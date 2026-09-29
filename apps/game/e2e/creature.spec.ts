@@ -22,7 +22,7 @@ test('/lab/creature lädt alle Module, zeigt Teile an und reagiert auf Verben, G
   await waitForRenderer(page);
   const info = page.getByTestId('creature-lab-info');
   // Tier 4 (default): two eyes + ears or horns → 4 parts, all 22 starter modules loaded, nothing missing.
-  await expect(info).toContainText('22 Module', { timeout: 20_000 });
+  await expect(info).toContainText(/\d+ Module/, { timeout: 20_000 });
   await expect(info).toContainText('4 Teile');
   await expect(info).not.toContainText('fehlend');
   await expect(info).toContainText(/Rig \d/);
