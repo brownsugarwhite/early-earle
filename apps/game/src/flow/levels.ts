@@ -1,23 +1,32 @@
 import type { LevelDef } from '@ee/core';
 import { LEVELS } from '../content/levels';
 
-/** The zone shown on the P5 patch; other zones get their own patch once the planet is chunked. */
-export const FLOW_ZONE = 'tjorizo';
-/** Node cap per patch (plan: 10–25 nodes on one cap patch). */
-export const MAX_NODES = 25;
-
+/**
+ * The planet carries all levels on one spiral path (Tjorizo → Syrup → Luzz → Wooding, 25 each).
+ * Node i ↔ FLOW_LEVELS[i] ↔ LEVELS[i] (global order).
+ */
 export interface FlowLevel {
   level: LevelDef;
   /** Index into `LEVELS` (what `useGridStore.loadLevel` expects). */
   index: number;
 }
 
-/** Levels of the flow's zone in order, mapped to their global index. Node i ↔ FLOW_LEVELS[i]. */
-export const FLOW_LEVELS: FlowLevel[] = LEVELS.map((level, index) => ({ level, index }))
-  .filter((e) => e.level.zone === FLOW_ZONE)
-  .slice(0, MAX_NODES);
+export const FLOW_LEVELS: FlowLevel[] = LEVELS.map((level, index) => ({ level, index }));
 
-/** Zone-relative level number (1-based) of a loaded level, or null if it is not on this patch. */
+/** Display names of the story zones (content/zones/*.json). */
+const ZONE_NAMES: Record<string, string> = {
+  tjorizo: 'Tjorizo',
+  syrup: 'Syrup',
+  luzz: 'Luzz',
+  wooding: 'Wooding',
+};
+
+export function zoneName(level: LevelDef | undefined): string {
+  if (!level) return 'early earle';
+  return ZONE_NAMES[level.zone] ?? level.zone;
+}
+
+/** Global level number (1-based) of a loaded level, or null if it is not part of the path. */
 export function flowLevelNo(level: LevelDef | undefined): number | null {
   if (!level) return null;
   const i = FLOW_LEVELS.findIndex((e) => e.level === level || e.level.id === level.id);

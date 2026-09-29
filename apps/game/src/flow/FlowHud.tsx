@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router';
 import { canRewind, type GoalProgress, type LevelDef } from '@ee/core';
-import { FLOW_LEVELS, flowLevelNo } from './levels';
+import { FLOW_LEVELS, flowLevelNo, zoneName } from './levels';
 import { useGridStore } from '../lab/grid/gridStore';
 import { PerfBadge } from '../overlay/PerfBadge';
 import { installHaptics } from '../native/haptics';
@@ -136,7 +136,7 @@ export function FlowHud() {
   const rex = inLevel ? gridRex : flowRex;
   const rewindable = !!history && canRewind(history) && status === 'playing';
 
-  const subtitle = `Tjorizo · Level ${levelNo}`;
+  const subtitle = `${zoneName(shownLevel)} · Level ${levelNo}`;
   const title = shownLevel?.name ?? shownLevel?.id ?? 'early earle';
   const moves = noLimit ? '∞' : inLevel && state ? String(state.movesLeft) : String(shownLevel?.moves ?? '–');
   const goals = inLevel && state ? state.goalProgress.map((g) => ({ text: goalText(g), done: g.done })) : goalPreview(shownLevel).map((text) => ({ text, done: false }));
