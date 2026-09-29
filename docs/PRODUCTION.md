@@ -131,3 +131,13 @@ Richtung laut `docs/FEEDBACK.md` (Hauptreferenz: ganzer Ordner `ref/eyvind earle
 | iPhone | lokales Capacitor-Plugin Liquid Glass (SwiftUI-Overlay), Haptik, Icon/Splash, Simulator, `docs/IOS.md` | `apps/game/ios`, `apps/game/plugins`, `apps/game/src/native`, `flow/FlowHud.tsx` |
 
 Integration danach durch die Leitung: Baum in den Planeten (LandmarkSlot), Kreaturen v2 + Materialien verdrahten, Kreaturen aufs Brett, natives Glas im Flow; anschließend Sichtung gegen die Gemälde und erneute iPhone-Messung.
+
+## Nachtrag 2026-09-30 (früh): Stand Iteration 2
+
+Committet und gepusht (jeweils isoliert geprüft: Typecheck, Unit-Tests, betroffene E2E):
+- **Schatten v2** (`/lab/shadow`): Kaskaden eng auf die Planetensicht, B-Spline/quintische Kante, Silhouettenregeln → glatte Vektorkanten ohne Treppen; in Map, Earle-, Baum- und Grid-Lab verdrahtet.
+- **Zehn Welten** (Pass 2): Gemälde-Kompositionen je Welt, Müll der Startwelt, Vektortexturen, Riesenbaum auf dem Planeten, Level 80–95 klettern Stamm und Krone.
+- **Riesenbaum** (`/lab/tree`, Pass 2), **Materialien** (Muster, Fell, Federn, Gas/Flüssig/Feuer, Gesichtsmaske), **Kreaturen v3** (Arten nach Florians Draufsicht-Skizze, geknetete Beine, Schlange mit Kopfspur, Maul, Merge-Moves), **Spielfeld** (Earle-Wiese, alle Elemente, Draufsicht ~65°, entfernungsabhängiges Timing, spektakuläre Merges mit Splash), **Level-Editor v2** (iPhone-first, Kette mit Schwierigkeitskurve), **iOS-Layer** (Liquid-Glass-Plugin, Haptik, `pnpm ios:sim`).
+
+In Arbeit: alle Arten auf dem Mesh-Weg (iPhone/Mobil), Spielfeld Pass 4 (Schritte der Stampfbeine, Mobil-Check, Map-Kamera MAP_VIEW + Baum-Schiene im Flow).
+Sicherheitsnetz: geplante Aufgabe `early-earle-weiterarbeiten` (alle 3 h, nur wenn das Projekt 2 h ruht).
