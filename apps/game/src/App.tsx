@@ -6,6 +6,7 @@ import { LabBlob } from './routes/LabBlob';
 import { LabEarle } from './routes/LabEarle';
 import { LabGrid } from './routes/LabGrid';
 import { LabCreature } from './routes/LabCreature';
+import { LabTree } from './routes/LabTree';
 import { EditorLevels } from './routes/EditorLevels';
 import { EditorCreatures } from './routes/EditorCreatures';
 import { EditorMap } from './routes/EditorMap';
@@ -20,6 +21,7 @@ export function App() {
       <Route path="/lab/earle" element={<LabEarle />} />
       <Route path="/lab/grid" element={<LabGrid />} />
       <Route path="/lab/creature" element={<LabCreature />} />
+      <Route path="/lab/tree" element={<LabTree />} />
       <Route path="/editor/levels" element={<EditorLevels />} />
       <Route path="/editor/creatures" element={<EditorCreatures />} />
       <Route path="/editor/map" element={<EditorMap />} />

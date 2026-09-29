@@ -1,0 +1,42 @@
+/* Baum-Lab: Info-Zeile, Ansichts- und Fahrt-Knöpfe — konturlos, Versatzschatten in Sonnenrichtung. */
+.tree-info {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 6px 10px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 12px/1.3 ui-monospace, Menlo, monospace;
+  box-shadow: var(--sun-shadow) var(--khaki-deep);
+}
+.tree-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-basis: 100%;
+}
+.tree-btn {
+  padding: 8px 12px;
+  border: 0;
+  background: var(--khaki);
+  color: var(--ink);
+  font: 900 12px/1 var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  box-shadow: var(--sun-shadow) var(--ink-soft);
+  cursor: pointer;
+}
+.tree-btn[data-active='true'] {
+  background: var(--pink);
+}
+.tree-btn:active {
+  transform: translate(-4px, 2px);
+  box-shadow: -4px 1px 0 var(--ink-soft);
+}
+.tree-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tree-toggles .earle-ctl {
+  min-width: 0;
+}
