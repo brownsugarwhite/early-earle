@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 
+// Unter SwiftShader (CI) laufen die Kamerafahrten mit 0,1-s-Schritten bei wenigen fps → deutlich längere Wartezeiten.
+const TRANSITION_MS = process.env.CI ? 45_000 : 10_000;
+test.setTimeout(process.env.CI ? 180_000 : 60_000);
+
 // P5 Flow-Lab: one take without cuts. Runs on the WebGL2 fallback (SwiftShader) like the smoke tests.
 
 function collectErrors(page: Page): string[] {
@@ -24,9 +28,9 @@ test('/ zeigt den Splash; ein Tipp startet den Hüpfer und endet auf der Map', a
   await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', 'splash');
   await waitForRenderer(page);
   await page.mouse.click(400, 300);
-  await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', /hop|map/, { timeout: 3_000 });
-  await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', 'map', { timeout: 10_000 });
-  await expect(page.getByTestId('splash')).toHaveCount(0, { timeout: 5_000 });
+  await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', /hop|map/, { timeout: TRANSITION_MS });
+  await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', 'map', { timeout: TRANSITION_MS });
+  await expect(page.getByTestId('splash')).toHaveCount(0, { timeout: TRANSITION_MS });
   await expect(page.getByTestId('play-btn')).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -41,8 +45,8 @@ test('/play startet auf der Map mit Glas-HUD; Spielen fliegt ins Level, Wisch/Ta
   await expect(page.getByTestId('hud-top').locator('h1')).toContainText('Level 1');
   await expect(page.getByTestId('rex-line')).toBeVisible();
   await page.getByTestId('play-btn').click();
-  await expect(hud).toHaveAttribute('data-flow-state', /flyIn|level/, { timeout: 3_000 });
-  await expect(hud).toHaveAttribute('data-flow-state', 'level', { timeout: 10_000 });
+  await expect(hud).toHaveAttribute('data-flow-state', /flyIn|level/, { timeout: TRANSITION_MS });
+  await expect(hud).toHaveAttribute('data-flow-state', 'level', { timeout: TRANSITION_MS });
   // Level 1 (2, 2, 4, 4 → 8) is won after a left and a right swipe. Under SwiftShader frames are slow,
   // so we keep swiping (the grid store queues one pending move) until the flow leaves the level.
   for (let i = 0; i < 8; i++) {
@@ -51,8 +55,8 @@ test('/play startet auf der Map mit Glas-HUD; Spielen fliegt ins Level, Wisch/Ta
     const state = await hud.getAttribute('data-flow-state');
     if (state === 'depart' || state === 'map') break;
   }
-  await expect(hud).toHaveAttribute('data-flow-state', /depart|map/, { timeout: 8_000 });
-  await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: 10_000 });
+  await expect(hud).toHaveAttribute('data-flow-state', /depart|map/, { timeout: TRANSITION_MS });
+  await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: TRANSITION_MS });
   await expect(page.getByTestId('hud-top').locator('h1')).toContainText('Level 2');
   expect(errors).toEqual([]);
 });
