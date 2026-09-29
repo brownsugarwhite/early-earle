@@ -194,3 +194,23 @@ Setup laut Plan 8b: Godot 4.7 Standard-Build (GDScript) + Export-Templates; Proj
 ## Referenzen
 
 Masterplan v0.1 (§8 Tech-Stack, §8b Vergleichs-Track, §11 P6, §16 Umsetzungsdesign); [`RESEARCH.md`](../RESEARCH.md) §2 (Plattform-Fakten, Engine-Matrix, Liquid Glass, Risiken) und §4 (Architektur-Review); Roh-Reports `docs/research/tech-stack.md`, `docs/research/architecture-review-p0-p3.md`.
+
+## Messung auf dem Gerät (2026-09-29, iPhone 16, Safari 26.3, WebGPU aktiv)
+
+Gemessen mit den Benchmark-Routen `/lab/blob?bench=1` und `/lab/earle?bench=1` über HTTPS im WLAN (Screenshots: `docs/progress/p6-iphone16-*.webp`). Das iPhone 16 hat ein 60-Hz-Display; 60 fps ist dort die Obergrenze, p99 ≈ 17–18 ms entspricht dem Vsync-Takt.
+
+| Szene | Konfiguration | fps | p99 ms | Draw Calls | Gate (≥ 58 fps, p99 < 20 ms) |
+|---|---|---|---|---|---|
+| Blob-Lab | (a) Raymarch × 9, Hoch | 60 | 17,5 | 3 | ✓ |
+| Blob-Lab | (a) Raymarch × 36, Hoch | 46 | 24 | 3 | ✗ |
+| Blob-Lab | (b) Jiggle-Mesh × 9 | 60 | 17,5 | 3 | ✓ |
+| Blob-Lab | (b) Jiggle-Mesh × 36 | 60 | 17 | 3 | ✓ |
+| Blob-Lab | (a) Raymarch × 36, Mobil-Preset | 60 | 17 | 3 | ✓ |
+| Earle-Lab | Hoch, Leerlauf (DPR 2, 786×1390) | 60 | 18 | 13 | ✓ |
+| Earle-Lab | Hoch, rotierend | 60 | 19 | 18 | ✓ |
+| Earle-Lab | Mobil, Leerlauf (DPR 1,5) | 60 | 19,5 | 11 | ✓ |
+| Earle-Lab | Mobil, rotierend | 58 | 63,5 | 16 | ✗ (Hitch, vermutlich Pipeline-/Schattenkarten-Neuaufbau beim Preset-Wechsel; zu prüfen) |
+
+Erste Messung vor dem Mobil-Preset: (a) Raymarch × 9 in Standardansicht 24 fps, p99 46 ms → das Preset (Schritte 20, innerer Marsch 4, DPR-Deckel 1,5, LOD) ist auf dem Gerät entscheidend.
+
+**Zwischenfazit für das Gate**: Der Web-Track (three.js WebGPU) erfüllt auf dem iPhone 16 die Bildratenkriterien, wenn (b) Jiggle-Mesh der Standard im Raster ist und (a) Raymarch nur für Hero-Ansichten und Verschmelzmomente mit Mobil-Preset genutzt wird; die Map läuft in "Hoch" mit 60 fps. Offen: 10-Minuten-Stabilität, Wärme, Speicher, WKWebView-Build auf dem Gerät (Simulator liefert nur WebGL2), Godot-iOS-Export zum direkten Vergleich. Empfehlung: three.js bleibt Primärtrack, Godot bleibt als dokumentierter Fallback im Repo (`apps/godot/`).

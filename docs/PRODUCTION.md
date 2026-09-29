@@ -110,3 +110,9 @@ Die Web-Version braucht von alledem nichts außer pnpm und Node.
 ## 9. Release-Konzept (Skelett, Phase 3)
 
 Grafik 100 %, Audio, DE/EN, Store-Assets (Screenshots im Lab erzeugt), Tierschutz-Partner mit Verträgen und Formulierung des Drittel-Versprechens je Modell, Transparenzbericht-Vorlage, Soft-Launch-Plan mit Telemetrie-Zielen (Versuche-Bänder, Abbruch < 2 %, Retention-Benchmarks aus dem GDD), App-Review-Vorbereitung (4.2: Game Center, Haptik, natives Chrome; 2.5.1: keine privaten APIs; 3.2.2: keine In-App-Spenden), Entscheidung Erlösmodell. **Offen** bis dahin.
+
+## Nachtrag 2026-09-29 (Abend): Stand P0–P6
+
+- P0 ✓ (WebGPU/WebGL2 im Panel, CI grün mit Smoke-Suite in ~2 min). P3 ✓ (Kern, Solver, Level 001–025 kalibriert, Grid-Lab spielbar). P1 ✓ (beide Kandidaten, Mobil-Preset, Bench). P2 ✓ (Earle-Slice, Mobil-Preset, Bench). P1-G/P2-G ✓ (Godot 4.7, Mac-Messwerte in `apps/godot/README.md`). P5 in Arbeit. P4 offen.
+- P6 teilweise: Capacitor-iOS-Projekt gebaut und im Simulator gestartet (nur WebGL2 dort); Gerätemessung über Safari auf dem iPhone 16 siehe ADR-0001 → Gate-Kriterien mit (b)-Standard und Mobil-Preset erfüllt. Noch offen: WKWebView-Build auf dem Gerät (Signatur mit Apple-ID), Langzeit-/Wärmetest, Godot-iOS-Export.
+- Nächste Schritte: adaptive Qualitätsstufe (Start Hoch, Rückstufung bei p99 > 20 ms über drei Fenster), (b) als Raster-Standard verdrahten, P4 Genom-Lab mit Blender-Modulen, P5 Flow-Lab abnehmen, Level 26–50 (Syrup) generieren.
