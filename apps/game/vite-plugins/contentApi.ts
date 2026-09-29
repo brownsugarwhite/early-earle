@@ -1,6 +1,7 @@
 import type { Plugin, ViteDevServer } from 'vite';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { formatJson } from '../../../tools/levels/format.ts';
 
 /**
  * Dev-Only-Endpunkt für die In-App-Editoren (auch vom Handy):
@@ -80,7 +81,8 @@ export function contentApi(opts: ContentApiOptions): Plugin {
               const r = validate(json);
               if (!r.ok) return send(400, { error: 'Validierung fehlgeschlagen', issues: r.issues });
             }
-            const pretty = JSON.stringify(json, null, 2) + '\n';
+            // Level-Dateien mit dem stabilen Formatierer der Werkzeuge schreiben (kompakte Koordinaten, saubere Diffs)
+            const pretty = (dir === 'levels' ? formatJson(json) : JSON.stringify(json, null, 2)) + '\n';
             const tmp = target + '.tmp-' + process.pid;
             await fs.mkdir(path.dirname(target), { recursive: true });
             await fs.writeFile(tmp, pretty, 'utf8');

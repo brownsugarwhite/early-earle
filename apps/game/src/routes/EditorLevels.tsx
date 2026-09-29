@@ -1,24 +1,56 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useMemo } from 'react';
+import { EditorPreviewScene } from '../editor/levels/EditorPreviewScene';
+import { useEditorStore } from '../editor/levels/editorStore';
+import { usePreviewStore } from '../editor/levels/previewStore';
+import { TopBar } from '../editor/levels/TopBar';
+import { PreviewPane } from '../editor/levels/PreviewPane';
+import { Sheet } from '../editor/levels/Sheet';
+import { Toast } from '../editor/levels/Toast';
+import '../styles/editor.css';
 
-/** Platzhalter: listet die JSON-Dateien über den Dev-Endpunkt. Der echte Editor folgt mit P3/P4. */
+/**
+ * `/editor/levels` — touch-first Level-Editor: Kopfleiste (Level, Speichern), 3D-Vorschau des Entwurfs,
+ * Bottom-Sheet mit Raster · Elemente · Ziele & Züge · Spawn · Solver · ASCII. Schreibt über den Dev-Endpunkt
+ * nach content/levels; ohne Endpunkt Download/Teilen. Entwürfe liegen zusätzlich in localStorage.
+ */
 export function EditorLevels() {
-  const [files, setFiles] = useState<string[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const controller = useMemo(() => new EditorPreviewScene(), []);
+  const init = useEditorStore((s) => s.init);
+
   useEffect(() => {
-    fetch(import.meta.env.BASE_URL + '__content/levels')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status + ' ' + r.statusText))))
-      .then((j: { files: string[] }) => setFiles(j.files))
-      .catch((e: Error) => setError(e.message));
+    void init();
+  }, [init]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const meta = e.metaKey || e.ctrlKey;
+      if (!meta) return;
+      const target = e.target as HTMLElement | null;
+      const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+      if (e.key.toLowerCase() === 'z' && !typing) {
+        e.preventDefault();
+        if (e.shiftKey) useEditorStore.getState().redo();
+        else useEditorStore.getState().undo();
+      } else if (e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        void useEditorStore.getState().save();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // Beim Verlassen der Route den Testmodus beenden, damit die nächste Vorschau wieder den Entwurf zeigt.
+  useEffect(() => () => usePreviewStore.setState({ mode: 'edit' }), []);
+
   return (
-    <main className="page">
-      <h1 className="display">Level-Editor</h1>
-      <p className="lede">Inhalte aus <code>content/levels/</code> (Dev-Endpunkt).</p>
-      {error ? <p className="error">Endpunkt nicht erreichbar: {error} (nur im Dev-Server verfügbar)</p> : null}
-      <ul className="list">{(files ?? []).map((f) => <li key={f}>{f}</li>)}</ul>
-      {files && files.length === 0 ? <p>Noch keine Dateien.</p> : null}
-      <Link className="tile" to="/">◀ Start</Link>
-    </main>
+    <div className="ed-root" data-testid="editor-levels">
+      <TopBar />
+      <div className="ed-main">
+        <PreviewPane controller={controller} />
+        <Sheet />
+      </div>
+      <Toast />
+    </div>
   );
 }
