@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { GridLabScene } from '../lab/grid/GridLabScene';
-import { useGridStore } from '../lab/grid/gridStore';
+import { DEMO_LEVEL_INDEX, useGridStore } from '../lab/grid/gridStore';
 import { LEVELS } from '../content/levels';
 import { canRewind, type Dir, type GoalProgress } from '@ee/core';
 
@@ -15,6 +15,8 @@ const GOAL_LABEL: Record<string, string> = {
   clearScrap: 'Schrott',
   deliver: 'Liefern',
   score: 'Punkte',
+  clearRot: 'Fäulnis',
+  calmStrays: 'Streuner',
 };
 
 function goalText(g: GoalProgress): string {
@@ -30,12 +32,14 @@ export function LabGrid() {
   const history = useGridStore((s) => s.history);
   const levelIndex = useGridStore((s) => s.levelIndex);
   const showNumbers = useGridStore((s) => s.showNumbers);
+  const juice = useGridStore((s) => s.juice);
   const rex = useGridStore((s) => s.rex);
   const move = useGridStore((s) => s.move);
   const loadLevel = useGridStore((s) => s.loadLevel);
   const restart = useGridStore((s) => s.restart);
   const rewindMove = useGridStore((s) => s.rewindMove);
   const toggleNumbers = useGridStore((s) => s.toggleNumbers);
+  const toggleJuice = useGridStore((s) => s.toggleJuice);
   const swipe = useRef<{ x: number; y: number; id: number } | null>(null);
 
   useEffect(() => {
@@ -45,16 +49,19 @@ export function LabGrid() {
   useEffect(() => {
     const keys: Record<string, Dir> = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) return;
       const dir = keys[e.key];
       if (dir) {
         e.preventDefault();
         move(dir);
       } else if (e.key === 'z' || e.key === 'Backspace') rewindMove();
       else if (e.key === 'r') restart();
+      else if (e.key === 'j') toggleJuice();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [move, rewindMove, restart]);
+  }, [move, rewindMove, restart, toggleJuice]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     swipe.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
@@ -71,18 +78,21 @@ export function LabGrid() {
 
   const next = state?.spawnQueue[0];
   const status = state?.status ?? 'playing';
+  const isDemo = levelIndex === DEMO_LEVEL_INDEX;
   const levelNo = levelIndex + 1;
   const noLimit = (level?.moves ?? 0) >= 99;
+  const title = isDemo ? 'P3 Grid-Lab — Elemente-Schau' : `P3 Grid-Lab — Level ${levelNo}${level ? ` · ${level.name ?? level.id}` : ''}`;
 
   return (
     <LabFrame
-      title={`P3 Grid-Lab — Level ${levelNo}${level ? ` · ${level.name ?? level.id}` : ''}`}
+      title={title}
       controls={
         <>
           <div className="hud-row">
             <label className="hud-field">
               Level
-              <select value={levelIndex} onChange={(e) => loadLevel(Number(e.target.value))}>
+              <select value={levelIndex} onChange={(e) => loadLevel(Number(e.target.value))} data-testid="grid-level-select">
+                <option value={DEMO_LEVEL_INDEX}>★ Elemente-Schau (alle Elemente)</option>
                 {LEVELS.map((l, i) => (
                   <option key={l.id} value={i}>{i + 1} · {l.name ?? l.id}</option>
                 ))}
@@ -91,6 +101,7 @@ export function LabGrid() {
             <button className="btn" onClick={rewindMove} disabled={!history || !canRewind(history)}>⟲ Rückspulen</button>
             <button className="btn" onClick={restart}>↻ Neu</button>
             <button className="btn" onClick={toggleNumbers}>{showNumbers ? 'Zahlen aus' : 'Zahlen an'}</button>
+            <button className={`btn${juice ? ' on' : ''}`} onClick={toggleJuice} data-testid="grid-juice" title="Partikel, Platten-Dip, Shake, REX-Puls (J)">Juice {juice ? 'an' : 'aus'}</button>
           </div>
           <div className="hud-row hud-stats">
             <span className="hud-pill">{noLimit ? 'Züge: frei' : `Züge: ${state?.movesLeft ?? 0}`}</span>
@@ -104,8 +115,8 @@ export function LabGrid() {
           {status !== 'playing' ? (
             <div className={`hud-banner ${status}`}>
               {status === 'won' ? 'Geschafft!' : 'Verloren.'}
-              <button className="btn" onClick={() => (status === 'won' && levelIndex + 1 < LEVELS.length ? loadLevel(levelIndex + 1) : restart())}>
-                {status === 'won' && levelIndex + 1 < LEVELS.length ? 'Weiter ▶' : 'Nochmal'}
+              <button className="btn" onClick={() => (status === 'won' && !isDemo && levelIndex + 1 < LEVELS.length ? loadLevel(levelIndex + 1) : restart())}>
+                {status === 'won' && !isDemo && levelIndex + 1 < LEVELS.length ? 'Weiter ▶' : 'Nochmal'}
               </button>
             </div>
           ) : null}

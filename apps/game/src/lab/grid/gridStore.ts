@@ -14,6 +14,10 @@ import {
 } from '@ee/core';
 import { LEVELS } from '../../content/levels';
 import { rexIntroFor, rexLine } from './rex';
+import { DEMO_LEVEL, demoState } from './demoLevel';
+
+/** `levelIndex` of the Elemente-Schau demo board (not part of `LEVELS`). */
+export const DEMO_LEVEL_INDEX = -1;
 
 export interface GridLabState {
   levelIndex: number;
@@ -23,17 +27,22 @@ export interface GridLabState {
   lastMove: MoveResult<LevelState> | null;
   moveSeq: number;
   showNumbers: boolean;
+  /** Board juice (particles, dips, shake, REX pulse) on/off. */
+  juice: boolean;
   animating: boolean;
   /** Ein während der Animation eingegebener Wisch (Warteschlange Tiefe 1). */
   pendingDir: Dir | null;
   rex: string | null;
   attempt: number;
   loadLevel: (index: number, attempt?: number) => void;
+  /** Loads the Elemente-Schau demo board (every element type on one board). */
+  loadDemo: (attempt?: number) => void;
   restart: () => void;
   move: (dir: Dir) => boolean;
   rewindMove: () => void;
   setAnimating: (v: boolean) => void;
   toggleNumbers: () => void;
+  toggleJuice: () => void;
 }
 
 function levelNo(level: LevelDef | undefined): number {
@@ -50,11 +59,16 @@ export const useGridStore = create<GridLabState>((set, get) => ({
   lastMove: null,
   moveSeq: 0,
   showNumbers: true,
+  juice: true,
   animating: false,
   pendingDir: null,
   rex: null,
   attempt: 1,
   loadLevel: (index, attempt = 1) => {
+    if (index === DEMO_LEVEL_INDEX) {
+      get().loadDemo(attempt);
+      return;
+    }
     const level = LEVELS[index];
     if (!level) return;
     const seed = (index + 1) * 1000 + attempt;
@@ -70,6 +84,21 @@ export const useGridStore = create<GridLabState>((set, get) => ({
       pendingDir: null,
       attempt,
       rex: rexIntroFor(levelNo(level)),
+    });
+  },
+  loadDemo: (attempt = 1) => {
+    const state = demoState(1000 + attempt);
+    set({
+      levelIndex: DEMO_LEVEL_INDEX,
+      level: DEMO_LEVEL,
+      history: createHistory(state, 8),
+      state,
+      lastMove: null,
+      moveSeq: 0,
+      animating: false,
+      pendingDir: null,
+      attempt,
+      rex: 'Elemente-Schau: alles auf einem Brett.',
     });
   },
   restart: () => {
@@ -114,4 +143,5 @@ export const useGridStore = create<GridLabState>((set, get) => ({
     }
   },
   toggleNumbers: () => set({ showNumbers: !get().showNumbers }),
+  toggleJuice: () => set({ juice: !get().juice }),
 }));

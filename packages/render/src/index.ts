@@ -4,3 +4,4 @@ export * from './blob/index';
 export * from './earle/index';
 export * from './creature/index';
 export * from './materials/index';
+export * from './board/index';

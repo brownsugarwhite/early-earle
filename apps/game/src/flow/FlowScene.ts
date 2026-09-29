@@ -1,4 +1,4 @@
-import { CircleGeometry, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Quaternion, Vector3 } from 'three/webgpu';
+import { Box3, CircleGeometry, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Quaternion, Vector3 } from 'three/webgpu';
 import type { Dir, LevelState } from '@ee/core';
 import type { SceneController, SceneContext } from '../canvas/SceneController';
 import { FLOW_LEVELS } from './levels';
@@ -12,9 +12,10 @@ import type { PathLayout, PathNode } from './path';
 import { NodePath } from './NodePath';
 import { Hero, SHADOW_PROXY_LAYER, type HeroPose } from './Hero';
 import { Rex } from './Rex';
-import { LevelBoard, CELL, PLATE_THICKNESS } from './LevelBoard';
+import { LevelBoard, PITCH } from './LevelBoard';
 import { resolveFlowQuality } from './quality';
 import { Tweens, easeInOut, easeInOutQuint, easeOut, lerp } from './tween';
+import { demoState } from '../lab/grid/demoLevel';
 
 export interface FlowSceneOptions {
   /** `/` starts at the splash, `/play` on the map. */
@@ -47,12 +48,22 @@ const MAP_TARGET_NDC_Y = -0.36;
 /** REX anchor in camera space: upper right, 12 units out (constant screen size, every aspect ratio). */
 const REX_NDC = { x: 0.72, y: 0.42 };
 const REX_DEPTH = 12;
-/** Timings in seconds (plan: pull-back ≈ 1.4 s, fly-in ≈ 1.2 s, plate ≈ 0.5 s). */
+/** Timings in seconds (plan: pull-back ≈ 1.4 s, fly-in ≈ 1.2 s; the plateau has its own choreography). */
 const T_HOP = 1.4;
 const T_FLY_IN = 1.2;
-const T_PLATE = 0.5;
 const T_DEPART = 1.3;
 const T_AUTO_ROTATE = 1.0;
+/**
+ * Board v2 fly-in (flow clock): the plateau starts heaving at T_RISE_AT (its own ≈1.3 s wall-clock
+ * choreography), the hero rides the hill up, crouches and jumps onto its cell at T_HERO_LAUNCH.
+ */
+const T_RISE_AT = 0.26;
+const T_HERO_LAUNCH = 0.64;
+const T_HERO_FLIGHT = 0.6;
+/** Sideways/upward bend of the camera dolly (fraction of the travel distance). */
+const CAMERA_ARC = 0.14;
+/** Camera shake scale (board shake is in board units at ≈ 1 unit from the camera). */
+const SHAKE_SCALE = 2.4;
 
 const _Y = new Vector3(0, 1, 0);
 const _m4 = new Matrix4();
@@ -96,6 +107,14 @@ export class FlowScene implements SceneController {
   private stripesY = 0;
   private splashBacking: Mesh | null = null;
   private splashBackingMat: MeshBasicMaterial | null = null;
+  /** Shadow pass keeps running briefly after the board stops moving (jiggle settles). */
+  private boardShadowGrace = 0;
+  /**
+   * Shadow map fitted tightly around the plateau (level view, late fly-in, early depart) instead of the
+   * whole loaded planet: 2048² over ≈ 16 units keeps the board's razor shadows free of stair steps.
+   */
+  private shadowFocus = false;
+  private readonly shadowBox = new Box3();
 
   constructor(readonly options: FlowSceneOptions) {}
 
@@ -160,6 +179,15 @@ export class FlowScene implements SceneController {
     if (phase === 'level' || phase === 'flyIn' || phase === 'depart') this.enterLevelImmediate(store.playing ?? current);
     else if (phase === 'splash' || phase === 'hop') this.enterSplashImmediate();
     else this.enterMapImmediate();
+    // Build the board's pipelines (all element families) while the player looks at the splash/map. WebGPU
+    // only: pipelines compile asynchronously there; on WebGL2 (SwiftShader in CI) a burst of synchronous
+    // program links would stall the first seconds instead.
+    if (this.phase !== 'level' && ctx.backend === 'webgpu') {
+      const board = this.board;
+      void board.warmup(demoState(), async (root) => {
+        await ctx.renderer.compileAsync(root, world.camera, world.scene);
+      });
+    }
   }
 
   resize(ctx: SceneContext): void {
@@ -194,6 +222,10 @@ export class FlowScene implements SceneController {
     }
 
     hero.update(dt, world.camera);
+    // A launched creature keeps its parts on the hero (until it lands in the next level).
+    if (board.carrying) {
+      board.setCarrier({ matrixWorld: hero.root.matrixWorld, params: hero.genome, standY: hero.standY(), scale: hero.scale, jiggle: hero.jiggle, visible: hero.root.visible });
+    }
     board.update(dt, world.camera);
     nodePath.update(elapsed);
     if (this.rex) {
@@ -202,10 +234,25 @@ export class FlowScene implements SceneController {
       this.rex.sprite.position.y += this.rex.bob;
     }
     world.fogStripes.group.position.y = this.stripesY;
-    // Moving casters (hero flights, wobble, the rising plate) need a fresh shadow pass.
-    if (hero.isFlying || hero.jiggle > 0.02 || this.tweens.active > 0) world.markShadowDirty();
+    // Moving casters (hero flights, wobble, the rising plateau, sliding blobs) need a fresh shadow pass.
+    if (board.root.visible && board.animating) this.boardShadowGrace = 0.6;
+    else this.boardShadowGrace = Math.max(0, this.boardShadowGrace - dt);
+    if (hero.isFlying || hero.jiggle > 0.02 || this.tweens.active > 0 || this.boardShadowGrace > 0) world.markShadowDirty();
     world.update();
-    ctx.renderer.render(world.scene, world.camera);
+    if (this.shadowFocus && board.root.visible) this.fitBoardShadow(false);
+    // Screen-space shake (board juice): nudge the camera along its own axes for this frame only.
+    const sh = board.shake;
+    const cam = world.camera;
+    if (board.root.visible && (sh.x !== 0 || sh.y !== 0)) {
+      _v.set(sh.x * SHAKE_SCALE, sh.y * SHAKE_SCALE, 0).applyQuaternion(cam.quaternion);
+      cam.position.add(_v);
+      cam.updateMatrixWorld(true);
+      ctx.renderer.render(world.scene, cam);
+      cam.position.sub(_v);
+      cam.updateMatrixWorld(true);
+    } else {
+      ctx.renderer.render(world.scene, cam);
+    }
   }
 
   dispose(): void {
@@ -247,18 +294,22 @@ export class FlowScene implements SceneController {
     return p;
   }
 
-  /** Camera over the plate (board-local framing like the Grid-Lab, transformed into rig space). */
+  /** Camera over the plateau (board-local framing like the Grid-Lab, transformed into rig space). */
   private levelPose(): CameraPose {
     const world = this.world!;
     const board = this.board!;
     const aspect = world.camera.aspect;
-    const span = Math.max(board.w, board.h * 0.9 + 1.2) * (CELL + 0.09);
+    // Cells plus margins; the goal totems stand on a ledge behind the far row (plateau centre at z ≈ −0.4).
+    const wide = board.w * PITCH + 1.0;
+    const deep = board.h * PITCH + 1.8;
+    const span = Math.max(wide, deep * 0.86 + 0.5);
     const fit = aspect < 1 ? span / aspect : span;
-    const dist = fit * 1.05 + 1.9;
-    const hudShift = aspect < 1 ? span * 0.42 : span * 0.04;
+    const dist = fit * 1.02 + 1.9;
+    const hudShift = aspect < 1 ? span * 0.4 : span * 0.03;
     const top = board.topY;
-    const eye = new Vector3(0, top + dist * 0.92, dist * 0.55 + hudShift);
-    const target = new Vector3(0, top, 0.15 * CELL + hudShift);
+    const cz = -0.32;
+    const eye = new Vector3(0, top + dist * 0.9, cz + dist * 0.6 + hudShift);
+    const target = new Vector3(0, top, cz + 0.16 + hudShift);
     board.root.updateWorldMatrix(true, false);
     board.root.localToWorld(eye);
     board.root.localToWorld(target);
@@ -281,15 +332,28 @@ export class FlowScene implements SceneController {
     cam.updateProjectionMatrix();
   }
 
-  /** One continuous camera move: position, orientation and FOV on the same easing. */
-  private tweenCamera(to: CameraPose, duration: number, ease = easeInOutQuint, done?: () => void): void {
+  /**
+   * One continuous camera move: position, orientation and FOV on the same easing. `arc` bends the dolly
+   * sideways toward the sun side (rig +x) and a little up, perpendicular to the travel (0 = straight line);
+   * the bend is fixed in rig space, so the reverse move retraces the same curve.
+   */
+  private tweenCamera(to: CameraPose, duration: number, ease = easeInOutQuint, done?: () => void, arc = 0): void {
     const from = this.currentPose();
     const cam = this.world!.camera;
+    const travel = to.position.clone().sub(from.position);
+    const len = travel.length();
+    const bend = new Vector3();
+    if (arc > 0 && len > 1e-3) {
+      travel.divideScalar(len);
+      bend.set(1, 0.4, 0);
+      bend.addScaledVector(travel, -bend.dot(travel));
+      if (bend.lengthSq() > 1e-6) bend.normalize().multiplyScalar(len * arc);
+    }
     this.tweens.cancel('camera');
     this.tweens.add(
       duration,
       (t) => {
-        cam.position.copy(from.position).lerp(to.position, t);
+        cam.position.copy(from.position).lerp(to.position, t).addScaledVector(bend, Math.sin(Math.PI * t));
         cam.quaternion.copy(from.quaternion).slerp(to.quaternion, t);
         cam.fov = lerp(from.fov, to.fov, t);
         cam.updateProjectionMatrix();
@@ -397,6 +461,31 @@ export class FlowScene implements SceneController {
     return { position, quaternion, scale };
   }
 
+  /**
+   * Fits the sun's shadow camera around the plateau plus a margin (after `world.update`, which may have
+   * refitted it to the planet). The fit is stable while the planet does not rotate, so the shadow pass only
+   * re-renders when something moved (`markShadowDirty`) or when `force` switches the fit.
+   */
+  private fitBoardShadow(force: boolean): void {
+    const world = this.world;
+    const board = this.board;
+    if (!world || !board) return;
+    const fp = board.footprint;
+    const margin = 5;
+    this.shadowBox.min.set(fp.minX - margin, board.sunkY - 1, fp.minZ - margin);
+    this.shadowBox.max.set(fp.maxX + margin, board.topY + 1.6, fp.maxZ + margin);
+    board.root.updateWorldMatrix(true, false);
+    world.sun.fitShadow(this.shadowBox, board.root.matrixWorld, 2.5);
+    if (force) world.sun.requestUpdate();
+  }
+
+  private setShadowFocus(on: boolean): void {
+    if (this.shadowFocus === on) return;
+    this.shadowFocus = on;
+    if (on) this.fitBoardShadow(true);
+    else this.world?.markShadowDirty(); // MapWorld refits to the planet and re-renders
+  }
+
   /** Places the (hidden) board at a node: tangent frame facing the camera, plate height from the terrain. */
   private placeBoardAt(index: number): void {
     const world = this.world!;
@@ -409,23 +498,28 @@ export class FlowScene implements SceneController {
     board.root.position.copy(position);
     board.root.quaternion.setFromRotationMatrix(_m4);
     board.root.updateMatrix();
-    // Terrain under the footprint: the plate top clears the highest point, the sunk plate hides under the lowest.
-    const [pw, ph] = board.plateSize;
+    // Terrain under the footprint (skirt included): the top clears the highest point, the skirt and the sunk
+    // hill reach below the lowest.
+    const fp = board.footprint;
     const rNode = position.length();
     let maxD = -Infinity;
     let minD = Infinity;
-    for (let j = 0; j <= 4; j++) {
-      for (let i = 0; i <= 4; i++) {
-        _v.set((i / 4 - 0.5) * pw, 0, (j / 4 - 0.5) * ph).applyMatrix4(board.root.matrix);
+    const N = 6;
+    for (let j = 0; j <= N; j++) {
+      for (let i = 0; i <= N; i++) {
+        _v.set(fp.minX + ((fp.maxX - fp.minX) * i) / N, 0, fp.minZ + ((fp.maxZ - fp.minZ) * j) / N).applyMatrix4(board.root.matrix);
         const r = world.surfaceRadius(_v2.copy(_v).normalize());
         const d = r - rNode;
         maxD = Math.max(maxD, d);
         minD = Math.min(minD, d);
       }
     }
-    board.topY = Math.max(0.3, maxD + 0.3);
-    board.sunkY = Math.min(0, minD) - PLATE_THICKNESS - 0.4;
-    board.setRise(0);
+    board.setTerrain(Math.min(0, minD), Math.max(0, maxD));
+    // Sun in board space: peel direction of the scrap layers and the plateau's ink offset shadow.
+    world.rig.updateWorldMatrix(true, true);
+    board.root.updateWorldMatrix(true, false);
+    const sun = world.sunDirection(new Vector3()).applyQuaternion(board.root.getWorldQuaternion(_q).invert());
+    board.setSunDirection(sun);
     board.root.visible = true;
   }
 
@@ -454,6 +548,8 @@ export class FlowScene implements SceneController {
   private enterSplashImmediate(): void {
     this.tweens.clear();
     this.detachTrackball();
+    this.setShadowFocus(false);
+    this.board!.dropCarried();
     this.board!.root.visible = false;
     this.board!.unbind();
     this.hero!.root.visible = true;
@@ -471,7 +567,9 @@ export class FlowScene implements SceneController {
 
   private enterMapImmediate(): void {
     this.tweens.clear();
-    this.board!.root.visible = false;
+    this.setShadowFocus(false);
+    if (this.board!.carrying) this.board!.setPartsOnly(true);
+    else this.board!.root.visible = false;
     this.board!.unbind();
     const current = useFlowStore.getState().current;
     this.zoom = 1;
@@ -518,15 +616,18 @@ export class FlowScene implements SceneController {
     const grid = useGridStore.getState();
     const levelIndex = FLOW_LEVELS[node]?.index ?? node;
     if (!grid.state || grid.levelIndex !== levelIndex) grid.loadLevel(levelIndex);
+    board.dropCarried();
     board.bind();
     this.placeBoardAt(node);
     board.setRise(1);
+    board.setMorph(1);
     board.setBlobPop(1);
     hero.root.visible = false;
     this.rex?.setVisible(false);
     this.stripesY = -4;
     flow.setPlaying(node);
     this.applyPose(this.levelPose());
+    this.setShadowFocus(true);
     this.setPhase('level');
   }
 
@@ -614,37 +715,62 @@ export class FlowScene implements SceneController {
     }
 
     useGridStore.getState().loadLevel(FLOW_LEVELS[node]?.index ?? node);
-    board.bind();
+    // The level arrives hidden: a round hill under the terrain, plates folded into it, props and blobs at 0.
+    board.bind({ hidden: true });
     this.placeBoardAt(node);
-    board.setBlobPop(0.001);
     const entry = board.entryBlob(hero.tier);
     if (entry) board.setBlobHidden(entry.id, true);
 
-    this.tweenCamera(this.levelPose(), T_FLY_IN, easeInOutQuint);
+    // Camera: dolly + FOV as before, bent into a slight arc toward the sun side.
+    this.tweenCamera(this.levelPose(), T_FLY_IN, easeInOutQuint, undefined, CAMERA_ARC);
     this.rex?.setVisible(false);
     const stripes0 = this.stripesY;
     this.tweens.add(0.8, (t) => (this.stripesY = lerp(stripes0, -4, t)), { ease: easeInOut });
 
-    // Plate unfolds while the camera is still settling; the hero hops onto its own cell and becomes that blob.
-    const plateStart = T_FLY_IN - T_PLATE - 0.15;
-    this.tweens.add(T_PLATE, (t) => board.setRise(t), { delay: plateStart, ease: easeOut });
-    this.tweens.add(0.25, (t) => board.setBlobPop(Math.max(0.001, t)), { delay: plateStart + T_PLATE * 0.55, ease: easeOut });
-    const target = entry ? this.boardPose(entry.local, board.worldScale(entry.tier)) : this.boardPose(new Vector3(0, 0, 0), 0.02);
-    this.tweens.after(plateStart + 0.02, () => {
-      hero.flyTo(target, {
-        duration: T_PLATE,
-        arc: 1.1,
+    // The hill heaves out of the terrain under the hero and flattens into the stepped plateau; plates swing
+    // up in a wave from the near edge, props pop, blobs pop (the board's own wall-clock choreography).
+    this.tweens.after(T_RISE_AT, () => board.playRise());
+    // The hero stands on the node = the plateau's centre: it rides the heave up until it jumps.
+    const riding = this.nodePose(node);
+    let lifted = false;
+    this.tweens.add(
+      T_HERO_LAUNCH - T_RISE_AT,
+      () => {
+        const y = board.surfaceY(0, 0);
+        if (y <= 0.001) return;
+        if (!lifted) {
+          lifted = true;
+          hero.impulse(0.7);
+        }
+        _v.set(0, y, 0).applyMatrix4(board.root.matrix);
+        hero.setPose({ position: _v.clone(), quaternion: riding.quaternion, scale: riding.scale });
+      },
+      { delay: T_RISE_AT, ease: (t) => t },
+    );
+    // Crouch, then the jump onto its own cell; the landing splats and hands over to that blob.
+    this.tweens.after(T_HERO_LAUNCH - 0.14, () => hero.impulse(1.0));
+    const scale = entry ? board.worldScale(entry.tier) : 0.02;
+    const local = entry ? entry.local.clone() : new Vector3(0, 0, 0);
+    this.tweens.after(T_HERO_LAUNCH, () => {
+      hero.flyTo(this.boardPose(local, scale), {
+        duration: T_HERO_FLIGHT,
+        arc: 1.15,
         ease: easeInOut,
         done: () => {
+          board.dropCarried();
+          const color = entry ? board.blobInfo(entry.id)?.genome.baseColor : undefined;
           if (entry) {
             hero.setTier(entry.tier);
-            board.setBlobHidden(entry.id, false);
+            board.revealBlob(entry.id, 1.4);
           }
+          board.splat(local, scale, color);
           hero.root.visible = false;
         },
       });
     });
-    this.tweens.after(T_FLY_IN + 0.1, () => this.setPhase('level'));
+    // Once the camera is close, the shadow map tightens around the plateau (crisp board shadows).
+    this.tweens.after(T_FLY_IN * 0.55, () => this.setShadowFocus(true));
+    this.tweens.after(T_FLY_IN + 0.12, () => this.setPhase('level'));
   }
 
   // ---------- depart / leave: level → map ----------
@@ -668,10 +794,18 @@ export class FlowScene implements SceneController {
     const current = flow.current;
     const next = won ? Math.min(current + 1, this.layout!.nodes.length - 1) : current;
 
+    // The launching creature: the hero takes over its body (and its parts, via the carrier) on its cell.
     const top = won ? board.topBlob() : board.entryBlob(hero.tier);
     if (top) {
+      const info = board.blobInfo(top.id);
       board.setBlobHidden(top.id, true);
       hero.setTier(top.tier);
+      if (info) hero.genome = { ...info.genome, eye: info.spec?.body.eye ?? hero.genome.eye };
+      if (info?.spec) {
+        const withParts = board.carry(top.id);
+        // Parts bring their own eyes: keep the painted slit only when the creature has none.
+        if (withParts && info.spec.parts.some((part) => part.slot === 'eye')) hero.genome = { ...hero.genome, eye: { ...hero.genome.eye, size: 0 } };
+      }
       hero.setPose(this.boardPose(top.local, board.worldScale(top.tier)));
     } else {
       hero.setPose(this.boardPose(new Vector3(0, 0, 0), 0.05));
@@ -680,20 +814,26 @@ export class FlowScene implements SceneController {
     hero.impulse(1.3);
     flow.setRex(won ? (rexLine('release') ?? 'Geh. Wir kommen nach.') : (rexLine('lose') ?? 'Nochmal.'));
 
+    // Launch: splat on the cell, then the long arc to the node; the plateau folds up and sinks behind it.
+    this.tweens.after(0.26, () => {
+      if (top) board.splat(top.local, board.worldScale(top.tier));
+    });
     this.tweens.after(0.28, () => {
       // The flight target is computed once the camera starts pulling out (faces the map camera).
       const pose = this.nodePose(next);
-      hero.flyTo(pose, { duration: T_DEPART - 0.2, arc: 2.4, ease: easeInOut });
+      hero.flyTo(pose, { duration: T_DEPART - 0.2, arc: 2.6, ease: easeInOut });
     });
     this.tweens.after(0.3, () => {
-      this.tweenCamera(this.mapPose(), T_DEPART, easeInOutQuint);
+      this.tweenCamera(this.mapPose(), T_DEPART, easeInOutQuint, undefined, CAMERA_ARC);
       const s0 = this.stripesY;
       this.tweens.add(0.9, (t) => (this.stripesY = lerp(s0, 0, t)), { ease: easeInOut });
-      this.tweens.add(0.25, (t) => board.setBlobPop(Math.max(0.001, 1 - t)), { ease: easeOut });
-      this.tweens.add(T_PLATE, (t) => board.setRise(1 - t), { delay: 0.1, ease: easeInOut });
+      board.playSink(top?.id ?? null);
     });
+    this.tweens.after(0.3 + T_DEPART * 0.4, () => this.setShadowFocus(false));
     this.tweens.after(0.3 + T_DEPART, () => {
-      board.root.visible = false;
+      // The plateau is gone; a carried creature keeps its parts on the hero until the next level.
+      if (board.carrying) board.setPartsOnly(true);
+      else board.root.visible = false;
       board.unbind();
       if (won) {
         flow.setCurrent(next);
