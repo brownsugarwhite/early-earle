@@ -3,16 +3,24 @@ import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { Break, Discard, Fn, If, Loop, abs, cameraFar, cameraNear, cameraPosition, dot, float, floor, hash, instanceIndex, int, length, max, min, modelViewMatrix, modelWorldMatrixInverse, normalize, positionGeometry, refract, sign, smoothstep, step, struct, varying, vec3, vec4, viewZToPerspectiveDepth } from 'three/tsl';
 import { elementOf, member } from '../common/tsl';
 import { BLOB_STRIDE, BlobField, type BlobParamBlock } from './blobParamsUniforms';
-import { compileSdf, type CompiledSdf } from './compileSdf';
+import { compileSdf, createBlobQualityUniforms, type BlobQualityUniforms, type CompiledSdf } from './compileSdf';
 import { analyticEyeMask, createBlobShadingUniforms, eyeFrame, shadeBlob, type BlobShadingUniforms } from './blobShading';
 
 export interface RaymarchBlobOptions {
-  /** Sphere-tracing steps for the surface. */
-  steps?: number;
-  /** Steps of the inner march along the refracted ray. */
-  innerSteps?: number;
   lightDir?: Vector3;
   uniforms?: BlobShadingUniforms;
+  /** Quality knobs (steps, inner steps, octaves) shared with candidate (b). */
+  quality?: BlobQualityUniforms;
+  /**
+   * March the cheap sphere-only core with a noise bound and evaluate the full noisy SDF only near the
+   * surface. Saves noise evaluations, costs a second sphere loop per near-surface step. Default false:
+   * on Apple GPUs the uniform-indexed sphere loads dominate, so it measured slower there.
+   */
+  coreBound?: boolean;
+  /** Bake the step count (unrolled loop) instead of the quality uniform. */
+  constantSteps?: number;
+  /** Bake the noise octave count instead of the quality uniform. */
+  constantOctaves?: number;
 }
 
 export interface RaymarchBlobMaterialResult {
@@ -27,9 +35,10 @@ export interface RaymarchBlobMaterialResult {
  * inner "organ" march and writes real depth so blobs sit on the plate.
  */
 export function createRaymarchBlobMaterial(block: BlobParamBlock, opts: RaymarchBlobOptions = {}): RaymarchBlobMaterialResult {
-  const steps = opts.steps ?? 32;
-  const innerSteps = opts.innerSteps ?? 8;
-  const sdf = compileSdf(block);
+  const quality = opts.quality ?? createBlobQualityUniforms();
+  const sdf = compileSdf(block, quality, opts.constantOctaves !== undefined ? { constantOctaves: opts.constantOctaves } : {});
+  const coreBound = opts.coreBound ?? false;
+  const stepCount = opts.constantSteps ?? quality.steps;
   const uniforms = opts.uniforms ?? createBlobShadingUniforms(opts.lightDir);
   const material = new MeshBasicNodeMaterial();
 
@@ -37,7 +46,8 @@ export function createRaymarchBlobMaterial(block: BlobParamBlock, opts: Raymarch
   const baseV = int(instanceIndex).mul(BLOB_STRIDE);
   const placeV = elementOf(block.node, baseV.add(BlobField.PLACE));
   const boxV = elementOf(block.node, baseV.add(BlobField.BOX));
-  const boxPoint = positionGeometry.mul(boxV.xyz); // blob units on the box surface
+  const boxCenterV = vec3(0, elementOf(block.node, baseV.add(BlobField.ANIM)).w, 0);
+  const boxPoint = positionGeometry.mul(boxV.xyz).add(boxCenterV); // blob units on the (tight) box surface
   material.positionNode = boxPoint.mul(placeV.w).add(placeV.xyz);
   const camObj = modelWorldMatrixInverse.mul(vec4(cameraPosition, 1)).xyz;
   const vLocal = varying(boxPoint, 'vBlobLocal');
@@ -54,27 +64,54 @@ export function createRaymarchBlobMaterial(block: BlobParamBlock, opts: Raymarch
     const rd = normalize(p0.sub(ro)).toVar();
     const box = elementOf(block.node, base.add(BlobField.BOX)).toVar();
     const place = elementOf(block.node, base.add(BlobField.PLACE)).toVar();
+    const misc = elementOf(block.node, base.add(BlobField.MISC)).toVar();
+    const boxCenter = vec3(0, elementOf(block.node, base.add(BlobField.ANIM)).w, 0);
 
     // Distance until the ray leaves the instance box (slab test), so we never march empty space.
     const safeRd = sign(rd).mul(max(abs(rd), 1e-5));
-    const exit = sign(rd).mul(box.xyz).sub(p0).div(safeRd);
+    const exit = sign(rd).mul(box.xyz).add(boxCenter).sub(p0).div(safeRd);
     const tExit = min(min(exit.x, exit.y), exit.z).toVar();
 
+    // Sphere tracing with a cheap conservative bound: far from the surface the sphere-only core SDF
+    // minus the maximum noise displacement is a valid lower bound of the full distance, so the
+    // expensive fractal noise is only evaluated in the last few steps near the surface.
+    const bound = sdf.displacementBound(base).toVar();
+    const lip = sdf.lipschitz(base).toVar();
     const t = float(0).toVar();
     const pos = p0.toVar();
     const hit = float(0).toVar();
-    Loop(steps, () => {
-      pos.assign(p0.add(rd.mul(t)));
-      const d = sdf.body(pos, base);
-      If(d.lessThan(0.0025), () => {
-        hit.assign(1);
-        Break();
+    if (coreBound) {
+      Loop(stepCount, () => {
+        pos.assign(p0.add(rd.mul(t)));
+        const dc = sdf.bodyCore(pos, base).sub(bound);
+        If(dc.greaterThan(0.01), () => {
+          t.addAssign(dc.div(lip));
+        }).Else(() => {
+          const d = sdf.body(pos, base);
+          If(d.lessThan(0.0025), () => {
+            hit.assign(1);
+            Break();
+          });
+          t.addAssign(d);
+        });
+        If(t.greaterThan(tExit), () => {
+          Break();
+        });
       });
-      t.addAssign(d);
-      If(t.greaterThan(tExit), () => {
-        Break();
+    } else {
+      Loop(stepCount, () => {
+        pos.assign(p0.add(rd.mul(t)));
+        const d = sdf.body(pos, base);
+        If(d.lessThan(0.0025), () => {
+          hit.assign(1);
+          Break();
+        });
+        t.addAssign(d);
+        If(t.greaterThan(tExit), () => {
+          Break();
+        });
       });
-    });
+    }
     Discard(hit.lessThan(0.5));
 
     const n = sdf.normalSmooth(pos, base).toVar();
@@ -83,15 +120,19 @@ export function createRaymarchBlobMaterial(block: BlobParamBlock, opts: Raymarch
     const rim = elementOf(block.node, base.add(BlobField.RIM));
     const anim = elementOf(block.node, base.add(BlobField.ANIM));
     const rr = normalize(refract(rd, n, 0.8)).toVar();
-    const stepLen = float(0.27);
     const organMin = float(1e3).toVar();
     const bubble = float(0).toVar();
     const bubbleFreq = float(2.6);
-    Loop(innerSteps, ({ i }) => {
-      const tt = float(i).add(0.5).mul(stepLen);
-      const q = pos.add(rr.mul(tt)).toVar();
-      const inBody = step(sdf.body(q, base), -0.04);
-      organMin.assign(min(organMin, sdf.inner(q, base).add(float(1).sub(inBody).mul(10))));
+    // LOD: tiny blobs (misc.z = 0, set per frame from the projected size) skip the inner march.
+    If(misc.z.greaterThan(0.5), () => {
+      const innerSteps = float(quality.innerSteps);
+      const stepLen = float(2.2).div(innerSteps); // the march always spans ≈ one body diameter
+      Loop(quality.innerSteps, ({ i }) => {
+        const tt = float(i).add(0.5).mul(stepLen);
+        const q = pos.add(rr.mul(tt)).toVar();
+        // Inside test on the cheap core SDF (conservative by the displacement bound).
+        const inBody = step(sdf.bodyCore(q, base), bound.negate().sub(0.03));
+        organMin.assign(min(organMin, sdf.inner(q, base).add(float(1).sub(inBody).mul(10))));
       // One micro-sphere per grid cell, present with probability ∝ bubbleDensity.
       const cell = floor(q.mul(bubbleFreq)).add(64);
       const h1 = hash(dot(cell, vec3(1, 131, 17161)).add(anim.z));
@@ -102,8 +143,9 @@ export function createRaymarchBlobMaterial(block: BlobParamBlock, opts: Raymarch
       const toC = c.sub(pos);
       const tc = dot(toC, rr);
       const perp = length(toC.sub(rr.mul(tc)));
-      const present = step(h3, rim.w.mul(0.07)).mul(step(0.05, tc)).mul(step(tc, stepLen.mul(innerSteps))).mul(inBody);
-      bubble.assign(max(bubble, present.mul(float(1).sub(smoothstep(rb.mul(0.7), rb, perp)))));
+        const present = step(h3, rim.w.mul(0.07)).mul(step(0.05, tc)).mul(step(tc, 2.2)).mul(inBody);
+        bubble.assign(max(bubble, present.mul(float(1).sub(smoothstep(rb.mul(0.7), rb, perp)))));
+      });
     });
     const organ = float(1).sub(smoothstep(-0.015, 0.015, organMin));
 

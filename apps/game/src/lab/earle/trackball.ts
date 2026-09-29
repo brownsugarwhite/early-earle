@@ -27,6 +27,7 @@ export class Trackball {
   private readonly tau: number;
   private readonly maxTilt: number;
   private dragging = false;
+  private moved = false;
   private lastMoveTime = 0;
   private readonly pointers = new Map<number, { x: number; y: number }>();
   private pinchDist = 0;
@@ -128,6 +129,7 @@ export class Trackball {
     _axis.set(dz, 0, -dx).divideScalar(len); // up × Bodenweg
     _q.setFromAxisAngle(_axis, angle);
     this.quaternion.premultiply(_q);
+    this.moved = true;
     // Winkelgeschwindigkeit für die Trägheit (leicht geglättet)
     const rate = angle / Math.max(dt, 1 / 240);
     this.omega.lerp(_axis.clone().multiplyScalar(rate), 0.6);
@@ -159,7 +161,9 @@ export class Trackball {
         this.omega.set(0, 0, 0);
       }
     } else {
-      changed = true; // während des Ziehens wurde per drag() rotiert
+      // Während des Ziehens zählt nur eine echte Zeigerbewegung (stiller Finger → kein Schattenpass)
+      changed = this.moved;
+      this.moved = false;
     }
     return changed;
   }

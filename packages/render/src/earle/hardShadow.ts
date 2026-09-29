@@ -69,7 +69,7 @@ export class SunRig {
   elevationDeg: number;
   azimuthDeg: number;
   sharpen: boolean;
-  readonly mapSize: number;
+  mapSize: number;
   private readonly bias: number;
   private readonly normalBias: number;
   private readonly distance: number;
@@ -118,6 +118,14 @@ export class SunRig {
     if (sharpen === this.sharpen) return;
     this.sharpen = sharpen;
     this.rebuild();
+  }
+
+  /** Schattenkarte umschalten (z. B. 2048 → 1024 auf dem Handy); three passt das Render-Target beim nächsten Pass an. */
+  setMapSize(size: number): void {
+    if (size === this.mapSize) return;
+    this.mapSize = size;
+    this.light.shadow.mapSize.set(size, size);
+    this.requestUpdate();
   }
 
   setAngles(elevationDeg: number, azimuthDeg: number): void {

@@ -2,6 +2,7 @@ import { BoxGeometry, Color, InstancedMesh, Mesh, PerspectiveCamera, Scene, Vect
 import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { Fn, color, float, floor, mix, mod, positionWorld, smoothstep, uniform, vec2 } from 'three/tsl';
 import {
+  boundingRadius as blobBoundingRadius,
   cloneParams,
   genomeFor,
   scaleForTier,
@@ -14,9 +15,13 @@ import {
 } from '@ee/genome';
 import { ShapeMatching, SpringJiggle, type SquashDriver } from '@ee/physics';
 import {
+  BLOB_QUALITY_HIGH,
+  BLOB_QUALITY_MOBILE,
   BlobParamBlock,
   MERGE_TOTAL_MS,
   MergeTimeline,
+  applyBlobQuality,
+  createBlobQualityUniforms,
   createBlobShadingUniforms,
   createJiggleBlobMesh,
   createRaymarchBlobMesh,
@@ -28,6 +33,8 @@ export type Candidate = 'a' | 'b' | 'both';
 export type BlobCount = 1 | 9 | 36;
 export type DriverKind = 'spring' | 'shape';
 export type LabPose = 'board' | 'screenshot3';
+/** Hoch = full raymarch quality; Mobil = phone preset; Auto = Mobil on touch devices or DPR ≥ 2.5. */
+export type Quality = 'high' | 'mobile' | 'auto';
 
 export interface BlobLabSettings {
   candidate: Candidate;
@@ -36,6 +43,7 @@ export interface BlobLabSettings {
   tier: number;
   driver: DriverKind;
   pose: LabPose;
+  quality: Quality;
   /** Overrides applied to every blob (null = genome value). */
   sminK: number | null;
   noiseAmp: number | null;
@@ -44,12 +52,13 @@ export interface BlobLabSettings {
 }
 
 export const DEFAULT_BLOB_LAB_SETTINGS: BlobLabSettings = {
-  candidate: 'a',
+  candidate: 'b',
   count: 9,
   material: 'auto',
   tier: 1,
   driver: 'spring',
   pose: 'board',
+  quality: 'auto',
   sminK: null,
   noiseAmp: null,
   gloss: null,
@@ -82,6 +91,49 @@ const CAPACITY = 36;
 const CELL = 1;
 const SLIDE_MS = 140;
 const INK = '#0f1c22';
+/** Mobil preset: render at most 1.5× pixel ratio (iPhone DPR 3 → 4× fewer fragments). */
+const MOBILE_DPR_CAP = 1.5;
+/** Mobil preset: at most this many spheres per blob (index 0/1 + largest lobes). */
+const MOBILE_MAX_SPHERES = 5;
+/** Projected diameter (device px) below which the inner march is skipped. */
+const LOD_PX = { high: 24, mobile: 64 } as const;
+
+export function resolveQuality(q: Quality): 'high' | 'mobile' {
+  if (q !== 'auto') return q;
+  if (typeof navigator === 'undefined') return 'high';
+  const touch = navigator.maxTouchPoints > 0 || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
+  return touch || (window.devicePixelRatio || 1) >= 2.5 ? 'mobile' : 'high';
+}
+
+/** A/B switches for the raymarch shader, readable from the URL (`?core=1&oct=const&steps=const`). */
+export interface BlobLabSceneOptions {
+  /** Core-bound stepping in candidate (a). Default false. */
+  coreBound?: boolean;
+  /** Bake noise octaves (2) into both shaders instead of the quality uniform (Mobil then keeps 2). */
+  constantOctaves?: boolean;
+  /** Bake the step count (32) into (a) instead of the quality uniform (Mobil then keeps 32). */
+  constantSteps?: boolean;
+}
+
+export function sceneOptionsFromSearch(search: string): BlobLabSceneOptions {
+  const p = new URLSearchParams(search);
+  return { coreBound: p.get('core') === '1', constantOctaves: p.get('oct') === 'const', constantSteps: p.get('steps') === 'const' };
+}
+
+export interface RenderInfo {
+  backend: string;
+  options: BlobLabSceneOptions;
+  /** Effective renderer pixel ratio (after the Mobil cap). */
+  pixelRatio: number;
+  devicePixelRatio: number;
+  cssWidth: number;
+  cssHeight: number;
+  backingWidth: number;
+  backingHeight: number;
+  quality: 'high' | 'mobile';
+  candidate: Candidate;
+  count: number;
+}
 
 /**
  * P1 Blob-Lab scene: a dark game-board plate with 1/9/36 blobs, rendered by candidate (a) raymarch,
@@ -91,6 +143,7 @@ export class BlobLabScene implements SceneController {
   readonly scene = new Scene();
   readonly camera = new PerspectiveCamera(32, 1, 0.1, 100);
   private settings: BlobLabSettings = { ...DEFAULT_BLOB_LAB_SETTINGS };
+  constructor(readonly options: BlobLabSceneOptions = {}) {}
   private blobs: BlobInstance[] = [];
   private blockA = new BlobParamBlock(CAPACITY);
   private blockB = new BlobParamBlock(CAPACITY);
@@ -102,6 +155,7 @@ export class BlobLabScene implements SceneController {
   private driver: SquashDriver = new SpringJiggle();
   private merge: MergeState | null = null;
   private ctx: SceneContext | null = null;
+  private quality = createBlobQualityUniforms();
   private time = 0;
   private aspect = 1;
   private disposables: Array<{ dispose(): void }> = [];
@@ -114,8 +168,15 @@ export class BlobLabScene implements SceneController {
     this.ctx = ctx;
     this.scene.background = new Color(INK);
     const uniforms = createBlobShadingUniforms();
-    const a = createRaymarchBlobMesh(this.blockA, { uniforms });
-    const b = createJiggleBlobMesh(this.blockB, { uniforms });
+    const o = this.options;
+    const a = createRaymarchBlobMesh(this.blockA, {
+      uniforms,
+      quality: this.quality,
+      coreBound: o.coreBound ?? false,
+      ...(o.constantOctaves ? { constantOctaves: BLOB_QUALITY_HIGH.octaves } : {}),
+      ...(o.constantSteps ? { constantSteps: BLOB_QUALITY_HIGH.steps } : {}),
+    });
+    const b = createJiggleBlobMesh(this.blockB, { uniforms, quality: this.quality, ...(o.constantOctaves ? { constantOctaves: BLOB_QUALITY_HIGH.octaves } : {}) });
     this.meshA = a.mesh;
     this.meshB = b.mesh;
     this.vertexCountB = b.vertexCount;
@@ -125,6 +186,7 @@ export class BlobLabScene implements SceneController {
     this.plateB = this.createPlate();
     this.scene.add(this.plateA, this.plateB);
     this.rebuild();
+    this.applyQuality();
     this.resize(ctx);
     await ctx.renderer.compileAsync(this.scene, this.camera);
   }
@@ -133,6 +195,48 @@ export class BlobLabScene implements SceneController {
     this.aspect = ctx.width / ctx.height;
     this.camera.aspect = this.aspect;
     this.placeCamera();
+    this.applyPixelRatio(); // CanvasHost just reset the ratio to its MAX_DPR; re-apply the preset cap
+  }
+
+  /** Resolved quality preset. */
+  get effectiveQuality(): 'high' | 'mobile' {
+    return resolveQuality(this.settings.quality);
+  }
+
+  /** Backend, pixel ratio and canvas size for the bench table. */
+  getRenderInfo(): RenderInfo | null {
+    const ctx = this.ctx;
+    if (!ctx) return null;
+    const pr = ctx.renderer.getPixelRatio();
+    return {
+      backend: ctx.backend,
+      options: this.options,
+      pixelRatio: pr,
+      devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
+      cssWidth: ctx.width,
+      cssHeight: ctx.height,
+      backingWidth: Math.round(ctx.width * pr),
+      backingHeight: Math.round(ctx.height * pr),
+      quality: this.effectiveQuality,
+      candidate: this.settings.candidate,
+      count: this.blobs.filter((b) => b.alive).length,
+    };
+  }
+
+  private applyQuality(): void {
+    applyBlobQuality(this.quality, this.effectiveQuality === 'mobile' ? BLOB_QUALITY_MOBILE : BLOB_QUALITY_HIGH);
+    this.applyPixelRatio();
+  }
+
+  /** Mobil: cap the renderer pixel ratio for this lab only (restored in dispose / by the next CanvasHost mount). */
+  private applyPixelRatio(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const target = this.effectiveQuality === 'mobile' ? Math.min(ctx.dpr, MOBILE_DPR_CAP) : ctx.dpr;
+    if (Math.abs(ctx.renderer.getPixelRatio() - target) > 1e-3) {
+      ctx.renderer.setPixelRatio(target);
+      ctx.renderer.setSize(ctx.width, ctx.height, false);
+    }
   }
 
   /** Applies settings from the React controls; structural changes rebuild the blob set. */
@@ -142,6 +246,7 @@ export class BlobLabScene implements SceneController {
     if (prev.driver !== next.driver) this.driver = next.driver === 'shape' ? new ShapeMatching({ particleCount: 20 }) : new SpringJiggle();
     if (prev.count !== next.count || prev.tier !== next.tier || prev.material !== next.material || prev.pose !== next.pose) this.rebuild();
     if (prev.candidate !== next.candidate || prev.pose !== next.pose) this.placeCamera();
+    if (prev.quality !== next.quality) this.applyQuality();
     this.layoutPlates();
   }
 
@@ -200,6 +305,11 @@ export class BlobLabScene implements SceneController {
   }
 
   dispose(): void {
+    const ctx = this.ctx;
+    if (ctx && Math.abs(ctx.renderer.getPixelRatio() - ctx.dpr) > 1e-3) {
+      ctx.renderer.setPixelRatio(ctx.dpr);
+      ctx.renderer.setSize(ctx.width, ctx.height, false);
+    }
     for (const d of this.disposables) d.dispose();
     this.disposables = [];
     this.scene.clear();
@@ -349,6 +459,11 @@ export class BlobLabScene implements SceneController {
     const m = this.merge;
     const mergeT = m ? m.t - SLIDE_MS : -1;
     const frame = m && mergeT >= 0 ? m.timeline.sample(mergeT) : null;
+    const mobile = this.effectiveQuality === 'mobile';
+    const lodPx = LOD_PX[mobile ? 'mobile' : 'high'];
+    // Projected size: device pixels per world unit at the blob's distance (perspective camera).
+    const pr = this.ctx?.renderer.getPixelRatio() ?? 1;
+    const pxPerUnitAt1 = ((this.ctx?.height ?? 800) * pr) / (2 * Math.tan((this.camera.fov * Math.PI) / 360));
 
     for (const b of this.blobs) {
       const slot = b.id;
@@ -368,6 +483,7 @@ export class BlobLabScene implements SceneController {
         phase: b.phase,
         seed: b.seed,
       };
+      if (mobile) dyn.maxSpheres = MOBILE_MAX_SPHERES;
       let forceA = false;
 
       if (m && b === m.b) {
@@ -400,6 +516,11 @@ export class BlobLabScene implements SceneController {
 
       const placeA = { center: [center[0] + off[0] * offsetScale + this.plateShift('a'), y, center[2] + off[2] * offsetScale] as Vec3, scale };
       const placeB = { center: [center[0] + off[0] * offsetScale + this.plateShift('b'), y, center[2] + off[2] * offsetScale] as Vec3, scale };
+      // Screen-size LOD: skip organs/bubbles when the blob is smaller than lodPx on screen.
+      const dist = this.camera.position.distanceTo(new Vector3(placeA.center[0], placeA.center[1], placeA.center[2]));
+      const projectedPx = (2 * scale * blobBoundingRadius(params) * pxPerUnitAt1) / Math.max(0.1, dist);
+      dyn.detail = projectedPx >= lodPx ? 1 : 0;
+      if (forceA) delete dyn.maxSpheres; // the merge union keeps all its spheres
 
       if (showA || forceA) {
         this.blockA.write(slot, params, forceA && !showA ? placeB : placeA, dyn);

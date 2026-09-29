@@ -61,6 +61,8 @@ export interface EvalOptions {
   breathHz?: number;
   /** Per-blob phase offset so a grid of blobs does not breathe in sync. */
   phase?: number;
+  /** Noise octaves (default SDF_NOISE_OCTAVES; the render "Mobil" preset uses 1). */
+  noiseOctaves?: number;
 }
 
 /**
@@ -87,7 +89,7 @@ export function evalSdf(program: SdfProgram, p: Vec3, opts: EvalOptions = {}): n
   }
   if (program.noiseAmp > 0) {
     const f = program.noiseFreq;
-    d += fractalNoise3(q[0] * f + phase, q[1] * f + t * 0.35, q[2] * f, SDF_NOISE_OCTAVES) * program.noiseAmp;
+    d += fractalNoise3(q[0] * f + phase, q[1] * f + t * 0.35, q[2] * f, opts.noiseOctaves ?? SDF_NOISE_OCTAVES) * program.noiseAmp;
     // 2-octave fractal noise has gradient ≤ ~1.5 · freq · amp: shrink steps accordingly.
     lipschitz *= 1 + program.noiseAmp * f * 2.5;
   }

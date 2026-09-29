@@ -3,7 +3,7 @@ import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { Fn, Loop, cameraPosition, clamp, cross, dot, float, fwidth, instanceIndex, int, max, modelWorldMatrixInverse, normalize, smoothstep, step, texture, varying, vec2, vec3, vec4, positionGeometry } from 'three/tsl';
 import { elementOf, member, type IntNode, type Vec3Node } from '../common/tsl';
 import { BLOB_STRIDE, BlobField, type BlobParamBlock } from './blobParamsUniforms';
-import { compileSdf, type CompiledSdf } from './compileSdf';
+import { compileSdf, createBlobQualityUniforms, type BlobQualityUniforms, type CompiledSdf } from './compileSdf';
 import { createBlobShadingUniforms, eyeFrame, shadeBlob, type BlobShadingUniforms } from './blobShading';
 import { createEyeGlyphTexture } from './faceGlyph';
 
@@ -13,6 +13,10 @@ export interface JiggleBlobOptions {
   lightDir?: Vector3;
   uniforms?: BlobShadingUniforms;
   glyph?: DataTexture;
+  /** Quality knobs shared with candidate (a) (only `octaves` matters here). */
+  quality?: BlobQualityUniforms;
+  /** Bake the noise octave count (unrolled loop) instead of the quality uniform. */
+  constantOctaves?: number;
 }
 
 /**
@@ -23,7 +27,7 @@ export interface JiggleBlobOptions {
  */
 export function createJiggleBlobMaterial(block: BlobParamBlock, opts: JiggleBlobOptions = {}): { material: MeshBasicNodeMaterial; sdf: CompiledSdf; uniforms: BlobShadingUniforms; glyph: DataTexture } {
   const traceSteps = opts.traceSteps ?? 6;
-  const sdf = compileSdf(block);
+  const sdf = compileSdf(block, opts.quality ?? createBlobQualityUniforms(), opts.constantOctaves !== undefined ? { constantOctaves: opts.constantOctaves } : {});
   const uniforms = opts.uniforms ?? createBlobShadingUniforms(opts.lightDir);
   const glyph = opts.glyph ?? createEyeGlyphTexture();
   const material = new MeshBasicNodeMaterial();
@@ -83,9 +87,10 @@ export function createJiggleBlobMaterial(block: BlobParamBlock, opts: JiggleBlob
     return shade;
   })();
 
+  // Opaque on purpose: one instanced draw in the opaque pass, early-z, no blending (gas alpha is an
+  // (a)-only effect; (b) shows gas with its soft rim and swirl only).
   material.colorNode = shaded.xyz;
-  material.opacityNode = shaded.w;
-  material.transparent = true;
+  material.transparent = false;
   material.depthWrite = true;
   return { material, sdf, uniforms, glyph };
 }

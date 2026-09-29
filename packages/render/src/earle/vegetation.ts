@@ -52,6 +52,8 @@ export interface VegetationOptions {
   dotsPerTree?: [number, number];
   /** Punktradius in Welteinheiten relativ zum Kronenradius (Standard 0.06). */
   dotRadius?: number;
+  /** Punkte unter dieser Bildschirmgröße (Radius in px) kollabieren (Standard 0.75). */
+  collapsePx?: number;
 }
 
 const KINDS: TreeKind[] = ['dome', 'cone', 'stacked'];
@@ -86,6 +88,7 @@ export class EarleVegetation {
   private readonly camRight = uniform(new Vector3(1, 0, 0));
   private readonly camUp = uniform(new Vector3(0, 1, 0));
   private readonly projScaleY = uniform(1);
+  private readonly collapsePx = uniform(0.75);
   private readonly geometries: BufferGeometry[] = [];
   private readonly materials: Array<{ dispose(): void }> = [];
   private growth = 1;
@@ -95,6 +98,7 @@ export class EarleVegetation {
     const rand = mulberry32(hash32('dots', options.seed ?? 1));
     const dotRange = options.dotsPerTree ?? [60, 200];
     const dotRadius = options.dotRadius ?? 0.06;
+    this.collapsePx.value = options.collapsePx ?? 0.75;
     this.group.name = 'EarleVegetation';
     this.treeCount = trees.length;
 
@@ -275,7 +279,7 @@ export class EarleVegetation {
       const px = sizeW.mul(pxPerUnit);
       const sizeEff = max(sizeW, float(1.2).div(pxPerUnit)); // ferne Punkte bleiben ≥ ~1 px (dichte Textur)
       const sparse = select(ndl.lessThan(0).and(dd.z.greaterThan(0.35)), float(0), float(1)); // Schattenseite spärlich
-      const visible = step(0.75, px).mul(sparse); // Kollaps < 0.75 px
+      const visible = step(this.collapsePx, px).mul(sparse); // Kollaps unter collapsePx
       const offset = this.camRight.mul(positionGeometry.x).add(this.camUp.mul(positionGeometry.y)).mul(sizeEff.mul(visible));
       const world = worldC.add(offset);
       material.vertexNode = cameraProjectionMatrix.mul(cameraViewMatrix).mul(vec4(world, 1));
@@ -312,6 +316,11 @@ export class EarleVegetation {
 
   getGrowth(): number {
     return this.growth;
+  }
+
+  /** Kollaps-Schwelle der Punkte in Pixeln (Mobil: höher → weniger Sub-Pixel-Overdraw). */
+  setCollapsePx(px: number): void {
+    this.collapsePx.value = px;
   }
 
   /** Richtung zur Sonne im Weltraum (für die Punkt-Tönung). */

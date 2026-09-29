@@ -17,9 +17,12 @@ export default defineConfig({
     launchOptions: { args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] },
   },
   webServer: {
-    command: 'NO_SSL=1 pnpm exec vite --host 127.0.0.1 --port 4173 --strictPort',
+    command: 'NO_SSL=1 node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4173 --strictPort',
+    stdout: 'ignore',
+    stderr: 'pipe',
     url: 'http://127.0.0.1:4173',
-    reuseExistingServer: !process.env.CI,
+    // scripts/e2e.mjs startet den Server selbst und setzt PW_REUSE_SERVER=1; direkter `playwright test` startet ihn hier.
+    reuseExistingServer: !process.env.CI || process.env.PW_REUSE_SERVER === '1',
     timeout: 120_000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
