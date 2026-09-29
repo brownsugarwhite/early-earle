@@ -7,12 +7,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
   check:
@@ -46,15 +40,7 @@ jobs:
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @ee/game build
-        env: { VITE_BASE: '/early-earle/' }
-      - uses: actions/upload-pages-artifact@v3
-        with: { path: apps/game/dist }
-
-  deploy:
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: { name: github-pages, url: ${{ steps.deployment.outputs.page_url }} }
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      # Web-Hosting: GitHub Pages ist für private Repos im Free-Plan nicht verfügbar.
+      # Bis ein Host feststeht (z. B. Cloudflare Pages), wird der Build nur als Artefakt abgelegt.
+      - uses: actions/upload-artifact@v4
+        with: { name: web-dist, path: apps/game/dist, retention-days: 14 }
