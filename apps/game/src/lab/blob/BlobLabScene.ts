@@ -28,6 +28,7 @@ import {
   createBlobQualityUniforms,
   createBlobShadingUniforms,
   createFeatherCardMesh,
+  createFurFinMesh,
   createFurShellMesh,
   createJiggleBlobMesh,
   createRaymarchBlobMesh,
@@ -43,7 +44,7 @@ import type { SceneController, SceneContext } from '../../canvas/SceneController
 export type Candidate = 'a' | 'b' | 'both';
 export type BlobCount = 1 | 9 | 36;
 export type DriverKind = 'spring' | 'shape';
-export type LabPose = 'board' | 'screenshot3' | 'close';
+export type LabPose = 'board' | 'screenshot3' | 'close' | 'macro';
 /** Sheet mode: every blob of the board shows a different pattern / material (review and screenshots). */
 export type LabSheet = 'off' | 'patterns' | 'materials';
 /** Hoch = full raymarch quality; Mobil = phone preset; Auto = Mobil on touch devices or DPR ≥ 2.5. */
@@ -166,6 +167,9 @@ interface BodySet {
   block: BlobParamBlock;
   body: InstancedMesh;
   fur: InstancedMesh;
+  fins: InstancedMesh;
+  finCards: number;
+  finSilhouetteOnly: { value: number };
   feather: InstancedMesh;
   particles: InstancedMesh;
   cards: number;
@@ -374,14 +378,15 @@ export class BlobLabScene implements SceneController {
   }
 
   private createPasses(block: BlobParamBlock, body: InstancedMesh, uniforms: ReturnType<typeof createBlobShadingUniforms>, octaves: { constantOctaves?: number }): BodySet {
-    const fur = createFurShellMesh(block, { uniforms, quality: this.quality, ...octaves });
+    const fur = createFurShellMesh(block, { uniforms, quality: this.quality, shells: 6, ...octaves });
+    const fins = createFurFinMesh(block, { uniforms, quality: this.quality, ...octaves });
     const feather = createFeatherCardMesh(block, { uniforms, quality: this.quality, ...octaves });
     const particles = createBlobParticleMesh(block, { uniforms, quality: this.quality });
     this.furShells = fur.shells;
     this.furVertices = fur.vertexCount;
-    this.disposables.push(fur.material, fur.mesh.geometry, feather.material, feather.mesh.geometry, particles.material, particles.mesh.geometry);
-    this.scene.add(fur.mesh, feather.mesh, particles.mesh);
-    return { block, body, fur: fur.mesh, feather: feather.mesh, particles: particles.mesh, cards: feather.cards, perBlob: particles.perBlob };
+    this.disposables.push(fur.material, fur.mesh.geometry, fins.material, fins.mesh.geometry, feather.material, feather.mesh.geometry, particles.material, particles.mesh.geometry);
+    this.scene.add(fur.mesh, fins.mesh, feather.mesh, particles.mesh);
+    return { block, body, fur: fur.mesh, fins: fins.mesh, finCards: fins.cards, finSilhouetteOnly: fins.silhouetteOnly, feather: feather.mesh, particles: particles.mesh, cards: feather.cards, perBlob: particles.perBlob };
   }
 
   resize(ctx: SceneContext): void {
@@ -662,7 +667,12 @@ export class BlobLabScene implements SceneController {
     let depth = half * 2;
     let elev = 0.88; // radians above the plate: game-board view
     let target = new Vector3(0, 0.1, 0);
-    if (s.pose === 'close') {
+    if (s.pose === 'macro') {
+      width = 1.05;
+      depth = 1.05;
+      elev = 0.3;
+      target = new Vector3(0.05, 0.62, 0);
+    } else if (s.pose === 'close') {
       width = 1.7;
       depth = 1.7;
       elev = 0.32;
@@ -809,6 +819,8 @@ export class BlobLabScene implements SceneController {
     const passes = this.passesActive;
     const mats = new Set(this.blobs.filter((b) => b.alive).map((b) => this.materialOf(b) ?? b.genome.material));
     const furOn = passes && mats.has('fur');
+    // Fur fins: Hoch = silhouette tufts + inner locks, Mobil = silhouette tufts only (always on for fur).
+    const finsOn = mats.has('fur');
     const featherOn = passes && mats.has('feather');
     const particlesOn = mats.has('gas') || mats.has('fire') || mats.has('liquid');
     const setA = this.setA;
@@ -817,6 +829,8 @@ export class BlobLabScene implements SceneController {
       const on = showA || m !== null;
       setA.body.count = on ? CAPACITY : 0;
       setA.fur.count = on && furOn ? CAPACITY : 0;
+      setA.fins.count = on && finsOn ? CAPACITY * setA.finCards : 0;
+      setA.finSilhouetteOnly.value = passes ? 0 : 1;
       setA.feather.count = on && featherOn ? CAPACITY * setA.cards : 0;
       setA.particles.count = on && particlesOn ? CAPACITY * setA.perBlob : 0;
     }
@@ -824,6 +838,8 @@ export class BlobLabScene implements SceneController {
       const n = showB ? this.blobs.length : 0;
       setB.body.count = n;
       setB.fur.count = furOn ? n : 0;
+      setB.fins.count = finsOn ? n * setB.finCards : 0;
+      setB.finSilhouetteOnly.value = passes ? 0 : 1;
       setB.feather.count = featherOn ? n * setB.cards : 0;
       setB.particles.count = particlesOn ? n * setB.perBlob : 0;
     }

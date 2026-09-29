@@ -143,6 +143,9 @@ export function LabBlob() {
         <button type="button" className="blob-lab-btn" data-kind="action" data-active={settings.pose === 'close'} onClick={() => set({ pose: settings.pose === 'close' ? 'board' : 'close', count: 1, sheet: 'off' })} data-testid="btn-close">
           Nah
         </button>
+        <button type="button" className="blob-lab-btn" data-kind="action" data-active={settings.pose === 'macro'} onClick={() => set({ pose: settings.pose === 'macro' ? 'board' : 'macro', count: 1, sheet: 'off' })} data-testid="btn-macro">
+          Makro
+        </button>
         <button type="button" className="blob-lab-btn" data-active={settings.passes} onClick={() => set({ passes: !settings.passes })} data-testid="btn-passes">
           Fell-Shells/Feder-Karten {passesOn ? 'an' : 'aus'}
         </button>

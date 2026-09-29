@@ -32,9 +32,9 @@ shader branches coherently on them, so a blob pays only for its own look.
 |---|---|---|---|
 | jelly | banded wrap light, organs, bubbles, arc highlight, damped ripple rings | – | same |
 | liquid | flatter light, wet highlight, **meniscus band** at the floor, **posterised ripple rings** + foam dots | drips (particles) | same |
-| gas | **Earle fog** (Ebene_19/20/25): long horizontal streaks drifting sideways in 4 pale layers (teal → pale teal → cream → white, no dark band); thin layers see-through and the silhouette dissolves — alpha in (a), **alpha-to-coverage dither** in (b) (MSAA, still one opaque draw) | soft wisps (particles, dithered edges) | same |
+| gas | **a small fog creature** (Ebene_19/20/25): a mostly even pale body with a few thin white horizontal streaks drifting slowly; the **outline itself is eroded** by two-scale noise that breathes, peels more at the crown and the wind side, thin areas see-through — alpha in (a), **alpha-to-coverage dither** in (b) (MSAA, one opaque draw) | wisps peel off the upper surface and drift with the wind (particles, dithered edges) | same |
 | fire | **flame crown** (5 swaying tongues + ridged noise in the SDF), 4 hard bands core→crimson tips, cream heart, no glow | embers (particles) | same |
-| fur | single pass — **Earle canopy** (Ebene_33): a dark mass (coat pulled to ink), light leaf-strokes (teardrops, combed) in arcs on the lit rims of fur clumps and along the lit silhouette; the coat/pattern colour lives in the strokes | **fur shells** (clumped tufts, lit tips only at the silhouette) | single pass only |
+| fur | single pass: a dark mass with **hair strokes combed along a flow field** (from the head/eye direction backwards and down the sides), clumped into locks, lit tips on the light side, lighter belly/chest; the coat/pattern colour lives in the strokes. **Fur fins** give the tufted silhouette | **fins** (128 camera-facing lock cards: contour tufts + inner locks) + **6 shells** | fins at the silhouette only + single pass |
 | feather | single pass: overlapping scallops on the pole-safe row lattice, ink arcs, rachis, dotted lit crests | **feather cards** | single pass only |
 
 **Highlights:** the glassy crescent + dot highlight is only drawn on *unpatterned* jelly/liquid. Fur,
@@ -133,6 +133,13 @@ const particles = createBlobParticleMesh(block, { uniforms, quality, perBlob: 12
 scene.add(body.mesh, fur.mesh, feathers.mesh, particles.mesh);
 ```
 
+* **Fur fins** (`createFurFinMesh(block, { cards: 128 })`, `mesh.count = slots × cards`): camera-facing
+  lock cards rooted on the body (Fibonacci roots traced onto the SDF). Each lock points along the combed
+  flow and turns its face to the camera about that axis: at the contour the locks stand out as rounded,
+  forked tufts (a fluffy, scalloped silhouette, the designer's retriever/mouse creatures), facing the
+  camera they lie flat as locks. Colour = the body's dark mass with thin light hair strokes per sub-lock
+  on the lit side; the face around the eye stays free. **Mobil**: `fins.silhouetteOnly.value = 1`
+  (contour tufts only) and no shells.
 * **Fur shells**: `shells` (8–12) copies of the body icosphere traced onto the same SDF, pushed out,
   combed down (`comb`), swayed by wind and the jiggle; the fragment alpha-tests a hashed strand lattice
   in rest space (strands thin to dots at the tips — Earle's dotted rims). Non-fur slots collapse in the

@@ -83,16 +83,20 @@ export function createBlobParticleMesh(block: BlobParamBlock, opts: BlobParticle
     const wLiquid = kindWeight(kind, 1).toVar();
 
     If(wGas.greaterThan(0.5), () => {
-      // Wisps: rise from the crown, drift sideways, shrink in three steps, cream then base colour.
+      // Wisps peel off the upper surface and the sides, drift out with the wind (+x) and up, swell and
+      // thin out again (3 size steps), cream then body colour; soft dithered edges.
       const T = PARTICLE_PERIOD.gas;
       const u = fract(time.div(T).add(fi.div(perBlob)).add(h1));
       const ageS = u.mul(T);
-      const start = s0.xyz.add(vec3(h1.sub(0.5).mul(0.9), 0.85, h2.sub(0.5).mul(0.6)).mul(r0));
-      centre.assign(start.add(vec3(sin(ageS.mul(2.1).add(h3.mul(6))).mul(0.14), u.mul(1.15), cos(ageS.mul(1.7).add(h2.mul(6))).mul(0.1)).mul(r0)));
-      const band = floor(float(1).sub(u).mul(2.999)); // 2, 1, 0
-      size.assign(float(0.02).add(band.mul(0.022)).mul(r0).mul(step(0.04, float(1).sub(u))));
-      aspect.assign(vec2(2.2, 0.55)); // flat fog streaks, not dots
-      color.assign(mix(rim.xyz, baseC.xyz, step(0.6, u)));
+      const a = h1.mul(Math.PI * 2);
+      const dirS = normalize(vec3(cos(a), float(0.2).add(h2.mul(0.8)), sin(a)));
+      const start = s0.xyz.add(dirS.mul(r0.mul(0.9)));
+      const drift = vec3(u.mul(0.55).add(sin(ageS.mul(1.9).add(h3.mul(6))).mul(0.06)), u.mul(0.4), cos(ageS.mul(1.6).add(h2.mul(6))).mul(0.06));
+      centre.assign(start.add(dirS.mul(u.mul(0.35).mul(r0))).add(drift.mul(r0)));
+      const swell = floor(sin(u.mul(Math.PI)).mul(2.999)); // 0, 1, 2 — grows, then thins out
+      size.assign(float(0.035).add(swell.mul(0.03)).mul(r0).mul(step(0.05, u)).mul(step(u, 0.95)));
+      aspect.assign(vec2(2.4, 0.6));
+      color.assign(mix(rim.xyz, baseC.xyz, step(0.65, u)));
     })
       .ElseIf(wFire.greaterThan(0.5), () => {
         // Embers: fast rise with a zigzag, cream → yellow → red by age, tiny.

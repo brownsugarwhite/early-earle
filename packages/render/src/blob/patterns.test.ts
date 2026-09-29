@@ -3,6 +3,7 @@ import { genomeFor } from '@ee/genome';
 import { BLOB_STRIDE, BLOB_STYLE_STRIDE, BlobField, BlobParamBlock, BlobStyleField } from './blobParamsUniforms';
 import { BLOB_MATERIAL_KIND_ID, BLOB_MATERIAL_KINDS, EARLE_TEST_STYLE, NO_PATTERN, PATTERN_KINDS, PATTERN_KIND_ID, SPECIES_PATTERNS, makePattern, patternPalette, speciesPalette, type BlobRenderParams } from './patterns';
 import { hexToLinear } from '../common/tsl';
+import { createFurFinMesh } from '../materials/FurFinMaterial';
 
 const style = (b: BlobParamBlock, slot: number, field: number): number[] => Array.from(b.styleData.slice((slot * BLOB_STYLE_STRIDE + field) * 4, (slot * BLOB_STYLE_STRIDE + field) * 4 + 4));
 const main = (b: BlobParamBlock, slot: number, field: number): number[] => Array.from(b.data.slice((slot * BLOB_STRIDE + field) * 4, (slot * BLOB_STRIDE + field) * 4 + 4));
@@ -128,5 +129,16 @@ describe('BlobParamBlock style block', () => {
     a.write(0, { ...g, material: 'jelly' }, { center: [0, 0, 0], scale: 1 });
     b.write(0, g, { center: [0, 0, 0], scale: 1 });
     expect(main(b, 0, BlobField.BOX)[1]!).toBeGreaterThan(main(a, 0, BlobField.BOX)[1]!);
+  });
+});
+
+describe('fur fins', () => {
+  it('build one instanced draw per block, off until the caller sets the count', () => {
+    const block = new BlobParamBlock(4);
+    const fins = createFurFinMesh(block, { cards: 64 });
+    expect(fins.cards).toBe(64);
+    expect(fins.mesh.count).toBe(0);
+    expect(fins.mesh.instanceMatrix.count).toBe(4 * 64);
+    expect(fins.silhouetteOnly.value).toBe(0); // Hoch: silhouette tufts + inner locks
   });
 });
