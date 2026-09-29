@@ -41,5 +41,17 @@
 **Schatten (Florian, 2026-09-29 spät, höchste Priorität)**
 - [ ] Schattenkanten sind stufig (Treppen = vergrößerte Schattenkarten-Texel bei 10°-Sonne und großer Planetenansicht). Ziel: **super smooth und exakt wie im Gemälde** — messerscharfe, aber glatte Vektor-Kurven, 1-px-Antialiasing, keine Treppen, kein Weichzeichnen, kein Flimmern beim Drehen. Vorher-Bild: `docs/progress/p2e-shadow-before-iphone.webp`.
 
+**Kreaturen & Spielfeld (Florian, 2026-09-29 Nacht, zweites Feedback)** — Referenz: seine Draufsicht-Skizze `assets/ref-florian/08-blob-animation-draft.png`
+- [ ] Spielfeld viel mehr von oben (Draufsicht, ~65°)
+- [ ] Bewegung langsamer und entfernungsabhängig (weiter Weg = länger), andere Dynamiken; Merge langsamer und lesbarer
+- [ ] Nur bewegte Figuren drehen sich in Wischrichtung
+- [ ] Funktionierendes, animiertes Maul (öffnen, kauen, brüllen, verschlingen); Blob mit Maul-Sichel in Bewegungsrichtung wie in der Skizze
+- [ ] Beine: als Assets **und** 2/4 dicke Stampfer direkt aus dem Körpermaterial geknetet (SDF), nicht angehängt
+- [ ] Schlange schlängelt dynamisch (Wirbelsäule folgt dem Kopf, Welle, S-Kurven) statt sich wie ein Stock zu drehen
+- [ ] Mutierte Wesen näher an der Skizze — besonders REX (pink, Stachelkamm), Giraffe (langer Hals, Flecken), Elefant (Ohrenlappen, Rüssel), dazu Retriever, Maus, Ente
+- [ ] Merge viel spektakulärer und interaktiver: Wesen mit starken Beinen/Flügeln springen zur Kamera hoch, reißen das Maul auf und verschmelzen beim Herunterfallen; mehr Splash-Effekte
+- [ ] Muster perfektionieren: Augen dürfen nicht im Muster untergehen; Fell und Federn verbessern
+- [ ] Sessionlimit: automatisch weiterarbeiten → geplante Aufgabe `early-earle-weiterarbeiten` (alle 3 h, nur wenn 2 h Ruhe)
+
 **iPhone first**
 - [ ] Auf dem iPhone mit vollem Liquid Glass und App-Funktionen testbar (Capacitor-Build, natives Glas-HUD, Haptik)
