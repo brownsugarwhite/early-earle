@@ -1,4 +1,4 @@
-import { BODY_TYPES, DEFAULT_BODY_RULES, type BodyType, type GenomeRulesInput, type SlotId, type ZoneId } from '@ee/genome';
+import { BODY_TYPES, DEFAULT_BODY_RULES, DEFAULT_SPECIES_RULES, SPECIES, type BodyType, type GenomeRulesInput, type SlotId, type Species, type ZoneId } from '@ee/genome';
 
 /** Motion character presets per archetype (one tap sets mass, tempo, jump power and clumsiness). */
 export interface CharacterPreset {
@@ -45,6 +45,7 @@ export type SocketDraft = RulesDraft['sockets'][SlotId];
 export type AssetDraft = RulesDraft['assets'][string];
 export type BodyDraft = NonNullable<NonNullable<RulesDraft['bodies']>[BodyType]>;
 export type ZoneBodyDraft = NonNullable<NonNullable<ZoneDraft['bodies']>[BodyType]>;
+export type SpeciesDraft = NonNullable<NonNullable<RulesDraft['species']>[Species]>;
 
 export const TIERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
@@ -131,12 +132,37 @@ export function effectiveBody(draft: RulesDraft, zone: ZoneId, type: BodyType): 
   return { fromTier: o?.fromTier ?? g.fromTier ?? 1, weight: o?.weight ?? g.weight ?? 1, overridden: !!o && (o.fromTier !== undefined || o.weight !== undefined) };
 }
 
-/** Presets: the designer's thresholds, blobs only, everything two tiers earlier / later. */
-export type BodyPreset = 'standard' | 'blobs' | 'early' | 'late';
-export const BODY_PRESET_LABELS: Record<BodyPreset, string> = { standard: 'Standard', blobs: 'Nur Blobs', early: 'Früh (−2)', late: 'Spät (+2)' };
+/** Species rule of the draft (falls back to the built-in sketch defaults, like the resolver). */
+export function speciesDraft(draft: RulesDraft, sp: Species): SpeciesDraft {
+  return (draft.species?.[sp] as SpeciesDraft | undefined) ?? clone(DEFAULT_SPECIES_RULES[sp]);
+}
+
+export function updateSpecies(draft: RulesDraft, sp: Species, fn: (s: SpeciesDraft) => void): RulesDraft {
+  const next = clone(draft);
+  next.species ??= {};
+  next.species[sp] ??= speciesDraft(draft, sp);
+  fn(next.species[sp]!);
+  return next;
+}
+
+/** Back to the built-in species rule (sketch 08). */
+export function resetSpecies(draft: RulesDraft, sp: Species): RulesDraft {
+  const next = clone(draft);
+  if (next.species) {
+    delete next.species[sp];
+    if (Object.keys(next.species).length === 0) delete next.species;
+  }
+  return next;
+}
+
+/** Presets: the designer's thresholds, blobs only, everything two tiers earlier / later, the sketch's animals. */
+export type BodyPreset = 'standard' | 'blobs' | 'early' | 'late' | 'sketch';
+export const BODY_PRESET_LABELS: Record<BodyPreset, string> = { standard: 'Standard', blobs: 'Nur Blobs', early: 'Früh (−2)', late: 'Spät (+2)', sketch: 'Skizze 08' };
 
 export function applyBodyPreset(draft: RulesDraft, zone: ZoneId, preset: BodyPreset): RulesDraft {
   let next = clone(draft);
+  // Skizze 08: the sketch's species (colours, parts, kneaded legs) with the standard thresholds.
+  if (preset === 'sketch') for (const sp of SPECIES) next = resetSpecies(next, sp);
   for (const type of BODY_TYPES) {
     if (type === 'blob') continue;
     const base = DEFAULT_BODY_RULES[type];

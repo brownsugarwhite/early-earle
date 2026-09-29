@@ -1,6 +1,7 @@
 import { Matrix4, Mesh, Object3D, type BufferGeometry, type Material } from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { socketSlotFromName } from '@ee/genome';
+import { proceduralModules } from './ProceduralModules';
 
 /**
  * Module library: Blender modules (`content/genome/assets/*.glb`) parsed into geometry per segment,
@@ -32,6 +33,8 @@ export interface ModuleSegment {
   pupil: boolean;
   /** Eyelid segments swing shut when the eye blinks (`<id>_lid`). */
   lid: boolean;
+  /** Lower-jaw segments swing open with the mouth (`<id>_jaw`, e.g. the duck's lower bill). */
+  jaw: boolean;
 }
 
 /** A named socket (`SOCKET_<name>`) relative to the frame of the segment it hangs under. */
@@ -116,6 +119,7 @@ export function moduleFromScene(id: string, scene: Object3D): ModuleDef {
         prims: prims.map(toPrim),
         pupil: /pupil/i.test(name),
         lid: /(^|_)lid$/i.test(name),
+        jaw: /(^|_)jaw$/i.test(name),
       };
       for (const p of seg.prims) faces += triangleCount(p.geometry);
       segments.push(seg);
@@ -146,7 +150,11 @@ export class ModuleLibrary {
   constructor(
     readonly urls: Readonly<Record<string, string>>,
     private readonly loader: GltfLike = new GLTFLoader(),
-  ) {}
+    opts: { procedural?: boolean } = {},
+  ) {
+    // Procedural modules (ear flaps, bills, frills, rope tails, the kneaded leg) are always available.
+    if (opts.procedural !== false) for (const def of proceduralModules()) this.modules.set(def.id, def);
+  }
 
   get ids(): string[] {
     return Object.keys(this.urls);

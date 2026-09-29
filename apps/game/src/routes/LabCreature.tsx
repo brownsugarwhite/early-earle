@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { BODY_TYPES, BODY_TYPE_LABELS, SLOT_IDS, ZONES, type BodyType, type SlotId, type Verb, type ZoneId } from '@ee/genome';
+import { LEG_STYLE_LABELS, SLOT_IDS, SPECIES, SPECIES_LABELS, ZONES, type SlotId, type Verb, type ZoneId } from '@ee/genome';
 import type { PartOverride } from '@ee/render';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
@@ -9,20 +9,26 @@ import {
   GAIT_LABELS,
   LabCreatureScene,
   MERGE_SCRUB_MAX_MS,
+  MOUTH_LABELS,
+  MOVE_LABELS,
   resolveQuality,
   type BodyCandidate,
-  type BodyChoice,
   type CreatureLabInfo,
   type CreatureLabSettings,
   type LabMode,
+  type LegChoice,
   type MotionAction,
+  type MouthAction,
+  type MoveAction,
   type Quality,
+  type SpeciesChoice,
 } from '../lab/creature/LabCreatureScene';
 import { BUNDLED_RULES } from '../lab/creature/content';
 import '../lab/creature/creatureLab.css';
 
 const MODES: Array<{ id: LabMode; label: string }> = [
   { id: 'single', label: 'Einzeln' },
+  { id: 'sketch', label: 'Skizze' },
   { id: 'motion', label: 'Bewegung' },
   { id: 'gallery', label: 'Galerie 1–8' },
   { id: 'sheet', label: 'Blob-Sheet' },
@@ -51,13 +57,21 @@ const VERBS: Array<{ id: Verb; label: string }> = [
   { id: 'curl', label: 'Rüssel rollen' },
   { id: 'sniff', label: 'Schnüffeln' },
 ];
-const BODY_CHOICES: Array<{ id: BodyChoice; label: string }> = [{ id: 'auto', label: 'Regeln' }, ...BODY_TYPES.map((b) => ({ id: b, label: BODY_TYPE_LABELS[b] }))];
+const BODY_CHOICES: Array<{ id: SpeciesChoice; label: string }> = [{ id: 'auto', label: 'Regeln' }, ...SPECIES.map((sp) => ({ id: sp, label: SPECIES_LABELS[sp] }))];
+const LEG_CHOICES: Array<{ id: LegChoice; label: string }> = [
+  { id: 'auto', label: 'Regeln' },
+  { id: 'sdf', label: LEG_STYLE_LABELS.sdf },
+  { id: 'module', label: LEG_STYLE_LABELS.module },
+];
 const ACTIONS: Array<{ id: MotionAction; label: string }> = [
   { id: 'walk', label: 'Laufen' },
   { id: 'jump', label: 'Springen' },
   { id: 'slither', label: 'Schlängeln' },
+  { id: 'turn', label: 'Drehen' },
   { id: 'stand', label: 'Stehen' },
 ];
+const MOVES = Object.entries(MOVE_LABELS) as Array<[MoveAction, string]>;
+const MOUTHS = Object.entries(MOUTH_LABELS) as Array<[MouthAction, string]>;
 const SLOT_LABELS: Record<SlotId, string> = { eye: 'Auge', horn: 'Horn', ear: 'Ohr', trunk: 'Rüssel', tooth: 'Zähne', wing: 'Flügel', leg: 'Beine', tail: 'Schweif', crest: 'Kamm' };
 const TIERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -84,14 +98,14 @@ export function Slider({ label, value, min, max, step, onChange, format, testId 
   );
 }
 
-const EMPTY_INFO: CreatureLabInfo = { creatures: 0, parts: 0, partDrawCalls: 0, modules: 0, missing: [], merging: false, inheritance: [], partIds: [], rigMs: 0, motionMs: 0, bodyType: null, gait: null, massKg: 0, speed: 0, motionState: '' };
+const EMPTY_INFO: CreatureLabInfo = { creatures: 0, parts: 0, partDrawCalls: 0, modules: 0, missing: [], merging: false, inheritance: [], partIds: [], rigMs: 0, motionMs: 0, bodyType: null, species: null, gait: null, massKg: 0, speed: 0, motionState: '' };
 
-/** "Zufall": archetype × zone × tier × seed — characterful variety, not just another seed. */
+/** "Zufall": species × zone × tier × seed — characterful variety, not just another seed. */
 function randomVariety(mode: LabMode): Partial<CreatureLabSettings> {
   const zone = ZONES[Math.floor(Math.random() * ZONES.length)]!;
-  const bodyType: BodyChoice = Math.random() < 0.25 ? 'auto' : BODY_TYPES[Math.floor(Math.random() * BODY_TYPES.length)]!;
-  const tier = mode === 'motion' || bodyType !== 'auto' ? 5 + Math.floor(Math.random() * 5) : 3 + Math.floor(Math.random() * 7);
-  return { seed: Math.floor(Math.random() * 100000), zone, tier, bodyType, overrides: {} };
+  const species: SpeciesChoice = Math.random() < 0.2 ? 'auto' : SPECIES[Math.floor(Math.random() * SPECIES.length)]!;
+  const tier = mode === 'motion' || species !== 'auto' ? 5 + Math.floor(Math.random() * 5) : 3 + Math.floor(Math.random() * 7);
+  return { seed: Math.floor(Math.random() * 100000), zone, tier, species, bodyType: 'auto', overrides: {} };
 }
 
 /** The live status line: subscribes to the scene's info stream and re-renders alone. */
@@ -103,7 +117,7 @@ function StatusLine({ subscribe, quality, initial }: { subscribe: Set<(i: Creatu
       subscribe.delete(setInfo);
     };
   }, [subscribe]);
-  const bodyLabel = info.bodyType ? BODY_TYPE_LABELS[info.bodyType] : '';
+  const bodyLabel = info.species ? SPECIES_LABELS[info.species] : '';
   const gaitLabel = info.gait ? GAIT_LABELS[info.gait] : '';
   return (
     <span className="creature-info creature-status" data-testid="creature-lab-info" data-warn={info.missing.length > 0}>
@@ -188,15 +202,19 @@ export function LabCreature() {
   };
 
   const act = (action: MotionAction) => {
-    set({ action, ...(action === 'slither' && settings.bodyType !== 'snake' ? { bodyType: 'snake' as BodyType, tier: Math.max(5, settings.tier) } : {}) });
-    // A changed archetype rebuilds on the next apply; the action itself runs on the rebuilt hero.
+    set({ action, ...(action === 'slither' && settings.species !== 'snake' ? { species: 'snake' as SpeciesChoice, bodyType: 'auto' as const, tier: Math.max(5, settings.tier) } : {}) });
+    // A changed species rebuilds on the next apply; the action itself runs on the rebuilt hero.
     setTimeout(() => controller.act(action), 0);
-    setHint(action === 'jump' ? 'Tippe auf die Platte: Sprung dorthin' : action === 'stand' ? '' : 'Tippe auf die Platte: dorthin laufen');
+    setHint(action === 'jump' ? 'Tippe auf die Platte: Sprung dorthin' : action === 'turn' ? 'Tippe auf die Platte: dorthin drehen (Ausholen, Überschwingen)' : action === 'stand' ? '' : 'Tippe auf die Platte: dorthin laufen');
+  };
+  const move = (kind: MoveAction) => {
+    controller.playMove(kind);
+    setHint(`${MOVE_LABELS[kind]}: ein Partner-Blob wird verschlungen`);
   };
 
   const selectedPart = info.partIds.find((p) => p.id === selected) ?? null;
   const ov = selectedPart ? settings.overrides[selectedPart.id] ?? {} : {};
-  const motionMode = settings.mode === 'motion' || settings.mode === 'herd';
+  const motionMode = settings.mode === 'motion' || settings.mode === 'herd' || settings.mode === 'sketch';
 
   const controls = (
     <div className="creature-controls" data-testid="creature-lab-controls" ref={controlsRef}>
@@ -210,7 +228,13 @@ export function LabCreature() {
       ) : (
         <Seg label="Stufe" value={settings.tier} options={TIERS.slice(0, 10).map((t) => ({ id: t, label: String(t) }))} onChange={(tier) => set({ tier })} testId="ctl-tier" />
       )}
-      <Seg label="Körper" value={settings.bodyType} options={BODY_CHOICES} onChange={(bodyType) => set({ bodyType, ...(bodyType !== 'auto' && bodyType !== 'blob' && settings.tier < 5 ? { tier: 5 } : {}) })} testId="ctl-body" />
+      <Seg label="Körper" value={settings.species} options={BODY_CHOICES} onChange={(species) => set({ species, bodyType: 'auto', ...(species !== 'auto' && species !== 'blob' && settings.tier < 5 ? { tier: 5 } : {}) })} testId="ctl-body" />
+      <div className="creature-row">
+        <Seg label="Beine" value={settings.legs} options={LEG_CHOICES} onChange={(legs) => set({ legs })} testId="ctl-legs" />
+        <button type="button" className="creature-btn" data-active={settings.topDown} onClick={() => set({ topDown: !settings.topDown })} data-testid="btn-topdown">
+          Draufsicht 65°
+        </button>
+      </div>
       <div className="creature-row">
         <span className="creature-label">Seed</span>
         <input className="creature-input" type="number" value={settings.seed} onChange={(e) => set({ seed: Number(e.target.value) || 0 })} data-testid="ctl-seed" />
@@ -234,6 +258,22 @@ export function LabCreature() {
                 Parcours (6 Körper)
               </button>
             ) : null}
+          </div>
+          <div className="creature-row" data-testid="ctl-moves">
+            <span className="creature-label">Verschmelz-Züge</span>
+            {MOVES.map(([id, label]) => (
+              <button key={id} type="button" className="creature-btn" data-kind="action" onClick={() => move(id)} data-testid={`move-${id}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="creature-row" data-testid="ctl-mouth">
+            <span className="creature-label">Maul</span>
+            {MOUTHS.map(([id, label]) => (
+              <button key={id} type="button" className="creature-btn" data-kind="verb" onClick={() => controller.mouthAction(id)} data-testid={`mouth-${id}`}>
+                {label}
+              </button>
+            ))}
           </div>
           <div className="creature-row">
             <Slider label="Tempo" value={settings.speed} min={0.3} max={2.5} step={0.05} onChange={(speed) => set({ speed })} format={(v) => `× ${v.toFixed(2)}`} testId="ctl-speed" />

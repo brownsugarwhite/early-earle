@@ -36,6 +36,7 @@ import {
 } from '@ee/genome';
 import { capSpheres } from '../blob/blobParamsUniforms';
 import { hexToLinear } from '../common/tsl';
+import { MOUTH_COLS, MOUTH_ROWS, MOUTH_VERTS } from './CreatureMouth';
 import type { CreaturePool, PartPool } from './CreaturePool';
 import type { ModuleDef } from './ModuleLibrary';
 
@@ -150,6 +151,10 @@ interface PartState {
   footIndex: number;
   /** The module has an eyelid segment: blinks swing the lid instead of squashing the eye. */
   hasLid: boolean;
+  /** Leg kneaded from the body SDF (virtual part: nothing to trace or draw). */
+  sdf: boolean;
+  /** Anchored on a head sphere: turns with the neck lead. */
+  headPart: boolean;
   // Per-part scratch (no per-frame allocations).
   dir: Vec3;
   point: Vec3;
@@ -182,6 +187,13 @@ const _to: Vec3 = [0, 0, 0];
 const _squashAxis: Vec3 = [0, 1, 0];
 const _ik: TwoBoneResult = { knee: [0, 0, 0], extension: 0, upperDir: [0, 0, 0], lowerDir: [0, 0, 0] };
 const FORWARD: Vec3 = [0, 0, 1];
+const _headForward: Vec3 = [0, 0, 1];
+const _md: Vec3 = [0, 0, 0];
+const _mr: Vec3 = [0, 0, 0];
+const _mu: Vec3 = [0, 0, 0];
+const _mdir: Vec3 = [0, 0, 0];
+const _mp: Vec3 = [0, 0, 0];
+const _mo: Vec3 = [0, 0, 0];
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
@@ -208,6 +220,21 @@ export class CreatureRig {
    * pose in between. 1 = every frame (hero). Squash, jiggle and the exact hero surface always trace.
    */
   traceInterval = 1;
+  /**
+   * Mouth override (lab sheet frames, previews): opening 0..1 and roundness; null = the pose's mouth.
+   */
+  mouthOverride: { open: number; round: number } | null = null;
+  /** Draw the traced mouth when it opens (off: e.g. a hidden body). */
+  showMouth = true;
+  /** False hides every part and the mouth (a swallowed merge partner, a hidden body). */
+  visible = true;
+  private readonly mouthIndex: number;
+  private readonly mouthVerts = new Float32Array(MOUTH_VERTS * 3);
+  /** Leg modules fitted to the species' stance height (part id → length multiplier). */
+  private readonly legFit = new Map<string, number>();
+  /** Leg modules are thickened across their bones (sturdy, jelly-like legs under round bodies). */
+  readonly legThickness: number;
+  private readonly mouthOnHead: boolean;
   private body: RigBodyState | null = null;
   private capped: { params: BlobParams; max: number; spheresRef: readonly SpherePrim[]; program: SdfProgram } | null = null;
   /** Rest body (unsquashed) with noise and ripple: the traces run here, the squash is mapped analytically. */
@@ -225,6 +252,10 @@ export class CreatureRig {
   ) {
     const seed = typeof spec.genome.seed === 'number' ? spec.genome.seed : hashString(String(spec.genome.seed));
     this.clock = new IdleClock(seed ^ 0x5bd1e995, spec.personality.idleTempo);
+    this.mouthIndex = pool.mouths.alloc();
+    this.legThickness = LEG_THICKNESS[spec.species] ?? 1.3;
+    const neckHead = spec.skeleton.neckChain?.head ?? null;
+    this.mouthOnHead = !!(neckHead && neckHead.includes(spec.skeleton.mouth.anchor));
     for (const p of spec.parts) {
       const module = pool.library.get(p.asset);
       if (!module) {
@@ -268,6 +299,8 @@ export class CreatureRig {
         legRig,
         footIndex: -2,
         hasLid: module.segments.some((s) => s.lid),
+        sdf: !!p.sdf || module.segments.length === 0,
+        headPart: !!(neckHead && neckHead.includes(p.anchor)),
         dir: [0, 0, 1],
         point: [0, 0, 0],
         normal: [0, 1, 0],
@@ -287,7 +320,15 @@ export class CreatureRig {
   /** Rest length of a leg part in blob units (hip → sole for jointed legs, root → tip otherwise); 0 for non-legs. */
   legLength(partId: string): number {
     const p = this.parts.find((q) => q.spec.id === partId);
-    return p ? p.legLen * p.spec.scale : 0;
+    return p ? p.legLen * p.spec.scale * (this.legFit.get(partId) ?? 1) : 0;
+  }
+
+  /**
+   * Fits a leg module's length (multiplier on its scale) so the animal stands at its designed height —
+   * the step cycle then reads the fitted length (`legLength`).
+   */
+  fitLeg(partId: string, factor: number): void {
+    this.legFit.set(partId, Math.min(1.8, Math.max(0.45, factor)));
   }
 
   /** Triggers a verb on every part that has it. */
@@ -376,6 +417,10 @@ export class CreatureRig {
     for (const e of this.clock.step(dt)) this.trigger(e.verb, e.strength);
     const pose = body.pose ?? null;
     if (pose && pose.stomp > 0.05) this.stompKick(pose.stomp);
+    const bend = pose?.neckBend ?? 0;
+    const squint = pose?.squint ?? 0;
+    const mouthOpen = this.mouthOverride ? this.mouthOverride.open : pose?.mouth ?? 0;
+    const mouthRound = this.mouthOverride ? this.mouthOverride.round : pose?.mouthRound ?? 0;
 
     const params = body.params;
     const program = this.programFor(params, body.maxSpheres, body.pose != null);
@@ -434,6 +479,13 @@ export class CreatureRig {
       _forward[2] = 1;
     }
     const forward = _forward;
+    // Head parts turn with the neck lead: forward bent about y, then posed.
+    const cb = Math.cos(bend);
+    const sb = Math.sin(bend);
+    _headForward[0] = sb;
+    _headForward[1] = 0;
+    _headForward[2] = cb;
+    if (posed) rotInto(rotation, _headForward, _headForward);
     const breath = 1 + BREATH_AMPLITUDE * Math.sin(2 * Math.PI * params.breathHz * body.time + (body.phase ?? 0));
     // Strong ripples and the exact hero surface trace every frame; crowds re-use cached rest traces (the
     // squash no longer forces re-traces: it is mapped analytically).
@@ -453,15 +505,23 @@ export class CreatureRig {
       const p = this.parts[pi]!;
       const spec = p.spec;
       const ov = this.overrides.get(spec.id);
-      const hidden = this.hiddenSlots.has(spec.slot) || ov?.visible === false;
+      const hidden = !this.visible || this.hiddenSlots.has(spec.slot) || ov?.visible === false;
       if (hidden) {
         for (const inst of p.instances) inst.pool.hide(inst.index);
         continue;
       }
+      // Kneaded legs are body spheres: nothing to trace or draw.
+      if (p.sdf) continue;
 
       // --- socket direction (+ gaze steer for eyes), rotated with the pose ----------------------
       const dir = p.dir;
       dirInto(ov?.theta ?? spec.theta, ov?.phi ?? spec.phi, dir);
+      if (p.headPart && bend !== 0) {
+        const x = dir[0];
+        const z = dir[2];
+        dir[0] = x * cb + z * sb;
+        dir[2] = -x * sb + z * cb;
+      }
       if (posed) rotInto(rotation, dir, dir);
       const anchorSphere = spec.anchor >= 0 ? spheres[spec.anchor] : undefined;
       const origin = _origin;
@@ -532,7 +592,7 @@ export class CreatureRig {
         squashNormal(n, point, _squashAxis, squashAmount, this.squash.taper, n);
         squashPoint(point, _squashAxis, squashAmount, this.squash.taper, point);
       }
-      p.frameOpts.forward = forward;
+      p.frameOpts.forward = p.headPart ? _headForward : forward;
       const frame = orientationFrameInto(n, p.frameOpts, p.frame);
 
       // --- inertia: the socket's acceleration kicks the springs (follow-through) ----------------
@@ -576,6 +636,8 @@ export class CreatureRig {
           break;
         case 'ear':
           hingeTarget = Math.sin(tt * 0.7 * tempo + ph) * 0.04 - 0.12 * speedNorm; // ears fold back in the wind
+          // Elephant ears fan slowly and flare wide on a roar / trumpet.
+          if (spec.asset === 'ear_flap') swivelTarget = -(0.14 * Math.sin(tt * 2.1 * tempo + ph) + 0.1 + 0.55 * mouthRound + 0.25 * env);
           break;
         case 'tail': {
           const swing = pose ? pose.tailSwing : 0;
@@ -635,17 +697,20 @@ export class CreatureRig {
         blink = blinkAmount(p.blinkT, dur);
         if (p.blinkT > dur) p.blinkT = -1;
       }
+      // Squeezed eyes (yawn, bite, effort) hold the lids down.
+      if (spec.slot === 'eye' && squint > 0) blink = Math.max(blink, p.hasLid ? squint : squint * 0.75);
 
       // --- matrices ------------------------------------------------------------------------------
       const ch = p.choreo;
       const sink = spec.sink;
       const push = p.push.x * 0.12; // blob units along the normal
-      // Legs keep their hips on the body (they emerge from the fur); everything else sits on top of it.
-      const up = spec.role !== null ? lift * 0.3 : lift;
+      // Legs keep their hips on the body (they emerge from the fur); face parts sit on the clear face (the
+      // face cap keeps the coat off it); everything else sits on top of the coat.
+      const up = spec.role !== null ? lift * 0.3 : p.headPart && (spec.slot === 'eye' || spec.slot === 'trunk' || spec.slot === 'tooth') ? lift * 0.25 : lift;
       const px = point[0] - n[0] * sink + n[0] * (push + up) + (ch ? ch.offset[0] : 0);
       const py = point[1] - n[1] * sink + n[1] * (push + up) + (ch ? ch.offset[1] : 0);
       const pz = point[2] - n[2] * sink + n[2] * (push + up) + (ch ? ch.offset[2] : 0);
-      const s = spec.scale * (ov?.scale ?? 1) * (ch ? ch.scale : 1);
+      const s = spec.scale * (ov?.scale ?? 1) * (ch ? ch.scale : 1) * (spec.role !== null ? this.legFit.get(spec.id) ?? 1 : 1);
 
       // --- legs: reach the planted foot (IK) -----------------------------------------------------
       const foot = pose && spec.role !== null && !ch ? this.footOf(p, pose) : undefined;
@@ -709,6 +774,12 @@ export class CreatureRig {
             _rot.makeRotationX(blink * 1.35);
             sm.multiply(_rot);
           }
+        } else if (seg.jaw) {
+          // A lower jaw / bill swings down (module +Z) with the mouth.
+          if (mouthOpen > 0) {
+            _rot.makeRotationX(-mouthOpen * 0.6);
+            sm.multiply(_rot);
+          }
         } else if (seg.pupil && gaze) {
           // Slide the pupil toward the target within the eye's tangent plane (module X/Z).
           _v.copy(gaze).applyMatrix4(_m2.copy(mats[0]!).invert());
@@ -720,7 +791,88 @@ export class CreatureRig {
       }
       for (const inst of p.instances) inst.pool.setMatrix(inst.index, mats[inst.segment]!.elements);
     }
+    this.writeMouth(program, cx, cz, rotation, posed, bend, mouthOpen, mouthRound, traceCfg, squashing, squashAmount, lift);
     if (this.overrideVersion !== this.tintVersion) this.writeTints();
+  }
+
+  /**
+   * The mouth crescent (the sketch's black mouth on the leading side): a grid traced onto the body SDF
+   * around the mouth direction — upper lip a gentle arch, lower lip a deep bulge that grows with the
+   * opening, a round O for yawns and roars — carried by the squash like the sockets. Hidden when closed.
+   */
+  private writeMouth(program: SdfProgram, cx: number, cz: number, rotation: Readonly<Rot3>, posed: boolean, bend: number, open: number, round: number, traceCfg: Readonly<{ steps: number; damping: number; start: number }>, squashing: boolean, squashAmount: number, lift: number): void {
+    const mouths = this.pool.mouths;
+    if (this.mouthIndex < 0) return;
+    const m = this.spec.skeleton.mouth;
+    if (!m || open < 0.03 || !this.showMouth || !this.visible) {
+      mouths.hide(this.mouthIndex);
+      return;
+    }
+    const spheres = program.spheres;
+    const a = m.anchor >= 0 ? spheres[m.anchor] : undefined;
+    _mo[0] = a ? a.center[0] : cx;
+    _mo[1] = a ? a.center[1] : 0;
+    _mo[2] = a ? a.center[2] : cz;
+    _md[0] = m.dir[0];
+    _md[1] = m.dir[1];
+    _md[2] = m.dir[2];
+    if (this.mouthOnHead && bend !== 0) {
+      const c = Math.cos(bend);
+      const sn = Math.sin(bend);
+      const x = _md[0];
+      const z = _md[2];
+      _md[0] = x * c + z * sn;
+      _md[2] = -x * sn + z * c;
+    }
+    if (posed) rotInto(rotation, _md, _md);
+    // Frame: right = up × d, up' = d × right.
+    let rx = _md[2];
+    let rz = -_md[0];
+    let rl = Math.sqrt(rx * rx + rz * rz);
+    if (rl < 1e-4) {
+      rx = 1;
+      rz = 0;
+      rl = 1;
+    }
+    _mr[0] = rx / rl;
+    _mr[1] = 0;
+    _mr[2] = rz / rl;
+    _mu[0] = _md[1] * _mr[2] - _md[2] * _mr[1];
+    _mu[1] = _md[2] * _mr[0] - _md[0] * _mr[2];
+    _mu[2] = _md[0] * _mr[1] - _md[1] * _mr[0];
+    const H = m.open * (0.3 + 0.7 * open);
+    const W = m.width * (1 - 0.3 * round) * (0.78 + 0.22 * open);
+    const verts = this.mouthVerts;
+    // Above the noise bulges between the traced vertices (the jelly's surface noise ≈ 0.05).
+    const offset = 0.02 + program.noiseAmp * 0.7 + lift * 0.7;
+    for (let r = 0; r < MOUTH_ROWS; r++) {
+      for (let c = 0; c < MOUTH_COLS; c++) {
+        const u = -1 + (2 * c) / (MOUTH_COLS - 1);
+        const env = Math.max(0, 1 - u * u);
+        const upper = open * H * (0.14 * env + 0.42 * round * Math.sqrt(env));
+        const lower = -open * H * Math.pow(env, 0.6) * (1 + 0.25 * round);
+        const ya = r === 0 ? upper : r === 2 ? lower : (upper + lower) * 0.5;
+        const xa = u * W * (r === 1 ? 0.96 : 1);
+        const cx2 = Math.cos(xa);
+        const cy2 = Math.cos(ya);
+        const sx2 = Math.sin(xa);
+        const sy2 = Math.sin(ya);
+        _mdir[0] = _md[0] * cx2 * cy2 + _mr[0] * sx2 * cy2 + _mu[0] * sy2;
+        _mdir[1] = _md[1] * cx2 * cy2 + _mr[1] * sx2 * cy2 + _mu[1] * sy2;
+        _mdir[2] = _md[2] * cx2 * cy2 + _mr[2] * sx2 * cy2 + _mu[2] * sy2;
+        const t = radialSurfaceDistance(program, _mdir, this.opts, traceCfg, _mo) + offset;
+        _mp[0] = _mo[0] + _mdir[0] * t;
+        _mp[1] = _mo[1] + _mdir[1] * t;
+        _mp[2] = _mo[2] + _mdir[2] * t;
+        if (squashing) squashPoint(_mp, _squashAxis, squashAmount, this.squash.taper, _mp);
+        _v.set(_mp[0], _mp[1], _mp[2]).applyMatrix4(_blob);
+        const o = (r * MOUTH_COLS + c) * 3;
+        verts[o] = _v.x;
+        verts[o + 1] = _v.y;
+        verts[o + 2] = _v.z;
+      }
+    }
+    mouths.write(this.mouthIndex, verts);
   }
 
   /** The pose foot that belongs to this leg part (resolved once). */
@@ -779,7 +931,11 @@ export class CreatureRig {
     if (_b.lengthSq() < 1e-8) _b.set(0, 1, 0).addScaledVector(_a, -_a.y);
     _b.normalize();
     _c.crossVectors(_a, _b);
-    // Q = [A B C] · [a b c]ᵀ maps the segment's local bone/side basis onto the solved one.
+    // Q = [A tB tC] · [a b c]ᵀ maps the segment's local bone/side basis onto the solved one and thickens
+    // the segment across its bone (t): sturdy legs whose joints overlap instead of gapping at the knee.
+    const t = k === 2 ? 1 + (this.legThickness - 1) * 0.6 : this.legThickness;
+    _b.multiplyScalar(t);
+    _c.multiplyScalar(t);
     _basis.makeBasis(_a, _b, _c).multiply(leg.basisT[k]);
     const jl = leg.jointL[k];
     _frame.makeScale(s, s, s).premultiply(_basis);
@@ -826,6 +982,8 @@ export class CreatureRig {
         const prim = seg.prims[inst.prim] ?? seg.prims[0]!;
         let color: [number, number, number];
         if (prim.materialName === 'Ink') color = hexToLinear(spec.constants.ink);
+        // The sketch's animals have plain black eyes (the glint stays): irises go ink.
+        else if (prim.materialName === 'Iris' && spec.species !== 'blob') color = hexToLinear(spec.constants.ink);
         else if (prim.materialName === 'Bone') color = hexToLinear(spec.constants.bone);
         else if (prim.materialName === 'Accent') color = hexToLinear(spec.constants.accent);
         // Eyelids are skin: the body colour, not the eye slot's ink tint (else they read as dark caps).
@@ -861,10 +1019,14 @@ export class CreatureRig {
     if (this.disposed) return;
     this.disposed = true;
     for (const p of this.parts) for (const inst of p.instances) inst.pool.release(inst.index);
+    this.pool.mouths.release(this.mouthIndex);
     this.parts.length = 0;
     this.pool.forget(this);
   }
 }
+
+/** Thickness of leg modules per species (the Blender legs are slender; the v3 bodies are round). */
+const LEG_THICKNESS: Readonly<Partial<Record<string, number>>> = { retriever: 1.75, mouse: 1.6, giraffe: 1.45, rex: 1.12, duck: 1.5, elephant: 1.4, blob: 1.3 };
 
 function dirInto(theta: number, phi: number, out: Vec3): Vec3 {
   const c = Math.cos(phi);
@@ -895,6 +1057,20 @@ function rotInvInto(r: Readonly<Rot3>, v: Vec3, out: Vec3): Vec3 {
 }
 
 function chainOptions(p: PartSpec): ConstructorParameters<typeof SpringChain>[1] {
+  // Procedural species parts (v3): floppy dog ears hang down, the mouse tail lies long and wavy on the
+  // ground, rope tails hang, the retriever's plume curls up.
+  switch (p.asset) {
+    case 'ear_dog':
+      return { omega: 13, zeta: 0.24, follow: 0.85, restBendX: 0.66 };
+    case 'tail_mouse':
+      return { omega: 8, zeta: 0.32, follow: 0.96, restBendX: 0.09 };
+    case 'tail_rope':
+      return { omega: 11, zeta: 0.26, follow: 0.9, restBendX: 0.2 };
+    case 'tail_plume':
+      return { omega: 12, zeta: 0.22, follow: 0.9, restBendX: -0.34 };
+    default:
+      break;
+  }
   switch (p.slot) {
     // Positive bends go toward module +Z = the part's "down" (module −Z is up), see CreatureRig.update.
     case 'trunk':

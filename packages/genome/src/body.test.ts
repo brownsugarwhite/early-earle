@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildBody } from './body';
 import { evalSdf } from './sdf';
 import { RADIAL_TRACE_MESH, radialSurfaceDistance } from './sockets';
-import { BODY_TYPES, type Vec3 } from './types';
+import { BODY_TYPES, SPECIES_BODY, type BodyType, type SdfProgram, type Species, type Vec3 } from './types';
 
 describe('buildBody', () => {
   it('is deterministic and within the sphere budget for every archetype', () => {
@@ -32,10 +32,10 @@ describe('buildBody', () => {
     }
   });
 
-  it('mesh-drawn archetypes are star-shaped from their box centre: the 6-step mesh trace finds the outer surface', () => {
+  it('mesh-drawn species are star-shaped from their box centre: the 6-step mesh trace finds the outer surface', () => {
     // The jiggle mesh traces each vertex radially from the box centre (render/blob); a body part that is
-    // not visible from there (a raised head behind a thin neck, an up-curled tail) would be dented or lost.
-    // Bodies that cannot satisfy this (snakes, giraffe necks) must be flagged for the raymarch.
+    // not visible from there (a raised head behind a thin neck, a leg behind the belly) would be dented or
+    // lost. Species that cannot satisfy this (snake, giraffe, REX, elephant) are flagged for the raymarch.
     const boxOrigin = (spheres: readonly { center: Vec3; r: number }[]): Vec3 => {
       let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity;
       for (const s of spheres) {
@@ -47,19 +47,16 @@ describe('buildBody', () => {
       return [(a + b) / 2, 0, (c + d) / 2];
     };
     let checked = 0;
-    for (const bodyType of ['quadruped', 'heavy'] as const) {
-      for (const seed of [1, 11, 23, 37, 51, 77, 91, 103, 127, 131]) {
-        const { params, skeleton } = buildBody(bodyType, 'tjorizo', 7, seed);
-        if (skeleton.raymarch) {
-          expect(skeleton.neck, `${bodyType} ${seed}`).toBeGreaterThan(0.4); // only giraffe necks opt out
-          continue;
-        }
+    const mesh: Array<[BodyType, Species]> = [['quadruped', 'retriever'], ['quadruped', 'mouse'], ['biped', 'duck'], ['blob', 'blob']];
+    for (const [bodyType, species] of mesh) {
+      for (const seed of [1, 11, 23, 37, 51, 77, 91, 103]) {
+        const { params, skeleton } = buildBody(bodyType, 'tjorizo', 7, seed, 'jelly', { species });
+        expect(skeleton.raymarch, `${species} ${seed}`).toBe(false);
         checked++;
-        const prog = { ...params, noiseAmp: 0 };
+        const prog = { ...params, noiseAmp: 0, floorY: -100 };
         const o = boxOrigin(prog.spheres);
         // Dent: the trace stops on an inner surface and a body part beyond it goes missing.
-        // Float: the vertex does not sit on any surface. (A vertex settling in a near-zero saddle — a
-        // slight web across a notch — is neither and stays invisible.)
+        // Float: the vertex does not sit on any surface.
         let dents = 0;
         let floats = 0;
         let worst = 0;
@@ -82,14 +79,59 @@ describe('buildBody', () => {
           worst = Math.max(worst, dent);
           if (Math.abs(evalSdf(prog, [o[0] + dir[0] * tMesh, o[1] + dir[1] * tMesh, o[2] + dir[2] * tMesh])) > 0.05) floats++;
         }
-        expect(dents, `${bodyType} seed ${seed} dents`).toBeLessThanOrEqual(1);
-        expect(floats, `${bodyType} seed ${seed} floats`).toBeLessThanOrEqual(2);
-        expect(worst, `${bodyType} seed ${seed}`).toBeLessThan(0.25);
+        if (bodyType === 'blob') continue; // the blob dome's flat base is checked by the blob renderer
+        expect(dents, `${species} seed ${seed} dents`).toBeLessThanOrEqual(1);
+        expect(floats, `${species} seed ${seed} floats`).toBeLessThanOrEqual(2);
+        expect(worst, `${species} seed ${seed}`).toBeLessThan(0.25);
       }
     }
-    expect(checked).toBeGreaterThan(12);
-    expect(buildBody('snake', 'luzz', 7, 1).skeleton.raymarch).toBe(true);
-    expect(buildBody('biped', 'luzz', 7, 1).skeleton.raymarch).toBe(true); // REX: head overhangs the chest
-    expect(buildBody('blob', 'luzz', 7, 1).skeleton.raymarch).toBe(false);
+    expect(checked).toBeGreaterThan(20);
+    for (const sp of ['snake', 'giraffe', 'rex', 'elephant'] as const) expect(buildBody(SPECIES_BODY[sp], 'luzz', 7, 1, 'jelly', { species: sp }).skeleton.raymarch, sp).toBe(true);
+  });
+
+  it('heads never melt into the chest: a neck pinch separates head and torso (read from above)', () => {
+    // Half-width of the body at a point of the chest → head line (radial trace sideways from the axis).
+    const halfWidth = (prog: SdfProgram, p: Vec3): number => radialSurfaceDistance(prog, [1, 0, 0], {}, { steps: 40, damping: 0.9, start: 0.05 }, p);
+    for (const species of ['retriever', 'mouse', 'giraffe', 'rex', 'elephant'] as const) {
+      const { params, skeleton } = buildBody(SPECIES_BODY[species], 'tjorizo', 7, 5, 'jelly', { species });
+      const prog = { ...params, noiseAmp: 0 };
+      const head = params.spheres[skeleton.anchors.head]!;
+      const core = params.spheres[skeleton.anchors.core]!;
+      let minW = Infinity;
+      for (let i = 1; i < 20; i++) {
+        const u = i / 20;
+        const p: Vec3 = [core.center[0] + (head.center[0] - core.center[0]) * u, core.center[1] + (head.center[1] - core.center[1]) * u, core.center[2] + (head.center[2] - core.center[2]) * u];
+        if (Math.hypot(p[0] - head.center[0], p[1] - head.center[1], p[2] - head.center[2]) < head.r * 0.9) break;
+        minW = Math.min(minW, halfWidth(prog, p));
+      }
+      const headW = halfWidth(prog, head.center);
+      // Elephants carry their head close to the chest; the ear flaps (parts) mark it — a small pinch suffices.
+      // The mouse is a fluffy ball with a snout (sketch): its head is marked by the ears, a slight pinch suffices.
+      const need = species === 'elephant' ? 1.4 : species === 'mouse' ? 1.35 : 1.0;
+      expect(minW, species).toBeLessThan(Math.max(headW * need, 0.05));
+      expect(headW, species).toBeGreaterThan(0.12);
+    }
+  });
+
+  it('kneaded legs: foot spheres touch the ground under their hips, knees in between', () => {
+    for (const species of ['retriever', 'mouse', 'giraffe', 'rex', 'duck', 'elephant'] as const) {
+      const { params, skeleton } = buildBody(SPECIES_BODY[species], 'tjorizo', 7, 9, 'jelly', { species, legs: 'sdf' });
+      expect(skeleton.legs.length, species).toBe(SPECIES_BODY[species] === 'biped' ? 2 : 4);
+      for (const leg of skeleton.legs) {
+        const foot = params.spheres[leg.footSphere]!;
+        expect(foot.center[1] - foot.r, species).toBeCloseTo(-skeleton.restLift, 5);
+        expect(Math.hypot(foot.center[0] - leg.hip[0], foot.center[2] - leg.hip[2]), species).toBeLessThan(0.2);
+        expect(leg.length * 0.9).toBeCloseTo(leg.hip[1] + skeleton.restLift, 5);
+        // The leg is one piece with the body: the SDF is negative all the way from the hip to the foot.
+        for (let i = 0; i <= 10; i++) {
+          const u = i / 10;
+          const p: Vec3 = [leg.hip[0] + (foot.center[0] - leg.hip[0]) * u, leg.hip[1] + (foot.center[1] - leg.hip[1]) * u, leg.hip[2] + (foot.center[2] - leg.hip[2]) * u];
+          expect(evalSdf({ ...params, noiseAmp: 0 }, p), `${species} ${leg.role} ${u}`).toBeLessThan(0.02);
+        }
+      }
+      const mod = buildBody(SPECIES_BODY[species], 'tjorizo', 7, 9, 'jelly', { species, legs: 'module' });
+      expect(mod.skeleton.legs).toHaveLength(0);
+      expect(mod.skeleton.structural.length).toBe(skeleton.legs.length);
+    }
   });
 });

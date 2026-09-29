@@ -1,4 +1,4 @@
-import { Group, Quaternion, Vector2, Vector3 } from 'three/webgpu';
+import { Group, Matrix4, Quaternion, Vector2, Vector3 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
 import { time, uniform } from 'three/tsl';
 import type { LevelState, MoveResult } from '@ee/core';
@@ -7,6 +7,7 @@ import type { ModuleLibrary } from '../creature/index';
 import type { FloatNode } from '../earle/tsl';
 import { BoardBlobs, type CreatureMode } from './BoardBlobs';
 import { BoardCells } from './BoardCells';
+import { BoardFx } from './boardFx';
 import { BoardLabels, labelIndexForTier } from './BoardLabels';
 import { BoardParticles } from './BoardParticles';
 import { BoardPlateau, HILL_HEIGHT } from './BoardPlateau';
@@ -49,6 +50,8 @@ export interface BoardRendererOptions {
   shadowLayer?: number;
   fog?: BoardFog | undefined;
   clock?: () => number;
+  /** Raymarch REX/snake/giraffe bodies (WebGPU + Hoch); false = every body is a jiggle mesh (Mobil, WebGL2). */
+  raymarch?: boolean;
 }
 
 export interface Footprint {
@@ -59,6 +62,7 @@ export interface Footprint {
 }
 
 const _q = new Quaternion();
+const _inv = new Matrix4();
 
 /**
  * Board v2: the level as an Earle plateau. Owns the plateau, plates, element props, particles, badges and
@@ -79,11 +83,15 @@ export class BoardRenderer {
   readonly particles: BoardParticles;
   readonly labels: BoardLabels;
   readonly blobs: BoardBlobs;
+  /** Splashes, ripples, ink and dust (merges, landings). */
+  readonly fx: BoardFx;
   readonly timeNode = uniform(0);
   /** Cells that healed in this level (keep the green look). */
   readonly healed = new Set<number>();
   /** Screen-space shake offset (board units, applied by the scene to the camera). */
   readonly shake = new Vector2();
+  /** 0..1 camera zoom punch (big merges): the scene dollies in by this fraction for the frame. */
+  zoomPunch = 0;
   /** Direction away from the sun in board-local xz (peels, offset shadows). */
   readonly awayDir = new Vector3(-0.7, 0, 0.4);
   layout: BoardLayout;
@@ -100,6 +108,7 @@ export class BoardRenderer {
   private streams: StreamDot[] = [];
   private goalLabels: GoalLabel[] = [];
   private shakeEnergy = 0;
+  private punchEnergy = 0;
   private terrain: { minD: number; maxD: number } = { minD: 0, maxD: 0 };
   private playing = 0;
   private moveTag: string | null = null;
@@ -129,7 +138,9 @@ export class BoardRenderer {
       palette: this.palette,
       octaves: options.octaves ?? 2,
       shadowLayer: options.shadowLayer ?? BOARD_SHADOW_LAYER,
+      raymarch: options.raymarch ?? false,
     });
+    this.fx = new BoardFx(this);
     this.lift.add(this.plateau.group, this.cells.mesh, this.props.group, this.particles.group, this.blobs.group, this.labels.mesh);
     this.timeline = new BoardTimeline(this);
     this.root.visible = false;
@@ -449,6 +460,7 @@ export class BoardRenderer {
     this.particles.group.visible = show;
     this.labels.mesh.visible = show;
     this.blobs.mesh.visible = show;
+    if (this.blobs.meshA) this.blobs.meshA.visible = show;
     this.blobs.proxies.visible = show;
     if (on) this.root.visible = true;
   }
@@ -472,7 +484,7 @@ export class BoardRenderer {
   blobInfo(id: number): { genome: import('@ee/genome').BlobParams; spec: import('@ee/genome').CreatureSpec | null; tier: number; scale: number } | null {
     const v = this.blobs.get(id);
     if (!v) return null;
-    return { genome: v.genome, spec: v.spec, tier: v.tier, scale: this.worldScale(v.tier) };
+    return { genome: v.spec ? v.spec.body : v.genome, spec: v.spec, tier: v.tier, scale: v.fit };
   }
 
   // ---------------------------------------------------------------- appearance choreography
@@ -621,6 +633,59 @@ export class BoardRenderer {
     this.shakeEnergy = Math.min(1, this.shakeEnergy + strength);
   }
 
+  /** Camera zoom punch (big merges, blasts): a quick dolly-in that springs back. */
+  punch(strength: number): void {
+    if (!this.juice) return;
+    this.punchEnergy = Math.min(1, Math.max(this.punchEnergy, strength));
+  }
+
+  /**
+   * A swipe was queued while this move still plays: the rest of its timeline runs `factor` × faster so the
+   * queued move starts promptly (instead of being cut off).
+   */
+  hurry(factor = 5): void {
+    if (this.moveTag) this.tweens.hurry(this.moveTag, factor);
+  }
+
+  /**
+   * Depart: the creature `id` walks/hops/slithers from its cell toward board-local direction (dx, dz) to the
+   * plateau rim and crouches there. Returns when (s from now) and where (board-local, ground) it stands at
+   * the rim, or null when there is no such creature.
+   */
+  exitCreature(id: number, dx: number, dz: number): { at: number; local: Vector3 } | null {
+    const v = this.blobs.get(id);
+    if (!v) return null;
+    if (this.moveTag) this.tweens.finish(this.moveTag);
+    let ux = dx;
+    let uz = dz;
+    const l = Math.hypot(ux, uz);
+    if (l < 1e-6) {
+      ux = 0;
+      uz = 1;
+    } else {
+      ux /= l;
+      uz /= l;
+    }
+    const cz = this.plateau.shape.centerZ;
+    const inside = (t: number): boolean => {
+      const x = v.x + ux * t;
+      const z = v.z + uz * t - cz;
+      const d = Math.hypot(x, z);
+      if (d < 1e-6) return true;
+      return d < this.plateau.rimRadius(x / d, z / d) * 0.93 - v.radius * 0.6;
+    };
+    let lo = 0;
+    let hi = 12;
+    for (let i = 0; i < 28; i++) {
+      const mid = (lo + hi) / 2;
+      if (inside(mid)) lo = mid;
+      else hi = mid;
+    }
+    const edge: [number, number] = [v.x + ux * lo, v.z + uz * lo];
+    const at = this.timeline.exit(v, edge);
+    return { at, local: new Vector3(edge[0], this.layout.top, edge[1]) };
+  }
+
   /** Reports a juicy moment to the HUD (REX-meter pulse); silent when juice is off. */
   emitJuice(kind: JuiceKind): void {
     if (!this.juice) return;
@@ -643,11 +708,15 @@ export class BoardRenderer {
     }
     this.particles.enabled = this.juice;
 
-    // Shake: decaying two-tone wobble.
+    // Shake: decaying two-tone wobble; punch: a fast dolly-in with a soft return.
     this.shakeEnergy *= Math.exp(-dt * 7);
     if (this.shakeEnergy < 0.002) this.shakeEnergy = 0;
     const e = this.shakeEnergy;
     this.shake.set(0.045 * e * Math.sin(now * 47), 0.03 * e * Math.cos(now * 61 + 1));
+    this.punchEnergy *= Math.exp(-dt * 5.5);
+    if (this.punchEnergy < 0.002) this.punchEnergy = 0;
+    this.zoomPunch += (this.punchEnergy - this.zoomPunch) * (1 - Math.exp(-dt * 30));
+    if (this.punchEnergy === 0 && this.zoomPunch < 0.002) this.zoomPunch = 0;
 
     // Vent streams: dots drift along the flow and fade at both ends.
     for (const s of this.streams) {
@@ -674,7 +743,9 @@ export class BoardRenderer {
           if (d > pitch * 1.35) continue;
           const wgt = smoothstep(pitch * 1.35, pitch * 0.15, d) * wTier * v.pop;
           const inv = d > 1e-4 ? 1 / d : 0;
-          this.cells.press(c.index, 0.03 * wgt, 0.085 * wgt * dz * inv, -0.085 * wgt * dx * inv);
+          // The plates are set flush into the meadow (BOARD_TOP thick): they may only sink a fraction of it,
+          // or the ink bed shows through as a dark square.
+          this.cells.press(c.index, 0.011 * wgt, 0.07 * wgt * dz * inv, -0.07 * wgt * dx * inv);
         }
       }
     }
@@ -685,8 +756,10 @@ export class BoardRenderer {
 
     this.lift.updateWorldMatrix(true, false);
     this.lift.getWorldQuaternion(_q);
+    _inv.copy(this.lift.matrixWorld).invert();
     this.labels.begin();
-    this.blobs.update(dt, camera, _q, this.props, this.labels, now, time.value + dt);
+    this.blobs.update(dt, camera, _q, _inv, this.props, this.labels, now, time.value + dt);
+    if (this.blobs.castersMoved) this.moved = true;
     // Goal totems carry their tier number only when numbers are on (the HUD states the goals anyway).
     if (this.goalLabels.length > 0 && this.blobs.showLabels) {
       const camLocal = camera.getWorldQuaternion(new Quaternion()).premultiply(new Quaternion().copy(_q).invert());
@@ -700,7 +773,7 @@ export class BoardRenderer {
     let n = 1; // plateau (ink slab included)
     if (this.cells.mesh.visible) n++;
     n += this.props.drawCalls;
-    if (this.blobs.mesh.count > 0) n++;
+    n += this.blobs.bodyDrawCalls;
     if (this.labels.mesh.visible) n++;
     n += this.blobs.partDrawCalls;
     for (const child of this.particles.group.children) if (child.visible) n++;

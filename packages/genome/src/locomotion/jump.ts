@@ -54,12 +54,12 @@ export function jumpHeight(plan: JumpPlan, t: number): number {
  * again before landing), the splat flattens hard and recovers with a spring.
  */
 export const JUMP_TIMING = {
-  /** Anticipation length (s) for a unit-mass body; heavier bodies wind up longer. */
-  anticipate: 0.15,
+  /** Anticipation length (s) for a unit-mass body; heavier bodies wind up longer (v3: weightier). */
+  anticipate: 0.22,
   /** Splat hold before the recovery spring takes over (s). */
-  splat: 0.06,
+  splat: 0.09,
   /** Recovery until the next command (s). */
-  recover: 0.32,
+  recover: 0.45,
 } as const;
 
 /** Anticipation: ease-in compression toward `depth` over the wind-up. */

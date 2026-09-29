@@ -17,6 +17,8 @@ export interface LevelBoardOptions {
   fog?: BoardFog | undefined;
   palette?: BoardZoneInput;
   juice?: boolean;
+  /** Raymarch REX/snake/giraffe bodies (WebGPU in the Hoch preset); Mobil and WebGL2 draw meshes only. */
+  raymarch?: boolean;
 }
 
 let sharedLibrary: { library: ModuleLibrary; ready: Promise<void> } | null = null;
@@ -70,6 +72,7 @@ export class LevelBoard {
       octaves: opts.octaves ?? 2,
       creatures: opts.creatures ?? 'all',
       fog: opts.fog,
+      raymarch: opts.raymarch ?? false,
     });
     this.renderer.juice = opts.juice ?? true;
     this.renderer.onJuice = (kind: JuiceKind) => pulseRex(kind);
@@ -100,6 +103,8 @@ export class LevelBoard {
     this.unsubscribe = store.subscribe((st, prev) => {
       if (st.showNumbers !== prev.showNumbers) this.renderer.setLabels(st.showNumbers);
       if (st.juice !== prev.juice) this.renderer.juice = st.juice;
+      // A swipe queued while the move still plays hurries the rest of it (the queued move starts promptly).
+      if (st.pendingDir !== null && prev.pendingDir === null && st.animating) this.renderer.hurry(5);
       if (st.moveSeq !== prev.moveSeq || st.level !== prev.level || st.state !== prev.state) this.syncFromStore(false);
     });
   }
@@ -182,6 +187,11 @@ export class LevelBoard {
   /** Screen-space shake (board units) for the camera. */
   get shake(): Vector2 {
     return this.renderer.shake;
+  }
+
+  /** 0..1 zoom punch (big merges): the scene dollies the camera in by this fraction for the frame. */
+  get zoomPunch(): number {
+    return this.renderer.zoomPunch;
   }
 
   cellToLocal([x, y]: readonly [number, number]): [number, number] {
@@ -269,6 +279,14 @@ export class LevelBoard {
     }
     if (!this.unsubscribe && !this.renderer.blobs.carrying) this.renderer.endWarmup();
     this.renderedLevelId = '';
+  }
+
+  /**
+   * Depart: the creature walks/hops/slithers from its cell to the plateau rim toward board-local (dx, dz).
+   * Returns when (s) and where (board-local ground point) it is ready to jump off, or null.
+   */
+  exitCreature(id: number, dx: number, dz: number): { at: number; local: Vector3 } | null {
+    return this.renderer.exitCreature(id, dx, dz);
   }
 
   /** The creature at `id` keeps its parts on another body (the hero) after it leaves the board. */

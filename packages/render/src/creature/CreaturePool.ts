@@ -2,6 +2,7 @@ import { Group, InstancedBufferAttribute, InstancedMesh, type BufferGeometry, ty
 import type { MeshBasicNodeMaterial } from 'three/webgpu';
 import type { CreatureSpec } from '@ee/genome';
 import type { BlobShadingUniforms } from '../blob/blobShading';
+import { MouthBatch } from './CreatureMouth';
 import { CreatureRig } from './CreatureRig';
 import type { ModuleDef, ModuleLibrary } from './ModuleLibrary';
 import { PART_ANIM_ATTR, PART_TINT_ATTR, createPartMaterial } from './partMaterial';
@@ -106,6 +107,8 @@ export class PartPool {
 export interface CreaturePoolOptions {
   /** Instances per pool (a pool = one module segment primitive). */
   capacity?: number;
+  /** Mouth slots (creatures with a traced mouth). */
+  mouths?: number;
 }
 
 /**
@@ -117,6 +120,8 @@ export class CreaturePool {
   readonly group = new Group();
   readonly material: MeshBasicNodeMaterial;
   readonly capacity: number;
+  /** Every rig's mouth crescent in one draw call. */
+  readonly mouths: MouthBatch;
   private readonly pools = new Map<string, PartPool>();
   private readonly rigs = new Set<CreatureRig>();
 
@@ -128,6 +133,8 @@ export class CreaturePool {
     this.material = createPartMaterial(uniforms);
     this.capacity = opts.capacity ?? 256;
     this.group.name = 'creature-parts';
+    this.mouths = new MouthBatch(opts.mouths ?? 96);
+    this.group.add(this.mouths.mesh);
   }
 
   poolFor(module: ModuleDef, segment: number, prim: number): PartPool {
@@ -161,6 +168,7 @@ export class CreaturePool {
   /** Uploads dirty instance data; call once per frame after all rigs updated. */
   commit(): void {
     for (const p of this.pools.values()) p.commit();
+    this.mouths.commit();
   }
 
   /** Pools that currently draw (≈ draw calls for the accessories). */
@@ -183,6 +191,8 @@ export class CreaturePool {
       p.dispose();
     }
     this.pools.clear();
+    this.group.remove(this.mouths.mesh);
+    this.mouths.dispose();
     this.material.dispose();
   }
 }

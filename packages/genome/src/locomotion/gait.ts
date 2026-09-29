@@ -39,20 +39,22 @@ export interface GaitParams {
   roll: number;
   /** Minimum cycle rate (Hz) while creeping. */
   minRate: number;
+  /** 0..1 stomp: the swing peaks late and the foot slams down (REX, heavy); 0 = a round arc. */
+  slam: number;
 }
 
 export const GAIT_PARAMS: Readonly<Record<GaitKind, GaitParams>> = {
   // Lateral sequence: LH, LF, RH, RF each a quarter cycle apart.
-  walk: { duty: 0.66, offsets: { BL: 0, FL: 0.25, BR: 0.5, FR: 0.75, L: 0, R: 0.5 }, lift: 0.32, stride: 1.25, bob: 0.035, beats: 4, roll: 0.05, minRate: 0.9 },
+  walk: { duty: 0.66, offsets: { BL: 0, FL: 0.25, BR: 0.5, FR: 0.75, L: 0, R: 0.5 }, lift: 0.34, stride: 1.3, bob: 0.04, beats: 4, roll: 0.05, minRate: 0.75, slam: 0.2 },
   // Diagonal pairs.
-  trot: { duty: 0.52, offsets: { FL: 0, BR: 0, FR: 0.5, BL: 0.5, L: 0, R: 0.5 }, lift: 0.4, stride: 1.6, bob: 0.06, beats: 2, roll: 0.03, minRate: 1.2 },
+  trot: { duty: 0.52, offsets: { FL: 0, BR: 0, FR: 0.5, BL: 0.5, L: 0, R: 0.5 }, lift: 0.4, stride: 1.6, bob: 0.06, beats: 2, roll: 0.03, minRate: 1.0, slam: 0.15 },
   // Biped: alternate legs, big lifts, hard landings.
-  stomp: { duty: 0.6, offsets: { L: 0, R: 0.5, FL: 0, FR: 0.5, BL: 0, BR: 0.5 }, lift: 0.45, stride: 1.05, bob: 0.07, beats: 2, roll: 0.12, minRate: 0.8 },
+  stomp: { duty: 0.6, offsets: { L: 0, R: 0.5, FL: 0, FR: 0.5, BL: 0, BR: 0.5 }, lift: 0.5, stride: 1.05, bob: 0.08, beats: 2, roll: 0.12, minRate: 0.65, slam: 0.9 },
   // Heavy: long stances, wide sway.
-  waddle: { duty: 0.74, offsets: { BL: 0, FL: 0.25, BR: 0.5, FR: 0.75, L: 0, R: 0.5 }, lift: 0.22, stride: 0.9, bob: 0.03, beats: 2, roll: 0.16, minRate: 0.6 },
+  waddle: { duty: 0.72, offsets: { BL: 0, FL: 0.25, BR: 0.5, FR: 0.75, L: 0, R: 0.5 }, lift: 0.3, stride: 0.9, bob: 0.035, beats: 2, roll: 0.16, minRate: 0.5, slam: 0.7 },
   // Hop and slither have no feet; their params only matter for legs a blob wears (kick with the hop).
-  hop: { duty: 0.7, offsets: { FL: 0, FR: 0, BL: 0, BR: 0, L: 0, R: 0 }, lift: 0.3, stride: 1, bob: 0, beats: 1, roll: 0, minRate: 1 },
-  slither: { duty: 0.7, offsets: { FL: 0, FR: 0.5, BL: 0.5, BR: 0, L: 0, R: 0.5 }, lift: 0.2, stride: 1, bob: 0, beats: 2, roll: 0, minRate: 1 },
+  hop: { duty: 0.7, offsets: { FL: 0, FR: 0, BL: 0, BR: 0, L: 0, R: 0 }, lift: 0.3, stride: 1, bob: 0, beats: 1, roll: 0, minRate: 1, slam: 0 },
+  slither: { duty: 0.7, offsets: { FL: 0, FR: 0.5, BL: 0.5, BR: 0, L: 0, R: 0.5 }, lift: 0.2, stride: 1, bob: 0, beats: 2, roll: 0, minRate: 1, slam: 0 },
 };
 
 export interface FootState {
@@ -71,6 +73,8 @@ export interface FootState {
   landed: boolean;
   /** True for the frame in which a planted foot slipped (reach limit). */
   slipped: boolean;
+  /** 1 on touchdown, decaying (≈ 0.15 s): kneaded feet splat wide when they land. */
+  splat: number;
 }
 
 const smooth = (u: number): number => u * u * (3 - 2 * u);
@@ -90,6 +94,12 @@ export class StepCycle {
   stride = 0;
   /** Horizontal reach limit of a planted foot from its hip, in leg lengths. */
   reach = 0.9;
+  /**
+   * Stride and lift multipliers: kneaded stumps take short, quick steps so the foot sphere never leaves
+   * the body's fillet (a long stride would tear the foot off the jelly).
+   */
+  strideScale = 1;
+  liftScale = 1;
 
   constructor(
     readonly legs: readonly LegDef[],
@@ -97,7 +107,7 @@ export class StepCycle {
     readonly ground: (x: number, z: number) => number = () => 0,
   ) {
     this.params = GAIT_PARAMS[gait];
-    this.feet = legs.map((leg) => ({ leg, pos: [0, 0, 0], planted: true, from: [0, 0, 0], to: [0, 0, 0], swing: 0, phase: this.params.offsets[leg.role], landed: false, slipped: false }));
+    this.feet = legs.map((leg) => ({ leg, pos: [0, 0, 0], planted: true, from: [0, 0, 0], to: [0, 0, 0], swing: 0, phase: this.params.offsets[leg.role], landed: false, slipped: false, splat: 0 }));
   }
 
   /** Plants every foot under its hip (teleport, start of a scene). */
@@ -112,6 +122,7 @@ export class StepCycle {
       f.planted = true;
       f.swing = 0;
       f.landed = false;
+      f.splat = 0;
       f.phase = this.params.offsets[f.leg.role];
     }
   }
@@ -127,7 +138,7 @@ export class StepCycle {
    */
   step(dt: number, speed: number, forward: Vec3, legLength: number, hips: (leg: LegDef) => Vec3, rateScale = 1, tempo = 1): void {
     const p = this.params;
-    const strideMax = Math.max(1e-3, p.stride * legLength) * (0.7 + 0.3 * tempo);
+    const strideMax = Math.max(1e-3, p.stride * legLength * this.strideScale) * (0.7 + 0.3 * tempo);
     const moving = speed > 1e-4;
     let rate = 0;
     if (moving) rate = Math.max(p.minRate * tempo, speed / strideMax);
@@ -136,10 +147,13 @@ export class StepCycle {
     this.rate = rate;
     this.stride = rate > 0 ? Math.min(strideMax, speed / rate) : 0;
     this.phase = (this.phase + rate * dt) % 1;
-    const lift = p.lift * legLength;
+    const lift = p.lift * legLength * this.liftScale;
+    const splatDecay = Math.exp(-dt * 9);
+    const liftPow = 1 + p.slam;
     for (const f of this.feet) {
       f.landed = false;
       f.slipped = false;
+      f.splat *= splatDecay;
       const local = (this.phase + p.offsets[f.leg.role]) % 1;
       f.phase = local;
       const inStance = local < p.duty;
@@ -152,6 +166,7 @@ export class StepCycle {
           f.planted = true;
           f.swing = 0;
           f.landed = true;
+          f.splat = 1;
         } else {
           // Reach limit: a planted foot is never left behind beyond what the leg can stretch to (a hard
           // turn or a shove); it slips after the hip instead. Normal strides stay far inside it.
@@ -189,7 +204,8 @@ export class StepCycle {
       const e = smooth(u);
       f.swing = u;
       f.pos[0] = f.from[0] + (f.to[0] - f.from[0]) * e;
-      f.pos[1] = f.from[1] + (f.to[1] - f.from[1]) * e + Math.sin(Math.PI * u) * lift;
+      // Stomping gaits lift slowly and slam down: the arc peaks late (u^(1 + slam)).
+      f.pos[1] = f.from[1] + (f.to[1] - f.from[1]) * e + Math.sin(Math.PI * Math.pow(u, liftPow)) * lift;
       f.pos[2] = f.from[2] + (f.to[2] - f.from[2]) * e;
     }
   }

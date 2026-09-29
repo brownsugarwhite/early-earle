@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { GridLabScene } from '../lab/grid/GridLabScene';
-import { DEMO_LEVEL_INDEX, useGridStore } from '../lab/grid/gridStore';
+import { CREATURE_DEMO_INDEX, DEMO_LEVEL_INDEX, useGridStore } from '../lab/grid/gridStore';
 import { LEVELS } from '../content/levels';
 import { canRewind, type Dir, type GoalProgress } from '@ee/core';
 
@@ -78,10 +78,10 @@ export function LabGrid() {
 
   const next = state?.spawnQueue[0];
   const status = state?.status ?? 'playing';
-  const isDemo = levelIndex === DEMO_LEVEL_INDEX;
+  const isDemo = levelIndex === DEMO_LEVEL_INDEX || levelIndex === CREATURE_DEMO_INDEX;
   const levelNo = levelIndex + 1;
   const noLimit = (level?.moves ?? 0) >= 99;
-  const title = isDemo ? 'P3 Grid-Lab — Elemente-Schau' : `P3 Grid-Lab — Level ${levelNo}${level ? ` · ${level.name ?? level.id}` : ''}`;
+  const title = levelIndex === CREATURE_DEMO_INDEX ? 'P3 Grid-Lab — Wesen-Schau' : isDemo ? 'P3 Grid-Lab — Elemente-Schau' : `P3 Grid-Lab — Level ${levelNo}${level ? ` · ${level.name ?? level.id}` : ''}`;
 
   return (
     <LabFrame
@@ -93,6 +93,7 @@ export function LabGrid() {
               Level
               <select value={levelIndex} onChange={(e) => loadLevel(Number(e.target.value))} data-testid="grid-level-select">
                 <option value={DEMO_LEVEL_INDEX}>★ Elemente-Schau (alle Elemente)</option>
+                <option value={CREATURE_DEMO_INDEX}>★ Wesen-Schau (Körpertypen, Merges)</option>
                 {LEVELS.map((l, i) => (
                   <option key={l.id} value={i}>{i + 1} · {l.name ?? l.id}</option>
                 ))}

@@ -22,8 +22,8 @@ import { hexToLinear } from '../common/tsl';
 import { BoardSurfaceMaterial, hexNode, polar, stripes, type BoardFog } from './boardMaterial';
 import type { BoardPalette } from './boardPalette';
 
-export type PropFamily = 'box' | 'hex' | 'spire' | 'shard' | 'disc' | 'ring' | 'sphere' | 'dome';
-export const PROP_FAMILIES: readonly PropFamily[] = ['box', 'hex', 'spire', 'shard', 'disc', 'ring', 'sphere', 'dome'];
+export type PropFamily = 'box' | 'hex' | 'spire' | 'shard' | 'disc' | 'ring' | 'sphere' | 'dome' | 'hoop';
+export const PROP_FAMILIES: readonly PropFamily[] = ['box', 'hex', 'spire', 'shard', 'disc', 'ring', 'sphere', 'dome', 'hoop'];
 
 /** Surface motifs (fragment stage, `propData.x`). */
 export const MOTIF = {
@@ -125,7 +125,7 @@ interface FamilyPool {
   dirtyAttr: boolean;
 }
 
-const CAPACITY: Record<PropFamily, number> = { box: 128, hex: 72, spire: 24, shard: 72, disc: 56, ring: 24, sphere: 112, dome: 72 };
+const CAPACITY: Record<PropFamily, number> = { box: 128, hex: 72, spire: 96, shard: 96, disc: 128, ring: 32, sphere: 160, dome: 72, hoop: 48 };
 const IDLE_NONE: PropIdle = { kind: 'none', speed: 0, amp: 0, phase: 0 };
 const ZERO16 = new Float32Array(16);
 const _m = new Matrix4();
@@ -153,6 +153,9 @@ function familyGeometry(family: PropFamily): BufferGeometry {
     case 'dome':
       // Unit-height hemisphere (radius 0.5, base at y = 0): scale y sets the dome's height directly.
       return new SphereGeometry(0.5, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 2, 1);
+    case 'hoop':
+      // Thin flat hoop (ripples running over the plates).
+      return new TorusGeometry(0.5, 0.016, 4, 48).rotateX(-Math.PI / 2).scale(1, 0.4, 1).translate(0, 0.008, 0);
   }
 }
 
@@ -184,7 +187,7 @@ export class BoardProps {
       mesh.name = `board-props-${family}`;
       mesh.frustumCulled = false;
       // Flat discs and rings throw no visible shadow at this sun height: skip them in the shadow pass.
-      mesh.castShadow = family !== 'disc' && family !== 'ring';
+      mesh.castShadow = family !== 'disc' && family !== 'ring' && family !== 'hoop';
       mesh.receiveShadow = true;
       mesh.instanceMatrix.setUsage(DynamicDrawUsage);
       mesh.instanceMatrix.array.fill(0);

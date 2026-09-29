@@ -89,3 +89,58 @@ export function demoState(seed = 1234): LevelState {
   b.flags[burst] = withKind(b.flags[burst]!, KIND_BURST);
   return { ...b, cells: materializeCells(b) };
 }
+
+/**
+ * "Wesen-Schau": the body archetypes on one board (blob ids pick the species: snakes, mouse, retriever,
+ * elephants, duck, REX, blobs and a 2048 retriever that overflows its cell). One swipe left plays every
+ * merge style at once: the snake coils and swallows (row 1), the retriever leaps toward the camera and
+ * devours (row 2), the elephant stomps (row 3), the blobs splash (row 4), the REX leaps onto the duck
+ * (row 5).
+ */
+export const CREATURE_DEMO_LEVEL: LevelDef = {
+  schemaVersion: 1,
+  id: 'demo-wesen',
+  zone: 'tjorizo',
+  name: 'Wesen-Schau',
+  grid: { w: 6, h: 6, mask: ['......', '......', '......', '......', '......', '......'] },
+  fences: [],
+  floors: [],
+  blockers: [],
+  threats: [],
+  start: [
+    { at: [0, 0], blob: { tier: 6 } }, // 1 snake
+    { at: [5, 0], blob: { tier: 1 } }, // 2 blob
+    { at: [3, 0], blob: { tier: 6 } }, // 3 snake → coils around 1 and swallows it
+    { at: [5, 3], blob: { tier: 2 } }, // 4 blob
+    { at: [0, 1], blob: { tier: 5 } }, // 5 mouse
+    { at: [5, 1], blob: { tier: 1 } }, // 6 blob
+    { at: [0, 2], blob: { tier: 8 } }, // 7 elephant
+    { at: [3, 1], blob: { tier: 5 } }, // 8 retriever → leaps toward the camera, devours 5
+    { at: [0, 3], blob: { tier: 3 } }, // 9 blob
+    { at: [3, 3], blob: { tier: 3 } }, // 10 blob → splashes into 9
+    { at: [3, 4], blob: { tier: 7 } }, // 11 REX → leaps onto 12
+    { at: [0, 4], blob: { tier: 7 } }, // 12 duck
+    { at: [5, 4], blob: { tier: 2 } }, // 13 blob
+    { at: [5, 2], blob: { tier: 1 } }, // 14 blob
+    { at: [3, 2], blob: { tier: 8 } }, // 15 elephant → rears up and stomps 7
+    { at: [0, 5], blob: { tier: 11 } }, // 16 a 2048 retriever (overflows its cell; tier 12 graduates at the cap)
+  ],
+  spawn: {
+    sources: [[5, 0]],
+    table: [
+      { tier: 1, weight: 6 },
+      { tier: 2, weight: 3 },
+    ],
+    preview: true,
+    fallback: 'anyEmpty',
+  },
+  goals: [{ type: 'reachTier', tier: 12 }],
+  moves: 99,
+  cap: 12,
+  specials: { lineAt: 13, burstAt: 13 },
+  difficulty: { targetAttempts: [1, 1.2], style: 'journey' },
+};
+
+export function creatureDemoState(seed = 1234): LevelState {
+  return createState(CREATURE_DEMO_LEVEL, seed);
+}

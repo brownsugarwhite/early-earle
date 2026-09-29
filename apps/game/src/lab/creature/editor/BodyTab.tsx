@@ -1,8 +1,8 @@
-import { BODY_TYPES, BODY_TYPE_LABELS, SKIN_PATTERNS, SKIN_PATTERN_LABELS, SLOT_IDS, type BodyType, type SlotId, type ZoneId } from '@ee/genome';
+import { BODY_TYPES, BODY_TYPE_LABELS, LEG_STYLES, LEG_STYLE_LABELS, SKIN_PATTERNS, SKIN_PATTERN_LABELS, SLOT_IDS, SPECIES_LABELS, speciesOf, type BodyType, type SlotId, type ZoneId } from '@ee/genome';
 import { Slider } from '../../../routes/LabCreature';
-import { BODY_PRESET_LABELS, CHARACTER_PRESETS, SLOT_LABELS, applyBodyPreset, assetsOfSlot, bodyDraft, effectiveBody, updateBody, updateZoneBody, type BodyPreset, type RulesDraft } from './editorState';
+import { BODY_PRESET_LABELS, CHARACTER_PRESETS, SLOT_LABELS, applyBodyPreset, assetsOfSlot, bodyDraft, effectiveBody, resetSpecies, speciesDraft, updateBody, updateSpecies, updateZoneBody, type BodyPreset, type RulesDraft } from './editorState';
 
-const PRESETS: BodyPreset[] = ['standard', 'blobs', 'early', 'late'];
+const PRESETS: BodyPreset[] = ['sketch', 'standard', 'blobs', 'early', 'late'];
 /** Slots a walking archetype fixes itself (hips); the rest can be guaranteed or dropped here. */
 const STRUCTURAL: Partial<Record<BodyType, SlotId[]>> = { quadruped: ['leg'], biped: ['leg'], heavy: ['leg'] };
 
@@ -54,6 +54,39 @@ export function BodyTab({ draft, zone, onChange, selected, setSelected }: { draf
             </div>
             {open ? (
               <>
+                {speciesOf(type).length > 1 || type !== 'blob' ? (
+                  <div className="ced-species" data-testid={`ed-body-${type}-species`}>
+                    {speciesOf(type).map((sp) => {
+                      const r = speciesDraft(draft, sp);
+                      return (
+                        <div key={sp} className="creature-row" data-testid={`ed-species-${sp}`}>
+                          <span className="ced-chip" data-active="true">{SPECIES_LABELS[sp]}</span>
+                          <Slider label="Anteil" value={r.weight ?? 1} min={0} max={3} step={0.1} onChange={(w) => onChange(updateSpecies(draft, sp, (x) => { x.weight = Math.round(w * 10) / 10; }))} format={(v) => (v === 0 ? 'aus' : `× ${v.toFixed(1)}`)} />
+                          {sp !== 'snake' ? (
+                            <>
+                              <span className="creature-label">Beine</span>
+                              {LEG_STYLES.map((ls) => (
+                                <button key={ls} type="button" className="ced-chip" data-active={(r.legs ?? 'sdf') === ls} onClick={() => onChange(updateSpecies(draft, sp, (x) => { x.legs = ls; }))} data-testid={`ed-species-${sp}-legs-${ls}`}>
+                                  {LEG_STYLE_LABELS[ls]}
+                                </button>
+                              ))}
+                            </>
+                          ) : null}
+                          <Slider label="Größe" value={r.size ?? 1} min={0.6} max={1.6} step={0.05} onChange={(v) => onChange(updateSpecies(draft, sp, (x) => { x.size = Math.round(v * 100) / 100; }))} format={(v) => `× ${v.toFixed(2)}`} />
+                          <Slider label="Artfarbe" value={r.tint ?? 0.75} min={0} max={1} step={0.05} onChange={(v) => onChange(updateSpecies(draft, sp, (x) => { x.tint = Math.round(v * 100) / 100; }))} format={(v) => `${Math.round(v * 100)} %`} />
+                          <label className="creature-slider">
+                            <span className="creature-label">Farbe</span>
+                            <input className="creature-color" type="color" value={r.color ?? '#7ce6d5'} onChange={(e) => onChange(updateSpecies(draft, sp, (x) => { x.color = e.target.value; }))} />
+                            <input className="creature-color" type="color" value={r.accent ?? '#f7f6d8'} onChange={(e) => onChange(updateSpecies(draft, sp, (x) => { x.accent = e.target.value; }))} />
+                          </label>
+                          <button type="button" className="ced-chip" onClick={() => onChange(resetSpecies(draft, sp))} data-testid={`ed-species-${sp}-reset`}>
+                            Skizze
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <div className="creature-row" data-testid={`ed-body-${type}-presets`}>
                   <span className="creature-label">Charakter</span>
                   {CHARACTER_PRESETS[type].map((cp) => {

@@ -2,14 +2,19 @@ import { BoxGeometry, Color, InstancedMesh, Mesh, PerspectiveCamera, Plane, Rayc
 import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { Fn, color, float, floor, mix, mod, positionWorld, smoothstep, time, uniform, vec2 } from 'three/tsl';
 import {
-  BODY_TYPES,
   BODY_TYPE_LABELS,
   NO_FLOOR,
+  SPECIES,
+  SPECIES_BODY,
   creatureGenome,
   describeInheritance,
+  faceCapFor,
   inherit,
   makeRng,
+  mixHex,
   resolveCreature,
+  rotationYPR,
+  shiftHex,
   squashScales,
   type BlobParams,
   type BodyType,
@@ -17,8 +22,13 @@ import {
   type CreatureSpec,
   type GaitKind,
   type GenomeRules,
+  type LegStyle,
+  type MaterialKind,
+  type MoveEvent,
   type Pose,
+  type Rot3,
   type SlotId,
+  type Species,
   type Squash,
   type Vec3,
   type Verb,
@@ -57,11 +67,16 @@ import type { SceneController, SceneContext } from '../../canvas/SceneController
 import { useAppStore } from '../../state/store';
 import { BUNDLED_RULES, MODULE_URLS } from './content';
 
-export type LabMode = 'single' | 'gallery' | 'grid' | 'herd' | 'merge' | 'motion' | 'sheet' | 'compare';
+export type LabMode = 'single' | 'gallery' | 'grid' | 'herd' | 'merge' | 'motion' | 'sheet' | 'compare' | 'sketch';
 export type BodyCandidate = 'a' | 'b';
 export type Quality = 'high' | 'mobile' | 'auto';
-export type MotionAction = 'walk' | 'jump' | 'slither' | 'stand';
+export type MotionAction = 'walk' | 'jump' | 'slither' | 'stand' | 'turn';
 export type BodyChoice = BodyType | 'auto';
+export type SpeciesChoice = Species | 'auto';
+export type LegChoice = LegStyle | 'auto';
+/** Merge moves of the motion stage (a partner blob is placed in front of the hero). */
+export type MoveAction = 'pounce' | 'leap' | 'devour' | 'coil' | 'stomp' | 'splash';
+export type MouthAction = 'open' | 'chew' | 'roar' | 'yawn';
 
 export interface CreatureLabSettings {
   mode: LabMode;
@@ -76,6 +91,12 @@ export interface CreatureLabSettings {
   overrides: Record<string, PartOverride>;
   /** Archetype override ('auto' = the rules decide per zone/tier/seed). */
   bodyType: BodyChoice;
+  /** Species override (implies the archetype); 'auto' = picked per line. */
+  species: SpeciesChoice;
+  /** Legs kneaded from the body or the leg modules ('auto' = the species rule). */
+  legs: LegChoice;
+  /** Board camera: look down at ~65° in every view. */
+  topDown: boolean;
   /** Motion section: what a tap on the plate does. */
   action: MotionAction;
   /** Speed multiplier 0.3..2.5. */
@@ -98,6 +119,9 @@ export const DEFAULT_CREATURE_LAB_SETTINGS: CreatureLabSettings = {
   hiddenSlots: [],
   overrides: {},
   bodyType: 'auto',
+  species: 'auto',
+  legs: 'auto',
+  topDown: false,
   action: 'walk',
   speed: 1,
   mass: 1,
@@ -106,6 +130,8 @@ export const DEFAULT_CREATURE_LAB_SETTINGS: CreatureLabSettings = {
 };
 
 export const GAIT_LABELS: Readonly<Record<GaitKind, string>> = { hop: 'Hüpfen', walk: 'Schritt', trot: 'Trab', stomp: 'Stampfen', slither: 'Schlängeln', waddle: 'Watscheln' };
+export const MOVE_LABELS: Readonly<Record<MoveAction, string>> = { pounce: 'Anspringen', leap: 'Zur Kamera', devour: 'Fressen', coil: 'Umschlingen', stomp: 'Stampfen', splash: 'Platschen' };
+export const MOUTH_LABELS: Readonly<Record<MouthAction, string>> = { open: 'Maul auf/zu', chew: 'Kauen', roar: 'Brüllen', yawn: 'Gähnen' };
 
 export interface CreatureLabInfo {
   creatures: number;
@@ -121,8 +147,9 @@ export interface CreatureLabInfo {
   rigMs: number;
   /** CPU time of the locomotion controllers per frame (ms, smoothed). */
   motionMs: number;
-  /** The hero creature's archetype, gait and motion state. */
+  /** The hero creature's archetype, species, gait and motion state. */
   bodyType: BodyType | null;
+  species: Species | null;
   gait: GaitKind | null;
   massKg: number;
   speed: number;
@@ -157,6 +184,16 @@ interface LabCreature {
   ripple: { dir: [number, number, number]; age: number; strength: number } | null;
   /** Parcours/herd: seconds until the next wander target. */
   wanderAt: number;
+  /** Heading of a frozen creature (sheet frames: the mouth faces the motion). */
+  yaw: number;
+  /** Frozen mouth (sheet frames). */
+  mouth: { open: number; round: number } | null;
+  /** Merge partner of a hero's move: drawn where the move's sample puts it. */
+  partnerOf: LabCreature | null;
+  /** Live copy of the pattern (its frame turns with the heading). */
+  patternLive: PatternParams | null;
+  /** World size multiplier (sketch layout). */
+  size: number;
 }
 
 interface SurfacePasses {
@@ -231,6 +268,8 @@ export class LabCreatureScene implements SceneController {
   private pool: CreaturePool | null = null;
   private plate: Mesh | null = null;
   private readonly plateOffset = uniform(0.5);
+  /** 1 = the sketch's violet paper instead of the checker plate. */
+  private readonly plateSketch = uniform(0);
   private readonly driver = new SpringJiggle();
   private creatures: LabCreature[] = [];
   private merge: MergeState | null = null;
@@ -243,6 +282,7 @@ export class LabCreatureScene implements SceneController {
   /** Follow camera (motion stage with one hero): smoothed look-at target and the fixed offset from it. */
   private readonly followTarget = new Vector3();
   private readonly followOffset = new Vector3();
+  private followBaseY = 0;
   private following = false;
   private nextId = 0;
   private rigMs = 0;
@@ -346,10 +386,18 @@ export class LabCreatureScene implements SceneController {
     const prev = this.settings;
     this.settings = { ...next, hiddenSlots: [...next.hiddenSlots], overrides: { ...next.overrides } };
     const structural =
-      prev.mode !== next.mode || prev.zone !== next.zone || prev.tier !== next.tier || prev.seed !== next.seed || prev.bodyType !== next.bodyType || prev.parcours !== next.parcours || prev.compareTier !== next.compareTier;
+      prev.mode !== next.mode ||
+      prev.zone !== next.zone ||
+      prev.tier !== next.tier ||
+      prev.seed !== next.seed ||
+      prev.bodyType !== next.bodyType ||
+      prev.species !== next.species ||
+      prev.legs !== next.legs ||
+      prev.parcours !== next.parcours ||
+      prev.compareTier !== next.compareTier;
     if (prev.mode !== next.mode || prev.parcours !== next.parcours) this.lastAct = null;
     if (structural && this.loaded) this.rebuild();
-    if (prev.candidate !== next.candidate) this.placeCamera();
+    if (prev.candidate !== next.candidate || prev.topDown !== next.topDown) this.placeCamera();
     if (prev.quality !== next.quality) this.applyQuality();
     if (prev.speed !== next.speed || prev.mass !== next.mass) this.applyMotionSliders();
     this.applyOverrides();
@@ -500,6 +548,11 @@ export class LabCreatureScene implements SceneController {
       pattern: undefined,
       ripple: null,
       wanderAt: Infinity,
+      yaw: 0,
+      mouth: null,
+      partnerOf: null,
+      patternLive: null,
+      size: 1,
     };
     child.rig.hiddenSlots.clear();
     for (const s of this.settings.hiddenSlots) child.rig.hiddenSlots.add(s);
@@ -549,6 +602,10 @@ export class LabCreatureScene implements SceneController {
     }
     this.updateMerge(dt);
     this.updateGazeDemo(dt);
+    if (this.partner && this.partnerDone) {
+      this.removePartner();
+      this.partnerDone = false;
+    }
     // Locomotion: every living creature with a controller steps; wanderers pick new targets.
     const tm0 = performance.now();
     this.separate();
@@ -636,7 +693,105 @@ export class LabCreatureScene implements SceneController {
     const action = this.settings.action;
     if (action === 'jump') m.controller.jumpTo(x, z);
     else if (action === 'stand') m.controller.stop();
+    else if (action === 'turn') m.controller.faceDirection([x, z]);
     else m.controller.walkTo(x, z);
+  }
+
+  /** The merge partner the hero's move eats (a blob placed in front of it); removed after the move. */
+  private partner: LabCreature | null = null;
+  private partnerDone = false;
+  /** Events of the running move (for the status line and tests). */
+  readonly moveEvents: string[] = [];
+
+  /**
+   * Motion stage: the hero plays a merge move on a partner blob placed in front of it — pounce, leap to
+   * the camera and devour, devour, coil and swallow (snakes), stomp (heavy), splash (blobs).
+   */
+  playMove(kind: MoveAction): boolean {
+    if ((this.settings.mode !== 'motion' && this.settings.mode !== 'sketch') || !this.pool) return false;
+    const hero = this.creatures.find((c) => c.motion && c.alive && !c.partnerOf) ?? null;
+    if (!hero?.motion) return false;
+    this.removePartner();
+    const ctl = hero.motion.controller;
+    const [x, z] = ctl.position;
+    const yaw = ctl.heading;
+    const reach = hero.spec.worldScale * Math.max(2.2, hero.spec.skeleton.length) * 0.75 + 0.45;
+    const px = Math.max(-MOTION_HALF[0], Math.min(MOTION_HALF[0], x + Math.sin(yaw) * reach));
+    const pz = Math.max(-MOTION_HALF[1], Math.min(MOTION_HALF[1], z + Math.cos(yaw) * reach));
+    const partner = this.makeCreature(this.genome(Math.max(1, Math.min(4, this.settings.tier - 2)), this.settings.seed + 77, 'blob'), [px, pz], null, { motion: false });
+    partner.partnerOf = hero;
+    this.creatures.push(partner);
+    this.partner = partner;
+    this.partnerDone = false;
+    this.moveEvents.length = 0;
+    const radius = partner.spec.worldScale * 1.05;
+    const target = { x: px, z: pz, radius };
+    const onEvent = (e: MoveEvent): void => {
+      this.moveEvents.push(e.type);
+      if (e.type === 'splash' || e.type === 'land' || e.type === 'stomp') hero.ripple = { dir: [0, -1, 0], age: 0, strength: 1.2 * e.strength };
+      if (e.type === 'contact' && kind === 'pounce') partner.alive = false;
+      if (e.type === 'done') this.partnerDone = true;
+    };
+    const m = hero.motion;
+    switch (kind) {
+      case 'pounce':
+        m.pounceTo([px, pz], { onEvent });
+        break;
+      case 'leap': {
+        const cam = this.camera.position;
+        const dir: Vec3 = [cam.x - x, cam.y, cam.z - z];
+        m.leapToCamera(Math.max(0.7, hero.spec.worldScale * 2.4), { partner: target, camera: dir, onEvent });
+        break;
+      }
+      case 'coil':
+        if (hero.spec.bodyType === 'snake') m.coilSwallow(target, { onEvent });
+        else m.devour(target, { onEvent });
+        break;
+      case 'stomp':
+        m.stompMerge({ partner: target, onEvent });
+        break;
+      case 'splash':
+        m.splashMerge({ partner: target, onEvent });
+        break;
+      default:
+        m.devour(target, { onEvent });
+        break;
+    }
+    hero.wanderAt = Infinity;
+    this.emitInfo();
+    return true;
+  }
+
+  /** Mouth buttons: open/close, chew, roar, yawn on the hero (every walker in the parcours). */
+  mouthAction(a: MouthAction): void {
+    const heroes = this.settings.parcours || this.settings.mode === 'herd' || this.settings.mode === 'sketch' ? this.creatures.filter((c) => c.motion && !c.partnerOf) : this.creatures.slice(0, 1);
+    for (const c of heroes) {
+      const ctl = c.motion?.controller;
+      if (!ctl) continue;
+      switch (a) {
+        case 'open':
+          if (ctl.mouthDriver.action === 'open') ctl.closeMouth();
+          else ctl.openMouth(1);
+          break;
+        case 'chew':
+          ctl.chew(3);
+          break;
+        case 'roar':
+          ctl.roar();
+          break;
+        case 'yawn':
+          ctl.yawn();
+          break;
+      }
+    }
+  }
+
+  private removePartner(): void {
+    const p = this.partner;
+    if (!p) return;
+    p.rig.dispose();
+    this.creatures = this.creatures.filter((c) => c !== p);
+    this.partner = null;
   }
 
   /**
@@ -719,15 +874,55 @@ export class LabCreatureScene implements SceneController {
     }
   }
 
-  private makeCreature(genome: CreatureGenome, at: [number, number], role: LabCreature['role'] = null, opts: { motion?: boolean; yaw?: number; wander?: boolean; fixed?: Squash } = {}): LabCreature {
-    const spec = resolveCreature(genome, this.rules, ARCHETYPES);
+  private makeCreature(
+    genome: CreatureGenome,
+    at: [number, number],
+    role: LabCreature['role'] = null,
+    opts: { motion?: boolean; yaw?: number; wander?: boolean; fixed?: Squash; coil?: boolean; idle?: boolean; size?: number; mouth?: { open: number; round: number }; recolor?: string; paintedEyes?: boolean } = {},
+  ): LabCreature {
+    let spec = resolveCreature(genome, this.rules, ARCHETYPES);
+    if (opts.paintedEyes) {
+      // The sketch's blobs: two small black slits on top (read from above) instead of eye modules.
+      spec = { ...spec, parts: spec.parts.filter((p) => p.slot !== 'eye'), paintedEye: true, body: { ...spec.body, eye: { dir: [0.02, 0.88, 0.47], size: 0.3, spacing: 0.24 } } };
+    }
+    if (opts.size !== undefined) spec = { ...spec, worldScale: spec.worldScale * opts.size };
+    if (opts.recolor) {
+      // Sketch frames: the merged blob's darker green (a colour change on the same body).
+      const c0 = opts.recolor;
+      spec = { ...spec, body: { ...spec.body, baseColor: c0, innerColor: shiftHex(c0, 4, 0.55, 1.1), rimColor: mixHex(c0, '#ffffff', 0.25), bubbleColor: shiftHex(c0, 0, 1.2, 0.6) } };
+    }
     const id = this.nextId++;
     this.driver.reset(id);
     this.driver.configure(id, { viscosity: spec.body.viscosity });
     const rig = this.pool!.createRig(spec);
-    const c: LabCreature = { id, genome, spec, rig, at, target: null, phase: (id * 1.618) % (Math.PI * 2), jiggle: 0, alive: true, role, motion: null, pose: null, fixed: opts.fixed ?? null, drops: [], dropBody: null, pattern: undefined, ripple: null, wanderAt: opts.wander ? this.wanderRng.next() * 1.5 : Infinity };
+    const c: LabCreature = {
+      id,
+      genome,
+      spec,
+      rig,
+      at,
+      target: null,
+      phase: (id * 1.618) % (Math.PI * 2),
+      jiggle: 0,
+      alive: true,
+      role,
+      motion: null,
+      pose: null,
+      fixed: opts.fixed ?? null,
+      drops: [],
+      dropBody: null,
+      pattern: undefined,
+      ripple: null,
+      wanderAt: opts.wander ? this.wanderRng.next() * 1.5 : Infinity,
+      yaw: opts.yaw ?? 0,
+      mouth: opts.mouth ?? null,
+      partnerOf: null,
+      patternLive: null,
+      size: opts.size ?? 1,
+    };
+    if (c.mouth) rig.mouthOverride = c.mouth;
     if (opts.motion !== false && !opts.fixed) {
-      c.motion = new CreatureMotion(spec, rig, { seed: (id * 7919 + this.settings.seed * 31) >>> 0, scale: spec.worldScale });
+      c.motion = new CreatureMotion(spec, rig, { seed: (id * 7919 + this.settings.seed * 31) >>> 0, scale: spec.worldScale, coilAtRest: opts.coil ?? true, idleLife: opts.idle ?? true });
       c.motion.controller.speedFactor = this.settings.speed;
       c.motion.controller.massFactor = this.settings.mass;
       // Walkers show their profile in a 3/4 view by default; blobs face the camera.
@@ -737,14 +932,20 @@ export class LabCreatureScene implements SceneController {
     return c;
   }
 
-  private genome(tier: number, seed: number, bodyType?: BodyChoice): CreatureGenome {
-    const bt = bodyType ?? this.settings.bodyType;
-    return creatureGenome(this.settings.zone, tier, seed, undefined, bt === 'auto' ? undefined : bt);
+  private genome(tier: number, seed: number, bodyType?: BodyChoice, species?: SpeciesChoice): CreatureGenome {
+    const sp = species ?? (bodyType !== undefined ? 'auto' : this.settings.species);
+    const bt = sp !== 'auto' ? SPECIES_BODY[sp] : bodyType ?? this.settings.bodyType;
+    const g = creatureGenome(this.settings.zone, tier, seed, undefined, bt === 'auto' ? undefined : bt);
+    if (sp !== 'auto') g.species = sp;
+    if (this.settings.legs !== 'auto') g.legs = this.settings.legs;
+    return g;
   }
 
   private rebuild(): void {
     if (!this.pool) return;
     this.merge = null;
+    this.partner = null;
+    this.partnerDone = false;
     for (const c of this.creatures) c.rig.dispose();
     this.creatures = [];
     const s = this.settings;
@@ -778,9 +979,9 @@ export class LabCreatureScene implements SceneController {
         }
         break;
       case 'herd':
-        // Locomotion cost check: 36 tier-5 quadrupeds walking at once.
+        // Locomotion cost check: 36 tier-5 quadrupeds (retrievers, the board's mesh-drawn walkers) at once.
         for (let i = 0; i < 36; i++) {
-          const c = this.makeCreature(this.genome(5, s.seed + i * 13, 'quadruped'), [((i % 6) - 2.5) * 1.15, (Math.floor(i / 6) - 2.5) * 1.15], null, { wander: true, yaw: (i * 2.4) % (Math.PI * 2) });
+          const c = this.makeCreature(this.genome(5, s.seed + i * 13, undefined, 'retriever'), [((i % 6) - 2.5) * 1.15, (Math.floor(i / 6) - 2.5) * 1.15], null, { wander: true, yaw: (i * 2.4) % (Math.PI * 2) });
           // Crowd LOD: cached socket traces follow rotation and squash analytically; re-trace every 4th frame.
           c.rig.traceInterval = 4;
           c.wanderAt = 0;
@@ -793,17 +994,23 @@ export class LabCreatureScene implements SceneController {
         break;
       case 'motion':
         if (s.parcours) {
-          const line: BodyType[] = ['blob', 'snake', 'quadruped', 'biped', 'heavy', BODY_TYPES[Math.floor(makeRng(s.seed).next() * BODY_TYPES.length)]!];
-          line.forEach((bt, i) => {
-            const c = this.makeCreature(this.genome(Math.max(5, s.tier), s.seed + i * 101, bt), [((i % 3) - 1) * 1.9, (i < 3 ? -1 : 1) * 1.1], null, { wander: true, yaw: i * 1.1 });
+          // Six of the sketch's animals wander the plate (the sixth varies with the seed).
+          const extra: Species[] = ['mouse', 'giraffe', 'duck'];
+          const line: Species[] = ['blob', 'snake', 'retriever', 'rex', 'elephant', extra[Math.floor(makeRng(s.seed).next() * extra.length)]!];
+          line.forEach((sp, i) => {
+            const c = this.makeCreature(this.genome(Math.max(5, s.tier), s.seed + i * 101, undefined, sp), [((i % 3) - 1) * 2.1, (i < 3 ? -1 : 1) * 1.25], null, { wander: true, yaw: i * 1.1 });
             this.creatures.push(c);
           });
         } else {
-          this.creatures.push(this.makeCreature(this.genome(Math.max(s.bodyType === 'auto' || s.bodyType === 'blob' ? 1 : 5, s.tier), s.seed), [0, 0]));
+          const blobby = s.species === 'blob' || (s.species === 'auto' && (s.bodyType === 'auto' || s.bodyType === 'blob'));
+          this.creatures.push(this.makeCreature(this.genome(Math.max(blobby ? 1 : 5, s.tier), s.seed), [0, 0]));
         }
         break;
       case 'sheet':
         this.buildSheet();
+        break;
+      case 'sketch':
+        this.buildSketch();
         break;
       case 'compare': {
         const ga = this.genome(s.tier, s.seed);
@@ -826,41 +1033,103 @@ export class LabCreatureScene implements SceneController {
     this.emitInfo();
   }
 
-  /** The designer's blob sheet: tiers across the back, the five archetypes, and the squash/stretch cross. */
+  /** The designer's blob sheet: tiers across the back, the species, and the squash/stretch cross. */
   private buildSheet(): void {
     const s = this.settings;
     // Row A: tiers 1–8 (blob line) along the back.
-    for (let t = 1; t <= 8; t++) this.creatures.push(this.makeCreature(this.genome(t, s.seed, 'blob'), [-4.3 + (t - 1) * 1.2, -2.6], null, { yaw: 0.2 }));
-    // Row B: the archetypes at tier 6, alive in place (hops, weight shifts, idle verbs).
-    BODY_TYPES.forEach((bt, i) => this.creatures.push(this.makeCreature(this.genome(6, s.seed + 5, bt), [-4.3 + i * 1.3, -0.4], null, { yaw: 0.6 })));
-    // Cross (the green blob cross of the animation draft, seen from above): per direction the
-    // anticipation squash against the motion (splash at the sides) and the stretch along it with
-    // trailing droplets; the centre blob at rest.
-    const cx = 2.9;
-    const cz = 1.2;
+    for (let t = 1; t <= 8; t++) this.creatures.push(this.makeCreature(this.genome(t, s.seed, 'blob'), [-4.3 + (t - 1) * 1.2, -4.4], null, { yaw: 0.2 }));
+    // Row B: the species at tier 6, alive in place (hops, weight shifts, idle verbs).
+    SPECIES.forEach((sp, i) => this.creatures.push(this.makeCreature(this.genome(6, s.seed + 5, undefined, sp), [-4.8 + i * 1.37, -2.4], null, { yaw: 0.6, coil: false })));
+    // The blob cross below (the sketch's squash/stretch/mouth sequence).
+    this.buildCross([0, 1.6], 0.9, this.genome(2, s.seed, 'blob'));
+  }
+
+  /**
+   * The green blob cross of the animation sketch, seen from above: from the centre (at rest) outward per
+   * direction the stretch (a teardrop pointing back, droplets trailing), the mouth wide open on the
+   * leading side, the gulp (the partner's darker body sinking in from the inner side) and the merged,
+   * darker blob.
+   */
+  private buildCross(centre: [number, number], spacing: number, g0: CreatureGenome): void {
+    const [cx, cz] = centre;
+    // Plain jelly (no coat, no pattern): the cross is about shape, mouth and droplets.
+    const g: CreatureGenome = { ...g0, genes: { ...(g0.genes ?? {}), pattern: 'none', coat: 'bare' } };
+    const spec = resolveCreature(g, this.rules, ARCHETYPES);
+    const dark = shiftHex(mixHex(spec.body.baseColor, '#2f9a4e', 0.55), 4, 0.72, 1.1);
     const arms: Array<{ dx: number; dz: number; axis: Vec3 }> = [
       { dx: 1, dz: 0, axis: [1, 0, 0] },
       { dx: -1, dz: 0, axis: [-1, 0, 0] },
       { dx: 0, dz: -1, axis: [0, 0, -1] },
       { dx: 0, dz: 1, axis: [0, 0, 1] },
     ];
-    const g = this.genome(2, s.seed, 'blob');
-    this.creatures.push(this.makeCreature(g, [cx, cz], null, { fixed: { axis: [0, 1, 0], amount: 0, taper: 0.55 } }));
+    this.creatures.push(this.makeCreature(g, [cx, cz], null, { fixed: { axis: [0, 1, 0], amount: 0, taper: 0.55 }, paintedEyes: true }));
     for (const a of arms) {
-      const squash = this.makeCreature(g, [cx + a.dx * 1.0, cz + a.dz * 1.0], null, { fixed: { axis: a.axis, amount: -0.3, taper: 0.55 } });
+      const yaw = Math.atan2(a.dx, a.dz);
       const side: Vec3 = [a.axis[2], 0, -a.axis[0]];
-      squash.drops.push(
-        { center: [side[0] * 1.25 - a.axis[0] * 0.2, -0.75, side[2] * 1.25 - a.axis[2] * 0.2], r: 0.12 },
-        { center: [-side[0] * 1.25 - a.axis[0] * 0.2, -0.75, -side[2] * 1.25 - a.axis[2] * 0.2], r: 0.1 },
-      );
-      this.creatures.push(squash);
-      const stretch = this.makeCreature(g, [cx + a.dx * 2.05, cz + a.dz * 2.05], null, { fixed: { axis: a.axis, amount: 0.55, taper: 0.55 } });
-      stretch.drops.push(
-        { center: [-a.axis[0] * 1.75, -0.35, -a.axis[2] * 1.75], r: 0.13 },
-        { center: [-a.axis[0] * 2.15 + side[0] * 0.3, -0.45, -a.axis[2] * 2.15 + side[2] * 0.3], r: 0.09 },
-      );
+      // 1: stretched toward the motion, teardrop tail back, droplets trailing.
+      const stretch = this.makeCreature(g, [cx + a.dx * spacing, cz + a.dz * spacing], null, { fixed: { axis: a.axis, amount: 0.62, taper: 0.7 }, yaw, paintedEyes: true });
+      stretch.drops.push({ center: [-a.axis[0] * 1.75 + side[0] * 0.3, -0.6, -a.axis[2] * 1.75 + side[2] * 0.3], r: 0.1 }, { center: [-a.axis[0] * 1.8 - side[0] * 0.35, -0.62, -a.axis[2] * 1.8 - side[2] * 0.35], r: 0.08 });
       this.creatures.push(stretch);
+      // 2: mouth wide open on the leading side (the black crescent), body a little squashed back.
+      const bite = this.makeCreature(g, [cx + a.dx * spacing * 2.05, cz + a.dz * spacing * 2.05], null, { fixed: { axis: a.axis, amount: -0.12, taper: 0.55 }, yaw, mouth: { open: 1, round: 0.1 }, paintedEyes: true });
+      bite.drops.push({ center: [-a.axis[0] * 1.4 + side[0] * 0.65, -0.66, -a.axis[2] * 1.4 + side[2] * 0.65], r: 0.08 });
+      this.creatures.push(bite);
+      // 3: the gulp — the partner's darker body sinks in from the inner side.
+      const gulp = this.makeCreature(g, [cx + a.dx * spacing * 3.05, cz + a.dz * spacing * 3.05], null, { fixed: { axis: a.axis, amount: -0.05, taper: 0.55 }, yaw, paintedEyes: true });
+      this.creatures.push(gulp);
+      const eaten = this.makeCreature(g, [cx + a.dx * spacing * 2.72, cz + a.dz * spacing * 2.72], null, { fixed: { axis: a.axis, amount: -0.25, taper: 0.55 }, yaw, size: 0.72, recolor: dark, paintedEyes: true });
+      eaten.drops.push({ center: [side[0] * 1.35, -0.7, side[2] * 1.35], r: 0.11 });
+      this.creatures.push(eaten);
+      // 4: merged — the darker blob.
+      this.creatures.push(this.makeCreature(g, [cx + a.dx * spacing * 4.05, cz + a.dz * spacing * 4.05], null, { fixed: { axis: [0, 1, 0], amount: 0, taper: 0.55 }, yaw: 0, recolor: dark, paintedEyes: true }));
     }
+  }
+
+  /**
+   * Florian's sketch 08 as a live stage, seen from above: the elephants top left, the giraffes (one with
+   * its long neck along the ground), the retrievers top right, the elephant on the right, the mouse, the
+   * patched giraffe and the ducks bottom right, the big pink REX bottom left and the green blob cross in
+   * the middle. Coordinates are the drawing's (1652 × 1646 px) mapped onto a 12 × 12 plate.
+   */
+  private buildSketch(): void {
+    const s = this.settings;
+    const W = 12;
+    const at = (px: number, py: number): [number, number] => [((px - 826) / 1652) * W, ((py - 823) / 1646) * W];
+    const face = { down: 0, up: Math.PI, left: -Math.PI / 2, right: Math.PI / 2 } as const;
+    const entries: Array<{ sp: Species; px: number; py: number; yaw: number; tier: number; seed: number; size?: number }> = [
+      { sp: 'elephant', px: 240, py: 215, yaw: face.down, tier: 7, seed: 3, size: 0.86 },
+      { sp: 'elephant', px: 505, py: 185, yaw: face.right, tier: 7, seed: 5, size: 0.86 },
+      { sp: 'giraffe', px: 640, py: 440, yaw: face.left, tier: 6, seed: 7, size: 0.95 },
+      { sp: 'giraffe', px: 400, py: 610, yaw: -1.94, tier: 7, seed: 12, size: 1.12 },
+      { sp: 'retriever', px: 1160, py: 385, yaw: face.left, tier: 6, seed: 4, size: 1.15 },
+      { sp: 'retriever', px: 1405, py: 385, yaw: face.up, tier: 6, seed: 9, size: 1.15 },
+      { sp: 'elephant', px: 1170, py: 630, yaw: face.left, tier: 8, seed: 8, size: 0.98 },
+      { sp: 'mouse', px: 1265, py: 1105, yaw: face.left, tier: 6, seed: 2, size: 1.2 },
+      { sp: 'giraffe', px: 1165, py: 1290, yaw: face.left, tier: 6, seed: 21, size: 0.92 },
+      { sp: 'duck', px: 1440, py: 1310, yaw: face.down, tier: 5, seed: 6, size: 1.35 },
+      { sp: 'duck', px: 1465, py: 1525, yaw: face.left + 0.4, tier: 5, seed: 11, size: 1.35 },
+      { sp: 'rex', px: 450, py: 1320, yaw: face.up, tier: 8, seed: 5, size: 1.75 },
+    ];
+    for (const e of entries) {
+      const g: CreatureGenome = { ...this.genome(e.tier, s.seed * 0 + e.seed, undefined, e.sp), material: 'jelly' as MaterialKind };
+      const c = this.makeCreature(g, at(e.px, e.py), null, { yaw: e.yaw, coil: false, size: e.size ?? 1 });
+      this.creatures.push(c);
+    }
+    const cross = at(880, 845);
+    const gBlob: CreatureGenome = { ...creatureGenome(this.settings.zone, 3, s.seed), bodyType: 'blob', material: 'jelly', genes: { pattern: 'none', coat: 'bare' } };
+    this.buildCross(cross, (160 / 1652) * W, gBlob);
+  }
+
+  private readonly yawRots = new Map<number, Rot3>();
+
+  /** Rotation of a frozen creature's heading (its mouth and parts face the motion). */
+  private yawRotation(c: LabCreature): Rot3 {
+    let r = this.yawRots.get(c.id);
+    if (!r) {
+      r = rotationYPR(c.yaw, 0, 0);
+      this.yawRots.set(c.id, r);
+    }
+    return r;
   }
 
   private restCenter(c: LabCreature, params = c.spec.body): Vec3 {
@@ -899,7 +1168,9 @@ export class LabCreatureScene implements SceneController {
         return { width: MOTION_HALF[0] * 2 + 0.6, depth: MOTION_HALF[1] * 2 + 0.6 };
       }
       case 'sheet':
-        return { width: 10.6, depth: 6.8 };
+        return { width: 11.4, depth: 11.2 };
+      case 'sketch':
+        return { width: 12.2, depth: 12.2 };
       case 'compare': {
         const xs = this.creatures.map((c) => c.at[0]);
         return { width: (Math.max(...xs, 0) - Math.min(...xs, 0)) + 2.2, depth: 2 };
@@ -910,9 +1181,13 @@ export class LabCreatureScene implements SceneController {
   private layoutPlate(): void {
     if (!this.plate) return;
     const { width, depth } = this.settings.mode === 'motion' ? { width: MOTION_HALF[0] * 2 + 3, depth: MOTION_HALF[1] * 2 + 3 } : this.extent();
-    this.plate.scale.set(Math.max(width, 2), 1, Math.max(depth, 2));
+    const sketch = this.settings.mode === 'sketch';
+    const pad = sketch ? 6 : 0;
+    this.plate.scale.set(Math.max(width, 2) + pad, 1, Math.max(depth, 2) + pad);
     this.plate.position.set(0, -0.15, 0);
     this.plateOffset.value = 0.5;
+    this.plateSketch.value = sketch ? 1 : 0;
+    this.scene.background = new Color(sketch ? '#231c2c' : INK);
   }
 
   private placeCamera(): void {
@@ -928,8 +1203,9 @@ export class LabCreatureScene implements SceneController {
     const s = this.creatures[0]?.spec.worldScale ?? 0.4;
     const maxS = this.creatures.reduce((m, c) => Math.max(m, c.spec.worldScale), s);
     const hero = this.followHero();
-    const flat = mode === 'grid' || mode === 'herd' || mode === 'sheet' || (mode === 'motion' && !hero);
-    const elev = mode === 'grid' || mode === 'herd' ? 0.88 : mode === 'sheet' ? 0.72 : mode === 'motion' ? (hero ? 0.3 : 0.62) : mode === 'single' ? 0.3 : 0.42;
+    const flat = mode === 'grid' || mode === 'herd' || mode === 'sheet' || mode === 'sketch' || (mode === 'motion' && !hero);
+    // The sketch is drawn from above; the board camera looks down at ~65° (Draufsicht).
+    const elev = mode === 'sketch' ? 1.36 : this.settings.topDown ? 1.13 : mode === 'grid' || mode === 'herd' ? 0.88 : mode === 'sheet' ? 0.72 : mode === 'motion' ? (hero ? 0.3 : 0.62) : mode === 'single' ? 0.3 : 0.42;
     // Creature height incl. parts (crest/horns stick out ≈ one body radius).
     const height = flat ? 1.2 : maxS * 3.8 + 0.4;
     const vFov = (this.camera.fov * Math.PI) / 180;
@@ -954,6 +1230,16 @@ export class LabCreatureScene implements SceneController {
       target.set(framed.at[0], centreY, framed.at[1]);
       if (hero) this.followTarget.copy(target);
     }
+    this.followBaseY = centreY;
+    if (framed && this.settings.topDown) {
+      // From above the creature's length (not its height) fills the frame.
+      const long = framed.spec.worldScale * Math.max(2.2, framed.spec.skeleton.length);
+      camDist = Math.max(camDist, (long * 1.25) / (2 * tanV));
+      centreY = 0.1;
+      this.followBaseY = centreY;
+      target.set(framed.at[0], centreY, framed.at[1]);
+      if (hero) this.followTarget.copy(target);
+    }
     this.followOffset.set(0, Math.sin(elev) * camDist, Math.cos(elev) * camDist);
     this.following = !!hero;
     this.camera.position.copy(target).add(this.followOffset);
@@ -975,6 +1261,9 @@ export class LabCreatureScene implements SceneController {
     const k = 1 - Math.exp(-dt * 2.2);
     this.followTarget.x += (hero.at[0] - this.followTarget.x) * k;
     this.followTarget.z += (hero.at[1] - this.followTarget.z) * k;
+    // Leaps toward the camera: the frame rises with the creature (it stays in view).
+    const liftY = hero.pose ? Math.max(0, hero.pose.lift - (hero.motion?.controller.restHeight ?? 0)) * 0.7 : 0;
+    this.followTarget.y += (this.followBaseY + liftY - this.followTarget.y) * (1 - Math.exp(-dt * 6));
     this.camera.position.copy(this.followTarget).add(this.followOffset);
     this.camera.lookAt(this.followTarget);
   }
@@ -982,13 +1271,17 @@ export class LabCreatureScene implements SceneController {
   private createPlate(): Mesh {
     const mat = new MeshBasicNodeMaterial();
     const offset = this.plateOffset;
+    const sketch = this.plateSketch;
     mat.colorNode = Fn(() => {
       const p = positionWorld;
       const cell = floor(vec2(p.x, p.z).add(offset));
       const checker = mod(cell.x.add(cell.y), 2);
       const top = smoothstep(-0.2, 0.0, p.y);
       const base = mix(color('#0f1c23'), color('#1a2e36'), checker.mul(top));
-      return mix(base, color('#0b151a'), float(1).sub(top).mul(0.7));
+      // Sketch 08: a dark violet paper with a soft light in the middle.
+      const r = vec2(p.x, p.z).length();
+      const violet = mix(color('#5b4e6c'), color('#2c2337'), smoothstep(1.0, 8.5, r));
+      return mix(mix(base, color('#0b151a'), float(1).sub(top).mul(0.7)), violet, sketch);
     })();
     const mesh = new Mesh(new BoxGeometry(1, 0.3, 1), mat);
     this.disposables.push(mat, mesh.geometry);
@@ -1035,7 +1328,9 @@ export class LabCreatureScene implements SceneController {
     const m = this.merge;
     const mergeT = m ? m.t - SLIDE_MS : -1;
     const frame = m && mergeT >= 0 ? m.timeline.sample(mergeT) : null;
-    let slot = 0;
+    // Each block fills its own slots (raymarched bodies in A, mesh bodies in B): 2 × 36 instances.
+    let slotA = 0;
+    let slotB = 0;
     let anyA = false;
     let usesFur = false;
     let usesFeather = false;
@@ -1044,7 +1339,6 @@ export class LabCreatureScene implements SceneController {
     for (const c of this.creatures) {
       const isChildPending = m && c === m.child && !c.alive;
       if (!c.alive && !isChildPending) continue;
-      if (slot >= CAPACITY) break;
       const st = this.driver.get(c.id);
       let params: BlobParams = c.spec.body;
       let center = this.restCenter(c);
@@ -1063,9 +1357,19 @@ export class LabCreatureScene implements SceneController {
         if (skin.coat === 'fur') usesFur = true;
         else usesFeather = true;
       } else if (c.spec.material !== 'jelly') usesParticles = true;
-      if (c.pattern === undefined) c.pattern = skin.pattern === 'none' ? null : makePattern(skin.pattern, c.spec.body.baseColor, { scale: skin.patternScale, rotation: skin.patternRotation });
-      if (c.pattern) dyn.pattern = c.pattern;
+      if (c.pattern === undefined) {
+        c.pattern = skin.pattern === 'none' ? null : makePattern(skin.pattern, c.spec.body.baseColor, { scale: skin.patternScale, rotation: skin.patternRotation });
+        c.patternLive = c.pattern ? { ...c.pattern } : null;
+      }
+      if (c.pattern && c.patternLive) {
+        // The pattern frame turns with the heading (the body's rotation is baked into its spheres).
+        c.patternLive.rotation = (c.pattern.rotation ?? 0) + (pose && c.motion ? c.motion.patternYaw(pose) : 0);
+        dyn.pattern = c.patternLive;
+      }
       if (c.ripple) dyn.ripple = c.ripple;
+      // Eyes over patterns: the face cap (from the eye modules) keeps patterns and fur off the face.
+      const face = pose && c.motion ? c.motion.faceMask(pose) : faceCapFor(c.spec);
+      if (face) (dyn as BlobDynamics & { face?: { dir: [number, number, number]; radius: number; strength?: number } }).face = { dir: face.dir, radius: face.radius, strength: 1 };
       // Crowds: small on screen — skip the inner organ march, halve the fur shells.
       if (crowd) dyn.detail = 0;
       // Snakes, REX and giraffe necks are not star-shaped from the box centre (the 6-step mesh trace
@@ -1087,6 +1391,17 @@ export class LabCreatureScene implements SceneController {
         center = [center[0] + combined.offset[0], center[1] + Math.max(0, combined.offset[1]), center[2] + combined.offset[2]];
       } else if (c.fixed) {
         dyn.squash = { axis: c.fixed.axis, amount: c.fixed.amount, taper: c.fixed.taper ?? 0.55 };
+      }
+
+      // Merge partner of a hero's move: drawn where the move puts it (pulled into the mouth, shrinking).
+      const host = c.partnerOf?.motion?.controller.moveSample?.partner ?? null;
+      let partnerScale = 1;
+      if (c.partnerOf && host) {
+        c.at = [host.x, host.z];
+        center = [host.x, this.restCenter(c)[1] + host.lift, host.z];
+        partnerScale = host.scale;
+        dyn.squash = { axis: [0, 1, 0], amount: host.squash, taper: 0.55 };
+        if (!host.visible) hideBody = true;
       }
 
       if (m && c === m.b) {
@@ -1119,6 +1434,10 @@ export class LabCreatureScene implements SceneController {
       let place: { center: Vec3; scale: number };
       if (pose) {
         place = { center, scale };
+      } else if (partnerScale !== 1) {
+        const floorY = params.floorY ?? NO_FLOOR;
+        const baseY = floorY > NO_FLOOR ? -floorY * scale * partnerScale : center[1];
+        place = { center: [center[0], baseY + (center[1] - this.restCenter(c)[1]), center[2]], scale: scale * partnerScale };
       } else {
         const { along, across } = squashScales(dyn.squash?.amount ?? 0);
         const ay = dyn.squash?.axis[1] ?? 1;
@@ -1130,22 +1449,22 @@ export class LabCreatureScene implements SceneController {
       }
       if (forceA) delete dyn.maxSpheres;
 
+      // A full mesh block spills into the raymarch block (the sketch stage has > 36 bodies + droplets).
+      const inA = showA || forceA || slotB >= CAPACITY;
       if (hideBody) {
-        this.blockA.hide(slot);
-        this.blockB.hide(slot);
-      } else if (showA || forceA) {
-        this.blockA.write(slot, params, place, dyn);
-        this.blockB.hide(slot);
+        // nothing drawn
+      } else if (inA) {
+        if (slotA < CAPACITY) this.blockA.write(slotA++, params, place, dyn);
         anyA = true;
-      } else {
-        this.blockB.write(slot, params, place, dyn);
-        this.blockA.hide(slot);
+      } else if (slotB < CAPACITY) {
+        this.blockB.write(slotB++, params, place, dyn);
       }
       // The rig samples exactly what the shader draws (same params, squash, phase, jiggle, time).
+      c.rig.visible = !(c.partnerOf && hideBody);
       c.rig.setBody({
         params: isChildPending ? c.spec.body : params,
         center: place.center,
-        scale,
+        scale: place.scale,
         squash: dyn.squash,
         jiggle: dyn.jiggle,
         phase: dyn.phase,
@@ -1153,12 +1472,12 @@ export class LabCreatureScene implements SceneController {
         time: gpuTime,
         noiseOctaves: octaves,
         surface: showA || forceA ? 'exact' : 'mesh',
-        rotation: pose ? pose.rotation : undefined,
+        rotation: pose ? pose.rotation : c.yaw !== 0 ? this.yawRotation(c) : undefined,
         pose,
         noiseMaterial: skin.coat !== 'bare' ? 'jelly' : undefined,
         surfaceOffset: skin.coat === 'fur' ? 0.1 : skin.coat === 'feather' ? 0.05 : 0,
       });
-      slot++;
+      c.rig.showMouth = !hideBody;
 
       // Droplets (splat, sheet frames): each its own one-sphere blob instance, whatever the candidate.
       const drops = pose ? pose.droplets : c.drops;
@@ -1166,42 +1485,33 @@ export class LabCreatureScene implements SceneController {
         c.dropBody ??= dropletParams(c.spec.body);
         const rot = pose ? pose.rotation : null;
         for (const d of drops) {
-          if (slot >= CAPACITY) break;
+          if ((inA ? slotA : slotB) >= CAPACITY) break;
           // Pose droplets are body-local in the posed frame's rest orientation → rotate with the body.
           const lc: Vec3 = rot ? [rot[0] * d.center[0] + rot[1] * d.center[1] + rot[2] * d.center[2], rot[3] * d.center[0] + rot[4] * d.center[1] + rot[5] * d.center[2], rot[6] * d.center[0] + rot[7] * d.center[1] + rot[8] * d.center[2]] : d.center;
           const at: Vec3 = [place.center[0] + lc[0] * scale, place.center[1] + lc[1] * scale, place.center[2] + lc[2] * scale];
-          const dyn2: BlobDynamics = { phase: c.phase + d.r * 13, seed: c.id * 31 + slot };
-          if (showA || forceA) {
-            this.blockA.write(slot, c.dropBody, { center: at, scale: d.r * scale }, dyn2);
-            this.blockB.hide(slot);
-            anyA = true;
-          } else {
-            this.blockB.write(slot, c.dropBody, { center: at, scale: d.r * scale }, dyn2);
-            this.blockA.hide(slot);
-          }
-          slot++;
+          const dyn2: BlobDynamics = { phase: c.phase + d.r * 13, seed: c.id * 31 + slotA + slotB };
+          if (inA) this.blockA.write(slotA++, c.dropBody, { center: at, scale: d.r * scale }, dyn2);
+          else this.blockB.write(slotB++, c.dropBody, { center: at, scale: d.r * scale }, dyn2);
         }
       }
     }
-    for (let i = slot; i < CAPACITY; i++) {
-      this.blockA.hide(i);
-      this.blockB.hide(i);
-    }
+    for (let i = slotA; i < CAPACITY; i++) this.blockA.hide(i);
+    for (let i = slotB; i < CAPACITY; i++) this.blockB.hide(i);
     const aOn = showA || m !== null || anyA;
     const bOn = !showA;
-    if (this.meshA) this.meshA.count = aOn ? slot : 0;
-    if (this.meshB) this.meshB.count = bOn ? slot : 0;
+    if (this.meshA) this.meshA.count = aOn ? slotA : 0;
+    if (this.meshB) this.meshB.count = bOn ? slotB : 0;
     // Extra passes (fur shells, feather cards, gas/fire/liquid particles) only in the Hoch preset; fur
     // fins (tufts) whenever fur is on stage — silhouette tufts only in Mobil (Materials agent's contract).
     const passes = this.passes;
     if (passes) {
       const high = !mobile;
-      for (const [ps, on] of [[passes.a, aOn], [passes.b, bOn]] as const) {
-        ps.fur.count = on && high && usesFur ? slot : 0;
-        ps.fins.count = on && usesFur ? slot * ps.finCards : 0;
+      for (const [ps, on, n] of [[passes.a, aOn, slotA], [passes.b, bOn, slotB]] as const) {
+        ps.fur.count = on && high && usesFur ? n : 0;
+        ps.fins.count = on && usesFur ? n * ps.finCards : 0;
         ps.finSilhouetteOnly.value = high ? 0 : 1;
-        ps.feather.count = on && high && usesFeather ? slot * ps.cards : 0;
-        ps.particles.count = on && high && usesParticles ? slot * ps.perBlob : 0;
+        ps.feather.count = on && high && usesFeather ? n * ps.cards : 0;
+        ps.particles.count = on && high && usesParticles ? n * ps.perBlob : 0;
       }
     }
   }
@@ -1215,7 +1525,8 @@ export class LabCreatureScene implements SceneController {
     for (const id of this.library.missing) missing.add(id);
     const pose = first?.pose ?? null;
     const ctl = first?.motion?.controller ?? null;
-    const state = !ctl || !pose ? '' : pose.jumpPhase !== 'none' ? { crouch: 'duckt sich', flight: 'fliegt', splat: 'platscht', recover: 'federt' }[pose.jumpPhase] : pose.stumble > 0.3 ? 'stolpert' : ctl.currentMode === 'idle' ? 'steht' : ctl.currentMode === 'circle' ? 'läuft im Kreis' : 'geht';
+    const move = ctl?.currentMove ?? null;
+    const state = !ctl || !pose ? '' : move ? `Zug ${move.kind}` : pose.jumpPhase !== 'none' ? { crouch: 'duckt sich', flight: 'fliegt', splat: 'platscht', recover: 'federt' }[pose.jumpPhase] : pose.stumble > 0.3 ? 'stolpert' : ctl.isCoiled ? 'eingerollt' : ctl.currentMode === 'coil' ? 'rollt sich ein' : ctl.currentMode === 'turn' ? 'dreht sich' : ctl.currentMode === 'idle' ? 'steht' : ctl.currentMode === 'circle' ? 'läuft im Kreis' : 'geht';
     this.onInfo({
       creatures: this.creatures.filter((c) => c.alive).length,
       parts,
@@ -1230,6 +1541,7 @@ export class LabCreatureScene implements SceneController {
       rigMs: Math.round(this.rigMs * 100) / 100,
       motionMs: Math.round(this.motionMs * 100) / 100,
       bodyType: first?.spec.bodyType ?? null,
+      species: first?.spec.species ?? null,
       gait: first?.spec.motion.gait ?? null,
       massKg: ctl ? Math.round(ctl.mass * 10) / 10 : 0,
       speed: pose ? Math.round(pose.speed * 100) / 100 : 0,

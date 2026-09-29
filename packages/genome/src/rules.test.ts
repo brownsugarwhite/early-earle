@@ -26,6 +26,7 @@ describe('GenomeRulesSchema', () => {
     const exported = new Map(manifest.exported.map((e) => [e.asset, e]));
     for (const slot of SLOT_IDS) expect(assetsForSlot(rules, slot).length, slot).toBeGreaterThan(0);
     for (const [id, a] of Object.entries(rules.assets)) {
+      if (a.procedural) continue; // built in code (render/creature/ProceduralModules)
       const e = exported.get(id);
       expect(e, `asset ${id} exported`).toBeDefined();
       expect(e!.extras.slot).toBe(a.slot);

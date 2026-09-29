@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// P4 Genom-Lab + Creature-Editor smoke tests (Kreaturen v2: Körpertypen, Bewegung, Editor-Usability).
+// P4 Genom-Lab + Creature-Editor smoke tests (Kreaturen v3: Arten aus Skizze 08, geknetete Beine, Maul,
+// Verschmelz-Züge, Skizze-Ansicht, Editor).
 // Run on the WebGL2 fallback (SwiftShader) like the others.
 
 function collectErrors(page: Page): string[] {
@@ -84,7 +85,7 @@ test('/lab/creature lädt alle Module, zeigt Teile an und reagiert auf Verben, G
   expect(errors).toEqual([]);
 });
 
-test('/lab/creature Bewegung: Körpertypen laufen, springen, schlängeln; Parcours, Blob-Sheet, Vergleichen', async ({ page }) => {
+test('/lab/creature Bewegung: Arten laufen, springen, schlängeln, fressen; Parcours, Blob-Sheet, Skizze, Vergleichen', async ({ page }) => {
   test.setTimeout(240_000);
   const errors = collectErrors(page);
   await useMobilPreset(page);
@@ -97,9 +98,9 @@ test('/lab/creature Bewegung: Körpertypen laufen, springen, schlängeln; Parcou
   await page.getByTestId('ctl-mode').getByRole('button', { name: 'Bewegung', exact: true }).click();
   await expect(page.getByTestId('ctl-motion')).toBeVisible();
 
-  // Quadruped: four structural legs, a walk or trot, walking in a circle on "Laufen".
-  await page.getByTestId('ctl-body').getByRole('button', { name: 'Vierbeiner', exact: true }).click();
-  await expect(info).toContainText('Vierbeiner', { timeout: 10_000 });
+  // Retriever: four kneaded legs, a walk or trot, walking in a circle on "Laufen".
+  await page.getByTestId('ctl-body').getByRole('button', { name: 'Retriever', exact: true }).click();
+  await expect(info).toContainText('Retriever', { timeout: 10_000 });
   await expect(info).toContainText(/Schritt|Trab/);
   await page.getByTestId('motion-walk').click();
   await expect(info).toContainText('läuft im Kreis', { timeout: 10_000 });
@@ -117,22 +118,31 @@ test('/lab/creature Bewegung: Körpertypen laufen, springen, schlängeln; Parcou
   await expect(info).toContainText('Schlange · Schlängeln', { timeout: 10_000 });
   await expect(info).toContainText('läuft im Kreis', { timeout: 10_000 });
 
-  // REX and heavy exist too; sliders take effect without errors.
+  // REX and the elephant exist too; sliders take effect without errors.
   await page.getByTestId('ctl-body').getByRole('button', { name: 'REX', exact: true }).click();
   await expect(info).toContainText('REX · Stampfen', { timeout: 10_000 });
-  await page.getByTestId('ctl-body').getByRole('button', { name: 'Behäbig', exact: true }).click();
-  await expect(info).toContainText('Behäbig · Watscheln', { timeout: 10_000 });
+  // The REX roars (mouth driver) and devours a partner blob (merge move with events).
+  await page.getByTestId('mouth-roar').click();
+  await page.getByTestId('move-devour').click();
+  await expect(info).toContainText('Zug devour', { timeout: 10_000 });
+  await expect(info).toContainText('steht', { timeout: 30_000 });
+  await page.getByTestId('ctl-body').getByRole('button', { name: 'Elefant', exact: true }).click();
+  await expect(info).toContainText('Elefant · Watscheln', { timeout: 10_000 });
   await page.getByTestId('ctl-mass').locator('input').fill('2.5');
   await page.getByTestId('ctl-speed').locator('input').fill('1.8');
 
-  // Parcours: six archetypes at once.
+  // Parcours: six of the sketch's animals at once.
   await page.getByTestId('btn-parcours').click();
   await expect(info).toContainText('6 Figuren', { timeout: 10_000 });
   await expect(info).toContainText(/Bewegung \d/);
 
-  // Blob sheet mirrors the designer's sheet: 8 tiers + 5 archetypes + 9 squash frames.
+  // Blob sheet mirrors the designer's sheet: 8 tiers + 8 species + the blob cross (1 + 4 × 5 frames).
   await page.getByTestId('ctl-mode').getByRole('button', { name: 'Blob-Sheet', exact: true }).click();
-  await expect(info).toContainText('22 Figuren', { timeout: 15_000 });
+  await expect(info).toContainText('37 Figuren', { timeout: 15_000 });
+
+  // Skizze: sketch 08 staged live — 12 animals + the blob cross.
+  await page.getByTestId('ctl-mode').getByRole('button', { name: 'Skizze', exact: true }).click();
+  await expect(info).toContainText('33 Figuren', { timeout: 15_000 });
 
   // Compare two tiers side by side.
   await page.getByTestId('ctl-mode').getByRole('button', { name: 'Vergleichen', exact: true }).click();
@@ -140,7 +150,7 @@ test('/lab/creature Bewegung: Körpertypen laufen, springen, schlängeln; Parcou
   await page.getByTestId('ctl-compare-tier').getByRole('button', { name: '9', exact: true }).click();
   await expect(info).toContainText('2 Figuren', { timeout: 10_000 });
 
-  // "Zufall" produces variety: archetype × zone × tier × seed.
+  // "Zufall" produces variety: species × zone × tier × seed.
   await page.getByTestId('btn-random').click();
   await expect(info).toContainText(/Figuren/, { timeout: 10_000 });
   expect(errors).toEqual([]);

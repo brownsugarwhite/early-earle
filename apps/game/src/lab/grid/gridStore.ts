@@ -14,10 +14,12 @@ import {
 } from '@ee/core';
 import { LEVELS } from '../../content/levels';
 import { rexIntroFor, rexLine } from './rex';
-import { DEMO_LEVEL, demoState } from './demoLevel';
+import { CREATURE_DEMO_LEVEL, DEMO_LEVEL, creatureDemoState, demoState } from './demoLevel';
 
 /** `levelIndex` of the Elemente-Schau demo board (not part of `LEVELS`). */
 export const DEMO_LEVEL_INDEX = -1;
+/** `levelIndex` of the Wesen-Schau demo board (body archetypes, every merge style in one swipe). */
+export const CREATURE_DEMO_INDEX = -2;
 
 export interface GridLabState {
   levelIndex: number;
@@ -37,6 +39,8 @@ export interface GridLabState {
   loadLevel: (index: number, attempt?: number) => void;
   /** Loads the Elemente-Schau demo board (every element type on one board). */
   loadDemo: (attempt?: number) => void;
+  /** Loads the Wesen-Schau demo board (body archetypes and merge styles). */
+  loadCreatureDemo: (attempt?: number) => void;
   restart: () => void;
   move: (dir: Dir) => boolean;
   rewindMove: () => void;
@@ -70,6 +74,10 @@ export const useGridStore = create<GridLabState>((set, get) => ({
       get().loadDemo(attempt);
       return;
     }
+    if (index === CREATURE_DEMO_INDEX) {
+      get().loadCreatureDemo(attempt);
+      return;
+    }
     const level = LEVELS[index];
     if (!level) return;
     const seed = (index + 1) * 1000 + attempt;
@@ -100,6 +108,21 @@ export const useGridStore = create<GridLabState>((set, get) => ({
       pendingDir: null,
       attempt,
       rex: 'Elemente-Schau: alles auf einem Brett.',
+    });
+  },
+  loadCreatureDemo: (attempt = 1) => {
+    const state = creatureDemoState(2000 + attempt);
+    set({
+      levelIndex: CREATURE_DEMO_INDEX,
+      level: CREATURE_DEMO_LEVEL,
+      history: createHistory(state, 8),
+      state,
+      lastMove: null,
+      moveSeq: 0,
+      animating: false,
+      pendingDir: null,
+      attempt,
+      rex: 'Wesen-Schau: einmal nach links wischen.',
     });
   },
   restart: () => {

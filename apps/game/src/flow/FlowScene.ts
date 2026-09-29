@@ -64,6 +64,8 @@ const T_HERO_FLIGHT = 0.6;
 const CAMERA_ARC = 0.14;
 /** Camera shake scale (board shake is in board units at ≈ 1 unit from the camera). */
 const SHAKE_SCALE = 2.4;
+/** Zoom punch: the camera dollies this fraction of its distance toward the board at full punch. */
+const PUNCH_SCALE = 0.07;
 
 const _Y = new Vector3(0, 1, 0);
 const _m4 = new Matrix4();
@@ -153,7 +155,8 @@ export class FlowScene implements SceneController {
     this.splashBacking.visible = false;
     world.camera.add(this.splashBacking);
 
-    this.board = new LevelBoard(ZONE, { octaves: q.blobOctaves });
+    // REX, snakes and giraffe necks raymarch on WebGPU in the Hoch preset; Mobil/WebGL2 draw mesh bodies only.
+    this.board = new LevelBoard(ZONE, { octaves: q.blobOctaves, raymarch: ctx.backend === 'webgpu' && q.name === 'hoch' });
     world.planet.add(this.board.root);
     this.board.onSettled = (state) => this.onBoardSettled(state);
 
@@ -240,11 +243,13 @@ export class FlowScene implements SceneController {
     if (hero.isFlying || hero.jiggle > 0.02 || this.tweens.active > 0 || this.boardShadowGrace > 0) world.markShadowDirty();
     world.update();
     if (this.shadowFocus && board.root.visible) this.fitBoardShadow(false);
-    // Screen-space shake (board juice): nudge the camera along its own axes for this frame only.
+    // Screen-space shake and zoom punch (board juice): nudge the camera along its own axes for this frame only.
     const sh = board.shake;
     const cam = world.camera;
-    if (board.root.visible && (sh.x !== 0 || sh.y !== 0)) {
-      _v.set(sh.x * SHAKE_SCALE, sh.y * SHAKE_SCALE, 0).applyQuaternion(cam.quaternion);
+    const punch = board.root.visible ? board.zoomPunch : 0;
+    if (board.root.visible && (sh.x !== 0 || sh.y !== 0 || punch > 0)) {
+      const dolly = punch > 0 ? punch * PUNCH_SCALE * cam.getWorldPosition(_v2).distanceTo(board.lift.getWorldPosition(_v)) : 0;
+      _v.set(sh.x * SHAKE_SCALE, sh.y * SHAKE_SCALE, -dolly).applyQuaternion(cam.quaternion);
       cam.position.add(_v);
       cam.updateMatrixWorld(true);
       ctx.renderer.render(world.scene, cam);
@@ -317,8 +322,9 @@ export class FlowScene implements SceneController {
     const cz = (fp.minZ + fp.maxZ) / 2;
     const tanV = Math.tan((LEVEL_FOV * Math.PI) / 360);
     const tanH = tanV * aspect;
-    const pitch = portrait ? 1.02 : 0.96;
-    const breathe = portrait ? 1.16 : 1.18;
+    // Creatures read from above (designer sketch): the level camera looks down ≈ 67° (portrait) / 63°.
+    const pitch = portrait ? 1.17 : 1.1;
+    const breathe = portrait ? 1.12 : 1.16;
     const dW = (W / 2 / tanH) * breathe;
     const dD = ((D * Math.sin(pitch) + 1.2 * Math.cos(pitch)) / 2 / (tanV * usable)) * breathe;
     const dist = Math.max(dW, dD);
@@ -809,10 +815,46 @@ export class FlowScene implements SceneController {
     this.setPhase('depart');
     const current = flow.current;
     const next = won ? Math.min(current + 1, this.layout!.nodes.length - 1) : current;
-
-    // The launching creature: the hero takes over its body (and its parts, via the carrier) on its cell.
     const top = won ? board.topBlob() : board.entryBlob(hero.tier);
+    flow.setRex(won ? (rexLine('release') ?? 'Geh. Wir kommen nach.') : (rexLine('lose') ?? 'Nochmal.'));
+
+    // First the creature leaves its cell in its own style — hops, walks, slithers or plods to the plateau rim
+    // on the side of the next node (toward the camera when it stays) — then the hero takes over for the arc.
+    let walk = 0;
+    let from = top?.local ?? null;
     if (top) {
+      const dir = this.boardDirectionTo(next === current ? null : next);
+      const ex = board.exitCreature(top.id, dir.x, dir.z);
+      if (ex) {
+        walk = ex.at;
+        from = ex.local;
+      }
+    }
+    this.tweens.after(walk, () => this.launchDepart(won, top, from, next, current), 'depart');
+  }
+
+  /** Board-local xz direction from the plateau centre toward a node (null = toward the camera). */
+  private boardDirectionTo(node: number | null): Vector3 {
+    const board = this.board!;
+    const out = new Vector3(0, 0, 1);
+    if (node === null) return out;
+    const n = this.layout!.nodes[node];
+    if (!n) return out;
+    board.root.updateMatrix();
+    const inv = _m4.copy(board.root.matrix).invert();
+    const p = new Vector3(n.position[0], n.position[1], n.position[2]).applyMatrix4(inv);
+    p.y = 0;
+    if (p.lengthSq() < 1e-6) return out;
+    return p.normalize();
+  }
+
+  /** The hero takes the creature's body at the rim, splats and flies the arc; the plateau sinks behind it. */
+  private launchDepart(won: boolean, top: { id: number; tier: number; local: Vector3 } | null, local: Vector3 | null, next: number, current: number): void {
+    if (this.phase !== 'depart') return;
+    const hero = this.hero!;
+    const board = this.board!;
+    const flow = useFlowStore.getState();
+    if (top && local) {
       const info = board.blobInfo(top.id);
       board.setBlobHidden(top.id, true);
       hero.setTier(top.tier);
@@ -822,31 +864,30 @@ export class FlowScene implements SceneController {
         // Parts bring their own eyes: keep the painted slit only when the creature has none.
         if (withParts && info.spec.parts.some((part) => part.slot === 'eye')) hero.genome = { ...hero.genome, eye: { ...hero.genome.eye, size: 0 } };
       }
-      hero.setPose(this.boardPose(top.local, board.worldScale(top.tier)));
+      hero.setPose(this.boardPose(local, info?.scale ?? board.worldScale(top.tier)));
     } else {
       hero.setPose(this.boardPose(new Vector3(0, 0, 0), 0.05));
     }
     hero.root.visible = true;
     hero.impulse(1.3);
-    flow.setRex(won ? (rexLine('release') ?? 'Geh. Wir kommen nach.') : (rexLine('lose') ?? 'Nochmal.'));
 
-    // Launch: splat on the cell, then the long arc to the node; the plateau folds up and sinks behind it.
-    this.tweens.after(0.26, () => {
-      if (top) board.splat(top.local, board.worldScale(top.tier));
+    // Launch: splat on the rim, then the long arc to the node; the plateau folds up and sinks behind it.
+    this.tweens.after(0.2, () => {
+      if (top && local) board.splat(local, board.blobInfo(top.id)?.scale ?? board.worldScale(top.tier));
     });
-    this.tweens.after(0.28, () => {
+    this.tweens.after(0.22, () => {
       // The flight target is computed once the camera starts pulling out (faces the map camera).
       const pose = this.nodePose(next);
       hero.flyTo(pose, { duration: T_DEPART - 0.2, arc: 2.6, ease: easeInOut });
     });
-    this.tweens.after(0.3, () => {
+    this.tweens.after(0.24, () => {
       this.tweenCamera(this.mapPose(), T_DEPART, easeInOutQuint, undefined, CAMERA_ARC);
       const s0 = this.stripesY;
       this.tweens.add(0.9, (t) => (this.stripesY = lerp(s0, 0, t)), { ease: easeInOut });
       board.playSink(top?.id ?? null);
     });
-    this.tweens.after(0.3 + T_DEPART * 0.4, () => this.setShadowFocus(false));
-    this.tweens.after(0.3 + T_DEPART, () => {
+    this.tweens.after(0.24 + T_DEPART * 0.4, () => this.setShadowFocus(false));
+    this.tweens.after(0.24 + T_DEPART, () => {
       // The plateau is gone; a carried creature keeps its parts on the hero until the next level.
       if (board.carrying) board.setPartsOnly(true);
       else board.root.visible = false;

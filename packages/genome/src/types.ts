@@ -19,7 +19,32 @@ export const MAX_BODY_SPHERES = 14;
  */
 export const BODY_TYPES = ['blob', 'snake', 'quadruped', 'biped', 'heavy'] as const;
 export type BodyType = (typeof BODY_TYPES)[number];
-export const BODY_TYPE_LABELS: Readonly<Record<BodyType, string>> = { blob: 'Blob', snake: 'Schlange', quadruped: 'Vierbeiner', biped: 'REX', heavy: 'Behäbig' };
+export const BODY_TYPE_LABELS: Readonly<Record<BodyType, string>> = { blob: 'Blob', snake: 'Schlange', quadruped: 'Vierbeiner', biped: 'Zweibeiner', heavy: 'Behäbig' };
+
+/**
+ * Species (Kreaturen v3, Florian's top-down sketch 08): the designed animals. Each species belongs to one
+ * body archetype (its locomotion class: gait, mass, rules) and has its own silhouette — built to read from
+ * above (the board camera looks down at ~65°): the pink REX with its big pointed head and spiky frills,
+ * the yellow giraffe with its long neck lying along the ground, the grey elephant with big ear flaps and
+ * a trunk, the golden retriever, the fluffy grey mouse with a pink tail and the yellow pear-shaped duck.
+ */
+export const SPECIES = ['blob', 'snake', 'retriever', 'mouse', 'giraffe', 'rex', 'duck', 'elephant'] as const;
+export type Species = (typeof SPECIES)[number];
+export const SPECIES_LABELS: Readonly<Record<Species, string>> = { blob: 'Blob', snake: 'Schlange', retriever: 'Retriever', mouse: 'Maus', giraffe: 'Giraffe', rex: 'REX', duck: 'Ente', elephant: 'Elefant' };
+/** The archetype (locomotion class) of every species. */
+export const SPECIES_BODY: Readonly<Record<Species, BodyType>> = { blob: 'blob', snake: 'snake', retriever: 'quadruped', mouse: 'quadruped', giraffe: 'quadruped', rex: 'biped', duck: 'biped', elephant: 'heavy' };
+/** Species of an archetype in their default order (the first is the archetype's classic look). */
+export function speciesOf(bodyType: BodyType): Species[] {
+  return SPECIES.filter((s) => SPECIES_BODY[s] === bodyType);
+}
+
+/**
+ * Legs: `sdf` = thick stumps kneaded from the body material (foot + knee spheres smooth-unioned with the
+ * body, stepping with the gait), `module` = the jointed leg assets on the hips (thigh → shin → foot IK).
+ */
+export const LEG_STYLES = ['sdf', 'module'] as const;
+export type LegStyle = (typeof LEG_STYLES)[number];
+export const LEG_STYLE_LABELS: Readonly<Record<LegStyle, string>> = { sdf: 'geknetet', module: 'Bein-Modul' };
 
 /** Skin coat: `bare` shows the body material; `fur` / `feather` render shells / cards (render: BlobMaterialKind). */
 export const COATS = ['bare', 'fur', 'feather'] as const;
@@ -27,9 +52,9 @@ export type Coat = (typeof COATS)[number];
 export const COAT_LABELS: Readonly<Record<Coat, string>> = { bare: 'nackt', fur: 'Fell', feather: 'Federn' };
 
 /** Procedural skin patterns in the Earle palette (render: `PatternKind` in blob/patterns.ts). */
-export const SKIN_PATTERNS = ['none', 'tiger', 'giraffe', 'zebra', 'snake', 'spots', 'diamonds'] as const;
+export const SKIN_PATTERNS = ['none', 'tiger', 'giraffe', 'zebra', 'snake', 'spots', 'diamonds', 'elephant', 'rex', 'retriever', 'mouse'] as const;
 export type SkinPattern = (typeof SKIN_PATTERNS)[number];
-export const SKIN_PATTERN_LABELS: Readonly<Record<SkinPattern, string>> = { none: 'ohne', tiger: 'Tiger', giraffe: 'Giraffe', zebra: 'Zebra', snake: 'Schlange', spots: 'Punkte', diamonds: 'Rauten' };
+export const SKIN_PATTERN_LABELS: Readonly<Record<SkinPattern, string>> = { none: 'ohne', tiger: 'Tiger', giraffe: 'Giraffe', zebra: 'Zebra', snake: 'Schlange', spots: 'Punkte', diamonds: 'Rauten', elephant: 'Elefant', rex: 'REX', retriever: 'Retriever', mouse: 'Maus' };
 
 /** One body primitive: a sphere in blob-local units (main body radius ≈ 1). */
 export interface SpherePrim {

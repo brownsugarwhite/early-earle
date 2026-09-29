@@ -69,6 +69,8 @@ const defaultClock = (): number => (typeof performance !== 'undefined' ? perform
 export class WallClockTweens {
   private list: ActiveTween[] = [];
   private now = 0;
+  /** Playback speed per tag (`hurry`): tweens added later under the tag run at the same speed. */
+  private readonly speed = new Map<string, number>();
 
   constructor(private readonly clock: () => number = defaultClock) {
     this.now = clock();
@@ -92,9 +94,10 @@ export class WallClockTweens {
 
   /** Adds a tween starting at `delay` seconds from now; `apply` receives the eased 0..1 value (exactly 1 at the end). */
   add(duration: number, apply: (t: number) => void, opts: TweenOptions = {}): void {
+    const k = opts.tag ? (this.speed.get(opts.tag) ?? 1) : 1;
     this.list.push({
-      start: this.clock() + (opts.delay ?? 0),
-      duration: Math.max(1e-6, duration),
+      start: this.clock() + (opts.delay ?? 0) / k,
+      duration: Math.max(1e-6, duration / k),
       ease: opts.ease ?? easeInOut,
       apply,
       done: opts.done,
@@ -110,6 +113,36 @@ export class WallClockTweens {
 
   cancel(tag: string): void {
     this.list = this.list.filter((t) => t.tag !== tag);
+    this.speed.delete(tag);
+  }
+
+  /**
+   * Plays the rest of every tween with `tag` `factor` × faster (pending delays shrink too, progress is kept),
+   * and so do tweens added under the tag afterwards — a queued swipe hurries the running move instead of
+   * cutting it.
+   */
+  hurry(tag: string, factor: number): void {
+    const now = this.clock();
+    const prev = this.speed.get(tag) ?? 1;
+    const k = Math.max(1, factor / prev);
+    if (k <= 1.0001) return;
+    this.speed.set(tag, prev * k);
+    for (const tw of this.list) {
+      if (tw.tag !== tag || tw.finished) continue;
+      if (tw.start >= now) {
+        tw.start = now + (tw.start - now) / k;
+        tw.duration /= k;
+      } else {
+        const p = Math.min(1, (now - tw.start) / tw.duration);
+        tw.duration /= k;
+        tw.start = now - p * tw.duration;
+      }
+    }
+  }
+
+  /** Current speed factor of a tag (1 = normal). */
+  speedOf(tag: string): number {
+    return this.speed.get(tag) ?? 1;
   }
 
   /**
@@ -117,6 +150,7 @@ export class WallClockTweens {
    * `done` callbacks may schedule more tagged tweens; those are finished too (bounded passes).
    */
   finish(tag: string): void {
+    this.speed.set(tag, 1e6);
     for (let pass = 0; pass < 8; pass++) {
       const batch = this.list.filter((t) => t.tag === tag && !t.finished).sort((a, b) => a.start - b.start);
       if (batch.length === 0) return;
@@ -127,10 +161,12 @@ export class WallClockTweens {
         tw.done?.();
       }
     }
+    this.speed.delete(tag);
   }
 
   clear(): void {
     this.list = [];
+    this.speed.clear();
   }
 
   /** Advances to the current wall-clock time; `done` callbacks may schedule new tweens. */
@@ -152,6 +188,9 @@ export class WallClockTweens {
     this.list = this.list.filter((t) => !t.finished);
   }
 }
+
+/** Walk: starts at a third of the cruise speed, peaks mid-way, arrives softly. */
+export const easeWalk: Ease = (t) => 0.3 * t + 0.7 * t * t * (3 - 2 * t);
 
 export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;

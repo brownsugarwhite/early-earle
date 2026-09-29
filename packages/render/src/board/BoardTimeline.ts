@@ -1,13 +1,15 @@
-import type { Blob, Coord, LevelState, MoveResult } from '@ee/core';
-import type { Vec3 } from '@ee/genome';
+import type { Blob, Coord, LevelState, MergeEvent, MoveResult } from '@ee/core';
+import type { BodyType, Vec3 } from '@ee/genome';
 import type { BoardRenderer } from './BoardRenderer';
 import type { BlobVisual } from './BoardBlobs';
 import type { PropInstance } from './BoardProps';
-import { easeIn, easeInOut, easeOut, easeOutBack, easeOutCubic, easeSpring, easeSpringSoft, type TweenOptions } from './boardTween';
+import type { FxScope } from './boardFx';
+import { genomeMergeMove, mergeMoveKind, mergeWarp, turnCurve, type MoveEventLike, type MoveSampleLike } from './boardMoves';
+import { easeIn, easeInOut, easeOut, easeOutBack, easeOutCubic, easeSpring, easeSpringSoft, easeWalk, smoothstep, type TweenOptions } from './boardTween';
 import { blossomDescs, jitter } from './boardElements';
 
-/** Timings (seconds): slide 140 ms and merge blend 300 ms per the GDD, overlapping. */
-export const SLIDE_S = 0.14;
+/** Base timings (seconds). Travel time grows with the distance (see `travelTime`); merges run ≈ 0.5–0.7 s. */
+export const SLIDE_S = 0.15;
 export const MERGE_S = 0.3;
 export const POP_S = 0.16;
 
@@ -20,23 +22,56 @@ export interface TimelineHooks {
   onSettled: () => void;
 }
 
-const adjacent = (a: Coord, b: Coord): boolean => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) === 1;
+/** Travel per body type: [base s, s per cell]. Blobs bounce, walkers scurry, heavies plod. */
+const TRAVEL: Record<BodyType, readonly [number, number]> = {
+  blob: [0.15, 0.09],
+  quadruped: [0.15, 0.085],
+  biped: [0.17, 0.09],
+  snake: [0.17, 0.095],
+  heavy: [0.22, 0.12],
+};
 
-/**
- * Turns a move's events into wall-clock tweens on the board: slides (with portal dips and vent pushes),
- * merges with droplets and spores, side effects on the elements (peel, thaw, wake, unwind, lift, heal,
- * collect, burn), specials with plate flashes and a subtle shake, dynamics (rot growth, toxic ticks and
- * freezes, stray hops), graduation and spawns. Input opens after slides + merges; the state is reconciled
- * once the last tween ends.
- */
-/** Tween calls of one move, all under the move's tag (so a newer move can fast-forward them). */
-interface TweenScope {
-  add(duration: number, apply: (t: number) => void, opts?: TweenOptions): void;
-  after(seconds: number, fn: () => void): void;
+/** Travel time (s) of a creature over `cells` cells: base + per cell by body type; tier ≥ 8 is slower. */
+export function travelTime(body: BodyType, cells: number, tier: number): number {
+  const [base, per] = TRAVEL[body];
+  return (base + per * Math.max(0, cells)) * (tier >= 8 ? 1.1 : 1);
 }
 
+/** Where a merging mover stops before its final leap into the partner (fraction of a cell before the target). */
+const STOP_SHORT: Record<BodyType, number> = { blob: 0.45, quadruped: 0.62, biped: 0.62, snake: 0.7, heavy: 0.55 };
+
+const adjacent = (a: Coord, b: Coord): boolean => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) === 1;
+const wrap = (a: number): number => {
+  let v = a;
+  while (v > Math.PI) v -= Math.PI * 2;
+  while (v < -Math.PI) v += Math.PI * 2;
+  return v;
+};
+const linear = (t: number): number => t;
+
+interface MoveInfo {
+  /** Time the mover reaches its end point (the pre-target point for merges). */
+  arrive: number;
+  /** End point and direction of the last run. */
+  end: [number, number];
+  dir: [number, number];
+}
+
+interface MergeTimes {
+  impact: number;
+  swap: number;
+}
+
+/**
+ * Turns a move's events into wall-clock tweens on the board: every creature travels in its own style and at
+ * its own distance-dependent pace (blobs bounce with a leading mouth and a droplet trail, walkers turn and
+ * scurry, heavies overshoot and stumble, snakes slither and coil), merges play a choreography by the mover's
+ * body type (splash, leap to the camera and devour, coil and swallow, stomp) with crowns, ripples, ink
+ * splats and dust, then the element side effects, specials, dynamics, graduation and spawns follow. Input
+ * opens after slides + merges; the state is reconciled once the last tween ends.
+ */
 export class BoardTimeline {
-  private tw: TweenScope;
+  private tw: FxScope;
 
   constructor(private readonly r: BoardRenderer) {
     this.tw = { add: (d, a, o) => r.tweens.add(d, a, o), after: (sec, fn) => r.tweens.after(sec, fn) };
@@ -46,7 +81,7 @@ export class BoardTimeline {
     const r = this.r;
     const base = r.tweens;
     this.tw = {
-      add: (d, a, o = {}) => base.add(d, a, { ...o, tag }),
+      add: (d, a, o: TweenOptions = {}) => base.add(d, a, { ...o, tag }),
       after: (sec, fn) => base.after(sec, fn, tag),
     };
     const tw = this.tw;
@@ -56,9 +91,6 @@ export class BoardTimeline {
     const pal = r.palette;
     const now = () => r.now;
     let tEnd = 0;
-    const slideEnd = SLIDE_S;
-    const sideStart = slideEnd + MERGE_S * 0.4;
-    const dynStart = slideEnd + MERGE_S + 0.05;
     const blobAt = (id: number): Blob | null => finalState.cells.find((b) => b?.id === id) ?? null;
     const cellIndex = (c: Coord) => c[1] * layout.w + c[0];
     const local = (c: Coord) => layout.cellToLocal(c[0], c[1]);
@@ -68,120 +100,152 @@ export class BoardTimeline {
     // A merge result gets a new id; the settled visual is re-keyed only when its merge tween ends. Events that
     // name the result (promote, release, blasts) resolve it through this alias at build time.
     const alias = new Map<number, BlobVisual>();
+    const mergeOf = new Map<number, MergeEvent>();
     for (const e of res.events) {
       if (e.type !== 'merge') continue;
       const settled = blobs.get(e.ids[0]) ?? alias.get(e.ids[0]);
       if (settled) alias.set(e.resultId, settled);
+      mergeOf.set(e.ids[1], e);
     }
     const vis = (id: number): BlobVisual | undefined => blobs.get(id) ?? alias.get(id);
 
-    // ---------------------------------------------------------------- phase 1: slides, pushes, stray hops
+    // ---------------------------------------------------------------- phase 1: slides (each at its own pace)
+    const moves = new Map<number, MoveInfo>();
+    const landAt = new Map<number, number>();
+    let slideEnd = 0;
     for (const e of res.events) {
-      if (e.type !== 'slide' && e.type !== 'push' && e.type !== 'strayMove') continue;
+      if (e.type !== 'slide') continue;
       const v = vis(e.id);
       if (!v) continue;
-      if (e.type === 'slide') mark(this.slide(v, e.from, e.path, 0));
-      else if (e.type === 'push') {
-        const delay = dynStart;
-        mark(this.slide(v, e.from, [e.to], delay, 0.2));
-        // The vent under the pushed blob puffs.
-        const [fx, fz] = local(e.from);
-        tw.after(delay, () => r.particles.burst('spore', now(), fx, layout.top + 0.06, fz, 5, { up: 0.5, spread: 0.35, life: 0.6, size: 0.053, colors: [pal.paper, pal.sky], seed: e.id }));
-      } else {
-        const delay = dynStart;
-        const from = local(e.from);
-        const to = local(e.to);
+      const merging = mergeOf.has(e.id);
+      const info = this.move(v, e.from, e.path, 0, merging ? { stopShort: STOP_SHORT[v.body] } : {});
+      moves.set(e.id, info);
+      if (!merging) landAt.set(cellIndex(e.to), info.arrive);
+      slideEnd = Math.max(slideEnd, info.arrive);
+      mark(info.arrive + 0.2);
+    }
+    if (slideEnd === 0) slideEnd = 0.05;
+
+    // ---------------------------------------------------------------- phase 1b: merges (by the mover's body)
+    let maxImpact = 0;
+    let maxSwap = 0;
+    for (const e of res.events) {
+      if (e.type !== 'merge') continue;
+      const [settledId, movingId] = e.ids;
+      const settled = vis(settledId);
+      const moving = vis(movingId);
+      const target = local(e.at);
+      const info = moves.get(movingId);
+      const tA = info?.arrive ?? SLIDE_S;
+      const from: [number, number] = info?.end ?? (moving ? [moving.x, moving.z] : target);
+      const dir: [number, number] = info?.dir ?? [0, 1];
+      const resultBlob = blobAt(e.resultId) ?? { id: e.resultId, tier: e.tier, material: e.material, kind: 'normal' as const };
+      const big = e.tier >= 7;
+      let times: MergeTimes;
+      const style = moving?.body ?? 'blob';
+      const played = moving ? this.playGenomeMove(moving, settled, from, target, dir, tA, e.tier) : null;
+      if (played) times = played;
+      else if (!moving) times = { impact: tA, swap: tA + 0.12 };
+      else if (style === 'blob') times = this.mergeSplash(moving, settled, from, target, dir, tA, e.tier);
+      else if (style === 'snake') times = this.mergeCoil(moving, settled, from, target, tA, e.tier);
+      else if (style === 'heavy') times = this.mergeStomp(moving, settled, from, target, dir, tA, e.tier);
+      else times = this.mergeLeap(moving, settled, from, target, tA, e.tier);
+      landAt.set(cellIndex(e.at), times.impact);
+      maxImpact = Math.max(maxImpact, times.impact);
+      maxSwap = Math.max(maxSwap, times.swap);
+      if (big) tw.after(times.impact, () => r.punch(0.5 + 0.1 * Math.min(4, e.tier - 7)));
+      // Parts: the parents' accessories detach and fly off around the impact, the child's pop on the swap.
+      if (settled) {
+        const t0 = times.swap - 0.3;
+        tw.after(Math.max(0, t0), () => blobs.beginMerge(settled, moving, resultBlob));
+        tw.add(0.63, (t) => blobs.sampleMerge(settled, t * 630), { delay: Math.max(0, t0) + 0.0002, ease: linear, done: () => blobs.endMerge(settled) });
+      }
+      // Swap: the mover is gone, the settled creature continues as the child (new body type) with a pop.
+      tw.after(times.swap, () => {
+        if (moving && moving !== settled) blobs.removeVisual(moving.id, props);
+        if (!settled) return;
+        settled.hidden = false;
+        settled.x = target[0];
+        settled.z = target[1];
+        blobs.swapMerge(settled, resultBlob);
+        settled.pop = 0.55;
+        settled.labelAlpha = 1;
+        settled.lift = 0;
+        settled.mouth = 0;
+        settled.pitchBlend = 0;
+        settled.coil = null;
+        settled.coilRadius = null;
+        settled.yawDirect = false;
+        settled.bulge = -1;
+        settled.trumpet = 0;
+        settled.crouch = 0;
+        settled.squash = null;
+        if (settled.drive && moving) settled.yawTarget = Math.atan2(dir[0], dir[1]);
+        this.mergeBurst(target, settled, e.tier);
+      });
+      if (settled) {
         tw.add(
-          0.24,
+          0.38,
           (t) => {
-            v.x = from[0] + (to[0] - from[0]) * t;
-            v.z = from[1] + (to[1] - from[1]) * t;
-            v.lift = 0.32 * Math.sin(t * Math.PI);
-            v.squash = { axis: [0, 1, 0], amount: 0.3 * Math.sin(t * Math.PI) };
+            settled.pop = 0.55 + 0.45 * t;
+            settled.squash = settled.drive ? null : { axis: [0, 1, 0], amount: 0.3 * Math.sin(t * Math.PI) };
           },
           {
-            delay,
-            ease: easeInOut,
+            delay: times.swap + 0.0002,
+            ease: easeSpring,
             done: () => {
-              v.lift = 0;
-              v.squash = null;
-              blobs.driver.impulse(v.id, [0, 1, 0], 0.9);
-              v.jiggle = 1;
-              r.kick(0.12);
+              settled.pop = 1;
+              settled.squash = null;
+              // Re-key first: the wobble belongs to the result's spring, which the visual reads from now on.
+              if (e.resultId !== settled.id) blobs.rekey(settled.id, e.resultId);
+              blobs.driver.impulse(settled.id, [0, 1, 0], 0.8);
+              settled.jiggle = 1;
             },
           },
         );
-        mark(delay + 0.24);
+      }
+      mark(times.swap + 0.45);
+    }
+
+    const sideAt = (c: Coord) => (landAt.get(cellIndex(c)) ?? slideEnd) + 0.05;
+    const settleAt = Math.max(slideEnd, maxSwap);
+    const dynStart = Math.max(slideEnd, maxImpact) + 0.12;
+    const afterMerges = settleAt + 0.08;
+
+    // ---------------------------------------------------------------- pushes and stray moves (dynamics)
+    for (const e of res.events) {
+      if (e.type !== 'push' && e.type !== 'strayMove') continue;
+      const v = vis(e.id);
+      if (!v) continue;
+      const delay = dynStart;
+      const info = this.move(v, e.from, [e.to], delay, { pushed: e.type === 'push' });
+      mark(info.arrive + 0.2);
+      if (e.type === 'push') {
+        // The vent under the pushed blob puffs.
+        const [fx, fz] = local(e.from);
+        tw.after(delay, () => r.particles.burst('spore', now(), fx, layout.top + 0.06, fz, 5, { up: 0.5, spread: 0.35, life: 0.6, size: 0.053, colors: [pal.paper, pal.sky], seed: e.id }));
       }
     }
 
     // ---------------------------------------------------------------- everything else, in event order
     for (const e of res.events) {
       switch (e.type) {
-        case 'merge': {
-          const [settledId, movingId] = e.ids;
-          const settled = vis(settledId);
-          const moving = vis(movingId);
-          const target = local(e.at);
-          if (moving) {
-            tw.add(
-              MERGE_S * 0.6,
-              (t) => {
-                moving.x += (target[0] - moving.x) * t;
-                moving.z += (target[1] - moving.z) * t;
-                moving.pop = 1 - 0.85 * t;
-                moving.labelAlpha = 1 - t;
-              },
-              { delay: slideEnd, ease: easeInOut, done: () => blobs.removeVisual(moving.id, props) },
-            );
-          }
-          if (settled) {
-            const resultBlob = blobAt(e.resultId) ?? { id: e.resultId, tier: e.tier, material: e.material, kind: 'normal' as const };
-            let swapped = false;
-            tw.add(
-              MERGE_S * 0.7,
-              (t) => {
-                settled.squash = { axis: [0, 1, 0], amount: 0.55 * Math.sin(t * Math.PI) };
-                settled.pop = 1 + 0.18 * Math.sin(t * Math.PI);
-                if (t > 0.3 && !swapped) {
-                  swapped = true;
-                  blobs.setBlob(settled, resultBlob);
-                  this.mergeSplash(target, settled, e.tier);
-                }
-              },
-              {
-                delay: slideEnd + MERGE_S * 0.35,
-                ease: easeOut,
-                done: () => {
-                  settled.squash = null;
-                  settled.pop = 1;
-                  // Re-key first: the wobble belongs to the result's spring, which the visual reads from now on.
-                  if (e.resultId !== settled.id) blobs.rekey(settled.id, e.resultId);
-                  blobs.driver.impulse(settled.id, [0, 1, 0], 0.9);
-                  settled.jiggle = 1;
-                },
-              },
-            );
-          }
-          mark(slideEnd + MERGE_S * 1.05);
-          break;
-        }
         case 'promote': {
           const v = vis(e.id);
           if (!v) break;
-          const delay = slideEnd + MERGE_S + 0.05;
+          const delay = afterMerges;
           tw.after(delay, () => {
             const b = blobAt(e.id);
             if (b) blobs.setBlob(v, b);
             blobs.driver.impulse(v.id, [0, 1, 0], 1.1);
             v.jiggle = 1;
-            r.particles.burst('droplet', now(), v.x, v.centerY + v.scale * 0.6, v.z, 10, { up: 1.6, spread: 1.2, life: 0.65, size: 0.06, colors: [pal.paper, pal.neon], seed: e.id, ring: v.scale * 0.9 });
+            r.particles.burst('droplet', now(), v.x, v.centerY + v.radius * 0.6, v.z, 10, { up: 1.6, spread: 1.2, life: 0.65, size: 0.06, colors: [pal.paper, pal.neon], seed: e.id, ring: v.radius * 0.9 });
           });
           mark(delay + 0.2);
           break;
         }
         case 'special': {
-          const delay = slideEnd + MERGE_S;
+          const delay = afterMerges;
           const origin = e.at;
           for (const c of e.cells) {
             const dist = Math.abs(c[0] - origin[0]) + Math.abs(c[1] - origin[1]);
@@ -197,19 +261,21 @@ export class BoardTimeline {
           const strength = e.kind === 'line' ? 0.35 : e.kind === 'burst' ? 0.6 : 1.0;
           tw.after(delay, () => {
             r.kick(strength);
+            r.punch(strength * 0.6);
             r.emitJuice('burst');
           });
           mark(delay + 0.5);
           break;
         }
         case 'tierBomb': {
-          const delay = slideEnd + MERGE_S;
+          const delay = afterMerges;
           e.removed.forEach((rm, k) => {
             const v = vis(rm.id);
             if (v) this.popOut(v, delay + k * 0.04, rm.id);
           });
           tw.after(delay, () => {
             r.kick(0.9);
+            r.punch(0.7);
             r.emitJuice('burst');
           });
           mark(delay + 0.5 + e.removed.length * 0.04);
@@ -218,7 +284,7 @@ export class BoardTimeline {
         case 'release':
         case 'deliver': {
           const v = vis(e.id);
-          const delay = slideEnd + MERGE_S + 0.02;
+          const delay = afterMerges + 0.02;
           if (v) {
             const dir: Vec3 = [away.x * 0.6, 1, away.z * 0.6];
             let trail = 0;
@@ -227,7 +293,7 @@ export class BoardTimeline {
               (t) => {
                 v.lift = t * t * 4.5;
                 v.pop = 1 - 0.45 * t;
-                v.squash = { axis: dir, amount: 0.5 * t };
+                v.squash = v.drive ? null : { axis: dir, amount: 0.5 * t };
                 v.labelAlpha = 1 - t;
                 if (t > trail) {
                   trail += 0.12;
@@ -242,7 +308,7 @@ export class BoardTimeline {
           break;
         }
         case 'spawn': {
-          const delay = Math.max(tEnd, slideEnd + MERGE_S);
+          const delay = Math.max(tEnd - 0.2, afterMerges);
           const blob = blobAt(e.id);
           if (!blob) break;
           const v = blobs.makeVisual(blob, e.at);
@@ -253,7 +319,7 @@ export class BoardTimeline {
             (t) => {
               v.pop = Math.max(0.001, t);
               v.labelAlpha = t;
-              v.squash = { axis: [0, 1, 0], amount: 0.35 * Math.sin(t * Math.PI) };
+              v.squash = v.drive ? null : { axis: [0, 1, 0], amount: 0.35 * Math.sin(t * Math.PI) };
             },
             { delay, ease: easeSpring, done: () => (v.squash = null) },
           );
@@ -273,7 +339,7 @@ export class BoardTimeline {
         case 'heal': {
           const i = cellIndex(e.at);
           const [px, pz] = local(e.at);
-          const delay = sideStart;
+          const delay = sideAt(e.at);
           if (e.to === 'healed') {
             tw.add(0.6, (t) => cells.setHeal(i, t), { delay, ease: easeOut });
             for (const [key, desc] of blossomDescs(i, px, pz, layout, pal)) {
@@ -299,7 +365,7 @@ export class BoardTimeline {
         case 'collect': {
           const i = cellIndex(e.at);
           const [px, pz] = local(e.at);
-          const delay = sideStart;
+          const delay = sideAt(e.at);
           const pod = props.get(`spore:${i}`);
           const stem = props.get(`sporeStem:${i}`);
           const halo = props.get(`sporeHalo:${i}`);
@@ -335,7 +401,7 @@ export class BoardTimeline {
         case 'blockerHit': {
           const i = cellIndex(e.at);
           const [px, pz] = local(e.at);
-          const delay = sideStart;
+          const delay = sideAt(e.at);
           if (e.kind === 'scrap') {
             const peel = props.get(`scrap:${i}:${e.layersLeft}`);
             const junk = props.get(`scrapJunk:${i}`);
@@ -387,7 +453,7 @@ export class BoardTimeline {
         }
         case 'thaw': {
           const v = vis(e.id);
-          const delay = sideStart;
+          const delay = sideAt(e.at);
           if (v) {
             tw.after(delay, () => {
               v.frozen = false;
@@ -398,7 +464,7 @@ export class BoardTimeline {
               }
               blobs.driver.impulse(v.id, [0, 1, 0], 1.0);
               v.jiggle = 1;
-              r.particles.burst('droplet', now(), v.x, v.centerY, v.z, 12, { up: 1.5, spread: 1.2, life: 0.65, size: 0.06, colors: [pal.ice, pal.iceDeep, '#ffffff'], seed: e.id, ring: v.scale * 1.1 });
+              r.particles.burst('droplet', now(), v.x, v.centerY, v.z, 12, { up: 1.5, spread: 1.2, life: 0.65, size: 0.06, colors: [pal.ice, pal.iceDeep, '#ffffff'], seed: e.id, ring: v.radius * 1.1 });
             });
             mark(delay + 0.5);
           }
@@ -406,7 +472,7 @@ export class BoardTimeline {
         }
         case 'wake': {
           const v = vis(e.id);
-          const delay = sideStart;
+          const delay = sideAt(e.at);
           if (v) {
             tw.after(delay, () => {
               v.sleeper = false;
@@ -428,7 +494,7 @@ export class BoardTimeline {
         case 'cageOpen': {
           const i = cellIndex(e.at);
           const [px, pz] = local(e.at);
-          const delay = sideStart;
+          const delay = sideAt(e.at);
           const layerKeys = [...props.keys()].filter((key) => key.startsWith(`cage:${i}:${e.layersLeft}:`) || key.startsWith(`thorn:${i}:${e.layersLeft}:`));
           layerKeys.forEach((key, k) => {
             const p = props.get(key);
@@ -467,7 +533,7 @@ export class BoardTimeline {
         }
         case 'reveal': {
           const i = cellIndex(e.at);
-          const delay = sideStart;
+          const delay = sideAt(e.at);
           for (let k = 0; k < 3; k++) {
             const key = `fog:${i}:${k}`;
             const p = props.get(key);
@@ -498,7 +564,7 @@ export class BoardTimeline {
         case 'burn': {
           const i = cellIndex(e.at);
           const [px, pz] = local(e.at);
-          const delay = sideStart;
+          const delay = sideAt(e.at);
           const fire = ['#e8552a', '#ffcf4a', '#ff8a3c'];
           if (e.what === 'rot') {
             for (const key of [`rot:${i}`, `rotCore:${i}`, ...[0, 1, 2, 3, 4].map((k) => `rotNode:${i}:${k}`)]) {
@@ -582,7 +648,7 @@ export class BoardTimeline {
               v.frozen = true;
               blobs.refreshParams(v);
               blobs.driver.impulse(v.id, [0, 1, 0], 0.6);
-              r.particles.burst('droplet', now(), v.x, v.centerY, v.z, 10, { up: 1.0, spread: 0.8, life: 0.55, size: 0.05, colors: [pal.ice, pal.toxic], seed: e.id, ring: v.scale * 1.1 });
+              r.particles.burst('droplet', now(), v.x, v.centerY, v.z, 10, { up: 1.0, spread: 0.8, life: 0.55, size: 0.05, colors: [pal.ice, pal.toxic], seed: e.id, ring: v.radius * 1.1 });
             });
           }
           mark(delay + 0.5);
@@ -594,12 +660,12 @@ export class BoardTimeline {
           if (v) {
             tw.add(0.35, (t) => {
               v.lift = 0.28 * Math.sin(t * Math.PI);
-              v.squash = { axis: [0, 1, 0], amount: 0.4 * Math.sin(t * Math.PI) };
+              v.squash = v.drive ? null : { axis: [0, 1, 0], amount: 0.4 * Math.sin(t * Math.PI) };
             }, { delay, ease: easeOut, done: () => { v.lift = 0; v.squash = null; blobs.driver.impulse(v.id, [0, 1, 0], 1.0); v.jiggle = 1; } });
             tw.after(delay + 0.2, () => {
               const b = blobAt(e.id);
               if (b) blobs.setBlob(v, b);
-              r.particles.burst('spore', now(), v.x, v.centerY + v.scale, v.z, 10, { up: 1.0, spread: 0.6, life: 0.8, size: 0.06, colors: [pal.paper, pal.rust, pal.pink], seed: e.id });
+              r.particles.burst('spore', now(), v.x, v.centerY + v.radius, v.z, 10, { up: 1.0, spread: 0.6, life: 0.8, size: 0.06, colors: [pal.paper, pal.rust, pal.pink], seed: e.id });
               r.emitJuice('calm');
             });
             mark(delay + 0.45);
@@ -609,7 +675,7 @@ export class BoardTimeline {
         case 'goalProgress': {
           if (!e.done) break;
           const key = `goal:${e.index}:plinth`;
-          const delay = Math.max(tEnd, slideEnd + MERGE_S);
+          const delay = Math.max(tEnd - 0.2, afterMerges);
           tw.after(delay, () => {
             props.setColor(key, pal.neon);
             const p = props.get(key);
@@ -618,7 +684,7 @@ export class BoardTimeline {
           break;
         }
         case 'won': {
-          const delay = Math.max(tEnd, slideEnd + MERGE_S) + 0.1;
+          const delay = Math.max(tEnd - 0.2, afterMerges) + 0.1;
           let k = 0;
           for (const v of blobs.visuals.values()) {
             const d = delay + k * 0.05;
@@ -642,20 +708,25 @@ export class BoardTimeline {
       }
     }
 
-    tw.after(slideEnd + MERGE_S, hooks.onInputOpen);
+    tw.after(Math.max(slideEnd + 0.05, maxSwap + 0.22), hooks.onInputOpen);
     tw.after(tEnd + 0.02, () => {
       r.reconcile(finalState);
       hooks.onSettled();
     });
   }
 
-  // ---------------------------------------------------------------------------------------- helpers
+  // ---------------------------------------------------------------------------------------- travel
 
-  /** Slides a blob along `path` (portal jumps dip through the rings); returns the end time. */
-  private slide(v: BlobVisual, from: Coord, path: Coord[], delay: number, duration = SLIDE_S): number {
+  /**
+   * Moves a creature along `path` in its body type's style, starting `delay` s from now; teleports dip through
+   * the portal rings. `stopShort` ends the last run that fraction of a cell early (merging movers leap the
+   * rest); `pushed` = moved by a vent (no turn, no anticipation). Returns the arrival time and end point.
+   */
+  move(v: BlobVisual, from: Coord, path: Coord[], delay: number, opts: { stopShort?: number; pushed?: boolean } = {}): MoveInfo {
     const r = this.r;
     const tw = this.tw;
     const { layout, props } = r;
+    const pitch = layout.pitch;
     // Split the path into contiguous runs at teleports.
     const runs: Coord[][] = [];
     let current: Coord[] = [from];
@@ -669,33 +740,75 @@ export class BoardTimeline {
     }
     runs.push(current);
     let t0 = delay;
-    const impulseAxis: Vec3 = [0, 0, 1];
+    const walker = v.drive !== null;
+    const dir: [number, number] = [v.moveDir[0], v.moveDir[1]];
+    let end: [number, number] = [v.x, v.z];
     runs.forEach((run, ri) => {
       const a = run[0]!;
       const b = run[run.length - 1]!;
       const [x0, z0] = layout.cellToLocal(a[0], a[1]);
-      const [x1, z1] = layout.cellToLocal(b[0], b[1]);
-      const dx = x1 - x0;
-      const dz = z1 - z0;
-      const len = Math.hypot(dx, dz);
-      if (len > 1e-6) {
-        const axis: Vec3 = [dx / len, 0, dz / len];
-        impulseAxis[0] = axis[0];
-        impulseAxis[2] = axis[2];
-        const dur = ri === 0 && runs.length === 1 ? duration : duration * Math.max(0.5, Math.min(1, len / (layout.pitch * 2)));
-        tw.add(
-          dur,
-          (t) => {
-            v.x = x0 + dx * t;
-            v.z = z0 + dz * t;
-            v.squash = { axis, amount: 0.38 * Math.sin(t * Math.PI) };
-          },
-          { delay: t0, ease: easeOutCubic },
-        );
-        t0 += dur;
+      let [x1, z1] = layout.cellToLocal(b[0], b[1]);
+      const last = ri === runs.length - 1;
+      let cells = run.length - 1;
+      const len0 = Math.hypot(x1 - x0, z1 - z0);
+      if (len0 > 1e-6) {
+        const ux = (x1 - x0) / len0;
+        const uz = (z1 - z0) / len0;
+        dir[0] = ux;
+        dir[1] = uz;
+        if (last && opts.stopShort) {
+          const cut = Math.min(opts.stopShort, cells - 0.05) * pitch;
+          x1 -= ux * cut;
+          z1 -= uz * cut;
+          cells -= cut / pitch;
+        }
+        const travel = travelTime(v.body, cells, v.tier) * (opts.pushed ? 0.8 : 1);
+        // Anticipation (first run only): walkers turn toward the swipe first (their heading spring overshoots
+        // and settles while they go), blobs crouch against the motion.
+        let lead = 0;
+        if (ri === 0 && !opts.pushed) {
+          const yaw = Math.atan2(ux, uz);
+          if (walker) {
+            // Anticipating turn (a small counter-turn, overshoot, settle); the walk starts while it turns.
+            const from0 = v.drive?.yaw ?? yaw;
+            const delta = wrap(yaw - from0);
+            const turn = Math.abs(delta);
+            if (turn > 0.08) {
+              const dur = 0.16 + 0.12 * (turn / Math.PI);
+              tw.add(
+                dur,
+                (u) => {
+                  v.yawTarget = from0 + delta * turnCurve(u, delta);
+                  v.yawDirect = true;
+                },
+                { delay: t0, ease: linear, done: () => { v.yawTarget = yaw; v.yawDirect = false; } },
+              );
+              lead = turn > 0.35 ? dur * 0.4 : 0.02;
+            } else tw.after(t0, () => (v.yawTarget = yaw));
+          } else {
+            lead = 0.055;
+            tw.add(
+              lead,
+              (t) => {
+                v.moveDir = [ux, uz];
+                v.squash = { axis: [ux, 0, uz], amount: -0.24 * easeOut(t) };
+                v.mouth = 0;
+              },
+              { delay: t0, ease: linear },
+            );
+          }
+        }
+        t0 += lead;
+        if (walker) this.walkRun(v, x0, z0, x1, z1, ux, uz, cells, travel, t0);
+        else this.hopRun(v, x0, z0, x1, z1, ux, uz, cells, travel, t0, last && !opts.stopShort);
+        t0 += travel;
+        end = [x1, z1];
       } else {
-        v.x = x1;
-        v.z = z1;
+        tw.after(t0, () => {
+          v.x = x1;
+          v.z = z1;
+        });
+        end = [x1, z1];
       }
       if (ri < runs.length - 1) {
         // Portal: sink into the ring, reappear at the exit.
@@ -709,23 +822,454 @@ export class BoardTimeline {
         t0 += 0.2;
       }
     });
-    tw.after(t0, () => {
-      v.squash = null;
-      r.blobs.driver.impulse(v.id, impulseAxis, 0.75);
-      v.jiggle = 1;
-    });
-    return t0;
+    return { arrive: t0, end, dir };
   }
 
-  private mergeSplash(target: [number, number], settled: BlobVisual, tier: number): void {
+  /** Blob travel: a chain of bouncy hops, stretched along the flight, mouth opening at the front, droplets trailing. */
+  private hopRun(v: BlobVisual, x0: number, z0: number, x1: number, z1: number, ux: number, uz: number, cells: number, dur: number, delay: number, final: boolean): void {
+    const r = this.r;
+    const tw = this.tw;
+    const pitch = r.layout.pitch;
+    const dist = Math.hypot(x1 - x0, z1 - z0);
+    const hops = Math.max(1, Math.min(3, Math.round(cells)));
+    const hopLen = dist / hops;
+    const H = pitch * (0.12 + 0.05 * Math.min(2, hopLen / pitch));
+    const hopDur = dur / hops;
+    let lastTrail = -1;
+    tw.add(
+      dur,
+      (t) => {
+        const f = Math.min(hops - 1e-6, t * hops);
+        const k = Math.floor(f);
+        const u = f - k;
+        const p = (k + u) / hops;
+        v.x = x0 + (x1 - x0) * p;
+        v.z = z0 + (z1 - z0) * p;
+        v.moveDir = [ux, uz];
+        v.lift = H * 4 * u * (1 - u);
+        // Stretch along the flight velocity; compressed around each contact.
+        const vy = (1 - 2 * u) * (4 * H) / Math.max(0.02, hopDur);
+        const vh = hopLen / Math.max(0.02, hopDur);
+        const vl = Math.hypot(vh, vy) || 1;
+        const contact = Math.max(0, 1 - Math.min(u, 1 - u) / 0.13);
+        const stretch = 0.46 * (1 - contact) - 0.2 * contact;
+        v.squash = contact > 0.55 ? { axis: [0, 1, 0], amount: stretch } : { axis: [(ux * vh) / vl, vy / vl, (uz * vh) / vl], amount: stretch };
+        // The mouth opens on the leading side toward the stop (the sketch's black crescent).
+        v.mouth = smoothstep(0.3, 0.75, t) * (final ? 1 : 0.7);
+        if (r.now - lastTrail > 0.035 && u > 0.1 && u < 0.9) {
+          lastTrail = r.now;
+          r.fx.trail(v.x, v.centerY + v.lift * 0.2, v.z, ux, uz, v.radius, k % 2 ? v.genome.rimColor : v.genome.baseColor, v.id * 7 + k);
+        }
+      },
+      { delay, ease: linear },
+    );
+    if (!final) return;
+    // Stop: the jelly keeps going (compression along the motion, a forward fan of droplets), the mouth
+    // snaps shut, then the spring wobbles it out.
+    tw.add(
+      0.16,
+      (t) => {
+        v.lift = 0;
+        v.squash = { axis: [ux, 0, uz], amount: -0.36 * (1 - easeOut(t)) };
+        v.mouth = 1 - easeOut(Math.min(1, t * 1.6));
+      },
+      {
+        delay: delay + dur,
+        ease: linear,
+        done: () => {
+          v.squash = null;
+          v.mouth = 0;
+          r.blobs.driver.impulse(v.id, [ux, 0.35, uz], 0.9);
+          v.jiggle = 1;
+        },
+      },
+    );
+    tw.after(delay + dur, () => {
+      const g = v.genome;
+      r.fx.splatFan(v.x, r.layout.top + v.radius * 0.35, v.z, ux, uz, v.radius, [g.baseColor, g.rimColor, g.highlightColor], v.id);
+    });
+  }
+
+  /** Walker travel: position eased by body type (heavies overshoot and stumble), the drive does the rest. */
+  private walkRun(v: BlobVisual, x0: number, z0: number, x1: number, z1: number, ux: number, uz: number, cells: number, dur: number, delay: number): void {
+    const r = this.r;
+    const tw = this.tw;
+    const pitch = r.layout.pitch;
+    const dx = x1 - x0;
+    const dz = z1 - z0;
+    if (v.body === 'heavy') {
+      const os = Math.min(0.16, 0.08 + 0.025 * cells) * pitch;
+      tw.add(
+        dur,
+        (t) => {
+          const m = easeWalk(Math.min(1, t / 0.84));
+          const h = t > 0.62 ? Math.sin((Math.PI * (t - 0.62)) / 0.38) : 0;
+          v.x = x0 + dx * m + ux * os * h;
+          v.z = z0 + dz * m + uz * os * h;
+          v.moveDir = [ux, uz];
+        },
+        { delay, ease: linear },
+      );
+      // It catches itself: a stumble, a thud and some dust.
+      tw.add(0.46, (t) => (v.stumble = Math.sin(Math.PI * t) * 0.85), { delay: delay + dur * 0.78, ease: linear, done: () => (v.stumble = 0) });
+      tw.after(delay + dur * 0.8, () => {
+        r.kick(0.1 + 0.03 * Math.min(4, v.tier - 7));
+        r.particles.burst('spore', r.now, v.x + ux * v.radius * 0.6, r.layout.top + 0.04, v.z + uz * v.radius * 0.6, 7, { up: 0.35, spread: 0.8, life: 0.7, size: 0.07, colors: [r.palette.soil, r.palette.paper], seed: v.id });
+      });
+      return;
+    }
+    tw.add(
+      dur,
+      (t) => {
+        const m = easeWalk(t);
+        v.x = x0 + dx * m;
+        v.z = z0 + dz * m;
+        v.moveDir = [ux, uz];
+      },
+      { delay, ease: linear },
+    );
+  }
+
+  // ---------------------------------------------------------------------------------------- merges
+
+  /**
+   * The Creatures v3 merge move of the mover's body type (leap toward the camera and devour, coil and
+   * swallow, stomp, splash), sampled through the board's time warp: the mover and its partner follow the
+   * sample, the move's events fire the splashes. Null when this build has no such move.
+   */
+  private playGenomeMove(m: BlobVisual, s: BlobVisual | undefined, from: [number, number], to: [number, number], dir: [number, number], tA: number, tier: number): MergeTimes | null {
+    const r = this.r;
+    const tw = this.tw;
+    const kind = mergeMoveKind(m.body);
+    const yaw = Math.atan2(dir[0], dir[1]);
+    const cam = r.blobs.cameraLocal;
+    const cx = cam.x - from[0];
+    const cy = cam.y - r.layout.top;
+    const cz = cam.z - from[1];
+    const cl = Math.hypot(cx, cy, cz) || 1;
+    const move = genomeMergeMove(
+      kind,
+      { from, yaw, scale: m.fit, mass: m.spec?.motion.mass ?? 1, bounce: m.spec?.motion.bounce ?? 0.75, bodyType: m.body, timeScale: 1 },
+      { x: to[0], z: to[1], radius: Math.max(0.12, s?.radius ?? 0.25) },
+      { height: r.layout.pitch * (1.3 + 0.08 * Math.min(5, Math.max(0, tier - 5))), camera: [cx / cl, cy / cl, cz / cl], thickness: (m.spec?.skeleton.width ?? 0.9) * m.fit },
+    );
+    if (!move) return null;
+    const { warp, swallowAt, contactAt } = mergeWarp(move);
+    let smp: MoveSampleLike | null = null;
+    let prevTm = -1;
+    let hit = false;
+    const onEvent = (ev: MoveEventLike): void => {
+      if (!hit && (ev.type === 'contact' || ev.type === 'splash' || ev.type === 'stomp')) {
+        hit = true;
+        if (kind === 'stompMerge') {
+          r.kick(0.55 + 0.08 * Math.min(4, Math.max(0, tier - 7)));
+          r.fx.plateWave(this.tw, 0, to[0], to[1], 1.2);
+        }
+      } else if (ev.type === 'launch' && m.drive) {
+        r.particles.burst('spore', r.now, m.x, r.layout.top + 0.03, m.z, 6, { up: 0.35, spread: 0.7, life: 0.6, size: 0.06, colors: [r.palette.soil, r.palette.paper], seed: m.id });
+      } else if (ev.type === 'bite') m.rig?.poke(0.6);
+    };
+    tw.add(
+      swallowAt,
+      (u) => {
+        const tm = warp(u * swallowAt);
+        smp = move.sample(tm, smp ?? undefined);
+        move.forEachEvent(prevTm, tm, onEvent);
+        prevTm = tm;
+        const q = smp;
+        m.x = q.x;
+        m.z = q.z;
+        m.lift = q.lift;
+        m.mouth = q.mouth;
+        m.jiggle = Math.max(m.jiggle, q.jiggle);
+        if (m.drive) {
+          m.yawTarget = q.yaw;
+          m.yawDirect = true;
+          m.pitch = q.pitch;
+          m.pitchBlend = 1;
+          m.crouch = q.crouch;
+          m.coil = 0;
+          m.bulge = q.bulge;
+          m.trumpet = q.trumpet;
+          m.squash = { axis: [q.squashAxis[0], q.squashAxis[1], q.squashAxis[2]], amount: q.squash * 0.6 };
+        } else {
+          const ddx = to[0] - q.x;
+          const ddz = to[1] - q.z;
+          const dl = Math.hypot(ddx, ddz);
+          if (dl > 1e-3) m.moveDir = [ddx / dl, ddz / dl];
+          m.squash = { axis: [q.squashAxis[0], q.squashAxis[1], q.squashAxis[2]], amount: q.squash };
+        }
+        const p = q.partner;
+        if (s && p) {
+          s.x = p.x;
+          s.z = p.z;
+          s.lift = p.lift;
+          s.pop = p.visible ? Math.max(0.001, p.scale) : 0.001;
+          s.labelAlpha = p.scale;
+          s.squash = s.drive ? null : { axis: [0, 1, 0], amount: p.squash };
+        }
+      },
+      { delay: tA, ease: linear },
+    );
+    const impact = tA + contactAt;
+    this.impactFx(impact, to, s ?? m, m, tier, kind === 'stompMerge' ? 'stomp' : kind === 'coilSwallow' ? 'coil' : kind === 'splashMerge' ? 'splash' : 'leap');
+    return { impact, swap: tA + swallowAt };
+  }
+
+  /** Blob mover: one last bouncy hop into the partner, mouth wide — splash crown, ripples, ink; the bodies melt. */
+  private mergeSplash(m: BlobVisual, s: BlobVisual | undefined, from: [number, number], to: [number, number], dir: [number, number], tA: number, tier: number): MergeTimes {
+    const r = this.r;
+    const tw = this.tw;
+    const pitch = r.layout.pitch;
+    const hop = 0.17;
+    const H = pitch * 0.2;
+    const [ux, uz] = dir;
+    tw.add(
+      hop,
+      (t) => {
+        m.x = from[0] + (to[0] - from[0]) * t * 0.85;
+        m.z = from[1] + (to[1] - from[1]) * t * 0.85;
+        m.lift = H * 4 * t * (1 - t);
+        m.moveDir = [ux, uz];
+        const vy = (1 - 2 * t) * 2;
+        const vl = Math.hypot(1, vy);
+        m.squash = { axis: [ux / vl, vy / vl, uz / vl], amount: 0.5 * Math.sin(Math.PI * Math.min(1, t * 1.1)) };
+        m.mouth = 0.6 + 0.4 * smoothstep(0, 0.5, t);
+      },
+      { delay: tA, ease: linear },
+    );
+    const impact = tA + hop;
+    if (s) {
+      // The partner braces, then takes the hit.
+      tw.add(0.14, (t) => (s.squash = s.drive ? null : { axis: [0, 1, 0], amount: 0.14 * Math.sin(Math.PI * t) }), { delay: impact - 0.14, ease: linear });
+      tw.add(0.22, (t) => {
+        s.squash = s.drive ? null : { axis: [ux, 0, uz], amount: -0.48 * Math.sin(Math.PI * t) };
+        s.pop = 1 + 0.16 * Math.sin(Math.PI * t);
+      }, { delay: impact, ease: linear });
+    }
+    tw.add(
+      0.15,
+      (t) => {
+        m.x = to[0] - ux * pitch * 0.07 * (1 - t);
+        m.z = to[1] - uz * pitch * 0.07 * (1 - t);
+        m.lift = 0;
+        m.pop = Math.max(0.001, 1 - 0.95 * easeIn(t));
+        m.squash = { axis: [0, 1, 0], amount: -0.5 * t };
+        m.mouth = 1 - t;
+        m.labelAlpha = 1 - t;
+      },
+      { delay: impact, ease: linear },
+    );
+    this.impactFx(impact, to, s ?? m, m, tier, 'splash');
+    return { impact, swap: impact + 0.17 };
+  }
+
+  /** Walkers: crouch, leap up toward the camera (the shadow shrinks), mouth ripped open, dive and devour. */
+  private mergeLeap(m: BlobVisual, s: BlobVisual | undefined, from: [number, number], to: [number, number], tA: number, tier: number): MergeTimes {
+    const r = this.r;
+    const tw = this.tw;
+    const pitch = r.layout.pitch;
+    const crouch = 0.08;
+    const rise = 0.22;
+    const hang = 0.05;
+    const dive = 0.13;
+    const H = pitch * (1.25 + 0.12 * Math.min(5, Math.max(0, tier - 5)));
+    // Apex: above the partner, drawn a little toward the camera.
+    const cam = r.blobs.cameraLocal;
+    let cx = cam.x - to[0];
+    let cz = cam.z - to[1];
+    const cl = Math.hypot(cx, cz) || 1;
+    cx /= cl;
+    cz /= cl;
+    const apex: [number, number] = [to[0] + cx * pitch * 0.35, to[1] + cz * pitch * 0.35];
+    const faceCam = Math.atan2(cx, cz);
+    tw.add(crouch, (t) => { m.crouch = easeOut(t); m.mouth = 0; }, { delay: tA, ease: linear });
+    tw.add(
+      rise,
+      (t) => {
+        const e = easeOutCubic(t);
+        m.x = from[0] + (apex[0] - from[0]) * e;
+        m.z = from[1] + (apex[1] - from[1]) * e;
+        m.lift = H * e;
+        m.crouch = 1 - Math.min(1, t * 3);
+        m.pitch = -0.95 * e;
+        m.pitchBlend = e;
+        m.yawTarget = faceCam;
+        m.mouth = smoothstep(0.3, 0.85, t);
+      },
+      { delay: tA + crouch, ease: linear },
+    );
+    tw.add(hang, (t) => { m.lift = H + pitch * 0.04 * Math.sin(Math.PI * t); m.mouth = 1; }, { delay: tA + crouch + rise, ease: linear });
+    const t3 = tA + crouch + rise + hang;
+    tw.add(
+      dive,
+      (t) => {
+        const e = easeIn(t);
+        m.x = apex[0] + (to[0] - apex[0]) * e;
+        m.z = apex[1] + (to[1] - apex[1]) * e;
+        m.lift = H * (1 - e);
+        m.pitch = -0.95 + 1.6 * easeInOut(t);
+        m.pitchBlend = 1;
+        m.mouth = 1;
+      },
+      { delay: t3, ease: linear },
+    );
+    const impact = t3 + dive;
+    if (s) {
+      // The partner looks up (a small squash) and is gulped down on impact.
+      tw.add(0.2, (t) => { s.crouch = Math.sin(Math.PI * t) * 0.5; s.squash = s.drive ? null : { axis: [0, 1, 0], amount: -0.12 * Math.sin(Math.PI * t) }; }, { delay: impact - 0.24, ease: linear });
+      tw.add(0.12, (t) => { s.pop = Math.max(0.001, 1 - easeIn(t)); s.squash = s.drive ? null : { axis: [0, 1, 0], amount: -0.5 * t }; s.labelAlpha = 1 - t; }, { delay: impact - 0.02, ease: linear });
+    }
+    // Landing: chew, straighten up.
+    tw.add(
+      0.26,
+      (t) => {
+        m.lift = 0;
+        m.x = to[0];
+        m.z = to[1];
+        m.mouth = 0.75 * (1 - t) * (0.5 + 0.5 * Math.cos(t * Math.PI * 5));
+        m.pitch = 0.65 * (1 - t);
+        m.pitchBlend = 1 - easeOut(t);
+      },
+      { delay: impact, ease: linear, done: () => { m.mouth = 0; m.pitchBlend = 0; } },
+    );
+    this.impactFx(impact, to, s ?? m, m, tier, 'leap');
+    return { impact, swap: impact + 0.15 };
+  }
+
+  /** Snake: slithers around the partner, coils about it, then swallows it head first. */
+  private mergeCoil(m: BlobVisual, s: BlobVisual | undefined, from: [number, number], to: [number, number], tA: number, tier: number): MergeTimes {
+    const tw = this.tw;
+    const wrapD = 0.3;
+    const swallow = 0.24;
+    const hug = s ? s.radius / Math.max(0.02, m.fit) + 0.55 : 1.4;
+    tw.add(
+      wrapD,
+      (t) => {
+        const e = easeInOut(t);
+        m.x = from[0] + (to[0] - from[0]) * e;
+        m.z = from[1] + (to[1] - from[1]) * e;
+        m.coil = e;
+        m.coilRadius = hug;
+        m.mouth = smoothstep(0.55, 1, t);
+      },
+      { delay: tA, ease: linear },
+    );
+    const impact = tA + wrapD;
+    if (s) {
+      tw.add(
+        swallow,
+        (t) => {
+          const e = easeIn(t);
+          // Toward the snake's head (inner end of the coil), shrinking into its mouth.
+          const d = m.drive;
+          const yaw = d?.yaw ?? 0;
+          const hx = -Math.cos(yaw) * hug * m.fit * 0.8;
+          const hz = Math.sin(yaw) * hug * m.fit * 0.8;
+          s.x = to[0] + hx * e;
+          s.z = to[1] + hz * e;
+          s.pop = Math.max(0.001, 1 - e);
+          s.labelAlpha = 1 - t;
+          s.squash = s.drive ? null : { axis: [0, 1, 0], amount: 0.3 * e };
+        },
+        { delay: impact, ease: linear },
+      );
+    }
+    tw.add(
+      swallow + 0.12,
+      (t) => {
+        m.pop = 1 + 0.14 * Math.sin(Math.PI * t);
+        m.mouth = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+      },
+      { delay: impact, ease: linear, done: () => { m.mouth = 0; } },
+    );
+    this.impactFx(impact, to, s ?? m, m, tier, 'coil');
+    return { impact, swap: impact + swallow };
+  }
+
+  /** Heavy: rears up and stomps the partner flat — dust ring, plate wave, shake. */
+  private mergeStomp(m: BlobVisual, s: BlobVisual | undefined, from: [number, number], to: [number, number], dir: [number, number], tA: number, tier: number): MergeTimes {
+    const r = this.r;
+    const tw = this.tw;
+    const pitch = r.layout.pitch;
+    const rear = 0.17;
+    const slam = 0.1;
+    const lift = pitch * 0.3;
+    const [ux, uz] = dir;
+    const mid: [number, number] = [from[0] + (to[0] - from[0]) * 0.35, from[1] + (to[1] - from[1]) * 0.35];
+    const land: [number, number] = [to[0] - ux * pitch * 0.12, to[1] - uz * pitch * 0.12];
+    tw.add(
+      rear,
+      (t) => {
+        const e = easeOut(t);
+        m.x = from[0] + (mid[0] - from[0]) * e;
+        m.z = from[1] + (mid[1] - from[1]) * e;
+        m.lift = lift * e;
+        m.pitch = -0.45 * e;
+        m.pitchBlend = 1;
+        m.crouch = t < 0.25 ? t / 0.25 : Math.max(0, 1 - (t - 0.25) * 3);
+        m.mouth = 0.6 * e;
+      },
+      { delay: tA, ease: linear },
+    );
+    tw.add(
+      slam,
+      (t) => {
+        const e = easeIn(t);
+        m.x = mid[0] + (land[0] - mid[0]) * e;
+        m.z = mid[1] + (land[1] - mid[1]) * e;
+        m.lift = lift * (1 - e);
+        m.pitch = -0.45 + 0.75 * e;
+      },
+      { delay: tA + rear, ease: linear },
+    );
+    const impact = tA + rear + slam;
+    tw.add(0.4, (t) => { m.pitch = 0.3 * (1 - t); m.pitchBlend = 1 - easeOut(t); m.stumble = Math.sin(Math.PI * t) * 0.6; m.mouth = 0.6 * (1 - t); m.x = land[0] + (to[0] - land[0]) * easeOut(t); m.z = land[1] + (to[1] - land[1]) * easeOut(t); }, { delay: impact, ease: linear, done: () => { m.pitchBlend = 0; m.stumble = 0; m.mouth = 0; } });
+    if (s) {
+      tw.add(0.16, (t) => { s.squash = s.drive ? null : { axis: [0, 1, 0], amount: -0.62 * easeOut(t) }; s.pop = Math.max(0.001, 1 - 0.85 * t); s.labelAlpha = 1 - t; }, { delay: impact - 0.01, ease: linear });
+    }
+    tw.after(impact, () => {
+      r.kick(0.55 + 0.08 * Math.min(4, Math.max(0, tier - 7)));
+      r.fx.plateWave(this.tw, 0, to[0], to[1], 1.2);
+    });
+    this.impactFx(impact, to, s ?? m, m, tier, 'stomp');
+    return { impact, swap: impact + 0.18 };
+  }
+
+  /** Splashes of an impact, scaled by the result tier: crown, droplet arcs, ripple rings, ink splats, spores or dust. */
+  private impactFx(at: number, to: [number, number], s: BlobVisual, m: BlobVisual, tier: number, style: 'splash' | 'leap' | 'coil' | 'stomp'): void {
+    const r = this.r;
+    const tw = this.tw;
+    const fx = r.fx;
+    const pal = r.palette;
+    const size = Math.max(0.18, s.radius);
+    const g = s.genome;
+    const colors = [g.baseColor, g.rimColor, m.genome.baseColor, pal.paper];
+    const seed = s.id * 13 + m.id;
+    const k = 0.85 + 0.08 * Math.min(6, tier);
+    if (style === 'stomp') {
+      fx.dust(tw, at, to[0], to[1], size * k, seed);
+      fx.inkSplats(tw, at, to[0], to[1], size * 1.1, seed, 5, pal.soilDeep);
+      tw.after(at, () => r.emitJuice('merge'));
+      return;
+    }
+    fx.crown(tw, at, to[0], to[1], size * (style === 'coil' ? 0.8 : 1.0) * k, colors, seed, style === 'leap' ? 1.25 : 1);
+    fx.ripple(tw, at + 0.02, to[0], to[1], size * 0.9, size * (1.6 + 0.08 * Math.min(6, tier)), style === 'coil' ? g.rimColor : pal.paper, tier >= 6 ? 2 : 1);
+    fx.inkSplats(tw, at + 0.03, to[0], to[1], size, seed, style === 'splash' ? 4 : 5);
+    tw.after(at + 0.05, () => r.particles.burst('spore', r.now, to[0], r.layout.top + size * 1.4, to[1], 8 + Math.min(8, tier), { up: 1.0, spread: 0.6, life: 1.1, size: 0.065, colors: [pal.neon, g.highlightColor, pal.paper], seed: seed + 3, ring: size * 0.5 }));
+    tw.after(at, () => {
+      r.kick(0.18 + 0.04 * Math.min(6, tier));
+      r.emitJuice('merge');
+    });
+  }
+
+  /** Droplets and spores when the child pops out of the merge. */
+  private mergeBurst(target: [number, number], child: BlobVisual, tier: number): void {
     const r = this.r;
     const pal = r.palette;
-    // Droplets spray outward from the body's waist, spores rise from its crown — both start outside the body.
-    const rad = settled.scale;
+    const rad = child.radius;
     const waist = r.layout.top + rad * 0.7;
-    r.particles.burst('droplet', r.now, target[0], waist, target[1], 10 + Math.min(10, tier * 2), { up: 2.0 + tier * 0.1, spread: 1.5, life: 0.8, size: 0.075, colors: [settled.genome.baseColor, settled.genome.rimColor, pal.paper], seed: settled.id, ring: rad * 1.05 });
-    r.particles.burst('spore', r.now, target[0], r.layout.top + rad * 2.1, target[1], 6 + Math.min(6, tier), { up: 1.0, spread: 0.55, life: 1.2, size: 0.065, colors: [pal.neon, settled.genome.highlightColor, pal.paper], seed: settled.id + 3, ring: rad * 0.4 });
-    r.emitJuice('merge');
+    r.particles.burst('droplet', r.now, target[0], waist, target[1], 8 + Math.min(10, tier * 2), { up: 1.8 + tier * 0.1, spread: 1.3, life: 0.75, size: 0.07, colors: [child.genome.baseColor, child.genome.rimColor, pal.paper], seed: child.id, ring: rad * 1.05 });
   }
 
   private popOut(v: BlobVisual, delay: number, id: number): void {
@@ -740,7 +1284,7 @@ export class BoardTimeline {
       },
       { delay, ease: easeIn, done: () => r.blobs.removeVisual(v.id, r.props) },
     );
-    this.tw.after(delay, () => r.particles.burst('droplet', r.now, v.x, v.centerY, v.z, 12, { up: 2.0, spread: 1.5, life: 0.75, size: 0.07, colors: [v.genome.baseColor, pal.paper], seed: id, ring: v.scale * 1.05 }));
+    this.tw.after(delay, () => r.particles.burst('droplet', r.now, v.x, v.centerY, v.z, 12, { up: 2.0, spread: 1.5, life: 0.75, size: 0.07, colors: [v.genome.baseColor, pal.paper], seed: id, ring: v.radius * 1.05 }));
   }
 
   private popIn(p: PropInstance, duration: number): void {
@@ -804,5 +1348,41 @@ export class BoardTimeline {
       }
     }
     return best;
+  }
+
+  /**
+   * Depart: the creature leaves its cell for the plateau rim at `edge` in its own style (hop chain, walk,
+   * slither, plod) and crouches there. Tagged 'exit'. Returns the time it stands at the rim.
+   */
+  exit(v: BlobVisual, edge: [number, number]): number {
+    const r = this.r;
+    const base = r.tweens;
+    this.tw = { add: (d, a, o: TweenOptions = {}) => base.add(d, a, { ...o, tag: 'exit' }), after: (sec, fn) => base.after(sec, fn, 'exit') };
+    const tw = this.tw;
+    const x0 = v.x;
+    const z0 = v.z;
+    const dx = edge[0] - x0;
+    const dz = edge[1] - z0;
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-4) return 0;
+    const ux = dx / len;
+    const uz = dz / len;
+    const cells = len / r.layout.pitch;
+    const travel = travelTime(v.body, cells, v.tier) * 1.15;
+    let lead = 0;
+    if (v.drive) {
+      const yaw = Math.atan2(ux, uz);
+      lead = 0.1;
+      v.yawTarget = yaw;
+      this.walkRun(v, x0, z0, edge[0], edge[1], ux, uz, cells, travel, lead);
+    } else {
+      lead = 0.06;
+      tw.add(lead, (t) => { v.moveDir = [ux, uz]; v.squash = { axis: [ux, 0, uz], amount: -0.24 * easeOut(t) }; }, { ease: linear });
+      this.hopRun(v, x0, z0, edge[0], edge[1], ux, uz, cells, travel, lead, false);
+    }
+    const at = lead + travel;
+    // Crouch at the rim before the jump (the hero takes over for the arc).
+    tw.add(0.12, (t) => { v.crouch = easeOut(t); v.lift = 0; v.squash = v.drive ? null : { axis: [0, 1, 0], amount: -0.3 * easeOut(t) }; v.mouth = 0; }, { delay: at, ease: linear });
+    return at + 0.12;
   }
 }

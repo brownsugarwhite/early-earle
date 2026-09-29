@@ -121,6 +121,11 @@ export class BoardPlateau {
     this.build();
   }
 
+  /** Radius of the top outline around (0, centerZ) in direction (cos θ, sin θ) of the x/z plane. */
+  rimRadius(cos: number, sin: number): number {
+    return this.outline(cos, sin);
+  }
+
   /** Radius of the organic top outline in direction (cos θ, sin θ) (rounded superellipse + wobble). */
   private outline(cos: number, sin: number): number {
     const { halfX, halfZ } = this.shape;

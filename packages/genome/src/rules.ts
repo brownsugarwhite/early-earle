@@ -8,7 +8,7 @@
  */
 import { z } from 'zod';
 import type { ZoneId } from './genome';
-import { BODY_TYPES, SKIN_PATTERNS, type BodyType } from './types';
+import { BODY_TYPES, LEG_STYLES, MATERIAL_KINDS, SKIN_PATTERNS, SPECIES, SPECIES_BODY, type BodyType, type Species } from './types';
 
 export const SLOT_IDS = ['eye', 'horn', 'ear', 'trunk', 'tooth', 'wing', 'leg', 'tail', 'crest'] as const;
 export type SlotId = (typeof SLOT_IDS)[number];
@@ -59,6 +59,8 @@ export const AssetRuleSchema = z.object({
   chain: z.boolean().default(false),
   /** Face count from the export manifest (informational). */
   faces: z.number().int().min(0).optional(),
+  /** Built in code (render/creature/ProceduralModules: ear flaps, bills, frills, rope tails), no GLB. */
+  procedural: z.boolean().default(false),
 });
 export type AssetRule = z.infer<typeof AssetRuleSchema>;
 
@@ -142,6 +144,42 @@ export const BodyRuleSchema = z.object({
 });
 export type BodyRule = z.infer<typeof BodyRuleSchema>;
 
+/**
+ * Species rule (Kreaturen v3): how often a line of an archetype grows into this species, the parts that
+ * make its silhouette (replacing the archetype's guaranteed parts slot by slot), its legs (kneaded from
+ * the body or the leg modules), its colours (species colour over the tier palette) and its skin.
+ */
+export const SpeciesRuleSchema = z.object({
+  /** Share among the species of the same archetype (per zone and seed). */
+  weight: z.number().min(0).max(10).default(1),
+  /** Guaranteed parts; a slot listed here replaces the archetype's part for that slot. */
+  parts: z.array(UnlockSchema).default([]),
+  /** Slots the species never wears (on top of the archetype's `drop`). */
+  drop: z.array(z.enum(SLOT_IDS)).default([]),
+  /** `sdf` = legs kneaded from the body (stumps that step with the gait), `module` = the leg assets. */
+  legs: z.enum(LEG_STYLES).default('sdf'),
+  /** Species body colour (sRGB) blended over the tier palette by `tint` (0 = tier colours only). */
+  color: Hex.optional(),
+  /** Second colour: ears, frills, beak, tail tip (module material "Accent"). */
+  accent: Hex.optional(),
+  tint: Unit.default(0.75),
+  /**
+   * Body material of the species at every tier (its identity: the elephant stays grey skin, the REX pink
+   * with spikes). Default jelly — the species' skin and coat carry the look; the tier's material
+   * progression (liquid → gas → fire) is the blob line's. A zone can override it (`speciesMaterial`).
+   */
+  material: z.enum(MATERIAL_KINDS).optional(),
+  /** Multipliers on the archetype's mass / tempo and on the world size. */
+  mass: z.number().min(0.1).max(5).default(1),
+  tempo: z.number().min(0.2).max(3).default(1),
+  size: z.number().min(0.5).max(2).default(1),
+  /** Skin overrides (else the archetype's coat / patterns apply). */
+  coat: z.object({ fur: Unit.default(0), feather: Unit.default(0) }).optional(),
+  patterns: z.array(z.enum(SKIN_PATTERNS)).optional(),
+  patternChance: Unit.optional(),
+});
+export type SpeciesRule = z.infer<typeof SpeciesRuleSchema>;
+
 /** Per-zone override of when/how often an archetype appears. */
 export const ZoneBodyOverrideSchema = z.object({
   fromTier: Tier.optional(),
@@ -162,6 +200,8 @@ export const ZoneRulesSchema = z.object({
   tiers: z.record(z.string().regex(/^\d+$/), TierRuleSchema).default({}),
   /** Archetype overrides for this zone (earlier snakes in Luzz, later REX in Wooding …). */
   bodies: z.partialRecord(z.enum(BODY_TYPES), ZoneBodyOverrideSchema).prefault({}),
+  /** Zone specials: a species' material in this zone (e.g. a fire REX in Wooding) — never a tier rule. */
+  speciesMaterial: z.partialRecord(z.enum(SPECIES), z.enum(MATERIAL_KINDS)).prefault({}),
 });
 export type ZoneRules = z.infer<typeof ZoneRulesSchema>;
 
@@ -210,6 +250,8 @@ export const GenomeRulesSchema = z
     inheritance: InheritanceSchema.prefault({}),
     /** Archetype rules; missing archetypes use `DEFAULT_BODY_RULES` (old files stay valid). */
     bodies: z.partialRecord(z.enum(BODY_TYPES), BodyRuleSchema).prefault({}),
+    /** Species rules (v3); missing species use `DEFAULT_SPECIES_RULES`. */
+    species: z.partialRecord(z.enum(SPECIES), SpeciesRuleSchema).prefault({}),
   })
   .superRefine((rules, ctx) => {
     const assetIds = new Set(Object.keys(rules.assets));
@@ -219,6 +261,15 @@ export const GenomeRulesSchema = z
           const asset = rules.assets[v];
           if (!asset) ctx.addIssue({ code: 'custom', path: ['bodies', type, 'parts', ui, 'variants', vi], message: `unknown asset "${v}"` });
           else if (asset.slot !== u.slot) ctx.addIssue({ code: 'custom', path: ['bodies', type, 'parts', ui, 'variants', vi], message: `asset "${v}" is a ${asset.slot}, not a ${u.slot}` });
+        });
+      });
+    }
+    for (const [sp, sr] of Object.entries(rules.species)) {
+      sr?.parts.forEach((u, ui) => {
+        u.variants.forEach((v, vi) => {
+          const asset = rules.assets[v];
+          if (!asset) ctx.addIssue({ code: 'custom', path: ['species', sp, 'parts', ui, 'variants', vi], message: `unknown asset "${v}"` });
+          else if (asset.slot !== u.slot) ctx.addIssue({ code: 'custom', path: ['species', sp, 'parts', ui, 'variants', vi], message: `asset "${v}" is a ${asset.slot}, not a ${u.slot}` });
         });
       });
     }
@@ -341,4 +392,133 @@ export function bodyRuleFor(rules: GenomeRules, zone: ZoneId, type: BodyType): B
     .map((u) => ({ ...u, variants: u.variants.filter((v) => rules.assets[v]?.slot === u.slot) }))
     .filter((u) => u.variants.length > 0);
   return { ...base, parts, fromTier: over?.fromTier ?? base.fromTier, weight: over?.weight ?? base.weight };
+}
+
+const part = (slot: (typeof SLOT_IDS)[number], variants: string[], count = 1): UnlockRule => ({ slot, variants, count, chance: 1 });
+
+/**
+ * Built-in species rules (Florian's sketch 08). Parts are procedural modules (render/creature) or Blender
+ * assets; colours are the sketch's: grey elephant, yellow giraffe with rust patches, golden retriever,
+ * grey mouse with pink ears and tail, yellow duck with an orange bill, pink REX.
+ */
+export const DEFAULT_SPECIES_RULES: Readonly<Record<Species, SpeciesRule>> = {
+  blob: { weight: 1, parts: [], drop: [], legs: 'sdf', tint: 0, mass: 1, tempo: 1, size: 1 },
+  snake: { weight: 1, parts: [], drop: [], legs: 'sdf', tint: 0, mass: 1, tempo: 1, size: 1 },
+  retriever: {
+    weight: 1,
+    parts: [part('eye', ['eye_cute', 'eye_round'], 2), part('ear', ['ear_dog'], 2), part('trunk', ['nose_dot']), part('tail', ['tail_plume'])],
+    drop: ['horn', 'wing', 'crest', 'tooth'],
+    legs: 'sdf',
+    color: '#efc25a',
+    accent: '#f8dfa0',
+    tint: 0.8,
+    mass: 1,
+    tempo: 1.05,
+    size: 1,
+    coat: { fur: 0.9, feather: 0 },
+    patterns: ['retriever'],
+    patternChance: 1,
+  },
+  mouse: {
+    weight: 0.8,
+    parts: [part('eye', ['eye_cute', 'eye_round'], 2), part('ear', ['ear_mouse'], 2), part('trunk', ['nose_dot']), part('tail', ['tail_mouse'])],
+    drop: ['horn', 'wing', 'crest', 'tooth'],
+    legs: 'sdf',
+    color: '#c9cbd4',
+    accent: '#e6a0c8',
+    tint: 0.85,
+    mass: 0.55,
+    tempo: 1.35,
+    size: 0.8,
+    coat: { fur: 0.9, feather: 0 },
+    patterns: ['mouse'],
+    patternChance: 1,
+  },
+  giraffe: {
+    weight: 0.8,
+    parts: [part('eye', ['eye_round', 'eye_cute'], 2), part('horn', ['horn_ossicone'], 2), part('ear', ['ear_pointy'], 2), part('tail', ['tail_rope'])],
+    drop: ['wing', 'crest', 'tooth', 'trunk'],
+    legs: 'sdf',
+    color: '#f2c85c',
+    accent: '#a8702c',
+    tint: 0.85,
+    mass: 1.25,
+    tempo: 0.8,
+    size: 1,
+    coat: { fur: 0, feather: 0 },
+    patterns: ['giraffe'],
+    patternChance: 0.7,
+  },
+  rex: {
+    weight: 1,
+    parts: [part('eye', ['eye_round', 'eye_reptile'], 2), part('crest', ['crest_frill'], 2), part('tooth', ['tooth_row', 'tooth_fang'])],
+    drop: ['wing', 'trunk', 'tail', 'ear', 'horn'],
+    legs: 'sdf',
+    color: '#d65ce4',
+    accent: '#9d36b0',
+    tint: 0.85,
+    mass: 1.1,
+    tempo: 1,
+    size: 1.1,
+    coat: { fur: 0, feather: 0 },
+    patterns: ['rex'],
+    patternChance: 1,
+  },
+  duck: {
+    weight: 0.8,
+    parts: [part('eye', ['eye_cute', 'eye_round'], 2), part('trunk', ['beak_duck']), part('tail', ['tail_duck'])],
+    drop: ['horn', 'ear', 'crest', 'tooth', 'wing'],
+    legs: 'sdf',
+    color: '#f3c94f',
+    accent: '#dc8f2a',
+    tint: 0.85,
+    mass: 0.7,
+    tempo: 1.1,
+    size: 0.85,
+    coat: { fur: 0, feather: 0.25 },
+    patterns: [],
+    patternChance: 0,
+  },
+  elephant: {
+    weight: 1,
+    parts: [part('eye', ['eye_sleepy', 'eye_round'], 2), part('ear', ['ear_flap'], 2), part('tail', ['tail_rope'])],
+    drop: ['horn', 'wing', 'crest', 'trunk', 'tooth'],
+    legs: 'sdf',
+    color: '#8e9ba8',
+    accent: '#6c7884',
+    tint: 0.85,
+    mass: 1,
+    tempo: 1,
+    size: 1.15,
+    coat: { fur: 0, feather: 0 },
+    patterns: ['elephant'],
+    patternChance: 1,
+  },
+};
+
+/** Species rule with defaults; assets the file does not know are filtered out of its parts. */
+export function speciesRuleFor(rules: GenomeRules, species: Species): SpeciesRule {
+  const base = rules.species[species] ?? DEFAULT_SPECIES_RULES[species];
+  const parts = base.parts
+    .map((u) => ({ ...u, variants: u.variants.filter((v) => rules.assets[v]?.slot === u.slot) }))
+    .filter((u) => u.variants.length > 0);
+  return { ...base, parts };
+}
+
+/**
+ * Species of a line of `bodyType`: weighted pick among the archetype's species with `u` ∈ [0, 1) (the
+ * caller hashes zone and seed, so a line keeps its animal across tiers).
+ */
+export function speciesForLine(rules: GenomeRules, bodyType: BodyType, u: number): Species {
+  const list = SPECIES.filter((sp) => SPECIES_BODY[sp] === bodyType);
+  if (list.length === 0) return 'blob';
+  const weights = list.map((sp) => Math.max(0, speciesRuleFor(rules, sp).weight));
+  const total = weights.reduce((a, b) => a + b, 0);
+  if (total <= 0) return list[0]!;
+  let x = u * total;
+  for (let i = 0; i < list.length; i++) {
+    x -= weights[i]!;
+    if (x < 0) return list[i]!;
+  }
+  return list[list.length - 1]!;
 }

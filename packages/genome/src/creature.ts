@@ -12,8 +12,11 @@ import { buildBody, type BodySkeleton, type LegRole } from './body';
 import { mixHex, shiftHex } from './color';
 import { paletteFor, scaleForTier, type BlobPalette, type PaletteOverride, type ZoneId } from './genome';
 import { hash32, makeRng } from './rng';
-import { PERSONALITY_TRAITS, SLOT_IDS, bodyRuleFor, type BodyRule, type FrameRef, type GenomeRules, type MaterialFamily, type PersonalityTrait, type SlotId, type UnlockRule, type Verb } from './rules';
-import { BODY_TYPES, type BlobParams, type BodyType, type Coat, type MaterialKind, type SkinPattern } from './types';
+import { PERSONALITY_TRAITS, SLOT_IDS, bodyRuleFor, speciesForLine, speciesRuleFor, type BodyRule, type FrameRef, type GenomeRules, type MaterialFamily, type PersonalityTrait, type SlotId, type SpeciesRule, type UnlockRule, type Verb } from './rules';
+import { BODY_TYPES, SPECIES_BODY, type BlobParams, type BodyType, type Coat, type LegStyle, type MaterialKind, type SkinPattern, type Species, type Vec3 } from './types';
+
+/** Virtual asset id of a leg kneaded from the body SDF (no module is drawn; the body spheres are the leg). */
+export const SDF_LEG_ASSET = 'leg_sdf';
 
 export type Personality = Record<PersonalityTrait, number>;
 
@@ -54,6 +57,10 @@ export interface CreatureGenome {
   material?: MaterialKind;
   /** Explicit body archetype; omit to follow the rules' archetype thresholds. */
   bodyType?: BodyType;
+  /** Explicit species (implies its archetype); omit to pick per zone/seed among the archetype's species. */
+  species?: Species;
+  /** Leg style override (lab/editor preview); omit for the species rule's choice. */
+  legs?: LegStyle;
   genes?: Partial<CosmeticGenes>;
 }
 
@@ -89,6 +96,8 @@ export interface PartSpec {
   role: LegRole | null;
   /** Knee bend direction for legs (+1 forward, −1 backward). */
   knee: 1 | -1;
+  /** Leg kneaded from the body SDF (asset `leg_sdf`): nothing to draw, the body spheres step. */
+  sdf?: boolean;
 }
 
 export type GaitKind = 'hop' | 'walk' | 'trot' | 'stomp' | 'slither' | 'waddle';
@@ -115,6 +124,9 @@ export interface CreatureSpec {
   tier: number;
   material: MaterialKind;
   bodyType: BodyType;
+  species: Species;
+  /** Kneaded SDF legs or leg modules. */
+  legStyle: LegStyle;
   /** Body parameters; the painted eye is hidden when eye modules are attached. */
   body: BlobParams;
   skeleton: BodySkeleton;
@@ -285,19 +297,38 @@ function matches(part: { asset: string; slot: SlotId }, ref: string): boolean {
   return part.asset === ref || part.slot === ref;
 }
 
-function gaitFor(bodyType: BodyType, seed: number | string): GaitKind {
-  switch (bodyType) {
+function gaitFor(species: Species, seed: number | string): GaitKind {
+  switch (species) {
     case 'snake':
       return 'slither';
-    case 'quadruped':
-      return makeRng(hash32('gait', seed)).next() < 0.4 ? 'trot' : 'walk';
-    case 'biped':
+    case 'retriever':
+      return makeRng(hash32('gait', seed)).next() < 0.5 ? 'trot' : 'walk';
+    case 'mouse':
+      return 'trot';
+    case 'giraffe':
+      return 'walk';
+    case 'rex':
       return 'stomp';
-    case 'heavy':
+    case 'duck':
+    case 'elephant':
       return 'waddle';
     default:
       return 'hop';
   }
+}
+
+/** Species colours over the tier palette (fire keeps its flames). */
+function speciesPalette(p: BlobPalette, rule: SpeciesRule, material: MaterialKind): BlobPalette {
+  const c = rule.color;
+  const k = material === 'fire' ? 0 : material === 'gas' ? rule.tint * 0.7 : rule.tint;
+  if (!c || k <= 0) return p;
+  return {
+    baseColor: mixHex(p.baseColor, c, k),
+    innerColor: mixHex(p.innerColor, shiftHex(c, 4, 0.55, 1.05), k),
+    rimColor: mixHex(p.rimColor, shiftHex(c, -6, 1.2, 0.8), k),
+    highlightColor: p.highlightColor,
+    bubbleColor: mixHex(p.bubbleColor, shiftHex(c, 0, 1.25, 0.6), k),
+  };
 }
 
 export interface ResolveOptions {
@@ -313,30 +344,77 @@ export function resolveCreature(genome: CreatureGenome, rules: GenomeRules, opts
   const zone = genome.zone;
   const tier = Math.max(1, Math.round(genome.tier));
   const seed = genome.seed;
-  const material = genome.material ?? materialForTierRules(rules, zone, tier);
   const zr = rules.zones[zone];
-  const bodyType = genome.bodyType ?? (opts.archetypes ? bodyTypeForTier(rules, zone, tier, seed) : 'blob');
+  const bodyType = genome.bodyType ?? (genome.species ? SPECIES_BODY[genome.species] : opts.archetypes ? bodyTypeForTier(rules, zone, tier, seed) : 'blob');
   const bodyRule = bodyRuleFor(rules, zone, bodyType);
+  const species: Species = genome.species && SPECIES_BODY[genome.species] === bodyType ? genome.species : speciesForLine(rules, bodyType, makeRng(hash32('species', zone, seed, bodyType)).next());
+  const speciesRule = speciesRuleFor(rules, species);
+  // Material: the blob line follows the zone's tier thresholds (jelly → liquid → gas → fire); animals keep
+  // their species identity at every tier (skin and coat carry the look), unless a zone special says otherwise.
+  const material: MaterialKind = genome.material ?? (species === 'blob' ? materialForTierRules(rules, zone, tier) : (zr.speciesMaterial?.[species] ?? speciesRule.material ?? 'jelly'));
+  const legStyle: LegStyle = genome.legs ?? speciesRule.legs;
 
   // --- body & palette ------------------------------------------------------------------------
-  const build = buildBody(bodyType, zone, tier, seed, material);
+  const build = buildBody(bodyType, zone, tier, seed, material, { species, legs: legStyle });
   let body = build.params;
   const skeleton = build.skeleton;
   const override: PaletteOverride = {};
   if (zr.ramp) override.ramp = zr.ramp;
   if (zr.hueShift !== undefined) override.hueShift = zr.hueShift;
-  const palette = zr.ramp || zr.hueShift !== undefined ? paletteFor(zone, tier, material, override) : paletteFor(zone, tier, material);
+  const tierPalette = zr.ramp || zr.hueShift !== undefined ? paletteFor(zone, tier, material, override) : paletteFor(zone, tier, material);
+  const palette = speciesPalette(tierPalette, speciesRule, material);
   body = { ...body, ...palette };
+  // Animals read as solid bodies (the sketch's flat colours): fewer organs and bubbles than a blob.
+  if (species !== 'blob') body = { ...body, translucency: body.translucency * 0.35, bubbleDensity: body.bubbleDensity * 0.3 };
 
   const genes = mergeGenes(genesFor(rules, seed), genome.genes);
   const { slots, grow } = activeUnlocks(rules, zone, tier, seed);
   const guaranteed = new Map<SlotId, UnlockRule>();
   for (const u of bodyRule.parts) guaranteed.set(u.slot, u);
+  // The species' parts make its silhouette: they replace the archetype's part slot by slot.
+  for (const u of speciesRule.parts) guaranteed.set(u.slot, u);
+  const dropped = new Set<SlotId>([...bodyRule.drop, ...speciesRule.drop]);
+  guaranteed.forEach((_u, slot) => {
+    if (speciesRule.parts.some((u) => u.slot === slot)) dropped.delete(slot);
+  });
+  const sdfLegs = legStyle === 'sdf' && skeleton.legs.length > 0;
 
   // --- parts -----------------------------------------------------------------------------------
   const parts: PartSpec[] = [];
   for (const slot of SLOT_IDS) {
-    if (bodyRule.drop.includes(slot)) continue;
+    if (dropped.has(slot)) continue;
+    // Kneaded legs: one virtual part per leg (roles, knees, the `leg` slot toggle), nothing is drawn.
+    if (slot === 'leg' && sdfLegs) {
+      const slotRule = rules.slots[slot];
+      skeleton.structural.forEach((st, index) => {
+        parts.push({
+          id: `leg:${SDF_LEG_ASSET}:${index}`,
+          slot: 'leg',
+          asset: SDF_LEG_ASSET,
+          index,
+          count: skeleton.structural.length,
+          theta: st.theta,
+          phi: st.phi,
+          mirror: st.mirror,
+          ref: st.ref,
+          tilt: st.tilt,
+          roll: st.roll,
+          sink: st.sink,
+          scale: 1,
+          tint: null,
+          family: 'jelly',
+          chain: false,
+          verbs: slotRule?.verbs ?? [],
+          carried: false,
+          since: Math.min(tier, Math.max(1, bodyRule.fromTier)),
+          anchor: st.anchor,
+          role: st.role,
+          knee: st.knee,
+          sdf: true,
+        });
+      });
+      continue;
+    }
     const forced = guaranteed.get(slot);
     const active: ActiveSlot | undefined = forced ? { unlock: forced, since: Math.min(tier, Math.max(1, bodyRule.fromTier)) } : slots.get(slot);
     if (!active) continue;
@@ -352,12 +430,16 @@ export function resolveCreature(genome: CreatureGenome, rules: GenomeRules, opts
     const asset = carried ? carried.asset : u.variants[Math.floor(slotRng.next() * u.variants.length)]!;
     const assetRule = rules.assets[asset];
     if (!assetRule) continue;
-    const socket = rules.sockets[slot];
+    // Species placement (the top-down design) over the rule socket.
+    const place = skeleton.sockets[slot];
+    const socket = place
+      ? { ...rules.sockets[slot], theta: place.theta, phi: place.phi, tilt: place.tilt ?? rules.sockets[slot].tilt, spread: place.spread ?? rules.sockets[slot].spread, sink: place.sink ?? rules.sockets[slot].sink, mirror: place.mirror ?? rules.sockets[slot].mirror }
+      : rules.sockets[slot];
     const slotRule = rules.slots[slot];
     const tintSource = slotRule?.tint ?? 'inner';
     const baseTint = tintFor(tintSource, palette, rules, zone);
     const structural = skeleton.structural.filter((s) => s.slot === slot);
-    const anchorId = skeleton.slotAnchor[slot] ?? 'core';
+    const anchorId = place?.anchor ?? skeleton.slotAnchor[slot] ?? 'core';
     const anchor = skeleton.anchors[anchorId];
     const count = structural.length > 0 ? structural.length : u.count;
 
@@ -406,14 +488,17 @@ export function resolveCreature(genome: CreatureGenome, rules: GenomeRules, opts
       const bias = 0.5 + 0.3 * genes.scaleJitter + rng.range(-0.15, 0.15);
       const growth = 1 + 0.08 * (tier - active.since);
       let scale = clamp(lerp(smin, smax, clamp(bias, 0, 1)) * growth, smin, smax * 1.6);
-      // Legs of the big archetypes scale with the body so the animal stands as tall as it is long.
-      if (slot === 'leg' && st) scale *= bodyType === 'heavy' ? 1.5 : bodyType === 'biped' ? 1.15 : 1.05;
+      // Leg modules scale with the body so the animal stands about as tall as with its kneaded legs (the
+      // rig fits the module length to the species' hip height, see CreatureMotion.legDefsFor).
+      if (slot === 'leg' && st) scale *= bodyType === 'heavy' ? 1.3 : bodyType === 'biped' ? 1.1 : 1;
       // Modules are authored for the blob body (radius ≈ 1): parts on a smaller anchor sphere (a head,
       // a snout, a rump) scale with it, so eyes stay smaller than the head they sit on.
       else if (partAnchor >= 0) {
         const anchorR = body.spheres[partAnchor]?.r ?? 1;
         scale *= clamp(anchorR / 0.8, 0.5, 1.15);
       }
+
+      if (place?.scale !== undefined && !(slot === 'leg' && st)) scale *= place.scale;
 
       let tint: string | null = baseTint;
       if (tint && assetRule.tintable) tint = shiftHex(tint, genes.tintShift + rng.range(-3, 3));
@@ -458,19 +543,28 @@ export function resolveCreature(genome: CreatureGenome, rules: GenomeRules, opts
   }
 
   const paintedEye = !kept.some((p) => p.slot === 'eye');
-  // Eye modules replace the painted slit: point it at the flat base (below the floor cut). Not exactly
-  // straight down — the shader's eye frame takes cross(up, dir) and must not degenerate to NaN.
-  if (!paintedEye) body = { ...body, eye: { ...body.eye, dir: [0.02, -1, 0.05] } };
+  // Eye modules replace the painted slit: it shrinks to nothing but keeps pointing at the face, because the
+  // body shader takes its forward axis from the eye (stripes wrap across the spine, the pattern lattice
+  // has its poles at face and tail, fur is combed back from the face). Not exactly straight ahead — the
+  // shader's eye frame takes cross(up, dir) and must not degenerate.
+  if (!paintedEye) {
+    const cap = faceCapFor({ body, parts: kept });
+    const d = cap ? cap.dir : ([0, 0.2, 1] as Vec3);
+    const l = Math.hypot(d[0], d[1] * 0.5, d[2]) || 1;
+    body = { ...body, eye: { dir: [d[0] / l + 0.001, (d[1] * 0.5) / l, d[2] / l], size: 0.0001, spacing: 0 } };
+  }
 
   const personality = genes.personality;
-  const skin = skinFor(bodyRule, zone, seed, bodyType, material, skeleton, genes);
+  // Skin: the species' coat/patterns win over the archetype's (retriever fur, giraffe patches).
+  const skinRule: BodyRule = { ...bodyRule, coat: speciesRule.coat ?? bodyRule.coat, patterns: speciesRule.patterns ?? bodyRule.patterns, patternChance: speciesRule.patternChance ?? bodyRule.patternChance };
+  const skin = skinFor(skinRule, zone, seed, bodyType, material, skeleton, genes);
   const motion: MotionTraits = {
     bodyType,
-    gait: gaitFor(bodyType, seed),
-    mass: bodyRule.mass * personality.heft * (1 + 0.12 * (tier - 1)),
+    gait: gaitFor(species, seed),
+    mass: bodyRule.mass * speciesRule.mass * personality.heft * (1 + 0.12 * (tier - 1)),
     stiffness: clamp(0.25 + 0.5 * body.viscosity + 0.25 * personality.squashHardness, 0, 1),
     bounce: clamp(bodyRule.bounce * personality.bounce, 0, 1),
-    tempo: bodyRule.tempo * personality.idleTempo,
+    tempo: bodyRule.tempo * speciesRule.tempo * personality.idleTempo,
     clumsy: bodyRule.clumsy,
   };
 
@@ -480,11 +574,13 @@ export function resolveCreature(genome: CreatureGenome, rules: GenomeRules, opts
     tier,
     material,
     bodyType,
+    species,
+    legStyle,
     body,
     skeleton,
     motion,
     skin,
-    worldScale: scaleForTier(tier) * grow,
+    worldScale: scaleForTier(tier) * grow * speciesRule.size,
     parts: kept,
     personality,
     genes,
@@ -492,10 +588,65 @@ export function resolveCreature(genome: CreatureGenome, rules: GenomeRules, opts
     constants: {
       ink: tintFor('ink', palette, rules, zone)!,
       bone: tintFor('bone', palette, rules, zone)!,
-      accent: tintFor('accent', palette, rules, zone)!,
+      accent: speciesRule.accent ? mixHex(tintFor('accent', palette, rules, zone)!, speciesRule.accent, material === 'fire' ? 0.3 : 0.9) : tintFor('accent', palette, rules, zone)!,
     },
     paintedEye,
   };
+}
+
+/** Face mask of a creature (rest space, from the main sphere's centre): a cap over its eye modules. */
+export interface FaceCap {
+  dir: Vec3;
+  radius: number;
+}
+
+/**
+ * The face cap the body shader keeps clear of patterns and fur so the eyes read (`BlobDynamics.face`):
+ * the mean eye direction seen from sphere 0 and the angular radius that covers both eyes plus a halo.
+ * Null for painted eyes (the renderer derives the cap from the slit itself).
+ */
+export function faceCapFor(spec: Pick<CreatureSpec, 'body' | 'parts'> & Partial<Pick<CreatureSpec, 'skeleton' | 'skin'>>): FaceCap | null {
+  const eyes = spec.parts.filter((p) => p.slot === 'eye');
+  const s0 = spec.body.spheres[0];
+  if (eyes.length === 0 || !s0) return null;
+  const pts: Vec3[] = [];
+  for (const e of eyes) {
+    const a = e.anchor >= 0 ? spec.body.spheres[e.anchor] : undefined;
+    const c = a ? a.center : ([0, 0, 0] as Vec3);
+    const r = a ? a.r : 1;
+    const cp = Math.cos(e.phi);
+    pts.push([c[0] + Math.sin(e.theta) * cp * r - s0.center[0], c[1] + Math.sin(e.phi) * r - s0.center[1], c[2] + Math.cos(e.theta) * cp * r - s0.center[2]]);
+  }
+  const m: Vec3 = [0, 0, 0];
+  for (const p of pts) {
+    const l = Math.hypot(p[0], p[1], p[2]) || 1;
+    m[0] += p[0] / l;
+    m[1] += p[1] / l;
+    m[2] += p[2] / l;
+  }
+  const ml = Math.hypot(m[0], m[1], m[2]) || 1;
+  const dir: Vec3 = [m[0] / ml, m[1] / ml, m[2] / ml];
+  let radius = 0;
+  for (const p of pts) {
+    const l = Math.hypot(p[0], p[1], p[2]) || 1;
+    const ang = Math.acos(Math.max(-1, Math.min(1, (p[0] * dir[0] + p[1] * dir[1] + p[2] * dir[2]) / l)));
+    // Eye size seen from the main sphere (≈ 0.18 blob units per eye) plus a halo.
+    radius = Math.max(radius, ang + Math.atan2(0.26, l));
+  }
+  radius = Math.min(1.3, radius + 0.08);
+  // Coated animals (fur, feathers): the whole head stays clear of the coat, so it reads as one clean round
+  // shape against the fluffy body from above (the sketch's retriever and mouse).
+  const hs = spec.skeleton?.anchors.head ?? -1;
+  const head = hs >= 0 && spec.skin && spec.skin.coat !== 'bare' ? spec.body.spheres[hs] : undefined;
+  if (head && hs !== 0) {
+    const hx = head.center[0] - s0.center[0];
+    const hy = head.center[1] - s0.center[1];
+    const hz = head.center[2] - s0.center[2];
+    const hl = Math.hypot(hx, hy, hz) || 1;
+    const ang = Math.acos(Math.max(-1, Math.min(1, (hx * dir[0] + hy * dir[1] + hz * dir[2]) / hl)));
+    radius = Math.min(1.3, Math.max(radius, ang + Math.asin(Math.min(0.95, (head.r * 1.15) / hl))));
+  }
+  return { dir, radius };
 }
 
 /**
@@ -545,10 +696,13 @@ export function inherit(a: CreatureGenome, b: CreatureGenome, rules: GenomeRules
   }
   const child: CreatureGenome = { zone: a.zone, tier, seed, genes: childGenes };
   if (a.material && a.material === b.material) child.material = a.material;
-  // Archetype: a parent's body carries on when the rules allow it at the child's tier; a blob parent
-  // keeps the door open for the rule pick (metamorphosis at the threshold tiers).
-  const parentType = rng.next() < 0.5 ? sa.bodyType : sb.bodyType;
-  if (parentType !== 'blob' && bodyRuleFor(rules, a.zone, parentType).fromTier <= tier) child.bodyType = parentType;
+  // Archetype: a parent's body (and its species) carries on when the rules allow it at the child's tier;
+  // a blob parent keeps the door open for the rule pick (metamorphosis at the threshold tiers).
+  const parent = rng.next() < 0.5 ? sa : sb;
+  if (parent.bodyType !== 'blob' && bodyRuleFor(rules, a.zone, parent.bodyType).fromTier <= tier) {
+    child.bodyType = parent.bodyType;
+    child.species = parent.species;
+  }
   return child;
 }
 
@@ -561,7 +715,7 @@ export function describeInheritance(child: CreatureSpec, a: CreatureSpec, b: Cre
   }
   lines.push(`Tönung ${child.genes.tintShift.toFixed(0)}° (A ${a.genes.tintShift.toFixed(0)}°, B ${b.genes.tintShift.toFixed(0)}°)`);
   lines.push(`Skalen-Gen ${child.genes.scaleJitter.toFixed(2)}`);
-  if (child.bodyType !== 'blob') lines.push(`Körper ${child.bodyType}${child.genome.bodyType ? ' (vererbt)' : ''}`);
+  if (child.bodyType !== 'blob') lines.push(`Körper ${child.species}${child.genome.bodyType ? ' (vererbt)' : ''}`);
   if (child.skin.pattern !== 'none') lines.push(`Muster ${child.skin.pattern}${child.genes.pattern ? ' (vererbt)' : ''}`);
   if (child.skin.coat !== 'bare') lines.push(`${child.skin.coat === 'fur' ? 'Fell' : 'Federn'}${child.genes.coat ? ' (vererbt)' : ''}`);
   return lines;

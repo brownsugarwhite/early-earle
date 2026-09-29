@@ -44,6 +44,8 @@ export class GridLabScene implements SceneController {
     this.sun.root.position.set(0, 0, 0);
     this.scene.add(this.sun.root);
     this.sun.light.shadow.camera.layers.enable(BOARD_SHADOW_LAYER);
+    // Shadows v2: camera-fitted cascades over the flat stage (the board-focus fit still defines the coverage).
+    this.sun.fitToView(this.camera, { plane: { minHeight: -1, maxHeight: 2 } });
 
     const store = useGridStore;
     if (!store.getState().state) store.getState().loadLevel(0);
@@ -65,8 +67,11 @@ export class GridLabScene implements SceneController {
     const zone = this.zoneOf();
     let board = this.boards.get(zone);
     if (!board) {
-      const octaves = useAppStore.getState().effectiveQuality === 'mobil' ? 1 : 2;
-      board = new LevelBoard(zone, { octaves, creatures: 'all' });
+      const mobil = useAppStore.getState().effectiveQuality === 'mobil';
+      const octaves = mobil ? 1 : 2;
+      // Raymarched REX/snake/giraffe bodies on WebGPU in the Hoch preset; Mobil draws mesh bodies only.
+      const raymarch = !mobil && this.ctx?.backend === 'webgpu';
+      board = new LevelBoard(zone, { octaves, creatures: 'all', raymarch });
       board.onLoaded = () => {
         this.frameCamera();
         this.fitShadow();
@@ -130,7 +135,8 @@ export class GridLabScene implements SceneController {
     const aspect = cam.aspect;
     const tanV = Math.tan((cam.fov * Math.PI) / 360);
     const tanH = tanV * aspect;
-    const pitch = aspect < 1 ? 1.02 : 0.98; // camera elevation (rad): portrait looks down a bit steeper
+    // Creatures read from above: ≈ 67° down in portrait, 63° on desktop (slight perspective stays).
+    const pitch = aspect < 1 ? 1.17 : 1.1;
     // Share of the screen height above the HUD (lab controls: tall sheet on phones, one strip on desktop).
     const usable = aspect < 1 ? 0.56 : 0.78;
     const breathe = aspect < 1 ? 1.06 : 1.16;
@@ -164,10 +170,12 @@ export class GridLabScene implements SceneController {
         this.shadowDirty = false;
       }
     }
-    // Screen-space shake: nudge the camera along its own axes for this frame only.
+    // Screen-space shake and zoom punch: nudge the camera along its own axes for this frame only.
     const sh = board?.shake;
-    if (sh && (sh.x !== 0 || sh.y !== 0)) {
-      _v.set(sh.x * 3, sh.y * 3, 0).applyQuaternion(this.camera.getWorldQuaternion(_q));
+    const punch = board?.zoomPunch ?? 0;
+    if (sh && (sh.x !== 0 || sh.y !== 0 || punch > 0)) {
+      const dolly = punch * 0.07 * this.camera.position.length();
+      _v.set(sh.x * 3, sh.y * 3, -dolly).applyQuaternion(this.camera.getWorldQuaternion(_q));
       this.camera.position.add(_v);
       ctx.renderer.render(this.scene, this.camera);
       this.camera.position.sub(_v);
