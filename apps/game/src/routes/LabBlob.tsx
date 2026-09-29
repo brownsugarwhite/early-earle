@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { genomeFor, MATERIAL_KINDS, type MaterialKind } from '@ee/genome';
+import { genomeFor } from '@ee/genome';
+import { BLOB_MATERIAL_KINDS, BLOB_MATERIAL_LABELS, PATTERN_KINDS, PATTERN_LABELS, type BlobMaterialKind, type PatternKind } from '@ee/render';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { useAppStore } from '../state/store';
 import { LabFrame } from '../overlay/LabFrame';
-import { BlobLabScene, DEFAULT_BLOB_LAB_SETTINGS, resolveQuality, sceneOptionsFromSearch, type BlobCount, type BlobLabSettings, type Candidate, type DriverKind, type Quality } from '../lab/blob/BlobLabScene';
+import { BlobLabScene, DEFAULT_BLOB_LAB_SETTINGS, genomeMaterialFor, resolveQuality, sceneOptionsFromSearch, type BlobCount, type BlobLabSettings, type Candidate, type DriverKind, type LabSheet, type Quality } from '../lab/blob/BlobLabScene';
 import { BenchOverlay, useBlobBench } from '../lab/blob/BlobBench';
 import '../lab/blob/blobLab.css';
 
@@ -23,6 +24,13 @@ const QUALITIES: Array<{ id: Quality; label: string }> = [
   { id: 'mobile', label: 'Mobil' },
   { id: 'auto', label: 'Auto' },
 ];
+const MATERIALS: Array<{ id: BlobMaterialKind | 'auto'; label: string }> = [{ id: 'auto', label: 'auto' }, ...BLOB_MATERIAL_KINDS.map((m) => ({ id: m, label: BLOB_MATERIAL_LABELS[m] }))];
+const PATTERNS: Array<{ id: PatternKind; label: string }> = PATTERN_KINDS.map((p) => ({ id: p, label: PATTERN_LABELS[p] }));
+const SHEETS: Array<{ id: LabSheet; label: string }> = [
+  { id: 'off', label: 'aus' },
+  { id: 'patterns', label: 'Muster 3×3' },
+  { id: 'materials', label: 'Materialien 3×3' },
+];
 
 function Seg<T extends string | number>({ label, value, options, onChange, testId }: { label: string; value: T; options: Array<{ id: T; label: string }>; onChange: (v: T) => void; testId: string }) {
   return (
@@ -37,9 +45,9 @@ function Seg<T extends string | number>({ label, value, options, onChange, testI
   );
 }
 
-function Slider({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void }) {
+function Slider({ label, value, min, max, step, onChange, testId }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; testId?: string }) {
   return (
-    <label className="blob-lab-slider">
+    <label className="blob-lab-slider" data-testid={testId}>
       <span className="blob-lab-label">{label}</span>
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
       <output>{value.toFixed(2)}</output>
@@ -58,7 +66,7 @@ export function LabBlob() {
   const bench = useBlobBench(benchMode, controller, applyPatch);
 
   // Genome defaults for the sliders follow tier/material; overrides stay null until touched.
-  const genome = useMemo(() => genomeFor('tjorizo', settings.tier, 7, settings.material === 'auto' ? undefined : settings.material), [settings.tier, settings.material]);
+  const genome = useMemo(() => genomeFor('tjorizo', settings.tier, 7, genomeMaterialFor(settings.material)), [settings.tier, settings.material]);
 
   useEffect(() => {
     controller.onInfo = setInfo;
@@ -86,24 +94,24 @@ export function LabBlob() {
   }, [controller, settings]);
 
   const set = (patch: Partial<BlobLabSettings>) => setSettings((s) => ({ ...s, ...patch }));
+  const passesOn = settings.passes && resolveQuality(settings.quality) === 'high';
 
   const controls = (
     <div className="blob-lab-controls" data-testid="blob-lab-controls">
       <Seg label="Kandidat" value={settings.candidate} options={CANDIDATES} onChange={(candidate) => set({ candidate, pose: 'board' })} testId="ctl-candidate" />
       <Seg label="Blobs" value={settings.count} options={COUNTS.map((c) => ({ id: c, label: String(c) }))} onChange={(count) => set({ count, pose: 'board' })} testId="ctl-count" />
-      <Seg
-        label="Material"
-        value={settings.material}
-        options={[{ id: 'auto' as const, label: 'auto' }, ...MATERIAL_KINDS.map((m) => ({ id: m, label: m }))]}
-        onChange={(material: MaterialKind | 'auto') => set({ material })}
-        testId="ctl-material"
-      />
+      <Seg label="Material" value={settings.material} options={MATERIALS} onChange={(material) => set({ material })} testId="ctl-material" />
+      <Seg label="Muster" value={settings.pattern} options={PATTERNS} onChange={(pattern) => set({ pattern })} testId="ctl-pattern" />
+      <Seg label="Bogen" value={settings.sheet} options={SHEETS} onChange={(sheet) => set({ sheet, count: sheet === 'off' ? settings.count : 9, pose: 'board' })} testId="ctl-sheet" />
       <Seg label="Stufe" value={settings.tier} options={[1, 2, 3, 4, 5, 6, 7, 8].map((t) => ({ id: t, label: String(t) }))} onChange={(tier) => set({ tier })} testId="ctl-tier" />
       <Seg label="Physik" value={settings.driver} options={DRIVERS} onChange={(driver) => set({ driver })} testId="ctl-driver" />
       <Seg label="Qualität" value={settings.quality} options={QUALITIES} onChange={(quality) => set({ quality })} testId="ctl-quality" />
       <div className="blob-lab-row">
         <button type="button" className="blob-lab-btn" data-kind="action" onClick={() => controller.impulse()} data-testid="btn-squash">
           Squash-Impuls
+        </button>
+        <button type="button" className="blob-lab-btn" data-kind="action" onClick={() => controller.ripple()} data-testid="btn-ripple">
+          Ripple
         </button>
         <button type="button" className="blob-lab-btn" data-kind="action" onClick={() => controller.mergeTwo() && setInfo((i) => ({ ...i, merging: true }))} data-testid="btn-merge">
           Zwei verschmelzen
@@ -113,13 +121,33 @@ export function LabBlob() {
           className="blob-lab-btn"
           data-kind="action"
           data-active={settings.pose === 'screenshot3'}
-          onClick={() => set({ candidate: 'a', count: 1, tier: 1, material: 'jelly', pose: 'screenshot3', sminK: null, noiseAmp: null, gloss: null, translucency: null })}
+          onClick={() => set({ candidate: 'a', count: 1, tier: 1, material: 'jelly', pose: 'screenshot3', sminK: null, noiseAmp: null, gloss: null, translucency: null, pattern: 'none', earleTest: false })}
           data-testid="btn-pose"
         >
           Screenshot-3-Pose
         </button>
+        <button
+          type="button"
+          className="blob-lab-btn"
+          data-kind="action"
+          data-active={settings.earleTest}
+          onClick={() =>
+            settings.earleTest
+              ? set({ earleTest: false, pattern: 'none', stipple: 0, rimDots: 0, patternContrast: 0.8 })
+              : set({ earleTest: true, material: 'jelly', pattern: 'diamonds', patternContrast: 1, patternScale: 1, stipple: 0.85, rimDots: 1, pose: 'board', gloss: null, translucency: null })
+          }
+          data-testid="btn-earle"
+        >
+          Earle-Test
+        </button>
+        <button type="button" className="blob-lab-btn" data-kind="action" data-active={settings.pose === 'close'} onClick={() => set({ pose: settings.pose === 'close' ? 'board' : 'close', count: 1, sheet: 'off' })} data-testid="btn-close">
+          Nah
+        </button>
+        <button type="button" className="blob-lab-btn" data-active={settings.passes} onClick={() => set({ passes: !settings.passes })} data-testid="btn-passes">
+          Fell-Shells/Feder-Karten {passesOn ? 'an' : 'aus'}
+        </button>
         <span className="blob-lab-info" data-testid="blob-lab-info">
-          {info.blobs} Blobs · (b) {controller.vertexCountB} Vertices · Qualität {resolveQuality(settings.quality) === 'mobile' ? 'Mobil' : 'Hoch'} · {info.merging ? 'verschmilzt…' : 'ruhig'}
+          {info.blobs} Blobs · (b) {controller.vertexCountB} Vertices · Fell {controller.furShells} Shells × {controller.furVertices} Vertices · Qualität {resolveQuality(settings.quality) === 'mobile' ? 'Mobil' : 'Hoch'} · {info.merging ? 'verschmilzt…' : 'ruhig'}
         </span>
       </div>
       <div className="blob-lab-row">
@@ -130,6 +158,12 @@ export function LabBlob() {
         <button type="button" className="blob-lab-btn" onClick={() => set({ sminK: null, noiseAmp: null, gloss: null, translucency: null })}>
           Genom-Werte
         </button>
+      </div>
+      <div className="blob-lab-row" data-testid="ctl-pattern-sliders">
+        <Slider label="Muster-Skala" value={settings.patternScale} min={0.4} max={2.5} step={0.05} onChange={(patternScale) => set({ patternScale })} testId="sl-pattern-scale" />
+        <Slider label="Kontrast" value={settings.patternContrast} min={0} max={1} step={0.01} onChange={(patternContrast) => set({ patternContrast })} testId="sl-pattern-contrast" />
+        <Slider label="Stipple" value={settings.stipple} min={0} max={1} step={0.01} onChange={(stipple) => set({ stipple })} testId="sl-stipple" />
+        <Slider label="Randpunkte" value={settings.rimDots} min={0} max={1} step={0.01} onChange={(rimDots) => set({ rimDots })} testId="sl-rimdots" />
       </div>
     </div>
   );

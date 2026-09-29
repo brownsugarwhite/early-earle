@@ -14,7 +14,8 @@
         "tintable": false,
         "material_family": "ink",
         "chain": false,
-        "faces": 112
+        "faces": 152,
+        "tris": 260
       }
     },
     {
@@ -30,13 +31,15 @@
         "tintable": false,
         "material_family": "ink",
         "chain": false,
-        "faces": 192
+        "faces": 272,
+        "tris": 464
       }
     },
     {
       "asset": "eye_round",
       "file": "content/genome/assets/eye_round.glb",
       "sockets": [
+        "SOCKET_lid",
         "SOCKET_root.002"
       ],
       "extras": {
@@ -46,13 +49,15 @@
         "tintable": false,
         "material_family": "ink",
         "chain": false,
-        "faces": 256
+        "faces": 394,
+        "tris": 690
       }
     },
     {
       "asset": "eye_spiral",
       "file": "content/genome/assets/eye_spiral.glb",
       "sockets": [
+        "SOCKET_lid.001",
         "SOCKET_root.003"
       ],
       "extras": {
@@ -62,14 +67,69 @@
         "tintable": false,
         "material_family": "ink",
         "chain": false,
-        "faces": 338
+        "faces": 374,
+        "tris": 698
+      }
+    },
+    {
+      "asset": "eye_cute",
+      "file": "content/genome/assets/eye_cute.glb",
+      "sockets": [
+        "SOCKET_lid.002",
+        "SOCKET_root.004"
+      ],
+      "extras": {
+        "slot": "eye",
+        "scale_min": 0.8,
+        "scale_max": 1.5,
+        "tintable": false,
+        "material_family": "ink",
+        "chain": false,
+        "faces": 418,
+        "tris": 726
+      }
+    },
+    {
+      "asset": "eye_sleepy",
+      "file": "content/genome/assets/eye_sleepy.glb",
+      "sockets": [
+        "SOCKET_lid.003",
+        "SOCKET_root.005"
+      ],
+      "extras": {
+        "slot": "eye",
+        "scale_min": 0.8,
+        "scale_max": 1.5,
+        "tintable": false,
+        "material_family": "ink",
+        "chain": false,
+        "faces": 394,
+        "tris": 690
+      }
+    },
+    {
+      "asset": "eye_reptile",
+      "file": "content/genome/assets/eye_reptile.glb",
+      "sockets": [
+        "SOCKET_lid.004",
+        "SOCKET_root.006"
+      ],
+      "extras": {
+        "slot": "eye",
+        "scale_min": 0.8,
+        "scale_max": 1.5,
+        "tintable": false,
+        "material_family": "ink",
+        "chain": false,
+        "faces": 314,
+        "tris": 550
       }
     },
     {
       "asset": "horn_curl",
       "file": "content/genome/assets/horn_curl.glb",
       "sockets": [
-        "SOCKET_root.004",
+        "SOCKET_root.007",
         "SOCKET_tip"
       ],
       "extras": {
@@ -79,14 +139,15 @@
         "tintable": true,
         "material_family": "shell",
         "chain": false,
-        "faces": 68
+        "faces": 360,
+        "tris": 690
       }
     },
     {
       "asset": "horn_spike",
       "file": "content/genome/assets/horn_spike.glb",
       "sockets": [
-        "SOCKET_root.005",
+        "SOCKET_root.008",
         "SOCKET_tip.001"
       ],
       "extras": {
@@ -96,14 +157,15 @@
         "tintable": true,
         "material_family": "shell",
         "chain": false,
-        "faces": 12
+        "faces": 300,
+        "tris": 570
       }
     },
     {
       "asset": "horn_nub",
       "file": "content/genome/assets/horn_nub.glb",
       "sockets": [
-        "SOCKET_root.006",
+        "SOCKET_root.009",
         "SOCKET_tip.002"
       ],
       "extras": {
@@ -113,15 +175,34 @@
         "tintable": true,
         "material_family": "shell",
         "chain": false,
-        "faces": 96
+        "faces": 150,
+        "tris": 280
+      }
+    },
+    {
+      "asset": "horn_ram",
+      "file": "content/genome/assets/horn_ram.glb",
+      "sockets": [
+        "SOCKET_root.010",
+        "SOCKET_tip.003"
+      ],
+      "extras": {
+        "slot": "horn",
+        "scale_min": 0.7,
+        "scale_max": 1.6,
+        "tintable": true,
+        "material_family": "shell",
+        "chain": false,
+        "faces": 396,
+        "tris": 765
       }
     },
     {
       "asset": "ear_round",
       "file": "content/genome/assets/ear_round.glb",
       "sockets": [
-        "SOCKET_root.007",
-        "SOCKET_tip.003"
+        "SOCKET_root.011",
+        "SOCKET_tip.004"
       ],
       "extras": {
         "slot": "ear",
@@ -130,15 +211,16 @@
         "tintable": true,
         "material_family": "jelly",
         "chain": false,
-        "faces": 112
+        "faces": 184,
+        "tris": 316
       }
     },
     {
       "asset": "ear_pointy",
       "file": "content/genome/assets/ear_pointy.glb",
       "sockets": [
-        "SOCKET_root.008",
-        "SOCKET_tip.004"
+        "SOCKET_root.012",
+        "SOCKET_tip.005"
       ],
       "extras": {
         "slot": "ear",
@@ -147,15 +229,16 @@
         "tintable": true,
         "material_family": "jelly",
         "chain": false,
-        "faces": 12
+        "faces": 26,
+        "tris": 80
       }
     },
     {
       "asset": "ear_floppy",
       "file": "content/genome/assets/ear_floppy.glb",
       "sockets": [
-        "SOCKET_root.009",
-        "SOCKET_tip.005"
+        "SOCKET_root.013",
+        "SOCKET_tip.006"
       ],
       "extras": {
         "slot": "ear",
@@ -164,31 +247,15 @@
         "tintable": true,
         "material_family": "jelly",
         "chain": true,
-        "faces": 36
+        "faces": 100,
+        "tris": 160
       }
     },
     {
       "asset": "trunk_short",
       "file": "content/genome/assets/trunk_short.glb",
       "sockets": [
-        "SOCKET_root.010",
-        "SOCKET_tip.006"
-      ],
-      "extras": {
-        "slot": "trunk",
-        "scale_min": 0.8,
-        "scale_max": 1.4,
-        "tintable": true,
-        "material_family": "jelly",
-        "chain": true,
-        "faces": 36
-      }
-    },
-    {
-      "asset": "trunk_long",
-      "file": "content/genome/assets/trunk_long.glb",
-      "sockets": [
-        "SOCKET_root.011",
+        "SOCKET_root.014",
         "SOCKET_tip.007"
       ],
       "extras": {
@@ -198,14 +265,33 @@
         "tintable": true,
         "material_family": "jelly",
         "chain": true,
-        "faces": 60
+        "faces": 390,
+        "tris": 718
+      }
+    },
+    {
+      "asset": "trunk_long",
+      "file": "content/genome/assets/trunk_long.glb",
+      "sockets": [
+        "SOCKET_root.015",
+        "SOCKET_tip.008"
+      ],
+      "extras": {
+        "slot": "trunk",
+        "scale_min": 0.8,
+        "scale_max": 1.4,
+        "tintable": true,
+        "material_family": "jelly",
+        "chain": true,
+        "faces": 416,
+        "tris": 762
       }
     },
     {
       "asset": "tooth_tusk",
       "file": "content/genome/assets/tooth_tusk.glb",
       "sockets": [
-        "SOCKET_root.012"
+        "SOCKET_root.016"
       ],
       "extras": {
         "slot": "tooth",
@@ -214,14 +300,15 @@
         "tintable": false,
         "material_family": "shell",
         "chain": false,
-        "faces": 100
+        "faces": 272,
+        "tris": 512
       }
     },
     {
       "asset": "tooth_row",
       "file": "content/genome/assets/tooth_row.glb",
       "sockets": [
-        "SOCKET_root.013"
+        "SOCKET_root.017"
       ],
       "extras": {
         "slot": "tooth",
@@ -230,31 +317,49 @@
         "tintable": false,
         "material_family": "shell",
         "chain": false,
-        "faces": 24
+        "faces": 192,
+        "tris": 320
+      }
+    },
+    {
+      "asset": "tooth_buck",
+      "file": "content/genome/assets/tooth_buck.glb",
+      "sockets": [
+        "SOCKET_root.018"
+      ],
+      "extras": {
+        "slot": "tooth",
+        "scale_min": 0.8,
+        "scale_max": 1.5,
+        "tintable": false,
+        "material_family": "shell",
+        "chain": false,
+        "faces": 108,
+        "tris": 216
+      }
+    },
+    {
+      "asset": "tooth_fang",
+      "file": "content/genome/assets/tooth_fang.glb",
+      "sockets": [
+        "SOCKET_root.019"
+      ],
+      "extras": {
+        "slot": "tooth",
+        "scale_min": 0.8,
+        "scale_max": 1.6,
+        "tintable": false,
+        "material_family": "shell",
+        "chain": false,
+        "faces": 182,
+        "tris": 336
       }
     },
     {
       "asset": "wing_leaf",
       "file": "content/genome/assets/wing_leaf.glb",
       "sockets": [
-        "SOCKET_root.014",
-        "SOCKET_tip.008"
-      ],
-      "extras": {
-        "slot": "wing",
-        "scale_min": 0.8,
-        "scale_max": 1.8,
-        "tintable": true,
-        "material_family": "membrane",
-        "chain": false,
-        "faces": 11
-      }
-    },
-    {
-      "asset": "wing_bat",
-      "file": "content/genome/assets/wing_bat.glb",
-      "sockets": [
-        "SOCKET_root.015",
+        "SOCKET_root.020",
         "SOCKET_tip.009"
       ],
       "extras": {
@@ -264,15 +369,54 @@
         "tintable": true,
         "material_family": "membrane",
         "chain": false,
-        "faces": 15
+        "faces": 157,
+        "tris": 236
+      }
+    },
+    {
+      "asset": "wing_bat",
+      "file": "content/genome/assets/wing_bat.glb",
+      "sockets": [
+        "SOCKET_root.021",
+        "SOCKET_tip.010"
+      ],
+      "extras": {
+        "slot": "wing",
+        "scale_min": 0.8,
+        "scale_max": 1.8,
+        "tintable": true,
+        "material_family": "membrane",
+        "chain": false,
+        "faces": 154,
+        "tris": 232
+      }
+    },
+    {
+      "asset": "wing_feather",
+      "file": "content/genome/assets/wing_feather.glb",
+      "sockets": [
+        "SOCKET_root.022",
+        "SOCKET_tip.011"
+      ],
+      "extras": {
+        "slot": "wing",
+        "scale_min": 0.8,
+        "scale_max": 1.7,
+        "tintable": true,
+        "material_family": "membrane",
+        "chain": false,
+        "faces": 290,
+        "tris": 420
       }
     },
     {
       "asset": "leg_stub",
       "file": "content/genome/assets/leg_stub.glb",
       "sockets": [
-        "SOCKET_root.016",
-        "SOCKET_tip.010"
+        "SOCKET_foot",
+        "SOCKET_knee",
+        "SOCKET_root.023",
+        "SOCKET_tip.012"
       ],
       "extras": {
         "slot": "leg",
@@ -281,15 +425,18 @@
         "tintable": true,
         "material_family": "jelly",
         "chain": false,
-        "faces": 96
+        "faces": 416,
+        "tris": 678
       }
     },
     {
       "asset": "leg_tall",
       "file": "content/genome/assets/leg_tall.glb",
       "sockets": [
-        "SOCKET_root.017",
-        "SOCKET_tip.011"
+        "SOCKET_foot.001",
+        "SOCKET_knee.001",
+        "SOCKET_root.024",
+        "SOCKET_tip.013"
       ],
       "extras": {
         "slot": "leg",
@@ -298,15 +445,36 @@
         "tintable": true,
         "material_family": "jelly",
         "chain": false,
-        "faces": 96
+        "faces": 416,
+        "tris": 678
+      }
+    },
+    {
+      "asset": "leg_rex",
+      "file": "content/genome/assets/leg_rex.glb",
+      "sockets": [
+        "SOCKET_foot.002",
+        "SOCKET_knee.002",
+        "SOCKET_root.025",
+        "SOCKET_tip.014"
+      ],
+      "extras": {
+        "slot": "leg",
+        "scale_min": 0.8,
+        "scale_max": 1.7,
+        "tintable": true,
+        "material_family": "jelly",
+        "chain": false,
+        "faces": 380,
+        "tris": 606
       }
     },
     {
       "asset": "tail_curl",
       "file": "content/genome/assets/tail_curl.glb",
       "sockets": [
-        "SOCKET_root.018",
-        "SOCKET_tip.012"
+        "SOCKET_root.026",
+        "SOCKET_tip.015"
       ],
       "extras": {
         "slot": "tail",
@@ -315,15 +483,16 @@
         "tintable": true,
         "material_family": "jelly",
         "chain": true,
-        "faces": 36
+        "faces": 280,
+        "tris": 520
       }
     },
     {
       "asset": "tail_tuft",
       "file": "content/genome/assets/tail_tuft.glb",
       "sockets": [
-        "SOCKET_root.019",
-        "SOCKET_tip.013"
+        "SOCKET_root.027",
+        "SOCKET_tip.016"
       ],
       "extras": {
         "slot": "tail",
@@ -332,15 +501,16 @@
         "tintable": true,
         "material_family": "fur",
         "chain": true,
-        "faces": 106
+        "faces": 316,
+        "tris": 551
       }
     },
     {
       "asset": "crest_tuft",
       "file": "content/genome/assets/crest_tuft.glb",
       "sockets": [
-        "SOCKET_root.020",
-        "SOCKET_tip.014"
+        "SOCKET_root.028",
+        "SOCKET_tip.017"
       ],
       "extras": {
         "slot": "crest",
@@ -349,15 +519,16 @@
         "tintable": true,
         "material_family": "jelly",
         "chain": false,
-        "faces": 50
+        "faces": 385,
+        "tris": 700
       }
     },
     {
       "asset": "crest_fin",
       "file": "content/genome/assets/crest_fin.glb",
       "sockets": [
-        "SOCKET_root.021",
-        "SOCKET_tip.015"
+        "SOCKET_root.029",
+        "SOCKET_tip.018"
       ],
       "extras": {
         "slot": "crest",
@@ -366,7 +537,44 @@
         "tintable": true,
         "material_family": "membrane",
         "chain": false,
-        "faces": 13
+        "faces": 139,
+        "tris": 202
+      }
+    },
+    {
+      "asset": "crest_feather",
+      "file": "content/genome/assets/crest_feather.glb",
+      "sockets": [
+        "SOCKET_root.030",
+        "SOCKET_tip.019"
+      ],
+      "extras": {
+        "slot": "crest",
+        "scale_min": 0.8,
+        "scale_max": 1.7,
+        "tintable": true,
+        "material_family": "membrane",
+        "chain": false,
+        "faces": 290,
+        "tris": 420
+      }
+    },
+    {
+      "asset": "crest_fur",
+      "file": "content/genome/assets/crest_fur.glb",
+      "sockets": [
+        "SOCKET_root.031",
+        "SOCKET_tip.020"
+      ],
+      "extras": {
+        "slot": "crest",
+        "scale_min": 0.8,
+        "scale_max": 1.8,
+        "tintable": true,
+        "material_family": "fur",
+        "chain": false,
+        "faces": 280,
+        "tris": 490
       }
     }
   ],

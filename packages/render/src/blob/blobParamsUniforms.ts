@@ -1,7 +1,8 @@
 import { buffer } from 'three/tsl';
 import type { Node } from 'three/webgpu';
-import { BREATH_AMPLITUDE, squashScales, NO_FLOOR, MATERIAL_KIND_ID, type BlobParams, type SpherePrim, type Vec3 } from '@ee/genome';
+import { BREATH_AMPLITUDE, squashScales, NO_FLOOR, type BlobParams, type SpherePrim, type Vec3 } from '@ee/genome';
 import { hexToLinear } from '../common/tsl';
+import { BLOB_MATERIAL_KIND_ID, DEFAULT_FEATHER, DEFAULT_FUR, NO_PATTERN, PATTERN_KIND_ID, type BlobMaterialKind, type BlobRenderParams, type FeatherParams, type FurParams, type PatternParams, type RippleImpulse } from './patterns';
 
 /** Sphere slots per instance on the GPU. Genomes use ≤ 8; a merge union (A ∪ B + droplets) up to 16. */
 export const BLOB_MAX_SPHERES_GPU = 16;
@@ -19,7 +20,7 @@ export const BlobField = {
   BOX: 17, // xyz half extents of the instance box (blob units), w = sphere count
   SHAPE: 18, // sminK, noiseAmp, noiseFreq, breathHz
   SQUASH: 19, // xyz unit axis, w amount
-  MISC: 20, // floorY, taper, detail (1 = inner march + bubbles, 0 = LOD skip), materialKind
+  MISC: 20, // floorY, taper, detail (1 = inner march + bubbles, 0 = LOD skip), materialKind (0..5, see BLOB_MATERIAL_KIND_ID)
   BASE: 21, // rgb base colour, w gloss
   INNER: 22, // rgb inner colour, w translucency
   RIM: 23, // rgb rim colour, w bubbleDensity
@@ -27,6 +28,24 @@ export const BlobField = {
   BUBBLE: 25, // rgb bubble colour, w breath phase
   EYE: 26, // xyz eye direction, w eye size
   ANIM: 27, // jiggleAmp, eyeSpacing, seed, box centre y (blob units; the box is tight around the body)
+} as const;
+
+/**
+ * Second, small uniform buffer per instance ("style block"): pattern, ripple, fur/feather knobs.
+ * Kept apart from the main block so the main block stays under the 16 KB WebGL2 minimum.
+ * 36 × 7 × 16 B = 4 032 B.
+ */
+export const BLOB_STYLE_STRIDE = 7;
+
+/** Slot indices inside one instance of the style block (vec4 units). */
+export const BlobStyleField = {
+  MAT: 0, // patternKind (PATTERN_KIND_ID), patternScale, patternContrast, patternRotation
+  PATTERN_INK: 1, // rgb pattern ink colour, w stipple (0..1)
+  PATTERN_LIGHT: 2, // rgb pattern light colour, w rimDots (0..1)
+  PATTERN_LIGHT2: 3, // rgb second light colour, w spare
+  RIPPLE: 4, // xyz impact direction (rest space, unit), w age in seconds (< 0 = no ripple)
+  FUR: 5, // length, density, sway, comb
+  FX: 6, // particle seed, ripple strength, feather size, feather ruffle
 } as const;
 
 export interface BlobPlacement {
@@ -53,6 +72,16 @@ export interface BlobDynamics {
   detail?: number;
   /** Keep at most this many spheres (index 0/1 first, then the largest lobes). Default: all. */
   maxSpheres?: number;
+  /** Overrides `params.material` (lets a genome `BlobParams` render as fur or feathers). */
+  material?: BlobMaterialKind | undefined;
+  /** Overrides `params.pattern`. */
+  pattern?: PatternParams | undefined;
+  /** Overrides `params.fur`. */
+  fur?: Partial<FurParams> | undefined;
+  /** Overrides `params.feather`. */
+  feather?: Partial<FeatherParams> | undefined;
+  /** Concentric surface ripples from an impact (liquid v2; jelly damped). */
+  ripple?: RippleImpulse | undefined;
 }
 
 /** Keeps the body (index 0/1) and the largest lobes so a capped blob still reads the same. */
@@ -64,17 +93,24 @@ export function capSpheres(spheres: readonly SpherePrim[], max: number): SphereP
 }
 
 /**
- * Per-instance parameter block shared by both render candidates: one Float32Array, uploaded every
- * frame as a uniform buffer, indexed on the GPU with `instanceIndex * BLOB_STRIDE + field`.
+ * Per-instance parameter block shared by both render candidates (and the fur/feather/particle passes):
+ * one Float32Array, uploaded every frame as a uniform buffer, indexed on the GPU with
+ * `instanceIndex * BLOB_STRIDE + field`, plus the style block indexed with `instanceIndex * BLOB_STYLE_STRIDE + field`.
  */
 export class BlobParamBlock {
   readonly data: Float32Array;
   /** `buffer(...)` node; read with `elementOf(node, index)`. */
   readonly node: Node;
+  /** Style block data (pattern, ripple, fur, feather). */
+  readonly styleData: Float32Array;
+  /** `buffer(...)` node of the style block; read with `elementOf(styleNode, slot * BLOB_STYLE_STRIDE + field)`. */
+  readonly styleNode: Node;
 
   constructor(readonly capacity: number) {
     this.data = new Float32Array(capacity * BLOB_STRIDE * 4);
     this.node = buffer(this.data, 'vec4', capacity * BLOB_STRIDE) as unknown as Node;
+    this.styleData = new Float32Array(capacity * BLOB_STYLE_STRIDE * 4);
+    this.styleNode = buffer(this.styleData, 'vec4', capacity * BLOB_STYLE_STRIDE) as unknown as Node;
     for (let i = 0; i < capacity; i++) this.hide(i);
   }
 
@@ -86,10 +122,22 @@ export class BlobParamBlock {
     this.data[o + 3] = w;
   }
 
-  /** Makes an instance produce no fragments (zero box, zero spheres). */
+  private setStyle(slot: number, field: number, x: number, y: number, z: number, w: number): void {
+    const o = (slot * BLOB_STYLE_STRIDE + field) * 4;
+    this.styleData[o] = x;
+    this.styleData[o + 1] = y;
+    this.styleData[o + 2] = z;
+    this.styleData[o + 3] = w;
+  }
+
+  /** Makes an instance produce no fragments (zero box, zero spheres) and clears its style. */
   hide(slot: number): void {
     this.set4(slot, BlobField.BOX, 0, 0, 0, 0);
     this.set4(slot, BlobField.PLACE, 0, -100, 0, 0);
+    this.set4(slot, BlobField.MISC, NO_FLOOR, 0, 0, 0);
+    this.setStyle(slot, BlobStyleField.MAT, 0, 1, 0, 0);
+    this.setStyle(slot, BlobStyleField.RIPPLE, 0, 1, 0, -1);
+    this.setStyle(slot, BlobStyleField.FX, slot * 7.31, 0, 1, 0);
   }
 
   /** Writes the sphere list (≤ 16). Returns the count written. */
@@ -102,13 +150,18 @@ export class BlobParamBlock {
     return n;
   }
 
+  /** Material kind written for an instance (params or the dynamics override). */
+  static materialOf(params: BlobRenderParams | BlobParams, dyn: BlobDynamics = {}): BlobMaterialKind {
+    return dyn.material ?? params.material;
+  }
+
   /**
    * Writes everything for one instance. The instance box is fitted per axis to the sphere list
    * (plus noise/smin/breath margins and the squash), cut at the floor, and re-centred: x/z by
    * shifting the spheres (the placement shifts back by the same amount), y via ANIM.w. Tight boxes
    * are the cheapest raymarch optimisation: fewer pixels enter the loop at all.
    */
-  write(slot: number, params: BlobParams, placement: BlobPlacement, dyn: BlobDynamics = {}): void {
+  write(slot: number, params: BlobRenderParams | BlobParams, placement: BlobPlacement, dyn: BlobDynamics = {}): void {
     if (slot < 0 || slot >= this.capacity) return;
     const spheres = dyn.maxSpheres !== undefined ? capSpheres(params.spheres, dyn.maxSpheres) : params.spheres;
     const squash = dyn.squash ?? params.squash;
@@ -118,6 +171,10 @@ export class BlobParamBlock {
     const amount = Math.max(-0.6, Math.min(1.5, squash.amount));
     const taper = squash.taper ?? params.squash.taper ?? 0;
     const floorY = params.floorY ?? NO_FLOOR;
+    const material = BlobParamBlock.materialOf(params, dyn);
+    const style = params as Partial<BlobRenderParams>;
+    const ripple = dyn.ripple;
+    const rippleActive = ripple !== undefined && ripple.age >= 0;
 
     // --- tight box -----------------------------------------------------------------------------
     let minX = Infinity;
@@ -136,9 +193,13 @@ export class BlobParamBlock {
       maxZ = Math.max(maxZ, s.center[2] + r);
     }
     if (!Number.isFinite(minX)) minX = maxX = minY = maxY = minZ = maxZ = 0;
-    // Displacement margin: 2-octave noise ≤ 1.6·amp, smin bulge, jiggle ripple, hit epsilon.
-    const margin = params.noiseAmp * 1.6 + params.sminK * 0.25 + 0.05 * (dyn.jiggle ?? 0) + 0.04;
-    minX -= margin; maxX += margin; minY -= margin; maxY += margin; minZ -= margin; maxZ += margin;
+    // Displacement margin: 2-octave noise ≤ 1.6·amp, smin bulge, jiggle ripple, impact ripple, hit
+    // epsilon. Fire: the ridged noise pushes out ≤ 0.8·amp·4 and the tongue crown rises — mostly upward,
+    // so the box grows up (every ray that misses between tongues marches all steps: keep it tight).
+    const fire = material === 'fire';
+    const margin = params.noiseAmp * 1.6 * (fire ? 1.5 : 1) + params.sminK * 0.25 + 0.05 * (dyn.jiggle ?? 0) + (rippleActive ? 0.05 : 0) + 0.04;
+    const fireUp = fire ? params.noiseAmp * (0.8 * 4 + 3.2) : 0;
+    minX -= margin; maxX += margin; minY -= margin; maxY += margin + fireUp; minZ -= margin; maxZ += margin;
     if (floorY > NO_FLOOR) minY = Math.max(minY, floorY - 0.02); // nothing below the cut plane
     const { along, across } = squashScales(amount);
     const grow = Math.abs(amount) > 0.01 ? Math.max(along, across) : 1;
@@ -159,7 +220,7 @@ export class BlobParamBlock {
     this.set4(slot, BlobField.BOX, half[0], half[1], half[2], count);
     this.set4(slot, BlobField.SHAPE, params.sminK, params.noiseAmp, params.noiseFreq, params.breathHz);
     this.set4(slot, BlobField.SQUASH, axis[0], axis[1], axis[2], amount);
-    this.set4(slot, BlobField.MISC, floorY, taper, dyn.detail ?? 1, MATERIAL_KIND_ID[params.material]);
+    this.set4(slot, BlobField.MISC, floorY, taper, dyn.detail ?? 1, BLOB_MATERIAL_KIND_ID[material]);
     const base = hexToLinear(params.baseColor);
     const inner = hexToLinear(params.innerColor);
     const rim = hexToLinear(params.rimColor);
@@ -173,6 +234,28 @@ export class BlobParamBlock {
     const e = params.eye.dir;
     const el = Math.hypot(e[0], e[1], e[2]) || 1;
     this.set4(slot, BlobField.EYE, e[0] / el, e[1] / el, e[2] / el, params.eye.size);
-    this.set4(slot, BlobField.ANIM, dyn.jiggle ?? 0, params.eye.spacing, dyn.seed ?? slot * 17 + 3, cy);
+    const seed = dyn.seed ?? slot * 17 + 3;
+    this.set4(slot, BlobField.ANIM, dyn.jiggle ?? 0, params.eye.spacing, seed, cy);
+
+    // --- style block ---------------------------------------------------------------------------
+    const pattern: PatternParams = dyn.pattern ?? style.pattern ?? NO_PATTERN;
+    const pInk = hexToLinear(pattern.ink);
+    const pLight = hexToLinear(pattern.light);
+    const pLight2 = hexToLinear(pattern.light2 ?? pattern.light);
+    // Fur and feather bodies default to a dotted rim (their silhouettes are strands/tips in the references).
+    const rimDots = pattern.rimDots ?? (material === 'fur' ? 0.8 : material === 'feather' ? 0.5 : 0);
+    this.setStyle(slot, BlobStyleField.MAT, PATTERN_KIND_ID[pattern.kind], pattern.scale, pattern.contrast, pattern.rotation ?? 0);
+    this.setStyle(slot, BlobStyleField.PATTERN_INK, pInk[0], pInk[1], pInk[2], pattern.stipple ?? 0);
+    this.setStyle(slot, BlobStyleField.PATTERN_LIGHT, pLight[0], pLight[1], pLight[2], rimDots);
+    this.setStyle(slot, BlobStyleField.PATTERN_LIGHT2, pLight2[0], pLight2[1], pLight2[2], 0);
+    if (rippleActive) {
+      const d = ripple.dir;
+      const dl = Math.hypot(d[0], d[1], d[2]) || 1;
+      this.setStyle(slot, BlobStyleField.RIPPLE, d[0] / dl, d[1] / dl, d[2] / dl, ripple.age);
+    } else this.setStyle(slot, BlobStyleField.RIPPLE, 0, 1, 0, -1);
+    const fur: FurParams = { ...DEFAULT_FUR, ...style.fur, ...dyn.fur };
+    const feather: FeatherParams = { ...DEFAULT_FEATHER, ...style.feather, ...dyn.feather };
+    this.setStyle(slot, BlobStyleField.FUR, fur.length, fur.density, fur.sway, fur.comb);
+    this.setStyle(slot, BlobStyleField.FX, seed * 0.173, rippleActive ? (ripple.strength ?? 1) : 0, feather.size, feather.ruffle);
   }
 }

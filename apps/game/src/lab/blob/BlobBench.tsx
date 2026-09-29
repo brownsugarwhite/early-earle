@@ -15,6 +15,10 @@ export const BENCH_CONFIGS: BenchConfig[] = [
   { id: 'b9', label: '(b) Jiggle-Mesh × 9', settings: { candidate: 'b', count: 9, quality: 'high', pose: 'board' } },
   { id: 'b36', label: '(b) Jiggle-Mesh × 36', settings: { candidate: 'b', count: 36, quality: 'high', pose: 'board' } },
   { id: 'a36m', label: '(a) Raymarch × 36 · Mobil', settings: { candidate: 'a', count: 36, quality: 'mobile', pose: 'board' } },
+  // P1b: the extra passes must stay ≤ 2 ms on the Mac (compare with the plain (b) × 36 row).
+  { id: 'b36fur', label: '(b) × 36 · Fell (Shells)', settings: { candidate: 'b', count: 36, quality: 'high', pose: 'board', material: 'fur', passes: true } },
+  { id: 'b36feather', label: '(b) × 36 · Federn (Karten)', settings: { candidate: 'b', count: 36, quality: 'high', pose: 'board', material: 'feather', passes: true } },
+  { id: 'b36gas', label: '(b) × 36 · Gas v2 + Partikel', settings: { candidate: 'b', count: 36, quality: 'high', pose: 'board', material: 'gas' } },
 ];
 
 export const BENCH_WARMUP_MS = 1000;
@@ -38,6 +42,8 @@ export interface BenchRow {
   drawCalls: number;
   samples: number;
   pass: boolean;
+  /** Median GPU time per frame (ms, WebGPU timestamp queries); 0 = not available. */
+  gpuMs: number;
 }
 
 export interface BenchReport {
@@ -84,6 +90,7 @@ export function useBlobBench(enabled: boolean, controller: BlobLabScene, apply: 
         const p99: number[] = [];
         let dc = 0;
         let skipped = false;
+        controller.gpu.reset();
         const unsub = useAppStore.subscribe((s, prev) => {
           if (s.fps === prev.fps && s.frameP99Ms === prev.frameP99Ms && s.drawCalls === prev.drawCalls) return;
           // The first 1-second window may still contain the configuration switch (rebuild spike).
@@ -113,13 +120,14 @@ export function useBlobBench(enabled: boolean, controller: BlobLabScene, apply: 
           drawCalls: dc,
           samples: fps.length,
           pass: median(fps) >= BENCH_PASS.fps && median(p99) < BENCH_PASS.p99Ms,
+          gpuMs: Math.round(controller.gpu.median() * 100) / 100,
         };
         rows.push(row);
       }
       if (cancelled) return;
       const info = controller.getRenderInfo();
       const rep: BenchReport = { rows, info, userAgent: navigator.userAgent, finishedAt: new Date().toISOString() };
-      console.table(rows.map((r) => ({ Konfig: r.label, fps: r.fps, 'fps min': r.fpsMin, 'p99 ms': r.p99, 'p99 max': r.p99Max, dc: r.drawCalls, pass: r.pass })));
+      console.table(rows.map((r) => ({ Konfig: r.label, fps: r.fps, 'fps min': r.fpsMin, 'p99 ms': r.p99, 'p99 max': r.p99Max, 'GPU ms': r.gpuMs, dc: r.drawCalls, pass: r.pass })));
       console.info('[bench]', JSON.stringify({ info, userAgent: rep.userAgent }));
       (window as unknown as { __eeBench?: BenchReport }).__eeBench = rep;
       setReport(rep);
@@ -163,6 +171,7 @@ export function BenchOverlay({ running, current, report, onRestart }: { running:
             <th>Konfig</th>
             <th>fps</th>
             <th>p99 ms</th>
+            <th>GPU ms</th>
             <th>dc</th>
             <th>Ziel</th>
           </tr>
@@ -177,6 +186,7 @@ export function BenchOverlay({ running, current, report, onRestart }: { running:
               <td>
                 {r.p99} <small>max {r.p99Max}</small>
               </td>
+              <td>{r.gpuMs > 0 ? r.gpuMs.toFixed(2) : '–'}</td>
               <td>{r.drawCalls}</td>
               <td className={r.pass ? 'bench-pass' : 'bench-fail'}>{r.pass ? 'OK' : 'zu langsam'}</td>
             </tr>

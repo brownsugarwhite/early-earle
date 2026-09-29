@@ -1,10 +1,11 @@
 import { BoxGeometry, InstancedMesh, Vector3 } from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
-import { Break, Discard, Fn, If, Loop, abs, cameraFar, cameraNear, cameraPosition, dot, float, floor, hash, instanceIndex, int, length, max, min, modelViewMatrix, modelWorldMatrixInverse, normalize, positionGeometry, refract, sign, smoothstep, step, struct, varying, vec3, vec4, viewZToPerspectiveDepth } from 'three/tsl';
+import { Break, Discard, Fn, If, Loop, abs, cameraFar, cameraNear, cameraPosition, clamp, dot, float, floor, hash, instanceIndex, int, length, max, min, modelViewMatrix, modelWorldMatrixInverse, normalize, positionGeometry, pow, refract, sign, smoothstep, step, struct, varying, vec3, vec4, viewZToPerspectiveDepth } from 'three/tsl';
 import { elementOf, member } from '../common/tsl';
 import { BLOB_STRIDE, BlobField, type BlobParamBlock } from './blobParamsUniforms';
 import { compileSdf, createBlobQualityUniforms, type BlobQualityUniforms, type CompiledSdf } from './compileSdf';
 import { analyticEyeMask, createBlobShadingUniforms, eyeFrame, shadeBlob, type BlobShadingUniforms } from './blobShading';
+import { dotField, kindWeight } from './patterns';
 
 export interface RaymarchBlobOptions {
   lightDir?: Vector3;
@@ -32,7 +33,8 @@ export interface RaymarchBlobMaterialResult {
 /**
  * Candidate (a): per-instance sphere tracing inside a unit box. The vertex stage passes the local ray
  * (camera in blob space, box entry point); the fragment stage traces the shared SDF, shades it with the
- * inner "organ" march and writes real depth so blobs sit on the plate.
+ * inner "organ" march (which also integrates the gas v2 swirl density) and writes real depth so blobs
+ * sit on the plate.
  */
 export function createRaymarchBlobMaterial(block: BlobParamBlock, opts: RaymarchBlobOptions = {}): RaymarchBlobMaterialResult {
   const quality = opts.quality ?? createBlobQualityUniforms();
@@ -114,14 +116,27 @@ export function createRaymarchBlobMaterial(block: BlobParamBlock, opts: Raymarch
     }
     Discard(hit.lessThan(0.5));
 
-    const n = sdf.normalSmooth(pos, base).toVar();
+    const n = sdf.normalShade(pos, base).toVar();
+    const q = sdf.unsquash(pos, base).toVar();
+    const kind = misc.w;
+    const wGas = kindWeight(kind, 2);
+    const wFur = kindWeight(kind, 4);
 
-    // Inner march along the refracted ray: organ coverage (min distance) and hashed-grid bubbles.
+    // Fur: fuzzy silhouette — the outermost Fresnel band is punched into strand-tip dots.
+    const s0 = elementOf(block.node, base).toVar();
+    const pq = q.sub(s0.xyz).div(max(s0.w, 0.2));
+    const fres = pow(float(1).sub(max(dot(n, rd.negate()), 0)), 2.5);
+    const tipDots = dotField(pq.mul(34).add(80.0), float(0.3), 23);
+    Discard(wFur.greaterThan(0.5).and(fres.greaterThan(0.9)).and(tipDots.lessThan(0.5)));
+
+    // Inner march along the refracted ray: organ coverage (min distance), hashed-grid bubbles and the
+    // gas v2 swirl density (accumulated only for gas bodies).
     const rim = elementOf(block.node, base.add(BlobField.RIM));
     const anim = elementOf(block.node, base.add(BlobField.ANIM));
     const rr = normalize(refract(rd, n, 0.8)).toVar();
     const organMin = float(1e3).toVar();
     const bubble = float(0).toVar();
+    const gasAcc = float(0).toVar();
     const bubbleFreq = float(2.6);
     // LOD: tiny blobs (misc.z = 0, set per frame from the projected size) skip the inner march.
     If(misc.z.greaterThan(0.5), () => {
@@ -129,28 +144,36 @@ export function createRaymarchBlobMaterial(block: BlobParamBlock, opts: Raymarch
       const stepLen = float(2.2).div(innerSteps); // the march always spans ≈ one body diameter
       Loop(quality.innerSteps, ({ i }) => {
         const tt = float(i).add(0.5).mul(stepLen);
-        const q = pos.add(rr.mul(tt)).toVar();
+        const qq = pos.add(rr.mul(tt)).toVar();
         // Inside test on the cheap core SDF (conservative by the displacement bound).
-        const inBody = step(sdf.bodyCore(q, base), bound.negate().sub(0.03));
-        organMin.assign(min(organMin, sdf.inner(q, base).add(float(1).sub(inBody).mul(10))));
-      // One micro-sphere per grid cell, present with probability ∝ bubbleDensity.
-      const cell = floor(q.mul(bubbleFreq)).add(64);
-      const h1 = hash(dot(cell, vec3(1, 131, 17161)).add(anim.z));
-      const h2 = hash(h1.mul(1000).add(1));
-      const h3 = hash(h1.mul(1000).add(2));
-      const c = cell.sub(64).add(vec3(h1, h2, h3).mul(0.6).add(0.2)).div(bubbleFreq);
-      const rb = float(0.07).add(h2.mul(0.04));
-      const toC = c.sub(pos);
-      const tc = dot(toC, rr);
-      const perp = length(toC.sub(rr.mul(tc)));
+        const inBody = step(sdf.bodyCore(qq, base), bound.negate().sub(0.03));
+        organMin.assign(min(organMin, sdf.inner(qq, base).add(float(1).sub(inBody).mul(10))));
+        // One micro-sphere per grid cell, present with probability ∝ bubbleDensity.
+        const cell = floor(qq.mul(bubbleFreq)).add(64);
+        const h1 = hash(dot(cell, vec3(1, 131, 17161)).add(anim.z));
+        const h2 = hash(h1.mul(1000).add(1));
+        const h3 = hash(h1.mul(1000).add(2));
+        const c = cell.sub(64).add(vec3(h1, h2, h3).mul(0.6).add(0.2)).div(bubbleFreq);
+        const rb = float(0.07).add(h2.mul(0.04));
+        const toC = c.sub(pos);
+        const tc = dot(toC, rr);
+        const perp = length(toC.sub(rr.mul(tc)));
         const present = step(h3, rim.w.mul(0.07)).mul(step(0.05, tc)).mul(step(tc, 2.2)).mul(inBody);
         bubble.assign(max(bubble, present.mul(float(1).sub(smoothstep(rb.mul(0.7), rb, perp)))));
+        If(wGas.greaterThan(0.5), () => {
+          gasAcc.addAssign(sdf.gasDensity(sdf.unsquash(qq, base), base).mul(inBody));
+        });
       });
+      gasAcc.assign(clamp(gasAcc.div(innerSteps).mul(1.9), 0, 1));
+    }).Else(() => {
+      // LOD: one surface tap keeps far gas bodies swirling.
+      gasAcc.assign(sdf.gasDensity(q, base));
     });
     const organ = float(1).sub(smoothstep(-0.015, 0.015, organMin));
 
     const eye = analyticEyeMask(eyeFrame(block, base, pos));
-    const shade = shadeBlob(block, uniforms, { pos, n, rd, base, organ, bubble, eye });
+    const ripple = sdf.ripple(q, base).y;
+    const shade = shadeBlob(block, uniforms, { pos, q, n, rd, base, organ, bubble, eye, gas: gasAcc, ripple });
 
     // Real depth of the hit point so blobs intersect the plate and each other correctly.
     const objPos = pos.mul(place.w).add(place.xyz);
