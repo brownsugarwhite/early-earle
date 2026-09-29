@@ -116,3 +116,18 @@ Grafik 100 %, Audio, DE/EN, Store-Assets (Screenshots im Lab erzeugt), Tierschut
 - P0 ✓ (WebGPU/WebGL2 im Panel, CI grün mit Smoke-Suite in ~2 min). P3 ✓ (Kern, Solver, Level 001–025 kalibriert, Grid-Lab spielbar). P1 ✓ (beide Kandidaten, Mobil-Preset, Bench). P2 ✓ (Earle-Slice, Mobil-Preset, Bench). P1-G/P2-G ✓ (Godot 4.7, Mac-Messwerte in `apps/godot/README.md`). P5 in Arbeit. P4 offen.
 - P6 teilweise: Capacitor-iOS-Projekt gebaut und im Simulator gestartet (nur WebGL2 dort); Gerätemessung über Safari auf dem iPhone 16 siehe ADR-0001 → Gate-Kriterien mit (b)-Standard und Mobil-Preset erfüllt. Noch offen: WKWebView-Build auf dem Gerät (Signatur mit Apple-ID), Langzeit-/Wärmetest, Godot-iOS-Export.
 - Nächste Schritte: adaptive Qualitätsstufe (Start Hoch, Rückstufung bei p99 > 20 ms über drei Fenster), (b) als Raster-Standard verdrahten, P4 Genom-Lab mit Blender-Modulen, P5 Flow-Lab abnehmen, Level 26–50 (Syrup) generieren.
+
+## Nachtrag 2026-09-29 (Nacht): Iteration 2 nach Florians Feedback
+
+Richtung laut `docs/FEEDBACK.md` (Hauptreferenz: ganzer Ordner `ref/eyvind earle/`). Sechs parallele Baustellen mit getrennten Zuständigkeiten:
+
+| Baustelle | Umfang | Zuständigkeit (Pfade) |
+|---|---|---|
+| Kreaturen v2 | Körpertypen (Blob, Schlange, Vierbeiner, REX-Zweibeiner, schwer), Gang mit Schrittzyklus + IK, Schlängeln, physikalischer Schleimsprung, Rüssel-/Bein-Animationen, Editor-Usability | `packages/genome`, `packages/physics`, `packages/render/src/creature`, `apps/game/src/lab/creature`, Editor Creatures |
+| Materialien v2 | Fell, Federn, Muster (Tiger, Giraffe, Zebra, Schuppen, Rauten), Gas/Flüssig/Feuer neu, reichere Module | `packages/render/src/blob`, `packages/render/src/materials`, `tools/blender`, `content/genome/assets`, Blob-Lab |
+| Zehn Welten | je ein Gemälde als Stil, Höhe + übertriebene Perspektive, Müll der Anfangswelt, feine Vektortexturen | `packages/world`, `packages/render/src/earle` (ohne tree/blossom), `content/zones`, Earle-Lab, `flow/MapWorld.ts` |
+| Riesenbaum | Flechtenstamm, Wurzeln, Kuppelkrone, Blüten mit Zen-Loops, Kronenpfad | `packages/render/src/earle/tree`, `earle/blossom`, `/lab/tree` |
+| Spielfeld v2 | Earle-Plateau, Element-Visualisierungen, Partikel, wandzeitbasierte Tweens, Morph Map→Brett | `packages/render/src/board`, `flow/LevelBoard.ts`, `flow/FlowScene.ts` (Choreografie), Grid-Lab |
+| iPhone | lokales Capacitor-Plugin Liquid Glass (SwiftUI-Overlay), Haptik, Icon/Splash, Simulator, `docs/IOS.md` | `apps/game/ios`, `apps/game/plugins`, `apps/game/src/native`, `flow/FlowHud.tsx` |
+
+Integration danach durch die Leitung: Baum in den Planeten (LandmarkSlot), Kreaturen v2 + Materialien verdrahten, Kreaturen aufs Brett, natives Glas im Flow; anschließend Sichtung gegen die Gemälde und erneute iPhone-Messung.
