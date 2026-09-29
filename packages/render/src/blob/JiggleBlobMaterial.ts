@@ -98,9 +98,11 @@ export function createJiggleBlobMaterial(block: BlobParamBlock, opts: JiggleBlob
     const g = glyphNode.sample(uv).x;
     const w = fwidth(g).add(0.002);
     const eye = smoothstep(float(0.5).sub(w), float(0.5).add(w), g).mul(inRange).mul(f.facing);
+    // Sclera ring: the glyph is an SDF (0.5 = edge, spread 0.22 uv), a band ≈ 0.03 uv outside the slit.
+    const eyeRing = smoothstep(float(0.31).sub(w), float(0.31).add(w), g).mul(float(1).sub(eye)).mul(inRange).mul(f.facing);
 
     const ripple = sdf.ripple(q, base).y;
-    const shade = shadeBlob(block, uniforms, { pos, q, n, rd, base, organ: organ.mul(inner.w.greaterThan(0).select(float(1), float(0))), bubble: float(0), eye, gas, ripple });
+    const shade = shadeBlob(block, uniforms, { pos, q, n, rd, base, organ: organ.mul(inner.w.greaterThan(0).select(float(1), float(0))), bubble: float(0), eye, eyeRing, gas, ripple });
     return shade;
   })();
 

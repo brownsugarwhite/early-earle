@@ -44,9 +44,9 @@ import type { SceneController, SceneContext } from '../../canvas/SceneController
 export type Candidate = 'a' | 'b' | 'both';
 export type BlobCount = 1 | 9 | 36;
 export type DriverKind = 'spring' | 'shape';
-export type LabPose = 'board' | 'screenshot3' | 'close' | 'macro';
+export type LabPose = 'board' | 'topdown' | 'screenshot3' | 'close' | 'macro';
 /** Sheet mode: every blob of the board shows a different pattern / material (review and screenshots). */
-export type LabSheet = 'off' | 'patterns' | 'materials';
+export type LabSheet = 'off' | 'patterns' | 'materials' | 'designer';
 /** Hoch = full raymarch quality; Mobil = phone preset; Auto = Mobil on touch devices or DPR ≥ 2.5. */
 export type Quality = 'high' | 'mobile' | 'auto';
 
@@ -111,6 +111,10 @@ interface SheetEntry {
   stipple?: number;
   rimDots?: number;
   earle?: boolean;
+  /** Designer sheet: two eye slits turned a little upward (readable from the ~65° board camera). */
+  twoEyes?: boolean;
+  /** Matte opaque body (no organs/bubbles, little gloss) like the flat creatures of sketch 08. */
+  matte?: boolean;
 }
 
 /** Patterns sheet (3×3): the six patterns, the Earle test, tiger with stipple, pure stipple + dotted rim. */
@@ -137,6 +141,19 @@ export const MATERIAL_SHEET: readonly SheetEntry[] = [
   { material: 'fur', pattern: 'tiger' },
   { material: 'feather', pattern: 'spots' },
   { material: 'jelly', pattern: 'giraffe' },
+];
+
+/** Designer sheet (3×3, sketch 08): species coats, fur, feathers and the classic patterns, eyes visible. */
+export const DESIGNER_SHEET: readonly SheetEntry[] = [
+  { pattern: 'giraffe', matte: true, twoEyes: true },
+  { pattern: 'elephant', matte: true, twoEyes: true },
+  { pattern: 'rex', matte: true, twoEyes: true },
+  { material: 'fur', pattern: 'retriever', twoEyes: true },
+  { material: 'fur', pattern: 'mouse', twoEyes: true },
+  { material: 'feather', pattern: 'retriever', twoEyes: true },
+  { pattern: 'tiger', matte: true, twoEyes: true },
+  { pattern: 'spots', matte: true, twoEyes: true },
+  { pattern: 'snake', matte: true, twoEyes: true },
 ];
 
 interface BlobInstance {
@@ -554,7 +571,7 @@ export class BlobLabScene implements SceneController {
   private sheetEntry(b: BlobInstance): SheetEntry | null {
     const s = this.settings.sheet;
     if (s === 'off') return null;
-    const list = s === 'patterns' ? PATTERN_SHEET : MATERIAL_SHEET;
+    const list = s === 'patterns' ? PATTERN_SHEET : s === 'designer' ? DESIGNER_SHEET : MATERIAL_SHEET;
     return list[b.id % list.length] ?? null;
   }
 
@@ -565,7 +582,7 @@ export class BlobLabScene implements SceneController {
 
   private makeBlob(id: number, tier: number, cell: [number, number]): BlobInstance {
     const seed = id * 31 + 7;
-    const list = this.settings.sheet === 'materials' ? MATERIAL_SHEET : null;
+    const list = this.settings.sheet === 'materials' ? MATERIAL_SHEET : this.settings.sheet === 'designer' ? DESIGNER_SHEET : null;
     const m = list?.[id % list.length]?.material ?? this.settings.material;
     const genome = genomeFor(ZONE, tier, seed, genomeMaterialFor(m));
     this.driver.reset(id);
@@ -605,6 +622,17 @@ export class BlobLabScene implements SceneController {
       if (s.gloss === null) p.gloss = material === 'feather' ? 0.35 : 0.1;
       if (s.translucency === null) p.translucency = 0;
       p.bubbleDensity = 0;
+    }
+    if (entry?.matte && !material) {
+      if (s.gloss === null) p.gloss = 0.3;
+      if (s.translucency === null) p.translucency = 0.05;
+      p.bubbleDensity = 0;
+    }
+    if (entry?.twoEyes) {
+      const d = p.eye.dir;
+      const up: Vec3 = [d[0] * 0.5, d[1] + 0.2, d[2]];
+      const l = Math.hypot(up[0], up[1], up[2]) || 1;
+      p.eye = { ...p.eye, dir: [up[0] / l, up[1] / l, up[2] / l], spacing: p.eye.spacing > 0 ? p.eye.spacing : 0.25, size: Math.min(p.eye.size, 0.3) };
     }
     const earle = entry ? entry.earle === true : s.earleTest;
     if (earle) {
@@ -677,6 +705,12 @@ export class BlobLabScene implements SceneController {
       depth = 1.7;
       elev = 0.32;
       target = new Vector3(0, 0.45, 0);
+    } else if (s.pose === 'topdown') {
+      // ≈ 65°: the new, more top-down board camera, framed on the bodies (1 blob = top-down close-up).
+      elev = 1.134;
+      width = this.side * CELL + 0.2 + (s.candidate === 'both' ? half * 2 + 0.6 : 0);
+      depth = this.side * CELL + 0.2;
+      target = new Vector3(0, 0.25, 0);
     } else if (s.pose === 'screenshot3') {
       width = 1.05;
       depth = 1.05;

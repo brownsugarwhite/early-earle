@@ -1,10 +1,10 @@
 import { BufferAttribute, BufferGeometry, InstancedMesh } from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
-import { Discard, Fn, If, attribute, cameraPosition, cross, dot, float, floor, fract, instanceIndex, int, length, max, mix, modelWorldMatrixInverse, normalize, positionGeometry, sin, smoothstep, step, struct, time, varying, vec3, vec4 } from 'three/tsl';
+import { Discard, Fn, If, abs, attribute, cameraPosition, cross, dot, float, floor, fract, instanceIndex, int, length, max, mix, modelWorldMatrixInverse, normalize, positionGeometry, sin, smoothstep, step, struct, time, varying, vec3, vec4 } from 'three/tsl';
 import { elementOf, member, type FloatNode } from '../common/tsl';
 import { BLOB_STRIDE, BLOB_STYLE_STRIDE, BlobField, BlobStyleField, type BlobParamBlock } from '../blob/blobParamsUniforms';
 import { compileSdf, createBlobQualityUniforms, type BlobQualityUniforms, type CompiledSdf } from '../blob/compileSdf';
-import { createBlobShadingUniforms, type BlobShadingUniforms } from '../blob/blobShading';
+import { createBlobShadingUniforms, faceMaskAt, type BlobShadingUniforms } from '../blob/blobShading';
 import { createIcosphere, makeVertexTracer } from '../blob/JiggleBlobMaterial';
 import { cellHash3, kindWeight, samplePattern } from '../blob/patterns';
 
@@ -57,8 +57,8 @@ export interface FurShellResult {
  * Fur shells (Hoch preset): `shells` copies of the body icosphere, each vertex traced onto the shared
  * SDF and pushed out along the normal, combed downward and swayed by wind/jiggle. The fragment stage
  * alpha-tests a hashed strand lattice at the strand root (rest space, stable while the body moves);
- * strands thin toward the tip, so the outer shells at the silhouette become the sparse dots of Earle's
- * dotted rims. Non-fur instances collapse in the vertex stage (no fragments, no trace).
+ * strands thin toward the tip and carry the coat colour, so they add a soft fuzz at the contour (lit
+ * tips on the light side). The face (style FACE slot) stays free. Non-fur instances collapse in the vertex stage (no fragments, no trace).
  *
  * One draw call for the whole block; set `mesh.count` = number of blob slots (or 0 to disable).
  */
@@ -133,13 +133,16 @@ export function createFurShellMesh(block: BlobParamBlock, opts: FurShellOptions 
     const styleBase = base.div(BLOB_STRIDE).mul(BLOB_STYLE_STRIDE);
     const fur = elementOf(block.styleNode, styleBase.add(BlobStyleField.FUR));
     // Strand lattice at the root (rest space): one strand per cell, per-strand length by hash.
-    const sp = pq.mul(26).mul(max(fur.y, 0.1)).add(5.0);
+    const sp = pq.mul(18).mul(max(fur.y, 0.1)).add(5.0);
     const h = cellHash3(floor(sp), 41);
     const centre = h.mul(0.5).add(0.25);
     const d = length(fract(sp).sub(centre));
     const lenQ = float(0.5).add(h.z.mul(0.5));
     const r = float(0.3).mul(float(1).sub(shellT.div(lenQ)));
-    Discard(d.greaterThan(r).or(shellT.greaterThan(lenQ)));
+    // Only near the contour (the body look carries the inside; strands facing the camera would read as
+    // dots from the board camera) and never in the face.
+    const facingV = abs(dot(normalize(vN), normalize(vCam.sub(vRoot))));
+    Discard(d.greaterThan(r).or(shellT.greaterThan(lenQ)).or(facingV.greaterThan(0.55)).or(faceMaskAt(block, base, normalize(pq.add(vec3(0, 1e-5, 0)))).greaterThan(0.5)));
 
     // Earle canopy (Ebene_33): a dark mass; strand tips catch the light only on the lit rims of their
     // clump and along the lit silhouette — light strokes on dark, the body pattern on the strands.
@@ -164,25 +167,15 @@ export function createFurShellMesh(block: BlobParamBlock, opts: FurShellOptions 
       coat.assign(mix(coat, pat.inkColor, pat.ink.mul(0.9)));
       coat.assign(mix(coat, pat.lightColor.mul(mix(float(0.62), float(1), step(0.47, wrap))), pat.light.mul(0.85)));
     });
-    // Dark mass: the coat pulled toward ink, darker toward the root.
-    const mass = mix(coat.mul(0.32), uniforms.ink, 0.5);
-    const col = mix(mass, mix(mass, coat, 0.12), step(0.55, wrap)).toVar();
-    col.assign(mix(col, uniforms.ink, float(1).sub(shellT).mul(0.3)));
-    // Lit strand tips: on the lit rim of the clump (tangent offset from the clump centre toward the light)
-    // and at the lit silhouette.
-    const cq = pq.mul(3.2).add(7.0);
-    const ch = cellHash3(floor(cq), 31);
-    const co = fract(cq).sub(ch.mul(0.4).add(0.3));
-    const cot = co.sub(n.mul(dot(co, n)));
-    const cr = length(cot);
-    const Lt = normalize(L.sub(n.mul(dot(L, n))).add(vec3(0, 1e-3, 0)));
-    const clumpRim = smoothstep(0.1, 0.4, cr).mul(smoothstep(0.0, 0.55, dot(cot.div(max(cr, 1e-3)), Lt)));
-    const edge = float(1).sub(max(dot(n, rd.negate()), 0));
+    // Fuzz in the coat colour (the body look continues on the strands): top light as on the body, a
+    // little deeper toward the root, lit tips on the light side — soft fuzz at the contour, no dark mass.
+    coat.assign(mix(coat, mix(baseC, hl.xyz, 0.45), smoothstep(-0.15, -0.6, pq.y).mul(0.8)));
     const lit = smoothstep(0.5, 0.75, wrap);
-    // Lit tips mostly at the lit silhouette (Earle's dotted canopy rim), a few on clump rims.
-    const tip = step(0.55, shellT).mul(lit).mul(step(0.5, edge.mul(edge).mul(1.6).add(clumpRim.mul(0.6)))).mul(step(h.x, 0.6));
-    const strokeCol = mix(coat, hl.xyz, float(0.15).add(step(0.72, wrap).mul(0.25)));
-    col.assign(mix(col, strokeCol, tip));
+    coat.assign(mix(coat, mix(coat, hl.xyz, 0.3), smoothstep(0.35, 0.9, pq.y).mul(mix(float(0.25), float(0.6), lit))));
+    const col = mix(mix(mix(inner, baseC, 0.28), coat, 0.55), coat, shellT.mul(0.6)).toVar();
+    const edge = float(1).sub(max(dot(n, rd.negate()), 0));
+    const tip = step(0.55, shellT).mul(lit).mul(step(0.35, edge)).mul(step(h.x, 0.6));
+    col.assign(mix(col, mix(coat, hl.xyz, 0.35), tip));
     return col;
   })();
   material.transparent = false;

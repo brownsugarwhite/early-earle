@@ -30,6 +30,7 @@ const SHEETS: Array<{ id: LabSheet; label: string }> = [
   { id: 'off', label: 'aus' },
   { id: 'patterns', label: 'Muster 3×3' },
   { id: 'materials', label: 'Materialien 3×3' },
+  { id: 'designer', label: 'Designer 3×3' },
 ];
 
 function Seg<T extends string | number>({ label, value, options, onChange, testId }: { label: string; value: T; options: Array<{ id: T; label: string }>; onChange: (v: T) => void; testId: string }) {
@@ -102,7 +103,7 @@ export function LabBlob() {
       <Seg label="Blobs" value={settings.count} options={COUNTS.map((c) => ({ id: c, label: String(c) }))} onChange={(count) => set({ count, pose: 'board' })} testId="ctl-count" />
       <Seg label="Material" value={settings.material} options={MATERIALS} onChange={(material) => set({ material })} testId="ctl-material" />
       <Seg label="Muster" value={settings.pattern} options={PATTERNS} onChange={(pattern) => set({ pattern })} testId="ctl-pattern" />
-      <Seg label="Bogen" value={settings.sheet} options={SHEETS} onChange={(sheet) => set({ sheet, count: sheet === 'off' ? settings.count : 9, pose: 'board' })} testId="ctl-sheet" />
+      <Seg label="Bogen" value={settings.sheet} options={SHEETS} onChange={(sheet) => set({ sheet, count: sheet === 'off' ? settings.count : 9, pose: settings.pose === 'topdown' ? 'topdown' : 'board' })} testId="ctl-sheet" />
       <Seg label="Stufe" value={settings.tier} options={[1, 2, 3, 4, 5, 6, 7, 8].map((t) => ({ id: t, label: String(t) }))} onChange={(tier) => set({ tier })} testId="ctl-tier" />
       <Seg label="Physik" value={settings.driver} options={DRIVERS} onChange={(driver) => set({ driver })} testId="ctl-driver" />
       <Seg label="Qualität" value={settings.quality} options={QUALITIES} onChange={(quality) => set({ quality })} testId="ctl-quality" />
@@ -139,6 +140,9 @@ export function LabBlob() {
           data-testid="btn-earle"
         >
           Earle-Test
+        </button>
+        <button type="button" className="blob-lab-btn" data-kind="action" data-active={settings.pose === 'topdown'} onClick={() => set({ pose: settings.pose === 'topdown' ? 'board' : 'topdown' })} data-testid="btn-topdown">
+          Draufsicht 65°
         </button>
         <button type="button" className="blob-lab-btn" data-kind="action" data-active={settings.pose === 'close'} onClick={() => set({ pose: settings.pose === 'close' ? 'board' : 'close', count: 1, sheet: 'off' })} data-testid="btn-close">
           Nah

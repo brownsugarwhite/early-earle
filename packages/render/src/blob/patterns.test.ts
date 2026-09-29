@@ -4,6 +4,7 @@ import { BLOB_STRIDE, BLOB_STYLE_STRIDE, BlobField, BlobParamBlock, BlobStyleFie
 import { BLOB_MATERIAL_KIND_ID, BLOB_MATERIAL_KINDS, EARLE_TEST_STYLE, NO_PATTERN, PATTERN_KINDS, PATTERN_KIND_ID, SPECIES_PATTERNS, makePattern, patternPalette, speciesPalette, type BlobRenderParams } from './patterns';
 import { hexToLinear } from '../common/tsl';
 import { createFurFinMesh } from '../materials/FurFinMaterial';
+import { createFeatherCardMesh, featherLayout } from '../materials/FeatherCardMaterial';
 
 const style = (b: BlobParamBlock, slot: number, field: number): number[] => Array.from(b.styleData.slice((slot * BLOB_STYLE_STRIDE + field) * 4, (slot * BLOB_STYLE_STRIDE + field) * 4 + 4));
 const main = (b: BlobParamBlock, slot: number, field: number): number[] => Array.from(b.data.slice((slot * BLOB_STRIDE + field) * 4, (slot * BLOB_STRIDE + field) * 4 + 4));
@@ -16,8 +17,9 @@ describe('material kinds', () => {
 });
 
 describe('patterns', () => {
-  it('ids are stable (0 none … 6 diamonds)', () => {
-    expect(PATTERN_KINDS.map((k) => PATTERN_KIND_ID[k])).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  it('ids are stable (0 none … 6 diamonds, 7 elephant … 10 mouse appended)', () => {
+    expect(PATTERN_KINDS.map((k) => PATTERN_KIND_ID[k])).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(PATTERN_KIND_ID).toMatchObject({ elephant: 7, rex: 8, retriever: 9, mouse: 10 });
   });
 
   it('palette harmonises with the body: marks derived from the base colour, lights from the Earle set', () => {
@@ -32,7 +34,8 @@ describe('patterns', () => {
   });
 
   it('species patterns carry their own coat and default to recolor 0.25', () => {
-    expect(SPECIES_PATTERNS).toEqual(['tiger', 'giraffe', 'zebra', 'snake', 'spots']);
+    expect(SPECIES_PATTERNS).toEqual(['tiger', 'giraffe', 'zebra', 'snake', 'spots', 'elephant', 'rex', 'retriever', 'mouse']);
+    for (const kind of SPECIES_PATTERNS) expect(speciesPalette(kind).ground).toMatch(/^#[0-9a-f]{6}$/);
     const tiger = makePattern('tiger', '#7ce6d5');
     expect(tiger.ground).toBe(speciesPalette('tiger').ground);
     expect(tiger.recolor).toBe(0.25);
@@ -122,6 +125,29 @@ describe('BlobParamBlock style block', () => {
     expect(style(block, 0, BlobStyleField.GROUND)[3]).toBe(0);
   });
 
+  it('face mask: derived from the eyes by default (FACE slot + strength), dyn.face / params.faceMask override', () => {
+    const block = new BlobParamBlock(3);
+    const g = genomeFor('tjorizo', 3, 5); // two eyes
+    block.write(0, g, { center: [0, 0, 0], scale: 1 });
+    const face = style(block, 0, BlobStyleField.FACE);
+    const e = g.eye.dir;
+    const el = Math.hypot(e[0], e[1], e[2]);
+    expect(face[0]).toBeCloseTo(e[0] / el, 5);
+    expect(face[1]).toBeCloseTo(e[1] / el, 5);
+    expect(face[2]).toBeCloseTo(e[2] / el, 5);
+    expect(face[3]).toBeCloseTo(Math.hypot(g.eye.spacing + g.eye.size * 0.15, g.eye.size * 0.85) + 0.16, 5);
+    expect(style(block, 0, BlobStyleField.PATTERN_LIGHT2)[3]).toBe(1); // strength
+    // Creature code sets the mask from its eye sockets (dynamics win over params).
+    block.write(1, { ...g, faceMask: { dir: [0, 1, 0], radius: 0.3 } }, { center: [0, 0, 0], scale: 1 }, { face: { dir: [0, 0, 2], radius: 0.7, strength: 0.5 } });
+    expect(style(block, 1, BlobStyleField.FACE)).toEqual([0, 0, 1, expect.closeTo(0.7, 5)]);
+    expect(style(block, 1, BlobStyleField.PATTERN_LIGHT2)[3]).toBeCloseTo(0.5);
+    block.write(2, { ...g, faceMask: { dir: [0, 2, 0], radius: 0.3, strength: 0 } }, { center: [0, 0, 0], scale: 1 });
+    expect(style(block, 2, BlobStyleField.FACE)).toEqual([0, 1, 0, expect.closeTo(0.3, 5)]);
+    expect(style(block, 2, BlobStyleField.PATTERN_LIGHT2)[3]).toBe(0); // mask off
+    block.hide(2);
+    expect(style(block, 2, BlobStyleField.FACE)).toEqual([0, 0, 1, 0]);
+  });
+
   it('fire widens the instance box for the flame tongues', () => {
     const a = new BlobParamBlock(1);
     const b = new BlobParamBlock(1);
@@ -139,6 +165,34 @@ describe('fur fins', () => {
     expect(fins.cards).toBe(64);
     expect(fins.mesh.count).toBe(0);
     expect(fins.mesh.instanceMatrix.count).toBe(4 * 64);
-    expect(fins.silhouetteOnly.value).toBe(0); // Hoch: silhouette tufts + inner locks
+    expect(fins.silhouetteOnly.value).toBe(0); // Hoch: the wider contour band
+  });
+});
+
+describe('feather cards', () => {
+  it('plumage layout: equal-size feathers in rings, within the budget, top and sides only', () => {
+    for (const cards of [32, 64, 96, 128]) {
+      const { cells, rows, dTheta } = featherLayout(cards);
+      expect(cells).toHaveLength(cards);
+      const used = cells.filter((c) => c.w > 0.5);
+      expect(used.length).toBeLessThanOrEqual(cards);
+      expect(used.length).toBeGreaterThan(cards * 0.8);
+      expect(new Set(used.map((c) => c.x.toFixed(4))).size).toBe(rows);
+      for (const c of used) {
+        expect(Math.abs(c.y)).toBeLessThanOrEqual(1.75 + c.z / 2 + 1e-6);
+        // Width of a feather (sin θ · φ step) stays close to the ring spacing: no crowding at the poles.
+        const w = Math.sin(c.x) * c.z;
+        expect(w).toBeGreaterThan(dTheta * 0.45);
+        expect(w).toBeLessThan(dTheta * 2.2);
+      }
+    }
+  });
+
+  it('build one instanced draw per block (96 cards by default), off until the caller sets the count', () => {
+    const block = new BlobParamBlock(2);
+    const f = createFeatherCardMesh(block);
+    expect(f.cards).toBe(96);
+    expect(f.mesh.count).toBe(0);
+    expect(f.mesh.instanceMatrix.count).toBe(2 * 96);
   });
 });

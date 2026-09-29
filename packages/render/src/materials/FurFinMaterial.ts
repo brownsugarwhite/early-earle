@@ -1,6 +1,6 @@
 import { BufferAttribute, BufferGeometry, DoubleSide, InstancedMesh } from 'three';
 import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
-import { Discard, Fn, If, abs, cameraPosition, cos, cross, dot, float, fwidth, instanceIndex, int, max, mix, modelWorldMatrixInverse, normalize, positionGeometry, pow, sin, smoothstep, sqrt, step, struct, time, uniform, varying, vec2, vec3, vec4 } from 'three/tsl';
+import { Discard, Fn, If, abs, acos, cameraPosition, clamp, cos, cross, dot, float, fwidth, instanceIndex, int, length, max, mix, modelWorldMatrixInverse, normalize, positionGeometry, sin, smoothstep, sqrt, step, struct, time, uniform, varying, vec2, vec3, vec4 } from 'three/tsl';
 import { elementOf, member, type FloatNode, type Vec3Node } from '../common/tsl';
 import { BLOB_STRIDE, BLOB_STYLE_STRIDE, BlobField, BlobStyleField, type BlobParamBlock } from '../blob/blobParamsUniforms';
 import { compileSdf, createBlobQualityUniforms, type BlobQualityUniforms, type CompiledSdf } from '../blob/compileSdf';
@@ -51,14 +51,15 @@ function createTuftGeometry(): BufferGeometry {
 const GOLDEN_ANGLE = 2.399963;
 
 /**
- * Fur fins / tuft cards: camera-facing lock cards rooted on the body (Fibonacci roots traced onto the
- * shared SDF). Each lock points along a combed flow field — from the head (eye direction) backwards and
- * down the sides — and turns its face to the camera about that axis. At the contour the locks stand out
- * of the body: a tufted, fluffy silhouette; facing the camera they lie flat as combed lock shapes.
- * Colours: the coat (with the body pattern sampled at the root), dark at the root, lit tip strokes on
- * the light side (Earle: thin light strokes on a dark mass). Non-fur slots collapse in the vertex stage.
+ * Fur fins — the soft, scalloped fringe of a fur coat (reads from the ~65° board camera as from the
+ * side): camera-facing puff cards rooted on the body (Fibonacci roots traced onto the shared SDF), kept
+ * only near the silhouette. Each puff is a round (combed: slightly elongated, leaning back along the
+ * combing flow) disc centred on the contour and pushed a little behind it, so only the part beyond the
+ * body's outline shows: overlapping round bumps — a cloud edge, no spikes, no leaf points. Colours: the
+ * coat at the root (body pattern included), one value step for light/shade, a lit crescent on the side
+ * toward the light (Earle's dome rims), lighter top. The face (style FACE slot) stays free.
  *
- * Mobil preset: `silhouetteOnly.value = 1` keeps only cards near the silhouette.
+ * Mobil preset: `silhouetteOnly.value = 1` keeps only the cards closest to the contour (fewer puffs).
  * One draw call; `mesh.count` = slots × cards.
  */
 export function createFurFinMesh(block: BlobParamBlock, opts: FurFinOptions = {}): FurFinResult {
@@ -70,7 +71,7 @@ export function createFurFinMesh(block: BlobParamBlock, opts: FurFinOptions = {}
   const silhouetteOnly = uniform(0);
   const material = new MeshBasicNodeMaterial();
 
-  const Vtx = struct({ pos: 'vec3', n: 'vec3', rest: 'vec3', base: 'float', seed: 'float', lit: 'float' }, 'EeFurFinVertex');
+  const Vtx = struct({ pos: 'vec3', n: 'vec3', rest: 'vec3', base: 'float', seed: 'float', luv: 'vec2' }, 'EeFurFinVertex');
   const vertex = Fn(() => {
     const slotI = int(instanceIndex).div(cards).toVar();
     const card = int(instanceIndex).sub(slotI.mul(cards)).toVar();
@@ -79,7 +80,8 @@ export function createFurFinMesh(block: BlobParamBlock, opts: FurFinOptions = {}
     const pos = vec3(0, -1e4, 0).toVar();
     const n = vec3(0, 1, 0).toVar();
     const rest = vec3(0, 0, 0).toVar();
-    const litOut = float(0).toVar();
+    const seedOut = float(0).toVar();
+    const luv = vec2(0, 1).toVar();
     const fi = float(card);
     If(kindWeight(misc.w, 4).greaterThan(0.5), () => {
       const styleBase = slotI.mul(BLOB_STYLE_STRIDE);
@@ -90,7 +92,7 @@ export function createFurFinMesh(block: BlobParamBlock, opts: FurFinOptions = {}
       const place = elementOf(block.node, baseV.add(BlobField.PLACE));
       const s0 = elementOf(block.node, baseV);
       // Root on a Fibonacci sphere; visibility is decided from the untraced direction first, so culled
-      // cards (the face, and most cards in the Mobil silhouette-only mode) never pay for the SDF trace.
+      // cards (the face, everything away from the contour) never pay for the SDF trace.
       const y = float(1).sub(fi.add(0.5).div(cards).mul(2));
       const rxz = sqrt(max(float(1).sub(y.mul(y)), 0));
       const phi = fi.mul(GOLDEN_ANGLE).add(fx.x);
@@ -99,61 +101,62 @@ export function createFurFinMesh(block: BlobParamBlock, opts: FurFinOptions = {}
       const camLocal = camObj.sub(place.xyz).div(max(place.w, 1e-4));
       const r0 = max(s0.w, 0.2);
       const viewA = normalize(camLocal.sub(s0.xyz.add(dir.mul(r0))));
-      const silA = float(1).sub(smoothstep(0.22, 0.62, abs(dot(dir, viewA))));
-      const face = step(dot(dir, normalize(eye.xyz)), float(0.9).sub(eye.w.mul(0.2)));
-      const keepA = max(float(1).sub(silhouetteOnly), step(0.03, silA)).mul(face);
-      If(keepA.greaterThan(0.5), () => {
-      const root = trace(dir, baseV).toVar();
-      n.assign(sdf.normalSmooth(root, baseV));
-      rest.assign(sdf.unsquash(root, baseV));
-      const view = normalize(camLocal.sub(root));
-      // Combed flow: from the head (eye direction) backwards and down the sides, in the tangent plane.
-      const fwd = normalize(vec3(eye.x, 0, eye.z).add(vec3(0, 0, 1e-4)));
-      const flowRaw = fwd.negate().mul(0.9).add(vec3(0, -0.65, 0));
-      const flowT = normalize(flowRaw.sub(n.mul(dot(flowRaw, n))).add(vec3(1e-4, 0, 0)));
-      const faceward = smoothstep(0.2, 0.85, dot(normalize(root.sub(s0.xyz)), fwd));
-      const facing = abs(dot(n, view));
-      const sil = float(1).sub(smoothstep(0.22, 0.62, facing));
-      const h = instanceHash(fx.x, fi, 7);
-      // Density: fewer locks toward the face, all of them on the back and sides.
-      const keep = max(float(1).sub(silhouetteOnly), step(0.08, sil)).mul(step(faceward.mul(0.4), h));
-      // Lock axis: lying along the flow on the body, standing out (combed) at the silhouette.
-      const comb = fur.w;
-      const axisIn = normalize(flowT.add(n.mul(0.22)));
-      // At the contour the locks lean hard along the comb: overlapping scallops, not radial spikes.
-      const axisOut = normalize(n.mul(float(0.55).sub(comb.mul(0.2))).add(flowT.mul(float(0.6).add(comb.mul(0.6)))));
-      const axis = normalize(mix(axisIn, axisOut, sil));
-      // Camera-facing width direction (the card turns about its own axis toward the viewer).
-      const wv = normalize(cross(axis, view).add(vec3(0, 1e-4, 0)));
-      // Inner locks (facing the camera) are smaller; the contour tufts carry the silhouette.
-      // Longer, wavier locks on the back and sides (retriever), shorter toward the face.
-      const L = fur.x.mul(mix(float(1.8), float(2.8), h)).mul(r0).mul(mix(float(0.65), float(1.1), sil)).mul(float(1).sub(faceward.mul(0.45)));
-      const W = L.mul(0.85);
-      // Sway (wind) and jiggle: the lock bends toward its width direction, more toward the tip.
-      const u = positionGeometry.x;
-      const v = positionGeometry.y;
-      const swayA = sin(time.mul(2.3).add(fi.mul(1.31)).add(fx.x)).mul(fur.z).mul(0.25).add(anim.x.mul(sin(time.mul(14).add(fi))).mul(0.4));
-      const bend = v.mul(v);
-      // Wave along the lock (retriever), a gentle lift of the tip, wind/jiggle sway.
-      const wave = sin(v.mul(Math.PI * 1.6).add(h.mul(6.28)).add(time.mul(1.1))).mul(0.14).mul(v);
-      const curl = n.mul(bend.mul(L).mul(0.1)).add(wv.mul(bend.mul(L).mul(swayA).add(wave.mul(L))));
-      // Sunk into the body so neighbouring locks overlap into one scalloped fringe.
-      const p = root.add(wv.mul(u.mul(W))).add(axis.mul(v.mul(L))).add(curl).sub(axis.mul(L.mul(0.22))).sub(n.mul(L.mul(0.1)));
-      pos.assign(mix(vec3(0, -1e4, 0), p, keep));
-      litOut.assign(h);
+      const band = mix(float(0.62), float(0.45), silhouetteOnly);
+      const nearContour = step(abs(dot(dir, viewA)), band);
+      const faceS = elementOf(block.styleNode, styleBase.add(BlobStyleField.FACE));
+      const faceStr = elementOf(block.styleNode, styleBase.add(BlobStyleField.PATTERN_LIGHT2)).w;
+      const face = float(1).sub(step(acos(clamp(dot(dir, faceS.xyz), -1, 1)), faceS.w.mul(1.2).add(0.1)).mul(faceStr));
+      If(nearContour.mul(face).greaterThan(0.5), () => {
+        const root = trace(dir, baseV).toVar();
+        n.assign(sdf.normalSmooth(root, baseV));
+        rest.assign(sdf.unsquash(root, baseV));
+        const view = normalize(camLocal.sub(root));
+        const facing = abs(dot(n, view));
+        const sil = float(1).sub(smoothstep(0.2, 0.6, facing));
+        // Combing flow: from the head (eye direction) backwards and down the sides, in the tangent plane.
+        const fwd = normalize(vec3(eye.x, 0, eye.z).add(vec3(0, 0, 1e-4)));
+        const flowRaw = fwd.negate().mul(0.9).add(vec3(0, -0.65, 0));
+        const flowT = normalize(flowRaw.sub(n.mul(dot(flowRaw, n))).add(vec3(1e-4, 0, 0)));
+        const faceward = smoothstep(0.2, 0.85, dot(normalize(root.sub(s0.xyz)), fwd));
+        const h = instanceHash(fx.x, fi, 7);
+        const comb = fur.w;
+        // Screen-plane frame: `outV` = the outward normal on the view plane; the long axis leans back
+        // along the (projected) combing flow.
+        const outV = normalize(n.sub(view.mul(dot(n, view))).add(vec3(0, 1e-4, 0)));
+        const flowV = flowT.sub(view.mul(dot(flowT, view)));
+        const axisA = normalize(outV.add(flowV.mul(comb.mul(0.9))));
+        const axisB = normalize(cross(view, axisA));
+        // Puff radius: fur length × body radius, random per puff, smaller toward the face.
+        // Irregular fringe: sizes vary a lot, bigger tufts on the back and sides, small ones at the front.
+        const R = fur.x.mul(mix(float(0.7), float(1.4), h)).mul(r0).mul(float(1).sub(faceward.mul(0.6)));
+        const elong = float(1).add(comb.mul(0.45));
+        // Wind sway and jiggle: the puff rocks a little sideways about its base.
+        const swayA = sin(time.mul(2.3).add(fi.mul(1.31)).add(fx.x)).mul(fur.z).mul(0.12).add(anim.x.mul(sin(time.mul(14).add(fi))).mul(0.15));
+        const qx = positionGeometry.x.mul(2); // −1..1 across
+        const qy = positionGeometry.y.mul(2).sub(1); // −1..1 along the long axis
+        // Centre on the contour, pushed back behind it: the body hides the inner half, only the bump
+        // beyond the outline shows.
+        const h2 = instanceHash(fx.x, fi, 8);
+        const centre = root.sub(outV.mul(R.mul(mix(float(0.45), float(0.1), h2)))).sub(view.mul(R.mul(0.5)));
+        const p = centre.add(axisB.mul(qx.add(swayA.mul(qy.add(1))).mul(R))).add(axisA.mul(qy.mul(R).mul(elong)));
+        pos.assign(mix(vec3(0, -1e4, 0), p, step(0.06, sil)));
+        seedOut.assign(h);
+        luv.assign(vec2(dot(uniforms.lightDir, axisB), dot(uniforms.lightDir, axisA)));
       });
     });
-    return Vtx(pos, n, rest, float(baseV), fi, litOut);
+    return Vtx(pos, n, rest, float(baseV), seedOut, luv);
   })();
   const slotV = int(instanceIndex).div(cards);
   const placeV = elementOf(block.node, slotV.mul(BLOB_STRIDE).add(BlobField.PLACE));
   const vN = varying(member<'vec3'>(vertex, 'n'), 'vFinN');
   const vRest = varying(member<'vec3'>(vertex, 'rest'), 'vFinRest');
   const vBase = varying(member<'float'>(vertex, 'base'), 'vFinBase');
+  const vSeed = varying(member<'float'>(vertex, 'seed'), 'vFinSeed');
+  const vLuv = varying(member<'vec2'>(vertex, 'luv'), 'vFinLuv');
   const vUv = varying(vec2(positionGeometry.x, positionGeometry.y), 'vFinUv');
   material.positionNode = member<'vec3'>(vertex, 'pos').mul(placeV.w).add(placeV.xyz);
 
-  // --- fragment: a lock glyph (wide root, pointed forked tip), coat colour, lit tip strokes ------------
+  // --- fragment: a round puff in the coat colour, lit crescent toward the light ----------------------
   const aa = (edge: FloatNode | number, x: FloatNode): FloatNode => {
     const w = fwidth(x).mul(0.75).add(1e-4);
     const e = typeof edge === 'number' ? float(edge) : edge;
@@ -161,12 +164,10 @@ export function createFurFinMesh(block: BlobParamBlock, opts: FurFinOptions = {}
   };
   material.colorNode = Fn(() => {
     const base = int(vBase.add(0.5)).toVar();
-    const u = vUv.x;
-    const v = vUv.y;
-    // Lock outline: a flat, rounded tear/leaf — full body, round tip (a scallop), no points or forks.
-    const hw = float(0.5).mul(pow(max(sin(pow(v, float(0.85)).mul(Math.PI)), 0), float(0.6))).mul(smoothstep(0.0, 0.1, v).mul(0.25).add(0.75));
-    const inside = hw.sub(abs(u));
-    Discard(inside.lessThan(0));
+    const qx = vUv.x.mul(2);
+    const qy = vUv.y.mul(2).sub(1);
+    const r = length(vec2(qx, qy));
+    Discard(r.greaterThan(1));
 
     const styleBase = base.div(BLOB_STRIDE).mul(BLOB_STYLE_STRIDE);
     const n = normalize(vN);
@@ -178,7 +179,8 @@ export function createFurFinMesh(block: BlobParamBlock, opts: FurFinOptions = {}
     const hl = elementOf(block.node, base.add(BlobField.HIGHLIGHT));
     const s0 = elementOf(block.node, base);
     const pq = vRest.sub(s0.xyz).div(max(s0.w, 0.2)).toVar();
-    const coat = mix(mix(inner, baseC, 0.28), baseC, step(0.5, wrap)).toVar();
+    const lit = step(0.55, wrap);
+    const coat = mix(mix(inner, baseC, 0.28), baseC, lit).toVar();
     // Lighter belly and chest.
     coat.assign(mix(coat, mix(baseC, hl.xyz, 0.45), smoothstep(-0.15, -0.6, pq.y).mul(0.8)));
     const mat = elementOf(block.styleNode, styleBase.add(BlobStyleField.MAT)).toVar();
@@ -198,18 +200,17 @@ export function createFurFinMesh(block: BlobParamBlock, opts: FurFinOptions = {}
         },
         { marksOnly: true },
       );
-      coat.assign(mix(coat, pat.inkColor, pat.ink.mul(0.9)));
-      coat.assign(mix(coat, pat.lightColor, pat.light.mul(0.8)));
+      coat.assign(mix(coat, pat.inkColor.mul(mix(float(0.7), float(1), lit)), pat.ink.mul(0.9)));
+      coat.assign(mix(coat, pat.lightColor.mul(mix(float(0.7), float(1), lit)), pat.light.mul(0.8)));
     });
-    // Flat lock: the body's own fur colour at that spot (the coat pulled toward the mass by the same
-    // amount as the body reads on average), one value step for light/shade, slightly lighter tip, a soft
-    // central parting stroke — no dark root cone, no specular: scallops like Earle's dome rims.
-    const mass = mix(coat.mul(0.32), uniforms.ink, 0.5);
-    const lit = step(0.55, wrap);
-    const col = mix(mix(mass, coat, 0.5), mix(mass, coat, 0.72), lit).toVar();
-    col.assign(mix(col, mix(coat, hl.xyz, 0.18), smoothstep(0.62, 0.9, v).mul(mix(float(0.35), float(0.8), lit))));
-    const parting = float(1).sub(aa(0.05, abs(u).div(max(hw, 1e-3)))).mul(smoothstep(0.25, 0.45, v)).mul(float(1).sub(smoothstep(0.8, 0.95, v)));
-    col.assign(mix(col, mix(mass, coat, 0.3), parting.mul(0.35)));
+    // The fringe is the coat's side fur, one value step deeper than the lit back (sketch 08: a lighter
+    // back over a deeper golden fringe); a slight per-puff tone; a soft lit crescent on the light side.
+    const deep = mix(mix(inner, baseC, 0.28), coat, 0.55);
+    const col = mix(deep, coat, lit.mul(0.5)).mul(float(1).add(vSeed.sub(0.5).mul(0.08))).toVar();
+    const lu = normalize(vLuv.add(vec2(0, 1e-4)));
+    const toward = dot(vec2(qx, qy).div(max(r, 1e-3)), lu);
+    const crescent = aa(0.66, r).mul(smoothstep(0.15, 0.5, toward)).mul(lit);
+    col.assign(mix(col, mix(coat, hl.xyz, 0.25), crescent.mul(0.6)));
     return col;
   })();
   material.side = DoubleSide;

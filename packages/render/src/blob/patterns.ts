@@ -23,10 +23,15 @@ export const BLOB_MATERIAL_LABELS: Readonly<Record<BlobMaterialKind, string>> = 
 
 // -------------------------------------------------------------------------------------- patterns
 
-export type PatternKind = 'none' | 'tiger' | 'giraffe' | 'zebra' | 'snake' | 'spots' | 'diamonds';
-export const PATTERN_KINDS: readonly PatternKind[] = ['none', 'tiger', 'giraffe', 'zebra', 'snake', 'spots', 'diamonds'];
-export const PATTERN_KIND_ID: Readonly<Record<PatternKind, number>> = { none: 0, tiger: 1, giraffe: 2, zebra: 3, snake: 4, spots: 5, diamonds: 6 };
-export const PATTERN_LABELS: Readonly<Record<PatternKind, string>> = { none: 'ohne', tiger: 'Tiger', giraffe: 'Giraffe', zebra: 'Zebra', snake: 'Schlange', spots: 'Punkte', diamonds: 'Rauten' };
+/**
+ * Pattern kinds. 0–6 since P1b; 7–10 (designer sketch 08) added in the "Augen vs. Muster" pass:
+ * `elephant` (plain grey, subtle wrinkle strokes), `rex` (pink with darker spiky crest stripes),
+ * `retriever` (golden coat, lighter chest/belly), `mouse` (fluffy grey coat, lighter belly).
+ */
+export type PatternKind = 'none' | 'tiger' | 'giraffe' | 'zebra' | 'snake' | 'spots' | 'diamonds' | 'elephant' | 'rex' | 'retriever' | 'mouse';
+export const PATTERN_KINDS: readonly PatternKind[] = ['none', 'tiger', 'giraffe', 'zebra', 'snake', 'spots', 'diamonds', 'elephant', 'rex', 'retriever', 'mouse'];
+export const PATTERN_KIND_ID: Readonly<Record<PatternKind, number>> = { none: 0, tiger: 1, giraffe: 2, zebra: 3, snake: 4, spots: 5, diamonds: 6, elephant: 7, rex: 8, retriever: 9, mouse: 10 };
+export const PATTERN_LABELS: Readonly<Record<PatternKind, string>> = { none: 'ohne', tiger: 'Tiger', giraffe: 'Giraffe', zebra: 'Zebra', snake: 'Schlange', spots: 'Punkte', diamonds: 'Rauten', elephant: 'Elefant', rex: 'REX', retriever: 'Retriever', mouse: 'Maus' };
 
 export interface PatternParams {
   kind: PatternKind;
@@ -99,8 +104,8 @@ export function speciesPalette(kind: PatternKind): { ground?: string; ink: strin
   switch (kind) {
     case 'tiger':
       return { ground: '#e0892e', ink: '#1c130e', light: '#f4e4c1', light2: '#b8561e' };
-    case 'giraffe':
-      return { ground: '#efdfb8', ink: '#9a4a22', light: '#efdfb8', light2: '#c7822e' };
+    case 'giraffe': // sketch 08: warm cream-yellow coat (= the seams), large rounded ochre patches
+      return { ground: '#f3d377', ink: '#b3802c', light: '#f6e7b8', light2: '#c2903a' };
     case 'zebra':
       return { ground: '#eeeadb', ink: '#15151b', light: '#eeeadb', light2: '#2b2a33' };
     case 'snake':
@@ -109,13 +114,21 @@ export function speciesPalette(kind: PatternKind): { ground?: string; ink: strin
       return { ground: '#d9a54e', ink: '#2a190e', light: '#f3e5c3', light2: '#a8662a' };
     case 'diamonds':
       return { ink: '#0d414c', light: '#e07380', light2: '#39bbeb' };
+    case 'elephant': // sketch 08: plain blue-grey, darker grey wrinkles
+      return { ground: '#96a1ad', ink: '#6e7a88', light: '#b3bcc6', light2: '#7f8a97' };
+    case 'rex': // sketch 08: pink-violet body, darker spiky stripes along the crest
+      return { ground: '#cf5fd8', ink: '#8a2c9e', light: '#e39ae8', light2: '#a33fb4' };
+    case 'retriever': // sketch 08: golden coat, lighter chest/belly
+      return { ground: '#e7b54c', ink: '#c28b2e', light: '#f6dfa0', light2: '#d19c3a' };
+    case 'mouse': // sketch 08: fluffy light grey, lighter belly, a slightly deeper lilac-grey back
+      return { ground: '#c3c3cb', ink: '#9d9aa8', light: '#e6e4ea', light2: '#b3aec0' };
     default:
       return { ink: NO_PATTERN.ink, light: NO_PATTERN.light, light2: NO_PATTERN.light };
   }
 }
 
 /** Patterns that carry a species coat (and default to recolor 0.25). */
-export const SPECIES_PATTERNS: readonly PatternKind[] = ['tiger', 'giraffe', 'zebra', 'snake', 'spots'];
+export const SPECIES_PATTERNS: readonly PatternKind[] = ['tiger', 'giraffe', 'zebra', 'snake', 'spots', 'elephant', 'rex', 'retriever', 'mouse'];
 
 /**
  * Fills in a full `PatternParams` from a kind (+ optional overrides). Species patterns get their species
@@ -168,7 +181,19 @@ export interface BlobStyle {
  * `BlobParams` with the wider material union and the optional style fields. Every `BlobParams` is a
  * valid `BlobRenderParams`, so genome output can be passed through untouched.
  */
-export type BlobRenderParams = Omit<BlobParams, 'material'> & { material: BlobMaterialKind } & Omit<BlobStyle, 'material'>;
+export type BlobRenderParams = Omit<BlobParams, 'material'> & { material: BlobMaterialKind } & Omit<BlobStyle, 'material'> & { faceMask?: FaceMask | undefined };
+
+/**
+ * Face mask: a cap around `dir` (blob-local, from the main sphere centre) where patterns, stipple, fur
+ * strokes/fins/shells and feather cards are suppressed, leaving a clean body-colour halo so eyes stay
+ * readable. `radius` is the angular radius in radians (≈ 0.5–0.9 for a face with two eyes),
+ * `strength` 0..1 (default 1). Without an explicit mask the renderer derives one from the painted eye.
+ */
+export interface FaceMask {
+  dir: [number, number, number];
+  radius: number;
+  strength?: number | undefined;
+}
 
 /** Impulse that starts concentric surface ripples (liquid: full, jelly: damped, fur/feather: faint). */
 export interface RippleImpulse {
@@ -333,11 +358,17 @@ export function snakeScales(f: SphereFrame, nAround: FloatNode): Vec4Node {
 
 /** Nearest-feature Voronoi (27 cells): returns vec3(F1, F2, cell id 0..1). */
 export function voronoi3(p: Vec3Node): Vec3Node {
+  return voronoi3Cell(p).f;
+}
+
+/** `voronoi3` plus the nearest feature point (lattice space) — e.g. to decide per patch, not per pixel. */
+export function voronoi3Cell(p: Vec3Node): { f: Vec3Node; centre: Vec3Node } {
   const pi = floor(p).toVar();
   const pf = fract(p).toVar();
   const f1 = float(8).toVar();
   const f2 = float(8).toVar();
   const id = float(0).toVar();
+  const centre = vec3(0, 0, 0).toVar();
   Loop(27, ({ i }) => {
     const x = i.mod(3).sub(1);
     const y = i.div(3).mod(3).sub(1);
@@ -349,9 +380,10 @@ export function voronoi3(p: Vec3Node): Vec3Node {
     const closer = d.lessThan(f1);
     f2.assign(closer.select(f1, min(f2, d)));
     id.assign(closer.select(h, id));
+    centre.assign(closer.select(pi.add(g).add(o), centre));
     f1.assign(closer.select(d, f1));
   });
-  return vec3(f1, f2, id);
+  return { f: vec3(f1, f2, id), centre };
 }
 
 export interface PatternInputs {
@@ -375,6 +407,11 @@ export interface PatternInputs {
   highlight: Vec3Node;
   /** Unit forward axis of the body (face direction, horizontal); stripes wrap perpendicular to it. Default +z. */
   fwd?: Vec3Node;
+  /**
+   * 0..1 approach to the face (1 at the face-mask edge, fading out further away — `faceMaskAt(…, 0.8)`).
+   * Stripes taper to points before the face instead of being cut by the mask. Default 0.
+   */
+  face?: FloatNode;
 }
 
 export interface PatternSample {
@@ -418,16 +455,19 @@ export function samplePattern(inp: PatternInputs, opts: SamplePatternOptions = {
   const s = sin(rot);
   const p0 = inp.pq;
   const p = vec3(p0.x.mul(c).sub(p0.z.mul(s)), p0.y, p0.x.mul(s).add(p0.z.mul(c))).toVar();
-  // Spherical frame for the pole-safe lattices (fwidth taken here, in uniform control flow).
-  const frame = sphereFrame(p);
   // Body axes for stripes: forward (spine direction over the top), up, side.
   const fwdIn = inp.fwd ?? vec3(0, 0, 1);
   const fwd = normalize(vec3(fwdIn.x, 0, fwdIn.z).add(vec3(0, 0, 1e-4))).toVar();
   const side = normalize(cross(vec3(0, 1, 0), fwd)).toVar();
+  // Spherical frame for the pole-safe lattices (fwidth taken here, in uniform control flow). Its poles
+  // are the face (kept clear by the face mask) and the tail, so the rows run as rings around the body
+  // (snake scale rows across the back) and the board camera never looks down onto a pole rosette.
+  const frame = sphereFrame(vec3(dot(p, side), dot(p, fwd), p.y));
   const along = dot(p, fwd).toVar(); // along the spine (+ = face)
   const across = dot(p, side).toVar(); // left/right
   const upP = p.y.toVar();
   const lightSide = smoothstep(0.35, 0.6, inp.wrap).toVar();
+  const taper = float(1).sub(inp.face ?? float(0)).toVar(); // stripe width factor toward the face
   const lit01 = smoothstep(0.3, 0.85, inp.wrap).toVar();
 
   const ink = float(0).toVar();
@@ -450,26 +490,33 @@ export function samplePattern(inp: PatternInputs, opts: SamplePatternOptions = {
       const hk = cellHash3(vec3(k, 0, 0), 11);
       const bellyEnd = mix(float(-0.2), float(-0.72), hk.x); // where this stripe runs out
       const t = smoothstep(bellyEnd, float(0.85), upP.add(warp.mul(0.2)));
-      const width = float(0.23).mul(pow(t, float(0.75))).mul(float(0.8).add(contrast.mul(0.3)));
+      const width = float(0.23).mul(pow(t, float(0.75))).mul(float(0.8).add(contrast.mul(0.3))).mul(taper);
       // Forks: some stripes split into two thinner branches below a split height.
       const split = mix(float(0.15), float(-0.3), hk.z);
       const sep = step(hk.y, 0.55).mul(clamp(split.sub(upP).mul(0.5), 0, 0.18));
       const forked = step(0.001, sep);
       const dist = mix(abs(f), min(abs(f.sub(sep)), abs(f.add(sep))), forked);
       const w2 = width.mul(mix(float(1), float(0.6), forked));
-      const face = float(1).sub(smoothstep(0.55, 0.82, along));
+      const face = float(1).sub(smoothstep(0.62, 0.7, along));
       ink.assign(float(1).sub(aa(w2, dist)).mul(step(0.02, t)).mul(face));
       const belly = smoothstep(-0.28, -0.7, upP.add(warp.mul(0.25)));
       light.assign(belly.mul(float(1).sub(ink)));
     })
-    // 2 giraffe: large Voronoi patches (rust / ochre per cell) on thick cream seams (the ground).
+    // 2 giraffe: large rounded Voronoi patches (two ochre tones per cell) on the cream-yellow coat.
     .ElseIf(kind.lessThan(2.5), () => {
-      const v = voronoi3(p.mul(1.55).mul(scale).add(0.5));
+      const vs = float(1.55).mul(scale);
+      const vc = voronoi3Cell(p.mul(vs).add(0.5));
+      const v = vc.f;
+      // Whole patches drop out toward the head (decided at the patch centre: crisp, never half a patch).
+      const patchAlong = dot(normalize(vc.centre.sub(0.5).div(vs).add(vec3(0, 1e-4, 0))), fwd);
       const seamW = float(0.11).add(float(1).sub(contrast).mul(0.06));
-      const inside = aa(seamW, v.y.sub(v.x));
-      ink.assign(inside);
+      // Rounded patches (sketch 08): the polygon corners (far from the feature point) are cut away.
+      const inside = aa(seamW, v.y.sub(v.x)).mul(float(1).sub(aa(float(0.5).add(v.z.mul(0.1)), v.x)));
       inkCol.assign(mix(inkSlot.xyz, light2Slot.xyz, step(0.55, v.z)));
-      light.assign(float(1).sub(inside));
+      // The head stays plain (sketch 08); the seams are the coat itself, so the clear face reads as the
+      // same coat; a lighter belly.
+      ink.assign(inside.mul(step(patchAlong, 0.55)));
+      light.assign(smoothstep(-0.3, -0.75, upP).mul(float(1).sub(inside)).mul(0.7));
     })
     // 3 zebra: bold, regular stripes perpendicular to the spine, bent into chevrons on the flanks,
     // narrowing (not ending) toward the belly; ink on paper.
@@ -478,7 +525,7 @@ export function samplePattern(inp: PatternInputs, opts: SamplePatternOptions = {
       const sc = along.mul(float(4.2).mul(scale)).add(across.mul(across).mul(1.6)).add(abs(across).mul(upP).mul(0.6)).add(warp);
       const f = fract(sc).sub(0.5);
       const t = smoothstep(-0.95, 0.6, upP);
-      const width = mix(float(0.14), float(0.27), t).mul(float(0.85).add(contrast.mul(0.2)));
+      const width = mix(float(0.14), float(0.27), t).mul(float(0.85).add(contrast.mul(0.2))).mul(taper);
       ink.assign(float(1).sub(aa(width, abs(f))));
       light.assign(float(1).sub(ink));
     })
@@ -543,6 +590,57 @@ export function samplePattern(inp: PatternInputs, opts: SamplePatternOptions = {
       light.assign(dots.mul(present));
       const pick = h.z;
       lightCol.assign(mix(mix(lightSlot.xyz, light2Slot.xyz, step(0.38, pick)), highlight, step(0.74, pick)));
+    })
+    // 7 elephant: plain grey with subtle wrinkle strokes — short, gently curved folds across the body
+    // (perpendicular to the spine, so they read as skin folds from above and from the side), broken
+    // into short segments, stronger low on the flanks, a slightly deeper back (sketch 08).
+    .ElseIf(kind.lessThan(7.5), () => {
+      const warp = mx_noise_float(p.mul(2.1).add(4.2)).mul(0.12);
+      const wa = along.mul(float(7).mul(scale)).add(warp.mul(3)).add(sin(upP.mul(2.6).add(across.mul(1.7))).mul(0.4)).add(across.mul(across).mul(0.8));
+      const f = fract(wa).sub(0.5);
+      const line = float(1).sub(aa(float(0.07).add(contrast.mul(0.02)).mul(taper), abs(f)));
+      const segment = smoothstep(0.0, 0.12, mx_noise_float(vec3(floor(wa).mul(1.7), upP.mul(4.5).mul(scale), across.mul(4.5).mul(scale)).add(11.0)));
+      const low = mix(float(0.35), float(1), smoothstep(0.55, -0.5, upP));
+      const face = float(1).sub(smoothstep(0.5, 0.8, along));
+      ink.assign(line.mul(segment).mul(low).mul(face).mul(0.55));
+      light.assign(smoothstep(-0.3, -0.75, upP).mul(0.5));
+    })
+    // 8 rex: pink body with darker spiky stripes along the crest (sketch 08): long pointed lens
+    // shapes lying along the spine — one row on the dorsal line, staggered shorter rows beside it,
+    // shrinking down the flanks; each spike has a lighter sibling on its lit side; light belly.
+    .ElseIf(kind.lessThan(8.5), () => {
+      const warp = mx_noise_float(p.mul(1.3).add(2.2)).mul(0.1);
+      const colW = float(0.4).div(scale);
+      const cx = across.add(warp).div(colW);
+      const ci = floor(cx.add(0.5)); // 0 = dorsal row
+      const lx = cx.sub(ci); // −0.5..0.5 across the row
+      const rowLen = float(0.8).div(scale);
+      const stagger = fract(ci.mul(0.5)).mul(rowLen); // odd rows shifted by half a spike
+      const ay = along.add(stagger).add(warp.mul(0.6)).div(rowLen);
+      const ai = floor(ay);
+      const t = ay.sub(ai).mul(2).sub(1); // −1..1 along the spike
+      const hk = cellHash3(vec3(ci, ai, 0), 17);
+      const rowFade = float(1).sub(smoothstep(0.6, 2.4, abs(ci))); // spikes shrink down the flank
+      const halfW = float(0.4).mul(float(1).sub(t.mul(t))).mul(mix(float(0.75), float(1.05), hk.x)).mul(rowFade);
+      const back = smoothstep(-0.25, 0.25, upP);
+      // Whole spikes drop out toward the face (decided at the spike centre: no half-faded spikes).
+      const spikeAlong = ai.add(0.5).mul(rowLen).sub(stagger);
+      const present = step(hk.y, 0.85).mul(back).mul(step(spikeAlong, 0.5));
+      const spike = float(1).sub(aa(halfW, abs(lx))).mul(step(0.02, halfW)).mul(present);
+      ink.assign(spike);
+      // Lighter sibling stroke beside each spike on its lit side.
+      const sib = float(1).sub(aa(halfW.mul(0.45), abs(lx.sub(halfW.add(0.12))))).mul(step(0.02, halfW)).mul(present).mul(lightSide);
+      light.assign(max(smoothstep(-0.2, -0.65, upP), sib.mul(0.8)).mul(float(1).sub(ink)));
+      lightCol.assign(mix(lightSlot.xyz, light2Slot.xyz, sib));
+    })
+    // 9 retriever / 10 mouse: a plain coat — lighter chest and belly, a slightly deeper back (the coat
+    // colours come from the species palette; fur/feather looks carry the texture).
+    .Else(() => {
+      const warp = mx_noise_float(p.mul(1.7).add(6.1)).mul(0.08);
+      const chest = smoothstep(0.35, 0.8, along).mul(smoothstep(0.3, -0.2, upP));
+      light.assign(max(smoothstep(-0.1, -0.6, upP.add(warp)), chest).mul(0.85));
+      ink.assign(smoothstep(0.45, 0.95, upP.add(warp)).mul(0.35));
+      inkCol.assign(light2Slot.xyz);
     });
 
   if (opts.marksOnly) {

@@ -4,7 +4,7 @@ import { Break, Discard, Fn, If, Loop, abs, cameraFar, cameraNear, cameraPositio
 import { elementOf, member } from '../common/tsl';
 import { BLOB_STRIDE, BlobField, type BlobParamBlock } from './blobParamsUniforms';
 import { compileSdf, createBlobQualityUniforms, type BlobQualityUniforms, type CompiledSdf } from './compileSdf';
-import { analyticEyeMask, createBlobShadingUniforms, eyeFrame, shadeBlob, type BlobShadingUniforms } from './blobShading';
+import { analyticEyeMask, analyticEyeRing, createBlobShadingUniforms, eyeFrame, shadeBlob, type BlobShadingUniforms } from './blobShading';
 import { dotField, kindWeight } from './patterns';
 
 export interface RaymarchBlobOptions {
@@ -164,9 +164,11 @@ export function createRaymarchBlobMaterial(block: BlobParamBlock, opts: Raymarch
     });
     const organ = float(1).sub(smoothstep(-0.015, 0.015, organMin));
 
-    const eye = analyticEyeMask(eyeFrame(block, base, pos));
+    const ef = eyeFrame(block, base, pos);
+    const eye = analyticEyeMask(ef);
+    const eyeRing = analyticEyeRing(ef);
     const ripple = sdf.ripple(q, base).y;
-    const shade = shadeBlob(block, uniforms, { pos, q, n, rd, base, organ, bubble, eye, gas: gasAcc, ripple });
+    const shade = shadeBlob(block, uniforms, { pos, q, n, rd, base, organ, bubble, eye, eyeRing, gas: gasAcc, ripple });
 
     // Real depth of the hit point so blobs intersect the plate and each other correctly.
     const objPos = pos.mul(place.w).add(place.xyz);

@@ -1,4 +1,4 @@
-import { If, abs, atan, clamp, cross, dot, float, floor, fract, fwidth, hash, length, mat3, max, mix, mx_fractal_noise_float, mx_noise_float, normalize, pow, sin, smoothstep, step, time, vec2, vec3, vec4, uniform } from 'three/tsl';
+import { If, abs, acos, clamp, cross, dot, float, floor, fract, fwidth, hash, length, mat3, max, mix, mx_fractal_noise_float, mx_noise_float, normalize, pow, sin, smoothstep, step, time, vec2, vec3, vec4, uniform } from 'three/tsl';
 import { Matrix3, Matrix4, Vector3 } from 'three';
 import type { UniformNode } from 'three/webgpu';
 import { elementOf, type FloatNode, type IntNode, type Vec3Node, type Vec4Node } from '../common/tsl';
@@ -38,13 +38,30 @@ export interface ShadeInputs {
   gas?: FloatNode;
   /** Normalised impact-ripple wave at the surface (−1..1 × envelope, `sdf.ripple(q).y`). Default 0. */
   ripple?: FloatNode;
+  /** 0..1 ring just outside the eye slit (light sclera ring for contrast). Default 0. */
+  eyeRing?: FloatNode;
 }
 
-/** Fixed rotations for the fur lattices (clumps A, strokes B) and their inverses (transposes). */
+/** Fixed rotation for the fur stroke lattice and its inverse (transpose). */
 const rotM = (ax: number, ay: number): Matrix3 => new Matrix3().setFromMatrix4(new Matrix4().makeRotationX(ax).multiply(new Matrix4().makeRotationY(ay)));
-const FUR_ROT_A = mat3(rotM(0.61, 0.83));
 const FUR_ROT_B = mat3(rotM(-0.47, 1.21));
 const FUR_ROT_B_T = mat3(rotM(-0.47, 1.21).transpose());
+
+/**
+ * 0..1 face mask at unit direction `pn` (rest space, from the main sphere centre): 1 inside the face
+ * cap of the instance (style FACE slot × strength), soft 1-px-ish falloff. Used by the body look and by
+ * the fur shells / fins / feather cards to keep the eyes readable.
+ */
+export function faceMaskAt(block: BlobParamBlock, base: IntNode, pn: Vec3Node, soft = 0): FloatNode {
+  const sb = styleBaseOf(base);
+  const face = elementOf(block.styleNode, sb.add(BlobStyleField.FACE));
+  const strength = elementOf(block.styleNode, sb.add(BlobStyleField.PATTERN_LIGHT2)).w;
+  const ang = acos(clamp(dot(pn, face.xyz), -1, 1));
+  // Default: a narrow edge (≈ 0.06 rad), marks end cleanly at the face instead of smearing out.
+  // `soft` > 0 widens the falloff outward (e.g. 0.8 → out to 1.8 × radius): the approach zone in which
+  // stripes taper to points before the face.
+  return float(1).sub(smoothstep(face.w, face.w.mul(1.06 + soft).add(0.03), ang)).mul(strength);
+}
 
 /** Anti-aliased step (≈1 px), shared by the look functions below. */
 function aa(edge: FloatNode | number, x: FloatNode): FloatNode {
@@ -133,6 +150,14 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
   // Bubbles: lighter flat discs.
   col.assign(mix(col, bub.xyz, inp.bubble.mul(0.75).mul(glass)));
 
+  // Face mask: pattern marks, fur strokes and feather scallops step back around the eyes (the stipple
+  // halftone stays — it is a texture of the light, not a mark); `faceNear` = the wider approach zone in
+  // which stripes taper to points.
+  const pqn = normalize(pq.add(vec3(0, 1e-5, 0))).toVar();
+  const face = faceMaskAt(block, base, pqn).toVar();
+  const unmasked = float(1).sub(face).toVar();
+  const faceNear = faceMaskAt(block, base, pqn, 0.8).toVar();
+
   // --- patterns + Earle stipple / dotted rim (solid bodies only) -----------------------------------
   // Everything below is branched on the per-instance kind (coherent for a whole blob): a blob pays only
   // for its own material look. Values used after the branches live in vars declared up here.
@@ -144,9 +169,12 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
   const patLightCol = vec3(0, 0, 0).toVar();
   If(wSolid.greaterThan(0.5), () => {
     const eyeS = slot(BlobField.EYE);
-    const pat = samplePattern({ mat, inkSlot, lightSlot, light2Slot, pq, n, wrap, fres, highlight: hl.xyz, fwd: eyeS.xyz });
-    patInk.assign(pat.ink);
-    patLight.assign(pat.light);
+    const pat = samplePattern({ mat, inkSlot, lightSlot, light2Slot, pq, n, wrap, fres, highlight: hl.xyz, fwd: eyeS.xyz, face: faceNear });
+    patInk.assign(pat.ink.mul(unmasked));
+    // Light layers that are the coat itself (zebra paper, bellies) stay; light *marks* (snake crests and
+    // borders, the Earle mosaic dots) step back from the face like the ink.
+    const lightIsMark = kindWeight(mat.x, 4).add(kindWeight(mat.x, 6));
+    patLight.assign(pat.light.mul(float(1).sub(face.mul(lightIsMark))));
     patStipple.assign(pat.stipple);
     patRim.assign(pat.rimDots);
     patInkCol.assign(pat.inkColor);
@@ -231,64 +259,71 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
       fireCol.assign(mix(fireCol, hl.xyz, step(1.12, v)));
       col.assign(fireCol);
     })
-    // 4 fur look (single pass; the fins add the tufted silhouette) — hair strokes combed along a flow
-    // field (from the head backwards, down the sides), clumped into locks, dark mass with thin lit
-    // strokes and lit tips on the light side (Earle), lighter belly and chest. No speckles.
+    // 4 fur look (single pass; the fins add the scalloped fringe) — the coat in its own colour, lighter
+    // on the back (top light: from the board camera the back is what you see), lighter belly and chest,
+    // and soft lock strokes combed along a flow field (from the head backwards, down the sides): long
+    // tapered strokes one value step lighter on the lit side and one step deeper in the shade, grouped
+    // in locks. Strokes fade out when they get too small (no noise), the face stays plain.
     .ElseIf(kind.lessThan(4.5), () => {
       const sc = max(mat.y, 0.05);
+      const litAmt = smoothstep(0.45, 0.75, wrap);
       const coat = col.toVar(); // body ramp + pattern marks
       coat.assign(mix(coat, mix(baseC.xyz, hl.xyz, 0.45), smoothstep(-0.15, -0.6, pq.y).mul(0.8)));
-      const mass = mix(coat.mul(0.32), u.ink, 0.5);
-      col.assign(mix(mass, mix(mass, coat, 0.2), step(0.55, wrap)));
+      coat.assign(mix(coat, mix(coat, hl.xyz, 0.3), smoothstep(0.35, 0.9, pq.y).mul(mix(float(0.25), float(0.6), litAmt))));
+      col.assign(coat);
       // Flow field in the tangent plane.
       const eyeF = slot(BlobField.EYE);
       const fwdF = normalize(vec3(eyeF.x, 0, eyeF.z).add(vec3(0, 0, 1e-4)));
       const flowRaw = fwdF.negate().mul(0.9).add(vec3(0, -0.65, 0));
       const flowT = normalize(flowRaw.sub(n.mul(dot(flowRaw, n))).add(vec3(1e-4, 0, 0))).toVar();
       const sideT = cross(n, flowT).toVar();
-      // Locks: coarse clumps shift the stroke brightness so strokes read in groups.
-      const lh = cellHash3(floor(FUR_ROT_A.mul(pq).mul(float(3.0).mul(sc)).add(7.0)), 31);
-      const lockTone = mix(float(0.75), float(1.15), lh.x);
-      const litAmt = smoothstep(0.45, 0.75, wrap);
-      const strokeCov = float(0).toVar();
-      const strokeTip = float(0).toVar();
+      const strokeLight = float(0).toVar();
+      const strokeDark = float(0).toVar();
       for (const [off, salt] of [
         [0.0, 33],
         [0.5, 34],
       ] as const) {
-        const sp = FUR_ROT_B.mul(pq).mul(float(8.5).mul(sc)).add(off + 3.0);
+        const sp = FUR_ROT_B.mul(pq).mul(float(4.6).mul(sc)).add(off + 3.0);
         const sh = cellHash3(floor(sp), salt);
         const o = FUR_ROT_B_T.mul(fract(sp).sub(sh.mul(0.3).add(0.35)));
         const a = dot(o, flowT);
         const bb = dot(o, sideT);
-        const len = float(0.3).mul(float(0.8).add(sh.y.mul(0.4)));
+        const len = float(0.34).mul(float(0.8).add(sh.y.mul(0.4)));
         const t = clamp(a.div(len).mul(0.5).add(0.5), 0, 1); // 0 root … 1 tip (along the flow)
-        const d = length(vec2(a.sub(clamp(a, len.negate(), len)), bb));
-        const cov = float(1).sub(aa(float(0.05).mul(float(1).sub(t.mul(0.7))), d)).mul(step(sh.x, 0.85));
-        strokeTip.assign(max(strokeTip, cov.mul(t)));
-        strokeCov.assign(max(strokeCov, cov));
+        // Slight S-wave across the stroke (combed lock), tapering to the tip.
+        const bw = bb.add(sin(t.mul(Math.PI * 1.5).add(sh.z.mul(6.28))).mul(0.025));
+        const d = length(vec2(a.sub(clamp(a, len.negate(), len)), bw));
+        const cov = float(1).sub(aa(float(0.085).mul(float(1).sub(t.mul(0.75))), d)).mul(step(sh.x, 0.6));
+        strokeLight.assign(max(strokeLight, cov.mul(step(0.45, sh.z))));
+        strokeDark.assign(max(strokeDark, cov.mul(step(sh.z, 0.45))));
       }
-      const lod = smoothstep(0.35, 0.7, length(fwidth(pq.mul(8.5))));
-      const cov = mix(strokeCov, float(0.35), lod);
-      // Strokes: coat-coloured on the lit side (dim in the shade), tips lit toward the highlight.
-      const strokeCol = mix(mix(mass, coat, 0.45), coat.mul(lockTone), litAmt).toVar();
-      strokeCol.assign(mix(strokeCol, mix(coat, hl.xyz, 0.4), smoothstep(0.55, 0.95, strokeTip).mul(litAmt)));
-      col.assign(mix(col, strokeCol, cov));
+      const lod = float(1).sub(smoothstep(0.4, 0.8, length(fwidth(pq.mul(4.6)))));
+      col.assign(mix(col, mix(coat, hl.xyz, 0.3), strokeLight.mul(lod).mul(unmasked).mul(mix(float(0.2), float(0.6), litAmt))));
+      col.assign(mix(col, mix(coat, mix(inner.xyz, shadowCol, 0.5), 0.45), strokeDark.mul(lod).mul(unmasked).mul(0.45)));
     })
-    // 5 feather look (Mobil preset, on the body): overlapping scallops on the pole-safe row lattice,
-    // ink arcs, a rachis stroke and lit crests (dots along the sunlit edge).
+    // 5 feather look (Mobil preset, on the body): overlapping scallops on the pole-safe row lattice. The
+    // rows are rings around the head–tail axis (pole at the face, which the face mask keeps clear), so
+    // the round feather edges point backwards like roof tiles from head to tail — plumage from above.
     .Else(() => {
-      const Lc = rowLattice(sphereFrame(pq), float(11).mul(max(mat.y, 0.05)), 1.3);
+      const eyeP = slot(BlobField.EYE);
+      const fwdP = normalize(vec3(eyeP.x, 0, eyeP.z).add(vec3(0, 0, 1e-4)));
+      const sideP = normalize(cross(vec3(0, 1, 0), fwdP));
+      const pf = vec3(dot(pq, sideP), dot(pq, fwdP), pq.y);
+      // The front of the head stays plain (no big pole cells around the face).
+      const plumage = float(1).sub(smoothstep(0.5, 0.75, dot(normalize(pf.add(vec3(0, 0, 1e-5))), vec3(0, 1, 0)))).mul(unmasked);
+      // Cell size matches the feather cards (≈ 0.27 rad), so the cards and the body plumage agree.
+      const Lc = rowLattice(sphereFrame(pf), float(18).mul(max(mat.y, 0.05)), 1.3);
       const fu = Lc.local.x;
-      const fv = Lc.local.y.add(0.5); // 0 bottom .. 1 top of the cell
+      const fv = Lc.local.y.add(0.5); // 0 bottom (tail side) .. 1 top (head side) of the cell
       const d = length(vec2(fu, fv.sub(0.62).mul(1.25)));
       const lowerHalf = step(fv, 0.62);
-      const arc = aaW(0.44, d, Lc.aaw).mul(float(1).sub(aaW(0.53, d, Lc.aaw))).mul(lowerHalf);
-      const crest = aaW(0.34, d, Lc.aaw).mul(float(1).sub(aaW(0.44, d, Lc.aaw))).mul(lowerHalf).mul(smoothstep(0.45, 0.65, wrap));
-      const crestDots = crest.mul(step(0.5, fract(atan(fu, fv.sub(0.62)).mul(4.0))));
-      const rachis = float(1).sub(aaW(0.03, abs(fu), Lc.aaw)).mul(step(0.18, fv));
-      col.assign(mix(col, shadowCol.mul(0.8), arc.mul(0.85).add(rachis.mul(0.3))));
-      col.assign(mix(col, hl.xyz, crestDots.mul(0.8)));
+      // Value steps, no outline: the rounded tip carries a lit crest on the light side; just beyond it,
+      // the next feather lies in the tip's shadow.
+      const crest = aaW(0.34, d, Lc.aaw).mul(float(1).sub(aaW(0.5, d, Lc.aaw))).mul(lowerHalf).mul(smoothstep(0.45, 0.65, wrap));
+      const under = aaW(0.5, d, Lc.aaw).mul(float(1).sub(aaW(0.66, d, Lc.aaw))).mul(lowerHalf);
+      const rachis = float(1).sub(aaW(0.025, abs(fu), Lc.aaw)).mul(step(0.25, fv)).mul(step(d, 0.45));
+      col.assign(mix(col, mix(col, shadowCol, 0.7), under.mul(0.55).add(rachis.mul(0.12)).mul(plumage)));
+      col.assign(mix(col, mix(baseC.xyz, hl.xyz, 0.45), crest.mul(0.5).mul(plumage)));
     });
 
   // Fresnel rim: light bleeding through the thin edge — soft, no outline (glass and gas only).
@@ -296,7 +331,8 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
   // Earle rim light for everything that is not glass (fur, feather, patterned coats; fire has its own
   // bands): one hard light band along the sunlit edge — a value step, not a line.
   const wFireR = kindWeight(kind, 3);
-  const nonGlass = float(1).sub(glass).sub(wGas).sub(wFireR).max(0);
+  // Fur has its scalloped fringe (fins) instead: a rim band would outline the body like a ball.
+  const nonGlass = float(1).sub(glass).sub(wGas).sub(wFireR).sub(wFur).max(0);
   const earleRim = smoothstep(0.4, 0.46, fres).mul(smoothstep(0.55, 0.66, wrap));
   col.assign(mix(col, mix(rim.xyz, hl.xyz, 0.45), earleRim.mul(0.7).mul(nonGlass)));
 
@@ -322,6 +358,10 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
   const hi = hiJelly.mul(wJelly).add(hiLiquid.mul(wLiquid)).mul(plain).add(hiFeather.mul(wFeather));
   col.assign(mix(col, hl.xyz, clamp(hi, 0, 1)));
 
+  // Eye contrast: a light sclera ring around the slit, strong on dark bodies, subtle on light ones.
+  const lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  const ringK = smoothstep(0.3, 0.06, lum).mul(0.85).add(0.15);
+  col.assign(mix(col, mix(hl.xyz, vec3(1, 1, 1), 0.35), (inp.eyeRing ?? float(0)).mul(ringK)));
   // Eye slit(s) in ink on top of everything.
   col.assign(mix(col, u.ink, inp.eye));
 
@@ -351,6 +391,16 @@ export function eyeFrame(block: BlobParamBlock, base: IntNode, pos: Vec3Node): {
   // Two slits: mirror u around the eye direction.
   const uu = spacing.greaterThan(0).select(abs(uRaw).sub(spacing), uRaw);
   return { u: uu, v: dot(rel, bitan), facing: step(0.25, dot(pn, ed)), size: eye.w, spacing };
+}
+
+/** Ring just outside the analytic eye slit (≈ 10 % of the eye size wide) for the sclera contrast ring. */
+export function analyticEyeRing(f: ReturnType<typeof eyeFrame>): FloatNode {
+  const hh = f.size.mul(0.85);
+  const rr = f.size.mul(0.11).mul(float(1).sub(f.v.div(hh).mul(0.2)));
+  const seg = f.v.sub(clamp(f.v, hh.negate(), hh));
+  const sd = length(vec2(f.u, seg)).sub(rr);
+  const w = f.size.mul(0.1);
+  return float(1).sub(smoothstep(w.sub(0.006), w.add(0.006), sd)).mul(smoothstep(-0.006, 0.006, sd)).mul(f.facing);
 }
 
 /** Analytic eye slit for the raymarch candidate: a slightly tapered vertical capsule in the eye frame. */

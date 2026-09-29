@@ -3,7 +3,7 @@ import type { Node } from 'three/webgpu';
 import { BREATH_AMPLITUDE, squashScales, NO_FLOOR, type BlobParams, type SpherePrim, type Vec3 } from '@ee/genome';
 import { hexToLinear } from '../common/tsl';
 import { patternPalette } from './patterns';
-import { BLOB_MATERIAL_KIND_ID, DEFAULT_FEATHER, DEFAULT_FUR, NO_PATTERN, PATTERN_KIND_ID, type BlobMaterialKind, type BlobRenderParams, type FeatherParams, type FurParams, type PatternParams, type RippleImpulse } from './patterns';
+import { BLOB_MATERIAL_KIND_ID, DEFAULT_FEATHER, DEFAULT_FUR, NO_PATTERN, PATTERN_KIND_ID, type BlobMaterialKind, type BlobRenderParams, type FaceMask, type FeatherParams, type FurParams, type PatternParams, type RippleImpulse } from './patterns';
 
 /** Sphere slots per instance on the GPU. Genomes use ≤ 8; a merge union (A ∪ B + droplets) up to 16. */
 export const BLOB_MAX_SPHERES_GPU = 16;
@@ -34,9 +34,9 @@ export const BlobField = {
 /**
  * Second, small uniform buffer per instance ("style block"): pattern, ripple, fur/feather knobs,
  * species ground. Kept apart from the main block so the main block stays under the 16 KB WebGL2
- * minimum. 36 × 8 × 16 B = 4 608 B. Always index with `BLOB_STYLE_STRIDE` (it grew from 7 to 8).
+ * minimum. 36 × 9 × 16 B = 5 184 B. Always index with `BLOB_STYLE_STRIDE` (7 → 8 → 9).
  */
-export const BLOB_STYLE_STRIDE = 8;
+export const BLOB_STYLE_STRIDE = 9;
 
 /** Slot indices inside one instance of the style block (vec4 units). */
 export const BlobStyleField = {
@@ -47,7 +47,8 @@ export const BlobStyleField = {
   RIPPLE: 4, // xyz impact direction (rest space, unit), w age in seconds (< 0 = no ripple)
   FUR: 5, // length, density, sway, comb
   FX: 6, // particle seed, ripple strength, feather size, feather ruffle
-  GROUND: 7, // rgb species ground colour (linear, already recoloured), w weight (1 − recolor; 0 = body colours)
+  GROUND: 7, // rgb species ground colour (linear, already recoloured), w weight (1 = coat, 0 = body colours)
+  FACE: 8, // xyz face direction (unit, blob-local), w angular radius (rad); strength lives in PATTERN_LIGHT2.w
 } as const;
 
 export interface BlobPlacement {
@@ -84,6 +85,12 @@ export interface BlobDynamics {
   feather?: Partial<FeatherParams> | undefined;
   /** Concentric surface ripples from an impact (liquid v2; jelly damped). */
   ripple?: RippleImpulse | undefined;
+  /**
+   * Face mask (overrides `params.faceMask`): patterns, fur strokes/fins/shells and feather cards are
+   * suppressed around the face so eyes stay readable. Default: derived from the painted eye
+   * (`params.eye`: direction, size and spacing). Set `strength: 0` to switch it off.
+   */
+  face?: FaceMask | undefined;
 }
 
 /** Linear sRGB → OKLab → OKLCh; h in radians. */
@@ -186,6 +193,7 @@ export class BlobParamBlock {
     this.setStyle(slot, BlobStyleField.RIPPLE, 0, 1, 0, -1);
     this.setStyle(slot, BlobStyleField.FX, slot * 7.31, 0, 1, 0);
     this.setStyle(slot, BlobStyleField.GROUND, 0, 0, 0, 0);
+    this.setStyle(slot, BlobStyleField.FACE, 0, 0, 1, 0);
   }
 
   /** Writes the sphere list (≤ 16). Returns the count written. */
@@ -308,7 +316,16 @@ export class BlobParamBlock {
     this.setStyle(slot, BlobStyleField.MAT, PATTERN_KIND_ID[pattern.kind], pattern.scale, pattern.contrast, pattern.rotation ?? 0);
     this.setStyle(slot, BlobStyleField.PATTERN_INK, pInk[0], pInk[1], pInk[2], pattern.stipple ?? 0);
     this.setStyle(slot, BlobStyleField.PATTERN_LIGHT, pLight[0], pLight[1], pLight[2], rimDots);
-    this.setStyle(slot, BlobStyleField.PATTERN_LIGHT2, pLight2[0], pLight2[1], pLight2[2], 0);
+    // Face mask: explicit (dyn / params) or derived from the painted eye (covers both slits + a halo).
+    const faceIn = dyn.face ?? (params as Partial<BlobRenderParams>).faceMask;
+    const fDir = faceIn?.dir ?? params.eye.dir;
+    const fLen = Math.hypot(fDir[0], fDir[1], fDir[2]) || 1;
+    // Default: the angular radius of the eye pair (slit half-height 0.85·size, half-width ≈ 0.15·size
+    // beside the spacing) plus a clean halo of 0.16 rad.
+    const fRadius = faceIn ? faceIn.radius : Math.hypot(params.eye.spacing + params.eye.size * 0.15, params.eye.size * 0.85) + 0.16;
+    const fStrength = Math.max(0, Math.min(1, faceIn?.strength ?? 1));
+    this.setStyle(slot, BlobStyleField.PATTERN_LIGHT2, pLight2[0], pLight2[1], pLight2[2], fStrength);
+    this.setStyle(slot, BlobStyleField.FACE, fDir[0] / fLen, fDir[1] / fLen, fDir[2] / fLen, fRadius);
     if (rippleActive) {
       const d = ripple.dir;
       const dl = Math.hypot(d[0], d[1], d[2]) || 1;
