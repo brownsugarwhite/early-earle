@@ -120,12 +120,14 @@ export class SunRig {
     this.rebuild();
   }
 
-  /** Schattenkarte umschalten (z. B. 2048 → 1024 auf dem Handy); three passt das Render-Target beim nächsten Pass an. */
+  /**
+   * Schattenkarte umschalten (z. B. 2048 → 1024 auf dem Handy). Baut das Licht neu statt das Render-Target in
+   * place zu skalieren: nach `RenderTarget.setSize` blieb der Schattenpass in r186 dauerhaft ~3 ms langsamer.
+   */
   setMapSize(size: number): void {
     if (size === this.mapSize) return;
     this.mapSize = size;
-    this.light.shadow.mapSize.set(size, size);
-    this.requestUpdate();
+    this.rebuild();
   }
 
   setAngles(elevationDeg: number, azimuthDeg: number): void {

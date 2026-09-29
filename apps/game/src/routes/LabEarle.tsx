@@ -4,7 +4,7 @@ import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { DEFAULT_EARLE_PARAMS, EarleLabScene, type EarleLabParams } from '../lab/earle/EarleLabScene';
 import { BenchPanel } from '../lab/earle/BenchPanel';
-import type { QualityLevel } from '../lab/earle/quality';
+import type { QualityLevel, ResolvedQuality } from '../lab/earle/quality';
 import '../lab/earle/earle-lab.css';
 
 function Range({
@@ -44,6 +44,14 @@ function sameParams(a: EarleLabParams, b: EarleLabParams): boolean {
 export function LabEarle() {
   const [searchParams] = useSearchParams();
   const bench = searchParams.get('bench') === '1';
+  const benchPresets = useMemo(
+    () =>
+      (searchParams.get('presets') ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s): s is ResolvedQuality => s === 'hoch' || s === 'mobil'),
+    [searchParams],
+  );
   const [params, setParams] = useState<EarleLabParams>(DEFAULT_EARLE_PARAMS);
   const [resolved, setResolved] = useState<'hoch' | 'mobil'>('hoch');
   const controller = useMemo(() => new EarleLabScene(DEFAULT_EARLE_PARAMS), []);
@@ -97,7 +105,7 @@ export function LabEarle() {
       }
     >
       <CanvasHost controller={controller} />
-      {bench ? <BenchPanel controller={controller} /> : null}
+      {bench ? <BenchPanel controller={controller} presets={benchPresets} /> : null}
     </LabFrame>
   );
 }

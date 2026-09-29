@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { EarleLabScene } from './EarleLabScene';
 import { runEarleBench, type BenchReport } from './bench';
+import type { ResolvedQuality } from './quality';
 
-/** Bench-Overlay für `/lab/earle?bench=1`: läuft automatisch, zeigt die Ergebnistabelle groß und konturlos. */
-export function BenchPanel({ controller }: { controller: EarleLabScene }) {
+/** Bench-Overlay für `/lab/earle?bench=1[&presets=mobil,hoch]`: läuft automatisch, zeigt die Ergebnistabelle groß und konturlos. */
+export function BenchPanel({ controller, presets }: { controller: EarleLabScene; presets?: ResolvedQuality[] }) {
   const [status, setStatus] = useState('Start …');
   const [report, setReport] = useState<BenchReport | null>(null);
   const [run, setRun] = useState(0);
@@ -11,7 +12,7 @@ export function BenchPanel({ controller }: { controller: EarleLabScene }) {
   useEffect(() => {
     let cancelled = false;
     setReport(null);
-    runEarleBench(controller, { onProgress: setStatus, isCancelled: () => cancelled }).then((r) => {
+    runEarleBench(controller, { onProgress: setStatus, isCancelled: () => cancelled, ...(presets && presets.length > 0 ? { presets } : {}) }).then((r) => {
       if (!cancelled && r) {
         setReport(r);
         setStatus('Fertig');
@@ -21,7 +22,7 @@ export function BenchPanel({ controller }: { controller: EarleLabScene }) {
       cancelled = true;
       controller.setAutoRotate(0);
     };
-  }, [controller, run]);
+  }, [controller, run, presets]);
 
   return (
     <section className="earle-bench" data-testid="earle-bench" data-done={report ? '1' : '0'}>
