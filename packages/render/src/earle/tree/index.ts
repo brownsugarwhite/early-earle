@@ -19,7 +19,9 @@ export {
 } from './treePath';
 export { computeTreeShape, layoutCrown, type CrownLayoutSpec, type Dome, type TreeShape, type TreeShapeOptions } from './shape';
 export {
+  BARK_EDGE,
   BARK_PALETTE,
+  BARK_RED,
   BLOSSOM_CENTER_PALETTE,
   BLOSSOM_PALETTE,
   CANOPY_FAMILIES,
@@ -38,4 +40,4 @@ export { createBarkShade, type BarkShadeOptions } from './bark';
 export { buildTrunk, trunkProfile, type RootLine, type TrunkBuild, type TrunkProfile, type TrunkSpec } from './trunk';
 export { growSkeleton, type BranchSegment, type BranchTip, type Skeleton, type SkeletonSpec } from './lsystem';
 export { createBranchMesh, createStarGlyph, createStarMesh, popScale, type BillboardUniforms, type StarInstance } from './branches';
-export { createCanopy, createGlyphGeometry, type Canopy, type CanopyOptions, type CanopyQuality } from './canopy';
+export { createCanopy, createGlyphGeometry, familyCoord, type Canopy, type CanopyOptions, type CanopyQuality, type MeadowMotif } from './canopy';

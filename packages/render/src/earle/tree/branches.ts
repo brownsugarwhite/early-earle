@@ -30,6 +30,7 @@ import { steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type 
 import { createBarkShade } from './bark';
 import { InkMaterial } from './inkMaterial';
 import type { BranchSegment } from './lsystem';
+import { BARK_EDGE, BARK_RED } from './palette';
 
 /** Gemeinsame Kamera-/Sonnen-Uniforms der Billboards (Punkte, Glyphen, Sterne, Blüten). */
 export interface BillboardUniforms {
@@ -66,7 +67,7 @@ export interface BranchMeshOptions {
  */
 export function createBranchMesh(o: BranchMeshOptions): { mesh: Mesh; count: number; dispose(): void } {
   const n = Math.max(1, o.segments.length);
-  const cyl = new CylinderGeometry(1, 1, 1, 7, 1, true);
+  const cyl = new CylinderGeometry(1, 1, 1, 10, 1, true);
   cyl.translate(0, 0.5, 0);
   const geometry = new InstancedBufferGeometry();
   geometry.setAttribute('position', cyl.getAttribute('position'));
@@ -127,7 +128,9 @@ export function createBranchMesh(o: BranchMeshOptions): { mesh: Mesh; count: num
     length: 4,
     clock: o.clock,
     bands: 9,
-    lichenStrips: 1,
+    lichen: 0.3,
+    edgeIndex: BARK_EDGE,
+    redIndex: BARK_RED,
     hairlines: 12,
     seed: o.seed + 3,
   });
@@ -183,7 +186,7 @@ export function createStarGlyph(): { position: Float32BufferAttribute; index: nu
     const a = (i / 16) * Math.PI * 2;
     const long = i % 2 === 0;
     const len = long ? 1 : 0.55;
-    const half = long ? 0.045 : 0.035;
+    const half = long ? 0.028 : 0.02;
     const c = Math.cos(a);
     const s = Math.sin(a);
     const base = pos.length / 3;

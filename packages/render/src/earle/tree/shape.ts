@@ -21,6 +21,8 @@ export interface CrownLayoutSpec {
   candidates: Vector3[];
   center: Vector3;
   crownTop: number;
+  /** Oberkante der Kuppeln am Rand (tiefer als crownTop → schwere, hängende Randmassen). Standard crownTop − 0.12·R. */
+  rimTop?: number;
   crownRadius: number;
   /** Ziel-Clusterzahl (20–40). */
   clusters: number;
@@ -28,15 +30,16 @@ export interface CrownLayoutSpec {
 }
 
 /**
- * Flache Riesenkrone aus Kuppelclustern (Ebene 33/8/16): Clusterzentren greedy aus den Astenden mit
- * Mindestabstand (Lücken füllt eine Sonnenblumen-Spirale), je Cluster eine Hauptkuppel mit der Oberkante am
- * flachen Kronendach plus 1–3 Schulterkuppeln; innen größer, am Rand kleiner und etwas tiefer; ein Scheitelcluster.
+ * Schwere Kuppelkrone (Ebene 33/16/8): Clusterzentren greedy aus den Astenden mit Mindestabstand (Lücken füllt eine
+ * Sonnenblumen-Spirale), je Cluster eine Hauptkuppel plus 1–3 Schulterkuppeln. Die Oberkanten folgen einer
+ * gewölbten Hülle: Scheitel oben, zum Rand hin tief hängende, größere und rundere Massen — keine flache Pilzscheibe.
  * Rang = Abstand zur Mitte (Wachstum baut die Krone von innen nach außen auf).
  */
 export function layoutCrown(spec: CrownLayoutSpec): Dome[] {
   const rand = mulberry32(hash32('hero-crown', spec.seed));
   const R = spec.crownRadius;
   const c0 = spec.center;
+  const rimTop = spec.rimTop ?? spec.crownTop - R * 0.12;
   const target = Math.max(4, Math.round(spec.clusters));
   const minDist = (R * 1.5) / Math.sqrt(target);
   const centres: Vector3[] = [];
@@ -73,9 +76,11 @@ export function layoutCrown(spec: CrownLayoutSpec): Dome[] {
   };
   centres.forEach((p, ci) => {
     const rank = Math.min(1, Math.hypot(p.x - c0.x, p.z - c0.z) / R);
-    const rMain = R * (0.3 - 0.1 * rank) * (0.85 + 0.3 * rand());
-    const sy = 0.56 + rand() * 0.12;
-    const top = spec.crownTop - rand() * 0.6 - rank * rank * R * 0.12;
+    const rMain = R * (0.25 + 0.04 * rank) * (0.85 + 0.3 * rand());
+    const sy = 0.56 + 0.14 * rank + rand() * 0.08;
+    // Randmassen hängen unterschiedlich tief → unregelmäßige, schwere Unterkante statt einer Schirmlinie
+    const droop = rank > 0.55 ? rand() * R * 0.11 : 0;
+    const top = spec.crownTop - (spec.crownTop - rimTop) * Math.pow(rank, 1.8) - rand() * 0.5 - droop;
     const c = new Vector3(p.x, top - rMain * sy * (0.82 + rand() * 0.18), p.z);
     push(c, rMain, sy, ci);
     const k = 1 + Math.floor(rand() * 2.999);
@@ -87,13 +92,14 @@ export function layoutCrown(spec: CrownLayoutSpec): Dome[] {
       push(new Vector3(c.x + Math.cos(a) * off, c.y - rMain * sy * (0.15 + rand() * 0.25) + rs * sy * 0.2, c.z + Math.sin(a) * off), rs, sy * (0.95 + rand() * 0.1), ci);
     }
   });
-  // Scheitelcluster: leicht über dem Dach
+  // Scheitelcluster: bündig mit der Hülle (kein aufgesetzter "Kopf")
   const apex = centres.length;
   for (let i = 0; i < 3; i++) {
     const a = rand() * Math.PI * 2;
     const r = R * (0.2 + rand() * 0.08);
+    const sy = 0.56;
     const off = i === 0 ? 0 : R * 0.16;
-    push(new Vector3(c0.x + Math.cos(a) * off, spec.crownTop - r * 0.6 + 0.5 - i * 0.5, c0.z + Math.sin(a) * off), r, 0.6, apex);
+    push(new Vector3(c0.x + Math.cos(a) * off, spec.crownTop - 0.4 - r * sy - i * 0.5, c0.z + Math.sin(a) * off), r, sy, apex);
   }
   domes.sort((x, y) => x.rank - y.rank);
   return domes;
@@ -101,9 +107,9 @@ export function layoutCrown(spec: CrownLayoutSpec): Dome[] {
 
 export interface TreeShapeOptions {
   seed?: number;
-  /** Stammhöhe bis zum Kronenansatz (Standard 16). */
+  /** Stammhöhe bis zur Astgabel (Standard 16). */
   trunkHeight?: number;
-  /** Kronenradius (Standard 14). */
+  /** Kronenradius der Clusterzentren (Standard 12; sichtbare Kronenbreite ≈ 2,5·R ≈ 2× sichtbarer Stamm). */
   crownRadius?: number;
   /** Hauptäste (Standard 5). */
   limbs?: number;
@@ -152,7 +158,10 @@ export interface TreeShape {
   crownCenter: Vector3;
   trunkSpec: TrunkSpec;
   trunk: TrunkProfile;
+  /** Astgerüst: Krone plus zwei kahle, tief angesetzte Seitenäste (Ebene 11/35) unter der Kronenmasse. */
   skeleton: Skeleton;
+  /** Nur die kahlen Seitenäste (Sternnadeln an ihren Spitzen). */
+  lowSkeleton: Skeleton;
   domes: Dome[];
   clusters: number;
   plan: PathPlan;
@@ -163,20 +172,22 @@ export interface TreeShape {
 export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
   const seed = o.seed ?? 7;
   const H = o.trunkHeight ?? 16;
-  const R = o.crownRadius ?? 14;
+  const R = o.crownRadius ?? 12;
   const crownTop = H + R * 0.72;
+  const rimTop = H + R * 0.3;
   const mobil = o.quality === 'mobil';
   const trunkSpec: TrunkSpec = {
     height: H,
-    baseRadius: R * 0.2,
-    topRadius: R * 0.11,
+    baseRadius: R * 0.25,
+    topRadius: R * 0.15,
     twist: 0.7,
     lobes: 7,
+    flare: 0.62,
     rings: mobil ? 30 : 44,
     segments: mobil ? 40 : 56,
     rootCount: 7,
-    rootLength: R * 0.62,
-    lean: R * 0.06,
+    rootLength: R * 0.8,
+    lean: R * 0.05,
     seed,
   };
   const trunk = trunkProfile(trunkSpec);
@@ -184,7 +195,7 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
   const crownCenter = new Vector3(trunk.top.x, crownTop, trunk.top.z);
   const plan = planPath(o, trunk, skeleton, H, R, crownTop, crownCenter);
   const candidates = [...(skeleton.ends[2] ?? []), ...(skeleton.ends[3] ?? []), ...(skeleton.ends[4] ?? [])];
-  const all = layoutCrown({ candidates, center: crownCenter, crownTop, crownRadius: R, clusters: o.clusters ?? 30, seed });
+  const all = layoutCrown({ candidates, center: crownCenter, crownTop, rimTop, crownRadius: R, clusters: o.clusters ?? 30, seed });
   // Tal für die Rampe: Kuppeln, die den Schlauch über der Rampe (±1,5 seitlich, bis 5 nach oben) schneiden, entfallen
   const tube: Vector3[] = [];
   const p = new Vector3();
@@ -202,7 +213,30 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
   });
   const clusters = new Set(domes.map((d) => d.cluster)).size;
   const crownBottom = Math.min(...domes.map((d) => d.center.y - d.r * d.sy));
-  return { seed, H, R, crownTop, crownCenter, trunkSpec, trunk, skeleton, domes, clusters, plan, crownBottom };
+  // Kahle Seitenäste: tief angesetzt, fast waagrecht, abseits des Pfads (+112° und +198° zur Pfadrichtung auf dieser
+  // Höhe — beide weit weg von der Spirale, nie auf die Stammansicht zu)
+  const lowT = 0.68;
+  const pathAng = plan.startAngle + plan.turns * Math.PI * 2 * plan.spiralAt(lowT);
+  const lowOrigin = trunk.axisAt(lowT * H, new Vector3());
+  const lowSkeleton = growSkeleton({
+    origin: lowOrigin,
+    radius: trunk.rMean(lowT) * 0.55,
+    limbs: 2,
+    levels: 3,
+    reach: R * 0.72,
+    seed: seed + 101,
+    tilt: [1.3, 1.45],
+    yaws: [pathAng + 1.95, pathAng + 3.45],
+    startDrop: 0.1,
+    bare: true,
+  });
+  const merged: Skeleton = {
+    segments: [...skeleton.segments, ...lowSkeleton.segments],
+    ends: skeleton.ends,
+    tips: [...skeleton.tips, ...lowSkeleton.tips],
+    levels: skeleton.levels,
+  };
+  return { seed, H, R, crownTop, crownCenter, trunkSpec, trunk, skeleton: merged, lowSkeleton, domes, clusters, plan, crownBottom };
 }
 
 function wrapAngle(a: number): number {
@@ -236,7 +270,7 @@ function planPath(o: TreeShapeOptions, trunk: TrunkProfile, skeleton: Skeleton, 
     turns = baseTurns + best / (Math.PI * 2);
   }
   const rampAngle = startAngle + turns * Math.PI * 2;
-  const ridgeRadius = R * 0.9;
+  const ridgeRadius = R * 0.82;
   // Winkeldichte ∝ Radius^0.75 (kumuliert, normiert)
   const N = 200;
   const cum: number[] = [0];

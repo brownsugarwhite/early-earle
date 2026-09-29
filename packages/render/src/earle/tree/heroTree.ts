@@ -7,10 +7,10 @@ import { PaletteLookup, createFogSettings, type FloatNode, type FogSettings, typ
 import { createBlossomMesh, type BlossomSeed } from '../blossom/blossoms';
 import { createBarkShade } from './bark';
 import { createBranchMesh, createStarMesh, type BillboardUniforms, type StarInstance } from './branches';
-import { createCanopy, type Canopy } from './canopy';
+import { createCanopy, type Canopy, type MeadowMotif } from './canopy';
 import { InkMaterial } from './inkMaterial';
 import type { Skeleton } from './lsystem';
-import { addTreePalette, type CanopyFamily, type TreePaletteRows } from './palette';
+import { BARK_EDGE, BARK_RED, addTreePalette, type CanopyFamily, type TreePaletteRows } from './palette';
 import { computeTreeShape, type Dome, type TreeShape, type TreeShapeOptions } from './shape';
 import { heroTreePath, type HeroTreePath } from './treePath';
 import { buildTrunk, type TrunkBuild } from './trunk';
@@ -32,6 +32,8 @@ export interface HeroTreeOptions extends Omit<TreeShapeOptions, 'quality'> {
   quality?: TreeQuality;
   /** Knoten des Levelpfads (Standard 24). */
   nodes?: number;
+  /** Millefleurs-Motive am Boden um den Baum (Standard an; auf unebenem Grund aus). */
+  meadow?: boolean;
   bloom?: number;
   growth?: number;
 }
@@ -43,6 +45,8 @@ export interface HeroTreeStats {
   domes: number;
   dots: number;
   glyphs: number;
+  /** Millefleurs-Motive am Boden. */
+  meadow: number;
   blossoms: number;
   nodes: number;
 }
@@ -136,8 +140,10 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
       length: trunk.surfaceUnits[1],
       clock,
       bands: 14,
-      lichenStrips: mobil ? 2 : 4,
+      lichen: mobil ? 0.4 : 0.55,
       hairlines: mobil ? 8 : 12,
+      edgeIndex: BARK_EDGE,
+      redIndex: BARK_RED,
       seed,
     }),
     terminator: 0.02,
@@ -155,14 +161,56 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
     trunkMaterial.dispose();
   });
 
-  // --- Äste ------------------------------------------------------------------------------------------------
+  const domes = shape.domes;
+  const insideDome = (p: Vector3, pad: number): boolean => {
+    for (const d of domes) {
+      const r = d.r + pad;
+      if (((p.x - d.center.x) / r) ** 2 + ((p.y - d.center.y) / (d.r * d.sy + pad)) ** 2 + ((p.z - d.center.z) / r) ** 2 < 1) return true;
+    }
+    return false;
+  };
+  const hdist = (p: Vector3): number => Math.hypot(p.x - crownCenter.x, p.z - crownCenter.z);
+
+  // --- Äste: Kronenzweige, die als Borsten aus den Kuppeln stechen oder ganz verdeckt sind, entfallen; die kahlen
+  //     Seitenäste unter der Krone bleiben vollständig (Ebene 11/35) ---------------------------------------------
   const skeleton = shape.skeleton;
-  const branches = createBranchMesh({ segments: skeleton.segments, lookup, fog, fogLookup, rows: { bark: rows.bark, lichen: rows.lichen }, clock, seed });
+  const low = new Set(shape.lowSkeleton.segments);
+  const segments = skeleton.segments.filter((sg) => {
+    if (sg.level <= 2 || low.has(sg)) return true;
+    const aIn = insideDome(sg.a, 0);
+    const bIn = insideDome(sg.b, 0);
+    if (aIn && bIn) return false;
+    if (bIn) return true; // Zweig läuft in eine Kuppel hinein (trägt sie)
+    return sg.b.y < shape.crownBottom + 0.5 && sg.a.y < shape.crownBottom + 1.5; // hängt unter der Krone
+  });
+  const branches = createBranchMesh({ segments, lookup, fog, fogLookup, rows: { bark: rows.bark, lichen: rows.lichen }, clock, seed });
   group.add(branches.mesh);
   disposables.push(branches.dispose);
 
+  // --- Millefleurs am Boden (Ebene 21/3): kleine Gruppen aus Vierpunkt-Rauten, Kreuzen, Rauten ---------------
+  const meadow: MeadowMotif[] = [];
+  if (options.meadow !== false) {
+    const sites = mobil ? 14 : 36;
+    for (let i = 0; i < sites; i++) {
+      const a = rand() * Math.PI * 2;
+      const r = R * (0.75 + rand() * 0.95);
+      const cx = Math.cos(a) * r;
+      const cz = Math.sin(a) * r;
+      const k = 3 + Math.floor(rand() * 3.999);
+      for (let j = 0; j < k; j++) {
+        const aa = rand() * Math.PI * 2;
+        const rr = 0.25 + rand() * 0.9;
+        const size = 0.07 + rand() * 0.05;
+        const q = rand();
+        const c = rand();
+        // Farben der Motivzeile: 0 Weiß, 3 Creme überwiegen, selten Cyan (2) und Rosé (1)
+        const colour = c < 0.45 ? 0 : c < 0.8 ? 3 : c < 0.92 ? 2 : 1;
+        meadow.push({ pos: new Vector3(cx + Math.cos(aa) * rr, size * 0.8 + 0.02, cz + Math.sin(aa) * rr), size, kind: q < 0.55 ? 2 : q < 0.8 ? 1 : 0, colour });
+      }
+    }
+  }
+
   // --- Krone -----------------------------------------------------------------------------------------------
-  const domes = shape.domes;
   const canopy: Canopy = createCanopy({
     domes,
     lookup,
@@ -173,63 +221,65 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
     rows: { canopy: rows.canopy, motif: rows.motif },
     bands,
     family: options.family ?? 'purple',
-    quality: mobil ? { dotsPerDome: [40, 110], glyphsPerDome: [8, 20] } : { dotsPerDome: [90, 260], glyphsPerDome: [18, 52] },
+    quality: mobil ? { dotsPerDome: [110, 330], glyphsPerDome: [0, 2] } : { dotsPerDome: [260, 800], glyphsPerDome: [1, 4] },
     bb,
+    meadow,
     seed,
   });
   group.add(canopy.domes, canopy.dots, canopy.glyphs);
   disposables.push(canopy.dispose);
 
-  // --- Sternnadeln an den kahlen Zweigen (Ebene 05/11) -------------------------------------------------------
+  // --- Sternnadeln nur an kahlen Zweigspitzen außerhalb der Kronen-Silhouette (Ebene 11/05) ---------------------
   const stars: StarInstance[] = [];
   const starNormal = (p: Vector3): Vector3 => {
     trunk.axisAt(Math.min(H, p.y), _v);
     const n = new Vector3(p.x - _v.x, 0.35, p.z - _v.z);
     return n.lengthSq() > 1e-6 ? n.normalize() : new Vector3(0, 1, 0);
   };
-  const rankOf = (p: Vector3): number => Math.min(1, Math.hypot(p.x - crownCenter.x, p.z - crownCenter.z) / (R * 1.05));
-  /** Sterne nur an Zweigen, die aus der Kuppelmasse ragen (sonst lägen sie als Flecken auf den Kuppeln). */
-  const clearOfDomes = (p: Vector3, size: number): boolean => {
-    for (const d of domes) {
-      const r = d.r + size * 0.6;
-      const q = ((p.x - d.center.x) / r) ** 2 + ((p.y - d.center.y) / (r * d.sy)) ** 2 + ((p.z - d.center.z) / r) ** 2;
-      if (q < 1) return false;
-    }
-    return true;
-  };
+  // außerhalb der Kronen-Silhouette = unter der Kuppelmasse und nicht in einer Kuppel
+  const outsideSilhouette = (p: Vector3, size: number): boolean => !insideDome(p, size + 0.4) && p.y < shape.crownBottom + 0.3;
+  // nur an den kahlen Seitenästen und an Kronenzweigen weit außen (nie an der Astgabel)
   for (const tip of skeleton.tips) {
-    const size = 0.42 + rand() * 0.28;
+    const size = 0.34 + rand() * 0.22;
     const pos = tip.pos.clone().addScaledVector(tip.dir, size * 0.4);
-    if (clearOfDomes(pos, size)) stars.push({ pos, normal: starNormal(pos), size, rank: rankOf(pos) });
+    if (outsideSilhouette(pos, size) && hdist(pos) > R * 0.55) stars.push({ pos, normal: starNormal(pos), size, rank: 0 });
   }
-  for (const s of skeleton.segments) {
-    if (s.level < skeleton.levels - 1) continue;
-    if (rand() > (s.level === skeleton.levels ? 0.8 : 0.4)) continue;
-    const size = 0.3 + rand() * 0.2;
-    const pos = s.a.clone().lerp(s.b, 0.3 + rand() * 0.5);
-    if (clearOfDomes(pos, size)) stars.push({ pos, normal: starNormal(pos), size, rank: rankOf(pos) });
+  for (const sg of shape.lowSkeleton.segments) {
+    if (sg.level < 3 || rand() > 0.6) continue;
+    const size = 0.26 + rand() * 0.16;
+    const pos = sg.a.clone().lerp(sg.b, 0.35 + rand() * 0.5);
+    if (outsideSilhouette(pos, size) && hdist(pos) > R * 0.45) stars.push({ pos, normal: starNormal(pos), size, rank: 0 });
   }
   const starMesh = createStarMesh({ stars: mobil ? stars.filter((_, i) => i % 2 === 0) : stars, lookup, fog, fogLookup, starRow: rows.star, bb, seed });
   group.add(starMesh.mesh);
   disposables.push(starMesh.dispose);
 
-  // --- Blüten: auf den Kuppelschultern + Bodenrand ---------------------------------------------------------
+  // --- Blüten als Akzente: kleine, gleichfarbige Gruppen auf den oberen Kuppelschultern -------------------------
   const seeds: BlossomSeed[] = [];
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  const rMax = Math.max(...domes.map((d) => d.r));
-  for (const d of domes) {
-    const count = Math.round((mobil ? 3 : 7) + (mobil ? 8 : 20) * (d.r / rMax) * (d.r / rMax));
-    const m = count * 2.2;
-    const phase = rand() * Math.PI * 2;
-    for (let i = 0; i < m; i++) {
-      const y = 1 - (2 * (i + 0.5)) / m;
-      if (y < 0.15 || y > 0.96) continue;
-      if (rand() > 0.5) continue;
+  const weights = domes.map((d) => d.r * d.r);
+  const wSum = weights.reduce((a, b) => a + b, 0);
+  const pickDome = (): (typeof domes)[number] => {
+    let x = rand() * wSum;
+    for (let i = 0; i < domes.length; i++) {
+      x -= weights[i]!;
+      if (x <= 0) return domes[i]!;
+    }
+    return domes[domes.length - 1]!;
+  };
+  const sites = domes.length === 0 ? 0 : mobil ? 20 : 56;
+  for (let s = 0; s < sites; s++) {
+    const d = pickDome();
+    const y0 = 0.3 + rand() * 0.55;
+    const phi0 = rand() * Math.PI * 2;
+    const colour = Math.floor(rand() * 7.999);
+    const k = 3 + Math.floor(rand() * 2.999);
+    for (let j = 0; j < k; j++) {
+      const y = Math.min(0.95, Math.max(0.15, y0 + (rand() - 0.5) * 0.18));
       const rr = Math.sqrt(1 - y * y);
-      const phi = i * golden + phase;
+      const phi = phi0 + ((rand() - 0.5) * 0.3) / Math.max(0.3, rr);
       const nx = rr * Math.cos(phi);
       const nz = rr * Math.sin(phi);
-      const size = 0.24 + rand() * 0.18;
+      const size = 0.13 + rand() * 0.09;
       seeds.push({
         rel: [nx * d.r + nx * size * 0.7, y * d.r * d.sy + y * size * 0.7, nz * d.r + nz * size * 0.7],
         hull: [d.center.x, d.center.y, d.center.z],
@@ -238,18 +288,9 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
         rank: d.rank,
         hash: rand(),
         petals: 5 + Math.floor(rand() * 3.999),
-        color: Math.floor(rand() * 7.999),
+        color: rand() < 0.75 ? colour : Math.floor(rand() * 7.999),
       });
     }
-  }
-  const groundCount = mobil ? 110 : 320;
-  for (let i = 0; i < groundCount; i++) {
-    const a = rand() * Math.PI * 2;
-    const r = R * (0.32 + Math.sqrt(rand()) * 0.85);
-    const size = 0.22 + rand() * 0.16;
-    const x = Math.cos(a) * r;
-    const z = Math.sin(a) * r;
-    seeds.push({ rel: [0, 0, 0], hull: [x, size * 0.55, z], normal: [0, 1, 0], size, rank: 0, hash: rand(), petals: 5 + Math.floor(rand() * 3.999), color: Math.floor(rand() * 7.999) });
   }
   const blossoms = createBlossomMesh({ seeds, lookup, fog, fogLookup, petalRow: rows.blossom, centerRow: rows.blossomCenter, bb, bloom });
   group.add(blossoms.mesh);
@@ -258,7 +299,7 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
   // --- Pfad (dieselbe Form wie die Meshes) -----------------------------------------------------------------
   const path = heroTreePath({ nodes: options.nodes ?? 24, shape });
 
-  const bounds = new Box3(new Vector3(-R * 1.15, -0.2, -R * 1.15), new Vector3(R * 1.15, crownTop + 4, R * 1.15));
+  const bounds = new Box3(new Vector3(-R * 1.6, -0.2, -R * 1.6), new Vector3(R * 1.6, crownTop + 4, R * 1.6));
   const parts = { trunk: trunkMesh, branches: branches.mesh, stars: starMesh.mesh, domes: canopy.domes, dots: canopy.dots, glyphs: canopy.glyphs, blossoms: blossoms.mesh };
   let growth = options.growth ?? 1;
   let bloomValue = options.bloom ?? 1;
@@ -283,6 +324,7 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
       domes: canopy.counts.domes,
       dots: canopy.counts.dots,
       glyphs: canopy.counts.glyphs,
+      meadow: canopy.counts.meadow,
       blossoms: blossoms.count,
       nodes: path.nodes.length,
     },

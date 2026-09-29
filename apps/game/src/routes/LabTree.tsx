@@ -88,7 +88,7 @@ export function LabTree() {
   const set = (patch: Partial<TreeLabParams>) => setParams((p) => ({ ...p, ...patch }));
 
   const info = stats
-    ? `Cluster ${stats.clusters} · Kuppeln ${stats.domes} · Punkte ${fmtK(stats.dots)} · Glyphen ${fmtK(stats.glyphs)} · Blüten ${fmtK(stats.blossoms)} · Sterne ${stats.stars} · Äste ${stats.segments} · Knoten ${stats.nodes} · Büsche ${stats.bushes} · ${stats.drawCalls} dc · ${stats.preset === 'mobil' ? 'Mobil' : 'Hoch'} · Fahrt ${Math.round(stats.rideT * 100)} %`
+    ? `Cluster ${stats.clusters} · Kuppeln ${stats.domes} · Punkte ${fmtK(stats.dots)} · Motive ${stats.glyphs}+${stats.meadow} · Blüten ${fmtK(stats.blossoms)} · Sterne ${stats.stars} · Äste ${stats.segments} · Knoten ${stats.nodes} · Büsche ${stats.bushes} · ${stats.drawCalls} dc · ${stats.preset === 'mobil' ? 'Mobil' : 'Hoch'} · Fahrt ${Math.round(stats.rideT * 100)} %`
     : 'lädt …';
 
   return (

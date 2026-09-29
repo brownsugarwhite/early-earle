@@ -21,23 +21,29 @@ export interface FamilyPalette {
 }
 
 export const FAMILY_PALETTES: Record<SolidFamily, FamilyPalette> = {
-  purple: { ink: '#120a26', bands: ['#26154f', '#40267c'], dots: ['#5e3fb0', '#9d7fe3', '#e2ccff'], motifs: ['#e0324a', '#f3e8cc', '#86c8ff', '#ffd45c'] },
-  blue: { ink: '#07122b', bands: ['#0f2a62', '#1a4396'], dots: ['#2f70d8', '#63a8f5', '#d2e9ff'], motifs: ['#e0324a', '#f3e8cc', '#3ee8e0', '#ffd45c'] },
-  red: { ink: '#2a0812', bands: ['#5e1424', '#932033'], dots: ['#c62f3d', '#ea6a52', '#ffd3a8'], motifs: ['#f3e8cc', '#63a8f5', '#ffe680', '#3ee8e0'] },
+  purple: { ink: '#120a26', bands: ['#26154f', '#40267c'], dots: ['#4a3a9a', '#8f86e0', '#dcd8ff'], motifs: ['#e5f3e3', '#d86070', '#93ced7', '#f0e8d0'] },
+  blue: { ink: '#07122b', bands: ['#0f2a62', '#1a4396'], dots: ['#1c5fa8', '#4f9fd8', '#cfe9f5'], motifs: ['#e5f3e3', '#c0485a', '#93ced7', '#f0e8d0'] },
+  red: { ink: '#2a0812', bands: ['#5e1424', '#932033'], dots: ['#9e2a3a', '#d8606a', '#f5d0c8'], motifs: ['#f0e8d0', '#93ced7', '#e5f3e3', '#e9c36a'] },
 };
 
-/** Stamm (Ebene 21): Tinte fast schwarz-blau, drei Blaustufen, weißblauer Strich. */
-export const BARK_PALETTE = ['#06091a', '#112c80', '#1f5bd0', '#4d9ff2', '#dbf0ff'];
 /**
- * Flechten-Mosaik (Ebene 21/35), 8 Stufen mit Gewichtung durch Wiederholung: Grün und Gelbgrün überwiegen,
- * dazu Weiß, Gelb, Türkis und wenig Rot.
+ * Stamm (Ebene 21, per k-Means aus dem Bild): Tinte fast schwarz-blau, drei Blaustufen, weißblauer Strich,
+ * Lichtkante (Cyan-Weiß) und das seltene Flechtenrot.
  */
-export const LICHEN_PALETTE = ['#4ed35c', '#a6dc3c', '#f0e04b', '#f6f2e4', '#2fd6d0', '#4ed35c', '#e23a44', '#a6dc3c'];
-/** Blüten in Juwelentönen; die Mitte kontrastiert je Index. */
-export const BLOSSOM_PALETTE = ['#e8304a', '#f2703a', '#f5d84a', '#e64a9c', '#35e0e8', '#c9a2ff', '#f7f1d8', '#ff9e5c'];
-export const BLOSSOM_CENTER_PALETTE = ['#f5d84a', '#f7f1d8', '#e8304a', '#f7f1d8', '#f5d84a', '#f5d84a', '#e8304a', '#f7f1d8'];
-/** Sternnadeln in Bronze (Schatten → Licht). */
-export const STAR_PALETTE = ['#4d3816', '#8a6a2c', '#bf9542', '#e6c46a'];
+export const BARK_PALETTE = ['#06091a', '#114a86', '#1485c2', '#4db0e0', '#dbf0ff', '#e8fbff', '#a8403a'];
+/** Index der Lichtkante bzw. des seltenen Flechtenrots in der Rindenzeile. */
+export const BARK_EDGE = 5;
+export const BARK_RED = 6;
+/**
+ * Flechten (k-Means aus Ebene 21): Blau-Cyan-Weiß überwiegt (6/8), dazu Grün und Limette; Rot kommt selten über
+ * `BARK_RED` hinzu.
+ */
+export const LICHEN_PALETTE = ['#74c0ce', '#e5f3e3', '#3b9bd0', '#a8dce6', '#e5f3e3', '#74c0ce', '#1a8653', '#dbe958'];
+/** Blüten als Akzente in der Bildpalette (k-Means aus Ebene 3/21): Rot, Koralle, Minzweiß, Malve, Blasscyan, Limette. */
+export const BLOSSOM_PALETTE = ['#bb2023', '#da603e', '#e5f3e3', '#965d6e', '#93ced7', '#e9f15e', '#d5e9dc', '#c0485a'];
+export const BLOSSOM_CENTER_PALETTE = ['#e9f15e', '#e5f3e3', '#bb2023', '#e5f3e3', '#bb2023', '#bb2023', '#bb2023', '#e9f15e'];
+/** Sternnadeln in dunkler Bronze (Ebene 11: Schatten → Licht). */
+export const STAR_PALETTE = ['#2a1e0c', '#4f3b1a', '#77592a', '#9c7a3e'];
 
 export interface TreePaletteRows {
   bark: number;

@@ -34,11 +34,17 @@ test('/lab/tree baut Stamm, Krone, Blüten und Pfad, bleibt unter 25 Draw Calls 
   expect(clusters).toBeGreaterThanOrEqual(20);
   expect(clusters).toBeLessThanOrEqual(40);
   expect(count(text, 'Kuppeln')).toBeGreaterThan(clusters);
-  expect(count(text, 'Blüten')).toBeGreaterThan(500);
-  expect(count(text, 'Punkte')).toBeGreaterThan(1000);
-  expect(count(text, 'Sterne')).toBeGreaterThan(50);
+  // Pass 2 (Art-Direction): Blüten als Akzente (≈ 220), Punkte dicht am Rand, Sterne nur an kahlen Zweigen
+  expect(count(text, 'Blüten')).toBeGreaterThan(100);
+  expect(count(text, 'Blüten')).toBeLessThan(400);
+  expect(count(text, 'Punkte')).toBeGreaterThan(10_000);
+  expect(count(text, 'Sterne')).toBeGreaterThan(15);
   expect(count(text, 'Äste')).toBeGreaterThan(100);
   expect(count(text, 'Knoten')).toBe(24);
+  // Kronenmotive klein und spärlich (≤ 20 % von Pass 1 = 934), dazu Millefleurs am Boden
+  const motifs = text?.match(/Motive (\d+)\+(\d+)/);
+  expect(Number(motifs?.[1] ?? 999)).toBeLessThanOrEqual(187);
+  expect(Number(motifs?.[2] ?? 0)).toBeGreaterThan(0);
 
   // Draw-Call-Budget (inkl. Schattenpass): ≤ 25
   await expect

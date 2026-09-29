@@ -1,4 +1,4 @@
-import { abs, float, floor, fract, fwidth, hash, length, max, mix, sin, smoothstep, step, vec2, vec3 } from 'three/tsl';
+import { abs, float, floor, fract, fwidth, hash, length, mix, sin, smoothstep, step, vec2 } from 'three/tsl';
 import type { FloatNode, PaletteLookup, TSLUniform, Vec2Node, Vec3Node } from '../tsl';
 
 const PI2 = Math.PI * 2;
@@ -17,12 +17,15 @@ export interface BarkShadeOptions {
   clock: TSLUniform;
   /** Bänder je Umlauf (Standard 14). */
   bands?: number;
-  /** Flechten-Adern (0–4, Standard 3). */
-  lichenStrips?: number;
+  /** Anteil der Bänder mit Flechtenstreifen (0..1, Standard 0.5). */
+  lichen?: number;
   /** Haarlinien je Oberflächeneinheit (Standard 12). */
   hairlines?: number;
-  /** Flecken-Zellen je Oberflächeneinheit (Standard 8 → Flecken ≈ 0,1 Einheiten). */
+  /** Flecken-Zellen je Oberflächeneinheit (Standard 14 → Flecken ≈ 0,05 Einheiten). */
   lichenCells?: number;
+  /** Index der Lichtkante und des seltenen Flechtenrots in der Rindenzeile. */
+  edgeIndex?: number;
+  redIndex?: number;
   /** Helligkeit der Flechten auf der Schattenseite (0..1, Standard 0.42). */
   lichenShadeGain?: number;
   seed?: number;
@@ -40,16 +43,20 @@ function edge(e: FloatNode | number, x: FloatNode, w: FloatNode): FloatNode {
  *    Bänder werden zu leuchtendem Blau, Schattenseite: dunkelblau auf Tinte.
  * 2. **Haarlinien**: gestrichelte, hauchdünne Linien in Stammrichtung (Earles gekämmte Striche), weißblau in den
  *    Bändern, dunkelblau in den Zwischenräumen — nur auf der Lichtseite.
- * 3. **Flechten-Adern**: 2–4 senkrechte Adern mit hash-gestreuten Flecken (Rot/Grün/Gelb/Weiß/Türkis), Radien so
- *    groß, dass Nachbarn zu Klumpen verschmelzen; `fwidth`-Antialiasing.
- * 4. **Randpunkte**: Reihe heller Punkte an den Bandkanten der Lichtseite.
+ * 3. **Flechten im Bänderfeld** (Ebene 21/35): ein Teil der Bänder trägt nahe seiner Lichtkante einen Streifen aus
+ *    winzigen, hash-gestreuten Zellen (Blau/Cyan/Weiß, etwas Grün/Limette, selten Rot), der mit dem Grat wogt und
+ *    entlang der Höhe zu Kolonien klumpt; `fwidth`-Antialiasing.
+ * 4. **Lichtkanten**: kräftiger cyan-weißer Doppelstrich innen an den Bandkanten der Lichtseite, dazu eine Reihe
+ *    heller Randpunkte.
  * Alles atmet minimal (Drift der Koordinaten, Radius der Flecken) über die Baum-Uhr.
  */
 export function createBarkShade(o: BarkShadeOptions): (lit: FloatNode, ndl: FloatNode) => Vec3Node {
   const K = o.bands ?? 14;
-  const strips = Math.max(0, Math.min(4, o.lichenStrips ?? 3));
+  const lichen = Math.max(0, Math.min(1, o.lichen ?? 0.5));
   const hair = o.hairlines ?? 12;
-  const cells = o.lichenCells ?? 8;
+  const cells = o.lichenCells ?? 14;
+  const edgeIdx = o.edgeIndex ?? 4;
+  const redIdx = o.redIndex ?? -1;
   const gain = o.lichenShadeGain ?? 0.42;
   const seed = Math.floor(o.seed ?? 1) * 97;
   const circ = typeof o.circumference === 'number' ? float(o.circumference) : o.circumference;
@@ -83,12 +90,16 @@ export function createBarkShade(o: BarkShadeOptions): (lit: FloatNode, ndl: Floa
     const streak = pal(4, o.barkRow);
 
     const litBand = mix(mix(blueDark, blue, smoothstep(0.05, 0.4, ndl)), blueLight, smoothstep(0.5, 0.9, ndl));
-    const shadeCol = mix(ink, blueDark, isBlue.mul(0.55));
+    const shadeCol = mix(ink, blueDark, isBlue.mul(0.8));
     let col = mix(shadeCol, mix(ink, litBand, isBlue), lit);
-    // Lichtkante: feiner weißblauer Strich innen an der Bandkante (Ebene 21) — Ornament in der Form, kein Umriss
-    const edgeD = abs(f.sub(w).add(0.035));
-    const edgeLine = float(1).sub(edge(0.022, edgeD, aaX)).mul(lit).mul(smoothstep(0.2, 0.55, ndl));
-    col = mix(col, mix(blueLight, streak, 0.6), edgeLine);
+    // Lichtkanten: kräftiger cyan-weißer Strich innen an der Bandkante, dünner Zweitstrich am Bandanfang (Ebene 21)
+    // — Ornament in der Form, kein Umriss
+    const edgeCol = pal(edgeIdx, o.barkRow);
+    const litEdge = lit.mul(smoothstep(0.12, 0.45, ndl));
+    const edgeA = float(1).sub(edge(0.03, abs(f.sub(w).add(0.045)), aaX));
+    const edgeB = float(1).sub(edge(0.016, abs(f.sub(0.035)), aaX)).mul(step(0.35, hB2));
+    col = mix(col, edgeCol, edgeA.mul(litEdge));
+    col = mix(col, mix(blueLight, edgeCol, 0.6), edgeB.mul(litEdge).mul(0.85));
 
     // (2) Haarlinien in Stammrichtung, gestrichelt, driften kaum merklich
     const sU = u.mul(circ);
@@ -104,36 +115,32 @@ export function createBarkShade(o: BarkShadeOptions): (lit: FloatNode, ndl: Floa
     col = mix(col, streak, hairMask.mul(isBlue).mul(0.75));
     col = mix(col, blueDark, hairMask.mul(float(1).sub(isBlue)).mul(0.6));
 
-    // (3) Flechten-Adern mit verschmelzenden Flecken; Breite in Welteinheiten (am Wurzelanlauf bleiben es Adern),
-    //     Dichte klumpt entlang der Höhe (Flecken-Kolonien und Lücken statt eines gleichmäßigen Bandes)
-    let lichenMask: FloatNode = float(0);
-    let lichenCol: Vec3Node = vec3(0, 0, 0);
-    const aaU = fwidth(u).max(1e-4);
-    for (let i = 0; i < strips; i++) {
-      const c = (i + 0.5) / strips + (i % 2 ? 0.07 : -0.05);
-      const centre = float(c).add(sin(v.mul(3.7).add(i * 2.3)).mul(0.05)).add(sin(v.mul(11.0).sub(i)).mul(0.012));
-      const patch = smoothstep(0.25, 0.8, sin(sV.mul(0.47).add(i * 1.7 + seed * 0.013)).mul(0.5).add(sin(sV.mul(1.31).sub(i * 0.9)).mul(0.3)).add(0.5));
-      const hwWorld = float(0.55).add(sin(v.mul(6.1).add(i)).mul(0.18)).mul(patch.mul(0.85).add(0.4));
-      const hw = hwWorld.div(circ);
-      const du = fract(u.sub(centre).add(0.5)).sub(0.5);
-      const strip = float(1).sub(edge(hw, abs(du), aaU));
-      const p = vec2(du.mul(circ).mul(cells), sV.mul(cells));
-      const cell = floor(p);
-      const cellId = cell.x.add(2048).add(cell.y.add(2048).mul(4096)).add(i * 131 + seed);
-      const h1 = hash(cellId);
-      const h2 = hash(cellId.add(11));
-      const h3 = hash(cellId.add(23));
-      const h4 = hash(cellId.add(37));
-      const cc = cell.add(0.5).add(vec2(h1, h2).sub(0.5).mul(0.7));
-      const d = length(p.sub(cc));
-      const r = float(0.3).add(h3.mul(0.34)).mul(sin(t.mul(0.5).add(h1.mul(PI2))).mul(0.1).add(1));
-      const aaP = fwidth(p).x.max(1e-4);
-      const present = step(float(0.75).sub(patch.mul(0.6)), h2);
-      const m = float(1).sub(edge(r, d, aaP)).mul(present).mul(strip);
-      const ci = pal(floor(h4.mul(7.99)), o.lichenRow);
-      lichenCol = mix(lichenCol, ci, m);
-      lichenMask = max(lichenMask, m);
-    }
+    // (3) Flechten im Bänderfeld: Streifen im blauen Teil nahe der Lichtkante ausgewählter Bänder, winzige Zellen,
+    //     Kolonien entlang der Höhe (dicht, dann Lücken) — folgen dem Grat, weil sie in Bandkoordinaten liegen
+    const hB3 = hash(band.add(seed + 77));
+    const onBand = step(hB3, float(lichen));
+    const a0 = w.mul(0.28);
+    const a1 = w.mul(0.93);
+    const streakMask = edge(a0, f, aaX).mul(float(1).sub(edge(a1, f, aaX))).mul(onBand);
+    const colony = smoothstep(0.35, 0.8, sin(sV.mul(0.33).add(hB.mul(6.3))).mul(0.3).add(sin(sV.mul(1.07).add(hB2.mul(4.1))).mul(0.25)).add(0.5));
+    const bandW = circ.div(K);
+    // Zellen doppelt so hoch wie breit → Flechten als senkrechte Tupfer, die zu Streifen verschmelzen
+    const p = vec2(f.mul(bandW).mul(cells), sV.mul(cells * 0.55));
+    const cell = floor(p);
+    const cellId = cell.x.add(64).add(cell.y.add(4096).mul(128)).add(band.mul(7919)).add(seed);
+    const h1 = hash(cellId);
+    const h2 = hash(cellId.add(11));
+    const h3 = hash(cellId.add(23));
+    const h4 = hash(cellId.add(37));
+    const h5 = hash(cellId.add(53));
+    const cc = cell.add(0.5).add(vec2(h1, h2).sub(0.5).mul(0.6));
+    const d = length(p.sub(cc));
+    const r = float(0.34).add(h3.mul(0.34)).mul(sin(t.mul(0.5).add(h1.mul(PI2))).mul(0.08).add(1));
+    const aaP = fwidth(p).x.max(1e-4);
+    const present = step(float(0.9).sub(colony.mul(0.72)), h2);
+    const lichenMask = float(1).sub(edge(r, d, aaP)).mul(present).mul(streakMask);
+    let lichenCol: Vec3Node = pal(floor(h4.mul(7.99)), o.lichenRow);
+    if (redIdx >= 0) lichenCol = mix(lichenCol, pal(redIdx, o.barkRow), step(0.97, h5));
     col = mix(col, lichenCol.mul(mix(float(gain), float(1), lit)), lichenMask);
 
     // (4) Randpunkte an den Bandkanten der Lichtseite

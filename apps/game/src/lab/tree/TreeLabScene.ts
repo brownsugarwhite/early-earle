@@ -62,6 +62,7 @@ export interface TreeLabStats {
   domes: number;
   dots: number;
   glyphs: number;
+  meadow: number;
   blossoms: number;
   stars: number;
   segments: number;
@@ -73,14 +74,14 @@ export interface TreeLabStats {
 }
 
 const VIEWS: Record<TreeView, OrbitView> = {
-  default: { yaw: -0.6, pitch: 0.3, distance: 70, target: [0, 15, 0] },
+  default: { yaw: -0.6, pitch: 0.28, distance: 62, target: [0, 13, 0] },
   // vom Boden aus schräg nach oben: Bänder, Flechten, Wurzelanlauf und die Astgabel gegen den Himmel (Ebene 21/35)
-  trunk: { yaw: 0.95, pitch: -0.15, distance: 30, target: [0.5, 9, 0] },
-  canopy: { yaw: -0.45, pitch: 0.58, distance: 52, target: [0, 23, 0] },
-  blossoms: { yaw: 0.25, pitch: 0.55, distance: 26, target: [5, 26.5, 1] },
-  path: { yaw: -0.6, pitch: 0.3, distance: 70, target: [0, 15, 0] },
-  // 130: die ganze Krone liegt in einer Nebelstufe [110, 150) — keine Stufenkante quer durch den Baum
-  far: { yaw: -0.75, pitch: 0.16, distance: 130, target: [0, 13, 0] },
+  trunk: { yaw: 0.95, pitch: -0.15, distance: 28, target: [0.5, 8.5, 0] },
+  canopy: { yaw: -0.45, pitch: 0.5, distance: 46, target: [0, 19, 0] },
+  blossoms: { yaw: 0.25, pitch: 0.45, distance: 20, target: [4, 21.5, 1.5] },
+  path: { yaw: -0.6, pitch: 0.28, distance: 62, target: [0, 13, 0] },
+  // Ziel und Abstand werden in setView('far') aus dem Schattenwurf berechnet (Baum + ganzer langer Schatten im Bild)
+  far: { yaw: -0.75, pitch: 0.26, distance: 130, target: [0, 13, 0] },
 };
 
 /** Ebene 21: gelbgrüne Hügel, tiefgrüne Tinte; Himmel Creme → Türkis → Lapis. */
@@ -142,9 +143,10 @@ export class TreeLabScene implements SceneController {
     this.sunPivot.add(this.sun.root);
     this.sun.root.position.set(0, 10, 0);
     this.orbit.attach(ctx.canvas);
-    this.orbit.setView(VIEWS[this.pendingView ?? 'default']);
     this.build();
     this.applyParams(this.params, true);
+    const pv = this.pendingView ?? 'default';
+    this.orbit.setView(pv === 'far' ? this.farView() : VIEWS[pv]);
     // Fahrt oder Schienenposition aus der URL (?view=path, ?t=0.6) → Kamera sofort auf der Schiene
     if (this.params.ride || this.params.rideT > 0) this.railMode = true;
     this.resize(ctx);
@@ -158,7 +160,8 @@ export class TreeLabScene implements SceneController {
     const groundRow = atlas.addRow({ name: 'lab/ground', steps: [GROUND_INK, ...GROUND_STEPS] });
     const skyRow = atlas.addRow({ name: 'lab/sky', steps: [...SKY_STEPS, '#f7f6d8', '#eef7e4'] });
     const fogRow = atlas.addRow({ name: 'lab/fog', steps: FOG_STEPS, alphas: FOG_ALPHA });
-    const fog = createFogSettings({ row: fogRow, steps: 5, start: 70, range: 160 });
+    // Nebel erst jenseits des Baums (auch in der Fernansicht bleibt das Wahrzeichen scharf; die Hügel dahinter stufen)
+    const fog = createFogSettings({ row: fogRow, steps: 5, start: 100, range: 240 });
     this.atlas = atlas;
     const quality: TreeQuality = p.name;
 
@@ -191,7 +194,8 @@ export class TreeLabScene implements SceneController {
       rows: { canopy: tree.rows.canopy, motif: tree.rows.motif },
       bands: this.bushBands,
       family: 'purple',
-      quality: p.name === 'mobil' ? { dotsPerDome: [24, 60], glyphsPerDome: [0, 3] } : { dotsPerDome: [60, 150], glyphsPerDome: [2, 6] },
+      quality: p.name === 'mobil' ? { dotsPerDome: [60, 160], glyphsPerDome: [0, 1] } : { dotsPerDome: [140, 380], glyphsPerDome: [0, 2] },
+      dotScale: 2,
       bb: tree.billboard,
       seed: this.params.seed + 11,
     });
@@ -263,7 +267,7 @@ export class TreeLabScene implements SceneController {
     }
     this.setParams({ ride: false });
     this.railMode = false;
-    this.orbit.setView(VIEWS[view]);
+    this.orbit.setView(view === 'far' ? this.farView() : VIEWS[view]);
   }
 
   private applyParams(next: TreeLabParams, force: boolean): void {
@@ -323,6 +327,28 @@ export class TreeLabScene implements SceneController {
       renderer.setPixelRatio(target);
       renderer.setSize(width, height, false);
     }
+  }
+
+  /**
+   * Fernansicht mit dem ganzen Schatten (Ebene 9: der lange harte Schatten gehört zum Bild): Die Sonne hängt am
+   * Kamera-Yaw, also liegt die Schattenrichtung für diesen Yaw fest; das Ziel sitzt zwischen Baum und Schatten, der
+   * Abstand reicht, dass Baum und Schattenspitze ins Bild passen.
+   */
+  private farView(): OrbitView {
+    const v = VIEWS.far;
+    const d = this.sun.directionLocal(new Vector3());
+    const c = Math.cos(v.yaw);
+    const sn = Math.sin(v.yaw);
+    const sx = -(d.x * c + d.z * sn);
+    const sz = -(-d.x * sn + d.z * c);
+    const sl = Math.hypot(sx, sz) || 1;
+    const top = this.tree ? this.tree.shape.crownTop : 25;
+    const R = this.tree ? this.tree.shape.R : 12;
+    const el = Math.max(0.05, (this.params.sunElevation * Math.PI) / 180);
+    const shadowLen = (top * 0.8) / Math.tan(el);
+    const mid = shadowLen * 0.3;
+    const distance = Math.min(260, (shadowLen * 0.42 + R * 1.5) / 0.6);
+    return { yaw: v.yaw, pitch: v.pitch, distance, target: [(sx / sl) * mid, 5, (sz / sl) * mid] };
   }
 
   resize(ctx: SceneContext): void {
@@ -418,6 +444,7 @@ export class TreeLabScene implements SceneController {
       domes: t && p.canopy ? t.stats.domes : 0,
       dots: t && p.canopy ? t.stats.dots : 0,
       glyphs: t && p.canopy ? t.stats.glyphs : 0,
+      meadow: t && p.canopy ? t.stats.meadow : 0,
       blossoms: t && p.blossoms ? t.stats.blossoms : 0,
       stars: t && p.stars ? t.stats.stars : 0,
       segments: t && p.branches ? t.stats.segments : 0,

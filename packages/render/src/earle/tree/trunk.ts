@@ -9,6 +9,8 @@ export interface TrunkSpec {
   twist: number;
   /** Zahl der Wurzelanläufe/Lappen am Fuß (5–8). */
   lobes: number;
+  /** Lappenausprägung am Fuß (Standard 0.62): Radius bis ×(1 + flare) auf den Kämmen. */
+  flare?: number;
   /** Mesh-Auflösung (beeinflusst die Form nicht). */
   rings: number;
   segments: number;
@@ -42,6 +44,9 @@ export interface TrunkProfile {
   rootTips: Vector3[];
   /** Umfang in der Stammmitte und Höhe (Welteinheiten). */
   surfaceUnits: [number, number];
+  /** Mittlerer Radius und Lappenamplitude bei Höhenanteil t (0..1). */
+  rMean(t: number): number;
+  lobeAmp(t: number): number;
 }
 
 export interface TrunkBuild extends TrunkProfile {
@@ -56,7 +61,8 @@ export interface TrunkBuild extends TrunkProfile {
 export function trunkProfile(spec: TrunkSpec): TrunkProfile {
   const H = spec.height;
   const rMean = (t: number): number => spec.topRadius + (spec.baseRadius - spec.topRadius) * Math.pow(Math.max(0, 1 - t), 1.7) + spec.baseRadius * 1.15 * Math.exp(-t * 9);
-  const lobeAmp = (t: number): number => 0.5 * Math.exp(-t * 4) + 0.06;
+  const flare = spec.flare ?? 0.62;
+  const lobeAmp = (t: number): number => flare * Math.exp(-t * 3.6) + 0.07;
   /** Radius beim unverdrehten Umlaufparameter phi. */
   const shape = (t: number, phi: number): number => rMean(t) * (1 + lobeAmp(t) * (0.5 + 0.5 * Math.cos(spec.lobes * phi)));
   const axis = (t: number, out: Vector3): Vector3 => out.set(spec.lean * t * t, t * H, 0.25 * spec.lean * Math.sin(t * 2.6));
@@ -95,7 +101,7 @@ export function trunkProfile(spec: TrunkSpec): TrunkProfile {
     // auf den nächsten Lappenkamm schnappen (cos(lobes·φ) = 1 am Fuß, t = 0 → keine Verdrehung)
     const phi = Math.round((phiOffset + (k / spec.rootCount) * Math.PI * 2) / crest) * crest;
     const len = spec.rootLength * (0.65 + 0.6 * rand());
-    addRoot(phi, rMean(0.02) * 0.75, len, 1.0 + 0.4 * rand(), 1.25 + 0.4 * rand(), 0, phi / (Math.PI * 2));
+    addRoot(phi, rMean(0.02) * 0.75, len, 1.45 + 0.55 * rand(), 1.75 + 0.55 * rand(), 0, phi / (Math.PI * 2));
   }
 
   const top = axis(1, new Vector3());
@@ -116,6 +122,8 @@ export function trunkProfile(spec: TrunkSpec): TrunkProfile {
     roots,
     rootTips,
     surfaceUnits: [Math.PI * 2 * rMean(0.5), H],
+    rMean,
+    lobeAmp,
   };
 }
 
@@ -127,8 +135,7 @@ export function buildTrunk(input: TrunkSpec | TrunkProfile): TrunkBuild {
   const profile = 'radiusAt' in input ? input : trunkProfile(input);
   const spec = profile.spec;
   const H = spec.height;
-  const rMean = (t: number): number => spec.topRadius + (spec.baseRadius - spec.topRadius) * Math.pow(Math.max(0, 1 - t), 1.7) + spec.baseRadius * 1.15 * Math.exp(-t * 9);
-  const lobeAmp = (t: number): number => 0.5 * Math.exp(-t * 4) + 0.06;
+  const { rMean, lobeAmp } = profile;
   const pos: number[] = [];
   const bark: number[] = [];
   const circ: number[] = [];

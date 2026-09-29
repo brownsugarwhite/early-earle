@@ -34,6 +34,14 @@ export interface SkeletonSpec {
   /** Zielreichweite der Krone (waagrecht). */
   reach: number;
   seed: number;
+  /** Neigung der Hauptäste gegen die Senkrechte in rad (min, max); Standard (0.95, 1.25) = breite, schwere Krone. */
+  tilt?: [number, number];
+  /** Feste Richtungen (Yaw, rad) der Hauptäste statt gleichmäßiger Verteilung. */
+  yaws?: number[];
+  /** Ansatz der Hauptäste unter dem Ursprung, relativ zum Radius (Standard 0.55 → die Gabel wächst aus dem Stamm). */
+  startDrop?: number;
+  /** Kahler Ast (Ebene 11): kein Anheben, alle Ebenen hängen leicht durch. */
+  bare?: boolean;
 }
 
 const _q = new Quaternion();
@@ -55,7 +63,7 @@ export function growSkeleton(spec: SkeletonSpec): Skeleton {
   const ends: Vector3[][] = [];
   const tips: BranchTip[] = [];
   for (let l = 0; l <= spec.levels; l++) ends.push([]);
-  const lengths = [0, 0.4, 0.3, 0.2, 0.14, 0.1].map((f) => f * spec.reach);
+  const lengths = [0, 0.42, 0.32, 0.2, 0.14, 0.1].map((f) => f * spec.reach);
 
   const branch = (pos: Vector3, dir: Vector3, len: number, r0: number, level: number, planeN: Vector3): void => {
     const parts = level <= 2 ? 3 : 2;
@@ -64,12 +72,23 @@ export function growSkeleton(spec: SkeletonSpec): Skeleton {
     let d = dir.clone();
     for (let i = 0; i < parts; i++) {
       let bend = (rand() - 0.5) * 0.36;
-      if (level <= 2) {
-        // Hauptäste: leichter Zug nach oben (Enden heben sich, Ebene 35)
-        if (d.y < 0.55) bend += 0.09 * (level === 2 ? 1.4 : 1);
+      if (spec.bare) {
+        d = rotateAround(d, planeN, bend * 0.6);
+        d.y -= 0.05;
+        if (d.y > 0.3) d.y = 0.3;
+        d.normalize();
+      } else if (level === 1) {
+        // Hauptäste: breit ausladend, heben sich nur, wenn sie fast waagrecht werden (Ebene 33/35)
+        if (d.y < 0.35) bend += 0.06;
         const lifted = rotateAround(d, planeN, bend);
         const alt = rotateAround(d, planeN, -bend);
         d = lifted.y >= alt.y ? lifted : alt;
+      } else if (level === 2) {
+        // zweite Ebene: läuft nach außen und senkt sich leicht → die Kuppeln hängen am Rand tief
+        d = rotateAround(d, planeN, bend);
+        d.y -= 0.03;
+        if (d.y > 0.55) d.y = 0.55;
+        d.normalize();
       } else {
         // Zweige: fächern nach außen und hängen leicht (Ebene 05/24), statt wie Borsten nach oben zu stehen
         d = rotateAround(d, planeN, bend);
@@ -91,7 +110,7 @@ export function growSkeleton(spec: SkeletonSpec): Skeleton {
     }
     const count = level === 1 ? 3 + (rand() < 0.5 ? 1 : 0) : level === 2 ? 2 + (rand() < 0.6 ? 1 : 0) : 2;
     const spread = level === 1 ? 1.25 : level === 2 ? 1.05 : 0.9;
-    const childR = r1 * Math.sqrt(1 / count) * 1.08;
+    const childR = r1 * Math.sqrt(1 / count) * (level === 1 ? 1.15 : 1.08);
     for (let c = 0; c < count; c++) {
       const s = count === 1 ? 0 : (c / (count - 1) - 0.5) * 2; // -1..1
       const angle = s * spread * 0.5 + (rand() - 0.5) * 0.22;
@@ -104,13 +123,16 @@ export function growSkeleton(spec: SkeletonSpec): Skeleton {
   };
 
   const yaw0 = rand() * Math.PI * 2;
-  for (let i = 0; i < spec.limbs; i++) {
-    const yaw = yaw0 + (i / spec.limbs) * Math.PI * 2 + (rand() - 0.5) * 0.35;
-    const tilt = 0.75 + rand() * 0.35; // 43°–63° von der Senkrechten
+  const [t0, t1] = spec.tilt ?? [0.95, 1.25];
+  const limbs = spec.yaws ? spec.yaws.length : spec.limbs;
+  const drop = spec.startDrop ?? 0.55;
+  for (let i = 0; i < limbs; i++) {
+    const yaw = spec.yaws ? spec.yaws[i]! : yaw0 + (i / limbs) * Math.PI * 2 + (rand() - 0.5) * 0.35;
+    const tilt = t0 + rand() * (t1 - t0);
     const dir = new Vector3(Math.sin(tilt) * Math.cos(yaw), Math.cos(tilt), Math.sin(tilt) * Math.sin(yaw)).normalize();
     const planeN = new Vector3().crossVectors(_up, dir).normalize();
-    const start = spec.origin.clone().add(new Vector3(Math.cos(yaw), -0.3, Math.sin(yaw)).multiplyScalar(spec.radius * 0.6));
-    branch(start, dir, lengths[1]! * (0.9 + rand() * 0.25), spec.radius * (0.42 + rand() * 0.12), 1, planeN);
+    const start = spec.origin.clone().add(new Vector3(Math.cos(yaw) * 0.6, -drop, Math.sin(yaw) * 0.6).multiplyScalar(spec.radius));
+    branch(start, dir, lengths[1]! * (0.9 + rand() * 0.25), spec.radius * (0.58 + rand() * 0.12), 1, planeN);
   }
   return { segments, ends, tips, levels: spec.levels };
 }
