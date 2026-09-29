@@ -1,0 +1,102 @@
+/* P2e Schatten-Lab: Split-Tags, Lupen-Rahmen, Kennzahlen. Konturlos, Versatzschatten wie die übrigen Labs. */
+.shadow-lab {
+  position: fixed;
+  inset: 0;
+}
+.shadow-seg {
+  display: flex;
+  gap: 0;
+  box-shadow: 5px 2px 0 var(--ink-soft);
+}
+.shadow-seg button,
+.shadow-btn {
+  padding: 8px 12px;
+  border: 0;
+  background: var(--khaki);
+  color: var(--ink);
+  font: 800 12px/1 var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+.shadow-seg button.is-on,
+.shadow-btn.is-on {
+  background: var(--ink);
+  color: var(--neon, #9ef0d8);
+}
+.shadow-btn {
+  box-shadow: 5px 2px 0 var(--ink-soft);
+}
+.shadow-split {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 3px;
+  margin-left: -1px;
+  background: var(--paper, #f7f6d8);
+  pointer-events: none;
+}
+.shadow-split__tag {
+  position: absolute;
+  top: 64px;
+  padding: 4px 10px;
+  background: var(--paper, #f7f6d8);
+  color: var(--ink, #081b25);
+  font: 900 16px/1 var(--font-display);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.shadow-split__tag--alt {
+  right: 10px;
+}
+.shadow-split__tag--neu {
+  left: 10px;
+}
+.shadow-mag-src {
+  position: absolute;
+  box-shadow: 0 0 0 2px var(--paper, #f7f6d8), 3px 2px 0 2px var(--ink, #081b25);
+  pointer-events: none;
+}
+.shadow-mag-inset {
+  position: absolute;
+  box-shadow: 0 0 0 3px var(--paper, #f7f6d8), 7px 3px 0 3px var(--ink, #081b25);
+  pointer-events: none;
+}
+.shadow-mag-inset span {
+  position: absolute;
+  left: 0;
+  top: -26px;
+  padding: 3px 8px;
+  background: var(--paper, #f7f6d8);
+  color: var(--ink, #081b25);
+  font: 900 13px/1 var(--font-display);
+  text-transform: uppercase;
+}
+.shadow-info {
+  position: absolute;
+  left: 14px;
+  top: 58px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: min(92vw, 460px);
+  padding: 8px 12px;
+  background: rgba(8, 27, 37, 0.86);
+  color: var(--paper, #f7f6d8);
+  font: 600 12px/1.35 ui-monospace, Menlo, monospace;
+  box-shadow: 5px 2px 0 var(--ink-soft, #1c2b30);
+  pointer-events: none;
+}
+.shadow-info strong {
+  font: 900 12px/1.2 var(--font-display);
+  text-transform: uppercase;
+  color: var(--khaki, #c9c28a);
+}
+@media (max-width: 700px) {
+  .shadow-info {
+    top: auto;
+    bottom: 48vh;
+    font-size: 10px;
+  }
+}

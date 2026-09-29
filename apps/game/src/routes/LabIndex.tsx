@@ -11,6 +11,7 @@ export function LabIndex() {
         <Link className="tile" to="/lab/grid">P3 Grid-Lab</Link>
         <Link className="tile" to="/lab/creature">P4 Genom-Lab</Link>
         <Link className="tile" to="/lab/tree">P2d Baum-Lab</Link>
+        <Link className="tile" to="/lab/shadow">P2e Schatten-Lab</Link>
         <Link className="tile" to="/">◀ Start</Link>
       </nav>
     </main>
