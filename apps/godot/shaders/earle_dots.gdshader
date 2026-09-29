@@ -11,7 +11,7 @@ render_mode unshaded, cull_disabled, shadows_disabled, world_vertex_coords, dept
 
 uniform vec3 u_sun_dir = vec3(0.0, 1.0, 0.0);
 uniform float u_growth = 1.0;
-uniform float u_size = 0.17;
+uniform float u_size = 0.07;
 uniform float u_min_px = 0.75;
 uniform float u_viewport_h = 1600.0;
 uniform vec3 u_lit_a : source_color = vec3(0.72, 1.0, 0.16);
@@ -44,7 +44,7 @@ void vertex() {
 	vec3 right = INV_VIEW_MATRIX[0].xyz;
 	vec3 up = INV_VIEW_MATRIX[1].xyz;
 	vec4 clip = PROJECTION_MATRIX * (VIEW_MATRIX * vec4(center, 1.0));
-	float px = s * PROJECTION_MATRIX[1][1] / max(clip.w, 0.01) * 0.5 * u_viewport_h;
+	float px = s * abs(PROJECTION_MATRIX[1][1]) / max(clip.w, 0.01) * 0.5 * u_viewport_h;
 	if (px < u_min_px) {
 		s = 0.0;
 	}

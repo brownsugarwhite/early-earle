@@ -83,6 +83,8 @@ export interface LevelSpec {
   spawn?: { tier2?: number; tier3?: number; amoeba?: number; sources?: Coord[] };
   specials?: { lineAt?: number; burstAt?: number };
   style?: DifficultyStyle;
+  /** Where blockers and target floors go; defaults to edge-first for gentle types, centre-first otherwise. */
+  placement?: 'edge' | 'interior' | 'any';
 }
 
 export function levelId(zone: ZoneId, index: number): string {
@@ -195,7 +197,7 @@ export function generateLevel(spec: LevelSpec): LevelDef {
     spec.type === 'fuu' ||
     spec.type === 'comfort' ||
     spec.type === 'celebration';
-  const bias = gentle ? 'edge' : 'interior';
+  const bias = spec.placement ?? (gentle ? 'edge' : 'interior');
 
   const table: LevelInput['spawn']['table'] = [{ tier: 1, weight: 9 }];
   const t2 = spec.spawn?.tier2 ?? 1;
@@ -256,7 +258,7 @@ export function generateLevel(spec: LevelSpec): LevelDef {
   const start: NonNullable<LevelInput['start']> = [];
 
   // Blockers first (they take cells), keeping at least one cell apart so lanes stay open.
-  let pool = biasedPool(rng, open, w, h, has('scrap') && !gentle ? 'interior' : bias);
+  let pool = biasedPool(rng, open, w, h, bias);
   if (has('scrap')) {
     const layers = spec.scrapLayers ?? 1;
     for (const c of take(pool, spec.counts?.scrap ?? 2, 2))

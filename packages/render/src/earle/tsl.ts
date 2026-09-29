@@ -41,7 +41,9 @@ export class PaletteLookup {
    */
   bands(x: FloatNode, row: FloatNode | number, base: number): Vec4Node {
     const i = floor(x);
-    const t = smoothstep(float(1).sub(fwidth(x)), float(1), fract(x));
+    // fwidth kann 0 sein (x konstant, z. B. geclampt) → smoothstep(1, 1, …) wäre undefiniert
+    const w = fwidth(x).max(1e-4);
+    const t = smoothstep(float(1).sub(w), float(1), fract(x));
     return mix(this.pal(i.add(base), row), this.pal(i.add(base + 1), row), t);
   }
 }

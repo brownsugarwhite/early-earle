@@ -14,6 +14,6 @@ export {
 // `aaStep` und die Node-Typaliase bleiben paketintern (common/ exportiert gleichnamige Helfer).
 export { PaletteLookup, createFogSettings, steppedFog, type FogSettings, type TSLUniform } from './tsl';
 export { EarleMaterial, type EarleMaterialOptions } from './EarleMaterial';
-export { SunRig, hardShadowFilter, type SunOptions } from './hardShadow';
+export { SunRig, createHardShadowFilter, type SunOptions } from './hardShadow';
 export { EarleVegetation, type VegetationOptions } from './vegetation';
 export { FogStripes, createSkyDome, type FogStripeOptions, type SkyDomeOptions } from './skyFog';

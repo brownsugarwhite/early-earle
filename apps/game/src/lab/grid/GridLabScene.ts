@@ -163,8 +163,10 @@ export class GridLabScene implements SceneController {
     const aspect = this.camera.aspect;
     const fit = aspect < 1 ? span / aspect : span;
     const dist = fit * 1.05 + 2.5;
-    this.camera.position.set(0, dist * 0.92, dist * 0.55);
-    this.camera.lookAt(0, 0, 0.15);
+    // Auf schmalen Bildschirmen liegt die HUD-Leiste unten: Brett nach oben rücken (Blickpunkt vor das Brett)
+    const hudShift = aspect < 1 ? span * 0.42 : span * 0.12;
+    this.camera.position.set(0, dist * 0.92, dist * 0.55 + hudShift);
+    this.camera.lookAt(0, 0, 0.15 + hudShift);
   }
 
   // ---------- Board ----------

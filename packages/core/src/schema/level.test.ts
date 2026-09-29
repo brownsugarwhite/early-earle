@@ -135,8 +135,9 @@ describe('content files', () => {
       const r = LevelSchema.safeParse(json);
       expect(r.success, `${f}: ${r.success ? '' : JSON.stringify(r.error.issues)}`).toBe(true);
       if (r.success) {
+        const index = Number(f.replace('.json', ''));
         expect(r.data.id).toBe(`tjorizo-${f.replace('.json', '')}`);
-        expect(r.data.difficulty.targetAttempts[1]).toBeLessThanOrEqual(1.1);
+        expect(r.data.difficulty.targetAttempts[1]).toBeLessThanOrEqual(index <= 10 ? 1.1 : 2.5);
       }
     }
   });

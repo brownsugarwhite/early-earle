@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "id": "tjorizo-025",
+  "zone": "tjorizo",
+  "name": "Der erste Riss",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".P...", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "scrap",
+      "at": [2, 2],
+      "layers": 2
+    },
+    {
+      "kind": "scrap",
+      "at": [0, 0],
+      "layers": 2
+    },
+    {
+      "kind": "scrap",
+      "at": [0, 4],
+      "layers": 2
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 1],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [4, 2],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [2, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [4, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 1],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "clearScrap"
+    },
+    {
+      "type": "reachTier",
+      "tier": 6
+    }
+  ],
+  "moves": 29,
+  "cap": 12,
+  "specials": {
+    "lineAt": 3,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.6, 2],
+    "style": "explosive"
+  }
+}

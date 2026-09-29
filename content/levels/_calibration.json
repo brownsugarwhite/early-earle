@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-29T14:05:24.374Z",
+  "generatedAt": "2026-09-29T14:32:48.750Z",
   "solverVersion": "0.1.0",
   "seeds": 200,
   "halfWidth": 0.05,
@@ -444,6 +444,666 @@
         }
       },
       "name": "Ehrenrunde"
+    },
+    {
+      "id": "tjorizo-011",
+      "file": "011.json",
+      "levelHash": 259832425,
+      "solverVersion": "0.1.0",
+      "elements": ["scrap"],
+      "moves": 30,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 4.057142857142857,
+          "meanMovesWon": 4.057142857142857,
+          "meanScore": 155.4857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 588.103791
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 4.8,
+          "meanMovesWon": 4.8,
+          "meanScore": 155.42857142857142,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 8.868583999999942
+        }
+      },
+      "name": "Schrott"
+    },
+    {
+      "id": "tjorizo-012",
+      "file": "012.json",
+      "levelHash": 2034744906,
+      "solverVersion": "0.1.0",
+      "elements": ["scrap"],
+      "moves": 34,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 9.857142857142858,
+          "meanMovesWon": 9.857142857142858,
+          "meanScore": 205,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 2009.2712499999998
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 12.4,
+          "meanMovesWon": 12.4,
+          "meanScore": 209.42857142857142,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 29.075415999999677
+        }
+      },
+      "name": "Mehr Schrott"
+    },
+    {
+      "id": "tjorizo-013",
+      "file": "013.json",
+      "levelHash": 2383268510,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "scrap"],
+      "moves": 31,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 13.2,
+          "meanMovesWon": 13.2,
+          "meanScore": 201.05714285714285,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 2671.783833
+        },
+        "novice": {
+          "n": 200,
+          "wins": 101,
+          "pWin": 0.505,
+          "wilson": [0.4362687594824017, 0.5735427804584151],
+          "attemptsEst": 1.9801980198019802,
+          "meanMoves": 26.64,
+          "meanMovesWon": 22.366336633663366,
+          "meanScore": 243.18,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 282.0137910000003
+        }
+      },
+      "name": "Schrotthügel"
+    },
+    {
+      "id": "tjorizo-014",
+      "file": "014.json",
+      "levelHash": 2016961099,
+      "solverVersion": "0.1.0",
+      "elements": ["spore"],
+      "moves": 30,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 7.0285714285714285,
+          "meanMovesWon": 7.0285714285714285,
+          "meanScore": 177.88571428571427,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 845.2846250000002
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.114285714285714,
+          "meanMovesWon": 11.114285714285714,
+          "meanScore": 188.88571428571427,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 11.93670800000018
+        }
+      },
+      "name": "Sporen"
+    },
+    {
+      "id": "tjorizo-015",
+      "file": "015.json",
+      "levelHash": 3693477862,
+      "solverVersion": "0.1.0",
+      "elements": ["spore"],
+      "moves": 34,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.428571428571429,
+          "meanMovesWon": 11.428571428571429,
+          "meanScore": 232.57142857142858,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 2200.8062090000003
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 18.085714285714285,
+          "meanMovesWon": 18.085714285714285,
+          "meanScore": 264.2,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 39.337790999999925
+        }
+      },
+      "name": "Sporenfeld"
+    },
+    {
+      "id": "tjorizo-016",
+      "file": "016.json",
+      "levelHash": 1946817118,
+      "solverVersion": "0.1.0",
+      "elements": ["amoeba"],
+      "moves": 30,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 8.514285714285714,
+          "meanMovesWon": 8.514285714285714,
+          "meanScore": 198.74285714285713,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 1014.0654169999998
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.142857142857142,
+          "meanMovesWon": 11.142857142857142,
+          "meanScore": 200.34285714285716,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 12.537833000000319
+        }
+      },
+      "name": "Die Amöbe"
+    },
+    {
+      "id": "tjorizo-017",
+      "file": "017.json",
+      "levelHash": 1948075875,
+      "solverVersion": "0.1.0",
+      "elements": ["spore", "amoeba"],
+      "moves": 34,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.714285714285714,
+          "meanMovesWon": 11.714285714285714,
+          "meanScore": 227.0857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 2211.755000000001
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 18.4,
+          "meanMovesWon": 18.4,
+          "meanScore": 255.82857142857142,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 37.99829099999988
+        }
+      },
+      "name": "Pflücken"
+    },
+    {
+      "id": "tjorizo-018",
+      "file": "018.json",
+      "levelHash": 2979464355,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 34,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 8.228571428571428,
+          "meanMovesWon": 8.228571428571428,
+          "meanScore": 256.74285714285713,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 1124.1707910000005
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.542857142857143,
+          "meanMovesWon": 11.542857142857143,
+          "meanScore": 257.77142857142854,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 12.60174999999981
+        }
+      },
+      "name": "Aufbruch"
+    },
+    {
+      "id": "tjorizo-019",
+      "file": "019.json",
+      "levelHash": 1282481729,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar"],
+      "moves": 18,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 145,
+          "wins": 130,
+          "pWin": 0.896551724137931,
+          "wilson": [0.8363312589764538, 0.9363021983365554],
+          "attemptsEst": 1.1153846153846154,
+          "meanMoves": 15.213793103448277,
+          "meanMovesWon": 14.892307692307693,
+          "meanScore": 242.06896551724137,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 11580.430667
+        },
+        "novice": {
+          "n": 200,
+          "wins": 104,
+          "pWin": 0.52,
+          "wilson": [0.4510366005581654, 0.5882095592051018],
+          "attemptsEst": 1.923076923076923,
+          "meanMoves": 16.855,
+          "meanMovesWon": 15.798076923076923,
+          "meanScore": 211.565,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 213.40249999999833
+        }
+      },
+      "name": "Zwei Aufbrüche"
+    },
+    {
+      "id": "tjorizo-020",
+      "file": "020.json",
+      "levelHash": 2806439118,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 30,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 497,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 33.568082999998296
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1.1142857142857143,
+          "meanMovesWon": 1.1142857142857143,
+          "meanScore": 496.42857142857144,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 3.48504099999991
+        }
+      },
+      "name": "Ehrenrunde II"
+    },
+    {
+      "id": "tjorizo-021",
+      "file": "021.json",
+      "levelHash": 1719963409,
+      "solverVersion": "0.1.0",
+      "elements": ["withered"],
+      "moves": 30,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 5.571428571428571,
+          "meanMovesWon": 5.571428571428571,
+          "meanScore": 179.57142857142858,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 690.8089159999981
+        },
+        "novice": {
+          "n": 51,
+          "wins": 50,
+          "pWin": 0.9803921568627451,
+          "wilson": [0.8969519232441061, 0.9965303967465577],
+          "attemptsEst": 1.02,
+          "meanMoves": 8.058823529411764,
+          "meanMovesWon": 7.62,
+          "meanScore": 182.41176470588235,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 13.579667000001791
+        }
+      },
+      "name": "Verdorrt"
+    },
+    {
+      "id": "tjorizo-022",
+      "file": "022.json",
+      "levelHash": 1601745298,
+      "solverVersion": "0.1.0",
+      "elements": ["withered", "deepWithered"],
+      "moves": 34,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 16.8,
+          "meanMovesWon": 16.8,
+          "meanScore": 280.9142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 10056.839708
+        },
+        "novice": {
+          "n": 200,
+          "wins": 162,
+          "pWin": 0.81,
+          "wilson": [0.7499864142552062, 0.8583290620754351],
+          "attemptsEst": 1.2345679012345678,
+          "meanMoves": 27.155,
+          "meanMovesWon": 25.549382716049383,
+          "meanScore": 303.505,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 861.0910829999993
+        }
+      },
+      "name": "Tief verdorrt"
+    },
+    {
+      "id": "tjorizo-023",
+      "file": "023.json",
+      "levelHash": 437463280,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "withered"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 9.771428571428572,
+          "meanMovesWon": 9.771428571428572,
+          "meanScore": 230.97142857142856,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 2045.827084
+        },
+        "novice": {
+          "n": 200,
+          "wins": 162,
+          "pWin": 0.81,
+          "wilson": [0.7499864142552062, 0.8583290620754351],
+          "attemptsEst": 1.2345679012345678,
+          "meanMoves": 19.03,
+          "meanMovesWon": 16.925925925925927,
+          "meanScore": 244.06,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 235.31195799999978
+        }
+      },
+      "name": "Heilen am Pfeiler"
+    },
+    {
+      "id": "tjorizo-024",
+      "file": "024.json",
+      "levelHash": 2494221924,
+      "solverVersion": "0.1.0",
+      "elements": ["scrap", "line"],
+      "moves": 32,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 8.057142857142857,
+          "meanMovesWon": 8.057142857142857,
+          "meanScore": 224.45714285714286,
+          "specialFrequency": {
+            "line": 0.25886524822695034,
+            "burst": 0,
+            "fired": 0.13120567375886524
+          },
+          "elapsedMs": 1821.791792
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 10.342857142857143,
+          "meanMovesWon": 10.342857142857143,
+          "meanScore": 240.45714285714286,
+          "specialFrequency": {
+            "line": 0.18232044198895028,
+            "burst": 0,
+            "fired": 0.11878453038674033
+          },
+          "elapsedMs": 24.774124999999913
+        }
+      },
+      "name": "Der Strahl"
+    },
+    {
+      "id": "tjorizo-025",
+      "file": "025.json",
+      "levelHash": 266028228,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "scrap", "line"],
+      "moves": 29,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 183,
+          "wins": 158,
+          "pWin": 0.8633879781420765,
+          "wilson": [0.8061073695574859, 0.905725541314611],
+          "attemptsEst": 1.1582278481012658,
+          "meanMoves": 21.016393442622952,
+          "meanMovesWon": 19.753164556962027,
+          "meanScore": 327.1693989071038,
+          "specialFrequency": {
+            "line": 0.04628185127405096,
+            "burst": 0,
+            "fired": 0.03250130005200208
+          },
+          "elapsedMs": 24573.334
+        },
+        "novice": {
+          "n": 200,
+          "wins": 101,
+          "pWin": 0.505,
+          "wilson": [0.4362687594824017, 0.5735427804584151],
+          "attemptsEst": 1.9801980198019802,
+          "meanMoves": 25.595,
+          "meanMovesWon": 22.257425742574256,
+          "meanScore": 314.77,
+          "specialFrequency": {
+            "line": 0.03320961125219769,
+            "burst": 0,
+            "fired": 0.023051377222113693
+          },
+          "elapsedMs": 286.59150000000227
+        }
+      },
+      "name": "Der erste Riss"
     }
   ]
 }

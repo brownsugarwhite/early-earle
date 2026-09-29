@@ -6,7 +6,7 @@ extends Node
 ##
 ## For every configuration it prints one JSON line (fps, frame-time p50/p99 in ms,
 ## draw calls, objects, primitives, physics step ms) and writes PNG screenshots of
-## the root viewport into --out. Results are also stored in res://bench/results-<renderer>.json.
+## the root viewport into --out. Results are also stored in res://bench/results-<method>-<driver>.json.
 ## Needs a window (the dummy rasterizer of --headless renders nothing).
 
 var active := false
@@ -62,6 +62,7 @@ func _blob_lab() -> void:
 		await _measure("blob", "36-" + names[k])
 		await _shot("p1g-blobs-36-%s.png" % names[k])
 	lab.set_material(0)
+	await _measure("blob", "36-jelly-repeat")
 	lab.set_softbody(true)
 	await _wait(1.2)
 	lab.poke()
@@ -126,16 +127,35 @@ func _wait(t: float) -> void:
 
 
 func _measure(scene: String, cfg: String) -> void:
+	# 3D only: hide the lab UI and the HUD while sampling (they add ~30 canvas draw calls)
+	var cur := get_tree().current_scene
+	var ui := cur.get_node_or_null("UI")
+	var hud := cur.get_node_or_null("PerfHud")
+	if ui:
+		ui.visible = false
+	if hud:
+		hud.visible = false
+	var rid := get_viewport().get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(rid, true)
 	await _wait(0.7) # warm-up (pipeline compilation, shadow first frame)
 	var samples := PackedFloat64Array()
+	var gpu := PackedFloat64Array()
+	var cpu := PackedFloat64Array()
+	var phys := PackedFloat64Array()
 	var t0 := Time.get_ticks_usec()
 	var last := t0
 	while Time.get_ticks_usec() - t0 < int(seconds * 1000000.0):
 		await get_tree().process_frame
 		var now := Time.get_ticks_usec()
 		samples.append(float(now - last) / 1000.0)
+		gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(rid))
+		cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(rid))
+		phys.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
 		last = now
 	samples.sort()
+	gpu.sort()
+	cpu.sort()
+	phys.sort()
 	var n := samples.size()
 	var d := {
 		"renderer": renderer,
@@ -146,15 +166,23 @@ func _measure(scene: String, cfg: String) -> void:
 		"p50_ms": snappedf(samples[int((n - 1) * 0.5)], 0.01),
 		"p99_ms": snappedf(samples[int((n - 1) * 0.99)], 0.01),
 		"max_ms": snappedf(samples[n - 1], 0.01),
+		"gpu_ms_p50": snappedf(gpu[int((n - 1) * 0.5)], 0.01),
+		"gpu_ms_p99": snappedf(gpu[int((n - 1) * 0.99)], 0.01),
+		"cpu_ms_p50": snappedf(cpu[int((n - 1) * 0.5)], 0.01),
 		"draw_calls": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
 		"objects": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
 		"primitives": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),
-		"physics_ms": snappedf(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, 0.001),
+		"physics_ms_p50": snappedf(phys[int((n - 1) * 0.5)], 0.001),
+		"physics_ms_max": snappedf(phys[n - 1], 0.001),
 		"static_mem_mb": snappedf(OS.get_static_memory_usage() / 1048576.0, 0.1),
 		"video_mem_mb": snappedf(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED) / 1048576.0, 0.1),
 	}
 	results.append(d)
 	print("[bench] " + JSON.stringify(d))
+	if ui:
+		ui.visible = true
+	if hud:
+		hud.visible = true
 
 
 func _shot(name: String) -> void:
@@ -170,7 +198,7 @@ func _shot(name: String) -> void:
 
 
 func _save() -> void:
-	var f := FileAccess.open("res://bench/results-%s.json" % renderer, FileAccess.WRITE)
+	var f := FileAccess.open("res://bench/results-%s-%s.json" % [renderer, RenderingServer.get_current_rendering_driver_name()], FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(results, "  "))
 		f.close()

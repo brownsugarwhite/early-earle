@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { generateLevel, defaultMoves, targetAttempts } from './generateLevel';
@@ -69,9 +69,12 @@ describe('generateLevel', () => {
     }
   });
 
-  it('content/levels/001–010 are exactly what the specs generate (run tools/levels/generate.ts after changing specs)', () => {
-    for (const i of P3_LEVEL_INDICES) {
-      const file = `${levelsDir}${String(i).padStart(3, '0')}.json`;
+  it('every content/levels/NNN.json is exactly what its spec generates (run tools/levels/generate.ts after changing specs)', () => {
+    const files = readdirSync(levelsDir).filter((f) => /^\d{3}\.json$/.test(f));
+    expect(files.length).toBeGreaterThanOrEqual(P3_LEVEL_INDICES.length);
+    for (const f of files) {
+      const i = Number(f.replace('.json', ''));
+      const file = `${levelsDir}${f}`;
       const onDisk = LevelSchema.parse(JSON.parse(readFileSync(file, 'utf8')));
       const generated = LevelSchema.parse(
         JSON.parse(JSON.stringify(generateLevel(tjorizoSpec(i)))),

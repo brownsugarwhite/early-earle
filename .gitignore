@@ -17,3 +17,16 @@ docs/progress/*.tmp.png
 # Apple/Android Projekte werden erst mit Capacitor erzeugt
 apps/ios/App/Pods/
 apps/android/.gradle/
+
+# Capacitor (generiert bei cap sync / Xcode-Build)
+apps/game/ios/build/
+apps/game/ios/DerivedData/
+apps/game/ios/App/App/public/
+apps/game/ios/App/App/capacitor.config.json
+apps/game/ios/App/Pods/
+apps/game/ios/App/App.xcworkspace/
+apps/game/ios/App/App.xcodeproj/xcuserdata/
+apps/game/ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+apps/game/android/build/
+apps/game/android/app/build/
+apps/game/android/app/src/main/assets/public/

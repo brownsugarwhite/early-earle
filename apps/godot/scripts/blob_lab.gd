@@ -425,7 +425,7 @@ func poke() -> void:
 	for i in range(soft_point_count):
 		var p := soft.get_point_transform(i)
 		if p.y > c.y + RADIUS * 0.45:
-			soft.apply_impulse(i, Vector3(0.0, -0.02, 0.0))
+			soft.apply_impulse(i, Vector3(0.0, -0.06, 0.0))
 	pokes += 1
 	_update_hud()
 

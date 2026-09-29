@@ -12,6 +12,8 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
     "@ee/core": "workspace:*",
     "@ee/genome": "workspace:*",
     "@ee/physics": "workspace:*",
@@ -26,6 +28,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
     "@playwright/test": "^1.63.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

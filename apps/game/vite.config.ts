@@ -19,7 +19,14 @@ export default defineConfig(({ command }) => ({
       '@content': fileURLToPath(new URL('../../content', import.meta.url)),
     },
   },
-  server: { host: true, port: 5173, strictPort: false, fs: { allow: [fileURLToPath(new URL('../..', import.meta.url))] } },
+  server: {
+    host: true,
+    port: 5173,
+    strictPort: false,
+    fs: { allow: [fileURLToPath(new URL('../..', import.meta.url))] },
+    // Native Projekte und Build-Ausgaben nicht beobachten (sonst Reloads während Tests/Builds)
+    watch: { ignored: ['**/ios/**', '**/android/**', '**/dist/**', '**/node_modules/**', '**/.git/**'] },
+  },
   preview: { host: true, port: 4173 },
   build: { target: 'es2022', sourcemap: true },
   optimizeDeps: { include: ['three', 'three/webgpu', 'three/tsl'] },

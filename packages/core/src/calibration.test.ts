@@ -4,7 +4,7 @@
  * Full statistics live in content/levels/_calibration.json (tools/levels/calibrate.ts).
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { generateLevel, tjorizoSpec } from './generator/index';
@@ -22,10 +22,11 @@ function load(i: number): LevelDef {
 
 const seeds = (id: string, n: number) => Array.from({ length: n }, (_, k) => hash32(id, k + 1));
 
-describe('calibration acceptance for levels 1–10', () => {
-  it('every level is solvable by the strong bot', () => {
-    for (let i = 1; i <= 10; i++) {
-      const level = load(i);
+describe('calibration acceptance', () => {
+  it('every shipped level is solvable by the strong bot', () => {
+    const files = readdirSync(levelsDir).filter((f) => /^\d{3}\.json$/.test(f));
+    for (const f of files) {
+      const level = load(Number(f.replace('.json', '')));
       const r = simulate(level, 'strong', seeds(level.id, 20), { stopAtFirstWin: true });
       expect(r.wins, level.id).toBeGreaterThanOrEqual(1);
     }

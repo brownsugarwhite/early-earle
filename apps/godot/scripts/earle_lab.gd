@@ -25,7 +25,7 @@ const PAL := {
 	"dot_a": Color("b8ff2a"), "dot_b": Color("d9e87a"), "dot_shade": Color("4e5c3b"),
 	"fog1": Color("8e8c78"), "fog2": Color("9186b3"), "fog3": Color("7e70b0"), "fog4": Color("8fc3e6"),
 	"sky0": Color("b8ff2a"), "sky1": Color("dcf58a"), "sky2": Color("c5eee0"), "sky3": Color("a9dff0"), "sky4": Color("8fc3e6"),
-	"sun": Color("f6ffd0"), "stripe": Color("e4f8ee"),
+	"sun": Color("f6ffd0"), "stripe": Color("f4fcf7"),
 }
 
 const MeshFactory := preload("res://scripts/mesh_factory.gd")
@@ -84,7 +84,7 @@ func _ready() -> void:
 	th.default_font_size = 30
 	ui_root.theme = th
 	cam.fov = 40.0
-	cam.look_at_from_position(Vector3(0.0, 12.0, 27.0), Vector3(0.0, -1.5, -1.0), Vector3.UP)
+	cam.look_at_from_position(Vector3(0.0, 20.0, 36.0), Vector3(0.0, -2.0, -2.0), Vector3.UP)
 	sky_mat = env_node.environment.sky.sky_material
 	for i in range(5):
 		sky_mat.set_shader_parameter("u_c%d" % i, PAL["sky%d" % i])
@@ -124,6 +124,8 @@ func _mat(path: String) -> ShaderMaterial:
 	m.set_shader_parameter("u_fog_c2", PAL.fog2)
 	m.set_shader_parameter("u_fog_c3", PAL.fog3)
 	m.set_shader_parameter("u_fog_c4", PAL.fog4)
+	m.set_shader_parameter("u_fog_near", 38.0)
+	m.set_shader_parameter("u_fog_far", 68.0)
 	all_mats.append(m)
 	return m
 
@@ -207,7 +209,7 @@ func _hull_point(mesh_type: int) -> Vector3:
 
 
 func _dots(mesh_type: int, s: float, frame: Basis) -> Array[Vector3]:
-	var n := clampi(int(60.0 + 140.0 * (s - 0.55) / 1.35), 60, 200)
+	var n := clampi(int(60.0 + 140.0 * (s - 0.3) / 0.65), 60, 200)
 	var sun_local := frame.inverse() * to_sun
 	var out: Array[Vector3] = []
 	var tries := 0
@@ -243,22 +245,22 @@ func _make_tree(u: float, v: float) -> Dictionary:
 	var trunk := false
 	match kind:
 		Kind.BUSH:
-			s = rng.randf_range(0.55, 1.4)
+			s = rng.randf_range(0.3, 0.7)
 			ys = rng.randf_range(0.75, 1.0)
 			crown_h = s * 0.12
 		Kind.UMBRELLA:
-			s = rng.randf_range(1.0, 1.9)
+			s = rng.randf_range(0.5, 0.95)
 			ys = rng.randf_range(0.55, 0.8)
-			crown_h = rng.randf_range(1.8, 3.8)
+			crown_h = rng.randf_range(0.9, 1.9)
 			trunk = true
 		Kind.CONE:
-			s = rng.randf_range(0.8, 1.5)
-			crown_h = s * 0.9 + rng.randf_range(0.0, 1.2)
+			s = rng.randf_range(0.4, 0.75)
+			crown_h = s * 0.9 + rng.randf_range(0.0, 0.6)
 			mesh_type = 1
 			trunk = crown_h > s * 0.95
 		Kind.STACK:
-			s = rng.randf_range(0.9, 1.6)
-			crown_h = s * 1.05 + rng.randf_range(0.0, 1.4)
+			s = rng.randf_range(0.45, 0.8)
+			crown_h = s * 1.05 + rng.randf_range(0.0, 0.7)
 			mesh_type = 2
 			trunk = crown_h > s * 1.1
 	t.kind = kind
@@ -267,7 +269,7 @@ func _make_tree(u: float, v: float) -> Dictionary:
 	t.sy = s * ys
 	t.crown_h = crown_h
 	t.trunk = trunk
-	t.trunk_w = rng.randf_range(0.03, 0.06)
+	t.trunk_w = rng.randf_range(0.02, 0.035)
 	t.basis = Basis(x * s, dir * s * ys, z * s)
 	t.frame = Basis(x, dir, z)
 	t.origin = base + dir * crown_h
@@ -278,7 +280,7 @@ func _make_tree(u: float, v: float) -> Dictionary:
 
 func _build_trees() -> void:
 	var trees: Array[Dictionary] = []
-	var step := 0.06
+	var step := 0.05
 	var u := -0.93
 	while u <= 0.93:
 		var v := -0.93
@@ -287,6 +289,7 @@ func _build_trees() -> void:
 			var vv := v + rng.randf_range(-0.022, 0.022)
 			var m := grove.get_noise_2d(uu * 3.0, vv * 3.0)
 			var p_keep := clampf(m * 1.5 + 0.3, 0.0, 1.0) * 0.8 + 0.04
+			p_keep *= 1.0 - 0.85 * smoothstep(0.2, 0.8, vv) # open, sunlit foreground with long shadows
 			if rng.randf() < p_keep:
 				trees.append(_make_tree(uu, vv))
 			v += step
@@ -429,7 +432,7 @@ func _build_trees() -> void:
 
 func _build_stripes() -> void:
 	var shader := load("res://shaders/fog_stripe.gdshader")
-	var defs := [[-16.0, 0.9, 1.1, 70.0], [-9.0, 1.4, 0.7, 60.0], [-3.5, 0.9, 0.55, 50.0], [4.0, 0.6, 0.45, 40.0]]
+	var defs := [[-16.0, -3.4, 1.2, 70.0], [-9.0, -1.8, 0.9, 60.0], [-3.5, -0.6, 0.7, 50.0], [4.0, 0.2, 0.55, 40.0]]
 	for i in range(defs.size()):
 		var q := QuadMesh.new()
 		q.size = Vector2(defs[i][3], defs[i][2])
@@ -438,7 +441,7 @@ func _build_stripes() -> void:
 		var m := ShaderMaterial.new()
 		m.shader = shader
 		m.set_shader_parameter("u_col", PAL.stripe)
-		m.set_shader_parameter("u_alpha", 0.62 - 0.06 * i)
+		m.set_shader_parameter("u_alpha", 0.58 - 0.06 * i)
 		mi.material_override = m
 		mi.position = Vector3(0.0, defs[i][1], defs[i][0])
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -456,7 +459,7 @@ func _sun_vector(elev_deg: float) -> Vector3:
 func _setup_sun() -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.directional_shadow_max_distance = 58.0
+	sun.directional_shadow_max_distance = 70.0
 	sun.light_angular_distance = 0.0
 	sun.shadow_blur = 0.0
 	sun.shadow_bias = 0.05

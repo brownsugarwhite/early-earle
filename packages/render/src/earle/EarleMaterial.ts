@@ -1,6 +1,6 @@
 import { LightingModel, NodeMaterial } from 'three/webgpu';
 import type { Node, NodeBuilder } from 'three/webgpu';
-import { clamp, float, min, mix, normalView, uniform } from 'three/tsl';
+import { clamp, min, mix, normalView, uniform } from 'three/tsl';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
 
 export interface EarleMaterialOptions {
@@ -93,4 +93,3 @@ class EarleLightingModel extends LightingModel {
   }
 }
 
-export const toFloat = float;

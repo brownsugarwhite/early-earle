@@ -12,7 +12,7 @@ float aa_step(float e, float x) {
 }
 
 void fragment() {
-	ALBEDO = vec3(0.0);
+	ALBEDO = vec3(1.0); // DIFFUSE_LIGHT is multiplied by ALBEDO after light()
 	SPECULAR = 0.0;
 	ROUGHNESS = 1.0;
 }

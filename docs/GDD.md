@@ -415,3 +415,16 @@ Ab Phase 2 (PostHog für Events, Feature Flags und Schwierigkeits-Experimente; S
 - Paletten (k-Means-Start, in OKLab verfeinern), Bandanzahl, Schattenform (P2-Feedback).
 - Zone 5+ (Ozean, Eis, Stadtruine …) nach Level 100.
 - Fell-Material (kosmetisch, später).
+
+### Nachtrag 2026-09-29 (Abend) — Fragen aus der Kern-Implementierung an Florian/Nicole
+
+Der Spielkern (`packages/core`) hat beim Bauen und Kalibrieren der Level 1–25 folgende Regel-Lücken sichtbar gemacht; die Umsetzung hat jeweils eine vorläufige Entscheidung getroffen (kursiv), die Design-Entscheidung steht aus:
+
+1. **Rettung braucht eine Ausgangszelle?** *Vorläufig: Käfig geöffnet = gerettet.* Alternative: Boden-Art `exit`, zu der das befreite Wesen geführt werden muss (mehr Puzzle, mehr Züge).
+2. **Stufenbombe — welche Stufe wird entfernt?** *Vorläufig: die häufigste Stufe auf dem Brett (bei Gleichstand die niedrigste).*
+3. **Strahl-Achse** — beim Entstehen festgelegt (Wischachse) oder beim Auslösen? *Vorläufig: beim Entstehen (Plan §16).*
+4. **Liefern** entfernt das gelieferte Wesen vom Brett. *Vorläufig ja* (wie Aufbruch).
+5. **Strahl-Blobs schaden Stufen-Zielen**: Ein Strahl räumt die ganze Reihe und vernichtet Masse; bei "Stufe N erreichen" bricht die Gewinnrate ein (100 % → 63 % beim starken Bot). Level 24 führt den Strahl deshalb mit einem Schrott-Ziel ein. Vorschlag zur Entscheidung: Strahl entfernt nur Wesen *unter* der Stufe des auslösenden Blobs (schont Gleiche und Höhere) — dann bleibt er auch bei Stufen-Zielen ein Werkzeug.
+6. **Zwei gleichzeitige Aufbrüche** lösen bereits in Level 19 eine Stufenbombe aus (formal erst ab Level 54 eingeführt). Seltener Fall; entweder in Tjorizo deaktivieren oder als Überraschungsmoment stehen lassen.
+7. **Punkteziele** (150/260) sind bot-abgeleitet und werden mit Nicoles Versuchen neu gefittet; Level 8 liegt am Bandrand (Anfänger-Bot 91 %).
+8. **Level 1 ohne Zuglimit** (`moves: 99` als "frei"); die UI blendet den Zähler aus — bestätigen.

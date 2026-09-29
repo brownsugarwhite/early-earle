@@ -136,7 +136,7 @@ vec3 blob_eye(vec3 col, vec3 d, float t, float seed) {
 	vec2 uv = vec2(dot(q, ex), dot(q, ey));
 	float blink = 1.0 - 0.92 * smoothstep(0.965, 1.0, sin(t * 0.9 + seed * 5.0));
 	uv.y /= max(blink, 0.08);
-	float sd = max(length(uv - vec2(0.42, 0.0)) - 0.5, length(uv + vec2(0.42, 0.0)) - 0.5);
+	float sd = max(length(uv - vec2(0.6, 0.0)) - 0.7, length(uv + vec2(0.6, 0.0)) - 0.7);
 	float w = max(fwidth(sd), 0.003);
 	float slit = 1.0 - smoothstep(-w, w, sd);
 	float halo = 1.0 - smoothstep(0.0, 0.12, sd);
@@ -199,8 +199,8 @@ vec3 blob_shade(vec3 p, vec3 n_o, vec3 n_v, vec3 view_v, vec3 cam_o, vec3 d, flo
 	col = mix(col, u_col_light, fres * 0.35);
 
 	// one big hard-edged crescent highlight top-left + a small comma below it
-	vec3 H1 = normalize(vec3(-0.55, 0.72, 0.42));
-	vec3 H2 = normalize(vec3(-0.50, 0.68, 0.53));
+	vec3 H1 = normalize(vec3(-0.52, 0.68, 0.52));
+	vec3 H2 = normalize(vec3(-0.46, 0.62, 0.64));
 	float a1 = dot(n_v, H1);
 	float a2 = dot(n_v, H2);
 	float w1 = max(fwidth(a1), 0.004);

@@ -1,21 +1,30 @@
 import { Box3, DirectionalLight, LinearFilter, Matrix4, Object3D, Vector3 } from 'three/webgpu';
-import type { DepthTexture, LightShadow } from 'three/webgpu';
-import { Fn, floor, fract, fwidth, mix, reference, smoothstep, texture, vec2 } from 'three/tsl';
+import type { DepthTexture, LightShadow, NodeBuilder, UniformNode } from 'three/webgpu';
+import { Fn, floor, fract, fwidth, lightTargetDirection, mix, normalView, reference, smoothstep, texture, uniform, vec2 } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node } from './tsl';
 
 /**
  * Nachschärfender Schattenfilter (Hook: `light.shadow.filterNode`, r186 `ShadowNode.setupShadow`).
+ * Empfängerseitiger, steigungsabhängiger Bias (`depthPerTexel · tan θ`): bei 10° Sonne streift das Licht den Boden,
+ * ein konstanter Bias würde entweder Acne oder weit versetzte Schatten erzeugen.
  * Ein Vergleichs-Tap über den Hardware-Compare-Sampler (LINEAR → 2×2-PCF-Rampe über genau ein Texel),
  * danach `smoothstep(0.5 ± w)` mit `w = ½·fwidth(r)`: die Rampe wird auf exakt einen Bildschirmpixel
  * zusammengezogen → gerade, anti-aliasierte, harte Kanten ohne Treppen und ohne Weichzeichnung.
  * Fällt die Plattform auf Nearest-Compare zurück (three: kein TEXTURE_COMPARE, z. B. Android-WebGPU), wird die
  * 2×2-Rampe manuell aus vier Taps gebaut.
  */
-export const hardShadowFilter = Fn((inputs: { depthTexture: DepthTexture; shadowCoord: Vec3Node; shadow: LightShadow }) => {
+export function createHardShadowFilter(light: DirectionalLight, depthPerTexel: UniformNode<'float', number>) {
+  return Fn((inputs: { depthTexture: DepthTexture; shadowCoord: Vec3Node; shadow: LightShadow }, builder: NodeBuilder) => {
   const { depthTexture, shadowCoord, shadow } = inputs;
+  // Steigung des Empfängers zum Licht: tan θ = sqrt(1 − (N·L)²) / (N·L), begrenzt
+  const ndl = normalView.dot(lightTargetDirection(light)).clamp(0.04, 1);
+  const tanTheta = ndl.mul(ndl).oneMinus().max(0).sqrt().div(ndl).clamp(1, 12);
+  const slopeBias = depthPerTexel.mul(tanTheta).mul(2.0);
+  const reversed = (builder.renderer as { reversedDepthBuffer?: boolean }).reversedDepthBuffer === true;
+  const z = reversed ? shadowCoord.z.add(slopeBias) : shadowCoord.z.sub(slopeBias);
   let r: FloatNode;
   if (depthTexture.minFilter === LinearFilter) {
-    r = texture(depthTexture, shadowCoord.xy).compare(shadowCoord.z) as unknown as FloatNode;
+    r = texture(depthTexture, shadowCoord.xy).compare(z) as unknown as FloatNode;
   } else {
     const mapSize = reference('mapSize', 'vec2', shadow) as unknown as Vec2Node;
     const texel = vec2(1).div(mapSize);
@@ -23,12 +32,13 @@ export const hardShadowFilter = Fn((inputs: { depthTexture: DepthTexture; shadow
     const f = fract(st) as unknown as Vec2Node;
     const base = floor(st).add(0.5).mul(texel);
     const tap = (ox: number, oy: number) =>
-      texture(depthTexture, base.add(vec2(ox, oy).mul(texel))).compare(shadowCoord.z) as unknown as FloatNode;
+      texture(depthTexture, base.add(vec2(ox, oy).mul(texel))).compare(z) as unknown as FloatNode;
     r = mix(mix(tap(0, 0), tap(1, 0), f.x), mix(tap(0, 1), tap(1, 1), f.x), f.y);
   }
   const w = fwidth(r).mul(0.5).clamp(1 / 256, 0.5);
   return smoothstep(w.oneMinus().sub(0.5), w.add(0.5), r);
-});
+  });
+}
 
 export interface SunOptions {
   mapSize?: number;
@@ -63,6 +73,8 @@ export class SunRig {
   private readonly bias: number;
   private readonly normalBias: number;
   private readonly distance: number;
+  /** Tiefe je Schattentexel (normalisiert), aus fitShadow; Basis des steigungsabhängigen Bias. */
+  readonly depthPerTexel = uniform(0.0005);
   /** Zähler der gerenderten Schattenpässe (zur Kontrolle "nicht im Leerlauf"). */
   updatesRequested = 0;
 
@@ -74,8 +86,8 @@ export class SunRig {
     this.sharpen = options.sharpen ?? true;
     this.elevationDeg = options.elevationDeg ?? 10;
     this.azimuthDeg = options.azimuthDeg ?? 70;
-    this.bias = options.bias ?? -0.0008;
-    this.normalBias = options.normalBias ?? 0.12;
+    this.bias = options.bias ?? -0.0006;
+    this.normalBias = options.normalBias ?? 0.04;
     this.distance = options.distance ?? 80;
     this.rebuild();
   }
@@ -95,7 +107,7 @@ export class SunRig {
     light.shadow.bias = this.bias;
     light.shadow.normalBias = this.normalBias;
     light.shadow.radius = 1;
-    (light.shadow as unknown as { filterNode: unknown }).filterNode = this.sharpen ? hardShadowFilter : null;
+    (light.shadow as unknown as { filterNode: unknown }).filterNode = this.sharpen ? createHardShadowFilter(light, this.depthPerTexel) : null;
     light.target = this.target;
     this.root.add(light);
     this.light = light;
@@ -174,6 +186,8 @@ export class SunRig {
     cam.near = Math.max(0.1, -_max.z - sunMargin);
     cam.far = -_min.z + sunMargin;
     cam.updateProjectionMatrix();
+    // Boden liegt fast parallel zum Licht: die Tiefe ändert sich pro Texel entlang der Licht-Y-Achse am stärksten
+    this.depthPerTexel.value = texelY / Math.max(1e-3, cam.far - cam.near);
   }
 
   dispose(): void {
