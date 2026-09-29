@@ -7,7 +7,7 @@ import { rexIntroFor, rexLine } from '../lab/grid/rex';
 import { Trackball } from '../lab/earle/trackball';
 import rexUrl from '../../../../assets/ref-florian/07-illudiy-logo-rex.png';
 import { useFlowStore, type FlowPhase, type FlowRequest } from './flowStore';
-import { MAP_VIEW, MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
+import { MAP_VIEW, MAP_VIEW_PORTRAIT, MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
 import type { PathLayout, PathNode } from './path';
 import { NodePath } from './NodePath';
 import { Hero, SHADOW_PROXY_LAYER, type HeroPose } from './Hero';
@@ -30,9 +30,7 @@ interface CameraPose {
 }
 
 const ZONE = 'tjorizo';
-/** Map camera: the Worlds agent's view (offset/look in rig space, FOV) with its curvature boost. */
-const MAP_OFFSET = MAP_VIEW.offset;
-const MAP_LOOK = MAP_VIEW.look;
+/** Map camera: the Worlds agent's view (offset/look in rig space, FOV) with its curvature boost; phones get the portrait view. */
 const MAP_FOV = MAP_VIEW.fov;
 const SPLASH_ZOOM = 0.62;
 const SPLASH_FOV = 58;
@@ -49,6 +47,14 @@ const T_SPLASH_FADE = 0.55;
 const MAP_TARGET_NDC_Y = -0.36;
 /** REX anchor in camera space: upper right, 12 units out (constant screen size, every aspect ratio). */
 const REX_NDC = { x: 0.72, y: 0.42 };
+/** Portrait: REX gets the lower-right corner of the map, above the play button (the path runs up the left). */
+const REX_NDC_PORTRAIT = { x: 0.56, y: -0.5 };
+
+interface MapViewLike {
+  offset: Vector3;
+  look: Vector3;
+  fov: number;
+}
 const REX_DEPTH = 12;
 /** Timings in seconds (plan: pull-back ≈ 1.4 s, fly-in ≈ 1.2 s; the plateau has its own choreography). */
 const T_HOP = 1.4;
@@ -102,6 +108,8 @@ export class FlowScene implements SceneController {
   private readonly mapTargetDir = new Vector3(0, 1, 0);
   private readonly probeCamera = new PerspectiveCamera(MAP_FOV, 1, 0.3, 700);
   private readonly railScratch = { position: new Vector3(), lookAt: new Vector3() };
+  /** Ground direction (world) at the map target that runs up the screen. */
+  private readonly mapUpDir = new Vector3(0, 0, -1);
   private readonly unsubscribes: Array<() => void> = [];
   private detachInput: (() => void) | null = null;
   private pointer: { x: number; y: number; t: number; id: number } | null = null;
@@ -201,10 +209,16 @@ export class FlowScene implements SceneController {
   resize(ctx: SceneContext): void {
     const cam = this.world?.camera;
     if (!cam) return;
+    const wasPortrait = this.portrait;
     cam.aspect = ctx.width / ctx.height;
     cam.updateProjectionMatrix();
     this.computeMapTarget();
     if (this.phase === 'level') this.levelPoseDirty = true;
+    // Rotating the phone switches between the portrait and landscape map cameras.
+    if (this.phase === 'map' && wasPortrait !== this.portrait && this.layout) {
+      this.snapPlanetToNode(useFlowStore.getState().current);
+      this.applyPose(this.mapPose());
+    }
   }
 
   update(dt: number, elapsed: number, ctx: SceneContext): void {
@@ -242,7 +256,8 @@ export class FlowScene implements SceneController {
     nodePath.update(elapsed);
     if (this.rex) {
       this.rex.update(dt, elapsed);
-      this.cameraPoint(REX_NDC.x, REX_NDC.y, REX_DEPTH, this.rex.sprite.position);
+      const rexNdc = this.portrait ? REX_NDC_PORTRAIT : REX_NDC;
+      this.cameraPoint(rexNdc.x, rexNdc.y, REX_DEPTH, this.rex.sprite.position);
       this.rex.sprite.position.y += this.rex.bob;
     }
     world.fogStripes.group.position.y = this.stripesY;
@@ -302,8 +317,17 @@ export class FlowScene implements SceneController {
    * orbit view: it stays behind the node, close to the bark, and rotates with the planet. `rail = false`
    * gives the plain orbit pose (used to aim the planet rotation).
    */
-  private mapPose(zoom = this.zoom, rail = true): CameraPose {
-    const position = MAP_OFFSET.clone().multiplyScalar(zoom);
+  /** Portrait screens (phones) get their own map camera: higher, steeper, the path running up the screen. */
+  private get portrait(): boolean {
+    return (this.world?.camera.aspect ?? 1) < 1;
+  }
+
+  private mapView(): MapViewLike {
+    return this.portrait ? MAP_VIEW_PORTRAIT : MAP_VIEW;
+  }
+
+  private mapPose(zoom = this.zoom, rail = true, view: MapViewLike = this.mapView()): CameraPose {
+    const position = view.offset.clone().multiplyScalar(zoom);
     const w = this.world;
     const r = rail && w ? w.cameraRailFor(useFlowStore.getState().current) : null;
     if (w && r) {
@@ -312,13 +336,13 @@ export class FlowScene implements SceneController {
       const eye = w.rig.worldToLocal(w.planet.localToWorld(r.position.clone()));
       const at = w.rig.worldToLocal(w.planet.localToWorld(r.lookAt.clone()));
       const up = w.rig.worldToLocal(w.planet.localToWorld(r.position.clone().normalize().multiplyScalar(PLANET_RADIUS * 2))).sub(w.rig.worldToLocal(w.planet.localToWorld(new Vector3()))).normalize();
-      return { position: eye, quaternion: lookAtQuaternion(eye, at, up, new Quaternion()), fov: MAP_FOV };
+      return { position: eye, quaternion: lookAtQuaternion(eye, at, up, new Quaternion()), fov: view.fov };
     }
-    return { position, quaternion: lookAtQuaternion(position, MAP_LOOK, _Y, new Quaternion()), fov: MAP_FOV };
+    return { position, quaternion: lookAtQuaternion(position, view.look, _Y, new Quaternion()), fov: view.fov };
   }
 
   private splashPose(): CameraPose {
-    const p = this.mapPose(SPLASH_ZOOM);
+    const p = this.mapPose(SPLASH_ZOOM, false, MAP_VIEW);
     p.fov = SPLASH_FOV;
     return p;
   }
@@ -412,8 +436,9 @@ export class FlowScene implements SceneController {
   private worldUnitsPerPixel(): number {
     const h = this.ctx?.height ?? 800;
     const cam = this.world?.camera;
-    const fov = cam?.fov ?? MAP_FOV;
-    const dist = MAP_OFFSET.clone().multiplyScalar(this.zoom).distanceTo(MAP_LOOK);
+    const view = this.mapView();
+    const fov = cam?.fov ?? view.fov;
+    const dist = view.offset.clone().multiplyScalar(this.zoom).distanceTo(view.look);
     return (2 * dist * Math.tan((fov * Math.PI) / 360)) / h;
   }
 
@@ -422,7 +447,10 @@ export class FlowScene implements SceneController {
     if (this.phase === 'map' && this.tweens.active === 0) this.applyPose(this.mapPose());
   }
 
-  /** World direction (from the planet centre) that appears in the lower third of the map view. */
+  /**
+   * World direction (from the planet centre) that appears on the lower third of the map view — in portrait a little
+   * left of centre — and the ground direction there that runs up the screen (portrait: the path is turned onto it).
+   */
   private computeMapTarget(): void {
     const world = this.world;
     if (!world) return;
@@ -434,18 +462,47 @@ export class FlowScene implements SceneController {
     cam.quaternion.copy(pose.quaternion);
     cam.updateMatrixWorld(true);
     cam.updateProjectionMatrix();
-    const origin = cam.position.clone();
-    const dir = _v.set(0, MAP_TARGET_NDC_Y, 0.5).unproject(cam).sub(origin).normalize();
-    const r = PLANET_RADIUS + 0.9;
-    const b = origin.dot(dir);
-    const c = origin.lengthSq() - r * r;
-    const disc = b * b - c;
-    if (disc < 0) {
-      this.mapTargetDir.set(0, 1, 0);
-      return;
+    const target = this.portrait ? MAP_VIEW_PORTRAIT.target : { x: 0, y: MAP_TARGET_NDC_Y };
+    const hit = (x: number, y: number, out: Vector3): boolean => {
+      const origin = cam.position;
+      const dir = _v2.set(x, y, 0.5).unproject(cam).sub(origin).normalize();
+      const r = PLANET_RADIUS + 0.9;
+      const b = origin.dot(dir);
+      const c = origin.lengthSq() - r * r;
+      const disc = b * b - c;
+      if (disc < 0) return false;
+      out.copy(origin).addScaledVector(dir, -b - Math.sqrt(disc)).normalize();
+      return true;
+    };
+    if (!hit(target.x, target.y, this.mapTargetDir)) this.mapTargetDir.set(0, 1, 0);
+    // Screen-up on the ground at the target: toward the point a little higher on the screen.
+    if (hit(target.x, target.y + 0.12, this.mapUpDir)) this.mapUpDir.sub(this.mapTargetDir);
+    else this.mapUpDir.set(0, 0, -1);
+    this.mapUpDir.addScaledVector(this.mapTargetDir, -this.mapUpDir.dot(this.mapTargetDir)).normalize();
+  }
+
+  /**
+   * Planet rotation that brings `index` onto the map target; in portrait it also turns the planet about that point
+   * so the path ahead (a few nodes) runs up the screen, away from the camera.
+   */
+  private nodeAlignment(index: number): Quaternion | null {
+    const world = this.world!;
+    const nodes = this.layout!.nodes;
+    const node = nodes[index];
+    if (!node) return null;
+    const delta = new Quaternion().setFromUnitVectors(this.nodeDirWorld(node, _v), this.mapTargetDir);
+    const ahead = nodes[Math.min(nodes.length - 1, index + MAP_VIEW_PORTRAIT.lookAhead)];
+    if (this.portrait && ahead && ahead !== node && !world.cameraRailFor(index)) {
+      const t = this.mapTargetDir;
+      const p = this.nodeDirWorld(ahead, _v).applyQuaternion(delta);
+      p.addScaledVector(t, -p.dot(t));
+      if (p.lengthSq() > 1e-10) {
+        p.normalize();
+        const ang = Math.atan2(t.dot(_v2.crossVectors(p, this.mapUpDir)), p.dot(this.mapUpDir));
+        delta.premultiply(_q.setFromAxisAngle(t, ang));
+      }
     }
-    const t = -b - Math.sqrt(disc);
-    this.mapTargetDir.copy(origin).addScaledVector(dir, t).normalize();
+    return delta;
   }
 
   private nodeDirWorld(node: PathNode, out: Vector3): Vector3 {
@@ -455,10 +512,9 @@ export class FlowScene implements SceneController {
   /** Rotates the planet so `node` sits in the lower third — instantly. */
   private snapPlanetToNode(index: number): void {
     const world = this.world!;
-    const node = this.layout!.nodes[index];
-    if (!node) return;
     this.computeMapTarget();
-    const delta = _q.setFromUnitVectors(this.nodeDirWorld(node, _v), this.mapTargetDir);
+    const delta = this.nodeAlignment(index);
+    if (!delta) return;
     world.planet.quaternion.premultiply(delta);
     this.trackball!.quaternion.copy(world.planet.quaternion);
     world.markShadowDirty();
@@ -467,9 +523,8 @@ export class FlowScene implements SceneController {
   /** Same, as a smooth slerp (cancelled by a drag). */
   private rotatePlanetToNode(index: number, duration = T_AUTO_ROTATE): void {
     const world = this.world!;
-    const node = this.layout!.nodes[index];
-    if (!node) return;
-    const delta = new Quaternion().setFromUnitVectors(this.nodeDirWorld(node, _v), this.mapTargetDir);
+    const delta = this.nodeAlignment(index);
+    if (!delta) return;
     const q0 = world.planet.quaternion.clone();
     const q1 = delta.multiply(q0);
     this.tweens.cancel('autoRotate');

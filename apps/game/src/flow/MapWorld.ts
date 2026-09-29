@@ -31,6 +31,24 @@ export const MAP_VIEW = {
   nearClear: 1.2,
 } as const;
 
+/**
+ * Portrait (phone) map camera: higher and steeper — 13.5 above and 5 behind the apex, looking 4 ahead (pitch ≈ 56°,
+ * fov 61). On this small planet a flatter look fills the upper half with sky; this one keeps the curved horizon with
+ * the painted sky band just under the top HUD pill (≈ 120 pt), reads the ground as a landscape seen from above, puts
+ * the current node on the lower third a little left of centre (above the bottom HUD; REX has the lower-right corner)
+ * and shows the next 5–6 path nodes running up the screen (the planet turns so the path heads away from the camera).
+ * The hero lands ≈ 14 units from the lens (≈ 50 pt on an iPhone 16).
+ */
+export const MAP_VIEW_PORTRAIT = {
+  offset: new Vector3(0, 13.5, 5),
+  look: new Vector3(0, 0, -4),
+  fov: 61,
+  /** NDC of the current node (x a little left: REX stands at the lower right). */
+  target: { x: -0.1, y: -0.36 },
+  /** Nodes ahead the planet turns toward screen-up (the path runs away from the camera). */
+  lookAhead: 3,
+} as const;
+
 export interface MapWorldOptions {
   quality: FlowQuality;
   seed?: number;
