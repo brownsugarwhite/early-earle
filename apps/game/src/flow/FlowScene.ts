@@ -7,7 +7,7 @@ import { rexIntroFor, rexLine } from '../lab/grid/rex';
 import { Trackball } from '../lab/earle/trackball';
 import rexUrl from '../../../../assets/ref-florian/07-illudiy-logo-rex.png';
 import { useFlowStore, type FlowPhase, type FlowRequest } from './flowStore';
-import { MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
+import { MAP_VIEW, MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
 import type { PathLayout, PathNode } from './path';
 import { NodePath } from './NodePath';
 import { Hero, SHADOW_PROXY_LAYER, type HeroPose } from './Hero';
@@ -30,13 +30,15 @@ interface CameraPose {
 }
 
 const ZONE = 'tjorizo';
-const MAP_OFFSET = new Vector3(0, 9, 8);
-const MAP_LOOK = new Vector3(0, 0, -4);
-const MAP_FOV = 70;
+/** Map camera: the Worlds agent's view (offset/look in rig space, FOV) with its curvature boost. */
+const MAP_OFFSET = MAP_VIEW.offset;
+const MAP_LOOK = MAP_VIEW.look;
+const MAP_FOV = MAP_VIEW.fov;
 const SPLASH_ZOOM = 0.62;
 const SPLASH_FOV = 58;
 const LEVEL_FOV = 40;
-const HERO_MAP_SCALE = 0.42;
+/** Hero size on the map (MAP_VIEW frames the planet wider than the old map camera). */
+const HERO_MAP_SCALE = 0.48;
 /** Depth (in front of the camera) at which the hero floats as the splash i-dot. */
 const SPLASH_DEPTH = 4;
 /** Interior colour of the splash "i" (#003f4e): the backing disc behind the hero in the mask hole. */
@@ -99,6 +101,7 @@ export class FlowScene implements SceneController {
   private zoom = 1;
   private readonly mapTargetDir = new Vector3(0, 1, 0);
   private readonly probeCamera = new PerspectiveCamera(MAP_FOV, 1, 0.3, 700);
+  private readonly railScratch = { position: new Vector3(), lookAt: new Vector3() };
   private readonly unsubscribes: Array<() => void> = [];
   private detachInput: (() => void) | null = null;
   private pointer: { x: number; y: number; t: number; id: number } | null = null;
@@ -106,6 +109,8 @@ export class FlowScene implements SceneController {
   private elapsed = 0;
   private trackballAttached = false;
   private levelPoseDirty = false;
+  /** Scene time until which a camera move runs (the tree rail must not override it). */
+  private cameraTweenUntil = 0;
   private stripesY = 0;
   private splashBacking: Mesh | null = null;
   private splashBackingMat: MeshBasicMaterial | null = null;
@@ -223,6 +228,10 @@ export class FlowScene implements SceneController {
       this.levelPoseDirty = false;
       this.applyPose(this.levelPose());
     }
+    // On the giant tree the map camera rides its rail, which turns with the planet (drags, auto-rotation).
+    if (this.phase === 'map' && elapsed >= this.cameraTweenUntil && world.cameraRailFor(useFlowStore.getState().current, this.railScratch)) this.applyPose(this.mapPose());
+    // The curvature boost bends the far terrain with the view: a standing hero stays on its (bent) node.
+    if (this.phase === 'map' && !hero.isFlying) hero.setPose(this.nodePose(useFlowStore.getState().current));
 
     hero.update(dt, world.camera);
     // A launched creature keeps its parts on the hero (until it lands in the next level).
@@ -288,8 +297,23 @@ export class FlowScene implements SceneController {
 
   // ================================================================================ camera
 
-  private mapPose(zoom = this.zoom): CameraPose {
+  /**
+   * Map camera (rig space). On the giant tree (levels 80–95) the Worlds agent's camera rail replaces the
+   * orbit view: it stays behind the node, close to the bark, and rotates with the planet. `rail = false`
+   * gives the plain orbit pose (used to aim the planet rotation).
+   */
+  private mapPose(zoom = this.zoom, rail = true): CameraPose {
     const position = MAP_OFFSET.clone().multiplyScalar(zoom);
+    const w = this.world;
+    const r = rail && w ? w.cameraRailFor(useFlowStore.getState().current) : null;
+    if (w && r) {
+      w.planet.updateWorldMatrix(true, false);
+      w.rig.updateWorldMatrix(true, false);
+      const eye = w.rig.worldToLocal(w.planet.localToWorld(r.position.clone()));
+      const at = w.rig.worldToLocal(w.planet.localToWorld(r.lookAt.clone()));
+      const up = w.rig.worldToLocal(w.planet.localToWorld(r.position.clone().normalize().multiplyScalar(PLANET_RADIUS * 2))).sub(w.rig.worldToLocal(w.planet.localToWorld(new Vector3()))).normalize();
+      return { position: eye, quaternion: lookAtQuaternion(eye, at, up, new Quaternion()), fov: MAP_FOV };
+    }
     return { position, quaternion: lookAtQuaternion(position, MAP_LOOK, _Y, new Quaternion()), fov: MAP_FOV };
   }
 
@@ -372,6 +396,7 @@ export class FlowScene implements SceneController {
       if (bend.lengthSq() > 1e-6) bend.normalize().multiplyScalar(len * arc);
     }
     this.tweens.cancel('camera');
+    this.cameraTweenUntil = this.elapsed + duration;
     this.tweens.add(
       duration,
       (t) => {
@@ -401,7 +426,7 @@ export class FlowScene implements SceneController {
   private computeMapTarget(): void {
     const world = this.world;
     if (!world) return;
-    const pose = this.mapPose(1);
+    const pose = this.mapPose(1, false);
     const cam = this.probeCamera;
     cam.aspect = world.camera.aspect;
     cam.fov = pose.fov;
@@ -465,7 +490,8 @@ export class FlowScene implements SceneController {
   private nodePose(index: number, scale = HERO_MAP_SCALE): HeroPose {
     const world = this.world!;
     const node = this.layout!.nodes[Math.min(index, this.layout!.nodes.length - 1)]!;
-    const position = new Vector3(node.position[0], node.position[1], node.position[2]);
+    // Nodes (and the hero on them) follow the far terrain's curvature boost.
+    const position = world.bend(new Vector3(node.position[0], node.position[1], node.position[2]));
     const normal = new Vector3(node.normal[0], node.normal[1], node.normal[2]);
     const camLocal = world.planet.worldToLocal(world.camera.getWorldPosition(new Vector3()));
     const fwd = camLocal.sub(position);
@@ -595,8 +621,9 @@ export class FlowScene implements SceneController {
     this.board!.unbind();
     const current = useFlowStore.getState().current;
     this.zoom = 1;
-    this.applyPose(this.mapPose());
     this.snapPlanetToNode(current);
+    this.applyPose(this.mapPose());
+    this.world!.setFootClear(MAP_VIEW.footClear);
     this.hero!.root.visible = true;
     this.hero!.setPose(this.nodePose(current));
     this.rex?.setVisible(true);
@@ -649,6 +676,7 @@ export class FlowScene implements SceneController {
     this.stripesY = -4;
     flow.setPlaying(node);
     this.applyPose(this.levelPose());
+    this.world!.setFootClear(0);
     this.setShadowFocus(true);
     this.setPhase('level');
   }
@@ -730,6 +758,8 @@ export class FlowScene implements SceneController {
     this.detachTrackball();
     this.tweens.cancel('autoRotate');
     this.setPhase('flyIn');
+    // The close board shot needs no clearing around the map camera's foot (restored after the depart).
+    this.world!.setFootClear(0);
     store.setPlaying(node);
     if (node !== store.current) {
       store.setCurrent(node);
@@ -898,6 +928,7 @@ export class FlowScene implements SceneController {
       }
       flow.setPlaying(null);
       this.rex?.setVisible(true);
+      this.world!.setFootClear(MAP_VIEW.footClear);
       this.setPhase('map');
       this.attachTrackball();
       this.rotatePlanetToNode(next);

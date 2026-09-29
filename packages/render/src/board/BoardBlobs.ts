@@ -69,6 +69,9 @@ export interface BlobVisual {
   /** Snake: swallowed bulge along the spine (0 head … 1 tail), < 0 = none; heavy: trunk raised 0..1. */
   bulge: number;
   trumpet: number;
+  /** Mouth roundness and eye squeeze (merge moves). */
+  mouthRound: number;
+  squint: number;
   /** Leap choreography: pitch override (+ = nose down) and its blend weight. */
   pitch: number;
   pitchBlend: number;
@@ -200,11 +203,16 @@ export class BoardBlobs {
   globalPop = 1;
   /** Board-local xz direction away from the sun (contact shadows lean that way). */
   readonly awayDir = new Vector3(-0.7, 0, 0.4);
+  /** Mobil preset: mesh bodies only, one noise octave, fewer part draw calls, sockets traced every other frame. */
+  private mobile: boolean;
+  private readonly quality: ReturnType<typeof createBlobQualityUniforms>;
   /** Camera position in board-local space (updated every frame; leaps aim at it). */
   readonly cameraLocal = new Vector3(0, 6, 4);
   showLabels = true;
   /** True for a frame in which a creature's shadow caster moved (the scene refreshes the shadow map). */
   castersMoved = false;
+  /** A walker's foot landed (board-local x, z; strength ≈ 0.3 trot … 1.2 stomp): the board puffs dust. */
+  onFootfall: ((x: number, z: number, strength: number, v: BlobVisual) => void) | null = null;
   readonly capacity: number;
 
   constructor(readonly options: BoardBlobsOptions) {
@@ -215,7 +223,9 @@ export class BoardBlobs {
     this.block = new BlobParamBlock(this.capacity);
     this.uniforms = createBlobShadingUniforms();
     const quality = createBlobQualityUniforms();
-    applyBlobQuality(quality, options.octaves >= 2 ? BLOB_QUALITY_HIGH : BLOB_QUALITY_MOBILE);
+    this.mobile = options.octaves < 2;
+    applyBlobQuality(quality, this.mobile ? BLOB_QUALITY_MOBILE : BLOB_QUALITY_HIGH);
+    this.quality = quality;
     const b = createJiggleBlobMesh(this.block, { uniforms: this.uniforms, quality });
     this.mesh = b.mesh;
     this.mesh.name = 'board-blob-bodies';
@@ -381,13 +391,10 @@ export class BoardBlobs {
    * admitted by slot priority (legs always, then eyes, horns, ears, …) while the budget lasts. A creature
    * whose eye module does not fit keeps its painted eye.
    */
-  private budgetSpec(specIn: CreatureSpec): CreatureSpec {
+  private budgetSpec(spec: CreatureSpec): CreatureSpec {
     const library = this.library;
-    // Legs kneaded from the body are virtual parts (nothing to draw): the board's drive steps them.
-    const virtual = specIn.parts.filter((p) => p.asset === 'leg_sdf' || (p as { sdf?: boolean }).sdf === true);
-    const spec = virtual.length > 0 ? { ...specIn, parts: specIn.parts.filter((p) => !virtual.includes(p)) } : specIn;
     if (!library || spec.parts.length === 0) return spec;
-    const budget = this.options.octaves >= 2 ? 16 : 12;
+    const budget = this.mobile ? 12 : 16;
     const live = this.livePoolKeys();
     const keys = (asset: string): string[] => {
       const m = library.get(asset);
@@ -442,8 +449,7 @@ export class BoardBlobs {
     v.spec = spec;
     v.rig = rig;
     v.body = spec?.bodyType ?? 'blob';
-    // Raymarch only where it shades right: snakes (coil) and gas bodies render dark there, the mesh draws them.
-    v.raymarch = !!(spec && spec.skeleton.raymarch && this.blockA && spec.bodyType !== 'snake' && spec.material !== 'gas');
+    v.raymarch = this.wantsRaymarch(spec);
     const skin = spec?.skin;
     v.pattern = skin && skin.pattern !== 'none' ? makePattern(skin.pattern, spec.body.baseColor, { scale: skin.patternScale, rotation: skin.patternRotation }) : null;
     if (spec && rig && v.body !== 'blob') {
@@ -452,13 +458,35 @@ export class BoardBlobs {
       const yaw = v.drive?.yaw ?? defaultYaw(v.id);
       v.drive = new CreatureDrive(spec, legDefsFor(spec, rig), { seed: v.seed, scale: v.fit, coilAllowed: coiled, yaw });
       // Walkers are drawn every frame with a new pose: trace their sockets every other frame on phones.
-      rig.traceInterval = this.options.octaves >= 2 ? 1 : 2;
+      rig.traceInterval = this.mobile ? 2 : 1;
     } else {
       v.fit = this.worldScale(v.tier);
       v.drive = null;
     }
     v.genome = this.paramsFor(v);
     this.driver.configure(v.id, { viscosity: v.genome.viscosity });
+  }
+
+  /**
+   * Raymarch only where it is needed and shades right: bodies the mesh trace cannot follow (`skeleton.raymarch`),
+   * never snakes (their coil) or gas bodies (both render dark there), never in the Mobil preset.
+   */
+  private wantsRaymarch(spec: CreatureSpec | null): boolean {
+    return !!(spec && spec.skeleton.raymarch && this.blockA && !this.mobile && spec.bodyType !== 'snake' && spec.material !== 'gas');
+  }
+
+  /**
+   * Quality switch at runtime (the governor dropping to Mobil on a phone): noise octaves, mesh bodies only,
+   * the part budget for new creatures and the socket trace interval follow.
+   */
+  setQuality(mobile: boolean): void {
+    if (mobile === this.mobile) return;
+    this.mobile = mobile;
+    applyBlobQuality(this.quality, mobile ? BLOB_QUALITY_MOBILE : BLOB_QUALITY_HIGH);
+    for (const v of this.visuals.values()) {
+      v.raymarch = this.wantsRaymarch(v.spec);
+      if (v.rig && v.drive) v.rig.traceInterval = mobile ? 2 : 1;
+    }
   }
 
   private refreshRig(v: BlobVisual, force = false): void {
@@ -532,6 +560,8 @@ export class BoardBlobs {
       yawDirect: false,
       bulge: -1,
       trumpet: 0,
+      mouthRound: 0,
+      squint: 0,
       pitch: 0,
       pitchBlend: 0,
       crouch: 0,
@@ -688,6 +718,8 @@ export class BoardBlobs {
       v.yawDirect = false;
       v.bulge = -1;
       v.trumpet = 0;
+      v.mouthRound = 0;
+      v.squint = 0;
       this.setBlob(v, blob);
     });
     for (const id of [...this.visuals.keys()]) if (!seen.has(id)) this.removeVisual(id, props);
@@ -831,8 +863,11 @@ export class BoardBlobs {
           yawDirect: v.yawDirect,
           bulge: v.bulge,
           trumpet: v.trumpet,
+          mouthRound: v.mouthRound,
+          squint: v.squint,
         });
         if (pose.moving || (drive.coil > 0.001 && drive.coil < 0.999)) moved = true;
+        if (this.onFootfall) for (const f of drive.footfalls) this.onFootfall(f.x, f.z, f.strength, v);
         center = [pose.x, ground + pose.lift, pose.z];
         const posed = drive.posedParams(center);
         params = posed;
@@ -1316,6 +1351,20 @@ export class BoardBlobs {
       const inst = props.place(key, desc, now);
       if (inst) v.attached.add(key);
     }
+  }
+
+  /**
+   * Where a creature's mouth is this frame (board-local): the traced mouth of a walker/snake (the skeleton's
+   * mouth anchor and direction on the posed body), the leading side of a blob.
+   */
+  mouthWorld(v: BlobVisual, out: Vector3): Vector3 {
+    const drive = v.drive;
+    if (drive && v.spec) {
+      const r = drive.mouthLocal(_head, _fwd);
+      const k = v.scale;
+      return out.set(v.x + (_head[0] + _fwd[0] * r * 0.9) * k, v.centerY + (_head[1] + _fwd[1] * r * 0.9) * k, v.z + (_head[2] + _fwd[2] * r * 0.9) * k);
+    }
+    return out.set(v.x + v.moveDir[0] * v.front * 0.8, v.centerY + v.radius * 0.35, v.z + v.moveDir[1] * v.front * 0.8);
   }
 
   /** Stops placing an attachment family for a blob (the timeline animates the leftover instances away). */

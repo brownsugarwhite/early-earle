@@ -233,6 +233,11 @@ export class LevelBoard {
     return this.renderer.playSink(keep);
   }
 
+  /** Quality preset at runtime (the governor switching Hoch ↔ Mobil). */
+  setQuality(mobile: boolean): void {
+    this.renderer.setQuality(mobile);
+  }
+
   setJuice(on: boolean): void {
     this.renderer.juice = on;
   }

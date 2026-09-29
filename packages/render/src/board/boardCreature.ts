@@ -55,6 +55,9 @@ export interface DriveInput {
   bulge: number;
   /** Heavy: trunk raised (trumpet) 0..1. */
   trumpet: number;
+  /** Mouth roundness (0 grin … 1 round O) and eye squeeze (bites) from merge moves. */
+  mouthRound: number;
+  squint: number;
 }
 
 /** Per-body-type tuning (board scale, all world-space rates). */
@@ -73,9 +76,9 @@ interface Tuning {
 }
 
 const TUNING: Record<Exclude<BodyType, 'blob'>, Tuning> = {
-  quadruped: { maxRate: 7.5, turnOmega: 26, turnZeta: 0.5, lean: 0.012, runLean: 0.06, stomp: 0.3 },
-  biped: { maxRate: 6, turnOmega: 22, turnZeta: 0.5, lean: 0.014, runLean: 0.16, stomp: 0.9 },
-  heavy: { maxRate: 4.2, turnOmega: 15, turnZeta: 0.42, lean: 0.009, runLean: 0.04, stomp: 0.7 },
+  quadruped: { maxRate: 11, turnOmega: 26, turnZeta: 0.5, lean: 0.012, runLean: 0.06, stomp: 0.3 },
+  biped: { maxRate: 9, turnOmega: 22, turnZeta: 0.5, lean: 0.014, runLean: 0.16, stomp: 0.9 },
+  heavy: { maxRate: 6.5, turnOmega: 15, turnZeta: 0.42, lean: 0.009, runLean: 0.04, stomp: 0.7 },
   snake: { maxRate: 0, turnOmega: 30, turnZeta: 0.6, lean: 0, runLean: 0, stomp: 0 },
 };
 
@@ -245,6 +248,11 @@ export class CreatureDrive {
   private readonly spinePts: (Vec3 | null)[] = [];
   private readonly coilPts: Vec3[] = [];
   private coilR = -1;
+  private readonly sphereScale: number[] = [];
+  /** Base stride / lift scale of the step cycle (kneaded stumps take short steps at walking pace). */
+  private baseStride = 1;
+  /** Feet that landed this frame (board-local x, z and a strength) — the board puffs dust there. */
+  readonly footfalls: { x: number; z: number; strength: number }[] = [];
   private wavePhase = 0;
   private waveAmp = 0.12;
   private headLift = 0;
@@ -279,7 +287,7 @@ export class CreatureDrive {
     // Kneaded stumps take short, quick steps (a long stride would tear the foot out of the jelly).
     const cyc = this.cycle as (StepCycle & { strideScale?: number; liftScale?: number }) | null;
     if (this.sdfLegs && cyc && 'strideScale' in cyc) {
-      cyc.strideScale = this.body === 'biped' ? 0.62 : 0.5;
+      cyc.strideScale = this.baseStride = this.body === 'biped' ? 0.62 : 0.5;
       cyc.liftScale = this.body === 'biped' ? 0.95 : 0.8;
     }
     for (let i = 0; i < legs.length; i++) {
@@ -300,8 +308,9 @@ export class CreatureDrive {
       this.sy = new Float64Array(n);
       this.stx = new Float64Array(n);
       this.stz = new Float64Array(n);
-      // Every sphere gets a spine point: the ones rigid with the head (snout) ride on the head's point.
-      for (let i = 0; i < this.restSpheres.length; i++) this.spinePts.push([0, 0, 0]);
+      // Spheres without an arc (snout) stay null: `poseSpheres` carries them rigidly with the head.
+      for (let i = 0; i < this.restSpheres.length; i++) this.spinePts.push((arc[i] ?? -1) >= 0 ? [0, 0, 0] : null);
+      for (let i = 0; i < this.restSpheres.length; i++) this.sphereScale.push(1);
       for (let k = 0; k < n; k++) this.coilPts.push([0, 0, 0]);
       this.trail = new PathHistory(320, 0.01);
     }
@@ -411,6 +420,7 @@ export class CreatureDrive {
     const tune = this.tune;
     const sk = this.spec.skeleton;
     pose.stomp = 0;
+    this.footfalls.length = 0;
 
     // --- motion from the tweened position ------------------------------------------------------------
     let dx = inp.x - this.px;
@@ -464,6 +474,7 @@ export class CreatureDrive {
       this.cycle?.reset(this.hipFn);
       this.stompPending = tune.stomp + 0.3;
       for (let i = 0; i < this.footSplat.length; i++) this.footSplat[i] = 1;
+      if (this.cycle) for (const f of this.cycle.feet) this.footfalls.push({ x: f.pos[0], z: f.pos[2], strength: tune.stomp + 0.3 });
     }
     this.airborne = airborne;
 
@@ -512,9 +523,18 @@ export class CreatureDrive {
         let stepTempo = tempo;
         let rateScale = 1;
         const turning = Math.abs(this.yawVel) > 0.6;
+        const c2 = cyc as StepCycle & { strideScale?: number; reach: number };
+        c2.strideScale = this.baseStride;
+        c2.reach = 0.9;
         if (moving) {
-          const strideMax = Math.max(1e-3, cyc.params.stride * this.legLength) * (0.7 + 0.3 * tempo);
-          const rate = speed / strideMax;
+          // Board slides are fast: the stride grows (long, low steps) until the cycle stays under its rate
+          // cap, and planted feet may trail half a stride behind the hip — the stumps step instead of skating.
+          const unit = Math.max(1e-3, cyc.params.stride * this.legLength) * (0.7 + 0.3 * tempo);
+          const need = speed / (tune.maxRate * unit);
+          const ss = Math.min(2.4, Math.max(this.baseStride, need));
+          c2.strideScale = ss;
+          c2.reach = Math.min(1.7, Math.max(0.9, (0.55 * ss * unit) / Math.max(1e-3, this.legLength)));
+          const rate = speed / (unit * ss);
           if (rate > tune.maxRate) rateScale = tune.maxRate / rate;
         } else if (this.settleT >= 0 || this.shuffleT >= 0 || turning) {
           // Settle / idle shuffle / turning on the spot: a creep speed lets every foot step back under its hip.
@@ -532,6 +552,7 @@ export class CreatureDrive {
         for (const f of cyc.feet) {
           if (!f.landed) continue;
           pose.stomp = Math.max(pose.stomp, tune.stomp * (0.3 + 0.7 * speedNorm));
+          if (moving) this.footfalls.push({ x: f.pos[0], z: f.pos[2], strength: tune.stomp * (0.4 + 0.6 * speedNorm) });
         }
         const beat = ((cyc.phase * cyc.params.beats) / 2) * TAU;
         const inten = moving ? intensity : 0;
@@ -673,6 +694,8 @@ export class CreatureDrive {
     pose.moving = moving || airborne;
     pose.time = this.t;
     pose.mouth = this.mouth;
+    pose.mouthRound = inp.mouthRound;
+    pose.squint = inp.squint;
     pose.jaw = this.mouth;
     pose.neckBend = this.neckBend;
     pose.trunkSway = trunkSway;
@@ -720,25 +743,6 @@ export class CreatureDrive {
       p[0] = bx;
       p[1] = by;
       p[2] = bz;
-    }
-    // Spheres rigid with the head (snout): the head's point plus their rest offset, turned with the heading.
-    const hi = this.spineIdx[0];
-    const head = hi !== undefined ? this.spinePts[hi] : null;
-    const hr = hi !== undefined ? this.restSpheres[hi] : undefined;
-    if (head && hr) {
-      const cy = Math.cos(this.yaw);
-      const sy = Math.sin(this.yaw);
-      for (let i = 0; i < this.restSpheres.length; i++) {
-        if (this.spineIdx.includes(i)) continue;
-        const r0 = this.restSpheres[i]!;
-        const ox = r0.center[0] - hr.center[0];
-        const oy = r0.center[1] - hr.center[1];
-        const oz = r0.center[2] - hr.center[2];
-        const p = this.spinePts[i]!;
-        p[0] = head[0] + ox * cy + oz * sy;
-        p[1] = head[1] + oy;
-        p[2] = head[2] - ox * sy + oz * cy;
-      }
     }
   }
 
@@ -830,17 +834,17 @@ export class CreatureDrive {
     } else {
       bp.feet = null;
     }
-    poseSpheres(this.restSpheres, this.spec.skeleton, bp, this.posed);
-    // A swallowed bulge travels down the snake.
+    // A swallowed bulge travels down the snake (per-sphere radius multipliers).
+    const bpx = bp as BodyPose & { sphereScale?: readonly number[] | null };
     if (this.bulge >= 0 && this.trail) {
       const L = Math.max(1e-6, this.spec.skeleton.length);
       for (let k = 0; k < this.spineIdx.length; k++) {
-        const i = this.spineIdx[k]!;
         const along = this.spineArc[k]! / L;
-        const sp = this.posed[i];
-        if (sp) sp.r *= 1 + 0.45 * Math.exp(-((along - this.bulge) * (along - this.bulge)) / 0.012);
+        this.sphereScale[this.spineIdx[k]!] = 1 + 0.45 * Math.exp(-((along - this.bulge) * (along - this.bulge)) / 0.012);
       }
-    }
+      bpx.sphereScale = this.sphereScale;
+    } else bpx.sphereScale = null;
+    poseSpheres(this.restSpheres, this.spec.skeleton, bp, this.posed);
     // Old skeletons: the REX lower jaw (sphere 8) drops with the mouth.
     if (this.body === 'biped' && this.mouth > 0.01 && !(this.spec.skeleton.mouth?.jaw?.length)) {
       const jaw = this.posed[8];

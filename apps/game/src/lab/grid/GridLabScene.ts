@@ -27,6 +27,7 @@ export class GridLabScene implements SceneController {
   private stage: Mesh | null = null;
   private stageMaterial: BoardSurfaceMaterial | null = null;
   private unsubscribe: (() => void) | null = null;
+  private unsubscribeQuality: (() => void) | null = null;
   private ctx: SceneContext | null = null;
   private shadowDirty = true;
   private zone: ZoneId = 'tjorizo';
@@ -53,6 +54,11 @@ export class GridLabScene implements SceneController {
     this.resize(ctx);
     this.unsubscribe = store.subscribe((s, prev) => {
       if (s.level !== prev.level) this.ensureBoard();
+    });
+    // The quality governor may drop to Mobil on a phone: the boards follow (mesh bodies, lean parts).
+    this.unsubscribeQuality = useAppStore.subscribe((s, prev) => {
+      if (s.effectiveQuality === prev.effectiveQuality) return;
+      for (const b of this.boards.values()) b.setQuality(s.effectiveQuality === 'mobil');
     });
   }
 
@@ -187,6 +193,8 @@ export class GridLabScene implements SceneController {
   dispose() {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    this.unsubscribeQuality?.();
+    this.unsubscribeQuality = null;
     for (const b of this.boards.values()) b.dispose();
     this.boards.clear();
     this.board = null;

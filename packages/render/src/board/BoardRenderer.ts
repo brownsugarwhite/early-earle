@@ -141,6 +141,21 @@ export class BoardRenderer {
       raymarch: options.raymarch ?? false,
     });
     this.fx = new BoardFx(this);
+    // Footfalls of the walkers: a small dust puff per planted foot (heavier feet, bigger puffs).
+    let puffs = 0;
+    let puffT = -1;
+    this.blobs.onFootfall = (x, z, strength) => {
+      if (!this.juice) return;
+      const t = this.now;
+      if (t - puffT > 0.05) {
+        puffT = t;
+        puffs = 0;
+      }
+      if (puffs++ > 10) return;
+      const pal = this.palette;
+      const n = strength > 0.8 ? 4 : 2;
+      this.particles.burst('spore', t, x, this.layout.top + 0.02, z, n, { up: 0.18 + 0.2 * strength, spread: 0.35 + 0.3 * strength, life: 0.45 + 0.2 * strength, size: 0.032 + 0.03 * strength, colors: [pal.soil, pal.paper, pal.soilDeep], seed: Math.floor(t * 997 + x * 131 + z * 71) });
+    };
     this.lift.add(this.plateau.group, this.cells.mesh, this.props.group, this.particles.group, this.blobs.group, this.labels.mesh);
     this.timeline = new BoardTimeline(this);
     this.root.visible = false;
@@ -299,6 +314,11 @@ export class BoardRenderer {
 
   setCreatures(library: ModuleLibrary | null, rules: GenomeRules | null, mode: CreatureMode): void {
     this.blobs.setCreatures(library, rules, mode);
+  }
+
+  /** Quality preset at runtime (Mobil: mesh bodies, one noise octave, leaner parts). */
+  setQuality(mobile: boolean): void {
+    this.blobs.setQuality(mobile);
   }
 
   setLabels(show: boolean): void {

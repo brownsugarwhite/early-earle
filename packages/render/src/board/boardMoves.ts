@@ -29,6 +29,8 @@ export interface MoveSampleLike {
   squash: number;
   crouch: number;
   mouth: number;
+  mouthRound?: number;
+  squint?: number;
   coil: number;
   bulge: number;
   trumpet: number;
@@ -116,12 +118,14 @@ export function genomeMergeMove(kind: string, ctx: MoveContextLike, partner: { x
 
 /** Board durations (s) per segment: anticipation → launch, launch → contact, contact → swallow. */
 const SEGMENTS: Record<string, readonly [number, number, number]> = {
-  leapToCamera: [0.11, 0.36, 0.15],
-  coilSwallow: [0.14, 0.3, 0.32],
-  stompMerge: [0.17, 0.09, 0.16],
-  splashMerge: [0.07, 0.13, 0.2],
-  devour: [0.16, 0.08, 0.14],
+  leapToCamera: [0.11, 0.42, 0.22],
+  coilSwallow: [0.14, 0.3, 0.34],
+  stompMerge: [0.17, 0.09, 0.18],
+  splashMerge: [0.07, 0.13, 0.22],
+  devour: [0.16, 0.08, 0.18],
 };
+/** The leap's flight share spent hanging at the apex, mouth wide open toward the camera. */
+const APEX_HOLD = 0.4;
 
 /**
  * Time warp board → move: key times (launch, contact, swallow) land on the board's segment budget; after
@@ -137,8 +141,18 @@ export function mergeWarp(move: MergeMoveLike, tailSpeed = 1): { warp: (tb: numb
   if (launch < 0 || launch > contact) launch = contact * 0.4;
   let swallow = move.timeOf('swallow');
   if (swallow < 0 || swallow < contact) swallow = Math.min(T, contact + 0.3);
-  const bm: number[] = [0, seg[0], seg[0] + seg[1], seg[0] + seg[1] + seg[2]];
-  const mt: number[] = [0, launch, contact, swallow];
+  let bm: number[] = [0, seg[0], seg[0] + seg[1], seg[0] + seg[1] + seg[2]];
+  let mt: number[] = [0, launch, contact, swallow];
+  const apex = move.timeOf('apex');
+  if (move.kind === 'leapToCamera' && apex > launch && apex < contact) {
+    // Rise fast, hold at the apex (the open mouth toward the camera), dive fast.
+    const hang = Math.min(contact - apex, 0.26) * 0.9;
+    const rise = seg[1] * 0.3;
+    const hold = seg[1] * APEX_HOLD;
+    bm = [0, seg[0], seg[0] + rise, seg[0] + rise + hold, seg[0] + seg[1], seg[0] + seg[1] + seg[2]];
+    mt = [0, launch, apex, apex + hang, contact, swallow];
+  }
+  const last = bm.length - 1;
   const warp = (tb: number): number => {
     if (tb <= 0) return 0;
     for (let i = 1; i < bm.length; i++) {
@@ -149,9 +163,9 @@ export function mergeWarp(move: MergeMoveLike, tailSpeed = 1): { warp: (tb: numb
         return mt[i - 1]! + (mt[i]! - mt[i - 1]!) * u;
       }
     }
-    return Math.min(T, swallow + (tb - bm[3]!) * tailSpeed);
+    return Math.min(T, swallow + (tb - bm[last]!) * tailSpeed);
   };
-  return { warp, swallowAt: bm[3]!, contactAt: bm[2]! };
+  return { warp, swallowAt: bm[last]!, contactAt: bm[last - 1]! };
 }
 
 /**

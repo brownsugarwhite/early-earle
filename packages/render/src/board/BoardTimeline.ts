@@ -1,3 +1,4 @@
+import { Vector3 } from 'three/webgpu';
 import type { Blob, Coord, LevelState, MergeEvent, MoveResult } from '@ee/core';
 import type { BodyType, Vec3 } from '@ee/genome';
 import type { BoardRenderer } from './BoardRenderer';
@@ -955,6 +956,10 @@ export class BoardTimeline {
     );
     if (!move) return null;
     const { warp, swallowAt, contactAt } = mergeWarp(move);
+    const tContact = move.timeOf('contact');
+    const tSwallow = move.timeOf('swallow');
+    const devours = kind === 'leapToCamera' || kind === 'coilSwallow';
+    const mouth = new Vector3();
     let smp: MoveSampleLike | null = null;
     let prevTm = -1;
     let hit = false;
@@ -981,6 +986,8 @@ export class BoardTimeline {
         m.z = q.z;
         m.lift = q.lift;
         m.mouth = q.mouth;
+        m.mouthRound = q.mouthRound ?? 0;
+        m.squint = q.squint ?? 0;
         m.jiggle = Math.max(m.jiggle, q.jiggle);
         if (m.drive) {
           m.yawTarget = q.yaw;
@@ -1007,6 +1014,23 @@ export class BoardTimeline {
           s.pop = p.visible ? Math.max(0.001, p.scale) : 0.001;
           s.labelAlpha = p.scale;
           s.squash = s.drive ? null : { axis: [0, 1, 0], amount: p.squash };
+          // Swallowed: after the bite the partner is sucked into the mover's mouth (up, in, stretched thin).
+          if (devours && tContact >= 0 && tm > tContact) {
+            const e = Math.min(1, (tm - tContact) / Math.max(0.05, (tSwallow > tContact ? tSwallow : tContact + 0.3) - tContact));
+            const k = e * e * (3 - 2 * e);
+            r.blobs.mouthWorld(m, mouth);
+            s.x = p.x + (mouth.x - p.x) * k;
+            s.z = p.z + (mouth.z - p.z) * k;
+            s.lift = Math.max(p.lift, (mouth.y - r.layout.top - s.radius * 0.6) * k);
+            s.pop = Math.max(0.001, Math.min(s.pop, 1 - k * 0.92));
+            if (!s.drive) {
+              const ax = mouth.x - p.x;
+              const ay = mouth.y - (r.layout.top + s.radius);
+              const az = mouth.z - p.z;
+              const al = Math.hypot(ax, ay, az) || 1;
+              s.squash = { axis: [ax / al, ay / al, az / al], amount: 0.55 * Math.sin(Math.PI * Math.min(1, k * 1.2)) };
+            }
+          }
         }
       },
       { delay: tA, ease: linear },
@@ -1244,7 +1268,8 @@ export class BoardTimeline {
     const pal = r.palette;
     const size = Math.max(0.18, s.radius);
     const g = s.genome;
-    const colors = [g.baseColor, g.rimColor, m.genome.baseColor, pal.paper];
+    // Splashes in the zone's Earle palette (paper, sky, teal, neon) with a touch of the creatures' jelly.
+    const colors = [pal.paper, pal.sky, pal.teal, g.baseColor, pal.paper, m.genome.baseColor];
     const seed = s.id * 13 + m.id;
     const k = 0.85 + 0.08 * Math.min(6, tier);
     if (style === 'stomp') {
@@ -1254,9 +1279,9 @@ export class BoardTimeline {
       return;
     }
     fx.crown(tw, at, to[0], to[1], size * (style === 'coil' ? 0.8 : 1.0) * k, colors, seed, style === 'leap' ? 1.25 : 1);
-    fx.ripple(tw, at + 0.02, to[0], to[1], size * 0.9, size * (1.6 + 0.08 * Math.min(6, tier)), style === 'coil' ? g.rimColor : pal.paper, tier >= 6 ? 2 : 1);
+    fx.ripple(tw, at + 0.02, to[0], to[1], size * 0.9, size * (1.6 + 0.08 * Math.min(6, tier)), style === 'coil' ? pal.sky : pal.paper, tier >= 6 ? 2 : 1);
     fx.inkSplats(tw, at + 0.03, to[0], to[1], size, seed, style === 'splash' ? 4 : 5);
-    tw.after(at + 0.05, () => r.particles.burst('spore', r.now, to[0], r.layout.top + size * 1.4, to[1], 8 + Math.min(8, tier), { up: 1.0, spread: 0.6, life: 1.1, size: 0.065, colors: [pal.neon, g.highlightColor, pal.paper], seed: seed + 3, ring: size * 0.5 }));
+    tw.after(at + 0.05, () => r.particles.burst('spore', r.now, to[0], r.layout.top + size * 1.4, to[1], 8 + Math.min(8, tier), { up: 1.0, spread: 0.6, life: 1.1, size: 0.065, colors: [pal.neon, pal.pink, pal.paper], seed: seed + 3, ring: size * 0.5 }));
     tw.after(at, () => {
       r.kick(0.18 + 0.04 * Math.min(6, tier));
       r.emitJuice('merge');
@@ -1269,7 +1294,7 @@ export class BoardTimeline {
     const pal = r.palette;
     const rad = child.radius;
     const waist = r.layout.top + rad * 0.7;
-    r.particles.burst('droplet', r.now, target[0], waist, target[1], 8 + Math.min(10, tier * 2), { up: 1.8 + tier * 0.1, spread: 1.3, life: 0.75, size: 0.07, colors: [child.genome.baseColor, child.genome.rimColor, pal.paper], seed: child.id, ring: rad * 1.05 });
+    r.particles.burst('droplet', r.now, target[0], waist, target[1], 8 + Math.min(10, tier * 2), { up: 1.8 + tier * 0.1, spread: 1.3, life: 0.75, size: 0.07, colors: [pal.paper, pal.sky, child.genome.baseColor], seed: child.id, ring: rad * 1.05 });
   }
 
   private popOut(v: BlobVisual, delay: number, id: number): void {
