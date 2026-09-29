@@ -142,6 +142,8 @@ export class TreeLabScene implements SceneController {
     this.scene.add(this.world, this.sunPivot);
     this.sunPivot.add(this.sun.root);
     this.sun.root.position.set(0, 10, 0);
+    // Shadows v2: Kamera-Kaskaden für glatte, exakte Schattenkanten (einmal vor dem ersten Rendern)
+    this.sun.fitToView(this.camera, { plane: { minHeight: -1, maxHeight: 3 }, maxDistance: 200 });
     this.orbit.attach(ctx.canvas);
     this.build();
     this.applyParams(this.params, true);
