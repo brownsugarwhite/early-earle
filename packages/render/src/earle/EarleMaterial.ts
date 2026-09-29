@@ -1,6 +1,6 @@
 import { LightingModel, NodeMaterial } from 'three/webgpu';
 import type { Node, NodeBuilder } from 'three/webgpu';
-import { clamp, min, mix, normalView, uniform } from 'three/tsl';
+import { clamp, min, mix, normalView, smoothstep, uniform, vec3 } from 'three/tsl';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
 
 export interface EarleMaterialOptions {
@@ -20,6 +20,12 @@ export interface EarleMaterialOptions {
   normalNode?: Vec3Node | null;
   /** Position im Objektraum (z. B. Wachstums-Skalierung). Wirkt auch im Schattenpass. */
   positionNode?: Vec3Node | null;
+  /** Palettenzeile als Knoten (z. B. Attribut je Zone/Instanz); überschreibt `row`. */
+  rowNode?: FloatNode | null;
+  /** Riss-Maske 0..1: 1 = tiefe Tinte (Zonengrenze). */
+  crackNode?: FloatNode | null;
+  /** Wachstum/Sättigung 0..1: 0 = verdorrt (entsättigt, bräunlich), 1 = volle Palette. */
+  growthNode?: FloatNode | null;
 }
 
 /**
@@ -40,6 +46,9 @@ export class EarleMaterial extends NodeMaterial {
     bandScale: TSLUniform;
     terminator: TSLUniform;
     lift: FloatNode | null;
+    rowNode: FloatNode | null;
+    crackNode: FloatNode | null;
+    growthNode: FloatNode | null;
   };
 
   constructor(options: EarleMaterialOptions) {
@@ -54,6 +63,9 @@ export class EarleMaterial extends NodeMaterial {
       bandScale: uniform(options.bandScale ?? 1.6),
       terminator: uniform(options.terminator ?? 0),
       lift: options.lift ?? null,
+      rowNode: options.rowNode ?? null,
+      crackNode: options.crackNode ?? null,
+      growthNode: options.growthNode ?? null,
     };
     if (options.normalNode) this.normalNode = options.normalNode;
     if (options.positionNode) this.positionNode = options.positionNode;
@@ -79,9 +91,18 @@ class EarleLightingModel extends LightingModel {
     let v = ndl.sub(e.terminator).mul(e.bandScale); // Bänder beginnen am Terminator
     if (e.lift) v = v.add(e.lift);
     const band = clamp(v, 0, 0.999).mul(e.bands.sub(1));
-    const litColor = e.lookup.bands(band, e.row, 1).rgb;
-    const ink = e.lookup.pal(0, e.row).rgb;
-    (input.reflectedLight.directDiffuse as Vec3Node).addAssign(mix(ink, litColor, lit));
+    const row = e.rowNode ?? e.row;
+    const litColor = e.lookup.bands(band, row, 1).rgb;
+    const ink = e.lookup.pal(0, row).rgb;
+    let col = mix(ink, litColor, lit);
+    if (e.growthNode) {
+      // Verdorrt: Richtung Grauwert und ein bräunlicher Stich, exakt gestuft bleibt es trotzdem
+      const l = col.dot(vec3(0.3, 0.5, 0.2));
+      const withered = mix(vec3(l), col, 0.35).mul(vec3(0.9, 0.82, 0.68));
+      col = mix(withered, col, smoothstep(0, 1, e.growthNode));
+    }
+    if (e.crackNode) col = mix(col, ink.mul(0.4), e.crackNode);
+    (input.reflectedLight.directDiffuse as Vec3Node).addAssign(col);
   }
 
   override finish(builder: NodeBuilder): void {

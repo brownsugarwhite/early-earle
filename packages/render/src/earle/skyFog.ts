@@ -1,7 +1,7 @@
 import { BackSide, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, SphereGeometry, Vector3 } from 'three/webgpu';
 import type { BufferGeometry, UniformNode } from 'three/webgpu';
 import { cameraPosition, clamp, float, mix, positionWorld, sin, smoothstep, time, uniform, uv } from 'three/tsl';
-import { aaStep, type PaletteLookup } from './tsl';
+import { aaStep, type FloatNode, type PaletteLookup } from './tsl';
 
 export interface SkyDomeOptions {
   lookup: PaletteLookup;
@@ -11,6 +11,9 @@ export interface SkyDomeOptions {
   sunIndex: number;
   ringIndex: number;
   sunDirWorld: UniformNode<'vec3', Vector3>;
+  /** Zweite Himmelszeile und Mischung (Zonenübergang). */
+  skyRowB?: UniformNode<'float', number>;
+  skyMix?: UniformNode<'float', number>;
   /** y-Komponente (sin) der Blickrichtung zum Planetenhorizont; Standard 0 (flache Welt). */
   horizonY?: UniformNode<'float', number> | number;
   /** Elevationsspanne (als y-Differenz) über die die Rampe läuft. Standard 0.6. */
@@ -30,12 +33,15 @@ export function createSkyDome(options: SkyDomeOptions): Mesh {
   const dir = positionWorld.sub(cameraPosition).normalize();
   const horizon = options.horizonY ?? 0;
   const t = clamp(dir.y.sub(horizon).div(options.spread ?? 0.6).add(0.03), 0, 0.999);
-  const sky = lookup.bands(t.mul(options.steps - 1), options.skyRow, 0).rgb;
+  const x = t.mul(options.steps - 1);
+  const skyA = lookup.bands(x, options.skyRow, 0).rgb;
+  const sky = options.skyRowB && options.skyMix ? mix(skyA, lookup.bands(x, options.skyRowB, 0).rgb, options.skyMix) : skyA;
   const d = dir.dot(options.sunDirWorld);
   const disc = aaStep(Math.cos((2.4 * Math.PI) / 180), d);
   const ring = aaStep(Math.cos((5.2 * Math.PI) / 180), d);
-  const withRing = mix(sky, lookup.pal(options.ringIndex, options.skyRow).rgb, ring);
-  material.colorNode = mix(withRing, lookup.pal(options.sunIndex, options.skyRow).rgb, disc);
+  const rowForSun = options.skyRowB && options.skyMix ? mix(float(options.skyRow), options.skyRowB, options.skyMix.greaterThan(0.5).select(float(1), float(0))) : float(options.skyRow);
+  const withRing = mix(sky, lookup.pal(options.ringIndex, rowForSun).rgb, ring);
+  material.colorNode = mix(withRing, lookup.pal(options.sunIndex, rowForSun).rgb, disc);
   const mesh = new Mesh(geometry, material);
   mesh.name = 'sky';
   mesh.renderOrder = -10;
@@ -47,7 +53,8 @@ export function createSkyDome(options: SkyDomeOptions): Mesh {
 
 export interface FogStripeOptions {
   lookup: PaletteLookup;
-  fogRow: number;
+  /** Nebelzeile (Zahl oder Uniform, z. B. Zonenzeile). */
+  fogRow: number | FloatNode;
   /** Palettenstufe der Streifenfarbe (hellste Nebelstufe). */
   colorIndex: number;
   count: number;

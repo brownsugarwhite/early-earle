@@ -15,3 +15,26 @@ export {
   type Vec3,
 } from './capPatch';
 export { scatterTrees, TREE_PROPORTIONS, type ScatterParams, type TreeInstance, type TreeKind } from './scatterTrees';
+export {
+  PlanetField,
+  chunkAngularRadius,
+  chunkDirection,
+  chunkKey,
+  chunkList,
+  generateChunkMesh,
+  scatterChunkProps,
+  scatterChunkTrees,
+  spiralPath,
+  type ChunkId,
+  type ChunkMeshData,
+  type ChunkScatterOptions,
+  type PlanetParams,
+  type PlanetProp,
+  type PlanetPropKind,
+  type PlanetTree,
+  type PlanetVegetationFamily,
+  type PlanetZoneParams,
+  type SpiralNode,
+  type SpiralOptions,
+  type SpiralPath,
+} from './planet';

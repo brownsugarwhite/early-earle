@@ -15,7 +15,7 @@ export interface PaletteRowSpec {
 
 export class PaletteAtlas {
   static readonly WIDTH = 8;
-  static readonly HEIGHT = 16;
+  static readonly HEIGHT = 32;
   readonly texture: DataTexture;
   private readonly data: Uint8Array;
   private readonly rows = new Map<string, { index: number; steps: number }>();
@@ -135,4 +135,53 @@ export function addZonePalette(atlas: PaletteAtlas, zone: ZonePalette, prefix = 
 /** Index der Sonnenscheibe bzw. des Sonnenrings in der Himmelszeile. */
 export function skySunIndices(zone: ZonePalette): { sun: number; ring: number; steps: number } {
   return { sun: zone.sky.length, ring: zone.sky.length + 1, steps: zone.sky.length };
+}
+
+/** Minimale Zonenbeschreibung aus `content/zones/*.json`. */
+export interface ZoneContentPalette {
+  sky: string[];
+  terrainLight: string;
+  terrainDark: string;
+  ink: string;
+  accents?: string[];
+}
+
+function rgb(hex: string): [number, number, number] {
+  return hexToRgb8(hex);
+}
+function hex(c: [number, number, number]): string {
+  return '#' + c.map((v) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('');
+}
+function mixRgb(a: string, b: string, t: number): string {
+  const x = rgb(a);
+  const y = rgb(b);
+  return hex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]);
+}
+function luma(h: string): number {
+  const c = rgb(h);
+  return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+}
+
+/**
+ * Leitet eine vollständige Serigrafie-Palette (Terrain 5 Stufen, Kronen, Himmel 6 Stufen, Nebel) aus den vier
+ * Farben der Zonendatei ab. Horizont = hellere der beiden Himmelsfarben, Zenit = dunklere; ein drittes Akzent-Neon
+ * (Tjorizo) sitzt als oberste Himmelsstufe.
+ */
+export function zonePaletteFromContent(content: ZoneContentPalette): ZonePalette {
+  const { terrainLight: light, terrainDark: dark, ink } = content;
+  const [s0, s1] = [content.sky[0] ?? light, content.sky[1] ?? light];
+  const horizon = luma(s0) >= luma(s1) ? s0 : s1;
+  const zenith = luma(s0) >= luma(s1) ? s1 : s0;
+  const neon = content.accents?.[2];
+  const white = '#ffffff';
+  return {
+    ink,
+    terrain: [dark, mixRgb(dark, light, 0.38), mixRgb(dark, light, 0.72), light, mixRgb(light, white, 0.2)],
+    canopy: [mixRgb(ink, dark, 0.3), mixRgb(ink, dark, 0.6), mixRgb(dark, light, 0.3), mixRgb(light, white, 0.08), mixRgb(light, white, 0.4)],
+    sky: [mixRgb(horizon, white, 0.35), horizon, mixRgb(horizon, zenith, 0.35), mixRgb(horizon, zenith, 0.7), zenith, neon ?? mixRgb(zenith, ink, 0.12)],
+    sun: '#f7f6d8',
+    sunRing: mixRgb(horizon, white, 0.5),
+    fog: [zenith, mixRgb(zenith, dark, 0.45), mixRgb(zenith, horizon, 0.3), mixRgb(zenith, horizon, 0.6), horizon, mixRgb(horizon, white, 0.3)],
+    fogAlpha: [0, 0.35, 0.55, 0.72, 0.85, 0.94],
+  };
 }

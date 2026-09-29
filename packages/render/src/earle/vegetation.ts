@@ -56,7 +56,8 @@ export interface VegetationOptions {
   collapsePx?: number;
 }
 
-const KINDS: TreeKind[] = ['dome', 'cone', 'stacked'];
+export const TREE_KINDS: TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall'];
+const KINDS = TREE_KINDS;
 const POP_IN = 3; // Instanzen, über die ein Baum beim Wachsen aufskaliert
 const _Y = new Vector3(0, 1, 0);
 const _q = new Quaternion();
@@ -103,7 +104,7 @@ export class EarleVegetation {
     this.treeCount = trees.length;
 
     // --- Kronen -------------------------------------------------------------------------------------
-    const perKind: Record<TreeKind, number[]> = { dome: [], cone: [], stacked: [] };
+    const perKind: Record<TreeKind, number[]> = { dome: [], cone: [], stacked: [], bulb: [], tall: [] };
     trees.forEach((t, i) => perKind[t.kind].push(i));
     this.ranks = perKind;
 
@@ -353,7 +354,7 @@ function smooth01(x: number): number {
 }
 
 /** Rotation: +Y → Oberflächennormale, dazu ein deterministischer Yaw aus der Position. */
-function treeFrame(t: TreeInstance, out: Quaternion): Quaternion {
+export function treeFrame(t: TreeInstance, out: Quaternion): Quaternion {
   _n.set(t.normal[0], t.normal[1], t.normal[2]).normalize();
   out.setFromUnitVectors(_Y, _n);
   const yaw = (Math.abs(t.position[0] * 12.9898 + t.position[2] * 78.233) % 1) * Math.PI * 2;
@@ -362,8 +363,28 @@ function treeFrame(t: TreeInstance, out: Quaternion): Quaternion {
 }
 
 /** Kronen-Primitiv in Einheiten des Kronenradius, Fußpunkt im Ursprung. */
-function createCanopyGeometry(kind: TreeKind): BufferGeometry {
+export function createCanopyGeometry(kind: TreeKind): BufferGeometry {
   const prop = TREE_PROPORTIONS[kind];
+  if (kind === 'bulb') {
+    // Hängende Knolle (Syrup): unten breiter, oben spitz zulaufend, tief angesetzt
+    const g = new SphereGeometry(1, 16, 12);
+    const p = g.getAttribute('position');
+    for (let i = 0; i < p.count; i++) {
+      const y = p.getY(i);
+      const w = y < 0 ? 1 + 0.15 * y : 1 - 0.45 * y; // Bauch unten, Spitze oben
+      p.setXYZ(i, p.getX(i) * w, y * 1.15, p.getZ(i) * w);
+    }
+    p.needsUpdate = true;
+    g.computeVertexNormals();
+    g.translate(0, prop.hull, 0);
+    return g;
+  }
+  if (kind === 'tall') {
+    // Kleine Kegelkrone hoch oben auf einem langen Stamm (Luzz)
+    const g = new ConeGeometry(1, 1.6, 12, 1, false);
+    g.translate(0, prop.trunk + 0.8, 0);
+    return g;
+  }
   if (kind === 'dome') {
     const g = new SphereGeometry(1, 16, 12);
     g.scale(1, 0.72, 1);
@@ -392,7 +413,7 @@ function createCanopyGeometry(kind: TreeKind): BufferGeometry {
 }
 
 /** Zwei gekreuzte Quads (Breite 1, Höhe 1), immer sichtbar, doppelseitig. */
-function createTrunkGeometry(): BufferGeometry {
+export function createTrunkGeometry(): BufferGeometry {
   const g = new BufferGeometry();
   const pos = [
     -0.5, 0, 0, 0.5, 0, 0, 0.5, 1, 0, -0.5, 1, 0, //
@@ -406,7 +427,7 @@ function createTrunkGeometry(): BufferGeometry {
 }
 
 /** Sechseck in der XY-Ebene, Radius 1, 6 Vertices / 4 Dreiecke. */
-function createHexagon(): { position: Float32BufferAttribute; index: number[] } {
+export function createHexagon(): { position: Float32BufferAttribute; index: number[] } {
   const pos: number[] = [];
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
@@ -416,19 +437,30 @@ function createHexagon(): { position: Float32BufferAttribute; index: number[] } 
 }
 
 /** Punkte auf der Kronenhülle in Einheiten des Kronenradius (Fußpunkt im Ursprung), gleichmäßig verteilt. */
-function dotsOnCanopy(kind: TreeKind, count: number, rand: () => number): Vec3[] {
+export function dotsOnCanopy(kind: TreeKind, count: number, rand: () => number): Vec3[] {
   const prop = TREE_PROPORTIONS[kind];
   const out: Vec3[] = [];
   const golden = Math.PI * (3 - Math.sqrt(5));
-  if (kind === 'dome') {
+  if (kind === 'dome' || kind === 'bulb') {
     const n = Math.round(count * 1.7);
     const phase = rand() * Math.PI * 2;
+    const stretch = kind === 'bulb' ? 1.15 : 0.72;
     for (let i = 0; i < n; i++) {
       const y = 1 - (2 * (i + 0.5)) / n;
       if (y < -0.12) continue;
-      const rr = Math.sqrt(1 - y * y);
+      const rr = Math.sqrt(1 - y * y) * (kind === 'bulb' ? (y < 0 ? 1 + 0.15 * y : 1 - 0.45 * y) : 1);
       const phi = i * golden + phase;
-      out.push([rr * Math.cos(phi), prop.hull + y * 0.72, rr * Math.sin(phi)]);
+      out.push([rr * Math.cos(phi), prop.hull + y * stretch, rr * Math.sin(phi)]);
+    }
+    return out;
+  }
+  if (kind === 'tall') {
+    const n = Math.round(count * 1.3);
+    const phase = rand() * Math.PI * 2;
+    for (let i = 0; i < n; i++) {
+      const t = 1 - Math.sqrt((i + 0.5) / n);
+      const phi = i * golden + phase;
+      out.push([(1 - t) * Math.cos(phi), prop.trunk + t * 1.6, (1 - t) * Math.sin(phi)]);
     }
     return out;
   }

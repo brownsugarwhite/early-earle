@@ -51,15 +51,20 @@ export class PaletteLookup {
 /** Gestufter Distanznebel (4–6 Stufen) aus der Nebelzeile des Atlas. */
 export interface FogSettings {
   row: TSLUniform;
+  /** Zweite Nebelzeile (Nachbarzone) und Mischung 0..1 für weiche Zonenübergänge. */
+  rowB: TSLUniform;
+  mix: TSLUniform;
   steps: TSLUniform;
   start: TSLUniform;
   /** 1 / Nebelstrecke (Welteinheiten von start bis volle Stufe). */
   invRange: TSLUniform;
 }
 
-export function createFogSettings(init: { row: number; steps: number; start: number; range: number }): FogSettings {
+export function createFogSettings(init: { row: number; rowB?: number; steps: number; start: number; range: number }): FogSettings {
   return {
     row: uniform(init.row),
+    rowB: uniform(init.rowB ?? init.row),
+    mix: uniform(0),
     steps: uniform(init.steps),
     start: uniform(init.start),
     invRange: uniform(1 / init.range),
@@ -73,6 +78,6 @@ export function createFogSettings(init: { row: number; steps: number; start: num
 export function steppedFog(color: Vec3Node, fog: FogSettings, lookup: PaletteLookup, dist?: FloatNode): Vec3Node {
   const d = dist ?? positionView.length();
   const x = clamp(d.sub(fog.start).mul(fog.invRange), 0, 0.999).mul(fog.steps.sub(1));
-  const f = lookup.bands(x, fog.row, 0);
+  const f = mix(lookup.bands(x, fog.row, 0), lookup.bands(x, fog.rowB, 0), fog.mix);
   return mix(color, f.rgb, f.a);
 }

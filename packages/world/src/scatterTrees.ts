@@ -2,7 +2,8 @@ import { createCapField, type CapPatchParams, type Vec3 } from './capPatch';
 import { GradientNoise3 } from './noise';
 import { hash32, mulberry32 } from './rng';
 
-export type TreeKind = 'dome' | 'cone' | 'stacked';
+/** Kronenformen: Kuppel, Kegel, gestapelte Kegel, hängende Knolle (Syrup), hoher dünner Stamm mit kleiner Krone (Luzz). */
+export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall';
 
 export interface TreeInstance {
   /** Fußpunkt auf der Oberfläche (Patch-Raum). */
@@ -42,6 +43,8 @@ export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number;
   dome: { radius: 0.7, trunk: 0.82, hull: 1.37, top: 2.1 },
   cone: { radius: 0.5, trunk: 0.62, hull: 1.5, top: 2.85 },
   stacked: { radius: 0.55, trunk: 0.78, hull: 1.8, top: 3.1 },
+  bulb: { radius: 0.75, trunk: 0.55, hull: 1.45, top: 2.55 },
+  tall: { radius: 0.4, trunk: 3.6, hull: 4.15, top: 4.8 },
 };
 
 /**

@@ -1,25 +1,13 @@
-import { Box3, BufferAttribute, BufferGeometry, Color, Group, Matrix4, Mesh, Object3D, PerspectiveCamera, Scene, Vector3 } from 'three/webgpu';
-import { attribute, uniform } from 'three/tsl';
-import { createCapField, generateCapPatch, generateDisplacedSphere, scatterTrees, type CapField, type CapPatch, type CapPatchParams, type TreeInstance } from '@ee/world';
-import {
-  EarleMaterial,
-  EarleVegetation,
-  FogStripes,
-  PaletteAtlas,
-  PaletteLookup,
-  SunRig,
-  TJORIZO_PALETTE,
-  addZonePalette,
-  createFogSettings,
-  createSkyDome,
-  skySunIndices,
-  type FogSettings,
-  type ZoneRows,
-} from '@ee/render';
+import { Color, Frustum, Group, Matrix4, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
+import { uniform } from 'three/tsl';
+import { EarlePlanet, FogStripes, SunRig, createSkyDome, skySunIndices } from '@ee/render';
 import type { FlowQuality } from './quality';
+import type { PathLayout } from './path';
+import { NODES_PER_ZONE, planetZones } from '../lab/earle/zones';
 
 export const PLANET_RADIUS = 40;
-export const CAP_ARC_DEG = 40;
+/** Chunks je Würfelseite (3 → 54 Chunks à 30°). */
+export const CHUNKS_PER_FACE = 3;
 /** Splash ink (#081b25): the scene background matches the splash PNG so the reveal is seamless. */
 export const INK_BACKGROUND = '#081b25';
 
@@ -28,54 +16,43 @@ export interface MapWorldOptions {
   seed?: number;
   sunElevationDeg?: number;
   sunAzimuthDeg?: number;
-  /** Trees closer than this (world units) to `keepClear(p)` positions are dropped. */
-  treeFilter?: (tree: TreeInstance) => boolean;
 }
 
+const _v = new Vector3();
+const _q = new Quaternion();
+const _m = new Matrix4();
+
 /**
- * The Earle world of the flow: cap patch + filler sphere with the banded EarleMaterial, instanced
- * vegetation, sun rig with the sharpened shadow filter, sky dome and fog stripes — composed from the
- * exported P2 builders. The planet rolls under a fixed rig (camera, sun, sky and stripes hang on it);
- * the flow moves the camera relative to the rig for fly-ins.
+ * The Earle world of the flow: the chunked planet (four zones, cracks, spiral path, per-chunk growth) with the
+ * banded EarleMaterial, pooled vegetation, sun rig with the sharpened shadow filter, sky dome and fog stripes.
+ * The planet rolls under a fixed rig (camera, sun, sky and stripes hang on it); the flow moves the camera
+ * relative to the rig for fly-ins. Chunks load/unload by visibility every frame.
  */
 export class MapWorld {
   readonly scene = new Scene();
   readonly camera = new PerspectiveCamera(70, 1, 0.3, 700);
   /** Rig at the apex of the planet; camera, sun and fog stripes are children. */
   readonly rig = new Object3D();
-  /** Rotating planet: terrain, filler, vegetation and everything that lives on the surface. */
+  /** Rotating planet: chunks, vegetation and everything that lives on the surface. */
   readonly planet = new Group();
-  readonly field: CapField;
-  readonly patch: CapPatch;
-  readonly capParams: CapPatchParams;
+  readonly world: EarlePlanet;
   readonly sun: SunRig;
-  readonly vegetation: EarleVegetation;
   readonly fogStripes: FogStripes;
-  readonly trees: TreeInstance[];
-  private readonly atlas = new PaletteAtlas();
-  private readonly rows: ZoneRows;
-  private readonly lookup: PaletteLookup;
-  private readonly fog: FogSettings;
-  private readonly terrainBands = uniform(4);
-  private readonly canopyBands = uniform(3);
+  /** Level path over the whole planet: node i ↔ LEVELS[i]. */
+  readonly layout: PathLayout;
   private readonly sunDirWorld = uniform(new Vector3(0, 1, 0));
   private readonly skyHorizon = uniform(-0.5);
-  private readonly shadowBounds = new Box3();
+  private readonly frustum = new Frustum();
   private readonly disposables: Array<{ dispose(): void }> = [];
   private readonly tmp = new Vector3();
+  private readonly sunLocal = new Vector3();
   private shadowDirty = true;
   shadowPasses = 0;
 
   constructor(readonly options: MapWorldOptions) {
     const q = options.quality;
-    this.capParams = { radius: PLANET_RADIUS, arcDeg: CAP_ARC_DEG, res: q.terrainRes, seed: options.seed ?? 7, edgeFade: 0 };
-    this.field = createCapField(this.capParams);
-    this.rows = addZonePalette(this.atlas, TJORIZO_PALETTE, 'tjorizo');
-    this.lookup = new PaletteLookup(this.atlas.texture, this.atlas.width, this.atlas.height);
-    this.fog = createFogSettings({ row: this.rows.fog, steps: 5, start: 12, range: 22 });
     this.scene.name = 'FlowWorld';
     this.scene.background = new Color(INK_BACKGROUND);
-
     this.rig.position.set(0, PLANET_RADIUS, 0);
     this.scene.add(this.rig, this.planet);
     this.rig.add(this.camera);
@@ -89,90 +66,50 @@ export class MapWorld {
     this.sun.root.position.set(0, 0, -4);
     this.rig.add(this.sun.root);
 
-    // --- terrain patch ------------------------------------------------------------------------
-    this.patch = generateCapPatch(this.capParams);
-    const patch = this.patch;
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new BufferAttribute(patch.positions, 3));
-    geometry.setAttribute('normal', new BufferAttribute(patch.normals, 3));
-    geometry.setAttribute('uv', new BufferAttribute(patch.uvs, 2));
-    geometry.setAttribute('height', new BufferAttribute(patch.height, 1));
-    geometry.setAttribute('biome', new BufferAttribute(patch.biome, 1));
-    geometry.setIndex(new BufferAttribute(patch.indices, 1));
-    const terrainMaterial = new EarleMaterial({
-      lookup: this.lookup,
-      row: this.rows.terrain,
-      fog: this.fog,
-      bands: this.terrainBands,
-      bandScale: 2.0,
-      terminator: -0.05,
-      lift: attribute('height', 'float').mul(0.45),
+    this.world = new EarlePlanet({
+      radius: PLANET_RADIUS,
+      seed: options.seed ?? 7,
+      chunksPerFace: CHUNKS_PER_FACE,
+      zones: planetZones(),
+      quality: {
+        chunkRes: Math.max(12, Math.round(q.terrainRes / 3)),
+        dotsPerTree: q.dotsPerTree,
+        collapsePx: q.collapsePx,
+        densityScale: q.treeCount / 200,
+        nearChunks: q.name === 'mobil' ? 3 : 5,
+        capacity: q.name === 'mobil' ? { trees: 1400, dots: 14000, props: 300, animals: 160 } : { trees: 2600, dots: 45000, props: 400, animals: 220 },
+      },
+      path: { nodesPerZone: NODES_PER_ZONE, turns: 2.75, clearNode: 3.4, clearPath: 1.0 },
+      loadsPerFrame: 2,
     });
-    const terrain = new Mesh(geometry, terrainMaterial);
-    terrain.name = 'terrain';
-    terrain.castShadow = true;
-    terrain.receiveShadow = true;
-    terrain.frustumCulled = false;
-    this.planet.add(terrain);
-    this.disposables.push(geometry, terrainMaterial);
-
-    // --- filler sphere (horizon curvature, same height field) ----------------------------------
-    const [ws, hs] = q.fillerSegments;
-    const sphere = generateDisplacedSphere({ ...this.capParams, widthSegments: ws, heightSegments: hs, radiusOffset: -0.03 });
-    const fillerGeometry = new BufferGeometry();
-    fillerGeometry.setAttribute('position', new BufferAttribute(sphere.positions, 3));
-    fillerGeometry.setAttribute('normal', new BufferAttribute(sphere.normals, 3));
-    fillerGeometry.setIndex(new BufferAttribute(sphere.indices, 1));
-    const fillerMaterial = new EarleMaterial({ lookup: this.lookup, row: this.rows.terrain, fog: this.fog, bands: this.terrainBands, bandScale: 2.0, terminator: -0.05 });
-    const filler = new Mesh(fillerGeometry, fillerMaterial);
-    filler.name = 'planet-filler';
-    filler.receiveShadow = true;
-    filler.frustumCulled = false;
-    this.planet.add(filler);
-    this.disposables.push(fillerGeometry, fillerMaterial);
-
-    // --- vegetation ------------------------------------------------------------------------------
-    let trees = scatterTrees({ seed: this.capParams.seed, count: q.treeCount, minDist: 1.45, cap: this.capParams, clumpiness: 0.6 });
-    if (options.treeFilter) trees = trees.filter(options.treeFilter);
-    // Re-rank growth after filtering so `setGrowth` still reveals trees in order.
-    trees = trees.map((t, i) => ({ ...t, growth: trees.length > 0 ? i / trees.length : 0 }));
-    this.trees = trees;
-    this.rig.updateWorldMatrix(true, true);
-    const sunLocal = this.sun.directionWorld(new Vector3());
-    this.vegetation = new EarleVegetation({
-      trees,
-      lookup: this.lookup,
-      canopyRow: this.rows.canopy,
-      fog: this.fog,
-      bands: this.canopyBands,
-      sunDirLocal: sunLocal,
-      seed: this.capParams.seed,
-      dotsPerTree: q.dotsPerTree,
-      collapsePx: q.collapsePx,
-    });
-    this.planet.add(this.vegetation.group);
-    this.vegetation.setGrowth(1);
-    const b = patch.bounds;
-    this.shadowBounds.min.set(b.min[0], b.min[1], b.min[2]);
-    this.shadowBounds.max.set(b.max[0], b.max[1] + this.vegetation.hMax, b.max[2]);
-    this.shadowBounds.expandByScalar(1);
+    this.planet.add(this.world.group);
+    this.layout = {
+      nodes: this.world.path.nodes.map((n) => ({ index: n.index, u: n.lon / 180, v: n.lat / 90, position: n.position, normal: n.normal })),
+      dots: this.world.path.dots.map((d) => ({ position: d.position, normal: d.normal })),
+      length: this.world.path.length,
+    };
 
     // --- sky and fog stripes -----------------------------------------------------------------------
-    const sunIdx = skySunIndices(TJORIZO_PALETTE);
+    const zones = planetZones();
+    const sunIdx = skySunIndices(zones[0]!.palette);
     const sky = createSkyDome({
-      lookup: this.lookup,
-      skyRow: this.rows.sky,
+      lookup: this.world.lookup,
+      skyRow: this.world.rows[0]!.sky,
       steps: sunIdx.steps,
       sunIndex: sunIdx.sun,
       ringIndex: sunIdx.ring,
       sunDirWorld: this.sunDirWorld,
+      skyRowB: this.world.skyRowB,
+      skyMix: this.world.skyMix,
       horizonY: this.skyHorizon,
     });
+    // Row A is a uniform on the planet; the dome takes the numeric row for the sun disc and A/B mix for the bands
+    (sky.material as unknown as { needsUpdate: boolean }).needsUpdate = true;
     this.camera.add(sky);
     this.disposables.push(sky.geometry, sky.material as { dispose(): void });
     this.fogStripes = new FogStripes({
-      lookup: this.lookup,
-      fogRow: this.rows.fog,
+      lookup: this.world.lookup,
+      fogRow: this.world.fog.row,
       colorIndex: 5,
       count: q.fogStripes,
       firstDistance: 6,
@@ -192,35 +129,70 @@ export class MapWorld {
     this.shadowDirty = true;
   }
 
-  /** Once per frame before rendering: sun/sky uniforms, billboard axes, shadow fit. */
+  /** Completed nodes → per-chunk growth along the path. */
+  setProgress(done: number): void {
+    this.world.setProgress(done);
+    this.shadowDirty = true;
+  }
+
+  /** Close (or reopen) the crack between zone `border` and `border + 1`. */
+  setCrackClosed(border: number, closed: boolean): void {
+    this.world.setCrackClosed(border, closed);
+  }
+
+  /** Once per frame before rendering: chunk streaming, sun/sky uniforms, zone blend, billboard axes, shadow fit. */
   update(): void {
     this.scene.updateMatrixWorld(true);
     this.sun.directionWorld(this.sunDirWorld.value);
-    const camR = this.camera.getWorldPosition(this.tmp).length();
+    this.planet.getWorldQuaternion(_q).invert();
+    this.sunLocal.copy(this.sunDirWorld.value).applyQuaternion(_q);
+    this.world.vegetation.setSunDirection(this.sunDirWorld.value, this.sunLocal);
+
+    const camWorld = this.camera.getWorldPosition(this.tmp);
+    const camR = camWorld.length();
     this.skyHorizon.value = -Math.sin(Math.acos(Math.min(1, PLANET_RADIUS / Math.max(PLANET_RADIUS + 0.01, camR))));
-    this.vegetation.setSunDirection(this.sunDirWorld.value);
-    this.vegetation.updateCamera(this.camera);
+    _m.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+    this.frustum.setFromProjectionMatrix(_m, this.camera.coordinateSystem);
+    if (this.world.update(this.camera, camWorld, this.planet.matrixWorld, this.frustum)) this.shadowDirty = true;
+
+    // Zone under the camera's look point drives sky and fog rows.
+    const look = _v.set(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(new Quaternion()));
+    const hit = raySphere(camWorld, look, PLANET_RADIUS + 0.5);
+    const dirWorld = hit ?? camWorld.clone().normalize();
+    const dirLocal = dirWorld.applyQuaternion(_q);
+    this.world.setViewZone(this.world.zoneCoordAt(dirLocal));
+
     if (this.shadowDirty) {
-      this.sun.fitShadow(this.shadowBounds, this.planet.matrixWorld, this.patch.hMax + this.vegetation.hMax + 1);
+      if (!this.world.bounds.isEmpty()) this.sun.fitShadow(this.world.bounds, this.planet.matrixWorld, this.world.hTotal);
       this.sun.requestUpdate();
       this.shadowPasses++;
       this.shadowDirty = false;
     }
   }
 
-  /** Terrain radius (distance from the planet centre) in a unit direction of patch space. */
+  /** Terrain radius (distance from the planet centre) in a unit direction of planet space. */
   surfaceRadius(dir: Vector3): number {
-    return PLANET_RADIUS + this.field.heightAt(dir.x, dir.y, dir.z);
+    return this.world.surfaceRadius(dir);
   }
 
   dispose(): void {
-    this.vegetation.dispose();
     this.fogStripes.dispose();
+    this.world.dispose();
     for (const d of this.disposables) d.dispose();
     this.sun.dispose();
-    this.atlas.dispose();
     this.scene.clear();
   }
+}
+
+/** Nearest intersection point of a ray with the sphere of radius r around the origin, or null. */
+function raySphere(origin: Vector3, dir: Vector3, r: number): Vector3 | null {
+  const b = origin.dot(dir);
+  const c = origin.lengthSq() - r * r;
+  const disc = b * b - c;
+  if (disc < 0) return null;
+  const t = -b - Math.sqrt(disc);
+  if (t < 0) return null;
+  return origin.clone().addScaledVector(dir, t).normalize();
 }
 
 /** Builds a tangent frame (right, up = normal, forward) as a rotation matrix. `forward` is projected onto the plane. */

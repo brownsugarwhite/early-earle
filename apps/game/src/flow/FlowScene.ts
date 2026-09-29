@@ -1,6 +1,5 @@
 import { CircleGeometry, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Quaternion, Vector3 } from 'three/webgpu';
 import type { Dir, LevelState } from '@ee/core';
-import { createCapField } from '@ee/world';
 import type { SceneController, SceneContext } from '../canvas/SceneController';
 import { FLOW_LEVELS } from './levels';
 import { useGridStore } from '../lab/grid/gridStore';
@@ -9,7 +8,7 @@ import { Trackball } from '../lab/earle/trackball';
 import rexUrl from '../../../../assets/ref-florian/07-illudiy-logo-rex.png';
 import { useFlowStore, type FlowPhase, type FlowRequest } from './flowStore';
 import { MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
-import { layoutPath, distanceToPath, type PathLayout, type PathNode } from './path';
+import type { PathLayout, PathNode } from './path';
 import { NodePath } from './NodePath';
 import { Hero, SHADOW_PROXY_LAYER, type HeroPose } from './Hero';
 import { Rex } from './Rex';
@@ -54,8 +53,6 @@ const T_FLY_IN = 1.2;
 const T_PLATE = 0.5;
 const T_DEPART = 1.3;
 const T_AUTO_ROTATE = 1.0;
-const TREE_CLEAR_NODE = 3.4;
-const TREE_CLEAR_PATH = 1.0;
 
 const _Y = new Vector3(0, 1, 0);
 const _m4 = new Matrix4();
@@ -109,26 +106,16 @@ export class FlowScene implements SceneController {
     ctx.renderer.shadowMap.enabled = true;
     const q = this.quality;
 
-    // Path first (the world clears a corridor for it), then the world.
-    const capParams = { radius: PLANET_RADIUS, arcDeg: 40, res: q.terrainRes, seed: 7, edgeFade: 0 };
-    const field = createCapField(capParams);
-    const layout = layoutPath(field, Math.max(1, FLOW_LEVELS.length));
+    // The chunked planet lays out the spiral path (all zones, 25 nodes each) and clears a corridor for it.
+    const world = new MapWorld({ quality: q, seed: 7 });
+    const layout = world.layout;
     this.layout = layout;
-    const world = new MapWorld({
-      quality: q,
-      seed: 7,
-      treeFilter: (tree) => {
-        const d = distanceToPath(tree.position, layout);
-        const nearNode = layout.nodes.some((n) => Math.hypot(tree.position[0] - n.position[0], tree.position[1] - n.position[1], tree.position[2] - n.position[2]) < TREE_CLEAR_NODE);
-        return !nearNode && d > TREE_CLEAR_PATH;
-      },
-    });
     this.world = world;
 
     // Nodes and path on the planet (sun direction in planet space for the offset shadows).
     world.rig.updateWorldMatrix(true, true);
     const sunLocal = world.sunDirection(new Vector3());
-    this.nodePath = new NodePath(layout, sunLocal);
+    this.nodePath = new NodePath(layout, sunLocal, { onProgress: (_current, done) => world.setProgress(done) });
     world.planet.add(this.nodePath.group);
 
     this.hero = new Hero(ZONE, { octaves: q.blobOctaves });
@@ -154,7 +141,7 @@ export class FlowScene implements SceneController {
     this.trackball = new Trackball({
       radius: PLANET_RADIUS,
       tau: 0.4,
-      maxTilt: (34 * Math.PI) / 180,
+      maxTilt: Math.PI, // full planet: no spring, the far side is revealed by rolling
       worldUnitsPerPixel: () => this.worldUnitsPerPixel(),
       onZoom: (f) => this.setZoom(this.zoom * f),
     });

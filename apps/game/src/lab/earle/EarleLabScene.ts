@@ -1,125 +1,103 @@
-import { Box3, BufferAttribute, BufferGeometry, Group, Mesh, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
-import { attribute, uniform } from 'three/tsl';
-import { generateCapPatch, generateDisplacedSphere, scatterTrees, type CapPatch, type CapPatchParams } from '@ee/world';
-import {
-  EarleMaterial,
-  EarleVegetation,
-  FogStripes,
-  PaletteAtlas,
-  PaletteLookup,
-  SunRig,
-  TJORIZO_PALETTE,
-  addZonePalette,
-  createFogSettings,
-  createSkyDome,
-  skySunIndices,
-  type FogSettings,
-  type ZoneRows,
-} from '@ee/render';
+import { Color, Frustum, Group, Matrix4, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
+import { uniform } from 'three/tsl';
+import { EarlePlanet, FogStripes, SunRig, createSkyDome, skySunIndices } from '@ee/render';
 import type { SceneController, SceneContext } from '../../canvas/SceneController';
 import { Trackball } from './trackball';
 import { resolveQuality, type QualityLevel, type QualityPreset, type ResolvedQuality } from './quality';
+import { NODES_PER_ZONE, ZONE_CONTENTS, planetZones } from './zones';
 
 export interface EarleLabParams {
-  /** Wachstum 0..1 (Instanzanzahl + Aufskalieren). */
-  growth: number;
+  /** Fortschritt: Anzahl geschaffter Knoten (0..100) → Wachstum je Chunk entlang des Pfads. */
+  progress: number;
   /** Sonnenhöhe in Grad (6–15). */
   sunElevation: number;
-  /** Sonnenazimut relativ zur Blickachse in Grad. */
+  /** Sonnenazimut relativ zur Blickachse in Grad (positiv = Sonne rechts, Schatten nach links). */
   sunAzimuth: number;
   /** Lichtbänder Terrain (2–5). */
   bands: number;
   /** Nebelstufen (3–6). */
   fogSteps: number;
-  /** Zielanzahl Bäume (Poisson-Disc liefert ≤). Wird beim Wechsel der Qualitätsstufe auf deren Wert gesetzt. */
-  treeCount: number;
+  /** Dichtefaktor der Vegetation in Prozent (Preset setzt den Standard). */
+  density: number;
   /** Nachschärfender Schattenfilter (true) oder three-Standard-PCF (false). */
   hardShadow: boolean;
   /** Qualitätsstufe: Hoch / Mobil / Auto (Touch oder DPR ≥ 2.5 → Mobil). */
   quality: QualityLevel;
+  /** Risse geschlossen (Index = Grenze Zone i | i+1). */
+  cracksClosed: boolean[];
   seed: number;
 }
 
 export const DEFAULT_EARLE_PARAMS: EarleLabParams = {
-  growth: 1,
+  progress: 12,
   sunElevation: 10,
   sunAzimuth: 70,
   bands: 4,
   fogSteps: 5,
-  treeCount: 260,
+  density: 100,
   hardShadow: true,
   quality: 'auto',
+  cracksClosed: [false, false, false],
   seed: 7,
 };
 
 export interface EarleBenchInfo {
   backend: 'webgpu' | 'webgl2' | 'unknown';
-  /** Effektiver Pixel-Ratio des Renderers (nach dem Preset-Cap). */
   dpr: number;
   deviceDpr: number;
-  /** Zeichenpuffer in Pixeln. */
   canvas: [number, number];
-  /** CSS-Größe in Pixeln. */
   css: [number, number];
   ua: string;
   preset: ResolvedQuality;
 }
 
-const PLANET_RADIUS = 40;
-const CAP_ARC_DEG = 40;
+export const PLANET_RADIUS = 40;
+const CHUNKS_PER_FACE = 3;
 const CAMERA_OFFSET = new Vector3(0, 9, 8);
 const LOOK_AT = new Vector3(0, 0, -4);
+/** NDC y des aktuellen Knotens (unteres Drittel). */
+const TARGET_NDC_Y = -0.36;
 const _Y = new Vector3(0, 1, 0);
 
 /**
- * P2 Earle-Lab: ein Kappen-Patch des Planeten (R 40, 40°) mit Hügeln, nachgeschärften Riesenschatten,
- * instanzierten Kuppel-/Kegel-Kronen mit Sechseck-Punkten, dünnen Stämmen, gestuftem Nebel und Bandhimmel.
- * Kamera fest (FOV 70, Planetenmitte weit unter der Bildmitte), das Patch rollt per Trackball unter ihr durch.
- * Qualitätsstufen (siehe quality.ts) tauschen Schattenkarte, Punktdichte, Baumzahl, Nebelstreifen, Auflösung
- * und den Pixel-Ratio des Renderers (Override über `resize()`, das der CanvasHost nach seinem setPixelRatio ruft).
+ * P2 Earle-Lab auf dem ganzen Planeten: Cube-Sphere-Chunks (Laden nach Sicht), vier Zonen mit Rissen, Spiralpfad
+ * mit allen Knoten, Wachstum je Chunk aus dem Fortschritt, Vegetation in Pools, Sonnen-Rig mit nachgeschärften
+ * Schatten. Kamera fest am Scheitel-Rig (FOV 70), der Planet rollt per Trackball (ohne Federgrenze: die
+ * Rückseite ist erreichbar) und dreht sich beim Fortschritt automatisch zum letzten Knoten.
  */
 export class EarleLabScene implements SceneController {
   private readonly scene = new Scene();
   private readonly camera = new PerspectiveCamera(70, 1, 0.5, 700);
+  private readonly probe = new PerspectiveCamera(70, 1, 0.5, 700);
   private readonly rig = new Object3D();
   private readonly planet = new Group();
-  private readonly atlas = new PaletteAtlas();
-  private readonly rows: ZoneRows;
-  private readonly lookup: PaletteLookup;
-  private readonly fog: FogSettings;
-  private readonly terrainBands = uniform(4);
-  private readonly canopyBands = uniform(3);
-  private readonly sunDirWorld = uniform(new Vector3(0, 1, 0));
-  /** sin der Horizontsenke (negativ), damit die Himmelsrampe am Planetenhorizont beginnt. */
-  private readonly skyHorizon = uniform(-0.5);
   private readonly sun: SunRig;
   private readonly trackball: Trackball;
+  private readonly sunDirWorld = uniform(new Vector3(0, 1, 0));
+  private readonly skyHorizon = uniform(-0.5);
+  private readonly frustum = new Frustum();
   private params: EarleLabParams;
   private preset: QualityPreset;
   private ctx: SceneContext | null = null;
-  private patch: CapPatch | null = null;
-  private terrain: Mesh | null = null;
-  private filler: Mesh | null = null;
-  private vegetation: EarleVegetation | null = null;
-  private sky: Mesh | null = null;
+  private world: EarlePlanet | null = null;
   private fogStripes: FogStripes | null = null;
-  private readonly shadowBounds = new Box3();
+  private readonly disposables: Array<{ dispose(): void }> = [];
+  private readonly listeners = new Set<(p: EarleLabParams) => void>();
+  private readonly tmp = new Vector3();
+  private readonly tmpQ = new Quaternion();
+  private readonly tmpM = new Matrix4();
+  private readonly sunLocal = new Vector3();
+  private readonly targetDir = new Vector3(0, 1, 0);
   private shadowDirty = true;
   private zoom = 1;
   private autoRotate = 0;
-  private readonly listeners = new Set<(p: EarleLabParams) => void>();
-  private readonly disposables: Array<{ dispose(): void }> = [];
-  private readonly tmp = new Vector3();
-  private readonly tmpQ = new Quaternion();
+  private autoTurn: { q0: Quaternion; q1: Quaternion; t: number } | null = null;
   /** Anzahl angeforderter Schattenpässe (für die Leerlauf-Kontrolle). */
   shadowPasses = 0;
 
   constructor(initial: Partial<EarleLabParams> = {}) {
     this.params = { ...DEFAULT_EARLE_PARAMS, ...initial };
     this.preset = resolveQuality(this.params.quality);
-    this.rows = addZonePalette(this.atlas, TJORIZO_PALETTE, 'tjorizo');
-    this.lookup = new PaletteLookup(this.atlas.texture, this.atlas.width, this.atlas.height);
-    this.fog = createFogSettings({ row: this.rows.fog, steps: this.params.fogSteps, start: 12, range: 22 });
     this.sun = new SunRig({
       mapSize: this.preset.shadowMapSize,
       sharpen: this.params.hardShadow,
@@ -129,14 +107,10 @@ export class EarleLabScene implements SceneController {
     this.trackball = new Trackball({
       radius: PLANET_RADIUS,
       tau: 0.4,
+      maxTilt: Math.PI,
       worldUnitsPerPixel: () => this.worldUnitsPerPixel(),
       onZoom: (f) => this.setZoom(this.zoom * f),
     });
-  }
-
-  private get capParams(): CapPatchParams {
-    // Kein Randauslauf: die Füllkugel trägt dasselbe Höhenfeld, Patch und Kugel gehen nahtlos ineinander über.
-    return { radius: PLANET_RADIUS, arcDeg: CAP_ARC_DEG, res: this.preset.terrainRes, seed: this.params.seed, edgeFade: 0 };
   }
 
   get isMounted(): boolean {
@@ -147,143 +121,73 @@ export class EarleLabScene implements SceneController {
     this.ctx = ctx;
     ctx.renderer.shadowMap.enabled = true;
     this.scene.name = 'EarleLab';
-
-    // Rig am Scheitel des Planeten; Kamera, Sonne, Himmel und Nebelstreifen hängen daran.
+    this.scene.background = new Color('#081b25');
     this.rig.position.set(0, PLANET_RADIUS, 0);
-    this.scene.add(this.rig);
+    this.scene.add(this.rig, this.planet);
     this.rig.add(this.camera);
     this.sun.root.position.copy(LOOK_AT);
     this.rig.add(this.sun.root);
     this.setZoom(1);
-    this.scene.add(this.planet);
+    this.trackball.attach(ctx.canvas);
+    this.buildWorld();
+    this.applyParams(this.params, true);
+    this.resize(ctx);
+    this.snapToNode(Math.max(0, Math.min(this.params.progress, NODES_PER_ZONE * ZONE_CONTENTS.length - 1)));
+  }
 
-    const sunIdx = skySunIndices(TJORIZO_PALETTE);
-    this.sky = createSkyDome({
-      lookup: this.lookup,
-      skyRow: this.rows.sky,
+  private buildWorld(): void {
+    this.world?.dispose();
+    this.fogStripes?.dispose();
+    for (const d of this.disposables) d.dispose();
+    this.disposables.length = 0;
+    const zones = planetZones();
+    const p = this.preset;
+    const world = new EarlePlanet({
+      radius: PLANET_RADIUS,
+      seed: this.params.seed,
+      chunksPerFace: CHUNKS_PER_FACE,
+      zones,
+      quality: {
+        chunkRes: Math.max(12, Math.round(p.terrainRes / 3)),
+        dotsPerTree: p.dotsPerTree,
+        collapsePx: p.collapsePx,
+        densityScale: (p.treeCount / 260) * (this.params.density / 100),
+        nearChunks: p.name === 'mobil' ? 3 : 5,
+        capacity: p.name === 'mobil' ? { trees: 1400, dots: 14000, props: 300, animals: 160 } : { trees: 2600, dots: 45000, props: 400, animals: 220 },
+      },
+      path: { nodesPerZone: NODES_PER_ZONE, turns: 2.75, clearNode: 3.4, clearPath: 1.0 },
+      loadsPerFrame: 2,
+    });
+    this.world = world;
+    this.planet.add(world.group);
+    world.terrainBands.value = this.params.bands;
+    world.fog.steps.value = this.params.fogSteps;
+
+    const sunIdx = skySunIndices(zones[0]!.palette);
+    const sky = createSkyDome({
+      lookup: world.lookup,
+      skyRow: world.rows[0]!.sky,
       steps: sunIdx.steps,
       sunIndex: sunIdx.sun,
       ringIndex: sunIdx.ring,
       sunDirWorld: this.sunDirWorld,
+      skyRowB: world.skyRowB,
+      skyMix: world.skyMix,
       horizonY: this.skyHorizon,
     });
-    this.camera.add(this.sky);
-    this.disposables.push(this.sky.geometry, this.sky.material as { dispose(): void });
-
-    this.trackball.attach(ctx.canvas);
-    // Preset bestimmt Baumzahl, Auflösung, Schattenkarte, DPR; danach alle Parameter anwenden
-    this.applyParams({ ...this.params, treeCount: this.preset.treeCount }, true);
-    this.resize(ctx);
-  }
-
-  // --- Aufbau ------------------------------------------------------------------------------------
-
-  private buildTerrain(): void {
-    this.terrain?.removeFromParent();
-    this.terrain?.geometry.dispose();
-    this.filler?.removeFromParent();
-    this.filler?.geometry.dispose();
-
-    const patch = generateCapPatch(this.capParams);
-    this.patch = patch;
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new BufferAttribute(patch.positions, 3));
-    geometry.setAttribute('normal', new BufferAttribute(patch.normals, 3));
-    geometry.setAttribute('uv', new BufferAttribute(patch.uvs, 2));
-    geometry.setAttribute('height', new BufferAttribute(patch.height, 1));
-    geometry.setAttribute('biome', new BufferAttribute(patch.biome, 1));
-    geometry.setIndex(new BufferAttribute(patch.indices, 1));
-    const material = new EarleMaterial({
-      lookup: this.lookup,
-      row: this.rows.terrain,
-      fog: this.fog,
-      bands: this.terrainBands,
-      bandScale: 2.0,
-      terminator: -0.05,
-      lift: attribute('height', 'float').mul(0.45),
-    });
-    const terrain = new Mesh(geometry, material);
-    terrain.name = 'terrain';
-    terrain.castShadow = true;
-    terrain.receiveShadow = true;
-    terrain.frustumCulled = false;
-    this.planet.add(terrain);
-    this.terrain = terrain;
-    this.disposables.push(material);
-
-    // Füllkugel: der Rest des Planeten (Horizontkrümmung) mit demselben Höhenfeld, knapp unter dem Patch.
-    const [ws, hs] = this.preset.fillerSegments;
-    const sphere = generateDisplacedSphere({ ...this.capParams, widthSegments: ws, heightSegments: hs, radiusOffset: -0.03 });
-    const fillerGeometry = new BufferGeometry();
-    fillerGeometry.setAttribute('position', new BufferAttribute(sphere.positions, 3));
-    fillerGeometry.setAttribute('normal', new BufferAttribute(sphere.normals, 3));
-    fillerGeometry.setIndex(new BufferAttribute(sphere.indices, 1));
-    const fillerMaterial = new EarleMaterial({
-      lookup: this.lookup,
-      row: this.rows.terrain,
-      fog: this.fog,
-      bands: this.terrainBands,
-      bandScale: 2.0,
-      terminator: -0.05,
-    });
-    const filler = new Mesh(fillerGeometry, fillerMaterial);
-    filler.name = 'planet-filler';
-    filler.castShadow = false;
-    filler.receiveShadow = true;
-    filler.frustumCulled = false;
-    this.planet.add(filler);
-    this.filler = filler;
-    this.disposables.push(fillerMaterial);
-  }
-
-  private buildVegetation(): void {
-    if (!this.patch) return;
-    this.vegetation?.dispose();
-    const trees = scatterTrees({
-      seed: this.params.seed,
-      count: this.params.treeCount,
-      minDist: 1.45,
-      cap: this.capParams,
-      clumpiness: 0.6,
-    });
-    // Sonnenrichtung im Patch-Raum (für die sonnenseitige Punktverteilung)
-    this.rig.updateWorldMatrix(true, true);
-    const sunLocal = this.sun.directionWorld(new Vector3());
-    this.planet.updateWorldMatrix(true, false);
-    sunLocal.applyQuaternion(this.planet.quaternion.clone().invert());
-    this.vegetation = new EarleVegetation({
-      trees,
-      lookup: this.lookup,
-      canopyRow: this.rows.canopy,
-      fog: this.fog,
-      bands: this.canopyBands,
-      sunDirLocal: sunLocal,
-      seed: this.params.seed,
-      dotsPerTree: this.preset.dotsPerTree,
-      collapsePx: this.preset.collapsePx,
-    });
-    this.planet.add(this.vegetation.group);
-    this.vegetation.setGrowth(this.params.growth);
-    // Schattenkamera: Patch-Grenzen plus Vegetationshöhe
-    const b = this.patch.bounds;
-    this.shadowBounds.min.set(b.min[0], b.min[1], b.min[2]);
-    this.shadowBounds.max.set(b.max[0], b.max[1] + this.vegetation.hMax, b.max[2]);
-    this.shadowBounds.expandByScalar(1);
-    this.shadowDirty = true;
-  }
-
-  private buildFogStripes(): void {
-    this.fogStripes?.dispose();
+    this.camera.add(sky);
+    this.disposables.push(sky.geometry, sky.material as { dispose(): void }, { dispose: () => sky.removeFromParent() });
     this.fogStripes = new FogStripes({
-      lookup: this.lookup,
-      fogRow: this.rows.fog,
+      lookup: world.lookup,
+      fogRow: world.fog.row,
       colorIndex: 5,
-      count: this.preset.fogStripes,
+      count: p.fogStripes,
       firstDistance: 6,
-      spacing: this.preset.fogStripes > 2 ? 5 : 8,
+      spacing: p.fogStripes > 2 ? 5 : 8,
       curvatureRadius: PLANET_RADIUS,
     });
     this.rig.add(this.fogStripes.group);
+    this.shadowDirty = true;
   }
 
   /** Pixel-Ratio-Override: CanvasHost setzt min(DPR, 2), das Preset deckelt weiter (Mobil 1.5). */
@@ -299,24 +203,18 @@ export class EarleLabScene implements SceneController {
 
   // --- Parameter ----------------------------------------------------------------------------------
 
-  /** Parameter live setzen (React und Bench rufen das). Löst Listener aus, wenn sich etwas geändert hat. */
   setParams(patch: Partial<EarleLabParams>): void {
-    const next = { ...this.params, ...patch };
-    if (patch.quality !== undefined && patch.quality !== this.params.quality && patch.treeCount === undefined) {
-      next.treeCount = resolveQuality(patch.quality).treeCount;
-    }
-    this.applyParams(next, false);
+    this.applyParams({ ...this.params, ...patch }, false);
   }
 
   getParams(): EarleLabParams {
-    return { ...this.params };
+    return { ...this.params, cracksClosed: [...this.params.cracksClosed] };
   }
 
   getResolvedQuality(): ResolvedQuality {
     return this.preset.name;
   }
 
-  /** Listener für Parameteränderungen (auch programmatische), z. B. damit Regler nachziehen. */
   subscribe(listener: (p: EarleLabParams) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -324,28 +222,27 @@ export class EarleLabScene implements SceneController {
 
   private applyParams(next: EarleLabParams, force: boolean): void {
     const prev = this.params;
-    const changed = force || (Object.keys(next) as Array<keyof EarleLabParams>).some((k) => next[k] !== prev[k]);
+    const keys = Object.keys(next) as Array<keyof EarleLabParams>;
+    const changed = force || keys.some((k) => (k === 'cracksClosed' ? next.cracksClosed.join() !== prev.cracksClosed.join() : next[k] !== prev[k]));
     this.params = next;
     if (!changed) return;
-    if (this.ctx) {
+    if (this.ctx && this.world) {
       const preset = resolveQuality(next.quality);
       const presetChanged = force || preset.name !== this.preset.name;
       this.preset = preset;
-      if (presetChanged) {
+      if (presetChanged || next.seed !== prev.seed || next.density !== prev.density) {
         this.applyDpr();
         this.sun.setMapSize(preset.shadowMapSize);
-        this.buildTerrain();
-        this.buildVegetation();
-        this.buildFogStripes();
-      } else if (next.seed !== prev.seed) {
-        this.buildTerrain();
-        this.buildVegetation();
-      } else if (next.treeCount !== prev.treeCount) {
-        this.buildVegetation();
+        this.buildWorld();
       }
-      if (force || next.growth !== prev.growth) {
-        this.vegetation?.setGrowth(next.growth);
+      const world = this.world;
+      world.terrainBands.value = Math.max(2, Math.min(5, Math.round(next.bands)));
+      world.fog.steps.value = Math.max(2, Math.min(6, Math.round(next.fogSteps)));
+      next.cracksClosed.forEach((closed, i) => world.setCrackClosed(i, closed));
+      if (force || next.progress !== prev.progress) {
+        world.setProgress(next.progress);
         this.shadowDirty = true;
+        if (!force) this.turnToNode(Math.max(0, Math.min(next.progress, world.path.nodes.length - 1)));
       }
       if (force || next.sunElevation !== prev.sunElevation || next.sunAzimuth !== prev.sunAzimuth) {
         this.sun.setAngles(next.sunElevation, next.sunAzimuth);
@@ -355,10 +252,8 @@ export class EarleLabScene implements SceneController {
         this.sun.setSharpen(next.hardShadow);
         this.shadowDirty = true;
       }
-      this.terrainBands.value = Math.max(2, Math.min(5, Math.round(next.bands)));
-      this.fog.steps.value = Math.max(2, Math.min(6, Math.round(next.fogSteps)));
     }
-    for (const l of this.listeners) l({ ...this.params });
+    for (const l of this.listeners) l(this.getParams());
   }
 
   // --- Kamera / Interaktion -----------------------------------------------------------------------
@@ -382,9 +277,57 @@ export class EarleLabScene implements SceneController {
     this.shadowDirty = true;
   }
 
-  /** Konstante Drehung um die Hochachse des Patches (rad/s), 0 = aus. Für die Bench "rotierend". */
+  /** Konstante Drehung um die Hochachse (rad/s), 0 = aus. Für die Bench "rotierend". */
   setAutoRotate(radPerSec: number): void {
     this.autoRotate = radPerSec;
+  }
+
+  /** Weltrichtung (vom Planetenmittelpunkt), die im unteren Drittel erscheint. */
+  private computeTargetDir(): void {
+    const cam = this.probe;
+    cam.aspect = this.camera.aspect;
+    cam.fov = this.camera.fov;
+    cam.position.copy(CAMERA_OFFSET).add(this.rig.position);
+    cam.lookAt(this.tmp.copy(LOOK_AT).add(this.rig.position));
+    cam.updateMatrixWorld(true);
+    cam.updateProjectionMatrix();
+    const origin = cam.position.clone();
+    const dir = this.tmp.set(0, TARGET_NDC_Y, 0.5).unproject(cam).sub(origin).normalize();
+    const r = PLANET_RADIUS + 0.9;
+    const b = origin.dot(dir);
+    const c = origin.lengthSq() - r * r;
+    const disc = b * b - c;
+    if (disc < 0) {
+      this.targetDir.set(0, 1, 0);
+      return;
+    }
+    this.targetDir.copy(origin).addScaledVector(dir, -b - Math.sqrt(disc)).normalize();
+  }
+
+  private nodeDirWorld(index: number, out: Vector3): Vector3 | null {
+    const node = this.world?.path.nodes[index];
+    if (!node) return null;
+    return out.set(node.position[0], node.position[1], node.position[2]).applyQuaternion(this.planet.quaternion).normalize();
+  }
+
+  /** Planet sofort so drehen, dass Knoten `index` im unteren Drittel liegt. */
+  snapToNode(index: number): void {
+    this.computeTargetDir();
+    const d = this.nodeDirWorld(index, this.tmp);
+    if (!d) return;
+    this.tmpQ.setFromUnitVectors(d, this.targetDir);
+    this.planet.quaternion.premultiply(this.tmpQ);
+    this.trackball.quaternion.copy(this.planet.quaternion);
+    this.shadowDirty = true;
+  }
+
+  /** Weich (Slerp, 1 s) zum Knoten drehen; ein Zug bricht ab. */
+  turnToNode(index: number): void {
+    this.computeTargetDir();
+    const d = this.nodeDirWorld(index, this.tmp);
+    if (!d) return;
+    const delta = new Quaternion().setFromUnitVectors(d, this.targetDir);
+    this.autoTurn = { q0: this.planet.quaternion.clone(), q1: delta.multiply(this.planet.quaternion.clone()), t: 0 };
   }
 
   resize(ctx: SceneContext): void {
@@ -394,7 +337,19 @@ export class EarleLabScene implements SceneController {
   }
 
   update(dt: number, _elapsed: number, ctx: SceneContext): void {
+    const world = this.world;
+    if (!world) return;
     let rotated = this.trackball.step(dt);
+    if (this.trackball.isDragging) this.autoTurn = null;
+    if (this.autoTurn) {
+      this.autoTurn.t = Math.min(1, this.autoTurn.t + dt / 1.0);
+      const t = this.autoTurn.t;
+      const e = t * t * (3 - 2 * t);
+      this.planet.quaternion.slerpQuaternions(this.autoTurn.q0, this.autoTurn.q1, e);
+      this.trackball.quaternion.copy(this.planet.quaternion);
+      rotated = true;
+      if (t >= 1) this.autoTurn = null;
+    }
     if (this.autoRotate !== 0 && dt > 0) {
       this.tmpQ.setFromAxisAngle(_Y, this.autoRotate * dt);
       this.trackball.quaternion.premultiply(this.tmpQ);
@@ -405,15 +360,28 @@ export class EarleLabScene implements SceneController {
       this.shadowDirty = true;
     }
     this.scene.updateMatrixWorld(true);
-    // Sonnenrichtung (Welt) für Himmel und Punkt-Tönung; Kameraachsen für die Billboards
     this.sun.directionWorld(this.sunDirWorld.value);
-    // Horizontsenke aus der Kamerahöhe über der Kugel: dip = acos(R / (R + h))
-    const camR = this.camera.getWorldPosition(this.tmp).length();
+    this.planet.getWorldQuaternion(this.tmpQ).invert();
+    this.sunLocal.copy(this.sunDirWorld.value).applyQuaternion(this.tmpQ);
+    world.vegetation.setSunDirection(this.sunDirWorld.value, this.sunLocal);
+
+    const camWorld = this.camera.getWorldPosition(this.tmp);
+    const camR = camWorld.length();
     this.skyHorizon.value = -Math.sin(Math.acos(Math.min(1, PLANET_RADIUS / Math.max(PLANET_RADIUS + 0.01, camR))));
-    this.vegetation?.setSunDirection(this.sunDirWorld.value);
-    this.vegetation?.updateCamera(this.camera);
+    this.tmpM.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+    this.frustum.setFromProjectionMatrix(this.tmpM, this.camera.coordinateSystem);
+    if (world.update(this.camera, camWorld, this.planet.matrixWorld, this.frustum)) this.shadowDirty = true;
+
+    // Zone unter dem Blickpunkt → Himmel/Nebel
+    const look = new Vector3(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(new Quaternion()));
+    const b = camWorld.dot(look);
+    const c = camWorld.lengthSq() - (PLANET_RADIUS + 0.5) ** 2;
+    const disc = b * b - c;
+    const dirWorld = disc >= 0 ? camWorld.clone().addScaledVector(look, -b - Math.sqrt(disc)).normalize() : camWorld.clone().normalize();
+    world.setViewZone(world.zoneCoordAt(dirWorld.applyQuaternion(this.tmpQ)));
+
     if (this.shadowDirty) {
-      this.sun.fitShadow(this.shadowBounds, this.planet.matrixWorld, (this.patch?.hMax ?? 2) + (this.vegetation?.hMax ?? 3));
+      if (!world.bounds.isEmpty()) this.sun.fitShadow(world.bounds, this.planet.matrixWorld, world.hTotal);
       this.sun.requestUpdate();
       this.shadowPasses++;
       this.shadowDirty = false;
@@ -423,16 +391,21 @@ export class EarleLabScene implements SceneController {
 
   // --- Messwerte ----------------------------------------------------------------------------------
 
-  getStats(): { drawCalls: number; shadowPasses: number; trees: number; dots: number; visibleTrees: number; preset: ResolvedQuality; dpr: number } {
+  getStats(): { drawCalls: number; shadowPasses: number; chunks: number; trees: number; dots: number; preset: ResolvedQuality; dpr: number; zone: string } {
     const info = this.ctx?.renderer.info as { render?: { drawCalls?: number } } | undefined;
+    const world = this.world;
+    let trees = 0;
+    if (world) for (const kind of Object.keys(world.vegetation.canopies) as Array<keyof typeof world.vegetation.canopies>) trees += world.vegetation.canopies[kind].count;
+    const zc = world ? world.zoneCoordAt(this.targetDir.clone().applyQuaternion(this.planet.quaternion.clone().invert())) : 0;
     return {
       drawCalls: info?.render?.drawCalls ?? 0,
       shadowPasses: this.shadowPasses,
-      trees: this.vegetation?.treeCount ?? 0,
-      dots: this.vegetation?.dotCount ?? 0,
-      visibleTrees: Math.floor((this.vegetation?.treeCount ?? 0) * this.params.growth),
+      chunks: world?.loadedCount ?? 0,
+      trees,
+      dots: (world?.vegetation.dots.geometry as { instanceCount?: number } | undefined)?.instanceCount ?? 0,
       preset: this.preset.name,
       dpr: this.ctx?.renderer.getPixelRatio() ?? 0,
+      zone: ZONE_CONTENTS[Math.min(ZONE_CONTENTS.length - 1, Math.floor(zc))]?.name ?? '',
     };
   }
 
@@ -451,19 +424,17 @@ export class EarleLabScene implements SceneController {
 
   dispose(): void {
     this.trackball.detach();
-    this.vegetation?.dispose();
+    this.world?.dispose();
     this.fogStripes?.dispose();
-    this.terrain?.geometry.dispose();
-    this.filler?.geometry.dispose();
     for (const d of this.disposables) d.dispose();
     this.sun.dispose();
-    this.atlas.dispose();
     if (this.ctx) {
       this.ctx.renderer.shadowMap.enabled = false;
       this.ctx.renderer.setPixelRatio(this.ctx.dpr);
     }
     this.listeners.clear();
     this.scene.clear();
+    this.world = null;
     this.ctx = null;
   }
 }

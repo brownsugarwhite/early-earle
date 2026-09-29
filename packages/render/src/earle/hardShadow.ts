@@ -18,7 +18,7 @@ export function createHardShadowFilter(light: DirectionalLight, depthPerTexel: U
   const { depthTexture, shadowCoord, shadow } = inputs;
   // Steigung des Empfängers zum Licht: tan θ = sqrt(1 − (N·L)²) / (N·L), begrenzt
   const ndl = normalView.dot(lightTargetDirection(light)).clamp(0.04, 1);
-  const tanTheta = ndl.mul(ndl).oneMinus().max(0).sqrt().div(ndl).clamp(1, 12);
+  const tanTheta = ndl.mul(ndl).oneMinus().max(0).sqrt().div(ndl).clamp(1, 20);
   const slopeBias = depthPerTexel.mul(tanTheta).mul(2.0);
   const reversed = (builder.renderer as { reversedDepthBuffer?: boolean }).reversedDepthBuffer === true;
   const z = reversed ? shadowCoord.z.add(slopeBias) : shadowCoord.z.sub(slopeBias);

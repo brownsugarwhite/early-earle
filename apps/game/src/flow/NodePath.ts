@@ -40,6 +40,8 @@ export class NodePath {
     readonly layout: PathLayout,
     /** Direction to the sun in the group's local space (for the offset shadows). */
     sunDirLocal: Vector3,
+    /** Optional hooks, e.g. to drive the planet's growth from the completed node count. */
+    private readonly hooks: { onProgress?: (current: number, done: number) => void } = {},
   ) {
     this.group.name = 'NodePath';
     const n = Math.max(1, layout.nodes.length);
@@ -124,6 +126,7 @@ export class NodePath {
       this.ring.quaternion.setFromUnitVectors(_Y, _n);
       this.ring.position.set(node.position[0], node.position[1], node.position[2]);
     }
+    this.hooks.onProgress?.(current, done);
   }
 
   get currentIndex(): number {
