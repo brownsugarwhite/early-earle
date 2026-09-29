@@ -26,3 +26,18 @@ code { font-family: ui-monospace, Menlo, monospace; background: rgba(255,255,255
 .perf-badge[data-backend='webgpu'] .perf-backend { color: var(--neon); }
 .perf-badge[data-backend='webgl2'] .perf-backend { color: var(--rust); }
 .perf-backend { font-weight: 700; }
+
+/* Grid-Lab HUD */
+.swipe-layer { position: absolute; inset: 0; touch-action: none; }
+.hud-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%; }
+.hud-field { display: inline-flex; gap: 8px; align-items: center; font-weight: 700; font-size: 14px; }
+.hud-field select { font: inherit; padding: 10px 12px; background: var(--paper); color: var(--ink); border: 0; box-shadow: var(--sun-shadow) var(--ink-soft); }
+.btn { font: inherit; font-weight: 900; padding: 12px 16px; background: var(--pink); color: var(--ink); border: 0; box-shadow: var(--sun-shadow) var(--ink-soft); cursor: pointer; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn:active:not(:disabled) { transform: translate(4px, 2px); box-shadow: 4px 1px 0 var(--ink-soft); }
+.hud-pill { padding: 8px 12px; background: var(--khaki); color: var(--ink); font-weight: 900; font-size: 14px; box-shadow: var(--sun-shadow) var(--ink-soft); }
+.hud-pill.done { background: var(--neon); }
+.rex-line { width: 100%; padding: 10px 14px; background: var(--paper); color: var(--ink); font-weight: 700; font-size: 16px; box-shadow: var(--sun-shadow) var(--ink-soft); }
+.rex-name { display: inline-block; margin-right: 8px; padding: 2px 8px; background: var(--teal); color: var(--ink); font-weight: 900; font-size: 12px; letter-spacing: 0.08em; }
+.hud-banner { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: var(--neon); color: var(--ink); font-family: var(--font-display); font-weight: 900; font-size: 22px; box-shadow: var(--sun-shadow) var(--ink-soft); }
+.hud-banner.lost { background: var(--rust); color: var(--paper); }

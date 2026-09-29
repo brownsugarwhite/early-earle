@@ -7,15 +7,7 @@
  * full line because they float over rifts and fences.
  */
 
-import {
-  CELL_OPEN,
-  CELL_PILLAR,
-  CELL_VOID,
-  DIR_INDEX,
-  DX,
-  DY,
-  indexOf,
-} from '../model';
+import { CELL_OPEN, CELL_PILLAR, CELL_VOID, DIR_INDEX, DX, DY, indexOf } from '../model';
 import type { LevelDef } from '../schema/level';
 import { mulberry32 } from '../rng';
 

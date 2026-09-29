@@ -21,7 +21,8 @@ export function createHistory(initial: LevelState, limit = 5): History {
 
 /** Records a new current state, dropping the oldest snapshot beyond the limit. */
 export function record(h: History, next: LevelState): History {
-  const past = h.past.length >= h.limit ? h.past.slice(h.past.length - h.limit + 1) : h.past.slice();
+  const past =
+    h.past.length >= h.limit ? h.past.slice(h.past.length - h.limit + 1) : h.past.slice();
   if (h.limit > 0) past.push(h.current);
   return { current: next, past, limit: h.limit };
 }

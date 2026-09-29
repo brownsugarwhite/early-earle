@@ -1,0 +1,449 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-29T14:05:24.374Z",
+  "solverVersion": "0.1.0",
+  "seeds": 200,
+  "halfWidth": 0.05,
+  "levels": [
+    {
+      "id": "tjorizo-001",
+      "file": "001.json",
+      "levelHash": 3587350674,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 99,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 502,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 41.16304199999999
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1.1428571428571428,
+          "meanMovesWon": 1.1428571428571428,
+          "meanScore": 501.2857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 2.8848750000000223
+        }
+      },
+      "name": "Zwei werden eins"
+    },
+    {
+      "id": "tjorizo-002",
+      "file": "002.json",
+      "levelHash": 3859421321,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 30,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 5.4,
+          "meanMovesWon": 5.4,
+          "meanScore": 164.25714285714287,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 513.215958
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 6.171428571428572,
+          "meanMovesWon": 6.171428571428572,
+          "meanScore": 162.22857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 8.036917000000017
+        }
+      },
+      "name": "Züge zählen"
+    },
+    {
+      "id": "tjorizo-003",
+      "file": "003.json",
+      "levelHash": 20631064,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 34,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.485714285714286,
+          "meanMovesWon": 11.485714285714286,
+          "meanScore": 221.71428571428572,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 1285.781
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 15.057142857142857,
+          "meanMovesWon": 15.057142857142857,
+          "meanScore": 221,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 16.38000000000011
+        }
+      },
+      "name": "Weiter so"
+    },
+    {
+      "id": "tjorizo-004",
+      "file": "004.json",
+      "levelHash": 686758516,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 30,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 20.17142857142857,
+          "meanMovesWon": 20.17142857142857,
+          "meanScore": 206.62857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 2220.267833
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 21.62857142857143,
+          "meanMovesWon": 21.62857142857143,
+          "meanScore": 200.02857142857144,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 25.69925000000012
+        }
+      },
+      "name": "Punkte sammeln"
+    },
+    {
+      "id": "tjorizo-005",
+      "file": "005.json",
+      "levelHash": 591010895,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 36,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 21.428571428571427,
+          "meanMovesWon": 21.428571428571427,
+          "meanScore": 342.9142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 3768.122707999999
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 24.65714285714286,
+          "meanMovesWon": 24.65714285714286,
+          "meanScore": 342.65714285714284,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 46.81537500000195
+        }
+      },
+      "name": "Der Vierundsechziger"
+    },
+    {
+      "id": "tjorizo-006",
+      "file": "006.json",
+      "levelHash": 1919423925,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar"],
+      "moves": 30,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 5.885714285714286,
+          "meanMovesWon": 5.885714285714286,
+          "meanScore": 161.94285714285715,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 680.2604589999974
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 6.942857142857143,
+          "meanMovesWon": 6.942857142857143,
+          "meanScore": 159.28571428571428,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 8.260167000000365
+        }
+      },
+      "name": "Der Pfeiler"
+    },
+    {
+      "id": "tjorizo-007",
+      "file": "007.json",
+      "levelHash": 4140329430,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar"],
+      "moves": 34,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.485714285714286,
+          "meanMovesWon": 11.485714285714286,
+          "meanScore": 220.68571428571428,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 1998.5244999999995
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 15.685714285714285,
+          "meanMovesWon": 15.685714285714285,
+          "meanScore": 220.14285714285714,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 29.813540999999532
+        }
+      },
+      "name": "Um die Ecke"
+    },
+    {
+      "id": "tjorizo-008",
+      "file": "008.json",
+      "levelHash": 3798019465,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar"],
+      "moves": 38,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 18.6,
+          "meanMovesWon": 18.6,
+          "meanScore": 347.2857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 3339.487083
+        },
+        "novice": {
+          "n": 132,
+          "wins": 120,
+          "pWin": 0.9090909090909091,
+          "wilson": [0.8478123270438168, 0.9472313120181494],
+          "attemptsEst": 1.1,
+          "meanMoves": 26.545454545454547,
+          "meanMovesWon": 25.4,
+          "meanScore": 346.030303030303,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 177.72541600000113
+        }
+      },
+      "name": "Zurückspulen"
+    },
+    {
+      "id": "tjorizo-009",
+      "file": "009.json",
+      "levelHash": 2718168951,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar"],
+      "moves": 36,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 25.314285714285713,
+          "meanMovesWon": 25.314285714285713,
+          "meanScore": 337.54285714285714,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 4555.749625
+        },
+        "novice": {
+          "n": 82,
+          "wins": 78,
+          "pWin": 0.9512195121951219,
+          "wilson": [0.8811836534035687, 0.9808692440261156],
+          "attemptsEst": 1.0512820512820513,
+          "meanMoves": 30.573170731707318,
+          "meanMovesWon": 30.294871794871796,
+          "meanScore": 306.0121951219512,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 137.57379200000014
+        }
+      },
+      "name": "Punkte am Pfeiler"
+    },
+    {
+      "id": "tjorizo-010",
+      "file": "010.json",
+      "levelHash": 1456717271,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 30,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 385,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 18.36037500000384
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 385,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 1.2762499999953434
+        }
+      },
+      "name": "Ehrenrunde"
+    }
+  ]
+}

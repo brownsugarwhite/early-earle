@@ -132,7 +132,9 @@ export function evaluate(b: Board, w: Weights = DEFAULT_WEIGHTS): number {
         for (let i = 0; i < n; i++) {
           const fl = b.floor[i]!;
           const isTarget =
-            g.type === 'heal' ? fl === FLOOR_WITHERED || fl === FLOOR_DEEP_WITHERED : fl === FLOOR_SPORE;
+            g.type === 'heal'
+              ? fl === FLOOR_WITHERED || fl === FLOOR_DEEP_WITHERED
+              : fl === FLOOR_SPORE;
           if (!isTarget) continue;
           targets++;
           if (b.tiers[i] !== 0 && hasMergePartner(b, i)) pot += 1;
@@ -155,7 +157,12 @@ export function evaluate(b: Board, w: Weights = DEFAULT_WEIGHTS): number {
           blockers++;
           for (let d = 0; d < 4; d++) {
             const j = geo.nb[d]![i]!;
-            if (j >= 0 && b.tiers[j] !== 0 && (b.flags[j]! & F_IMMOBILE) === 0 && hasMergePartner(b, j)) {
+            if (
+              j >= 0 &&
+              b.tiers[j] !== 0 &&
+              (b.flags[j]! & F_IMMOBILE) === 0 &&
+              hasMergePartner(b, j)
+            ) {
               pot += 0.5;
             }
           }
@@ -173,7 +180,6 @@ export function evaluate(b: Board, w: Weights = DEFAULT_WEIGHTS): number {
   let empty = 0;
   let oil = 0;
   let frag = 0;
-  let blobs = 0;
   for (let i = 0; i < n; i++) {
     if (geo.cellType[i] !== CELL_OPEN) continue;
     const t = b.tiers[i]!;
@@ -181,7 +187,6 @@ export function evaluate(b: Board, w: Weights = DEFAULT_WEIGHTS): number {
       if (b.scrap[i] === 0 && b.mound[i]! < 0 && b.rot[i] === 0 && b.fog[i] === 0) empty++;
       continue;
     }
-    blobs++;
     if (b.floor[i] === FLOOR_OIL) oil++;
     // boxed in by different tiers on all open sides?
     let boxed = true;

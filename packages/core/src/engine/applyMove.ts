@@ -268,7 +268,12 @@ function slidePhase(b: Board, d: number, ev: MoveEvent[] | null): boolean {
         const mat = sAm ? materialOf(f) : materialOf(sf);
         const movingId = b.ids[c]!;
         const settledId = b.ids[target]!;
-        if (sKind === KIND_LINE || sKind === KIND_BURST || mKind === KIND_LINE || mKind === KIND_BURST) {
+        if (
+          sKind === KIND_LINE ||
+          sKind === KIND_BURST ||
+          mKind === KIND_LINE ||
+          mKind === KIND_BURST
+        ) {
           ctx.fired.push({
             cell: target,
             sKind,
@@ -313,7 +318,14 @@ function slidePhase(b: Board, d: number, ev: MoveEvent[] | null): boolean {
         clearCell(b, c);
         changed = true;
         if (ev) {
-          ev.push({ type: 'slide', phase: P1, id, from: xy(b, c), to: xy(b, dest), path: pathCoords(b) });
+          ev.push({
+            type: 'slide',
+            phase: P1,
+            id,
+            from: xy(b, c),
+            to: xy(b, dest),
+            path: pathCoords(b),
+          });
         }
       }
     }
@@ -365,7 +377,8 @@ function hitCell(
     b.scrap[j] = b.scrap[j]! - 1;
     b.scrapCleared++;
     b.score += 5;
-    if (ev) ev.push({ type: 'blockerHit', phase, at: xy(b, j), kind: 'scrap', layersLeft: b.scrap[j]! });
+    if (ev)
+      ev.push({ type: 'blockerHit', phase, at: xy(b, j), kind: 'scrap', layersLeft: b.scrap[j]! });
     return;
   }
   const m = b.mound[j]!;
@@ -377,7 +390,8 @@ function hitCell(
     if (left === 0) {
       for (let i = 0; i < b.geo.n; i++) if (b.mound[i] === m) b.mound[i] = -1;
     }
-    if (ev) ev.push({ type: 'blockerHit', phase, at: xy(b, j), kind: 'scrapMound', layersLeft: left });
+    if (ev)
+      ev.push({ type: 'blockerHit', phase, at: xy(b, j), kind: 'scrapMound', layersLeft: left });
     return;
   }
   if (b.rot[j]! > 0) {
@@ -480,7 +494,13 @@ function sideEffectsPhase(b: Board, ev: MoveEvent[] | null): void {
 
 // ---- phase 3: specials ------------------------------------------------------------
 
-function specialCells(b: Board, at: number, kind: SpecialKind, axisV: boolean, out: number[]): void {
+function specialCells(
+  b: Board,
+  at: number,
+  kind: SpecialKind,
+  axisV: boolean,
+  out: number[],
+): void {
   const { w, h, cellType } = b.geo;
   const ax = at % w;
   const ay = Math.floor(at / w);
@@ -652,7 +672,8 @@ function dynamicsPhase(b: Board, d: number, ev: MoveEvent[] | null): void {
       placeBlob(b, j, b.tiers[c]!, b.flags[c]!, b.ids[c]!);
       clearCell(b, c);
       pushed[j] = 2; // do not process the same stray twice in one scan
-      if (ev) ev.push({ type: 'strayMove', phase: P4, id: b.ids[j]!, from: xy(b, c), to: xy(b, j) });
+      if (ev)
+        ev.push({ type: 'strayMove', phase: P4, id: b.ids[j]!, from: xy(b, c), to: xy(b, j) });
     }
   }
 
@@ -714,7 +735,8 @@ function graduationPhase(b: Board, ev: MoveEvent[] | null): void {
         b.delivered++;
         b.deliveredByTier[g.tier] = b.deliveredByTier[g.tier]! + 1;
         b.score += 1 << g.tier;
-        if (ev) ev.push({ type: 'deliver', phase: P5, id: b.ids[cell]!, at: xy(b, cell), tier: g.tier });
+        if (ev)
+          ev.push({ type: 'deliver', phase: P5, id: b.ids[cell]!, at: xy(b, cell), tier: g.tier });
         clearCell(b, cell);
       }
     }
@@ -777,7 +799,12 @@ export function spawnCandidates(b: Board, out: Int16Array | number[]): number {
   return count;
 }
 
-export function placeSpawn(b: Board, cell: number, entry: SpawnEntry, ev: MoveEvent[] | null): void {
+export function placeSpawn(
+  b: Board,
+  cell: number,
+  entry: SpawnEntry,
+  ev: MoveEvent[] | null,
+): void {
   const id = ++b.blobSeq;
   const kind = entry.kind === 'amoeba' ? KIND_AMOEBA : KIND_NORMAL;
   const material = zoneMaterial(b.level);
@@ -838,7 +865,12 @@ export function computeGoalProgress(b: Board): GoalProgress[] {
       case 'release':
         return { type: g.type, progress: b.released, target: g.count, done: b.released >= g.count };
       case 'heal':
-        return { type: g.type, progress: b.healed, target: b.healTotal, done: b.healed >= b.healTotal };
+        return {
+          type: g.type,
+          progress: b.healed,
+          target: b.healTotal,
+          done: b.healed >= b.healTotal,
+        };
       case 'collectSpores':
         return { type: g.type, progress: b.spores, target: g.count, done: b.spores >= g.count };
       case 'rescue':
@@ -872,7 +904,14 @@ export function finalizeMove(b: Board, ev: MoveEvent[] | null): void {
     if (!g.done) allDone = false;
     const p = prev[i];
     if (ev && (!p || p.progress !== g.progress || p.done !== g.done)) {
-      ev.push({ type: 'goalProgress', phase: P7, index: i, progress: g.progress, target: g.target, done: g.done });
+      ev.push({
+        type: 'goalProgress',
+        phase: P7,
+        index: i,
+        progress: g.progress,
+        target: g.target,
+        done: g.done,
+      });
     }
   }
   if (allDone) {
@@ -1071,7 +1110,8 @@ export function createState(level: LevelDef, seed: number): LevelState {
         break;
       case 'fog':
         b.fog[i] = 1;
-        if (bl.content) placeBlob(b, i, bl.content.tier, blobFlags(level, bl.content) | F_HIDDEN, ++b.blobSeq);
+        if (bl.content)
+          placeBlob(b, i, bl.content.tier, blobFlags(level, bl.content) | F_HIDDEN, ++b.blobSeq);
         break;
     }
   }

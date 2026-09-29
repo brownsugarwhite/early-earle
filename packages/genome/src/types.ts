@@ -28,18 +28,32 @@ export interface SdfProgram {
   noiseAmp: number;
   /** Noise frequency (cycles per blob unit). */
   noiseFreq: number;
+  /**
+   * Flat base: the body is cut off below this height (blob units) with a soft fillet, so blobs sit on
+   * the plate like the reference dome. Omit or use < -10 for no cut.
+   */
+  floorY?: number;
 }
 
 /** Volume-preserving squash: scale (1 + amount) along `axis`, 1/sqrt(1 + amount) perpendicular. */
 export interface Squash {
   axis: Vec3;
   amount: number;
+  /**
+   * 0..1: when stretched (amount > 0) the trailing half tapers into a teardrop pointing along `axis`
+   * (Florian's slide frames). Ignored for compression.
+   */
+  taper?: number;
 }
 
-/** Face: one slit eye in direction `dir` (blob-local, from the body centre), angular half-size `size`. */
+/**
+ * Face: slit eye(s) in direction `dir` (blob-local, from the main sphere), angular half-size `size`.
+ * `spacing` > 0 draws two slits offset sideways by ±spacing (radians); 0 = the single pezenpez slit.
+ */
 export interface Eye {
   dir: Vec3;
   size: number;
+  spacing: number;
 }
 
 /** Everything the renderer needs for one blob. Colours are sRGB hex strings. */

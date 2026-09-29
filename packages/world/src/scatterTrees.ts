@@ -39,9 +39,9 @@ export interface ScatterParams {
 
 /** Proportionen je Kronenform (Einheit = Kronenradius): Stammhöhe, Hüllzentrum-Höhe über dem Fußpunkt. */
 export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number; hull: number; top: number }> = {
-  dome: { radius: 1.1, trunk: 0.82, hull: 1.37, top: 2.1 },
-  cone: { radius: 0.8, trunk: 0.62, hull: 1.5, top: 2.85 },
-  stacked: { radius: 0.9, trunk: 0.78, hull: 1.8, top: 3.1 },
+  dome: { radius: 0.7, trunk: 0.82, hull: 1.37, top: 2.1 },
+  cone: { radius: 0.5, trunk: 0.62, hull: 1.5, top: 2.85 },
+  stacked: { radius: 0.55, trunk: 0.78, hull: 1.8, top: 3.1 },
 };
 
 /**

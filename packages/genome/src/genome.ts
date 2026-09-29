@@ -41,10 +41,11 @@ export function paletteFor(zone: ZoneId, tier: number, material: MaterialKind): 
   let highlight = mixHex('#ffffff', base, 0.08);
   let bubble = shiftHex(base, 0, 1.25, 0.6);
   if (material === 'fire') {
-    base = hslToHex(hue - 8, 0.95, 0.5);
-    inner = '#ffd25a';
+    // Fire is always ember orange with a yellow core, whatever the tier hue.
+    base = mixHex('#e8552a', hslToHex(hue, 0.9, 0.5), 0.15);
+    inner = '#ffcf4a';
     rim = '#ff8a3c';
-    highlight = '#fff6c8';
+    highlight = '#fff1b8';
     bubble = '#ffe9a0';
   } else if (material === 'gas') {
     base = shiftHex(base, 0, 1.05, 0.55);
@@ -72,47 +73,53 @@ export function genomeFor(zone: ZoneId, tier: number, seed: number | string = 0,
   const rng = makeRng(hash32(zone, t, seed));
   const mat = material ?? materialForTier(t);
 
-  // Body: main sphere + up to 7 lobes. Lobes are biased to the upper hemisphere and the sides so
-  // the flat bottom (contact with the plate) stays clean.
-  const lobeCount = Math.min(MAX_GENOME_SPHERES - 1, t - 1);
-  const spheres: SpherePrim[] = [{ center: [0, 0, 0], r: 1 }];
+  // Body: a dome (main sphere + a wider, lower base sphere, cut flat at the floor like the reference)
+  // plus up to 6 lobes. Lobes sit in the upper hemisphere and at the sides so the base stays clean;
+  // tier 1 keeps the pezenpez shoulder bump on the upper right.
+  const lobeCount = Math.min(MAX_GENOME_SPHERES - 2, t - 1);
+  const spheres: SpherePrim[] = [
+    { center: [0, 0.08, 0], r: 1 },
+    { center: [0, -0.3 - 0.05 * t, 0], r: 0.96 + 0.03 * t },
+  ];
+  if (t === 1) spheres.push({ center: [0.5, 0.5, 0.15], r: 0.52 });
   const golden = 2.399963; // golden angle spreads lobes around the body deterministically
   for (let i = 0; i < lobeCount; i++) {
     const ang = i * golden + rng.range(-0.4, 0.4);
-    const elev = rng.range(0.05, 0.75); // radians above the equator
-    const dist = rng.range(0.55, 0.85);
-    const r = rng.range(0.42, 0.68) * (1 + 0.04 * i);
+    const elev = rng.range(0.15, 0.9); // radians above the equator
+    const dist = rng.range(0.5, 0.8);
+    const r = rng.range(0.34, 0.55) * (1 + 0.03 * i);
     const dir: Vec3 = [Math.cos(ang) * Math.cos(elev), Math.sin(elev), Math.sin(ang) * Math.cos(elev)];
-    spheres.push({ center: [dir[0] * dist, dir[1] * dist, dir[2] * dist], r });
+    spheres.push({ center: [dir[0] * dist, dir[1] * dist + 0.1 * t, dir[2] * dist], r });
   }
 
   const viscosity = mat === 'jelly' ? rng.range(0.25, 0.45) : mat === 'liquid' ? rng.range(0.1, 0.25) : mat === 'gas' ? rng.range(0.5, 0.7) : rng.range(0.3, 0.5);
   const palette = paletteFor(zone, t, mat);
 
   // Eye: slightly right of centre, facing the camera-ish (+z), a little upward.
-  const eyeDir = normalize3([0.22 + rng.range(-0.05, 0.05), 0.18 + rng.range(-0.05, 0.08), 1]);
+  const eyeDir = normalize3([0.22 + rng.range(-0.05, 0.05), 0.3 + rng.range(-0.05, 0.08), 1]);
 
   return {
     spheres,
+    floorY: -1.05 - 0.05 * t,
     sminK: mat === 'liquid' ? rng.range(0.45, 0.6) : rng.range(0.3, 0.45),
-    noiseAmp: mat === 'gas' ? rng.range(0.12, 0.18) : mat === 'fire' ? rng.range(0.1, 0.16) : rng.range(0.035, 0.06),
-    noiseFreq: mat === 'gas' ? rng.range(1.2, 1.8) : rng.range(1.6, 2.4),
+    noiseAmp: mat === 'gas' ? rng.range(0.12, 0.18) : mat === 'fire' ? rng.range(0.1, 0.16) : rng.range(0.05, 0.07),
+    noiseFreq: mat === 'gas' ? rng.range(1.2, 1.8) : rng.range(0.8, 1.1),
     breathHz: rng.range(0.35, 0.6) * (mat === 'fire' ? 2 : 1),
-    squash: { axis: [0, 1, 0], amount: 0 },
+    squash: { axis: [0, 1, 0], amount: 0, taper: mat === 'gas' ? 0.2 : 0.55 },
     morph: 0,
     ...palette,
     gloss: mat === 'liquid' ? 0.9 : mat === 'gas' ? 0.15 : mat === 'fire' ? 0.3 : rng.range(0.55, 0.75),
     translucency: mat === 'jelly' ? rng.range(0.6, 0.8) : mat === 'liquid' ? 0.35 : mat === 'gas' ? 0.5 : 0.9,
     bubbleDensity: mat === 'jelly' ? rng.range(0.4, 0.7) : mat === 'liquid' ? 0.25 : 0,
     material: mat,
-    eye: { dir: eyeDir, size: 0.16 + 0.012 * t },
+    eye: { dir: eyeDir, size: 0.3 + 0.015 * t, spacing: t >= 3 ? 0.26 : 0 },
     viscosity,
   };
 }
 
 /** World-space scale of a tier (tier 1 ≈ 0.36 units on a 1-unit grid cell, growing per tier). */
 export function scaleForTier(tier: number): number {
-  return 0.36 * (1 + 0.09 * (Math.max(1, tier) - 1));
+  return 0.32 * (1 + 0.06 * (Math.max(1, tier) - 1));
 }
 
 /** Deep copy so callers can mutate a genome (merge timeline) without touching cached results. */
@@ -120,7 +127,7 @@ export function cloneParams(p: BlobParams): BlobParams {
   return {
     ...p,
     spheres: p.spheres.map((s) => ({ center: [...s.center] as Vec3, r: s.r })),
-    squash: { axis: [...p.squash.axis] as Vec3, amount: p.squash.amount },
-    eye: { dir: [...p.eye.dir] as Vec3, size: p.eye.size },
+    squash: { ...p.squash, axis: [...p.squash.axis] as Vec3 },
+    eye: { ...p.eye, dir: [...p.eye.dir] as Vec3 },
   };
 }

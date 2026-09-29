@@ -21,7 +21,24 @@
  */
 
 import type { Board, Coord } from '../model';
-import { CELL_OPEN, CELL_PILLAR, F_AXIS_V, F_CAGED, F_FROZEN, F_HIDDEN, F_SLEEPER, KIND_AMOEBA, KIND_BURST, KIND_LINE, KIND_STRAY, MAT_FIRE, MAT_GAS, MAT_LIQUID, kindOf, materialOf } from '../model';
+import {
+  CELL_OPEN,
+  CELL_PILLAR,
+  F_AXIS_V,
+  F_CAGED,
+  F_FROZEN,
+  F_HIDDEN,
+  F_SLEEPER,
+  KIND_AMOEBA,
+  KIND_BURST,
+  KIND_LINE,
+  KIND_STRAY,
+  MAT_FIRE,
+  MAT_GAS,
+  MAT_LIQUID,
+  kindOf,
+  materialOf,
+} from '../model';
 import { LevelSchema, type LevelDef, type LevelInput } from '../schema/level';
 
 type Floor = NonNullable<LevelInput['floors']>[number];
@@ -68,7 +85,8 @@ function parseFloor(tok: string, at: Coord): Floor {
     case '>':
       return { kind: 'current', at, dir: 'right' };
     default:
-      if (tok.startsWith('@') && tok.length === 2) return { kind: 'portal', at, portalId: tok.slice(1) };
+      if (tok.startsWith('@') && tok.length === 2)
+        return { kind: 'portal', at, portalId: tok.slice(1) };
       throw new Error(`unknown floor token '${tok}'`);
   }
 }
@@ -79,7 +97,6 @@ export function levelFromAscii(board: string, opts: AsciiOptions = {}): LevelDef
     .map((r) => r.trim())
     .filter((r) => r.length > 0)
     .map((r) => r.split(/\s+/));
-  const h = rows.length;
   const w = rows[0]?.length ?? 0;
   const mask: string[] = [];
   const start: Start[] = [...(opts.start ?? [])];

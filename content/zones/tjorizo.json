@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "tjorizo",
+  "name": "Tjorizo",
+  "palette": {
+    "sky": ["#7ce6d5", "#caf5e4"],
+    "terrainLight": "#b3bb6d",
+    "terrainDark": "#606e4f",
+    "ink": "#242c0b",
+    "accents": ["#c8542a", "#22baa9", "#b8ff2a"]
+  },
+  "levelRange": [1, 25],
+  "material": "jelly"
+}

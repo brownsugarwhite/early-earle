@@ -235,3 +235,124 @@ export function generateCapPatch(params: CapPatchParams): CapPatch {
     halfExtent,
   };
 }
+
+export interface DisplacedSphereParams extends CapPatchParams {
+  widthSegments?: number;
+  heightSegments?: number;
+  /** Radialer Versatz (z. B. -0.03, damit die Kugel knapp unter dem Patch liegt). */
+  radiusOffset?: number;
+}
+
+export interface DisplacedSphere {
+  vertexCount: number;
+  positions: Float32Array;
+  normals: Float32Array;
+  indices: Uint16Array | Uint32Array;
+}
+
+/**
+ * Ganze Planetenkugel mit demselben Höhenfeld wie das Patch (ohne Randausblendung): Füllkörper für den
+ * Horizont, damit Patch und Kugel nahtlos ineinander übergehen. Normalen per finiten Differenzen im Tangentialraum.
+ */
+export function generateDisplacedSphere(params: DisplacedSphereParams): DisplacedSphere {
+  const field = createCapField(params);
+  const R = field.params.radius + (params.radiusOffset ?? 0);
+  const ws = Math.max(8, Math.floor(params.widthSegments ?? 128));
+  const hs = Math.max(6, Math.floor(params.heightSegments ?? 64));
+  const n = (ws + 1) * (hs + 1);
+  const positions = new Float32Array(n * 3);
+  const normals = new Float32Array(n * 3);
+  const eps = 0.012;
+  const d: Vec3 = [0, 0, 0];
+  const t1: Vec3 = [0, 0, 0];
+  const t2: Vec3 = [0, 0, 0];
+  const pa: Vec3 = [0, 0, 0];
+  const pb: Vec3 = [0, 0, 0];
+  const pc: Vec3 = [0, 0, 0];
+  const pd: Vec3 = [0, 0, 0];
+  const displaced = (dx: number, dy: number, dz: number, out: Vec3): Vec3 => {
+    const l = Math.hypot(dx, dy, dz) || 1;
+    dx /= l;
+    dy /= l;
+    dz /= l;
+    const r = R + field.heightAt(dx, dy, dz);
+    out[0] = dx * r;
+    out[1] = dy * r;
+    out[2] = dz * r;
+    return out;
+  };
+  let k = 0;
+  for (let j = 0; j <= hs; j++) {
+    const v = j / hs;
+    const theta = v * Math.PI;
+    for (let i = 0; i <= ws; i++) {
+      const u = i / ws;
+      const phi = u * Math.PI * 2;
+      d[0] = -Math.sin(theta) * Math.cos(phi);
+      d[1] = Math.cos(theta);
+      d[2] = Math.sin(theta) * Math.sin(phi);
+      displaced(d[0], d[1], d[2], pa);
+      positions[k * 3] = pa[0];
+      positions[k * 3 + 1] = pa[1];
+      positions[k * 3 + 2] = pa[2];
+      // Tangentialbasis
+      const ax = Math.abs(d[1]) < 0.9 ? 0 : 1;
+      const ay = Math.abs(d[1]) < 0.9 ? 1 : 0;
+      t1[0] = ay * d[2] - 0 * d[1];
+      t1[1] = 0 * d[0] - ax * d[2];
+      t1[2] = ax * d[1] - ay * d[0];
+      const l1 = Math.hypot(t1[0], t1[1], t1[2]) || 1;
+      t1[0] /= l1;
+      t1[1] /= l1;
+      t1[2] /= l1;
+      t2[0] = d[1] * t1[2] - d[2] * t1[1];
+      t2[1] = d[2] * t1[0] - d[0] * t1[2];
+      t2[2] = d[0] * t1[1] - d[1] * t1[0];
+      displaced(d[0] + t1[0] * eps, d[1] + t1[1] * eps, d[2] + t1[2] * eps, pa);
+      displaced(d[0] - t1[0] * eps, d[1] - t1[1] * eps, d[2] - t1[2] * eps, pb);
+      displaced(d[0] + t2[0] * eps, d[1] + t2[1] * eps, d[2] + t2[2] * eps, pc);
+      displaced(d[0] - t2[0] * eps, d[1] - t2[1] * eps, d[2] - t2[2] * eps, pd);
+      const ex = pa[0] - pb[0];
+      const ey = pa[1] - pb[1];
+      const ez = pa[2] - pb[2];
+      const fx = pc[0] - pd[0];
+      const fy = pc[1] - pd[1];
+      const fz = pc[2] - pd[2];
+      let nx = ey * fz - ez * fy;
+      let ny = ez * fx - ex * fz;
+      let nz = ex * fy - ey * fx;
+      const nl = Math.hypot(nx, ny, nz) || 1;
+      nx /= nl;
+      ny /= nl;
+      nz /= nl;
+      if (nx * d[0] + ny * d[1] + nz * d[2] < 0) {
+        nx = -nx;
+        ny = -ny;
+        nz = -nz;
+      }
+      normals[k * 3] = nx;
+      normals[k * 3 + 1] = ny;
+      normals[k * 3 + 2] = nz;
+      k++;
+    }
+  }
+  const quads = ws * hs;
+  const indices = n <= 65535 ? new Uint16Array(quads * 6) : new Uint32Array(quads * 6);
+  let o = 0;
+  for (let j = 0; j < hs; j++) {
+    for (let i = 0; i < ws; i++) {
+      const a = j * (ws + 1) + i;
+      const b = a + 1;
+      const c = a + ws + 1;
+      const e = c + 1;
+      // von außen gesehen gegen den Uhrzeigersinn (θ von +Y nach -Y, φ um +Y)
+      indices[o++] = a;
+      indices[o++] = c;
+      indices[o++] = b;
+      indices[o++] = b;
+      indices[o++] = c;
+      indices[o++] = e;
+    }
+  }
+  return { vertexCount: n, positions, normals, indices };
+}

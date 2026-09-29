@@ -84,7 +84,10 @@ export const LevelSchema = z
     grid: z.object({
       w: Int.min(3).max(8),
       h: Int.min(3).max(8),
-      mask: z.array(z.string().regex(/^[.#P]+$/)).min(3).max(8),
+      mask: z
+        .array(z.string().regex(/^[.#P]+$/))
+        .min(3)
+        .max(8),
     }),
     fences: z.array(z.object({ a: Coord, b: Coord })).default([]),
     floors: z.array(Floor).default([]),
@@ -170,13 +173,15 @@ export const LevelSchema = z
       const dy = Math.abs(f.a[1] - f.b[1]);
       if (dx + dy !== 1) issue('fence cells must be orthogonally adjacent', ['fences', i]);
       for (const c of [f.a, f.b]) {
-        if (!inside(c) || cellAt(c) === '#') issue('fence must touch two non-void cells', ['fences', i]);
+        if (!inside(c) || cellAt(c) === '#')
+          issue('fence must touch two non-void cells', ['fences', i]);
       }
     });
 
     // Spawn sources on non-void cells; empty sources need the anyEmpty fallback.
     lvl.spawn.sources.forEach((s, i) => {
-      if (!inside(s) || cellAt(s) === '#') issue('spawn source must be on a non-void cell', ['spawn', 'sources', i]);
+      if (!inside(s) || cellAt(s) === '#')
+        issue('spawn source must be on a non-void cell', ['spawn', 'sources', i]);
     });
     if (lvl.spawn.sources.length === 0 && lvl.spawn.fallback !== 'anyEmpty') {
       issue("spawn without sources needs fallback 'anyEmpty'", ['spawn', 'fallback']);
@@ -193,8 +198,10 @@ export const LevelSchema = z
 
     // cap >= reachTier, deliver tier <= cap, start tiers below the cap.
     for (const [i, g] of lvl.goals.entries()) {
-      if (g.type === 'reachTier' && g.tier > lvl.cap) issue('cap must be >= reachTier', ['goals', i]);
-      if (g.type === 'deliver' && g.tier > lvl.cap) issue('deliver tier must be <= cap', ['goals', i]);
+      if (g.type === 'reachTier' && g.tier > lvl.cap)
+        issue('cap must be >= reachTier', ['goals', i]);
+      if (g.type === 'deliver' && g.tier > lvl.cap)
+        issue('deliver tier must be <= cap', ['goals', i]);
     }
     lvl.start.forEach((s, i) => {
       if (s.blob.tier >= lvl.cap) issue('start blob tier must be below the cap', ['start', i]);
@@ -237,7 +244,10 @@ export const LevelSchema = z
 
     // At most 4 distinct element kinds per level (King/Playrix rule).
     if (countElementKinds(lvl).size > 4) {
-      issue(`level uses ${countElementKinds(lvl).size} element kinds (max 4): ${[...countElementKinds(lvl)].join(', ')}`, ['blockers']);
+      issue(
+        `level uses ${countElementKinds(lvl).size} element kinds (max 4): ${[...countElementKinds(lvl)].join(', ')}`,
+        ['blockers'],
+      );
     }
   });
 
@@ -268,7 +278,10 @@ export function countElementKinds(lvl: {
   for (const f of lvl.floors) kinds.add(f.kind);
   for (const b of lvl.blockers) kinds.add(b.kind);
   for (const t of lvl.threats) kinds.add(t.kind);
-  if (lvl.start.some((s) => s.blob.kind === 'amoeba') || lvl.spawn.table.some((t) => t.kind === 'amoeba')) {
+  if (
+    lvl.start.some((s) => s.blob.kind === 'amoeba') ||
+    lvl.spawn.table.some((t) => t.kind === 'amoeba')
+  ) {
     kinds.add('amoeba');
   }
   if (lvl.specials.lineAt < SPECIAL_OFF) kinds.add('line');

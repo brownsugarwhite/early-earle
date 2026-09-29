@@ -69,7 +69,8 @@ describe('genomeFor', () => {
     const a = genomeFor('tjorizo', 1, 42);
     const b = genomeFor('tjorizo', 1, 42);
     expect(a).toEqual(b);
-    expect(a.spheres.length).toBe(1);
+    expect(a.spheres.length).toBe(3);
+    expect(evalSdf(a, [0, a.floorY! - 0.5, 0])).toBeGreaterThan(0); // flat base: nothing below the floor
     expect(a.baseColor).toBe('#7ce6d5');
     expect(a.innerColor).toBe('#2f7f7a');
     expect(a.material).toBe('jelly');
@@ -78,7 +79,7 @@ describe('genomeFor', () => {
     for (let t = 1; t <= 8; t++) {
       const g = genomeFor('luzz', t, 'x');
       expect(g.spheres.length).toBeLessThanOrEqual(8);
-      expect(g.spheres.length).toBe(Math.min(8, t));
+      expect(g.spheres.length).toBe(Math.min(8, t + 1 + (t === 1 ? 1 : 0)));
     }
     expect(scaleForTier(8)).toBeGreaterThan(scaleForTier(1));
     expect(genomeFor('tjorizo', 8, 0).material).toBe('fire');

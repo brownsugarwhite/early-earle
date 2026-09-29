@@ -5,7 +5,7 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "types": ["vite/client", "node"],
-    "paths": { "@/*": ["./src/*"] },
+    "paths": { "@/*": ["./src/*"], "@content/*": ["../../content/*"] },
     "baseUrl": "."
   },
   "include": ["src", "vite-plugins", "vite.config.ts", "playwright.config.ts", "e2e"]

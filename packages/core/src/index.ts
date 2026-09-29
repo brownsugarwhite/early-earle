@@ -23,3 +23,18 @@ export {
   spawnDistribution,
 } from './engine/applyMove';
 export * from './engine/snapshot';
+
+// solver
+export * from './solver/index';
+
+// testing helpers (ASCII boards, also handy for the editor's debug view)
+export {
+  levelFromAscii,
+  asciiTiers,
+  normalizeAscii,
+  expectedAscii,
+  type AsciiOptions,
+} from './testing/ascii';
+
+// generator
+export * from './generator/index';

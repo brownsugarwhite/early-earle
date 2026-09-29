@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { applyMove, createState, blobAtCoord } from './applyMove';
-import { applySpecialTokens, asciiTiers, expectedAscii, levelFromAscii, type AsciiOptions } from '../testing/ascii';
+import {
+  applySpecialTokens,
+  asciiTiers,
+  expectedAscii,
+  levelFromAscii,
+  type AsciiOptions,
+} from '../testing/ascii';
 import { cloneBoard, indexOf, type Dir, type LevelState } from '../model';
 import type { MoveEvent, MoveResult } from '../events';
 
@@ -18,14 +24,24 @@ function boardWithoutSpawn(res: MoveResult<LevelState>): string {
   return asciiTiers(b);
 }
 
-function play(board: string, dir: Dir, opts: AsciiOptions = {}, seed = 1): MoveResult<LevelState> | null {
+function play(
+  board: string,
+  dir: Dir,
+  opts: AsciiOptions = {},
+  seed = 1,
+): MoveResult<LevelState> | null {
   const level = levelFromAscii(board, opts);
   const s0 = createState(level, seed);
   applySpecialTokens(s0);
   return applyMove(s0, dir);
 }
 
-function expectMove(board: string, dir: Dir, expected: string, opts: AsciiOptions = {}): MoveResult<LevelState> {
+function expectMove(
+  board: string,
+  dir: Dir,
+  expected: string,
+  opts: AsciiOptions = {},
+): MoveResult<LevelState> {
   const res = play(board, dir, opts);
   expect(res, 'move should change the board').not.toBeNull();
   expect(boardWithoutSpawn(res!)).toBe(expectedAscii(expected));
@@ -40,7 +56,16 @@ describe('slide + merge (phase 1)', () => {
   it('slides a blob to the wall and emits a slide event with its path', () => {
     const res = expectMove('1 . . .', 'right', '. . . 1');
     const slide = res.events.find((e) => e.type === 'slide');
-    expect(slide).toMatchObject({ phase: 1, from: [0, 0], to: [3, 0], path: [[1, 0], [2, 0], [3, 0]] });
+    expect(slide).toMatchObject({
+      phase: 1,
+      from: [0, 0],
+      to: [3, 0],
+      path: [
+        [1, 0],
+        [2, 0],
+        [3, 0],
+      ],
+    });
   });
 
   it('merges equal tiers into the settled blob and hands out a fresh id', () => {
@@ -141,7 +166,15 @@ describe('layout elements', () => {
   it('portal teleports A → B and continues; exit blocked → stop before entering', () => {
     const res = expectMove('1 . @a . @a .', 'right', '. . . . . 1');
     const slide = res.events.find((e) => e.type === 'slide');
-    expect(slide).toMatchObject({ to: [5, 0], path: [[1, 0], [2, 0], [4, 0], [5, 0]] });
+    expect(slide).toMatchObject({
+      to: [5, 0],
+      path: [
+        [1, 0],
+        [2, 0],
+        [4, 0],
+        [5, 0],
+      ],
+    });
     expectMove('1 . @a . 3F/@a .', 'right', '. 1 . . 3F .');
   });
 });
@@ -172,7 +205,13 @@ describe('amoeba', () => {
 describe('side effects at the landing cell and its neighbours (phase 2)', () => {
   it('scrap next to a merge landing loses a layer; clearScrap goal tracks it', () => {
     const res = expectMove('. 1 1 X2', 'right', '. . 2 X1', { goals: [{ type: 'clearScrap' }] });
-    expect(res.events).toContainEqual({ type: 'blockerHit', phase: 2, at: [3, 0], kind: 'scrap', layersLeft: 1 });
+    expect(res.events).toContainEqual({
+      type: 'blockerHit',
+      phase: 2,
+      at: [3, 0],
+      kind: 'scrap',
+      layersLeft: 1,
+    });
     expect(res.state.goalProgress[0]).toMatchObject({ progress: 1, target: 2, done: false });
     // a slide next to scrap does nothing
     expect(play('1 . . X2', 'right')!.state.scrap[3]).toBe(2);
@@ -186,19 +225,39 @@ describe('side effects at the landing cell and its neighbours (phase 2)', () => 
       `. 2 M3 M3
        . . M3 M3`,
     );
-    expect(res.events).toContainEqual({ type: 'blockerHit', phase: 2, at: [2, 0], kind: 'scrapMound', layersLeft: 3 });
+    expect(res.events).toContainEqual({
+      type: 'blockerHit',
+      phase: 2,
+      at: [2, 0],
+      kind: 'scrapMound',
+      layersLeft: 3,
+    });
   });
 
   it('merge landing on withered heals, on deep withered lifts one step, on spore collects', () => {
     const r1 = expectMove('1 1/w . .', 'right', '. . . 2', {}); // landing at [3,0] – not withered
     expect(types(r1.events)).not.toContain('heal');
     const r2 = expectMove('. . 1 1/w', 'right', '. . . 2', { goals: [{ type: 'heal' }] });
-    expect(r2.events).toContainEqual({ type: 'heal', phase: 2, at: [3, 0], from: 'withered', to: 'healed' });
+    expect(r2.events).toContainEqual({
+      type: 'heal',
+      phase: 2,
+      at: [3, 0],
+      from: 'withered',
+      to: 'healed',
+    });
     expect(r2.state.status).toBe('won');
     const r3 = expectMove('. . 1 1/d', 'right', '. . . 2', { goals: [{ type: 'heal' }] });
-    expect(r3.events).toContainEqual({ type: 'heal', phase: 2, at: [3, 0], from: 'deepWithered', to: 'withered' });
+    expect(r3.events).toContainEqual({
+      type: 'heal',
+      phase: 2,
+      at: [3, 0],
+      from: 'deepWithered',
+      to: 'withered',
+    });
     expect(r3.state.status).toBe('playing');
-    const r4 = expectMove('. . 1 1/s', 'right', '. . . 2', { goals: [{ type: 'collectSpores', count: 1 }] });
+    const r4 = expectMove('. . 1 1/s', 'right', '. . . 2', {
+      goals: [{ type: 'collectSpores', count: 1 }],
+    });
     expect(r4.events).toContainEqual({ type: 'collect', phase: 2, at: [3, 0], total: 1 });
     expect(r4.state.status).toBe('won');
   });
@@ -208,11 +267,25 @@ describe('side effects at the landing cell and its neighbours (phase 2)', () => 
     expect(thaw.events).toContainEqual({ type: 'thaw', phase: 2, at: [3, 0], id: 3 });
     const wake = expectMove('. 1 1 2S', 'right', '. . 2 2');
     expect(types(wake.events)).toContain('wake');
-    const cage = expectMove('. 1 1 2C', 'right', '. . 2 2', { goals: [{ type: 'rescue', count: 1 }] });
-    expect(cage.events).toContainEqual({ type: 'cageOpen', phase: 2, at: [3, 0], id: 3, layersLeft: 0 });
+    const cage = expectMove('. 1 1 2C', 'right', '. . 2 2', {
+      goals: [{ type: 'rescue', count: 1 }],
+    });
+    expect(cage.events).toContainEqual({
+      type: 'cageOpen',
+      phase: 2,
+      at: [3, 0],
+      id: 3,
+      layersLeft: 0,
+    });
     expect(cage.state.status).toBe('won');
     const cage2 = expectMove('. 1 1 2C2', 'right', '. . 2 2C');
-    expect(cage2.events).toContainEqual({ type: 'cageOpen', phase: 2, at: [3, 0], id: 3, layersLeft: 1 });
+    expect(cage2.events).toContainEqual({
+      type: 'cageOpen',
+      phase: 2,
+      at: [3, 0],
+      id: 3,
+      layersLeft: 1,
+    });
     const fog = expectMove('. 1 1 3H', 'right', '. . 2 3');
     expect(fog.events).toContainEqual({ type: 'reveal', phase: 2, at: [3, 0], id: 3 });
     const fogEmpty = expectMove('. 1 1 H', 'right', '. . 2 .');
@@ -236,7 +309,14 @@ describe('side effects at the landing cell and its neighbours (phase 2)', () => 
 describe('specials (phase 3)', () => {
   it('promotes the last merge result to a line blob at lineAt merges (axis = swipe axis)', () => {
     const res = expectMove('1 1 2 2', 'left', '2 3L . .', { lineAt: 2 });
-    expect(res.events).toContainEqual({ type: 'promote', phase: 3, id: 6, at: [1, 0], kind: 'line', axis: 'h' });
+    expect(res.events).toContainEqual({
+      type: 'promote',
+      phase: 3,
+      id: 6,
+      at: [1, 0],
+      kind: 'line',
+      axis: 'h',
+    });
     const vert = expectMove(
       `1 2
        1 2`,
@@ -250,7 +330,10 @@ describe('specials (phase 3)', () => {
 
   it('promotes to burst at burstAt merges (takes precedence over line)', () => {
     const res = expectMove('1 1 2 2 3 3', 'left', '2 3 4B . . .', { lineAt: 2, burstAt: 3 });
-    expect(res.events.find((e) => e.type === 'promote')).toMatchObject({ kind: 'burst', at: [2, 0] });
+    expect(res.events.find((e) => e.type === 'promote')).toMatchObject({
+      kind: 'burst',
+      at: [2, 0],
+    });
   });
 
   it('a line blob fires when it merges: clears its row/column (blockers lose a layer)', () => {
@@ -264,7 +347,13 @@ describe('specials (phase 3)', () => {
     );
     const sp = res.events.find((e) => e.type === 'special');
     expect(sp).toMatchObject({ phase: 3, kind: 'line', at: [1, 0] });
-    expect(res.events).toContainEqual({ type: 'blockerHit', phase: 3, at: [3, 0], kind: 'scrap', layersLeft: 0 });
+    expect(res.events).toContainEqual({
+      type: 'blockerHit',
+      phase: 3,
+      at: [3, 0],
+      kind: 'scrap',
+      layersLeft: 0,
+    });
     // the blob in the row was removed
     expect(sp && sp.type === 'special' ? sp.removed.map((r) => r.at) : []).toEqual([[0, 0]]);
   });
@@ -279,7 +368,10 @@ describe('specials (phase 3)', () => {
        . . 3
        . . .`,
     );
-    expect(col.events.find((e) => e.type === 'special')).toMatchObject({ kind: 'line', at: [2, 1] });
+    expect(col.events.find((e) => e.type === 'special')).toMatchObject({
+      kind: 'line',
+      at: [2, 1],
+    });
     // the 1 and the 3 slid into column 2 before the blast and were cleared by it
     expect(col.state.tiers[indexOf(3, [2, 0])]).toBe(0);
 
@@ -292,7 +384,10 @@ describe('specials (phase 3)', () => {
        . 4 . .
        . . . 8`,
     );
-    expect(burst.events.find((e) => e.type === 'special')).toMatchObject({ kind: 'burst', at: [1, 1] });
+    expect(burst.events.find((e) => e.type === 'special')).toMatchObject({
+      kind: 'burst',
+      at: [1, 1],
+    });
     expect(blobAtCoord(burst.state, [1, 1])).toMatchObject({ tier: 4, kind: 'normal' });
 
     const cross = expectMove(
@@ -304,7 +399,10 @@ describe('specials (phase 3)', () => {
        3 . .
        . 6 7`,
     );
-    expect(cross.events.find((e) => e.type === 'special')).toMatchObject({ kind: 'cross', at: [0, 1] });
+    expect(cross.events.find((e) => e.type === 'special')).toMatchObject({
+      kind: 'cross',
+      at: [0, 1],
+    });
   });
 });
 
@@ -325,7 +423,13 @@ describe('dynamics (phase 4)', () => {
 
   it('a stray does not slide; it steps one cell in the swipe direction and calms when boxed in', () => {
     const res = expectMove('1W . 2 .', 'right', '. 1W . 2');
-    expect(res.events).toContainEqual({ type: 'strayMove', phase: 4, id: 2, from: [0, 0], to: [1, 0] });
+    expect(res.events).toContainEqual({
+      type: 'strayMove',
+      phase: 4,
+      id: 2,
+      from: [0, 0],
+      to: [1, 0],
+    });
     const calm = expectMove(
       `1W P .
        P  1 .`,
@@ -373,7 +477,10 @@ describe('dynamics (phase 4)', () => {
 
 describe('graduation (phase 5)', () => {
   it('a blob reaching the cap is released and counts for release goals', () => {
-    const res = expectMove('2 2 . .', 'left', '. . . .', { cap: 3, goals: [{ type: 'release', count: 1 }] });
+    const res = expectMove('2 2 . .', 'left', '. . . .', {
+      cap: 3,
+      goals: [{ type: 'release', count: 1 }],
+    });
     expect(res.events).toContainEqual({ type: 'release', phase: 5, id: 3, at: [0, 0], tier: 3 });
     expect(res.state.released).toBe(1);
     expect(res.state.status).toBe('won');
@@ -388,7 +495,11 @@ describe('graduation (phase 5)', () => {
       `. . . .
        . . . .
        . 2 . .`,
-      { cap: 4, goals: [{ type: 'release', count: 5 }], spawn: { table: [{ tier: 2, weight: 1 }] } },
+      {
+        cap: 4,
+        goals: [{ type: 'release', count: 5 }],
+        spawn: { table: [{ tier: 2, weight: 1 }] },
+      },
     );
     const bomb = res.events.find((e) => e.type === 'tierBomb');
     expect(bomb).toMatchObject({ phase: 5, tier: 1 });
@@ -396,7 +507,9 @@ describe('graduation (phase 5)', () => {
   });
 
   it('deliver goals take the ordered tier off the board', () => {
-    const res = expectMove('1 1 . .', 'left', '. . . .', { goals: [{ type: 'deliver', tier: 2, count: 1 }] });
+    const res = expectMove('1 1 . .', 'left', '. . . .', {
+      goals: [{ type: 'deliver', tier: 2, count: 1 }],
+    });
     expect(res.events).toContainEqual({ type: 'deliver', phase: 5, id: 3, at: [0, 0], tier: 2 });
     expect(res.state.status).toBe('won');
   });
@@ -417,7 +530,10 @@ describe('spawn (phase 6)', () => {
     const spawn = res.events.find((e) => e.type === 'spawn');
     expect(spawn).toMatchObject({ phase: 6, tier: 2 });
     const at = spawn && spawn.type === 'spawn' ? spawn.at : [-1, -1];
-    expect([[1, 3], [0, 2]]).toContainEqual(at);
+    expect([
+      [1, 3],
+      [0, 2],
+    ]).toContainEqual(at);
     expect(res.state.spawnQueue).toEqual([{ tier: 2, kind: 'normal' }]);
   });
 
@@ -447,7 +563,14 @@ describe('goals, moves and terminal states (phase 7)', () => {
     const res = applyMove(s0, 'left')!;
     expect(res.state.status).toBe('won');
     expect(types(res.events)).toContain('won');
-    expect(res.events).toContainEqual({ type: 'goalProgress', phase: 7, index: 0, progress: 4, target: 4, done: true });
+    expect(res.events).toContainEqual({
+      type: 'goalProgress',
+      phase: 7,
+      index: 0,
+      progress: 4,
+      target: 4,
+      done: true,
+    });
   });
 
   it('loses when the last move is used up', () => {

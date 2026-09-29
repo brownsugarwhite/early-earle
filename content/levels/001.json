@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "id": "tjorizo-001",
+  "zone": "tjorizo",
+  "name": "Zwei werden eins",
+  "grid": {
+    "w": 4,
+    "h": 4,
+    "mask": ["....", "....", "....", "...."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [3, 1],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 2],
+      "blob": {
+        "tier": 2
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "reachTier",
+      "tier": 3
+    }
+  ],
+  "moves": 99,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1, 1.1],
+    "style": "journey"
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createCapField, generateCapPatch } from './capPatch';
+import { createCapField, generateCapPatch, generateDisplacedSphere } from './capPatch';
 
 const params = { radius: 40, arcDeg: 40, res: 32, seed: 1234 };
 
@@ -92,5 +92,55 @@ describe('generateCapPatch', () => {
     expect(pos[0]).toBeCloseTo(p.positions[k * 3]!, 4);
     expect(pos[1]).toBeCloseTo(p.positions[k * 3 + 1]!, 4);
     expect(pos[2]).toBeCloseTo(p.positions[k * 3 + 2]!, 4);
+  });
+});
+
+describe('generateDisplacedSphere', () => {
+  it('ist deterministisch und liegt im Höhenband der Kappe', () => {
+    const a = generateDisplacedSphere({ ...params, widthSegments: 32, heightSegments: 16, radiusOffset: -0.03 });
+    const b = generateDisplacedSphere({ ...params, widthSegments: 32, heightSegments: 16, radiusOffset: -0.03 });
+    expect(a.positions).toEqual(b.positions);
+    expect(a.normals).toEqual(b.normals);
+    expect(a.vertexCount).toBe(33 * 17);
+    for (let i = 0; i < a.vertexCount; i++) {
+      const r = Math.hypot(a.positions[i * 3]!, a.positions[i * 3 + 1]!, a.positions[i * 3 + 2]!);
+      expect(r).toBeGreaterThanOrEqual(40 - 0.03 - 1e-4);
+      expect(r).toBeLessThanOrEqual(40 - 0.03 + 1.8 + 1e-4);
+      const dot =
+        a.normals[i * 3]! * a.positions[i * 3]! + a.normals[i * 3 + 1]! * a.positions[i * 3 + 1]! + a.normals[i * 3 + 2]! * a.positions[i * 3 + 2]!;
+      expect(dot).toBeGreaterThan(0);
+    }
+  });
+
+  it('Dreiecke sind von außen gegen den Uhrzeigersinn gewickelt (Front = außen)', () => {
+    for (const geo of [
+      generateDisplacedSphere({ ...params, widthSegments: 24, heightSegments: 12 }),
+      generateCapPatch({ ...params, res: 16 }),
+    ]) {
+      let outward = 0;
+      let inward = 0;
+      const p = geo.positions;
+      for (let i = 0; i < geo.indices.length; i += 3) {
+        const a = geo.indices[i]! * 3;
+        const b = geo.indices[i + 1]! * 3;
+        const c = geo.indices[i + 2]! * 3;
+        const abx = p[b]! - p[a]!, aby = p[b + 1]! - p[a + 1]!, abz = p[b + 2]! - p[a + 2]!;
+        const acx = p[c]! - p[a]!, acy = p[c + 1]! - p[a + 1]!, acz = p[c + 2]! - p[a + 2]!;
+        const nx = aby * acz - abz * acy, ny = abz * acx - abx * acz, nz = abx * acy - aby * acx;
+        const d = nx * p[a]! + ny * p[a + 1]! + nz * p[a + 2]!;
+        if (d > 1e-9) outward++;
+        else if (d < -1e-9) inward++;
+      }
+      expect(inward).toBe(0);
+      expect(outward).toBeGreaterThan(0);
+    }
+  });
+
+  it('stimmt am Scheitel mit dem Höhenfeld des Patches überein (nahtlos)', () => {
+    const f = createCapField(params);
+    const s = generateDisplacedSphere({ ...params, widthSegments: 64, heightSegments: 32 });
+    // Vertex j=0 ist der Nordpol (0, R+h, 0)
+    const y = s.positions[1]!;
+    expect(y).toBeCloseTo(40 + f.heightAt(0, 1, 0), 3);
   });
 });

@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "id": "tjorizo-009",
+  "zone": "tjorizo",
+  "name": "Punkte am Pfeiler",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", "..P..", "....."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [2, 2],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 4],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [4, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 2],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [4, 2],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "score",
+      "points": 260
+    }
+  ],
+  "moves": 36,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1, 1.1],
+    "style": "diligent"
+  }
+}

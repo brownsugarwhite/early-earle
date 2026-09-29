@@ -1,0 +1,19 @@
+{
+  "name": "@ee/tools-levels",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Level-Werkzeuge: Generator (content/levels/NNN.json) und Solver-Kalibrierung",
+  "type": "module",
+  "scripts": {
+    "generate": "tsx generate.ts",
+    "calibrate": "tsx calibrate.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ee/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.0"
+  }
+}

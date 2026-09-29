@@ -5,12 +5,21 @@ import type { SdfProgram, Squash, Vec3 } from './types';
 export const SDF_NOISE_OCTAVES = 2;
 /** Idle breathing amplitude (relative radius) — must match compileSdf.ts. */
 export const BREATH_AMPLITUDE = 0.03;
+/** Fillet radius of the flat base (blob units) — must match compileSdf.ts. */
+export const FLOOR_FILLET = 0.18;
+/** Floor values below this disable the cut. */
+export const NO_FLOOR = -100;
 
 /** Polynomial smooth minimum (Quilez, quadratic). k = 0 → hard min. */
 export function smin(a: number, b: number, k: number): number {
   if (k <= 0) return Math.min(a, b);
   const h = Math.max(k - Math.abs(a - b), 0) / k;
   return Math.min(a, b) - h * h * k * 0.25;
+}
+
+/** Smooth maximum (intersection) with the same polynomial blend. */
+export function smax(a: number, b: number, k: number): number {
+  return -smin(-a, -b, k);
 }
 
 /** Per-axis scale of a volume-preserving squash: (1 + a) along the axis, 1/sqrt(1 + a) across. */
@@ -34,7 +43,10 @@ export function inverseSquash(p: Vec3, squash: Squash): { q: Vec3; lipschitz: nu
   const par = p[0] * nx + p[1] * ny + p[2] * nz;
   const perp: Vec3 = [p[0] - par * nx, p[1] - par * ny, p[2] - par * nz];
   const parS = par / along;
-  const perpS = 1 / across;
+  // Teardrop: behind the centre (against the axis) the body gets thinner while stretched.
+  const taper = (squash.taper ?? 0) * Math.max(0, squash.amount);
+  const behind = Math.min(1, Math.max(0, -parS)); // 0 at the centre, 1 one unit behind
+  const perpS = (1 / across) * (1 + taper * behind * behind * (3 - 2 * behind));
   return {
     q: [perp[0] * perpS + parS * nx, perp[1] * perpS + parS * ny, perp[2] * perpS + parS * nz],
     lipschitz: Math.max(1 / along, perpS),
@@ -79,6 +91,8 @@ export function evalSdf(program: SdfProgram, p: Vec3, opts: EvalOptions = {}): n
     // 2-octave fractal noise has gradient ≤ ~1.5 · freq · amp: shrink steps accordingly.
     lipschitz *= 1 + program.noiseAmp * f * 2.5;
   }
+  const floorY = program.floorY ?? NO_FLOOR;
+  if (floorY > NO_FLOOR) d = smax(d, floorY - q[1], FLOOR_FILLET);
   return d / lipschitz;
 }
 
