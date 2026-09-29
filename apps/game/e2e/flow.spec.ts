@@ -43,11 +43,14 @@ test('/play startet auf der Map mit Glas-HUD; Spielen fliegt ins Level, Wisch/Ta
   await page.getByTestId('play-btn').click();
   await expect(hud).toHaveAttribute('data-flow-state', /flyIn|level/, { timeout: 3_000 });
   await expect(hud).toHaveAttribute('data-flow-state', 'level', { timeout: 10_000 });
-  await page.keyboard.press('ArrowLeft');
-  await page.waitForTimeout(700);
-  await page.keyboard.press('ArrowRight');
-  await page.waitForTimeout(700);
-  // Level 1 (2, 2, 4, 4 → 8) is won after these two moves; the top blob departs back to the map.
+  // Level 1 (2, 2, 4, 4 → 8) is won after a left and a right swipe. Under SwiftShader frames are slow,
+  // so we keep swiping (the grid store queues one pending move) until the flow leaves the level.
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press(i % 2 === 0 ? 'ArrowLeft' : 'ArrowRight');
+    await page.waitForTimeout(900);
+    const state = await hud.getAttribute('data-flow-state');
+    if (state === 'depart' || state === 'map') break;
+  }
   await expect(hud).toHaveAttribute('data-flow-state', /depart|map/, { timeout: 8_000 });
   await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: 10_000 });
   await expect(page.getByTestId('hud-top').locator('h1')).toContainText('Level 2');

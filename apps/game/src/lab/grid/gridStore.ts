@@ -24,6 +24,8 @@ export interface GridLabState {
   moveSeq: number;
   showNumbers: boolean;
   animating: boolean;
+  /** Ein während der Animation eingegebener Wisch (Warteschlange Tiefe 1). */
+  pendingDir: Dir | null;
   rex: string | null;
   attempt: number;
   loadLevel: (index: number, attempt?: number) => void;
@@ -49,6 +51,7 @@ export const useGridStore = create<GridLabState>((set, get) => ({
   moveSeq: 0,
   showNumbers: true,
   animating: false,
+  pendingDir: null,
   rex: null,
   attempt: 1,
   loadLevel: (index, attempt = 1) => {
@@ -64,6 +67,7 @@ export const useGridStore = create<GridLabState>((set, get) => ({
       lastMove: null,
       moveSeq: 0,
       animating: false,
+      pendingDir: null,
       attempt,
       rex: rexIntroFor(levelNo(level)),
     });
@@ -74,7 +78,11 @@ export const useGridStore = create<GridLabState>((set, get) => ({
   },
   move: (dir) => {
     const { history, animating } = get();
-    if (!history || animating) return false;
+    if (!history) return false;
+    if (animating) {
+      set({ pendingDir: dir });
+      return true;
+    }
     const res = applyMove(history.current, dir);
     if (!res) return false;
     const next = record(history, res.state);
@@ -86,7 +94,7 @@ export const useGridStore = create<GridLabState>((set, get) => ({
     else if (lost) rex = rexLine('lose');
     else if (combo >= 2) rex = rexLine('combo', { combo });
     else if (res.events.some((e) => e.type === 'release')) rex = rexLine('release');
-    set({ history: next, state: res.state, lastMove: res, moveSeq: get().moveSeq + 1, animating: true, rex });
+    set({ history: next, state: res.state, lastMove: res, moveSeq: get().moveSeq + 1, animating: true, pendingDir: null, rex });
     return true;
   },
   rewindMove: () => {
@@ -95,6 +103,15 @@ export const useGridStore = create<GridLabState>((set, get) => ({
     const h = rewind(history);
     set({ history: h, state: h.current, lastMove: null, moveSeq: get().moveSeq + 1, rex: 'Zurück. Nichts passiert.' });
   },
-  setAnimating: (v) => set({ animating: v }),
+  setAnimating: (v) => {
+    set({ animating: v });
+    if (!v) {
+      const pending = get().pendingDir;
+      if (pending) {
+        set({ pendingDir: null });
+        get().move(pending);
+      }
+    }
+  },
   toggleNumbers: () => set({ showNumbers: !get().showNumbers }),
 }));
