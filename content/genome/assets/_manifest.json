@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "exported": [
+    {
+      "asset": "eye_slit",
+      "file": "content/genome/assets/eye_slit.glb",
+      "sockets": [
+        "SOCKET_root"
+      ],
+      "extras": {
+        "slot": "eye",
+        "scale_min": 0.8,
+        "scale_max": 1.5,
+        "tintable": false,
+        "material_family": "ink",
+        "chain": false,
+        "faces": 112
+      }
+    },
+    {
+      "asset": "eye_double_slit",
+      "file": "content/genome/assets/eye_double_slit.glb",
+      "sockets": [
+        "SOCKET_root.001"
+      ],
+      "extras": {
+        "slot": "eye",
+        "scale_min": 0.8,
+        "scale_max": 1.4,
+        "tintable": false,
+        "material_family": "ink",
+        "chain": false,
+        "faces": 192
+      }
+    },
+    {
+      "asset": "eye_round",
+      "file": "content/genome/assets/eye_round.glb",
+      "sockets": [
+        "SOCKET_root.002"
+      ],
+      "extras": {
+        "slot": "eye",
+        "scale_min": 0.8,
+        "scale_max": 1.6,
+        "tintable": false,
+        "material_family": "ink",
+        "chain": false,
+        "faces": 256
+      }
+    },
+    {
+      "asset": "eye_spiral",
+      "file": "content/genome/assets/eye_spiral.glb",
+      "sockets": [
+        "SOCKET_root.003"
+      ],
+      "extras": {
+        "slot": "eye",
+        "scale_min": 0.9,
+        "scale_max": 1.5,
+        "tintable": false,
+        "material_family": "ink",
+        "chain": false,
+        "faces": 338
+      }
+    },
+    {
+      "asset": "horn_curl",
+      "file": "content/genome/assets/horn_curl.glb",
+      "sockets": [
+        "SOCKET_root.004",
+        "SOCKET_tip"
+      ],
+      "extras": {
+        "slot": "horn",
+        "scale_min": 0.7,
+        "scale_max": 1.8,
+        "tintable": true,
+        "material_family": "shell",
+        "chain": false,
+        "faces": 68
+      }
+    },
+    {
+      "asset": "horn_spike",
+      "file": "content/genome/assets/horn_spike.glb",
+      "sockets": [
+        "SOCKET_root.005",
+        "SOCKET_tip.001"
+      ],
+      "extras": {
+        "slot": "horn",
+        "scale_min": 0.7,
+        "scale_max": 2.0,
+        "tintable": true,
+        "material_family": "shell",
+        "chain": false,
+        "faces": 12
+      }
+    },
+    {
+      "asset": "horn_nub",
+      "file": "content/genome/assets/horn_nub.glb",
+      "sockets": [
+        "SOCKET_root.006",
+        "SOCKET_tip.002"
+      ],
+      "extras": {
+        "slot": "horn",
+        "scale_min": 0.8,
+        "scale_max": 1.6,
+        "tintable": true,
+        "material_family": "shell",
+        "chain": false,
+        "faces": 96
+      }
+    },
+    {
+      "asset": "ear_round",
+      "file": "content/genome/assets/ear_round.glb",
+      "sockets": [
+        "SOCKET_root.007",
+        "SOCKET_tip.003"
+      ],
+      "extras": {
+        "slot": "ear",
+        "scale_min": 0.8,
+        "scale_max": 1.6,
+        "tintable": true,
+        "material_family": "jelly",
+        "chain": false,
+        "faces": 112
+      }
+    },
+    {
+      "asset": "ear_pointy",
+      "file": "content/genome/assets/ear_pointy.glb",
+      "sockets": [
+        "SOCKET_root.008",
+        "SOCKET_tip.004"
+      ],
+      "extras": {
+        "slot": "ear",
+        "scale_min": 0.8,
+        "scale_max": 1.7,
+        "tintable": true,
+        "material_family": "jelly",
+        "chain": false,
+        "faces": 12
+      }
+    },
+    {
+      "asset": "ear_floppy",
+      "file": "content/genome/assets/ear_floppy.glb",
+      "sockets": [
+        "SOCKET_root.009",
+        "SOCKET_tip.005"
+      ],
+      "extras": {
+        "slot": "ear",
+        "scale_min": 0.8,
+        "scale_max": 1.6,
+        "tintable": true,
+        "material_family": "jelly",
+        "chain": true,
+        "faces": 36
+      }
+    },
+    {
+      "asset": "trunk_short",
+      "file": "content/genome/assets/trunk_short.glb",
+      "sockets": [
+        "SOCKET_root.010",
+        "SOCKET_tip.006"
+      ],
+      "extras": {
+        "slot": "trunk",
+        "scale_min": 0.8,
+        "scale_max": 1.4,
+        "tintable": true,
+        "material_family": "jelly",
+        "chain": true,
+        "faces": 36
+      }
+    },
+    {
+      "asset": "trunk_long",
+      "file": "content/genome/assets/trunk_long.glb",
+      "sockets": [
+        "SOCKET_root.011",
+        "SOCKET_tip.007"
+      ],
+      "extras": {
+        "slot": "trunk",
+        "scale_min": 0.8,
+        "scale_max": 1.4,
+        "tintable": true,
+        "material_family": "jelly",
+        "chain": true,
+        "faces": 60
+      }
+    },
+    {
+      "asset": "tooth_tusk",
+      "file": "content/genome/assets/tooth_tusk.glb",
+      "sockets": [
+        "SOCKET_root.012"
+      ],
+      "extras": {
+        "slot": "tooth",
+        "scale_min": 0.8,
+        "scale_max": 1.6,
+        "tintable": false,
+        "material_family": "shell",
+        "chain": false,
+        "faces": 100
+      }
+    },
+    {
+      "asset": "tooth_row",
+      "file": "content/genome/assets/tooth_row.glb",
+      "sockets": [
+        "SOCKET_root.013"
+      ],
+      "extras": {
+        "slot": "tooth",
+        "scale_min": 0.8,
+        "scale_max": 1.4,
+        "tintable": false,
+        "material_family": "shell",
+        "chain": false,
+        "faces": 24
+      }
+    },
+    {
+      "asset": "wing_leaf",
+      "file": "content/genome/assets/wing_leaf.glb",
+      "sockets": [
+        "SOCKET_root.014",
+        "SOCKET_tip.008"
+      ],
+      "extras": {
+        "slot": "wing",
+        "scale_min": 0.8,
+        "scale_max": 1.8,
+        "tintable": true,
+        "material_family": "membrane",
+        "chain": false,
+        "faces": 11
+      }
+    },
+    {
+      "asset": "wing_bat",
+      "file": "content/genome/assets/wing_bat.glb",
+      "sockets": [
+        "SOCKET_root.015",
+        "SOCKET_tip.009"
+      ],
+      "extras": {
+        "slot": "wing",
+        "scale_min": 0.8,
+        "scale_max": 1.8,
+        "tintable": true,
+        "material_family": "membrane",
+        "chain": false,
+        "faces": 15
+      }
+    },
+    {
+      "asset": "leg_stub",
+      "file": "content/genome/assets/leg_stub.glb",
+      "sockets": [
+        "SOCKET_root.016",
+        "SOCKET_tip.010"
+      ],
+      "extras": {
+        "slot": "leg",
+        "scale_min": 0.8,
+        "scale_max": 1.5,
+        "tintable": true,
+        "material_family": "jelly",
+        "chain": false,
+        "faces": 96
+      }
+    },
+    {
+      "asset": "leg_tall",
+      "file": "content/genome/assets/leg_tall.glb",
+      "sockets": [
+        "SOCKET_root.017",
+        "SOCKET_tip.011"
+      ],
+      "extras": {
+        "slot": "leg",
+        "scale_min": 0.8,
+        "scale_max": 1.6,
+        "tintable": true,
+        "material_family": "jelly",
+        "chain": false,
+        "faces": 96
+      }
+    },
+    {
+      "asset": "tail_curl",
+      "file": "content/genome/assets/tail_curl.glb",
+      "sockets": [
+        "SOCKET_root.018",
+        "SOCKET_tip.012"
+      ],
+      "extras": {
+        "slot": "tail",
+        "scale_min": 0.8,
+        "scale_max": 1.6,
+        "tintable": true,
+        "material_family": "jelly",
+        "chain": true,
+        "faces": 36
+      }
+    },
+    {
+      "asset": "tail_tuft",
+      "file": "content/genome/assets/tail_tuft.glb",
+      "sockets": [
+        "SOCKET_root.019",
+        "SOCKET_tip.013"
+      ],
+      "extras": {
+        "slot": "tail",
+        "scale_min": 0.8,
+        "scale_max": 1.6,
+        "tintable": true,
+        "material_family": "fur",
+        "chain": true,
+        "faces": 106
+      }
+    },
+    {
+      "asset": "crest_tuft",
+      "file": "content/genome/assets/crest_tuft.glb",
+      "sockets": [
+        "SOCKET_root.020",
+        "SOCKET_tip.014"
+      ],
+      "extras": {
+        "slot": "crest",
+        "scale_min": 0.8,
+        "scale_max": 1.8,
+        "tintable": true,
+        "material_family": "jelly",
+        "chain": false,
+        "faces": 50
+      }
+    },
+    {
+      "asset": "crest_fin",
+      "file": "content/genome/assets/crest_fin.glb",
+      "sockets": [
+        "SOCKET_root.021",
+        "SOCKET_tip.015"
+      ],
+      "extras": {
+        "slot": "crest",
+        "scale_min": 0.8,
+        "scale_max": 1.6,
+        "tintable": true,
+        "material_family": "membrane",
+        "chain": false,
+        "faces": 13
+      }
+    }
+  ],
+  "skipped": []
+}

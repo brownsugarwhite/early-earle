@@ -9,6 +9,7 @@ export function LabIndex() {
         <Link className="tile" to="/lab/blob">P1 Blob-Lab</Link>
         <Link className="tile" to="/lab/earle">P2 Earle-Lab</Link>
         <Link className="tile" to="/lab/grid">P3 Grid-Lab</Link>
+        <Link className="tile" to="/lab/creature">P4 Genom-Lab</Link>
         <Link className="tile" to="/">◀ Start</Link>
       </nav>
     </main>

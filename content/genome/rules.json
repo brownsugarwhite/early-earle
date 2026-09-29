@@ -1,0 +1,989 @@
+{
+  "schemaVersion": 1,
+  "assets": {
+    "eye_slit": {
+      "slot": "eye",
+      "scale": [
+        0.8,
+        1.5
+      ],
+      "tintable": false,
+      "family": "ink"
+    },
+    "eye_round": {
+      "slot": "eye",
+      "scale": [
+        0.8,
+        1.6
+      ],
+      "tintable": false,
+      "family": "ink"
+    },
+    "eye_spiral": {
+      "slot": "eye",
+      "scale": [
+        0.9,
+        1.5
+      ],
+      "tintable": false,
+      "family": "ink"
+    },
+    "eye_double_slit": {
+      "slot": "eye",
+      "scale": [
+        0.8,
+        1.4
+      ],
+      "tintable": false,
+      "family": "ink"
+    },
+    "horn_curl": {
+      "slot": "horn",
+      "scale": [
+        0.7,
+        1.8
+      ],
+      "tintable": true,
+      "family": "shell"
+    },
+    "horn_spike": {
+      "slot": "horn",
+      "scale": [
+        0.7,
+        2
+      ],
+      "tintable": true,
+      "family": "shell"
+    },
+    "horn_nub": {
+      "slot": "horn",
+      "scale": [
+        0.8,
+        1.6
+      ],
+      "tintable": true,
+      "family": "shell"
+    },
+    "ear_round": {
+      "slot": "ear",
+      "scale": [
+        0.8,
+        1.6
+      ],
+      "tintable": true,
+      "family": "jelly"
+    },
+    "ear_pointy": {
+      "slot": "ear",
+      "scale": [
+        0.8,
+        1.7
+      ],
+      "tintable": true,
+      "family": "jelly"
+    },
+    "ear_floppy": {
+      "slot": "ear",
+      "scale": [
+        0.8,
+        1.6
+      ],
+      "tintable": true,
+      "family": "jelly",
+      "chain": true
+    },
+    "trunk_short": {
+      "slot": "trunk",
+      "scale": [
+        1,
+        1.6
+      ],
+      "tintable": true,
+      "family": "jelly",
+      "chain": true
+    },
+    "trunk_long": {
+      "slot": "trunk",
+      "scale": [
+        1,
+        1.5
+      ],
+      "tintable": true,
+      "family": "jelly",
+      "chain": true
+    },
+    "tooth_tusk": {
+      "slot": "tooth",
+      "scale": [
+        0.9,
+        1.6
+      ],
+      "tintable": false,
+      "family": "shell"
+    },
+    "tooth_row": {
+      "slot": "tooth",
+      "scale": [
+        1,
+        1.5
+      ],
+      "tintable": false,
+      "family": "shell"
+    },
+    "wing_leaf": {
+      "slot": "wing",
+      "scale": [
+        1,
+        2
+      ],
+      "tintable": true,
+      "family": "membrane"
+    },
+    "wing_bat": {
+      "slot": "wing",
+      "scale": [
+        1,
+        2
+      ],
+      "tintable": true,
+      "family": "membrane"
+    },
+    "leg_stub": {
+      "slot": "leg",
+      "scale": [
+        0.8,
+        1.5
+      ],
+      "tintable": true,
+      "family": "jelly"
+    },
+    "leg_tall": {
+      "slot": "leg",
+      "scale": [
+        0.8,
+        1.6
+      ],
+      "tintable": true,
+      "family": "jelly"
+    },
+    "tail_curl": {
+      "slot": "tail",
+      "scale": [
+        0.8,
+        1.6
+      ],
+      "tintable": true,
+      "family": "jelly",
+      "chain": true
+    },
+    "tail_tuft": {
+      "slot": "tail",
+      "scale": [
+        0.8,
+        1.6
+      ],
+      "tintable": true,
+      "family": "fur",
+      "chain": true
+    },
+    "crest_tuft": {
+      "slot": "crest",
+      "scale": [
+        1.3,
+        2.2
+      ],
+      "tintable": true,
+      "family": "jelly"
+    },
+    "crest_fin": {
+      "slot": "crest",
+      "scale": [
+        1.2,
+        2
+      ],
+      "tintable": true,
+      "family": "membrane"
+    }
+  },
+  "slots": {
+    "eye": {
+      "verbs": [
+        "blink",
+        "gaze"
+      ],
+      "tint": "ink",
+      "label": "Auge"
+    },
+    "horn": {
+      "verbs": [],
+      "tint": "inner",
+      "label": "Horn"
+    },
+    "ear": {
+      "verbs": [
+        "twitch"
+      ],
+      "tint": "inner",
+      "label": "Ohr"
+    },
+    "trunk": {
+      "verbs": [
+        "sway"
+      ],
+      "tint": "base",
+      "label": "Rüssel"
+    },
+    "tooth": {
+      "verbs": [],
+      "tint": "bone",
+      "label": "Zähne"
+    },
+    "wing": {
+      "verbs": [
+        "flap"
+      ],
+      "tint": "rim",
+      "label": "Flügel"
+    },
+    "leg": {
+      "verbs": [],
+      "tint": "inner",
+      "label": "Beine"
+    },
+    "tail": {
+      "verbs": [
+        "wag"
+      ],
+      "tint": "base",
+      "label": "Schweif"
+    },
+    "crest": {
+      "verbs": [
+        "bob"
+      ],
+      "tint": "accent",
+      "label": "Kamm"
+    }
+  },
+  "sockets": {
+    "eye": {
+      "theta": 0.3,
+      "phi": 0.3,
+      "ref": "up",
+      "mirror": true,
+      "tilt": 0,
+      "roll": 0,
+      "sink": 0.035,
+      "jitter": [
+        0.03,
+        0.03
+      ],
+      "spread": 0.42
+    },
+    "horn": {
+      "theta": 0.5,
+      "phi": 0.98,
+      "ref": "forward",
+      "mirror": true,
+      "tilt": -0.3,
+      "roll": 0,
+      "sink": 0.06,
+      "jitter": [
+        0.04,
+        0.03
+      ],
+      "spread": 0.35
+    },
+    "ear": {
+      "theta": 1.05,
+      "phi": 0.6,
+      "ref": "up",
+      "mirror": true,
+      "tilt": 0.2,
+      "roll": 0,
+      "sink": 0.05,
+      "jitter": [
+        0.05,
+        0.04
+      ],
+      "spread": 0.3
+    },
+    "trunk": {
+      "theta": 0,
+      "phi": 0.02,
+      "ref": "up",
+      "mirror": false,
+      "tilt": -0.75,
+      "roll": 0,
+      "sink": 0.1,
+      "jitter": [
+        0.02,
+        0.02
+      ],
+      "spread": 0.3
+    },
+    "tooth": {
+      "theta": 0,
+      "phi": -0.34,
+      "ref": "up",
+      "mirror": false,
+      "tilt": 0.15,
+      "roll": 0,
+      "sink": 0.06,
+      "jitter": [
+        0.02,
+        0.02
+      ],
+      "spread": 0.3
+    },
+    "wing": {
+      "theta": 1.7,
+      "phi": 0.55,
+      "ref": "up",
+      "mirror": true,
+      "tilt": 0.7,
+      "roll": 0,
+      "sink": 0.08,
+      "jitter": [
+        0.04,
+        0.04
+      ],
+      "spread": 0.3
+    },
+    "leg": {
+      "theta": 0.75,
+      "phi": -0.62,
+      "ref": "up",
+      "mirror": true,
+      "tilt": -0.55,
+      "roll": 0,
+      "sink": 0.06,
+      "jitter": [
+        0.03,
+        0.02
+      ],
+      "spread": 0.55
+    },
+    "tail": {
+      "theta": 3.1,
+      "phi": -0.12,
+      "ref": "up",
+      "mirror": false,
+      "tilt": 0.45,
+      "roll": 0,
+      "sink": 0.06,
+      "jitter": [
+        0.03,
+        0.03
+      ],
+      "spread": 0.3
+    },
+    "crest": {
+      "theta": 0,
+      "phi": 1.22,
+      "ref": "forward",
+      "mirror": false,
+      "tilt": 0.1,
+      "roll": 0,
+      "sink": 0.06,
+      "jitter": [
+        0.03,
+        0.02
+      ],
+      "spread": 0.4
+    }
+  },
+  "zones": {
+    "tjorizo": {
+      "tints": {
+        "ink": "#0f1c22",
+        "bone": "#f7f6d8",
+        "accent": "#22baa9"
+      },
+      "materialFrom": {
+        "liquid": 4,
+        "gas": 6,
+        "fire": 8
+      },
+      "tiers": {
+        "1": {
+          "unlock": [
+            {
+              "slot": "eye",
+              "variants": [
+                "eye_slit"
+              ],
+              "count": 1
+            }
+          ],
+          "note": "pezenpez: ein Augenschlitz"
+        },
+        "2": {
+          "grow": 1.08,
+          "note": "etwas größer"
+        },
+        "3": {
+          "unlock": [
+            {
+              "slot": "eye",
+              "variants": [
+                "eye_slit",
+                "eye_round"
+              ],
+              "count": 2
+            }
+          ],
+          "note": "zwei Augen"
+        },
+        "4": {
+          "unlock": [
+            {
+              "slot": "ear",
+              "variants": [
+                "ear_round",
+                "ear_pointy",
+                "ear_floppy"
+              ],
+              "count": 2,
+              "group": "kopf"
+            },
+            {
+              "slot": "horn",
+              "variants": [
+                "horn_curl",
+                "horn_spike",
+                "horn_nub"
+              ],
+              "count": 2,
+              "group": "kopf"
+            }
+          ],
+          "note": "Ohren oder Hörner"
+        },
+        "5": {
+          "unlock": [
+            {
+              "slot": "tooth",
+              "variants": [
+                "tooth_tusk",
+                "tooth_row"
+              ],
+              "count": 1
+            }
+          ],
+          "note": "Zähne/Stoßzähne"
+        },
+        "6": {
+          "unlock": [
+            {
+              "slot": "wing",
+              "variants": [
+                "wing_leaf",
+                "wing_bat"
+              ],
+              "count": 2
+            }
+          ],
+          "grow": 1.04,
+          "note": "Flügel"
+        },
+        "7": {
+          "unlock": [
+            {
+              "slot": "trunk",
+              "variants": [
+                "trunk_short",
+                "trunk_long"
+              ],
+              "count": 1
+            }
+          ],
+          "note": "Rüssel (verdrängt Stoßzähne)"
+        },
+        "8": {
+          "unlock": [
+            {
+              "slot": "crest",
+              "variants": [
+                "crest_tuft",
+                "crest_fin"
+              ],
+              "count": 1
+            }
+          ],
+          "grow": 1.1,
+          "note": "Kamm/Krone"
+        },
+        "9": {
+          "unlock": [
+            {
+              "slot": "leg",
+              "variants": [
+                "leg_stub",
+                "leg_tall"
+              ],
+              "count": 2
+            }
+          ],
+          "grow": 1.12,
+          "note": "Beine — wächst über die Zelle hinaus"
+        },
+        "10": {
+          "unlock": [
+            {
+              "slot": "tail",
+              "variants": [
+                "tail_curl",
+                "tail_tuft"
+              ],
+              "count": 1
+            },
+            {
+              "slot": "eye",
+              "variants": [
+                "eye_round",
+                "eye_spiral"
+              ],
+              "count": 3
+            }
+          ],
+          "grow": 1.15,
+          "note": "Schweif, drittes Auge"
+        },
+        "11": {
+          "unlock": [
+            {
+              "slot": "horn",
+              "variants": [
+                "horn_spike",
+                "horn_curl"
+              ],
+              "count": 4
+            }
+          ],
+          "grow": 1.2
+        },
+        "12": {
+          "unlock": [
+            {
+              "slot": "crest",
+              "variants": [
+                "crest_fin"
+              ],
+              "count": 2
+            }
+          ],
+          "grow": 1.25
+        }
+      }
+    },
+    "syrup": {
+      "tints": {
+        "ink": "#1a131b",
+        "bone": "#f7f6d8",
+        "accent": "#f17023"
+      },
+      "materialFrom": {
+        "liquid": 3,
+        "gas": 6,
+        "fire": 8
+      },
+      "tiers": {
+        "1": {
+          "unlock": [
+            {
+              "slot": "eye",
+              "variants": [
+                "eye_round"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        "2": {
+          "grow": 1.08
+        },
+        "3": {
+          "unlock": [
+            {
+              "slot": "eye",
+              "variants": [
+                "eye_round",
+                "eye_double_slit"
+              ],
+              "count": 2
+            }
+          ]
+        },
+        "4": {
+          "unlock": [
+            {
+              "slot": "horn",
+              "variants": [
+                "horn_curl",
+                "horn_nub"
+              ],
+              "count": 2
+            }
+          ]
+        },
+        "5": {
+          "unlock": [
+            {
+              "slot": "tooth",
+              "variants": [
+                "tooth_row"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        "6": {
+          "unlock": [
+            {
+              "slot": "wing",
+              "variants": [
+                "wing_bat"
+              ],
+              "count": 2
+            }
+          ],
+          "grow": 1.04
+        },
+        "7": {
+          "unlock": [
+            {
+              "slot": "trunk",
+              "variants": [
+                "trunk_long"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        "8": {
+          "unlock": [
+            {
+              "slot": "crest",
+              "variants": [
+                "crest_fin"
+              ],
+              "count": 1
+            }
+          ],
+          "grow": 1.1
+        },
+        "9": {
+          "unlock": [
+            {
+              "slot": "tail",
+              "variants": [
+                "tail_curl"
+              ],
+              "count": 1
+            }
+          ],
+          "grow": 1.12
+        },
+        "10": {
+          "unlock": [
+            {
+              "slot": "leg",
+              "variants": [
+                "leg_tall"
+              ],
+              "count": 2
+            }
+          ],
+          "grow": 1.15
+        }
+      }
+    },
+    "luzz": {
+      "tints": {
+        "ink": "#191b2f",
+        "bone": "#dbf8fa",
+        "accent": "#2de5f8"
+      },
+      "materialFrom": {
+        "liquid": 4,
+        "gas": 5,
+        "fire": 8
+      },
+      "tiers": {
+        "1": {
+          "unlock": [
+            {
+              "slot": "eye",
+              "variants": [
+                "eye_spiral"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        "2": {
+          "grow": 1.08
+        },
+        "3": {
+          "unlock": [
+            {
+              "slot": "eye",
+              "variants": [
+                "eye_spiral",
+                "eye_double_slit"
+              ],
+              "count": 2
+            }
+          ]
+        },
+        "4": {
+          "unlock": [
+            {
+              "slot": "ear",
+              "variants": [
+                "ear_pointy"
+              ],
+              "count": 2
+            }
+          ]
+        },
+        "5": {
+          "unlock": [
+            {
+              "slot": "crest",
+              "variants": [
+                "crest_fin"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        "6": {
+          "unlock": [
+            {
+              "slot": "wing",
+              "variants": [
+                "wing_leaf"
+              ],
+              "count": 2
+            }
+          ],
+          "grow": 1.04
+        },
+        "7": {
+          "unlock": [
+            {
+              "slot": "tail",
+              "variants": [
+                "tail_tuft"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        "8": {
+          "unlock": [
+            {
+              "slot": "horn",
+              "variants": [
+                "horn_spike"
+              ],
+              "count": 2
+            }
+          ],
+          "grow": 1.1
+        },
+        "9": {
+          "unlock": [
+            {
+              "slot": "tooth",
+              "variants": [
+                "tooth_tusk"
+              ],
+              "count": 1
+            }
+          ],
+          "grow": 1.12
+        },
+        "10": {
+          "unlock": [
+            {
+              "slot": "leg",
+              "variants": [
+                "leg_stub"
+              ],
+              "count": 2
+            }
+          ],
+          "grow": 1.15
+        }
+      }
+    },
+    "wooding": {
+      "tints": {
+        "ink": "#252d08",
+        "bone": "#f7f6d8",
+        "accent": "#ddd042"
+      },
+      "materialFrom": {
+        "liquid": 4,
+        "gas": 6,
+        "fire": 7
+      },
+      "tiers": {
+        "1": {
+          "unlock": [
+            {
+              "slot": "eye",
+              "variants": [
+                "eye_slit"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        "2": {
+          "grow": 1.08
+        },
+        "3": {
+          "unlock": [
+            {
+              "slot": "eye",
+              "variants": [
+                "eye_slit",
+                "eye_round"
+              ],
+              "count": 2
+            }
+          ]
+        },
+        "4": {
+          "unlock": [
+            {
+              "slot": "ear",
+              "variants": [
+                "ear_floppy",
+                "ear_round"
+              ],
+              "count": 2
+            }
+          ]
+        },
+        "5": {
+          "unlock": [
+            {
+              "slot": "tail",
+              "variants": [
+                "tail_tuft",
+                "tail_curl"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        "6": {
+          "unlock": [
+            {
+              "slot": "leg",
+              "variants": [
+                "leg_stub",
+                "leg_tall"
+              ],
+              "count": 2
+            }
+          ],
+          "grow": 1.04
+        },
+        "7": {
+          "unlock": [
+            {
+              "slot": "tooth",
+              "variants": [
+                "tooth_row"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        "8": {
+          "unlock": [
+            {
+              "slot": "crest",
+              "variants": [
+                "crest_tuft"
+              ],
+              "count": 1
+            }
+          ],
+          "grow": 1.1
+        },
+        "9": {
+          "unlock": [
+            {
+              "slot": "wing",
+              "variants": [
+                "wing_leaf"
+              ],
+              "count": 2
+            }
+          ],
+          "grow": 1.12
+        },
+        "10": {
+          "unlock": [
+            {
+              "slot": "horn",
+              "variants": [
+                "horn_nub"
+              ],
+              "count": 2
+            }
+          ],
+          "grow": 1.15
+        }
+      }
+    }
+  },
+  "compat": {
+    "minTier": {
+      "wing": 6,
+      "trunk": 5
+    },
+    "exclude": [
+      {
+        "when": "trunk",
+        "drop": "tooth_tusk"
+      },
+      {
+        "when": "crest_fin",
+        "drop": "crest_tuft"
+      }
+    ],
+    "maxParts": 24
+  },
+  "personality": {
+    "idleTempo": [
+      0.7,
+      1.4
+    ],
+    "skittish": [
+      0.1,
+      0.9
+    ],
+    "curiosity": [
+      0.3,
+      1
+    ],
+    "squashHardness": [
+      0.2,
+      0.8
+    ]
+  },
+  "inheritance": {
+    "carryChance": 0.6,
+    "tintBlend": 0.5,
+    "jitter": 0.1,
+    "tintJitterDeg": 8
+  }
+}

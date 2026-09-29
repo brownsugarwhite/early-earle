@@ -1,7 +1,11 @@
-export const GENOME_VERSION = '0.0.1';
+export const GENOME_VERSION = '0.0.2';
 export * from './types';
 export * from './rng';
 export * from './noise';
 export * from './color';
 export * from './sdf';
 export * from './genome';
+export * from './rules';
+export * from './sockets';
+export * from './procedural';
+export * from './creature';

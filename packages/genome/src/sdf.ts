@@ -1,5 +1,5 @@
 import { fractalNoise3 } from './noise';
-import type { SdfProgram, Squash, Vec3 } from './types';
+import type { MaterialKind, SdfProgram, Squash, Vec3 } from './types';
 
 /** Noise octaves used for the body displacement — must match compileSdf.ts on the GPU. */
 export const SDF_NOISE_OCTAVES = 2;
@@ -63,6 +63,16 @@ export interface EvalOptions {
   phase?: number;
   /** Noise octaves (default SDF_NOISE_OCTAVES; the render "Mobil" preset uses 1). */
   noiseOctaves?: number;
+  /**
+   * 0..1 travelling-wave jiggle energy (`BlobDynamics.jiggle` on the GPU). Adds the same ripple the
+   * shaders add, so sockets stay on the rendered surface while a blob wobbles after an impulse.
+   */
+  jiggle?: number;
+  /**
+   * Body material: gas and fire drift their noise faster and fire licks upward (as in compileSdf.ts).
+   * Omit for jelly/liquid (identical to the plain evaluation).
+   */
+  material?: MaterialKind;
 }
 
 /**
@@ -89,10 +99,18 @@ export function evalSdf(program: SdfProgram, p: Vec3, opts: EvalOptions = {}): n
   }
   if (program.noiseAmp > 0) {
     const f = program.noiseFreq;
-    d += fractalNoise3(q[0] * f + phase, q[1] * f + t * 0.35, q[2] * f, opts.noiseOctaves ?? SDF_NOISE_OCTAVES) * program.noiseAmp;
+    // Gas/fire swirl faster, fire licks upward (coordinates scroll down) — same terms as the GPU body.
+    const mat = opts.material;
+    const gasOrFire = mat === 'gas' || mat === 'fire' ? 1 : 0;
+    const fire = mat === 'fire' ? 1 : 0;
+    const drift = t * 0.35 + gasOrFire * t * 1.1;
+    const ampScale = 1 + fire * Math.max(q[1], 0) * 2;
+    d += fractalNoise3(q[0] * f + phase, q[1] * f + drift - t * fire * 2.5, q[2] * f, opts.noiseOctaves ?? SDF_NOISE_OCTAVES) * program.noiseAmp * ampScale;
     // 2-octave fractal noise has gradient ≤ ~1.5 · freq · amp: shrink steps accordingly.
-    lipschitz *= 1 + program.noiseAmp * f * 2.5;
+    lipschitz *= 1 + program.noiseAmp * f * 2.5 * ampScale;
   }
+  // Jiggle ripple shared with both render candidates: a travelling wave along y after impulses.
+  if (opts.jiggle) d += Math.sin(q[1] * 7 - t * 16 + phase) * opts.jiggle * 0.05;
   const floorY = program.floorY ?? NO_FLOOR;
   if (floorY > NO_FLOOR) d = smax(d, floorY - q[1], FLOOR_FILLET);
   return d / lipschitz;

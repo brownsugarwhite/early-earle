@@ -44,6 +44,29 @@ describe('evalSdf', () => {
   });
 });
 
+describe('evalSdf GPU-matching options', () => {
+  it('jiggle adds the travelling ripple, zero leaves the field untouched', () => {
+    const g = genomeFor('tjorizo', 2, 3);
+    const p: [number, number, number] = [0.2, 0.4, 0.95];
+    const base = evalSdf(g, p, { time: 1.5, breathHz: g.breathHz, phase: 0.4 });
+    expect(evalSdf(g, p, { time: 1.5, breathHz: g.breathHz, phase: 0.4, jiggle: 0 })).toBe(base);
+    const rippled = evalSdf(g, p, { time: 1.5, breathHz: g.breathHz, phase: 0.4, jiggle: 1 });
+    expect(rippled).not.toBe(base);
+    expect(Math.abs(rippled - base)).toBeLessThan(0.06);
+  });
+  it('jelly/liquid ignore the material option, gas and fire drift differently', () => {
+    const g = genomeFor('tjorizo', 6, 3);
+    const p: [number, number, number] = [0.1, 0.5, 0.9];
+    const opts = { time: 2, breathHz: g.breathHz };
+    expect(evalSdf(g, p, { ...opts, material: 'jelly' })).toBe(evalSdf(g, p, opts));
+    expect(evalSdf(g, p, { ...opts, material: 'liquid' })).toBe(evalSdf(g, p, opts));
+    expect(evalSdf(g, p, { ...opts, material: 'gas' })).not.toBe(evalSdf(g, p, opts));
+    expect(evalSdf(g, p, { ...opts, material: 'fire' })).not.toBe(evalSdf(g, p, { ...opts, material: 'gas' }));
+    // At t = 0 the drift terms vanish for gas (only the fire amplitude scaling differs).
+    expect(evalSdf(g, p, { material: 'gas' })).toBe(evalSdf(g, p, {}));
+  });
+});
+
 describe('noise', () => {
   it('is deterministic, bounded and varies', () => {
     expect(perlin3(0.3, 0.7, 1.1)).toBe(perlin3(0.3, 0.7, 1.1));

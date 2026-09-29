@@ -6,13 +6,20 @@ export type ZoneId = 'tjorizo' | 'syrup' | 'luzz' | 'wooding';
 export const ZONES: readonly ZoneId[] = ['tjorizo', 'syrup', 'luzz', 'wooding'];
 
 /** Hue offset per zone relative to Tjorizo's teal start palette (from the k-means zone palettes). */
-const ZONE_HUE_SHIFT: Record<ZoneId, number> = { tjorizo: 0, syrup: 130, luzz: 20, wooding: -110 };
+export const ZONE_HUE_SHIFT: Readonly<Record<ZoneId, number>> = { tjorizo: 0, syrup: 130, luzz: 20, wooding: -110 };
+
+/** One stop of the tier palette ramp (HSL, hue in degrees). */
+export interface RampStop {
+  hue: number;
+  sat: number;
+  light: number;
+}
 
 /**
  * Tier ramp of the blob sheet: teal → green → yellow → orange. Tier 1 is pezenpez (#7ce6d5 / #22baa9,
  * inner #2f7f7a). Hues in degrees, lightness of the base colour.
  */
-const TIER_RAMP: Array<{ hue: number; sat: number; light: number }> = [
+const TIER_RAMP: RampStop[] = [
   { hue: 171, sat: 0.68, light: 0.69 }, // 1 teal (pezenpez)
   { hue: 158, sat: 0.66, light: 0.66 }, // 2 mint
   { hue: 132, sat: 0.66, light: 0.62 }, // 3 green
@@ -31,12 +38,30 @@ export function materialForTier(tier: number): MaterialKind {
   return 'fire';
 }
 
-/** Palette for a (zone, tier, material). Exported so the merge timeline can crossfade toward a child. */
-export function paletteFor(zone: ZoneId, tier: number, material: MaterialKind): Pick<BlobParams, 'baseColor' | 'innerColor' | 'rimColor' | 'highlightColor' | 'bubbleColor'> {
-  const ramp = TIER_RAMP[Math.min(TIER_RAMP.length, Math.max(1, Math.round(tier))) - 1]!;
-  const hue = ramp.hue + ZONE_HUE_SHIFT[zone];
-  let base = tier === 1 && zone === 'tjorizo' ? '#7ce6d5' : hslToHex(hue, ramp.sat, ramp.light);
-  let inner = tier === 1 && zone === 'tjorizo' ? '#2f7f7a' : hslToHex(hue + 4, ramp.sat * 0.7, ramp.light * 0.5);
+/** The built-in blob-sheet ramp (read-only copy for editors that want to start from it). */
+export const DEFAULT_TIER_RAMP: readonly Readonly<RampStop>[] = TIER_RAMP;
+
+/** Optional palette override from `content/genome/rules.json` (per zone). */
+export interface PaletteOverride {
+  /** Replaces the built-in tier ramp (index = tier − 1; the last stop repeats for higher tiers). */
+  ramp?: readonly RampStop[] | undefined;
+  /** Replaces the built-in zone hue shift (degrees). */
+  hueShift?: number | undefined;
+}
+
+export type BlobPalette = Pick<BlobParams, 'baseColor' | 'innerColor' | 'rimColor' | 'highlightColor' | 'bubbleColor'>;
+
+/**
+ * Palette for a (zone, tier, material). Exported so the merge timeline can crossfade toward a child.
+ * Without `override` the result is the built-in blob-sheet ramp (tier 1 Tjorizo = exact pezenpez colours).
+ */
+export function paletteFor(zone: ZoneId, tier: number, material: MaterialKind, override?: PaletteOverride): BlobPalette {
+  const stops = override?.ramp && override.ramp.length > 0 ? override.ramp : TIER_RAMP;
+  const ramp = stops[Math.min(stops.length, Math.max(1, Math.round(tier))) - 1]!;
+  const hue = ramp.hue + (override?.hueShift ?? ZONE_HUE_SHIFT[zone]);
+  const pezenpez = tier === 1 && zone === 'tjorizo' && !override?.ramp && override?.hueShift === undefined;
+  let base = pezenpez ? '#7ce6d5' : hslToHex(hue, ramp.sat, ramp.light);
+  let inner = pezenpez ? '#2f7f7a' : hslToHex(hue + 4, ramp.sat * 0.7, ramp.light * 0.5);
   let rim = shiftHex(base, -6, 1.22, 0.8);
   let highlight = mixHex('#ffffff', base, 0.08);
   let bubble = shiftHex(base, 0, 1.25, 0.6);
