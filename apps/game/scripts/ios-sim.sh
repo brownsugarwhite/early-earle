@@ -41,7 +41,9 @@ APP="$DERIVED/Build/Products/Debug-iphonesimulator/App.app"
 
 echo "▶ Simulator starten und installieren"
 xcrun simctl boot "$DEVICE" >/dev/null 2>&1 || true
-open -a Simulator
+# Simulator.app liegt je nach Xcode-Version im Developer-Ordner; ein fehlendes Fenster ist kein Fehler (simctl reicht).
+SIM_APP="$(xcode-select -p)/Applications/Simulator.app"
+if [ -d "$SIM_APP" ]; then open -a "$SIM_APP" || true; else open -a Simulator 2>/dev/null || true; fi
 xcrun simctl install booted "$APP"
 xcrun simctl launch booted "$BUNDLE_ID" >/dev/null
 echo "✓ $BUNDLE_ID läuft auf „$DEVICE“ ($APP)"
