@@ -1,33 +1,47 @@
-import { useMemo } from 'react';
-import { BoardGrid } from '../BoardGrid';
-import { cellKey, sourceAdjacentCells, type LevelDraft } from '../draft';
+import { sourceAdjacentCells, type LevelDraft } from '../draft';
 import { useEditorStore } from '../editorStore';
+import { ToolIcon, UiIcon } from '../icons';
 import { Row, Seg, Section, Stepper, Toggle } from '../ui';
 
 type TableRow = LevelDraft['spawn']['table'][number];
 
 export function SpawnTab() {
   const draft = useEditorStore((s) => s.draft);
+  const tool = useEditorStore((s) => s.tool);
   const update = useEditorStore((s) => s.update);
-  const place = useEditorStore((s) => s.place);
-  const highlight = useMemo(() => new Set(draft ? sourceAdjacentCells(draft).map(cellKey) : []), [draft]);
+  const setTool = useEditorStore((s) => s.setTool);
+  const setSheet = useEditorStore((s) => s.setSheet);
   if (!draft) return null;
   const spawn = draft.spawn;
+  const spawnCells = sourceAdjacentCells(draft).length;
   const setSpawn = (p: Partial<LevelDraft['spawn']>, key?: string) => update((d) => ({ ...d, spawn: { ...d.spawn, ...p } }), key);
   const total = spawn.table.reduce((s, t) => s + t.weight, 0);
   const setRow = (i: number, row: TableRow, key?: string) => setSpawn({ table: spawn.table.map((r, k) => (k === i ? row : r)) }, key);
 
   return (
     <>
-      <Section title="Gasquellen" aside={<span className="ed-stat"><b>{spawn.sources.length}</b> Quellen · <b>{highlight.size}</b> Spawn-Zellen</span>}>
-        <p className="ed-hint">Tippen setzt oder löscht eine Gasquelle (auch auf Pfeilern). Hervorgehoben: Zellen, in denen gespawnt wird. Ohne Quellen spawnt es überall (Fallback).</p>
+      <Section title="Gasquellen" aside={<span className="ed-stat"><b>{spawn.sources.length}</b> Quellen · <b>{spawnCells}</b> Spawn-Zellen</span>}>
+        <p className="ed-hint">Grün markierte Zellen auf dem Brett: dort wird gespawnt. Ohne Quellen spawnt es überall.</p>
+        <Row>
+          <button
+            type="button"
+            className="ed-btn"
+            data-active={tool === 'source'}
+            onClick={() => {
+              setTool('source');
+              setSheet('peek');
+            }}
+            data-testid="spawn-pick-source"
+          >
+            <ToolIcon tool="source" size={30} /> {tool === 'source' ? 'Quellen setzen: aufs Brett tippen' : 'Quellen setzen'}
+          </button>
+        </Row>
       </Section>
-      <BoardGrid draft={draft} mode="tool" onTap={(at) => place(at, 'source')} highlight={highlight} testId="spawn-grid" />
       <Section
         title="Spawn-Tabelle"
         aside={
           <button type="button" className="ed-btn ed-btn-small" onClick={() => setSpawn({ table: [...spawn.table, { tier: 1, weight: 1 }] })} data-testid="spawn-add">
-            + Zeile
+            <UiIcon name="plus" size={16} /> Zeile
           </button>
         }
       >
@@ -57,30 +71,30 @@ export function SpawnTab() {
                 { value: 'amoeba', label: 'Amöbe' },
               ]}
             />
-            <span className="ed-stat">
+            <span className="ed-stat ed-share">
               <b>{Math.round((100 * row.weight) / total)} %</b>
             </span>
             <button type="button" className="ed-btn ed-btn-sq ed-btn-ghost" aria-label="Zeile entfernen" disabled={spawn.table.length <= 1} onClick={() => setSpawn({ table: spawn.table.filter((_, k) => k !== i) })}>
-              ✕
+              <UiIcon name="trash" size={18} />
             </button>
           </div>
         ))}
       </Section>
       <Section title="Regeln">
         <Row>
-          <Toggle label="Vorschau des nächsten Spawns" on={spawn.preview} onChange={(preview) => setSpawn({ preview })} />
+          <Toggle label="Nächsten Spawn zeigen" on={spawn.preview} onChange={(preview) => setSpawn({ preview })} />
           <Seg
-            label="Fallback"
+            label="Wenn alle Quellen zu sind"
             value={spawn.fallback}
             onChange={(fallback) => setSpawn({ fallback })}
             options={[
-              { value: 'none', label: 'keiner', title: 'Sind alle Quellen-Nachbarn belegt, spawnt nichts' },
-              { value: 'anyEmpty', label: 'überall', title: 'Dann auf irgendeiner freien Zelle' },
+              { value: 'none', label: 'nichts' },
+              { value: 'anyEmpty', label: 'irgendwo' },
             ]}
             testIdPrefix="fallback"
           />
         </Row>
-        <p className="ed-hint">Nachtrag 11: Quellen in der Mitte füttern Blocker — Quellen an den Seiten mit Innen-Blockern funktionieren.</p>
+        <p className="ed-hint">Quellen in der Mitte füttern Blocker — Quellen am Rand mit Innen-Blockern funktionieren (GDD Nachtrag).</p>
       </Section>
     </>
   );

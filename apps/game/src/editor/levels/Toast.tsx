@@ -6,7 +6,21 @@ export function Toast() {
   if (!toast) return null;
   return (
     <div className="ed-toast" data-kind={toast.kind} role="status" data-testid="toast" onClick={hide}>
-      {toast.text}
+      <span>{toast.text}</span>
+      {toast.action ? (
+        <button
+          type="button"
+          className="ed-toast-action"
+          onClick={(e) => {
+            e.stopPropagation();
+            toast.action?.run();
+            hide();
+          }}
+          data-testid="toast-action"
+        >
+          {toast.action.label}
+        </button>
+      ) : null}
     </div>
   );
 }

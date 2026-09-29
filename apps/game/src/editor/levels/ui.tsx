@@ -12,10 +12,12 @@ interface StepperProps {
   format?: (v: number) => string;
   testId?: string;
   compact?: boolean;
+  /** Beschriftung nur für Screenreader (z. B. in einer Kopfzeile). */
+  hideLabel?: boolean;
 }
 
 /** −/+ mit Auto-Wiederholung beim Gedrückthalten. */
-export function Stepper({ label, value, min, max, step = 1, onChange, format, testId, compact }: StepperProps) {
+export function Stepper({ label, value, min, max, step = 1, onChange, format, testId, compact, hideLabel }: StepperProps) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef(value);
   latest.current = value;
@@ -45,8 +47,8 @@ export function Stepper({ label, value, min, max, step = 1, onChange, format, te
   };
   const text = format ? format(value) : String(value);
   return (
-    <div className={`ed-stepper${compact ? ' compact' : ''}`} data-testid={testId}>
-      <span className="ed-label">{label}</span>
+    <div className={`ed-stepper${compact ? ' compact' : ''}${hideLabel ? ' bare' : ''}`} data-testid={testId}>
+      <span className={hideLabel ? 'ed-sr' : 'ed-label'}>{label}</span>
       <div className="ed-stepper-ctl">
         <button type="button" className="ed-btn ed-btn-sq" aria-label={`${label} verringern`} disabled={value - step < min - 1e-9} onPointerDown={start(-1)} onPointerUp={stop} onPointerCancel={stop} onPointerLeave={stop}>
           −

@@ -419,26 +419,44 @@ export function toggleFence(d: LevelDraft, a: Cell, b: Cell): LevelDraft {
   return { ...d, fences: [...d.fences, { a: [a[0], a[1]], b: [b[0], b[1]] }] };
 }
 
+/** Zaun zwischen zwei Nachbarzellen gezielt setzen (`on`) oder entfernen. */
+export function setFence(d: LevelDraft, a: Cell, b: Cell, on: boolean): LevelDraft {
+  if (!adjacent(a, b) || !inside(d, a) || !inside(d, b)) return d;
+  if (maskAt(d, a) === '#' || maskAt(d, b) === '#') return d;
+  const has = fenceIndex(d, a, b) >= 0;
+  return has === on ? d : toggleFence(d, a, b);
+}
+
 // ---- Werkzeuge -------------------------------------------------------------------------
 
 export type ToolId =
-  | 'blob'
+  // Layout
+  | 'void'
+  | 'pillar'
+  | 'fence'
+  // Blocker
   | 'scrap'
   | 'scrapMound'
   | 'crust'
   | 'sleeper'
   | 'cage'
   | 'fog'
+  // Boden
   | 'oil'
   | 'current'
   | 'withered'
   | 'deepWithered'
   | 'spore'
   | 'portal'
+  // Bedrohung
   | 'rot'
   | 'toxic'
   | 'stray'
+  // Spawn
+  | 'blob'
   | 'source'
+  // Spezial
+  | 'amoeba'
   | 'erase';
 
 export interface ToolParams {
@@ -469,44 +487,63 @@ export const DEFAULT_TOOL_PARAMS: ToolParams = {
   countdown: 5,
 };
 
+export type ToolGroup = 'Layout' | 'Blocker' | 'Boden' | 'Bedrohung' | 'Spawn' | 'Spezial';
+export const TOOL_GROUPS: readonly ToolGroup[] = ['Layout', 'Blocker', 'Boden', 'Bedrohung', 'Spawn', 'Spezial'];
+
 export interface ToolInfo {
   id: ToolId;
   label: string;
-  group: 'Blobs' | 'Blocker' | 'Boden' | 'Bedrohung' | 'Spawn' | 'Werkzeug';
-  /** Kurzzeichen (wie im ASCII-Format). */
+  group: ToolGroup;
+  /** Kurzzeichen (wie im ASCII-Format), Textersatz für das Icon. */
   glyph: string;
+  /** Ein kurzer Satz, was das Element tut. */
   hint: string;
+  /** Ziehen malt über mehrere Zellen (sonst nur Tippen). */
+  paint: boolean;
 }
 
 export const TOOLS: readonly ToolInfo[] = [
-  { id: 'blob', label: 'Blob', group: 'Blobs', glyph: '2', hint: 'Start-Blob mit Stufe, Material, Art' },
-  { id: 'scrap', label: 'Schrott', group: 'Blocker', glyph: 'X', hint: '1–3 Lagen, verliert eine Lage pro Verschmelzung daneben' },
-  { id: 'scrapMound', label: 'Schrottberg', group: 'Blocker', glyph: 'M', hint: '2×2 ab links oben, 4–8 Treffer' },
-  { id: 'crust', label: 'Kruste', group: 'Blocker', glyph: 'F', hint: 'Festgefrorener Blob, Nachbar-Verschmelzungen tauen' },
-  { id: 'sleeper', label: 'Schläfer', group: 'Blocker', glyph: 'S', hint: 'Verschmilzt erst, wenn ein Nachbar ihn weckt' },
-  { id: 'cage', label: 'Käfig', group: 'Blocker', glyph: 'C', hint: 'Inhalt mit Nachbar-Verschmelzungen befreien' },
-  { id: 'fog', label: 'Nebel', group: 'Blocker', glyph: 'H', hint: 'Inhalt verborgen bis aufgedeckt' },
-  { id: 'oil', label: 'Ölpfütze', group: 'Boden', glyph: 'o', hint: 'Eintretende Figur bleibt stehen' },
-  { id: 'current', label: 'Gasstrom', group: 'Boden', glyph: '→', hint: 'Schiebt nach jedem Wisch eine Zelle' },
-  { id: 'withered', label: 'Verdorrt', group: 'Boden', glyph: 'w', hint: 'Heilt, wenn eine Verschmelzung darauf landet' },
-  { id: 'deepWithered', label: 'Tief verdorrt', group: 'Boden', glyph: 'd', hint: 'Zwei Heilungen nötig' },
-  { id: 'spore', label: 'Spore', group: 'Boden', glyph: 's', hint: 'Wird gesammelt, wenn eine Verschmelzung darauf landet' },
-  { id: 'portal', label: 'Rohr', group: 'Boden', glyph: '@', hint: 'Zwei Zellen antippen = ein Rohrpaar' },
-  { id: 'rot', label: 'Fäulnis', group: 'Bedrohung', glyph: 'R', hint: 'Frisst alle N Züge eine Nachbarzelle' },
-  { id: 'toxic', label: 'Giftwolke', group: 'Bedrohung', glyph: 'T', hint: 'Countdown, friert danach eine Figur ein' },
-  { id: 'stray', label: 'Streuner', group: 'Bedrohung', glyph: 'W', hint: 'Wandert pro Wisch; eingekesselt wird er Helfer' },
-  { id: 'source', label: 'Gasquelle', group: 'Spawn', glyph: '◆', hint: 'Spawnt daneben (auch auf Pfeilern)' },
-  { id: 'erase', label: 'Radieren', group: 'Werkzeug', glyph: '⌫', hint: 'Tippen entfernt alles auf der Zelle' },
+  { id: 'void', label: 'Riss', group: 'Layout', glyph: '#', hint: 'Zelle fällt weg', paint: true },
+  { id: 'pillar', label: 'Pfeiler', group: 'Layout', glyph: 'P', hint: 'Feste Innenwand', paint: true },
+  { id: 'fence', label: 'Fossilwand', group: 'Layout', glyph: '|', hint: 'Über eine Kante wischen', paint: true },
+  { id: 'scrap', label: 'Schrott', group: 'Blocker', glyph: 'X', hint: 'Verschmelzen daneben räumt eine Lage', paint: true },
+  { id: 'scrapMound', label: 'Schrottberg', group: 'Blocker', glyph: 'M', hint: '2×2 ab links oben, 4–8 Treffer', paint: false },
+  { id: 'crust', label: 'Kruste', group: 'Blocker', glyph: 'F', hint: 'Friert einen Blob ein', paint: true },
+  { id: 'sleeper', label: 'Schläfer', group: 'Blocker', glyph: 'S', hint: 'Wacht durch Nachbarn auf', paint: true },
+  { id: 'cage', label: 'Käfig', group: 'Blocker', glyph: 'C', hint: 'Aufbrechen und retten', paint: true },
+  { id: 'fog', label: 'Nebel', group: 'Blocker', glyph: 'H', hint: 'Versteckt den Inhalt', paint: true },
+  { id: 'oil', label: 'Ölpfütze', group: 'Boden', glyph: 'o', hint: 'Hält Figuren an', paint: true },
+  { id: 'current', label: 'Gasstrom', group: 'Boden', glyph: '→', hint: 'Schiebt nach jedem Wisch', paint: true },
+  { id: 'withered', label: 'Verdorrt', group: 'Boden', glyph: 'w', hint: 'Heilt durch Verschmelzen darauf', paint: true },
+  { id: 'deepWithered', label: 'Tief verdorrt', group: 'Boden', glyph: 'd', hint: 'Braucht zwei Heilungen', paint: true },
+  { id: 'spore', label: 'Spore', group: 'Boden', glyph: 's', hint: 'Verschmelzen darauf sammelt', paint: true },
+  { id: 'portal', label: 'Rohr', group: 'Boden', glyph: '@', hint: 'Zwei Zellen = ein Paar', paint: false },
+  { id: 'rot', label: 'Fäulnis', group: 'Bedrohung', glyph: 'R', hint: 'Frisst Nachbarzellen', paint: true },
+  { id: 'toxic', label: 'Giftwolke', group: 'Bedrohung', glyph: 'T', hint: 'Countdown, dann Frost', paint: true },
+  { id: 'stray', label: 'Streuner', group: 'Bedrohung', glyph: 'W', hint: 'Wandert, eingekesselt hilft er', paint: true },
+  { id: 'blob', label: 'Blob', group: 'Spawn', glyph: '2', hint: 'Start-Figur', paint: true },
+  { id: 'source', label: 'Gasquelle', group: 'Spawn', glyph: '◆', hint: 'Hier wird gespawnt', paint: true },
+  { id: 'amoeba', label: 'Amöbe', group: 'Spezial', glyph: 'A', hint: 'Verschmilzt mit jeder Stufe', paint: true },
+  { id: 'erase', label: 'Radieren', group: 'Spezial', glyph: '⌫', hint: 'Leert die Zelle', paint: true },
 ];
 
-export const toolInfo = (id: ToolId): ToolInfo => TOOLS.find((t) => t.id === id)!;
+const TOOL_BY_ID = new Map(TOOLS.map((t) => [t.id, t] as const));
+export const toolInfo = (id: ToolId): ToolInfo => TOOL_BY_ID.get(id) ?? TOOLS[0]!;
+export const isToolId = (v: unknown): v is ToolId => typeof v === 'string' && TOOL_BY_ID.has(v as ToolId);
 
-function blobFromParams(p: ToolParams): BlobDef {
+/** Werkzeuge, deren Stufe/Material einstellbar ist (Blob-Inhalt). */
+export const TOOL_HAS_TIER = new Set<ToolId>(['blob', 'cage', 'crust', 'sleeper', 'fog', 'stray']);
+export const TOOL_HAS_MATERIAL = new Set<ToolId>(['blob', 'cage', 'crust', 'sleeper', 'fog']);
+
+export function blobFromParams(p: ToolParams, kind?: 'amoeba'): BlobDef {
+  if (kind === 'amoeba') return { tier: 1, kind: 'amoeba' };
   const blob: BlobDef = { tier: p.tier };
   if (p.material !== 'zone') blob.material = p.material;
   if (p.blobKind === 'amoeba') blob.kind = 'amoeba';
   return blob;
 }
+
+export const sameBlob = (a: BlobDef, b: BlobDef): boolean => a.tier === b.tier && (a.material ?? null) === (b.material ?? null) && (a.kind ?? 'normal') === (b.kind ?? 'normal');
 
 /** Freie Portal-Kennung: eine mit genau einer Zelle (offenes Paar) oder der nächste freie Buchstabe. */
 export function nextPortalId(d: LevelDraft, preferred: string | null): string {
@@ -519,6 +556,14 @@ export function nextPortalId(d: LevelDraft, preferred: string | null): string {
     if (!counts.has(id)) return id;
   }
   return 'z';
+}
+
+/** Offene Rohr-Kennung (genau eine Zelle), sonst null. */
+export function openPortalId(d: LevelDraft): string | null {
+  const counts = new Map<string, number>();
+  for (const f of d.floors) if (f.kind === 'portal') counts.set(f.portalId, (counts.get(f.portalId) ?? 0) + 1);
+  for (const [id, n] of counts) if (n === 1) return id;
+  return null;
 }
 
 export interface PlaceResult {
@@ -535,6 +580,8 @@ export function placeTool(d: LevelDraft, tool: ToolId, p: ToolParams, c: Cell, p
   const m = maskAt(d, c);
   const at: [number, number] = [c[0], c[1]];
   if (tool === 'erase') return { draft: removeAt(d, c) };
+  if (tool === 'void' || tool === 'pillar') return { draft: setMask(d, c, tool === 'void' ? '#' : 'P') };
+  if (tool === 'fence') return { draft: d };
   if (tool === 'source') {
     if (m === '#') return { draft: d, error: 'Gasquellen nur auf Zellen oder Pfeilern' };
     const has = d.spawn.sources.some((s) => sameCell(s, c));
@@ -545,15 +592,16 @@ export function placeTool(d: LevelDraft, tool: ToolId, p: ToolParams, c: Cell, p
       },
     };
   }
-  if (m !== '.') return { draft: d, error: 'Nur auf freien Zellen (.)' };
+  if (m !== '.') return { draft: d, error: 'Nur auf freien Zellen' };
 
   switch (tool) {
-    case 'blob': {
+    case 'blob':
+    case 'amoeba': {
       // Kruste/Schläfer ohne Inhalt dürfen bleiben: der Blob wird ihr Inhalt.
       const keepBlocker = d.blockers.find((b) => (b.kind === 'crust' || b.kind === 'sleeper') && !b.content && sameCell(b.at, c));
       let next = removeAt(d, c, { keepFloor: true, keepSource: true });
       if (keepBlocker) next = { ...next, blockers: [...next.blockers, keepBlocker] };
-      return { draft: { ...next, start: [...next.start, { at, blob: blobFromParams(p) }] } };
+      return { draft: { ...next, start: [...next.start, { at, blob: blobFromParams(p, tool === 'amoeba' ? 'amoeba' : undefined) }] } };
     }
     case 'scrap':
     case 'scrapMound':
@@ -629,6 +677,306 @@ export function placeTool(d: LevelDraft, tool: ToolId, p: ToolParams, c: Cell, p
     default:
       return { draft: d };
   }
+}
+
+// ---- Tippen & Malen: Umschalten statt Stapeln ------------------------------------------------
+
+export type StrokeAction = 'add' | 'remove';
+
+export function startAt(d: LevelDraft, c: Cell): StartDef | undefined {
+  return d.start.find((s) => sameCell(s.at, c));
+}
+export function blockerAt(d: LevelDraft, c: Cell): BlockerDef | undefined {
+  return d.blockers.find((b) => blockerCovers(b, c));
+}
+export function floorAt(d: LevelDraft, c: Cell): FloorDef | undefined {
+  return d.floors.find((f) => sameCell(f.at, c));
+}
+export function threatAt(d: LevelDraft, c: Cell): ThreatDef | undefined {
+  return d.threats.find((t) => sameCell(t.at, c));
+}
+export function sourceAt(d: LevelDraft, c: Cell): boolean {
+  return d.spawn.sources.some((s) => sameCell(s, c));
+}
+
+/** Liegt genau das, was das Werkzeug setzen würde, schon auf der Zelle? Dann schaltet ein Tipp es wieder aus. */
+export function toolPresent(d: LevelDraft, tool: ToolId, p: ToolParams, c: Cell): boolean {
+  if (!inside(d, c)) return false;
+  const m = maskAt(d, c);
+  switch (tool) {
+    case 'void':
+      return m === '#';
+    case 'pillar':
+      return m === 'P';
+    case 'source':
+      return sourceAt(d, c);
+    case 'fence':
+    case 'erase':
+      return false;
+    default:
+      break;
+  }
+  if (m !== '.') return false;
+  const b = blockerAt(d, c);
+  switch (tool) {
+    case 'blob': {
+      const s = startAt(d, c);
+      return !!s && (!b || ((b.kind === 'crust' || b.kind === 'sleeper') && !b.content)) && sameBlob(s.blob, blobFromParams(p));
+    }
+    case 'amoeba': {
+      const s = startAt(d, c);
+      return !!s && s.blob.kind === 'amoeba' && !b;
+    }
+    case 'scrap':
+      return b?.kind === 'scrap' && b.layers === p.scrapLayers;
+    case 'scrapMound':
+    case 'crust':
+    case 'sleeper':
+    case 'cage':
+    case 'fog':
+      return b?.kind === tool;
+    case 'current': {
+      const f = floorAt(d, c);
+      return f?.kind === 'current' && f.dir === p.dir;
+    }
+    case 'oil':
+    case 'withered':
+    case 'deepWithered':
+    case 'spore':
+    case 'portal':
+      return floorAt(d, c)?.kind === tool;
+    case 'rot':
+    case 'toxic':
+    case 'stray':
+      return threatAt(d, c)?.kind === tool;
+    default:
+      return false;
+  }
+}
+
+/** Nimmt genau das Element des Werkzeugs von der Zelle (Rest bleibt). */
+export function removeToolAt(d: LevelDraft, tool: ToolId, c: Cell): LevelDraft {
+  const m = maskAt(d, c);
+  switch (tool) {
+    case 'void':
+      return m === '#' ? setMask(d, c, '.') : d;
+    case 'pillar':
+      return m === 'P' ? setMask(d, c, '.') : d;
+    case 'source':
+      return sourceAt(d, c) ? { ...d, spawn: { ...d.spawn, sources: d.spawn.sources.filter((s) => !sameCell(s, c)) } } : d;
+    case 'blob':
+    case 'amoeba':
+      return startAt(d, c) ? removeLayer(d, c, 'start') : d;
+    case 'scrap':
+    case 'scrapMound':
+    case 'crust':
+    case 'sleeper':
+    case 'cage':
+    case 'fog':
+      return blockerAt(d, c)?.kind === tool ? removeLayer(d, c, 'blocker') : d;
+    case 'oil':
+    case 'current':
+    case 'withered':
+    case 'deepWithered':
+    case 'spore':
+    case 'portal':
+      return floorAt(d, c)?.kind === tool ? removeLayer(d, c, 'floor') : d;
+    case 'rot':
+    case 'toxic':
+    case 'stray':
+      return threatAt(d, c)?.kind === tool ? removeLayer(d, c, 'threat') : d;
+    case 'erase':
+      return eraseCell(d, c);
+    default:
+      return d;
+  }
+}
+
+/** Radieren: erst den Inhalt, bei leerer Zelle wird ein Riss/Pfeiler wieder zur Zelle. */
+export function eraseCell(d: LevelDraft, c: Cell): LevelDraft {
+  if (!inside(d, c)) return d;
+  const cleared = removeAt(d, c);
+  const changed = cleared.start.length !== d.start.length || cleared.blockers.length !== d.blockers.length || cleared.floors.length !== d.floors.length || cleared.threats.length !== d.threats.length || cleared.spawn.sources.length !== d.spawn.sources.length;
+  if (changed) return cleared;
+  return maskAt(d, c) === '.' ? d : setMask(d, c, '.');
+}
+
+/**
+ * Wendet ein Werkzeug im Rahmen eines Strichs an: `add` setzt (und macht Risse/Pfeiler vorher zur Zelle),
+ * `remove` nimmt nur das Element des Werkzeugs weg. Der erste Tipp eines Strichs entscheidet über die Aktion.
+ */
+export function applyTool(d: LevelDraft, tool: ToolId, p: ToolParams, c: Cell, action: StrokeAction, pendingPortalId: string | null): PlaceResult {
+  if (!inside(d, c)) return { draft: d };
+  if (action === 'remove') {
+    const next = removeToolAt(d, tool, c);
+    return tool === 'portal' ? { draft: next, pendingPortalId: openPortalId(next) } : { draft: next };
+  }
+  if (tool === 'erase') return { draft: eraseCell(d, c) };
+  if (tool === 'fence') return { draft: d };
+  let base = d;
+  const m = maskAt(d, c);
+  const needsCell = tool !== 'void' && tool !== 'pillar' && !(tool === 'source' && m === 'P');
+  if (needsCell && m !== '.') base = setMask(d, c, '.');
+  if (tool === 'scrapMound') {
+    for (const mc of moundCells(c)) if (inside(base, mc) && maskAt(base, mc) !== '.') base = setMask(base, mc, '.');
+  }
+  if (tool === 'source' && sourceAt(base, c)) return { draft: base };
+  const r = placeTool(base, tool, p, c, pendingPortalId);
+  return r.error ? { ...r, draft: d } : r;
+}
+
+// ---- Zell-Ebenen (Langdruck-Menü) ---------------------------------------------------------------
+
+export type LayerId = 'start' | 'blocker' | 'floor' | 'threat' | 'source';
+
+export interface CellLayers {
+  at: Cell;
+  mask: MaskChar;
+  start?: StartDef;
+  blocker?: BlockerDef;
+  floor?: FloorDef;
+  threat?: ThreatDef;
+  source: boolean;
+  /** Portal-Partner (andere Zelle mit derselben Kennung). */
+  portalPartner?: Cell;
+}
+
+export function cellLayers(d: LevelDraft, c: Cell): CellLayers {
+  const out: CellLayers = { at: c, mask: maskAt(d, c) ?? '.', source: sourceAt(d, c) };
+  const s = startAt(d, c);
+  const b = blockerAt(d, c);
+  const f = floorAt(d, c);
+  const t = threatAt(d, c);
+  if (s) out.start = s;
+  if (b) out.blocker = b;
+  if (f) {
+    out.floor = f;
+    if (f.kind === 'portal') {
+      const partner = d.floors.find((o) => o.kind === 'portal' && o.portalId === f.portalId && !sameCell(o.at, c));
+      if (partner) out.portalPartner = partner.at;
+    }
+  }
+  if (t) out.threat = t;
+  return out;
+}
+
+export function removeLayer(d: LevelDraft, c: Cell, layer: LayerId): LevelDraft {
+  switch (layer) {
+    case 'start':
+      return { ...d, start: d.start.filter((s) => !sameCell(s.at, c)) };
+    case 'blocker': {
+      const b = blockerAt(d, c);
+      if (!b) return d;
+      return { ...d, blockers: d.blockers.filter((x) => x !== b) };
+    }
+    case 'floor':
+      return { ...d, floors: d.floors.filter((f) => !sameCell(f.at, c)) };
+    case 'threat':
+      return { ...d, threats: d.threats.filter((t) => !sameCell(t.at, c)) };
+    case 'source':
+      return { ...d, spawn: { ...d.spawn, sources: d.spawn.sources.filter((s) => !sameCell(s, c)) } };
+  }
+}
+
+export function setSource(d: LevelDraft, c: Cell, on: boolean): LevelDraft {
+  const has = sourceAt(d, c);
+  if (has === on || maskAt(d, c) === '#') return d;
+  return on ? { ...d, spawn: { ...d.spawn, sources: [...d.spawn.sources, [c[0], c[1]]] } } : removeLayer(d, c, 'source');
+}
+
+/** Ändert den Start-Blob der Zelle. */
+export function patchStart(d: LevelDraft, c: Cell, fn: (b: BlobDef) => BlobDef): LevelDraft {
+  const s = startAt(d, c);
+  if (!s) return d;
+  return { ...d, start: d.start.map((x) => (x === s ? { at: x.at, blob: fn(x.blob) } : x)) };
+}
+
+/** Ändert den Blocker auf der Zelle (auch einen Schrottberg, der die Zelle überdeckt). */
+export function patchBlocker(d: LevelDraft, c: Cell, fn: (b: BlockerDef) => BlockerDef): LevelDraft {
+  const b = blockerAt(d, c);
+  if (!b) return d;
+  return { ...d, blockers: d.blockers.map((x) => (x === b ? fn(x) : x)) };
+}
+
+export function patchFloor(d: LevelDraft, c: Cell, fn: (f: FloorDef) => FloorDef): LevelDraft {
+  const f = floorAt(d, c);
+  if (!f) return d;
+  return { ...d, floors: d.floors.map((x) => (x === f ? fn(x) : x)) };
+}
+
+export function patchThreat(d: LevelDraft, c: Cell, fn: (t: ThreatDef) => ThreatDef): LevelDraft {
+  const t = threatAt(d, c);
+  if (!t) return d;
+  return { ...d, threats: d.threats.map((x) => (x === t ? fn(x) : x)) };
+}
+
+/** Blob-Eigenschaften setzen; `material: 'zone'` entfernt das eigene Material. */
+export function withBlob(b: BlobDef, patch: { tier?: number; material?: Material | 'zone'; kind?: 'normal' | 'amoeba' }): BlobDef {
+  const next: BlobDef = { tier: patch.tier ?? b.tier };
+  const material = patch.material === undefined ? b.material : patch.material === 'zone' ? undefined : patch.material;
+  const kind = patch.kind === undefined ? b.kind : patch.kind;
+  if (material) next.material = material;
+  if (kind && kind !== 'normal') next.kind = kind;
+  return next;
+}
+
+/** Pipette: Werkzeug und Parameter aus dem Hauptelement einer Zelle. */
+export function toolFromCell(d: LevelDraft, c: Cell, base: ToolParams): { tool: ToolId; params: ToolParams } | null {
+  const L = cellLayers(d, c);
+  const fromBlob = (b: BlobDef | undefined, p: ToolParams): ToolParams => (b ? { ...p, tier: b.tier, material: b.material ?? 'zone', blobKind: b.kind === 'amoeba' ? 'amoeba' : 'normal' } : p);
+  if (L.mask === '#') return { tool: 'void', params: base };
+  if (L.mask === 'P') return { tool: L.source ? 'source' : 'pillar', params: base };
+  const b = L.blocker;
+  if (b) {
+    switch (b.kind) {
+      case 'scrap':
+        return { tool: 'scrap', params: { ...base, scrapLayers: b.layers } };
+      case 'scrapMound':
+        return { tool: 'scrapMound', params: { ...base, moundLayers: b.layers } };
+      case 'cage':
+        return { tool: 'cage', params: { ...fromBlob(b.content, base), cageLayers: b.layers } };
+      case 'fog':
+        return { tool: 'fog', params: { ...fromBlob(b.content, base), withContent: !!b.content } };
+      case 'crust':
+      case 'sleeper':
+        return { tool: b.kind, params: fromBlob(b.content ?? L.start?.blob, base) };
+    }
+  }
+  const t = L.threat;
+  if (t) {
+    if (t.kind === 'rot') return { tool: 'rot', params: { ...base, period: t.period } };
+    if (t.kind === 'toxic') return { tool: 'toxic', params: { ...base, countdown: t.countdown } };
+    return { tool: 'stray', params: { ...base, tier: t.tier } };
+  }
+  if (L.start) return L.start.blob.kind === 'amoeba' ? { tool: 'amoeba', params: base } : { tool: 'blob', params: fromBlob(L.start.blob, base) };
+  const f = L.floor;
+  if (f) {
+    if (f.kind === 'current') return { tool: 'current', params: { ...base, dir: f.dir } };
+    return { tool: f.kind, params: base };
+  }
+  if (L.source) return { tool: 'source', params: base };
+  return null;
+}
+
+/** Alle Rohrpaare (für Verbindungslinien auf dem Brett). */
+export function portalPairs(d: LevelDraft): { id: string; a: Cell; b: Cell | null }[] {
+  const byId = new Map<string, Cell[]>();
+  for (const f of d.floors) if (f.kind === 'portal') byId.set(f.portalId, [...(byId.get(f.portalId) ?? []), f.at]);
+  return [...byId.entries()].map(([id, cells]) => ({ id, a: cells[0]!, b: cells[1] ?? null }));
+}
+
+/** Kurzbeschreibung einer Zelle (Screenreader, Menüs). */
+export function describeCell(d: LevelDraft, c: Cell): string {
+  const L = cellLayers(d, c);
+  if (L.mask === '#') return 'Riss';
+  const parts: string[] = [];
+  if (L.mask === 'P') parts.push('Pfeiler');
+  if (L.blocker) parts.push(toolInfo(L.blocker.kind).label);
+  if (L.threat) parts.push(toolInfo(L.threat.kind).label);
+  if (L.start) parts.push(L.start.blob.kind === 'amoeba' ? 'Amöbe' : `Blob ${2 ** L.start.blob.tier}`);
+  if (L.floor) parts.push(toolInfo(L.floor.kind).label);
+  if (L.source) parts.push('Gasquelle');
+  return parts.length ? parts.join(', ') : 'leer';
 }
 
 // ---- Ziele / Spawn --------------------------------------------------------------------------

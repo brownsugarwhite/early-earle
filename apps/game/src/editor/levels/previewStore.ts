@@ -18,7 +18,25 @@ import {
  * Vorschau-Zustand des Level-Editors. Spiegelt die Form des Grid-Lab-Stores (Level, History,
  * letzter Zug, Animationsflag), lädt aber ungespeicherte Entwürfe (`loadDraft`) statt aus LEVELS.
  * Seeds folgen der Kalibrierung: Versuch n spielt mit `hash32(level.id, n)` — derselbe Seed wie Bot-Lauf n.
+ *
+ * Testen ↔ Bauen ist ein Umschalter: Ein laufendes Testspiel wird beim Zurückschalten geparkt und beim
+ * nächsten „Testen“ fortgesetzt, solange sich der Entwurf nicht geändert hat.
  */
+export interface PreviewView {
+  /** 1 = Brett passt genau hinein. */
+  zoom: number;
+  /** Verschiebung des Blickpunkts in Welt-Einheiten. */
+  panX: number;
+  panZ: number;
+}
+
+interface Parked {
+  levelJson: string;
+  attempt: number;
+  history: History;
+  state: LevelState;
+}
+
 export interface PreviewState {
   level: LevelDef | null;
   /** Zählt Ladevorgänge (Entwürfe behalten ihre ID, die Szene braucht ein Änderungssignal). */
@@ -32,17 +50,25 @@ export interface PreviewState {
   moveSeq: number;
   animating: boolean;
   showNumbers: boolean;
+  view: PreviewView;
+  parked: Parked | null;
   loadDraft: (level: LevelDef, attempt?: number) => void;
   setMode: (mode: 'edit' | 'play') => void;
   setAttempt: (attempt: number) => void;
+  /** Nächster Seed („Nochmal“). */
+  nextAttempt: () => void;
   restart: () => void;
   move: (dir: Dir) => boolean;
   rewindMove: () => void;
   setAnimating: (v: boolean) => void;
   toggleNumbers: () => void;
+  setView: (v: Partial<PreviewView>) => void;
+  resetView: () => void;
 }
 
 export const seedFor = (level: LevelDef, attempt: number): number => hash32(level.id, attempt);
+
+const DEFAULT_VIEW: PreviewView = { zoom: 1, panX: 0, panZ: 0 };
 
 export const usePreviewStore = create<PreviewState>((set, get) => ({
   level: null,
@@ -56,6 +82,8 @@ export const usePreviewStore = create<PreviewState>((set, get) => ({
   moveSeq: 0,
   animating: false,
   showNumbers: true,
+  view: DEFAULT_VIEW,
+  parked: null,
   loadDraft: (level, attempt = get().attempt) => {
     const seed = seedFor(level, attempt);
     let state: LevelState;
@@ -78,18 +106,35 @@ export const usePreviewStore = create<PreviewState>((set, get) => ({
     });
   },
   setMode: (mode) => {
-    const { level, attempt } = get();
+    const { level, attempt, mode: prev, history, state, parked } = get();
+    if (mode === prev) return;
+    if (mode === 'edit') {
+      // Laufendes Spiel parken (nur wenn schon gezogen wurde), dann den Entwurf zeigen.
+      const played = history && state && state.moveNo > 0 && state.status === 'playing';
+      set({ mode, parked: played && level ? { levelJson: JSON.stringify(level), attempt, history, state } : null, view: DEFAULT_VIEW });
+      if (level) get().loadDraft(level, attempt);
+      return;
+    }
     set({ mode });
-    if (level) get().loadDraft(level, attempt);
+    if (!level) return;
+    if (parked && parked.levelJson === JSON.stringify(level) && parked.attempt === attempt) {
+      set({ history: parked.history, state: parked.state, lastMove: null, moveSeq: 0, levelSeq: get().levelSeq + 1, animating: false, parked: null });
+      return;
+    }
+    set({ parked: null });
+    get().loadDraft(level, attempt);
   },
   setAttempt: (attempt) => {
     const { level } = get();
     const a = Math.max(1, Math.min(9999, Math.round(attempt)));
+    set({ parked: null });
     if (level) get().loadDraft(level, a);
     else set({ attempt: a });
   },
+  nextAttempt: () => get().setAttempt(get().attempt + 1),
   restart: () => {
     const { level, attempt } = get();
+    set({ parked: null });
     if (level) get().loadDraft(level, attempt);
   },
   move: (dir) => {
@@ -108,4 +153,6 @@ export const usePreviewStore = create<PreviewState>((set, get) => ({
   },
   setAnimating: (v) => set({ animating: v }),
   toggleNumbers: () => set({ showNumbers: !get().showNumbers }),
+  setView: (v) => set({ view: { ...get().view, ...v } }),
+  resetView: () => set({ view: DEFAULT_VIEW }),
 }));

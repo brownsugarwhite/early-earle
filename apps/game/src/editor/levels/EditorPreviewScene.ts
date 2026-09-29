@@ -14,6 +14,8 @@ import {
   SpriteMaterial,
   CanvasTexture,
   Vector3,
+  type Object3D,
+  type Material,
 } from 'three';
 import {
   CELL_PILLAR,
@@ -154,22 +156,42 @@ export class EditorPreviewScene implements SceneController {
   private floorMeshes = new Map<number, Mesh>();
   private bodyGeo = new BoxGeometry(0.78, 0.5, 0.78, 2, 2, 2);
   private aspect = 1;
+  private viewportH = 1;
+  /** Abstand, bei dem das Brett genau passt (vor Zoom). */
+  private fitDist = 10;
+  /** Bauen-Modus: nur neu zeichnen, wenn sich etwas geändert hat (Akku am Handy); Zähler für Folgebilder. */
+  private dirtyFrames = 3;
+  private frame = 0;
 
   mount(ctx: SceneContext) {
-    this.scene.background = new Color(INK);
+    // Etwas heller als die Bühne: das Vorschaufenster hebt sich ohne Kontur vom Hintergrund ab.
+    this.scene.background = new Color('#1a2c33');
     this.scene.add(this.boardGroup, this.markerGroup, this.blobGroup);
     this.resize(ctx);
     this.syncFromStore(true);
     this.unsubscribe = usePreviewStore.subscribe((s, prev) => {
+      if (s.mode !== prev.mode) this.invalidate();
       if (s.showNumbers !== prev.showNumbers) {
+        this.invalidate();
         this.showNumbers = s.showNumbers;
         for (const v of this.visuals.values()) v.label.visible = this.showNumbers;
       }
       if (s.moveSeq !== prev.moveSeq || s.levelSeq !== prev.levelSeq || s.state !== prev.state) this.syncFromStore(false);
+      if (s.view !== prev.view) this.applyView();
     });
   }
 
+  /** Welt-Einheiten pro Bildschirmpixel in der Brettebene (für Zwei-Finger-Verschieben). */
+  worldPerPixel(): number {
+    const v = usePreviewStore.getState().view;
+    const dist = this.fitDist / Math.max(0.01, v.zoom);
+    const visible = 2 * dist * Math.tan((this.camera.fov * Math.PI) / 360);
+    return visible / Math.max(1, this.viewportH);
+  }
+
   resize(ctx: SceneContext) {
+    this.invalidate();
+    this.viewportH = ctx.height;
     this.aspect = ctx.width / Math.max(1, ctx.height);
     this.camera.aspect = this.aspect;
     this.camera.updateProjectionMatrix();
@@ -178,8 +200,21 @@ export class EditorPreviewScene implements SceneController {
 
   update(_dt: number, elapsed: number, ctx: SceneContext) {
     this.now = elapsed * 1000;
+    this.frame++;
+    const active = this.tweens.length > 0;
     this.runTweens();
-    ctx.renderer.render(this.scene, this.camera);
+    // Testen: jedes Bild. Bauen: nur nach Änderungen, sonst die atmenden Gasquellen mit ~15 Bildern/s.
+    const play = usePreviewStore.getState().mode === 'play';
+    const hasVents = (usePreviewStore.getState().level?.spawn.sources.length ?? 0) > 0;
+    if (play || active || this.dirtyFrames > 0 || (hasVents && this.frame % 4 === 0)) {
+      ctx.renderer.render(this.scene, this.camera);
+      if (this.dirtyFrames > 0) this.dirtyFrames--;
+    }
+  }
+
+  /** Nächste Bilder zeichnen (nach Store-Änderung, Größenwechsel, Kamerafahrt). */
+  private invalidate() {
+    this.dirtyFrames = 3;
   }
 
   dispose() {
@@ -187,9 +222,25 @@ export class EditorPreviewScene implements SceneController {
     this.unsubscribe = null;
     this.clearBoard();
     this.clearMarkers();
-    for (const v of this.visuals.values()) this.blobGroup.remove(v.group);
+    for (const id of [...this.visuals.keys()]) this.removeVisual(id);
     this.visuals.clear();
     this.scene.clear();
+  }
+
+  /** Gibt Geometrien und Materialien eines entfernten Teilbaums frei (Texturen sind gecacht und bleiben). */
+  private release(obj: Object3D) {
+    obj.traverse((o) => {
+      const m = o as Mesh | Sprite;
+      if ((m as Mesh).isMesh) {
+        const mesh = m as Mesh;
+        if (mesh.geometry !== this.bodyGeo) mesh.geometry.dispose();
+        const mat = mesh.material as Material | Material[];
+        if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
+        else mat.dispose();
+      } else if ((m as Sprite).isSprite) {
+        (m as Sprite).material.dispose();
+      }
+    });
   }
 
   // ---------- Layout ----------
@@ -223,19 +274,37 @@ export class EditorPreviewScene implements SceneController {
       if (fits(mid)) hi = mid;
       else lo = mid;
     }
-    fits(hi);
+    this.fitDist = hi;
+    this.applyView();
+  }
+
+  /** Zoom und Verschiebung aus dem Store (zwei Finger im Testmodus) auf die Kamera legen. */
+  private applyView() {
+    this.invalidate();
+    const v = usePreviewStore.getState().view;
+    const dir = new Vector3(0, 1.0, 0.62).normalize();
+    const target = new Vector3(v.panX, 0.1, v.panZ);
+    this.camera.position.copy(dir).multiplyScalar(this.fitDist / Math.max(0.01, v.zoom)).add(target);
+    this.camera.lookAt(target);
+    this.camera.updateMatrixWorld();
   }
 
   // ---------- Board ----------
 
   private clearBoard() {
-    for (const child of [...this.boardGroup.children]) this.boardGroup.remove(child);
+    for (const child of [...this.boardGroup.children]) {
+      this.boardGroup.remove(child);
+      this.release(child);
+    }
     this.scrapMeshes.clear();
     this.floorMeshes.clear();
   }
 
   private clearMarkers() {
-    for (const child of [...this.markerGroup.children]) this.markerGroup.remove(child);
+    for (const child of [...this.markerGroup.children]) {
+      this.markerGroup.remove(child);
+      this.release(child);
+    }
   }
 
   private floorColor(code: number): string {
@@ -291,7 +360,11 @@ export class EditorPreviewScene implements SceneController {
 
   private buildScrap(i: number, px: number, pz: number, layers: number) {
     const old = this.scrapMeshes.get(i);
-    if (old) for (const m of old) this.boardGroup.remove(m);
+    if (old)
+      for (const m of old) {
+        this.boardGroup.remove(m);
+        this.release(m);
+      }
     const meshes: Mesh[] = [];
     for (let l = 0; l < layers; l++) {
       const s = 0.82 - l * 0.12;
@@ -486,6 +559,8 @@ export class EditorPreviewScene implements SceneController {
     if (!v) return;
     this.blobGroup.remove(v.group);
     this.visuals.delete(id);
+    // Nach einem Verschmelzen hängt dasselbe Visual kurz unter zwei IDs — erst freigeben, wenn es weg ist.
+    if (![...this.visuals.values()].includes(v)) this.release(v.group);
   }
 
   /** Bringt Visuals, Schrott, Böden und Marker ohne Animation auf den Stand des States. */
@@ -510,7 +585,10 @@ export class EditorPreviewScene implements SceneController {
       if ((had?.length ?? 0) !== layers) {
         const [px, pz] = this.cellToWorld([i % w, Math.floor(i / w)]);
         if (layers === 0 && had) {
-          for (const m of had) this.boardGroup.remove(m);
+          for (const m of had) {
+            this.boardGroup.remove(m);
+            this.release(m);
+          }
           this.scrapMeshes.delete(i);
         } else if (layers > 0) this.buildScrap(i, px, pz, layers);
       }
@@ -525,6 +603,7 @@ export class EditorPreviewScene implements SceneController {
   // ---------- Store sync ----------
 
   private syncFromStore(initial: boolean) {
+    this.invalidate();
     const s = usePreviewStore.getState();
     if (!s.state || !s.level) return;
     const levelChanged = s.levelSeq !== this.renderedLevelSeq;
