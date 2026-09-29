@@ -38,5 +38,8 @@
 - [ ] Spielfeld viel cooler; Sondersteine mit echter Visualisierung (keine leeren Klötze)
 - [ ] Morph Map → Spielfeld spektakulärer, alles flüssiger und dynamischer
 
+**Schatten (Florian, 2026-09-29 spät, höchste Priorität)**
+- [ ] Schattenkanten sind stufig (Treppen = vergrößerte Schattenkarten-Texel bei 10°-Sonne und großer Planetenansicht). Ziel: **super smooth und exakt wie im Gemälde** — messerscharfe, aber glatte Vektor-Kurven, 1-px-Antialiasing, keine Treppen, kein Weichzeichnen, kein Flimmern beim Drehen. Vorher-Bild: `docs/progress/p2e-shadow-before-iphone.webp`.
+
 **iPhone first**
 - [ ] Auf dem iPhone mit vollem Liquid Glass und App-Funktionen testbar (Capacitor-Build, natives Glas-HUD, Haptik)
