@@ -10,13 +10,18 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "e2e": "node scripts/e2e.mjs",
-    "e2e:pw": "playwright test"
+    "e2e:pw": "playwright test",
+    "ios:icons": "bash scripts/ios-icons.sh",
+    "ios:sim": "bash scripts/ios-sim.sh",
+    "ios:device": "bash scripts/ios-device.sh"
   },
   "dependencies": {
     "@capacitor/core": "^8.5.2",
+    "@capacitor/haptics": "^8.0.2",
     "@capacitor/ios": "^8.5.2",
     "@ee/core": "workspace:*",
     "@ee/genome": "workspace:*",
+    "@ee/liquid-glass": "link:./plugins/liquid-glass",
     "@ee/physics": "workspace:*",
     "@ee/render": "workspace:*",
     "@ee/world": "workspace:*",

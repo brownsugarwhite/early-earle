@@ -8,6 +8,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
+        // Ink behind everything (launch screen → web view → glass HUD), so no white flash between them.
+        window?.backgroundColor = UIColor(red: 8 / 255, green: 27 / 255, blue: 37 / 255, alpha: 1)
         window?.rootViewController = CAPBridgeViewController()
         window?.makeKeyAndVisible()
 

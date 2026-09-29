@@ -1,0 +1,22 @@
+{
+  "name": "@ee/liquid-glass",
+  "version": "0.0.1",
+  "private": true,
+  "description": "early earle: natives Liquid-Glass-HUD (SwiftUI) über dem Capacitor-WebView, Touch-Durchleitung, JSON-Zustand",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "src",
+    "ios/Sources",
+    "Package.swift"
+  ],
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  },
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  }
+}
