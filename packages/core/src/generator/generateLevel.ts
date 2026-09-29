@@ -17,10 +17,10 @@ import {
   type ZoneId,
 } from '../schema/level';
 import { levelFromAscii, type AsciiOptions } from '../testing/ascii';
-import type { Coord } from '../model';
+import type { Coord, Material } from '../model';
 
 export type LevelType =
-  'tutorial' | 'fuu' | 'comfort' | 'skill' | 'hard' | 'veryHard' | 'celebration';
+  'tutorial' | 'fuu' | 'comfort' | 'skill' | 'hard' | 'veryHard' | 'celebration' | 'breather';
 export type DifficultyStyle = (typeof DIFFICULTY_STYLES)[number];
 
 export type ElementId =
@@ -48,6 +48,13 @@ export type ElementId =
 
 export type GoalSpec = LevelInput['goals'][number];
 
+/** A start blob with an explicit material/kind (e.g. jelly blobs in a liquid zone). */
+export interface StartBlobSpec {
+  tier: number;
+  material?: Material;
+  kind?: 'normal' | 'amoeba' | 'stray';
+}
+
 export interface LevelSpec {
   zone: ZoneId;
   /** 1-based level number. */
@@ -63,8 +70,13 @@ export interface LevelSpec {
   seed: number;
   /** Fixed ASCII layout (tokens of `testing/ascii`); overrides random placement. */
   board?: string;
-  /** Multiset of start-blob tiers placed on random open cells. */
-  startTiers?: number[];
+  /** Multiset of start blobs (tier or tier+material) placed on random open cells. */
+  startTiers?: (number | StartBlobSpec)[];
+  /**
+   * Explicit mask rows ('.', '#', 'P'): void shapes ("Riss-Formen") and vents.
+   * The grid size follows the mask; pillars come from the mask instead of random placement.
+   */
+  mask?: string[];
   counts?: Partial<
     Record<
       | 'pillars'
@@ -75,12 +87,24 @@ export interface LevelSpec {
       | 'cages'
       | 'fences'
       | 'crust'
-      | 'sleepers',
+      | 'sleepers'
+      | 'oil',
       number
     >
   >;
   scrapLayers?: number;
-  spawn?: { tier2?: number; tier3?: number; amoeba?: number; sources?: Coord[] };
+  cageLayers?: number;
+  cageTier?: number;
+  crustTier?: number;
+  /** Explicit fences (added to randomly placed ones). */
+  fences?: { a: Coord; b: Coord }[];
+  spawn?: {
+    tier2?: number;
+    tier3?: number;
+    amoeba?: number;
+    sources?: Coord[];
+    fallback?: 'none' | 'anyEmpty';
+  };
   specials?: { lineAt?: number; burstAt?: number };
   style?: DifficultyStyle;
   /** Where blockers and target floors go; defaults to edge-first for gentle types, centre-first otherwise. */
@@ -116,6 +140,7 @@ export function targetAttempts(index: number, type: LevelType): [number, number]
     case 'tutorial':
     case 'fuu':
     case 'celebration':
+    case 'breather':
       return [1.0, 1.1];
     case 'comfort':
       return index <= 20 ? [1.0, 1.1] : [1.1, 1.3];
@@ -187,7 +212,8 @@ function biasedPool(
 // ---- generator -------------------------------------------------------------------
 
 export function generateLevel(spec: LevelSpec): LevelDef {
-  const { w, h } = spec.grid;
+  const w = spec.mask ? (spec.mask[0]?.length ?? 0) : spec.grid.w;
+  const h = spec.mask ? spec.mask.length : spec.grid.h;
   const id = levelId(spec.zone, spec.index);
   const seed = hash32(spec.zone, spec.index, spec.seed);
   const rng = new Rng(seed);
@@ -196,7 +222,8 @@ export function generateLevel(spec: LevelSpec): LevelDef {
     spec.type === 'tutorial' ||
     spec.type === 'fuu' ||
     spec.type === 'comfort' ||
-    spec.type === 'celebration';
+    spec.type === 'celebration' ||
+    spec.type === 'breather';
   const bias = spec.placement ?? (gentle ? 'edge' : 'interior');
 
   const table: LevelInput['spawn']['table'] = [{ tier: 1, weight: 9 }];
@@ -222,24 +249,38 @@ export function generateLevel(spec: LevelSpec): LevelDef {
     sources: spec.spawn?.sources ?? [],
     table,
     preview: true,
-    fallback: spec.spawn?.sources && spec.spawn.sources.length > 0 ? 'none' : 'anyEmpty',
+    fallback:
+      spec.spawn?.fallback ??
+      (spec.spawn?.sources && spec.spawn.sources.length > 0 ? 'none' : 'anyEmpty'),
   };
 
   // Fixed board: reuse the ASCII parser, then stamp id/name/difficulty.
   if (spec.board) {
-    const opts: AsciiOptions = { id, zone: spec.zone, moves, cap, goals, lineAt, burstAt, spawn };
+    const opts: AsciiOptions = {
+      id,
+      zone: spec.zone,
+      moves,
+      cap,
+      goals,
+      lineAt,
+      burstAt,
+      spawn,
+      fences: spec.fences ?? [],
+    };
     const base = levelFromAscii(spec.board, opts);
     const input: LevelInput = { ...base, difficulty };
     if (spec.name) input.name = spec.name;
     return LevelSchema.parse(input);
   }
 
-  // Mask with interior pillars.
-  const mask: string[][] = Array.from({ length: h }, () => new Array<string>(w).fill('.'));
+  // Mask: explicit (void shapes, vents) or a full rectangle with random interior pillars.
+  const mask: string[][] = spec.mask
+    ? spec.mask.map((r) => r.split(''))
+    : Array.from({ length: h }, () => new Array<string>(w).fill('.'));
   const all: Coord[] = [];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) all.push([x, y]);
-  const open: Coord[] = all.slice();
-  if (has('pillar')) {
+  const open: Coord[] = all.filter((c) => mask[c[1]]![c[0]] === '.');
+  if (has('pillar') && !spec.mask) {
     const interior = rng.shuffle(all.filter((c) => isInterior(w, h, c)));
     const k = spec.counts?.pillars ?? 1;
     const picked = take(interior, k, 2);
@@ -254,7 +295,7 @@ export function generateLevel(spec: LevelSpec): LevelDef {
 
   const blockers: NonNullable<LevelInput['blockers']> = [];
   const floors: NonNullable<LevelInput['floors']> = [];
-  const fences: NonNullable<LevelInput['fences']> = [];
+  const fences: NonNullable<LevelInput['fences']> = [...(spec.fences ?? [])];
   const start: NonNullable<LevelInput['start']> = [];
 
   // Blockers first (they take cells), keeping at least one cell apart so lanes stay open.
@@ -266,12 +307,17 @@ export function generateLevel(spec: LevelSpec): LevelDef {
   }
   if (has('cage')) {
     for (const c of take(pool, spec.counts?.cages ?? 1, 2)) {
-      blockers.push({ kind: 'cage', at: c, content: { tier: 2 }, layers: 1 });
+      blockers.push({
+        kind: 'cage',
+        at: c,
+        content: { tier: spec.cageTier ?? 2 },
+        layers: spec.cageLayers ?? 1,
+      });
     }
   }
   if (has('crust')) {
     for (const c of take(pool, spec.counts?.crust ?? 1, 2))
-      blockers.push({ kind: 'crust', at: c, content: { tier: 2 } });
+      blockers.push({ kind: 'crust', at: c, content: { tier: spec.crustTier ?? 2 } });
   }
   if (has('sleeper')) {
     for (const c of take(pool, spec.counts?.sleepers ?? 1, 2))
@@ -291,6 +337,9 @@ export function generateLevel(spec: LevelSpec): LevelDef {
   if (has('spore')) {
     for (const c of take(pool, spec.counts?.spores ?? 3, 1)) floors.push({ kind: 'spore', at: c });
   }
+  if (has('oil')) {
+    for (const c of take(pool, spec.counts?.oil ?? 2, 1)) floors.push({ kind: 'oil', at: c });
+  }
 
   // Fences between two adjacent open cells (never touching a blocker).
   if (has('fence')) {
@@ -306,10 +355,14 @@ export function generateLevel(spec: LevelSpec): LevelDef {
   // Start blobs on the remaining cells (floors may sit underneath).
   const startCells = rng.shuffle(pool.slice());
   const tiers = spec.startTiers ?? [2, 2, 1, 1];
-  tiers.forEach((tier, i) => {
+  tiers.forEach((t, i) => {
     const c = startCells[i];
     if (!c) return;
-    start.push({ at: c, blob: { tier } });
+    const def: StartBlobSpec = typeof t === 'number' ? { tier: t } : t;
+    const blob: NonNullable<LevelInput['start']>[number]['blob'] = { tier: def.tier };
+    if (def.material) blob.material = def.material;
+    if (def.kind) blob.kind = def.kind;
+    start.push({ at: c, blob });
   });
 
   const input: LevelInput = {

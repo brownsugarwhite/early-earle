@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "syrup",
+  "name": "Syrup",
+  "palette": {
+    "sky": ["#e5aed4", "#937cc2"],
+    "terrainLight": "#b08fcb",
+    "terrainDark": "#7567a8",
+    "ink": "#1a131b",
+    "accents": ["#f17023", "#db292f"]
+  },
+  "levelRange": [26, 50],
+  "material": "liquid"
+}

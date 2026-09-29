@@ -1,3 +1,4 @@
+import { useAppStore } from '../../state/store';
 import { BoxGeometry, Color, InstancedMesh, Mesh, PerspectiveCamera, Scene, Vector3 } from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { Fn, color, float, floor, mix, mod, positionWorld, smoothstep, uniform, vec2 } from 'three/tsl';
@@ -100,9 +101,8 @@ const LOD_PX = { high: 24, mobile: 64 } as const;
 
 export function resolveQuality(q: Quality): 'high' | 'mobile' {
   if (q !== 'auto') return q;
-  if (typeof navigator === 'undefined') return 'high';
-  const touch = navigator.maxTouchPoints > 0 || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
-  return touch || (window.devicePixelRatio || 1) >= 2.5 ? 'mobile' : 'high';
+  // 'auto' folgt dem App-Governor (siehe canvas/qualityGovernor.ts)
+  return useAppStore.getState().effectiveQuality === 'mobil' ? 'mobile' : 'high';
 }
 
 /** A/B switches for the raymarch shader, readable from the URL (`?core=1&oct=const&steps=const`). */

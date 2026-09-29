@@ -9,7 +9,7 @@
  *   R<n>       rot (period n)        T<n> toxic (countdown)    H   empty fog cell
  *   <tier>     blob, e.g. 3          A   amoeba (tier 1)
  *
- * Blob modifiers (append to the tier): l liquid, g gas, r fire (default jelly);
+ * Blob modifiers (append to the tier): j jelly, l liquid, g gas, r fire (default: zone material);
  *   F frozen (crust), S sleeper, C caged (C2 = 2 layers), H hidden (fog),
  *   L line (row axis), V line (column axis), B burst, W stray.
  *
@@ -64,7 +64,12 @@ export interface AsciiOptions {
   threats?: Threat[];
 }
 
-const MAT_LETTER: Record<string, 'liquid' | 'gas' | 'fire'> = { l: 'liquid', g: 'gas', r: 'fire' };
+const MAT_LETTER: Record<string, 'jelly' | 'liquid' | 'gas' | 'fire'> = {
+  j: 'jelly',
+  l: 'liquid',
+  g: 'gas',
+  r: 'fire',
+};
 
 function parseFloor(tok: string, at: Coord): Floor {
   switch (tok) {
@@ -151,7 +156,7 @@ export function levelFromAscii(board: string, opts: AsciiOptions = {}): LevelDef
         return;
       }
       // blob token
-      m = /^(A|\d{1,2})([lgr]?)(F|S|C[1-3]?|H|L|V|B|W)?$/.exec(tok);
+      m = /^(A|\d{1,2})([jlgr]?)(F|S|C[1-3]?|H|L|V|B|W)?$/.exec(tok);
       if (!m) throw new Error(`unknown token '${tok0}' at [${x},${y}]`);
       const blob: BlobDef = { tier: m[1] === 'A' ? 1 : Number(m[1]) };
       if (m[1] === 'A') blob.kind = 'amoeba';

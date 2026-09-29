@@ -1,0 +1,110 @@
+/* P5 Flow-Lab: splash overlay, glass HUD (CSS fallback for Liquid Glass), debug strip.
+   Rules: no borders/outlines anywhere; the 1-px highlight is an inset shadow; hard offset shadows in the
+   sun direction (--sun-shadow); zone-tinted glass over the Earle bands; chunky grotesk type; ≤ 8 words. */
+
+.flow-root { position: fixed; inset: 0; background: #081b25; overflow: hidden; }
+.flow-root .canvas-host { position: absolute; inset: 0; }
+.flow-root canvas { touch-action: none; }
+
+/* ---------- splash ---------- */
+.splash {
+  position: absolute; inset: 0; z-index: 20;
+  background: #081b25;
+  display: grid; place-items: center;
+  cursor: pointer; user-select: none; -webkit-user-select: none;
+  transition: opacity 0.55s ease-out;
+  /* A circular hole over the baked i-dot (viewport px): the 3D hero renders through it, in front of a
+     backing disc in the same interior colour as the i. */
+  -webkit-mask-image: radial-gradient(circle at var(--dot-x, 50%) var(--dot-y, 40%), transparent calc(var(--hole-r, 0px) - 0.5px), #000 calc(var(--hole-r, 0px) + 0.5px));
+  mask-image: radial-gradient(circle at var(--dot-x, 50%) var(--dot-y, 40%), transparent calc(var(--hole-r, 0px) - 0.5px), #000 calc(var(--hole-r, 0px) + 0.5px));
+}
+.splash[data-fading='true'] { opacity: 0; pointer-events: none; }
+.splash-img { display: block; pointer-events: none; }
+.splash-hint {
+  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 28px);
+  text-align: center; font-family: var(--font-display); font-weight: 900; font-size: 13px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--paper); opacity: 0.55;
+  animation: splash-pulse 2.2s ease-in-out infinite;
+}
+@keyframes splash-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.75; } }
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- HUD ---------- */
+.flow-hud { position: absolute; inset: 0; z-index: 10; pointer-events: none; font-family: var(--font-display); color: var(--ink); }
+.flow-hud > * { pointer-events: none; }
+.flow-hud button, .flow-hud a, .flow-hud select { pointer-events: auto; }
+.flow-hud[data-flow-state='splash'] .hud-top,
+.flow-hud[data-flow-state='splash'] .hud-bottom,
+.flow-hud[data-flow-state='hop'] .hud-top,
+.flow-hud[data-flow-state='hop'] .hud-bottom { opacity: 0; transform: translateY(-6px); }
+.hud-top, .hud-bottom { transition: opacity 0.6s ease 0.5s, transform 0.6s ease 0.5s; }
+
+/* Liquid-Glass fallback: tinted blur, 1-px inner highlight (inset shadow, not a border), hard sun shadow. */
+.glass {
+  --glass-tint: color-mix(in srgb, var(--sky-1) 26%, transparent);
+  background: var(--glass-tint);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 0 0 0 transparent, var(--sun-shadow) var(--ink-soft);
+  border: 0; border-radius: var(--radius);
+  color: var(--ink);
+}
+.flow-hud[data-flow-state='level'] .glass { --glass-tint: color-mix(in srgb, var(--khaki) 30%, transparent); }
+
+.hud-top {
+  position: absolute; top: calc(env(safe-area-inset-top) + 12px); left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 14px; padding: 10px 16px; max-width: calc(100vw - 32px);
+  white-space: nowrap;
+}
+.flow-hud[data-flow-state='splash'] .hud-top, .flow-hud[data-flow-state='hop'] .hud-top { transform: translate(-50%, -6px); }
+.hud-title { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: 0.02em; line-height: 1.1; display: flex; flex-direction: column; }
+.hud-title small { font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.75; font-weight: 900; }
+.hud-stat { display: flex; flex-direction: column; align-items: center; min-width: 44px; line-height: 1; }
+.hud-stat b { font-size: 20px; font-weight: 900; }
+.hud-stat span { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.75; margin-top: 3px; }
+.hud-goal { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--paper); font-size: 12px; font-weight: 900; box-shadow: 4px 2px 0 var(--ink-soft); }
+.hud-goal[data-done='true'] { background: var(--neon); }
+
+.hud-bottom {
+  position: absolute; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 14px);
+  display: flex; flex-direction: column; gap: 10px; align-items: center;
+}
+.hud-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.glass-btn {
+  font: inherit; font-weight: 900; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 14px 22px; min-width: 96px; min-height: 48px; cursor: pointer; color: var(--ink);
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+.glass-btn.primary { --glass-tint: color-mix(in srgb, var(--pink) 70%, transparent); }
+.glass-btn:active { transform: translate(4px, 2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 4px 1px 0 var(--ink-soft); }
+.glass-btn:disabled { opacity: 0.4; cursor: default; }
+.glass-btn:focus-visible { outline: none; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), var(--sun-shadow) var(--neon); }
+
+.flow-rex {
+  display: flex; align-items: center; gap: 10px; max-width: 520px; width: 100%;
+  padding: 10px 14px; background: var(--paper); color: var(--ink); font-weight: 700; font-size: 16px;
+  font-family: var(--font-body); box-shadow: var(--sun-shadow) var(--ink-soft);
+  animation: rex-in 0.35s ease-out;
+}
+.flow-rex .rex-name { flex: none; }
+@keyframes rex-in { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.hud-banner-flow { width: 100%; max-width: 520px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: var(--rust); color: var(--paper); font-weight: 900; font-size: 20px; box-shadow: var(--sun-shadow) var(--ink-soft); }
+
+/* ---------- dev strip ---------- */
+.flow-dev {
+  position: absolute; bottom: calc(env(safe-area-inset-bottom) + 8px); left: 8px; z-index: 12; max-width: 40vw;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: none;
+  font: 11px/1 ui-monospace, Menlo, monospace;
+}
+.flow-dev > * { pointer-events: auto; }
+.flow-dev .dev-btn { font: inherit; padding: 6px 8px; background: var(--ink); color: var(--paper); border: 0; cursor: pointer; box-shadow: 3px 1px 0 var(--khaki-deep); }
+.flow-dev .dev-btn[data-active='true'] { background: var(--neon); color: var(--ink); }
+.flow-dev .dev-link { padding: 6px 8px; background: var(--pink); color: var(--ink); font-weight: 900; box-shadow: 3px 1px 0 var(--ink-soft); }
+.flow-dev .perf-badge { transform: scale(0.9); transform-origin: left center; }
+
+@media (max-width: 480px) {
+  .hud-top { gap: 10px; padding: 8px 12px; }
+  .hud-title { font-size: 13px; }
+  .hud-goal { font-size: 11px; }
+  .flow-dev { bottom: calc(env(safe-area-inset-bottom) + 150px); max-width: 60vw; }
+}

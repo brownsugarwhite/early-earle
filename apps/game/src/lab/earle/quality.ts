@@ -1,3 +1,4 @@
+import { useAppStore } from '../../state/store';
 /**
  * Qualitätsstufen des Earle-Labs. Der Look (Tintenformen, Bänder, Punktrand) bleibt in beiden Stufen gleich;
  * nur die Kosten ändern sich.
@@ -57,10 +58,8 @@ export const QUALITY_PRESETS: Record<ResolvedQuality, QualityPreset> = {
 
 /** Auto: Touch-Gerät oder DPR ≥ 2.5 → Mobil, sonst Hoch. */
 export function detectAutoQuality(): ResolvedQuality {
-  if (typeof window === 'undefined') return 'hoch';
-  const touch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
-  const dpr = window.devicePixelRatio || 1;
-  return touch || dpr >= 2.5 ? 'mobil' : 'hoch';
+  // 'auto' folgt dem App-Governor (Start Hoch, Rückstufung bei gemessener p99 > 20 ms), nicht mehr Geräte-Heuristiken.
+  return useAppStore.getState().effectiveQuality;
 }
 
 export function resolveQuality(level: QualityLevel): QualityPreset {

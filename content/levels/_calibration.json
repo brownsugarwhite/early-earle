@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-29T14:32:48.750Z",
+  "generatedAt": "2026-09-29T15:48:47.924Z",
   "solverVersion": "0.1.0",
   "seeds": 200,
   "halfWidth": 0.05,
@@ -1104,6 +1104,1106 @@
         }
       },
       "name": "Der erste Riss"
+    },
+    {
+      "id": "syrup-026",
+      "file": "026.json",
+      "levelHash": 3102866786,
+      "solverVersion": "0.1.0",
+      "elements": ["fence"],
+      "moves": 30,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 12.428571428571429,
+          "meanMovesWon": 12.428571428571429,
+          "meanScore": 301.1142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 2733.807125
+        },
+        "novice": {
+          "n": 162,
+          "wins": 143,
+          "pWin": 0.8827160493827161,
+          "wilson": [0.8240837045755098, 0.9236177165395785],
+          "attemptsEst": 1.132867132867133,
+          "meanMoves": 20.22222222222222,
+          "meanMovesWon": 18.923076923076923,
+          "meanScore": 292.61728395061726,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 286.24841700000025
+        }
+      },
+      "name": "Fossilwand"
+    },
+    {
+      "id": "syrup-027",
+      "file": "027.json",
+      "levelHash": 1646997457,
+      "solverVersion": "0.1.0",
+      "elements": ["oil"],
+      "moves": 30,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 18.742857142857144,
+          "meanMovesWon": 18.742857142857144,
+          "meanScore": 309.54285714285714,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 3905.326708
+        },
+        "novice": {
+          "n": 200,
+          "wins": 162,
+          "pWin": 0.81,
+          "wilson": [0.7499864142552062, 0.8583290620754351],
+          "attemptsEst": 1.2345679012345678,
+          "meanMoves": 23.58,
+          "meanMovesWon": 22.074074074074073,
+          "meanScore": 292.72,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 309.1432910000003
+        }
+      },
+      "name": "Flüssig"
+    },
+    {
+      "id": "syrup-028",
+      "file": "028.json",
+      "levelHash": 3836474323,
+      "solverVersion": "0.1.0",
+      "elements": ["fence", "oil"],
+      "moves": 25,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 73,
+          "wins": 70,
+          "pWin": 0.958904109589041,
+          "wilson": [0.8859972266493555, 0.9859263147657112],
+          "attemptsEst": 1.042857142857143,
+          "meanMoves": 16.17808219178082,
+          "meanMovesWon": 15.8,
+          "meanScore": 282.027397260274,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 7643.798375
+        },
+        "novice": {
+          "n": 200,
+          "wins": 103,
+          "pWin": 0.515,
+          "wilson": [0.44610724474630287, 0.5833273750761476],
+          "attemptsEst": 1.941747572815534,
+          "meanMoves": 21.985,
+          "meanMovesWon": 19.145631067961165,
+          "meanScore": 249.095,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 286.0965419999993
+        }
+      },
+      "name": "Sirupfalle"
+    },
+    {
+      "id": "syrup-029",
+      "file": "029.json",
+      "levelHash": 1659924067,
+      "solverVersion": "0.1.0",
+      "elements": ["oil"],
+      "moves": 26,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 2,
+          "meanMovesWon": 2,
+          "meanScore": 145.82857142857142,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 294.87204199999996
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 2.257142857142857,
+          "meanMovesWon": 2.257142857142857,
+          "meanScore": 145.22857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 7.3729999999999905
+        }
+      },
+      "name": "Verschnaufer"
+    },
+    {
+      "id": "syrup-030",
+      "file": "030.json",
+      "levelHash": 3223868204,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 25,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 344,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 28.05516699999953
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1.0571428571428572,
+          "meanMovesWon": 1.0571428571428572,
+          "meanScore": 343.7142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 1.6490420000000086
+        }
+      },
+      "name": "Ehrenrunde III"
+    },
+    {
+      "id": "syrup-031",
+      "file": "031.json",
+      "levelHash": 2266971659,
+      "solverVersion": "0.1.0",
+      "elements": ["cage"],
+      "moves": 28,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 4.6,
+          "meanMovesWon": 4.6,
+          "meanScore": 156.6,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 1166.8353749999997
+        },
+        "novice": {
+          "n": 200,
+          "wins": 166,
+          "pWin": 0.83,
+          "wilson": [0.7718399896049648, 0.8757216464889435],
+          "attemptsEst": 1.2048192771084338,
+          "meanMoves": 17.265,
+          "meanMovesWon": 15.066265060240964,
+          "meanScore": 189.035,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 217.34204200000022
+        }
+      },
+      "name": "Der Käfig"
+    },
+    {
+      "id": "syrup-032",
+      "file": "032.json",
+      "levelHash": 4049949317,
+      "solverVersion": "0.1.0",
+      "elements": ["cage"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 7.942857142857143,
+          "meanMovesWon": 7.942857142857143,
+          "meanScore": 195.94285714285715,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 2372.0027919999993
+        },
+        "novice": {
+          "n": 200,
+          "wins": 163,
+          "pWin": 0.815,
+          "wilson": [0.7554281794988185, 0.8626988367726394],
+          "attemptsEst": 1.2269938650306749,
+          "meanMoves": 17.51,
+          "meanMovesWon": 15.128834355828221,
+          "meanScore": 230.94,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 363.5400840000002
+        }
+      },
+      "name": "Zwei Käfige"
+    },
+    {
+      "id": "syrup-033",
+      "file": "033.json",
+      "levelHash": 3730425573,
+      "solverVersion": "0.1.0",
+      "elements": ["fence", "cage"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 10.942857142857143,
+          "meanMovesWon": 10.942857142857143,
+          "meanScore": 191.9142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 2540.3782090000004
+        },
+        "novice": {
+          "n": 200,
+          "wins": 162,
+          "pWin": 0.81,
+          "wilson": [0.7499864142552062, 0.8583290620754351],
+          "attemptsEst": 1.2345679012345678,
+          "meanMoves": 16.255,
+          "meanMovesWon": 13.5,
+          "meanScore": 207.625,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 228.36462500000016
+        }
+      },
+      "name": "Käfig hinter der Wand"
+    },
+    {
+      "id": "syrup-034",
+      "file": "034.json",
+      "levelHash": 3856733079,
+      "solverVersion": "0.1.0",
+      "elements": ["scrap", "burst"],
+      "moves": 26,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 6.6,
+          "meanMovesWon": 6.6,
+          "meanScore": 154.85714285714286,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.06060606060606061,
+            "fired": 0.021645021645021644
+          },
+          "elapsedMs": 1682.33725
+        },
+        "novice": {
+          "n": 176,
+          "wins": 153,
+          "pWin": 0.8693181818181818,
+          "wilson": [0.8115399359239899, 0.9113184016352844],
+          "attemptsEst": 1.150326797385621,
+          "meanMoves": 13.352272727272727,
+          "meanMovesWon": 11.450980392156863,
+          "meanScore": 185.69886363636363,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.033191489361702124,
+            "fired": 0.017446808510638297
+          },
+          "elapsedMs": 177.826458
+        }
+      },
+      "name": "Der Knall"
+    },
+    {
+      "id": "syrup-035",
+      "file": "035.json",
+      "levelHash": 1412568786,
+      "solverVersion": "0.1.0",
+      "elements": ["withered", "deepWithered", "burst"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 14.6,
+          "meanMovesWon": 14.6,
+          "meanScore": 257.9714285714286,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.07045009784735812,
+            "fired": 0.06262230919765166
+          },
+          "elapsedMs": 2955.2554999999993
+        },
+        "novice": {
+          "n": 200,
+          "wins": 157,
+          "pWin": 0.785,
+          "wilson": [0.7229757022632792, 0.836282074363278],
+          "attemptsEst": 1.2738853503184713,
+          "meanMoves": 22.305,
+          "meanMovesWon": 20.745222929936304,
+          "meanScore": 274.235,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.05021295673615781,
+            "fired": 0.04393633714413808
+          },
+          "elapsedMs": 273.47000000000116
+        }
+      },
+      "name": "Tausch"
+    },
+    {
+      "id": "syrup-036",
+      "file": "036.json",
+      "levelHash": 2652572117,
+      "solverVersion": "0.1.0",
+      "elements": ["fence", "scrap", "burst"],
+      "moves": 22,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.114285714285714,
+          "meanMovesWon": 11.114285714285714,
+          "meanScore": 168.2,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.04627249357326478,
+            "fired": 0.02313624678663239
+          },
+          "elapsedMs": 2574.9914590000008
+        },
+        "novice": {
+          "n": 200,
+          "wins": 123,
+          "pWin": 0.615,
+          "wilson": [0.5459973878179245, 0.6796680308208618],
+          "attemptsEst": 1.6260162601626016,
+          "meanMoves": 18.605,
+          "meanMovesWon": 16.479674796747968,
+          "meanScore": 179.59,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.019887127116366567,
+            "fired": 0.009137328675087342
+          },
+          "elapsedMs": 212.5323750000025
+        }
+      },
+      "name": "Sirupsumpf"
+    },
+    {
+      "id": "syrup-037",
+      "file": "037.json",
+      "levelHash": 3607430273,
+      "solverVersion": "0.1.0",
+      "elements": ["oil", "cage"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 7.742857142857143,
+          "meanMovesWon": 7.742857142857143,
+          "meanScore": 210.88571428571427,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 1702.7726669999975
+        },
+        "novice": {
+          "n": 200,
+          "wins": 162,
+          "pWin": 0.81,
+          "wilson": [0.7499864142552062, 0.8583290620754351],
+          "attemptsEst": 1.2345679012345678,
+          "meanMoves": 17.865,
+          "meanMovesWon": 15.487654320987655,
+          "meanScore": 243.595,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 214.89754200000243
+        }
+      },
+      "name": "Rettung im Sirup"
+    },
+    {
+      "id": "syrup-038",
+      "file": "038.json",
+      "levelHash": 1029767641,
+      "solverVersion": "0.1.0",
+      "elements": ["fence", "cage"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 173,
+          "wins": 151,
+          "pWin": 0.8728323699421965,
+          "wilson": [0.8149656522319276, 0.9145007176719863],
+          "attemptsEst": 1.1456953642384107,
+          "meanMoves": 21.601156069364162,
+          "meanMovesWon": 20.66887417218543,
+          "meanScore": 218.17919075144508,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 24395.056542000006
+        },
+        "novice": {
+          "n": 200,
+          "wins": 154,
+          "pWin": 0.77,
+          "wilson": [0.7069157192180299, 0.8229074375860769],
+          "attemptsEst": 1.2987012987012987,
+          "meanMoves": 21.8,
+          "meanMovesWon": 19.948051948051948,
+          "meanScore": 224.63,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 338.669790999993
+        }
+      },
+      "name": "Sirupkreuzung"
+    },
+    {
+      "id": "syrup-039",
+      "file": "039.json",
+      "levelHash": 488689483,
+      "solverVersion": "0.1.0",
+      "elements": ["fence", "cage", "burst"],
+      "moves": 18,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 9.771428571428572,
+          "meanMovesWon": 9.771428571428572,
+          "meanScore": 200.68571428571428,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.04093567251461988,
+            "fired": 0.029239766081871343
+          },
+          "elapsedMs": 2237.7302919999997
+        },
+        "novice": {
+          "n": 200,
+          "wins": 108,
+          "pWin": 0.54,
+          "wilson": [0.4708216309361468, 0.6076706885903875],
+          "attemptsEst": 1.8518518518518516,
+          "meanMoves": 15.77,
+          "meanMovesWon": 13.87037037037037,
+          "meanScore": 198.19,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.024413443246670895,
+            "fired": 0.01046290424857324
+          },
+          "elapsedMs": 205.14629199999945
+        }
+      },
+      "name": "Knall am Käfig"
+    },
+    {
+      "id": "syrup-040",
+      "file": "040.json",
+      "levelHash": 1019550710,
+      "solverVersion": "0.1.0",
+      "elements": ["burst"],
+      "moves": 25,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 344,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 1,
+            "fired": 0
+          },
+          "elapsedMs": 25.284749999998894
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1.0285714285714285,
+          "meanMovesWon": 1.0285714285714285,
+          "meanScore": 343.85714285714283,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.9722222222222222,
+            "fired": 0
+          },
+          "elapsedMs": 3.5400840000002063
+        }
+      },
+      "name": "Ehrenrunde IV"
+    },
+    {
+      "id": "syrup-041",
+      "file": "041.json",
+      "levelHash": 3527683556,
+      "solverVersion": "0.1.0",
+      "elements": ["crust"],
+      "moves": 30,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 17.142857142857142,
+          "meanMovesWon": 17.142857142857142,
+          "meanScore": 318.65714285714284,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 3544.5396660000006
+        },
+        "novice": {
+          "n": 200,
+          "wins": 165,
+          "pWin": 0.825,
+          "wilson": [0.7663545078991807, 0.8713955882539106],
+          "attemptsEst": 1.2121212121212122,
+          "meanMoves": 23.175,
+          "meanMovesWon": 21.727272727272727,
+          "meanScore": 308.31,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 288.6680839999972
+        }
+      },
+      "name": "Kruste"
+    },
+    {
+      "id": "syrup-042",
+      "file": "042.json",
+      "levelHash": 4252615385,
+      "solverVersion": "0.1.0",
+      "elements": ["cage", "crust"],
+      "moves": 30,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 19.114285714285714,
+          "meanMovesWon": 19.114285714285714,
+          "meanScore": 352.25714285714287,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 4186.854749999999
+        },
+        "novice": {
+          "n": 200,
+          "wins": 163,
+          "pWin": 0.815,
+          "wilson": [0.7554281794988185, 0.8626988367726394],
+          "attemptsEst": 1.2269938650306749,
+          "meanMoves": 23.53,
+          "meanMovesWon": 22.061349693251532,
+          "meanScore": 339.075,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 286.8554579999982
+        }
+      },
+      "name": "Doppelkruste"
+    },
+    {
+      "id": "syrup-043",
+      "file": "043.json",
+      "levelHash": 121078230,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 28,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 17.771428571428572,
+          "meanMovesWon": 17.771428571428572,
+          "meanScore": 184.5142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 3416.7730830000073
+        },
+        "novice": {
+          "n": 173,
+          "wins": 151,
+          "pWin": 0.8728323699421965,
+          "wilson": [0.8149656522319276, 0.9145007176719863],
+          "attemptsEst": 1.1456953642384107,
+          "meanMoves": 22.6242774566474,
+          "meanMovesWon": 21.841059602649008,
+          "meanScore": 182.32369942196533,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 238.56908399998792
+        }
+      },
+      "name": "Rissformen"
+    },
+    {
+      "id": "syrup-044",
+      "file": "044.json",
+      "levelHash": 715725181,
+      "solverVersion": "0.1.0",
+      "elements": ["crust"],
+      "moves": 25,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 14.8,
+          "meanMovesWon": 14.8,
+          "meanScore": 179.42857142857142,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 2787.1160420000087
+        },
+        "novice": {
+          "n": 200,
+          "wins": 156,
+          "pWin": 0.78,
+          "wilson": [0.7176107720803744, 0.8318354646053661],
+          "attemptsEst": 1.282051282051282,
+          "meanMoves": 20.25,
+          "meanMovesWon": 18.91025641025641,
+          "meanScore": 165.945,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 187.0244169999787
+        }
+      },
+      "name": "Riss und Kruste"
+    },
+    {
+      "id": "syrup-045",
+      "file": "045.json",
+      "levelHash": 3669234137,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "fence", "cage"],
+      "moves": 22,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 51,
+          "wins": 50,
+          "pWin": 0.9803921568627451,
+          "wilson": [0.8969519232441061, 0.9965303967465577],
+          "attemptsEst": 1.02,
+          "meanMoves": 12.803921568627452,
+          "meanMovesWon": 12.62,
+          "meanScore": 189.47058823529412,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 4633.592958
+        },
+        "novice": {
+          "n": 200,
+          "wins": 122,
+          "pWin": 0.61,
+          "wilson": [0.5409361758928832, 0.6749177028050861],
+          "attemptsEst": 1.639344262295082,
+          "meanMoves": 18.405,
+          "meanMovesWon": 16.10655737704918,
+          "meanScore": 176.045,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 246.62783300000046
+        }
+      },
+      "name": "Sirupschlucht"
+    },
+    {
+      "id": "syrup-046",
+      "file": "046.json",
+      "levelHash": 1479794852,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar"],
+      "moves": 30,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.571428571428571,
+          "meanMovesWon": 11.571428571428571,
+          "meanScore": 296.6,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 1065.683791000003
+        },
+        "novice": {
+          "n": 183,
+          "wins": 158,
+          "pWin": 0.8633879781420765,
+          "wilson": [0.8061073695574859, 0.905725541314611],
+          "attemptsEst": 1.1582278481012658,
+          "meanMoves": 19.51366120218579,
+          "meanMovesWon": 17.854430379746834,
+          "meanScore": 294.7704918032787,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 65.7143750000032
+        }
+      },
+      "name": "Gasquelle"
+    },
+    {
+      "id": "syrup-047",
+      "file": "047.json",
+      "levelHash": 637674677,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "withered"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.142857142857142,
+          "meanMovesWon": 11.142857142857142,
+          "meanScore": 175.02857142857144,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 1484.9429999999993
+        },
+        "novice": {
+          "n": 200,
+          "wins": 156,
+          "pWin": 0.78,
+          "wilson": [0.7176107720803744, 0.8318354646053661],
+          "attemptsEst": 1.282051282051282,
+          "meanMoves": 20.265,
+          "meanMovesWon": 18.083333333333332,
+          "meanScore": 198.255,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 77.13208399999712
+        }
+      },
+      "name": "Quellen und Dürre"
+    },
+    {
+      "id": "syrup-048",
+      "file": "048.json",
+      "levelHash": 4122322479,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "fence", "cage"],
+      "moves": 24,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 7.8,
+          "meanMovesWon": 7.8,
+          "meanScore": 212.82857142857142,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 234.144834
+        },
+        "novice": {
+          "n": 200,
+          "wins": 163,
+          "pWin": 0.815,
+          "wilson": [0.7554281794988185, 0.8626988367726394],
+          "attemptsEst": 1.2269938650306749,
+          "meanMoves": 15.21,
+          "meanMovesWon": 13.214723926380367,
+          "meanScore": 203.05,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0
+          },
+          "elapsedMs": 49.805916000000025
+        }
+      },
+      "name": "Quellen und Käfige"
+    },
+    {
+      "id": "syrup-049",
+      "file": "049.json",
+      "levelHash": 511307663,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "scrap", "burst"],
+      "moves": 23,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.428571428571429,
+          "meanMovesWon": 11.428571428571429,
+          "meanScore": 163.17142857142858,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.0175,
+            "fired": 0.01
+          },
+          "elapsedMs": 1484.9554580000001
+        },
+        "novice": {
+          "n": 200,
+          "wins": 124,
+          "pWin": 0.62,
+          "wilson": [0.5510658951919951, 0.6844110633876079],
+          "attemptsEst": 1.6129032258064517,
+          "meanMoves": 18.59,
+          "meanMovesWon": 15.887096774193548,
+          "meanScore": 188.845,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.02097902097902098,
+            "fired": 0.010758472296933835
+          },
+          "elapsedMs": 79.65479099999993
+        }
+      },
+      "name": "Quellensturm"
+    },
+    {
+      "id": "syrup-050",
+      "file": "050.json",
+      "levelHash": 3634524501,
+      "solverVersion": "0.1.0",
+      "elements": ["cage", "burst"],
+      "moves": 20,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 237,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 1,
+            "fired": 0
+          },
+          "elapsedMs": 146.44337500000256
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1.1714285714285715,
+          "meanMovesWon": 1.1714285714285715,
+          "meanScore": 235.8,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.8292682926829268,
+            "fired": 0
+          },
+          "elapsedMs": 6.734208000008948
+        }
+      },
+      "name": "Der zweite Riss"
     }
   ]
 }

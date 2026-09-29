@@ -136,15 +136,19 @@ describe('content files', () => {
       expect(r.success, `${f}: ${r.success ? '' : JSON.stringify(r.error.issues)}`).toBe(true);
       if (r.success) {
         const index = Number(f.replace('.json', ''));
-        expect(r.data.id).toBe(`tjorizo-${f.replace('.json', '')}`);
+        expect(r.data.id).toBe(`${r.data.zone}-${f.replace('.json', '')}`);
         expect(r.data.difficulty.targetAttempts[1]).toBeLessThanOrEqual(index <= 10 ? 1.1 : 2.5);
       }
     }
   });
 
-  it('content/zones/tjorizo.json validates', () => {
-    const json = JSON.parse(readFileSync(`${contentDir}zones/tjorizo.json`, 'utf8'));
-    const zone = ZoneSchema.parse(json);
-    expect(zone.levelRange).toEqual([1, 25]);
+  it('every content/zones/*.json validates', () => {
+    const files = readdirSync(`${contentDir}zones`).filter((f) => f.endsWith('.json'));
+    expect(files.length).toBeGreaterThanOrEqual(2);
+    for (const f of files) {
+      const zone = ZoneSchema.parse(JSON.parse(readFileSync(`${contentDir}zones/${f}`, 'utf8')));
+      expect(`${zone.id}.json`).toBe(f);
+      expect(zone.levelRange[1]).toBeGreaterThan(zone.levelRange[0]);
+    }
   });
 });

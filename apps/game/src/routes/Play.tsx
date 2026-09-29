@@ -1,13 +1,6 @@
-import { useMemo } from 'react';
-import { CanvasHost } from '../canvas/CanvasHost';
-import { LabFrame } from '../overlay/LabFrame';
-import { PlaceholderScene } from '../scenes/PlaceholderScene';
+import { FlowView } from '../flow/FlowView';
 
+/** `/play`: the flow starting on the map (no splash). */
 export function Play() {
-  const controller = useMemo(() => new PlaceholderScene('#7ce6d5'), []);
-  return (
-    <LabFrame title="Spiel (Platzhalter)">
-      <CanvasHost controller={controller} />
-    </LabFrame>
-  );
+  return <FlowView start="map" />;
 }

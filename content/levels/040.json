@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "id": "syrup-040",
+  "zone": "syrup",
+  "name": "Ehrenrunde IV",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [0, 0],
+      "blob": {
+        "tier": 6
+      }
+    },
+    {
+      "at": [1, 0],
+      "blob": {
+        "tier": 6
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 5
+      }
+    },
+    {
+      "at": [1, 1],
+      "blob": {
+        "tier": 5
+      }
+    },
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [1, 2],
+      "blob": {
+        "tier": 4
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "reachTier",
+      "tier": 7
+    }
+  ],
+  "moves": 25,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 3
+  },
+  "difficulty": {
+    "targetAttempts": [1, 1.1],
+    "style": "explosive"
+  }
+}

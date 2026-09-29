@@ -3,6 +3,7 @@ import type { SceneController, SceneContext } from './SceneController';
 import { getRenderer, detectBackend } from './rendererSingleton';
 import { useAppStore } from '../state/store';
 import { bus } from '../state/bus';
+import { governQuality, resetQualityGovernor } from './qualityGovernor';
 
 const MAX_DPR = 2;
 
@@ -41,6 +42,7 @@ export function CanvasHost({ controller }: { controller: SceneController }) {
       useAppStore.getState().setBackend(backend);
       bus.emit('renderer/ready', { backend });
       ctx = { renderer, canvas, width: 1, height: 1, dpr: 1, backend };
+      resetQualityGovernor();
       if (import.meta.env.DEV) (window as unknown as { __ee?: unknown }).__ee = { renderer, ctx, controller };
       applySize(ctx);
       ro = new ResizeObserver(() => {
@@ -67,7 +69,10 @@ export function CanvasHost({ controller }: { controller: SceneController }) {
           const sorted = [...times].sort((a, b) => a - b);
           const p99 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.99))] ?? 0;
           const info = renderer.info as { render?: { drawCalls?: number } };
-          useAppStore.getState().setPerf(Math.round(frames / acc), Math.round(p99 * 10) / 10, info.render?.drawCalls ?? 0);
+          const fpsNow = Math.round(frames / acc);
+          const p99Now = Math.round(p99 * 10) / 10;
+          useAppStore.getState().setPerf(fpsNow, p99Now, info.render?.drawCalls ?? 0);
+          governQuality(fpsNow, p99Now);
           times.length = 0;
           frames = 0;
           acc = 0;

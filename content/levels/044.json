@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "id": "syrup-044",
+  "zone": "syrup",
+  "name": "Riss und Kruste",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", "..#..", ".#...", "#...."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "crust",
+      "at": [0, 1],
+      "content": {
+        "tier": 3
+      }
+    },
+    {
+      "kind": "crust",
+      "at": [3, 1],
+      "content": {
+        "tier": 3
+      }
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [4, 0],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "reachTier",
+      "tier": 5
+    }
+  ],
+  "moves": 25,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.2, 1.4],
+    "style": "puzzle"
+  }
+}

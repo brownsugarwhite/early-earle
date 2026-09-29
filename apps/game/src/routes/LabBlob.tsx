@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { genomeFor, MATERIAL_KINDS, type MaterialKind } from '@ee/genome';
 import { CanvasHost } from '../canvas/CanvasHost';
+import { useAppStore } from '../state/store';
 import { LabFrame } from '../overlay/LabFrame';
 import { BlobLabScene, DEFAULT_BLOB_LAB_SETTINGS, resolveQuality, sceneOptionsFromSearch, type BlobCount, type BlobLabSettings, type Candidate, type DriverKind, type Quality } from '../lab/blob/BlobLabScene';
 import { BenchOverlay, useBlobBench } from '../lab/blob/BlobBench';
@@ -66,6 +67,20 @@ export function LabBlob() {
     };
   }, [controller]);
 
+  // Governor-Wechsel → 'auto' neu auflösen
+  useEffect(
+    () =>
+      useAppStore.subscribe((s, prev) => {
+        if (s.effectiveQuality === prev.effectiveQuality) return;
+        setSettings((cur) => {
+          if (cur.quality !== 'auto') return cur;
+          controller.apply({ ...cur, quality: s.effectiveQuality === 'mobil' ? 'mobile' : 'high' });
+          controller.apply({ ...cur });
+          return cur;
+        });
+      }),
+    [controller],
+  );
   useEffect(() => {
     controller.apply(settings);
   }, [controller, settings]);

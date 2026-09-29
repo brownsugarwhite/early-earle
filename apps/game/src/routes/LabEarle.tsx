@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { CanvasHost } from '../canvas/CanvasHost';
+import { useAppStore } from '../state/store';
 import { LabFrame } from '../overlay/LabFrame';
 import { DEFAULT_EARLE_PARAMS, EarleLabScene, type EarleLabParams } from '../lab/earle/EarleLabScene';
 import { BenchPanel } from '../lab/earle/BenchPanel';
@@ -66,6 +67,17 @@ export function LabEarle() {
       controller.subscribe((p) => {
         setParams((prev) => (sameParams(prev, p) ? prev : p));
         setResolved(controller.getResolvedQuality());
+      }),
+    [controller],
+  );
+  // Governor-Wechsel → 'auto' neu auflösen (Zwischenschritt mit fester Stufe erzwingt den Preset-Wechsel)
+  useEffect(
+    () =>
+      useAppStore.subscribe((s, prev) => {
+        if (s.effectiveQuality === prev.effectiveQuality) return;
+        if (controller.getParams().quality !== 'auto') return;
+        controller.setParams({ quality: s.effectiveQuality });
+        controller.setParams({ quality: 'auto' });
       }),
     [controller],
   );

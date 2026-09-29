@@ -31,7 +31,8 @@ export interface FlowState {
   /** REX line for map moments (the level's own line lives in the grid store). */
   rex: string | null;
   splashDot: SplashDot | null;
-  request: FlowRequest | null;
+  /** Pending command for the scene (consumed via `clearRequest`). */
+  pending: FlowRequest | null;
   reset: (phase: FlowPhase, nodeCount: number) => void;
   setPhase: (phase: FlowPhase) => void;
   setCurrent: (node: number) => void;
@@ -52,13 +53,13 @@ export const useFlowStore = create<FlowState>((set) => ({
   nodeCount: 0,
   rex: null,
   splashDot: null,
-  request: null,
-  reset: (phase, nodeCount) => set({ phase, nodeCount, playing: null, request: null }),
+  pending: null,
+  reset: (phase, nodeCount) => set({ phase, nodeCount, playing: null, pending: null }),
   setPhase: (phase) => set({ phase }),
   setCurrent: (current) => set({ current }),
   setPlaying: (playing) => set({ playing }),
   setRex: (rex) => set({ rex }),
   setSplashDot: (splashDot) => set({ splashDot }),
-  request: (kind, node) => set({ request: node === undefined ? { kind, seq: ++seq } : { kind, node, seq: ++seq } }),
-  clearRequest: () => set({ request: null }),
+  request: (kind, node) => set({ pending: node === undefined ? { kind, seq: ++seq } : { kind, node, seq: ++seq } }),
+  clearRequest: () => set({ pending: null }),
 }));

@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "id": "syrup-045",
+  "zone": "syrup",
+  "name": "Sirupschlucht",
+  "grid": {
+    "w": 6,
+    "h": 6,
+    "mask": ["#....#", "......", "..PP..", "..PP..", "......", "#....#"]
+  },
+  "fences": [
+    {
+      "a": [5, 1],
+      "b": [5, 2]
+    },
+    {
+      "a": [4, 2],
+      "b": [5, 2]
+    }
+  ],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "cage",
+      "at": [4, 3],
+      "content": {
+        "tier": 2
+      },
+      "layers": 2
+    },
+    {
+      "kind": "cage",
+      "at": [4, 1],
+      "content": {
+        "tier": 2
+      },
+      "layers": 2
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [5, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [4, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 4],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [1, 2],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "rescue",
+      "count": 2
+    }
+  ],
+  "moves": 22,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.6, 2],
+    "style": "precise"
+  }
+}

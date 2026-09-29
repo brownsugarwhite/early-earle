@@ -1,4 +1,5 @@
 import { useAppStore } from '../state/store';
+import { resetQualityGovernor } from '../canvas/qualityGovernor';
 
 /** Zeigt Backend (WebGPU/WebGL2), FPS, Frametime-p99 und Draw Calls. Pflicht in jedem Lab. */
 export function PerfBadge() {
@@ -6,6 +7,15 @@ export function PerfBadge() {
   const fps = useAppStore((s) => s.fps);
   const p99 = useAppStore((s) => s.frameP99Ms);
   const dc = useAppStore((s) => s.drawCalls);
+  const pref = useAppStore((s) => s.qualityPref);
+  const eff = useAppStore((s) => s.effectiveQuality);
+  const setPref = useAppStore((s) => s.setQualityPref);
+  const cycle = () => {
+    const next = pref === 'auto' ? 'hoch' : pref === 'hoch' ? 'mobil' : 'auto';
+    setPref(next);
+    if (next === 'auto') resetQualityGovernor(); // explizit Auto gewählt → wieder bei Hoch starten
+  };
+  const qLabel = (pref === 'auto' ? 'Auto·' : '') + (eff === 'hoch' ? 'Hoch' : 'Mobil');
   const label = backend === 'webgpu' ? 'WebGPU' : backend === 'webgl2' ? 'WebGL2' : '…';
   return (
     <div className="perf-badge" data-backend={backend} data-testid="perf-badge">
@@ -13,6 +23,7 @@ export function PerfBadge() {
       <span>{fps} fps</span>
       <span>p99 {p99} ms</span>
       <span>{dc} dc</span>
+      <button type="button" className="perf-quality" onClick={cycle} title="Qualität: Auto → Hoch → Mobil" data-testid="perf-quality">{qLabel}</button>
     </div>
   );
 }

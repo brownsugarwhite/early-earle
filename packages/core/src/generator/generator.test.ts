@@ -3,16 +3,21 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { generateLevel, defaultMoves, targetAttempts } from './generateLevel';
 import { P3_LEVEL_INDICES, TJORIZO_SPECS, tjorizoSpec } from './tjorizo';
+import { SYRUP_SPECS } from './syrup';
+import { levelSpec } from './index';
 import { countElementKinds, LevelSchema } from '../schema/level';
 
 const levelsDir = fileURLToPath(new URL('../../../../content/levels/', import.meta.url));
 
 describe('generateLevel', () => {
-  it('produces valid levels for every Tjorizo spec (1–25)', () => {
+  it('produces valid levels for every Tjorizo (1–25) and Syrup (26–50) spec', () => {
     expect(TJORIZO_SPECS.length).toBe(25);
-    for (const spec of TJORIZO_SPECS) {
+    expect(SYRUP_SPECS.length).toBe(25);
+    expect(SYRUP_SPECS.map((s) => s.index)).toEqual(Array.from({ length: 25 }, (_, i) => 26 + i));
+    for (const spec of [...TJORIZO_SPECS, ...SYRUP_SPECS]) {
       const level = generateLevel(spec);
-      expect(level.id).toBe(`tjorizo-${String(spec.index).padStart(3, '0')}`);
+      expect(level.id).toBe(`${spec.zone}-${String(spec.index).padStart(3, '0')}`);
+      expect(levelSpec(spec.index)).toBe(spec);
       expect(LevelSchema.safeParse(JSON.parse(JSON.stringify(level))).success).toBe(true);
       expect(countElementKinds(level).size).toBeLessThanOrEqual(4);
       // requested elements are present
@@ -28,6 +33,26 @@ describe('generateLevel', () => {
       if (spec.elements.includes('line')) expect(level.specials.lineAt).toBeLessThan(9);
       else expect(level.specials.lineAt).toBeGreaterThanOrEqual(9);
       if (spec.elements.includes('cap')) expect(level.cap).toBeLessThan(12);
+      if (spec.elements.includes('cage'))
+        expect(level.blockers.some((b) => b.kind === 'cage')).toBe(true);
+      if (spec.elements.includes('crust'))
+        expect(level.blockers.some((b) => b.kind === 'crust')).toBe(true);
+      if (spec.elements.includes('oil'))
+        expect(level.floors.some((f) => f.kind === 'oil')).toBe(true);
+      if (spec.elements.includes('fence')) expect(level.fences.length).toBeGreaterThan(0);
+      if (spec.elements.includes('burst')) expect(level.specials.burstAt).toBeLessThan(9);
+      if (spec.mask) expect(level.grid.mask).toEqual(spec.mask);
+      if (spec.spawn?.sources) expect(level.spawn.fallback).toBe('none');
+    }
+  });
+
+  it('Syrup levels with oil carry jelly start blobs (liquid ignores oil)', () => {
+    for (const spec of SYRUP_SPECS.filter((s) => s.elements.includes('oil'))) {
+      const level = generateLevel(spec);
+      expect(
+        level.start.some((s) => s.blob.material === 'jelly'),
+        level.id,
+      ).toBe(true);
     }
   });
 
@@ -53,8 +78,8 @@ describe('generateLevel', () => {
     }
   });
 
-  it('places pillars in the interior only', () => {
-    for (const spec of TJORIZO_SPECS.filter((s) => s.elements.includes('pillar'))) {
+  it('places random pillars in the interior only', () => {
+    for (const spec of TJORIZO_SPECS.filter((s) => s.elements.includes('pillar') && !s.mask)) {
       const level = generateLevel(spec);
       level.grid.mask.forEach((row, y) => {
         for (let x = 0; x < row.length; x++) {
@@ -76,9 +101,7 @@ describe('generateLevel', () => {
       const i = Number(f.replace('.json', ''));
       const file = `${levelsDir}${f}`;
       const onDisk = LevelSchema.parse(JSON.parse(readFileSync(file, 'utf8')));
-      const generated = LevelSchema.parse(
-        JSON.parse(JSON.stringify(generateLevel(tjorizoSpec(i)))),
-      );
+      const generated = LevelSchema.parse(JSON.parse(JSON.stringify(generateLevel(levelSpec(i)))));
       expect(onDisk, file).toEqual(generated);
     }
   });

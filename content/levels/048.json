@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "id": "syrup-048",
+  "zone": "syrup",
+  "name": "Quellen und Käfige",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", "..P..", ".....", "....."]
+  },
+  "fences": [
+    {
+      "a": [1, 3],
+      "b": [2, 3]
+    }
+  ],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "cage",
+      "at": [3, 2],
+      "content": {
+        "tier": 2
+      },
+      "layers": 1
+    },
+    {
+      "kind": "cage",
+      "at": [1, 2],
+      "content": {
+        "tier": 2
+      },
+      "layers": 1
+    },
+    {
+      "kind": "cage",
+      "at": [2, 0],
+      "content": {
+        "tier": 2
+      },
+      "layers": 1
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [2, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 4],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [[2, 2]],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "none"
+  },
+  "goals": [
+    {
+      "type": "rescue",
+      "count": 3
+    }
+  ],
+  "moves": 24,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.2, 1.4],
+    "style": "precise"
+  }
+}

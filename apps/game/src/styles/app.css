@@ -41,3 +41,5 @@ code { font-family: ui-monospace, Menlo, monospace; background: rgba(255,255,255
 .rex-name { display: inline-block; margin-right: 8px; padding: 2px 8px; background: var(--teal); color: var(--ink); font-weight: 900; font-size: 12px; letter-spacing: 0.08em; }
 .hud-banner { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: var(--neon); color: var(--ink); font-family: var(--font-display); font-weight: 900; font-size: 22px; box-shadow: var(--sun-shadow) var(--ink-soft); }
 .hud-banner.lost { background: var(--rust); color: var(--paper); }
+
+.perf-quality { font: inherit; padding: 0 6px; background: var(--khaki); color: var(--ink); border: 0; cursor: pointer; font-weight: 700; }

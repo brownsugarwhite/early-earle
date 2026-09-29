@@ -428,3 +428,15 @@ Der Spielkern (`packages/core`) hat beim Bauen und Kalibrieren der Level 1–25 
 6. **Zwei gleichzeitige Aufbrüche** lösen bereits in Level 19 eine Stufenbombe aus (formal erst ab Level 54 eingeführt). Seltener Fall; entweder in Tjorizo deaktivieren oder als Überraschungsmoment stehen lassen.
 7. **Punkteziele** (150/260) sind bot-abgeleitet und werden mit Nicoles Versuchen neu gefittet; Level 8 liegt am Bandrand (Anfänger-Bot 91 %).
 8. **Level 1 ohne Zuglimit** (`moves: 99` als "frei"); die UI blendet den Zähler aus — bestätigen.
+
+### Nachtrag 2026-09-29 (Abend, II) — Erkenntnisse aus der Kalibrierung von Syrup (Level 26–50)
+
+Alle 50 Level liegen im Zielband (`content/levels/_calibration.json`). Beobachtungen, die Design-Entscheidungen brauchen:
+
+9. **Käfige sind eine Klippe**: Einlagige Käfige am Rand öffnen sich nach 1–4 Zügen von selbst, zweilagige im Inneren senken den Anfänger-Bot auf 2–30 %. Ein echter Regler wäre die Ausgangszelle (Frage 1) oder Lagen pro Käfig.
+10. **Heilen in der Mitte ohne Pfeiler** ist brutal (15 % beim Anfänger-Bot) — "Mitte schwer" aus dem GDD bestätigt; Intro-Level heilen am Rand plus eine tiefe Zelle.
+11. **Gasquellen in der Mitte füttern Blocker** (Spawns direkt neben Schrott/Käfig machen sie trivial); Quellen an den Seiten mit Innen-Blockern funktionieren.
+12. `reachTier 6` braucht bei 28–30 Zügen ~50 Startmasse für ein Komfort-Band.
+13. **Flüssig** ist nur gegen Jelly sichtbar; Level 27/28/29/37 tragen deshalb Jelly-Startblobs. Konflikt: Öl ist im Plan erst bei 64 (Luzz) vorgesehen, Syrup führt es mit Flüssig bei 27 ein — Entscheidung nötig (Vorschlag: Öl bleibt in Syrup, Luzz bekommt dafür Gasstrom früher).
+14. Knall-Blobs zünden bei `burstAt 3` auf 2–7 % der Wische; Intro-Level 34 sollte `burstAt 2` bekommen (wie beim Strahl). In den Feier-Leveln 40/50 entsteht der Knall im Siegeswisch und zündet nie (reines Spektakel).
+15. Mehrere Normal-Level nutzen zufällige Platzierung (`any`); der Seed entscheidet viel — im Level-Editor sichten.
