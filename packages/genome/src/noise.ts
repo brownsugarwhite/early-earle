@@ -3,28 +3,39 @@
  * `three/tsl`). Bit-exact hashing (Bob Jenkins' lookup3 final mix) so CPU and GPU evaluate the same field.
  */
 
-const u32 = (x: number): number => x >>> 0;
-const rotl32 = (x: number, k: number): number => u32((x << k) | (x >>> (32 - k)));
+// int32 arithmetic throughout (identical bits to the uint32 lookup3 on the GPU; `>>> 0` only at the
+// public boundary): uint32 intermediates above 2^31 would be boxed as heap numbers by V8, and this
+// runs ~10⁵ times per frame for the CPU socket traces.
+const rotl32 = (x: number, k: number): number => (x << k) | (x >>> (32 - k));
 
 function bjfinal(a0: number, b0: number, c0: number): number {
-  let a = u32(a0);
-  let b = u32(b0);
-  let c = u32(c0);
-  c = u32(c ^ b); c = u32(c - rotl32(b, 14));
-  a = u32(a ^ c); a = u32(a - rotl32(c, 11));
-  b = u32(b ^ a); b = u32(b - rotl32(a, 25));
-  c = u32(c ^ b); c = u32(c - rotl32(b, 16));
-  a = u32(a ^ c); a = u32(a - rotl32(c, 4));
-  b = u32(b ^ a); b = u32(b - rotl32(a, 14));
-  c = u32(c ^ b); c = u32(c - rotl32(b, 24));
+  let a = a0 | 0;
+  let b = b0 | 0;
+  let c = c0 | 0;
+  c ^= b; c = (c - rotl32(b, 14)) | 0;
+  a ^= c; a = (a - rotl32(c, 11)) | 0;
+  b ^= a; b = (b - rotl32(a, 25)) | 0;
+  c ^= b; c = (c - rotl32(b, 16)) | 0;
+  a ^= c; a = (a - rotl32(c, 4)) | 0;
+  b ^= a; b = (b - rotl32(a, 14)) | 0;
+  c ^= b; c = (c - rotl32(b, 24)) | 0;
   return c;
 }
 
-/** `mx_hash_int(x, y, z)` */
+/** Seed of `mx_hash_int` for three components: 0xdeadbeef + (3 << 2) + 13 (int32). */
+const HASH3_SEED = (0xdeadbeef + (3 << 2) + 13) | 0;
+
+/**
+ * Internal: the low 4 bits of `mx_hash_int(x, y, z)` — all `gradient3` uses. Returning a small integer
+ * (a Smi) instead of the full int32 keeps V8 from boxing ~10⁵ results per frame when not inlined.
+ */
+function hash3(x: number, y: number, z: number): number {
+  return bjfinal((HASH3_SEED + x) | 0, (HASH3_SEED + y) | 0, (HASH3_SEED + z) | 0) & 15;
+}
+
+/** `mx_hash_int(x, y, z)` (uint32). */
 export function hashInt3(x: number, y: number, z: number): number {
-  const len = 3;
-  const seed = u32(0xdeadbeef + (len << 2) + 13);
-  return bjfinal(u32(seed + u32(x)), u32(seed + u32(y)), u32(seed + u32(z)));
+  return bjfinal((HASH3_SEED + (x | 0)) | 0, (HASH3_SEED + (y | 0)) | 0, (HASH3_SEED + (z | 0)) | 0) >>> 0;
 }
 
 function gradient3(hash: number, x: number, y: number, z: number): number {
@@ -48,12 +59,11 @@ export function perlin3(x: number, y: number, z: number): number {
   const u = fade(fx);
   const v = fade(fy);
   const w = fade(fz);
-  const g = (dx: number, dy: number, dz: number): number =>
-    gradient3(hashInt3(X + dx, Y + dy, Z + dz), fx - dx, fy - dy, fz - dz);
-  const x00 = lerp(g(0, 0, 0), g(1, 0, 0), u);
-  const x10 = lerp(g(0, 1, 0), g(1, 1, 0), u);
-  const x01 = lerp(g(0, 0, 1), g(1, 0, 1), u);
-  const x11 = lerp(g(0, 1, 1), g(1, 1, 1), u);
+  // Corner gradients written out (no closure: this runs thousands of times per frame on the CPU).
+  const x00 = lerp(gradient3(hash3(X, Y, Z), fx, fy, fz), gradient3(hash3(X + 1, Y, Z), fx - 1, fy, fz), u);
+  const x10 = lerp(gradient3(hash3(X, Y + 1, Z), fx, fy - 1, fz), gradient3(hash3(X + 1, Y + 1, Z), fx - 1, fy - 1, fz), u);
+  const x01 = lerp(gradient3(hash3(X, Y, Z + 1), fx, fy, fz - 1), gradient3(hash3(X + 1, Y, Z + 1), fx - 1, fy, fz - 1), u);
+  const x11 = lerp(gradient3(hash3(X, Y + 1, Z + 1), fx, fy - 1, fz - 1), gradient3(hash3(X + 1, Y + 1, Z + 1), fx - 1, fy - 1, fz - 1), u);
   const y0 = lerp(x00, x10, v);
   const y1 = lerp(x01, x11, v);
   return 0.982 * lerp(y0, y1, w);

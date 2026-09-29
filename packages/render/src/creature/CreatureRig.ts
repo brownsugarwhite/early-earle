@@ -4,20 +4,33 @@ import {
   IdleClock,
   RADIAL_TRACE_EXACT,
   RADIAL_TRACE_MESH,
+  ROT_IDENTITY,
   Spring1D,
   SpringChain,
   blinkAmount,
-  orientationFrame,
+  orientationFrameInto,
   radialSurfaceDistance,
   sdfNormal,
   socketDirection,
+  squashNormal,
+  squashPoint,
   steerDirection,
+  stretchLeg,
+  twoBoneIk,
   type BlobParams,
   type CreatureSpec,
   type EvalOptions,
+  type FootState,
+  type FrameOptions,
+  type MaterialKind,
   type PartSpec,
+  type Pose,
+  type Rot3,
   type SdfProgram,
   type SlotId,
+  type SocketFrame,
+  type SpherePrim,
+  type TwoBoneResult,
   type Vec3,
   type Verb,
 } from '@ee/genome';
@@ -28,6 +41,7 @@ import type { ModuleDef } from './ModuleLibrary';
 
 /** What the body shader was given this frame — the rig samples the same SDF with the same options. */
 export interface RigBodyState {
+  /** Posed body (sphere centres already rotated/displaced by the pose). */
   params: BlobParams;
   /** Blob origin in the pool group's space (world units). */
   center: Vec3;
@@ -46,6 +60,17 @@ export interface RigBodyState {
   surface?: 'mesh' | 'exact' | undefined;
   /** Optional parent transform of the blob (pool group space). */
   parent?: Matrix4 | undefined;
+  /** Body rotation baked into `params.spheres` (socket directions rotate with it). */
+  rotation?: Readonly<Rot3> | undefined;
+  /** Locomotion pose: feet for the leg IK, tail counter-swing, stomps. */
+  pose?: Pose | null | undefined;
+  /**
+   * Material the GPU body noise follows when it differs from `params.material` (fur/feather coats run
+   * the jelly noise path), so the CPU trace matches the drawn surface.
+   */
+  noiseMaterial?: MaterialKind | undefined;
+  /** Parts sit this far above the SDF surface (blob units): on top of fur strands / feather cards. */
+  surfaceOffset?: number | undefined;
 }
 
 export interface PartOverride {
@@ -69,6 +94,25 @@ interface PartInstance {
   pool: PartPool;
   index: number;
   segment: number;
+  prim: number;
+}
+
+/**
+ * Jointed leg module (thigh → shin → foot with `SOCKET_knee`, `SOCKET_foot`, `SOCKET_tip`): the rest
+ * joints in each segment's own frame, so the IK can map the authored bones exactly onto the solved ones.
+ */
+interface LegRig {
+  seg: [number, number, number];
+  /** Joint each segment hangs from (hip, knee, ankle) in that segment's local coordinates. */
+  jointL: [Vector3, Vector3, Vector3];
+  /** Transposed local bases [bone, side, bone × side] per segment (thigh, shin, foot). */
+  basisT: [Matrix4, Matrix4, Matrix4];
+  /** Bone lengths hip→knee, knee→ankle and the ankle's height above the sole (module units). */
+  l1: number;
+  l2: number;
+  drop: number;
+  /** Rest length hip → sole along the leg (module units). */
+  length: number;
 }
 
 interface PartState {
@@ -83,33 +127,73 @@ interface PartState {
   chain: SpringChain | null;
   burst: number;
   burstLen: number;
+  /** Trunk verbs: curl and sniff envelopes (seconds left, −1 = idle). */
+  curlT: number;
+  sniffT: number;
   gazeDir: Vec3;
   prevPoint: Vector3 | null;
   prevVel: Vector3;
+  /** Time accumulated since the last inertia sample (the finite differences need ≥ 1/90 s). */
+  inertiaDt: number;
   choreo: PartChoreo | null;
   /** Per-part phase so pairs do not move in sync. */
   phase: number;
+  /** Cached trace (radial distance without breathing, unposed normal) for the LOD re-use between traces. */
+  restT: number;
+  restNormal: Vec3;
+  traced: boolean;
+  /** Leg: length root → tip in module units (before the part scale). */
+  legLen: number;
+  /** Jointed legs (new module library); null = single mesh (aim + stretch). */
+  legRig: LegRig | null;
+  /** Index of this leg's foot in the pose (−2 = not resolved yet, −1 = none). */
+  footIndex: number;
+  /** The module has an eyelid segment: blinks swing the lid instead of squashing the eye. */
+  hasLid: boolean;
+  // Per-part scratch (no per-frame allocations).
+  dir: Vec3;
+  point: Vec3;
+  normal: Vec3;
+  frame: SocketFrame;
+  frameOpts: FrameOptions;
+  segMatrices: Matrix4[];
 }
 
 const _m = new Matrix4();
 const _m2 = new Matrix4();
 const _frame = new Matrix4();
-const _seg = new Matrix4();
 const _rot = new Matrix4();
+const _basis = new Matrix4();
 const _v = new Vector3();
 const _v2 = new Vector3();
+const _a = new Vector3();
+const _b = new Vector3();
+const _c = new Vector3();
 const _blob = new Matrix4();
+const _blobInv = new Matrix4();
 const _point = new Vector3();
 const _vel = new Vector3();
+const _hip: Vec3 = [0, 0, 0];
+const _target: Vec3 = [0, 0, 0];
+const _pole: Vec3 = [0, 0, 0];
+const _forward: Vec3 = [0, 0, 1];
+const _origin: Vec3 = [0, 0, 0];
+const _to: Vec3 = [0, 0, 0];
+const _squashAxis: Vec3 = [0, 1, 0];
+const _ik: TwoBoneResult = { knee: [0, 0, 0], extension: 0, upperDir: [0, 0, 0], lowerDir: [0, 0, 0] };
+const FORWARD: Vec3 = [0, 0, 1];
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
 /**
- * One creature's accessories at runtime. Every frame the socket points are re-traced on the body SDF
- * (same program, squash, breathing, noise drift and jiggle ripple as the shader), a stable frame is
- * built from the smooth normal and the parts are written as instances into the shared pools.
- * Motion is procedural: idle micro-motion, verbs (blink, flap, twitch, wag, sway, bob, gaze), inertia
- * follow-through from the body's own movement and poke reactions.
+ * One creature's accessories at runtime. Every frame the socket points are re-traced on the (posed)
+ * body SDF (same program, squash, breathing, noise drift and jiggle ripple as the shader), a stable
+ * frame is built from the smooth normal and the parts are written as instances into the shared pools.
+ * Motion is procedural: idle micro-motion, verbs (blink, flap, twitch, wag, sway, bob, gaze, curl,
+ * sniff), inertia follow-through from the body's own movement, poke reactions — and, with a
+ * locomotion pose, legs that reach their planted feet (thigh/shin/foot IK on jointed modules with the
+ * foot flat on the ground, aim + stretch on single meshes), tails that counter-swing and parts that
+ * bounce on every stomp. Allocation-free per frame.
  */
 export class CreatureRig {
   readonly parts: PartState[] = [];
@@ -119,12 +203,20 @@ export class CreatureRig {
   gazeTarget: Vector3 | null = null;
   /** Modules that were not loaded (parts skipped). */
   readonly missingModules: string[] = [];
+  /**
+   * Trace LOD: re-trace every part every n-th frame (staggered per part) and move it rigidly with the
+   * pose in between. 1 = every frame (hero). Squash, jiggle and the exact hero surface always trace.
+   */
+  traceInterval = 1;
   private body: RigBodyState | null = null;
-  private core: SdfProgram | null = null;
-  private coreOf: BlobParams | null = null;
-  private spheresCache: { params: BlobParams; max: number | undefined; program: SdfProgram; cx: number; cz: number } | null = null;
+  private capped: { params: BlobParams; max: number; spheresRef: readonly SpherePrim[]; program: SdfProgram } | null = null;
+  /** Rest body (unsquashed) with noise and ripple: the traces run here, the squash is mapped analytically. */
+  private readonly opts: EvalOptions = {};
+  private readonly coreOpts: EvalOptions = {};
+  private readonly squash = { axis: _squashAxis, amount: 0, taper: 0 };
   private readonly clock: IdleClock;
   private t = 0;
+  private frame = 0;
   private disposed = false;
 
   constructor(
@@ -144,10 +236,11 @@ export class CreatureRig {
         seg.prims.forEach((_prim, pi) => {
           const pp = pool.poolFor(module, si, pi);
           const index = pp.alloc();
-          if (index >= 0) instances.push({ pool: pp, index, segment: si });
+          if (index >= 0) instances.push({ pool: pp, index, segment: si, prim: pi });
         });
       });
       const chain = p.chain && module.segments.length > 1 ? new SpringChain(module.segments.length, chainOptions(p)) : null;
+      const legRig = p.slot === 'leg' && !p.chain ? buildLegRig(module) : null;
       this.parts.push({
         spec: p,
         module,
@@ -160,11 +253,27 @@ export class CreatureRig {
         chain,
         burst: 0,
         burstLen: 1,
+        curlT: -1,
+        sniffT: -1,
         gazeDir: socketDirection(p.theta, p.phi),
         prevPoint: null,
         prevVel: new Vector3(),
+        inertiaDt: 0,
         choreo: null,
         phase: (p.index * 1.7 + p.theta) % (Math.PI * 2),
+        restT: 1,
+        restNormal: [0, 1, 0],
+        traced: false,
+        legLen: legRig ? legRig.length : moduleTipLength(module),
+        legRig,
+        footIndex: -2,
+        hasLid: module.segments.some((s) => s.lid),
+        dir: [0, 0, 1],
+        point: [0, 0, 0],
+        normal: [0, 1, 0],
+        frame: { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] },
+        frameOpts: { ref: p.ref, mirror: p.mirror, tilt: p.tilt, roll: p.roll, forward: FORWARD },
+        segMatrices: module.segments.map(() => new Matrix4()),
       });
     }
     this.writeTints();
@@ -173,6 +282,12 @@ export class CreatureRig {
   /** The body the shader draws this frame; call before `update`. */
   setBody(body: RigBodyState): void {
     this.body = body;
+  }
+
+  /** Rest length of a leg part in blob units (hip → sole for jointed legs, root → tip otherwise); 0 for non-legs. */
+  legLength(partId: string): number {
+    const p = this.parts.find((q) => q.spec.id === partId);
+    return p ? p.legLen * p.spec.scale : 0;
   }
 
   /** Triggers a verb on every part that has it. */
@@ -199,6 +314,16 @@ export class CreatureRig {
           p.pulse.kick(3.5 * strength);
           p.hinge.kick(2.5 * strength);
           break;
+        case 'curl':
+          p.curlT = 0;
+          break;
+        case 'sniff':
+          p.sniffT = 0;
+          p.pulse.kick(1.2 * strength);
+          break;
+        case 'stomp':
+          p.push.kick(-1.2 * strength);
+          break;
         case 'gaze':
           break;
       }
@@ -219,6 +344,19 @@ export class CreatureRig {
     }
   }
 
+  /** Landing / stomp impulse from the locomotion (0..1): parts bounce with follow-through. */
+  private stompKick(strength: number): void {
+    const s = strength * 0.6;
+    for (const p of this.parts) {
+      if (p.spec.role !== null) continue;
+      p.push.kick(-1.1 * s);
+      p.hinge.kick((p.spec.mirror < 0 ? -1 : 1) * 2.2 * s);
+      p.pulse.kick(0.8 * s);
+      p.chain?.impulse(3.5 * s, 1.2 * s * (p.spec.mirror < 0 ? -1 : 1), 0.7);
+      if (strength > 0.7 && p.spec.verbs.includes('blink') && p.blinkT < 0) p.blinkT = 0;
+    }
+  }
+
   /** Merge choreography hook. */
   setChoreo(partId: string, choreo: PartChoreo | null): void {
     const p = this.parts.find((q) => q.spec.id === partId);
@@ -234,34 +372,85 @@ export class CreatureRig {
     const body = this.body;
     if (!body) return;
     this.t += dt;
+    this.frame++;
     for (const e of this.clock.step(dt)) this.trigger(e.verb, e.strength);
+    const pose = body.pose ?? null;
+    if (pose && pose.stomp > 0.05) this.stompKick(pose.stomp);
 
     const params = body.params;
-    const { program, cx, cz } = this.cappedProgram(params, body.maxSpheres);
-    const core = this.coreProgram(program, params);
+    const program = this.programFor(params, body.maxSpheres, body.pose != null);
+    const spheres = program.spheres;
+    // Box centre (x/z) of the drawn sphere list: the mesh traces from there (BlobParamBlock.write).
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (let i = 0; i < spheres.length; i++) {
+      const s = spheres[i]!;
+      const r = s.r * (1 + BREATH_AMPLITUDE);
+      minX = Math.min(minX, s.center[0] - r);
+      maxX = Math.max(maxX, s.center[0] + r);
+      minZ = Math.min(minZ, s.center[2] - r);
+      maxZ = Math.max(maxZ, s.center[2] + r);
+    }
+    const cx = Number.isFinite(minX) ? (minX + maxX) / 2 : 0;
+    const cz = Number.isFinite(minZ) ? (minZ + maxZ) / 2 : 0;
+
     const sq = body.squash ?? params.squash;
-    const al = Math.hypot(sq.axis[0], sq.axis[1], sq.axis[2]) || 1;
-    const opts: EvalOptions = {
-      squash: { axis: [sq.axis[0] / al, sq.axis[1] / al, sq.axis[2] / al], amount: clamp(sq.amount, -0.6, 1.5), taper: sq.taper ?? params.squash.taper ?? 0 },
-      time: body.time,
-      breathHz: params.breathHz,
-      phase: body.phase ?? 0,
-      jiggle: body.jiggle ?? 0,
-      material: params.material,
-    };
+    const al = Math.sqrt(sq.axis[0] * sq.axis[0] + sq.axis[1] * sq.axis[1] + sq.axis[2] * sq.axis[2]) || 1;
+    const squashAmount = clamp(sq.amount, -0.6, 1.5);
+    _squashAxis[0] = sq.axis[0] / al;
+    _squashAxis[1] = sq.axis[1] / al;
+    _squashAxis[2] = sq.axis[2] / al;
+    this.squash.amount = squashAmount;
+    this.squash.taper = sq.taper ?? params.squash.taper ?? 0;
+    // Forward squash (`squashPoint`, the exact inverse of the shader's `unsquash`, taper included):
+    // sockets are traced on the rest body and carried by the deformation, so parts ride the material and
+    // cached traces stay valid while the body squashes and stretches.
+    const squashing = Math.abs(squashAmount) > 1e-6;
+    const opts = this.opts;
+    delete opts.squash;
+    opts.time = body.time;
+    opts.breathHz = params.breathHz;
+    opts.phase = body.phase ?? 0;
+    opts.jiggle = body.jiggle ?? 0;
+    opts.material = body.noiseMaterial ?? params.material;
     if (body.noiseOctaves !== undefined) opts.noiseOctaves = body.noiseOctaves;
-    const traceCfg = body.surface === 'exact' ? RADIAL_TRACE_EXACT : RADIAL_TRACE_MESH;
-    const origin: Vec3 = [cx, 0, cz];
+    else delete opts.noiseOctaves;
+    // Smooth core for the frames (the GPU shades with `normalSmooth`: no noise, no ripple).
+    const coreOpts = this.coreOpts;
+    Object.assign(coreOpts, opts);
+    coreOpts.noNoise = true;
+
+    const lift = body.surfaceOffset ?? 0;
+    const exact = body.surface === 'exact';
+    const traceCfg = exact ? RADIAL_TRACE_EXACT : RADIAL_TRACE_MESH;
+    const rotation = body.rotation ?? ROT_IDENTITY;
+    const posed = body.rotation !== undefined;
+    if (posed) rotInto(rotation, FORWARD, _forward);
+    else {
+      _forward[0] = 0;
+      _forward[1] = 0;
+      _forward[2] = 1;
+    }
+    const forward = _forward;
+    const breath = 1 + BREATH_AMPLITUDE * Math.sin(2 * Math.PI * params.breathHz * body.time + (body.phase ?? 0));
+    // Strong ripples and the exact hero surface trace every frame; crowds re-use cached rest traces (the
+    // squash no longer forces re-traces: it is mapped analytically).
+    const dynamic = (body.jiggle ?? 0) > 0.5 || exact;
+    const interval = dynamic ? 1 : Math.max(1, Math.floor(this.traceInterval));
 
     // Blob → group space: parent × T(center) × S(scale).
     _blob.makeScale(body.scale, body.scale, body.scale).setPosition(body.center[0], body.center[1], body.center[2]);
     if (body.parent) _blob.premultiply(body.parent);
+    _blobInv.copy(_blob).invert();
 
     const gaze = this.gazeTarget;
     const curiosity = this.spec.personality.curiosity;
     const tempo = this.spec.personality.idleTempo;
 
-    for (const p of this.parts) {
+    for (let pi = 0; pi < this.parts.length; pi++) {
+      const p = this.parts[pi]!;
       const spec = p.spec;
       const ov = this.overrides.get(spec.id);
       const hidden = this.hiddenSlots.has(spec.slot) || ov?.visible === false;
@@ -270,45 +459,107 @@ export class CreatureRig {
         continue;
       }
 
-      // --- socket direction (+ gaze steer for eyes) ------------------------------------------
-      let dir = socketDirection(ov?.theta ?? spec.theta, ov?.phi ?? spec.phi);
-      if (gaze && spec.verbs.includes('gaze')) {
-        // Target in blob space: from the eye's rough position toward the pointer.
-        _v.copy(gaze);
-        _m.copy(_blob).invert();
-        _v.applyMatrix4(_m);
-        const to: Vec3 = [_v.x - dir[0], _v.y - dir[1], _v.z - dir[2]];
-        const target = steerDirection(dir, to, 0.16 * curiosity);
-        const k = 1 - Math.exp(-dt * 9);
-        p.gazeDir = [p.gazeDir[0] + (target[0] - p.gazeDir[0]) * k, p.gazeDir[1] + (target[1] - p.gazeDir[1]) * k, p.gazeDir[2] + (target[2] - p.gazeDir[2]) * k];
-        const l = Math.hypot(...p.gazeDir) || 1;
-        dir = [p.gazeDir[0] / l, p.gazeDir[1] / l, p.gazeDir[2] / l];
+      // --- socket direction (+ gaze steer for eyes), rotated with the pose ----------------------
+      const dir = p.dir;
+      dirInto(ov?.theta ?? spec.theta, ov?.phi ?? spec.phi, dir);
+      if (posed) rotInto(rotation, dir, dir);
+      const anchorSphere = spec.anchor >= 0 ? spheres[spec.anchor] : undefined;
+      const origin = _origin;
+      if (anchorSphere) {
+        origin[0] = anchorSphere.center[0];
+        origin[1] = anchorSphere.center[1];
+        origin[2] = anchorSphere.center[2];
       } else {
-        p.gazeDir = dir;
+        origin[0] = cx;
+        origin[1] = 0;
+        origin[2] = cz;
+      }
+      const gazing = !!(gaze && spec.verbs.includes('gaze'));
+      if (gazing) {
+        // Target in blob space: from the eye's rough position toward the pointer.
+        _v.copy(gaze!).applyMatrix4(_blobInv);
+        _to[0] = _v.x - origin[0] - dir[0];
+        _to[1] = _v.y - origin[1] - dir[1];
+        _to[2] = _v.z - origin[2] - dir[2];
+        const target = steerDirection(dir, _to, 0.16 * curiosity);
+        const k = 1 - Math.exp(-dt * 9);
+        const g = p.gazeDir;
+        g[0] += (target[0] - g[0]) * k;
+        g[1] += (target[1] - g[1]) * k;
+        g[2] += (target[2] - g[2]) * k;
+        const gl = Math.sqrt(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) || 1;
+        dir[0] = g[0] / gl;
+        dir[1] = g[1] / gl;
+        dir[2] = g[2] / gl;
+      } else {
+        p.gazeDir[0] = dir[0];
+        p.gazeDir[1] = dir[1];
+        p.gazeDir[2] = dir[2];
       }
 
       // --- surface point and stable frame ------------------------------------------------------
-      const t = radialSurfaceDistance(program, dir, opts, traceCfg, origin);
-      const point: Vec3 = [origin[0] + dir[0] * t, origin[1] + dir[1] * t, origin[2] + dir[2] * t];
-      const n = sdfNormal(core, point, opts, 0.02);
-      const frame = orientationFrame(n, { ref: spec.ref, mirror: spec.mirror, tilt: spec.tilt, roll: spec.roll });
+      let t: number;
+      const n = p.normal;
+      const point = p.point;
+      const doTrace = !p.traced || interval === 1 || (this.frame + pi) % interval === 0 || gazing;
+      if (doTrace) {
+        t = radialSurfaceDistance(program, dir, opts, traceCfg, origin);
+        point[0] = origin[0] + dir[0] * t;
+        point[1] = origin[1] + dir[1] * t;
+        point[2] = origin[2] + dir[2] * t;
+        sdfNormal(program, point, coreOpts, 0.02, n);
+        p.restT = t / breath;
+        if (posed) rotInvInto(rotation, n, p.restNormal);
+        else {
+          p.restNormal[0] = n[0];
+          p.restNormal[1] = n[1];
+          p.restNormal[2] = n[2];
+        }
+        p.traced = true;
+      } else {
+        t = p.restT * breath;
+        if (posed) rotInto(rotation, p.restNormal, n);
+        else {
+          n[0] = p.restNormal[0];
+          n[1] = p.restNormal[1];
+          n[2] = p.restNormal[2];
+        }
+        point[0] = origin[0] + dir[0] * t;
+        point[1] = origin[1] + dir[1] * t;
+        point[2] = origin[2] + dir[2] * t;
+      }
+      if (squashing) {
+        squashNormal(n, point, _squashAxis, squashAmount, this.squash.taper, n);
+        squashPoint(point, _squashAxis, squashAmount, this.squash.taper, point);
+      }
+      p.frameOpts.forward = forward;
+      const frame = orientationFrameInto(n, p.frameOpts, p.frame);
 
       // --- inertia: the socket's acceleration kicks the springs (follow-through) ----------------
+      // Sampled over ≥ 1/90 s so the second finite difference stays meaningful at any frame rate
+      // (120 Hz displays, unthrottled benchmarks); the kick is scaled by the sampled interval.
       _point.set(point[0], point[1], point[2]).applyMatrix4(_blob);
-      if (p.prevPoint && dt > 1e-4 && dt < 0.1) {
-        _vel.copy(_point).sub(p.prevPoint).divideScalar(dt);
-        _v2.copy(_vel).sub(p.prevVel).divideScalar(dt); // acceleration (world units/s²)
-        const accUp = _v2.x * frame.y[0] + _v2.y * frame.y[1] + _v2.z * frame.y[2];
-        const accSide = _v2.x * frame.x[0] + _v2.y * frame.x[1] + _v2.z * frame.x[2];
-        const k = 0.012 / Math.max(0.15, body.scale);
-        p.hinge.v += clamp(-accUp * k, -6, 6) * dt * 60;
-        p.swivel.v += clamp(accSide * k, -6, 6) * dt * 60;
-        p.chain?.impulse(clamp(-accUp * k * 0.8, -4, 4) * dt * 60, clamp(accSide * k * 0.8, -4, 4) * dt * 60, 0.7);
-        p.prevVel.copy(_vel);
-      } else {
+      if (!p.prevPoint || dt >= 0.1) {
+        (p.prevPoint ??= new Vector3()).copy(_point);
         p.prevVel.set(0, 0, 0);
+        p.inertiaDt = 0;
+      } else {
+        p.inertiaDt += dt;
+        const h = p.inertiaDt;
+        if (h >= 1 / 90) {
+          _vel.copy(_point).sub(p.prevPoint).divideScalar(h);
+          _v2.copy(_vel).sub(p.prevVel).divideScalar(h); // acceleration (world units/s²)
+          const accUp = _v2.x * frame.y[0] + _v2.y * frame.y[1] + _v2.z * frame.y[2];
+          const accSide = _v2.x * frame.x[0] + _v2.y * frame.x[1] + _v2.z * frame.x[2];
+          const k = 0.012 / Math.max(0.15, body.scale);
+          p.hinge.v += clamp(-accUp * k, -6, 6) * h * 60;
+          p.swivel.v += clamp(accSide * k, -6, 6) * h * 60;
+          p.chain?.impulse(clamp(-accUp * k * 0.8, -4, 4) * h * 60, clamp(accSide * k * 0.8, -4, 4) * h * 60, 0.7);
+          p.prevVel.copy(_vel);
+          p.prevPoint.copy(_point);
+          p.inertiaDt = 0;
+        }
       }
-      (p.prevPoint ??= new Vector3()).copy(_point);
 
       // --- procedural animation state --------------------------------------------------------
       const ph = p.phase + (body.phase ?? 0);
@@ -318,25 +569,51 @@ export class CreatureRig {
       let pulseTarget = 1;
       if (p.burst > 0) p.burst = Math.max(0, p.burst - dt);
       const env = p.burst > 0 ? Math.sin(Math.PI * (p.burst / p.burstLen)) : 0;
+      const speedNorm = pose?.speedNorm ?? 0;
       switch (spec.slot) {
         case 'wing':
           hingeTarget = Math.sin(tt * 2 * Math.PI * 0.45 * tempo + ph) * 0.06 + env * Math.sin(tt * 2 * Math.PI * 4.5) * 0.55;
           break;
         case 'ear':
-          hingeTarget = Math.sin(tt * 0.7 * tempo + ph) * 0.04;
+          hingeTarget = Math.sin(tt * 0.7 * tempo + ph) * 0.04 - 0.12 * speedNorm; // ears fold back in the wind
           break;
-        case 'tail':
-          if (p.chain) p.chain.driveY = Math.sin(tt * 1.3 * tempo + ph) * 0.12 + env * Math.sin(tt * 2 * Math.PI * 3.2) * 0.45;
-          else swivelTarget = Math.sin(tt * 1.3 * tempo + ph) * 0.1 + env * Math.sin(tt * 2 * Math.PI * 3.2) * 0.4;
+        case 'tail': {
+          const swing = pose ? pose.tailSwing : 0;
+          if (p.chain) p.chain.driveY = Math.sin(tt * 1.3 * tempo + ph) * 0.12 + env * Math.sin(tt * 2 * Math.PI * 3.2) * 0.45 + swing;
+          else swivelTarget = Math.sin(tt * 1.3 * tempo + ph) * 0.1 + env * Math.sin(tt * 2 * Math.PI * 3.2) * 0.4 + swing * 0.6;
           break;
-        case 'trunk':
+        }
+        case 'trunk': {
+          // Independent sway + curl (rolls up toward the face) + sniff (tip lifts and quivers).
+          let curl = 0;
+          let sniff = 0;
+          if (p.curlT >= 0) {
+            p.curlT += dt;
+            const dur = 1.4;
+            curl = Math.sin(Math.PI * Math.min(1, p.curlT / dur));
+            if (p.curlT > dur) p.curlT = -1;
+          }
+          if (p.sniffT >= 0) {
+            p.sniffT += dt;
+            const dur = 0.9;
+            sniff = Math.sin(Math.PI * Math.min(1, p.sniffT / dur));
+            if (p.sniffT > dur) p.sniffT = -1;
+          }
+          const swingX = Math.sin(tt * 0.6 * tempo + ph) * 0.1 + env * Math.sin(tt * 2 * Math.PI * 1.1) * 0.35;
+          const swingY = Math.sin(tt * 0.45 * tempo + ph * 2) * 0.12 + env * Math.cos(tt * 2 * Math.PI * 0.9) * 0.3;
+          const gait = pose && pose.moving ? Math.sin(tt * 2 * Math.PI * 1.1 + ph) * 0.18 * speedNorm : 0;
           if (p.chain) {
-            p.chain.driveX = Math.sin(tt * 0.6 * tempo + ph) * 0.1 + env * Math.sin(tt * 2 * Math.PI * 1.1) * 0.35;
-            p.chain.driveY = Math.sin(tt * 0.45 * tempo + ph * 2) * 0.12 + env * Math.cos(tt * 2 * Math.PI * 0.9) * 0.3;
+            p.chain.driveX = swingX - 1.25 * curl - 0.5 * sniff + Math.sin(tt * 42) * 0.14 * sniff + gait;
+            p.chain.driveY = swingY + Math.sin(tt * 37) * 0.08 * sniff;
+          } else {
+            hingeTarget = swingX - 0.6 * curl - 0.3 * sniff;
+            swivelTarget = swingY;
           }
           break;
+        }
         case 'crest':
           pulseTarget = 1 + Math.sin(tt * params.breathHz * 2 * Math.PI + ph) * 0.05;
+          hingeTarget = -0.15 * speedNorm; // the crest streams back while running
           break;
         default:
           break;
@@ -363,15 +640,42 @@ export class CreatureRig {
       const ch = p.choreo;
       const sink = spec.sink;
       const push = p.push.x * 0.12; // blob units along the normal
-      const px = point[0] - n[0] * sink + n[0] * push + (ch ? ch.offset[0] : 0);
-      const py = point[1] - n[1] * sink + n[1] * push + (ch ? ch.offset[1] : 0);
-      const pz = point[2] - n[2] * sink + n[2] * push + (ch ? ch.offset[2] : 0);
+      // Legs keep their hips on the body (they emerge from the fur); everything else sits on top of it.
+      const up = spec.role !== null ? lift * 0.3 : lift;
+      const px = point[0] - n[0] * sink + n[0] * (push + up) + (ch ? ch.offset[0] : 0);
+      const py = point[1] - n[1] * sink + n[1] * (push + up) + (ch ? ch.offset[1] : 0);
+      const pz = point[2] - n[2] * sink + n[2] * (push + up) + (ch ? ch.offset[2] : 0);
       const s = spec.scale * (ov?.scale ?? 1) * (ch ? ch.scale : 1);
+
+      // --- legs: reach the planted foot (IK) -----------------------------------------------------
+      const foot = pose && spec.role !== null && !ch ? this.footOf(p, pose) : undefined;
+      if (foot && s > 1e-6) {
+        _v.set(foot.pos[0], foot.pos[1], foot.pos[2]).applyMatrix4(_blobInv);
+        _hip[0] = px;
+        _hip[1] = py;
+        _hip[2] = pz;
+        const k = spec.knee > 0 ? 1 : -1;
+        _pole[0] = forward[0] * k;
+        _pole[1] = forward[1] * k;
+        _pole[2] = forward[2] * k;
+        if (p.legRig) {
+          this.writeJointedLeg(p, p.legRig, _hip, _v, foot, s, forward);
+        } else {
+          _target[0] = _v.x;
+          _target[1] = _v.y;
+          _target[2] = _v.z;
+          const st = stretchLeg(_hip, _target, p.legLen * s);
+          // Cartoon leg: aim, stretch along the leg, slight bulge across when compressed.
+          this.writeStretchLeg(p, _hip, st.dir, s, st.stretch, forward);
+        }
+        continue;
+      }
+
       // Module +Y → normal (frame z), module −Z → up (frame y), module +X → frame x.
       const { x, y, z } = frame;
       _frame.set(x[0] * s, z[0] * s, -y[0] * s, px, x[1] * s, z[1] * s, -y[1] * s, py, x[2] * s, z[2] * s, -y[2] * s, pz, 0, 0, 0, 1);
       // Verb rotations in module space: hinge about X (up/down), swivel about Z (sideways), then blink
-      // (scale along module Z = the part's up axis) and crest pulse (along module Y = outward).
+      // (lidless eyes squash along module Z = the part's up axis) and crest pulse (along module Y = outward).
       const hinge = p.hinge.x + (ch ? ch.spin : 0);
       _rot.makeRotationX(hinge);
       _frame.multiply(_rot);
@@ -380,37 +684,131 @@ export class CreatureRig {
         _frame.multiply(_rot);
       }
       const pulse = spec.slot === 'crest' ? p.pulse.x : 1 + (p.pulse.x - 1) * 0.35;
-      if (blink > 0 || pulse !== 1) {
-        _rot.makeScale(1, pulse, 1 - 0.88 * blink);
+      const squashBlink = p.hasLid ? 0 : blink;
+      if (squashBlink > 0 || pulse !== 1) {
+        _rot.makeScale(1, pulse, 1 - 0.88 * squashBlink);
         _frame.multiply(_rot);
       }
       _frame.multiply(p.module.rootSocketInverse);
-      _m.copy(_blob).multiply(_frame); // root segment, group space
+      const mats = p.segMatrices;
+      mats[0]!.copy(_blob).multiply(_frame); // root segment, group space
 
-      // Segments: root first, chain children bent by the spring chain, pupils slid by the gaze.
-      const segMatrices: Matrix4[] = [_m];
+      // Segments: root first, chain children bent by the spring chain, lids swung by the blink, pupils
+      // slid by the gaze.
       for (let si = 1; si < p.module.segments.length; si++) {
         const seg = p.module.segments[si]!;
-        const parent = segMatrices[Math.max(0, seg.parent)] ?? _m;
-        const sm = new Matrix4().copy(parent).multiply(seg.local);
+        const sm = mats[si]!.copy(mats[Math.max(0, seg.parent)]!).multiply(seg.local);
         if (p.chain) {
           _rot.makeRotationX(p.chain.ax[si] ?? 0);
           sm.multiply(_rot);
           _rot.makeRotationZ(p.chain.ay[si] ?? 0);
           sm.multiply(_rot);
+        } else if (seg.lid) {
+          if (blink > 0) {
+            // +X rotation swings the lid from the brow over the front of the eyeball.
+            _rot.makeRotationX(blink * 1.35);
+            sm.multiply(_rot);
+          }
         } else if (seg.pupil && gaze) {
           // Slide the pupil toward the target within the eye's tangent plane (module X/Z).
-          _v.copy(gaze).applyMatrix4(_m2.copy(_m).invert());
+          _v.copy(gaze).applyMatrix4(_m2.copy(mats[0]!).invert());
           const gx = clamp(_v.x * 0.06, -0.06, 0.06);
           const gz = clamp(_v.z * 0.06, -0.06, 0.06);
           _rot.makeTranslation(gx, 0, gz);
           sm.multiply(_rot);
         }
-        segMatrices.push(sm);
       }
-      for (const inst of p.instances) inst.pool.setMatrix(inst.index, segMatrices[inst.segment]!.elements);
+      for (const inst of p.instances) inst.pool.setMatrix(inst.index, mats[inst.segment]!.elements);
     }
     if (this.overrideVersion !== this.tintVersion) this.writeTints();
+  }
+
+  /** The pose foot that belongs to this leg part (resolved once). */
+  private footOf(p: PartState, pose: Pose): FootState | undefined {
+    if (p.footIndex === -2 || (p.footIndex >= 0 && pose.feet[p.footIndex]?.leg.id !== p.spec.id)) {
+      p.footIndex = pose.feet.findIndex((f) => f.leg.id === p.spec.id);
+    }
+    return p.footIndex >= 0 ? pose.feet[p.footIndex] : undefined;
+  }
+
+  /**
+   * Jointed leg: two-bone IK from the hip to the ankle (the planted point raised by the foot's height),
+   * the authored thigh and shin bones mapped exactly onto the solved bones (knees bend along the body's
+   * forward, hind legs backward), the foot kept flat on the ground and pointing forward, its toes lifting
+   * during the swing.
+   */
+  private writeJointedLeg(p: PartState, leg: LegRig, hip: Vec3, footBlob: Vector3, foot: FootState, s: number, forward: Vec3): void {
+    const drop = leg.drop * s;
+    _target[0] = footBlob.x;
+    _target[1] = footBlob.y + drop;
+    _target[2] = footBlob.z;
+    const ik = twoBoneIk(hip, _target, leg.l1 * s, leg.l2 * s, _pole, _ik);
+    const knee = ik.knee;
+    // Ankle actually reached (the target may be out of reach).
+    const ax = knee[0] + ik.lowerDir[0] * leg.l2 * s;
+    const ay = knee[1] + ik.lowerDir[1] * leg.l2 * s;
+    const az = knee[2] + ik.lowerDir[2] * leg.l2 * s;
+    // Thigh and shin: bone direction + the forward axis as the side reference.
+    this.writeLegBone(p, leg, 0, hip[0], hip[1], hip[2], ik.upperDir, forward, s);
+    this.writeLegBone(p, leg, 1, knee[0], knee[1], knee[2], ik.lowerDir, forward, s);
+    // Foot: down = −y, forward horizontal; toes lift with the swing (and settle when planted).
+    let fx = forward[0];
+    let fz = forward[2];
+    const fl = Math.sqrt(fx * fx + fz * fz) || 1;
+    fx /= fl;
+    fz /= fl;
+    const pitch = foot.planted ? 0 : 0.45 * Math.sin(Math.PI * foot.swing);
+    const c = Math.cos(pitch);
+    const sn = Math.sin(pitch);
+    // Rotate (down, fwd) about the side axis: toes up = fwd tilts toward +y, down tilts toward fwd.
+    const down: Vec3 = _hip; // reuse scratch (hip no longer needed)
+    down[0] = fx * sn;
+    down[1] = -c;
+    down[2] = fz * sn;
+    _pole[0] = fx * c;
+    _pole[1] = sn;
+    _pole[2] = fz * c;
+    this.writeLegBone(p, leg, 2, ax, ay, az, down, _pole, s);
+  }
+
+  /** Segment k of a jointed leg: joint at (jx, jy, jz), bone along `bone`, side reference `side` (blob space). */
+  private writeLegBone(p: PartState, leg: LegRig, k: 0 | 1 | 2, jx: number, jy: number, jz: number, bone: Vec3, side: Vec3, s: number): void {
+    _a.set(bone[0], bone[1], bone[2]).normalize();
+    _b.set(side[0], side[1], side[2]);
+    _b.addScaledVector(_a, -_a.dot(_b));
+    if (_b.lengthSq() < 1e-8) _b.set(0, 1, 0).addScaledVector(_a, -_a.y);
+    _b.normalize();
+    _c.crossVectors(_a, _b);
+    // Q = [A B C] · [a b c]ᵀ maps the segment's local bone/side basis onto the solved one.
+    _basis.makeBasis(_a, _b, _c).multiply(leg.basisT[k]);
+    const jl = leg.jointL[k];
+    _frame.makeScale(s, s, s).premultiply(_basis);
+    _frame.setPosition(jx - (_basis.elements[0]! * jl.x + _basis.elements[4]! * jl.y + _basis.elements[8]! * jl.z) * s, jy - (_basis.elements[1]! * jl.x + _basis.elements[5]! * jl.y + _basis.elements[9]! * jl.z) * s, jz - (_basis.elements[2]! * jl.x + _basis.elements[6]! * jl.y + _basis.elements[10]! * jl.z) * s);
+    const seg = leg.seg[k];
+    const m = p.segMatrices[seg]!.copy(_blob).multiply(_frame);
+    for (const inst of p.instances) if (inst.segment === seg) inst.pool.setMatrix(inst.index, m.elements);
+  }
+
+  /**
+   * Single-mesh leg (legacy modules): aimed along `dir` from `from` (posed blob space), module +Y → dir,
+   * module −Z → the body's forward projected off the leg, stretched along the leg.
+   */
+  private writeStretchLeg(p: PartState, from: Vec3, dir: Vec3, s: number, stretch: number, forward: Vec3): void {
+    _a.set(dir[0], dir[1], dir[2]).normalize(); // z
+    _b.set(forward[0], forward[1], forward[2]);
+    if (Math.abs(_b.dot(_a)) > 0.985) _b.set(0, 1, 0);
+    _c.crossVectors(_b, _a).normalize(); // x
+    if (p.spec.mirror < 0) _c.negate();
+    _b.crossVectors(_a, _c); // y
+    // Volume-ish: compressed legs get a little thicker, stretched ones thinner.
+    const across = 1 / Math.sqrt(Math.max(0.3, stretch));
+    const sx = s * across;
+    const sz = s * stretch;
+    const sy = s * across;
+    _frame.set(_c.x * sx, _a.x * sz, -_b.x * sy, from[0], _c.y * sx, _a.y * sz, -_b.y * sy, from[1], _c.z * sx, _a.z * sz, -_b.z * sy, from[2], 0, 0, 0, 1);
+    _frame.multiply(p.module.rootSocketInverse);
+    _m.copy(_blob).multiply(_frame);
+    for (const inst of p.instances) inst.pool.setMatrix(inst.index, _m.elements);
   }
 
   /** Per-instance tint + look flags (only rewritten when overrides change). */
@@ -422,18 +820,21 @@ export class CreatureRig {
       const gloss = family === 'ink' ? 1 : family === 'membrane' ? 0 : 0.35;
       const flat = family === 'ink' ? 1 : 0;
       const rim = family === 'membrane' ? 0.35 : family === 'ink' ? 0.05 : 0.2;
+      const tintHex = ov?.tint ?? p.spec.tint;
       for (const inst of p.instances) {
-        const prim = p.module.segments[inst.segment]!.prims[0]!;
+        const seg = p.module.segments[inst.segment]!;
+        const prim = seg.prims[inst.prim] ?? seg.prims[0]!;
         let color: [number, number, number];
-        const tintHex = ov?.tint ?? p.spec.tint;
         if (prim.materialName === 'Ink') color = hexToLinear(spec.constants.ink);
         else if (prim.materialName === 'Bone') color = hexToLinear(spec.constants.bone);
         else if (prim.materialName === 'Accent') color = hexToLinear(spec.constants.accent);
+        // Eyelids are skin: the body colour, not the eye slot's ink tint (else they read as dark caps).
+        else if (prim.materialName === 'Tint' && seg.lid) color = hexToLinear(spec.body.baseColor);
         else if (prim.materialName === 'Tint' && tintHex) color = hexToLinear(tintHex);
         else color = prim.color;
         inst.pool.setTint(inst.index, color[0], color[1], color[2]);
-        const seg = p.module.segments[inst.segment]!;
-        inst.pool.setAnim(inst.index, seg.pupil || prim.materialName === 'Ink' ? 1 : gloss, prim.materialName === 'Ink' ? 1 : flat, rim, 0);
+        const glossy = seg.pupil || prim.materialName === 'Ink' || prim.materialName === 'Iris';
+        inst.pool.setAnim(inst.index, glossy ? 1 : gloss, prim.materialName === 'Ink' ? 1 : flat, rim, 0);
       }
     }
     this.tintVersion = this.overrideVersion;
@@ -443,34 +844,17 @@ export class CreatureRig {
   overrideVersion = 0;
   private tintVersion = 0;
 
-  private cappedProgram(params: BlobParams, max: number | undefined): { program: SdfProgram; cx: number; cz: number } {
-    const c = this.spheresCache;
-    if (c && c.params === params && c.max === max) return c;
-    const spheres = max !== undefined ? capSpheres(params.spheres, max) : params.spheres;
-    // Same tight-box centring as BlobParamBlock.write: the mesh traces from this shifted origin.
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minZ = Infinity;
-    let maxZ = -Infinity;
-    for (const s of spheres) {
-      const r = s.r * (1 + BREATH_AMPLITUDE);
-      minX = Math.min(minX, s.center[0] - r);
-      maxX = Math.max(maxX, s.center[0] + r);
-      minZ = Math.min(minZ, s.center[2] - r);
-      maxZ = Math.max(maxZ, s.center[2] + r);
-    }
-    const cx = Number.isFinite(minX) ? (minX + maxX) / 2 : 0;
-    const cz = Number.isFinite(minZ) ? (minZ + maxZ) / 2 : 0;
-    const program: SdfProgram = params.spheres === spheres ? params : { ...params, spheres };
-    this.spheresCache = { params, max, program, cx, cz };
-    return this.spheresCache;
-  }
-
-  private coreProgram(program: SdfProgram, params: BlobParams): SdfProgram {
-    if (this.core && this.coreOf === params && this.spheresCache?.program === program) return this.core;
-    this.core = { ...program, noiseAmp: 0 };
-    this.coreOf = params;
-    return this.core;
+  /**
+   * The sphere list the shader draws (capped on the mobile preset); uncapped bodies are used as is.
+   * Posed bodies change in place every frame, so their capped list is never cached.
+   */
+  private programFor(params: BlobParams, max: number | undefined, posed: boolean): SdfProgram {
+    if (max === undefined || params.spheres.length <= max) return params;
+    const c = this.capped;
+    if (!posed && c && c.params === params && c.max === max && c.spheresRef === params.spheres) return c.program;
+    const program: SdfProgram = { ...params, spheres: capSpheres(params.spheres, max) };
+    this.capped = { params, max, spheresRef: params.spheres, program };
+    return program;
   }
 
   dispose(): void {
@@ -480,6 +864,34 @@ export class CreatureRig {
     this.parts.length = 0;
     this.pool.forget(this);
   }
+}
+
+function dirInto(theta: number, phi: number, out: Vec3): Vec3 {
+  const c = Math.cos(phi);
+  out[0] = Math.sin(theta) * c;
+  out[1] = Math.sin(phi);
+  out[2] = Math.cos(theta) * c;
+  return out;
+}
+
+function rotInto(r: Readonly<Rot3>, v: Vec3, out: Vec3): Vec3 {
+  const x = v[0];
+  const y = v[1];
+  const z = v[2];
+  out[0] = r[0] * x + r[1] * y + r[2] * z;
+  out[1] = r[3] * x + r[4] * y + r[5] * z;
+  out[2] = r[6] * x + r[7] * y + r[8] * z;
+  return out;
+}
+
+function rotInvInto(r: Readonly<Rot3>, v: Vec3, out: Vec3): Vec3 {
+  const x = v[0];
+  const y = v[1];
+  const z = v[2];
+  out[0] = r[0] * x + r[3] * y + r[6] * z;
+  out[1] = r[1] * x + r[4] * y + r[7] * z;
+  out[2] = r[2] * x + r[5] * y + r[8] * z;
+  return out;
 }
 
 function chainOptions(p: PartSpec): ConstructorParameters<typeof SpringChain>[1] {
@@ -494,6 +906,83 @@ function chainOptions(p: PartSpec): ConstructorParameters<typeof SpringChain>[1]
     default:
       return { omega: 14, zeta: 0.22, follow: 0.85 };
   }
+}
+
+const _tipV = new Vector3();
+const _rootV = new Vector3();
+const _tipM = new Matrix4();
+
+/** Rest transform of every segment in root-segment space (segments are listed parents first). */
+function restTransforms(module: ModuleDef): Matrix4[] {
+  const out: Matrix4[] = [];
+  module.segments.forEach((seg, i) => {
+    if (seg.parent < 0 || i === 0) out.push(new Matrix4());
+    else out.push(out[seg.parent]!.clone().multiply(seg.local));
+  });
+  return out;
+}
+
+/** Distance SOCKET_root → SOCKET_tip in module units (0.8 when no tip is authored). */
+export function moduleTipLength(module: ModuleDef): number {
+  if (!module.tip) return 0.8;
+  const rest = restTransforms(module);
+  _tipM.copy(rest[module.tip.segment] ?? new Matrix4()).multiply(module.tip.local);
+  _tipV.setFromMatrixPosition(_tipM);
+  _rootV.setFromMatrixPosition(_tipM.copy(module.rootSocketInverse).invert());
+  const d = _tipV.distanceTo(_rootV);
+  return d > 1e-3 ? d : 0.8;
+}
+
+/**
+ * Jointed leg description from `SOCKET_knee` (under the thigh), `SOCKET_foot` (under the shin) and
+ * `SOCKET_tip` (under the foot); null for modules without these joints (single-mesh legs).
+ */
+export function buildLegRig(module: ModuleDef): LegRig | null {
+  const knee = module.sockets['knee'];
+  const ankle = module.sockets['foot'];
+  const tip = module.sockets['tip'];
+  if (!knee || !ankle || !tip) return null;
+  const thigh = knee.segment;
+  const shin = ankle.segment;
+  const footSeg = tip.segment;
+  if (thigh !== 0 || shin <= 0 || footSeg <= 0 || shin === footSeg) return null;
+  const rest = restTransforms(module);
+  // Everything in socket space: module frame after SOCKET_root (hip at the origin, +Y down the leg, −Z forward).
+  const rsi = module.rootSocketInverse;
+  const toSocket = (seg: number, local: Matrix4): Vector3 => new Vector3().setFromMatrixPosition(rsi.clone().multiply(rest[seg]!).multiply(local));
+  const hipS = new Vector3(0, 0, 0);
+  const kneeS = toSocket(knee.segment, knee.local);
+  const ankleS = toSocket(ankle.segment, ankle.local);
+  const tipS = toSocket(tip.segment, tip.local);
+  const segFrames = [thigh, shin, footSeg].map((si) => rsi.clone().multiply(rest[si]!));
+  const joints = [hipS, kneeS, ankleS];
+  const bones = [kneeS.clone().sub(hipS), ankleS.clone().sub(kneeS), new Vector3(0, 1, 0)];
+  const jointL: Vector3[] = [];
+  const basisT: Matrix4[] = [];
+  for (let k = 0; k < 3; k++) {
+    const frame = segFrames[k]!;
+    const inv = frame.clone().invert();
+    jointL.push(joints[k]!.clone().applyMatrix4(inv));
+    const rotInv = new Matrix4().extractRotation(frame).transpose();
+    const a = bones[k]!.clone().applyMatrix4(rotInv).normalize();
+    const side = new Vector3(0, 0, -1).applyMatrix4(rotInv);
+    const b = side.addScaledVector(a, -a.dot(side)).normalize();
+    const c = new Vector3().crossVectors(a, b);
+    basisT.push(new Matrix4().makeBasis(a, b, c).transpose());
+  }
+  const l1 = kneeS.distanceTo(hipS);
+  const l2 = ankleS.distanceTo(kneeS);
+  const drop = Math.max(0, tipS.y - ankleS.y);
+  if (l1 < 1e-3 || l2 < 1e-3) return null;
+  return {
+    seg: [thigh, shin, footSeg],
+    jointL: jointL as [Vector3, Vector3, Vector3],
+    basisT: basisT as [Matrix4, Matrix4, Matrix4],
+    l1,
+    l2,
+    drop,
+    length: ankleS.y + drop,
+  };
 }
 
 function hashString(s: string): number {

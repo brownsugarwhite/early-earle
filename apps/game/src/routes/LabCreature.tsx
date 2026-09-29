@@ -1,17 +1,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { SLOT_IDS, ZONES, type SlotId, type Verb, type ZoneId } from '@ee/genome';
+import { BODY_TYPES, BODY_TYPE_LABELS, SLOT_IDS, ZONES, type BodyType, type SlotId, type Verb, type ZoneId } from '@ee/genome';
 import type { PartOverride } from '@ee/render';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { useAppStore } from '../state/store';
-import { DEFAULT_CREATURE_LAB_SETTINGS, LabCreatureScene, MERGE_SCRUB_MAX_MS, resolveQuality, type BodyCandidate, type CreatureLabInfo, type CreatureLabSettings, type LabMode, type Quality } from '../lab/creature/LabCreatureScene';
+import {
+  DEFAULT_CREATURE_LAB_SETTINGS,
+  GAIT_LABELS,
+  LabCreatureScene,
+  MERGE_SCRUB_MAX_MS,
+  resolveQuality,
+  type BodyCandidate,
+  type BodyChoice,
+  type CreatureLabInfo,
+  type CreatureLabSettings,
+  type LabMode,
+  type MotionAction,
+  type Quality,
+} from '../lab/creature/LabCreatureScene';
 import { BUNDLED_RULES } from '../lab/creature/content';
 import '../lab/creature/creatureLab.css';
 
 const MODES: Array<{ id: LabMode; label: string }> = [
   { id: 'single', label: 'Einzeln' },
+  { id: 'motion', label: 'Bewegung' },
   { id: 'gallery', label: 'Galerie 1–8' },
+  { id: 'sheet', label: 'Blob-Sheet' },
+  { id: 'compare', label: 'Vergleichen' },
   { id: 'grid', label: '36 × Stufe 4' },
+  { id: 'herd', label: '36 × Vierbeiner' },
   { id: 'merge', label: 'Verschmelzen' },
 ];
 const CANDIDATES: Array<{ id: BodyCandidate; label: string }> = [
@@ -31,8 +48,18 @@ const VERBS: Array<{ id: Verb; label: string }> = [
   { id: 'wag', label: 'Wedeln' },
   { id: 'sway', label: 'Schwingen' },
   { id: 'bob', label: 'Wippen' },
+  { id: 'curl', label: 'Rüssel rollen' },
+  { id: 'sniff', label: 'Schnüffeln' },
+];
+const BODY_CHOICES: Array<{ id: BodyChoice; label: string }> = [{ id: 'auto', label: 'Regeln' }, ...BODY_TYPES.map((b) => ({ id: b, label: BODY_TYPE_LABELS[b] }))];
+const ACTIONS: Array<{ id: MotionAction; label: string }> = [
+  { id: 'walk', label: 'Laufen' },
+  { id: 'jump', label: 'Springen' },
+  { id: 'slither', label: 'Schlängeln' },
+  { id: 'stand', label: 'Stehen' },
 ];
 const SLOT_LABELS: Record<SlotId, string> = { eye: 'Auge', horn: 'Horn', ear: 'Ohr', trunk: 'Rüssel', tooth: 'Zähne', wing: 'Flügel', leg: 'Beine', tail: 'Schweif', crest: 'Kamm' };
+const TIERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 export function Seg<T extends string | number>({ label, value, options, onChange, testId }: { label: string; value: T; options: Array<{ id: T; label: string }>; onChange: (v: T) => void; testId?: string }) {
   return (
@@ -47,9 +74,9 @@ export function Seg<T extends string | number>({ label, value, options, onChange
   );
 }
 
-export function Slider({ label, value, min, max, step, onChange, format }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; format?: (v: number) => string }) {
+export function Slider({ label, value, min, max, step, onChange, format, testId }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; format?: (v: number) => string; testId?: string }) {
   return (
-    <label className="creature-slider">
+    <label className="creature-slider" data-testid={testId}>
       <span className="creature-label">{label}</span>
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
       <output>{format ? format(value) : value.toFixed(2)}</output>
@@ -57,18 +84,77 @@ export function Slider({ label, value, min, max, step, onChange, format }: { lab
   );
 }
 
-const EMPTY_INFO: CreatureLabInfo = { creatures: 0, parts: 0, partDrawCalls: 0, modules: 0, missing: [], merging: false, inheritance: [], partIds: [], rigMs: 0 };
+const EMPTY_INFO: CreatureLabInfo = { creatures: 0, parts: 0, partDrawCalls: 0, modules: 0, missing: [], merging: false, inheritance: [], partIds: [], rigMs: 0, motionMs: 0, bodyType: null, gait: null, massKg: 0, speed: 0, motionState: '' };
+
+/** "Zufall": archetype × zone × tier × seed — characterful variety, not just another seed. */
+function randomVariety(mode: LabMode): Partial<CreatureLabSettings> {
+  const zone = ZONES[Math.floor(Math.random() * ZONES.length)]!;
+  const bodyType: BodyChoice = Math.random() < 0.25 ? 'auto' : BODY_TYPES[Math.floor(Math.random() * BODY_TYPES.length)]!;
+  const tier = mode === 'motion' || bodyType !== 'auto' ? 5 + Math.floor(Math.random() * 5) : 3 + Math.floor(Math.random() * 7);
+  return { seed: Math.floor(Math.random() * 100000), zone, tier, bodyType, overrides: {} };
+}
+
+/** The live status line: subscribes to the scene's info stream and re-renders alone. */
+function StatusLine({ subscribe, quality, initial }: { subscribe: Set<(i: CreatureLabInfo) => void>; quality: Quality; initial: CreatureLabInfo }) {
+  const [info, setInfo] = useState<CreatureLabInfo>(initial);
+  useEffect(() => {
+    subscribe.add(setInfo);
+    return () => {
+      subscribe.delete(setInfo);
+    };
+  }, [subscribe]);
+  const bodyLabel = info.bodyType ? BODY_TYPE_LABELS[info.bodyType] : '';
+  const gaitLabel = info.gait ? GAIT_LABELS[info.gait] : '';
+  return (
+    <span className="creature-info creature-status" data-testid="creature-lab-info" data-warn={info.missing.length > 0}>
+      {info.creatures} Figuren · {info.parts} Teile · {info.partDrawCalls} Teil-Draw-Calls · {info.modules} Module · Rig {info.rigMs} ms · Bewegung {info.motionMs} ms · Qualität {resolveQuality(quality) === 'mobile' ? 'Mobil' : 'Hoch'}
+      {info.bodyType ? ` · ${bodyLabel} · ${gaitLabel} · Masse ${info.massKg}${info.motionState ? ` · ${info.motionState}` : ''}${info.speed > 0.01 ? ` · ${info.speed} m/s` : ''}` : ''}
+      {info.merging ? ' · verschmilzt…' : ''}
+      {info.missing.length ? ` · fehlend: ${info.missing.join(', ')}` : ''}
+      {info.inheritance.length ? `\nKind erbt: ${info.inheritance.join(' · ')}` : ''}
+    </span>
+  );
+}
 
 export function LabCreature() {
   const controller = useMemo(() => new LabCreatureScene({ rules: BUNDLED_RULES }), []);
   const [settings, setSettings] = useState<CreatureLabSettings>(DEFAULT_CREATURE_LAB_SETTINGS);
+  // Structural info (parts list, merge state) re-renders the panel; the live status line (timings,
+  // speed, motion state) updates in its own small component so the ~90 buttons do not re-render at 2 Hz.
   const [info, setInfo] = useState<CreatureLabInfo>(EMPTY_INFO);
+  const statusSubs = useRef(new Set<(i: CreatureLabInfo) => void>());
   const [selected, setSelected] = useState<string | null>(null);
   const [scrub, setScrub] = useState<number | null>(null);
+  const [hint, setHint] = useState<string>('');
   const layerRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+
+  // The controls sheet covers the lower part of the canvas: the scene frames its content above it.
+  useEffect(() => {
+    const el = controlsRef.current;
+    const layer = layerRef.current;
+    if (!el || !layer) return;
+    const report = () => {
+      const h = layer.getBoundingClientRect().height;
+      if (h > 0) controller.setInsetBottom((el.getBoundingClientRect().height + 24) / h);
+    };
+    const ro = new ResizeObserver(report);
+    ro.observe(el);
+    ro.observe(layer);
+    report();
+    return () => ro.disconnect();
+  }, [controller]);
 
   useEffect(() => {
-    controller.onInfo = setInfo;
+    let lastKey = '';
+    controller.onInfo = (next) => {
+      for (const f of statusSubs.current) f(next);
+      const key = JSON.stringify([next.partIds, next.merging, next.inheritance, next.bodyType, next.gait, next.missing, next.creatures]);
+      if (key !== lastKey) {
+        lastKey = key;
+        setInfo(next);
+      }
+    };
     return () => {
       controller.onInfo = null;
     };
@@ -101,23 +187,62 @@ export function LabCreature() {
     return { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -(((e.clientY - r.top) / r.height) * 2 - 1) };
   };
 
+  const act = (action: MotionAction) => {
+    set({ action, ...(action === 'slither' && settings.bodyType !== 'snake' ? { bodyType: 'snake' as BodyType, tier: Math.max(5, settings.tier) } : {}) });
+    // A changed archetype rebuilds on the next apply; the action itself runs on the rebuilt hero.
+    setTimeout(() => controller.act(action), 0);
+    setHint(action === 'jump' ? 'Tippe auf die Platte: Sprung dorthin' : action === 'stand' ? '' : 'Tippe auf die Platte: dorthin laufen');
+  };
+
   const selectedPart = info.partIds.find((p) => p.id === selected) ?? null;
   const ov = selectedPart ? settings.overrides[selectedPart.id] ?? {} : {};
+  const motionMode = settings.mode === 'motion' || settings.mode === 'herd';
 
   const controls = (
-    <div className="creature-controls" data-testid="creature-lab-controls">
+    <div className="creature-controls" data-testid="creature-lab-controls" ref={controlsRef}>
       <Seg label="Ansicht" value={settings.mode} options={MODES} onChange={(mode) => set({ mode })} testId="ctl-mode" />
       <Seg label="Zone" value={settings.zone} options={ZONES.map((z: ZoneId) => ({ id: z, label: z }))} onChange={(zone) => set({ zone })} testId="ctl-zone" />
-      <Seg label="Stufe" value={settings.tier} options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((t) => ({ id: t, label: String(t) }))} onChange={(tier) => set({ tier })} testId="ctl-tier" />
+      {settings.mode === 'compare' ? (
+        <>
+          <Seg label="Stufe A" value={settings.tier} options={TIERS.map((t) => ({ id: t, label: String(t) }))} onChange={(tier) => set({ tier })} testId="ctl-tier" />
+          <Seg label="Stufe B" value={settings.compareTier} options={TIERS.map((t) => ({ id: t, label: String(t) }))} onChange={(compareTier) => set({ compareTier })} testId="ctl-compare-tier" />
+        </>
+      ) : (
+        <Seg label="Stufe" value={settings.tier} options={TIERS.slice(0, 10).map((t) => ({ id: t, label: String(t) }))} onChange={(tier) => set({ tier })} testId="ctl-tier" />
+      )}
+      <Seg label="Körper" value={settings.bodyType} options={BODY_CHOICES} onChange={(bodyType) => set({ bodyType, ...(bodyType !== 'auto' && bodyType !== 'blob' && settings.tier < 5 ? { tier: 5 } : {}) })} testId="ctl-body" />
       <div className="creature-row">
         <span className="creature-label">Seed</span>
         <input className="creature-input" type="number" value={settings.seed} onChange={(e) => set({ seed: Number(e.target.value) || 0 })} data-testid="ctl-seed" />
-        <button type="button" className="creature-btn" data-kind="action" onClick={() => set({ seed: Math.floor(Math.random() * 100000), overrides: {} })} data-testid="btn-random">
+        <button type="button" className="creature-btn" data-kind="action" onClick={() => set(randomVariety(settings.mode))} data-testid="btn-random">
           Zufall
         </button>
-        <Seg label="Körper" value={settings.candidate} options={CANDIDATES} onChange={(candidate) => set({ candidate })} testId="ctl-candidate" />
+        <Seg label="Render" value={settings.candidate} options={CANDIDATES} onChange={(candidate) => set({ candidate })} testId="ctl-candidate" />
         <Seg label="Qualität" value={settings.quality} options={QUALITIES} onChange={(quality) => set({ quality })} testId="ctl-quality" />
       </div>
+      {motionMode ? (
+        <div className="creature-section" data-testid="ctl-motion">
+          <span className="creature-label">Bewegung</span>
+          <div className="creature-row">
+            {ACTIONS.map((a) => (
+              <button key={a.id} type="button" className="creature-btn" data-kind="verb" data-active={settings.action === a.id} onClick={() => act(a.id)} data-testid={`motion-${a.id}`}>
+                {a.label}
+              </button>
+            ))}
+            {settings.mode === 'motion' ? (
+              <button type="button" className="creature-btn" data-active={settings.parcours} onClick={() => set({ parcours: !settings.parcours })} data-testid="btn-parcours">
+                Parcours (6 Körper)
+              </button>
+            ) : null}
+          </div>
+          <div className="creature-row">
+            <Slider label="Tempo" value={settings.speed} min={0.3} max={2.5} step={0.05} onChange={(speed) => set({ speed })} format={(v) => `× ${v.toFixed(2)}`} testId="ctl-speed" />
+            <Slider label="Masse" value={settings.mass} min={0.4} max={3} step={0.05} onChange={(mass) => set({ mass })} format={(v) => `× ${v.toFixed(2)}`} testId="ctl-mass" />
+          </div>
+          {/* Always reserved: a hint appearing must not shift the buttons of the bottom-anchored sheet. */}
+          <span className="creature-info creature-hint">{hint || ' '}</span>
+        </div>
+      ) : null}
       <div className="creature-row" data-testid="ctl-verbs">
         <span className="creature-label">Verben</span>
         {VERBS.map((v) => (
@@ -187,12 +312,7 @@ export function LabCreature() {
           </button>
         </div>
       ) : null}
-      <span className="creature-info" data-testid="creature-lab-info" data-warn={info.missing.length > 0}>
-        {info.creatures} Figuren · {info.parts} Teile · {info.partDrawCalls} Teil-Draw-Calls · {info.modules} Module · Rig {info.rigMs} ms · Qualität {resolveQuality(settings.quality) === 'mobile' ? 'Mobil' : 'Hoch'}
-        {info.merging ? ' · verschmilzt…' : ''}
-        {info.missing.length ? ` · fehlend: ${info.missing.join(', ')}` : ''}
-        {info.inheritance.length ? `\nKind erbt: ${info.inheritance.join(' · ')}` : ''}
-      </span>
+      <StatusLine subscribe={statusSubs.current} quality={settings.quality} initial={info} />
     </div>
   );
 
@@ -206,7 +326,7 @@ export function LabCreature() {
         onPointerMove={(e) => controller.setPointer(ndcOf(e))}
         onPointerLeave={() => controller.setPointer(null)}
         onPointerDown={(e) => {
-          controller.pokeAt(ndcOf(e));
+          controller.commandAt(ndcOf(e));
         }}
       />
     </LabFrame>

@@ -5,3 +5,4 @@ export * from './partMaterial';
 export * from './CreaturePool';
 export * from './CreatureRig';
 export * from './CreatureMergeChoreo';
+export * from './CreatureMotion';

@@ -9,6 +9,8 @@ export const BREATH_AMPLITUDE = 0.03;
 export const FLOOR_FILLET = 0.18;
 /** Floor values below this disable the cut. */
 export const NO_FLOOR = -100;
+/** Fire tongues: noise amplitude multiplier at the crown (v2) — must match compileSdf.ts. */
+export const FIRE_AMP_MAX = 4;
 
 /** Polynomial smooth minimum (Quilez, quadratic). k = 0 → hard min. */
 export function smin(a: number, b: number, k: number): number {
@@ -53,6 +55,60 @@ export function inverseSquash(p: Vec3, squash: Squash): { q: Vec3; lipschitz: nu
   };
 }
 
+/**
+ * Forward squash: rest-space point → squashed body (the exact inverse of `inverseSquash`, teardrop taper
+ * included). Sockets are traced on the rest body and carried here, so parts ride the deformation.
+ * `axis` must be unit length. Writes into `out` (may alias `q`).
+ */
+export function squashPoint(q: Vec3, axis: Vec3, amount: number, taper: number, out: Vec3): Vec3 {
+  if (Math.abs(amount) < 1e-6) {
+    out[0] = q[0];
+    out[1] = q[1];
+    out[2] = q[2];
+    return out;
+  }
+  const along = Math.max(0.2, 1 + amount);
+  const invAcross = Math.sqrt(along);
+  const taperK = taper * Math.max(0, amount);
+  const par = q[0] * axis[0] + q[1] * axis[1] + q[2] * axis[2];
+  // inverseSquash: parS = par_p / along = par_q; perp_q = perp_p · perpS(parS) → perp_p = perp_q / perpS.
+  const behind = Math.min(1, Math.max(0, -par));
+  const k = 1 / (invAcross * (1 + taperK * behind * behind * (3 - 2 * behind)));
+  const qx = q[0] - axis[0] * par;
+  const qy = q[1] - axis[1] * par;
+  const qz = q[2] - axis[2] * par;
+  out[0] = axis[0] * par * along + qx * k;
+  out[1] = axis[1] * par * along + qy * k;
+  out[2] = axis[2] * par * along + qz * k;
+  return out;
+}
+
+/**
+ * Normal of the squashed surface at the image of a rest point with rest normal `n` (inverse-transpose
+ * of the squash; the taper's variation along the axis is ignored — it only tilts frames slightly).
+ */
+export function squashNormal(n: Vec3, q: Vec3, axis: Vec3, amount: number, taper: number, out: Vec3): Vec3 {
+  if (Math.abs(amount) < 1e-6) {
+    out[0] = n[0];
+    out[1] = n[1];
+    out[2] = n[2];
+    return out;
+  }
+  const along = Math.max(0.2, 1 + amount);
+  const par = q[0] * axis[0] + q[1] * axis[1] + q[2] * axis[2];
+  const behind = Math.min(1, Math.max(0, -par));
+  const perpS = Math.sqrt(along) * (1 + taper * Math.max(0, amount) * behind * behind * (3 - 2 * behind));
+  const nd = n[0] * axis[0] + n[1] * axis[1] + n[2] * axis[2];
+  const nx = (axis[0] * nd) / along + (n[0] - axis[0] * nd) * perpS;
+  const ny = (axis[1] * nd) / along + (n[1] - axis[1] * nd) * perpS;
+  const nz = (axis[2] * nd) / along + (n[2] - axis[2] * nd) * perpS;
+  const l = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+  out[0] = nx / l;
+  out[1] = ny / l;
+  out[2] = nz / l;
+  return out;
+}
+
 export interface EvalOptions {
   /** Squash applied to the body (inverse-mapped before evaluation). */
   squash?: Squash;
@@ -73,6 +129,8 @@ export interface EvalOptions {
    * Omit for jelly/liquid (identical to the plain evaluation).
    */
   material?: MaterialKind;
+  /** Smooth core only: skip the noise and the jiggle ripple (stable normals for socket frames). */
+  noNoise?: boolean;
 }
 
 /**
@@ -80,61 +138,105 @@ export interface EvalOptions {
  * tracing on the CPU is safe; the GPU version in compileSdf.ts uses the same formula.
  */
 export function evalSdf(program: SdfProgram, p: Vec3, opts: EvalOptions = {}): number {
-  let q = p;
+  // Allocation-free: this runs thousands of times per frame (socket traces of every creature), so the
+  // inverse squash is inlined into scalars (same formula as `inverseSquash`) and no arrays are created.
+  let qx = p[0];
+  let qy = p[1];
+  let qz = p[2];
   let lipschitz = 1;
-  if (opts.squash && Math.abs(opts.squash.amount) > 1e-6) {
-    const inv = inverseSquash(p, opts.squash);
-    q = inv.q;
-    lipschitz = inv.lipschitz;
+  const sq = opts.squash;
+  if (sq && Math.abs(sq.amount) > 1e-6) {
+    const ax = sq.axis[0];
+    const ay = sq.axis[1];
+    const az = sq.axis[2];
+    const len = Math.sqrt(ax * ax + ay * ay + az * az);
+    if (len >= 1e-6) {
+      const along = Math.max(0.2, 1 + sq.amount);
+      const across = 1 / Math.sqrt(along);
+      const nx = ax / len;
+      const ny = ay / len;
+      const nz = az / len;
+      const par = qx * nx + qy * ny + qz * nz;
+      const px = qx - par * nx;
+      const py = qy - par * ny;
+      const pz = qz - par * nz;
+      const parS = par / along;
+      const taper = (sq.taper ?? 0) * Math.max(0, sq.amount);
+      const behind = Math.min(1, Math.max(0, -parS));
+      const perpS = (1 / across) * (1 + taper * behind * behind * (3 - 2 * behind));
+      qx = px * perpS + parS * nx;
+      qy = py * perpS + parS * ny;
+      qz = pz * perpS + parS * nz;
+      lipschitz = Math.max(1 / along, perpS);
+    }
   }
   const t = opts.time ?? 0;
   const phase = opts.phase ?? 0;
   const breath = 1 + BREATH_AMPLITUDE * Math.sin(2 * Math.PI * (opts.breathHz ?? 0) * t + phase);
   let d = 1e3;
-  for (const s of program.spheres) {
-    const dx = q[0] - s.center[0];
-    const dy = q[1] - s.center[1];
-    const dz = q[2] - s.center[2];
-    d = smin(d, Math.hypot(dx, dy, dz) - s.r * breath, program.sminK);
+  const spheres = program.spheres;
+  const k = program.sminK;
+  for (let i = 0; i < spheres.length; i++) {
+    const s = spheres[i]!;
+    const c = s.center;
+    const dx = qx - c[0];
+    const dy = qy - c[1];
+    const dz = qz - c[2];
+    d = smin(d, Math.sqrt(dx * dx + dy * dy + dz * dz) - s.r * breath, k);
   }
-  if (program.noiseAmp > 0) {
+  if (program.noiseAmp > 0 && !opts.noNoise) {
     const f = program.noiseFreq;
-    // Gas/fire swirl faster, fire licks upward (coordinates scroll down) — same terms as the GPU body.
+    // Gas/fire swirl faster; fire licks upward (coordinates scroll down) with tongues that are stretched
+    // vertically and grow toward the crown (v2: up to FIRE_AMP_MAX×) — same terms as the GPU body
+    // (`compileSdf.ts`), so sockets stay on the rendered surface.
     const mat = opts.material;
     const gasOrFire = mat === 'gas' || mat === 'fire' ? 1 : 0;
     const fire = mat === 'fire' ? 1 : 0;
     const drift = t * 0.35 + gasOrFire * t * 1.1;
-    const ampScale = 1 + fire * Math.max(q[1], 0) * 2;
-    d += fractalNoise3(q[0] * f + phase, q[1] * f + drift - t * fire * 2.5, q[2] * f, opts.noiseOctaves ?? SDF_NOISE_OCTAVES) * program.noiseAmp * ampScale;
+    const cr = Math.min(1, Math.max(0, (qy + 0.4) / 1.5));
+    const crown = cr * cr * (3 - 2 * cr);
+    const ampScale = 1 + fire * crown * crown * (FIRE_AMP_MAX - 1);
+    const stretch = fire ? 0.45 : 1;
+    d += fractalNoise3(qx * f + phase, qy * f * stretch + drift - t * fire * 3.0, qz * f, opts.noiseOctaves ?? SDF_NOISE_OCTAVES) * program.noiseAmp * ampScale;
     // 2-octave fractal noise has gradient ≤ ~1.5 · freq · amp: shrink steps accordingly.
     lipschitz *= 1 + program.noiseAmp * f * 2.5 * ampScale;
   }
   // Jiggle ripple shared with both render candidates: a travelling wave along y after impulses.
-  if (opts.jiggle) d += Math.sin(q[1] * 7 - t * 16 + phase) * opts.jiggle * 0.05;
+  if (opts.jiggle && !opts.noNoise) d += Math.sin(qy * 7 - t * 16 + phase) * opts.jiggle * 0.05;
   const floorY = program.floorY ?? NO_FLOOR;
-  if (floorY > NO_FLOOR) d = smax(d, floorY - q[1], FLOOR_FILLET);
+  if (floorY > NO_FLOOR) d = smax(d, floorY - qy, FLOOR_FILLET);
   return d / lipschitz;
 }
 
-/** Tetrahedron 4-tap gradient, normalised. */
-export function sdfNormal(program: SdfProgram, p: Vec3, opts: EvalOptions = {}, eps = 1e-3): Vec3 {
-  const taps: Vec3[] = [
-    [1, -1, -1],
-    [-1, -1, 1],
-    [-1, 1, -1],
-    [1, 1, 1],
-  ];
+const TAPS: readonly (readonly [number, number, number])[] = [
+  [1, -1, -1],
+  [-1, -1, 1],
+  [-1, 1, -1],
+  [1, 1, 1],
+];
+const _tap: Vec3 = [0, 0, 0];
+
+/** Tetrahedron 4-tap gradient, normalised. Writes into `out` when given (allocation-free). */
+export function sdfNormal(program: SdfProgram, p: Vec3, opts: EvalOptions = {}, eps = 1e-3, out?: Vec3): Vec3 {
   let nx = 0;
   let ny = 0;
   let nz = 0;
-  for (const k of taps) {
-    const d = evalSdf(program, [p[0] + k[0] * eps, p[1] + k[1] * eps, p[2] + k[2] * eps], opts);
+  for (let i = 0; i < 4; i++) {
+    const k = TAPS[i]!;
+    _tap[0] = p[0] + k[0] * eps;
+    _tap[1] = p[1] + k[1] * eps;
+    _tap[2] = p[2] + k[2] * eps;
+    const d = evalSdf(program, _tap, opts);
     nx += k[0] * d;
     ny += k[1] * d;
     nz += k[2] * d;
   }
-  const len = Math.hypot(nx, ny, nz) || 1;
-  return [nx / len, ny / len, nz / len];
+  const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+  const n = out ?? ([0, 0, 0] as Vec3);
+  n[0] = nx / len;
+  n[1] = ny / len;
+  n[2] = nz / len;
+  return n;
 }
 
 /** Radius of a centred sphere that contains the body including noise displacement (blob units). */

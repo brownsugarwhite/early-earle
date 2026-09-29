@@ -99,6 +99,8 @@ export interface FrameOptions {
   tilt: number;
   /** Rotation about +Z (radians). */
   roll: number;
+  /** The creature's forward axis (unit) when the body is posed/turned; default +z. */
+  forward?: Vec3 | undefined;
 }
 
 /** Orthonormal (or reflected) frame: columns x, y, z. z = normal, y = toward the reference axis. */
@@ -129,8 +131,9 @@ function dot(a: Vec3, b: Vec3): number {
  */
 export function orientationFrame(normal: Vec3, opts: FrameOptions): SocketFrame {
   const z0 = norm(normal);
-  let ref = opts.ref === 'up' ? UP : FORWARD;
-  if (Math.abs(dot(z0, ref)) > 0.985) ref = opts.ref === 'up' ? FORWARD : UP;
+  const fwd = opts.forward ?? FORWARD;
+  let ref = opts.ref === 'up' ? UP : fwd;
+  if (Math.abs(dot(z0, ref)) > 0.985) ref = opts.ref === 'up' ? fwd : UP;
   let x = norm(cross(ref, z0));
   let y = cross(z0, x);
   let z = z0;
@@ -153,6 +156,86 @@ export function orientationFrame(normal: Vec3, opts: FrameOptions): SocketFrame 
   }
   if (opts.mirror < 0) x = [-x[0], -x[1], -x[2]];
   return { x, y, z };
+}
+
+/**
+ * `orientationFrame` writing into a preallocated frame (no allocations; the rig calls it for every part
+ * of every creature each frame). Identical math.
+ */
+export function orientationFrameInto(normal: Vec3, opts: FrameOptions, out: SocketFrame): SocketFrame {
+  let l = Math.sqrt(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]) || 1;
+  let zx = normal[0] / l;
+  let zy = normal[1] / l;
+  let zz = normal[2] / l;
+  const fwd = opts.forward ?? FORWARD;
+  let rx = opts.ref === 'up' ? 0 : fwd[0];
+  let ry = opts.ref === 'up' ? 1 : fwd[1];
+  let rz = opts.ref === 'up' ? 0 : fwd[2];
+  if (Math.abs(zx * rx + zy * ry + zz * rz) > 0.985) {
+    if (opts.ref === 'up') {
+      rx = fwd[0];
+      ry = fwd[1];
+      rz = fwd[2];
+    } else {
+      rx = 0;
+      ry = 1;
+      rz = 0;
+    }
+  }
+  // x = norm(cross(ref, z)); y = cross(z, x)
+  let xx = ry * zz - rz * zy;
+  let xy = rz * zx - rx * zz;
+  let xz = rx * zy - ry * zx;
+  l = Math.sqrt(xx * xx + xy * xy + xz * xz) || 1;
+  xx /= l;
+  xy /= l;
+  xz /= l;
+  let yx = zy * xz - zz * xy;
+  let yy = zz * xx - zx * xz;
+  let yz = zx * xy - zy * xx;
+  if (opts.tilt !== 0) {
+    const c = Math.cos(opts.tilt);
+    const sn = Math.sin(opts.tilt);
+    const z1x = zx * c + yx * sn;
+    const z1y = zy * c + yy * sn;
+    const z1z = zz * c + yz * sn;
+    const y1x = yx * c - zx * sn;
+    const y1y = yy * c - zy * sn;
+    const y1z = yz * c - zz * sn;
+    zx = z1x;
+    zy = z1y;
+    zz = z1z;
+    yx = y1x;
+    yy = y1y;
+    yz = y1z;
+  }
+  if (opts.roll !== 0) {
+    const c = Math.cos(opts.roll);
+    const sn = Math.sin(opts.roll);
+    const x1x = xx * c + yx * sn;
+    const x1y = xy * c + yy * sn;
+    const x1z = xz * c + yz * sn;
+    const y1x = yx * c - xx * sn;
+    const y1y = yy * c - xy * sn;
+    const y1z = yz * c - xz * sn;
+    xx = x1x;
+    xy = x1y;
+    xz = x1z;
+    yx = y1x;
+    yy = y1y;
+    yz = y1z;
+  }
+  const m = opts.mirror < 0 ? -1 : 1;
+  out.x[0] = xx * m;
+  out.x[1] = xy * m;
+  out.x[2] = xz * m;
+  out.y[0] = yx;
+  out.y[1] = yy;
+  out.y[2] = yz;
+  out.z[0] = zx;
+  out.z[1] = zy;
+  out.z[2] = zz;
+  return out;
 }
 
 /**

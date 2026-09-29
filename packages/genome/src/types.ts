@@ -7,8 +7,29 @@ export const MATERIAL_KINDS: readonly MaterialKind[] = ['jelly', 'liquid', 'gas'
 /** Numeric id used inside GPU parameter blocks. */
 export const MATERIAL_KIND_ID: Readonly<Record<MaterialKind, number>> = { jelly: 0, liquid: 1, gas: 2, fire: 3 };
 
-/** Maximum number of body primitives a genome may produce. Merge unions may temporarily exceed this (see render). */
+/** Maximum number of body primitives a blob genome may produce. Merge unions may temporarily exceed this (see render). */
 export const MAX_GENOME_SPHERES = 8;
+/** Sphere budget of an archetype body (snake spines, droplets); the GPU block holds 16 incl. merge droplets. */
+export const MAX_BODY_SPHERES = 14;
+
+/**
+ * Body archetypes (Kreaturen v2). `blob` is the dome of the blob sheet; `snake` a chain of spheres along a
+ * spine that slithers; `quadruped` a torso with four legs that really walks; `biped` the REX (big head,
+ * crest, two stomping legs, tail); `heavy` a wide, low, sluggish body.
+ */
+export const BODY_TYPES = ['blob', 'snake', 'quadruped', 'biped', 'heavy'] as const;
+export type BodyType = (typeof BODY_TYPES)[number];
+export const BODY_TYPE_LABELS: Readonly<Record<BodyType, string>> = { blob: 'Blob', snake: 'Schlange', quadruped: 'Vierbeiner', biped: 'REX', heavy: 'Behäbig' };
+
+/** Skin coat: `bare` shows the body material; `fur` / `feather` render shells / cards (render: BlobMaterialKind). */
+export const COATS = ['bare', 'fur', 'feather'] as const;
+export type Coat = (typeof COATS)[number];
+export const COAT_LABELS: Readonly<Record<Coat, string>> = { bare: 'nackt', fur: 'Fell', feather: 'Federn' };
+
+/** Procedural skin patterns in the Earle palette (render: `PatternKind` in blob/patterns.ts). */
+export const SKIN_PATTERNS = ['none', 'tiger', 'giraffe', 'zebra', 'snake', 'spots', 'diamonds'] as const;
+export type SkinPattern = (typeof SKIN_PATTERNS)[number];
+export const SKIN_PATTERN_LABELS: Readonly<Record<SkinPattern, string>> = { none: 'ohne', tiger: 'Tiger', giraffe: 'Giraffe', zebra: 'Zebra', snake: 'Schlange', spots: 'Punkte', diamonds: 'Rauten' };
 
 /** One body primitive: a sphere in blob-local units (main body radius ≈ 1). */
 export interface SpherePrim {

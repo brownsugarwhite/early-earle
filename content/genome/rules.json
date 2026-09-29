@@ -95,8 +95,8 @@
     "trunk_short": {
       "slot": "trunk",
       "scale": [
-        1,
-        1.6
+        0.8,
+        1.4
       ],
       "tintable": true,
       "family": "jelly",
@@ -105,8 +105,8 @@
     "trunk_long": {
       "slot": "trunk",
       "scale": [
-        1,
-        1.5
+        0.8,
+        1.4
       ],
       "tintable": true,
       "family": "jelly",
@@ -115,7 +115,7 @@
     "tooth_tusk": {
       "slot": "tooth",
       "scale": [
-        0.9,
+        0.8,
         1.6
       ],
       "tintable": false,
@@ -124,8 +124,8 @@
     "tooth_row": {
       "slot": "tooth",
       "scale": [
-        1,
-        1.5
+        0.8,
+        1.4
       ],
       "tintable": false,
       "family": "shell"
@@ -133,8 +133,8 @@
     "wing_leaf": {
       "slot": "wing",
       "scale": [
-        1,
-        2
+        0.8,
+        1.8
       ],
       "tintable": true,
       "family": "membrane"
@@ -142,8 +142,8 @@
     "wing_bat": {
       "slot": "wing",
       "scale": [
-        1,
-        2
+        0.8,
+        1.8
       ],
       "tintable": true,
       "family": "membrane"
@@ -189,8 +189,8 @@
     "crest_tuft": {
       "slot": "crest",
       "scale": [
-        1.3,
-        2.2
+        0.8,
+        1.8
       ],
       "tintable": true,
       "family": "jelly"
@@ -198,11 +198,101 @@
     "crest_fin": {
       "slot": "crest",
       "scale": [
-        1.2,
-        2
+        0.8,
+        1.6
       ],
       "tintable": true,
       "family": "membrane"
+    },
+    "eye_cute": {
+      "slot": "eye",
+      "scale": [
+        0.8,
+        1.5
+      ],
+      "tintable": false,
+      "family": "ink"
+    },
+    "eye_sleepy": {
+      "slot": "eye",
+      "scale": [
+        0.8,
+        1.5
+      ],
+      "tintable": false,
+      "family": "ink"
+    },
+    "eye_reptile": {
+      "slot": "eye",
+      "scale": [
+        0.8,
+        1.5
+      ],
+      "tintable": false,
+      "family": "ink"
+    },
+    "horn_ram": {
+      "slot": "horn",
+      "scale": [
+        0.7,
+        1.6
+      ],
+      "tintable": true,
+      "family": "shell"
+    },
+    "tooth_buck": {
+      "slot": "tooth",
+      "scale": [
+        0.8,
+        1.5
+      ],
+      "tintable": false,
+      "family": "shell"
+    },
+    "tooth_fang": {
+      "slot": "tooth",
+      "scale": [
+        0.8,
+        1.6
+      ],
+      "tintable": false,
+      "family": "shell"
+    },
+    "wing_feather": {
+      "slot": "wing",
+      "scale": [
+        0.8,
+        1.7
+      ],
+      "tintable": true,
+      "family": "membrane"
+    },
+    "leg_rex": {
+      "slot": "leg",
+      "scale": [
+        0.8,
+        1.7
+      ],
+      "tintable": true,
+      "family": "jelly"
+    },
+    "crest_feather": {
+      "slot": "crest",
+      "scale": [
+        0.8,
+        1.7
+      ],
+      "tintable": true,
+      "family": "membrane"
+    },
+    "crest_fur": {
+      "slot": "crest",
+      "scale": [
+        0.8,
+        1.8
+      ],
+      "tintable": true,
+      "family": "fur"
     }
   },
   "slots": {
@@ -228,7 +318,9 @@
     },
     "trunk": {
       "verbs": [
-        "sway"
+        "sway",
+        "curl",
+        "sniff"
       ],
       "tint": "base",
       "label": "Rüssel"
@@ -246,7 +338,9 @@
       "label": "Flügel"
     },
     "leg": {
-      "verbs": [],
+      "verbs": [
+        "stomp"
+      ],
       "tint": "inner",
       "label": "Beine"
     },
@@ -428,7 +522,8 @@
               "slot": "eye",
               "variants": [
                 "eye_slit",
-                "eye_round"
+                "eye_round",
+                "eye_cute"
               ],
               "count": 2
             }
@@ -452,7 +547,8 @@
               "variants": [
                 "horn_curl",
                 "horn_spike",
-                "horn_nub"
+                "horn_nub",
+                "horn_ram"
               ],
               "count": 2,
               "group": "kopf"
@@ -466,7 +562,9 @@
               "slot": "tooth",
               "variants": [
                 "tooth_tusk",
-                "tooth_row"
+                "tooth_row",
+                "tooth_buck",
+                "tooth_fang"
               ],
               "count": 1
             }
@@ -479,7 +577,8 @@
               "slot": "wing",
               "variants": [
                 "wing_leaf",
-                "wing_bat"
+                "wing_bat",
+                "wing_feather"
               ],
               "count": 2
             }
@@ -506,7 +605,9 @@
               "slot": "crest",
               "variants": [
                 "crest_tuft",
-                "crest_fin"
+                "crest_fin",
+                "crest_feather",
+                "crest_fur"
               ],
               "count": 1
             }
@@ -542,7 +643,8 @@
               "slot": "eye",
               "variants": [
                 "eye_round",
-                "eye_spiral"
+                "eye_spiral",
+                "eye_sleepy"
               ],
               "count": 3
             }
@@ -574,6 +676,20 @@
             }
           ],
           "grow": 1.25
+        }
+      },
+      "bodies": {
+        "snake": {
+          "fromTier": 6
+        },
+        "quadruped": {
+          "fromTier": 5
+        },
+        "biped": {
+          "fromTier": 7
+        },
+        "heavy": {
+          "fromTier": 8
         }
       }
     },
@@ -609,7 +725,8 @@
               "slot": "eye",
               "variants": [
                 "eye_round",
-                "eye_double_slit"
+                "eye_double_slit",
+                "eye_sleepy"
               ],
               "count": 2
             }
@@ -621,7 +738,8 @@
               "slot": "horn",
               "variants": [
                 "horn_curl",
-                "horn_nub"
+                "horn_nub",
+                "horn_ram"
               ],
               "count": 2
             }
@@ -632,7 +750,8 @@
             {
               "slot": "tooth",
               "variants": [
-                "tooth_row"
+                "tooth_row",
+                "tooth_fang"
               ],
               "count": 1
             }
@@ -697,6 +816,15 @@
           ],
           "grow": 1.15
         }
+      },
+      "bodies": {
+        "biped": {
+          "fromTier": 5,
+          "weight": 1.2
+        },
+        "heavy": {
+          "fromTier": 7
+        }
       }
     },
     "luzz": {
@@ -731,7 +859,8 @@
               "slot": "eye",
               "variants": [
                 "eye_spiral",
-                "eye_double_slit"
+                "eye_double_slit",
+                "eye_reptile"
               ],
               "count": 2
             }
@@ -753,7 +882,8 @@
             {
               "slot": "crest",
               "variants": [
-                "crest_fin"
+                "crest_fin",
+                "crest_feather"
               ],
               "count": 1
             }
@@ -818,6 +948,19 @@
           ],
           "grow": 1.15
         }
+      },
+      "bodies": {
+        "snake": {
+          "fromTier": 4,
+          "weight": 1.3
+        },
+        "quadruped": {
+          "fromTier": 6
+        },
+        "heavy": {
+          "fromTier": 8,
+          "weight": 0.5
+        }
       }
     },
     "wooding": {
@@ -852,7 +995,8 @@
               "slot": "eye",
               "variants": [
                 "eye_slit",
-                "eye_round"
+                "eye_round",
+                "eye_cute"
               ],
               "count": 2
             }
@@ -900,7 +1044,8 @@
             {
               "slot": "tooth",
               "variants": [
-                "tooth_row"
+                "tooth_row",
+                "tooth_buck"
               ],
               "count": 1
             }
@@ -911,7 +1056,8 @@
             {
               "slot": "crest",
               "variants": [
-                "crest_tuft"
+                "crest_tuft",
+                "crest_fur"
               ],
               "count": 1
             }
@@ -923,7 +1069,8 @@
             {
               "slot": "wing",
               "variants": [
-                "wing_leaf"
+                "wing_leaf",
+                "wing_feather"
               ],
               "count": 2
             }
@@ -941,6 +1088,20 @@
             }
           ],
           "grow": 1.15
+        }
+      },
+      "bodies": {
+        "quadruped": {
+          "fromTier": 4,
+          "weight": 1.4
+        },
+        "heavy": {
+          "fromTier": 6,
+          "weight": 1.1
+        },
+        "snake": {
+          "fromTier": 7,
+          "weight": 0.5
         }
       }
     }
@@ -978,6 +1139,14 @@
     "squashHardness": [
       0.2,
       0.8
+    ],
+    "bounce": [
+      0.4,
+      1
+    ],
+    "heft": [
+      0.75,
+      1.3
     ]
   },
   "inheritance": {
@@ -985,5 +1154,213 @@
     "tintBlend": 0.5,
     "jitter": 0.1,
     "tintJitterDeg": 8
+  },
+  "bodies": {
+    "blob": {
+      "fromTier": 1,
+      "weight": 1.2,
+      "mass": 1,
+      "tempo": 1,
+      "bounce": 0.85,
+      "clumsy": 0,
+      "coat": {
+        "fur": 0.1,
+        "feather": 0
+      },
+      "patterns": [
+        "spots",
+        "diamonds"
+      ],
+      "patternChance": 0.2
+    },
+    "snake": {
+      "fromTier": 5,
+      "weight": 0.8,
+      "drop": [
+        "leg",
+        "wing",
+        "tail",
+        "trunk"
+      ],
+      "mass": 0.8,
+      "tempo": 1.1,
+      "bounce": 0.1,
+      "clumsy": 0,
+      "coat": {
+        "fur": 0,
+        "feather": 0
+      },
+      "patterns": [
+        "snake",
+        "diamonds",
+        "zebra"
+      ],
+      "patternChance": 0.9,
+      "parts": [
+        {
+          "slot": "eye",
+          "variants": [
+            "eye_reptile",
+            "eye_slit"
+          ],
+          "count": 2
+        }
+      ]
+    },
+    "quadruped": {
+      "fromTier": 5,
+      "weight": 1,
+      "parts": [
+        {
+          "slot": "leg",
+          "variants": [
+            "leg_tall",
+            "leg_stub"
+          ],
+          "count": 4
+        },
+        {
+          "slot": "eye",
+          "variants": [
+            "eye_cute",
+            "eye_round",
+            "eye_sleepy"
+          ],
+          "count": 2
+        }
+      ],
+      "mass": 1.2,
+      "tempo": 1,
+      "bounce": 0.5,
+      "clumsy": 0.05,
+      "coat": {
+        "fur": 0.45,
+        "feather": 0
+      },
+      "patterns": [
+        "giraffe",
+        "spots",
+        "tiger",
+        "zebra"
+      ],
+      "patternChance": 0.6
+    },
+    "biped": {
+      "fromTier": 6,
+      "weight": 0.9,
+      "parts": [
+        {
+          "slot": "leg",
+          "variants": [
+            "leg_rex"
+          ],
+          "count": 2
+        },
+        {
+          "slot": "crest",
+          "variants": [
+            "crest_fin",
+            "crest_feather",
+            "crest_tuft"
+          ],
+          "count": 1
+        },
+        {
+          "slot": "tail",
+          "variants": [
+            "tail_curl",
+            "tail_tuft"
+          ],
+          "count": 1
+        },
+        {
+          "slot": "eye",
+          "variants": [
+            "eye_spiral",
+            "eye_reptile",
+            "eye_round"
+          ],
+          "count": 2
+        },
+        {
+          "slot": "tooth",
+          "variants": [
+            "tooth_fang",
+            "tooth_row"
+          ],
+          "count": 1
+        }
+      ],
+      "drop": [
+        "wing",
+        "trunk"
+      ],
+      "mass": 1.7,
+      "tempo": 0.8,
+      "bounce": 0.35,
+      "clumsy": 0.1,
+      "coat": {
+        "fur": 0,
+        "feather": 0.3
+      },
+      "patterns": [
+        "tiger",
+        "spots",
+        "diamonds"
+      ],
+      "patternChance": 0.45
+    },
+    "heavy": {
+      "fromTier": 7,
+      "weight": 0.8,
+      "parts": [
+        {
+          "slot": "leg",
+          "variants": [
+            "leg_stub"
+          ],
+          "count": 4
+        },
+        {
+          "slot": "ear",
+          "variants": [
+            "ear_floppy",
+            "ear_round"
+          ],
+          "count": 2
+        },
+        {
+          "slot": "trunk",
+          "variants": [
+            "trunk_long",
+            "trunk_short"
+          ],
+          "count": 1
+        },
+        {
+          "slot": "eye",
+          "variants": [
+            "eye_sleepy",
+            "eye_round"
+          ],
+          "count": 2
+        }
+      ],
+      "drop": [
+        "wing"
+      ],
+      "mass": 3,
+      "tempo": 0.55,
+      "bounce": 0.15,
+      "clumsy": 0.45,
+      "coat": {
+        "fur": 0.3,
+        "feather": 0
+      },
+      "patterns": [
+        "spots"
+      ],
+      "patternChance": 0.15
+    }
   }
 }

@@ -30,6 +30,14 @@ export interface ModuleSegment {
   prims: ModulePrim[];
   /** Pupil segments slide with the gaze. */
   pupil: boolean;
+  /** Eyelid segments swing shut when the eye blinks (`<id>_lid`). */
+  lid: boolean;
+}
+
+/** A named socket (`SOCKET_<name>`) relative to the frame of the segment it hangs under. */
+export interface ModuleSocket {
+  segment: number;
+  local: Matrix4;
 }
 
 export interface ModuleDef {
@@ -42,6 +50,8 @@ export interface ModuleDef {
   rootSocketInverse: Matrix4;
   /** SOCKET_tip relative to its segment (if authored). */
   tip: { segment: number; local: Matrix4 } | null;
+  /** Every named socket except root (tip, knee, foot, lid, …), relative to its segment. */
+  sockets: Record<string, ModuleSocket>;
   /** Triangle count over all segments. */
   faces: number;
 }
@@ -79,6 +89,7 @@ export function moduleFromScene(id: string, scene: Object3D): ModuleDef {
   const segments: ModuleSegment[] = [];
   let rootSocketInverse: Matrix4 | null = null;
   let tip: ModuleDef['tip'] = null;
+  const sockets: Record<string, ModuleSocket> = {};
   let faces = 0;
 
   const visit = (node: Object3D, parentSeg: number, acc: Matrix4): void => {
@@ -88,7 +99,10 @@ export function moduleFromScene(id: string, scene: Object3D): ModuleDef {
     if (slot) {
       const m = acc.clone().multiply(node.matrix);
       if (slot === 'root') rootSocketInverse = m.clone().invert();
-      else if (slot === 'tip') tip = { segment: parentSeg, local: m };
+      else {
+        if (slot === 'tip') tip = { segment: parentSeg, local: m };
+        sockets[slot] = { segment: parentSeg, local: m };
+      }
       return;
     }
     const prims = primsOf(node);
@@ -101,6 +115,7 @@ export function moduleFromScene(id: string, scene: Object3D): ModuleDef {
         local: acc.clone().multiply(node.matrix),
         prims: prims.map(toPrim),
         pupil: /pupil/i.test(name),
+        lid: /(^|_)lid$/i.test(name),
       };
       for (const p of seg.prims) faces += triangleCount(p.geometry);
       segments.push(seg);
@@ -114,7 +129,7 @@ export function moduleFromScene(id: string, scene: Object3D): ModuleDef {
   const extras = { ...root.userData } as Record<string, unknown>;
   delete extras['name'];
   const slot = typeof extras['slot'] === 'string' ? (extras['slot'] as string) : id.split('_')[0]!;
-  return { id, slot, extras, segments, rootSocketInverse: rootSocketInverse ?? new Matrix4(), tip, faces };
+  return { id, slot, extras, segments, rootSocketInverse: rootSocketInverse ?? new Matrix4(), tip, sockets, faces };
 }
 
 export interface GltfLike {

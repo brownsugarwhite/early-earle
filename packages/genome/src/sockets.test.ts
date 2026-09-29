@@ -99,3 +99,20 @@ describe('socketSlotFromName', () => {
     expect(socketSlotFromName('SOCKET_')).toBeNull();
   });
 });
+
+describe('orientationFrameInto', () => {
+  it('matches orientationFrame for all refs, tilts, rolls and mirrors', async () => {
+    const { orientationFrameInto } = await import('./sockets');
+    const out = { x: [0, 0, 0] as Vec3, y: [0, 0, 0] as Vec3, z: [0, 0, 0] as Vec3 };
+    const normals: Vec3[] = [[0, 1, 0], [0.3, 0.2, 0.9], [0, -1, 0.01], [0.99, 0.05, 0], [0, 0.999, 0.02], [-0.4, -0.5, -0.7]];
+    for (const n of normals)
+      for (const ref of ['up', 'forward'] as const)
+        for (const mirror of [1, -1] as const)
+          for (const [tilt, roll] of [[0, 0], [0.4, 0], [0, -0.7], [-0.3, 1.1]] as const)
+            for (const forward of [undefined, [0.6, 0, 0.8] as Vec3]) {
+              const a = orientationFrame(n, { ref, mirror, tilt, roll, forward });
+              orientationFrameInto(n, { ref, mirror, tilt, roll, forward }, out);
+              for (const k of ['x', 'y', 'z'] as const) for (let i = 0; i < 3; i++) expect(out[k][i]).toBeCloseTo(a[k][i]!, 12);
+            }
+  });
+});

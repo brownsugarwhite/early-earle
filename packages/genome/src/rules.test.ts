@@ -60,3 +60,37 @@ describe('GenomeRulesSchema', () => {
     if (!r.ok) expect(r.issues.map((i) => i.path)).toContain('assets');
   });
 });
+
+describe('body archetype rules', () => {
+  it('round-trip through JSON and keep old files (without `bodies`) valid with built-in defaults', async () => {
+    const { bodyRuleFor, DEFAULT_BODY_RULES } = await import('./rules');
+    const input = loadRulesJson();
+    const rules = parseGenomeRules(input);
+    expect(rules.bodies.snake?.drop).toContain('leg');
+    expect(bodyRuleFor(rules, 'luzz', 'snake').fromTier).toBe(4); // zone override
+    expect(bodyRuleFor(rules, 'tjorizo', 'snake').fromTier).toBe(6);
+    expect(bodyRuleFor(rules, 'wooding', 'quadruped').weight).toBeCloseTo(1.4);
+    expect(rules.personality.bounce[1]).toBeGreaterThan(rules.personality.bounce[0]);
+    // Round trip: parse → stringify → parse gives the same rules.
+    const again = parseGenomeRules(JSON.parse(JSON.stringify(input)));
+    expect(again).toEqual(rules);
+    const twice = parseGenomeRules(JSON.parse(JSON.stringify(rules)));
+    expect(twice).toEqual(rules);
+    // Old file: no bodies, no new traits, old verbs only.
+    const old = structuredClone(input) as Record<string, unknown>;
+    delete old['bodies'];
+    for (const z of Object.values((old['zones'] as Record<string, Record<string, unknown>>))) delete z['bodies'];
+    const pers = old['personality'] as Record<string, unknown>;
+    delete pers['bounce'];
+    delete pers['heft'];
+    const oldRules = parseGenomeRules(old);
+    expect(bodyRuleFor(oldRules, 'tjorizo', 'heavy')).toEqual({ ...DEFAULT_BODY_RULES.heavy });
+    expect(oldRules.personality.heft).toEqual([0.75, 1.3]);
+    // Archetype parts must reference known assets of the right slot.
+    const bad = structuredClone(input);
+    bad.bodies!.quadruped!.parts![0]!.variants = ['eye_slit'];
+    const v = validateGenomeRules(bad);
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.issues[0]!.path).toContain('bodies.quadruped.parts.0.variants');
+  });
+});

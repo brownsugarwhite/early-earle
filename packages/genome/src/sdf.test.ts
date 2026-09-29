@@ -3,6 +3,7 @@ import { boundingRadius, evalSdf, inverseSquash, sdfNormal, smin, traceSdf } fro
 import { fractalNoise3, perlin3 } from './noise';
 import { genomeFor, scaleForTier } from './genome';
 import type { SdfProgram } from './types';
+import { RADIAL_TRACE_EXACT, radialSurfaceDistance } from './sockets';
 
 const unit: SdfProgram = { spheres: [{ center: [0, 0, 0], r: 1 }], sminK: 0, noiseAmp: 0, noiseFreq: 1 };
 
@@ -109,5 +110,35 @@ describe('genomeFor', () => {
   });
   it('differs between zones', () => {
     expect(genomeFor('tjorizo', 2, 1).baseColor).not.toBe(genomeFor('syrup', 2, 1).baseColor);
+  });
+});
+
+describe('squashPoint (forward squash)', () => {
+  it('is the exact inverse of inverseSquash (taper included): rest surface → squashed surface', async () => {
+    const { squashPoint, squashNormal, inverseSquash } = await import('./sdf');
+    const g = genomeFor('tjorizo', 4, 2);
+    const core = { ...g, noiseAmp: 0 };
+    let worst = 0;
+    let worstSdf = 0;
+    for (const [ax, amount, taper] of [[[0, 1, 0], 0.45, 0.55], [[0.6, 0.8, 0], -0.4, 0.55], [[0, 0, 1], 0.3, 0.3], [[0.3, 0.4, 0.866], 0.9, 0.55]] as const) {
+      const l = Math.hypot(...ax);
+      const axis: [number, number, number] = [ax[0] / l, ax[1] / l, ax[2] / l];
+      for (let i = 0; i < 200; i++) {
+        const u = (i + 0.5) / 200;
+        const y = 1 - 2 * u;
+        const r = Math.sqrt(1 - y * y);
+        const dir: [number, number, number] = [Math.cos(i * 2.4) * r, y, Math.sin(i * 2.4) * r];
+        const t = radialSurfaceDistance(core, dir, {}, RADIAL_TRACE_EXACT);
+        const q: [number, number, number] = [dir[0] * t, dir[1] * t, dir[2] * t];
+        const p = squashPoint(q, axis, amount, taper, [0, 0, 0]);
+        const back = inverseSquash(p, { axis, amount, taper }).q;
+        worst = Math.max(worst, Math.hypot(back[0] - q[0], back[1] - q[1], back[2] - q[2]));
+        worstSdf = Math.max(worstSdf, Math.abs(evalSdf(core, p, { squash: { axis, amount, taper } })));
+        const n = squashNormal([dir[0], dir[1], dir[2]], q, axis, amount, taper, [0, 0, 0]);
+        expect(Math.hypot(...n)).toBeCloseTo(1, 9);
+      }
+    }
+    expect(worst).toBeLessThan(1e-9);
+    expect(worstSdf).toBeLessThan(1e-3); // on the squashed surface (as far as the rest trace converged)
   });
 });

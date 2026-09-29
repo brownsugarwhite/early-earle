@@ -24,9 +24,34 @@ export function UnlockTab({ draft, zone, onChange }: { draft: RulesDraft; zone: 
       {TIERS.map((tier) => {
         const t = tiers[String(tier)] ?? {};
         const unlocks = t.unlock ?? [];
+        const quickCount = (slot: SlotId) => (slot === 'eye' || slot === 'ear' || slot === 'horn' || slot === 'wing' || slot === 'leg' ? 2 : 1);
         return (
           <div key={tier} className="ced-tier" data-testid={`ed-tier-${tier}`}>
             <span className="ced-tier-num">{tier}</span>
+            <div className="ced-quick" data-testid={`ed-quick-${tier}`}>
+              {SLOT_IDS.map((slot) => {
+                const has = unlocks.some((u) => u.slot === slot);
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    className="ced-chip"
+                    data-active={has}
+                    title={has ? `${SLOT_LABELS[slot]} ab Stufe ${tier} entfernen` : `${SLOT_LABELS[slot]} ab Stufe ${tier} freischalten`}
+                    onClick={() =>
+                      onChange(
+                        updateTier(draft, zone, tier, (tt) => {
+                          if (has) tt.unlock = (tt.unlock ?? []).filter((u) => u.slot !== slot);
+                          else tt.unlock = [...(tt.unlock ?? []), { slot, variants: assetsOfSlot(draft, slot), count: quickCount(slot) }];
+                        }),
+                      )
+                    }
+                  >
+                    {SLOT_LABELS[slot]}
+                  </button>
+                );
+              })}
+            </div>
             <label className="creature-slider" style={{ minWidth: 200 }}>
               <span className="creature-label">Wachstum</span>
               <input type="range" min={0.8} max={1.6} step={0.01} value={t.grow ?? 1} onChange={(e) => onChange(updateTier(draft, zone, tier, (tt) => { tt.grow = Number(e.target.value); }))} />

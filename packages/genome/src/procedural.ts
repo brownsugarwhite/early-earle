@@ -158,6 +158,8 @@ export interface IdleEvent {
   strength: number;
 }
 
+const NO_EVENTS: readonly IdleEvent[] = Object.freeze([]);
+
 interface IdleTimer {
   verb: Verb;
   mean: number;
@@ -175,7 +177,7 @@ export class IdleClock {
 
   constructor(seed: number, readonly tempo = 1, means: Partial<Record<Verb, number>> = {}) {
     this.rand = mulberry32(seed >>> 0);
-    const defaults: Record<Verb, number> = { blink: 3.4, twitch: 5.5, flap: 7, wag: 4.5, bob: 6, sway: 5, gaze: 4 };
+    const defaults: Record<Verb, number> = { blink: 3.4, twitch: 5.5, flap: 7, wag: 4.5, bob: 6, sway: 5, gaze: 4, curl: 11, sniff: 7.5, stomp: 14 };
     this.timers = (Object.keys(defaults) as Verb[]).map((verb) => {
       const mean = (means[verb] ?? defaults[verb]) / Math.max(0.2, tempo);
       return { verb, mean, next: this.sample(mean) * this.rand() };
@@ -187,16 +189,17 @@ export class IdleClock {
     return Math.min(3 * mean, Math.max(0.3 * mean, -Math.log(u) * mean));
   }
 
-  step(dt: number): IdleEvent[] {
+  /** Events fired this step (a shared empty array when none fired — do not mutate the result). */
+  step(dt: number): readonly IdleEvent[] {
     this.t += dt;
-    const fired: IdleEvent[] = [];
+    let fired: IdleEvent[] | null = null;
     for (const tm of this.timers) {
       if (this.t >= tm.next) {
-        fired.push({ verb: tm.verb, strength: 0.6 + 0.4 * this.rand() });
+        (fired ??= []).push({ verb: tm.verb, strength: 0.6 + 0.4 * this.rand() });
         tm.next = this.t + this.sample(tm.mean);
       }
     }
-    return fired;
+    return fired ?? NO_EVENTS;
   }
 }
 

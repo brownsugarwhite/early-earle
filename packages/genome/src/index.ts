@@ -1,4 +1,4 @@
-export const GENOME_VERSION = '0.0.2';
+export const GENOME_VERSION = '0.0.3';
 export * from './types';
 export * from './rng';
 export * from './noise';
@@ -8,4 +8,6 @@ export * from './genome';
 export * from './rules';
 export * from './sockets';
 export * from './procedural';
+export * from './body';
 export * from './creature';
+export * from './locomotion/index';

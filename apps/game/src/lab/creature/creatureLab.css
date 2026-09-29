@@ -47,3 +47,22 @@
 .ced-json { width: 100%; min-height: 40vh; padding: 10px; border: 0; background: rgba(255,255,255,0.06); color: var(--paper); font: 12px/1.4 ui-monospace, Menlo, monospace; }
 .ced-issues { margin: 0; padding: 10px 12px; background: var(--rust); color: var(--paper); font: 13px/1.4 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
 .ced-swatch { display: inline-block; width: 44px; height: 44px; box-shadow: 4px 2px 0 var(--ink-soft); }
+
+/* Kreaturen v2: Bewegungs-Sektion, größere Touch-Ziele, Editor-Extras. */
+.creature-section { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: rgba(255,255,255,0.05); }
+.ced-frame .ced-chip, .ced-frame .creature-btn { min-height: 48px; }
+.ced-frame .ced-chip { padding: 0 16px; font-size: 15px; }
+.ced-frame .creature-slider input[type='range'] { height: 48px; }
+.ced-undo { display: inline-flex; gap: 6px; }
+.ced-preview-modes { display: flex; gap: 8px; flex-wrap: wrap; }
+.ced-body-card { display: flex; flex-direction: column; gap: 10px; padding: 12px; background: rgba(255,255,255,0.05); }
+.ced-body-card[data-active='true'] { background: rgba(184,255,42,0.12); }
+.ced-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.ced-quick .ced-chip { min-height: 44px; padding: 0 12px; font-size: 13px; }
+.ced-quick .ced-chip[data-active='false'] { opacity: 0.55; }
+@media (max-width: 899px) { .ced-frame { grid-template-rows: minmax(200px, 36vh) 1fr; } }
+.ced-tabs { align-items: center; flex-wrap: wrap; }
+.ced-tabs .ced-quick { flex-wrap: wrap; }
+/* The live status updates twice a second: a fixed box keeps the bottom-anchored sheet (and its buttons) still. */
+.creature-status { display: block; flex-shrink: 0; height: 4.2em; overflow: hidden; }
+.creature-hint { display: block; flex-shrink: 0; min-height: 1.4em; }

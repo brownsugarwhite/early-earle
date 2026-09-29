@@ -8,6 +8,7 @@
  */
 import { z } from 'zod';
 import type { ZoneId } from './genome';
+import { BODY_TYPES, SKIN_PATTERNS, type BodyType } from './types';
 
 export const SLOT_IDS = ['eye', 'horn', 'ear', 'trunk', 'tooth', 'wing', 'leg', 'tail', 'crest'] as const;
 export type SlotId = (typeof SLOT_IDS)[number];
@@ -16,8 +17,8 @@ export type SlotId = (typeof SLOT_IDS)[number];
 export const MATERIAL_FAMILIES = ['ink', 'shell', 'membrane', 'fur', 'jelly'] as const;
 export type MaterialFamily = (typeof MATERIAL_FAMILIES)[number];
 
-/** Procedural animation verbs a slot can perform. */
-export const VERBS = ['blink', 'gaze', 'flap', 'sway', 'twitch', 'wag', 'bob'] as const;
+/** Procedural animation verbs a slot can perform (curl/sniff: trunks, stomp: legs). */
+export const VERBS = ['blink', 'gaze', 'flap', 'sway', 'twitch', 'wag', 'bob', 'curl', 'sniff', 'stomp'] as const;
 export type Verb = (typeof VERBS)[number];
 
 /** Where a slot's tint comes from: the body palette, the zone's constants or the module's own colour. */
@@ -28,7 +29,8 @@ export type TintSource = (typeof TINT_SOURCES)[number];
 export const FRAME_REFS = ['up', 'forward'] as const;
 export type FrameRef = (typeof FRAME_REFS)[number];
 
-export const PERSONALITY_TRAITS = ['idleTempo', 'skittish', 'curiosity', 'squashHardness'] as const;
+/** `bounce` = jump power gene, `heft` = mass multiplier gene (both feed the MotionController). */
+export const PERSONALITY_TRAITS = ['idleTempo', 'skittish', 'curiosity', 'squashHardness', 'bounce', 'heft'] as const;
 export type PersonalityTrait = (typeof PERSONALITY_TRAITS)[number];
 
 /** Zone ids as a literal tuple for zod (kept in sync with `ZoneId` by the type assertion below). */
@@ -111,6 +113,42 @@ export const TierRuleSchema = z.object({
 });
 export type TierRule = z.infer<typeof TierRuleSchema>;
 
+/**
+ * Body archetype rule: from which tier the archetype may be picked, its weight in the per-seed pick,
+ * the parts it always wears (legs on hips, the REX crest/tail), slots it never wears and its motion
+ * character. The pick is deterministic per (zone, seed): a line keeps its archetype except at tiers
+ * where a new archetype unlocks (then it may metamorphose).
+ */
+export const BodyRuleSchema = z.object({
+  fromTier: Tier.default(1),
+  weight: z.number().min(0).max(10).default(1),
+  /** Guaranteed parts; legs use the archetype's hip sockets (count = hips), other slots the rule socket. */
+  parts: z.array(UnlockSchema).default([]),
+  /** Slots the archetype never wears (a snake has no legs, wings or tail module). */
+  drop: z.array(z.enum(SLOT_IDS)).default([]),
+  /** Mass multiplier relative to a blob (heavy ≈ 3): slower cycles, larger sway, harder landings. */
+  mass: z.number().min(0.1).max(10).default(1),
+  /** Gait tempo multiplier. */
+  tempo: z.number().min(0.2).max(3).default(1),
+  /** 0..1 jump power of the archetype (blob hops high, heavy barely lifts). */
+  bounce: Unit.default(0.5),
+  /** 0..1 clumsiness: chance of a stumble/wobble per gait cycle. */
+  clumsy: Unit.default(0),
+  /** Coat chances per seed (fur shells / feather cards instead of the bare body; never on fire bodies). */
+  coat: z.object({ fur: Unit.default(0), feather: Unit.default(0) }).prefault({}),
+  /** Skin patterns the archetype may wear, and the chance (per seed) that it wears one. */
+  patterns: z.array(z.enum(SKIN_PATTERNS)).default([]),
+  patternChance: Unit.default(0),
+});
+export type BodyRule = z.infer<typeof BodyRuleSchema>;
+
+/** Per-zone override of when/how often an archetype appears. */
+export const ZoneBodyOverrideSchema = z.object({
+  fromTier: Tier.optional(),
+  weight: z.number().min(0).max(10).optional(),
+});
+export type ZoneBodyOverride = z.infer<typeof ZoneBodyOverrideSchema>;
+
 export const ZoneRulesSchema = z.object({
   /** Replaces the built-in zone hue shift (degrees) of the tier ramp. */
   hueShift: z.number().min(-360).max(360).optional(),
@@ -122,6 +160,8 @@ export const ZoneRulesSchema = z.object({
   materialFrom: z.object({ liquid: Tier.default(4), gas: Tier.default(6), fire: Tier.default(8) }).prefault({}),
   /** Tier → unlock schedule; keys are tier numbers as strings. Unlocks are cumulative. */
   tiers: z.record(z.string().regex(/^\d+$/), TierRuleSchema).default({}),
+  /** Archetype overrides for this zone (earlier snakes in Luzz, later REX in Wooding …). */
+  bodies: z.partialRecord(z.enum(BODY_TYPES), ZoneBodyOverrideSchema).prefault({}),
 });
 export type ZoneRules = z.infer<typeof ZoneRulesSchema>;
 
@@ -139,6 +179,8 @@ export const PersonalitySchema = z.object({
   skittish: Range.default([0.1, 0.9]),
   curiosity: Range.default([0.3, 1]),
   squashHardness: Range.default([0.2, 0.8]),
+  bounce: Range.default([0.4, 1]),
+  heft: Range.default([0.75, 1.3]),
 });
 export type PersonalityRanges = z.infer<typeof PersonalitySchema>;
 
@@ -166,9 +208,20 @@ export const GenomeRulesSchema = z
     compat: CompatSchema.prefault({}),
     personality: PersonalitySchema.prefault({}),
     inheritance: InheritanceSchema.prefault({}),
+    /** Archetype rules; missing archetypes use `DEFAULT_BODY_RULES` (old files stay valid). */
+    bodies: z.partialRecord(z.enum(BODY_TYPES), BodyRuleSchema).prefault({}),
   })
   .superRefine((rules, ctx) => {
     const assetIds = new Set(Object.keys(rules.assets));
+    for (const [type, br] of Object.entries(rules.bodies)) {
+      br?.parts.forEach((u, ui) => {
+        u.variants.forEach((v, vi) => {
+          const asset = rules.assets[v];
+          if (!asset) ctx.addIssue({ code: 'custom', path: ['bodies', type, 'parts', ui, 'variants', vi], message: `unknown asset "${v}"` });
+          else if (asset.slot !== u.slot) ctx.addIssue({ code: 'custom', path: ['bodies', type, 'parts', ui, 'variants', vi], message: `asset "${v}" is a ${asset.slot}, not a ${u.slot}` });
+        });
+      });
+    }
     for (const [zone, zr] of Object.entries(rules.zones)) {
       for (const [tier, tr] of Object.entries(zr.tiers)) {
         tr.unlock.forEach((u, ui) => {
@@ -219,4 +272,73 @@ export function assetsForSlot(rules: GenomeRules, slot: SlotId): string[] {
   return Object.entries(rules.assets)
     .filter(([, a]) => a.slot === slot)
     .map(([id]) => id);
+}
+
+/** Built-in archetype rules (used when `bodies` omits an archetype): the designer's thresholds. */
+export const DEFAULT_BODY_RULES: Readonly<Record<BodyType, BodyRule>> = {
+  blob: { fromTier: 1, weight: 1.2, parts: [], drop: [], mass: 1, tempo: 1, bounce: 0.85, clumsy: 0, coat: { fur: 0.1, feather: 0 }, patterns: ['spots', 'diamonds'], patternChance: 0.2 },
+  snake: { fromTier: 5, weight: 0.8, parts: [{ slot: 'eye', variants: ['eye_reptile', 'eye_slit'], count: 2, chance: 1 }], drop: ['leg', 'wing', 'tail', 'trunk'], mass: 0.8, tempo: 1.1, bounce: 0.1, clumsy: 0, coat: { fur: 0, feather: 0 }, patterns: ['snake', 'diamonds', 'zebra'], patternChance: 0.9 },
+  quadruped: {
+    fromTier: 5,
+    weight: 1,
+    parts: [
+      { slot: 'leg', variants: ['leg_tall', 'leg_stub'], count: 4, chance: 1 },
+      { slot: 'eye', variants: ['eye_cute', 'eye_round', 'eye_sleepy'], count: 2, chance: 1 },
+    ],
+    drop: [],
+    mass: 1.2,
+    tempo: 1,
+    bounce: 0.5,
+    clumsy: 0.05,
+    coat: { fur: 0.45, feather: 0 },
+    patterns: ['giraffe', 'spots', 'tiger', 'zebra'],
+    patternChance: 0.6,
+  },
+  biped: {
+    fromTier: 6,
+    weight: 0.9,
+    parts: [
+      { slot: 'leg', variants: ['leg_rex', 'leg_tall'], count: 2, chance: 1 },
+      { slot: 'crest', variants: ['crest_fin', 'crest_feather', 'crest_tuft'], count: 1, chance: 1 },
+      { slot: 'tail', variants: ['tail_curl', 'tail_tuft'], count: 1, chance: 1 },
+      { slot: 'eye', variants: ['eye_spiral', 'eye_reptile', 'eye_round'], count: 2, chance: 1 },
+      { slot: 'tooth', variants: ['tooth_fang', 'tooth_row'], count: 1, chance: 1 },
+    ],
+    drop: ['wing', 'trunk'],
+    mass: 1.7,
+    tempo: 0.8,
+    bounce: 0.35,
+    clumsy: 0.1,
+    coat: { fur: 0, feather: 0.3 },
+    patterns: ['tiger', 'spots', 'diamonds'],
+    patternChance: 0.45,
+  },
+  heavy: {
+    fromTier: 7,
+    weight: 0.8,
+    parts: [
+      { slot: 'leg', variants: ['leg_stub'], count: 4, chance: 1 },
+      { slot: 'ear', variants: ['ear_floppy', 'ear_round'], count: 2, chance: 1 },
+      { slot: 'trunk', variants: ['trunk_long', 'trunk_short'], count: 1, chance: 1 },
+      { slot: 'eye', variants: ['eye_sleepy', 'eye_round'], count: 2, chance: 1 },
+    ],
+    drop: ['wing'],
+    mass: 3,
+    tempo: 0.55,
+    bounce: 0.15,
+    clumsy: 0.45,
+    coat: { fur: 0.3, feather: 0 },
+    patterns: ['spots'],
+    patternChance: 0.15,
+  },
+};
+
+/** Archetype rule with the zone's overrides applied; assets the file does not know are filtered out. */
+export function bodyRuleFor(rules: GenomeRules, zone: ZoneId, type: BodyType): BodyRule {
+  const base = rules.bodies[type] ?? DEFAULT_BODY_RULES[type];
+  const over = rules.zones[zone]?.bodies[type];
+  const parts = base.parts
+    .map((u) => ({ ...u, variants: u.variants.filter((v) => rules.assets[v]?.slot === u.slot) }))
+    .filter((u) => u.variants.length > 0);
+  return { ...base, parts, fromTier: over?.fromTier ?? base.fromTier, weight: over?.weight ?? base.weight };
 }

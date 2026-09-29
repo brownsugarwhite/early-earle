@@ -98,3 +98,18 @@ describe('math', () => {
     }
   });
 });
+
+describe('combineSquash', () => {
+  it('adds amounts, blends axes by magnitude and never lets them cancel', async () => {
+    const { combineSquash } = await import('./squashBlend');
+    const rest = combineSquash({ axis: [0, 1, 0], amount: -0.3 }, { axis: [0, 1, 0], amount: 0, offset: [0, 0, 0] });
+    expect(rest.amount).toBeCloseTo(-0.3);
+    expect(rest.axis).toEqual([0, 1, 0]);
+    const mixed = combineSquash({ axis: [0, 1, 0], amount: 0.4 }, { axis: [0, -1, 0], amount: 0.2, offset: [1, 2, 3] });
+    expect(mixed.amount).toBeCloseTo(0.6);
+    expect(mixed.axis[1]).toBeCloseTo(1); // sign-aligned
+    expect(mixed.offset[0]).toBeCloseTo(0.22);
+    const clamped = combineSquash({ axis: [1, 0, 0], amount: -0.5 }, { axis: [1, 0, 0], amount: -0.5, offset: [0, 0, 0] });
+    expect(clamped.amount).toBe(-0.6);
+  });
+});
