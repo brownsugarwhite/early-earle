@@ -1,6 +1,6 @@
 # Feedback-Katalog (Florian, 2026-09-29 Nacht) — Richtung für die zweite Iteration
 
-Referenzen: `ref/feedback-2026-09-29/01–10.webp` (Earle-Gemälde, lokal). Zuordnung:
+**Hauptreferenz ist der gesamte Ordner `ref/eyvind earle/` (45 Gemälde, lokal, nicht im Git) — von Anfang an.** Die zehn Bilder in `ref/feedback-2026-09-29/01–10.webp` sind gute Beispiele daraus; das Bild aus dem ersten Briefing war ebenfalls nur ein Beispiel. Zuordnung der zehn Beispiele:
 
 | Nr. | Bild | Welt-Idee | Kernmerkmale |
 |---|---|---|---|
