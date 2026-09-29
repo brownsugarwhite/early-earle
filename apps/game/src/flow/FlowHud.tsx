@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link } from 'react-router';
 import { canRewind, type GoalProgress, type LevelDef } from '@ee/core';
 import { FLOW_LEVELS, flowLevelNo, zoneName } from './levels';
+import { useProgress } from '../state/progress';
 import { useGridStore } from '../lab/grid/gridStore';
 import { PerfBadge } from '../overlay/PerfBadge';
 import { installHaptics } from '../native/haptics';
@@ -254,6 +255,16 @@ function DevStrip({ phase }: { phase: FlowPhase }) {
       ))}
       <button className="dev-btn" onClick={toggleNumbers}>
         {showNumbers ? '123' : '· · ·'}
+      </button>
+      <button
+        className="dev-btn"
+        title="Fortschritt zurücksetzen (Level 1)"
+        onClick={() => {
+          useProgress.getState().resetAll();
+          location.reload();
+        }}
+      >
+        ↺ 0
       </button>
       <Link className="dev-link" to="/lab">
         Lab

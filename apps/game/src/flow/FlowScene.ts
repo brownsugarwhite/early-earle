@@ -2,6 +2,7 @@ import { Box3, CircleGeometry, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCame
 import type { Dir, LevelState } from '@ee/core';
 import type { SceneController, SceneContext } from '../canvas/SceneController';
 import { FLOW_LEVELS } from './levels';
+import { useProgress } from '../state/progress';
 import { useGridStore } from '../lab/grid/gridStore';
 import { rexIntroFor, rexLine } from '../lab/grid/rex';
 import { Trackball } from '../lab/earle/trackball';
@@ -188,7 +189,8 @@ export class FlowScene implements SceneController {
     const store = useFlowStore.getState();
     const current = Math.min(store.current, layout.nodes.length - 1);
     store.setCurrent(current);
-    this.nodePath.setProgress(current, current);
+    // Wachstum der Welt aus dem gespeicherten Fortschritt (erreichte Knoten), nicht nur aus dem aktuellen.
+    this.nodePath.setProgress(current, Math.max(current, Math.min(useProgress.getState().reached, layout.nodes.length - 1)));
     this.snapPlanetToNode(current);
     // A re-mount (React StrictMode, Vite HMR) resumes the stored phase instead of restarting the take.
     const phase = store.phase;
