@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "language": "de",
+  "rules": {
+    "maxWordsMicro": 8,
+    "cadence": "Mikro-Sätze bei neuen Mechaniken; kurze Szene alle 5–10 Level; Kapitel-Szene an Zonenanfängen (1, 26, 51, 76) und Zonenmitten (13, 38, 63, 88); großer Beat an Zonenfinalen (25, 50, 75, 100)."
+  },
+  "character": {
+    "name": "REX",
+    "role": "Gedächtnis der alten Erde; zeigt statt zu erklären; jubelt, verzweifelt komisch, benommen von den Gasen (Spiral-Augen).",
+    "voice": "kurz, warm, leicht schräg; nie belehrend; sagt 'wir', nicht 'du musst'."
+  },
+  "triggers": {
+    "intro.zone.tjorizo": [
+      { "level": 1, "lines": ["Hallo, Kleines.", "Zwei Gleiche. Schieb sie zusammen."] }
+    ],
+    "mechanic.swipe": [{ "level": 1, "lines": ["Wisch. Egal wohin."] }],
+    "mechanic.moves": [{ "level": 2, "lines": ["Jeder Wisch zählt. Siehst du?"] }],
+    "mechanic.preview": [{ "level": 1, "lines": ["Da oben: was als Nächstes kommt."] }],
+    "mechanic.pillar": [{ "level": 6, "lines": ["Fels. Nutz ihn als Wand."] }],
+    "mechanic.rewind": [{ "level": 8, "lines": ["Rückspulen. Einmal. Sag's niemandem."] }],
+    "mechanic.scrap": [{ "level": 11, "lines": ["Altes Zeug. Daneben verschmelzen knackt es."] }],
+    "mechanic.spore": [{ "level": 14, "lines": ["Da liegt was. Genau darauf landen."] }],
+    "mechanic.amoeba": [{ "level": 16, "lines": ["Die passt zu allen. Mag ich."] }],
+    "mechanic.pluck": [{ "level": 17, "lines": ["Pflücken. Einer geht. Wähle weise."] }],
+    "mechanic.cap": [{ "level": 18, "lines": ["Groß genug. Lass ihn gehen.", "Er wartet draußen auf uns."] }],
+    "mechanic.withered": [{ "level": 21, "lines": ["Verdorrt. Landet drauf, dann blüht es."] }],
+    "mechanic.line": [{ "level": 24, "lines": ["Zwei auf einmal? Das gibt Strahl."] }],
+    "celebrate": [
+      { "level": 10, "lines": ["Zehn. Ehrenrunde!"] },
+      { "level": 20, "lines": ["Schau, wie sie leuchten."] }
+    ],
+    "hard.enter": [{ "level": 19, "lines": ["Das hier ist knifflig. Egal. Wir."] }],
+    "finale.zone.tjorizo": [{ "level": 25, "lines": ["Der Riss. Er schließt sich.", "Ich hab's so lange nicht gesehen."] }],
+    "win": [
+      { "lines": ["Ja!", "Weiter, weiter.", "Das war schön.", "Hast du das gesehen?"] }
+    ],
+    "lose": [
+      { "lines": ["Macht nichts. Nochmal.", "Fast. Wirklich fast.", "Der Boden bleibt. Wir auch."] }
+    ],
+    "combo": [
+      { "min": 2, "lines": ["Doppelt!"] },
+      { "min": 3, "lines": ["Dreifach! Dreifach!"] },
+      { "min": 4, "lines": ["Ich… muss mich setzen."] }
+    ],
+    "release": [{ "lines": ["Geh. Wir kommen nach.", "Bis draußen!"] }],
+    "idle": [{ "afterSeconds": 20, "lines": ["Ich bin noch da.", "Die Gase. Die Gase…"] }]
+  }
+}

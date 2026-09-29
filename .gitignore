@@ -2,3 +2,18 @@
 
 # Referenzbilder (Eyvind Earle, urheberrechtlich geschützt, ~160 MB) – nur lokal
 ref/
+
+# Build & Tooling
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+playwright-report/
+test-results/
+*.local
+.env
+docs/progress/*.tmp.png
+
+# Apple/Android Projekte werden erst mit Capacitor erzeugt
+apps/ios/App/Pods/
+apps/android/.gradle/

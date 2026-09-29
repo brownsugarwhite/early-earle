@@ -1,0 +1,39 @@
+{
+  "name": "@ee/game",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@ee/core": "workspace:*",
+    "@ee/genome": "workspace:*",
+    "@ee/physics": "workspace:*",
+    "@ee/render": "workspace:*",
+    "@ee/world": "workspace:*",
+    "mitt": "^3.0.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router": "^8.4.0",
+    "three": "0.186.1",
+    "zod": "^4.6.5",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "~5.9.0",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}

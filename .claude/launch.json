@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "game-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@ee/game", "exec", "vite", "--port", "5173", "--strictPort"],
+      "port": 5173,
+      "url": "https://localhost:5173"
+    },
+    {
+      "name": "game-dev-http",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["NO_SSL=1", "pnpm", "--filter", "@ee/game", "exec", "vite", "--port", "5174", "--strictPort"],
+      "port": 5174
+    }
+  ]
+}

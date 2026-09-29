@@ -1,0 +1,22 @@
+/* Design-Tokens: Neo-Brutalismus × Earle. Keine Konturen (Florians Regel), harte Versatzschatten in Sonnenrichtung,
+   Juwelentöne, getönte "Tinte" statt Schwarz. Zonenpaletten aus den Referenzen (k-Means, Stand 2026-09-29). */
+:root {
+  --ink: #0f1c22;
+  --ink-soft: #242c0b;
+  --paper: #f7f6d8;
+  --sky-1: #7ce6d5;
+  --sky-2: #caf5e4;
+  --neon: #b8ff2a;
+  --teal: #22baa9;
+  --khaki: #b3bb6d;
+  --khaki-deep: #606e4f;
+  --rust: #c8542a;
+  --pink: #e5aed4;
+  --violet: #937cc2;
+  --cyan: #2de5f8;
+  --sun-shadow: 8px 3px 0;
+  --radius: 0;
+  --font-display: 'Helvetica Neue', 'Arial Black', Arial, sans-serif;
+  --font-body: 'Helvetica Neue', Arial, sans-serif;
+  color-scheme: dark;
+}

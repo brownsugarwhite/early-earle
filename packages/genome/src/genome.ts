@@ -1,0 +1,126 @@
+import { hslToHex, shiftHex, mixHex } from './color';
+import { hash32, makeRng } from './rng';
+import { MAX_GENOME_SPHERES, type BlobParams, type MaterialKind, type SpherePrim, type Vec3 } from './types';
+
+export type ZoneId = 'tjorizo' | 'syrup' | 'luzz' | 'wooding';
+export const ZONES: readonly ZoneId[] = ['tjorizo', 'syrup', 'luzz', 'wooding'];
+
+/** Hue offset per zone relative to Tjorizo's teal start palette (from the k-means zone palettes). */
+const ZONE_HUE_SHIFT: Record<ZoneId, number> = { tjorizo: 0, syrup: 130, luzz: 20, wooding: -110 };
+
+/**
+ * Tier ramp of the blob sheet: teal → green → yellow → orange. Tier 1 is pezenpez (#7ce6d5 / #22baa9,
+ * inner #2f7f7a). Hues in degrees, lightness of the base colour.
+ */
+const TIER_RAMP: Array<{ hue: number; sat: number; light: number }> = [
+  { hue: 171, sat: 0.68, light: 0.69 }, // 1 teal (pezenpez)
+  { hue: 158, sat: 0.66, light: 0.66 }, // 2 mint
+  { hue: 132, sat: 0.66, light: 0.62 }, // 3 green
+  { hue: 92, sat: 0.72, light: 0.6 }, // 4 lime
+  { hue: 58, sat: 0.82, light: 0.6 }, // 5 yellow
+  { hue: 42, sat: 0.9, light: 0.58 }, // 6 amber
+  { hue: 26, sat: 0.9, light: 0.56 }, // 7 orange
+  { hue: 12, sat: 0.86, light: 0.52 }, // 8 red-orange
+];
+
+/** Material thresholds (plan §5): merges switch material at tier boundaries. */
+export function materialForTier(tier: number): MaterialKind {
+  if (tier <= 3) return 'jelly';
+  if (tier <= 5) return 'liquid';
+  if (tier <= 7) return 'gas';
+  return 'fire';
+}
+
+/** Palette for a (zone, tier, material). Exported so the merge timeline can crossfade toward a child. */
+export function paletteFor(zone: ZoneId, tier: number, material: MaterialKind): Pick<BlobParams, 'baseColor' | 'innerColor' | 'rimColor' | 'highlightColor' | 'bubbleColor'> {
+  const ramp = TIER_RAMP[Math.min(TIER_RAMP.length, Math.max(1, Math.round(tier))) - 1]!;
+  const hue = ramp.hue + ZONE_HUE_SHIFT[zone];
+  let base = tier === 1 && zone === 'tjorizo' ? '#7ce6d5' : hslToHex(hue, ramp.sat, ramp.light);
+  let inner = tier === 1 && zone === 'tjorizo' ? '#2f7f7a' : hslToHex(hue + 4, ramp.sat * 0.7, ramp.light * 0.5);
+  let rim = shiftHex(base, -6, 1.22, 0.8);
+  let highlight = mixHex('#ffffff', base, 0.08);
+  let bubble = shiftHex(base, 0, 1.25, 0.6);
+  if (material === 'fire') {
+    base = hslToHex(hue - 8, 0.95, 0.5);
+    inner = '#ffd25a';
+    rim = '#ff8a3c';
+    highlight = '#fff6c8';
+    bubble = '#ffe9a0';
+  } else if (material === 'gas') {
+    base = shiftHex(base, 0, 1.05, 0.55);
+    inner = shiftHex(inner, 0, 1.4, 0.5);
+    rim = mixHex(base, '#ffffff', 0.35);
+  } else if (material === 'liquid') {
+    rim = mixHex(base, '#ffffff', 0.45);
+    highlight = '#ffffff';
+  }
+  return { baseColor: base, innerColor: inner, rimColor: rim, highlightColor: highlight, bubbleColor: bubble };
+}
+
+function normalize3(v: Vec3): Vec3 {
+  const l = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / l, v[1] / l, v[2] / l];
+}
+
+/**
+ * Deterministic genome stub: `blob = f(zone, tier, seed)`. Tier 1 = pezenpez (one teal body, one eye slit);
+ * higher tiers grow, gain lobes and shift the palette along the blob sheet. Body is in blob units
+ * (main sphere r = 1); the renderer applies a world scale.
+ */
+export function genomeFor(zone: ZoneId, tier: number, seed: number | string = 0, material?: MaterialKind): BlobParams {
+  const t = Math.max(1, Math.min(8, Math.round(tier)));
+  const rng = makeRng(hash32(zone, t, seed));
+  const mat = material ?? materialForTier(t);
+
+  // Body: main sphere + up to 7 lobes. Lobes are biased to the upper hemisphere and the sides so
+  // the flat bottom (contact with the plate) stays clean.
+  const lobeCount = Math.min(MAX_GENOME_SPHERES - 1, t - 1);
+  const spheres: SpherePrim[] = [{ center: [0, 0, 0], r: 1 }];
+  const golden = 2.399963; // golden angle spreads lobes around the body deterministically
+  for (let i = 0; i < lobeCount; i++) {
+    const ang = i * golden + rng.range(-0.4, 0.4);
+    const elev = rng.range(0.05, 0.75); // radians above the equator
+    const dist = rng.range(0.55, 0.85);
+    const r = rng.range(0.42, 0.68) * (1 + 0.04 * i);
+    const dir: Vec3 = [Math.cos(ang) * Math.cos(elev), Math.sin(elev), Math.sin(ang) * Math.cos(elev)];
+    spheres.push({ center: [dir[0] * dist, dir[1] * dist, dir[2] * dist], r });
+  }
+
+  const viscosity = mat === 'jelly' ? rng.range(0.25, 0.45) : mat === 'liquid' ? rng.range(0.1, 0.25) : mat === 'gas' ? rng.range(0.5, 0.7) : rng.range(0.3, 0.5);
+  const palette = paletteFor(zone, t, mat);
+
+  // Eye: slightly right of centre, facing the camera-ish (+z), a little upward.
+  const eyeDir = normalize3([0.22 + rng.range(-0.05, 0.05), 0.18 + rng.range(-0.05, 0.08), 1]);
+
+  return {
+    spheres,
+    sminK: mat === 'liquid' ? rng.range(0.45, 0.6) : rng.range(0.3, 0.45),
+    noiseAmp: mat === 'gas' ? rng.range(0.12, 0.18) : mat === 'fire' ? rng.range(0.1, 0.16) : rng.range(0.035, 0.06),
+    noiseFreq: mat === 'gas' ? rng.range(1.2, 1.8) : rng.range(1.6, 2.4),
+    breathHz: rng.range(0.35, 0.6) * (mat === 'fire' ? 2 : 1),
+    squash: { axis: [0, 1, 0], amount: 0 },
+    morph: 0,
+    ...palette,
+    gloss: mat === 'liquid' ? 0.9 : mat === 'gas' ? 0.15 : mat === 'fire' ? 0.3 : rng.range(0.55, 0.75),
+    translucency: mat === 'jelly' ? rng.range(0.6, 0.8) : mat === 'liquid' ? 0.35 : mat === 'gas' ? 0.5 : 0.9,
+    bubbleDensity: mat === 'jelly' ? rng.range(0.4, 0.7) : mat === 'liquid' ? 0.25 : 0,
+    material: mat,
+    eye: { dir: eyeDir, size: 0.16 + 0.012 * t },
+    viscosity,
+  };
+}
+
+/** World-space scale of a tier (tier 1 ≈ 0.36 units on a 1-unit grid cell, growing per tier). */
+export function scaleForTier(tier: number): number {
+  return 0.36 * (1 + 0.09 * (Math.max(1, tier) - 1));
+}
+
+/** Deep copy so callers can mutate a genome (merge timeline) without touching cached results. */
+export function cloneParams(p: BlobParams): BlobParams {
+  return {
+    ...p,
+    spheres: p.spheres.map((s) => ({ center: [...s.center] as Vec3, r: s.r })),
+    squash: { axis: [...p.squash.axis] as Vec3, amount: p.squash.amount },
+    eye: { dir: [...p.eye.dir] as Vec3, size: p.eye.size },
+  };
+}

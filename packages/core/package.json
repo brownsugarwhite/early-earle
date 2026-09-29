@@ -1,0 +1,25 @@
+{
+  "name": "@ee/core",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Regeln: Raster, Züge, Verschmelzung, Elemente, Materialien, Solver — reine TS-Logik ohne Abhängigkeiten",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.0",
+    "vitest": "^5.0.2"
+  }
+}
