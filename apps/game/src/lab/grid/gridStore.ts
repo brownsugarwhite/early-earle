@@ -58,7 +58,8 @@ export const useGridStore = create<GridLabState>((set, get) => ({
   state: null,
   lastMove: null,
   moveSeq: 0,
-  showNumbers: true,
+  // Board v2: stages read from colour, size and parts; tier numbers are an opt-in HUD toggle.
+  showNumbers: false,
   juice: true,
   animating: false,
   pendingDir: null,

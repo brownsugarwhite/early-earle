@@ -1,5 +1,5 @@
 import { BoxGeometry, DynamicDrawUsage, Euler, InstancedBufferAttribute, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
-import { Fn, If, attribute, cos, float, fwidth, mix, mx_worley_noise_vec2, sin, smoothstep, uv, vec2, vec3 } from 'three/tsl';
+import { Fn, If, attribute, cos, float, floor, fract, fwidth, mix, mx_worley_noise_vec2, sin, smoothstep, uv, vec2, vec3 } from 'three/tsl';
 import { BoardSurfaceMaterial, hexNode, stripes, type BoardFog } from './boardMaterial';
 import type { BoardPalette } from './boardPalette';
 import type { FloatNode, Vec2Node, Vec3Node, Vec4Node } from '../earle/tsl';
@@ -78,11 +78,14 @@ export class BoardCells {
       const uvT = uv() as unknown as Vec2Node;
       // Everything with derivatives first (uniform control flow, required by WGSL), then one branch per kind
       // so only withered cells pay for the Voronoi cracks.
-      const phi = seed.mul(0.37).sin().mul(0.18);
+      // Stone: very fine furrows in one of three directions per plate (0°, 60°, 120°, slightly jittered),
+      // low contrast, plus a ±5 % value step per plate — calm stone set into the meadow, not planks.
+      const dirIdx = floor(fract(seed.mul(7.13)).mul(3));
+      const phi = dirIdx.mul(Math.PI / 3).add(seed.mul(0.37).sin().mul(0.07));
       const lineCoord = uvT.x.mul(cos(phi)).add(uvT.y.mul(sin(phi))).add(seed.mul(0.11));
-      // Stone: fine hatch lines, each plate turned a little so the board does not read as one texture.
-      const stone = mix(hexNode(palette.plate), hexNode(palette.plateLine), stripes(lineCoord, 12, 0.12).mul(0.72));
-      const healedLines = stripes(lineCoord, 9, 0.1).mul(heal).mul(0.5);
+      const tone = fract(seed.mul(13.37)).sub(0.5).mul(0.1).add(1);
+      const stone = mix(hexNode(palette.plate).mul(tone), hexNode(palette.plateLine), stripes(lineCoord, 15, 0.09).mul(0.34));
+      const healedLines = stripes(lineCoord, 18, 0.1).mul(heal).mul(0.4);
       // Oil: ink pool with thin wavy light bands drifting across (Earle's dark water).
       const wave = uvT.y.add(uvT.x.mul(8).add(t.mul(0.7)).add(seed).sin().mul(0.05)).add(t.mul(0.04));
       const oil = mix(hexNode(palette.oil), hexNode(palette.oilBand), stripes(wave, 2.2, 0.06));
@@ -120,7 +123,8 @@ export class BoardCells {
     this.mesh = new InstancedMesh(this.geometry, this.material, capacity);
     this.mesh.name = 'board-cells';
     this.mesh.frustumCulled = false;
-    this.mesh.castShadow = true;
+    // 3 cm plates set into the meadow: they receive the shadows, casting adds nothing but a shadow-pass draw.
+    this.mesh.castShadow = false;
     this.mesh.receiveShadow = true;
     this.mesh.instanceMatrix.setUsage(DynamicDrawUsage);
     this.mesh.count = 0;

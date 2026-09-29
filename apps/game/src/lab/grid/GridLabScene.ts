@@ -133,8 +133,9 @@ export class GridLabScene implements SceneController {
     const pitch = aspect < 1 ? 1.02 : 0.98; // camera elevation (rad): portrait looks down a bit steeper
     // Share of the screen height above the HUD (lab controls: tall sheet on phones, one strip on desktop).
     const usable = aspect < 1 ? 0.56 : 0.78;
-    const dW = (W / 2 / tanH) * 1.04;
-    const dD = ((D * Math.sin(pitch) + 1.2 * Math.cos(pitch)) / 2 / (tanV * usable)) * 1.04;
+    const breathe = aspect < 1 ? 1.06 : 1.16;
+    const dW = (W / 2 / tanH) * breathe;
+    const dD = ((D * Math.sin(pitch) + 1.2 * Math.cos(pitch)) / 2 / (tanV * usable)) * breathe;
     const dist = Math.max(dW, dD, 4);
     const cz = (fp.minZ + fp.maxZ) / 2;
     cam.position.set(0, top + dist * Math.sin(pitch), cz + dist * Math.cos(pitch));
@@ -158,7 +159,7 @@ export class GridLabScene implements SceneController {
     const board = this.board;
     if (board) {
       board.update(dt, this.camera);
-      if (board.animating || this.shadowDirty) {
+      if (board.animating || board.moved || this.shadowDirty) {
         this.fitShadow();
         this.shadowDirty = false;
       }

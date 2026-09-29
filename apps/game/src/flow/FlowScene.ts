@@ -12,7 +12,7 @@ import type { PathLayout, PathNode } from './path';
 import { NodePath } from './NodePath';
 import { Hero, SHADOW_PROXY_LAYER, type HeroPose } from './Hero';
 import { Rex } from './Rex';
-import { LevelBoard, PITCH } from './LevelBoard';
+import { LevelBoard } from './LevelBoard';
 import { resolveFlowQuality } from './quality';
 import { Tweens, easeInOut, easeInOutQuint, easeOut, lerp } from './tween';
 import { demoState } from '../lab/grid/demoLevel';
@@ -235,7 +235,7 @@ export class FlowScene implements SceneController {
     }
     world.fogStripes.group.position.y = this.stripesY;
     // Moving casters (hero flights, wobble, the rising plateau, sliding blobs) need a fresh shadow pass.
-    if (board.root.visible && board.animating) this.boardShadowGrace = 0.6;
+    if (board.root.visible && (board.animating || board.moved)) this.boardShadowGrace = 0.6;
     else this.boardShadowGrace = Math.max(0, this.boardShadowGrace - dt);
     if (hero.isFlying || hero.jiggle > 0.02 || this.tweens.active > 0 || this.boardShadowGrace > 0) world.markShadowDirty();
     world.update();
@@ -294,27 +294,43 @@ export class FlowScene implements SceneController {
     return p;
   }
 
-  /** Camera over the plateau (board-local framing like the Grid-Lab, transformed into rig space). */
+  /**
+   * Camera over the plateau: the footprint (skirt and bushes included) is fitted into the screen band the
+   * glass HUD leaves free (width against the horizontal FOV, depth foreshortened by the pitch against the
+   * vertical one), with breathing room so the landscape shows around the hilltop; the view then tilts so the
+   * plateau centres in that band. Board-local framing, transformed into rig space.
+   */
   private levelPose(): CameraPose {
     const world = this.world!;
     const board = this.board!;
     const aspect = world.camera.aspect;
-    // Cells plus margins; the goal totems stand on a ledge behind the far row (plateau centre at z ≈ −0.4).
-    const wide = board.w * PITCH + 1.0;
-    const deep = board.h * PITCH + 1.8;
-    const span = Math.max(wide, deep * 0.86 + 0.5);
-    const fit = aspect < 1 ? span / aspect : span;
-    const dist = fit * 1.02 + 1.9;
-    const hudShift = aspect < 1 ? span * 0.4 : span * 0.03;
+    const portrait = aspect < 1;
+    const H = this.ctx?.height ?? 800;
+    // HUD insets in CSS px: top pill / REX line + action row (portrait wraps taller).
+    const topInset = (portrait ? 104 : 86) / H;
+    const bottomInset = (portrait ? 180 : 150) / H;
+    const usable = Math.max(0.35, 1 - topInset - bottomInset);
+    const bandCenter = bottomInset - topInset;
+    const fp = board.footprint;
+    const W = fp.maxX - fp.minX;
+    const D = fp.maxZ - fp.minZ;
+    const cz = (fp.minZ + fp.maxZ) / 2;
+    const tanV = Math.tan((LEVEL_FOV * Math.PI) / 360);
+    const tanH = tanV * aspect;
+    const pitch = portrait ? 1.02 : 0.96;
+    const breathe = portrait ? 1.16 : 1.18;
+    const dW = (W / 2 / tanH) * breathe;
+    const dD = ((D * Math.sin(pitch) + 1.2 * Math.cos(pitch)) / 2 / (tanV * usable)) * breathe;
+    const dist = Math.max(dW, dD);
     const top = board.topY;
-    const cz = -0.32;
-    const eye = new Vector3(0, top + dist * 0.9, cz + dist * 0.6 + hudShift);
-    const target = new Vector3(0, top, cz + 0.16 + hudShift);
+    const eye = new Vector3(0, top + dist * Math.sin(pitch), cz + dist * Math.cos(pitch));
+    const target = new Vector3(0, top - 0.1, cz);
     board.root.updateWorldMatrix(true, false);
     board.root.localToWorld(eye);
     board.root.localToWorld(target);
     const up = _Y.clone().applyQuaternion(board.root.getWorldQuaternion(_q));
     const quaternion = lookAtQuaternion(eye, target, up, new Quaternion());
+    quaternion.multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.atan(bandCenter * tanV)));
     eye.sub(world.rig.position);
     return { position: eye, quaternion, fov: LEVEL_FOV };
   }

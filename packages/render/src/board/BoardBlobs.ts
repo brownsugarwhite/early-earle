@@ -78,6 +78,8 @@ const _s = new Vector3();
 const _v = new Vector3();
 const _z = new Vector3(0, 0, 1);
 const LIGHT_CAMERA = new Vector3(-0.66, 0.6, 0.5).normalize();
+/** Resting squash: bodies sit slightly heavy on their plate. */
+const REST_SQUASH = -0.07;
 
 /**
  * The creatures on the board: candidate-(b) jiggle bodies (one instanced draw), smooth sphere proxies on the
@@ -106,6 +108,8 @@ export class BoardBlobs {
   private carrier: CarrierBody | null = null;
   /** Global pop multiplier (board appears/disappears). */
   globalPop = 1;
+  /** Board-local xz direction away from the sun (contact shadows lean that way). */
+  readonly awayDir = new Vector3(-0.7, 0, 0.4);
   showLabels = true;
   readonly capacity: number;
 
@@ -463,7 +467,17 @@ export class BoardBlobs {
           }
         }
       }
-      const squash = v.squash ?? { axis: st.axis, amount: st.amount };
+      // At rest the body settles a little onto its plate (resting squash); while the spring is active its own
+      // axis takes over — blended by the spring's energy so there is no pop between the two.
+      let squash = v.squash;
+      if (!squash) {
+        const w = 1 - Math.min(1, Math.abs(st.amount) / 0.08);
+        const ax = st.axis[0] * (1 - w);
+        const ayy = st.axis[1] * (1 - w) + w;
+        const az = st.axis[2] * (1 - w);
+        const al = Math.hypot(ax, ayy, az) || 1;
+        squash = { axis: [ax / al, ayy / al, az / al], amount: st.amount * (1 - w) + REST_SQUASH * w };
+      }
       const { along, across } = squashScales(squash.amount);
       const ay = squash.axis[1];
       const sy = along * ay * ay + across * (1 - ay * ay);
@@ -544,6 +558,20 @@ export class BoardBlobs {
     if (visible) {
       const r = v.scale;
       const cy = v.centerY;
+      // Contact shadow: a crisp ink ellipse under the body, stretched and nudged away from the sun, so the
+      // blob sits *in* the meadow (the long razor shadow comes from the proxy in the shadow map).
+      const ad = this.awayDir;
+      wanted.set(`contact:${v.id}`, {
+        family: 'disc',
+        x: v.x + ad.x * r * 0.22,
+        y: this.options.layout.top + 0.002,
+        z: v.z + ad.z * r * 0.22,
+        ry: -Math.atan2(ad.z, ad.x),
+        sx: r * 2.35,
+        sy: 0.006,
+        sz: r * 1.85,
+        color: pal.ink,
+      });
       if (v.frozen) {
         // Ice crust: a pale disc frozen onto the plate and a ring of crystal shards leaning out of it,
         // rooted just outside the body (Earle's snow lace: white against deep blue).

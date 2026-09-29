@@ -10,25 +10,33 @@ import { BoardCells } from './BoardCells';
 import { BoardLabels, labelIndexForTier } from './BoardLabels';
 import { BoardParticles } from './BoardParticles';
 import { BoardPlateau, HILL_HEIGHT } from './BoardPlateau';
-import { BoardProps } from './BoardProps';
+import { BoardProps, MOTIF } from './BoardProps';
 import { BoardTimeline, type JuiceKind, type TimelineHooks } from './BoardTimeline';
-import { cellKinds, collectElements, type BoardLayout, type ElementSet, type GoalLabel, type StreamDot } from './boardElements';
+import { cellKinds, collectElements, jitter, type BoardLayout, type ElementSet, type GoalLabel, type StreamDot } from './boardElements';
 import type { BoardFog } from './boardMaterial';
 import { boardPaletteFor, type BoardPalette, type BoardZoneInput } from './boardPalette';
 import { WallClockTweens, easeIn, easeInCubic, easeInOut, easeOutCubic, easeSpring, smoothstep } from './boardTween';
 
 /** Board metrics in world units (the plateau sits on a planet with R = 40, hills ≈ 1.8 high). */
+/** Reference cell size: blob and prop scales are expressed in it. */
 export const BOARD_CELL = 0.72;
 export const BOARD_GAP = 0.09;
 export const BOARD_PITCH = BOARD_CELL + BOARD_GAP;
-/** Plate thickness: props and blobs stand on it. */
-export const BOARD_TOP = 0.06;
+/** Ink seam between the stone plates (the plates are set flush into the meadow). */
+export const BOARD_SEAM = 0.026;
+export const BOARD_PLATE = BOARD_PITCH - BOARD_SEAM;
+/** Plate thickness = height props and blobs stand on (the plates barely rise out of the meadow). */
+export const BOARD_TOP = 0.03;
 const MARGIN = 0.42;
+/** Clearance between the grid corners and the organic rim. */
+const RIM_CLEARANCE = 0.34;
 /** Extra ledge on the far side for the goal totems. */
 const GOAL_LEDGE = 0.8;
 /** Render layer of the blob shadow proxies (only the sun's shadow camera has it enabled) — same as the hero's. */
 export const BOARD_SHADOW_LAYER = 1;
-const ATTACHMENT_PREFIXES = ['crust:', 'zzz:', 'lid:', 'orbit:', 'core:'];
+const ATTACHMENT_PREFIXES = ['crust:', 'zzz:', 'lid:', 'orbit:', 'core:', 'contact:'];
+/** Props the renderer plants itself (not part of the element set of a state). */
+const STATIC_PREFIXES = ['bush:'];
 /** Plate rotation about its near edge when folded into the plateau (hidden before the rise). */
 const PLATE_FOLDED = -Math.PI / 2;
 
@@ -111,7 +119,7 @@ export class BoardRenderer {
     const fog = options.fog;
     const tNode = this.timeNode as unknown as FloatNode;
     this.plateau = new BoardPlateau(this.palette, fog);
-    this.cells = new BoardCells(this.palette, BOARD_CELL, BOARD_TOP, 64, fog, tNode);
+    this.cells = new BoardCells(this.palette, BOARD_PLATE, BOARD_TOP, 64, fog, tNode);
     this.props = new BoardProps(this.palette, tNode, fog);
     this.particles = new BoardParticles(tNode);
     this.labels = new BoardLabels(this.palette.paper, this.palette.ink, 56);
@@ -131,6 +139,9 @@ export class BoardRenderer {
   get now(): number {
     return this.tweens.time - this.t0;
   }
+
+  /** True for a frame in which tweens advanced (see `update`). */
+  moved = false;
 
   /** True while a move timeline or an appearance choreography runs. */
   get animating(): boolean {
@@ -173,11 +184,60 @@ export class BoardRenderer {
   private applyShape(): void {
     const { w, h } = this.layout;
     const depth = Math.max(1.05, this.topY - this.terrain.minD + 0.6);
-    this.plateau.setShape({
-      halfX: (w * BOARD_PITCH) / 2 + MARGIN,
-      halfZ: (h * BOARD_PITCH) / 2 + MARGIN + GOAL_LEDGE / 2,
-      centerZ: -GOAL_LEDGE / 2,
-      depth,
+    const gx = (w * BOARD_PITCH) / 2;
+    const gz = (h * BOARD_PITCH) / 2;
+    let a = gx + MARGIN;
+    let b = gz + MARGIN + GOAL_LEDGE / 2;
+    // The rounded outline cuts the corners: grow it until the near grid corner keeps its clearance.
+    const n = 4.5;
+    const cx = gx + RIM_CLEARANCE;
+    const cz = gz + GOAL_LEDGE / 2 + RIM_CLEARANCE;
+    const f = Math.pow(Math.pow(cx / a, n) + Math.pow(cz / b, n), 1 / n);
+    if (f > 1) {
+      a *= f;
+      b *= f;
+    }
+    this.plateau.setShape({ halfX: a, halfZ: b, centerZ: -GOAL_LEDGE / 2, depth });
+    this.plateau.setGrid(gx + BOARD_SEAM * 0.5, gz + BOARD_SEAM * 0.5, 0);
+  }
+
+  /**
+   * Dark dome bushes along the rim frame the meadow (Earle's scalloped hedges with dotted lit edges). The near
+   * side (towards the camera) stays open; bushes thin out towards it so the board is never covered.
+   */
+  private plantBushes(hidden: boolean): void {
+    for (const key of [...this.props.keys()]) if (key.startsWith('bush:')) this.props.remove(key);
+    const seed = this.layout.w * 31 + this.layout.h * 7;
+    const rnd = (k: number) => jitter(seed, k);
+    const pts = this.plateau.rimPoints(0.36, (k) => rnd(k * 3 + 1));
+    const pal = this.palette;
+    pts.forEach((p, k) => {
+      // θ = π/2 faces the camera: open there, small bushes on the flanks of the opening.
+      const toCamera = Math.cos(p.theta - Math.PI / 2);
+      if (toCamera > 0.62) return;
+      const shrink = toCamera > 0.25 ? 0.62 : 1;
+      const r = (0.2 + rnd(k * 3 + 2) * 0.17) * shrink;
+      const tall = r * (1.05 + rnd(k * 5 + 3) * 0.6);
+      const out = 0.06 + rnd(k * 7 + 4) * 0.08;
+      const inst = this.props.add(
+        `bush:${k}`,
+        {
+          family: 'dome',
+          x: p.x + p.nx * out,
+          y: -0.2,
+          z: p.z + p.nz * out,
+          ry: rnd(k * 11 + 5) * Math.PI * 2,
+          sx: r * 2,
+          sy: tall + 0.2,
+          sz: r * 2,
+          color: k % 4 === 0 ? pal.bushLight : pal.bush,
+          motif: MOTIF.domeDots,
+          hatch: 30,
+          delay: rnd(k * 13 + 6) * 0.12,
+        },
+        this.now,
+      );
+      if (inst && hidden) inst.scale = 0.001;
     });
   }
 
@@ -201,6 +261,7 @@ export class BoardRenderer {
     if (this.awayDir.lengthSq() < 1e-6) this.awayDir.set(-0.7, 0, 0.4);
     this.awayDir.normalize();
     this.plateau.setShadowDir(this.awayDir);
+    this.blobs.awayDir.copy(this.awayDir);
   }
 
   /** Rise 0 (sunk under the terrain) … 1 (plateau top at `topY`). */
@@ -218,7 +279,6 @@ export class BoardRenderer {
   setMorph(m: number): void {
     this.morph = m;
     this.plateau.morph.value = m;
-    this.plateau.applyShadowPose();
   }
 
   /** Global scale multiplier for all blobs (pop in/out with the plate). */
@@ -295,6 +355,7 @@ export class BoardRenderer {
       const inst = this.props.add(key, desc, this.now);
       if (inst && hidden) inst.scale = 0.001;
     }
+    this.plantBushes(hidden);
     this.streams = set.streams;
     this.goalLabels = set.goalLabels;
     for (const id of [...this.blobs.visuals.keys()]) this.blobs.removeVisual(id, this.props);
@@ -324,7 +385,7 @@ export class BoardRenderer {
     this.desired.delete(state);
     const set = this.desiredFor(state);
     for (const key of [...this.props.keys()]) {
-      if (set.props.has(key) || ATTACHMENT_PREFIXES.some((p) => key.startsWith(p))) continue;
+      if (set.props.has(key) || ATTACHMENT_PREFIXES.some((p) => key.startsWith(p)) || STATIC_PREFIXES.some((p) => key.startsWith(p))) continue;
       const p = this.props.get(key);
       if (!p || p.removing) continue;
       p.removing = true;
@@ -569,6 +630,9 @@ export class BoardRenderer {
   // ---------------------------------------------------------------- frame
 
   update(dt: number, camera: Camera): void {
+    // Something moved this frame if tweens were pending before the update — including the frame in which a
+    // whole choreography completed at once after a hitch (callers refresh the shadow map on it).
+    this.moved = this.tweens.active > 0 || this.playing > 0;
     this.tweens.update();
     const now = this.now;
     this.timeNode.value = now;
@@ -623,7 +687,8 @@ export class BoardRenderer {
     this.lift.getWorldQuaternion(_q);
     this.labels.begin();
     this.blobs.update(dt, camera, _q, this.props, this.labels, now, time.value + dt);
-    if (this.goalLabels.length > 0) {
+    // Goal totems carry their tier number only when numbers are on (the HUD states the goals anyway).
+    if (this.goalLabels.length > 0 && this.blobs.showLabels) {
       const camLocal = camera.getWorldQuaternion(new Quaternion()).premultiply(new Quaternion().copy(_q).invert());
       for (const g of this.goalLabels) this.labels.add(g.x, g.y, g.z, 0.3, labelIndexForTier(g.tier), 1, camLocal);
     }
@@ -632,7 +697,7 @@ export class BoardRenderer {
 
   /** Draw calls the board contributes at the moment (visible meshes). */
   get drawCalls(): number {
-    let n = 2; // plateau + ink shadow
+    let n = 1; // plateau (ink slab included)
     if (this.cells.mesh.visible) n++;
     n += this.props.drawCalls;
     if (this.blobs.mesh.count > 0) n++;

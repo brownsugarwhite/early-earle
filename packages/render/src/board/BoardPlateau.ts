@@ -1,8 +1,8 @@
-import { BufferAttribute, BufferGeometry, Group, Mesh, MeshBasicNodeMaterial, Vector3 } from 'three/webgpu';
-import { attribute, fract, length, mix, modelViewMatrix, normalGeometry, positionGeometry, select, uniform, vec2, vec4 } from 'three/tsl';
+import { BufferAttribute, BufferGeometry, Group, Mesh, Vector2, Vector3 } from 'three/webgpu';
+import { abs, attribute, mix, modelViewMatrix, normalGeometry, positionGeometry, select, uniform, vec3, vec4 } from 'three/tsl';
 import { BoardSurfaceMaterial, hexNode, stripes, type BoardFog } from './boardMaterial';
 import type { BoardPalette } from './boardPalette';
-import { aaStep, type FloatNode, type Vec3Node } from '../earle/tsl';
+import { aaStep, type FloatNode, type Vec2Node, type Vec3Node } from '../earle/tsl';
 
 export interface PlateauShape {
   /** Half extents of the flat top (world units) and its centre offset along z. */
@@ -25,13 +25,18 @@ const PROFILE: ReadonlyArray<{ out: number; y: number; band: number; wall: boole
   { out: 0.62, y: -1, band: 3, wall: true }, // y = -depth (patched at build time)
   { out: 0.78, y: -1, band: 3, wall: false },
 ];
-const SEGMENTS = 72;
-const SUPER_N = 7;
+const SEGMENTS = 96;
+/** Superellipse exponent of the top outline: 4.5 = a rounded hilltop, not a tray. */
+const SUPER_N = 4.5;
 /** Height of the hill hump the plateau morphs from (above the top level). */
 const HILL_HEIGHT = 1.0;
-/** Rim ornament: dots per world unit along the top edge; wall striations per dot. */
-const RIM_DOTS_PER_UNIT = 3;
-const STRIATIONS_PER_DOT = 3;
+/** Wall striations per world unit along the ring (Earle's cliff hatching). */
+const STRIATIONS_PER_UNIT = 9;
+
+/** Organic wobble of the outline (≥ 0, so the grid clearance computed for the smooth shape still holds). */
+function wobble(theta: number): number {
+  return 0.035 * (1 + Math.sin(3 * theta + 1.1)) + 0.018 * (1 + Math.sin(7 * theta + 2.3)) + 0.01 * (1 + Math.sin(13 * theta + 0.4));
+}
 
 /**
  * The level plateau: a flattened hill top cut out of the terrain. Flat top (the zone's meadow), a stepped
@@ -42,12 +47,14 @@ const STRIATIONS_PER_DOT = 3;
 export class BoardPlateau {
   readonly group = new Group();
   readonly mesh: Mesh;
-  readonly shadow: Mesh;
   readonly morph = uniform(1);
+  /** Offset of the ink slab (away from the sun, lift-local xz). */
+  private readonly slabOffset = uniform(new Vector3(-0.25, 0, 0.14));
+  /** Cell grid (lift-local): half extents and centre z — painted as the ink bed the plates are set into. */
+  readonly gridHalf = uniform(vec2Of(1.6, 1.6));
+  readonly gridCenterZ = uniform(0);
   private readonly material: BoardSurfaceMaterial;
-  private readonly shadowMaterial: MeshBasicNodeMaterial;
   private geometry: BufferGeometry | null = null;
-  private shadowGeometry: BufferGeometry | null = null;
   shape: PlateauShape = { halfX: 2, halfZ: 2, centerZ: 0, depth: 1.4 };
   /** Direction (xz, unit) the offset shadow moves toward: away from the sun. */
   readonly shadowDir = new Vector3(-0.7, 0, 0.4);
@@ -61,7 +68,12 @@ export class BoardPlateau {
     const striate = attribute('striate', 'float') as FloatNode;
     const along = attribute('along', 'float') as FloatNode;
     const m = morph.smoothstep(0, 1);
-    const positionNode = mix(hillPos, positionGeometry, m) as unknown as Vec3Node;
+    // The ink slab (slab = 1) shares the mesh: pushed away from the sun, and sunk into the ground while the
+    // plateau is still a round hill.
+    const slab = attribute('slab', 'float') as FloatNode;
+    const off = this.slabOffset as unknown as Vec3Node;
+    const slabShift = vec3(off.x, m.sub(1).mul(1.6), off.z).mul(slab);
+    const positionNode = mix(hillPos, positionGeometry, m).add(slabShift) as unknown as Vec3Node;
     const nLocal = mix(hillNrm, normalGeometry, m).normalize();
     const normalNode = modelViewMatrix.mul(vec4(nLocal, 0)).xyz.normalize() as unknown as Vec3Node;
 
@@ -74,24 +86,25 @@ export class BoardPlateau {
     base = select(band.lessThan(1.5), base, s1) as unknown as Vec3Node;
     base = select(band.lessThan(2.5), base, s2) as unknown as Vec3Node;
     base = select(band.lessThan(3.5), base, s3) as unknown as Vec3Node;
+    base = select(band.lessThan(4.5), base, hexNode(palette.ink)) as unknown as Vec3Node;
     // Hill form has no terraces: blend the bands toward one meadow tone while the hill is still round.
     base = mix(mix(top, s1, band.mul(0.2).clamp(0, 1)), base, m) as unknown as Vec3Node;
     // Walls: fine vertical striations (Earle's cliff hatching), integer count around the ring (no seam).
-    const lines = stripes(along, STRIATIONS_PER_DOT, 0.1).mul(striate).mul(m);
+    const lines = stripes(along, 1, 0.1).mul(striate).mul(m);
     let albedo = mix(base, base.mul(0.7), lines) as unknown as Vec3Node;
-    // Top: three fine contour lines echo the rim, a row of light dots sits just inside it (Punktrand).
-    const rim = attribute('rim', 'float') as FloatNode;
+    // Top: an untextured golden meadow (Earle's fields are flat value planes). Under the cell grid the meadow
+    // is cut: an ink bed the plates are set into, so seams, rifts and dips read as crisp ink.
     const isTop = band.lessThan(0.5).select(1, 0).mul(m) as unknown as FloatNode;
-    const contourBand = aaStep(0.2, rim).mul(aaStep(0.62, rim).oneMinus());
-    const contour = stripes(rim, 7, 0.08).mul(contourBand).mul(isTop);
-    albedo = mix(albedo, albedo.mul(0.84), contour) as unknown as Vec3Node;
-    const u = fract(along).sub(0.5);
-    const v = rim.sub(0.1).mul(RIM_DOTS_PER_UNIT);
-    const dot = aaStep(0.17, length(vec2(u, v))).oneMinus().mul(isTop);
-    albedo = mix(albedo, hexNode(palette.paper), dot.mul(0.85)) as unknown as Vec3Node;
+    const pg = positionGeometry as unknown as Vec3Node;
+    const half = this.gridHalf as unknown as Vec2Node;
+    const inX = aaStep(half.x, abs(pg.x)).oneMinus();
+    const inZ = aaStep(half.y, abs(pg.z.sub(this.gridCenterZ))).oneMinus();
+    const bed = inX.mul(inZ).mul(isTop);
+    const ink = hexNode(palette.ink);
+    albedo = mix(albedo, ink, bed) as unknown as Vec3Node;
     this.material = new BoardSurfaceMaterial({
       albedo,
-      shade: hexNode(palette.plateauShade),
+      shade: mix(hexNode(palette.plateauShade), ink, bed.max(slab)) as unknown as Vec3Node,
       terminator: 0.02,
       facet: { threshold: 0.55, amount: 0.7 },
       positionNode,
@@ -104,22 +117,51 @@ export class BoardPlateau {
     this.mesh.receiveShadow = true;
     this.mesh.frustumCulled = false;
 
-    this.shadowMaterial = new MeshBasicNodeMaterial();
-    this.shadowMaterial.colorNode = hexNode(palette.ink);
-    this.shadow = new Mesh(new BufferGeometry(), this.shadowMaterial);
-    this.shadow.name = 'plateau-ink-shadow';
-    this.shadow.frustumCulled = false;
-    this.shadow.castShadow = false;
-    this.shadow.receiveShadow = false;
-    this.group.add(this.shadow, this.mesh);
+    this.group.add(this.mesh);
     this.build();
   }
 
-  /** Radius of the rounded-rectangle top outline in direction (cos θ, sin θ). */
+  /** Radius of the organic top outline in direction (cos θ, sin θ) (rounded superellipse + wobble). */
   private outline(cos: number, sin: number): number {
     const { halfX, halfZ } = this.shape;
     const a = Math.pow(Math.abs(cos / halfX), SUPER_N) + Math.pow(Math.abs(sin / halfZ), SUPER_N);
-    return 1 / Math.pow(Math.max(1e-6, a), 1 / SUPER_N);
+    const r = 1 / Math.pow(Math.max(1e-6, a), 1 / SUPER_N);
+    return r * (1 + wobble(Math.atan2(sin, cos)));
+  }
+
+  /**
+   * Points along the top rim every ~`spacing` units (lift-local x/z, outward unit normal, angle θ where +z,
+   * the camera side, is θ = π/2). Used to plant the dome bushes that frame the meadow.
+   */
+  rimPoints(spacing: number, jitter: (k: number) => number): Array<{ x: number; z: number; nx: number; nz: number; theta: number }> {
+    const out: Array<{ x: number; z: number; nx: number; nz: number; theta: number }> = [];
+    const { centerZ } = this.shape;
+    const steps = 720;
+    let acc = 0;
+    let next = spacing * (0.5 + jitter(0));
+    let px = 0;
+    let pz = 0;
+    for (let j = 0; j <= steps; j++) {
+      const th = (j / steps) * Math.PI * 2;
+      const r = this.outline(Math.cos(th), Math.sin(th));
+      const x = Math.cos(th) * r;
+      const z = Math.sin(th) * r + centerZ;
+      if (j > 0) acc += Math.hypot(x - px, z - pz);
+      px = x;
+      pz = z;
+      if (acc >= next) {
+        out.push({ x, z, nx: Math.cos(th), nz: Math.sin(th), theta: th });
+        next = acc + spacing * (0.75 + 0.5 * jitter(out.length));
+      }
+    }
+    return out;
+  }
+
+  /** The ink bed under the plates: grid half extents (lift-local) and its centre z. */
+  setGrid(halfX: number, halfZ: number, centerZ = 0): void {
+    (this.gridHalf.value as { x: number; y: number }).x = halfX;
+    (this.gridHalf.value as { x: number; y: number }).y = halfZ;
+    this.gridCenterZ.value = centerZ;
   }
 
   setShape(shape: PlateauShape): void {
@@ -137,9 +179,8 @@ export class BoardPlateau {
     const rp: number[][] = []; // plateau positions
     const hp: number[][] = []; // hill positions
     const hn: number[][] = []; // hill normals (smooth, analytic)
-    const rimOf: number[] = []; // distance to the top rim (top fan only)
     const bandOf: number[] = [];
-    // Perimeter of the top outline → an integer number of rim dots (and striations) around the ring.
+    // Perimeter of the top outline → an integer number of wall striations around the ring (no seam).
     let perimeter = 0;
     for (let j = 0; j < seg; j++) {
       const a0 = (j / seg) * Math.PI * 2;
@@ -148,7 +189,7 @@ export class BoardPlateau {
       const r1 = this.outline(Math.cos(a1), Math.sin(a1));
       perimeter += Math.hypot(Math.cos(a1) * r1 - Math.cos(a0) * r0, Math.sin(a1) * r1 - Math.sin(a0) * r0);
     }
-    const dots = Math.max(8, Math.round(perimeter * RIM_DOTS_PER_UNIT));
+    const striations = Math.max(8, Math.round(perimeter * STRIATIONS_PER_UNIT));
     const alongAt: number[] = [0];
     {
       let acc = 0;
@@ -158,7 +199,7 @@ export class BoardPlateau {
         const r0 = this.outline(Math.cos(a0), Math.sin(a0));
         const r1 = this.outline(Math.cos(a1), Math.sin(a1));
         acc += Math.hypot(Math.cos(a1) * r1 - Math.cos(a0) * r0, Math.sin(a1) * r1 - Math.sin(a0) * r0);
-        alongAt.push((acc / perimeter) * dots);
+        alongAt.push((acc / perimeter) * striations);
       }
     }
     for (let i = 0; i < rings; i++) {
@@ -171,7 +212,6 @@ export class BoardPlateau {
         const rho = this.outline(c, s);
         const r = i === 0 ? 0.001 : rho + prof.out;
         const R = rho + outMax;
-        rimOf.push(i === 0 ? rho : 0);
         const x = c * r;
         const z = s * r + centerZ;
         rp.push([x, prof.y, z]);
@@ -195,7 +235,7 @@ export class BoardPlateau {
     const band: number[] = [];
     const striate: number[] = [];
     const along: number[] = [];
-    const rimD: number[] = [];
+
     const va = new Vector3();
     const vb = new Vector3();
     const vc = new Vector3();
@@ -221,10 +261,10 @@ export class BoardPlateau {
         hnrm.push(hnv[0]!, hnv[1]!, hnv[2]!);
         band.push(bandV);
         striate.push(wall);
-        // Arc length along the ring in rim-dot units (walls: striations, top: dot cells).
+        // Arc length along the ring in striation units.
         const j = v % (seg + 1);
         along.push(alongAt[j] ?? 0);
-        rimD.push(rimOf[v] ?? 0);
+
       }
     };
     for (let i = 0; i < rings - 1; i++) {
@@ -241,64 +281,72 @@ export class BoardPlateau {
         pushTri(a, c, d, bandV, wall);
       }
     }
+    const slabFlag: number[] = new Array<number>(pos.length / 3).fill(0);
+    // Ink offset slab (neo-brutalist Versatzschatten, one-sided): the *top* outline extruded from just below the
+    // rim down to the foot; the vertex stage pushes it away from the sun. On the lit side it hides inside the
+    // skirt, on the shadow side it peeks out under the rim as a hard ink band — like the UI's 8px 3px 0 ink.
+    {
+      const yTop = -0.13;
+      const yBot = -depth;
+      const ring: Array<[number, number]> = [];
+      for (let j = 0; j <= seg; j++) {
+        const th = (j / seg) * Math.PI * 2;
+        const r = this.outline(Math.cos(th), Math.sin(th));
+        ring.push([Math.cos(th) * r, Math.sin(th) * r + centerZ]);
+      }
+      const put = (x: number, y: number, z: number, nx: number, ny: number, nz: number) => {
+        pos.push(x, y, z);
+        nrm.push(nx, ny, nz);
+        hpos.push(x, y, z);
+        hnrm.push(nx, ny, nz);
+        band.push(5);
+        striate.push(0);
+        along.push(0);
+        slabFlag.push(1);
+      };
+      for (let j = 0; j < seg; j++) {
+        const [x0, z0] = ring[j]!;
+        const [x1, z1] = ring[j + 1]!;
+        put(0, yTop, centerZ, 0, 1, 0);
+        put(x1, yTop, z1, 0, 1, 0);
+        put(x0, yTop, z0, 0, 1, 0);
+        const tx = x1 - x0;
+        const tz = z1 - z0;
+        const tl = Math.hypot(tx, tz) || 1;
+        const nx = tz / tl;
+        const nz = -tx / tl;
+        put(x0, yTop, z0, nx, 0, nz);
+        put(x1, yTop, z1, nx, 0, nz);
+        put(x1, yBot, z1, nx, 0, nz);
+        put(x0, yTop, z0, nx, 0, nz);
+        put(x1, yBot, z1, nx, 0, nz);
+        put(x0, yBot, z0, nx, 0, nz);
+      }
+    }
     const geo = new BufferGeometry();
     geo.setAttribute('position', new BufferAttribute(new Float32Array(pos), 3));
+    geo.setAttribute('slab', new BufferAttribute(new Float32Array(slabFlag), 1));
     geo.setAttribute('normal', new BufferAttribute(new Float32Array(nrm), 3));
     geo.setAttribute('hillPos', new BufferAttribute(new Float32Array(hpos), 3));
     geo.setAttribute('hillNrm', new BufferAttribute(new Float32Array(hnrm), 3));
     geo.setAttribute('band', new BufferAttribute(new Float32Array(band), 1));
     geo.setAttribute('striate', new BufferAttribute(new Float32Array(striate), 1));
     geo.setAttribute('along', new BufferAttribute(new Float32Array(along), 1));
-    geo.setAttribute('rim', new BufferAttribute(new Float32Array(rimD), 1));
+
     geo.computeBoundingSphere();
     this.geometry?.dispose();
     this.geometry = geo;
     this.mesh.geometry = geo;
 
-    // Ink offset shadow (neo-brutalist Versatzschatten, one-sided): the *top* outline extruded from just below
-    // the rim down to the foot and pushed away from the sun (`setShadowDir`). On the lit side it hides inside the
-    // skirt; on the shadow side it peeks out under the rim as a hard ink band — like the UI's 8px 3px 0 ink.
-    const sPos: number[] = [];
-    const yTop = -0.13;
-    const yBot = -depth;
-    const ring: Array<[number, number]> = [];
-    for (let j = 0; j <= seg; j++) {
-      const th = (j / seg) * Math.PI * 2;
-      const r = this.outline(Math.cos(th), Math.sin(th));
-      ring.push([Math.cos(th) * r, Math.sin(th) * r + centerZ]);
-    }
-    for (let j = 0; j < seg; j++) {
-      const [x0, z0] = ring[j]!;
-      const [x1, z1] = ring[j + 1]!;
-      // top cap (fan, counter-clockwise from above)
-      sPos.push(0, yTop, centerZ, x1, yTop, z1, x0, yTop, z0);
-      // wall (outward)
-      sPos.push(x0, yTop, z0, x1, yTop, z1, x1, yBot, z1);
-      sPos.push(x0, yTop, z0, x1, yBot, z1, x0, yBot, z0);
-    }
-    const sGeo = new BufferGeometry();
-    sGeo.setAttribute('position', new BufferAttribute(new Float32Array(sPos), 3));
-    sGeo.computeBoundingSphere();
-    this.shadowGeometry?.dispose();
-    this.shadowGeometry = sGeo;
-    this.shadow.geometry = sGeo;
     this.setShadowDir(this.shadowDir);
   }
 
-  /** Pushes the ink offset shadow away from the sun (`dir` = direction away from the sun, board-local xz). */
+  /** Pushes the ink offset slab away from the sun (`dir` = direction away from the sun, board-local xz). */
   setShadowDir(dir: Vector3): void {
     this.shadowDir.set(dir.x, 0, dir.z);
     if (this.shadowDir.lengthSq() < 1e-6) this.shadowDir.set(-0.7, 0, 0.4);
     this.shadowDir.normalize();
-    this.applyShadowPose();
-  }
-
-  /** The slab only exists for the finished plateau: it sinks into the ground while the hill morphs. */
-  applyShadowPose(): void {
-    const m0 = Math.min(1, Math.max(0, this.morph.value));
-    const m = m0 * m0 * (3 - 2 * m0);
-    this.shadow.visible = m > 0.02;
-    this.shadow.position.set(this.shadowDir.x * 0.36, -(1 - m) * 1.6, this.shadowDir.z * 0.36);
+    (this.slabOffset.value as Vector3).set(this.shadowDir.x * 0.36, 0, this.shadowDir.z * 0.36);
   }
 
   /**
@@ -328,11 +376,13 @@ export class BoardPlateau {
 
   dispose(): void {
     this.geometry?.dispose();
-    this.shadowGeometry?.dispose();
     this.material.dispose();
-    this.shadowMaterial.dispose();
     this.group.removeFromParent();
   }
 }
 
 export { HILL_HEIGHT };
+
+function vec2Of(x: number, y: number): Vector2 {
+  return new Vector2(x, y);
+}

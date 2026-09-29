@@ -12,17 +12,18 @@ import {
   Matrix4,
   OctahedronGeometry,
   Quaternion,
+  SphereGeometry,
   TorusGeometry,
   Vector3,
 } from 'three/webgpu';
-import { atan, attribute, fract, mix, positionGeometry, select, uv } from 'three/tsl';
+import { abs, asin, atan, attribute, float, floor, fract, length, mix, normalize, normalView, positionGeometry, positionViewDirection, select, uv, vec2, vec3 } from 'three/tsl';
 import { aaStep, type FloatNode, type Vec2Node, type Vec3Node, type Vec4Node } from '../earle/tsl';
 import { hexToLinear } from '../common/tsl';
 import { BoardSurfaceMaterial, hexNode, polar, stripes, type BoardFog } from './boardMaterial';
 import type { BoardPalette } from './boardPalette';
 
-export type PropFamily = 'box' | 'hex' | 'spire' | 'shard' | 'disc' | 'ring' | 'sphere';
-export const PROP_FAMILIES: readonly PropFamily[] = ['box', 'hex', 'spire', 'shard', 'disc', 'ring', 'sphere'];
+export type PropFamily = 'box' | 'hex' | 'spire' | 'shard' | 'disc' | 'ring' | 'sphere' | 'dome';
+export const PROP_FAMILIES: readonly PropFamily[] = ['box', 'hex', 'spire', 'shard', 'disc', 'ring', 'sphere', 'dome'];
 
 /** Surface motifs (fragment stage, `propData.x`). */
 export const MOTIF = {
@@ -41,6 +42,8 @@ export const MOTIF = {
   glow: 6,
   /** Lighter upper half (spires, ice shards). */
   tipLight: 7,
+  /** Earle dome: fine dot rows only along the silhouette, so only the lit edge shows them (bushes). */
+  domeDots: 8,
 } as const;
 
 export interface PropIdle {
@@ -122,7 +125,7 @@ interface FamilyPool {
   dirtyAttr: boolean;
 }
 
-const CAPACITY: Record<PropFamily, number> = { box: 128, hex: 72, spire: 24, shard: 72, disc: 56, ring: 24, sphere: 112 };
+const CAPACITY: Record<PropFamily, number> = { box: 128, hex: 72, spire: 24, shard: 72, disc: 56, ring: 24, sphere: 112, dome: 72 };
 const IDLE_NONE: PropIdle = { kind: 'none', speed: 0, amp: 0, phase: 0 };
 const ZERO16 = new Float32Array(16);
 const _m = new Matrix4();
@@ -147,6 +150,9 @@ function familyGeometry(family: PropFamily): BufferGeometry {
       return new TorusGeometry(0.5, 0.075, 8, 28).rotateX(-Math.PI / 2).translate(0, 0.075, 0);
     case 'sphere':
       return new IcosahedronGeometry(0.5, 1).translate(0, 0.5, 0);
+    case 'dome':
+      // Unit-height hemisphere (radius 0.5, base at y = 0): scale y sets the dome's height directly.
+      return new SphereGeometry(0.5, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 2, 1);
   }
 }
 
@@ -177,7 +183,8 @@ export class BoardProps {
       const mesh = new InstancedMesh(geometry, material, capacity);
       mesh.name = `board-props-${family}`;
       mesh.frustumCulled = false;
-      mesh.castShadow = true;
+      // Flat discs and rings throw no visible shadow at this sun height: skip them in the shadow pass.
+      mesh.castShadow = family !== 'disc' && family !== 'ring';
       mesh.receiveShadow = true;
       mesh.instanceMatrix.setUsage(DynamicDrawUsage);
       mesh.instanceMatrix.array.fill(0);
@@ -204,13 +211,13 @@ export class BoardProps {
     const dark = mix(c, ink, 0.6);
 
     const hatch = mix(c, dark, stripes(ang, k, 0.13));
-    // Tower: striations + tally rows (short ticks in a band every 1/rows of the height), Earle's monoliths.
-    const rows = param.max(1);
+    // Tower (Earle's monoliths): dense fine striations plus thin zigzag tally rows — two per remaining layer.
+    const rows = param.max(1).mul(2);
     const rowF = fract(pg.y.mul(rows));
-    const rowBand = aaStep(0.62, rowF).mul(aaStep(0.86, rowF).oneMinus());
-    const ticks = stripes(ang.add(pg.y.mul(0.3)), k.mul(1.6), 0.28);
-    const towerBase = mix(c, dark, stripes(ang, k, 0.09).mul(0.8));
-    const tower = mix(towerBase, ink, rowBand.mul(ticks).mul(0.9));
+    const zig = abs(fract(ang.mul(k.mul(0.5))).sub(0.5)).mul(2);
+    const zigLine = aaStep(0.06, abs(rowF.sub(zig.mul(0.5).add(0.25)))).oneMinus();
+    const towerBase = mix(c, dark, stripes(ang, k.mul(1.8), 0.07).mul(0.5));
+    const tower = mix(towerBase, mix(dark, ink, 0.6), zigLine.mul(0.85));
     // Disc motifs (cap uv → polar).
     const rim = aaStep(0.74, r).mul(aaStep(0.96, r).oneMinus());
     const spokes = stripes(a, k.max(6), 0.22);
@@ -223,6 +230,18 @@ export class BoardProps {
     const pulse = t.mul(3).add(param).sin().mul(0.35).add(1);
     const glowing = c.mul(pulse).add(glow.mul(0.05));
     const tip = mix(c, c.mul(1.28).add(0.03), aaStep(0.55, pg.y));
+    // Dome dots: rows on the unit sphere (azimuth × elevation, every other row offset), kept to the silhouette
+    // band; the lighting drops them on the shaded side, so they sit on the lit rim only (Punktrand).
+    const nObj = normalize(vec3(pg.x, pg.y.mul(0.5), pg.z));
+    const az = atan(nObj.z, nObj.x).div(Math.PI * 2).add(0.5);
+    const el = asin(nObj.y.clamp(0, 1)).div(Math.PI / 2);
+    const dotRows = float(9);
+    const rv = el.mul(dotRows);
+    const ru = az.mul(k).add(floor(rv).mul(0.5));
+    const cell = vec2(fract(ru).sub(0.5), fract(rv).sub(0.5));
+    const dotMask = aaStep(0.2, length(cell)).oneMinus();
+    const rimBand = aaStep(0.42, abs(normalView.dot(positionViewDirection)).oneMinus());
+    const domeDots = mix(c, hexNode(palette.bushDot), dotMask.mul(rimBand));
 
     let albedo = select(motif.lessThan(0.5), c, hatch) as unknown as Vec3Node;
     albedo = select(motif.lessThan(1.5), albedo, tower) as unknown as Vec3Node;
@@ -231,8 +250,13 @@ export class BoardProps {
     albedo = select(motif.lessThan(4.5), albedo, arc) as unknown as Vec3Node;
     albedo = select(motif.lessThan(5.5), albedo, glowing) as unknown as Vec3Node;
     albedo = select(motif.lessThan(6.5), albedo, tip) as unknown as Vec3Node;
+    albedo = select(motif.lessThan(7.5), albedo, domeDots) as unknown as Vec3Node;
     const isGlow = aaStep(5.5, motif).mul(aaStep(6.5, motif).oneMinus());
-    const shade = mix(mix(ink, c, 0.22), glowing, isGlow) as unknown as Vec3Node;
+    // In shadow the motif stays a value step down (hatch, tower rows, arcs remain readable); bush domes keep a
+    // flat shade so their dots live on the lit edge only.
+    const isDome = aaStep(7.5, motif);
+    const shadeMotif = mix(mix(ink, albedo, 0.32), mix(ink, c, 0.22), isDome);
+    const shade = mix(shadeMotif, glowing, isGlow) as unknown as Vec3Node;
     return new BoardSurfaceMaterial({ albedo, shade, terminator: 0.02, facet: { threshold: 0.5, amount: 0.5 }, fog });
   }
 

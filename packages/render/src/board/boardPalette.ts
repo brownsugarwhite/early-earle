@@ -55,6 +55,10 @@ export interface BoardPalette {
   vine: string;
   fog: string;
   stem: string;
+  /** Dome bushes around the meadow: dark body (two tones) and the light dots on their lit edges. */
+  bush: string;
+  bushLight: string;
+  bushDot: string;
 }
 
 function luma(hex: string): number {
@@ -65,7 +69,8 @@ function luma(hex: string): number {
 export function boardPaletteFor(zone: BoardZoneInput): BoardPalette {
   const { terrainLight: light, terrainDark: dark, ink } = zone;
   const accents = zone.accents ?? [];
-  const rust = accents[0] ?? '#c8542a';
+  // Scrap is rust in every zone (Earle's red monoliths); the zone's first accent only tints it.
+  const rust = mixHex('#c8542a', accents[0] ?? '#c8542a', 0.15);
   const teal = accents[1] ?? '#22baa9';
   const neon = accents[2] ?? '#b8ff2a';
   const skyA = zone.sky[0] ?? '#7ce6d5';
@@ -109,5 +114,8 @@ export function boardPaletteFor(zone: BoardZoneInput): BoardPalette {
     vine: mixHex(shiftHex(dark, 20, 0.9, 1.2), ink, 0.35),
     fog: mixHex(paper, sky, 0.18),
     stem: mixHex(dark, ink, 0.3),
+    bush: mixHex(dark, ink, 0.62),
+    bushLight: mixHex(dark, ink, 0.45),
+    bushDot: mixHex(light, paper, 0.35),
   };
 }

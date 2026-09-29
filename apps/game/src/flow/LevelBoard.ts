@@ -174,6 +174,11 @@ export class LevelBoard {
     return this.renderer.animating;
   }
 
+  /** Tweens advanced this frame (refresh the shadow map). */
+  get moved(): boolean {
+    return this.renderer.moved;
+  }
+
   /** Screen-space shake (board units) for the camera. */
   get shake(): Vector2 {
     return this.renderer.shake;
