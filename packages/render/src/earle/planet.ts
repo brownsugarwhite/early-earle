@@ -1,6 +1,6 @@
 import { Box3, BufferAttribute, BufferGeometry, Frustum, Group, Matrix4, Mesh, Object3D, Quaternion, Sphere, Vector3 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
-import { abs, acos, asin, atan, attribute, clamp, cos, dot, float, fract, int, max, mix, normalGeometry, normalize, positionGeometry, positionLocal, select, smoothstep, step, uniform, uniformArray } from 'three/tsl';
+import { abs, acos, asin, atan, attribute, clamp, cos, dot, float, fract, int, max, mix, normalGeometry, normalize, positionGeometry, positionLocal, positionView, select, smoothstep, step, uniform, uniformArray } from 'three/tsl';
 import {
   PlanetField,
   chunkAngularRadius,
@@ -36,6 +36,9 @@ export interface EarlePlanetZone {
 /** Bodenbehandlung je Welt (Terrain-Ornament): glatt, Schneelinien, Wiese, Perspektivlinien, Rampen, Schneegrate. */
 export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges';
 
+/** Kameradistanz (Welteinheiten, Kamera → Blickpunkt), für die die Nebelwerte der Welten gesetzt sind. */
+export const FOG_REFERENCE_DISTANCE = 9;
+
 export interface WorldView {
   /** Kamerahöhe über dem Scheitel (Welteinheiten). */
   height: number;
@@ -46,6 +49,12 @@ export interface WorldView {
   fov: number;
   /** Krümmungs-Boost 0..1 (ferne Erde sinkt zusätzlich ab). */
   curvature: number;
+  /** Bildposition (NDC x, y) des Fokus-Elements: Drittellinien statt Bildmitte. */
+  focus?: [number, number];
+  /** Freiraum vor der Linse in Welteinheiten (Vegetation/Requisiten näher an der Kamera schrumpfen weg). */
+  nearClear?: number;
+  /** Lichtung unter der Kamera (seitlicher Radius, Welteinheiten): ruhiges unteres Bildband. */
+  footClear?: number;
 }
 
 export interface EarlePlanetWorld {
@@ -117,6 +126,8 @@ const _v = new Vector3();
 const _c = new Vector3();
 const _sphere = new Sphere();
 const _q = new Quaternion();
+const _q2 = new Quaternion();
+const _s = new Vector3();
 const _Y = new Vector3(0, 1, 0);
 
 /**
@@ -143,7 +154,8 @@ export class EarlePlanet {
   /** Krümmungs-Boost (0 = echte Kugel) und Blickrichtung im Planetenraum für den Warp. */
   readonly curvature = uniform(0);
   readonly lookDirLocal = uniform(new Vector3(0, 1, 0));
-  readonly path: SpiralPath;
+  /** Levelpfad (Spirale; Abschnitte können überschrieben werden, z. B. der Baumpfad). */
+  path: SpiralPath;
   readonly vegetation: PlanetVegetation;
   /** Vereinigung der geladenen Chunks (Planetenraum) inkl. Vegetationshöhe, für die Schattenkamera. */
   readonly bounds = new Box3();
@@ -177,6 +189,20 @@ export class EarlePlanet {
   private viewBlend = 0;
   private fogStart = 12;
   private fogRange = 22;
+  /**
+   * Nebel-Versatz (Welteinheiten) für die aktuelle Kamera: Die Nebelwerte der Welten gelten für eine Kamera
+   * ≈ 9 Einheiten vor dem Blickpunkt; höhere Kameras (Hügelblick, Karte) schieben den Nebel um ihren Mehrabstand
+   * nach hinten, damit die Wertstufen im Mittel- und Hintergrund liegen und nicht schon am Vordergrund.
+   */
+  private fogOffset = 0;
+  /**
+   * Schleier über Nachbarwelten: zusätzliche Nebeldistanz (Welteinheiten) für alles, was nicht zur Blick-Welt gehört.
+   * Fremde Welten lesen so als ferne Wertstufen im Nebel der eigenen Welt (Earle: ein Bild, ruhige Hintergrundbänder)
+   * statt als bunte Flecken im Bild; beim Drehen wandert der Schleier mit der Überblendung. 0 = aus.
+   */
+  readonly veilDistance = uniform(24);
+  private readonly veilWorldA = uniform(0);
+  private readonly veilWorldB = uniform(0);
 
   constructor(readonly options: EarlePlanetOptions) {
     if (options.zones.length < 1) throw new Error('EarlePlanet needs zones');
@@ -238,11 +264,7 @@ export class EarlePlanet {
     // Blickpunkt → effektiver Krümmungsradius R / (1 + c)); dieselbe Formel für Terrain, Vegetation, Requisiten
     // und den Schattenpass (Caster und Empfänger konsistent gebogen).
     const R = options.radius;
-    const warp = (p: Vec3Node): Vec3Node => {
-      const n = normalize(p);
-      const away = clamp(float(1).sub(dot(n, this.lookDirLocal)), 0, 2);
-      return p.sub(n.mul(away.mul(this.curvature).mul(R)));
-    };
+    const warp = (p: Vec3Node): Vec3Node => this.bendNode(p);
 
     // --- Terrainmaterial (geteilt): Zeile je Welt, Riss je Grenze, Wachstum je Slot, Bodenornament ---------
     const zones = options.zones.length;
@@ -254,8 +276,10 @@ export class EarlePlanet {
     const farSplitTable = uniformArray(tables.farSplit.map((v) => v), 'float') as unknown as UniformArrayLike;
     const terrainRows = uniformArray(this.rows.map((r) => r.terrain), 'float') as unknown as UniformArrayLike;
     const groundKinds = uniformArray(this.worlds.map((w) => GROUND_KIND[w.ground]), 'float') as unknown as UniformArrayLike;
-    const patternRows = uniformArray(this.worlds.map((w, i) => (w.ground === 'floorLines' ? this.rows[i]!.accent : this.rows[i]!.terrain)), 'float') as unknown as UniformArrayLike;
-    const patternIdx = uniformArray(this.worlds.map((w) => (w.ground === 'floorLines' ? 7 : 1)), 'float') as unknown as UniformArrayLike;
+    // Linienfarbe: Schneestreifen eine Stufe dunkler als der Schnee; Bodenlinien des Juwelenwalds (Ebene_3) dunkel auf
+    // dunklem Grund — nur zwei Stufen heller als die Bodentinte
+    const patternRows = uniformArray(this.worlds.map((_, i) => this.rows[i]!.terrain), 'float') as unknown as UniformArrayLike;
+    const patternIdx = uniformArray(this.worlds.map((w) => (w.ground === 'floorLines' ? 4 : 1)), 'float') as unknown as UniformArrayLike;
     const cosHalfWidth = uniform(this.field.cosHalfWidth);
     // Gepackte Vertex-Attribute (WebGPU ≤ 8 Puffer): ta = (Zone, Grenzabstand, Grenz-ID, Slot), tb = (cos Δ, sin Δ, Höhe, 0)
     const ta = attribute('ta', 'vec4');
@@ -288,9 +312,29 @@ export class EarlePlanet {
     const tri2 = abs(fract(along.mul(2.7).add(0.37)).mul(2).sub(1));
     const jag = width.mul(float(0.45).add(tri.mul(0.4)).add(tri2.mul(0.25)));
     const open = step(0.001, width);
-    const crack = aaStep(jag, border).oneMinus().mul(open);
+    const zoneCrack = aaStep(jag, border).oneMinus().mul(open);
     const north = zoneCoord.sub(zoneCoord.floor()).lessThan(0.5); // Grenze liegt unter (südlich von) diesem Punkt
-    const lip = aaStep(jag, border).mul(aaStep(jag.add(0.07), border).oneMinus()).mul(open).mul(select(north, float(1), float(0)));
+    const zoneLip = aaStep(jag, border).mul(aaStep(jag.add(0.07), border).oneMinus()).mul(open).mul(select(north, float(1), float(0)));
+    // Weltgrenzen innerhalb einer Zone (Pfadseite ↔ Gegenseite, Nord-/Südhälfte) als schmalere, immer offene
+    // Spalten: Nachbarwelten liegen hinter einer klaren Kante statt ineinander zu verlaufen.
+    const hw = Math.acos(Math.max(-1, Math.min(1, this.field.cosHalfWidth)));
+    const cosLat = float(1).sub(pc.y.mul(pc.y)).max(0).sqrt();
+    const deltaAbs = abs(atan(side.y, side.x));
+    const dSide = abs(deltaAbs.sub(hw)).mul(cosLat).mul(R);
+    const hasB = select(side.x.greaterThan(cosHalfWidth), nearB, farB).greaterThan(-0.5);
+    const zoneFrac = zoneCoord.sub(zoneIndex);
+    const dHalf = select(hasB, abs(zoneFrac.sub(arrayElement(farSplitTable, zoneIndex))).mul((Math.PI / zones) * R), float(1e4));
+    const alongW = select(dSide.lessThan(dHalf), asin(clamp(pc.y, -0.999, 0.999)).mul(R * 0.9), along);
+    const triW = abs(fract(alongW.mul(1.3)).mul(2).sub(1));
+    const worldGap = float(hw < Math.PI - 1e-3 ? 1 : 0); // ohne Weltenliste (Altformat) keine Weltgrenzen
+    const wWorld = float(0.32).mul(float(0.5).add(triW.mul(0.5))).mul(worldGap);
+    const dWorld = dSide.min(dHalf);
+    const worldCrack = aaStep(wWorld, dWorld).oneMinus().mul(worldGap);
+    const nearSide = side.x.greaterThan(cosHalfWidth);
+    const lipSide = select(dSide.lessThan(dHalf), select(nearSide, float(1), float(0)), select(zoneFrac.lessThan(arrayElement(farSplitTable, zoneIndex)), float(1), float(0)));
+    const worldLip = aaStep(wWorld, dWorld).mul(aaStep(wWorld.add(0.06), dWorld).oneMinus()).mul(lipSide).mul(worldGap);
+    const crack = max(zoneCrack, worldCrack);
+    const lip = max(zoneLip, worldLip);
     const slotAttr = ta.w;
     const growthNode = (this.terrainGrowth as unknown as { element(i: unknown): FloatNode }).element(int(slotAttr));
 
@@ -321,15 +365,15 @@ export class EarlePlanet {
     const e2U = uniform(e2);
     const ang = acos(clamp(dot(d, anchorU), -1, 1));
     const theta = atan(dot(d, e2U), dot(d, e1U));
-    const lines = stripeMask(select(isSnow, snowCoord, theta.mul(56 / (Math.PI * 2))), select(isSnow, float(0.09), float(0.05))).mul(
+    const lines = stripeMask(select(isSnow, snowCoord, theta.mul(36 / (Math.PI * 2))), select(isSnow, float(0.09), float(0.035))).mul(
       select(isSnow, float(1), smoothstep(0.015, 0.06, ang)),
     );
-    const rings = stripeMask(ang.mul(R / 1.5).add(drift), 0.06).mul(select(isSnow, float(0), float(1)));
+    const rings = stripeMask(ang.mul(R / 2.4).add(drift), 0.035).mul(select(isSnow, float(0), float(1)));
     const mask = max(lines, rings).mul(flat).mul(select(kind.greaterThan(0.5).and(kind.lessThan(2.5)), float(1), float(0)));
     const patternColor = this.lookup.pal(arrayElement(patternIdx, worldIndex), arrayElement(patternRows, worldIndex)).rgb;
     // Schneelinien und Bodenlinien laufen durch die Schatten (dort halb in Tinte gemischt), Grat-Streifen nur im Licht
     const runsInShadow = kind.greaterThan(0.5).and(kind.lessThan(2.5));
-    const patternShadow = mix(this.lookup.pal(0, rowNode).rgb, patternColor, select(runsInShadow, float(0.55), float(0)));
+    const patternShadow = mix(this.lookup.pal(0, rowNode).rgb, patternColor, select(runsInShadow, float(0.4), float(0)));
 
     this.terrainMaterial = new EarleMaterial({
       lookup: this.lookup,
@@ -345,6 +389,7 @@ export class EarlePlanet {
       growthNode,
       pattern: { mask, color: patternColor, shadowColor: patternShadow },
       positionNode: warp(positionLocal),
+      fogDistNode: positionView.length().add(this.veilNode(worldIndex)),
     });
 
     // --- Vegetation ------------------------------------------------------------------------------------
@@ -360,8 +405,48 @@ export class EarlePlanet {
       collapsePx: options.quality.collapsePx,
       seed: options.seed,
       warp,
+      veil: (worldIndex) => this.veilNode(worldIndex),
+      foreign: (worldIndex) => this.foreignNode(worldIndex),
+      rowCount: this.atlas.rowCount,
     });
     this.group.add(this.vegetation.group);
+  }
+
+  /**
+   * Krümmungs-Boost als TSL-Knoten für Planetenraum-Positionen: Punkt sinkt radial um (1 − cos θ)·c·R ab
+   * (θ = Winkel zum Blickpunkt). Dieselbe Formel wie Terrain und Vegetation — für Pfad-Pucks, Held, Brett.
+   */
+  bendNode(p: Vec3Node): Vec3Node {
+    const n = normalize(p);
+    const away = clamp(float(1).sub(dot(n, this.lookDirLocal)), 0, 2);
+    return p.sub(n.mul(away.mul(this.curvature).mul(this.options.radius)));
+  }
+
+  /** CPU-Gegenstück zu `bendNode` (Planetenraum): für Positionen, die auf der CPU gesetzt werden. */
+  bend(p: Vector3, out = new Vector3()): Vector3 {
+    const len = p.length() || 1;
+    const away = Math.min(2, Math.max(0, 1 - p.dot(this.lookDirLocal.value) / len));
+    const drop = away * this.curvature.value * this.options.radius;
+    return out.copy(p).addScaledVector(p, -drop / len);
+  }
+
+  /** Wahrzeichen-Slots ersetzen (Freiräume und Fokus-Elemente); geladene Chunks werden neu gestreut. */
+  setLandmarks(landmarks: PlanetLandmarkParams[]): void {
+    this.field.setLandmarks(landmarks);
+    this.cache.clear();
+    for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
+    this.contentDirty = true;
+  }
+
+  /**
+   * Levelpfad ersetzen (vor dem ersten Laden der Chunks, sonst werden sie neu gestreut): Pfadkorridor und Wachstum
+   * folgen dann den neuen Knoten (z. B. dem Abschnitt, der den Riesenbaum hinaufführt).
+   */
+  setPath(path: SpiralPath): void {
+    this.path = path;
+    this.cache.clear();
+    for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
+    this.contentDirty = true;
   }
 
   get hTotal(): number {
@@ -395,10 +480,20 @@ export class EarlePlanet {
     return this.viewWorldB;
   }
 
+  /** Läuft gerade eine Welt-Überblendung? (Schleier/Nahfeld der Nachbarn ändern sich → Schattenpass nachziehen.) */
+  get viewBlending(): boolean {
+    return this.viewBlend < 1;
+  }
+
   /** Himmel und Nebel auf die Zone unter dem Blickpunkt einstellen (Altformat: nahe Welt der Zone). */
   setViewZone(zoneCoord: number): void {
     const z = Math.min(this.field.zoneCount - 1, Math.max(0, Math.floor(zoneCoord)));
     this.setViewWorld(this.field.tables.nearWorld[z] ?? 0);
+  }
+
+  /** Nur den Blickpunkt setzen (Zentrum des Krümmungs-Boosts), ohne die Blick-Welt zu wechseln. */
+  setLookDirection(dirLocal: Vector3): void {
+    this.lookDirLocal.value.copy(dirLocal).normalize();
   }
 
   /** Blickpunkt im Planetenraum → Welt darunter → Himmel/Nebel/Streifen überblenden. */
@@ -424,6 +519,21 @@ export class EarlePlanet {
     this.skyRowB.value = b.sky;
     this.fog.row.value = a.fog;
     this.fog.rowB.value = b.fog;
+    this.veilWorldA.value = this.viewWorldA;
+    this.veilWorldB.value = this.viewWorldB;
+  }
+
+  /** Fremdheit 0..1 der Welt `worldIndex` gegenüber der Blick-Welt (mit der Überblendung weich) (TSL). */
+  private foreignNode(worldIndex: FloatNode): FloatNode {
+    const foreignA = step(0.5, abs(worldIndex.sub(this.veilWorldA)));
+    const foreignB = step(0.5, abs(worldIndex.sub(this.veilWorldB)));
+    // Schleier aus (Übersicht) → auch keine Fremdheit
+    return mix(foreignA, foreignB, this.fog.mix).mul(step(0.01, this.veilDistance));
+  }
+
+  /** Schleier-Zusatzdistanz für ein Fragment/eine Instanz der Welt `worldIndex` (TSL). */
+  private veilNode(worldIndex: FloatNode): FloatNode {
+    return this.foreignNode(worldIndex).mul(this.veilDistance);
   }
 
   /** Überblendung vorantreiben (einmal pro Frame). */
@@ -438,8 +548,7 @@ export class EarlePlanet {
       this.stripeStrength.value = wa.fogStripes + (wb.fogStripes - wa.fogStripes) * t;
       this.fogStart = wa.fog.start + (wb.fog.start - wa.fog.start) * t;
       this.fogRange = wa.fog.range + (wb.fog.range - wa.fog.range) * t;
-      this.fog.start.value = this.fogStart;
-      this.fog.invRange.value = 1 / Math.max(1, this.fogRange);
+      this.applyFog();
       if (this.viewBlend >= 1) {
         this.viewWorldA = this.viewWorldB;
         this.applyViewRows();
@@ -447,6 +556,22 @@ export class EarlePlanet {
         this.fog.mix.value = 0;
       }
     }
+  }
+
+  /**
+   * Nebel für die Kameradistanz nachführen: `lookDistance` = Abstand Kamera → Blickpunkt am Boden. Die Weltwerte
+   * (fog.start/range) sind für ≈ 9 Einheiten gesetzt; mehr Abstand verschiebt den Nebel um die Differenz.
+   */
+  setFogDistance(lookDistance: number): void {
+    const offset = Math.max(0, lookDistance - FOG_REFERENCE_DISTANCE);
+    if (Math.abs(offset - this.fogOffset) < 1e-3) return;
+    this.fogOffset = offset;
+    this.applyFog();
+  }
+
+  private applyFog(): void {
+    this.fog.start.value = this.fogStart + this.fogOffset;
+    this.fog.invRange.value = 1 / Math.max(1, this.fogRange);
   }
 
   /** Riss zwischen Zone `border` und `border + 1` schließen/öffnen. */
@@ -487,20 +612,30 @@ export class EarlePlanet {
   }
 
   /**
-   * Setzt ein externes Objekt (z. B. `createHeroTree()`) auf einen Wahrzeichen-Slot: Fußpunkt auf der Oberfläche,
-   * +Y entlang der Normale, Skalierung aus dem Slot. Das Objekt wird Kind der Planetengruppe (rotiert mit).
+   * Setzt ein externes Objekt (z. B. `createHeroTree().group`) auf einen Wahrzeichen-Slot: ein Halter trägt Lage,
+   * Normale, Drehung (yaw) und Maßstab des Slots, das Objekt selbst bleibt frei (eigenes Wachstum/Skalierung).
+   * Der Halter hängt in der Planetengruppe (rotiert mit) und wird zurückgegeben (Matrix = Slot-Raum → Planetenraum).
    */
-  addLandmark(object: Object3D, slotId?: string): LandmarkSlot | null {
+  addLandmark(object: Object3D, slotId?: string): Group | null {
     const slot = slotId ? this.getLandmarkSlot(slotId) : this.field.landmarkSlots[0];
     if (!slot) return null;
-    object.position.set(slot.position[0], slot.position[1], slot.position[2]);
+    const holder = new Group();
+    holder.name = `landmark-${slot.id}`;
+    holder.matrix.copy(this.landmarkMatrix(slot));
+    holder.matrix.decompose(holder.position, holder.quaternion, holder.scale);
+    holder.add(object);
+    this.group.add(holder);
+    this.landmarks.set(slot.id, holder);
+    return holder;
+  }
+
+  /** Matrix Slot-Raum (Fuß im Ursprung, +Y = Normale, gedreht um yaw, skaliert) → Planetenraum. */
+  landmarkMatrix(slot: LandmarkSlot, out = new Matrix4()): Matrix4 {
     _v.set(slot.normal[0], slot.normal[1], slot.normal[2]).normalize();
     _q.setFromUnitVectors(_Y, _v);
-    object.quaternion.copy(_q);
-    object.scale.setScalar(slot.scale);
-    this.group.add(object);
-    this.landmarks.set(slot.id, object);
-    return slot;
+    _q2.setFromAxisAngle(_Y, (slot.yawDeg * Math.PI) / 180);
+    _q.multiply(_q2);
+    return out.compose(_c.set(slot.position[0], slot.position[1], slot.position[2]), _q, _s.setScalar(slot.scale));
   }
 
   removeLandmark(slotId: string): void {

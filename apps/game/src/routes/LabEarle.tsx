@@ -61,6 +61,13 @@ function paramsFromUrl(search: URLSearchParams): Partial<EarleLabParams> {
   if (sun !== null) out.sunElevation = Math.max(6, Math.min(15, sun));
   const q = search.get('quality');
   if (q === 'hoch' || q === 'mobil' || q === 'auto') out.quality = q;
+  if (search.get('path') === '1') out.path = true;
+  // ?rail=88 → Kamera auf der Baum-Schiene bei Level 88 (Knoten 87); zeigt auch den Pfad
+  const rail = num('rail');
+  if (rail !== null && rail >= 1) {
+    out.rail = Math.round(rail) - 1;
+    out.path = true;
+  }
   return out;
 }
 
@@ -139,6 +146,10 @@ export function LabEarle() {
             />
             <Range label="Müll" testId="earle-trash" value={params.trash} min={0} max={200} step={10} format={(v) => `${v} %`} onChange={(v) => set({ trash: v })} />
             <label className="earle-ctl earle-ctl--toggle">
+              <span>Levelpfad</span>
+              <input type="checkbox" checked={params.path} onChange={(e) => set({ path: e.target.checked })} data-testid="earle-path-toggle" />
+            </label>
+            <label className="earle-ctl earle-ctl--toggle">
               <span>Referenz</span>
               <input type="checkbox" checked={showRef} onChange={(e) => setShowRef(e.target.checked)} data-testid="earle-ref-toggle" />
             </label>
@@ -187,7 +198,7 @@ export function LabEarle() {
             ))}
             <p className="earle-hint">
               Ziehen rollt den Planeten, Pinch/Rad zoomt. Welt wählen dreht zu ihrer Mitte; Perspektive 0 = alte Übersicht, 100 % = Earle-Komposition der Welt, darüber
-              übertrieben. Fortschritt heilt die Chunks entlang des Pfads, der Müll versinkt. <code>?world=08&amp;p=1.2&amp;ref=1</code>, <code>?bench=1</code> misst.
+              übertrieben. Fortschritt heilt die Chunks entlang des Pfads, der Müll versinkt. Level 80–95 steigen den Riesenbaum hinauf. <code>?world=08&amp;ref=1</code>, <code>?rail=88</code> (Baum-Schiene), <code>?bench=1</code> misst.
             </p>
           </>
         )

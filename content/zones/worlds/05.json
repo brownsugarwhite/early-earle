@@ -33,5 +33,15 @@
   "props": { "rocks": 0.006, "animals": 0.006 },
   "fogStripes": 0,
   "fog": { "start": 7, "range": 13 },
-  "view": { "height": 3.8, "forward": 1.6, "look": 5.55, "fov": 86, "curvature": 0.12 }
+  "view": {
+    "height": 6.0,
+    "forward": 9,
+    "look": 5.0,
+    "fov": 52,
+    "curvature": 0.12,
+    "focus": [-0.33, -0.4],
+    "nearClear": 1.2,
+    "footClear": 6.0
+  },
+  "focal": { "kind": "bare", "scale": 3.0, "latFrac": 0.5, "yawDeg": 0 }
 }

@@ -4,7 +4,9 @@ import { EarlePlanet, FogStripes, SunRig, createSkyDome, skySunIndices, type Wor
 import type { SceneController, SceneContext } from '../../canvas/SceneController';
 import { Trackball } from './trackball';
 import { resolveQuality, type QualityLevel, type QualityPreset, type ResolvedQuality } from './quality';
-import { CHUNKS_PER_FACE, NODES_PER_ZONE, PLANET_RADIUS, WORLD_CONTENTS, ZONE_CONTENTS, nearWorldOfZone, planetLandmarks, planetWorlds, planetZones } from './zones';
+import { CHUNKS_PER_FACE, HERO_TREE_WORLD, NODES_PER_ZONE, PLANET_RADIUS, WORLD_CONTENTS, ZONE_CONTENTS, nearWorldOfZone, planetLandmarks, planetWorlds, planetZones } from './zones';
+import { createHeroTreeSite, type HeroTreeSite } from './heroTreeSite';
+import { NodePath, type BentLayout } from '../../flow/NodePath';
 
 export interface EarleLabParams {
   /** Fortschritt: Anzahl geschaffter Knoten (0..100) → Wachstum je Chunk entlang des Pfads (Müll versinkt). */
@@ -32,6 +34,10 @@ export interface EarleLabParams {
   perspective: number;
   /** Müll-Dichte der Startwelt in Prozent (0–200). */
   trash: number;
+  /** Levelpfad (Steine, Punkte, Ring) einblenden — inkl. des Abschnitts über den Riesenbaum. */
+  path: boolean;
+  /** Kamera auf der Baum-Schiene bei Knoten `rail` (0-basiert, 79–94); −1 = aus. */
+  rail: number;
 }
 
 export const DEFAULT_EARLE_PARAMS: EarleLabParams = {
@@ -48,6 +54,8 @@ export const DEFAULT_EARLE_PARAMS: EarleLabParams = {
   world: -1,
   perspective: 1,
   trash: 100,
+  path: false,
+  rail: -1,
 };
 
 export interface EarleBenchInfo {
@@ -63,10 +71,11 @@ export interface EarleBenchInfo {
 export { PLANET_RADIUS };
 
 /** Alte Übersicht (P2b): Kamera 9 hoch, 8 zurück, Blick 4 voraus, FOV 70, keine Zusatzkrümmung. */
+/** Schleier über Nachbarwelten im Weltblick (Zusatz-Nebeldistanz, Welteinheiten). */
+const VEIL_DISTANCE = 24;
 const OVERVIEW: WorldView = { height: 9, forward: 8, look: 4, fov: 70, curvature: 0 };
-/** NDC y des Fokus: Knoten im unteren Drittel, Weltmitte im Blickpunkt. */
-const NODE_NDC_Y = -0.3;
-const WORLD_NDC_Y = 0;
+/** Bildposition des Fokus: Knoten auf der unteren Drittellinie; Welten nach ihrer Komposition (view.focus). */
+const NODE_NDC: [number, number] = [0, -0.3];
 /** Mindestabstand der Kamera über dem Gelände. */
 const CLEARANCE = 1.3;
 const _Y = new Vector3(0, 1, 0);
@@ -93,6 +102,16 @@ export class EarleLabScene implements SceneController {
   private ctx: SceneContext | null = null;
   private world: EarlePlanet | null = null;
   private fogStripes: FogStripes | null = null;
+  private treeSite: HeroTreeSite | null = null;
+  private nodePath: NodePath | null = null;
+  private elapsed = 0;
+  private nearClear = 0.25;
+  private footClear = 0;
+  /**
+   * Gewählte Welt (Weltwahl/Knoten): Himmel, Nebel und Komposition bleiben bei ihr, auch wenn der Bildmittelpunkt
+   * knapp in einer Nachbarwelt liegt (Fokus auf der Drittellinie). Ziehen löst die Bindung.
+   */
+  private pinnedWorld = -1;
   private readonly disposables: Array<{ dispose(): void }> = [];
   private readonly listeners = new Set<(p: EarleLabParams) => void>();
   private readonly worldListeners = new Set<(world: number) => void>();
@@ -106,6 +125,11 @@ export class EarleLabScene implements SceneController {
   private readonly view: WorldView = { ...OVERVIEW };
   private viewInitialised = false;
   private lift = 0;
+  /**
+   * Geländehöhe am Blickpunkt (Welteinheiten über dem Grundradius, geglättet): Kamera und Blickziel stehen relativ zum
+   * Gelände, das man ansieht — in steilen Welten (Violette Hänge, Schneekiefern) klebt der Hügelblick sonst am Hang.
+   */
+  private groundLift = 0;
   private shadowDirty = true;
   private zoom = 1;
   private autoRotate = 0;
@@ -124,6 +148,8 @@ export class EarleLabScene implements SceneController {
       elevationDeg: this.params.sunElevation,
       azimuthDeg: this.params.sunAzimuth,
     });
+    // Schatten v2: Kaskaden an der Planetensicht (Empfänger = Planetenschale inkl. Krümmungs-Warp; Welt als Getter)
+    this.sun.fitToPlanet(this.camera, () => this.world, this.planet);
     this.trackball = new Trackball({
       radius: PLANET_RADIUS,
       tau: 0.4,
@@ -156,18 +182,23 @@ export class EarleLabScene implements SceneController {
   }
 
   private buildWorld(): void {
+    this.nodePath?.dispose();
+    this.nodePath = null;
+    this.treeSite?.dispose();
+    this.treeSite = null;
     this.world?.dispose();
     this.fogStripes?.dispose();
     for (const d of this.disposables) d.dispose();
     this.disposables.length = 0;
     const p = this.preset;
+    const landmarks = planetLandmarks();
     const world = new EarlePlanet({
       radius: PLANET_RADIUS,
       seed: this.params.seed,
       chunksPerFace: CHUNKS_PER_FACE,
       zones: planetZones(),
       worlds: planetWorlds(),
-      landmarks: planetLandmarks(),
+      landmarks,
       trashScale: this.params.trash / 100,
       quality: {
         chunkRes: Math.max(12, Math.round(p.terrainRes / 3)),
@@ -182,6 +213,9 @@ export class EarleLabScene implements SceneController {
     });
     this.world = world;
     this.planet.add(world.group);
+    // Riesenbaum (Welt 01) mit dem Levelabschnitt 80–95 über Stamm und Krone
+    this.treeSite = createHeroTreeSite(world, { worldIndex: HERO_TREE_WORLD, quality: p.name, seed: this.params.seed, landmarks });
+    this.buildNodePath();
     world.terrainBands.value = this.params.bands;
     world.fog.steps.value = this.params.fogSteps;
 
@@ -212,6 +246,28 @@ export class EarleLabScene implements SceneController {
     this.rig.add(this.fogStripes.group);
     this.lastCurvature = -1;
     this.shadowDirty = true;
+  }
+
+  /** Levelpfad (NodePath des Flows) mit Krümmung; nur wenn eingeschaltet. */
+  private buildNodePath(): void {
+    this.nodePath?.dispose();
+    this.nodePath = null;
+    const world = this.world;
+    const site = this.treeSite;
+    if (!world || !site || !this.params.path) return;
+    const path = site.levelPath;
+    const layout: BentLayout = {
+      nodes: path.nodes.map((n) => ({ index: n.index, u: n.lon / 180, v: n.lat / 90, position: n.position, normal: n.normal })),
+      dots: path.dots.map((d) => ({ position: d.position, normal: d.normal })),
+      length: path.length,
+      bend: (q) => world.bendNode(q),
+    };
+    this.scene.updateMatrixWorld(true);
+    const sunLocal = this.sun.directionWorld(new Vector3()).applyQuaternion(this.planet.quaternion.clone().invert());
+    this.nodePath = new NodePath(layout, sunLocal);
+    const current = Math.max(0, Math.min(this.params.progress, layout.nodes.length - 1));
+    this.nodePath.setProgress(current, this.params.progress);
+    this.planet.add(this.nodePath.group);
   }
 
   /** Pixel-Ratio-Override: CanvasHost setzt min(DPR, 2), das Preset deckelt weiter (Mobil 1.5). */
@@ -276,9 +332,12 @@ export class EarleLabScene implements SceneController {
       }
       if (force || next.progress !== prev.progress) {
         world.setProgress(next.progress);
+        this.treeSite?.setProgress(next.progress);
+        this.nodePath?.setProgress(Math.max(0, Math.min(next.progress, world.path.nodes.length - 1)), next.progress);
         this.shadowDirty = true;
         if (!force) this.turnToNode(Math.max(0, Math.min(next.progress, world.path.nodes.length - 1)));
       }
+      if (!force && next.path !== prev.path) this.buildNodePath();
       if (!force && next.world !== prev.world && next.world >= 0) this.turnToWorld(next.world);
       if (force || next.sunElevation !== prev.sunElevation || next.sunAzimuth !== prev.sunAzimuth) {
         this.sun.setAngles(next.sunElevation, next.sunAzimuth);
@@ -320,12 +379,34 @@ export class EarleLabScene implements SceneController {
   private applyView(): void {
     const v = this.view;
     this.cameraOffset(v, this.camera.position);
-    this.camera.position.y += this.lift;
-    this.camera.lookAt(this.tmp.set(0, 0, -v.look).add(this.rig.position));
+    this.camera.position.y += this.lift + this.groundLift;
+    this.camera.lookAt(this.tmp.set(0, this.groundLift, -v.look).add(this.rig.position));
     if (Math.abs(this.camera.fov - v.fov) > 1e-3) {
       this.camera.fov = v.fov;
       this.camera.updateProjectionMatrix();
     }
+  }
+
+  /**
+   * Kameraschiene des Baumabschnitts (Vorschau für den Flow): Kamera auf der Schiene bei Knoten `params.rail`,
+   * Blick zum Schienen-Blickpunkt; Schiene im Planetenraum → Welt → Rig-Raum.
+   */
+  private applyRail(): void {
+    const site = this.treeSite;
+    const index = this.params.rail;
+    if (!site || index < 0) return;
+    const pos = new Vector3();
+    const look = new Vector3();
+    if (!site.railFor(index, pos, look)) return;
+    this.scene.updateMatrixWorld(true);
+    this.planet.localToWorld(pos);
+    this.planet.localToWorld(look);
+    // Kamera hängt am Rig (Scheitel): Weltposition in Rig-Raum, Blick mit Oben = radial am Kameraort
+    this.rig.worldToLocal(pos);
+    this.camera.position.copy(pos);
+    this.camera.up.copy(pos.clone().add(this.rig.position).normalize());
+    this.camera.lookAt(look);
+    this.camera.up.set(0, 1, 0);
   }
 
   private worldUnitsPerPixel(): number {
@@ -341,6 +422,7 @@ export class EarleLabScene implements SceneController {
   /** Programmatisches Ziehen (Tests): Pixel-Delta wie eine Zeigerbewegung. */
   rotateBy(dxPx: number, dyPx: number): void {
     this.trackball.drag(dxPx, dyPx, 1 / 60);
+    this.pinnedWorld = -1;
     this.planet.quaternion.copy(this.trackball.quaternion);
     this.shadowDirty = true;
   }
@@ -350,23 +432,25 @@ export class EarleLabScene implements SceneController {
     this.autoRotate = radPerSec;
   }
 
-  /** Weltrichtung (vom Planetenmittelpunkt), die bei der Komposition `v` auf Bildschirmhöhe `ndcY` erscheint. */
-  private computeTargetDir(v: WorldView, ndcY: number): void {
+  /** Weltrichtung (vom Planetenmittelpunkt), die bei der Komposition `v` an der Bildstelle `ndc` erscheint. */
+  private computeTargetDir(v: WorldView, ndc: [number, number]): void {
+    const [ndcX, ndcY] = ndc;
     const cam = this.probe;
     cam.aspect = this.camera.aspect;
     cam.fov = v.fov;
     this.cameraOffset(v, cam.position).add(this.rig.position);
-    cam.lookAt(this.tmp.set(0, 0, -v.look).add(this.rig.position));
+    cam.position.y += this.groundLift;
+    cam.lookAt(this.tmp.set(0, this.groundLift, -v.look).add(this.rig.position));
     cam.updateMatrixWorld(true);
     cam.updateProjectionMatrix();
     // Blickpunkt am Boden (auch für flache Blicke, deren Mittelstrahl über den Horizont geht)
     const lookDir = new Vector3(0, 0, -v.look).add(this.rig.position).normalize();
-    if (ndcY === 0) {
+    if (ndcY === 0 && ndcX === 0) {
       this.targetDir.copy(lookDir);
       return;
     }
     const origin = cam.position.clone();
-    const dir = this.tmp.set(0, ndcY, 0.5).unproject(cam).sub(origin).normalize();
+    const dir = this.tmp.set(ndcX, ndcY, 0.5).unproject(cam).sub(origin).normalize();
     const r = PLANET_RADIUS + 0.9;
     const b = origin.dot(dir);
     const c = origin.lengthSq() - r * r;
@@ -397,19 +481,61 @@ export class EarleLabScene implements SceneController {
    * Welten sind Spiralbänder (Ost–West), der Blick läuft also längs der Welt und des Pfads zum Horizont; die
    * Nachbarwelten liegen links und rechts.
    */
-  private focusRotation(focusWorld: Vector3, worldIndex: number, ndcY: number): Quaternion {
-    this.computeTargetDir(this.viewFor(worldIndex), ndcY);
+  private focusRotation(focusWorld: Vector3, worldIndex: number, ndc: [number, number]): Quaternion {
+    this.computeTargetDir(this.viewFor(worldIndex), ndc);
     const delta = new Quaternion().setFromUnitVectors(focusWorld, this.targetDir);
     const focusLocal = focusWorld.clone().applyQuaternion(this.planet.quaternion.clone().invert());
-    const east = new Vector3(-focusLocal.z, 0, focusLocal.x);
-    if (east.lengthSq() < 1e-6) return delta;
-    east.normalize().applyQuaternion(this.planet.quaternion).applyQuaternion(delta);
+    const heading = this.bestHeading(focusLocal, worldIndex);
+    if (!heading) return delta;
+    heading.applyQuaternion(this.planet.quaternion).applyQuaternion(delta);
     const n = this.targetDir;
-    const a = east.addScaledVector(n, -east.dot(n)).normalize();
+    const a = heading.addScaledVector(n, -heading.dot(n)).normalize();
     const forward = new Vector3(0, 0, -1);
     const b = forward.addScaledVector(n, -forward.dot(n)).normalize();
     const angle = Math.atan2(n.dot(new Vector3().crossVectors(a, b)), a.dot(b));
     return new Quaternion().setFromAxisAngle(n, angle).multiply(delta);
+  }
+
+  /**
+   * Blickrichtung (Tangente am Fokus, Planetenraum), in der das Bild in der eigenen Welt bleibt: Kandidaten alle 10°,
+   * Proben entlang der Blickachse (3–15 Einheiten) und seitlich (Bildbreite); die Richtung mit den meisten Proben in
+   * der Welt gewinnt (bei Gleichstand: Osten, längs des Weltbands). Nachbarwelten rücken so an den Rand oder hinter
+   * den Horizont.
+   */
+  private bestHeading(focusLocal: Vector3, worldIndex: number): Vector3 | null {
+    const world = this.world;
+    const up = focusLocal.clone().normalize();
+    const east = new Vector3(-up.z, 0, up.x);
+    if (east.lengthSq() < 1e-6) return null;
+    east.normalize();
+    const north = new Vector3().crossVectors(up, east).normalize();
+    if (!world) return east;
+    const R = PLANET_RADIUS;
+    const probe = new Vector3();
+    const inWorld = (dir: Vector3, dist: number): number => {
+      const ang = dist / R;
+      probe.copy(up).multiplyScalar(Math.cos(ang)).addScaledVector(dir, Math.sin(ang));
+      return world.worldAt(probe) === worldIndex ? 1 : 0;
+    };
+    let best = east.clone();
+    let bestScore = -1;
+    for (let deg = 0; deg < 360; deg += 10) {
+      const a = (deg * Math.PI) / 180;
+      const fwd = east.clone().multiplyScalar(Math.cos(a)).addScaledVector(north, Math.sin(a));
+      const side = new Vector3().crossVectors(up, fwd).normalize();
+      let score = 0;
+      for (const d of [3, 6, 9, 12, 15]) score += inWorld(fwd, d);
+      for (const [f, l] of [[8, 6], [8, -6], [14, 10], [14, -10]] as const) {
+        const dir = fwd.clone().multiplyScalar(f).addScaledVector(side, l);
+        score += 0.6 * inWorld(dir.normalize(), Math.hypot(f, l));
+      }
+      score -= 0.002 * Math.min(deg, 360 - deg); // Gleichstand → Osten
+      if (score > bestScore) {
+        bestScore = score;
+        best = fwd;
+      }
+    }
+    return best;
   }
 
   /** Planet sofort so drehen, dass Knoten `index` im unteren Drittel liegt. */
@@ -417,8 +543,9 @@ export class EarleLabScene implements SceneController {
     const world = this.world;
     const d = this.nodeDirWorld(index, this.tmp2);
     if (!world || !d) return;
-    this.planet.quaternion.premultiply(this.focusRotation(d, this.nodeWorld(index), NODE_NDC_Y));
+    this.planet.quaternion.premultiply(this.focusRotation(d, this.nodeWorld(index), NODE_NDC));
     this.trackball.quaternion.copy(this.planet.quaternion);
+    this.pinnedWorld = this.nodeWorld(index);
     this.viewInitialised = false;
     this.shadowDirty = true;
   }
@@ -428,25 +555,42 @@ export class EarleLabScene implements SceneController {
     const world = this.world;
     const d = this.nodeDirWorld(index, this.tmp2);
     if (!world || !d) return;
-    const delta = this.focusRotation(d, this.nodeWorld(index), NODE_NDC_Y);
+    const delta = this.focusRotation(d, this.nodeWorld(index), NODE_NDC);
     this.autoTurn = { q0: this.planet.quaternion.clone(), q1: delta.multiply(this.planet.quaternion.clone()), t: 0 };
+    this.pinnedWorld = this.nodeWorld(index);
   }
 
+  /**
+   * Fokus einer Welt (Planetenraum → Welt): ihr Fokus-Element (Scheune, Wurzelbaum, Riesenbaum …), sonst die Mitte
+   * ihres Bands (nahe Welten 25° neben dem Pfad, der Korridor ist frei geräumt).
+   */
   private worldDirWorld(index: number, out: Vector3): Vector3 | null {
     const world = this.world;
     if (!world || index < 0 || index >= world.worlds.length) return null;
-    world.worldCenter(index, out);
-    // Story-Welten liegen um den Pfad; der Korridor ist frei geräumt → Blick 25° neben den Pfad
-    if (world.worlds[index]!.params.side === 'near') out.applyAxisAngle(_Y, (-25 * Math.PI) / 180);
+    const ref = WORLD_CONTENTS[index]?.ref;
+    // Fokus-Slot der Welt (Element oder Bildanker). Welt 01: Anker an der breitesten Stelle des schmalen Bands, der
+    // Riesenbaum steht am Horizont (aus der Nähe zeigt ihn die Kameraschiene, `?rail=80..95`)
+    const slot = ref ? world.getLandmarkSlot(`focal-${ref}`) : undefined;
+    if (slot) out.set(slot.dir[0], slot.dir[1], slot.dir[2]);
+    else {
+      world.worldCenter(index, out);
+      if (world.worlds[index]!.params.side === 'near') out.applyAxisAngle(_Y, (-25 * Math.PI) / 180);
+    }
     return out.applyQuaternion(this.planet.quaternion).normalize();
+  }
+
+  private worldFocusNdc(index: number): [number, number] {
+    const f = this.world?.worlds[index]?.view.focus;
+    return f ? [f[0], f[1]] : [0, 0];
   }
 
   /** Planet sofort zur Mitte von Welt `index` drehen. */
   snapToWorld(index: number): void {
     const d = this.worldDirWorld(index, this.tmp2);
     if (!d) return;
-    this.planet.quaternion.premultiply(this.focusRotation(d, index, WORLD_NDC_Y));
+    this.planet.quaternion.premultiply(this.focusRotation(d, index, this.worldFocusNdc(index)));
     this.trackball.quaternion.copy(this.planet.quaternion);
+    this.pinnedWorld = index;
     this.viewInitialised = false;
     this.shadowDirty = true;
   }
@@ -455,8 +599,9 @@ export class EarleLabScene implements SceneController {
   turnToWorld(index: number): void {
     const d = this.worldDirWorld(index, this.tmp2);
     if (!d) return;
-    const delta = this.focusRotation(d, index, WORLD_NDC_Y);
+    const delta = this.focusRotation(d, index, this.worldFocusNdc(index));
     this.autoTurn = { q0: this.planet.quaternion.clone(), q1: delta.multiply(this.planet.quaternion.clone()), t: 0 };
+    this.pinnedWorld = index;
   }
 
   resize(ctx: SceneContext): void {
@@ -468,8 +613,12 @@ export class EarleLabScene implements SceneController {
   update(dt: number, _elapsed: number, ctx: SceneContext): void {
     const world = this.world;
     if (!world) return;
+    this.elapsed += dt;
     let rotated = this.trackball.step(dt);
-    if (this.trackball.isDragging) this.autoTurn = null;
+    if (this.trackball.isDragging) {
+      this.autoTurn = null;
+      this.pinnedWorld = -1;
+    }
     if (this.autoTurn) {
       this.autoTurn.t = Math.min(1, this.autoTurn.t + dt / 1.1);
       const t = this.autoTurn.t;
@@ -500,14 +649,43 @@ export class EarleLabScene implements SceneController {
     v.fov += (target.fov - v.fov) * k;
     v.curvature += (target.curvature - v.curvature) * k;
     world.curvature.value = v.curvature;
+    // Freiraum vor der Linse: Vegetation, die näher kommt, schrumpft weg (nichts schneidet ins Bild)
+    const nearTarget = this.params.rail >= 0 ? 1.0 : (world.worlds[world.viewWorld]?.view.nearClear ?? 1.2) * Math.min(1, this.params.perspective);
+    this.nearClear += (Math.max(0.25, nearTarget) - this.nearClear) * k;
+    world.vegetation.setNearClear(this.nearClear);
+    // Lichtung unter der Kamera: ruhiges unteres Bildband (Schatten fallen hinein); Schattenpass mitziehen
+    const footTarget = this.params.rail >= 0 ? 0 : (world.worlds[world.viewWorld]?.view.footClear ?? 0) * Math.min(1, this.params.perspective);
+    const footNext = this.footClear + (footTarget - this.footClear) * k;
+    if (Math.abs(footNext - this.footClear) > 0.02) this.shadowDirty = true;
+    this.footClear = Math.abs(footNext - footTarget) < 0.02 ? footTarget : footNext;
+    world.vegetation.setFootClear(this.footClear);
+    // Schleier über Nachbarwelten (Übersicht ohne Schleier, Weltblick mit): fremde Welten = ferne Nebelstufen
+    world.veilDistance.value = VEIL_DISTANCE * Math.min(1, this.params.perspective);
     if (Math.abs(v.curvature - this.lastCurvature) > 1e-3) {
       this.lastCurvature = v.curvature;
       this.shadowDirty = true;
     }
     this.applyView();
+    this.applyRail();
+    // Nebel mit der Kameradistanz nach hinten schieben (Hügelblick: Wertstufen im Mittel-/Hintergrund)
+    world.setFogDistance(this.params.rail >= 0 ? 9 : this.camera.position.distanceTo(this.tmp.set(0, 0, -v.look)));
     this.fogStripes?.layout(Math.max(0.6, v.look / 6), v.curvature);
 
     this.scene.updateMatrixWorld(true);
+    // Kompositionshöhe: Gelände am Blickpunkt (Mittel aus Blickpunkt und zwei Nachbarproben längs der Blickachse)
+    if (this.params.rail < 0) {
+      const inv = this.planet.getWorldQuaternion(this.tmpQ).invert();
+      let sum = 0;
+      for (const ahead of [-2, 0, 3]) {
+        const probe = this.tmp2.set(0, 0, -(v.look + ahead)).add(this.rig.position).normalize().applyQuaternion(inv);
+        sum += world.surfaceRadius(probe) - PLANET_RADIUS;
+      }
+      const target = Math.max(0, sum / 3);
+      const kg = this.viewInitialised ? 1 - Math.exp(-dt / 0.6) : 1;
+      const prev = this.groundLift;
+      this.groundLift += (target - this.groundLift) * kg;
+      if (Math.abs(this.groundLift - prev) > 1e-3) this.applyView();
+    }
     // Geländefreiheit: Kamera über dem Gelände unter ihr halten (hohe Grate der Schneewelt, steile Hänge)
     const camWorld = this.camera.getWorldPosition(this.tmp);
     this.planet.getWorldQuaternion(this.tmpQ).invert();
@@ -517,7 +695,7 @@ export class EarleLabScene implements SceneController {
     const kl = 1 - Math.exp(-dt / 0.25);
     const liftPrev = this.lift;
     this.lift += (need - this.lift) * kl;
-    if (Math.abs(this.lift - liftPrev) > 1e-4) {
+    if (Math.abs(this.lift - liftPrev) > 1e-4 && this.params.rail < 0) {
       this.applyView();
       this.scene.updateMatrixWorld(true);
       this.camera.getWorldPosition(camWorld);
@@ -540,15 +718,28 @@ export class EarleLabScene implements SceneController {
     const disc = b * b - c;
     const t = disc >= 0 ? -b - Math.sqrt(disc) : -1;
     const dirWorld = t > 0 ? camWorld.clone().addScaledVector(look, t).normalize() : this.tmp2.set(0, 0, -this.view.look).add(this.rig.position).normalize();
-    world.setViewDirection(dirWorld.applyQuaternion(this.tmpQ));
+    if (this.pinnedWorld >= 0) {
+      world.setLookDirection(dirWorld.applyQuaternion(this.tmpQ));
+      world.setViewWorld(this.pinnedWorld);
+    } else world.setViewDirection(dirWorld.applyQuaternion(this.tmpQ));
+    // Überblendung: fremde Instanzen nahe der Kamera treten weg/zurück → Schattenpass mitziehen
+    if (world.viewBlending) this.shadowDirty = true;
     world.tickView(dt);
+    const site = this.treeSite;
+    if (site) {
+      const wasVisible = site.holder.visible;
+      site.update(dt, this.camera, this.sunDirWorld.value, camWorld, this.planet.matrixWorld, this.frustum);
+      if (site.holder.visible !== wasVisible) this.shadowDirty = true;
+    }
+    this.nodePath?.update(this.elapsed);
     if (world.viewWorld !== this.lastViewWorld) {
       this.lastViewWorld = world.viewWorld;
       for (const l of this.worldListeners) l(this.lastViewWorld);
     }
 
     if (this.shadowDirty) {
-      if (!world.bounds.isEmpty()) this.sun.fitShadow(world.bounds, this.planet.matrixWorld, world.hTotal);
+      const hTotal = Math.max(world.hTotal, site?.holder.visible ? site.height + 1 : 0);
+      if (!world.bounds.isEmpty()) this.sun.fitShadow(world.bounds, this.planet.matrixWorld, hTotal);
       this.sun.requestUpdate();
       this.shadowPasses++;
       this.shadowDirty = false;
@@ -614,6 +805,8 @@ export class EarleLabScene implements SceneController {
 
   dispose(): void {
     this.trackball.detach();
+    this.nodePath?.dispose();
+    this.treeSite?.dispose();
     this.world?.dispose();
     this.fogStripes?.dispose();
     for (const d of this.disposables) d.dispose();

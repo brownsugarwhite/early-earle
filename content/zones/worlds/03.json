@@ -34,5 +34,15 @@
   "props": { "barns": 0.0015, "animals": 0.008 },
   "fogStripes": 0.3,
   "fog": { "start": 6, "range": 12 },
-  "view": { "height": 3.6, "forward": 1.8, "look": 5.58, "fov": 80, "curvature": 0.1 }
+  "view": {
+    "height": 5.0,
+    "forward": 8,
+    "look": 6.0,
+    "fov": 50,
+    "curvature": 0.12,
+    "focus": [0.0, -0.2],
+    "nearClear": 1.2,
+    "footClear": 5.0
+  },
+  "focal": { "kind": "dome", "scale": 2.4, "latFrac": 0.7, "deltaDeg": -12, "yawDeg": 0 }
 }

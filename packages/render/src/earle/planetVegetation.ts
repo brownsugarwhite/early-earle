@@ -34,11 +34,11 @@ import {
   max,
   mix,
   modelViewMatrix,
-  modelWorldMatrix,
   normalGeometry,
   normalize,
   positionGeometry,
   positionLocal,
+  positionView,
   screenSize,
   select,
   sin,
@@ -51,9 +51,9 @@ import {
   vec3,
   vec4,
 } from 'three/tsl';
-import { TREE_PROPORTIONS, hash32, mulberry32, type PlanetProp, type PlanetTree, type PlanetVegetationFamily, type TreeKind, type Vec3 } from '@ee/world';
+import { TREE_PROPORTIONS, hash32, mulberry32, type PlanetProp, type PlanetTree, type PlanetVegetationFamily, type TreeKind } from '@ee/world';
 import { EarleMaterial } from './EarleMaterial';
-import { hatchMask, lichenCells, palByKey, patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
+import { arrayElement, hatchMask, lichenCells, palByKey, patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from './tsl';
 import { createBareTreeGeometry, createCanopyGeometry, createHexagon, createTrunkGeometry, dotsOnCanopy, mergeGeometries, treeFrame } from './vegetation';
 
 /** Zahl der Wachstums-Slots (ein Slot je geladenem Chunk). */
@@ -78,6 +78,12 @@ export interface PlanetVegetationOptions {
   worldRows: VegetationWorldRows[];
   families: PlanetVegetationFamily[];
   capacity: { trees: number; dots: number; props: number; animals: number };
+  /** Schleier über Nachbarwelten: Zusatz-Nebeldistanz je Welt-Index (TSL); fehlt → kein Schleier. */
+  veil?: (worldIndex: FloatNode) => FloatNode;
+  /** Fremdheit 0..1 einer Welt (0 = Blick-Welt, 1 = Nachbar); nahe fremde Instanzen treten aus dem Bild. */
+  foreign?: (worldIndex: FloatNode) => FloatNode;
+  /** Zeilen im Atlas beim Aufbau (Tabelle Zeile → Welt für den Schleier). */
+  rowCount?: number;
   dotsPerTree: [number, number];
   collapsePx: number;
   dotRadius?: number;
@@ -162,8 +168,6 @@ const _t = new Vector3();
 const _qYaw = new Quaternion();
 const _b = new Vector3();
 
-type PropStyle = 'lump' | 'tower' | 'tire' | 'pipe' | 'barn';
-
 /**
  * Vegetation und Requisiten des Planeten als feste Pools (Kapazität vorab): je Kronenform ein InstancedMesh,
  * Stämme (Zylinder mit Stil je Welt: Tinte, weiß, gestreift, Flechten), kahle Fraktalbäume als Karten, ein
@@ -192,6 +196,19 @@ export class PlanetVegetation {
   private readonly camLocal = uniform(new Vector3(0, 50, 0));
   private readonly projScaleY = uniform(1);
   private readonly collapsePx = uniform(0.75);
+  /** Freiraum vor der Linse (Welteinheiten): Instanzen näher an der Kamera schrumpfen weg. */
+  private readonly nearClear = uniform(0.25);
+  /**
+   * Lichtung unter der Kamera (Welteinheiten, 0 = aus): Instanzen, deren Fuß seitlich näher als dieser Radius an der
+   * Hochachse der Kamera steht, schrumpfen weg — das untere Bildband bleibt ruhiger Boden (Earle: stiller Vordergrund,
+   * in den die langen Schatten der Mittelgrund-Bäume fallen).
+   */
+  private readonly footClear = uniform(0);
+  /**
+   * Nachbarwelten nah an der Kamera (Welteinheiten): fremde Bäume/Requisiten näher als dieser Abstand treten weg — die
+   * Nachbarn bleiben ferne Nebelstufen und ragen nicht groß ins Bild (0 = aus).
+   */
+  private readonly foreignClear = uniform(11);
   private readonly geometries: BufferGeometry[] = [];
   private readonly materials: Array<{ dispose(): void }> = [];
   private readonly rand: () => number;
@@ -213,6 +230,28 @@ export class PlanetVegetation {
     const { lookup, fog } = options;
     const warp = this.warp;
 
+    // Schleier: Palettenzeile → Welt (jede Welt hat eigene Zeilen), fremde Welten bekommen Zusatz-Nebeldistanz
+    const rowWorldValues = new Array<number>(Math.max(1, (options.rowCount ?? 0) + 8)).fill(-1);
+    options.worldRows.forEach((r, w) => {
+      for (const row of [r.terrain, ...r.canopy, r.accent, r.monolith, r.barn]) if (row >= 0 && row < rowWorldValues.length) rowWorldValues[row] = w;
+    });
+    const rowWorld = uniformArray(rowWorldValues, 'float') as unknown as UniformArrayLike;
+    const veilOfRow = (row: FloatNode): FloatNode => {
+      if (!options.veil) return float(0);
+      const w = arrayElement(rowWorld, row);
+      return select(w.lessThan(-0.5), float(0), options.veil(w));
+    };
+    /** Nebeldistanz eines Fragments: Kameraabstand + Schleier seiner Welt. */
+    const fogDist = (row: FloatNode, dist: FloatNode = positionView.length()): FloatNode => dist.add(veilOfRow(row));
+    /** Fremde Instanz nahe der Kamera → 0 (tritt weg), eigene Welt → 1. */
+    const foreignNear = (row: FloatNode, base: Vec3Node): FloatNode => {
+      if (!options.foreign) return float(1);
+      const w = arrayElement(rowWorld, row);
+      const f = select(w.lessThan(-0.5), float(0), options.foreign(w));
+      const d = this.camLocal.sub(base).length();
+      return mix(float(1), smoothstep(this.foreignClear, this.foreignClear.add(3), d), f);
+    };
+
     const slotGrowth = (slotAttr: FloatNode): FloatNode =>
       (this.growthSlots as unknown as { element(i: unknown): FloatNode }).element(int(slotAttr));
     const popScale = (rank: FloatNode, slot: FloatNode): FloatNode => {
@@ -230,13 +269,22 @@ export class PlanetVegetation {
      * Nähe-Ausblendung: Instanzen, deren Achse (Fuß → Krone) näher als `radius` + 0.25..1.6 an der Kamera liegt,
      * schrumpfen weg — die Kamera steht nie in einer Krone, einem Stamm oder einer Scheune.
      */
+    const footFade = (base: Vec3Node): FloatNode => {
+      const camUp = normalize(this.camLocal);
+      const along = base.dot(camUp);
+      // Nur der Fuß zählt: große Elemente außerhalb der Lichtung (Scheune, Fokusbaum) bleiben ganz
+      const lateral = base.sub(camUp.mul(along)).length();
+      const clear = smoothstep(this.footClear, this.footClear.add(1.8), lateral);
+      // Nur auf der Kameraseite des Planeten und nur, wenn eingeschaltet
+      return select(along.greaterThan(0).and(this.footClear.greaterThan(0.01)), clear, float(1));
+    };
     const nearFade = (base: Vec3Node, top: Vec3Node, radius: FloatNode): FloatNode => {
       const axis = top.sub(base);
       const len2 = axis.dot(axis).max(1e-4);
       const t = clamp(this.camLocal.sub(base).dot(axis).div(len2), 0, 1);
       const closest = base.add(axis.mul(t));
       const gap = this.camLocal.sub(closest).length().sub(radius);
-      return smoothstep(0.25, 1.6, gap);
+      return smoothstep(this.nearClear, this.nearClear.add(1.6), gap).mul(footFade(base));
     };
 
     // --- Kronen -----------------------------------------------------------------------------------------
@@ -247,7 +295,8 @@ export class PlanetVegetation {
     const treeB = () => attribute('treeB', 'vec4');
     const treeC = () => attribute('treeC', 'vec4');
     const treeD = () => attribute('treeD', 'vec4');
-    const treeScale = (): FloatNode => popScale(treeA().w, treeB().w).mul(nearFade(treeA().xyz, treeB().xyz, treeD().z));
+    const treeScale = (): FloatNode =>
+      popScale(treeA().w, treeB().w).mul(nearFade(treeA().xyz, treeB().xyz, treeD().z)).mul(foreignNear(treeC().x, treeA().xyz));
     const treeGrown = (): Vec3Node => {
       const base = treeA().xyz;
       return base.add(positionLocal.sub(base).mul(treeScale()));
@@ -272,11 +321,13 @@ export class PlanetVegetation {
         lookup,
         row: options.worldRows[0]?.canopy[0] ?? 0,
         rowNode: treeC().x,
+        fogDistNode: fogDist(treeC().x),
         fog,
         bands: options.bands,
         bandScale: 2.0,
         terminator: 0.5,
-        terminatorNode: select(jewel, float(0.02), float(0.5)),
+        // Juwelenkuppeln leuchten fast rundum in ihren Juwelentönen (Schattenseite = dunkler Juwelton, nicht Tinte)
+        terminatorNode: select(jewel, float(-0.45), float(0.5)),
         normalNode: treeNormal(grown),
         positionNode: warp(grown),
         growthNode: treeGrowth(),
@@ -319,15 +370,16 @@ export class PlanetVegetation {
       // Flechtenbänder (Bilder 01, 08): waagrechte Bänder mit Mosaik aus Flechtenfarben, langsam atmend.
       // Ein Flechten-Aufruf für beide Stile (Parameter je Stil) hält den Shader klein.
       const isStriped = style.lessThan(2.5);
-      const stripeIdx = floor(u.mul(7.0).add(variant.mul(5.0)));
+      // Gestreifte Stämme ruhig und breit (Bild 10, Ebene_3): vier Bahnen rundum
+      const stripeIdx = floor(u.mul(4.0).add(variant.mul(5.0)));
       const sh = hash(stripeIdx.add(variant.mul(31.0)));
       // Akzentzeile: 0 hell, 1–2 Streifenfarben, 3 kahle Bäume, 4–6 Flechten, 7 Requisit B
       const stripeCol = select(sh.lessThan(0.34), ink, select(sh.lessThan(0.58), lookup.pal(1, acc).rgb, select(sh.lessThan(0.82), lookup.pal(2, acc).rgb, lookup.pal(0, acc).rgb)));
-      const stripeEdge = stripeMask(u.mul(7.0).add(variant.mul(5.0)).add(0.5), 0.12); // dünne Tintenlinien zwischen den Streifen
+      const stripeEdge = stripeMask(u.mul(4.0).add(variant.mul(5.0)).add(0.5), 0.06); // feine Tintenlinien zwischen den Bahnen
       const cells = lichenCells(
         around.mul(select(isStriped, float(9.0), float(14.0))),
         height.mul(select(isStriped, float(7.0), float(22.0))).add(patternTime.mul(0.02)),
-        select(isStriped, float(0.16), float(0.62)),
+        select(isStriped, float(0.05), float(0.62)),
         variant,
       );
       const lichenCol = palByKey(lookup, cells.key, acc, 4, 7);
@@ -337,7 +389,7 @@ export class PlanetVegetation {
       const blueBand = lookup.pal(1, acc).rgb; // Bandgrund (Blau bei 01, dunkles Grau bei 08)
       const lichen = mix(ink, mix(blueBand, lichenCol, cells.mask), band);
       const col = select(style.lessThan(0.5), ink, select(style.lessThan(1.5), white, select(style.lessThan(2.5), striped, lichen)));
-      material.colorNode = steppedFog(col, fog, lookup);
+      material.colorNode = steppedFog(col, fog, lookup, fogDist(row));
       material.positionNode = warp(treeGrown());
       const mesh = new InstancedMesh(geometry, material, options.capacity.trees);
       mesh.name = 'planet-trunks';
@@ -363,14 +415,14 @@ export class PlanetVegetation {
       const up = attribute('bareUp', 'vec3');
       const data = attribute('bareData', 'vec4');
       const variant = attribute('bareVariant', 'float');
-      const size = data.x.mul(popScale(data.y, data.z)).mul(nearFade(base, base.add(up.mul(data.x.mul(2.1))), data.x));
+      const size = data.x.mul(popScale(data.y, data.z)).mul(nearFade(base, base.add(up.mul(data.x.mul(2.1))), data.x)).mul(foreignNear(data.w, base));
       const flip = select(variant.greaterThan(0.5), float(-1), float(1));
       const billboard = (toward: Vec3Node): Vec3Node => {
         const right = normalize(cross(up, toward));
         return base.add(right.mul(positionGeometry.x.mul(size).mul(flip))).add(up.mul(positionGeometry.y.mul(size)));
       };
       const material = new MeshBasicNodeMaterial({ side: DoubleSide });
-      material.colorNode = steppedFog(lookup.pal(3, data.w).rgb, fog, lookup);
+      material.colorNode = steppedFog(lookup.pal(3, data.w).rgb, fog, lookup, fogDist(data.w));
       material.positionNode = warp(billboard(normalize(this.camLocal.sub(base))));
       (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(billboard(this.sunDirLocal));
       const mesh = new InstancedMesh(geometry, material, n);
@@ -414,8 +466,8 @@ export class PlanetVegetation {
       const hullAttr = attribute('dotHull', 'vec4');
       // Nähe-Ausblendung billig als Kugeltest um das Hüllzentrum (Punkte folgen ihrer Krone)
       const toCam = this.camLocal.sub(hullAttr.xyz);
-      const nearDots = smoothstep(0.25, 1.6, toCam.length().sub(hullAttr.w.mul(1.2)));
-      const s = popScale(dd.y, dd.w).mul(nearDots);
+      const nearDots = smoothstep(this.nearClear, this.nearClear.add(1.6), toCam.length().sub(hullAttr.w.mul(1.2))).mul(footFade(base));
+      const s = popScale(dd.y, dd.w).mul(nearDots).mul(foreignNear(row, base));
       const center = warp(base.add(rel.mul(s)));
       // Billboard im View-Raum: eine Matrixmultiplikation für den Mittelpunkt, der Versatz liegt direkt in x/y.
       // Tönung und Randtest im Planetenraum (Sonne und Kamera liegen dort als Uniforms vor) — keine Normalen-Matrizen.
@@ -438,7 +490,7 @@ export class PlanetVegetation {
       const dist = varying(depth, 'vPlanetDotDist');
       const litIdx = select(ndl.greaterThan(0.5), float(5), select(ndl.greaterThan(0.12), float(4), float(3)));
       const idx = select(kind.lessThan(0.5).or(kind.greaterThan(2.5)), litIdx, select(kind.lessThan(1.5), float(6), float(7)));
-      material.colorNode = steppedFog(lookup.pal(idx, row).rgb, fog, lookup, dist);
+      material.colorNode = steppedFog(lookup.pal(idx, row).rgb, fog, lookup, fogDist(row, dist));
       const mesh = new Mesh(geometry, material);
       mesh.name = 'planet-dots';
       mesh.castShadow = false;
@@ -468,7 +520,7 @@ export class PlanetVegetation {
       const type = propType();
       const up = propB().xyz;
       const h = propB().w;
-      const fade = nearFade(base, base.add(up.mul(h)), h.mul(0.8).add(0.5));
+      const fade = nearFade(base, base.add(up.mul(h)), h.mul(0.8).add(0.5)).mul(foreignNear(propRow(), base));
       // Teilform des Typs: Klumpen (0, 1), Turm (2, 3), Reifen (4), Rohr (5), Scheune (6)
       const want = select(type.lessThan(1.5), float(0), select(type.lessThan(3.5), float(1), type.sub(2)));
       const keep = part ? step(abs(part.sub(want)), float(0.5)) : float(1);
@@ -552,12 +604,14 @@ export class PlanetVegetation {
         lookup,
         row: options.worldRows[0]?.terrain ?? 0,
         rowNode: select(isRoof, row2, row),
+        fogDistNode: fogDist(row),
         fog,
         bands: options.bands,
         bandScale: 1.5,
         terminator: 0.2,
         // Schrott, Reifen und Gasquellen bleiben dunkle Masse; Monolith hell; Schneedach immer im Licht
-        terminatorNode: byType<FloatNode>([float(0.2), float(0.2), float(0.15), float(0.15), float(0.35), float(0.3), select(isRoof, float(-1), float(-0.35))]),
+        // Scheune: Wände fast rundum im Licht (rote Bänder; nur Schlagschatten sind Tinte), Schneedach immer hell
+        terminatorNode: byType<FloatNode>([float(0.2), float(0.2), float(0.15), float(0.15), float(0.35), float(0.3), select(isRoof, float(-1), float(-0.7))]),
         lift: byType<FloatNode>([float(-0.7), float(0), float(0.45), float(-0.8), float(-0.8), float(-0.35), select(isRoof, float(0.9), float(0))]),
         pattern: { mask, color },
         positionNode: warp(propGrown(part)),
@@ -575,7 +629,7 @@ export class PlanetVegetation {
       const band = stripeMask(lp.z.mul(1.6).add(lp.x.mul(0.35)).add(propVariant()).add(patternTime.mul(0.03)), 0.09);
       const band2 = stripeMask(lp.z.mul(1.6).add(lp.x.mul(0.35)).add(propVariant()).add(patternTime.mul(0.03)).add(0.3), 0.04);
       const col = mix(ink, lookup.pal(7, propRow2()).rgb, max(band, band2));
-      material.colorNode = steppedFog(col, fog, lookup);
+      material.colorNode = steppedFog(col, fog, lookup, fogDist(propRow()));
       material.positionNode = warp(propGrown(null));
       this.pools = makeProp('planet-pools', geometry, material, options.capacity.props, false);
     }
@@ -590,13 +644,13 @@ export class PlanetVegetation {
       const data = attribute('animData', 'vec4');
       const g = slotGrowth(data.z);
       const vis = clamp(g.sub(0.5).sub(data.y.mul(0.4)).div(0.1), 0, 1);
-      const size = data.x.mul(vis).mul(nearFade(base, base.add(up.mul(0.8)), float(0.6)));
+      const size = data.x.mul(vis).mul(nearFade(base, base.add(up.mul(0.8)), float(0.6))).mul(foreignNear(data.w, base));
       const billboard = (toward: Vec3Node): Vec3Node => {
         const right = normalize(cross(up, toward));
         return base.add(right.mul(positionGeometry.x.mul(size))).add(up.mul(positionGeometry.y.mul(size)));
       };
       const material = new MeshBasicNodeMaterial({ side: DoubleSide });
-      material.colorNode = steppedFog(lookup.pal(0, data.w).rgb, fog, lookup);
+      material.colorNode = steppedFog(lookup.pal(0, data.w).rgb, fog, lookup, fogDist(data.w));
       material.positionNode = warp(billboard(normalize(this.camLocal.sub(base))));
       // Schattenpass: Karte zur Sonne drehen → lange Kuh-Schatten wie bei Earle
       (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(billboard(this.sunDirLocal));
@@ -791,6 +845,42 @@ export class PlanetVegetation {
       const row = this.canopyRowOf(t);
       const rc = t.canopyRadius * Math.max(1, aspect);
       let k = 0;
+      if (motif === 'diamond') {
+        // Juwelenkuppel (Bild 10, Ebene_3): kleine Rauten in ruhigen Reihen (Breitenringe der Kuppel) auf der Lichtseite,
+        // eine Farbe je Kuppel; dazu nur ein spärlicher Punktrand an der Silhouette — kein Konfetti.
+        const ry = t.canopyRadius * (t.kind === 'jewel' ? 0.88 : 0.72) * aspect;
+        const rows = t.canopyRadius > 1.4 ? 4 : 3;
+        const md = r * 0.8;
+        for (let ri = 0; ri < rows; ri++) {
+          const polar = ((0.26 + (0.6 * ri) / Math.max(1, rows - 1)) * Math.PI) / 2;
+          const ringR = Math.sin(polar) * t.canopyRadius;
+          const step = md * 7;
+          const nAz = Math.max(4, Math.floor((Math.PI * 2 * ringR) / step));
+          const phase = (ri % 2) * 0.5;
+          for (let ai = 0; ai < nAz; ai++) {
+            const az = ((ai + phase) / nAz) * Math.PI * 2;
+            _t.set(Math.cos(az) * ringR, Math.cos(polar) * ry, Math.sin(az) * ringR);
+            _t.applyQuaternion(_q);
+            const world = hull.clone().add(_t);
+            _n.copy(world).sub(hull).normalize();
+            if (_n.dot(sunLocal) < -0.05) continue;
+            const tang = new Vector3(0, 1, 0).cross(_n);
+            if (tang.lengthSq() < 1e-6) tang.set(1, 0, 0).cross(_n);
+            tang.normalize();
+            const bit = new Vector3().crossVectors(_n, tang).normalize();
+            for (const [ox, oy] of [[md * 1.6, 0], [-md * 1.6, 0], [0, md * 1.6], [0, -md * 1.6]] as const) {
+              const p2 = world.clone().addScaledVector(tang, ox).addScaledVector(bit, oy);
+              if (!pushDot(t, p2, hull, md, row, 1, e.slot, rc)) break outer;
+            }
+          }
+        }
+        for (const pt of pts) {
+          if (++k % 3 !== 0) continue;
+          const world = new Vector3(pt[0], pt[1], pt[2]).applyMatrix4(_m);
+          if (!pushDot(t, world, hull, r * 0.8, row, 3, e.slot, rc)) break outer;
+        }
+        continue;
+      }
       for (const pt of pts) {
         const world = new Vector3(pt[0], pt[1], pt[2]).applyMatrix4(_m);
         _n.copy(world).sub(hull).normalize();
@@ -798,8 +888,8 @@ export class PlanetVegetation {
         const pAccept = 0.28 + 0.72 * smooth01((facing + 0.25) / 0.85);
         if (this.rand() > pAccept) continue;
         k++;
-        // Motive: jede 6. Position wird zu einem Rauten- (4 Punkte) oder Kreuzmotiv (5 Punkte) in den Motivfarben
-        const isMotif = (motif === 'diamond' || motif === 'cross') && k % 6 === 0 && facing > -0.1;
+        // Kreuzmotive (Bilder 01, 04): jede 6. Position wird zu einem Kreuz (5 Punkte) in den Motivfarben
+        const isMotif = motif === 'cross' && k % 6 === 0 && facing > -0.1;
         if (isMotif) {
           _t.set(0, 1, 0).cross(_n);
           if (_t.lengthSq() < 1e-6) _t.set(1, 0, 0).cross(_n);
@@ -807,7 +897,7 @@ export class PlanetVegetation {
           _b.crossVectors(_n, _t).normalize();
           const dd = r * 2.1;
           const colorKind = this.rand() < 0.5 ? 1 : 2;
-          const offsets: Array<[number, number]> = motif === 'diamond' ? [[dd, 0], [-dd, 0], [0, dd], [0, -dd]] : [[0, 0], [dd, 0], [-dd, 0], [0, dd], [0, -dd]];
+          const offsets: Array<[number, number]> = [[0, 0], [dd, 0], [-dd, 0], [0, dd], [0, -dd]];
           for (const [ox, oy] of offsets) {
             const p2 = world.clone().addScaledVector(_t, ox).addScaledVector(_b, oy);
             if (!pushDot(t, p2, hull, r * 0.9, row, colorKind, e.slot, rc)) break outer;
@@ -937,6 +1027,21 @@ export class PlanetVegetation {
     });
     for (const attr of [a, b, c, mesh.instanceMatrix]) commit(attr, list.length);
     mesh.count = list.length;
+  }
+
+  /** Freiraum vor der Kamera in Welteinheiten (Kompositionen: nichts ragt in die Linse). */
+  setNearClear(units: number): void {
+    this.nearClear.value = Math.max(0, units);
+  }
+
+  /** Lichtung unter der Kamera (seitlicher Radius um die Hochachse der Kamera, 0 = aus). */
+  setFootClear(units: number): void {
+    this.footClear.value = Math.max(0, units);
+  }
+
+  /** Abstand, unter dem Instanzen fremder Welten wegtreten (0 = aus). */
+  setForeignClear(units: number): void {
+    this.foreignClear.value = Math.max(0, units);
   }
 
   /** Wachstum 0..1 eines Chunk-Slots (sofort wirksam, kein Pufferschreiben). */

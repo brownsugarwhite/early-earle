@@ -31,6 +31,12 @@ export interface WorldContent {
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
+  /** Fokus-Element der Komposition (Baum oder Requisit am Slot; nahe Welten neben dem Pfad). */
+  /**
+   * Fokus der Weltkomposition: mit `kind` ein Fokus-Element (Scheune, Wurzelbaum …) am Slot, ohne `kind` nur ein
+   * Bildanker (z. B. Welt 01: die breiteste Stelle des Bands, der Riesenbaum steht am Horizont).
+   */
+  focal?: { kind?: NonNullable<PlanetLandmarkParams['instance']>['kind']; scale?: number; latFrac?: number; deltaDeg?: number; yawDeg?: number };
 }
 
 const modules = import.meta.glob<{ default: ZoneContent }>('@content/zones/*.json', { eager: true });
@@ -117,11 +123,30 @@ export function planetWorlds(): EarlePlanetWorld[] {
   });
 }
 
-/** Wahrzeichen-Slots: der Hero-Baum (Flechtenbaum, Welt 01) neben dem Pfad der Wooding-Zone. */
+/**
+ * Fokus-Elemente der Weltkompositionen als Landmark-Slots (die rote Scheune in 08, der Wurzelbaum in 05, …).
+ * Der Riesenbaum (Welt 01) kommt dazu, sobald der Pfad bekannt ist (`createHeroTreeSite`).
+ */
 export function planetLandmarks(): PlanetLandmarkParams[] {
-  const hero = WORLD_CONTENTS.findIndex((w) => w.id === 'w01');
-  return hero >= 0 ? [{ id: 'hero-tree', world: hero, deltaDeg: 30, latFrac: 0.45, scale: 1, clearRadius: 7 }] : [];
+  const out: PlanetLandmarkParams[] = [];
+  WORLD_CONTENTS.forEach((w, i) => {
+    if (!w.focal) return;
+    out.push({
+      id: `focal-${w.ref}`,
+      world: i,
+      latFrac: w.focal.latFrac ?? 0.5,
+      deltaDeg: w.focal.deltaDeg ?? 40,
+      yawDeg: w.focal.yawDeg ?? 0,
+      scale: 1,
+      clearRadius: !w.focal.kind ? 0 : w.focal.kind === 'barn' ? 4.5 : 3.2,
+      ...(w.focal.kind ? { instance: { kind: w.focal.kind, scale: w.focal.scale ?? 1 } } : {}),
+    });
+  });
+  return out;
 }
+
+/** Index der Welt mit dem Riesenbaum (Flechtenbaum, Referenz 01). */
+export const HERO_TREE_WORLD = Math.max(0, WORLD_CONTENTS.findIndex((w) => w.id === 'w01'));
 
 /** Welt-Index der nahen (Story-)Welt eines Zonenindex. */
 export function nearWorldOfZone(zone: number): number {

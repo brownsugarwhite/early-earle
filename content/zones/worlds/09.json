@@ -23,15 +23,26 @@
   "terrain": { "amplitude": 2.4, "wavelength": 1.5, "slope": 0.4 },
   "ground": "meadow",
   "vegetation": {
-    "density": 0.24,
+    "density": 0.55,
     "clumpiness": 0.8,
     "kinds": { "dome": 0.8, "stacked": 0.2 },
     "scale": [0.7, 1.5],
     "trunkStyle": "ink",
-    "motif": "rim"
+    "motif": "rim",
+    "rows": { "spacing": 0.2, "width": 0.34 }
   },
   "props": { "trash": 0.13, "pools": 0.016, "animals": 0.014 },
   "fogStripes": 0.1,
   "fog": { "start": 9, "range": 16 },
-  "view": { "height": 6.0, "forward": 0.4, "look": 3.35, "fov": 84, "curvature": 0.1 }
+  "view": {
+    "height": 12.0,
+    "forward": 0,
+    "look": 6.34,
+    "fov": 54,
+    "curvature": 0.14,
+    "focus": [-0.33, 0.12],
+    "nearClear": 1.2,
+    "footClear": 3.2
+  },
+  "focal": { "kind": "dome", "scale": 2.2, "latFrac": 0.5, "deltaDeg": -12, "yawDeg": 0 }
 }

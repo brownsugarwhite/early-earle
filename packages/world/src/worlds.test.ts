@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PlanetField, generateChunkMesh, scatterChunkProps, scatterChunkTrees, spiralPath, type PlanetParams, type PlanetWorldParams } from './planet';
+import { PlanetField, chunkDirection, chunkIdOf, chunkList, generateChunkMesh, scatterChunkProps, scatterChunkTrees, spiralPath, type PlanetParams, type PlanetWorldParams } from './planet';
 import { areaSplit, decideWorld, pathLongitude, wrapAngle } from './worldLayout';
 
 const veg = (density: number): PlanetWorldParams['vegetation'] => ({ density, clumpiness: 0.5, kinds: { dome: 1 }, scale: [0.8, 1.2] });
@@ -26,7 +26,11 @@ const params: PlanetParams = {
   zones,
   worlds,
   spiral: { turns: 2.75, polarMarginDeg: 9 },
-  landmarks: [{ id: 'hero-tree', world: 0, scale: 3, clearRadius: 5 }],
+  landmarks: [
+    { id: 'hero-tree', world: 0, scale: 3, clearRadius: 5 },
+    { id: 'barn', world: 7, scale: 1, clearRadius: 3, instance: { kind: 'barn', scale: 3 }, yawDeg: 30 },
+    { id: 'root-tree', world: 4, scale: 1, clearRadius: 3, instance: { kind: 'bare', scale: 2.5 } },
+  ],
 };
 
 function randomDir(i: number): [number, number, number] {
@@ -75,6 +79,18 @@ describe('worldLayout', () => {
   });
 });
 
+describe('chunkIdOf', () => {
+  it('ist die Umkehrung von chunkDirection (Zellmitten und Ränder aller 54 Chunks)', () => {
+    const d: [number, number, number] = [0, 0, 0];
+    for (const id of chunkList(3)) {
+      for (const [lu, lv] of [[0, 0], [0.9, -0.9], [-0.95, 0.4]] as const) {
+        chunkDirection(id, 3, lu, lv, d);
+        expect(chunkIdOf(d[0], d[1], d[2], 3)).toEqual(id);
+      }
+    }
+  });
+});
+
 describe('PlanetField mit zehn Welten', () => {
   const field = new PlanetField(params);
   it('alle zehn Welten sind auf der Kugel vorhanden, jede mit plausiblem Flächenanteil', () => {
@@ -107,11 +123,33 @@ describe('PlanetField mit zehn Welten', () => {
       expect(Math.hypot(...d)).toBeCloseTo(1, 9);
       expect(field.worldAt(d[0], d[1], d[2])).toBe(w);
     }
-    expect(field.landmarkSlots.length).toBe(1);
+    expect(field.landmarkSlots.length).toBe(3);
     const slot = field.landmarkSlots[0]!;
     expect(field.worldAt(...slot.dir)).toBe(0);
     expect(Math.hypot(...slot.position)).toBeGreaterThanOrEqual(36 - 1e-6);
     expect(Math.hypot(...slot.normal)).toBeCloseTo(1, 6);
+  });
+  it('Fokus-Elemente: Scheune und Wurzelbaum stehen genau einmal an ihrem Slot, drumherum frei', () => {
+    const barn = field.landmarkSlots.find((l) => l.id === 'barn')!;
+    const root = field.landmarkSlots.find((l) => l.id === 'root-tree')!;
+    let barns = 0;
+    let roots = 0;
+    for (const id of chunkList(3)) {
+      const props = scatterChunkProps(field, id, { densityScale: 1 });
+      for (const p of props) if (p.kind === 'barn' && Math.hypot(p.position[0] - barn.position[0], p.position[1] - barn.position[1], p.position[2] - barn.position[2]) < 1e-6) barns++;
+      const trees = scatterChunkTrees(field, id, { densityScale: 1 });
+      for (const t of trees) {
+        const d = Math.hypot(t.position[0] - root.position[0], t.position[1] - root.position[1], t.position[2] - root.position[2]);
+        if (d < 1e-6) {
+          roots++;
+          expect(t.kind).toBe('bare');
+          expect(t.rank).toBe(0);
+        } else expect(d).toBeGreaterThan(root.clearRadius);
+      }
+    }
+    expect(barns).toBe(1);
+    expect(roots).toBe(1);
+    expect(barn.yawDeg).toBe(30);
   });
   it('Shader-Entscheidung aus den Vertex-Attributen stimmt mit worldAt überein', () => {
     const m = generateChunkMesh(field, { face: 4, cx: 1, cy: 1 }, 12);

@@ -20,6 +20,7 @@ export {
   PlanetField,
   chunkAngularRadius,
   chunkDirection,
+  chunkIdOf,
   chunkKey,
   chunkList,
   generateChunkMesh,

@@ -34,5 +34,14 @@
   "props": { "rocks": 0.004 },
   "fogStripes": 0,
   "fog": { "start": 10, "range": 18 },
-  "view": { "height": 9.0, "forward": 0.2, "look": 3.81, "fov": 84, "curvature": 0.08 }
+  "view": {
+    "height": 12.0,
+    "forward": 0,
+    "look": 6.34,
+    "fov": 54,
+    "curvature": 0.14,
+    "focus": [0.0, 0.1],
+    "nearClear": 1.2,
+    "footClear": 3.2
+  }
 }

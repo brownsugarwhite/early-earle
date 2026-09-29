@@ -41,6 +41,11 @@ export interface PlanetVegetationFamily {
   rowVariants?: number;
   /** Schwelle der Waldmaske 0..1 (Standard 0.51; kleiner = mehr Wald, z. B. Nebelhügel 0.42). */
   forestThreshold?: number;
+  /**
+   * Hecken (Bilder 09, Ebene_36): Bäume stehen in Reihen entlang der Höhenlinien — Abstand der Reihen in
+   * Höhen-Einheiten (Anteil der Amplitude) und Breite einer Reihe (Anteil des Abstands).
+   */
+  rows?: { spacing: number; width: number };
 }
 
 export interface PlanetTerrainShape {
@@ -95,9 +100,18 @@ export interface PlanetLandmarkParams {
   deltaDeg?: number;
   /** Anteil 0..1 innerhalb der Breitenspanne der Welt (Standard 0.5). */
   latFrac?: number;
+  /** Explizite Richtung (Einheitsvektor, Planetenraum); überschreibt deltaDeg/latFrac. */
+  dir?: Vec3;
+  /** Drehung um die Oberflächennormale in Grad (z. B. Wurzelspitze zum Pfad). */
+  yawDeg?: number;
   scale: number;
   /** Radius (Welteinheiten), in dem keine Vegetation/Requisiten stehen. */
   clearRadius: number;
+  /**
+   * Fokus-Element der Weltkomposition: ein Baum oder Requisit, das die Streuung genau an diesem Slot setzt
+   * (z. B. die rote Scheune in Welt 08, der Wurzelbaum in 05). Fehlt es, bleibt der Slot leer (externes Objekt).
+   */
+  instance?: { kind: TreeKind | PlanetPropKind; scale: number };
 }
 
 export interface LandmarkSlot {
@@ -107,8 +121,11 @@ export interface LandmarkSlot {
   position: Vec3;
   normal: Vec3;
   dir: Vec3;
+  /** Drehung um die Normale (Grad). */
+  yawDeg: number;
   scale: number;
   clearRadius: number;
+  instance?: { kind: TreeKind | PlanetPropKind; scale: number };
 }
 
 export interface PlanetParams {
@@ -237,6 +254,28 @@ export function chunkDirection(id: ChunkId, chunksPerFace: number, lu: number, l
   return out;
 }
 
+/** Chunk, dessen Zelle die Richtung enthält (Umkehrung von `chunkDirection`). */
+export function chunkIdOf(dx: number, dy: number, dz: number, chunksPerFace: number): ChunkId {
+  const ax = Math.abs(dx);
+  const ay = Math.abs(dy);
+  const az = Math.abs(dz);
+  let face: number;
+  if (ax >= ay && ax >= az) face = dx > 0 ? 0 : 1;
+  else if (ay >= az) face = dy > 0 ? 2 : 3;
+  else face = dz > 0 ? 4 : 5;
+  const f = FACES[face]!;
+  // Strahl auf die Würfelseite projizieren: origin·d / |…| → Punkt mit origin-Komponente 1
+  const o = f.origin[0] * dx + f.origin[1] * dy + f.origin[2] * dz;
+  const px = dx / o;
+  const py = dy / o;
+  const pz = dz / o;
+  const fu = (px - f.origin[0]) * f.right[0] + (py - f.origin[1]) * f.right[1] + (pz - f.origin[2]) * f.right[2];
+  const fv = (px - f.origin[0]) * f.up[0] + (py - f.origin[1]) * f.up[1] + (pz - f.origin[2]) * f.up[2];
+  const cx = Math.min(chunksPerFace - 1, Math.max(0, Math.floor(((fu + 1) / 2) * chunksPerFace)));
+  const cy = Math.min(chunksPerFace - 1, Math.max(0, Math.floor(((fv + 1) / 2) * chunksPerFace)));
+  return { face, cx, cy };
+}
+
 /** Winkelradius eines Chunks (Mittelpunkt → fernste Ecke), Maximum über alle Chunks einer Seite. */
 export function chunkAngularRadius(chunksPerFace: number): number {
   const c: Vec3 = [0, 0, 0];
@@ -288,7 +327,7 @@ export class PlanetField {
   readonly turns: number;
   readonly polarMargin: number;
   readonly cosHalfWidth: number;
-  readonly landmarkSlots: LandmarkSlot[];
+  landmarkSlots: LandmarkSlot[];
   private readonly hills: GradientNoise3;
   private readonly ridges: GradientNoise3;
   private readonly ramps: GradientNoise3;
@@ -464,16 +503,43 @@ export class PlanetField {
   private buildLandmark(l: PlanetLandmarkParams): LandmarkSlot {
     const w = this.worlds[l.world];
     if (!w) throw new Error(`Landmark "${l.id}" refers to world ${l.world}`);
-    const [latHi, latLo] = this.worldLatRange(l.world);
-    const f = l.latFrac ?? 0.5;
-    const lat = latHi + (latLo - latHi) * f;
-    const delta = ((l.deltaDeg ?? 34) * Math.PI) / 180;
-    const lon = this.pathLongitudeAt(lat) + (w.side === 'far' ? Math.PI : delta);
-    const dir: Vec3 = [Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon)];
+    let dir: Vec3;
+    if (l.dir) {
+      const len = Math.hypot(l.dir[0], l.dir[1], l.dir[2]) || 1;
+      dir = [l.dir[0] / len, l.dir[1] / len, l.dir[2] / len];
+    } else {
+      const [latHi, latLo] = this.worldLatRange(l.world);
+      const f = l.latFrac ?? 0.5;
+      const lat = latHi + (latLo - latHi) * f;
+      const delta = ((l.deltaDeg ?? 34) * Math.PI) / 180;
+      const lon = this.pathLongitudeAt(lat) + (w.side === 'far' ? Math.PI : delta);
+      dir = [Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon)];
+    }
     const position: Vec3 = [0, 0, 0];
     const normal: Vec3 = [0, 0, 0];
     this.surfaceAt(dir[0], dir[1], dir[2], position, normal);
-    return { id: l.id, world: l.world, zone: w.zone, position, normal, dir, scale: l.scale, clearRadius: l.clearRadius };
+    return {
+      id: l.id,
+      world: l.world,
+      zone: w.zone,
+      position,
+      normal,
+      dir,
+      yawDeg: l.yawDeg ?? 0,
+      scale: l.scale,
+      clearRadius: l.clearRadius,
+      ...(l.instance ? { instance: l.instance } : {}),
+    };
+  }
+
+  /** Wahrzeichen-Slots neu setzen (z. B. nachdem der Pfad bekannt ist); Streuungen danach neu erzeugen. */
+  setLandmarks(landmarks: PlanetLandmarkParams[]): void {
+    this.landmarkSlots = landmarks.map((l) => this.buildLandmark(l));
+  }
+
+  /** Chunk, in dessen Zelle eine Richtung liegt (Würfelseite nach größter Komponente, dann gnomonisch). */
+  chunkOf(dx: number, dy: number, dz: number): ChunkId {
+    return chunkIdOf(dx, dy, dz, this.params.chunksPerFace);
   }
 
   /** Terrainform am Ort: Welt-Parameter, schmal über Nah/Fern-, Hälften- und Zonengrenzen (Risse) geblendet. */
@@ -840,7 +906,13 @@ export function scatterChunkTrees(field: PlanetField, id: ChunkId, options: Chun
     const forest = field.forestAt(d[0], d[1], d[2]);
     const ft = fam.forestThreshold ?? 0.51;
     const fm = smoothstep(ft - 0.09, ft + 0.09, forest);
-    const pAccept = rel * (1 - fam.clumpiness + fam.clumpiness * fm);
+    let pAccept = rel * (1 - fam.clumpiness + fam.clumpiness * fm);
+    if (fam.rows) {
+      // Hecke: Nähe zur nächsten Höhenlinie h = k·spacing (leicht verrauscht, damit die Reihen atmen)
+      const hn = field.heightNormAt(d[0], d[1], d[2]) + (forest - 0.5) * 0.12;
+      const q = Math.abs((hn / fam.rows.spacing) % 1 - 0.5) * 2; // 1 auf der Linie, 0 dazwischen
+      pAccept = rel * smoothstep(1 - fam.rows.width, 1 - fam.rows.width * 0.4, q);
+    }
     if (rand() > pAccept) continue;
     const kind = pickKind(fam.kinds, rand());
     const scale = fam.scale[0] + (fam.scale[1] - fam.scale[0]) * (0.35 * rand() + 0.65 * rand());
@@ -869,8 +941,43 @@ export function scatterChunkTrees(field: PlanetField, id: ChunkId, options: Chun
     });
   }
   raw.sort((a, b) => a.priority - b.priority);
+  // Fokus-Bäume der Weltkompositionen (Landmark-Slots mit Baum-Instanz), genau im Chunk ihres Slots, wachsen zuerst
+  for (const l of field.landmarkSlots) {
+    const inst = l.instance;
+    if (!inst || !isTreeKind(inst.kind)) continue;
+    const c = field.chunkOf(l.dir[0], l.dir[1], l.dir[2]);
+    if (c.face !== id.face || c.cx !== id.cx || c.cy !== id.cy) continue;
+    const kind = inst.kind;
+    const prop = TREE_PROPORTIONS[kind];
+    const canopyRadius = prop.radius * inst.scale;
+    const hullH = prop.hull * canopyRadius;
+    const [px, py, pz] = l.position;
+    const [nx, ny, nz] = l.normal;
+    raw.unshift({
+      tree: {
+        position: [px, py, pz],
+        normal: [nx, ny, nz],
+        kind,
+        scale: inst.scale,
+        canopyRadius,
+        trunkHeight: prop.trunk * canopyRadius,
+        hullCenter: [px + nx * hullH, py + ny * hullH, pz + nz * hullH],
+        growth: 0,
+        zone: l.zone,
+        world: l.world,
+        rank: 0,
+        variant: 0.37,
+      },
+      priority: -1,
+    });
+  }
   const n = raw.length;
   return raw.map((e, i) => ({ ...e.tree, rank: n > 0 ? i / n : 0, growth: n > 0 ? i / n : 0 }));
+}
+
+const TREE_KIND_SET = new Set<string>(['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel']);
+function isTreeKind(k: string): k is TreeKind {
+  return TREE_KIND_SET.has(k);
 }
 
 const TRASH_KINDS: Array<[PlanetPropKind, number]> = [
@@ -960,6 +1067,24 @@ export function scatterChunkProps(field: PlanetField, id: ChunkId, options: Chun
     place((spec.barns ?? 0) * scale, 'barn', (rand, forest, s) => (s?.barns && forest < 0.6 ? { kind: 'barn', scale: 2.2 + rand() * 1.6 } : null));
     place((spec.rocks ?? 0) * scale, 'rock', (rand, _forest, s) => (s?.rocks && rand() < 0.8 ? { kind: 'rock', scale: 0.7 + rand() * 1.5 } : null));
     place((spec.animals ?? 0) * scale, 'animal', (rand, forest, s) => (s?.animals && forest < 0.5 && rand() < 0.7 ? { kind: 'animal', scale: 0.8 + rand() * 0.35 } : null));
+    // Fokus-Requisiten der Weltkompositionen (z. B. die rote Scheune in Welt 08)
+    for (const l of field.landmarkSlots) {
+      const inst = l.instance;
+      if (!inst || isTreeKind(inst.kind)) continue;
+      const c = field.chunkOf(l.dir[0], l.dir[1], l.dir[2]);
+      if (c.face !== id.face || c.cx !== id.cx || c.cy !== id.cy) continue;
+      out.push({
+        kind: inst.kind as PlanetPropKind,
+        position: [l.position[0], l.position[1], l.position[2]],
+        normal: [l.normal[0], l.normal[1], l.normal[2]],
+        scale: inst.scale,
+        yaw: (l.yawDeg * Math.PI) / 180,
+        zone: l.zone,
+        world: l.world,
+        rank: 0,
+        variant: 0.37,
+      });
+    }
     return out;
   }
 

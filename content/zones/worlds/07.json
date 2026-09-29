@@ -33,5 +33,15 @@
   "props": {},
   "fogStripes": 0.25,
   "fog": { "start": 5, "range": 11 },
-  "view": { "height": 2.7, "forward": 1.2, "look": 7.11, "fov": 84, "curvature": 0.08 }
+  "view": {
+    "height": 7.5,
+    "forward": 8,
+    "look": 5.0,
+    "fov": 52,
+    "curvature": 0.12,
+    "focus": [0.0, -0.25],
+    "nearClear": 1.2,
+    "footClear": 6.0
+  },
+  "focal": { "kind": "spire", "scale": 1.7, "latFrac": 0.5, "yawDeg": 0 }
 }

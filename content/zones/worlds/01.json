@@ -34,5 +34,15 @@
   "props": { "animals": 0.012 },
   "fogStripes": 0.2,
   "fog": { "start": 9, "range": 16 },
-  "view": { "height": 4.6, "forward": 0.8, "look": 3.06, "fov": 86, "curvature": 0.14 }
+  "view": {
+    "height": 9.0,
+    "forward": 4,
+    "look": 5.0,
+    "fov": 52,
+    "curvature": 0.14,
+    "focus": [0.0, -0.1],
+    "nearClear": 1.2,
+    "footClear": 4.5
+  },
+  "focal": { "latFrac": 0.5, "deltaDeg": -52 }
 }

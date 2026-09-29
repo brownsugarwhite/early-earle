@@ -1,6 +1,6 @@
-import { Color, CylinderGeometry, Group, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, MeshBasicNodeMaterial, Quaternion, Raycaster, Vector3 } from 'three/webgpu';
-import type { BufferGeometry, Camera } from 'three/webgpu';
-import { color, mix, positionLocal, smoothstep } from 'three/tsl';
+import { Color, CylinderGeometry, Group, InstancedMesh, Matrix4, MeshBasicMaterial, MeshBasicNodeMaterial, Quaternion, Raycaster, Vector3 } from 'three/webgpu';
+import type { BufferGeometry, Camera, Node } from 'three/webgpu';
+import { color, mix, positionGeometry, positionLocal, smoothstep, uniform } from 'three/tsl';
 import type { PathLayout } from './path';
 
 /** Small inlaid stones (Earle: tiny scale figures in a big landscape), not coins that dominate the map. */
@@ -16,6 +16,16 @@ const INK = '#242c0b';
 const GRADIENT_A = '#ff77ae'; // splash outline top
 const GRADIENT_B = '#b668d9'; // splash outline bottom
 
+type Vec3Node = Node<'vec3'>;
+
+/**
+ * Optional extras a map layout can carry (MapWorld sets them): the curvature bend (TSL, planet space) so pucks and
+ * dots follow the same exaggerated curvature as the terrain.
+ */
+export interface BentLayout extends PathLayout {
+  bend?: (p: Vec3Node) => Vec3Node;
+}
+
 const _Y = new Vector3(0, 1, 0);
 const _m = new Matrix4();
 const _q = new Quaternion();
@@ -26,6 +36,8 @@ const _n = new Vector3();
 /**
  * Level nodes on the map: small inlaid stones (instanced, flush with the ground), an ink offset shadow per stone in
  * the sun direction, a fine dotted path between them and — only on the current node — the fat pink→violet ring.
+ * Any node may sit off the ground (the stretch that climbs the giant tree: stones become brackets on the bark and
+ * stepping stones on the crown rim); the layout decides. Positions follow the map's curvature bend (layout.bend).
  * Tap targets stay generous through invisible pick discs on a layer the camera never renders.
  * No outlines anywhere else; edges come from value contrast alone.
  */
@@ -34,12 +46,14 @@ export class NodePath {
   readonly discs: InstancedMesh;
   private readonly shadows: InstancedMesh;
   private readonly dots: InstancedMesh;
-  private readonly ring: Mesh;
+  /** Ring as a one-instance mesh: its position is in planet space like the stones, so the bend applies alike. */
+  private readonly ring: InstancedMesh;
   /** Pick proxies on a layer the camera never renders (no draw call). */
   private readonly hits: InstancedMesh;
   private readonly geometries: BufferGeometry[] = [];
   private readonly materials: Array<{ dispose(): void }> = [];
   private readonly raycaster = new Raycaster();
+  private readonly ringScale = uniform(1);
   private current = 0;
   private done = 0;
 
@@ -52,17 +66,24 @@ export class NodePath {
   ) {
     this.group.name = 'NodePath';
     const n = Math.max(1, layout.nodes.length);
+    const bend = (layout as BentLayout).bend ?? ((p: Vec3Node) => p);
+    const bentMaterial = (col: string, instanceColors = false): MeshBasicNodeMaterial => {
+      const m = new MeshBasicNodeMaterial();
+      m.colorNode = color(instanceColors ? '#ffffff' : col);
+      m.positionNode = bend(positionLocal as unknown as Vec3Node);
+      return m;
+    };
 
     const discGeo = new CylinderGeometry(NODE_RADIUS, NODE_RADIUS, NODE_HEIGHT, 24);
     discGeo.translate(0, NODE_HEIGHT / 2 + 0.015, 0);
-    const discMat = new MeshBasicMaterial({ color: '#ffffff' });
+    const discMat = bentMaterial('#ffffff', true);
     this.discs = new InstancedMesh(discGeo, discMat, n);
     this.discs.name = 'nodes';
     this.discs.frustumCulled = false;
 
     const shadowGeo = new CylinderGeometry(NODE_RADIUS * 1.02, NODE_RADIUS * 1.02, 0.03, 24);
     shadowGeo.translate(0, 0.02, 0);
-    const shadowMat = new MeshBasicMaterial({ color: INK });
+    const shadowMat = bentMaterial(INK);
     this.shadows = new InstancedMesh(shadowGeo, shadowMat, n);
     this.shadows.name = 'node-shadows';
     this.shadows.frustumCulled = false;
@@ -86,7 +107,7 @@ export class NodePath {
 
     const dotGeo = new CylinderGeometry(0.06, 0.06, 0.04, 8);
     dotGeo.translate(0, 0.03, 0);
-    const dotMat = new MeshBasicMaterial({ color: PAPER });
+    const dotMat = bentMaterial(PAPER);
     this.dots = new InstancedMesh(dotGeo, dotMat, Math.max(1, layout.dots.length));
     this.dots.name = 'path-dots';
     this.dots.frustumCulled = false;
@@ -101,13 +122,14 @@ export class NodePath {
     this.dots.instanceMatrix.needsUpdate = true;
 
     // Ring: a wider puck under the current disc. Only the annulus and its side show → a fat, hard-edged,
-    // two-colour gradient outline (pink → violet along the path direction).
+    // two-colour gradient outline (pink → violet along the path direction). Breathing via a uniform scale.
     const ringGeo = new CylinderGeometry(NODE_RADIUS + RING_WIDTH, NODE_RADIUS + RING_WIDTH, NODE_HEIGHT, 40);
     ringGeo.translate(0, NODE_HEIGHT / 2 + 0.01, 0);
     const ringMat = new MeshBasicNodeMaterial();
-    const t = smoothstep(-(NODE_RADIUS + RING_WIDTH), NODE_RADIUS + RING_WIDTH, positionLocal.z.negate().add(positionLocal.x.mul(0.35)));
+    const t = smoothstep(-(NODE_RADIUS + RING_WIDTH), NODE_RADIUS + RING_WIDTH, positionGeometry.z.negate().add(positionGeometry.x.mul(0.35)));
     ringMat.colorNode = mix(color(GRADIENT_A), color(GRADIENT_B), t);
-    this.ring = new Mesh(ringGeo, ringMat);
+    ringMat.positionNode = bend(positionLocal as unknown as Vec3Node);
+    this.ring = new InstancedMesh(ringGeo, ringMat, 1);
     this.ring.name = 'current-ring';
     this.ring.frustumCulled = false;
 
@@ -145,13 +167,20 @@ export class NodePath {
       this.discs.setColorAt(i, c);
     });
     if (this.discs.instanceColor) this.discs.instanceColor.needsUpdate = true;
-    const node = this.layout.nodes[current];
-    if (node) {
-      _n.set(node.normal[0], node.normal[1], node.normal[2]).normalize();
-      this.ring.quaternion.setFromUnitVectors(_Y, _n);
-      this.ring.position.set(node.position[0], node.position[1], node.position[2]);
-    }
+    this.placeRing();
     this.hooks.onProgress?.(current, done);
+  }
+
+  private placeRing(): void {
+    const node = this.layout.nodes[this.current];
+    if (!node) return;
+    _n.set(node.normal[0], node.normal[1], node.normal[2]).normalize();
+    _q.setFromUnitVectors(_Y, _n);
+    _p.set(node.position[0], node.position[1], node.position[2]);
+    const s = this.ringScale.value;
+    _m.compose(_p, _q, _s.set(s, 1, s));
+    this.ring.setMatrixAt(0, _m);
+    this.ring.instanceMatrix.needsUpdate = true;
   }
 
   get currentIndex(): number {
@@ -164,8 +193,8 @@ export class NodePath {
 
   /** Slow breathing of the ring (always alive). */
   update(elapsed: number): void {
-    const s = 1 + 0.035 * Math.sin(elapsed * 2.4);
-    this.ring.scale.set(s, 1, s);
+    this.ringScale.value = 1 + 0.035 * Math.sin(elapsed * 2.4);
+    this.placeRing();
   }
 
   /** Node index under a screen position (NDC), or null. */

@@ -43,6 +43,8 @@ export interface EarleMaterialOptions {
   bandNode?: FloatNode | null;
   /** Terminator je Fragment (z. B. Schneedach immer im Licht: −1); überschreibt `terminator`. */
   terminatorNode?: FloatNode | null;
+  /** Nebeldistanz je Fragment (z. B. + Schleier über Nachbarwelten); Standard: Abstand zur Kamera. */
+  fogDistNode?: FloatNode | null;
 }
 
 /**
@@ -70,6 +72,7 @@ export class EarleMaterial extends NodeMaterial {
     pattern: EarlePattern | null;
     bandNode: FloatNode | null;
     terminatorNode: FloatNode | null;
+    fogDistNode: FloatNode | null;
   };
 
   constructor(options: EarleMaterialOptions) {
@@ -91,6 +94,7 @@ export class EarleMaterial extends NodeMaterial {
       pattern: options.pattern ?? null,
       bandNode: options.bandNode ?? null,
       terminatorNode: options.terminatorNode ?? null,
+      fogDistNode: options.fogDistNode ?? null,
     };
     if (options.normalNode) this.normalNode = options.normalNode;
     if (options.positionNode) this.positionNode = options.positionNode;
@@ -140,6 +144,6 @@ class EarleLightingModel extends LightingModel {
     const context = builder.context as { outgoingLight?: Node };
     if (!context.outgoingLight) return;
     const out = context.outgoingLight as Vec3Node;
-    out.assign(steppedFog(out, e.fog, e.lookup));
+    out.assign(steppedFog(out, e.fog, e.lookup, e.fogDistNode ?? undefined));
   }
 }
