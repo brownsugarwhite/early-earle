@@ -1,6 +1,6 @@
 import { BufferAttribute, BufferGeometry, IcosahedronGeometry, InstancedMesh, Vector3, type DataTexture } from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
-import { Fn, If, Loop, cameraPosition, clamp, cross, dot, float, fwidth, instanceIndex, int, max, modelWorldMatrixInverse, mx_noise_float, normalize, refract, smoothstep, step, texture, varying, vec2, vec3, vec4, positionGeometry } from 'three/tsl';
+import { Fn, Loop, cameraPosition, clamp, cross, dot, float, fwidth, instanceIndex, int, max, modelWorldMatrixInverse, mx_noise_float, normalize, smoothstep, step, texture, varying, vec2, vec3, vec4, positionGeometry } from 'three/tsl';
 import { elementOf, type IntNode, type Vec3Node } from '../common/tsl';
 import { BLOB_STRIDE, BlobField, type BlobParamBlock } from './blobParamsUniforms';
 import { compileSdf, createBlobQualityUniforms, type BlobQualityUniforms, type CompiledSdf } from './compileSdf';
@@ -73,7 +73,6 @@ export function createJiggleBlobMaterial(block: BlobParamBlock, opts: JiggleBlob
     const n = normalize(normalize(vNormal).add(sdf.rippleSlope(q, base))).toVar();
     const rd = normalize(pos.sub(vCam)).toVar();
     const inner = elementOf(block.node, base.add(BlobField.INNER));
-    const misc = elementOf(block.node, base.add(BlobField.MISC)).toVar();
     const s0 = elementOf(block.node, base).toVar();
 
     // View-dependent inner shapes instead of the organ march: two ellipses painted on the visible disc
@@ -89,14 +88,8 @@ export function createJiggleBlobMaterial(block: BlobParamBlock, opts: JiggleBlob
     const facing = smoothstep(0.05, 0.25, dot(pn, fwd));
     const organ = clamp(max(lower, upperRight).mul(facing), 0, 1);
 
-    // Gas v2 without an inner march: two parallax taps of the swirl density along the refracted ray
-    // (only for gas bodies: the branch is coherent per instance).
-    const gas = float(0).toVar();
-    If(kindWeight(misc.w, 2).greaterThan(0.5), () => {
-      const rr = normalize(refract(rd, n, 0.8));
-      const r0 = max(s0.w, 0.2);
-      gas.assign(clamp(sdf.gasDensity(q.add(rr.mul(r0.mul(0.25))), base).add(sdf.gasDensity(q.add(rr.mul(r0.mul(0.85))), base)).mul(0.5), 0, 1));
-    });
+    // Gas v2 (fog bands) is shaded on the surface in shadeBlob; no volume taps needed.
+    const gas = float(0);
 
     // Eye from the SDF glyph: sample the eye frame, sharpen with fwidth (crisp at any size).
     const f = eyeFrame(block, base, pos);

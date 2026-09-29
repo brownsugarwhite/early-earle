@@ -1,6 +1,6 @@
 import { BoxGeometry, InstancedMesh, Vector3 } from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
-import { Break, Discard, Fn, If, Loop, abs, cameraFar, cameraNear, cameraPosition, clamp, dot, float, floor, hash, instanceIndex, int, length, max, min, modelViewMatrix, modelWorldMatrixInverse, normalize, positionGeometry, pow, refract, sign, smoothstep, step, struct, varying, vec3, vec4, viewZToPerspectiveDepth } from 'three/tsl';
+import { Break, Discard, Fn, If, Loop, abs, cameraFar, cameraNear, cameraPosition, dot, float, floor, hash, instanceIndex, int, length, max, min, modelViewMatrix, modelWorldMatrixInverse, normalize, positionGeometry, pow, refract, sign, smoothstep, step, struct, varying, vec3, vec4, viewZToPerspectiveDepth } from 'three/tsl';
 import { elementOf, member } from '../common/tsl';
 import { BLOB_STRIDE, BlobField, type BlobParamBlock } from './blobParamsUniforms';
 import { compileSdf, createBlobQualityUniforms, type BlobQualityUniforms, type CompiledSdf } from './compileSdf';
@@ -119,7 +119,6 @@ export function createRaymarchBlobMaterial(block: BlobParamBlock, opts: Raymarch
     const n = sdf.normalShade(pos, base).toVar();
     const q = sdf.unsquash(pos, base).toVar();
     const kind = misc.w;
-    const wGas = kindWeight(kind, 2);
     const wFur = kindWeight(kind, 4);
 
     // Fur: fuzzy silhouette — the outermost Fresnel band is punched into strand-tip dots.
@@ -160,14 +159,8 @@ export function createRaymarchBlobMaterial(block: BlobParamBlock, opts: Raymarch
         const perp = length(toC.sub(rr.mul(tc)));
         const present = step(h3, rim.w.mul(0.07)).mul(step(0.05, tc)).mul(step(tc, 2.2)).mul(inBody);
         bubble.assign(max(bubble, present.mul(float(1).sub(smoothstep(rb.mul(0.7), rb, perp)))));
-        If(wGas.greaterThan(0.5), () => {
-          gasAcc.addAssign(sdf.gasDensity(sdf.unsquash(qq, base), base).mul(inBody));
-        });
+
       });
-      gasAcc.assign(clamp(gasAcc.div(innerSteps).mul(1.9), 0, 1));
-    }).Else(() => {
-      // LOD: one surface tap keeps far gas bodies swirling.
-      gasAcc.assign(sdf.gasDensity(q, base));
     });
     const organ = float(1).sub(smoothstep(-0.015, 0.015, organMin));
 

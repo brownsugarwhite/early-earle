@@ -91,12 +91,13 @@ export function createBlobParticleMesh(block: BlobParamBlock, opts: BlobParticle
       const a = h1.mul(Math.PI * 2);
       const dirS = normalize(vec3(cos(a), float(0.2).add(h2.mul(0.8)), sin(a)));
       const start = s0.xyz.add(dirS.mul(r0.mul(0.9)));
-      const drift = vec3(u.mul(0.55).add(sin(ageS.mul(1.9).add(h3.mul(6))).mul(0.06)), u.mul(0.4), cos(ageS.mul(1.6).add(h2.mul(6))).mul(0.06));
-      centre.assign(start.add(dirS.mul(u.mul(0.35).mul(r0))).add(drift.mul(r0)));
-      const swell = floor(sin(u.mul(Math.PI)).mul(2.999)); // 0, 1, 2 — grows, then thins out
-      size.assign(float(0.035).add(swell.mul(0.03)).mul(r0).mul(step(0.05, u)).mul(step(u, 0.95)));
-      aspect.assign(vec2(2.4, 0.6));
-      color.assign(mix(rim.xyz, baseC.xyz, step(0.65, u)));
+      const drift = vec3(u.mul(0.9).add(sin(ageS.mul(1.3).add(h3.mul(6))).mul(0.05)), u.mul(0.22), cos(ageS.mul(1.1).add(h2.mul(6))).mul(0.05));
+      centre.assign(start.add(dirS.mul(u.mul(0.25).mul(r0))).add(drift.mul(r0)));
+      // Long thin fog streaks (Earle's fog wisps), stretching as they drift, soft dithered ends.
+      const swell = sin(u.mul(Math.PI));
+      size.assign(float(0.05).add(swell.mul(0.07)).mul(r0).mul(step(0.04, u)).mul(step(u, 0.96)));
+      aspect.assign(vec2(float(3.2).add(u.mul(2.5)), 0.28));
+      color.assign(mix(mix(hl.xyz, vec3(1, 1, 1), 0.5), mix(rim.xyz, vec3(1, 1, 1), 0.3), step(0.6, u)));
     })
       .ElseIf(wFire.greaterThan(0.5), () => {
         // Embers: fast rise with a zigzag, cream → yellow → red by age, tiny.
@@ -169,7 +170,7 @@ export function createBlobParticleMesh(block: BlobParamBlock, opts: BlobParticle
   material.positionNode = member<'vec3'>(particle, 'pos').mul(placeV.w).add(placeV.xyz);
   material.colorNode = Fn(() => mix(mix(vColor.mul(0.72), vColor, step(0.5, vLit)), vHl, step(0.5, vHi)))();
   // Gas wisps dissolve toward their edge (alpha-to-coverage dither, still one opaque draw).
-  material.opacityNode = mix(float(1), float(1).sub(smoothstep(0.25, 0.95, length(vRad))), step(0.5, vSoft));
+  material.opacityNode = mix(float(1), float(1).sub(smoothstep(0.1, 0.95, length(vRad.mul(vec2(1, 0.6))))), step(0.5, vSoft));
   material.alphaToCoverage = true;
   material.transparent = false;
   material.depthWrite = true;

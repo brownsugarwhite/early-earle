@@ -32,7 +32,7 @@ shader branches coherently on them, so a blob pays only for its own look.
 |---|---|---|---|
 | jelly | banded wrap light, organs, bubbles, arc highlight, damped ripple rings | – | same |
 | liquid | flatter light, wet highlight, **meniscus band** at the floor, **posterised ripple rings** + foam dots | drips (particles) | same |
-| gas | **a small fog creature** (Ebene_19/20/25): a mostly even pale body with a few thin white horizontal streaks drifting slowly; the **outline itself is eroded** by two-scale noise that breathes, peels more at the crown and the wind side, thin areas see-through — alpha in (a), **alpha-to-coverage dither** in (b) (MSAA, one opaque draw) | wisps peel off the upper surface and drift with the wind (particles, dithered edges) | same |
+| gas | **a small fog creature** (Ebene_19/20/25): a calm pale body with 2–3 long, thin, soft-edged white horizontal bands sliding slowly sideways; the **outline itself is eroded** by two-scale noise that breathes, peels more at the crown and the wind side, thin areas see-through — alpha in (a), **alpha-to-coverage dither** in (b) (MSAA, one opaque draw) | long thin white fog streaks peel off the upper surface and drift with the wind (particles, dithered ends) | same |
 | fire | **flame crown** (5 swaying tongues + ridged noise in the SDF), 4 hard bands core→crimson tips, cream heart, no glow | embers (particles) | same |
 | fur | single pass: a dark mass with **hair strokes combed along a flow field** (from the head/eye direction backwards and down the sides), clumped into locks, lit tips on the light side, lighter belly/chest; the coat/pattern colour lives in the strokes. **Fur fins** give the tufted silhouette | **fins** (128 camera-facing lock cards: contour tufts + inner locks) + **6 shells** | fins at the silhouette only + single pass |
 | feather | single pass: overlapping scallops on the pole-safe row lattice, ink arcs, rachis, dotted lit crests | **feather cards** | single pass only |
@@ -137,8 +137,9 @@ scene.add(body.mesh, fur.mesh, feathers.mesh, particles.mesh);
   lock cards rooted on the body (Fibonacci roots traced onto the SDF). Each lock points along the combed
   flow and turns its face to the camera about that axis: at the contour the locks stand out as rounded,
   forked tufts (a fluffy, scalloped silhouette, the designer's retriever/mouse creatures), facing the
-  camera they lie flat as locks. Colour = the body's dark mass with thin light hair strokes per sub-lock
-  on the lit side; the face around the eye stays free. **Mobil**: `fins.silhouetteOnly.value = 1`
+  camera they lie flat as locks. Locks are flat, rounded tear/leaf scallops in the body's own fur colour
+  (one light/shade step, slightly lighter tip, no dark cone, no specular), longer and wavier on the
+  back and sides, sparser toward the face, overlapping into one scalloped fringe. **Mobil**: `fins.silhouetteOnly.value = 1`
   (contour tufts only) and no shells.
 * **Fur shells**: `shells` (8–12) copies of the body icosphere traced onto the same SDF, pushed out,
   combed down (`comb`), swayed by wind and the jiggle; the fragment alpha-tests a hashed strand lattice

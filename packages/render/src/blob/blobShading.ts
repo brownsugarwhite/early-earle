@@ -1,4 +1,4 @@
-import { If, abs, atan, clamp, cross, dot, float, floor, fract, fwidth, hash, length, mat3, max, mix, mx_fractal_noise_float, mx_noise_float, normalize, pow, smoothstep, step, time, vec2, vec3, vec4, uniform } from 'three/tsl';
+import { If, abs, atan, clamp, cross, dot, float, floor, fract, fwidth, hash, length, mat3, max, mix, mx_fractal_noise_float, mx_noise_float, normalize, pow, sin, smoothstep, step, time, vec2, vec3, vec4, uniform } from 'three/tsl';
 import { Matrix3, Matrix4, Vector3 } from 'three';
 import type { UniformNode } from 'three/webgpu';
 import { elementOf, type FloatNode, type IntNode, type Vec3Node, type Vec4Node } from '../common/tsl';
@@ -161,7 +161,6 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
   const lightBanded = patLightCol.mul(mix(float(0.62), float(1), smoothstep(0.42, 0.5, wrap)));
   col.assign(mix(col, lightBanded, patLight.mul(float(0.7).add(contrast.mul(0.3))).mul(wSolid)));
 
-  const gasIn = clamp(inp.gas ?? float(0), 0, 1).toVar();
   const gasBand = float(0).toVar();
   const gasErode = float(0).toVar();
   const wave = (inp.ripple ?? float(0)).toVar();
@@ -191,28 +190,29 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
       ringsOf(1);
       col.assign(mix(col, hl.xyz, foamOf()));
     })
-    // 2 gas v2 — Earle fog (Ebene_19/20/25): teal body, pale teal, cream and white streaks drifting in
-    // horizontal layers; no dark band. The layer index also drives the alpha (thin = see-through).
+    // 2 gas v2 — Earle fog (Ebene_20, Ebene_25): a calm pale body with 2–3 long, thin, soft-edged white
+    // horizontal bands that slowly slide sideways and fade in and out along their length.
     .ElseIf(kind.lessThan(2.5), () => {
-      const band = floor(clamp(gasIn.sub(0.5).mul(1.9).add(0.5), 0, 0.9999).mul(4)); // 0..3
-      gasBand.assign(band);
-      // Breathing, noise-eroded edge: the silhouette frays, more at the crown where wisps peel off.
-      const tt = time.add(bub.w.mul(3.0));
-      // Two scales: large lobes pull the outline in irregularly (breathing), fine frays at the edge; the
-      // crown and the wind side (+x) peel more.
-      const big = mx_noise_float(pq.mul(1.6).add(vec3(tt.mul(0.25), tt.mul(0.18), tt.mul(-0.1))));
-      const fine = mx_noise_float(pq.mul(5.0).add(vec3(tt.mul(0.6), 0, tt.mul(0.3))));
+      const tt = time.mul(0.12).add(bub.w.mul(3.0));
+      const body = mix(mix(baseC.xyz, rim.xyz, 0.42), mix(baseC.xyz, rim.xyz, 0.58), step(0.5, wrap)).toVar();
+      const bands = float(0).toVar();
+      for (const k of [0, 1, 2]) {
+        const yk = float(-0.42 + k * 0.4).add(sin(tt.mul(0.9).add(k * 2.1)).mul(0.05));
+        const wave = mx_noise_float(vec3(pq.x.mul(1.1).add(tt.mul(0.7 + k * 0.25)).add(k * 5.3), float(k * 3.1), pq.z.mul(1.1))).mul(0.07);
+        const d = abs(pq.y.sub(yk).sub(wave));
+        const thick = float(0.06 + k * 0.012);
+        // Each band fades in and out along its length and slides sideways (the wind, +x).
+        const alongB = smoothstep(-0.35, 0.2, mx_noise_float(vec3(pq.x.mul(0.8).sub(tt.mul(1.2 + k * 0.4)).add(k * 7.7), float(k), pq.z.mul(0.8))));
+        const present = k === 2 ? step(0.45, fract(bub.w.mul(1.7))) : float(1); // 2 or 3 bands per body
+        bands.assign(max(bands, float(1).sub(smoothstep(thick.mul(0.35), thick, d)).mul(alongB).mul(present)));
+      }
+      gasBand.assign(bands.mul(3));
+      col.assign(mix(body, mix(hl.xyz, vec3(1, 1, 1), 0.55), bands.mul(0.92)));
+      // Breathing, noise-eroded edge: the silhouette frays, more at the crown and on the wind side.
+      const te = time.add(bub.w.mul(3.0));
+      const big = mx_noise_float(pq.mul(1.6).add(vec3(te.mul(0.25), te.mul(0.18), te.mul(-0.1))));
+      const fine = mx_noise_float(pq.mul(5.0).add(vec3(te.mul(0.6), 0, te.mul(0.3))));
       gasErode.assign(big.mul(0.55).add(fine.mul(0.2)).add(smoothstep(0.25, 1.0, pq.y).mul(0.25)).add(smoothstep(0.2, 1.0, pq.x).mul(0.12)));
-      // A mostly even pale body with a few thin white streaks (3 close values, low contrast): a small fog
-      // creature, not a marbled ball.
-      const c0 = mix(baseC.xyz, rim.xyz, 0.4);
-      const c1 = mix(baseC.xyz, rim.xyz, 0.55);
-      const c2 = mix(rim.xyz, vec3(1, 1, 1), 0.2);
-      const c3 = mix(hl.xyz, vec3(1, 1, 1), 0.6);
-      const gasCol = mix(mix(c0, c1, step(0.5, band)), mix(c2, c3, step(2.5, band)), step(1.5, band)).toVar();
-      // The shaded side keeps one value step toward the body colour (bands, no gradient).
-      gasCol.assign(mix(gasCol, mix(baseC.xyz, gasCol, 0.7), step(wrap, 0.38)));
-      col.assign(gasCol);
     })
     // 3 fire v2: four hard bands from the hot core to crimson tips, streaked vertically by the same
     // stretched noise as the tongues; a small cream heart — no glow, no gradient.
@@ -328,7 +328,7 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
   // Alpha: gas fades at the edges (Fresnel) and uses the block's alpha; everything else is opaque.
   // Gas: thin layers see-through, dense streaks nearly opaque, the silhouette dissolves (alpha in (a),
   // alpha-to-coverage dither in (b)).
-  const gasAlpha = hl.w.mul(clamp(float(0.62).add(gasBand.mul(0.13)), 0, 1)).mul(float(1).sub(smoothstep(0.08, 0.5, fres.mul(1.2).add(gasErode))));
+  const gasAlpha = hl.w.mul(clamp(float(0.72).add(gasBand.mul(0.09)), 0, 1)).mul(float(1).sub(smoothstep(0.08, 0.5, fres.mul(1.2).add(gasErode))));
   const alpha = mix(float(1), gasAlpha, wGas);
   return vec4(col, alpha);
 }
