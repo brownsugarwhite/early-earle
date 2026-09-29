@@ -1,10 +1,10 @@
-import { If, abs, atan, clamp, cross, dot, float, floor, fract, fwidth, hash, length, max, mix, mx_fractal_noise_float, mx_noise_float, normalize, pow, smoothstep, step, time, vec2, vec3, vec4, uniform } from 'three/tsl';
-import { Vector3 } from 'three';
+import { If, abs, atan, clamp, cross, dot, float, floor, fract, fwidth, hash, length, mat3, max, mix, mx_fractal_noise_float, normalize, pow, smoothstep, step, time, vec2, vec3, vec4, uniform } from 'three/tsl';
+import { Matrix3, Matrix4, Vector3 } from 'three';
 import type { UniformNode } from 'three/webgpu';
 import { elementOf, type FloatNode, type IntNode, type Vec3Node, type Vec4Node } from '../common/tsl';
 import { BlobField, BlobStyleField, type BlobParamBlock } from './blobParamsUniforms';
 import { styleBaseOf, type CompiledSdf } from './compileSdf';
-import { aaW, dotField, kindWeight, rowLattice, samplePattern, sphereFrame } from './patterns';
+import { aaW, cellHash3, dotField, kindWeight, rowLattice, samplePattern, sphereFrame } from './patterns';
 
 /** Uniforms shared by both candidates (one fake light, ink colour for the eye). */
 export interface BlobShadingUniforms {
@@ -39,6 +39,13 @@ export interface ShadeInputs {
   /** Normalised impact-ripple wave at the surface (−1..1 × envelope, `sdf.ripple(q).y`). Default 0. */
   ripple?: FloatNode;
 }
+
+/** Fixed rotations for the fur lattices (clumps A, strokes B) and their inverses (transposes). */
+const rotM = (ax: number, ay: number): Matrix3 => new Matrix3().setFromMatrix4(new Matrix4().makeRotationX(ax).multiply(new Matrix4().makeRotationY(ay)));
+const FUR_ROT_A = mat3(rotM(0.61, 0.83));
+const FUR_ROT_A_T = mat3(rotM(0.61, 0.83).transpose());
+const FUR_ROT_B = mat3(rotM(-0.47, 1.21));
+const FUR_ROT_B_T = mat3(rotM(-0.47, 1.21).transpose());
 
 /** Anti-aliased step (≈1 px), shared by the look functions below. */
 function aa(edge: FloatNode | number, x: FloatNode): FloatNode {
@@ -86,6 +93,17 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
   const wFeather = kindWeight(kind, 5);
   const wSolid = wJelly.add(wLiquid).add(wFur).add(wFeather); // bodies that carry patterns
 
+  // Species ground (tiger saffron, giraffe cream …) replaces the body ramp of solid bodies; the shadow
+  // and rim follow the ground so a patterned jelly is an ochre animal, not a teal melon.
+  const groundSlot = style(BlobStyleField.GROUND).toVar();
+  const gW = groundSlot.w.mul(wSolid).toVar();
+  baseC.assign(vec4(mix(baseC.xyz, groundSlot.xyz, gW), baseC.w));
+  inner.assign(vec4(mix(inner.xyz, groundSlot.xyz.mul(0.36), gW.mul(0.85)), inner.w));
+  rim.assign(vec4(mix(rim.xyz, mix(groundSlot.xyz, vec3(1, 0.97, 0.9), 0.4), gW.mul(0.7)), rim.w));
+  // Glass (crescent highlight, organs, bubbles) only on unpatterned jelly/liquid.
+  const plain = float(1).sub(step(0.5, mat.x)).toVar();
+  const glass = wJelly.add(wLiquid).mul(plain).toVar();
+
   const L = u.lightDir;
   const V = rd.negate().toVar();
   const NdotL = dot(n, L);
@@ -111,10 +129,10 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
 
   // Inner organs: flat translucent shapes (crisp coverage, opacity = translucency). Fur/feather bodies are opaque.
   const organCol = mix(inner.xyz, inner.xyz.mul(0.7), smoothstep(0.2, -0.9, pos.y));
-  col.assign(mix(col, organCol, inp.organ.mul(inner.w).mul(0.95).mul(wJelly.add(wLiquid).add(wGas))));
+  col.assign(mix(col, organCol, inp.organ.mul(inner.w).mul(0.95).mul(wJelly.add(wLiquid).mul(float(1).sub(gW.mul(0.8))).add(wGas))));
 
   // Bubbles: lighter flat discs.
-  col.assign(mix(col, bub.xyz, inp.bubble.mul(0.75).mul(wJelly.add(wLiquid))));
+  col.assign(mix(col, bub.xyz, inp.bubble.mul(0.75).mul(glass)));
 
   // --- patterns + Earle stipple / dotted rim (solid bodies only) -----------------------------------
   // Everything below is branched on the per-instance kind (coherent for a whole blob): a blob pays only
@@ -126,7 +144,8 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
   const patInkCol = vec3(0, 0, 0).toVar();
   const patLightCol = vec3(0, 0, 0).toVar();
   If(wSolid.greaterThan(0.5), () => {
-    const pat = samplePattern({ mat, inkSlot, lightSlot, light2Slot, pq, n, wrap, fres, highlight: hl.xyz });
+    const eyeS = slot(BlobField.EYE);
+    const pat = samplePattern({ mat, inkSlot, lightSlot, light2Slot, pq, n, wrap, fres, highlight: hl.xyz, fwd: eyeS.xyz });
     patInk.assign(pat.ink);
     patLight.assign(pat.light);
     patStipple.assign(pat.stipple);
@@ -144,6 +163,7 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
   col.assign(mix(col, lightBanded, patLight.mul(float(0.7).add(contrast.mul(0.3))).mul(wSolid)));
 
   const gasIn = clamp(inp.gas ?? float(0), 0, 1).toVar();
+  const gasBand = float(0).toVar();
   const wave = (inp.ripple ?? float(0)).toVar();
   const foamOf = (): FloatNode => dotField(pq.mul(30).add(50.0), smoothstep(0.35, 0.95, wave).mul(0.3), 17).mul(smoothstep(0.35, 0.5, wave));
 
@@ -171,18 +191,19 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
       ringsOf(1);
       col.assign(mix(col, hl.xyz, foamOf()));
     })
-    // 2 gas v2: posterised swirl layers seen through the body. Dense layers are the light fog (cream
-    // rim colour, Earle's fog bands over dark hills), thin layers the dark inner colour.
+    // 2 gas v2 — Earle fog (Ebene_19/20/25): teal body, pale teal, cream and white streaks drifting in
+    // horizontal layers; no dark band. The layer index also drives the alpha (thin = see-through).
     .ElseIf(kind.lessThan(2.5), () => {
-      // Stretch the density contrast so all four layers show (the raw field sits mostly mid-range).
-      const band = floor(clamp(gasIn.sub(0.5).mul(1.8).add(0.5), 0, 0.9999).mul(4)); // 0..3
-      const deep = mix(inner.xyz, u.ink, 0.25);
-      const fogMid = mix(baseC.xyz, rim.xyz, 0.55);
-      const gasCol = mix(mix(deep, baseC.xyz, step(0.5, band)), mix(fogMid, rim.xyz, step(2.5, band)), step(1.5, band)).toVar();
-      // The shaded side keeps one step darker (value bands, no gradient).
-      gasCol.assign(mix(gasCol, mix(inner.xyz, gasCol, 0.55), step(wrap, 0.42)));
-      // Soft edge as a value step toward the deep colour (the opaque (b) mesh has no alpha fade).
-      gasCol.assign(mix(gasCol, deep, smoothstep(0.35, 0.8, fres).mul(0.55)));
+      const band = floor(clamp(gasIn.sub(0.5).mul(1.9).add(0.5), 0, 0.9999).mul(4)); // 0..3
+      gasBand.assign(band);
+      // Layers: see-through teal body → pale teal → white streaks (fog is light on dark; no dark band).
+      const c0 = mix(baseC.xyz, rim.xyz, 0.15);
+      const c1 = mix(baseC.xyz, rim.xyz, 0.6);
+      const c2 = mix(rim.xyz, vec3(1, 1, 1), 0.3);
+      const c3 = mix(hl.xyz, vec3(1, 1, 1), 0.55);
+      const gasCol = mix(mix(c0, c1, step(0.5, band)), mix(c2, c3, step(2.5, band)), step(1.5, band)).toVar();
+      // The shaded side keeps one value step toward the body colour (bands, no gradient).
+      gasCol.assign(mix(gasCol, mix(baseC.xyz, gasCol, 0.7), step(wrap, 0.38)));
       col.assign(gasCol);
     })
     // 3 fire v2: four hard bands from the hot core to crimson tips, streaked vertically by the same
@@ -202,13 +223,42 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
       fireCol.assign(mix(fireCol, hl.xyz, step(1.12, v)));
       col.assign(fireCol);
     })
-    // 4 fur look (single pass / Mobil preset): combed strand streaks, light flecks, matte 2-band shading.
+    // 4 fur look (single pass / Mobil preset) — Earle canopy (Ebene_33): a dark mass, light strokes on
+    // the lit rims of fur clumps and along the lit silhouette, combed down the surface. The coat colour
+    // (incl. pattern marks) lives in the strokes, so stripes and spots stay readable on dark fur.
     .ElseIf(kind.lessThan(4.5), () => {
-      const sq = vec3(pq.x.mul(5.5), pq.y.mul(1.3), pq.z.mul(5.5)).mul(max(mat.y, 0.05));
-      const streak = aa(0.1, mx_noise_float(sq.mul(3.5).add(11.0)));
-      col.assign(mix(col, shadowCol, streak.mul(0.45)));
-      const flecks = dotField(pq.mul(30).add(3.0), float(0.05).add(smoothstep(0.45, 0.9, wrap).mul(0.2)), 21).mul(smoothstep(0.4, 0.6, wrap));
-      col.assign(mix(col, hl.xyz, flecks.mul(0.55)));
+      const sc = max(mat.y, 0.05);
+      const coat = col.toVar(); // body ramp + pattern marks
+      const mass = mix(coat.mul(0.32), u.ink, 0.5);
+      // The mass stays dark even in the light (one small value step); the light lives in the strokes.
+      col.assign(mix(mass, mix(mass, coat, 0.12), step(0.55, wrap)));
+      // Clumps: one sub-dome per 3-D cell; its lit rim is where the tangent offset from the clump centre
+      // points toward the light.
+      // Lattices are rotated off the body axes so clumps and strokes never line up into columns.
+      const cq = FUR_ROT_A.mul(pq).mul(float(2.5).mul(sc)).add(7.0);
+      const ch = cellHash3(floor(cq), 31);
+      const co = FUR_ROT_A_T.mul(fract(cq).sub(ch.mul(0.5).add(0.25)));
+      const cot = co.sub(n.mul(dot(co, n)));
+      const cr = length(cot);
+      const Lt = normalize(L.sub(n.mul(dot(L, n))).add(vec3(0, 1e-3, 0)));
+      // Hard arcs on the lit rim of each clump (the scalloped canopy edges of Ebene_33).
+      const clumpRim = smoothstep(0.18, 0.3, cr).mul(float(1).sub(smoothstep(0.42, 0.5, cr))).mul(smoothstep(0.2, 0.55, dot(cot.div(max(cr, 1e-3)), Lt)));
+      // Strokes: teardrops elongated along the comb direction (down the surface).
+      const sp = FUR_ROT_B.mul(pq).mul(float(14).mul(sc)).add(3.0);
+      const sh = cellHash3(floor(sp), 33);
+      const so = FUR_ROT_B_T.mul(fract(sp).sub(sh.mul(0.6).add(0.2)));
+      const down = normalize(vec3(0, -1, 0).add(n.mul(n.y)).add(vec3(1e-3, 0, 0)));
+      const sideT = cross(n, down);
+      const along = dot(so, down);
+      // Leaf teardrops pointing up (against the comb), size varied per stroke (Ebene_33).
+      const sd = length(vec2(dot(so, sideT).mul(float(1).sub(along.mul(1.4))), along.mul(0.62))).div(float(0.75).add(sh.z.mul(0.5)));
+      const litAmt = smoothstep(0.42, 0.78, wrap);
+      const density = clamp(clumpRim.mul(0.95).add(fres.mul(fres).mul(1.1)).add(0.015).mul(litAmt), 0, 1);
+      const strokes = float(1).sub(aa(0.2, sd)).mul(step(sh.x, density));
+      const lod = smoothstep(0.3, 0.6, length(fwidth(sp)));
+      const cover = mix(strokes, density.mul(0.3), lod);
+      const strokeCol = mix(coat, hl.xyz, float(0.15).add(step(0.72, wrap).mul(0.25)));
+      col.assign(mix(col, strokeCol, cover));
     })
     // 5 feather look (Mobil preset, on the body): overlapping scallops on the pole-safe row lattice,
     // ink arcs, a rachis stroke and lit crests (dots along the sunlit edge).
@@ -226,9 +276,14 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
       col.assign(mix(col, hl.xyz, crestDots.mul(0.8)));
     });
 
-  // Fresnel rim: light bleeding through the thin edge — soft, no outline. Matte fur/feather get little.
-  const rimAmt = float(0.18).add(wGas.mul(0.5)).sub(wFur.add(wFeather).mul(0.1));
-  col.assign(mix(col, rim.xyz, fres.mul(rimAmt)));
+  // Fresnel rim: light bleeding through the thin edge — soft, no outline (glass and gas only).
+  col.assign(mix(col, rim.xyz, fres.mul(float(0.18).mul(glass).add(wGas.mul(0.5)))));
+  // Earle rim light for everything that is not glass (fur, feather, patterned coats; fire has its own
+  // bands): one hard light band along the sunlit edge — a value step, not a line.
+  const wFireR = kindWeight(kind, 3);
+  const nonGlass = float(1).sub(glass).sub(wGas).sub(wFireR).max(0);
+  const earleRim = smoothstep(0.4, 0.46, fres).mul(smoothstep(0.55, 0.66, wrap));
+  col.assign(mix(col, mix(rim.xyz, hl.xyz, 0.45), earleRim.mul(0.7).mul(nonGlass)));
 
   // Dotted rim (style block / fur default): light dots along the sunlit Fresnel band.
   col.assign(mix(col, patLightCol, patRim.mul(wSolid)));
@@ -249,14 +304,17 @@ export function shadeBlob(block: BlobParamBlock, u: BlobShadingUniforms, inp: Sh
   const hiLiquid = smoothstep(0.968, 0.978, dh).mul(gloss).add(arc.mul(0.7));
   // Fire has no highlight (its light is the band structure); feathers a faint dot.
   const hiFeather = dotHi.mul(0.35).mul(gloss);
-  const hi = hiJelly.mul(wJelly).add(hiLiquid.mul(wLiquid)).add(hiFeather.mul(wFeather));
+  const hi = hiJelly.mul(wJelly).add(hiLiquid.mul(wLiquid)).mul(plain).add(hiFeather.mul(wFeather));
   col.assign(mix(col, hl.xyz, clamp(hi, 0, 1)));
 
   // Eye slit(s) in ink on top of everything.
   col.assign(mix(col, u.ink, inp.eye));
 
   // Alpha: gas fades at the edges (Fresnel) and uses the block's alpha; everything else is opaque.
-  const alpha = mix(float(1), hl.w.mul(float(0.55).add(float(0.45).mul(float(1).sub(fres)))), wGas);
+  // Gas: thin layers see-through, dense streaks nearly opaque, the silhouette dissolves (alpha in (a),
+  // alpha-to-coverage dither in (b)).
+  const gasAlpha = hl.w.mul(clamp(float(0.5).add(gasBand.mul(0.2)), 0, 1)).mul(float(1).sub(smoothstep(0.16, 0.78, fres)));
+  const alpha = mix(float(1), gasAlpha, wGas);
   return vec4(col, alpha);
 }
 

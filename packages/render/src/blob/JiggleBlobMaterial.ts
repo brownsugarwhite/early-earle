@@ -111,9 +111,12 @@ export function createJiggleBlobMaterial(block: BlobParamBlock, opts: JiggleBlob
     return shade;
   })();
 
-  // Opaque on purpose: one instanced draw in the opaque pass, early-z, no blending (gas alpha is an
-  // (a)-only effect; (b) shows gas with its soft rim and swirl only).
+  // Still one opaque instanced draw (early-z, no blending): gas alpha goes through alpha-to-coverage, so
+  // with MSAA the gas silhouette and its thin layers dissolve into a stable dither instead of an opaque
+  // shell. Every other material writes alpha 1 (no effect, no cost).
   material.colorNode = shaded.xyz;
+  material.opacityNode = shaded.w;
+  material.alphaToCoverage = true;
   material.transparent = false;
   material.depthWrite = true;
   return { material, sdf, uniforms, glyph };

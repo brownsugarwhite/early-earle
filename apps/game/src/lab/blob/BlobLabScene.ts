@@ -70,6 +70,8 @@ export interface BlobLabSettings {
   stipple: number;
   /** 0..1 dotted rim. */
   rimDots: number;
+  /** 0..1 species colours → body/world palette (patterns with a species coat). */
+  recolor: number;
   /** "Earle-Test": dark lapis body with the diamond mosaic (colours from EARLE_TEST_STYLE). */
   earleTest: boolean;
   /** Extra passes (fur shells, feather cards) — only in the Hoch preset; Mobil always uses the single-pass looks. */
@@ -95,6 +97,7 @@ export const DEFAULT_BLOB_LAB_SETTINGS: BlobLabSettings = {
   patternContrast: 0.8,
   stipple: 0,
   rimDots: 0,
+  recolor: 0.25,
   earleTest: false,
   passes: true,
   sheet: 'off',
@@ -611,7 +614,7 @@ export class BlobLabScene implements SceneController {
     }
     // rimDots 0 = "material default" (fur/feather get their dotted rim), > 0 overrides.
     const rim = entry ? entry.rimDots : s.rimDots > 0 ? s.rimDots : undefined;
-    const overrides = { scale: s.patternScale, contrast: s.patternContrast, stipple: entry?.stipple ?? (entry ? 0 : s.stipple), ...(rim !== undefined ? { rimDots: rim } : {}) };
+    const overrides = { scale: s.patternScale, contrast: s.patternContrast, recolor: s.recolor, stipple: entry?.stipple ?? (entry ? 0 : s.stipple), ...(rim !== undefined ? { rimDots: rim } : {}) };
     const kind = entry ? (entry.pattern ?? 'none') : s.pattern;
     p.pattern = earle && kind === 'diamonds' ? { ...EARLE_TEST_STYLE.pattern, ...overrides } : makePattern(kind, p.baseColor, overrides);
     return p;

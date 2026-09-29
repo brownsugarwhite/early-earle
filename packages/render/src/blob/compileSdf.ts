@@ -289,8 +289,9 @@ export function compileSdf(block: BlobParamBlock, quality: BlobQualityUniforms =
     // (a cheap stand-in for a curl field: 3 noise evaluations per sample instead of 5).
     const n0 = mx_noise_float(pq.mul(1.3).add(vec3(t.mul(0.3), 0, t.mul(-0.27))));
     const w = vec3(cos(n0.mul(4)), n0.mul(0.3), sin(n0.mul(4))).mul(0.5);
-    // Stretched flat (y × 2.4): the swirl settles into horizontal layers like Earle's fog bands (Ebene_19/20).
-    const dens = mx_fractal_noise_float(pq.mul(vec3(1, 2.4, 1)).mul(shape.z.mul(1.6)).add(w).sub(vec3(0, t.mul(0.35), 0)), 2, 2.0, 0.5, 1.0);
+    // Stretched flat (y × 4) and drifting sideways: long horizontal streaks like Earle's fog bands
+    // (Ebene_19/20/25) that slide slowly through the body.
+    const dens = mx_noise_float(pq.mul(vec3(0.45, 5.0, 0.45)).mul(shape.z.mul(1.1)).add(w.mul(0.2)).add(vec3(t.mul(0.2), t.mul(-0.04), 0))).mul(1.3);
     return clamp(dens.mul(0.7).add(0.5), 0, 1);
   }).setLayout({ name: 'eeBlobGasDensity', type: 'float', inputs: [vec3Input('q'), baseInput] });
 

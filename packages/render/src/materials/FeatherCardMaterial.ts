@@ -2,7 +2,7 @@ import { BufferAttribute, BufferGeometry, DoubleSide, InstancedMesh } from 'thre
 import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { Discard, Fn, If, abs, cameraPosition, cos, cross, dot, float, fract, fwidth, instanceIndex, int, max, mix, modelWorldMatrixInverse, normalize, positionGeometry, pow, sin, smoothstep, sqrt, step, struct, time, varying, vec2, vec3, vec4 } from 'three/tsl';
 import { elementOf, member, type FloatNode } from '../common/tsl';
-import { BLOB_STRIDE, BlobField, BlobStyleField, type BlobParamBlock } from '../blob/blobParamsUniforms';
+import { BLOB_STRIDE, BLOB_STYLE_STRIDE, BlobField, BlobStyleField, type BlobParamBlock } from '../blob/blobParamsUniforms';
 import { compileSdf, createBlobQualityUniforms, type BlobQualityUniforms, type CompiledSdf } from '../blob/compileSdf';
 import { createBlobShadingUniforms, instanceHash, type BlobShadingUniforms } from '../blob/blobShading';
 import { makeVertexTracer } from '../blob/JiggleBlobMaterial';
@@ -63,7 +63,7 @@ export function createFeatherCardMesh(block: BlobParamBlock, opts: FeatherCardOp
     const pos = vec3(0, -1e4, 0).toVar();
     const n = vec3(0, 1, 0).toVar();
     If(wFeather.greaterThan(0.5), () => {
-      const styleBase = slotI.mul(7);
+      const styleBase = slotI.mul(BLOB_STYLE_STRIDE);
       const fx = elementOf(block.styleNode, styleBase.add(BlobStyleField.FX)); // seed, rippleStrength, size, ruffle
       const anim = elementOf(block.node, baseV.add(BlobField.ANIM));
       const s0 = elementOf(block.node, baseV);
@@ -133,8 +133,9 @@ export function createFeatherCardMesh(block: BlobParamBlock, opts: FeatherCardOp
     const wrap = dot(n, uniforms.lightDir).mul(0.5).add(0.5);
     const litBand = smoothstep(0.44, 0.5, wrap).mul(0.65).add(smoothstep(0.7, 0.74, wrap).mul(0.35));
     const litSide = smoothstep(0.48, 0.6, wrap);
-    const baseC = elementOf(block.node, base.add(BlobField.BASE));
-    const inner = elementOf(block.node, base.add(BlobField.INNER));
+    const ground = elementOf(block.styleNode, base.div(BLOB_STRIDE).mul(BLOB_STYLE_STRIDE).add(BlobStyleField.GROUND));
+    const baseC = vec4(mix(elementOf(block.node, base.add(BlobField.BASE)).xyz, ground.xyz, ground.w), 1).toVar();
+    const inner = vec4(mix(elementOf(block.node, base.add(BlobField.INNER)).xyz, ground.xyz.mul(0.36), ground.w.mul(0.85)), 1).toVar();
     const hl = elementOf(block.node, base.add(BlobField.HIGHLIGHT));
     const shadowCol = mix(inner.xyz, baseC.xyz, 0.28);
     const col = mix(shadowCol, baseC.xyz, litBand).toVar();

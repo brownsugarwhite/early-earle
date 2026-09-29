@@ -1,8 +1,8 @@
 import { BufferAttribute, BufferGeometry, InstancedMesh } from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
-import { Fn, If, Loop, cameraPosition, cos, cross, dot, float, floor, fract, instanceIndex, int, max, mix, modelWorldMatrixInverse, normalize, positionGeometry, sin, smoothstep, sqrt, step, struct, time, varying, vec2, vec3, vec4 } from 'three/tsl';
+import { Fn, If, Loop, cameraPosition, cos, cross, dot, float, floor, fract, instanceIndex, int, length, max, mix, modelWorldMatrixInverse, normalize, positionGeometry, sin, smoothstep, sqrt, step, struct, time, varying, vec2, vec3, vec4 } from 'three/tsl';
 import { elementOf, member } from '../common/tsl';
-import { BLOB_STRIDE, BlobField, BlobStyleField, type BlobParamBlock } from './blobParamsUniforms';
+import { BLOB_STRIDE, BLOB_STYLE_STRIDE, BlobField, BlobStyleField, type BlobParamBlock } from './blobParamsUniforms';
 import { compileSdf, createBlobQualityUniforms, type BlobQualityUniforms, type CompiledSdf } from './compileSdf';
 import { createBlobShadingUniforms, instanceHash, type BlobShadingUniforms } from './blobShading';
 import { kindWeight } from './patterns';
@@ -64,7 +64,7 @@ export function createBlobParticleMesh(block: BlobParamBlock, opts: BlobParticle
     const inner = elementOf(block.node, base.add(BlobField.INNER)).toVar();
     const rim = elementOf(block.node, base.add(BlobField.RIM)).toVar();
     const hl = elementOf(block.node, base.add(BlobField.HIGHLIGHT)).toVar();
-    const fx = elementOf(block.styleNode, slotI.mul(7).add(BlobStyleField.FX)).toVar();
+    const fx = elementOf(block.styleNode, slotI.mul(BLOB_STYLE_STRIDE).add(BlobStyleField.FX)).toVar();
     const seed = fx.x;
     const kind = misc.w;
     // Shared by all branches below: declared before the If chain (see samplePattern for why).
@@ -150,7 +150,7 @@ export function createBlobParticleMesh(block: BlobParamBlock, opts: BlobParticle
     const lit = step(0.1, dot(nDot, uniforms.lightDir));
     // Liquid drips: one crisp highlight dot (third tone), everything else two-tone.
     const hiMask = step(0.9, dot(nDot, normalize(uniforms.lightDir.add(fwd)))).mul(spec);
-    return Part(pos, color, lit, vec3(hiMask, 0, 0));
+    return Part(pos, color, lit, vec3(hiMask, wGas, 0));
   })();
 
   const slotV = int(instanceIndex).div(perBlob);
@@ -158,10 +158,15 @@ export function createBlobParticleMesh(block: BlobParamBlock, opts: BlobParticle
   const vColor = varying(member<'vec3'>(particle, 'color'), 'vPartColor');
   const vLit = varying(member<'float'>(particle, 'lit'), 'vPartLit');
   const vHi = varying(member<'vec3'>(particle, 'hi').x, 'vPartHi');
+  const vSoft = varying(member<'vec3'>(particle, 'hi').y, 'vPartSoft');
+  const vRad = varying(vec2(positionGeometry.x, positionGeometry.y), 'vPartRad');
   const hlV = elementOf(block.node, slotV.mul(BLOB_STRIDE).add(BlobField.HIGHLIGHT));
   const vHl = varying(hlV.xyz, 'vPartHl');
   material.positionNode = member<'vec3'>(particle, 'pos').mul(placeV.w).add(placeV.xyz);
   material.colorNode = Fn(() => mix(mix(vColor.mul(0.72), vColor, step(0.5, vLit)), vHl, step(0.5, vHi)))();
+  // Gas wisps dissolve toward their edge (alpha-to-coverage dither, still one opaque draw).
+  material.opacityNode = mix(float(1), float(1).sub(smoothstep(0.25, 0.95, length(vRad))), step(0.5, vSoft));
+  material.alphaToCoverage = true;
   material.transparent = false;
   material.depthWrite = true;
   material.name = 'ee-blob-particles';

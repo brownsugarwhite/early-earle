@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { genomeFor } from '@ee/genome';
 import { BLOB_STRIDE, BLOB_STYLE_STRIDE, BlobField, BlobParamBlock, BlobStyleField } from './blobParamsUniforms';
-import { BLOB_MATERIAL_KIND_ID, BLOB_MATERIAL_KINDS, EARLE_TEST_STYLE, NO_PATTERN, PATTERN_KINDS, PATTERN_KIND_ID, makePattern, patternPalette, type BlobRenderParams } from './patterns';
+import { BLOB_MATERIAL_KIND_ID, BLOB_MATERIAL_KINDS, EARLE_TEST_STYLE, NO_PATTERN, PATTERN_KINDS, PATTERN_KIND_ID, SPECIES_PATTERNS, makePattern, patternPalette, speciesPalette, type BlobRenderParams } from './patterns';
+import { hexToLinear } from '../common/tsl';
 
 const style = (b: BlobParamBlock, slot: number, field: number): number[] => Array.from(b.styleData.slice((slot * BLOB_STYLE_STRIDE + field) * 4, (slot * BLOB_STYLE_STRIDE + field) * 4 + 4));
 const main = (b: BlobParamBlock, slot: number, field: number): number[] => Array.from(b.data.slice((slot * BLOB_STRIDE + field) * 4, (slot * BLOB_STRIDE + field) * 4 + 4));
@@ -27,6 +28,18 @@ describe('patterns', () => {
     expect(patternPalette('diamonds', '#7ce6d5').light).toBe('#e07380');
     // Tiger ink follows the base hue (different bases → different inks).
     expect(patternPalette('tiger', '#7ce6d5').ink).not.toBe(patternPalette('tiger', '#e8552a').ink);
+  });
+
+  it('species patterns carry their own coat and default to recolor 0.25', () => {
+    expect(SPECIES_PATTERNS).toEqual(['tiger', 'giraffe', 'zebra', 'snake', 'spots']);
+    const tiger = makePattern('tiger', '#7ce6d5');
+    expect(tiger.ground).toBe(speciesPalette('tiger').ground);
+    expect(tiger.recolor).toBe(0.25);
+    expect(tiger.ink).toBe(speciesPalette('tiger').ink);
+    // The Earle mosaic keeps the body palette (no coat, no recolor).
+    const dia = makePattern('diamonds', '#7ce6d5');
+    expect(dia.ground).toBeUndefined();
+    expect(dia.recolor).toBeUndefined();
   });
 
   it('makePattern fills defaults and keeps overrides', () => {
@@ -83,6 +96,29 @@ describe('BlobParamBlock style block', () => {
     block.write(0, genomeFor('tjorizo', 3, 1), { center: [0, 0, 0], scale: 1 });
     expect(style(block, 0, BlobStyleField.MAT)[0]).toBe(PATTERN_KIND_ID[NO_PATTERN.kind]);
     expect(style(block, 0, BlobStyleField.PATTERN_INK)[3]).toBe(0);
+  });
+
+  it('recolor pulls the species coat into the body palette (write time, linear)', () => {
+    const block = new BlobParamBlock(2);
+    const g = genomeFor('tjorizo', 1, 1); // pezenpez teal body
+    block.write(0, { ...g, pattern: makePattern('tiger', g.baseColor, { recolor: 0 }) }, { center: [0, 0, 0], scale: 1 });
+    block.write(1, { ...g, pattern: makePattern('tiger', g.baseColor, { recolor: 1 }) }, { center: [0, 0, 0], scale: 1 });
+    const saffron = hexToLinear(speciesPalette('tiger').ground!);
+    const teal = hexToLinear(g.baseColor);
+    const g0 = style(block, 0, BlobStyleField.GROUND);
+    const g1 = style(block, 1, BlobStyleField.GROUND);
+    expect(g0[0]).toBeCloseTo(saffron[0], 5);
+    expect(g0[3]).toBeCloseTo(1); // full species coat
+    expect(g1[1]).toBeCloseTo(teal[1], 3); // coat pulled onto the body colour
+    expect(g1[3]).toBeCloseTo(1);
+    // Halfway keeps the chroma (hue walks the OKLCh circle): not a grey average.
+    block.write(1, { ...g, pattern: makePattern('tiger', g.baseColor, { recolor: 0.5 }) }, { center: [0, 0, 0], scale: 1 });
+    const mid = style(block, 1, BlobStyleField.GROUND);
+    const spread = Math.max(mid[0]!, mid[1]!, mid[2]!) - Math.min(mid[0]!, mid[1]!, mid[2]!);
+    expect(spread).toBeGreaterThan(0.12);
+    // Unpatterned bodies keep their colours (weight 0).
+    block.write(0, g, { center: [0, 0, 0], scale: 1 });
+    expect(style(block, 0, BlobStyleField.GROUND)[3]).toBe(0);
   });
 
   it('fire widens the instance box for the flame tongues', () => {

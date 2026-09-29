@@ -8,7 +8,7 @@
  * Earle rules (docs/STYLE.md §3/§4): patterns are ornament *inside* the body, never an outline; dots
  * sit where light hits, solid ink elsewhere; 3–4 value bands, no gradients.
  */
-import { If, Loop, abs, asin, atan, clamp, cos, dot, float, floor, fract, fwidth, hash, length, max, min, mix, mod, mx_fractal_noise_float, mx_noise_float, normalize, sin, smoothstep, step, vec2, vec3, vec4 } from 'three/tsl';
+import { If, Loop, abs, asin, atan, clamp, cos, cross, dot, float, floor, fract, fwidth, hash, length, max, min, mix, mod, mx_noise_float, normalize, pow, sin, smoothstep, step, vec2, vec3, vec4 } from 'three/tsl';
 import { MATERIAL_KIND_ID, mixHex, shiftHex, type BlobParams, type MaterialKind } from '@ee/genome';
 import type { FloatNode, Vec2Node, Vec3Node, Vec4Node } from '../common/tsl';
 
@@ -49,6 +49,18 @@ export interface PatternParams {
   rimDots?: number | undefined;
   /** Rotation of the pattern frame around the body's up axis, radians. Default 0. */
   rotation?: number | undefined;
+  /**
+   * Species ground colour (the coat the marks sit on: tiger saffron, giraffe cream, zebra paper …).
+   * Replaces the body ramp of solid bodies (jelly/liquid/fur/feather) by (1 − recolor). Default: none
+   * (the marks sit on the body colour, as before).
+   */
+  ground?: string | undefined;
+  /**
+   * 0..1 harmonisation: 0 = species colours as authored, 1 = ground/ink/light fully pulled into the
+   * body palette (`patternPalette`). Applied in `BlobParamBlock.write` (linear RGB). Default 0;
+   * `makePattern` uses 0.25 for species patterns.
+   */
+  recolor?: number | undefined;
 }
 
 /** No pattern; `rimDots` stays undefined so fur (0.8) / feather (0.5) keep their dotted-rim default. */
@@ -79,10 +91,43 @@ export function patternPalette(kind: PatternKind, baseColor: string): { ink: str
 }
 
 /**
- * Fills in a full `PatternParams` from a kind (+ optional overrides), colours from `patternPalette`.
- * `rimDots` is left undefined unless given, so the material default applies (fur 0.8, feather 0.5).
+ * Species palette (the animal's own colours, Earle-toned): ground = coat, ink = marks, light = belly /
+ * seams / crests, light2 = second mark tone. `diamonds` (Earle mosaic) and `none` have no ground — they
+ * keep the body/zone colours.
+ */
+export function speciesPalette(kind: PatternKind): { ground?: string; ink: string; light: string; light2: string } {
+  switch (kind) {
+    case 'tiger':
+      return { ground: '#e0892e', ink: '#1c130e', light: '#f4e4c1', light2: '#b8561e' };
+    case 'giraffe':
+      return { ground: '#efdfb8', ink: '#9a4a22', light: '#efdfb8', light2: '#c7822e' };
+    case 'zebra':
+      return { ground: '#eeeadb', ink: '#15151b', light: '#eeeadb', light2: '#2b2a33' };
+    case 'snake':
+      return { ground: '#2f9a58', ink: '#10301f', light: '#e6dc6a', light2: '#d6b93a' };
+    case 'spots':
+      return { ground: '#d9a54e', ink: '#2a190e', light: '#f3e5c3', light2: '#a8662a' };
+    case 'diamonds':
+      return { ink: '#0d414c', light: '#e07380', light2: '#39bbeb' };
+    default:
+      return { ink: NO_PATTERN.ink, light: NO_PATTERN.light, light2: NO_PATTERN.light };
+  }
+}
+
+/** Patterns that carry a species coat (and default to recolor 0.25). */
+export const SPECIES_PATTERNS: readonly PatternKind[] = ['tiger', 'giraffe', 'zebra', 'snake', 'spots'];
+
+/**
+ * Fills in a full `PatternParams` from a kind (+ optional overrides). Species patterns get their species
+ * palette (`speciesPalette`) with `recolor` 0.25 (a quarter harmonised into the body palette at write
+ * time); `diamonds`/`none` use `patternPalette(kind, baseColor)` as before. `rimDots` is left undefined
+ * unless given, so the material default applies (fur 0.8, feather 0.5).
  */
 export function makePattern(kind: PatternKind, baseColor: string, overrides: Partial<Omit<PatternParams, 'kind'>> = {}): PatternParams {
+  if (SPECIES_PATTERNS.includes(kind)) {
+    const sp = speciesPalette(kind);
+    return { kind, scale: 1, contrast: 0.8, stipple: 0, rotation: 0, recolor: 0.25, ...sp, ...overrides };
+  }
   const pal = patternPalette(kind, baseColor);
   return { kind, scale: 1, contrast: 0.8, stipple: 0, rotation: 0, ...pal, ...overrides };
 }
@@ -328,6 +373,8 @@ export interface PatternInputs {
   fres: FloatNode;
   /** Body highlight colour (third mosaic tone). */
   highlight: Vec3Node;
+  /** Unit forward axis of the body (face direction, horizontal); stripes wrap perpendicular to it. Default +z. */
+  fwd?: Vec3Node;
 }
 
 export interface PatternSample {
@@ -373,65 +420,111 @@ export function samplePattern(inp: PatternInputs, opts: SamplePatternOptions = {
   const p = vec3(p0.x.mul(c).sub(p0.z.mul(s)), p0.y, p0.x.mul(s).add(p0.z.mul(c))).toVar();
   // Spherical frame for the pole-safe lattices (fwidth taken here, in uniform control flow).
   const frame = sphereFrame(p);
+  // Body axes for stripes: forward (spine direction over the top), up, side.
+  const fwdIn = inp.fwd ?? vec3(0, 0, 1);
+  const fwd = normalize(vec3(fwdIn.x, 0, fwdIn.z).add(vec3(0, 0, 1e-4))).toVar();
+  const side = normalize(cross(vec3(0, 1, 0), fwd)).toVar();
+  const along = dot(p, fwd).toVar(); // along the spine (+ = face)
+  const across = dot(p, side).toVar(); // left/right
+  const upP = p.y.toVar();
   const lightSide = smoothstep(0.35, 0.6, inp.wrap).toVar();
   const lit01 = smoothstep(0.3, 0.85, inp.wrap).toVar();
 
   const ink = float(0).toVar();
   const light = float(0).toVar();
   const lightCol = lightSlot.xyz.toVar();
+  const inkCol = inkSlot.xyz.toVar();
 
   // 0 none (explicit head of the chain so the ElseIf ranges below stay simple upper bounds).
   If(kind.lessThan(0.5), () => {
     ink.assign(0);
   })
-    // 1 tiger: noise-warped bands around the spine (x), tapering to nothing on the belly, broken up.
+    // 1 tiger: stripes wrap perpendicular to the spine (bands of the along-spine coordinate, bent back
+    // toward the flanks), thick on the back, tapering to points toward the belly, some forked; the face
+    // cap stays clear; cream belly.
     .ElseIf(kind.lessThan(1.5), () => {
-    const warp = mx_fractal_noise_float(p.mul(1.7).add(vec3(3.1, 0, 7.7)), 2, 2.0, 0.5, 1.0);
-    const uu = p.x.mul(3.6).mul(scale).add(warp.mul(1.1)).add(p.y.mul(0.35));
-    const band = sin(uu.mul(Math.PI));
-    const belly = smoothstep(-0.15, -0.85, p.y.add(warp.mul(0.15)));
-    const gaps = aa(0.25, mx_noise_float(p.mul(2.6).add(9.0)).add(0.5));
-    const thr = float(0.15).add(float(1).sub(contrast).mul(0.35)).add(belly.mul(1.6));
-    ink.assign(aa(thr, band).mul(gaps));
-      // Belly: cream underside.
-      light.assign(belly.mul(0.9));
+      const warp = mx_noise_float(p.mul(1.5).add(vec3(3.1, 0, 7.7))).mul(0.32).add(mx_noise_float(p.mul(3.4).add(1.7)).mul(0.1));
+      const sc = along.mul(float(4.0).mul(scale)).add(across.mul(across).mul(1.1)).add(warp);
+      const k = floor(sc.add(0.5));
+      const f = sc.sub(k); // −0.5..0.5 across the stripe
+      const hk = cellHash3(vec3(k, 0, 0), 11);
+      const bellyEnd = mix(float(-0.2), float(-0.72), hk.x); // where this stripe runs out
+      const t = smoothstep(bellyEnd, float(0.85), upP.add(warp.mul(0.2)));
+      const width = float(0.23).mul(pow(t, float(0.75))).mul(float(0.8).add(contrast.mul(0.3)));
+      // Forks: some stripes split into two thinner branches below a split height.
+      const split = mix(float(0.15), float(-0.3), hk.z);
+      const sep = step(hk.y, 0.55).mul(clamp(split.sub(upP).mul(0.5), 0, 0.18));
+      const forked = step(0.001, sep);
+      const dist = mix(abs(f), min(abs(f.sub(sep)), abs(f.add(sep))), forked);
+      const w2 = width.mul(mix(float(1), float(0.6), forked));
+      const face = float(1).sub(smoothstep(0.55, 0.82, along));
+      ink.assign(float(1).sub(aa(w2, dist)).mul(step(0.02, t)).mul(face));
+      const belly = smoothstep(-0.28, -0.7, upP.add(warp.mul(0.25)));
+      light.assign(belly.mul(float(1).sub(ink)));
     })
-    // 2 giraffe: Voronoi patches (ink, two tones by cell id) with light seams.
+    // 2 giraffe: large Voronoi patches (rust / ochre per cell) on thick cream seams (the ground).
     .ElseIf(kind.lessThan(2.5), () => {
-      const v = voronoi3(p.mul(2.4).mul(scale).add(0.5));
-      const seamW = float(0.16).sub(contrast.mul(0.06));
+      const v = voronoi3(p.mul(1.55).mul(scale).add(0.5));
+      const seamW = float(0.11).add(float(1).sub(contrast).mul(0.06));
       const inside = aa(seamW, v.y.sub(v.x));
-      ink.assign(inside.mul(float(1).sub(step(0.55, v.z).mul(0.35))));
+      ink.assign(inside);
+      inkCol.assign(mix(inkSlot.xyz, light2Slot.xyz, step(0.55, v.z)));
       light.assign(float(1).sub(inside));
     })
-    // 3 zebra: equal-width warped stripes, ink on cream.
+    // 3 zebra: bold, regular stripes perpendicular to the spine, bent into chevrons on the flanks,
+    // narrowing (not ending) toward the belly; ink on paper.
     .ElseIf(kind.lessThan(3.5), () => {
-      const warp = mx_fractal_noise_float(p.mul(2.2).add(vec3(0, 5.5, 1.3)), 2, 2.0, 0.5, 1.0);
-      const uu = p.x.mul(5.2).mul(scale).add(warp.mul(0.55)).add(p.y.mul(0.6));
-      const band = sin(uu.mul(Math.PI));
-      const belly = smoothstep(-0.5, -0.95, p.y);
-      ink.assign(aa(0.0, band).mul(float(1).sub(belly)));
+      const warp = mx_noise_float(p.mul(1.8).add(vec3(0, 5.5, 1.3))).mul(0.14);
+      const sc = along.mul(float(4.2).mul(scale)).add(across.mul(across).mul(1.6)).add(abs(across).mul(upP).mul(0.6)).add(warp);
+      const f = fract(sc).sub(0.5);
+      const t = smoothstep(-0.95, 0.6, upP);
+      const width = mix(float(0.14), float(0.27), t).mul(float(0.85).add(contrast.mul(0.2)));
+      ink.assign(float(1).sub(aa(width, abs(f))));
       light.assign(float(1).sub(ink));
     })
-    // 4 snake: square rhombic scales on the pole-safe row lattice, ink seams, two tones, lit upper edge.
+    // 4 snake: jewel scales (square rhombi on the pole-safe row lattice) with dark seams, yellow belly
+    // scales, and a chain of dark diamonds with yellow borders along the back.
     .ElseIf(kind.lessThan(4.5), () => {
       const sc = snakeScales(frame, float(16).mul(scale));
       const aaw = frame.dLat.mul(float(16).mul(scale)).mul(0.5 * 0.75).add(1e-4);
       const seamW = float(0.12).add(contrast.mul(0.08));
       const seam = float(1).sub(aaW(seamW, sc.x, aaw));
-      // Scale tones: every scale darkens toward its lower edge (overlap shadow), half of them one step darker.
-      const tone = step(0.5, sc.z).mul(0.3).add(step(sc.y, -0.25).mul(0.25));
+      const tone = step(0.5, sc.z).mul(0.22).add(step(sc.y, -0.25).mul(0.2));
       const crest = aaW(seamW, sc.x, aaw).mul(float(1).sub(aaW(seamW.add(0.2), sc.x, aaw))).mul(smoothstep(0.05, 0.3, sc.y)).mul(lightSide);
-      ink.assign(max(seam, tone.mul(float(1).sub(seam))));
-      light.assign(crest);
+      // Dorsal diamonds: along-spine periodic × across rhombus metric, only on the back.
+      const da = fract(along.mul(float(2.2).mul(scale)).add(0.25)).sub(0.5);
+      const dd = abs(da).mul(2).add(abs(across).mul(float(2.6).mul(scale)));
+      const back = smoothstep(-0.05, 0.35, upP);
+      const diamond = float(1).sub(aa(0.72, dd)).mul(back);
+      const border = aa(0.72, dd).mul(float(1).sub(aa(0.92, dd))).mul(back);
+      const bellyScales = smoothstep(-0.2, -0.45, upP);
+      ink.assign(max(max(seam, tone.mul(float(1).sub(seam))), diamond.mul(0.92)));
+      light.assign(max(crest, max(border, bellyScales.mul(0.8)).mul(float(1).sub(seam))));
+      lightCol.assign(mix(lightSlot.xyz, light2Slot.xyz, max(border, bellyScales)));
     })
-    // 5 spots: tangent-plane discs of varying size (full circles), sparse on the belly.
+    // 5 spots: leopard rosettes on the pole-safe row lattice (one jittered rosette per cell, uniform
+    // density) — broken rings around a darker tawny centre; some cells carry a small solid spot instead;
+    // sparse on the belly.
     .ElseIf(kind.lessThan(5.5), () => {
-      const q = p.mul(2.8).mul(scale).add(20.0);
-      const h = cellHash3(floor(q), 5);
-      const r = float(0.12).add(h.y.mul(0.16)).mul(float(0.75).add(contrast.mul(0.25)));
-      const present = step(h.z, 0.8).mul(smoothstep(-0.95, -0.55, p.y));
-      ink.assign(dotFieldTangent(q, inp.n, r, 5).mul(present));
+      const L = rowLattice(frame, float(10).mul(scale), 1);
+      const h = cellHash3(vec3(L.col, L.row, 3), 5);
+      const o = L.local.sub(h.xy.sub(0.5).mul(0.28));
+      const ang = atan(o.y, o.x);
+      // Irregular rosettes: the ring radius wobbles with the angle, 3–5 uneven gaps.
+      const wob = sin(ang.mul(3).add(h.x.mul(6.28))).mul(0.12).add(sin(ang.mul(5).add(h.z.mul(9))).mul(0.06));
+      const d = length(o).div(float(1).add(wob));
+      const r = float(0.3).add(h.z.mul(0.08));
+      const nGaps = floor(float(3).add(h.x.mul(2.99)));
+      const gapPhase = fract(ang.div(Math.PI * 2).mul(nGaps).add(h.y.mul(5)).add(sin(ang.mul(2).add(h.z.mul(4))).mul(0.12)));
+      const gaps = step(mix(float(0.14), float(0.3), h.z), gapPhase);
+      const rosette = step(h.y, 0.7); // the rest are small solid spots
+      const ring = aaW(r.mul(0.6), d, L.aaw).mul(float(1).sub(aaW(r, d, L.aaw))).mul(gaps);
+      const centre = float(1).sub(aaW(r.mul(0.6), d, L.aaw));
+      const solid = float(1).sub(aaW(r.mul(0.42), d, L.aaw));
+      const present = smoothstep(-0.95, -0.5, upP);
+      ink.assign(mix(solid, max(ring, centre), rosette).mul(present));
+      inkCol.assign(mix(inkSlot.xyz, light2Slot.xyz, rosette.mul(centre).mul(float(1).sub(ring))));
+      light.assign(smoothstep(-0.35, -0.75, upP).mul(float(1).sub(ink)));
     })
     // 6 diamonds: Earle mosaic — 4-dot diamonds and 5-dot crosses on the pole-safe row lattice,
     // denser and lighter toward the light (Ebene_3, ref 10).
@@ -453,7 +546,7 @@ export function samplePattern(inp: PatternInputs, opts: SamplePatternOptions = {
     });
 
   if (opts.marksOnly) {
-    return { ink: clamp(ink.mul(smoothstep(0.02, 0.15, contrast.add(0.1))), 0, 1), light: clamp(light, 0, 1), inkColor: inkSlot.xyz, lightColor: lightCol, stipple: float(0), rimDots: float(0) };
+    return { ink: clamp(ink.mul(smoothstep(0.02, 0.15, contrast.add(0.1))), 0, 1), light: clamp(light, 0, 1), inkColor: inkCol, lightColor: lightCol, stipple: float(0), rimDots: float(0) };
   }
 
   // Earle stipple: dots that grow toward the light (object-space halftone of the lit band). When a cell
@@ -472,5 +565,5 @@ export function samplePattern(inp: PatternInputs, opts: SamplePatternOptions = {
   const rimD = mix(dotField(rq, float(0.27), 13), float(0.3), smoothstep(0.3, 0.6, length(fwidth(rq))));
   const rimDots = rimD.mul(rimBand).mul(smoothstep(0.25, 0.55, inp.wrap)).mul(smoothstep(0.02, 0.1, rimAmt));
 
-  return { ink: clamp(ink.mul(smoothstep(0.02, 0.15, contrast.add(0.1))), 0, 1), light: clamp(light, 0, 1), inkColor: inkSlot.xyz, lightColor: lightCol, stipple, rimDots };
+  return { ink: clamp(ink.mul(smoothstep(0.02, 0.15, contrast.add(0.1))), 0, 1), light: clamp(light, 0, 1), inkColor: inkCol, lightColor: lightCol, stipple, rimDots };
 }

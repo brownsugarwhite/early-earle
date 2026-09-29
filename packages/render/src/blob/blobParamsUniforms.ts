@@ -2,6 +2,7 @@ import { buffer } from 'three/tsl';
 import type { Node } from 'three/webgpu';
 import { BREATH_AMPLITUDE, squashScales, NO_FLOOR, type BlobParams, type SpherePrim, type Vec3 } from '@ee/genome';
 import { hexToLinear } from '../common/tsl';
+import { patternPalette } from './patterns';
 import { BLOB_MATERIAL_KIND_ID, DEFAULT_FEATHER, DEFAULT_FUR, NO_PATTERN, PATTERN_KIND_ID, type BlobMaterialKind, type BlobRenderParams, type FeatherParams, type FurParams, type PatternParams, type RippleImpulse } from './patterns';
 
 /** Sphere slots per instance on the GPU. Genomes use ≤ 8; a merge union (A ∪ B + droplets) up to 16. */
@@ -31,11 +32,11 @@ export const BlobField = {
 } as const;
 
 /**
- * Second, small uniform buffer per instance ("style block"): pattern, ripple, fur/feather knobs.
- * Kept apart from the main block so the main block stays under the 16 KB WebGL2 minimum.
- * 36 × 7 × 16 B = 4 032 B.
+ * Second, small uniform buffer per instance ("style block"): pattern, ripple, fur/feather knobs,
+ * species ground. Kept apart from the main block so the main block stays under the 16 KB WebGL2
+ * minimum. 36 × 8 × 16 B = 4 608 B. Always index with `BLOB_STYLE_STRIDE` (it grew from 7 to 8).
  */
-export const BLOB_STYLE_STRIDE = 7;
+export const BLOB_STYLE_STRIDE = 8;
 
 /** Slot indices inside one instance of the style block (vec4 units). */
 export const BlobStyleField = {
@@ -46,6 +47,7 @@ export const BlobStyleField = {
   RIPPLE: 4, // xyz impact direction (rest space, unit), w age in seconds (< 0 = no ripple)
   FUR: 5, // length, density, sway, comb
   FX: 6, // particle seed, ripple strength, feather size, feather ruffle
+  GROUND: 7, // rgb species ground colour (linear, already recoloured), w weight (1 − recolor; 0 = body colours)
 } as const;
 
 export interface BlobPlacement {
@@ -83,6 +85,51 @@ export interface BlobDynamics {
   /** Concentric surface ripples from an impact (liquid v2; jelly damped). */
   ripple?: RippleImpulse | undefined;
 }
+
+/** Linear sRGB → OKLab → OKLCh; h in radians. */
+function toOklch(c: readonly number[]): [number, number, number] {
+  const l = 0.4122214708 * c[0]! + 0.5363325363 * c[1]! + 0.0514459929 * c[2]!;
+  const m = 0.2119034982 * c[0]! + 0.6806995451 * c[1]! + 0.1073969566 * c[2]!;
+  const s = 0.0883024619 * c[0]! + 0.2817188376 * c[1]! + 0.6299787005 * c[2]!;
+  const l_ = Math.cbrt(l);
+  const m_ = Math.cbrt(m);
+  const s_ = Math.cbrt(s);
+  const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_;
+  const A = 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_;
+  const B = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_;
+  return [L, Math.hypot(A, B), Math.atan2(B, A)];
+}
+
+function fromOklch([L, C, h]: readonly [number, number, number]): [number, number, number] {
+  const A = C * Math.cos(h);
+  const B = C * Math.sin(h);
+  const l_ = L + 0.3963377774 * A + 0.2158037573 * B;
+  const m_ = L - 0.1055613458 * A - 0.0638541728 * B;
+  const s_ = L - 0.0894841775 * A - 1.291485548 * B;
+  const l = l_ * l_ * l_;
+  const m = m_ * m_ * m_;
+  const s = s_ * s_ * s_;
+  const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+  return [clamp01(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s), clamp01(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s), clamp01(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s)];
+}
+
+/**
+ * Harmonising blend (recolor): lightness and chroma blend linearly, the hue walks the short way round
+ * the OKLCh circle — saffron pulled toward a teal body becomes ochre/olive-gold, not grey.
+ */
+const mixLin = (a: readonly number[], b: readonly number[], t: number): [number, number, number] => {
+  if (t <= 0) return [a[0]!, a[1]!, a[2]!];
+  if (t >= 1) return [b[0]!, b[1]!, b[2]!];
+  const x = toOklch(a);
+  const y = toOklch(b);
+  let dh = y[2] - x[2];
+  if (dh > Math.PI) dh -= 2 * Math.PI;
+  if (dh < -Math.PI) dh += 2 * Math.PI;
+  // Near-grey colours have no meaningful hue: take the other's.
+  const hx = x[1] < 0.02 ? y[2] : x[2];
+  const hy = y[1] < 0.02 ? x[2] : hx + dh;
+  return fromOklch([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, hx + (hy - hx) * t]);
+};
 
 /** Keeps the body (index 0/1) and the largest lobes so a capped blob still reads the same. */
 export function capSpheres(spheres: readonly SpherePrim[], max: number): SpherePrim[] {
@@ -138,6 +185,7 @@ export class BlobParamBlock {
     this.setStyle(slot, BlobStyleField.MAT, 0, 1, 0, 0);
     this.setStyle(slot, BlobStyleField.RIPPLE, 0, 1, 0, -1);
     this.setStyle(slot, BlobStyleField.FX, slot * 7.31, 0, 1, 0);
+    this.setStyle(slot, BlobStyleField.GROUND, 0, 0, 0, 0);
   }
 
   /** Writes the sphere list (≤ 16). Returns the count written. */
@@ -239,9 +287,22 @@ export class BlobParamBlock {
 
     // --- style block ---------------------------------------------------------------------------
     const pattern: PatternParams = dyn.pattern ?? style.pattern ?? NO_PATTERN;
-    const pInk = hexToLinear(pattern.ink);
-    const pLight = hexToLinear(pattern.light);
-    const pLight2 = hexToLinear(pattern.light2 ?? pattern.light);
+    // Species colours, pulled toward the body palette by `recolor` (linear RGB, no string churn).
+    const rc = Math.max(0, Math.min(1, pattern.recolor ?? 0));
+    let pInk = hexToLinear(pattern.ink);
+    let pLight = hexToLinear(pattern.light);
+    let pLight2 = hexToLinear(pattern.light2 ?? pattern.light);
+    let ground: [number, number, number] = pattern.ground ? hexToLinear(pattern.ground) : [0, 0, 0];
+    if (rc > 0) {
+      const h = patternPalette(pattern.kind, params.baseColor);
+      pInk = mixLin(pInk, hexToLinear(h.ink), rc);
+      pLight = mixLin(pLight, hexToLinear(h.light), rc);
+      pLight2 = mixLin(pLight2, hexToLinear(h.light2), rc);
+      if (pattern.ground) ground = mixLin(ground, hexToLinear(params.baseColor), rc);
+    }
+    // The ground replaces the body ramp (already recoloured above: recolor 1 = the body colour itself).
+    const groundW = pattern.ground ? 1 : 0;
+    this.setStyle(slot, BlobStyleField.GROUND, ground[0], ground[1], ground[2], groundW);
     // Fur and feather bodies default to a dotted rim (their silhouettes are strands/tips in the references).
     const rimDots = pattern.rimDots ?? (material === 'fur' ? 0.8 : material === 'feather' ? 0.5 : 0);
     this.setStyle(slot, BlobStyleField.MAT, PATTERN_KIND_ID[pattern.kind], pattern.scale, pattern.contrast, pattern.rotation ?? 0);

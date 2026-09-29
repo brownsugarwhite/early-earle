@@ -2,7 +2,7 @@ import { BufferAttribute, BufferGeometry, InstancedMesh } from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { Discard, Fn, If, attribute, cameraPosition, cross, dot, float, floor, fract, instanceIndex, int, length, max, mix, modelWorldMatrixInverse, normalize, positionGeometry, sin, smoothstep, step, struct, time, varying, vec3, vec4 } from 'three/tsl';
 import { elementOf, member, type FloatNode } from '../common/tsl';
-import { BLOB_STRIDE, BlobField, BlobStyleField, type BlobParamBlock } from '../blob/blobParamsUniforms';
+import { BLOB_STRIDE, BLOB_STYLE_STRIDE, BlobField, BlobStyleField, type BlobParamBlock } from '../blob/blobParamsUniforms';
 import { compileSdf, createBlobQualityUniforms, type BlobQualityUniforms, type CompiledSdf } from '../blob/compileSdf';
 import { createBlobShadingUniforms, type BlobShadingUniforms } from '../blob/blobShading';
 import { createIcosphere, makeVertexTracer } from '../blob/JiggleBlobMaterial';
@@ -89,8 +89,8 @@ export function createFurShellMesh(block: BlobParamBlock, opts: FurShellOptions 
       root.assign(trace(dir, baseV));
       rest.assign(sdf.unsquash(root, baseV));
       n.assign(sdf.normalSmooth(root, baseV));
-      const fur = elementOf(block.styleNode, baseV.div(BLOB_STRIDE).mul(7).add(BlobStyleField.FUR)); // length, density, sway, comb
-      const fx = elementOf(block.styleNode, baseV.div(BLOB_STRIDE).mul(7).add(BlobStyleField.FX));
+      const fur = elementOf(block.styleNode, baseV.div(BLOB_STRIDE).mul(BLOB_STYLE_STRIDE).add(BlobStyleField.FUR)); // length, density, sway, comb
+      const fx = elementOf(block.styleNode, baseV.div(BLOB_STRIDE).mul(BLOB_STYLE_STRIDE).add(BlobStyleField.FX));
       const anim = elementOf(block.node, baseV.add(BlobField.ANIM));
       const len = fur.x.mul(shellT);
       const down = vec3(0, -1, 0).sub(n.mul(n.y));
@@ -99,7 +99,14 @@ export function createFurShellMesh(block: BlobParamBlock, opts: FurShellOptions 
       const swayPhase = time.mul(2.1).add(root.x.mul(2.3)).add(root.z.mul(1.7)).add(fx.x);
       const sway = sin(swayPhase).mul(0.5).add(sin(swayPhase.mul(2.3)).mul(0.25)).mul(fur.z).mul(0.35).add(anim.x.mul(sin(time.mul(15).add(root.y.mul(6)))).mul(0.5));
       const bend = shellT.mul(shellT);
-      const offset = n.mul(len).mul(float(1).sub(fur.w.mul(0.45).mul(bend))).add(downT.mul(len).mul(fur.w).mul(bend).mul(0.9)).add(side.mul(len).mul(sway).mul(bend));
+      // Clumping: tips lean toward the centre of their fur clump (3-D cells in rest space) → tufts.
+      const s0v = elementOf(block.node, baseV);
+      const cq = rest.sub(s0v.xyz).div(max(s0v.w, 0.2)).mul(3.2).add(7.0);
+      const ch = cellHash3(floor(cq), 31);
+      const co = fract(cq).sub(ch.mul(0.4).add(0.3));
+      const toCentre = co.sub(n.mul(dot(co, n))).negate();
+      const clump = toCentre.mul(len).mul(bend).mul(0.55);
+      const offset = n.mul(len).mul(float(1).sub(fur.w.mul(0.45).mul(bend))).add(downT.mul(len).mul(fur.w).mul(bend).mul(0.9)).add(side.mul(len).mul(sway).mul(bend)).add(clump);
       pos.assign(root.add(offset));
     });
     return Vtx(pos, root, n, rest);
@@ -123,7 +130,7 @@ export function createFurShellMesh(block: BlobParamBlock, opts: FurShellOptions 
     const q = vRest.toVar(); // rest space, unsquashed per vertex (the strand lattice rides on the body)
     const s0 = elementOf(block.node, base).toVar();
     const pq = q.sub(s0.xyz).div(max(s0.w, 0.2)).toVar();
-    const styleBase = base.div(BLOB_STRIDE).mul(7);
+    const styleBase = base.div(BLOB_STRIDE).mul(BLOB_STYLE_STRIDE);
     const fur = elementOf(block.styleNode, styleBase.add(BlobStyleField.FUR));
     // Strand lattice at the root (rest space): one strand per cell, per-strand length by hash.
     const sp = pq.mul(26).mul(max(fur.y, 0.1)).add(5.0);
@@ -134,17 +141,17 @@ export function createFurShellMesh(block: BlobParamBlock, opts: FurShellOptions 
     const r = float(0.3).mul(float(1).sub(shellT.div(lenQ)));
     Discard(d.greaterThan(r).or(shellT.greaterThan(lenQ)));
 
-    // Two-band matte lighting, darker toward the root, the body pattern on the strands.
+    // Earle canopy (Ebene_33): a dark mass; strand tips catch the light only on the lit rims of their
+    // clump and along the lit silhouette — light strokes on dark, the body pattern on the strands.
     const n = normalize(vN);
     const L = uniforms.lightDir;
     const wrap = dot(n, L).mul(0.5).add(0.5);
-    const litBand = smoothstep(0.44, 0.5, wrap).mul(0.65).add(smoothstep(0.7, 0.74, wrap).mul(0.35));
-    const baseC = elementOf(block.node, base.add(BlobField.BASE));
-    const inner = elementOf(block.node, base.add(BlobField.INNER));
+    const ground = elementOf(block.styleNode, styleBase.add(BlobStyleField.GROUND));
+    const baseC = mix(elementOf(block.node, base.add(BlobField.BASE)).xyz, ground.xyz, ground.w).toVar();
+    const inner = mix(elementOf(block.node, base.add(BlobField.INNER)).xyz, ground.xyz.mul(0.36), ground.w.mul(0.85)).toVar();
     const hl = elementOf(block.node, base.add(BlobField.HIGHLIGHT));
-    const shadowCol = mix(inner.xyz, baseC.xyz, 0.28);
-    const col = mix(shadowCol, baseC.xyz, litBand).toVar();
-    col.assign(mix(col, inner.xyz, float(1).sub(shellT).mul(0.45)));
+    const shadowCol = mix(inner, baseC, 0.28);
+    const coat = mix(shadowCol, baseC, step(0.5, wrap)).toVar(); // coat colour; pattern marks added below
     const mat = elementOf(block.styleNode, styleBase.add(BlobStyleField.MAT)).toVar();
     const inkSlot = elementOf(block.styleNode, styleBase.add(BlobStyleField.PATTERN_INK));
     const lightSlot = elementOf(block.styleNode, styleBase.add(BlobStyleField.PATTERN_LIGHT));
@@ -154,12 +161,28 @@ export function createFurShellMesh(block: BlobParamBlock, opts: FurShellOptions 
     // The body pattern continues on the strands (marks only: the body's stipple/rim dots stay on the body).
     If(mat.x.greaterThan(0.5), () => {
       const pat = samplePattern({ mat, inkSlot, lightSlot, light2Slot, pq, n, wrap, fres, highlight: hl.xyz }, { marksOnly: true });
-      col.assign(mix(col, pat.inkColor, pat.ink.mul(0.9)));
-      col.assign(mix(col, pat.lightColor.mul(mix(float(0.62), float(1), step(0.47, wrap))), pat.light.mul(0.85)));
+      coat.assign(mix(coat, pat.inkColor, pat.ink.mul(0.9)));
+      coat.assign(mix(coat, pat.lightColor.mul(mix(float(0.62), float(1), step(0.47, wrap))), pat.light.mul(0.85)));
     });
-    // Lit strand tips.
-    const tip = step(0.75, shellT).mul(smoothstep(0.55, 0.7, wrap)).mul(step(0.2, dot(n, rd.negate())));
-    col.assign(mix(col, hl.xyz, tip.mul(0.55)));
+    // Dark mass: the coat pulled toward ink, darker toward the root.
+    const mass = mix(coat.mul(0.32), uniforms.ink, 0.5);
+    const col = mix(mass, mix(mass, coat, 0.12), step(0.55, wrap)).toVar();
+    col.assign(mix(col, uniforms.ink, float(1).sub(shellT).mul(0.3)));
+    // Lit strand tips: on the lit rim of the clump (tangent offset from the clump centre toward the light)
+    // and at the lit silhouette.
+    const cq = pq.mul(3.2).add(7.0);
+    const ch = cellHash3(floor(cq), 31);
+    const co = fract(cq).sub(ch.mul(0.4).add(0.3));
+    const cot = co.sub(n.mul(dot(co, n)));
+    const cr = length(cot);
+    const Lt = normalize(L.sub(n.mul(dot(L, n))).add(vec3(0, 1e-3, 0)));
+    const clumpRim = smoothstep(0.1, 0.4, cr).mul(smoothstep(0.0, 0.55, dot(cot.div(max(cr, 1e-3)), Lt)));
+    const edge = float(1).sub(max(dot(n, rd.negate()), 0));
+    const lit = smoothstep(0.5, 0.75, wrap);
+    // Lit tips mostly at the lit silhouette (Earle's dotted canopy rim), a few on clump rims.
+    const tip = step(0.55, shellT).mul(lit).mul(step(0.5, edge.mul(edge).mul(1.6).add(clumpRim.mul(0.6)))).mul(step(h.x, 0.6));
+    const strokeCol = mix(coat, hl.xyz, float(0.15).add(step(0.72, wrap).mul(0.25)));
+    col.assign(mix(col, strokeCol, tip));
     return col;
   })();
   material.transparent = false;

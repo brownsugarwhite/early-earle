@@ -32,10 +32,14 @@ shader branches coherently on them, so a blob pays only for its own look.
 |---|---|---|---|
 | jelly | banded wrap light, organs, bubbles, arc highlight, damped ripple rings | – | same |
 | liquid | flatter light, wet highlight, **meniscus band** at the floor, **posterised ripple rings** + foam dots | drips (particles) | same |
-| gas | **4 posterised swirl layers** (curl-advected noise, flat fog bands, light = cream rim colour), soft rim (alpha in (a), value step in (b)) | wisps (particles) | same, particles optional |
+| gas | **Earle fog** (Ebene_19/20/25): long horizontal streaks drifting sideways in 4 pale layers (teal → pale teal → cream → white, no dark band); thin layers see-through and the silhouette dissolves — alpha in (a), **alpha-to-coverage dither** in (b) (MSAA, still one opaque draw) | soft wisps (particles, dithered edges) | same |
 | fire | **flame crown** (5 swaying tongues + ridged noise in the SDF), 4 hard bands core→crimson tips, cream heart, no glow | embers (particles) | same |
-| fur | single pass: combed strand streaks, lit flecks, matte 2-band light, fuzzy silhouette ((a) punches strand dots into the rim), dotted rim by default | **fur shells** | single pass only |
+| fur | single pass — **Earle canopy** (Ebene_33): a dark mass (coat pulled to ink), light leaf-strokes (teardrops, combed) in arcs on the lit rims of fur clumps and along the lit silhouette; the coat/pattern colour lives in the strokes | **fur shells** (clumped tufts, lit tips only at the silhouette) | single pass only |
 | feather | single pass: overlapping scallops on the pole-safe row lattice, ink arcs, rachis, dotted lit crests | **feather cards** | single pass only |
+
+**Highlights:** the glassy crescent + dot highlight is only drawn on *unpatterned* jelly/liquid. Fur,
+feather, gas-free solids with a pattern and fire get **Earle rim light** instead: one hard light band
+along the sunlit edge (a value step, not a line); gas keeps its soft Fresnel fog edge.
 
 ## 2. Patterns (`patterns.ts`)
 
@@ -53,19 +57,29 @@ interface PatternParams {
   stipple?: number;     // 0..1 Earle stipple: the lit band becomes dots that grow toward the light
   rimDots?: number;     // 0..1 light dots along the sunlit Fresnel rim (fur 0.8 / feather 0.5 by default)
   rotation?: number;    // radians around the body's up axis
+  ground?: string;      // species coat (tiger saffron, giraffe cream, zebra paper …) — replaces the body ramp
+  recolor?: number;     // 0 = species colours, 1 = fully harmonised into the body palette (OKLCh hue walk)
 }
-makePattern(kind, baseColor, overrides?)   // full PatternParams with the per-pattern palette
-patternPalette(kind, baseColor)            // { ink, light, light2 } harmonised with the body ramp
+makePattern(kind, baseColor, overrides?)   // species kinds: speciesPalette + recolor 0.25; diamonds/none: patternPalette
+speciesPalette(kind)                       // { ground?, ink, light, light2 } — the animal's own (Earle-toned) colours
+patternPalette(kind, baseColor)            // { ink, light, light2 } harmonised with the body ramp (recolor target)
+SPECIES_PATTERNS                           // ['tiger','giraffe','zebra','snake','spots']
 NO_PATTERN, EARLE_TEST_STYLE               // presets (Earle test = lapis body, diamond mosaic, stipple, dotted rim)
 ```
 
+`recolor` is applied in `BlobParamBlock.write` (CPU, linear RGB via OKLCh: lightness and chroma blend,
+the hue walks the short way round — saffron pulled toward a teal body becomes gold/olive, not grey).
+The ground replaces base/shadow/rim of solid bodies (jelly, liquid, fur, feather, fur shells, feather
+cards); organs and the crescent disappear under a coat. Stripes are oriented by the body axes: the
+forward axis is the eye direction (`EYE` slot), so they wrap perpendicular to the spine.
+
 | pattern | technique | Earle reference |
 |---|---|---|
-| tiger | noise-warped bands around the spine, broken, cream belly | – |
-| giraffe | 3-D Voronoi patches (two tones) with light seams | lichen mosaic 01 / Ebene_35 |
-| zebra | gently warped equal stripes, ink on cream | – |
-| snake | square rhombic scales on a **pole-safe row lattice** (N·cos(lat) columns per row, L1-Voronoi over 3 rows), ink seams, two tones, lit upper edge | – |
-| spots | tangent-plane discs of varying size (full circles on the surface) | – |
+| tiger | saffron coat; stripes wrap perpendicular to the spine (bent back on the flanks), thick on the back, tapering to points toward the belly, ~half of them forked; face cap clear; cream belly | – |
+| giraffe | cream ground; large 3-D Voronoi patches in rust/ochre with thick cream seams | lichen mosaic 01 / Ebene_35 |
+| zebra | paper ground; bold regular stripes perpendicular to the spine, chevrons on the flanks, narrowing toward the belly | – |
+| snake | jewel green scales (square rhombi on a **pole-safe row lattice**, L1-Voronoi over 3 rows), dark seams, yellow belly scales, a **dorsal chain of dark diamonds** with yellow borders | – |
+| spots | tawny coat; **leopard rosettes** on the row lattice (irregular broken rings, 3–5 gaps, darker centres), small solid spots between | – |
 | diamonds | 4-dot diamonds / 5-dot crosses on the row lattice, denser and lighter toward the light, red/cyan/cream | ref 10, Ebene_3 |
 | stipple / rimDots | object-space halftone (14 cells/unit) and rim dots; fade to their average below ≈ 3 px per cell (no moiré) | 01, 03, 06 (dots only where light hits) |
 
@@ -77,7 +91,7 @@ the lab render it; there is nothing else to wire.
 ## 3. Parameter block
 
 `BlobParamBlock(capacity)` holds two uniform buffers: the main block (`BLOB_STRIDE = 28` vec4 per slot,
-unchanged layout, `MISC.w` now 0..5) and the **style block** (`BLOB_STYLE_STRIDE = 7`):
+unchanged layout, `MISC.w` now 0..5) and the **style block** (`BLOB_STYLE_STRIDE = 8`):
 
 | `BlobStyleField` | x | y | z | w |
 |---|---|---|---|---|
@@ -88,6 +102,9 @@ unchanged layout, `MISC.w` now 0..5) and the **style block** (`BLOB_STYLE_STRIDE
 | `RIPPLE` (4) | impact dir (rest space, unit) | | | age s (< 0 = none) |
 | `FUR` (5) | length | density | sway | comb |
 | `FX` (6) | particle seed | ripple strength | feather size | feather ruffle |
+| `GROUND` (7) | species ground rgb (linear, already recoloured) | | | weight (1 = coat, 0 = body colours) |
+
+`BLOB_STYLE_STRIDE` grew from 7 to 8 (pass 2) — always index with the constant.
 
 `write(slot, params, placement, dyn)` fills both. New `BlobDynamics` fields:
 
@@ -135,21 +152,19 @@ bench column "GPU ms"). **Caveat:** measured while other agents' headless browse
 the minima are the best available numbers, the ordering is reliable, single rows can be off by
 ±0.5 ms. Re-measure on a quiet machine with `/lab/blob?bench=1` (table rows "Fell/Federn/Gas").
 
-Frame cost for 36 bodies, candidate (b), tier 3, board view (each blob ≈ 100–130 px), minimum of 6
-interleaved rounds. "+" = over the empty board (plate, clear, MSAA resolve: 0.86 ms / 0.58 ms ts).
+Frame cost for 36 bodies, candidate (b), tier 3, board view (each blob ≈ 100–130 px), minimum of 4
+interleaved rounds, every config rebuilt (pass 2; the pass-1 table measured a dead board for some rows).
+"+" = over the empty board (plate, clear, MSAA resolve ≈ 1.0 ms).
 
 | config | frame (+) | timestamps (+) | note |
 |---|---|---|---|
-| jelly | +0.03 ms | ±0.1 | the jiggle body itself is almost free at board size |
-| + tiger / giraffe / snake / diamonds | +0.02…0.08 ms | ±0.1 | patterns are below measurement noise |
-| + stipple + dotted rim | +0.08 ms | ±0.1 | |
-| liquid + drips | +0.41 ms | +0.36 ms | ripple rings, meniscus, 4 drips per body |
-| gas + wisps | +0.95 ms | +1.01 ms | most expensive body (2 swirl taps per pixel) |
-| fire + embers | +0.47 ms | +0.36 ms | tongues in the vertex trace + 4 bands |
-| fur single pass (Mobil) | +0.59 ms | +0.38 ms | |
-| **fur + 10 shells (Hoch)** | **+1.47 ms** | **+1.74 ms** | shells ≈ +0.9…1.4 ms over single pass → **≤ 2 ms for 36 ✓** |
-| feather single pass (Mobil) | +0.41 ms | +0.32 ms | |
-| **feather + 64 cards (Hoch)** | **+0.37 ms** | **+0.32 ms** | cards are below noise over single pass |
+| jelly | +0.94 ms | +1.70 ms | 36 jiggle bodies |
+| + tiger / giraffe / spots | +1.42 / +1.50 / +1.01 ms | +2.3 / +0.3 / +1.6 ms | species coats: +0.1…0.6 ms over jelly |
+| gas + wisps | +1.93 ms | +3.06 ms | fog streaks, alpha-to-coverage, dithered wisps |
+| fur single pass (Mobil) | +0.90 ms | +1.55 ms | Earle canopy strokes ≈ jelly cost |
+| **fur + 10 shells (Hoch)** | **+1.82 ms** | **+3.04 ms** | shells **+0.92 ms** (+1.5 ms ts) over single pass → **≤ 2 ms for 36 ✓** |
+| feather single pass (Mobil) | +0.82 ms | +1.24 ms | |
+| **feather + 64 cards (Hoch)** | **+0.70 ms** | **+1.29 ms** | cards within noise over single pass |
 
 Standard bench (`/lab/blob?bench=1`, vsync, WebGPU timestamps, medians — `docs/progress/p1b-bench.png`):
 (b) × 36 jelly 1.57 ms · fur + shells 2.84 ms (**+1.27**) · feathers + cards 2.07 ms (+0.5) · gas +

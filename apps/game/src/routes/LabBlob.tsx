@@ -164,6 +164,7 @@ export function LabBlob() {
         <Slider label="Kontrast" value={settings.patternContrast} min={0} max={1} step={0.01} onChange={(patternContrast) => set({ patternContrast })} testId="sl-pattern-contrast" />
         <Slider label="Stipple" value={settings.stipple} min={0} max={1} step={0.01} onChange={(stipple) => set({ stipple })} testId="sl-stipple" />
         <Slider label="Randpunkte" value={settings.rimDots} min={0} max={1} step={0.01} onChange={(rimDots) => set({ rimDots })} testId="sl-rimdots" />
+        <Slider label="Umfärben" value={settings.recolor} min={0} max={1} step={0.01} onChange={(recolor) => set({ recolor })} testId="sl-recolor" />
       </div>
     </div>
   );
