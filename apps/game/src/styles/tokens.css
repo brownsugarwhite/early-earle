@@ -14,7 +14,7 @@
   --pink: #e5aed4;
   --violet: #937cc2;
   --cyan: #2de5f8;
-  --sun-shadow: 8px 3px 0;
+  --sun-shadow: -8px 3px 0; /* Sonne steht rechts, Schatten fallen nach links unten (wie in der 3D-Szene) */
   --radius: 0;
   --font-display: 'Helvetica Neue', 'Arial Black', Arial, sans-serif;
   --font-body: 'Helvetica Neue', Arial, sans-serif;
