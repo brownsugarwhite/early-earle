@@ -598,3 +598,61 @@ describe('goals, moves and terminal states (phase 7)', () => {
     expect(res.state.status).toBe('won');
   });
 });
+
+describe('Luzz / Wooding rules', () => {
+  it('a fire merge landing on oil burns the puddle and fires a burst blast', () => {
+    const res = expectMove(
+      `1r/o 1r . .
+       5    . . .`,
+      'left',
+      `2r . . .
+       .  . . .`,
+      { zone: 'wooding' },
+    );
+    expect(res.events).toContainEqual({ type: 'burn', phase: 2, at: [0, 0], what: 'oil' });
+    const sp = res.events.find((e) => e.type === 'special');
+    expect(sp).toMatchObject({ phase: 3, kind: 'burst', at: [0, 0] });
+    expect(sp && sp.type === 'special' ? sp.removed.map((r) => r.at) : []).toEqual([[0, 1]]);
+    expect(res.state.floor[0]).toBe(0);
+    // a jelly merge on oil does nothing of the sort
+    const jelly = play('1j/o 1j . .', 'left')!;
+    expect(types(jelly.events)).not.toContain('burn');
+    expect(jelly.state.floor[0]).toBe(1);
+  });
+
+  it('blasts burn rot away and count for the clearRot goal', () => {
+    const res = expectMove('1 2L 2 R2', 'left', '. 3 . .', { goals: [{ type: 'clearRot' }] });
+    expect(res.events).toContainEqual({ type: 'burn', phase: 3, at: [3, 0], what: 'rot' });
+    expect(res.state.rot[3]).toBe(0);
+    expect(res.state.rotCleared).toBe(1);
+    expect(res.state.status).toBe('won');
+    // an ordinary merge next to rot only stops it growing
+    const touched = play('R1 1 1 .', 'left', { goals: [{ type: 'clearRot' }] })!;
+    expect(touched.state.rot[0]).toBe(1);
+    expect(touched.state.goalProgress[0]).toMatchObject({ progress: 0, target: 1, done: false });
+  });
+
+  it('fire merges burn adjacent rot and count for clearRot', () => {
+    const res = play(
+      `. 1r 1r
+       . . R1`,
+      'right',
+      { goals: [{ type: 'clearRot' }] },
+    )!;
+    expect(res.state.rotCleared).toBe(1);
+    expect(res.state.status).toBe('won');
+  });
+
+  it('calming a boxed-in stray completes a calmStrays goal', () => {
+    const res = expectMove(
+      `1W P .
+       P  1 .`,
+      'right',
+      `1 P .
+       P . 1`,
+      { goals: [{ type: 'calmStrays', count: 1 }] },
+    );
+    expect(res.state.calmed).toBe(1);
+    expect(res.state.status).toBe('won');
+  });
+});

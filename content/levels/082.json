@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-082",
+  "zone": "wooding",
+  "name": "Nebelrohr",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "portal",
+      "at": [0, 2],
+      "portalId": "a"
+    },
+    {
+      "kind": "portal",
+      "at": [3, 4],
+      "portalId": "a"
+    }
+  ],
+  "blockers": [
+    {
+      "kind": "fog",
+      "at": [0, 0],
+      "content": {
+        "tier": 2
+      }
+    },
+    {
+      "kind": "fog",
+      "at": [2, 4],
+      "content": {
+        "tier": 2
+      }
+    },
+    {
+      "kind": "fog",
+      "at": [1, 3],
+      "content": {
+        "tier": 2
+      }
+    },
+    {
+      "kind": "fog",
+      "at": [1, 0],
+      "content": {
+        "tier": 2
+      }
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [2, 0],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [4, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 1],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [4, 2],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [4, 4],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "reachTier",
+      "tier": 6
+    }
+  ],
+  "moves": 27,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.2, 1.4],
+    "style": "puzzle"
+  }
+}

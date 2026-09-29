@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-098",
+  "zone": "wooding",
+  "name": "Remix: Schläfer und Gift",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", "..P..", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "withered",
+      "at": [0, 1]
+    },
+    {
+      "kind": "withered",
+      "at": [0, 3]
+    },
+    {
+      "kind": "withered",
+      "at": [0, 2]
+    },
+    {
+      "kind": "withered",
+      "at": [4, 3]
+    },
+    {
+      "kind": "withered",
+      "at": [2, 4]
+    }
+  ],
+  "blockers": [
+    {
+      "kind": "sleeper",
+      "at": [4, 0],
+      "content": {
+        "tier": 3
+      }
+    },
+    {
+      "kind": "sleeper",
+      "at": [4, 4],
+      "content": {
+        "tier": 3
+      }
+    }
+  ],
+  "threats": [
+    {
+      "kind": "toxic",
+      "at": [1, 0],
+      "countdown": 6
+    }
+  ],
+  "start": [
+    {
+      "at": [0, 0],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 4],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 4],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [1, 4],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "heal"
+    }
+  ],
+  "moves": 26,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.2, 1.4],
+    "style": "precise"
+  }
+}

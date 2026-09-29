@@ -4,17 +4,23 @@ import { describe, expect, it } from 'vitest';
 import { generateLevel, defaultMoves, targetAttempts } from './generateLevel';
 import { P3_LEVEL_INDICES, TJORIZO_SPECS, tjorizoSpec } from './tjorizo';
 import { SYRUP_SPECS } from './syrup';
+import { LUZZ_SPECS } from './luzz';
+import { WOODING_SPECS } from './wooding';
 import { levelSpec } from './index';
 import { countElementKinds, LevelSchema } from '../schema/level';
 
 const levelsDir = fileURLToPath(new URL('../../../../content/levels/', import.meta.url));
 
 describe('generateLevel', () => {
-  it('produces valid levels for every Tjorizo (1–25) and Syrup (26–50) spec', () => {
+  it('produces valid levels for every spec of the four zones (1–100)', () => {
     expect(TJORIZO_SPECS.length).toBe(25);
     expect(SYRUP_SPECS.length).toBe(25);
+    expect(LUZZ_SPECS.length).toBe(25);
+    expect(WOODING_SPECS.length).toBe(25);
     expect(SYRUP_SPECS.map((s) => s.index)).toEqual(Array.from({ length: 25 }, (_, i) => 26 + i));
-    for (const spec of [...TJORIZO_SPECS, ...SYRUP_SPECS]) {
+    expect(LUZZ_SPECS.map((s) => s.index)).toEqual(Array.from({ length: 25 }, (_, i) => 51 + i));
+    expect(WOODING_SPECS.map((s) => s.index)).toEqual(Array.from({ length: 25 }, (_, i) => 76 + i));
+    for (const spec of [...TJORIZO_SPECS, ...SYRUP_SPECS, ...LUZZ_SPECS, ...WOODING_SPECS]) {
       const level = generateLevel(spec);
       expect(level.id).toBe(`${spec.zone}-${String(spec.index).padStart(3, '0')}`);
       expect(levelSpec(spec.index)).toBe(spec);
@@ -43,6 +49,22 @@ describe('generateLevel', () => {
       if (spec.elements.includes('burst')) expect(level.specials.burstAt).toBeLessThan(9);
       if (spec.mask) expect(level.grid.mask).toEqual(spec.mask);
       if (spec.spawn?.sources) expect(level.spawn.fallback).toBe('none');
+      if (spec.elements.includes('sleeper'))
+        expect(level.blockers.some((b) => b.kind === 'sleeper')).toBe(true);
+      if (spec.elements.includes('scrapMound'))
+        expect(level.blockers.some((b) => b.kind === 'scrapMound')).toBe(true);
+      if (spec.elements.includes('fog'))
+        expect(level.blockers.some((b) => b.kind === 'fog')).toBe(true);
+      if (spec.elements.includes('rot'))
+        expect(level.threats.some((t) => t.kind === 'rot')).toBe(true);
+      if (spec.elements.includes('toxic'))
+        expect(level.threats.some((t) => t.kind === 'toxic')).toBe(true);
+      if (spec.elements.includes('stray'))
+        expect(level.threats.some((t) => t.kind === 'stray')).toBe(true);
+      if (spec.elements.includes('portal'))
+        expect(level.floors.filter((f) => f.kind === 'portal').length % 2).toBe(0);
+      if (spec.elements.includes('current'))
+        expect(level.floors.some((f) => f.kind === 'current')).toBe(true);
     }
   });
 

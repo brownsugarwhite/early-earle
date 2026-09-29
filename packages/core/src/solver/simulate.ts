@@ -23,6 +23,8 @@ export interface RunResult {
   burstPromotes: number;
   /** Specials that fired. */
   specialsFired: number;
+  /** Combos among them (cross, tripleCross, burst5). */
+  combos: number;
   nodes: number;
 }
 
@@ -39,7 +41,7 @@ export interface SimResult {
   meanMovesWon: number;
   meanScore: number;
   /** Fraction of swipes that created a line blob / a burst blob. */
-  specialFrequency: { line: number; burst: number; fired: number };
+  specialFrequency: { line: number; burst: number; fired: number; combo: number };
   totalMoves: number;
   totalNodes: number;
   elapsedMs: number;
@@ -63,6 +65,7 @@ export function playGame(level: LevelDef, bot: Bot, seed: number): RunResult {
   let linePromotes = 0;
   let burstPromotes = 0;
   let specialsFired = 0;
+  let combos = 0;
   let nodes = 0;
   while (state.status === 'playing') {
     const dir: Dir | null = bot.choose(state);
@@ -84,7 +87,10 @@ export function playGame(level: LevelDef, bot: Bot, seed: number): RunResult {
       if (e.type === 'promote') {
         if (e.kind === 'line') line = true;
         else burst = true;
-      } else if (e.type === 'special') specialsFired++;
+      } else if (e.type === 'special') {
+        specialsFired++;
+        if (e.kind === 'cross' || e.kind === 'tripleCross' || e.kind === 'burst5') combos++;
+      }
     }
     if (line) linePromotes++;
     if (burst) burstPromotes++;
@@ -98,6 +104,7 @@ export function playGame(level: LevelDef, bot: Bot, seed: number): RunResult {
     linePromotes,
     burstPromotes,
     specialsFired,
+    combos,
     nodes,
   };
 }
@@ -150,6 +157,7 @@ export function simulate(
       line: totalMoves > 0 ? runs.reduce((s, r) => s + r.linePromotes, 0) / totalMoves : 0,
       burst: totalMoves > 0 ? runs.reduce((s, r) => s + r.burstPromotes, 0) / totalMoves : 0,
       fired: totalMoves > 0 ? runs.reduce((s, r) => s + r.specialsFired, 0) / totalMoves : 0,
+      combo: totalMoves > 0 ? runs.reduce((s, r) => s + r.combos, 0) / totalMoves : 0,
     },
     totalMoves,
     totalNodes: runs.reduce((s, r) => s + r.nodes, 0),

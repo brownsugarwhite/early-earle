@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-29T15:48:47.924Z",
+  "generatedAt": "2026-09-29T16:25:18.230Z",
   "solverVersion": "0.1.0",
   "seeds": 200,
   "halfWidth": 0.05,
@@ -2204,6 +2204,2306 @@
         }
       },
       "name": "Der zweite Riss"
+    },
+    {
+      "id": "luzz-051",
+      "file": "051.json",
+      "levelHash": 1223094122,
+      "solverVersion": "0.1.0",
+      "elements": ["sleeper"],
+      "moves": 30,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 17.257142857142856,
+          "meanMovesWon": 17.257142857142856,
+          "meanScore": 319.51428571428573,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3264.099959
+        },
+        "novice": {
+          "n": 186,
+          "wins": 160,
+          "pWin": 0.8602150537634409,
+          "wilson": [0.8030620800159547, 0.9027895352253834],
+          "attemptsEst": 1.1625,
+          "meanMoves": 21.844086021505376,
+          "meanMovesWon": 20.51875,
+          "meanScore": 309.1559139784946,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 232.77612499999987
+        }
+      },
+      "name": "Schläfer"
+    },
+    {
+      "id": "luzz-052",
+      "file": "052.json",
+      "levelHash": 3778686463,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 30,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 51,
+          "wins": 50,
+          "pWin": 0.9803921568627451,
+          "wilson": [0.8969519232441061, 0.9965303967465577],
+          "attemptsEst": 1.02,
+          "meanMoves": 17.294117647058822,
+          "meanMovesWon": 17.04,
+          "meanScore": 307.29411764705884,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 4128.958916
+        },
+        "novice": {
+          "n": 200,
+          "wins": 159,
+          "pWin": 0.795,
+          "wilson": [0.7337418048192546, 0.8451390516889363],
+          "attemptsEst": 1.2578616352201257,
+          "meanMoves": 22.695,
+          "meanMovesWon": 20.81132075471698,
+          "meanScore": 294.245,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 210.12004200000047
+        }
+      },
+      "name": "Gas"
+    },
+    {
+      "id": "luzz-053",
+      "file": "053.json",
+      "levelHash": 1271780205,
+      "solverVersion": "0.1.0",
+      "elements": ["fence"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 19.314285714285713,
+          "meanMovesWon": 19.314285714285713,
+          "meanScore": 299.54285714285714,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3486.2691250000003
+        },
+        "novice": {
+          "n": 200,
+          "wins": 145,
+          "pWin": 0.725,
+          "wilson": [0.6593153404748534, 0.7822039568619022],
+          "attemptsEst": 1.3793103448275863,
+          "meanMoves": 23.33,
+          "meanMovesWon": 21.55862068965517,
+          "meanScore": 276.05,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 260.667375
+        }
+      },
+      "name": "Gas über Wände"
+    },
+    {
+      "id": "luzz-054",
+      "file": "054.json",
+      "levelHash": 3176616569,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 20,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 187,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 1.035584000000199
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 187,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 1.4517919999998412
+        }
+      },
+      "name": "Stufenbombe"
+    },
+    {
+      "id": "luzz-055",
+      "file": "055.json",
+      "levelHash": 405080748,
+      "solverVersion": "0.1.0",
+      "elements": ["fence"],
+      "moves": 17,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 51,
+          "wins": 50,
+          "pWin": 0.9803921568627451,
+          "wilson": [0.8969519232441061, 0.9965303967465577],
+          "attemptsEst": 1.02,
+          "meanMoves": 14.137254901960784,
+          "meanMovesWon": 14.08,
+          "meanScore": 245.2156862745098,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3634.27225
+        },
+        "novice": {
+          "n": 200,
+          "wins": 121,
+          "pWin": 0.605,
+          "wilson": [0.5358822087449843, 0.6701601300121683],
+          "attemptsEst": 1.6528925619834711,
+          "meanMoves": 15.81,
+          "meanMovesWon": 15.03305785123967,
+          "meanScore": 214.19,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 204.86970800000017
+        }
+      },
+      "name": "Doppelter Aufbruch"
+    },
+    {
+      "id": "luzz-056",
+      "file": "056.json",
+      "levelHash": 2191714098,
+      "solverVersion": "0.1.0",
+      "elements": ["scrap", "line", "burst"],
+      "moves": 26,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 10.857142857142858,
+          "meanMovesWon": 10.857142857142858,
+          "meanScore": 199.88571428571427,
+          "specialFrequency": {
+            "line": 0.15526315789473685,
+            "burst": 0.021052631578947368,
+            "fired": 0.10526315789473684,
+            "combo": 0.005263157894736842
+          },
+          "elapsedMs": 2281.901958000002
+        },
+        "novice": {
+          "n": 141,
+          "wins": 127,
+          "pWin": 0.900709219858156,
+          "wilson": [0.8402321307958763, 0.939930474422514],
+          "attemptsEst": 1.110236220472441,
+          "meanMoves": 16.26241134751773,
+          "meanMovesWon": 15.188976377952756,
+          "meanScore": 218.9787234042553,
+          "specialFrequency": {
+            "line": 0.13955516790231137,
+            "burst": 0.0170082860880942,
+            "fired": 0.08547754034016572,
+            "combo": 0.0065416484954208464
+          },
+          "elapsedMs": 131.62779099999898
+        }
+      },
+      "name": "Kombos"
+    },
+    {
+      "id": "luzz-057",
+      "file": "057.json",
+      "levelHash": 3568304796,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "withered", "line", "burst"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 10.514285714285714,
+          "meanMovesWon": 10.514285714285714,
+          "meanScore": 235.25714285714287,
+          "specialFrequency": {
+            "line": 0.15489130434782608,
+            "burst": 0.024456521739130436,
+            "fired": 0.10597826086956522,
+            "combo": 0.008152173913043478
+          },
+          "elapsedMs": 2138.9177500000005
+        },
+        "novice": {
+          "n": 200,
+          "wins": 153,
+          "pWin": 0.765,
+          "wilson": [0.7015850701327535, 0.8184265467305365],
+          "attemptsEst": 1.3071895424836601,
+          "meanMoves": 18.475,
+          "meanMovesWon": 15.549019607843137,
+          "meanScore": 263.865,
+          "specialFrequency": {
+            "line": 0.1401894451962111,
+            "burst": 0.02354533152909337,
+            "fired": 0.0993234100135318,
+            "combo": 0.007848443843031122
+          },
+          "elapsedMs": 207.8003749999989
+        }
+      },
+      "name": "Kreuz und Knall"
+    },
+    {
+      "id": "luzz-058",
+      "file": "058.json",
+      "levelHash": 3905358405,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 26,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 3,
+          "meanMovesWon": 3,
+          "meanScore": 141.74285714285713,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 393.8195420000011
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 3.657142857142857,
+          "meanMovesWon": 3.657142857142857,
+          "meanScore": 140.28571428571428,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 9.290624999999636
+        }
+      },
+      "name": "Verschnaufer"
+    },
+    {
+      "id": "luzz-059",
+      "file": "059.json",
+      "levelHash": 3071769495,
+      "solverVersion": "0.1.0",
+      "elements": ["fence"],
+      "moves": 17,
+      "targetAttempts": [2, 2.5],
+      "bots": {
+        "strong": {
+          "n": 162,
+          "wins": 143,
+          "pWin": 0.8827160493827161,
+          "wilson": [0.8240837045755098, 0.9236177165395785],
+          "attemptsEst": 1.132867132867133,
+          "meanMoves": 14.820987654320987,
+          "meanMovesWon": 14.531468531468532,
+          "meanScore": 235.61111111111111,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 14754.817958
+        },
+        "novice": {
+          "n": 200,
+          "wins": 82,
+          "pWin": 0.41,
+          "wilson": [0.34415559179081295, 0.4792366892744849],
+          "attemptsEst": 2.4390243902439024,
+          "meanMoves": 16.185,
+          "meanMovesWon": 15.012195121951219,
+          "meanScore": 195.695,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 267.369832999997
+        }
+      },
+      "name": "Gasriss"
+    },
+    {
+      "id": "luzz-060",
+      "file": "060.json",
+      "levelHash": 1056083944,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 25,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 344,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 29.499582999997074
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1.0571428571428572,
+          "meanMovesWon": 1.0571428571428572,
+          "meanScore": 343.7142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 2.172416000001249
+        }
+      },
+      "name": "Ehrenrunde V"
+    },
+    {
+      "id": "luzz-061",
+      "file": "061.json",
+      "levelHash": 1314315333,
+      "solverVersion": "0.1.0",
+      "elements": ["rot", "burst"],
+      "moves": 30,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 10.514285714285714,
+          "meanMovesWon": 10.514285714285714,
+          "meanScore": 231.77142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.125,
+            "fired": 0.06793478260869565,
+            "combo": 0
+          },
+          "elapsedMs": 3064.400875
+        },
+        "novice": {
+          "n": 200,
+          "wins": 166,
+          "pWin": 0.83,
+          "wilson": [0.7718399896049648, 0.8757216464889435],
+          "attemptsEst": 1.2048192771084338,
+          "meanMoves": 17.575,
+          "meanMovesWon": 15.03012048192771,
+          "meanScore": 252.355,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.1314366998577525,
+            "fired": 0.07140825035561878,
+            "combo": 0.0031294452347083927
+          },
+          "elapsedMs": 231.9261660000002
+        }
+      },
+      "name": "Fäulnis"
+    },
+    {
+      "id": "luzz-062",
+      "file": "062.json",
+      "levelHash": 821457995,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "rot", "burst"],
+      "moves": 30,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 4.485714285714286,
+          "meanMovesWon": 4.485714285714286,
+          "meanScore": 215.62857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.2802547770700637,
+            "fired": 0.2229299363057325,
+            "combo": 0
+          },
+          "elapsedMs": 1848.5369580000001
+        },
+        "novice": {
+          "n": 200,
+          "wins": 149,
+          "pWin": 0.745,
+          "wilson": [0.6803694869280502, 0.8003959701719726],
+          "attemptsEst": 1.342281879194631,
+          "meanMoves": 15.715,
+          "meanMovesWon": 10.825503355704697,
+          "meanScore": 267.655,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.17721921730830417,
+            "fired": 0.11326757874642061,
+            "combo": 0.009545020680878142
+          },
+          "elapsedMs": 172.29708299999993
+        }
+      },
+      "name": "Fäulnis II"
+    },
+    {
+      "id": "luzz-063",
+      "file": "063.json",
+      "levelHash": 3888025259,
+      "solverVersion": "0.1.0",
+      "elements": ["withered", "rot", "burst"],
+      "moves": 30,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 7.885714285714286,
+          "meanMovesWon": 7.885714285714286,
+          "meanScore": 252.34285714285716,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.2391304347826087,
+            "fired": 0.12681159420289856,
+            "combo": 0.010869565217391304
+          },
+          "elapsedMs": 1521.1482499999997
+        },
+        "novice": {
+          "n": 200,
+          "wins": 158,
+          "pWin": 0.79,
+          "wilson": [0.7283526118460081, 0.8407167047213658],
+          "attemptsEst": 1.2658227848101264,
+          "meanMoves": 16.125,
+          "meanMovesWon": 12.436708860759493,
+          "meanScore": 274.235,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0.15844961240310076,
+            "fired": 0.09612403100775194,
+            "combo": 0.006201550387596899
+          },
+          "elapsedMs": 175.89366599999994
+        }
+      },
+      "name": "Fauler Boden"
+    },
+    {
+      "id": "luzz-064",
+      "file": "064.json",
+      "levelHash": 3314964502,
+      "solverVersion": "0.1.0",
+      "elements": ["oil"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 18.542857142857144,
+          "meanMovesWon": 18.542857142857144,
+          "meanScore": 297,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 4386.252833000006
+        },
+        "novice": {
+          "n": 200,
+          "wins": 144,
+          "pWin": 0.72,
+          "wilson": [0.6540756858222899, 0.7776320715736488],
+          "attemptsEst": 1.3888888888888888,
+          "meanMoves": 23.055,
+          "meanMovesWon": 21.131944444444443,
+          "meanScore": 272.345,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 254.9825839999976
+        }
+      },
+      "name": "Öl und Gas"
+    },
+    {
+      "id": "luzz-065",
+      "file": "065.json",
+      "levelHash": 1962196581,
+      "solverVersion": "0.1.0",
+      "elements": ["fence", "oil"],
+      "moves": 20,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 14.628571428571428,
+          "meanMovesWon": 14.628571428571428,
+          "meanScore": 260.22857142857146,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3024.0112910000025
+        },
+        "novice": {
+          "n": 200,
+          "wins": 123,
+          "pWin": 0.615,
+          "wilson": [0.5459973878179245, 0.6796680308208618],
+          "attemptsEst": 1.6260162601626016,
+          "meanMoves": 17.97,
+          "meanMovesWon": 16.69918699186992,
+          "meanScore": 225.91,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 200.20737499999814
+        }
+      },
+      "name": "Sumpfgas"
+    },
+    {
+      "id": "luzz-066",
+      "file": "066.json",
+      "levelHash": 3350967875,
+      "solverVersion": "0.1.0",
+      "elements": ["toxic"],
+      "moves": 30,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 21.685714285714287,
+          "meanMovesWon": 21.685714285714287,
+          "meanScore": 311.54285714285714,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 4144.675750000002
+        },
+        "novice": {
+          "n": 200,
+          "wins": 159,
+          "pWin": 0.795,
+          "wilson": [0.7337418048192546, 0.8451390516889363],
+          "attemptsEst": 1.2578616352201257,
+          "meanMoves": 23.93,
+          "meanMovesWon": 22.364779874213838,
+          "meanScore": 295.77,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 270.45037500000035
+        }
+      },
+      "name": "Giftwolke"
+    },
+    {
+      "id": "luzz-067",
+      "file": "067.json",
+      "levelHash": 3568321792,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "toxic"],
+      "moves": 30,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 12.228571428571428,
+          "meanMovesWon": 12.228571428571428,
+          "meanScore": 301.25714285714287,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 2321.691791999998
+        },
+        "novice": {
+          "n": 200,
+          "wins": 166,
+          "pWin": 0.83,
+          "wilson": [0.7718399896049648, 0.8757216464889435],
+          "attemptsEst": 1.2048192771084338,
+          "meanMoves": 21.735,
+          "meanMovesWon": 20.042168674698797,
+          "meanScore": 297.005,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 222.94800000000396
+        }
+      },
+      "name": "Giftwolken"
+    },
+    {
+      "id": "luzz-068",
+      "file": "068.json",
+      "levelHash": 57653567,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 26,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 2,
+          "meanMovesWon": 2,
+          "meanScore": 148,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 180.06208299999707
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 2.4571428571428573,
+          "meanMovesWon": 2.4571428571428573,
+          "meanScore": 146.28571428571428,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 4.476999999998952
+        }
+      },
+      "name": "Verschnaufer II"
+    },
+    {
+      "id": "luzz-069",
+      "file": "069.json",
+      "levelHash": 1038217435,
+      "solverVersion": "0.1.0",
+      "elements": ["rot", "toxic"],
+      "moves": 16,
+      "targetAttempts": [2, 2.5],
+      "bots": {
+        "strong": {
+          "n": 51,
+          "wins": 50,
+          "pWin": 0.9803921568627451,
+          "wilson": [0.8969519232441061, 0.9965303967465577],
+          "attemptsEst": 1.02,
+          "meanMoves": 11.705882352941176,
+          "meanMovesWon": 11.62,
+          "meanScore": 220.2156862745098,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 4513.624542
+        },
+        "novice": {
+          "n": 200,
+          "wins": 99,
+          "pWin": 0.495,
+          "wilson": [0.4264572195415849, 0.5637312405175983],
+          "attemptsEst": 2.0202020202020203,
+          "meanMoves": 14.525,
+          "meanMovesWon": 13.02020202020202,
+          "meanScore": 177.71,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 193.19262499999968
+        }
+      },
+      "name": "Giftriss"
+    },
+    {
+      "id": "luzz-070",
+      "file": "070.json",
+      "levelHash": 83538628,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 25,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 672,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 0.58383399999002
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 672,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 1.3707079999876441
+        }
+      },
+      "name": "Ehrenrunde VI"
+    },
+    {
+      "id": "luzz-071",
+      "file": "071.json",
+      "levelHash": 1797247316,
+      "solverVersion": "0.1.0",
+      "elements": ["scrapMound"],
+      "moves": 22,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 13.82857142857143,
+          "meanMovesWon": 13.82857142857143,
+          "meanScore": 192.85714285714286,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 2527.619458000001
+        },
+        "novice": {
+          "n": 200,
+          "wins": 162,
+          "pWin": 0.81,
+          "wilson": [0.7499864142552062, 0.8583290620754351],
+          "attemptsEst": 1.2345679012345678,
+          "meanMoves": 18.505,
+          "meanMovesWon": 17.685185185185187,
+          "meanScore": 191.225,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 172.91616700000122
+        }
+      },
+      "name": "Schrottberg"
+    },
+    {
+      "id": "luzz-072",
+      "file": "072.json",
+      "levelHash": 3027921886,
+      "solverVersion": "0.1.0",
+      "elements": ["scrap", "scrapMound"],
+      "moves": 23,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 15.228571428571428,
+          "meanMovesWon": 15.228571428571428,
+          "meanScore": 212.9142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3082.881874999999
+        },
+        "novice": {
+          "n": 200,
+          "wins": 154,
+          "pWin": 0.77,
+          "wilson": [0.7069157192180299, 0.8229074375860769],
+          "attemptsEst": 1.2987012987012987,
+          "meanMoves": 19.67,
+          "meanMovesWon": 18.675324675324674,
+          "meanScore": 212.52,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 189.4099580000002
+        }
+      },
+      "name": "Schrottberge"
+    },
+    {
+      "id": "luzz-073",
+      "file": "073.json",
+      "levelHash": 3550667276,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 26,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 19.885714285714286,
+          "meanMovesWon": 19.885714285714286,
+          "meanScore": 305.77142857142854,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3688.1868749999994
+        },
+        "novice": {
+          "n": 200,
+          "wins": 168,
+          "pWin": 0.84,
+          "wilson": [0.7828581380609876, 0.8843265779145542],
+          "attemptsEst": 1.1904761904761905,
+          "meanMoves": 22.47,
+          "meanMovesWon": 21.797619047619047,
+          "meanScore": 291.27,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 273.99625000000015
+        }
+      },
+      "name": "Lieferung"
+    },
+    {
+      "id": "luzz-074",
+      "file": "074.json",
+      "levelHash": 1903363793,
+      "solverVersion": "0.1.0",
+      "elements": ["fence"],
+      "moves": 27,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 22.17142857142857,
+          "meanMovesWon": 22.17142857142857,
+          "meanScore": 304.7142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 4171.685999999998
+        },
+        "novice": {
+          "n": 200,
+          "wins": 157,
+          "pWin": 0.785,
+          "wilson": [0.7229757022632792, 0.836282074363278],
+          "attemptsEst": 1.2738853503184713,
+          "meanMoves": 24.175,
+          "meanMovesWon": 23.401273885350317,
+          "meanScore": 286.545,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 285.0229999999974
+        }
+      },
+      "name": "Bestellung"
+    },
+    {
+      "id": "luzz-075",
+      "file": "075.json",
+      "levelHash": 3360799929,
+      "solverVersion": "0.1.0",
+      "elements": ["scrapMound", "line"],
+      "moves": 22,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 90,
+          "wins": 85,
+          "pWin": 0.9444444444444444,
+          "wilson": [0.8764610019095158, 0.9760393817156567],
+          "attemptsEst": 1.0588235294117647,
+          "meanMoves": 14.777777777777779,
+          "meanMovesWon": 14.352941176470589,
+          "meanScore": 343.93333333333334,
+          "specialFrequency": {
+            "line": 0.06315789473684211,
+            "burst": 0,
+            "fired": 0.03759398496240601,
+            "combo": 0.0007518796992481203
+          },
+          "elapsedMs": 7956.277583000003
+        },
+        "novice": {
+          "n": 200,
+          "wins": 111,
+          "pWin": 0.555,
+          "wilson": [0.4857317563236392, 0.6221951830253456],
+          "attemptsEst": 1.8018018018018016,
+          "meanMoves": 19.475,
+          "meanMovesWon": 17.45045045045045,
+          "meanScore": 289.39,
+          "specialFrequency": {
+            "line": 0.032349165596919124,
+            "burst": 0,
+            "fired": 0.017201540436456997,
+            "combo": 0
+          },
+          "elapsedMs": 219.19804200000362
+        }
+      },
+      "name": "Der dritte Riss"
+    },
+    {
+      "id": "wooding-076",
+      "file": "076.json",
+      "levelHash": 3898719464,
+      "solverVersion": "0.1.0",
+      "elements": ["portal"],
+      "moves": 30,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 13.6,
+          "meanMovesWon": 13.6,
+          "meanScore": 312.1714285714286,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 2458.9591669999973
+        },
+        "novice": {
+          "n": 200,
+          "wins": 166,
+          "pWin": 0.83,
+          "wilson": [0.7718399896049648, 0.8757216464889435],
+          "attemptsEst": 1.2048192771084338,
+          "meanMoves": 22.04,
+          "meanMovesWon": 20.40963855421687,
+          "meanScore": 300.34,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 233.0343329999996
+        }
+      },
+      "name": "Rohrpaar"
+    },
+    {
+      "id": "wooding-077",
+      "file": "077.json",
+      "levelHash": 841053790,
+      "solverVersion": "0.1.0",
+      "elements": ["oil", "rot"],
+      "moves": 28,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 4,
+          "meanMovesWon": 4,
+          "meanScore": 171.54285714285714,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0.014285714285714285,
+            "combo": 0
+          },
+          "elapsedMs": 900.5180419999961
+        },
+        "novice": {
+          "n": 132,
+          "wins": 120,
+          "pWin": 0.9090909090909091,
+          "wilson": [0.8478123270438168, 0.9472313120181494],
+          "attemptsEst": 1.1,
+          "meanMoves": 7.4772727272727275,
+          "meanMovesWon": 5.425,
+          "meanScore": 190.18939393939394,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0.04559270516717325,
+            "combo": 0
+          },
+          "elapsedMs": 56.2168340000062
+        }
+      },
+      "name": "Feuer"
+    },
+    {
+      "id": "wooding-078",
+      "file": "078.json",
+      "levelHash": 1204350114,
+      "solverVersion": "0.1.0",
+      "elements": ["portal", "rot"],
+      "moves": 30,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 7.942857142857143,
+          "meanMovesWon": 7.942857142857143,
+          "meanScore": 216.9142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 1771.992542
+        },
+        "novice": {
+          "n": 200,
+          "wins": 156,
+          "pWin": 0.78,
+          "wilson": [0.7176107720803744, 0.8318354646053661],
+          "attemptsEst": 1.282051282051282,
+          "meanMoves": 16.7,
+          "meanMovesWon": 12.948717948717949,
+          "meanScore": 267.55,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 172.87537500000144
+        }
+      },
+      "name": "Feuer II"
+    },
+    {
+      "id": "wooding-079",
+      "file": "079.json",
+      "levelHash": 1606144548,
+      "solverVersion": "0.1.0",
+      "elements": ["oil", "portal", "rot"],
+      "moves": 18,
+      "targetAttempts": [2, 2.5],
+      "bots": {
+        "strong": {
+          "n": 90,
+          "wins": 85,
+          "pWin": 0.9444444444444444,
+          "wilson": [0.8764610019095158, 0.9760393817156567],
+          "attemptsEst": 1.0588235294117647,
+          "meanMoves": 5.555555555555555,
+          "meanMovesWon": 4.823529411764706,
+          "meanScore": 210.44444444444446,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0.05,
+            "combo": 0
+          },
+          "elapsedMs": 3273.308083000011
+        },
+        "novice": {
+          "n": 200,
+          "wins": 84,
+          "pWin": 0.42,
+          "wilson": [0.3537348235017175, 0.48928053744521394],
+          "attemptsEst": 2.380952380952381,
+          "meanMoves": 14.085,
+          "meanMovesWon": 8.678571428571429,
+          "meanScore": 249.645,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0.09549165779197728,
+            "combo": 0
+          },
+          "elapsedMs": 158.01612499999464
+        }
+      },
+      "name": "Feuerrohr"
+    },
+    {
+      "id": "wooding-080",
+      "file": "080.json",
+      "levelHash": 1268501044,
+      "solverVersion": "0.1.0",
+      "elements": ["oil"],
+      "moves": 25,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 376,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 1,
+            "combo": 0
+          },
+          "elapsedMs": 34.04595800000243
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1.1714285714285715,
+          "meanMovesWon": 1.1714285714285715,
+          "meanScore": 375.37142857142857,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0.8292682926829268,
+            "combo": 0
+          },
+          "elapsedMs": 2.054334000014933
+        }
+      },
+      "name": "Ehrenrunde VII"
+    },
+    {
+      "id": "wooding-081",
+      "file": "081.json",
+      "levelHash": 84828880,
+      "solverVersion": "0.1.0",
+      "elements": ["fog"],
+      "moves": 30,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 16.057142857142857,
+          "meanMovesWon": 16.057142857142857,
+          "meanScore": 315.65714285714284,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3198.847375000005
+        },
+        "novice": {
+          "n": 200,
+          "wins": 157,
+          "pWin": 0.785,
+          "wilson": [0.7229757022632792, 0.836282074363278],
+          "attemptsEst": 1.2738853503184713,
+          "meanMoves": 23.255,
+          "meanMovesWon": 21.40764331210191,
+          "meanScore": 305.685,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 242.03054100000008
+        }
+      },
+      "name": "Nebel"
+    },
+    {
+      "id": "wooding-082",
+      "file": "082.json",
+      "levelHash": 3105188955,
+      "solverVersion": "0.1.0",
+      "elements": ["portal", "fog"],
+      "moves": 27,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 15.914285714285715,
+          "meanMovesWon": 15.914285714285715,
+          "meanScore": 302.85714285714283,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3191.4865419999987
+        },
+        "novice": {
+          "n": 200,
+          "wins": 162,
+          "pWin": 0.81,
+          "wilson": [0.7499864142552062, 0.8583290620754351],
+          "attemptsEst": 1.2345679012345678,
+          "meanMoves": 20.945,
+          "meanMovesWon": 19.52469135802469,
+          "meanScore": 297.795,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 199.7532499999943
+        }
+      },
+      "name": "Nebelrohr"
+    },
+    {
+      "id": "wooding-083",
+      "file": "083.json",
+      "levelHash": 1902242079,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "withered", "fog"],
+      "moves": 22,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.057142857142857,
+          "meanMovesWon": 11.057142857142857,
+          "meanScore": 206.4857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 2193.472833
+        },
+        "novice": {
+          "n": 200,
+          "wins": 153,
+          "pWin": 0.765,
+          "wilson": [0.7015850701327535, 0.8184265467305365],
+          "attemptsEst": 1.3071895424836601,
+          "meanMoves": 17.195,
+          "meanMovesWon": 15.718954248366012,
+          "meanScore": 228.705,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 168.6674579999999
+        }
+      },
+      "name": "Nebelwald"
+    },
+    {
+      "id": "wooding-084",
+      "file": "084.json",
+      "levelHash": 3106656044,
+      "solverVersion": "0.1.0",
+      "elements": ["current"],
+      "moves": 30,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 17.685714285714287,
+          "meanMovesWon": 17.685714285714287,
+          "meanScore": 309.8,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3382.712458000002
+        },
+        "novice": {
+          "n": 200,
+          "wins": 164,
+          "pWin": 0.82,
+          "wilson": [0.7608840628376157, 0.8670544933746589],
+          "attemptsEst": 1.2195121951219512,
+          "meanMoves": 23.36,
+          "meanMovesWon": 21.902439024390244,
+          "meanScore": 294.64,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 260.6414589999986
+        }
+      },
+      "name": "Gasstrom"
+    },
+    {
+      "id": "wooding-085",
+      "file": "085.json",
+      "levelHash": 3763570290,
+      "solverVersion": "0.1.0",
+      "elements": ["oil", "current"],
+      "moves": 18,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 127,
+          "wins": 116,
+          "pWin": 0.9133858267716536,
+          "wilson": [0.8515484151644752, 0.9509486499891151],
+          "attemptsEst": 1.0948275862068966,
+          "meanMoves": 12.653543307086615,
+          "meanMovesWon": 12.14655172413793,
+          "meanScore": 251.70866141732284,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0.042937149968886125,
+            "combo": 0
+          },
+          "elapsedMs": 11487.260334
+        },
+        "novice": {
+          "n": 200,
+          "wins": 125,
+          "pWin": 0.625,
+          "wilson": [0.5561417515728713, 0.6891467469475485],
+          "attemptsEst": 1.6,
+          "meanMoves": 14.615,
+          "meanMovesWon": 12.584,
+          "meanScore": 234.945,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0.045843311666096474,
+            "combo": 0
+          },
+          "elapsedMs": 194.0314580000013
+        }
+      },
+      "name": "Stromschnelle"
+    },
+    {
+      "id": "wooding-086",
+      "file": "086.json",
+      "levelHash": 182906306,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 26,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 4.085714285714285,
+          "meanMovesWon": 4.085714285714285,
+          "meanScore": 139.28571428571428,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 584.7816659999953
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 6.485714285714286,
+          "meanMovesWon": 6.485714285714286,
+          "meanScore": 139.4,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 15.594791000010446
+        }
+      },
+      "name": "Verschnaufer III"
+    },
+    {
+      "id": "wooding-087",
+      "file": "087.json",
+      "levelHash": 3959509154,
+      "solverVersion": "0.1.0",
+      "elements": ["portal", "current"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 51,
+          "wins": 50,
+          "pWin": 0.9803921568627451,
+          "wilson": [0.8969519232441061, 0.9965303967465577],
+          "attemptsEst": 1.02,
+          "meanMoves": 17.80392156862745,
+          "meanMovesWon": 17.6,
+          "meanScore": 295.1372549019608,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 5155.697417000018
+        },
+        "novice": {
+          "n": 200,
+          "wins": 147,
+          "pWin": 0.735,
+          "wilson": [0.6698229773344888, 0.7913193998839003],
+          "attemptsEst": 1.3605442176870748,
+          "meanMoves": 22.71,
+          "meanMovesWon": 20.802721088435373,
+          "meanScore": 277.35,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 243.90433300001314
+        }
+      },
+      "name": "Strom und Rohr"
+    },
+    {
+      "id": "wooding-088",
+      "file": "088.json",
+      "levelHash": 757560989,
+      "solverVersion": "0.1.0",
+      "elements": ["current", "fog"],
+      "moves": 25,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 18.542857142857144,
+          "meanMovesWon": 18.542857142857144,
+          "meanScore": 304.85714285714283,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3724.555207999998
+        },
+        "novice": {
+          "n": 200,
+          "wins": 154,
+          "pWin": 0.77,
+          "wilson": [0.7069157192180299, 0.8229074375860769],
+          "attemptsEst": 1.2987012987012987,
+          "meanMoves": 22.345,
+          "meanMovesWon": 21.551948051948052,
+          "meanScore": 284.715,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 252.0813330000019
+        }
+      },
+      "name": "Strom und Nebel"
+    },
+    {
+      "id": "wooding-089",
+      "file": "089.json",
+      "levelHash": 3612953856,
+      "solverVersion": "0.1.0",
+      "elements": ["oil", "current", "rot"],
+      "moves": 20,
+      "targetAttempts": [2, 2.5],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 9.228571428571428,
+          "meanMovesWon": 9.228571428571428,
+          "meanScore": 185.57142857142858,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0.02476780185758514,
+            "combo": 0
+          },
+          "elapsedMs": 2199.2713749999966
+        },
+        "novice": {
+          "n": 200,
+          "wins": 100,
+          "pWin": 0.5,
+          "wilson": [0.43135962209034523, 0.5686403779096547],
+          "attemptsEst": 2,
+          "meanMoves": 16.665,
+          "meanMovesWon": 13.33,
+          "meanScore": 231.135,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0.06840684068406841,
+            "combo": 0
+          },
+          "elapsedMs": 190.7290420000063
+        }
+      },
+      "name": "Feuersturm"
+    },
+    {
+      "id": "wooding-090",
+      "file": "090.json",
+      "levelHash": 512084810,
+      "solverVersion": "0.1.0",
+      "elements": ["portal"],
+      "moves": 25,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 248,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 0.46495900000445545
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 1,
+          "meanMovesWon": 1,
+          "meanScore": 248,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 4.061916000006022
+        }
+      },
+      "name": "Ehrenrunde VIII"
+    },
+    {
+      "id": "wooding-091",
+      "file": "091.json",
+      "levelHash": 3969792240,
+      "solverVersion": "0.1.0",
+      "elements": ["stray"],
+      "moves": 20,
+      "targetAttempts": [1.1, 1.3],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 12.142857142857142,
+          "meanMovesWon": 12.142857142857142,
+          "meanScore": 171.05714285714285,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 2397.5931249999994
+        },
+        "novice": {
+          "n": 189,
+          "wins": 162,
+          "pWin": 0.8571428571428571,
+          "wilson": [0.8001290522756795, 0.8999273670861178],
+          "attemptsEst": 1.1666666666666667,
+          "meanMoves": 15.243386243386244,
+          "meanMovesWon": 14.450617283950617,
+          "meanScore": 162.8095238095238,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 193.58983299999818
+        }
+      },
+      "name": "Streuner"
+    },
+    {
+      "id": "wooding-092",
+      "file": "092.json",
+      "levelHash": 1655363535,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "stray"],
+      "moves": 26,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 13.4,
+          "meanMovesWon": 13.4,
+          "meanScore": 325.2857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 2900.6832499999946
+        },
+        "novice": {
+          "n": 200,
+          "wins": 156,
+          "pWin": 0.78,
+          "wilson": [0.7176107720803744, 0.8318354646053661],
+          "attemptsEst": 1.282051282051282,
+          "meanMoves": 19.365,
+          "meanMovesWon": 17.493589743589745,
+          "meanScore": 316.555,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 222.69324999999662
+        }
+      },
+      "name": "Streuner II"
+    },
+    {
+      "id": "wooding-093",
+      "file": "093.json",
+      "levelHash": 109426862,
+      "solverVersion": "0.1.0",
+      "elements": ["fog", "stray"],
+      "moves": 30,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 16,
+          "meanMovesWon": 16,
+          "meanScore": 347.14285714285717,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3430.528582999992
+        },
+        "novice": {
+          "n": 200,
+          "wins": 158,
+          "pWin": 0.79,
+          "wilson": [0.7283526118460081, 0.8407167047213658],
+          "attemptsEst": 1.2658227848101264,
+          "meanMoves": 23.23,
+          "meanMovesWon": 21.430379746835442,
+          "meanScore": 337.55,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 279.623041999992
+        }
+      },
+      "name": "Streuner im Nebel"
+    },
+    {
+      "id": "wooding-094",
+      "file": "094.json",
+      "levelHash": 1328041457,
+      "solverVersion": "0.1.0",
+      "elements": [],
+      "moves": 26,
+      "targetAttempts": [1, 1.1],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 2,
+          "meanMovesWon": 2,
+          "meanScore": 148,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 240.40150000000722
+        },
+        "novice": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 2.5714285714285716,
+          "meanMovesWon": 2.5714285714285716,
+          "meanScore": 146.62857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 7.124249999993481
+        }
+      },
+      "name": "Verschnaufer IV"
+    },
+    {
+      "id": "wooding-095",
+      "file": "095.json",
+      "levelHash": 2317540862,
+      "solverVersion": "0.1.0",
+      "elements": ["current", "rot", "stray"],
+      "moves": 23,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 63,
+          "wins": 61,
+          "pWin": 0.9682539682539683,
+          "wilson": [0.8914331816504081, 0.9912506559597031],
+          "attemptsEst": 1.0327868852459017,
+          "meanMoves": 8.619047619047619,
+          "meanMovesWon": 8.147540983606557,
+          "meanScore": 254.1904761904762,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3776.7938340000037
+        },
+        "novice": {
+          "n": 200,
+          "wins": 100,
+          "pWin": 0.5,
+          "wilson": [0.43135962209034523, 0.5686403779096547],
+          "attemptsEst": 2,
+          "meanMoves": 17.7,
+          "meanMovesWon": 12.4,
+          "meanScore": 294.16,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 219.2445000000007
+        }
+      },
+      "name": "Wildes Holz"
+    },
+    {
+      "id": "wooding-096",
+      "file": "096.json",
+      "levelHash": 4107247951,
+      "solverVersion": "0.1.0",
+      "elements": ["portal", "cage", "fog"],
+      "moves": 28,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 14.571428571428571,
+          "meanMovesWon": 14.571428571428571,
+          "meanScore": 334.9714285714286,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3782.964041000014
+        },
+        "novice": {
+          "n": 200,
+          "wins": 158,
+          "pWin": 0.79,
+          "wilson": [0.7283526118460081, 0.8407167047213658],
+          "attemptsEst": 1.2658227848101264,
+          "meanMoves": 21.705,
+          "meanMovesWon": 20.031645569620252,
+          "meanScore": 340.075,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 221.4907089999906
+        }
+      },
+      "name": "Remix: Rohr und Nebel"
+    },
+    {
+      "id": "wooding-097",
+      "file": "097.json",
+      "levelHash": 220991251,
+      "solverVersion": "0.1.0",
+      "elements": ["current", "scrap", "line"],
+      "moves": 22,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 12.114285714285714,
+          "meanMovesWon": 12.114285714285714,
+          "meanScore": 188.62857142857143,
+          "specialFrequency": {
+            "line": 0.014150943396226415,
+            "burst": 0,
+            "fired": 0.0047169811320754715,
+            "combo": 0
+          },
+          "elapsedMs": 3066.4500829999997
+        },
+        "novice": {
+          "n": 200,
+          "wins": 162,
+          "pWin": 0.81,
+          "wilson": [0.7499864142552062, 0.8583290620754351],
+          "attemptsEst": 1.2345679012345678,
+          "meanMoves": 17.165,
+          "meanMovesWon": 16.030864197530864,
+          "meanScore": 185.815,
+          "specialFrequency": {
+            "line": 0.017186134576172445,
+            "burst": 0,
+            "fired": 0.00873871249635887,
+            "combo": 0
+          },
+          "elapsedMs": 210.16762500000186
+        }
+      },
+      "name": "Remix: Strom und Schrott"
+    },
+    {
+      "id": "wooding-098",
+      "file": "098.json",
+      "levelHash": 2395743128,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "withered", "sleeper", "toxic"],
+      "moves": 26,
+      "targetAttempts": [1.2, 1.4],
+      "bots": {
+        "strong": {
+          "n": 35,
+          "wins": 35,
+          "pWin": 1,
+          "wilson": [0.9010957324106112, 1],
+          "attemptsEst": 1,
+          "meanMoves": 11.514285714285714,
+          "meanMovesWon": 11.514285714285714,
+          "meanScore": 221.22857142857143,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 2384.2211669999997
+        },
+        "novice": {
+          "n": 200,
+          "wins": 161,
+          "pWin": 0.805,
+          "wilson": [0.744558352034882, 0.8539455843549424],
+          "attemptsEst": 1.2422360248447204,
+          "meanMoves": 19.09,
+          "meanMovesWon": 17.41614906832298,
+          "meanScore": 240.065,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 204.61004200000025
+        }
+      },
+      "name": "Remix: Schläfer und Gift"
+    },
+    {
+      "id": "wooding-099",
+      "file": "099.json",
+      "levelHash": 1912320053,
+      "solverVersion": "0.1.0",
+      "elements": ["rot", "stray"],
+      "moves": 15,
+      "targetAttempts": [2, 2.5],
+      "bots": {
+        "strong": {
+          "n": 51,
+          "wins": 50,
+          "pWin": 0.9803921568627451,
+          "wilson": [0.8969519232441061, 0.9965303967465577],
+          "attemptsEst": 1.02,
+          "meanMoves": 9.098039215686274,
+          "meanMovesWon": 8.98,
+          "meanScore": 301.94117647058823,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 3115.03225
+        },
+        "novice": {
+          "n": 200,
+          "wins": 91,
+          "pWin": 0.455,
+          "wilson": [0.38748099090226035, 0.5242151496303886],
+          "attemptsEst": 2.1978021978021975,
+          "meanMoves": 13.545,
+          "meanMovesWon": 11.802197802197803,
+          "meanScore": 239.085,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0,
+            "combo": 0
+          },
+          "elapsedMs": 158.51579199999833
+        }
+      },
+      "name": "Letzter Riss"
+    },
+    {
+      "id": "wooding-100",
+      "file": "100.json",
+      "levelHash": 585394445,
+      "solverVersion": "0.1.0",
+      "elements": ["pillar", "withered", "oil"],
+      "moves": 30,
+      "targetAttempts": [1.6, 2],
+      "bots": {
+        "strong": {
+          "n": 51,
+          "wins": 50,
+          "pWin": 0.9803921568627451,
+          "wilson": [0.8969519232441061, 0.9965303967465577],
+          "attemptsEst": 1.02,
+          "meanMoves": 15.156862745098039,
+          "meanMovesWon": 14.86,
+          "meanScore": 473.5882352941176,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0.06338939197930142,
+            "combo": 0
+          },
+          "elapsedMs": 6738.970125
+        },
+        "novice": {
+          "n": 200,
+          "wins": 105,
+          "pWin": 0.525,
+          "wilson": [0.45597270710507, 0.5930849925990139],
+          "attemptsEst": 1.9047619047619047,
+          "meanMoves": 24.97,
+          "meanMovesWon": 20.419047619047618,
+          "meanScore": 502.19,
+          "specialFrequency": {
+            "line": 0,
+            "burst": 0,
+            "fired": 0.05586704044853825,
+            "combo": 0
+          },
+          "elapsedMs": 502.2714159999996
+        }
+      },
+      "name": "Das erste Wäldchen"
     }
   ]
 }

@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-085",
+  "zone": "wooding",
+  "name": "Stromschnelle",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "oil",
+      "at": [1, 1]
+    },
+    {
+      "kind": "oil",
+      "at": [2, 3]
+    },
+    {
+      "kind": "current",
+      "at": [0, 2],
+      "dir": "right"
+    },
+    {
+      "kind": "current",
+      "at": [1, 2],
+      "dir": "right"
+    },
+    {
+      "kind": "current",
+      "at": [2, 2],
+      "dir": "right"
+    },
+    {
+      "kind": "current",
+      "at": [3, 2],
+      "dir": "right"
+    }
+  ],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [3, 1],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [4, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [4, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 4],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [2, 0],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [4, 4],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "release",
+      "count": 2
+    }
+  ],
+  "moves": 18,
+  "cap": 5,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.6, 2],
+    "style": "precise"
+  }
+}

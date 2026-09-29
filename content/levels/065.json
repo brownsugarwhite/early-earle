@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-065",
+  "zone": "luzz",
+  "name": "Sumpfgas",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [
+    {
+      "a": [4, 2],
+      "b": [4, 3]
+    },
+    {
+      "a": [4, 1],
+      "b": [4, 2]
+    }
+  ],
+  "floors": [
+    {
+      "kind": "oil",
+      "at": [0, 4]
+    },
+    {
+      "kind": "oil",
+      "at": [0, 0]
+    },
+    {
+      "kind": "oil",
+      "at": [1, 3]
+    }
+  ],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [3, 2],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [4, 2],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [2, 4],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 4],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [2, 1],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [4, 0],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "release",
+      "count": 2
+    }
+  ],
+  "moves": 20,
+  "cap": 5,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.6, 2],
+    "style": "precise"
+  }
+}

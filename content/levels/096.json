@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-096",
+  "zone": "wooding",
+  "name": "Remix: Rohr und Nebel",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "portal",
+      "at": [1, 2],
+      "portalId": "a"
+    },
+    {
+      "kind": "portal",
+      "at": [4, 2],
+      "portalId": "a"
+    }
+  ],
+  "blockers": [
+    {
+      "kind": "cage",
+      "at": [2, 2],
+      "content": {
+        "tier": 2
+      },
+      "layers": 1
+    },
+    {
+      "kind": "fog",
+      "at": [3, 2],
+      "content": {
+        "tier": 2
+      }
+    },
+    {
+      "kind": "fog",
+      "at": [3, 3],
+      "content": {
+        "tier": 2
+      }
+    },
+    {
+      "kind": "fog",
+      "at": [1, 1],
+      "content": {
+        "tier": 2
+      }
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [4, 4],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [2, 3],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 4],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 4],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [4, 0],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "rescue",
+      "count": 1
+    },
+    {
+      "type": "reachTier",
+      "tier": 6
+    }
+  ],
+  "moves": 28,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.2, 1.4],
+    "style": "puzzle"
+  }
+}

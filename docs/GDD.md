@@ -440,3 +440,15 @@ Alle 50 Level liegen im Zielband (`content/levels/_calibration.json`). Beobachtu
 13. **Flüssig** ist nur gegen Jelly sichtbar; Level 27/28/29/37 tragen deshalb Jelly-Startblobs. Konflikt: Öl ist im Plan erst bei 64 (Luzz) vorgesehen, Syrup führt es mit Flüssig bei 27 ein — Entscheidung nötig (Vorschlag: Öl bleibt in Syrup, Luzz bekommt dafür Gasstrom früher).
 14. Knall-Blobs zünden bei `burstAt 3` auf 2–7 % der Wische; Intro-Level 34 sollte `burstAt 2` bekommen (wie beim Strahl). In den Feier-Leveln 40/50 entsteht der Knall im Siegeswisch und zündet nie (reines Spektakel).
 15. Mehrere Normal-Level nutzen zufällige Platzierung (`any`); der Seed entscheidet viel — im Level-Editor sichten.
+
+### Nachtrag 2026-09-29 (Abend, III) — Kalibrierung Luzz (51–75) und Wooding (76–100)
+
+Alle 100 Level liegen im Zielband (`content/levels/_calibration.json`, Solver `strong`/`novice`). Neue Regeln, die für die Elementliste nötig waren: Feuer-Verschmelzung auf Öl → Öl brennt und löst eine Knall-Sprengung aus; Sprengungen verbrennen Fäulnis (sonst hätte Luzz keine Waffe gegen Fäulnis); Zieltypen `clearRot` ("Fäulnis eindämmen") und `calmStrays` ("Streuner beruhigen").
+
+16. **Fäulnis** ist für den Anfänger-Bot brutal, wenn sie nur durch Sprengungen verschwindet (Menschen zielen, Bots nicht): Level 61 führt sie als Störung ein (Stufenziel), 62 bekämpft sie (`clearRot`, `burstAt 2`, Fäulnis am Rand). Hinweis: `burstAt ≤ lineAt` bedeutet, dass nie Strahlen entstehen (Knall gewinnt bei Gleichstand).
+17. **Feuer trivialisiert Fäulnis** (ein Fäulnisfeld war in 3 Zügen weg); zwei Felder plus Öl-Bomben machen daraus ein Level.
+18. **Streuner beruhigen sich zu leicht**: "eingekesselt = kein freier Nachbar" ist in jeder Ecke sofort erreicht. Vorschlag: beruhigt nur, wenn kein freier Nachbar *und* im letzten Zug keine Bewegung möglich war. Streuner-Level tragen vorerst ein zweites Ziel.
+19. **Lieferungen kosten Masse**: 3× Stufe 5 in 28 Zügen → 8 % Gewinnrate; 2× ist die richtige Bestellgröße.
+20. Gas schwebt über Fossilwände, daher binden Wände in Luzz nur Jelly-Startblobs (Kontrastprinzip wie bei Flüssig).
+21. **Finale (100)**: 8 Heilungen + Stufe 7 war unschaffbar (19 % beim starken Bot); jetzt 5 Randheilungen, 6×6 mit Pfeilerblock, 30 Züge → 53 % Anfänger, 98 % stark. Entscheidung: 30 Züge statt "kurz" — als Set-Piece vertretbar?
+22. Kombos (Kreuz, Dreifachkreuz, 5×5) treten bei `lineAt 2 / burstAt 3` auf ~2 % der Wische auf — als seltenes Spektakel akzeptieren oder ein kombofreundliches Level bauen?

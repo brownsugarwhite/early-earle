@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-057",
+  "zone": "luzz",
+  "name": "Kreuz und Knall",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", "..P..", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "withered",
+      "at": [4, 4]
+    },
+    {
+      "kind": "withered",
+      "at": [4, 1]
+    },
+    {
+      "kind": "withered",
+      "at": [3, 4]
+    },
+    {
+      "kind": "withered",
+      "at": [3, 3]
+    },
+    {
+      "kind": "withered",
+      "at": [1, 0]
+    }
+  ],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [4, 3],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [1, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 4],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [2, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [4, 0],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "heal"
+    }
+  ],
+  "moves": 28,
+  "cap": 12,
+  "specials": {
+    "lineAt": 2,
+    "burstAt": 3
+  },
+  "difficulty": {
+    "targetAttempts": [1.2, 1.4],
+    "style": "explosive"
+  }
+}

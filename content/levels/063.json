@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-063",
+  "zone": "luzz",
+  "name": "Fauler Boden",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "withered",
+      "at": [4, 2]
+    },
+    {
+      "kind": "withered",
+      "at": [1, 4]
+    },
+    {
+      "kind": "withered",
+      "at": [0, 1]
+    },
+    {
+      "kind": "withered",
+      "at": [4, 0]
+    }
+  ],
+  "blockers": [],
+  "threats": [
+    {
+      "kind": "rot",
+      "at": [4, 1],
+      "period": 7
+    },
+    {
+      "kind": "rot",
+      "at": [0, 4],
+      "period": 7
+    }
+  ],
+  "start": [
+    {
+      "at": [4, 4],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 1],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 2],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [2, 1],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "heal"
+    }
+  ],
+  "moves": 30,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 2
+  },
+  "difficulty": {
+    "targetAttempts": [1.2, 1.4],
+    "style": "explosive"
+  }
+}

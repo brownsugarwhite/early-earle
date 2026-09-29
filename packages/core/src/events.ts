@@ -98,7 +98,7 @@ export interface BurnEvent {
   type: 'burn';
   phase: Phase;
   at: Coord;
-  what: 'crust' | 'rot';
+  what: 'crust' | 'rot' | 'oil';
 }
 
 /** A blob became a special piece because enough merges happened in one swipe. */

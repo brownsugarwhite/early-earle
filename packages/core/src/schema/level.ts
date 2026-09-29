@@ -71,6 +71,10 @@ const Goal = z.discriminatedUnion('type', [
   z.object({ type: z.literal('clearScrap') }),
   z.object({ type: z.literal('deliver'), tier: Tier.min(2), count: Int.min(1).max(20) }),
   z.object({ type: z.literal('score'), points: Int.min(1) }),
+  /** "Fäulnis eindämmen": remove every rot cell (blasts and fire merges burn rot). */
+  z.object({ type: z.literal('clearRot') }),
+  /** "Streuner beruhigen": box in N strays. */
+  z.object({ type: z.literal('calmStrays'), count: Int.min(1).max(5) }),
 ]);
 
 export const DIFFICULTY_STYLES = ['explosive', 'precise', 'journey', 'puzzle', 'diligent'] as const;

@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-080",
+  "zone": "wooding",
+  "name": "Ehrenrunde VII",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "oil",
+      "at": [0, 0]
+    }
+  ],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [0, 0],
+      "blob": {
+        "tier": 6
+      }
+    },
+    {
+      "at": [1, 0],
+      "blob": {
+        "tier": 6
+      }
+    },
+    {
+      "at": [3, 2],
+      "blob": {
+        "tier": 5
+      }
+    },
+    {
+      "at": [4, 2],
+      "blob": {
+        "tier": 5
+      }
+    },
+    {
+      "at": [3, 4],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [4, 4],
+      "blob": {
+        "tier": 4
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "reachTier",
+      "tier": 7
+    }
+  ],
+  "moves": 25,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1, 1.1],
+    "style": "explosive"
+  }
+}

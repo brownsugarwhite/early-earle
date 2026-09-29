@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-060",
+  "zone": "luzz",
+  "name": "Ehrenrunde V",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": ["..#..", "..#..", "..#..", "..#..", "....."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [0, 0],
+      "blob": {
+        "tier": 6
+      }
+    },
+    {
+      "at": [4, 0],
+      "blob": {
+        "tier": 6
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 5
+      }
+    },
+    {
+      "at": [4, 1],
+      "blob": {
+        "tier": 5
+      }
+    },
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [4, 2],
+      "blob": {
+        "tier": 4
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "reachTier",
+      "tier": 7
+    }
+  ],
+  "moves": 25,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1, 1.1],
+    "style": "explosive"
+  }
+}

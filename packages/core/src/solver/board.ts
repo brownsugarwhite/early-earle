@@ -48,6 +48,7 @@ export function hashBoard(b: Board): number {
       (b.scrapCleared << 16) |
       (b.rescued << 22)) *
     0x9e3779b1;
+  h ^= Math.imul(b.rotCleared + 1, 0x3c6ef372) ^ Math.imul(b.calmed + 1, 0x1b873593);
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
   h ^= h >>> 16;
   return h >>> 0;

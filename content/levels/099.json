@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-099",
+  "zone": "wooding",
+  "name": "Letzter Riss",
+  "grid": {
+    "w": 6,
+    "h": 6,
+    "mask": ["##..##", "#....#", "......", "......", "#....#", "##..##"]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [],
+  "threats": [
+    {
+      "kind": "rot",
+      "at": [3, 2],
+      "period": 3
+    },
+    {
+      "kind": "stray",
+      "at": [2, 3],
+      "tier": 1
+    }
+  ],
+  "start": [
+    {
+      "at": [5, 3],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 4],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [2, 4],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [1, 4],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [4, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 1],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "release",
+      "count": 1
+    },
+    {
+      "type": "calmStrays",
+      "count": 1
+    }
+  ],
+  "moves": 15,
+  "cap": 6,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [2, 2.5],
+    "style": "explosive"
+  }
+}

@@ -395,8 +395,11 @@ function hitCell(
     return;
   }
   if (b.rot[j]! > 0) {
-    if (fire) {
+    // Fire merges and blasts burn rot away; any other merge only stops it growing this move.
+    if (fire || sweep) {
       b.rot[j] = 0;
+      b.rotCleared++;
+      b.score += 10;
       if (ev) ev.push({ type: 'burn', phase, at: xy(b, j), what: 'rot' });
     } else {
       rotImmune[j] = 1;
@@ -477,6 +480,18 @@ function sideEffectsPhase(b: Board, ev: MoveEvent[] | null): void {
     const L = ctx.landings[k]!;
     healFloor(b, L, P2, ev);
     const fire = materialOf(b.flags[L]!) === MAT_FIRE;
+    // Fire ignites oil: the puddle burns away and a burst blast fires at the landing cell (phase 3).
+    if (fire && b.floor[L] === FLOOR_OIL) {
+      b.floor[L] = FLOOR_NONE;
+      if (ev) ev.push({ type: 'burn', phase: P2, at: xy(b, L), what: 'oil' });
+      ctx.fired.push({
+        cell: L,
+        sKind: KIND_BURST,
+        sAxisV: false,
+        mKind: KIND_NORMAL,
+        mAxisV: false,
+      });
+    }
     // A mound adjacent on two sides still takes only one hit per landing.
     let moundHit = -1;
     for (let d = 0; d < 4; d++) {
@@ -664,6 +679,8 @@ function dynamicsPhase(b: Board, d: number, ev: MoveEvent[] | null): void {
     }
     if (!free) {
       b.flags[c] = withKind(b.flags[c]!, KIND_NORMAL);
+      b.calmed++;
+      b.score += 20;
       if (ev) ev.push({ type: 'strayCalm', phase: P4, id: b.ids[c]!, at: xy(b, c) });
       continue;
     }
@@ -888,6 +905,18 @@ export function computeGoalProgress(b: Board): GoalProgress[] {
       }
       case 'score':
         return { type: g.type, progress: b.score, target: g.points, done: b.score >= g.points };
+      case 'clearRot': {
+        let remaining = 0;
+        for (let i = 0; i < b.geo.n; i++) if (b.rot[i]! > 0) remaining++;
+        return {
+          type: g.type,
+          progress: b.rotCleared,
+          target: b.rotCleared + remaining,
+          done: remaining === 0,
+        };
+      }
+      case 'calmStrays':
+        return { type: g.type, progress: b.calmed, target: g.count, done: b.calmed >= g.count };
     }
   });
 }
@@ -1019,6 +1048,8 @@ export function createState(level: LevelDef, seed: number): LevelState {
     delivered: 0,
     deliveredByTier: new Uint8Array(16),
     rescued: 0,
+    rotCleared: 0,
+    calmed: 0,
     spores: 0,
     healed: 0,
     healTotal: 0,

@@ -55,7 +55,7 @@ interface BotSummary {
   meanMoves: number;
   meanMovesWon: number;
   meanScore: number;
-  specialFrequency: { line: number; burst: number; fired: number };
+  specialFrequency: { line: number; burst: number; fired: number; combo: number };
   elapsedMs: number;
 }
 interface LevelEntry {

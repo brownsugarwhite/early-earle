@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding",
+  "name": "Wooding",
+  "palette": {
+    "sky": ["#f7f6d8", "#e0e6bb"],
+    "terrainLight": "#98b392",
+    "terrainDark": "#41422b",
+    "ink": "#252d08",
+    "accents": ["#ddd042", "#d66e78"]
+  },
+  "levelRange": [76, 100],
+  "material": "fire"
+}

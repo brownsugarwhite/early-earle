@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-095",
+  "zone": "wooding",
+  "name": "Wildes Holz",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "current",
+      "at": [2, 1],
+      "dir": "up"
+    },
+    {
+      "kind": "current",
+      "at": [0, 0],
+      "dir": "up"
+    }
+  ],
+  "blockers": [],
+  "threats": [
+    {
+      "kind": "rot",
+      "at": [3, 0],
+      "period": 3
+    },
+    {
+      "kind": "rot",
+      "at": [2, 4],
+      "period": 3
+    },
+    {
+      "kind": "stray",
+      "at": [4, 1],
+      "tier": 1
+    }
+  ],
+  "start": [
+    {
+      "at": [1, 4],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 2],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 4],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [4, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 4],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [1, 1],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "release",
+      "count": 1
+    },
+    {
+      "type": "clearRot"
+    },
+    {
+      "type": "calmStrays",
+      "count": 1
+    }
+  ],
+  "moves": 23,
+  "cap": 5,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.6, 2],
+    "style": "puzzle"
+  }
+}

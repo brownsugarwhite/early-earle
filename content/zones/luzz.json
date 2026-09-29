@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz",
+  "name": "Luzz",
+  "palette": {
+    "sky": ["#dbf8fa", "#84c9df"],
+    "terrainLight": "#5fadb9",
+    "terrainDark": "#2d4455",
+    "ink": "#191b2f",
+    "accents": ["#2de5f8", "#15afd1"]
+  },
+  "levelRange": [51, 75],
+  "material": "gas"
+}

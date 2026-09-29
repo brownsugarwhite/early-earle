@@ -170,6 +170,10 @@ export interface Board {
   /** Deliveries per tier (index = tier), for `deliver` goals. */
   deliveredByTier: Uint8Array;
   rescued: number;
+  /** Rot cells burnt away (fire merges, blasts). */
+  rotCleared: number;
+  /** Strays calmed (boxed in). */
+  calmed: number;
   spores: number;
   healed: number;
   healTotal: number;
@@ -247,6 +251,8 @@ export function cloneBoard(b: Board): Board {
     delivered: b.delivered,
     deliveredByTier: b.deliveredByTier.slice(),
     rescued: b.rescued,
+    rotCleared: b.rotCleared,
+    calmed: b.calmed,
     spores: b.spores,
     healed: b.healed,
     healTotal: b.healTotal,
@@ -284,6 +290,8 @@ export function copyBoardInto(dst: Board, src: Board): void {
   dst.delivered = src.delivered;
   dst.deliveredByTier.set(src.deliveredByTier);
   dst.rescued = src.rescued;
+  dst.rotCleared = src.rotCleared;
+  dst.calmed = src.calmed;
   dst.spores = src.spores;
   dst.healed = src.healed;
   dst.healTotal = src.healTotal;

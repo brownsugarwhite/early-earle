@@ -24,6 +24,7 @@ import {
   FLOOR_WITHERED,
   FLOOR_DEEP_WITHERED,
   KIND_AMOEBA,
+  KIND_STRAY,
   kindOf,
   type Board,
 } from '../model';
@@ -140,6 +141,32 @@ export function evaluate(b: Board, w: Weights = DEFAULT_WEIGHTS): number {
           if (b.tiers[i] !== 0 && hasMergePartner(b, i)) pot += 1;
         }
         shaping += targets > 0 ? pot / targets : 0;
+        break;
+      }
+      case 'clearRot': {
+        let remaining = 0;
+        for (let i = 0; i < n; i++) if (b.rot[i]! > 0) remaining++;
+        const total = b.rotCleared + remaining;
+        goal += total > 0 ? b.rotCleared / total : 1;
+        shaping -= Math.min(1, remaining / 6);
+        break;
+      }
+      case 'calmStrays': {
+        goal += Math.min(1, b.calmed / g.count);
+        // a stray with fewer free neighbours is closer to being boxed in
+        let boxed = 0;
+        let strays = 0;
+        for (let i = 0; i < n; i++) {
+          if (b.tiers[i] === 0 || kindOf(b.flags[i]!) !== KIND_STRAY) continue;
+          strays++;
+          let free = 0;
+          for (let d = 0; d < 4; d++) {
+            const j = geo.nb[d]![i]!;
+            if (j >= 0 && geo.cellType[j] === CELL_OPEN && b.tiers[j] === 0) free++;
+          }
+          boxed += (4 - free) / 4;
+        }
+        shaping += strays > 0 ? boxed / strays : 0;
         break;
       }
       case 'clearScrap':

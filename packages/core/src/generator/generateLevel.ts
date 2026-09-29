@@ -17,7 +17,7 @@ import {
   type ZoneId,
 } from '../schema/level';
 import { levelFromAscii, type AsciiOptions } from '../testing/ascii';
-import type { Coord, Material } from '../model';
+import type { Coord, Dir, Material } from '../model';
 
 export type LevelType =
   'tutorial' | 'fuu' | 'comfort' | 'skill' | 'hard' | 'veryHard' | 'celebration' | 'breather';
@@ -88,7 +88,14 @@ export interface LevelSpec {
       | 'fences'
       | 'crust'
       | 'sleepers'
-      | 'oil',
+      | 'oil'
+      | 'rot'
+      | 'toxic'
+      | 'mounds'
+      | 'portals'
+      | 'fog'
+      | 'currents'
+      | 'strays',
       number
     >
   >;
@@ -96,6 +103,20 @@ export interface LevelSpec {
   cageLayers?: number;
   cageTier?: number;
   crustTier?: number;
+  sleeperTier?: number;
+  /** Rot growth period (moves), default 3. */
+  rotPeriod?: number;
+  /** Toxic cloud countdown (moves), default 6. */
+  toxicCountdown?: number;
+  /** 2×2 scrap mound layers (4–8), default 4. */
+  moundLayers?: number;
+  /** Tier of the blob hidden in fog cells; 0 = empty fog. Default 2. */
+  fogTier?: number;
+  /** Direction of randomly placed currents, default 'right'. */
+  currentDir?: Dir;
+  /** Explicit current cells (added to randomly placed ones). */
+  currents?: { at: Coord; dir: Dir }[];
+  strayTier?: number;
   /** Explicit fences (added to randomly placed ones). */
   fences?: { a: Coord; b: Coord }[];
   spawn?: {
@@ -295,8 +316,17 @@ export function generateLevel(spec: LevelSpec): LevelDef {
 
   const blockers: NonNullable<LevelInput['blockers']> = [];
   const floors: NonNullable<LevelInput['floors']> = [];
+  const threats: NonNullable<LevelInput['threats']> = [];
   const fences: NonNullable<LevelInput['fences']> = [...(spec.fences ?? [])];
   const start: NonNullable<LevelInput['start']> = [];
+  const inPool = (pool: Coord[], c: Coord) => pool.some((o) => o[0] === c[0] && o[1] === c[1]);
+  const drop = (pool: Coord[], c: Coord) => {
+    const i = pool.findIndex((o) => o[0] === c[0] && o[1] === c[1]);
+    if (i >= 0) pool.splice(i, 1);
+  };
+
+  // Explicitly authored current cells are reserved before anything else is placed.
+  for (const cur of spec.currents ?? []) drop(open, cur.at);
 
   // Blockers first (they take cells), keeping at least one cell apart so lanes stay open.
   let pool = biasedPool(rng, open, w, h, bias);
@@ -321,7 +351,35 @@ export function generateLevel(spec: LevelSpec): LevelDef {
   }
   if (has('sleeper')) {
     for (const c of take(pool, spec.counts?.sleepers ?? 1, 2))
-      blockers.push({ kind: 'sleeper', at: c, content: { tier: 2 } });
+      blockers.push({ kind: 'sleeper', at: c, content: { tier: spec.sleeperTier ?? 2 } });
+  }
+  if (has('scrapMound')) {
+    // 2×2 block of free cells, anchored at its top-left cell.
+    let placed = 0;
+    for (let i = 0; i < pool.length && placed < (spec.counts?.mounds ?? 1); i++) {
+      const c = pool[i]!;
+      const cells: Coord[] = [c, [c[0] + 1, c[1]], [c[0], c[1] + 1], [c[0] + 1, c[1] + 1]];
+      if (!cells.every((q) => inPool(pool, q))) continue;
+      blockers.push({ kind: 'scrapMound', at: c, size: [2, 2], layers: spec.moundLayers ?? 4 });
+      for (const q of cells) drop(pool, q);
+      placed++;
+      i = -1;
+    }
+  }
+  if (has('fog')) {
+    const tier = spec.fogTier ?? 2;
+    for (const c of take(pool, spec.counts?.fog ?? 3, 1)) {
+      if (tier > 0) blockers.push({ kind: 'fog', at: c, content: { tier } });
+      else blockers.push({ kind: 'fog', at: c });
+    }
+  }
+  if (has('rot')) {
+    for (const c of take(pool, spec.counts?.rot ?? 1, 2))
+      threats.push({ kind: 'rot', at: c, period: spec.rotPeriod ?? 3 });
+  }
+  if (has('stray')) {
+    for (const c of take(pool, spec.counts?.strays ?? 1, 2))
+      threats.push({ kind: 'stray', at: c, tier: spec.strayTier ?? 1 });
   }
 
   // Target floors: withered / deep withered / spores.
@@ -339,6 +397,25 @@ export function generateLevel(spec: LevelSpec): LevelDef {
   }
   if (has('oil')) {
     for (const c of take(pool, spec.counts?.oil ?? 2, 1)) floors.push({ kind: 'oil', at: c });
+  }
+  if (has('toxic')) {
+    for (const c of take(pool, spec.counts?.toxic ?? 1, 2))
+      threats.push({ kind: 'toxic', at: c, countdown: spec.toxicCountdown ?? 6 });
+  }
+  if (has('portal')) {
+    // Pairs far apart (Chebyshev ≥ 3 when possible).
+    for (let k = 0; k < (spec.counts?.portals ?? 1); k++) {
+      const pair = take(pool, 2, 3);
+      if (pair.length < 2) break;
+      const portalId = String.fromCharCode(97 + k);
+      for (const c of pair) floors.push({ kind: 'portal', at: c, portalId });
+    }
+  }
+  if (has('current')) {
+    for (const cur of spec.currents ?? [])
+      floors.push({ kind: 'current', at: cur.at, dir: cur.dir });
+    for (const c of take(pool, spec.counts?.currents ?? 0, 1))
+      floors.push({ kind: 'current', at: c, dir: spec.currentDir ?? 'right' });
   }
 
   // Fences between two adjacent open cells (never touching a blocker).
@@ -373,7 +450,7 @@ export function generateLevel(spec: LevelSpec): LevelDef {
     fences,
     floors,
     blockers,
-    threats: [],
+    threats,
     start,
     spawn,
     goals,
