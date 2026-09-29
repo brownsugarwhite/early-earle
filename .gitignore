@@ -30,3 +30,6 @@ apps/game/ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
 apps/game/android/build/
 apps/game/android/app/build/
 apps/game/android/app/src/main/assets/public/
+
+# Referenz-Thumbnails im Lab (urheberrechtlich geschützt) – nur lokal
+apps/game/public/refs/

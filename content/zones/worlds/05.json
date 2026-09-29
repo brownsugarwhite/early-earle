@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "w05",
+  "index": 4,
+  "ref": "05",
+  "name": "Wurzelwelt",
+  "title": "Blauer Baum mit Wurzeln, Winter-Blau",
+  "zone": "syrup",
+  "side": "far",
+  "half": 1,
+  "sources": ["05.webp", "Ebene_11.jpg", "Bildschirmfoto_2025-10-15_um_16.47.13.jpg", "Ebene_25.jpg"],
+  "palette": {
+    "ink": "#07131c",
+    "terrain": ["#3a8fb0", "#7fc0cc", "#c8dfd0", "#eae9d2", "#f6f2dc"],
+    "canopy": ["#0c1c28", "#12283a", "#6a5a30", "#9a8446", "#c8b06a", "#c8b06a", "#e6d090"],
+    "sky": ["#3a9fbe", "#2f8fb0", "#25809f", "#1f7090", "#1a6484", "#155676"],
+    "sun": "#f0ead0",
+    "sunRing": "#8fd0dc",
+    "fog": ["#155676", "#12465e", "#1f7090", "#3a9fbe", "#7fc0cc", "#c8dfd0"],
+    "fogAlpha": [0, 0.3, 0.5, 0.66, 0.8, 0.9],
+    "accent": ["#0a1620", "#9a8446", "#07131c", "#0a1620", "#c8b06a", "#e6d090", "#8fb8c8", "#3a8fb0"]
+  },
+  "terrain": { "amplitude": 2.8, "wavelength": 1.5, "slope": 0.3 },
+  "ground": "snowLines",
+  "vegetation": {
+    "density": 0.09,
+    "clumpiness": 0.3,
+    "kinds": { "bare": 0.85, "dome": 0.15 },
+    "scale": [1.2, 2.4],
+    "trunkStyle": "ink",
+    "motif": "dots"
+  },
+  "props": { "rocks": 0.006, "animals": 0.006 },
+  "fogStripes": 0,
+  "fog": { "start": 7, "range": 13 },
+  "view": { "height": 3.8, "forward": 1.6, "look": 5.55, "fov": 86, "curvature": 0.12 }
+}

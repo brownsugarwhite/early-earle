@@ -1,4 +1,4 @@
-export const WORLD_VERSION = '0.0.1';
+export const WORLD_VERSION = '0.0.2';
 
 export { hash32, mulberry32 } from './rng';
 export { GradientNoise3 } from './noise';
@@ -15,6 +15,7 @@ export {
   type Vec3,
 } from './capPatch';
 export { scatterTrees, TREE_PROPORTIONS, type ScatterParams, type TreeInstance, type TreeKind } from './scatterTrees';
+export { areaSplit, decideWorld, pathLongitude, wrapAngle, smoothstep01, type WorldTables } from './worldLayout';
 export {
   PlanetField,
   chunkAngularRadius,
@@ -25,16 +26,23 @@ export {
   scatterChunkProps,
   scatterChunkTrees,
   spiralPath,
+  type CanopyMotif,
   type ChunkId,
   type ChunkMeshData,
   type ChunkScatterOptions,
+  type LandmarkSlot,
+  type PlanetLandmarkParams,
   type PlanetParams,
   type PlanetProp,
   type PlanetPropKind,
+  type PlanetPropSpec,
+  type PlanetTerrainShape,
   type PlanetTree,
   type PlanetVegetationFamily,
+  type PlanetWorldParams,
   type PlanetZoneParams,
   type SpiralNode,
   type SpiralOptions,
   type SpiralPath,
+  type TrunkStyle,
 } from './planet';

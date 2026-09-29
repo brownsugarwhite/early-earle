@@ -1,4 +1,4 @@
-import { clamp, float, floor, fract, fwidth, mix, positionView, smoothstep, texture, uniform, vec2 } from 'three/tsl';
+import { abs, clamp, float, floor, fract, fwidth, hash, int, max, mix, positionView, select, smoothstep, texture, time, uniform, vec2 } from 'three/tsl';
 import type { Node, Texture, UniformNode } from 'three/webgpu';
 
 /** Typisierte TSL-Knoten (Swizzles und Operatoren hängen am Typparameter). */
@@ -7,6 +7,11 @@ export type Vec2Node = Node<'vec2'>;
 export type Vec3Node = Node<'vec3'>;
 export type Vec4Node = Node<'vec4'>;
 export type TSLUniform = UniformNode<'float', number>;
+/** `uniformArray(...)` ohne die generischen Typen: Element-Zugriff über `element(int)`. */
+export interface UniformArrayLike {
+  element(i: unknown): FloatNode;
+  array: number[];
+}
 
 /** `number` oder Float-Knoten → Float-Knoten. */
 export function asFloat(v: FloatNode | number): FloatNode {
@@ -80,4 +85,76 @@ export function steppedFog(color: Vec3Node, fog: FogSettings, lookup: PaletteLoo
   const x = clamp(d.sub(fog.start).mul(fog.invRange), 0, 0.999).mul(fog.steps.sub(1));
   const f = mix(lookup.bands(x, fog.row, 0), lookup.bands(x, fog.rowB, 0), fog.mix);
   return mix(color, f.rgb, f.a);
+}
+
+// --- Feine Vektortexturen (Streifen, Schraffur, Flechten) --------------------------------------------------
+// Alle Muster laufen über eine Objekt-/Planetenraum-Koordinate (nie Screen-Space, sonst schwimmen sie beim Rollen),
+// werden mit `fwidth` auf genau eine Bildschirmpixel-Kante anti-aliasiert und blenden aus, sobald die Periode unter
+// ~2 px fällt (kein Moiré). Die Zeit kommt aus dem geteilten `patternTime`-Knoten (langsam, Sekunden).
+
+/** Gemeinsame, langsame Zeit für Musterdrift (Sekunden × Geschwindigkeit). */
+export const patternSpeed = uniform(1);
+export const patternTime = time.mul(patternSpeed);
+
+/** Fade 1 → 0, wenn die Periode `coord` (in Perioden) auf dem Bildschirm zu fein wird. */
+export function periodFade(coord: FloatNode, minPeriodPx = 2.5): FloatNode {
+  // fwidth(coord) = Perioden pro Pixel; 1/minPeriodPx Perioden pro Pixel ist die Grenze
+  const fw = fwidth(coord).max(1e-5);
+  return smoothstep(float(1 / minPeriodPx), float(1 / (minPeriodPx * 2.2)), fw);
+}
+
+/**
+ * Parallele Linien: `coord` in Perioden (1 = eine Linie), `width` = Linienbreite als Anteil der Periode (0..1).
+ * Liefert 0..1 (1 = auf der Linie), mit 1-px-AA und Moiré-Fade.
+ */
+export function stripeMask(coord: FloatNode, width: FloatNode | number): FloatNode {
+  const f = fract(coord);
+  const dist = abs(f.sub(0.5)); // 0 in der Periodenmitte, 0.5 am Rand
+  const half = asFloat(width).mul(0.5);
+  const fw = fwidth(coord).max(1e-5);
+  const line = smoothstep(half.add(fw), half.sub(fw), dist);
+  return line.mul(periodFade(coord));
+}
+
+/** Schraffur: Streifen mit Unterbrechungen (zweite Frequenz quer dazu) → kurze parallele Striche wie bei Earle. */
+export function hatchMask(coord: FloatNode, across: FloatNode, width: FloatNode | number, gaps: FloatNode | number = 0.35): FloatNode {
+  const lines = stripeMask(coord, width);
+  const cell = floor(across);
+  const h = hash(cell.add(floor(coord).mul(17.0)));
+  const broken = select(h.lessThan(asFloat(gaps)), float(0), float(1));
+  // Strichlänge ist die Zellenlänge quer: an den Zellgrenzen kurz ausblenden
+  const g = fract(across);
+  const ends = smoothstep(0.0, 0.08, g).mul(smoothstep(1.0, 0.92, g));
+  return lines.mul(broken).mul(ends);
+}
+
+/**
+ * Flechten-Mosaik: Zellen einer Kachelung mit gehashter Farbe (0..1) und Lückenmaske. `cellsU/V` in Zellen,
+ * `fill` = Anteil belegter Zellen. Rückgabe: {mask 0..1, key 0..1 je Zelle}.
+ */
+export function lichenCells(u: FloatNode, v: FloatNode, fill: FloatNode | number, seed: FloatNode | number = 0): { mask: FloatNode; key: FloatNode } {
+  const cu = floor(u);
+  const cv = floor(v);
+  const key = hash(cu.mul(53.0).add(cv.mul(911.0)).add(asFloat(seed).mul(7.0)));
+  const key2 = hash(cu.mul(31.0).add(cv.mul(197.0)).add(asFloat(seed).mul(13.0)).add(3.0));
+  const inside = select(key2.lessThan(asFloat(fill)), float(1), float(0));
+  // Zellrand leicht abrunden: Kreis/Abstand zur Zellmitte
+  const du = fract(u).sub(0.5);
+  const dv = fract(v).sub(0.5);
+  const r = max(abs(du), abs(dv));
+  const fw = fwidth(u).add(fwidth(v)).mul(0.5).max(1e-5);
+  const shape = smoothstep(float(0.5).add(fw), float(0.42).sub(fw), r);
+  const fade = periodFade(u, 1.8).mul(periodFade(v, 1.8));
+  return { mask: inside.mul(shape).mul(fade), key };
+}
+
+/** Farbe aus einer Palettenzeile nach einem Zufallsschlüssel 0..1 zwischen den Indizes `from..to`. */
+export function palByKey(lookup: PaletteLookup, key: FloatNode, row: FloatNode | number, from: number, to: number): Vec3Node {
+  const idx = floor(key.mul(to - from + 1)).clamp(0, to - from).add(from);
+  return lookup.pal(idx, row).rgb;
+}
+
+/** Ganzzahl-Element eines Float-Uniform-Arrays (Index-Knoten wird gerundet). */
+export function arrayElement(arr: UniformArrayLike, index: FloatNode): FloatNode {
+  return arr.element(int(index.add(0.5).floor()));
 }

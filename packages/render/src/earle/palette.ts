@@ -1,8 +1,8 @@
 import { ClampToEdgeWrapping, DataTexture, NearestFilter, RGBAFormat, SRGBColorSpace, UnsignedByteType } from 'three/webgpu';
 
 /**
- * Paletten-Atlas: eine kleine RGBA8-Textur mit Nearest-Filter. Zeile = Rampe (Terrain-Zone, Kronen, Himmel,
- * Nebel), x = Stufe. Konvention für Terrain/Kronen: x = 0 Tinte, x = 1.. Lichtstufen (dunkel → hell).
+ * Paletten-Atlas: eine kleine RGBA8-Textur mit Nearest-Filter. Zeile = Rampe (Terrain-Welt, Kronen, Himmel,
+ * Nebel, Akzente), x = Stufe. Konvention für Terrain/Kronen: x = 0 Tinte, x = 1.. Lichtstufen (dunkel → hell).
  * Nebelzeile: x = 0 kein Nebel (Alpha 0), dann Stufen mit steigendem Alpha. Himmelszeile: x = 0 Horizont … Zenit.
  */
 export interface PaletteRowSpec {
@@ -15,7 +15,7 @@ export interface PaletteRowSpec {
 
 export class PaletteAtlas {
   static readonly WIDTH = 8;
-  static readonly HEIGHT = 32;
+  static readonly HEIGHT = 128;
   readonly texture: DataTexture;
   private readonly data: Uint8Array;
   private readonly rows = new Map<string, { index: number; steps: number }>();
@@ -78,6 +78,10 @@ export class PaletteAtlas {
     return r.steps;
   }
 
+  get rowCount(): number {
+    return this.nextRow;
+  }
+
   dispose(): void {
     this.texture.dispose();
   }
@@ -99,6 +103,20 @@ export interface ZonePalette {
   sunRing: string;
   fog: string[];
   fogAlpha: number[];
+}
+
+/**
+ * Weltpalette (zehn Welten, je eine Earle-Serigrafie): wie die Zonenpalette plus
+ * - `canopy` mit 7 Einträgen: 2 Lichtbänder, 3 Punktfarben (Schattenseite, Lichtseite ×2), 2 Motivfarben (Rauten/Kreuze),
+ * - `canopyVariants`: weitere Kronenzeilen (Juwelenwald: rot, blau, türkis) mit derselben Struktur,
+ * - `accent` (8): 0 Stamm hell, 1–3 Stammstreifen, 4–5 Flechten, 6 Requisit A (Scheunenrot, Rost), 7 Requisit B (Schraffur, Ölreflex),
+ * - optionale Requisitenzeilen `monolith` und `barn` (Tinte + 4 Lichtstufen).
+ */
+export interface WorldPalette extends ZonePalette {
+  canopyVariants?: string[][];
+  accent: string[];
+  monolith?: string[];
+  barn?: string[];
 }
 
 /** Tjorizo (aus dem Plan und Florians Draft): Neongrün-Himmel, Khaki-Hügel, olive Tinte. */
@@ -123,6 +141,14 @@ export interface ZoneRows {
   fog: number;
 }
 
+export interface WorldRows extends ZoneRows {
+  /** Alle Kronenzeilen (Hauptzeile zuerst). */
+  canopyRows: number[];
+  accent: number;
+  monolith: number;
+  barn: number;
+}
+
 /** Schreibt eine Zonenpalette als vier Zeilen in den Atlas (Prefix erlaubt mehrere Zonen im selben Atlas). */
 export function addZonePalette(atlas: PaletteAtlas, zone: ZonePalette, prefix = 'tjorizo'): ZoneRows {
   const terrain = atlas.addRow({ name: `${prefix}/terrain`, steps: [zone.ink, ...zone.terrain] });
@@ -130,6 +156,17 @@ export function addZonePalette(atlas: PaletteAtlas, zone: ZonePalette, prefix = 
   const sky = atlas.addRow({ name: `${prefix}/sky`, steps: [...zone.sky, zone.sun, zone.sunRing] });
   const fog = atlas.addRow({ name: `${prefix}/fog`, steps: zone.fog, alphas: zone.fogAlpha });
   return { terrain, canopy, sky, fog };
+}
+
+/** Schreibt eine Weltpalette (5–8 Zeilen) in den Atlas. */
+export function addWorldPalette(atlas: PaletteAtlas, world: WorldPalette, prefix: string): WorldRows {
+  const base = addZonePalette(atlas, world, prefix);
+  const canopyRows = [base.canopy];
+  (world.canopyVariants ?? []).forEach((steps, i) => canopyRows.push(atlas.addRow({ name: `${prefix}/canopy${i + 1}`, steps: [world.ink, ...steps] })));
+  const accent = atlas.addRow({ name: `${prefix}/accent`, steps: world.accent.slice(0, 8) });
+  const monolith = world.monolith ? atlas.addRow({ name: `${prefix}/monolith`, steps: world.monolith }) : base.terrain;
+  const barn = world.barn ? atlas.addRow({ name: `${prefix}/barn`, steps: world.barn }) : base.terrain;
+  return { ...base, canopyRows, accent, monolith, barn };
 }
 
 /** Index der Sonnenscheibe bzw. des Sonnenrings in der Himmelszeile. */
@@ -152,7 +189,7 @@ function rgb(hex: string): [number, number, number] {
 function hex(c: [number, number, number]): string {
   return '#' + c.map((v) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('');
 }
-function mixRgb(a: string, b: string, t: number): string {
+export function mixRgb(a: string, b: string, t: number): string {
   const x = rgb(a);
   const y = rgb(b);
   return hex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]);
@@ -183,5 +220,16 @@ export function zonePaletteFromContent(content: ZoneContentPalette): ZonePalette
     sunRing: mixRgb(horizon, white, 0.5),
     fog: [zenith, mixRgb(zenith, dark, 0.45), mixRgb(zenith, horizon, 0.3), mixRgb(zenith, horizon, 0.6), horizon, mixRgb(horizon, white, 0.3)],
     fogAlpha: [0, 0.35, 0.55, 0.72, 0.85, 0.94],
+  };
+}
+
+/** Weltpalette aus einer Zonenpalette (Altformat) — Akzente aus Tinte/Terrain abgeleitet. */
+export function worldPaletteFromZone(zone: ZonePalette): WorldPalette {
+  const canopy = zone.canopy.length >= 7 ? zone.canopy : [...zone.canopy, zone.canopy[zone.canopy.length - 1] ?? zone.ink, zone.canopy[zone.canopy.length - 2] ?? zone.ink];
+  const light = zone.terrain[zone.terrain.length - 1] ?? zone.ink;
+  return {
+    ...zone,
+    canopy,
+    accent: [light, zone.terrain[1] ?? zone.ink, zone.ink, zone.ink, zone.canopy[3] ?? light, zone.canopy[4] ?? light, zone.terrain[0] ?? zone.ink, light],
   };
 }

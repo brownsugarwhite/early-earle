@@ -1,21 +1,34 @@
 import { Color, Frustum, Group, Matrix4, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import { EarlePlanet, FogStripes, SunRig, createSkyDome, skySunIndices } from '@ee/render';
+import type { LandmarkSlot } from '@ee/world';
 import type { FlowQuality } from './quality';
 import type { PathLayout } from './path';
-import { NODES_PER_ZONE, planetZones } from '../lab/earle/zones';
+import { CHUNKS_PER_FACE, NODES_PER_ZONE, PLANET_RADIUS, planetLandmarks, planetWorlds, planetZones } from '../lab/earle/zones';
 
-export const PLANET_RADIUS = 40;
-/** Chunks je Würfelseite (3 → 54 Chunks à 30°). */
-export const CHUNKS_PER_FACE = 3;
+export { PLANET_RADIUS, CHUNKS_PER_FACE };
 /** Splash ink (#081b25): the scene background matches the splash PNG so the reveal is seamless. */
 export const INK_BACKGROUND = '#081b25';
+
+/**
+ * Recommended Earle map camera (rig-local, like FlowScene's MAP_OFFSET / MAP_LOOK / MAP_FOV): lower, closer and
+ * wider so hills stack as receding bands up to a high, curved horizon (see `/lab/earle`, "Perspektive" 1.0).
+ * FlowScene still uses its own constants; adopting these is a three-line change there.
+ */
+export const MAP_VIEW = { offset: new Vector3(0, 6.2, 4.6), look: new Vector3(0, 0, -9), fov: 82 } as const;
 
 export interface MapWorldOptions {
   quality: FlowQuality;
   seed?: number;
   sunElevationDeg?: number;
   sunAzimuthDeg?: number;
+  /**
+   * Curvature boost of the far terrain (0 = off). Only terrain, vegetation and props bend; objects the flow
+   * places on the planet (nodes, hero, board) do not, so keep 0 unless they follow the same warp.
+   */
+  curvature?: number;
+  /** Trash density of the start world (1 = content default). */
+  trashScale?: number;
 }
 
 const _v = new Vector3();
@@ -23,10 +36,11 @@ const _q = new Quaternion();
 const _m = new Matrix4();
 
 /**
- * The Earle world of the flow: the chunked planet (four zones, cracks, spiral path, per-chunk growth) with the
- * banded EarleMaterial, pooled vegetation, sun rig with the sharpened shadow filter, sky dome and fog stripes.
- * The planet rolls under a fixed rig (camera, sun, sky and stripes hang on it); the flow moves the camera
- * relative to the rig for fly-ins. Chunks load/unload by visibility every frame.
+ * The Earle world of the flow: the chunked planet (four story zones with cracks, ten Earle worlds as spiral bands,
+ * spiral path, per-chunk growth, trash in the start world that sinks as it heals) with the banded EarleMaterial,
+ * pooled vegetation, sun rig with the sharpened shadow filter, sky dome and fog stripes. The planet rolls under a
+ * fixed rig (camera, sun, sky and stripes hang on it); the flow moves the camera relative to the rig for fly-ins.
+ * Chunks load/unload by visibility every frame; sky, fog and stripes cross-fade to the world under the look point.
  */
 export class MapWorld {
   readonly scene = new Scene();
@@ -47,6 +61,7 @@ export class MapWorld {
   private readonly tmp = new Vector3();
   private readonly sunLocal = new Vector3();
   private shadowDirty = true;
+  private lastTime = -1;
   shadowPasses = 0;
 
   constructor(readonly options: MapWorldOptions) {
@@ -66,22 +81,29 @@ export class MapWorld {
     this.sun.root.position.set(0, 0, -4);
     this.rig.add(this.sun.root);
 
+    const zones = planetZones();
     this.world = new EarlePlanet({
       radius: PLANET_RADIUS,
       seed: options.seed ?? 7,
       chunksPerFace: CHUNKS_PER_FACE,
-      zones: planetZones(),
+      zones,
+      worlds: planetWorlds(),
+      landmarks: planetLandmarks(),
+      trashScale: options.trashScale ?? 1,
       quality: {
         chunkRes: Math.max(12, Math.round(q.terrainRes / 3)),
         dotsPerTree: q.dotsPerTree,
         collapsePx: q.collapsePx,
         densityScale: q.treeCount / 200,
         nearChunks: q.name === 'mobil' ? 3 : 5,
-        capacity: q.name === 'mobil' ? { trees: 1400, dots: 14000, props: 300, animals: 160 } : { trees: 2600, dots: 45000, props: 400, animals: 220 },
+        // Punkte-Kapazität = Budget je Neuaufbau (die Punkte je Baum werden gleichmäßig ausgedünnt, wenn mehr geplant
+        // sind): die Karte sieht auf dem kleineren Planeten mehr Chunks als P2b, die Punktzahl bleibt wie dort
+        capacity: q.name === 'mobil' ? { trees: 1400, dots: 11000, props: 300, animals: 160 } : { trees: 2600, dots: 16000, props: 400, animals: 220 },
       },
       path: { nodesPerZone: NODES_PER_ZONE, turns: 2.75, clearNode: 3.4, clearPath: 1.0 },
       loadsPerFrame: 2,
     });
+    this.world.curvature.value = options.curvature ?? 0;
     this.planet.add(this.world.group);
     this.layout = {
       nodes: this.world.path.nodes.map((n) => ({ index: n.index, u: n.lon / 180, v: n.lat / 90, position: n.position, normal: n.normal })),
@@ -90,11 +112,10 @@ export class MapWorld {
     };
 
     // --- sky and fog stripes -----------------------------------------------------------------------
-    const zones = planetZones();
-    const sunIdx = skySunIndices(zones[0]!.palette);
+    const sunIdx = skySunIndices(this.world.worlds[0]!.palette);
     const sky = createSkyDome({
       lookup: this.world.lookup,
-      skyRow: this.world.rows[0]!.sky,
+      skyRow: this.world.skyRowA,
       steps: sunIdx.steps,
       sunIndex: sunIdx.sun,
       ringIndex: sunIdx.ring,
@@ -103,8 +124,6 @@ export class MapWorld {
       skyMix: this.world.skyMix,
       horizonY: this.skyHorizon,
     });
-    // Row A is a uniform on the planet; the dome takes the numeric row for the sun disc and A/B mix for the bands
-    (sky.material as unknown as { needsUpdate: boolean }).needsUpdate = true;
     this.camera.add(sky);
     this.disposables.push(sky.geometry, sky.material as { dispose(): void });
     this.fogStripes = new FogStripes({
@@ -115,6 +134,7 @@ export class MapWorld {
       firstDistance: 6,
       spacing: q.fogStripes > 2 ? 5 : 8,
       curvatureRadius: PLANET_RADIUS,
+      strength: this.world.stripeStrength,
     });
     this.rig.add(this.fogStripes.group);
   }
@@ -129,7 +149,7 @@ export class MapWorld {
     this.shadowDirty = true;
   }
 
-  /** Completed nodes → per-chunk growth along the path. */
+  /** Completed nodes → per-chunk growth along the path (trash sinks, trees grow). */
   setProgress(done: number): void {
     this.world.setProgress(done);
     this.shadowDirty = true;
@@ -140,8 +160,34 @@ export class MapWorld {
     this.world.setCrackClosed(border, closed);
   }
 
-  /** Once per frame before rendering: chunk streaming, sun/sky uniforms, zone blend, billboard axes, shadow fit. */
+  /** Trash density of the start world (chunks re-scatter). */
+  setTrashScale(scale: number): void {
+    this.world.setTrashScale(scale);
+    this.shadowDirty = true;
+  }
+
+  /** Landmark slots (e.g. the hero tree): position/normal/scale/zone on the planet surface. */
+  get landmarkSlots(): LandmarkSlot[] {
+    return this.world.landmarkSlots;
+  }
+
+  /** Places an object (e.g. `createHeroTree().group`) on a landmark slot; it rotates with the planet. */
+  addLandmark(object: Object3D, slotId?: string): LandmarkSlot | null {
+    const slot = this.world.addLandmark(object, slotId);
+    this.shadowDirty = true;
+    return slot;
+  }
+
+  /** Index (0..9) of the Earle world under the look point. */
+  get viewWorld(): number {
+    return this.world.viewWorld;
+  }
+
+  /** Once per frame before rendering: chunk streaming, sun/sky uniforms, world blend, billboard axes, shadow fit. */
   update(): void {
+    const now = performance.now() / 1000;
+    const dt = this.lastTime < 0 ? 0 : Math.min(0.1, now - this.lastTime);
+    this.lastTime = now;
     this.scene.updateMatrixWorld(true);
     this.sun.directionWorld(this.sunDirWorld.value);
     this.planet.getWorldQuaternion(_q).invert();
@@ -155,12 +201,14 @@ export class MapWorld {
     this.frustum.setFromProjectionMatrix(_m, this.camera.coordinateSystem);
     if (this.world.update(this.camera, camWorld, this.planet.matrixWorld, this.frustum)) this.shadowDirty = true;
 
-    // Zone under the camera's look point drives sky and fog rows.
+    // World under the camera's look point drives sky, fog, stripes (and the curvature warp centre).
     const look = _v.set(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(new Quaternion()));
     const hit = raySphere(camWorld, look, PLANET_RADIUS + 0.5);
     const dirWorld = hit ?? camWorld.clone().normalize();
     const dirLocal = dirWorld.applyQuaternion(_q);
-    this.world.setViewZone(this.world.zoneCoordAt(dirLocal));
+    this.world.setViewDirection(dirLocal);
+    this.world.tickView(dt);
+    this.fogStripes.layout(1, this.world.curvature.value);
 
     if (this.shadowDirty) {
       if (!this.world.bounds.isEmpty()) this.sun.fitShadow(this.world.bounds, this.planet.matrixWorld, this.world.hTotal);

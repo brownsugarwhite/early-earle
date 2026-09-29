@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "w03",
+  "index": 2,
+  "ref": "03",
+  "name": "Kuppelbaum",
+  "title": "Kuppelbäume vor cremefarbenem Himmel (erstes Wäldchen, Level 100)",
+  "zone": "wooding",
+  "side": "near",
+  "half": 1,
+  "sources": ["03.webp", "Ebene_33.jpg", "Ebene_30.jpg", "Bildschirmfoto_2025-10-15_um_16.47.13.jpg"],
+  "palette": {
+    "ink": "#2a1e18",
+    "terrain": ["#8a8d78", "#a7ab8e", "#c2c4a2", "#d9d9b8", "#ebe7c8"],
+    "canopy": ["#3a2c22", "#4a3a2c", "#6e7a3c", "#9ba14a", "#c9cc6e", "#b8b060", "#e0dc9a"],
+    "sky": ["#f5eedb", "#f0e8cf", "#e9e0c2", "#dfd8b8", "#d2ceb0", "#c4c2a8"],
+    "sun": "#fbf7e6",
+    "sunRing": "#f7f2dd",
+    "fog": ["#c4c2a8", "#a8a894", "#c2c0a8", "#d8d6bc", "#e8e4cc", "#f2eedc"],
+    "fogAlpha": [0, 0.3, 0.5, 0.68, 0.82, 0.92],
+    "accent": ["#2a1e18", "#4a3a2c", "#2a1e18", "#2c2018", "#9ba14a", "#c9cc6e", "#9a9c98", "#6a6c6a"],
+    "barn": ["#3a3a3c", "#8a8c90", "#b0b2b4", "#d4d4d0", "#eeece6"]
+  },
+  "terrain": { "amplitude": 1.8, "wavelength": 1.8 },
+  "ground": "smooth",
+  "vegetation": {
+    "density": 0.16,
+    "clumpiness": 0.4,
+    "kinds": { "dome": 0.75, "tall": 0.1, "bare": 0.15 },
+    "scale": [1.1, 2.0],
+    "trunkStyle": "ink",
+    "motif": "rim"
+  },
+  "props": { "barns": 0.0015, "animals": 0.008 },
+  "fogStripes": 0.3,
+  "fog": { "start": 6, "range": 12 },
+  "view": { "height": 3.6, "forward": 1.8, "look": 5.58, "fov": 80, "curvature": 0.1 }
+}

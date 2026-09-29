@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "w02",
+  "index": 1,
+  "ref": "02",
+  "name": "Nebelhügel",
+  "title": "Grüne Nebelhügel",
+  "zone": "luzz",
+  "side": "near",
+  "sources": ["02.webp", "Ebene_49.jpg", "Ebene_20_Kopie.jpg", "Ebene_1.jpg", "Bildschirmfoto_2025-10-15_um_16.41.26.jpg"],
+  "palette": {
+    "ink": "#04140c",
+    "terrain": ["#0e4a26", "#1c7f34", "#35b43e", "#8fd93c", "#d6f05a"],
+    "canopy": ["#0a2416", "#123a20", "#2f6b3a", "#5fa64a", "#a8d66a", "#c8322e", "#e6d24a"],
+    "sky": ["#d2ead8", "#9fd2c8", "#5fb0c8", "#2f7fc0", "#1f4fa8", "#0f2f80"],
+    "sun": "#f4f6e0",
+    "sunRing": "#e2f3ea",
+    "fog": ["#0f2f80", "#0c3a5a", "#2f7fc0", "#6fbcd8", "#b8e6ec", "#eaf6f4"],
+    "fogAlpha": [0, 0.35, 0.55, 0.72, 0.86, 0.95],
+    "accent": ["#0a1a12", "#1c7f34", "#0a2416", "#0d2418", "#8fd93c", "#5fa64a", "#c8542a", "#eaf6f4"]
+  },
+  "terrain": { "amplitude": 3.0, "wavelength": 1.4, "slope": 0.35 },
+  "ground": "ramps",
+  "vegetation": {
+    "density": 0.95,
+    "clumpiness": 0.9,
+    "kinds": { "dome": 0.85, "stacked": 0.15 },
+    "scale": [0.45, 0.95],
+    "trunkStyle": "ink",
+    "motif": "rim",
+    "forestThreshold": 0.4
+  },
+  "props": { "animals": 0.01 },
+  "fogStripes": 1,
+  "fog": { "start": 8, "range": 16 },
+  "view": { "height": 8.0, "forward": 0.2, "look": 3.7, "fov": 82, "curvature": 0.08 }
+}

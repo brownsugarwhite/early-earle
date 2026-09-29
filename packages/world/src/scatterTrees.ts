@@ -2,8 +2,12 @@ import { createCapField, type CapPatchParams, type Vec3 } from './capPatch';
 import { GradientNoise3 } from './noise';
 import { hash32, mulberry32 } from './rng';
 
-/** Kronenformen: Kuppel, Kegel, gestapelte Kegel, hängende Knolle (Syrup), hoher dünner Stamm mit kleiner Krone (Luzz). */
-export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall';
+/**
+ * Kronenformen: Kuppel, Kegel, gestapelte Kegel, hängende Knolle (Syrup), hoher dünner Stamm mit kleiner Krone
+ * (Luzz), schwarze Kieferndreiecke (06), Kathedralen-Spitzen mit geschichteten Kronen auf überlangen Stämmen (07),
+ * kahle Fraktalbäume als Karten (04/05/08), Juwelenkuppeln fast am Boden (10).
+ */
+export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel';
 
 export interface TreeInstance {
   /** Fußpunkt auf der Oberfläche (Patch-Raum). */
@@ -38,13 +42,21 @@ export interface ScatterParams {
   edgeMargin?: number;
 }
 
-/** Proportionen je Kronenform (Einheit = Kronenradius): Stammhöhe, Hüllzentrum-Höhe über dem Fußpunkt. */
+/** Proportionen je Kronenform (Einheit = Kronenradius): Stammhöhe, Hüllzentrum-Höhe über dem Fußpunkt, Gipfel. */
 export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number; hull: number; top: number }> = {
-  dome: { radius: 0.7, trunk: 0.82, hull: 1.37, top: 2.1 },
+  dome: { radius: 0.7, trunk: 0.82, hull: 1.37, top: 2.25 },
   cone: { radius: 0.5, trunk: 0.62, hull: 1.5, top: 2.85 },
   stacked: { radius: 0.55, trunk: 0.78, hull: 1.8, top: 3.1 },
   bulb: { radius: 0.75, trunk: 0.55, hull: 1.45, top: 2.55 },
   tall: { radius: 0.4, trunk: 3.6, hull: 4.15, top: 4.8 },
+  // Kiefer: schmales Dreieck, fast ohne Stamm (Bild 06)
+  pine: { radius: 0.5, trunk: 0.25, hull: 1.9, top: 3.9 },
+  // Kathedralenbaum: überlanger dünner Stamm, geschichtete Krone (Bild 07)
+  spire: { radius: 0.45, trunk: 6.4, hull: 7.8, top: 9.4 },
+  // Kahler Fraktalbaum als Karte (Bilder 04, 05, 08): "Krone" = Astwerk
+  bare: { radius: 0.9, trunk: 0.9, hull: 2.1, top: 3.2 },
+  // Juwelenkuppel: große runde Krone, winziger Stamm (Bild 10)
+  jewel: { radius: 1.1, trunk: 0.3, hull: 1.05, top: 2.1 },
 };
 
 /**

@@ -5,7 +5,7 @@ import { LabFrame } from '../overlay/LabFrame';
 import { DEFAULT_EARLE_PARAMS, EarleLabScene, type EarleLabParams } from '../lab/earle/EarleLabScene';
 import { BenchPanel } from '../lab/earle/BenchPanel';
 import type { QualityLevel, ResolvedQuality } from '../lab/earle/quality';
-import { NODES_PER_ZONE, ZONE_CONTENTS } from '../lab/earle/zones';
+import { NODES_PER_ZONE, WORLD_CONTENTS, ZONE_CONTENTS } from '../lab/earle/zones';
 import '../lab/earle/earle-lab.css';
 
 function Range({
@@ -16,6 +16,7 @@ function Range({
   step,
   format,
   onChange,
+  testId,
 }: {
   label: string;
   value: number;
@@ -24,9 +25,10 @@ function Range({
   step: number;
   format?: (v: number) => string;
   onChange: (v: number) => void;
+  testId?: string;
 }) {
   return (
-    <label className="earle-ctl">
+    <label className="earle-ctl" data-testid={testId}>
       <span>{label}</span>
       <output>{format ? format(value) : value}</output>
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
@@ -40,9 +42,33 @@ function sameParams(a: EarleLabParams, b: EarleLabParams): boolean {
 
 const NODE_COUNT = NODES_PER_ZONE * ZONE_CONTENTS.length;
 
+/** Startparameter aus der URL: `?world=08&p=1.2&trash=150&progress=40&sun=10` (Screenshots, Vergleiche). */
+function paramsFromUrl(search: URLSearchParams): Partial<EarleLabParams> {
+  const out: Partial<EarleLabParams> = {};
+  const num = (k: string) => {
+    const v = search.get(k);
+    return v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null;
+  };
+  const w = num('world');
+  if (w !== null && w >= 1 && w <= WORLD_CONTENTS.length) out.world = Math.round(w) - 1;
+  const p = num('p');
+  if (p !== null) out.perspective = Math.max(0, Math.min(1.4, p));
+  const trash = num('trash');
+  if (trash !== null) out.trash = Math.max(0, Math.min(200, trash));
+  const progress = num('progress');
+  if (progress !== null) out.progress = Math.max(0, Math.min(NODE_COUNT, Math.round(progress)));
+  const sun = num('sun');
+  if (sun !== null) out.sunElevation = Math.max(6, Math.min(15, sun));
+  const q = search.get('quality');
+  if (q === 'hoch' || q === 'mobil' || q === 'auto') out.quality = q;
+  return out;
+}
+
 /**
- * P2 Earle-Lab auf dem Planeten: Fortschritt (heilt Chunks entlang des Pfads und dreht zum Knoten), Sonne,
- * Bänder, Nebel, Dichte, Qualität, Risse und der Schattenfilter-Vergleich. `?bench=1` misst automatisch.
+ * P2c Earle-Lab auf dem Planeten: zehn Welten (Wähler dreht dorthin, Referenzbild zum Vergleich), Perspektive
+ * (Übersicht → Earle-Komposition → übertrieben), Müll-Dichte der Startwelt, Fortschritt (heilt Chunks entlang
+ * des Pfads, Müll versinkt), Sonne, Bänder, Nebel, Dichte, Qualität, Risse und der Schattenfilter-Vergleich.
+ * `?bench=1` misst automatisch.
  */
 export function LabEarle() {
   const [searchParams] = useSearchParams();
@@ -55,9 +81,13 @@ export function LabEarle() {
         .filter((s): s is ResolvedQuality => s === 'hoch' || s === 'mobil'),
     [searchParams],
   );
-  const [params, setParams] = useState<EarleLabParams>(DEFAULT_EARLE_PARAMS);
+  const initial = useMemo(() => ({ ...DEFAULT_EARLE_PARAMS, ...paramsFromUrl(searchParams) }), [searchParams]);
+  const [params, setParams] = useState<EarleLabParams>(initial);
   const [resolved, setResolved] = useState<'hoch' | 'mobil'>('hoch');
-  const controller = useMemo(() => new EarleLabScene(DEFAULT_EARLE_PARAMS), []);
+  const [viewWorld, setViewWorld] = useState(-1);
+  const [showRef, setShowRef] = useState(searchParams.get('ref') === '1');
+  const [refMissing, setRefMissing] = useState(false);
+  const controller = useMemo(() => new EarleLabScene(initial), [initial]);
 
   useEffect(() => {
     controller.setParams(params);
@@ -70,15 +100,48 @@ export function LabEarle() {
       }),
     [controller],
   );
+  useEffect(() => controller.onViewWorld(setViewWorld), [controller]);
+  useEffect(() => setRefMissing(false), [viewWorld]);
+
   const set = (patch: Partial<EarleLabParams>) => setParams((p) => ({ ...p, ...patch }));
   const zoneOf = (node: number) => ZONE_CONTENTS[Math.min(ZONE_CONTENTS.length - 1, Math.floor(node / NODES_PER_ZONE))]?.name ?? '';
+  const current = WORLD_CONTENTS[viewWorld];
 
   return (
     <LabFrame
-      title={bench ? 'P2 Earle-Lab · Bench' : 'P2 Earle-Lab · Planet'}
+      title={bench ? 'P2c Earle-Lab · Bench' : 'P2c Earle-Lab · Zehn Welten'}
       controls={
         bench ? undefined : (
           <>
+            <label className="earle-ctl earle-ctl--select" data-testid="earle-world">
+              <span>Welt</span>
+              <output>{current ? `${current.ref} · ${current.zone}` : '–'}</output>
+              <select value={params.world} onChange={(e) => set({ world: Number(e.target.value) })}>
+                <option value={-1} disabled>
+                  wählen …
+                </option>
+                {WORLD_CONTENTS.map((w, i) => (
+                  <option key={w.id} value={i}>
+                    {w.ref} {w.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Range
+              label="Perspektive"
+              testId="earle-perspective"
+              value={params.perspective}
+              min={0}
+              max={1.4}
+              step={0.05}
+              format={(v) => (v < 0.05 ? 'Übersicht' : v <= 1.001 ? `${Math.round(v * 100)} % Earle` : `+${Math.round((v - 1) * 250)} % übertrieben`)}
+              onChange={(v) => set({ perspective: v })}
+            />
+            <Range label="Müll" testId="earle-trash" value={params.trash} min={0} max={200} step={10} format={(v) => `${v} %`} onChange={(v) => set({ trash: v })} />
+            <label className="earle-ctl earle-ctl--toggle">
+              <span>Referenz</span>
+              <input type="checkbox" checked={showRef} onChange={(e) => setShowRef(e.target.checked)} data-testid="earle-ref-toggle" />
+            </label>
             <Range
               label="Fortschritt"
               value={params.progress}
@@ -123,14 +186,31 @@ export function LabEarle() {
               </label>
             ))}
             <p className="earle-hint">
-              Ziehen rollt den Planeten (Trägheit, Rückseite erreichbar), Pinch/Rad zoomt. Fortschritt heilt die Chunks entlang des Pfads und dreht zum Knoten.
-              Mobil: Schattenkarte 1024, ~40 Punkte/Baum, halbe Dichte, 2 Nebelstreifen, DPR ≤ 1.5. <code>?bench=1</code> misst automatisch.
+              Ziehen rollt den Planeten, Pinch/Rad zoomt. Welt wählen dreht zu ihrer Mitte; Perspektive 0 = alte Übersicht, 100 % = Earle-Komposition der Welt, darüber
+              übertrieben. Fortschritt heilt die Chunks entlang des Pfads, der Müll versinkt. <code>?world=08&amp;p=1.2&amp;ref=1</code>, <code>?bench=1</code> misst.
             </p>
           </>
         )
       }
     >
       <CanvasHost controller={controller} />
+      {!bench && current ? (
+        <aside className="earle-world-tag" data-testid="earle-world-tag" data-world={current.ref}>
+          <strong>{current.ref}</strong> {current.name}
+        </aside>
+      ) : null}
+      {!bench && showRef && current ? (
+        <figure className="earle-ref" data-testid="earle-ref">
+          {refMissing ? (
+            <span className="earle-ref__missing">Referenz {current.ref} fehlt lokal (apps/game/public/refs/)</span>
+          ) : (
+            <img src={`${import.meta.env.BASE_URL}refs/${current.ref}.png`} alt={`Referenz ${current.ref}: ${current.title}`} onError={() => setRefMissing(true)} />
+          )}
+          <figcaption>
+            {current.ref} · {current.title}
+          </figcaption>
+        </figure>
+      ) : null}
       {bench ? <BenchPanel controller={controller} presets={benchPresets} /> : null}
     </LabFrame>
   );

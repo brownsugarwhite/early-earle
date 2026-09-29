@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "w04",
+  "index": 3,
+  "ref": "04",
+  "name": "Violette Hänge",
+  "title": "Violette Hänge, gelber Hang",
+  "zone": "syrup",
+  "side": "near",
+  "sources": ["04.webp", "Ebene_19_Kopie.jpg", "Ebene_25.jpg", "Ebene_46.jpg"],
+  "palette": {
+    "ink": "#0c0a1e",
+    "terrain": ["#6f7046", "#a29e56", "#cfc266", "#ebdc8c", "#f6efbe"],
+    "canopy": ["#1f2a8c", "#2f45c0", "#2a2f7a", "#8fa8f0", "#e2e8ff", "#d8d8a0", "#f0e8c0"],
+    "sky": ["#e2f0fa", "#a8d0f0", "#6fa8e6", "#3f78d8", "#2c4fc0", "#2a2f9c"],
+    "sun": "#f8f4e0",
+    "sunRing": "#eaf2fa",
+    "fog": ["#2a2f9c", "#2a2f9c", "#3f5ac8", "#6f98e0", "#9fc4ee", "#c8dff6"],
+    "fogAlpha": [0, 0.4, 0.6, 0.75, 0.86, 0.94],
+    "accent": ["#0c0a1e", "#2a2f9c", "#0c0a1e", "#100e24", "#8a9a58", "#d8d8a0", "#f17023", "#db292f"],
+    "canopyVariants": [
+      ["#141432", "#1e1e46", "#2a2a50", "#8a9a58", "#d8d8a0", "#b8c8a0", "#f0e8c0"]
+    ]
+  },
+  "terrain": { "amplitude": 4.4, "wavelength": 1.6, "slope": 0.6, "ridge": 0.15 },
+  "ground": "meadow",
+  "vegetation": {
+    "density": 0.34,
+    "clumpiness": 0.72,
+    "kinds": { "dome": 0.72, "stacked": 0.1, "bare": 0.18 },
+    "scale": [0.7, 1.6],
+    "trunkStyle": "ink",
+    "motif": "cross",
+    "rowVariants": 2
+  },
+  "props": { "animals": 0.014, "pools": 0.006 },
+  "fogStripes": 0.15,
+  "fog": { "start": 8, "range": 16 },
+  "view": { "height": 5.6, "forward": 0.6, "look": 3.18, "fov": 88, "curvature": 0.14 }
+}

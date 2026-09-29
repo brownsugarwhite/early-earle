@@ -134,3 +134,48 @@
   box-shadow: var(--sun-shadow) var(--ink-soft);
   cursor: pointer;
 }
+
+/* Welt-Etikett und Referenz-Thumbnail (P2c): konturlos, Versatzschatten in Sonnenrichtung. */
+.earle-world-tag {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 64px);
+  left: 14px;
+  padding: 6px 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 700 12px/1.1 var(--font-display);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: 5px 2px 0 var(--ink-soft);
+  pointer-events: none;
+}
+.earle-world-tag strong {
+  font-weight: 900;
+  margin-right: 4px;
+}
+.earle-ref {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 100px);
+  left: 14px;
+  margin: 0;
+  max-width: 200px;
+  background: var(--ink);
+  box-shadow: 8px 3px 0 var(--ink-soft);
+  pointer-events: none;
+}
+.earle-ref img {
+  display: block;
+  max-width: 200px;
+  max-height: 200px;
+}
+.earle-ref figcaption {
+  padding: 4px 8px 6px;
+  color: var(--paper);
+  font: 600 10px/1.25 var(--font-body);
+}
+.earle-ref__missing {
+  display: block;
+  padding: 10px;
+  color: var(--paper);
+  font: 600 11px/1.3 var(--font-body);
+}

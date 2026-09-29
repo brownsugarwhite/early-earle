@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "w01",
+  "index": 0,
+  "ref": "01",
+  "name": "Flechtenbaum",
+  "title": "Blauer Riesenbaum auf grünen Hügeln",
+  "zone": "wooding",
+  "side": "near",
+  "half": 0,
+  "sources": ["01.webp", "Ebene_21.jpg", "Ebene_35.jpg", "Ebene_36.jpg"],
+  "palette": {
+    "ink": "#050f16",
+    "terrain": ["#0b4a24", "#138b36", "#1fb141", "#8fd23a", "#d7ec4e"],
+    "canopy": ["#0b1a2c", "#142a48", "#3a3f8a", "#4f7de0", "#a9c8ff", "#c8322e", "#e2d84a"],
+    "sky": ["#dcf5ee", "#a4e2e6", "#5fc4dc", "#2f9fd0", "#2a7fc4", "#1f5fb0"],
+    "sun": "#f7f6d8",
+    "sunRing": "#e9fbf4",
+    "fog": ["#1f5fb0", "#12456e", "#2a7fc4", "#5fb0dc", "#9fdcea", "#dcf5ee"],
+    "fogAlpha": [0, 0.3, 0.5, 0.68, 0.82, 0.92],
+    "accent": ["#9aa8ff", "#1c3bd6", "#0b1330", "#a894ff", "#d92f2b", "#7ed321", "#f2e34a", "#f4f4ef"]
+  },
+  "terrain": { "amplitude": 2.6, "wavelength": 1.3, "slope": 0.25 },
+  "ground": "smooth",
+  "vegetation": {
+    "density": 0.5,
+    "clumpiness": 0.75,
+    "kinds": { "dome": 0.62, "stacked": 0.1, "bare": 0.28 },
+    "scale": [0.7, 1.5],
+    "trunkStyle": "lichen",
+    "trunkWidth": 0.07,
+    "motif": "cross"
+  },
+  "props": { "animals": 0.012 },
+  "fogStripes": 0.2,
+  "fog": { "start": 9, "range": 16 },
+  "view": { "height": 4.6, "forward": 0.8, "look": 3.06, "fov": 86, "curvature": 0.14 }
+}

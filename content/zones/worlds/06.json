@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "w06",
+  "index": 5,
+  "ref": "06",
+  "name": "Schneekiefern",
+  "title": "Blauer Schneeberg mit Kiefern",
+  "zone": "tjorizo",
+  "side": "far",
+  "sources": ["06.webp", "Ebene_10.jpg", "Ebene_2.jpg", "Ebene_7.jpg"],
+  "palette": {
+    "ink": "#050608",
+    "terrain": ["#2a4ec0", "#3f6fe0", "#8fb0f0", "#e8ecf0", "#f7f6ee"],
+    "canopy": ["#0a0d14", "#12161e", "#3a4a6a", "#9ab0d0", "#eef2f8", "#c8d8f0", "#ffffff"],
+    "sky": ["#8fc2ec", "#6faae4", "#5494dc", "#4482d4", "#3872c8", "#2c5ec0"],
+    "sun": "#f8f8f2",
+    "sunRing": "#c8dcf4",
+    "fog": ["#2c5ec0", "#1a2a58", "#2a4ec0", "#3f6fe0", "#8fb0f0", "#c8d8f0"],
+    "fogAlpha": [0, 0.25, 0.42, 0.58, 0.72, 0.85],
+    "accent": ["#eef2f8", "#3f6fe0", "#050608", "#0a0d14", "#9ab0d0", "#eef2f8", "#2a4ec0", "#8fb0f0"]
+  },
+  "terrain": { "amplitude": 3.8, "wavelength": 1.2, "ridge": 0.95 },
+  "ground": "smooth",
+  "vegetation": {
+    "density": 1.0,
+    "clumpiness": 0.55,
+    "kinds": { "pine": 1 },
+    "scale": [0.32, 0.75],
+    "trunkStyle": "ink",
+    "aspect": 1.35,
+    "motif": "dots",
+    "forestThreshold": 0.46
+  },
+  "props": { "rocks": 0.004 },
+  "fogStripes": 0,
+  "fog": { "start": 10, "range": 18 },
+  "view": { "height": 9.0, "forward": 0.2, "look": 3.81, "fov": 84, "curvature": 0.08 }
+}

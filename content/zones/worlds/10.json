@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "w10",
+  "index": 9,
+  "ref": "10",
+  "name": "Juwelenwald",
+  "title": "Juwelenwald mit gestreiften Stämmen",
+  "zone": "syrup",
+  "side": "far",
+  "half": 0,
+  "sources": ["10.webp", "Ebene_3.jpg", "Ebene_32.jpg", "Ebene_24.jpg", "Ebene_22.jpg"],
+  "palette": {
+    "ink": "#07060f",
+    "terrain": ["#0c0b16", "#141328", "#1c1a38", "#262448", "#303060"],
+    "canopy": ["#4a2aa8", "#6a3ad8", "#3a2a90", "#9a7af0", "#d8c0ff", "#ff4040", "#40d8ff"],
+    "canopyVariants": [
+      ["#b01828", "#e0283a", "#7a1020", "#ff7060", "#ffc0a0", "#ffe040", "#40d0ff"],
+      ["#2038b8", "#3a60e8", "#1a2a80", "#70a8ff", "#c0e0ff", "#ff3a3a", "#ffe040"],
+      ["#0e7070", "#18a098", "#0a4848", "#50e0c8", "#b0fff0", "#ff3a3a", "#c8b0ff"]
+    ],
+    "sky": ["#f4e8c4", "#ecdcaa", "#e0cf9a", "#d3c48f", "#c4b888", "#b2a980"],
+    "sun": "#fff4d0",
+    "sunRing": "#f8ecc8",
+    "fog": ["#b2a980", "#8a8470", "#b2a980", "#c8bc90", "#dccfa0", "#ecdcaa"],
+    "fogAlpha": [0, 0.3, 0.48, 0.64, 0.78, 0.9],
+    "accent": ["#e8f0ff", "#2030c0", "#7030c0", "#1a1438", "#20a060", "#d02020", "#f0e040", "#5ff0ff"]
+  },
+  "terrain": { "amplitude": 0.7, "wavelength": 2 },
+  "ground": "floorLines",
+  "vegetation": {
+    "density": 0.22,
+    "clumpiness": 0.5,
+    "kinds": { "jewel": 0.55, "spire": 0.25, "bare": 0.2 },
+    "scale": [0.9, 2.0],
+    "trunkStyle": "striped",
+    "trunkWidth": 0.6,
+    "motif": "diamond",
+    "rowVariants": 4
+  },
+  "props": {},
+  "fogStripes": 0,
+  "fog": { "start": 6, "range": 12 },
+  "view": { "height": 2.7, "forward": 1.2, "look": 6.64, "fov": 88, "curvature": 0.08 }
+}

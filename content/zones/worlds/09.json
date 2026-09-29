@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "w09",
+  "index": 8,
+  "ref": "09",
+  "name": "Goldene Wiese",
+  "title": "Goldene Wiese mit Kuh-Schatten (Startwelt Tjorizo, vermüllt)",
+  "zone": "tjorizo",
+  "side": "near",
+  "sources": ["09.webp", "Ebene_8.jpg", "Bildschirmfoto_2025-10-17_um_10.07.08.jpg", "Ebene_36.jpg", "Ebene_44.jpg", "Ebene_45.jpg", "Bildschirmfoto_2025-10-15_um_17.33.52.jpg", "Ebene_27.jpg"],
+  "palette": {
+    "ink": "#0c1a12",
+    "terrain": ["#22402a", "#4f6a34", "#9aa040", "#d8c24c", "#f0dc78"],
+    "canopy": ["#122418", "#1a3222", "#2f5a4a", "#5fb0a0", "#b8e0c8", "#22baa9", "#d8c24c"],
+    "sky": ["#7fa070", "#4a7a60", "#345e50", "#274a44", "#1e3a3a", "#162c30"],
+    "sun": "#f7f6d8",
+    "sunRing": "#c8d890",
+    "fog": ["#162c30", "#122428", "#1e3a3a", "#345e50", "#4a7a60", "#7fa070"],
+    "fogAlpha": [0, 0.3, 0.48, 0.64, 0.78, 0.9],
+    "accent": ["#0c1a12", "#c8542a", "#0c1a12", "#0c1a12", "#5fb0a0", "#b8e0c8", "#d8382a", "#7ce6d5"],
+    "monolith": ["#2a0806", "#6e1a10", "#b0301a", "#e04a22", "#f2703a"]
+  },
+  "terrain": { "amplitude": 2.4, "wavelength": 1.5, "slope": 0.4 },
+  "ground": "meadow",
+  "vegetation": {
+    "density": 0.24,
+    "clumpiness": 0.8,
+    "kinds": { "dome": 0.8, "stacked": 0.2 },
+    "scale": [0.7, 1.5],
+    "trunkStyle": "ink",
+    "motif": "rim"
+  },
+  "props": { "trash": 0.13, "pools": 0.016, "animals": 0.014 },
+  "fogStripes": 0.1,
+  "fog": { "start": 9, "range": 16 },
+  "view": { "height": 6.0, "forward": 0.4, "look": 3.35, "fov": 84, "curvature": 0.1 }
+}

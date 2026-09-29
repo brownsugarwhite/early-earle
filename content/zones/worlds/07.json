@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "w07",
+  "index": 6,
+  "ref": "07",
+  "name": "Kathedralenwald",
+  "title": "Blauer Kathedralenwald",
+  "zone": "luzz",
+  "side": "far",
+  "sources": ["07.webp", "Ebene_16.jpg", "Ebene_23.jpg", "Ebene_12.jpg", "Ebene_38.jpg", "Ebene_42.jpg", "Ebene_43.jpg"],
+  "palette": {
+    "ink": "#060a1c",
+    "terrain": ["#0f1c3e", "#173064", "#204a8a", "#2e6aa8", "#4a90c0"],
+    "canopy": ["#0c1a3a", "#123a52", "#2a6a6a", "#5fb0a0", "#c8e8d8", "#7ad0e8", "#e8fbff"],
+    "sky": ["#dcf6f4", "#a0e0ea", "#5fc0d8", "#2f90c0", "#1a5a9a", "#0d2f6a"],
+    "sun": "#f4fbff",
+    "sunRing": "#c8f0f6",
+    "fog": ["#0d2f6a", "#0a1e48", "#1a5a9a", "#2f90c0", "#5fc0d8", "#a0e0ea"],
+    "fogAlpha": [0, 0.3, 0.5, 0.66, 0.8, 0.9],
+    "accent": ["#e8f4ff", "#4f9fe0", "#1a5a9a", "#e8f4ff", "#5fb0a0", "#c8e8d8", "#2de5f8", "#15afd1"]
+  },
+  "terrain": { "amplitude": 0.9, "wavelength": 2.2 },
+  "ground": "smooth",
+  "vegetation": {
+    "density": 0.55,
+    "clumpiness": 0.35,
+    "kinds": { "spire": 0.62, "dome": 0.38 },
+    "scale": [0.8, 1.5],
+    "trunkStyle": "white",
+    "trunkWidth": 0.05,
+    "motif": "dots"
+  },
+  "props": {},
+  "fogStripes": 0.25,
+  "fog": { "start": 5, "range": 11 },
+  "view": { "height": 2.7, "forward": 1.2, "look": 7.11, "fov": 84, "curvature": 0.08 }
+}

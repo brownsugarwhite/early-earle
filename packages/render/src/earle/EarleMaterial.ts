@@ -3,6 +3,15 @@ import type { Node, NodeBuilder } from 'three/webgpu';
 import { clamp, min, mix, normalView, smoothstep, uniform, vec3 } from 'three/tsl';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
 
+export interface EarlePattern {
+  /** Maske 0..1 des Ornaments (Linien, Schraffur, Flechten) — nur im Licht sichtbar, nie in der Tinte. */
+  mask: FloatNode;
+  /** Farbe des Ornaments (exakte Palettenfarbe). */
+  color: Vec3Node;
+  /** Farbe des Ornaments im Schatten (z. B. Bodenlinien, Schneestreifen laufen durch die Tinte); fehlt → nur im Licht. */
+  shadowColor?: Vec3Node | null;
+}
+
 export interface EarleMaterialOptions {
   lookup: PaletteLookup;
   /** Zeile im Atlas: x = 0 Tinte, x = 1.. Lichtstufen. */
@@ -24,8 +33,16 @@ export interface EarleMaterialOptions {
   rowNode?: FloatNode | null;
   /** Riss-Maske 0..1: 1 = tiefe Tinte (Zonengrenze). */
   crackNode?: FloatNode | null;
+  /** Helle Abbruchkante am Riss (0..1): hellste Lichtstufe der Zeile. */
+  crackLipNode?: FloatNode | null;
   /** Wachstum/Sättigung 0..1: 0 = verdorrt (entsättigt, bräunlich), 1 = volle Palette. */
   growthNode?: FloatNode | null;
+  /** Feines Ornament auf der Lichtseite (Streifen, Schraffur, Flechten). */
+  pattern?: EarlePattern | null;
+  /** Bandwert-Override 0..1 (z. B. Requisiten mit eigener Tönung): ersetzt N·L-Bänder, Tinte bleibt aus dem Schatten. */
+  bandNode?: FloatNode | null;
+  /** Terminator je Fragment (z. B. Schneedach immer im Licht: −1); überschreibt `terminator`. */
+  terminatorNode?: FloatNode | null;
 }
 
 /**
@@ -48,7 +65,11 @@ export class EarleMaterial extends NodeMaterial {
     lift: FloatNode | null;
     rowNode: FloatNode | null;
     crackNode: FloatNode | null;
+    crackLipNode: FloatNode | null;
     growthNode: FloatNode | null;
+    pattern: EarlePattern | null;
+    bandNode: FloatNode | null;
+    terminatorNode: FloatNode | null;
   };
 
   constructor(options: EarleMaterialOptions) {
@@ -65,7 +86,11 @@ export class EarleMaterial extends NodeMaterial {
       lift: options.lift ?? null,
       rowNode: options.rowNode ?? null,
       crackNode: options.crackNode ?? null,
+      crackLipNode: options.crackLipNode ?? null,
       growthNode: options.growthNode ?? null,
+      pattern: options.pattern ?? null,
+      bandNode: options.bandNode ?? null,
+      terminatorNode: options.terminatorNode ?? null,
     };
     if (options.normalNode) this.normalNode = options.normalNode;
     if (options.positionNode) this.positionNode = options.positionNode;
@@ -87,21 +112,26 @@ class EarleLightingModel extends LightingModel {
     const lightColor = input.lightColor as Vec3Node;
     const ndl = normalView.dot(L);
     const shadow = lightColor.r; // weiße Sonne → r = Schattenfaktor (1 = beleuchtet)
-    const lit = min(aaStep(e.terminator, ndl), shadow); // Eigen- und Schlagschatten = eine Tintenform
-    let v = ndl.sub(e.terminator).mul(e.bandScale); // Bänder beginnen am Terminator
+    const term = e.terminatorNode ?? e.terminator;
+    const lit = min(aaStep(term, ndl), shadow); // Eigen- und Schlagschatten = eine Tintenform
+    let v = ndl.sub(term).mul(e.bandScale); // Bänder beginnen am Terminator
     if (e.lift) v = v.add(e.lift);
+    if (e.bandNode) v = e.bandNode;
     const band = clamp(v, 0, 0.999).mul(e.bands.sub(1));
     const row = e.rowNode ?? e.row;
-    const litColor = e.lookup.bands(band, row, 1).rgb;
+    let litColor = e.lookup.bands(band, row, 1).rgb;
+    if (e.pattern) litColor = mix(litColor, e.pattern.color, e.pattern.mask);
     const ink = e.lookup.pal(0, row).rgb;
-    let col = mix(ink, litColor, lit);
+    const shadowSide = e.pattern?.shadowColor ? mix(ink, e.pattern.shadowColor, e.pattern.mask) : ink;
+    let col = mix(shadowSide, litColor, lit);
     if (e.growthNode) {
       // Verdorrt: Richtung Grauwert und ein bräunlicher Stich, exakt gestuft bleibt es trotzdem
       const l = col.dot(vec3(0.3, 0.5, 0.2));
       const withered = mix(vec3(l), col, 0.35).mul(vec3(0.9, 0.82, 0.68));
       col = mix(withered, col, smoothstep(0, 1, e.growthNode));
     }
-    if (e.crackNode) col = mix(col, ink.mul(0.4), e.crackNode);
+    if (e.crackLipNode) col = mix(col, e.lookup.pal(5, row).rgb, e.crackLipNode);
+    if (e.crackNode) col = mix(col, ink.mul(0.55), e.crackNode);
     (input.reflectedLight.directDiffuse as Vec3Node).addAssign(col);
   }
 
@@ -113,4 +143,3 @@ class EarleLightingModel extends LightingModel {
     out.assign(steppedFog(out, e.fog, e.lookup));
   }
 }
-
