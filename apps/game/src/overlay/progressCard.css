@@ -16,6 +16,7 @@
 .ws-prog-seg-btn[aria-pressed='true'] { background: var(--sky-1); }
 .ws-prog[data-mode='free'] .ws-prog-seg-btn[aria-pressed='true'] { background: var(--neon); }
 .ws-prog-seg-btn:focus-visible { outline: none; box-shadow: inset 0 -4px 0 var(--ink-soft); }
-.ws-prog-level { flex: 0 1 140px; }
+.ws-prog .ws-prog-level { flex: 0 0 132px; width: 132px; }
+.ws-prog .ws-prog-level input { width: 100%; box-sizing: border-box; }
 .ws-prog-actions { display: flex; flex-wrap: wrap; gap: 12px 14px; }
 .ws-prog-danger[data-armed='true'] { background: var(--rust); color: var(--paper); }
