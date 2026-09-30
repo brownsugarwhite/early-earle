@@ -938,8 +938,17 @@ export class EarlePlanet {
 
   /** Höhe der höchsten Werfer über dem Boden (Schattenkamera). */
   get hTotal(): number {
-    return Math.max(this.field.hMax + this.vegetation.hMax + 1, this.field.hMax + this.landmarkTop + 1, this.field.hMax + this.landmarkSet.maxHeight + 1, 9);
+    const top = this.terrainTop;
+    return Math.max(top + this.vegetation.hMax + 1, top + this.landmarkTop + 1, top + this.landmarkSet.maxHeight + 1, 9);
   }
+
+  /** Höchstes Gelände: Hügelamplitude aller Welten oder die geladenen Chunks (Steilhang in Welt 12, Hügelstaffel in Welt 11). */
+  get terrainTop(): number {
+    return Math.max(this.field.hMax, this.loadedTop);
+  }
+
+  /** Höchster Punkt der geladenen Chunks (bei jedem Neuaufbau des Inhalts). */
+  private loadedTop = 0;
 
   /** Richtung zur Sonne (Welt = Ebene, die Ebene dreht sich nicht): Vegetation und Wahrzeichen. */
   setSunDirection(dir: Vector3): void {
@@ -1041,7 +1050,7 @@ export class EarlePlanet {
     const cz0 = Math.floor((this.focus.z - reach) / CHUNK_SIZE);
     const cz1 = Math.floor((this.focus.z + reach) / CHUNK_SIZE);
     const wanted: Array<{ key: string; cx: number; cz: number; dist: number; visible: boolean; res: number }> = [];
-    const hTop = this.field.hMax + 6;
+    const hTop = this.terrainTop + 6;
     for (let cz = cz0; cz <= cz1; cz++) {
       for (let cx = cx0; cx <= cx1; cx++) {
         const mx = cx * CHUNK_SIZE + half;
@@ -1456,9 +1465,11 @@ export class EarlePlanet {
     const az = Math.round(this.focus.z);
     this.bounds.makeEmpty();
     const regions = new Set<string>();
+    let loadedTop = 0;
     for (const chunk of this.loaded.values()) {
       const withDots = nearSet.has(chunk.key);
       const m = chunk.cpu.mesh;
+      loadedTop = Math.max(loadedTop, m.maxH);
       for (const key of m.regions) regions.add(key);
       for (const tree of chunk.cpu.trees) {
         trees.push({ tree, slot: chunk.slot, withDots });
@@ -1479,6 +1490,7 @@ export class EarlePlanet {
       this.bounds.expandByPoint(_v.set(m.ox - this.focus.x, this.options.radius + m.minH, m.oz - this.focus.z));
       this.bounds.expandByPoint(_v.set(m.ox + CHUNK_SIZE - this.focus.x, this.options.radius + m.maxH, m.oz + CHUNK_SIZE - this.focus.z));
     }
+    this.loadedTop = loadedTop;
     this.vegetation.setContent(trees, props, { x: ax, z: az });
     this.anchorObject(this.vegetation.group, ax, az);
     this.landmarkTop = this.barns.set(barns, { x: ax, z: az });

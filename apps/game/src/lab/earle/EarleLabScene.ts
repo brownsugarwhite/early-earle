@@ -588,7 +588,8 @@ export class EarleLabScene implements SceneController {
     if (!layout) return 0;
     for (let k = 0; k < layout.authored; k++) {
       const seg = layout.segment(k);
-      if (seg.world === id && seg.levels > 0) return Math.min(LEVEL_COUNT, seg.firstLevel + seg.levels + 1);
+      // bis zum letzten spielbaren Level der Weltenlage (Welten hinter Level 100 ohne `future` wachsen erst mit ihm)
+      if (seg.world === id && seg.levels > 0) return Math.min(Math.max(LEVEL_COUNT, layout.authoredLevels), seg.firstLevel + seg.levels + 1);
     }
     return 0;
   }
@@ -803,7 +804,7 @@ export class EarleLabScene implements SceneController {
     }
 
     if (this.shadowDirty) {
-      const hTotal = Math.max(world.hTotal, site?.holder.visible ? site.height + 1 : 0, world.field.hMax + (this.trash?.hMax ?? 0) + 1);
+      const hTotal = Math.max(world.hTotal, site?.holder.visible ? site.height + 1 : 0, world.terrainTop + (this.trash?.hMax ?? 0) + 1);
       this.sun.setCasterHeight(hTotal);
       this.sun.requestUpdate();
       this.shadowPasses++;

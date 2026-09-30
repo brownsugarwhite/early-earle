@@ -509,7 +509,7 @@ export class MapWorld {
 
     if (this.shadowDirty) {
       const treeH = site?.holder.visible ? site.height + 1 : 0;
-      this.sun.setCasterHeight(Math.max(this.world.hTotal, treeH, this.world.field.hMax + (this.trash?.hMax ?? 0) + 1));
+      this.sun.setCasterHeight(Math.max(this.world.hTotal, treeH, this.world.terrainTop + (this.trash?.hMax ?? 0) + 1));
       this.sun.requestUpdate();
       this.shadowPasses++;
       this.shadowDirty = false;

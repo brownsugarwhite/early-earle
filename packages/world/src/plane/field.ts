@@ -147,7 +147,9 @@ export class PlaneField {
     this.ramps = new GradientNoise2(hash32('plane-ramps', params.seed));
     this.biome = new GradientNoise2(hash32('plane-biome', params.seed));
     this.forest = new GradientNoise2(hash32('plane-forest', params.seed));
-    this.hMax = Math.max(3.6, ...params.catalog.authored.map((w) => w.terrain.amplitude + (w.terrain.flank?.height ?? 0) + (w.terrain.ridges?.height ?? 0) * 1.4));
+    // Nur die Hügelamplitude: Steilhang und Hügelstaffel (Welten 11/12) zählen hier nicht — sonst wüchsen Kullkugeln und
+    // Schattenkamera in allen Welten mit; die Karte nimmt dafür die Höhe der geladenen Chunks (`EarlePlanet.hTotal`)
+    this.hMax = Math.max(3.6, ...params.catalog.authored.map((w) => w.terrain.amplitude));
     this.features = new PlaneFeatures(
       {
         seed: params.seed,
