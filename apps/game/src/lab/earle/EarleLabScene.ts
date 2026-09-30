@@ -429,9 +429,15 @@ export class EarleLabScene implements SceneController {
 
   // --- Kamera / Komposition -------------------------------------------------------------------------
 
+  /** Komposition einer Welt für das aktuelle Bildformat (Hochformat: `view.portrait` ersetzt Felder). */
+  private presetOf(worldId: number): WorldView {
+    const v = this.world?.worldData(worldId).view ?? OVERVIEW;
+    return v.portrait && this.camera.aspect < 1 ? { ...v, ...v.portrait } : v;
+  }
+
   /** Kamera-Komposition einer Welt bei Perspektive p (0 = Übersicht, 1 = Weltpreset, >1 übertrieben). */
   private viewFor(worldId: number, out: WorldView = { ...OVERVIEW }): WorldView {
-    const preset = this.world?.worldData(worldId).view ?? OVERVIEW;
+    const preset = this.presetOf(worldId);
     const p = Math.max(0, Math.min(1.4, this.params.perspective));
     const t = Math.min(1, p);
     out.height = OVERVIEW.height + (preset.height - OVERVIEW.height) * t;
@@ -657,7 +663,7 @@ export class EarleLabScene implements SceneController {
    * neben dem Bildfokus — für Untersichten, deren Bildstelle kein Bodenstrahl trifft (Welt 13); sonst über `view.focus`.
    */
   private worldTarget(id: number, p: { x: number; z: number }): { x: number; z: number } {
-    const aim = this.world?.worldData(id).view.aim;
+    const aim = this.presetOf(id).aim;
     if (aim && this.params.perspective > 0.5) {
       const c = Math.cos(this.yaw);
       const s = Math.sin(this.yaw);
@@ -742,9 +748,9 @@ export class EarleLabScene implements SceneController {
     v.curvature += (target.curvature - v.curvature) * k;
     v.lookHeight = (v.lookHeight ?? 0) + ((target.lookHeight ?? 0) - (v.lookHeight ?? 0)) * k;
     v.lookSide = (v.lookSide ?? 0) + ((target.lookSide ?? 0) - (v.lookSide ?? 0)) * k;
-    this.followWorldSun(world.worldData(world.viewWorld).view, k);
+    this.followWorldSun(this.presetOf(world.viewWorld), k);
     world.curvature.value = v.curvature;
-    const viewData = world.worldData(world.viewWorld).view;
+    const viewData = this.presetOf(world.viewWorld);
     // Freiraum vor der Linse: Vegetation, die näher kommt, schrumpft weg (nichts schneidet ins Bild)
     const nearTarget = this.params.rail >= 0 ? 1.0 : (viewData.nearClear ?? 1.2) * Math.min(1, this.params.perspective);
     this.nearClear += (Math.max(0.25, nearTarget) - this.nearClear) * k;

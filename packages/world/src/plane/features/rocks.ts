@@ -460,7 +460,7 @@ function placeMonolith(host: PlaneFeatureHost, site: RegionSite, world: number, 
     if (!isFree(occupied, f.cx, f.cz, built.footprint * 0.8, 0.5)) continue;
     let top = -Infinity;
     for (const col of built.columns) top = Math.max(top, columnPeak(col));
-    const formation: RockFormation = { id, world, region: site.region.key, kind: 'monolith', cx: f.cx, cz: f.cz, columns: built.columns, footprint: built.footprint, height: top, variant: rand(), ground: built.ground };
+    const formation: RockFormation = { id, world, region: site.region.key, kind: 'monolith', cx: f.cx, cz: f.cz, columns: built.columns, footprint: built.footprint, height: top, variant: rand(), ground: built.ground, herd: built.herd };
     occupied.push({ x: f.cx, z: f.cz, radius: built.footprint });
     const ledges: LedgeAnchor[] = [];
     pushLedges(host, ledges, { columns: built.columns, ledges: built.ledges, footprint: built.footprint }, world, site.region.key, id, 'monolith', f);

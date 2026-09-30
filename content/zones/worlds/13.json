@@ -30,7 +30,7 @@
     "trunkStyle": "ink",
     "motif": "dots"
   },
-  "props": { "animals": 0.006 },
+  "props": {  },
   "features": {
     "rocks": [
       { "kind": "monolith", "count": 1, "size": [16, 16.5], "height": [21, 22], "pathDistance": [3, 30] }
@@ -38,45 +38,46 @@
   },
   "landmarkChance": 0,
   "fogStripes": 0,
-  "fog": { "start": 14, "range": 26 },
+  "fog": { "start": 40, "range": 60 },
   "view": {
-    "height": 3,
-    "forward": 12,
+    "height": 3.2,
+    "forward": 16,
     "look": 2,
-    "lookHeight": 6.5,
-    "fov": 64,
+    "lookHeight": 6,
+    "fov": 60,
     "curvature": -0.9,
     "focus": [0.45, -0.6],
     "nearClear": 1.2,
     "footClear": 0,
     "sun": { "elevation": 12, "azimuth": 125 },
-    "aim": [-5.5, 2]
+    "aim": [-6, 3],
+    "portrait": { "aim": [-2, 3], "lookHeight": 6.5, "fov": 66 }
   },
   "focal": { "along": 0.5, "lateral": 17 },
   "clouds": {
     "layers": [
-      { "kind": "wash", "az": -32, "width": 34, "el": 70, "height": 30, "seed": 0.3 },
-      { "kind": "wash", "az": 38, "width": 20, "el": 74, "height": 26, "seed": 1.7 },
-      { "kind": "streak", "az": -4.5, "width": 17.6, "el": 75.4, "height": 3.5, "tone": 0.9, "puffs": 3 },
-      { "kind": "streak", "az": 24.5, "width": 20.7, "el": 77.6, "height": 2.4, "tone": 0.85 },
-      { "kind": "streak", "az": -0.4, "width": 16.1, "el": 70.8, "height": 3.1, "tone": 0.8 },
-      { "kind": "bank", "az": -3, "width": 20.9, "el": 44.6, "height": 26.0, "tone": 0.9, "puffs": 6 },
-      { "kind": "bank", "az": 34, "width": 11.2, "el": 64.5, "height": 7.4, "tone": 0.85, "puffs": 3 },
-      { "kind": "bank", "az": 35, "width": 10.1, "el": 53.8, "height": 7.4, "tone": 0.6, "puffs": 3 },
-      { "kind": "bank", "az": 36, "width": 9.0, "el": 40.1, "height": 5.0, "tone": 0.5, "puffs": 3 },
-      { "kind": "streak", "az": -19.8, "width": 4.7, "el": 62.0, "height": 1.9, "tone": 0.9 },
-      { "kind": "bank", "az": -18.6, "width": 23.0, "el": 52.1, "height": 5.6, "tone": 0.8, "puffs": 8, "rows": 1 },
-      { "kind": "bank", "az": -16, "width": 23.0, "el": 32.2, "height": 15.5, "tone": 0.55, "puffs": 7 },
-      { "kind": "bank", "az": 5.6, "width": 11.2, "el": 35.3, "height": 10.5, "tone": 0.7, "puffs": 4 },
-      { "kind": "streak", "az": -19.5, "width": 21.8, "el": 37.7, "height": 1.9, "tone": 0.75 },
-      { "kind": "dome", "az": -27.4, "width": 11.2, "el": 24.7, "height": 9.9, "tone": 0.75, "puffs": 5 },
-      { "kind": "dome", "az": -12.6, "width": 4.5, "el": 26.2, "height": 6.8, "tone": 0.6, "puffs": 3 },
-      { "kind": "streak", "az": -21.8, "width": 19.5, "el": 30.0, "height": 2.5, "tone": 0.7 },
-      { "kind": "streak", "az": -17.4, "width": 9.7, "el": 19.8, "height": 2.0, "tone": 0.65 },
-      { "kind": "streak", "az": 35, "width": 6.7, "el": 31.5, "height": 2.5, "tone": 0.7 },
-      { "kind": "bank", "az": -40, "width": 24, "el": 2, "height": 10, "tone": 0.7, "puffs": 7 },
-      { "kind": "bank", "az": 5, "width": 20, "el": 3, "height": 8, "tone": 0.6, "puffs": 6 },
-      { "kind": "bank", "az": 45, "width": 22, "el": 2.5, "height": 9, "tone": 0.75, "puffs": 6 }
+      { "kind": "wash", "az": -32, "width": 34, "el": 56, "height": 30, "seed": 0.3 },
+      { "kind": "wash", "az": 38, "width": 20, "el": 60, "height": 26, "seed": 1.7 },
+      { "kind": "streak", "az": -4.5, "width": 20.2, "el": 75.4, "height": 3.9, "tone": 0.9, "puffs": 3 },
+      { "kind": "streak", "az": 24.5, "width": 23.8, "el": 77.6, "height": 2.7, "tone": 0.85 },
+      { "kind": "streak", "az": -0.4, "width": 18.5, "el": 70.8, "height": 3.5, "tone": 0.8 },
+      { "kind": "bank", "az": -3, "width": 24.0, "el": 44.6, "height": 29.1, "tone": 0.9, "puffs": 6 },
+      { "kind": "bank", "az": 34, "width": 12.9, "el": 64.5, "height": 8.3, "tone": 0.85, "puffs": 3 },
+      { "kind": "bank", "az": 35, "width": 11.6, "el": 53.8, "height": 8.3, "tone": 0.6, "puffs": 3 },
+      { "kind": "bank", "az": 36, "width": 10.3, "el": 40.1, "height": 5.6, "tone": 0.5, "puffs": 3 },
+      { "kind": "streak", "az": -19.8, "width": 5.4, "el": 62.0, "height": 2.1, "tone": 0.9 },
+      { "kind": "bank", "az": -18.6, "width": 26.4, "el": 52.1, "height": 6.3, "tone": 0.8, "puffs": 8, "rows": 1 },
+      { "kind": "bank", "az": -16, "width": 26.4, "el": 32.2, "height": 17.4, "tone": 0.55, "puffs": 7 },
+      { "kind": "bank", "az": 5.6, "width": 12.9, "el": 35.3, "height": 11.8, "tone": 0.7, "puffs": 4 },
+      { "kind": "streak", "az": -19.5, "width": 25.1, "el": 37.7, "height": 2.1, "tone": 0.75 },
+      { "kind": "dome", "az": -27.4, "width": 12.9, "el": 24.7, "height": 11.1, "tone": 0.75, "puffs": 5 },
+      { "kind": "dome", "az": -12.6, "width": 5.2, "el": 26.2, "height": 7.6, "tone": 0.6, "puffs": 3 },
+      { "kind": "streak", "az": -21.8, "width": 22.4, "el": 30.0, "height": 2.8, "tone": 0.7 },
+      { "kind": "streak", "az": -17.4, "width": 11.2, "el": 19.8, "height": 2.2, "tone": 0.65 },
+      { "kind": "streak", "az": 35, "width": 7.7, "el": 31.5, "height": 2.8, "tone": 0.7 },
+      { "kind": "bank", "az": -40, "width": 27.6, "el": 2, "height": 11.2, "tone": 0.7, "puffs": 7 },
+      { "kind": "bank", "az": 5, "width": 23.0, "el": 3, "height": 9.0, "tone": 0.6, "puffs": 6 },
+      { "kind": "bank", "az": 45, "width": 25.3, "el": 2.5, "height": 10.1, "tone": 0.75, "puffs": 6 }
     ]
   }
 }

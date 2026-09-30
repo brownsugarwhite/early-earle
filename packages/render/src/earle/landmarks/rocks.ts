@@ -308,12 +308,18 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
   });
 }
 
-/** Säule nahe am Kamerafuß: Höhe über dem Fuß schrumpft weich auf 0 (seitlicher Abstand Rand ↔ Kamerafuß). */
+/**
+ * Säule nahe am Kamerafuß: Höhe über dem Fuß schrumpft weich auf 0 (seitlicher Abstand Rand ↔ Kamerafuß). Der
+ * Monolith (Art 4) bleibt stehen: sein Plateau ist so groß, dass es sonst schon aus der Ferne versänke.
+ */
 function sinkNearCamera(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
   const rc = attribute('rc', 'vec4');
   const lateral = vec2(rc.x.sub(camLocal.x), rc.z.sub(camLocal.z)).length().sub(rc.w);
   const r = radius as unknown as FloatNode;
-  const keep = select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1));
+  const code = attribute('rk', 'vec4').z;
+  const local = code.sub(floor(code.add(0.5).div(CODES_PER_WORLD)).mul(CODES_PER_WORLD));
+  const mono = step(15.5, local).mul(step(local, float(19.5)));
+  const keep = max(select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1)), mono);
   const p = positionLocal as unknown as Vec3Node;
   return vec3(p.x, rc.y.add(p.y.sub(rc.y).mul(max(keep, float(0.02)))), p.z) as unknown as Vec3Node;
 }

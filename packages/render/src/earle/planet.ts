@@ -34,6 +34,7 @@ import { createWaterMaterial } from './water/waterSurface';
 import { buildWaterGeometry, waterGeometry, type WaterRegionInput } from './water/waterMesh';
 import { buildRockGeometry, createRockMaterial, rockGeometry } from './landmarks/rocks';
 import { BarnLandmarks } from './landmarks/barn';
+import { HorseHerd, type HorsePlacement } from './landmarks/horses';
 import { DriftLandmarks, type DriftPlacement } from './landmarks/drifts';
 import { PLANET_ATLAS_HEIGHT, SLOT_COUNT, SLOT_ROWS, WorldSlots, slotLandmarkRows, slotRows } from './worldSlots';
 import { LandmarkSet } from './landmarks/set/LandmarkSet';
@@ -70,6 +71,8 @@ export interface WorldView {
   aim?: [number, number];
   /** Blickpunkt seitlich (Welteinheiten, + rechts): die Kamera dreht sich zur Seite (Welt 14: zur Landzunge). */
   lookSide?: number;
+  /** Abweichungen der Komposition im Hochformat (Handy): ersetzen die Felder oben, wenn das Bild höher als breit ist. */
+  portrait?: Partial<Omit<WorldView, 'portrait'>>;
 }
 
 /** Eine Welt mit ihren Darstellungsdaten (Autorenwelt aus `content/`, oder prozedural erzeugt). */
@@ -252,6 +255,8 @@ export class EarlePlanet {
   readonly barns: BarnLandmarks;
   /** Schneewehen am Baumfuß in den Schneewelten. */
   readonly drifts: DriftLandmarks;
+  /** Weiße Pferde am Fuß der Monolithen (Welt 13). */
+  readonly horses: HorseHerd;
   /**
    * Wahrzeichen der geladenen Regionen (Fels mit Wasserfall, Felsstufe, Zwillingsfälle, Ruine, Sumpf): wenige
    * zusammengefasste Meshes, neu gebaut, wenn sich die Menge ändert (Anker = Fokus beim Bau).
@@ -513,6 +518,8 @@ export class EarlePlanet {
       footClear: { camLocal: this.driftCamLocal, radius: this.rockFootClear },
     });
     this.plane.add(this.drifts.mesh);
+    this.horses = new HorseHerd({ lookup: this.lookup, fog: this.fog, warp, camLocal: this.rockCamLocal, sunDir: this.rockSunDir, veil: (w) => this.veilNode(w) });
+    this.plane.add(this.horses.mesh);
 
     // --- Vegetation ----------------------------------------------------------------------------------------------
     this.vegetation = new PlanetVegetation({
@@ -1533,6 +1540,19 @@ export class EarlePlanet {
     }
     this.featureRanges = ranges.slice(0, this.featureGrowth.array.length);
     this.applyFeatureGrowth();
+    const horses: HorsePlacement[] = [];
+    for (const { f } of formations) {
+      if (!f.herd) continue;
+      const slot = this.slots.slotOf(f.world);
+      const row = this.slots.rowsOf(slot).accent;
+      for (const [a, b, flip] of f.herd) {
+        const x = f.cx + a;
+        const z = f.cz + b;
+        horses.push({ x, y: this.field.heightAt(x, z), z, size: 0.62, flip, row, slot });
+      }
+    }
+    this.horses.set(horses, { x: ax, z: az });
+    this.anchorObject(this.horses.mesh, ax, az);
     if (formations.length > 0) {
       const data = buildRockGeometry(
         formations.map((e) => e.f),
@@ -1602,6 +1622,7 @@ export class EarlePlanet {
     this.landmarkSet.dispose();
     this.barns.dispose();
     this.drifts.dispose();
+    this.horses.dispose();
     this.rocks?.geometry.dispose();
     this.water?.geometry.dispose();
     this.rockMaterial.dispose();
@@ -1705,6 +1726,7 @@ function proceduralView(v: WorldView): WorldView {
   delete rest.sun;
   delete rest.aim;
   delete rest.lookSide;
+  delete rest.portrait;
   return rest;
 }
 

@@ -103,14 +103,17 @@ export function monolithShading(o: MonolithShadingOptions): { wall: Vec3Node; ca
   cap = mix(cap, pal(2), strata) as unknown as Vec3Node;
   // Tintenkeile vom Turmfuß nach vorn links (Maß: Anteile des Fußabdrucks ≈ 16·s)
   const k = 1 / 15.9;
-  // Keile laufen fächerförmig vom Turmfuß (b ≈ 2,5) zur Plateaukante vorn links; der linke ist die Flanke im Schatten
+  // Keile laufen fächerförmig vom Turmfuß (b ≈ 2,5) zur Plateaukante vorn links, ungleich breit und lang (Ebene 45:
+  // lange Streifen, kurze Zacken dazwischen); der linke ist die Flanke im Schatten
   const flank = wedge(a, b, [-3.6 * k, 0.2 * k], [-0.72, 0.69], 15 * k, 0.9 * k, 2.6 * k);
-  const w0 = wedge(a, b, [-2.4 * k, 1.9 * k], [-0.7, 0.72], 13 * k, 0.45 * k, 0.1 * k);
-  const w1 = wedge(a, b, [-1.1 * k, 2.8 * k], [-0.62, 0.79], 12 * k, 0.55 * k, 0.14 * k);
-  const w2 = wedge(a, b, [0.4 * k, 3.2 * k], [-0.55, 0.84], 11 * k, 0.4 * k, 0.1 * k);
-  const w3 = wedge(a, b, [1.8 * k, 3.3 * k], [-0.46, 0.89], 10 * k, 0.42 * k, 0.1 * k);
-  const w4 = wedge(a, b, [3.3 * k, 3.0 * k], [-0.36, 0.93], 9 * k, 0.3 * k, 0.08 * k);
-  const inkMask = max(max(max(flank, w0), max(w1, w2)), max(w3, w4));
+  const w0 = wedge(a, b, [-2.5 * k, 1.8 * k], [-0.74, 0.67], 13.5 * k, 0.5 * k, 0.08 * k);
+  const w1 = wedge(a, b, [-1.4 * k, 2.7 * k], [-0.6, 0.8], 12 * k, 0.62 * k, 0.12 * k);
+  const w2 = wedge(a, b, [-0.2 * k, 3.1 * k], [-0.5, 0.87], 6.5 * k, 0.28 * k, 0.05 * k);
+  const w3 = wedge(a, b, [0.9 * k, 3.3 * k], [-0.56, 0.83], 11 * k, 0.46 * k, 0.1 * k);
+  const w4 = wedge(a, b, [2.2 * k, 3.4 * k], [-0.38, 0.93], 8.5 * k, 0.34 * k, 0.07 * k);
+  const w5 = wedge(a, b, [3.4 * k, 3.1 * k], [-0.3, 0.95], 10 * k, 0.4 * k, 0.09 * k);
+  const w6 = wedge(a, b, [4.3 * k, 2.4 * k], [-0.12, 0.99], 5.5 * k, 0.22 * k, 0.05 * k);
+  const inkMask = max(max(max(flank, w0), max(w1, w2)), max(max(w3, w4), max(w5, w6)));
   cap = mix(cap, pal(0), inkMask) as unknown as Vec3Node;
   return { wall, cap };
 }

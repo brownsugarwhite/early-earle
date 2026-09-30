@@ -87,6 +87,8 @@ export interface RockFormation {
   variant: number;
   /** Geländehöhe am Fuß (nur Monolith: Bezug der Wandverläufe im Material). */
   ground?: number;
+  /** Weiße Pferde am Fuß (nur Monolith): (a, b) relativ zur Mitte und Blickrichtung ±1. */
+  herd?: Array<[number, number, number]>;
 }
 
 /**

@@ -19,6 +19,8 @@ export interface MonolithBuilt {
   footprint: number;
   /** Geländehöhe am Fuß (Bezug der Wandverläufe). */
   ground: number;
+  /** Weiße Pferde vor dem Plateau (a, b, Blickrichtung). */
+  herd: Array<[number, number, number]>;
 }
 
 /** Versenkung der Füße unter den tiefsten Geländepunkt (nichts schwebt). */
@@ -151,5 +153,16 @@ export function buildMonolith(host: PlaneFeatureHost, cx: number, cz: number, si
 
   let footprint = 0;
   for (const c of columns) for (const [x, y] of c.polygon) footprint = Math.max(footprint, Math.hypot(x, y));
-  return { columns, ledges, footprint, ground };
+  // Pferde: drei grasen vorn am Plateau (eines links, zwei beisammen rechts, Ebene 45), einige weiter draußen
+  const herdDesign: Array<[number, number]> = [
+    [-4.6, 10.7],
+    [2.2, 10.5],
+    [3.2, 10.6],
+    [12.6, 3.5],
+    [13.4, 4.4],
+    [-15.5, 12.5],
+    [-9.5, -11.5],
+  ];
+  const herd: Array<[number, number, number]> = herdDesign.map(([a, b]) => [(a + (rand() - 0.5) * 0.6) * s, (b + (rand() - 0.5) * 0.4) * s, rand() < 0.5 ? -1 : 1]);
+  return { columns, ledges, footprint, ground, herd };
 }
