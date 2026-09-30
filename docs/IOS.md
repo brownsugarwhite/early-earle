@@ -1,6 +1,6 @@
-# iPhone-App (Capacitor) — Installation, Glas-HUD, Haptik, Werkstatt
+# iPhone-App (Capacitor) — Installation, Glas-HUD, Haptik, Werkstatt, Ton
 
-Stand 2026-09-29 (Werkstatt, Labs und Editoren in der App: 2026-09-30, Abschnitt 7). Die App-Hülle liegt in `apps/game/ios` (Capacitor 8.5, SPM, iOS-27-SDK/Xcode 27). Das Spiel selbst ist das Web-Bundle aus `apps/game/dist`; es läuft in der WKWebView, darüber schwebt ein **natives SwiftUI-HUD in Liquid Glass** (eigenes Plugin `apps/game/plugins/liquid-glass`).
+Stand 2026-09-29 (Werkstatt, Labs und Editoren in der App: 2026-09-30, Abschnitt 7; Ton und Stummschalter: Abschnitt 8). Die App-Hülle liegt in `apps/game/ios` (Capacitor 8.5, SPM, iOS-27-SDK/Xcode 27). Das Spiel selbst ist das Web-Bundle aus `apps/game/dist`; es läuft in der WKWebView, darüber schwebt ein **natives SwiftUI-HUD in Liquid Glass** (eigenes Plugin `apps/game/plugins/liquid-glass`).
 
 ## 1. Auf Florians iPhone installieren (ohne Developer-Programm, mit Apple-ID)
 
@@ -27,6 +27,8 @@ Icons/Launch-Bild neu erzeugen (aus `assets/ref-florian/02-splashscreen-illudiy-
 - Ein **`UIHostingController` mit SwiftUI-HUD** wird als Child des Capacitor-`CAPBridgeViewController` über die WKWebView gelegt. Ein `PassthroughView` lässt nur Berührungen **innerhalb der Glas-Elemente** durch (Frames kommen per `onGeometryChange` aus SwiftUI); alles andere erreicht die WebView — Wischen auf dem Spielfeld und Planet-Drehen funktionieren wie im Browser.
 - **iOS 26+:** `glassEffect(.regular.tint(zonenfarbe).interactive(), in: Capsule())` in einem `GlassEffectContainer`; die Pillen tragen `glassEffectID`s und **morphen** zwischen Map („Spielen“) und Level („Zurück / Neu / Map“). Tönung = Zonenfarbe (Map Himmel-Türkis, Level Khaki, Hauptaktion Pink), Schrift schwarz-fett, **keine Konturen**; Ziel-Chips und die REX-Zeile sind Papierkarten mit hartem Versatzschatten in Sonnenrichtung (wie das CSS-HUD).
 - **iOS 16–18:** gleiches Layout mit `regularMaterial` (Blur, UIVisualEffectView).
+- **Schrift:** Die große Zahl der Pille (Züge bzw. Punkte) und ein rein numerischer Titel (z. B. „2048“) stehen in **Caprasimo** (wie `--font-heavy`/'EE Heavy' im Web; OFL, im Paket unter `ios/Sources/LiquidGlassPlugin/Fonts/` mit `OFL.txt`, `resources: [.copy("Fonts")]` in `Package.swift`, registriert in `LiquidGlassPlugin.load()` per `CTFontManagerRegisterFontsForURL`, `Font.custom("Caprasimo-Regular", size:, relativeTo:)`, Dynamic Type bis XXL). Darunter die Beschriftung `movesLabel` (Vorgabe „ZÜGE“, Klassik „PUNKTE“). REX-Zeile, Ziele und Pillen bleiben in der Systemschrift.
+- **Knopfleiste (eine Entscheidung für die ganze Reihe, nie „…“):** passen alle Beschriftungen, stehen sie da (`iconOnly`-Pillen sind Kreise). Sonst behält die Hauptaktion („Spielen“, „Nochmal“) ihre Beschriftung und alle anderen Pillen werden runde Symbol-Pillen; Innenabstand, Lücken (nie unter 11 pt, der Glas-Container verschmilzt ab 10 pt) und Kreise werden stufenweise enger (48 → 44 pt). Ohne Hauptaktion (die vier Level-Knöpfe) teilen sich gleich breite Symbol-Pillen die Reihe. Map auf 393 pt: „Spielen“ + Setzkasten + Klassik + Ton + Werkstatt in einer Reihe (46-pt-Kreise, 11 pt Lücke).
 - **Web/Android:** `isAvailable()` → `available: false`; das CSS-Glas-HUD in `FlowHud.tsx` bleibt.
 
 API (`apps/game/src/native/liquidGlass.ts` kapselt sie mit `useNativeGlass()`, `syncNativeGlass()`, `useNativeGlassActions()`, `useNativeGlassLayout()`):
@@ -34,11 +36,11 @@ API (`apps/game/src/native/liquidGlass.ts` kapselt sie mit `useNativeGlass()`, `
 | Methode / Event | Bedeutung |
 |---|---|
 | `isAvailable()` → `{ available, glass, platform, version }` | `glass: true` = echtes Liquid Glass (iOS 26+) |
-| `show({ top: { title, subtitle, moves, goals[] }, actions: [{ id, label, icon?, primary?, disabled?, tint?, iconOnly? }], rex?, tint?, accent? })` | Zustand setzen und einblenden; `iconOnly` = runde Symbol-Pille (Label nur für VoiceOver), z. B. der Werkstatt-Schlüssel |
+| `show({ top: { title, subtitle, moves, movesLabel?, goals[] }, actions: [{ id, label, icon?, primary?, disabled?, tint?, iconOnly? }], rex?, tint?, accent? })` | Zustand setzen und einblenden; `movesLabel` = Beschriftung unter der großen Zahl (Vorgabe „ZÜGE“); `iconOnly` = runde Symbol-Pille (Label nur für VoiceOver), z. B. der Werkstatt-Schlüssel, Setzkasten, Klassik; `tint` = eigene Glastönung der Pille |
 | `update({...})` | Teil-Update (nur vorhandene Schlüssel, `null` löscht), Pillen morphen |
 | `hide()` | ausblenden (Splash/Hüpfer) |
 | `setSafeInsets({ top, bottom })` | zusätzliche Ränder in CSS-px |
-| Event `action` `{ id }` | Tipp auf eine Pille (`play`, `rewind`, `restart`, `map`, `sound`, `werkstatt`); nativ mit leichtem Haptik-Tick |
+| Event `action` `{ id }` | Tipp auf eine Pille (`play`, `rewind`, `restart`, `map`, `sound`, `werkstatt`, Karten-Einstiege wie `collection`, `classic`); nativ mit leichtem Haptik-Tick; der Web-Teil entsperrt vorher den Ton und tinkt (Abschnitt 8) |
 | Event `layout` `{ top, bottom, safeTop, safeBottom, glass, line, actions }` | Höhen in CSS-px, damit Web-Elemente ausweichen können; `line` (REX-Sprechblase) und `actions` (Knopfleiste) als Rechtecke, REX schaut über `line` (`nativeGlassLayout()` in `src/native/liquidGlass.ts`) |
 
 `FlowHud.tsx` spiegelt den Store (Levelname, Züge, Ziele, REX-Zeile, Aktionen) per JSON in das Overlay und blendet dabei die eigenen CSS-Pillen aus; `icon` sind SF-Symbol-Namen.
@@ -116,3 +118,40 @@ Technik: `apps/game/src/editor/content/` (`target.ts` Speicherziel + Verbindungs
 - Lokale Stände liegen im Web-Speicher der App (localStorage). Er übersteht Neustarts und Updates, gilt aber nicht als Backup (iOS kann ihn bei Speichermangel leeren, Löschen der App löscht ihn) — Wichtiges per „Teilen“ auf den Mac schicken oder mit Verbindung sichern.
 - Der Dev-Endpunkt existiert nur, solange `pnpm dev`/`dev:http` auf dem Mac läuft; Florians laufender Server braucht nach dem Merge einen **Neustart** (CORS für die App kommt aus der Vite-Konfiguration des Plugins).
 - Das REX-Lab zeigt seine iPhone-Vorschau (393 × 852) in echter Größe; auf dem iPhone selbst scrollt die Bühne dafür.
+
+## 8. Ton
+
+Stand 2026-09-30 (Iteration 4). Alle Klänge sind prozedural (Web Audio in der WebView, keine Aufnahmen); Übersicht und Hörproben: `/lab/audio` (in der App: Werkstatt ▸ Audio-Lab), `docs/progress/audio/*.m4a`.
+
+**Der Stummschalter schaltet das Spiel stumm — mit Absicht.** Die App benutzt die Audiosession **ambient** (`AppDelegate.swift`: `AVAudioSession.setCategory(.ambient, options: [.mixWithOthers])`, im Web-Code zusätzlich `navigator.audioSession.type = 'ambient'`). Das ist das Verhalten der meisten Spiele und so von Apple vorgesehen: Steht das iPhone auf Stumm (Seitenschalter bzw. Aktionstaste „Stumm“), ist das Spiel still; Musik oder Podcasts aus anderen Apps laufen unter dem Spiel weiter. Entscheidung Florian (2026-09-30): so bleibt es, keine eigene Einstellung.
+
+**„Kein Ton auf dem iPhone“ — so prüfen**
+
+1. **Stumm?** Kontrollzentrum bzw. Seitenschalter: steht das iPhone auf Stumm, ist das Spiel still (gewollt, siehe oben).
+2. **Lautstärke**: im Spiel die Lautstärketasten drücken (regeln die Medienlautstärke). Bluetooth-Kopfhörer verbunden? Dann kommt der Ton dort.
+3. **Ton-Pille** im Spiel: Lautsprecher ohne Schrägstrich (der Zustand bleibt gespeichert, `localStorage` `ee.audio.v1`).
+4. **Audio-Lab** (Werkstatt ▸ Audio-Lab), Statuszeile **„Kontext …“**:
+   - `running` → die Engine läuft. Ist trotzdem nichts zu hören, liegt es an Stumm, Lautstärke oder Ausgabegerät (Web Audio kann den Stummschalter nicht abfragen: iOS schaltet nur die Ausgabe ab, der Kontext meldet weiter `running`).
+   - `suspended`, `interrupted` oder `none` → einmal irgendwo tippen (die Engine wartet dann auf den nächsten Tipp). Bleibt es dabei, ist es ein Fehler: mit dem Web Inspector nachsehen (unten).
+   - Daneben: Abtastrate und Latenz, Stimmen, gestartete/gestohlene/verworfene Klänge, Musik und Ambiente der Szene. „Pegel prüfen“ (Abschnitt „Iteration 4“) rendert die neuen Klänge offline und vergleicht sie mit dem Soll-Pegel.
+5. **Safari Web Inspector**: Die Builds von `ios:sim` und `ios:device` sind Debug-Builds (`CAPACITOR_DEBUG = true` in `ios/debug.xcconfig` → Capacitor macht die WebView inspizierbar). Mac-Safari ▸ Einstellungen ▸ Erweitert ▸ „Funktionen für Webentwickler“; iPhone: Einstellungen ▸ Apps ▸ Safari ▸ Erweitert ▸ „Web-Inspektor“; dann Safari ▸ Entwickler ▸ ‹iPhone oder Simulator› ▸ early earle. In der Konsole: `__eeAudio.stats()` (Zustand, Stimmen, Warteschlange, Musik/Ambiente) und `__eeAudio.ctx.state`.
+
+**Wie der Ton in der App startet**
+
+- Die WebView der App braucht **keine Geste** (Capacitor setzt `mediaTypesRequiringUserActionForPlayback = []`): die Engine startet den Audio-Kontext, sobald sie geladen ist (`audio.arm(true)` in `src/audio/engine.ts`, nur in der App, also vor dem ersten Klang des Splashs) — der Splash klingt ohne Tippen. Im Browser (Safari, Chrome) bleibt es bei der Regel „erster Tipp startet den Ton“.
+- **Native Glas-Pillen** (Spielen, Setzkasten, Klassik, Ton, Werkstatt …) sind Berührungen, die die WebView nie sieht: jeder Tipp ruft vor der Aktion `audio.unlock()` und spielt den Glas-Tink (`dispatchNativeAction` in `src/native/liquidGlass.ts`).
+- **Wachhund**: WebKit lässt ein `resume()` ohne Geste unendlich hängen (es lehnt nie ab). Ist der Kontext 400 ms nach `resume()` (Start, Ton wieder an, Rückkehr in den Vordergrund) nicht `running`, hängt die Engine die Tipp-Entsperrung wieder ein; der nächste Tipp startet den Ton.
+- Hintergrund und Unterbrechungen: beim Verlassen der App pausiert die Engine (`suspend`), beim Zurückkommen läuft sie weiter; nach Anruf/Siri/Wecker (`interrupted`) startet sie beim nächsten Tipp oder beim nächsten Wechsel in den Vordergrund.
+
+**Geprüft im Simulator (iPhone 17e, 390 × 844 pt, iOS 27, Debug-Build, 2026-09-30)**
+
+- Ohne einen einzigen Tipp: Audio-Lab zeigt „Kontext running · 48000 Hz“ und über 100 gestartete Klänge aus Karte und Level (`docs/progress/iter4-native-audiolab-running.png`).
+- Karte mit fünf Pillen in einer Reihe, nichts abgeschnitten: „▶ SPIELEN“ + Setzkasten (Akzent-Tönung) + Klassik + Ton + Werkstatt als Kreise (`iter4-native-map-pills.png`; Setzkasten/Klassik für das Bild als Platzhalter registriert, die echten Einträge kommen aus den Baustellen Sammlung und Klassik). Auf 390 pt greift die vierte Stufe (44-pt-Kreise), auf 393 pt die dritte (46 pt).
+- Level 2 „30 ZÜGE“ in Caprasimo (`iter4-native-level-zuege.png`), Klassik-Überschreibung „2048 · 12480 PUNKTE“ (`iter4-native-klassik-punkte.png`). Level 1 ohne Zuglimit zeigt „∞“ in der Systemschrift: Caprasimos ∞ ist ein leeres Kästchen (`GlassFonts.covers`).
+
+**Bekannte Grenzen**
+
+- Stumm = still, auch für REX und die Möwe; im Spiel gibt es dafür keinen Hinweis.
+- Der Simulator spielt über den Mac und hat keinen Stummschalter — Stumm und Lautstärketasten nur auf dem Gerät prüfbar.
+- Bluetooth-Kopfhörer bringen ≈ 150–250 ms Verzögerung (Klänge kommen nach der Animation).
+- Der erste Klang nach dem Start kann ≈ 0,1 s später kommen, weil der Kontext erst anläuft; die Engine hält Klänge bis 1,5 s in der Warteschlange und spielt sie dann ab.

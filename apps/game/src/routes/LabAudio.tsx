@@ -5,7 +5,8 @@ import { audio, type EngineStats } from '../audio/engine';
 import { useAudioSettings, type VolumeKey } from '../audio/settings';
 import { ZONE_KEYS, ZONE_MUSIC, type ZoneKey } from '../audio/scales';
 import { AMBIENT_PRESETS, WORLD_IDS, ambientDetail, worldForZone, type WorldId } from '../audio/ambient';
-import { PREVIEWS, PREVIEW_IDS, benchOffline, encodeWav, measure, renderPreview, type BenchResult, type LevelStats, type PreviewId } from '../audio/render';
+import { ITER4_KARTE, ITER4_LOADER, PREVIEWS, PREVIEW_IDS, benchOffline, encodeWav, measure, renderPreview, sfxLevel, type BenchResult, type LevelStats, type PreviewId, type SfxRun } from '../audio/render';
+import { EXTRA_CHECKS } from '../audio/sfxExtra';
 import { planMove } from '../audio/timeline';
 import { syntheticMove } from '../audio/demo';
 import { moodForText, type RexChirp, type RexMood } from '../audio/rex';
@@ -102,6 +103,7 @@ export function LabAudio() {
   const [bench, setBench] = useState<BenchResult | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [levels, setLevels] = useState<Partial<Record<PreviewId, LevelStats>>>({});
+  const [levels4, setLevels4] = useState<Record<number, LevelStats>>({});
 
   // The lab starts quiet: no music/ambience until switched on; restore the game defaults on leave.
   useEffect(() => {
@@ -147,6 +149,25 @@ export function LabAudio() {
       audio.sfx('merge', { zone, tier: t, material }, d);
     }
   });
+
+  /** Iteration 4: only the zone comes from the pickers (tier/material would change the variants, e.g. a big splat). */
+  const sfx4 = (id: SfxId, p: SfxParams) => go(() => audio.sfx(id, { zone, ...p }));
+  const playRun = (run: SfxRun) => go(() => run.forEach(([t, id, p]) => audio.sfx(id, { zone, ...p }, t)));
+
+  /** The offline level check (same as the unit tests): loudest 100 ms of each variant through the default mix. */
+  const checkLevels4 = async () => {
+    setBusy('levels4');
+    try {
+      for (const [i, c] of EXTRA_CHECKS.entries()) {
+        const l = await sfxLevel(c.id, c.p, 3);
+        setLevels4((prev) => ({ ...prev, [i]: l }));
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+  const measured4 = EXTRA_CHECKS.filter((_, i) => levels4[i]).length;
+  const inPolicy4 = EXTRA_CHECKS.filter((c, i) => levels4[i] && Math.abs(levels4[i]!.maxRmsDb - c.target) <= 1.5).length;
 
   const say = go(() => audio.say(text, mood === 'auto' ? moodForText(text) : mood, 0.02));
   const chirp = (k: RexChirp) => go(() => audio.chirp(k));
@@ -488,6 +509,40 @@ export function LabAudio() {
               {label}
             </button>
           ))}
+        </div>
+      </Section>
+
+      <Section title="Iteration 4" note="Loader, Möwe, Setzkasten, Klassik, Aufbruch. „Pegel prüfen“ rendert jede Variante offline und zeigt das lauteste 100-ms-Fenster neben dem Soll.">
+        <div className="al-grid" data-testid="sfx4-buttons">
+          {EXTRA_CHECKS.map((c, i) => {
+            const l = levels4[i];
+            return (
+              <button key={`${c.id}-${i}`} type="button" className="al-sfx" data-testid={`sfx4-${i}`} onClick={sfx4(c.id, c.p)}>
+                {c.label}
+                {l ? (
+                  <small className="al-level" data-ok={Math.abs(l.maxRmsDb - c.target) <= 1.5}>
+                    {l.maxRmsDb} dB · Soll {c.target}
+                  </small>
+                ) : null}
+              </button>
+            );
+          })}
+          <button type="button" className="al-sfx al-wide" data-testid="sfx4-loader" onClick={playRun(ITER4_LOADER)}>
+            Loader-Ablauf
+          </button>
+          <button type="button" className="al-sfx al-wide" onClick={playRun(ITER4_KARTE)}>
+            Karte, Setzkasten, Klassik
+          </button>
+        </div>
+        <div className="al-row al-levels">
+          <button type="button" className="btn" data-testid="sfx4-levels" disabled={busy !== null} onClick={() => void checkLevels4()}>
+            Pegel prüfen
+          </button>
+          {measured4 ? (
+            <span className="al-bench" data-testid="sfx4-summary" data-done={measured4 === EXTRA_CHECKS.length} data-ok={inPolicy4 === EXTRA_CHECKS.length}>
+              {inPolicy4}/{measured4} im Soll (± 1,5 dB)
+            </span>
+          ) : null}
         </div>
       </Section>
 
