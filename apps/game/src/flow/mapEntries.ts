@@ -33,7 +33,8 @@ export const useMapEntries = create<MapEntriesState>((set, get) => ({
   entries: [],
   register: (entry) => {
     set({ entries: sorted([...get().entries.filter((e) => e.id !== entry.id), entry]) });
-    return () => set({ entries: get().entries.filter((e) => e !== entry) });
+    // Abmelden über die ID: `patch()` ersetzt das Objekt, ein Vergleich über die Identität träfe es danach nicht mehr.
+    return () => set({ entries: get().entries.filter((e) => e.id !== entry.id) });
   },
   patch: (id, patch) => set({ entries: get().entries.map((e) => (e.id === id ? { ...e, ...patch } : e)) }),
 }));
