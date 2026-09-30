@@ -91,6 +91,8 @@ interface HudFacts {
   muted: boolean;
   movesLabel: string | undefined;
   entries: MapEntry[];
+  /** Text des Banners, wenn der Versuch vorbei ist (Klassik: „Kein Zug mehr“). */
+  lostText: string | undefined;
 }
 
 /** The native overlay's mirror of the store: same texts and actions as the CSS HUD (ids → handlers below). */
@@ -120,7 +122,8 @@ function nativeHudState(f: HudFacts): GlassHudState | null {
   return {
     top: { title: f.title, subtitle: f.subtitle, moves: f.moves, goals: f.goals, ...(f.movesLabel ? { movesLabel: f.movesLabel } : {}) },
     actions,
-    rex: f.rex,
+    // Das Glas-HUD hat kein Banner: ist ein Klassik-Lauf vorbei, steht sein Text in der REX-Zeile.
+    rex: f.phase === 'level' && f.status === 'lost' && f.lostText ? f.lostText : f.rex,
     tint: f.phase === 'level' ? TINT_LEVEL : TINT_MAP,
     accent: ACCENT,
   };
@@ -176,7 +179,7 @@ export function FlowHud() {
   // Mirror to the native overlay; the JSON key keeps the effect quiet while nothing visible changed. The free mode
   // (development) says so in the subtitle, so it is never mistaken for the real game.
   const nativeSubtitle = free ? `${subtitle} · Frei` : subtitle;
-  const nativeState = native.active ? nativeHudState({ phase, subtitle: nativeSubtitle, title, moves, goals, rex, status, rewindable, muted, movesLabel, entries }) : null;
+  const nativeState = native.active ? nativeHudState({ phase, subtitle: nativeSubtitle, title, moves, goals, rex, status, rewindable, muted, movesLabel, entries, lostText: ov?.lostText }) : null;
   const nativeJson = nativeState ? JSON.stringify(nativeState) : '';
   useEffect(() => {
     if (!native.active) return;

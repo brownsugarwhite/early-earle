@@ -419,7 +419,8 @@ export function planMove(res: MoveResult<LevelState>, ctx: PlanContext): MovePla
       case 'lost': {
         lost = true;
         endAt = Math.max(tEnd - 0.2, afterMerges) + 0.25;
-        add(endAt, 'lost', {}, 3);
+        // Klassik endet ohne Niederlage: sanft fallendes „kein Zug mehr“ statt des Verloren-Klangs.
+        add(endAt, res.state.level.mode === 'classic' ? 'gameOver' : 'lost', {}, 3);
         break;
       }
       default:
