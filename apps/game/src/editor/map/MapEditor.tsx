@@ -6,6 +6,7 @@ import { UiIcon } from '../levels/icons';
 import { IS_NATIVE, useContentTarget } from '../content/target';
 import { downloadJson, shareJson, shareMessage } from '../content/share';
 import { Poster } from './Poster';
+import { PROCEDURAL_COUNT, ProceduralDetail, ProceduralList, useProceduralWorlds } from './procedural';
 import { getAt, isHex, loadMapFiles, saveMapFile, setAt, validateMap, type Json, type MapFile, type MapKind } from './mapContent';
 
 type Tab = 'farben' | 'werte' | 'text' | 'json';
@@ -192,7 +193,10 @@ interface Session {
 export function MapEditor() {
   const [files, setFiles] = useState<MapFile[] | null>(null);
   const [online, setOnline] = useState(false);
-  const [kind, setKind] = useState<MapKind>('welt');
+  const [kind, setKind] = useState<MapKind | 'prozedural'>('welt');
+  // Prozedurale Welten ab Welt 11 (nur lesen): Auswahl nach Kennung
+  const [procSel, setProcSel] = useState<number | null>(null);
+  const procedural = useProceduralWorlds();
   const [selected, setSelected] = useState<string | null>(() => new URLSearchParams(location.search).get('file'));
   const [drafts, setDrafts] = useState<Record<string, Json>>({});
   const [tab, setTab] = useState<Tab>('farben');
@@ -300,6 +304,29 @@ export function MapEditor() {
     </span>
   );
 
+  // ---- procedural world (read only) ----
+  const procEntry = procSel !== null ? procedural.find((e) => e.id === procSel) : undefined;
+  if (procEntry) {
+    return (
+      <div className="map-ed" data-testid="editor-map" data-procedural={procEntry.id + 1}>
+        <header className="map-top">
+          <button type="button" className="map-back" onClick={() => setProcSel(null)} data-testid="map-back" aria-label="Zur Liste">
+            <UiIcon name="back" size={20} />
+          </button>
+          <div className="map-head-text">
+            <b>{String(procEntry.json.name)}</b>
+            <small>
+              <i aria-hidden="true" />
+              Prozedural · nur lesen
+            </small>
+          </div>
+          {target}
+        </header>
+        <ProceduralDetail entry={procEntry} />
+      </div>
+    );
+  }
+
   // ---- list ----
   if (!file || !draft) {
     const list = (files ?? []).filter((f) => f.kind === kind);
@@ -316,14 +343,16 @@ export function MapEditor() {
               [
                 ['welt', 'Welten'],
                 ['zone', 'Zonen'],
+                ['prozedural', 'Prozedural'],
               ] as const
             ).map(([k, label]) => (
               <button key={k} type="button" role="radio" aria-checked={kind === k} className="map-chip" data-active={kind === k} onClick={() => setKind(k)} data-testid={`map-kind-${k}`}>
-                {label} <small>{(files ?? []).filter((f) => f.kind === k).length}</small>
+                {label} <small>{k === 'prozedural' ? PROCEDURAL_COUNT : (files ?? []).filter((f) => f.kind === k).length}</small>
               </button>
             ))}
           </div>
           {files === null ? <p className="map-hint">Lädt …</p> : null}
+          {kind === 'prozedural' ? <ProceduralList entries={procedural} onOpen={setProcSel} /> : null}
           <ul className="map-list">
             {list.map((f) => {
               const d = drafts[keyOf(f)];
