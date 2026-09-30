@@ -26,7 +26,8 @@ function stem(rand: () => number, y0: number, y1: number, n: number, r0: number,
   const knots = [0.25 + rand() * 0.2, 0.55 + rand() * 0.25];
   const out: TubePoint[] = [];
   for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
+    // Ringe am Fuß dichter (t^1.5): der Wurzelanlauf wölbt sich weich in den Boden statt als Stufe
+    const t = Math.pow(i / (n - 1), 1.5);
     const y = y0 + (y1 - y0) * t;
     const above = Math.max(0, y) / Math.max(1e-3, y1);
     const x = amp * (Math.sin(ph1 + above * Math.PI * k1) - Math.sin(ph1));
@@ -183,13 +184,13 @@ export function createOakTrunk(seed = 3): OakGeometry {
   const b = new TreeMeshBuilder();
   const tips: Array<{ p: V3; d: V3 }> = [];
   // Stamm: Achse wandert (gedreht, leicht geneigt), Querschnitt mit drei gedrehten Wülsten und fünf Wurzelanläufen
-  const r0 = 0.2;
-  const n = 12;
+  const r0 = 0.27;
+  const n = 14;
   const trunk: TubePoint[] = [];
   const twist = rand() * Math.PI * 2;
   const leanAz = rand() * Math.PI * 2;
   for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
+    const t = Math.pow(i / (n - 1), 1.6);
     const y = -0.28 + 1.36 * t;
     const above = Math.max(0, y);
     const off = 0.08 * above + 0.05 * Math.sin(above * 4.2 + twist);
@@ -206,7 +207,7 @@ export function createOakTrunk(seed = 3): OakGeometry {
   const lobe = (a: number, ring: number): number => {
     const y = ys[ring] ?? 0;
     const flute = 0.12 * Math.sin(3 * a + twist + Math.max(0, y) * 2.6);
-    const roots = 0.55 * Math.max(0, Math.cos(5 * a + rootPhase)) ** 3 * Math.exp(-Math.max(0, y + 0.12) / 0.14);
+    const roots = 0.45 * Math.max(0, Math.cos(5 * a + rootPhase)) ** 2 * Math.exp(-Math.max(0, y + 0.1) / 0.16);
     return 1 + flute + roots;
   };
   const vTop = b.tube(trunk, 14, 0, 0, lobe);

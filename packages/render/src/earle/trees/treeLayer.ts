@@ -250,7 +250,7 @@ export class TreeLayer {
     const stippleOf: Record<CrownKind, { cell: number; size: number; flowers: boolean }> = {
       dome: { cell: 0.11, size: 0.3, flowers: true },
       column: { cell: 0.1, size: 0.3, flowers: false },
-      pine: { cell: 0.07, size: 0.34, flowers: false },
+      pine: { cell: 0.05, size: 0.3, flowers: false },
     };
     for (const kind of CROWN_KINDS) {
       const geometry = this.templates[kind].geometry;
@@ -272,7 +272,8 @@ export class TreeLayer {
         positionNode: warp(grownFrom(positionLocal)),
         patternPos: varying(positionGeometry.mul(vec3(treeD().x, treeD().y, treeD().x)), 'vCrownPattern'),
         patternNormal: varying(normalGeometry, 'vCrownPatternN'),
-        stipple: { cell: cfg.cell, size: cfg.size, density: kind === 'pine' ? float(0.9) : arrayElement(this.worldStipple, world) },
+        stipple: { cell: cfg.cell, size: cfg.size, density: kind === 'pine' ? float(0.55) : arrayElement(this.worldStipple, world) },
+        inkBody: kind === 'pine',
         flowers: cfg.flowers ? { density: arrayElement(this.worldFlowers, world), cell: 0.26 } : null,
         // Juwelenkuppeln leuchten fast rundum (Bild 02): Bänder etwas angehoben
         lift: select(treeD().w.lessThan(0), float(0.12), float(0)),
@@ -300,16 +301,15 @@ export class TreeLayer {
       const bark = attribute('bark', 'vec4');
       const H = treeD().x;
       const thick = treeD().y;
-      // Dicke je Instanz: Punkte entlang ihrer Normale verschieben (Radius · (Dicke − 1)), dann wachsen/biegen
+      // Dicke je Instanz steckt in der Instanzmatrix (waagrecht gestreckt): der Wurzelanlauf wird breiter, nicht höher
       const n = normalize(normalLocal);
-      const thickened = positionLocal.add(n.mul(bark.w.mul(H).mul(thick.sub(1))));
       const row = treeC().x;
       const world = treeD().w;
       const material = new BarkMaterial({
         lookup,
         fog,
         fogDistNode: shared.fogDist(row),
-        positionNode: warp(grownFrom(thickened)),
+        positionNode: warp(grownFrom(positionLocal)),
         rowNode: row,
         accentNode: treeC().y,
         terrainRowNode: arrayElement(this.worldTerrain, world),
@@ -516,6 +516,8 @@ export class TreeLayer {
 
   /** Stammdicke je Instanz: Familie (Anteil am Kronenradius, Standard 0.04) relativ zum Archetyp. */
   private thickness(t: PlanetTree, form: KindForm): number {
+    // Eiche und Fächer haben eigene Proportionen (die Dicke streckt waagrecht und würde die Äste aus der Krone schieben)
+    if (form.trunk === 'oak' || form.trunk === 'fan') return 1;
     const w = (this.family(t)?.trunkWidth ?? 0.04) / 0.04;
     const clampW = Math.min(form.trunk === 'pole' ? 3 : 2.2, Math.max(0.6, w));
     return form.thick * clampW;
@@ -534,8 +536,11 @@ export class TreeLayer {
   /** Instanzmatrix des Stamms (einheitliche Skalierung H). */
   trunkMatrix(t: PlanetTree, form: KindForm, q: Quaternion, out: Matrix4): Matrix4 {
     const H = form.trunkH * t.canopyRadius * (form.crown === 'pine' ? 1 : Math.min(1.3, this.aspect(t)));
+    const k = this.thickness(t, form);
     _p.set(t.position[0], t.position[1], t.position[2]);
-    return out.compose(_p, q, _s.setScalar(H));
+    out.compose(_p, q, _s.set(H * k, H, H * k));
+    _s.setScalar(H);
+    return out;
   }
 
   /** Schreibt alle Instanzpuffer der Bäume neu (bei Wechsel der geladenen/nahen Chunks). */
@@ -654,7 +659,8 @@ export class TreeLayer {
     if (form.dots === 'none' || form.dots === 'stars' || !form.crown) return 0;
     const r = t.canopyRadius;
     const k = this.family(t)?.dots ?? 1;
-    return r * r * (form.dots === 'lace' ? 0.5 : form.dots === 'pine' ? 0.8 : 1) * k;
+    // Tannen sind schmal, aber hoch (Silhouette ≈ 3.6 r²): der Tannenwald ist aus Punkten gemacht (Bild 05)
+    return r * r * (form.dots === 'lace' ? 0.5 : form.dots === 'pine' ? 2.6 : 1) * k;
   }
 
   private blockKey(slot: number, list: TreeEntry[]): string {
@@ -801,7 +807,8 @@ export class TreeLayer {
       const count = Math.min(total, maxPerTree, Math.max(4, Math.round(perWeight * this.dotWeight(t))));
       const start = Math.floor(treeHash(t.position, 5) * total);
       const kind0 = form.dots === 'pine' ? DOT_KIND.pine : t.kind === 'jewel' ? DOT_KIND.jewel : DOT_KIND.crown;
-      const pineSize = form.dots === 'pine' ? 0.62 : 1;
+      // Tannenpunkte: feste Größe (die schmalen Kronen würden sie sonst unter die Pixelgrenze drücken)
+      const pineSize = form.dots === 'pine' ? 0.042 / Math.max(1e-3, sizeBase) : 1;
       for (let k = 0; k < count; k++) {
         const o = ((start + k) % total) * 6;
         _p.set(samples[o]!, samples[o + 1]!, samples[o + 2]!).applyMatrix4(_m);

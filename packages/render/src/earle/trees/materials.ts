@@ -28,6 +28,11 @@ export interface CrownMaterialOptions {
   patternNormal: Vec3Node;
   /** Tüpfel: Zellgröße (Welteinheiten), Punktradius relativ zur Zelle, Dichte (Knoten, z. B. je Welt). */
   stipple: { cell: number; size: number; density: FloatNode };
+  /**
+   * Tintenkörper (Tannen, Bild 05): die Krone bleibt rundum Tinte, nur die hellen Punkte zeichnen sie — sonnenseitig
+   * größer und heller, auf der Schattenseite klein und gedämpft (nie ganz weg: der Tannenwald ist aus Punkten gemacht).
+   */
+  inkBody?: boolean;
   /** Blütendichte (0 = keine), Zellgröße der Blüten. */
   flowers?: { density: FloatNode; cell: number } | null;
   /** Aufhellung der Bänder (z. B. Juwelenkuppeln leuchten rundum). */
@@ -67,7 +72,10 @@ class CrownLightingModel extends LightingModel {
     const shadow = (input.lightColor as Vec3Node).r;
     const ndl = normalView.dot(L);
     const term = o.terminatorNode;
-    const lit = min(aaStep(term, ndl), shadow);
+    // Schlagschatten nur auf der Sonnenseite: die Rückseite liegt hinter der eigenen (in der Karte stehenden) dunklen
+    // Seite — Juwelenkuppeln (Terminator < 0) leuchten sonst nicht mehr rundum
+    const cast = mix(float(1), shadow, smoothstep(-0.02, 0.1, ndl));
+    const lit = min(aaStep(term, ndl), cast);
     const ndlHull = o.hullNormalView ? normalize(o.hullNormalView).dot(L) : ndl;
     let v = ndlHull.sub(term).mul(o.bandScale);
     if (o.lift) v = v.add(o.lift);
@@ -76,9 +84,19 @@ class CrownLightingModel extends LightingModel {
     // Obergrenze mitten im obersten Band: an der Sättigungskante wäre fract ≈ 1 bei fwidth > 0 → heller Strich
     const band = clamp(v, 0, 1).pow(1.6).mul(o.bands).min(o.bands.sub(0.5));
     const row = o.rowNode;
+    const ink = o.lookup.pal(0, row).rgb as unknown as Vec3Node;
+    if (o.inkBody) {
+      // Tanne: Tinte mit hellen Punkten; Schlagschatten dämpft die Punkte (kleiner, dunkler), löscht sie aber nicht
+      const light = smoothstep(-0.1, 0.5, ndl).mul(mix(float(0.35), float(1), cast));
+      const st = stipple(o.patternPos, o.stipple.cell, o.stipple.size, float(0.55).add(light.mul(0.45)), o.stipple.density);
+      const dotIdx = float(3).add(step(0.45, light.add(st.key.mul(0.3))).mul(2));
+      const col = mix(ink, o.lookup.pal(dotIdx, row).rgb as unknown as Vec3Node, st.mask);
+      (input.reflectedLight.directDiffuse as Vec3Node).addAssign(col);
+      return;
+    }
     let litColor = o.lookup.bands(band, row, 1).rgb as unknown as Vec3Node;
     // Punkte wachsen mit dem Licht: am Terminator 0, voll erst auf der Sonnenseite (weich, kein Ploppen)
-    const grow = smoothstep(term.add(0.02), term.add(0.5), ndl).mul(shadow);
+    const grow = smoothstep(term.add(0.02), term.add(0.5), ndl).mul(cast);
     const st = stipple(o.patternPos, o.stipple.cell, o.stipple.size, grow, o.stipple.density);
     // Getüpfelter Verlauf wie bei Earle (Bild 03): jeder Punkt eine Stufe heller als das Band unter ihm, nahe am Licht
     // einzelne zwei Stufen — ruhige Textur statt Konfetti
@@ -91,7 +109,6 @@ class CrownLightingModel extends LightingModel {
       const flowerColor = mix(o.lookup.pal(6, row).rgb, o.lookup.pal(7, row).rgb, step(0.5, fl.key)) as unknown as Vec3Node;
       litColor = mix(litColor, flowerColor, fl.mask);
     }
-    const ink = o.lookup.pal(0, row).rgb as unknown as Vec3Node;
     let col = mix(ink, litColor, lit);
     if (o.growthNode) {
       const l = col.dot(vec3(0.3, 0.5, 0.2));
@@ -207,7 +224,12 @@ export class BarkMaterial extends NodeMaterial {
 
 /** Linien rundum je Ebene (Stamm, Ast, Zweig, Wurzel): die Kalligrafie folgt der Form. */
 function linesAround(level: FloatNode): FloatNode {
-  return select(level.lessThan(0.5), float(16), select(level.lessThan(1.5), float(9), select(level.lessThan(2.5), float(4), float(7))));
+  return select(level.lessThan(0.5), float(26), select(level.lessThan(1.5), float(12), select(level.lessThan(2.5), float(4), float(12))));
+}
+
+/** Helligkeit (für die Wahl der hellsten verfügbaren Linienfarbe). */
+function luma(c: Vec3Node): FloatNode {
+  return c.dot(vec3(0.3, 0.59, 0.11));
 }
 
 class BarkLightingModel extends LightingModel {
@@ -235,9 +257,12 @@ class BarkLightingModel extends LightingModel {
     const variant = o.variantNode;
     const ink = o.lookup.pal(0, row).rgb as unknown as Vec3Node;
     const dark = o.lookup.pal(1, row).rgb as unknown as Vec3Node;
-    const light = o.lookup.pal(0, acc).rgb as unknown as Vec3Node;
+    // Helle Linienfarbe: Akzent 0 (Stamm hell), sonst das hellste Terrain (Schnee) — nie dunkel auf dunkel
+    const accLight = o.lookup.pal(0, acc).rgb as unknown as Vec3Node;
+    const light = select(luma(accLight).greaterThan(0.45), accLight, o.lookup.pal(5, o.terrainRowNode).rgb) as unknown as Vec3Node;
     // Kalligrafie (Bild 01): feine, wellige helle Linien entlang des Stamms, im Licht hell, im Schatten grau
-    const calli = flowLines(u.add(variant), v.mul(2.4), linesAround(level), select(isCalli, float(0.3), float(0.17)), select(isCalli, float(0.28), float(0.7)), 3);
+    // Feine Kalligrafie (Bild 01): viele schmale, wellige Striche, die abschnittsweise abbrechen (Holzmaserung)
+    const calli = flowLines(u.add(variant), v.mul(2.4), linesAround(level), select(isCalli, float(0.2), float(0.14)), select(isCalli, float(0.32), float(0.72)), 3);
     const lineShadow = mix(ink, light, 0.3);
     // Flechten (Bilder 03, 35): unregelmäßige Flecken, jeder in einer flachen Farbe der Akzentzeile (Hellgrün, Gelb)
     const p = o.objPos;
@@ -282,11 +307,19 @@ class BarkLightingModel extends LightingModel {
     ) as unknown as Vec3Node;
     let col = mix(shadowCol, litCol, lit);
     // Schnee auf den Oberseiten (Bilder 01/04): Fleckenrand aus Tüpfeln, die mit der Schneemenge wachsen
+    // Oberseiten (Normale zum Lot) und die Wetterseite des Stamms (eine Seite rundum, je Baum gedreht) tragen Schnee;
+    // der Rand ist ein Tüpfelsaum aus Schneeflocken, die zur Kante hin kleiner werden
     const up = dot(normalize(o.normalPlanet), normalize(o.upPlanet));
     const wobble = wob.sub(0.5).mul(0.6);
-    const amount = o.snowNode.mul(smoothstep(0.08, 0.55, up.add(wobble)));
-    const specks = stipple(p, 0.035, 0.62, amount, 0.95);
-    const snowMask = max(smoothstep(0.8, 0.88, amount), specks.mask.mul(step(0.04, amount)));
+    const topSide = smoothstep(0.05, 0.6, up.add(wobble));
+    const windward = sin(u.add(variant.mul(0.37)).mul(6.2831853)).add(wobble.mul(1.4));
+    const isStem = level.lessThan(0.5).or(level.greaterThan(2.5));
+    const weather = smoothstep(0.35, 0.8, windward).mul(select(isStem, float(0.95), float(0))).mul(smoothstep(0.3, 1.2, v));
+    const side = max(topSide, weather).mul(step(0.01, o.snowNode));
+    const thr = float(1.08).sub(o.snowNode.mul(0.5));
+    const solid = smoothstep(thr, thr.add(0.05), side);
+    const specks = stipple(p, 0.03, 0.66, smoothstep(thr.sub(0.4), thr, side), 0.95);
+    const snowMask = max(solid, specks.mask);
     const snowCol = mix(o.lookup.pal(3, o.terrainRowNode).rgb, o.lookup.pal(5, o.terrainRowNode).rgb, lit) as unknown as Vec3Node;
     col = mix(col, snowCol, snowMask);
     if (o.growthNode) {
