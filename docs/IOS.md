@@ -16,7 +16,14 @@ Danach jederzeit aktualisieren: `IOS_TEAM_ID=<10-stellige Team-ID> pnpm --filter
 
 Simulator (ohne Apple-ID): `pnpm --filter @ee/game ios:sim` — baut Web-Bundle, `cap sync`, `xcodebuild` für „iPhone Air“ (andere: `IOS_SIM_DEVICE="iPhone 17 Pro"`), installiert und startet. `--skip-web` überspringt den Vite-Build.
 
-Icons/Launch-Bild neu erzeugen (aus `assets/ref-florian/02-splashscreen-illudiy-i.png`): `pnpm --filter @ee/game ios:icons`.
+Icons neu erzeugen (aus `assets/ref-florian/02-splashscreen-illudiy-i.png`): `pnpm --filter @ee/game ios:icons`.
+
+Startbild = erstes Bild des Loaders (Stamm als 4-%-Streifen, „0%“, Schatten auf `#081b25`): `node scripts/launch-frame.mjs`
+(im Ordner `apps/game`, rendert `/?splash=launchframe` mit Playwright nach `LaunchLoader.imageset`). `LaunchScreen.storyboard`
+legt es mit *scaleAspectFit* an die Ränder — wie `object-fit: contain` in der Web-Ansicht. Das Plugin
+`@capacitor/splash-screen` hält das Startbild, bis das Inline-Boot-Skript nach dem ersten Web-Bild `SplashScreen.hide()`
+ruft (ohne Übergang, spätestens nach 3 s von selbst): kein leeres Ink-Bild zwischen Startbild und Web-Loader.
+Auf dem Gerät prüfen: Startbild → Web-Loader ohne Sprung (Stamm und „0%“ an derselben Stelle), dann wächst der Stamm.
 
 **TestFlight (später):** braucht das Apple Developer Program (99 $/Jahr). Dann: Archive in Xcode (Product ▸ Archive) → Distribute → TestFlight; Uploads müssen mit Xcode 26+/iOS-26-SDK gebaut sein (erfüllt). Nicole bekommt dann eine Einladung per E-Mail und die App über die TestFlight-App, ohne Kabel, 90 Tage gültig.
 

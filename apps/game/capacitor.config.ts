@@ -18,6 +18,20 @@ const config: CapacitorConfig = {
     preferredContentMode: 'mobile',
     backgroundColor: '#081b25',
   },
+  plugins: {
+    /**
+     * Startbild = erstes Loader-Bild (LaunchScreen.storyboard, LaunchLoader.imageset aus scripts/launch-frame.mjs).
+     * Das Inline-Boot-Skript blendet es nach dem ersten Web-Bild ohne Übergang aus (gleiches Bild → keine Naht);
+     * nach 3 s verschwindet es spätestens von selbst (falls das Skript nie läuft).
+     */
+    SplashScreen: {
+      launchAutoHide: true,
+      launchShowDuration: 3000,
+      launchFadeOutDuration: 0,
+      backgroundColor: '#081b25',
+      showSpinner: false,
+    },
+  },
 };
 
 export default config;

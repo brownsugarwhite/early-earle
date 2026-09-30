@@ -182,6 +182,17 @@ export function bootInline(D: BootInlineData): EeBoot | null {
   w.__eeBoot = api;
   setStem(0, 0);
   mirror(0);
+  // iOS-App: das native Startbild (gleiches erstes Bild) nach dem ersten gemalten Web-Bild ohne Übergang wegnehmen
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const cap = (window as unknown as { Capacitor?: { Plugins?: { SplashScreen?: { hide(o: object): unknown } } } }).Capacitor;
+      try {
+        cap?.Plugins?.SplashScreen?.hide({ fadeOutDuration: 0 });
+      } catch {
+        // Web oder Plugin fehlt: nichts zu tun
+      }
+    }),
+  );
   // Testschalter (?splash=manual/final/overlay/launchframe): erstes Bild stehen lassen, SplashStage übernimmt
   if (/[?&]splash=(manual|final|overlay|launchframe)/.test(location.search)) running = false;
   else requestAnimationFrame(loop);
