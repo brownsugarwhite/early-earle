@@ -72,6 +72,17 @@ export function playableCells(mask: readonly string[]): number {
   return n;
 }
 
+/**
+ * Seed-Basis des `run`-ten Durchgangs eines Formats (0 = erster Start); der Versuch (Neu) wird noch
+ * addiert. Jeder Start bringt ein neues Brett und bleibt doch nachspielbar: frischer Speicher →
+ * immer dasselbe erste Brett (E2E, Fehlersuche).
+ */
+export function classicSeed(formatId: string, run = 0): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < formatId.length; i++) h = Math.imul(h ^ formatId.charCodeAt(i), 0x01000193);
+  return ((h >>> 1) + Math.imul(run, 7919)) % 1_000_000_007;
+}
+
 /** Offen bei `reached` (höchster freigeschalteter Knoten, 0-basiert = Zahl gewonnener Level)? */
 export function isFormatUnlocked(
   format: Pick<KlassikFormat, 'unlockAfterLevel'>,

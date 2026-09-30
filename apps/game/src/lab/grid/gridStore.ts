@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import {
   classicLevel,
+  classicSeed as firstClassicSeed,
   createHistory,
   createState,
   record,
@@ -16,7 +17,7 @@ import {
   type ZoneId,
 } from '@ee/core';
 import { LEVELS } from '../../content/levels';
-import { classicSeedFor, formatById } from '../../klassik/formats';
+import { formatById } from '../../klassik/formats';
 import { rexIntroFor, rexLine } from './rex';
 import { CREATURE_DEMO_LEVEL, DEMO_LEVEL, HERD_DEMO_LEVEL, creatureDemoState, demoState, herdDemoState } from './demoLevel';
 
@@ -109,7 +110,7 @@ export const useGridStore = create<GridLabState>((set, get) => ({
   startClassic: (formatId, seed) => {
     const format = formatById(formatId);
     if (!format) return false;
-    set({ session: 'classic', classicFormat: format, classicSeed: seed ?? classicSeedFor(format.id) });
+    set({ session: 'classic', classicFormat: format, classicSeed: seed ?? firstClassicSeed(format.id) });
     return true;
   },
   endClassic: () => {

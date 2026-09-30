@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { GameMode } from '../state/progress';
-import { classicSeedFor } from './formats';
+import { classicSeed } from '@ee/core';
 
 /**
  * Klassik-Speicher (localStorage `ee.klassik.v1`), getrennt nach echtem und freiem Stand wie der Fortschritt:
@@ -107,7 +107,7 @@ export const useKlassik = create<KlassikState>((set, get) => {
     nextRun: (mode, formatId) => {
       const run = get().slots[mode].runs[formatId] ?? 0;
       write(mode, (slot) => ({ ...slot, runs: { ...slot.runs, [formatId]: run + 1 } }));
-      return classicSeedFor(formatId, run);
+      return classicSeed(formatId, run);
     },
     markSeen: (mode, formatIds) => {
       const seen = get().slots[mode].seen;

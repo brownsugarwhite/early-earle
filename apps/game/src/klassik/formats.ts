@@ -20,13 +20,3 @@ export function formatOpen(format: KlassikFormat, mode: 'real' | 'free', reached
 export function openFormatIds(mode: 'real' | 'free', reached: number): string[] {
   return KLASSIK_FORMATS.filter((f) => formatOpen(f, mode, reached)).map((f) => f.id);
 }
-
-/**
- * Seed-Basis des `run`-ten Durchgangs eines Formats (0 = erster). Jeder Start aus dem Blatt zählt hoch, so bringt
- * jede Runde ein neues Brett und bleibt doch nachspielbar (frischer Speicher → immer dasselbe erste Brett).
- */
-export function classicSeedFor(formatId: string, run = 0): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < formatId.length; i++) h = Math.imul(h ^ formatId.charCodeAt(i), 0x01000193);
-  return ((h >>> 1) + Math.imul(run, 7919)) % 1_000_000_007;
-}

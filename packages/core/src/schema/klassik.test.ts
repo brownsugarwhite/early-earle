@@ -5,6 +5,7 @@ import {
   KLASSIK_MAX_CELLS,
   KlassikFormatsSchema,
   classicLevel,
+  classicSeed,
   isFormatUnlocked,
   playableCells,
   type KlassikFormats,
@@ -85,6 +86,16 @@ describe('KlassikFormatsSchema', () => {
     expect(isFormatUnlocked({ unlockAfterLevel: 5 }, 4)).toBe(false);
     expect(isFormatUnlocked({ unlockAfterLevel: 5 }, 5)).toBe(true);
     expect(isFormatUnlocked({ unlockAfterLevel: 0 }, 0)).toBe(true);
+  });
+
+  it('gibt je Format und Durchgang einen festen, eigenen Seed', () => {
+    expect(classicSeed('4x4')).toBe(classicSeed('4x4', 0));
+    expect(classicSeed('4x4', 1)).not.toBe(classicSeed('4x4', 0));
+    expect(classicSeed('5x5')).not.toBe(classicSeed('4x4'));
+    for (const run of [0, 1, 99, 5000]) {
+      const s = classicSeed('riss', run);
+      expect(Number.isInteger(s) && s >= 0 && s < 1_000_000_007).toBe(true);
+    }
   });
 });
 

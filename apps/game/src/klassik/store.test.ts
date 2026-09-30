@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { KLASSIK_KEY, emptyKlassikSlot, loadKlassik, useKlassik } from './store';
-import { classicSeedFor } from './formats';
+import { classicSeed } from '@ee/core';
 
 const storage = (items: Record<string, string>) => ({ getItem: (k: string) => items[k] ?? null });
 
@@ -36,8 +36,8 @@ describe('useKlassik', () => {
   it('zählt Durchgänge: jeder Start eine neue Seed-Basis, frisch immer dieselbe erste', () => {
     const a = useKlassik.getState().nextRun('free', '4x4');
     const b = useKlassik.getState().nextRun('free', '4x4');
-    expect(a).toBe(classicSeedFor('4x4', 0));
-    expect(b).toBe(classicSeedFor('4x4', 1));
+    expect(a).toBe(classicSeed('4x4', 0));
+    expect(b).toBe(classicSeed('4x4', 1));
     expect(a).not.toBe(b);
     expect(useKlassik.getState().slots.free.runs['4x4']).toBe(2);
     expect(useKlassik.getState().nextRun('real', '4x4')).toBe(a);
