@@ -20,6 +20,7 @@ import { useAudioSettings } from '../audio/settings';
 import { WERKSTATT_ENABLED, WERKSTATT_GLASS_ACTION, WerkstattButton } from '../overlay/WerkstattButton';
 import { mapEntry, useMapEntries, type MapEntry } from './mapEntries';
 import { useHudOverride } from './hudOverride';
+import { SwipeHint } from './tutorial/SwipeHint';
 
 const GOAL_LABEL: Record<string, string> = {
   reachTier: 'Stufe',
@@ -62,12 +63,16 @@ function goalPreview(level: LevelDef | undefined): string[] {
   });
 }
 
-const DEV_PHASES: Array<{ label: string; kind: 'splash' | 'map' | 'flyIn' | 'depart' }> = [
+const DEV_PHASES: Array<{ label: string; kind: 'splash' | 'intro' | 'map' | 'flyIn' | 'depart' }> = [
   { label: 'Splash', kind: 'splash' },
+  { label: 'Intro', kind: 'intro' },
   { label: 'Map', kind: 'map' },
   { label: 'FlyIn', kind: 'flyIn' },
   { label: 'Depart', kind: 'depart' },
 ];
+
+/** Phases in which the HUD shows the level (the intro ends in level 1). */
+const inLevelPhase = (p: FlowPhase): boolean => p === 'flyIn' || p === 'level' || p === 'depart' || p === 'intro';
 
 /** Zone tints mirrored from flow.css: sky glass on the map, khaki in the level, pink primary action. */
 const TINT_MAP = '#7ce6d5';
@@ -90,7 +95,7 @@ interface HudFacts {
 
 /** The native overlay's mirror of the store: same texts and actions as the CSS HUD (ids → handlers below). */
 function nativeHudState(f: HudFacts): GlassHudState | null {
-  if (f.phase === 'splash' || f.phase === 'hop') return null;
+  if (f.phase === 'splash' || f.phase === 'hop' || f.phase === 'intro') return null;
   const actions: GlassAction[] = [];
   if (f.phase === 'map') actions.push({ id: 'play', label: 'Spielen', icon: 'play.fill', primary: true });
   if (f.phase === 'level') {
@@ -145,10 +150,13 @@ export function FlowHud() {
   const toggleMuted = useAudioSettings((s) => s.toggleMuted);
   const navigate = useNavigate();
 
+  const free = useProgress((s) => s.mode === 'free');
+  const story = useFlowStore((s) => s.story);
+
   // Haptics for the whole flow (native only; no-op on the web).
   useEffect(() => installHaptics(), []);
 
-  const inLevel = phase === 'flyIn' || phase === 'level' || phase === 'depart';
+  const inLevel = inLevelPhase(phase);
   const mapLevel = FLOW_LEVELS[current]?.level;
   const shownLevel = inLevel ? level : mapLevel;
   const levelNo = inLevel && level ? (flowLevelNo(level) ?? current + 1) : current + 1;
@@ -165,8 +173,10 @@ export function FlowHud() {
   const movesLabel = ov?.movesLabel;
   const goals = ov?.goals ?? (inLevel && state ? state.goalProgress.map((g) => ({ text: goalText(g), done: g.done })) : goalPreview(shownLevel).map((text) => ({ text, done: false })));
 
-  // Mirror to the native overlay; the JSON key keeps the effect quiet while nothing visible changed.
-  const nativeState = native.active ? nativeHudState({ phase, subtitle, title, moves, goals, rex, status, rewindable, muted, movesLabel, entries }) : null;
+  // Mirror to the native overlay; the JSON key keeps the effect quiet while nothing visible changed. The free mode
+  // (development) says so in the subtitle, so it is never mistaken for the real game.
+  const nativeSubtitle = free ? `${subtitle} · Frei` : subtitle;
+  const nativeState = native.active ? nativeHudState({ phase, subtitle: nativeSubtitle, title, moves, goals, rex, status, rewindable, muted, movesLabel, entries }) : null;
   const nativeJson = nativeState ? JSON.stringify(nativeState) : '';
   useEffect(() => {
     if (!native.active) return;
@@ -225,9 +235,21 @@ export function FlowHud() {
             ))}
           </header>
 
+          {free ? (
+            <span className="flow-mode-tag" data-testid="mode-tag">
+              Frei
+            </span>
+          ) : null}
+
           <footer className="hud-bottom">
             {rex ? (
-              <div className="flow-rex" data-testid="rex-line">
+              <div
+                className="flow-rex"
+                data-testid="rex-line"
+                data-story={story ?? undefined}
+                role={story ? 'button' : undefined}
+                onClick={story ? () => request('story') : undefined}
+              >
                 <span className="rex-name">REX</span> {rex}
               </div>
             ) : null}
@@ -282,6 +304,7 @@ export function FlowHud() {
         </>
       )}
 
+      <SwipeHint />
       {import.meta.env.DEV ? <DevStrip phase={phase} /> : null}
     </div>
   );
@@ -298,7 +321,16 @@ function DevStrip({ phase }: { phase: FlowPhase }) {
         Flow
       </span>
       {DEV_PHASES.map((p) => (
-        <button key={p.kind} className="dev-btn" data-active={phase === p.kind || (p.kind === 'flyIn' && phase === 'level')} onClick={() => request(p.kind)}>
+        <button
+          key={p.kind}
+          className="dev-btn"
+          data-active={phase === p.kind || (p.kind === 'flyIn' && phase === 'level') || (p.kind === 'depart' && phase === 'travel')}
+          onClick={() => {
+            // The intro starts from the splash (the scene only plays it from there).
+            if (p.kind === 'intro' && phase !== 'splash') request('splash');
+            request(p.kind);
+          }}
+        >
           {p.label}
         </button>
       ))}

@@ -8,25 +8,23 @@ import { guessCreature, loadCreatureRules } from './bodies';
 import { isZoneKey, type ZoneKey } from './scales';
 import { worldForZone } from './ambient';
 import { moodForText, type RexMood } from './rex';
-import type { Material } from './sfx';
+import { SFX_IDS, type Material, type SfxId } from './sfx';
+import { bus, type BusEvents } from '../state/bus';
 
 /**
- * Binds the engine to the game: grid moves become timed sound plans, flow phases get their transitions
- * (hop, fly-in heave, jump, depart chime, landing), the zone and world pick music and ambience, REX's line
- * is babbled when it changes (a chirp instead for win/lose), and buttons tick (glass buttons tink).
+ * Binds the engine to the game: grid moves become timed sound plans, the flow's choreography beats (`flow/cue`: hop,
+ * fly-in heave, jumps, landings, the plateau sinking, creatures moving out, hops along the path, the unlock, a locked
+ * node) play their sounds at the exact moment, the zone and world pick music and ambience, REX's line is babbled
+ * when it changes (a chirp instead for win/lose), and buttons tick (glass buttons tink).
  * Idempotent and ref-counted like the haptics (StrictMode mounts twice).
  */
 
 /** The flow's board resolves creatures with the Tjorizo genome for every level (FlowScene `ZONE`). */
 const BOARD_ZONE = 'tjorizo';
 
-/** Flow timings mirrored from FlowScene (T_HOP, T_RISE_AT, T_HERO_LAUNCH, T_HERO_FLIGHT). */
-const T_HOP = 1.4;
-const T_RISE_AT = 0.26;
-const T_HERO_LAUNCH = 0.64;
-const T_HERO_FLIGHT = 0.6;
-
-const inLevel = (p: FlowPhase): boolean => p === 'flyIn' || p === 'level' || p === 'depart';
+/** Phases that show (or head into) a level: its REX line, its zone. */
+const inLevel = (p: FlowPhase): boolean => p === 'flyIn' || p === 'level' || p === 'depart' || p === 'intro';
+const SFX = new Set<string>(SFX_IDS);
 
 /** Trigger → mood for every known REX line. */
 function moodIndex(): (text: string) => RexMood {
@@ -44,7 +42,7 @@ function sceneFor(flow: FlowState, grid: GridLabState): AudioScene {
   const node = inLevel(phase) ? (flow.playing ?? flow.current) : flow.current;
   const level = inLevel(phase) ? (grid.level ?? FLOW_LEVELS[node]?.level) : FLOW_LEVELS[node]?.level;
   const zone: ZoneKey = isZoneKey(level?.zone) ? level.zone : 'tjorizo';
-  const mode: SceneMode = phase === 'splash' ? 'silent' : phase === 'flyIn' || phase === 'level' ? 'level' : 'map';
+  const mode: SceneMode = phase === 'splash' ? 'silent' : phase === 'flyIn' || phase === 'level' || phase === 'intro' ? 'level' : 'map';
   return { zone, world: worldForZone(zone, node % 25), mode };
 }
 
@@ -144,51 +142,20 @@ function wire(): () => void {
     if (s.rex !== prev.rex) syncLine();
   });
 
-  // ------------------------------------------------------------------ flow (phases)
-  let departWon = false;
+  // ------------------------------------------------------------------ flow (phases and choreography beats)
   const offFlow = useFlowStore.subscribe((s, prev) => {
-    if (s.phase !== prev.phase) {
-      const zone = sceneFor(s, useGridStore.getState()).zone;
-      const from = prev.phase;
-      switch (s.phase) {
-        case 'hop':
-          audio.sfx('hop', { zone }, 0.1);
-          audio.sfx('land', { zone }, 0.1 + T_HOP - 0.32);
-          break;
-        case 'flyIn':
-          audio.sfx('select', { zone });
-          audio.sfx('flyIn', { zone }, 0.02);
-          audio.sfx('rise', { zone }, T_RISE_AT);
-          audio.sfx('heroJump', { zone }, T_HERO_LAUNCH - 0.1);
-          audio.sfx('land', { zone }, T_HERO_LAUNCH + T_HERO_FLIGHT);
-          break;
-        case 'depart': {
-          audio.cancelMove();
-          const won = useGridStore.getState().state?.status === 'won';
-          departWon = won;
-          if (won) audio.sfx('depart', { zone }, 0.45);
-          else audio.sfx('flyIn', { zone }, 0.25);
-          audio.sfx('sink', { zone }, won ? 0.7 : 0.3);
-          break;
-        }
-        case 'map':
-          if (from === 'depart') {
-            audio.sfx('land', { zone });
-            // A won level opens the next node on the path.
-            if (departWon) audio.sfx('nodeUnlock', { zone }, 0.15);
-            departWon = false;
-          }
-          break;
-        default:
-          break;
-      }
-    } else if (s.phase === 'map' && s.current !== prev.current) {
-      // Debug hop to the next node / progress without a level.
-      audio.sfx('land', { zone: sceneFor(s, useGridStore.getState()).zone }, 0.85);
-    }
+    // A move still sounding when the level is left (win, map button) stops with it.
+    if (s.phase !== prev.phase && s.phase === 'depart') audio.cancelMove();
     if (s.phase !== prev.phase || s.current !== prev.current || s.playing !== prev.playing) syncScene();
     if (s.phase !== prev.phase || s.rex !== prev.rex) syncLine();
   });
+  // The scene reports every beat when it happens (scene clock, also when frames are slow): the cue is the sound id.
+  const onCue = ({ cue, strength }: BusEvents['flow/cue']): void => {
+    if (!SFX.has(cue)) return;
+    const zone = sceneFor(useFlowStore.getState(), useGridStore.getState()).zone;
+    audio.sfx(cue as SfxId, strength === undefined ? { zone } : { zone, vel: strength });
+  };
+  bus.on('flow/cue', onCue);
 
   // ------------------------------------------------------------------ UI taps
   const onPointer = (e: PointerEvent): void => {
@@ -204,6 +171,7 @@ function wire(): () => void {
   return () => {
     offGrid();
     offFlow();
+    bus.off('flow/cue', onCue);
     document.removeEventListener('pointerdown', onPointer, true);
     if (lineTimer) clearTimeout(lineTimer);
     audio.cancelMove();

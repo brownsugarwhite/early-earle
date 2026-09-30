@@ -36,7 +36,9 @@
 .flow-hud[data-flow-state='splash'] .hud-top,
 .flow-hud[data-flow-state='splash'] .hud-bottom,
 .flow-hud[data-flow-state='hop'] .hud-top,
-.flow-hud[data-flow-state='hop'] .hud-bottom { opacity: 0; transform: translateY(-6px); }
+.flow-hud[data-flow-state='hop'] .hud-bottom,
+.flow-hud[data-flow-state='intro'] .hud-top,
+.flow-hud[data-flow-state='intro'] .hud-bottom { opacity: 0; transform: translateY(-6px); }
 .hud-top, .hud-bottom { transition: opacity 0.6s ease 0.5s, transform 0.6s ease 0.5s; }
 
 /* Liquid-Glass fallback: tinted blur, 1-px inner highlight (inset shadow, not a border), hard sun shadow. */
@@ -56,7 +58,7 @@
   display: flex; align-items: center; gap: 14px; padding: 10px 16px; max-width: calc(100vw - 32px);
   white-space: nowrap;
 }
-.flow-hud[data-flow-state='splash'] .hud-top, .flow-hud[data-flow-state='hop'] .hud-top { transform: translate(-50%, -6px); }
+.flow-hud[data-flow-state='splash'] .hud-top, .flow-hud[data-flow-state='hop'] .hud-top, .flow-hud[data-flow-state='intro'] .hud-top { transform: translate(-50%, -6px); }
 .hud-title { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: 0.02em; line-height: 1.1; display: flex; flex-direction: column; }
 .hud-title small { font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.75; font-weight: 900; }
 .hud-stat { display: flex; flex-direction: column; align-items: center; min-width: 44px; line-height: 1; }
@@ -90,6 +92,39 @@
 }
 .flow-rex .rex-name { flex: none; }
 @keyframes rex-in { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* REX tells a scene: the box turns the page on a tap (in the app the native line lets taps through to the canvas). */
+.flow-rex[data-story] { pointer-events: auto; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.flow-rex[data-story]::after { content: '›'; margin-left: auto; padding-left: 8px; font: 900 22px/1 var(--font-display); opacity: 0.6; }
+.flow-rex[data-story]:active { transform: translate(-3px, 1px); }
+
+/* Free mode (development): a small tag, so it is never mistaken for the real game. */
+.flow-mode-tag {
+  position: absolute; top: calc(env(safe-area-inset-top) + 24px); left: 14px;
+  padding: 5px 8px; background: var(--neon); color: var(--ink);
+  font: 900 10px/1 var(--font-display); letter-spacing: 0.22em; text-transform: uppercase;
+  box-shadow: -4px 2px 0 var(--ink-soft);
+}
+.flow-hud[data-flow-state='splash'] .flow-mode-tag, .flow-hud[data-flow-state='hop'] .flow-mode-tag { opacity: 0; }
+
+/* Swipe hint (level 1): a big paper arrow over the board, hard ink shadow in sun direction, no outline. The wrapper
+   carries the shadow (screen space), the inner element turns into the swipe direction, the arrow slides along it. */
+.swipe-hint {
+  position: absolute; z-index: 11; transform: translate(-50%, -50%); pointer-events: none;
+  filter: drop-shadow(var(--sun-shadow) var(--ink-soft));
+  animation: swipe-hint-in 0.35s ease-out;
+}
+.swipe-hint-turn { display: grid; place-items: center; }
+.swipe-hint-arrow { display: block; fill: var(--paper); animation: swipe-hint-slide 1.2s cubic-bezier(0.45, 0, 0.2, 1) infinite; }
+@keyframes swipe-hint-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes swipe-hint-slide {
+  0% { transform: translateX(-28px); opacity: 0; }
+  18% { opacity: 1; }
+  72% { transform: translateX(26px); opacity: 1; }
+  100% { transform: translateX(36px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .swipe-hint, .swipe-hint-arrow { animation: none; }
+}
 .hud-banner-flow { width: 100%; max-width: 520px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: var(--rust); color: var(--paper); font-weight: 900; font-size: 20px; box-shadow: var(--sun-shadow) var(--ink-soft); }
 
 /* ---------- dev strip ---------- */
@@ -111,6 +146,7 @@
   .hud-actions[data-count='4'] .btn-label { display: none; }
   .hud-actions[data-count='4'] .btn-ico { font-size: 20px; }
   .hud-top { gap: 10px; padding: 8px 12px; }
+  .flow-mode-tag { top: calc(env(safe-area-inset-top) + 74px); left: 12px; }
   .hud-title { font-size: 13px; }
   .hud-goal { font-size: 11px; }
   .flow-dev { bottom: calc(env(safe-area-inset-bottom) + 150px); max-width: 60vw; }
