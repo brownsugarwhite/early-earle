@@ -27,6 +27,8 @@ import {
 import { EarleMaterial } from './EarleMaterial';
 import { PaletteAtlas, addWorldPalette, worldPaletteFromZone, type WorldPalette, type WorldRows, type ZonePalette } from './palette';
 import { GROWTH_SLOTS, PlanetVegetation, type VegetationPropEntry, type VegetationTreeEntry, type VegetationWorldRows } from './planetVegetation';
+import type { ShadowFactorFn } from './trees/treeLayer';
+import type { ShadowTint } from '../shadow/shadowTint';
 import { PaletteLookup, aaStep, arrayElement, createFogSettings, patternTime, stripeMask, type FloatNode, type FogSettings, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from './tsl';
 import { createWaterMaterial } from './water/waterSurface';
 import { buildWaterGeometry, waterGeometry } from './water/waterMesh';
@@ -108,6 +110,12 @@ export interface EarlePlanetOptions {
   nearHalfWidthDeg?: number;
   /** Müll-Dichtefaktor (Startwelt). */
   trashScale?: number;
+  /**
+   * Schatten des Sonnen-Rigs (Schatten v3): `factor` = glatter Schattenwert an einer Weltposition (Vertex-Stufe; die
+   * Kronenpunkte skalieren damit im Schlagschatten aus 0), `tint` = Schattentönung je Welt (Gelände, Felsen, Wasser,
+   * Requisiten mischen ihre Tinte im Schatten zur Farbe der Welt). Beides z. B. vom `SunRig`.
+   */
+  shadow?: { factor?: ShadowFactorFn | null; tint?: ShadowTint | null } | null;
 }
 
 interface ChunkCpu {
@@ -501,6 +509,7 @@ export class EarlePlanet {
       veil: (worldIndex) => this.veilNode(worldIndex),
       foreign: (worldIndex) => this.foreignNode(worldIndex),
       rowCount: this.atlas.rowCount,
+      shadowFactor: options.shadow?.factor ?? null,
     });
     this.group.add(this.vegetation.group);
   }

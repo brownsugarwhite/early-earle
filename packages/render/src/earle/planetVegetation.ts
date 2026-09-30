@@ -52,7 +52,7 @@ import type { PlanetProp, PlanetTree, PlanetVegetationFamily, TreeFamily } from 
 import { EarleMaterial } from './EarleMaterial';
 import { arrayElement, hatchMask, patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from './tsl';
 import { createHexagon, mergeGeometries } from './vegetation';
-import { CROWN_KINDS, TreeLayer, type CrownKind } from './trees/treeLayer';
+import { CROWN_KINDS, TreeLayer, type CrownKind, type ShadowFactorFn } from './trees/treeLayer';
 
 /** Zahl der Wachstums-Slots (ein Slot je geladenem Chunk). */
 export const GROWTH_SLOTS = 64;
@@ -93,6 +93,11 @@ export interface PlanetVegetationOptions {
    * `false`, wenn eine eigene Müll-Welt ihn ersetzt; Felsen, Scheunen und Tiere bleiben.
    */
   builtinTrash?: boolean;
+  /**
+   * Glatter Schattenwert an einer Weltposition (Vertex-Stufe), z. B. `(p, o) => sunRig.shadowFactor(p, o)`: die
+   * Kronenpunkte skalieren im Schlagschatten stetig aus 0. Fehlt → Punkte empfangen den Schatten je Fragment.
+   */
+  shadowFactor?: ShadowFactorFn | null;
 }
 
 export interface VegetationTreeEntry {
@@ -274,6 +279,7 @@ export class PlanetVegetation {
         sunDirLocal: this.sunDirLocal,
         projScaleY: this.projScaleY,
         collapsePx: this.collapsePx,
+        shadowFactor: options.shadowFactor ?? null,
       },
       {
         worldRows: options.worldRows,

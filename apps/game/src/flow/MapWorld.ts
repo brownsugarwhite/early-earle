@@ -157,6 +157,8 @@ export class MapWorld {
       },
       path: { nodesPerZone: NODES_PER_ZONE, turns: 2.75, clearNode: 2.0, clearPath: 0.8 },
       loadsPerFrame: 2,
+      // Schatten v3: Kronenpunkte skalieren mit dem glatten Schattenwert, Schatten tönen je Welt
+      shadow: { factor: location.search.includes('dotshadow=0') ? null : (p, o) => this.sun.shadowFactor(p, o), tint: this.sun.shadowTint },
     });
     this.world.curvature.value = options.curvature ?? MAP_VIEW.curvature;
     this.world.vegetation.setNearClear(MAP_VIEW.nearClear);
