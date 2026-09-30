@@ -519,6 +519,7 @@ export class FlowScene implements SceneController {
     const bandC = (bandTop + bandBottom) / 2;
     // Phones: the grid fills the width (safe margins); landscape: the grid and its goal ledge fill the band's height.
     const targetW = (2 * (W - 2 * margin)) / W;
+    // Tutorial-Bretter (1×3, 3×2 …) wie ein 3×3 rahmen, sonst taucht die Kamera auf den Streifen.
     const gx = (Math.max(board.w, 3) * PITCH) / 2;
     const gz = (Math.max(board.h, 3) * PITCH) / 2;
     const top = board.topY;
