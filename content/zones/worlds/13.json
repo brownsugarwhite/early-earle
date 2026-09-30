@@ -38,7 +38,7 @@
   },
   "landmarkChance": 0,
   "fogStripes": 0,
-  "fog": { "start": 40, "range": 60 },
+  "fog": { "start": 60, "range": 70 },
   "view": {
     "height": 3.2,
     "forward": 16,
