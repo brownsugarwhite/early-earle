@@ -1,8 +1,8 @@
 import { LightingModel, NodeMaterial } from 'three/webgpu';
 import type { Node, NodeBuilder } from 'three/webgpu';
-import { abs, clamp, cos, cross, dot, float, floor, fract, fwidth, max, min, mix, normalView, normalize, select, sin, smoothstep, step, varying, vec3 } from 'three/tsl';
+import { abs, clamp, cos, dot, float, floor, fract, fwidth, max, min, mix, normalView, normalize, select, sin, smoothstep, step, varying, vec3 } from 'three/tsl';
 import { aaStep, palByKey, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node, type Vec4Node } from '../tsl';
-import { earleGradients, fountain } from '../gradients';
+import { earleGradients, fountain, hueRotate } from '../gradients';
 import { blotches, flowLines, flowers, stipple, valueNoise3 } from './patterns';
 
 /**
@@ -135,10 +135,7 @@ class CrownLightingModel extends LightingModel {
     // Vertex (Normale und Terminator sind Vertex-Größen), die Drehung um die Grauachse (Rodrigues) je Pixel
     const isJewel = select(term.lessThan(0), float(1), float(0));
     const angle = float(1).sub(normalize(o.patternNormal).y).mul(-0.5 * JEWEL_TURN).mul(isJewel);
-    const cs = mix(float(1), varying(cos(angle)), soft);
-    const sn = varying(sin(angle)).mul(soft);
-    const k = vec3(0.57735027, 0.57735027, 0.57735027);
-    litColor = max(litColor.mul(cs).add(cross(k, litColor).mul(sn)).add(k.mul(dot(k, litColor)).mul(float(1).sub(cs))), vec3(0, 0, 0)) as unknown as Vec3Node;
+    litColor = hueRotate(litColor, mix(float(1), varying(cos(angle)), soft), varying(sin(angle)).mul(soft));
     if (o.flowers) {
       const fl = flowers(o.patternPos, o.patternNormal, o.flowers.cell, grow, o.flowers.density);
       const flowerColor = mix(o.lookup.pal(6, row).rgb, o.lookup.pal(7, row).rgb, step(0.5, fl.key)) as unknown as Vec3Node;

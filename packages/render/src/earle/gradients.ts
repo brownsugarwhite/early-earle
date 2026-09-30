@@ -1,4 +1,4 @@
-import { abs, clamp, cross, dot, float, floor, fract, fwidth, max, mix, screenCoordinate, smoothstep, sqrt, uniform, vec2, vec3, vec4 } from 'three/tsl';
+import { cross, dot, float, floor, fract, fwidth, max, mix, screenCoordinate, smoothstep, sqrt, uniform, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, PaletteLookup, Vec3Node, Vec4Node } from './tsl';
 
 /**
@@ -11,13 +11,14 @@ import type { FloatNode, PaletteLookup, Vec3Node, Vec4Node } from './tsl';
  * die Tiefe. Die Kanten (Silhouette, Terminator, Schlagschatten) bleiben die eine harte Tintenform.
  *
  * Dieses Modul ist das gemeinsame Vokabular dafür (alles ALU, keine Pässe, keine Texturen außer dem Paletten-Atlas):
- * - `fountain` — Rampe durch die Palettenstufen: 0 = harte Siebdruckstufen (alt), 1 = weicher Verlauf,
- *   dazwischen „Bänder, die innen verlaufen“ (jede Stufe läuft zur nächsten, an der Kante bleibt ein Rest-Sprung);
+ * - `fountain` — Irisdruck durch die Palettenstufen: 0 = harte Siebdruckstufen (alt), 1 = weicher Verlauf, dazwischen
+ *   Bänder, die innen verlaufen; zu schmale Stufen (Ferne) bleiben hart. Der Stufenwert selbst trägt die Richtung des
+ *   Verlaufs: Licht (N·L, auch über eine breite Verlaufsnormale), Kamm → Tal (Höhe), Distanz (Luftperspektive);
  * - `mixInk` — Mischung wie gedruckte Farbe (≈ sRGB/Gamma 2), nicht das zu helle Linear-Licht-Mischen;
  * - `aaSaw` — anti-aliasierter Sägezahn (Verlauf innerhalb einer Stufe, 1-px-Kante an der Stufe: Meißelhänge);
- * - `glow` — radialer Glutverlauf (Scheunenwand, Sonnenschein am Horizont);
- * - `hueTurn` — Farbton-Drehung um die Grauachse (Juwelenkuppeln: warm oben, kühl unten);
- * - `dither` — ±½ LSB Rauschen im Bildraum gegen 8-Bit-Treppen in großen, flachen Verläufen (Himmel, Luft).
+ * - `glow` — radialer Airbrush-Schein (Scheunenwand, Sonnenschein am Himmel);
+ * - `hueRotate` — Farbton-Drehung um die Grauachse (Juwelenkuppeln: Rot oben, Violett/Blau unten);
+ * - `dither` — ±½ LSB Rauschen im Bildraum gegen 8-Bit-Treppen in großen, flachen Verläufen (Himmel).
  *
  * Die Stärke hängt an drei geteilten Uniforms (ändern ohne Neukompilieren, Earle-Lab-Regler „Verläufe“, `?verlauf=`):
  * `earleGradients.surface` (Flächen), `.air` (Himmel, Luftperspektive, Nebelbänke), `.dither`.
@@ -131,26 +132,20 @@ export function glow(d: FloatNode, inner: FloatNode | number, outer: FloatNode |
   return g.mul(g) as unknown as FloatNode;
 }
 
-/** Glatter Übergang 0 → 1 zwischen `a` und `b` (Höhen-, Hang-, Distanzverläufe), ohne Kante. */
-export function ramp01(x: FloatNode, a: FloatNode | number, b: FloatNode | number): FloatNode {
-  return smoothstep(asNode(a), asNode(b), x) as unknown as FloatNode;
-}
-
 /**
- * Farbton-Drehung um die Grauachse (Rodrigues): `angle` in Bogenmaß, positiv = Rot → Gelb → Grün. Juwelenkuppeln
- * (Bild 02) drehen zur Unterseite hin negativ: Rot → Magenta → Violett → Blau → Türkis. Direkt im Linearraum (billig;
- * Helligkeit bleibt, die Sättigung ändert sich leicht).
+ * Farbton-Drehung um die Grauachse (Rodrigues) mit Kosinus und Sinus des Winkels (positiv = Rot → Gelb → Grün).
+ * Juwelenkuppeln (Bild 02) drehen zur Unterseite hin negativ: Rot → Magenta → Violett → Blau. `cs`/`sn` am besten je
+ * Vertex rechnen und interpolieren (der Winkel ändert sich langsam); die Drehung selbst ist ein paar Multiplikationen.
+ * Direkt im Linearraum (billig; die Helligkeit bleibt, die Sättigung ändert sich leicht).
  */
-export function hueTurn(c: Vec3Node, angle: FloatNode): Vec3Node {
+export function hueRotate(c: Vec3Node, cs: FloatNode, sn: FloatNode): Vec3Node {
   const k = vec3(0.57735027, 0.57735027, 0.57735027);
-  const cs = angle.cos();
-  const sn = angle.sin();
   const r = c.mul(cs).add(cross(k, c).mul(sn)).add(k.mul(dot(k, c)).mul(float(1).sub(cs)));
   return max(r, vec3(0, 0, 0)) as unknown as Vec3Node;
 }
 
 /**
- * Gegen 8-Bit-Treppen in großen, weichen Verläufen (Himmel, Luft, Schnee): Interleaved-Gradient-Noise im Bildraum
+ * Gegen 8-Bit-Treppen in großen, weichen Verläufen (Himmel): Interleaved-Gradient-Noise im Bildraum
  * (stabil, schwimmt nicht mit dem Planeten), Amplitude ±½ LSB der sRGB-Ausgabe. Die Farbe ist Linear-Licht, 1 LSB
  * entspricht dort ≈ 2,2·√c / 255. Unsichtbar als Muster — nur die Stufen verschwinden (Earles eigenes Korn sind feine
  * Punkte, nie Rauschen; die Punkte bleiben Ornament).
@@ -162,12 +157,3 @@ export function dither(color: Vec3Node, amount: FloatNode | number = earleGradie
   return color.add(lsb.mul(n.sub(0.5)).mul(asNode(amount))) as unknown as Vec3Node;
 }
 
-/** Glatte Dreieckswelle 0..1..0 (für Streifen, die innen verlaufen). */
-export function tri01(x: FloatNode): FloatNode {
-  return float(1).sub(abs(fract(x).mul(2).sub(1))) as unknown as FloatNode;
-}
-
-/** Wert auf [0, 1] begrenzen (Kurzform). */
-export function sat(x: FloatNode): FloatNode {
-  return clamp(x, 0, 1) as unknown as FloatNode;
-}
