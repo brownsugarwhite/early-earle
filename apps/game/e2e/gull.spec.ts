@@ -6,7 +6,9 @@ import { test, expect, type Browser, type Page } from '@playwright/test';
 // Wische → Möwe fliegt → Blob landet → Brett kommt zur Ruhe, ohne Konsolenfehler. Die Tweens laufen auf der Wanduhr,
 // also auch bei wenigen fps in der geplanten Zeit.
 
-test.setTimeout(process.env.CI ? 300_000 : 180_000);
+// SwiftShader auf einem ausgelasteten Rechner: einzelne Bilder brauchen Sekunden (die Tweens laufen auf der Wanduhr, das
+// Brett kommt aber erst mit dem nächsten Bild zur Ruhe).
+test.setTimeout(process.env.CI ? 420_000 : 300_000);
 // Bilder nur mit echter GPU (Metal); die Funktionsprüfung läuft sonst wie alle Specs auf SwiftShader.
 if (process.env.GULL_SHOTS) test.use({ launchOptions: { args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] } });
 
@@ -65,7 +67,7 @@ async function settled(page: Page): Promise<BoardStats> {
   await expect.poll(async () => {
     const s = await stats(page);
     return !!s && !s.animating && s.pending === 0 && s.airborne === 0 && s.active === 0;
-  }, { timeout: 30_000 }).toBe(true);
+  }, { timeout: 60_000 }).toBe(true);
   return (await stats(page))!;
 }
 
