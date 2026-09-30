@@ -569,7 +569,7 @@ export class TreeLayer {
         .mul(shared.nearFade(base, base.add(up.mul(data.x.mul(card.height))), data.x.mul(1.2)))
         .mul(shared.foreignNear(data.w, base));
       // Spitzenwerk (z = 1) je Baum: jeder vierte Baum steht kahl (Ebene 29: der zweite Baum)
-      const tuft = positionGeometry.z;
+      const tuft = step(0.75, positionGeometry.z);
       const keep = float(1).sub(tuft.mul(float(1).sub(step(0.25, variant))));
       const spread = float(0.85).add(fract(variant.mul(7.31)).mul(0.3));
       const billboard = (toward: Vec3Node): Vec3Node => {
@@ -585,10 +585,11 @@ export class TreeLayer {
       const tuftCol = lookup.pal(4, data.w).rgb as unknown as Vec3Node;
       material.colorNode = fogOf(data.w, base, 'vWindFogDist')(mix(branchCol, tuftCol, tuft) as unknown as Vec3Node);
       material.positionNode = warp(billboard(normalize(shared.camLocal.sub(base))));
-      (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(billboard(shared.sunDirLocal));
       const mesh = new InstancedMesh(geometry, material, n);
       mesh.name = 'planet-wind';
-      mesh.castShadow = true;
+      // Kein Schlagschatten: Ebene 29 steht im Gegenlicht, die Landzunge ist eine ruhige, dunkle Fläche; das feine
+      // Astwerk würde bei tiefer Sonne als meterlanges Netz über sie laufen
+      mesh.castShadow = false;
       mesh.receiveShadow = false;
       mesh.frustumCulled = false;
       mesh.count = 0;

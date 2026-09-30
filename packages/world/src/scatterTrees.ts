@@ -130,6 +130,11 @@ export interface TreeFamily extends PlanetVegetationFamily {
   dots?: number;
   /** Fokus-Baum der Welt (ersetzt die Art aus `focal`, z. B. die Earle-Eiche in Welt 05). */
   focalTree?: { kind: TreeKind; scale?: number };
+  /**
+   * Bäume nur in einem Band hinter der Klippe eines Meeres (Abstand landeinwärts [min, max], Welteinheiten) — die
+   * Windbäume der Landzunge (Welt 14) stehen an der Kante, als Silhouetten vor dem Himmel.
+   */
+  coastBand?: [number, number];
 }
 
 /** Was die Komposition vom Planetenfeld braucht (strukturell, passt auf `PlanetField`). */

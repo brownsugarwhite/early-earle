@@ -183,6 +183,37 @@ export function createWindCard(seed = 5, options: WindCardOptions = {}): WindCar
     const a = 1.85 - t * 1.6 + (rand() - 0.5) * 0.15;
     branch(0.24, 0.95, a, 0.7 + rand() * 0.35 + t * 0.25, 0.1 - t * 0.02, 1);
   }
+  // Spitzensaum (Ebene 29): längs der oberen und der Lee-Kante der Hülle ein dichtes Band aus feinen Strichen, nach
+  // außen gekämmt — die gekrauste Schirmkante, die den Umriss der Krone zeichnet. Jeder Saumpunkt hängt an einem kurzen
+  // Zweig nach innen (das Band gehört zum Astwerk); alles Schicht 1, fällt also beim kahlen Baum weg.
+  const fringeN = Math.round(tuftN * 5.5);
+  const cr = Math.cos(env.rot);
+  const sr = Math.sin(env.rot);
+  for (let i = 0; i < fringeN; i++) {
+    // von oben links (Luvseite, knapp über dem Stamm) über den Scheitel bis unten rechts (Lee)
+    const th = 2.25 - (i / Math.max(1, fringeN - 1)) * 3.2 + (rand() - 0.5) * 0.05;
+    const k = 0.93 + rand() * 0.08;
+    const ex = Math.cos(th) * env.rx * k;
+    const ey = Math.sin(th) * env.ry * k;
+    const px = env.cx + ex * cr - ey * sr;
+    const py = env.cy + ex * sr + ey * cr;
+    // Normale der Ellipse (nach außen), gedreht wie die Hülle
+    const nx0 = Math.cos(th) / env.rx;
+    const ny0 = Math.sin(th) / env.ry;
+    const out = Math.atan2(nx0 * sr + ny0 * cr, nx0 * cr - ny0 * sr);
+    const twig = 0.14 + rand() * 0.16;
+    strip(
+      [
+        [px - Math.cos(out) * twig, py - Math.sin(out) * twig],
+        [px - Math.cos(out + 0.3) * twig * 0.45, py - Math.sin(out + 0.3) * twig * 0.45],
+        [px, py],
+      ],
+      0.014,
+      0.006,
+      1,
+    );
+    tuft(px, py, out, 1.25 + rand() * 0.5);
+  }
   const g = new BufferGeometry();
   g.setAttribute('position', new Float32BufferAttribute(pos, 3));
   g.setIndex(new Uint32BufferAttribute(idx, 1));

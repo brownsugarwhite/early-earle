@@ -175,6 +175,18 @@ function addSea(acc: Acc, sea: Sea, slot: number): void {
   const grid: number[] = [];
   const keep: boolean[] = [];
   acc.bank = sea.cliff;
+  // Musterkoordinaten gedreht (Längsachse der Kräusel quer zum Blick der Komposition); linear, also exakt interpoliert
+  const rc = Math.cos(sea.ripple);
+  const rs = Math.sin(sea.ripple);
+  // Spiegelbild der Landzunge: Richtung zur Pfadküste (Ebene) und die spiegelnde Höhe (Klippe plus halber Anstieg zum
+  // Grat), gepackt in den Fluss-Slot: Winkel + 10 · Höhe. Der Winkel ist um π/2 gedreht und liegt in 0..2π, damit die
+  // übliche Richtung (quer zum Pfad, ±x) weit vom Sprung bei 0/2π liegt — der Wert wird im Dreieck linear gemischt.
+  const reflH = Math.max(1, Math.min(40, Math.round(sea.cliff + sea.rise * sea.ridge * 0.5)));
+  const probe = { t: 0, coast: 0 };
+  const coastAt = (x: number, z: number): number => {
+    planeSeaField(sea, x, z, probe);
+    return probe.coast;
+  };
   for (let i = 0; i <= rows; i++) {
     const z = zA - ((zA - zB) * i) / rows;
     const k = Math.max(0, Math.min(sea.backbone.length - 1, Math.round(sea.zTop - z)));
@@ -185,7 +197,12 @@ function addSea(acc: Acc, sea: Sea, slot: number): void {
       const f = planeSeaField(sea, x, z, hit);
       // Uferhöhe-Slot trägt beim Meer den Abstand zur Pfadküste (Spiegelbild der Landzunge)
       acc.bank = hit.coast;
-      grid.push(push(acc, x, sea.level, z, x, z, f, 0, slot, 0, id, 3));
+      const gx = coastAt(x + 0.5, z) - coastAt(x - 0.5, z);
+      const gz = coastAt(x, z + 0.5) - coastAt(x, z - 0.5);
+      let toward = Math.atan2(-gz, -gx) + Math.PI / 2;
+      if (toward > Math.PI) toward -= Math.PI * 2;
+      toward += Math.PI;
+      grid.push(push(acc, x, sea.level, z, x * rc - z * rs, x * rs + z * rc, f, 0, slot, toward + 10 * reflH, id, 3));
       keep.push(f > -0.8);
     }
   }

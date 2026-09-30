@@ -360,6 +360,22 @@ export class PlaneFeatures {
     return false;
   }
 
+  /**
+   * Uferabstand zum Meer der Region (> 0 im Wasser, < 0 an Land) oder null ohne Meer. `pathCoast`: nur Land zwischen
+   * Pfad und Pfadküste zählt (die fernen Ufer der Bucht bleiben frei — dort liefert es null).
+   */
+  seaDistance(key: string, x: number, z: number, pathCoast = false): number | null {
+    const r = this.region(key);
+    if (r.seas.length === 0) return null;
+    let best = -Infinity;
+    for (const sea of r.seas) {
+      const f = seaField(sea, x, z, this.seaHit);
+      if (pathCoast && this.seaHit.edge !== 0) continue;
+      best = Math.max(best, f);
+    }
+    return best === -Infinity ? null : best;
+  }
+
   /** Felssäule an einem Punkt (mit Rand) oder null. */
   rockAt(key: string, x: number, z: number, margin = 0): { formation: RockFormation; column: RockColumn } | null {
     const r = this.region(key);

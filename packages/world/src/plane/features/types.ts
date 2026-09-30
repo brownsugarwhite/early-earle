@@ -116,6 +116,8 @@ export interface Sea {
   bays: number;
   /** Höhenabfall der Landzunge längs der Bucht (0 = gleich hoch; 1 = vorn anderthalbfach, hinten halb). */
   slopeAlong: number;
+  /** Drehung der Kräusel in der Ebene (Bogenmaß). */
+  ripple: number;
   /** Anfang und Ende der Bucht (Anteil zwischen zTop und zBottom). */
   t0: number;
   t1: number;

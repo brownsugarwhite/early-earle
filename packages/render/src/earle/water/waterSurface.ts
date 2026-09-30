@@ -120,7 +120,7 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
   let shadowCol: Vec3Node = mix(pal(0), mix(pal(2), pal(3), 0.4), frozen) as unknown as Vec3Node;
   // Meer (Art 3, Welt 14): Earles gestaffelte Kräusel statt der Seezellen; als Faktor gemischt (kein `select`-Zweig)
   const isSea = clamp(float(1).sub(abs(wb.w.sub(3)).mul(2)), 0, 1);
-  const sea = seaColor({ lookup: o.lookup, row, x: u, z: v, shore: attribute('wg', 'vec2').y, body });
+  const sea = seaColor({ lookup: o.lookup, row, x: u, z: v, shore: attribute('wg', 'vec2').y, body, warp: o.warp, mirror: flow });
   col = mix(col, sea.color, isSea) as unknown as Vec3Node;
   shadowCol = mix(shadowCol, sea.shadow, isSea) as unknown as Vec3Node;
   return new EarleMaterial({

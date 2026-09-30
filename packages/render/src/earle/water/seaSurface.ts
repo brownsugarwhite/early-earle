@@ -1,4 +1,4 @@
-import { clamp, float, floor, fract, hash, mix, mod, positionView, smoothstep, sqrt, vec2 } from 'three/tsl';
+import { abs, cameraPosition, clamp, cos, dot, float, floor, fract, hash, max, mix, mod, modelWorldMatrix, normalize, positionLocal, positionView, sin, smoothstep, sqrt, varying, vec2, vec3, vec4 } from 'three/tsl';
 import { aaStep, patternTime, type FloatNode, type PaletteLookup, type Vec2Node, type Vec3Node } from '../tsl';
 
 /**
@@ -21,6 +21,34 @@ export interface SeaOptions {
   shore: FloatNode;
   /** Körper-Zufall 0..1. */
   body: FloatNode;
+  /** Anzeige-Abbildung (Ebene → Kugel), für den Streifwinkel zur gebogenen Oberfläche. */
+  warp: (p: Vec3Node) => Vec3Node;
+  /** Spiegelbild: Richtung zur Pfadküste (Winkel + 3π/2, in 0..2π) + 10 · spiegelnde Höhe der Landzunge (Vertex-Daten). */
+  mirror: FloatNode;
+}
+
+/**
+ * Blick auf die (gebogene) Meeresfläche, im Vertex-Schritt: `graze` = Streifwinkel (0 = streifend am Horizont, 1 =
+ * senkrecht von oben) und `toward` = wie sehr der Blick in der Ebene zur Pfadküste zeigt (cos, < 0 = von ihr weg). Der
+ * ferne Glanz und das Spiegelbild der Landzunge hängen daran statt an der Entfernung: vom Wasser aus hell unter dem
+ * Horizont und schwarz unter der Klippe, von oben (Karte, Übersicht) weder noch.
+ */
+function viewOnSea(warp: (p: Vec3Node) => Vec3Node, towardAngle: FloatNode): { graze: FloatNode; toward: FloatNode } {
+  const at = (dx: number, dy: number, dz: number): Vec3Node => warp(positionLocal.add(vec3(dx, dy, dz)) as unknown as Vec3Node);
+  const p = at(0, 0, 0);
+  const dir = (q: Vec3Node): Vec3Node => modelWorldMatrix.mul(vec4(q.sub(p), 0)).xyz as unknown as Vec3Node;
+  const up = normalize(dir(at(0, 0.5, 0)));
+  const ex = dir(at(0.5, 0, 0));
+  const ez = dir(at(0, 0, 0.5));
+  const view = modelWorldMatrix.mul(vec4(p, 1)).xyz.sub(cameraPosition);
+  const graze = abs(dot(normalize(view), up));
+  // Blickrichtung in Ebenenkoordinaten (über die Tangenten der Abbildung) gegen die Richtung zur Küste
+  const planeView = normalize(vec2(dot(view, ex).div(dot(ex, ex)), dot(view, ez).div(dot(ez, ez))).add(vec2(1e-5, 0)));
+  const toward = dot(planeView, vec2(cos(towardAngle), sin(towardAngle)));
+  return {
+    graze: varying(graze, 'vSeaGraze') as unknown as FloatNode,
+    toward: varying(toward, 'vSeaToward') as unknown as FloatNode,
+  };
 }
 
 /**
@@ -47,9 +75,10 @@ function mixInk(a: Vec3Node, b: Vec3Node, t: FloatNode): Vec3Node {
 /** Farbe des Meeres (Lichtseite) und seine Schattenfarbe (Schlagschatten = Tiefe). */
 export function seaColor(o: SeaOptions): { color: Vec3Node; shadow: Vec3Node } {
   const pal = (k: number): Vec3Node => o.lookup.pal(k, o.row).rgb as unknown as Vec3Node;
-  // Kräusel quer zum Blick: längs x gestreckt (≈ 3 : 1), langsam ziehend
+  // Kräusel längs der Musterachse u gestreckt (≈ 3.5 : 1; das Gitter dreht sie quer zum Blick der Komposition),
+  // langsam ziehend; die Verkürzung der Ebene macht sie fern zu schmalen Strichen, nah zu breiten Flecken
   const drift = patternTime.mul(0.012);
-  const q = vec2(o.x.mul(0.36).add(drift), o.z.mul(1.15).add(o.body.mul(17.0)));
+  const q = vec2(o.x.mul(0.4).add(drift), o.z.mul(1.4).add(o.body.mul(17.0)));
   const w = vec2(vnoise(q.mul(0.45).add(vec2(3.1, 1.7))), vnoise(q.mul(0.45).add(vec2(7.7, 5.3)))).sub(0.5);
   const n1 = vnoise(q.add(w.mul(1.9)));
   const n2 = vnoise(q.mul(2.3).add(w.mul(0.9)).add(vec2(11.0, 4.0)));
@@ -57,8 +86,15 @@ export function seaColor(o: SeaOptions): { color: Vec3Node; shadow: Vec3Node } {
   // Ferne heller, Nähe dunkler (Bildtiefe), Spiegelbild der Klippe dunkel mit zerfallendem Rand
   const dist = positionView.length();
   const depth = smoothstep(3.0, 26.0, dist);
-  const refl = smoothstep(6.5, 1.0, o.shore);
-  const bias = mix(float(-0.1), float(0.24), depth).sub(refl.mul(0.4));
+  // Spiegelbild der Landzunge: der gespiegelte Blick steigt so steil, wie er fällt; trifft er auf dem Weg zur Küste
+  // (Abstand längs des Blicks) die Klippe samt Hang, liegt hier ihr dunkles Bild. Dazu immer ein schmales Band am Ufer.
+  const mirrorH = floor(o.mirror.div(10));
+  const view = viewOnSea(o.warp, o.mirror.sub(mirrorH.mul(10)).sub(Math.PI * 1.5));
+  const tanDep = view.graze.div(sqrt(max(float(1e-4), float(1).sub(view.graze.mul(view.graze)))));
+  const along = o.shore.max(0).div(max(view.toward, float(0.02)));
+  const reach = mirrorH.div(max(tanDep, float(1e-3)));
+  const refl = max(smoothstep(reach.mul(1.12), reach.mul(0.88), along), smoothstep(2.5, 0.8, o.shore));
+  const bias = mix(float(0.0), float(0.24), depth).sub(refl.mul(0.45));
   const v = n.add(bias);
   // Stufen: Tal (1) | Saum (4) | Körper (2) | innerer Saum (3) | Krone (3→5)
   const s0 = aaStep(-0.1, v);
@@ -75,9 +111,12 @@ export function seaColor(o: SeaOptions): { color: Vec3Node; shadow: Vec3Node } {
   c = mix(c, bodyC, s1) as unknown as Vec3Node;
   c = mix(c, pal(4), s2) as unknown as Vec3Node;
   c = mix(c, crest, s3) as unknown as Vec3Node;
-  // ganz fern: die glatte, helle Fläche unter dem Horizont (Stufe 7), die Kräusel werden dort zu feinen Strichen
-  const far = smoothstep(26.0, 44.0, dist);
-  c = mix(c, mixInk(pal(3), pal(7), far.mul(0.9)), far.mul(aaStep(-0.02, v).mul(0.7).add(0.3))) as unknown as Vec3Node;
+  // ganz nah (tiefe Kamera über dem Wasser): fast Schwarz, die Kräusel nur noch dunkles Graublau auf Schwarz
+  c = mixInk(c, pal(0), smoothstep(12.0, 3.0, dist).mul(0.3));
+  // ganz fern (streifender Blick): die glatte, helle graugrüne Fläche unter dem Horizont (Stufe 3 → halb zur Stufe 7),
+  // die Kräusel werden dort zu feinen dunklen Strichen
+  const far = smoothstep(0.12, 0.025, view.graze).mul(refl.oneMinus());
+  c = mix(c, mixInk(pal(3), pal(7), far.mul(0.55)), far.mul(aaStep(-0.02, v).mul(0.6).add(0.4))) as unknown as Vec3Node;
   // Kein Schlagschatten auf dem Meer (Ebene 29: nur das Spiegelbild der Landzunge ist dunkel): Schatten = eigene Farbe
   return { color: c, shadow: c };
 }

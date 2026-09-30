@@ -78,16 +78,20 @@ export function seaHeight(sea: Sea, f: number, h: number, edge = 0, t = 0.5): nu
   // Höhe je Rand: Pfadküste (0) mit Abfall längs der Bucht, ferner Rand (1) flach, Anfang (2) mittel, Ende (3) als ferne
   // Landzunge am Horizont
   const alongT = Math.max(0, Math.min(1, t));
-  const tall = edge === 0 ? 1 + sea.slopeAlong * (0.5 - alongT) : edge === 1 ? 0.55 : edge === 2 ? 0.8 : 0.9;
+  const tall = edge === 0 ? 1 + sea.slopeAlong * (0.5 - alongT) : edge === 1 ? 0.3 : edge === 2 ? 0.8 : 0.9;
   const riseK = edge === 0 ? tall : edge === 1 ? 0.25 : 0.45;
   const top = sea.level + sea.cliff * tall;
-  // Klippe über ≈ 0,7 Einheiten (zwei Gitterschritte): steil, aber ohne Sägezahn an der Wasserlinie
+  // Klippe: flacher Geröllfuß, dann über zwei Einheiten S-förmig zur Kante
   if (f > -0.1) return sea.level - 0.12 - (sea.depth - 0.12) * smoothstep(-0.1, 0.9, f);
-  if (f > -0.8) {
-    const w = smoothstep(-0.1, -0.8, f);
-    return sea.level - 0.12 + (Math.max(top, h) - sea.level + 0.12) * w;
+  // flacher Fuß (Geröll, 1,2 Einheiten): die Wasserlinie schneidet ihn flach — auch im groben Fern-Gitter ohne Zacken
+  const foot = sea.level + 0.3;
+  if (f > -1.3) return sea.level - 0.12 + (foot - sea.level + 0.12) * ((-0.1 - f) / 1.2);
+  if (f > -3.3) {
+    const t = Math.min(1, (-1.3 - f) / 2);
+    const w = t * t * (3 - 2 * t);
+    return foot + (Math.max(top, h) - foot) * w;
   }
-  const inland = -f - 0.8;
+  const inland = -f - 3.3;
   // Anstieg zum Grat, danach über `sea.ridge * 0.5` zurück ins Gelände
   const ridgeH = top + sea.rise * riseK * Math.min(inland, sea.ridge);
   const back = smoothstep(sea.ridge, sea.ridge * 1.5, inland);
@@ -120,7 +124,8 @@ export function makeSea(host: PlaneFeatureHost, site: RegionSite, world: number,
   let half = Infinity;
   for (let z = zTop; z >= zBottom; z -= 2) half = Math.min(half, host.bandHalf(z));
   const ridge = spec.ridge ?? 10;
-  const outer = Math.max(far + 8, half - 2.6 - Math.min(4, ridge * 0.3));
+  // ferner Rand: bis an die Regionsgrenze (dahinter steigt die Nachbarwelt als fernes Ufer auf)
+  const outer = Math.max(far + 8, half + 1.5);
   const sea: Sea = {
     id: `${site.region.key}-sea`,
     world,
@@ -136,6 +141,7 @@ export function makeSea(host: PlaneFeatureHost, site: RegionSite, world: number,
     outer,
     bays: spec.bays ?? 1.6,
     slopeAlong: spec.slopeAlong ?? 0,
+    ripple: ((spec.ripple ?? 0) * Math.PI) / 180,
     t0: spec.ends?.[0] ?? 0.1,
     t1: spec.ends?.[1] ?? 0.9,
     zTop,

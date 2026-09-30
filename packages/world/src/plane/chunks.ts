@@ -1,6 +1,6 @@
 import { hash32, mulberry32 } from '../rng';
 import type { Vec3 } from '../capPatch';
-import { TREE_PROPORTIONS, pickTreeKind, type TreeKind } from '../scatterTrees';
+import { TREE_PROPORTIONS, pickTreeKind, type TreeFamily, type TreeKind } from '../scatterTrees';
 import { NO_WATER } from './features/index';
 import type { FeatureSample } from './features/types';
 import type { PlaneField } from './field';
@@ -393,6 +393,12 @@ export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, opt
     const key = rs.region.key;
     const fam = field.spec(world).vegetation;
     if (fam.density <= 0) continue;
+    // Windbäume an der Klippenkante (Welt 14): nur im Band hinter der Klippe
+    const band = (fam as TreeFamily).coastBand;
+    if (band) {
+      const f = field.features.seaDistance(key, x, z, true);
+      if (f === null || f > -band[0] || f < -band[1]) continue;
+    }
     const rel = Math.min(1, fam.density / Math.max(1e-6, maxDensity));
     const forest = field.forestAt(x, z);
     const ft = fam.forestThreshold ?? 0.51;

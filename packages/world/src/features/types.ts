@@ -44,6 +44,11 @@ export interface CoastSpec {
   ends?: [number, number];
   /** Höhenabfall der Landzunge längs der Bucht (0 = gleich hoch, 1 = vorn anderthalbfach, am Ende halb), Standard 0. */
   slopeAlong?: number;
+  /**
+   * Drehung der Kräusel in der Ebene (Grad, von oben gegen den Uhrzeiger): ihre Längsachse liegt quer zum Blick der
+   * Weltkomposition (dort waagrecht wie bei Earle), Standard 0 = quer zum Pfad.
+   */
+  ripple?: number;
 }
 
 /** Lage relativ zum Levelpfad (nahe Welten) bzw. zum Bildfokus der Welt (ferne Welten ohne Pfad). */
