@@ -24,6 +24,7 @@ export {
   TREE_KIND_LIST,
   TREE_PROPORTIONS,
   type BarkStyleName,
+  type GiantSpec,
   type GroveFieldLike,
   type GroveSpec,
   type GroveTree,

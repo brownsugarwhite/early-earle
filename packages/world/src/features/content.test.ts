@@ -22,7 +22,7 @@ interface WorldFile {
   vegetation: PlanetWorldParams['vegetation'];
   props?: PlanetWorldParams['props'];
   features?: WorldFeatureSpec;
-  focal?: { kind?: string; scale?: number; latFrac?: number; deltaDeg?: number; yawDeg?: number };
+  focal?: { kind?: string; scale?: number; latFrac?: number; deltaDeg?: number; yawDeg?: number; clear?: number };
 }
 
 const zones = readdirSync(contentDir)
@@ -56,7 +56,7 @@ function buildField(seed = 7): PlanetField {
       deltaDeg: w.focal.deltaDeg ?? 40,
       yawDeg: w.focal.yawDeg ?? 0,
       scale: 1,
-      clearRadius: !w.focal.kind ? 0 : w.focal.kind === 'barn' ? 4.5 : 3.2,
+      clearRadius: !w.focal.kind ? 0 : (w.focal.clear ?? (w.focal.kind === 'barn' ? 4.5 : 3.2)),
       ...(w.focal.kind ? { instance: { kind: w.focal.kind as NonNullable<PlanetLandmarkParams['instance']>['kind'], scale: w.focal.scale ?? 1 } } : {}),
     });
   });

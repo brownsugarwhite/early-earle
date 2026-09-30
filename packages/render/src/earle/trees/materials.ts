@@ -5,6 +5,8 @@ import { aaStep, palByKey, steppedFog, type FloatNode, type FogSettings, type Pa
 import { earleGradients, fountain, hueRotate } from '../gradients';
 import { blotches, flowLines, flowers, stipple, valueNoise3 } from './patterns';
 import type { ShadeTexture } from './shade';
+import { glassBark } from './glassBark';
+import { glowBark } from './glowBark';
 
 /** Nebel je Instanz (Bäume v4, siehe `trees/fog.ts`): ersetzt den gestuften Nebel je Fragment, wenn gesetzt. */
 export type FogFn = (color: Vec3Node) => Vec3Node;
@@ -228,8 +230,8 @@ class DotLightingModel extends LightingModel {
 
 // --- Rinde ------------------------------------------------------------------------------------------------
 
-/** Rindenstile (Index im Instanzattribut): Tinte, weiß (Kathedrale), Juwelenstreifen, Flechten, Kalligrafie. */
-export const BARK_STYLE = { ink: 0, white: 1, striped: 2, lichen: 3, calligraphy: 4 } as const;
+/** Rindenstile (Index im Instanzattribut): Tinte, weiß (Kathedrale), Juwelenstreifen, Flechten, Kalligrafie, Leuchten. */
+export const BARK_STYLE = { ink: 0, white: 1, striped: 2, lichen: 3, calligraphy: 4, glow: 5 } as const;
 export type BarkStyle = keyof typeof BARK_STYLE;
 
 export interface BarkMaterialOptions {
@@ -260,6 +262,8 @@ export interface BarkMaterialOptions {
    * Vertices, `color` die blasse Fläche, vor der Skelett und Punkte stehen.
    */
   veil?: { mask: FloatNode; color: Vec3Node } | null;
+  /** Riesenstamm (Archetyp `pillar`): Rindenstile, die dicke und dünne Stämme unterscheiden (Leuchten), nehmen die dicke Form. */
+  giant?: boolean;
 }
 
 export class BarkMaterial extends NodeMaterial {
@@ -302,7 +306,8 @@ class BarkLightingModel extends LightingModel {
     const isWhite = style.greaterThan(0.5).and(style.lessThan(1.5));
     const isStriped = style.greaterThan(1.5).and(style.lessThan(2.5));
     const isLichen = style.greaterThan(2.5).and(style.lessThan(3.5));
-    const isCalli = style.greaterThan(3.5);
+    const isCalli = style.greaterThan(3.5).and(style.lessThan(4.5));
+    const isGlow = style.greaterThan(4.5);
     // Weiße Kathedralenstämme bleiben fast rundum hell (Ebene_23), sonst Tinte ab dem Terminator
     const term = select(isWhite, float(-0.35), float(0.02));
     const lit = aaStep(term, ndl);
@@ -363,6 +368,12 @@ class BarkLightingModel extends LightingModel {
       select(isStriped, mix(ink, striped, 0.28), select(isLichen, mix(ink, lichenCol, blotch.mul(0.25)), mix(ink, lineShadow, calli))),
     ) as unknown as Vec3Node;
     let col = mix(shadowCol, litCol, lit);
+    // Leuchtende Kathedralenstämme mit Lichtkante (Ebene 16): eigener Zweig, siehe glowBark.ts. `mix` statt `select`: ein
+    // `select` baut seine Zweige als if/else, und geteilte Knoten (Licht) stünden dann nur im nicht genommenen Zweig
+    const glow = glowBark({ lookup: o.lookup, row, acc, lit, bark: o.bark, variant, giant: o.giant ?? false });
+    col = mix(col, glow, select(isGlow, float(1), float(0))) as unknown as Vec3Node;
+    // Riesenstämme im Juwelenwald: feine Glasfenster-Streifen statt der groben Juwelenstreifen (Ebene 3), siehe glassBark.ts
+    if (o.giant) col = mix(col, glassBark({ lookup: o.lookup, row, acc, lit, ndl, bark: o.bark, variant }), select(isStriped, float(1), float(0))) as unknown as Vec3Node;
     // Schnee auf den Oberseiten (Bilder 01/04): Fleckenrand aus Tüpfeln, die mit der Schneemenge wachsen
     // Oberseiten (Normale zum Lot) und die Wetterseite des Stamms (eine Seite rundum, je Baum gedreht) tragen Schnee;
     // der Rand ist ein Tüpfelsaum aus Schneeflocken, die zur Kante hin kleiner werden
