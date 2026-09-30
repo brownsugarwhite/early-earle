@@ -87,3 +87,22 @@ test('Earle-Welten auf WebGPU: Wasser, Felsen, Scheune, Schneefelder und -wehen 
   }
   expect(errors).toEqual([]);
 });
+
+test('Riesenbaum im Flow auf WebGPU: Baumpilze, Blütensteine, Schiene, Anflug auf Wurzelterrasse und Krone', async ({ page }) => {
+  const errors = collectGpuErrors(page);
+  await page.setViewportSize({ width: 393, height: 852 });
+  // Level 86 (Rinde → Wurzelterrasse) und 92 (Krone): Pilze, Steine, Punkte und Ring am Baum, Schattenwert der Punkte
+  for (const node of [85, 91]) {
+    await page.addInitScript((n) => localStorage.setItem('ee.progress.v1', JSON.stringify({ version: 1, reached: n, current: n, levels: {} })), node);
+    await page.goto('/play');
+    if (node === 85) await requireWebGPU(page);
+    const hud = page.getByTestId('flow-hud');
+    await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: 30_000 });
+    await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgpu', { timeout: 30_000 });
+    await page.waitForTimeout(2500);
+    await page.getByTestId('play-btn').click();
+    await expect(hud).toHaveAttribute('data-flow-state', 'level', { timeout: 30_000 });
+    await page.waitForTimeout(2000);
+  }
+  expect(errors).toEqual([]);
+});
