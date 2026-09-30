@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { writeFileSync } from 'node:fs';
+import { test, expect, type Browser, type Page } from '@playwright/test';
 
 // Möwe im Spiel (Iteration 4, B2): der Schatten einer Möwe fliegt übers Brett und lässt den Spawn aufklatschen.
 // Funktionsprüfung im Grid-Lab mit `?gull=always` auf dem WebGL2-Fallback (SwiftShader) wie die anderen Specs:
@@ -134,16 +135,18 @@ test('Grid-Lab ?gull=always: der Möwenschatten fliegt, der Blob klatscht auf, d
 });
 
 // ------------------------------------------------------------------------------------------------ Bilder (echte GPU)
-// `GULL_SHOTS=1 E2E_PORT=… node scripts/e2e.mjs e2e/gull.spec.ts` (Mac, Metal): hält die Szene an festen Momenten des
-// Flugs an (die Uhr der Seite läuft über `performance.now`, hier langsamer bzw. angehalten) und legt Bilder nach
-// `GULL_SHOTS_DIR` (Standard docs/progress). Nicht in CI.
+// `GULL_SHOTS=1 E2E_PORT=… node scripts/e2e.mjs e2e/gull.spec.ts -g Bilder` (Mac, Metal): hält die Szene an festen
+// Momenten des Flugs an (die Seitenuhr läuft über `performance.now`, hier in Zeitlupe bzw. angehalten) und legt Bilder
+// nach `GULL_SHOTS_DIR` (Standard docs/progress): Schatten über dem Brett (Grid-Lab und Flow, Handy und Desktop), Fall,
+// Aufprall und je eine Bildfolge. Nicht in CI.
 
 const SHOTS = process.env.GULL_SHOTS_DIR ?? '../../docs/progress';
 const PREFIX = process.env.GULL_SHOTS_PREFIX ?? 'iter4-b2-';
 
-/** Seitenuhr mit Zeitlupe/Halt: `window.__eeTime.scale` (1 = normal, 0 = angehalten). */
-async function installClock(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+/** Seitenuhr mit Zeitlupe/Halt: `window.__eeTime.scale` (1 = normal, 0 = angehalten); optional ein Fortschritt. */
+async function installClock(page: Page, progress: object | null): Promise<void> {
+  await page.addInitScript((prog) => {
+    if (prog) localStorage.setItem('ee.progress.v2', JSON.stringify(prog));
     const real = performance.now.bind(performance);
     let lastReal = real();
     let virt = lastReal;
@@ -155,7 +158,7 @@ async function installClock(page: Page): Promise<void> {
       lastReal = r;
       return virt;
     };
-  });
+  }, progress);
 }
 
 async function timeScale(page: Page, k: number): Promise<void> {
@@ -172,66 +175,139 @@ interface Times {
   exitAt: number;
 }
 
-/** Flugzeit des zuletzt geschriebenen Möwen-Frames (s ab Zugbeginn) und die Zeiten des Flugs. */
-async function flight(page: Page): Promise<{ t: number; times: Times | null }> {
+/** Flugzeit des zuletzt geschriebenen Möwen-Frames (s ab Zugbeginn), die Zeiten des Flugs, gestartete Flüge. */
+async function flight(page: Page): Promise<{ t: number; times: Times | null; flights: number }> {
   return page.evaluate(() => {
     interface G {
+      flights: number;
       last: { t: number; times: Times | null };
     }
     const c = (window as unknown as { __ee?: { controller?: { board?: { renderer?: { gull: G } } } } }).__ee?.controller;
     const g = c?.board?.renderer?.gull;
-    return { t: g?.last.t ?? -1, times: g?.last.times ?? null };
+    return { t: g?.last.t ?? -1, times: g?.last.times ?? null, flights: g?.flights ?? 0 };
   });
 }
 
-/** Lässt die Szene in Zeitlupe laufen, bis der Flug den Moment `at(times)` erreicht, und hält sie dort an. */
-async function freezeAt(page: Page, at: (t: Times) => number): Promise<void> {
-  await timeScale(page, 0.12);
+/** Zeitlupe, bis der Flug Nr. `n` den Moment `at(times)` erreicht; dort anhalten. */
+async function freezeAt(page: Page, n: number, at: (t: Times) => number): Promise<void> {
+  await timeScale(page, 0.1);
   await expect
     .poll(
       async () => {
         const f = await flight(page);
-        return f.times ? f.t >= at(f.times) : false;
+        return f.flights >= n && f.times !== null && f.t >= at(f.times);
       },
-      { timeout: 60_000, intervals: [10] },
+      { timeout: 60_000, intervals: [8] },
     )
     .toBe(true);
   await timeScale(page, 0);
-  await page.waitForTimeout(250);
+  await page.waitForTimeout(300);
 }
 
-async function shoot(page: Page, name: string): Promise<void> {
-  await page.screenshot({ path: `${SHOTS}/${PREFIX}${name}.png` });
+/** Bildfolge als ein Bild (Canvas im Browser): `frames` in Spalten, Beschriftung über jedem Bild. */
+async function sheet(browser: Browser, frames: Buffer[], labels: string[], cols: number, cellW: number, file: string): Promise<void> {
+  const page = await browser.newPage();
+  await page.setContent('<html><body style="margin:0"></body></html>');
+  const url = await page.evaluate(
+    async ({ srcs, labels, cols, cellW }) => {
+      const imgs = await Promise.all(
+        srcs.map(
+          (src) =>
+            new Promise<HTMLImageElement>((res) => {
+              const i = new Image();
+              i.onload = () => res(i);
+              i.src = src;
+            }),
+        ),
+      );
+      const first = imgs[0]!;
+      const cellH = Math.round((cellW * first.height) / first.width);
+      const pad = 8;
+      const lab = 26;
+      const rows = Math.ceil(imgs.length / cols);
+      const c = document.createElement('canvas');
+      c.width = cols * (cellW + pad) + pad;
+      c.height = rows * (cellH + lab + pad) + pad;
+      const g = c.getContext('2d')!;
+      g.fillStyle = '#081b25';
+      g.fillRect(0, 0, c.width, c.height);
+      imgs.forEach((img, k) => {
+        const x = pad + (k % cols) * (cellW + pad);
+        const y = pad + Math.floor(k / cols) * (cellH + lab + pad);
+        g.drawImage(img, x, y + lab, cellW, cellH);
+        g.fillStyle = '#f7f6d8';
+        g.font = 'bold 17px sans-serif';
+        g.fillText(labels[k] ?? '', x + 2, y + 19);
+      });
+      return c.toDataURL('image/png');
+    },
+    { srcs: frames.map((b) => `data:image/png;base64,${b.toString('base64')}`), labels, cols, cellW },
+  );
+  writeFileSync(file, Buffer.from(url.split(',')[1]!, 'base64'));
+  await page.close();
 }
+
+const FREE_AT = (node: number) => ({ version: 2, mode: 'free', slots: { free: { reached: node, current: node }, real: {} } });
+
+/** Momente der Bildfolge relativ zum Abwurf bzw. Aufprall. */
+const SEQUENCE: Array<{ label: string; at: (t: Times) => number }> = [
+  { label: 'Anflug', at: (t) => t.releaseAt - 0.5 },
+  { label: 'über dem Brett', at: (t) => t.releaseAt - 0.33 },
+  { label: 'gleitet', at: (t) => t.releaseAt - 0.16 },
+  { label: 'Abwurf', at: (t) => t.releaseAt },
+  { label: 'Fall', at: (t) => t.releaseAt + 0.33 },
+  { label: 'Flatsch', at: (t) => t.impactAt + 0.04 },
+  { label: 'Uff', at: (t) => t.impactAt + 0.13 },
+  { label: 'Ringe', at: (t) => t.impactAt + 0.34 },
+];
 
 test.describe('Bilder (echte GPU)', () => {
   test.skip(!process.env.GULL_SHOTS, 'nur auf Wunsch: GULL_SHOTS=1');
+  test.setTimeout(300_000);
 
-  for (const view of [
-    { name: 'handy', width: 393, height: 852 },
-    { name: 'desktop', width: 1280, height: 800 },
-  ]) {
-    test(`Grid-Lab ${view.name}: Anflug, Abwurf, Fall, Aufprall`, async ({ page }) => {
-      await installClock(page);
-      await page.setViewportSize({ width: view.width, height: view.height });
-      await page.goto('/lab/grid?gull=always');
-      await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu|webgl2/, { timeout: 30_000 });
-      if (view.name === 'handy') await page.getByTestId('lab-sheet-toggle').click();
-      await page.getByTestId('grid-level-select').selectOption(process.env.GULL_LEVEL ?? '4');
-      if (view.name === 'handy') await page.getByTestId('lab-sheet-toggle').click();
-      await page.waitForTimeout(3500);
+  for (const scene of [
+    { where: 'grid', view: 'handy', width: 393, height: 852, dpr: 2 },
+    { where: 'grid', view: 'desktop', width: 1280, height: 800, dpr: 1 },
+    { where: 'flow', view: 'handy', width: 393, height: 852, dpr: 2 },
+    { where: 'flow', view: 'desktop', width: 1280, height: 800, dpr: 1 },
+  ] as const) {
+    test(`${scene.where} ${scene.view}: Möwenschatten, Fall, Aufprall`, async ({ browser }) => {
+      const context = await browser.newContext({ viewport: { width: scene.width, height: scene.height }, deviceScaleFactor: scene.dpr });
+      const page = await context.newPage();
+      const flow = scene.where === 'flow';
+      // Flow: Level 5 (Der Vierundsechziger, 5×5) im freien Modus — offenes Brett, wenig Baumschatten darauf.
+      await installClock(page, flow ? FREE_AT(Number(process.env.GULL_NODE ?? 4)) : null);
+      if (flow) {
+        await page.goto('/play?gull=always');
+        const hud = page.getByTestId('flow-hud');
+        await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: 60_000 });
+        await page.waitForTimeout(2000);
+        await page.getByTestId('play-btn').click();
+        await expect(hud).toHaveAttribute('data-flow-state', 'level', { timeout: 60_000 });
+        await page.waitForTimeout(3000);
+      } else {
+        await page.goto('/lab/grid?gull=always');
+        await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu|webgl2/, { timeout: 30_000 });
+        if (scene.view === 'handy') await page.getByTestId('lab-sheet-toggle').click();
+        await page.getByTestId('grid-level-select').selectOption(process.env.GULL_LEVEL ?? '4');
+        if (scene.view === 'handy') await page.getByTestId('lab-sheet-toggle').click();
+        await page.waitForTimeout(3500);
+      }
+      const n = (await flight(page)).flights + 1;
       await page.keyboard.press(process.env.GULL_KEY ?? 'ArrowLeft');
-      await freezeAt(page, (t) => t.releaseAt - 0.22);
-      await shoot(page, `grid-${view.name}-anflug`);
-      await freezeAt(page, (t) => t.releaseAt);
-      await shoot(page, `grid-${view.name}-abwurf`);
-      await freezeAt(page, (t) => t.releaseAt + 0.33);
-      await shoot(page, `grid-${view.name}-fall`);
-      await freezeAt(page, (t) => t.impactAt + 0.05);
-      await shoot(page, `grid-${view.name}-aufprall`);
-      await freezeAt(page, (t) => t.impactAt + 0.3);
-      await shoot(page, `grid-${view.name}-abflug`);
+      const frames: Buffer[] = [];
+      for (const m of SEQUENCE) {
+        await freezeAt(page, n, m.at);
+        const shot = await page.screenshot();
+        frames.push(shot);
+        const name = `${scene.where}-${scene.view}`;
+        if (m.label === 'über dem Brett') writeFileSync(`${SHOTS}/${PREFIX}${name}-schatten.png`, shot);
+        if (flow && scene.view === 'handy' && m.label === 'Fall') writeFileSync(`${SHOTS}/${PREFIX}fall.png`, shot);
+        if (flow && scene.view === 'handy' && m.label === 'Flatsch') writeFileSync(`${SHOTS}/${PREFIX}aufprall.png`, shot);
+      }
       await timeScale(page, 1);
+      if (scene.view === 'handy') await sheet(browser, frames, SEQUENCE.map((m) => m.label), 4, 330, `${SHOTS}/${PREFIX}${scene.where}-sequenz.png`);
+      await context.close();
     });
   }
 });
