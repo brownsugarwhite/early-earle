@@ -163,6 +163,8 @@ export class TrashField {
   private pathRef: SpiralPath | null = null;
   private densityScale: number;
   private active: string[] = [];
+  private readonly lastWanted = new Map<string, number>();
+  private nearSet = new Set<string>();
   private activeKey = '';
   private nearKey = '';
   private dirty = true;
@@ -467,9 +469,20 @@ export class TrashField {
         if (oldest !== undefined && !wanted.some((x) => x.key === oldest)) this.cache.delete(oldest);
       }
     }
-    const active = wanted.filter((w) => this.cache.has(w.key)).map((w) => w.key);
+    // Hysterese: ein Chunk bleibt 30 Frames aktiv, nachdem er aus dem Bild fiel, und bleibt „nah“, solange er unter den
+    // N + 2 nächsten ist — kleine Kamerabewegungen am Bildrand oder gleich weite Chunks schreiben die Puffer nicht neu
+    for (const w of wanted) this.lastWanted.set(w.key, this.frame);
+    const wantedKeys = wanted.filter((w) => this.cache.has(w.key)).map((w) => w.key);
+    const lingering = [...this.lastWanted].filter(([k, f]) => this.frame - f <= 30 && this.cache.has(k) && !wantedKeys.includes(k)).map(([k]) => k);
+    for (const [k, f] of this.lastWanted) if (this.frame - f > 30) this.lastWanted.delete(k);
+    const active = [...wantedKeys, ...lingering];
     const activeKey = [...active].sort().join('|');
-    const nearKey = active.slice(0, this.caps.nearChunks).sort().join('|');
+    const nearN = this.caps.nearChunks;
+    const nearNow = new Set(wantedKeys.slice(0, nearN));
+    const keepable = new Set(wantedKeys.slice(0, nearN + 2));
+    for (const k of this.nearSet) if (keepable.has(k) && nearNow.size < nearN + 2) nearNow.add(k);
+    this.nearSet = nearNow;
+    const nearKey = [...nearNow].sort().join('|');
     if (activeKey !== this.activeKey || nearKey !== this.nearKey) {
       this.activeKey = activeKey;
       this.nearKey = nearKey;
