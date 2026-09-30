@@ -58,6 +58,8 @@ const SEGMENT_LABEL: Record<string, string> = {
   fallback: 'Fallback',
   preview: 'Vorschau',
   portalId: 'Rohr-Kennung',
+  script: 'Skript',
+  kind: 'Art',
 };
 
 function tabFor(path: readonly PropertyKey[]): Issue['tab'] {
@@ -97,6 +99,9 @@ function cellsFor(d: LevelDraft, path: readonly PropertyKey[], message: string):
   } else if (head === 'spawn' && idx === 'sources' && typeof sub === 'number') {
     const c = asCell(d.spawn.sources[sub]);
     if (c) out.push(c);
+  } else if (head === 'spawn' && idx === 'script' && typeof sub === 'number') {
+    const c = asCell(d.spawn.script?.[sub]?.at);
+    if (c) out.push(c);
   }
   const seen = new Set<string>();
   return out.filter((c) => {
@@ -126,6 +131,7 @@ function describePath(path: readonly PropertyKey[]): string {
 const TRANSLATIONS: [RegExp, (m: RegExpExecArray) => string][] = [
   [/^mask must have (\d+) rows$/, (m) => `Maske braucht ${m[1]} Zeilen`],
   [/^mask row (\d+) must have (\d+) chars$/, (m) => `Maskenzeile ${Number(m[1]) + 1} braucht ${m[2]} Zeichen`],
+  [/^grid needs at least 2 playable cells$/, () => 'Raster braucht mindestens 2 freie Zellen'],
   [/^\[(\d+),(\d+)\] is outside the grid$/, (m) => `[${m[1]},${m[2]}] liegt außerhalb des Rasters`],
   [/^\[(\d+),(\d+)\] is not a '\.' cell$/, (m) => `[${m[1]},${m[2]}] ist keine freie Zelle`],
   [/^(crust|sleeper) at \[(\d+),(\d+)\] needs content or a start blob$/, (m) => `${m[1] === 'crust' ? 'Kruste' : 'Schläfer'} bei [${m[2]},${m[3]}] braucht einen Inhalt oder einen Start-Blob`],
@@ -205,9 +211,12 @@ function translate(issue: ZodIssueLike): string {
   }
 }
 
-/** Zugbänder aus GDD 6.1 nach Levelnummer. */
-export function movesBand(levelNo: number): [number, number] | null {
-  if (levelNo <= 0) return null;
+/**
+ * Zugbänder aus GDD 6.1 nach Levelnummer. Gelten ab 4×4; kleinere Tutorial-Bretter (`cells` < 16) bekommen so viele
+ * Züge, wie ihre Mechanik braucht.
+ */
+export function movesBand(levelNo: number, cells = 16): [number, number] | null {
+  if (levelNo <= 0 || cells < 16) return null;
   if (levelNo <= 20) return [30, 38];
   if (levelNo <= 60) return [25, 30];
   return [23, 27];
@@ -221,7 +230,7 @@ function softChecks(d: LevelDraft): Issue[] {
   if (!d.name || !d.name.trim()) warn('Name', 'Kein Name vergeben', 'ziele');
   if (!d.id.startsWith(d.zone)) warn('ID', `ID beginnt nicht mit der Zone „${d.zone}“`, 'ziele');
 
-  const band = movesBand(no);
+  const band = movesBand(no, d.grid.w * d.grid.h);
   if (band && d.moves < 99 && (d.moves < band[0] || d.moves > band[1])) {
     warn('Züge', `${d.moves} Züge liegen außerhalb des Bands ${band[0]}–${band[1]} für Level ${no}`, 'ziele');
   }

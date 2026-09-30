@@ -1,7 +1,6 @@
-import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
-
-// Dieselben Aliase wie in vite.config.ts, damit Tests Module mit Inhalten (@content/…) laden können.
+import { defineConfig } from 'vitest/config';
+// Dieselben Aliase wie vite.config.ts (vitest liest die Vite-Konfiguration nicht, sobald es diese Datei gibt).
 export default defineConfig({
   resolve: {
     alias: {

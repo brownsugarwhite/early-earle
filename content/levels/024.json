@@ -4,65 +4,48 @@
   "zone": "tjorizo",
   "name": "Der Strahl",
   "grid": {
-    "w": 5,
-    "h": 5,
-    "mask": [".....", ".....", ".....", ".....", "....."]
+    "w": 4,
+    "h": 4,
+    "mask": ["....", "....", "....", "...."]
   },
   "fences": [],
   "floors": [],
   "blockers": [
     {
       "kind": "scrap",
-      "at": [4, 3],
+      "at": [1, 2],
       "layers": 2
     },
     {
       "kind": "scrap",
-      "at": [0, 1],
-      "layers": 2
-    },
-    {
-      "kind": "scrap",
-      "at": [3, 0],
+      "at": [2, 2],
       "layers": 2
     }
   ],
   "threats": [],
   "start": [
     {
+      "at": [0, 1],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [1, 1],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
       "at": [2, 1],
       "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [1, 3],
-      "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [3, 3],
-      "blob": {
         "tier": 2
       }
     },
     {
-      "at": [2, 2],
+      "at": [3, 1],
       "blob": {
         "tier": 2
-      }
-    },
-    {
-      "at": [2, 3],
-      "blob": {
-        "tier": 1
-      }
-    },
-    {
-      "at": [3, 4],
-      "blob": {
-        "tier": 1
       }
     }
   ],
@@ -86,7 +69,7 @@
       "type": "clearScrap"
     }
   ],
-  "moves": 32,
+  "moves": 24,
   "cap": 12,
   "specials": {
     "lineAt": 2,
