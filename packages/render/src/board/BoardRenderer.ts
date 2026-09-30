@@ -2,7 +2,7 @@ import { Group, Matrix4, Quaternion, Vector2, Vector3 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
 import { time, uniform } from 'three/tsl';
 import type { LevelState, MoveResult } from '@ee/core';
-import { genomeFor, type GenomeRules, type ZoneId } from '@ee/genome';
+import { genomeFor, mixHex, type GenomeRules, type ZoneId } from '@ee/genome';
 import type { ModuleLibrary } from '../creature/index';
 import type { FloatNode } from '../earle/tsl';
 import { BoardBlobs, type CreatureMode } from './BoardBlobs';
@@ -288,6 +288,12 @@ export class BoardRenderer {
     this.siteSeed = seed;
     this.plateau.setStyle(st);
     this.props.setDotColor(st.rim?.dot ?? this.palette.bushDot);
+    // Stone plates cut from the same place: a step between the first two skirt bands, hatch toward the third (for the
+    // zone meadow this is the palette's plate), ink of the site — violet on the crown, rock on a ledge, sand at a shore
+    if (style) {
+      const plate = mixHex(st.skirt[0], st.skirt[1], 0.6);
+      this.cells.setStoneColors(plate, mixHex(plate, st.skirt[2], 0.7), st.ink);
+    } else this.cells.setStoneColors(this.palette.plate, this.palette.plateLine, this.palette.ink);
     this.applyShape();
     if (this.state) this.plantBushes(this.hiddenLoad);
   }

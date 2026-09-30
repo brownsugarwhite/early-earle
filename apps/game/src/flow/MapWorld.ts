@@ -165,44 +165,11 @@ export class MapWorld {
     this.world.vegetation.setFootClear(MAP_VIEW.footClear);
     this.planet.add(this.world.group);
 
-    // The level path leads through the landscape: the spiral is only its backbone (hillsides and valley floors,
-    // organic S-curves, nodes on flat ground or on the element they visit). Routed before the giant tree splices in.
-    const firstTree = TREE_LEVELS[0] - 1;
-    const lastTree = TREE_LEVELS[1] - 1;
-    this.route = routeGroundPath(this.world.field, this.world.path, {
-      nodesPerZone: NODES_PER_ZONE,
-      seed: options.seed ?? 7,
-      keepGround: [firstTree - 1, lastTree + 1],
-      provider: options.anchors === undefined ? featurePathProvider(this.world.field) : options.anchors,
-    });
-    this.world.setPath(this.route);
-
-    // The giant tree: slot next to the path, levels 80–95 on trunk and crown (splices the level path)
+    // The level path leads through the landscape (routed before the giant tree splices in), then the giant tree carries
+    // levels 80–95 on trunk and crown
+    this.route = routeWorldPath(this.world, options.seed ?? 7, options.anchors);
     this.treeSite = createHeroTreeSite(this.world, { worldIndex: HERO_TREE_WORLD, quality: q.name, seed: options.seed ?? 7, landmarks });
-    const slot = this.world.getLandmarkSlot('hero-tree');
-    // The tree's own markers (fungi on the bark, stones on roots and domes, flush dots) carry its stretch: the nodes lie
-    // exactly on the tree's surfaces, its dots are used as they are (NodePath leaves both to the markers)
-    const surfaceOf = { root: 'ground', bark: 'bark', limb: 'bark', dome: 'crown' } as const;
-    const built = buildLevelPath(
-      this.world,
-      this.route,
-      slot
-        ? {
-            first: this.treeSite.first,
-            last: this.treeSite.last,
-            path: this.treeSite.tree.path,
-            shape: this.treeSite.tree.shape,
-            domes: this.treeSite.tree.domes,
-            matrix: this.world.landmarkMatrix(slot, new Matrix4()),
-            world: HERO_TREE_WORLD,
-            surface: this.treeSite.tree.path.nodes.map((n) => ({ position: n.position, normal: n.normal, on: surfaceOf[n.surface] })),
-            dotsOnSurface: true,
-          }
-        : null,
-    );
-    // Corridor and growth follow the final path (stones on the tree, dots on bark and crown).
-    this.world.setPath(built.spiral);
-    const layout: BentLayout = { ...built.layout, bend: (p: Vec3Node) => this.world.bendNode(p) };
+    const layout = spliceTreePath(this.world, this.route, this.treeSite);
     // Trash v2 (neon debris, ruins, heaps, veil): placed after the final path, so its corridor stays clear.
     this.trash = createPlanetTrash(this.world, { quality: q.name, seed: options.seed ?? 7, densityScale: options.trashScale ?? 1 });
     this.trash.setFootClear(MAP_VIEW.footClear);
@@ -244,13 +211,7 @@ export class MapWorld {
    * flowers and pedestals take each world's ink, jewel accent, rock, scrap, sand and water.
    */
   pathPalette(): PathPalette {
-    return {
-      lookup: this.world.lookup,
-      fog: this.world.fog,
-      bands: this.world.terrainBands,
-      terrainRow: (w) => this.world.rows[Math.max(0, Math.min(this.world.rows.length - 1, w))]!.terrain,
-      colors: (w) => worldPathColors(w),
-    };
+    return planetPathPalette(this.world);
   }
 
   /** Direction to the sun in world space (unit). */
@@ -535,6 +496,66 @@ export function tangentFrame(normal: Vector3, forwardHint: Vector3, out: Matrix4
   fwd.normalize();
   const right = new Vector3().crossVectors(up, fwd).normalize();
   return out.makeBasis(right, up, fwd);
+}
+
+/**
+ * Lays the level path through the landscape (MapWorld, Earle lab): the spiral is only its backbone (hillsides and
+ * valley floors, organic S-curves, nodes on flat ground or on the element they visit, around lakes, rivers and rock
+ * feet). Keeps the nodes around the giant tree's stretch on the ground and hands the route to the planet (corridor).
+ * `anchors`: the terrain features' provider by default, `null` = none.
+ */
+export function routeWorldPath(world: EarlePlanet, seed: number, anchors?: PathAnchorProvider | null): RoutedGround {
+  const firstTree = TREE_LEVELS[0] - 1;
+  const lastTree = TREE_LEVELS[1] - 1;
+  const route = routeGroundPath(world.field, world.path, {
+    nodesPerZone: NODES_PER_ZONE,
+    seed,
+    keepGround: [firstTree - 1, lastTree + 1],
+    provider: anchors === undefined ? featurePathProvider(world.field) : anchors,
+  });
+  world.setPath(route);
+  return route;
+}
+
+/**
+ * Splices the giant tree's stretch into the routed path: its nodes lie exactly on the tree's surfaces (root, bark, limb
+ * → ground/bark, dome → crown) and its dots are used as they are — the tree's own markers draw them, NodePath keeps
+ * the ground (`external`). Sets the final path as the planet's corridor and growth input; returns the bent layout.
+ */
+export function spliceTreePath(world: EarlePlanet, route: RoutedGround, site: HeroTreeSite): BentLayout {
+  const slot = world.getLandmarkSlot('hero-tree');
+  const surfaceOf = { root: 'ground', bark: 'bark', limb: 'bark', dome: 'crown' } as const;
+  const built = buildLevelPath(
+    world,
+    route,
+    slot
+      ? {
+          first: site.first,
+          last: site.last,
+          path: site.tree.path,
+          shape: site.tree.shape,
+          domes: site.tree.domes,
+          matrix: world.landmarkMatrix(slot, new Matrix4()),
+          world: HERO_TREE_WORLD,
+          surface: site.tree.path.nodes.map((n) => ({ position: n.position, normal: n.normal, on: surfaceOf[n.surface] })),
+          dotsOnSurface: true,
+        }
+      : null,
+  );
+  // Corridor and growth follow the final path (stones on the tree, dots on bark and crown).
+  world.setPath(built.spiral);
+  return { ...built.layout, bend: (p: Vec3Node) => world.bendNode(p) };
+}
+
+/** Palette context of the path visuals on a planet (see `MapWorld.pathPalette`). */
+export function planetPathPalette(world: EarlePlanet): PathPalette {
+  return {
+    lookup: world.lookup,
+    fog: world.fog,
+    bands: world.terrainBands,
+    terrainRow: (w) => world.rows[Math.max(0, Math.min(world.rows.length - 1, w))]!.terrain,
+    colors: (w) => worldPathColors(w),
+  };
 }
 
 /**

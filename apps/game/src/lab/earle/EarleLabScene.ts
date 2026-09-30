@@ -9,6 +9,7 @@ import { createHeroTreeSite, type HeroTreeSite } from './heroTreeSite';
 import { createPlanetTrash } from './trash';
 import type { TrashField } from '@ee/render/earle/trash/index.ts';
 import { NodePath, type BentLayout } from '../../flow/NodePath';
+import { planetPathPalette, routeWorldPath, spliceTreePath } from '../../flow/MapWorld';
 
 export interface EarleLabParams {
   /** Fortschritt: Anzahl geschaffter Knoten (0..100) → Wachstum je Chunk entlang des Pfads (Müll versinkt). */
@@ -220,8 +221,11 @@ export class EarleLabScene implements SceneController {
     });
     this.world = world;
     this.planet.add(world.group);
-    // Riesenbaum (Welt 01) mit dem Levelabschnitt 80–95 über Stamm und Krone
+    // Levelpfad wie im Flow: durch die Landschaft geroutet, dann der Riesenbaum (Welt 01) mit dem Abschnitt 80–95 über
+    // Stamm und Krone (seine eigenen Markierungen tragen ihn)
+    const route = routeWorldPath(world, this.params.seed);
     this.treeSite = createHeroTreeSite(world, { worldIndex: HERO_TREE_WORLD, quality: p.name, seed: this.params.seed, landmarks });
+    this.pathLayout = spliceTreePath(world, route, this.treeSite);
     this.trash = createPlanetTrash(world, { quality: p.name, seed: this.params.seed, densityScale: this.params.trash / 100 });
     this.trash.setProgress(this.params.progress, false);
     this.planet.add(this.trash.group);
@@ -258,27 +262,29 @@ export class EarleLabScene implements SceneController {
     this.shadowDirty = true;
   }
 
-  /** Levelpfad (NodePath des Flows) mit Krümmung; nur wenn eingeschaltet. */
+  /**
+   * Levelpfad wie im Flow (geroutet, mit Band und Knoten auf ihren Elementen; der Riesenbaum trägt seinen Abschnitt mit
+   * eigenen Markierungen) mit Krümmung; nur wenn eingeschaltet.
+   */
   private buildNodePath(): void {
     this.nodePath?.dispose();
     this.nodePath = null;
     const world = this.world;
     const site = this.treeSite;
-    if (!world || !site || !this.params.path) return;
-    const path = site.levelPath;
-    const layout: BentLayout = {
-      nodes: path.nodes.map((n) => ({ index: n.index, u: n.lon / 180, v: n.lat / 90, position: n.position, normal: n.normal })),
-      dots: path.dots.map((d) => ({ position: d.position, normal: d.normal })),
-      length: path.length,
-      bend: (q) => world.bendNode(q),
-    };
+    const layout = this.pathLayout;
+    if (site) site.markers.group.visible = this.params.path;
+    if (!world || !site || !layout || !this.params.path) return;
     this.scene.updateMatrixWorld(true);
     const sunLocal = this.sun.directionWorld(new Vector3()).applyQuaternion(this.planet.quaternion.clone().invert());
-    this.nodePath = new NodePath(layout, sunLocal);
+    const isTree = (i: number) => i >= site.first && i <= site.last;
+    this.nodePath = new NodePath(layout, sunLocal, { onProgress: (cur, done) => site.setPathState(cur, done) }, { palette: planetPathPalette(world), external: isTree });
     const current = Math.max(0, Math.min(this.params.progress, layout.nodes.length - 1));
     this.nodePath.setProgress(current, this.params.progress);
     this.planet.add(this.nodePath.group);
   }
+
+  /** Levelpfad der aktuellen Welt (geroutet und mit dem Baumabschnitt gespleißt). */
+  private pathLayout: BentLayout | null = null;
 
   /** Pixel-Ratio-Override: CanvasHost setzt min(DPR, 2), das Preset deckelt weiter (Mobil 1.5). */
   private applyDpr(): void {
