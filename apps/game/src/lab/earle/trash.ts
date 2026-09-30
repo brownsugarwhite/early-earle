@@ -45,7 +45,7 @@ export function createPlanetTrash(world: EarlePlanet, path: PathLayout | null, o
     seed: options.seed,
     nodes: pathNodes(world, path),
     ...(options.densityScale !== undefined ? { densityScale: options.densityScale } : {}),
-    // Wasser, Felsen und die Scheunen-Lichtungen: dort liegt kein Müll
-    isBlocked: (x, z) => world.field.isWater(x, z, 0.6) || world.field.rockAt(x, z, 0.6) !== null,
+    // Wasser, Felsen und Wahrzeichen (Fels mit Wasserfall, Ruine, Sumpf): dort liegt kein Müll
+    isBlocked: (x, z) => world.field.isWater(x, z, 0.6) || world.field.rockAt(x, z, 0.6) !== null || world.field.landmarkBlocks(x, z, 0.6),
   });
 }

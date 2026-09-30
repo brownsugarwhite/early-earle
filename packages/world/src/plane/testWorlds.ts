@@ -37,8 +37,10 @@ export function focalOf(w: WorldFile): FocalSpec | undefined {
   const tree = f.kind && f.kind !== 'barn' ? w.vegetation.focalTree : undefined;
   const kind = (tree?.kind ?? f.kind) as FocalSpec['kind'];
   const scale = tree ? (tree.scale ?? 1) : (f.scale ?? 1);
-  const lateral = f.lateral ?? (f.deltaDeg !== undefined ? Math.sign(f.deltaDeg || 1) * Math.min(9, Math.max(3.5, 3 + Math.abs(f.deltaDeg) * 0.12)) : 5.5);
-  return { ...(kind ? { kind } : {}), scale, along: f.along ?? f.latFrac ?? 0.5, lateral, yawDeg: f.yawDeg ?? 0 };
+  // Alte Kugel: deltaDeg = Bogen neben dem Pfad (R 32) — auf der Ebene 75 % davon, mindestens 6 (der Pfad schwingt ±3,2),
+  // höchstens 12 (ganz in der Pfadwelt); ohne Angabe wählt das Feld die Seite (Abstand 10)
+  const lateral = f.lateral ?? (f.deltaDeg !== undefined ? Math.sign(f.deltaDeg || 1) * Math.min(12, Math.max(6, ((Math.abs(f.deltaDeg) * Math.PI) / 180) * 32 * 0.75)) : undefined);
+  return { ...(kind ? { kind } : {}), scale, along: f.along ?? f.latFrac ?? 0.5, ...(lateral !== undefined ? { lateral } : {}), yawDeg: f.yawDeg ?? 0 };
 }
 
 export function authoredSpecs(): WorldSpec[] {

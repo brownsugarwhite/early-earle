@@ -35,9 +35,12 @@ export interface LayoutParams {
   proceduralLevels?: number;
   /** Länge eines Vorland-Abschnitts hinter dem Start (Standard 52). */
   prologueLength?: number;
-  /** Halbe Breite des Pfadbands (Standard 13). */
+  /**
+   * Halbe Breite des Pfadbands (Standard 30: breit genug, dass Wahrzeichen neben dem Pfad — Fels mit Wasserfall, Ruine,
+   * 8–18 Einheiten vom Pfad, Kern ≈ 9 — ganz in der Pfadwelt stehen).
+   */
   bandHalfWidth?: number;
-  /** Zellmaß der Seitenwelten: quer (v) und längs (z). Standard 34 × 42. */
+  /** Zellmaß der Seitenwelten: quer (v) und längs (z). Standard 38 × 44. */
   cell?: { across: number; along: number };
 }
 
@@ -115,9 +118,9 @@ export class WorldLayout {
     this.nodeSpacing = params.nodeSpacing ?? 4.2;
     this.proceduralLevels = params.proceduralLevels ?? 10;
     this.prologueLength = params.prologueLength ?? 52;
-    this.bandHalfWidth = params.bandHalfWidth ?? 13;
-    this.cellAcross = params.cell?.across ?? 34;
-    this.cellAlong = params.cell?.along ?? 42;
+    this.bandHalfWidth = params.bandHalfWidth ?? 30;
+    this.cellAcross = params.cell?.across ?? 38;
+    this.cellAlong = params.cell?.along ?? 44;
     this.authored = params.authored;
     this.route = params.route.length > 0 ? params.route : [{ world: 0, levels: 10 }];
     let s = 0;

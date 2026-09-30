@@ -464,7 +464,7 @@ export class MapWorld {
     this.scene.updateMatrixWorld(true);
     this.sun.directionWorld(this.sunDirWorld.value);
     // Plane space = world axes (the plane group does not turn): the sun is the same in both
-    this.world.vegetation.setSunDirection(this.sunDirWorld.value, this.sunDirWorld.value);
+    this.world.setSunDirection(this.sunDirWorld.value);
 
     const camWorld = this.camera.getWorldPosition(this.tmp);
     const R = PLANET_RADIUS;

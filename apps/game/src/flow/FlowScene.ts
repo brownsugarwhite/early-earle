@@ -12,6 +12,7 @@ import { useFlowStore, type FlowPhase, type FlowRequest } from './flowStore';
 import { MAP_VIEW, MAP_VIEW_PORTRAIT, MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
 import type { NodeSite } from './path';
 import { plateauStyleFor } from './siteStyle';
+import { landmarkPaletteFromWorld, landmarkPlateauStyle } from '@ee/render/earle/landmarks/set/index.ts';
 import { NodePath } from './NodePath';
 import { Hero, SHADOW_PROXY_LAYER, type HeroPose } from './Hero';
 import { Rex } from './Rex';
@@ -304,6 +305,14 @@ export class FlowScene implements SceneController {
     if (this.phase === 'map' && elapsed >= this.cameraTweenUntil && world.cameraRailFor(useFlowStore.getState().current, this.railScratch)) this.applyPose(this.mapPose());
     // A standing hero keeps its node (the display follows the view).
     if (this.phase === 'map' && !hero.isFlying) hero.setPose(this.nodePose(useFlowStore.getState().current));
+    // Map lift follows the current node's elevation (a level on a rock plateau lifts the orbit camera)
+    if (this.phase === 'map') {
+      const want = this.liftFor(useFlowStore.getState().current);
+      if (Math.abs(want - this.mapLift) > 1e-3) {
+        this.mapLift += (want - this.mapLift) * (1 - Math.exp(-dt / 0.45));
+        if (elapsed >= this.cameraTweenUntil && !world.cameraRailFor(useFlowStore.getState().current, this.railScratch)) this.applyPose(this.mapPose());
+      }
+    }
 
     hero.update(dt, world.camera);
     // A launched creature keeps its parts on the hero (until it lands in the next level).
@@ -424,9 +433,15 @@ export class FlowScene implements SceneController {
    */
   private viewFor(index: number): MapView {
     const world = this.world!;
-    const node = world.layout.node(index).position;
+    const pathNode = world.layout.node(index);
+    const node = pathNode.position;
     let yaw = this.viewYaw;
-    if (this.portrait && !world.isTreeNode(index)) {
+    const lm = pathNode.landmark;
+    if (lm) {
+      // A level on a landmark: the map looks from the anchor's open side (nothing rises above the top there)
+      const f = lm.anchor.facing;
+      yaw = this.viewYaw + angleDelta(this.viewYaw, Math.atan2(f[0], f[1]));
+    } else if (this.portrait && !world.isTreeNode(index)) {
       const ahead = world.layout.node(index + MAP_VIEW_PORTRAIT.lookAhead).position;
       const dx = ahead[0] - node[0];
       const dz = ahead[2] - node[2];
@@ -452,6 +467,7 @@ export class FlowScene implements SceneController {
     this.computeMapTarget();
     this.tweens.cancel('glide');
     this.panBall?.stop();
+    this.mapLift = this.liftFor(index);
     this.applyView(this.viewFor(index));
   }
 
@@ -492,11 +508,26 @@ export class FlowScene implements SceneController {
     return this.mapPoseFor(useFlowStore.getState().current, this.currentView(), zoom, view);
   }
 
-  /** The plain orbit view over the apex (rig space; the view brings the node under it). */
-  private orbitPose(zoom = this.zoom, view: MapViewLike = this.mapViewCamera()): CameraPose {
+  /**
+   * The plain orbit view over the apex (rig space; the view brings the node under it), lifted by the elevation of a
+   * level on a landmark (a rock plateau, a ruin terrace): the camera keeps the same framing above the stone.
+   */
+  private orbitPose(zoom = this.zoom, view: MapViewLike = this.mapViewCamera(), lift = this.mapLift): CameraPose {
     const position = view.offset.clone().multiplyScalar(zoom);
-    return { position, quaternion: lookAtQuaternion(position, view.look, _Y, new Quaternion()), fov: view.fov };
+    position.y += lift;
+    const look = _v.copy(view.look);
+    look.y += lift;
+    return { position, quaternion: lookAtQuaternion(position, look, _Y, new Quaternion()), fov: view.fov };
   }
+
+  /** Elevation of node `index` above the ground around it (levels on landmarks), 0 elsewhere. */
+  private liftFor(index: number): number {
+    const n = this.world?.layout.node(index);
+    return n?.landmark ? Math.max(0, n.landmark.anchor.height - 0.8) : 0;
+  }
+
+  /** Camera lift of the map view (smoothed toward the current node's elevation). */
+  private mapLift = 0;
 
   /** Display position of a plane point for a given view (focus), not only the current one. */
   private displayAt(p: Vector3, v: MapView, out: Vector3): Vector3 {
@@ -715,7 +746,8 @@ export class FlowScene implements SceneController {
   private computeMapTarget(): void {
     const world = this.world;
     if (!world) return;
-    const pose = this.mapPose(1, false);
+    // the target on the ground (without a landmark lift)
+    const pose = this.orbitPose(1, this.mapViewCamera(), 0);
     const cam = this.probeCamera;
     cam.aspect = world.camera.aspect;
     cam.fov = pose.fov;
@@ -904,7 +936,9 @@ export class FlowScene implements SceneController {
     this.syncBoard();
     const data = world.world.worldData(stage.world);
     const zone = stage.world < WORLD_CONTENTS.length ? WORLD_CONTENTS[stage.world]?.zone : undefined;
-    board.setSite(plateauStyleFor(stage.site, data.palette, zone), index);
+    const lm = world.layout.node(index).landmark;
+    // Auf einem Wahrzeichen: das Plateau ist aus seinem Gipfel geschnitten (Moos auf Basalt, Steinplatten, Sumpfinsel)
+    board.setSite(lm ? landmarkPlateauStyle(lm.anchor.site, landmarkPaletteFromWorld(data.palette)) : plateauStyleFor(stage.site, data.palette, zone), index);
     if (stage.terrain) {
       board.setTerrain(stage.terrain[0], stage.terrain[1]);
     } else {

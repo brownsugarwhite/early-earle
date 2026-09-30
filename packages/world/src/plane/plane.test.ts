@@ -177,14 +177,34 @@ describe('PlanePath', () => {
       expect(n.index).toBe(i);
       if (i > 0) {
         expect(n.s).toBeGreaterThan(nodes[i - 1]!.s);
-        // der Riesenbaum-Abschnitt (80–95) ist kurz, dort liegen die Knoten dichter
+        // der Riesenbaum-Abschnitt (80–95) ist kurz, dort liegen die Knoten dichter; Level auf einem Wahrzeichen liegen
+        // neben der Route oben auf dem Plateau (bis ≈ 22 Einheiten)
         const d = Math.hypot(n.position[0] - nodes[i - 1]!.position[0], n.position[2] - nodes[i - 1]!.position[2]);
-        expect(d).toBeLessThan(8);
+        const onLandmark = !!n.landmark || !!nodes[i - 1]!.landmark;
+        expect(d).toBeLessThan(onLandmark ? 26 : 8);
         expect(d).toBeGreaterThan(0.8);
       }
     });
     expect(nodes[0]!.world).toBe(AUTHORED_ROUTE[0]!.world);
     expect(nodes[99]!.world).toBe(AUTHORED_ROUTE[9]!.world);
+  });
+
+  it('climbs landmarks: some levels stand on a plateau, the dots go up the steps and down again', () => {
+    const nodes = path.nodes(0, 99);
+    const on = nodes.filter((n) => n.landmark);
+    expect(on.length).toBeGreaterThan(2);
+    for (const n of on) {
+      const a = n.landmark!.anchor;
+      expect(n.position[1]).toBeCloseTo(a.position[1], 5);
+      expect(a.radius).toBeGreaterThanOrEqual(4.5);
+      // Punkte vor und nach dem Knoten erreichen die Höhe des Plateaus (Treppe hinauf und hinab)
+      const seg = path.segment(n.segment);
+      const up = seg.dots.filter((d) => d.seg === n.index - 1);
+      const down = seg.dots.filter((d) => d.seg === n.index);
+      expect(up.length).toBeGreaterThan(3);
+      expect(down.length).toBeGreaterThan(3);
+      expect(Math.max(...up.map((d) => d.position[1]))).toBeGreaterThan(a.position[1] - a.height * 0.6);
+    }
   });
 
   it('continues forever: random access far along the path, deterministic', () => {

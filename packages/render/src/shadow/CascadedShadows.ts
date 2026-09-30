@@ -283,6 +283,16 @@ class TerminatorShadowNode extends ShadowNode {
     super(light, shadow);
   }
 
+  /**
+   * Empfängerposition für den Kartenvergleich: mit Verzug (Ebene) die flache Position des Fragments — dieselbe, in der
+   * die Werfer liegen (three nimmt sonst die angezeigte Position, die Karten lägen neben den Werfern).
+   */
+  override setupShadowPosition(builder: NodeBuilder): void {
+    const b = builder as unknown as { context: { shadowPositionWorld?: Vec3Node }; material: { receivedShadowPositionNode?: Vec3Node | null } };
+    const src = (b.material.receivedShadowPositionNode ?? b.context.shadowPositionWorld ?? positionWorld) as unknown as Vec3Node;
+    (shadowPositionWorld as unknown as { assign(v: unknown): void }).assign(this.warp ? this.warp.node(src) : src);
+  }
+
   /** Eigene, vorab angelegte Tiefenkarte statt einer neuen je Aufbau (Konsumenten binden dieselbe Textur). */
   setupRenderTarget(_shadow: LightShadow, builder: NodeBuilder): { shadowMap: RenderTarget; depthTexture: DepthTexture } {
     const { target, depth } = this.owned;

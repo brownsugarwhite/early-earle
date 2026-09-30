@@ -62,9 +62,10 @@
   },
   "features": {
     "rocks": [
-      { "kind": "tower", "count": 1, "size": [1.7, 2.0], "height": [7, 8.5], "pathDistance": [2.8, 3.6], "focusDistance": [6, 11] },
-      { "kind": "mesa", "count": 1, "size": [3.8, 4.4], "height": [2.6, 3.2], "pathDistance": [2.2, 3.0] }
-    ]
+      { "kind": "tower", "count": 1, "size": [1.7, 2.0], "height": [7, 8.5], "pathDistance": [7.5, 10], "focusDistance": [10, 16] },
+      { "kind": "mesa", "count": 1, "size": [3.8, 4.4], "height": [2.6, 3.2], "pathDistance": [6, 8.5] }
+    ],
+    "lakes": { "count": 2, "radius": [1.8, 2.8], "stretch": 2.0, "pathDistance": [3.0, 5.0] }
   },
   "fogStripes": 0.1,
   "fog": { "start": 9, "range": 16 },

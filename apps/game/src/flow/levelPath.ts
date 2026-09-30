@@ -121,7 +121,7 @@ export class FlowPath implements PathLayout {
   }
 
   private groundNode(g: PlanePathNode): PathNode {
-    return {
+    const node: PathNode = {
       index: g.index,
       position: g.position,
       normal: g.normal,
@@ -131,6 +131,21 @@ export class FlowPath implements PathLayout {
       rise: g.rise,
       ...(g.index > this.lastPlayable ? { locked: true } : {}),
     };
+    const lm = g.landmark;
+    if (lm) {
+      // Level oben auf dem Wahrzeichen: das Plateau steht auf dem Anker (Fels, Terrasse, Insel), die Levelkamera kommt
+      // von der offenen Seite
+      const a = lm.anchor;
+      node.landmark = lm;
+      node.stage = {
+        position: [a.position[0], a.position[1], a.position[2]],
+        normal: [0, 1, 0],
+        site: a.site === 'island' ? 'shore' : 'ledge',
+        facing: [a.facing[0], 0, a.facing[1]],
+        terrain: [-0.6, 0.05],
+      };
+    }
+    return node;
   }
 
   /** Nearest node to a point of the plane (ground path and the tree's nodes). */

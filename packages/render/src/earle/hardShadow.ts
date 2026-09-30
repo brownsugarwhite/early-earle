@@ -1,6 +1,6 @@
 import { Box3, DirectionalLight, Matrix4, Object3D, Vector3 } from 'three/webgpu';
 import type { DepthTexture, LightShadow, NodeBuilder, PerspectiveCamera, UniformNode } from 'three/webgpu';
-import { Fn, fwidth, lightTargetDirection, normalView, smoothstep, uniform } from 'three/tsl';
+import { Fn, dot, fwidth, lightTargetDirection, normalView, smoothstep, uniform, vec2, vec3 } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node } from './tsl';
 import { CascadedShadows, type CascadeSampleOptions, type CascadedShadowStats, type ShadowWarp, type ViewReceivers } from '../shadow/CascadedShadows';
 import type { DisplayMapping } from './display';
@@ -168,12 +168,42 @@ export interface ShadowDisplayLike {
   readonly field: { hMax: number; heightAt(x: number, z: number): number };
 }
 
-/** Verzug Anzeige ↔ Schattenraum (flache Ebene) einer Anzeige-Abbildung. */
+/**
+ * Verzug Anzeige ↔ Schattenraum einer Anzeige-Abbildung: der Schattenraum ist die Ebene um den Fokus mit dem Abfall der
+ * Anzeigekugel (Paraboloid `y − (x² + z²) / 2Rₛ`, Rₛ = R / (1 + c)). So fallen Schlagschatten wie auf der alten Kugel:
+ * die Erde fällt vom Werfer weg, hohe Werfer (Türme, Wahrzeichen) werfen keine endlos langen Schatten bei 10° Sonne,
+ * nahe am Fokus ist der Raum eben (Eigen- und Schlagschatten eine Form, Licht mit den ebenen Normalen). x/z bleiben
+ * Ebenenkoordinaten: das Texelgitter bleibt beim Schwenken ruhig.
+ */
 export function displayShadowWarp(mapping: DisplayMapping): ShadowWarp {
+  const inv = (): number => (1 + mapping.curvature.value) / (2 * mapping.radius.value);
+  // (1 + c) / 2R aus denselben Uniforms wie die Abbildung (der Krümmungs-Boost ändert sich mit der Welt)
+  const invNode = (mapping.curvature as unknown as FloatNode).add(1).div((mapping.radius as unknown as FloatNode).mul(2));
   return {
-    node: (p) => mapping.toFlat(p),
-    cpu: { toShadow: (p) => mapping.toFlatCpu(p, p), toView: (p) => mapping.toDisplayCpu(p, p) },
+    node: (p) => {
+      const f = mapping.toFlat(p);
+      const q = vec2(f.x, f.z);
+      return vec3(f.x, f.y.sub(dot(q, q).mul(invNode)), f.z) as unknown as Vec3Node;
+    },
+    cpu: {
+      toShadow: (p) => {
+        mapping.toFlatCpu(p, p);
+        p.y -= (p.x * p.x + p.z * p.z) * inv();
+        return p;
+      },
+      toView: (p) => {
+        p.y += (p.x * p.x + p.z * p.z) * inv();
+        return mapping.toDisplayCpu(p, p);
+      },
+    },
   };
+}
+
+/** Flacher Weltpunkt (Ebene − Fokus, y = R + h) → Schattenraum (Paraboloid-Abfall wie `displayShadowWarp`). */
+function flatToShadow(mapping: DisplayMapping, p: Vector3): Vector3 {
+  const rs = mapping.radius.value / (1 + mapping.curvature.value);
+  p.y -= (p.x * p.x + p.z * p.z) / (2 * rs);
+  return p;
 }
 
 /**
@@ -217,7 +247,10 @@ export function displayShadowReceivers(world: ShadowDisplayLike | (() => ShadowD
   };
   const volumes = (): ReceiverVolume[] => {
     const w = get();
-    return collector.collect(planeObject, w ? { heightAt: (x, z) => w.field.heightAt(x, z), focus: w.focus } : null, coverTolerance);
+    const list = collector.collect(planeObject, w ? { heightAt: (x, z) => w.field.heightAt(x, z), focus: w.focus } : null, coverTolerance);
+    // flache Weltpunkte → Schattenraum (Kugelabfall)
+    if (w) for (const v of list) flatToShadow(w.mapping, v.center);
+    return list;
   };
   return { sphere, volumes };
 }

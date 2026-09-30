@@ -411,6 +411,8 @@ export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, opt
     const canopyRadius = prop.radius * scale;
     if (options.clear?.(x, z, canopyRadius)) continue;
     if (landmarkCleared(slots, x, z, canopyRadius)) continue;
+    // Wahrzeichen (Fels, Ruine, Becken, Sumpf): keine Bäume in Stein und Wasser
+    if (field.landmarkBlocks(x, z, canopyRadius * 0.6)) continue;
     const hn = field.features.region(key).snow ? field.heightNormAt(x, z) : 0;
     if (field.features.blocksTree(key, x, z, canopyRadius, hn)) continue;
     field.surfaceAt(x, z, pos, nor);
@@ -536,6 +538,7 @@ export function scatterPlaneProps(field: PlaneField, cx: number, cz: number, opt
       const foot = PROP_FOOTPRINT[r.kind] * r.scale;
       if (options.clear?.(x, z, foot)) continue;
       if (landmarkCleared(slots, x, z, foot)) continue;
+      if (field.landmarkBlocks(x, z, foot)) continue;
       if (field.features.blocksProp(key, x, z, foot)) continue;
       field.surfaceAt(x, z, pos, nor);
       snapToMesh(options.mesh, pos);

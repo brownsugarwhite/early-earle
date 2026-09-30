@@ -1,4 +1,5 @@
 import type { Vec3 } from '../capPatch';
+import type { LandmarkAnchor, LandmarkInstance, LandmarkWaypoint } from '../landmarks/types';
 import type { PlaneField } from './field';
 import type { RegionSample } from './layout';
 
@@ -29,6 +30,11 @@ export interface PlanePathNode {
   world: number;
   /** Höhe des Elements über dem Gelände (Felsvorsprung, Müllhügel, Sandbank). */
   rise: number;
+  /**
+   * Der Knoten liegt auf einem Wahrzeichen (Felsplateau, Ruinenterrasse, Sumpfinsel): das Level wird dort oben gespielt
+   * (`anchor.position`, die Levelkamera kommt von `anchor.facing`); der Weg steigt über `route` hinauf und hinab.
+   */
+  landmark?: { id: string; kind: LandmarkInstance['placement']['kind']; world: number; anchor: LandmarkAnchor };
 }
 
 export interface PlanePathDot {
@@ -102,6 +108,8 @@ export interface PlanePathOptions {
   spikes?: readonly number[];
   /** Knotenindizes (0-basiert), die flacher Boden bleiben (z. B. beim Riesenbaum). */
   keepGround?: readonly number[];
+  /** Wahrzeichen besuchen (Level auf Fels, Ruine, Sumpfinsel; Standard true). */
+  landmarks?: boolean;
   /** Cache der Abschnitte (Obergrenze). */
   capacity?: number;
 }
@@ -150,7 +158,7 @@ interface Route {
 
 export class PlanePath {
   readonly field: PlaneField;
-  private readonly opts: Required<Omit<PlanePathOptions, 'provider' | 'keepGround' | 'spikes' | 'meander'>> & { meanderA: number; meanderL: number };
+  private readonly opts: Required<Omit<PlanePathOptions, 'provider' | 'keepGround' | 'spikes' | 'meander' | 'landmarks'>> & { meanderA: number; meanderL: number };
   private readonly provider: PlanePathProvider | null;
   private readonly keep: Set<number>;
   private readonly spikes: Set<number>;
@@ -158,6 +166,7 @@ export class PlanePath {
   private readonly segments = new Map<number, PlanePathSegment>();
   private readonly phase0: number;
   private readonly rs = {} as RegionSample;
+  private readonly visitLandmarks: boolean;
 
   constructor(field: PlaneField, options: PlanePathOptions = {}) {
     this.field = field;
@@ -176,6 +185,7 @@ export class PlanePath {
     this.keep = new Set(options.keepGround ?? []);
     this.spikes = new Set((options.spikes ?? [13, 38, 63, 88]).map((l) => l - 1));
     this.phase0 = hash01(this.opts.seed, 11) * Math.PI * 2;
+    this.visitLandmarks = options.landmarks ?? true;
   }
 
   /** Knoten mit globalem Index (0-basiert). */
@@ -470,6 +480,59 @@ export class PlanePath {
     return nodeS;
   }
 
+  /**
+   * Welches Wahrzeichen der Abschnitt besucht (höchstens eines): ein Held (Fels, Ruine) mit Plateau nahe der Route,
+   * sonst gelegentlich eine Sumpfinsel. Liefert den ersetzten Knoten (lokal), das Wahrzeichen und den Anker.
+   */
+  private landmarkVisit(k: number, route: Route, nodeS: number[], firstIndex: number): { j: number; inst: LandmarkInstance; anchor: LandmarkAnchor } | null {
+    const lm = this.field.landmarks;
+    const n = nodeS.length;
+    if (!lm || !this.visitLandmarks || n < 4) return null;
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    for (const p of route.pts) {
+      x0 = Math.min(x0, p[0]);
+      x1 = Math.max(x1, p[0]);
+    }
+    const list = lm.inRect(x0 - 24, route.zEnd, x1 + 24, route.zStart);
+    let best: { j: number; inst: LandmarkInstance; anchor: LandmarkAnchor; score: number } | null = null;
+    for (const inst of list) {
+      const anchor = inst.anchors[0];
+      if (!anchor || inst.route.ascent.length === 0 || inst.route.descent.length === 0) continue;
+      // nächste Stelle der Route und Abstand
+      let bi = 0;
+      let bd = Infinity;
+      for (let i = 0; i < route.pts.length; i++) {
+        const d = Math.hypot(route.pts[i]![0] - anchor.position[0], route.pts[i]![1] - anchor.position[2]);
+        if (d < bd) {
+          bd = d;
+          bi = i;
+        }
+      }
+      const swamp = inst.placement.kind === 'swamp';
+      if (bd > (swamp ? 16 : 22)) continue;
+      // Knoten am nächsten (nicht erster/letzter des Abschnitts, nicht die ersten Level, keine Bodenpflicht)
+      const sAt = route.s[bi]!;
+      let j = -1;
+      let dj = Infinity;
+      for (let i = 1; i < n - 1; i++) {
+        const idx = firstIndex + i;
+        if (idx < 3 || this.keep.has(idx) || this.keep.has(idx - 1) || this.keep.has(idx + 1)) continue;
+        const d = Math.abs(nodeS[i]! - sAt);
+        if (d < dj) {
+          dj = d;
+          j = i;
+        }
+      }
+      if (j < 0) continue;
+      const r = hash01(k * 31 + (swamp ? 7 : 3), this.opts.seed + 41);
+      if (swamp && r > 0.6) continue;
+      const score = (swamp ? 10 : 0) + bd * 0.2 + dj * 0.1;
+      if (!best || score < best.score) best = { j, inst, anchor, score };
+    }
+    return best ? { j: best.j, inst: best.inst, anchor: best.anchor } : null;
+  }
+
   private buildSegment(k: number): PlanePathSegment {
     const field = this.field;
     const layout = field.layout;
@@ -487,6 +550,7 @@ export class PlanePath {
       return { position: [pos[0], pos[1], pos[2]], normal: [nor[0], nor[1], nor[2]], side: [route.sides[i]![0], 0, route.sides[i]![1]], s: route.s[i]! };
     });
     const nodeS = this.nodeArcs(k);
+    const visit = this.landmarkVisit(k, route, nodeS, firstIndex);
     const ring = (x: number, z: number): { spread: number; relief: number } => this.ring(x, z);
     const nodes: PlanePathNode[] = [];
     const sites: NodeSite[] = [];
@@ -513,6 +577,23 @@ export class PlanePath {
         if (site !== 'meadow' && site !== 'grove' && last === site && !spike) site = forest > 0.5 ? 'grove' : 'meadow';
         if (site === 'meadow' && index % 7 === 3 && r.spread < 0.9) site = 'ledge';
       }
+      if (visit && visit.j === i) {
+        // Level auf dem Wahrzeichen: der Stein liegt auf dem Plateau (Moos, Terrasse, Insel), ohne Sockel
+        const a = visit.anchor;
+        sites.push('meadow');
+        nodes.push({
+          index,
+          segment: k,
+          position: [a.position[0], a.position[1], a.position[2]],
+          normal: [0, 1, 0],
+          s: sBase + nodeS[i]! * sScale,
+          site: 'meadow',
+          world: visit.inst.placement.world >= 0 ? visit.inst.placement.world : w,
+          rise: 0,
+          landmark: { id: visit.inst.placement.id, kind: visit.inst.placement.kind, world: visit.inst.placement.world, anchor: a },
+        });
+        continue;
+      }
       sites.push(site);
       const rise = site === 'ledge' ? 0.42 + 0.3 * hash01(index, seed + 5) : site === 'trash' ? 0.15 : site === 'shore' ? 0.07 : 0;
       nodes.push({ index, segment: k, position: [pos[0], pos[1] + rise, pos[2]], normal: [nor[0], nor[1], nor[2]], s: sBase + nodeS[i]! * sScale, site, world: w, rise });
@@ -535,9 +616,48 @@ export class PlanePath {
         dots.push({ position: [pos[0], pos[1], pos[2]], normal: [nor[0], nor[1], nor[2]], seg, u: uOf(s), on: 'ground' });
       }
     };
+    /** Punkte auf einem Wegstück aus Bodenlinie und Wegpunkten des Wahrzeichens (Stufen, Treppe, Steine). */
+    const pushPolyline = (pts: Array<{ p: Vec3; ground: boolean }>, seg: number): void => {
+      // Länge und Bogenparameter; Bodenstücke dazwischen in Schritten von `dotSpacing`
+      const out: Array<{ p: Vec3; n: Vec3 }> = [];
+      for (let q = 0; q + 1 < pts.length; q++) {
+        const a = pts[q]!;
+        const b = pts[q + 1]!;
+        if (a.ground && b.ground) {
+          const d = Math.hypot(b.p[0] - a.p[0], b.p[2] - a.p[2]);
+          const m = Math.max(1, Math.round(d / dotSpacing));
+          for (let t = q === 0 ? 0 : 1; t <= m; t++) {
+            const f = t / m;
+            field.surfaceAt(a.p[0] + (b.p[0] - a.p[0]) * f, a.p[2] + (b.p[2] - a.p[2]) * f, pos, nor);
+            out.push({ p: [pos[0], pos[1], pos[2]], n: [nor[0], nor[1], nor[2]] });
+          }
+        } else {
+          if (q === 0) out.push({ p: a.p, n: [0, 1, 0] });
+          out.push({ p: b.p, n: [0, 1, 0] });
+        }
+      }
+      // Freihaltung an den Enden (Knotensteine), gleichmäßiger Bogenparameter
+      const first = pts[0]!.p;
+      const last = pts[pts.length - 1]!.p;
+      const kept = out.filter((o) => Math.hypot(o.p[0] - first[0], o.p[2] - first[2]) >= clearance && Math.hypot(o.p[0] - last[0], o.p[2] - last[2]) >= clearance);
+      kept.forEach((o, qi) => dots.push({ position: o.p, normal: o.n, seg, u: kept.length > 1 ? qi / (kept.length - 1) : 0.5, on: 'ground' }));
+    };
+    const way = (w: LandmarkWaypoint): { p: Vec3; ground: boolean } => ({ p: [w.position[0], w.position[1], w.position[2]], ground: w.kind === 'ground' });
     for (let i = 0; i + 1 < n; i++) {
       const a = nodeS[i]!;
       const b = nodeS[i + 1]!;
+      if (visit && (visit.j === i + 1 || visit.j === i)) {
+        // Hinauf: Bodenlinie vom Knoten zum Fuß der Treppe, dann die Wegpunkte bis aufs Plateau; hinab umgekehrt
+        const r = visit.inst.route;
+        if (visit.j === i + 1) {
+          const from = nodes[i]!.position;
+          pushPolyline([{ p: from, ground: true }, { p: r.ascent[0]!.position, ground: true }, ...r.ascent.slice(1).map(way), { p: nodes[i + 1]!.position, ground: false }], firstIndex + i);
+        } else {
+          const to = nodes[i + 1]!.position;
+          pushPolyline([{ p: nodes[i]!.position, ground: false }, ...r.descent.slice(0, -1).map(way), { p: r.descent[r.descent.length - 1]!.position, ground: true }, { p: to, ground: true }], firstIndex + i);
+        }
+        continue;
+      }
       pushDots(a, b, firstIndex + i, (s) => this.at(route, s), (s) => (s - a) / Math.max(1e-6, b - a));
     }
     if (n > 0) {

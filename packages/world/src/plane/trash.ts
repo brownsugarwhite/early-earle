@@ -166,7 +166,7 @@ export class PlaneTrashPlanner {
   private blocked(x: number, z: number): boolean {
     if (this.ctx.isBlocked) return this.ctx.isBlocked(x, z);
     const f = this.ctx.field;
-    return f.isWater(x, z, 0.6) || f.rockAt(x, z, 0.6) !== null;
+    return f.isWater(x, z, 0.6) || f.rockAt(x, z, 0.6) !== null || f.landmarkBlocks(x, z, 0.6);
   }
 
   /** Knoten und Pfad-Locator für einen z-Bereich (einmal je Chunk). */

@@ -1,4 +1,4 @@
-import type { NodeSite, Vec3 } from '@ee/world';
+import type { NodeSite, PlanePathNode, Vec3 } from '@ee/world';
 
 /**
  * Datentypen des Levelpfads der Karte (ADR 0002: unendliche Ebene). Das Routing (Täler und Hänge, Mäander, Knoten auf
@@ -26,6 +26,8 @@ export interface PathNode {
   stage?: PathStage;
   /** Künftiges Level (nach dem letzten Autorenlevel): gesperrt, „bald". */
   locked?: boolean;
+  /** Der Knoten liegt auf einem Wahrzeichen (Felsplateau, Ruinenterrasse, Sumpfinsel): Plateaustil und Anker. */
+  landmark?: PlanePathNode['landmark'];
 }
 
 export interface PathStage {

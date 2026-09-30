@@ -8,6 +8,9 @@ import type { WorldCatalog } from './catalog';
 import { PlaneFeatures, type RegionSite } from './features/index';
 import type { LedgeAnchor, RockColumn, RockFormation } from './features/types';
 import type { LandmarkSlot, PlanetLandmarkParams, PlanetPropKind, PlanetVegetationFamily, WorldSpec } from './types';
+import { PlaneLandmarks, type PlaneLandmarkOptions } from './landmarks';
+import type { LandmarkPlanParams } from '../landmarks/types';
+import { DEFAULT_LANDMARK_PLAN } from '../landmarks/placement';
 
 export interface ResolvedShape {
   amplitude: number;
@@ -25,6 +28,10 @@ export interface PlaneFieldParams {
   hillWavelength?: number;
   /** Breite der Formüberblendung an Weltgrenzen (Welteinheiten, Standard 2). */
   blendWidth?: number;
+  /**
+   * Wahrzeichen (Fels mit Wasserfall, Ruine, Sumpf …): Planung und Detailstufe; `false` = keine (Tests, alte Labs).
+   */
+  landmarks?: (PlaneLandmarkOptions & { plan?: LandmarkPlanParams }) | false;
 }
 
 function resolveShape(s: WorldSpec['terrain']): ResolvedShape {
@@ -39,6 +46,19 @@ function mixShape(a: ResolvedShape, b: ResolvedShape, t: number, out: ResolvedSh
   out.slope = a.slope + (b.slope - a.slope) * t;
   return out;
 }
+
+/**
+ * Planung der Wahrzeichen auf der Ebene: wie `DEFAULT_LANDMARK_PLAN`, aber dichter und mit mehr Versuchen je Zelle —
+ * der Kern jedes Wahrzeichens muss ganz in einer Welt liegen (Pfadabschnitte sind 42 lang, das Band ±30), das
+ * verwirft viele Kandidaten. Etwa ein Wahrzeichen je Pfadabschnitt, Sümpfe dreifach in den Startwelten (09, 02).
+ */
+export const PLANE_LANDMARK_PLAN: LandmarkPlanParams = {
+  ...DEFAULT_LANDMARK_PLAN,
+  density: 0.85,
+  tries: 12,
+  // Sümpfe dürfen in welligem Gelände liegen (die Startwelten sind hügelig): die Teiche folgen dem Boden
+  kinds: { ...DEFAULT_LANDMARK_PLAN.kinds, swamp: { weight: 1.1, pathDistance: [10, 60], maxRelief: 2.8, maxSlope: 0.34 } },
+};
 
 const TREE_KINDS = new Set<string>(['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak']);
 export function isTreeKind(k: string): k is TreeKind {
@@ -70,8 +90,14 @@ export class PlaneField {
   private readonly tmpA: ResolvedShape = { amplitude: 0, wavelength: 1, ridge: 0, floor: 0, slope: 0 };
   private readonly tmpB: ResolvedShape = { amplitude: 0, wavelength: 1, ridge: 0, floor: 0, slope: 0 };
   private readonly tmpC: ResolvedShape = { amplitude: 0, wavelength: 1, ridge: 0, floor: 0, slope: 0 };
+  /** Eigene Formen der Planungs-Höhen (Merkmale, Wahrzeichen): laufen verschachtelt in `heightWithShape`. */
+  private readonly tmpD: ResolvedShape = { amplitude: 0, wavelength: 1, ridge: 0, floor: 0, slope: 0 };
+  private readonly tmpE: ResolvedShape = { amplitude: 0, wavelength: 1, ridge: 0, floor: 0, slope: 0 };
   private readonly external = new Map<string, LandmarkSlot>();
   private readonly focalCache = new Map<string, LandmarkSlot | null>();
+  /** Wahrzeichen der Ebene (null = aus). Ihre Becken und Teiche liegen im Höhenfeld. */
+  readonly landmarks: PlaneLandmarks | null;
+  private readonly rs3 = {} as RegionSample;
   /** Zählt Änderungen an Wahrzeichen/Merkmalen (Streuungen und Meshes neu bauen). */
   version = 0;
 
@@ -104,6 +130,64 @@ export class PlaneField {
         featureSpec: (w) => self.catalog.spec(w).features as WorldFeatureSpec | undefined,
       },
     );
+    this.landmarks =
+      params.landmarks === false
+        ? null
+        : new PlaneLandmarks(
+            {
+              seed: params.seed,
+              heightAt: (x, z) => self.heightNoLandmarks(x, z),
+              isWater: (x, z, m) => self.features.isWater(self.layout.sample(x, z, self.rs3).region.key, x, z, m),
+              isBlocked: (x, z, r) => self.landmarkBlocked(x, z, r),
+              pathDistance: (x, z) => self.backboneDistance(x, z),
+              worldAt: (x, z) => self.layout.sample(x, z, self.rs3).world,
+              regionAt: (x, z) => self.layout.sample(x, z, self.rs3).region,
+              segment: (k) => self.layout.segment(k),
+              backbone: (z) => self.layout.backbone(z),
+            },
+            { plan: PLANE_LANDMARK_PLAN, ...(params.landmarks ?? {}) },
+          );
+  }
+
+  /**
+   * Abstand zur Mittellinie des Levelpfads, geschätzt aus dem Rückgrat (der Pfad schwingt höchstens ±3,2 darum): ohne
+   * den Pfad zu bauen (die Wahrzeichen werden vor dem Pfad geplant, der Pfad besucht sie danach).
+   */
+  backboneDistance(x: number, z: number): number {
+    const slope = this.layout.backboneSlope(z);
+    const u = Math.abs(x - this.layout.backbone(z)) / Math.hypot(1, slope);
+    return Math.max(0, u - 3.2);
+  }
+
+  /**
+   * Belegt für die Planung der Wahrzeichen: Felsformationen, Riesenbaum und Fokus-Elemente im Fußabdruck; der Kern
+   * (55 % des Radius: Fels, Becken, Treppen) liegt ganz in einer Welt (keine Weltgrenze, kein Riss quer durch Becken
+   * und Fels).
+   */
+  private landmarkBlocked(x: number, z: number, radius: number): boolean {
+    const rs = this.layout.sample(x, z, this.rs3);
+    const world = rs.world;
+    const key = rs.region.key;
+    const core = radius * 0.55;
+    if (rs.border < core) return true;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const px = x + Math.cos(a) * core;
+      const pz = z + Math.sin(a) * core;
+      const q = this.layout.sample(px, pz, this.rs3);
+      if (q.world !== world) return true;
+    }
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const f = i === 8 ? 0 : 0.7;
+      const px = x + Math.cos(a) * radius * f;
+      const pz = z + Math.sin(a) * radius * f;
+      if (this.features.rockAt(this.layout.sample(px, pz, this.rs3).region.key, px, pz, 1) !== null) return true;
+    }
+    for (const l of this.external.values()) if (Math.hypot(x - l.position[0], z - l.position[2]) < l.clearRadius + radius) return true;
+    const focal = this.focalSlot(key);
+    if (focal && Math.hypot(x - focal.position[0], z - focal.position[2]) < focal.clearRadius + radius * 0.8) return true;
+    return false;
   }
 
   // --- Welten und Formen -----------------------------------------------------------------------------------
@@ -146,6 +230,13 @@ export class PlaneField {
     return this.tmpC;
   }
 
+  /** Form am Punkt in eine eigene Ablage (verschachtelte Abfragen überschreiben `shapeAt`s Ablage nicht). */
+  private shapeInto(rs: RegionSample, out: ResolvedShape): ResolvedShape {
+    const own = this.shapeOf(rs.world);
+    if (rs.neighbor === rs.world || rs.border >= this.blendWidth) return own;
+    return mixShape(this.shapeOf(rs.neighbor), own, WorldLayout.blendWeight(rs.border, this.blendWidth), out);
+  }
+
   amplitudeAt(x: number, z: number): number {
     return this.shapeAt(x, z).amplitude;
   }
@@ -174,14 +265,23 @@ export class PlaneField {
   /** Natürliches Gelände (Planung der Merkmale). */
   baseHeightAt(x: number, z: number): number {
     const rs = this.layout.sample(x, z, this.rs2);
-    return this.naturalHeight(x, z, this.shapeAt(x, z, rs));
+    return this.naturalHeight(x, z, this.shapeInto(rs, this.tmpD));
   }
 
-  /** Höhe mit Seen und Flussrinnen. `key` = Region des Punkts (sonst neu bestimmt). */
+  /** Höhe mit Seen, Flussrinnen und den Becken der Wahrzeichen. `key` = Region des Punkts (sonst neu bestimmt). */
   heightWithShape(x: number, z: number, s: ResolvedShape, key?: string): number {
     const h = this.naturalHeight(x, z, s);
     const k = key ?? this.layout.sample(x, z, this.rs2).region.key;
-    return this.features.applyHeight(k, x, z, h);
+    const hf = this.features.applyHeight(k, x, z, h);
+    return this.landmarks ? this.landmarks.ground(x, z, hf) : hf;
+  }
+
+  /** Gelände ohne Wahrzeichen (Planung und Bau der Wahrzeichen). */
+  heightNoLandmarks(x: number, z: number): number {
+    const rs = this.layout.sample(x, z, this.rs3);
+    const key = rs.region.key;
+    const h = this.naturalHeight(x, z, this.shapeInto(rs, this.tmpE));
+    return this.features.applyHeight(key, x, z, h);
   }
 
   heightAt(x: number, z: number): number {
@@ -250,16 +350,25 @@ export class PlaneField {
   }
 
   isWater(x: number, z: number, margin = 0): boolean {
-    return this.features.isWater(this.keyAt(x, z), x, z, margin);
+    if (this.features.isWater(this.keyAt(x, z), x, z, margin)) return true;
+    const lw = this.landmarks?.waterAt(x, z);
+    return !!lw && lw.depth > -margin;
+  }
+
+  /** Belegt ein Wahrzeichen (Fels, Stein, Wasser) den Kreis (x, z, r)? Für Streuung, Müll und Pfad. */
+  landmarkBlocks(x: number, z: number, radius: number): boolean {
+    return this.landmarks?.blocks(x, z, radius) ?? false;
   }
 
   rockAt(x: number, z: number, margin = 0): { formation: RockFormation; column: RockColumn } | null {
     return this.features.rockAt(this.keyAt(x, z), x, z, margin);
   }
 
-  /** Begehbare Höhe (Gelände oder Felsdeckfläche). */
+  /** Begehbare Höhe (Gelände, Felsdeckfläche oder die Oberkante eines Wahrzeichens). */
   surfaceHeightAt(x: number, z: number): number {
-    return this.features.surfaceHeight(this.keyAt(x, z), x, z, this.heightAt(x, z));
+    const h = this.features.surfaceHeight(this.keyAt(x, z), x, z, this.heightAt(x, z));
+    const top = this.landmarks?.surfaceAt(x, z);
+    return top !== null && top !== undefined ? Math.max(h, top) : h;
   }
 
   /** Nächster Felsanker innerhalb `maxDist` (sucht in den Regionen um den Punkt). */
@@ -308,7 +417,7 @@ export class PlaneField {
         const seg = this.layout.segment(region.k);
         const along = focal.along ?? 0.5;
         z = seg.zStart + (seg.zEnd - seg.zStart) * Math.min(0.9, Math.max(0.1, along));
-        const lateral = focal.lateral ?? (hash2(region.k, 7, this.seed) < 0.5 ? -1 : 1) * 5;
+        const lateral = focal.lateral ?? (hash2(region.k, 7, this.seed) < 0.5 ? -1 : 1) * 10;
         x = this.layout.backbone(z) + lateral;
       } else {
         const jx = (hash2(region.c, region.j, this.seed + 17) - 0.5) * 6;
@@ -390,6 +499,8 @@ export class PlaneField {
       this.features.invalidate(prev.region);
       this.version++;
     }
+    // Wahrzeichen der Umgebung neu planen (sie meiden den Riesenbaum)
+    this.landmarks?.invalidate();
     // Höhe erst nach der (Neu-)Planung: der Fuß steht auf dem echten Gelände (Seen im Höhenfeld)
     this.surfaceAt(params.x, params.z, pos, nor);
     this.version++;
@@ -401,6 +512,7 @@ export class PlaneField {
     if (!prev) return;
     this.external.delete(id);
     this.features.invalidate(prev.region);
+    this.landmarks?.invalidate();
     this.version++;
   }
 

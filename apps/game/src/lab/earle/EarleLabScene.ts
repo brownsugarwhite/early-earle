@@ -699,7 +699,7 @@ export class EarleLabScene implements SceneController {
     }
 
     this.sun.directionWorld(this.sunDirWorld.value);
-    world.vegetation.setSunDirection(this.sunDirWorld.value, this.sunDirWorld.value);
+    world.setSunDirection(this.sunDirWorld.value);
 
     const camR = camWorld.length();
     this.skyHorizon.value = -Math.sin(Math.acos(Math.min(1, PLANET_RADIUS / Math.max(PLANET_RADIUS + 0.01, camR))));

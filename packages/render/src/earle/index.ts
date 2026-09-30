@@ -26,6 +26,6 @@ export { EarleVegetation, TREE_KINDS, CANOPY_KINDS, createBareTreeGeometry, type
 export { PlanetVegetation, GROWTH_SLOTS, CANOPY_MESHES, createPropGeometry, type CanopyMesh, type PlanetVegetationOptions, type VegetationTreeEntry, type VegetationPropEntry, type VegetationWorldRows } from './planetVegetation';
 export { EarlePlanet, FOG_REFERENCE_DISTANCE, proceduralWorld, type EarlePlanetOptions, type EarlePlanetQuality, type EarlePlanetWorld, type GroundTreatment, type PathCorridor, type WorldView } from './planet';
 export { DisplayMapping } from './display';
-export { WorldSlots, SLOT_COUNT, SLOT_ROWS, PLANET_ATLAS_HEIGHT, slotRows, slotOfRow, writeSlotPalette } from './worldSlots';
+export { WorldSlots, SLOT_COUNT, SLOT_ROWS, PLANET_ATLAS_HEIGHT, slotLandmarkRows, slotRows, slotOfRow, writeSlotPalette } from './worldSlots';
 export { proceduralPalette, hexToOklab, oklabToHex, type PaletteRecipe } from './proceduralPalette';
 export { FogStripes, createSkyDome, type FogStripeOptions, type SkyDomeOptions } from './skyFog';

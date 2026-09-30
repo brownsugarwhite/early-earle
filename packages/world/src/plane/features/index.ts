@@ -1,5 +1,5 @@
 import { featureRandom, type PlaneFeatureHost, type RegionSite } from './host';
-import { WET, carve, generateLakes, lakeAt, type Occupied } from './lakes';
+import { WET, carve, generateLakes, lakeAt, lakeRadiusAt, type Occupied } from './lakes';
 import { generateRivers, riverHeight, riverSegmentAt } from './rivers';
 import { columnAt, columnPeak, columnTopAt, generateRocks } from './rocks';
 import { SnowFields } from './snow';
@@ -296,8 +296,36 @@ export class PlaneFeatures {
     return best;
   }
 
+  /**
+   * Liegt (x, z) im Wasser der Region oder näher als `margin` am Ufer? Auch für große Ränder (Planung der Wahrzeichen:
+   * Fußabdruck + 1,5): echte Uferabstände statt der Nah-Abfrage (`NO_WATER` heißt „weit weg", nicht „nah").
+   */
   isWater(key: string, x: number, z: number, margin = 0): boolean {
-    return this.waterDepthAt(key, x, z) > -margin;
+    if (margin <= 0.5) return this.waterDepthAt(key, x, z) > -margin;
+    const r = this.region(key);
+    const box = r.waterBox;
+    const m = margin + 1;
+    if (!box || x < box[0] - m || x > box[2] + m || z < box[1] - m || z > box[3] + m) return false;
+    for (const lake of r.lakes) {
+      const dx = x - lake.cx;
+      const dz = z - lake.cz;
+      if (dx * dx + dz * dz > (lake.reach + margin) * (lake.reach + margin)) continue;
+      // Uferabstand ohne die Reichweiten-Grenze von `lakeAt`
+      const ca = Math.cos(lake.axis);
+      const sa = Math.sin(lake.axis);
+      const k = Math.sqrt(lake.stretch);
+      const u = (dx * ca + dz * sa) / k;
+      const v = (-dx * sa + dz * ca) * k;
+      const theta = Math.atan2(v, u);
+      const g = Math.hypot(Math.cos(theta) / k, Math.sin(theta) * k) || 1;
+      const e = (Math.hypot(u, v) - lakeRadiusAt(lake, theta)) / g;
+      if (e < margin) return true;
+    }
+    for (const river of r.rivers) {
+      this.nearestRiver(river, x, z, 9 + margin);
+      if (this.segHit.e < margin) return true;
+    }
+    return false;
   }
 
   /** Felssäule an einem Punkt (mit Rand) oder null. */

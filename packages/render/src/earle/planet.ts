@@ -35,7 +35,9 @@ import { buildWaterGeometry, waterGeometry, type WaterRegionInput } from './wate
 import { buildRockGeometry, createRockMaterial, rockGeometry } from './landmarks/rocks';
 import { BarnLandmarks } from './landmarks/barn';
 import { DriftLandmarks, type DriftPlacement } from './landmarks/drifts';
-import { PLANET_ATLAS_HEIGHT, SLOT_COUNT, SLOT_ROWS, WorldSlots, slotRows } from './worldSlots';
+import { PLANET_ATLAS_HEIGHT, SLOT_COUNT, SLOT_ROWS, WorldSlots, slotLandmarkRows, slotRows } from './worldSlots';
+import { LandmarkSet } from './landmarks/set/LandmarkSet';
+import type { LandmarkInstance } from '@ee/world';
 
 /** Bodenbehandlung je Welt (Terrain-Ornament): glatt, Schneelinien, Wiese, Perspektivlinien, Rampen, Schneegrate. */
 export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges';
@@ -215,6 +217,14 @@ export class EarlePlanet {
   readonly barns: BarnLandmarks;
   /** Schneewehen am Baumfuß in den Schneewelten. */
   readonly drifts: DriftLandmarks;
+  /**
+   * Wahrzeichen der geladenen Regionen (Fels mit Wasserfall, Felsstufe, Zwillingsfälle, Ruine, Sumpf): wenige
+   * zusammengefasste Meshes, neu gebaut, wenn sich die Menge ändert (Anker = Fokus beim Bau).
+   */
+  readonly landmarkSet: LandmarkSet;
+  private landmarkKey = '';
+  private readonly landmarkOrigin = { x: 0, z: 0 };
+  private landmarkInstances: LandmarkInstance[] = [];
   private readonly terrainMaterial: EarleMaterial;
   private readonly rockMaterial: EarleMaterial;
   private readonly waterMaterial: EarleMaterial;
@@ -452,7 +462,19 @@ export class EarlePlanet {
       shadowFactor: options.shadow?.factor ?? null,
     });
     this.plane.add(this.vegetation.group);
-    for (const o of [this.barns.mesh, this.drifts.mesh, this.vegetation.group]) this.anchorObject(o, 0, 0);
+
+    // --- Wahrzeichen (@ee/world/landmarks): Zeilen je Welt-Slot, Anzeige-Abbildung wie das Terrain -------------
+    const factor = options.shadow?.factor ?? null;
+    this.landmarkSet = new LandmarkSet({
+      ctx: { lookup: this.lookup, fog: this.fog, bands: this.terrainBands, warp },
+      rowsFor: (world) => slotLandmarkRows(this.slots.slotOf(world)),
+      quality: options.quality.chunkRes < 30 ? 'mobil' : 'hoch',
+      origin: this.landmarkOrigin,
+      ...(factor ? { shade: (p: Vec3Node) => factor(p, { softness: 0.1 }) } : {}),
+      groundAt: (x, z) => this.field.heightAt(x, z),
+    });
+    this.plane.add(this.landmarkSet.group);
+    for (const o of [this.barns.mesh, this.drifts.mesh, this.vegetation.group, this.landmarkSet.group]) this.anchorObject(o, 0, 0);
   }
 
   // --- Welten und Slots ------------------------------------------------------------------------------------------
@@ -791,7 +813,18 @@ export class EarlePlanet {
 
   /** Höhe der höchsten Werfer über dem Boden (Schattenkamera). */
   get hTotal(): number {
-    return Math.max(this.field.hMax + this.vegetation.hMax + 1, this.field.hMax + this.landmarkTop + 1, 9);
+    return Math.max(this.field.hMax + this.vegetation.hMax + 1, this.field.hMax + this.landmarkTop + 1, this.field.hMax + this.landmarkSet.maxHeight + 1, 9);
+  }
+
+  /** Richtung zur Sonne (Welt = Ebene, die Ebene dreht sich nicht): Vegetation und Wahrzeichen. */
+  setSunDirection(dir: Vector3): void {
+    this.vegetation.setSunDirection(dir, dir);
+    this.landmarkSet.setSunDirection(dir);
+  }
+
+  /** Wahrzeichen im Bild (gebaut). */
+  get landmarkList(): readonly LandmarkInstance[] {
+    return this.landmarkInstances;
   }
 
   // --- Wahrzeichen (Riesenbaum usw.) ---------------------------------------------------------------------------
@@ -958,7 +991,9 @@ export class EarlePlanet {
     inUse.add(this.viewWorldA);
     inUse.add(this.viewWorldB);
     for (const set of this.extraPins.values()) for (const w of set) inUse.add(w);
+    for (const l of this.landmarkInstances) inUse.add(l.placement.world);
     this.slots.pin(inUse);
+    this.landmarkSet.update(camera);
     this.mapping.toFlatCpu(cameraWorld, _v);
     this.vegetation.updateCamera(camera, _v.sub(this.vegetation.group.position).sub(this.plane.position));
     return rebuilt;
@@ -1172,6 +1207,8 @@ export class EarlePlanet {
     }
     for (const [slot, b] of best) this.slotFocusPlane[slot] = b.f;
     this.syncSlotFocus();
+    // Wahrzeichen der geladenen Fläche (nur neu bauen, wenn sich die Menge ändert)
+    this.rebuildLandmarks();
     // Felsen und Wasser der aktiven Regionen (ein Mesh je Schicht)
     const key = [...regions].sort().join('|') + `#${this.field.version}`;
     if (key !== this.activeRegionsKey) {
@@ -1179,6 +1216,32 @@ export class EarlePlanet {
       this.buildFeatureMeshes([...regions]);
     }
     if (!this.bounds.isEmpty()) this.bounds.expandByScalar(this.hTotal);
+  }
+
+  /** Wahrzeichen der geladenen Chunks: Menge bestimmen, bei Änderung neu bauen (Anker = gerundeter Fokus). */
+  private rebuildLandmarks(): void {
+    const lm = this.field.landmarks;
+    if (!lm) return;
+    let x0 = Infinity;
+    let z0 = Infinity;
+    let x1 = -Infinity;
+    let z1 = -Infinity;
+    for (const chunk of this.loaded.values()) {
+      const m = chunk.cpu.mesh;
+      x0 = Math.min(x0, m.ox);
+      z0 = Math.min(z0, m.oz);
+      x1 = Math.max(x1, m.ox + CHUNK_SIZE);
+      z1 = Math.max(z1, m.oz + CHUNK_SIZE);
+    }
+    const list = x0 < x1 ? lm.inRect(x0, z0, x1, z1) : [];
+    const key = list.map((l) => l.placement.id).sort().join('|') + `#${lm.version}`;
+    if (key === this.landmarkKey) return;
+    this.landmarkKey = key;
+    this.landmarkInstances = list;
+    this.landmarkOrigin.x = Math.round(this.focus.x);
+    this.landmarkOrigin.z = Math.round(this.focus.z);
+    this.landmarkSet.build(list);
+    this.anchorObject(this.landmarkSet.group, this.landmarkOrigin.x, this.landmarkOrigin.z);
   }
 
   /** Felsen- und Wasser-Meshes aus den Merkmalen der aktiven Regionen. */
@@ -1277,6 +1340,7 @@ export class EarlePlanet {
     for (const o of this.landmarks.values()) o.removeFromParent();
     this.landmarks.clear();
     this.vegetation.dispose();
+    this.landmarkSet.dispose();
     this.barns.dispose();
     this.drifts.dispose();
     this.rocks?.geometry.dispose();

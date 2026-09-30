@@ -1,4 +1,5 @@
 import { waterFromSky, rockFromTerrain, type PaletteAtlas, type WorldPalette, type WorldRows } from './palette';
+import { LANDMARK_ROLES, landmarkPaletteFromWorld, type LandmarkRows } from './landmarks/set/palette';
 
 /**
  * Welt-Slots der unendlichen Ebene (ADR 0002): Shader können keine unbegrenzten Weltindizes nachschlagen. Jede sichtbare
@@ -10,10 +11,12 @@ import { waterFromSky, rockFromTerrain, type PaletteAtlas, type WorldPalette, ty
 
 /** Anzahl gleichzeitiger Welten (Blickweite ≈ 60 Einheiten, Welten ≈ 34–42 Einheiten groß → selten über 14). */
 export const SLOT_COUNT = 24;
-/** Zeilen je Slot im Atlas. */
-export const SLOT_ROWS = 16;
+/** Zeilen je Slot im Atlas (13 Weltzeilen + 11 Zeilen der Wahrzeichen + Reserve). */
+export const SLOT_ROWS = 32;
+/** Erste Zeile der Wahrzeichen-Palette (Fels, Stein, Dach, Moos, Erde, Wasser, Nebel, Sumpf, Ried, Busch, Ranke) im Slot. */
+const LANDMARK_ROW = 13;
 /** Zeilen des Karten-Atlas (Slots + benannte Zeilen anderer Module: Riesenbaum, Müll, …). */
-export const PLANET_ATLAS_HEIGHT = 512;
+export const PLANET_ATLAS_HEIGHT = 1024;
 
 /** Feste Zeilen eines Slots. */
 export function slotRows(slot: number): WorldRows {
@@ -31,6 +34,14 @@ export function slotRows(slot: number): WorldRows {
     rock: b + 11,
     snow: b + 12,
   };
+}
+
+/** Zeilen der Wahrzeichen eines Slots (`LandmarkSet.rowsFor`). */
+export function slotLandmarkRows(slot: number): LandmarkRows {
+  const b = slot * SLOT_ROWS + LANDMARK_ROW;
+  const rows = {} as LandmarkRows;
+  LANDMARK_ROLES.forEach((role, i) => (rows[role] = b + i));
+  return rows;
 }
 
 /** Slot einer Atlaszeile (−1 = keine Slotzeile). */
@@ -54,6 +65,10 @@ export function writeSlotPalette(atlas: PaletteAtlas, slot: number, p: WorldPale
   atlas.setRow(rows.water, (p.water ?? waterFromSky(p)).slice(0, 8));
   atlas.setRow(rows.rock, (p.rock ?? rockFromTerrain(p)).slice(0, 8));
   atlas.setRow(rows.snow, (p.snow ?? terrain).slice(0, 8));
+  // Wahrzeichen der Welt (Fels mit Wasserfall, Ruine, Sumpf) aus derselben Palette
+  const lp = landmarkPaletteFromWorld(p);
+  const lr = slotLandmarkRows(slot);
+  for (const role of LANDMARK_ROLES) atlas.setRow(lr[role], lp[role].slice(0, 8));
   return { ...rows, canopyRows: [rows.canopy, ...rows.canopyRows.slice(1, 1 + Math.max(0, Math.min(3, variants.length)))] };
 }
 
