@@ -41,6 +41,8 @@ export interface BlobVisual {
   fogged: boolean;
   /** Hidden by the scene (the hero stands in for it during hand-offs). */
   hidden: boolean;
+  /** Created by a move but not drawn yet (a gull still carries this spawn); cleared by `reconcile`. */
+  pending: boolean;
   seed: number;
   spec: CreatureSpec | null;
   genome: BlobParams;
@@ -883,6 +885,7 @@ export class BoardBlobs {
       caged: blob.caged === true,
       fogged: blob.hidden === true,
       hidden: false,
+      pending: false,
       seed: blob.id * 31 + 7,
       spec: null,
       genome: genomeFor(this.options.zone, blob.tier, blob.id * 31 + 7),
@@ -1052,6 +1055,7 @@ export class BoardBlobs {
       v.z = z;
       v.lift = 0;
       v.pop = 1;
+      v.pending = false;
       v.squash = null;
       v.crouch = 0;
       v.stumble = 0;
@@ -1173,7 +1177,7 @@ export class BoardBlobs {
     meshBodies?.begin();
     for (const v of this.visuals.values()) {
       v.jiggle = Math.max(0, v.jiggle - dt * 1.4);
-      const visible = v.slot >= 0 && !v.hidden && !v.fogged && v.pop > 0.001 && this.globalPop > 0.001;
+      const visible = v.slot >= 0 && !v.hidden && !v.pending && !v.fogged && v.pop > 0.001 && this.globalPop > 0.001;
       if (!visible) {
         if (v.slot >= 0) {
           this.block.hide(v.slot);
@@ -1366,14 +1370,15 @@ export class BoardBlobs {
         const align = squash.axis[0] * v.moveDir[0] + squash.axis[2] * v.moveDir[1];
         v.front = scale * (across + (along - across) * align * align);
         if (v.lift !== 0 || v.squash !== null || Math.abs(st.amount) > 0.02) moved = true;
-        // Shadow proxy: an ellipsoid around the body, squashed like it.
+        // Shadow proxy: an ellipsoid around the body, squashed like it. High up (a spawn falling from the gull, a
+        // released blob) it casts none: at a 10° sun its shadow would land 6× the height away, off the board.
         const ax = squash.axis[0];
         const az = squash.axis[2];
         const r = scale * 0.95;
         _p.set(center[0], center[1] - 0.05 * scale, center[2]);
         _s.set(r * (across + (along - across) * ax * ax), r * sy, r * (across + (along - across) * az * az));
         _m.compose(_p, _q.identity(), _s);
-        if (proxyCount < this.capacity * PROXIES_PER_CREATURE) this.proxies.setMatrixAt(proxyCount++, _m);
+        if (v.lift <= 1.2 && proxyCount < this.capacity * PROXIES_PER_CREATURE) this.proxies.setMatrixAt(proxyCount++, _m);
         if (this.showLabels && v.labelAlpha > 0.01) {
           labels.add(v.x, y + scale * 1.32, v.z, 0.36 * Math.min(1, v.pop * this.globalPop), labelIndexForTier(v.tier), v.labelAlpha, camLocal);
         }
