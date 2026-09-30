@@ -1,7 +1,7 @@
 /* Audio-Lab (/lab/audio): neo-brutalist blocks, hard sun shadows, no borders or outlines. */
 .audio-lab { max-width: 1080px; }
 .audio-lab .al-head { display: grid; gap: 6px; margin-bottom: 18px; }
-.audio-lab .al-head .lab-back { justify-self: start; }
+.audio-lab .al-head .lab-nav { justify-self: start; margin-bottom: 10px; }
 .al-section { margin: 0 0 26px; padding: 16px 18px; background: rgba(247, 246, 216, 0.06); box-shadow: var(--sun-shadow) rgba(0, 0, 0, 0.35); }
 .al-section h2 { margin: 0 0 10px; font-family: var(--font-display); font-weight: 900; font-size: 20px; letter-spacing: 0.02em; color: var(--sky-1); }
 .al-note { margin: -4px 0 12px; font-size: 13px; opacity: 0.75; }

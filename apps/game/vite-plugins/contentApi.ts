@@ -1,15 +1,23 @@
-import type { Plugin, ViteDevServer } from 'vite';
+import { defaultAllowedOrigins, type Plugin, type ViteDevServer } from 'vite';
 import { promises as fs } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { formatJson } from '../../../tools/levels/format.ts';
 
 /**
- * Dev-Only-Endpunkt für die In-App-Editoren (auch vom Handy):
- *   GET  /__content/<dir>            → Liste der JSON-Dateien
+ * Dev-Only-Endpunkt für die In-App-Editoren (Browser auf dem Mac, Safari auf dem iPhone, die iOS-App):
+ *   GET  /__content                   → Ping { ok, app, host, dirs } (Verbindungstest der Werkstatt)
+ *   GET  /__content/<dir>             → Liste der JSON-Dateien
  *   GET  /__content/<dir>/<file>.json → Datei
  *   PUT  /__content/<dir>/<file>.json → validieren, atomar schreiben (tmp + rename)
  *   DELETE /__content/<dir>/_<file>.json → nur Dateien mit Unterstrich-Präfix (Entwürfe, Testdateien)
- * Pfade sind auf content/<dir> begrenzt; Validatoren pro Verzeichnis sind steckbar.
+ * `<dir>` darf ein erlaubtes Unterverzeichnis sein (z. B. `zones/worlds`). Pfade sind auf content/<dir> begrenzt;
+ * Validatoren pro Verzeichnis sind steckbar.
+ *
+ * Die iOS-App lädt von `capacitor://localhost` und spricht den Mac im WLAN an (HTTP, Port 5174): Vites
+ * CORS-Middleware läuft vor den Plugin-Middlewares, deshalb erweitert `config()` deren Origin-Liste um genau die
+ * App-Origins (plus Vites Standard: localhost). Andere Websites bekommen weiterhin kein CORS — ein fremder Tab im
+ * WLAN kann nicht in content/ schreiben.
  */
 export interface ContentApiOptions {
   contentDir: string;
@@ -17,7 +25,10 @@ export interface ContentApiOptions {
   allowedDirs?: string[];
 }
 
-const DEFAULT_DIRS = ['zones', 'levels', 'genome', 'rex'];
+const DEFAULT_DIRS = ['zones', 'zones/worlds', 'levels', 'genome', 'rex'];
+
+/** Origins of the Capacitor shells (iOS: capacitor://localhost; Android: http(s)://localhost without a port). */
+export const APP_ORIGINS = ['capacitor://localhost', 'ionic://localhost', 'https://localhost', 'http://localhost'];
 
 export function contentApi(opts: ContentApiOptions): Plugin {
   const allowed = new Set(opts.allowedDirs ?? DEFAULT_DIRS);
@@ -40,6 +51,11 @@ export function contentApi(opts: ContentApiOptions): Plugin {
   return {
     name: 'ee-content-api',
     apply: 'serve',
+    config(userConfig) {
+      // Respect an explicit cors setting in vite.config; otherwise: Vite's default origins + the app origins.
+      if (userConfig.server?.cors !== undefined) return;
+      return { server: { cors: { origin: [defaultAllowedOrigins, ...APP_ORIGINS] } } };
+    },
     configureServer(server: ViteDevServer) {
       server.middlewares.use('/__content', async (req, res) => {
         const send = (status: number, body: unknown) => {
@@ -48,9 +64,21 @@ export function contentApi(opts: ContentApiOptions): Plugin {
           res.end(JSON.stringify(body));
         };
         try {
+          if (req.method === 'OPTIONS') {
+            res.statusCode = 204;
+            return res.end();
+          }
           const url = new URL(req.url ?? '/', 'http://localhost');
           const parts = url.pathname.split('/').filter(Boolean);
-          const [dir, file] = parts;
+          if (parts.length === 0) {
+            if (req.method !== 'GET') return send(405, { error: 'Methode nicht erlaubt' });
+            return send(200, { ok: true, app: 'early-earle', host: os.hostname().replace(/\.local$/, ''), dirs: [...allowed] });
+          }
+          // Last segment ending in .json is the file, the rest the (possibly nested) directory.
+          const last = parts[parts.length - 1]!;
+          const hasFile = last.endsWith('.json');
+          const dir = (hasFile ? parts.slice(0, -1) : parts).join('/');
+          const file = hasFile ? last : undefined;
           if (!dir) return send(400, { error: 'dir fehlt' });
           const target = resolveSafe(dir, file);
           if (!target) return send(400, { error: 'ungültiger Pfad' });

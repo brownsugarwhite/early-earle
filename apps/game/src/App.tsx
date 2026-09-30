@@ -13,12 +13,17 @@ import { LabAudio } from './routes/LabAudio';
 import { EditorLevels } from './routes/EditorLevels';
 import { EditorCreatures } from './routes/EditorCreatures';
 import { EditorMap } from './routes/EditorMap';
+import { Werkstatt } from './routes/Werkstatt';
+import { useDeepLinks } from './native/deepLinks';
 
 export function App() {
+  // iOS app: earlyearle://werkstatt, earlyearle://lab/earle … open that route (no URL bar in the app).
+  useDeepLinks();
   return (
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/play" element={<Play />} />
+      <Route path="/werkstatt" element={<Werkstatt />} />
       <Route path="/lab" element={<LabIndex />} />
       <Route path="/lab/blob" element={<LabBlob />} />
       <Route path="/lab/earle" element={<LabEarle />} />

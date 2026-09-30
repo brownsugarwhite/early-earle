@@ -25,6 +25,8 @@ export interface GlassAction {
   disabled?: boolean;
   /** Hex override of this pill's glass tint. */
   tint?: string;
+  /** Always a round icon pill (label only for VoiceOver), e.g. the Werkstatt wrench next to "Spielen". */
+  iconOnly?: boolean;
 }
 
 /** Partial HUD state: only the keys present are applied; `null` clears a section. */

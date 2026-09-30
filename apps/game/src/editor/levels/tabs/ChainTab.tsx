@@ -199,6 +199,7 @@ export function ChainTab() {
   const visible = rows.filter((r) => (filter === 'alle' ? true : filter === 'ausreisser' ? r.outlier || r.doubleHard : r.zone === filter));
   const currentId = draft && /^\d{3}\.json$/.test(targetFile) ? (LEVELS[levelNumber(targetFile.replace('.json', '')) - 1]?.id ?? null) : null;
   const hasDraft = new Set(files.filter((f) => f.hasDraft).map((f) => f.file));
+  const localSaved = new Set(files.filter((f) => f.local).map((f) => f.file));
 
   const open = async (file: string) => {
     await openFile(file);
@@ -242,7 +243,7 @@ export function ChainTab() {
                   <b>{f.name}</b>
                   <small>
                     {f.file}
-                    {f.localOnly ? ' · nur lokal' : f.hasDraft ? ' · ungesichert' : ''}
+                    {f.hasDraft ? ' · ungesichert' : f.local ? ' · lokal gespeichert' : f.localOnly ? ' · nur lokal' : ''}
                   </small>
                 </span>
               </button>
@@ -274,7 +275,7 @@ export function ChainTab() {
               <span className="ch-name">
                 <b>
                   {r.name}
-                  {hasDraft.has(r.file) ? <i className="ch-unsaved" role="img" aria-label="ungesichert" /> : null}
+                  {hasDraft.has(r.file) ? <i className="ch-unsaved" role="img" aria-label="ungesichert" /> : localSaved.has(r.file) ? <i className="ch-unsaved ch-local" role="img" aria-label="lokal gespeichert" /> : null}
                 </b>
                 <span className="ch-kinds">
                   {r.kinds.length ? r.kinds.map((k) => <KindIcon key={k} kind={k} size={20} />) : <small>reines Verschmelzen</small>}

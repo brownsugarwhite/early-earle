@@ -108,15 +108,6 @@ export function LabBlob() {
       <Seg label="Physik" value={settings.driver} options={DRIVERS} onChange={(driver) => set({ driver })} testId="ctl-driver" />
       <Seg label="Qualität" value={settings.quality} options={QUALITIES} onChange={(quality) => set({ quality })} testId="ctl-quality" />
       <div className="blob-lab-row">
-        <button type="button" className="blob-lab-btn" data-kind="action" onClick={() => controller.impulse()} data-testid="btn-squash">
-          Squash-Impuls
-        </button>
-        <button type="button" className="blob-lab-btn" data-kind="action" onClick={() => controller.ripple()} data-testid="btn-ripple">
-          Ripple
-        </button>
-        <button type="button" className="blob-lab-btn" data-kind="action" onClick={() => controller.mergeTwo() && setInfo((i) => ({ ...i, merging: true }))} data-testid="btn-merge">
-          Zwei verschmelzen
-        </button>
         <button
           type="button"
           className="blob-lab-btn"
@@ -176,8 +167,23 @@ export function LabBlob() {
     </div>
   );
 
+  // Quick actions in the sheet's bar: they stay in reach while the settings are closed.
+  const peek = (
+    <>
+      <button type="button" className="blob-lab-btn" data-kind="action" onClick={() => controller.impulse()} data-testid="btn-squash">
+        Squash
+      </button>
+      <button type="button" className="blob-lab-btn" data-kind="action" onClick={() => controller.ripple()} data-testid="btn-ripple">
+        Ripple
+      </button>
+      <button type="button" className="blob-lab-btn" data-kind="action" onClick={() => controller.mergeTwo() && setInfo((i) => ({ ...i, merging: true }))} data-testid="btn-merge">
+        Verschmelzen
+      </button>
+    </>
+  );
+
   return (
-    <LabFrame title={benchMode ? 'P1 Blob-Lab · Benchmark' : 'P1 Blob-Lab'} controls={benchMode ? undefined : controls}>
+    <LabFrame title={benchMode ? 'P1 Blob-Lab · Benchmark' : 'P1 Blob-Lab'} controls={benchMode ? undefined : controls} peek={benchMode ? undefined : peek}>
       <CanvasHost controller={controller} />
       {benchMode ? <BenchOverlay running={bench.running} current={bench.current} report={bench.report} onRestart={bench.restart} /> : null}
     </LabFrame>

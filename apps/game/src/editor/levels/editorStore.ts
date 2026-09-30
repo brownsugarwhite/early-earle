@@ -28,6 +28,12 @@ import { useSolverStore } from './solverStore';
 import { FILE_NAME_RE, deleteLevelFile, getLevelFile, listLevelFiles, putLevelFile } from './contentClient';
 import { buildTemplate, type TemplateId } from './templates';
 import { haptic } from './haptics';
+import { IS_NATIVE, useContentTarget } from '../content/target';
+import { localGet, localList, localPut, localRemove } from '../content/local';
+import { downloadJson, shareJson, shareMessage } from '../content/share';
+
+/** Verzeichnis der Level im lokalen Speicher (wie content/levels). */
+const LOCAL_DIR = 'levels';
 
 export interface FileEntry {
   file: string;
@@ -35,8 +41,10 @@ export interface FileEntry {
   name: string;
   /** Es liegt ein lokaler, ungesicherter Entwurf für diese Datei vor. */
   hasDraft: boolean;
-  /** Nur lokal (noch nie gesichert). */
+  /** Nur lokal (noch nie auf dem Mac gesichert). */
   localOnly?: boolean;
+  /** Ohne Mac lokal gesichert — geht beim nächsten „Sichern“ mit Verbindung auf den Mac. */
+  local?: boolean;
 }
 
 export type TabId = 'werkzeug' | 'ziele' | 'spawn' | 'solver' | 'kette' | 'datei' | 'ascii';
@@ -320,8 +328,8 @@ export const useEditorStore = create<EditorState>((set, get) => {
     if (dirty && FILE_NAME_RE.test(targetFile) && !files.some((f) => f.file === targetFile)) {
       files = [...files, { file: targetFile, id: draft.id, name: draft.name ?? draft.id, hasDraft: true, localOnly: true }];
     }
-    // Lokale Entwürfe ohne gespeicherten Stand verschwinden, wenn sie nicht mehr existieren.
-    files = files.filter((f) => !f.localOnly || f.hasDraft);
+    // Lokale Entwürfe ohne gespeicherten Stand verschwinden, wenn sie nicht mehr existieren (lokal gesicherte bleiben).
+    files = files.filter((f) => !f.localOnly || f.hasDraft || f.local);
     set({ files });
   };
   const scheduleAutosave = () => {
@@ -376,6 +384,30 @@ export const useEditorStore = create<EditorState>((set, get) => {
     if (!taken(`${base}.json`)) return `${base}.json`;
     for (let i = 2; i < 100; i++) if (!taken(`${base}-${i}.json`)) return `${base}-${i}.json`;
     return `${base}-${Date.now().toString(36)}.json`;
+  };
+
+  /** Woher der gesicherte Stand (`savedJson`) stammt: vom Mac bzw. Dev-Server oder aus App/lokalem Speicher. */
+  let savedSource: 'mac' | 'local' = 'mac';
+
+  /** Ohne Mac: den Entwurf als lokalen Stand sichern (übersteht Neustarts, geht später auf den Mac). */
+  const saveLocal = (note: string): boolean => {
+    const { draft, targetFile, activeFile } = get();
+    if (!draft) return false;
+    const json = normalizeDraft(draft);
+    if (!localPut(LOCAL_DIR, targetFile, json)) {
+      get().showToast('Lokaler Speicher voll — bitte „Teilen“ nutzen', 'error', { label: 'Teilen', run: () => void get().share() });
+      haptic('error');
+      return false;
+    }
+    lsRemove(DRAFT_PREFIX + targetFile);
+    if (activeFile && activeFile !== targetFile) lsRemove(DRAFT_PREFIX + activeFile);
+    savedSource = 'local';
+    set({ activeFile: targetFile, savedJson: JSON.stringify(json), dirty: false, lastTemplate: null, endpoint: 'offline' });
+    writeSession();
+    writeHistoryNow();
+    get().showToast(`${note}Lokal gespeichert: ${targetFile}`, 'ok', { label: 'Teilen', run: () => void get().share() });
+    haptic('success');
+    return true;
   };
 
   /** Neuen, noch ungesicherten Entwurf laden (Neu, Vorlage, Duplikat). */
@@ -444,7 +476,8 @@ export const useEditorStore = create<EditorState>((set, get) => {
 
     refreshFiles: async () => {
       let names: string[] | null = null;
-      if (import.meta.env.DEV) {
+      // Dev-Server (gleiche Herkunft) oder der Mac im WLAN (iOS-App); sonst die gebündelten Level + lokale Stände.
+      if (await useContentTarget.getState().check()) {
         try {
           names = await listLevelFiles();
           set({ endpoint: 'ok' });
@@ -456,7 +489,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
 
       let entries: FileEntry[];
       if (names === null) {
-        // Produktions-Build: die gebündelten Level (001…), Entwürfe nur lokal.
+        // Ohne Mac: die gebündelten Level (001…), Entwürfe und Sicherungen nur lokal.
         entries = LEVELS.map((l, i) => ({ file: fileNameForNumber(i + 1), id: l.id, name: l.name ?? l.id, hasDraft: hasStoredDraft(fileNameForNumber(i + 1)) }));
       } else {
         const numeric = names.filter((n) => /^\d{3}\.json$/.test(n)).sort();
@@ -478,6 +511,15 @@ export const useEditorStore = create<EditorState>((set, get) => {
           }),
         );
         entries = [...entries, ...draftEntries];
+      }
+      // Ohne Mac lokal gesicherte Stände: markieren bzw. (neue Dateien) anhängen.
+      const localSaved = new Set(localList(LOCAL_DIR).filter((f) => FILE_NAME_RE.test(f)));
+      entries = entries.map((e) => (localSaved.has(e.file) ? { ...e, local: true } : e));
+      for (const file of localSaved) {
+        if (entries.some((e) => e.file === file)) continue;
+        const raw = (localGet(LOCAL_DIR, file)?.json ?? null) as { id?: unknown; name?: unknown } | null;
+        const id = typeof raw?.id === 'string' ? raw.id : file;
+        entries.push({ file, id, name: typeof raw?.name === 'string' ? raw.name : id, hasDraft: hasStoredDraft(file), localOnly: true, local: true });
       }
       // Nur lokal vorhandene Entwürfe (Neu/Vorlage/Kopie, noch nie gesichert).
       const known = new Set(entries.map((e) => e.file));
@@ -508,8 +550,18 @@ export const useEditorStore = create<EditorState>((set, get) => {
         const idx = get().files.findIndex((f) => f.file === file);
         raw = idx >= 0 && /^\d{3}\.json$/.test(file) ? (LEVELS[idx] ?? null) : null;
       }
+      // Ohne Mac lokal gesichert: ohne Verbindung ist das der gesicherte Stand; mit Verbindung ein Stand, der noch
+      // auf den Mac muss (lädt wie ein ungesicherter Entwurf, „Sichern“ schreibt ihn dorthin).
+      const localSave = localGet(LOCAL_DIR, file);
+      let pendingLocal: unknown = null;
+      savedSource = get().endpoint === 'ok' ? 'mac' : 'local';
+      if (localSave && get().endpoint !== 'ok') raw = localSave.json;
+      else if (localSave) {
+        if (raw !== null && normalizedJson(localSave.json) === normalizedJson(raw)) localRemove(LOCAL_DIR, file);
+        else pendingLocal = localSave.json;
+      }
       const stored = readStoredDraft(file);
-      if (raw === null && !stored) {
+      if (raw === null && !stored && pendingLocal === null) {
         get().showToast(`${file} gibt es nicht`, 'error');
         set({ loading: false });
         return;
@@ -517,12 +569,18 @@ export const useEditorStore = create<EditorState>((set, get) => {
       const diskJson = raw === null ? null : normalizedJson(raw);
       let draft = raw === null ? null : normalizeDraft(raw);
       let restored = false;
+      let fromLocal = false;
       if (stored) {
         const sd = normalizeDraft(stored.draft);
         if (diskJson === null || JSON.stringify(sd) !== diskJson) {
           draft = sd;
           restored = true;
         } else lsRemove(DRAFT_PREFIX + file);
+      }
+      if (!restored && pendingLocal !== null) {
+        draft = normalizeDraft(pendingLocal);
+        restored = true;
+        fromLocal = true;
       }
       if (!draft) draft = emptyDraft();
       const activeFile = raw === null ? (stored?.activeFile ?? null) : file;
@@ -540,7 +598,8 @@ export const useEditorStore = create<EditorState>((set, get) => {
       applyDraft(draft, { savedJson: diskJson });
       set({ dirty: restored || diskJson === null });
       writeSession();
-      if (restored && raw !== null) get().showToast('Ungesicherten Stand wiederhergestellt', 'info');
+      if (fromLocal) get().showToast('Lokal gesicherter Stand — „Sichern“ bringt ihn auf den Mac', 'info');
+      else if (restored && raw !== null) get().showToast('Ungesicherten Stand wiederhergestellt', 'info');
     },
 
     update: (fn, opKey) => {
@@ -710,16 +769,33 @@ export const useEditorStore = create<EditorState>((set, get) => {
         get().showToast('Dateiname: nur Buchstaben, Ziffern, _ - . und .json', 'error');
         return false;
       }
-      if (endpoint !== 'ok') {
-        get().download();
-        return false;
-      }
       set({ busy: true });
       try {
-        const existing = await getLevelFile(targetFile);
+        // Mac erreichbar (Dev-Server bzw. WLAN)? Sonst lokal sichern — „Teilen“ schickt die Datei weiter.
+        if (!(await useContentTarget.getState().check())) {
+          const ok = saveLocal('Mac nicht erreichbar · ');
+          if (ok) await get().refreshFiles();
+          return ok;
+        }
+        if (endpoint !== 'ok') set({ endpoint: 'ok' });
+        let existing: unknown;
+        try {
+          existing = await getLevelFile(targetFile);
+        } catch (e) {
+          if (useContentTarget.getState().status !== 'offline') throw e;
+          const ok = saveLocal('Verbindung weg · ');
+          if (ok) await get().refreshFiles();
+          return ok;
+        }
         if (existing !== null) {
           if (targetFile !== activeFile) {
             if (!(await get().requestConfirm({ title: `${targetFile} überschreiben?`, body: 'Die Datei gibt es schon.', ok: 'Überschreiben', danger: true }))) return false;
+          } else if (savedSource === 'local') {
+            // Offline begonnen: nur nachfragen, wenn der Mac inzwischen einen anderen Stand hat als die App.
+            const bundled = /^\d{3}\.json$/.test(targetFile) ? (LEVELS[levelNumber(targetFile.replace(/\.json$/, '')) - 1] ?? null) : null;
+            if (bundled === null || normalizedJson(existing) !== normalizedJson(bundled)) {
+              if (!(await get().requestConfirm({ title: 'Anderer Stand auf dem Mac', body: `${targetFile} ist auf dem Mac anders als dein lokaler Ausgangsstand. Mit deinem Stand überschreiben?`, ok: 'Überschreiben', danger: true }))) return false;
+            }
           } else if (savedJson !== null && normalizedJson(existing) !== savedJson) {
             if (!(await get().requestConfirm({ title: 'Datei wurde inzwischen geändert', body: `${targetFile} hat sich auf der Platte geändert. Trotzdem überschreiben?`, ok: 'Überschreiben', danger: true }))) return false;
           }
@@ -733,14 +809,16 @@ export const useEditorStore = create<EditorState>((set, get) => {
         }
         const saved = JSON.stringify(json);
         lsRemove(DRAFT_PREFIX + targetFile);
+        localRemove(LOCAL_DIR, targetFile);
+        savedSource = 'mac';
         // „Sichern unter“: die Änderungen stecken jetzt in der neuen Datei, das Original bleibt unverändert.
         if (activeFile && activeFile !== targetFile) lsRemove(DRAFT_PREFIX + activeFile);
         set({ activeFile: targetFile, savedJson: saved, dirty: false, lastTemplate: null });
         writeSession();
         writeHistoryNow();
         // Vite lädt die Seite nach der Dateiänderung neu (JSON-HMR); der Hinweis überlebt das.
-        lsSet(PENDING_TOAST_KEY, `Gesichert: ${targetFile}`);
-        get().showToast(`Gesichert: ${targetFile}`, 'ok');
+        lsSet(PENDING_TOAST_KEY, `Gespeichert auf dem Mac: ${targetFile}`);
+        get().showToast(`Gespeichert auf dem Mac: ${targetFile}`, 'ok');
         haptic('success');
         await get().refreshFiles();
         setTimeout(() => lsRemove(PENDING_TOAST_KEY), 4000);
@@ -810,7 +888,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
         get().showToast('Nur Entwürfe (_-Dateien) lassen sich löschen', 'error');
         return;
       }
-      const ok = await get().requestConfirm({ title: `${file} löschen?`, body: onDisk ? 'Die Datei verschwindet aus content/levels.' : 'Der lokale Entwurf verschwindet.', ok: 'Löschen', danger: true });
+      const ok = await get().requestConfirm({ title: `${file} löschen?`, body: onDisk && endpoint === 'ok' ? 'Die Datei verschwindet aus content/levels auf dem Mac.' : 'Der lokale Stand verschwindet.', ok: 'Löschen', danger: true });
       if (!ok) return;
       const current = file === (get().activeFile ?? get().targetFile) || file === get().targetFile;
       if (current && autosaveTimer) {
@@ -823,6 +901,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       }
       lsRemove(DRAFT_PREFIX + file);
       lsRemove(HIST_PREFIX + file);
+      localRemove(LOCAL_DIR, file);
       touchHistIndex(file, true);
       if (endpoint === 'ok' && onDisk) {
         try {
@@ -847,36 +926,22 @@ export const useEditorStore = create<EditorState>((set, get) => {
     download: () => {
       const { draft, targetFile } = get();
       if (!draft) return;
-      const text = JSON.stringify(normalizeDraft(draft), null, 2) + '\n';
-      const blob = new Blob([text], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = targetFile || 'level.json';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      get().showToast(`Heruntergeladen: ${a.download}`, 'ok');
+      // Die WKWebView der App lädt nichts herunter: dort übernimmt das Teilen-Blatt.
+      if (IS_NATIVE) {
+        void get().share();
+        return;
+      }
+      const name = targetFile || 'level.json';
+      if (downloadJson(name, normalizeDraft(draft))) get().showToast(`Heruntergeladen: ${name}`, 'ok');
+      else get().showToast('Herunterladen ging schief', 'error');
     },
 
     share: async () => {
       const { draft, targetFile } = get();
       if (!draft) return;
-      const text = JSON.stringify(normalizeDraft(draft), null, 2) + '\n';
-      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-      if (typeof nav.share !== 'function') {
-        get().download();
-        return;
-      }
-      try {
-        const file = new File([text], targetFile || 'level.json', { type: 'application/json' });
-        if (nav.canShare?.({ files: [file] })) await nav.share({ files: [file], title: draft.name ?? draft.id });
-        else await nav.share({ title: draft.name ?? draft.id, text });
-        get().showToast('Geteilt', 'ok');
-      } catch (e) {
-        if (!(e instanceof DOMException && e.name === 'AbortError')) get().showToast('Teilen ging schief', 'error');
-      }
+      const name = targetFile || 'level.json';
+      const outcome = await shareJson(name, normalizeDraft(draft), draft.name ?? draft.id);
+      if (outcome !== 'abgebrochen') get().showToast(shareMessage(outcome, name), outcome === 'fehler' ? 'error' : 'ok');
     },
 
     syncPreview: () => {

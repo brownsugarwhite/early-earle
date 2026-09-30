@@ -132,16 +132,20 @@ export function LabShadow() {
     <div ref={frameRef} className="shadow-lab" data-mode={params.mode}>
       <LabFrame
         title="P2e Schatten-Lab · Shadows v2"
+        peek={
+          hideUi ? undefined : (
+            <div className="shadow-seg" role="group" aria-label="Modus" data-testid="shadow-mode">
+              {(['alt', 'split', 'neu'] as ShadowLabMode[]).map((m) => (
+                <button key={m} type="button" className={params.mode === m ? 'is-on' : ''} onClick={() => set({ mode: m })} data-testid={`mode-${m}`}>
+                  {MODE_LABELS[m]}
+                </button>
+              ))}
+            </div>
+          )
+        }
         controls={
           hideUi ? undefined : (
             <>
-              <div className="shadow-seg" role="group" aria-label="Modus" data-testid="shadow-mode">
-                {(['alt', 'split', 'neu'] as ShadowLabMode[]).map((m) => (
-                  <button key={m} type="button" className={params.mode === m ? 'is-on' : ''} onClick={() => set({ mode: m })} data-testid={`mode-${m}`}>
-                    {MODE_LABELS[m]}
-                  </button>
-                ))}
-              </div>
               <label className="earle-ctl earle-ctl--select" data-testid="shadow-view">
                 <span>Ansicht</span>
                 <output>{VIEW_LABELS[params.view]}</output>

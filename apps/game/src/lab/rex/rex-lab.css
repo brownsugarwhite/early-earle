@@ -38,28 +38,22 @@
 }
 .rex-text:focus-visible { outline: none; box-shadow: var(--sun-shadow) var(--neon); }
 
-/* Phone views: controls become a side panel, the frame sits in the free space. */
-.rex-lab[data-view='map'] .lab-controls,
-.rex-lab[data-view='level'] .lab-controls {
-  top: 56px;
-  left: auto;
-  width: min(420px, 46vw);
-  align-content: flex-start;
-  overflow: auto;
-  background: linear-gradient(to left, rgba(15, 28, 34, 0.92), rgba(15, 28, 34, 0.6));
-}
+/* Phone views: the 393 × 852 frame sits in the free stage (LabFrame keeps the controls beside/below it) and
+   scrolls when the stage is smaller (phones) — never scaled, the placement maths run in real phone pixels. */
 .rex-lab[data-view='map'] .lab-frame,
 .rex-lab[data-view='level'] .lab-frame { background: #0b1418; }
 .rex-stage {
   position: absolute;
-  inset: 52px min(440px, 48vw) 0 0;
-  display: grid;
-  place-items: center;
+  inset: 0;
+  display: flex;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: calc(var(--lab-top, 60px) + 6px) 16px 16px 24px;
 }
-.rex-lab[data-ui='off'] .rex-stage { inset: 0; }
+.rex-lab[data-ui='off'] .rex-stage { padding: 0; }
 .rex-phone {
   position: relative;
+  margin: auto;
   flex: none;
   overflow: hidden;
   background: #081b25;

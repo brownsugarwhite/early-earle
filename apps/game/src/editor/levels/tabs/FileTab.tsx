@@ -5,6 +5,7 @@ import { TEMPLATES, buildTemplate, type TemplateId } from '../templates';
 import { BlobGlyph, C, CracksOrnament, CurrentOrnament, OilOrnament, PortalRing, SporeOrnament, ToolGlyph, UiIcon, floorFill } from '../icons';
 import { ZONE_COLOR, de } from '../chain';
 import { Row, Section } from '../ui';
+import { IS_NATIVE, useContentTarget } from '../../content/target';
 
 /** Mini-Brett als Vorschau einer Vorlage (gleiche Glyphen wie das große Brett, stark verkleinert). */
 function MiniBoard({ level }: { level: LevelDraft }) {
@@ -144,17 +145,35 @@ export function FileTab() {
   const download = useEditorStore((s) => s.download);
   const share = useEditorStore((s) => s.share);
   const setTargetFile = useEditorStore((s) => s.setTargetFile);
+  const macHost = useContentTarget((s) => s.host);
   if (!draft) return null;
   const file = activeFile ?? targetFile;
   const entry = files.find((f) => f.file === file);
   const deletable = file.startsWith('_') || !!entry?.localOnly || (activeFile === null && !files.some((f) => f.file === targetFile && !f.localOnly));
-  const canShare = typeof navigator !== 'undefined' && typeof (navigator as Navigator & { share?: unknown }).share === 'function';
+  // In der App teilt das iOS-Blatt (AirDrop, Dateien …); im Browser, wo es die Web-Share-API gibt.
+  const canShare = IS_NATIVE || (typeof navigator !== 'undefined' && typeof (navigator as Navigator & { share?: unknown }).share === 'function');
   const offline = endpoint !== 'ok';
-  const status = activeFile === null ? 'Entwurf · noch nie gesichert' : dirty ? 'Ungesicherte Änderungen (lokal gemerkt)' : 'Gesichert';
+  const status =
+    activeFile === null
+      ? 'Entwurf · noch nie gesichert'
+      : dirty
+        ? 'Ungesicherte Änderungen (lokal gemerkt)'
+        : offline
+          ? entry?.local
+            ? 'Lokal gespeichert · geht mit Verbindung auf den Mac'
+            : 'Stand der App (ohne Mac)'
+          : 'Gespeichert auf dem Mac';
 
   return (
     <>
-      <Section title="Diese Datei" aside={<span className="ed-endpoint" data-state={endpoint}>{endpoint === 'ok' ? 'Dev-Endpunkt' : endpoint === 'offline' ? 'Nur lokal' : '…'}</span>}>
+      <Section
+        title="Diese Datei"
+        aside={
+          <span className="ed-endpoint" data-state={endpoint} data-testid="save-target">
+            {endpoint === 'ok' ? `Mac${macHost ? ` · ${macHost}` : ''}` : endpoint === 'offline' ? 'Lokal' : '…'}
+          </span>
+        }
+      >
         <p className="ft-status" data-dirty={dirty || activeFile === null}>
           <i aria-hidden="true" />
           {status}
@@ -165,7 +184,7 @@ export function FileTab() {
         </label>
         <Row>
           <button type="button" className="ed-btn ed-btn-primary" onClick={() => void save()} disabled={!validation.ok || busy} data-testid="file-save-btn">
-            <UiIcon name={offline ? 'download' : 'save'} size={18} /> {offline ? 'Herunterladen' : busy ? 'Sichert …' : 'Sichern'}
+            <UiIcon name="save" size={18} /> {busy ? 'Sichert …' : offline ? 'Lokal sichern' : 'Auf den Mac sichern'}
           </button>
           <button type="button" className="ed-btn" onClick={duplicate} data-testid="duplicate-btn">
             <UiIcon name="copy" size={18} /> Als Entwurf duplizieren
@@ -175,9 +194,11 @@ export function FileTab() {
           <button type="button" className="ed-btn ed-btn-small" onClick={revert} disabled={!dirty || savedJson === null} data-testid="revert-btn">
             <UiIcon name="undo" size={16} /> Zurücksetzen
           </button>
-          <button type="button" className="ed-btn ed-btn-small" onClick={download} data-testid="download-btn">
-            <UiIcon name="download" size={16} /> JSON
-          </button>
+          {IS_NATIVE ? null : (
+            <button type="button" className="ed-btn ed-btn-small" onClick={download} data-testid="download-btn">
+              <UiIcon name="download" size={16} /> JSON
+            </button>
+          )}
           {canShare ? (
             <button type="button" className="ed-btn ed-btn-small" onClick={() => void share()} data-testid="share-btn">
               <UiIcon name="share" size={16} /> Teilen
@@ -187,7 +208,10 @@ export function FileTab() {
             <UiIcon name="trash" size={16} /> Löschen
           </button>
         </Row>
-        <p className="ed-hint">{deletable ? 'Entwürfe lassen sich löschen.' : 'Nummerierte Level lassen sich nicht löschen — erst duplizieren.'} Zurücksetzen lässt sich rückgängig machen.</p>
+        <p className="ed-hint">
+          {offline ? 'Mac nicht erreichbar: „Lokal sichern“ behält den Stand auf dem Gerät, „Teilen“ schickt die JSON-Datei weiter. ' : ''}
+          {deletable ? 'Entwürfe lassen sich löschen.' : 'Nummerierte Level lassen sich nicht löschen — erst duplizieren.'} Zurücksetzen lässt sich rückgängig machen.
+        </p>
       </Section>
       <TemplatePicker />
     </>

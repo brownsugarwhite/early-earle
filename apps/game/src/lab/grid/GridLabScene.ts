@@ -160,8 +160,11 @@ export class GridLabScene implements SceneController {
     const tanH = tanV * aspect;
     // Creatures read from above: ≈ 67° down in portrait, 63° on desktop (slight perspective stays).
     const pitch = aspect < 1 ? 1.17 : 1.1;
-    // Share of the screen height above the HUD (lab controls: tall sheet on phones, one strip on desktop).
-    const usable = aspect < 1 ? 0.56 : 0.78;
+    // Free band of the stage (fractions from the top): the lab's HUD pills cover the top strip, REX's line the
+    // bottom one. The settings no longer overlay the canvas (LabFrame sheet / side panel).
+    const bandTop = aspect < 1 ? 0.2 : 0.12;
+    const bandBottom = aspect < 1 ? 0.9 : 0.92;
+    const usable = bandBottom - bandTop;
     const breathe = aspect < 1 ? 1.06 : 1.16;
     const dW = (W / 2 / tanH) * breathe;
     const dD = ((D * Math.sin(pitch) + 1.2 * Math.cos(pitch)) / 2 / (tanV * usable)) * breathe;
@@ -169,8 +172,8 @@ export class GridLabScene implements SceneController {
     const cz = (fp.minZ + fp.maxZ) / 2;
     cam.position.set(0, top + dist * Math.sin(pitch), cz + dist * Math.cos(pitch));
     cam.lookAt(0, top - 0.15, cz);
-    // Centre the plateau in the free band: NDC y of the band centre = 1 − usable.
-    cam.rotateX(-Math.atan((1 - usable) * tanV));
+    // Centre the plateau in the free band: NDC y of the band centre = 1 − (top + bottom).
+    cam.rotateX(-Math.atan((1 - (bandTop + bandBottom)) * tanV));
   }
 
   private fitShadow(): void {

@@ -143,23 +143,9 @@ export function LabCreature() {
   const [scrub, setScrub] = useState<number | null>(null);
   const [hint, setHint] = useState<string>('');
   const layerRef = useRef<HTMLDivElement>(null);
-  const controlsRef = useRef<HTMLDivElement>(null);
 
-  // The controls sheet covers the lower part of the canvas: the scene frames its content above it.
-  useEffect(() => {
-    const el = controlsRef.current;
-    const layer = layerRef.current;
-    if (!el || !layer) return;
-    const report = () => {
-      const h = layer.getBoundingClientRect().height;
-      if (h > 0) controller.setInsetBottom((el.getBoundingClientRect().height + 24) / h);
-    };
-    const ro = new ResizeObserver(report);
-    ro.observe(el);
-    ro.observe(layer);
-    report();
-    return () => ro.disconnect();
-  }, [controller]);
+  // The LabFrame keeps the settings off the stage (bottom sheet / side panel): frame the whole canvas.
+  useEffect(() => controller.setInsetBottom(0), [controller]);
 
   useEffect(() => {
     let lastKey = '';
@@ -219,7 +205,7 @@ export function LabCreature() {
   const motionMode = settings.mode === 'motion' || settings.mode === 'herd' || settings.mode === 'zoo' || settings.mode === 'sketch';
 
   const controls = (
-    <div className="creature-controls" data-testid="creature-lab-controls" ref={controlsRef}>
+    <div className="creature-controls" data-testid="creature-lab-controls">
       <Seg label="Ansicht" value={settings.mode} options={MODES} onChange={(mode) => set({ mode })} testId="ctl-mode" />
       <Seg label="Zone" value={settings.zone} options={ZONES.map((z: ZoneId) => ({ id: z, label: z }))} onChange={(zone) => set({ zone })} testId="ctl-zone" />
       {settings.mode === 'compare' ? (
@@ -243,9 +229,6 @@ export function LabCreature() {
       <div className="creature-row">
         <span className="creature-label">Seed</span>
         <input className="creature-input" type="number" value={settings.seed} onChange={(e) => set({ seed: Number(e.target.value) || 0 })} data-testid="ctl-seed" />
-        <button type="button" className="creature-btn" data-kind="action" onClick={() => set(randomVariety(settings.mode))} data-testid="btn-random">
-          Zufall
-        </button>
         <Seg label="Render" value={settings.candidate} options={CANDIDATES} onChange={(candidate) => set({ candidate })} testId="ctl-candidate" />
         <Seg label="Qualität" value={settings.quality} options={QUALITIES} onChange={(quality) => set({ quality })} testId="ctl-quality" />
       </div>
@@ -284,8 +267,6 @@ export function LabCreature() {
             <Slider label="Tempo" value={settings.speed} min={0.3} max={2.5} step={0.05} onChange={(speed) => set({ speed })} format={(v) => `× ${v.toFixed(2)}`} testId="ctl-speed" />
             <Slider label="Masse" value={settings.mass} min={0.4} max={3} step={0.05} onChange={(mass) => set({ mass })} format={(v) => `× ${v.toFixed(2)}`} testId="ctl-mass" />
           </div>
-          {/* Always reserved: a hint appearing must not shift the buttons of the bottom-anchored sheet. */}
-          <span className="creature-info creature-hint">{hint || ' '}</span>
         </div>
       ) : null}
       <div className="creature-row" data-testid="ctl-verbs">
@@ -295,9 +276,6 @@ export function LabCreature() {
             {v.label}
           </button>
         ))}
-        <button type="button" className="creature-btn" data-kind="action" onClick={() => controller.poke()} data-testid="btn-poke">
-          Poke
-        </button>
         {settings.mode === 'merge' ? (
           <>
             <button type="button" className="creature-btn" data-kind="action" onClick={() => controller.mergeParents()} disabled={info.merging} data-testid="btn-merge">
@@ -361,9 +339,26 @@ export function LabCreature() {
     </div>
   );
 
+  // Quick actions in the sheet's bar (reachable while the settings are closed).
+  const peek = (
+    <>
+      <button type="button" className="creature-btn" data-kind="action" onClick={() => set(randomVariety(settings.mode))} data-testid="btn-random">
+        Zufall
+      </button>
+      <button type="button" className="creature-btn" data-kind="action" onClick={() => controller.poke()} data-testid="btn-poke">
+        Poke
+      </button>
+    </>
+  );
+
   return (
-    <LabFrame title="P4 Genom-Lab" controls={controls}>
+    <LabFrame title="P4 Genom-Lab" controls={controls} peek={peek}>
       <CanvasHost controller={controller} />
+      {motionMode && hint ? (
+        <p className="creature-stage-hint" data-testid="creature-hint">
+          {hint}
+        </p>
+      ) : null}
       <div
         ref={layerRef}
         className="creature-pointer-layer"

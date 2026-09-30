@@ -23,6 +23,8 @@ struct HudAction: Equatable, Identifiable {
     var disabled: Bool = false
     /// Optional hex override for this pill's glass tint.
     var tint: String?
+    /// Always a round icon pill (the label is only for VoiceOver), e.g. the Werkstatt wrench on the map.
+    var iconOnly: Bool = false
 }
 
 struct HudState: Equatable {
@@ -89,7 +91,8 @@ enum HudParser {
                 icon: nonEmpty(string(o["icon"])),
                 primary: bool(o["primary"]),
                 disabled: bool(o["disabled"]),
-                tint: nonEmpty(string(o["tint"])))
+                tint: nonEmpty(string(o["tint"])),
+                iconOnly: bool(o["iconOnly"]))
         }
     }
 }

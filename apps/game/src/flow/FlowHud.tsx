@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { canRewind, type GoalProgress, type LevelDef } from '@ee/core';
 import { FLOW_LEVELS, flowLevelNo, zoneName } from './levels';
 import { useProgress } from '../state/progress';
@@ -17,6 +17,7 @@ import {
 import { useFlowStore, type FlowPhase } from './flowStore';
 import { SoundToggle } from '../audio/SoundToggle';
 import { useAudioSettings } from '../audio/settings';
+import { WERKSTATT_ENABLED, WERKSTATT_GLASS_ACTION, WerkstattButton } from '../overlay/WerkstattButton';
 
 const GOAL_LABEL: Record<string, string> = {
   reachTier: 'Stufe',
@@ -101,6 +102,8 @@ function nativeHudState(f: HudFacts): GlassHudState | null {
     }
   }
   if (f.phase === 'map' || f.phase === 'level') actions.push({ id: 'sound', label: 'Ton', icon: f.muted ? 'speaker.slash.fill' : 'speaker.wave.2.fill' });
+  // Werkstatt (labs + editors): the app has no URL bar — a wrench pill on the map leads there.
+  if (f.phase === 'map' && WERKSTATT_ENABLED) actions.push({ ...WERKSTATT_GLASS_ACTION });
   return {
     top: { title: f.title, subtitle: f.subtitle, moves: f.moves, goals: f.goals },
     actions,
@@ -130,6 +133,7 @@ export function FlowHud() {
   const native = useNativeGlass();
   const muted = useAudioSettings((s) => s.muted);
   const toggleMuted = useAudioSettings((s) => s.toggleMuted);
+  const navigate = useNavigate();
 
   // Haptics for the whole flow (native only; no-op on the web).
   useEffect(() => installHaptics(), []);
@@ -177,6 +181,9 @@ export function FlowHud() {
         break;
       case 'sound':
         toggleMuted();
+        break;
+      case 'werkstatt':
+        navigate('/werkstatt');
         break;
       default:
         break;
@@ -248,6 +255,7 @@ export function FlowHud() {
                 </>
               ) : null}
               {phase === 'map' || phase === 'level' ? <SoundToggle /> : null}
+              {phase === 'map' && WERKSTATT_ENABLED ? <WerkstattButton /> : null}
             </div>
           </footer>
         </>
