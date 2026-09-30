@@ -57,6 +57,8 @@ export interface PlacementSpec {
   pathDistance?: [number, number];
   /** Abstand zum Fokus der Welt (Fokus-Slot oder Weltmitte) [min, max]. Standard [3, 16]. */
   focusDistance?: [number, number];
+  /** Seite des Pfads (1 = rechts, −1 = links; Standard zufällig). Nur auf der Ebene (Pfadregionen). */
+  side?: 1 | -1;
 }
 
 export interface LakeSpec extends PlacementSpec {
@@ -105,11 +107,23 @@ export interface RockSpec extends PlacementSpec {
   side?: 1 | -1;
 }
 
+export interface SnowFieldPatch {
+  radius: number;
+  offset?: [number, number];
+}
+
 export interface SnowFieldSpec {
   /** Anteil der Fläche unter Schnee (0..1, Standard 0.45). */
   cover: number;
   /** Maßstab der Felder (1 = Standard, größer = weitere Felder). */
   scale?: number;
+  /**
+   * Felder am Bildfokus der Region (Ebene, Welt 11: die leuchtenden Wiesen vor den Schirmbäumen): Radius und Versatz
+   * (x, z) vom Fokus, eines oder mehrere. Nur auf der Ebene.
+   */
+  focus?: SnowFieldPatch | SnowFieldPatch[];
+  /** Wiese statt Schnee (Welt 11): flache leuchtende Fläche mit Verlauf nach innen, nur Schlagschatten (Farben: `snow`). */
+  meadow?: boolean;
 }
 
 export interface DriftSpec {

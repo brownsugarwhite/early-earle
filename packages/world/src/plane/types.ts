@@ -2,6 +2,9 @@ import type { Vec3 } from '../capPatch';
 import type { TreeKind } from '../scatterTrees';
 import type { WorldFeatureSpec } from '../features/types';
 import type { TrashSpec } from '../trash/types';
+import type { MistSpec } from './mist';
+import type { LandmarkKind } from '../landmarks/types';
+import type { FlankSpec, RidgeTrainSpec } from './flank';
 
 /**
  * Welt-Spezifikationen der unendlichen Ebene (ADR 0002). Positionen sind Ebenenkoordinaten: `[x, h, z]` mit x seitlich,
@@ -57,6 +60,15 @@ export interface PlanetTerrainShape {
   floor?: number;
   /** Anteil einer großwelligen Rampe (steile Hänge wie in Bild 04). */
   slope?: number;
+  /**
+   * Streckung der Hügel quer zum Pfad (x): > 1 = lange Kämme quer durchs Bild, die sich in die Tiefe staffeln (Ebene 20),
+   * < 1 = Hänge längs des Pfads (Ebene 7). Standard 1.
+   */
+  stretch?: number;
+  /** Steilhang neben dem Pfad (Welt 12, Ebene 7), siehe `plane/flank.ts`. */
+  flank?: FlankSpec;
+  /** Hügelstaffel quer zum Blick (Welt 11, Ebene 20), siehe `plane/flank.ts`. */
+  ridges?: RidgeTrainSpec;
 }
 
 export interface PlanetPropSpec {
@@ -70,6 +82,10 @@ export interface PlanetPropSpec {
   rocks?: number;
   /** Tiere (Silhouetten) pro Welteinheit². */
   animals?: number;
+  /** Größenfaktor der Tiere (Standard 1; Welt 11: winzige Kühe als Maßstabsfiguren). */
+  animalScale?: number;
+  /** Tiere nur auf den Wiesen (Schneefelder mit `meadow`, Welt 11). */
+  animalsOnMeadow?: boolean;
 }
 
 export type PlanetPropKind = 'scrap' | 'pool' | 'animal' | 'mound' | 'monolith' | 'vent' | 'tire' | 'pipe' | 'barn' | 'rock';
@@ -105,6 +121,10 @@ export interface WorldSpec {
    * Meer) setzen 0 — nichts Fremdes steht in ihrem Bild.
    */
   landmarkChance?: number;
+  /** Nebelbänke zwischen den Hügeln und Nebelmeer (Welten 11/12, siehe `plane/mist.ts`). */
+  mist?: MistSpec;
+  /** Gewichtsfaktoren der Wahrzeichen dieser Welt (0 = keine; z. B. keine Wasserfall-Felsen in der Nebelweide). */
+  landmarks?: Partial<Record<LandmarkKind, number>>;
 }
 
 /** Alter Name (Planet mit Zonenbändern); die Felder zone/side/half gibt es nicht mehr. */

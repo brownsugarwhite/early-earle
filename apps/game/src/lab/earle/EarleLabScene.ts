@@ -1,6 +1,6 @@
 import { Color, Frustum, Matrix4, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
-import { CloudBanks, EarlePlanet, FogStripes, PLANET_SHADOW_LAYER, SunRig, createSkyDome, followViewClouds, skySunIndices, type WorldView } from '@ee/render';
+import { CloudBanks, EarlePlanet, FogStripes, PLANET_SHADOW_LAYER, SunRig, createForegroundBranch, createSkyDome, followViewClouds, skySunIndices, type ForegroundBranch, type WorldView } from '@ee/render';
 import type { SceneController, SceneContext } from '../../canvas/SceneController';
 import { PanBall } from './panball';
 import { resolveQuality, type QualityLevel, type QualityPreset, type ResolvedQuality } from './quality';
@@ -130,6 +130,9 @@ export class EarleLabScene implements SceneController {
   private fogStripes: FogStripes | null = null;
   /** Wolkenbänke der Blick-Welt (Welt 13). */
   private clouds: CloudBanks | null = null;
+  /** Vordergrund-Ast der Komposition (Welt 12, Ebene 7), an der Kamera. */
+  private branch: ForegroundBranch | null = null;
+  private branchFade = 0;
   private treeSite: HeroTreeSite | null = null;
   /** Müll v2 und Neon-Schleier (heilt mit dem Fortschritt; ein Schritt am Regler spielt die Feier). */
   private trash: TrashField | null = null;
@@ -300,6 +303,10 @@ export class EarleLabScene implements SceneController {
     this.rig.add(this.fogStripes.group);
     this.clouds = new CloudBanks({ lookup: world.lookup });
     this.rig.add(this.clouds.group);
+    this.branch?.dispose();
+    this.branch = createForegroundBranch();
+    this.branch.setOpacity(0);
+    this.camera.add(this.branch.group);
     this.lastCurvature = -1;
     this.shadowDirty = true;
   }
@@ -468,7 +475,7 @@ export class EarleLabScene implements SceneController {
    */
   private followWorldSun(view: WorldView, k: number): void {
     const want = view.sun && this.params.perspective > 0.5 ? view.sun : null;
-    const el = want ? want.elevation : this.params.sunElevation;
+    const el = want ? (want.elevation ?? this.params.sunElevation) : this.params.sunElevation;
     const az = want ? want.azimuth : this.params.sunAzimuth;
     if (Number.isNaN(this.sunNow.el)) {
       this.sunNow.el = this.params.sunElevation;
@@ -637,7 +644,8 @@ export class EarleLabScene implements SceneController {
     if (!layout) return 0;
     for (let k = 0; k < layout.authored; k++) {
       const seg = layout.segment(k);
-      if (seg.world === id && seg.levels > 0) return Math.min(LEVEL_COUNT, seg.firstLevel + seg.levels + 1);
+      // bis zum letzten spielbaren Level der Weltenlage (Welten hinter Level 100 ohne `future` wachsen erst mit ihm)
+      if (seg.world === id && seg.levels > 0) return Math.min(Math.max(LEVEL_COUNT, layout.authoredLevels), seg.firstLevel + seg.levels + 1);
     }
     return 0;
   }
@@ -675,11 +683,23 @@ export class EarleLabScene implements SceneController {
     return this.focusFor(p.x, p.z, id, this.worldFocusNdc(id));
   }
 
+  /**
+   * Blickrichtung der Komposition einer Welt (Rig um die Hochachse; Welt 12 blickt schräg auf den Steilhang). Die Sonne
+   * der Komposition (`view.sun`) fährt `followWorldSun` weich an.
+   */
+  private applyWorldYaw(id: number): void {
+    const view = this.presetOf(id);
+    this.yaw = ((view.yaw ?? 0) * Math.PI) / 180;
+    this.rig.quaternion.setFromAxisAngle(_Y, this.yaw);
+    this.shadowDirty = true;
+  }
+
   /** Sofort zum Bildfokus von Welt `id`. */
   snapToWorld(id: number): void {
     const world = this.world;
     const p = this.worldFocusPoint(id);
     if (!world || !p) return;
+    this.applyWorldYaw(id);
     const f = this.worldTarget(id, p);
     world.setFocus(f.x, f.z);
     this.glide = null;
@@ -693,6 +713,7 @@ export class EarleLabScene implements SceneController {
     const world = this.world;
     const p = this.worldFocusPoint(id);
     if (!world || !p) return;
+    this.applyWorldYaw(id);
     const f = this.worldTarget(id, p);
     const dist = Math.hypot(f.x - world.focus.x, f.z - world.focus.z);
     // Weite Wege springen vorab bis kurz davor (die Welt dazwischen streamt sonst in Sekunden durch)
@@ -775,6 +796,13 @@ export class EarleLabScene implements SceneController {
     // Nebel mit der Kameradistanz nach hinten schieben (Hügelblick: Wertstufen im Mittel-/Hintergrund)
     world.setFogDistance(this.params.rail >= 0 ? 9 : this.camera.position.distanceTo(this.tmp.set(0, 0, -v.look)));
     this.fogStripes?.layout(Math.max(0.6, v.look / 6), v.curvature);
+    // Vordergrund-Ornament der Welt (Ast oben links) nur in der Komposition, weich mit der Weltwahl
+    if (this.branch) {
+      const want = viewData.ornament === 'branch' && this.params.rail < 0 ? Math.max(0, Math.min(1, (this.params.perspective - 0.6) / 0.4)) : 0;
+      this.branchFade += (want - this.branchFade) * k;
+      this.branch.setOpacity(this.branchFade);
+      if (this.branchFade > 0.001) this.branch.layout(this.camera);
+    }
 
     this.scene.updateMatrixWorld(true);
     // Kompositionshöhe: Gelände am Blickpunkt (Mittel aus Blickpunkt und zwei Nachbarproben längs der Blickachse)
@@ -848,7 +876,7 @@ export class EarleLabScene implements SceneController {
     }
 
     if (this.shadowDirty) {
-      const hTotal = Math.max(world.hTotal, site?.holder.visible ? site.height + 1 : 0, world.field.hMax + (this.trash?.hMax ?? 0) + 1);
+      const hTotal = Math.max(world.hTotal, site?.holder.visible ? site.height + 1 : 0, world.terrainTop + (this.trash?.hMax ?? 0) + 1);
       this.sun.setCasterHeight(hTotal);
       this.sun.requestUpdate();
       this.shadowPasses++;
@@ -928,6 +956,7 @@ export class EarleLabScene implements SceneController {
     this.world?.dispose();
     this.fogStripes?.dispose();
     this.clouds?.dispose();
+    this.branch?.dispose();
     for (const d of this.disposables) d.dispose();
     this.sun.dispose();
     if (this.ctx) {

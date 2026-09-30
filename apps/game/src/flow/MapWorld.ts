@@ -609,7 +609,7 @@ export class MapWorld {
 
     if (this.shadowDirty) {
       const treeH = site?.holder.visible ? site.height + 1 : 0;
-      this.sun.setCasterHeight(Math.max(this.world.hTotal, treeH, this.world.field.hMax + (this.trash?.hMax ?? 0) + 1));
+      this.sun.setCasterHeight(Math.max(this.world.hTotal, treeH, this.world.terrainTop + (this.trash?.hMax ?? 0) + 1));
       this.sun.requestUpdate();
       this.shadowPasses++;
       this.shadowDirty = false;
@@ -703,7 +703,8 @@ export function planetPathPalette(world: EarlePlanet, shadowTint: PathPalette['s
     lookup: world.lookup,
     fog: world.fog,
     bands: world.terrainBands,
-    terrainRow: (w) => world.rowsOfWorld(w).terrain,
+    // Welten mit Nebelmeer (Welt 12): das Band liegt im Nebel und nimmt dessen Farben (Wasserzeile), nicht das Gelände
+    terrainRow: (w) => (world.catalog.spec(w).mist?.sea ? world.rowsOfWorld(w).water : world.rowsOfWorld(w).terrain),
     colors: (w) => worldPathColors(world.worldData(w).palette, world.worldData(w).id),
     shadowTint,
   };

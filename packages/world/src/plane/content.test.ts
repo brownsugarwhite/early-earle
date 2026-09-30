@@ -22,14 +22,17 @@ describe('Geländemerkmale der Weltdateien (Ebene)', () => {
       // Jeder Fluss mündet in einen eigenen See; `lakes.count` zählt diese mit
       const wantLakes = Math.max(spec.lakes?.count ?? 0, spec.rivers ? rivers : 0);
       expect(features.lakes.length, `${w.id} Seen`).toBe(wantLakes);
-      for (const r of spec.rocks ?? []) {
-        const made = features.formations.filter((x) => x.kind === r.kind);
-        if (r.kind === 'wall') {
+      // je Art die Summe der verlangten Anzahl (eine Welt darf dieselbe Art mehrfach verlangen, z. B. Welt 12)
+      const wanted = new Map<string, number>();
+      for (const r of spec.rocks ?? []) wanted.set(r.kind, (wanted.get(r.kind) ?? 0) + r.count);
+      for (const [kind, count] of wanted) {
+        const made = features.formations.filter((x) => x.kind === kind);
+        if (kind === 'wall') {
           // Wand = Segmente einer Formation (mindestens zwei)
           const walls = new Set(made.map((x) => x.id.replace(/-seg\d+$/, '')));
-          expect(walls.size, `${w.id} Felswände`).toBe(r.count);
-          expect(made.length, `${w.id} Wandsegmente`).toBeGreaterThanOrEqual(2 * r.count);
-        } else expect(made.length, `${w.id} ${r.kind}`).toBe(r.count);
+          expect(walls.size, `${w.id} Felswände`).toBe(count);
+          expect(made.length, `${w.id} Wandsegmente`).toBeGreaterThanOrEqual(2 * count);
+        } else expect(made.length, `${w.id} ${kind}`).toBe(count);
       }
       if (spec.snowFields) expect(features.snow, `${w.id} Schneefelder`).not.toBeNull();
     }

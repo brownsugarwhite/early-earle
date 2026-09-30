@@ -15,18 +15,19 @@ describe('Welten 13 und 14 (künftige Abschnitte)', () => {
   const path = new PlanePath(field, { seed: 7 });
 
   it('liegen hinter Level 100 auf der Route und zählen nicht als spielbare Level', () => {
-    expect(k13).toBe(10);
-    expect(k14).toBe(11);
+    // Reihenfolge der künftigen Welten: w11, w12 (Ebene 20/7), dann w13, w14
+    expect(k13).toBe(12);
+    expect(k14).toBe(13);
     expect(field.layout.authoredLevels).toBe(100);
-    expect(field.layout.segment(k13)).toMatchObject({ world: AUTHORED_ROUTE[k13]!.world, firstLevel: 101, levels: 10 });
-    expect(field.layout.segment(k14)).toMatchObject({ world: AUTHORED_ROUTE[k14]!.world, firstLevel: 111, levels: 10 });
-    const nodes = path.nodes(100, 119);
+    expect(field.layout.segment(k13)).toMatchObject({ world: AUTHORED_ROUTE[k13]!.world, firstLevel: 121, levels: 10 });
+    expect(field.layout.segment(k14)).toMatchObject({ world: AUTHORED_ROUTE[k14]!.world, firstLevel: 131, levels: 10 });
+    const nodes = path.nodes(120, 139);
     for (const n of nodes.slice(0, 10)) expect(n.world, `Knoten ${n.index}`).toBe(AUTHORED_ROUTE[k13]!.world);
     for (const n of nodes.slice(10)) expect(n.world, `Knoten ${n.index}`).toBe(AUTHORED_ROUTE[k14]!.world);
   });
 
   it('kein Levelknoten der beiden Welten liegt im Wasser oder auf dem Fels', () => {
-    for (const n of path.nodes(100, 119)) {
+    for (const n of path.nodes(120, 139)) {
       if (n.landmark) continue;
       expect(field.isWater(n.position[0], n.position[2], 0.6), `Knoten ${n.index} im Wasser`).toBe(false);
       expect(field.rockAt(n.position[0], n.position[2], 0.6), `Knoten ${n.index} auf Fels`).toBeNull();

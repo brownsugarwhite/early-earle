@@ -169,6 +169,7 @@ describe('landmark palette', () => {
     .map((f) => JSON.parse(readFileSync(join(worldsDir, f), 'utf8')) as { palette: WorldPalette });
 
   it('derives all roles (8 hex stops each) for every Earle world', () => {
+    // die zehn Welten der Route und die späteren Autorenwelten (11, 12, …)
     expect(worlds.length).toBeGreaterThanOrEqual(10);
     for (const w of worlds) {
       const p = landmarkPaletteFromWorld(w.palette);

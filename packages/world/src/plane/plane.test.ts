@@ -40,7 +40,13 @@ describe('WorldLayout', () => {
   it('lays the authored route along −z: worlds 09, 06, 04, 10, 05, 02, 07, 08, 01, 03 for levels 1–100', () => {
     const order = AUTHORED_ROUTE.map((r) => r.world);
     for (let k = 0; k < order.length; k++) expect(layout.segment(k).world).toBe(order[k]);
-    expect(layout.authoredLevels).toBe(100);
+    // spielbar: bis zum ersten künftigen Eintrag (Welten 11/12 tragen künftige Level; ohne `future` zählen sie mit)
+    let playable = 0;
+    for (const r of AUTHORED_ROUTE) {
+      if ((r as { future?: boolean }).future) break;
+      playable += r.levels;
+    }
+    expect(layout.authoredLevels).toBe(playable);
     expect(layout.segmentOfLevel(1)).toBe(0);
     expect(layout.segmentOfLevel(80)).toBe(8);
     expect(layout.segmentOfLevel(95)).toBe(8);
@@ -90,7 +96,7 @@ describe('WorldLayout', () => {
     expect(far.length).toBeGreaterThan(40);
     // Seitlich neben den Autorenwelten stehen Autorenwelten (die alten „fernen“ Welten)
     const near = layout.sample(xb + layout.bandHalf(z) + 6, z).world;
-    expect(near).toBeLessThan(10);
+    expect(near).toBeLessThan(14); // Autorenwelten 01–14
     expect(near).not.toBe(seg.world);
   });
 

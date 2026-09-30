@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "id": "w11",
+  "index": 10,
+  "ref": "11",
+  "name": "Nebelweide",
+  "title": "Nebelhügel mit Schirmbäumen, Buschteppichen und Kühen",
+  "zone": "luzz",
+  "sources": ["Ebene 20 Kopie.png"],
+  "palette": {
+    "ink": "#0b0c06",
+    "terrain": ["#0e1108", "#161b0b", "#77821d", "#b5ad2e", "#d9cf4a"],
+    "canopy": ["#0c0f07", "#11160a", "#1d2a12", "#a6a52a", "#dcd550", "#7fb52a", "#e6d24a"],
+    "sky": ["#bcc466", "#cacd62", "#d8d56b", "#e4db77", "#efe387", "#f8eb9c"],
+    "sun": "#fbf3b8",
+    "sunRing": "#f3eaa4",
+    "fog": ["#12301f", "#1f5a41", "#3c8866", "#5fae98", "#8fe2cd", "#e6fbef"],
+    "fogAlpha": [0, 0.3, 0.5, 0.66, 0.8, 0.9],
+    "accent": ["#c1b532", "#1a200d", "#0b0c06", "#0b0c06", "#4f5a14", "#c1b532", "#6a3a1a", "#e9dd5c"],
+    "snow": ["#0d2a0c", "#0b7c0b", "#1f9412", "#4b9908", "#9ca101", "#ecd12a"]
+  },
+  "terrain": { "amplitude": 2.8, "wavelength": 0.6, "stretch": 1.6, "ridge": 0.5, "slope": 0.1, "ridges": { "period": 7, "height": 3.2, "vary": 0.5, "wobble": 0.4 } },
+  "ground": "scales",
+  "vegetation": {
+    "density": 1.6,
+    "clumpiness": 0,
+    "kinds": { "shrub": 1 },
+    "scale": [0.42, 0.62],
+    "trunkStyle": "ink",
+    "motif": "rim",
+    "stipple": 0.9,
+    "grove": {
+      "cover": 0.5,
+      "wavelength": 5,
+      "fill": 0.95,
+      "satellites": 0.12,
+      "coreScale": 0.1,
+      "specimens": 0.002,
+      "specimenKinds": { "parasol": 1 },
+      "specimenScale": [0.75, 1.0],
+      "crest": { "kinds": { "parasol": 1 }, "above": 1, "aboveHeight": 3.4, "chance": 0.9, "scale": [0.75, 1.05], "spacing": 2.3 },
+      "maxSlope": 0.55
+    }
+  },
+  "props": { "animals": 0.12, "animalScale": 0.45, "animalsOnMeadow": true },
+  "features": {
+    "snowFields": { "cover": 0.2, "scale": 1.0, "focus": [{ "radius": 2.2, "offset": [-3.5, 1.5] }, { "radius": 3.6, "offset": [1.5, 7.6] }], "meadow": true }
+  },
+  "landmarks": { "fallsRock": 0, "cliffFall": 0, "twinFalls": 0, "ruin": 0, "swamp": 0 },
+  "mist": { "banks": 22, "height": [0.95, 1.35], "thickness": [1.8, 2.8], "length": [10, 18], "opacity": 0.9 },
+  "groundTerminator": 0.2,
+  "fogStripes": 1,
+  "fog": { "start": 9, "range": 18 },
+  "view": {
+    "height": 12,
+    "forward": 15,
+    "look": 8,
+    "fov": 40,
+    "curvature": -1.5,
+    "focus": [0.0, 0.2],
+    "nearClear": 1.0,
+    "footClear": 2.0,
+    "sun": { "azimuth": -70, "elevation": 15 }
+  },
+  "focal": { "kind": "parasol", "scale": 1.0, "along": 0.3, "lateral": 3 }
+}
