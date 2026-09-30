@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { AudioGraph, BUS_NAMES } from './graph';
 import { playSfx, type SfxId, type SfxParams } from './sfx';
 import { babble, BABBLE_MAX_S, chirp, rexSchedule, type RexChirp, type RexMood } from './rex';
@@ -13,6 +14,11 @@ import { useAudioSettings, type AudioSettings } from './settings';
  * resumed on return. Sounds are queued on a small look-ahead scheduler (a 25 ms timer that only runs while
  * something is queued) so a move's sounds can be cancelled or hurried like the board's tweens. Music and
  * ambience are pumped every half second while the context runs. No per-frame work anywhere.
+ *
+ * iOS: the session is 'ambient' on purpose (AppDelegate + `navigator.audioSession`): the silent switch mutes the
+ * game like most games, other apps' music keeps playing (docs/IOS.md, "Ton"). In the app the web view needs no
+ * gesture, so the context starts at once (`arm`); a resume() that WebKit leaves pending re-arms the gesture
+ * listeners after 400 ms (`watch`), and native pill taps unlock too (native/liquidGlass.ts).
  */
 
 export type SceneMode = 'silent' | 'map' | 'level';
@@ -51,6 +57,17 @@ interface Job {
 const GESTURES = ['pointerdown', 'pointerup', 'touchend', 'mousedown', 'keydown', 'click'] as const;
 const LOOKAHEAD = 0.1;
 const MOVE_GROUP = 1;
+/** How long a resume() may stay pending before the gesture listeners are armed again (WebKit never rejects it). */
+const RESUME_WATCH_MS = 400;
+
+/** iOS app (Capacitor): WKWebView plays without a user gesture (no media types require user action). */
+const NATIVE_APP = (() => {
+  try {
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+})();
 
 type AudioContextCtor = new (options?: AudioContextOptions) => AudioContext;
 
@@ -79,6 +96,7 @@ export class AudioEngine {
   private readonly listeners = new Set<() => void>();
   private docListeners = false;
   private unsubscribe: (() => void) | null = null;
+  private watchdog: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.settings = useAudioSettings.getState();
@@ -105,8 +123,12 @@ export class AudioEngine {
 
   // ---------------------------------------------------------------------------------------- lifecycle
 
-  /** Installs the unlock listeners (first gesture creates/resumes the context) and the page listeners. */
-  arm(): void {
+  /**
+   * Installs the unlock listeners (first gesture creates/resumes the context) and the page listeners. In the iOS
+   * app the context starts right away (no gesture needed there), so the splash is heard without a tap; the
+   * listeners stay as the fallback.
+   */
+  arm(autoUnlock = NATIVE_APP): void {
     if (typeof window === 'undefined') return;
     if (!this.docListeners) {
       this.docListeners = true;
@@ -117,6 +139,7 @@ export class AudioEngine {
     if (this.armed || this.running) return;
     this.armed = true;
     for (const type of GESTURES) window.addEventListener(type, this.onGesture, { capture: true, passive: true });
+    if (autoUnlock && !this.ctx) this.unlock();
   }
 
   private disarm(): void {
@@ -143,8 +166,24 @@ export class AudioEngine {
     this.silentKick();
     ctx.resume().then(
       () => this.onRunning(),
-      () => undefined,
+      () => this.arm(false),
     );
+    this.watch();
+  }
+
+  /**
+   * WebKit keeps a resume() without a gesture pending forever (it neither resolves nor rejects): if the context is
+   * not running `RESUME_WATCH_MS` later, arm the gesture listeners again so the next tap finishes the job.
+   */
+  private watch(): void {
+    if (typeof window === 'undefined') return;
+    if (this.watchdog) clearTimeout(this.watchdog);
+    this.watchdog = setTimeout(() => {
+      this.watchdog = null;
+      if (this.running || this.settings.muted || !this.ctx) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
+      this.arm(false);
+    }, RESUME_WATCH_MS);
   }
 
   private create(): boolean {
@@ -206,7 +245,7 @@ export class AudioEngine {
     const ctx = this.ctx;
     if (!ctx) return;
     // iOS may interrupt (calls, Siri) or the system may suspend: the next tap resumes.
-    if (ctx.state !== 'running' && !this.suspendedByUs && !this.settings.muted) this.arm();
+    if (ctx.state !== 'running' && !this.suspendedByUs && !this.settings.muted) this.arm(false);
     if (ctx.state === 'running') this.onRunning();
     this.emit();
   }
@@ -220,12 +259,10 @@ export class AudioEngine {
     this.suspendedByUs = false;
     this.ctx.resume().then(
       () => this.onRunning(),
-      () => this.arm(),
+      () => this.arm(false),
     );
     // Some WebViews need a fresh gesture after returning from the background.
-    setTimeout(() => {
-      if (!this.running && !this.settings.muted && !document.hidden) this.arm();
-    }, 400);
+    this.watch();
   };
 
   private readonly onPageHide = (): void => {
@@ -276,8 +313,9 @@ export class AudioEngine {
           this.onRunning();
           this.sfx('soundOn', {}, 0.05);
         },
-        () => this.arm(),
+        () => this.arm(false),
       );
+      this.watch();
     }
     this.emit();
   }
@@ -583,6 +621,8 @@ export class AudioEngine {
   /** Tears everything down (HMR). */
   dispose(): void {
     this.disarm();
+    if (this.watchdog) clearTimeout(this.watchdog);
+    this.watchdog = null;
     this.stopTick();
     this.stopPump();
     this.queue.length = 0;
@@ -605,7 +645,8 @@ export class AudioEngine {
 /** The page's engine. */
 export const audio = new AudioEngine();
 
-// Dev handle for poking at the engine from the console (`__eeAudio.stats()`).
-if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __eeAudio?: AudioEngine }).__eeAudio = audio;
+// Handle for poking at the engine from the console (`__eeAudio.stats()`): dev server, and the iOS app for the
+// Safari Web Inspector (debug builds are inspectable, docs/IOS.md "Ton").
+if ((import.meta.env.DEV || NATIVE_APP) && typeof window !== 'undefined') (window as unknown as { __eeAudio?: AudioEngine }).__eeAudio = audio;
 
 if (import.meta.hot) import.meta.hot.dispose(() => audio.dispose());

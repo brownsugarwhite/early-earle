@@ -1,6 +1,6 @@
-# iPhone-App (Capacitor) — Installation, Glas-HUD, Haptik, Werkstatt
+# iPhone-App (Capacitor) — Installation, Glas-HUD, Haptik, Werkstatt, Ton
 
-Stand 2026-09-29 (Werkstatt, Labs und Editoren in der App: 2026-09-30, Abschnitt 7). Die App-Hülle liegt in `apps/game/ios` (Capacitor 8.5, SPM, iOS-27-SDK/Xcode 27). Das Spiel selbst ist das Web-Bundle aus `apps/game/dist`; es läuft in der WKWebView, darüber schwebt ein **natives SwiftUI-HUD in Liquid Glass** (eigenes Plugin `apps/game/plugins/liquid-glass`).
+Stand 2026-09-29 (Werkstatt, Labs und Editoren in der App: 2026-09-30, Abschnitt 7; Ton und Stummschalter: Abschnitt 8). Die App-Hülle liegt in `apps/game/ios` (Capacitor 8.5, SPM, iOS-27-SDK/Xcode 27). Das Spiel selbst ist das Web-Bundle aus `apps/game/dist`; es läuft in der WKWebView, darüber schwebt ein **natives SwiftUI-HUD in Liquid Glass** (eigenes Plugin `apps/game/plugins/liquid-glass`).
 
 ## 1. Auf Florians iPhone installieren (ohne Developer-Programm, mit Apple-ID)
 
@@ -38,7 +38,7 @@ API (`apps/game/src/native/liquidGlass.ts` kapselt sie mit `useNativeGlass()`, `
 | `update({...})` | Teil-Update (nur vorhandene Schlüssel, `null` löscht), Pillen morphen |
 | `hide()` | ausblenden (Splash/Hüpfer) |
 | `setSafeInsets({ top, bottom })` | zusätzliche Ränder in CSS-px |
-| Event `action` `{ id }` | Tipp auf eine Pille (`play`, `rewind`, `restart`, `map`, `sound`, `werkstatt`); nativ mit leichtem Haptik-Tick |
+| Event `action` `{ id }` | Tipp auf eine Pille (`play`, `rewind`, `restart`, `map`, `sound`, `werkstatt`, Karten-Einstiege wie `collection`, `classic`); nativ mit leichtem Haptik-Tick; der Web-Teil entsperrt vorher den Ton und tinkt (Abschnitt 8) |
 | Event `layout` `{ top, bottom, safeTop, safeBottom, glass, line, actions }` | Höhen in CSS-px, damit Web-Elemente ausweichen können; `line` (REX-Sprechblase) und `actions` (Knopfleiste) als Rechtecke, REX schaut über `line` (`nativeGlassLayout()` in `src/native/liquidGlass.ts`) |
 
 `FlowHud.tsx` spiegelt den Store (Levelname, Züge, Ziele, REX-Zeile, Aktionen) per JSON in das Overlay und blendet dabei die eigenen CSS-Pillen aus; `icon` sind SF-Symbol-Namen.
@@ -116,3 +116,34 @@ Technik: `apps/game/src/editor/content/` (`target.ts` Speicherziel + Verbindungs
 - Lokale Stände liegen im Web-Speicher der App (localStorage). Er übersteht Neustarts und Updates, gilt aber nicht als Backup (iOS kann ihn bei Speichermangel leeren, Löschen der App löscht ihn) — Wichtiges per „Teilen“ auf den Mac schicken oder mit Verbindung sichern.
 - Der Dev-Endpunkt existiert nur, solange `pnpm dev`/`dev:http` auf dem Mac läuft; Florians laufender Server braucht nach dem Merge einen **Neustart** (CORS für die App kommt aus der Vite-Konfiguration des Plugins).
 - Das REX-Lab zeigt seine iPhone-Vorschau (393 × 852) in echter Größe; auf dem iPhone selbst scrollt die Bühne dafür.
+
+## 8. Ton
+
+Stand 2026-09-30 (Iteration 4). Alle Klänge sind prozedural (Web Audio in der WebView, keine Aufnahmen); Übersicht und Hörproben: `/lab/audio` (in der App: Werkstatt ▸ Audio-Lab), `docs/progress/audio/*.m4a`.
+
+**Der Stummschalter schaltet das Spiel stumm — mit Absicht.** Die App benutzt die Audiosession **ambient** (`AppDelegate.swift`: `AVAudioSession.setCategory(.ambient, options: [.mixWithOthers])`, im Web-Code zusätzlich `navigator.audioSession.type = 'ambient'`). Das ist das Verhalten der meisten Spiele und so von Apple vorgesehen: Steht das iPhone auf Stumm (Seitenschalter bzw. Aktionstaste „Stumm“), ist das Spiel still; Musik oder Podcasts aus anderen Apps laufen unter dem Spiel weiter. Entscheidung Florian (2026-09-30): so bleibt es, keine eigene Einstellung.
+
+**„Kein Ton auf dem iPhone“ — so prüfen**
+
+1. **Stumm?** Kontrollzentrum bzw. Seitenschalter: steht das iPhone auf Stumm, ist das Spiel still (gewollt, siehe oben).
+2. **Lautstärke**: im Spiel die Lautstärketasten drücken (regeln die Medienlautstärke). Bluetooth-Kopfhörer verbunden? Dann kommt der Ton dort.
+3. **Ton-Pille** im Spiel: Lautsprecher ohne Schrägstrich (der Zustand bleibt gespeichert, `localStorage` `ee.audio.v1`).
+4. **Audio-Lab** (Werkstatt ▸ Audio-Lab), Statuszeile **„Kontext …“**:
+   - `running` → die Engine läuft. Ist trotzdem nichts zu hören, liegt es an Stumm, Lautstärke oder Ausgabegerät (Web Audio kann den Stummschalter nicht abfragen: iOS schaltet nur die Ausgabe ab, der Kontext meldet weiter `running`).
+   - `suspended`, `interrupted` oder `none` → einmal irgendwo tippen (die Engine wartet dann auf den nächsten Tipp). Bleibt es dabei, ist es ein Fehler: mit dem Web Inspector nachsehen (unten).
+   - Daneben: Abtastrate und Latenz, Stimmen, gestartete/gestohlene/verworfene Klänge, Musik und Ambiente der Szene. „Pegel prüfen“ (Abschnitt „Iteration 4“) rendert die neuen Klänge offline und vergleicht sie mit dem Soll-Pegel.
+5. **Safari Web Inspector**: Die Builds von `ios:sim` und `ios:device` sind Debug-Builds (`CAPACITOR_DEBUG = true` in `ios/debug.xcconfig` → Capacitor macht die WebView inspizierbar). Mac-Safari ▸ Einstellungen ▸ Erweitert ▸ „Funktionen für Webentwickler“; iPhone: Einstellungen ▸ Apps ▸ Safari ▸ Erweitert ▸ „Web-Inspektor“; dann Safari ▸ Entwickler ▸ ‹iPhone oder Simulator› ▸ early earle. In der Konsole: `__eeAudio.stats()` (Zustand, Stimmen, Warteschlange, Musik/Ambiente) und `__eeAudio.ctx.state`.
+
+**Wie der Ton in der App startet**
+
+- Die WebView der App braucht **keine Geste** (Capacitor setzt `mediaTypesRequiringUserActionForPlayback = []`): die Engine startet den Audio-Kontext gleich beim Start (`audio.arm()` in `src/audio/engine.ts`, nur in der App) — der Splash klingt ohne Tippen. Im Browser (Safari, Chrome) bleibt es bei der Regel „erster Tipp startet den Ton“.
+- **Native Glas-Pillen** (Spielen, Setzkasten, Klassik, Ton, Werkstatt …) sind Berührungen, die die WebView nie sieht: jeder Tipp ruft vor der Aktion `audio.unlock()` und spielt den Glas-Tink (`dispatchNativeAction` in `src/native/liquidGlass.ts`).
+- **Wachhund**: WebKit lässt ein `resume()` ohne Geste unendlich hängen (es lehnt nie ab). Ist der Kontext 400 ms nach `resume()` (Start, Ton wieder an, Rückkehr in den Vordergrund) nicht `running`, hängt die Engine die Tipp-Entsperrung wieder ein; der nächste Tipp startet den Ton.
+- Hintergrund und Unterbrechungen: beim Verlassen der App pausiert die Engine (`suspend`), beim Zurückkommen läuft sie weiter; nach Anruf/Siri/Wecker (`interrupted`) startet sie beim nächsten Tipp oder beim nächsten Wechsel in den Vordergrund.
+
+**Bekannte Grenzen**
+
+- Stumm = still, auch für REX und die Möwe; im Spiel gibt es dafür keinen Hinweis.
+- Der Simulator spielt über den Mac und hat keinen Stummschalter — Stumm und Lautstärketasten nur auf dem Gerät prüfbar.
+- Bluetooth-Kopfhörer bringen ≈ 150–250 ms Verzögerung (Klänge kommen nach der Animation).
+- Der erste Klang nach dem Start kann ≈ 0,1 s später kommen, weil der Kontext erst anläuft; die Engine hält Klänge bis 1,5 s in der Warteschlange und spielt sie dann ab.
