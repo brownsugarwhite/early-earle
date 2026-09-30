@@ -140,8 +140,8 @@ export class LandmarkLabScene implements SceneController {
     this.sun.fitToView(this.camera, { plane: { minHeight: -2.5, maxHeight: 15 }, maxDistance: 320 });
     this.orbit.attach(ctx.canvas);
     this.build();
-    this.setView(this.pendingView ?? this.params.view);
     this.resize(ctx);
+    this.setView(this.pendingView ?? this.params.view);
   }
 
   // --- world -----------------------------------------------------------------------------------------------------
@@ -407,7 +407,10 @@ export class LandmarkLabScene implements SceneController {
       this.params = { ...this.params, view };
       for (const l of this.listeners) l(this.getParams());
     }
-    const v = this.viewFor(view);
+    const base = this.viewFor(view);
+    // portrait (phone): the same subject needs more distance to fit the narrow width
+    const fit = view === 'level' ? 1 : Math.min(2, Math.max(1, 1.2 / Math.max(0.3, this.camera.aspect)));
+    const v = { ...base, distance: base.distance * fit };
     const cam = this.params.cam;
     this.orbit.setView(cam ? { ...v, yaw: cam[0], pitch: cam[1], distance: cam[2] } : v);
   }

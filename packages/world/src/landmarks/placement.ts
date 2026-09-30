@@ -27,11 +27,11 @@ export const DEFAULT_LANDMARK_PLAN: LandmarkPlanParams = {
   tries: 6,
   waterMargin: 1.5,
   kinds: {
-    fallsRock: { weight: 1.2, pathDistance: [9, 22], maxRelief: 3.2, maxSlope: 0.5 },
-    cliffFall: { weight: 1, pathDistance: [8, 22], maxRelief: 2.6, maxSlope: 0.45 },
-    twinFalls: { weight: 0.7, pathDistance: [9, 22], maxRelief: 3.2, maxSlope: 0.5 },
-    ruin: { weight: 1, pathDistance: [8, 22], maxRelief: 2.4, maxSlope: 0.4 },
-    swamp: { weight: 1.1, pathDistance: [10, 60], maxRelief: 1.1, maxSlope: 0.18 },
+    fallsRock: { weight: 1.2, pathDistance: [9, 22], maxRelief: 4.5, maxSlope: 0.6 },
+    cliffFall: { weight: 1, pathDistance: [8, 22], maxRelief: 4, maxSlope: 0.55 },
+    twinFalls: { weight: 0.7, pathDistance: [9, 22], maxRelief: 4.5, maxSlope: 0.6 },
+    ruin: { weight: 1, pathDistance: [8, 22], maxRelief: 3.5, maxSlope: 0.5 },
+    swamp: { weight: 1.1, pathDistance: [10, 60], maxRelief: 1.5, maxSlope: 0.22 },
   },
   worldWeights: (world) => (world === 8 || world === 1 ? { swamp: 3 } : {}),
 };

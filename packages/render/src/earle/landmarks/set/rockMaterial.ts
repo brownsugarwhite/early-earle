@@ -120,7 +120,7 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
   const tufts = stipple(u, y, 1.6, 0.12, 0.22, 11);
   const flagCourse = floor(y.div(1.05));
   const flag = max(stripeMask(u.div(float(1.2).add(hash(flagCourse).mul(0.6))).add(hash(flagCourse.add(3.0)).mul(2.0)), 0.04), stripeMask(y.div(1.05), 0.04));
-  const flagMoss = stipple(u, y, 3.2, 0.14, 0.3, 17);
+  const flagMoss = stipple(u, y, 2.6, 0.13, 0.08, 17);
 
   // gradient hook: glow toward the top (walls), stone blocks vary a little, wet rock sits darker
   const lift = g

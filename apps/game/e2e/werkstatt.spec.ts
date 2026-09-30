@@ -64,8 +64,8 @@ test.describe('iPhone 393×852', () => {
     await page.getByTestId('werkstatt-btn').tap();
     await expect(page).toHaveURL(/\/werkstatt$/);
     await expect(page.getByTestId('werkstatt')).toBeVisible();
-    // 3 editors + 8 labs, German names, all within the phone width.
-    await expect(page.locator('.ws-tile')).toHaveCount(11);
+    // 3 editors + 9 labs, German names, all within the phone width.
+    await expect(page.locator('.ws-tile')).toHaveCount(12);
     await expect(page.getByTestId('ws-map-editor')).toContainText('Map-Editor');
     await expect(page.getByTestId('ws-earle-lab')).toContainText('Zehn Welten auf dem Planeten');
     expect(await page.evaluate(() => document.querySelector('.ws-scroll')!.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
@@ -126,7 +126,7 @@ test.describe('iPhone 393×852', () => {
   });
 
   test('Alle Labs: Regler geschlossen, Bühne frei, Werkstatt und Spiel erreichbar', async ({ page }) => {
-    for (const route of ['/lab/earle', '/lab/tree', '/lab/shadow', '/lab/creature', '/lab/blob', '/lab/rex']) {
+    for (const route of ['/lab/earle', '/lab/tree', '/lab/shadow', '/lab/landmarks', '/lab/creature', '/lab/blob', '/lab/rex']) {
       await page.goto(route);
       await expect(page.getByTestId('lab-frame'), route).toHaveAttribute('data-sheet', 'zu');
       await expect(page.getByTestId('lab-back'), route).toBeVisible();
