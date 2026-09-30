@@ -113,6 +113,8 @@ export interface TreeShapeOptions {
   pathClearance?: number;
   /** Curvature radius of the ground (planet slot), tree units. */
   groundRadius?: number;
+  /** Ground height below (x, z) in tree space (the actual terrain of a slot); overrides `groundRadius`. */
+  groundAt?: (x: number, z: number) => number;
   /** Mesh resolution only; the form is identical for both. */
   quality?: 'hoch' | 'mobil';
 }
@@ -170,16 +172,19 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
     rootCount: 7,
     rootLength: R * 0.72,
     ...(o.groundRadius !== undefined ? { groundRadius: o.groundRadius } : {}),
+    ...(o.groundAt ? { groundAt: o.groundAt } : {}),
     seed,
   };
   const trunk = trunkProfile(trunkSpec);
   const clearance = o.pathClearance ?? 1.2;
 
-  // --- Path start: the root whose visible tip lies farthest out -------------------------------------------------
+  // --- Path start: the main root reaching farthest out (by its horizontal course, independent of the ground) ------
   let rootIndex = 0;
   let best = -1;
-  trunk.rootTips.forEach((t, i) => {
-    const d = Math.hypot(t.x, t.z);
+  trunk.rootAngles.forEach((_, i) => {
+    const pts = trunk.roots[i]!.points;
+    const end = pts[pts.length - 1]!;
+    const d = Math.hypot(end.x, end.z);
     if (d > best) {
       best = d;
       rootIndex = i;

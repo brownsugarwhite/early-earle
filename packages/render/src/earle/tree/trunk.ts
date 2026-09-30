@@ -28,6 +28,11 @@ export interface TrunkSpec {
    * the first path node follow the sphere instead of the tangent plane (nothing floats at the rim). Standard: flat.
    */
   groundRadius?: number;
+  /**
+   * Ground height below (x, z) in tree space (the foot at 0), e.g. the real terrain of a planet slot. Overrides
+   * `groundRadius`; roots, the snow drift and the path start then follow the actual ground.
+   */
+  groundAt?: (x: number, z: number) => number;
   seed: number;
 }
 
@@ -44,7 +49,7 @@ export interface TrunkProfile {
   normalAt(y: number, angle: number, out?: Vector3): Vector3;
   /** Axis point at height y (the trunk bends in a gnarled S). */
   axisAt(y: number, out: Vector3): Vector3;
-  /** Ground height below (x, z) (0 on flat ground, the sphere with `groundRadius`). */
+  /** Ground height below (x, z) (0 on flat ground, the sphere with `groundRadius`, or `groundAt`). */
   groundY(x: number, z: number): number;
   /** Axis point at the fork. */
   top: Vector3;
@@ -83,7 +88,9 @@ export function trunkProfile(spec: TrunkSpec): TrunkProfile {
   const rand = mulberry32(hash32('hero-trunk', spec.seed));
   const flare = spec.flare ?? 0.55;
   const R = spec.groundRadius ?? Infinity;
+  const groundAt = spec.groundAt;
   const groundY = (x: number, z: number): number => {
+    if (groundAt) return groundAt(x, z);
     if (!Number.isFinite(R)) return 0;
     const d2 = Math.min(R * R * 0.98, x * x + z * z);
     return -(R - Math.sqrt(R * R - d2));

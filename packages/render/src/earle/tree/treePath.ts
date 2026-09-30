@@ -557,8 +557,12 @@ export function heroTreePath(o: HeroTreePathOptions): HeroTreePath {
   };
   // elastic band: alternate pushing out of the volumes (along the clearance gradient, a few steps) and light
   // Laplacian smoothing in cylindrical coordinates → a smooth rail that keeps its distance, without jumps
+  // the ground is only consulted where it can matter (terrain lookups may be expensive on a planet)
+  let groundCeil = -Infinity;
+  for (let gx = -2; gx <= 2; gx += 0.5) for (let gz = -2; gz <= 2; gz += 0.5) groundCeil = Math.max(groundCeil, trunk.groundY(cx + gx * R, cz + gz * R));
+  groundCeil += 1.6;
   const groundClamp = (c: Vector3) => {
-    c.y = Math.max(c.y, trunk.groundY(c.x, c.z) + 1.5);
+    if (c.y < groundCeil) c.y = Math.max(c.y, trunk.groundY(c.x, c.z) + 1.5);
   };
   // Runs of samples that are too close to a volume move together, in one direction (the deficit-weighted mean of
   // their clearance gradients) with a soft window around the run — the band never splits around a thin limb.
