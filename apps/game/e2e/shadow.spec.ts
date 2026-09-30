@@ -83,7 +83,7 @@ test('/lab/shadow fittet Kaskaden an die Kamera, schaltet Alt/Neu/Split, Debug u
 });
 
 test('/lab/shadow Schatten v3: Kontakt-Diagnose, Feldansicht, Kontaktregler und Testpunkte (shadowFactor im Vertex-Shader)', async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   const errors = collectErrors(page);
   await page.setViewportSize({ width: 900, height: 560 });
   await page.goto('/lab/shadow?q=mobil&view=karte&node=20&progress=30&mode=neu&mag=0&cascades=mobil');
@@ -102,11 +102,13 @@ test('/lab/shadow Schatten v3: Kontakt-Diagnose, Feldansicht, Kontaktregler und 
   await page.waitForTimeout(1500);
   await debug.selectOption('0');
 
-  // Kontaktregler live (Mindestbreite, Versatz, Ebenen-Bias) → neue Schattenpässe ohne Fehler
+  // Kontaktregler live (Mindestbreite, Versatz, Ebenen-Bias) → neue Schattenpässe ohne Fehler. Der Ebenen-Bias ist
+  // einkompiliert: Umschalten baut das Licht neu, alle beleuchteten Materialien kompilieren neu — unter SwiftShader auf
+  // einem ausgelasteten Rechner deutlich länger als 30 s (die Karte der Ebene hat mehr Programme als die alte Kugel)
   const before = (await stats(page)).passes;
   await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ dilation: 1, shift: 0.06, planeBias: false }));
   await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ dilation: 0.6, shift: 0.03, planeBias: true }));
-  await expect.poll(async () => (await stats(page)).passes, { timeout: 30_000 }).toBeGreaterThan(before);
+  await expect.poll(async () => (await stats(page)).passes, { timeout: 120_000 }).toBeGreaterThan(before);
 
   // Empfängerhöhe verteilter Schichten (Kronen): bindet die Empfänger neu, die gröbste Kaskade wächst höchstens mäßig
   const last = (s: LabStats): CascadeStat => s.cascades!.cascades[s.cascades!.cascades.length - 1]!;

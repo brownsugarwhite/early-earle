@@ -8,6 +8,8 @@ test.setTimeout(process.env.CI ? 420_000 : 360_000);
 if (process.env.EE_GPU) test.use({ launchOptions: { args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] } });
 
 const PHONE = { width: 393, height: 852 };
+/** Der Loader geht erst nach dem Aufwärmen aller Karten-Shader auf 100 % — unter SwiftShader dauert das. */
+const LOADER_MS = process.env.CI ? 240_000 : 150_000;
 
 /**
  * Merkt sich im Seitenkontext alle Phasen und Takte (`flow/cue`) ab jetzt. Zustand meldet einen Phasenwechsel, der
@@ -43,6 +45,8 @@ test('Erster Start (echt): Tippen → Intro direkt in Level 1 → Sieg → Landu
   await page.goto('/?quality=mobil');
   await waitForRenderer(page);
   await waitPhase(page, 'splash');
+  // Getippt wird erst, wenn der Loader fertig ist und „Tippen“ steht (vorher nimmt der Splash keine Tipps an)
+  await expect(page.getByTestId('splash')).toHaveAttribute('data-phase', 'idle', { timeout: LOADER_MS });
   await record(page);
   await page.mouse.click(PHONE.width / 2, PHONE.height * 0.8);
   await waitPhase(page, 'level');
@@ -131,10 +135,11 @@ test('Echt: die Karte dreht nur begrenzt und federt nach einem weiten Zug zurüc
   expect(start!.margin).toBe(2.5);
   // Far drags across the screen: the rubber band holds the view close to the path while the finger is down
   let peak = 0;
+  // Der Zug beginnt über der unteren HUD-Leiste (bei y ≈ 775–840 liegt „Spielen“: dort käme der Zeiger nie zur Karte)
   for (let k = 0; k < 2; k++) {
-    await page.mouse.move(60, 780);
+    await page.mouse.move(60, 700);
     await page.mouse.down();
-    for (let i = 1; i <= 16; i++) await page.mouse.move(60 + (i * 280) / 16, 780 - (i * 700) / 16);
+    for (let i = 1; i <= 16; i++) await page.mouse.move(60 + (i * 280) / 16, 700 - (i * 620) / 16);
     peak = Math.max(peak, (await scrollState(page))!.excess);
     await page.mouse.up();
   }
