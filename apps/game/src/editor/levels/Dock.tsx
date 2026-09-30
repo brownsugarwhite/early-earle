@@ -89,10 +89,21 @@ function EditDock() {
         data-state={saveState}
         onClick={() => void save()}
         disabled={!valid || busy}
-        aria-label={offline ? 'Herunterladen' : saveState === 'dirty' ? 'Sichern (ungesicherte Änderungen)' : saveState === 'invalid' ? 'Sichern gesperrt: Fehler' : 'Gesichert'}
+        aria-label={
+          saveState === 'invalid'
+            ? 'Sichern gesperrt: Fehler'
+            : saveState === 'dirty'
+              ? offline
+                ? 'Lokal sichern (Mac nicht erreichbar)'
+                : 'Auf den Mac sichern (ungesicherte Änderungen)'
+              : offline
+                ? 'Lokal gespeichert'
+                : 'Gespeichert auf dem Mac'
+        }
         data-testid="save-btn"
+        data-target={offline ? 'lokal' : 'mac'}
       >
-        <UiIcon name={offline ? 'download' : saveState === 'clean' ? 'check' : 'save'} />
+        <UiIcon name={saveState === 'clean' ? 'check' : 'save'} />
         {saveState === 'dirty' ? <i className="ed-dock-dot" aria-hidden="true" /> : null}
       </button>
       <TestToggle />

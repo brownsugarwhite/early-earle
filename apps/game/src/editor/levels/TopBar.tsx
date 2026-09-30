@@ -70,12 +70,14 @@ export function TopBar() {
   const dirty = useEditorStore((s) => s.dirty);
   const endpoint = useEditorStore((s) => s.endpoint);
   const openTab = useEditorStore((s) => s.openTab);
+  const localSaved = useEditorStore((s) => s.files.some((f) => f.file === s.targetFile && f.local));
   const isNew = activeFile === null;
-  const status = isNew || dirty ? 'Ungesichert' : 'Gesichert';
+  // Speicherziel sichtbar: auf dem Mac (Dev-Server/WLAN) oder lokal auf dem Gerät.
+  const status = isNew || dirty ? 'Ungesichert' : endpoint === 'ok' ? 'Auf dem Mac' : localSaved ? 'Lokal gespeichert' : 'Stand der App';
 
   return (
     <header className="ed-top" data-testid="editor-top" data-endpoint={endpoint}>
-      <Link to="/" className="ed-back" aria-label="Zur Startseite">
+      <Link to="/werkstatt" className="ed-back" aria-label="Zur Werkstatt" data-testid="lab-back">
         <UiIcon name="back" size={20} />
       </Link>
       <h1 className="ed-title">Level-Editor</h1>

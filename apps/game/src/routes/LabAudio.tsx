@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
 import rexJson from '@content/rex/lines.json';
+import { LabNav } from '../overlay/LabNav';
 import { audio, type EngineStats } from '../audio/engine';
 import { useAudioSettings, type VolumeKey } from '../audio/settings';
 import { ZONE_KEYS, ZONE_MUSIC, type ZoneKey } from '../audio/scales';
@@ -206,11 +206,11 @@ export function LabAudio() {
   const tiers = Array.from({ length: 12 }, (_, i) => i + 1);
 
   return (
+    // Own scroll box: the iOS app's web view does not scroll the document (Capacitor `scrollEnabled: false`).
+    <div className="page-scroll">
     <main className="page audio-lab" data-testid="audio-lab" data-ctx-state={stats.state} data-sfx="none">
       <header className="al-head">
-        <Link className="lab-back" to="/lab">
-          ◀ Lab
-        </Link>
+        <LabNav />
         <h1 className="display">Audio-Lab</h1>
         <p className="lede">Alles prozedural (Web Audio, keine Samples). Jeder Knopf entsperrt zuerst den Audio-Kontext – wie der erste Tipp im Spiel.</p>
       </header>
@@ -578,5 +578,6 @@ export function LabAudio() {
         </div>
       </Section>
     </main>
+    </div>
   );
 }

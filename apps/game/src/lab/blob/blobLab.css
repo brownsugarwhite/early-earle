@@ -2,8 +2,8 @@
 .blob-lab-controls { display: flex; flex-direction: column; gap: 10px; width: 100%; max-height: 46vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .blob-lab-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .blob-lab-label { min-width: 84px; font: 700 12px/1 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; color: var(--sky-2); text-shadow: 2px 1px 0 var(--ink-soft); }
-.blob-lab-btn { min-height: 44px; min-width: 44px; padding: 0 14px; border: 0; background: var(--khaki); color: var(--ink); font: 900 15px/1 var(--font-display); box-shadow: 5px 2px 0 var(--ink-soft); cursor: pointer; touch-action: manipulation; }
-.blob-lab-btn:active { transform: translate(3px, 1px); box-shadow: 2px 1px 0 var(--ink-soft); }
+.blob-lab-btn { min-height: 44px; min-width: 44px; padding: 0 14px; border: 0; background: var(--khaki); color: var(--ink); font: 900 15px/1 var(--font-display); box-shadow: -5px 2px 0 var(--ink-soft); cursor: pointer; touch-action: manipulation; white-space: nowrap; }
+.blob-lab-btn:active { transform: translate(-3px, 1px); box-shadow: -2px 1px 0 var(--ink-soft); }
 .blob-lab-btn[data-active='true'] { background: var(--neon); }
 .blob-lab-btn[data-kind='action'] { background: var(--pink); }
 .blob-lab-btn:disabled { opacity: 0.45; cursor: default; }

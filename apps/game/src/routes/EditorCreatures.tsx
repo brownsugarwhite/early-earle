@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router';
 import { BODY_TYPE_LABELS, ZONES, validateGenomeRules, type BodyType, type SlotId, type ZoneId } from '@ee/genome';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { PerfBadge } from '../overlay/PerfBadge';
+import { LabNav } from '../overlay/LabNav';
 import { DEFAULT_CREATURE_LAB_SETTINGS, LabCreatureScene, type BodyChoice, type LabMode } from '../lab/creature/LabCreatureScene';
-import { BUNDLED_RULES, BUNDLED_RULES_INPUT, downloadRules, fetchDevRulesInput, saveDevRules } from '../lab/creature/content';
+import { BUNDLED_RULES, BUNDLED_RULES_INPUT, downloadRules, loadRulesInput, saveRules, shareRules, type RulesSource } from '../lab/creature/content';
 import { UnlockTab } from '../lab/creature/editor/UnlockTab';
 import { BodyTab } from '../lab/creature/editor/BodyTab';
 import { SocketTab } from '../lab/creature/editor/SocketTab';
 import { ScaleTab } from '../lab/creature/editor/ScaleTab';
 import { PaletteTab } from '../lab/creature/editor/PaletteTab';
 import { TIERS, type RulesDraft } from '../lab/creature/editor/editorState';
+import { IS_NATIVE, useContentTarget } from '../editor/content/target';
+import { shareMessage } from '../editor/content/share';
+import { UiIcon } from '../editor/levels/icons';
 import '../lab/creature/creatureLab.css';
 
 type Tab = 'tiers' | 'bodies' | 'sockets' | 'scales' | 'palette' | 'json';
@@ -29,15 +32,17 @@ const PREVIEWS: Array<{ id: Preview; label: string }> = [
   { id: 'compare', label: 'Vergleichen' },
   { id: 'motion', label: 'Bewegung' },
 ];
+const MOTION_BODIES = ['blob', 'snake', 'quadruped', 'biped', 'heavy'] as const;
 const HISTORY_MAX = 80;
+const SOURCE_LABEL: Record<RulesSource, string> = { Bundle: 'Stand der App', Mac: 'vom Mac', Lokal: 'lokal gespeichert' };
 
 /**
- * Creature-Editor (touch-first): edits `content/genome/rules.json` — unlock schedule per zone/tier
- * (with quick slot toggles), body archetypes (thresholds, presets, motion character), socket positions
- * on a body map, scale ranges and palette ramps — with a sticky live preview (gallery, one creature,
- * two tiers side by side, or the walking archetype). Undo/redo over every change, validation with the
- * zod schema, save via the dev endpoint, download as fallback. Rules and modules are edited here,
- * never single creatures.
+ * Wesen-Editor (touch-first, iPhone at 393 × 852 included): edits `content/genome/rules.json` — unlock schedule per
+ * zone/tier (with quick slot toggles), body archetypes (thresholds, presets, motion character), socket positions
+ * on a body map, scale ranges and palette ramps — with a live preview on top (gallery, one creature, two tiers
+ * side by side, or the walking archetype). Undo/redo over every change, validation with the zod schema. Saves on
+ * the Mac (dev endpoint, from the app over the WLAN); without a connection locally, with "Teilen" as JSON.
+ * Rules and modules are edited here, never single creatures.
  */
 export function EditorCreatures() {
   const controller = useMemo(() => new LabCreatureScene({ rules: BUNDLED_RULES, framing: 'editor' }), []);
@@ -55,11 +60,13 @@ export function EditorCreatures() {
   });
   const [tierA, setTierA] = useState(4);
   const [tierB, setTierB] = useState(7);
-  const [source, setSource] = useState<'Bundle' | 'Dev-Endpunkt'>('Bundle');
+  const [source, setSource] = useState<RulesSource>('Bundle');
   const [toast, setToast] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [jsonText, setJsonText] = useState('');
   const [saving, setSaving] = useState(false);
   const validation = useMemo(() => validateGenomeRules(draft), [draft]);
+  const status = useContentTarget((s) => s.status);
+  const online = status === 'verbunden';
 
   /** Every edit goes through here so it can be undone. */
   const setDraft = useCallback((next: RulesDraft) => {
@@ -95,12 +102,12 @@ export function EditorCreatures() {
 
   useEffect(() => {
     let alive = true;
-    fetchDevRulesInput().then((r) => {
+    void loadRulesInput().then((r) => {
       if (alive && r) {
-        setDraftRaw(r);
+        setDraftRaw(r.input);
         history.current = { past: [], future: [] };
         setHistSize({ past: 0, future: 0 });
-        setSource('Dev-Endpunkt');
+        setSource(r.source);
       }
     });
     return () => {
@@ -153,10 +160,14 @@ export function EditorCreatures() {
 
   const save = async () => {
     setSaving(true);
-    const r = await saveDevRules(draft);
+    const r = await saveRules(draft);
     setSaving(false);
     setToast({ kind: r.ok ? 'ok' : 'error', text: r.message });
-    if (r.ok) setSource('Dev-Endpunkt');
+    if (r.ok) setSource(r.target === 'mac' ? 'Mac' : 'Lokal');
+  };
+  const share = async () => {
+    const outcome = await shareRules(draft);
+    if (outcome !== 'abgebrochen') setToast({ kind: outcome === 'fehler' ? 'error' : 'ok', text: shareMessage(outcome, 'rules.json') });
   };
 
   const applyJson = () => {
@@ -168,14 +179,17 @@ export function EditorCreatures() {
     }
   };
 
-  const tierChips = (value: number, onPick: (t: number) => void, testId: string) => (
-    <div className="ced-quick" data-testid={testId}>
-      {TIERS.map((t) => (
-        <button key={t} type="button" className="ced-chip" data-active={t === value} onClick={() => onPick(t)}>
-          {t}
-        </button>
-      ))}
-    </div>
+  const tierSelect = (label: string, value: number, onPick: (t: number) => void, testId: string) => (
+    <label className="ced-pick" data-testid={testId}>
+      <span>{label}</span>
+      <select value={value} onChange={(e) => onPick(Number(e.target.value))} aria-label={label}>
+        {TIERS.map((t) => (
+          <option key={t} value={t}>
+            {t}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 
   return (
@@ -183,73 +197,75 @@ export function EditorCreatures() {
       <div className="ced-preview">
         <CanvasHost controller={controller} />
         <div className="ced-topbar">
-          <Link to="/" className="lab-back">◀ Start</Link>
-          <h1 className="ced-title">Creature-Editor · {PREVIEWS.find((p) => p.id === preview)?.label} {zone}</h1>
+          <LabNav />
+          <h1 className="ced-title">
+            Wesen-Editor · {PREVIEWS.find((p) => p.id === preview)?.label} {zone}
+          </h1>
           <PerfBadge />
         </div>
-      </div>
-      <div className="ced-sheet">
-        <div className="ced-tabs">
-          {ZONES.map((z) => (
-            <button key={z} type="button" className="ced-chip" data-active={z === zone} onClick={() => setZone(z)} data-testid={`ed-zone-${z}`}>
-              {z}
-            </button>
-          ))}
-          <span style={{ flex: 1 }} />
-          <span className="ced-undo">
-            <button type="button" className="creature-btn" onClick={undo} disabled={histSize.past === 0} title="Rückgängig (⌘Z)" data-testid="ed-undo">
-              ↶ {histSize.past || ''}
-            </button>
-            <button type="button" className="creature-btn" onClick={redo} disabled={histSize.future === 0} title="Wiederholen (⇧⌘Z)" data-testid="ed-redo">
-              ↷ {histSize.future || ''}
-            </button>
-          </span>
-          <button type="button" className="creature-btn" data-kind="action" onClick={save} disabled={!validation.ok || saving} data-testid="ed-save">
-            Speichern
-          </button>
-          <button type="button" className="creature-btn" onClick={() => downloadRules(draft)} data-testid="ed-download">
-            Download
-          </button>
-        </div>
-        <div className="ced-tabs">
-          <span className="creature-label">Vorschau</span>
+        {/* Vorschau-Steuerung unten auf der Vorschau: eine wischbare Zeile. */}
+        <div className="ced-preview-bar" role="group" aria-label="Vorschau">
           {PREVIEWS.map((p) => (
             <button key={p.id} type="button" className="ced-chip" data-active={p.id === preview} onClick={() => setPreview(p.id)} data-testid={`ed-preview-${p.id}`}>
               {p.label}
             </button>
           ))}
-        </div>
-        {preview !== 'gallery' ? (
-          <div className="ced-tabs">
-            <span className="creature-label">{preview === 'compare' ? 'Stufe A' : 'Stufe'}</span>
-            {tierChips(tierA, setTierA, 'ed-preview-tier')}
-            {preview === 'compare' ? (
-              <>
-                <span className="creature-label">gegen</span>
-                {tierChips(tierB, setTierB, 'ed-preview-tier-b')}
-              </>
-            ) : null}
-            {preview === 'motion' ? (
-              <div className="ced-quick">
-                {(['blob', 'snake', 'quadruped', 'biped', 'heavy'] as const).map((b) => (
-                  <button key={b} type="button" className="ced-chip" data-active={b === body} onClick={() => setBody(b)}>
+          {preview !== 'gallery' ? tierSelect(preview === 'compare' ? 'Stufe A' : 'Stufe', tierA, setTierA, 'ed-preview-tier') : null}
+          {preview === 'compare' ? tierSelect('gegen', tierB, setTierB, 'ed-preview-tier-b') : null}
+          {preview === 'motion' ? (
+            <label className="ced-pick">
+              <span>Körper</span>
+              <select value={body} onChange={(e) => setBody(e.target.value as BodyType)} aria-label="Körper">
+                {MOTION_BODIES.map((b) => (
+                  <option key={b} value={b}>
                     {BODY_TYPE_LABELS[b]}
-                  </button>
+                  </option>
                 ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="ced-tabs">
+              </select>
+            </label>
+          ) : null}
+        </div>
+      </div>
+      <div className="ced-sheet">
+        <div className="ced-actions">
+          <span className="ced-undo">
+            <button type="button" className="creature-btn ced-icon-btn" onClick={undo} disabled={histSize.past === 0} title="Rückgängig (⌘Z)" aria-label="Rückgängig" data-testid="ed-undo">
+              <UiIcon name="undo" size={20} /> {histSize.past || ''}
+            </button>
+            <button type="button" className="creature-btn ced-icon-btn" onClick={redo} disabled={histSize.future === 0} title="Wiederholen (⇧⌘Z)" aria-label="Wiederholen" data-testid="ed-redo">
+              <UiIcon name="redo" size={20} /> {histSize.future || ''}
+            </button>
+          </span>
+          <button type="button" className="creature-btn ced-save" data-kind="action" onClick={save} disabled={!validation.ok || saving} data-target={online ? 'mac' : 'lokal'} data-testid="ed-save">
+            {saving ? 'Speichert …' : online ? 'Speichern' : 'Lokal speichern'}
+            <small>{online ? 'auf dem Mac' : 'ohne Mac'}</small>
+          </button>
+          <button type="button" className="creature-btn" onClick={() => void share()} data-testid="ed-share">
+            Teilen
+          </button>
+          {IS_NATIVE ? null : (
+            <button type="button" className="creature-btn" onClick={() => downloadRules(draft)} data-testid="ed-download">
+              Download
+            </button>
+          )}
+        </div>
+        <div className="ced-row" role="group" aria-label="Zone">
+          {ZONES.map((z) => (
+            <button key={z} type="button" className="ced-chip" data-active={z === zone} onClick={() => setZone(z)} data-testid={`ed-zone-${z}`}>
+              {z}
+            </button>
+          ))}
+        </div>
+        <div className="ced-row" role="tablist" aria-label="Bereiche">
           {TABS.map((t) => (
-            <button key={t.id} type="button" className="ced-chip" data-active={t.id === tab} onClick={() => setTab(t.id)} data-testid={`ed-tab-${t.id}`}>
+            <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} className="ced-chip ced-tab" data-active={t.id === tab} onClick={() => setTab(t.id)} data-testid={`ed-tab-${t.id}`}>
               {t.label}
             </button>
           ))}
-          <span className="creature-info" data-testid="ed-status" data-warn={!validation.ok}>
-            {validation.ok ? `gültig · Quelle: ${source}` : `ungültig (${validation.issues.length} Fehler)`}
-          </span>
         </div>
+        <p className="creature-info ced-status" data-testid="ed-status" data-warn={!validation.ok}>
+          {validation.ok ? `gültig · ${SOURCE_LABEL[source]}` : `ungültig (${validation.issues.length} Fehler)`}
+        </p>
         {validation.ok ? null : (
           <pre className="ced-issues" data-testid="ed-issues">
             {validation.issues.slice(0, 12).map((i) => `${i.path || '(root)'}: ${i.message}`).join('\n')}

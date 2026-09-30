@@ -81,53 +81,62 @@ export function LabGrid() {
   const isDemo = levelIndex === DEMO_LEVEL_INDEX || levelIndex === CREATURE_DEMO_INDEX || levelIndex === HERD_DEMO_INDEX;
   const levelNo = levelIndex + 1;
   const noLimit = (level?.moves ?? 0) >= 99;
-  const title = levelIndex === CREATURE_DEMO_INDEX ? 'P3 Grid-Lab — Wesen-Schau' : levelIndex === HERD_DEMO_INDEX ? 'P3 Grid-Lab — Herde' : isDemo ? 'P3 Grid-Lab — Elemente-Schau' : `P3 Grid-Lab — Level ${levelNo}${level ? ` · ${level.name ?? level.id}` : ''}`;
+  const title = levelIndex === CREATURE_DEMO_INDEX ? 'P3 Spielfeld-Lab — Wesen-Schau' : levelIndex === HERD_DEMO_INDEX ? 'P3 Spielfeld-Lab — Herde' : isDemo ? 'P3 Spielfeld-Lab — Elemente-Schau' : `P3 Spielfeld-Lab — Level ${levelNo}${level ? ` · ${level.name ?? level.id}` : ''}`;
+
+  const won = status === 'won' && !isDemo && levelIndex + 1 < LEVELS.length;
 
   return (
     <LabFrame
       title={title}
-      controls={
+      peek={
         <>
-          <div className="hud-row">
-            <label className="hud-field">
-              Level
-              <select value={levelIndex} onChange={(e) => loadLevel(Number(e.target.value))} data-testid="grid-level-select">
-                <option value={DEMO_LEVEL_INDEX}>★ Elemente-Schau (alle Elemente)</option>
-                <option value={CREATURE_DEMO_INDEX}>★ Wesen-Schau (Körpertypen, Merges)</option>
-                <option value={HERD_DEMO_INDEX}>★ Herde (21 Arten, Mesh-Weg)</option>
-                {LEVELS.map((l, i) => (
-                  <option key={l.id} value={i}>{i + 1} · {l.name ?? l.id}</option>
-                ))}
-              </select>
-            </label>
-            <button className="btn" onClick={rewindMove} disabled={!history || !canRewind(history)}>⟲ Rückspulen</button>
-            <button className="btn" onClick={restart}>↻ Neu</button>
-            <button className="btn" onClick={toggleNumbers}>{showNumbers ? 'Zahlen aus' : 'Zahlen an'}</button>
-            <button className={`btn${juice ? ' on' : ''}`} onClick={toggleJuice} data-testid="grid-juice" title="Partikel, Platten-Dip, Shake, REX-Puls (J)">Juice {juice ? 'an' : 'aus'}</button>
-          </div>
-          <div className="hud-row hud-stats">
-            <span className="hud-pill">{noLimit ? 'Züge: frei' : `Züge: ${state?.movesLeft ?? 0}`}</span>
-            <span className="hud-pill">Punkte: {state?.score ?? 0}</span>
-            {next ? <span className="hud-pill">Nächster: {2 ** next.tier}{next.kind === 'amoeba' ? ' (Amöbe)' : ''}</span> : null}
-            {state?.goalProgress.map((g, i) => (
-              <span key={i} className={`hud-pill ${g.done ? 'done' : ''}`}>{goalText(g)}</span>
-            ))}
-          </div>
-          {rex ? <div className="rex-line"><span className="rex-name">REX</span> {rex}</div> : null}
-          {status !== 'playing' ? (
-            <div className={`hud-banner ${status}`}>
-              {status === 'won' ? 'Geschafft!' : 'Verloren.'}
-              <button className="btn" onClick={() => (status === 'won' && !isDemo && levelIndex + 1 < LEVELS.length ? loadLevel(levelIndex + 1) : restart())}>
-                {status === 'won' && !isDemo && levelIndex + 1 < LEVELS.length ? 'Weiter ▶' : 'Nochmal'}
-              </button>
-            </div>
-          ) : null}
+          <button className="btn" onClick={rewindMove} disabled={!history || !canRewind(history)} data-testid="grid-rewind">⟲ Zurück</button>
+          <button className="btn" onClick={restart} data-testid="grid-restart">↻ Neu</button>
         </>
+      }
+      controls={
+        <div className="hud-row">
+          <label className="hud-field grid-level-field">
+            Level
+            <select value={levelIndex} onChange={(e) => loadLevel(Number(e.target.value))} data-testid="grid-level-select">
+              <option value={DEMO_LEVEL_INDEX}>★ Elemente-Schau (alle Elemente)</option>
+              <option value={CREATURE_DEMO_INDEX}>★ Wesen-Schau (Körpertypen, Merges)</option>
+              <option value={HERD_DEMO_INDEX}>★ Herde (21 Arten, Mesh-Weg)</option>
+              {LEVELS.map((l, i) => (
+                <option key={l.id} value={i}>{i + 1} · {l.name ?? l.id}</option>
+              ))}
+            </select>
+          </label>
+          <button className="btn" onClick={toggleNumbers}>{showNumbers ? 'Zahlen aus' : 'Zahlen an'}</button>
+          <button className={`btn${juice ? ' on' : ''}`} onClick={toggleJuice} data-testid="grid-juice" title="Partikel, Platten-Dip, Shake, REX-Puls (J)">Juice {juice ? 'an' : 'aus'}</button>
+        </div>
       }
     >
       <div className="swipe-layer" onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={() => (swipe.current = null)}>
         <CanvasHost controller={controller} />
       </div>
+      {/* Spiel-HUD auf der Bühne (wie im Flow): Stand oben, REX und Ergebnis unten. */}
+      <div className="grid-lab-hud hud-row hud-stats" data-testid="grid-hud">
+        <span className="hud-pill">{noLimit ? 'Züge: frei' : `Züge: ${state?.movesLeft ?? 0}`}</span>
+        <span className="hud-pill">Punkte: {state?.score ?? 0}</span>
+        {next ? <span className="hud-pill">Nächster: {2 ** next.tier}{next.kind === 'amoeba' ? ' (Amöbe)' : ''}</span> : null}
+        {state?.goalProgress.map((g, i) => (
+          <span key={i} className={`hud-pill ${g.done ? 'done' : ''}`}>{goalText(g)}</span>
+        ))}
+      </div>
+      {rex || status !== 'playing' ? (
+        <div className="grid-lab-bottom">
+          {rex ? <div className="rex-line"><span className="rex-name">REX</span> {rex}</div> : null}
+          {status !== 'playing' ? (
+            <div className={`hud-banner ${status}`}>
+              {status === 'won' ? 'Geschafft!' : 'Verloren.'}
+              <button className="btn" onClick={() => (won ? loadLevel(levelIndex + 1) : restart())}>
+                {won ? 'Weiter ▶' : 'Nochmal'}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </LabFrame>
   );
 }

@@ -131,11 +131,17 @@ struct ActionPill: View {
 
     static let labelFont = UIFont.systemFont(ofSize: 15, weight: .black)
     static let tracking: CGFloat = 0.9
+    /// Width of an `iconOnly` pill (with the 48-pt height a near-round capsule).
+    static let iconOnlyWidth: CGFloat = 52
 
     /// Width of the row with all labels (icon + label + padding per pill, plus spacing).
     static func fullRowWidth(_ actions: [HudAction], spacing: CGFloat) -> CGFloat {
         var total: CGFloat = 0
         for a in actions {
+            if a.iconOnly, a.icon != nil {
+                total += iconOnlyWidth
+                continue
+            }
             let label = a.label.uppercased() as NSString
             let text = ceil(label.size(withAttributes: [.font: labelFont, .kern: tracking]).width)
             let icon: CGFloat = a.icon != nil ? 18 + 8 : 0
@@ -151,6 +157,10 @@ struct ActionPill: View {
                     Image(systemName: icon)
                         .font(.system(size: 18, weight: .black))
                         .frame(maxWidth: .infinity)
+                } else if action.iconOnly, let icon = action.icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .black))
+                        .frame(width: Self.iconOnlyWidth)
                 } else {
                     HStack(spacing: 8) {
                         if let icon = action.icon {

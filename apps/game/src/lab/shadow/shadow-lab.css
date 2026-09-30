@@ -39,7 +39,7 @@
 }
 .shadow-split__tag {
   position: absolute;
-  top: 64px;
+  top: calc(var(--lab-top, 60px) + 4px);
   padding: 4px 10px;
   background: var(--paper, #f7f6d8);
   color: var(--ink, #081b25);
@@ -76,7 +76,7 @@
 .shadow-info {
   position: absolute;
   left: 14px;
-  top: 58px;
+  top: calc(var(--lab-top, 60px) + 44px);
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -93,10 +93,19 @@
   text-transform: uppercase;
   color: var(--khaki, #c9c28a);
 }
-@media (max-width: 700px) {
-  .shadow-info {
-    top: auto;
-    bottom: 48vh;
-    font-size: 10px;
-  }
+/* Handy: Kennzahlen unten auf der Bühne (die Regler liegen im Sheet darunter, nie über der Ansicht). */
+.lab-frame[data-layout='sheet'] .shadow-info {
+  top: auto;
+  bottom: 10px;
+  max-width: calc(100% - 28px);
+  gap: 1px;
+  padding: 5px 9px;
+  font-size: 9px;
+}
+.lab-frame[data-layout='sheet'] .shadow-info > span:last-child {
+  display: none;
+}
+.lab-peek .shadow-seg button {
+  min-height: 44px;
+  padding: 0 10px;
 }

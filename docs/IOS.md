@@ -1,6 +1,6 @@
-# iPhone-App (Capacitor) — Installation, Glas-HUD, Haptik
+# iPhone-App (Capacitor) — Installation, Glas-HUD, Haptik, Werkstatt
 
-Stand 2026-09-29. Die App-Hülle liegt in `apps/game/ios` (Capacitor 8.5, SPM, iOS-27-SDK/Xcode 27). Das Spiel selbst ist das Web-Bundle aus `apps/game/dist`; es läuft in der WKWebView, darüber schwebt ein **natives SwiftUI-HUD in Liquid Glass** (eigenes Plugin `apps/game/plugins/liquid-glass`).
+Stand 2026-09-29 (Werkstatt, Labs und Editoren in der App: 2026-09-30, Abschnitt 7). Die App-Hülle liegt in `apps/game/ios` (Capacitor 8.5, SPM, iOS-27-SDK/Xcode 27). Das Spiel selbst ist das Web-Bundle aus `apps/game/dist`; es läuft in der WKWebView, darüber schwebt ein **natives SwiftUI-HUD in Liquid Glass** (eigenes Plugin `apps/game/plugins/liquid-glass`).
 
 ## 1. Auf Florians iPhone installieren (ohne Developer-Programm, mit Apple-ID)
 
@@ -34,11 +34,11 @@ API (`apps/game/src/native/liquidGlass.ts` kapselt sie mit `useNativeGlass()`, `
 | Methode / Event | Bedeutung |
 |---|---|
 | `isAvailable()` → `{ available, glass, platform, version }` | `glass: true` = echtes Liquid Glass (iOS 26+) |
-| `show({ top: { title, subtitle, moves, goals[] }, actions: [{ id, label, icon?, primary?, disabled?, tint? }], rex?, tint?, accent? })` | Zustand setzen und einblenden |
+| `show({ top: { title, subtitle, moves, goals[] }, actions: [{ id, label, icon?, primary?, disabled?, tint?, iconOnly? }], rex?, tint?, accent? })` | Zustand setzen und einblenden; `iconOnly` = runde Symbol-Pille (Label nur für VoiceOver), z. B. der Werkstatt-Schlüssel |
 | `update({...})` | Teil-Update (nur vorhandene Schlüssel, `null` löscht), Pillen morphen |
 | `hide()` | ausblenden (Splash/Hüpfer) |
 | `setSafeInsets({ top, bottom })` | zusätzliche Ränder in CSS-px |
-| Event `action` `{ id }` | Tipp auf eine Pille (`play`, `rewind`, `restart`, `map`); nativ mit leichtem Haptik-Tick |
+| Event `action` `{ id }` | Tipp auf eine Pille (`play`, `rewind`, `restart`, `map`, `sound`, `werkstatt`); nativ mit leichtem Haptik-Tick |
 | Event `layout` `{ top, bottom, safeTop, safeBottom, glass, line, actions }` | Höhen in CSS-px, damit Web-Elemente ausweichen können; `line` (REX-Sprechblase) und `actions` (Knopfleiste) als Rechtecke, REX schaut über `line` (`nativeGlassLayout()` in `src/native/liquidGlass.ts`) |
 
 `FlowHud.tsx` spiegelt den Store (Levelname, Züge, Ziele, REX-Zeile, Aktionen) per JSON in das Overlay und blendet dabei die eigenen CSS-Pillen aus; `icon` sind SF-Symbol-Namen.
@@ -64,3 +64,55 @@ Noch nicht geprüft (braucht das Gerät + Apple-ID): Signatur/Installation auf d
 - Personal-Team-Builds laufen 7 Tage; danach neu installieren (⌘R). Maximal 3 Apps pro Personal Team, 10 Geräte.
 - Das Overlay kennt keine Sheets/Booster-Leiste — kommen, sobald das Spiel sie hat (gleiches Plugin, weitere Elemente).
 - Der Dev-Streifen unten links (nur `pnpm dev`) liegt im Web-Layer und kann die nativen Pillen auf sehr schmalen Geräten berühren; im Release-Bundle gibt es ihn nicht.
+- Werkstatt-Grenzen: siehe Abschnitt 7.
+
+## 7. Werkstatt: Labs und Editoren in der App
+
+Stand 2026-09-30. Die App hat keine Adresszeile — deshalb gibt es die **Werkstatt** (`/werkstatt`, auch unter `/lab`): alle Labs und Editoren mit deutschem Namen und einer Zeile Beschreibung, das Speicherziel und der Weg zurück ins Spiel.
+
+**So kommst du hin**
+
+- **Auf der Map** rechts neben „Spielen“ und „Ton“: die runde Glas-Pille mit dem **Schraubenschlüssel** (nativ, SF Symbol `wrench.and.screwdriver.fill`; im Browser ein gleich großer Glasknopf). Im Level ist sie ausgeblendet.
+- **Direkt per Link** (Safari, Notizen, Kurzbefehle, Home-Bildschirm-Kurzbefehl): `earlyearle://werkstatt`, `earlyearle://lab/earle?world=08`, `earlyearle://editor/levels?file=003.json`, `earlyearle://play`. Im Simulator: `xcrun simctl openurl booted earlyearle://werkstatt`.
+- **Zurück**: jede Lab-/Editor-Seite hat oben links **„◀ Werkstatt“** (pink) und daneben den **Planeten** = zurück ins Spiel (Map). In der Werkstatt ist „Zurück zum Spiel“ der erste, größte Knopf. Der Level-Editor hat oben links nur den Pfeil (zur Werkstatt), weil seine Kopfzeile schon voll ist.
+- Ausblenden für einen späteren Store-Build: `VITE_WERKSTATT=0`. In einem statischen Web-Build ist sie aus, außer `VITE_WERKSTATT=1`.
+
+**Labs auf dem iPhone (Regler als Bottom-Sheet)**
+
+- Die Regler hängen nicht mehr über der Ansicht: unten liegt ein **Sheet mit Griff**, beim Öffnen eines Labs **zu**. Die Bühne (Canvas) endet immer über dem Sheet.
+- **Tippen** auf „Regler ▴“ öffnet **halb** (die Bühne schrumpft auf die obere Hälfte, alles bleibt sichtbar), **Hochziehen** am Griff öffnet **voll** (überdeckt dann die Bühne, die Kopfzeile mit „Werkstatt“ bleibt frei), Runterziehen schließt. Tippen auf den Griff schaltet zu → halb → voll → zu. Der Zustand gilt pro Lab bis zum Schließen der App.
+- In der Leiste daneben liegen die **Schnellaktionen** (wischbar), die auch bei geschlossenem Sheet erreichbar sind: Spielfeld-Lab „Zurück/Neu“, Blob-Lab „Squash/Ripple/Verschmelzen“, Genom-Lab „Zufall/Poke“, Schatten-Lab „Alt | Neu“, REX-Lab alle Animationen.
+- Große Touch-Ziele (≥ 44 pt), eckige Schieber mit Papier-Griff, 16-px-Eingaben (kein Zoom beim Tippen), Safe Areas oben/unten.
+- **Desktop** (≥ 900 px breit, auch Handy quer): die Regler sind eine **Seitenleiste rechts**, „ausblenden ▸“ klappt sie weg, „◂ Regler“ in der Kopfzeile holt sie zurück.
+- Links für Screenshots: `?sheet=zu|halb|voll`, `?panel=zu`.
+
+**Speichern: direkt auf den Mac oder lokal**
+
+1. Auf dem Mac den HTTP-Dev-Server starten: `pnpm --filter @ee/game dev:http` (Port 5174, im ganzen WLAN erreichbar; HTTPS auf 5173 geht aus der App nicht — selbst signiertes Zertifikat).
+2. iPhone im **gleichen WLAN**. Fragt iOS beim ersten Verbinden nach **„Lokales Netzwerk“** → erlauben (später: `Einstellungen ▸ early earle ▸ Lokales Netzwerk`).
+3. In der Werkstatt steht oben das **Speicherziel**: „Mac verbunden · <Mac-Name>“ (grün) oder „Mac nicht erreichbar“ (rost). Die **Mac-Adresse** ist dort einstellbar (Standard `http://192.168.1.55:5174`, nur IP reicht: Port 5174 wird ergänzt; „Übernehmen“). **„Testen“** pingt den Mac und schreibt und löscht eine Wegwerfdatei (`content/genome/_werkstatt-test.json`) — „✓ Schreiben geht“ heißt: Speichern klappt. `earlyearle://werkstatt?test=1` macht das beim Öffnen.
+4. **Verbunden:** Level-, Wesen- und Map-Editor schreiben direkt nach `content/` auf dem Mac (gleicher Dev-Endpunkt `/__content/...` wie im Browser, mit Validierung). Hinweis „Gespeichert auf dem Mac“.
+5. **Nicht erreichbar:** gespeichert wird **lokal auf dem iPhone** („Lokal gespeichert“, der Speicher-Knopf ist dann khaki statt türkis/pink). Lokale Stände überstehen Neustarts. **„Teilen“** öffnet das iOS-Teilen-Blatt mit der JSON-Datei (AirDrop an den Mac, Dateien, Mail). Sobald der Mac wieder erreichbar ist, lädt der Editor den lokalen Stand als „ungesichert“ — **Sichern** bringt ihn auf den Mac (bei abweichendem Stand auf dem Mac mit Rückfrage).
+
+Technik: `apps/game/src/editor/content/` (`target.ts` Speicherziel + Verbindungstest, `local.ts` lokale Stände, `share.ts` Teilen über `@capacitor/share` + `@capacitor/filesystem`), der Dev-Endpunkt `apps/game/vite-plugins/contentApi.ts` antwortet mit CORS für `capacitor://localhost` (nur App-Origins, keine fremden Seiten), `GET /__content` ist der Ping, Unterordner wie `zones/worlds` sind erlaubt. `Info.plist`: `NSAppTransportSecurity ▸ NSAllowsLocalNetworking` (HTTP im LAN), `NSLocalNetworkUsageDescription`, URL-Schema `earlyearle` (`CFBundleURLTypes`, `@capacitor/app`).
+
+**Die Editoren auf dem iPhone**
+
+- **Level-Editor** (schon iPhone-first): Status unter dem Levelnamen zeigt das Ziel („Auf dem Mac“ / „Lokal gespeichert“ / „Stand der App“), Reiter „Datei“: „Auf den Mac sichern“ bzw. „Lokal sichern“, „Teilen“.
+- **Wesen-Editor**: Vorschau oben mit wischbarer Vorschau-Leiste (Galerie/Einzeln/Vergleichen/Bewegung, Stufen als Auswahl), darunter eine Aktionszeile (Rückgängig, Wiederholen, Speichern, Teilen), Zonen und Bereiche als je eine wischbare Zeile.
+- **Map-Editor** (neu): die zehn Welten (`content/zones/worlds/NN.json`) und vier Zonen als Liste mit Farbstreifen; pro Datei ein flaches **Serigrafie-Plakat** der Palette (Himmelsbänder, Sonne, Hügel, Nebelstreifen, Kuppelbäume mit Sonnenpunkten), Reiter **Farben** (Antippen öffnet die iOS-Farbwahl), **Werte** (Hügel, Bäume, Nebel, Kamera), **Text**, **JSON**. Ungesicherte Änderungen bleiben auf dem Gerät; „Im Earle-Lab“ öffnet die Welt im Lab.
+
+**Geprüft im Simulator (iPhone Air, iOS 27, 2026-09-30)**
+
+- Native Map-Leiste „Spielen · Ton · 🔧“ (runde Glas-Pille, die Beschriftungen bleiben), Werkstatt, Labs mit Sheet (zu/halb/voll, Safe Areas), alle drei Editoren; die Editoren laden vom Mac („Auf dem Mac“).
+- Von `capacitor://localhost` zum Dev-Server: Ping, CORS-Preflight, `PUT` und `DELETE` — gegen `127.0.0.1:5186` und gegen eine LAN-IP (`192.168.1.55`, Test-Server): „Mac verbunden · ✓ Schreiben geht“, also ATS mit `NSAllowsLocalNetworking` in Ordnung. Auf dem echten iPhone kommt ggf. noch die Frage nach „Lokales Netzwerk“ dazu (nicht im Simulator prüfbar).
+- Screenshots: `docs/progress/werkstatt-app-*.png` (Simulator), `werkstatt-handy-*.png` (393 × 852), `werkstatt-desktop-*.png`.
+- Test-Builds ohne Tippen: `VITE_START_ROUTE="/werkstatt?test=1|/lab/earle?sheet=halb"` (mehrere Routen im Wechsel, `VITE_START_TOUR_MS`) und `VITE_MAC_URL=http://127.0.0.1:5186` vor `ios:sim` — `xcrun simctl openurl` fragt im Simulator erst „In ‚early earle‘ öffnen?“.
+
+**Bekannte Grenzen**
+
+- Die Labs und Editoren im App-Bundle zeigen den **Stand der letzten Installation**; was du auf dem Mac speicherst, sieht die App erst nach dem nächsten `ios:device` (die Editoren selbst laden die Dateien aber frisch vom Mac, solange er erreichbar ist). Im Browser gegen den Dev-Server lädt Vite sofort neu.
+- Ohne Verbindung sieht das Earle-Lab lokale Änderungen aus dem Map-Editor nicht (es liest die gebündelten Welten).
+- Lokale Stände liegen im Web-Speicher der App (localStorage). Er übersteht Neustarts und Updates, gilt aber nicht als Backup (iOS kann ihn bei Speichermangel leeren, Löschen der App löscht ihn) — Wichtiges per „Teilen“ auf den Mac schicken oder mit Verbindung sichern.
+- Der Dev-Endpunkt existiert nur, solange `pnpm dev`/`dev:http` auf dem Mac läuft; Florians laufender Server braucht nach dem Merge einen **Neustart** (CORS für die App kommt aus der Vite-Konfiguration des Plugins).
+- Das REX-Lab zeigt seine iPhone-Vorschau (393 × 852) in echter Größe; auf dem iPhone selbst scrollt die Bühne dafür.

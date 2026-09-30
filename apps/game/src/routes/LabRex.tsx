@@ -179,6 +179,15 @@ export function LabRex() {
     <div className="rex-lab" data-view={view} data-ui={hideUi ? 'off' : 'on'} data-testid="rex-lab">
       <LabFrame
         title="P7 REX-Lab · der Guide"
+        peek={
+          hideUi
+            ? undefined
+            : ACTIONS.map((a) => (
+                <button key={a.test} type="button" className="rex-btn rex-btn--act" data-active={stats?.action === a.id && a.id !== 'idle'} onClick={() => play(a.id, a.arg)} data-testid={`rex-act-${a.test}`}>
+                  {a.label}
+                </button>
+              ))
+        }
         controls={
           hideUi ? undefined : (
             <>
@@ -189,13 +198,6 @@ export function LabRex() {
                 {VIEWS.map((v) => (
                   <button key={v.id} type="button" className="rex-btn" data-active={view === v.id} onClick={() => setView(v.id)} data-testid={`rex-view-${v.id}`}>
                     {v.label}
-                  </button>
-                ))}
-              </div>
-              <div className="rex-row" role="group" aria-label="Animationen">
-                {ACTIONS.map((a) => (
-                  <button key={a.test} type="button" className="rex-btn rex-btn--act" data-active={stats?.action === a.id && a.id !== 'idle'} onClick={() => play(a.id, a.arg)} data-testid={`rex-act-${a.test}`}>
-                    {a.label}
                   </button>
                 ))}
               </div>
