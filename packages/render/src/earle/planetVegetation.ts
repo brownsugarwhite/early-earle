@@ -6,7 +6,6 @@ import {
   DoubleSide,
   Float32BufferAttribute,
   Group,
-  ConeGeometry,
   InstancedBufferAttribute,
   InstancedBufferGeometry,
   InstancedMesh,
@@ -29,7 +28,6 @@ import {
   floor,
   fract,
   fwidth,
-  hash,
   int,
   max,
   mix,
@@ -46,15 +44,15 @@ import {
   step,
   uniform,
   uniformArray,
-  uv,
   varying,
   vec3,
   vec4,
 } from 'three/tsl';
-import { TREE_PROPORTIONS, hash32, mulberry32, type PlanetProp, type PlanetTree, type PlanetVegetationFamily, type TreeKind } from '@ee/world';
+import type { PlanetProp, PlanetTree, PlanetVegetationFamily, TreeFamily } from '@ee/world';
 import { EarleMaterial } from './EarleMaterial';
-import { arrayElement, hatchMask, lichenCells, palByKey, patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from './tsl';
-import { createBareTreeGeometry, createCanopyGeometry, createHexagon, createTrunkGeometry, dotsOnCanopy, mergeGeometries, treeFrame } from './vegetation';
+import { arrayElement, hatchMask, patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from './tsl';
+import { createHexagon, mergeGeometries } from './vegetation';
+import { CROWN_KINDS, TreeLayer, type CrownKind } from './trees/treeLayer';
 
 /** Zahl der Wachstums-Slots (ein Slot je geladenem Chunk). */
 export const GROWTH_SLOTS = 64;
@@ -90,6 +88,11 @@ export interface PlanetVegetationOptions {
   seed?: number;
   /** Krümmungs-Warp aller Planetenraum-Positionen (Perspektiv-Boost), identisch mit dem Terrain. */
   warp?: ((p: Vec3Node) => Vec3Node) | undefined;
+  /**
+   * Eingebauten Müll (Schrotthügel, Monolithe, Gasquellen, Reifen, Rohre, Ölbecken, Sporen) streuen (Standard true).
+   * `false`, wenn eine eigene Müll-Welt ihn ersetzt; Felsen, Scheunen und Tiere bleiben.
+   */
+  builtinTrash?: boolean;
 }
 
 export interface VegetationTreeEntry {
@@ -105,7 +108,6 @@ export interface VegetationPropEntry {
   slot: number;
 }
 
-const TRUNK_STYLE_INDEX = { ink: 0, white: 1, striped: 2, lichen: 3 } as const;
 /** Requisiten-Typ im gemeinsamen Material (propC.w = Typ + Variante). */
 const PROP_TYPE: Record<PlanetProp['kind'], number> = { mound: 0, scrap: 0, rock: 1, monolith: 2, vent: 3, tire: 4, pipe: 5, barn: 6, pool: 7, animal: 7 };
 
@@ -130,59 +132,32 @@ function propSize(p: PlanetProp): [number, number, number] {
   }
 }
 
-/** Kronen-Grundformen (ein Mesh je Grundform). */
-export type CanopyMesh = 'dome' | 'stacked' | 'cone' | 'sphere' | 'spire';
-export const CANOPY_MESHES: CanopyMesh[] = ['dome', 'stacked', 'cone', 'sphere', 'spire'];
-const CANOPY_MESH_OF: Record<Exclude<TreeKind, 'bare'>, CanopyMesh> = {
-  dome: 'dome',
-  stacked: 'stacked',
-  cone: 'cone',
-  tall: 'cone',
-  pine: 'cone',
-  bulb: 'sphere',
-  jewel: 'sphere',
-  spire: 'spire',
-};
-/** Einheitskegel (Radius 1, Höhe 1, Fuß bei y = 0): Ansatzhöhe und Höhe je Form in Kronenradien. */
-const CONE_FORM = { cone: [0.62, 2.2], tall: [3.6, 1.6], pine: [0.25, 3.4] } as const;
-/** Einheitskugel: Mittelpunkthöhe und y-Streckung je Form in Kronenradien. */
-const SPHERE_FORM = { jewel: [1.05, 0.88], bulb: [1.45, 1.15] } as const;
-
-/** Geometrie einer Kronen-Grundform. */
-function createCanopyMeshGeometry(shape: CanopyMesh): BufferGeometry {
-  if (shape === 'cone') {
-    const g = new ConeGeometry(1, 1, 12, 1, false);
-    g.translate(0, 0.5, 0);
-    return g;
-  }
-  if (shape === 'sphere') return new SphereGeometry(1, 16, 12);
-  return createCanopyGeometry(shape);
-}
+/** Kronen-Grundformen der Bäume v3 (ein Mesh je Grundform): Kuppel-Masse, Juwel, Säule, Stufenkiefer. */
+export type CanopyMesh = CrownKind;
+export const CANOPY_MESHES: CanopyMesh[] = CROWN_KINDS;
+/** Müll-Requisiten (werden mit `builtinTrash: false` nicht gestreut — die Müll-Welt kann sie ersetzen). */
+const TRASH_PROPS = new Set<PlanetProp['kind']>(['mound', 'scrap', 'monolith', 'vent', 'tire', 'pipe', 'pool']);
 const _Y = new Vector3(0, 1, 0);
 const _q = new Quaternion();
 const _m = new Matrix4();
 const _p = new Vector3();
 const _s = new Vector3();
 const _n = new Vector3();
-const _t = new Vector3();
 const _qYaw = new Quaternion();
-const _b = new Vector3();
 
 /**
- * Vegetation und Requisiten des Planeten als feste Pools (Kapazität vorab): je Kronenform ein InstancedMesh,
- * Stämme (Zylinder mit Stil je Welt: Tinte, weiß, gestreift, Flechten), kahle Fraktalbäume als Karten, ein
- * Punkt-Billboard-Pool (Punkte, Rauten, Kreuze, Randpunkte), Müll (Schrotthügel/Felsen, Monolithe/Gasquellen,
- * Reifen, Rohre, Ölbecken, Sporen), Scheunen und Tier-Silhouetten. Beim Wechsel der geladenen Chunks werden nur
- * die Instanzpuffer neu geschrieben. Wachstum je Chunk über ein Uniform-Array: Bäume wachsen in den Chunk hinein,
- * Müll versinkt im Boden.
+ * Vegetation und Requisiten des Planeten als feste Pools (Kapazität vorab). Bäume v3 (`trees/treeLayer.ts`): je
+ * Kronenform ein InstancedMesh (Kuppel-Masse, Juwel, Säule, Stufenkiefer), organische Stämme (Gabel, Fächer, Eiche)
+ * mit Rindenstilen je Welt (Kalligrafie, Flechten, Juwelenstreifen, weiß, Schnee), kahle Linienbäume als Karten und
+ * ein Punkt-Pool (Randfunkeln, Spitzenschleier, Sternnadeln). Dazu Müll (Schrotthügel/Felsen, Monolithe/Gasquellen,
+ * Reifen, Rohre, Ölbecken, Sporen; abschaltbar mit `builtinTrash: false`), Scheunen und Tier-Silhouetten. Beim
+ * Wechsel der geladenen Chunks werden nur die Instanzpuffer neu geschrieben. Wachstum je Chunk über ein
+ * Uniform-Array: Bäume wachsen in den Chunk hinein, Müll versinkt im Boden.
  */
 export class PlanetVegetation {
   readonly group = new Group();
-  /** Kronen-Meshes je Grundform (dome, stacked, cone, sphere, spire). */
-  readonly canopies: Partial<Record<CanopyMesh, InstancedMesh>>;
-  readonly trunks: InstancedMesh;
-  readonly bare: InstancedMesh;
-  readonly dots: Mesh;
+  /** Bäume v3: Kronen, organische Stämme, Linienbäume, Punkte (trees/treeLayer.ts). */
+  readonly trees: TreeLayer;
   /** Alle festen Requisiten (Schrott, Fels, Monolith, Gasquelle, Reifen, Rohr, Scheune) in einem Mesh. */
   readonly props: InstancedMesh;
   readonly pools: InstancedMesh;
@@ -211,19 +186,12 @@ export class PlanetVegetation {
   private readonly foreignClear = uniform(11);
   private readonly geometries: BufferGeometry[] = [];
   private readonly materials: Array<{ dispose(): void }> = [];
-  private readonly rand: () => number;
-  private readonly dotRange: [number, number];
-  private readonly dotRadius: number;
-  private readonly dotsGeometry: InstancedBufferGeometry;
   private readonly sporesGeometry: InstancedBufferGeometry;
   private readonly capacity: PlanetVegetationOptions['capacity'];
   private readonly warp: (p: Vec3Node) => Vec3Node;
 
   constructor(readonly options: PlanetVegetationOptions) {
     this.group.name = 'PlanetVegetation';
-    this.rand = mulberry32(hash32('planet-dots', options.seed ?? 1));
-    this.dotRange = options.dotsPerTree;
-    this.dotRadius = options.dotRadius ?? 0.06;
     this.collapsePx.value = options.collapsePx;
     this.capacity = options.capacity;
     this.warp = options.warp ?? ((p) => p);
@@ -287,220 +255,35 @@ export class PlanetVegetation {
       return smoothstep(this.nearClear, this.nearClear.add(1.6), gap).mul(footFade(base));
     };
 
-    // --- Kronen -----------------------------------------------------------------------------------------
-    // Instanzattribute gepackt (WebGPU: höchstens 8 Vertex-Puffer je Pipeline):
-    // treeA = (Fußpunkt xyz, Rang), treeB = (Hüllzentrum xyz, Slot), treeC = (Zeile, Akzentzeile, Stammstil, Variante),
-    // treeD = (Instanzradius, Instanzhöhe, Kronenradius, –)
-    const treeA = () => attribute('treeA', 'vec4');
-    const treeB = () => attribute('treeB', 'vec4');
-    const treeC = () => attribute('treeC', 'vec4');
-    const treeD = () => attribute('treeD', 'vec4');
-    const treeScale = (): FloatNode =>
-      popScale(treeA().w, treeB().w).mul(nearFade(treeA().xyz, treeB().xyz, treeD().z)).mul(foreignNear(treeC().x, treeA().xyz));
-    const treeGrown = (): Vec3Node => {
-      const base = treeA().xyz;
-      return base.add(positionLocal.sub(base).mul(treeScale()));
-    };
-    const treeNormal = (grown: Vec3Node): Vec3Node => {
-      const base = treeA().xyz;
-      const hull = treeB().xyz;
-      const s = popScale(treeA().w, treeB().w);
-      const hc = base.add(hull.sub(base).mul(s));
-      return varying(modelViewMatrix.mul(vec4(grown.sub(hc), 0)).xyz, 'vEarleHullN').normalize();
-    };
-    const treeGrowth = (): FloatNode => slotGrowth(treeB().w);
-
-    const canopies: Partial<Record<CanopyMesh, InstancedMesh>> = {};
-    // Ein Material für alle Kronen; Formen mit gleicher Grundgeometrie teilen sich ein Mesh (Kegel: cone/tall/pine,
-    // Kugel: jewel/bulb) → weniger Pipelines. Die Juwelenkuppel (Bild 10: überwiegend farbig) bekommt Terminator
-    // und Bandskala über treeD.w = 1.
-    {
-      const grown = treeGrown();
-      const jewel = treeD().w.greaterThan(0.5);
-      const material = new EarleMaterial({
+    // --- Bäume v3 (Kronen, Stämme, Linienbäume, Punkte): trees/treeLayer.ts ------------------------------
+    this.trees = new TreeLayer(
+      {
         lookup,
-        row: options.worldRows[0]?.canopy[0] ?? 0,
-        rowNode: treeC().x,
-        fogDistNode: fogDist(treeC().x),
         fog,
         bands: options.bands,
-        bandScale: 2.0,
-        terminator: 0.5,
-        // Juwelenkuppeln leuchten fast rundum in ihren Juwelentönen (Schattenseite = dunkler Juwelton, nicht Tinte)
-        terminatorNode: select(jewel, float(-0.45), float(0.5)),
-        normalNode: treeNormal(grown),
-        positionNode: warp(grown),
-        growthNode: treeGrowth(),
-      });
-      this.materials.push(material);
-      for (const shape of CANOPY_MESHES) {
-        const geometry = createCanopyMeshGeometry(shape);
-        this.attachTreeAttributes(geometry, options.capacity.trees);
-        const mesh = new InstancedMesh(geometry, material, options.capacity.trees);
-        mesh.name = `planet-canopy-${shape}`;
-        mesh.castShadow = true;
-        mesh.receiveShadow = false;
-        mesh.frustumCulled = false;
-        mesh.count = 0;
-        canopies[shape] = mesh;
-        this.geometries.push(geometry);
-        this.group.add(mesh);
-      }
-    }
-    this.canopies = canopies;
-
-    // --- Stämme: Tinte / weiß / gestreift / Flechtenbänder ------------------------------------------------
-    {
-      const geometry = createTrunkGeometry();
-      this.attachTreeAttributes(geometry, options.capacity.trees);
-      const material = new MeshBasicNodeMaterial({ side: DoubleSide });
-      const row = treeC().x;
-      const acc = treeC().y;
-      const style = treeC().z;
-      const variant = treeC().w;
-      const size = treeD().xy;
-      const u = uv().x;
-      const v = uv().y;
-      const ink = lookup.pal(0, row).rgb;
-      const white = lookup.pal(0, acc).rgb;
-      // Weltkoordinaten auf dem Stamm: rundum (Umfang) und Höhe
-      const around = u.mul(size.x.mul(Math.PI));
-      const height = v.mul(size.y);
-      // Gestreift (Bild 10): 7 senkrechte Streifen rundum in Juwelenfarben, dazwischen Tinte, feine Flechtenflecken;
-      // Flechtenbänder (Bilder 01, 08): waagrechte Bänder mit Mosaik aus Flechtenfarben, langsam atmend.
-      // Ein Flechten-Aufruf für beide Stile (Parameter je Stil) hält den Shader klein.
-      const isStriped = style.lessThan(2.5);
-      // Gestreifte Stämme ruhig und breit (Bild 10, Ebene_3): vier Bahnen rundum
-      const stripeIdx = floor(u.mul(4.0).add(variant.mul(5.0)));
-      const sh = hash(stripeIdx.add(variant.mul(31.0)));
-      // Akzentzeile: 0 hell, 1–2 Streifenfarben, 3 kahle Bäume, 4–6 Flechten, 7 Requisit B
-      const stripeCol = select(sh.lessThan(0.34), ink, select(sh.lessThan(0.58), lookup.pal(1, acc).rgb, select(sh.lessThan(0.82), lookup.pal(2, acc).rgb, lookup.pal(0, acc).rgb)));
-      const stripeEdge = stripeMask(u.mul(4.0).add(variant.mul(5.0)).add(0.5), 0.06); // feine Tintenlinien zwischen den Bahnen
-      const cells = lichenCells(
-        around.mul(select(isStriped, float(9.0), float(14.0))),
-        height.mul(select(isStriped, float(7.0), float(22.0))).add(patternTime.mul(0.02)),
-        select(isStriped, float(0.05), float(0.62)),
-        variant,
-      );
-      const lichenCol = palByKey(lookup, cells.key, acc, 4, 7);
-      const striped = mix(mix(stripeCol, ink, stripeEdge), lichenCol, cells.mask);
-      const bandCoord = height.mul(3.2).add(sin(around.mul(2.1).add(variant.mul(6.0))).mul(0.18)).add(patternTime.mul(0.015));
-      const band = smoothstep(0.38, 0.5, abs(fract(bandCoord).sub(0.5)).oneMinus()); // breite Bänder, harte Kante (Tinte dazwischen)
-      const blueBand = lookup.pal(1, acc).rgb; // Bandgrund (Blau bei 01, dunkles Grau bei 08)
-      const lichen = mix(ink, mix(blueBand, lichenCol, cells.mask), band);
-      const col = select(style.lessThan(0.5), ink, select(style.lessThan(1.5), white, select(style.lessThan(2.5), striped, lichen)));
-      material.colorNode = steppedFog(col, fog, lookup, fogDist(row));
-      material.positionNode = warp(treeGrown());
-      const mesh = new InstancedMesh(geometry, material, options.capacity.trees);
-      mesh.name = 'planet-trunks';
-      mesh.castShadow = true;
-      mesh.receiveShadow = false;
-      mesh.frustumCulled = false;
-      mesh.count = 0;
-      this.trunks = mesh;
-      this.geometries.push(geometry);
-      this.materials.push(material);
-      this.group.add(mesh);
-    }
-
-    // --- Kahle Fraktalbäume: Karten, zur Kamera gedreht, im Schattenpass zur Sonne ------------------------
-    {
-      const geometry = createBareTreeGeometry(3);
-      const n = options.capacity.trees;
-      geometry.setAttribute('bareBase', new InstancedBufferAttribute(new Float32Array(n * 3), 3));
-      geometry.setAttribute('bareUp', new InstancedBufferAttribute(new Float32Array(n * 3), 3));
-      geometry.setAttribute('bareData', new InstancedBufferAttribute(new Float32Array(n * 4), 4)); // size, rank, slot, accentRow
-      geometry.setAttribute('bareVariant', new InstancedBufferAttribute(new Float32Array(n), 1));
-      const base = attribute('bareBase', 'vec3');
-      const up = attribute('bareUp', 'vec3');
-      const data = attribute('bareData', 'vec4');
-      const variant = attribute('bareVariant', 'float');
-      const size = data.x.mul(popScale(data.y, data.z)).mul(nearFade(base, base.add(up.mul(data.x.mul(2.1))), data.x)).mul(foreignNear(data.w, base));
-      const flip = select(variant.greaterThan(0.5), float(-1), float(1));
-      const billboard = (toward: Vec3Node): Vec3Node => {
-        const right = normalize(cross(up, toward));
-        return base.add(right.mul(positionGeometry.x.mul(size).mul(flip))).add(up.mul(positionGeometry.y.mul(size)));
-      };
-      const material = new MeshBasicNodeMaterial({ side: DoubleSide });
-      material.colorNode = steppedFog(lookup.pal(3, data.w).rgb, fog, lookup, fogDist(data.w));
-      material.positionNode = warp(billboard(normalize(this.camLocal.sub(base))));
-      (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(billboard(this.sunDirLocal));
-      const mesh = new InstancedMesh(geometry, material, n);
-      mesh.name = 'planet-bare';
-      mesh.castShadow = true;
-      mesh.receiveShadow = false;
-      mesh.frustumCulled = false;
-      mesh.count = 0;
-      this.bare = mesh;
-      this.geometries.push(geometry);
-      this.materials.push(material);
-      this.group.add(mesh);
-    }
-
-    // --- Punkte (Punkte, Rauten, Kreuze, Randpunkte) ---------------------------------------------------
-    {
-      const geometry = new InstancedBufferGeometry();
-      const hex = createHexagon();
-      geometry.setAttribute('position', hex.position);
-      geometry.setIndex(hex.index);
-      const n = options.capacity.dots;
-      geometry.setAttribute('dotRel', new InstancedBufferAttribute(new Float32Array(n * 3), 3));
-      geometry.setAttribute('dotBase', new InstancedBufferAttribute(new Float32Array(n * 3), 3));
-      geometry.setAttribute('dotNormal', new InstancedBufferAttribute(new Float32Array(n * 3), 3));
-      geometry.setAttribute('dotData', new InstancedBufferAttribute(new Float32Array(n * 4), 4));
-      geometry.setAttribute('dotRow', new InstancedBufferAttribute(new Float32Array(n), 1));
-      geometry.setAttribute('dotHull', new InstancedBufferAttribute(new Float32Array(n * 4), 4));
-      geometry.instanceCount = 0;
-      geometry.boundingSphere = null;
-      this.dotsGeometry = geometry;
-
-      const material = new MeshBasicNodeMaterial();
-      const rel = attribute('dotRel', 'vec3');
-      const base = attribute('dotBase', 'vec3');
-      const nrm = attribute('dotNormal', 'vec3');
-      const dd = attribute('dotData', 'vec4');
-      const rowKind = attribute('dotRow', 'float');
-      const row = floor(rowKind.add(0.01));
-      // Art: 0 Punkt, 1–2 Motivfarben (Rauten/Kreuze), 3 Randpunkt
-      const kind = floor(fract(rowKind).mul(8.0).add(0.5));
-      const hullAttr = attribute('dotHull', 'vec4');
-      // Nähe-Ausblendung billig als Kugeltest um das Hüllzentrum (Punkte folgen ihrer Krone)
-      const toCam = this.camLocal.sub(hullAttr.xyz);
-      const nearDots = smoothstep(this.nearClear, this.nearClear.add(1.6), toCam.length().sub(hullAttr.w.mul(1.2))).mul(footFade(base));
-      const s = popScale(dd.y, dd.w).mul(nearDots).mul(foreignNear(row, base));
-      const center = warp(base.add(rel.mul(s)));
-      // Billboard im View-Raum: eine Matrixmultiplikation für den Mittelpunkt, der Versatz liegt direkt in x/y.
-      // Tönung und Randtest im Planetenraum (Sonne und Kamera liegen dort als Uniforms vor) — keine Normalen-Matrizen.
-      const viewC = modelViewMatrix.mul(vec4(center, 1));
-      const ndl = varying(nrm.dot(this.sunDirLocal), 'vPlanetDotNdl');
-      const facingCam = abs(nrm.dot(normalize(this.camLocal.sub(center))));
-      const rimOnly = select(kind.greaterThan(2.5), step(facingCam, float(0.55)), float(1));
-      const depth = viewC.z.negate().max(0.05);
-      const pxPerUnit = this.projScaleY.mul(screenSize.y).mul(0.5).div(depth);
-      const sizeW = dd.x.mul(s);
-      const px = sizeW.mul(pxPerUnit);
-      // Bildschirmgröße gedeckelt (≈ 4.5 px bei 900 px Höhe): nahe Punkte bleiben fein wie Earles Pinselpunkte
-      const maxPx = screenSize.y.mul(4.5 / 900);
-      const sizeEff = clamp(sizeW, float(1.2).div(pxPerUnit), maxPx.div(pxPerUnit));
-      const sparse = select(ndl.lessThan(0).and(dd.z.greaterThan(0.35)), float(0), float(1));
-      const visible = step(this.collapsePx, px).mul(sparse).mul(rimOnly);
-      const viewPos = viewC.xyz.add(vec3(positionGeometry.x, positionGeometry.y, 0).mul(sizeEff.mul(visible)));
-      material.vertexNode = cameraProjectionMatrix.mul(vec4(viewPos, 1));
-      // Nebel nach der echten Punktentfernung (positionView wäre hier der Planetenmittelpunkt)
-      const dist = varying(depth, 'vPlanetDotDist');
-      const litIdx = select(ndl.greaterThan(0.5), float(5), select(ndl.greaterThan(0.12), float(4), float(3)));
-      const idx = select(kind.lessThan(0.5).or(kind.greaterThan(2.5)), litIdx, select(kind.lessThan(1.5), float(6), float(7)));
-      material.colorNode = steppedFog(lookup.pal(idx, row).rgb, fog, lookup, fogDist(row, dist));
-      const mesh = new Mesh(geometry, material);
-      mesh.name = 'planet-dots';
-      mesh.castShadow = false;
-      mesh.receiveShadow = false;
-      mesh.frustumCulled = false;
-      this.dots = mesh;
-      this.geometries.push(geometry);
-      this.materials.push(material);
-      this.group.add(mesh);
-    }
+        warp,
+        fogDist,
+        foreignNear,
+        popScale,
+        slotGrowth,
+        nearFade,
+        footFade,
+        rowWorld,
+        nearClear: this.nearClear,
+        camLocal: this.camLocal,
+        sunDirLocal: this.sunDirLocal,
+        projScaleY: this.projScaleY,
+        collapsePx: this.collapsePx,
+      },
+      {
+        worldRows: options.worldRows,
+        families: options.families as TreeFamily[],
+        capacity: { trees: options.capacity.trees, dots: options.capacity.dots },
+        dotsPerTree: options.dotsPerTree,
+        ...(options.dotRadius !== undefined ? { dotRadius: options.dotRadius } : {}),
+      },
+    );
+    for (const m of this.trees.meshes) this.group.add(m);
 
     // --- Requisiten -------------------------------------------------------------------------------------
     // Gepackte Attribute: propA = (Fußpunkt xyz, Rang), propB = (Normale xyz, Höhe), propC = (Slot, Zeile, Zeile 2, Typ + Variante)
@@ -707,13 +490,6 @@ export class PlanetVegetation {
     }
   }
 
-  private attachTreeAttributes(geometry: BufferGeometry, n: number): void {
-    geometry.setAttribute('treeA', new InstancedBufferAttribute(new Float32Array(n * 4), 4));
-    geometry.setAttribute('treeB', new InstancedBufferAttribute(new Float32Array(n * 4), 4));
-    geometry.setAttribute('treeC', new InstancedBufferAttribute(new Float32Array(n * 4), 4));
-    geometry.setAttribute('treeD', new InstancedBufferAttribute(new Float32Array(n * 4), 4));
-  }
-
   private attachPropAttributes(geometry: BufferGeometry, n: number): void {
     geometry.setAttribute('propA', new InstancedBufferAttribute(new Float32Array(n * 4), 4));
     geometry.setAttribute('propB', new InstancedBufferAttribute(new Float32Array(n * 4), 4));
@@ -728,189 +504,14 @@ export class PlanetVegetation {
     return this.options.families[world];
   }
 
-  private canopyRowOf(t: PlanetTree): number {
-    const rows = this.rowsOf(t.world);
-    const variants = Math.max(1, Math.min(rows.canopy.length, this.familyOf(t.world)?.rowVariants ?? 1));
-    return rows.canopy[Math.min(variants - 1, Math.floor(t.variant * variants))] ?? rows.canopy[0] ?? 0;
-  }
-
   /** Schreibt alle Instanzpuffer neu (bei Wechsel der geladenen/nahen Chunks). */
   setContent(trees: VegetationTreeEntry[], props: VegetationPropEntry[]): void {
-    let hMax = 2;
-
-    // Kronen je Grundform (Karten separat)
-    const perMesh = new Map<CanopyMesh, VegetationTreeEntry[]>();
-    for (const k of CANOPY_MESHES) perMesh.set(k, []);
-    const bareList: VegetationTreeEntry[] = [];
-    const withTrunk: VegetationTreeEntry[] = [];
-    for (const e of trees) {
-      if (e.tree.kind === 'bare') bareList.push(e);
-      else {
-        perMesh.get(CANOPY_MESH_OF[e.tree.kind])?.push(e);
-        // Juwelenkuppeln sitzen auf dem Boden (Bild 10) — kein Stammstummel darunter
-        if (e.tree.kind !== 'jewel') withTrunk.push(e);
-      }
-    }
-    for (const shape of CANOPY_MESHES) {
-      const mesh = this.canopies[shape];
-      if (!mesh) continue;
-      const list = perMesh.get(shape)!.slice(0, this.capacity.trees);
-      this.fillTrees(mesh, list, (t, out) => this.canopyMatrix(t, out), (t) => [t.canopyRadius, t.canopyRadius * this.aspectOf(t)]);
-      for (const e of list) hMax = Math.max(hMax, TREE_PROPORTIONS[e.tree.kind].top * e.tree.canopyRadius * this.aspectOf(e.tree));
-    }
-    // Stämme (alle Bäume mit Krone)
-    const all = withTrunk.slice(0, this.capacity.trees);
-    const trunkSize = (t: PlanetTree): [number, number] => [Math.max(0.035, (this.familyOf(t.world)?.trunkWidth ?? 0.04) * t.canopyRadius), t.trunkHeight + 0.35 * t.canopyRadius];
-    this.fillTrees(
-      this.trunks,
-      all,
-      (t, out) => {
-        const [w, h] = trunkSize(t);
-        treeFrame(t, _q);
-        return out.compose(_p.set(t.position[0], t.position[1], t.position[2]), _q, _s.set(w, h, w));
-      },
-      trunkSize,
-    );
-    // Kahle Bäume (Karten)
-    {
-      const list = bareList.slice(0, this.capacity.trees);
-      const geo = this.bare.geometry;
-      const b = geo.getAttribute('bareBase') as InstancedBufferAttribute;
-      const u = geo.getAttribute('bareUp') as InstancedBufferAttribute;
-      const dat = geo.getAttribute('bareData') as InstancedBufferAttribute;
-      const va = geo.getAttribute('bareVariant') as InstancedBufferAttribute;
-      list.forEach((e, i) => {
-        const t = e.tree;
-        b.setXYZ(i, t.position[0], t.position[1], t.position[2]);
-        u.setXYZ(i, t.normal[0], t.normal[1], t.normal[2]);
-        dat.setXYZW(i, t.canopyRadius, t.rank, e.slot, this.rowsOf(t.world).accent);
-        va.setX(i, t.variant);
-        _m.identity();
-        this.bare.setMatrixAt(i, _m);
-        hMax = Math.max(hMax, TREE_PROPORTIONS.bare.top * t.canopyRadius);
-      });
-      for (const a of [b, u, dat, va, this.bare.instanceMatrix]) commit(a, list.length);
-      this.bare.count = list.length;
-    }
-
-    // Punkte (nur nahe Chunks): Anzahl nach Kronenfläche, Budget je Neuaufbau (Kapazität), Punktgröße gedeckelt
-    const g = this.dotsGeometry;
-    const rel = g.getAttribute('dotRel') as InstancedBufferAttribute;
-    const base = g.getAttribute('dotBase') as InstancedBufferAttribute;
-    const nrm = g.getAttribute('dotNormal') as InstancedBufferAttribute;
-    const data = g.getAttribute('dotData') as InstancedBufferAttribute;
-    const rowA = g.getAttribute('dotRow') as InstancedBufferAttribute;
-    const hullA = g.getAttribute('dotHull') as InstancedBufferAttribute;
-    let d = 0;
-    const cap = this.capacity.dots;
-    const sunLocal = this.sunDirLocal.value;
-    const dotCount = (t: PlanetTree): number => {
-      const R = t.canopyRadius;
-      const sizeT = Math.min(1, Math.max(0, (R - 0.4) / 1.2));
-      const c = this.dotRange[0] + (this.dotRange[1] - this.dotRange[0]) * sizeT;
-      const n = R > 1.6 ? Math.min(this.dotRange[1] * 2, c * (R / 1.6) ** 1.5) : c;
-      return t.kind === 'jewel' ? n * 1.4 : n;
-    };
-    const dotted = trees.filter((e) => e.withDots);
-    // ~60 % der Kandidaten überstehen die Sonnenseiten-Auswahl
-    const planned = dotted.reduce((a, e) => a + dotCount(e.tree) * 0.6, 0);
-    const budget = planned > cap ? cap / planned : 1;
-    const pushDot = (t: PlanetTree, world: Vector3, hull: Vector3, r: number, row: number, kind: number, slot: number, rc: number): boolean => {
-      if (d >= cap) return false;
-      _n.copy(world).sub(hull).normalize();
-      world.addScaledVector(_n, r * 0.9);
-      rel.setXYZ(d, world.x - t.position[0], world.y - t.position[1], world.z - t.position[2]);
-      base.setXYZ(d, t.position[0], t.position[1], t.position[2]);
-      nrm.setXYZ(d, _n.x, _n.y, _n.z);
-      data.setXYZW(d, r * (0.8 + 0.4 * this.rand()), t.rank, this.rand(), slot);
-      rowA.setX(d, row + kind * 0.125);
-      hullA.setXYZW(d, hull.x, hull.y, hull.z, rc);
-      d++;
-      return true;
-    };
-    outer: for (const e of dotted) {
-      const t = e.tree;
-      const fam = this.familyOf(t.world);
-      const motif = fam?.motif ?? 'dots';
-      const aspect = fam?.aspect ?? 1;
-      const count = Math.max(6, Math.round(dotCount(t) * budget));
-      const pts = dotsOnCanopy(t.kind, count, this.rand);
-      treeFrame(t, _q);
-      _p.set(t.position[0], t.position[1], t.position[2]);
-      _s.set(t.canopyRadius, t.canopyRadius * aspect, t.canopyRadius);
-      _m.compose(_p, _q, _s);
-      const hull = new Vector3(t.hullCenter[0], t.hullCenter[1], t.hullCenter[2]);
-      // Punktradius: fein (Earle: Hunderte Punkte je Kuppel), bei großen Kronen gedeckelt
-      const r = this.dotRadius * Math.min(1.1, Math.max(0.35, t.canopyRadius)) * (0.85 + 0.3 * this.rand());
-      const row = this.canopyRowOf(t);
-      const rc = t.canopyRadius * Math.max(1, aspect);
-      let k = 0;
-      if (motif === 'diamond') {
-        // Juwelenkuppel (Bild 10, Ebene_3): kleine Rauten in ruhigen Reihen (Breitenringe der Kuppel) auf der Lichtseite,
-        // eine Farbe je Kuppel; dazu nur ein spärlicher Punktrand an der Silhouette — kein Konfetti.
-        const ry = t.canopyRadius * (t.kind === 'jewel' ? 0.88 : 0.72) * aspect;
-        const rows = t.canopyRadius > 1.4 ? 4 : 3;
-        const md = r * 0.8;
-        for (let ri = 0; ri < rows; ri++) {
-          const polar = ((0.26 + (0.6 * ri) / Math.max(1, rows - 1)) * Math.PI) / 2;
-          const ringR = Math.sin(polar) * t.canopyRadius;
-          const step = md * 7;
-          const nAz = Math.max(4, Math.floor((Math.PI * 2 * ringR) / step));
-          const phase = (ri % 2) * 0.5;
-          for (let ai = 0; ai < nAz; ai++) {
-            const az = ((ai + phase) / nAz) * Math.PI * 2;
-            _t.set(Math.cos(az) * ringR, Math.cos(polar) * ry, Math.sin(az) * ringR);
-            _t.applyQuaternion(_q);
-            const world = hull.clone().add(_t);
-            _n.copy(world).sub(hull).normalize();
-            if (_n.dot(sunLocal) < -0.05) continue;
-            const tang = new Vector3(0, 1, 0).cross(_n);
-            if (tang.lengthSq() < 1e-6) tang.set(1, 0, 0).cross(_n);
-            tang.normalize();
-            const bit = new Vector3().crossVectors(_n, tang).normalize();
-            for (const [ox, oy] of [[md * 1.6, 0], [-md * 1.6, 0], [0, md * 1.6], [0, -md * 1.6]] as const) {
-              const p2 = world.clone().addScaledVector(tang, ox).addScaledVector(bit, oy);
-              if (!pushDot(t, p2, hull, md, row, 1, e.slot, rc)) break outer;
-            }
-          }
-        }
-        for (const pt of pts) {
-          if (++k % 3 !== 0) continue;
-          const world = new Vector3(pt[0], pt[1], pt[2]).applyMatrix4(_m);
-          if (!pushDot(t, world, hull, r * 0.8, row, 3, e.slot, rc)) break outer;
-        }
-        continue;
-      }
-      for (const pt of pts) {
-        const world = new Vector3(pt[0], pt[1], pt[2]).applyMatrix4(_m);
-        _n.copy(world).sub(hull).normalize();
-        const facing = _n.dot(sunLocal);
-        const pAccept = 0.28 + 0.72 * smooth01((facing + 0.25) / 0.85);
-        if (this.rand() > pAccept) continue;
-        k++;
-        // Kreuzmotive (Bilder 01, 04): jede 6. Position wird zu einem Kreuz (5 Punkte) in den Motivfarben
-        const isMotif = motif === 'cross' && k % 6 === 0 && facing > -0.1;
-        if (isMotif) {
-          _t.set(0, 1, 0).cross(_n);
-          if (_t.lengthSq() < 1e-6) _t.set(1, 0, 0).cross(_n);
-          _t.normalize();
-          _b.crossVectors(_n, _t).normalize();
-          const dd = r * 2.1;
-          const colorKind = this.rand() < 0.5 ? 1 : 2;
-          const offsets: Array<[number, number]> = [[0, 0], [dd, 0], [-dd, 0], [0, dd], [0, -dd]];
-          for (const [ox, oy] of offsets) {
-            const p2 = world.clone().addScaledVector(_t, ox).addScaledVector(_b, oy);
-            if (!pushDot(t, p2, hull, r * 0.9, row, colorKind, e.slot, rc)) break outer;
-          }
-          continue;
-        }
-        if (!pushDot(t, world, hull, r, row, motif === 'rim' ? 3 : 0, e.slot, rc)) break outer;
-      }
-    }
-    for (const a of [rel, base, nrm, data, rowA, hullA]) commit(a, d);
-    g.instanceCount = d;
+    // Bäume v3: Kronen, Stämme, Linienbäume und Punkte (deterministisch je Baum, Blende je Chunk)
+    this.trees.setContent(trees);
+    let hMax = this.trees.hMax;
 
     // Requisiten
+    if (this.options.builtinTrash === false) props = props.filter((p) => !TRASH_PROPS.has(p.prop.kind));
     const solid = props.filter((p) => p.prop.kind !== 'pool' && p.prop.kind !== 'animal').slice(0, this.capacity.props);
     const poolList = props.filter((p) => p.prop.kind === 'pool').slice(0, this.capacity.props);
     const animalList = props.filter((p) => p.prop.kind === 'animal').slice(0, this.capacity.animals);
@@ -956,51 +557,6 @@ export class PlanetVegetation {
       geo.instanceCount = n;
     }
     this.hMax = hMax;
-  }
-
-  private aspectOf(t: PlanetTree): number {
-    return this.familyOf(t.world)?.aspect ?? 1;
-  }
-
-  /** Instanzmatrix einer Krone: Grundform (Einheitskegel/-kugel) mit Ansatzhöhe und Proportion der Form. */
-  private canopyMatrix(t: PlanetTree, out: Matrix4): Matrix4 {
-    treeFrame(t, _q);
-    const r = t.canopyRadius;
-    const asp = this.aspectOf(t);
-    _n.set(t.normal[0], t.normal[1], t.normal[2]).normalize();
-    _p.set(t.position[0], t.position[1], t.position[2]);
-    const cone = CONE_FORM[t.kind as keyof typeof CONE_FORM];
-    const sphere = SPHERE_FORM[t.kind as keyof typeof SPHERE_FORM];
-    if (cone) {
-      _p.addScaledVector(_n, cone[0] * r * asp);
-      _s.set(r, cone[1] * r * asp, r);
-    } else if (sphere) {
-      _p.addScaledVector(_n, sphere[0] * r * asp);
-      _s.set(r, sphere[1] * r * asp, r);
-    } else {
-      _s.set(r, r * asp, r);
-    }
-    return out.compose(_p, _q, _s);
-  }
-
-  private fillTrees(mesh: InstancedMesh, list: VegetationTreeEntry[], matrix: (t: PlanetTree, out: Matrix4) => Matrix4, size: (t: PlanetTree) => [number, number]): void {
-    const geo = mesh.geometry;
-    const a = geo.getAttribute('treeA') as InstancedBufferAttribute;
-    const b = geo.getAttribute('treeB') as InstancedBufferAttribute;
-    const c = geo.getAttribute('treeC') as InstancedBufferAttribute;
-    const d = geo.getAttribute('treeD') as InstancedBufferAttribute;
-    list.forEach((e, i) => {
-      const t = e.tree;
-      mesh.setMatrixAt(i, matrix(t, _m));
-      const [r, h] = size(t);
-      const fam = this.familyOf(t.world);
-      a.setXYZW(i, t.position[0], t.position[1], t.position[2], t.rank);
-      b.setXYZW(i, t.hullCenter[0], t.hullCenter[1], t.hullCenter[2], e.slot);
-      c.setXYZW(i, this.canopyRowOf(t), this.rowsOf(t.world).accent, TRUNK_STYLE_INDEX[fam?.trunkStyle ?? 'ink'], t.variant);
-      d.setXYZW(i, r, h, t.canopyRadius * Math.max(1, this.aspectOf(t)), t.kind === 'jewel' ? 1 : 0);
-    });
-    for (const attr of [a, b, c, d, mesh.instanceMatrix]) commit(attr, list.length);
-    mesh.count = list.length;
   }
 
   private fillProps(mesh: InstancedMesh, list: VegetationPropEntry[]): void {
@@ -1060,29 +616,39 @@ export class PlanetVegetation {
   updateCamera(camera: Camera, cameraLocal: Vector3): void {
     this.projScaleY.value = camera.projectionMatrix.elements[5]!;
     this.camLocal.value.copy(cameraLocal);
+    // Punkt-Blenden der Chunks (Ein-/Ausblenden statt Ploppen)
+    this.trees.tick();
+  }
+
+  /** Kronen-Meshes je Grundform (Kompatibilität: Zählung im Lab). */
+  get canopies(): Record<CanopyMesh, InstancedMesh> {
+    return this.trees.crowns;
+  }
+
+  /** Stämme der Hainbäume (Gabel-Archetyp); Fächer und Eiche unter `trees.trunks`. */
+  get trunks(): InstancedMesh {
+    return this.trees.trunks.fork;
+  }
+
+  get bare(): InstancedMesh {
+    return this.trees.bare;
+  }
+
+  get dots(): Mesh {
+    return this.trees.dots;
   }
 
   /** Alle Instanz-Meshes (für Draw-Call-Zählung und Tests). */
   get meshes(): Array<InstancedMesh | Mesh> {
-    const out: Array<InstancedMesh | Mesh> = [];
-    for (const k of CANOPY_MESHES) {
-      const m = this.canopies[k];
-      if (m) out.push(m);
-    }
-    out.push(this.trunks, this.bare, this.dots, this.props, this.pools, this.animals, this.spores);
-    return out;
+    return [...this.trees.meshes, this.props, this.pools, this.animals, this.spores];
   }
 
   dispose(): void {
+    this.trees.dispose();
     for (const g of this.geometries) g.dispose();
     for (const m of this.materials) m.dispose();
     this.group.removeFromParent();
   }
-}
-
-function smooth01(x: number): number {
-  const t = Math.min(1, Math.max(0, x));
-  return t * t * (3 - 2 * t);
 }
 
 /**

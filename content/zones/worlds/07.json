@@ -22,13 +22,21 @@
   "terrain": { "amplitude": 0.9, "wavelength": 2.2 },
   "ground": "smooth",
   "vegetation": {
-    "density": 0.55,
-    "clumpiness": 0.35,
-    "kinds": { "spire": 0.62, "dome": 0.38 },
+    "density": 0.7,
+    "clumpiness": 0,
+    "kinds": { "spire": 0.66, "dome": 0.26, "lace": 0.08 },
     "scale": [0.8, 1.5],
     "trunkStyle": "white",
-    "trunkWidth": 0.05,
-    "motif": "dots"
+    "trunkWidth": 0.045,
+    "motif": "dots",
+    "grove": {
+      "cover": 0.66,
+      "wavelength": 9,
+      "fill": 0.9,
+      "satellites": 0.25,
+      "specimens": 0.01,
+      "specimenKinds": { "lace": 0.5, "spire": 0.5 }
+    }
   },
   "props": {},
   "fogStripes": 0.25,

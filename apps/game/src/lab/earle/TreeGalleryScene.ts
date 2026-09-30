@@ -1,0 +1,212 @@
+import { Color, Group, Mesh, PerspectiveCamera, Quaternion, Scene, SphereGeometry, Vector3 } from 'three/webgpu';
+import { float, positionLocal, uniform } from 'three/tsl';
+import { EarleMaterial, PaletteAtlas, PaletteLookup, PlanetVegetation, SunRig, addWorldPalette, createFogSettings, createSkyDome, skySunIndices, type WorldRows } from '@ee/render';
+import { TREE_PROPORTIONS, type PlanetTree, type TreeFamily, type TreeKind } from '@ee/world';
+import type { SceneContext, SceneController } from '../../canvas/SceneController';
+import { WORLD_CONTENTS } from './zones';
+
+/** Parameter der Baum-Galerie (`/lab/earle?gallery=1&world=05&kinds=oak,lace&dist=7&sun=10&az=70&spin=1`). */
+export interface TreeGalleryParams {
+  /** Welt-Index 0..9 (Palette, Rinde, Schnee, Tüpfel der Welt). */
+  world: number;
+  /** Baumarten in der Reihe (Standard: alle mit Krone und Stamm). */
+  kinds: TreeKind[];
+  /** Kameraabstand zur Reihe (Welteinheiten). */
+  distance: number;
+  /** Kamerahöhe über dem Boden. */
+  height: number;
+  sunElevation: number;
+  sunAzimuth: number;
+  /** Sonne kreist (Grad/s) — Test: Punkte skalieren im Schatten weich auf 0, nichts springt. */
+  spin: number;
+  /** Größenfaktor der Bäume. */
+  scale: number;
+}
+
+export const GALLERY_KINDS: TreeKind[] = ['dome', 'umbrella', 'lace', 'oak', 'jewel', 'stacked', 'spire', 'pine', 'bare'];
+
+const R = 32;
+const _q = new Quaternion();
+const _v = new Vector3();
+
+/**
+ * Baum-Galerie: eine Reihe Bäume der gewählten Welt auf einer kleinen Planetenkappe (gleicher Radius wie die Map, damit
+ * Lot, Warp und Schatten dieselben Annahmen treffen), Sonne 9–12° mit den Kaskadenschatten, Himmel der Welt. Zum
+ * Beurteilen aus der Nähe: organische Stämme, Rindenlinien, Schnee, Kronen, Punkte; mit `spin` kreist die Sonne.
+ */
+export class TreeGalleryScene implements SceneController {
+  private readonly scene = new Scene();
+  private readonly camera = new PerspectiveCamera(40, 1, 0.1, 400);
+  private readonly planet = new Group();
+  private readonly rig = new Group();
+  private readonly sun: SunRig;
+  private readonly atlas = new PaletteAtlas();
+  private readonly rows: WorldRows[];
+  private readonly lookup: PaletteLookup;
+  private vegetation: PlanetVegetation | null = null;
+  private ground: Mesh | null = null;
+  private readonly sunDirWorld = uniform(new Vector3(0, 1, 0));
+  private readonly disposables: Array<{ dispose(): void }> = [];
+  private ctx: SceneContext | null = null;
+  private azimuth: number;
+  private shadowDirty = true;
+  /** Welt-Richtung, in der die Galerie steht (Planetenraum, Scheitel = +Y). */
+  readonly trees: PlanetTree[] = [];
+
+  constructor(readonly params: TreeGalleryParams) {
+    this.azimuth = params.sunAzimuth;
+    this.sun = new SunRig({ mapSize: 2048, sharpen: true, elevationDeg: params.sunElevation, azimuthDeg: params.sunAzimuth });
+    this.rows = WORLD_CONTENTS.map((w) => addWorldPalette(this.atlas, w.palette, w.id));
+    this.lookup = new PaletteLookup(this.atlas.texture, this.atlas.width, this.atlas.height);
+  }
+
+  mount(ctx: SceneContext): void {
+    this.ctx = ctx;
+    ctx.renderer.shadowMap.enabled = true;
+    const world = Math.min(WORLD_CONTENTS.length - 1, Math.max(0, this.params.world));
+    const content = WORLD_CONTENTS[world]!;
+    const rows = this.rows[world]!;
+    this.scene.background = new Color(content.palette.sky[1] ?? '#88aacc');
+    this.scene.add(this.planet, this.rig);
+    this.rig.position.set(0, R, 0);
+    this.rig.add(this.camera);
+    this.sun.root.position.set(0, 0, -4);
+    this.rig.add(this.sun.root);
+
+    const fog = createFogSettings({ row: rows.fog, steps: 5, start: 60, range: 80 });
+    const bands = uniform(3);
+    // Boden: Kappe der Planetenkugel in der Terrainzeile der Welt
+    const groundGeo = new SphereGeometry(R, 160, 80, 0, Math.PI * 2, 0, 0.5);
+    const groundMat = new EarleMaterial({ lookup: this.lookup, row: rows.terrain, fog, bands: uniform(4), bandScale: 2, terminator: 0.02, lift: float(0.35), positionNode: positionLocal });
+    this.ground = new Mesh(groundGeo, groundMat);
+    this.ground.castShadow = true;
+    this.ground.receiveShadow = true;
+    this.planet.add(this.ground);
+    this.disposables.push(groundGeo, groundMat);
+
+    const sky = createSkyDome({ lookup: this.lookup, skyRow: rows.sky, ...skyOptions(content.palette), sunDirWorld: this.sunDirWorld, horizonY: -0.05 });
+    this.camera.add(sky);
+    this.disposables.push(sky.geometry, sky.material as { dispose(): void });
+
+    this.vegetation = new PlanetVegetation({
+      lookup: this.lookup,
+      fog,
+      bands,
+      worldRows: this.rows.map((r) => ({ terrain: r.terrain, canopy: r.canopyRows, accent: r.accent, monolith: r.monolith, barn: r.barn })),
+      families: WORLD_CONTENTS.map((w) => w.vegetation),
+      capacity: { trees: 64, dots: 20000, props: 8, animals: 8 },
+      dotsPerTree: [60, 200],
+      collapsePx: 0.75,
+      rowCount: this.atlas.rowCount,
+    });
+    this.planet.add(this.vegetation.group);
+
+    // Reihe der Bäume: auf einem Bogen quer zur Blickrichtung, Abstand nach Kronengröße
+    const fam = content.vegetation as TreeFamily;
+    const kinds = this.params.kinds.length > 0 ? this.params.kinds : GALLERY_KINDS;
+    void fam;
+    const sizes = kinds.map((k) => TREE_PROPORTIONS[k].radius * this.params.scale);
+    const total = sizes.reduce((a, s) => a + s * 2.6, 0);
+    let x = -total / 2;
+    kinds.forEach((kind, i) => {
+      const r = sizes[i]!;
+      x += r * 1.3;
+      const dir = new Vector3(x / R, 1, 0).normalize();
+      const pos = dir.clone().multiplyScalar(R);
+      const hull = TREE_PROPORTIONS[kind].hull * r;
+      this.trees.push({
+        position: [pos.x, pos.y, pos.z],
+        normal: [dir.x, dir.y, dir.z],
+        kind,
+        scale: 1,
+        canopyRadius: r,
+        trunkHeight: TREE_PROPORTIONS[kind].trunk * r,
+        hullCenter: [pos.x + dir.x * hull, pos.y + dir.y * hull, pos.z + dir.z * hull],
+        growth: 0,
+        zone: 0,
+        world,
+        rank: 0,
+        variant: (i * 0.618) % 1,
+      });
+      x += r * 1.3;
+    });
+    this.vegetation.setContent(
+      this.trees.map((tree) => ({ tree, slot: 0, withDots: true })),
+      [],
+    );
+    this.sun.fitToView(this.camera, { sphere: { center: this.planet, radius: R, minHeight: -0.5, maxHeight: 1, surface: () => R }, casterHeight: 8 });
+    this.resize(ctx);
+  }
+
+  resize(ctx: SceneContext): void {
+    this.camera.aspect = ctx.width / ctx.height;
+    this.camera.updateProjectionMatrix();
+  }
+
+  update(dt: number, _elapsed: number, ctx: SceneContext): void {
+    const veg = this.vegetation;
+    if (!veg) return;
+    const p = this.params;
+    // Kamera vor der Reihe, Blick auf halbe Baumhöhe
+    this.camera.position.set(0, p.height, p.distance);
+    this.camera.lookAt(0, R + Math.max(0.6, p.height * 0.55), 0); // lookAt nimmt Weltkoordinaten
+    this.camera.updateMatrixWorld(true);
+    if (p.spin !== 0) {
+      this.azimuth += p.spin * dt;
+      this.sun.setAngles(p.sunElevation, this.azimuth);
+      this.shadowDirty = true;
+    }
+    this.scene.updateMatrixWorld(true);
+    this.sun.directionWorld(this.sunDirWorld.value);
+    this.planet.getWorldQuaternion(_q).invert();
+    veg.setSunDirection(this.sunDirWorld.value, _v.copy(this.sunDirWorld.value).applyQuaternion(_q));
+    const camWorld = this.camera.getWorldPosition(new Vector3());
+    veg.updateCamera(this.camera, camWorld.clone().applyQuaternion(_q));
+    if (this.shadowDirty) {
+      this.sun.requestUpdate();
+      this.shadowDirty = false;
+    }
+    ctx.renderer.render(this.scene, this.camera);
+  }
+
+  getStats(): { dots: number; trees: number } {
+    return { dots: this.vegetation?.trees.dotCountTotal ?? 0, trees: this.trees.length };
+  }
+
+  dispose(): void {
+    this.vegetation?.dispose();
+    for (const d of this.disposables) d.dispose();
+    this.sun.dispose();
+    this.atlas.dispose();
+    if (this.ctx) this.ctx.renderer.shadowMap.enabled = false;
+    this.scene.clear();
+    this.ctx = null;
+  }
+}
+
+function skyOptions(palette: (typeof WORLD_CONTENTS)[number]['palette']): { steps: number; sunIndex: number; ringIndex: number } {
+  const s = skySunIndices(palette);
+  return { steps: s.steps, sunIndex: s.sun, ringIndex: s.ring };
+}
+
+/** Galerie-Parameter aus der URL. */
+export function galleryParamsFromUrl(search: URLSearchParams): TreeGalleryParams {
+  const num = (k: string, d: number) => {
+    const v = search.get(k);
+    return v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d;
+  };
+  const kinds = (search.get('kinds') ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s): s is TreeKind => s in TREE_PROPORTIONS);
+  return {
+    world: Math.round(num('world', 1)) - 1,
+    kinds,
+    distance: num('dist', 16),
+    height: num('h', 3),
+    sunElevation: num('sun', 10),
+    sunAzimuth: num('az', 70),
+    spin: num('spin', 0),
+    scale: num('scale', 1.4),
+  };
+}

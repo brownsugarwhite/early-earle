@@ -1,13 +1,20 @@
 import { createCapField, type CapPatchParams, type Vec3 } from './capPatch';
 import { GradientNoise3 } from './noise';
 import { hash32, mulberry32 } from './rng';
+import type { PlanetVegetationFamily } from './planet';
 
 /**
  * Kronenformen: Kuppel, Kegel, gestapelte Kegel, hängende Knolle (Syrup), hoher dünner Stamm mit kleiner Krone
  * (Luzz), schwarze Kieferndreiecke (06), Kathedralen-Spitzen mit geschichteten Kronen auf überlangen Stämmen (07),
  * kahle Fraktalbäume als Karten (04/05/08), Juwelenkuppeln fast am Boden (10).
+ * Bäume v3 (Feedback 2026-09-30): Spitzenbaum (`lace`, Kuppelkappe über einem Spitzenschleier aus Punktrosetten, das
+ * Astwerk scheint durch — Bilder 02, Ebene_19), Schirmbaum (`umbrella`, flache Kuppel auf sichtbarem Astfächer —
+ * Ebene_1/20/36) und die knorrige Earle-Eiche (`oak`, Solitär mit bogig hängenden Ästen und Sternnadeln — Bild 04).
  */
-export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel';
+export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel' | 'lace' | 'umbrella' | 'oak';
+
+/** Alle Baumarten (z. B. zur Unterscheidung Baum ↔ Requisit bei Fokus-Elementen). */
+export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak'];
 
 export interface TreeInstance {
   /** Fußpunkt auf der Oberfläche (Patch-Raum). */
@@ -57,7 +64,220 @@ export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number;
   bare: { radius: 0.9, trunk: 0.9, hull: 2.1, top: 3.2 },
   // Juwelenkuppel: große runde Krone, winziger Stamm (Bild 10)
   jewel: { radius: 1.1, trunk: 0.3, hull: 1.05, top: 2.1 },
+  // Spitzenbaum: Kuppelkappe oben, darunter der Spitzenschleier (Punktrosetten), das Astwerk sichtbar (Bild 02, Ebene_19)
+  lace: { radius: 0.95, trunk: 0.85, hull: 1.75, top: 2.7 },
+  // Schirmbaum: flache breite Kuppel auf einem sichtbaren Astfächer (Ebene_1, Ebene_20, Ebene_36)
+  umbrella: { radius: 0.9, trunk: 1.05, hull: 1.6, top: 2.15 },
+  // Earle-Eiche: knorriger Stamm, bogig ausladende, hängende Äste; "Krone" = Astwerk mit Sternnadeln (Bild 04)
+  oak: { radius: 1.5, trunk: 0.75, hull: 1.35, top: 2.35 },
 };
+
+// --- Earle-Komposition der Welten -------------------------------------------------------------------
+
+/**
+ * Komposition einer Welt (Abschnitt `vegetation.grove` der Weltdatei): Haine als fließende Massen, die sich an
+ * Höhenlinien entlangziehen (Täler, Hangschultern, Kämme), dazwischen offene Wiesen, am Hainrand kleine Trabanten und
+ * Randbäume, auf den Wiesen wenige Solitäre (Earle: Bilder 03, Ebene_1, Ebene_36, die gelben Hügel).
+ */
+export interface GroveSpec {
+  /** Anteil der Fläche unter Hainmassen außerhalb der Höhenlinien (0..1). */
+  cover: number;
+  /** Höhenlinien (Anteil 0..1 der lokalen Amplitude), an denen Haine entlangfließen: Täler ≈ 0.1, Schultern 0.5, Kämme 0.9. */
+  contours?: number[];
+  /** Halbe Breite eines Höhenlinien-Hains (Anteil der Amplitude, Standard 0.12). */
+  contourWidth?: number;
+  /** Wellenlänge der Hainmassen in Welteinheiten (Standard 9). */
+  wavelength?: number;
+  /** Anteil der Kandidaten im Hain, die stehen (Standard 0.9 → geschlossene Massen). */
+  fill?: number;
+  /** Wahrscheinlichkeit eines Trabanten je Kandidat im Randband (Standard 0.18). */
+  satellites?: number;
+  /** Wahrscheinlichkeit eines Solitärs je Kandidat auf der Wiese (Standard 0.004). */
+  specimens?: number;
+  /** Arten der Solitäre (Gewichte); Standard: Hainarten. */
+  specimenKinds?: Partial<Record<TreeKind, number>>;
+  /** Größenfaktor der Solitäre (Standard: obere Hälfte von `scale`). */
+  specimenScale?: [number, number];
+  /** Arten im Randband des Hains (Gewichte); Standard: Hainarten. */
+  edgeKinds?: Partial<Record<TreeKind, number>>;
+  /** Kern größer: +Anteil der Skalierung im Hainkern (Standard 0.35). */
+  coreScale?: number;
+  /** Höchste Hangneigung (1 − cos zwischen Normale und Lot) für Bäume (Standard 0.35 ≈ 49°). */
+  maxSlope?: number;
+  /** Umkehren: Wald überall, offene Wiesenbänder an den Höhenlinien (Nebelhügel, Bild 02 vom 29.09.). */
+  invert?: boolean;
+}
+
+/** Rindenstil der Bäume v3 (ersetzt `trunkStyle`, wenn gesetzt): Kalligrafie = weiße Linien auf Tinte (Bild 01). */
+export type BarkStyleName = 'ink' | 'white' | 'striped' | 'lichen' | 'calligraphy';
+
+/** Vegetationsfamilie mit den Erweiterungen der Bäume v3 (Weltdatei, Abschnitt `vegetation`). */
+export interface TreeFamily extends PlanetVegetationFamily {
+  grove?: GroveSpec;
+  /** Rindenstil (Standard: aus `trunkStyle`). */
+  bark?: BarkStyleName;
+  /** Schnee auf den Oberseiten von Stämmen und Ästen 0..1 (Schneewelten, Bilder 01/04). */
+  snow?: number;
+  /** Dichte der Tüpfel in den Kronen 0..1 (Standard 0.75). */
+  stipple?: number;
+  /** Dichte der Vier-Punkt-Blüten in den Kronen 0..1 (Standard: 0.35 bei Motiv Raute/Kreuz, sonst 0). */
+  flowers?: number;
+  /** Instanzierte Punkte je Baum relativ zur Qualitätsstufe (Standard 1). */
+  dots?: number;
+  /** Fokus-Baum der Welt (ersetzt die Art aus `focal`, z. B. die Earle-Eiche in Welt 05). */
+  focalTree?: { kind: TreeKind; scale?: number };
+}
+
+/** Was die Komposition vom Planetenfeld braucht (strukturell, passt auf `PlanetField`). */
+export interface GroveFieldLike {
+  readonly params: { radius: number; seed: number };
+  heightNormAt(dx: number, dy: number, dz: number): number;
+  surfaceAt(dx: number, dy: number, dz: number, outPos: Vec3, outNormal: Vec3): number;
+  /** Geländehöhe in Welteinheiten (für die Bodenhaftung auf dem Dreiecksnetz). */
+  heightAt?(dx: number, dy: number, dz: number): number;
+}
+
+/**
+ * Bodenhaftung: wie tief ein Baum unter die analytische Oberfläche sinken muss, damit er auch auf dem gröberen
+ * Dreiecksnetz des Chunks nicht schwebt. Auf Kuppen und Graten liegt das Netz (Sehne zwischen den Gitterpunkten)
+ * unter der glatten Oberfläche; geschätzt wird die tiefste Sehne über ±spacing/2 in zwei Richtungen. In Mulden liegt
+ * das Netz höher — dann steckt der Fuß ohnehin im Boden (0).
+ */
+export function groundSink(field: GroveFieldLike, dir: Vec3, spacing: number): number {
+  if (!field.heightAt) return 0;
+  const R = field.params.radius;
+  const [dx, dy, dz] = dir;
+  const h0 = field.heightAt(dx, dy, dz);
+  // Tangentialbasis
+  const ax = Math.abs(dy) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+  let t1 = [ax[1]! * dz - ax[2]! * dy, ax[2]! * dx - ax[0]! * dz, ax[0]! * dy - ax[1]! * dx];
+  const l1 = Math.hypot(t1[0]!, t1[1]!, t1[2]!) || 1;
+  t1 = t1.map((v) => v / l1);
+  const t2 = [dy * t1[2]! - dz * t1[1]!, dz * t1[0]! - dx * t1[2]!, dx * t1[1]! - dy * t1[0]!];
+  const e = (spacing * 0.5) / R;
+  const h = (t: number[], s: number): number => {
+    const x = dx + t[0]! * e * s;
+    const y = dy + t[1]! * e * s;
+    const z = dz + t[2]! * e * s;
+    const l = Math.hypot(x, y, z) || 1;
+    return field.heightAt!(x / l, y / l, z / l);
+  };
+  const chord = Math.min((h(t1, 1) + h(t1, -1)) * 0.5, (h(t2, 1) + h(t2, -1)) * 0.5);
+  return Math.max(0, Math.min(1.5, h0 - chord));
+}
+
+export interface GroveTree {
+  kind: TreeKind;
+  scale: number;
+}
+
+/** Gewichtete Wahl einer Baumart. */
+export function pickTreeKind(weights: Partial<Record<TreeKind, number>>, r: number): TreeKind {
+  const entries = Object.entries(weights).filter(([, w]) => (w ?? 0) > 0) as Array<[TreeKind, number]>;
+  const total = entries.reduce((a, [, w]) => a + w, 0) || 1;
+  let acc = 0;
+  for (const [kind, w] of entries) {
+    acc += w / total;
+    if (r < acc) return kind;
+  }
+  return entries[entries.length - 1]?.[0] ?? 'dome';
+}
+
+const groveNoise = new Map<number, { mass: GradientNoise3; warp: GradientNoise3 }>();
+function groveNoiseFor(seed: number): { mass: GradientNoise3; warp: GradientNoise3 } {
+  let n = groveNoise.get(seed);
+  if (!n) {
+    n = { mass: new GradientNoise3(hash32('grove-mass', seed)), warp: new GradientNoise3(hash32('grove-warp', seed)) };
+    groveNoise.set(seed, n);
+  }
+  return n;
+}
+
+/** Streuung des Massenrauschens (Standardabweichung von `0.5 + 0.62·fbm`, gemessen). */
+const MASS_SIGMA = 0.13;
+
+/**
+ * Hainmaske 0..1 an einer Einheitsrichtung: ≥ 0.5 im Hain (Kern → 1), Randband 0.3..0.5, darunter Wiese. Fließende
+ * Massen aus domänenverzerrtem Rauschen (Wellenlänge `wavelength`), dazu Bänder entlang der Höhenlinien, deren Breite
+ * mit dem Rauschen atmet — so ziehen sich die Haine wie bei Earle an den Hängen entlang, schwellen an und ab und
+ * haben klare Ränder (die Massen reichen dicht bis an die Wiese).
+ */
+export function groveMask(field: GroveFieldLike, dir: Vec3, grove: GroveSpec): number {
+  const { mass, warp } = groveNoiseFor(field.params.seed);
+  const f = field.params.radius / Math.max(1, grove.wavelength ?? 9);
+  const x = dir[0] * f;
+  const y = dir[1] * f;
+  const z = dir[2] * f;
+  const wx = warp.fbm(x * 0.5 + 4.1, y * 0.5 - 2.7, z * 0.5 + 8.3, 2);
+  const wy = warp.fbm(x * 0.5 - 6.2, y * 0.5 + 1.9, z * 0.5 - 3.4, 2);
+  const n = mass.fbm(x + 1.6 * wx, y + 1.6 * wy, z - 1.6 * wx, 2); // ≈ -1..1
+  const m = 0.5 + 0.62 * n;
+  // Massen: Schwelle so, dass etwa `cover` der Fläche darüber liegt (Rauschen ≈ normalverteilt um 0.5)
+  const cover = Math.min(1, Math.max(0, grove.cover));
+  const t = cover <= 0 ? 99 : 0.5 + probit(1 - cover) * MASS_SIGMA;
+  let s = m - t; // > 0 im Hain
+  const contours = grove.contours ?? [];
+  if (contours.length > 0) {
+    const h = field.heightNormAt(dir[0], dir[1], dir[2]) + 0.07 * n;
+    const w = (grove.contourWidth ?? 0.12) * (0.55 + 0.9 * Math.min(1, Math.max(0, m)));
+    for (const c of contours) s = Math.max(s, (w - Math.abs(h - c)) * 0.6);
+  }
+  if (grove.invert) s = -s;
+  return Math.min(1, Math.max(0, 0.5 + 4 * s));
+}
+
+/** Näherung der Umkehrfunktion der Standard-Normalverteilung (Acklam, |Fehler| < 5e-4 reicht hier). */
+function probit(p: number): number {
+  const q = Math.min(1 - 1e-6, Math.max(1e-6, p));
+  // Zweistufige rationale Näherung (Abramowitz & Stegun 26.2.23)
+  const sgn = q < 0.5 ? -1 : 1;
+  const pp = q < 0.5 ? q : 1 - q;
+  const tt = Math.sqrt(-2 * Math.log(pp));
+  const z = tt - (2.515517 + 0.802853 * tt + 0.010328 * tt * tt) / (1 + 1.432788 * tt + 0.189269 * tt * tt + 0.001308 * tt * tt * tt);
+  return sgn * z;
+}
+
+/**
+ * Entscheidet für einen Streukandidaten der Planeten-Chunks (nach Poisson und Dichte-Auswahl), ob und welcher Baum
+ * dort steht. Ohne `grove` in der Familie gilt das alte Verhalten (Art und Größe wie übergeben). Mit `grove`: Hain,
+ * Randband (Trabanten, Randarten, kleiner), Wiese (seltene Solitäre, groß), zu steile Hänge bleiben frei.
+ */
+export function composeGroveTree(field: GroveFieldLike, dir: Vec3, fam: PlanetVegetationFamily, kind: TreeKind, scale: number, rand: () => number): GroveTree | null {
+  const grove = (fam as TreeFamily).grove;
+  if (!grove) return { kind, scale };
+  const g = groveMask(field, dir, grove);
+  const r = rand();
+  const [s0, s1] = fam.scale;
+  let out: GroveTree | null = null;
+  if (g > 0.5) {
+    const inside = smoothstep(0.5, 0.58, g);
+    if (r < (grove.fill ?? 0.9) * (0.55 + 0.45 * inside)) {
+      const core = smoothstep(0.62, 0.95, g);
+      out = { kind, scale: scale * (1 + (grove.coreScale ?? 0.35) * core) };
+    }
+  } else if (g > 0.32) {
+    if (r < (grove.satellites ?? 0.18) * smoothstep(0.32, 0.5, g)) {
+      const k = grove.edgeKinds ? pickTreeKind(grove.edgeKinds, rand()) : kind;
+      out = { kind: k, scale: s0 + (s1 - s0) * 0.45 * rand() };
+    }
+  } else if (r < (grove.specimens ?? 0.004)) {
+    const k = grove.specimenKinds ? pickTreeKind(grove.specimenKinds, rand()) : kind;
+    const [a, b] = grove.specimenScale ?? [s0 + (s1 - s0) * 0.5, s1];
+    out = { kind: k, scale: a + (b - a) * rand() };
+  }
+  if (!out) return null;
+  // Hangneigung: Bäume wachsen lotrecht; auf Felswänden und Steilhängen steht nichts
+  const maxSlope = grove.maxSlope ?? 0.35;
+  if (maxSlope < 1) {
+    const pos: Vec3 = [0, 0, 0];
+    const nor: Vec3 = [0, 0, 0];
+    field.surfaceAt(dir[0], dir[1], dir[2], pos, nor);
+    const l = Math.hypot(dir[0], dir[1], dir[2]) || 1;
+    const cos = (nor[0] * dir[0] + nor[1] * dir[1] + nor[2] * dir[2]) / l;
+    if (1 - cos > maxSlope) return null;
+  }
+  return out;
+}
 
 /**
  * Poisson-Disc-Streuung (Bridson) im gnomonischen uv-Raum, danach Waldmasken-Filter, deterministische
