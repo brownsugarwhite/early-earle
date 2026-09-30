@@ -21,6 +21,8 @@ let package = Package(
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
                 .product(name: "Cordova", package: "capacitor-swift-pm")
             ],
-            path: "ios/Sources/LiquidGlassPlugin")
+            path: "ios/Sources/LiquidGlassPlugin",
+            // Caprasimo (OFL, the web's 'EE Heavy') for the big HUD number; registered in LiquidGlassPlugin.load().
+            resources: [.copy("Fonts")])
     ]
 )
