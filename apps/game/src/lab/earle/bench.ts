@@ -43,6 +43,23 @@ export interface BenchOptions {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Wartet, bis `frames` Bilder in Folge schneller als `ms` kamen (höchstens `maxMs`): Umbau, Pipeline-Kompilate und das
+ * Nachladen nach einem Preset- oder Moduswechsel fallen so auch auf langsamen oder ausgelasteten Geräten nicht in die
+ * Messung (die feste Einschwingzeit allein reichte dort nicht).
+ */
+async function waitSteady(cancelled: () => boolean, frames = 30, ms = 22, maxMs = 8000): Promise<void> {
+  const until = performance.now() + maxMs;
+  let run = 0;
+  let last = performance.now();
+  while (run < frames && performance.now() < until && !cancelled()) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const now = performance.now();
+    run = now - last < ms ? run + 1 : 0;
+    last = now;
+  }
+}
+
 function median(values: number[]): number {
   if (values.length === 0) return 0;
   const s = [...values].sort((a, b) => a - b);
@@ -82,6 +99,7 @@ export async function runEarleBench(controller: EarleLabScene, options: BenchOpt
       controller.setAutoRotate(mode === 'rotating' ? rotate : 0);
       progress(`${preset === 'hoch' ? 'Hoch' : 'Mobil'} · ${mode === 'idle' ? 'Leerlauf' : 'rotierend'}: einschwingen …`);
       await sleep(settleMs);
+      await waitSteady(cancelled);
       if (cancelled()) return null;
       progress(`${preset === 'hoch' ? 'Hoch' : 'Mobil'} · ${mode === 'idle' ? 'Leerlauf' : 'rotierend'}: messen …`);
       const fps: number[] = [];

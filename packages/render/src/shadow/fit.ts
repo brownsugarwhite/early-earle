@@ -177,7 +177,6 @@ const _g = new Vector3();
 const _vp = new Matrix4();
 const _sph = new Sphere();
 const _w = new Vector3();
-const _wv = new Vector3();
 
 function emptyCascade(): CascadeFit {
   return { active: false, x0: 0, x1: 1, y0: 0, y1: 1, texelX: 1, texelY: 1, near: 0.1, far: 1, split: 0, pxPerTexel: 0 };
@@ -259,6 +258,8 @@ export class CascadeFitter {
   private readonly cacheTg = new Float64Array(MAX_RAYS).fill(NaN);
   private readonly cacheHit = new Uint8Array(MAX_RAYS);
   private cacheEpoch = -1;
+  /** Mitten der Empfänger-Volumen im Blickraum (je Fit einmal abgebildet). */
+  private readonly volView: Vector3[] = [];
   /** Anzahl Geländeabfragen im letzten Fit (Diagnose). */
   surfaceCalls = 0;
   private readonly cos = new Float64Array(MAX_RAYS);
@@ -350,6 +351,12 @@ export class CascadeFitter {
     const reuse = epoch === this.cacheEpoch && epoch >= 0;
     if (!reuse) this.cacheTg.fill(NaN);
     this.cacheEpoch = epoch;
+    // Empfänger-Volumen einmal je Fit in den Blickraum (mit Verzug kostet jede Mitte eine Abbildung — je Strahl wären
+    // es Strahlen × Volumen, beim Drehen und Schwenken jedes Bild)
+    const vols = input.volumes;
+    const nv = vols?.length ?? 0;
+    while (this.volView.length < nv) this.volView.push(new Vector3());
+    for (let v = 0; v < nv; v++) this.view(vols![v]!.center, this.volView[v]!);
     const addRay = (nx: number, ny: number): void => {
       slot++;
       _d.set(nx, ny, 0.5).unproject(cam).sub(_o).normalize();
@@ -477,10 +484,9 @@ export class CascadeFitter {
         }
       }
       // Empfänger-Volumen (Riesenbaum, Brett): Strahlabschnitt in der Kugel zu beiden Intervallen
-      const vols = input.volumes;
       if (vols) {
-        for (const v of vols) {
-          const h = raySphere(_o, _d, this.view(v.center, _wv), v.radius);
+        for (let vi = 0; vi < nv; vi++) {
+          const h = raySphere(_o, _d, this.volView[vi]!, vols[vi]!.radius);
           if (!h || h[1] <= ta || h[0] >= tb) continue;
           const v0 = Math.max(ta, h[0]);
           const v1 = Math.min(tb, h[1]);

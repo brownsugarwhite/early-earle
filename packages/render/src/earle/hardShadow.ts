@@ -166,6 +166,8 @@ export interface ShadowDisplayLike {
   readonly mapping: DisplayMapping;
   readonly focus: { x: number; z: number };
   readonly field: { hMax: number; heightAt(x: number, z: number): number };
+  /** Höhe auf den Dreiecken des geladenen Chunks (null = nicht geladen): das gezeichnete Gelände, ohne Rauschen. */
+  meshHeightAt?(x: number, z: number): number | null;
 }
 
 /**
@@ -241,13 +243,17 @@ export function displayShadowReceivers(world: ShadowDisplayLike | (() => ShadowD
       const rxz = Math.hypot(dir.x, dir.z);
       const alpha = Math.atan2(rxz, dir.y);
       const k = rxz > 1e-9 ? (alpha * R) / rxz : 0;
-      const h = w.field.heightAt(w.focus.x + dir.x * k, w.focus.z + dir.z * k);
+      const x = w.focus.x + dir.x * k;
+      const z = w.focus.z + dir.z * k;
+      // das gezeichnete Gelände (Dreiecke der geladenen Chunks) statt des Rauschfelds: beim Drehen und Schwenken läuft
+      // der Fit jedes Bild, die Rauschabfragen kosteten dort ≈ 7 ms (M3); außerhalb der Chunks das Feld
+      const h = w.meshHeightAt?.(x, z) ?? w.field.heightAt(x, z);
       return R + h - (1 - Math.cos(alpha)) * c * R;
     },
   };
   const volumes = (): ReceiverVolume[] => {
     const w = get();
-    const list = collector.collect(planeObject, w ? { heightAt: (x, z) => w.field.heightAt(x, z), focus: w.focus } : null, coverTolerance);
+    const list = collector.collect(planeObject, w ? { heightAt: (x, z) => w.meshHeightAt?.(x, z) ?? w.field.heightAt(x, z), focus: w.focus } : null, coverTolerance);
     // flache Weltpunkte → Schattenraum (Kugelabfall)
     if (w) for (const v of list) flatToShadow(w.mapping, v.center);
     return list;

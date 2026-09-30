@@ -157,6 +157,8 @@ export interface PathCorridor {
 
 /** Chunks, die nach dem Schwenken höchstens über die gewollten hinaus geladen bleiben (Rückweg ohne Neubau). */
 const LINGER_CHUNKS = 12;
+/** Frist der ersten Füllung (ms): so viele der nächsten Chunks wie hineinpassen, der Rest mit dem Budget je Bild. */
+const FIRST_FILL_MS = 60;
 
 /**
  * Grundbestand vor der Heilung (nie leeres Gelände): Welten ohne ganzes Müllfeld zeigen schon die Hälfte ihrer Bäume
@@ -1010,7 +1012,19 @@ export class EarlePlanet {
    * sieht — zwischen den Gitterpunkten weicht die glatte Höhe um einige Zentimeter ab.
    */
   meshHeightAt(x: number, z: number): number | null {
-    const chunk = this.loaded.get(`${Math.floor(x / CHUNK_SIZE)}:${Math.floor(z / CHUNK_SIZE)}`);
+    // Letzter Chunk als Merker (der Schatten-Fit fragt tausendfach je Bild längs weniger Strahlen): gültig im selben
+    // Bild, in dem Chunks nur in `update` kommen und gehen
+    const cx = Math.floor(x / CHUNK_SIZE);
+    const cz = Math.floor(z / CHUNK_SIZE);
+    let chunk: LoadedChunk | undefined;
+    if (cx === this.meshMemo.cx && cz === this.meshMemo.cz && this.meshMemo.frame === this.frame) chunk = this.meshMemo.chunk ?? undefined;
+    else {
+      chunk = this.loaded.get(`${cx}:${cz}`);
+      this.meshMemo.cx = cx;
+      this.meshMemo.cz = cz;
+      this.meshMemo.frame = this.frame;
+      this.meshMemo.chunk = chunk ?? null;
+    }
     if (!chunk) return null;
     const m = chunk.cpu.mesh;
     const n = m.n;
@@ -1192,6 +1206,8 @@ export class EarlePlanet {
     let changed = false;
     let loads = 0;
     let buildMs = 0;
+    // Erste Füllung (Start, Qualitätswechsel im Lab): die nächsten Chunks sofort, bis FIRST_FILL_MS — der Rest folgt mit
+    // dem normalen Budget über die nächsten Bilder (vorher alle in einem Bild: ≈ 250 ms bei 20 Chunks, M3)
     const firstFill = this.loaded.size === 0;
     for (const w of wanted) {
       const chunk = this.loaded.get(w.key);
@@ -1199,7 +1215,7 @@ export class EarlePlanet {
         chunk.lastSeen = this.frame;
         continue;
       }
-      const over = !firstFill && (loads >= this.loadsPerFrame || performance.now() - t0 > this.loadBudgetMs);
+      const over = firstFill ? loads > 0 && performance.now() - t0 > FIRST_FILL_MS : loads >= this.loadsPerFrame || performance.now() - t0 > this.loadBudgetMs;
       if (over) {
         if (chunk) chunk.lastSeen = this.frame; // alte Detailstufe bleibt, bis die neue gebaut ist
         continue;
@@ -1745,6 +1761,8 @@ export class EarlePlanet {
     const peek = Math.acos(R / (R + Math.max(0, top)));
     return arc / R > Math.min(Math.PI * 0.9, this.viewHorizon + peek + 0.05);
   }
+
+  private readonly meshMemo: { cx: number; cz: number; frame: number; chunk: LoadedChunk | null } = { cx: 0, cz: 0, frame: -1, chunk: null };
 
   /** Kamerafuß in der Ebene und Horizontwinkel des letzten `update` (−1 = noch keins). */
   private readonly viewFoot = { x: 0, z: 0 };
