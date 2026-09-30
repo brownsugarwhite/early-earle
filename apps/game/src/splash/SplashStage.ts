@@ -175,6 +175,8 @@ export class SplashStage {
   private last = 0;
   private reduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   private readonly offs: Array<() => void> = [];
+  /** Nur für die aktuelle Anzeige (Eingabe, Layout, Boot-Abschluss): beim Entfernen/Neuanzeigen gelöst. */
+  private readonly showOffs: Array<() => void> = [];
   private readonly prev = new Map<string, string>();
   private tongues: Tongue[] = [];
   private flameTip: Pt = [0, 0];
@@ -219,6 +221,7 @@ export class SplashStage {
       clearTimeout(this.fadeTimer);
       this.fadeTimer = null;
     }
+    for (const off of this.showOffs.splice(0)) off();
     const existed = !!document.getElementById('ee-splash');
     if (!existed) {
       const holder = document.createElement('div');
@@ -273,10 +276,11 @@ export class SplashStage {
     // Neues Markup mitten im Boot (HMR): bootProgress treibt ab jetzt diesen Stamm
     if (!existed && this.inline) boot.adopt(this.inline);
     setCanvasCovered(true);
-    this.offs.push(boot.onComplete(() => this.beginIntro(false)));
+    this.showOffs.push(boot.onComplete(() => this.beginIntro(false)));
   }
 
   private remove(): void {
+    for (const off of this.showOffs.splice(0)) off();
     const root = document.getElementById('ee-splash');
     root?.remove();
     this.parts = null;
@@ -450,6 +454,7 @@ export class SplashStage {
   private enterIdle(): void {
     this.state = 'idle';
     this.parts?.root.setAttribute('data-phase', 'idle');
+    this.parts?.root.setAttribute('aria-label', 'early earle – Tippen zum Starten');
   }
 
   private loop(): void {
@@ -559,7 +564,7 @@ export class SplashStage {
     if (!root) return;
     const ro = new ResizeObserver(() => this.updateDot());
     ro.observe(root);
-    this.offs.push(() => ro.disconnect());
+    this.showOffs.push(() => ro.disconnect());
     this.updateDot();
   }
 
@@ -597,7 +602,7 @@ export class SplashStage {
     };
     root.addEventListener('pointerdown', down);
     window.addEventListener('keydown', key);
-    this.offs.push(() => {
+    this.showOffs.push(() => {
       root.removeEventListener('pointerdown', down);
       window.removeEventListener('keydown', key);
     });
