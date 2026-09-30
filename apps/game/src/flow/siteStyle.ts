@@ -12,6 +12,13 @@ import type { NodeSite } from './path';
  * water), the crown of the giant tree a flattened dome with dotted skin among crown puffs, snow a drift with pines.
  */
 export function plateauStyleFor(site: NodeSite, world: number): PlateauStyle {
+  const style = siteStyleFor(site, world);
+  // The plateau's shade takes the world's shadow tint like the ground around it (blue shadows on snow, image 05)
+  const tint = WORLD_CONTENTS[Math.max(0, Math.min(WORLD_CONTENTS.length - 1, world))]?.shadowTint;
+  return tint ? { ...style, shade: mixHex(style.shade, tint.color, tint.amount) } : style;
+}
+
+function siteStyleFor(site: NodeSite, world: number): PlateauStyle {
   const content = WORLD_CONTENTS[Math.max(0, Math.min(WORLD_CONTENTS.length - 1, world))];
   const p = content?.palette;
   if (!p) throw new Error(`no world ${world}`);
