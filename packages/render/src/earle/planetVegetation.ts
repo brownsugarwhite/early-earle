@@ -402,6 +402,9 @@ export class PlanetVegetation {
         // Scheune: Wände fast rundum im Licht (rote Bänder; nur Schlagschatten sind Tinte), Schneedach immer hell
         terminatorNode: byType<FloatNode>([float(0.2), float(0.2), float(0.15), float(0.15), float(0.35), float(0.3), select(isRoof, float(-1), float(-0.7))]),
         lift: byType<FloatNode>([float(-0.7), float(0), float(0.45), float(-0.8), float(-0.8), float(-0.35), select(isRoof, float(0.9), float(0))]),
+        // Verlauf innerhalb der harten Bänder: oben hell, zum Fuß tiefer (Monolith Ebene 45, Felsen, Scheunenwand);
+        // Schrott, Reifen, Rohre und Gasquellen bleiben flache dunkle Masse
+        gradient: clamp(byType<FloatNode>([float(0), lp.y.mul(2).sub(1), lp.y.mul(2).sub(1), float(0), float(0), float(0), lp.y.mul(1.7).sub(1)]), -1, 1) as unknown as FloatNode,
         pattern: { mask, color },
         positionNode: warp(propGrown(part)),
       });

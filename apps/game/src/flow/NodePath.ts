@@ -748,8 +748,8 @@ export class NodePath {
     const passed = step(celeb.x.add(rSeg.sub(celeb.y).mul(celeb.w)), this.uTime as unknown as FloatNode);
     const walked = smoothstep(0.0, 0.25, (this.uDone as unknown as FloatNode).sub(rSeg)).mul(mix(float(1), passed, inCeleb));
     const rWx = attribute('rWx', 'vec2');
-    // Earle's sunlit field (Ebene 36): a soft crown across the ribbon — the middle a touch lighter than its edges
-    const across = float(1).sub(rWx.y.abs()).mul(0.12).sub(0.06).mul(earleGradients.surface);
+    // Earle's sunlit field (Ebene 36): inside its hard bands the ribbon runs lighter toward its middle
+    const across = float(1).sub(rWx.y.abs()).mul(2).sub(1);
     const tint = palette.shadowTint ?? null;
     const mat = new EarleMaterial({
       lookup: palette.lookup,
@@ -760,8 +760,10 @@ export class NodePath {
       bandScale: 2.0,
       terminator: 0.02,
       // One to two value steps above the ground it lies on: a sunlit field between the dark masses.
-      lift: (attribute('rH', 'float') as unknown as FloatNode).mul(0.45).add(0.78).add(across),
-      // shadow gradient led by the planet's sphere normal, like the terrain under it (one shadow shape)
+      lift: (attribute('rH', 'float') as unknown as FloatNode).mul(0.45).add(0.78),
+      gradient: across,
+      gradientAmount: earleGradients.surface.mul(0.25),
+      // shadows tinted like the terrain under them (one shadow shape)
       shadowTint: tint ? { tint, world: rWx.x as unknown as FloatNode, up: modelViewMatrix.mul(vec4(normalize(positionLocal), 0)).xyz as unknown as Vec3Node } : null,
       growthNode: mix(float(0.78), float(1), walked),
       positionNode: place(positionLocal as unknown as Vec3Node, NUDGE_RIBBON),

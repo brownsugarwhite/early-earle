@@ -37,7 +37,7 @@ import {
 import { hash32, mulberry32 } from '@ee/world';
 import { createHexagon } from '../vegetation';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from '../tsl';
-import { earleGradients, fountain, mixInk } from '../gradients';
+import { SAW_GRADIENT, STEP_GRADIENT, earleGradients, stepRamp } from '../gradients';
 import { LOD_FADE, applyLod, lodScale, popScale, type BillboardUniforms } from './branches';
 import { InkMaterial } from './inkMaterial';
 import { familyTone, type CanopyFamily } from './palette';
@@ -100,8 +100,9 @@ const _s = new Vector3();
 
 /**
  * Jewel canopy (image 02, Ebene 33): all domes in one InstancedMesh with the ink material —
- * - **tone gradient**: each dome runs through two neighbouring families (teal → blue → violet → magenta → red) as a
- *   split-fountain gradient along its own direction (warmer on top), with a soft light ramp — the ink edge stays crisp;
+ * - **tone gradient**: each dome runs through two neighbouring families (teal → blue → violet → magenta → red) in
+ *   three hard serigraph steps along its own direction (warmer on top), banded by the light; each step and each light
+ *   band carries its own inner gradient (Earle's split fountain per screen), the edges between them stay hard;
  * - **micro-dot stipple**: object-space 3D cells, one dot per cell measured in the tangent plane (every dot shows
  *   whole, none swims), several tints plus a rare complementary accent; the dot radius scales with the light —
  *   in the shade the dots shrink smoothly to zero instead of popping;
@@ -159,25 +160,31 @@ export function createCanopy(o: CanopyOptions): Canopy {
       const P = varying(pTree, 'vDomePos') as unknown as Vec3Node;
       const dh = vInfo.w;
       const qn = normalize(varying(unit, 'vDomeUnit'));
-      // tone: two neighbouring families along the dome's own direction (image 02: red → violet → blue within one
-      // dome). Split-fountain gradient between the families (`earleGradients.surface` 0 = the old three hard steps)
+      // tone: two neighbouring families along the dome's own direction, three hard steps (image 02: red → violet →
+      // blue within one dome); inside each step the tone drifts on toward the next one (a saw, `earleGradients.surface`)
       const soft = earleGradients.surface;
       const g = qn.y.mul(0.85).add(qn.x.mul(vTone.y)).add(qn.z.mul(vTone.z));
-      // wider spread with the gradient (image 02: one dome runs red → violet → blue from its top down)
-      const tone = clamp(vTone.x.add(g.mul(mix(float(0.42), float(0.62), soft))), 0, 3.999);
+      const tone = clamp(vTone.x.add(g.mul(0.42)), 0, 3.999);
       const ts = tone.mul(3);
       const fts = fract(ts);
       const wts = fwidth(ts).max(1e-4);
-      // the gradient is centred on the old steps (same average tone, no edges)
-      const stepped = mix(floor(ts).add(smoothstep(float(1).sub(wts), float(1), fts)).div(3), tone.sub(1 / 6).max(0), soft);
+      const edgeT = smoothstep(float(1).sub(wts), float(1), fts);
+      const sawT = soft.mul(SAW_GRADIENT * 1.5);
+      const stepped = floor(ts).add(mix(fts.mul(2).sub(1).mul(sawT), float(1).sub(sawT), edgeT)).max(0).div(3);
       const fam = floor(stepped);
       const fr = stepped.sub(fam);
       const rowA = fam.add(domeRow0);
       const rowB = min(fam.add(1), float(4)).add(domeRow0);
-      // light: a soft ramp through the dome's light steps (top lit, underside deeper), the terminator stays crisp
+      // light: hard bands (lifted sun: lit crowns, dark undersides), each with its own gradient top → underside
       const band = clamp(ndl.sub(TERMINATOR).mul(2.3), 0, 0.999).mul(o.bands.sub(1));
-      const litCol = mixInk(fountain(lookup, band, rowA, 1, soft).rgb as unknown as Vec3Node, fountain(lookup, band, rowB, 1, soft).rgb as unknown as Vec3Node, fr);
-      const inkCol = mixInk(lookup.pal(0, rowA).rgb as unknown as Vec3Node, lookup.pal(0, rowB).rgb as unknown as Vec3Node, fr);
+      const gLight = clamp(qn.y.mul(1.2), -1, 1);
+      const lightAmount = soft.mul(STEP_GRADIENT);
+      const litCol = mix(
+        stepRamp(lookup, band, rowA, 1, gLight, lightAmount, { linear: true }).rgb,
+        stepRamp(lookup, band, rowB, 1, gLight, lightAmount, { linear: true }).rgb,
+        fr,
+      ) as unknown as Vec3Node;
+      const inkCol = mix(lookup.pal(0, rowA).rgb, lookup.pal(0, rowB).rgb, fr) as unknown as Vec3Node;
       let col: Vec3Node = mix(inkCol, litCol, lit);
 
       // tangent frame of the surface (object space) for the stipple
@@ -202,15 +209,11 @@ export function createCanopy(o: CanopyOptions): Canopy {
       const far = smoothstep(float(0.42), float(0.2), fw); // cells under ~2.5 px: the stipple melts into the tint
       const dotR = float(0.17).add(h4.mul(0.12)).mul(light);
       const dotMask = smoothstep(dotR.add(fw), dotR.sub(fw).max(0), d).mul(step(0.12, h2)).mul(far);
-      // mostly one band lighter (a woven texture), some light tints, rare sparkles and complementary accents. The
-      // "one band lighter" dots follow the gradient under them (no dot-colour steps at the old band edges)
+      // mostly one band lighter (a woven texture), some light tints, rare sparkles and complementary accents
       const pick = fract(h1.mul(41.9).add(h2.mul(11.3)));
       const lighter = min(floor(band).add(2), float(3));
       const dotIdx = select(pick.lessThan(0.62), lighter, select(pick.lessThan(0.88), float(5), select(pick.lessThan(0.96), float(6), float(7))));
-      const dotStep = mix(lookup.pal(dotIdx, rowA).rgb, lookup.pal(dotIdx, rowB).rgb, fr) as unknown as Vec3Node;
-      // one band lighter ≈ the gradient colour under the dot, brightened in linear light (hue kept, no extra lookups)
-      const dotSoft = min(litCol.mul(1.7), vec3(1, 1, 1)) as unknown as Vec3Node;
-      const dotCol = mix(dotStep, dotSoft, select(pick.lessThan(0.62), soft, float(0))) as unknown as Vec3Node;
+      const dotCol = mix(lookup.pal(dotIdx, rowA).rgb, lookup.pal(dotIdx, rowB).rgb, fr);
       col = mix(col, dotCol, dotMask);
       // at distance the stipple becomes a lighter tint of the lit side (same average, no shimmer)
       col = mix(col, mix(col, dotCol, 0.22), float(1).sub(far).mul(light).mul(0.8));

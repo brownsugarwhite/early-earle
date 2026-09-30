@@ -1,6 +1,6 @@
 import { Box3, BufferAttribute, BufferGeometry, Frustum, Group, Matrix4, Mesh, Object3D, Quaternion, Sphere, Vector3, Vector4 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
-import { abs, acos, asin, atan, attribute, clamp, cos, dot, float, fract, int, max, mix, modelViewMatrix, normalGeometry, normalView, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, varying, vec4 } from 'three/tsl';
+import { abs, acos, asin, atan, attribute, clamp, cos, dot, float, fract, int, max, mix, modelViewMatrix, normalGeometry, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, varying, vec4 } from 'three/tsl';
 import {
   PlanetField,
   chunkAngularRadius,
@@ -475,17 +475,27 @@ export class EarlePlanet {
     // Planetenraum eine feine organische Welligkeit (bricht die Interpolation des Vertex-Felds)
     const sp = positionGeometry.mul(1.9);
     const snowWob = sin(sp.x.add(sin(sp.z.mul(1.3)).mul(1.7))).mul(0.035).add(sin(sp.y.mul(2.3).add(sp.x.mul(0.7))).mul(0.025));
-    // Schatten auf dem Schneefeld laufen von tiefem zu hellerem Blau (sonnenzugewandte Hänge heller, Bild 05)
-    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08), shadowLift: 0.15 };
+    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08) };
     // Gemeißelte Hänge: Wertstufen entlang der Höhenlinien (Stufensprung im Bandwert je Höhenschicht)
     const chisel = wa.w;
     // Sägezahn mit 1-px-Kante: jede Höhenschicht verläuft in sich, die Stufe zur nächsten bleibt eine klare Kante
     const contour = aaSaw(heightAttr.mul(5.0).add(0.5)).sub(0.5).mul(0.34);
-    // Verlaufsnormale: Geländenormale zur Kugelnormale hin gemischt → ein ruhiger Verlauf über den Hügel (Kamm hell,
-    // Hang zur Sonne heller), kleine Dellen und Uferrinnen zeigen keine Dreiecke; die Tintenform folgt weiter dem Relief
+    // Verlauf innerhalb der Lichtbänder (Ebene 19/20/36: jede Wiese, jedes Schneefeld verläuft in sich), großräumig und
+    // damit auf beiden Seiten einer Bandkante fast gleich — die Kante bleibt ein harter Sprung:
+    // - zur Sonne hin heller (Kugelnormale: die sonnenseitige Hälfte des Bildes, Ebene 19),
+    // - Kamm hell → Tal tief (Höhe),
+    // - vorn tief, zum Horizont heller (Bildtiefe: die Höhe im Bild — unterer Bildrand = nächster Boden −1, Horizont
+    //   +1, bei FOV 50–61° in jeder Kameraeinstellung gleich; dahinter übernehmen die Wertstufen der Luftperspektive).
     const sphereN = varying(modelViewMatrix.mul(vec4(normalize(positionGeometry), 0)).xyz, 'vTerrainSphereN');
     const sphereUp = normalize(sphereN);
-    const gradientNormal = mix(normalView, sphereUp, 0.8);
+    const crest = heightAttr.mul(2).sub(1);
+    const depth = clamp(positionView.y.div(positionView.length()).mul(4.5).add(0.9), -1, 1);
+    // Eine gemeinsame Richtung (vorn tief → hinten und zur Sonne hell), die über das ganze Bild läuft: große Flächen
+    // zeigen den Verlauf deutlich, kleine Formen sehen nur ein Stück davon
+    const terrainGradient = ({ L }: { L: Vec3Node }): FloatNode => {
+      const sunSide = clamp(sphereUp.dot(L).sub(0.17).mul(3.5), -1, 1);
+      return clamp(depth.mul(0.7).add(sunSide.mul(0.4)).add(crest.mul(0.3)), -1, 1) as unknown as FloatNode;
+    };
     // Talnebel (Ebene 20): am Talgrund dicht und hell, zu den Kämmen hin ausdünnend; direkt vor der Linse frei
     const valley = float(1).sub(smoothstep(0.0, 0.5, heightAttr));
     const mist = varying(valley.mul(valley).mul(smoothstep(4.0, 13.0, positionView.length())), 'vTerrainMist').mul(this.mistStrength).mul(earleGradients.air);
@@ -501,9 +511,11 @@ export class EarlePlanet {
       bands: this.terrainBands,
       bandScale: 2.0,
       terminator: 0.02,
-      // Kamm → Tal: Kuppen heller, Mulden tiefer (Earles Hügel), dazu die Meißelschichten
-      lift: heightAttr.mul(0.5).add(contour.mul(chisel)),
-      gradientNormalNode: gradientNormal,
+      // Höhe → hellere Kuppen, dazu die Meißelschichten (harte Bänder wie im Siebdruck)
+      lift: heightAttr.mul(0.45).add(contour.mul(chisel)),
+      gradient: terrainGradient,
+      // große, gleichfarbige Flächen (Wiese, Schnee, Wüste) zeigen den Verlauf deutlich: bis 45 % zur Nachbarstufe
+      gradientAmount: earleGradients.surface.mul(0.45),
       shadowTint: tint ? { tint, world: worldIndex, up: sphereUp } : null,
       mist: { amount: mist, color: this.mistColor as unknown as Vec3Node },
       crackNode: crack,

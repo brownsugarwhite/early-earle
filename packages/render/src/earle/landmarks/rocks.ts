@@ -3,7 +3,6 @@ import { abs, attribute, float, floor, fract, fwidth, hash, max, mix, positionLo
 import { columnTopAt, framePoint, type RockColumn, type RockFormation, type RockKind } from '@ee/world';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, hatchMask, patternTime, periodFade, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
-import { earleGradients } from '../gradients';
 
 /** Art-Code im Vertex-Attribut (Welt·16 + Art·4 + Fläche). Wand = Basalt wie die Terrassen. */
 const KIND_CODE: Record<RockKind, number> = { terraces: 0, wall: 0, tower: 1, mesa: 2, spires: 3 };
@@ -188,8 +187,8 @@ export interface RockMaterialOptions {
 }
 
 /**
- * Fels-Material (Earle-Monolithe): Facetten mit Verlauf (oben hell, zum Fuß dunkler) durch 4 Lichtstufen,
- * Schattenseite Tinte; Ornament je Art (Linie in etwas drin, nie drum herum):
+ * Fels-Material (Earle-Monolithe): harte Facetten in 4 Lichtbändern, jede mit Verlauf innen (oben hell, zum Fuß tiefer,
+ * Ebene 45), Schattenseite Tinte; Ornament je Art (Linie in etwas drin, nie drum herum):
  * - Basalt (Terrassen, Wand): dichte senkrechte Riefen (Ebene_12), im Schatten als dunkle Linien sichtbar (Ebene_7),
  *   Moosköpfe mit feinen hellen Tupfen;
  * - Turm: gebrochene senkrechte Striche und wandernde Zickzack-Glyphenbänder, dichter am Sockel (Ebene_44/45);
@@ -250,9 +249,9 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
   const mf = fract(mp).sub(vec2(hash(mcell.x.add(mcell.y.mul(91.0))).mul(0.5).add(0.25), hash(mcell.x.mul(17.0).add(mcell.y.mul(3.0))).mul(0.5).add(0.25)));
   const moss = aaStep(mf.length(), float(0.16)).mul(step(hash(mcell.x.mul(5.0).add(mcell.y.mul(23.0))), float(0.55))).mul(periodFade(mp.x, 2.2)).mul(isKind(0));
   const capLit = mix(capColor, mix(capColor, vec3(1, 1, 1), 0.35), moss);
-  // Verlauf an der Wand (Ebene 27, 45, 46): oben im Licht hell, zum Fuß hin dunkler — die flachen Facetten laufen in
-  // sich, statt als eine Fläche zu stehen. Rahmenhöhe z in Welteinheiten (Fuß versenkt ≈ −0.5, Köpfe 3–8)
-  const heightGrad = smoothstep(-0.6, 6.5, z).sub(0.5).mul(0.5).mul(earleGradients.surface);
+  // Verlauf innerhalb der Facetten (Ebene 27, 45, 46): oben hell, zum Fuß tiefer. Rahmenhöhe z in Welteinheiten (Fuß
+  // versenkt ≈ −0.5, Köpfe 3–8); die Facettenkanten bleiben harte Sprünge
+  const heightGrad = smoothstep(-0.6, 6.5, z).mul(2).sub(1);
   return new EarleMaterial({
     lookup: o.lookup,
     row: 0,
@@ -261,8 +260,9 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
     bands: o.bands,
     bandScale: 1.35,
     terminator: 0.04,
-    // Turm-Schaft heller (Glut, Ebene_45), Sockel eine Spur dunkler; dazu der Höhenverlauf (Kopf hell, Fuß tief)
-    lift: isKind(1).mul(float(0.12).sub(isTier.mul(0.16))).add(heightGrad),
+    // Turm-Schaft heller (Glut, Ebene_45), Sockel eine Spur dunkler
+    lift: isKind(1).mul(float(0.12).sub(isTier.mul(0.16))),
+    gradient: heightGrad,
     // Linien im Licht dunkel (Stufe 6), im Schatten hell (Stufe 3 halb in Tinte): die Riefen lesen sich auch auf der
     // Tintenseite (Ebene_7: türkise Striche auf schwarzem Fels)
     pattern: { mask, color: lineColor, shadowColor: mix(ink, o.lookup.pal(3, row).rgb, 0.42) },

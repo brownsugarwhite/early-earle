@@ -244,8 +244,8 @@ export class BoardPlateau {
     base = select(band.lessThan(4.5), base, ink) as unknown as Vec3Node;
     // Hill form has no terraces: blend the bands toward one meadow tone while the hill is still round.
     base = mix(mix(top, s1, band.mul(0.2).clamp(0, 1)), base, m) as unknown as Vec3Node;
-    // Earle gradient (like the rocks): the skirt runs from its lit lip to a deeper foot — each band in itself a
-    // gradient, the band edges stay crisp; the top glows a touch in its middle and deepens toward its rim.
+    // Earle gradient inside the hard bands (like the rocks): the skirt deepens from its lip to its foot and the top a
+    // touch toward its rim — the same shift on both sides of a band edge, so every edge keeps its full jump.
     const soft = earleGradients.surface;
     const pgy = (positionGeometry as unknown as Vec3Node).y;
     const footward = smoothstep(0.0, -1.3, pgy).mul(band.greaterThan(0.5).select(float(1), float(0)));
