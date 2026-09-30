@@ -5,7 +5,7 @@ import { FLOW_LEVELS } from './levels';
 import { useProgress } from '../state/progress';
 import { useGridStore } from '../lab/grid/gridStore';
 import { rexIntroFor, rexLine } from '../lab/grid/rex';
-import { PanBall } from '../lab/earle/panball';
+import { PanBall, type PanConstrain } from '../lab/earle/panball';
 import { WORLD_CONTENTS } from '../lab/earle/zones';
 import rexUrl from '../../../../assets/ref-florian/07-illudiy-logo-rex.png';
 import { useFlowStore, type FlowPhase, type FlowRequest } from './flowStore';
@@ -34,7 +34,7 @@ interface CameraPose {
 }
 
 /** A view of the infinite world: the plane point at the apex (focus) and the view yaw (rig turn about the vertical). */
-interface MapView {
+export interface MapView {
   x: number;
   z: number;
   yaw: number;
@@ -146,8 +146,12 @@ export class FlowScene implements SceneController {
   private readonly railScratch = { position: new Vector3(), lookAt: new Vector3() };
   /** The view yaw (rig turn about the vertical through the apex). */
   private viewYaw = 0;
-  /** Where the board stands (plane pose); its root is mapped onto the display every frame. */
-  private readonly boardPlane = { position: new Vector3(), quaternion: new Quaternion(), active: false };
+  /**
+   * Where the board stands (plane pose: position (x, h, z), orientation in plane axes); while `active` its root is
+   * mapped onto the display every frame. Entry point for the flow choreography (FlowStage): `placeBoardAt`,
+   * `levelPose` and `boardPose` all read it.
+   */
+  readonly boardPlane = { position: new Vector3(), quaternion: new Quaternion(), active: false };
   private readonly unsubscribes: Array<() => void> = [];
   private detachInput: (() => void) | null = null;
   private pointer: { x: number; y: number; t: number; id: number } | null = null;
@@ -226,6 +230,10 @@ export class FlowScene implements SceneController {
       yaw: () => this.viewYaw,
       onPan: (dx, dz) => this.panBy(dx, dz),
       onZoom: (f) => this.setZoom(this.zoom * f),
+      focus: () => {
+        const f = world.focus;
+        return { x: f.x, y: world.walkableHeight(f.x, f.z), z: f.z };
+      },
     });
 
     this.attachInput(ctx.canvas);
@@ -373,9 +381,19 @@ export class FlowScene implements SceneController {
   }
 
   // ================================================================================ view (focus, yaw)
+  //
+  // Entry points for the flow choreography (FlowStage, ADR 0002): `nodePose(i)` (hero on a node, plane pose — the hero's
+  // mapper puts it on the display globe), `snapViewToNode(i)` / `glideViewToNode(i)` (bring a node onto the map target:
+  // focus + view yaw), `currentView()` / `world.focus` (the map's focus point), `boardPlane` (where the level plays),
+  // `setPanConstrain(fn)` (scroll limit with rubber band in real mode; `null` = free, endless).
+
+  /** Scroll limit of the map pan (real mode: around unlocked nodes, rubber band); `null` = free (endless globe). */
+  setPanConstrain(fn: PanConstrain | null): void {
+    this.panBall?.setConstrain(fn);
+  }
 
   /** Current view: focus of the world and the rig's yaw. */
-  private currentView(): MapView {
+  currentView(): MapView {
     const f = this.world!.focus;
     return { x: f.x, z: f.z, yaw: this.viewYaw };
   }
@@ -430,7 +448,7 @@ export class FlowScene implements SceneController {
   }
 
   /** Brings `index` onto the map target — instantly. */
-  private snapViewToNode(index: number): void {
+  snapViewToNode(index: number): void {
     this.computeMapTarget();
     this.tweens.cancel('glide');
     this.panBall?.stop();
@@ -438,7 +456,7 @@ export class FlowScene implements SceneController {
   }
 
   /** Same, as a glide over the plane (cancelled by a drag). */
-  private glideViewToNode(index: number, duration = T_GLIDE, ease = easeInOut): void {
+  glideViewToNode(index: number, duration = T_GLIDE, ease = easeInOut): void {
     const from = this.currentView();
     const to = this.viewFor(index);
     this.tweens.cancel('glide');
@@ -736,7 +754,7 @@ export class FlowScene implements SceneController {
    * the shelf fungus (up = the fungus seat, the body clears the bark) or the flower stone on a root or dome — a little
    * smaller there, since the rail camera is closer than the map camera.
    */
-  private nodePose(index: number, scale = HERO_MAP_SCALE): HeroPose {
+  nodePose(index: number, scale = HERO_MAP_SCALE): HeroPose {
     const world = this.world!;
     const node = world.layout.node(index);
     const surface = world.treeSurface(index);
@@ -1470,6 +1488,8 @@ export class FlowScene implements SceneController {
       /** Glide the view to a node (like after a won level). */
       goToNode: (i: number) => this.glideViewToNode(i),
       view: () => ({ ...this.currentView(), phase: this.phase }),
+      /** Dev: the world object (inspection in scripted checks). */
+      world: () => (import.meta.env.DEV ? this.world : null),
       stats: () => {
         const w = this.world;
         if (!w) return null;

@@ -4,6 +4,7 @@ import { EarlePlanet, FogStripes, SunRig, createSkyDome, skySunIndices, type Wor
 import type { Vec3 } from '@ee/world';
 import { mixHex } from '@ee/genome';
 import type { FlowQuality } from './quality';
+import type { GroundFrame, MapGround } from './MapCreatures';
 import type { PathPalette, PathWorldColors } from './NodePath';
 import { FlowPath } from './levelPath';
 import { AUTHORED_ROUTE, HERO_TREE_WORLD, PLANET_RADIUS, planetWorlds } from '../lab/earle/zones';
@@ -282,6 +283,52 @@ export class MapWorld {
     return this.world.heightAt(x, z);
   }
 
+  /**
+   * The ground seam for everything that walks or rests on the map (MapCreatures, ADR 0002): points in plane
+   * coordinates (x, h, z) — `ground` puts feet on the walkable surface (terrain or rock top), `homeSpot` finds dry
+   * spots in the clearing around a node (off the path, off water and rock feet), `display` maps a plane point onto the
+   * display globe, `focus` is the view focus (the plane point at the apex, on the ground).
+   */
+  mapGround(): MapGround {
+    const world = this.world;
+    const layout = this.layout;
+    const pos: Vec3 = [0, 0, 0];
+    const nor: Vec3 = [0, 0, 0];
+    const frame = (x: number, z: number, out: GroundFrame): void => {
+      world.surfaceAt(x, z, pos, nor);
+      const h = world.walkableHeight(x, z);
+      out.position.set(x, Math.max(h, pos[1]), z);
+      out.normal.set(nor[0], nor[1], nor[2]);
+    };
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    return {
+      homeSpot: (node, slot, out) => {
+        const n = layout.node(node);
+        const cx = n.position[0];
+        const cz = n.position[2];
+        const win = layout.window(Math.max(0, node - 1), node + 1);
+        // Rings around the node's clearing (1.8–3.4 units), the slot's angle turns by the golden angle
+        for (let tries = 0; tries < 24; tries++) {
+          const k = slot + tries * 7;
+          const a = k * golden + node * 0.37;
+          const r = 1.8 + ((k * 0.618) % 1) * 1.6;
+          const x = cx + Math.cos(a) * r;
+          const z = cz + Math.sin(a) * r;
+          if (world.isWater(x, z, 0.4) || world.field.rockAt(x, z, 0.4) !== null) continue;
+          // off the path: not on the dots or stones of the node's neighbourhood
+          const onPath = win.dots.some((d) => Math.hypot(d.position[0] - x, d.position[2] - z) < 0.55) || win.nodes.some((m) => Math.hypot(m.position[0] - x, m.position[2] - z) < 1.2);
+          if (onPath) continue;
+          frame(x, z, out);
+          return true;
+        }
+        return false;
+      },
+      ground: (p, out) => frame(p.x, p.z, out),
+      display: (p, out) => world.toDisplay(p, out),
+      focus: (out) => out.set(world.focus.x, world.walkableHeight(world.focus.x, world.focus.z), world.focus.z),
+    };
+  }
+
   walkableHeight(x: number, z: number): number {
     return this.world.walkableHeight(x, z);
   }
@@ -355,8 +402,14 @@ export class MapWorld {
   setViewFocus(point: Vector3 | null, immediate = false): void {
     if (point) this.viewFocus.copy(point);
     this.hasViewFocus = point !== null;
-    if (immediate) this.focusBlend = point ? 1 : 0;
+    if (immediate) {
+      this.focusBlend = point ? 1 : 0;
+      this.viewCut = true;
+    }
   }
+
+  /** A cut (start, re-mount, jump): sky, fog and stripes switch to the new look point without a blend. */
+  private viewCut = true;
 
   private readonly viewFocus = new Vector3();
   private hasViewFocus = false;
@@ -438,7 +491,8 @@ export class MapWorld {
       lookPlane.z += (this.viewFocus.z - lookPlane.z) * wf;
     }
     if (fogDist >= 0) this.world.setFogDistance(fogDist);
-    this.world.setViewPoint(lookPlane.x, lookPlane.z);
+    this.world.setViewPoint(lookPlane.x, lookPlane.z, this.viewCut);
+    this.viewCut = false;
     if (this.world.viewBlending) this.shadowDirty = true; // neighbours fade in/out near the camera
     this.world.tickView(dt);
     if (this.trash?.update(this.camera, camWorld, this.frustum, dt)) this.shadowDirty = true;

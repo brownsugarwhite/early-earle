@@ -1,3 +1,16 @@
+/** Ein Punkt der Ebene (x, Höhe, z) — dieselbe Form wie in `progression/scrollLimit.ts`. */
+export interface PanPoint {
+  x: number;
+  y: number;
+  z: number;
+}
+
+/**
+ * Grenze des Schwenkens (echter Modus: nur um freigespielte Knoten): zu `focus` die Überschreitung `excess`
+ * (Welteinheiten, 0 = frei) und der Punkt `anchor`, zu dem das Gummiband zieht. `null` = unbegrenzt (freier Modus).
+ */
+export type PanConstrain = (focus: PanPoint) => { excess: number; anchor: PanPoint } | null;
+
 export interface PanBallOptions {
   /** Welteinheiten pro Bildschirmpixel am Blickpunkt (abhängig von Zoom und Canvas-Höhe). */
   worldUnitsPerPixel: () => number;
@@ -8,6 +21,13 @@ export interface PanBallOptions {
   onZoom?: (factor: number) => void;
   /** Trägheit: v ·= exp(−dt/τ). */
   tau?: number;
+  /** Aktueller Fokus (Ebene) — nötig für `constrain`. */
+  focus?: () => PanPoint;
+  /**
+   * Gummiband (echter Modus): jenseits der Grenze wird der Zug zäh (Weg ∝ 1 / (1 + Überschreitung / 2,5)), nach dem
+   * Loslassen federt der Fokus zum `anchor` zurück; der Schwung nach außen erlischt. Ohne Hook: unbegrenzt.
+   */
+  constrain?: PanConstrain | null;
 }
 
 /**
@@ -25,9 +45,27 @@ export class PanBall {
   private readonly pointers = new Map<number, { x: number; y: number }>();
   private pinchDist = 0;
   private detachFn: (() => void) | null = null;
+  private constrainFn: PanConstrain | null;
 
   constructor(private readonly options: PanBallOptions) {
     this.tau = options.tau ?? 0.45;
+    this.constrainFn = options.constrain ?? null;
+  }
+
+  /** Grenze setzen oder aufheben (Moduswechsel echt ↔ frei). */
+  setConstrain(fn: PanConstrain | null): void {
+    this.constrainFn = fn;
+  }
+
+  /** Überschreitung und Anker am aktuellen Fokus (null: frei oder keine Grenze). */
+  private limit(): { excess: number; anchor: PanPoint; focus: PanPoint } | null {
+    const fn = this.constrainFn;
+    const focusOf = this.options.focus;
+    if (!fn || !focusOf) return null;
+    const focus = focusOf();
+    const r = fn(focus);
+    if (!r || !(r.excess > 1e-4)) return null;
+    return { excess: r.excess, anchor: r.anchor, focus };
   }
 
   get isDragging(): boolean {
@@ -137,6 +175,19 @@ export class PanBall {
   drag(dxPx: number, dyPx: number, dt: number): void {
     const d = this.toPlane(dxPx, dyPx);
     if (Math.hypot(d.x, d.z) < 1e-9) return;
+    // Jenseits der Grenze: nach außen zäh (Gummiband), zurück frei
+    const lim = this.limit();
+    if (lim) {
+      const ox = lim.focus.x - lim.anchor.x;
+      const oz = lim.focus.z - lim.anchor.z;
+      const ol = Math.hypot(ox, oz) || 1;
+      const outward = (d.x * ox + d.z * oz) / ol;
+      if (outward > 0) {
+        const k = 1 / (1 + lim.excess / 2.5);
+        d.x -= (ox / ol) * outward * (1 - k);
+        d.z -= (oz / ol) * outward * (1 - k);
+      }
+    }
     this.options.onPan(d.x, d.z);
     this.moved = true;
     // Geschwindigkeit für die Trägheit (leicht geglättet)
@@ -145,7 +196,7 @@ export class PanBall {
     this.velocity.z += (d.z * k - this.velocity.z) * 0.6;
   }
 
-  /** Integriert die Trägheit. Liefert true, wenn sich der Fokus bewegt hat. */
+  /** Integriert Trägheit und Gummiband. Liefert true, wenn sich der Fokus bewegt hat. */
   step(dt: number): boolean {
     if (dt <= 0) return false;
     if (this.dragging) {
@@ -154,10 +205,28 @@ export class PanBall {
       this.moved = false;
       return changed;
     }
+    let changed = false;
+    // Gummiband: jenseits der Grenze erlischt der Schwung nach außen, der Fokus federt zum Anker (τ ≈ 0,18 s)
+    const lim = this.limit();
+    if (lim) {
+      const ox = lim.focus.x - lim.anchor.x;
+      const oz = lim.focus.z - lim.anchor.z;
+      const ol = Math.hypot(ox, oz) || 1;
+      const outward = (this.velocity.x * ox + this.velocity.z * oz) / ol;
+      if (outward > 0) {
+        this.velocity.x -= (ox / ol) * outward;
+        this.velocity.z -= (oz / ol) * outward;
+      }
+      const k = 1 - Math.exp(-dt / 0.18);
+      const pull = Math.min(lim.excess, ol) * k;
+      this.options.onPan((-ox / ol) * pull, (-oz / ol) * pull);
+      changed = true;
+    }
     const speed = Math.hypot(this.velocity.x, this.velocity.z);
     if (speed < 1e-3) {
-      this.stop();
-      return false;
+      this.velocity.x = 0;
+      this.velocity.z = 0;
+      return changed;
     }
     this.options.onPan(this.velocity.x * dt, this.velocity.z * dt);
     const decay = Math.exp(-dt / this.tau);

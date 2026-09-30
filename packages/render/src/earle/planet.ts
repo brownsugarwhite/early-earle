@@ -677,17 +677,38 @@ export class EarlePlanet {
   }
 
   /** Blickpunkt in der Ebene → Welt darunter → Himmel/Nebel/Streifen überblenden. */
-  setViewPoint(x: number, z: number): void {
-    this.setViewWorld(this.field.worldAt(x, z));
+  setViewPoint(x: number, z: number, immediate = false): void {
+    this.setViewWorld(this.field.worldAt(x, z), immediate);
   }
 
-  setViewWorld(world: number): void {
-    if (world === this.viewWorldB) return;
+  /**
+   * Welt unter dem Blickpunkt setzen: überblendet (0,6 s) von der vorigen; `immediate` (Start, Schnitt) setzt ohne
+   * Überblendung. Der allererste Aufruf ist immer sofort (kein Start aus einer fremden Welt).
+   */
+  setViewWorld(world: number, immediate = false): void {
+    if (world === this.viewWorldB && (!immediate || this.viewBlend >= 1)) return;
+    if (immediate || !this.viewSet) {
+      this.viewSet = true;
+      this.viewWorldA = world;
+      this.viewWorldB = world;
+      this.viewBlend = 1;
+      this.skyMix.value = 0;
+      this.fog.mix.value = 0;
+      const w = this.worldData(world);
+      this.stripeStrength.value = w.fogStripes;
+      this.fogStart = w.fog.start;
+      this.fogRange = w.fog.range;
+      this.applyFog();
+      this.applyViewRows();
+      return;
+    }
     if (this.viewBlend >= 0.5) this.viewWorldA = this.viewWorldB;
     this.viewWorldB = world;
     this.viewBlend = 0;
     this.applyViewRows();
   }
+
+  private viewSet = false;
 
   private applyViewRows(): void {
     const a = this.slots.rowsOfWorld(this.viewWorldA);
