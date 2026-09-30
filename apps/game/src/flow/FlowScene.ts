@@ -42,6 +42,11 @@ const LEVEL_FOV = 40;
 const LEVEL_FOV_PORTRAIT = 44;
 /** Hero size on the map (MAP_VIEW frames the planet wider than the old map camera). */
 const HERO_MAP_SCALE = 0.48;
+/**
+ * Hero size on the giant tree relative to the map (the rail camera is 2–3× closer than the map camera): on a shelf
+ * fungus it sits like a blob on a bracket, on the crown's flower stones a little larger (the crown camera is further).
+ */
+const HERO_TREE_SCALE: Record<'root' | 'bark' | 'limb' | 'dome', number> = { root: 0.72, bark: 0.66, limb: 0.72, dome: 0.88 };
 /** Depth (in front of the camera) at which the hero floats as the splash i-dot. */
 const SPLASH_DEPTH = 4;
 /** Interior colour of the splash "i" (#003f4e): the backing disc behind the hero in the mask hole. */
@@ -78,6 +83,8 @@ const T_HERO_LAUNCH = 0.64;
 const T_HERO_FLIGHT = 0.6;
 /** Sideways/upward bend of the camera dolly (fraction of the travel distance). */
 const CAMERA_ARC = 0.14;
+/** The same around the giant tree: away from the trunk and up (the dolly swings around the wood). */
+const TREE_ARC = 0.3;
 /** Camera shake scale (board shake is in board units at ≈ 1 unit from the camera). */
 const SHAKE_SCALE = 2.4;
 /** Zoom punch: the camera dollies this fraction of its distance toward the board at full punch. */
@@ -155,10 +162,16 @@ export class FlowScene implements SceneController {
     this.layout = layout;
     this.world = world;
 
-    // Nodes and path on the planet (sun direction in planet space for the offset shadows).
+    // Nodes and path on the planet (sun direction in planet space for the offset shadows). The giant tree draws its
+    // own stretch (fungi on the bark, stones on roots and domes, flush dots); NodePath keeps the ground and the taps.
     world.rig.updateWorldMatrix(true, true);
     const sunLocal = world.sunDirection(new Vector3());
-    this.nodePath = new NodePath(layout, sunLocal, { onProgress: (_current, done) => world.setProgress(done) }, { palette: world.pathPalette() });
+    this.nodePath = new NodePath(
+      layout,
+      sunLocal,
+      { onProgress: (current, done) => world.setProgress(done, current) },
+      { palette: world.pathPalette(), external: (i) => world.isTreeNode(i) },
+    );
     world.planet.add(this.nodePath.group);
 
     this.hero = new Hero(ZONE, { octaves: q.blobOctaves });
@@ -279,6 +292,16 @@ export class FlowScene implements SceneController {
     if (board.root.visible && (board.animating || board.moved)) this.boardShadowGrace = 0.6;
     else this.boardShadowGrace = Math.max(0, this.boardShadowGrace - dt);
     if (hero.isFlying || hero.jiggle > 0.02 || this.tweens.active > 0 || this.boardShadowGrace > 0) world.markShadowDirty();
+    // On the giant tree, sky, fog and the curvature centre follow the node the camera frames (the centre ray would
+    // run past the crown onto a neighbour world far behind it)
+    const flow = useFlowStore.getState();
+    const focusNode = this.phase === 'depart' ? this.departTarget : this.phase === 'map' ? flow.current : this.phase === 'flyIn' || this.phase === 'level' ? (flow.playing ?? flow.current) : -1;
+    const focus = focusNode >= 0 && world.isTreeNode(focusNode) ? this.layout!.nodes[focusNode] : undefined;
+    world.setViewFocus(focus ? _v.set(focus.position[0], focus.position[1], focus.position[2]) : null);
+    // A plateau under or on the giant tree: the curtain of hanging twigs keeps it clear while it is played
+    const playing = flow.playing;
+    const underTree = board.root.visible && this.phase !== 'map' && playing !== null && world.isTreeNode(playing);
+    world.setTreeSight(underTree ? board.root.position : null, 4.5);
     world.update();
     if (this.shadowFocus && board.root.visible) this.fitBoardShadow(false);
     // Screen-space shake and zoom punch (board juice): nudge the camera along its own axes for this frame only.
@@ -341,18 +364,56 @@ export class FlowScene implements SceneController {
   }
 
   private mapPose(zoom = this.zoom, rail = true, view: MapViewLike = this.mapView()): CameraPose {
-    const position = view.offset.clone().multiplyScalar(zoom);
     const w = this.world;
-    const r = rail && w ? w.cameraRailFor(useFlowStore.getState().current) : null;
-    if (w && r) {
-      w.planet.updateWorldMatrix(true, false);
-      w.rig.updateWorldMatrix(true, false);
-      const eye = w.rig.worldToLocal(w.planet.localToWorld(r.position.clone()));
-      const at = w.rig.worldToLocal(w.planet.localToWorld(r.lookAt.clone()));
-      const up = w.rig.worldToLocal(w.planet.localToWorld(r.position.clone().normalize().multiplyScalar(PLANET_RADIUS * 2))).sub(w.rig.worldToLocal(w.planet.localToWorld(new Vector3()))).normalize();
-      return { position: eye, quaternion: lookAtQuaternion(eye, at, up, new Quaternion()), fov: view.fov };
-    }
+    if (!w || !rail) return this.orbitPose(zoom, view);
+    return this.mapPoseFor(useFlowStore.getState().current, w.planet.quaternion, zoom, view);
+  }
+
+  /** The plain orbit view over the apex (rig space; the planet turns the node under it). */
+  private orbitPose(zoom = this.zoom, view: MapViewLike = this.mapView()): CameraPose {
+    const position = view.offset.clone().multiplyScalar(zoom);
     return { position, quaternion: lookAtQuaternion(position, view.look, _Y, new Quaternion()), fov: view.fov };
+  }
+
+  /**
+   * Map camera for node `index` with the planet at rotation `planetQ` (rig space): on the giant tree the camera rail
+   * (phones: the wider portrait rail), which turns with the planet; elsewhere the orbit view.
+   */
+  private mapPoseFor(index: number, planetQ: Quaternion, zoom = this.zoom, view: MapViewLike = this.mapView()): CameraPose {
+    const w = this.world;
+    const r = w ? w.cameraRailFor(index, undefined, this.portrait) : null;
+    if (!w || !r) return this.orbitPose(zoom, view);
+    // Planet at the origin (no scale), rig at the apex without rotation: rig = planetQ · p − rig position
+    w.rig.updateWorldMatrix(true, false);
+    const toRig = (p: Vector3): Vector3 => w.rig.worldToLocal(p.applyQuaternion(planetQ));
+    const eye = toRig(r.position.clone());
+    const at = toRig(r.lookAt.clone());
+    const up = r.position.clone().normalize().applyQuaternion(planetQ);
+    return { position: eye, quaternion: lookAtQuaternion(eye, at, up, new Quaternion()), fov: view.fov };
+  }
+
+  /**
+   * Bend of a camera move around the giant tree (rig space): away from the trunk and up, so the dolly between the rail
+   * and a plateau at the tree's foot or on its crown swings around the wood instead of through it.
+   */
+  private treeBend(to: CameraPose): Vector3 {
+    const w = this.world!;
+    w.planet.updateWorldMatrix(true, false);
+    w.rig.updateWorldMatrix(true, false);
+    const foot = w.rig.worldToLocal(w.planet.localToWorld(w.treeFoot(new Vector3())));
+    const up = foot.clone().add(w.rig.position).normalize();
+    const mid = this.world!.camera.position.clone().add(to.position).multiplyScalar(0.5);
+    const away = mid.sub(foot);
+    away.addScaledVector(up, -away.dot(up));
+    if (away.lengthSq() < 1e-6) away.set(1, 0, 0);
+    return away.normalize().addScaledVector(up, 0.7).normalize();
+  }
+
+  /** Planet rotation that brings node `index` onto the map target (from the current rotation). */
+  private planetQuatFor(index: number): Quaternion {
+    const q0 = this.world!.planet.quaternion.clone();
+    const delta = this.nodeAlignment(index);
+    return delta ? delta.multiply(q0) : q0;
   }
 
   private splashPose(): CameraPose {
@@ -469,7 +530,7 @@ export class FlowScene implements SceneController {
    * sideways toward the sun side (rig +x) and a little up, perpendicular to the travel (0 = straight line);
    * the bend is fixed in rig space, so the reverse move retraces the same curve.
    */
-  private tweenCamera(to: CameraPose, duration: number, ease = easeInOutQuint, done?: () => void, arc = 0): void {
+  private tweenCamera(to: CameraPose, duration: number, ease = easeInOutQuint, done?: () => void, arc = 0, bendDir: Vector3 | null = null): void {
     const from = this.currentPose();
     const cam = this.world!.camera;
     const travel = to.position.clone().sub(from.position);
@@ -477,7 +538,8 @@ export class FlowScene implements SceneController {
     const bend = new Vector3();
     if (arc > 0 && len > 1e-3) {
       travel.divideScalar(len);
-      bend.set(1, 0.4, 0);
+      if (bendDir) bend.copy(bendDir);
+      else bend.set(1, 0.4, 0);
       bend.addScaledVector(travel, -bend.dot(travel));
       if (bend.lengthSq() > 1e-6) bend.normalize().multiplyScalar(len * arc);
     }
@@ -583,7 +645,7 @@ export class FlowScene implements SceneController {
   }
 
   /** Same, as a smooth slerp (cancelled by a drag). */
-  private rotatePlanetToNode(index: number, duration = T_AUTO_ROTATE): void {
+  private rotatePlanetToNode(index: number, duration = T_AUTO_ROTATE, ease = easeInOut): void {
     const world = this.world!;
     const delta = this.nodeAlignment(index);
     if (!delta) return;
@@ -597,23 +659,33 @@ export class FlowScene implements SceneController {
         this.trackball!.quaternion.copy(world.planet.quaternion);
         world.markShadowDirty();
       },
-      { ease: easeInOut, tag: 'autoRotate' },
+      { ease, tag: 'autoRotate' },
     );
   }
 
   // ================================================================================ poses on the planet
 
-  /** Hero pose standing on a node, facing the camera (planet-local). */
+  /**
+   * Hero pose standing on a node, facing the camera (planet-local). On the giant tree it sits on its node's marker: on
+   * top of the shelf fungus (up = the fungus seat, the body clears the bark) or the flower stone on a root or dome —
+   * a little smaller there, since the rail camera is closer than the map camera.
+   */
   private nodePose(index: number, scale = HERO_MAP_SCALE): HeroPose {
     const world = this.world!;
-    const node = this.layout!.nodes[Math.min(index, this.layout!.nodes.length - 1)]!;
+    const i = Math.min(index, this.layout!.nodes.length - 1);
+    const node = this.layout!.nodes[i]!;
+    const surface = world.treeSurface(i);
+    const s = surface ? scale * (HERO_TREE_SCALE[surface] ?? 1) : scale;
+    const seat = new Vector3();
+    const up = new Vector3();
+    const onTree = surface !== null && world.treeSeat(i, s * 0.95, seat, up);
     // Nodes (and the hero on them) follow the far terrain's curvature boost.
-    const position = world.bend(new Vector3(node.position[0], node.position[1], node.position[2]));
-    const normal = new Vector3(node.normal[0], node.normal[1], node.normal[2]);
+    const position = world.bend(onTree ? seat : new Vector3(node.position[0], node.position[1], node.position[2]));
+    const normal = onTree ? up : new Vector3(node.normal[0], node.normal[1], node.normal[2]);
     const camLocal = world.planet.worldToLocal(world.camera.getWorldPosition(new Vector3()));
     const fwd = camLocal.sub(position);
     tangentFrame(normal, fwd, _m4);
-    return { position, quaternion: new Quaternion().setFromRotationMatrix(_m4), scale };
+    return { position, quaternion: new Quaternion().setFromRotationMatrix(_m4), scale: s };
   }
 
   /** Hero pose on a board cell (planet-local) for the risen plate. */
@@ -673,16 +745,55 @@ export class FlowScene implements SceneController {
       if (toSun.lengthSq() > 1e-6) {
         toSun.normalize();
         // Mostly toward the sun, a little toward the node (every trunk level a slightly different view of the tree).
-        const dir = toSun.multiplyScalar(0.75).addScaledVector(nodeDir, 0.25).normalize();
-        const q = foot.clone().addScaledVector(dir, st.orbit.radius).normalize();
-        position = q.multiplyScalar(world.surfaceRadius(q));
-        // The camera comes from the side (the sun rakes across the board, the trunk rises behind it).
-        facing = dir.clone().applyAxisAngle(up, 0.95);
+        const dir0 = toSun.multiplyScalar(0.75).addScaledVector(nodeDir, 0.25).normalize();
+        // …on a spot where no limb of the giant tree hangs between the level camera and the plateau (turning around
+        // the trunk as little as possible, so the sun still rakes across the board)
+        const place = (dir: Vector3): { position: Vector3; facing: Vector3 } => {
+          const q = foot.clone().addScaledVector(dir, st.orbit!.radius).normalize();
+          // The camera comes from the side (the sun rakes across the board, the trunk rises behind it).
+          return { position: q.multiplyScalar(world.surfaceRadius(q)), facing: dir.clone().applyAxisAngle(up, 0.95) };
+        };
+        let best = place(dir0);
+        for (const deg of [0, 25, -25, 50, -50, 75, -75, 100, -100]) {
+          const c = place(dir0.clone().applyAxisAngle(up, (deg * Math.PI) / 180));
+          if (this.stageInView(c.position, c.facing, up)) {
+            best = c;
+            break;
+          }
+        }
+        position = best.position;
+        facing = best.facing;
       }
     }
     const normal = position.clone().normalize();
     const away = !!st && position.distanceTo(new Vector3(...node.position)) > 0.8;
     return { position, normal, facing, site: st?.site ?? node.site ?? 'meadow', world: node.world ?? 0, terrain: st?.terrain ?? null, away };
+  }
+
+  /**
+   * Is a plateau at `position` (planet space), seen by the level camera from `facing`, free of the giant tree? The level
+   * camera hangs ≈ 9 units above and 4 toward `facing`; the lines from there to the plateau's centre and corners must
+   * keep clear of trunk, limbs and domes.
+   */
+  private stageInView(position: Vector3, facing: Vector3, up: Vector3): boolean {
+    const world = this.world!;
+    const side = new Vector3().crossVectors(up, facing).normalize();
+    // the level camera (phones ≈ 12 above and 5 toward `facing`, wider screens lower)
+    const cams = [position.clone().addScaledVector(up, 12).addScaledVector(facing, 5), position.clone().addScaledVector(up, 8.5).addScaledVector(facing, 4)];
+    const p = new Vector3();
+    const target = new Vector3();
+    for (const cam of cams) {
+      for (let a = -3; a <= 3; a += 3) {
+        for (let b = -3; b <= 3; b += 3) {
+          target.copy(position).addScaledVector(side, a).addScaledVector(facing, b).addScaledVector(up, 0.5);
+          for (let k = 1; k <= 12; k++) {
+            p.copy(target).lerp(cam, k / 13);
+            if (world.treeClearance(p) < 0.45) return false;
+          }
+        }
+      }
+    }
+    return true;
   }
 
   /**
@@ -733,6 +844,12 @@ export class FlowScene implements SceneController {
 
   // ================================================================================ phases
 
+  /** Hide the node under the level plateau (ground stone or the giant tree's marker), or none. */
+  private setLevelNode(index: number | null): void {
+    this.nodePath?.setLevelNode(index);
+    this.world?.setTreeLevelNode(index);
+  }
+
   private setPhase(p: FlowPhase): void {
     if (import.meta.env.DEV) console.debug(`[flow] ${this.phase} → ${p}`);
     this.phase = p;
@@ -776,7 +893,7 @@ export class FlowScene implements SceneController {
   private enterMapImmediate(): void {
     this.tweens.clear();
     this.setShadowFocus(false);
-    this.nodePath?.setLevelNode(null);
+    this.setLevelNode(null);
     if (this.board!.carrying) this.board!.setPartsOnly(true);
     else this.board!.root.visible = false;
     this.board!.unbind();
@@ -829,7 +946,7 @@ export class FlowScene implements SceneController {
     board.dropCarried();
     board.bind();
     this.placeBoardAt(node);
-    if (!this.stageOf(node).away) this.nodePath?.setLevelNode(node);
+    if (!this.stageOf(node).away) this.setLevelNode(node);
     board.setRise(1);
     board.setMorph(1);
     board.setBlobPop(1);
@@ -934,12 +1051,15 @@ export class FlowScene implements SceneController {
     this.placeBoardAt(node);
     const stage = this.stageOf(node);
     // The plateau heaves up where the node's stone lies (unless the level plays on a stage beside the node).
-    if (!stage.away) this.nodePath!.setLevelNode(node);
+    if (!stage.away) this.setLevelNode(node);
     const entry = board.entryBlob(hero.tier);
     if (entry) board.setBlobHidden(entry.id, true);
 
-    // Camera: dolly + FOV as before, bent into a slight arc toward the sun side.
-    this.tweenCamera(this.levelPose(), T_FLY_IN, easeInOutQuint, undefined, CAMERA_ARC);
+    // Camera: dolly + FOV as before, bent into a slight arc toward the sun side — on the giant tree a wider arc away
+    // from the trunk (from the rail beside the bark down to the root terrace, or over the domes onto the crown).
+    const levelPose = this.levelPose();
+    if (this.world!.isTreeNode(node)) this.tweenCamera(levelPose, T_FLY_IN, easeInOutQuint, undefined, TREE_ARC, this.treeBend(levelPose));
+    else this.tweenCamera(levelPose, T_FLY_IN, easeInOutQuint, undefined, CAMERA_ARC);
     this.rex?.setVisible(false);
     const stripes0 = this.stripesY;
     this.tweens.add(0.8, (t) => (this.stripesY = lerp(stripes0, -4, t)), { ease: easeInOut });
@@ -1073,13 +1193,21 @@ export class FlowScene implements SceneController {
     this.tweens.after(0.2, () => {
       if (top && local) board.splat(local, board.blobInfo(top.id)?.scale ?? board.worldScale(top.tier));
     });
+    // Onto or off the giant tree: the camera heads straight for the next node's view (its rail pose on the tree) while
+    // the planet turns that node into place — one move, no cut when the rail takes over.
+    const railMove = won && next !== current && (this.world!.isTreeNode(next) || this.world!.isTreeNode(current));
+    this.departTarget = railMove ? next : current;
     this.tweens.after(0.22, () => {
       // The flight target is computed once the camera starts pulling out (faces the map camera).
       const pose = this.nodePose(next);
       hero.flyTo(pose, { duration: T_DEPART - 0.2, arc: 2.6, ease: easeInOut });
     });
     this.tweens.after(0.24, () => {
-      this.tweenCamera(this.mapPose(), T_DEPART, easeInOutQuint, undefined, CAMERA_ARC);
+      const target = railMove ? this.mapPoseFor(next, this.planetQuatFor(next)) : this.mapPose();
+      // leaving a level under or on the giant tree: swing around the wood (see startFlyIn)
+      const bend = this.world!.isTreeNode(current) ? this.treeBend(target) : null;
+      this.tweenCamera(target, T_DEPART, easeInOutQuint, undefined, bend ? TREE_ARC : CAMERA_ARC, bend);
+      if (railMove) this.rotatePlanetToNode(next, T_DEPART, easeInOutQuint);
       const s0 = this.stripesY;
       this.tweens.add(0.9, (t) => (this.stripesY = lerp(s0, 0, t)), { ease: easeInOut });
       board.playSink(top?.id ?? null);
@@ -1089,7 +1217,7 @@ export class FlowScene implements SceneController {
     // next node pops dot by dot behind the flying hero, the ring grows in around it as it lands.
     this.tweens.after(T_CELEBRATE_AT, () => {
       const path = this.nodePath!;
-      path.setLevelNode(null);
+      this.setLevelNode(null);
       if (!won) return;
       path.celebrate(current, next, T_CELEBRATE);
       path.setProgress(next, Math.max(path.doneCount, current + 1));
@@ -1108,11 +1236,14 @@ export class FlowScene implements SceneController {
       this.world!.setFootClear(MAP_VIEW.footClear);
       this.setPhase('map');
       this.attachTrackball();
-      this.rotatePlanetToNode(next);
+      if (!railMove) this.rotatePlanetToNode(next);
       const intro = won ? rexIntroFor(next + 1) : null;
       if (intro) flow.setRex(intro);
     });
   }
+
+  /** Node the camera heads for during a depart (the next node when the move enters or leaves the giant tree). */
+  private departTarget = 0;
 
   /** Debug: hop the hero to the next node on the map (no level). */
   private hopToNext(): void {
@@ -1120,11 +1251,17 @@ export class FlowScene implements SceneController {
     const flow = useFlowStore.getState();
     const next = Math.min(flow.current + 1, this.layout!.nodes.length - 1);
     if (next === flow.current) return;
+    const railMove = this.world!.isTreeNode(next) || this.world!.isTreeNode(flow.current);
+    const q1 = railMove ? this.planetQuatFor(next) : null;
     this.hero!.flyTo(this.nodePose(next), { duration: 0.9, arc: 1.8, ease: easeInOut });
     this.nodePath!.celebrate(flow.current, next, 0.85);
     flow.setCurrent(next);
     this.nodePath!.setProgress(next, Math.max(this.nodePath!.doneCount, next));
-    this.rotatePlanetToNode(next);
+    if (q1) {
+      // Along the giant tree: the camera glides to the next rail pose while the planet turns (no cut)
+      this.tweenCamera(this.mapPoseFor(next, q1), T_AUTO_ROTATE, easeInOut);
+      this.rotatePlanetToNode(next, T_AUTO_ROTATE, easeInOut);
+    } else this.rotatePlanetToNode(next);
   }
 
   // ================================================================================ requests and input

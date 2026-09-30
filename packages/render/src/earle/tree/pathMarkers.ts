@@ -2,7 +2,8 @@ import { BufferGeometry, CylinderGeometry, Float32BufferAttribute, Group, Instan
 import type { Node } from 'three/webgpu';
 import { attribute, color, float, fract, fwidth, max, mix, positionGeometry, positionLocal, smoothstep, step, uniform } from 'three/tsl';
 import type { Vec3 } from '@ee/world';
-import { heroNodeScale, type HeroPathNode, type HeroTreePath } from './treePath';
+import { steppedFog, type FogSettings, type PaletteLookup } from '../tsl';
+import { heroNodeScale, type HeroPathDot, type HeroPathNode, type HeroTreePath } from './treePath';
 
 type FloatNode = Node<'float'>;
 type Vec3Node = Node<'vec3'>;
@@ -13,17 +14,40 @@ export interface HeroPathMarkerOptions {
   sunDirLocal?: Vector3;
   /** Marker size in tree units (Standard 1: shelf fungus ≈ 2.2 wide, stones ≈ 1.8). */
   scale?: number;
+  /**
+   * Relative sizes per marker kind on top of `scale` (Standard 1 each): the map makes the shelf fungi larger so the
+   * hero can sit on them, the flower stones and dots stay the size of the ground path.
+   */
+  scales?: { fungus?: number; stone?: number; dot?: number };
   /** Position warp in tree space (planet curvature bend), like the tree's own `warp`. */
   warp?: (p: Vec3Node) => Vec3Node;
+  /** Stepped distance fog of the world (the markers fade into the same value steps as the tree). Default: none. */
+  fog?: { settings: FogSettings; lookup: PaletteLookup };
+  /**
+   * Also lay the exit (`path.exit.dots`: down the canopy and along the ground limb) as dots — the way back to the ground
+   * lies on the tree too. Default false.
+   */
+  exitDots?: boolean;
 }
 
 export interface HeroPathMarkers {
   group: Group;
-  /** `current` gets the ring and breathes; nodes < `done` are completed; newly reached nodes bloom (pulse). */
+  /**
+   * `current` gets the ring and breathes (−1 = none, e.g. the hero is on the ground path); nodes < `done` are completed;
+   * newly reached nodes bloom (pulse). Without a current node, `done ≥ nodes` marks every dot as walked.
+   */
   setProgress(current: number, done: number): void;
+  /** Hide one node (its level plateau stands there) or none (`null`). The ring hides with it. */
+  setHidden(index: number | null): void;
   /** Animations (seconds): bloom pulse, breathing, the light wave along the dots. */
   update(time: number): void;
   setSunDirection(dirLocal: Vector3): void;
+  /**
+   * Where a figure stands on node `index` (tree space): on top of the shelf fungus (far enough from the bark for a body
+   * of `radius` tree units, up = the fungus seat) or on top of the flower stone (up = surface normal). False for an
+   * unknown index.
+   */
+  seat(index: number, outPos: Vector3, outUp: Vector3, radius?: number): boolean;
   dispose(): void;
 }
 
@@ -212,15 +236,22 @@ function frameOf(node: HeroPathNode): Matrix4 {
 export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers {
   const path = o.path;
   const k = o.scale ?? 1;
+  const kFungus = k * (o.scales?.fungus ?? 1);
+  const kStone = k * (o.scales?.stone ?? 1);
+  const kDot = k * (o.scales?.dot ?? 1);
   const warp = o.warp;
+  const fog = o.fog ?? null;
   const warped = (m: MeshBasicNodeMaterial) => {
     if (warp) m.positionNode = warp(positionLocal as unknown as Vec3Node);
   };
+  /** Colour with the world's stepped distance fog (like the tree around the markers). */
+  const fogged = (c: Vec3Node): Vec3Node => (fog ? steppedFog(c, fog.settings, fog.lookup) : c);
   const group = new Group();
   group.name = 'HeroPathMarkers';
   const nodes = path.nodes;
   const frames = nodes.map(frameOf);
   const isBark = nodes.map((n) => n.surface === 'bark');
+  const kOf = (i: number): number => (isBark[i] ? kFungus : kStone);
   const fungusIdx: number[] = [];
   const stoneIdx: number[] = [];
   nodes.forEach((n, i) => (isBark[i] ? fungusIdx : stoneIdx).push(i));
@@ -247,7 +278,7 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
     const gfw = fwidth(gx).max(1e-4);
     const gill = smoothstep(float(0.18).add(gfw), float(0.18).sub(gfw), fract(gx).sub(0.5).abs()).mul(smoothstep(0.15, 0.4, r));
     const under = mix(color(INK), color('#2c3550'), gill);
-    fMat.colorNode = mix(under, topCol, step(0, sd));
+    fMat.colorNode = fogged(mix(under, topCol, step(0, sd)) as unknown as Vec3Node);
   }
   warped(fMat);
   const fungi = new InstancedMesh(fGeo, fMat, Math.max(1, fungusIdx.length));
@@ -270,7 +301,7 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
     const middle = mix(color(OCHRE), color(ROSE), done);
     const top = mix(petals, middle, centre);
     const side = mix(color('#6e6a4e'), color('#8a3a62'), done);
-    sMat.colorNode = mix(top, side, wallA);
+    sMat.colorNode = fogged(mix(top, side, wallA) as unknown as Vec3Node);
   }
   warped(sMat);
   const stones = new InstancedMesh(sGeo, sMat, Math.max(1, stoneIdx.length));
@@ -281,14 +312,14 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
   // --- contact shadows (ink discs flush with the surface) ---------------------------------------------------------
   const shGeo = new CylinderGeometry(1, 1, 0.02, 24, 1);
   const shMat = new MeshBasicNodeMaterial();
-  shMat.colorNode = color(INK);
+  shMat.colorNode = fogged(color(INK) as unknown as Vec3Node);
   warped(shMat);
   const shadows = new InstancedMesh(shGeo, shMat, Math.max(1, nodes.length));
   shadows.name = 'path-contact-shadows';
   shadows.frustumCulled = false;
 
   // --- dots ----------------------------------------------------------------------------------------------------
-  const dots = path.dots;
+  const dots: HeroPathDot[] = o.exitDots && path.exit ? [...path.dots, ...path.exit.dots] : path.dots;
   const dGeo = new CylinderGeometry(0.15, 0.15, 0.05, 10, 1);
   dGeo.translate(0, 0.02, 0);
   const dS = new Float32Array(Math.max(1, dots.length));
@@ -303,7 +334,7 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
     const phase = fract(s.sub(uTime.mul(path.motion.waveSpeed)).div(path.motion.waveLength));
     const pulse = smoothstep(0.78, 0.97, phase).mul(smoothstep(1.0, 0.97, phase));
     const base = mix(color(PAPER).mul(0.82), color(PINK), walked);
-    dMat.colorNode = mix(base, color('#fff6fb'), pulse.mul(max(walked, float(0.35))));
+    dMat.colorNode = fogged(mix(base, color('#fff6fb'), pulse.mul(max(walked, float(0.35)))) as unknown as Vec3Node);
   }
   warped(dMat);
   const dotMesh = new InstancedMesh(dGeo, dMat, Math.max(1, dots.length));
@@ -315,7 +346,7 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
     _n.set(d.normal[0], d.normal[1], d.normal[2]).normalize();
     _q.setFromUnitVectors(new Vector3(0, 1, 0), _n);
     _p.set(d.position[0], d.position[1], d.position[2]);
-    _m.compose(_p, _q, _s.setScalar(k));
+    _m.compose(_p, _q, _s.setScalar(kDot));
     dotMesh.setMatrixAt(i, _m);
   });
   dotMesh.instanceMatrix.needsUpdate = true;
@@ -324,7 +355,7 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
   const ringHalf = ringGeometry(true, 1.04, 1.3);
   const ringFull = ringGeometry(false, 1.02, 1.26);
   const rMat = new MeshBasicNodeMaterial();
-  rMat.colorNode = mix(color(RING_A), color(RING_B), smoothstep(-1.2, 1.2, positionGeometry.x.add(positionGeometry.z.mul(0.4))));
+  rMat.colorNode = fogged(mix(color(RING_A), color(RING_B), smoothstep(-1.2, 1.2, positionGeometry.x.add(positionGeometry.z.mul(0.4)))) as unknown as Vec3Node);
   warped(rMat);
   const ring = new InstancedMesh(ringFull, rMat, 1);
   ring.name = 'path-current-ring';
@@ -335,49 +366,54 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
   const sun = (o.sunDirLocal ?? new Vector3(0.5, 0.2, 0.5)).clone().normalize();
   let current = -1;
   let done = 0;
+  let hidden = -1;
   const unlockedAt = nodes.map(() => -Infinity);
   let now = 0;
 
-  const place = (i: number, scale: number): Matrix4 => {
+  /** Origin of a node marker: shelves sit a little into the bark, stones a little into the surface (touching, never hovering). */
+  const originOf = (i: number, out: Vector3): Vector3 => {
     const n = nodes[i]!;
-    const f = frames[i]!;
-    _p.set(n.position[0], n.position[1], n.position[2]);
-    // shelves sit a little into the bark, stones a little into the surface (touching, never hovering)
-    const nrm = _n.set(n.normal[0], n.normal[1], n.normal[2]);
-    _p.addScaledVector(nrm, isBark[i] ? -0.05 * k : -0.06 * k);
-    _q.setFromRotationMatrix(f);
-    return _m.compose(_p, _q, _s.setScalar(k * Math.max(0.001, scale)));
+    out.set(n.position[0], n.position[1], n.position[2]);
+    return out.addScaledVector(_n.set(n.normal[0], n.normal[1], n.normal[2]), isBark[i] ? -0.05 * kFungus : -0.06 * kStone);
+  };
+  const place = (i: number, scale: number): Matrix4 => {
+    originOf(i, _p);
+    _q.setFromRotationMatrix(frames[i]!);
+    return _m.compose(_p, _q, _s.setScalar(kOf(i) * Math.max(0.001, scale)));
   };
   const placeShadow = (i: number) => {
     const n = nodes[i]!;
+    const kk = kOf(i);
     const nrm = new Vector3(n.normal[0], n.normal[1], n.normal[2]).normalize();
     _p.set(n.position[0], n.position[1], n.position[2]);
+    const gone = i === hidden ? 0 : 1;
     if (isBark[i]) {
       // crescent on the bark just below the shelf
       const seat = new Vector3(n.seat[0], n.seat[1], n.seat[2]);
       const down = seat.clone().addScaledVector(nrm, -seat.dot(nrm)).normalize().negate();
-      _p.addScaledVector(down, 0.28 * k).addScaledVector(nrm, 0.01);
+      _p.addScaledVector(down, 0.28 * kk).addScaledVector(nrm, 0.01);
       _q.setFromUnitVectors(new Vector3(0, 1, 0), nrm);
-      _m.compose(_p, _q, _s.set(1.0 * k, 1, 0.42 * k));
+      _m.compose(_p, _q, _s.set(1.0 * kk * gone, 1, 0.42 * kk * gone));
     } else {
       const away = sun.clone().addScaledVector(nrm, -sun.dot(nrm));
-      if (away.lengthSq() > 1e-6) away.normalize().multiplyScalar(-0.24 * k);
+      if (away.lengthSq() > 1e-6) away.normalize().multiplyScalar(-0.24 * kk);
       _p.add(away).addScaledVector(nrm, 0.008);
       _q.setFromUnitVectors(new Vector3(0, 1, 0), nrm);
-      _m.compose(_p, _q, _s.set(0.92 * k, 1, 0.92 * k));
+      _m.compose(_p, _q, _s.set(0.92 * kk * gone, 1, 0.92 * kk * gone));
     }
     shadows.setMatrixAt(i, _m);
   };
   nodes.forEach((_, i) => placeShadow(i));
   shadows.instanceMatrix.needsUpdate = true;
 
+  const scaleOf = (ni: number): number => (ni === hidden ? 0 : heroNodeScale(path.motion, now, ni === current, unlockedAt[ni]!));
   const writeNodes = (progressChanged: boolean) => {
     fungusIdx.forEach((ni, j) => {
-      fungi.setMatrixAt(j, place(ni, heroNodeScale(path.motion, now, ni === current, unlockedAt[ni]!)));
+      fungi.setMatrixAt(j, place(ni, scaleOf(ni)));
       fDone[j] = ni < done || ni === current ? 1 : 0;
     });
     stoneIdx.forEach((ni, j) => {
-      stones.setMatrixAt(j, place(ni, heroNodeScale(path.motion, now, ni === current, unlockedAt[ni]!)));
+      stones.setMatrixAt(j, place(ni, scaleOf(ni)));
       sDone[j] = ni < done || ni === current ? 1 : 0;
     });
     fungi.instanceMatrix.needsUpdate = true;
@@ -386,7 +422,7 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
       (fGeo.getAttribute('nodeDone') as InstancedBufferAttribute).needsUpdate = true;
       (sGeo.getAttribute('nodeDone') as InstancedBufferAttribute).needsUpdate = true;
     }
-    if (current >= 0 && current < nodes.length) {
+    if (current >= 0 && current < nodes.length && current !== hidden) {
       ring.visible = true;
       ring.geometry = isBark[current] ? ringHalf : ringFull;
       const breath = heroNodeScale(path.motion, now, true, unlockedAt[current]!);
@@ -394,6 +430,15 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
       ring.instanceMatrix.needsUpdate = true;
     } else ring.visible = false;
   };
+
+  // Fungus top (local frame, unit scale) along its middle line: rho 0 at the bark … 1 at the rim
+  const fungusTop = (rho: number): { y: number; z: number } => {
+    const kz = 1 + 0.07 + 0.04 * Math.cos(0.6); // scalloped outline at θ = 0
+    return { y: 0.5 * Math.pow(Math.max(0, 1 - rho * rho), 0.45) + 0.05, z: 0.9 * rho * kz - 0.14 };
+  };
+  const _x = new Vector3();
+  const _y = new Vector3();
+  const _z = new Vector3();
 
   return {
     group,
@@ -403,8 +448,19 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
       current = cur;
       done = d;
       const node = nodes[cur];
-      uCurrentS.value = node ? node.t * path.length : 0;
+      // the light wave's walked side: up to the current node; without one all (path behind) or none (path ahead)
+      uCurrentS.value = node ? node.t * path.length : d >= nodes.length ? 1e6 : -1e6;
       writeNodes(true);
+    },
+    setHidden(index) {
+      const next = index ?? -1;
+      if (next === hidden) return;
+      const prev = hidden;
+      hidden = next;
+      if (prev >= 0) placeShadow(prev);
+      if (hidden >= 0) placeShadow(hidden);
+      shadows.instanceMatrix.needsUpdate = true;
+      writeNodes(false);
     },
     update(time) {
       now = time;
@@ -415,6 +471,24 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
       sun.copy(dir).normalize();
       nodes.forEach((_, i) => placeShadow(i));
       shadows.instanceMatrix.needsUpdate = true;
+    },
+    seat(index, outPos, outUp, radius = 0) {
+      const n = nodes[index];
+      if (!n) return false;
+      frames[index]!.extractBasis(_x, _y, _z);
+      originOf(index, outPos);
+      outUp.copy(_y).normalize();
+      if (isBark[index]) {
+        // on top of the shelf, far enough out that a body of `radius` clears the bark (never past 90 % of the rim)
+        const kk = kFungus;
+        const rho = Math.min(0.9, Math.max(0.2, (radius / kk + 0.05 + 0.14) / 0.993));
+        const top = fungusTop(rho);
+        outPos.addScaledVector(_y, top.y * kk).addScaledVector(_z, top.z * kk);
+      } else {
+        // the flower stone's top (rosette thickness 0.14, sunk 0.06 into the surface)
+        outPos.addScaledVector(_y, 0.14 * kStone);
+      }
+      return true;
     },
     dispose() {
       for (const g of [fGeo, sGeo, shGeo, dGeo, ringHalf, ringFull]) g.dispose();

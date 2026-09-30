@@ -178,6 +178,9 @@ export class MapWorld {
     // The giant tree: slot next to the path, levels 80–95 on trunk and crown (splices the level path)
     this.treeSite = createHeroTreeSite(this.world, { worldIndex: HERO_TREE_WORLD, quality: q.name, seed: options.seed ?? 7, landmarks });
     const slot = this.world.getLandmarkSlot('hero-tree');
+    // The tree's own markers (fungi on the bark, stones on roots and domes, flush dots) carry its stretch: the nodes lie
+    // exactly on the tree's surfaces, its dots are used as they are (NodePath leaves both to the markers)
+    const surfaceOf = { root: 'ground', bark: 'bark', limb: 'bark', dome: 'crown' } as const;
     const built = buildLevelPath(
       this.world,
       this.route,
@@ -190,6 +193,8 @@ export class MapWorld {
             domes: this.treeSite.tree.domes,
             matrix: this.world.landmarkMatrix(slot, new Matrix4()),
             world: HERO_TREE_WORLD,
+            surface: this.treeSite.tree.path.nodes.map((n) => ({ position: n.position, normal: n.normal, on: surfaceOf[n.surface] })),
+            dotsOnSurface: true,
           }
         : null,
     );
@@ -256,13 +261,75 @@ export class MapWorld {
     this.shadowDirty = true;
   }
 
-  /** Completed nodes → per-chunk growth along the path (trash sinks, trees grow, the giant tree blooms). */
-  setProgress(done: number): void {
+  /**
+   * Completed nodes → per-chunk growth along the path (trash sinks, trees grow, the giant tree blooms); `current` (the
+   * node with the ring) drives the markers on the giant tree.
+   */
+  setProgress(done: number, current = -1): void {
+    this.treeSite.setPathState(current, done);
+    if (done === this.lastDone) return;
+    this.lastDone = done;
     this.world.setProgress(done);
     this.treeSite.setProgress(done);
     this.trash.setProgress(done);
     this.shadowDirty = true;
   }
+
+  private lastDone = -1;
+
+  /** Is node `index` drawn by the giant tree's own markers (fungi, stones on the tree) instead of NodePath? */
+  isTreeNode(index: number): boolean {
+    return index >= this.treeSite.first && index <= this.treeSite.last;
+  }
+
+  /** What a node of the giant tree rests on (root, bark, limb, dome), null for ground nodes. */
+  treeSurface(index: number): 'root' | 'bark' | 'limb' | 'dome' | null {
+    return this.isTreeNode(index) ? (this.treeSite.tree.path.nodes[index - this.treeSite.first]?.surface ?? null) : null;
+  }
+
+  /**
+   * Where the hero (body radius `radius`, world units) stands on a node of the giant tree: on top of its shelf fungus
+   * (up = the fungus seat, the body clears the bark) or its flower stone — planet space, unbent. Null elsewhere.
+   */
+  treeSeat(index: number, radius: number, outPos: Vector3, outUp: Vector3): boolean {
+    return this.treeSite.seatFor(index, radius, outPos, outUp);
+  }
+
+  /** Hide the giant tree's marker of node `index` while its level plateau stands there (crown levels), or none. */
+  setTreeLevelNode(index: number | null): void {
+    this.treeSite.setHiddenNode(index);
+  }
+
+  /** Foot of the giant tree (planet space, unbent). */
+  treeFoot(out: Vector3): Vector3 {
+    return out.set(0, 0, 0).applyMatrix4(this.treeSite.matrix);
+  }
+
+  /** Distance (planet space, world units, saturating at ≈ 3.5) from a point to the giant tree's trunk, limbs and domes. */
+  treeClearance(p: Vector3): number {
+    return this.treeSite.path.clearance(p);
+  }
+
+  /**
+   * Keep a point in sight through the giant tree's curtain of hanging twigs (planet space, e.g. the level plateau under
+   * the tree, radius in world units); `null` = the current node on the tree (map).
+   */
+  setTreeSight(point: Vector3 | null, radius = 3): void {
+    this.treeSite.setSightOverride(point, radius);
+  }
+
+  /**
+   * Look point for sky, fog and the curvature centre (planet space) — e.g. the node on the giant tree the rail camera
+   * looks at — instead of the ground under the camera's centre ray (which lands on a neighbour world behind the tree).
+   * `null` = the ray (map, level).
+   */
+  setViewFocus(point: Vector3 | null): void {
+    if (point) this.viewFocus.copy(point);
+    this.hasViewFocus = point !== null;
+  }
+
+  private readonly viewFocus = new Vector3();
+  private hasViewFocus = false;
 
   /**
    * Clearing around the camera's foot (lateral radius in world units; MAP_VIEW.footClear by default, 0 = off), e.g.
@@ -311,15 +378,15 @@ export class MapWorld {
    * for ground nodes. The rail stays behind the node, close to the bark on the trunk, higher and further out above
    * the crown, and craning over the valley in between.
    */
-  cameraRailFor(levelIndex: number, out?: MapRail): MapRail | null {
+  cameraRailFor(levelIndex: number, out?: MapRail, portrait = false): MapRail | null {
     const r = out ?? { position: new Vector3(), lookAt: new Vector3() };
-    return this.treeSite.railFor(levelIndex, r.position, r.lookAt) ? r : null;
+    return this.treeSite.railFor(levelIndex, r.position, r.lookAt, portrait) ? r : null;
   }
 
   /** Continuous rail over the whole tree stretch (t 0..1, planet space) for camera moves between tree nodes. */
-  sampleTreeRail(t: number, out?: MapRail): MapRail {
+  sampleTreeRail(t: number, out?: MapRail, portrait = false): MapRail {
     const r = out ?? { position: new Vector3(), lookAt: new Vector3() };
-    this.treeSite.sampleRail(t, r.position, r.lookAt);
+    this.treeSite.sampleRail(t, r.position, r.lookAt, portrait);
     return r;
   }
 
@@ -347,11 +414,20 @@ export class MapWorld {
     if (this.world.update(this.camera, camWorld, this.planet.matrixWorld, this.frustum)) this.shadowDirty = true;
 
     // World under the camera's look point drives sky, fog, stripes (and the curvature warp centre).
-    const look = _v.set(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(new Quaternion()));
-    const hit = raySphere(camWorld, look, PLANET_RADIUS + 0.5);
-    // Fog follows the camera distance (hill view, fly-ins, rail): value steps stay in the middle and far ground
-    if (hit) this.world.setFogDistance(_w.copy(hit).multiplyScalar(PLANET_RADIUS + 0.5).distanceTo(camWorld));
-    const dirWorld = hit ?? camWorld.clone().normalize();
+    let dirWorld: Vector3;
+    if (this.hasViewFocus) {
+      // A focus on the giant tree (rail camera): its world and its distance — the centre ray would pass the crown and
+      // land on a neighbour world far behind (foreign fog and veil over the whole tree)
+      const focusWorld = _w.copy(this.viewFocus).applyMatrix4(this.planet.matrixWorld);
+      this.world.setFogDistance(focusWorld.distanceTo(camWorld));
+      dirWorld = focusWorld.clone().normalize();
+    } else {
+      const look = _v.set(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(new Quaternion()));
+      const hit = raySphere(camWorld, look, PLANET_RADIUS + 0.5);
+      // Fog follows the camera distance (hill view, fly-ins, rail): value steps stay in the middle and far ground
+      if (hit) this.world.setFogDistance(_w.copy(hit).multiplyScalar(PLANET_RADIUS + 0.5).distanceTo(camWorld));
+      dirWorld = hit ?? camWorld.clone().normalize();
+    }
     const dirLocal = dirWorld.applyQuaternion(_q);
     this.world.setViewDirection(dirLocal);
     if (this.world.viewBlending) this.shadowDirty = true; // neighbours fade in/out near the camera
