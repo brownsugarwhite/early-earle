@@ -12,6 +12,7 @@ import {
   GULL_WINDOW,
   getGullMode,
   gullDropFor,
+  gullLaneValue,
   gullTiers,
   gullTimes,
   gullWindowMove,
@@ -150,25 +151,30 @@ describe('Möwe: Regel', () => {
     }
   });
 
-  it('fliegt über das Brett an: Zellen links der Mitte nach links (side −1), rechts der Mitte nach rechts', () => {
-    let left = 0;
-    let right = 0;
-    for (const level of ALL.slice(0, 25)) {
+  it('wählt die Schneise, in der man sie sieht: über freie Platten, an den Blobs vorbei', () => {
+    let checked = 0;
+    let overBoard = 0;
+    for (const level of ALL.slice(0, 30)) {
       for (const res of play(level, hash32(level.id, 9), 3, 20)) {
         const drop = gullDropFor(res, 'always');
         if (!drop) continue;
-        const dx = drop.at[0] - (res.state.geo.w - 1) / 2;
-        if (dx < -0.25) {
-          expect(drop.side).toBe(-1);
-          left++;
-        } else if (dx > 0.25) {
-          expect(drop.side).toBe(1);
-          right++;
+        const chosen = gullLaneValue(res.state, drop.at, drop.spawnId, drop.side, drop.corridor);
+        for (const side of [-1, 1] as const) {
+          for (const corridor of [0, 1, 2] as const) expect(chosen + 0.05 + 1e-9).toBeGreaterThanOrEqual(gullLaneValue(res.state, drop.at, drop.spawnId, side, corridor));
         }
+        if (chosen > 0) overBoard++;
+        checked++;
       }
     }
-    expect(left).toBeGreaterThan(10);
-    expect(right).toBeGreaterThan(10);
+    expect(checked).toBeGreaterThan(100);
+    // meist führt der Anflug über freie Platten
+    expect(overBoard / checked).toBeGreaterThan(0.7);
+    // leeres Brett, Zelle oben links: der Anflug kommt von rechts unten übers Brett (Flug nach links oben)
+    const level = LevelSchema.parse({ ...JSON.parse(readFileSync(`${levelsDir}005.json`, 'utf8')) });
+    const s0 = createState(level, 1);
+    const empty = { ...s0, cells: s0.cells.map(() => null) } as LevelState;
+    const lanes = ([-1, 1] as const).map((side) => gullLaneValue(empty, [0, 0], -1, side, 0));
+    expect(lanes[0]!).toBeGreaterThan(lanes[1]! + 1);
   });
 
   it('ist deterministisch: gleiches Level, gleicher Seed, gleiche Züge → dieselben Möwen', () => {
@@ -200,8 +206,8 @@ describe('Möwe: Regel', () => {
           expect(back.current).toBe(h.current);
           const again = applyMove(back.current, dir)!;
           expect(gullDropFor(again)).toEqual(drop);
-          // zurück und ein anderer Wisch: dieselbe Zugnummer → wieder die Möwe (sofern ein passender Spawn kommt), gleiche
-          // Schneise und Rufe (die Seite folgt der Zelle)
+          // zurück und ein anderer Wisch: dieselbe Zugnummer → wieder die Möwe (sofern ein passender Spawn kommt) mit
+          // denselben Rufen (Seite und Schneise folgen dem neuen Brett)
           for (const other of dirs) {
             if (other === dir) continue;
             const alt = applyMove(back.current, other)!;
@@ -209,7 +215,7 @@ describe('Möwe: Regel', () => {
             const d2 = gullDropFor(alt);
             if (s && gullTiers(level).includes(s.tier)) {
               expect(d2).not.toBeNull();
-              const pick = ({ corridor, call, laugh }: GullDrop) => ({ corridor, call, laugh });
+              const pick = ({ call, laugh }: GullDrop) => ({ call, laugh });
               expect(pick(d2!)).toEqual(pick(drop));
             } else expect(d2).toBeNull();
           }

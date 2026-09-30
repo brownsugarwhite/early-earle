@@ -48,11 +48,11 @@ export interface GullDrop {
   at: Coord;
   tier: number;
   /**
-   * Flug quer zum Bildschirm: −1 nach links, 1 nach rechts (Panorama des Rufs läuft mit). Die Möwe kommt über das Brett:
-   * Zellen links der Mitte fliegt sie nach links an (von rechts unten), rechts der Mitte nach rechts.
+   * Flug quer zum Bildschirm: −1 nach links, 1 nach rechts (Panorama des Rufs läuft mit). Seite und Schneise wählt
+   * die Möwe so, dass ihr Anflug über möglichst viele freie Platten führt (`gullLaneValue`).
    */
   side: -1 | 1;
-  /** Flugschneise 0..2 (Winkel zur Bildschirm-Senkrechten und Bogen). */
+  /** Flugschneise 0..2 (Winkel zur Bildschirm-Senkrechten, `GULL_CORRIDOR_DEG`, und Bogen). */
   corridor: 0 | 1 | 2;
   /** Rufvariante 0..2. */
   call: 0 | 1 | 2;
@@ -141,20 +141,76 @@ export function gullDropFor(res: MoveResult<LevelState>, which: GullMode = mode)
   }
   if (!spawn) return null;
   const h = mixed('gullLook', levelId, seed, moveNo);
-  // Anflug übers Brett: eine Zelle links der Mitte wird von rechts unten angeflogen (Flug nach links oben), eine
-  // rechts der Mitte von links unten; die Mittelspalte würfelt. (Brett-x = Bildschirm-rechts in Flow und Lab.)
-  const w = st.geo?.w ?? 0;
-  const dx = spawn.at[0] - (w - 1) / 2;
-  const side: -1 | 1 = w > 0 && Math.abs(dx) > 0.25 ? (dx < 0 ? -1 : 1) : h & 1 ? 1 : -1;
+  const lane = clearLane(st, spawn, h);
   return {
     spawnId: spawn.id,
     at: [spawn.at[0], spawn.at[1]],
     tier: spawn.tier,
-    side,
-    corridor: ((h >>> 1) % 3) as 0 | 1 | 2,
+    side: lane.side,
+    corridor: lane.corridor,
     call: ((h >>> 3) % 3) as 0 | 1 | 2,
     laugh: ((h >>> 5) & 3) === 0,
   };
+}
+
+/**
+ * Winkel der Flugschneisen zur Bildschirm-Senkrechten (Grad, je `corridor`). Der Schatten fliegt von der Kamera weg
+ * (Bildschirm-oben = Brett −y) und um diesen Winkel zur Seite `side` (Brett-x = Bildschirm-rechts in Flow und Lab).
+ */
+export const GULL_CORRIDOR_DEG: readonly [number, number, number] = [35, 55, 45];
+
+/** Länge des bewerteten Anflugs (Zellen vor der Zielzelle) und halbe Breite der Schneise (Zellen). */
+const LANE_LENGTH = 3.5;
+const LANE_HALF = 0.9;
+
+/**
+ * Wie gut man den Schatten im Anflug sieht: freie Platten entlang des Wegs zählen, Blobs darauf (sie verdecken den
+ * Schatten, der auf ihnen nicht liegt) zählen stark dagegen; ein Anflug neben dem Brett sieht man kaum.
+ */
+export function gullLaneValue(st: Partial<LevelState>, at: Coord, spawnId: number, side: -1 | 1, corridor: 0 | 1 | 2): number {
+  const geo = st.geo;
+  const cells = st.cells;
+  if (!geo?.cellType || !cells) return 0;
+  const a = ((GULL_CORRIDOR_DEG[corridor] ?? 45) * Math.PI) / 180;
+  // Flugrichtung in Zellen (x rechts, y zur Kamera): nach oben und zur Seite
+  const fx = Math.sin(a) * side;
+  const fy = -Math.cos(a);
+  let v = 0;
+  for (let i = 0; i < geo.n; i++) {
+    if (geo.cellType[i] !== 1) continue;
+    const x = (i % geo.w) - at[0];
+    const y = Math.floor(i / geo.w) - at[1];
+    // hinter der Zelle entlang des Anflugs (t > 0) und quer dazu (d)
+    const t = -(x * fx + y * fy);
+    if (t < 0.4 || t > LANE_LENGTH) continue;
+    const d = Math.abs(x * fy - y * fx);
+    if (d >= LANE_HALF) continue;
+    const k = 1 - d / LANE_HALF;
+    const blob = cells[i];
+    v += blob && blob.id !== spawnId ? -1.5 * k : k;
+  }
+  return v;
+}
+
+/**
+ * Die Schneise, in der man die Möwe am besten sieht: über möglichst viele freie Platten, an den Blobs vorbei. Bei
+ * Gleichstand entscheidet der Wurf des Zugs (Abwechslung, deterministisch — Rückspulen bringt dieselbe Schneise).
+ */
+function clearLane(st: Partial<LevelState>, spawn: SpawnEvent, h: number): { side: -1 | 1; corridor: 0 | 1 | 2 } {
+  const hashSide: -1 | 1 = h & 1 ? 1 : -1;
+  const hashCorridor = ((h >>> 1) % 3) as 0 | 1 | 2;
+  let best = { side: hashSide, corridor: hashCorridor };
+  let bestV = gullLaneValue(st, spawn.at, spawn.id, hashSide, hashCorridor) + 0.05;
+  for (const side of [-1, 1] as const) {
+    for (const corridor of [0, 1, 2] as const) {
+      const v = gullLaneValue(st, spawn.at, spawn.id, side, corridor);
+      if (v > bestV + 1e-9) {
+        bestV = v;
+        best = { side, corridor };
+      }
+    }
+  }
+  return best;
 }
 
 /**

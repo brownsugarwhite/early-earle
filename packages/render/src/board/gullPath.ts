@@ -13,7 +13,7 @@
  * Ruck beim Loslassen, danach zwei Schläge und eine Schräglage im Abflug.
  */
 
-import type { GullTimes } from '@ee/core';
+import { GULL_CORRIDOR_DEG, type GullTimes } from '@ee/core';
 
 /** Earle-Streckung des Bodenschattens entlang der sonnenabgewandten Richtung. */
 export const GULL_STRETCH = 1.35;
@@ -193,12 +193,11 @@ export interface GullFlight {
   readonly bendSign: number;
 }
 
-/** Winkel der Schneisen zur Bildschirm-Senkrechten (rad) und ob der Bogen nach außen (1) oder zur Senkrechten (−1) dreht. */
-const CORRIDORS: ReadonlyArray<{ angle: number; bend: 1 | -1 }> = [
-  { angle: (35 * Math.PI) / 180, bend: -1 },
-  { angle: (55 * Math.PI) / 180, bend: -1 },
-  { angle: (45 * Math.PI) / 180, bend: 1 },
-];
+/**
+ * Winkel der Schneisen zur Bildschirm-Senkrechten (aus dem Kern, der danach die freie Schneise wählt) und ob der Bogen
+ * nach außen (1) oder zur Senkrechten (−1) dreht.
+ */
+const CORRIDORS: ReadonlyArray<{ angle: number; bend: 1 | -1 }> = GULL_CORRIDOR_DEG.map((deg, k) => ({ angle: (deg * Math.PI) / 180, bend: k === 2 ? 1 : -1 }));
 
 /** Richtet einen Flug ein: Kurs gegen die Kamera, Sonnenachsen, Höhe (so, dass kein Eckpunkt über `GULL_MAX_HEIGHT` liegt). */
 export function planGullFlight(spec: GullFlightSpec): GullFlight {
