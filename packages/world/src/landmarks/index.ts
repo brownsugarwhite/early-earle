@@ -21,7 +21,7 @@
  *    `landmarkWaterAt`, `landmarkSurfaceAt` (walkable top), `landmarkBlocks` (for tree/prop/trash scattering).
  */
 export * from './types';
-export { FOOT_SINK, SHORE_SAMPLES, pondField, prismPeak, prismTopAt, shoreAt } from './shapes';
+export { FOOT_SINK, SHORE_SAMPLES, pondField, prismPeak, prismTopAt, shoreAt, wallAxis, wallCorners, wallPoint } from './shapes';
 export { MIN_PLATEAU_RADIUS, buildCliffFall, buildFallsRock, buildTwinFalls, mirrorBlueprint, type RockOptions } from './rock';
 export { buildRuin, lancetHeight, type RuinOptions } from './ruin';
 export { buildSwamp, swampWater, type SwampOptions } from './swamp';

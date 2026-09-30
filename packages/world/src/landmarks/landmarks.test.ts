@@ -20,6 +20,8 @@ import {
   swampWater,
   toLocal,
   toWorld,
+  wallCorners,
+  wallPoint,
   type LandmarkBlueprint,
   type LandmarkEnv,
   type LandmarkKind,
@@ -80,13 +82,12 @@ describe('landmark blueprints', () => {
             if (prismPeak(p) < a.y - 0.05) continue;
             for (const [x, z] of [...p.base, ...p.top]) expect(Math.hypot(x - a.x, z - a.z), `${kind} ${seed} ${p.role}`).toBeGreaterThanOrEqual(a.r);
           }
-          for (const arc of bp.arcades) {
-            // closest approach of the arcade's centreline to the anchor, minus half its depth
-            const ex = arc.to[0] - arc.from[0];
-            const ez = arc.to[1] - arc.from[1];
-            const t = Math.max(0, Math.min(1, ((a.x - arc.from[0]) * ex + (a.z - arc.from[1]) * ez) / (ex * ex + ez * ez)));
-            const d = Math.hypot(arc.from[0] + ex * t - a.x, arc.from[1] + ez * t - a.z);
-            expect(d - arc.depth / 2, `${kind} ${seed} arcade`).toBeGreaterThanOrEqual(a.r - 1e-6);
+          for (const w of bp.walls) {
+            // every corner of a tracery wall that rises above the top stays outside the usable circle (both faces, lean)
+            for (const [x, y, z] of wallCorners(w)) {
+              if (y < a.y - 0.05) continue;
+              expect(Math.hypot(x - a.x, z - a.z), `${kind} ${seed} wall ${w.role}`).toBeGreaterThanOrEqual(a.r);
+            }
           }
         }
       }
@@ -107,12 +108,7 @@ describe('landmark blueprints', () => {
           p.top.forEach(([x, z], i) => samples.push([x, p.y1 + p.tilt[0] * (x - cx) + p.tilt[1] * (z - cz) + (p.jag[i] ?? 0), z]));
           if (p.apex > 0) samples.push([cx + p.apexOffset[0], p.y1 + p.apex, cz + p.apexOffset[1]]);
         }
-        for (const arc of bp.arcades) {
-          for (let k = 0; k <= 8; k++) {
-            const t = k / 8;
-            samples.push([arc.from[0] + (arc.to[0] - arc.from[0]) * t, arc.y + arc.pierHeight + arc.rise + 0.45, arc.from[1] + (arc.to[1] - arc.from[1]) * t]);
-          }
-        }
+        for (const w of bp.walls) samples.push(...wallCorners(w));
         for (const az of [55, 70, 85]) {
           const r = (az * Math.PI) / 180;
           const dx = -Math.sin(r);
@@ -204,6 +200,101 @@ describe('landmark blueprints', () => {
     expect(b.falls[0]!.impact[0]).toBeCloseTo(-a.falls[0]!.impact[0], 6);
     expect(b.route.ascent.length).toBe(a.route.ascent.length);
     expect(b.anchors[0]!.radius).toBe(a.anchors[0]!.radius);
+  });
+
+  it('ruin: a tall gothic carrier — high terrace, a tower far above it, tracery walls with lancets on the left and back', () => {
+    for (const seed of MANY) {
+      const bp = landmarkBlueprint('ruin', seed, { ground: localHills });
+      const a = anchorTop(bp);
+      expect(a.y, `${seed} terrace`).toBeGreaterThanOrEqual(7.2);
+      expect(bp.height - a.y, `${seed} tower above the terrace`).toBeGreaterThan(7);
+      // a leaning nave wall with lancet openings, a half-collapsed arch, a low pier stub
+      const nave = bp.walls.find((w) => w.role === 'nave')!;
+      expect(nave.holes.length).toBeGreaterThanOrEqual(1);
+      expect(nave.lean).toBeGreaterThan(0);
+      expect(bp.walls.some((w) => w.role === 'arch')).toBe(true);
+      for (const w of bp.walls) {
+        // standing on the terrace, sunk into it (the shadow reaches the foot), the holes inside the outline
+        expect(w.y).toBeCloseTo(a.y, 6);
+        expect(Math.min(...w.outline.map((p) => p[1])), `${seed} ${w.role} sunk`).toBeLessThanOrEqual(-0.3);
+        const hi = Math.max(...w.outline.map((p) => p[1]));
+        for (const hole of w.holes) for (const [, h] of hole) expect(h).toBeLessThan(hi);
+        // the tall walls stand left of or behind the board (the low sun comes from the right, the camera from the
+        // front); only the low broken parapet runs along the front rim
+        const mid = wallPoint(w, (Math.min(...w.outline.map((p) => p[0])) + Math.max(...w.outline.map((p) => p[0]))) / 2, 0, 0);
+        if (hi > 1.2) expect(mid[0] < -a.r || mid[2] < -a.r, `${seed} ${w.role} left or back`).toBe(true);
+        else expect(hi, `${seed} ${w.role} low`).toBeLessThan(0.75);
+      }
+      // painted lancets: the portal in the front facade, slits and belfry windows on the tower
+      const keep = bp.prisms.find((p) => p.role === 'terrace')!;
+      expect(keep.lancets?.length).toBeGreaterThanOrEqual(1);
+      expect(bp.prisms.find((p) => p.role === 'belfry')!.lancets?.length).toBe(8);
+      // a tree grows out of the top
+      expect(bp.prisms.some((p) => p.role === 'tree' && p.surface === 'bark' && p.y0 < a.y + 0.01)).toBe(true);
+    }
+  });
+
+  it('ruin: the stair winds up the wall, every waypoint lies on a tread, nothing on the ground floats', () => {
+    const placement: LandmarkPlacement = { id: 'ruin:0:0', kind: 'ruin', x: 0, z: 0, y: 0, yaw: 0, seed: 1, radius: LANDMARK_RADIUS.ruin, world: 0 };
+    for (const seed of MANY) {
+      for (const mirror of [false, true]) {
+        const bp = landmarkBlueprint('ruin', seed, { ground: localHills, mirror });
+        const inst = instanceOf({ ...placement, seed }, bp);
+        const a = anchorTop(bp);
+        // the ascent sweeps around the keep (a winding stair, not a straight flight)
+        let swept = 0;
+        const way = bp.route.ascent.slice(1, -1);
+        for (let i = 1; i < way.length; i++) {
+          const p = way[i - 1]!.position;
+          const q = way[i]!.position;
+          swept += Math.abs(Math.atan2(Math.sin(Math.atan2(q[2], q[0]) - Math.atan2(p[2], p[0])), Math.cos(Math.atan2(q[2], q[0]) - Math.atan2(p[2], p[0]))));
+        }
+        expect(swept, `${seed} stair sweep`).toBeGreaterThan(Math.PI * 0.55);
+        // the level stones lie on the treads, landings, blocks and the terrace — never in the air, never under stone
+        for (const w of [...bp.route.ascent, ...bp.route.descent]) {
+          if (w.kind === 'ground' || w.kind === 'top') continue;
+          const s = landmarkSurfaceAt(inst, w.position[0], w.position[2]);
+          expect(s, `${seed} ${mirror} ${w.kind} at (${w.position[0].toFixed(1)}, ${w.position[2].toFixed(1)})`).not.toBeNull();
+          expect(Math.abs(s! - w.position[1]), `${seed} ${mirror} ${w.kind} on its tread`).toBeLessThan(0.06);
+        }
+        // everything standing on the ground reaches below it (its shadow meets its foot)
+        for (const p of bp.prisms) {
+          if (!['terrace', 'stair', 'landing', 'step', 'rubble', 'skirt', 'needle', 'tower-foot'].includes(p.role)) continue;
+          let lo = Infinity;
+          for (const [x, z] of p.base) lo = Math.min(lo, localHills(x, z));
+          expect(p.y0, `${seed} ${p.role} sunk`).toBeLessThan(lo - 0.2);
+        }
+        // the bushes keep off the way
+        for (const b of bp.bushes) {
+          for (const w of [...bp.route.ascent, ...bp.route.descent]) {
+            if (w.kind === 'top') continue;
+            expect(Math.hypot(b.center[0] - w.position[0], b.center[2] - w.position[2]), `${seed} bush on the way`).toBeGreaterThan(b.radius * 0.8);
+          }
+        }
+        expect(a.r).toBeGreaterThanOrEqual(MIN_PLATEAU_RADIUS);
+      }
+    }
+  });
+
+  it('ruin: mirroring flips the walls and the painted lancets with the prisms', () => {
+    const a = landmarkBlueprint('ruin', 9, { mirror: false });
+    const b = landmarkBlueprint('ruin', 9, { mirror: true });
+    a.walls.forEach((w, i) => {
+      const ca = wallCorners(w);
+      const cb = wallCorners(b.walls[i]!);
+      ca.forEach((p, k) => {
+        expect(cb[k]![0]).toBeCloseTo(-p[0], 9);
+        expect(cb[k]![1]).toBeCloseTo(p[1], 9);
+        expect(cb[k]![2]).toBeCloseTo(p[2], 9);
+      });
+    });
+    // the portal still sits on the front face (the face whose midpoint lies furthest toward +z)
+    for (const bp of [a, b]) {
+      const keep = bp.prisms.find((p) => p.role === 'terrace')!;
+      const n = keep.base.length;
+      const frontFace = keep.base.map((p, i) => (p[1] + keep.base[(i + 1) % n]![1]) / 2).reduce((best, z, i, all) => (z > all[best]! ? i : best), 0);
+      expect(keep.lancets![0]!.face).toBe(frontFace);
+    }
   });
 
   it('swamp: water in the moat, island dry and flat, stones in the water, pads on it', () => {

@@ -211,6 +211,9 @@ export function landmarkBlocks(instances: readonly LandmarkInstance[], x: number
     for (const p of inst.blueprint.prisms) {
       if (pointInPolygon(lx, lz, p.base) || distanceToEdges(lx, lz, p.base) < radius) return true;
     }
+    for (const w of inst.blueprint.walls) {
+      if (distanceToEdges(lx, lz, [w.from, w.to]) < radius + w.depth * 0.5) return true;
+    }
     for (const c of inst.blueprint.carves) if (carveHit(c, lx, lz).e < radius + 0.3) return true;
     for (const m of inst.blueprint.mist) if (Math.hypot(lx - m.center[0], lz - m.center[2]) < m.radius + radius) return true;
   }
