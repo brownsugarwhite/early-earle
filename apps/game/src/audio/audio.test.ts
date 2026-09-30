@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chainNote, inSet, stepFrom, ZONE_KEYS, ZONE_MUSIC } from './scales';
 import { rexSchedule, wordSyllables, babbleSyllables, BABBLE_MAX_S } from './rex';
 import { planMove, travelTime } from './timeline';
 import { syntheticMove } from './demo';
 import { MusicGenerator, type MusicNote } from './music';
-import { encodeWav } from './render';
+import { encodeWav, measure, renderSfx, sfxLevel } from './render';
+import { installMiniOffline } from './miniOffline';
+import { EXTRA_CHECKS, EXTRA_LEVEL_TARGETS, EXTRA_SFX_IDS, EXTRA_TRIM_DB } from './sfxExtra';
+import { SFX_IDS, type SfxId } from './sfx';
 import type { CreatureGuess } from './bodies';
 
 const blob = (): CreatureGuess => ({ body: 'blob', coat: 'bare' });
@@ -158,5 +161,131 @@ describe('combo harmony', () => {
       .sounds.filter((s) => s.id === 'merge')
       .map((s) => s.p.step ?? 0);
     expect(steps).toEqual([0, 2, 4]);
+  });
+});
+
+// ------------------------------------------------------------------------------------------ offline renders
+
+/** Mono mix of a render. */
+function mono(buf: AudioBuffer): Float32Array {
+  const m = new Float32Array(buf.length);
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < m.length; i++) m[i] = m[i]! + d[i]! / buf.numberOfChannels;
+  }
+  return m;
+}
+
+/** Fundamental (Hz) of a 40 ms window at `t` s by normalised autocorrelation in 500–2600 Hz, null when quiet. */
+function pitchAt(m: Float32Array, sr: number, t: number): number | null {
+  const n = Math.round(sr * 0.04);
+  const s0 = Math.round(t * sr);
+  let e = 0;
+  for (let i = 0; i < n; i++) e += m[s0 + i]! * m[s0 + i]!;
+  if (e < 1e-6) return null;
+  const lo = Math.floor(sr / 2600);
+  const hi = Math.ceil(sr / 500);
+  const r = (lag: number): number => {
+    let acc = 0;
+    for (let i = 0; i < n; i++) acc += m[s0 + i]! * m[s0 + i + lag]!;
+    return acc / e;
+  };
+  // The first lag whose correlation is near the best one (avoids octave errors on strong second harmonics).
+  let best = -1;
+  for (let lag = lo; lag <= hi; lag++) best = Math.max(best, r(lag));
+  for (let lag = lo; lag <= hi; lag++) {
+    const v = r(lag);
+    if (v >= 0.9 * best && v >= r(lag - 1) && v >= r(lag + 1)) return sr / lag;
+  }
+  return null;
+}
+
+describe('Iteration-4-Klänge (offline gerendert)', () => {
+  // Node has no OfflineAudioContext: the tests render through the small spec renderer (≈ Chromium ± 0.7 dB).
+  let uninstall: () => void = () => undefined;
+  beforeAll(() => {
+    uninstall = installMiniOffline();
+  });
+  afterAll(() => uninstall());
+
+  it('hat für jede neue ID einen Soll-Pegel und mindestens eine Prüf-Variante', () => {
+    for (const id of EXTRA_SFX_IDS) {
+      expect(SFX_IDS).toContain(id);
+      expect(EXTRA_LEVEL_TARGETS[id]).toBeLessThan(-15);
+      expect(EXTRA_CHECKS.some((c) => c.id === id)).toBe(true);
+    }
+    // Trims stay small corrections, not a second mixer.
+    for (const v of Object.values(EXTRA_TRIM_DB)) expect(Math.abs(v)).toBeLessThanOrEqual(10);
+  });
+
+  it.each(EXTRA_CHECKS.map((c) => [c.label, c] as const))('%s: hörbar, ohne Clipping, im Pegel der Politik', async (_label, c) => {
+    const l = await sfxLevel(c.id, c.p, 3);
+    // Not silent, clearly under full scale, and within ±1.5 dB of its place in the loudness policy.
+    expect(l.peakDb).toBeGreaterThan(-40);
+    expect(l.peakDb).toBeLessThan(-6);
+    expect(l.clipped).toBe(0);
+    expect(l.maxRmsDb).toBeGreaterThan(c.target - 1.5);
+    expect(l.maxRmsDb).toBeLessThan(c.target + 1.5);
+  });
+
+  it('ist deterministisch: gleicher Seed → gleiche Samples, anderer Seed → andere Variation', async () => {
+    for (const id of EXTRA_SFX_IDS) {
+      const a = mono(await renderSfx(id, {}, 1.8, 7));
+      const b = mono(await renderSfx(id, {}, 1.8, 7));
+      expect(a).toEqual(b);
+    }
+    // Without `kind` the gull picks a variant and a pitch from the graph's random stream.
+    const g1 = mono(await renderSfx('gullCall', {}, 1.8, 7));
+    const g2 = mono(await renderSfx('gullCall', {}, 1.8, 8));
+    expect(g1).not.toEqual(g2);
+  });
+
+  it('Möwe „kjau“: steigt um ≈ +35 % auf ≈ 1,5 kHz und fällt dann deutlich', async () => {
+    const buf = await renderSfx('gullCall', { kind: 'a' }, 1.2, 42);
+    const m = mono(buf);
+    const sr = buf.sampleRate;
+    // The call starts at 0.1 s: "ky" (0.065 s) rises, "ow" falls.
+    const start = pitchAt(m, sr, 0.1 + 0.005)!;
+    const peak = pitchAt(m, sr, 0.1 + 0.09)!;
+    const end = pitchAt(m, sr, 0.1 + 0.29)!;
+    expect(start).toBeGreaterThan(1000);
+    expect(start).toBeLessThan(1250);
+    expect(peak / start).toBeGreaterThan(1.2);
+    expect(peak).toBeGreaterThan(1350);
+    expect(peak).toBeLessThan(1650);
+    expect(end / peak).toBeLessThan(0.75);
+  });
+
+  it('Stern 1 → 2 → 3 wird lauter und höher; großer Flatsch lauter als der kleine', async () => {
+    const lv = async (id: SfxId, p: object): Promise<number> => (await sfxLevel(id, p, 2)).maxRmsDb;
+    const s0 = await lv('starPop', { step: 0 });
+    const s1 = await lv('starPop', { step: 1 });
+    const s2 = await lv('starPop', { step: 2 });
+    expect(s1).toBeGreaterThan(s0);
+    expect(s2).toBeGreaterThan(s1);
+    expect(await lv('splat', { kind: 'big' })).toBeGreaterThan((await lv('splat', {})) + 2);
+    expect(await lv('splat', { tier: 2 })).toBeCloseTo(await lv('splat', { kind: 'big' }), 0);
+  });
+});
+
+describe('Grundkatalog offline (Stichproben gegen Chromium-Messung)', () => {
+  let uninstall: () => void = () => undefined;
+  beforeAll(() => {
+    uninstall = installMiniOffline();
+  });
+  afterAll(() => uninstall());
+
+  // Chromium (/lab/audio, OfflineAudioContext 44.1 kHz) measured these loudest-100-ms levels; the policy of TRIM_DB.
+  it.each([
+    ['merge', { tier: 2 }, -21.2],
+    ['merge', { tier: 7 }, -16.9],
+    ['won', {}, -19.6],
+    ['land', {}, -32.9],
+    ['splash', {}, -36.4],
+    ['uiTick', {}, -40],
+    ['creatureVoice', {}, -22.2],
+  ] as const)('%s %o ≈ %d dBFS', async (id, p, db) => {
+    const l = measure(await renderSfx(id, p, 3));
+    expect(Math.abs(l.maxRmsDb - db)).toBeLessThanOrEqual(0.8);
   });
 });
