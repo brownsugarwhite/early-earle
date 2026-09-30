@@ -125,6 +125,18 @@ describe('createMapCreatures', () => {
     c.dispose();
   });
 
+  it('restore again reconciles (a mode switch or a cleared collection sends the others away)', () => {
+    const c = createMapCreatures(testGround(new Vector3(3, 0, 0)), { cap: 6, mobile: true, shadowLayer: 1, library: null, rules });
+    c.restore([entry(1, 1, 'blob', 'a'), entry(2, 2, 'blob', 'b')]);
+    run(c, 1);
+    expect(c.liveCount).toBe(2);
+    c.restore([entry(1, 1, 'blob', 'a')]);
+    expect(c.probe!().map((p) => p.key)).toEqual(['a']);
+    c.restore([]);
+    expect(c.probe!()).toEqual([]);
+    c.dispose();
+  });
+
   it('scales with the tier, relative to the hero on the map', () => {
     expect(mapScaleForTier(1)).toBeCloseTo(0.48 * 0.42, 5);
     expect(mapScaleForTier(9)).toBeCloseTo(0.48 * 0.9, 5);

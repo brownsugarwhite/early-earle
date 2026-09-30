@@ -49,7 +49,10 @@ export interface MapCreaturesOptions {
 export interface MapCreaturesApi {
   /** Kind von `world.planet` (bzw. später des Ebenen-Ankers). */
   readonly group: Group;
-  /** Beim Start: alle Wesen mit `placedOnMap` an ihre Wohnorte setzen. */
+  /**
+   * Beim Start: alle Wesen mit `placedOnMap` an ihre Wohnorte setzen. Wieder aufgerufen (Moduswechsel, geleerte
+   * Sammlung) gleicht es ab: wer nicht mehr dabei ist, geht (außer Wesen, die gerade heimlaufen).
+   */
   restore(entries: CollectionEntry[]): void;
   /**
    * Aufbruch: ein Wesen verlässt das Plateau am Rand `from` und läuft zu seinem Wohnort am Fundknoten.
@@ -420,6 +423,9 @@ export function createMapCreatures(ground: MapGround, options: MapCreaturesOptio
       return residents.filter((r) => r.member).length;
     },
     restore(entries) {
+      // Abgleich: wer nicht mehr auf der Map wohnt (Moduswechsel, geleerte Sammlung), geht; neue ziehen ein.
+      const placed = new Set(entries.filter((e) => e.placedOnMap).map((e) => e.key));
+      for (const r of [...residents]) if (!placed.has(r.key) && !r.pinned && r.key === r.entry.key) remove(r);
       for (const e of entries) if (e.placedOnMap) add(e);
       liveT = 0;
     },

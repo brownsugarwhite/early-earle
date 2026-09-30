@@ -427,7 +427,11 @@ export class SetzkastenScene implements SceneController {
     const c = this.cellCenter(slot.cell, _p).add(this.caseOffset);
     c.project(this.camera);
     if (Math.abs(c.x) > 1 || Math.abs(c.y) > 1) return null;
-    return { x: ((c.x + 1) / 2) * this.width, y: ((1 - c.y) / 2) * this.height };
+    const x = ((c.x + 1) / 2) * this.width;
+    const y = ((1 - c.y) / 2) * this.height;
+    // Unter Kopf und Reitern liegt ein Fach nicht frei.
+    if (y < this.insetTop || y > this.height - this.insetBottom) return null;
+    return { x, y };
   }
 
   /** Lebende und ruhende Wesen, Zeichenaufrufe (Budget-Prüfung in Tests). */
