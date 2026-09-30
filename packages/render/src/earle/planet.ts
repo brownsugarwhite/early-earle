@@ -940,6 +940,34 @@ export class EarlePlanet {
   }
 
   /**
+   * Höhe des gezeichneten Geländenetzes an (x, z): die Dreiecke des geladenen Chunks (Gitter n × n, Diagonale wie in
+   * `generatePlaneChunk`), `null`, wenn der Chunk nicht geladen ist. Füße (Map-Wesen) stehen so auf dem Netz, das man
+   * sieht — zwischen den Gitterpunkten weicht die glatte Höhe um einige Zentimeter ab.
+   */
+  meshHeightAt(x: number, z: number): number | null {
+    const chunk = this.loaded.get(`${Math.floor(x / CHUNK_SIZE)}:${Math.floor(z / CHUNK_SIZE)}`);
+    if (!chunk) return null;
+    const m = chunk.cpu.mesh;
+    const n = m.n;
+    const step = CHUNK_SIZE / (n - 1);
+    const fx = (x - m.ox) / step;
+    const fz = (z - m.oz) / step;
+    const i = Math.min(n - 2, Math.max(0, Math.floor(fx)));
+    const j = Math.min(n - 2, Math.max(0, Math.floor(fz)));
+    const u = fx - i;
+    const v = fz - j;
+    const P = m.positions;
+    const h = (ii: number, jj: number): number => P[(jj * n + ii) * 3 + 1]!;
+    // Dreiecke (a, c, b) und (b, c, d) je Zelle: a = (i, j), b = (i + 1, j), c = (i, j + 1), d = (i + 1, j + 1)
+    if (u + v <= 1) {
+      const ha = h(i, j);
+      return ha + u * (h(i + 1, j) - ha) + v * (h(i, j + 1) - ha);
+    }
+    const hd = h(i + 1, j + 1);
+    return hd + (1 - u) * (h(i, j + 1) - hd) + (1 - v) * (h(i + 1, j) - hd);
+  }
+
+  /**
    * Lichtung unter der Kamera (seitlicher Radius, 0 = aus): Bäume und Requisiten treten weg, Felssäulen sinken in den
    * Boden — das untere Bildband der Karte bleibt ruhiger Boden, auch wenn sie über eine Felswand schwenkt.
    */

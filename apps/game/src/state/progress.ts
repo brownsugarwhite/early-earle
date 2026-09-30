@@ -105,6 +105,11 @@ export interface ProgressState extends Slot {
   fillCollection: (inputs: CollectInput[]) => void;
   /** Nur für Entwicklung/Werkstatt: Sammlung leeren. */
   clearCollection: () => void;
+  /**
+   * Nur für Entwicklung/Werkstatt („Intro nochmal“): im echten Stand Intro und die genannten REX-Szenen wieder
+   * ungesehen, Siege von Level `firstLevelId` auf 0 (Versuche und Bestwerte bleiben).
+   */
+  resetIntro: (firstLevelId: string, stories?: string[]) => void;
   /** Nur für Entwicklung/Tests: setzt den aktiven Stand zurück (wie `resetSlot()`). */
   resetAll: () => void;
 }
@@ -289,6 +294,16 @@ export const useProgress = create<ProgressState>((set, get) => {
         return { ...slot, collection };
       }),
     clearCollection: () => writeActive((slot) => ({ ...slot, collection: {} })),
+    resetIntro: (firstLevelId, stories = []) => {
+      const { mode, slots } = get();
+      const real = slots.real;
+      const levels = { ...real.levels };
+      const rec = levels[firstLevelId];
+      if (rec) levels[firstLevelId] = { ...rec, wins: 0 };
+      const next: Slot = { ...real, levels, seen: { intro: false, stories: real.seen.stories.filter((s) => !stories.includes(s)) } };
+      set({ slots: { ...slots, real: next }, ...(mode === 'real' ? mirror(next) : {}) });
+      persist();
+    },
     resetAll: () => get().resetSlot(),
   };
 });

@@ -1,4 +1,4 @@
-import { DepthTexture, DoubleSide, FrontSide, GreaterEqualCompare, LessEqualCompare, LinearFilter, NoBlending, NodeMaterial, Object3D, Quaternion, RenderTarget, ShadowBaseNode, ShadowNode, Vector2, Vector3, Vector4 } from 'three/webgpu';
+import { DepthTexture, DoubleSide, FrontSide, GreaterEqualCompare, LessEqualCompare, LinearFilter, Matrix4, NoBlending, NodeMaterial, Object3D, Quaternion, RenderTarget, ShadowBaseNode, ShadowNode, Vector2, Vector3, Vector4 } from 'three/webgpu';
 import type { BufferGeometry, Camera, DirectionalLight, LightShadow, Node, NodeBuilder, PerspectiveCamera, Renderer, Scene, UniformNode } from 'three/webgpu';
 import {
   Discard,
@@ -473,6 +473,35 @@ const _v2 = new Vector3();
 const _size = new Vector2();
 const _dirLocal = new Vector3();
 const _invQ = new Quaternion();
+const _yawQ = new Quaternion();
+const _yawM = new Matrix4();
+const _keyM = new Matrix4();
+const _keySun = new Vector3();
+const _yu = new Vector3();
+const _yf = new Vector3();
+const _yr = new Vector3();
+const _yc = new Vector3();
+
+/**
+ * Drehung um die Hochachse `up` (durch den Ursprung), die den Blick der Kamera auf −z (in der Ebene ⊥ `up`) dreht —
+ * der „gierfreie“ Rahmen der Kamera. Dreht die Ansicht mit Kamera und Sonne gemeinsam um die Hochachse (ADR 0002: das
+ * Rig dreht über der Ebene; früher drehte sich die Kugel unter fester Kamera), ist die Lage in diesem Rahmen dieselbe.
+ */
+function yawFreeRotation(camera: PerspectiveCamera, up: Vector3, out: Quaternion): Quaternion {
+  const u = _yu.copy(up).normalize();
+  const e = camera.matrixWorld.elements;
+  const f = _yf.set(-e[8]!, -e[9]!, -e[10]!);
+  f.addScaledVector(u, -f.dot(u));
+  // senkrecht nach unten: die Hochachse des Bildes gibt die Richtung
+  if (f.lengthSq() < 1e-8) f.set(e[4]!, e[5]!, e[6]!).addScaledVector(u, -_yc.set(e[4]!, e[5]!, e[6]!).dot(u));
+  if (f.lengthSq() < 1e-8) return out.identity();
+  f.normalize();
+  const ref = _yr.set(0, 0, -1).addScaledVector(u, u.z);
+  if (ref.lengthSq() < 1e-8) ref.set(1, 0, 0).addScaledVector(u, -u.x);
+  ref.normalize();
+  const angle = Math.atan2(u.dot(_yc.crossVectors(f, ref)), f.dot(ref));
+  return out.setFromAxisAngle(u, angle);
+}
 
 /** Feste Scheibenverteilung (goldener Winkel, 8 Punkte + Mitte) für weiche Schattenwerte. */
 const SOFT_DISC: Array<[number, number]> = (() => {
@@ -964,7 +993,13 @@ export class CascadedShadows {
       slab.hMin = r.plane.minHeight;
       slab.hMax = r.plane.maxHeight;
     }
-    const key = [...camera.matrixWorld.elements, ...camera.projectionMatrix.elements, this.sunDir.x, this.sunDir.y, this.sunDir.z, size.x, size.y, this.fixedPsiDeg ?? -999];
+    // Schlüssel im gierfreien Rahmen der Kamera: dreht die Ansicht mit Kamera und Sonne gemeinsam um die Hochachse
+    // (Rig-Drehung über der Ebene, das „Rollen“ im Lab), bleibt die Lage dieselbe → ψ und die Texel der feinen
+    // Kaskaden bleiben stehen (Gitter steht), wie früher beim Drehen der Kugel unter fester Kamera
+    const yaw = yawFreeRotation(camera, this.upRef, _yawQ);
+    _keyM.copy(camera.matrixWorld).premultiply(_yawM.makeRotationFromQuaternion(yaw));
+    _keySun.copy(this.sunDir).applyQuaternion(yaw);
+    const key = [..._keyM.elements, ...camera.projectionMatrix.elements, _keySun.x, _keySun.y, _keySun.z, size.x, size.y, this.fixedPsiDeg ?? -999];
     for (const c of this.cascades) key.push(c.size.width, c.size.height);
     let keepPsi = key.length === this.psiKey.length;
     for (let i = 0; keepPsi && i < key.length; i++) keepPsi = Math.abs(key[i]! - this.psiKey[i]!) <= 1e-7;

@@ -1,3 +1,5 @@
+import { rubber } from '../../flow/progression/scrollLimit';
+
 /** Ein Punkt der Ebene (x, Höhe, z) — dieselbe Form wie in `progression/scrollLimit.ts`. */
 export interface PanPoint {
   x: number;
@@ -24,8 +26,9 @@ export interface PanBallOptions {
   /** Aktueller Fokus (Ebene) — nötig für `constrain`. */
   focus?: () => PanPoint;
   /**
-   * Gummiband (echter Modus): jenseits der Grenze wird der Zug zäh (Weg ∝ 1 / (1 + Überschreitung / 2,5)), nach dem
-   * Loslassen federt der Fokus zum `anchor` zurück; der Schwung nach außen erlischt. Ohne Hook: unbegrenzt.
+   * Gummiband (echter Modus): jenseits der Grenze wird der Zug zäh (Weg nach außen ∝ 1 / (1 + Überschreitung / 2,5)²,
+   * `scrollLimit.rubber`), nach dem Loslassen federt der Fokus zum `anchor` zurück; der Schwung nach außen erlischt.
+   * Ohne Hook: unbegrenzt.
    */
   constrain?: PanConstrain | null;
 }
@@ -183,7 +186,7 @@ export class PanBall {
       const ol = Math.hypot(ox, oz) || 1;
       const outward = (d.x * ox + d.z * oz) / ol;
       if (outward > 0) {
-        const k = 1 / (1 + lim.excess / 2.5);
+        const k = rubber(lim.excess);
         d.x -= (ox / ol) * outward * (1 - k);
         d.z -= (oz / ol) * outward * (1 - k);
       }

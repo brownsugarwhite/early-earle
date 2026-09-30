@@ -316,7 +316,7 @@ export class Rex {
           // He watches the blobs slide and merge, then looks back at the player.
           this.glanceUntil = this.clock + 0.9;
         }
-        const inLevel = this.phase === 'level' || this.phase === 'flyIn';
+        const inLevel = this.phase === 'level' || this.phase === 'flyIn' || this.phase === 'intro';
         if (!inLevel) return;
         // Level lines (intro, combos, win, lose) → talk.
         if (s.rex && s.rex !== prev.rex) this.say(s.rex, 0.12);
@@ -417,7 +417,8 @@ export class Rex {
     }
   }
 
-  private pointAtNode(i: number): void {
+  /** REX points at node `i` on the map (the end of a scene, a mechanic intro). */
+  pointAtNode(i: number): void {
     const p = this.nodeWorld(i, _v2);
     const camera = this.sprite.parent as PerspectiveCamera | null;
     if (p) this.character.point(p);

@@ -196,6 +196,7 @@ Verläufe in der UI folgen derselben Regel wie in der Welt: Flächen dürfen inn
 - UI-Schatten **echoen die Weltschatten**: Richtung = Sonnenrichtung auf den Bildschirm projiziert, überwiegend horizontal.
 - Juwelenton-Füllungen; **filigrane Musterlinien** als Trenner und Hintergründe (langsam animiert); höchstens **ein gotischer Akzent** (z. B. eine Initiale).
 - Die **fette Verlaufskontur** nur an Level-Platte, REX-Emblem, Hauptaktion, Zonen-Portal.
+- **Fette Display-Schrift: Caprasimo** (SIL OFL, an Cooper Black angelehnt; Florian 2026-09-30, Cooper Black Std aus Adobe Fonts ist nicht einbettbar). CSS-Familie `'EE Heavy'`, Token `--font-heavy`, nativ registriert im Glas-HUD. **Nur** für Zahlen, Prozent, Punkte, kurze Titel (höchstens drei Wörter) und Stempel: Loader-Prozent, „Tippen“, Zugzahl und Punkte im HUD, Sieg-/Verloren-Banner, Stufen-Badges, „NEU!“, „Bestwert!“, Setzkasten-Zähler, Klassik-Punkte. **Nie** für REX-Sätze, Knöpfe, Ziele, Labs und Werkstatt. Die Mathe-Zeichen der Schrift (∞, π …) sind Platzhalter und fallen per `unicode-range` auf die Ersatzschrift zurück.
 - **Liquid Glass** (iOS 26+) als gefärbtes Glas in Zonentönung über der Content-Ebene: HUD-Pille, Pause, Booster-Leiste, Sheets. Kein Glas auf Glas. Android/Web: TSL-Glas im Canvas (Rundrechteck-Normale, Snell-Brechung, Farbsplit, Randlicht), `backdrop-filter` für HTML-Menüs.
 - ≤ 8 Wörter auf dem Bildschirm; große Touch-Ziele; Bottom-Sheets; Undo.
 - 2D-Animationen für UI-Schmuck (dotLottie oder Rive) folgen denselben Regeln: flache Füllungen, keine Umrisse.
@@ -247,7 +248,7 @@ Verläufe in der UI folgen derselben Regel wie in der Welt: Flächen dürfen inn
 - **Paletten** in OKLab (k-Means ist der Start), Bandanzahl je Zone, Nebelstufen — nach P2-Feedback.
 - **Verläufe**: Stärke je Welt feinjustieren (Talnebel, Horizontschein, Schattentönung weiterer Welten), Verläufe in der UI (Glas-HUD) nach Florians Blick auf dem iPhone.
 - **Hero-Kontur**: exakter Zweifarb-Verlauf pro Zone, Breite innerhalb 8–12 %.
-- **Schriften**: Display-Grotesk noch nicht gewählt (Scaffold nutzt Systemschrift).
+- **Schriften**: fette Display-Schrift entschieden (Caprasimo, §8); eine Grotesk für Überschriften/Knöpfe ist weiter offen (heute Systemschrift).
 - **Blob-Render-Kandidat** (a)/(b) — P1.
 - „30+ Farben pro Serigrafie" ist *(unverifiziert)*; belegt sind nur die 200 Siebe von *Fire Magic*.
 - Blenders NPR-Projekt (Multi-Stage-Compositing): Stand September 2026 nicht geprüft.
