@@ -1,12 +1,14 @@
-import { Box3, BufferAttribute, BufferGeometry, Frustum, Group, Matrix4, Mesh, Object3D, Quaternion, Sphere, Vector3 } from 'three/webgpu';
+import { Box3, BufferAttribute, BufferGeometry, Frustum, Group, Matrix4, Mesh, Object3D, Quaternion, Sphere, Vector3, Vector4 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
-import { abs, acos, asin, atan, attribute, clamp, cos, dot, float, fract, int, max, mix, normalGeometry, normalize, positionGeometry, positionLocal, positionView, select, smoothstep, step, uniform, uniformArray } from 'three/tsl';
+import { abs, acos, asin, atan, attribute, clamp, cos, dot, float, fract, int, max, mix, normalGeometry, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray } from 'three/tsl';
 import {
   PlanetField,
   chunkAngularRadius,
   chunkDirection,
   chunkKey,
   chunkList,
+  frameAt,
+  offsetDir,
   generateChunkMesh,
   scatterChunkProps,
   scatterChunkTrees,
@@ -25,7 +27,12 @@ import {
 import { EarleMaterial } from './EarleMaterial';
 import { PaletteAtlas, addWorldPalette, worldPaletteFromZone, type WorldPalette, type WorldRows, type ZonePalette } from './palette';
 import { GROWTH_SLOTS, PlanetVegetation, type VegetationPropEntry, type VegetationTreeEntry, type VegetationWorldRows } from './planetVegetation';
-import { PaletteLookup, aaStep, arrayElement, createFogSettings, patternTime, stripeMask, type FloatNode, type FogSettings, type TSLUniform, type UniformArrayLike, type Vec3Node } from './tsl';
+import { PaletteLookup, aaStep, arrayElement, createFogSettings, patternTime, stripeMask, type FloatNode, type FogSettings, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from './tsl';
+import { createWaterMaterial } from './water/waterSurface';
+import { buildWaterGeometry, waterGeometry } from './water/waterMesh';
+import { buildRockGeometry, createRockMaterial, rockGeometry } from './landmarks/rocks';
+import { BarnLandmarks } from './landmarks/barn';
+import { DriftLandmarks, type DriftPlacement } from './landmarks/drifts';
 
 export interface EarlePlanetZone {
   id: string;
@@ -166,6 +173,30 @@ export class EarlePlanet {
   private readonly crackWidths: TSLUniform[];
   private readonly crackWidth: number;
   private readonly terrainMaterial: EarleMaterial;
+  /**
+   * Alle Felsformationen des Planeten in einem Mesh (ein Draw Call je Pass; wenige tausend Dreiecke, die Formationen
+   * stehen fest). `null`, wenn keine Welt Felsen hat.
+   */
+  rocks: Mesh | null = null;
+  /** Alle Seen und Flüsse in einem Mesh (flach auf dem Wasserspiegel, empfängt Schatten). */
+  water: Mesh | null = null;
+  private readonly rockMaterial: EarleMaterial;
+  private readonly waterMaterial: EarleMaterial;
+  /** Alle Scheunen (Fokus + gestreute) als eigene Wahrzeichen. */
+  readonly barns: BarnLandmarks;
+  /** Schneewehen am Baumfuß in den Schneewelten. */
+  readonly drifts: DriftLandmarks;
+  /** Höchster Aufbau der geladenen Wahrzeichen (Scheunenfirst) für die Schattenkamera. */
+  private landmarkTop = 0;
+  /** Wachstum je Merkmal (Seen, Flüsse, Formationen) und ihr Knotenbereich. */
+  /** Plätze im Wachstums-Array der Merkmale (fest, damit neu geplante Merkmale keinen Shader-Umbau brauchen). */
+  private readonly featureCapacity: number;
+  private featureVersion = 0;
+  private readonly featureGrowth: UniformArrayLike;
+  private featureRanges: Array<[number, number]> = [];
+  /** Chunks, in die Felsen bzw. Gewässer reichen: ohne geladenen Chunk bleiben die Meshes unsichtbar (spart Draw Calls). */
+  private readonly rockChunks = new Set<string>();
+  private readonly waterChunks = new Set<string>();
   private readonly ids: ChunkId[];
   private readonly centres: Vector3[];
   private readonly loaded = new Map<string, LoadedChunk>();
@@ -238,7 +269,14 @@ export class EarlePlanet {
       ...(options.landmarks ? { landmarks: options.landmarks } : {}),
       ...(options.nearHalfWidthDeg !== undefined ? { nearHalfWidthDeg: options.nearHalfWidthDeg } : {}),
     });
-    this.rows = this.worlds.map((w) => addWorldPalette(this.atlas, w.palette, w.id));
+    // Wasser-/Felszeilen nur für Welten, die Gewässer bzw. Felsen haben (Atlas hat 128 Zeilen für alle Agenten)
+    const feat = this.field.features;
+    this.rows = this.worlds.map((w, i) =>
+      addWorldPalette(this.atlas, w.palette, w.id, {
+        water: feat.lakes.some((l) => l.world === i) || feat.rivers.some((r) => r.world === i),
+        rock: feat.formations.some((f) => f.world === i),
+      }),
+    );
     this.lookup = new PaletteLookup(this.atlas.texture, this.atlas.width, this.atlas.height);
     const first = this.worlds[0]!;
     this.fogStart = first.fog.start;
@@ -269,17 +307,25 @@ export class EarlePlanet {
     // --- Terrainmaterial (geteilt): Zeile je Welt, Riss je Grenze, Wachstum je Slot, Bodenornament ---------
     const zones = options.zones.length;
     const tables = this.field.tables;
-    const nearTable = uniformArray(tables.nearWorld.map((v) => v), 'float') as unknown as UniformArrayLike;
-    const nearBTable = uniformArray((tables.nearWorldB ?? tables.nearWorld.map(() => -1)).map((v) => v), 'float') as unknown as UniformArrayLike;
-    const farATable = uniformArray(tables.farWorldA.map((v) => v), 'float') as unknown as UniformArrayLike;
-    const farBTable = uniformArray(tables.farWorldB.map((v) => v), 'float') as unknown as UniformArrayLike;
+    // Tabellen gepackt (WebGPU: höchstens 12 Uniform-Puffer je Stufe, jedes uniformArray ist einer):
+    // je Zone (nahe A, nahe B, ferne A, ferne B) + Teilung; je Welt A = (Terrainzeile, Bodenart, Linienstufe, Meißel),
+    // B = (Wasserzeile, Schneezeile, Schneefelder an, Felszeile)
+    const nearB0 = tables.nearWorldB ?? tables.nearWorld.map(() => -1);
+    const zoneTable = uniformArray(
+      tables.nearWorld.map((v, z) => new Vector4(v, nearB0[z] ?? -1, tables.farWorldA[z] ?? v, tables.farWorldB[z] ?? -1)),
+      'vec4',
+    ) as unknown as UniformVec4ArrayLike;
     const farSplitTable = uniformArray(tables.farSplit.map((v) => v), 'float') as unknown as UniformArrayLike;
-    const terrainRows = uniformArray(this.rows.map((r) => r.terrain), 'float') as unknown as UniformArrayLike;
-    const groundKinds = uniformArray(this.worlds.map((w) => GROUND_KIND[w.ground]), 'float') as unknown as UniformArrayLike;
     // Linienfarbe: Schneestreifen eine Stufe dunkler als der Schnee; Bodenlinien des Juwelenwalds (Ebene_3) dunkel auf
     // dunklem Grund — nur zwei Stufen heller als die Bodentinte
-    const patternRows = uniformArray(this.worlds.map((_, i) => this.rows[i]!.terrain), 'float') as unknown as UniformArrayLike;
-    const patternIdx = uniformArray(this.worlds.map((w) => (w.ground === 'floorLines' ? 4 : 1)), 'float') as unknown as UniformArrayLike;
+    const worldA = uniformArray(
+      this.worlds.map((w, i) => new Vector4(this.rows[i]!.terrain, GROUND_KIND[w.ground], w.ground === 'floorLines' ? 4 : 1, this.field.features.chisel[i] ?? 0)),
+      'vec4',
+    ) as unknown as UniformVec4ArrayLike;
+    const worldB = uniformArray(
+      this.worlds.map((w, i) => new Vector4(this.rows[i]!.water, this.rows[i]!.snow, w.palette.snow && this.field.features.snow[i] ? 1 : 0, this.rows[i]!.rock)),
+      'vec4',
+    ) as unknown as UniformVec4ArrayLike;
     const cosHalfWidth = uniform(this.field.cosHalfWidth);
     // Gepackte Vertex-Attribute (WebGPU ≤ 8 Puffer): ta = (Zone, Grenzabstand, Grenz-ID, Slot), tb = (cos Δ, sin Δ, Höhe, 0)
     const ta = attribute('ta', 'vec4');
@@ -287,15 +333,18 @@ export class EarlePlanet {
     const zoneCoord = ta.x;
     const side = tb.xy;
     const zoneIndex = zoneCoord.floor().clamp(0, zones - 1);
-    const nearA = arrayElement(nearTable, zoneIndex);
-    const nearB = arrayElement(nearBTable, zoneIndex);
-    const farA = arrayElement(farATable, zoneIndex);
-    const farB = arrayElement(farBTable, zoneIndex);
+    const zt = vec4Element(zoneTable, zoneIndex);
+    const nearA = zt.x;
+    const nearB = zt.y;
+    const farA = zt.z;
+    const farB = zt.w;
     const half = zoneCoord.sub(zoneIndex).lessThan(arrayElement(farSplitTable, zoneIndex));
     const near = select(nearB.lessThan(-0.5).or(half), nearA, nearB);
     const far = select(farB.lessThan(-0.5).or(half), farA, farB);
     const worldIndex = select(side.x.greaterThan(cosHalfWidth), near, far);
-    const rowNode = arrayElement(terrainRows, worldIndex);
+    const wa = vec4Element(worldA, worldIndex);
+    const wb = vec4Element(worldB, worldIndex);
+    const rowNode = wa.x;
     const border = ta.y;
     const borderId = ta.z;
     let width: FloatNode = float(0);
@@ -350,7 +399,7 @@ export class EarlePlanet {
     // Schneestreifen (Meridiane → waagrechte Bänder im Blick längs des Weltbands, Bilder 05/08) und Perspektivlinien
     // (Strahlen + Ringe um den Mittelpunkt des Juwelenwalds, Bild 10). Eine Streifenfunktion für Schnee/Strahlen
     // (Koordinate je Art), eine für die Ringe.
-    const kind = arrayElement(groundKinds, worldIndex);
+    const kind = wa.y;
     const isSnow = kind.lessThan(1.5);
     const snowCoord = lon.mul(cos(lat)).mul(R / 0.7).add(drift);
     const anchorIdx = this.worlds.findIndex((w) => w.ground === 'floorLines');
@@ -370,10 +419,22 @@ export class EarlePlanet {
     );
     const rings = stripeMask(ang.mul(R / 2.4).add(drift), 0.035).mul(select(isSnow, float(0), float(1)));
     const mask = max(lines, rings).mul(flat).mul(select(kind.greaterThan(0.5).and(kind.lessThan(2.5)), float(1), float(0)));
-    const patternColor = this.lookup.pal(arrayElement(patternIdx, worldIndex), arrayElement(patternRows, worldIndex)).rgb;
+    const patternColor = this.lookup.pal(wa.z, rowNode).rgb;
     // Schneelinien und Bodenlinien laufen durch die Schatten (dort halb in Tinte gemischt), Grat-Streifen nur im Licht
     const runsInShadow = kind.greaterThan(0.5).and(kind.lessThan(2.5));
     const patternShadow = mix(this.lookup.pal(0, rowNode).rgb, patternColor, select(runsInShadow, float(0.4), float(0)));
+
+    // --- Geländemerkmale je Vertex: tc = (Uferabstand, Schneefeld, Koordinate längs des Gewässers, Eis) ------------
+    // Wasser hat eigene Meshes (exakte Uferlinie); das Terrain darunter ist knapp unter dem Spiegel gegraben.
+    const tc = attribute('tc', 'vec4');
+    // Schneefelder (Bild 05): eigene Zeile Creme → gesättigtes Blau, Schatten blau statt Tinte. Die Kante bekommt im
+    // Planetenraum eine feine organische Welligkeit (bricht die Interpolation des Vertex-Felds)
+    const sp = positionGeometry.mul(1.9);
+    const snowWob = sin(sp.x.add(sin(sp.z.mul(1.3)).mul(1.7))).mul(0.035).add(sin(sp.y.mul(2.3).add(sp.x.mul(0.7))).mul(0.025));
+    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08) };
+    // Gemeißelte Hänge: Wertstufen entlang der Höhenlinien (Stufensprung im Bandwert je Höhenschicht)
+    const chisel = wa.w;
+    const contour = fract(heightAttr.mul(5.0).add(0.5)).sub(0.5).mul(0.34);
 
     this.terrainMaterial = new EarleMaterial({
       lookup: this.lookup,
@@ -383,14 +444,46 @@ export class EarlePlanet {
       bands: this.terrainBands,
       bandScale: 2.0,
       terminator: 0.02,
-      lift: heightAttr.mul(0.45),
+      lift: heightAttr.mul(0.45).add(contour.mul(chisel)),
       crackNode: crack,
       crackLipNode: lip,
       growthNode,
       pattern: { mask, color: patternColor, shadowColor: patternShadow },
+      layers: [snowField],
       positionNode: warp(positionLocal),
       fogDistNode: positionView.length().add(this.veilNode(worldIndex)),
     });
+
+    // --- Felsen, Wasser, Scheunen, Schneewehen -----------------------------------------------------------
+    // Wachstum/Heilung: Gewässer und Formationen je Merkmals-Index (Knotenbereich ihrer Umgebung wie bei den Chunks),
+    // Scheunen und Wehen je Chunk-Slot (wie Terrain und Vegetation) — vor der Heilung verdorrt wie das Gelände ringsum
+    const features = this.field.features;
+    this.featureCapacity = Math.max(64, features.lakes.length + features.rivers.length + features.formations.length);
+    this.featureGrowth = uniformArray(new Array<number>(this.featureCapacity).fill(1), 'float') as unknown as UniformArrayLike;
+    const featureGrowth = (i: FloatNode): FloatNode => arrayElement(this.featureGrowth, i);
+    const slotGrowth = (slot: FloatNode): FloatNode => (this.terrainGrowth as unknown as { element(i: unknown): FloatNode }).element(int(slot.add(0.5).floor()));
+    const rockRows = uniformArray(this.rows.map((r) => r.rock), 'float') as unknown as UniformArrayLike;
+    this.rockMaterial = createRockMaterial({ lookup: this.lookup, fog: this.fog, bands: this.terrainBands, rockRows, veil: (w) => this.veilNode(w), warp, growth: featureGrowth });
+    const waterRows = uniformArray(this.rows.map((r) => r.water), 'float') as unknown as UniformArrayLike;
+    this.waterMaterial = createWaterMaterial({ lookup: this.lookup, fog: this.fog, bands: this.terrainBands, waterRows, veil: (w) => this.veilNode(w), warp, growth: featureGrowth });
+    // Felsen und Wasser: je ein Mesh für den ganzen Planeten (fest, klein) — kein Draw Call je Chunk
+    this.buildFeatureMeshes();
+    const barnRows = uniformArray(this.rows.map((r) => r.barn), 'float') as unknown as UniformArrayLike;
+    const plainTerrainRows = uniformArray(this.rows.map((r) => r.terrain), 'float') as unknown as UniformArrayLike;
+    this.barns = new BarnLandmarks({ lookup: this.lookup, fog: this.fog, bands: this.terrainBands, barnRows, terrainRows: plainTerrainRows, veil: (w) => this.veilNode(w), warp, capacity: 24, growth: slotGrowth });
+    this.group.add(this.barns.mesh);
+    const driftRows = uniformArray(this.rows.map((r) => r.snow), 'float') as unknown as UniformArrayLike;
+    this.drifts = new DriftLandmarks({
+      lookup: this.lookup,
+      fog: this.fog,
+      bands: this.canopyBands,
+      snowRows: driftRows,
+      veil: (w) => this.veilNode(w),
+      warp,
+      capacity: options.quality.capacity.trees > 1500 ? 700 : 360,
+      growth: slotGrowth,
+    });
+    this.group.add(this.drifts.mesh);
 
     // --- Vegetation ------------------------------------------------------------------------------------
     const worldRows: VegetationWorldRows[] = this.rows.map((r) => ({ terrain: r.terrain, canopy: r.canopyRows, accent: r.accent, monolith: r.monolith, barn: r.barn }));
@@ -430,12 +523,50 @@ export class EarlePlanet {
     return out.copy(p).addScaledVector(p, -drop / len);
   }
 
+  /** Planetenweites Merkmals-Mesh (Felsen, Wasser): ohne Culling (Krümmungs-Warp), Schattenempfang an. */
+  private featureMesh(name: string, geometry: BufferGeometry, material: EarleMaterial, castShadow: boolean): Mesh {
+    const mesh = new Mesh(geometry, material);
+    mesh.name = name;
+    mesh.castShadow = castShadow;
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    this.group.add(mesh);
+    return mesh;
+  }
+
   /** Wahrzeichen-Slots ersetzen (Freiräume und Fokus-Elemente); geladene Chunks werden neu gestreut. */
   setLandmarks(landmarks: PlanetLandmarkParams[]): void {
     this.field.setLandmarks(landmarks);
     this.cache.clear();
     for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
     this.contentDirty = true;
+    // Merkmale wurden neu geplant (ein Wahrzeichen stand auf einem See/Felsen): Felsen- und Wasser-Meshes neu bauen
+    if (this.field.featureVersion !== this.featureVersion) this.buildFeatureMeshes();
+  }
+
+  /**
+   * Felsen- und Wasser-Meshes aus den Merkmalen des Felds (je ein Mesh für den ganzen Planeten), dazu Chunk-Zuordnung,
+   * Knotenbereiche und Wachstum. Ersetzt vorhandene Meshes.
+   */
+  private buildFeatureMeshes(): void {
+    const features = this.field.features;
+    const R = this.options.radius;
+    for (const m of [this.rocks, this.water]) {
+      if (!m) continue;
+      m.removeFromParent();
+      m.geometry.dispose();
+    }
+    const rockBase = features.lakes.length + features.rivers.length;
+    const rockData = buildRockGeometry(features.formations, R, (f) => f.world, (_f, i) => Math.min(this.featureCapacity - 1, rockBase + i));
+    this.rocks = rockData.indices.length > 0 ? this.featureMesh('planet-rocks', rockGeometry(rockData), this.rockMaterial, true) : null;
+    const waterData = buildWaterGeometry(features, R, () => true, (x, y, z) => this.field.heightAt(x, y, z));
+    this.water = waterData ? this.featureMesh('planet-water', waterGeometry(waterData), this.waterMaterial, false) : null;
+    this.rockChunks.clear();
+    this.waterChunks.clear();
+    this.collectFeatureChunks();
+    this.featureRanges = this.computeFeatureRanges();
+    this.applyFeatureGrowth();
+    this.featureVersion = this.field.featureVersion;
   }
 
   /**
@@ -447,16 +578,75 @@ export class EarlePlanet {
     this.cache.clear();
     for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
     this.contentDirty = true;
+    this.featureRanges = this.computeFeatureRanges();
+    this.applyFeatureGrowth();
+  }
+
+  /**
+   * Knotenbereich je Merkmal (Seen, Flüsse, Formationen): Knoten in derselben Reichweite wie bei den Chunks (Winkelradius
+   * eines Chunks + 5° um den Merkmalsmittelpunkt), sonst der nächste Knoten — das Merkmal heilt mit seiner Umgebung.
+   */
+  private computeFeatureRanges(): Array<[number, number]> {
+    const f = this.field.features;
+    const centres: Vec3[] = [
+      ...f.lakes.map((l) => l.frame.c),
+      ...f.rivers.map((r) => r.points[Math.floor(r.points.length / 2)] ?? r.points[0]!),
+      ...f.formations.map((r) => r.frame.c),
+    ];
+    const reach = Math.cos(this.angularRadius + (5 * Math.PI) / 180);
+    return centres.map((c) => {
+      let i0 = Infinity;
+      let i1 = -Infinity;
+      let nearest = 0;
+      let nearestDot = -2;
+      for (const n of this.path.nodes) {
+        const d = _v.set(n.position[0], n.position[1], n.position[2]).normalize().dot(_c.set(c[0], c[1], c[2]));
+        if (d > nearestDot) {
+          nearestDot = d;
+          nearest = n.index;
+        }
+        if (d >= reach) {
+          i0 = Math.min(i0, n.index);
+          i1 = Math.max(i1, n.index);
+        }
+      }
+      return Number.isFinite(i0) ? ([i0, i1] as [number, number]) : ([nearest, nearest] as [number, number]);
+    });
+  }
+
+  /** Wachstum der Merkmale (Wasser, Felsen) aus dem Fortschritt — gleiche Formel wie je Chunk. */
+  private applyFeatureGrowth(): void {
+    const arr = this.featureGrowth.array;
+    this.featureRanges.forEach(([i0, i1], k) => {
+      if (k < arr.length) arr[k] = Math.min(1, Math.max(0, (this.progressDone - i0 + 1) / (i1 - i0 + 2)));
+    });
   }
 
   get hTotal(): number {
-    return this.field.hMax + this.vegetation.hMax + 1 + this.curvature.value * this.options.radius * 0.25;
+    // Felsen und Scheunen können höher als Gelände + Vegetation sein (Turm-Monolith, Tafelberg)
+    const rocks = Math.max(this.field.features.maxRockHeight, this.field.hMax + this.landmarkTop) + 1;
+    return Math.max(this.field.hMax + this.vegetation.hMax + 1, rocks) + this.curvature.value * this.options.radius * 0.25;
   }
 
-  /** Terrain-Radius (vom Planetenmittelpunkt) in einer Richtung des Planetenraums. */
+  /** Terrain-Radius (vom Planetenmittelpunkt, inkl. Seebecken und Flussrinnen) in einer Richtung des Planetenraums. */
   surfaceRadius(dir: Vector3): number {
     const l = dir.length() || 1;
     return this.options.radius + this.field.heightAt(dir.x / l, dir.y / l, dir.z / l);
+  }
+
+  /**
+   * Radius der begehbaren Oberfläche: Gelände oder — auf einer Felsformation — deren Deckfläche (Knoten auf Felsen,
+   * Kamera-Freiheit über Felswänden). `surfaceRadius` bleibt das reine Gelände.
+   */
+  walkableRadius(dir: Vector3): number {
+    const l = dir.length() || 1;
+    return this.options.radius + this.field.surfaceHeightAt(dir.x / l, dir.y / l, dir.z / l);
+  }
+
+  /** Liegt die Richtung (Planetenraum) im Wasser (See/Fluss, optional mit Uferrand in Welteinheiten)? */
+  isWater(dir: Vector3, margin = 0): boolean {
+    const l = dir.length() || 1;
+    return this.field.isWater(dir.x / l, dir.y / l, dir.z / l, margin);
   }
 
   zoneCoordAt(dir: Vector3): number {
@@ -586,6 +776,7 @@ export class EarlePlanet {
   setProgress(done: number): void {
     this.progressDone = Math.max(0, done);
     for (const chunk of this.loaded.values()) this.applyGrowth(chunk);
+    this.applyFeatureGrowth();
   }
 
   get progress(): number {
@@ -759,6 +950,8 @@ export class EarlePlanet {
     }
     geometry.setAttribute('ta', new BufferAttribute(ta, 4));
     geometry.setAttribute('tb', new BufferAttribute(tb, 4));
+    // Merkmale (Wasser, Schneefeld, Musterkoordinate, Eis) — direkt aus dem Chunk-Generator
+    geometry.setAttribute('tc', new BufferAttribute(m.feature, 4));
     geometry.setIndex(new BufferAttribute(m.indices, 1));
     geometry.computeBoundingSphere();
     // Krümmungs-Warp senkt ferne Chunks radial ab: Kugel großzügig, damit das Culling sie nicht verliert
@@ -824,21 +1017,64 @@ export class EarlePlanet {
     return { mesh, trees, props, nodeRange };
   }
 
+  /** Chunk-Schlüssel, die jede Formation bzw. jedes Gewässer berührt (Mitte und Rand des Grundrisses). */
+  private collectFeatureChunks(): void {
+    const f = this.field.features;
+    const R = this.options.radius;
+    const add = (set: Set<string>, c: Vec3, radius: number): void => {
+      const frame = frameAt(c);
+      const d: Vec3 = [0, 0, 0];
+      for (let i = -1; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const r = i < 0 ? 0 : radius;
+        offsetDir(frame, R, Math.cos(a) * r, Math.sin(a) * r, d);
+        set.add(chunkKey(this.field.chunkOf(d[0], d[1], d[2])));
+      }
+    };
+    for (const form of f.formations) add(this.rockChunks, form.frame.c, form.footprint + 0.5);
+    for (const lake of f.lakes) add(this.waterChunks, lake.frame.c, lake.reach);
+    for (const river of f.rivers) for (let i = 0; i < river.points.length; i += 4) add(this.waterChunks, river.points[i]!, 1.5);
+  }
+
   private rebuildContent(): void {
     const nearSet = new Set(this.nearKeys.split('|').filter(Boolean));
     const trees: VegetationTreeEntry[] = [];
     const props: VegetationPropEntry[] = [];
+    const barns: Array<{ prop: PlanetProp; world: number; slot: number }> = [];
+    const drifts: DriftPlacement[] = [];
+    const driftSpecs = this.field.features.drifts;
     this.bounds.makeEmpty();
     for (const chunk of this.loaded.values()) {
       const withDots = nearSet.has(chunk.key);
-      for (const tree of chunk.cpu.trees) trees.push({ tree, slot: chunk.slot, withDots });
-      for (const prop of chunk.cpu.props) props.push({ prop, slot: chunk.slot });
+      for (const tree of chunk.cpu.trees) {
+        trees.push({ tree, slot: chunk.slot, withDots });
+        // Schneewehe am Stammfuß (Schneewelten): verbirgt den Fuß, der Baum steht im Schnee
+        const spec = driftSpecs[tree.world];
+        if (spec && tree.variant < (spec.trees ?? 1)) {
+          const size = Math.min(1.7, Math.max(0.45, tree.canopyRadius * 0.42)) * (spec.size ?? 1);
+          drifts.push({ position: tree.position, normal: tree.normal, size, yaw: tree.variant * 97.1, world: tree.world, slot: chunk.slot });
+        }
+      }
+      for (const prop of chunk.cpu.props) {
+        // Scheunen zeichnet das Wahrzeichen (Earle-Scheune), nicht der Requisiten-Pool
+        if (prop.kind === 'barn') {
+          barns.push({ prop, world: prop.world, slot: chunk.slot });
+          // Schneewehen an den Längswänden (Bild 01): der Wandfuß steht im Schnee
+          const spec = driftSpecs[prop.world];
+          if (spec) for (const d of barnDrifts(prop, spec.size ?? 1, chunk.slot)) drifts.push(d);
+        } else props.push({ prop, slot: chunk.slot });
+      }
       const b = chunk.cpu.mesh.bounds;
       this.bounds.expandByPoint(_v.set(b.min[0], b.min[1], b.min[2]));
       this.bounds.expandByPoint(_v.set(b.max[0], b.max[1], b.max[2]));
     }
     // Sonnenrichtung im Planetenraum ist in der Vegetation gesetzt (setSunDirection) → Punktverteilung sonnenseitig
     this.vegetation.setContent(trees, props);
+    this.landmarkTop = this.barns.set(barns);
+    this.drifts.set(drifts);
+    // Felsen und Wasser nur zeichnen (Haupt- und Schattenpass), wenn einer ihrer Chunks geladen ist
+    if (this.rocks) this.rocks.visible = [...this.rockChunks].some((k) => this.loaded.has(k));
+    if (this.water) this.water.visible = [...this.waterChunks].some((k) => this.loaded.has(k));
     if (!this.bounds.isEmpty()) this.bounds.expandByScalar(this.hTotal);
   }
 
@@ -851,6 +1087,12 @@ export class EarlePlanet {
     for (const o of this.landmarks.values()) o.removeFromParent();
     this.landmarks.clear();
     this.vegetation.dispose();
+    this.barns.dispose();
+    this.drifts.dispose();
+    this.rocks?.geometry.dispose();
+    this.water?.geometry.dispose();
+    this.rockMaterial.dispose();
+    this.waterMaterial.dispose();
     this.terrainMaterial.dispose();
     this.atlas.dispose();
     this.group.removeFromParent();
@@ -860,4 +1102,41 @@ export class EarlePlanet {
 function smooth01(x: number): number {
   const t = Math.min(1, Math.max(0, x));
   return t * t * (3 - 2 * t);
+}
+
+/**
+ * Schneewehen am Fuß einer Scheune: an Längswänden, Anbau und Giebeln, im Scheunenraum gesetzt und in den
+ * Planetenraum gedreht.
+ */
+function barnDrifts(prop: PlanetProp, size: number, slot: number): DriftPlacement[] {
+  const n = new Vector3(prop.normal[0], prop.normal[1], prop.normal[2]).normalize();
+  const radial = new Vector3(prop.position[0], prop.position[1], prop.position[2]).normalize();
+  const up = n.lerp(radial, 0.85).normalize();
+  const q = new Quaternion().setFromUnitVectors(_Y, up).multiply(new Quaternion().setFromAxisAngle(_Y, prop.yaw));
+  const s = prop.scale;
+  // Scheunenraum nach der Drehung der Geometrie: First längs x (±0.78), Wände bei z = ±0.5, Anbau bei z −0.5…−1.0
+  const spots: Array<[number, number, number, number]> = [
+    // x, z, Größe, Drehung
+    [-0.45, 0.62, 0.55, 0.2],
+    [0.4, 0.66, 0.5, 2.1],
+    [0.15, -1.1, 0.5, 3.6],
+    [0.92, 0.05, 0.45, 5.0],
+    [-0.9, -0.3, 0.42, 1.2],
+  ];
+  const out: DriftPlacement[] = [];
+  for (const [x, z, r, yaw] of spots) {
+    const p = new Vector3(x * s, 0, z * s).applyQuaternion(q).add(new Vector3(prop.position[0], prop.position[1], prop.position[2]));
+    out.push({ position: [p.x, p.y, p.z], normal: [up.x, up.y, up.z], size: r * s * size, yaw: prop.yaw + yaw, world: prop.world, slot });
+  }
+  return out;
+}
+
+/** `uniformArray(Vector4[], 'vec4')` ohne die generischen Typen. */
+interface UniformVec4ArrayLike {
+  element(i: unknown): Vec4Node;
+}
+
+/** vec4-Element eines Uniform-Arrays (Index-Knoten wird gerundet). */
+function vec4Element(arr: UniformVec4ArrayLike, index: FloatNode): Vec4Node {
+  return arr.element(int(index.add(0.5).floor()));
 }

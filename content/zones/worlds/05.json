@@ -18,7 +18,9 @@
     "sunRing": "#8fd0dc",
     "fog": ["#155676", "#12465e", "#1f7090", "#3a9fbe", "#7fc0cc", "#c8dfd0"],
     "fogAlpha": [0, 0.3, 0.5, 0.66, 0.8, 0.9],
-    "accent": ["#0a1620", "#9a8446", "#07131c", "#0a1620", "#c8b06a", "#e6d090", "#8fb8c8", "#3a8fb0"]
+    "accent": ["#0a1620", "#9a8446", "#07131c", "#0a1620", "#c8b06a", "#e6d090", "#8fb8c8", "#3a8fb0"],
+    "water": ["#1a4a6a", "#5f9ec0", "#a8d4e0", "#dcecec", "#f6f4e8", "#ffffff", "#3a7fa0", "#c8e4ec"],
+    "rock": ["#0e1a26", "#3c4c5e", "#8a96a4", "#c8c4c4", "#f0e2da", "#e2ecec", "#243444", "#f6ece4"]
   },
   "terrain": { "amplitude": 2.8, "wavelength": 1.5, "slope": 0.3 },
   "ground": "snowLines",
@@ -44,6 +46,11 @@
     }
   },
   "props": { "rocks": 0.006, "animals": 0.006 },
+  "features": {
+    "rocks": [{ "kind": "spires", "count": 2, "size": [2.6, 3.6], "height": [3.2, 4.6], "focusDistance": [3, 10] }],
+    "lakes": { "count": 1, "radius": [2.3, 2.9], "stretch": 0.55, "frozen": true, "focusDistance": [9, 15] },
+    "drifts": { "trees": 1, "size": 1.2 }
+  },
   "fogStripes": 0,
   "fog": { "start": 7, "range": 13 },
   "view": {

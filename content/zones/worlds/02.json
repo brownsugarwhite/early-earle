@@ -17,7 +17,8 @@
     "sunRing": "#e2f3ea",
     "fog": ["#0f2f80", "#0c3a5a", "#2f7fc0", "#6fbcd8", "#b8e6ec", "#eaf6f4"],
     "fogAlpha": [0, 0.35, 0.55, 0.72, 0.86, 0.95],
-    "accent": ["#0a1a12", "#1c7f34", "#0a2416", "#0d2418", "#8fd93c", "#5fa64a", "#c8542a", "#eaf6f4"]
+    "accent": ["#0a1a12", "#1c7f34", "#0a2416", "#0d2418", "#8fd93c", "#5fa64a", "#c8542a", "#eaf6f4"],
+    "water": ["#0d5560", "#12707c", "#1f98a0", "#56c8bc", "#b8f0e0", "#e8fff4", "#0b4a50", "#9fe8d8"]
   },
   "terrain": { "amplitude": 3.0, "wavelength": 1.4, "slope": 0.35 },
   "ground": "ramps",
@@ -55,6 +56,10 @@
     "veilHeights": [0.9, 1.7],
     "neon": 0.45,
     "pockets": { "density": 0.0025, "radius": [4, 7] }
+  },
+  "features": {
+    "rivers": { "count": 2, "width": [1.0, 1.5], "length": [14, 22], "meander": 0.6, "pathDistance": [2.4, 3.2] },
+    "lakes": { "count": 2, "radius": [1.6, 2.4], "stretch": 2.4 }
   },
   "fogStripes": 1,
   "fog": { "start": 8, "range": 16 },

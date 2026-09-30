@@ -3,6 +3,7 @@ import { hash32, mulberry32 } from './rng';
 import { TREE_KIND_LIST, TREE_PROPORTIONS, composeGroveTree, groundSink, type TreeInstance, type TreeKind } from './scatterTrees';
 import type { Vec3 } from './capPatch';
 import { areaSplit, decideWorld, pathLongitude, smoothstep01, wrapAngle, type WorldTables } from './worldLayout';
+import { PlanetFeatures, type FeatureHost, type FeatureSample, type LedgeAnchor, type WorldFeatureSpec } from './features';
 
 /**
  * Rotierbarer Planet: Cube-Sphere mit `chunksPerFace²` Chunks pro Würfelseite, ein globales Höhenfeld aus
@@ -84,6 +85,8 @@ export interface PlanetWorldParams {
   terrain: PlanetTerrainShape;
   vegetation: PlanetVegetationFamily;
   props?: PlanetPropSpec;
+  /** Geländemerkmale: Seen, Flüsse, Felsformationen, Schneefelder, Schneewehen, Meißelstufen (siehe `features/`). */
+  features?: WorldFeatureSpec;
 }
 
 export interface PlanetZoneParams {
@@ -170,6 +173,11 @@ export interface ChunkMeshData {
   border: Float32Array;
   /** Index der nächsten Grenze (0 = Zone 0|1, …), -1 = keine. */
   borderId: Float32Array;
+  /**
+   * Merkmale je Vertex (4 Werte): Uferabstand (> 0 im Wasser, −8 = kein Wasser), Schneefeld (> 0 Schnee, −1 = keine
+   * Schneefelder), Musterkoordinate längs des Gewässers, Eis (1 = zugefroren).
+   */
+  feature: Float32Array;
   indices: Uint16Array | Uint32Array;
   bounds: { min: Vec3; max: Vec3 };
   center: Vec3;
@@ -328,6 +336,15 @@ export class PlanetField {
   readonly polarMargin: number;
   readonly cosHalfWidth: number;
   landmarkSlots: LandmarkSlot[];
+  /**
+   * Geländemerkmale (Seen, Flüsse, Felsformationen mit Ankern für Levelknoten, Schneefelder). Seen und Flüsse sind
+   * ins Höhenfeld gegraben; Felsen stehen als eigene Meshes darauf (siehe `features/`).
+   */
+  features: PlanetFeatures;
+  /** Zählt Neuberechnungen der Merkmale (z. B. wenn ein neues Wahrzeichen auf einem See stünde). */
+  featureVersion = 0;
+  /** Während der Merkmalsgenerierung aus: `heightWithShape` liefert dann das natürliche Gelände. */
+  private featuresOn = false;
   private readonly hills: GradientNoise3;
   private readonly ridges: GradientNoise3;
   private readonly ramps: GradientNoise3;
@@ -405,6 +422,43 @@ export class PlanetField {
     this.shapes = this.worlds.map((w) => resolveShape(w.terrain));
     this.hMax = Math.max(...this.shapes.map((s) => s.amplitude));
     this.landmarkSlots = (params.landmarks ?? []).map((l) => this.buildLandmark(l));
+    // Merkmale auf dem natürlichen Gelände planen, danach gelten sie für alle Höhenabfragen (Wahrzeichen neu setzen)
+    this.features = new PlanetFeatures(this.featureHost(), this.worlds.map((w) => w.features));
+    this.featuresOn = true;
+    if (this.features.lakes.length + this.features.rivers.length > 0) this.landmarkSlots = (params.landmarks ?? []).map((l) => this.buildLandmark(l));
+  }
+
+  /** Brücke für die Merkmalsgenerierung (natürliches Gelände, Welten, Spirale, Wahrzeichen). */
+  private featureHost(): FeatureHost {
+    const shapeTmp: ResolvedShape = { amplitude: 0, wavelength: 1, ridge: 0, floor: 0, slope: 0 };
+    return {
+      radius: this.params.radius,
+      seed: this.params.seed,
+      worldCount: this.worlds.length,
+      worldId: (i) => this.worlds[i]?.id ?? `w${i}`,
+      worldSide: (i) => this.worlds[i]?.side ?? 'near',
+      worldAt: (x, y, z) => this.worldAt(x, y, z),
+      baseHeightAt: (x, y, z) => {
+        const s = this.shapeAt(x, y, z);
+        shapeTmp.amplitude = s.amplitude;
+        shapeTmp.wavelength = s.wavelength;
+        shapeTmp.ridge = s.ridge;
+        shapeTmp.floor = s.floor;
+        shapeTmp.slope = s.slope;
+        return this.heightWithShape(x, y, z, shapeTmp);
+      },
+      amplitudeAt: (x, y, z) => this.amplitudeAt(x, y, z),
+      worldLatRange: (i) => this.worldLatRange(i),
+      worldCenterDir: (i) => this.worldCenterDir(i),
+      focusDir: (i) => {
+        const slot = this.landmarkSlots.find((s) => s.world === i && s.id.startsWith('focal-'));
+        return slot ? slot.dir : null;
+      },
+      keepClear: () => this.landmarkSlots.filter((s) => s.clearRadius > 0).map((s) => ({ dir: s.dir, radius: s.clearRadius })),
+      turns: this.turns,
+      polarMargin: this.polarMargin,
+      nearHalfWidth: this.cosHalfWidth <= -1 ? Math.PI : Math.acos(Math.min(1, this.cosHalfWidth)),
+    };
   }
 
   get zoneCount(): number {
@@ -535,6 +589,16 @@ export class PlanetField {
   /** Wahrzeichen-Slots neu setzen (z. B. nachdem der Pfad bekannt ist); Streuungen danach neu erzeugen. */
   setLandmarks(landmarks: PlanetLandmarkParams[]): void {
     this.landmarkSlots = landmarks.map((l) => this.buildLandmark(l));
+    // Ein neues Wahrzeichen (z. B. der Riesenbaum, dessen Platz erst mit dem Pfad feststeht) darf auf keinem See, Fluss
+    // oder Felsen stehen: dann die Merkmale mit dem neuen Freiraum neu planen (selten, kostet einmal ~50 ms)
+    const clear = this.landmarkSlots.filter((l) => l.clearRadius > 0).map((l) => ({ dir: l.dir, radius: l.clearRadius }));
+    if (this.features.conflicts(clear)) {
+      this.featuresOn = false;
+      this.features = new PlanetFeatures(this.featureHost(), this.worlds.map((w) => w.features));
+      this.featuresOn = true;
+      this.featureVersion++;
+      this.landmarkSlots = landmarks.map((l) => this.buildLandmark(l));
+    }
   }
 
   /** Chunk, in dessen Zelle eine Richtung liegt (Würfelseite nach größter Komponente, dann gnomonisch). */
@@ -614,7 +678,26 @@ export class PlanetField {
     }
     base = Math.min(1, Math.max(0, base));
     const h = s.floor > 0 ? smoothstep01(s.floor, 1, base) : base;
-    return s.amplitude * h;
+    // Seen und Flussrinnen (flache Wasserspiegel) ins natürliche Gelände graben
+    return this.featuresOn ? this.features.applyHeight(dx, dy, dz, s.amplitude * h) : s.amplitude * h;
+  }
+
+  /**
+   * Höhe der begehbaren Oberfläche: Gelände oder — auf einer Felssäule — deren Deckfläche (Kamera-Freiheit, Knoten
+   * auf Felsen). Für das Terrain-Mesh gilt weiter `heightAt`.
+   */
+  surfaceHeightAt(dx: number, dy: number, dz: number): number {
+    return this.features.surfaceHeight(dx, dy, dz, this.heightAt(dx, dy, dz));
+  }
+
+  /** Liegt die Richtung im Wasser (See oder Fluss, optional mit Uferrand in Welteinheiten)? */
+  isWater(dx: number, dy: number, dz: number, margin = 0): boolean {
+    return this.features.isWater(dx, dy, dz, margin);
+  }
+
+  /** Nächster Felsanker für einen Levelknoten (Einheitsrichtung) innerhalb `maxDist` Welteinheiten. */
+  ledgeNear(dir: Vec3, maxDist = Infinity): LedgeAnchor | null {
+    return this.features.ledgeNear(dir, maxDist);
   }
 
   /** Höhe 0..1 relativ zur lokalen Amplitude. */
@@ -713,6 +796,8 @@ export function generateChunkMesh(field: PlanetField, id: ChunkId, res: number):
   const side = new Float32Array(count * 2);
   const border = new Float32Array(count);
   const borderId = new Float32Array(count);
+  const feature = new Float32Array(count * 4);
+  const fs: FeatureSample = { water: 0, frozen: 0, along: 0, snow: -1 };
   const dir: Vec3 = [0, 0, 0];
   const pos: Vec3 = [0, 0, 0];
   const nor: Vec3 = [0, 0, 0];
@@ -744,6 +829,12 @@ export function generateChunkMesh(field: PlanetField, id: ChunkId, res: number):
       const b = field.borderFromZone(zc);
       border[k] = Math.min(999, b.dist);
       borderId[k] = b.border;
+      // Merkmale: Wasser (Uferabstand), Schneefeld, Musterkoordinate, Eis
+      field.features.sample(dir[0], dir[1], dir[2], height[k]!, decideWorld(zc, sd[0], field.cosHalfWidth, field.tables), fs);
+      feature[k * 4] = fs.water;
+      feature[k * 4 + 1] = fs.snow;
+      feature[k * 4 + 2] = fs.along;
+      feature[k * 4 + 3] = fs.frozen;
       if (pos[0] < min[0]) min[0] = pos[0];
       if (pos[1] < min[1]) min[1] = pos[1];
       if (pos[2] < min[2]) min[2] = pos[2];
@@ -782,6 +873,7 @@ export function generateChunkMesh(field: PlanetField, id: ChunkId, res: number):
     side,
     border,
     borderId,
+    feature,
     indices,
     bounds: { min, max },
     center: centre,
@@ -927,6 +1019,8 @@ export function scatterChunkTrees(field: PlanetField, id: ChunkId, options: Chun
     const sink = options.meshSpacing ? groundSink(field, d, options.meshSpacing) : 0;
     if (sink > 0) for (let k = 0; k < 3; k++) pos[k] = pos[k]! - d[k]! * sink;
     if (isCleared(field, options, pos, canopyRadius)) continue;
+    // Geländemerkmale: kein Baum im Wasser, auf Felsen oder im Schneefeld
+    if (field.features.blocksTree(d[0], d[1], d[2], canopyRadius, world, field.features.snow[world] ? field.heightNormAt(d[0], d[1], d[2]) : 0)) continue;
     const trunkHeight = prop.trunk * canopyRadius;
     const hullH = prop.hull * canopyRadius;
     raw.push({
@@ -1045,6 +1139,8 @@ export function scatterChunkProps(field: PlanetField, id: ChunkId, options: Chun
       if (!r) continue;
       field.surfaceAt(d[0], d[1], d[2], pos, nor);
       if (isCleared(field, options, pos, PROP_FOOTPRINT[r.kind] * r.scale)) continue;
+      // Geländemerkmale: nichts im Wasser oder auf Felsen
+      if (field.features.blocksProp(d[0], d[1], d[2], PROP_FOOTPRINT[r.kind] * r.scale)) continue;
       items.push({ prop: { kind: r.kind, position: [pos[0], pos[1], pos[2]], normal: [nor[0], nor[1], nor[2]], scale: r.scale, yaw, zone, world: w, rank: 0, variant }, priority });
     }
     items.sort((a, b) => a.priority - b.priority);

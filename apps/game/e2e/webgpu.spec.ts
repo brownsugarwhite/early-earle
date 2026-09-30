@@ -71,3 +71,19 @@ test('Herde auf WebGPU: 21 Arten (Mesh-Körper, Fell, Federn) kompilieren', asyn
   await page.waitForTimeout(1500);
   expect(errors).toEqual([]);
 });
+
+test('Earle-Welten auf WebGPU: Wasser, Felsen, Scheune, Schneefelder und -wehen kompilieren', async ({ page }) => {
+  const errors = collectGpuErrors(page);
+  await page.setViewportSize({ width: 900, height: 700 });
+  // Welten mit Geländemerkmalen: Fluss + Seen (02), Felsstufen + Wand (04), Eis + Tafelfels + Wehen (05),
+  // Schneefelder + Wand (06), Scheune (08), Turm (09)
+  for (const world of [2, 4, 5, 6, 8, 9]) {
+    await page.goto(`/lab/earle?world=${world}&progress=100`);
+    if (world === 2) {
+      await requireWebGPU(page);
+      await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgpu', { timeout: 30_000 });
+    }
+    await page.waitForTimeout(2500);
+  }
+  expect(errors).toEqual([]);
+});

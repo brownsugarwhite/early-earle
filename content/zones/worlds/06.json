@@ -10,14 +10,16 @@
   "sources": ["06.webp", "Ebene_10.jpg", "Ebene_2.jpg", "Ebene_7.jpg"],
   "palette": {
     "ink": "#050608",
-    "terrain": ["#2a4ec0", "#3f6fe0", "#8fb0f0", "#e8ecf0", "#f7f6ee"],
+    "terrain": ["#0c1426", "#142040", "#1c2e58", "#263e72", "#34528e"],
     "canopy": ["#0a0d14", "#12161e", "#3a4a6a", "#9ab0d0", "#eef2f8", "#c8d8f0", "#ffffff"],
     "sky": ["#8fc2ec", "#6faae4", "#5494dc", "#4482d4", "#3872c8", "#2c5ec0"],
     "sun": "#f8f8f2",
     "sunRing": "#c8dcf4",
     "fog": ["#2c5ec0", "#1a2a58", "#2a4ec0", "#3f6fe0", "#8fb0f0", "#c8d8f0"],
     "fogAlpha": [0, 0.25, 0.42, 0.58, 0.72, 0.85],
-    "accent": ["#eef2f8", "#3f6fe0", "#050608", "#0a0d14", "#9ab0d0", "#eef2f8", "#2a4ec0", "#8fb0f0"]
+    "accent": ["#eef2f8", "#3f6fe0", "#050608", "#0a0d14", "#9ab0d0", "#eef2f8", "#2a4ec0", "#8fb0f0"],
+    "rock": ["#02040a", "#0a1426", "#14284a", "#1f4a78", "#3a78b0", "#e8ecf0", "#1d4f6e", "#e8ecf0"],
+    "snow": ["#1f3fd0", "#6f96ea", "#c4d4ef", "#ebeee6", "#f6f2e4", "#fbf8ee"]
   },
   "terrain": { "amplitude": 3.8, "wavelength": 1.2, "ridge": 0.95 },
   "ground": "smooth",
@@ -47,6 +49,13 @@
     "veilHeights": [1.2, 1.9],
     "neon": 0.55,
     "pockets": { "density": 0.0022, "radius": [4, 7] }
+  },
+  "features": {
+    "snowFields": { "cover": 0.45, "scale": 1 },
+    "rocks": [
+      { "kind": "wall", "count": 1, "size": [18, 24], "height": [6, 8], "steps": 3, "focusDistance": [0, 6] },
+      { "kind": "spires", "count": 2, "size": [2.5, 4], "height": [3, 4.5], "focusDistance": [4, 12] }
+    ]
   },
   "fogStripes": 0,
   "fog": { "start": 10, "range": 18 },

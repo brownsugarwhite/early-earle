@@ -12,6 +12,26 @@ export interface EarlePattern {
   shadowColor?: Vec3Node | null;
 }
 
+/**
+ * Zweite Oberfläche über dem Grundmaterial (Wasser, Schneefeld, Fels an Steilwänden): eigene Palettenzeile mit den
+ * gleichen Lichtbändern oder feste Farben, Schatten = Stufe 0 der Zeile. Wird mit `mask` (anti-aliasiert) überblendet.
+ */
+export interface EarleLayer {
+  mask: FloatNode;
+  /** Palettenzeile: Lichtfarbe aus den Bändern, Schattenfarbe = Stufe 0. */
+  row?: FloatNode | null;
+  /** Feste Lichtfarbe (statt `row`). */
+  color?: Vec3Node | null;
+  /** Feste Schattenfarbe (statt Stufe 0 von `row`). */
+  shadowColor?: Vec3Node | null;
+  /** Nur Schlagschatten, kein Terminator (flaches Wasser, Eis). */
+  castOnly?: boolean;
+  /** Bandwert-Zusatz (z. B. Schneefelder heller als der Waldboden). */
+  lift?: FloatNode | null;
+  /** Ornament der Schicht (nur im Licht). */
+  pattern?: EarlePattern | null;
+}
+
 export interface EarleMaterialOptions {
   lookup: PaletteLookup;
   /** Zeile im Atlas: x = 0 Tinte, x = 1.. Lichtstufen. */
@@ -45,6 +65,8 @@ export interface EarleMaterialOptions {
   terminatorNode?: FloatNode | null;
   /** Nebeldistanz je Fragment (z. B. + Schleier über Nachbarwelten); Standard: Abstand zur Kamera. */
   fogDistNode?: FloatNode | null;
+  /** Überblendete Oberflächen (in Reihenfolge), z. B. Schneefeld, dann Wasser. */
+  layers?: EarleLayer[] | null;
 }
 
 /**
@@ -73,6 +95,7 @@ export class EarleMaterial extends NodeMaterial {
     bandNode: FloatNode | null;
     terminatorNode: FloatNode | null;
     fogDistNode: FloatNode | null;
+    layers: EarleLayer[];
   };
 
   constructor(options: EarleMaterialOptions) {
@@ -95,6 +118,7 @@ export class EarleMaterial extends NodeMaterial {
       bandNode: options.bandNode ?? null,
       terminatorNode: options.terminatorNode ?? null,
       fogDistNode: options.fogDistNode ?? null,
+      layers: options.layers ?? [],
     };
     if (options.normalNode) this.normalNode = options.normalNode;
     if (options.positionNode) this.positionNode = options.positionNode;
@@ -128,6 +152,23 @@ class EarleLightingModel extends LightingModel {
     const ink = e.lookup.pal(0, row).rgb;
     const shadowSide = e.pattern?.shadowColor ? mix(ink, e.pattern.shadowColor, e.pattern.mask) : ink;
     let col = mix(shadowSide, litColor, lit);
+    // Überblendete Oberflächen (Schneefeld, Wasser): eigene Zeile oder feste Farben, gleiche Bänder bzw. nur Schlagschatten
+    for (const layer of e.layers) {
+      const litL = layer.castOnly ? min(shadow, 1) : lit;
+      let lc: Vec3Node;
+      let sc: Vec3Node;
+      if (layer.row) {
+        const vL = layer.lift ? v.add(layer.lift) : v;
+        const bandL = clamp(vL, 0, 0.999).mul(e.bands.sub(1));
+        lc = e.lookup.bands(bandL, layer.row, 1).rgb;
+        sc = layer.shadowColor ?? e.lookup.pal(0, layer.row).rgb;
+      } else {
+        lc = layer.color ?? litColor;
+        sc = layer.shadowColor ?? ink;
+      }
+      if (layer.pattern) lc = mix(lc, layer.pattern.color, layer.pattern.mask);
+      col = mix(col, mix(sc, lc, litL), layer.mask);
+    }
     if (e.growthNode) {
       // Verdorrt: Richtung Grauwert und ein bräunlicher Stich, exakt gestuft bleibt es trotzdem
       const l = col.dot(vec3(0.3, 0.5, 0.2));

@@ -43,6 +43,9 @@
     }
   },
   "props": { "barns": 0.005, "animals": 0.004 },
+  "features": {
+    "drifts": { "trees": 1, "size": 1 }
+  },
   "fogStripes": 0,
   "fog": { "start": 6, "range": 12 },
   "view": {
@@ -51,9 +54,9 @@
     "look": 4.0,
     "fov": 52,
     "curvature": 0.12,
-    "focus": [0.25, -0.3],
+    "focus": [0.2, -0.06],
     "nearClear": 1.2,
     "footClear": 5.0
   },
-  "focal": { "kind": "barn", "scale": 2.5, "latFrac": 0.5, "yawDeg": 110 }
+  "focal": { "kind": "barn", "scale": 2.2, "latFrac": 0.5, "yawDeg": 110 }
 }
