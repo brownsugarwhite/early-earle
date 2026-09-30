@@ -1,11 +1,12 @@
 import { Color, Group, Mesh, PerspectiveCamera, Quaternion, Scene, SphereGeometry, Vector3 } from 'three/webgpu';
 import { float, positionLocal, uniform } from 'three/tsl';
 import { EarleMaterial, PaletteAtlas, PaletteLookup, PlanetVegetation, SunRig, addWorldPalette, createFogSettings, createSkyDome, skySunIndices, type WorldRows } from '@ee/render';
+import { GRAND_FORMS, createGrandTrees, type GrandTrees } from '@ee/render/earle/tree/grand.ts';
 import { TREE_PROPORTIONS, type PlanetTree, type TreeFamily, type TreeKind } from '@ee/world';
 import type { SceneContext, SceneController } from '../../canvas/SceneController';
 import { WORLD_CONTENTS } from './zones';
 
-/** Parameter der Baum-Galerie (`/lab/earle?gallery=1&world=05&kinds=oak,lace&dist=7&sun=10&az=70&spin=1`). */
+/** Parameter der Baum-Galerie (`/lab/earle?gallery=1&world=05&kinds=oak,lace&dist=7&sun=10&az=70&spin=1&grand=4`). */
 export interface TreeGalleryParams {
   /** Welt-Index 0..9 (Palette, Rinde, Schnee, Tüpfel der Welt). */
   world: number;
@@ -21,11 +22,18 @@ export interface TreeGalleryParams {
   spin: number;
   /** Größenfaktor der Bäume. */
   scale: number;
+  /**
+   * Geschwister des Riesenbaums in der Reihe (`?grand=4`: die vier Formen Kuppel, Fontäne, Schirm, Pagode; 0 = aus).
+   * Stehen in einer zweiten Reihe hinter den Welt-Bäumen, im Maßstab der Karte (Baumeinheit × 0.4).
+   */
+  grand: number;
 }
 
 export const GALLERY_KINDS: TreeKind[] = ['dome', 'umbrella', 'lace', 'oak', 'jewel', 'stacked', 'spire', 'pine', 'bare'];
 
 const R = 32;
+/** Maßstab des Riesenbaums auf der Karte (Baumeinheit → Welteinheit), gleich für seine Geschwister. */
+const TREE_SCALE = 0.4;
 const _q = new Quaternion();
 const _v = new Vector3();
 
@@ -44,6 +52,7 @@ export class TreeGalleryScene implements SceneController {
   private readonly rows: WorldRows[];
   private readonly lookup: PaletteLookup;
   private vegetation: PlanetVegetation | null = null;
+  private grand: GrandTrees | null = null;
   private ground: Mesh | null = null;
   private readonly sunDirWorld = uniform(new Vector3(0, 1, 0));
   private readonly disposables: Array<{ dispose(): void }> = [];
@@ -136,8 +145,31 @@ export class TreeGalleryScene implements SceneController {
       this.trees.map((tree) => ({ tree, slot: 0, withDots: true })),
       [],
     );
+    // Geschwister des Riesenbaums: zweite Reihe hinter den Welt-Bäumen, auf der Planetenkappe (Baumraum × 0.4)
+    if (this.params.grand > 0) {
+      const holder = new Group();
+      holder.position.set(0, R, 0);
+      holder.scale.setScalar(TREE_SCALE);
+      const Rt = R / TREE_SCALE;
+      const n = Math.min(6, Math.round(this.params.grand));
+      const back = -14 / TREE_SCALE;
+      const sites = Array.from({ length: n }, (_, i) => ({ x: (i - (n - 1) / 2) * 26, z: back + (i % 2) * 6, yaw: i * 1.7, spec: { form: GRAND_FORMS[i % GRAND_FORMS.length]! } }));
+      const grand = createGrandTrees({
+        sites,
+        seed: 7,
+        quality: 'hoch',
+        groundAt: (x, z) => Math.sqrt(Math.max(0, Rt * Rt - x * x - (z * z))) - Rt,
+        bark: content.vegetation.trunkStyle === 'striped' ? 'jewel' : 'ink',
+        snow: (content.vegetation as TreeFamily).snow ?? 0.6,
+        fog,
+        fogLookup: this.lookup,
+      });
+      holder.add(grand.group);
+      this.planet.add(holder);
+      this.grand = grand;
+    }
     // Empfänger bis in die Kronen (die Punkte lesen den Schattenwert dort)
-    this.sun.fitToView(this.camera, { sphere: { center: this.planet, radius: R, minHeight: -0.5, maxHeight: 6, surface: () => R }, casterHeight: 8 });
+    this.sun.fitToView(this.camera, { sphere: { center: this.planet, radius: R, minHeight: -0.5, maxHeight: 6, surface: () => R }, casterHeight: this.params.grand > 0 ? 12 : 8 });
     this.resize(ctx);
   }
 
@@ -165,6 +197,11 @@ export class TreeGalleryScene implements SceneController {
     veg.setSunDirection(this.sunDirWorld.value, _v.copy(this.sunDirWorld.value).applyQuaternion(_q));
     const camWorld = this.camera.getWorldPosition(new Vector3());
     veg.updateCamera(this.camera, camWorld.clone().applyQuaternion(_q));
+    if (this.grand) {
+      this.grand.setSunDirection(this.sunDirWorld.value);
+      this.grand.updateCamera(this.camera);
+      this.grand.update(dt);
+    }
     if (this.shadowDirty) {
       this.sun.requestUpdate();
       this.shadowDirty = false;
@@ -178,6 +215,7 @@ export class TreeGalleryScene implements SceneController {
 
   dispose(): void {
     this.vegetation?.dispose();
+    this.grand?.dispose();
     for (const d of this.disposables) d.dispose();
     this.sun.dispose();
     this.atlas.dispose();
@@ -211,5 +249,6 @@ export function galleryParamsFromUrl(search: URLSearchParams): TreeGalleryParams
     sunAzimuth: num('az', 70),
     spin: num('spin', 0),
     scale: num('scale', 1.4),
+    grand: Math.max(0, Math.min(6, Math.round(num('grand', 0)))),
   };
 }
