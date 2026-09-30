@@ -23,9 +23,11 @@ export function collectErrors(page: Page): string[] {
   return errors;
 }
 
+/** Renderer bereit und die Szene läuft (mindestens ein Bild auf der Szenenuhr). */
 export async function waitForRenderer(page: Page): Promise<void> {
   await expect(page.locator('canvas')).toBeVisible();
   await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu|webgl2/, { timeout: 30_000 });
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __ee?: { controller?: { elapsed?: number } } }).__ee?.controller?.elapsed ?? 0), { timeout: TRANSITION_MS }).toBeGreaterThan(0);
 }
 
 export async function waitPhase(page: Page, phase: Phase | RegExp, timeout = TRANSITION_MS): Promise<void> {

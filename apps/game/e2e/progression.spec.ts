@@ -174,8 +174,7 @@ test('Weg: bei jeder Landung steht der Held auf einem Pfadpunkt, zuletzt auf dem
   await record(page);
   // Dev "Depart" on the map: the walk alone (node 10 → 11)
   await request(page, 'depart');
-  await waitPhase(page, 'travel');
-  await waitPhase(page, 'map');
+  await expect.poll(() => phases(page), { timeout: TRANSITION_MS }).toEqual(['travel', 'map']);
   const log = await travelLog(page);
   expect(log).not.toBeNull();
   expect(log!.mode).toBe('hops');
