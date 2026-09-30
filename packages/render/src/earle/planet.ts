@@ -177,9 +177,9 @@ export class EarlePlanet {
    * Alle Felsformationen des Planeten in einem Mesh (ein Draw Call je Pass; wenige tausend Dreiecke, die Formationen
    * stehen fest). `null`, wenn keine Welt Felsen hat.
    */
-  readonly rocks: Mesh | null;
+  rocks: Mesh | null = null;
   /** Alle Seen und Flüsse in einem Mesh (flach auf dem Wasserspiegel, empfängt Schatten). */
-  readonly water: Mesh | null;
+  water: Mesh | null = null;
   private readonly rockMaterial: EarleMaterial;
   private readonly waterMaterial: EarleMaterial;
   /** Alle Scheunen (Fokus + gestreute) als eigene Wahrzeichen. */
@@ -189,7 +189,9 @@ export class EarlePlanet {
   /** Höchster Aufbau der geladenen Wahrzeichen (Scheunenfirst) für die Schattenkamera. */
   private landmarkTop = 0;
   /** Wachstum je Merkmal (Seen, Flüsse, Formationen) und ihr Knotenbereich. */
-  private readonly featureCount: number;
+  /** Plätze im Wachstums-Array der Merkmale (fest, damit neu geplante Merkmale keinen Shader-Umbau brauchen). */
+  private readonly featureCapacity: number;
+  private featureVersion = 0;
   private readonly featureGrowth: UniformArrayLike;
   private featureRanges: Array<[number, number]> = [];
   /** Chunks, in die Felsen bzw. Gewässer reichen: ohne geladenen Chunk bleiben die Meshes unsichtbar (spart Draw Calls). */
@@ -456,8 +458,8 @@ export class EarlePlanet {
     // Wachstum/Heilung: Gewässer und Formationen je Merkmals-Index (Knotenbereich ihrer Umgebung wie bei den Chunks),
     // Scheunen und Wehen je Chunk-Slot (wie Terrain und Vegetation) — vor der Heilung verdorrt wie das Gelände ringsum
     const features = this.field.features;
-    this.featureCount = features.lakes.length + features.rivers.length + features.formations.length;
-    this.featureGrowth = uniformArray(new Array<number>(Math.max(1, this.featureCount)).fill(1), 'float') as unknown as UniformArrayLike;
+    this.featureCapacity = Math.max(64, features.lakes.length + features.rivers.length + features.formations.length);
+    this.featureGrowth = uniformArray(new Array<number>(this.featureCapacity).fill(1), 'float') as unknown as UniformArrayLike;
     const featureGrowth = (i: FloatNode): FloatNode => arrayElement(this.featureGrowth, i);
     const slotGrowth = (slot: FloatNode): FloatNode => (this.terrainGrowth as unknown as { element(i: unknown): FloatNode }).element(int(slot.add(0.5).floor()));
     const rockRows = uniformArray(this.rows.map((r) => r.rock), 'float') as unknown as UniformArrayLike;
@@ -465,14 +467,7 @@ export class EarlePlanet {
     const waterRows = uniformArray(this.rows.map((r) => r.water), 'float') as unknown as UniformArrayLike;
     this.waterMaterial = createWaterMaterial({ lookup: this.lookup, fog: this.fog, bands: this.terrainBands, waterRows, veil: (w) => this.veilNode(w), warp, growth: featureGrowth });
     // Felsen und Wasser: je ein Mesh für den ganzen Planeten (fest, klein) — kein Draw Call je Chunk
-    const rockBase = features.lakes.length + features.rivers.length;
-    const rockData = buildRockGeometry(features.formations, R, (f) => f.world, (_f, i) => rockBase + i);
-    this.rocks = rockData.indices.length > 0 ? this.featureMesh('planet-rocks', rockGeometry(rockData), this.rockMaterial, true) : null;
-    const waterData = buildWaterGeometry(features, R, () => true, (x, y, z) => this.field.heightAt(x, y, z));
-    this.water = waterData ? this.featureMesh('planet-water', waterGeometry(waterData), this.waterMaterial, false) : null;
-    this.collectFeatureChunks();
-    this.featureRanges = this.computeFeatureRanges();
-    this.applyFeatureGrowth();
+    this.buildFeatureMeshes();
     const barnRows = uniformArray(this.rows.map((r) => r.barn), 'float') as unknown as UniformArrayLike;
     const plainTerrainRows = uniformArray(this.rows.map((r) => r.terrain), 'float') as unknown as UniformArrayLike;
     this.barns = new BarnLandmarks({ lookup: this.lookup, fog: this.fog, bands: this.terrainBands, barnRows, terrainRows: plainTerrainRows, veil: (w) => this.veilNode(w), warp, capacity: 24, growth: slotGrowth });
@@ -545,6 +540,33 @@ export class EarlePlanet {
     this.cache.clear();
     for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
     this.contentDirty = true;
+    // Merkmale wurden neu geplant (ein Wahrzeichen stand auf einem See/Felsen): Felsen- und Wasser-Meshes neu bauen
+    if (this.field.featureVersion !== this.featureVersion) this.buildFeatureMeshes();
+  }
+
+  /**
+   * Felsen- und Wasser-Meshes aus den Merkmalen des Felds (je ein Mesh für den ganzen Planeten), dazu Chunk-Zuordnung,
+   * Knotenbereiche und Wachstum. Ersetzt vorhandene Meshes.
+   */
+  private buildFeatureMeshes(): void {
+    const features = this.field.features;
+    const R = this.options.radius;
+    for (const m of [this.rocks, this.water]) {
+      if (!m) continue;
+      m.removeFromParent();
+      m.geometry.dispose();
+    }
+    const rockBase = features.lakes.length + features.rivers.length;
+    const rockData = buildRockGeometry(features.formations, R, (f) => f.world, (_f, i) => Math.min(this.featureCapacity - 1, rockBase + i));
+    this.rocks = rockData.indices.length > 0 ? this.featureMesh('planet-rocks', rockGeometry(rockData), this.rockMaterial, true) : null;
+    const waterData = buildWaterGeometry(features, R, () => true, (x, y, z) => this.field.heightAt(x, y, z));
+    this.water = waterData ? this.featureMesh('planet-water', waterGeometry(waterData), this.waterMaterial, false) : null;
+    this.rockChunks.clear();
+    this.waterChunks.clear();
+    this.collectFeatureChunks();
+    this.featureRanges = this.computeFeatureRanges();
+    this.applyFeatureGrowth();
+    this.featureVersion = this.field.featureVersion;
   }
 
   /**
@@ -596,7 +618,7 @@ export class EarlePlanet {
   private applyFeatureGrowth(): void {
     const arr = this.featureGrowth.array;
     this.featureRanges.forEach(([i0, i1], k) => {
-      arr[k] = Math.min(1, Math.max(0, (this.progressDone - i0 + 1) / (i1 - i0 + 2)));
+      if (k < arr.length) arr[k] = Math.min(1, Math.max(0, (this.progressDone - i0 + 1) / (i1 - i0 + 2)));
     });
   }
 

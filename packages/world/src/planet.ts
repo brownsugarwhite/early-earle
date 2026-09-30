@@ -340,7 +340,9 @@ export class PlanetField {
    * Geländemerkmale (Seen, Flüsse, Felsformationen mit Ankern für Levelknoten, Schneefelder). Seen und Flüsse sind
    * ins Höhenfeld gegraben; Felsen stehen als eigene Meshes darauf (siehe `features/`).
    */
-  readonly features: PlanetFeatures;
+  features: PlanetFeatures;
+  /** Zählt Neuberechnungen der Merkmale (z. B. wenn ein neues Wahrzeichen auf einem See stünde). */
+  featureVersion = 0;
   /** Während der Merkmalsgenerierung aus: `heightWithShape` liefert dann das natürliche Gelände. */
   private featuresOn = false;
   private readonly hills: GradientNoise3;
@@ -587,6 +589,16 @@ export class PlanetField {
   /** Wahrzeichen-Slots neu setzen (z. B. nachdem der Pfad bekannt ist); Streuungen danach neu erzeugen. */
   setLandmarks(landmarks: PlanetLandmarkParams[]): void {
     this.landmarkSlots = landmarks.map((l) => this.buildLandmark(l));
+    // Ein neues Wahrzeichen (z. B. der Riesenbaum, dessen Platz erst mit dem Pfad feststeht) darf auf keinem See, Fluss
+    // oder Felsen stehen: dann die Merkmale mit dem neuen Freiraum neu planen (selten, kostet einmal ~50 ms)
+    const clear = this.landmarkSlots.filter((l) => l.clearRadius > 0).map((l) => ({ dir: l.dir, radius: l.clearRadius }));
+    if (this.features.conflicts(clear)) {
+      this.featuresOn = false;
+      this.features = new PlanetFeatures(this.featureHost(), this.worlds.map((w) => w.features));
+      this.featuresOn = true;
+      this.featureVersion++;
+      this.landmarkSlots = landmarks.map((l) => this.buildLandmark(l));
+    }
   }
 
   /** Chunk, in dessen Zelle eine Richtung liegt (Würfelseite nach größter Komponente, dann gnomonisch). */

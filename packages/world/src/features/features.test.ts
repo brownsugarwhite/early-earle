@@ -216,6 +216,20 @@ describe('PlanetFeatures', () => {
     expect(snow).toBeGreaterThan(0);
   });
 
+  it('ein neues Wahrzeichen auf einem See plant die Merkmale neu (kein See unter dem Riesenbaum)', () => {
+    const local = new PlanetField(params);
+    const lake = local.features.lakes[0]!;
+    expect(local.featureVersion).toBe(0);
+    local.setLandmarks([...(params.landmarks ?? []), { id: 'hero-tree', world: lake.world, dir: lake.frame.c, scale: 1, clearRadius: 4 }]);
+    expect(local.featureVersion).toBe(1);
+    const slot = local.landmarkSlots.find((l) => l.id === 'hero-tree')!;
+    expect(local.features.conflicts([{ dir: slot.dir, radius: slot.clearRadius }])).toBe(false);
+    // Ohne Konflikt bleibt alles, wie es ist
+    const again = local.features;
+    local.setLandmarks([...(params.landmarks ?? []), { id: 'hero-tree', world: lake.world, dir: slot.dir, scale: 1, clearRadius: 4 }]);
+    expect(local.features).toBe(again);
+  });
+
   it('ohne Merkmale bleibt das Höhenfeld unverändert', () => {
     const plain = new PlanetField({ ...params, worlds: base.map((w) => ({ ...w })) });
     expect(plain.features.lakes.length + plain.features.rivers.length + plain.features.formations.length).toBe(0);

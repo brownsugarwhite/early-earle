@@ -296,6 +296,20 @@ export class PlanetFeatures {
     return this.rockAt(dx, dy, dz, radius + 0.2) !== null;
   }
 
+  /** Überschneidet ein Merkmal einen der Kreise (Richtung, Radius in Welteinheiten)? */
+  conflicts(circles: ReadonlyArray<{ dir: Vec3; radius: number }>): boolean {
+    const R = this.radius;
+    const dist = (a: Vec3, b: Vec3) => Math.acos(Math.min(1, Math.max(-1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]))) * R;
+    for (const c of circles) {
+      for (const l of this.lakes) if (dist(c.dir, l.frame.c) < l.reach + c.radius) return true;
+      for (const f of this.formations) if (dist(c.dir, f.frame.c) < f.footprint + c.radius) return true;
+      for (const r of this.rivers) {
+        for (let i = 0; i < r.points.length; i++) if (dist(c.dir, r.points[i]!) < r.widths[i]! * 0.5 + r.shore + c.radius) return true;
+      }
+    }
+    return false;
+  }
+
   /** Alle Anker für Levelknoten auf Felsen (optional einer Welt), Stufen aufsteigend. */
   ledges(world?: number): LedgeAnchor[] {
     const list = world === undefined ? this.ledgeAnchors : this.ledgeAnchors.filter((l) => l.world === world);
