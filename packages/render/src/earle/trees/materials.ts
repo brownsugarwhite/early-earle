@@ -322,7 +322,10 @@ class BarkLightingModel extends LightingModel {
     // der Rand ist ein Tüpfelsaum aus Schneeflocken, die zur Kante hin kleiner werden
     const up = dot(normalize(o.normalPlanet), normalize(o.upPlanet));
     const wobble = wob.sub(0.5).mul(0.6);
-    const topSide = smoothstep(0.05, 0.6, up.add(wobble));
+    // Schnee liegt in Flecken (Bild 04): große Flecken auf Stamm und Ästen, auf feinen Zweigen kaum etwas
+    const patches = smoothstep(0.38, 0.62, valueNoise3(p.mul(vec3(3.2, 1.6, 3.2)), 7));
+    const perLevel = select(level.lessThan(0.5), float(1), select(level.lessThan(1.5), patches, select(level.lessThan(2.5), float(0.15), float(1))));
+    const topSide = smoothstep(0.05, 0.6, up.add(wobble)).mul(perLevel);
     const windward = sin(u.add(variant.mul(0.37)).mul(6.2831853)).add(wobble.mul(1.4));
     const isStem = level.lessThan(0.5).or(level.greaterThan(2.5));
     const weather = smoothstep(0.35, 0.8, windward).mul(select(isStem, float(0.95), float(0))).mul(smoothstep(0.3, 1.2, v));
