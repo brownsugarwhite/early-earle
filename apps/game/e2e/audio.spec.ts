@@ -65,7 +65,30 @@ test('/play zeigt den Ton-Schalter; er schaltet stumm und bleibt nach dem Neulad
   expect(errors).toEqual([]);
 });
 
-const PREVIEWS = ['merge-chain', 'splash', 'leap-merge', 'rex-babble', 'ambient-10s', 'music-20s', 'win-lose', 'specials-blockers'];
+test('/lab/audio · Iteration 4: jede neue Variante spielt, „Pegel prüfen“ liegt im Soll (echtes OfflineAudioContext)', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('/lab/audio');
+  const lab = page.getByTestId('audio-lab');
+  await expect(lab).toBeVisible();
+  // The loader run (dropFall, splat, stamp, clack, flame, gull) unlocks and plays without errors.
+  await page.getByTestId('sfx4-loader').click();
+  await expect(lab).toHaveAttribute('data-ctx-state', 'running');
+  const buttons = page.getByTestId('sfx4-buttons').locator('button');
+  const n = await buttons.count();
+  expect(n).toBeGreaterThanOrEqual(20);
+  for (let i = 0; i < n; i++) await buttons.nth(i).click();
+  await page.waitForTimeout(800);
+  const started = await page.evaluate(() => (window as unknown as { __eeAudio?: { stats: () => { started: number } } }).__eeAudio?.stats().started ?? -1);
+  expect(started).toBeGreaterThan(20);
+  // The same offline level check as the unit tests, in Chromium: every variant within ± 1.5 dB of its target.
+  await page.getByTestId('sfx4-levels').click();
+  const summary = page.getByTestId('sfx4-summary');
+  await expect(summary).toHaveAttribute('data-done', 'true', { timeout: 60_000 });
+  await expect(summary).toHaveAttribute('data-ok', 'true');
+  expect(errors).toEqual([]);
+});
+
+const PREVIEWS = ['merge-chain', 'splash', 'leap-merge', 'rex-babble', 'ambient-10s', 'music-20s', 'win-lose', 'specials-blockers', 'iter4-loader', 'iter4-karte'];
 
 test.describe('WAV-Vorschauen', () => {
   test.skip(!process.env.EE_AUDIO_PREVIEWS, 'nur mit EE_AUDIO_PREVIEWS=1');

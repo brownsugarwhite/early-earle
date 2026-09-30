@@ -200,7 +200,8 @@ function pitchAt(m: Float32Array, sr: number, t: number): number | null {
   return null;
 }
 
-describe('Iteration-4-Klänge (offline gerendert)', () => {
+// Offline renders cost 0.05–0.4 s each (more while the whole suite runs in parallel).
+describe('Iteration-4-Klänge (offline gerendert)', { timeout: 30_000 }, () => {
   // Node has no OfflineAudioContext: the tests render through the small spec renderer (≈ Chromium ± 0.7 dB).
   let uninstall: () => void = () => undefined;
   beforeAll(() => {
@@ -230,13 +231,13 @@ describe('Iteration-4-Klänge (offline gerendert)', () => {
 
   it('ist deterministisch: gleicher Seed → gleiche Samples, anderer Seed → andere Variation', async () => {
     for (const id of EXTRA_SFX_IDS) {
-      const a = mono(await renderSfx(id, {}, 1.8, 7));
-      const b = mono(await renderSfx(id, {}, 1.8, 7));
+      const a = mono(await renderSfx(id, {}, 1.6, 7, 22050));
+      const b = mono(await renderSfx(id, {}, 1.6, 7, 22050));
       expect(a).toEqual(b);
     }
     // Without `kind` the gull picks a variant and a pitch from the graph's random stream.
-    const g1 = mono(await renderSfx('gullCall', {}, 1.8, 7));
-    const g2 = mono(await renderSfx('gullCall', {}, 1.8, 8));
+    const g1 = mono(await renderSfx('gullCall', {}, 1.6, 7, 22050));
+    const g2 = mono(await renderSfx('gullCall', {}, 1.6, 8, 22050));
     expect(g1).not.toEqual(g2);
   });
 
@@ -268,7 +269,7 @@ describe('Iteration-4-Klänge (offline gerendert)', () => {
   });
 });
 
-describe('Grundkatalog offline (Stichproben gegen Chromium-Messung)', () => {
+describe('Grundkatalog offline (Stichproben gegen Chromium-Messung)', { timeout: 30_000 }, () => {
   let uninstall: () => void = () => undefined;
   beforeAll(() => {
     uninstall = installMiniOffline();

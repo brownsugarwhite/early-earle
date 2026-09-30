@@ -19,6 +19,9 @@
 .al-sfx:active { transform: translate(-4px, 2px); box-shadow: -4px 1px 0 var(--ink-soft); background: var(--neon); }
 .al-sfx:focus-visible, .al-chip:focus-visible, .al-line:focus-visible { outline: none; box-shadow: var(--sun-shadow) var(--neon); }
 .al-sfx.al-wide { grid-column: span 2; background: var(--pink); }
+.al-sfx .al-level { display: block; margin-top: 4px; font: 11px/1.2 ui-monospace, Menlo, monospace; font-weight: 400; opacity: 0.8; }
+.al-sfx .al-level[data-ok='false'] { color: var(--rust); opacity: 1; font-weight: 700; }
+.al-levels .al-bench[data-ok='false'] { background: var(--rust); color: var(--paper); }
 .al-pick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
 .al-pick-label { min-width: 64px; font-weight: 900; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
 .al-chip {
