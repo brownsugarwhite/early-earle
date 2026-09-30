@@ -8,6 +8,7 @@ import { LabGrid } from './routes/LabGrid';
 import { LabCreature } from './routes/LabCreature';
 import { LabTree } from './routes/LabTree';
 import { LabShadow } from './routes/LabShadow';
+import { LabLandmarks } from './lab/landmarks/LabLandmarks';
 import { LabRex } from './routes/LabRex';
 import { LabAudio } from './routes/LabAudio';
 import { EditorLevels } from './routes/EditorLevels';
@@ -31,6 +32,7 @@ export function App() {
       <Route path="/lab/creature" element={<LabCreature />} />
       <Route path="/lab/tree" element={<LabTree />} />
       <Route path="/lab/shadow" element={<LabShadow />} />
+      <Route path="/lab/landmarks" element={<LabLandmarks />} />
       <Route path="/lab/rex" element={<LabRex />} />
       <Route path="/lab/audio" element={<LabAudio />} />
       <Route path="/editor/levels" element={<EditorLevels />} />
