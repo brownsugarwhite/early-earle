@@ -294,6 +294,10 @@ export class NodePath {
   private readonly uCeleb = uniform(new Vector4(-100, -10, -10, 1));
   /** Node hidden under the level plateau (−10 = none). */
   private readonly uHide = uniform(-10);
+  /** Real mode: highest unlocked node (stones beyond are locked, dots beyond it pale); −1 = everything open. */
+  private readonly uReach = uniform(-1);
+  /** Tap on a locked stone: (node, start time) of its 0.45-s head shake. */
+  private readonly uWobble = uniform(new Vector2(-10, -100));
   /** Direction to the sun in the group's space (contact shadows). */
   private readonly uSun = uniform(new Vector3(0.6, 0.18, 0.4).normalize());
   private readonly uRingPos = uniform(new Vector3());
@@ -341,6 +345,10 @@ export class NodePath {
     const cur = this.uCurrent as unknown as FloatNode;
     const done = this.uDone as unknown as FloatNode;
     const celeb = this.uCeleb as unknown as Vec4Node;
+    const reach = this.uReach as unknown as FloatNode;
+    const wob = this.uWobble as unknown as Node<'vec2'>;
+    /** 1 beyond the reached node (real mode), 0 when everything is open. */
+    const beyond = (i: FloatNode, from: number): FloatNode => step(reach.add(from), i).mul(step(-0.5, reach)) as unknown as FloatNode;
     const fog = palette ? { settings: palette.fog, lookup: palette.lookup } : undefined;
     const paper = hexNode(PAPER);
     const pink = hexNode(PINK);
@@ -389,21 +397,27 @@ export class NodePath {
       const isCur = step(abs(k), 0.5);
       const isDone = step(idx.add(0.5), done);
       const hidden = step(abs(idx.sub(this.uHide)), 0.5);
+      // Locked (real mode): paper greyed toward ink, smaller, no bloom; a tap shakes it (0.45 s, sideways + squash).
+      const locked = beyond(idx, 0.5);
+      const wt = clamp(t.sub(wob.y).div(0.45), 0, 1);
+      const shake = sin(wt.mul(Math.PI * 5)).mul(float(1).sub(wt)).mul(step(abs(idx.sub(wob.x)), 0.5)).mul(step(wt, 0.999));
       // Current: slow breath. Next six: a bloom wave rolls outward every 3.6 s. Arrival pop after a celebration.
       const kk = clamp(k, 0, 9);
-      const upcoming = step(0.5, k).mul(step(k, 6.5));
+      const upcoming = step(0.5, k).mul(step(k, 6.5)).mul(locked.oneMinus());
       const ph = fract(t.sub(kk.mul(0.3)).div(3.6));
       const bloom = sin(clamp(ph.div(0.2), 0, 1).mul(Math.PI)).mul(upcoming).mul(float(1).sub(kk.div(9)));
       const arrive = step(abs(idx.sub(celeb.z)), 0.5);
       const at = t.sub(celeb.x.add(celeb.w));
       const pop = arrive.mul(smoothstep(0, 0.12, at)).mul(smoothstep(0.55, 0.12, at));
       const breathe = sin(t.mul(2.2)).mul(0.07).mul(isCur);
-      const grow = float(1).add(breathe).add(bloom.mul(0.22)).add(pop.mul(0.45)).sub(isDone.mul(0.1));
+      const grow = float(1).add(breathe).add(bloom.mul(0.22)).add(pop.mul(0.45)).sub(isDone.mul(0.1)).mul(mix(float(1), float(0.8), locked)).add(abs(shake).mul(0.3));
       const scale = A.x.mul(grow).mul(hidden.oneMinus());
-      const local = sweep(Q, positionGeometry as unknown as Vec3Node, part, 0.32);
+      const gp0 = positionGeometry as unknown as Vec3Node;
+      const local = sweep(Q, vec3(gp0.x.add(shake.mul(1.1)), gp0.y, gp0.z) as unknown as Vec3Node, part, 0.32);
+      const face = mix(mix(mix(paper, pink, max(isCur, isDone)), paper, bloom.mul(0.5).add(pop.mul(0.6))), mix(paper, inkOf(A.z), 0.35), locked);
       const mat = new BoardSurfaceMaterial({
-        albedo: mix(mix(mix(paper, pink, max(isCur, isDone)), paper, bloom.mul(0.5).add(pop.mul(0.6))), inkOf(A.z), step(0.5, part)) as unknown as Vec3Node,
-        shade: mix(mix(mix(paper, pink, max(isCur, isDone)), inkOf(A.z), 0.58), inkOf(A.z), step(0.5, part)) as unknown as Vec3Node,
+        albedo: mix(face, inkOf(A.z), step(0.5, part)) as unknown as Vec3Node,
+        shade: mix(mix(mix(mix(paper, pink, max(isCur, isDone)), mix(paper, inkOf(A.z), 0.35), locked), inkOf(A.z), 0.58), inkOf(A.z), step(0.5, part)) as unknown as Vec3Node,
         terminator: 0.0,
         facet: { threshold: 0.55, amount: 0.55 },
         positionNode: place(P.xyz.add(rotq(Q, local.mul(scale))) as unknown as Vec3Node, NUDGE_STONE),
@@ -494,11 +508,13 @@ export class NodePath {
       // Ripple toward the next level on the current stretch.
       const wave = pow(max(sin(u.mul(1.6).sub(t.mul(0.6)).mul(Math.PI * 2)), 0), 5).mul(onCur);
       const future = float(1).sub(walked).sub(onCur).max(0);
-      const grow = float(1).add(wave.mul(0.6)).add(bell.mul(1.1)).sub(future.mul(0.12)).add(walked.mul(0.08));
+      // Real mode: the stretches from the reached node on lie pale and a little smaller (not walkable yet).
+      const pale = beyond(seg, -0.5).mul(float(1).sub(max(bell, walked)));
+      const grow = float(1).add(wave.mul(0.6)).add(bell.mul(1.1)).sub(future.mul(0.12)).add(walked.mul(0.08)).mul(mix(float(1), float(0.85), pale));
       const scale = A.y.mul(grow);
       const local = sweep(Q, positionGeometry as unknown as Vec3Node, part, 0.32, 2.4);
       const bud = mix(petalOf(A.z), paper, 0.3);
-      const body = mix(mix(mix(paper, bud, walked), pink, wave.mul(0.85)), paper, bell.mul(0.7));
+      const body = mix(mix(mix(mix(paper, bud, walked), pink, wave.mul(0.85)), paper, bell.mul(0.7)), mix(paper, inkOf(A.z), 0.18), pale.mul(0.8));
       const mat = new BoardSurfaceMaterial({
         albedo: mix(body, inkOf(A.z), step(0.5, part)) as unknown as Vec3Node,
         shade: mix(mix(body, inkOf(A.z), 0.58), inkOf(A.z), step(0.5, part)) as unknown as Vec3Node,
@@ -791,6 +807,19 @@ export class NodePath {
   }
 
   private ringHandover: { at: number; node: number } | null = null;
+
+  /**
+   * Real mode: nodes up to `reached` are open, the stones beyond greyed and small, their stretches pale (−1 = all open,
+   * the free mode). Called when the hero ARRIVES at a newly unlocked node, not at the win: the unlock is the arrival.
+   */
+  setReach(reached: number): void {
+    this.uReach.value = reached;
+  }
+
+  /** A tap on a locked stone: it shakes its head (0.45 s). */
+  wobble(index: number): void {
+    (this.uWobble.value as Vector2).set(index, this.time);
+  }
 
   /**
    * Hide the stone (and ring) of the node whose level is being played (the plateau stands there); null = none. Nodes

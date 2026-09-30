@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Startbild = erstes Bild des Loaders: Splash-Ink #081b25, darauf LaunchLoader (scripts/launch-frame.mjs, Design-Rechteck
+     838 × 1428 wie `object-fit: contain`), an die Ränder der Ansicht gepinnt — die Web-Ansicht (viewport-fit=cover) legt
+     das gleiche Rechteck genauso in den Bildschirm. -->
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="17132" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
-    <device id="retina4_7" orientation="portrait" appearance="light"/>
+    <device id="retina6_1" orientation="portrait" appearance="dark"/>
     <dependencies>
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17105"/>
-        <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -12,11 +14,22 @@
         <scene sceneID="EHf-IW-A2E">
             <objects>
                 <viewController id="01J-lp-oVM" sceneMemberID="viewController">
-                    <imageView key="view" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Splash" id="snD-IY-ifK">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
-                        <autoresizingMask key="autoresizingMask"/>
-                        <color key="backgroundColor" red="0.031" green="0.106" blue="0.145" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                    </imageView>
+                    <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
+                        <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchLoader" translatesAutoresizingMaskIntoConstraints="NO" id="snD-IY-ifK">
+                                <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                            </imageView>
+                        </subviews>
+                        <color key="backgroundColor" red="0.031372549" green="0.105882353" blue="0.145098039" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <constraints>
+                            <constraint firstItem="snD-IY-ifK" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="L1e-aB-001"/>
+                            <constraint firstItem="snD-IY-ifK" firstAttribute="trailing" secondItem="Ze5-6b-2t3" secondAttribute="trailing" id="L1e-aB-002"/>
+                            <constraint firstItem="snD-IY-ifK" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="L1e-aB-003"/>
+                            <constraint firstItem="snD-IY-ifK" firstAttribute="bottom" secondItem="Ze5-6b-2t3" secondAttribute="bottom" id="L1e-aB-004"/>
+                        </constraints>
+                    </view>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
@@ -24,9 +37,6 @@
         </scene>
     </scenes>
     <resources>
-        <image name="Splash" width="1366" height="1366"/>
-        <systemColor name="systemBackgroundColor">
-            <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-        </systemColor>
+        <image name="LaunchLoader" width="430" height="733"/>
     </resources>
 </document>

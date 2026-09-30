@@ -25,7 +25,7 @@ Dev-Server starten (`pnpm dev`), dann im Browser auf dem Mac `https://localhost:
 
 | Adresse | Was | Ausprobieren |
 |---|---|---|
-| `/` | Splash → Hüpfer → Map → Level → Aufbruch in einem Take | Antippen, "Spielen", wischen; Entwickler-Leiste oben links springt zwischen Zuständen |
+| `/` | Loader (Stamm wächst, Prozent) → Splash baut sich auf → „Tippen“ → Hüpfer → Map → Level → Aufbruch in einem Take | Antippen, "Spielen", wischen; Entwickler-Leiste oben links springt zwischen Zuständen; Splash-Schalter `?splash=fast\|final\|manual\|overlay\|launchframe` |
 | `/play` | Direkt auf der Map | Knoten antippen, Planeten ziehen |
 | `/lab/grid` | Spielkern mit allen 100 Leveln als Klötze | Level-Wähler, Pfeiltasten/Wischen, Z = Rückspulen, R = Neustart |
 | `/lab/blob` | Blob-Kandidaten (a Raymarch / b Jiggle-Mesh), Materialien, Verschmelzen | "Screenshot-3-Pose", "Zwei verschmelzen", Qualität Hoch/Mobil |
