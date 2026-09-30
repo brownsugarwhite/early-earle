@@ -93,7 +93,7 @@ test('Riesenbaum im Flow auf WebGPU: Baumpilze, Blütensteine, Schiene, Anflug a
   await page.setViewportSize({ width: 393, height: 852 });
   // Level 86 (Rinde → Wurzelterrasse) und 92 (Krone): Pilze, Steine, Punkte und Ring am Baum, Schattenwert der Punkte
   for (const node of [85, 91]) {
-    await page.addInitScript((n) => localStorage.setItem('ee.progress.v1', JSON.stringify({ version: 1, reached: n, current: n, levels: {} })), node);
+    await page.addInitScript((n) => localStorage.setItem('ee.progress.v2', JSON.stringify({ version: 2, mode: 'free', slots: { free: { reached: n, current: n }, real: {} } })), node);
     await page.goto('/play');
     if (node === 85) await requireWebGPU(page);
     const hud = page.getByTestId('flow-hud');

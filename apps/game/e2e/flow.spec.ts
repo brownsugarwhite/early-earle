@@ -149,7 +149,8 @@ test('Handy: Levelpfad liegt in der Landschaft, Spielfeld füllt die Breite, REX
 
 test('Riesenbaum (Handy, Level 86): der Held sitzt auf dem Baumpilz, die Schiene sieht den Knoten', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.addInitScript(() => localStorage.setItem('ee.progress.v1', JSON.stringify({ version: 1, reached: 85, current: 85, levels: {} })));
+  // Freier Modus (Entwicklung): jede Stelle der Welt ist erreichbar, der Held steht auf Knoten 85.
+  await page.addInitScript(() => localStorage.setItem('ee.progress.v2', JSON.stringify({ version: 2, mode: 'free', slots: { free: { reached: 85, current: 85 }, real: {} } })));
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto('/play');
   await waitForRenderer(page);

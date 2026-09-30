@@ -3,6 +3,9 @@
 # Referenzbilder (Eyvind Earle, urheberrechtlich geschützt, ~160 MB) – nur lokal
 ref/
 
+# Cooper Black Std aus Adobe Fonts: nicht einbettbar, nur lokal (im Spiel läuft Caprasimo, OFL)
+cooper-std/
+
 # Build & Tooling
 node_modules/
 dist/

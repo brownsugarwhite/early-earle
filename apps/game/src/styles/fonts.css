@@ -1,0 +1,11 @@
+/* Fette Display-Schrift: Caprasimo (SIL OFL 1.1, Quelle und Lizenz in assets/fonts/caprasimo/), an Cooper Black angelehnt.
+   Einsatz nur für Zahlen, Prozent, Punkte und kurze Titel (höchstens drei Wörter): Loader, "Tippen", Zugzahl und Levelnummer,
+   Sieg-/Verloren-Banner, Stufen-Badges, "NEU!", Setzkasten-Zähler, Klassik-Punkte. Nie für REX-Sätze, Knöpfe, Labs, Werkstatt.
+   Es gibt nur einen Schnitt; der Gewichtsbereich verhindert künstliches Fetten bei font-weight 900. */
+@font-face {
+  font-family: 'EE Heavy';
+  src: url('/fonts/ee-heavy.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
