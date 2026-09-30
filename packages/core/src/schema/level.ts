@@ -79,11 +79,21 @@ const Goal = z.discriminatedUnion('type', [
 
 export const DIFFICULTY_STYLES = ['explosive', 'precise', 'journey', 'puzzle', 'diligent'] as const;
 
+/**
+ * Spielmodus eines Levels: `level` (Standard, auch wenn das Feld fehlt) oder `classic` = freies
+ * 2048 (Klassik): zwei Start-Blobs, kein Zugzähler, keine Ziele, kein Sieg, vorbei erst ohne
+ * möglichen Zug, keine Aufbrüche, keine Spezialteile. `moves` und `cap` bleiben Pflichtfelder,
+ * die Klassik-Regeln lesen sie nicht.
+ */
+export const LEVEL_MODES = ['level', 'classic'] as const;
+export type LevelMode = (typeof LEVEL_MODES)[number];
+
 export const LevelSchema = z
   .object({
     schemaVersion: z.literal(1),
     id: z.string().regex(/^[a-z0-9-]+$/),
     zone: z.enum(ZONE_IDS),
+    mode: z.enum(LEVEL_MODES).optional(),
     name: z.string().min(1).optional(),
     grid: z.object({
       w: Int.min(3).max(8),
@@ -112,7 +122,8 @@ export const LevelSchema = z
       preview: z.boolean().default(true),
       fallback: z.enum(['none', 'anyEmpty']).default('none'),
     }),
-    goals: z.array(Goal).min(1),
+    /** Mindestens ein Ziel, außer im Klassik-Modus (siehe superRefine). */
+    goals: z.array(Goal),
     moves: Int.min(1).max(99),
     cap: Int.min(3).max(12),
     specials: z
@@ -129,6 +140,17 @@ export const LevelSchema = z
   .superRefine((lvl, ctx) => {
     const issue = (message: string, path: (string | number)[]) =>
       ctx.addIssue({ code: 'custom', message, path });
+    // Ein Level ohne Ziel wäre sofort gewonnen; nur Klassik (freies 2048) spielt ohne.
+    if (lvl.mode !== 'classic' && lvl.goals.length === 0) {
+      ctx.addIssue({
+        code: 'too_small',
+        origin: 'array',
+        minimum: 1,
+        inclusive: true,
+        message: 'level needs at least one goal',
+        path: ['goals'],
+      });
+    }
     const { w, h, mask } = lvl.grid;
     if (mask.length !== h) issue(`mask must have ${h} rows`, ['grid', 'mask']);
     mask.forEach((row, y) => {
