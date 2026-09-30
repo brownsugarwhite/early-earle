@@ -162,3 +162,22 @@ Simulator-Durchlauf (iPhone Air, Splash → Map → Level 1 → Sieg → Level 2
 Außerdem: lokale Wartezeiten im Flow-E2E an SwiftShader angepasst, ESLint ignoriert iOS-Build-Ausgaben.
 
 Offen: Test auf Florians iPhone als native App (Signatur mit Apple-ID, siehe `docs/IOS.md`), dort läuft WebGPU; REX springt beim Sieg kurz über den Brettrand (bewusst gelassen, das Level ist dann vorbei); Zielanzeige „Stufe 8“ zeigt den 2048-Wert statt der Stufe (Designfrage).
+
+## Nachtrag 2026-09-30 (Tag): Iteration 3 nach Florians Morgen-Feedback
+
+Florian hat die App erstmals auf seinem iPhone 16 getestet („Alles sieht schon gut aus. Der Ansatz passt.“) und mit fünf Earle-Bildern präzisiert (lokal in `ref/eyvind earle/feedback-2026-09-30/`). Acht Baustellen liefen parallel in eigenen Git-Arbeitsbäumen, danach zusammengeführt und gemeinsam geprüft:
+
+| Baustelle | Ergebnis | Wo ansehen |
+|---|---|---|
+| Bäume v3 | organische Stämme/Äste, Rinde als Filigran (weiße Linien, Flechten, Glasfenster, Schnee), Kuppelkronen mit Blütenpunkten, Earle-Eiche, Tannen aus Punkten, Haine entlang der Hügel, Punkte skalieren weich aus 0 | `/lab/earle?gallery=1&world=05`, `/play` |
+| Landschaft | Felswände, Felsnadeln, Turm und Tafelfels, Flüsse, Seen (auch gefroren), Schneefelder, Schneewehen, rote Scheune, Nebelbänke | `/lab/earle?world=06`, `?world=08` |
+| Müll v2 | kleinteiliger Neon-Müll, Ruinen, Müllberge, Neon-Nebelschleier, der mit jedem Sieg heilt | `/lab/earle?world=9&progress=0` |
+| Riesenbaum v3 | größer, knorrig, Juwelenkrone, Levelpunkte als Baumpilze an der Rinde und Blütensteine auf den Kuppeln (liegen an, schweben nicht) | `/lab/tree?view=path` |
+| Levelpfad | Wegband durch die Landschaft, Knoten auf ihren Elementen, Animationen, Level am Ort, großes Spielfeld, REX mobil oben rechts | `/play` |
+| Schatten v3 | Kontakt bis zum Gegenstand, Kaskaden am sichtbaren Boden (etwa doppelt so fein), `shadowFactor`, Schattentönung je Welt | `/lab/shadow?debug=3` |
+| Werkstatt | Labs und Editoren in der App, Einstellungs-Sheet, Speichern auf den Mac im WLAN, Map-Editor | Schraubenschlüssel auf der Map |
+| Blender-Bibliothek | `assets/blender/early-earle-bibliothek.blend`: Map, 108 Wesen mit Rig, REX, Module, Materialien, Vorlage „Eigenes Wesen“ mit Rückweg ins Spiel | `docs/BLENDER.md` |
+
+Integration durch die Leitung: Pfad meidet Wasser und Felsfüße, Müll meidet Wasser und Felsen, Kronen-Level in der Kuppelfarbe, Blender-Export auf die neuen Paletten, GPU-Tests auf Desktopbreite; eine eigene Integrations-Baustelle verdrahtet die Baumpilze im Spiel, `shadowFactor` für die Kronenpunkte, Kronen als Schattenempfänger, blaue Schatten auf Schnee und schwebende Reste.
+
+Werkzeuge: `E2E_PORT` für parallele Testläufe (Fetch-Sperrports wie 4190 meiden), `pnpm assets:blender -- --bilder` erneuert die Blender-Datei (≈ 2 min), `IOS_TEAM_ID=R67BLW649H IOS_DEVICE="eyePhone (2)" pnpm --filter @ee/game ios:device` spielt auf Florians iPhone.
