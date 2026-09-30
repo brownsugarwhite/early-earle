@@ -23,7 +23,7 @@
   "terrain": { "amplitude": 2.6, "wavelength": 1.3, "slope": 0.25 },
   "ground": "smooth",
   "vegetation": {
-    "density": 0.95,
+    "density": 1.1,
     "clumpiness": 0,
     "kinds": { "dome": 0.74, "umbrella": 0.1, "stacked": 0.08, "bare": 0.08 },
     "scale": [0.75, 1.5],
@@ -33,9 +33,9 @@
     "motif": "cross",
     "flowers": 0.3,
     "grove": {
-      "cover": 0.16,
+      "cover": 0.22,
       "contours": [0.1, 0.6],
-      "contourWidth": 0.08,
+      "contourWidth": 0.09,
       "wavelength": 8,
       "fill": 0.9,
       "satellites": 0.22,

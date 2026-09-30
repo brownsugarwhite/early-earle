@@ -23,7 +23,7 @@
   "terrain": { "amplitude": 2.8, "wavelength": 1.5, "slope": 0.3 },
   "ground": "snowLines",
   "vegetation": {
-    "density": 0.16,
+    "density": 0.3,
     "clumpiness": 0,
     "kinds": { "bare": 0.75, "dome": 0.1, "pine": 0.15 },
     "scale": [1.1, 2.1],

@@ -24,7 +24,7 @@
   "terrain": { "amplitude": 1.8, "wavelength": 1.8 },
   "ground": "smooth",
   "vegetation": {
-    "density": 0.45,
+    "density": 0.9,
     "clumpiness": 0,
     "kinds": { "dome": 0.62, "stacked": 0.2, "tall": 0.08, "bare": 0.1 },
     "scale": [1, 1.9],
@@ -39,7 +39,7 @@
       "wavelength": 10,
       "fill": 0.9,
       "satellites": 0.12,
-      "specimens": 0.035,
+      "specimens": 0.03,
       "specimenKinds": { "umbrella": 0.55, "dome": 0.3, "lace": 0.15 },
       "specimenScale": [1.4, 2.1]
     }

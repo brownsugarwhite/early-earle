@@ -23,7 +23,7 @@
   "terrain": { "amplitude": 2.4, "wavelength": 1.5, "slope": 0.4 },
   "ground": "meadow",
   "vegetation": {
-    "density": 1,
+    "density": 0.72,
     "clumpiness": 0,
     "kinds": { "dome": 0.82, "stacked": 0.12, "umbrella": 0.06 },
     "scale": [0.65, 1.4],

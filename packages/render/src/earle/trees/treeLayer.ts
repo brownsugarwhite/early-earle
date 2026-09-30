@@ -174,6 +174,8 @@ interface DotBlock {
   dist: number;
   fade: number;
   target: number;
+  /** Liegt im Pool (nur dann läuft die Blende; ein Block, der auf Platz wartet, blendet danach von 0 ein). */
+  written: boolean;
 }
 
 /** Dauer der Ein-/Ausblendung der Punkte eines Chunks (s). */
@@ -655,7 +657,8 @@ export class TreeLayer {
    */
   private get dotsPerChunk(): number {
     const hi = this.options.dotsPerTree[0] >= 50;
-    const near = hi ? 5 : 3;
+    // Nahe Chunks (Hoch 5, Mobil 3) plus zwei, die gerade ausblenden
+    const near = (hi ? 5 : 3) + 2;
     // Funkeln, keine Konfetti: die Textur der Kronen tragen die Tüpfel im Material, die Instanzen setzen die Lichter
     return Math.min(hi ? 4200 : 1600, Math.floor(this.options.capacity.dots / near));
   }
@@ -701,19 +704,29 @@ export class TreeLayer {
       block.dist = dist;
       if (block.target > 0 || block.fade > 0) next.set(slot, block);
     }
-    // Budget: nahe Chunks zuerst; was nicht mehr passt, bekommt keine Punkte (ganz oder gar nicht, mit Blende)
-    const sorted = [...next.values()].sort((a, b) => a.dist - b.dist);
+    this.blocks = next;
+    this.writeDots();
+  }
+
+  /**
+   * Belegung des Pools: erst die einblendenden bzw. sichtbaren Chunks (nah zuerst), dann die ausblendenden. Ein Block,
+   * der nicht passt, liegt nicht im Pool (`written = false`) und blendet erst ein, sobald Platz frei wird.
+   */
+  private allocate(): DotBlock[] {
+    const cap = this.options.capacity.dots;
+    const order = [...this.blocks.values()].sort((a, b) => b.target - a.target || a.dist - b.dist);
+    const out: DotBlock[] = [];
     let used = 0;
-    for (const b of sorted) {
-      if (used + b.count > this.options.capacity.dots) {
-        if (b.fade <= 0) next.delete(b.slot);
-        else b.target = 0;
+    for (const b of order) {
+      b.written = used + b.count <= cap;
+      if (!b.written) {
+        b.fade = 0; // wartet auf Platz (blendet danach von 0 ein) oder fällt weg (ausblendend, fernster zuerst)
         continue;
       }
       used += b.count;
+      out.push(b);
     }
-    this.blocks = next;
-    this.writeDots();
+    return out;
   }
 
   /** Erzeugt die Punkte eines Chunks (deterministisch je Baum). */
@@ -737,6 +750,9 @@ export class TreeLayer {
       if (d === 'stars') fixed += this.oak.tips.length * (hi ? 9 : 3);
       weightSum += this.dotWeight(t);
     }
+    // Spitze und Sternnadeln bekommen höchstens 70 % des Chunk-Anteils (sonst dünner: jede k-te Rosette bzw. Nadel)
+    const fixedStride = Math.max(1, Math.ceil(fixed / Math.max(1, 0.7 * this.dotsPerChunk)));
+    fixed = Math.ceil(fixed / fixedStride);
     const perWeight = weightSum > 0 ? Math.max(0, this.dotsPerChunk - fixed) / weightSum : 0;
     const maxPerTree = this.options.dotsPerTree[1];
     for (const e of list) {
@@ -765,7 +781,7 @@ export class TreeLayer {
         const hx = t.position[0] + _v.x;
         const hy = t.position[1] + _v.y;
         const hz = t.position[2] + _v.z;
-        const step = this.options.dotsPerTree[0] >= 50 ? 1 : 2;
+        const step = (this.options.dotsPerTree[0] >= 50 ? 1 : 2) * fixedStride;
         const needles = this.options.dotsPerTree[0] >= 50 ? 9 : 6;
         const golden = Math.PI * (3 - Math.sqrt(5));
         for (let i = 0; i < this.oak.tips.length; i += step) {
@@ -799,13 +815,13 @@ export class TreeLayer {
         const sm = new Matrix4().compose(_p.set(t.position[0] + _v.x, t.position[1] + _v.y, t.position[2] + _v.z), q, _s.set(r * 0.98, r * 0.92, r * 0.98));
         const snm = new Matrix3().getNormalMatrix(sm);
         const shell = this.laceShell;
-        const stride = this.options.dotsPerTree[0] >= 50 ? 1 : 2;
+        const stride = (this.options.dotsPerTree[0] >= 50 ? 1 : 2) * fixedStride;
         for (let ri = 0; ri < LACE_ROSETTES; ri += stride) {
           for (let k = 0; k < 7; k++) {
             const o = (ri * 7 + k) * 6;
             _p.set(shell[o]!, shell[o + 1]!, shell[o + 2]!).applyMatrix4(sm);
             _n.set(shell[o + 3]!, shell[o + 4]!, shell[o + 5]!).applyMatrix3(snm).normalize();
-            push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, sizeBase * (k === 0 ? 0.6 : 0.42) * stride, DOT_KIND.lace, hx, hy, hz, fadeR * 1.6, 0);
+            push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, sizeBase * (k === 0 ? 0.6 : 0.42) * Math.sqrt(stride), DOT_KIND.lace, hx, hy, hz, fadeR * 1.6, 0);
           }
         }
       }
@@ -839,6 +855,7 @@ export class TreeLayer {
       dist: 0,
       fade: 0,
       target: 1,
+      written: false,
     };
   }
 
@@ -851,10 +868,8 @@ export class TreeLayer {
     const data = g.getAttribute('dotData') as InstancedBufferAttribute;
     const row = g.getAttribute('dotRow') as InstancedBufferAttribute;
     const hull = g.getAttribute('dotHull') as InstancedBufferAttribute;
-    const cap = this.options.capacity.dots;
     let n = 0;
-    for (const b of this.blocks.values()) {
-      if (n + b.count > cap) continue;
+    for (const b of this.allocate()) {
       (rel.array as Float32Array).set(b.rel, n * 3);
       (base.array as Float32Array).set(b.base, n * 3);
       (nrm.array as Float32Array).set(b.nrm, n * 3);
@@ -872,17 +887,25 @@ export class TreeLayer {
   private syncFades(): void {
     const arr = (this.dotFade as unknown as { array: number[] }).array;
     arr.fill(0);
-    for (const b of this.blocks.values()) arr[b.slot] = b.fade;
+    for (const b of this.blocks.values()) if (b.written) arr[b.slot] = b.fade;
   }
 
-  /** Einmal pro Frame: Punkt-Blenden der Chunks nachführen (entfernt ausgeblendete Blöcke). */
-  tick(): void {
+  /** Einmal pro Frame: Punkt-Blenden der Chunks nachführen (entfernt ausgeblendete Blöcke). `dtSeconds` für Tests. */
+  tick(dtSeconds?: number): void {
     const now = typeof performance !== 'undefined' ? performance.now() / 1000 : 0;
-    const dt = this.lastTick < 0 ? 0 : Math.min(0.1, Math.max(0, now - this.lastTick));
+    const dt = dtSeconds ?? (this.lastTick < 0 ? 0 : Math.min(0.1, Math.max(0, now - this.lastTick)));
     this.lastTick = now;
     let changed = false;
     let removed = false;
     for (const b of this.blocks.values()) {
+      if (!b.written) {
+        // Wartet auf Platz (einblendend) oder fällt weg (ausblendend ohne Platz)
+        if (b.target <= 0) {
+          this.blocks.delete(b.slot);
+          removed = true;
+        }
+        continue;
+      }
       if (b.fade === b.target) continue;
       const step = dt / DOT_FADE_SECONDS;
       b.fade = b.target > b.fade ? Math.min(b.target, b.fade + step) : Math.max(b.target, b.fade - step);
@@ -892,7 +915,7 @@ export class TreeLayer {
         removed = true;
       }
     }
-    if (removed) this.dotsDirty = true;
+    if (removed) this.dotsDirty = true; // Platz frei → wartende Blöcke kommen in den Pool
     if (this.dotsDirty) this.writeDots();
     else if (changed) this.syncFades();
   }
