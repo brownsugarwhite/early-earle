@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { GridLabScene } from '../lab/grid/GridLabScene';
 import { CREATURE_DEMO_INDEX, DEMO_LEVEL_INDEX, HERD_DEMO_INDEX, useGridStore } from '../lab/grid/gridStore';
 import { LEVELS } from '../content/levels';
-import { canRewind, type Dir, type GoalProgress } from '@ee/core';
+import { canRewind, getGullMode, setGullMode, type Dir, type GoalProgress, type GullMode } from '@ee/core';
 
 const GOAL_LABEL: Record<string, string> = {
   reachTier: 'Stufe erreichen',
@@ -18,6 +18,10 @@ const GOAL_LABEL: Record<string, string> = {
   clearRot: 'Fäulnis',
   calmStrays: 'Streuner',
 };
+
+/** Möwe: Takt (Regel, alle 3–5 Züge) → immer (jeder Spawn) → aus. */
+const GULL_NEXT: Record<GullMode, GullMode> = { auto: 'always', always: 'off', off: 'auto' };
+const GULL_LABEL: Record<GullMode, string> = { auto: 'Möwe: Takt', always: 'Möwe: immer', off: 'Möwe: aus' };
 
 function goalText(g: GoalProgress): string {
   const label = GOAL_LABEL[g.type] ?? g.type;
@@ -41,6 +45,7 @@ export function LabGrid() {
   const toggleNumbers = useGridStore((s) => s.toggleNumbers);
   const toggleJuice = useGridStore((s) => s.toggleJuice);
   const swipe = useRef<{ x: number; y: number; id: number } | null>(null);
+  const [gull, setGull] = useState<GullMode>(getGullMode);
 
   useEffect(() => {
     if (!useGridStore.getState().state) loadLevel(0);
@@ -58,6 +63,11 @@ export function LabGrid() {
       } else if (e.key === 'z' || e.key === 'Backspace') rewindMove();
       else if (e.key === 'r') restart();
       else if (e.key === 'j') toggleJuice();
+      else if (e.key === 'g') {
+        const next = GULL_NEXT[getGullMode()];
+        setGullMode(next);
+        setGull(next);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -109,6 +119,19 @@ export function LabGrid() {
           </label>
           <button className="btn" onClick={toggleNumbers}>{showNumbers ? 'Zahlen aus' : 'Zahlen an'}</button>
           <button className={`btn${juice ? ' on' : ''}`} onClick={toggleJuice} data-testid="grid-juice" title="Partikel, Platten-Dip, Shake, REX-Puls (J)">Juice {juice ? 'an' : 'aus'}</button>
+          <button
+            className={`btn${gull !== 'off' ? ' on' : ''}`}
+            onClick={() => {
+              const next = GULL_NEXT[gull];
+              setGullMode(next);
+              setGull(next);
+            }}
+            data-testid="grid-gull"
+            data-mode={gull}
+            title="Möwe bringt Spawns: im Takt (alle 3–5 Züge), bei jedem Spawn oder nie (G)"
+          >
+            {GULL_LABEL[gull]}
+          </button>
         </div>
       }
     >

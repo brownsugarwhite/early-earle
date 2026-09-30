@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router';
 import { Glyph } from '../overlay/glyphs';
 import { WERKSTATT_EDITORS, WERKSTATT_LABS, type WerkstattEntry } from '../overlay/werkstattCatalog';
 import { ConnectionCard } from '../editor/content/ConnectionCard';
+import { ProgressCard } from '../overlay/ProgressCard';
 
 function Tile({ entry }: { entry: WerkstattEntry }) {
   return (
@@ -54,6 +55,8 @@ export function Werkstatt() {
             <p className="ws-lede">Labs und Editoren zum Ausprobieren.</p>
           </div>
         </header>
+
+        <ProgressCard />
 
         <ConnectionCard autoTest={autoTest} />
 

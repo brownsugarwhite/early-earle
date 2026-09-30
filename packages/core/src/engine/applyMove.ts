@@ -1113,6 +1113,7 @@ export function createState(level: LevelDef, seed: number): LevelState {
     moveNo: 0,
     score: 0,
     rng: seed | 0,
+    seed: seed >>> 0,
     blobSeq: 0,
     status: 'playing',
     spawnQueue: [],

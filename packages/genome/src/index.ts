@@ -10,5 +10,6 @@ export * from './sockets';
 export * from './procedural';
 export * from './body';
 export * from './creature';
+export * from './catalog';
 export * from './locomotion/index';
 export * from './custom/index';
