@@ -99,7 +99,7 @@ export interface HeroTreePath {
   railFor(index: number, outPos: Vector3, outLook: Vector3): void;
   /** Point of the path at parameter t (0..1, arc length), on the surface. */
   curveAt(t: number, out: Vector3): Vector3;
-  /** Collision volumes (trunk, limbs, branches, domes, lace curtain). */
+  /** Collision volumes (trunk, limbs, forks, domes); the fine lace is not a collider. */
   colliders: HeroCollider[];
   /** Approximate signed distance from p to the tree (negative inside a volume). */
   clearance(p: Vector3): number;
@@ -138,22 +138,6 @@ const _a = new Vector3();
 const _b = new Vector3();
 const _c = new Vector3();
 const UP = new Vector3(0, 1, 0);
-/** Rail camera candidates (azimuth, extra elevation) in order of preference. */
-const RAIL_CANDIDATES: Array<[number, number]> = [
-  [0, 0],
-  [0.3, 0],
-  [-0.3, 0],
-  [0, 0.25],
-  [0.6, 0],
-  [-0.6, 0],
-  [0.3, 0.25],
-  [-0.3, 0.25],
-  [0, 0.5],
-  [0.95, 0.1],
-  [-0.95, 0.1],
-  [0.6, 0.45],
-  [-0.6, 0.45],
-];
 /** Clearance saturates at this distance (grid reach): far from the tree every query returns it. */
 export const HERO_CLEARANCE_REACH = 3.5;
 
@@ -453,24 +437,7 @@ export function heroTreePath(o: HeroTreePathOptions): HeroTreePath {
     }
   }
   for (const d of domes) colliders.push({ kind: 'ellipsoid', center: v3(d.center), up: [0, 1, 0], radiusH: d.r, radiusV: d.r * d.sy });
-  // lace curtain: one soft capsule per main twig chain (keeps camera lenses out of the hanging lines)
-  {
-    let start: Vector3 | null = null;
-    let end: Vector3 | null = null;
-    const flush = () => {
-      if (start && end) colliders.push({ kind: 'capsule', a: v3(start), b: v3(end), ra: 0.5, rb: 0.5 });
-    };
-    for (const t of shape.twigs) {
-      if (t.order !== 0) continue;
-      if (end && t.a.distanceTo(end) < 1e-4) end = t.b;
-      else {
-        flush();
-        start = t.a;
-        end = t.b;
-      }
-    }
-    flush();
-  }
+  // the lace (fine hanging twigs) is no collider: the lens may brush through the curtain like through a willow
   const clearanceOf = makeClearance(colliders);
 
   // --- camera rail ------------------------------------------------------------------------------------------------
@@ -480,17 +447,10 @@ export function heroTreePath(o: HeroTreePathOptions): HeroTreePath {
   const crownDist = o.rail?.crownDistance ?? 21;
   const rampDist = trunkDist + 5;
   const lift = o.rail?.height ?? 3.5;
-  const railN = 200;
+  const railN = 320;
   let lastRadial: Vector3 | null = null;
   const cam: Vector3[] = [];
   const looks: Vector3[] = [];
-  const segmentClear = (from: Vector3, to: Vector3): boolean => {
-    for (let k = 1; k < 12; k++) {
-      _c.copy(from).lerp(to, k / 12);
-      if (clearanceOf(_c) < 0.3) return false;
-    }
-    return true;
-  };
   // phase boundaries (arc length): the camera blends its distance, elevation and direction across them
   let lenRamp = total;
   let lenCrown = total;
@@ -536,25 +496,12 @@ export function heroTreePath(o: HeroTreePathOptions): HeroTreePath {
     const elev = 0.22 + (elevRamp - 0.22) * wRamp + (0.85 - elevRamp) * wCrown;
     const look = pos.clone().addScaledVector(tan, 2.5 + 2 * onCrown);
     look.y += 0.6 * (1 - onCrown);
-    // candidates around the preferred pose, in order of preference: the first clear one with a free view wins
-    let best: Vector3 | null = null;
-    let bestScore = -Infinity;
-    const target = pos.clone().addScaledVector(smp.nrm, 0.6);
-    for (const [dAz, dEl] of RAIL_CANDIDATES) {
-      const dirC = outH.clone().applyAxisAngle(UP, dAz).multiplyScalar(Math.cos(elev + dEl)).addScaledVector(UP, Math.sin(elev + dEl)).addScaledVector(tanH, -0.35).normalize();
-      const c = pos.clone().addScaledVector(dirC, dist);
-      c.y += lift * (1 - onCrown) * 0.3;
-      c.y = Math.max(c.y, trunk.groundY(c.x, c.z) + 1.5);
-      const clear = clearanceOf(c);
-      const visible = segmentClear(c, target);
-      const score = (visible ? 10 : 0) + Math.min(clear, 3) - Math.abs(dAz) * 1.5 - dEl * 2;
-      if (score > bestScore) {
-        bestScore = score;
-        best = c;
-      }
-      if (visible && clear > 1.5) break;
-    }
-    cam.push(best!);
+    // the ideal pose: beside/above the node along the blended outward direction (collisions are resolved below)
+    const dirC = outH.clone().multiplyScalar(Math.cos(elev)).addScaledVector(UP, Math.sin(elev)).addScaledVector(tanH, -0.35).normalize();
+    const c = pos.clone().addScaledVector(dirC, dist);
+    c.y += lift * (1 - onCrown) * 0.3;
+    c.y = Math.max(c.y, trunk.groundY(c.x, c.z) + 1.5);
+    cam.push(c);
     looks.push(look);
   }
   // smooth (positions and looks), then push out again so smoothing never enters a volume
@@ -600,24 +547,73 @@ export function heroTreePath(o: HeroTreePathOptions): HeroTreePath {
       return new Vector3(cx + Math.cos(a) * (r / c), y / c, cz + Math.sin(a) * (r / c));
     });
   };
+  // elastic band: alternate pushing out of the volumes (along the clearance gradient, a few steps) and light
+  // Laplacian smoothing in cylindrical coordinates → a smooth rail that keeps its distance, without jumps
+  const groundClamp = (c: Vector3) => {
+    c.y = Math.max(c.y, trunk.groundY(c.x, c.z) + 1.5);
+  };
+  // Runs of samples that are too close to a volume move together, in one direction (the deficit-weighted mean of
+  // their clearance gradients) with a soft window around the run — the band never splits around a thin limb.
+  const gradAt = (q: Vector3, out: Vector3): Vector3 => {
+    const e2 = 0.15;
+    return out.set(
+      clearanceOf(_a.copy(q).setX(q.x + e2)) - clearanceOf(_b.copy(q).setX(q.x - e2)),
+      clearanceOf(_a.copy(q).setY(q.y + e2)) - clearanceOf(_b.copy(q).setY(q.y - e2)),
+      clearanceOf(_a.copy(q).setZ(q.z + e2)) - clearanceOf(_b.copy(q).setZ(q.z - e2)),
+    );
+  };
   let camS = smoothCyl(cam, 6);
-  for (const c of camS) pushOutWith(clearanceOf, c, 1.4);
-  camS = smoothCyl(camS, 3);
-  for (const c of camS) pushOutWith(clearanceOf, c, 1.2);
+  const PAD = 1.5;
+  const gr = new Vector3();
+  const runDir = new Vector3();
+  for (let it = 0; it < 80; it++) {
+    const clear = camS.map((c) => clearanceOf(c));
+    let moved = false;
+    let i = 0;
+    while (i < camS.length) {
+      if (clear[i]! >= PAD) {
+        i++;
+        continue;
+      }
+      let j = i;
+      let deficit = 0;
+      runDir.set(0, 0, 0);
+      while (j < camS.length && clear[j]! < PAD) {
+        const d = PAD - clear[j]!;
+        deficit = Math.max(deficit, d);
+        gradAt(camS[j]!, gr);
+        if (gr.lengthSq() > 1e-10) runDir.addScaledVector(gr.normalize(), d);
+        j++;
+      }
+      if (runDir.lengthSq() < 1e-8) runDir.set(0, 1, 0);
+      runDir.normalize();
+      const step = Math.min(0.6, deficit * 0.5 + 0.05);
+      const margin = 4;
+      for (let k = Math.max(0, i - margin); k < Math.min(camS.length, j + margin); k++) {
+        const w = k < i ? smooth01((k - (i - margin - 1)) / (margin + 1)) : k >= j ? smooth01((j + margin - k) / (margin + 1)) : 1;
+        camS[k]!.addScaledVector(runDir, step * w);
+      }
+      moved = true;
+      i = j;
+    }
+    for (const c of camS) groundClamp(c);
+    if (!moved) break;
+    if (it % 4 === 3) camS = smoothCyl(camS, 1);
+  }
   const lookS = smoothV(looks, 4);
   // validation on the interpolated rail: wherever a Catmull-Rom sub-sample comes closer than 0.9 to a volume,
   // push the neighbouring samples out along the clearance gradient (a few rounds)
   const g = new Vector3();
   const sub = new Vector3();
   const e = 0.2;
-  for (let round = 0; round < 10; round++) {
+  for (let round = 0; round < 24; round++) {
     let moved = false;
     for (let i = 0; i < camS.length - 1; i++) {
       const p0 = camS[Math.max(0, i - 1)]!;
       const p1 = camS[i]!;
       const p2 = camS[i + 1]!;
       const p3 = camS[Math.min(camS.length - 1, i + 2)]!;
-      for (let k = 1; k < 6; k++) {
+      for (let k = 0; k < 6; k++) {
         const f = k / 6;
         sub.set(catmull(p0.x, p1.x, p2.x, p3.x, f), catmull(p0.y, p1.y, p2.y, p3.y, f), catmull(p0.z, p1.z, p2.z, p3.z, f));
         const c = clearanceOf(sub);
@@ -707,11 +703,11 @@ function makeClearance(colliders: HeroCollider[]): (p: Vector3) => number {
   };
 }
 
-function pushOutWith(clearance: (p: Vector3) => number, p: Vector3, pad: number): Vector3 {
+function pushOutWith(clearance: (p: Vector3) => number, p: Vector3, pad: number, maxSteps = 60): Vector3 {
   // gradient ascent on the clearance field (numerical), bounded
   const e = 0.15;
   const g = new Vector3();
-  for (let it = 0; it < 60; it++) {
+  for (let it = 0; it < maxSteps; it++) {
     const c = clearance(p);
     if (c >= pad) break;
     g.set(clearance(_a.copy(p).setX(p.x + e)) - clearance(_b.copy(p).setX(p.x - e)), 0, 0);

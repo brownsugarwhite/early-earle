@@ -211,6 +211,30 @@ describe('heroTreePath: nodes lie on the tree', () => {
     expect(v(t.exit!.ground).distanceTo(v(path.exit!.ground).applyMatrix4(m))).toBeLessThan(1e-5);
   });
 
+  it('robust across seeds: the walk lies on the tree, the rail is smooth and never clips', () => {
+    for (let seed = 1; seed <= 8; seed++) {
+      const sh = computeTreeShape({ seed });
+      const p = heroTreePath({ nodes: 16, shape: sh });
+      expect(p.nodes[0]!.surface).toBe('root');
+      expect(p.nodes.at(-1)!.surface).toBe('dome');
+      expect(p.nodes.at(-1)!.position[1]).toBeGreaterThan(sh.crownTop - 1);
+      for (const n of p.nodes) expect(surfaceDistance(sh, n)).toBeLessThan(0.06);
+      const a = new Vector3();
+      const b = new Vector3();
+      const l = new Vector3();
+      let maxStep = 0;
+      let minClear = Infinity;
+      for (let i = 0; i <= 600; i++) {
+        p.sampleRail(i / 600, a, l);
+        if (i > 0) maxStep = Math.max(maxStep, a.distanceTo(b));
+        b.copy(a);
+        minClear = Math.min(minClear, p.clearance(a));
+      }
+      expect(minClear).toBeGreaterThan(0.8);
+      expect(maxStep).toBeLessThan(2);
+    }
+  });
+
   it('on a planet slot the roots and the first node follow the curved ground', () => {
     const curved = computeTreeShape({ groundRadius: 80 });
     const p = heroTreePath({ nodes: 16, shape: curved });
