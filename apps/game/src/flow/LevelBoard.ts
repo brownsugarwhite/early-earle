@@ -26,8 +26,11 @@ export interface LevelBoardOptions {
 
 let sharedLibrary: { library: ModuleLibrary; ready: Promise<void> } | null = null;
 
-/** Loads the starter modules once per app (feature-guarded: without them the blobs keep their painted eyes). */
-async function creatureLibrary(): Promise<{ library: ModuleLibrary; rules: import('@ee/genome').GenomeRules } | null> {
+/**
+ * Loads the starter modules once per app (feature-guarded: without them the blobs keep their painted eyes). Shared by
+ * the board, the Setzkasten and the creatures on the map (one library, one set of GLB loads).
+ */
+export async function creatureLibrary(): Promise<{ library: ModuleLibrary; rules: import('@ee/genome').GenomeRules } | null> {
   try {
     const content = await import('../lab/creature/content');
     if (typeof ModuleLibrary !== 'function' || !content.MODULE_URLS || !content.BUNDLED_RULES) return null;
