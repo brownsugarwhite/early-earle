@@ -1,6 +1,6 @@
 import { mixHex } from '@ee/genome';
 import type { PlateauStyle } from '@ee/render';
-import { FAMILY_PALETTES } from '@ee/render/earle/tree/index.ts';
+import { DOME_FAMILIES } from '@ee/render/earle/tree/index.ts';
 import { WORLD_CONTENTS } from '../lab/earle/zones';
 import type { NodeSite } from './path';
 
@@ -88,7 +88,9 @@ export function plateauStyleFor(site: NodeSite, world: number): PlateauStyle {
       };
     }
     case 'crown': {
-      const f = FAMILY_PALETTES.purple;
+      // The crown's violet dome family (giant tree v3: ink, three light bands, dots shade/lit/bright, accent).
+      const v = (DOME_FAMILIES.find((d) => d.name === 'violet') ?? DOME_FAMILIES[0]!).steps;
+      const f = { ink: v[0], bands: [v[1], v[2]] as const, dots: [v[4], v[5], v[6]] as const };
       return {
         kind: 'crown',
         top: f.bands[1],
