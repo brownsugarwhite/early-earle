@@ -24,11 +24,12 @@ async function waitForRenderer(page: Page): Promise<void> {
 test('/ zeigt den Splash; ein Tipp startet den Hüpfer und endet auf der Map', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto('/');
+  // Loader und Splash liegen außerhalb von #root (index.html); nach 100 % baut sich das Logo auf, dann "Tippen"
   await expect(page.getByTestId('splash')).toBeVisible();
-  await expect(page.locator('img.splash-img')).toBeVisible();
   await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', 'splash');
   await waitForRenderer(page);
-  await page.mouse.click(400, 300);
+  await expect(page.getByTestId('splash')).toHaveAttribute('data-phase', 'idle', { timeout: TRANSITION_MS });
+  await page.mouse.click(200, 300);
   await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', /hop|map/, { timeout: TRANSITION_MS });
   await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', 'map', { timeout: TRANSITION_MS });
   await expect(page.getByTestId('splash')).toHaveCount(0, { timeout: TRANSITION_MS });

@@ -118,13 +118,16 @@ export function bootInline(D: BootInlineData): EeBoot | null {
   };
 
   let lastPct = -1;
+  let lastS = -1;
   const mirror = (p: number) => {
     const q = D.quad;
-    const s = scaleOf(p);
+    // Stammschatten nur bei merklicher Änderung neu (jedes Neuzeichnen der großen Schattenfläche kostet)
+    const s = Math.round(scaleOf(p) * 400) / 400;
     // Stamm wächst an seinen senkrechten Seiten: Oberkante = Unterkante + s · Höhe
     const tl = [q[3][0] + (q[0][0] - q[3][0]) * s, q[3][1] + (q[0][1] - q[3][1]) * s];
     const tr = [q[2][0] + (q[1][0] - q[2][0]) * s, q[2][1] + (q[1][1] - q[2][1]) * s];
-    if (shStem) shStem.setAttribute('d', sweep([[tl, tr, q[2], q[3]]], 0, 0, 1));
+    if (shStem && s !== lastS) shStem.setAttribute('d', sweep([[tl, tr, q[2], q[3]]], 0, 0, 1));
+    lastS = s;
     const pct = Math.max(0, Math.min(100, Math.floor(p * 100 + 1e-6)));
     api.shown = p;
     if (pct === lastPct) return;

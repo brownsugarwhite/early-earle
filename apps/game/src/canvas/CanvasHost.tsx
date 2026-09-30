@@ -4,6 +4,7 @@ import { getRenderer, detectBackend } from './rendererSingleton';
 import { useAppStore } from '../state/store';
 import { bus } from '../state/bus';
 import { governQuality, resetQualityGovernor } from './qualityGovernor';
+import { boot, isCanvasCovered } from '../boot/bootProgress';
 
 const MAX_DPR = 2;
 
@@ -41,6 +42,7 @@ export function CanvasHost({ controller }: { controller: SceneController }) {
       const backend = detectBackend(renderer);
       useAppStore.getState().setBackend(backend);
       bus.emit('renderer/ready', { backend });
+      boot.done('renderer');
       ctx = { renderer, canvas, width: 1, height: 1, dpr: 1, backend };
       resetQualityGovernor();
       if (import.meta.env.DEV) (window as unknown as { __ee?: unknown }).__ee = { renderer, ctx, controller };
@@ -51,15 +53,27 @@ export function CanvasHost({ controller }: { controller: SceneController }) {
         controller.resize?.(ctx);
       });
       ro.observe(host);
-      await controller.mount(ctx);
+      // Loader: Schrift da, dann bekommt der Stamm sein Ziel fürs Ende des (synchronen) Mounts
+      await boot.whenDone('font');
+      await boot.beforeBlock('mount');
       if (disposed) return;
+      await controller.mount(ctx);
+      boot.done('mount');
+      if (disposed) return;
+      boot.markSceneReady();
+      if (controller.warm) void controller.warm(boot.report);
+      else for (const s of ['creatures', 'board', 'chunks', 'mapShaders'] as const) boot.done(s);
       start = performance.now();
       last = start;
       renderer.setAnimationLoop(() => {
         if (!ctx) return;
         const now = performance.now();
-        const dt = Math.min(0.1, (now - last) / 1000);
+        const raw = (now - last) / 1000;
+        const dt = Math.min(0.1, raw);
         last = now;
+        boot.frame(raw);
+        // Nach dem Boot liegt der Splash deckend über dem Canvas: 3D pausiert (bis zum Ausklang)
+        if (boot.complete && isCanvasCovered()) return;
         controller.update(dt, (now - start) / 1000, ctx);
         // Perf-Statistik: FPS und p99 der Frametime über ein 1-s-Fenster
         times.push(dt * 1000);
