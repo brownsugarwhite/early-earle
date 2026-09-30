@@ -301,7 +301,7 @@ test.describe('Bilder (echte GPU)', () => {
         const shot = await page.screenshot();
         frames.push(shot);
         const name = `${scene.where}-${scene.view}`;
-        if (m.label === 'über dem Brett') writeFileSync(`${SHOTS}/${PREFIX}${name}-schatten.png`, shot);
+        if (m.label === 'gleitet') writeFileSync(`${SHOTS}/${PREFIX}${name}-schatten.png`, shot);
         if (flow && scene.view === 'handy' && m.label === 'Fall') writeFileSync(`${SHOTS}/${PREFIX}fall.png`, shot);
         if (flow && scene.view === 'handy' && m.label === 'Flatsch') writeFileSync(`${SHOTS}/${PREFIX}aufprall.png`, shot);
       }
