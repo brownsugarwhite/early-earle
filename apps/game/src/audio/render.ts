@@ -1,5 +1,5 @@
 import { AudioGraph, BUS_NAMES } from './graph';
-import { playSfx, type Material, type SfxParams } from './sfx';
+import { playSfx, type Material, type SfxId, type SfxParams } from './sfx';
 import { babble, chirp } from './rex';
 import { MusicLayer } from './music';
 import { AMBIENT_PRESETS, AmbientBed, ambientDetail, type WorldId } from './ambient';
@@ -221,15 +221,21 @@ export function encodeWav(buf: AudioBuffer): ArrayBuffer {
 export interface LevelStats {
   peakDb: number;
   rmsDb: number;
+  /** Loudest 100 ms window (RMS over both channels, 10 ms hop): the number the loudness policy (`TRIM_DB`) uses. */
+  maxRmsDb: number;
   clipped: number;
 }
 
-/** Peak / RMS (dBFS) of a rendered buffer, for the lab and the preview check. */
+const toDb = (x: number): number => (x > 0 ? Math.round(20 * Math.log10(x) * 10) / 10 : -120);
+
+/** Peak / RMS / loudest-100-ms RMS (dBFS) of a rendered buffer, for the lab, the preview check and the tests. */
 export function measure(buf: AudioBuffer): LevelStats {
   let peak = 0;
   let sum = 0;
   let clipped = 0;
   let count = 0;
+  const n = buf.length;
+  const energy = new Float64Array(n);
   for (let c = 0; c < buf.numberOfChannels; c++) {
     const d = buf.getChannelData(c);
     for (let i = 0; i < d.length; i++) {
@@ -237,11 +243,37 @@ export function measure(buf: AudioBuffer): LevelStats {
       if (a > peak) peak = a;
       if (a >= 0.999) clipped++;
       sum += a * a;
+      energy[i] = energy[i]! + a * a;
       count++;
     }
   }
-  const db = (x: number): number => (x > 0 ? Math.round(20 * Math.log10(x) * 10) / 10 : -120);
-  return { peakDb: db(peak), rmsDb: db(Math.sqrt(sum / Math.max(1, count))), clipped };
+  const win = Math.max(1, Math.round(buf.sampleRate * 0.1));
+  const hop = Math.max(1, Math.round(buf.sampleRate * 0.01));
+  let best = 0;
+  let acc = 0;
+  for (let i = 0; i < Math.min(win, n); i++) acc += energy[i]!;
+  best = acc;
+  for (let start = 0; start + win < n; start += hop) {
+    // slide the window by `hop` frames
+    for (let i = start; i < start + hop && i + win < n; i++) acc += energy[i + win]! - energy[i]!;
+    if (acc > best) best = acc;
+  }
+  const chans = Math.max(1, buf.numberOfChannels);
+  return { peakDb: toDb(peak), rmsDb: toDb(Math.sqrt(sum / Math.max(1, count))), maxRmsDb: toDb(Math.sqrt(Math.max(0, best) / (Math.min(win, n) * chans))), clipped };
+}
+
+/**
+ * One sound alone through the default mix, offline (starts at 0.1 s; `seconds` long): the level check behind the
+ * loudness policy (`TRIM_DB`, `EXTRA_TRIM_DB`), the lab's level table and the unit tests. Deterministic per `seed`.
+ */
+export async function renderSfx(id: SfxId, p: SfxParams = {}, seconds = 3, seed = 42, sampleRate = 44100): Promise<AudioBuffer> {
+  const { ctx, g } = offlineGraph(seconds, sampleRate, seed);
+  playSfx(g, id, 0.1, p);
+  return ctx.startRendering();
+}
+
+export async function sfxLevel(id: SfxId, p: SfxParams = {}, seconds = 3, seed = 42): Promise<LevelStats> {
+  return measure(await renderSfx(id, p, seconds, seed));
 }
 
 export interface BenchResult {
