@@ -8,8 +8,8 @@
  *    bei 0), Vorschübe, Unterschneidung für "Tippen" und abgetastete Ringe für die langen Schatten (Außenringe positive
  *    Fläche, Löcher negativ). Der Loader zeichnet Ziffern als Pfade: kein Schrift-Blitzen, die Ziffern werfen Schatten,
  *    und das Inline-Boot-Skript braucht keine Webfont.
- * 2. public/fonts/ee-heavy.woff2 — Untermenge (Basis-Latein, ÄÖÜäöüß, Satzzeichen) für alle anderen Stellen
- *    (fonts.css lädt woff2 zuerst, die TTF bleibt Rückfall und Quelle für die native App).
+ * 2. public/fonts/ee-heavy.woff2 — Untermenge genau über die unicode-range aus fonts.css (Latein, Umlaute, ß,
+ *    Satzzeichen, €, ™) für alle anderen Stellen (woff2 zuerst, die TTF bleibt Rückfall und Quelle der nativen App).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -146,11 +146,18 @@ export type GlyphChar = keyof typeof GLYPHS.glyphs;
 `;
 fs.writeFileSync(OUT_TS, ts);
 
-// woff2-Untermenge
-const latin = Array.from({ length: 0x7f - 0x20 }, (_, i) => String.fromCharCode(0x20 + i)).join('');
-const text = latin + 'ÄÖÜäöüßéèêàâçœ€„“”‚‘’–—…·×÷°²³½';
+// woff2-Untermenge: genau die unicode-range aus fonts.css (echte Glyphen; die Mathe-Zeichen sind Platzhalter-Kästchen)
+const css = fs.readFileSync(path.join(appDir, 'src/styles/fonts.css'), 'utf8');
+const range = /unicode-range:([^;]+);/.exec(css)?.[1] ?? 'U+0020-007E';
+let text = '';
+for (const part of range.split(',')) {
+  const [a, b] = part.trim().replace(/^U\+/i, '').split('-');
+  const lo = parseInt(a, 16);
+  const hi = b ? parseInt(b, 16) : lo;
+  for (let cp = lo; cp <= hi; cp++) if (font.charToGlyphIndex(String.fromCodePoint(cp)) > 0) text += String.fromCodePoint(cp);
+}
 const woff2 = await subsetFont(buf, text, { targetFormat: 'woff2' });
 fs.writeFileSync(OUT_WOFF2, woff2);
 
 console.log(`glyphs.gen.ts: ${Object.keys(glyphs).length} Glyphen, ${(ts.length / 1024).toFixed(1)} KB, Kerning ${JSON.stringify(kern)}`);
-console.log(`ee-heavy.woff2: ${(woff2.length / 1024).toFixed(1)} KB (TTF ${(buf.length / 1024).toFixed(1)} KB)`);
+console.log(`ee-heavy.woff2: ${(woff2.length / 1024).toFixed(1)} KB, ${[...text].length} Zeichen (TTF ${(buf.length / 1024).toFixed(1)} KB)`);
