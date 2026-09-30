@@ -1,0 +1,47 @@
+# This is an Asset Catalog Definition file for Blender.
+#
+# Empty lines and lines starting with `#` will be ignored.
+# The first non-ignored line should be the version indicator.
+# Other lines are of the format "UUID:catalog/path/for/assets:simple catalog name"
+#
+# early earle — erzeugt von tools/blender/build_library.py (pnpm assets:blender).
+
+VERSION 1
+
+dec33a63-13d7-5556-9013-549840b1d5c7:Eigenes Wesen:Eigenes Wesen
+75e0aec5-2c3d-5c5b-a3b7-65e29122c77a:Map:Map
+49767bac-d67e-5be9-954c-091ef08bf4ae:Map/Müll:Map-Müll
+c92338be-7bb3-5a9d-9eb2-81790ccdd6b4:Map/Requisiten:Map-Requisiten
+abd6c1da-91b2-5865-87a2-2fa21a5a63c9:Map/Riesenbaum:Map-Riesenbaum
+ee20e239-af39-57cd-9b48-2ab2372d539c:Map/Vegetation:Map-Vegetation
+62bfc22b-2d90-51c8-89ea-c45b50576553:Materialien:Materialien
+018124c1-9c21-523c-8747-5f080e9a7571:Materialien/Module:Materialien-Module
+69f90e82-454a-55c1-9b67-49dbf54286f8:Materialien/Muster:Materialien-Muster
+0bc1e754-f37d-50e5-bba7-0bd851d14f59:Materialien/Wesen:Materialien-Wesen
+0effb323-515d-51a6-97a8-24e85ec18159:Module:Module
+df55c990-4b44-5e1b-8066-7fd32593d7fd:Module/Augen:Module-Augen
+52689365-905e-59ca-a832-5d60ea9ccd86:Module/Beine:Module-Beine
+d395d238-f8f7-5729-84f1-b11290140323:Module/Flügel:Module-Flügel
+757f9d9a-c0fb-5265-a805-e1f327dec785:Module/Hörner:Module-Hörner
+25758ffa-118d-546f-94c9-376fcef366d4:Module/Kämme:Module-Kämme
+8814627e-13aa-58d0-a04b-a9e0ae89a504:Module/Ohren:Module-Ohren
+9379b8b5-d72b-594b-9b71-e9d298e8a449:Module/Rüssel & Nasen:Module-Rüssel & Nasen
+66c31351-dc44-5253-921a-c1428cb64d5c:Module/Schweife:Module-Schweife
+741db7e1-71bb-59e2-a8f6-e965a9238e32:Module/Zähne & Schnäbel:Module-Zähne & Schnäbel
+56c21be7-8ff2-5127-98e6-aff0d8a77b52:REX:REX
+e0754ba5-a330-5546-87a5-3462b7970133:Spielfeld:Spielfeld
+24a5d7cc-df72-512b-8f1c-fd0551ee41b9:Spielfeld/Elemente:Spielfeld-Elemente
+608f600d-6b12-5f38-b42e-c231d7e6bc22:Spielfeld/Grundformen:Spielfeld-Grundformen
+cb6e57fb-7057-5c18-b610-b70aa961a69c:Wesen:Wesen
+5a761026-6471-58ea-b149-17333fdc2eae:Wesen/Blob Luzz:Wesen-Blob Luzz
+355267bb-8de1-5d7f-8a99-d42b2ee63c8d:Wesen/Blob Syrup:Wesen-Blob Syrup
+ee1e87a3-bfaf-59c6-ae82-a11cd527a503:Wesen/Blob Tjorizo:Wesen-Blob Tjorizo
+62e7a0e8-86b1-5abd-99fe-9140f78dda11:Wesen/Blob Wooding:Wesen-Blob Wooding
+b98bd40c-f568-5818-8e1b-4d6b585b921b:Wesen/Eigene Wesen:Wesen-Eigene Wesen
+95af767b-2d6e-5219-bf01-1075604d4ec8:Wesen/Elefant:Wesen-Elefant
+914fba64-a4a7-5b17-ad0a-b96630e6a865:Wesen/Ente:Wesen-Ente
+7c92fa29-2a3d-5ca0-a344-9e0d0f793a58:Wesen/Giraffe:Wesen-Giraffe
+020c7808-f4fa-54cd-8f11-fc7af6161011:Wesen/Maus:Wesen-Maus
+58022199-5708-58ec-8135-b3c92431c9f0:Wesen/REX:Wesen-REX
+6f56a0cb-7aae-5b36-9cea-c02cdfc16534:Wesen/Retriever:Wesen-Retriever
+7abdb31e-9645-59a1-a98d-4443eed1f530:Wesen/Schlange:Wesen-Schlange

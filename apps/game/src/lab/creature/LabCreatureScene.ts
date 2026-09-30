@@ -6,7 +6,9 @@ import {
   NO_FLOOR,
   SPECIES,
   SPECIES_BODY,
+  buildCustomCreature,
   creatureGenome,
+  customCreatureGenome,
   describeInheritance,
   faceCapFor,
   inherit,
@@ -68,6 +70,7 @@ import {
 import type { SceneController, SceneContext } from '../../canvas/SceneController';
 import { useAppStore } from '../../state/store';
 import { BUNDLED_RULES, MODULE_URLS } from './content';
+import { CUSTOM_SEED_PREFIX, customCreatureById } from './customCreatures';
 
 export type LabMode = 'single' | 'gallery' | 'grid' | 'herd' | 'zoo' | 'merge' | 'motion' | 'sheet' | 'compare' | 'sketch';
 export type BodyCandidate = 'a' | 'b';
@@ -111,6 +114,8 @@ export interface CreatureLabSettings {
   parcours: boolean;
   /** Second tier of the compare view. */
   compareTier: number;
+  /** Own creature from Blender (`content/genome/custom/<id>.json`); null = the rules / species above. */
+  custom: string | null;
 }
 
 export const DEFAULT_CREATURE_LAB_SETTINGS: CreatureLabSettings = {
@@ -132,6 +137,7 @@ export const DEFAULT_CREATURE_LAB_SETTINGS: CreatureLabSettings = {
   mass: 1,
   parcours: false,
   compareTier: 7,
+  custom: null,
 };
 
 export const GAIT_LABELS: Readonly<Record<GaitKind, string>> = { hop: 'Hüpfen', walk: 'Schritt', trot: 'Trab', stomp: 'Stampfen', slither: 'Schlängeln', waddle: 'Watscheln' };
@@ -416,8 +422,11 @@ export class LabCreatureScene implements SceneController {
       prev.species !== next.species ||
       prev.legs !== next.legs ||
       prev.parcours !== next.parcours ||
-      prev.compareTier !== next.compareTier;
+      prev.compareTier !== next.compareTier ||
+      prev.custom !== next.custom;
     if (prev.mode !== next.mode || prev.parcours !== next.parcours) this.lastAct = null;
+    // Own creatures share the species mesh cache key (species|legs|spheres|tier): drop cached meshes on a switch.
+    if (prev.custom !== next.custom) this.meshBodies?.prune(-1);
     if (structural && this.loaded) this.rebuild();
     if (prev.candidate !== next.candidate || prev.topDown !== next.topDown) this.placeCamera();
     if (prev.quality !== next.quality) this.applyQuality();
@@ -907,7 +916,8 @@ export class LabCreatureScene implements SceneController {
     role: LabCreature['role'] = null,
     opts: { motion?: boolean; yaw?: number; wander?: boolean; fixed?: Squash; coil?: boolean; idle?: boolean; size?: number; mouth?: { open: number; round: number }; recolor?: string; paintedEyes?: boolean } = {},
   ): LabCreature {
-    let spec = resolveCreature(genome, this.rules, ARCHETYPES);
+    const custom = typeof genome.seed === 'string' && genome.seed.startsWith(CUSTOM_SEED_PREFIX) ? customCreatureById(genome.seed.slice(CUSTOM_SEED_PREFIX.length))?.def ?? null : null;
+    let spec = custom ? buildCustomCreature(custom, this.rules, { zone: genome.zone, tier: genome.tier }).spec : resolveCreature(genome, this.rules, ARCHETYPES);
     if (opts.paintedEyes) {
       // The sketch's blobs: two small black slits on top (read from above) instead of eye modules.
       spec = { ...spec, parts: spec.parts.filter((p) => p.slot !== 'eye'), paintedEye: true, body: { ...spec.body, eye: { dir: [0.02, 0.88, 0.47], size: 0.3, spacing: 0.24 } } };
@@ -960,6 +970,12 @@ export class LabCreatureScene implements SceneController {
   }
 
   private genome(tier: number, seed: number, bodyType?: BodyChoice, species?: SpeciesChoice): CreatureGenome {
+    const own = bodyType === undefined && species === undefined ? customCreatureById(this.settings.custom)?.def : null;
+    if (own) {
+      // Own creature: its base species moves it; the seed carries the id (makeCreature builds the custom body).
+      const t = this.settings.mode === 'gallery' || this.settings.mode === 'compare' ? tier : own.tier;
+      return { ...customCreatureGenome(own, { zone: this.settings.zone, tier: t }), seed: `${CUSTOM_SEED_PREFIX}${own.id}` };
+    }
     const sp = species ?? (bodyType !== undefined ? 'auto' : this.settings.species);
     const bt = sp !== 'auto' ? SPECIES_BODY[sp] : bodyType ?? this.settings.bodyType;
     const g = creatureGenome(this.settings.zone, tier, seed, undefined, bt === 'auto' ? undefined : bt);

@@ -11,3 +11,4 @@ export * from './procedural';
 export * from './body';
 export * from './creature';
 export * from './locomotion/index';
+export * from './custom/index';

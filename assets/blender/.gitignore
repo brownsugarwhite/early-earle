@@ -1,0 +1,5 @@
+# Zwischenexport von tools/export3d (wird bei jedem pnpm assets:blender neu erzeugt)
+_export/
+# Blender-Sicherungen
+*.blend1
+*.blend2
