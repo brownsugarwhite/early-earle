@@ -22,7 +22,7 @@ import {
 import { useFlowStore, type FlowPhase } from './flowStore';
 import { useGridStore } from '../lab/grid/gridStore';
 import { rexIntroFor, rexLine } from '../lab/grid/rex';
-import { nativeGlassLayout } from '../native/liquidGlass';
+import { readHudBands } from './hudBands';
 import type { MapWorld } from './MapWorld';
 import type { PathLayout } from './path';
 
@@ -107,6 +107,8 @@ export class Rex {
   private placement: RexMapPlacement | null = null;
   private spot: RexBoardSpot | null = null;
   private spotKey = '';
+  /** REX's height (board units) at the current level spot. */
+  private levelRexHeight = 0;
   private groundY = 0;
   private boardRoot: Object3D | null = null;
   private lastInput = 0;
@@ -118,7 +120,6 @@ export class Rex {
   /** Until this clock time REX watches the game (the board after a swipe, the hero's node on the map). */
   private glanceUntil = -1;
   private hud: { at: number; safe: RexInsets; hudTop: number; hudBottom: number; lineBox: RexRect | null; actions: RexRect | null; w: number; h: number } | null = null;
-  private safeProbe: HTMLDivElement | null = null;
   private readonly unsubscribes: Array<() => void> = [];
   private disposed = false;
 
@@ -233,8 +234,6 @@ export class Rex {
     this.disposed = true;
     for (const u of this.unsubscribes) u();
     this.unsubscribes.length = 0;
-    this.safeProbe?.remove();
-    this.safeProbe = null;
     this.character.dispose();
     this.sprite.removeFromParent();
     useRexAnchor.setState({ visible: false, mode: 'hidden', rimY: null });
@@ -368,56 +367,13 @@ export class Rex {
 
   // ------------------------------------------------------------------------------------------ map
 
-  /** HUD geometry from the DOM (4 Hz): safe areas, top pill, REX line box, action row. */
+  /** HUD geometry (4 Hz): safe areas, top pill, REX line box, action row — native frames in the app, DOM on the web. */
   private readHud(): NonNullable<Rex['hud']> {
     const now = this.clock;
     if (this.hud && now - this.hud.at < 0.25) return this.hud;
-    const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
-    const h = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const portrait = w < h;
-    let safe: RexInsets = { top: 0, right: 0, bottom: 0, left: 0 };
-    let hudTop = portrait ? 104 : 86;
-    let hudBottom = h - (portrait ? 180 : 150);
-    let lineBox: RexRect | null = null;
-    let actions: RexRect | null = null;
-    if (typeof document !== 'undefined') {
-      safe = this.safeInsets();
-      const rect = (sel: string): RexRect | null => {
-        const el = document.querySelector(sel);
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
-        return r.width > 0 && r.height > 0 ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom } : null;
-      };
-      const native = nativeGlassLayout();
-      if (native) {
-        // iOS app: the native Liquid-Glass overlay replaces the DOM HUD; its frames come with the layout event.
-        if (native.top > 0) hudTop = native.top;
-        lineBox = native.line ?? null;
-        actions = native.actions ?? null;
-        if (!actions && native.bottom > 0) actions = { left: 0, top: h - native.bottom, right: w, bottom: h };
-      } else {
-        const top = rect('.flow-hud [data-testid="hud-top"]');
-        if (top) hudTop = top.bottom;
-        lineBox = rect('.flow-hud [data-testid="rex-line"]');
-        actions = rect('.flow-hud .hud-actions');
-      }
-      const bottomBand = lineBox ?? actions;
-      if (bottomBand) hudBottom = Math.min(lineBox?.top ?? Infinity, actions?.top ?? Infinity);
-    }
-    this.hud = { at: now, safe, hudTop, hudBottom, lineBox, actions, w, h };
+    const b = readHudBands(this.mode === 'level' ? 'level' : 'map');
+    this.hud = { at: now, safe: b.safe, hudTop: b.top, hudBottom: b.bottom, lineBox: b.lineBox, actions: b.actions, w: b.w, h: b.h };
     return this.hud;
-  }
-
-  private safeInsets(): RexInsets {
-    if (!this.safeProbe) {
-      const d = document.createElement('div');
-      d.setAttribute('aria-hidden', 'true');
-      d.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);';
-      document.body.appendChild(d);
-      this.safeProbe = d;
-    }
-    const cs = getComputedStyle(this.safeProbe);
-    return { top: parseFloat(cs.paddingTop) || 0, right: parseFloat(cs.paddingRight) || 0, bottom: parseFloat(cs.paddingBottom) || 0, left: parseFloat(cs.paddingLeft) || 0 };
   }
 
   /** World position of a path node (bent like the terrain), or null without the flow context. */
@@ -507,34 +463,58 @@ export class Rex {
       return;
     }
     const hud = this.readHud();
-    const key = `${hud.w}x${hud.h}|${useGridStore.getState().level?.id ?? ''}`;
+    const key = `${hud.w}x${hud.h}|${useGridStore.getState().level?.id ?? ''}|${root.position.x.toFixed(2)}`;
     if (!this.spot || key !== this.spotKey) {
       camera.updateMatrixWorld();
       root.updateWorldMatrix(true, false);
       const g = this.boardGeometry();
-      const height = this.levelHeight(g.footprint);
-      this.spot = chooseBoardSpot({
-        footprint: g.footprint,
-        cells: g.cells,
-        topY: g.topY,
-        groundY: 0,
-        rexHeight: height,
-        project: (x, y, z) => {
-          _v.set(x, y, z).applyMatrix4(root.matrixWorld);
-          const s = projectToScreen(_v, camera, hud.w, hud.h, _s);
-          return s ? { x: s.x, y: s.y } : null;
-        },
-        width: hud.w,
-        height: hud.h,
-        hudTop: hud.hudTop,
-        hudBottom: hud.hudBottom,
-        prev: this.spot,
-      });
+      // Phones: small, in the top-right corner behind the board (the bottom belongs to the grid and the actions).
+      const corner = hud.w < hud.h;
+      const project = (x: number, y: number, z: number) => {
+        _v.set(x, y, z).applyMatrix4(root.matrixWorld);
+        const s = projectToScreen(_v, camera, hud.w, hud.h, _s);
+        return s ? { x: s.x, y: s.y } : null;
+      };
+      let height = this.levelHeight(g.footprint);
+      let groundY = 0;
+      const choose = (): RexBoardSpot =>
+        chooseBoardSpot({
+          footprint: g.footprint,
+          cells: g.cells,
+          topY: g.topY,
+          groundY,
+          rexHeight: height,
+          project,
+          width: hud.w,
+          height: hud.h,
+          hudTop: hud.hudTop,
+          hudBottom: hud.hudBottom,
+          prev: this.spot,
+          corner: corner ? 'topRight' : null,
+        });
+      this.spot = choose();
+      if (corner) {
+        // Size him to ≈ 12 % of the screen height at the chosen spot, then settle the spot for that size. He leans
+        // back toward the steep camera there, so he reads ≈ 1.35× taller than his upright projection.
+        const target = (Math.min(118, Math.max(84, hud.h * 0.12)) * this.sizeScale) / 1.35;
+        for (let k = 0; k < 3; k++) {
+          // The ground behind the board (candidates there stand on it); on the ledge his feet are at the top.
+          if (!this.spot.onTop) groundY = this.terrainAt(root, this.spot.x, this.spot.z);
+          const feetY = this.spot.onTop ? g.topY : groundY;
+          const feet = project(this.spot.x, feetY, this.spot.z);
+          const head = project(this.spot.x, feetY + height * 1.02, this.spot.z);
+          if (!feet || !head) break;
+          const px = Math.abs(feet.y - head.y);
+          if (px > 1) height *= target / px;
+          this.spot = choose();
+        }
+      }
+      this.levelRexHeight = height;
       this.spotKey = key;
-      this.groundY = this.terrainAt(root, this.spot.x, this.spot.z);
+      this.groundY = this.spot.onTop ? g.topY : this.terrainAt(root, this.spot.x, this.spot.z);
     }
     const g = this.boardGeometry();
-    stageAtBoard(this.character, this.spot, { groundY: this.groundY, rexHeight: this.levelHeight(g.footprint), boardRoot: root, camera });
+    stageAtBoard(this.character, this.spot, { groundY: this.groundY, rexHeight: this.levelRexHeight || this.levelHeight(g.footprint), boardRoot: root, camera });
     if (this.clock < this.glanceUntil) this.character.lookAtWorld(_v2.set(0, g.topY, (g.cells.minZ + g.cells.maxZ) / 2).applyMatrix4(root.matrixWorld));
   }
 

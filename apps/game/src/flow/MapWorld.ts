@@ -3,10 +3,12 @@ import type { Node } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import { EarlePlanet, FogStripes, SunRig, createSkyDome, skySunIndices } from '@ee/render';
 import type { LandmarkSlot } from '@ee/world';
+import { mixHex } from '@ee/genome';
 import type { FlowQuality } from './quality';
-import type { PathLayout } from './path';
-import type { BentLayout } from './NodePath';
-import { CHUNKS_PER_FACE, HERO_TREE_WORLD, NODES_PER_ZONE, PLANET_RADIUS, planetLandmarks, planetWorlds, planetZones } from '../lab/earle/zones';
+import { routeGroundPath, type PathAnchorProvider, type PathLayout, type RoutedGround } from './path';
+import type { BentLayout, PathPalette, PathWorldColors } from './NodePath';
+import { buildLevelPath } from './levelPath';
+import { CHUNKS_PER_FACE, HERO_TREE_WORLD, NODES_PER_ZONE, PLANET_RADIUS, WORLD_CONTENTS, planetLandmarks, planetWorlds, planetZones } from '../lab/earle/zones';
 import { TREE_LEVELS, createHeroTreeSite, type HeroTreeSite } from '../lab/earle/heroTreeSite';
 
 export { PLANET_RADIUS, CHUNKS_PER_FACE, TREE_LEVELS };
@@ -58,6 +60,11 @@ export interface MapWorldOptions {
   curvature?: number;
   /** Trash density of the start world (1 = content default). */
   trashScale?: number;
+  /**
+   * Terrain features (cliff ledges, rivers, lakes) can offer anchors the level path visits and a walk cost that keeps
+   * it off water and cliff faces (see `PathAnchorProvider` in path.ts).
+   */
+  anchors?: PathAnchorProvider | null;
 }
 
 /** Camera rail sample (planet space, rotates with the planet: convert with `planet.localToWorld`). */
@@ -95,6 +102,8 @@ export class MapWorld {
   readonly treeSite: HeroTreeSite;
   /** Level path over the whole planet: node i ↔ LEVELS[i] (levels 80–95 climb the tree). Carries `bend` for NodePath. */
   readonly layout: PathLayout;
+  /** The ground route through the landscape before the tree stretch was spliced in. */
+  readonly route: RoutedGround;
   private readonly sunDirWorld = uniform(new Vector3(0, 1, 0));
   private readonly skyHorizon = uniform(-0.5);
   private readonly frustum = new Frustum();
@@ -150,15 +159,39 @@ export class MapWorld {
     this.world.vegetation.setFootClear(MAP_VIEW.footClear);
     this.planet.add(this.world.group);
 
-    // The giant tree: slot next to the spiral, levels 80–95 on trunk and crown (splices the level path)
+    // The level path leads through the landscape: the spiral is only its backbone (hillsides and valley floors,
+    // organic S-curves, nodes on flat ground or on the element they visit). Routed before the giant tree splices in.
+    const firstTree = TREE_LEVELS[0] - 1;
+    const lastTree = TREE_LEVELS[1] - 1;
+    this.route = routeGroundPath(this.world.field, this.world.path, {
+      nodesPerZone: NODES_PER_ZONE,
+      seed: options.seed ?? 7,
+      keepGround: [firstTree - 1, lastTree + 1],
+      provider: options.anchors ?? null,
+    });
+    this.world.setPath(this.route);
+
+    // The giant tree: slot next to the path, levels 80–95 on trunk and crown (splices the level path)
     this.treeSite = createHeroTreeSite(this.world, { worldIndex: HERO_TREE_WORLD, quality: q.name, seed: options.seed ?? 7, landmarks });
-    const path = this.treeSite.levelPath;
-    const layout: BentLayout = {
-      nodes: path.nodes.map((n) => ({ index: n.index, u: n.lon / 180, v: n.lat / 90, position: n.position, normal: n.normal })),
-      dots: path.dots.map((d) => ({ position: d.position, normal: d.normal })),
-      length: path.length,
-      bend: (p: Vec3Node) => this.world.bendNode(p),
-    };
+    const slot = this.world.getLandmarkSlot('hero-tree');
+    const built = buildLevelPath(
+      this.world,
+      this.route,
+      slot
+        ? {
+            first: this.treeSite.first,
+            last: this.treeSite.last,
+            path: this.treeSite.tree.path,
+            shape: this.treeSite.tree.shape,
+            domes: this.treeSite.tree.domes,
+            matrix: this.world.landmarkMatrix(slot, new Matrix4()),
+            world: HERO_TREE_WORLD,
+          }
+        : null,
+    );
+    // Corridor and growth follow the final path (stones on the tree, dots on bark and crown).
+    this.world.setPath(built.spiral);
+    const layout: BentLayout = { ...built.layout, bend: (p: Vec3Node) => this.world.bendNode(p) };
     this.layout = layout;
 
     // --- sky and fog stripes -----------------------------------------------------------------------
@@ -189,6 +222,20 @@ export class MapWorld {
     this.rig.add(this.fogStripes.group);
     // Shadows v2: cascades fitted to the planet view (receivers = planet shell incl. the curvature bend)
     this.sun.fitToPlanet(this.camera, this.world, this.planet);
+  }
+
+  /**
+   * Palette context for the path visuals: the ribbon is shaded like the terrain (atlas rows, bands, fog), stones,
+   * flowers and pedestals take each world's ink, jewel accent, rock, scrap, sand and water.
+   */
+  pathPalette(): PathPalette {
+    return {
+      lookup: this.world.lookup,
+      fog: this.world.fog,
+      bands: this.world.terrainBands,
+      terrainRow: (w) => this.world.rows[Math.max(0, Math.min(this.world.rows.length - 1, w))]!.terrain,
+      colors: (w) => worldPathColors(w),
+    };
   }
 
   /** Direction to the sun in world space (unit). */
@@ -328,6 +375,54 @@ export class MapWorld {
     this.sun.dispose();
     this.scene.clear();
   }
+}
+
+function chroma(hex: string): { c: number; l: number } {
+  const v = parseInt(hex.replace('#', ''), 16);
+  const r = ((v >> 16) & 255) / 255;
+  const g = ((v >> 8) & 255) / 255;
+  const b = (v & 255) / 255;
+  const mx = Math.max(r, g, b);
+  const mn = Math.min(r, g, b);
+  return { c: mx - mn, l: (mx + mn) / 2 };
+}
+
+const pathColorCache = new Map<number, PathWorldColors>();
+
+/**
+ * Path colours of an Earle world from its palette: ink for contact shadows, the most saturated mid-light accent as
+ * the flower petal (Earle's single accent), red rust towers as rock where the world has a monolith row, otherwise
+ * rock from the terrain's dark steps; sand from the lightest terrain step, pool water from ink and sky.
+ */
+export function worldPathColors(w: number): PathWorldColors {
+  const cached = pathColorCache.get(w);
+  if (cached) return cached;
+  const content = WORLD_CONTENTS[w];
+  if (!content) throw new Error(`no world ${w}`);
+  const p = content.palette;
+  let petal = '#e0567a';
+  let best = 0.28;
+  for (const hex of [...p.accent, ...p.canopy.slice(3)]) {
+    const { c, l } = chroma(hex);
+    const score = c * (l > 0.25 && l < 0.8 ? 1 : 0.3);
+    if (score > best) {
+      best = score;
+      petal = hex;
+    }
+  }
+  const t = p.terrain;
+  const rock = p.monolith?.[3] ?? mixHex(mixHex(t[2] ?? '#8c8c70', '#8a8272', 0.45), p.ink, 0.12);
+  const colors: PathWorldColors = {
+    ink: p.ink,
+    petal,
+    rock,
+    rockShade: p.monolith?.[1] ?? mixHex(t[0] ?? '#303020', p.ink, 0.55),
+    scrap: mixHex('#8a3a22', p.ink, 0.25),
+    sand: mixHex(t[t.length - 1] ?? '#e8d8a0', '#f2e2b0', 0.45),
+    water: mixHex(p.ink, p.sky[3] ?? '#3a6a8a', 0.22),
+  };
+  pathColorCache.set(w, colors);
+  return colors;
 }
 
 /** Nearest intersection point of a ray with the sphere of radius r around the origin, or null. */

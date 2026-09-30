@@ -18,7 +18,7 @@ import {
   Vector3,
 } from 'three/webgpu';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { abs, asin, atan, attribute, float, floor, fract, length, mix, normalize, normalView, positionGeometry, positionLocal, positionViewDirection, select, step, uv, vec2, vec3 } from 'three/tsl';
+import { abs, asin, atan, attribute, float, floor, fract, length, mix, normalize, normalView, positionGeometry, positionLocal, positionViewDirection, select, step, uniform, uv, vec2, vec3 } from 'three/tsl';
 import { aaStep, type FloatNode, type Vec2Node, type Vec3Node, type Vec4Node } from '../earle/tsl';
 import { hexToLinear } from '../common/tsl';
 import { BoardSurfaceMaterial, hexNode, polar, stripes, type BoardFog } from './boardMaterial';
@@ -215,9 +215,12 @@ export class BoardProps {
   private readonly instances = new Map<string, PropInstance>();
   private readonly materials: BoardSurfaceMaterial[] = [];
   private readonly geometries: BufferGeometry[] = [];
+  /** Colour of the dots on the lit edges of dome bushes (the site's vegetation tints them, see `setDotColor`). */
+  private readonly dotColor = uniform(new Vector3(1, 1, 1));
 
   constructor(palette: BoardPalette, timeNode: FloatNode, fog?: BoardFog) {
     this.group.name = 'board-props';
+    this.setDotColor(palette.bushDot);
     for (const families of PROP_GROUPS) {
       const capacity = families.reduce((n, f) => n + CAPACITY[f], 0);
       const geometry = groupGeometry(families);
@@ -295,7 +298,7 @@ export class BoardProps {
     const cell = vec2(fract(ru).sub(0.5), fract(rv).sub(0.5));
     const dotMask = aaStep(0.2, length(cell)).oneMinus();
     const rimBand = aaStep(0.42, abs(normalView.dot(positionViewDirection)).oneMinus());
-    const domeDots = mix(c, hexNode(palette.bushDot), dotMask.mul(rimBand));
+    const domeDots = mix(c, this.dotColor as unknown as Vec3Node, dotMask.mul(rimBand));
 
     let albedo = select(motif.lessThan(0.5), c, hatch) as unknown as Vec3Node;
     albedo = select(motif.lessThan(1.5), albedo, tower) as unknown as Vec3Node;
@@ -315,6 +318,12 @@ export class BoardProps {
     const keep = grouped ? step(abs((attribute('propFamV', 'float') as FloatNode).sub(attribute('propFam', 'float') as FloatNode)), 0.5) : null;
     const positionNode = keep ? ((positionLocal as unknown as Vec3Node).mul(keep) as unknown as Vec3Node) : undefined;
     return new BoardSurfaceMaterial({ albedo, shade, terminator: 0.02, facet: { threshold: 0.5, amount: 0.5 }, fog, positionNode });
+  }
+
+  /** Dot colour of the dome bushes (sRGB hex). */
+  setDotColor(hex: string): void {
+    const [r, g, b] = hexToLinear(hex);
+    this.dotColor.value.set(r, g, b);
   }
 
   has(key: string): boolean {

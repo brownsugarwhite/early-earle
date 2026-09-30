@@ -10,8 +10,8 @@ import { BoardCells } from './BoardCells';
 import { BoardFx } from './boardFx';
 import { BoardLabels, labelIndexForTier } from './BoardLabels';
 import { BoardParticles } from './BoardParticles';
-import { BoardPlateau, HILL_HEIGHT } from './BoardPlateau';
-import { BoardProps, MOTIF } from './BoardProps';
+import { BoardPlateau, HILL_HEIGHT, defaultPlateauStyle, type PlateauRim, type PlateauStyle } from './BoardPlateau';
+import { BoardProps, MOTIF, type PropDesc } from './BoardProps';
 import { BoardTimeline, type JuiceKind, type TimelineHooks } from './BoardTimeline';
 import { cellKinds, collectElements, jitter, type BoardLayout, type ElementSet, type GoalLabel, type StreamDot } from './boardElements';
 import type { BoardFog } from './boardMaterial';
@@ -184,7 +184,7 @@ export class BoardRenderer {
   /** Board-local xz extent of the plateau including the skirt (for terrain probes). */
   get footprint(): Footprint {
     const s = this.plateau.shape;
-    const out = BoardPlateau.skirtOut;
+    const out = this.plateau.skirtExtent;
     return { minX: -s.halfX - out, maxX: s.halfX + out, minZ: s.centerZ - s.halfZ - out, maxZ: s.centerZ + s.halfZ + out };
   }
 
@@ -225,49 +225,75 @@ export class BoardRenderer {
       a *= f;
       b *= f;
     }
-    this.plateau.setShape({ halfX: a, halfZ: b, centerZ: -GOAL_LEDGE / 2, depth });
+    this.plateau.setShape({ halfX: a, halfZ: b, centerZ: -GOAL_LEDGE / 2, depth, ground: this.terrain.minD - this.topY });
     this.plateau.setGrid(gx + BOARD_SEAM * 0.5, gz + BOARD_SEAM * 0.5, 0);
   }
 
   /**
-   * Dark dome bushes along the rim frame the meadow (Earle's scalloped hedges with dotted lit edges). The near
-   * side (towards the camera) stays open; bushes thin out towards it so the board is never covered.
+   * The rim frames the top with the place's own vegetation or debris (the site style's `rim`): Earle's scalloped
+   * dome hedges with dotted lit edges in a meadow or a grove, dark pines on snow, rock shards on a ledge, scrap on a
+   * trash field, crown puffs on the giant tree. The near side (towards the camera) stays open; the rim thins out
+   * towards it so the board is never covered.
    */
   private plantBushes(hidden: boolean): void {
     for (const key of [...this.props.keys()]) if (key.startsWith('bush:')) this.props.remove(key);
-    const seed = this.layout.w * 31 + this.layout.h * 7;
+    const rim: PlateauRim = this.plateau.style.rim ?? { family: 'dome', body: this.palette.bush, light: this.palette.bushLight, density: 1, height: 1 };
+    if (rim.family === 'none' || rim.density <= 0) return;
+    const seed = this.layout.w * 31 + this.layout.h * 7 + this.siteSeed;
     const rnd = (k: number) => jitter(seed, k);
-    const pts = this.plateau.rimPoints(0.36, (k) => rnd(k * 3 + 1));
-    const pal = this.palette;
+    const pts = this.plateau.rimPoints(0.36 / Math.max(0.15, rim.density), (k) => rnd(k * 3 + 1));
+    const tall = Math.max(0.3, rim.height);
     pts.forEach((p, k) => {
-      // θ = π/2 faces the camera: open there, small bushes on the flanks of the opening.
+      // θ = π/2 faces the camera: open there, small pieces on the flanks of the opening.
       const toCamera = Math.cos(p.theta - Math.PI / 2);
       if (toCamera > 0.62) return;
       const shrink = toCamera > 0.25 ? 0.62 : 1;
       const r = (0.2 + rnd(k * 3 + 2) * 0.17) * shrink;
-      const tall = r * (1.05 + rnd(k * 5 + 3) * 0.6);
+      const h = r * (1.05 + rnd(k * 5 + 3) * 0.6) * tall;
       const out = 0.06 + rnd(k * 7 + 4) * 0.08;
-      const inst = this.props.add(
-        `bush:${k}`,
-        {
-          family: 'dome',
-          x: p.x + p.nx * out,
-          y: -0.2,
-          z: p.z + p.nz * out,
-          ry: rnd(k * 11 + 5) * Math.PI * 2,
-          sx: r * 2,
-          sy: tall + 0.2,
-          sz: r * 2,
-          color: k % 4 === 0 ? pal.bushLight : pal.bush,
-          motif: MOTIF.domeDots,
-          hatch: 30,
-          delay: rnd(k * 13 + 6) * 0.12,
-        },
-        this.now,
-      );
+      const color = k % 4 === 0 ? rim.light : rim.body;
+      const base = { x: p.x + p.nx * out, z: p.z + p.nz * out, ry: rnd(k * 11 + 5) * Math.PI * 2, color, delay: rnd(k * 13 + 6) * 0.12 };
+      let desc: PropDesc;
+      switch (rim.family) {
+        case 'spire':
+          // Pines: tall dark cones, lighter tips (Earle's pine forests of fb-05).
+          desc = { ...base, family: 'spire', y: -0.15, sx: r * 1.5, sy: h * 2.2 + 0.25, sz: r * 1.5, motif: MOTIF.tipLight };
+          break;
+        case 'shard':
+          // Rock shards: tilted, hatched.
+          desc = { ...base, family: 'shard', y: -0.25, rx: (rnd(k * 17 + 7) - 0.5) * 0.5, sx: r * 1.4, sy: h * 1.6 + 0.2, sz: r * 1.1, motif: MOTIF.hatchV, hatch: 14 };
+          break;
+        case 'box':
+          // Scrap: crooked crates and plates, hatched rust.
+          desc = { ...base, family: 'box', y: -0.12, rx: (rnd(k * 17 + 7) - 0.5) * 0.6, rz: (rnd(k * 19 + 8) - 0.5) * 0.6, sx: r * 1.5, sy: h * 0.9 + 0.1, sz: r * 1.2, motif: MOTIF.hatchV, hatch: 10 };
+          break;
+        default:
+          desc = { ...base, family: 'dome', y: -0.2, sx: r * 2, sy: h + 0.2, sz: r * 2, motif: MOTIF.domeDots, hatch: 30 };
+      }
+      const inst = this.props.add(`bush:${k}`, desc, this.now);
       if (inst && hidden) inst.scale = 0.001;
     });
   }
+
+  /** Variation of the rim per site (the same grid size must not always grow the same hedge). */
+  private siteSeed = 0;
+
+  /**
+   * The place the level stands in (flow: from the node's site and the local Earle world): plateau family and colours,
+   * its top ornament and pool, the rim's vegetation. `null` restores the zone meadow. Takes effect immediately and
+   * re-plants the rim of a loaded level; the next `load`/`playRise` keeps it.
+   */
+  setSite(style: PlateauStyle | null, seed = 0): void {
+    const st = style ?? defaultPlateauStyle(this.palette);
+    this.siteSeed = seed;
+    this.plateau.setStyle(st);
+    this.props.setDotColor(st.rim?.dot ?? this.palette.bushDot);
+    this.applyShape();
+    if (this.state) this.plantBushes(this.hiddenLoad);
+  }
+
+  /** The loaded level waits hidden for its appearance choreography (`playRise`). */
+  private hiddenLoad = false;
 
   // ---------------------------------------------------------------- placement
 
@@ -371,6 +397,7 @@ export class BoardRenderer {
     this.blobs.options.layout = this.layout;
     this.applyShape();
     const hidden = opts.hidden ?? false;
+    this.hiddenLoad = hidden;
     const kinds = cellKinds(state, this.healed);
     this.cells.layout(
       kinds.map((k) => {
@@ -526,6 +553,7 @@ export class BoardRenderer {
   playRise(): number {
     const tw = this.tweens;
     tw.cancel('appear');
+    this.hiddenLoad = false;
     this.root.visible = true;
     this.setMorph(0);
     this.setRise(0);
@@ -820,6 +848,7 @@ export class BoardRenderer {
       for (const g of this.goalLabels) this.labels.add(g.x, g.y, g.z, 0.3, labelIndexForTier(g.tier), 1, camLocal);
     }
     this.labels.end();
+    this.plateau.setTime(now);
   }
 
   /** Draw calls the board contributes at the moment (visible meshes). */

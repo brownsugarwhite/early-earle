@@ -39,9 +39,11 @@ export function stageAtBoard(rex: RexCharacter, spot: RexBoardSpot, opts: { grou
   let d = toBoard - toCam;
   d = Math.atan2(Math.sin(d), Math.cos(d)) * (spot.kind === 'side' ? 1 : 0);
   // Lean back toward a camera high above (the level camera looks down ≈ 65°) so his front reads, not his scalp.
+  // Behind the board (the phone's top-right corner) he looks up at the player much more steeply.
   const horiz = Math.hypot(camLocal.x - spot.x, camLocal.z - spot.z);
   const elev = Math.atan2(camLocal.y - opts.groundY, Math.max(1e-3, horiz));
-  const lean = 0.24 * Math.max(0, Math.min(1, (elev - 0.35) / 0.9));
+  const maxLean = spot.kind === 'back' ? 0.62 : 0.24;
+  const lean = maxLean * Math.max(0, Math.min(1, (elev - 0.35) / 0.9));
   rex.root.position.set(spot.x, opts.groundY, spot.z);
   rex.root.rotation.order = 'YXZ';
   rex.root.rotation.set(-lean, toCam + d * 0.25, 0);

@@ -216,6 +216,13 @@ export interface RexBoardInput {
   hudTop: number;
   hudBottom: number;
   prev?: RexBoardSpot | null;
+  /**
+   * Phones: REX peeks into the top-right corner — he stands on the ground behind the plateau's far edge, tucked
+   * under the top HUD pill, small, never over the grid (the bottom belongs to the board and the action row).
+   */
+  corner?: 'topRight' | null;
+  /** Target visible height in CSS px for the corner (default ≈ 12 % of the screen height). */
+  cornerHeightPx?: number;
 }
 
 export interface RexBoardSpot {
@@ -226,6 +233,8 @@ export interface RexBoardSpot {
   score: number;
   /** Screen rect of REX at this spot (CSS px). */
   rect: RexRect;
+  /** He stands on the plateau's far ledge (feet at `topY`) instead of the ground beside it. */
+  onTop?: boolean;
 }
 
 function projectRect(inp: RexBoardInput, pts: Array<[number, number, number]>): RexRect | null {
@@ -249,8 +258,61 @@ function intersect(a: RexRect, b: RexRect): RexRect {
   return { left: Math.max(a.left, b.left), right: Math.min(a.right, b.right), top: Math.max(a.top, b.top), bottom: Math.min(a.bottom, b.bottom) };
 }
 
-/** Picks where REX peeks over the plateau: beside it in landscape, at a front corner on phones. */
+/**
+ * Top-right corner (phones): candidates on the ground behind the plateau's far edge, from the middle to the right
+ * end of the grid. Scored by: fully on screen, clear of the grid and the top HUD, tucked under the pill's lower
+ * edge, as far right as possible.
+ */
+function chooseCornerSpot(inp: RexBoardInput): RexBoardSpot {
+  const fp = inp.footprint;
+  const h = inp.rexHeight;
+  const screen: RexRect = { left: 0, top: 0, right: inp.width, bottom: inp.height };
+  const cellsRect = projectRect(inp, [
+    [inp.cells.minX, inp.topY, inp.cells.minZ],
+    [inp.cells.maxX, inp.topY, inp.cells.minZ],
+    [inp.cells.minX, inp.topY, inp.cells.maxZ],
+    [inp.cells.maxX, inp.topY, inp.cells.maxZ],
+  ]);
+  let best: RexBoardSpot | null = null;
+  const margin = Math.max(6, inp.width * 0.02);
+  // Behind the plateau on the ground, or on its far ledge beside the goal totems (when the band above is short).
+  const rows: Array<{ z: number; feet: number; onTop: boolean }> = [
+    { z: fp.minZ - h * 0.05, feet: inp.groundY, onTop: false },
+    { z: fp.minZ - h * 0.35, feet: inp.groundY, onTop: false },
+    { z: fp.minZ - h * 0.7, feet: inp.groundY, onTop: false },
+    { z: inp.cells.minZ - h * 0.32, feet: inp.topY, onTop: true },
+  ];
+  for (let i = 0; i <= 8; i++) {
+    const fx = 0.15 + (i / 8) * 1.0;
+    for (const row of rows) {
+      const x = inp.cells.maxX * fx;
+      const z = row.z;
+      const w = h * 0.36;
+      const rect = projectRect(inp, [
+        [x - w, row.feet + h * 0.3, z - w * 0.6],
+        [x + w, row.feet + h * 0.3, z + w * 0.6],
+        [x - w, row.feet + h * 1.02, z - w * 0.6],
+        [x + w, row.feet + h * 1.02, z + w * 0.6],
+      ]);
+      if (!rect) continue;
+      const a = Math.max(1, area(rect));
+      const offPenalty = (1 - area(intersect(rect, { left: screen.left + margin, top: screen.top, right: screen.right - margin, bottom: screen.bottom })) / a) * 6;
+      const cellPenalty = cellsRect ? (area(intersect(rect, cellsRect)) / a) * 10 : 0;
+      const hudPenalty = (area(intersect(rect, { left: 0, right: inp.width, top: 0, bottom: inp.hudTop + 4 })) / a) * 14;
+      // Tucked under the pill and pushed into the corner (his head a little below the pill's lower edge).
+      const tuck = Math.abs(rect.top - (inp.hudTop + 14)) / inp.height;
+      const right = (inp.width - margin - rect.right) / inp.width;
+      // A small preference for standing behind the board (in the landscape) over its ledge.
+      const score = offPenalty + cellPenalty + hudPenalty + tuck * 2 + right * 3 + (row.onTop ? 0.15 : 0) + (inp.prev && Math.abs(inp.prev.x - x) < 1e-3 ? -0.2 : 0);
+      if (!best || score < best.score) best = { x, z, side: 'right', kind: 'back', score, rect, onTop: row.onTop };
+    }
+  }
+  return best ?? { x: inp.cells.maxX * 0.8, z: fp.minZ - h * 0.2, side: 'right', kind: 'back', score: 99, rect: { left: 0, top: 0, right: 0, bottom: 0 } };
+}
+
+/** Picks where REX peeks over the plateau: beside it in landscape, in the top-right corner behind it on phones. */
 export function chooseBoardSpot(inp: RexBoardInput): RexBoardSpot {
+  if (inp.corner === 'topRight') return chooseCornerSpot(inp);
   const fp = inp.footprint;
   const h = inp.rexHeight;
   const cz = (fp.minZ + fp.maxZ) / 2;

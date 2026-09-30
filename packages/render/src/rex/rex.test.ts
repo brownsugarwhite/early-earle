@@ -166,4 +166,32 @@ describe('REX placement', () => {
     const iy = Math.max(0, Math.min(spot.rect.bottom, cells.bottom) - Math.max(spot.rect.top, cells.top));
     expect(ix * iy).toBe(0);
   });
+
+  it('phones: peeks into the top-right corner behind the board, under the pill, clear of the grid', () => {
+    // Portrait level camera from above: the grid fills the width, its far edge ≈ 250 px from the top.
+    const W = 393;
+    const H = 852;
+    const project = (x: number, y: number, z: number) => ({ x: W / 2 + x * 85, y: 420 + z * 80 - y * 70 });
+    const spot = chooseBoardSpot({
+      footprint: { minX: -3.2, maxX: 3.2, minZ: -3.6, maxZ: 3.0 },
+      cells: { minX: -2.02, maxX: 2.02, minZ: -2.02, maxZ: 2.02 },
+      topY: 0.35,
+      groundY: 0,
+      rexHeight: 1.1,
+      project,
+      width: W,
+      height: H,
+      hudTop: 70,
+      hudBottom: 720,
+      corner: 'topRight',
+    });
+    expect(spot.kind).toBe('back');
+    expect(spot.side).toBe('right');
+    // Right half, below the pill, above the grid's far edge, on screen.
+    expect((spot.rect.left + spot.rect.right) / 2).toBeGreaterThan(W * 0.55);
+    expect(spot.rect.right).toBeLessThanOrEqual(W);
+    expect(spot.rect.top).toBeGreaterThanOrEqual(70);
+    const gridTop = project(0, 0.35, -2.02).y;
+    expect(spot.rect.bottom).toBeLessThanOrEqual(gridTop + 1);
+  });
 });
