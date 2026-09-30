@@ -770,7 +770,8 @@ export class TrashField {
         const baseV = v;
         for (let k = 0; k < nn; k++) {
           pos.setXYZ(v, grid.dirs[k * 3]! * r, grid.dirs[k * 3 + 1]! * r, grid.dirs[k * 3 + 2]! * r);
-          va.setXYZW(v, grid.strength[k]!, grid.heal[k]!, grid.open[k]!, hIdx);
+          // Lab-Regler „Müll“ unter 100 % dünnt auch den Schleier aus (0 % = kein Schleier)
+          va.setXYZW(v, grid.strength[k]! * Math.min(1, this.densityScale), grid.heal[k]!, grid.open[k]!, hIdx);
           vw.setX(v, worlds[k]!);
           v++;
         }
