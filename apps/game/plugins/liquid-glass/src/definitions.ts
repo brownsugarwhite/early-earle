@@ -12,6 +12,8 @@ export interface GlassTop {
   subtitle?: string;
   /** Moves left ("∞" for no limit). */
   moves?: string | number;
+  /** Caption under the big number (default "ZÜGE"); e.g. "PUNKTE" in the classic 2048 mode. */
+  movesLabel?: string;
   goals?: Array<GlassGoal | string>;
 }
 

@@ -6,6 +6,7 @@ import { genomeFor, mixHex, type GenomeRules, type ZoneId } from '@ee/genome';
 import type { ModuleLibrary } from '../creature/index';
 import type { FloatNode } from '../earle/tsl';
 import { BoardBlobs, type CreatureMode } from './BoardBlobs';
+import type { BoardHooks } from './boardHooks';
 import { BoardCells } from './BoardCells';
 import { BoardFx } from './boardFx';
 import { BoardLabels, labelIndexForTier } from './BoardLabels';
@@ -71,6 +72,17 @@ const _inv = new Matrix4();
  * `playRise`/`playSink`, reads `shake` for the camera and forwards moves from the store.
  */
 export class BoardRenderer {
+  /** App-weite Einhängepunkte (Sammlung, Klassik); einmal beim Start setzen. */
+  static defaultHooks: BoardHooks = {};
+  private ownHooks: BoardHooks | null = null;
+  /** Wirksame Hooks: eigene oder die App-weiten. */
+  get hooks(): BoardHooks {
+    return this.ownHooks ?? BoardRenderer.defaultHooks;
+  }
+  /** Eigene Hooks für dieses Brett (`null` = wieder die App-weiten). */
+  setHooks(hooks: BoardHooks | null): void {
+    this.ownHooks = hooks;
+  }
   /** Tangent frame at the node (child of the planet / scene). */
   readonly root = new Group();
   /** Rises/sinks along the node normal; everything visible is inside. */

@@ -18,6 +18,8 @@ import { useFlowStore, type FlowPhase } from './flowStore';
 import { SoundToggle } from '../audio/SoundToggle';
 import { useAudioSettings } from '../audio/settings';
 import { WERKSTATT_ENABLED, WERKSTATT_GLASS_ACTION, WerkstattButton } from '../overlay/WerkstattButton';
+import { mapEntry, useMapEntries, type MapEntry } from './mapEntries';
+import { useHudOverride } from './hudOverride';
 
 const GOAL_LABEL: Record<string, string> = {
   reachTier: 'Stufe',
@@ -82,6 +84,8 @@ interface HudFacts {
   status: string;
   rewindable: boolean;
   muted: boolean;
+  movesLabel: string | undefined;
+  entries: MapEntry[];
 }
 
 /** The native overlay's mirror of the store: same texts and actions as the CSS HUD (ids → handlers below). */
@@ -103,11 +107,13 @@ function nativeHudState(f: HudFacts): GlassHudState | null {
       );
     }
   }
+  // Einstiege der Karte (Setzkasten, Klassik …): runde Pillen, hervorgehoben in der Akzentfarbe.
+  if (f.phase === 'map') for (const e of f.entries) actions.push({ id: e.id, label: e.label, icon: e.icon, iconOnly: true, ...(e.highlight ? { tint: ACCENT } : {}) });
   if (f.phase === 'map' || f.phase === 'level') actions.push({ id: 'sound', label: 'Ton', icon: f.muted ? 'speaker.slash.fill' : 'speaker.wave.2.fill' });
   // Werkstatt (labs + editors): the app has no URL bar — a wrench pill on the map leads there.
   if (f.phase === 'map' && WERKSTATT_ENABLED) actions.push({ ...WERKSTATT_GLASS_ACTION });
   return {
-    top: { title: f.title, subtitle: f.subtitle, moves: f.moves, goals: f.goals },
+    top: { title: f.title, subtitle: f.subtitle, moves: f.moves, goals: f.goals, ...(f.movesLabel ? { movesLabel: f.movesLabel } : {}) },
     actions,
     rex: f.rex,
     tint: f.phase === 'level' ? TINT_LEVEL : TINT_MAP,
@@ -133,6 +139,8 @@ export function FlowHud() {
   const rewindMove = useGridStore((s) => s.rewindMove);
   const restart = useGridStore((s) => s.restart);
   const native = useNativeGlass();
+  const entries = useMapEntries((s) => s.entries);
+  const override = useHudOverride((s) => s.override);
   const muted = useAudioSettings((s) => s.muted);
   const toggleMuted = useAudioSettings((s) => s.toggleMuted);
   const navigate = useNavigate();
@@ -149,13 +157,16 @@ export function FlowHud() {
   const rex = inLevel ? gridRex : flowRex;
   const rewindable = !!history && canRewind(history) && status === 'playing';
 
-  const subtitle = `${zoneName(shownLevel)} · Level ${levelNo}`;
-  const title = shownLevel?.name ?? shownLevel?.id ?? 'early earle';
-  const moves = noLimit ? '∞' : inLevel && state ? String(state.movesLeft) : String(shownLevel?.moves ?? '–');
-  const goals = inLevel && state ? state.goalProgress.map((g) => ({ text: goalText(g), done: g.done })) : goalPreview(shownLevel).map((text) => ({ text, done: false }));
+  // Ein anderer Spielmodus (Klassik) darf die Texte der Pille im Level ersetzen.
+  const ov = inLevel ? override : null;
+  const subtitle = ov?.subtitle ?? `${zoneName(shownLevel)} · Level ${levelNo}`;
+  const title = ov?.title ?? shownLevel?.name ?? shownLevel?.id ?? 'early earle';
+  const moves = ov?.moves ?? (noLimit ? '∞' : inLevel && state ? String(state.movesLeft) : String(shownLevel?.moves ?? '–'));
+  const movesLabel = ov?.movesLabel;
+  const goals = ov?.goals ?? (inLevel && state ? state.goalProgress.map((g) => ({ text: goalText(g), done: g.done })) : goalPreview(shownLevel).map((text) => ({ text, done: false })));
 
   // Mirror to the native overlay; the JSON key keeps the effect quiet while nothing visible changed.
-  const nativeState = native.active ? nativeHudState({ phase, subtitle, title, moves, goals, rex, status, rewindable, muted }) : null;
+  const nativeState = native.active ? nativeHudState({ phase, subtitle, title, moves, goals, rex, status, rewindable, muted, movesLabel, entries }) : null;
   const nativeJson = nativeState ? JSON.stringify(nativeState) : '';
   useEffect(() => {
     if (!native.active) return;
@@ -188,6 +199,7 @@ export function FlowHud() {
         navigate('/werkstatt');
         break;
       default:
+        mapEntry(id)?.open();
         break;
     }
   }, native.active);
@@ -203,7 +215,7 @@ export function FlowHud() {
             </h1>
             <div className="hud-stat">
               <b>{moves}</b>
-              <span>Züge</span>
+              <span>{movesLabel ?? 'Züge'}</span>
             </div>
             {goals.map((g, i) => (
               <span key={i} className="hud-goal" data-done={g.done}>
@@ -221,7 +233,7 @@ export function FlowHud() {
             ) : null}
             {phase === 'level' && status === 'lost' ? (
               <div className="hud-banner-flow">
-                Verloren.
+                {ov?.lostText ?? 'Verloren.'}
                 <button className="glass-btn" onClick={restart}>
                   Nochmal
                 </button>
@@ -256,6 +268,13 @@ export function FlowHud() {
                   </button>
                 </>
               ) : null}
+              {phase === 'map'
+                ? entries.map((e) => (
+                    <button key={e.id} className="glass-btn glass entry-btn" data-testid={`entry-${e.id}`} data-highlight={e.highlight ?? false} onClick={e.open} aria-label={e.label} title={e.label}>
+                      <span aria-hidden="true">{e.glyph}</span>
+                    </button>
+                  ))
+                : null}
               {phase === 'map' || phase === 'level' ? <SoundToggle /> : null}
               {phase === 'map' && WERKSTATT_ENABLED ? <WerkstattButton /> : null}
             </div>

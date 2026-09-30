@@ -2,6 +2,7 @@ import type { AudioGraph, Strip } from './graph';
 import { bass, clamp, crackle, flutter, glass, glide, kalimba, mallet, marimba, noiseHit, pad, partial, plip, pluck, puff, thump, whoosh, wobble } from './dsp';
 import { chainNote, mtof, stepFrom, ZONE_MUSIC, type ZoneKey } from './scales';
 import { roar, yawn, yip } from './voice';
+import { EXTRA_TRIM_DB, extraPlayers } from './sfxExtra';
 
 /**
  * The sound catalogue. Every sound is a small recipe on a borrowed strip, parameterised by zone (key),
@@ -757,7 +758,7 @@ const nodeUnlock: Player = (g, t, p) => {
   for (let i = 0; i < 4; i++) glass(s, t + i * 0.06, mtof(stepFrom(zone, base, i)), 0.1 * V(p), 0.9);
 };
 
-const PLAYERS = {
+const BASE_PLAYERS = {
   slide,
   stop,
   merge,
@@ -815,6 +816,9 @@ const PLAYERS = {
   nodeUnlock,
 } satisfies Record<string, Player>;
 
+/** Grundkatalog plus die Klänge der Iteration 4 (`sfxExtra.ts`). */
+const PLAYERS = { ...BASE_PLAYERS, ...extraPlayers(BASE_PLAYERS) };
+
 export type SfxId = keyof typeof PLAYERS;
 export const SFX_IDS = Object.keys(PLAYERS) as SfxId[];
 
@@ -823,6 +827,7 @@ export const SFX_IDS = Object.keys(PLAYERS) as SfxId[];
  * −18 for the big tiers, win −20, REX −24, landings −32, splashes −32, whooshes −36, UI ticks −40.
  */
 const TRIM_DB: Partial<Record<SfxId, number>> = {
+  ...EXTRA_TRIM_DB,
   slide: 9,
   childPop: 5,
   leapUp: 7,
