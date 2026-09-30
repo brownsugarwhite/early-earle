@@ -37,9 +37,14 @@ export function generateRivers(
       const lMax = half - BORDER_MARGIN - width * 0.5 - 0.2;
       const lMin = near ? (spec.pathDistance?.[0] ?? 2) + width * 0.5 + 0.3 : -lMax;
       if (lMax - lMin < 0.6) break;
-      const sign = near ? (rand() < 0.5 ? -1 : 1) : 1;
-      const lMid = near ? (lMin + lMax) * 0.5 : (rand() - 0.5) * lMax * 0.6;
-      const amp = Math.min(lMax - Math.abs(lMid), Math.abs(lMid - lMin), lMax - lMid, near ? Infinity : lMax * 0.4) * (0.35 + 0.65 * meander);
+      const sign = rand() < 0.5 ? -1 : 1;
+      // Nahe Welten: mittig im freien Streifen neben dem Pfad. Ferne Welten: seitlich der Bandmitte, denn dort steht
+      // der Bildfokus (Fokus-Element) — der Fluss zieht daran vorbei statt hindurch
+      const farInner = 2.2;
+      const lMid = near ? (lMin + lMax) * 0.5 : farInner + rand() * Math.max(0, lMax - farInner - 1.2);
+      const amp = near
+        ? Math.min(lMax - lMid, lMid - lMin) * (0.35 + 0.65 * meander)
+        : Math.min(lMax - lMid, lMid - 1.0, lMax * 0.4) * (0.35 + 0.65 * meander);
       // Abschnitt längs des Bands: nahe Welten irgendwo im Weltbereich, ferne um den Bildfokus
       let sMid: number;
       if (near) sMid = sLo + (sHi - sLo) * (0.1 + 0.8 * rand());
