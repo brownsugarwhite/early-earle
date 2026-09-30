@@ -39,7 +39,7 @@ API (`apps/game/src/native/liquidGlass.ts` kapselt sie mit `useNativeGlass()`, `
 | `hide()` | ausblenden (Splash/Hüpfer) |
 | `setSafeInsets({ top, bottom })` | zusätzliche Ränder in CSS-px |
 | Event `action` `{ id }` | Tipp auf eine Pille (`play`, `rewind`, `restart`, `map`); nativ mit leichtem Haptik-Tick |
-| Event `layout` `{ top, bottom, safeTop, safeBottom, glass }` | Höhen in CSS-px, damit Web-Elemente ausweichen können |
+| Event `layout` `{ top, bottom, safeTop, safeBottom, glass, line, actions }` | Höhen in CSS-px, damit Web-Elemente ausweichen können; `line` (REX-Sprechblase) und `actions` (Knopfleiste) als Rechtecke, REX schaut über `line` (`nativeGlassLayout()` in `src/native/liquidGlass.ts`) |
 
 `FlowHud.tsx` spiegelt den Store (Levelname, Züge, Ziele, REX-Zeile, Aktionen) per JSON in das Overlay und blendet dabei die eigenen CSS-Pillen aus; `icon` sind SF-Symbol-Namen.
 
