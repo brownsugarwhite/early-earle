@@ -336,7 +336,8 @@ export function createCanopy(o: CanopyOptions): Canopy {
     const sunW = smoothstep(-0.02, 0.4, ndl);
     const upSide = smoothstep(-0.3, 0.25, nrm.y);
     const grow = rimW.mul(sunW).mul(upSide);
-    const sizeW = dd.x.mul(s).mul(grow);
+    // never larger than ~1.2 % of the screen height (close to the lens the fringe stays fine)
+    const sizeW = dd.x.mul(s).mul(grow).min(screenSize.y.mul(0.012).div(pxPerUnit));
     const px = sizeW.mul(pxPerUnit);
     // under the pixel threshold the dot shrinks smoothly to nothing (no hard collapse)
     const collapse = smoothstep(bb.collapsePx.mul(0.6), bb.collapsePx.mul(1.4), px);

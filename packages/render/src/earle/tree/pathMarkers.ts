@@ -1,6 +1,6 @@
 import { BufferGeometry, Color, CylinderGeometry, Float32BufferAttribute, Group, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshBasicNodeMaterial, Quaternion, Vector3 } from 'three/webgpu';
 import type { Node } from 'three/webgpu';
-import { attribute, color, float, fract, max, mix, normalLocal, positionGeometry, positionLocal, smoothstep, uniform } from 'three/tsl';
+import { attribute, color, float, fract, fwidth, max, mix, normalLocal, positionGeometry, positionLocal, smoothstep, step, uniform } from 'three/tsl';
 import type { Vec3 } from '@ee/world';
 import { heroNodeScale, type HeroPathNode, type HeroTreePath } from './treePath';
 
@@ -45,50 +45,63 @@ const _s = new Vector3();
  * domed top, flatter underside, back face inside the bark. Attribute `ring` = radial parameter 0..1 (growth rings).
  */
 function fungusGeometry(): BufferGeometry {
-  const A = 20;
-  const Rr = 7;
+  const A = 36;
+  const Rr = 9;
   const pos: number[] = [];
   const ring: number[] = [];
+  const angle: number[] = [];
+  const side: number[] = [];
   const idx: number[] = [];
   const top: number[] = [];
   const bot: number[] = [];
-  const vert = (x: number, y: number, z: number, r: number) => {
+  const vert = (x: number, y: number, z: number, r: number, a: number, sd: number) => {
     pos.push(x, y, z);
     ring.push(r);
+    angle.push(a);
+    side.push(sd);
     return pos.length / 3 - 1;
+  };
+  // scalloped outline (image 04 ornaments: nothing is a plain circle), a domed top and a flatter underside
+  const outline = (th: number): number => 1 + 0.07 * Math.cos(7 * th) + 0.04 * Math.cos(3 * th + 0.6);
+  const shape = (rho: number, th: number): [number, number] => {
+    const k = outline(th);
+    return [1.15 * rho * k * Math.sin(th), 0.9 * rho * k * Math.cos(th) - 0.14];
   };
   for (let i = 0; i <= Rr; i++) {
     const rho = i / Rr;
     for (let j = 0; j <= A; j++) {
-      const th = -Math.PI / 2 + (j / A) * Math.PI;
-      const x = 1.1 * rho * Math.sin(th);
-      const z = 0.85 * rho * Math.cos(th) - 0.12;
-      top.push(vert(x, 0.46 * Math.pow(Math.max(0, 1 - rho * rho), 0.5) + 0.04, z, rho));
+      const a = j / A;
+      const th = -Math.PI / 2 + a * Math.PI;
+      const [x, z] = shape(rho, th);
+      top.push(vert(x, 0.5 * Math.pow(Math.max(0, 1 - rho * rho), 0.45) + 0.05, z, rho, a, 1));
     }
   }
   for (let i = 0; i <= Rr; i++) {
     const rho = i / Rr;
     for (let j = 0; j <= A; j++) {
-      const th = -Math.PI / 2 + (j / A) * Math.PI;
-      const x = 1.1 * rho * Math.sin(th);
-      const z = 0.85 * rho * Math.cos(th) - 0.12;
-      bot.push(vert(x, -0.22 * Math.pow(Math.max(0, 1 - rho * rho), 0.7), z, rho));
+      const a = j / A;
+      const th = -Math.PI / 2 + a * Math.PI;
+      const [x, z] = shape(rho, th);
+      bot.push(vert(x, -0.24 * Math.pow(Math.max(0, 1 - rho * rho), 0.65) + 0.05, z, rho, a, -1));
     }
   }
   const W = A + 1;
   for (let i = 0; i < Rr; i++) {
     for (let j = 0; j < A; j++) {
+      // top faces +Y, underside −Y (front faces towards the viewer from above / below)
       const a = top[i * W + j]!;
       const b = top[(i + 1) * W + j]!;
-      idx.push(a, a + 1, b, b, a + 1, b + 1);
+      idx.push(a, b, a + 1, b, b + 1, a + 1);
       const c = bot[i * W + j]!;
       const d = bot[(i + 1) * W + j]!;
-      idx.push(c, d, c + 1, d, d + 1, c + 1);
+      idx.push(c, c + 1, d, d, c + 1, d + 1);
     }
   }
   const g = new BufferGeometry();
   g.setAttribute('position', new Float32BufferAttribute(pos, 3));
   g.setAttribute('ring', new Float32BufferAttribute(ring, 1));
+  g.setAttribute('angle', new Float32BufferAttribute(angle, 1));
+  g.setAttribute('side', new Float32BufferAttribute(side, 1));
   g.setIndex(idx);
   g.computeVertexNormals();
   return g;
@@ -145,20 +158,28 @@ function rosetteGeometry(petals = 8): BufferGeometry {
   return g;
 }
 
-/** Flat half-annulus (current-node outline around a shelf fungus) or full annulus (stone), in the XZ plane. */
-function ringGeometry(half: boolean, inner: number, outer: number, sx = 1.1, sz = 0.85): BufferGeometry {
-  const A = half ? 24 : 40;
+/**
+ * Flat half-annulus (current-node outline around a shelf fungus, same scalloped outline) or full annulus (flower
+ * stone), in the XZ plane, facing +Y. The one fat two-colour outline of the hero element (≈ 12 % of its size).
+ */
+function ringGeometry(half: boolean, inner: number, outer: number): BufferGeometry {
+  const A = half ? 36 : 48;
   const pos: number[] = [];
   const idx: number[] = [];
+  const outline = (th: number): number => (half ? 1 + 0.07 * Math.cos(7 * th) + 0.04 * Math.cos(3 * th + 0.6) : 1);
   for (let j = 0; j <= A; j++) {
     const th = half ? -Math.PI / 2 + (j / A) * Math.PI : (j / A) * Math.PI * 2;
     const s = Math.sin(th);
     const c = Math.cos(th);
-    pos.push(inner * sx * s, 0, inner * sz * c - (half ? 0.12 : 0), outer * sx * s, 0.05, outer * sz * c - (half ? 0.12 : 0));
+    const k = outline(th);
+    const sx = half ? 1.15 : 1;
+    const sz = half ? 0.9 : 1;
+    const oz = half ? -0.14 : 0;
+    pos.push(inner * k * sx * s, 0, inner * k * sz * c + oz, outer * k * sx * s, 0.04, outer * k * sz * c + oz);
   }
   for (let j = 0; j < A; j++) {
     const a = j * 2;
-    idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+    idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
   }
   const g = new BufferGeometry();
   g.setAttribute('position', new Float32BufferAttribute(pos, 3));
@@ -211,11 +232,22 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
   const fMat = new MeshBasicNodeMaterial();
   {
     const r = attribute('ring', 'float') as unknown as FloatNode;
+    const a = attribute('angle', 'float') as unknown as FloatNode;
+    const sd = attribute('side', 'float') as unknown as FloatNode;
     const done = attribute('nodeDone', 'float') as unknown as FloatNode;
-    const bands = smoothstep(0.42, 0.58, fract(r.mul(3.2)).sub(0.5).abs().mul(2)); // growth rings
-    const topCol = mix(mix(color(PAPER), color(OCHRE), bands.mul(0.55)), mix(color(PINK), color(ROSE), bands.mul(0.6)), done);
-    const up = normalLocal.y;
-    fMat.colorNode = mix(color(INK), topCol, smoothstep(-0.15, 0.25, up));
+    // growth rings in hard serigraph steps (cream, ochre, cream), a darker lip; gill lines under the shelf
+    const ringsX = r.mul(3.5).add(a.mul(Math.PI * 7).sin().mul(0.05));
+    const fw = fwidth(ringsX).max(1e-4);
+    const band = smoothstep(float(0.5).sub(fw), float(0.5).add(fw), fract(ringsX));
+    const lip = smoothstep(float(0.86).sub(fwidth(r)), float(0.86).add(fwidth(r)), r);
+    const cream = mix(color(PAPER), color(PINK), done);
+    const ochre = mix(color(OCHRE), color(ROSE), done);
+    const topCol = mix(mix(cream, ochre, band.mul(0.85)), mix(color(OCHRE), color('#a8426e'), done).mul(0.8), lip);
+    const gx = a.mul(46);
+    const gfw = fwidth(gx).max(1e-4);
+    const gill = smoothstep(float(0.18).add(gfw), float(0.18).sub(gfw), fract(gx).sub(0.5).abs()).mul(smoothstep(0.15, 0.4, r));
+    const under = mix(color(INK), color('#2c3550'), gill);
+    fMat.colorNode = mix(under, topCol, step(0, sd));
   }
   warped(fMat);
   const fungi = new InstancedMesh(fGeo, fMat, Math.max(1, fungusIdx.length));
@@ -257,7 +289,7 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
 
   // --- dots ----------------------------------------------------------------------------------------------------
   const dots = path.dots;
-  const dGeo = new CylinderGeometry(0.2, 0.2, 0.06, 10, 1);
+  const dGeo = new CylinderGeometry(0.15, 0.15, 0.05, 10, 1);
   dGeo.translate(0, 0.02, 0);
   const dS = new Float32Array(Math.max(1, dots.length));
   dots.forEach((d, i) => (dS[i] = d.s ?? i));
@@ -289,8 +321,8 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
   dotMesh.instanceMatrix.needsUpdate = true;
 
   // --- ring (the one fat gradient outline) ------------------------------------------------------------------------
-  const ringHalf = ringGeometry(true, 1.02, 1.3);
-  const ringFull = ringGeometry(false, 1.04, 1.34, 1, 1);
+  const ringHalf = ringGeometry(true, 1.04, 1.3);
+  const ringFull = ringGeometry(false, 1.02, 1.26);
   const rMat = new MeshBasicNodeMaterial();
   rMat.colorNode = mix(color(RING_A), color(RING_B), smoothstep(-1.2, 1.2, positionGeometry.x.add(positionGeometry.z.mul(0.4))));
   warped(rMat);

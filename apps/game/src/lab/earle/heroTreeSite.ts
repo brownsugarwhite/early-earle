@@ -111,7 +111,7 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
   const fDir = bDir.clone().applyAxisAngle(new Vector3(0, 1, 0), -turn);
   const foot: Vec3 = [fDir.x, fDir.y, fDir.z];
   void slerpDir;
-  const base: PlanetLandmarkParams = { id: 'hero-tree', world: options.worldIndex, dir: foot, scale: TREE_SCALE, clearRadius: tree.shape.R * 1.25 * TREE_SCALE };
+  const base: PlanetLandmarkParams = { id: 'hero-tree', world: options.worldIndex, dir: foot, scale: TREE_SCALE, clearRadius: tree.shape.R * 1.55 * TREE_SCALE };
   // Yaw: the root tip (path start) points at the last ground node
   world.setLandmarks([...options.landmarks, base]);
   let slot = world.getLandmarkSlot('hero-tree')!;

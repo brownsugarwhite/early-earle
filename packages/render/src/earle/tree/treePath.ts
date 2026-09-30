@@ -474,11 +474,11 @@ export function heroTreePath(o: HeroTreePathOptions): HeroTreePath {
   const clearanceOf = makeClearance(colliders);
 
   // --- camera rail ------------------------------------------------------------------------------------------------
-  // bark and ramp cameras stay inside the weeping skirt of fountain limbs (close to the wood, under the canopy);
-  // crown cameras hover above the domes
-  const trunkDist = o.rail?.trunkDistance ?? 8.5;
-  const crownDist = o.rail?.crownDistance ?? 16;
-  const rampDist = trunkDist + 0.5;
+  // bark and ramp cameras stay just inside the weeping skirt of fountain limbs (under the canopy, the lace behind
+  // them), crown cameras hover above the domes; far enough that the node, its neighbours and the tree read
+  const trunkDist = o.rail?.trunkDistance ?? 15;
+  const crownDist = o.rail?.crownDistance ?? 21;
+  const rampDist = trunkDist - 1;
   const lift = o.rail?.height ?? 3.5;
   const railN = 200;
   let lastRadial: Vector3 | null = null;
