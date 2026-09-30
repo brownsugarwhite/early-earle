@@ -4,8 +4,11 @@
  *   scrap (11), spores (14), amoeba (16), pluck booster (17, UI), cap/graduation (18),
  *   withered (21), line blob (24); celebrations at 10 and 20; hard at 19 and 25.
  *
- * Only 1–10 ship in `content/levels` for P3; 11–25 are drafts for the next round.
- * Numbers (moves, start tiers, goal sizes) are tuned with tools/levels/calibrate.ts.
+ * Tutorial boards are only as big as their mechanic needs (Florian, iteration 4): level 1
+ * is a 1×3 strip with a scripted spawn, 2–4 and 6 are 3×2 / 3×3, and the first level of
+ * every later mechanic (11, 14, 16, 18, 21) is a fixed 3×3 board; 24 is a fixed 4×4.
+ * Follow-up levels keep their size. Numbers (moves, start tiers, goal sizes) are tuned
+ * with tools/levels/calibrate.ts (novice ≥ 90 %, strong always solves).
  */
 
 import type { LevelSpec } from './generateLevel';
@@ -14,20 +17,19 @@ const Z = 'tjorizo' as const;
 
 export const TJORIZO_SPECS: readonly LevelSpec[] = [
   {
+    // 1×3 strip straight from the splash: one swipe either way merges the 1s, the scripted 1
+    // fills the gap, the second swipe makes the 8. Up/down change nothing, so it cannot be lost.
     zone: Z,
     index: 1,
     name: 'Zwei werden eins',
     type: 'tutorial',
-    grid: { w: 4, h: 4 },
+    grid: { w: 3, h: 1 },
     elements: [],
     goals: [{ type: 'reachTier', tier: 3 }],
     moves: 99,
     seed: 1,
-    board: `
-      . . . .
-      1 . . 1
-      2 . . 2
-      . . . .`,
+    board: `1 1 2`,
+    spawn: { script: [{ tier: 1 }] },
     style: 'journey',
   },
   {
@@ -35,12 +37,14 @@ export const TJORIZO_SPECS: readonly LevelSpec[] = [
     index: 2,
     name: 'Züge zählen',
     type: 'tutorial',
-    grid: { w: 4, h: 4 },
+    grid: { w: 3, h: 2 },
     elements: [],
     goals: [{ type: 'reachTier', tier: 4 }],
-    moves: 30,
-    startTiers: [2, 2, 1, 1],
+    moves: 10,
     seed: 1,
+    board: `
+      1 1 .
+      2 . .`,
     style: 'journey',
   },
   {
@@ -48,11 +52,11 @@ export const TJORIZO_SPECS: readonly LevelSpec[] = [
     index: 3,
     name: 'Weiter so',
     type: 'comfort',
-    grid: { w: 4, h: 4 },
+    grid: { w: 3, h: 3 },
     elements: [],
-    goals: [{ type: 'reachTier', tier: 5 }],
-    moves: 34,
-    startTiers: [3, 2, 2, 1, 1],
+    goals: [{ type: 'reachTier', tier: 4 }],
+    moves: 16,
+    startTiers: [2, 1, 1],
     seed: 1,
     style: 'journey',
   },
@@ -61,25 +65,26 @@ export const TJORIZO_SPECS: readonly LevelSpec[] = [
     index: 4,
     name: 'Punkte sammeln',
     type: 'comfort',
-    grid: { w: 4, h: 4 },
+    grid: { w: 3, h: 3 },
     elements: [],
-    goals: [{ type: 'score', points: 150 }],
-    moves: 30,
+    goals: [{ type: 'score', points: 60 }],
+    moves: 20,
     startTiers: [2, 2, 1, 1],
     seed: 1,
     style: 'diligent',
   },
   {
+    // 4×4 needs 35 moves for the novice to stay at ≥ 90 % (30 → 82–90 %, 34 → 91–94 %).
     zone: Z,
     index: 5,
     name: 'Der Vierundsechziger',
     type: 'skill',
-    grid: { w: 5, h: 5 },
+    grid: { w: 4, h: 4 },
     elements: [],
     goals: [{ type: 'reachTier', tier: 6 }],
-    moves: 36,
+    moves: 35,
     startTiers: [4, 3, 3, 2, 2, 1, 1],
-    seed: 1,
+    seed: 3,
     style: 'precise',
   },
   {
@@ -87,12 +92,15 @@ export const TJORIZO_SPECS: readonly LevelSpec[] = [
     index: 6,
     name: 'Der Pfeiler',
     type: 'tutorial',
-    grid: { w: 4, h: 4 },
+    grid: { w: 3, h: 3 },
     elements: ['pillar'],
     goals: [{ type: 'reachTier', tier: 4 }],
-    moves: 30,
-    startTiers: [2, 2, 1, 1],
+    moves: 18,
     seed: 1,
+    board: `
+      1 . 1
+      . P .
+      . 2 .`,
     style: 'journey',
   },
   {
@@ -153,20 +161,22 @@ export const TJORIZO_SPECS: readonly LevelSpec[] = [
       . . . . .`,
     style: 'explosive',
   },
-  // ---- 11–25: drafts, not shipped in P3 ------------------------------------------
+  // ---- 11–25 -------------------------------------------------------------------------
   {
+    // One scrap per side: a merge landing next to it cracks it (right for the top, left for the bottom).
     zone: Z,
     index: 11,
     name: 'Schrott',
     type: 'tutorial',
-    grid: { w: 4, h: 4 },
+    grid: { w: 3, h: 3 },
     elements: ['scrap'],
-    counts: { scrap: 2 },
-    scrapLayers: 1,
     goals: [{ type: 'clearScrap' }],
-    moves: 30,
-    startTiers: [2, 2, 1, 1],
+    moves: 12,
     seed: 1,
+    board: `
+      1  1 X1
+      .  . .
+      X1 2 2`,
     style: 'precise',
   },
   {
@@ -200,17 +210,20 @@ export const TJORIZO_SPECS: readonly LevelSpec[] = [
     style: 'precise',
   },
   {
+    // Spores at the ends of the two rows: the merge lands on them (right for the top, left for the bottom).
     zone: Z,
     index: 14,
     name: 'Sporen',
     type: 'tutorial',
-    grid: { w: 4, h: 4 },
+    grid: { w: 3, h: 3 },
     elements: ['spore'],
-    counts: { spores: 3 },
-    goals: [{ type: 'collectSpores', count: 3 }],
-    moves: 30,
-    startTiers: [2, 2, 1, 1],
+    goals: [{ type: 'collectSpores', count: 2 }],
+    moves: 12,
     seed: 1,
+    board: `
+      1 1 s
+      . . .
+      s 2 2`,
     style: 'journey',
   },
   {
@@ -228,17 +241,21 @@ export const TJORIZO_SPECS: readonly LevelSpec[] = [
     style: 'journey',
   },
   {
+    // Every first swipe leaves the centre free; the scripted amoeba lands there and lifts the 16 to 32.
     zone: Z,
     index: 16,
     name: 'Die Amöbe',
     type: 'tutorial',
-    grid: { w: 4, h: 4 },
+    grid: { w: 3, h: 3 },
     elements: ['amoeba'],
-    spawn: { amoeba: 1 },
+    spawn: { amoeba: 1, script: [{ tier: 1, kind: 'amoeba', at: [1, 1] }] },
     goals: [{ type: 'reachTier', tier: 5 }],
-    moves: 30,
-    startTiers: [3, 2, 2, 1, 1],
+    moves: 16,
     seed: 1,
+    board: `
+      . 3 .
+      . . .
+      2 . 2`,
     style: 'journey',
   },
   {
@@ -257,17 +274,21 @@ export const TJORIZO_SPECS: readonly LevelSpec[] = [
     style: 'journey',
   },
   {
+    // Cap 4: the first sideways swipe releases the top pair; the second 16 is built from the bottom pair.
     zone: Z,
     index: 18,
     name: 'Aufbruch',
     type: 'tutorial',
-    grid: { w: 4, h: 4 },
+    grid: { w: 3, h: 3 },
     elements: ['cap'],
-    cap: 5,
-    goals: [{ type: 'release', count: 1 }],
-    moves: 34,
-    startTiers: [3, 3, 2, 2, 1, 1],
+    cap: 4,
+    goals: [{ type: 'release', count: 2 }],
+    moves: 16,
     seed: 1,
+    board: `
+      3 3 .
+      . . .
+      . 2 2`,
     style: 'journey',
   },
   {
@@ -304,17 +325,20 @@ export const TJORIZO_SPECS: readonly LevelSpec[] = [
     style: 'explosive',
   },
   {
+    // Withered cells at the far ends of the two columns: swipe up heals the left, down the right.
     zone: Z,
     index: 21,
     name: 'Verdorrt',
     type: 'tutorial',
-    grid: { w: 4, h: 4 },
+    grid: { w: 3, h: 3 },
     elements: ['withered'],
-    counts: { withered: 3 },
     goals: [{ type: 'heal' }],
-    moves: 30,
-    startTiers: [2, 2, 1, 1],
+    moves: 12,
     seed: 1,
+    board: `
+      w . 2
+      1 . 2
+      1 . w`,
     style: 'journey',
   },
   {
@@ -347,19 +371,23 @@ export const TJORIZO_SPECS: readonly LevelSpec[] = [
     style: 'precise',
   },
   {
+    // Two pairs in a row: the first sideways swipe makes two merges and a beam blob; the scrap pair
+    // under it (two layers each) wants the beam fired along its row (fires in ~9 of 10 novice games).
     zone: Z,
     index: 24,
     name: 'Der Strahl',
     type: 'tutorial',
-    grid: { w: 5, h: 5 },
+    grid: { w: 4, h: 4 },
     elements: ['line', 'scrap'],
-    counts: { scrap: 3 },
-    scrapLayers: 2,
     specials: { lineAt: 2 },
     goals: [{ type: 'clearScrap' }],
-    moves: 32,
-    startTiers: [3, 3, 2, 2, 1, 1],
+    moves: 24,
     seed: 1,
+    board: `
+      . .  .  .
+      1 1  2  2
+      . X2 X2 .
+      . .  .  .`,
     style: 'explosive',
   },
   {
