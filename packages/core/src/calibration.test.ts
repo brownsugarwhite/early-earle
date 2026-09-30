@@ -1,6 +1,7 @@
 /**
- * P3 acceptance (plan §11): all 10 shipped levels solvable by `strong`,
- * tutorial levels 1–5 `pWin(novice) ≥ 0.9`, line specials on ≤ 40 % of swipes.
+ * P3 acceptance (plan §11): all shipped levels solvable by `strong`,
+ * tutorial levels `pWin(novice) ≥ 0.9` (1–6 and the shrunken first level of every later
+ * Tjorizo mechanic: 11, 14, 16, 18, 21, 24), line specials on ≤ 40 % of swipes.
  * Full statistics live in content/levels/_calibration.json (tools/levels/calibrate.ts).
  */
 
@@ -32,15 +33,15 @@ describe('calibration acceptance', () => {
     }
   }, 120_000);
 
-  it('tutorial levels 1–5 are won by the novice bot at least 90 % of the time', () => {
-    for (let i = 1; i <= 5; i++) {
+  it('tutorial levels (1–6 and the intro levels 11, 14, 16, 18, 21, 24) are won by the novice bot at least 90 % of the time', () => {
+    for (const i of [1, 2, 3, 4, 5, 6, 11, 14, 16, 18, 21, 24]) {
       const level = load(i);
       const r = simulate(level, 'novice', seeds(level.id, 40), {
         botSeed: hash32(level.id, 'novice'),
       });
       expect(r.pWin, `${level.id}: ${r.wins}/${r.n}`).toBeGreaterThanOrEqual(0.9);
     }
-  }, 60_000);
+  }, 90_000);
 
   it('line specials appear on at most 40 % of swipes (shipped levels and the line-blob intro draft)', () => {
     for (let i = 1; i <= 10; i++) {
@@ -55,5 +56,10 @@ describe('calibration acceptance', () => {
     );
     expect(r.specialFrequency.line).toBeLessThanOrEqual(0.4);
     expect(r.specialFrequency.line).toBeGreaterThan(0);
+    // the beam intro shows the beam firing, not only forming (novice: most games)
+    const nov = simulate(intro, 'novice', seeds(intro.id, 20), {
+      botSeed: hash32(intro.id, 'novice'),
+    });
+    expect(nov.runs.filter((g) => g.specialsFired > 0).length).toBeGreaterThanOrEqual(12);
   }, 120_000);
 });

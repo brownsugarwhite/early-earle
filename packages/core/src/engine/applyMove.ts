@@ -8,7 +8,9 @@
  * Internal API (mutable, used by the solver on scratch boards):
  *   runPreSpawn(board, dirIndex, events) → false | MoveContext  (phases 1–5)
  *   spawnCandidates(board, out) → count                          (phase 6 choices)
+ *   forcedSpawnCell(entry, cands, count) → cell | -1              (scripted spawn cell)
  *   placeSpawn(board, cell, entry, events) / refillQueue(board)   (phase 6)
+ *   peekScript(board) → next spawn-script entry | null            (solver previews)
  *   finalizeMove(board, events)                                  (phase 7)
  *   canSlide(board, dirIndex), anyDirectionChanges(board)
  *
@@ -839,8 +841,42 @@ export function placeSpawn(
   }
 }
 
-/** Draws the next spawn from the level's table into the queue (uses the board RNG). */
+/** Spawn-script entries per level as queue entries (built once; entries are shared and never mutated). */
+const scriptCache = new WeakMap<LevelDef, readonly SpawnEntry[]>();
+
+function scriptEntries(level: LevelDef): readonly SpawnEntry[] {
+  let entries = scriptCache.get(level);
+  if (!entries) {
+    const w = level.grid.w;
+    entries = (level.spawn.script ?? []).map((s): SpawnEntry => {
+      const e: SpawnEntry = { tier: s.tier, kind: s.kind === 'amoeba' ? 'amoeba' : 'normal' };
+      if (s.at) e.at = indexOf(w, s.at);
+      return e;
+    });
+    scriptCache.set(level, entries);
+  }
+  return entries;
+}
+
+/**
+ * The script entry the next refill will draw (null once the script is used up or the level has none).
+ * The solver uses it for the preview after a spawn: deterministic, no chance node over tiers.
+ */
+export function peekScript(b: Board): SpawnEntry | null {
+  return scriptEntries(b.level)[b.scriptPos] ?? null;
+}
+
+/**
+ * Draws the next spawn into the queue: the next spawn-script entry while the script lasts (no RNG),
+ * afterwards a weighted pick from the level's table (uses the board RNG).
+ */
 export function refillQueue(b: Board): void {
+  const scripted = peekScript(b);
+  if (scripted) {
+    b.spawnQueue.push(scripted);
+    b.scriptPos++;
+    return;
+  }
   const table = b.level.spawn.table;
   const weights = new Array<number>(table.length);
   for (let i = 0; i < table.length; i++) weights[i] = table[i]!.weight;
@@ -860,14 +896,31 @@ export function spawnDistribution(level: LevelDef): { entry: SpawnEntry; p: numb
   }));
 }
 
+/** The scripted cell of `entry` when it is among the `count` candidates in `cands`, else -1. */
+export function forcedSpawnCell(
+  entry: SpawnEntry,
+  cands: Int16Array | number[],
+  count: number,
+): number {
+  const at = entry.at;
+  if (at === undefined) return -1;
+  for (let k = 0; k < count; k++) if (cands[k] === at) return at;
+  return -1;
+}
+
 function spawnPhase(b: Board, ev: MoveEvent[] | null): void {
   const entry = b.spawnQueue[0];
   if (!entry) return;
   const count = spawnCandidates(b, candBuf);
   if (count === 0) return;
-  const [k, next] = randInt(b.rng, count);
-  b.rng = next;
-  placeSpawn(b, candBuf[k]!, entry, ev);
+  // A scripted cell wins when it is free; otherwise (or without one) a uniform pick among the candidates.
+  let cell = forcedSpawnCell(entry, candBuf, count);
+  if (cell < 0) {
+    const [k, next] = randInt(b.rng, count);
+    b.rng = next;
+    cell = candBuf[k]!;
+  }
+  placeSpawn(b, cell, entry, ev);
   b.spawnQueue.shift();
   refillQueue(b);
 }
@@ -1044,6 +1097,7 @@ export function createState(level: LevelDef, seed: number): LevelState {
     blobSeq: 0,
     status: 'playing',
     spawnQueue: [],
+    scriptPos: 0,
     released: 0,
     delivered: 0,
     deliveredByTier: new Uint8Array(16),

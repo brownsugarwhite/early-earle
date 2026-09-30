@@ -96,8 +96,32 @@ describe('generateLevel', () => {
     for (const i of P3_LEVEL_INDICES) {
       const level = generateLevel(tjorizoSpec(i));
       expect(level.difficulty.targetAttempts[1]).toBeLessThanOrEqual(1.1);
-      expect(level.moves).toBeGreaterThanOrEqual(30);
+      // The move band (GDD 6.1) applies from 4×4 up; tiny tutorial boards get what their mechanic needs.
+      if (level.grid.w * level.grid.h >= 16)
+        expect(level.moves, level.id).toBeGreaterThanOrEqual(30);
     }
+  });
+
+  it('builds the tutorial curriculum on tiny boards (level 1 is a 1×3 strip with a scripted spawn)', () => {
+    const sizes = [1, 2, 3, 4, 5, 6].map((i) => {
+      const l = generateLevel(tjorizoSpec(i));
+      return `${l.grid.w}x${l.grid.h}`;
+    });
+    expect(sizes).toEqual(['3x1', '3x2', '3x3', '3x3', '4x4', '3x3']);
+    const one = generateLevel(tjorizoSpec(1));
+    expect(one.grid.mask).toEqual(['...']);
+    expect(one.start.map((s) => s.blob.tier)).toEqual([1, 1, 2]);
+    expect(one.spawn.script).toEqual([{ tier: 1 }]);
+    // the first level of every later mechanic is shrunk to 3×3 (24, the beam, to 4×4); follow-ups keep 5×5
+    for (const i of [11, 14, 16, 18, 21])
+      expect(generateLevel(tjorizoSpec(i)).grid.w, `level ${i}`).toBe(3);
+    expect(generateLevel(tjorizoSpec(24)).grid.w).toBe(4);
+    for (const i of [12, 15, 17, 19, 22])
+      expect(generateLevel(tjorizoSpec(i)).grid.w, `level ${i}`).toBe(5);
+    const amoeba = generateLevel(tjorizoSpec(16));
+    expect(amoeba.spawn.script).toEqual([{ tier: 1, at: [1, 1], kind: 'amoeba' }]);
+    // levels without a script carry no `script` key at all (their JSON stays byte-identical)
+    expect('script' in generateLevel(tjorizoSpec(7)).spawn).toBe(false);
   });
 
   it('places random pillars in the interior only', () => {
