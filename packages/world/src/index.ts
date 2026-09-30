@@ -60,6 +60,7 @@ export {
   groundZ,
   lakeRadiusAt,
   localOf,
+  nearestSpiralS,
   offsetDir,
   pathDistance,
   spiralDir,

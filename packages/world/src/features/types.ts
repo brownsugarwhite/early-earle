@@ -202,6 +202,10 @@ export interface LedgeAnchor {
   height: number;
   /** Nutzbarer Radius der ebenen Fläche (Welteinheiten). */
   radius: number;
+  /** Parameter s ∈ [0, 1] des nächsten Punkts auf dem Levelpfad (Spirale, Nordpol → Südpol) — zum Einordnen. */
+  pathS: number;
+  /** Seitlicher Abstand zum Levelpfad (Welteinheiten). */
+  pathDistance: number;
 }
 
 /** Ergebnis von `PlanetFeatures.sample` (je Vertex): Wasser, Schneefeld, Felsnähe. */

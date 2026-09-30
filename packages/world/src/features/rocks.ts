@@ -384,11 +384,12 @@ function buildSpires(host: FeatureHost, frame: FeatureFrame, size: number, heigh
   return { columns, ledges: [], footprint };
 }
 
-function pushLedges(out: LedgeAnchor[], built: Built, world: number, id: string, kind: RockKind, frame: FeatureFrame, R: number): void {
+function pushLedges(host: FeatureHost, out: LedgeAnchor[], built: Built, world: number, id: string, kind: RockKind, frame: FeatureFrame, R: number): void {
   for (let li = 0; li < built.ledges.length; li++) {
     const l = built.ledges[li]!;
     const position = framePoint(frame, R, l.x, l.y, l.z);
     const len = Math.hypot(position[0], position[1], position[2]) || 1;
+    const dir: Vec3 = [position[0] / len, position[1] / len, position[2] / len];
     out.push({
       id: `${id}-ledge${li}`,
       world,
@@ -397,9 +398,11 @@ function pushLedges(out: LedgeAnchor[], built: Built, world: number, id: string,
       step: l.step,
       position,
       normal: [frame.c[0], frame.c[1], frame.c[2]],
-      dir: [position[0] / len, position[1] / len, position[2] / len],
+      dir,
       height: len - R,
       radius: l.radius,
+      pathS: nearestSpiralS(host, dir),
+      pathDistance: pathDistance(host, dir[0], dir[1], dir[2]),
     });
   }
 }
@@ -454,7 +457,7 @@ function buildWall(host: FeatureHost, world: number, spec: RockSpec, id: string,
         let top = -Infinity;
         for (const col of built.columns) top = Math.max(top, columnPeak(col));
         formations.push({ id: segId, world, kind: 'wall', frame, columns: built.columns, footprint: built.footprint, height: top, variant: rand() });
-        pushLedges(ledges, built, world, segId, 'wall', frame, R);
+        pushLedges(host, ledges, built, world, segId, 'wall', frame, R);
         break;
       }
     }
@@ -512,7 +515,7 @@ export function generateRocks(host: FeatureHost, world: number, specs: readonly 
         for (const col of built.columns) top = Math.max(top, columnPeak(col));
         formations.push({ id, world, kind: spec.kind, frame, columns: built.columns, footprint: built.footprint, height: top, variant: rand() });
         occupied.push({ dir: frame.c, radius: built.footprint });
-        pushLedges(ledges, built, world, id, spec.kind, frame, R);
+        pushLedges(host, ledges, built, world, id, spec.kind, frame, R);
         placed = true;
       }
     }

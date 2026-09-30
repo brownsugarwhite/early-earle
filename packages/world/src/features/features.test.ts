@@ -168,6 +168,9 @@ describe('PlanetFeatures', () => {
       const z = a.position[0] * form.frame.c[0] + a.position[1] * form.frame.c[1] + a.position[2] * form.frame.c[2] - 32;
       expect(Math.abs(Math.max(...tops) - z)).toBeLessThan(0.05);
       expect(f.ledgeNear(a.dir, 0.01)?.id).toBe(a.id);
+      expect(a.pathS).toBeGreaterThanOrEqual(0);
+      expect(a.pathS).toBeLessThanOrEqual(1);
+      expect(a.pathDistance).toBeCloseTo(pathDistance({ radius: 32, turns: field.turns, polarMargin: field.polarMargin }, ...a.dir), 6);
     }
     // Stufen aufsteigend je Formation
     const byForm = new Map<string, number[]>();

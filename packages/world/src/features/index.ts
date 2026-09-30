@@ -9,7 +9,7 @@ import { SnowFields } from './snow';
 import type { DriftSpec, FeatureSample, Lake, LedgeAnchor, River, RockColumn, RockFormation, WorldFeatureSpec } from './types';
 
 export type * from './types';
-export { pathDistance, spiralDir, type FeatureHost } from './host';
+export { nearestSpiralS, pathDistance, spiralDir, type FeatureHost } from './host';
 export { frameAt, framePoint, groundZ, localOf, offsetDir } from './geometry';
 export { SHORE_E, WATER_BED, WATER_OVERLAP, lakeRadiusAt } from './lakes';
 export { columnPeak, columnTopAt } from './rocks';
@@ -36,7 +36,8 @@ interface WaterItem {
  * - `field.features.ledges(world?)` → `LedgeAnchor[]`: flache Deckflächen (Felsstufen, Wandstufen, Turmsockel,
  *   Tafelfels-Kante), je Formation nach `step` aufsteigend (0 = niedrigste, vom Pfad aus zuerst erreichbar). Felder:
  *   `position` (auf der Deckfläche), `normal` (Oben der Formation), `dir` (Einheitsrichtung), `height` (über dem
- *   Grundradius), `radius` (nutzbare ebene Fläche), `formation`, `kind`, `world`.
+ *   Grundradius), `radius` (nutzbare ebene Fläche), `formation`, `kind`, `world`, `pathS` (Spiralparameter des
+ *   nächsten Pfadpunkts, zum Einordnen längs des Pfads) und `pathDistance` (seitlicher Abstand zum Pfad).
  * - `field.ledgeNear(dir, maxDist)` / `features.ledgeNear(...)`: nächster Anker zu einer Richtung innerhalb
  *   `maxDist` Welteinheiten (z. B. Knoten n auf den nächsten Felsen setzen, wenn einer näher als 4 liegt).
  * - `field.surfaceHeightAt(dx, dy, dz)`: begehbare Höhe (Gelände oder Felsdeckfläche) — für Figuren, Brett, Kamera.
