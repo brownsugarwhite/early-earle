@@ -1,6 +1,6 @@
 import { Box3, BufferAttribute, BufferGeometry, Frustum, Group, Matrix4, Mesh, MeshBasicNodeMaterial, Object3D, Quaternion, Sphere, Vector3, Vector4 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
-import { abs, atan, attribute, float, fract, int, length, max, mix, modelViewMatrix, modelWorldMatrix, normalGeometry, normalView, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, varying, vec2, vec3, vec4 } from 'three/tsl';
+import { abs, atan, attribute, float, fract, fwidth, int, length, max, mix, modelViewMatrix, modelWorldMatrix, normalGeometry, normalView, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, varying, vec2, vec3, vec4 } from 'three/tsl';
 import {
   CHUNK_SIZE,
   PlaneField,
@@ -154,6 +154,15 @@ export interface PathCorridor {
 const LINGER_CHUNKS = 12;
 
 /**
+ * Grundbestand vor der Heilung (nie leeres Gelände): Welten ohne ganzes Müllfeld zeigen schon die Hälfte ihrer Bäume
+ * (etwas kleiner) auf nur leicht verdorrtem Boden; mit dem Fortschritt wird es dichter. Die vermüllte Startwelt (Müll
+ * überall, voller Neon-Schleier) bleibt dystopisch — dort lichten sich Müll und Schleier mit dem Fortschritt.
+ */
+const GROWTH_FLOOR = 0.5;
+/** Dasselbe für die Farbe des Bodens, der Felsen und des Wassers (0 = verdorrt, 1 = geheilt). */
+const TERRAIN_FLOOR = 0.7;
+
+/**
  * Layer der Schattenwerfer-Stellvertreter (nur Schattenpass): das Gelände wirft seinen Schatten über eigene Meshes je
  * 2 × 2 Chunks, deren Grenzkugel im Schattenraum liegt — die sichtbaren Chunks kullen eng im Anzeigeraum, und jede
  * Kaskade zeichnet ein Viertel der Aufrufe. Der Besitzer der Sonne schaltet den Layer auf der Schattenkamera ein (wie
@@ -290,6 +299,8 @@ export class EarlePlanet {
   private readonly unloadAfter: number;
   private readonly viewRadius: number;
   private progressDone = 0;
+  /** Grundbestand je Welt (siehe `GROWTH_FLOOR`), einmal je Welt ermittelt. */
+  private readonly floors = new Map<number, { vegetation: number; terrain: number }>();
   private frame = 0;
   private nearKeys = '';
   private contentDirty = true;
@@ -317,6 +328,8 @@ export class EarlePlanet {
   private featureVersion = -1;
   private readonly featureGrowth: UniformArrayLike;
   private featureRanges: Array<[number, number]> = [];
+  /** Welt je Merkmal (Grundbestand der Farbe). */
+  private featureWorlds: number[] = [];
   private featureAnchor = { x: 0, z: 0 };
   private corridorFn: ((x0: number, z0: number, x1: number, z1: number) => PathCorridor) | null = null;
   /** Blick-Welt und Überblendung (Himmel/Nebel/Streifen). */
@@ -419,17 +432,29 @@ export class EarlePlanet {
     // Risse als Earle-Spalten: Zickzack-Breite längs der Grenze, tiefe Tinte innen, eine helle Abbruchkante (Lippe)
     // auf einer Seite. Pfadrisse (Kennung ≥ 0) schließen sich mit dem Fortschritt; seitliche Risse sind schmaler und offen.
     const isPath = borderId.greaterThan(-0.5);
-    const tri = abs(fract(along.mul(0.9)).mul(2).sub(1));
-    const tri2 = abs(fract(along.mul(2.43).add(0.37)).mul(2).sub(1));
-    const triW = abs(fract(along.mul(1.17)).mul(2).sub(1));
+    // Zickzack längs der Grenze, bandbegrenzt: wird eine Zacke auf dem Bildschirm schmaler als etwa 5 Pixel (flacher
+    // Blick, Ferne), glättet sie sich zur mittleren Breite — sonst zerfällt die Kante in Kamm- und Treppenmuster
+    const alongPx = fwidth(along).max(1e-5);
+    const zig = (freq: number, t: FloatNode): FloatNode => mix(float(0.5), t, float(1).sub(smoothstep(0.07, 0.2, alongPx.mul(freq)))) as unknown as FloatNode;
+    const tri = zig(0.9, abs(fract(along.mul(0.9)).mul(2).sub(1)) as unknown as FloatNode);
+    const tri2 = zig(2.43, abs(fract(along.mul(2.43).add(0.37)).mul(2).sub(1)) as unknown as FloatNode);
+    const triW = zig(1.17, abs(fract(along.mul(1.17)).mul(2).sub(1)) as unknown as FloatNode);
     const zoneW = select(borderId.lessThan(this.crackOpenFrom), float(0), float(this.crackWidth));
     const width = select(isPath, zoneW.mul(float(0.45).add(tri.mul(0.4)).add(tri2.mul(0.25))), float(0.32).mul(float(0.5).add(triW.mul(0.5))));
     const open = step(0.001, width);
-    const crack = aaStep(width, border).oneMinus().mul(open);
+    // Rand als Abstandsfeld (Grenzabstand − Rissbreite), geglättet über seine eigene Bildschirmänderung: die Zacken der
+    // Breite zählen mit (nur `border` zu glätten ließ sie als harte Kammzähne stehen)
+    const edge = border.sub(width);
+    const edgePx = fwidth(edge).max(1e-4);
+    const outside = smoothstep(edgePx.negate(), edgePx, edge);
+    const crack = outside.oneMinus().mul(open);
     const lipOnLo = step(fract(tg), float(0.25));
     const onLo = step(0, sd);
     const lipSide = mix(onLo.oneMinus(), onLo, lipOnLo);
-    const lip = aaStep(width, border).mul(aaStep(width.add(select(isPath, float(0.07), float(0.06))), border).oneMinus()).mul(open).mul(lipSide);
+    // Lippe: helles Band neben dem Spalt; schmaler als gut ein Pixel blendet es aus, statt zu flimmern
+    const lipW = select(isPath, float(0.07), float(0.06));
+    const lipFade = smoothstep(0.8, 1.8, lipW.div(edgePx));
+    const lip = outside.mul(smoothstep(lipW.sub(edgePx), lipW.add(edgePx), edge).oneMinus()).mul(open).mul(lipSide).mul(lipFade);
     const growthNode = (this.terrainGrowth as unknown as { element(i: unknown): FloatNode }).element(int(tg.floor()));
 
     // Bodenornament (nie Screen-Space): Schneelinien quer zum Blick (Linien gleicher z), Perspektivlinien (Strahlen +
@@ -772,15 +797,31 @@ export class EarlePlanet {
 
   private applyGrowth(chunk: LoadedChunk): void {
     const g = this.growthOf(chunk.cpu.nodeRange);
-    this.vegetation.setSlotGrowth(chunk.slot, g);
-    (this.terrainGrowth as unknown as { array: number[] }).array[chunk.slot] = g;
+    const floor = this.growthFloor(chunk.cpu.mesh.world);
+    this.vegetation.setSlotGrowth(chunk.slot, Math.max(g, floor.vegetation));
+    (this.terrainGrowth as unknown as { array: number[] }).array[chunk.slot] = Math.max(g, floor.terrain);
   }
 
   private applyFeatureGrowth(): void {
     const arr = this.featureGrowth.array;
     this.featureRanges.forEach((r, i) => {
-      if (i < arr.length) arr[i] = this.growthOf(r);
+      if (i < arr.length) arr[i] = Math.max(this.growthOf(r), this.growthFloor(this.featureWorlds[i] ?? -1).terrain);
     });
+  }
+
+  /**
+   * Grundbestand einer Welt vor der Heilung: 0 für die vermüllte Welt mit ganzem Müllfeld und vollem Neon-Schleier
+   * (dystopisch, der Müll lichtet sich mit dem Fortschritt), sonst `GROWTH_FLOOR` / `TERRAIN_FLOOR` (Earle-Natur).
+   */
+  private growthFloor(world: number): { vegetation: number; terrain: number } {
+    let f = this.floors.get(world);
+    if (f) return f;
+    const trash = world >= 0 ? this.worldData(world).params.trash : undefined;
+    const dystopian = !!trash && !trash.pockets && trash.heals !== false && (trash.veil ?? 0) >= 0.8;
+    f = dystopian ? { vegetation: 0, terrain: 0 } : { vegetation: GROWTH_FLOOR, terrain: TERRAIN_FLOOR };
+    if (this.floors.size > 256) this.floors.clear();
+    this.floors.set(world, f);
+    return f;
   }
 
   /** Müll-Dichte (Startwelt) ändern: Chunks werden neu gestreut. */
@@ -1604,6 +1645,7 @@ export class EarlePlanet {
     this.featureAnchor = { x: ax, z: az };
     const regions: RegionFeatures[] = regionKeys.map((k) => this.field.features.region(k)).filter((r) => r.lakes.length + r.rivers.length + r.formations.length > 0);
     const ranges: Array<[number, number]> = [];
+    const worlds: number[] = [];
     const waterInputs: WaterRegionInput[] = [];
     const formations: Array<{ f: RegionFeatures['formations'][number]; feature: number }> = [];
     for (const r of regions) {
@@ -1612,14 +1654,19 @@ export class EarlePlanet {
       const range = this.nodeRangeFor(z0, z1);
       if (r.lakes.length + r.rivers.length > 0) {
         waterInputs.push({ lakes: r.lakes, rivers: r.rivers, slot: this.slots.slotOf(r.world), featureBase: ranges.length });
-        for (let i = 0; i < r.lakes.length + r.rivers.length; i++) ranges.push(range);
+        for (let i = 0; i < r.lakes.length + r.rivers.length; i++) {
+          ranges.push(range);
+          worlds.push(r.world);
+        }
       }
       for (const f of r.formations) {
         formations.push({ f, feature: ranges.length });
         ranges.push(range);
+        worlds.push(f.world);
       }
     }
     this.featureRanges = ranges.slice(0, this.featureGrowth.array.length);
+    this.featureWorlds = worlds.slice(0, this.featureGrowth.array.length);
     this.applyFeatureGrowth();
     if (formations.length > 0) {
       const data = buildRockGeometry(

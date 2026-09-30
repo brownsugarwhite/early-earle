@@ -307,6 +307,7 @@ function barnSink(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
   const lateral = vec2(foot.x.sub(camLocal.x), foot.z.sub(camLocal.z)).length().sub(foot.w);
   const r = radius as unknown as FloatNode;
   const keep = select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1));
+  // die ganze Scheune schrumpft zu ihrem Fuß (flach gedrückt blieben Dach und Wände als beige Deckel liegen)
   const p = positionLocal as unknown as Vec3Node;
-  return vec3(p.x, foot.y.add(p.y.sub(foot.y).mul(max(keep, float(0.02)))), p.z) as unknown as Vec3Node;
+  return vec3(foot.x.add(p.x.sub(foot.x).mul(keep)), foot.y.add(p.y.sub(foot.y).mul(keep)), foot.z.add(p.z.sub(foot.z).mul(keep))) as unknown as Vec3Node;
 }

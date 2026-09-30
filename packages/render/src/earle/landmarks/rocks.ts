@@ -288,14 +288,17 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
   });
 }
 
-/** Säule nahe am Kamerafuß: Höhe über dem Fuß schrumpft weich auf 0 (seitlicher Abstand Rand ↔ Kamerafuß). */
+/**
+ * Säule nahe am Kamerafuß: schrumpft weich ganz auf ihren Fußpunkt (seitlicher Abstand Rand ↔ Kamerafuß) — nur die
+ * Höhe zu drücken ließe flache Deckel im ruhigen Vordergrund liegen.
+ */
 function sinkNearCamera(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
   const rc = attribute('rc', 'vec4');
   const lateral = vec2(rc.x.sub(camLocal.x), rc.z.sub(camLocal.z)).length().sub(rc.w);
   const r = radius as unknown as FloatNode;
   const keep = select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1));
   const p = positionLocal as unknown as Vec3Node;
-  return vec3(p.x, rc.y.add(p.y.sub(rc.y).mul(max(keep, float(0.02)))), p.z) as unknown as Vec3Node;
+  return vec3(rc.x.add(p.x.sub(rc.x).mul(keep)), rc.y.add(p.y.sub(rc.y).mul(keep)), rc.z.add(p.z.sub(rc.z).mul(keep))) as unknown as Vec3Node;
 }
 
 // --- kleine Vektorhelfer ------------------------------------------------------------------------------------

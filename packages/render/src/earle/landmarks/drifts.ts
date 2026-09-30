@@ -1,5 +1,5 @@
 import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
-import { attribute, float, floor, fract, hash, max, mix, modelViewMatrix, normalize, positionGeometry, positionLocal, positionView, select, smoothstep, step, vec2, vec3, vec4 } from 'three/tsl';
+import { attribute, float, floor, fract, hash, mix, modelViewMatrix, normalize, positionGeometry, positionLocal, positionView, select, smoothstep, step, vec2, vec3, vec4 } from 'three/tsl';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
 import type { ShadowTint } from '../../shadow/shadowTint';
@@ -206,8 +206,8 @@ function driftSink(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
   const lateral = vec2(foot.x.sub(camLocal.x), foot.z.sub(camLocal.z)).length().sub(foot.w);
   const r = radius as unknown as FloatNode;
   const keep = select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1));
-  // die ganze Wehe schrumpft zum Fuß (flach gedrückt bliebe ein weißer Fleck im ruhigen Vordergrund)
-  const k = max(keep, float(0.02));
+  // die ganze Wehe schrumpft auf ihren Fuß (flach gedrückt bliebe ein weißer Fleck im ruhigen Vordergrund)
+  const k = keep;
   const p = positionLocal as unknown as Vec3Node;
   return vec3(foot.x.add(p.x.sub(foot.x).mul(k)), foot.y.add(p.y.sub(foot.y).mul(k)), foot.z.add(p.z.sub(foot.z).mul(k))) as unknown as Vec3Node;
 }
