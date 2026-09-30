@@ -228,7 +228,7 @@ export class SunRig implements ShadowFactorSource {
   private referenceOn = false;
   private fixedPsiDeg: number | null = null;
   private biasTuning = { casterOffset: 0.04, grazing: 0.006 };
-  private contactTuning: { dilation: number; shift: number; planeBias: boolean; baseBias: number } = { dilation: 0.6, shift: 1, planeBias: true, baseBias: 0.25 };
+  private contactTuning: { dilation: number; shift: number; planeBias: boolean; baseBias: number } = { dilation: 0.6, shift: 0.03, planeBias: true, baseBias: 0.25 };
   /** Materialien mit `shadowFactor()`-Knoten: nach einem Kaskaden-Neubau neu bauen (neue Karten binden). */
   private readonly shadowConsumers = new Set<{ needsUpdate: boolean; addEventListener?(type: string, fn: () => void): void }>();
   private smoothCasters: boolean;
@@ -456,8 +456,8 @@ export class SunRig implements ShadowFactorSource {
 
   /**
    * Kontakt (Schatten v3, live): `dilation` = Werfer-Mindestbreite (Texel je Seite, dünne reine Werfer im Schattenpass,
-   * 0 = aus), `shift` = Kontaktversatz reiner Werfer (Texel entlang −Licht-Y: der Schatten beginnt unter dem Fuß, 0 =
-   * aus), `planeBias` = Empfängerebenen-Bias (Taps folgen der Facette; aus = alter symmetrischer Kernel-Bias),
+   * 0 = aus), `shift` = Kontaktversatz reiner Werfer (Welteinheiten entlang −Licht-Y, mindestens ein Texel: der Schatten
+   * beginnt unter dem Fuß, auch wenn der Werfer knapp über dem facettierten Gelände steht; 0 = aus), `planeBias` = Empfängerebenen-Bias (Taps folgen der Facette; aus = alter symmetrischer Kernel-Bias),
    * `baseBias` = Grundbias in Anteilen einer mittleren Texelkante.
    */
   setContact(options: { dilation?: number; shift?: number; planeBias?: boolean; baseBias?: number }): void {

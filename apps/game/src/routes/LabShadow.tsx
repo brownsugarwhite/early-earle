@@ -8,7 +8,7 @@ import '../lab/shadow/shadow-lab.css';
 
 /**
  * Startparameter aus der URL: `?view=karte&mode=split&sun=10&az=70&mag=0.5,0.55&debug=3&cascades=mobil&taps=4&node=52&progress=60`
- * (Kontakt: `dil` Werfer-Mindestbreite in Texeln, `shift` Kontaktversatz in Texeln, `plane=0|1` Empfängerebenen-Bias, `base` Grundbias,
+ * (Kontakt: `dil` Werfer-Mindestbreite in Texeln, `shift` Kontaktversatz in Welteinheiten, `plane=0|1` Empfängerebenen-Bias, `base` Grundbias,
  * `gap` Diagnosefenster, `map=1..3` Tiefenkarte einblenden, `map=11..13` groß).
  */
 function paramsFromUrl(search: URLSearchParams): Partial<ShadowLabParams> {
@@ -53,7 +53,7 @@ function paramsFromUrl(search: URLSearchParams): Partial<ShadowLabParams> {
   const dil = num('dil');
   if (dil !== null) out.dilation = Math.max(0, Math.min(3, dil));
   const shift = num('shift');
-  if (shift !== null) out.shift = Math.max(0, Math.min(4, shift));
+  if (shift !== null) out.shift = Math.max(0, Math.min(0.3, shift));
   const plane = search.get('plane');
   if (plane === '0' || plane === '1') out.planeBias = plane === '1';
   const base = num('base');
@@ -223,7 +223,7 @@ export function LabShadow() {
                 </p>
               ) : null}
               <Range label="Werfer-Mindestbreite" testId="shadow-dilation" value={params.dilation} min={0} max={2} step={0.05} format={(v) => (v ? `${v.toFixed(2)} Texel` : 'aus')} onChange={(v) => set({ dilation: v })} />
-              <Range label="Kontaktversatz" testId="shadow-shift" value={params.shift} min={0} max={3} step={0.1} format={(v) => (v ? `${v.toFixed(1)} Texel` : 'aus')} onChange={(v) => set({ shift: v })} />
+              <Range label="Kontaktversatz" testId="shadow-shift" value={params.shift} min={0} max={0.15} step={0.005} format={(v) => (v ? `${v.toFixed(3)} m` : 'aus')} onChange={(v) => set({ shift: v })} />
               <label className="earle-ctl earle-ctl--toggle">
                 <span>Ebenen-Bias</span>
                 <input type="checkbox" checked={params.planeBias} onChange={(e) => set({ planeBias: e.target.checked })} data-testid="shadow-plane" />

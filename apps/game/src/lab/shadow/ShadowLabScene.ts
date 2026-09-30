@@ -52,7 +52,7 @@ export interface ShadowLabParams {
   grazingBias: number;
   /** Werfer-Mindestbreite: Aufweitung reiner Werfer im Schattenpass (Texel je Seite, 0 = aus). */
   dilation: number;
-  /** Kontaktversatz reiner Werfer (Texel entlang −Licht-Y; Schatten beginnt unter dem Fuß, 0 = aus). */
+  /** Kontaktversatz reiner Werfer (Welteinheiten entlang −Licht-Y; Schatten beginnt unter dem Fuß, 0 = aus). */
   shift: number;
   /** Empfängerebenen-Bias (Taps folgen der Facette); aus = alter symmetrischer Kernel-Bias. */
   planeBias: boolean;
@@ -95,7 +95,7 @@ export const DEFAULT_SHADOW_PARAMS: ShadowLabParams = {
   slopeBias: 0.04,
   grazingBias: 0.006,
   dilation: 0.6,
-  shift: 1,
+  shift: 0.03,
   planeBias: true,
   baseBias: 0.25,
   gap: 0.35,
@@ -649,10 +649,11 @@ export class ShadowLabScene implements SceneController {
   // --- Messungen ---------------------------------------------------------------------------------------------
 
   /**
-   * Schattenpass-Kosten (WebGPU): `frames`-mal rendern, je einmal mit erzwungenem Pass aller Kaskaden und einmal ohne,
-   * jeweils bis die GPU fertig ist; Differenz der Mittelwerte = ms je Schattenpass (GPU + Encode). Null auf WebGL2.
+   * Schattenpass-Kosten (WebGPU): je Probe `batch` Renders mit erzwungenem Pass aller Kaskaden und `batch` ohne, jeweils
+   * bis die GPU fertig ist, abwechselnd (gegen Takt- und Wärmedrift); Median der Differenz / batch = ms je Schattenpass
+   * (GPU + Encode der Kaskaden). Null auf WebGL2.
    */
-  async benchShadowPass(frames = 24): Promise<{ withPass: number; without: number; pass: number } | null> {
+  async benchShadowPass(samples = 15, batch = 8): Promise<{ withPass: number; without: number; pass: number } | null> {
     const ctx = this.ctx;
     const world = this.world;
     if (!ctx || !world) return null;
@@ -661,25 +662,29 @@ export class ShadowLabScene implements SceneController {
     this.benchRunning = true;
     try {
       const run = async (withPass: boolean): Promise<number> => {
-        const times: number[] = [];
-        for (let i = 0; i < frames + 3; i++) {
-          if (withPass) world.markShadowDirty();
-          this.frameWorld();
-          await device.queue.onSubmittedWorkDone();
-          const t0 = performance.now();
+        this.frameWorld();
+        await device.queue.onSubmittedWorkDone();
+        const t0 = performance.now();
+        for (let i = 0; i < batch; i++) {
+          if (withPass) world.sun.requestUpdate();
           ctx.renderer.render(world.scene, world.camera);
-          await device.queue.onSubmittedWorkDone();
-          if (i >= 3) times.push(performance.now() - t0);
         }
-        times.sort((a, b) => a - b);
-        return times[Math.floor(times.length / 2)]!;
+        await device.queue.onSubmittedWorkDone();
+        return (performance.now() - t0) / batch;
       };
-      const without = await run(false);
-      const withPass = await run(true);
-      const without2 = await run(false);
-      const base = Math.min(without, without2);
-      this.shadowPassMs = Math.max(0, withPass - base);
-      return { withPass, without: base, pass: this.shadowPassMs };
+      await run(true);
+      await run(false);
+      const a: number[] = [];
+      const b: number[] = [];
+      for (let k = 0; k < samples; k++) {
+        a.push(await run(true));
+        b.push(await run(false));
+      }
+      const median = (v: number[]) => [...v].sort((x, y) => x - y)[Math.floor(v.length / 2)]!;
+      const withPass = median(a);
+      const without = median(b);
+      this.shadowPassMs = Math.max(0, withPass - without);
+      return { withPass, without, pass: this.shadowPassMs };
     } finally {
       this.benchRunning = false;
     }

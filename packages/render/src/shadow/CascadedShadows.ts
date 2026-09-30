@@ -114,7 +114,10 @@ export interface CascadedShadowsOptions {
   casterOffset?: number;
   /** Aufweitung reiner Werfer im Schattenpass (Texel je Seite, Standard 0,6 → dünne Werfer ≥ 1,2 Texel breit). */
   casterDilation?: number;
-  /** Kontaktversatz reiner Werfer (Texel entlang −Licht-Y, Standard 1). */
+  /**
+   * Kontaktversatz reiner Werfer entlang −Licht-Y in Welteinheiten (Standard 0,03, mindestens ein Texel): schließt die
+   * Lichtlücke unter Werfern, die bis zu diesem Maß über dem gerenderten Gelände stehen.
+   */
   casterShift?: number;
   /**
    * Empfängerebenen-Bias (Standard an). `false` kompiliert den alten symmetrischen Kernel-Bias ein (A/B-Vergleich im Lab;
@@ -193,9 +196,9 @@ interface CascadeEntry {
   selfBias: SelfShadowBias;
   /**
    * Werfer-Transformation reiner Werfer im Schattenpass (Welteinheiten): x, y = Aufweitung entlang Licht-X/-Y,
-   * z = Kontaktversatz entlang −Licht-Y (Schatten rutscht unter den Fuß).
+   * z = Kontaktversatz entlang −Licht-Y (Schatten rutscht unter den Fuß), w = Kontakthub zur Sonne (Tiefe).
    */
-  casterXf: UniformNode<'vec3', Vector3>;
+  casterXf: UniformNode<'vec4', Vector4>;
   /** Vorab angelegte Tiefenkarte (gehört dieser Klasse; die `ShadowNode` rendert hinein). */
   target: RenderTarget | null;
   depth: DepthTexture | null;
@@ -255,7 +258,7 @@ class TerminatorShadowNode extends ShadowNode {
     private readonly selfBias: SelfShadowBias,
     private readonly casters: CasterSettings,
     private readonly axes: Pick<ShadowFrameUniforms, 'axisX' | 'axisY' | 'axisL'>,
-    private readonly casterXf: UniformNode<'vec3', Vector3>,
+    private readonly casterXf: UniformNode<'vec4', Vector4>,
     private readonly owned: { target: RenderTarget; depth: DepthTexture },
   ) {
     super(light, shadow);
@@ -283,7 +286,8 @@ class TerminatorShadowNode extends ShadowNode {
    * `dilate`) − Kontaktversatz entlang Licht-Y. Beides liegt in der Lichtebene → die Tiefe bleibt unverändert.
    *
    * Der Versatz schiebt den Werfer im Lichtbild um `shift` nach unten (Richtung Boden, quer zur Sonne): sein Schatten
-   * rutscht auf dem Boden um shift / sin(Sonnenhöhe) auf den Werfer zu. Das schließt die Lücke zwischen Fuß und
+   * rutscht auf dem Boden um shift / sin(Sonnenhöhe) auf den Werfer zu (0,03 → 0,17 Einheiten). Das schließt die Lücke
+   * zwischen Fuß und
    * Schattenbeginn, die sonst entsteht, wenn der Werfer eine Spur über dem gerenderten Gelände steht (analytischer Fuß
    * vs. facettiertes Gelände: 1 cm Schweben = 6 cm Lichtspalt bei 10° Sonne) oder die Kante am Linienende rundet.
    * Vor dem Werfer (sonnenseitig) entsteht kein Schatten — der Tiefentest schützt den näheren Boden.
@@ -291,11 +295,13 @@ class TerminatorShadowNode extends ShadowNode {
   private casterClip(dilate: boolean): Vec4Node {
     const X = this.axes.axisX as unknown as Vec3Node;
     const Y = this.axes.axisY as unknown as Vec3Node;
-    const xf = this.casterXf as unknown as Vec3Node;
-    let off: Vec3Node = Y.mul(xf.z.negate()) as unknown as Vec3Node;
+    const xf = this.casterXf as unknown as Vec4Node;
+    const L = this.axes.axisL as unknown as Vec3Node;
+    // Versatz Richtung Boden (Lichtbild) + Hub zur Sonne (Tiefe): am Fuß registrieren auch die sonnenseitigen Taps den
+    // Werfer, das Linienende rundet nicht mehr vor dem Fuß ab (dünne Linien: Feld am Fuß ≈ ¾ · ½ < 0,5)
+    let off: Vec3Node = Y.mul(xf.z.negate()).add(L.mul(xf.w)) as unknown as Vec3Node;
     if (dilate) {
       const n = normalWorldGeometry as unknown as Vec3Node;
-      const L = this.axes.axisL as unknown as Vec3Node;
       const np = n.sub(L.mul(n.dot(L)));
       const len = np.length();
       const dir = np.div(len.max(1e-5)).mul(step(1e-4, len));
@@ -497,7 +503,7 @@ export class CascadedShadows {
   casterOffset: number;
   /** Glatte Terminator-Silhouetten und Werfer-Aufweitung im Schattenpass (live umschaltbar, ab dem nächsten Pass). */
   readonly casterSettings: CasterSettings = { smooth: true, dilate: true, shift: true };
-  /** Kontaktversatz reiner Werfer (Texel entlang −Licht-Y), live änderbar. */
+  /** Kontaktversatz reiner Werfer (Welteinheiten entlang −Licht-Y, mindestens ein Texel), live änderbar. */
   casterShift: number;
 
   constructor(
@@ -508,7 +514,7 @@ export class CascadedShadows {
     this.blend = options.blend ?? 0.14;
     this.casterOffset = options.casterOffset ?? 0.04;
     this.casterDilation = options.casterDilation ?? 0.6;
-    this.casterShift = options.casterShift ?? 1;
+    this.casterShift = options.casterShift ?? 0.03;
     this.casterSettings.smooth = options.smoothCasters ?? true;
     const shared = createShadowFrameUniforms();
     this.axes = { axisX: shared.axisX, axisY: shared.axisY, axisL: shared.axisL, grazing: shared.grazing, baseBias: shared.baseBias };
@@ -547,7 +553,7 @@ export class CascadedShadows {
     const light = new CascadeLight(shadow);
     light.name = `EarleCascade${this.cascades.length}`;
     const selfBias: SelfShadowBias = { slopeScale: 0, units: 0 };
-    const casterXf = uniform(new Vector3(0, 0, 0));
+    const casterXf = uniform(new Vector4(0, 0, 0, 0));
     let target: RenderTarget | null = null;
     let depth: DepthTexture | null = null;
     let node: Node;
@@ -1028,8 +1034,9 @@ export class CascadedShadows {
   }
 
   /**
-   * Kontakt-Einstellungen (live): Werfer-Aufweitung (Texel je Seite, 0 = aus), Kontaktversatz (Texel entlang −Licht-Y,
-   * 0 = aus), Grundbias (Anteil einer mittleren Texelkante). Der Empfängerebenen-Bias ist eine Bau-Option (`planeBias`).
+   * Kontakt-Einstellungen (live): Werfer-Aufweitung (Texel je Seite, 0 = aus), Kontaktversatz (Welteinheiten entlang
+   * −Licht-Y, mindestens ein Texel, 0 = aus), Grundbias (Anteil einer mittleren Texelkante). Der Empfängerebenen-Bias
+   * ist eine Bau-Option (`planeBias`).
    */
   setContact(options: { dilation?: number; shift?: number; baseBias?: number }): void {
     if (options.dilation !== undefined) {
@@ -1057,7 +1064,9 @@ export class CascadedShadows {
   /** Werfer-Transformation einer Kaskade aus ihrer Texelgröße (Aufweitung x/y, Kontaktversatz z). */
   private applyCasterXf(c: CascadeEntry): void {
     const t = c.frame.texel.value;
-    c.casterXf.value.set(this.casterDilation * t.x, this.casterDilation * t.y, this.casterShift * t.y);
+    // Hub zur Sonne: Tiefenänderung des Bodens über zwei Texel entlang der Sonne (t.y / tan θ je Texel), höchstens 4 cm
+    const lift = this.casterShift > 0 ? Math.min(0.04, (2 * t.y) / Math.max(0.05, Math.tan(this.elevationRad))) : 0;
+    c.casterXf.value.set(this.casterDilation * t.x, this.casterDilation * t.y, this.casterShift > 0 ? Math.max(this.casterShift, t.y) : 0, lift);
   }
 
   get grazingBias(): number {
