@@ -75,6 +75,18 @@ export interface CascadeSize {
   height: number;
 }
 
+/**
+ * Verzug zwischen Blick- und Schattenraum (unendliche Ebene, ADR 0002): Die Kamera sieht die Anzeigekugel, die Schatten
+ * liegen in der flachen Ebene. Abtaststrahlen laufen im Anzeigeraum; ihre Empfängerpunkte werden mit `toShadow` in den
+ * Schattenraum gelegt, bevor die Kaskaden sie umranden. Empfänger-Volumen liegen im Schattenraum.
+ */
+export interface ShadowSpaceWarp {
+  /** Anzeigeraum → Schattenraum (an Ort und Stelle). */
+  toShadow(p: Vector3): Vector3;
+  /** Schattenraum → Anzeigeraum (an Ort und Stelle). */
+  toView(p: Vector3): Vector3;
+}
+
 export interface FitInput {
   camera: PerspectiveCamera;
   /** Zeichenpuffer in Pixeln (für die Pixel-je-Texel-Schätzung). */
@@ -105,8 +117,10 @@ export interface FitInput {
   keepPsi?: boolean;
   /** Texelgrößen der feinen Kaskaden festhalten (Rollen): Gitter bleibt stehen, Rechtecke werden nur verschoben. */
   lockTexels?: boolean;
-  /** Empfänger über dem Boden (Welt-Kugeln), zusätzlich zum Bodenfokus. */
+  /** Empfänger über dem Boden (Welt-Kugeln, Schattenraum), zusätzlich zum Bodenfokus. */
   volumes?: ReceiverVolume[] | null;
+  /** Verzug Blick- ↔ Schattenraum (null = gleicher Raum). */
+  warp?: ShadowSpaceWarp | null;
 }
 
 export interface CascadeFit {
@@ -162,6 +176,8 @@ const _n = new Vector3();
 const _g = new Vector3();
 const _vp = new Matrix4();
 const _sph = new Sphere();
+const _w = new Vector3();
+const _wv = new Vector3();
 
 function emptyCascade(): CascadeFit {
   return { active: false, x0: 0, x1: 1, y0: 0, y1: 1, texelX: 1, texelY: 1, near: 0.1, far: 1, split: 0, pxPerTexel: 0 };
@@ -265,14 +281,24 @@ export class CascadeFitter {
   /** Kamerafrustum des laufenden Fits (Sichtbarkeit der Empfänger-Volumen). */
   private readonly frustum = new Frustum();
 
+  private warp: ShadowSpaceWarp | null = null;
+
+  /** Punkt des Schattenraums → Blickraum (ohne Verzug unverändert). */
+  private view(p: Vector3, out: Vector3): Vector3 {
+    out.copy(p);
+    return this.warp ? this.warp.toView(out) : out;
+  }
+
   private volumeVisible(v: ReceiverVolume): boolean {
-    _sph.center.copy(v.center);
+    this.view(v.center, _sph.center);
     _sph.radius = v.radius;
     return this.frustum.intersectsSphere(_sph);
   }
 
   fit(input: FitInput, out: FitResult): FitResult {
     const cam = input.camera;
+    this.warp = input.warp ?? null;
+    const warp = this.warp;
     const n = input.sizes.length;
     while (out.cascades.length < n) out.cascades.push(emptyCascade());
     out.cascades.length = n;
@@ -301,6 +327,7 @@ export class CascadeFitter {
       cx1 = cy1 = -Infinity;
       for (let i = 0; i < 8; i++) {
         _q.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).applyMatrix4(_vp);
+        if (warp) warp.toShadow(_q);
         const x = _q.dot(X0);
         const y = _q.dot(Y0);
         cx0 = Math.min(cx0, x);
@@ -311,6 +338,7 @@ export class CascadeFitter {
     }
     const ox0 = _o.dot(X0);
     const oy0 = _o.dot(Y0);
+    const clipWarped = !!(input.clip && warp);
 
     // --- 1) Abtaststrahlen durch den Bildschirm, je Strahl das Empfängerintervall [ta, tb] ----------------
     let rays = 0;
@@ -352,8 +380,8 @@ export class CascadeFitter {
           tb = Math.min(tb, Math.max(t0, t1));
         }
       }
-      if (input.clip) {
-        // Prisma-Test im Lichtraum: zwei Platten (X0, Y0), entlang L unbegrenzt
+      if (input.clip && !warp) {
+        // Prisma-Test im Lichtraum: zwei Platten (X0, Y0), entlang L unbegrenzt (mit Verzug: Klemmen der Endpunkte in 4)
         const slabs: Array<[number, number, number, number]> = [
           [ox0, _d.dot(X0), cx0, cx1],
           [oy0, _d.dot(Y0), cy0, cy1],
@@ -452,7 +480,7 @@ export class CascadeFitter {
       const vols = input.volumes;
       if (vols) {
         for (const v of vols) {
-          const h = raySphere(_o, _d, v.center, v.radius);
+          const h = raySphere(_o, _d, this.view(v.center, _wv), v.radius);
           if (!h || h[1] <= ta || h[0] >= tb) continue;
           const v0 = Math.max(ta, h[0]);
           const v1 = Math.min(tb, h[1]);
@@ -518,7 +546,9 @@ export class CascadeFitter {
       const t = input.shell?.surface ? this.tg[i]! : this.ta[i]!;
       _p.set(_o.x + this.dx[i]! * t, _o.y + this.dy[i]! * t, _o.z + this.dz[i]! * t);
       this.mDepth[i] = t * this.cos[i]!;
-      if (input.shell) _n.copy(_p).sub(input.shell.center).normalize();
+      // Bodennormale im Schattenraum (flache Ebene: oben; Kugel/Bühne wie bisher)
+      if (warp) _n.copy(input.upRef);
+      else if (input.shell) _n.copy(_p).sub(input.shell.center).normalize();
       else if (input.slab) _n.copy(input.slab.normal);
       else _n.copy(input.upRef);
       const ln = Math.max(0.08, L.dot(_n));
@@ -526,10 +556,14 @@ export class CascadeFitter {
       toPx(_p, _q);
       const sx = _q.x;
       const sy = _q.y;
-      // Bodenverschiebung für einen Lichtraum-Schritt e: g = e − L (e·n)/(L·n)
+      // Bodenpunkt im Schattenraum (Ausgang der Schritte)
+      _w.copy(_p);
+      if (warp) warp.toShadow(_w);
+      // Bodenverschiebung für einen Lichtraum-Schritt e: g = e − L (e·n)/(L·n) (Schattenraum), dann zurück in den Blick
       for (let a = 0; a < 2; a++) {
         const e = a === 0 ? X0 : Y0;
-        _g.copy(e).addScaledVector(L, -e.dot(_n) / ln).multiplyScalar(h).add(_p);
+        _g.copy(e).addScaledVector(L, -e.dot(_n) / ln).multiplyScalar(h).add(_w);
+        if (warp) warp.toView(_g);
         toPx(_g, _g);
         const gx = (_g.x - sx) / h;
         const gy = (_g.y - sy) / h;
@@ -554,12 +588,13 @@ export class CascadeFitter {
         const tb = Math.min(cover ? this.cb[i]! : this.gb[i]!, lim / c);
         if (!(ta < tb)) continue;
         for (const t of [ta, tb]) {
-          const x = _o.x + this.dx[i]! * t;
-          const y = _o.y + this.dy[i]! * t;
-          const z = _o.z + this.dz[i]! * t;
-          this.px[m] = x * X0.x + y * X0.y + z * X0.z;
-          this.py[m] = x * Y0.x + y * Y0.y + z * Y0.z;
-          this.pz[m] = x * L.x + y * L.y + z * L.z;
+          _w.set(_o.x + this.dx[i]! * t, _o.y + this.dy[i]! * t, _o.z + this.dz[i]! * t);
+          if (warp) warp.toShadow(_w);
+          // Verzug + Clip-Box: Endpunkte im Schattenraum auf das Prisma der Box klemmen (der Strahltest oben liefe im
+          // Anzeigeraum)
+          this.px[m] = clipWarped ? Math.min(cx1, Math.max(cx0, _w.dot(X0))) : _w.dot(X0);
+          this.py[m] = clipWarped ? Math.min(cy1, Math.max(cy0, _w.dot(Y0))) : _w.dot(Y0);
+          this.pz[m] = _w.dot(L);
           m++;
         }
       }
@@ -571,10 +606,18 @@ export class CascadeFitter {
           if (!this.gHit[i]) continue;
           const t = this.tg[i]!;
           _p.set(_o.x + this.dx[i]! * t, _o.y + this.dy[i]! * t, _o.z + this.dz[i]! * t);
-          _n.copy(_p).sub(center).normalize();
-          _p.addScaledVector(_n, above);
-          const depth = _q.copy(_p).sub(_o).dot(_f);
-          if (depth <= near || depth > lim) continue;
+          if (warp) {
+            // Ebene: Boden + oben (Schattenraum); Blicktiefe des gehobenen Punkts aus dem Anzeigeraum
+            warp.toShadow(_p);
+            _p.y += above;
+            const depth = this.view(_p, _q).sub(_o).dot(_f);
+            if (depth <= near || depth > lim) continue;
+          } else {
+            _n.copy(_p).sub(center).normalize();
+            _p.addScaledVector(_n, above);
+            const depth = _q.copy(_p).sub(_o).dot(_f);
+            if (depth <= near || depth > lim) continue;
+          }
           this.px[m] = _p.dot(X0);
           this.py[m] = _p.dot(Y0);
           this.pz[m] = _p.dot(L);
@@ -684,7 +727,7 @@ export class CascadeFitter {
       if (input.volumes) {
         for (const v of input.volumes) {
           if (!this.volumeVisible(v)) continue;
-          const dc = _q.copy(v.center).sub(_o).dot(_f);
+          const dc = this.view(v.center, _q).sub(_o).dot(_f);
           if (dc + v.radius < near || (k < n - 1 && dc - v.radius > cf.split)) continue;
           const px0 = v.center.dot(X0);
           const py0 = v.center.dot(Y0);

@@ -12,24 +12,19 @@ import {
   StaticDrawUsage,
   Vector3,
 } from 'three/webgpu';
-import type { Camera, Frustum, Material, UniformNode } from 'three/webgpu';
-import { abs, mix, step, uniform, uniformArray } from 'three/tsl';
+import type { Camera, Frustum, Material, Object3D, UniformNode } from 'three/webgpu';
+import { abs, clamp, mix, step, uniform, uniformArray } from 'three/tsl';
 import {
   HEAL_SPAN,
   NEVER_HEALS,
-  TrashPlanner,
-  chunkAngularRadius,
-  chunkDirection,
-  chunkKey,
-  chunkList,
+  PlaneTrashPlanner,
   healAmount,
-  type ChunkId,
-  type ChunkTrash,
-  type VeilSpore,
-  type PlanetField,
-  type SpiralPath,
+  type PlaneChunkTrash,
+  type PlaneField,
+  type PlaneTrashNode,
   type TrashItem,
   type TrashSpec,
+  type VeilSpore,
   type Vec3,
 } from '@ee/world';
 import { PaletteLookup, arrayElement, type FloatNode, type FogSettings, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
@@ -37,21 +32,24 @@ import { TrashPalette, isTrashStyle, type TrashMaterialName, type TrashStyle, ty
 import { createBigTrashGeometry, createBlockGeometry, createGooGeometry, createHexDot, createRingGeometry, createTubeGeometry } from './geometry';
 import { createBigMaterial, createDebrisMaterial, createGooMaterial, createSporeMaterial, createVeilMaterial, type TrashShaderContext } from './shaders';
 
-/** Was der Müll vom Planeten braucht (passt strukturell auf `EarlePlanet`). */
+/** Was der Müll von der unendlichen Welt braucht (passt strukturell auf `EarlePlanet`). */
 export interface TrashPlanetLike {
-  readonly field: PlanetField;
-  readonly path: SpiralPath;
+  readonly field: PlaneField;
   readonly lookup: PaletteLookup;
   readonly fog: FogSettings;
-  readonly options: { radius: number; chunksPerFace: number };
   readonly veilDistance: TSLUniform;
   readonly viewWorld: number;
   readonly viewBlending: boolean;
   readonly terrainBands: TSLUniform;
-  /** Blickpunkt-Richtung im Planetenraum (Zentrum des Krümmungs-Warps; Tangentialebene der Schwaden). */
-  readonly lookDirLocal: { value: Vector3 };
+  /** Autorenwelten (Tinte je Welt: Eigen- und Schlagschatten eine Form). */
   readonly worlds: ReadonlyArray<{ palette: { ink: string } }>;
-  bendNode(p: Vec3Node): Vec3Node;
+  readonly options: { radius: number };
+  readonly mapping: { warp(p: Vec3Node): Vec3Node; toFlatCpu(p: Vector3, out?: Vector3): Vector3 };
+  readonly focus: { readonly x: number; readonly z: number };
+  /** Sichtbare Chunks des letzten Frames (Ebene), die nächsten zuerst. */
+  readonly viewChunks: ReadonlyArray<{ cx: number; cz: number; dist: number }>;
+  anchorObject(object: Object3D, x: number, z: number): void;
+  releaseObject(object: Object3D): void;
 }
 
 /** Müll-Abschnitt einer Welt plus Stil der Palette. */
@@ -63,15 +61,16 @@ export type TrashQuality = 'hoch' | 'mobil';
 
 export interface TrashFieldOptions {
   planet: TrashPlanetLike;
-  /** Müll je Welt-Index (fehlt = sauber). */
+  /** Müll je Autorenwelt (fehlt = sauber); prozedurale Welten und ferne Seitenzellen sind sauber. */
   specs: ReadonlyArray<TrashWorldSpec | undefined>;
   quality: TrashQuality;
   seed: number;
-  nodesPerZone: number;
+  /** Knoten des endgültigen Levelpfads in einem z-Bereich (Heilschwellen, Freiraum). */
+  nodes: (z0: number, z1: number) => ReadonlyArray<PlaneTrashNode>;
   /** Dichtefaktor (Lab-Regler „Müll“, 1 = Inhalt). */
   densityScale?: number;
   /** Geländemaske (Wasser, Felswände): true = hier liegt kein Müll. */
-  isBlocked?: (dx: number, dy: number, dz: number) => boolean;
+  isBlocked?: (x: number, z: number) => boolean;
   /** Dauer der Heil-Feier in Sekunden (Standard 3.2). */
   celebrate?: number;
 }
@@ -92,13 +91,16 @@ interface QualityCaps {
   collapsePx: number;
 }
 
+// Ebenen-Chunks sind 16 × 16 Einheiten (kleiner als die alten Würfel-Chunks): mehr Chunks, feineres Schleiergitter
 const CAPS: Record<TrashQuality, QualityCaps> = {
-  hoch: { big: 56, tube: 1800, ring: 800, block: 1500, goo: 240, spores: 5200, nearChunks: 6, debrisScale: 1, veilLayers: 3, veilRes: 17, veilChunks: 16, collapsePx: 0.75 },
-  mobil: { big: 36, tube: 900, ring: 420, block: 780, goo: 150, spores: 2200, nearChunks: 4, debrisScale: 0.6, veilLayers: 2, veilRes: 13, veilChunks: 12, collapsePx: 1.2 },
+  hoch: { big: 56, tube: 1800, ring: 800, block: 1500, goo: 240, spores: 5200, nearChunks: 16, debrisScale: 1, veilLayers: 3, veilRes: 9, veilChunks: 44, collapsePx: 0.75 },
+  mobil: { big: 36, tube: 900, ring: 420, block: 780, goo: 150, spores: 2200, nearChunks: 10, debrisScale: 0.6, veilLayers: 2, veilRes: 7, veilChunks: 30, collapsePx: 1.2 },
 };
 
 /** Ruinen: eigene Proportionen (Breite, Tiefe relativ zur Höhe) → Instanz gleichmäßig skaliert. */
 const RUIN_UNIFORM = true;
+/** Periode der Schwaden-Koordinaten (Anker der Puffer modulo): kein Sprung beim Neuaufbau. */
+const PATTERN_PERIOD = 4096;
 
 type MeshKind = 'big' | 'tube' | 'ring' | 'block' | 'goo';
 
@@ -112,16 +114,14 @@ const _s = new Vector3();
 const _v = new Vector3();
 const _c = new Vector3();
 const _axis = new Vector3();
-const _sphere = new Sphere();
-const _inv = new Matrix4();
 
 /**
- * Müll v2 auf dem Planeten: Müllberge und Ruinen (ein Mesh, Teilform je Instanz), Kleinteile (Röhren, Ringe,
- * Blöcke), Neon-Pfützen, Sporen (Gasquellen-Säulen, schwebend im Schleier, Heil-Ausbrüche) und der neongrüne
- * Nebelschleier in Lagen. Streamt chunkweise wie der Planet (eigene Sichtbarkeit), schreibt Instanzpuffer nur beim
- * Wechsel der sichtbaren Chunks. Fortschritt: `setProgress(geschaffte Knoten)`; ein Anstieg um wenige Knoten wird als
- * kleine Feier animiert (Neon erlischt, Schleier reißt auf, Müll sinkt ein, Sporen steigen als helle Punkte auf).
- * Sieben Draw Calls im Hauptpass, vier Schattenwerfer.
+ * Müll v2 auf der unendlichen Ebene (ADR 0002): Müllberge und Ruinen (ein Mesh, Teilform je Instanz), Kleinteile
+ * (Röhren, Ringe, Blöcke), Neon-Pfützen, Sporen (Gasquellen-Säulen, schwebend im Schleier, Heil-Ausbrüche) und der
+ * neongrüne Nebelschleier in Lagen. Streamt mit den sichtbaren Chunks der Welt, schreibt Instanzpuffer nur beim Wechsel
+ * (relativ zu einem Anker: schwebender Ursprung), jede Position läuft durch die Anzeige-Abbildung. Fortschritt:
+ * `setProgress(geschaffte Knoten)`; ein Anstieg um wenige Knoten wird als kleine Feier animiert (Neon erlischt, Schleier
+ * reißt auf, Müll sinkt ein, Sporen steigen als helle Punkte auf). Sieben Draw Calls im Hauptpass, vier Schattenwerfer.
  */
 export class TrashField {
   readonly group = new Group();
@@ -155,13 +155,12 @@ export class TrashField {
   private readonly veilGeometry: BufferGeometry;
   private readonly geometries: BufferGeometry[] = [];
   private readonly materials: Material[] = [];
-  private readonly ids: ChunkId[];
-  private readonly centres: Vector3[];
-  private readonly angular: number;
-  private readonly cache = new Map<string, ChunkTrash>();
-  private planner: TrashPlanner | null = null;
-  private pathRef: SpiralPath | null = null;
+  private readonly cache = new Map<string, PlaneChunkTrash>();
+  private planner: PlaneTrashPlanner | null = null;
   private densityScale: number;
+  /** Anker der Puffer (Ebene, ganzzahlig): Instanzpositionen bleiben kleine Zahlen. */
+  private readonly anchor = { x: 0, z: 0 };
+  private readonly patternOffset = uniform(new Vector3());
   private active: string[] = [];
   private readonly lastWanted = new Map<string, number>();
   private nearSet = new Set<string>();
@@ -176,7 +175,6 @@ export class TrashField {
   private progressFloor = 0;
   private anim: { from: number; to: number; t: number; duration: number } | null = null;
   private lastViewB = -1;
-  private readonly veilRadius: number;
   private readonly veilHeightsDefault = [0.55, 1.0, 1.45];
 
   constructor(readonly options: TrashFieldOptions) {
@@ -185,15 +183,6 @@ export class TrashField {
     this.collapsePx.value = this.caps.collapsePx;
     this.densityScale = options.densityScale ?? 1;
     const planet = options.planet;
-    const cpf = planet.options.chunksPerFace;
-    this.ids = chunkList(cpf);
-    this.centres = this.ids.map((id) => {
-      const d: Vec3 = [0, 0, 0];
-      chunkDirection(id, cpf, 0, 0, d);
-      return new Vector3(d[0], d[1], d[2]);
-    });
-    this.angular = chunkAngularRadius(cpf);
-    this.veilRadius = planet.options.radius;
 
     // Paletten je Welt mit Müll (Tinte = Tinte der Welt → Eigen- und Schlagschatten eine Form)
     this.worldRows = planet.worlds.map((w, i) => {
@@ -213,6 +202,10 @@ export class TrashField {
     const mossTable = table((r) => r.mossRow);
     const bloomTable = table((r) => r.rows.bloom);
     const snowTable = table((r) => (r.snow ? 1 : 0));
+    // Welten ohne Müll (prozedural, Seitenzellen) tragen keine Instanzen; Schleier-Vertices dort haben Stärke 0 — ihre
+    // Tabellenzugriffe bleiben trotzdem im Bereich
+    const nWorlds = Math.max(1, planet.worlds.length);
+    const lookupWorld = (w: FloatNode): FloatNode => clamp(w, 0, nWorlds - 1) as unknown as FloatNode;
 
     const fog = planet.fog;
     const foreign = (w: FloatNode): FloatNode => mix(step(0.5, abs(w.sub(this.viewA))), step(0.5, abs(w.sub(this.viewB))), fog.mix).mul(step(0.01, planet.veilDistance));
@@ -227,17 +220,19 @@ export class TrashField {
       nearClear: this.nearClear,
       footClear: this.footClear,
       collapsePx: this.collapsePx,
-      warp: (p) => planet.bendNode(p),
+      warp: (p) => planet.mapping.warp(p),
       veil: (w) => foreign(w).mul(planet.veilDistance),
       foreign,
-      neonRow: (w) => arrayElement(neonTable, w),
-      mossRow: (w) => arrayElement(mossTable, w),
-      bloomRow: (w) => arrayElement(bloomTable, w),
-      snowWorld: (w) => arrayElement(snowTable, w),
+      neonRow: (w) => arrayElement(neonTable, lookupWorld(w)),
+      mossRow: (w) => arrayElement(mossTable, lookupWorld(w)),
+      bloomRow: (w) => arrayElement(bloomTable, lookupWorld(w)),
+      snowWorld: (w) => arrayElement(snowTable, lookupWorld(w)),
       neonScale: this.neonScale,
       veilScale: this.veilScale,
       wispAcross: this.wispAcross as unknown as UniformNode<'vec3', Vector3>,
       wispAlong: this.wispAlong as unknown as UniformNode<'vec3', Vector3>,
+      planar: true,
+      patternOffset: this.patternOffset as unknown as UniformNode<'vec3', Vector3>,
     };
 
     const makeInstanced = (name: string, geometry: BufferGeometry, material: Material, cap: number, shadows: boolean, withAxis: boolean): InstancedMesh => {
@@ -306,7 +301,7 @@ export class TrashField {
       g.setDrawRange(0, 0);
       g.boundingSphere = new Sphere(new Vector3(), planet.options.radius * 2);
       this.veilGeometry = g;
-      const material = createVeilMaterial(ctx, this.veilRadius);
+      const material = createVeilMaterial(ctx, planet.options.radius);
       this.veil = new Mesh(g, material);
       this.veil.name = 'trash-veil';
       this.veil.frustumCulled = false;
@@ -317,6 +312,8 @@ export class TrashField {
       this.materials.push(material);
       this.group.add(this.veil);
     }
+    // Schwebender Ursprung: die Gruppe steht im flachen Raum der Welt am Anker der Puffer
+    planet.anchorObject(this.group, 0, 0);
   }
 
   // --- öffentliche Steuerung -------------------------------------------------------------------------------
@@ -413,21 +410,20 @@ export class TrashField {
   // --- je Frame ----------------------------------------------------------------------------------------------
 
   /**
-   * Einmal pro Frame nach dem Planeten: Sichtbarkeit, Planung neuer Chunks (höchstens einer je Frame), Puffer bei
-   * Wechsel, Kamera-Uniforms, Heil-Animation. Liefert true, wenn der Schattenpass neu laufen muss.
+   * Einmal pro Frame nach der Welt: sichtbare Chunks (dieselben wie die Welt), Planung neuer Chunks (höchstens zwei je
+   * Frame), Puffer bei Wechsel, Kamera-Uniforms, Heil-Animation. Liefert true, wenn der Schattenpass neu laufen muss.
    */
-  update(camera: Camera, cameraWorld: Vector3, planetMatrixWorld: Matrix4, frustum: Frustum, dt: number): boolean {
+  update(camera: Camera, cameraWorld: Vector3, frustum: Frustum, dt: number): boolean {
+    void frustum;
     this.frame++;
     const planet = this.options.planet;
     let shadow = false;
-    // Planer (neu, wenn der Pfad getauscht wurde, z. B. der Abschnitt über den Riesenbaum)
-    if (!this.planner || this.pathRef !== planet.path) {
-      this.pathRef = planet.path;
-      this.planner = new TrashPlanner({
+    if (!this.planner) {
+      const specs = this.options.specs;
+      this.planner = new PlaneTrashPlanner({
         field: planet.field,
-        nodes: planet.path.nodes,
-        specs: this.options.specs,
-        nodesPerZone: this.options.nodesPerZone,
+        nodes: this.options.nodes,
+        spec: (w) => (w >= 0 && w < specs.length ? specs[w] : undefined),
         seed: this.options.seed,
         densityScale: this.densityScale,
         debrisScale: this.caps.debrisScale,
@@ -439,41 +435,29 @@ export class TrashField {
     }
     const planner = this.planner;
 
-    // Sichtbare Chunks (gleiches Kriterium wie der Planet)
-    const R = planet.options.radius;
-    const camDist = cameraWorld.length();
-    const horizon = Math.acos(Math.min(1, R / Math.max(R + 0.01, camDist)));
-    const limit = Math.cos(Math.min(Math.PI, horizon + this.angular + (6 * Math.PI) / 180));
-    const camDir = _c.copy(cameraWorld).normalize();
-    const sphereR = R * Math.sin(this.angular) + Math.max(4, this.hMax) + 1;
-    const wanted: Array<{ key: string; index: number; angle: number }> = [];
-    for (let i = 0; i < this.ids.length; i++) {
-      const dirWorld = _v.copy(this.centres[i]!).transformDirection(planetMatrixWorld);
-      const facing = dirWorld.dot(camDir);
-      if (facing < limit) continue;
-      _sphere.center.copy(dirWorld).multiplyScalar(R);
-      _sphere.radius = sphereR;
-      if (!frustum.intersectsSphere(_sphere)) continue;
-      wanted.push({ key: chunkKey(this.ids[i]!), index: i, angle: Math.acos(Math.min(1, facing)) });
-    }
-    wanted.sort((a, b) => a.angle - b.angle);
-    // Planung: der nächste fehlende Chunk (am Anfang zwei)
-    let plans = this.cache.size === 0 ? 2 : 1;
+    // Sichtbare Chunks (dieselbe Auswahl wie die Welt, die nächsten zuerst)
+    const wanted = planet.viewChunks.map((c) => ({ key: `${c.cx}:${c.cz}`, cx: c.cx, cz: c.cz }));
+    // Planung: die nächsten fehlenden Chunks (am Anfang mehr)
+    let plans = this.cache.size === 0 ? 6 : 2;
     for (const w of wanted) {
       if (plans <= 0) break;
       if (this.cache.has(w.key)) continue;
-      this.cache.set(w.key, planner.chunk(this.ids[w.index]!));
+      this.cache.set(w.key, planner.chunk(w.cx, w.cz));
       plans--;
-      if (this.cache.size > 80) {
-        const oldest = this.cache.keys().next().value;
-        if (oldest !== undefined && !wanted.some((x) => x.key === oldest)) this.cache.delete(oldest);
+      if (this.cache.size > 200) {
+        for (const k of this.cache.keys()) {
+          if (wanted.some((x) => x.key === k)) continue;
+          this.cache.delete(k);
+          break;
+        }
       }
     }
-    // Hysterese: ein Chunk bleibt 30 Frames aktiv, nachdem er aus dem Bild fiel, und bleibt „nah“, solange er unter den
+    // Hysterese: ein Chunk bleibt 30 Frames aktiv, nachdem er aus dem Bild fiel, und bleibt „nah", solange er unter den
     // N + 2 nächsten ist — kleine Kamerabewegungen am Bildrand oder gleich weite Chunks schreiben die Puffer nicht neu
     for (const w of wanted) this.lastWanted.set(w.key, this.frame);
     const wantedKeys = wanted.filter((w) => this.cache.has(w.key)).map((w) => w.key);
-    const lingering = [...this.lastWanted].filter(([k, f]) => this.frame - f <= 30 && this.cache.has(k) && !wantedKeys.includes(k)).map(([k]) => k);
+    const wantedSet = new Set(wantedKeys);
+    const lingering = [...this.lastWanted].filter(([k, f]) => this.frame - f <= 30 && this.cache.has(k) && !wantedSet.has(k)).map(([k]) => k);
     for (const [k, f] of this.lastWanted) if (this.frame - f > 30) this.lastWanted.delete(k);
     const active = [...wantedKeys, ...lingering];
     const activeKey = [...active].sort().join('|');
@@ -497,12 +481,13 @@ export class TrashField {
       shadow = true;
     }
 
-    // Kamera im Planetenraum, Projektionsmaßstab
+    // Kamera im Raum der Gruppe (flach, relativ zum Anker), Projektionsmaßstab
     this.projScaleY.value = camera.projectionMatrix.elements[5]!;
-    this.camLocal.value.copy(cameraWorld).applyMatrix4(_inv.copy(planetMatrixWorld).invert());
+    planet.mapping.toFlatCpu(cameraWorld, _c);
+    this.camLocal.value.set(_c.x - (this.anchor.x - planet.focus.x), _c.y - planet.options.radius, _c.z - (this.anchor.z - planet.focus.z));
     this.updateWispAxes(camera, dt);
 
-    // Schleier über Nachbarwelten: Blick-Welt A/B wie der Planet (A = vorige, solange überblendet wird)
+    // Schleier über Nachbarwelten: Blick-Welt A/B wie die Welt (A = vorige, solange überblendet wird)
     const vb = planet.viewWorld;
     if (vb !== this.lastViewB) {
       if (this.lastViewB >= 0 && planet.fog.mix.value >= 0.5) this.viewA.value = this.viewB.value;
@@ -530,24 +515,22 @@ export class TrashField {
   }
 
   /**
-   * Schwaden-Achsen: Bildwaagrechte der Kamera in die Tangentialebene am Blickpunkt projiziert (Planetenraum), weich
-   * nachgeführt (τ ≈ 1.2 s): im Stand liegen die Schwaden quer im Bild, nach einer Drehung legen sie sich neu.
+   * Schwaden-Achsen: Bildwaagrechte der Kamera in die Ebene gelegt (waagrecht), weich nachgeführt (τ ≈ 1.2 s): im
+   * Stand liegen die Schwaden quer im Bild, nach einer Drehung legen sie sich neu.
    */
   private updateWispAxes(camera: Camera, dt: number): void {
-    const look = _c.copy(this.options.planet.lookDirLocal.value).normalize();
-    // Kamera-Rechts (Welt) → Planetenraum: nur Rotation (inverse Planetenmatrix ohne Translation)
-    const right = _v.set(1, 0, 0).applyQuaternion(camera.getWorldQuaternion(_q)).transformDirection(_inv);
-    right.addScaledVector(look, -right.dot(look));
+    const right = _v.set(1, 0, 0).applyQuaternion(camera.getWorldQuaternion(_q));
+    right.y = 0;
     if (right.lengthSq() < 1e-8) return;
     right.normalize();
     const k = this.wispInit ? 1 - Math.exp(-dt / 1.2) : 1;
     this.wispInit = true;
     const across = this.wispAcross.value.lerp(right, k);
-    across.addScaledVector(look, -across.dot(look));
+    across.y = 0;
     // Kehrtwende (Achse fast gegenläufig): direkt übernehmen statt durch null zu mitteln
     if (across.lengthSq() < 1e-6) across.copy(right);
     across.normalize();
-    this.wispAlong.value.crossVectors(look, across).normalize();
+    this.wispAlong.value.crossVectors(_Y, across).normalize();
   }
 
   // --- Puffer ------------------------------------------------------------------------------------------------
@@ -598,7 +581,13 @@ export class TrashField {
     const alive = (heal: number) => healAmount(heal, floor) < 1;
     const lists: Record<MeshKind, TrashItem[]> = { big: [], tube: [], ring: [], block: [], goo: [] };
     const nearSet = new Set(this.nearKey.split('|').filter(Boolean));
-    const veils: ChunkTrash[] = [];
+    const veils: PlaneChunkTrash[] = [];
+    // Anker der Puffer: der Fokus beim Neuaufbau (ganzzahlig)
+    const planet = this.options.planet;
+    this.anchor.x = Math.round(planet.focus.x);
+    this.anchor.z = Math.round(planet.focus.z);
+    planet.anchorObject(this.group, this.anchor.x, this.anchor.z);
+    this.patternOffset.value.set(mod(this.anchor.x, PATTERN_PERIOD), 0, mod(this.anchor.z, PATTERN_PERIOD));
     /** Blüten: auch geheilte Elemente (dort blüht es), nur in den nahen Chunks. */
     const blooms: TrashItem[] = [];
     const nodeBlooms: VeilSpore[] = [];
@@ -654,10 +643,12 @@ export class TrashField {
       // Liegende Teile: um ihren halben Querschnitt anheben (der Fuß ist bereits eingesenkt)
       const big = it.kind === 'heap' || it.kind === 'ruin';
       const lift = big ? 0 : (it.size[2] * 0.5) * Math.sin(it.lean);
-      _p.set(it.position[0], it.position[1], it.position[2]).addScaledVector(up, lift);
+      const ax = this.anchor.x;
+      const az = this.anchor.z;
+      _p.set(it.position[0] - ax, it.position[1], it.position[2] - az).addScaledVector(up, lift);
       _m.compose(_p, _q, _s);
       mesh.setMatrixAt(i, _m);
-      a.setXYZW(i, it.position[0], it.position[1], it.position[2], it.heal);
+      a.setXYZW(i, it.position[0] - ax, it.position[1], it.position[2] - az, it.heal);
       b.setXYZW(i, up.x, up.y, up.z, big ? it.size[1] : Math.max(it.size[1] * Math.cos(it.lean), Math.max(it.size[0], it.size[2]) * Math.sin(it.lean)));
       const shape = it.kind === 'ruin' ? 3 + it.shape : it.shape;
       c.setXYZW(i, this.rowOf(it) + Math.min(0.98, Math.max(0, it.variant)), it.neon, it.world, shape);
@@ -670,7 +661,7 @@ export class TrashField {
     mesh.count = n;
   }
 
-  private fillSpores(veils: ChunkTrash[], bigs: TrashItem[], vents: TrashItem[], alive: (heal: number) => boolean, blooms: TrashItem[], nodeBlooms: VeilSpore[]): void {
+  private fillSpores(veils: PlaneChunkTrash[], bigs: TrashItem[], vents: TrashItem[], alive: (heal: number) => boolean, blooms: TrashItem[], nodeBlooms: VeilSpore[]): void {
     const g = this.sporeGeometry;
     const a = g.getAttribute('spA') as InstancedBufferAttribute;
     const b = g.getAttribute('spB') as InstancedBufferAttribute;
@@ -686,7 +677,7 @@ export class TrashField {
       const ux = Array.isArray(up) ? up[0] : up.x;
       const uy = Array.isArray(up) ? up[1] : up.y;
       const uz = Array.isArray(up) ? up[2] : up.z;
-      a.setXYZW(n, px, py, pz, phase);
+      a.setXYZW(n, px - this.anchor.x, py, pz - this.anchor.z, phase);
       b.setXYZW(n, ux, uy, uz, size);
       c.setXYZW(n, heal, kind, neonRow(world), world);
       n++;
@@ -715,9 +706,7 @@ export class TrashField {
       const petal = new Vector3();
       /** Eine Rosette an `at` (auf den Boden gelegt): Mitte gold (Stufe 2), Blätter in einer der anderen Farben. */
       const flower = (at: Vector3, heal: number, world: number, seed: number): void => {
-        const len = at.length() || 1;
-        const ground = planet.options.radius + planet.field.heightAt(at.x / len, at.y / len, at.z / len);
-        at.multiplyScalar((ground + 0.012) / len);
+        at.y = planet.field.heightAt(at.x, at.z) + 0.012;
         const petalCi = [1, 3, 4, 5][Math.floor((seed * 7.31) % 1 * 4)] ?? 3;
         const row = bloomRow(world);
         const rot = seed * 6.283;
@@ -753,8 +742,7 @@ export class TrashField {
       }
       // Rosetten um geschaffte Knoten (vorher steigt an jeder ein heller Funke auf): die Feier nach dem Sieg
       nodeBlooms.forEach((b) => {
-        const l = Math.hypot(b.position[0], b.position[1], b.position[2]) || 1;
-        const world = planet.field.worldAt(b.position[0] / l, b.position[1] / l, b.position[2] / l);
+        const world = planet.field.worldAt(b.position[0], b.position[2]);
         frame(b.up);
         if (healAmount(b.heal, this.progressFloor) < 1) push(b.position, b.up, b.phase * 13, 0.06, b.heal, 2, world);
         pos.set(b.position[0], b.position[1], b.position[2]);
@@ -765,8 +753,7 @@ export class TrashField {
     outer: for (const ch of veils) {
       for (const s of ch.spores) {
         if (!alive(s.heal)) continue;
-        const l = Math.hypot(s.position[0], s.position[1], s.position[2]) || 1;
-        const world = this.options.planet.field.worldAt(s.position[0] / l, s.position[1] / l, s.position[2] / l);
+        const world = this.options.planet.field.worldAt(s.position[0], s.position[2]);
         if (!push(s.position, s.up, s.phase, s.size, s.heal, 1, world)) break outer;
       }
     }
@@ -774,16 +761,17 @@ export class TrashField {
     g.instanceCount = n;
   }
 
-  private fillVeil(chunks: ChunkTrash[]): void {
+  private fillVeil(chunks: PlaneChunkTrash[]): void {
     const g = this.veilGeometry;
     const pos = g.getAttribute('position') as BufferAttribute;
     const va = g.getAttribute('vA') as BufferAttribute;
     const vw = g.getAttribute('vW') as BufferAttribute;
     const index = g.getIndex()!;
-    const R = this.veilRadius;
     const layers = this.caps.veilLayers;
     const floor = this.progressFloor;
-    const field = this.options.planet.field;
+    const nWorlds = this.options.planet.worlds.length;
+    const ax = this.anchor.x;
+    const az = this.anchor.z;
     let v = 0;
     let o = 0;
     let used = 0;
@@ -801,21 +789,23 @@ export class TrashField {
       if (!any || grid.n !== this.caps.veilRes) continue;
       used++;
       const heights = grid.heights.length > 0 ? grid.heights : this.veilHeightsDefault;
-      const nn = grid.n * grid.n;
-      // Welt je Vertex (Schleier über Nachbarwelten, Neonfarbe)
-      const worlds = new Float32Array(nn);
-      for (let k = 0; k < nn; k++) worlds[k] = field.worldAt(grid.dirs[k * 3]!, grid.dirs[k * 3 + 1]!, grid.dirs[k * 3 + 2]!);
+      const n = grid.n;
       for (let L = 0; L < layers; L++) {
         // Mobil: zwei Lagen (unterste und oberste Höhe)
         const hIdx = layers >= heights.length ? Math.min(L, heights.length - 1) : Math.round((L / Math.max(1, layers - 1)) * (heights.length - 1));
-        const r = R + heights[hIdx]!;
+        const h = heights[hIdx]!;
         const baseV = v;
-        for (let k = 0; k < nn; k++) {
-          pos.setXYZ(v, grid.dirs[k * 3]! * r, grid.dirs[k * 3 + 1]! * r, grid.dirs[k * 3 + 2]! * r);
-          // Lab-Regler „Müll“ unter 100 % dünnt auch den Schleier aus (0 % = kein Schleier)
-          va.setXYZW(v, grid.strength[k]! * Math.min(1, this.densityScale), grid.heal[k]!, grid.open[k]!, hIdx);
-          vw.setX(v, worlds[k]!);
-          v++;
+        for (let j = 0; j < n; j++) {
+          for (let i = 0; i < n; i++) {
+            const k = j * n + i;
+            pos.setXYZ(v, grid.x0 + (i / (n - 1)) * grid.size - ax, h, grid.z0 + (j / (n - 1)) * grid.size - az);
+            // Lab-Regler „Müll“ unter 100 % dünnt auch den Schleier aus (0 % = kein Schleier)
+            va.setXYZW(v, grid.strength[k]! * Math.min(1, this.densityScale), grid.heal[k]!, grid.open[k]!, hIdx);
+            // Welt je Vertex (Nachbarwelten): Autorenwelten mit ihrer Kennung, alle anderen −1 (fremd, ohne Müll)
+            const w = grid.worlds[k]!;
+            vw.setX(v, w < nWorlds ? w : -1);
+            v++;
+          }
         }
         for (let q = 0; q < grid.indices.length; q++) index.setX(o++, grid.indices[q]! + baseV);
       }
@@ -834,8 +824,13 @@ export class TrashField {
     for (const m of this.materials) m.dispose();
     this.palette.dispose();
     this.cache.clear();
+    this.options.planet.releaseObject(this.group);
     this.group.removeFromParent();
   }
+}
+
+function mod(a: number, n: number): number {
+  return ((a % n) + n) % n;
 }
 
 function staticInstanced(count: number, itemSize: number): InstancedBufferAttribute {

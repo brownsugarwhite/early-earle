@@ -26,9 +26,14 @@ export interface SphereCover {
   readonly count: number;
 }
 
-/** Was der Sammler vom Planeten braucht (strukturell, passt auf `EarlePlanet`). */
+/**
+ * Was der Sammler vom Planeten braucht: Kugel (alt, `surfaceRadius` je Richtung im Planetenraum) oder Ebene (ADR 0002:
+ * `heightAt(x, z)` absolut und der Fokus — der Raum des Planetenobjekts ist Ebene − Fokus, Höhen absolut).
+ */
 export interface VolumePlanetLike {
-  surfaceRadius(dirLocal: Vector3): number;
+  surfaceRadius?(dirLocal: Vector3): number;
+  heightAt?(x: number, z: number): number;
+  readonly focus?: { x: number; z: number };
 }
 
 /** Kantenlänge der Zellen im Planetenraum (Welteinheiten bei Planetenmaßstab 1). */
@@ -173,9 +178,15 @@ function keptSpheres(grid: CellGrid, planet: VolumePlanetLike, tolerance: number
     const b = k * 6;
     if (!force) {
       _p.set((grid.box[b]! + grid.box[b + 3]!) * 0.5, (grid.box[b + 1]! + grid.box[b + 4]!) * 0.5, (grid.box[b + 2]! + grid.box[b + 5]!) * 0.5);
-      const len = _p.length();
-      if (len <= 1e-9) continue;
-      const ground = planet.surfaceRadius(_dir.copy(_p).divideScalar(len));
+      let ground: number;
+      if (planet.heightAt) {
+        // Ebene: Zellen in absoluten Ebenenkoordinaten, Oberkante = höchstes y
+        ground = planet.heightAt(_p.x, _p.z);
+      } else {
+        const len = _p.length();
+        if (len <= 1e-9) continue;
+        ground = planet.surfaceRadius!(_dir.copy(_p).divideScalar(len));
+      }
       if (grid.top[k]! - ground <= tolerance) continue;
     }
     keep.push(k);
@@ -207,8 +218,8 @@ function keptSpheres(grid: CellGrid, planet: VolumePlanetLike, tolerance: number
   return cover.data;
 }
 
-/** Dreiecke einer Geometrie (über `rel` im Planetenraum) ins Zellraster. */
-function gridOfGeometry(geometry: BufferGeometry, rel: Matrix4, size: number): CellGrid | null {
+/** Dreiecke einer Geometrie (über `rel` im Planetenraum) ins Zellraster; `flat`: Oberkante = y (Ebene) statt Radius. */
+function gridOfGeometry(geometry: BufferGeometry, rel: Matrix4, size: number, flat = false): CellGrid | null {
   const pos = geometry.getAttribute('position');
   if (!pos || pos.count === 0) return null;
   const index = geometry.getIndex();
@@ -222,7 +233,7 @@ function gridOfGeometry(geometry: BufferGeometry, rel: Matrix4, size: number): C
     vx[i] = _p.x;
     vy[i] = _p.y;
     vz[i] = _p.z;
-    vr[i] = _p.length();
+    vr[i] = flat ? _p.y : _p.length();
   }
   const grid = new CellGrid(size);
   const tris = Math.floor((index ? index.count : vc) / 3);
@@ -251,7 +262,7 @@ function gridOfGeometry(geometry: BufferGeometry, rel: Matrix4, size: number): C
 }
 
 /** Instanzen (Hüllkugel der Geometrie je Instanzmatrix, über `rel` im Planetenraum) ins Zellraster. */
-function gridOfInstances(mesh: InstancedMesh, rel: Matrix4, size: number): CellGrid | null {
+function gridOfInstances(mesh: InstancedMesh, rel: Matrix4, size: number, flat = false): CellGrid | null {
   const geometry = mesh.geometry;
   if (!geometry.boundingSphere) geometry.computeBoundingSphere();
   const gs = geometry.boundingSphere;
@@ -263,7 +274,7 @@ function gridOfInstances(mesh: InstancedMesh, rel: Matrix4, size: number): CellG
     const c = _sph.center;
     const r = _sph.radius;
     if (!(r >= 0) || !Number.isFinite(c.x + c.y + c.z + r)) continue;
-    grid.add(c.x - r, c.y - r, c.z - r, c.x + r, c.y + r, c.z + r, c.length() + r);
+    grid.add(c.x - r, c.y - r, c.z - r, c.x + r, c.y + r, c.z + r, (flat ? c.y : c.length()) + r);
   }
   return grid;
 }
@@ -372,12 +383,18 @@ export class PlanetVolumeCollector {
       const force = data.shadowVolume === true;
       if (mesh.isInstancedMesh && (mesh as unknown as InstancedMesh).count > MAX_VOLUME_INSTANCES && !force) return;
       _rel.multiplyMatrices(_planetInv, mesh.matrixWorld);
+      // Ebene: absolute Ebenenkoordinaten (Fokus addiert) — beim Schwenken bleibt die Vermessung gültig
+      const flat = !!planet.focus;
+      if (planet.focus) {
+        _rel.elements[12] += planet.focus.x;
+        _rel.elements[14] += planet.focus.z;
+      }
       let e = this.entries.get(mesh);
       const stale = !e || e.planet !== planet || e.tolerance !== tolerance || e.force !== force || !sameMatrix(e.rel, _rel) || e.key !== contentKey(mesh);
       const interval = !mesh.isInstancedMesh && triangleCount(mesh.geometry) > BIG_GEOMETRY_TRIANGLES ? BIG_RECLASSIFY_INTERVAL_MS : RECLASSIFY_INTERVAL_MS;
       const throttled = this.throttle && !!e && stale && t - e.at < interval;
       if (stale && !throttled) {
-        const grid = mesh.isInstancedMesh ? gridOfInstances(mesh as unknown as InstancedMesh, _rel, this.cellSize) : gridOfGeometry(mesh.geometry, _rel, this.cellSize);
+        const grid = mesh.isInstancedMesh ? gridOfInstances(mesh as unknown as InstancedMesh, _rel, this.cellSize, flat) : gridOfGeometry(mesh.geometry, _rel, this.cellSize, flat);
         e = {
           key: contentKey(mesh),
           planet,
@@ -393,9 +410,11 @@ export class PlanetVolumeCollector {
       if (!e || e.parts.length === 0) return;
       objects++;
       const parts = e.parts;
+      const fx = planet.focus?.x ?? 0;
+      const fz = planet.focus?.z ?? 0;
       for (let i = 0; i < parts.length; i += 4) {
         const v = this.pool[n] ?? (this.pool[n] = { center: new Vector3(), radius: 0 });
-        v.center.set(parts[i]!, parts[i + 1]!, parts[i + 2]!).applyMatrix4(planetObject.matrixWorld);
+        v.center.set(parts[i]! - fx, parts[i + 1]!, parts[i + 2]! - fz).applyMatrix4(planetObject.matrixWorld);
         v.radius = parts[i + 3]! * planetScale;
         n++;
       }

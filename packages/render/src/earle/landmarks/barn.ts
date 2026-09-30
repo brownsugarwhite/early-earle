@@ -1,6 +1,6 @@
 import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
 import { abs, attribute, float, floor, fract, hash, max, mix, positionLocal, positionView, sin, smoothstep, step, vec2 } from 'three/tsl';
-import type { PlanetProp } from '@ee/world';
+import type { PlaneProp as PlanetProp } from '@ee/world';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
 
@@ -144,7 +144,7 @@ export interface BarnOptions {
   lookup: PaletteLookup;
   fog: FogSettings;
   bands: TSLUniform;
-  /** Scheunenzeile, Terrainzeile (Schnee/Kante) je Welt-Index. */
+  /** Scheunenzeile, Terrainzeile (Schnee/Kante) je Welt-Slot. */
   barnRows: UniformArrayLike;
   terrainRows: UniformArrayLike;
   veil: (world: FloatNode) => FloatNode;
@@ -233,21 +233,24 @@ export class BarnLandmarks {
     this.mesh = mesh;
   }
 
-  /** Scheunen setzen (Fuß auf dem Boden, Oben = Normale, Drehung yaw, Maßstab). Liefert die höchste Firsthöhe. */
-  set(barns: ReadonlyArray<{ prop: PlanetProp; world: number; slot: number }>): number {
+  /**
+   * Scheunen setzen (Fuß auf dem Boden, fast lotrecht, Drehung yaw, Maßstab; `world` = Welt-Slot). Positionen der Ebene
+   * relativ zum Anker `origin`. Liefert die höchste Firsthöhe.
+   */
+  set(barns: ReadonlyArray<{ prop: PlanetProp; world: number; slot: number }>, origin: { x: number; z: number } = { x: 0, z: 0 }): number {
     const n = Math.min(barns.length, this.data.count);
     const arr = this.data.array as Float32Array;
     let top = 0;
     for (let i = 0; i < n; i++) {
       const { prop, world, slot } = barns[i]!;
       _up.set(prop.normal[0], prop.normal[1], prop.normal[2]).normalize();
-      // Senkrecht zur Kugel statt zum Hang: Scheunen stehen aufrecht, der Fuß ist versenkt
-      _radial.set(prop.position[0], prop.position[1], prop.position[2]).normalize();
+      // Lotrecht statt zum Hang: Scheunen stehen aufrecht, der Fuß ist versenkt
+      _radial.set(0, 1, 0);
       _up.lerp(_radial, 0.85).normalize();
       _q.setFromUnitVectors(_Y, _up);
       _qy.setFromAxisAngle(_Y, prop.yaw);
       _q.multiply(_qy);
-      _p.set(prop.position[0], prop.position[1], prop.position[2]);
+      _p.set(prop.position[0] - origin.x, prop.position[1], prop.position[2] - origin.z);
       _m.compose(_p, _q, _s.setScalar(prop.scale));
       this.mesh.setMatrixAt(i, _m);
       arr[i * 4] = world;

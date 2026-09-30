@@ -1,6 +1,6 @@
 import { BufferAttribute, BufferGeometry } from 'three/webgpu';
 import { abs, attribute, float, floor, fract, fwidth, hash, max, mix, positionLocal, positionView, select, sin, smoothstep, step, vec2, vec3 } from 'three/tsl';
-import { columnTopAt, framePoint, type RockColumn, type RockFormation, type RockKind } from '@ee/world';
+import { planeColumnTopAt as columnTopAt, type PlaneRockColumn as RockColumn, type PlaneRockFormation as RockFormation, type RockKind } from '@ee/world';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, hatchMask, patternTime, periodFade, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
 
@@ -28,13 +28,14 @@ type V3 = [number, number, number];
 
 /**
  * Säulen-Geometrie aller Formationen (flach schattiert: eigene Vertices je Fläche): Wände als Quads vom versenkten
- * Fuß zur (verjüngten, ggf. geneigten) Deckfläche, Deckfläche als Fächer, Nadeln mit versetzter Spitze. Rahmen der
- * Formation (Oben = Normale am Mittelpunkt), Positionen im Planetenraum.
+ * Fuß zur (verjüngten, ggf. geneigten) Deckfläche, Deckfläche als Fächer, Nadeln mit versetzter Spitze. Ebene: Oben =
+ * +y, Grundrisse um den Formationsmittelpunkt (a = x, b = z), Positionen relativ zum Anker (ax, az) des Meshes.
+ * `slotOf` liefert den Welt-Slot (Palettenzeilen) je Formation.
  */
 export function buildRockGeometry(
   formations: readonly RockFormation[],
-  radius: number,
-  worldOf: (f: RockFormation) => number,
+  anchor: { x: number; z: number },
+  slotOf: (f: RockFormation) => number,
   featureOf: (f: RockFormation, index: number) => number = (_f, i) => i,
 ): RockGeometryData {
   const pos: number[] = [];
@@ -51,34 +52,32 @@ export function buildRockGeometry(
     rg.push(feature);
     return pos.length / 3 - 1;
   };
+  const up: V3 = [0, 1, 0];
   for (let fi = 0; fi < formations.length; fi++) {
     const f = formations[fi]!;
     feature = featureOf(f, fi);
-    const world = worldOf(f);
+    const world = slotOf(f);
     const kind = KIND_CODE[f.kind] ?? 0;
-    const up = f.frame.c;
-    const P = (x: number, y: number, z: number): V3 => framePoint(f.frame, radius, x, y, z, [0, 0, 0]);
+    const ox = f.cx - anchor.x;
+    const oz = f.cz - anchor.z;
+    const P = (a: number, b: number, h: number): V3 => [ox + a, h, oz + b];
     f.columns.forEach((col, ci) => {
       const n = col.polygon.length;
       if (n < 3) return;
       const variant = fract1(f.variant * 7.13 + ci * 0.618);
       const wallFace = col.part === 1 || col.part === 2 || (col.part === 3 && f.kind === 'mesa') ? FACE_TIER : FACE_WALL;
       const code = world * 16 + kind * 4;
-      // Deckfläche: Spitze (Nadel), geneigte Facette oder flacher Kopf in Deckfarbe
       const capFace = col.capStyle === 1 ? FACE_FACET : FACE_CAP;
-      // Oberer Wandring: Böschung (Versatz nach innen) oder Verjüngung zum Schwerpunkt
       const shoulder: Array<[number, number]> =
         col.shoulder && col.shoulder.length === n
           ? col.shoulder
           : col.polygon.map(([x, y]) => [col.cx + (x - col.cx) * col.taper, col.cy + (y - col.cy) * col.taper] as [number, number]);
-      // Moosbank: Fase vom Wandring zur eingerückten Deckfläche (nur mit explizitem Deckring)
       const hasCap = !!col.cap && col.cap.length === n;
       const bevel = hasCap && capFace === FACE_CAP && col.apex <= 1e-3 ? Math.min(col.bevel, (col.top - col.base) * 0.2) : 0;
       const topPoly: Array<[number, number]> = bevel > 0 ? col.cap! : shoulder;
       const shoulderZ = shoulder.map(([x, y]) => columnTopAt(col, x, y) - bevel);
       const topZ = topPoly.map(([x, y]) => columnTopAt(col, x, y));
       for (const z of topZ) maxHeight = Math.max(maxHeight, z + col.apex);
-      // Wände (Fuß → Wandring) und Fase (Wandring → Deckfläche)
       let perim = variant * 3;
       for (let i = 0; i < n; i++) {
         const i1 = (i + 1) % n;
@@ -92,9 +91,7 @@ export function buildRockGeometry(
         const TA = P(ta[0], ta[1], shoulderZ[i]!);
         const TB = P(tb[0], tb[1], shoulderZ[i1]!);
         const nrm = normalize(cross(sub(B, A), sub(TA, A)));
-        const mx = (a[0] + b[0]) * 0.5 - col.cx;
-        const my = (a[1] + b[1]) * 0.5 - col.cy;
-        const out: V3 = [f.frame.east[0] * mx + f.frame.north[0] * my, f.frame.east[1] * mx + f.frame.north[1] * my, f.frame.east[2] * mx + f.frame.north[2] * my];
+        const out: V3 = [(a[0] + b[0]) * 0.5 - col.cx, 0, (a[1] + b[1]) * 0.5 - col.cy];
         if (dot(nrm, out) < 0) scale(nrm, -1);
         const i0 = vtx(A, nrm, perim, col.base, code + wallFace, variant);
         const i1v = vtx(B, nrm, perim + edge, col.base, code + wallFace, variant);
@@ -177,9 +174,9 @@ export interface RockMaterialOptions {
   lookup: PaletteLookup;
   fog: FogSettings;
   bands: TSLUniform;
-  /** Felszeile je Welt-Index. */
+  /** Felszeile je Welt-Slot. */
   rockRows: UniformArrayLike;
-  /** Zusatz-Nebeldistanz (Schleier) je Welt-Index. */
+  /** Zusatz-Nebeldistanz (Schleier) je Welt-Slot. */
   veil: (world: FloatNode) => FloatNode;
   warp: (p: Vec3Node) => Vec3Node;
   /** Wachstum/Heilung 0..1 je Merkmals-Index (Vertex-Attribut `rg`); fehlt → immer geheilt. */

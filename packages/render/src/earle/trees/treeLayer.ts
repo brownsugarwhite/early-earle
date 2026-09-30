@@ -28,7 +28,9 @@ import {
   vec3,
   vec4,
 } from 'three/tsl';
-import { TREE_PROPORTIONS, hash32, type PlanetTree, type TreeFamily, type TreeKind } from '@ee/world';
+import { TREE_PROPORTIONS, hash32, type PlaneTree as PlanetTree, type TreeFamily, type TreeKind } from '@ee/world';
+import type { WorldSlots } from '../worldSlots';
+import { SLOT_COUNT } from '../worldSlots';
 import { arrayElement, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from '../tsl';
 import { createHexagon } from '../vegetation';
 import { createBareCard } from './bare';
@@ -65,8 +67,8 @@ export interface TreeLayerShared {
   nearFade: (base: Vec3Node, top: Vec3Node, radius: FloatNode) => FloatNode;
   /** Lichtung unter der Kamera. */
   footFade: (base: Vec3Node) => FloatNode;
-  /** Palettenzeile → Welt-Index (−1 = keine). */
-  rowWorld: UniformArrayLike;
+  /** Palettenzeile → Welt-Slot (−1 = keine Slotzeile). */
+  slotOfRow: (row: FloatNode) => FloatNode;
   nearClear: TSLUniform;
   camLocal: { value: Vector3 } & Vec3Node;
   sunDirLocal: { value: Vector3 } & Vec3Node;
@@ -83,8 +85,10 @@ export interface TreeWorldRows {
 }
 
 export interface TreeLayerOptions {
-  worldRows: TreeWorldRows[];
-  families: TreeFamily[];
+  /** Welt-Slots (Palettenzeilen je Welt). */
+  slots: WorldSlots;
+  /** Vegetationsfamilie einer Welt (Kennung). */
+  family: (world: number) => TreeFamily | undefined;
   capacity: { trees: number; dots: number };
   dotsPerTree: [number, number];
   dotRadius?: number;
@@ -166,7 +170,7 @@ export function treeHash(p: readonly number[], salt: number): number {
  * deterministische Neigung und Drehung je Baum (organische Vielfalt ohne weitere Archetypen).
  */
 export function treeQuaternion(t: PlanetTree, out: Quaternion, lean = true): Quaternion {
-  _up.set(t.position[0], t.position[1], t.position[2]).normalize().multiplyScalar(0.8);
+  _up.set(0, 0.8, 0);
   _up.add(_n.set(t.normal[0], t.normal[1], t.normal[2]).normalize().multiplyScalar(0.2)).normalize();
   out.setFromUnitVectors(_Y, _up);
   if (lean) {
@@ -181,6 +185,9 @@ interface DotBlock {
   key: string;
   slot: number;
   count: number;
+  /** Ursprung (Ebene) der Fuß- und Hüllpositionen des Blocks. */
+  ox: number;
+  oz: number;
   rel: Float32Array;
   base: Float32Array;
   nrm: Float32Array;
@@ -237,12 +244,13 @@ export class TreeLayer {
     const { lookup, fog } = shared;
     const warp = shared.warp;
     this.dotRadius = options.dotRadius ?? 0.06;
-    const fam = (w: number): TreeFamily | undefined => options.families[w];
-    const perWorld = (f: (w: number) => number): UniformArrayLike => uniformArray(options.worldRows.map((_, w) => f(w)), 'float') as unknown as UniformArrayLike;
-    this.worldSnow = perWorld((w) => fam(w)?.snow ?? 0);
-    this.worldTerrain = perWorld((w) => options.worldRows[w]!.terrain);
-    this.worldStipple = perWorld((w) => fam(w)?.stipple ?? 0.75);
-    this.worldFlowers = perWorld((w) => fam(w)?.flowers ?? (fam(w)?.motif === 'cross' || fam(w)?.motif === 'diamond' ? 0.35 : 0));
+    // Tabellen je Welt-Slot (nachgeführt, wenn ein Slot neu belegt wird)
+    const perSlot = (v: number): UniformArrayLike => uniformArray(new Array<number>(SLOT_COUNT).fill(v), 'float') as unknown as UniformArrayLike;
+    this.worldSnow = perSlot(0);
+    this.worldTerrain = perSlot(0);
+    this.worldStipple = perSlot(0.75);
+    this.worldFlowers = perSlot(0);
+    for (const [slot, world] of options.slots.entries()) this.onSlotAssigned(slot, world);
 
     // Detailstufe aus der Qualitätsstufe (Hoch: 60+ Punkte je Baum): feinere Teilkuppeln, glattere Silhouetten
     const detail = options.dotsPerTree[0] >= 50 ? 'hoch' : 'mobil';
@@ -276,13 +284,13 @@ export class TreeLayer {
       const geometry = this.templates[kind].geometry;
       this.attachTreeAttributes(geometry, kind === 'domeHi' ? 64 : options.capacity.trees);
       const row = treeC().x;
-      const world = arrayElement(shared.rowWorld, row);
+      const world = shared.slotOfRow(row);
       const cfg = stippleOf[kind];
       // Hüllnormale: Richtung von der (mitwachsenden) Kronenmitte zum Punkt, im View-Raum
       const hullPlanet = grownFrom(positionLocal).sub(grownFrom(treeB().xyz));
       const hullN = varying(modelViewMatrix.mul(vec4(hullPlanet, 0)).xyz, 'vCrownHullN');
       // Schlagschatten nur auf der unteren Kronenhälfte (Kuppel-Scheitel bleiben hell, Fugen zwischen den Kuppeln dunkel)
-      const hullUp = normalize(hullPlanet).dot(normalize(treeA().xyz));
+      const hullUp = normalize(hullPlanet).y;
       // Juwelenkuppeln (Terminator < 0) leuchten rundum — kein Schlagschatten auf ihnen (Bild 02)
       const castWeight = varying(smoothstep(0.5, -0.15, hullUp).mul(select(treeD().w.lessThan(0), float(0), float(1))), 'vCrownCastW');
       const material = new CrownMaterial({
@@ -336,7 +344,7 @@ export class TreeLayer {
       let placed: Vec3Node = positionLocal;
       if (kind === 'fork') {
         // Anlauf des Gabel-Archetyps (createForkTrunk: flare(y, 1.6, 0.075)) waagrecht auf `keep` zurücknehmen
-        const up = normalize(treeA().xyz);
+        const up = vec3(0, 1, 0);
         const rel = positionLocal.sub(treeA().xyz);
         const along = up.mul(rel.dot(up));
         const F = float(1).add(float(1.6).mul(positionGeometry.y.add(0.02).max(0).div(0.075).negate().exp()));
@@ -357,7 +365,7 @@ export class TreeLayer {
         bark: varying(vec4(bark.x, bark.y.mul(H), bark.z, bark.w.mul(H).mul(thick)), 'vBark') as unknown as Vec4Node,
         objPos: varying(positionGeometry.mul(H), 'vBarkPos'),
         normalPlanet: varying(n, 'vBarkN'),
-        upPlanet: varying(normalize(treeA().xyz), 'vBarkUp'),
+        upPlanet: varying(vec3(0, 1, 0), 'vBarkUp'),
         growthNode: shared.slotGrowth(treeB().w),
       });
       this.materials.push(material);
@@ -457,7 +465,7 @@ export class TreeLayer {
       const isPine = kind.greaterThan(1.5).and(kind.lessThan(2.5));
       const isJewel = kind.greaterThan(0.5).and(kind.lessThan(1.5));
       // Schlagschatten wie die Krone darunter: Punkte auf der oberen Kuppel bleiben, an der Unterseite deckt ihn der Schatten
-      const castW = select(isPine.or(isStar), float(1), select(isJewel, float(0), smoothstep(0.5, -0.15, nrm.dot(normalize(base)))));
+      const castW = select(isPine.or(isStar), float(1), select(isJewel, float(0), smoothstep(0.5, -0.15, nrm.y)));
       // Glatter Schattenwert am Punktmittelpunkt (Vertex-Stufe, weich über ≈ 1–2 Punktdurchmesser): im Schlagschatten
       // skalieren die Punkte stetig aus 0, statt je Fragment Tinte zu werden (kein Verschwinden und Wiederauftauchen,
       // wenn eine Schattenkante beim Drehen über die Krone wandert)
@@ -544,11 +552,22 @@ export class TreeLayer {
   }
 
   private family(t: PlanetTree): TreeFamily | undefined {
-    return this.options.families[t.world];
+    return this.options.family(t.world);
   }
 
   private rows(t: PlanetTree): TreeWorldRows {
-    return this.options.worldRows[t.world] ?? this.options.worldRows[0] ?? { terrain: 0, canopy: [0], accent: 0 };
+    const r = this.options.slots.rowsOfWorld(t.world);
+    return { terrain: r.terrain, canopy: r.canopyRows, accent: r.accent };
+  }
+
+  /** Ein Welt-Slot wurde neu belegt: Schnee, Terrainzeile, Tüpfel, Blüten der Welt in die Tabellen. */
+  onSlotAssigned(slot: number, world: number): void {
+    const f = this.options.family(world);
+    const rows = this.options.slots.rowsOf(slot);
+    this.worldSnow.array[slot] = f?.snow ?? 0;
+    this.worldTerrain.array[slot] = rows.terrain;
+    this.worldStipple.array[slot] = f?.stipple ?? 0.75;
+    this.worldFlowers.array[slot] = f?.flowers ?? (f?.motif === 'cross' || f?.motif === 'diamond' ? 0.35 : 0);
   }
 
   /** Kronenzeile eines Baums (Juwelenwald: Farbvarianten). */
@@ -584,12 +603,16 @@ export class TreeLayer {
     return t.canopyRadius * form.crownS[0] >= DOME_HI_RADIUS ? 'domeHi' : 'dome';
   }
 
-  /** Instanzmatrix der Krone (Planetenraum). */
+  /** Anker der Instanzpositionen (Ebene): Positionen werden relativ dazu gespeichert. */
+  private ox = 0;
+  private oz = 0;
+
+  /** Instanzmatrix der Krone (relativ zum Anker). */
   crownMatrix(t: PlanetTree, form: KindForm, q: Quaternion, out: Matrix4): Matrix4 {
     const r = t.canopyRadius;
     const asp = this.aspect(t);
     _v.set(0, form.crownY * r * (form.crown === 'pine' ? 1 : asp), 0).applyQuaternion(q);
-    _p.set(t.position[0], t.position[1], t.position[2]).add(_v);
+    _p.set(t.position[0] - this.ox, t.position[1], t.position[2] - this.oz).add(_v);
     _s.set(form.crownS[0] * r, form.crownS[1] * r * asp, form.crownS[0] * r);
     return out.compose(_p, q, _s);
   }
@@ -598,14 +621,18 @@ export class TreeLayer {
   trunkMatrix(t: PlanetTree, form: KindForm, q: Quaternion, out: Matrix4): Matrix4 {
     const H = form.trunkH * t.canopyRadius * (form.crown === 'pine' ? 1 : Math.min(1.3, this.aspect(t)));
     const k = this.thickness(t, form);
-    _p.set(t.position[0], t.position[1], t.position[2]);
+    _p.set(t.position[0] - this.ox, t.position[1], t.position[2] - this.oz);
     out.compose(_p, q, _s.set(H * k, H, H * k));
     _s.setScalar(H);
     return out;
   }
 
-  /** Schreibt alle Instanzpuffer der Bäume neu (bei Wechsel der geladenen/nahen Chunks). */
-  setContent(entries: TreeEntry[]): void {
+  /** Schreibt alle Instanzpuffer der Bäume neu (bei Wechsel der geladenen/nahen Chunks); Positionen relativ zu `origin`. */
+  setContent(entries: TreeEntry[], origin: { x: number; z: number } = { x: 0, z: 0 }): void {
+    this.ox = origin.x;
+    this.oz = origin.z;
+    const ox = origin.x;
+    const oz = origin.z;
     const cap = this.options.capacity.trees;
     const perCrown = new Map<CrownKind, TreeEntry[]>(CROWN_KINDS.map((k) => [k, []]));
     const perTrunk = new Map<TrunkKind, TreeEntry[]>(TRUNK_KINDS.map((k) => [k, []]));
@@ -641,8 +668,8 @@ export class TreeLayer {
         const r = t.canopyRadius;
         const asp = form.crown === 'pine' ? 1 : this.aspect(t);
         _v.set(0, form.crownY * r * asp, 0).applyQuaternion(q);
-        a.setXYZW(i, t.position[0], t.position[1], t.position[2], t.rank);
-        b.setXYZW(i, t.position[0] + _v.x, t.position[1] + _v.y, t.position[2] + _v.z, e.slot);
+        a.setXYZW(i, t.position[0] - ox, t.position[1], t.position[2] - oz, t.rank);
+        b.setXYZW(i, t.position[0] - ox + _v.x, t.position[1] + _v.y, t.position[2] - oz + _v.z, e.slot);
         c.setXYZW(i, this.canopyRow(t), this.rows(t).accent, this.barkStyle(t), t.variant);
         d.setXYZW(i, form.crownS[0] * r, form.crownS[1] * r * asp, r * Math.max(1, form.crownS[1] * asp), form.terminator);
         // Höchster Punkt, an dem die Krone Schlagschatten zeigt: Kiefern ganz (Tintenkörper), Kuppeln und Säulen bis
@@ -673,11 +700,12 @@ export class TreeLayer {
         const H = _s.x;
         const top = kind === 'oak' ? this.oak.top : 1.3;
         _v.set(0, top * H, 0).applyQuaternion(q);
-        a.setXYZW(i, t.position[0], t.position[1], t.position[2], t.rank);
-        b.setXYZW(i, t.position[0] + _v.x, t.position[1] + _v.y, t.position[2] + _v.z, e.slot);
+        a.setXYZW(i, t.position[0] - ox, t.position[1], t.position[2] - oz, t.rank);
+        b.setXYZW(i, t.position[0] - ox + _v.x, t.position[1] + _v.y, t.position[2] - oz + _v.z, e.slot);
         c.setXYZW(i, this.canopyRow(t), this.rows(t).accent, this.barkStyle(t), t.variant);
         const keep = form.thick < 0.5 ? 0.35 : 1;
-        d.setXYZW(i, H, this.thickness(t, form), kind === 'oak' ? this.oak.spread * H : Math.max(0.3, t.canopyRadius * 0.4), t.world + (1 - keep) * 0.5);
+        // Welt-Slot (Tabellen) + halber Anlauf-Anteil
+        d.setXYZW(i, H, this.thickness(t, form), kind === 'oak' ? this.oak.spread * H : Math.max(0.3, t.canopyRadius * 0.4), this.options.slots.slotOf(t.world) + (1 - keep) * 0.5);
         if (kind === 'oak') hMax = Math.max(hMax, this.oak.top * H);
       });
       for (const attr of [a, b, c, d, mesh.instanceMatrix]) commit(attr, list.length);
@@ -694,7 +722,7 @@ export class TreeLayer {
         const t = e.tree;
         treeQuaternion(t, q, false);
         _up.set(0, 1, 0).applyQuaternion(q);
-        b.setXYZ(i, t.position[0], t.position[1], t.position[2]);
+        b.setXYZ(i, t.position[0] - ox, t.position[1], t.position[2] - oz);
         u.setXYZ(i, _up.x, _up.y, _up.z);
         dat.setXYZW(i, t.canopyRadius, t.rank, e.slot, this.rows(t).accent);
         va.setX(i, t.variant);
@@ -706,6 +734,12 @@ export class TreeLayer {
     }
     this.hMax = hMax;
     this.updateDotBlocks(entries);
+  }
+
+  /** Blockursprung (Ebene) eines Chunks: Punkte werden relativ dazu gebaut, beim Schreiben auf den Pool-Anker versetzt. */
+  private blockOrigin(list: TreeEntry[]): [number, number] {
+    const t = list[0]!.tree;
+    return [Math.round(t.position[0]), Math.round(t.position[2])];
   }
 
   // --- Punkte ------------------------------------------------------------------------------------------
@@ -760,7 +794,7 @@ export class TreeLayer {
       if (!block) continue;
       block.target = s.dotted ? 1 : 0;
       let dist = Infinity;
-      for (const e of s.all) dist = Math.min(dist, Math.hypot(e.tree.position[0] - cam.x, e.tree.position[1] - cam.y, e.tree.position[2] - cam.z));
+      for (const e of s.all) dist = Math.min(dist, Math.hypot(e.tree.position[0] - this.ox - cam.x, e.tree.position[1] - cam.y, e.tree.position[2] - this.oz - cam.z));
       block.dist = dist;
       if (block.target > 0 || block.fade > 0) next.set(slot, block);
     }
@@ -798,6 +832,10 @@ export class TreeLayer {
     const row: number[] = [];
     const hull: number[] = [];
     const q = new Quaternion();
+    // Blockpositionen relativ zum Blockursprung (Kronen-/Stamm-Matrizen rechnen relativ zum Pool-Anker → zurückversetzen)
+    const [bx, bz] = this.blockOrigin(list);
+    const dx = this.ox - bx;
+    const dz = this.oz - bz;
     // Budget des Chunks: feste Punkte (Spitzenschleier, Sternnadeln) zuerst, der Rest nach Kronenfläche
     const hi = this.options.dotsPerTree[0] >= 50;
     let fixed = 0;
@@ -824,23 +862,26 @@ export class TreeLayer {
       treeQuaternion(t, q);
       const rand = mulberryFrom(treeHash(t.position, 9));
       const r = t.canopyRadius;
+      // px…/hx… kommen relativ zum Pool-Anker (Matrizen), die Fußposition absolut
+      const footX = t.position[0] - this.ox;
+      const footZ = t.position[2] - this.oz;
       const push = (px: number, py: number, pz: number, nx: number, ny: number, nz: number, size: number, kind: number, hx: number, hy: number, hz: number, fadeR: number, lift = 0.6) => {
         const off = size * lift;
-        rel.push(px + nx * off - t.position[0], py + ny * off - t.position[1], pz + nz * off - t.position[2]);
-        base.push(t.position[0], t.position[1], t.position[2]);
+        rel.push(px + nx * off - footX, py + ny * off - t.position[1], pz + nz * off - footZ);
+        base.push(t.position[0] - bx, t.position[1], t.position[2] - bz);
         nrm.push(nx, ny, nz);
         data.push(size, t.rank, rand(), slot);
         row.push(rowIdx + kind * 0.125);
-        hull.push(hx, hy, hz, fadeR);
+        hull.push(hx + dx, hy, hz + dz, fadeR);
       };
       if (form.dots === 'stars') {
         // Sternnadeln der Eiche (Bild 04): goldene Büschel aus feinen Nadeln (gestreckte Punkte), strahlig im Raum
         this.trunkMatrix(t, form, q, _m);
         const H = _s.x;
         _v.set(0, this.oak.top * 0.6 * H, 0).applyQuaternion(q);
-        const hx = t.position[0] + _v.x;
+        const hx = footX + _v.x;
         const hy = t.position[1] + _v.y;
-        const hz = t.position[2] + _v.z;
+        const hz = footZ + _v.z;
         const step = (this.options.dotsPerTree[0] >= 50 ? 1 : 2) * fixedStride;
         const needles = this.options.dotsPerTree[0] >= 50 ? 9 : 6;
         const golden = Math.PI * (3 - Math.sqrt(5));
@@ -872,7 +913,7 @@ export class TreeLayer {
       if (form.dots === 'lace') {
         // Spitzenschleier: Rosetten auf der unteren Schale (eigene Matrix: Kugel um die Hülle, nicht flachgedrückt)
         _v.set(0, TREE_PROPORTIONS.lace.hull * r, 0).applyQuaternion(q);
-        const sm = new Matrix4().compose(_p.set(t.position[0] + _v.x, t.position[1] + _v.y, t.position[2] + _v.z), q, _s.set(r * 0.98, r * 0.92, r * 0.98));
+        const sm = new Matrix4().compose(_p.set(footX + _v.x, t.position[1] + _v.y, footZ + _v.z), q, _s.set(r * 0.98, r * 0.92, r * 0.98));
         const snm = new Matrix3().getNormalMatrix(sm);
         const shell = this.laceShell;
         const stride = (this.options.dotsPerTree[0] >= 50 ? 1 : 2) * fixedStride;
@@ -906,6 +947,8 @@ export class TreeLayer {
       key,
       slot,
       count,
+      ox: bx,
+      oz: bz,
       rel: new Float32Array(rel),
       base: new Float32Array(base),
       nrm: new Float32Array(nrm),
@@ -929,13 +972,25 @@ export class TreeLayer {
     const row = g.getAttribute('dotRow') as InstancedBufferAttribute;
     const hull = g.getAttribute('dotHull') as InstancedBufferAttribute;
     let n = 0;
+    const baseArr = base.array as Float32Array;
+    const hullArr = hull.array as Float32Array;
     for (const b of this.allocate()) {
       (rel.array as Float32Array).set(b.rel, n * 3);
-      (base.array as Float32Array).set(b.base, n * 3);
       (nrm.array as Float32Array).set(b.nrm, n * 3);
       (data.array as Float32Array).set(b.data, n * 4);
       (row.array as Float32Array).set(b.row, n);
-      (hull.array as Float32Array).set(b.hull, n * 4);
+      // Fuß und Hülle: Blockursprung → Pool-Anker (kleine Zahlen)
+      const ddx = b.ox - this.ox;
+      const ddz = b.oz - this.oz;
+      for (let i = 0; i < b.count; i++) {
+        baseArr[(n + i) * 3] = b.base[i * 3]! + ddx;
+        baseArr[(n + i) * 3 + 1] = b.base[i * 3 + 1]!;
+        baseArr[(n + i) * 3 + 2] = b.base[i * 3 + 2]! + ddz;
+        hullArr[(n + i) * 4] = b.hull[i * 4]! + ddx;
+        hullArr[(n + i) * 4 + 1] = b.hull[i * 4 + 1]!;
+        hullArr[(n + i) * 4 + 2] = b.hull[i * 4 + 2]! + ddz;
+        hullArr[(n + i) * 4 + 3] = b.hull[i * 4 + 3]!;
+      }
       n += b.count;
     }
     for (const a of [rel, base, nrm, data, row, hull]) commit(a, n);
