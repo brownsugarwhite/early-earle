@@ -1,4 +1,4 @@
-import { Box3, BufferAttribute, BufferGeometry, Frustum, Group, Matrix4, Mesh, Object3D, Quaternion, Sphere, Vector3, Vector4 } from 'three/webgpu';
+import { Box3, BufferAttribute, BufferGeometry, Frustum, Group, Matrix4, Mesh, MeshBasicNodeMaterial, Object3D, Quaternion, Sphere, Vector3, Vector4 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
 import { abs, atan, attribute, float, fract, int, length, max, mix, modelWorldMatrix, normalGeometry, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
 import {
@@ -134,6 +134,31 @@ export interface PathCorridor {
   dots: Array<[number, number]>;
 }
 
+/** Chunks, die nach dem Schwenken höchstens über die gewollten hinaus geladen bleiben (Rückweg ohne Neubau). */
+const LINGER_CHUNKS = 12;
+
+/**
+ * Layer der Schattenwerfer-Stellvertreter (nur Schattenpass): das Gelände wirft seinen Schatten über eigene Meshes je
+ * 2 × 2 Chunks, deren Grenzkugel im Schattenraum liegt — die sichtbaren Chunks kullen eng im Anzeigeraum, und jede
+ * Kaskade zeichnet ein Viertel der Aufrufe. Der Besitzer der Sonne schaltet den Layer auf der Schattenkamera ein (wie
+ * den Schatten-Proxy des Helden).
+ */
+export const PLANET_SHADOW_LAYER = 1;
+/** Chunks je Seite einer Schatten-Kachel. */
+const SHADOW_TILE = 3;
+/** Neubau geänderter Schatten-Kacheln höchstens alle so viele Frames. */
+const TILE_REBUILD_FRAMES = 6;
+
+interface ShadowTile {
+  key: string;
+  tx: number;
+  tz: number;
+  mesh: Mesh | null;
+  dirty: boolean;
+  minH: number;
+  maxH: number;
+}
+
 interface ChunkCpu {
   mesh: PlaneChunkMesh;
   trees: PlaneTree[];
@@ -232,6 +257,9 @@ export class EarlePlanet {
   /** Pfadrisse mit Kennung < diesem Wert sind geschlossen. */
   private readonly crackOpenFrom = uniform(-1e6);
   private readonly loaded = new Map<string, LoadedChunk>();
+  /** Schattenwerfer des Geländes je 2 × 2 Chunks (Layer PLANET_SHADOW_LAYER). */
+  private readonly shadowTiles = new Map<string, ShadowTile>();
+  private tileMaterial: MeshBasicNodeMaterial | null = null;
   private readonly cache = new Map<string, ChunkCpu>();
   private readonly slotsUsed: Array<string | null> = new Array<string | null>(GROWTH_SLOTS).fill(null);
   private readonly loadsPerFrame: number;
@@ -969,6 +997,16 @@ export class EarlePlanet {
         changed = true;
       }
     }
+    // Schnelles Schwenken: nicht mehr gewollte Chunks warten höchstens bis zur Obergrenze (älteste zuerst) — sonst
+    // häufen sich Dutzende hinter dem Horizont (Speicher, Schattenpass)
+    const lingerCap = wanted.length + LINGER_CHUNKS;
+    if (this.loaded.size > lingerCap) {
+      const stale = [...this.loaded.values()].filter((c) => c.lastSeen < this.frame).sort((a, b) => a.lastSeen - b.lastSeen);
+      for (let i = 0; i < stale.length && this.loaded.size > lingerCap; i++) {
+        this.unloadChunk(stale[i]!);
+        changed = true;
+      }
+    }
     this.stats.builtThisFrame = loads;
     this.stats.buildMs = buildMs;
     this.stats.loaded = this.loaded.size;
@@ -993,9 +1031,14 @@ export class EarlePlanet {
       this.lastRebuild = this.frame;
       rebuilt = true;
     }
-    // Kugel der Chunks im Anzeigeraum (Haupt- und Schattenpass: three kullt mit der Geometrie-Kugel)
+    // Kugel der Chunks im Anzeigeraum (Haupt- und Schattenpass: three kullt mit der Geometrie-Kugel); Chunks hinter dem
+    // Horizont (Bogen vom Kamerafuß) bleiben ganz aus — die Abbildung legte sie sonst an den Gegenpol, und ihre für den
+    // Schattenpass vergrößerte Kugel hielte sie in beiden Pässen
+    const horizonReach = (horizon + 0.12) * R + CHUNK_SIZE * 0.75 + 8;
     let visibleCount = 0;
-    for (const chunk of this.loaded.values()) if (this.updateChunkBounds(chunk, frustum)) visibleCount++;
+    for (const chunk of this.loaded.values()) if (this.updateChunkBounds(chunk, frustum, camX, camZ, horizonReach)) visibleCount++;
+    this.rebuildShadowTiles();
+    for (const tile of this.shadowTiles.values()) this.updateTileBounds(tile, camX, camZ, horizonReach);
     this.stats.visible = visibleCount;
     // Welten der geladenen Chunks und des Inhalts bleiben belegt
     const inUse = new Set<number>();
@@ -1016,26 +1059,151 @@ export class EarlePlanet {
   }
 
   /** Grenzkugel eines Chunks im Anzeigeraum in seinem Objektraum (three kullt damit); liefert „im Bild“. */
-  private updateChunkBounds(chunk: LoadedChunk, frustum: Frustum): boolean {
+  private updateChunkBounds(chunk: LoadedChunk, frustum: Frustum, camX: number, camZ: number, horizonReach: number): boolean {
     const R = this.options.radius;
     const half = CHUNK_SIZE / 2;
     const m = chunk.cpu.mesh;
+    const beyond = Math.hypot(m.ox + half - camX, m.oz + half - camZ) > horizonReach;
+    chunk.mesh.visible = !beyond;
+    if (beyond) return false;
     const fx = m.ox + half - this.focus.x;
     const fz = m.oz + half - this.focus.z;
     const cy = (m.minH + m.maxH) * 0.5;
     _w.set(fx, R + cy, fz);
     this.mapping.toDisplayCpu(_w, _v);
-    const g = chunk.mesh.geometry;
-    const bs = g.boundingSphere ?? (g.boundingSphere = new Sphere());
-    // Kugel im Objektraum: Anzeigemitte minus Objektposition (flacher Raum), Radius deckt auch die flache Lage (Schattenpass)
     const ox = chunk.mesh.position.x;
     const oz = chunk.mesh.position.z;
+    const r0 = half * Math.SQRT2 + (m.maxH - m.minH) * 0.5 + 1.5;
+    // Sichtbare Mesh: Kugel im Anzeigeraum (Objektraum = flacher Raum minus Objektposition)
+    const g = chunk.mesh.geometry;
+    const bs = g.boundingSphere ?? (g.boundingSphere = new Sphere());
     bs.center.set(_v.x - ox, _v.y - R, _v.z - oz);
-    const shift = _v.distanceTo(_w);
-    bs.radius = half * Math.SQRT2 + (m.maxH - m.minH) * 0.5 + 1.5 + shift;
+    bs.radius = r0 + 0.5;
     _sphere.center.copy(_v);
-    _sphere.radius = half * Math.SQRT2 + (m.maxH - m.minH) * 0.5 + 1.5;
+    _sphere.radius = r0;
     return frustum.intersectsSphere(_sphere);
+  }
+
+  /** Schatten-Kachel eines Chunks als geändert markieren (Neubau im nächsten `update`). */
+  private markShadowTile(cx: number, cz: number): void {
+    const tx = Math.floor(cx / SHADOW_TILE);
+    const tz = Math.floor(cz / SHADOW_TILE);
+    const key = `${tx}:${tz}`;
+    let tile = this.shadowTiles.get(key);
+    if (!tile) {
+      tile = { key, tx, tz, mesh: null, dirty: true, minH: 0, maxH: 0 };
+      this.shadowTiles.set(key, tile);
+    }
+    tile.dirty = true;
+  }
+
+  /**
+   * Geänderte Schatten-Kacheln neu zusammensetzen (Positionen relativ zur Kachelecke, Normalen, Indizes) — beim Schwenken
+   * höchstens alle paar Frames (neue Chunks laden am Rand, ihr Schatten darf kurz nachziehen), sonst sofort.
+   */
+  private rebuildShadowTiles(force = false): void {
+    if (!force && this.frame - this.lastTileRebuild < TILE_REBUILD_FRAMES) return;
+    let any = false;
+    for (const tile of [...this.shadowTiles.values()]) {
+      if (!tile.dirty) continue;
+      tile.dirty = false;
+      any = true;
+      const parts: PlaneChunkMesh[] = [];
+      for (let dz = 0; dz < SHADOW_TILE; dz++) {
+        for (let dx = 0; dx < SHADOW_TILE; dx++) {
+          const c = this.loaded.get(`${tile.tx * SHADOW_TILE + dx}:${tile.tz * SHADOW_TILE + dz}`);
+          if (c) parts.push(c.cpu.mesh);
+        }
+      }
+      if (tile.mesh) {
+        tile.mesh.removeFromParent();
+        tile.mesh.geometry.dispose();
+        this.releaseObject(tile.mesh);
+        tile.mesh = null;
+      }
+      if (parts.length === 0) {
+        this.shadowTiles.delete(tile.key);
+        continue;
+      }
+      const ox = tile.tx * SHADOW_TILE * CHUNK_SIZE;
+      const oz = tile.tz * SHADOW_TILE * CHUNK_SIZE;
+      let verts = 0;
+      let idx = 0;
+      for (const m of parts) {
+        verts += m.vertexCount;
+        idx += m.indices.length;
+      }
+      const pos = new Float32Array(verts * 3);
+      const nor = new Float32Array(verts * 3);
+      const index = new Uint32Array(idx);
+      let v0 = 0;
+      let i0 = 0;
+      let minH = Infinity;
+      let maxH = -Infinity;
+      for (const m of parts) {
+        const sx = m.ox - ox;
+        const sz = m.oz - oz;
+        for (let k = 0; k < m.vertexCount; k++) {
+          pos[(v0 + k) * 3] = m.positions[k * 3]! + sx;
+          pos[(v0 + k) * 3 + 1] = m.positions[k * 3 + 1]!;
+          pos[(v0 + k) * 3 + 2] = m.positions[k * 3 + 2]! + sz;
+        }
+        nor.set(m.normals.subarray(0, m.vertexCount * 3), v0 * 3);
+        for (let k = 0; k < m.indices.length; k++) index[i0 + k] = m.indices[k]! + v0;
+        v0 += m.vertexCount;
+        i0 += m.indices.length;
+        minH = Math.min(minH, m.minH);
+        maxH = Math.max(maxH, m.maxH);
+      }
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new BufferAttribute(pos, 3));
+      geometry.setAttribute('normal', new BufferAttribute(nor, 3));
+      geometry.setIndex(new BufferAttribute(index, 1));
+      geometry.boundingSphere = new Sphere();
+      if (!this.tileMaterial) {
+        this.tileMaterial = new MeshBasicNodeMaterial();
+        this.tileMaterial.name = 'planet-terrain-shadow';
+        this.tileMaterial.positionNode = this.mapping.warp(positionLocal as unknown as Vec3Node);
+      }
+      const mesh = new Mesh(geometry, this.tileMaterial);
+      mesh.name = `chunk-shadow-${tile.key}`;
+      mesh.layers.set(PLANET_SHADOW_LAYER);
+      mesh.castShadow = true;
+      // Selbstschatten-Neigung wie das Gelände (der Schattenpass wählt danach sein Material)
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = true;
+      mesh.userData.shadowGround = true;
+      this.plane.add(mesh);
+      this.anchorObject(mesh, ox, oz);
+      tile.mesh = mesh;
+      tile.minH = minH;
+      tile.maxH = maxH;
+    }
+    if (any) this.lastTileRebuild = this.frame;
+  }
+
+  private lastTileRebuild = -1000;
+
+  /** Grenzkugel einer Schatten-Kachel im Schattenraum (Ebene mit dem Kugelabfall um den Fokus, `displayShadowWarp`). */
+  private updateTileBounds(tile: ShadowTile, camX: number, camZ: number, horizonReach: number): void {
+    const mesh = tile.mesh;
+    if (!mesh) return;
+    const R = this.options.radius;
+    const half = (SHADOW_TILE * CHUNK_SIZE) / 2;
+    const cx = tile.tx * SHADOW_TILE * CHUNK_SIZE + half;
+    const cz = tile.tz * SHADOW_TILE * CHUNK_SIZE + half;
+    const beyond = Math.hypot(cx - camX, cz - camZ) > horizonReach + half * 0.5;
+    mesh.visible = !beyond;
+    if (beyond) return;
+    const fx = cx - this.focus.x;
+    const fz = cz - this.focus.z;
+    const cy = (tile.minH + tile.maxH) * 0.5;
+    const k = (1 + this.mapping.curvature.value) / (2 * R);
+    const d = Math.hypot(fx, fz);
+    const dMax = d + half * Math.SQRT2;
+    const bs = mesh.geometry.boundingSphere ?? (mesh.geometry.boundingSphere = new Sphere());
+    bs.center.set(half, cy - d * d * k, half);
+    bs.radius = half * Math.SQRT2 + (tile.maxH - tile.minH) * 0.5 + 1.5 + (dMax * dMax - d * d) * k;
   }
 
   private loadChunk(cx: number, cz: number, key: string, res: number, replaces: LoadedChunk | null): boolean {
@@ -1101,13 +1269,15 @@ export class EarlePlanet {
     geometry.boundingSphere = new Sphere();
     const mesh = new Mesh(geometry, this.terrainMaterial);
     mesh.name = `chunk-${key}`;
-    mesh.castShadow = true;
+    // Schatten wirft der Stellvertreter (eigene Grenzkugel im Schattenraum): die sichtbare Mesh kullt eng im Bild
+    mesh.castShadow = false;
     mesh.receiveShadow = true;
     mesh.frustumCulled = true;
     mesh.userData.shadowGround = true;
     this.plane.add(mesh);
     this.anchorObject(mesh, m.ox, m.oz);
     const chunk: LoadedChunk = { key, cx, cz, res, cpu, mesh, slot, lastSeen: this.frame, centreY: (m.minH + m.maxH) * 0.5, radius: CHUNK_SIZE * 0.72 };
+    this.markShadowTile(cx, cz);
     this.slotsUsed[slot] = key;
     this.loaded.set(key, chunk);
     this.applyGrowth(chunk);
@@ -1142,6 +1312,7 @@ export class EarlePlanet {
     this.disposeChunkMesh(chunk);
     this.slotsUsed[chunk.slot] = null;
     this.loaded.delete(chunk.key);
+    this.markShadowTile(chunk.cx, chunk.cz);
   }
 
   private buildChunk(cx: number, cz: number, res: number): ChunkCpu {
@@ -1338,7 +1509,7 @@ export class EarlePlanet {
 
   /** Größe der Caches (Speicher bleibt beim endlosen Schwenken begrenzt). */
   get cacheSizes(): { chunks: number; cpu: number; regions: number; slots: number } {
-    return { chunks: this.loaded.size, cpu: this.cache.size, regions: this.field.features.planned, slots: this.slots.entries().length };
+    return { chunks: this.loaded.size, cpu: this.cache.size, regions: this.field.features.size, slots: this.slots.entries().length };
   }
 
   /** Letzter Knoten der Autorenroute (0-basiert). */
@@ -1353,6 +1524,8 @@ export class EarlePlanet {
 
   dispose(): void {
     for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
+    this.rebuildShadowTiles(true);
+    this.tileMaterial?.dispose();
     for (const o of this.landmarks.values()) o.removeFromParent();
     this.landmarks.clear();
     this.vegetation.dispose();

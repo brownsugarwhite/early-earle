@@ -279,6 +279,8 @@ class TerminatorShadowNode extends ShadowNode {
     private readonly casterXf: UniformNode<'vec4', Vector4>,
     private readonly owned: { target: RenderTarget; depth: DepthTexture },
     private readonly warp: ShadowWarp | null = null,
+    /** Index der Kaskade (0 = die feinste, kameranächste). */
+    private readonly cascadeIndex = 0,
   ) {
     super(light, shadow);
   }
@@ -388,7 +390,10 @@ class TerminatorShadowNode extends ShadowNode {
           return;
         }
         const mat = material as CasterMaterialState | null;
-        const data = object.userData as { shadowSelfBias?: boolean; shadowSmooth?: boolean; shadowDilate?: boolean; shadowContact?: boolean };
+        const data = object.userData as { shadowSelfBias?: boolean; shadowSmooth?: boolean; shadowDilate?: boolean; shadowContact?: boolean; shadowCascades?: number };
+        // Kleine Werfer (Müll, Requisiten, Tiere, Sockel): nur in den feinen Kaskaden — in der gröbsten wären ihre
+        // Schatten kleiner als ein Texel, der Zeichenaufruf je Kaskade bliebe (`userData.shadowCascades = n`: Kaskaden 0 … n−1)
+        if (typeof data.shadowCascades === 'number' && this.cascadeIndex >= data.shadowCascades) return;
         const self = object.receiveShadow === true && data.shadowSelfBias !== false;
         const smooth =
           this.casters.smooth &&
@@ -602,7 +607,7 @@ export class CascadedShadows {
       target.texture.name = 'EarleShadowMap';
       target.texture.type = shadow.mapType;
       target.depthTexture = depth;
-      node = new TerminatorShadowNode(light as unknown as DirectionalLight, shadow, selfBias, this.casterSettings, this.axes, casterXf, { target, depth }, this.options.warp ?? null) as unknown as Node;
+      node = new TerminatorShadowNode(light as unknown as DirectionalLight, shadow, selfBias, this.casterSettings, this.axes, casterXf, { target, depth }, this.options.warp ?? null, this.cascades.length) as unknown as Node;
     }
     return { light, shadow, node, frame, split: uniform(0), active: uniform(0), band: uniform(new Vector4(0.002, 0.004, 0.002, 0.004)), size, selfBias, casterXf, target, depth };
   }

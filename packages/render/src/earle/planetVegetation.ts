@@ -304,6 +304,8 @@ export class PlanetVegetation {
       },
     );
     for (const m of this.trees.meshes) this.group.add(m);
+    // Stämme: dünne Schattenlinien — nur in den zwei feinen Kaskaden (die Kronen werfen in allen)
+    for (const m of Object.values(this.trees.trunks)) m.userData.shadowCascades = 2;
 
     // --- Requisiten -------------------------------------------------------------------------------------
     // Gepackte Attribute: propA = (Fußpunkt xyz, Rang), propB = (Normale xyz, Höhe), propC = (Slot, Zeile, Zeile 2, Typ + Variante)
@@ -420,6 +422,8 @@ export class PlanetVegetation {
         positionNode: warp(propGrown(part)),
       });
       this.props = makeProp('planet-props', createPropGeometry(), material, options.capacity.props);
+      // kleine Werfer (Müll, Reifen, Rohre, Felsbrocken): nur in den zwei feinen Kaskaden
+      this.props.userData.shadowCascades = 2;
     }
     {
       // Ölbecken: glänzende Tintenellipsen mit einem hellen Reflexband (Akzent 7), langsam driftend
@@ -467,6 +471,7 @@ export class PlanetVegetation {
       const mesh = new InstancedMesh(geometry, material, n);
       mesh.name = 'planet-animals';
       mesh.castShadow = true;
+      mesh.userData.shadowCascades = 2;
       mesh.receiveShadow = false;
       mesh.frustumCulled = false;
       mesh.count = 0;

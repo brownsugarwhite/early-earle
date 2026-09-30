@@ -627,6 +627,8 @@ export class NodePath {
       this.pedestals.frustumCulled = false;
       this.pedestals.castShadow = true;
       this.pedestals.receiveShadow = true;
+      // Sockel der Steine: kleine Werfer, nur in den zwei feinen Kaskaden
+      this.pedestals.userData.shadowCascades = 2;
       this.geometries.push(geo);
       this.materials.push(mat);
     }

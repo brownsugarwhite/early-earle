@@ -247,6 +247,8 @@ export class TrashField {
       mesh.frustumCulled = false;
       mesh.castShadow = shadows;
       mesh.receiveShadow = shadows;
+      // kleine Werfer: nur in den zwei feinen Kaskaden (in der gröbsten unter einem Texel)
+      mesh.userData.shadowCascades = 2;
       this.geometries.push(geometry);
       this.materials.push(material);
       this.group.add(mesh);

@@ -83,6 +83,8 @@ const T_DEPART = 1.3;
 const T_CELEBRATE_AT = 0.69;
 const T_CELEBRATE = 0.78;
 const T_GLIDE = 1.0;
+/** Farther than this (plane units), a glide to a node jumps to its last stretch first (0.4 of this distance). */
+const GLIDE_JUMP = 150;
 /**
  * Board v2 fly-in (flow clock): the plateau starts heaving at T_RISE_AT (its own ≈1.3 s wall-clock
  * choreography), the hero rides the hill up, crouches and jumps onto its cell at T_HERO_LAUNCH.
@@ -481,10 +483,18 @@ export class FlowScene implements SceneController {
 
   /** Same, as a glide over the plane (cancelled by a drag). */
   glideViewToNode(index: number, duration = T_GLIDE, ease = easeInOut): void {
-    const from = this.currentView();
+    let from = this.currentView();
     const to = this.viewFor(index);
     this.tweens.cancel('glide');
     this.panBall?.stop();
+    // From far away (after a long pan across the endless plane): jump to the last stretch first — gliding through
+    // thousands of units would stream every chunk on the way for nothing
+    const far = Math.hypot(to.x - from.x, to.z - from.z);
+    if (far > GLIDE_JUMP) {
+      const k = (far - GLIDE_JUMP * 0.4) / far;
+      from = { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k, yaw: from.yaw };
+      this.applyView(from);
+    }
     this.tweens.add(
       duration,
       (t) => {

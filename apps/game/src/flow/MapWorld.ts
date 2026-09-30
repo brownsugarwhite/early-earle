@@ -1,6 +1,6 @@
 import { Color, Frustum, Group, Matrix4, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
-import { EarlePlanet, FogStripes, SunRig, createSkyDome, skySunIndices, type WorldPalette } from '@ee/render';
+import { EarlePlanet, FogStripes, PLANET_SHADOW_LAYER, SunRig, createSkyDome, skySunIndices, type WorldPalette } from '@ee/render';
 import type { Vec3 } from '@ee/world';
 import { mixHex } from '@ee/genome';
 import type { FlowQuality } from './quality';
@@ -130,6 +130,8 @@ export class MapWorld {
     });
     this.sun.root.position.set(0, 0, -4);
     this.rig.add(this.sun.root);
+    // Schattenwerfer des Geländes (Stellvertreter-Layer der Ebene) und der Schatten-Proxy des Helden
+    this.sun.light.shadow.camera.layers.enable(PLANET_SHADOW_LAYER);
 
     const withTree = options.tree !== false;
     const treeFirst = TREE_LEVELS[0] - 1;

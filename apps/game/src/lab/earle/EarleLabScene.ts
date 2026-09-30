@@ -1,6 +1,6 @@
 import { Color, Frustum, Matrix4, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
-import { EarlePlanet, FogStripes, SunRig, createSkyDome, skySunIndices, type WorldView } from '@ee/render';
+import { EarlePlanet, FogStripes, PLANET_SHADOW_LAYER, SunRig, createSkyDome, skySunIndices, type WorldView } from '@ee/render';
 import type { SceneController, SceneContext } from '../../canvas/SceneController';
 import { PanBall } from './panball';
 import { resolveQuality, type QualityLevel, type QualityPreset, type ResolvedQuality } from './quality';
@@ -160,6 +160,8 @@ export class EarleLabScene implements SceneController {
       elevationDeg: this.params.sunElevation,
       azimuthDeg: this.params.sunAzimuth,
     });
+    // Schattenwerfer des Geländes: Stellvertreter-Layer der Ebene
+    this.sun.light.shadow.camera.layers.enable(PLANET_SHADOW_LAYER);
     this.panBall = new PanBall({
       worldUnitsPerPixel: () => this.worldUnitsPerPixel(),
       yaw: () => this.yaw,

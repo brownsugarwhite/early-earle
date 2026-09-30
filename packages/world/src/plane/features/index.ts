@@ -60,6 +60,11 @@ export class PlaneFeatures {
   /** Planungen seit Beginn (Diagnose, Tests). */
   planned = 0;
 
+  /** Geplante Regionen im Cache (bleibt beim endlosen Schwenken unter `capacity`). */
+  get size(): number {
+    return this.cache.size;
+  }
+
   constructor(
     private readonly host: PlaneFeatureHost,
     private readonly provider: RegionProvider,
