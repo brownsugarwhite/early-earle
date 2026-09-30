@@ -86,17 +86,25 @@ describe('Bäume v4: Stämme', () => {
       expect(Math.abs(k - 1)).toBeLessThan(0.06);
       expect(t.p[1]).toBeLessThan(E.cy + 0.12);
     }
-    // jede Spitze liegt auf dem Skelett: nahe an einem Vertex eines Zweigs (Ebene 2)
+    // jede Spitze und jede Perle liegt auf dem Skelett (Abstand zur Mittellinie eines Asts oder Zweigs)
+    const onPath = (q: readonly number[]): number => {
+      let best = Infinity;
+      for (const path of fan.paths) {
+        for (let i = 0; i + 1 < path.length; i++) {
+          const a = path[i]!;
+          const b = path[i + 1]!;
+          const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+          const aq = [q[0]! - a[0], q[1]! - a[1], q[2]! - a[2]];
+          const t = Math.max(0, Math.min(1, (aq[0]! * ab[0]! + aq[1]! * ab[1]! + aq[2]! * ab[2]!) / Math.max(1e-9, ab[0]! ** 2 + ab[1]! ** 2 + ab[2]! ** 2)));
+          best = Math.min(best, Math.hypot(aq[0]! - ab[0]! * t, aq[1]! - ab[1]! * t, aq[2]! - ab[2]! * t));
+        }
+      }
+      return best;
+    };
+    for (const t of [...fan.tips, ...fan.beads]) expect(onPath(t.p)).toBeLessThan(0.01);
     const g = fan.geometry;
     const p = positions(g);
     const bark = g.getAttribute('bark').array as Float32Array;
-    const twigPts: number[][] = [];
-    for (let i = 0; i < p.length / 3; i++) if (bark[i * 4 + 2] === 2) twigPts.push([p[i * 3]!, p[i * 3 + 1]!, p[i * 3 + 2]!]);
-    for (const t of [...fan.tips, ...fan.beads]) {
-      let best = Infinity;
-      for (const q of twigPts) best = Math.min(best, Math.hypot(q[0]! - t.p[0], q[1]! - t.p[1], q[2]! - t.p[2]));
-      expect(best).toBeLessThan(0.05);
-    }
     // Schleier-Grund: untere Halbscheibe (Ebene 4), die der Shader hinter die Baummitte stellt
     let veil = 0;
     for (let i = 0; i < p.length / 3; i++) {

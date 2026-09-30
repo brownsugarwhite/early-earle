@@ -1,6 +1,6 @@
 import { clamp, float, floor, fract, fwidth, length, max, mix, select, smoothstep, vec3 } from 'three/tsl';
 import type { FloatNode, PaletteLookup, Vec3Node } from '../tsl';
-import { branchVeins, cellHash, flowers, rehash } from './patterns';
+import { branchVeins, cellHash, flowers } from './patterns';
 
 /**
  * Textur der Schattenseite der Kronen (Earle: dunkel auf dunkel, nie eine schwarze Fläche — Ebene 1/19/32, Bild 03):
@@ -64,10 +64,11 @@ export function crownShadeTexture(o: ShadeTextureOptions): ShadeTexture {
     const grow = float(1).sub(s.lit).mul(max(depth, float(1).sub(s.cast)));
     const q = o.patternPos.div(cellN);
     const c = floor(q);
+    // ein Hash je Zelle, die übrigen Zufallswerte daraus abgeleitet (billig auf dem Handy)
     const h1 = cellHash(c, 19);
-    const h2 = rehash(h1, 7);
-    const h3 = rehash(h2, 29);
-    const h4 = rehash(h3, 43);
+    const h2 = fract(h1.mul(17.31).add(0.13));
+    const h3 = fract(h1.mul(31.77).add(h2.mul(5.3)));
+    const h4 = fract(h2.mul(23.17).add(h1.mul(7.1)));
     const jit = vec3(h1, h2, h3).sub(0.5).mul(float(1 - size * 2).max(0).mul(0.9));
     const d = length(fract(q).sub(0.5).sub(jit)).mul(cellN);
     const present = select(h4.lessThan(o.density), float(1), float(0));
@@ -76,7 +77,7 @@ export function crownShadeTexture(o: ShadeTextureOptions): ShadeTexture {
     const fw = cellsPerPx.mul(cellN).max(1e-5);
     const visible = smoothstep(0.42, 0.24, cellsPerPx);
     const mask = smoothstep(rad.add(fw), rad.sub(fw), d).mul(clamp(rad.div(fw), 0, 1)).mul(visible);
-    const idx = select(rehash(h4, 3).lessThan(0.72), float(3), float(2));
+    const idx = select(fract(h3.mul(13.7).add(h4)).lessThan(0.72), float(3), float(2));
     const dotCol = o.lookup.pal(idx, s.row).rgb as unknown as Vec3Node;
     // Glühen: die Schattenseite nimmt einen Teil des ersten Kronentons an (auch im Schlagschatten)
     const glowing = o.glow ? mix(col, o.lookup.pal(1, s.row).rgb as unknown as Vec3Node, o.glow.mul(float(1).sub(s.lit))) : col;

@@ -68,7 +68,7 @@ function along(path: V3[], t: number): { p: V3; d: V3; i: number } {
 }
 
 /** Kurze, flache Wurzelanläufe, die schräg in den Boden laufen. */
-function roots(b: TreeMeshBuilder, rand: () => number, r0: number, count: number, reach0: number): void {
+function roots(b: TreeMeshBuilder, rand: () => number, r0: number, count: number, reach0: number, radial = 4): void {
   const rootAz = rand() * Math.PI * 2;
   for (let k = 0; k < count; k++) {
     const az = rootAz + (k / count) * Math.PI * 2 + (rand() - 0.5) * 0.7;
@@ -80,7 +80,7 @@ function roots(b: TreeMeshBuilder, rand: () => number, r0: number, count: number
       [c * reach * 0.55, 0.0, s * reach * 0.55],
       [c * reach, -0.14, s * reach],
     ];
-    b.tube(taperAlong(path, r0 * 1.25, 0.018), 4, 3, 0);
+    b.tube(taperAlong(path, r0 * 1.25, 0.018), radial, 3, 0);
   }
 }
 
@@ -94,7 +94,7 @@ export function createForkTrunk(seed = 11): BufferGeometry {
   const b = new TreeMeshBuilder();
   const r0 = 0.07;
   const pts = stem(rand, -0.28, FORK_Y, 6, r0, 1.6, 0.025);
-  const vTop = b.tube(pts, 7, 0);
+  const vTop = b.tube(pts, 5, 0);
   const top = pts[pts.length - 1]!;
   const F = top.p;
   const rF = top.r;
@@ -110,7 +110,7 @@ export function createForkTrunk(seed = 11): BufferGeometry {
     const p3 = add(F, scale(dirFrom(az + sway, Math.min(1.45, el + 0.2)), L));
     const path = bezier3(p0, p1, p2, p3, 5);
     const limb = taperAlong(path, rF * 0.72, 0.008, 0.04);
-    b.tube(limb, 5, 1, vTop);
+    b.tube(limb, 4, 1, vTop);
     // Nebenäste: schwingen zur Seite aus und steigen wieder (keine Gerade, eine kleine Lyra)
     for (const [t, side] of [
       [0.42 + rand() * 0.08, k % 2 === 0 ? 1 : -1],
@@ -123,10 +123,10 @@ export function createForkTrunk(seed = 11): BufferGeometry {
       const q0 = at.p;
       const q1 = add(q0, scale(dirFrom(sAz, 0.55 + rand() * 0.2), sl * 0.45));
       const q2 = add(q0, scale(dirFrom(sAz - side * 0.2, 1.15 + rand() * 0.2), sl));
-      b.tube(taperAlong(bezier(q0, q1, q2, 4), rAt * 0.62, 0.005), 4, 2, vTop);
+      b.tube(taperAlong(bezier(q0, q1, q2, 3), rAt * 0.62, 0.005), 3, 2, vTop);
     }
   }
-  roots(b, rand, r0, 3, 0.2);
+  roots(b, rand, r0, 3, 0.2, 3);
   return b.toGeometry();
 }
 
@@ -154,6 +154,8 @@ export interface FanGeometry {
   tips: LaceTip[];
   /** Perlen entlang der hängenden Zweige (Punkte auf dem Skelett). */
   beads: LaceTip[];
+  /** Mittellinien aller Äste und Zweige (Tests: jeder Punkt liegt auf dem Skelett). */
+  paths: V3[][];
   /** Höchster Punkt und größte Ausladung (Archetyp-Einheiten). */
   top: number;
   spread: number;
@@ -170,6 +172,7 @@ export function createFanTrunk(seed = 5): FanGeometry {
   const b = new TreeMeshBuilder();
   const tips: LaceTip[] = [];
   const beads: LaceTip[] = [];
+  const paths: V3[][] = [];
   const E = LACE_ENVELOPE;
   const C: V3 = [0, E.cy, 0];
   let topY = 0;
@@ -187,7 +190,7 @@ export function createFanTrunk(seed = 5): FanGeometry {
   const r0 = 0.062;
   const yF = 0.62;
   const pts = stem(rand, -0.25, yF, 6, r0, 1.35, 0.03, 0.28);
-  const vTop = b.tube(pts, 7, 0);
+  const vTop = b.tube(pts, 6, 0);
   const F = pts[pts.length - 1]!.p;
   const rF = pts[pts.length - 1]!.r;
   const limbs = 5;
@@ -201,9 +204,10 @@ export function createFanTrunk(seed = 5): FanGeometry {
     const p1 = add(F, add(scale(dirFrom(az, 0), 0.16), [0, 0.3, 0]));
     const p2: V3 = [Math.cos(az + twist * 0.5) * reach * 0.72, 1.28 + 0.08 * rand(), Math.sin(az + twist * 0.5) * reach * 0.72];
     const p3: V3 = [Math.cos(az + twist) * reach, 1.8 + 0.06 * rand(), Math.sin(az + twist) * reach];
-    const path = bezier3(p0, p1, p2, p3, 7);
+    const path = bezier3(p0, p1, p2, p3, 6);
     const limb = taperAlong(path, rF * 0.62, 0.01, 0.05);
-    b.tube(limb, 5, 1, vTop);
+    b.tube(limb, 4, 1, vTop);
+    paths.push(path);
     for (const p of path) note(p);
     // Nebenäste: hängen nach außen und unten bis auf die Schale
     const subs = 3 + (rand() < 0.5 ? 1 : 0);
@@ -224,9 +228,10 @@ export function createFanTrunk(seed = 5): FanGeometry {
       const q1 = add(q0, add(scale(out, dl * 0.34), [0, dl * 0.04, 0]));
       const q2 = add(target.p, add(scale(out, -dl * 0.06), [0, dl * 0.2, 0]));
       const q3 = target.p;
-      const sp = bezier3(q0, q1, q2, q3, 6);
+      const sp = bezier3(q0, q1, q2, q3, 5);
       const subT = taperAlong(sp, rAt * 0.62, 0.006);
-      b.tube(subT, 4, 2, vTop);
+      b.tube(subT, 3, 2, vTop);
+      paths.push(sp);
       for (const p of sp) note(p);
       // Perlen entlang des hängenden Teils
       for (const f of [0.4, 0.55, 0.7, 0.84, 0.94]) {
@@ -249,6 +254,7 @@ export function createFanTrunk(seed = 5): FanGeometry {
         const mid = add(scale(add(target.p, tip), 0.5), scale(target.n, tl * 0.18));
         const twig = bezier(target.p, mid, tip, 3);
         b.tube(taperAlong(twig, 0.0055, 0.0028), 3, 2, vTop);
+        paths.push(twig);
         note(tip);
         const n = norm([rel[0] / (E.rx * E.rx), rel[1] / (E.ry * E.ry), rel[2] / (E.rx * E.rx)]);
         tips.push({ p: tip, n, d: norm(sub(tip, mid)) });
@@ -256,9 +262,9 @@ export function createFanTrunk(seed = 5): FanGeometry {
       tips.push({ p: target.p, n: target.n, d: endDir });
     }
   }
-  roots(b, rand, r0, 3, 0.18);
+  roots(b, rand, r0, 3, 0.18, 3);
   veilShell(b);
-  return { geometry: b.toGeometry(), tips, beads, top: topY, spread };
+  return { geometry: b.toGeometry(), tips, beads, paths, top: topY, spread };
 }
 
 /** Ebene des Schleier-Grunds im Rindenattribut (`bark.z`): der Shader färbt diese Vertices blass, der Schattenpass lässt sie weg. */
