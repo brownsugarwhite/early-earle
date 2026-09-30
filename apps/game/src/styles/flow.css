@@ -141,3 +141,12 @@
   .hud-goal { font-size: 11px; }
   .flow-dev { bottom: calc(env(safe-area-inset-bottom) + 150px); max-width: 60vw; }
 }
+
+/* Einstiege auf der Karte (Web; mapEntries: Setzkasten, Klassik …): quadratische Glasknöpfe wie Ton und Werkstatt, das
+   Zeichen in der fetten Display-Schrift (fehlende Glyphen wie ▦ fallen auf die Ersatzschrift zurück); leuchten in der
+   Akzentfarbe, solange es dort Neues gibt. Im nativen HUD sind es runde Pillen mit SF Symbol. */
+.flow-hud .glass-btn.entry-btn {
+  min-width: 48px; width: 52px; padding: 0 0 2px; display: inline-grid; place-items: center;
+  font-family: var(--font-heavy); font-size: 14px; letter-spacing: 0; text-transform: none;
+}
+.flow-hud .glass-btn.entry-btn[data-highlight='true'] { --glass-tint: color-mix(in srgb, var(--pink) 70%, transparent); }

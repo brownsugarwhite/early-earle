@@ -47,6 +47,8 @@ export function FlowView({ start }: FlowSceneOptions) {
     });
     const offGrid = useGridStore.subscribe((s, prev) => {
       if (!s.level) return;
+      // Klassik-Runden (`session === 'classic'`) sind keine Level-Versuche und keine Siege.
+      if (s.session === 'classic') return;
       if (s.level.id !== prev.level?.id || s.attempt !== prev.attempt) useProgress.getState().recordAttempt(s.level.id);
       if (s.state?.status === 'won' && prev.state?.status !== 'won') {
         const flow = useFlowStore.getState();

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { collectErrors, flowState, nodeOnScreen, request, seedProgress, TRANSITION_MS, waitForRenderer, waitPhase, waitScene, winLevel, type FlowHandles } from './helpers';
+import { collectErrors, flowState, nodeOnScreen, request, seedProgress, TRANSITION_MS, waitForRenderer, waitPhase, waitScene, winLevel, type FlowHandles, waitSplashIdle } from './helpers';
 
 // Iteration 4 · Flow und Fortschritt: echter und freier Modus, Intro, Landung auf dem geschafften Knoten und der Weg
 // über die Punkte, REX-Szene nach Level 1, gesperrte Knoten, Scroll-Grenze. SwiftShader/WebGL2 wie die anderen Tests;
@@ -43,6 +43,7 @@ test('Erster Start (echt): Tippen → Intro direkt in Level 1 → Sieg → Landu
   await page.goto('/?quality=mobil');
   await waitForRenderer(page);
   await waitPhase(page, 'splash');
+  await waitSplashIdle(page);
   await record(page);
   await page.mouse.click(PHONE.width / 2, PHONE.height * 0.8);
   await waitPhase(page, 'level');
@@ -132,9 +133,10 @@ test('Echt: die Karte dreht nur begrenzt und federt nach einem weiten Zug zurüc
   // Far drags across the screen: the rubber band holds the view close to the path while the finger is down
   let peak = 0;
   for (let k = 0; k < 2; k++) {
-    await page.mouse.move(60, 780);
+    // Start in der freien Kartenfläche (unten liegen Knopfleiste und REX-Zeile, links die Entwicklerleiste)
+    await page.mouse.move(330, 640);
     await page.mouse.down();
-    for (let i = 1; i <= 16; i++) await page.mouse.move(60 + (i * 280) / 16, 780 - (i * 700) / 16);
+    for (let i = 1; i <= 16; i++) await page.mouse.move(330 - (i * 280) / 16, 640 - (i * 560) / 16);
     peak = Math.max(peak, (await scrollState(page))!.excess);
     await page.mouse.up();
   }

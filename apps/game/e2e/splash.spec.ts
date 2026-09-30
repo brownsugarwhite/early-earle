@@ -111,7 +111,8 @@ async function waitForRenderer(page: Page): Promise<void> {
 
 test('Tipp auf "Tippen": Ausklang, Übergabe an den Helden, Map — Splash weg', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('/');
+  // Freier Modus: der Tipp führt wie bisher auf die Map (im echten Modus spielt der erste Start das Intro, progression.spec)
+  await page.goto('/?mode=free');
   await waitForRenderer(page);
   const splash = page.getByTestId('splash');
   await expect(splash).toHaveAttribute('data-phase', 'idle', { timeout: SLOW });
@@ -130,7 +131,7 @@ test.describe('reduzierte Bewegung', () => {
   test.use({ reducedMotion: 'reduce' });
   test('alles schneidet bei 100 % ein, Tippen führt ohne Ausklang zur Map', async ({ page }) => {
     const errors = collectErrors(page);
-    await page.goto('/');
+    await page.goto('/?mode=free');
     await waitForRenderer(page);
     const splash = page.getByTestId('splash');
     await recordProgress(page);
