@@ -210,3 +210,135 @@ describe('Clip-Box (fitShadow im Kaskadenbetrieb)', () => {
     if (Math.abs(ndc.x) <= 1 && Math.abs(ndc.y) <= 1) expect(inRect(tip)).toBe(true);
   });
 });
+
+describe('Bodengefittete gröbste Kaskade (Schatten v3)', () => {
+  const focused = (cam: PerspectiveCamera, surface: ((d: Vector3) => number) | null, epoch = 1, tol = 1.2): FitInput => {
+    const base = input(cam, surface, epoch);
+    return { ...base, shell: { ...base.shell!, coverTolerance: tol } };
+  };
+
+  it('spannt die gröbste Kaskade deutlich enger als die ganze Schale', () => {
+    const cam = mapCamera();
+    const shell = new CascadeFitter().fit(input(cam, hills()), createFitResult(3));
+    const ground = new CascadeFitter().fit(focused(cam, hills()), createFitResult(3));
+    const area = (f: typeof shell) => (f.cascades[2]!.x1 - f.cascades[2]!.x0) * (f.cascades[2]!.y1 - f.cascades[2]!.y0);
+    expect(area(ground)).toBeLessThan(area(shell) * 0.8);
+    expect(ground.dMax).toBeLessThanOrEqual(shell.dMax + 1e-9);
+  });
+
+  it('deckt weiter jeden sichtbaren Bodenpunkt ab', () => {
+    const cam = mapCamera();
+    const surface = hills();
+    const fit = new CascadeFitter().fit(focused(cam, surface), createFitResult(3));
+    const last = fit.cascades[2]!;
+    const o = cam.position.clone();
+    const d = new Vector3();
+    const p = new Vector3();
+    let checked = 0;
+    for (let j = 0; j <= 20; j++) {
+      for (let i = 0; i <= 20; i++) {
+        d.set(-1 + i / 10, -1 + j / 10, 0.5).unproject(cam).sub(o).normalize();
+        for (let t = 0.3; t < 60; t += 0.02) {
+          p.copy(d).multiplyScalar(t).add(o);
+          const len = p.length();
+          if (len <= surface(p.clone().divideScalar(len))) {
+            const x = fit.X.dot(p);
+            const y = fit.Y.dot(p);
+            expect(x).toBeGreaterThanOrEqual(last.x0);
+            expect(x).toBeLessThanOrEqual(last.x1);
+            expect(y).toBeGreaterThanOrEqual(last.y0);
+            expect(y).toBeLessThanOrEqual(last.y1);
+            checked++;
+            break;
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(200);
+  });
+
+  it('nimmt Empfänger-Volumen über dem Boden in die Kaskaden ihrer Blicktiefe auf', () => {
+    const cam = mapCamera();
+    // Kugel 3 Einheiten über dem Boden vor der Kamera (Riesenbaum-Stamm, Brett)
+    const center = new Vector3(0.4, R + 4.2, -3);
+    const fit = new CascadeFitter().fit({ ...focused(cam, hills()), volumes: [{ center, radius: 0.8 }] }, createFitResult(3));
+    const top = center.clone().add(new Vector3(0, 0.6, 0));
+    const fwd = new Vector3(0, 0, -1).transformDirection(cam.matrixWorld);
+    const depth = top.clone().sub(cam.position).dot(fwd);
+    const covering = fit.cascades.filter((c, k) => k === fit.cascades.length - 1 || c.split >= depth + 1);
+    expect(covering.length).toBeGreaterThan(0);
+    for (const c of covering) {
+      const x = fit.X.dot(top);
+      const y = fit.Y.dot(top);
+      expect(x).toBeGreaterThanOrEqual(c.x0);
+      expect(x).toBeLessThanOrEqual(c.x1);
+      expect(y).toBeGreaterThanOrEqual(c.y0);
+      expect(y).toBeLessThanOrEqual(c.y1);
+    }
+  });
+
+  it('deckt mit coverAbove auch verteilte Empfänger über dem Boden ab (Kronen), einseitig und billiger als ein breites Band', () => {
+    const cam = mapCamera();
+    const surface = hills();
+    const withAbove = (above: number): FitInput => {
+      const f = focused(cam, surface);
+      return { ...f, shell: { ...f.shell!, coverAbove: above } };
+    };
+    const plain = new CascadeFitter().fit(focused(cam, surface), createFitResult(3));
+    const above = new CascadeFitter().fit(withAbove(3), createFitResult(3));
+    const wide = new CascadeFitter().fit(focused(cam, surface, 1, 3), createFitResult(3));
+    const o = cam.position.clone();
+    const fwd = new Vector3(0, 0, -1).transformDirection(cam.matrixWorld);
+    const d = new Vector3();
+    const p = new Vector3();
+    const outside = (fit: typeof plain, q: Vector3): boolean => {
+      const c = fit.cascades[2]!;
+      const x = fit.X.dot(q);
+      const y = fit.Y.dot(q);
+      return x < c.x0 || x > c.x1 || y < c.y0 || y > c.y1;
+    };
+    let checked = 0;
+    let missedPlain = 0;
+    for (let j = 0; j <= 20; j++) {
+      for (let i = 0; i <= 20; i++) {
+        d.set(-1 + i / 10, -1 + j / 10, 0.5).unproject(cam).sub(o).normalize();
+        for (let t = 0.3; t < 60; t += 0.02) {
+          p.copy(d).multiplyScalar(t).add(o);
+          const len = p.length();
+          if (len <= surface(p.clone().divideScalar(len))) {
+            const crown = p.clone().addScaledVector(p.clone().normalize(), 3);
+            const depth = crown.clone().sub(o).dot(fwd);
+            if (depth > cam.near && depth <= above.dMax) {
+              expect(outside(above, crown)).toBe(false);
+              if (outside(plain, crown)) missedPlain++;
+              checked++;
+            }
+            break;
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(150);
+    expect(missedPlain).toBeGreaterThan(0);
+    const area = (f: typeof plain) => (f.cascades[2]!.x1 - f.cascades[2]!.x0) * (f.cascades[2]!.y1 - f.cascades[2]!.y0);
+    expect(area(above)).toBeLessThan(area(wide));
+  });
+
+  it('hält beim Rollen auch die gröbste Kaskade meist still (Hysterese)', () => {
+    const cam = mapCamera();
+    const fitter = new CascadeFitter();
+    const out = createFitResult(3);
+    fitter.fit(focused(cam, hills()), out);
+    let prev = [out.cascades[2]!.texelX, out.cascades[2]!.texelY];
+    let changes = 0;
+    for (let step = 1; step <= 40; step++) {
+      const q = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0.3).normalize(), (step * 0.25 * Math.PI) / 180);
+      fitter.fit({ ...focused(cam, hills(q), step), keepPsi: true, lockTexels: true }, out);
+      const now = [out.cascades[2]!.texelX, out.cascades[2]!.texelY];
+      if (now[0] !== prev[0] || now[1] !== prev[1]) changes++;
+      prev = now;
+    }
+    // Hügel ziehen durch, die Bodenregion atmet: höchstens ein paar Stufenwechsel über 10° Rollen
+    expect(changes).toBeLessThanOrEqual(3);
+  });
+});

@@ -81,3 +81,106 @@ test('/lab/shadow fittet Kaskaden an die Kamera, schaltet Alt/Neu/Split, Debug u
   await expect(info).toContainText('K2', { timeout: 30_000 });
   expect(errors).toEqual([]);
 });
+
+test('/lab/shadow Schatten v3: Kontakt-Diagnose, Feldansicht, Kontaktregler und Testpunkte (shadowFactor im Vertex-Shader)', async ({ page }) => {
+  test.setTimeout(240_000);
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 900, height: 560 });
+  await page.goto('/lab/shadow?q=mobil&view=karte&node=20&progress=30&mode=neu&mag=0&cascades=mobil');
+  await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu|webgl2/, { timeout: 60_000 });
+  await expect.poll(async () => (await stats(page)).cascades?.cascades.filter((c) => c.active).length ?? 0, { timeout: 90_000 }).toBe(2);
+  // Bodengefittete gröbste Kaskade: die Tiefe endet am sichtbaren Boden, nicht an der Schale
+  const s = await stats(page);
+  expect(s.cascades!.dMax).toBeGreaterThan(s.cascades!.dMin);
+
+  // Kontakt-Diagnose und Feldansicht (Ersatzmaterial auf den Empfängern), Legende sichtbar
+  const debug = page.getByTestId('shadow-debug').locator('select');
+  await debug.selectOption('3');
+  await expect(page.getByTestId('shadow-contact-legend')).toBeVisible();
+  await page.waitForTimeout(1500);
+  await debug.selectOption('4');
+  await page.waitForTimeout(1500);
+  await debug.selectOption('0');
+
+  // Kontaktregler live (Mindestbreite, Versatz, Ebenen-Bias) → neue Schattenpässe ohne Fehler
+  const before = (await stats(page)).passes;
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ dilation: 1, shift: 0.06, planeBias: false }));
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ dilation: 0.6, shift: 0.03, planeBias: true }));
+  await expect.poll(async () => (await stats(page)).passes, { timeout: 30_000 }).toBeGreaterThan(before);
+
+  // Empfängerhöhe verteilter Schichten (Kronen): bindet die Empfänger neu, die gröbste Kaskade wächst höchstens mäßig
+  const last = (s: LabStats): CascadeStat => s.cascades!.cascades[s.cascades!.cascades.length - 1]!;
+  const coverBefore = last(await stats(page));
+  await expect(page.getByTestId('shadow-crown')).toBeVisible();
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ crownHeight: 3 }));
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 4 }));
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 0 }));
+  const coverAfter = last(await stats(page));
+  expect(coverAfter.texelY).toBeLessThan(coverBefore.texelY * 1.6);
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ crownHeight: 0 }));
+
+  // Testpunkte: shadowFactor() im Vertex-Shader, dazu Drehung (Schatten wandern über die Punkte)
+  await page.getByTestId('shadow-dots').click();
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 6 }));
+  await page.waitForTimeout(2500);
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 0 }));
+  await page.getByTestId('shadow-dots').click();
+  expect(errors).toEqual([]);
+});
+
+// Echte GPU (Mac/Metal): die Tests oben laufen auf SwiftShader/WebGL2 und sehen kein WGSL. Hier kompilieren die
+// Schatten-v3-Pfade unter WebGPU — Vergleich auf Level 0 (textureSampleCompareLevel) auch im Vertex-Shader (Testpunkte),
+// Kontakt-Diagnose, Feldansicht, Kaskaden-Debug, Mobil-Preset, Ebenen-Bias als Bau-Option. Eigener Browser mit
+// GPU-Flags (launchOptions lassen sich nicht pro Test umstellen); auf CI und ohne WebGPU-Adapter übersprungen.
+const GPU_ERROR = /WGSL|ShaderModule|pipeline creation failed|Invalid RenderPipeline|unresolved value|Invalid (BindGroup|Buffer|Texture)/i;
+
+test('/lab/shadow Schatten v3 auf WebGPU: Diagnose, Feld, Testpunkte und Presets kompilieren (echte GPU)', async ({ playwright, baseURL }) => {
+  test.skip(!!process.env.CI, 'braucht eine echte GPU');
+  test.setTimeout(180_000);
+  const browser = await playwright.chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });
+  try {
+    const page = await browser.newPage({ ...(baseURL ? { baseURL } : {}), viewport: { width: 393, height: 852 } });
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    page.on('console', (m) => {
+      if (m.type() === 'error' || (m.type() === 'warning' && GPU_ERROR.test(m.text()))) errors.push(m.text().slice(0, 600));
+    });
+    await page.goto('/lab/shadow?view=karte&node=52&progress=60&mode=neu&mag=0');
+    const ok = await page.evaluate(async () => {
+      try {
+        const gpu = (navigator as unknown as { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
+        return !!gpu && !!(await gpu.requestAdapter());
+      } catch {
+        return false;
+      }
+    });
+    test.skip(!ok, 'kein WebGPU-Adapter');
+    await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgpu', { timeout: 30_000 });
+    await expect.poll(async () => (await stats(page)).cascades?.cascades.filter((c) => c.active).length ?? 0, { timeout: 60_000 }).toBe(3);
+
+    // Kontakt-Diagnose, Feld, Kaskaden, Texel (Ersatzmaterialien mit eigenem Vergleichspfad)
+    const debug = page.getByTestId('shadow-debug').locator('select');
+    for (const d of ['3', '4', '1', '2', '0']) {
+      await debug.selectOption(d);
+      await page.waitForTimeout(800);
+    }
+    // Testpunkte: shadowFactor() im Vertex-Shader, Schatten wandern beim Drehen über die Punkte
+    await page.getByTestId('shadow-dots').click();
+    await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 6 }));
+    await page.waitForTimeout(2000);
+    await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 0 }));
+    await page.getByTestId('shadow-dots').click();
+
+    // Mobil-Preset (zwei Kaskaden) und Ebenen-Bias aus/an (Neubau der Schattenknoten)
+    await page.getByTestId('shadow-cascades').locator('select').selectOption('mobil');
+    await expect.poll(async () => (await stats(page)).cascades?.cascades.length ?? 0, { timeout: 30_000 }).toBe(2);
+    await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ planeBias: false }));
+    await page.waitForTimeout(1200);
+    await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ planeBias: true }));
+    await page.waitForTimeout(1200);
+    expect(errors).toEqual([]);
+  } finally {
+    await browser.close();
+  }
+});

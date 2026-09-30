@@ -109,3 +109,24 @@
   min-height: 44px;
   padding: 0 10px;
 }
+/* Kontakt-Diagnose: Legende als Farbflächen (keine Konturen) */
+.shadow-legend b {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-right: 2px;
+  color: #081b25;
+  font-weight: 900;
+}
+.shadow-legend .is-gap {
+  background: #ff00ff;
+}
+.shadow-legend .is-ok {
+  background: #00e77c;
+  color: #f7f6d8;
+}
+.shadow-legend .is-lost {
+  background: #00ffff;
+}
+.shadow-legend .is-grown {
+  background: #ffbc00;
+}

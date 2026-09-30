@@ -1,4 +1,4 @@
-import { Matrix4, Vector3 } from 'three/webgpu';
+import { Frustum, Matrix4, Sphere, Vector3 } from 'three/webgpu';
 import type { PerspectiveCamera } from 'three/webgpu';
 
 /**
@@ -33,6 +33,24 @@ export interface ReceiverShellSpec {
    * Besitzer erhöht ihn, wenn sich Kamera oder Planetendrehung merklich geändert haben).
    */
   surfaceEpoch?: number;
+  /**
+   * Schatten v3: auch die gröbste Kaskade an den Boden fitten (± `coverTolerance` Welteinheiten um den geschätzten
+   * Bodenpunkt, dazu `volumes`). Ohne diesen Wert deckt sie die ganze Schale ab — in der Hochformat-Karte waren das
+   * 45 × 35 Einheiten Luft statt 22 × 8 Einheiten sichtbarem Boden (Faktor 2 in X und 4,5 in Y an Auflösung verschenkt).
+   */
+  coverTolerance?: number | null;
+  /**
+   * Schatten v3: Höhe über dem Boden, bis zu der verteilte Empfänger reichen (Kronen einer Wald-Schicht, die selbst
+   * Schlagschatten tragen). Die gröbste Kaskade nimmt je Strahl zusätzlich den Punkt Boden + Normale · `coverAbove`
+   * auf — einseitig nach oben, billiger als ein breiteres Band. Ohne Wert (oder ≤ `coverTolerance`) nichts.
+   */
+  coverAbove?: number | null;
+}
+
+/** Zusätzliche Empfänger über dem Boden (Welt-Kugeln: Riesenbaum-Stamm, Brett): immer in allen Kaskaden gefittet. */
+export interface ReceiverVolume {
+  center: Vector3;
+  radius: number;
 }
 
 export interface ReceiverSlabSpec {
@@ -87,6 +105,8 @@ export interface FitInput {
   keepPsi?: boolean;
   /** Texelgrößen der feinen Kaskaden festhalten (Rollen): Gitter bleibt stehen, Rechtecke werden nur verschoben. */
   lockTexels?: boolean;
+  /** Empfänger über dem Boden (Welt-Kugeln), zusätzlich zum Bodenfokus. */
+  volumes?: ReceiverVolume[] | null;
 }
 
 export interface CascadeFit {
@@ -141,6 +161,7 @@ const _q = new Vector3();
 const _n = new Vector3();
 const _g = new Vector3();
 const _vp = new Matrix4();
+const _sph = new Sphere();
 
 function emptyCascade(): CascadeFit {
   return { active: false, x0: 0, x1: 1, y0: 0, y1: 1, texelX: 1, texelY: 1, near: 0.1, far: 1, split: 0, pxPerTexel: 0 };
@@ -212,7 +233,12 @@ export class CascadeFitter {
   /** Fokusintervall (um den geschätzten Bodenpunkt) und Bodenpunkt je Strahl. */
   private readonly ga = new Float64Array(MAX_RAYS);
   private readonly gb = new Float64Array(MAX_RAYS);
+  /** Intervall der gröbsten Kaskade je Strahl (Schale oder Bodenfokus mit `coverTolerance`). */
+  private readonly ca = new Float64Array(MAX_RAYS);
+  private readonly cb = new Float64Array(MAX_RAYS);
   private readonly tg = new Float64Array(MAX_RAYS);
+  /** Strahl trifft (nach der Bodenschätzung) Gelände. */
+  private readonly gHit = new Uint8Array(MAX_RAYS);
   /** Cache der Bodenschätzung je Abtastpunkt (Index über alle Proben, nicht nur gültige Strahlen). */
   private readonly cacheTg = new Float64Array(MAX_RAYS).fill(NaN);
   private readonly cacheHit = new Uint8Array(MAX_RAYS);
@@ -223,10 +249,10 @@ export class CascadeFitter {
   private readonly dx = new Float64Array(MAX_RAYS);
   private readonly dy = new Float64Array(MAX_RAYS);
   private readonly dz = new Float64Array(MAX_RAYS);
-  /** Endpunkte je Kaskade in der Grundbasis (x0, y0, z), 2 je Strahl. */
-  private readonly px = new Float64Array(MAX_RAYS * 2);
-  private readonly py = new Float64Array(MAX_RAYS * 2);
-  private readonly pz = new Float64Array(MAX_RAYS * 2);
+  /** Endpunkte je Kaskade in der Grundbasis (x0, y0, z), 2 je Strahl (+1 für `coverAbove`). */
+  private readonly px = new Float64Array(MAX_RAYS * 3);
+  private readonly py = new Float64Array(MAX_RAYS * 3);
+  private readonly pz = new Float64Array(MAX_RAYS * 3);
   /** Nächste Empfänger je Strahl: Tiefe und Bildschirm-Jacobi (px je Lichteinheit entlang X0/Y0). */
   private readonly mDepth = new Float64Array(MAX_RAYS);
   private readonly m00 = new Float64Array(MAX_RAYS);
@@ -236,12 +262,22 @@ export class CascadeFitter {
   private readonly X0 = new Vector3();
   private readonly Y0 = new Vector3();
 
+  /** Kamerafrustum des laufenden Fits (Sichtbarkeit der Empfänger-Volumen). */
+  private readonly frustum = new Frustum();
+
+  private volumeVisible(v: ReceiverVolume): boolean {
+    _sph.center.copy(v.center);
+    _sph.radius = v.radius;
+    return this.frustum.intersectsSphere(_sph);
+  }
+
   fit(input: FitInput, out: FitResult): FitResult {
     const cam = input.camera;
     const n = input.sizes.length;
     while (out.cascades.length < n) out.cascades.push(emptyCascade());
     out.cascades.length = n;
     cam.updateMatrixWorld();
+    this.frustum.setFromProjectionMatrix(_vp.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse), cam.coordinateSystem);
     _o.setFromMatrixPosition(cam.matrixWorld);
     _f.set(0, 0, -1).transformDirection(cam.matrixWorld);
     const near = Math.max(1e-3, cam.near);
@@ -397,11 +433,52 @@ export class CascadeFitter {
           gb = tb;
         }
       }
+      this.gHit[i] = surf && gb > ga ? 1 : 0;
+      // Gröbste Kaskade: ganze Schale (alt) oder Bodenfokus mit größerer Toleranz (v3)
+      let ca = ta;
+      let cb = tb;
+      const coverTol = input.shell?.coverTolerance;
+      if (surf && coverTol !== undefined && coverTol !== null) {
+        if (gb > ga) {
+          _p.copy(_d).multiplyScalar(tg).add(_o).sub(input.shell!.center).normalize();
+          const cosN = Math.max(0.25, -_p.dot(_d));
+          ca = Math.max(ta, tg - coverTol / cosN);
+          cb = Math.min(tb, tg + coverTol / cosN);
+        } else {
+          ca = cb = tb;
+        }
+      }
+      // Empfänger-Volumen (Riesenbaum, Brett): Strahlabschnitt in der Kugel zu beiden Intervallen
+      const vols = input.volumes;
+      if (vols) {
+        for (const v of vols) {
+          const h = raySphere(_o, _d, v.center, v.radius);
+          if (!h || h[1] <= ta || h[0] >= tb) continue;
+          const v0 = Math.max(ta, h[0]);
+          const v1 = Math.min(tb, h[1]);
+          if (gb > ga) {
+            ga = Math.min(ga, v0);
+            gb = Math.max(gb, v1);
+          } else {
+            ga = v0;
+            gb = v1;
+          }
+          if (cb > ca) {
+            ca = Math.min(ca, v0);
+            cb = Math.max(cb, v1);
+          } else {
+            ca = v0;
+            cb = v1;
+          }
+        }
+      }
       this.ga[i] = ga;
       this.gb[i] = gb;
       this.tg[i] = tg;
+      this.ca[i] = ca;
+      this.cb[i] = cb;
       if (gb > ga || !surf) dMin = Math.min(dMin, ga * c);
-      dMax = Math.max(dMax, tb * c);
+      if (cb > ca) dMax = Math.max(dMax, cb * c);
     };
     for (let i = 0; i < EDGE_SAMPLES; i++) {
       const u = -1 + (2 * i) / (EDGE_SAMPLES - 1);
@@ -414,6 +491,10 @@ export class CascadeFitter {
       for (let i = 0; i < GRID_X; i++) addRay(-1 + (2 * (i + 0.5)) / GRID_X, -1 + (2 * (j + 0.5)) / GRID_Y);
     }
     out.rays = rays;
+    if (rays > 0 && !(dMax > 0)) {
+      // Kein Boden und kein Volumen sichtbar (nur Himmel): nichts zu beschatten
+      rays = 0;
+    }
     if (rays === 0) {
       out.empty = true;
       for (const c of out.cascades) c.active = false;
@@ -469,8 +550,8 @@ export class CascadeFitter {
       let m = 0;
       for (let i = 0; i < rays; i++) {
         const c = this.cos[i]!;
-        const ta = cover ? this.ta[i]! : this.ga[i]!;
-        const tb = Math.min(cover ? this.tb[i]! : this.gb[i]!, lim / c);
+        const ta = cover ? this.ca[i]! : this.ga[i]!;
+        const tb = Math.min(cover ? this.cb[i]! : this.gb[i]!, lim / c);
         if (!(ta < tb)) continue;
         for (const t of [ta, tb]) {
           const x = _o.x + this.dx[i]! * t;
@@ -479,6 +560,24 @@ export class CascadeFitter {
           this.px[m] = x * X0.x + y * X0.y + z * X0.z;
           this.py[m] = x * Y0.x + y * Y0.y + z * Y0.z;
           this.pz[m] = x * L.x + y * L.y + z * L.z;
+          m++;
+        }
+      }
+      // Verteilte Empfänger über dem Boden (Kronen): Boden + Normale · coverAbove je Strahl, nur in der gröbsten Kaskade
+      const above = input.shell?.coverAbove ?? 0;
+      if (cover && input.shell && above > (input.shell.coverTolerance ?? 0)) {
+        const center = input.shell.center;
+        for (let i = 0; i < rays; i++) {
+          if (!this.gHit[i]) continue;
+          const t = this.tg[i]!;
+          _p.set(_o.x + this.dx[i]! * t, _o.y + this.dy[i]! * t, _o.z + this.dz[i]! * t);
+          _n.copy(_p).sub(center).normalize();
+          _p.addScaledVector(_n, above);
+          const depth = _q.copy(_p).sub(_o).dot(_f);
+          if (depth <= near || depth > lim) continue;
+          this.px[m] = _p.dot(X0);
+          this.py[m] = _p.dot(Y0);
+          this.pz[m] = _p.dot(L);
           m++;
         }
       }
@@ -580,6 +679,26 @@ export class CascadeFitter {
         z0 = Math.min(z0, this.pz[i]!);
         z1 = Math.max(z1, this.pz[i]!);
       }
+      // Empfänger-Volumen ganz (die Abtaststrahlen treffen ihre Ränder nicht genau): sichtbare Kugeln, deren
+      // Blicktiefe in diese Kaskade reicht
+      if (input.volumes) {
+        for (const v of input.volumes) {
+          if (!this.volumeVisible(v)) continue;
+          const dc = _q.copy(v.center).sub(_o).dot(_f);
+          if (dc + v.radius < near || (k < n - 1 && dc - v.radius > cf.split)) continue;
+          const px0 = v.center.dot(X0);
+          const py0 = v.center.dot(Y0);
+          const vx = cp * px0 - sp * py0;
+          const vy = sp * px0 + cp * py0;
+          const vz = v.center.dot(L);
+          x0 = Math.min(x0, vx - v.radius);
+          x1 = Math.max(x1, vx + v.radius);
+          y0 = Math.min(y0, vy - v.radius);
+          y1 = Math.max(y1, vy + v.radius);
+          z0 = Math.min(z0, vz - v.radius);
+          z1 = Math.max(z1, vz + v.radius);
+        }
+      }
       zRanges.push([z0, z1]);
       zAll1 = Math.max(zAll1, z1);
       const w = Math.max(1e-3, x1 - x0);
@@ -589,12 +708,19 @@ export class CascadeFitter {
       const cover = k === n - 1;
       // Rollen (Kamera/Sonne fest): feine Kaskaden behalten ihre Texelgröße → das Abtastgitter steht still. Wächst die
       // Bodenregion über das Rechteck hinaus, wird es nur zentriert; der Rand fällt an die nächste Kaskade.
+      const focusedCover = cover && input.shell?.surface && input.shell.coverTolerance !== undefined && input.shell.coverTolerance !== null;
       const locked = !cover && input.lockTexels === true && cf.active;
+      // Bodengefittete gröbste Kaskade beim Rollen: Texel halten, solange die Region hineinpasst und nicht viel kleiner
+      // wird (Hügel ziehen durch → Region atmet leicht; ohne Hysterese sprängen die Kanten bei jedem Stufenwechsel)
+      const coverLocked = focusedCover && input.lockTexels === true && cf.active;
       let tx: number;
       let ty: number;
       if (locked) {
         tx = needX > cf.texelX * 2 || needX < cf.texelX * 0.5 ? quantizeTexel(needX) : cf.texelX;
         ty = needY > cf.texelY * 2 || needY < cf.texelY * 0.5 ? quantizeTexel(needY) : cf.texelY;
+      } else if (coverLocked) {
+        tx = needX > cf.texelX || needX < cf.texelX * 0.6 ? quantizeTexel(needX * 1.12) : cf.texelX;
+        ty = needY > cf.texelY || needY < cf.texelY * 0.6 ? quantizeTexel(needY * 1.12) : cf.texelY;
       } else {
         tx = pick(needX, cf.texelX, cf.active);
         ty = pick(needY, cf.texelY, cf.active);
