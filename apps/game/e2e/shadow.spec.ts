@@ -116,3 +116,59 @@ test('/lab/shadow Schatten v3: Kontakt-Diagnose, Feldansicht, Kontaktregler und 
   await page.getByTestId('shadow-dots').click();
   expect(errors).toEqual([]);
 });
+
+// Echte GPU (Mac/Metal): die Tests oben laufen auf SwiftShader/WebGL2 und sehen kein WGSL. Hier kompilieren die
+// Schatten-v3-Pfade unter WebGPU — Vergleich auf Level 0 (textureSampleCompareLevel) auch im Vertex-Shader (Testpunkte),
+// Kontakt-Diagnose, Feldansicht, Kaskaden-Debug, Mobil-Preset, Ebenen-Bias als Bau-Option. Eigener Browser mit
+// GPU-Flags (launchOptions lassen sich nicht pro Test umstellen); auf CI und ohne WebGPU-Adapter übersprungen.
+const GPU_ERROR = /WGSL|ShaderModule|pipeline creation failed|Invalid RenderPipeline|unresolved value|Invalid (BindGroup|Buffer|Texture)/i;
+
+test('/lab/shadow Schatten v3 auf WebGPU: Diagnose, Feld, Testpunkte und Presets kompilieren (echte GPU)', async ({ playwright, baseURL }) => {
+  test.skip(!!process.env.CI, 'braucht eine echte GPU');
+  test.setTimeout(180_000);
+  const browser = await playwright.chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });
+  try {
+    const page = await browser.newPage({ ...(baseURL ? { baseURL } : {}), viewport: { width: 393, height: 852 } });
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    page.on('console', (m) => {
+      if (m.type() === 'error' || (m.type() === 'warning' && GPU_ERROR.test(m.text()))) errors.push(m.text().slice(0, 600));
+    });
+    await page.goto('/lab/shadow?view=karte&node=52&progress=60&mode=neu&mag=0');
+    const ok = await page.evaluate(async () => {
+      try {
+        const gpu = (navigator as unknown as { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
+        return !!gpu && !!(await gpu.requestAdapter());
+      } catch {
+        return false;
+      }
+    });
+    test.skip(!ok, 'kein WebGPU-Adapter');
+    await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgpu', { timeout: 30_000 });
+    await expect.poll(async () => (await stats(page)).cascades?.cascades.filter((c) => c.active).length ?? 0, { timeout: 60_000 }).toBe(3);
+
+    // Kontakt-Diagnose, Feld, Kaskaden, Texel (Ersatzmaterialien mit eigenem Vergleichspfad)
+    const debug = page.getByTestId('shadow-debug').locator('select');
+    for (const d of ['3', '4', '1', '2', '0']) {
+      await debug.selectOption(d);
+      await page.waitForTimeout(800);
+    }
+    // Testpunkte: shadowFactor() im Vertex-Shader, Schatten wandern beim Drehen über die Punkte
+    await page.getByTestId('shadow-dots').click();
+    await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 6 }));
+    await page.waitForTimeout(2000);
+    await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 0 }));
+    await page.getByTestId('shadow-dots').click();
+
+    // Mobil-Preset (zwei Kaskaden) und Ebenen-Bias aus/an (Neubau der Schattenknoten)
+    await page.getByTestId('shadow-cascades').locator('select').selectOption('mobil');
+    await expect.poll(async () => (await stats(page)).cascades?.cascades.length ?? 0, { timeout: 30_000 }).toBe(2);
+    await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ planeBias: false }));
+    await page.waitForTimeout(1200);
+    await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ planeBias: true }));
+    await page.waitForTimeout(1200);
+    expect(errors).toEqual([]);
+  } finally {
+    await browser.close();
+  }
+});
