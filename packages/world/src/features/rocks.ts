@@ -74,6 +74,9 @@ function lateralReachOf(kind: RockKind, size: number): number {
       return size * 0.44;
     case 'spires':
       return size * 0.62;
+    case 'monolith':
+      // Nur auf der Ebene gebaut (Welt 13); die alte Kugel stellt ihn als Turm auf
+      return size * 0.5 * 1.9 + 0.3;
   }
 }
 
@@ -502,7 +505,7 @@ export function generateRocks(host: FeatureHost, world: number, specs: readonly 
         const built =
           spec.kind === 'terraces'
             ? buildTerraces(host, frame, front, size, height, Math.max(2, spec.steps ?? 3), rand)
-            : spec.kind === 'tower'
+            : spec.kind === 'tower' || spec.kind === 'monolith'
               ? buildTower(host, frame, front, size, height, rand)
               : spec.kind === 'mesa'
                 ? buildMesa(host, frame, front, size, height, rand)

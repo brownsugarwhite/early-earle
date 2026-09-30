@@ -131,7 +131,12 @@ function mixFeatures(a: WorldFeatureSpec | undefined, b: WorldFeatureSpec | unde
   const rocksA = a?.rocks ?? [];
   const rocksB = b?.rocks ?? [];
   const rocks: RockSpec[] = [];
-  for (const r of [...rocksA, ...rocksB]) if (rand() < 0.55) rocks.push(scaleCount(r, 0.6 + rand() * 0.8));
+  for (const r of [...rocksA, ...rocksB]) {
+    if (rand() >= 0.55) continue;
+    const scaled = scaleCount(r, 0.6 + rand() * 0.8);
+    // Der Monolith (Welt 13) bleibt ein Unikat seiner Welt; Türme, Tafelfelsen und Nadeln dürfen wandern
+    if (r.kind !== 'monolith') rocks.push(scaled);
+  }
   if (rocks.length > 0) out.rocks = rocks;
   const snow = pick('snowFields');
   if (snow) out.snowFields = snow;

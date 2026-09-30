@@ -1,12 +1,15 @@
 import { BufferAttribute, BufferGeometry } from 'three/webgpu';
-import { abs, attribute, float, floor, fract, fwidth, hash, max, mix, positionLocal, positionView, select, sin, smoothstep, step, vec2, vec3 } from 'three/tsl';
+import { abs, attribute, float, floor, fract, fwidth, hash, max, mix, positionLocal, positionView, select, sin, smoothstep, step, varying, vec2, vec3 } from 'three/tsl';
 import type { Vector3 } from 'three/webgpu';
 import { planeColumnTopAt as columnTopAt, type PlaneRockColumn as RockColumn, type PlaneRockFormation as RockFormation, type RockKind } from '@ee/world';
 import { EarleMaterial } from '../EarleMaterial';
+import { monolithShading } from './monolith';
 import { aaStep, arrayElement, hatchMask, patternTime, periodFade, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
 
-/** Art-Code im Vertex-Attribut (Welt·16 + Art·4 + Fläche). Wand = Basalt wie die Terrassen. */
-const KIND_CODE: Record<RockKind, number> = { terraces: 0, wall: 0, tower: 1, mesa: 2, spires: 3 };
+/** Art-Code im Vertex-Attribut (Welt·32 + Art·4 + Fläche). Wand = Basalt wie die Terrassen. */
+const KIND_CODE: Record<RockKind, number> = { terraces: 0, wall: 0, tower: 1, mesa: 2, spires: 3, monolith: 4 };
+/** Codes je Welt-Slot (8 Arten × 4 Flächen). */
+const CODES_PER_WORLD = 32;
 /** Flächentypen: 0 Wand, 1 Deckfläche (Deckfarbe), 2 Facette (geneigte Deckfläche/Spitze, Lichtbänder), 3 Sockelwand. */
 const FACE_WALL = 0;
 const FACE_CAP = 1;
@@ -67,6 +70,10 @@ export function buildRockGeometry(
     const kind = KIND_CODE[f.kind] ?? 0;
     const ox = f.cx - anchor.x;
     const oz = f.cz - anchor.z;
+    // Monolith (Ebene 45): Wände tragen (Umfang, Höhenanteil über dem Fuß, –, Tiefe unter der Oberkante), Deckflächen
+    // (a, b) in Anteilen des Fußabdrucks — das Material malt damit Verlauf, Glut, Zahnfries und die Tintenkeile
+    const mono = f.kind === 'monolith' ? { g: f.ground ?? 0, h: Math.max(1, f.height - (f.ground ?? 0)), fp: Math.max(1, f.footprint) } : null;
+    const wz = (z: number): number => (mono ? (z - mono.g) / mono.h : z);
     const P = (a: number, b: number, h: number): V3 => [ox + a, h, oz + b];
     f.columns.forEach((col, ci) => {
       const n = col.polygon.length;
@@ -77,14 +84,15 @@ export function buildRockGeometry(
       column.r = Math.max(...col.polygon.map(([x, y]) => Math.hypot(x - col.cx, y - col.cy)));
       const variant = fract1(f.variant * 7.13 + ci * 0.618);
       const wallFace = col.part === 1 || col.part === 2 || (col.part === 3 && f.kind === 'mesa') ? FACE_TIER : FACE_WALL;
-      const code = world * 16 + kind * 4;
+      const code = world * CODES_PER_WORLD + kind * 4;
       const capFace = col.capStyle === 1 ? FACE_FACET : FACE_CAP;
       const shoulder: Array<[number, number]> =
         col.shoulder && col.shoulder.length === n
           ? col.shoulder
           : col.polygon.map(([x, y]) => [col.cx + (x - col.cx) * col.taper, col.cy + (y - col.cy) * col.taper] as [number, number]);
       const hasCap = !!col.cap && col.cap.length === n;
-      const bevel = hasCap && capFace === FACE_CAP && col.apex <= 1e-3 ? Math.min(col.bevel, (col.top - col.base) * 0.2) : 0;
+      // Monolith: die Bänke seines Plateaus sind breite Schrägen (bis 90 % der Stufenhöhe)
+      const bevel = hasCap && capFace === FACE_CAP && col.apex <= 1e-3 ? Math.min(col.bevel, (col.top - col.base) * (mono ? 0.9 : 0.2)) : 0;
       const topPoly: Array<[number, number]> = bevel > 0 ? col.cap! : shoulder;
       const shoulderZ = shoulder.map(([x, y]) => columnTopAt(col, x, y) - bevel);
       const topZ = topPoly.map(([x, y]) => columnTopAt(col, x, y));
@@ -104,10 +112,10 @@ export function buildRockGeometry(
         const nrm = normalize(cross(sub(B, A), sub(TA, A)));
         const out: V3 = [(a[0] + b[0]) * 0.5 - col.cx, 0, (a[1] + b[1]) * 0.5 - col.cy];
         if (dot(nrm, out) < 0) scale(nrm, -1);
-        const i0 = vtx(A, nrm, perim, col.base, code + wallFace, variant);
-        const i1v = vtx(B, nrm, perim + edge, col.base, code + wallFace, variant);
-        const i2 = vtx(TB, nrm, perim + edge, shoulderZ[i1]!, code + wallFace, variant);
-        const i3 = vtx(TA, nrm, perim, shoulderZ[i]!, code + wallFace, variant);
+        const i0 = vtx(A, nrm, perim, wz(col.base), code + wallFace, mono ? shoulderZ[i]! - col.base : variant);
+        const i1v = vtx(B, nrm, perim + edge, wz(col.base), code + wallFace, mono ? shoulderZ[i1]! - col.base : variant);
+        const i2 = vtx(TB, nrm, perim + edge, wz(shoulderZ[i1]!), code + wallFace, mono ? 0 : variant);
+        const i3 = vtx(TA, nrm, perim, wz(shoulderZ[i]!), code + wallFace, mono ? 0 : variant);
         tri(idx, pos, i0, i1v, i2, nrm);
         tri(idx, pos, i0, i2, i3, nrm);
         if (bevel > 0) {
@@ -117,10 +125,11 @@ export function buildRockGeometry(
           const CB = P(cb[0], cb[1], topZ[i1]!);
           const bn = normalize(cross(sub(TB, TA), sub(CA, TA)));
           if (dot(bn, up) < 0) scale(bn, -1);
-          const j0 = vtx(TA, bn, ta[0], ta[1], code + FACE_CAP, variant);
-          const j1 = vtx(TB, bn, tb[0], tb[1], code + FACE_CAP, variant);
-          const j2 = vtx(CB, bn, cb[0], cb[1], code + FACE_CAP, variant);
-          const j3 = vtx(CA, bn, ca[0], ca[1], code + FACE_CAP, variant);
+          const k = mono ? 1 / mono.fp : 1;
+          const j0 = vtx(TA, bn, ta[0] * k, ta[1] * k, code + FACE_CAP, mono ? wz(shoulderZ[i]!) : variant);
+          const j1 = vtx(TB, bn, tb[0] * k, tb[1] * k, code + FACE_CAP, mono ? wz(shoulderZ[i1]!) : variant);
+          const j2 = vtx(CB, bn, cb[0] * k, cb[1] * k, code + FACE_CAP, mono ? wz(topZ[i1]!) : variant);
+          const j3 = vtx(CA, bn, ca[0] * k, ca[1] * k, code + FACE_CAP, mono ? wz(topZ[i]!) : variant);
           tri(idx, pos, j0, j1, j2, bn);
           tri(idx, pos, j0, j2, j3, bn);
         }
@@ -159,7 +168,8 @@ export function buildRockGeometry(
         const ring: number[] = [];
         for (let i = 0; i < n; i++) {
           const t = topPoly[i]!;
-          ring.push(vtx(P(t[0], t[1], topZ[i]!), nrm, uOf(t[0], t[1]), capFace === FACE_CAP ? t[1] : topZ[i]!, code + capFace, variant));
+          if (mono) ring.push(vtx(P(t[0], t[1], topZ[i]!), nrm, t[0] / mono.fp, t[1] / mono.fp, code + FACE_CAP, wz(topZ[i]!)));
+          else ring.push(vtx(P(t[0], t[1], topZ[i]!), nrm, uOf(t[0], t[1]), capFace === FACE_CAP ? t[1] : topZ[i]!, code + capFace, variant));
         }
         // Ohrenschneiden: Deckflächen der gerippten Stufen sind nicht konvex
         for (const [a, b, c] of earClip(topPoly)) tri(idx, pos, ring[a]!, ring[b]!, ring[c]!, nrm);
@@ -199,6 +209,8 @@ export interface RockMaterialOptions {
    * Objektraum des Fels-Meshes, `radius` 0 = aus.
    */
   footClear?: { camLocal: { value: Vector3 } & Vec3Node; radius: TSLUniform };
+  /** Richtung zur Sonne (flacher Raum) für die Stufen des Monolithen; fehlt → feste Richtung rechts hinten. */
+  sunDir?: Vec3Node;
 }
 
 /**
@@ -216,10 +228,15 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
   const z = rk.y;
   const code = rk.z;
   const variant = rk.w;
-  const world = floor(code.add(0.5).div(16));
-  const local = code.sub(world.mul(16));
-  const kind = floor(local.add(0.5).div(4));
-  const face = local.sub(kind.mul(4));
+  // Welt, Art und Fläche im Vertex-Shader dekodiert (je Fläche konstant): im Fragment bauen verzweigte Knoten sie sonst
+  // nur in einem Zweig auf, und die anderen Zweige lesen einen alten Wert
+  const worldV = floor(code.add(0.5).div(CODES_PER_WORLD));
+  const localV = code.sub(worldV.mul(CODES_PER_WORLD));
+  const kindV = floor(localV.add(0.5).div(4));
+  const decoded = varying(vec3(worldV, kindV, localV.sub(kindV.mul(4))), 'vRockCode');
+  const world = decoded.x;
+  const kind = decoded.y;
+  const face = decoded.z;
   const row = arrayElement(o.rockRows, world);
   const isKind = (k: number) => step(abs(kind.sub(k)), float(0.5));
   const isFace = (k: number) => step(abs(face.sub(k)), float(0.5));
@@ -264,6 +281,9 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
   const mf = fract(mp).sub(vec2(hash(mcell.x.add(mcell.y.mul(91.0))).mul(0.5).add(0.25), hash(mcell.x.mul(17.0).add(mcell.y.mul(3.0))).mul(0.5).add(0.25)));
   const moss = aaStep(mf.length(), float(0.16)).mul(step(hash(mcell.x.mul(5.0).add(mcell.y.mul(23.0))), float(0.55))).mul(periodFade(mp.x, 2.2)).mul(isKind(0));
   const capLit = mix(capColor, mix(capColor, vec3(1, 1, 1), 0.35), moss);
+  // Roter Monolith (Ebene 45): eigene Lichtfarben für Wände und Bänke, Schattenseite reine Tinte
+  const isMonoF = isKind(4);
+  const mono = monolithShading({ lookup: o.lookup, row, sunDir: o.sunDir ?? (vec3(0.8, 0.21, 0.56).normalize() as unknown as Vec3Node), isTier });
   return new EarleMaterial({
     lookup: o.lookup,
     row: 0,
@@ -276,8 +296,12 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
     lift: isKind(1).mul(float(0.12).sub(isTier.mul(0.16))),
     // Linien im Licht dunkel (Stufe 6), im Schatten hell (Stufe 3 halb in Tinte): die Riefen lesen sich auch auf der
     // Tintenseite (Ebene_7: türkise Striche auf schwarzem Fels)
-    pattern: { mask, color: lineColor, shadowColor: mix(ink, o.lookup.pal(3, row).rgb, 0.42) },
-    layers: [{ mask: isCap, color: capLit, shadowColor: mix(ink, capColor, 0.34) }],
+    pattern: {
+      mask: mix(mask, isCap.oneMinus(), isMonoF),
+      color: mix(lineColor, mono.wall, isMonoF) as unknown as Vec3Node,
+      shadowColor: mix(mix(ink, o.lookup.pal(3, row).rgb, 0.42), ink, isMonoF) as unknown as Vec3Node,
+    },
+    layers: [{ mask: isCap, color: mix(capLit, mono.cap, isMonoF) as unknown as Vec3Node, shadowColor: mix(mix(ink, capColor, 0.34), ink, isMonoF) as unknown as Vec3Node }],
     positionNode: o.warp(o.footClear ? sinkNearCamera(o.footClear.camLocal, o.footClear.radius) : positionLocal),
     fogDistNode: positionView.length().add(o.veil(world)),
     growthNode: o.growth ? o.growth(attribute('rg', 'float')) : null,

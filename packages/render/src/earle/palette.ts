@@ -140,6 +140,11 @@ export interface WorldPalette extends ZonePalette {
   rock?: string[];
   /** Schneefelder (≤ 8): 0 Schatten (gesättigtes Blau), 1.. Lichtstufen bis Creme. Fehlt → keine eigene Schneezeile. */
   snow?: string[];
+  /**
+   * Wolkenbänke (8, Welt 13): 0 Tiefschatten, 1 Lavendel, 2 Türkis, 3 helles Türkis, 4 Mint, 5 Creme, 6 Hellcreme,
+   * 7 dunkle Unterseite der Streifen. Fehlt → aus dem Himmel abgeleitet.
+   */
+  cloud?: string[];
 }
 
 /** Tjorizo (aus dem Plan und Florians Draft): Neongrün-Himmel, Khaki-Hügel, olive Tinte. */
@@ -176,6 +181,8 @@ export interface WorldRows extends ZoneRows {
   rock: number;
   /** Schneefeldzeile oder die Terrainzeile, wenn die Welt keine eigene hat. */
   snow: number;
+  /** Wolkenzeile (Wolkenbänke am Himmel); nur in den Welt-Slots der Karte. */
+  cloud?: number;
 }
 
 /** Schreibt eine Zonenpalette als vier Zeilen in den Atlas (Prefix erlaubt mehrere Zonen im selben Atlas). */
@@ -231,6 +238,23 @@ export function rockFromTerrain(p: WorldPalette): string[] {
   const dark = t[0] ?? p.ink;
   const light = t[t.length - 1] ?? dark;
   return [p.ink, mixRgb(p.ink, dark, 0.55), dark, t[2] ?? light, light, t[3] ?? light, mixRgb(p.ink, dark, 0.3), p.accent[6] ?? light];
+}
+
+/** Wolken aus dem Himmel: Schatten aus dem Zenit, Köpfe aus dem Horizont ins Creme (Welten ohne eigene Wolkenzeile). */
+export function cloudFromSky(p: WorldPalette): string[] {
+  const s = p.sky;
+  const horizon = s[0] ?? '#dcdcd0';
+  const zenith = s[s.length - 1] ?? horizon;
+  return [
+    mixRgb(zenith, '#8a9ac8', 0.45),
+    mixRgb(zenith, '#a8b4d8', 0.6),
+    mixRgb(horizon, '#9ccad0', 0.5),
+    mixRgb(horizon, '#b8dcd4', 0.45),
+    mixRgb(horizon, '#d4e4cc', 0.5),
+    mixRgb(horizon, '#f0ecd0', 0.6),
+    mixRgb(horizon, '#fbf8e8', 0.75),
+    mixRgb(zenith, p.ink, 0.35),
+  ];
 }
 
 /** Index der Sonnenscheibe bzw. des Sonnenrings in der Himmelszeile. */

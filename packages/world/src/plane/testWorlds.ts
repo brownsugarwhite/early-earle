@@ -19,6 +19,7 @@ interface WorldFile {
   features?: WorldSpec['features'];
   trash?: WorldSpec['trash'];
   focal?: { kind?: string; scale?: number; latFrac?: number; deltaDeg?: number; yawDeg?: number; along?: number; lateral?: number };
+  landmarkChance?: number;
 }
 
 const contentDir = fileURLToPath(new URL('../../../../content/zones/worlds', import.meta.url));
@@ -54,6 +55,7 @@ export function authoredSpecs(): WorldSpec[] {
       ...(w.features ? { features: w.features } : {}),
       ...(w.trash ? { trash: w.trash } : {}),
       ...(focal ? { focal } : {}),
+      ...(w.landmarkChance !== undefined ? { landmarkChance: w.landmarkChance } : {}),
     };
   });
 }
@@ -70,6 +72,9 @@ export const AUTHORED_ROUTE: RouteEntry[] = [
   { world: 7, levels: 9 }, // 08 Rote Scheune
   { world: 0, levels: 16, length: 34 }, // 01 Flechtenbaum mit dem Riesenbaum (Level 80–95)
   { world: 2, levels: 5 }, // 03 Kuppelbaum (erstes Wäldchen, Level 100)
+  // künftige Level: Autorenwelten hinter Level 100 (Index nach Kennung, die Dateien sind nach `index` sortiert)
+  { world: loadWorldFiles().findIndex((w) => w.id === 'w13'), levels: 10, future: true }, // 13 Roter Monolith
+  { world: loadWorldFiles().findIndex((w) => w.id === 'w14'), levels: 10, future: true }, // 14 Stille Bucht
 ];
 
 export function testField(seed = 7): PlaneField {

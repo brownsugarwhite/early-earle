@@ -143,6 +143,7 @@ export class PlaneField {
               regionAt: (x, z) => this.layout.sample(x, z, this.rs3).region,
               segment: (k) => this.layout.segment(k),
               backbone: (z) => this.layout.backbone(z),
+              landmarkChance: (w) => this.catalog.spec(w).landmarkChance ?? 1,
             },
             { plan: PLANE_LANDMARK_PLAN, ...(params.landmarks ?? {}) },
           );

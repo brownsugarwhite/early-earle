@@ -55,9 +55,10 @@ export interface RiverSpec extends PlacementSpec {
  * Felsformationen nach Earle: `terraces` = Basaltsäulen-Stufen mit Moosköpfen (Ebene_12), `tower` = Turm-Monolith
  * mit Sockelstufen und Glyphenbändern (Ebene_44/45), `mesa` = Tafelfels mit schrägen Facetten und Rissen (Ebene_27),
  * `spires` = Felsnadel-Gruppe (Ebene_46, Ebene_7), `wall` = riesige Felswand aus Basaltblöcken längs des
- * Weltbands am fernen Rand (Kulisse, Ebene_12/25).
+ * Weltbands am fernen Rand (Kulisse, Ebene_12/25), `monolith` = riesiger roter Tafelberg-Turm auf einem gestuften
+ * Plateau mit gezahnten Stufenwänden (Ebene_45, Welt 13; steht im Bildfokus der Welt).
  */
-export type RockKind = 'terraces' | 'tower' | 'mesa' | 'spires' | 'wall';
+export type RockKind = 'terraces' | 'tower' | 'mesa' | 'spires' | 'wall' | 'monolith';
 
 export interface RockSpec extends PlacementSpec {
   kind: RockKind;

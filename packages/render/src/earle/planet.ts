@@ -37,6 +37,7 @@ import { BarnLandmarks } from './landmarks/barn';
 import { DriftLandmarks, type DriftPlacement } from './landmarks/drifts';
 import { PLANET_ATLAS_HEIGHT, SLOT_COUNT, SLOT_ROWS, WorldSlots, slotLandmarkRows, slotRows } from './worldSlots';
 import { LandmarkSet } from './landmarks/set/LandmarkSet';
+import type { CloudBankSpec } from './sky/cloudBanks';
 import type { LandmarkInstance } from '@ee/world';
 
 /** Bodenbehandlung je Welt (Terrain-Ornament): glatt, Schneelinien, Wiese, Perspektivlinien, Rampen, Schneegrate. */
@@ -61,6 +62,12 @@ export interface WorldView {
   nearClear?: number;
   /** Lichtung unter der Kamera (seitlicher Radius, Welteinheiten): ruhiges unteres Bildband. */
   footClear?: number;
+  /** Blickpunkt über dem Gelände (Welteinheiten): > 0 hebt den Blick (Untersicht, z. B. zum Monolithen, Ebene 45). */
+  lookHeight?: number;
+  /** Sonne der Komposition (Grad, Azimut relativ zur Blickachse wie im Sonnen-Rig); fehlt → Sonne des Lab-Reglers. */
+  sun?: { elevation: number; azimuth: number };
+  /** Scheitel neben dem Bildfokus (Rig-Raum: x rechts, z zur Kamera) statt `focus` — Untersichten ohne Bodenstrahl. */
+  aim?: [number, number];
 }
 
 /** Eine Welt mit ihren Darstellungsdaten (Autorenwelt aus `content/`, oder prozedural erzeugt). */
@@ -76,6 +83,8 @@ export interface EarlePlanetWorld {
   view: WorldView;
   /** Prozedural erzeugt (nur lesbar im Editor). */
   procedural?: boolean;
+  /** Wolkenbänke am Himmel der Welt (Welt 13, `sky/cloudBanks.ts`). */
+  clouds?: CloudBankSpec;
 }
 
 export interface EarlePlanetQuality {
@@ -310,6 +319,8 @@ export class EarlePlanet {
   /** Kamera im Objektraum des Fels-Meshes und Lichtungsradius (Karte: wie die Bäume, `setFootClear`). */
   private readonly rockCamLocal = uniform(new Vector3(0, 100, 0)) as unknown as { value: Vector3 } & Vec3Node;
   private readonly rockFootClear = uniform(0);
+  /** Richtung zur Sonne für die Stufen des Monolithen (Fels-Material). */
+  private readonly rockSunDir = uniform(new Vector3(0.8, 0.21, 0.56).normalize()) as unknown as { value: Vector3 } & Vec3Node;
   private readonly barnCamLocal = uniform(new Vector3(0, 100, 0)) as unknown as { value: Vector3 } & Vec3Node;
   private readonly driftCamLocal = uniform(new Vector3(0, 100, 0)) as unknown as { value: Vector3 } & Vec3Node;
   /** Scheunen im geladenen Inhalt (Ebene: Mitte, Radius, Firsthöhe) — Hindernisse für die Kartenkamera. */
@@ -472,6 +483,7 @@ export class EarlePlanet {
       warp,
       growth: featureGrowth,
       footClear: { camLocal: this.rockCamLocal, radius: this.rockFootClear },
+      sunDir: this.rockSunDir,
     });
     this.waterMaterial = createWaterMaterial({ lookup: this.lookup, fog: this.fog, bands: this.terrainBands, waterRows: this.waterRows, veil: (w) => this.veilNode(w), warp, growth: featureGrowth });
     this.barns = new BarnLandmarks({
@@ -753,6 +765,11 @@ export class EarlePlanet {
     return this.viewBlend < 1;
   }
 
+  /** Blick-Welten der Überblendung (Himmel, Nebel, Wolken): A → B mit Anteil t. */
+  get viewWorlds(): { a: number; b: number; t: number } {
+    return { a: this.viewWorldA, b: this.viewWorldB, t: this.skyMix.value };
+  }
+
   /** Blickpunkt in der Ebene → Welt darunter → Himmel/Nebel/Streifen überblenden. */
   setViewPoint(x: number, z: number, immediate = false): void {
     this.setViewWorld(this.field.worldAt(x, z), immediate);
@@ -889,6 +906,7 @@ export class EarlePlanet {
 
   /** Richtung zur Sonne (Welt = Ebene, die Ebene dreht sich nicht): Vegetation und Wahrzeichen. */
   setSunDirection(dir: Vector3): void {
+    this.rockSunDir.value.copy(dir);
     this.vegetation.setSunDirection(dir, dir);
     this.landmarkSet.setSunDirection(dir);
   }
@@ -1672,9 +1690,18 @@ export function proceduralWorld(id: number, authored: readonly EarlePlanetWorld[
     ground: dom.ground,
     fogStripes: A.fogStripes + (B.fogStripes - A.fogStripes) * t,
     fog: { start: A.fog.start + (B.fog.start - A.fog.start) * t, range: A.fog.range + (B.fog.range - A.fog.range) * t },
-    view: dom.view ?? DEFAULT_VIEW,
+    view: proceduralView(dom.view ?? DEFAULT_VIEW),
     procedural: true,
   };
+}
+
+/** Ansicht einer prozeduralen Welt: wie die Elternwelt, aber ohne deren Einzelkomposition (Untersicht, Sonne, Versatz). */
+function proceduralView(v: WorldView): WorldView {
+  const rest: WorldView = { ...v };
+  delete rest.lookHeight;
+  delete rest.sun;
+  delete rest.aim;
+  return rest;
 }
 
 export { SLOT_ROWS, isTreeKind };

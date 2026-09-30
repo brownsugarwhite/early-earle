@@ -24,6 +24,8 @@ export interface PlaneLandmarkHost {
   worldAt(x: number, z: number): number;
   /** Region am Punkt (Weltenlage). */
   regionAt(x: number, z: number): Region;
+  /** Anteil der Wahrzeichen einer Welt 0..1 (Standard 1). */
+  landmarkChance?(world: number): number;
   segment(k: number): PathSegment;
   backbone(z: number): number;
 }
@@ -127,11 +129,12 @@ export class PlaneLandmarks {
     const rand = mulberry32(hash32('plane-landmarks', region.key, this.host.seed));
     const out: LandmarkPlacement[] = [];
     const world = region.world;
+    const share = Math.max(0, Math.min(1, this.host.landmarkChance?.(world) ?? 1));
     if (region.kind === 'path') {
       const seg = this.host.segment(region.k);
       const len = seg.zStart - seg.zEnd;
       // Held-Wahrzeichen neben dem Pfad (der Pfad steigt hinauf)
-      if (rand() < this.pathChance) {
+      if (rand() < this.pathChance * share) {
         const kind = pick(this.weights(world, HERO_KINDS), rand());
         const sideDraw = rand() < 0.5 ? -1 : 1;
         const seed = Math.floor(rand() * 0x7fffffff);
@@ -150,7 +153,7 @@ export class PlaneLandmarks {
         }
       }
       // Sümpfe in den Startwelten (grün, viel Wasser), sonst seltener
-      const swampChance = this.swampWorlds.has(world) ? this.swampChance : 0.2;
+      const swampChance = (this.swampWorlds.has(world) ? this.swampChance : 0.2) * share;
       if (this.plan.kinds.swamp && rand() < swampChance) {
         const seed = Math.floor(rand() * 0x7fffffff);
         const pref = out[0] ? -Math.sign(out[0].x - this.host.backbone(out[0].z)) : rand() < 0.5 ? -1 : 1;
@@ -169,7 +172,7 @@ export class PlaneLandmarks {
       return out;
     }
     // Seitenzelle: gelegentlich ein Wahrzeichen nahe der Mitte (ohne Pfadabstand: der Pfad ist weit)
-    if (rand() < this.cellChance) {
+    if (rand() < this.cellChance * share) {
       const kind = pick(this.weights(world, [...HERO_KINDS, 'swamp']), rand());
       const seed = Math.floor(rand() * 0x7fffffff);
       if (kind) {

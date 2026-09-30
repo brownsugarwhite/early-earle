@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "w14",
+  "index": 13,
+  "ref": "14",
+  "name": "Stille Bucht",
+  "title": "Dunkle Landzunge mit Windbäumen über dem stillen Meer",
+  "zone": "luzz",
+  "sources": ["Ebene_29.jpg"],
+  "palette": {
+    "ink": "#140f0e",
+    "terrain": ["#2a211f", "#322825", "#3a2f2b", "#443833", "#50433c"],
+    "canopy": ["#1e1816", "#2a2220", "#3a2e2a", "#4a3c36", "#5a4a42", "#6a5a50", "#7a6a5e"],
+    "sky": ["#fcf2d2", "#f7e6cb", "#ecdcc4", "#dcd2bc", "#c9c6b3", "#b3b5a9"],
+    "sun": "#fffbe6",
+    "sunRing": "#fdf3d6",
+    "fog": ["#b3b5a9", "#6f7f80", "#8e9a96", "#aeb4aa", "#d2cebb", "#f2e9cf"],
+    "fogAlpha": [0, 0.3, 0.5, 0.68, 0.82, 0.94],
+    "accent": ["#4a3c36", "#2a2220", "#140f0e", "#1a1412", "#5a4a42", "#6a5a50", "#2a2220", "#8e9a96"],
+    "water": ["#0b0d0c", "#171d1f", "#2b3a3c", "#4a6066", "#8aa6ae", "#cdd6cf", "#1e2a2e", "#efe6cf"],
+    "rock": ["#140f0e", "#241c1a", "#322825", "#3e332f", "#4a3e38", "#52463f", "#1a1412", "#5e5048"]
+  },
+  "terrain": { "amplitude": 2.6, "wavelength": 1.6, "slope": 0.3 },
+  "ground": "smooth",
+  "vegetation": {
+    "density": 0.05,
+    "clumpiness": 0,
+    "kinds": { "bare": 1 },
+    "scale": [1.1, 1.6],
+    "trunkStyle": "ink",
+    "motif": "dots"
+  },
+  "props": {  },
+  "features": {
+    "lakes": { "count": 1, "radius": [6, 7], "stretch": 2.6, "pathDistance": [9, 12] }
+  },
+  "fogStripes": 0,
+  "fog": { "start": 8, "range": 22 },
+  "view": { "height": 3.0, "forward": 6, "look": 10, "fov": 55, "curvature": 0.12, "focus": [-0.1, 0.1], "nearClear": 1.2, "footClear": 0 },
+  "focal": { "along": 0.5, "lateral": 7 }
+}

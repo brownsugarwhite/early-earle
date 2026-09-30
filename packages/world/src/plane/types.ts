@@ -97,6 +97,11 @@ export interface WorldSpec {
   /** Müll v2 der Welt (Startwelt, Nester). */
   trash?: TrashSpec;
   focal?: FocalSpec;
+  /**
+   * Anteil der Wahrzeichen (Fels mit Wasserfall, Ruine, Sumpf) 0..1, Standard 1: Welten mit eigenem Held (Monolith,
+   * Meer) setzen 0 — nichts Fremdes steht in ihrem Bild.
+   */
+  landmarkChance?: number;
 }
 
 /** Alter Name (Planet mit Zonenbändern); die Felder zone/side/half gibt es nicht mehr. */

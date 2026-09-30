@@ -93,7 +93,7 @@ describe('landmark palette', () => {
     .map((f) => JSON.parse(readFileSync(join(worldsDir, f), 'utf8')) as { palette: WorldPalette });
 
   it('derives all roles (8 hex stops each) for every Earle world', () => {
-    expect(worlds.length).toBe(10);
+    expect(worlds.length).toBeGreaterThanOrEqual(10);
     for (const w of worlds) {
       const p = landmarkPaletteFromWorld(w.palette);
       for (const role of LANDMARK_ROLES) {

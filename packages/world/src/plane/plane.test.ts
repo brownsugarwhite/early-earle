@@ -60,7 +60,8 @@ describe('WorldLayout', () => {
   });
 
   it('counts future route entries (worlds without playable levels yet) for the layout, not as playable levels', () => {
-    const route = [...AUTHORED_ROUTE, { world: 4, levels: 10, future: true as const }, { world: 6, levels: 10, future: true as const }];
+    const playable = AUTHORED_ROUTE.filter((r) => !r.future);
+    const route = [...playable, { world: 4, levels: 10, future: true as const }, { world: 6, levels: 10, future: true as const }];
     const withFuture = new WorldLayout({ seed: 7, route, authored: 10 });
     // spielbar bleiben die Level 1–100; die künftigen Abschnitte tragen die Level 101–120, danach prozedural
     expect(withFuture.authoredLevels).toBe(100);
@@ -72,7 +73,7 @@ describe('WorldLayout', () => {
     // Lage der Autorenabschnitte unverändert
     for (let k = 0; k < 10; k++) expect(withFuture.segment(k)).toEqual(layout.segment(k));
     // Ab dem ersten künftigen Eintrag zählt nichts mehr mit (auch ein späterer Eintrag ohne Flag nicht)
-    const mixed = new WorldLayout({ seed: 7, route: [...AUTHORED_ROUTE, { world: 4, levels: 10, future: true as const }, { world: 6, levels: 10 }], authored: 10 });
+    const mixed = new WorldLayout({ seed: 7, route: [...playable, { world: 4, levels: 10, future: true as const }, { world: 6, levels: 10 }], authored: 10 });
     expect(mixed.authoredLevels).toBe(100);
   });
 

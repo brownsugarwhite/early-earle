@@ -85,6 +85,8 @@ export interface RockFormation {
   /** Höchste Deckfläche (absolut). */
   height: number;
   variant: number;
+  /** Geländehöhe am Fuß (nur Monolith: Bezug der Wandverläufe im Material). */
+  ground?: number;
 }
 
 /** Anker für Levelknoten auf Felsen: flache Deckfläche (Ebene, absolute Höhe). */

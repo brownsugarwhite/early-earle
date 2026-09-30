@@ -1,4 +1,4 @@
-import type { EarlePlanetWorld, GroundTreatment, WorldPalette, WorldView } from '@ee/render';
+import type { CloudBankSpec, EarlePlanetWorld, GroundTreatment, WorldPalette, WorldView } from '@ee/render';
 import type { FocalSpec, PlanetPropSpec, PlanetTerrainShape, RouteEntry, TreeFamily, WorldFeatureSpec, WorldSpec } from '@ee/world';
 
 /** Zonendatei `content/zones/*.json` (Schema 1). */
@@ -44,6 +44,10 @@ export interface WorldContent {
    * rechts vom Pfad); ältere Dateien: `latFrac` (→ along) und `deltaDeg` (→ Seite und Abstand).
    */
   focal?: { kind?: NonNullable<FocalSpec['kind']>; scale?: number; along?: number; lateral?: number; latFrac?: number; deltaDeg?: number; yawDeg?: number };
+  /** Wolkenbänke am Himmel (Welt 13): Schichten in Grad über dem Horizont, siehe `@ee/render` CloudBankSpec. */
+  clouds?: CloudBankSpec;
+  /** Anteil der Wahrzeichen (Wasserfall-Fels, Ruine, Sumpf) 0..1; Standard 1. */
+  landmarkChance?: number;
 }
 
 const modules = import.meta.glob<{ default: ZoneContent }>('@content/zones/*.json', { eager: true });
@@ -87,6 +91,8 @@ export const AUTHORED_ROUTE: RouteEntry[] = [
   { world: worldIndex('w08'), levels: 9 }, // Rote Scheune
   { world: worldIndex('w01'), levels: 16, length: 34 }, // Flechtenbaum mit dem Riesenbaum (Level 80–95)
   { world: worldIndex('w03'), levels: 5 }, // Kuppelbaum (erstes Wäldchen, Level 100)
+  { world: worldIndex('w13'), levels: 10, future: true }, // Roter Monolith (Ebene 45, künftige Level)
+  { world: worldIndex('w14'), levels: 10, future: true }, // Stille Bucht (Ebene 29, künftige Level)
 ];
 
 /** Index der Welt mit dem Riesenbaum (Flechtenbaum, Referenz 01). */
@@ -117,6 +123,7 @@ export function worldSpecOf(w: WorldContent): WorldSpec {
     ...(w.features ? { features: w.features } : {}),
     ...(w.trash ? { trash: w.trash as unknown as NonNullable<WorldSpec['trash']> } : {}),
     ...(focal ? { focal } : {}),
+    ...(w.landmarkChance !== undefined ? { landmarkChance: w.landmarkChance } : {}),
   };
 }
 
@@ -131,6 +138,7 @@ export function planetWorlds(): EarlePlanetWorld[] {
     fogStripes: w.fogStripes,
     fog: w.fog,
     view: w.view,
+    ...(w.clouds ? { clouds: w.clouds } : {}),
   }));
 }
 

@@ -50,9 +50,12 @@ function paramsFromUrl(search: URLSearchParams): Partial<EarleLabParams> {
     const v = search.get(k);
     return v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null;
   };
-  // ?world=08 (Autorenwelt) oder ?world=14 (prozedurale Pfadwelt 14)
+  // ?world=08 (Autorenwelt) oder ?world=24 (prozedurale Pfadwelt 24); Autorenwelten nach ihrer Nummer (ref), auch
+  // wenn davor Nummern fehlen
   const w = num('world');
-  if (w !== null && w >= 1 && w <= LAB_WORLD_COUNT) out.world = Math.round(w) - 1;
+  const byRef = w !== null ? WORLD_CONTENTS.findIndex((c) => Number(c.ref) === Math.round(w)) : -1;
+  if (byRef >= 0) out.world = byRef;
+  else if (w !== null && w >= 1 && w <= LAB_WORLD_COUNT) out.world = Math.round(w) - 1;
   const p = num('p');
   if (p !== null) out.perspective = Math.max(0, Math.min(1.4, p));
   const trash = num('trash');
