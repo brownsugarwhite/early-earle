@@ -13,6 +13,8 @@ export interface FlowQuality {
   terrainRes: number;
   fillerSegments: [number, number];
   blobOctaves: number;
+  /** Erspielte Wesen, die gleichzeitig auf der Map leben (MapCreatures). */
+  mapCreatureCap: number;
 }
 
 export const FLOW_QUALITY: Record<'hoch' | 'mobil', FlowQuality> = {
@@ -26,6 +28,7 @@ export const FLOW_QUALITY: Record<'hoch' | 'mobil', FlowQuality> = {
     terrainRes: 96,
     fillerSegments: [160, 80],
     blobOctaves: 2,
+    mapCreatureCap: 14,
   },
   mobil: {
     name: 'mobil',
@@ -37,6 +40,7 @@ export const FLOW_QUALITY: Record<'hoch' | 'mobil', FlowQuality> = {
     terrainRes: 64,
     fillerSegments: [96, 48],
     blobOctaves: 1,
+    mapCreatureCap: 7,
   },
 };
 
