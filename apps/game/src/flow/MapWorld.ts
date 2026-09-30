@@ -171,7 +171,7 @@ export class MapWorld {
       nodesPerZone: NODES_PER_ZONE,
       seed: options.seed ?? 7,
       keepGround: [firstTree - 1, lastTree + 1],
-      provider: options.anchors ?? null,
+      provider: options.anchors === undefined ? featurePathProvider(this.world.field) : options.anchors,
     });
     this.world.setPath(this.route);
 
@@ -457,4 +457,29 @@ export function tangentFrame(normal: Vector3, forwardHint: Vector3, out: Matrix4
   fwd.normalize();
   const right = new Vector3().crossVectors(up, fwd).normalize();
   return out.makeBasis(right, up, fwd);
+}
+
+/**
+ * The terrain features as the level path's anchor provider (MapWorld default): lakes, rivers and rock columns cost
+ * (the route keeps off water and rock feet), the lowest ledge of each formation near the path attracts the route, so
+ * it swings past the rocks like a path through an Earle landscape. Nodes keep their own stones (a board on a narrow
+ * rock top would float), the formations are the backdrop.
+ */
+function featurePathProvider(field: {
+  features?: {
+    ledges(world?: number): Array<{ position: [number, number, number]; normal: [number, number, number]; step: number; pathDistance: number }>;
+    isWater(dx: number, dy: number, dz: number, margin?: number): boolean;
+    rockAt(dx: number, dy: number, dz: number, margin?: number): unknown;
+  };
+}): PathAnchorProvider | null {
+  const features = field.features;
+  if (!features) return null;
+  return {
+    anchors: () =>
+      features
+        .ledges()
+        .filter((l) => l.step === 0 && l.pathDistance < 6)
+        .map((l) => ({ position: l.position, normal: l.normal, kind: 'ledge' as const, reach: Math.min(5, l.pathDistance + 1.5) })),
+    cost: (dir) => (features.isWater(dir[0], dir[1], dir[2], 0.6) || features.rockAt(dir[0], dir[1], dir[2], 0.5) !== null ? 1 : 0),
+  };
 }

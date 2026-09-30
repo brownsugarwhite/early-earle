@@ -13,6 +13,10 @@ type Mask = ((dir: [number, number, number]) => boolean) | ((dx: number, dy: num
  * PlanetField, als Richtung oder als drei Zahlen): dort liegt kein Müll. Ohne Masken gilt der ganze Boden.
  */
 function terrainBlock(planet: TrashPlanetLike): ((dx: number, dy: number, dz: number) => boolean) | undefined {
+  const withFeatures = planet.field as unknown as { features?: { blocksProp?(dx: number, dy: number, dz: number, radius: number): boolean } };
+  const features = withFeatures.features;
+  // Terrain features (lakes, rivers, rock formations): water and rock in one query, with a small margin.
+  if (features && typeof features.blocksProp === 'function') return (dx, dy, dz) => features.blocksProp!(dx, dy, dz, 0.6);
   const field = planet.field as unknown as { isWater?: Mask; isCliff?: Mask };
   const masks = [field.isWater, field.isCliff].filter((m): m is Mask => typeof m === 'function');
   if (masks.length === 0) return undefined;
