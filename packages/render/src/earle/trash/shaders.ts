@@ -552,20 +552,23 @@ export function createVeilMaterial(ctx: TrashShaderContext, radius: number): Mes
   // im Bild), in der Tiefe gestapelt wie Earles Nebelstreifen: harte Oberkante, gestuft auslaufende Unterkante,
   // endlich lang (je Schwade eigene Phase), langsam ziehend
   const bend = sin(v.mul(0.16).add(ph.mul(3.0))).mul(1.6).add(sin(v.mul(0.061).add(time.mul(0.008))).mul(2.4));
-  const sc = u.mul(0.17).add(bend.mul(0.17)).add(time.mul(0.004)).add(ph.mul(0.37));
+  // leicht gewellte Oberkante (kein Lineal)
+  const sc = u.mul(0.17).add(bend.mul(0.17)).add(sin(v.mul(0.7).add(ph.mul(5.0))).mul(0.03)).add(time.mul(0.004)).add(ph.mul(0.37));
   const idx = floor(sc);
   const pr = fract(sc);
   const seed = rnd(idx.mul(13.0).add(lay.mul(101.0)));
   const lenMask = sin(v.mul(0.2).add(seed.mul(6.283)).add(time.mul(0.015))).add(seed.sub(0.5).mul(0.6));
-  // Dicke schrumpft mit der Heilung (die Schwade wird zum Faden und reißt ab)
-  const thick = float(0.3).mul(float(1).sub(clear.mul(0.95)));
+  // Spindelform: zu den Enden hin dünner (gerade Oberkante, gewölbte Unterkante wie Earles Nebelstreifen); die Dicke
+  // schrumpft mit der Heilung (die Schwade wird zum Faden und reißt ab)
+  const lens = smoothstep(0.1, 0.75, lenMask);
+  const thick = float(0.3).mul(float(1).sub(clear.mul(0.95))).mul(lens);
   const pfw = fwidth(sc).max(1e-4);
-  const core = smoothstep(float(0).sub(pfw), float(0).add(pfw), pr).mul(smoothstep(thick.mul(0.55).add(pfw), thick.mul(0.55).sub(pfw), pr));
-  const halo = smoothstep(float(0).sub(pfw), float(0).add(pfw), pr).mul(smoothstep(thick.add(pfw), thick.sub(pfw), pr));
+  const top = smoothstep(float(0).sub(pfw), float(0).add(pfw), pr);
+  const core = top.mul(smoothstep(thick.mul(0.55).add(pfw), thick.mul(0.55).sub(pfw), pr));
+  const halo = top.mul(smoothstep(thick.add(pfw), thick.sub(pfw), pr));
   const lfw = fwidth(lenMask).max(1e-4);
-  const inWisp = smoothstep(float(0.15).sub(lfw), float(0.15).add(lfw), lenMask);
   const inCore = smoothstep(float(0.42).sub(lfw), float(0.42).add(lfw), lenMask);
-  const wisp = halo.mul(inWisp).mul(0.5).add(core.mul(inCore).mul(0.5));
+  const wisp = halo.mul(0.5).add(core.mul(inCore).mul(0.5));
   // feine Linien längs der Schwaden (Ornament, nur im Kern)
   const fine = stripeMask(sc.mul(9.0), 0.1).mul(core).mul(inCore);
   const isHaze = lay.lessThan(0.5);
