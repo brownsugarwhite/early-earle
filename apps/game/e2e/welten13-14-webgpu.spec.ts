@@ -59,7 +59,8 @@ test('Welten 13 und 14 im Earle-Lab: Kompositionen quer (Hoch) und hoch (Mobil),
     await page.goto(`/lab/earle?world=13&p=1&quality=${c.quality}`);
     await requireWebGPU(page);
     await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgpu', { timeout: 30_000 });
-    await expect.poll(async () => (await labState(page)).horses, { timeout: 60_000 }).toBe(7);
+    // je Monolith sieben Pferde; seitliche Nachbarbänder können einen zweiten Monolith zeigen
+    await expect.poll(async () => (await labState(page)).horses, { timeout: 60_000 }).toBeGreaterThanOrEqual(7);
     await expect.poll(async () => (await labState(page)).clouds, { timeout: 30_000 }).toBeGreaterThan(0);
     await page.waitForTimeout(2500);
     // Welt 14: Meer an der Landzunge, Windbäume auf dem Grat, ferne Landzunge als Himmelsschicht
@@ -93,10 +94,12 @@ test('Karte an den Knoten der Welten 13 und 14 (Handy): Monolith, Meer und Windb
       const w = (window as unknown as { __flow: Flow }).__flow.world()?.world;
       return { horses: w?.horses?.mesh?.count ?? -1, wind: w?.vegetation?.trees?.wind?.count ?? -1, water: !!w?.water };
     });
-  await page.evaluate(() => (window as unknown as { __flow: Flow }).__flow.goToNode(104));
-  await expect.poll(async () => (await planet()).horses, { timeout: 60_000 }).toBe(7);
+  // die Flow-Szene kann nach dem Map-Zustand noch einmal mounten: erst warten, bis ihre Debug-API steht
+  await page.waitForFunction(() => !!(window as unknown as { __flow?: unknown }).__flow, undefined, { timeout: 30_000 });
+  await page.evaluate(() => (window as unknown as { __flow: Flow }).__flow.goToNode(124));
+  await expect.poll(async () => (await planet()).horses, { timeout: 60_000 }).toBeGreaterThanOrEqual(7);
   await page.waitForTimeout(2000);
-  await page.evaluate(() => (window as unknown as { __flow: Flow }).__flow.goToNode(114));
+  await page.evaluate(() => (window as unknown as { __flow: Flow }).__flow.goToNode(134));
   await expect.poll(async () => (await planet()).wind, { timeout: 60_000 }).toBeGreaterThan(0);
   expect((await planet()).water).toBe(true);
   await page.waitForTimeout(2500);
