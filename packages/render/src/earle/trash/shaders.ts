@@ -2,7 +2,6 @@ import { DoubleSide, MeshBasicNodeMaterial, NormalBlending } from 'three/webgpu'
 import type { UniformNode, Vector3 } from 'three/webgpu';
 import {
   abs,
-  asin,
   atan,
   attribute,
   cameraProjectionMatrix,
