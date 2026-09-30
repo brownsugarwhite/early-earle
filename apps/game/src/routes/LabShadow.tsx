@@ -76,6 +76,7 @@ function paramsFromUrl(search: URLSearchParams): Partial<ShadowLabParams> {
   if (legacy === 0 || legacy === 1 || legacy === 2) out.legacy = legacy;
   const inset = num('map');
   if (inset !== null) out.mapInset = Math.max(0, Math.min(13, Math.round(inset)));
+  if (search.get('dots') === '1') out.dots = true;
   const repeat = num('repeat');
   if (repeat !== null) out.repeat = Math.max(1, Math.min(40, Math.round(repeat)));
   return out;
@@ -244,6 +245,10 @@ export function LabShadow() {
                   <option value="hoch">Hoch</option>
                   <option value="mobil">Mobil</option>
                 </select>
+              </label>
+              <label className="earle-ctl earle-ctl--toggle">
+                <span>Testpunkte (Schattenwert)</span>
+                <input type="checkbox" checked={params.dots} onChange={(e) => set({ dots: e.target.checked })} data-testid="shadow-dots" />
               </label>
               <label className="earle-ctl earle-ctl--toggle">
                 <span>Glatte Werfer</span>

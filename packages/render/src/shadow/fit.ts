@@ -1,4 +1,4 @@
-import { Matrix4, Vector3 } from 'three/webgpu';
+import { Frustum, Matrix4, Sphere, Vector3 } from 'three/webgpu';
 import type { PerspectiveCamera } from 'three/webgpu';
 
 /**
@@ -155,6 +155,7 @@ const _q = new Vector3();
 const _n = new Vector3();
 const _g = new Vector3();
 const _vp = new Matrix4();
+const _sph = new Sphere();
 
 function emptyCascade(): CascadeFit {
   return { active: false, x0: 0, x1: 1, y0: 0, y1: 1, texelX: 1, texelY: 1, near: 0.1, far: 1, split: 0, pxPerTexel: 0 };
@@ -253,12 +254,22 @@ export class CascadeFitter {
   private readonly X0 = new Vector3();
   private readonly Y0 = new Vector3();
 
+  /** Kamerafrustum des laufenden Fits (Sichtbarkeit der Empfänger-Volumen). */
+  private readonly frustum = new Frustum();
+
+  private volumeVisible(v: ReceiverVolume): boolean {
+    _sph.center.copy(v.center);
+    _sph.radius = v.radius;
+    return this.frustum.intersectsSphere(_sph);
+  }
+
   fit(input: FitInput, out: FitResult): FitResult {
     const cam = input.camera;
     const n = input.sizes.length;
     while (out.cascades.length < n) out.cascades.push(emptyCascade());
     out.cascades.length = n;
     cam.updateMatrixWorld();
+    this.frustum.setFromProjectionMatrix(_vp.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse), cam.coordinateSystem);
     _o.setFromMatrixPosition(cam.matrixWorld);
     _f.set(0, 0, -1).transformDirection(cam.matrixWorld);
     const near = Math.max(1e-3, cam.near);
@@ -640,6 +651,26 @@ export class CascadeFitter {
       for (let i = 0; i < m; i++) {
         z0 = Math.min(z0, this.pz[i]!);
         z1 = Math.max(z1, this.pz[i]!);
+      }
+      // Empfänger-Volumen ganz (die Abtaststrahlen treffen ihre Ränder nicht genau): sichtbare Kugeln, deren
+      // Blicktiefe in diese Kaskade reicht
+      if (input.volumes) {
+        for (const v of input.volumes) {
+          if (!this.volumeVisible(v)) continue;
+          const dc = _q.copy(v.center).sub(_o).dot(_f);
+          if (dc + v.radius < near || (k < n - 1 && dc - v.radius > cf.split)) continue;
+          const px0 = v.center.dot(X0);
+          const py0 = v.center.dot(Y0);
+          const vx = cp * px0 - sp * py0;
+          const vy = sp * px0 + cp * py0;
+          const vz = v.center.dot(L);
+          x0 = Math.min(x0, vx - v.radius);
+          x1 = Math.max(x1, vx + v.radius);
+          y0 = Math.min(y0, vy - v.radius);
+          y1 = Math.max(y1, vy + v.radius);
+          z0 = Math.min(z0, vz - v.radius);
+          z1 = Math.max(z1, vz + v.radius);
+        }
       }
       zRanges.push([z0, z1]);
       zAll1 = Math.max(zAll1, z1);

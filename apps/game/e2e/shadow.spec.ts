@@ -81,3 +81,38 @@ test('/lab/shadow fittet Kaskaden an die Kamera, schaltet Alt/Neu/Split, Debug u
   await expect(info).toContainText('K2', { timeout: 30_000 });
   expect(errors).toEqual([]);
 });
+
+test('/lab/shadow Schatten v3: Kontakt-Diagnose, Feldansicht, Kontaktregler und Testpunkte (shadowFactor im Vertex-Shader)', async ({ page }) => {
+  test.setTimeout(240_000);
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 900, height: 560 });
+  await page.goto('/lab/shadow?q=mobil&view=karte&node=20&progress=30&mode=neu&mag=0&cascades=mobil');
+  await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu|webgl2/, { timeout: 60_000 });
+  await expect.poll(async () => (await stats(page)).cascades?.cascades.filter((c) => c.active).length ?? 0, { timeout: 90_000 }).toBe(2);
+  // Bodengefittete gröbste Kaskade: die Tiefe endet am sichtbaren Boden, nicht an der Schale
+  const s = await stats(page);
+  expect(s.cascades!.dMax).toBeGreaterThan(s.cascades!.dMin);
+
+  // Kontakt-Diagnose und Feldansicht (Ersatzmaterial auf den Empfängern), Legende sichtbar
+  const debug = page.getByTestId('shadow-debug').locator('select');
+  await debug.selectOption('3');
+  await expect(page.getByTestId('shadow-contact-legend')).toBeVisible();
+  await page.waitForTimeout(1500);
+  await debug.selectOption('4');
+  await page.waitForTimeout(1500);
+  await debug.selectOption('0');
+
+  // Kontaktregler live (Mindestbreite, Versatz, Ebenen-Bias) → neue Schattenpässe ohne Fehler
+  const before = (await stats(page)).passes;
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ dilation: 1, shift: 1.5, planeBias: false }));
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ dilation: 0.6, shift: 1, planeBias: true }));
+  await expect.poll(async () => (await stats(page)).passes, { timeout: 30_000 }).toBeGreaterThan(before);
+
+  // Testpunkte: shadowFactor() im Vertex-Shader, dazu Drehung (Schatten wandern über die Punkte)
+  await page.getByTestId('shadow-dots').click();
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 6 }));
+  await page.waitForTimeout(2500);
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 0 }));
+  await page.getByTestId('shadow-dots').click();
+  expect(errors).toEqual([]);
+});

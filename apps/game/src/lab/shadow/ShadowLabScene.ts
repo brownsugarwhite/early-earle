@@ -6,6 +6,7 @@ import { MapWorld, MAP_VIEW, MAP_VIEW_PORTRAIT, PLANET_RADIUS } from '../../flow
 import { FLOW_QUALITY } from '../../flow/quality';
 import { NodePath } from '../../flow/NodePath';
 import { Trackball } from '../earle/trackball';
+import { createShadowTestDots } from './shadowDots';
 import { flatNormalWorld, type CascadedShadows, type CascadedShadowStats, type ShadowCascadePreset, type ShadowTaps } from '@ee/render/shadow/index.ts';
 
 /** Anzeige: nur neu, nur alt (P2-Verfahren) oder geteilt (links alt, rechts neu, gleiches Bild). */
@@ -67,6 +68,8 @@ export interface ShadowLabParams {
   legacy: 0 | 1 | 2;
   /** Tiefenkarte einer Kaskade als Einblendung unten links (0 = aus, 1..3 = Kaskade). */
   mapInset: number;
+  /** Testpunkte für `shadowFactor()` (skalieren im Vertex-Shader mit dem Schatten). */
+  dots: boolean;
   /** Tiefenvergleich: -1 automatisch, 0 Hardware-Vergleichs-Sampler, 1 manuell im Shader (WebGL2-Rückfall). */
   compare: -1 | 0 | 1;
 }
@@ -101,6 +104,7 @@ export const DEFAULT_SHADOW_PARAMS: ShadowLabParams = {
   legacy: 0,
   compare: -1,
   mapInset: 0,
+  dots: false,
 };
 
 export interface ShadowLabStats {
@@ -187,6 +191,7 @@ export class ShadowLabScene implements SceneController {
   private readonly diagGap: UniformNode<'float', number> = uniform(0.35);
   private readonly diagEpsilon: UniformNode<'float', number> = uniform(0.02);
   private readonly diagMode: UniformNode<'float', number> = uniform(0);
+  private testDots: ReturnType<typeof createShadowTestDots> | null = null;
   /** Einblendung der Tiefenkarte (Material je Kaskade/Kaskadensatz). */
   private insetQuad: QuadMesh | null = null;
   private insetKey = '';
@@ -244,6 +249,14 @@ export class ShadowLabScene implements SceneController {
 
     this.needsSnap = true;
     this.appliedSpin = 0;
+    this.syncTestDots();
+  }
+
+  /** Testpunkte um den Fokusknoten (neu, wenn Knoten oder Schalter wechseln). */
+  private syncTestDots(): void {
+    this.testDots?.dispose();
+    this.testDots = null;
+    if (this.world && this.params.dots) this.testDots = createShadowTestDots(this.world, this.params.node);
   }
 
   /** Die Ein-Zeilen-Integration für MapWorld/EarleLab (Planetenschale um den Planetenmittelpunkt). */
@@ -260,6 +273,8 @@ export class ShadowLabScene implements SceneController {
 
   private disposeWorld(): void {
     this.restoreDiagnostics();
+    this.testDots?.dispose();
+    this.testDots = null;
     this.nodePath?.dispose();
     this.nodePath = null;
     if (this.world) {
@@ -319,6 +334,7 @@ export class ShadowLabScene implements SceneController {
           this.nodePath?.setProgress(next.node, next.node);
           this.needsSnap = true;
         }
+        if (next.dots !== prev.dots || (next.dots && next.node !== prev.node)) this.syncTestDots();
       }
     }
     for (const l of this.listeners) l(this.getParams());

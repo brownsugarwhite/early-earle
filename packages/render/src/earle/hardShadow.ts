@@ -5,6 +5,7 @@ import { Fn, fwidth, lightTargetDirection, normalView, smoothstep, uniform } fro
 import type { FloatNode, Vec2Node, Vec3Node } from './tsl';
 import { CascadedShadows, type CascadeSampleOptions, type CascadedShadowStats, type ViewReceivers } from '../shadow/CascadedShadows';
 import { shadowFactorNode, type ShadowFactorSource } from '../shadow/shadowFactor';
+import { ShadowTint } from '../shadow/shadowTint';
 import { createDefaultShadowFilter, createDepthCompare, createEarleShadowFilter, createShadowFrameUniforms, type ShadowFrameUniforms, type ShadowTaps } from '../shadow/filters';
 import type { CascadeSize, ReceiverVolume } from '../shadow/fit';
 import { needsManualDepthCompare, type ManualCompareOption } from '../shadow/webglCompat';
@@ -205,6 +206,11 @@ export class SunRig implements ShadowFactorSource {
   private readonly bias: number;
   private readonly normalBias: number;
   private readonly distance: number;
+  /**
+   * Schattentönung je Welt (Haken für die Material-Besitzer, z. B. blaue Schatten auf Schnee): siehe `ShadowTint`.
+   * Überlebt Neubauten des Lichts (reine Uniforms).
+   */
+  readonly shadowTint = new ShadowTint(16);
   /** Tiefe je Schattentexel (normalisiert), aus fitShadow; Basis des steigungsabhängigen Bias (alter Filter). */
   readonly depthPerTexel = uniform(0.0005);
   /** Zähler der gerenderten Schattenpässe (zur Kontrolle "nicht im Leerlauf"). */
