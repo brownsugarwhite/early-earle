@@ -42,12 +42,22 @@ export interface WorldContent {
   valleyMist?: number;
   /** Leuchtender Horizont 0..1 (Ebene 16: heller Schein hinter den Baumreihen). */
   skyGlow?: number;
+  /** Fluchtpunkt der Bodenlinien (Ost/Nord vom Weltmittelpunkt, Welteinheiten), siehe `EarlePlanetWorld.floorAnchor`. */
+  floorAnchor?: { east?: number; north?: number };
   /** Fokus-Element der Komposition (Baum oder Requisit am Slot; nahe Welten neben dem Pfad). */
   /**
    * Fokus der Weltkomposition: mit `kind` ein Fokus-Element (Scheune, Wurzelbaum …) am Slot, ohne `kind` nur ein
    * Bildanker (z. B. Welt 01: die breiteste Stelle des Bands, der Riesenbaum steht am Horizont).
    */
-  focal?: { kind?: NonNullable<PlanetLandmarkParams['instance']>['kind']; scale?: number; latFrac?: number; deltaDeg?: number; yawDeg?: number };
+  focal?: {
+    kind?: NonNullable<PlanetLandmarkParams['instance']>['kind'];
+    scale?: number;
+    latFrac?: number;
+    deltaDeg?: number;
+    yawDeg?: number;
+    /** Freiraum um das Fokus-Element (Welteinheiten; Standard je Art, z. B. 3.2 für Bäume, 4.5 für die Scheune). */
+    clear?: number;
+  };
 }
 
 const modules = import.meta.glob<{ default: ZoneContent }>('@content/zones/*.json', { eager: true });
@@ -134,6 +144,7 @@ export function planetWorlds(): EarlePlanetWorld[] {
       ...(w.shadowTint ? { shadowTint: w.shadowTint } : {}),
       ...(w.valleyMist !== undefined ? { valleyMist: w.valleyMist } : {}),
       ...(w.skyGlow !== undefined ? { skyGlow: w.skyGlow } : {}),
+      ...(w.floorAnchor ? { floorAnchor: w.floorAnchor } : {}),
     };
   });
 }
@@ -157,7 +168,7 @@ export function planetLandmarks(): PlanetLandmarkParams[] {
       deltaDeg: w.focal.deltaDeg ?? 40,
       yawDeg: w.focal.yawDeg ?? 0,
       scale: 1,
-      clearRadius: !kind ? 0 : kind === 'barn' ? 4.5 : kind === 'oak' ? 2.4 * scale : 3.2,
+      clearRadius: !kind ? 0 : (w.focal.clear ?? (kind === 'barn' ? 4.5 : kind === 'oak' ? 2.4 * scale : 3.2)),
       ...(kind ? { instance: { kind, scale } } : {}),
     });
   });

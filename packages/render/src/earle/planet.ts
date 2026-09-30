@@ -87,6 +87,11 @@ export interface EarlePlanetWorld {
   valleyMist?: number;
   /** Leuchtender Horizont 0..1 (Ebene 16: heller Schein hinter den Baumreihen, am Horizont rundum). Fehlt → 0. */
   skyGlow?: number;
+  /**
+   * Fluchtpunkt der Bodenlinien (`ground: floorLines`, Ebene 3/32) relativ zum Weltmittelpunkt in Welteinheiten (Ost =
+   * längs des Weltbands). Fehlt → Weltmittelpunkt (Strahlen und Ringe um die Mitte).
+   */
+  floorAnchor?: { east?: number; north?: number };
 }
 
 export interface EarlePlanetQuality {
@@ -435,7 +440,11 @@ export class EarlePlanet {
     const isSnow = kind.lessThan(1.5);
     const snowCoord = lon.mul(cos(lat)).mul(R / 0.7).add(drift);
     const anchorIdx = this.worlds.findIndex((w) => w.ground === 'floorLines');
-    const anchor = this.field.worldCenterDir(Math.max(0, anchorIdx));
+    // Fluchtpunkt der Bodenlinien: Weltmittelpunkt, verschoben um `floorAnchor` (Ost/Nord, Welteinheiten) — weit voraus
+    // laufen die Strahlen wie Earles Perspektivlinien auf den Horizont zu, die Ringe werden flache Bögen
+    const fa = this.worlds[anchorIdx]?.floorAnchor;
+    const centre = this.field.worldCenterDir(Math.max(0, anchorIdx));
+    const anchor = fa ? offsetDir(frameAt(centre), R, fa.east ?? 0, fa.north ?? 0) : centre;
     const a = new Vector3(anchor[0], anchor[1], anchor[2]);
     const e1 = new Vector3().crossVectors(a, _Y);
     if (e1.lengthSq() < 1e-6) e1.set(1, 0, 0);
@@ -446,8 +455,10 @@ export class EarlePlanet {
     const e2U = uniform(e2);
     const ang = acos(clamp(dot(d, anchorU), -1, 1));
     const theta = atan(dot(d, e2U), dot(d, e1U));
-    // Perspektivlinien (Ebene 3/32): fein und dicht wie gezogene Tuschelinien — 48 Strahlen, Ringe alle 2.4 Einheiten
-    const lines = stripeMask(select(isSnow, snowCoord, theta.mul(48 / (Math.PI * 2))), select(isSnow, float(0.09), float(0.022))).mul(
+    // Perspektivlinien (Ebene 3/32): fein und dicht wie gezogene Tuschelinien — 48 Strahlen (mit fernem Fluchtpunkt 144,
+    // damit sie vorn dicht bleiben), Ringe alle 2.4 Einheiten
+    const rays = fa ? 144 : 48;
+    const lines = stripeMask(select(isSnow, snowCoord, theta.mul(rays / (Math.PI * 2))), select(isSnow, float(0.09), float(0.022))).mul(
       select(isSnow, float(1), smoothstep(0.015, 0.06, ang)),
     );
     const rings = stripeMask(ang.mul(R / 2.4).add(drift), 0.018).mul(select(isSnow, float(0), float(1)));

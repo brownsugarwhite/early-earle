@@ -10,11 +10,12 @@ import type { PlanetVegetationFamily } from './planet';
  * Bäume v3 (Feedback 2026-09-30): Spitzenbaum (`lace`, Kuppelkappe über einem Spitzenschleier aus Punktrosetten, das
  * Astwerk scheint durch — Bilder 02, Ebene_19), Schirmbaum (`umbrella`, flache Kuppel auf sichtbarem Astfächer —
  * Ebene_1/20/36) und die knorrige Earle-Eiche (`oak`, Solitär mit bogig hängenden Ästen und Sternnadeln — Bild 04).
+ * Riesenstamm (`pillar`, Ebene 16 und Ebene 3): sehr dicker Stamm, die Krone hoch über dem Wald — rahmt das Bild.
  */
-export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel' | 'lace' | 'umbrella' | 'oak';
+export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel' | 'lace' | 'umbrella' | 'oak' | 'pillar';
 
 /** Alle Baumarten (z. B. zur Unterscheidung Baum ↔ Requisit bei Fokus-Elementen). */
-export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak'];
+export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak', 'pillar'];
 
 export interface TreeInstance {
   /** Fußpunkt auf der Oberfläche (Patch-Raum). */
@@ -70,6 +71,9 @@ export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number;
   umbrella: { radius: 0.9, trunk: 1.05, hull: 1.6, top: 2.15 },
   // Earle-Eiche: knorriger Stamm, bogig ausladende, hängende Äste; "Krone" = Astwerk mit Sternnadeln (Bild 04)
   oak: { radius: 1.5, trunk: 0.75, hull: 1.35, top: 2.35 },
+  // Riesenstamm (Ebene 16, Ebene 3): dicker Schaft bis weit über den Wald, die Krone darüber (aus der Nähe außerhalb
+  // des Bilds) — vorn rahmen diese Stämme das Bild wie Kulissen
+  pillar: { radius: 1.25, trunk: 5.2, hull: 6.1, top: 7.1 },
 };
 
 // --- Earle-Komposition der Welten -------------------------------------------------------------------
@@ -108,8 +112,29 @@ export interface GroveSpec {
   invert?: boolean;
 }
 
-/** Rindenstil der Bäume v3 (ersetzt `trunkStyle`, wenn gesetzt): Kalligrafie = weiße Linien auf Tinte (Bild 01). */
-export type BarkStyleName = 'ink' | 'white' | 'striped' | 'lichen' | 'calligraphy';
+/**
+ * Rindenstil der Bäume v3 (ersetzt `trunkStyle`, wenn gesetzt): Kalligrafie = weiße Linien auf Tinte (Bild 01),
+ * Leuchten = blau bis cyan leuchtende Stämme mit heller Lichtkante (Ebene 16).
+ */
+export type BarkStyleName = 'ink' | 'white' | 'striped' | 'lichen' | 'calligraphy' | 'glow';
+
+/**
+ * Riesenstämme einer Welt (Abschnitt `vegetation.giants`, Ebene 16 und Ebene 3): einzelne, sehr dicke Stämme zwischen
+ * den Hainen, eigene Streuung mit großem Mindestabstand — unabhängig von Hain und Qualitätsfaktor, denn sie tragen die
+ * Komposition. Normale Bäume halten Abstand zum Stamm.
+ */
+export interface GiantSpec {
+  /** Art (Standard `pillar`). */
+  kind?: TreeKind;
+  /** Mindestabstand zwischen zwei Riesen (Welteinheiten). */
+  spacing: number;
+  /** Anteil der Kandidaten, die stehen (0..1, Standard 1). */
+  share?: number;
+  /** Größenfaktor-Bereich. */
+  scale: [number, number];
+  /** Freiraum um den Stamm, in dem keine normalen Bäume stehen (Welteinheiten, Standard 0.9). */
+  clear?: number;
+}
 
 /** Vegetationsfamilie mit den Erweiterungen der Bäume v3 (Weltdatei, Abschnitt `vegetation`). */
 export interface TreeFamily extends PlanetVegetationFamily {
@@ -126,6 +151,8 @@ export interface TreeFamily extends PlanetVegetationFamily {
   dots?: number;
   /** Fokus-Baum der Welt (ersetzt die Art aus `focal`, z. B. die Earle-Eiche in Welt 05). */
   focalTree?: { kind: TreeKind; scale?: number };
+  /** Riesenstämme (Ebene 16, Ebene 3), siehe `GiantSpec`. */
+  giants?: GiantSpec;
 }
 
 /** Was die Komposition vom Planetenfeld braucht (strukturell, passt auf `PlanetField`). */

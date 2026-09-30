@@ -408,3 +408,55 @@ export function createOakTrunk(seed = 3): OakGeometry {
   }
   return { geometry: b.toGeometry(), tips, top, spread };
 }
+
+// --- Riesenstamm ---------------------------------------------------------------------------------------------
+
+/** Verzweigungshöhe und höchste Astspitze des Riesenstamms (Einheit H = Archetyp-Maßstab). */
+export const PILLAR_Y = 0.86;
+export const PILLAR_TOP = 1.14;
+
+/**
+ * Riesenstamm (Ebene 16 Kathedralenwald, Ebene 3 Juwelenwald): mächtiger, fast gerader Schaft mit leichtem S und
+ * Knoten, weicher Wurzelanlauf mit fünf flachen Rippen, der unter den Boden reicht (nichts schwebt); oben teilt er sich
+ * in vier steile Äste mit Nebenästen, die in der hohen Krone verschwinden. Fein rund (18 Segmente): aus der Nähe füllt
+ * er ein gutes Stück des Bilds. Einheit H (Verzweigung bei `PILLAR_Y`). ≈ 550 Vertices, nur wenige Instanzen.
+ */
+export function createPillarTrunk(seed = 7): BufferGeometry {
+  const rand = mulberry32(hash32('trunk-pillar-v1', seed));
+  const b = new TreeMeshBuilder();
+  const r0 = 0.05;
+  const pts = stem(rand, -0.08, PILLAR_Y, 16, r0, 0.9, 0.016, 0.24);
+  const ys = pts.map((q) => q.p[1]);
+  const ribPhase = rand() * Math.PI * 2;
+  // Wurzelanlauf: fünf flache Rippen am Fuß, die nach oben weich im Schaft verlaufen
+  const lobe = (a: number, ring: number): number => 1 + 0.12 * (0.5 + 0.5 * Math.cos(5 * a + ribPhase)) * Math.exp(-Math.max(0, (ys[ring] ?? 0) + 0.04) / 0.08);
+  const vTop = b.tube(pts, 18, 0, 0, lobe);
+  const top = pts[pts.length - 1]!;
+  const F = top.p;
+  const rF = top.r;
+  const az0 = rand() * Math.PI * 2;
+  for (let k = 0; k < 4; k++) {
+    const az = az0 + (k / 4) * Math.PI * 2 + (rand() - 0.5) * 0.4;
+    const el = 1.12 + rand() * 0.22;
+    const L = ((PILLAR_TOP - PILLAR_Y) * (0.86 + 0.14 * rand())) / Math.sin(el);
+    const sway = (rand() - 0.5) * 0.4;
+    const p0: V3 = [F[0], F[1] - 0.04, F[2]];
+    const p1 = add(F, scale(dirFrom(az, el - 0.15), L * 0.35));
+    const p2 = add(F, scale(dirFrom(az + sway * 0.6, el), L * 0.7));
+    const p3 = add(F, scale(dirFrom(az + sway, Math.min(1.5, el + 0.15)), L));
+    const path = bezier3(p0, p1, p2, p3, 5);
+    const limb = taperAlong(path, rF * 0.62, 0.006, 0.05);
+    b.tube(limb, 8, 1, vTop);
+    for (const t of [0.45 + rand() * 0.1, 0.7 + rand() * 0.1]) {
+      const at = along(path, t);
+      const rAt = limb[at.i]!.r;
+      const sAz = az + (rand() < 0.5 ? 1 : -1) * (0.6 + rand() * 0.4);
+      const sl = L * (0.3 + 0.12 * rand());
+      const q0 = at.p;
+      const q1 = add(q0, scale(dirFrom(sAz, 0.5 + rand() * 0.2), sl * 0.45));
+      const q2 = add(q0, scale(dirFrom(sAz, 1.1 + rand() * 0.2), sl));
+      b.tube(taperAlong(bezier(q0, q1, q2, 4), rAt * 0.55, 0.004), 4, 2, vTop);
+    }
+  }
+  return b.toGeometry();
+}
