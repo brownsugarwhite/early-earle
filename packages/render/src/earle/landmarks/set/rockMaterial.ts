@@ -18,6 +18,10 @@ export function rockFamilyOf(surface: PrismSurface): RockFamily {
   return surface === 'stone' || surface === 'rubble' || surface === 'roof' ? 'stone' : 'rock';
 }
 
+/** Light bands of rock and stone: N·L scale and terminator (the facet gradient estimates the band with the same). */
+const STONE_BAND_SCALE = 1.35;
+const STONE_TERMINATOR = 0.04;
+
 function stipple(u: FloatNode, v: FloatNode, scale: number, r: number, fill: number, seed: number): FloatNode {
   return stippleDots(u, v, scale, r, fill, seed).mask;
 }
@@ -67,7 +71,7 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
   // stone only: dotted ivy on the shade side, painted lancets, the facets' inner gradient (hard serigraph steps)
   let ivy: FloatNode = float(0);
   let lancet: FloatNode = float(0);
-  let facetDark: FloatNode | null = null;
+  let facet: { dark: FloatNode; light: FloatNode } | null = null;
   let soft: FloatNode | null = null;
   const layers: EarleLayer[] = [moss];
 
@@ -167,7 +171,13 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
     lancet = aaStep(0.0, hw.sub(across)).mul(aaStep(0.0, y.sub(ld.z))).mul(aaStep(0.0, archTop.sub(y))).mul(step(1e-3, hw)).mul(isWall) as unknown as FloatNode;
     // each stone facet lifts as a whole: its step up the monolith, a key of its own; rubble and slate sit darker
     lift = centre.sub(0.45).mul(uni.gradient).add(faceKey.sub(0.5).mul(0.07)).add(isRubble.mul(-0.06)).add(isRoof.mul(-0.06)) as unknown as FloatNode;
-    facetDark = pow(gf.oneMinus(), 1.3).mul(0.5).mul(earleGradients.surface).mul(max(isWall, isFacet)).mul(lancet.oneMinus()) as unknown as FloatNode;
+    // the facet's own gradient inside its step: the head up to ~35 % toward the next lighter step, the foot up to 45 %
+    // toward the next darker one (Florian: the jump to the neighbour step stays visible)
+    const inFacet = earleGradients.surface.mul(max(isWall, isFacet)).mul(lancet.oneMinus());
+    facet = {
+      dark: pow(gf.oneMinus(), 1.15).mul(0.45).mul(inFacet) as unknown as FloatNode,
+      light: smoothstep(0.4, 1.0, gf).mul(0.36).mul(inFacet) as unknown as FloatNode,
+    };
     soft = float(0) as unknown as FloatNode;
     // joints and strokes barely show in the ink
     lineShadow = mix(ink, pal(2), 0.22) as unknown as Vec3Node;
@@ -178,8 +188,8 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
     const fx = u.div(float(1.1).add(hash(frow.add(5.0)).mul(1.2))).add(hash(frow).mul(4.0));
     const flag = max(stripeMask(fy, 0.035).mul(fOn), stripeMask(fx, 0.03).mul(step(hash(floor(fx).add(frow.mul(7.0))), float(0.38))));
     const mossPatch = smoothstep(-0.2, 0.6, sin(u.mul(0.7).add(1.3)).mul(sin(y.mul(0.6).sub(u.mul(0.2)))));
-    const flagMoss = stippleDots(u, y, 3.2, 0.19, mossPatch.mul(mossPatch).mul(0.26).add(0.005), 17).mask;
-    layers.push({ mask: isF(FACE_CUT), row, lift: float(0.18), pattern: { mask: max(flag, flagMoss.mul(0.85)), color: mix(pal(6), pal(3, capRow), flagMoss) } });
+    const flagMoss = stippleDots(u, y, 4.6, 0.17, mossPatch.mul(mossPatch).mul(0.2).add(0.004), 17).mask;
+    layers.push({ mask: isF(FACE_CUT), row, lift: float(0.18), pattern: { mask: max(flag, flagMoss.mul(0.8)), color: mix(pal(6), pal(2, capRow), flagMoss) } });
   }
   const mask = max(wallMask.mul(isWall), facetLines.mul(isFacet));
   // ivy: dark green dots in the ink (a lighter green where the terminator lets them into the light); gold never shows
@@ -193,17 +203,22 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
     patternColor = mix(mix(patternColor, mix(ivyInk, pal(5), 0.3), ivy), ink, lancet) as unknown as Vec3Node;
     patternShadow = mix(mix(patternShadow, ivyInk, ivy), ink, lancet) as unknown as Vec3Node;
   }
-  if (facetDark) {
-    // the facet's own gradient: from its head (the step's colour) toward the next darker step at its foot — a layer one
-    // step down, so the facet's edge stays the hard jump between two flat prints (Ebene 44/45), the ornament rides on
-    // top; in the ink the layer shows the same ink and ornament (no lightening inside the shadow)
-    layers.push({
-      mask: facetDark,
-      row,
-      lift: float(-1).div(ctx.bands.sub(1)) as unknown as FloatNode,
-      shadowColor: mix(ink, patternShadow, patternMask) as unknown as Vec3Node,
-      pattern: { mask: patternMask, color: patternColor },
-    });
+  if (facet) {
+    // the facet's own gradient: two layers, the step below and the step above, mixed in by the facet's height share —
+    // the facet's edge stays the hard jump between two flat prints (Ebene 44/45), the ornament rides on top; in the ink
+    // both layers show the same ink and ornament (no lightening inside the shadow). The facet's step is estimated from
+    // the sun direction like the lighting does (the lit stone mostly sits in the clamped top band — a lift could never
+    // leave it, nor reach the lightest step): the neighbour steps are read from the palette directly.
+    const vFacet = normalWorld.dot(uni.sunDir).sub(STONE_TERMINATOR).mul(STONE_BAND_SCALE).add(lift);
+    const idx = floor(vFacet.clamp(0, 0.999).mul(ctx.bands.sub(1)));
+    const inkSide = mix(ink, patternShadow, patternMask) as unknown as Vec3Node;
+    // the facet prints step idx + 1; below it idx (never the ink), above it idx + 2 (at most the lightest, 4)
+    for (const [mask, stop] of [
+      [facet.dark, idx.max(1)],
+      [facet.light, idx.add(2).min(4)],
+    ] as const) {
+      layers.push({ mask, color: ctx.lookup.pal(stop as unknown as FloatNode, row).rgb as unknown as Vec3Node, shadowColor: inkSide, pattern: { mask: patternMask, color: patternColor } });
+    }
   }
   return new EarleMaterial({
     lookup: ctx.lookup,
@@ -211,8 +226,8 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
     rowNode: row,
     fog: ctx.fog,
     bands: ctx.bands,
-    bandScale: 1.35,
-    terminator: 0.04,
+    bandScale: STONE_BAND_SCALE,
+    terminator: STONE_TERMINATOR,
     lift,
     pattern: { mask: patternMask, color: patternColor, shadowColor: patternShadow },
     layers,
