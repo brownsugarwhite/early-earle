@@ -469,7 +469,7 @@ export class EarlePlanet {
     const gradientNormal = mix(normalView, normalize(sphereN), 0.8);
     // Talnebel (Ebene 20): am Talgrund dicht und hell, zu den Kämmen hin ausdünnend; direkt vor der Linse frei
     const valley = float(1).sub(smoothstep(0.0, 0.5, heightAttr));
-    const mist = valley.mul(valley).mul(smoothstep(4.0, 13.0, positionView.length())).mul(this.mistStrength).mul(earleGradients.air);
+    const mist = varying(valley.mul(valley).mul(smoothstep(4.0, 13.0, positionView.length())), 'vTerrainMist').mul(this.mistStrength).mul(earleGradients.air);
     // Schattentönung je Welt (SunRig.shadowTint): Tönungen der Weltdateien eintragen
     const tint = options.shadowTint ?? null;
     if (tint) this.worlds.forEach((w, i) => (w.shadowTint ? tint.set(i, w.shadowTint.color, w.shadowTint.amount, w.shadowTint.lift ?? 0) : tint.clear(i)));

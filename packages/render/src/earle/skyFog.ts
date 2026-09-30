@@ -2,7 +2,7 @@ import { BackSide, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, SphereGeom
 import type { BufferGeometry, UniformNode } from 'three/webgpu';
 import { cameraPosition, clamp, float, mix, positionWorld, sin, smoothstep, time, uniform, uv } from 'three/tsl';
 import { aaStep, type FloatNode, type PaletteLookup, type Vec3Node } from './tsl';
-import { dither, earleGradients, fountain, glow, mixInk } from './gradients';
+import { dither, earleGradients, fountain, glow } from './gradients';
 
 export interface SkyDomeOptions {
   lookup: PaletteLookup;
@@ -44,8 +44,10 @@ export function createSkyDome(options: SkyDomeOptions): Mesh {
   const t = clamp(dir.y.sub(horizon).div(options.spread ?? 0.6).add(0.03), 0, 0.999);
   const x = t.mul(options.steps - 1);
   const air = earleGradients.air;
-  const skyA = fountain(lookup, x, options.skyRow, 0, air).rgb as unknown as Vec3Node;
-  const sky = options.skyRowB && options.skyMix ? (mix(skyA, fountain(lookup, x, options.skyRowB, 0, air).rgb, options.skyMix) as unknown as Vec3Node) : skyA;
+  // Luft: linear gemischt (die Himmelsstufen liegen nah beieinander; spart die Druckfarben-Mischung auf vielen Pixeln)
+  const ramp = { linear: true };
+  const skyA = fountain(lookup, x, options.skyRow, 0, air, ramp).rgb as unknown as Vec3Node;
+  const sky = options.skyRowB && options.skyMix ? (mix(skyA, fountain(lookup, x, options.skyRowB, 0, air, ramp).rgb, options.skyMix) as unknown as Vec3Node) : skyA;
   const d = dir.dot(options.sunDirWorld);
   const disc = aaStep(Math.cos((2.4 * Math.PI) / 180), d);
   const ring = aaStep(Math.cos((5.2 * Math.PI) / 180), d);
@@ -53,15 +55,16 @@ export function createSkyDome(options: SkyDomeOptions): Mesh {
   const rowForSun = options.skyRowB && options.skyMix ? mix(rowA, options.skyRowB, options.skyMix.greaterThan(0.5).select(float(1), float(0))) : rowA;
   const ringColor = lookup.pal(options.ringIndex, rowForSun).rgb as unknown as Vec3Node;
   // Schein zur Sonne: breit (bis ≈ 80° neben der Sonne), am Horizont am stärksten, zum Zenit ausklingend
+  const low = float(1).sub(t);
   const sunGlow = glow(d, 0.97, Math.cos((80 * Math.PI) / 180))
-    .mul(float(1).sub(t).pow(1.5))
-    .mul(air.mul(0.55));
-  let lit = mixInk(sky, ringColor, sunGlow);
+    .mul(low.mul(low))
+    .mul(air.mul(0.6));
+  let lit = mix(sky, ringColor, sunGlow) as unknown as Vec3Node;
   if (options.glow) {
     // Rundum am Horizont: schmaler, sehr heller Schein (Ringfarbe zur Sonne hin), nach oben quadratisch ausklingend
     const sunColor = lookup.pal(options.sunIndex, rowForSun).rgb as unknown as Vec3Node;
     const band = float(1).sub(smoothstep(0.0, 0.3, t));
-    lit = mixInk(lit, mixInk(ringColor, sunColor, 0.45), band.mul(band).mul(options.glow).mul(air));
+    lit = mix(lit, mix(ringColor, sunColor, 0.45), band.mul(band).mul(options.glow).mul(air)) as unknown as Vec3Node;
   }
   const withRing = mix(dither(lit), ringColor, ring);
   material.colorNode = mix(withRing, lookup.pal(options.sunIndex, rowForSun).rgb, disc);
@@ -152,7 +155,7 @@ export class FogStripes {
       // Farbe: am Fuß die hellste Nebelstufe, nach oben eine Spur tiefer (Stufe darunter)
       const bright = lookup.pal(options.colorIndex, options.fogRow).rgb as unknown as Vec3Node;
       const deeper = lookup.pal(Math.max(0, options.colorIndex - 1), options.fogRow).rgb as unknown as Vec3Node;
-      material.colorNode = mixInk(bright, deeper, smoothstep(0.35, 1.0, v).mul(air).mul(0.5));
+      material.colorNode = mix(bright, deeper, smoothstep(0.35, 1.0, v).mul(air).mul(0.5));
       const alpha = profile.mul(density).mul(stripeAlpha);
       material.opacityNode = options.strength ? alpha.mul(options.strength) : alpha;
       this.materials.push(material);

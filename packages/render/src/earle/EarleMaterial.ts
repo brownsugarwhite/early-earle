@@ -88,7 +88,8 @@ export interface EarleMaterialOptions {
   /**
    * Schattentönung je Welt (`SunRig.shadowTint`, z. B. blaue Schatten auf Schnee): die ganze Tintenform (Eigen- und
    * Schlagschatten) wird zur Tönung der Welt `world` gemischt; Ornamente im Schatten behalten ihren Abstand zur Tinte.
-   * Risse bleiben tiefe, ungetönte Tinte. `up` (View-Raum, z. B. die Kugelnormale des Planeten): führt den Verlauf
+   * Risse bleiben tiefe, ungetönte Tinte. Die Tönung wird je Pixel aus der Welt gelesen (an Weltgrenzen hart, kein
+   * Übergang über ein Dreieck). `up` (View-Raum, z. B. die Kugelnormale des Planeten): führt den Verlauf
    * *in* der Schattenform (`lift` der Welt) — dieselbe Normale für Gelände, Wehen und Pfad, damit ihre Schatten eine
    * Form bleiben. Ohne `up` bleibt die Tönung flach.
    */
