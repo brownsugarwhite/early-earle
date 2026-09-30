@@ -243,6 +243,7 @@ function LabEarlePlanet() {
             <p className="earle-hint">
               Ziehen rollt den Planeten, Pinch/Rad zoomt. Welt wählen dreht zu ihrer Mitte; Perspektive 0 = alte Übersicht, 100 % = Earle-Komposition der Welt, darüber
               übertrieben. Fortschritt heilt die Chunks entlang des Pfads, der Müll versinkt. Level 80–95 steigen den Riesenbaum hinauf. <code>?world=08&amp;ref=1</code>, <code>?rail=88</code> (Baum-Schiene), <code>?bench=1</code> misst.
+              Bäume aus der Nähe: <a href="?gallery=1&amp;world=5">Baum-Galerie</a> (<code>?gallery=1&amp;world=05&amp;kinds=oak,lace&amp;spin=20</code>).
             </p>
           </>
         )
