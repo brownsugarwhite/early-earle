@@ -1,5 +1,5 @@
 import { Matrix4, Quaternion, Vector3 } from 'three/webgpu';
-import { atan, cos, float, length, max, modelWorldMatrix, modelWorldMatrixInverse, sin, uniform, vec2, vec3, vec4 } from 'three/tsl';
+import { atan, cos, float, length, max, min, modelWorldMatrix, modelWorldMatrixInverse, sin, uniform, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, Vec3Node } from './tsl';
 
 /**
@@ -18,6 +18,9 @@ import type { FloatNode, Vec3Node } from './tsl';
  *
  * Normalen werden nicht abgebildet: Licht und Schatten rechnen in der Ebene (jede Stelle sieht die Sonne gleich flach),
  * nur die finale Projektion ist gebogen (STYLE 5.7).
+ *
+ * Weiter als π·R vom Fokus (≈ 100 Einheiten) liefe die Abbildung einmal um die Kugel und käme am Scheitel wieder an:
+ * α ist deshalb auf π begrenzt — so Fernes landet am Gegenpol unter dem Gelände statt neben der Kamera.
  */
 export class DisplayMapping {
   /** Anzeigeradius R der Kugel. */
@@ -41,7 +44,7 @@ export class DisplayMapping {
     const R = this.radius;
     const q = vec2(p.x, p.z);
     const d = length(q);
-    const alpha = d.div(R);
+    const alpha = min(d.div(R), float(Math.PI));
     const s = sin(alpha).div(max(d, float(1e-6)));
     const c = cos(alpha);
     const h = p.y.sub(R);
@@ -74,7 +77,7 @@ export class DisplayMapping {
   toDisplayCpu(p: Vector3, out = new Vector3()): Vector3 {
     const R = this.radius.value;
     const d = Math.hypot(p.x, p.z);
-    const alpha = d / R;
+    const alpha = Math.min(d / R, Math.PI);
     const s = d > 1e-9 ? Math.sin(alpha) / d : 1 / R;
     const c = Math.cos(alpha);
     const r = p.y - (1 - c) * this.curvature.value * R;
@@ -101,7 +104,7 @@ export class DisplayMapping {
     if (d < 1e-9) return out.identity();
     // Achse u_t = (−q̂z, 0, q̂x) · (−1): Drehung um (q̂z, 0, −q̂x) um +α
     _axis.set(p.z / d, 0, -p.x / d);
-    return out.setFromAxisAngle(_axis, d / R);
+    return out.setFromAxisAngle(_axis, Math.min(d / R, Math.PI));
   }
 
   /** Matrix: flacher Rahmen am Punkt `p` (Ursprung dort, Achsen des flachen Raums) → Anzeigeraum (starr). */

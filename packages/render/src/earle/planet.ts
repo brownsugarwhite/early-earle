@@ -822,6 +822,18 @@ export class EarlePlanet {
     this.landmarkSet.setSunDirection(dir);
   }
 
+  /**
+   * Sichtlinie Kamera → Ebenenpunkt (z. B. der aktuelle Knoten) frei halten: Bäume und Requisiten dazwischen schrumpfen
+   * weg. `null` = aus.
+   */
+  setSightTarget(p: Vec3 | null, radius = 0.6): void {
+    this.sightPlane = p ? [p[0], p[1], p[2]] : null;
+    this.sightRadius = radius;
+  }
+
+  private sightPlane: Vec3 | null = null;
+  private sightRadius = 0.6;
+
   /** Wahrzeichen im Bild (gebaut). */
   get landmarkList(): readonly LandmarkInstance[] {
     return this.landmarkInstances;
@@ -996,6 +1008,10 @@ export class EarlePlanet {
     this.landmarkSet.update(camera);
     this.mapping.toFlatCpu(cameraWorld, _v);
     this.vegetation.updateCamera(camera, _v.sub(this.vegetation.group.position).sub(this.plane.position));
+    // Sichtlinie im Objektraum der Vegetation (Anker der Pools)
+    const a = this.anchorOf(this.vegetation.group);
+    const sp = this.sightPlane;
+    this.vegetation.setSightLine(sp && a ? _w.set(sp[0] - a.x, sp[1], sp[2] - a.z) : null, this.sightRadius);
     return rebuilt;
   }
 

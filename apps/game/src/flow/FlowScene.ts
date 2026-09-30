@@ -343,6 +343,14 @@ export class FlowScene implements SceneController {
     const playing = flow.playing;
     const underTree = board.root.visible && this.phase !== 'map' && playing !== null && world.isTreeNode(playing);
     world.setTreeSight(underTree ? this.boardPlane.position : null, 4.5);
+    // Sichtlinie frei: keine Krone zwischen Kamera und Held (Karte) bzw. Plateau (Level)
+    if (this.phase === 'map' || this.phase === 'hop') {
+      const n = world.layout.node(flow.current).position;
+      world.world.setSightTarget(world.isTreeNode(flow.current) ? null : [n[0], n[1] + 0.4, n[2]], 0.8);
+    } else if (this.boardPlane.active) {
+      const b = this.boardPlane.position;
+      world.world.setSightTarget([b.x, b.y + 0.5, b.z], 2.2);
+    } else world.world.setSightTarget(null);
     world.update();
     if (this.shadowFocus && board.root.visible) this.fitBoardShadow(false);
     // Screen-space shake and zoom punch (board juice): nudge the camera along its own axes for this frame only.

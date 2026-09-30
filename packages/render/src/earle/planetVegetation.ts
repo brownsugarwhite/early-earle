@@ -30,6 +30,7 @@ import {
   fwidth,
   int,
   max,
+  min,
   mix,
   modelViewMatrix,
   normalGeometry,
@@ -191,6 +192,13 @@ export class PlanetVegetation {
    * Nachbarn bleiben ferne Nebelstufen und ragen nicht groß ins Bild (0 = aus).
    */
   private readonly foreignClear = uniform(11);
+  /**
+   * Sichtlinie (Karte): Ziel (Objektraum der Vegetation, z. B. der aktuelle Knoten) und Radius. Bäume und Requisiten,
+   * deren Achse der Linie Kamera → Ziel näher kommt als ihr Radius + `sightRadius`, schrumpfen weg — kein Juwelenbaum
+   * steht zwischen Kamera und Held. Radius 0 = aus.
+   */
+  private readonly sightTarget = uniform(new Vector3(0, -1000, 0));
+  private readonly sightRadius = uniform(0);
   private readonly geometries: BufferGeometry[] = [];
   private readonly materials: Array<{ dispose(): void }> = [];
   private readonly sporesGeometry: InstancedBufferGeometry;
@@ -247,13 +255,23 @@ export class PlanetVegetation {
       const clear = smoothstep(this.footClear, this.footClear.add(1.8), lateral);
       return select(this.footClear.greaterThan(0.01), clear, float(1));
     };
+    /** Abstand eines Punkts zur Sichtlinie Kamera → Ziel (nur zwischen den Enden, am Ziel selbst nicht). */
+    const sightDist = (p: Vec3Node): FloatNode => {
+      const ab = this.sightTarget.sub(this.camLocal);
+      const len2 = ab.dot(ab).max(1e-4);
+      const t = clamp(p.sub(this.camLocal).dot(ab).div(len2), 0, 0.92);
+      return p.sub(this.camLocal.add(ab.mul(t))).length() as unknown as FloatNode;
+    };
     const nearFade = (base: Vec3Node, top: Vec3Node, radius: FloatNode): FloatNode => {
       const axis = top.sub(base);
       const len2 = axis.dot(axis).max(1e-4);
       const t = clamp(this.camLocal.sub(base).dot(axis).div(len2), 0, 1);
       const closest = base.add(axis.mul(t));
       const gap = this.camLocal.sub(closest).length().sub(radius);
-      return smoothstep(this.nearClear, this.nearClear.add(1.6), gap).mul(footFade(base));
+      // Sichtlinie: drei Punkte der Achse (Fuß, Mitte, Spitze) gegen die Linie Kamera → Ziel
+      const sd = min(min(sightDist(base.add(axis.mul(0.3))), sightDist(base.add(axis.mul(0.65)))), sightDist(top)).sub(radius);
+      const sight = select(this.sightRadius.greaterThan(0.01), smoothstep(this.sightRadius, this.sightRadius.add(1.4), sd), float(1));
+      return smoothstep(this.nearClear, this.nearClear.add(1.6), gap).mul(footFade(base)).mul(sight);
     };
 
     // --- Bäume v3 (Kronen, Stämme, Linienbäume, Punkte): trees/treeLayer.ts ------------------------------
@@ -617,6 +635,16 @@ export class PlanetVegetation {
   /** Lichtung unter der Kamera (seitlicher Radius um die Hochachse der Kamera, 0 = aus). */
   setFootClear(units: number): void {
     this.footClear.value = Math.max(0, units);
+  }
+
+  /** Sichtlinie Kamera → Ziel (Objektraum der Vegetation) frei halten; `null` = aus. */
+  setSightLine(target: Vector3 | null, radius = 0.6): void {
+    if (!target) {
+      this.sightRadius.value = 0;
+      return;
+    }
+    this.sightTarget.value.copy(target);
+    this.sightRadius.value = Math.max(0.02, radius);
   }
 
   /** Abstand, unter dem Instanzen fremder Welten wegtreten (0 = aus). */

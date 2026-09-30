@@ -51,7 +51,7 @@
     "pockets": { "density": 0.0022, "radius": [4, 7] }
   },
   "features": {
-    "snowFields": { "cover": 0.45, "scale": 1 },
+    "snowFields": { "cover": 0.62, "scale": 1 },
     "rocks": [
       { "kind": "wall", "count": 1, "size": [18, 24], "height": [6, 8], "steps": 3, "focusDistance": [0, 6] },
       { "kind": "spires", "count": 2, "size": [2.5, 4], "height": [3, 4.5], "focusDistance": [4, 12] }

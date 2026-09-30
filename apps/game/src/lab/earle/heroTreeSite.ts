@@ -228,17 +228,23 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
       sightOverride = point ? { point: point.clone(), radius } : null;
     },
     update(dt, camera, sunDirWorld, cameraWorld, frustum) {
-      // Cull behind the horizon or outside the frustum (7 draw calls + 3 shadow casters otherwise): the foot on the
-      // display sphere, a sphere around the whole tree
-      world.toDisplay(footPlane, _w);
+      // Cull behind the horizon or outside the frustum (7 draw calls + 3 shadow casters otherwise). The horizon test runs
+      // on the plane (arc from the camera's foot to the tree's foot): the display mapping only holds up to π·R from the
+      // focus — the tree 200 units ahead would otherwise come round the globe once and stand next to the camera.
       const R = world.options.radius;
-      const up = _v.copy(_w).normalize();
+      world.mapping.toFlatCpu(cameraWorld, _v);
+      const arc = Math.hypot(footPlane.x - world.focus.x - _v.x, footPlane.z - world.focus.z - _v.z);
       const horizon = Math.acos(Math.min(1, R / Math.max(R + 0.01, cameraWorld.length())));
-      const facing = up.dot(_sphere.center.copy(cameraWorld).normalize());
-      const reach = Math.cos(Math.min(Math.PI, horizon + (height + 8) / R));
+      const reach = Math.min(Math.PI * 0.9, horizon + (height + 8) / R);
+      if (arc / R > reach) {
+        holder.visible = false;
+        return;
+      }
+      world.toDisplay(footPlane, _w);
+      const up = _v.copy(_w).normalize();
       _sphere.center.copy(_w).addScaledVector(up, height * 0.5);
       _sphere.radius = height * 0.8 + 2;
-      holder.visible = facing > reach && frustum.intersectsSphere(_sphere);
+      holder.visible = frustum.intersectsSphere(_sphere);
       if (!holder.visible) return;
       tree.updateCamera(camera);
       tree.setSunDirection(sunDirWorld);
