@@ -1,16 +1,13 @@
 import { abs, attribute, float, floor, fract, fwidth, hash, max, mix, positionLocal, select, sin, smoothstep, step, vec2 } from 'three/tsl';
 import { EarleMaterial } from '../../EarleMaterial';
 import { aaStep, hatchMask, lichenCells, patternTime, periodFade, stripeMask, type FloatNode, type Vec3Node } from '../../tsl';
+import { stippleDots } from './cells';
 import { fogDistance, type LandmarkMaterialContext, type LandmarkUniforms } from './context';
 import { FACE_CUT, FACE_FACET, FACE_MOSS, FACE_PLATEAU, FACE_WALL, SURFACE_CODE } from './prismGeometry';
 
 /** Stippled dots on a plane (u, v) in cells of `scale`: `fill` share of the cells carry a dot of radius `r`. */
 function stipple(u: FloatNode, v: FloatNode, scale: number, r: number, fill: number, seed: number): FloatNode {
-  const p = vec2(u.mul(scale), v.mul(scale));
-  const cell = floor(p);
-  const f = fract(p).sub(vec2(hash(cell.x.add(cell.y.mul(57.0)).add(seed)).mul(0.5).add(0.25), hash(cell.x.mul(13.0).add(cell.y.mul(7.0)).add(seed * 3)).mul(0.5).add(0.25)));
-  const on = step(hash(cell.x.mul(5.0).add(cell.y.mul(23.0)).add(seed * 7)), float(fill));
-  return aaStep(f.length(), float(r)).mul(on).mul(periodFade(p.x, 2.2)) as unknown as FloatNode;
+  return stippleDots(u, v, scale, r, fill, seed).mask;
 }
 
 /**
@@ -59,18 +56,17 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
   const wu = u.mul(6.5);
   const wetStreak = stripeMask(wu.add(hash(floor(wu)).mul(0.4)), 0.34);
   const glint = stripeMask(wu.add(0.5), 0.1).mul(step(0.62, fract(y.mul(0.5).add(patternTime.mul(uni.flow).mul(0.45)).add(hash(floor(wu)).mul(3.0)))));
-  // --- stone: brick courses, staggered joints ---------------------------------------------------------------------------
-  const course = y.div(0.42);
+  // --- stone (Ebene 22): large blocks in courses, block lengths varying per course, thin joints ---------------------
+  const course = y.div(0.62);
   const courseIdx = floor(course);
-  const bx = u.div(0.92).add(fract(courseIdx.mul(0.5)).mul(1.0));
-  const mortarH = stripeMask(course, 0.08);
-  const mortarV = stripeMask(bx, 0.055);
-  const bricks = max(mortarH, mortarV);
+  const courseKey = hash(courseIdx.mul(7.13).add(variant.mul(3.0)));
+  const bx = u.div(float(1.15).add(courseKey.mul(0.8))).add(courseKey.mul(3.7));
+  const bricks = max(stripeMask(course, 0.05), stripeMask(bx, 0.04));
   const blockKey = hash(floor(bx).add(courseIdx.mul(17.0)).add(variant.mul(5.0)));
-  // rubble: coarser blocks and a crack now and then
-  const rcourse = y.div(0.7);
-  const rbx = u.div(1.3).add(fract(floor(rcourse).mul(0.5)));
-  const rubble = max(max(stripeMask(rcourse, 0.08), stripeMask(rbx, 0.06)), stripeMask(u.mul(1.7).add(sin(y.mul(2.3)).mul(0.3)), 0.05).mul(step(hash(floor(u.mul(1.7))), float(0.3))));
+  // rubble: bigger blocks and a crack now and then
+  const rcourse = y.div(0.85);
+  const rbx = u.div(1.5).add(hash(floor(rcourse)).mul(2.0));
+  const rubble = max(max(stripeMask(rcourse, 0.05), stripeMask(rbx, 0.045)), stripeMask(u.mul(1.7).add(sin(y.mul(2.3)).mul(0.3)), 0.045).mul(step(hash(floor(u.mul(1.7))), float(0.25))));
   // roof: slate scallops (rows of arcs)
   const sy = y.div(0.34);
   const sx = u.div(0.46).add(fract(floor(sy).mul(0.5)));
@@ -81,6 +77,8 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
   const strata = stripeMask(y.mul(3.2).add(sin(u.mul(1.3)).mul(0.25)), 0.12);
   const roots = stripeMask(u.mul(2.2).add(sin(y.mul(4.0).add(u)).mul(0.2)), 0.06).mul(step(hash(floor(u.mul(2.2)).add(9.0)), float(0.35)));
   const island = max(strata.mul(0.8), roots);
+  // bark (dead snags): fine grain running up the wood
+  const bark = stripeMask(u.mul(11.0).add(sin(y.mul(3.0).add(variant.mul(5.0))).mul(0.15)), 0.2);
 
   const wallMask = select(
     isS(SURFACE_CODE.basalt).greaterThan(0.5),
@@ -91,7 +89,7 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
       select(
         isS(SURFACE_CODE.wet).greaterThan(0.5),
         max(wetStreak.mul(0.55), glint),
-        select(isS(SURFACE_CODE.stone).greaterThan(0.5), bricks, select(isS(SURFACE_CODE.rubble).greaterThan(0.5), rubble, select(isS(SURFACE_CODE.roof).greaterThan(0.5), shingles, island))),
+        select(isS(SURFACE_CODE.stone).greaterThan(0.5), bricks, select(isS(SURFACE_CODE.rubble).greaterThan(0.5), rubble, select(isS(SURFACE_CODE.roof).greaterThan(0.5), shingles, select(isS(SURFACE_CODE.island).greaterThan(0.5), island, bark)))),
       ),
     ),
   ) as unknown as FloatNode;
@@ -107,23 +105,35 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
   const isStoneLike = max(isS(SURFACE_CODE.stone), isS(SURFACE_CODE.rubble));
   const lineColor = select(isS(SURFACE_CODE.crag).greaterThan(0.5), mix(lines, glyph, glyphs), select(isWet.greaterThan(0.5), mix(lines, wetGlint, glint), lines)) as unknown as Vec3Node;
 
-  // lichen (stone): yellow patches on the lit upper courses and cut tops
-  const lich = lichenCells(u.mul(2.1), y.mul(2.1), float(0.34), variant.mul(9.0));
-  const lichen = lich.mask.mul(smoothstep(0.45, 0.9, g)).mul(isStoneLike).mul(isWall);
+  // Ebene 22: the lit upper edge of every stone face turns golden — a thin band (world units below the face's top)
+  // with an organic drip
+  const topDist = attribute('lc', 'vec4').x as unknown as FloatNode;
+  const drip = float(0.2).sub(topDist).add(sin(u.mul(2.3).add(variant.mul(9.0))).mul(0.07)).add(sin(u.mul(5.7)).mul(0.04));
+  const lichen = aaStep(0.0, drip).mul(isStoneLike).mul(isWall);
+  // a few lichen blotches lower down (rounded cells, sparse)
+  const lich = lichenCells(u.mul(1.6), y.mul(1.6), float(0.08), variant.mul(9.0));
+  const blotch = lich.mask.mul(smoothstep(0.35, 0.7, g)).mul(isStoneLike).mul(isWall);
+  const gold = max(lichen, blotch);
 
-  // moss caps: fine light dots; plateau: a quiet meadow with sparse tufts; flagstones: joints
+  // moss caps: fine light dots; plateau: a quiet meadow with sparse tufts; flagstones: joints and moss specks
   const mossDots = stipple(u, y, 5.5, 0.16, 0.5, 3);
   const tufts = stipple(u, y, 1.6, 0.12, 0.22, 11);
-  const flag = max(stripeMask(u.div(1.1).add(fract(floor(y.div(0.9)).mul(0.37))), 0.05), stripeMask(y.div(0.9), 0.05));
+  const flagCourse = floor(y.div(1.05));
+  const flag = max(stripeMask(u.div(float(1.2).add(hash(flagCourse).mul(0.6))).add(hash(flagCourse.add(3.0)).mul(2.0)), 0.04), stripeMask(y.div(1.05), 0.04));
+  const flagMoss = stipple(u, y, 3.2, 0.14, 0.3, 17);
 
   // gradient hook: glow toward the top (walls), stone blocks vary a little, wet rock sits darker
   const lift = g
     .sub(0.45)
     .mul(uni.gradient)
     .add(select(isWet.greaterThan(0.5), float(-0.32), float(0)))
-    .add(step(0.72, blockKey).mul(-0.14).mul(isStoneLike))
-    .add(isS(SURFACE_CODE.roof).mul(-0.08)) as unknown as FloatNode;
+    .add(blockKey.sub(0.5).mul(0.12).mul(isStoneLike))
+    .add(isS(SURFACE_CODE.roof).mul(-0.08))
+    .add(isS(SURFACE_CODE.bark).mul(-0.22)) as unknown as FloatNode;
 
+  // lines in the ink: light strokes on basalt and crags (Ebene 7), barely visible joints on stone; gold never
+  // shows in the shade
+  const lineShadow = mix(mix(ink, pal(3), 0.42), mix(ink, pal(2), 0.22), isStoneLike);
   return new EarleMaterial({
     lookup: ctx.lookup,
     row: 0,
@@ -133,12 +143,11 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
     bandScale: 1.35,
     terminator: 0.04,
     lift,
-    // lines dark in the light, light in the ink (Ebene 7: turquoise strokes on black rock)
-    pattern: { mask: max(mask, lichen), color: mix(lineColor, pal(5), lichen), shadowColor: mix(ink, pal(3), 0.42) },
+    pattern: { mask: max(mask, gold), color: mix(lineColor, pal(5), gold), shadowColor: mix(lineShadow, ink, gold.mul(mask.oneMinus())) },
     layers: [
       { mask: isF(FACE_MOSS), row: capRow, lift: float(0.22), pattern: { mask: mossDots, color: pal(5, capRow) } },
-      { mask: isF(FACE_PLATEAU), row: capRow, lift: float(0.12), pattern: { mask: tufts, color: pal(6, capRow) } },
-      { mask: isF(FACE_CUT), row, lift: float(0.18), pattern: { mask: max(flag, lich.mask.mul(0.8)), color: mix(pal(6), pal(5), lich.mask) } },
+      { mask: isF(FACE_PLATEAU), row: capRow, lift: float(0.12), pattern: { mask: tufts, color: pal(5, capRow) } },
+      { mask: isF(FACE_CUT), row, lift: float(0.18), pattern: { mask: max(flag, flagMoss), color: mix(pal(6), pal(5), flagMoss) } },
     ],
     positionNode: ctx.warp ? ctx.warp(positionLocal as unknown as Vec3Node) : null,
     fogDistNode: fogDistance(ctx),

@@ -37,11 +37,11 @@ export type LocalGround = (x: number, z: number) => number;
  * Surface family of a prism (material code): basalt column (vertical striations, moss caps), crag (striations plus
  * Earle's zigzag glyph bands, towering), wet rock (dark streaks beside a fall), cut stone (ruin blocks, brick
  * courses), rubble (tumbled ruin blocks), roof (the tower's spire, dark slate), island (swamp hummock: meadow cap,
- * earthy walls).
+ * earthy walls), bark (dead snags: dark wood with fine grain).
  */
-export type PrismSurface = 'basalt' | 'crag' | 'wet' | 'stone' | 'rubble' | 'roof' | 'island';
+export type PrismSurface = 'basalt' | 'crag' | 'wet' | 'stone' | 'rubble' | 'roof' | 'island' | 'bark';
 
-export const PRISM_SURFACES: readonly PrismSurface[] = ['basalt', 'crag', 'wet', 'stone', 'rubble', 'roof', 'island'];
+export const PRISM_SURFACES: readonly PrismSurface[] = ['basalt', 'crag', 'wet', 'stone', 'rubble', 'roof', 'island', 'bark'];
 export const PRISM_CAPS: readonly PrismCap[] = ['moss', 'plateau', 'facet', 'cut', 'broken'];
 
 /**

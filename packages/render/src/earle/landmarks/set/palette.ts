@@ -83,7 +83,7 @@ export function landmarkPaletteFromWorld(w: WorldPalette): LandmarkPalette {
     t[2] ?? meadow,
     mixRgb(meadow, rock[5] ?? meadow, 0.35),
     mixRgb(t[4] ?? meadow, CREAM, 0.2),
-    mixRgb(rock[5] ?? meadow, CREAM, 0.35),
+    mixRgb(t[4] ?? meadow, CREAM, 0.45),
     mixRgb(t[0] ?? ink, ink, 0.35),
     w.accent[4] ?? '#d92f2b',
   ];
@@ -92,8 +92,9 @@ export function landmarkPaletteFromWorld(w: WorldPalette): LandmarkPalette {
   const mistShade = mixRgb(mixRgb(zenith, '#a9bdd6', 0.62), horizon, 0.18);
   const mist = [mistShade, mixRgb(mistShade, horizon, 0.45), mixRgb(horizon, CREAM, 0.35), mixRgb(horizon, CREAM, 0.7), mixRgb(CREAM, WHITE, 0.5), '#fffdf2', mixRgb(mistShade, horizon, 0.25), mixRgb(CREAM, '#f2d98a', 0.35)];
   // Tjorizo's neon swamp (#b8ff2a), deepened into the world's ink
-  const deep = mixRgb('#123a22', ink, 0.35);
-  const swamp = [mixRgb(ink, '#07140d', 0.5), deep, mixRgb('#1f5a2e', water[2] ?? '#1f5a2e', 0.18), mixRgb('#2f7a3a', water[3] ?? '#2f7a3a', 0.15), '#b8ff2a', '#7fbf3a', mixRgb('#8fd23a', '#b8ff2a', 0.3), '#d4ff5a'];
+  // Ebene 1: turquoise marsh water with neon-green scallops (Tjorizo's neon, the gas-born blobs) against dark bog
+  const deep = mixRgb('#0f4a44', ink, 0.3);
+  const swamp = [mixRgb(ink, '#062019', 0.5), deep, mixRgb('#1c8a78', water[2] ?? '#1c8a78', 0.18), mixRgb('#3fb8a0', water[3] ?? '#3fb8a0', 0.15), '#b8ff2a', mixRgb('#7fd3a8', '#dff5c8', 0.35), mixRgb('#8fd23a', '#b8ff2a', 0.3), '#d4ff5a'];
   const marsh = [mixRgb(ink, '#0b2414', 0.5), '#1d4a26', '#2f6b30', '#4f8f38', '#7fb640', '#b8e05a', w.accent[4] ?? '#e5aed4', '#d9f07a'];
   const bush = eight([ink, ...canopy]);
   const vineBase = mixRgb(canopy[0] ?? ink, '#10261a', 0.4);

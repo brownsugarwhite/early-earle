@@ -104,6 +104,8 @@ export function LabLandmarks() {
     if (sun !== null) p.sunElevation = sun;
     const az = num(searchParams.get('az'), 0, 120);
     if (az !== null) p.sunAzimuth = az;
+    const cam = (searchParams.get('cam') ?? '').split(',').map(Number);
+    if (cam.length === 3 && cam.every((v) => Number.isFinite(v))) p.cam = [cam[0]!, cam[1]!, cam[2]!];
     return p;
   }, [searchParams]);
   const controller = useMemo(() => new LandmarkLabScene(initial), [initial]);

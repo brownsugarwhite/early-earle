@@ -8,6 +8,8 @@ import { ROCK_LAYOUT, addArcade, addPrisms } from './prismGeometry';
 import { createLandmarkRockMaterial } from './rockMaterial';
 import { DotBatch, FALL_LAYOUT, addFallDots, addFalls, createDotMesh, createFallMaterial, createMistMesh } from './waterfall';
 import { WATER_LAYOUT, addPoolsAndStreams, createPoolMaterial } from './water';
+import { BushBatch, VINE_LAYOUT, addBushes, addVines, createBushMesh, createVineMaterial } from './growth';
+import { BANK_LAYOUT, PadBatch, REED_LAYOUT, SWAMP_WATER_LAYOUT, addBubbles, addPads, addReeds, addSwampBank, addSwampWater, createPadMesh, createReedMaterial, createSwampBankMaterial, createSwampWaterMaterial, swampPrisms } from './swamp';
 
 export type LandmarkQuality = 'hoch' | 'mobil';
 
@@ -23,6 +25,11 @@ export interface LandmarkSetOptions {
   origin?: { x: number; z: number };
   /** Sun shadow factor at a world position (e.g. `sun.shadowFactor(p)`): spray and stipple dots darken in shade. */
   shade?: ((worldPos: Vec3Node) => FloatNode) | undefined;
+  /**
+   * Terrain height at a plane point (with the landmarks' carves applied, i.e. `landmarkGround`): the swamp's bog
+   * carpet and reed bases follow it. Without it the bog carpet is left out.
+   */
+  groundAt?: ((x: number, z: number) => number) | undefined;
 }
 
 export interface LandmarkSetStats {
@@ -49,6 +56,7 @@ export class LandmarkSet {
   private quality: LandmarkQuality;
   private readonly origin: { x: number; z: number };
   private readonly shade: ((worldPos: Vec3Node) => FloatNode) | undefined;
+  private readonly groundAt: ((x: number, z: number) => number) | undefined;
   private readonly materials = new Map<string, Material>();
   private readonly geometries: BufferGeometry[] = [];
   private instances: readonly LandmarkInstance[] = [];
@@ -62,6 +70,7 @@ export class LandmarkSet {
     this.quality = o.quality ?? 'hoch';
     this.origin = o.origin ?? { x: 0, z: 0 };
     this.shade = o.shade;
+    this.groundAt = o.groundAt;
     this.uniforms = createLandmarkUniforms();
     this.uniforms.collapsePx.value = this.quality === 'mobil' ? 1.2 : 0.75;
     this.group.name = 'landmarks';
@@ -90,27 +99,69 @@ export class LandmarkSet {
     const falls = new GeoBuffer(FALL_LAYOUT);
     const water = new GeoBuffer(WATER_LAYOUT);
     const dots = new DotBatch();
+    const bushes = new BushBatch();
+    const vines = new GeoBuffer(VINE_LAYOUT);
+    const marsh = new GeoBuffer(SWAMP_WATER_LAYOUT);
+    const bank = new GeoBuffer(BANK_LAYOUT);
+    const reeds = new GeoBuffer(REED_LAYOUT);
+    const pads = new PadBatch();
     const mist: Array<{ puff: LandmarkInstance['blueprint']['mist'][number]; frame: LandmarkFrame; row: number }> = [];
+    let earthRow = 0;
     instances.forEach((inst, i) => {
       const bp = inst.blueprint;
       const frame = this.frameOf(inst);
       const rows = this.rowsFor(inst.placement.world);
+      earthRow = rows.earth;
       addPrisms(rock, bp.prisms, frame, rows);
       for (const a of bp.arcades) addArcade(rock, a, frame, rows);
       addFalls(falls, bp.falls, frame, rows, bp.seed + i);
       addPoolsAndStreams(water, bp.pools, bp.falls, frame, rows, [0, 0]);
       addFallDots(dots, bp.falls, bp.mist, frame, rows, detail, bp.seed + i * 7);
       for (const puff of bp.mist) mist.push({ puff, frame, row: rows.mist });
+      addBushes(bushes, dots, bp.bushes, frame, rows.bush, detail, bp.seed + i * 13);
+      addVines(vines, bp.vines, frame, rows.vine);
+      const s = bp.swamp;
+      if (s) {
+        // local ground of this landmark (plane → local), for the bog carpet and the reed bases
+        const groundAt = this.groundAt;
+        const local = (x: number, z: number): number => {
+          if (!groundAt) return s.level + 0.3;
+          const c = Math.cos(frame.yaw);
+          const sn = Math.sin(frame.yaw);
+          return groundAt(frame.x + x * c + z * sn + this.origin.x, frame.z - x * sn + z * c + this.origin.z);
+        };
+        addPrisms(rock, swampPrisms(s), frame, rows);
+        addSwampWater(marsh, s, frame, rows);
+        if (groundAt) addSwampBank(bank, s, frame, rows, local);
+        addPads(pads, dots, s, frame, rows, bp.seed + i);
+        addReeds(reeds, s, frame, rows, local, bp.seed + i * 3);
+        addBubbles(dots, s, frame, rows, detail);
+        addBushes(bushes, dots, s.hummocks, frame, rows.marsh, detail * 0.6, bp.seed + i * 17);
+      }
     });
     const ctx = this.ctx;
     const uni = this.uniforms;
     this.addMesh('rock', rock, () => createLandmarkRockMaterial(ctx, uni), true, true);
     this.addMesh('falls', falls, () => createFallMaterial(ctx, uni), false, true);
     this.addMesh('water', water, () => createPoolMaterial(ctx, uni), false, true);
+    this.addMesh('vines', vines, () => createVineMaterial(ctx, uni), false, true);
+    this.addMesh('marsh', marsh, () => createSwampWaterMaterial(ctx, uni), false, true);
+    const bankRows = { earth: earthRow };
+    this.addMesh('bank', bank, () => createSwampBankMaterial(ctx, bankRows), false, true);
+    this.addMesh('reeds', reeds, () => createReedMaterial(ctx, uni), false, true);
     const mistMesh = createMistMesh(mist, ctx, uni, detail);
     if (mistMesh) this.adopt('mist', mistMesh);
+    const bushMesh = createBushMesh(bushes, ctx, detail);
+    if (bushMesh) this.adopt('bushes', bushMesh);
+    const padMesh = createPadMesh(pads, ctx);
+    if (padMesh) this.adopt('pads', padMesh);
     if (dots.count > 0) this.adopt('dots', createDotMesh(dots, ctx, uni, this.shade));
     this.statsCache = this.computeStats(dots.count, mist.length);
+  }
+
+  /** Direction to the sun (world, normalized): the domes' dotted rims light up on that side. */
+  setSunDirection(dir: { x: number; y: number; z: number }): void {
+    this.uniforms.sunDir.value.set(dir.x, dir.y, dir.z).normalize();
   }
 
   private addMesh(role: string, buf: GeoBuffer, make: () => Material, cast: boolean, receive: boolean, renderOrder = 0): void {

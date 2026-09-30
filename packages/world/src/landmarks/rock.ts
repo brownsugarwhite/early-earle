@@ -330,38 +330,42 @@ function skirtAndCrown(
   return out;
 }
 
-/** A crag buttress with a cleft at angle `a`: two tall columns flanking the water, a wet back wall between them. */
+/**
+ * A crag with a cleft at angle `a`: a tall column on the far side of the water (away from the plateau) with a lower
+ * block leaning on it, and a wet back wall behind the source. The sheet may turn toward the viewer (`facingAngle`).
+ * No flank on the plateau's side: it would stand in the board circle (and, pushed out of it, in front of the water).
+ */
 function cragWithCleft(rand: () => number, core: Core, a: number, top: number, cleftY: number, width: number, ground: LocalGround, facingAngle = a): { prisms: Prism[]; source: P3; facing: P2 } {
   const H = core.H;
   const prisms: Prism[] = [];
   const rho = coreRadius(core, a, H) + 0.7;
-  // the crag stands at angle `a`; its cleft (and the water sheet) may turn toward the viewer (`facingAngle`)
   const facing = dirAt(facingAngle);
-  const side: P2 = [-facing[1], facing[0]];
   const gap = width * 0.55 + 0.12;
   const C: P2 = [Math.cos(a) * rho, Math.sin(a) * rho];
-  for (const s of [-1, 1]) {
-    // the flanks stand a little behind the sheet (the water pours out in front of the crag, fully visible)
-    const r = 0.95 + rand() * 0.3;
-    const cx = C[0] + side[0] * s * (gap + r * 0.8) - facing[0] * 0.45;
-    const cz = C[1] + side[1] * s * (gap + r * 0.8) - facing[1] * 0.45;
-    prisms.push(
-      column(rand, cx, cz, r, top - (s > 0 ? 0 : 0.6 + rand() * 0.6), 'crag', ground, {
-        surface: 'crag',
-        cap: 'facet',
-        taper: 0.82,
-        apex: r * (0.7 + rand() * 0.8),
-        apexOffset: [side[0] * s * 0.2, side[1] * s * 0.2],
-      }),
-    );
-    // a second, lower block leaning on its outer side (the buttress reads as several columns)
-    const r2 = 0.7 + rand() * 0.25;
-    const cx2 = cx + side[0] * s * (r + r2 * 0.55) - facing[0] * 0.2;
-    const cz2 = cz + side[1] * s * (r + r2 * 0.55) - facing[1] * 0.2;
-    prisms.push(column(rand, cx2, cz2, r2, cleftY - 0.9 - rand() * 1.4, 'buttress', ground, { surface: 'crag', cap: 'moss', taper: 0.9 }));
-  }
+  // the far side: of the two directions across the sheet, the one pointing away from the plateau centre
+  let side: P2 = [-facing[1], facing[0]];
+  if (side[0] * C[0] + side[1] * C[1] < 0) side = [-side[0], -side[1]];
+  const r = 0.95 + rand() * 0.3;
+  const cx = C[0] + side[0] * (gap + r * 0.8) - facing[0] * 0.45;
+  const cz = C[1] + side[1] * (gap + r * 0.8) - facing[1] * 0.45;
+  prisms.push(
+    column(rand, cx, cz, r, top, 'crag', ground, {
+      surface: 'crag',
+      cap: 'facet',
+      taper: 0.82,
+      apex: r * (0.7 + rand() * 0.8),
+      apexOffset: [side[0] * 0.2, side[1] * 0.2],
+    }),
+  );
+  // a second, lower block leaning on its outer side (the buttress reads as several columns)
+  const r2 = 0.7 + rand() * 0.25;
+  prisms.push(column(rand, cx + side[0] * (r + r2 * 0.55) - facing[0] * 0.2, cz + side[1] * (r + r2 * 0.55) - facing[1] * 0.2, r2, cleftY - 0.9 - rand() * 1.4, 'buttress', ground, { surface: 'crag', cap: 'moss', taper: 0.9 }));
+  // on the plateau's side the cleft is closed by the massif itself: a short wet column against its wall
+  const inner: P2 = [-side[0], -side[1]];
+  prisms.push(column(rand, C[0] + inner[0] * (gap + 0.35) - facing[0] * 0.55, C[1] + inner[1] * (gap + 0.35) - facing[1] * 0.55, 0.55, H - 0.25, 'cleft', ground, { surface: 'wet', cap: 'moss', taper: 1 }));
   // wet back wall of the cleft (behind the water, lower than the flanks)
-  prisms.push(column(rand, C[0] - facing[0] * 0.2, C[1] - facing[1] * 0.2, width * 0.55 + 0.25, cleftY + 0.35, 'cleft', ground, { surface: 'wet', cap: 'moss', taper: 1 }));
+  // (entirely behind the water's source: the sheet pours out in front of it)
+  prisms.push(column(rand, C[0] - facing[0] * 0.62, C[1] - facing[1] * 0.62, width * 0.42 + 0.12, cleftY + 0.35, 'cleft', ground, { surface: 'wet', cap: 'moss', taper: 1 }));
   const source: P3 = [C[0] + facing[0] * 0.25, cleftY, C[1] + facing[1] * 0.25];
   return { prisms, source, facing };
 }
@@ -534,7 +538,7 @@ export function buildFallsRock(seed: number, o: RockOptions = {}): LandmarkBluep
   const aFall = Math.PI * 0.83 - 0.08 + rand() * 0.16;
   const fallWidth = 0.95 + rand() * 0.35;
   // the sheet turns toward the viewer (≈ 114°) while the crag stays at the flank, outside the board's width
-  const facingA = aFall - 0.62;
+  const facingA = aFall - 0.72;
   const crag = cragWithCleft(rand, core, aFall, H + 2.6 + rand() * 1.2, H + 1.15 + rand() * 0.4, fallWidth, ground, facingA);
   prisms.push(...crag.prisms);
   // the pool lies in front of the sheet, its stream runs out to the front-left

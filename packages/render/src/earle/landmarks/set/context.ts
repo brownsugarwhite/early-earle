@@ -1,3 +1,4 @@
+import { Vector3, type UniformNode } from 'three/webgpu';
 import { positionLocal, positionView, uniform } from 'three/tsl';
 import type { FloatNode, FogSettings, PaletteLookup, TSLUniform, Vec3Node } from '../../tsl';
 
@@ -29,10 +30,12 @@ export interface LandmarkUniforms {
   projScaleY: TSLUniform;
   /** Dots under this size in px shrink to nothing (0.75 Hoch, 1.2 Mobil). */
   collapsePx: TSLUniform;
+  /** Direction to the sun (world): the dotted rims of the domes light up on the sun side. */
+  sunDir: UniformNode<'vec3', Vector3>;
 }
 
 export function createLandmarkUniforms(): LandmarkUniforms {
-  return { gradient: uniform(0.35), flow: uniform(1), sway: uniform(1), projScaleY: uniform(1.5), collapsePx: uniform(0.75) };
+  return { gradient: uniform(0.35), flow: uniform(1), sway: uniform(1), projScaleY: uniform(1.5), collapsePx: uniform(0.75), sunDir: uniform(new Vector3(0.6, 0.2, -0.3).normalize()) };
 }
 
 export function warpedPosition(ctx: LandmarkMaterialContext, p: Vec3Node = positionLocal as unknown as Vec3Node): Vec3Node {

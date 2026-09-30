@@ -128,7 +128,7 @@ export function buildRuin(seed: number, o: RuinOptions = {}): LandmarkBlueprint 
     apexOffset: [0, 0],
     jag: [],
     surface: 'stone',
-    cap: 'plateau',
+    cap: 'cut',
     role: 'terrace',
     variant: rand(),
   });

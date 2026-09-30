@@ -2,6 +2,7 @@ import { DoubleSide, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, Me
 import {
   abs,
   attribute,
+  cameraPosition,
   cameraProjectionMatrix,
   cameraViewMatrix,
   cos,
@@ -196,6 +197,8 @@ export const DOT_STIPPLE = 1;
 export const DOT_DROP = 2;
 export const DOT_STATIC = 3;
 export const DOT_BUBBLE = 4;
+/** A dot on an Earle dome: shown only near the silhouette on the sun side (the dotted lit rim). */
+export const DOT_RIM = 5;
 
 /** Spray, mist stipple and falling drops of the falls. `count` scales with the quality (1 = Hoch). */
 export function addFallDots(batch: DotBatch, falls: readonly FallSpec[], mist: readonly MistPuff[], frame: LandmarkFrame, rows: LandmarkRows, amount: number, seedBase: number): void {
@@ -299,13 +302,20 @@ export function createDotMesh(batch: DotBatch, ctx: LandmarkMaterialContext, uni
     sprayP,
     select(isMode(DOT_STIPPLE).greaterThan(0.5), stippleP, select(isMode(DOT_DROP).greaterThan(0.5), dropP, select(isMode(DOT_BUBBLE).greaterThan(0.5), bubbleP, origin))),
   ) as unknown as Vec3Node;
+  const local = ctx.warp ? ctx.warp(pos) : pos;
+  const worldC = modelWorldMatrix.mul(vec4(local, 1)).xyz;
+  // rim dots: near the silhouette (seen from the camera), on the sun side, on the upper half — they glide along the
+  // rim as the view turns and grow/shrink continuously (never pop)
+  const nW = normalize(modelWorldMatrix.mul(vec4(d1.xyz, 0)).xyz);
+  const rimness = float(1).sub(abs(nW.dot(normalize(cameraPosition.sub(worldC)))));
+  const rimW = smoothstep(d1.w.mul(0.25).add(0.4), d1.w.mul(0.25).add(0.66), rimness);
+  const sunW = smoothstep(-0.05, 0.35, nW.dot(uni.sunDir));
+  const rimSize = size0.mul(rimW).mul(sunW).mul(smoothstep(-0.25, 0.2, d1.y));
   const size = select(
     isMode(DOT_SPRAY).greaterThan(0.5),
     spraySize,
-    select(isMode(DOT_DROP).greaterThan(0.5), dropSize, select(isMode(DOT_BUBBLE).greaterThan(0.5), bubbleSize, size0)),
+    select(isMode(DOT_DROP).greaterThan(0.5), dropSize, select(isMode(DOT_BUBBLE).greaterThan(0.5), bubbleSize, select(isMode(DOT_RIM).greaterThan(0.5), rimSize, size0))),
   ).mul(step(0, mode)) as unknown as FloatNode;
-  const local = ctx.warp ? ctx.warp(pos) : pos;
-  const worldC = modelWorldMatrix.mul(vec4(local, 1)).xyz;
   const viewC = cameraViewMatrix.mul(vec4(worldC, 1));
   const depth = viewC.z.negate().max(0.05);
   const pxPerUnit = uni.projScaleY.mul(screenSize.y).mul(0.5).div(depth);

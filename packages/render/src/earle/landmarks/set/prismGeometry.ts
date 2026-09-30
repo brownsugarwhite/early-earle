@@ -4,7 +4,7 @@ import { GeoBuffer, frameDir, framePoint, type LandmarkFrame } from './buffers';
 import type { LandmarkRows } from './palette';
 
 /** Surface codes of the rock/stone material (`lb.x`). */
-export const SURFACE_CODE: Record<PrismSurface, number> = { basalt: 0, crag: 1, wet: 2, stone: 3, rubble: 4, roof: 5, island: 6 };
+export const SURFACE_CODE: Record<PrismSurface, number> = { basalt: 0, crag: 1, wet: 2, stone: 3, rubble: 4, roof: 5, island: 6, bark: 7 };
 /** Face codes (`lb.y`): walls, moss cap, rock facet, level top, cut stone top. */
 export const FACE_WALL = 0;
 export const FACE_MOSS = 1;
@@ -22,6 +22,8 @@ export const ROCK_LAYOUT = {
   la: 4,
   /** (surface code, face code, wall row, cap row) */
   lb: 4,
+  /** (distance below the top edge of the face [world units], 0, 0, 0): the lit gold edge of stone faces */
+  lc: 4,
 };
 
 type V3 = [number, number, number];
@@ -48,6 +50,8 @@ function rowsFor(surface: PrismSurface, rows: LandmarkRows): [number, number] {
       return [rows.stone, rows.stone];
     case 'roof':
       return [rows.roof, rows.roof];
+    case 'bark':
+      return [rows.vine, rows.vine];
     case 'island':
       return [rows.earth, rows.moss];
     default:
@@ -72,8 +76,8 @@ export function addPrisms(out: GeoBuffer, prisms: readonly Prism[], frame: Landm
     const span = Math.max(0.5, yMax - Math.max(yMin, 0));
     const grad = (y: number) => Math.min(1, Math.max(0, y / span));
     const P = (x: number, y: number, z: number): V3 => framePoint(frame, x, y, z);
-    const vtx = (pos: V3, nrm: V3, u: number, y: number, face: number, row: number) =>
-      out.vertex({ position: pos, normal: nrm, la: [u, y, grad(y), p.variant], lb: [sc, face, row, rowCap] });
+    const vtx = (pos: V3, nrm: V3, u: number, y: number, face: number, row: number, td = 0) =>
+      out.vertex({ position: pos, normal: nrm, la: [u, y, grad(y), p.variant], lb: [sc, face, row, rowCap], lc: [td, 0, 0, 0] });
     const [bcx, bcz] = centroidOf(p.base);
     // walls
     let perim = p.variant * 7;
@@ -91,8 +95,8 @@ export function addPrisms(out: GeoBuffer, prisms: readonly Prism[], frame: Landm
       const mid = frameDir(frame, (a[0] + b[0]) * 0.5 - bcx, 0, (a[1] + b[1]) * 0.5 - bcz);
       if (dot(nrm, mid) < 0) nrm = [-nrm[0], -nrm[1], -nrm[2]];
       const edge = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      const i0 = vtx(A, nrm, perim, p.y0, FACE_WALL, rowWall);
-      const i1v = vtx(B, nrm, perim + edge, p.y0, FACE_WALL, rowWall);
+      const i0 = vtx(A, nrm, perim, p.y0, FACE_WALL, rowWall, topY[i]! - p.y0);
+      const i1v = vtx(B, nrm, perim + edge, p.y0, FACE_WALL, rowWall, topY[i1]! - p.y0);
       const i2 = vtx(TB, nrm, perim + edge, topY[i1]!, FACE_WALL, rowWall);
       const i3 = vtx(TA, nrm, perim, topY[i]!, FACE_WALL, rowWall);
       out.triFacing(i0, i1v, i2, nrm);
@@ -189,7 +193,7 @@ export function addArcade(out: GeoBuffer, a: ArcadeSpec, frame: LandmarkFrame, r
   const P = (s: number, y: number, side: number): V3 => framePoint(frame, a.from[0] + ux * s + nx * half * side, y, a.from[1] + uz * s + nz * half * side);
   const N = (x: number, y: number, z: number): V3 => norm(frameDir(frame, x, y, z) as V3);
   const grad = (y: number) => Math.min(1, Math.max(0, (y - a.y) / (topY - a.y)));
-  const vtx = (pos: V3, nrm: V3, u: number, y: number, face = 0) => out.vertex({ position: pos, normal: nrm, la: [u, y, grad(y) * 0.6 + 0.4, 0.37], lb: [sc, face, rows.stone, rows.stone] });
+  const vtx = (pos: V3, nrm: V3, u: number, y: number, face = 0) => out.vertex({ position: pos, normal: nrm, la: [u, y, grad(y) * 0.6 + 0.4, 0.37], lb: [sc, face, rows.stone, rows.stone], lc: [Math.max(0, topY - y), 0, 0, 0] });
   const quad = (p0: V3, p1: V3, p2: V3, p3: V3, nrm: V3, u0: number, u1: number, y0: number, y1: number, y2: number, y3: number, face = 0) => {
     const i0 = vtx(p0, nrm, u0, y0, face);
     const i1 = vtx(p1, nrm, u1, y1, face);

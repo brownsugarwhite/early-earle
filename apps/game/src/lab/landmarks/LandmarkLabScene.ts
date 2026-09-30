@@ -46,6 +46,8 @@ export interface LandmarkLabParams {
   flow: number;
   /** Vertical glow of rock and stone (gradient hook). */
   gradient: number;
+  /** Camera override (yaw, pitch, distance) on top of the view preset — URL `?cam=yaw,pitch,dist`. */
+  cam?: [number, number, number] | undefined;
 }
 
 export const DEFAULT_LANDMARK_LAB: LandmarkLabParams = {
@@ -218,6 +220,7 @@ export class LandmarkLabScene implements SceneController {
       rowsFor: () => lmRows,
       quality: this.preset.name,
       shade: (w) => this.sun.shadowFactor(w, { softness: 0.1 }),
+      groundAt: (x, z) => landmarkGround(instances, x, z, labHeight(x, z)),
     });
     set.uniforms.flow.value = p.flow;
     set.uniforms.gradient.value = p.gradient;
@@ -404,7 +407,9 @@ export class LandmarkLabScene implements SceneController {
       this.params = { ...this.params, view };
       for (const l of this.listeners) l(this.getParams());
     }
-    this.orbit.setView(this.viewFor(view));
+    const v = this.viewFor(view);
+    const cam = this.params.cam;
+    this.orbit.setView(cam ? { ...v, yaw: cam[0], pitch: cam[1], distance: cam[2] } : v);
   }
 
   private viewFor(view: LandmarkLabView): OrbitView {
@@ -471,6 +476,7 @@ export class LandmarkLabScene implements SceneController {
     this.camera.updateMatrixWorld(true);
     this.sun.directionWorld(this.sunDirWorld.value);
     this.set?.update(this.camera);
+    this.set?.setSunDirection(this.sunDirWorld.value);
     const board = this.board;
     if (board) {
       board.root.updateWorldMatrix(true, false);
