@@ -41,6 +41,7 @@ import { LandmarkSet } from './landmarks/set/LandmarkSet';
 import { MistBanks } from './mist/mistBanks';
 import { createScaleCarpet, type ScaleCarpet } from './ground/scaleCarpet';
 import { fogSeaLayer } from './ground/fogSea';
+import { meadowLayer } from './ground/meadow';
 import type { LandmarkInstance } from '@ee/world';
 
 /**
@@ -72,6 +73,11 @@ export interface WorldView {
   yaw?: number;
   /** Vordergrund-Ornament der Komposition (Welt 12: der fraktale Ast oben links, Ebene 7). */
   ornament?: 'branch';
+  /**
+   * Sonne der Komposition relativ zur Blickrichtung (Grad; Azimut 0 = Gegenlicht vor der Kamera, 90 = rechts), z. B.
+   * Welt 11: Gegenlicht von rechts vorn — die Hänge zur Kamera liegen im Schatten, nur die Kämme leuchten (Ebene 20).
+   */
+  sun?: { azimuth: number; elevation?: number };
 }
 
 /** Eine Welt mit ihren Darstellungsdaten (Autorenwelt aus `content/`, oder prozedural erzeugt). */
@@ -299,8 +305,10 @@ export class EarlePlanet {
   private readonly barnRows: UniformArrayLike;
   private readonly plainTerrainRows: UniformArrayLike;
   private readonly driftRows: UniformArrayLike;
-  /** Nebelspiegel je Welt-Slot (Welt 12: darunter ist der Boden Nebelmeer; 0 = keins). */
+  /** Nebelspiegel je Welt-Slot (Welt 12: darunter ist der Boden Nebelmeer; −10⁴ = keins). */
   private readonly slotSea: UniformArrayLike;
+  /** Wiese statt Schnee je Welt-Slot (Welt 11: die Schneefelder sind leuchtende Wiesen mit Verlauf; 0/1). */
+  private readonly slotMeadow: UniformArrayLike;
   /** Fokus modulo PATTERN_PERIOD (Muster in Ebenenkoordinaten ohne Genauigkeitsverlust). */
   private readonly patternOrigin = uniform(new Vector3());
   private readonly anchors = new Map<Object3D, { x: number; z: number }>();
@@ -372,7 +380,8 @@ export class EarlePlanet {
     this.barnRows = rowsBy((r) => r.barn);
     this.plainTerrainRows = rowsBy((r) => r.terrain);
     this.driftRows = rowsBy((r) => r.snow);
-    this.slotSea = uniformArray(new Array<number>(SLOT_COUNT).fill(0), 'float') as unknown as UniformArrayLike;
+    this.slotSea = uniformArray(new Array<number>(SLOT_COUNT).fill(-1e4), 'float') as unknown as UniformArrayLike;
+    this.slotMeadow = uniformArray(new Array<number>(SLOT_COUNT).fill(0), 'float') as unknown as UniformArrayLike;
     this.slots = new WorldSlots(this.atlas, (w) => this.worldData(w).palette, (slot, world) => this.onSlotAssigned(slot, world));
     const first = this.worldData(0);
     const firstSlot = this.slots.slotOf(0);
@@ -461,7 +470,11 @@ export class EarlePlanet {
     const snowWob = sin(po.x.mul(k(1.9)).add(sin(po.z.mul(k(1.9 * 1.3))).mul(1.7)))
       .mul(0.035)
       .add(sin(po.y.mul(2.3 * 1.9).add(po.x.mul(k(0.7 * 1.9)))).mul(0.025));
-    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08) };
+    // Wiese (Welt 11): dieselbe Feldkante, aber als flache Fläche mit Verlauf nach innen statt Schnee in Lichtbändern
+    const meadowOn = arrayElement(this.slotMeadow, slotF);
+    const fieldEdge = aaStep(0, tc.y.add(snowWob)).mul(wb.z);
+    const snowField = { mask: fieldEdge.mul(meadowOn.oneMinus()), row: wb.y, lift: float(0.08) };
+    const meadow = meadowLayer(this.lookup, wb.y, tc.y, fieldEdge, po, meadowOn);
     const chisel = wa.w;
     const contour = fract(heightAttr.mul(5.0).add(0.5)).sub(0.5).mul(0.34);
 
@@ -478,7 +491,7 @@ export class EarlePlanet {
       crackLipNode: lip,
       growthNode,
       pattern: { mask: select(isCarpet, this.carpet.mask, mask), color: select(isCarpet, this.carpet.color, patternColor), shadowColor: select(isCarpet, this.carpet.shadowColor, patternShadow) },
-      layers: [snowField, seaLayer],
+      layers: [snowField, meadow, seaLayer],
       positionNode: warp(positionLocal as unknown as Vec3Node),
       fogDistNode: positionView.length().add(this.veilNode(slotF)),
     });
@@ -601,7 +614,8 @@ export class EarlePlanet {
     this.slotA.array[slot]!.set(rows.terrain, GROUND_KIND[w.ground], w.ground === 'floorLines' ? 4 : 1, Math.max(0, spec.features?.chisel ?? 0));
     this.slotB.array[slot]!.set(rows.water, w.palette.snow ? rows.snow : rows.terrain, hasSnow ? 1 : 0, rows.rock);
     const sea = spec.mist?.sea;
-    this.slotSea.array[slot] = sea ? (sea.height ?? sea.level * spec.terrain.amplitude) : 0;
+    this.slotSea.array[slot] = sea ? (sea.height ?? sea.level * spec.terrain.amplitude) : -1e4;
+    this.slotMeadow.array[slot] = hasSnow && spec.features?.snowFields?.meadow ? 1 : 0;
     // Fokus der Perspektivlinien: setzt `rebuildContent` aus der nächsten Region der Welt
     this.slotFocusPlane[slot] = null;
     this.slotFocus.array[slot]!.set(1e4, 1e4, 0, 0);

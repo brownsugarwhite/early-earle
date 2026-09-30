@@ -602,7 +602,8 @@ export function planetPathPalette(world: EarlePlanet): PathPalette {
     lookup: world.lookup,
     fog: world.fog,
     bands: world.terrainBands,
-    terrainRow: (w) => world.rowsOfWorld(w).terrain,
+    // Welten mit Nebelmeer (Welt 12): das Band liegt im Nebel und nimmt dessen Farben (Wasserzeile), nicht das Gelände
+    terrainRow: (w) => (world.catalog.spec(w).mist?.sea ? world.rowsOfWorld(w).water : world.rowsOfWorld(w).terrain),
     colors: (w) => worldPathColors(world.worldData(w).palette, world.worldData(w).id),
   };
 }

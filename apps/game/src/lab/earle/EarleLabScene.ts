@@ -612,10 +612,17 @@ export class EarleLabScene implements SceneController {
     return f ? [f[0], f[1]] : [0, 0];
   }
 
-  /** Blickrichtung der Komposition einer Welt (Rig um die Hochachse; Welt 12 blickt schräg auf den Steilhang). */
+  /**
+   * Blickrichtung und Sonne der Komposition einer Welt (Rig um die Hochachse; Welt 12 blickt schräg auf den Steilhang,
+   * Welt 11 hat Gegenlicht). Ohne Vorgabe gelten die Regler.
+   */
   private applyWorldYaw(id: number): void {
-    this.yaw = ((this.world?.worldData(id).view.yaw ?? 0) * Math.PI) / 180;
+    const view = this.world?.worldData(id).view;
+    this.yaw = ((view?.yaw ?? 0) * Math.PI) / 180;
     this.rig.quaternion.setFromAxisAngle(_Y, this.yaw);
+    const sun = this.params.perspective >= 0.5 ? view?.sun : undefined;
+    this.sun.setAngles(sun?.elevation ?? this.params.sunElevation, sun?.azimuth ?? this.params.sunAzimuth);
+    this.shadowDirty = true;
   }
 
   /** Sofort zum Bildfokus von Welt `id`. */

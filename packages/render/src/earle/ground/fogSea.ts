@@ -1,4 +1,4 @@
-import { clamp, floor, fract, fwidth, max, mix, sin, smoothstep, vec2 } from 'three/tsl';
+import { clamp, floor, fract, fwidth, max, mix, sin, smoothstep, step, vec2 } from 'three/tsl';
 import type { EarleLayer } from '../EarleMaterial';
 import type { FloatNode, PaletteLookup, Vec3Node } from '../tsl';
 
@@ -8,7 +8,7 @@ import type { FloatNode, PaletteLookup, Vec3Node } from '../tsl';
  * gespritzt: ein Band feiner Körner (je Zelle der Ebene), in dem der Fuß des Steilhangs und der Felsstümpfe weich im
  * Nebel steckt. Kein Licht und kein Schlagschatten auf dem Nebel (eine gemalte Fläche).
  *
- * `level` = Nebelspiegel (Höhe in Welteinheiten, ≤ 0 = kein Nebelmeer), `height` = Geländehöhe des Fragments,
+ * `level` = Nebelspiegel (Höhe in Welteinheiten, auch unter 0; ≤ −1000 = kein Nebelmeer), `height` = Geländehöhe,
  * `po` = Ebenenposition (modulo 700) für das Korn, `seaRow` = Farbzeile des Nebelmeers (die Wasserzeile der Welt:
  * Stufe 5 tief und hell, Stufe 4 am Spiegel). Dunkler und grauer nach hinten wird es durch den Distanznebel der Welt.
  */
@@ -21,7 +21,7 @@ export function fogSeaLayer(lookup: PaletteLookup, seaRow: FloatNode, level: Flo
   // weiches, gespritztes Band von 0,7 Einheiten am Spiegel; darunter dicht
   const t = clamp(depth.div(0.7).add(0.25), 0, 1);
   const on = smoothstep(grain.sub(0.08), grain.add(0.08), t);
-  const mask = on.mul(smoothstep(0.0, 0.02, level));
+  const mask = on.mul(step(-1000, level));
   // Farbe: in der Tiefe die hellste Nebelstufe (Ebene 7: unten cremig hell), am Spiegel eine Stufe darunter
   const deep = lookup.pal(5, seaRow).rgb as unknown as Vec3Node;
   const mid = lookup.pal(4, seaRow).rgb as unknown as Vec3Node;

@@ -77,6 +77,10 @@ export interface PlanetPropSpec {
   rocks?: number;
   /** Tiere (Silhouetten) pro Welteinheit². */
   animals?: number;
+  /** Größenfaktor der Tiere (Standard 1; Welt 11: winzige Kühe als Maßstabsfiguren). */
+  animalScale?: number;
+  /** Tiere nur auf den Wiesen (Schneefelder mit `meadow`, Welt 11). */
+  animalsOnMeadow?: boolean;
 }
 
 export type PlanetPropKind = 'scrap' | 'pool' | 'animal' | 'mound' | 'monolith' | 'vent' | 'tire' | 'pipe' | 'barn' | 'rock';

@@ -9,7 +9,7 @@
   "sources": ["Ebene 20 Kopie.png"],
   "palette": {
     "ink": "#0b0c06",
-    "terrain": ["#0e1108", "#13170a", "#1c230c", "#474f14", "#c1b532"],
+    "terrain": ["#0e1108", "#161b0b", "#77821d", "#b5ad2e", "#d9cf4a"],
     "canopy": ["#0c0f07", "#11160a", "#1d2a12", "#a6a52a", "#dcd550", "#7fb52a", "#e6d24a"],
     "sky": ["#bcc466", "#cacd62", "#d8d56b", "#e4db77", "#efe387", "#f8eb9c"],
     "sun": "#fbf3b8",
@@ -17,9 +17,9 @@
     "fog": ["#12301f", "#1f5a41", "#3c8866", "#5fae98", "#a6dccb", "#e6f3dc"],
     "fogAlpha": [0, 0.3, 0.5, 0.66, 0.8, 0.9],
     "accent": ["#c1b532", "#1a200d", "#0b0c06", "#0b0c06", "#4f5a14", "#c1b532", "#6a3a1a", "#e9dd5c"],
-    "snow": ["#0a3d0c", "#0b7c0b", "#2a9311", "#6ca30a", "#b49c0a", "#ecd12a"]
+    "snow": ["#0d2a0c", "#0b7c0b", "#1f9412", "#4b9908", "#9ca101", "#ecd12a"]
   },
-  "terrain": { "amplitude": 5.0, "wavelength": 0.55, "stretch": 2.2, "ridge": 0.35, "slope": 0.1 },
+  "terrain": { "amplitude": 5.0, "wavelength": 0.55, "stretch": 2.2, "ridge": 0.85, "slope": 0.1 },
   "ground": "scales",
   "vegetation": {
     "density": 1.6,
@@ -44,9 +44,9 @@
       "maxSlope": 0.55
     }
   },
-  "props": { "animals": 0.02 },
+  "props": { "animals": 0.12, "animalScale": 0.45, "animalsOnMeadow": true },
   "features": {
-    "snowFields": { "cover": 0.24, "scale": 1.0, "focus": { "radius": 3.2, "offset": [-2.0, 6.0] } }
+    "snowFields": { "cover": 0.24, "scale": 1.0, "focus": { "radius": 3.2, "offset": [-2.0, 6.0] }, "meadow": true }
   },
   "landmarks": { "fallsRock": 0, "cliffFall": 0, "twinFalls": 0, "ruin": 0, "swamp": 0 },
   "mist": { "banks": 18, "height": [0.45, 0.85], "thickness": [2.4, 4.0], "length": [10, 18], "opacity": 0.7, "focal": { "behind": 3.5, "height": 1.2 } },
@@ -54,13 +54,14 @@
   "fog": { "start": 9, "range": 18 },
   "view": {
     "height": 8,
-    "forward": 1,
-    "look": 6,
-    "fov": 55,
+    "forward": 5,
+    "look": 8,
+    "fov": 46,
     "curvature": -0.6,
-    "focus": [0.15, 0.3],
+    "focus": [0.1, 0.1],
     "nearClear": 1.0,
-    "footClear": 2.0
+    "footClear": 2.0,
+    "sun": { "azimuth": 35, "elevation": 9 }
   },
   "focal": { "kind": "parasol", "scale": 1.25, "along": 0.45, "lateral": 3 }
 }

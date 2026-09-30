@@ -73,7 +73,7 @@ export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number;
   // Earle-Eiche: knorriger Stamm, bogig ausladende, hängende Äste; "Krone" = Astwerk mit Sternnadeln (Bild 04)
   oak: { radius: 1.5, trunk: 0.75, hull: 1.35, top: 2.35 },
   // Schirmbaum (Ebene 20): breiter, flacher Pilzhut, unten gerade abgeschnitten, auf kurzem, dünnem, gegabeltem Stamm
-  parasol: { radius: 1.0, trunk: 0.76, hull: 0.98, top: 1.24 },
+  parasol: { radius: 1.0, trunk: 0.9, hull: 1.12, top: 1.38 },
   // Buschröschen (Ebene 20 Buschteppich, Ebene 7 Schuppenbusch): kleiner runder Busch ohne sichtbaren Stamm
   shrub: { radius: 0.5, trunk: 0, hull: 0.28, top: 1.08 },
   // Earle-Tanne (Ebene 7): schmal, hängende Etagen, unregelmäßige Silhouette, Spitze als dünner Dorn

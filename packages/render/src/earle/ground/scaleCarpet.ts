@@ -148,9 +148,15 @@ export function createScaleCarpet(lookup: PaletteLookup, row: FloatNode, po: Vec
   const mid = lookup.pal(4, row).rgb as unknown as Vec3Node;
   const dim = mix(lookup.pal(2, row).rgb, lookup.pal(3, row).rgb, 0.5) as unknown as Vec3Node;
   // Bogenpunkte: im vollen Licht die hellste Stufe, sonst eine darunter; innere Punkte gedämpft
-  let rimCol = mix(mix(mid, lit, smoothstep(0.3, 0.8, slopeLit.mul(arcLit))), lit, decor) as unknown as Vec3Node;
-  let innerCol = mix(dim, mid, decor) as unknown as Vec3Node;
+  let rimCol = mix(mid, lit, smoothstep(0.3, 0.8, slopeLit.mul(arcLit))) as unknown as Vec3Node;
+  let innerCol = dim;
+  let streakCol = mid;
   if (accentRow) {
+    // Ebene 7: der Zierrat hat eigene Farben (Akzent 0 helles Cyan, 2 Türkis) — die Terrainzeile bleibt frei für das
+    // Gelände (ihr heller Ton ist der Nebelpfad)
+    rimCol = mix(rimCol, lookup.pal(0, accentRow).rgb as unknown as Vec3Node, decor) as unknown as Vec3Node;
+    innerCol = mix(innerCol, lookup.pal(2, accentRow).rgb as unknown as Vec3Node, decor) as unknown as Vec3Node;
+    streakCol = mix(streakCol, lookup.pal(2, accentRow).rgb as unknown as Vec3Node, decor) as unknown as Vec3Node;
     // Farbflecken (Ebene 7): in einzelnen Feldern tragen die Büsche rote bzw. hellgrüne Bögen (Akzent 6/7 bzw. 4/5);
     // Feldgrenzen gewellt, Feld für Feld gezogen
     const qx = po.x.add(sin(po.z.mul(k700(0.8))).mul(0.9));
@@ -170,7 +176,7 @@ export function createScaleCarpet(lookup: PaletteLookup, row: FloatNode, po: Vec
   const bushOn = mix(float(1), step(0.28, fract(c.h.mul(7.13))), decor);
   const dots = max(rim, inner.mul(0.8)).mul(bushOn);
   const mask = max(dots.mul(visible), streak.mul(smoothstep(2.0, 5.0, float(period).div(fw))));
-  const color = select(streak.greaterThan(dots), mid, select(isRim, rimCol, innerCol)) as unknown as Vec3Node;
+  const color = select(streak.greaterThan(dots), streakCol, select(isRim, rimCol, innerCol)) as unknown as Vec3Node;
   // Schattenseite: Ebene 20 gedämpft; Ebene 7 leuchtet der Zierrat auch auf der abgewandten Wand
   const shadowColor = mix(dim, color, decor.mul(0.85)) as unknown as Vec3Node;
   return { mask, color, shadowColor, sunDir: sunDir as unknown as { value: Vector3 } };

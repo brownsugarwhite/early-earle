@@ -73,7 +73,8 @@ export class MistBanks {
     const sigma = select(dv.lessThan(0), float(0.24), float(0.19));
     const band = exp(dv.div(sigma).mul(dv.div(sigma)).negate());
     // Nebelmeer: bis knapp unter die Oberkante dicht, oben weich
-    const sea = smoothstep(float(0.98).add(wob), float(0.52).add(wob), v).mul(smoothstep(0.0, 0.06, v));
+    // (auch unten weich: eine Bank über tieferem Gelände schwebt sonst mit harter Unterkante)
+    const sea = smoothstep(float(0.98).add(wob), float(0.52).add(wob), v).mul(smoothstep(0.0, 0.3, v));
     // Berg (Ebene 7): gezackte Oberkante aus drei Wellen, darunter eine Fläche, die nach oben verblasst
     const ridge = float(0.62)
       .add(sin(u.mul(7.3).add(seed.mul(29.0))).mul(0.16))
@@ -99,7 +100,9 @@ export class MistBanks {
     const edge = a.mul(float(1).sub(a)).mul(4).mul(select(isMountain, float(0), float(1)));
     // Nahe an der Kamera löst sich die Bank auf (kein Nebelvorhang vor der Linse; sie liegt im Mittelgrund)
     const near = smoothstep(3.5, 9.0, this.camLocal.sub(centre).length());
-    const alpha = clamp(a.add(grain.sub(0.5).mul(0.55).mul(edge)), 0, 1).mul(B.y).mul(near);
+    // Korn am stärksten im äußeren Saum (a klein), im Kern ruhig
+    const spray = edge.mul(smoothstep(0.7, 0.15, a));
+    const alpha = clamp(a.add(grain.sub(0.5).mul(0.4).mul(spray)), 0, 1).mul(B.y).mul(near);
     // Farben: Rand (Stufe 3) → Mitte (4) → Kern (5); Nebelmeer unten heller
     const edgeCol = options.lookup.pal(3, row).rgb as unknown as Vec3Node;
     const midCol = options.lookup.pal(4, row).rgb as unknown as Vec3Node;

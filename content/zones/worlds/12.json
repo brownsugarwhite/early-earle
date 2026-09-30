@@ -21,12 +21,12 @@
     "sunRing": "#fde9b2",
     "fog": ["#c6b692", "#f6e2ab", "#ecd7a2", "#e3cf9f", "#dac8a0", "#d2c2a0"],
     "fogAlpha": [0, 0.25, 0.45, 0.62, 0.76, 0.86],
-    "accent": ["#74bca9", "#1c4a42", "#2f7a6c", "#0e2a26", "#aed65a", "#e6ffb0", "#b8434b", "#f0979c"],
+    "accent": ["#8fd9c6", "#1c4a42", "#3f8f80", "#0e2a26", "#aed65a", "#e6ffb0", "#b8434b", "#f0979c"],
     "water": ["#8a7650", "#b89d6c", "#e2c68c", "#efd49a", "#fae2a8", "#ffebb6", "#c9b894", "#fff0c4"],
     "rock": ["#0b0a06", "#100e08", "#14120b", "#19160e", "#1f1b11", "#14120b", "#0e0c07", "#2a251a"]
   },
   "terrain": {
-    "amplitude": 1.6,
+    "amplitude": 0.9,
     "wavelength": 1.0,
     "stretch": 0.6,
     "slope": 0.1,
@@ -44,10 +44,10 @@
     "rowVariants": 4,
     "kindRows": { "fir": 3, "shrub": 0 },
     "grove": {
-      "cover": 0.45,
+      "cover": 0.2,
       "wavelength": 5,
-      "fill": 0.92,
-      "satellites": 0.3,
+      "fill": 0.6,
+      "satellites": 0.05,
       "coreScale": 0.1,
       "specimens": 0.002,
       "specimenKinds": { "fir": 1 },
@@ -58,7 +58,7 @@
   },
   "props": {},
   "features": {
-    "rocks": [{ "kind": "spires", "count": 8, "size": [1.6, 2.6], "height": [2.0, 2.9], "pathDistance": [3, 20], "side": -1 }]
+    "rocks": [{ "kind": "spires", "count": 9, "size": [1.0, 1.9], "height": [2.3, 3.1], "pathDistance": [5, 20], "side": -1 }]
   },
   "landmarks": { "fallsRock": 0, "cliffFall": 0, "twinFalls": 0, "ruin": 0, "swamp": 0 },
   "mist": {
@@ -67,7 +67,7 @@
     "thickness": [2.5, 4.0],
     "length": [14, 24],
     "opacity": 0.55,
-    "sea": { "level": 0.8, "banks": 6, "lateral": [-22, 3], "thickness": [2.0, 3.0], "height": 1.9 },
+    "sea": { "level": 0.8, "banks": 8, "lateral": [-45, -10], "thickness": [3.0, 5.5], "height": 1.9 },
     "mountains": { "count": 4, "lateral": [-12, 22], "height": [18, 28], "width": [26, 40], "ahead": [14, 34] }
   },
   "fogStripes": 1,

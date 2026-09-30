@@ -84,6 +84,8 @@ export interface SnowFieldSpec {
    * vom Fokus. Nur auf der Ebene.
    */
   focus?: { radius: number; offset?: [number, number] };
+  /** Wiese statt Schnee (Welt 11): flache leuchtende Fläche mit Verlauf nach innen, nur Schlagschatten (Farben: `snow`). */
+  meadow?: boolean;
 }
 
 export interface DriftSpec {
