@@ -30,7 +30,8 @@ process.on('exit', killServer);
 process.on('SIGINT', () => { killServer(); process.exit(130); });
 process.on('SIGTERM', () => { killServer(); process.exit(143); });
 
-const deadline = Date.now() + 90_000;
+// Cold starts after a merge (dependency pre-bundling) under load can take longer than a minute.
+const deadline = Date.now() + 180_000;
 let ready = false;
 while (Date.now() < deadline) {
   try {
