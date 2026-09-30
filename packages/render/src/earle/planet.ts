@@ -463,7 +463,7 @@ export class EarlePlanet {
     const rockBase = features.lakes.length + features.rivers.length;
     const rockData = buildRockGeometry(features.formations, R, (f) => f.world, (_f, i) => rockBase + i);
     this.rocks = rockData.indices.length > 0 ? this.featureMesh('planet-rocks', rockGeometry(rockData), this.rockMaterial, true) : null;
-    const waterData = buildWaterGeometry(features, R, () => true);
+    const waterData = buildWaterGeometry(features, R, () => true, (x, y, z) => this.field.heightAt(x, y, z));
     this.water = waterData ? this.featureMesh('planet-water', waterGeometry(waterData), this.waterMaterial, false) : null;
     this.featureRanges = this.computeFeatureRanges();
     this.applyFeatureGrowth();

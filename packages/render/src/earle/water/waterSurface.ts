@@ -97,11 +97,18 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
   // Flachwasser: hellere Stufe an Teilen des Ufers mit organischer Kante (Wertsprung, keine umlaufende Uferlinie)
   const wob = sin(u.mul(1.7).add(v.mul(0.9)).add(body.mul(5.0))).mul(0.12).add(sin(u.mul(0.53).sub(v.mul(2.1))).mul(0.08));
   // Flachwasser wie Sandbänke: nur an einem Ufer, das Ufer wechselt längs des Gewässers (keine umlaufende Uferlinie)
-  const bank = sin(u.mul(0.23).add(body.mul(17.0))).add(sin(u.mul(0.61).add(body.mul(3.0))).mul(0.35));
-  const oneSide = aaStep(0.0, v.mul(select(bank.greaterThan(0), float(1), float(-1))));
-  const patchy = aaStep(0.25, abs(bank)).mul(oneSide);
+  const sandSide = sin(u.mul(0.23).add(body.mul(17.0))).add(sin(u.mul(0.61).add(body.mul(3.0))).mul(0.35));
+  const oneSide = aaStep(0.0, v.mul(select(sandSide.greaterThan(0), float(1), float(-1))));
+  const patchy = aaStep(0.25, abs(sandSide)).mul(oneSide);
   const shallow = aaStep(e, float(0.2).add(wob.mul(0.8))).mul(patchy);
   col = mix(col, mix(light, pal(4), 0.3), shallow.mul(frozen.oneMinus()));
+  // Flache Spiegelung der Böschung (Ebene_29): ein dunkles Band am Ufer, so breit wie das Ufer hoch ist, mit welliger
+  // Kante; darin laufen die Wellen als dunklere Silhouetten weiter
+  const bankH = attribute('wg', 'vec2').y;
+  const reflEdge = bankH.mul(0.8).add(wob.mul(bankH.min(1)).mul(1.4));
+  const refl = aaStep(e, reflEdge).mul(step(0.25, bankH)).mul(frozen.oneMinus());
+  const reflCol = mix(pal(0), pal(1), select(vor.edge.lessThan(0.12), float(0.55), float(0.12)).mul(near));
+  col = mix(col, reflCol, refl);
   // Eis: Schollen in zwei hellen Stufen, dunkle Risse (Zellkanten), Schneeflecken am Rand
   const plates = mix(pal(4), pal(5), step(vor.key, float(0.45)));
   const cracks = smoothstep(float(0.06).add(fw), float(0.06).sub(fw), vor.edge).mul(periodFade(p.x, 3.0));
@@ -121,7 +128,7 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
     positionNode: o.warp(positionLocal),
     fogDistNode: positionView.length().add(o.veil(world)),
     // Vor der Heilung trüb wie das verdorrte Gelände ringsum
-    growthNode: o.growth ? o.growth(attribute('wg', 'float')) : null,
+    growthNode: o.growth ? o.growth(attribute('wg', 'vec2').x) : null,
   });
 }
 

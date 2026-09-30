@@ -14,7 +14,10 @@ export interface WaterGeometryData {
   wa: Float32Array;
   /** (Welt-Index, Strömung, Körper-Hash, Art 0 See / 1 Fluss) je Vertex. */
   wb: Float32Array;
-  /** Merkmals-Index je Vertex (Seen 0..L−1, Flüsse L..): Wachstum/Heilung je Gewässer. */
+  /**
+   * (Merkmals-Index, Uferhöhe) je Vertex: Index für Wachstum/Heilung je Gewässer (Seen 0..L−1, Flüsse L..), Höhe des
+   * Ufers über dem Spiegel (Welteinheiten) für die flache Spiegelung der Böschung.
+   */
   wg: Float32Array;
   indices: Uint32Array;
 }
@@ -28,14 +31,22 @@ interface Acc {
   idx: number[];
   /** Merkmals-Index des gerade gebauten Gewässers. */
   feature: number;
+  /** Uferhöhe für den nächsten Vertex. */
+  bank: number;
 }
+
+/** Geländehöhe über dem Grundradius an einer Einheitsrichtung (für die Uferhöhe). */
+export type HeightFn = (dx: number, dy: number, dz: number) => number;
+
+/** Abstand vom Ufer, in dem die Böschungshöhe gemessen wird (Welteinheiten). */
+const BANK_PROBE = 1.1;
 
 function push(acc: Acc, dir: Vec3, r: number, u: number, v: number, e: number, frozen: number, world: number, flow: number, id: number, kind: number): number {
   acc.pos.push(dir[0] * r, dir[1] * r, dir[2] * r);
   acc.nor.push(dir[0], dir[1], dir[2]);
   acc.wa.push(u, v, e, frozen);
   acc.wb.push(world, flow, id, kind);
-  acc.wg.push(acc.feature);
+  acc.wg.push(acc.feature, acc.bank);
   return acc.pos.length / 3 - 1;
 }
 
@@ -46,7 +57,7 @@ function idHash(s: string): number {
 }
 
 /** See als Polargitter (Mitte + Ringe bis zur Uferlinie), flach auf dem Spiegel. */
-function addLake(acc: Acc, lake: Lake, R: number): void {
+function addLake(acc: Acc, lake: Lake, R: number, height: HeightFn | null): void {
   const k = Math.sqrt(lake.stretch);
   const ca = Math.cos(lake.axis);
   const sa = Math.sin(lake.axis);
@@ -55,12 +66,25 @@ function addLake(acc: Acc, lake: Lake, R: number): void {
   const frozen = lake.frozen ? 1 : 0;
   const flow = 0.15;
   const dir: Vec3 = [0, 0, 0];
+  // Uferhöhe je Richtung: Gelände ein Stück hinter der Uferlinie, über dem Spiegel
+  const banks: number[] = [];
+  for (let j = 0; j < LAKE_SEGMENTS; j++) {
+    const th = (j / LAKE_SEGMENTS) * Math.PI * 2;
+    const g = Math.hypot(Math.cos(th) / k, Math.sin(th) * k) || 1;
+    const rs = lakeRadiusAt(lake, th) + BANK_PROBE * g;
+    const a = Math.cos(th) * rs * k;
+    const c = (Math.sin(th) * rs) / k;
+    offsetDir(lake.frame, R, a * ca - c * sa, a * sa + c * ca, dir);
+    banks.push(height ? Math.max(0, Math.min(3, height(dir[0], dir[1], dir[2]) - lake.level)) : 0);
+  }
+  acc.bank = 0;
   const centre = push(acc, lake.frame.c, r, 0, 0, lake.radius, frozen, lake.world, flow, id, 0);
   const rings: number[][] = [];
   for (let ring = 1; ring <= LAKE_RINGS + 1; ring++) {
     const row: number[] = [];
     for (let j = 0; j < LAKE_SEGMENTS; j++) {
       const th = (j / LAKE_SEGMENTS) * Math.PI * 2;
+      acc.bank = banks[j]!;
       const g = Math.hypot(Math.cos(th) / k, Math.sin(th) * k) || 1; // Welteinheiten je gestreckter Einheit (Normalenrichtung)
       const shore = lakeRadiusAt(lake, th);
       // Ringe bis zur Uferlinie, ein letzter Ring `WATER_OVERLAP` darüber hinaus (verschwindet unter dem Uferwall)
@@ -92,7 +116,7 @@ function addLake(acc: Acc, lake: Lake, R: number): void {
  * Fluss als Band (drei Vertices quer: Ufer, Mitte, Ufer → der Uferabstand interpoliert exakt), Quelle spitz
  * auslaufend; Punkte im Mündungssee tauchen knapp unter dessen Spiegel. `keep(i)` wählt die Segmente (Chunk).
  */
-function addRiver(acc: Acc, river: River, lake: Lake | undefined, R: number, keep: (i: number) => boolean): void {
+function addRiver(acc: Acc, river: River, lake: Lake | undefined, R: number, keep: (i: number) => boolean, height: HeightFn | null): void {
   const n = river.points.length;
   if (n < 2) return;
   const id = idHash(river.id);
@@ -128,7 +152,20 @@ function addRiver(acc: Acc, river: River, lake: Lake | undefined, R: number, kee
     if (lake && lakeProbe(lake, R, p, lakeHit) && lakeHit.e < 0) level = Math.min(level, lake.level - MOUTH_DIP);
     const r = R + level;
     const row: number[] = [];
+    // Uferhöhe links/rechts (hinter der Böschung), die Mitte mittelt
+    const bankAt = (sgn: number): number => {
+      if (!height) return 0;
+      const off = (halfW + BANK_PROBE) / R;
+      const bx = p[0] + lx * off * sgn;
+      const by = p[1] + ly * off * sgn;
+      const bz = p[2] + lz * off * sgn;
+      const bl = Math.hypot(bx, by, bz) || 1;
+      return Math.max(0, Math.min(3, height(bx / bl, by / bl, bz / bl) - level));
+    };
+    const bankL = bankAt(-1);
+    const bankR = bankAt(1);
     for (const s of [-1, 0, 1]) {
+      acc.bank = s < 0 ? bankL : s > 0 ? bankR : (bankL + bankR) * 0.5;
       dir[0] = p[0] + lx * half * s;
       dir[1] = p[1] + ly * half * s;
       dir[2] = p[2] + lz * half * s;
@@ -174,11 +211,11 @@ function lakeProbe(lake: Lake, R: number, p: Vec3, out: { e: number; theta: numb
  * Wasser-Geometrie der Seen und Flussabschnitte, die `owns(dir)` einem Chunk zuordnet (Seen nach ihrem Mittelpunkt,
  * Flusssegmente nach ihrem Mittelpunkt). Positionen im Planetenraum auf dem Wasserspiegel. null = kein Wasser.
  */
-export function buildWaterGeometry(features: PlanetFeatures, radius: number, owns: (dir: Vec3) => boolean): WaterGeometryData | null {
-  const acc: Acc = { pos: [], nor: [], wa: [], wb: [], wg: [], idx: [], feature: 0 };
+export function buildWaterGeometry(features: PlanetFeatures, radius: number, owns: (dir: Vec3) => boolean, height: HeightFn | null = null): WaterGeometryData | null {
+  const acc: Acc = { pos: [], nor: [], wa: [], wb: [], wg: [], idx: [], feature: 0, bank: 0 };
   features.lakes.forEach((lake, i) => {
     acc.feature = i;
-    if (owns(lake.frame.c)) addLake(acc, lake, radius);
+    if (owns(lake.frame.c)) addLake(acc, lake, radius, height);
   });
   const mid: Vec3 = [0, 0, 0];
   for (let ri = 0; ri < features.rivers.length; ri++) {
@@ -198,7 +235,7 @@ export function buildWaterGeometry(features: PlanetFeatures, radius: number, own
     };
     let any = false;
     for (let i = 0; i + 1 < river.points.length && !any; i++) any = keep(i);
-    if (any) addRiver(acc, river, features.lakes[river.lake], radius, keep);
+    if (any) addRiver(acc, river, features.lakes[river.lake], radius, keep, height);
   }
   if (acc.idx.length === 0) return null;
   return {
@@ -217,7 +254,7 @@ export function waterGeometry(data: WaterGeometryData): BufferGeometry {
   g.setAttribute('normal', new BufferAttribute(data.normals, 3));
   g.setAttribute('wa', new BufferAttribute(data.wa, 4));
   g.setAttribute('wb', new BufferAttribute(data.wb, 4));
-  g.setAttribute('wg', new BufferAttribute(data.wg, 1));
+  g.setAttribute('wg', new BufferAttribute(data.wg, 2));
   g.setIndex(new BufferAttribute(data.indices, 1));
   g.computeBoundingSphere();
   return g;
