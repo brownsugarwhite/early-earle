@@ -3,7 +3,8 @@
   "language": "de",
   "rules": {
     "maxWordsMicro": 8,
-    "cadence": "Mikro-Sätze bei neuen Mechaniken; kurze Szene alle 5–10 Level; Kapitel-Szene an Zonenanfängen (1, 26, 51, 76) und Zonenmitten (13, 38, 63, 88); großer Beat an Zonenfinalen (25, 50, 75, 100)."
+    "cadence": "Mikro-Sätze bei neuen Mechaniken; kurze Szene alle 5–10 Level; Kapitel-Szene an Zonenanfängen (1, 26, 51, 76) und Zonenmitten (13, 38, 63, 88); großer Beat an Zonenfinalen (25, 50, 75, 100).",
+    "scenes": "scenes.<id>: Satzfolgen (je höchstens 8 Wörter), die REX nacheinander sagt, z. B. afterLevel1 nach dem ersten Sieg."
   },
   "character": {
     "name": "REX",
@@ -14,9 +15,9 @@
     "intro.zone.tjorizo": [
       { "level": 1, "lines": ["Hallo, Kleines.", "Zwei Gleiche. Schieb sie zusammen."] }
     ],
-    "mechanic.swipe": [{ "level": 1, "lines": ["Wisch. Egal wohin."] }],
+    "mechanic.swipe": [{ "level": 1, "lines": ["Wisch zur Seite."] }],
     "mechanic.moves": [{ "level": 2, "lines": ["Jeder Wisch zählt. Siehst du?"] }],
-    "mechanic.preview": [{ "level": 1, "lines": ["Da oben: was als Nächstes kommt."] }],
+    "mechanic.preview": [{ "level": 1, "lines": ["Da kommt Nachschub für uns."] }],
     "mechanic.pillar": [{ "level": 6, "lines": ["Fels. Nutz ihn als Wand."] }],
     "mechanic.rewind": [{ "level": 8, "lines": ["Rückspulen. Einmal. Sag's niemandem."] }],
     "mechanic.scrap": [{ "level": 11, "lines": ["Altes Zeug. Daneben verschmelzen knackt es."] }],
@@ -44,6 +45,17 @@
       { "min": 4, "lines": ["Ich… muss mich setzen."] }
     ],
     "release": [{ "lines": ["Geh. Wir kommen nach.", "Bis draußen!"] }],
-    "idle": [{ "afterSeconds": 20, "lines": ["Ich bin noch da.", "Die Gase. Die Gase…"] }]
+    "idle": [{ "afterSeconds": 20, "lines": ["Ich bin noch da.", "Die Gase. Die Gase…"] }],
+    "locked": [{ "lines": ["Noch zu. Erst der davor."] }],
+    "collection.new": [{ "lines": ["Neu! Ab in den Setzkasten."] }],
+    "classic.unlock": [{ "lines": ["Neues Raster frei!"] }]
+  },
+  "scenes": {
+    "afterLevel1": [
+      "Schau, es bleibt bei uns.",
+      "Die Erde ist zerbrochen.",
+      "Jeder Stein heilt ein Stück.",
+      "Da vorne wartet der nächste."
+    ]
   }
 }

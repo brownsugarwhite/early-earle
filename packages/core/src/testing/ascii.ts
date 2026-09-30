@@ -194,18 +194,14 @@ export function levelFromAscii(board: string, opts: AsciiOptions = {}): LevelDef
     mask.push(maskRow);
   });
 
-  // The schema wants at least 3×3; pad small test boards with void cells (coordinates stay).
-  const padW = Math.max(w, 3);
-  const paddedMask = mask.map((r) => r.padEnd(padW, '#'));
-  while (paddedMask.length < 3) paddedMask.push('#'.repeat(padW));
-
+  // Boards keep their exact size (the schema accepts 1×N up to 8×8 with at least two playable cells).
   const goals: LevelInput['goals'] = opts.goals ?? [{ type: 'reachTier', tier: 12 }];
   const cap = opts.cap ?? 12;
   const input: LevelInput = {
     schemaVersion: 1,
     id: opts.id ?? 'test',
     zone: opts.zone ?? 'tjorizo',
-    grid: { w: padW, h: paddedMask.length, mask: paddedMask },
+    grid: { w, h: mask.length, mask },
     fences: opts.fences ?? [],
     floors,
     blockers,
@@ -310,15 +306,9 @@ export function normalizeAscii(s: string): string {
 }
 
 /**
- * Normalises an expected board and applies the same 3×3 void padding that
- * `levelFromAscii` applies, so small boards compare 1:1 with `asciiTiers`.
+ * Normalises an expected board for a 1:1 comparison with `asciiTiers` (boards are no longer
+ * padded, so this is `normalizeAscii`; kept as the name the tests use).
  */
 export function expectedAscii(s: string): string {
-  const rows = normalizeAscii(s)
-    .split('\n')
-    .map((r) => r.split(' '));
-  const w = Math.max(rows[0]?.length ?? 0, 3);
-  for (const r of rows) while (r.length < w) r.push('#');
-  while (rows.length < 3) rows.push(new Array<string>(w).fill('#'));
-  return rows.map((r) => r.join(' ')).join('\n');
+  return normalizeAscii(s);
 }

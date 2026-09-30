@@ -1,5 +1,7 @@
 import { SPECIAL_OFF, countElementKinds } from '@ee/core';
 import {
+  GRID_MAX,
+  GRID_MIN,
   MATERIAL_LABEL,
   TOOLS,
   TOOL_GROUPS,
@@ -174,8 +176,8 @@ export function ToolsTab() {
           <div className="ed-palette">{TOOLS.filter((t) => t.group === g).map((t) => tile(t.id, 'palette'))}</div>
           {g === 'Layout' ? (
             <Row>
-              <Stepper label="Breite" value={draft.grid.w} min={3} max={8} onChange={(w) => update((d) => resizeGrid(d, w, d.grid.h), 'size')} testId="grid-w" compact />
-              <Stepper label="Höhe" value={draft.grid.h} min={3} max={8} onChange={(h) => update((d) => resizeGrid(d, d.grid.w, h), 'size')} testId="grid-h" compact />
+              <Stepper label="Breite" value={draft.grid.w} min={GRID_MIN} max={GRID_MAX} onChange={(w) => update((d) => resizeGrid(d, w, d.grid.h), 'size')} testId="grid-w" compact />
+              <Stepper label="Höhe" value={draft.grid.h} min={GRID_MIN} max={GRID_MAX} onChange={(h) => update((d) => resizeGrid(d, d.grid.w, h), 'size')} testId="grid-h" compact />
               <span className="ed-stat">
                 <b>{openCellCount(draft)}</b> Zellen · <b>{voids}</b> Risse · <b>{draft.fences.length}</b> Wände
               </span>
