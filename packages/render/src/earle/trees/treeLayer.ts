@@ -176,7 +176,8 @@ export const TREE_FORMS: Record<Exclude<TreeKind, 'bare'>, KindForm> = {
 
 /**
  * Punktarten (Bruchteil der Zeile · 8): Krone, Juwelenkrone, Kiefernschnee, Randfunkeln, Spitze, Sternnadel, Bogen
- * (gepunktete Oberkante einer Teilkuppel). Das halbe Achtel darüber trägt, ob der Punkt Schlagschatten annimmt.
+ * (gepunktete Oberkante einer Teilkuppel). Ein Viertel-Achtel darüber trägt, ob der Punkt Schlagschatten annimmt —
+ * gerundet (`Math.round(fract · 8)`, wie der Blender-Export liest) bleibt es die Art.
  */
 export const DOT_KIND = { crown: 0, jewel: 1, pine: 2, rim: 3, lace: 4, star: 5, scallop: 6 } as const;
 
@@ -556,10 +557,10 @@ export class TreeLayer {
       const dd = attribute('dotData', 'vec4'); // Größe, Rang, Zufall, Slot
       const rowKind = attribute('dotRow', 'float');
       const row = floor(rowKind.add(0.01));
-      // Art im Achtel, darüber ein halbes Achtel: nimmt Schlagschatten an
+      // Art im Achtel, darüber ein Viertel-Achtel: nimmt Schlagschatten an (Rundung liefert weiter die Art)
       const kf = fract(rowKind).mul(8.0);
       const kind = floor(kf.add(0.1));
-      const castBit = step(0.25, kf.sub(kind));
+      const castBit = step(0.125, kf.sub(kind));
       const hullAttr = attribute('dotHull', 'vec4');
       const toCam = shared.camLocal.sub(hullAttr.xyz);
       const nearDots = smoothstep(shared.nearClear, shared.nearClear.add(1.6), toCam.length().sub(hullAttr.w.mul(1.2))).mul(shared.footFade(base));
@@ -1001,7 +1002,7 @@ export class TreeLayer {
         base.push(t.position[0], t.position[1], t.position[2]);
         nrm.push(nx, ny, nz);
         data.push(size, t.rank, rand(), slot);
-        row.push(dotRow + (kind + (cast > 0.5 ? 0.5 : 0)) * 0.125);
+        row.push(dotRow + (kind + (cast > 0.5 ? 0.25 : 0)) * 0.125);
         hull.push(hx, hy, hz, fadeR);
       };
       /** Zeile eines Kronenpunkts nach seiner Höhe in der Krone (Probe im Objektraum, −1 unten … 1 oben). */
