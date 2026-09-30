@@ -140,7 +140,8 @@ test('/lab/shadow Schatten v3 auf WebGPU: Diagnose, Feld, Testpunkte und Presets
   test.setTimeout(180_000);
   const browser = await playwright.chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });
   try {
-    const page = await browser.newPage({ ...(baseURL ? { baseURL } : {}), viewport: { width: 393, height: 852 } });
+    // Desktop: the lab's controls are a side panel there (on phones they sit in the collapsed bottom sheet).
+    const page = await browser.newPage({ ...(baseURL ? { baseURL } : {}), viewport: { width: 1100, height: 800 } });
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(String(e)));
     page.on('console', (m) => {

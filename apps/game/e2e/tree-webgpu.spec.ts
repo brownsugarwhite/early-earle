@@ -34,7 +34,8 @@ async function requireWebGPU(page: Page): Promise<void> {
 
 test('Riesenbaum auf WebGPU: alle Teile, beide Rinden, Mobil und die Schiene kompilieren', async ({ page }) => {
   const errors = collectGpuErrors(page);
-  await page.setViewportSize({ width: 393, height: 852 });
+  // Desktop: the lab's controls are a side panel there (on phones they sit in the collapsed bottom sheet).
+  await page.setViewportSize({ width: 1100, height: 800 });
   await page.goto('/lab/tree?view=path&t=0.3');
   await requireWebGPU(page);
   await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgpu', { timeout: 30_000 });
