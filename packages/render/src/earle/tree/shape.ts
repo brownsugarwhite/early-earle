@@ -97,15 +97,15 @@ export interface PathPlan {
 
 export interface TreeShapeOptions {
   seed?: number;
-  /** Height of the fork (Standard 13). */
+  /** Height of the fork (Standard 14; the crown top lies at H + 1.25·R ≈ 33). */
   trunkHeight?: number;
-  /** Crown radius (the canopy reaches ≈ 0.95·R, the lace ≈ 1.3·R; Standard 13). */
+  /** Crown radius (the dome pile reaches ≈ R, fountain arms and lace ≈ 1.5·R; Standard 15). */
   crownRadius?: number;
-  /** Support limbs carrying the canopy rim (Standard 6; each grows a fountain arm). */
+  /** Support limbs from the fork carrying the canopy rim (Standard 6). */
   limbs?: number;
   /** Kept for compatibility (the canopy is a dome pile, not an L-system). */
   levels?: number;
-  /** Target number of domes (Standard 56). */
+  /** Target number of fill domes on the envelope (Standard 56; path domes, floor and satellites come on top). */
   clusters?: number;
   /** Turns of the bark spiral (Standard 2). */
   pathTurns?: number;

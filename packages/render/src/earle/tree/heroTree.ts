@@ -357,7 +357,8 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
         const dist = Math.max(1e-3, _v.distanceTo(_c));
         const f = (crownTop * 0.55 * s * p5) / dist;
         const share = Math.min(1, Math.max(0, (f - 0.15) / 0.75));
-        if (Math.abs(share - detail) > 0.04) applyDetail(share);
+        // continuous: instances at the cut-off shrink smoothly (lodScale), nothing pops
+        if (Math.abs(share - detail) > 0.002) applyDetail(share);
       }
     },
     setCollapsePx: (px) => {

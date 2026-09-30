@@ -9,6 +9,7 @@ import {
   cos,
   cross,
   float,
+  instanceIndex,
   max,
   mix,
   modelWorldMatrix,
@@ -18,6 +19,7 @@ import {
   select,
   sin,
   smoothstep,
+  uniform,
   varying,
   vec4,
 } from 'three/tsl';
@@ -34,6 +36,24 @@ export interface BillboardUniforms {
   /** Crown growth 0..1 (instances appear by rank). */
   crown: TSLUniform;
   clock: TSLUniform;
+}
+
+/** Instances that fade out over this many slots at the LOD cut-off (they shrink to zero instead of popping). */
+export const LOD_FADE = 48;
+
+/**
+ * Smooth count-LOD: `count` (float uniform) instances are shown; the last `LOD_FADE` before the cut-off shrink
+ * continuously → changing the detail level never makes instances pop.
+ */
+export function lodScale(count: TSLUniform): FloatNode {
+  return clamp(count.sub(float(instanceIndex)).div(LOD_FADE), 0, 1) as unknown as FloatNode;
+}
+
+/** Sets the LOD count uniform and the drawn instance count (fading instances included). */
+export function applyLod(count: TSLUniform, geometry: { instanceCount: number }, total: number, share: number): void {
+  const c = Math.max(0, Math.min(1, share)) * (total + LOD_FADE);
+  count.value = c;
+  geometry.instanceCount = Math.max(0, Math.min(total, Math.ceil(c)));
 }
 
 /** Growth scale by rank: an instance grows in once the crown growth passes its rank (short, smooth). */
@@ -92,10 +112,11 @@ export function createLaceMesh(o: LaceMeshOptions): CountLodMesh {
   geometry.boundingSphere = null;
 
   const bb = o.bb;
+  const lodCount: TSLUniform = uniform(total + LOD_FADE);
   const A = attribute('twigA', 'vec3') as unknown as Vec3Node;
   const B = attribute('twigB', 'vec3') as unknown as Vec3Node;
   const D = attribute('twigData', 'vec4');
-  const s = popScale(D.z as unknown as FloatNode, bb.crown);
+  const s = popScale(D.z as unknown as FloatNode, bb.crown).mul(lodScale(lodCount));
   const along = positionGeometry.x;
   const warp = o.warp ?? ((p: Vec3Node) => p);
   const Aw = modelWorldMatrix.mul(vec4(warp(A), 1)).xyz;
@@ -129,9 +150,7 @@ export function createLaceMesh(o: LaceMeshOptions): CountLodMesh {
   return {
     mesh,
     count: total,
-    setShare: (share) => {
-      geometry.instanceCount = Math.max(0, Math.min(total, Math.round(total * share)));
-    },
+    setShare: (share) => applyLod(lodCount, geometry, total, share),
     dispose: () => {
       geometry.dispose();
       material.dispose();
@@ -196,10 +215,11 @@ export function createStarMesh(o: StarMeshOptions): CountLodMesh {
   geometry.boundingSphere = null;
 
   const bb = o.bb;
+  const lodCount: TSLUniform = uniform(total + LOD_FADE);
   const P = attribute('starPos', 'vec3') as unknown as Vec3Node;
   const N = attribute('starNormal', 'vec3') as unknown as Vec3Node;
   const D = attribute('starData', 'vec4');
-  const s = popScale(D.y as unknown as FloatNode, bb.crown);
+  const s = popScale(D.y as unknown as FloatNode, bb.crown).mul(lodScale(lodCount));
   const worldC = modelWorldMatrix.mul(vec4((o.warp ?? ((p: Vec3Node) => p))(P), 1)).xyz;
   const nW = modelWorldMatrix.mul(vec4(N, 0)).xyz.normalize();
   const ndl = nW.dot(bb.sunDirWorld);
@@ -235,9 +255,7 @@ export function createStarMesh(o: StarMeshOptions): CountLodMesh {
   return {
     mesh,
     count: total,
-    setShare: (share) => {
-      geometry.instanceCount = Math.max(0, Math.min(total, Math.round(total * share)));
-    },
+    setShare: (share) => applyLod(lodCount, geometry, total, share),
     dispose: () => {
       geometry.dispose();
       material.dispose();

@@ -37,7 +37,7 @@ import {
 import { hash32, mulberry32 } from '@ee/world';
 import { createHexagon } from '../vegetation';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from '../tsl';
-import { popScale, type BillboardUniforms } from './branches';
+import { LOD_FADE, applyLod, lodScale, popScale, type BillboardUniforms } from './branches';
 import { InkMaterial } from './inkMaterial';
 import { familyTone, type CanopyFamily } from './palette';
 import type { Dome } from './shape';
@@ -345,6 +345,7 @@ export function createCanopy(o: CanopyOptions): Canopy {
   dotGeo.setAttribute('dotData', new InstancedBufferAttribute(reorder(dotData, 4), 4));
   dotGeo.setAttribute('dotTone', new InstancedBufferAttribute(dotTone, 1).setUsage(DynamicDrawUsage));
   const dotTotal = dotOrder.length;
+  const dotLod: TSLUniform = uniform(dotTotal + LOD_FADE);
   dotGeo.instanceCount = dotTotal;
   dotGeo.boundingSphere = null;
 
@@ -356,7 +357,7 @@ export function createCanopy(o: CanopyOptions): Canopy {
     const nrm = attribute('dotNormal', 'vec3') as unknown as Vec3Node;
     const dd = attribute('dotData', 'vec4');
     const dtone = attribute('dotTone', 'float') as unknown as FloatNode;
-    const s = popScale(dd.y as unknown as FloatNode, bb.crown);
+    const s = popScale(dd.y as unknown as FloatNode, bb.crown).mul(lodScale(dotLod));
     const centre = hullC.add(rel.mul(s));
     const worldC = modelWorldMatrix.mul(vec4(warp(centre), 1)).xyz;
     const nW = modelWorldMatrix.mul(vec4(nrm, 0)).xyz.normalize();
@@ -419,9 +420,7 @@ export function createCanopy(o: CanopyOptions): Canopy {
     counts: { domes: domes.length, dots: dotTotal },
     setFamily,
     sortForCamera,
-    setDotShare: (share) => {
-      dotGeo.instanceCount = Math.max(0, Math.min(dotTotal, Math.round(dotTotal * share)));
-    },
+    setDotShare: (share) => applyLod(dotLod, dotGeo, dotTotal, share),
     dispose: () => {
       sphere.dispose();
       dotGeo.dispose();
