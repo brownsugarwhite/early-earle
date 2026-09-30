@@ -2,7 +2,7 @@ import { LightingModel, NodeMaterial } from 'three/webgpu';
 import type { Node, NodeBuilder } from 'three/webgpu';
 import { clamp, min, mix, normalView, normalize, smoothstep, uniform, vec3 } from 'three/tsl';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
-import { earleGradients, fountain, mixInk } from './gradients';
+import { earleGradients, fountain, mixInk, type FountainOptions } from './gradients';
 import type { ShadowTint } from '../shadow/shadowTint';
 
 export interface EarlePattern {
@@ -96,10 +96,10 @@ export interface EarleMaterialOptions {
   /** Platzbedarf der Verläufe (Pixel je Stufe: ganz hart, ganz weich), siehe `fountain`. */
   gradientRoomPx?: readonly [number, number];
   /**
-   * Talnebel 0..1 je Fragment (Ebene 20, Bild 03): nach der Luftperspektive zur hellsten Nebelstufe gemischt — dicht
+   * Talnebel 0..1 je Fragment (Ebene 20, Bild 03): nach der Luftperspektive zur Nebelfarbe `color` gemischt — dicht
    * am Talgrund, nach oben ausdünnend (eine liegende Nebelbank, hell an ihrem Fuß). Fehlt → kein Talnebel.
    */
-  mistNode?: FloatNode | null;
+  mist?: { amount: FloatNode; color: Vec3Node } | null;
 }
 
 /**
@@ -133,8 +133,8 @@ export class EarleMaterial extends NodeMaterial {
     soft: FloatNode;
     gradientNormal: Vec3Node | null;
     shadowTint: { tint: ShadowTint; world: FloatNode; up?: Vec3Node | null } | null;
-    mist: FloatNode | null;
-    room: readonly [number, number] | undefined;
+    mist: { amount: FloatNode; color: Vec3Node } | null;
+    ramp: FountainOptions;
   };
 
   constructor(options: EarleMaterialOptions) {
@@ -161,8 +161,8 @@ export class EarleMaterial extends NodeMaterial {
       soft: options.softNode ?? earleGradients.surface,
       gradientNormal: options.gradientNormalNode ?? null,
       shadowTint: options.shadowTint ?? null,
-      mist: options.mistNode ?? null,
-      room: options.gradientRoomPx,
+      mist: options.mist ?? null,
+      ramp: options.gradientRoomPx ? { roomPx: options.gradientRoomPx } : {},
     };
     if (options.normalNode) this.normalNode = options.normalNode;
     if (options.positionNode) this.positionNode = options.positionNode;
@@ -194,7 +194,8 @@ class EarleLightingModel extends LightingModel {
     const band = clamp(v, 0, 0.999).mul(e.bands.sub(1));
     const row = e.rowNode ?? e.row;
     // Lichtfläche als Irisdruck durch die Lichtstufen (Earle: Verlauf innerhalb der Form), Kante Licht/Tinte bleibt hart
-    let litColor = fountain(e.lookup, band, row, 1, e.soft, undefined, e.room).rgb as unknown as Vec3Node;
+    const rampColor = fountain(e.lookup, band, row, 1, e.soft, e.ramp).rgb as unknown as Vec3Node;
+    let litColor = rampColor;
     if (e.pattern) litColor = mix(litColor, e.pattern.color, e.pattern.mask);
     const ink = e.lookup.pal(0, row).rgb as unknown as Vec3Node;
     // Schattentönung je Welt: die Tintenform zur Tönung hin; Ornamente im Schatten wandern um denselben Betrag mit.
@@ -206,8 +207,9 @@ class EarleLightingModel extends LightingModel {
       const t = e.shadowTint.tint.node(e.shadowTint.world);
       inkT = mix(ink, t.color, t.amount) as unknown as Vec3Node;
       if (e.shadowTint.up) {
+        // zur Lichtfarbe am Ort hin (am Terminator ≈ erste Lichtstufe), ohne zusätzlichen Paletten-Lookup
         const facing = smoothstep(-0.25, 0.55, normalize(e.shadowTint.up).dot(L)).mul(t.lift).mul(e.soft);
-        inkT = mixInk(inkT, e.lookup.pal(1, row).rgb as unknown as Vec3Node, facing.mul(0.6));
+        inkT = mixInk(inkT, rampColor, facing.mul(0.6));
       }
     }
     const shift = inkT.sub(ink);
@@ -221,11 +223,11 @@ class EarleLightingModel extends LightingModel {
       if (layer.row) {
         const vL = layer.lift ? v.add(layer.lift) : v;
         const bandL = clamp(vL, 0, 0.999).mul(e.bands.sub(1));
-        lc = fountain(e.lookup, bandL, layer.row, 1, e.soft, undefined, e.room).rgb as unknown as Vec3Node;
+        lc = fountain(e.lookup, bandL, layer.row, 1, e.soft, e.ramp).rgb as unknown as Vec3Node;
         sc = layer.shadowColor ?? (e.lookup.pal(0, layer.row).rgb as unknown as Vec3Node);
         if (layer.shadowLift) {
           const facing = smoothstep(-0.25, 0.55, ndlG).mul(layer.shadowLift).mul(e.soft);
-          sc = mixInk(sc, e.lookup.pal(1, layer.row).rgb as unknown as Vec3Node, facing);
+          sc = mix(sc, e.lookup.pal(1, layer.row).rgb, facing) as unknown as Vec3Node;
         }
       } else {
         lc = layer.color ?? litColor;
@@ -251,10 +253,7 @@ class EarleLightingModel extends LightingModel {
     if (!context.outgoingLight) return;
     const out = context.outgoingLight as Vec3Node;
     const aired = steppedFog(out, e.fog, e.lookup, e.fogDistNode ?? undefined);
-    if (e.mist) {
-      // Talnebel in der hellsten Nebelstufe der Blick-Welt (mit der Überblendung der Nebelzeilen)
-      const mistColor = mix(e.lookup.pal(5, e.fog.row).rgb, e.lookup.pal(5, e.fog.rowB).rgb, e.fog.mix) as unknown as Vec3Node;
-      out.assign(mixInk(aired, mistColor, e.mist));
-    } else out.assign(aired);
+    if (e.mist) out.assign(mix(aired, e.mist.color, e.mist.amount));
+    else out.assign(aired);
   }
 }

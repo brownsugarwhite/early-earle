@@ -27,7 +27,7 @@ import {
 import { EarleMaterial } from './EarleMaterial';
 import { aaSaw, earleGradients } from './gradients';
 import type { ShadowTint } from '../shadow/shadowTint';
-import { PaletteAtlas, addWorldPalette, worldPaletteFromZone, type WorldPalette, type WorldRows, type ZonePalette } from './palette';
+import { PaletteAtlas, addWorldPalette, hexToRgb8, worldPaletteFromZone, type WorldPalette, type WorldRows, type ZonePalette } from './palette';
 import { GROWTH_SLOTS, PlanetVegetation, type VegetationPropEntry, type VegetationTreeEntry, type VegetationWorldRows } from './planetVegetation';
 import { PaletteLookup, aaStep, arrayElement, createFogSettings, patternTime, stripeMask, type FloatNode, type FogSettings, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from './tsl';
 import { createWaterMaterial } from './water/waterSurface';
@@ -178,6 +178,8 @@ export class EarlePlanet {
   readonly mistStrength = uniform(0);
   /** Leuchtender Horizont der Blick-Welt (0..1, mit der Überblendung), für `createSkyDome({ glow })`. */
   readonly skyGlow = uniform(0);
+  /** Farbe des Talnebels (hellste Nebelstufe der Blick-Welt, mit der Überblendung; linear). */
+  private readonly mistColor = uniform(new Vector3(1, 1, 1));
   /** Krümmungs-Boost (0 = echte Kugel) und Blickrichtung im Planetenraum für den Warp. */
   readonly curvature = uniform(0);
   readonly lookDirLocal = uniform(new Vector3(0, 1, 0));
@@ -308,6 +310,7 @@ export class EarlePlanet {
     this.stripeStrength.value = first.fogStripes;
     this.mistStrength.value = first.valleyMist ?? 0;
     this.skyGlow.value = first.skyGlow ?? 0;
+    this.setMistColor(0, 0, 0);
     this.crackClosed = options.zones.map(() => false);
     this.crackWidths = options.zones.slice(0, -1).map(() => uniform(this.crackWidth));
     this.angularRadius = chunkAngularRadius(options.chunksPerFace);
@@ -483,7 +486,7 @@ export class EarlePlanet {
       lift: heightAttr.mul(0.5).add(contour.mul(chisel)),
       gradientNormalNode: gradientNormal,
       shadowTint: tint ? { tint, world: worldIndex, up: sphereN } : null,
-      mistNode: mist,
+      mist: { amount: mist, color: this.mistColor as unknown as Vec3Node },
       crackNode: crack,
       crackLipNode: lip,
       growthNode,
@@ -753,6 +756,22 @@ export class EarlePlanet {
     this.veilWorldB.value = this.viewWorldB;
   }
 
+  /** Talnebel-Farbe: hellste Nebelstufe der Welten A/B, gemischt (linear, wie die Paletten-Textur sie liefert). */
+  private setMistColor(a: number, b: number, t: number): void {
+    const lin = (w: number): [number, number, number] => {
+      const fog = this.worlds[w]?.palette.fog ?? ['#ffffff'];
+      const [r, g, bl] = hexToRgb8(fog[Math.min(5, fog.length - 1)] ?? '#ffffff');
+      const f = (c: number) => {
+        const x = c / 255;
+        return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+      };
+      return [f(r), f(g), f(bl)];
+    };
+    const ca = lin(a);
+    const cb = lin(b);
+    this.mistColor.value.set(ca[0] + (cb[0] - ca[0]) * t, ca[1] + (cb[1] - ca[1]) * t, ca[2] + (cb[2] - ca[2]) * t);
+  }
+
   /** Fremdheit 0..1 der Welt `worldIndex` gegenüber der Blick-Welt (mit der Überblendung weich) (TSL). */
   private foreignNode(worldIndex: FloatNode): FloatNode {
     const foreignA = step(0.5, abs(worldIndex.sub(this.veilWorldA)));
@@ -778,6 +797,7 @@ export class EarlePlanet {
       this.stripeStrength.value = wa.fogStripes + (wb.fogStripes - wa.fogStripes) * t;
       this.mistStrength.value = (wa.valleyMist ?? 0) + ((wb.valleyMist ?? 0) - (wa.valleyMist ?? 0)) * t;
       this.skyGlow.value = (wa.skyGlow ?? 0) + ((wb.skyGlow ?? 0) - (wa.skyGlow ?? 0)) * t;
+      this.setMistColor(this.viewWorldA, this.viewWorldB, t);
       this.fogStart = wa.fog.start + (wb.fog.start - wa.fog.start) * t;
       this.fogRange = wa.fog.range + (wb.fog.range - wa.fog.range) * t;
       this.applyFog();

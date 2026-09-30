@@ -101,7 +101,8 @@ export function steppedFog(color: Vec3Node, fog: FogSettings, lookup: PaletteLoo
   // die näheren Stufen laufen zur jeweils nächsten
   const soft = earleGradients.air.mul(FOG_SOFTNESS);
   const top = fog.steps.sub(2);
-  const f = mix(fountain(lookup, x, fog.row, 0, soft, top, AIR_ROOM_PX), fountain(lookup, x, fog.rowB, 0, soft, top, AIR_ROOM_PX), fog.mix);
+  const air = { maxX: top, roomPx: AIR_ROOM_PX, linear: true };
+  const f = mix(fountain(lookup, x, fog.row, 0, soft, air), fountain(lookup, x, fog.rowB, 0, soft, air), fog.mix);
   return mix(color, f.rgb, f.a);
 }
 

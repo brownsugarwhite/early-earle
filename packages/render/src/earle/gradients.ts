@@ -59,6 +59,16 @@ export function mixInk(a: Vec3Node, b: Vec3Node, t: FloatNode | number): Vec3Nod
 export const GRADIENT_ROOM_PX: readonly [number, number] = [10, 32];
 export const AIR_ROOM_PX: readonly [number, number] = [24, 90];
 
+/** Optionen der Irisdruck-Rampe. */
+export interface FountainOptions {
+  /** Höchster Stufenwert (Standard offen). */
+  maxX?: FloatNode | number;
+  /** Platzbedarf in Pixeln je Stufe: [ganz hart, ganz weich] (Standard `GRADIENT_ROOM_PX`). */
+  roomPx?: readonly [number, number];
+  /** Linear mischen statt wie Druckfarbe (billiger; für Luft/Nebel, deren Stufen nah beieinander liegen). */
+  linear?: boolean;
+}
+
 /**
  * Irisdruck-Rampe durch eine Palettenzeile: `x` ist der kontinuierliche Stufenwert (0 … n−1), gelesen ab Stufe
  * `base`. `soft` 0 = harte Siebdruckstufe (exakte Palettenfarbe, 1-px-Übergang — wie das alte `bands`), 1 = weicher
@@ -72,24 +82,16 @@ export const AIR_ROOM_PX: readonly [number, number] = [24, 90];
  *   sonst sähe der zusammengedrückte Verlauf wie Unschärfe aus. So bleibt die Ferne grafisch klar, die großen Flächen
  *   werden weich.
  *
- * Zwei Nearest-Lookups wie bisher; Alpha (Nebelanteil) wird linear gemischt. `maxX`: höchster Stufenwert (offen),
- * `roomPx`: Platzbedarf (Pixel je Stufe: ganz hart, ganz weich).
+ * Zwei Nearest-Lookups wie bisher; Alpha (Nebelanteil) wird linear gemischt.
  */
-export function fountain(
-  lookup: PaletteLookup,
-  x: FloatNode,
-  row: FloatNode | number,
-  base: number,
-  soft: FloatNode | number,
-  maxX?: FloatNode | number,
-  roomPx: readonly [number, number] = GRADIENT_ROOM_PX,
-): Vec4Node {
+export function fountain(lookup: PaletteLookup, x: FloatNode, row: FloatNode | number, base: number, soft: FloatNode | number, options: FountainOptions = {}): Vec4Node {
+  const roomPx = options.roomPx ?? GRADIENT_ROOM_PX;
   const fw = fwidth(x);
   const room = smoothstep(float(1 / roomPx[0]), float(1 / roomPx[1]), fw);
   const s = asNode(soft).mul(room);
   // um eine halbe Stufe verschoben: Bandmitte = Palettenfarbe; die harte Stufe springt bei t = ½ (= alte Bandgrenze)
   let xe = x.sub(0.5).max(0);
-  if (maxX !== undefined) xe = xe.min(asNode(maxX));
+  if (options.maxX !== undefined) xe = xe.min(asNode(options.maxX));
   const i = floor(xe);
   const t = xe.sub(i);
   // fwidth kann 0 sein (x konstant, z. B. geclampt) → smoothstep(a, a, …) wäre undefiniert
@@ -98,7 +100,8 @@ export function fountain(
   const k = mix(edge, t, s);
   const a = lookup.pal(i.add(base), row);
   const b = lookup.pal(i.add(base + 1), row);
-  return vec4(mixInk(a.rgb as unknown as Vec3Node, b.rgb as unknown as Vec3Node, k), mix(a.a, b.a, k)) as unknown as Vec4Node;
+  const rgb = options.linear ? mix(a.rgb, b.rgb, k) : mixInk(a.rgb as unknown as Vec3Node, b.rgb as unknown as Vec3Node, k);
+  return vec4(rgb, mix(a.a, b.a, k)) as unknown as Vec4Node;
 }
 
 /**
@@ -126,17 +129,16 @@ export function ramp01(x: FloatNode, a: FloatNode | number, b: FloatNode | numbe
 }
 
 /**
- * Farbton-Drehung um die Grauachse (Rodrigues, im √-Raum): `angle` in Bogenmaß, positiv = Rot → Gelb → Grün.
- * Juwelenkuppeln (Bild 02) drehen zur Unterseite hin negativ: Rot → Magenta → Violett → Blau → Türkis.
+ * Farbton-Drehung um die Grauachse (Rodrigues): `angle` in Bogenmaß, positiv = Rot → Gelb → Grün. Juwelenkuppeln
+ * (Bild 02) drehen zur Unterseite hin negativ: Rot → Magenta → Violett → Blau → Türkis. Direkt im Linearraum (billig;
+ * Helligkeit bleibt, die Sättigung ändert sich leicht).
  */
 export function hueTurn(c: Vec3Node, angle: FloatNode): Vec3Node {
-  const s = sqrt(c.max(0));
   const k = vec3(0.57735027, 0.57735027, 0.57735027);
   const cs = angle.cos();
   const sn = angle.sin();
-  const r = s.mul(cs).add(cross(k, s).mul(sn)).add(k.mul(dot(k, s)).mul(float(1).sub(cs)));
-  const q = max(r, vec3(0, 0, 0));
-  return q.mul(q) as unknown as Vec3Node;
+  const r = c.mul(cs).add(cross(k, c).mul(sn)).add(k.mul(dot(k, c)).mul(float(1).sub(cs)));
+  return max(r, vec3(0, 0, 0)) as unknown as Vec3Node;
 }
 
 /**

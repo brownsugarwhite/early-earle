@@ -208,8 +208,8 @@ export function createCanopy(o: CanopyOptions): Canopy {
       const lighter = min(floor(band).add(2), float(3));
       const dotIdx = select(pick.lessThan(0.62), lighter, select(pick.lessThan(0.88), float(5), select(pick.lessThan(0.96), float(6), float(7))));
       const dotStep = mix(lookup.pal(dotIdx, rowA).rgb, lookup.pal(dotIdx, rowB).rgb, fr) as unknown as Vec3Node;
-      const brightest = mixInk(lookup.pal(3, rowA).rgb as unknown as Vec3Node, lookup.pal(3, rowB).rgb as unknown as Vec3Node, fr);
-      const dotSoft = mixInk(litCol, brightest, 0.6);
+      // one band lighter ≈ the gradient colour under the dot, brightened in linear light (hue kept, no extra lookups)
+      const dotSoft = min(litCol.mul(1.7), vec3(1, 1, 1)) as unknown as Vec3Node;
       const dotCol = mix(dotStep, dotSoft, select(pick.lessThan(0.62), soft, float(0))) as unknown as Vec3Node;
       col = mix(col, dotCol, dotMask);
       // at distance the stipple becomes a lighter tint of the lit side (same average, no shimmer)

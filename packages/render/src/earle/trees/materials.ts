@@ -128,7 +128,7 @@ class CrownLightingModel extends LightingModel {
     const up = float(1).add(step(0.8, st.key.mul(0.5).add(grow.mul(0.55))));
     const dotStep = o.lookup.pal(clamp(bandIdx.add(up), 2, 5), row).rgb as unknown as Vec3Node;
     // Mit Verlauf folgen die Punktfarben dem Verlauf darunter (keine Farbsprünge der Punkte an den alten Bandkanten)
-    const dotRamp = fountain(o.lookup, bandG.add(up).max(1.5), row, 1, soft, 4).rgb as unknown as Vec3Node;
+    const dotRamp = fountain(o.lookup, bandG.add(up).max(1.5), row, 1, soft, { maxX: 4 }).rgb as unknown as Vec3Node;
     const dotColor = mix(dotStep, dotRamp, soft) as unknown as Vec3Node;
     litColor = mix(litColor, dotColor, st.mask);
     // Juwelen (Terminator < 0): Farbton dreht zur Unterseite (rot → violett → blau, Bild 02)

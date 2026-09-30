@@ -67,7 +67,10 @@ export function createSkyDome(options: SkyDomeOptions): Mesh {
   material.colorNode = mix(withRing, lookup.pal(options.sunIndex, rowForSun).rgb, disc);
   const mesh = new Mesh(geometry, material);
   mesh.name = 'sky';
-  mesh.renderOrder = -10;
+  // Nach allen deckenden Objekten (die Kuppel schreibt keine Tiefe, steht aber hinter allem): der Tiefentest verwirft
+  // jeden verdeckten Himmelspixel vor dem Shader — nur sichtbarer Himmel kostet (Verlauf, Schein, Rauschen). Die
+  // transparenten Nebelstreifen und Schleier folgen ohnehin danach.
+  mesh.renderOrder = 100;
   mesh.frustumCulled = false;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
