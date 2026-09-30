@@ -1,5 +1,6 @@
-import { Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial } from 'three/webgpu';
+import { Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial, Vector3 } from 'three/webgpu';
 import {
+  atan,
   attribute,
   cameraProjectionMatrix,
   cameraViewMatrix,
@@ -29,6 +30,8 @@ export const PHI = (1 + Math.sqrt(5)) / 2;
 /** Periode einer Drehung um den goldenen Winkel (s) und der Atmung (s). */
 export const SPIN_PERIOD = 21;
 export const BREATH_PERIOD = 9;
+/** Period (s) of the bloom wave that travels once around the crown. */
+export const WAVE_PERIOD = 34;
 
 export interface BlossomSeed {
   /** Position relativ zum Hüllzentrum (Baumkoordinaten). */
@@ -56,6 +59,10 @@ export interface BlossomMeshOptions {
   bb: BillboardUniforms;
   /** Blütezeit 0 (Knospen) .. 1 (volle Blüte). */
   bloom: TSLUniform;
+  /** Kronenmitte: eine langsame Blühwelle läuft um sie herum (Standard: keine Welle). */
+  centre?: Vector3;
+  /** Positions-Warp im Baumraum (Krümmung des Planeten). */
+  warp?: (p: Vec3Node) => Vec3Node;
 }
 
 /** Blütengeometrie: 8 Blätter à 6 Vertices (Fächer) plus Sechseck-Mitte; `petal` = Blattindex, 8 = Mitte. */
@@ -97,6 +104,10 @@ export function createBlossomGeometry(): { position: Float32BufferAttribute; pet
  * - **Drehung um den goldenen Winkel** je 21 s, Tempo je Blüte über φ verstimmt.
  * - **Lissajous-Schwingen** der Mitte mit Frequenzverhältnis 1 : φ (quasiperiodisch, nie synchron).
  * - **Atmen** der Größe mit Phasen `fract(i·φ)` → die ganze Krone liest sich als ein ruhiger Loop ohne Schwebung.
+ * - **Blühwelle**: einmal je 34 s wandert eine Welle um die Krone, die Blüten öffnen sich in ihr ganz und schließen
+ *   sich dahinter halb (Phase = Winkel um die Kronenmitte + Höhe) — ein Loop, der die ganze Krone verbindet.
+ * - **Licht**: Größe folgt stetig der Sonnenseite und schrumpft im Schatten auf 0 (kein Aufpoppen), ebenso unter
+ *   der Pixelschwelle.
  */
 export function createBlossomMesh(o: BlossomMeshOptions): { mesh: Mesh; count: number; dispose(): void } {
   const n = Math.max(1, o.seeds.length);
@@ -143,17 +154,23 @@ export function createBlossomMesh(o: BlossomMeshOptions): { mesh: Mesh; count: n
 
   const s = popScale(D.y, bb.crown);
   const centre = Hc.add(R.mul(s));
-  const worldC = modelWorldMatrix.mul(vec4(centre, 1)).xyz;
+  const worldC = modelWorldMatrix.mul(vec4((o.warp ?? ((p: Vec3Node) => p))(centre), 1)).xyz;
   const nW = modelWorldMatrix.mul(vec4(N, 0)).xyz.normalize();
   const ndl = nW.dot(bb.sunDirWorld);
   const viewC = cameraViewMatrix.mul(vec4(worldC, 1));
   const depth = viewC.z.negate().max(0.05);
   const pxPerUnit = bb.projScaleY.mul(screenSize.y).mul(0.5).div(depth);
-  const px = size.mul(s).mul(pxPerUnit);
-  const visible = step(bb.collapsePx.mul(1.8), px);
+  const light = smoothstep(-0.45, 0.15, ndl);
+  const px = size.mul(s).mul(pxPerUnit).mul(light);
+  const visible = smoothstep(bb.collapsePx.mul(1.2), bb.collapsePx.mul(2.6), px).mul(light);
 
-  // Blütezeit je Blüte (Hash verschiebt den Einsatz), weich
-  const b = smoothstep(0, 1, clamp(o.bloom.sub(h.mul(0.35)).div(0.65), 0, 1));
+  // Blütezeit je Blüte (Hash verschiebt den Einsatz), weich; die Blühwelle läuft um die Kronenmitte
+  const c0 = o.centre ?? new Vector3();
+  const waveOn = o.centre ? 1 : 0;
+  const ang = atan(Hc.z.sub(c0.z), Hc.x.sub(c0.x)).add(Hc.y.mul(0.08));
+  const wave = sin(t.mul((Math.PI * 2) / WAVE_PERIOD).sub(ang)).mul(0.5).add(0.5);
+  const waveGain = float(1 - 0.28 * waveOn).add(wave.mul(0.28 * waveOn));
+  const b = smoothstep(0, 1, clamp(o.bloom.mul(waveGain).sub(h.mul(0.35)).div(0.65), 0, 1));
   const breath = sin(t.mul((Math.PI * 2) / BREATH_PERIOD).add(fract(h.mul(PHI)).mul(Math.PI * 2))).mul(0.07).add(1);
   const spin = t.mul(GOLDEN_ANGLE / SPIN_PERIOD).mul(fract(h.mul(PHI * PHI)).mul(0.3).add(1)).add(h.mul(Math.PI * 2));
   const i = petal;

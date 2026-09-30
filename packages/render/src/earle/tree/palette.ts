@@ -1,79 +1,105 @@
 import type { PaletteAtlas } from '../palette';
 
 /**
- * Paletten des Riesenbaums (aus den Referenzen: Ebene 21/35 Stamm, Ebene 3/10 Kronen, Ebene 11/24 Sterne).
- * Alle Farben liegen als Zeilen im gemeinsamen Nearest-Filter-Atlas; die Shader schlagen nur nach.
+ * Palettes of the giant tree (references: image 01/04 ink bark, white lines and snow; image 02 jewel domes and
+ * stained-glass streaks; image 04/24 golden needle stars). All colours are rows of a nearest-filter atlas; the
+ * shaders only look them up.
  */
-export type SolidFamily = 'purple' | 'blue' | 'red';
-/** `jewel` = jede Kuppel zieht eine der drei Familien (Juwelenwald, Ebene 3). */
-export type CanopyFamily = SolidFamily | 'jewel';
-export const SOLID_FAMILIES: SolidFamily[] = ['purple', 'blue', 'red'];
-export const CANOPY_FAMILIES: CanopyFamily[] = ['purple', 'blue', 'red', 'jewel'];
 
-export interface FamilyPalette {
-  ink: string;
-  /** Zwei Lichtbänder (dunkel → hell). */
-  bands: [string, string];
-  /** Punkte: Schattenseite, Lichtseite, hellste Stufe. */
-  dots: [string, string, string];
-  /** Innenmotive (Rauten, Kreuze, Blüten): vier Töne. */
-  motifs: [string, string, string, string];
+/**
+ * Canopy colour mode (lab selector, URL `family=`): `jewel` spans the whole gradient teal → blue → violet →
+ * magenta → red from the rim to the top (image 02); `blue` the cool half, `red` the warm half, `purple` the middle.
+ */
+export type CanopyFamily = 'purple' | 'blue' | 'red' | 'jewel';
+export const CANOPY_FAMILIES: CanopyFamily[] = ['jewel', 'purple', 'blue', 'red'];
+/** Kept for compatibility: the three solid modes. */
+export type SolidFamily = 'purple' | 'blue' | 'red';
+export const SOLID_FAMILIES: SolidFamily[] = ['purple', 'blue', 'red'];
+
+/** Remap of the dome tone (0 rim … 1 top) per colour mode → continuous family index 0..4. */
+export function familyTone(mode: CanopyFamily, tone: number): number {
+  const t = Math.min(1, Math.max(0, tone));
+  if (mode === 'blue') return 0.15 + t * 1.9;
+  if (mode === 'red') return 2.2 + t * 1.8;
+  if (mode === 'purple') return 1.5 + t * 1.45;
+  return 0.1 + t * 3.85;
 }
 
-export const FAMILY_PALETTES: Record<SolidFamily, FamilyPalette> = {
-  purple: { ink: '#120a26', bands: ['#26154f', '#40267c'], dots: ['#4a3a9a', '#8f86e0', '#dcd8ff'], motifs: ['#e5f3e3', '#d86070', '#93ced7', '#f0e8d0'] },
-  blue: { ink: '#07122b', bands: ['#0f2a62', '#1a4396'], dots: ['#1c5fa8', '#4f9fd8', '#cfe9f5'], motifs: ['#e5f3e3', '#c0485a', '#93ced7', '#f0e8d0'] },
-  red: { ink: '#2a0812', bands: ['#5e1424', '#932033'], dots: ['#9e2a3a', '#d8606a', '#f5d0c8'], motifs: ['#f0e8d0', '#93ced7', '#e5f3e3', '#e9c36a'] },
-};
+export interface DomeFamily {
+  name: string;
+  /** ink, three light bands (dark → light), dot in shade, dot lit, dot bright (rim sparkle), accent dot. */
+  steps: [string, string, string, string, string, string, string, string];
+}
 
-/**
- * Stamm (Ebene 21, per k-Means aus dem Bild): Tinte fast schwarz-blau, drei Blaustufen, weißblauer Strich,
- * Lichtkante (Cyan-Weiß) und das seltene Flechtenrot.
- */
-export const BARK_PALETTE = ['#06091a', '#114a86', '#1485c2', '#4db0e0', '#dbf0ff', '#e8fbff', '#a8403a'];
-/** Index der Lichtkante bzw. des seltenen Flechtenrots in der Rindenzeile. */
+/** Dome families in gradient order (index 0..4), image 02. */
+export const DOME_FAMILIES: DomeFamily[] = [
+  { name: 'teal', steps: ['#031a1d', '#0a4b52', '#13807f', '#2fb3a4', '#0f5e66', '#58d9c6', '#c2f7e8', '#ec5b86'] },
+  { name: 'blue', steps: ['#060f38', '#122a8c', '#2149c6', '#3f76e8', '#1d3aa2', '#78a6ff', '#cfe0ff', '#f2d64e'] },
+  { name: 'violet', steps: ['#13083a', '#341a82', '#5732ba', '#8060e2', '#3a2292', '#ad92f4', '#e6daff', '#55e3c6'] },
+  { name: 'magenta', steps: ['#29052f', '#661271', '#9e209b', '#cf4cc2', '#5a1068', '#ef8ee0', '#ffd6f4', '#7ee3ff'] },
+  { name: 'red', steps: ['#2c0508', '#7e0f19', '#bf1c24', '#ea4a30', '#8a1420', '#ff9270', '#ffd8c2', '#46aaff'] },
+];
+
+/** Tiny four-dot flowers on the domes (image 02): cream, pink, cyan, yellow, rose, mint, white, lilac. */
+export const MOTIF_PALETTE = ['#f4eedd', '#ff9ec8', '#9ff0f0', '#fff3a0', '#e0506a', '#b0ffb0', '#fdfdf6', '#c8b4ff'];
+
+/** Ink bark (image 01): ink, lit ink, line dim/mid/lit/bright, knot eye, spare. */
+export const BARK_PALETTE = ['#06070b', '#151b27', '#384152', '#9aa3b0', '#dedcd0', '#f7f2e2', '#020203', '#232a36'];
+/** Kept for compatibility (lab labels): index of the bright line and of the knot. */
 export const BARK_EDGE = 5;
 export const BARK_RED = 6;
-/**
- * Flechten (k-Means aus Ebene 21): Blau-Cyan-Weiß überwiegt (6/8), dazu Grün und Limette; Rot kommt selten über
- * `BARK_RED` hinzu.
- */
-export const LICHEN_PALETTE = ['#74c0ce', '#e5f3e3', '#3b9bd0', '#a8dce6', '#e5f3e3', '#74c0ce', '#1a8653', '#dbe958'];
-/** Blüten als Akzente in der Bildpalette (k-Means aus Ebene 3/21): Rot, Koralle, Minzweiß, Malve, Blasscyan, Limette. */
+/** Snow (image 01/04): deep blue, shadow blue, light shadow, cream lit, bright, warm, speck, crumb. */
+export const SNOW_PALETTE = ['#1c3764', '#3a67a4', '#6995cb', '#efe6cb', '#fbf7ea', '#f2e0b8', '#17243d', '#dfe8f0'];
+/** Stained-glass streaks of the jewel bark (image 02/21). */
+export const JEWEL_BARK_PALETTE = ['#1f47c9', '#3fa6e6', '#6a3fd0', '#1aa38a', '#d9382f', '#e8d24a', '#4fc35a', '#c65ad8'];
+/** Kept for compatibility: lichen tones (the jewel streak row doubles as lichen). */
+export const LICHEN_PALETTE = JEWEL_BARK_PALETTE;
+/** Blossoms as accents in the picture palette: red, coral, mint white, mauve, pale cyan, lime, pale green, rose. */
 export const BLOSSOM_PALETTE = ['#bb2023', '#da603e', '#e5f3e3', '#965d6e', '#93ced7', '#e9f15e', '#d5e9dc', '#c0485a'];
 export const BLOSSOM_CENTER_PALETTE = ['#e9f15e', '#e5f3e3', '#bb2023', '#e5f3e3', '#bb2023', '#bb2023', '#bb2023', '#e9f15e'];
-/** Sternnadeln in dunkler Bronze (Ebene 11: Schatten → Licht). */
-export const STAR_PALETTE = ['#2a1e0c', '#4f3b1a', '#77592a', '#9c7a3e'];
+/** Golden needle stars (image 04): navy in the shade → bronze → gold → pale gold. */
+export const STAR_PALETTE = ['#141d33', '#3a3122', '#7a5b28', '#b68a3c', '#e2bb62', '#f6dc9a'];
+/** Twig lace: ink navy (shade) → lit navy. */
+export const LACE_PALETTE = ['#070a13', '#101729', '#1d2944', '#2f4166'];
 
 export interface TreePaletteRows {
   bark: number;
-  lichen: number;
-  canopy: Record<SolidFamily, number>;
-  motif: Record<SolidFamily, number>;
+  snow: number;
+  jewel: number;
+  /** First of five consecutive dome family rows (teal, blue, violet, magenta, red). */
+  domes: number;
+  motif: number;
   blossom: number;
   blossomCenter: number;
   star: number;
-  /** Nebelzeile ohne Wirkung (Alpha 0) für Bäume ohne Weltnebel. */
+  lace: number;
+  /** Fog row without effect (alpha 0) for trees without world fog. */
   nofog: number;
+  /** Compatibility: family → row (violet/blue/red). */
+  canopy: Record<SolidFamily, number>;
+  lichen: number;
 }
 
-/** Schreibt alle Baumzeilen in den Atlas (idempotent über den Namen). */
+/** Rows the tree needs (for capacity checks on a shared atlas). */
+export const TREE_PALETTE_ROWS = 14;
+
+/** Writes all tree rows into the atlas (idempotent by name). The dome rows are consecutive. */
 export function addTreePalette(atlas: PaletteAtlas, prefix = 'tree'): TreePaletteRows {
-  const canopy = {} as Record<SolidFamily, number>;
-  const motif = {} as Record<SolidFamily, number>;
-  for (const f of SOLID_FAMILIES) {
-    const p = FAMILY_PALETTES[f];
-    canopy[f] = atlas.addRow({ name: `${prefix}/canopy-${f}`, steps: [p.ink, ...p.bands, ...p.dots] });
-    motif[f] = atlas.addRow({ name: `${prefix}/motif-${f}`, steps: [...p.motifs] });
-  }
+  const domeRows = DOME_FAMILIES.map((f) => atlas.addRow({ name: `${prefix}/dome-${f.name}`, steps: [...f.steps] }));
+  for (let i = 1; i < domeRows.length; i++) if (domeRows[i] !== domeRows[0]! + i) throw new Error('tree dome rows must be consecutive');
+  const jewel = atlas.addRow({ name: `${prefix}/jewel`, steps: JEWEL_BARK_PALETTE });
   return {
     bark: atlas.addRow({ name: `${prefix}/bark`, steps: BARK_PALETTE }),
-    lichen: atlas.addRow({ name: `${prefix}/lichen`, steps: LICHEN_PALETTE }),
-    canopy,
-    motif,
+    snow: atlas.addRow({ name: `${prefix}/snow`, steps: SNOW_PALETTE }),
+    jewel,
+    domes: domeRows[0]!,
+    motif: atlas.addRow({ name: `${prefix}/motif`, steps: MOTIF_PALETTE }),
     blossom: atlas.addRow({ name: `${prefix}/blossom`, steps: BLOSSOM_PALETTE }),
     blossomCenter: atlas.addRow({ name: `${prefix}/blossom-center`, steps: BLOSSOM_CENTER_PALETTE }),
     star: atlas.addRow({ name: `${prefix}/star`, steps: STAR_PALETTE }),
+    lace: atlas.addRow({ name: `${prefix}/lace`, steps: LACE_PALETTE }),
     nofog: atlas.addRow({ name: `${prefix}/nofog`, steps: ['#000000', '#000000'], alphas: [0, 0] }),
+    canopy: { blue: domeRows[1]!, purple: domeRows[2]!, red: domeRows[4]! },
+    lichen: jewel,
   };
 }

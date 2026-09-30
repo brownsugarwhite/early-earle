@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
-import { DEFAULT_TREE_PARAMS, TreeLabScene, type TreeLabParams, type TreeLabStats, type TreeView } from '../lab/tree/TreeLabScene';
+import { DEFAULT_TREE_PARAMS, TreeLabScene, type TreeLabParams, type TreeLabStats, type TreeStage, type TreeView } from '../lab/tree/TreeLabScene';
 import type { QualityLevel } from '../lab/earle/quality';
-import type { CanopyFamily } from '@ee/render/earle/tree/index.ts';
+import type { BarkStyle, CanopyFamily } from '@ee/render/earle/tree/index.ts';
 import '../lab/earle/earle-lab.css';
 import '../lab/tree/tree-lab.css';
 
@@ -27,7 +27,36 @@ function Toggle({ label, value, onChange, testId }: { label: string; value: bool
   );
 }
 
-const FAMILY_LABEL: Record<CanopyFamily, string> = { purple: 'Violett', blue: 'Blau', red: 'Rot', jewel: 'Juwelen' };
+function Select<T extends string>({ label, value, options, onChange, testId }: { label: string; value: T; options: Array<[T, string]>; onChange: (v: T) => void; testId: string }) {
+  return (
+    <label className="earle-ctl earle-ctl--select">
+      <span>{label}</span>
+      <output>{options.find(([v]) => v === value)?.[1] ?? value}</output>
+      <select value={value} onChange={(e) => onChange(e.target.value as T)} data-testid={testId}>
+        {options.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+const FAMILY_OPTIONS: Array<[CanopyFamily, string]> = [
+  ['jewel', 'Juwelen'],
+  ['purple', 'Violett'],
+  ['blue', 'Blau'],
+  ['red', 'Rot'],
+];
+const BARK_OPTIONS: Array<[BarkStyle, string]> = [
+  ['ink', 'Tinte + Linien'],
+  ['jewel', 'Juwelen-Streifen'],
+];
+const STAGE_OPTIONS: Array<[TreeStage, string]> = [
+  ['schnee', 'Schnee'],
+  ['huegel', 'Hügel'],
+];
 const VIEW_LABEL: Array<[TreeView, string]> = [
   ['far', 'Weit'],
   ['default', 'Ganz'],
@@ -45,8 +74,10 @@ function sameParams(a: TreeLabParams, b: TreeLabParams): boolean {
 }
 
 /**
- * P2d Baum-Lab `/lab/tree`: Riesenbaum mit Stamm, Ästen, Sternnadeln, Kuppelkrone, Blüten und Kronenpfad.
- * URL: `?view=trunk|canopy|blossoms|path|far`, `?ui=0` blendet die Regler aus, `?t=0.6` setzt die Fahrtposition.
+ * Giant tree lab `/lab/tree`: gnarled trunk with fountain limbs, bark lines and snow, jewel domes, lace with golden
+ * needles, blossoms and the level path lying on the tree. URL: `?view=trunk|canopy|blossoms|path|far`, `?ui=0`
+ * hides the controls, `?t=0.6` sets the rail position, `?family=`, `?bark=ink|jewel`, `?snow=0..1`,
+ * `?stage=schnee|huegel`, `?bloom=`, `?growth=`, `?quality=hoch|mobil`, `?progress=`.
  */
 export function LabTree() {
   const [searchParams] = useSearchParams();
@@ -55,6 +86,12 @@ export function LabTree() {
     const p: Partial<TreeLabParams> = {};
     const fam = searchParams.get('family');
     if (fam === 'purple' || fam === 'blue' || fam === 'red' || fam === 'jewel') p.family = fam;
+    const bark = searchParams.get('bark');
+    if (bark === 'ink' || bark === 'jewel') p.bark = bark;
+    const stage = searchParams.get('stage');
+    if (stage === 'schnee' || stage === 'huegel') p.stage = stage;
+    const snow = searchParams.get('snow');
+    if (snow !== null) p.snow = Math.min(1, Math.max(0, Number(snow)));
     const bloom = searchParams.get('bloom');
     if (bloom !== null) p.bloom = Math.min(1, Math.max(0, Number(bloom)));
     const growth = searchParams.get('growth');
@@ -66,6 +103,8 @@ export function LabTree() {
     if (searchParams.get('view') === 'path') p.ride = true;
     const progress = searchParams.get('progress');
     if (progress !== null) p.progress = Number(progress);
+    const sun = searchParams.get('sun');
+    if (sun !== null) p.sunElevation = Math.min(20, Math.max(6, Number(sun)));
     return p;
   }, [searchParams]);
   const controller = useMemo(() => {
@@ -88,12 +127,12 @@ export function LabTree() {
   const set = (patch: Partial<TreeLabParams>) => setParams((p) => ({ ...p, ...patch }));
 
   const info = stats
-    ? `Cluster ${stats.clusters} · Kuppeln ${stats.domes} · Punkte ${fmtK(stats.dots)} · Motive ${stats.glyphs}+${stats.meadow} · Blüten ${fmtK(stats.blossoms)} · Sterne ${stats.stars} · Äste ${stats.segments} · Knoten ${stats.nodes} · Büsche ${stats.bushes} · ${stats.drawCalls} dc · ${stats.preset === 'mobil' ? 'Mobil' : 'Hoch'} · Fahrt ${Math.round(stats.rideT * 100)} %`
+    ? `Cluster ${stats.clusters} · Kuppeln ${stats.domes} · Punkte ${fmtK(stats.dots)} · Zweige ${fmtK(stats.twigs)} · Sterne ${stats.stars} · Blüten ${stats.blossoms} · Äste ${stats.segments} · Knoten ${stats.nodes} · Büsche ${stats.bushes} · ${stats.drawCalls} dc · ${stats.preset === 'mobil' ? 'Mobil' : 'Hoch'} · Detail ${Math.round(stats.detail * 100)} % · Fahrt ${Math.round(stats.rideT * 100)} %`
     : 'lädt …';
 
   return (
     <LabFrame
-      title="P2d Baum-Lab · Riesenbaum"
+      title="Baum-Lab · Riesenbaum"
       controls={
         hideUi ? (
           <p className="tree-info" data-testid="tree-lab-info">{info}</p>
@@ -111,43 +150,38 @@ export function LabTree() {
               </button>
             </div>
             <div className="tree-toggles">
-              <Toggle label="Stamm" value={params.trunk} onChange={(v) => set({ trunk: v })} testId="tgl-trunk" />
-              <Toggle label="Äste" value={params.branches} onChange={(v) => set({ branches: v })} testId="tgl-branches" />
+              <Toggle label="Holz" value={params.trunk} onChange={(v) => set({ trunk: v })} testId="tgl-trunk" />
+              <Toggle label="Zweige" value={params.branches} onChange={(v) => set({ branches: v })} testId="tgl-branches" />
               <Toggle label="Sterne" value={params.stars} onChange={(v) => set({ stars: v })} testId="tgl-stars" />
               <Toggle label="Krone" value={params.canopy} onChange={(v) => set({ canopy: v })} testId="tgl-canopy" />
               <Toggle label="Blüten" value={params.blossoms} onChange={(v) => set({ blossoms: v })} testId="tgl-blossoms" />
               <Toggle label="Pfad" value={params.path} onChange={(v) => set({ path: v })} testId="tgl-path" />
               <Toggle label="Sonne folgt Kamera" value={params.sunFollowsCamera} onChange={(v) => set({ sunFollowsCamera: v })} testId="tgl-sun-follow" />
             </div>
-            <label className="earle-ctl earle-ctl--select">
-              <span>Kronenfarbe</span>
-              <output>{FAMILY_LABEL[params.family]}</output>
-              <select value={params.family} onChange={(e) => set({ family: e.target.value as CanopyFamily })} data-testid="sel-family">
-                {(Object.keys(FAMILY_LABEL) as CanopyFamily[]).map((f) => (
-                  <option key={f} value={f}>
-                    {FAMILY_LABEL[f]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Select label="Kronenfarbe" value={params.family} options={FAMILY_OPTIONS} onChange={(v) => set({ family: v })} testId="sel-family" />
+            <Select label="Rinde" value={params.bark} options={BARK_OPTIONS} onChange={(v) => set({ bark: v })} testId="sel-bark" />
+            <Select label="Bühne" value={params.stage} options={STAGE_OPTIONS} onChange={(v) => set({ stage: v })} testId="sel-stage" />
+            <Range label="Schnee" value={params.snow} min={0} max={1} step={0.01} format={(v) => `${Math.round(v * 100)} %`} onChange={(v) => set({ snow: v })} testId="rng-snow" />
             <Range label="Blütezeit" value={params.bloom} min={0} max={1} step={0.01} format={(v) => `${Math.round(v * 100)} %`} onChange={(v) => set({ bloom: v })} testId="rng-bloom" />
             <Range label="Wachstum" value={params.growth} min={0} max={1} step={0.01} format={(v) => `${Math.round(v * 100)} %`} onChange={(v) => set({ growth: v })} testId="rng-growth" />
             <Range label="Sonne Höhe" value={params.sunElevation} min={6} max={20} step={0.5} format={(v) => `${v}°`} onChange={(v) => set({ sunElevation: v })} testId="rng-sun" />
             <Range label="Sonne Azimut" value={params.sunAzimuth} min={20} max={110} step={1} format={(v) => `${v}°`} onChange={(v) => set({ sunAzimuth: v })} />
             <Range label="Knoten" value={params.progress} min={0} max={Math.max(1, (stats?.nodes ?? 24) - 1)} step={1} onChange={(v) => set({ progress: v })} testId="rng-progress" />
             <Range label="Fahrt" value={params.rideT} min={0} max={1} step={0.005} format={(v) => `${Math.round(v * 100)} %`} onChange={(v) => set({ rideT: v, ride: false })} testId="rng-ride" />
-            <label className="earle-ctl earle-ctl--select">
-              <span>Qualität</span>
-              <output>{stats?.preset === 'mobil' ? 'Mobil' : 'Hoch'}</output>
-              <select value={params.quality} onChange={(e) => set({ quality: e.target.value as QualityLevel })} data-testid="sel-quality">
-                <option value="hoch">Hoch</option>
-                <option value="mobil">Mobil</option>
-                <option value="auto">Auto</option>
-              </select>
-            </label>
+            <Select<QualityLevel>
+              label="Qualität"
+              value={params.quality}
+              options={[
+                ['hoch', 'Hoch'],
+                ['mobil', 'Mobil'],
+                ['auto', 'Auto'],
+              ]}
+              onChange={(v) => set({ quality: v })}
+              testId="sel-quality"
+            />
             <p className="earle-hint">
-              Ziehen orbitet, Rad/Pinch zoomt. Die Sonne hängt am Kamera-Yaw (Schatten laufen waagrecht). Kamera-Fahrt scrubbt die Pfadschiene:
-              Wurzel → Spirale am Stamm → Rampe aufs Kronendach → Gratwanderung. Mobil: weniger Punkte/Blüten, Schattenkarte 1024, DPR ≤ 1.5.
+              Ziehen orbitet, Rad/Pinch zoomt. Die Sonne hängt am Kamera-Yaw (Schatten laufen waagrecht). Die Levelpunkte liegen am Baum: Wurzel → Baumpilze
+              spiralig am Stamm → Rampenast → Steine auf den Kuppeln bis zur Spitze. Mobil: weniger Zweige, Sterne und Randpunkte, Schattenkarte 1024.
             </p>
           </>
         )
