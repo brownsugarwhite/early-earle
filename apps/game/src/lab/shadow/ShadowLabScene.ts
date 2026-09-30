@@ -43,6 +43,10 @@ export interface ShadowLabParams {
   repeat: number;
   /** Glatte Terminator-Silhouetten der Werfer. */
   smoothCasters: boolean;
+  /** Diagnose: 1 = Einzelkarte (keine Kamera binden), 2 = three-Standard-PCF (kein eigener Filter). */
+  legacy: 0 | 1 | 2;
+  /** Tiefenvergleich: -1 automatisch, 0 Hardware-Vergleichs-Sampler, 1 manuell im Shader (WebGL2-Rückfall). */
+  compare: -1 | 0 | 1;
 }
 
 export const DEFAULT_SHADOW_PARAMS: ShadowLabParams = {
@@ -65,6 +69,8 @@ export const DEFAULT_SHADOW_PARAMS: ShadowLabParams = {
   grazingBias: 0.006,
   repeat: 1,
   smoothCasters: true,
+  legacy: 0,
+  compare: -1,
 };
 
 export interface ShadowLabStats {
@@ -76,6 +82,8 @@ export interface ShadowLabStats {
   dpr: number;
   /** CPU-Zeit je Frame für update + Render-Aufrufe (ms, gleitend). */
   cpuMs: number;
+  /** Tiefenvergleich der gebauten Filter: manuell (true), Hardware (false), noch nichts gebaut (null). */
+  manualCompare: boolean | null;
 }
 
 interface ViewPose {
@@ -165,6 +173,7 @@ export class ShadowLabScene implements SceneController {
     this.bindView();
     sun.setBias(p.slopeBias, p.grazingBias);
     sun.setSmoothCasters(p.smoothCasters);
+    sun.setManualCompare(p.compare < 0 ? null : p.compare === 1);
     sun.setDebug(p.debug);
     this.needsSnap = true;
     this.appliedSpin = 0;
@@ -174,6 +183,11 @@ export class ShadowLabScene implements SceneController {
   private bindView(): void {
     const world = this.world;
     if (!world) return;
+    if (this.params.legacy > 0) {
+      world.sun.fitToView(null);
+      if (this.params.legacy === 2) world.sun.setSharpen(false);
+      return;
+    }
     world.sun.fitToPlanet(world.camera, () => this.world?.world, world.planet);
   }
 
@@ -440,6 +454,7 @@ export class ShadowLabScene implements SceneController {
       canvas: [r?.domElement.width ?? 0, r?.domElement.height ?? 0],
       dpr: r?.getPixelRatio() ?? 0,
       cpuMs: this.cpuMs,
+      manualCompare: world?.sun.manualCompareActive ?? null,
     };
   }
 

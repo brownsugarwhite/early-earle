@@ -1,7 +1,8 @@
-import { LinearFilter, Vector2, Vector3 } from 'three/webgpu';
+import { BasicShadowMap, LinearFilter, NearestFilter, VSMShadowMap, Vector2, Vector3 } from 'three/webgpu';
 import type { DepthTexture, LightShadow, NodeBuilder, UniformNode } from 'three/webgpu';
-import { Fn, abs, float, floor, fwidth, max, mix, normalWorld, reference, smoothstep, texture, uniform, vec2 } from 'three/tsl';
+import { BasicShadowFilter, Fn, PCFShadowFilter, VSMShadowFilter, abs, float, floor, fwidth, max, mix, normalWorld, reference, smoothstep, step, texture, uniform, vec2 } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node } from '../earle/tsl';
+import { resolveManualCompare, type ManualCompareOption } from './webglCompat';
 
 /**
  * Schattenfilter für Earle-Tintenformen (Hook `light.shadow.filterNode`, r186 `ShadowNode.setupShadowFilter`).
@@ -61,13 +62,80 @@ export interface ShadowFilterOptions {
   /** Zusätzlicher Bias-Faktor (1 = Kernelradius). */
   biasScale?: number;
   /**
+   * Tiefe ohne Vergleichs-Sampler lesen und im Shader vergleichen (4 Texel je bilinearem Tap). Standard: automatisch —
+   * nur wo der WebGL2-Vergleichs-Sampler kaputt ist (iOS-Simulator: jeder Vergleich liefert 0 → alles Tinte), siehe
+   * `webglCompat.ts`. Wert oder Rückruf (wird beim Bauen gelesen).
+   */
+  manualCompare?: ManualCompareOption;
+  /**
    * Empfängerneigungs-Bias nur nahe am Terminator (Kaskaden: der Werfer-Bias der Selbstschatten-Objekte deckt die
    * Gelände-Facetten ab). Ohne Werfer-Bias (Einzelkarte) muss er überall gelten — sonst Akne auf streifenden Hängen.
    */
   terminatorOnly?: boolean;
 }
 
-type ShadowFilterInputs = { depthTexture: DepthTexture; shadowCoord: Vec3Node; shadow: LightShadow };
+type ShadowFilterInputs = { depthTexture: DepthTexture; shadowCoord: Vec3Node; shadow: LightShadow; depthLayer?: unknown };
+
+/** Bilinear gefilterter Tiefenvergleich (1 = beleuchtet) an `uv` gegen die Referenztiefe `z`. */
+export type DepthCompareFn = (uv: Vec2Node) => FloatNode;
+
+/**
+ * Bereitet die Tiefentextur für den Filter vor und liefert den bilinearen Vergleich:
+ * - Hardware: Vergleichs-Sampler, LINEAR = 2×2-PCF in einem Tap (NEAREST: vier Taps, im Shader gemischt).
+ * - Manuell (Plattform ohne funktionierende Vergleichs-Sampler, siehe `webglCompat.ts`): Vergleichsmodus aus, NEAREST
+ *   (Tiefe ist nicht linear filterbar), Tiefe als gewöhnliche Textur lesen, `step` vergleichen, vier Texel bilinear
+ *   mischen — dasselbe Feld wie Hardware-PCF.
+ * Muss vor der ersten Bindung laufen: die Tiefentextur entsteht in `ShadowNode.setupShadow` direkt vor dem Filteraufruf.
+ */
+export function createDepthCompare(
+  depthTexture: DepthTexture,
+  shadow: LightShadow,
+  z: FloatNode,
+  builder: NodeBuilder,
+  manualCompare?: ManualCompareOption,
+): DepthCompareFn {
+  const manual = resolveManualCompare(manualCompare, builder);
+  if (manual) {
+    depthTexture.compareFunction = null;
+    depthTexture.minFilter = NearestFilter;
+    depthTexture.magFilter = NearestFilter;
+  }
+  const reversed = (builder.renderer as { reversedDepthBuffer?: boolean }).reversedDepthBuffer === true;
+  const tap = (uv: Vec2Node): FloatNode => {
+    if (!manual) return texture(depthTexture, uv).compare(z) as unknown as FloatNode;
+    const d = texture(depthTexture, uv) as unknown as FloatNode;
+    return (reversed ? step(d, z) : step(z, d)) as unknown as FloatNode;
+  };
+  if (!manual && depthTexture.minFilter === LinearFilter) return tap;
+  const mapSize = reference('mapSize', 'vec2', shadow) as unknown as Vec2Node;
+  const texel = vec2(1).div(mapSize);
+  return (uv: Vec2Node): FloatNode => {
+    const st = uv.mul(mapSize).sub(0.5);
+    const i = floor(st);
+    const f = st.sub(i) as unknown as Vec2Node;
+    const base = i.add(0.5).mul(texel);
+    const at = (ox: number, oy: number) => tap(base.add(vec2(ox, oy).mul(texel)) as unknown as Vec2Node);
+    return mix(mix(at(0, 0), at(1, 0), f.x), mix(at(0, 1), at(1, 1), f.x), f.y) as unknown as FloatNode;
+  };
+}
+
+/**
+ * three-Standardfilter (Basic/PCF/VSM nach `renderer.shadowMap.type`) für den Modus ohne Nachschärfen — auf
+ * Plattformen ohne funktionierende Vergleichs-Sampler ersetzt durch einen manuellen bilinearen Vergleich (2×2-PCF).
+ */
+export function createDefaultShadowFilter(manualCompare?: ManualCompareOption) {
+  // three ruft die Filter mit einem Objekt auf (die mitgelieferten Typen deklarieren Einzelargumente)
+  type ThreeFilter = (inputs: ShadowFilterInputs) => FloatNode;
+  return Fn((inputs: ShadowFilterInputs, builder: NodeBuilder) => {
+    // `inputs` ist ein TSL-Proxy über die Aufrufparameter — für den Weiterruf als schlichtes Objekt auspacken
+    const { depthTexture, shadowCoord, shadow, depthLayer } = inputs;
+    const plain: ShadowFilterInputs = { depthTexture, shadowCoord, shadow, depthLayer };
+    const type = (builder.renderer as { shadowMap: { type: number } }).shadowMap.type;
+    if (type === VSMShadowMap) return (VSMShadowFilter as unknown as ThreeFilter)(plain);
+    if (!resolveManualCompare(manualCompare, builder)) return ((type === BasicShadowMap ? BasicShadowFilter : PCFShadowFilter) as unknown as ThreeFilter)(plain);
+    return createDepthCompare(depthTexture, shadow, shadowCoord.z as unknown as FloatNode, builder, true)(shadowCoord.xy as unknown as Vec2Node);
+  });
+}
 
 /** Harte, 1-px-anti-aliasierte Schwelle eines glatten Feldes bei 0,5. */
 export function thresholdField(field: FloatNode): FloatNode {
@@ -124,18 +192,8 @@ export function createEarleShadowFilter(options: ShadowFilterOptions) {
     const z = (reversed ? shadowCoord.z.add(bias) : shadowCoord.z.sub(bias)) as unknown as FloatNode;
     const mapSize = reference('mapSize', 'vec2', shadow) as unknown as Vec2Node;
     const texel = vec2(1).div(mapSize);
-    const hardwarePcf = depthTexture.minFilter === LinearFilter;
-
-    /** Bilinear gefilterter Vergleich an `uv` (Hardware-PCF oder vier Nearest-Taps). */
-    const bilinear = (uv: Vec2Node): FloatNode => {
-      if (hardwarePcf) return texture(depthTexture, uv).compare(z) as unknown as FloatNode;
-      const st = uv.mul(mapSize).sub(0.5);
-      const i = floor(st);
-      const f = st.sub(i) as unknown as Vec2Node;
-      const base = i.add(0.5).mul(texel);
-      const tap = (ox: number, oy: number) => texture(depthTexture, base.add(vec2(ox, oy).mul(texel))).compare(z) as unknown as FloatNode;
-      return mix(mix(tap(0, 0), tap(1, 0), f.x), mix(tap(0, 1), tap(1, 1), f.x), f.y) as unknown as FloatNode;
-    };
+    /** Bilinear gefilterter Vergleich an `uv` (Hardware-PCF oder vier Einzel-Taps, ggf. manuell verglichen). */
+    const bilinear = createDepthCompare(depthTexture, shadow, z, builder, options.manualCompare);
 
     let field: FloatNode;
     if (taps === 1) {

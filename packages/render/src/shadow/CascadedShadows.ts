@@ -4,6 +4,7 @@ import { Discard, Fn, If, float, fract, lightShadowMatrix, max, min, mod, floor,
 import type { FloatNode, Vec2Node, Vec3Node, Vec4Node } from '../earle/tsl';
 import { CascadeFitter, createFitResult, type CascadeSize, type ClipBoxSpec, type FitInput, type FitResult, type ReceiverShellSpec, type ReceiverSlabSpec } from './fit';
 import { createEarleShadowFilter, createShadowFrameUniforms, thresholdField, type ShadowFrameUniforms, type ShadowTaps } from './filters';
+import type { ManualCompareOption } from './webglCompat';
 
 /**
  * Kaskadierte, an die Kamera gefittete Earle-Schatten als eigener Schattenknoten (`light.shadow.shadowNode`).
@@ -51,6 +52,8 @@ export interface CascadedShadowsOptions {
   blend?: number;
   normalBias?: number;
   bias?: number;
+  /** Tiefe manuell vergleichen (siehe `ShadowFilterOptions.manualCompare`); Standard: automatisch. */
+  manualCompare?: ManualCompareOption;
 }
 
 export interface CascadeStats {
@@ -353,7 +356,8 @@ export class CascadedShadows {
     shadow.radius = 1;
     const frame = createShadowFrameUniforms();
     if (axes) Object.assign(frame, axes);
-    (shadow as unknown as { filterNode: unknown }).filterNode = filter ?? createEarleShadowFilter({ frame, taps, output, terminatorOnly: true });
+    (shadow as unknown as { filterNode: unknown }).filterNode =
+      filter ?? createEarleShadowFilter({ frame, taps, output, terminatorOnly: true, ...(this.options.manualCompare !== undefined ? { manualCompare: this.options.manualCompare } : {}) });
     const light = new CascadeLight(shadow);
     light.name = `EarleCascade${this.cascades.length}`;
     const selfBias: SelfShadowBias = { slopeScale: 0, units: 0 };

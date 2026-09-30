@@ -52,6 +52,10 @@ function paramsFromUrl(search: URLSearchParams): Partial<ShadowLabParams> {
   if (graz !== null) out.grazingBias = Math.max(0, graz);
   const smooth = search.get('smooth');
   if (smooth === '0' || smooth === '1') out.smoothCasters = smooth === '1';
+  const compare = num('cmp');
+  if (compare === 0 || compare === 1) out.compare = compare;
+  const legacy = num('legacy');
+  if (legacy === 0 || legacy === 1 || legacy === 2) out.legacy = legacy;
   const repeat = num('repeat');
   if (repeat !== null) out.repeat = Math.max(1, Math.min(40, Math.round(repeat)));
   return out;
@@ -247,6 +251,7 @@ export function LabShadow() {
             )}
             <span>
               {stats?.backend ?? '…'} · {stats ? `${stats.canvas[0]}×${stats.canvas[1]}` : ''} · DPR {fmt(stats?.dpr ?? 0, 2)} · CPU {fmt(stats?.cpuMs ?? 0, 2)} ms · Chunks {stats?.chunks ?? 0}
+              {stats?.manualCompare ? ' · Tiefenvergleich manuell' : ''}
             </span>
           </aside>
         )}

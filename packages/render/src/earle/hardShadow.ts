@@ -1,36 +1,27 @@
-import { Box3, DirectionalLight, LinearFilter, Matrix4, Object3D, Vector3 } from 'three/webgpu';
+import { Box3, DirectionalLight, Matrix4, Object3D, Vector3 } from 'three/webgpu';
 import type { DepthTexture, LightShadow, NodeBuilder, PerspectiveCamera, UniformNode } from 'three/webgpu';
-import { Fn, floor, fract, fwidth, lightTargetDirection, mix, normalView, reference, smoothstep, texture, uniform, vec2 } from 'three/tsl';
+import { Fn, fwidth, lightTargetDirection, normalView, smoothstep, uniform } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node } from './tsl';
 import { CascadedShadows, type CascadedShadowStats, type ViewReceivers } from '../shadow/CascadedShadows';
-import { createEarleShadowFilter, createShadowFrameUniforms, type ShadowFrameUniforms, type ShadowTaps } from '../shadow/filters';
+import { createDefaultShadowFilter, createDepthCompare, createEarleShadowFilter, createShadowFrameUniforms, type ShadowFrameUniforms, type ShadowTaps } from '../shadow/filters';
 import type { CascadeSize } from '../shadow/fit';
+import { needsManualDepthCompare, type ManualCompareOption } from '../shadow/webglCompat';
 
 /**
  * Alter nachschärfender Schattenfilter (P2, bleibt als Export und als „Alt“-Referenz erhalten).
  * Ein Vergleichs-Tap über den Hardware-Compare-Sampler (LINEAR → 2×2-PCF-Rampe), danach `smoothstep(0.5 ± ½·fwidth)`.
  * Nur „vektorhaft“, solange ein Schattentexel ≲ 1–2 Bildschirmpixel ist — sonst Treppen (siehe `shadow/filters.ts`).
  */
-export function createHardShadowFilter(light: DirectionalLight, depthPerTexel: UniformNode<'float', number>) {
+export function createHardShadowFilter(light: DirectionalLight, depthPerTexel: UniformNode<'float', number>, manualCompare?: ManualCompareOption) {
   return Fn((inputs: { depthTexture: DepthTexture; shadowCoord: Vec3Node; shadow: LightShadow }, builder: NodeBuilder) => {
     const { depthTexture, shadowCoord, shadow } = inputs;
     const ndl = normalView.dot(lightTargetDirection(light)).clamp(0.04, 1);
     const tanTheta = ndl.mul(ndl).oneMinus().max(0).sqrt().div(ndl).clamp(1, 20);
     const slopeBias = depthPerTexel.mul(tanTheta).mul(2.0);
     const reversed = (builder.renderer as { reversedDepthBuffer?: boolean }).reversedDepthBuffer === true;
-    const z = reversed ? shadowCoord.z.add(slopeBias) : shadowCoord.z.sub(slopeBias);
-    let r: FloatNode;
-    if (depthTexture.minFilter === LinearFilter) {
-      r = texture(depthTexture, shadowCoord.xy).compare(z) as unknown as FloatNode;
-    } else {
-      const mapSize = reference('mapSize', 'vec2', shadow) as unknown as Vec2Node;
-      const texel = vec2(1).div(mapSize);
-      const st = shadowCoord.xy.mul(mapSize).sub(0.5);
-      const f = fract(st) as unknown as Vec2Node;
-      const base = floor(st).add(0.5).mul(texel);
-      const tap = (ox: number, oy: number) => texture(depthTexture, base.add(vec2(ox, oy).mul(texel))).compare(z) as unknown as FloatNode;
-      r = mix(mix(tap(0, 0), tap(1, 0), f.x), mix(tap(0, 1), tap(1, 1), f.x), f.y);
-    }
+    const z = (reversed ? shadowCoord.z.add(slopeBias) : shadowCoord.z.sub(slopeBias)) as unknown as FloatNode;
+    // Ein bilinearer Vergleich (Hardware-PCF; ohne funktionierende Vergleichs-Sampler manuell, siehe shadow/webglCompat)
+    const r = createDepthCompare(depthTexture, shadow, z, builder, manualCompare)(shadowCoord.xy as unknown as Vec2Node);
     const w = fwidth(r).mul(0.5).clamp(1 / 256, 0.5);
     return smoothstep(w.oneMinus().sub(0.5), w.add(0.5), r);
   });
@@ -90,6 +81,12 @@ export interface SunOptions {
    * dunklen Seite statt ihrer Dreieckskanten (keine Geländetreppen, keine Facetten-Akne). Standard an.
    */
   smoothCasters?: boolean;
+  /**
+   * Tiefe ohne Vergleichs-Sampler lesen und im Shader vergleichen (true/false). Standard: automatisch — nur im
+   * WebGL2-Rückfall, wenn der Vergleichs-Sampler-Test fehlschlägt (iOS-Simulator: jeder Vergleich liefert 0 → alles
+   * Tinte). Siehe `shadow/webglCompat.ts`.
+   */
+  manualCompare?: boolean;
 }
 
 /** Empfänger für `fitToView`: Planetenschale oder Bodenplatte (Welt), plus Werferhöhe. */
@@ -185,6 +182,7 @@ export class SunRig {
   private biasTuning = { casterOffset: 0.04, grazing: 0.006 };
   private smoothCasters: boolean;
   private tapsOverride: ShadowTaps | null;
+  private manualCompare: boolean | null;
 
   constructor(options: SunOptions = {}) {
     this.root.name = 'SunRig';
@@ -203,6 +201,7 @@ export class SunRig {
     this.cascadeSizes = resolveCascades(options.cascades, this.mapSize);
     this.wantReference = options.reference ?? false;
     this.smoothCasters = options.smoothCasters ?? true;
+    this.manualCompare = options.manualCompare ?? null;
     this.rebuild();
   }
 
@@ -243,7 +242,8 @@ export class SunRig {
         sizes: this.cascadeSizes,
         taps: this.taps,
         referenceSize: this.wantReference ? this.mapSize : null,
-        referenceFilter: createHardShadowFilter(light, this.depthPerTexel),
+        referenceFilter: createHardShadowFilter(light, this.depthPerTexel, this.manualCompareFn),
+        manualCompare: this.manualCompareFn,
         smoothCasters: this.smoothCasters,
       });
       cascaded.camera = this.viewCamera;
@@ -258,7 +258,9 @@ export class SunRig {
       shadow.filterNode = null;
       this.cascaded = cascaded;
     } else {
-      shadow.filterNode = this.sharpen ? createEarleShadowFilter({ frame: this.frame, taps: this.taps, output: 'threshold' }) : null;
+      shadow.filterNode = this.sharpen
+        ? createEarleShadowFilter({ frame: this.frame, taps: this.taps, output: 'threshold', manualCompare: this.manualCompareFn })
+        : createDefaultShadowFilter(this.manualCompareFn);
     }
     this.applyAngles();
     if (this.lastClip) this.fitShadow(this.lastClip.bounds, this.lastClip.matrix, this.lastClip.hTotal);
@@ -389,6 +391,26 @@ export class SunRig {
 
   get biasSettings(): { casterOffset: number; grazing: number } {
     return { ...this.biasTuning };
+  }
+
+  /** Wird beim Bauen der Filter gelesen: manuellen Tiefenvergleich erzwingen, verbieten oder automatisch. */
+  private lastManualCompare: boolean | null = null;
+  private readonly manualCompareFn = (builder: NodeBuilder): boolean => {
+    const on = this.manualCompare ?? needsManualDepthCompare(builder);
+    this.lastManualCompare = on;
+    return on;
+  };
+
+  /** Manuellen Tiefenvergleich erzwingen (true/false) oder automatisch (null); baut neu. */
+  setManualCompare(on: boolean | null): void {
+    if (on === this.manualCompare) return;
+    this.manualCompare = on;
+    this.rebuild();
+  }
+
+  /** Letzte Entscheidung der Filter (true = manueller Vergleich), null solange nichts gebaut wurde. */
+  get manualCompareActive(): boolean | null {
+    return this.lastManualCompare;
   }
 
   /** Glatte Terminator-Silhouetten der Werfer an/aus (Kaskaden; ohne Neubau). */
