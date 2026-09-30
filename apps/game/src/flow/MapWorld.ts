@@ -159,7 +159,7 @@ export class MapWorld {
       shadow: { factor: typeof location !== 'undefined' && location.search.includes('dotshadow=0') ? null : (p, o) => this.sun.shadowFactor(p, o) },
     });
     this.world.vegetation.setNearClear(MAP_VIEW.nearClear);
-    this.world.vegetation.setFootClear(MAP_VIEW.footClear);
+    this.world.setFootClear(MAP_VIEW.footClear);
     this.planet.add(this.world.group);
 
     // The giant tree stands a little ahead of level 79 (root tip facing it); its nodes replace the ground nodes 80–95
@@ -423,7 +423,7 @@ export class MapWorld {
    * smaller for close shots on the board. Changes need a shadow pass (cleared trees drop their shadows too).
    */
   setFootClear(units: number): void {
-    this.world.vegetation.setFootClear(units);
+    this.world.setFootClear(units);
     this.trash?.setFootClear(units);
     this.shadowDirty = true;
   }

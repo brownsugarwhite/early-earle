@@ -1,5 +1,5 @@
 import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
-import { attribute, float, floor, fract, hash, mix, positionGeometry, positionLocal, positionView, step, vec2 } from 'three/tsl';
+import { attribute, float, floor, fract, hash, max, mix, positionGeometry, positionLocal, positionView, select, smoothstep, step, vec2, vec3 } from 'three/tsl';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
 
@@ -88,6 +88,8 @@ export interface DriftOptions {
   capacity: number;
   /** Wachstum/Heilung 0..1 je Chunk-Slot (Instanzattribut); fehlt → immer geheilt. */
   growth?: (slot: FloatNode) => FloatNode;
+  /** Lichtung unter der Kamera (wie Bäume, Felsen, Scheunen): `camLocal` im Objektraum, `radius` 0 = aus. */
+  footClear?: { camLocal: { value: Vector3 } & Vec3Node; radius: TSLUniform };
 }
 
 export interface DriftPlacement {
@@ -108,6 +110,8 @@ export interface DriftPlacement {
 export class DriftLandmarks {
   readonly mesh: InstancedMesh;
   private readonly data: InstancedBufferAttribute;
+  /** Fuß je Wehe (x, y, z relativ zum Anker, Radius) für die Lichtung unter der Kamera. */
+  private readonly foot: InstancedBufferAttribute;
   private readonly geometry: BufferGeometry;
   private readonly material: EarleMaterial;
 
@@ -115,6 +119,8 @@ export class DriftLandmarks {
     this.geometry = createDriftGeometry();
     this.data = new InstancedBufferAttribute(new Float32Array(o.capacity * 4), 4);
     this.geometry.setAttribute('driftData', this.data);
+    this.foot = new InstancedBufferAttribute(new Float32Array(o.capacity * 4), 4);
+    this.geometry.setAttribute('driftFoot', this.foot);
     const inst = attribute('driftData', 'vec4'); // (Welt, Variante, Chunk-Slot, –)
     const world = inst.x;
     const row = arrayElement(o.snowRows, world);
@@ -134,7 +140,7 @@ export class DriftLandmarks {
       terminator: -0.05,
       lift: float(0.35),
       pattern: { mask: dots, color: mix(o.lookup.pal(2, row).rgb, o.lookup.pal(1, row).rgb, 0.5) },
-      positionNode: o.warp(positionLocal),
+      positionNode: o.warp(o.footClear ? driftSink(o.footClear.camLocal, o.footClear.radius) : positionLocal),
       fogDistNode: positionView.length().add(o.veil(world)),
       growthNode: o.growth ? o.growth(inst.z) : null,
     });
@@ -161,10 +167,16 @@ export class DriftLandmarks {
       arr[i * 4] = d.world;
       arr[i * 4 + 1] = (((d.yaw / (Math.PI * 2)) % 1) + 1) % 1;
       arr[i * 4 + 2] = d.slot;
+      const f = this.foot.array as Float32Array;
+      f[i * 4] = d.position[0];
+      f[i * 4 + 1] = d.position[1];
+      f[i * 4 + 2] = d.position[2];
+      f[i * 4 + 3] = d.size;
     }
     this.mesh.count = n;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.data.needsUpdate = true;
+    this.foot.needsUpdate = true;
   }
 
   dispose(): void {
@@ -181,3 +193,15 @@ const _qy = new Quaternion();
 const _p = new Vector3();
 const _s = new Vector3();
 const _m = new Matrix4();
+
+/** Wehe nahe am Kamerafuß: Höhe über dem Fuß schrumpft weich auf 0 (seitlicher Abstand Rand ↔ Kamerafuß). */
+function driftSink(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
+  const foot = attribute('driftFoot', 'vec4');
+  const lateral = vec2(foot.x.sub(camLocal.x), foot.z.sub(camLocal.z)).length().sub(foot.w);
+  const r = radius as unknown as FloatNode;
+  const keep = select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1));
+  // die ganze Wehe schrumpft zum Fuß (flach gedrückt bliebe ein weißer Fleck im ruhigen Vordergrund)
+  const k = max(keep, float(0.02));
+  const p = positionLocal as unknown as Vec3Node;
+  return vec3(foot.x.add(p.x.sub(foot.x).mul(k)), foot.y.add(p.y.sub(foot.y).mul(k)), foot.z.add(p.z.sub(foot.z).mul(k))) as unknown as Vec3Node;
+}

@@ -1,5 +1,6 @@
 import { BufferAttribute, BufferGeometry } from 'three/webgpu';
 import { abs, attribute, float, floor, fract, fwidth, hash, max, mix, positionLocal, positionView, select, sin, smoothstep, step, vec2, vec3 } from 'three/tsl';
+import type { Vector3 } from 'three/webgpu';
 import { planeColumnTopAt as columnTopAt, type PlaneRockColumn as RockColumn, type PlaneRockFormation as RockFormation, type RockKind } from '@ee/world';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, hatchMask, patternTime, periodFade, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
@@ -19,6 +20,8 @@ export interface RockGeometryData {
   rk: Float32Array;
   /** Merkmals-Index je Vertex (Wachstum/Heilung je Formation). */
   rg: Float32Array;
+  /** Säule je Vertex: Mitte (x, z relativ zum Anker), Fußhöhe, Radius — für die Lichtung unter der Kamera. */
+  rc: Float32Array;
   indices: Uint32Array;
   /** Höchste Deckfläche (über dem Grundradius) für die Schattenkamera. */
   maxHeight: number;
@@ -42,14 +45,18 @@ export function buildRockGeometry(
   const nor: number[] = [];
   const rk: number[] = [];
   const rg: number[] = [];
+  const rc: number[] = [];
   const idx: number[] = [];
   let maxHeight = 0;
   let feature = 0;
+  // Säule, zu der die nächsten Vertices gehören (Mitte relativ zum Anker, Fuß, Radius)
+  const column = { x: 0, z: 0, base: 0, r: 0 };
   const vtx = (p: V3, n: V3, u: number, z: number, code: number, variant: number): number => {
     pos.push(p[0], p[1], p[2]);
     nor.push(n[0], n[1], n[2]);
     rk.push(u, z, code, variant);
     rg.push(feature);
+    rc.push(column.x, column.base, column.z, column.r);
     return pos.length / 3 - 1;
   };
   const up: V3 = [0, 1, 0];
@@ -64,6 +71,10 @@ export function buildRockGeometry(
     f.columns.forEach((col, ci) => {
       const n = col.polygon.length;
       if (n < 3) return;
+      column.x = ox + col.cx;
+      column.z = oz + col.cy;
+      column.base = col.base;
+      column.r = Math.max(...col.polygon.map(([x, y]) => Math.hypot(x - col.cx, y - col.cy)));
       const variant = fract1(f.variant * 7.13 + ci * 0.618);
       const wallFace = col.part === 1 || col.part === 2 || (col.part === 3 && f.kind === 'mesa') ? FACE_TIER : FACE_WALL;
       const code = world * 16 + kind * 4;
@@ -156,7 +167,7 @@ export function buildRockGeometry(
       }
     });
   }
-  return { positions: new Float32Array(pos), normals: new Float32Array(nor), rk: new Float32Array(rk), rg: new Float32Array(rg), indices: new Uint32Array(idx), maxHeight };
+  return { positions: new Float32Array(pos), normals: new Float32Array(nor), rk: new Float32Array(rk), rg: new Float32Array(rg), rc: new Float32Array(rc), indices: new Uint32Array(idx), maxHeight };
 }
 
 export function rockGeometry(data: RockGeometryData): BufferGeometry {
@@ -165,6 +176,7 @@ export function rockGeometry(data: RockGeometryData): BufferGeometry {
   g.setAttribute('normal', new BufferAttribute(data.normals, 3));
   g.setAttribute('rk', new BufferAttribute(data.rk, 4));
   g.setAttribute('rg', new BufferAttribute(data.rg, 1));
+  g.setAttribute('rc', new BufferAttribute(data.rc, 4));
   g.setIndex(new BufferAttribute(data.indices, 1));
   g.computeBoundingSphere();
   return g;
@@ -181,6 +193,12 @@ export interface RockMaterialOptions {
   warp: (p: Vec3Node) => Vec3Node;
   /** Wachstum/Heilung 0..1 je Merkmals-Index (Vertex-Attribut `rg`); fehlt → immer geheilt. */
   growth?: (feature: FloatNode) => FloatNode;
+  /**
+   * Lichtung unter der Kamera (wie bei den Bäumen): Säulen, deren Rand seitlich näher als `radius` am Kamerafuß steht,
+   * sinken in den Boden — keine Felswand füllt das Bild, wenn die Karte über sie schwenkt. `camLocal` = Kamera im
+   * Objektraum des Fels-Meshes, `radius` 0 = aus.
+   */
+  footClear?: { camLocal: { value: Vector3 } & Vec3Node; radius: TSLUniform };
 }
 
 /**
@@ -260,10 +278,20 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
     // Tintenseite (Ebene_7: türkise Striche auf schwarzem Fels)
     pattern: { mask, color: lineColor, shadowColor: mix(ink, o.lookup.pal(3, row).rgb, 0.42) },
     layers: [{ mask: isCap, color: capLit, shadowColor: mix(ink, capColor, 0.34) }],
-    positionNode: o.warp(positionLocal),
+    positionNode: o.warp(o.footClear ? sinkNearCamera(o.footClear.camLocal, o.footClear.radius) : positionLocal),
     fogDistNode: positionView.length().add(o.veil(world)),
     growthNode: o.growth ? o.growth(attribute('rg', 'float')) : null,
   });
+}
+
+/** Säule nahe am Kamerafuß: Höhe über dem Fuß schrumpft weich auf 0 (seitlicher Abstand Rand ↔ Kamerafuß). */
+function sinkNearCamera(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
+  const rc = attribute('rc', 'vec4');
+  const lateral = vec2(rc.x.sub(camLocal.x), rc.z.sub(camLocal.z)).length().sub(rc.w);
+  const r = radius as unknown as FloatNode;
+  const keep = select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1));
+  const p = positionLocal as unknown as Vec3Node;
+  return vec3(p.x, rc.y.add(p.y.sub(rc.y).mul(max(keep, float(0.02)))), p.z) as unknown as Vec3Node;
 }
 
 // --- kleine Vektorhelfer ------------------------------------------------------------------------------------

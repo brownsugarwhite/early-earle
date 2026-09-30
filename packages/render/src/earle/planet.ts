@@ -308,6 +308,13 @@ export class EarlePlanet {
   private readonly veilSlotA = uniform(0);
   private readonly veilSlotB = uniform(0);
   private landmarkTop = 0;
+  /** Kamera im Objektraum des Fels-Meshes und Lichtungsradius (Karte: wie die Bäume, `setFootClear`). */
+  private readonly rockCamLocal = uniform(new Vector3(0, 100, 0)) as unknown as { value: Vector3 } & Vec3Node;
+  private readonly rockFootClear = uniform(0);
+  private readonly barnCamLocal = uniform(new Vector3(0, 100, 0)) as unknown as { value: Vector3 } & Vec3Node;
+  private readonly driftCamLocal = uniform(new Vector3(0, 100, 0)) as unknown as { value: Vector3 } & Vec3Node;
+  /** Scheunen im geladenen Inhalt (Ebene: Mitte, Radius, Firsthöhe) — Hindernisse für die Kartenkamera. */
+  private barnSpots: Array<{ x: number; z: number; r: number; top: number }> = [];
   /** Chunk-Neubauten seit Beginn (Diagnose). */
   chunkBuilds = 0;
   /** Letzte Streaming-Kennzahlen (Diagnose, Tests). */
@@ -457,9 +464,29 @@ export class EarlePlanet {
     this.featureGrowth = uniformArray(new Array<number>(96).fill(1), 'float') as unknown as UniformArrayLike;
     const featureGrowth = (i: FloatNode): FloatNode => arrayElement(this.featureGrowth, i);
     const slotGrowth = (slot: FloatNode): FloatNode => (this.terrainGrowth as unknown as { element(i: unknown): FloatNode }).element(int(slot.add(0.5).floor()));
-    this.rockMaterial = createRockMaterial({ lookup: this.lookup, fog: this.fog, bands: this.terrainBands, rockRows: this.rockRows, veil: (w) => this.veilNode(w), warp, growth: featureGrowth });
+    this.rockMaterial = createRockMaterial({
+      lookup: this.lookup,
+      fog: this.fog,
+      bands: this.terrainBands,
+      rockRows: this.rockRows,
+      veil: (w) => this.veilNode(w),
+      warp,
+      growth: featureGrowth,
+      footClear: { camLocal: this.rockCamLocal, radius: this.rockFootClear },
+    });
     this.waterMaterial = createWaterMaterial({ lookup: this.lookup, fog: this.fog, bands: this.terrainBands, waterRows: this.waterRows, veil: (w) => this.veilNode(w), warp, growth: featureGrowth });
-    this.barns = new BarnLandmarks({ lookup: this.lookup, fog: this.fog, bands: this.terrainBands, barnRows: this.barnRows, terrainRows: this.plainTerrainRows, veil: (w) => this.veilNode(w), warp, capacity: 24, growth: slotGrowth });
+    this.barns = new BarnLandmarks({
+      lookup: this.lookup,
+      fog: this.fog,
+      bands: this.terrainBands,
+      barnRows: this.barnRows,
+      terrainRows: this.plainTerrainRows,
+      veil: (w) => this.veilNode(w),
+      warp,
+      capacity: 24,
+      growth: slotGrowth,
+      footClear: { camLocal: this.barnCamLocal, radius: this.rockFootClear },
+    });
     this.plane.add(this.barns.mesh);
     this.drifts = new DriftLandmarks({
       lookup: this.lookup,
@@ -470,6 +497,7 @@ export class EarlePlanet {
       warp,
       capacity: options.quality.capacity.trees > 1500 ? 700 : 360,
       growth: slotGrowth,
+      footClear: { camLocal: this.driftCamLocal, radius: this.rockFootClear },
     });
     this.plane.add(this.drifts.mesh);
 
@@ -831,6 +859,22 @@ export class EarlePlanet {
     return this.field.surfaceAt(x, z, outPos, outNormal);
   }
 
+  /**
+   * Lichtung unter der Kamera (seitlicher Radius, 0 = aus): Bäume und Requisiten treten weg, Felssäulen sinken in den
+   * Boden — das untere Bildband der Karte bleibt ruhiger Boden, auch wenn sie über eine Felswand schwenkt.
+   */
+  setFootClear(units: number): void {
+    this.vegetation.setFootClear(units);
+    this.rockFootClear.value = Math.max(0, units);
+  }
+
+  /** Höchste Oberfläche an (x, z) für die Kamera: Gelände, Felsformationen, Wahrzeichen und Scheunen-Firste. */
+  obstacleHeightAt(x: number, z: number): number {
+    let h = this.field.surfaceHeightAt(x, z);
+    for (const b of this.barnSpots) if (Math.hypot(x - b.x, z - b.z) < b.r) h = Math.max(h, b.top);
+    return h;
+  }
+
   isWater(x: number, z: number, margin = 0): boolean {
     return this.field.isWater(x, z, margin);
   }
@@ -1050,6 +1094,10 @@ export class EarlePlanet {
     this.slots.pin(inUse);
     this.landmarkSet.update(camera);
     this.mapping.toFlatCpu(cameraWorld, _v);
+    // Fels-Mesh: Kamera im Objektraum (flach, relativ zu seinem Anker)
+    if (this.rocks) this.rockCamLocal.value.set(_v.x - this.rocks.position.x, _v.y - this.options.radius, _v.z - this.rocks.position.z);
+    this.barnCamLocal.value.set(_v.x - this.barns.mesh.position.x, _v.y - this.options.radius, _v.z - this.barns.mesh.position.z);
+    this.driftCamLocal.value.set(_v.x - this.drifts.mesh.position.x, _v.y - this.options.radius, _v.z - this.drifts.mesh.position.z);
     this.vegetation.updateCamera(camera, _v.sub(this.vegetation.group.position).sub(this.plane.position));
     // Sichtlinie im Objektraum der Vegetation (Anker der Pools)
     const a = this.anchorOf(this.vegetation.group);
@@ -1378,6 +1426,8 @@ export class EarlePlanet {
     this.vegetation.setContent(trees, props, { x: ax, z: az });
     this.anchorObject(this.vegetation.group, ax, az);
     this.landmarkTop = this.barns.set(barns, { x: ax, z: az });
+    // Scheunen-Firste (Einheit: Scheunenmaßstab, First 1,12, halbe Länge ≈ 1)
+    this.barnSpots = barns.map(({ prop }) => ({ x: prop.position[0], z: prop.position[2], r: 1.3 * prop.scale, top: prop.position[1] + 1.12 * prop.scale }));
     this.anchorObject(this.barns.mesh, ax, az);
     this.drifts.set(drifts);
     this.anchorObject(this.drifts.mesh, ax, az);

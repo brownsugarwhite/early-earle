@@ -1,5 +1,5 @@
 import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
-import { abs, attribute, float, floor, fract, hash, max, mix, positionLocal, positionView, sin, smoothstep, step, vec2 } from 'three/tsl';
+import { abs, attribute, float, floor, fract, hash, max, mix, positionLocal, positionView, select, sin, smoothstep, step, vec2, vec3 } from 'three/tsl';
 import type { PlaneProp as PlanetProp } from '@ee/world';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
@@ -152,6 +152,11 @@ export interface BarnOptions {
   capacity: number;
   /** Wachstum/Heilung 0..1 je Chunk-Slot (Instanzattribut); fehlt → immer geheilt. */
   growth?: (slot: FloatNode) => FloatNode;
+  /**
+   * Lichtung unter der Kamera (wie bei Bäumen und Felsen): Scheunen, deren Rand seitlich näher als `radius` am
+   * Kamerafuß steht, sinken in den Boden. `camLocal` = Kamera im Objektraum des Meshes, `radius` 0 = aus.
+   */
+  footClear?: { camLocal: { value: Vector3 } & Vec3Node; radius: TSLUniform };
 }
 
 /**
@@ -162,6 +167,8 @@ export interface BarnOptions {
 export class BarnLandmarks {
   readonly mesh: InstancedMesh;
   private readonly data: InstancedBufferAttribute;
+  /** Fuß je Scheune (x, y, z relativ zum Anker, Radius) für die Lichtung unter der Kamera. */
+  private readonly foot: InstancedBufferAttribute;
   private readonly geometry: BufferGeometry;
   private readonly material: EarleMaterial;
 
@@ -169,6 +176,8 @@ export class BarnLandmarks {
     this.geometry = createBarnGeometry();
     this.data = new InstancedBufferAttribute(new Float32Array(o.capacity * 4), 4);
     this.geometry.setAttribute('barnData', this.data);
+    this.foot = new InstancedBufferAttribute(new Float32Array(o.capacity * 4), 4);
+    this.geometry.setAttribute('barnFoot', this.foot);
     const bn = attribute('bn', 'vec4');
     const inst = attribute('barnData', 'vec4'); // (Welt, Variante, Chunk-Slot, –)
     const part = bn.x;
@@ -220,7 +229,7 @@ export class BarnLandmarks {
         { mask: isPart(EDGE), color: edge, shadowColor: mix(ink, edge, 0.4), castOnly: true },
         { mask: isPart(UNDER), color: ink, shadowColor: ink, castOnly: true },
       ],
-      positionNode: o.warp(positionLocal),
+      positionNode: o.warp(o.footClear ? barnSink(o.footClear.camLocal, o.footClear.radius) : positionLocal),
       fogDistNode: positionView.length().add(o.veil(world)),
       growthNode: o.growth ? o.growth(inst.z) : null,
     });
@@ -256,11 +265,17 @@ export class BarnLandmarks {
       arr[i * 4] = world;
       arr[i * 4 + 1] = prop.variant;
       arr[i * 4 + 2] = slot;
+      const f = this.foot.array as Float32Array;
+      f[i * 4] = _p.x;
+      f[i * 4 + 1] = _p.y;
+      f[i * 4 + 2] = _p.z;
+      f[i * 4 + 3] = 1.0 * prop.scale;
       top = Math.max(top, RIDGE * prop.scale);
     }
     this.mesh.count = n;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.data.needsUpdate = true;
+    this.foot.needsUpdate = true;
     return top;
   }
 
@@ -279,3 +294,13 @@ const _qy = new Quaternion();
 const _p = new Vector3();
 const _s = new Vector3();
 const _m = new Matrix4();
+
+/** Scheune nahe am Kamerafuß: Höhe über dem Fuß schrumpft weich auf 0 (seitlicher Abstand Rand ↔ Kamerafuß). */
+function barnSink(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
+  const foot = attribute('barnFoot', 'vec4');
+  const lateral = vec2(foot.x.sub(camLocal.x), foot.z.sub(camLocal.z)).length().sub(foot.w);
+  const r = radius as unknown as FloatNode;
+  const keep = select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1));
+  const p = positionLocal as unknown as Vec3Node;
+  return vec3(p.x, foot.y.add(p.y.sub(foot.y).mul(max(keep, float(0.02)))), p.z) as unknown as Vec3Node;
+}

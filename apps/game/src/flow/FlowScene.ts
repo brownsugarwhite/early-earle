@@ -573,11 +573,12 @@ export class FlowScene implements SceneController {
     const sx = -dz / len;
     const sz = dx / len;
     let maxH = -Infinity;
+    // Unter der Kamera und im unteren Bildband (bis gut zur Mitte des Wegs zum Fokus), seitlich bis ± 5
     for (const t of [0, 0.2, 0.4, 0.6]) {
-      for (const side of [-2.5, 0, 2.5]) {
+      for (const side of [-5, -2.5, 0, 2.5, 5]) {
         const x = c.x + dx * t + sx * side;
         const z = c.z + dz * t + sz * side;
-        maxH = Math.max(maxH, world.walkableHeight(x, z));
+        maxH = Math.max(maxH, world.world.obstacleHeightAt(x, z));
       }
     }
     return Math.max(0, maxH + MAP_CLEARANCE - baseH);
