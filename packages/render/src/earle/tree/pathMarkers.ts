@@ -371,7 +371,7 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
   nodes.forEach((_, i) => placeShadow(i));
   shadows.instanceMatrix.needsUpdate = true;
 
-  const writeNodes = () => {
+  const writeNodes = (progressChanged: boolean) => {
     fungusIdx.forEach((ni, j) => {
       fungi.setMatrixAt(j, place(ni, heroNodeScale(path.motion, now, ni === current, unlockedAt[ni]!)));
       fDone[j] = ni < done || ni === current ? 1 : 0;
@@ -382,8 +382,10 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
     });
     fungi.instanceMatrix.needsUpdate = true;
     stones.instanceMatrix.needsUpdate = true;
-    (fGeo.getAttribute('nodeDone') as InstancedBufferAttribute).needsUpdate = true;
-    (sGeo.getAttribute('nodeDone') as InstancedBufferAttribute).needsUpdate = true;
+    if (progressChanged) {
+      (fGeo.getAttribute('nodeDone') as InstancedBufferAttribute).needsUpdate = true;
+      (sGeo.getAttribute('nodeDone') as InstancedBufferAttribute).needsUpdate = true;
+    }
     if (current >= 0 && current < nodes.length) {
       ring.visible = true;
       ring.geometry = isBark[current] ? ringHalf : ringFull;
@@ -402,12 +404,12 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
       done = d;
       const node = nodes[cur];
       uCurrentS.value = node ? node.t * path.length : 0;
-      writeNodes();
+      writeNodes(true);
     },
     update(time) {
       now = time;
       uTime.value = time;
-      writeNodes();
+      writeNodes(false);
     },
     setSunDirection(dir) {
       sun.copy(dir).normalize();

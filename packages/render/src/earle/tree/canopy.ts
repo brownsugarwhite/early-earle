@@ -1,4 +1,4 @@
-import { DynamicDrawUsage, InstancedBufferAttribute, InstancedBufferGeometry, InstancedMesh, Matrix4, Mesh, MeshBasicNodeMaterial, Quaternion, SphereGeometry, Vector3 } from 'three/webgpu';
+import { InstancedBufferAttribute, InstancedBufferGeometry, InstancedMesh, Matrix4, Mesh, MeshBasicNodeMaterial, Quaternion, SphereGeometry, Vector3 } from 'three/webgpu';
 import type { UniformNode } from 'three/webgpu';
 import {
   abs,
@@ -121,9 +121,9 @@ export function createCanopy(o: CanopyOptions): Canopy {
   const hull = new Float32Array(n * 3);
   const info = new Float32Array(n * 4);
   const toneArr = new Float32Array(n * 4);
-  sphere.setAttribute('hullCenter', new InstancedBufferAttribute(hull, 3).setUsage(DynamicDrawUsage));
-  sphere.setAttribute('domeInfo', new InstancedBufferAttribute(info, 4).setUsage(DynamicDrawUsage));
-  sphere.setAttribute('domeTone', new InstancedBufferAttribute(toneArr, 4).setUsage(DynamicDrawUsage));
+  sphere.setAttribute('hullCenter', new InstancedBufferAttribute(hull, 3));
+  sphere.setAttribute('domeInfo', new InstancedBufferAttribute(info, 4));
+  sphere.setAttribute('domeTone', new InstancedBufferAttribute(toneArr, 4));
   const hullAttr = attribute('hullCenter', 'vec3') as unknown as Vec3Node;
   const infoAttr = attribute('domeInfo', 'vec4');
   const toneAttr = attribute('domeTone', 'vec4');
@@ -183,10 +183,11 @@ export function createCanopy(o: CanopyOptions): Canopy {
       const C = P.div(DOT);
       const cell = floor(C);
       const cid = fract(cell.x.div(256)).mul(256).add(fract(cell.y.div(256)).mul(256).mul(256)).add(fract(cell.z.div(256)).mul(256).mul(65536)).floor();
+      // two hashes per cell; the other random values are derived from them (cheap on phones)
       const h1 = hash(cid);
       const h2 = hash(cid.add(7));
-      const h3 = hash(cid.add(13));
-      const h4 = hash(cid.add(29));
+      const h3 = fract(h1.mul(17.31).add(h2.mul(3.7)));
+      const h4 = fract(h2.mul(23.17).add(h1.mul(5.3)));
       const cc = cell.add(0.5).add(vec3(h1, h2, h3).sub(0.5).mul(0.38));
       const dv = C.sub(cc);
       const dn = dv.dot(nrm);
@@ -196,7 +197,7 @@ export function createCanopy(o: CanopyOptions): Canopy {
       const dotR = float(0.17).add(h4.mul(0.12)).mul(light);
       const dotMask = smoothstep(dotR.add(fw), dotR.sub(fw).max(0), d).mul(step(0.12, h2)).mul(far);
       // mostly one band lighter (a woven texture), some light tints, rare sparkles and complementary accents
-      const pick = hash(cid.add(41));
+      const pick = fract(h1.mul(41.9).add(h2.mul(11.3)));
       const lighter = min(floor(band).add(2), float(3));
       const dotIdx = select(pick.lessThan(0.62), lighter, select(pick.lessThan(0.88), float(5), select(pick.lessThan(0.96), float(6), float(7))));
       const dotCol = mix(lookup.pal(dotIdx, rowA).rgb, lookup.pal(dotIdx, rowB).rgb, fr);
@@ -209,8 +210,9 @@ export function createCanopy(o: CanopyOptions): Canopy {
         const F = P.div(FC);
         const fcell = floor(F);
         const fid = fract(fcell.x.div(256)).mul(256).add(fract(fcell.y.div(256)).mul(256).mul(256)).add(fract(fcell.z.div(256)).mul(256).mul(65536)).floor().add(dh.mul(97).floor());
-        const on = step(hash(fid.add(3)), float(0.34));
-        const fc = fcell.add(0.5).add(vec3(hash(fid.add(5)), hash(fid.add(9)), hash(fid.add(17))).sub(0.5).mul(0.4));
+        const fh = hash(fid.add(3));
+        const on = step(fh, float(0.34));
+        const fc = fcell.add(0.5).add(vec3(fract(fh.mul(13.1)), fract(fh.mul(27.7)), fract(fh.mul(51.3))).sub(0.5).mul(0.4));
         const fv = F.sub(fc);
         const t1 = normalize(cross(nrm, select(abs(nrm.y).lessThan(0.9), vec3(0, 1, 0), vec3(1, 0, 0))));
         const t2 = cross(nrm, t1);
@@ -221,7 +223,7 @@ export function createCanopy(o: CanopyOptions): Canopy {
         const ffw = fwidth(F.x).max(1e-4);
         const fr0 = float(0.062).mul(light);
         const petal = smoothstep(fr0.add(ffw), fr0.sub(ffw).max(0), dd).mul(on).mul(smoothstep(float(0.2), float(0.08), ffw));
-        const mcol = lookup.pal(floor(hash(fid.add(23)).mul(7.99)), motifRow).rgb;
+        const mcol = lookup.pal(floor(fract(fh.mul(91.7)).mul(7.99)), motifRow).rgb;
         col = mix(col, mcol, petal);
       }
       return col;
@@ -233,13 +235,17 @@ export function createCanopy(o: CanopyOptions): Canopy {
     positionNode: warp(hullAttr.add(positionLocal.sub(hullAttr).mul(pop))),
   });
   const domeMesh = new InstancedMesh(sphere, domeMaterial, n);
-  domeMesh.instanceMatrix.setUsage(DynamicDrawUsage);
   domeMesh.name = 'hero-domes';
   domeMesh.castShadow = true;
-  domeMesh.receiveShadow = true;
+  // STYLE §5.5: crowns do not read the shadow map — each dome is its own light/ink shape (lifted light), the long
+  // shadows fall onto the ground and the wood. Saves the cascade sampling on the most expensive surface, and the
+  // stipple dots are never cut by a cast-shadow edge (they only scale with the light)
+  domeMesh.receiveShadow = false;
   domeMesh.frustumCulled = false;
   // Instance slot → dome index. The slots are re-sorted front to back when the camera moves (see sortForCamera):
   // the stippled dome shader is the most expensive one of the tree, early-z then shades each pixel about once.
+  // Note: no DynamicDrawUsage anywhere — three r186 re-uploads such attributes on every frame; updates go through
+  // needsUpdate (version bump) only when something changed.
   let order = domes.map((_, i) => i);
   const domeTone = new Float32Array(n * 4);
   const writeInstances = () => {
@@ -343,7 +349,7 @@ export function createCanopy(o: CanopyOptions): Canopy {
   dotGeo.setAttribute('dotHull', new InstancedBufferAttribute(reorder(dotHull, 3), 3));
   dotGeo.setAttribute('dotNormal', new InstancedBufferAttribute(dotOrder.length ? reorder(dotNormal, 3) : new Float32Array([0, 1, 0]), 3));
   dotGeo.setAttribute('dotData', new InstancedBufferAttribute(reorder(dotData, 4), 4));
-  dotGeo.setAttribute('dotTone', new InstancedBufferAttribute(dotTone, 1).setUsage(DynamicDrawUsage));
+  dotGeo.setAttribute('dotTone', new InstancedBufferAttribute(dotTone, 1));
   const dotTotal = dotOrder.length;
   const dotLod: TSLUniform = uniform(dotTotal + LOD_FADE);
   dotGeo.instanceCount = dotTotal;

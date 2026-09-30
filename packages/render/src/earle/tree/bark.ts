@@ -129,7 +129,7 @@ export function createBarkShade(o: BarkShadeOptions): (lit: FloatNode, ndl: Floa
     const coord = w.div(perLine.max(1e-3));
     const lineId = floor(coord);
     const lh = hash(lineId.add(4096).add(seed));
-    const lh2 = hash(lineId.add(8192).add(seed));
+    const lh2 = fract(lh.mul(37.73).add(0.31));
     // strokes: each line broken into tapered dashes of 1.6–5 units
     const dashC = y.div(float(1.6).add(lh.mul(3.4))).add(lh2.mul(7));
     const df = fract(dashC);
@@ -194,12 +194,13 @@ export function createBarkShade(o: BarkShadeOptions): (lit: FloatNode, ndl: Floa
     const sp = vec2(x, y).div(SC);
     const sc = floor(sp);
     const sid = sc.x.add(2048).add(sc.y.add(2048).mul(4099)).add(seed);
+    // one hash per cell; jitter and size are derived from it (cheap on phones)
     const shs = hash(sid);
-    const sjx = hash(sid.add(7)).sub(0.5).mul(0.5);
-    const sjy = hash(sid.add(13)).sub(0.5).mul(0.5);
+    const sjx = fract(shs.mul(13.37)).sub(0.5).mul(0.5);
+    const sjy = fract(shs.mul(29.71)).sub(0.5).mul(0.5);
     const sd = length(fract(sp).sub(0.5).sub(vec2(sjx, sjy)));
     const sfw = fwidth(sp.x).max(1e-4);
-    const dotR = float(0.22).add(hash(sid.add(19)).mul(0.16));
+    const dotR = float(0.22).add(fract(shs.mul(7.13)).mul(0.16));
     const dot = smoothstep(dotR.add(sfw), dotR.sub(sfw), sd).mul(smoothstep(float(0.6), float(0.3), sfw));
     const tBand = clamp(field.div(BAND).add(1), 0, 1);
     const speck = step(shs, tBand.mul(tBand)).mul(dot).mul(float(1).sub(core));

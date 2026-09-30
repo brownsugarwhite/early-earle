@@ -178,6 +178,8 @@ export function createStarGlyph(rays = 22): { position: Float32BufferAttribute; 
 
 export interface StarMeshOptions {
   stars: NeedleSite[];
+  /** Needles per star (Standard 22; phones 14). */
+  rays?: number;
   lookup: PaletteLookup;
   fog: FogSettings;
   fogLookup?: PaletteLookup;
@@ -195,7 +197,7 @@ export interface StarMeshOptions {
  */
 export function createStarMesh(o: StarMeshOptions): CountLodMesh {
   const n = Math.max(1, o.stars.length);
-  const glyph = createStarGlyph();
+  const glyph = createStarGlyph(o.rays ?? 22);
   const geometry = new InstancedBufferGeometry();
   geometry.setAttribute('position', glyph.position);
   geometry.setIndex(glyph.index);

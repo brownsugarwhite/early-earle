@@ -213,7 +213,7 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
   const warpOpt = options.warp ? { warp: options.warp } : {};
   const lace = createLaceMesh({ twigs, lookup, fog, fogLookup, laceRow: rows.lace, bb, centre: crownCenter, ...warpOpt });
   const needles = mobil ? shape.needles.filter((_, i) => i % 3 !== 2) : shape.needles;
-  const stars = createStarMesh({ stars: needles, lookup, fog, fogLookup, starRow: rows.star, bb, seed, ...warpOpt });
+  const stars = createStarMesh({ stars: needles, rays: mobil ? 14 : 22, lookup, fog, fogLookup, starRow: rows.star, bb, seed, ...warpOpt });
   group.add(lace.mesh, stars.mesh);
   disposables.push(lace.dispose, stars.dispose);
 
