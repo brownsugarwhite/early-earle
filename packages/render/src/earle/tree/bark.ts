@@ -28,8 +28,10 @@ export interface BarkShadeOptions {
   circumference: FloatNode;
   /** (kind, hash, rank, radius): kind 0 trunk, 1 limb, 2 branch, 3 root, 4 snow drift. */
   wood: Vec4Node;
-  /** Tree-space normal (snow lies where it points up). */
+  /** Tree-space normal (kept for callers; the snow field comes from `snowBase`). */
   normal: Vec3Node;
+  /** Per-vertex snow field base (1.3·n.y + low-frequency noise), see `buildWood`. */
+  snowBase: FloatNode;
   /** Tree-space position (ragged snow noise). */
   position: Vec3Node;
   /** Snow amount 0..1 (0 = none). */
@@ -179,11 +181,12 @@ export function createBarkShade(o: BarkShadeOptions): (lit: FloatNode, ndl: Floa
     col = mix(col, pal(5, o.rows.bark), knotRing.mul(litSoft));
 
     // --- (3) snow patches and the drift -------------------------------------------------------------------------
+    // snow field: per-vertex base (up-facing + low-frequency ragged edge, see wood.ts) plus the fine part here
     const P3 = o.position;
-    const n1 = valueNoise3(P3.mul(0.55));
-    const nz = hoch ? n1.mul(0.62).add(valueNoise3(P3.mul(1.7).add(vec3(7.1, 3.3, 1.9))).mul(0.34)) : n1.mul(0.9);
-    const upness = o.normal.y;
-    const field = upness.mul(1.3).add(nz).sub(float(1.62).sub(o.snow.mul(0.7)));
+    const fine = hoch ? valueNoise3(P3.mul(1.7).add(vec3(7.1, 3.3, 1.9))).mul(0.34) : float(0.14);
+    // thin limbs and branches keep only a line of snow on top (image 01), the trunk and big limbs carry patches
+    const thin = float(1).sub(smoothstep(0.3, 1.2, o.wood.w)).mul(step(0.5, kind)).mul(float(1).sub(isDrift));
+    const field = o.snowBase.add(fine).sub(float(1.62).sub(o.snow.mul(0.7))).sub(thin.mul(0.38));
     const BAND = 0.16;
     const core = aa(0, field);
     // stipple band: dots in a fine bark-space grid, present with growing probability towards the patch

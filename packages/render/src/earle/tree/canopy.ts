@@ -88,6 +88,8 @@ export interface Canopy {
   setFamily(f: CanopyFamily): void;
   /** Share of rim dots drawn (LOD 0..1). */
   setDotShare(share: number): void;
+  /** Re-sorts the dome instances front to back for a camera position in canopy space; true if the order changed. */
+  sortForCamera(camera: Vector3): boolean;
   dispose(): void;
 }
 
@@ -119,8 +121,8 @@ export function createCanopy(o: CanopyOptions): Canopy {
   const hull = new Float32Array(n * 3);
   const info = new Float32Array(n * 4);
   const toneArr = new Float32Array(n * 4);
-  sphere.setAttribute('hullCenter', new InstancedBufferAttribute(hull, 3));
-  sphere.setAttribute('domeInfo', new InstancedBufferAttribute(info, 4));
+  sphere.setAttribute('hullCenter', new InstancedBufferAttribute(hull, 3).setUsage(DynamicDrawUsage));
+  sphere.setAttribute('domeInfo', new InstancedBufferAttribute(info, 4).setUsage(DynamicDrawUsage));
   sphere.setAttribute('domeTone', new InstancedBufferAttribute(toneArr, 4).setUsage(DynamicDrawUsage));
   const hullAttr = attribute('hullCenter', 'vec3') as unknown as Vec3Node;
   const infoAttr = attribute('domeInfo', 'vec4');
@@ -231,24 +233,57 @@ export function createCanopy(o: CanopyOptions): Canopy {
     positionNode: warp(hullAttr.add(positionLocal.sub(hullAttr).mul(pop))),
   });
   const domeMesh = new InstancedMesh(sphere, domeMaterial, n);
+  domeMesh.instanceMatrix.setUsage(DynamicDrawUsage);
   domeMesh.name = 'hero-domes';
   domeMesh.castShadow = true;
   domeMesh.receiveShadow = true;
   domeMesh.frustumCulled = false;
-  domes.forEach((d, i) => {
-    _s.set(d.r, d.r * d.sy, d.r);
-    _m.compose(d.center, _q.identity(), _s);
-    domeMesh.setMatrixAt(i, _m);
-    hull[i * 3] = d.center.x;
-    hull[i * 3 + 1] = d.center.y;
-    hull[i * 3 + 2] = d.center.z;
-    info[i * 4] = d.r;
-    info[i * 4 + 1] = d.sy;
-    info[i * 4 + 2] = d.rank;
-    info[i * 4 + 3] = d.hash;
-  });
-  domeMesh.instanceMatrix.needsUpdate = true;
+  // Instance slot → dome index. The slots are re-sorted front to back when the camera moves (see sortForCamera):
+  // the stippled dome shader is the most expensive one of the tree, early-z then shades each pixel about once.
+  let order = domes.map((_, i) => i);
+  const domeTone = new Float32Array(n * 4);
+  const writeInstances = () => {
+    order.forEach((di, slot) => {
+      const d = domes[di]!;
+      _s.set(d.r, d.r * d.sy, d.r);
+      _m.compose(d.center, _q.identity(), _s);
+      domeMesh.setMatrixAt(slot, _m);
+      hull[slot * 3] = d.center.x;
+      hull[slot * 3 + 1] = d.center.y;
+      hull[slot * 3 + 2] = d.center.z;
+      info[slot * 4] = d.r;
+      info[slot * 4 + 1] = d.sy;
+      info[slot * 4 + 2] = d.rank;
+      info[slot * 4 + 3] = d.hash;
+      toneArr.set(domeTone.subarray(di * 4, di * 4 + 4), slot * 4);
+    });
+    domeMesh.instanceMatrix.needsUpdate = true;
+    (sphere.getAttribute('hullCenter') as InstancedBufferAttribute).needsUpdate = true;
+    (sphere.getAttribute('domeInfo') as InstancedBufferAttribute).needsUpdate = true;
+    (sphere.getAttribute('domeTone') as InstancedBufferAttribute).needsUpdate = true;
+  };
+  writeInstances();
   domeMesh.count = domes.length;
+  const sortKey = new Float32Array(n);
+  const sortForCamera = (camTree: Vector3): boolean => {
+    for (let i = 0; i < domes.length; i++) {
+      const d = domes[i]!;
+      // distance to the nearest point of the dome's bounding sphere (front surface first)
+      sortKey[i] = d.center.distanceTo(camTree) - d.r;
+    }
+    const next = domes.map((_, i) => i).sort((a, b) => sortKey[a]! - sortKey[b]!);
+    let same = true;
+    for (let i = 0; i < next.length; i++) {
+      if (next[i] !== order[i]) {
+        same = false;
+        break;
+      }
+    }
+    if (same) return false;
+    order = next;
+    writeInstances();
+    return true;
+  };
 
   // --- Rim fringe dots ------------------------------------------------------------------------------------------
   const dotRel: number[] = [];
@@ -289,27 +324,27 @@ export function createCanopy(o: CanopyOptions): Canopy {
     }
   });
   // shuffle-free LOD: interleave so any prefix covers all domes evenly
-  const order = dotDome.map((_, i) => i).sort((a, b) => dotData[a * 4 + 3]! - dotData[b * 4 + 3]!);
+  const dotOrder = dotDome.map((_, i) => i).sort((a, b) => dotData[a * 4 + 3]! - dotData[b * 4 + 3]!);
   const reorder = (src: number[], k: number): Float32Array => {
-    const out = new Float32Array(Math.max(1, order.length) * k);
-    order.forEach((from, to) => {
+    const out = new Float32Array(Math.max(1, dotOrder.length) * k);
+    dotOrder.forEach((from, to) => {
       for (let c = 0; c < k; c++) out[to * k + c] = src[from * k + c]!;
     });
     return out;
   };
-  const dotDomeSorted = order.map((i) => dotDome[i]!);
+  const dotDomeSorted = dotOrder.map((i) => dotDome[i]!);
   const dotGeo = new InstancedBufferGeometry();
   const hex = createHexagon();
   dotGeo.setAttribute('position', hex.position);
   dotGeo.setIndex(hex.index);
-  const nd = Math.max(1, order.length);
+  const nd = Math.max(1, dotOrder.length);
   const dotTone = new Float32Array(nd);
   dotGeo.setAttribute('dotRel', new InstancedBufferAttribute(reorder(dotRel, 3), 3));
   dotGeo.setAttribute('dotHull', new InstancedBufferAttribute(reorder(dotHull, 3), 3));
-  dotGeo.setAttribute('dotNormal', new InstancedBufferAttribute(order.length ? reorder(dotNormal, 3) : new Float32Array([0, 1, 0]), 3));
+  dotGeo.setAttribute('dotNormal', new InstancedBufferAttribute(dotOrder.length ? reorder(dotNormal, 3) : new Float32Array([0, 1, 0]), 3));
   dotGeo.setAttribute('dotData', new InstancedBufferAttribute(reorder(dotData, 4), 4));
   dotGeo.setAttribute('dotTone', new InstancedBufferAttribute(dotTone, 1).setUsage(DynamicDrawUsage));
-  const dotTotal = order.length;
+  const dotTotal = dotOrder.length;
   dotGeo.instanceCount = dotTotal;
   dotGeo.boundingSphere = null;
 
@@ -366,11 +401,12 @@ export function createCanopy(o: CanopyOptions): Canopy {
   const setFamily = (f: CanopyFamily) => {
     domes.forEach((d, i) => {
       const a = phase + d.hash * Math.PI * 2;
-      toneArr[i * 4] = Math.min(3.999, familyTone(f, d.tone));
-      toneArr[i * 4 + 1] = Math.cos(a) * 0.35;
-      toneArr[i * 4 + 2] = Math.sin(a) * 0.35;
-      toneArr[i * 4 + 3] = 0;
+      domeTone[i * 4] = Math.min(3.999, familyTone(f, d.tone));
+      domeTone[i * 4 + 1] = Math.cos(a) * 0.35;
+      domeTone[i * 4 + 2] = Math.sin(a) * 0.35;
+      domeTone[i * 4 + 3] = 0;
     });
+    order.forEach((di, slot) => toneArr.set(domeTone.subarray(di * 4, di * 4 + 4), slot * 4));
     for (let i = 0; i < dotDomeSorted.length; i++) dotTone[i] = Math.min(3.999, familyTone(f, domes[dotDomeSorted[i]!]!.tone) + 0.3);
     (sphere.getAttribute('domeTone') as InstancedBufferAttribute).needsUpdate = true;
     (dotGeo.getAttribute('dotTone') as InstancedBufferAttribute).needsUpdate = true;
@@ -382,6 +418,7 @@ export function createCanopy(o: CanopyOptions): Canopy {
     dots: dotMesh,
     counts: { domes: domes.length, dots: dotTotal },
     setFamily,
+    sortForCamera,
     setDotShare: (share) => {
       dotGeo.instanceCount = Math.max(0, Math.min(dotTotal, Math.round(dotTotal * share)));
     },

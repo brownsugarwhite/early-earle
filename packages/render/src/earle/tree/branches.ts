@@ -106,8 +106,8 @@ export function createLaceMesh(o: LaceMeshOptions): CountLodMesh {
   const pxPerUnit = bb.projScaleY.mul(screenSize.y).mul(0.5).div(depth);
   const worldScale = modelWorldMatrix.mul(vec4(1, 0, 0, 0)).xyz.length();
   const w = mix(D.x, D.y, along).mul(worldScale).mul(s);
-  // a hairline at least (0.75 px), at most 0.5 % of the screen height: twigs close to the lens stay fine lines
-  const width = max(w.min(screenSize.y.mul(0.005).div(pxPerUnit)), float(0.75).div(pxPerUnit));
+  // a hairline at least (0.75 px), at most 0.25 % of the screen height: twigs close to the lens stay fine lines
+  const width = max(w.min(screenSize.y.mul(0.0025).div(pxPerUnit)), float(0.75).div(pxPerUnit));
   const world = P.add(side.mul(width.mul(positionGeometry.y)));
   const material = new MeshBasicNodeMaterial();
   material.vertexNode = cameraProjectionMatrix.mul(cameraViewMatrix.mul(vec4(world, 1)));

@@ -145,6 +145,21 @@ describe('heroTreePath: nodes lie on the tree', () => {
     }
   });
 
+  it('map framing (wider rail, as the planet site uses it) stays clear of the tree too', () => {
+    const wide = heroTreePath({ nodes: 16, shape, rail: { trunkDistance: 18, crownDistance: 28 } });
+    const a = new Vector3();
+    const la = new Vector3();
+    let minClear = Infinity;
+    for (let i = 0; i <= 1200; i++) {
+      wide.sampleRail(i / 1200, a, la);
+      minClear = Math.min(minClear, wide.clearance(a));
+      expect(shape.insideCanopy(a, 0.3)).toBe(false);
+    }
+    expect(minClear).toBeGreaterThan(0.5);
+    // the nodes themselves do not depend on the camera
+    expect(wide.nodes.map((n) => n.position)).toEqual(path.nodes.map((n) => n.position));
+  });
+
   it('colliders: negative inside the trunk and the domes, positive in the open', () => {
     const inTrunk = shape.trunk.axisAt(4, new Vector3());
     expect(path.clearance(inTrunk)).toBeLessThan(0);

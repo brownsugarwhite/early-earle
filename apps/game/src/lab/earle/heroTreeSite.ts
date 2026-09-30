@@ -97,6 +97,8 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
     pathClearance: PUCK_CLEARANCE / TREE_SCALE,
     // roots, drift and the first node follow the planet's curvature (nothing floats at the rim of the foot)
     groundRadius: world.options.radius / TREE_SCALE,
+    // map framing: hero, the next nodes and the tree together (≈ 7 / 11 world units from the node)
+    rail: { trunkDistance: 18, crownDistance: 28 },
   });
   const plan = tree.shape.plan;
   const height = (tree.shape.crownTop + 3) * TREE_SCALE;

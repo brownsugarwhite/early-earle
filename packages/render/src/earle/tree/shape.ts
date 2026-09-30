@@ -152,9 +152,9 @@ const dir = (a: number): Vector3 => new Vector3(Math.cos(a), 0, Math.sin(a));
 
 export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
   const seed = o.seed ?? 7;
-  const H = o.trunkHeight ?? 11;
+  const H = o.trunkHeight ?? 14;
   const R = o.crownRadius ?? 15;
-  const crownTop = H + 1.42 * R;
+  const crownTop = H + 1.25 * R;
   const mobil = o.quality === 'mobil';
   const rand = mulberry32(hash32('hero-shape-v3', seed));
   const trunkSpec: TrunkSpec = {
@@ -222,18 +222,18 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
   const at = (ang: number, rho: number, y: number): Vector3 => new Vector3(cx + Math.cos(ang) * rho, y, cz + Math.sin(ang) * rho);
   const Re = R * 1.0;
   /** Canopy floor (under the umbrella) and crest height at the rim. */
-  const yFloor = H + 0.62 * R;
-  const yBase = yFloor + 0.3 * R;
+  const yFloor = H + 0.5 * R;
+  const yBase = yFloor + 0.28 * R;
   /** Height of the envelope's upper shell at horizontal distance rho (crownTop at the axis, yBase at the rim). */
   const yEnv = (rho: number): number => yBase + (crownTop - yBase) * Math.pow(Math.max(0, 1 - Math.pow(Math.min(1, rho / Re), 2)), 0.8);
 
   // --- Doorstep and ramp limb: the doorstep dome sits on the ramp limb just outside the canopy footprint (seen from
   //     outside and above); the limb leaves the bark where the spiral ends and rises under the canopy floor to it -----
   const doorAng = rampAngle + 0.1;
-  const doorRho = Re * 1.08;
-  const doorR = R * 0.18;
-  const doorSy = 0.62;
-  const doorC = at(doorAng, doorRho, yFloor - R * 0.02);
+  const doorRho = Re * 1.2;
+  const doorR = R * 0.17;
+  const doorSy = 0.64;
+  const doorC = at(doorAng, doorRho, yFloor - R * 0.14);
   const doorCrest = doorC.y + doorR * doorSy;
   const limbs: Limb[] = [];
   const axis = (y: number): Vector3 => trunk.axisAt(y, new Vector3());
@@ -278,6 +278,24 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
   tubeFlank(ramp, doorS, rampSide, rampFlank, _v, _n);
   const entry = _v.clone();
 
+  const rampTop: Vector3[] = [];
+  for (let s = 0; s <= doorS; s += 0.5) {
+    tubeFlank(ramp, s, rampSide, rampFlank, _v, _n);
+    rampTop.push(_v.clone());
+  }
+  /** Headroom over the ramp walk (the camera looks at it from outside): a dome must not cover it. */
+  const coversRamp = (c: Vector3, r: number, sy: number): boolean => {
+    for (const q of rampTop) {
+      for (const lift of [0, 1.4, 2.8]) {
+        const x = (q.x - c.x) / (r + 0.6);
+        const y = (q.y + lift - c.y) / (r * sy + 0.6);
+        const z = (q.z - c.z) / (r + 0.6);
+        if (x * x + y * y + z * z < 1) return true;
+      }
+    }
+    return false;
+  };
+
   // --- Path spine: over the doorstep dome from the limb entry to its crest, sideways along the rim onto the canopy's
   //     shoulder (never back over the ramp), then a spiral on the envelope to the top --------------------------------
   const spineTurn = Math.PI * 2 * 0.62;
@@ -291,13 +309,14 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
       spineRaw.push(new Vector3(doorC.x + dirH.x * doorR * c, doorC.y + doorR * doorSy * Math.sin(phi), doorC.z + dirH.z * doorR * c));
     }
   }
-  const arc0 = doorAng + 0.16;
-  const arc1 = doorAng + 0.8;
-  for (let i = 1; i <= 40; i++) {
-    const u = i / 40;
+  // a staircase of domes up the crown's outer flank: sideways and inwards while climbing onto the shoulder
+  const arc0 = doorAng + 0.14;
+  const arc1 = doorAng + 0.95;
+  for (let i = 1; i <= 60; i++) {
+    const u = i / 60;
     const e = u * u * (3 - 2 * u);
-    const rho = Re * (1.02 - 0.2 * e);
-    spineRaw.push(at(arc0 + (arc1 - arc0) * u, rho, doorCrest + (yEnv(rho) + 0.4 - doorCrest) * Math.min(1, u * 1.4)));
+    const rho = doorRho * (0.97 - 0.1 * u) + (Re * 0.82 - doorRho * 0.87) * e;
+    spineRaw.push(at(arc0 + (arc1 - arc0) * u, rho, doorCrest + (yEnv(rho) + 0.4 - doorCrest) * Math.min(1, u * 1.15)));
   }
   for (let i = 1; i <= 600; i++) {
     const u = i / 600;
@@ -305,7 +324,7 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
     const ang = arc1 + spineTurn * (1 - Math.pow(1 - u, 1.35));
     spineRaw.push(at(ang, rho, yEnv(rho) + 0.4));
   }
-  const spine = resample(spineRaw, 0.25);
+  const spine = resample(spineRaw, 0.1);
   const spineLen: number[] = [0];
   for (let i = 1; i < spine.length; i++) spineLen.push(spineLen[i - 1]! + spine[i]!.distanceTo(spine[i - 1]!));
   const spineTotal = spineLen[spineLen.length - 1]!;
@@ -350,31 +369,16 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
       const r = R * (isTop ? 0.38 : 0.21 + 0.13 * u) * (isTop ? 1 : 0.94 + 0.12 * rand());
       const sy = isTop ? 0.72 : 0.55 + 0.15 * u + 0.05 * rand();
       const p = spineAt(s, new Vector3());
-      addDome(p.clone().setY(p.y - r * sy), r, sy, isTop ? 4 : 6, true);
+      // chain domes never swallow the ramp walk (the limb enters the doorstep dome, nothing covers that entry)
+      let rr = r;
+      for (let k = 0; k < 6 && coversRamp(p.clone().setY(p.y - rr * sy), rr, sy); k++) rr *= 0.85;
+      if (!coversRamp(p.clone().setY(p.y - rr * sy), rr, sy)) addDome(p.clone().setY(p.y - rr * sy), rr, sy, isTop ? 4 : 6, true);
       if (isTop) break;
       const rNext = R * (0.21 + 0.13 * Math.min(1, u + 0.1));
       s = Math.min(spineTotal, s + 0.55 * (r + rNext));
     }
   }
   const pathDomeCount = domes.length;
-  const rampTop: Vector3[] = [];
-  for (let s = 0; s <= doorS; s += 0.5) {
-    tubeFlank(ramp, s, rampSide, rampFlank, _v, _n);
-    rampTop.push(_v.clone());
-  }
-  /** Headroom over the ramp walk (the camera looks at it from outside): a dome must not cover it. */
-  const coversRamp = (c: Vector3, r: number, sy: number): boolean => {
-    for (const q of rampTop) {
-      for (const lift of [0, 1.4, 2.8]) {
-        const x = (q.x - c.x) / (r + 0.6);
-        const y = (q.y + lift - c.y) / (r * sy + 0.6);
-        const z = (q.z - c.z) / (r + 0.6);
-        if (x * x + y * y + z * z < 1) return true;
-      }
-    }
-    return false;
-  };
-
   // --- Fill domes: Poisson-packed over the envelope (one scalloped mass, Ebene 33 / image 02), a flat floor under
   //     it, satellites hanging at the rim ------------------------------------------------------------------------
   const overlaps = (c: Vector3, r: number, k: number): boolean => {
@@ -392,25 +396,32 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
     return { nh: -dy / l, ny: 1 / l };
   };
   const target = Math.max(28, o.clusters ?? 56);
+  // tiers (image 02): the domes of a tier sit on a ring of the envelope, each tier a scalloped band stacked on the
+  // one below and inset — a pagoda of jewel caps rather than a random heap; jitter keeps them hand-made
+  const TIERS = [0.93, 0.7, 0.47, 0.24];
   {
     const golden = Math.PI * (3 - Math.sqrt(5));
     const M = 520;
-    const cands: Array<{ a: number; rho: number; key: number }> = [];
-    for (let k = 0; k < M; k++) cands.push({ a: k * golden + rand() * 0.3, rho: Re * 0.97 * Math.sqrt((k + 0.5) / M), key: rand() });
+    const cands: Array<{ a: number; rho: number; tier: number; key: number }> = [];
+    for (let k = 0; k < M; k++) {
+      const rho0 = Re * 0.97 * Math.sqrt((k + 0.5) / M);
+      let tier = 0;
+      for (let t = 1; t < TIERS.length; t++) if (Math.abs(TIERS[t]! * Re - rho0) < Math.abs(TIERS[tier]! * Re - rho0)) tier = t;
+      cands.push({ a: k * golden + rand() * 0.3, rho: TIERS[tier]! * Re * (0.97 + 0.06 * rand()), tier, key: rand() });
+    }
     cands.sort((x, y) => x.key - y.key);
     for (const cd of cands) {
       if (domes.length >= target + pathDomeCount * 0.4) break;
       const inner = 1 - cd.rho / Re;
-      const r = R * (0.18 + 0.15 * rand()) * (1 + 0.3 * inner);
-      const sy = 0.52 + 0.14 * rand() + 0.08 * inner;
+      const r = R * (0.2 + 0.1 * rand()) * (1 + 0.35 * inner);
+      const sy = 0.56 + 0.1 * rand() + 0.08 * inner;
       const en = envNormal(cd.rho);
-      const top = yEnv(cd.rho) + (rand() - 0.35) * 0.9;
+      const top = yEnv(cd.rho) + (rand() - 0.4) * 0.6;
       // centre inside the envelope along its normal: the dome's crest touches the envelope
-      const c = at(cd.a, cd.rho - en.nh * r * 0.35, top - r * sy * (0.72 + 0.28 * en.ny));
-      if (overlaps(c, r, 0.52)) continue;
+      const c = at(cd.a, cd.rho - en.nh * r * 0.3, top - r * sy * (0.74 + 0.26 * en.ny));
+      if (overlaps(c, r, 0.5)) continue;
       if (coversRamp(c, r, sy)) continue;
-      const cluster = cd.rho > Re * 0.72 ? 1 : cd.rho > Re * 0.42 ? 2 : 3;
-      addDome(c, r, sy, cluster, false);
+      addDome(c, r, sy, 1 + Math.min(2, cd.tier), false);
     }
   }
   // floor: flat domes under the pile — seen from below one dark mass resting on the limbs (nothing floats)
@@ -560,42 +571,45 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
     supports.push(forkLimb(ang0, ang, aRho, aY, tail, 0, 0.2, 'support'));
   }
 
-  // fountain arms (image 04): branch off each support under the canopy, pass below the rim and sweep far out and down
+  // fountain arms (image 04): grow from the trunk below the canopy — up briefly, then out and down in long arcs,
+  // forking into dendritic hands with a curtain of lace; a skirt under the jewel crown. Their bases keep clear of
+  // the bark spiral (the level path) and of the ramp.
   const doorSector = (ang: number): boolean => Math.abs(wrapAngle(ang - doorAng)) < 0.6;
-  supports.forEach((sup, i) => {
-    const c = sup.curve;
-    const len = tubeLength(c);
-    let s0 = len * 0.3;
-    for (let s = 0; s < len; s += 0.2) {
-      tubePointAt(c, s, _v);
-      if (Math.hypot(_v.x - cx, _v.z - cz) >= R * 0.3) {
-        s0 = s;
+  const pathAngleAt = (y: number): number => spiralAngle0 + turns * Math.PI * 2 * spiralAt((y - spiralY0) / (spiralY1 - spiralY0));
+  const nArms = 6;
+  const armA0 = rampAngle + 0.6;
+  for (let i = 0; i < nArms; i++) {
+    const ang = armA0 + (i / nArms) * Math.PI * 2 + (rand() - 0.5) * 0.4;
+    if (doorSector(ang) || Math.abs(wrapAngle(ang - exitAngle)) < 0.5) continue;
+    // base height: the first in [0.5H, 0.8H] where the path is ≥ 1 rad away (±1.5 units in height)
+    let yb = -1;
+    for (let t = 0; t < 16; t++) {
+      const y = H * (0.5 + 0.3 * ((t * 0.618 + i * 0.37) % 1));
+      let clear = true;
+      for (const dy of [-1.5, 0, 1.5]) if (Math.abs(wrapAngle(pathAngleAt(y + dy) - ang)) < 1.0) clear = false;
+      if (clear) {
+        yb = y;
         break;
       }
     }
-    const p0 = tubePointAt(c, s0, new Vector3());
-    const a0 = Math.atan2(p0.z - cz, p0.x - cx);
-    const side = i % 2 === 0 ? 1 : -1;
-    const ang = a0 + side * (0.32 + 0.12 * rand());
-    if (doorSector(ang) || Math.abs(wrapAngle(ang - exitAngle)) < 0.35) return;
-    const r0 = tubeRadiusAt(c, s0) * 0.9;
-    // every arm its own gesture: reach, sway, drop and a kink (image 04 — no two limbs alike)
-    const drop = 0.75 + 0.5 * rand();
-    const reach = 0.9 + 0.22 * rand();
-    const sway = side * (0.06 + 0.1 * rand());
-    const kink = (rand() - 0.5) * 1.6;
-    const tipRho = R * 1.48 * reach;
-    const tipY = Math.max(trunk.groundY(cx + Math.cos(ang) * tipRho, cz + Math.sin(ang) * tipRho) + 3, yFloor - R * drop);
+    if (yb < 0) continue;
+    const b = axis(yb);
+    const rT = trunk.surfaceAt(yb, ang);
+    const reach = 0.95 + 0.2 * rand();
+    const sway = (i % 2 === 0 ? 1 : -1) * (0.08 + 0.12 * rand());
+    const lift = R * (0.22 + 0.12 * rand());
+    const tipRho = R * 1.45 * reach;
+    const tipY = trunk.groundY(cx + Math.cos(ang) * tipRho, cz + Math.sin(ang) * tipRho) + H * (0.28 + 0.18 * rand());
     const ctrl = [
-      p0.clone(),
-      at(ang - side * 0.05, R * 0.6, yFloor - 2.6 + kink * 0.4),
-      at(ang + sway * 0.3, R * 0.94 * reach, yFloor - 3.1 - Math.max(0, kink) * 0.5),
-      at(ang + sway * 0.7, R * 1.18 * reach, yFloor - 5.2 + kink),
-      at(ang + sway * 1.1, R * 1.38 * reach, yFloor - R * (0.25 + 0.3 * drop)),
-      at(ang + sway * 1.35, tipRho, tipY),
+      b.clone().addScaledVector(dir(ang), rT * 0.3).add(new Vector3(0, -0.6, 0)),
+      b.clone().addScaledVector(dir(ang), rT + 1.2).add(new Vector3(0, 1.4, 0)),
+      at(ang + sway * 0.3, R * 0.55 * reach, yb + lift),
+      at(ang + sway * 0.7, R * 0.9 * reach, yb + lift * 0.85),
+      at(ang + sway, R * 1.2 * reach, yb + lift * 0.2),
+      at(ang + sway * 1.2, tipRho, tipY),
     ];
-    limbs.push({ curve: limbTube(ctrl, r0, 0.12, 0.12), kind: 'free', level: 1, hash: rand(), exposedFrom: 0 });
-  });
+    limbs.push({ curve: limbTube(ctrl, rT * (0.36 + 0.06 * rand()), 0.16, 0.5), kind: 'free', level: 1, hash: rand(), exposedFrom: 0 });
+  }
 
   // ground limb (exit): from the fork through a rim dome, then out and down until its elbow rests on the ground
   const groundLimb = limbs.length;
@@ -605,17 +619,20 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
     const ang = exitAnchor.ang;
     const aRho = d ? Math.hypot(d.center.x - cx, d.center.z - cz) : Re * 0.8;
     const aY = d ? d.center.y - d.r * d.sy * 0.35 : yBase;
-    const far = R * 1.56;
+    const far = R * 1.6;
     const fx = cx + Math.cos(ang - 0.1) * far;
     const fz = cz + Math.sin(ang - 0.1) * far;
+    const g = trunk.groundY(fx, fz);
+    // S-curve: out along the rim, a long fall, the elbow resting on the ground, the end diving into it
     const tail = [
-      at(ang - 0.04, aRho + R * 0.2, aY - R * 0.12),
-      at(ang - 0.07, R * 1.32, aY * 0.5),
-      new Vector3(fx, trunk.groundY(fx, fz) + 0.25, fz),
-      at(ang - 0.12, R * 1.7, trunk.groundY(fx, fz) - 0.2),
+      at(ang - 0.03, aRho + R * 0.18, aY - R * 0.06),
+      at(ang - 0.06, R * 1.25, aY * 0.72),
+      at(ang - 0.08, R * 1.42, aY * 0.34),
+      new Vector3(fx, g + 0.6, fz),
+      at(ang - 0.12, R * 1.78, g - 0.4),
     ];
     const rT = trunk.surfaceAt(spiralY1 + 1, ang);
-    forkLimb(ang, ang, aRho, aY, tail, rT * 0.56, 0.3, 'ground');
+    forkLimb(ang, ang, aRho, aY, tail, rT * 0.62, 0.55, 'ground');
   }
   const gl = limbs[groundLimb]!.curve;
   const glLen = tubeLength(gl);
@@ -665,30 +682,53 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
     0.25,
   );
 
-  // --- Branches (level 2): from the exposed limb ends, drooping (the weeping starts here) ------------------------
+  // --- Forks (image 04): the exposed part of every limb forks again and again into a dendritic hand — each fork
+  //     thinner, turning sideways and drooping a little more; below ~0.1 units the lace takes over -------------------
   const nLimbs = limbs.length;
+  const DOWN = new Vector3(0, -1, 0);
+  const fork = (start: Vector3, dir: Vector3, r0: number, len: number, depth: number): void => {
+    const ctrl = [start.clone()];
+    const d = dir.clone().normalize();
+    let p = start.clone();
+    const bend = (rand() - 0.5) * 0.5;
+    for (let k = 1; k <= 3; k++) {
+      d.applyAxisAngle(UP, bend * 0.35).addScaledVector(DOWN, 0.1 + 0.07 * k + 0.05 * depth).normalize();
+      p = p.clone().addScaledVector(d, (len / 3) * (0.85 + 0.3 * rand()));
+      ctrl.push(p);
+    }
+    const tipR = Math.max(0.05, r0 * 0.35);
+    const curve = makeTube(ctrl, 0.35, (u) => tipR + (r0 - tipR) * Math.pow(1 - u, 1.1));
+    limbs.push({ curve, kind: 'branch', level: 2, hash: rand(), exposedFrom: 0 });
+    if (depth >= 2 || r0 < 0.16) return;
+    const clen = tubeLength(curve);
+    const kids = depth === 0 ? 2 : 1 + (rand() < 0.6 ? 1 : 0);
+    for (let k = 0; k < kids; k++) {
+      const s = clen * (kids === 1 ? 0.55 + 0.2 * rand() : 0.4 + 0.35 * k + 0.1 * rand());
+      const q = tubePointAt(curve, s, new Vector3());
+      const t = tubeTangentAt(curve, s, new Vector3());
+      const sign = (k + depth) % 2 === 0 ? 1 : -1;
+      const cd = t.clone().applyAxisAngle(UP, sign * (0.45 + 0.35 * rand())).addScaledVector(DOWN, 0.15).normalize();
+      fork(q, cd, tubeRadiusAt(curve, s) * 0.72, len * (0.55 + 0.15 * rand()), depth + 1);
+    }
+  };
   for (let li = 0; li < nLimbs; li++) {
     const l = limbs[li]!;
-    if (l.kind === 'leader') continue;
+    if (l.kind === 'leader' || l.kind === 'ramp') continue;
     const c = l.curve;
     const len = tubeLength(c);
-    const from = Math.max(l.exposedFrom, len * 0.4);
-    const count = l.kind === 'ground' ? 3 : l.kind === 'free' ? 4 : 3;
+    const from = Math.max(l.exposedFrom, len * (l.kind === 'free' ? 0.45 : 0.55));
+    const count = l.kind === 'free' ? 3 : l.kind === 'ground' ? 2 : 2;
     for (let k = 0; k < count; k++) {
-      const s = from + ((k + 0.6 + (rand() - 0.5) * 0.4) / count) * (len - from) * 0.95;
-      if (l.kind === 'ramp' && s < doorS + 1) continue;
-      if (l.kind === 'ground' && s > groundTo - 3) continue;
+      const s = from + ((k + 0.5 + (rand() - 0.5) * 0.3) / count) * (len - from) * 0.92;
+      if (l.kind === 'ground' && s > groundTo - 4) continue;
       const p = tubePointAt(c, s, new Vector3());
       if (doorSector(Math.atan2(p.z - cz, p.x - cx)) && Math.hypot(p.x - cx, p.z - cz) > R * 0.7) continue;
+      if (insideCanopy(p, 0.3)) continue;
       const t = tubeTangentAt(c, s, new Vector3());
-      const side = new Vector3().crossVectors(t, UP).normalize().multiplyScalar(k % 2 === 0 ? 1 : -1);
-      const r0 = tubeRadiusAt(c, s) * (0.55 + 0.1 * rand());
-      const blen = R * (0.24 + 0.16 * rand());
-      const d0 = t.clone().multiplyScalar(0.6).addScaledVector(side, 0.75).add(new Vector3(0, 0.3, 0)).normalize();
-      const p1 = p.clone().addScaledVector(d0, blen * 0.3);
-      const p2 = p1.clone().addScaledVector(d0, blen * 0.32).add(new Vector3(0, -blen * 0.1, 0));
-      const p3 = p2.clone().addScaledVector(d0, blen * 0.16).add(new Vector3(0, -blen * 0.38, 0));
-      limbs.push({ curve: makeTube([p.clone().addScaledVector(side, -r0 * 0.3), p1, p2, p3], 0.4, (u) => 0.07 + (r0 - 0.07) * Math.pow(1 - u, 1.1)), kind: 'branch', level: 2, hash: rand(), exposedFrom: 0 });
+      const sign = k % 2 === 0 ? 1 : -1;
+      const dir0 = t.clone().applyAxisAngle(UP, sign * (0.5 + 0.3 * rand())).add(new Vector3(0, 0.12, 0)).normalize();
+      const r0 = tubeRadiusAt(c, s) * (0.6 + 0.1 * rand());
+      fork(p.clone().addScaledVector(dir0, -r0 * 0.4), dir0, r0, R * (0.2 + 0.1 * rand()), 0);
     }
   }
 
@@ -696,21 +736,21 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
   const twigs: Twig[] = [];
   const needles: NeedleSite[] = [];
   const hang = (start: Vector3, out: Vector3, length: number, r0: number, rank: number, order: number, depth: number): void => {
-    // gravity-bent twig: starts along `out`, bends down, 3–5 segments; forks once or twice
-    const segs = depth === 0 ? 5 : 3;
+    // weeping strand (image 04): a short start along `out`, then it falls like a curtain, 5–6 segments; side twigs
+    const segs = depth === 0 ? 6 : 3;
     let p = start.clone();
     const d = out.clone().normalize();
     const segLen = length / segs;
     let r = r0;
     for (let k = 0; k < segs; k++) {
-      d.lerp(new Vector3(0, -1, 0), 0.26 + 0.07 * k).normalize();
+      d.lerp(new Vector3(0, -1, 0), 0.34 + 0.08 * k).normalize();
       d.x += (rand() - 0.5) * 0.22;
       d.z += (rand() - 0.5) * 0.22;
       d.normalize();
       const q = p.clone().addScaledVector(d, segLen * (0.85 + 0.3 * rand()));
-      const r1 = r * 0.74;
+      const r1 = r * 0.8;
       twigs.push({ a: p, b: q, r0: r, r1, rank, order });
-      if (depth === 0 && (k === 1 || k === 3) && rand() < 0.75) {
+      if (depth === 0 && (k === 1 || k === 3 || k === 4) && rand() < 0.7) {
         const side = new Vector3().crossVectors(d, UP).normalize().multiplyScalar(rand() < 0.5 ? -1 : 1);
         hang(q, d.clone().addScaledVector(side, 1.0), length * (0.4 + 0.2 * rand()), r1 * 0.8, rank, Math.min(2, order + 1), depth + 1);
         if (rand() < 0.5) needles.push({ pos: q.clone(), normal: out.clone().setY(0).normalize(), size: R * (0.014 + 0.01 * rand()), rank, order: order + 1 });
@@ -724,8 +764,8 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
   for (const l of exposedWood) {
     const c = l.curve;
     const len = tubeLength(c);
-    const from = l.level === 2 ? len * 0.15 : Math.max(l.exposedFrom, len * 0.5);
-    const step = l.level === 2 ? 0.55 : 0.8;
+    const from = l.level === 2 ? len * 0.2 : Math.max(l.exposedFrom, len * 0.55);
+    const step = l.level === 2 ? 0.5 : 0.9;
     for (let s = from; s < len; s += step * (0.8 + 0.4 * rand())) {
       if (l.kind === 'ramp' && s < doorS + 1.5) continue;
       if (l.kind === 'ground' && s > groundTo - 4) continue;
@@ -739,7 +779,7 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
       const o2 = outward.clone().multiplyScalar(0.55).addScaledVector(side, 0.55).addScaledVector(t, 0.25).normalize();
       const start = p.clone().addScaledVector(new Vector3(0, -1, 0), rad * 0.6);
       const rank = Math.min(1, Math.hypot(p.x - cx, p.z - cz) / (R * 1.4));
-      hang(start, o2, R * (0.16 + 0.2 * rand()) * (l.level === 2 ? 0.9 : 1), Math.min(0.1, rad * 0.45), rank, 0, 0);
+      hang(start, o2, R * (0.2 + 0.24 * rand()), Math.min(0.045, rad * 0.3), rank, 0, 0);
     }
   }
   // rim fringe: lace hanging from under the canopy rim (between the limbs)
@@ -753,7 +793,7 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
       p.y = d.center.y - d.r * d.sy * 0.55;
       if (doorSector(a)) continue;
       const outward = dir(a).multiplyScalar(0.5).add(new Vector3(0, -0.35, 0));
-      hang(p, outward, R * (0.18 + 0.18 * rand()), 0.08, Math.min(1, rho / (R * 1.2)), 0, 0);
+      hang(p, outward, R * (0.18 + 0.18 * rand()), 0.045, Math.min(1, rho / (R * 1.2)), 0, 0);
     }
   }
   // needles along the exposed limb tops (a few, image 04)

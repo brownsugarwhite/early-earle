@@ -1,4 +1,4 @@
-import { Box3, Group, Mesh, Vector3 } from 'three/webgpu';
+import { Box3, Group, Matrix4, Mesh, Vector3 } from 'three/webgpu';
 import type { Camera, InstancedMesh, Object3D } from 'three/webgpu';
 import { attribute, normalLocal, positionGeometry, positionLocal, uniform } from 'three/tsl';
 import { hash32, mulberry32 } from '@ee/world';
@@ -31,6 +31,11 @@ export interface HeroTreeOptions extends Omit<TreeShapeOptions, 'quality'> {
   family?: CanopyFamily;
   quality?: TreeQuality;
   /** Level path nodes (default 24). */
+  /**
+   * Camera rail distances in tree units (default: close-up lab ride, trunk 11 / crown 21). The map uses wider
+   * framing so the hero, the next nodes and the tree read together.
+   */
+  rail?: { trunkDistance?: number; crownDistance?: number; height?: number };
   nodes?: number;
   /** Kept for compatibility (the ground motifs moved to the world). */
   meadow?: boolean;
@@ -108,6 +113,8 @@ export interface HeroTree {
 
 const _v = new Vector3();
 const _c = new Vector3();
+const _cam = new Vector3();
+const _inv = new Matrix4();
 
 /**
  * The giant tree as the landmark (v3, Florian's references of 2026-09-30): a gnarled, twisting trunk with fountain
@@ -158,6 +165,7 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
       circumference: attribute('barkCirc', 'float') as unknown as FloatNode,
       wood: attribute('wood', 'vec4') as unknown as Vec4Node,
       normal: normalLocal as unknown as Vec3Node,
+      snowBase: attribute('snowBase', 'float') as unknown as FloatNode,
       position: positionGeometry as unknown as Vec3Node,
       snow,
       style: options.bark ?? 'ink',
@@ -210,7 +218,7 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
   disposables.push(lace.dispose, stars.dispose);
 
   // --- Path (same form) ---------------------------------------------------------------------------------------
-  const path = heroTreePath({ nodes: options.nodes ?? 24, shape });
+  const path = heroTreePath({ nodes: options.nodes ?? 24, shape, ...(options.rail ? { rail: options.rail } : {}) });
 
   // --- Blossoms: small groups on the upper shoulders of the domes, never on the path --------------------------------
   const seeds: BlossomSeed[] = [];
@@ -270,6 +278,7 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
   let growth = options.growth ?? 1;
   let bloomValue = options.bloom ?? 1;
   let detailOverride: number | null = null;
+  const lastSortCam = new Vector3(Infinity, Infinity, Infinity);
   let detail = 1;
   const applyDetail = (share: number) => {
     detail = share;
@@ -333,9 +342,15 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
       bb.camUp.value.set(e[4]!, e[5]!, e[6]!).normalize();
       const p5 = camera.projectionMatrix.elements[5]!;
       bb.projScaleY.value = p5;
+      group.updateWorldMatrix(true, false);
+      // domes front to back (early-z): only when the camera moved more than a unit in tree space
+      _cam.set(e[12]!, e[13]!, e[14]!).applyMatrix4(_inv.copy(group.matrixWorld).invert());
+      if (_cam.distanceToSquared(lastSortCam) > 1) {
+        lastSortCam.copy(_cam);
+        canopy.sortForCamera(_cam);
+      }
       if (detailOverride === null) {
         // screen share of the tree: radius · P5 / distance (fraction of half the screen height)
-        group.updateWorldMatrix(true, false);
         const s = group.matrixWorld.getMaxScaleOnAxis();
         _c.set(crownCenter.x, crownTop * 0.5, crownCenter.z).applyMatrix4(group.matrixWorld);
         _v.set(e[12]!, e[13]!, e[14]!);

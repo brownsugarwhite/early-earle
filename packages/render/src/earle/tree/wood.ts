@@ -26,13 +26,38 @@ export interface WoodBuild {
   tubes: number;
 }
 
+/** Hash-based 3D value noise 0..1 (smooth), for the per-vertex snow field. */
+function hash3(x: number, y: number, z: number): number {
+  let h = (x * 374761393 + y * 668265263 + z * 2147483647) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+function valueNoise(x: number, y: number, z: number): number {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const zi = Math.floor(z);
+  const fx = x - xi;
+  const fy = y - yi;
+  const fz = z - zi;
+  const ux = fx * fx * (3 - 2 * fx);
+  const uy = fy * fy * (3 - 2 * fy);
+  const uz = fz * fz * (3 - 2 * fz);
+  const l = (a: number, b: number, t: number) => a + (b - a) * t;
+  const c = (dx: number, dy: number, dz: number) => hash3(xi + dx, yi + dy, zi + dz);
+  return l(l(l(c(0, 0, 0), c(1, 0, 0), ux), l(c(0, 1, 0), c(1, 1, 0), ux), uy), l(l(c(0, 0, 1), c(1, 0, 1), ux), l(c(0, 1, 1), c(1, 1, 1), ux), uy), uz);
+}
+
 class Buffers {
   pos: number[] = [];
   nrm: number[] = [];
   bark: number[] = [];
   circ: number[] = [];
   wood: number[] = [];
+  snow: number[] = [];
   idx: number[] = [];
+  /** Weight of the low-frequency noise in the baked snow field (Mobil has no high-frequency part in the shader). */
+  constructor(readonly snowNoise: number) {}
   get count(): number {
     return this.pos.length / 3;
   }
@@ -42,6 +67,9 @@ class Buffers {
     this.bark.push(u, s);
     this.circ.push(c);
     this.wood.push(kind, h, rank, radius);
+    // snow lies where the wood faces up; the low-frequency part of its ragged edge is baked here (per vertex), the
+    // shader adds the fine part
+    this.snow.push(n.y * 1.3 + valueNoise(p.x * 0.55 + 0.37, p.y * 0.55 + 0.11, p.z * 0.55 + 0.73) * this.snowNoise);
   }
   /** Quad grid (rings × perRing); `flip` for rings that run the other way round (the trunk). */
   grid(base: number, rings: number, perRing: number, flip = false): void {
@@ -111,7 +139,7 @@ function addTube(buf: Buffers, c: TubeCurve, kind: number, h: number, _rank: num
  * (circumference in tree units, isotropic patterns), `wood` (kind, hash, rank, radius).
  */
 export function buildWood(shape: TreeShape, o: WoodOptions): WoodBuild {
-  const buf = new Buffers();
+  const buf = new Buffers(o.quality === 'mobil' ? 0.9 : 0.62);
   const trunk = shape.trunk;
   const spec = trunk.spec;
   const H = spec.height;
@@ -223,6 +251,7 @@ export function buildWood(shape: TreeShape, o: WoodOptions): WoodBuild {
   geometry.setAttribute('bark', new Float32BufferAttribute(buf.bark, 2));
   geometry.setAttribute('barkCirc', new Float32BufferAttribute(buf.circ, 1));
   geometry.setAttribute('wood', new Float32BufferAttribute(buf.wood, 4));
+  geometry.setAttribute('snowBase', new Float32BufferAttribute(buf.snow, 1));
   geometry.setIndex(new Uint32BufferAttribute(buf.idx, 1));
   geometry.computeBoundingSphere();
   return { geometry, vertices: buf.count, tubes };

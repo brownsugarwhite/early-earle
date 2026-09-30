@@ -476,9 +476,9 @@ export function heroTreePath(o: HeroTreePathOptions): HeroTreePath {
   // --- camera rail ------------------------------------------------------------------------------------------------
   // bark and ramp cameras stay just inside the weeping skirt of fountain limbs (under the canopy, the lace behind
   // them), crown cameras hover above the domes; far enough that the node, its neighbours and the tree read
-  const trunkDist = o.rail?.trunkDistance ?? 15;
+  const trunkDist = o.rail?.trunkDistance ?? 11;
   const crownDist = o.rail?.crownDistance ?? 21;
-  const rampDist = trunkDist - 1;
+  const rampDist = trunkDist + 5;
   const lift = o.rail?.height ?? 3.5;
   const railN = 200;
   let lastRadial: Vector3 | null = null;
@@ -491,33 +491,49 @@ export function heroTreePath(o: HeroTreePathOptions): HeroTreePath {
     }
     return true;
   };
+  // phase boundaries (arc length): the camera blends its distance, elevation and direction across them
+  let lenRamp = total;
+  let lenCrown = total;
+  for (const smp of samples) {
+    if (smp.phase === 'ramp' && lenRamp === total) lenRamp = smp.len;
+    if (smp.phase === 'crown') {
+      lenCrown = smp.len;
+      break;
+    }
+  }
+  const barkDir = new Vector3();
   for (let i = 0; i <= railN; i++) {
     const len = (i / railN) * total;
     const { i: si } = at(len);
     const smp = samples[si]!;
     const pos = posAt(len, new Vector3());
     const tan = tangentAt(len, new Vector3());
-    const onCrown = smp.phase === 'crown' ? 1 : smp.phase === 'ramp' ? 0.45 : 0;
-    // outward direction per phase: bark → its horizontal normal; root → away from the axis; ramp → diagonally
-    // beside the limb (it runs across the view); crown → radial from the crown centre (kept near the top)
-    const outH = new Vector3();
-    if (smp.surface === 'bark') outH.set(smp.nrm.x, 0, smp.nrm.z);
-    else if (smp.surface === 'root') outH.set(pos.x, 0, pos.z);
-    else if (smp.phase === 'ramp') outH.set(plan.rampSide.x, 0, plan.rampSide.z);
-    else {
-      outH.set(pos.x - cx, 0, pos.z - cz);
-      if (outH.length() < R * 0.25 && lastRadial) outH.lerp(lastRadial, 1 - outH.length() / (R * 0.25));
-    }
-    if (outH.lengthSq() < 1e-6) outH.copy(lastRadial ?? new Vector3(1, 0, 0));
+    const wRamp = smooth01((len - (lenRamp - 3)) / 7);
+    const wCrown = smooth01((len - (lenCrown - 6)) / 14);
+    const onCrown = wCrown;
+    // outward direction per phase: bark → its horizontal normal (root: away from the axis); ramp → beside the limb
+    // (it runs across the view); crown → radial from the crown centre (kept near the top); blended across phases
+    if (smp.surface === 'bark') barkDir.set(smp.nrm.x, 0, smp.nrm.z);
+    else if (smp.surface === 'root') barkDir.set(pos.x, 0, pos.z);
+    if (barkDir.lengthSq() < 1e-6) barkDir.set(1, 0, 0);
+    const radial = new Vector3(pos.x - cx, 0, pos.z - cz);
+    if (radial.length() < R * 0.25 && lastRadial) radial.lerp(lastRadial, 1 - radial.length() / (R * 0.25));
+    if (radial.lengthSq() < 1e-6) radial.copy(lastRadial ?? new Vector3(1, 0, 0));
+    radial.normalize();
+    if (smp.phase === 'crown') lastRadial = radial.clone();
+    const outH = barkDir.clone().normalize().lerp(new Vector3(plan.rampSide.x, 0, plan.rampSide.z), wRamp).lerp(radial, wCrown);
+    if (outH.lengthSq() < 1e-6) outH.copy(radial);
     outH.normalize();
-    if (smp.phase === 'crown') lastRadial = outH.clone();
     const tanH = new Vector3(tan.x, 0, tan.z);
     if (tanH.lengthSq() > 1e-6) tanH.normalize();
-    // ramp: low and outside the canopy radius (looking in under the umbrella's edge); the rise to the crown camera
-    // then happens outside the rim, never through the canopy
-    const rampCovered = smp.phase === 'ramp' && shape.roofAt(pos.x, pos.z, -Infinity).y > pos.y + 1;
-    const dist = smp.phase === 'crown' ? crownDist : smp.phase === 'ramp' ? rampDist : trunkDist;
-    const elev = smp.phase === 'crown' ? 0.85 : smp.phase === 'ramp' ? (rampCovered ? 0.0 : 0.45) : 0.22;
+    // ramp: level with the limb while under the canopy floor, higher once it is outside; the rise to the crown
+    // camera happens outside the rim, never through the canopy
+    const covered = smooth01((shape.roofAt(pos.x, pos.z, -Infinity).y - pos.y - 1) / 3);
+    // while it swings from beside the limb up over the crown the camera bulges outwards (never close to a dome)
+    const bulge = 7 * Math.sin(Math.PI * wCrown);
+    const dist = trunkDist + (rampDist - trunkDist) * wRamp + (crownDist - rampDist) * wCrown + bulge;
+    const elevRamp = 0.28 - 0.2 * covered;
+    const elev = 0.22 + (elevRamp - 0.22) * wRamp + (0.85 - elevRamp) * wCrown;
     const look = pos.clone().addScaledVector(tan, 2.5 + 2 * onCrown);
     look.y += 0.6 * (1 - onCrown);
     // candidates around the preferred pose, in order of preference: the first clear one with a free view wins
