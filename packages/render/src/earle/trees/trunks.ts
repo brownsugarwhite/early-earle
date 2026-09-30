@@ -210,7 +210,7 @@ export function createFanTrunk(seed = 5): FanGeometry {
     paths.push(path);
     for (const p of path) note(p);
     // Nebenäste: hängen nach außen und unten bis auf die Schale
-    const subs = 3 + (rand() < 0.5 ? 1 : 0);
+    const subs = 3;
     for (let j = 0; j < subs; j++) {
       const t = 0.3 + (j / subs) * 0.55 + rand() * 0.06;
       const at = along(path, t);
@@ -239,7 +239,7 @@ export function createFanTrunk(seed = 5): FanGeometry {
         beads.push({ p: a.p, n: norm(sub(a.p, C)), d: a.d });
       }
       // Zweige an der Spitze: fächern quer zum Nebenast über die Schale auf, jede Spitze eine Rosette
-      const twigs = 3 + (rand() < 0.5 ? 1 : 0);
+      const twigs = 3;
       const endDir = along(sp, 0.98).d;
       const across = norm(cross(endDir, target.n));
       for (let m = 0; m < twigs; m++) {
