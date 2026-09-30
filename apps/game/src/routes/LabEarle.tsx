@@ -133,6 +133,11 @@ function LabEarlePlanet() {
   // Verläufe (Earle-Irisdruck): 0 = alte harte Stufen, 1 = Verläufe; ein geteilter Uniform, kein Neukompilieren
   const [verlauf, setVerlauf] = useState(() => earleGradients.surface.value);
   useEffect(() => setGradientAmount(verlauf), [verlauf]);
+  // Der Regler gilt nur im Lab: beim Verlassen den vorigen Wert wiederherstellen (Spiel und andere Labs unberührt)
+  useEffect(() => {
+    const before = earleGradients.surface.value;
+    return () => setGradientAmount(before);
+  }, []);
   const controller = useMemo(() => new EarleLabScene(initial), [initial]);
 
   useEffect(() => {

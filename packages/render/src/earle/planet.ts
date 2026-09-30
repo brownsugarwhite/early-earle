@@ -458,7 +458,7 @@ export class EarlePlanet {
     const sp = positionGeometry.mul(1.9);
     const snowWob = sin(sp.x.add(sin(sp.z.mul(1.3)).mul(1.7))).mul(0.035).add(sin(sp.y.mul(2.3).add(sp.x.mul(0.7))).mul(0.025));
     // Schatten auf dem Schneefeld laufen von tiefem zu hellerem Blau (sonnenzugewandte Hänge heller, Bild 05)
-    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08), shadowLift: 0.1 };
+    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08), shadowLift: 0.15 };
     // Gemeißelte Hänge: Wertstufen entlang der Höhenlinien (Stufensprung im Bandwert je Höhenschicht)
     const chisel = wa.w;
     // Sägezahn mit 1-px-Kante: jede Höhenschicht verläuft in sich, die Stufe zur nächsten bleibt eine klare Kante
@@ -466,7 +466,8 @@ export class EarlePlanet {
     // Verlaufsnormale: Geländenormale zur Kugelnormale hin gemischt → ein ruhiger Verlauf über den Hügel (Kamm hell,
     // Hang zur Sonne heller), kleine Dellen und Uferrinnen zeigen keine Dreiecke; die Tintenform folgt weiter dem Relief
     const sphereN = varying(modelViewMatrix.mul(vec4(normalize(positionGeometry), 0)).xyz, 'vTerrainSphereN');
-    const gradientNormal = mix(normalView, normalize(sphereN), 0.8);
+    const sphereUp = normalize(sphereN);
+    const gradientNormal = mix(normalView, sphereUp, 0.8);
     // Talnebel (Ebene 20): am Talgrund dicht und hell, zu den Kämmen hin ausdünnend; direkt vor der Linse frei
     const valley = float(1).sub(smoothstep(0.0, 0.5, heightAttr));
     const mist = varying(valley.mul(valley).mul(smoothstep(4.0, 13.0, positionView.length())), 'vTerrainMist').mul(this.mistStrength).mul(earleGradients.air);
@@ -485,7 +486,7 @@ export class EarlePlanet {
       // Kamm → Tal: Kuppen heller, Mulden tiefer (Earles Hügel), dazu die Meißelschichten
       lift: heightAttr.mul(0.5).add(contour.mul(chisel)),
       gradientNormalNode: gradientNormal,
-      shadowTint: tint ? { tint, world: worldIndex, up: sphereN } : null,
+      shadowTint: tint ? { tint, world: worldIndex, up: sphereUp } : null,
       mist: { amount: mist, color: this.mistColor as unknown as Vec3Node },
       crackNode: crack,
       crackLipNode: lip,

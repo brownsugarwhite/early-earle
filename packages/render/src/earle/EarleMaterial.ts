@@ -1,6 +1,6 @@
 import { LightingModel, NodeMaterial } from 'three/webgpu';
 import type { Node, NodeBuilder } from 'three/webgpu';
-import { clamp, min, mix, normalView, normalize, smoothstep, uniform, vec3 } from 'three/tsl';
+import { clamp, min, mix, normalView, smoothstep, uniform, vec3 } from 'three/tsl';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
 import { earleGradients, fountain, mixInk, type FountainOptions } from './gradients';
 import type { ShadowTint } from '../shadow/shadowTint';
@@ -33,8 +33,8 @@ export interface EarleLayer {
   /** Ornament der Schicht (nur im Licht). */
   pattern?: EarlePattern | null;
   /**
-   * Verlauf in der Schattenfarbe der Schicht (0..1, nur mit `row`): auf sonnenzugewandten Flächen zur ersten
-   * Lichtstufe hin heller (Bild 05: Schatten auf Schnee laufen von tiefem zu hellerem Blau), Kante bleibt hart.
+   * Verlauf in der Schattenfarbe der Schicht (nur mit `row`): auf sonnenzugewandten Flächen bis zu (1 + Wert)-fach heller,
+   * im selben Farbton (Bild 05: Schatten auf Schnee laufen von tiefem zu hellerem Blau). Die Kante bleibt hart.
    */
   shadowLift?: number;
 }
@@ -89,7 +89,7 @@ export interface EarleMaterialOptions {
    * Schattentönung je Welt (`SunRig.shadowTint`, z. B. blaue Schatten auf Schnee): die ganze Tintenform (Eigen- und
    * Schlagschatten) wird zur Tönung der Welt `world` gemischt; Ornamente im Schatten behalten ihren Abstand zur Tinte.
    * Risse bleiben tiefe, ungetönte Tinte. Die Tönung wird je Pixel aus der Welt gelesen (an Weltgrenzen hart, kein
-   * Übergang über ein Dreieck). `up` (View-Raum, z. B. die Kugelnormale des Planeten): führt den Verlauf
+   * Übergang über ein Dreieck). `up` (View-Raum, Einheitsvektor, z. B. die Kugelnormale des Planeten): führt den Verlauf
    * *in* der Schattenform (`lift` der Welt) — dieselbe Normale für Gelände, Wehen und Pfad, damit ihre Schatten eine
    * Form bleiben. Ohne `up` bleibt die Tönung flach.
    */
@@ -209,7 +209,7 @@ class EarleLightingModel extends LightingModel {
       inkT = mix(ink, t.color, t.amount) as unknown as Vec3Node;
       if (e.shadowTint.up) {
         // zur Lichtfarbe am Ort hin (am Terminator ≈ erste Lichtstufe), ohne zusätzlichen Paletten-Lookup
-        const facing = smoothstep(-0.25, 0.55, normalize(e.shadowTint.up).dot(L)).mul(t.lift).mul(e.soft);
+        const facing = smoothstep(-0.25, 0.55, e.shadowTint.up.dot(L)).mul(t.lift).mul(e.soft);
         inkT = mixInk(inkT, rampColor, facing.mul(0.6));
       }
     }
@@ -227,8 +227,9 @@ class EarleLightingModel extends LightingModel {
         lc = fountain(e.lookup, bandL, layer.row, 1, e.soft, e.ramp).rgb as unknown as Vec3Node;
         sc = layer.shadowColor ?? (e.lookup.pal(0, layer.row).rgb as unknown as Vec3Node);
         if (layer.shadowLift) {
+          // Schattenfarbe aufhellen (Farbton bleibt: gesättigtes Blau wird helleres Blau), ohne zusätzlichen Lookup
           const facing = smoothstep(-0.25, 0.55, ndlG).mul(layer.shadowLift).mul(e.soft);
-          sc = mix(sc, e.lookup.pal(1, layer.row).rgb, facing) as unknown as Vec3Node;
+          sc = sc.mul(facing.add(1)) as unknown as Vec3Node;
         }
       } else {
         lc = layer.color ?? litColor;

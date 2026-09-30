@@ -1,6 +1,6 @@
 import { abs, clamp, float, floor, fract, fwidth, hash, int, max, mix, positionView, select, smoothstep, texture, time, uniform, vec2 } from 'three/tsl';
 import type { Node, Texture, UniformNode } from 'three/webgpu';
-import { AIR_ROOM_PX, earleGradients, fountain } from './gradients';
+import { AIR_ROOM_PX, earleGradients, fountain, fountain2 } from './gradients';
 
 /** Typisierte TSL-Knoten (Swizzles und Operatoren hängen am Typparameter). */
 export type FloatNode = Node<'float'>;
@@ -103,7 +103,7 @@ export function steppedFog(color: Vec3Node, fog: FogSettings, lookup: PaletteLoo
   const top = fog.steps.sub(2);
   // Nachlauf ¾ Stufe: der Mittelgrund bleibt satt (Earles klare Wertstufen), erst zur nächsten Stufe hin wird es neblig
   const air = { maxX: top, roomPx: AIR_ROOM_PX, linear: true, lag: 0.75 };
-  const f = mix(fountain(lookup, x, fog.row, 0, soft, air), fountain(lookup, x, fog.rowB, 0, soft, air), fog.mix);
+  const f = fountain2(lookup, x, fog.row, fog.rowB, fog.mix, 0, soft, air);
   return mix(color, f.rgb, f.a);
 }
 

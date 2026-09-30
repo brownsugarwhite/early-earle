@@ -92,6 +92,36 @@ export interface FountainOptions {
  * Zwei Nearest-Lookups wie bisher; Alpha (Nebelanteil) wird linear gemischt.
  */
 export function fountain(lookup: PaletteLookup, x: FloatNode, row: FloatNode | number, base: number, soft: FloatNode | number, options: FountainOptions = {}): Vec4Node {
+  const { i, k } = fountainStep(x, soft, options);
+  const a = lookup.pal(i.add(base), row);
+  const b = lookup.pal(i.add(base + 1), row);
+  const rgb = options.linear ? mix(a.rgb, b.rgb, k) : mixInk(a.rgb as unknown as Vec3Node, b.rgb as unknown as Vec3Node, k);
+  return vec4(rgb, mix(a.a, b.a, k)) as unknown as Vec4Node;
+}
+
+/**
+ * Dieselbe Rampe für zwei Palettenzeilen, gemischt mit `t` (z. B. Nebel der Blick-Welt A und B während der
+ * Überblendung): Stufe und Verlaufsanteil werden nur einmal gerechnet, nur die Lookups doppeln sich.
+ */
+export function fountain2(
+  lookup: PaletteLookup,
+  x: FloatNode,
+  rowA: FloatNode | number,
+  rowB: FloatNode | number,
+  t: FloatNode | number,
+  base: number,
+  soft: FloatNode | number,
+  options: FountainOptions = {},
+): Vec4Node {
+  const { i, k } = fountainStep(x, soft, options);
+  const lo = mix(lookup.pal(i.add(base), rowA), lookup.pal(i.add(base), rowB), asNode(t));
+  const hi = mix(lookup.pal(i.add(base + 1), rowA), lookup.pal(i.add(base + 1), rowB), asNode(t));
+  const rgb = options.linear ? mix(lo.rgb, hi.rgb, k) : mixInk(lo.rgb as unknown as Vec3Node, hi.rgb as unknown as Vec3Node, k);
+  return vec4(rgb, mix(lo.a, hi.a, k)) as unknown as Vec4Node;
+}
+
+/** Stufenindex `i` und Mischanteil `k` zur nächsten Stufe (siehe `fountain`). */
+function fountainStep(x: FloatNode, soft: FloatNode | number, options: FountainOptions): { i: FloatNode; k: FloatNode } {
   const roomPx = options.roomPx ?? GRADIENT_ROOM_PX;
   const fw = fwidth(x);
   const room = smoothstep(float(1 / roomPx[0]), float(1 / roomPx[1]), fw);
@@ -106,11 +136,7 @@ export function fountain(lookup: PaletteLookup, x: FloatNode, row: FloatNode | n
   // fwidth kann 0 sein (x konstant, z. B. geclampt) → smoothstep(a, a, …) wäre undefiniert
   const w = fw.max(1e-4).mul(0.5);
   const edge = smoothstep(float(1 - lag).sub(w), float(1 - lag).add(w), t);
-  const k = mix(edge, t, s);
-  const a = lookup.pal(i.add(base), row);
-  const b = lookup.pal(i.add(base + 1), row);
-  const rgb = options.linear ? mix(a.rgb, b.rgb, k) : mixInk(a.rgb as unknown as Vec3Node, b.rgb as unknown as Vec3Node, k);
-  return vec4(rgb, mix(a.a, b.a, k)) as unknown as Vec4Node;
+  return { i: i as unknown as FloatNode, k: mix(edge, t, s) as unknown as FloatNode };
 }
 
 /**

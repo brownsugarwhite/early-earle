@@ -141,7 +141,7 @@ export class DriftLandmarks {
       fogDistNode: positionView.length().add(o.veil(world)),
       growthNode: o.growth ? o.growth(inst.z) : null,
       // Verlauf im Schatten wie das Gelände darunter (Kugelnormale am Ort): die Wehe verschmilzt mit seinem Schatten
-      shadowTint: o.shadowTint ? { tint: o.shadowTint, world, up: modelViewMatrix.mul(vec4(normalize(positionLocal), 0)).xyz } : null,
+      shadowTint: o.shadowTint ? { tint: o.shadowTint, world, up: normalize(modelViewMatrix.mul(vec4(positionLocal, 0)).xyz) } : null,
     });
     const mesh = new InstancedMesh(this.geometry, this.material, o.capacity);
     mesh.name = 'planet-drifts';
