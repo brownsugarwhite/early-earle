@@ -129,6 +129,25 @@ test('/lab/shadow Schatten v3: Kontakt-Diagnose, Feldansicht, Kontaktregler und 
   expect(errors).toEqual([]);
 });
 
+// iOS-WebGL2 (WebKit/ANGLE-Metal) hat keine funktionierenden Vergleichs-Sampler; dort lesen die Filter die Tiefe als
+// gewöhnliche Textur (`webglCompat.ts`). `?shadowcompat=manual` erzwingt diesen Pfad hier. Regression: three r186
+// erzeugt für `texture(depth).level(0)` in GLSL `textureLod(…)` ohne `.x` → „dimension mismatch“ in 17 Shadern.
+test('WebKit-Schattenpfad (manueller Tiefenvergleich) kompiliert Earle-, Baum- und Schatten-Lab ohne Shader-Fehler', async ({ page }) => {
+  test.setTimeout(420_000);
+  const errors = collectErrors(page);
+  // kleines Fenster: SwiftShader zahlt je Pixel, kompiliert werden dieselben Programme
+  await page.setViewportSize({ width: 360, height: 360 });
+  for (const route of ['/lab/earle', '/lab/tree', '/lab/shadow?view=karte&dots=1']) {
+    await page.goto(`${route}${route.includes('?') ? '&' : '?'}backend=webgl&shadowcompat=manual`);
+    await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgl2', { timeout: 60_000 });
+    // die ersten Frames (SwiftShader: Sekunden je Frame) — dabei kompiliert three alle Programme und meldet Fehler
+    const frames = () => page.evaluate(() => (window as unknown as { __ee?: { renderer: { info: { render: { calls: number } } } } }).__ee?.renderer.info.render.calls ?? 0);
+    await expect.poll(frames, { timeout: 120_000 }).toBeGreaterThan(2);
+    await page.waitForTimeout(1500);
+  }
+  expect(errors.filter((e) => /Shader Error|not compiled|dimension mismatch|program not (valid|linked)/i.test(e))).toEqual([]);
+});
+
 // Echte GPU (Mac/Metal): die Tests oben laufen auf SwiftShader/WebGL2 und sehen kein WGSL. Hier kompilieren die
 // Schatten-v3-Pfade unter WebGPU — Vergleich auf Level 0 (textureSampleCompareLevel) auch im Vertex-Shader (Testpunkte),
 // Kontakt-Diagnose, Feldansicht, Kaskaden-Debug, Mobil-Preset, Ebenen-Bias als Bau-Option. Eigener Browser mit
