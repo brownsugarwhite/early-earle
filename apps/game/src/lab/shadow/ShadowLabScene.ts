@@ -70,6 +70,8 @@ export interface ShadowLabParams {
   mapInset: number;
   /** Testpunkte für `shadowFactor()` (skalieren im Vertex-Shader mit dem Schatten). */
   dots: boolean;
+  /** Höhe verteilter Empfänger über dem Boden (Kronen mit Schlagschatten, `coverAbove`), 0 = nur Hinweise der Meshes. */
+  crownHeight: number;
   /** Tiefenvergleich: -1 automatisch, 0 Hardware-Vergleichs-Sampler, 1 manuell im Shader (WebGL2-Rückfall). */
   compare: -1 | 0 | 1;
 }
@@ -105,6 +107,7 @@ export const DEFAULT_SHADOW_PARAMS: ShadowLabParams = {
   compare: -1,
   mapInset: 0,
   dots: false,
+  crownHeight: 0,
 };
 
 export interface ShadowLabStats {
@@ -268,7 +271,7 @@ export class ShadowLabScene implements SceneController {
       if (this.params.legacy === 2) world.sun.setSharpen(false);
       return;
     }
-    world.sun.fitToPlanet(world.camera, () => this.world?.world, world.planet);
+    world.sun.fitToPlanet(world.camera, () => this.world?.world, world.planet, { coverAbove: this.params.crownHeight });
   }
 
   private disposeWorld(): void {
@@ -335,6 +338,7 @@ export class ShadowLabScene implements SceneController {
           this.needsSnap = true;
         }
         if (next.dots !== prev.dots || (next.dots && next.node !== prev.node)) this.syncTestDots();
+        if (next.crownHeight !== prev.crownHeight) this.bindView();
       }
     }
     for (const l of this.listeners) l(this.getParams());

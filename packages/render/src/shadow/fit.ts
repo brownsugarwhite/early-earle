@@ -39,6 +39,12 @@ export interface ReceiverShellSpec {
    * 45 × 35 Einheiten Luft statt 22 × 8 Einheiten sichtbarem Boden (Faktor 2 in X und 4,5 in Y an Auflösung verschenkt).
    */
   coverTolerance?: number | null;
+  /**
+   * Schatten v3: Höhe über dem Boden, bis zu der verteilte Empfänger reichen (Kronen einer Wald-Schicht, die selbst
+   * Schlagschatten tragen). Die gröbste Kaskade nimmt je Strahl zusätzlich den Punkt Boden + Normale · `coverAbove`
+   * auf — einseitig nach oben, billiger als ein breiteres Band. Ohne Wert (oder ≤ `coverTolerance`) nichts.
+   */
+  coverAbove?: number | null;
 }
 
 /** Zusätzliche Empfänger über dem Boden (Welt-Kugeln: Riesenbaum-Stamm, Brett): immer in allen Kaskaden gefittet. */
@@ -231,6 +237,8 @@ export class CascadeFitter {
   private readonly ca = new Float64Array(MAX_RAYS);
   private readonly cb = new Float64Array(MAX_RAYS);
   private readonly tg = new Float64Array(MAX_RAYS);
+  /** Strahl trifft (nach der Bodenschätzung) Gelände. */
+  private readonly gHit = new Uint8Array(MAX_RAYS);
   /** Cache der Bodenschätzung je Abtastpunkt (Index über alle Proben, nicht nur gültige Strahlen). */
   private readonly cacheTg = new Float64Array(MAX_RAYS).fill(NaN);
   private readonly cacheHit = new Uint8Array(MAX_RAYS);
@@ -241,10 +249,10 @@ export class CascadeFitter {
   private readonly dx = new Float64Array(MAX_RAYS);
   private readonly dy = new Float64Array(MAX_RAYS);
   private readonly dz = new Float64Array(MAX_RAYS);
-  /** Endpunkte je Kaskade in der Grundbasis (x0, y0, z), 2 je Strahl. */
-  private readonly px = new Float64Array(MAX_RAYS * 2);
-  private readonly py = new Float64Array(MAX_RAYS * 2);
-  private readonly pz = new Float64Array(MAX_RAYS * 2);
+  /** Endpunkte je Kaskade in der Grundbasis (x0, y0, z), 2 je Strahl (+1 für `coverAbove`). */
+  private readonly px = new Float64Array(MAX_RAYS * 3);
+  private readonly py = new Float64Array(MAX_RAYS * 3);
+  private readonly pz = new Float64Array(MAX_RAYS * 3);
   /** Nächste Empfänger je Strahl: Tiefe und Bildschirm-Jacobi (px je Lichteinheit entlang X0/Y0). */
   private readonly mDepth = new Float64Array(MAX_RAYS);
   private readonly m00 = new Float64Array(MAX_RAYS);
@@ -425,6 +433,7 @@ export class CascadeFitter {
           gb = tb;
         }
       }
+      this.gHit[i] = surf && gb > ga ? 1 : 0;
       // Gröbste Kaskade: ganze Schale (alt) oder Bodenfokus mit größerer Toleranz (v3)
       let ca = ta;
       let cb = tb;
@@ -551,6 +560,24 @@ export class CascadeFitter {
           this.px[m] = x * X0.x + y * X0.y + z * X0.z;
           this.py[m] = x * Y0.x + y * Y0.y + z * Y0.z;
           this.pz[m] = x * L.x + y * L.y + z * L.z;
+          m++;
+        }
+      }
+      // Verteilte Empfänger über dem Boden (Kronen): Boden + Normale · coverAbove je Strahl, nur in der gröbsten Kaskade
+      const above = input.shell?.coverAbove ?? 0;
+      if (cover && input.shell && above > (input.shell.coverTolerance ?? 0)) {
+        const center = input.shell.center;
+        for (let i = 0; i < rays; i++) {
+          if (!this.gHit[i]) continue;
+          const t = this.tg[i]!;
+          _p.set(_o.x + this.dx[i]! * t, _o.y + this.dy[i]! * t, _o.z + this.dz[i]! * t);
+          _n.copy(_p).sub(center).normalize();
+          _p.addScaledVector(_n, above);
+          const depth = _q.copy(_p).sub(_o).dot(_f);
+          if (depth <= near || depth > lim) continue;
+          this.px[m] = _p.dot(X0);
+          this.py[m] = _p.dot(Y0);
+          this.pz[m] = _p.dot(L);
           m++;
         }
       }

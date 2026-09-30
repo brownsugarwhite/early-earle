@@ -77,6 +77,8 @@ function paramsFromUrl(search: URLSearchParams): Partial<ShadowLabParams> {
   const inset = num('map');
   if (inset !== null) out.mapInset = Math.max(0, Math.min(13, Math.round(inset)));
   if (search.get('dots') === '1') out.dots = true;
+  const crown = num('crown');
+  if (crown !== null) out.crownHeight = Math.max(0, Math.min(8, crown));
   const repeat = num('repeat');
   if (repeat !== null) out.repeat = Math.max(1, Math.min(40, Math.round(repeat)));
   return out;
@@ -232,6 +234,16 @@ export function LabShadow() {
               {params.debug >= 3 ? (
                 <Range label="Kontaktfenster" value={params.gap} min={0.05} max={1.5} step={0.05} format={(v) => `${v.toFixed(2)} m`} onChange={(v) => set({ gap: v })} />
               ) : null}
+              <Range
+                label="Empfängerhöhe (Kronen)"
+                testId="shadow-crown"
+                value={params.crownHeight}
+                min={0}
+                max={6}
+                step={0.25}
+                format={(v) => (v ? `${v.toFixed(2)} m` : 'aus')}
+                onChange={(v) => set({ crownHeight: v })}
+              />
               <Range label="Fortschritt" testId="shadow-progress" value={params.progress} min={0} max={100} step={1} format={(v) => `${v} Level`} onChange={(v) => set({ progress: v })} />
               <Range label="Drehung" testId="shadow-rotate" value={params.rotate} min={0} max={20} step={0.5} format={(v) => (v ? `${v}°/s` : 'aus')} onChange={(v) => set({ rotate: v })} />
               <Range label="Knoten" value={params.node} min={0} max={99} step={1} onChange={(v) => set({ node: v })} />

@@ -277,6 +277,53 @@ describe('Bodengefittete gröbste Kaskade (Schatten v3)', () => {
     }
   });
 
+  it('deckt mit coverAbove auch verteilte Empfänger über dem Boden ab (Kronen), einseitig und billiger als ein breites Band', () => {
+    const cam = mapCamera();
+    const surface = hills();
+    const withAbove = (above: number): FitInput => {
+      const f = focused(cam, surface);
+      return { ...f, shell: { ...f.shell!, coverAbove: above } };
+    };
+    const plain = new CascadeFitter().fit(focused(cam, surface), createFitResult(3));
+    const above = new CascadeFitter().fit(withAbove(3), createFitResult(3));
+    const wide = new CascadeFitter().fit(focused(cam, surface, 1, 3), createFitResult(3));
+    const o = cam.position.clone();
+    const fwd = new Vector3(0, 0, -1).transformDirection(cam.matrixWorld);
+    const d = new Vector3();
+    const p = new Vector3();
+    const outside = (fit: typeof plain, q: Vector3): boolean => {
+      const c = fit.cascades[2]!;
+      const x = fit.X.dot(q);
+      const y = fit.Y.dot(q);
+      return x < c.x0 || x > c.x1 || y < c.y0 || y > c.y1;
+    };
+    let checked = 0;
+    let missedPlain = 0;
+    for (let j = 0; j <= 20; j++) {
+      for (let i = 0; i <= 20; i++) {
+        d.set(-1 + i / 10, -1 + j / 10, 0.5).unproject(cam).sub(o).normalize();
+        for (let t = 0.3; t < 60; t += 0.02) {
+          p.copy(d).multiplyScalar(t).add(o);
+          const len = p.length();
+          if (len <= surface(p.clone().divideScalar(len))) {
+            const crown = p.clone().addScaledVector(p.clone().normalize(), 3);
+            const depth = crown.clone().sub(o).dot(fwd);
+            if (depth > cam.near && depth <= above.dMax) {
+              expect(outside(above, crown)).toBe(false);
+              if (outside(plain, crown)) missedPlain++;
+              checked++;
+            }
+            break;
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(150);
+    expect(missedPlain).toBeGreaterThan(0);
+    const area = (f: typeof plain) => (f.cascades[2]!.x1 - f.cascades[2]!.x0) * (f.cascades[2]!.y1 - f.cascades[2]!.y0);
+    expect(area(above)).toBeLessThan(area(wide));
+  });
+
   it('hält beim Rollen auch die gröbste Kaskade meist still (Hysterese)', () => {
     const cam = mapCamera();
     const fitter = new CascadeFitter();

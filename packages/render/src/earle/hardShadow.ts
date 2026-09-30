@@ -119,15 +119,17 @@ export const PLANET_COVER_TOLERANCE = 1.2;
  * deutlich darüber aufragen (Riesenbaum-Holz und -Kuppeln, Scheune), sammelt `PlanetVolumeCollector` je Refit als grobe
  * Kugelhülle ein (`shadow/volumes.ts`: nur die Teile über dem Bodenband; flache, weite Schichten, große Instanz-Streu
  * und Geländechunks nicht). `userData.shadowVolume = true | false` erzwingt bzw. verbietet ein Volumen,
- * `userData.shadowGround = true` markiert Gelände.
+ * `userData.shadowGround = true` markiert Gelände. Verteilte hohe Empfänger (Wald mit Schlagschatten auf den Kronen)
+ * melden ihre Höhe mit `userData.shadowHeight = h` → die gröbste Kaskade deckt auch Boden + h ab (`coverAbove`).
  */
 export function planetShadowReceivers(
   planet: ShadowPlanetLike | (() => ShadowPlanetLike | null | undefined),
   planetObject: Object3D,
-  options: { coverTolerance?: number } = {},
+  options: PlanetReceiverOptions = {},
 ): ViewReceivers {
   const get = typeof planet === 'function' ? planet : () => planet;
   const coverTolerance = options.coverTolerance ?? PLANET_COVER_TOLERANCE;
+  const collector = new PlanetVolumeCollector();
   const sphere = {
     center: planetObject,
     get radius(): number {
@@ -141,6 +143,9 @@ export function planetShadowReceivers(
       return (get()?.field.hMax ?? 0) + 0.3;
     },
     coverTolerance,
+    get coverAbove(): number {
+      return Math.max(options.coverAbove ?? 0, collector.receiverHeight);
+    },
     surface: (dirLocal: Vector3): number => {
       const p = get();
       if (!p) return 1;
@@ -151,9 +156,16 @@ export function planetShadowReceivers(
       return r - away * c * p.options.radius;
     },
   };
-  const collector = new PlanetVolumeCollector();
   const volumes = (): ReceiverVolume[] => collector.collect(planetObject, get() ?? null, coverTolerance);
   return { sphere, volumes };
+}
+
+/** Optionen für `planetShadowReceivers` / `SunRig.fitToPlanet`. */
+export interface PlanetReceiverOptions {
+  /** Halbe Höhe des Bodenbands (Standard `PLANET_COVER_TOLERANCE`). */
+  coverTolerance?: number;
+  /** Mindesthöhe verteilter Empfänger über dem Boden (sonst nur die `userData.shadowHeight`-Hinweise). */
+  coverAbove?: number;
 }
 
 const _corner = new Vector3();
@@ -366,14 +378,14 @@ export class SunRig implements ShadowFactorSource {
   /**
    * Ein-Zeilen-Integration für die Planetenkarte: Kaskaden an `camera`, Empfänger = Planetenschale mit Bodenschätzung
    * aus dem analytischen Feld (inkl. Krümmungs-Warp). `planet` darf ein Getter sein, wenn die Welt neu gebaut wird.
-   * `options.coverTolerance`: Höhe des Bodenbands (Standard `PLANET_COVER_TOLERANCE`), z. B. größer, wenn eine
-   * Instanz-Schicht hoher Empfänger (Wald mit empfangenden Kronen) auch am Bildrand Schlagschatten tragen soll.
+   * `options.coverTolerance`: halbe Höhe des Bodenbands (Standard `PLANET_COVER_TOLERANCE`); `options.coverAbove`:
+   * Mindesthöhe verteilter Empfänger (Kronen mit Schlagschatten) — sonst genügt `userData.shadowHeight` am Mesh.
    */
   fitToPlanet(
     camera: PerspectiveCamera,
     planet: ShadowPlanetLike | (() => ShadowPlanetLike | null | undefined),
     planetObject: Object3D,
-    options: { coverTolerance?: number } = {},
+    options: PlanetReceiverOptions = {},
   ): void {
     this.fitToView(camera, planetShadowReceivers(planet, planetObject, options));
   }

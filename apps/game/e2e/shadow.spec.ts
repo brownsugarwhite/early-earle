@@ -108,6 +108,18 @@ test('/lab/shadow Schatten v3: Kontakt-Diagnose, Feldansicht, Kontaktregler und 
   await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ dilation: 0.6, shift: 0.03, planeBias: true }));
   await expect.poll(async () => (await stats(page)).passes, { timeout: 30_000 }).toBeGreaterThan(before);
 
+  // Empfängerhöhe verteilter Schichten (Kronen): bindet die Empfänger neu, die gröbste Kaskade wächst höchstens mäßig
+  const last = (s: LabStats): CascadeStat => s.cascades!.cascades[s.cascades!.cascades.length - 1]!;
+  const coverBefore = last(await stats(page));
+  await expect(page.getByTestId('shadow-crown')).toBeVisible();
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ crownHeight: 3 }));
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 4 }));
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 0 }));
+  const coverAfter = last(await stats(page));
+  expect(coverAfter.texelY).toBeLessThan(coverBefore.texelY * 1.6);
+  await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ crownHeight: 0 }));
+
   // Testpunkte: shadowFactor() im Vertex-Shader, dazu Drehung (Schatten wandern über die Punkte)
   await page.getByTestId('shadow-dots').click();
   await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 6 }));

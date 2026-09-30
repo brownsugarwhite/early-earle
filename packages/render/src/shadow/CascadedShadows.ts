@@ -87,6 +87,12 @@ export interface ViewReceivers {
      * Empfänger über dem Boden (Riesenbaum, Brett) kommen über `ViewReceivers.volumes` dazu.
      */
     coverTolerance?: number | null;
+    /**
+     * Höhe, bis zu der verteilte Empfänger über dem Boden reichen (Kronen einer Wald-Schicht mit Schlagschatten): die
+     * gröbste Kaskade deckt je Strahl auch Boden + Normale · `coverAbove` ab (einseitig, nur wenn > `coverTolerance`).
+     * Darf ein Getter sein (wird je Refit nach `volumes` gelesen).
+     */
+    coverAbove?: number | null;
   } | null;
   plane?: { origin?: Vector3 | Object3D; normal?: Vector3; minHeight: number; maxHeight: number } | null;
   /** Größte Blicktiefe mit Empfängern (Standard: Kamera-far). */
@@ -871,6 +877,8 @@ export class CascadedShadows {
     const vols = r.volumes?.() ?? null;
     this.volumeScratch = vols;
     if (vols) for (const v of vols) s.push(3, v.center.x, v.center.y, v.center.z, v.radius);
+    // nach `volumes` (der Sammler liest dabei die Höhen-Hinweise der Empfänger)
+    if (r.sphere) s.push(4, r.sphere.coverTolerance ?? -1, r.sphere.coverAbove ?? -1);
     if (this.clip) s.push(...this.clip.toLocal.elements, this.clip.min.x, this.clip.min.y, this.clip.min.z, this.clip.max.x, this.clip.max.y, this.clip.max.z);
     for (const c of this.cascades) s.push(c.size.width, c.size.height);
     return s;
@@ -909,6 +917,7 @@ export class CascadedShadows {
         shell.surface = null;
       }
       shell.coverTolerance = r.sphere.coverTolerance ?? null;
+      shell.coverAbove = r.sphere.coverAbove ?? null;
     }
     if (r.plane) {
       slab = this.slabScratch;

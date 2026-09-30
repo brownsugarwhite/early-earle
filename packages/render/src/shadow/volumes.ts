@@ -15,7 +15,9 @@ import type { ReceiverVolume } from './fit';
  * werden gar nicht erst vermessen.
  *
  * `userData.shadowVolume = true` erzwingt (alle Zellen), `false` schließt aus; `userData.shadowGround = true` und
- * `chunk-*` sind Gelände.
+ * `chunk-*` sind Gelände. `userData.shadowHeight = h` (Welteinheiten über dem Boden) meldet eine verteilte Schicht hoher
+ * Empfänger (Wald, dessen Kronen Schlagschatten tragen): die gröbste Kaskade deckt dann auch Boden + h ab
+ * (`receiverHeight` → `coverAbove`), ohne dass die Schicht ein Volumen wird.
  */
 
 /** Kugelhülle: je Kugel x, y, z, r (Vereinigung enthält jedes Primitiv). */
@@ -330,6 +332,11 @@ export class PlanetVolumeCollector {
   private readonly entries = new WeakMap<Object3D, VolumeEntry>();
   /** Objekte mit Volumen im letzten Aufruf (Diagnose). */
   objects = 0;
+  /**
+   * Größter Höhen-Hinweis (`userData.shadowHeight`, Welteinheiten über dem Boden) der sichtbaren Empfänger im letzten
+   * Aufruf — für verteilte Schichten, die kein Volumen werden (Wald mit Schlagschatten auf den Kronen).
+   */
+  receiverHeight = 0;
   /** Neuvermessungen seit Beginn (Diagnose, Tests). */
   classifications = 0;
 
@@ -345,9 +352,11 @@ export class PlanetVolumeCollector {
   collect(planetObject: Object3D, planet: VolumePlanetLike | null, tolerance: number): ReceiverVolume[] {
     let n = 0;
     let objects = 0;
+    let height = 0;
     if (!planet) {
       this.pool.length = 0;
       this.objects = 0;
+      this.receiverHeight = 0;
       return this.pool;
     }
     _planetInv.copy(planetObject.matrixWorld).invert();
@@ -356,7 +365,9 @@ export class PlanetVolumeCollector {
     planetObject.traverseVisible((o) => {
       const mesh = o as Mesh & { isInstancedMesh?: boolean };
       if (!mesh.isMesh || mesh.receiveShadow !== true) return;
-      const data = mesh.userData as { shadowGround?: boolean; shadowVolume?: boolean };
+      const data = mesh.userData as { shadowGround?: boolean; shadowVolume?: boolean; shadowHeight?: unknown };
+      const hint = data.shadowHeight;
+      if (typeof hint === 'number' && Number.isFinite(hint) && hint > height) height = hint;
       if (data.shadowGround === true || data.shadowVolume === false || mesh.name.startsWith('chunk-')) return;
       const force = data.shadowVolume === true;
       if (mesh.isInstancedMesh && (mesh as unknown as InstancedMesh).count > MAX_VOLUME_INSTANCES && !force) return;
@@ -391,6 +402,7 @@ export class PlanetVolumeCollector {
     });
     this.pool.length = n;
     this.objects = objects;
+    this.receiverHeight = height;
     return this.pool;
   }
 }

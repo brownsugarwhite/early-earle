@@ -13,4 +13,4 @@ export { ShadowFactorNode, shadowFactorNode, type ShadowFactorSource } from './s
 export { depthCompareLevel } from './compareLevel';
 export { ShadowTint } from './shadowTint';
 export { PlanetVolumeCollector, coverFromBoxes, VOLUME_CELL_SIZE, MAX_VOLUME_CELLS, MAX_VOLUME_INSTANCES, type SphereCover, type VolumePlanetLike } from './volumes';
-export { PLANET_COVER_TOLERANCE } from '../earle/hardShadow';
+export { PLANET_COVER_TOLERANCE, type PlanetReceiverOptions } from '../earle/hardShadow';

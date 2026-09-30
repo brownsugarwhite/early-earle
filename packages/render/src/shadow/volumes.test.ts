@@ -183,6 +183,26 @@ describe('PlanetVolumeCollector (Schatten v3, Empfänger-Volumen)', () => {
     const r = planetShadowReceivers(fake, g, { coverTolerance: 2 });
     expect(r.sphere?.coverTolerance).toBe(2);
     expect(r.volumes!().length).toBeGreaterThan(2);
+    expect(r.sphere?.coverAbove).toBe(0);
     expect(planetShadowReceivers(() => null, g).volumes!()).toEqual([]);
+  });
+
+  it('liest Höhen-Hinweise verteilter Schichten (Wald: kein Volumen, aber coverAbove)', () => {
+    const { g } = build();
+    const forest = g.getObjectByName('forest')!;
+    forest.userData.shadowHeight = 3.5;
+    const fake: ShadowPlanetLike = {
+      options: { radius: R },
+      field: { hMax: 2 },
+      curvature: { value: 0 },
+      lookDirLocal: { value: new Vector3(0, 1, 0) },
+      surfaceRadius: () => R,
+    };
+    const r = planetShadowReceivers(fake, g, { coverAbove: 1.5 });
+    r.volumes!();
+    expect(r.sphere?.coverAbove).toBe(3.5);
+    forest.visible = false;
+    r.volumes!();
+    expect(r.sphere?.coverAbove).toBe(1.5);
   });
 });
