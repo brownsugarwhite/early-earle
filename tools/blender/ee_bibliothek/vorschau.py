@@ -3,6 +3,7 @@ Vorschaubilder: je Asset ein kleines EEVEE-Bild (Asset-Browser-Vorschau, transpa
 große Übersichtsbilder je Szene plus eine Rig-Erklärung (Kugeln und Knochen der Giraffe).
 """
 import os
+import shutil
 import tempfile
 
 import bmesh
@@ -36,9 +37,9 @@ def _preview_scene():
 
 
 def _frame_camera(cam, mn, mx, direction=(-0.5, -1.0, 0.65)):
-    loc, target = szenen.frame(mn, mx, direction, cam.data.lens, 1.02)
+    loc, target = szenen.frame(mn, mx, direction, cam.data.lens, 1.08, aspect=1.0)
     cam.location = loc
-    cam.rotation_euler = (target - loc).to_track_quat("-Z", "Y").to_euler()
+    cam.rotation_euler = szenen.look_rotation(loc, target)
 
 
 def _sample_sphere():
@@ -79,17 +80,15 @@ def asset_previews(st):
     for i, (idblock, cat, _desc, _tags) in enumerate(st.assets):
         png = os.path.join(tmp, f"{i:04d}.png")
         temp_objects = []
+        linked = None
         try:
             if isinstance(idblock, bpy.types.Collection):
-                inst = bpy.data.objects.new("Vorschau · Instanz", None)
-                inst.instance_type = "COLLECTION"
-                inst.instance_collection = idblock
-                sc.collection.objects.link(inst)
-                temp_objects.append(inst)
+                # Direkt in die Vorschau-Szene hängen (nicht instanzieren): so bleiben die Sockel die Instanzierer
+                # ihrer Module und die Modul-Materialien finden ee_tint/ee_ink/… wie in der Szene „Wesen“.
+                sc.collection.children.link(idblock)
+                linked = idblock
+                sc.view_layers[0].update()
                 mn, mx = szenen.bounds_of(idblock)
-                # Module: Instanz-Ursprung = SOCKET_root → die Instanz steht versetzt; Grenzen entsprechend verschieben
-                off = idblock.instance_offset
-                mn, mx = mn - off, mx - off
             elif isinstance(idblock, bpy.types.Object):
                 sc.collection.objects.link(idblock)
                 temp_objects.append(None)
@@ -119,6 +118,8 @@ def asset_previews(st):
         except Exception as ex:  # noqa: BLE001
             st.report.append(f"! Vorschau {getattr(idblock, 'name', '?')}: {ex}")
         finally:
+            if linked is not None:
+                sc.collection.children.unlink(linked)
             for o in temp_objects:
                 if o is None:
                     sc.collection.objects.unlink(idblock)
@@ -130,6 +131,7 @@ def asset_previews(st):
     for o in list(sc.objects):
         bpy.data.objects.remove(o, do_unlink=True)
     bpy.data.scenes.remove(sc)
+    shutil.rmtree(tmp, ignore_errors=True)
     return count
 
 
@@ -200,6 +202,7 @@ def _rig_illustration(st, sc, name_prefix="Giraffe S8"):
         temps.append(o)
     stick = materials.flat_material("Rig · Knochen", "#f7f6d8", banded=False)
     ik = materials.flat_material("Rig · IK-Ziel", "#ff5a36", banded=False)
+    root_mat = materials.flat_material("Rig · Wurzel", "#5f7f8c", banded=False)
     for bone in arm.bones:
         h = ao.matrix_world @ bone.head_local
         tl = ao.matrix_world @ bone.tail_local
@@ -211,17 +214,17 @@ def _rig_illustration(st, sc, name_prefix="Giraffe S8"):
         me = bpy.data.meshes.new(f"Rig · Knochen {bone.name}")
         bm.to_mesh(me)
         bm.free()
-        me.materials.append(ik if bone.name.startswith("IK-") else stick)
+        me.materials.append(ik if bone.name.startswith("IK-") else root_mat if bone.name == "Wurzel" else stick)
         o = bpy.data.objects.new(f"Rig · Knochen {bone.name}", me)
         tcol.objects.link(o)
         o.location = h + d / 2
         o.rotation_euler = d.to_track_quat("Z", "Y").to_euler()
         temps.append(o)
-    mn, mx = szenen.bounds_of(col)
-    cam = szenen._camera(sc, "Kamera · Rig", (0, 0, 0), (0, 0, 1), 50.0, 500.0)
-    loc, target = szenen.frame(mn, mx, (-0.9, -1.0, 0.8), 50.0, 0.8)
-    cam.location = loc
-    cam.rotation_euler = (target - loc).to_track_quat("-Z", "Y").to_euler()
+    sc.view_layers[0].update()
+    pts = [o.matrix_world @ Vector(v) for o in temps for v in o.bound_box]
+    # von der Seite (etwas von vorn und oben): Hals, Beine und IK-Ziele sind klar zu lesen
+    loc, target = szenen.fit(pts, (-1.0, -0.45, 0.42), 50.0, 1400 / 900, 1.08)
+    cam = szenen._camera(sc, "Kamera · Rig", loc, target, 50.0, 500.0)
     temps.append(cam)
     # alles andere der Szene ausblenden
     hidden = []

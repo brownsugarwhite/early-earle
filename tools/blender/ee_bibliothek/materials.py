@@ -369,7 +369,8 @@ def _flat_band(t, color, lit_socket):
 def module_material(material_name):
     """Gemeinsames Material einer Modul-Materialsorte: Farbe aus der Eigenschaft des Sockels (Instanzierer) oder des Objekts."""
     prop, default_hex, desc = MODULE_MATERIALS.get(material_name, ("ee_tint", "#8ad6c8", ""))
-    name = f"Modul · {material_name}"
+    # Genau die Namen des Spiels (Tint, Ink, Bone, Accent, Iris): export_assets.py liefert sie so ans Spiel.
+    name = material_name
     if name in bpy.data.materials:
         return bpy.data.materials[name]
     mat = new_material(name)

@@ -28,10 +28,11 @@ def _swatch_material():
     return mat
 
 
-def _text(name, body, col, loc, size=0.35, mat=None):
+def _text(name, body, col, loc, size=0.35, mat=None, align="LEFT"):
     cu = bpy.data.curves.new(name, "FONT")
     cu.body = body
     cu.size = size
+    cu.align_x = align
     cu.align_y = "CENTER"
     o = bpy.data.objects.new(name, cu)
     link(o, col)
@@ -119,21 +120,40 @@ def build_paletten(st):
                 blocks.append((group["group"], rows_[0]["name"].split(" · ")[0], rows_))
         else:
             blocks.append((group["group"], group["group"], group["rows"]))
+    # Schmale Blöcke im Mauerwerk (fünf Spalten), breite (lange Farbreihen wie Spielfeld) als Band darunter
+    def size_of(rows_):
+        return 7.5 + 1.1 * max(len(r["colors"]) for r in rows_), 2.2 + 1.4 * len(rows_)
+
+    WIDE = 22.0
     cols_h = [0.0, 0.0, 0.0, 0.0, 0.0]
     cols_w = [0.0] * len(cols_h)
     placed = []
     for gname, title, rows_ in blocks:
-        h = 2.2 + 1.4 * len(rows_)
-        w = 7.5 + 1.1 * max(len(r["colors"]) for r in rows_)
+        w, h = size_of(rows_)
+        if w > WIDE:
+            continue
         c = min(range(len(cols_h)), key=lambda i: cols_h[i])
         placed.append((c, cols_h[c], gname, title, rows_))
         cols_h[c] += h + 1.5
         cols_w[c] = max(cols_w[c], w)
     xs = [sum(cols_w[:i]) + 3.0 * i for i in range(len(cols_w))]
+    total_w = xs[-1] + cols_w[-1]
+    band_y = max(cols_h) + 1.5
+    band_x, band_h = 0.0, 0.0
+    for gname, title, rows_ in blocks:
+        w, h = size_of(rows_)
+        if w <= WIDE:
+            continue
+        if band_x > 0 and band_x + w > total_w:
+            band_y += band_h + 1.5
+            band_x, band_h = 0.0, 0.0
+        placed.append((("x", band_x), band_y, gname, title, rows_))
+        band_x += w + 3.0
+        band_h = max(band_h, h)
     rows = 0
     for c, y0, gname, title, rows_ in placed:
         gcol = collection(f"Paletten · {gname}", top)
-        x0 = xs[c]
+        x0 = c[1] if isinstance(c, tuple) else xs[c]
         _text(f"Titel · {title}", title, gcol, (x0, -y0, 0), 0.7, label_mat)
         y = -y0 - 1.6
         for row in rows_:
@@ -143,24 +163,25 @@ def build_paletten(st):
             _text(f"Name · {row['name']}", short, gcol, (x0, y, 0), 0.32, label_mat)
             y -= 1.4
             rows += 1
-    # Musterkugeln: Materialarten und Muster (die Wesen-Materialien des Spiels)
+    # Musterkugeln über den Paletten: Materialarten und Muster (die Wesen-Materialien des Spiels)
     scol = collection("Materialien · Musterkugeln", top)
-    _text("Titel · Materialarten", "Materialarten", scol, (0, 6.5, 0), 0.8, label_mat)
+    S, STEP = 1.8, 4.4  # Kugelgröße (Radius 0,8 × S) und Abstand
+    _text("Titel · Materialarten", "Materialarten", scol, (0, 20.5, 0), 1.1, label_mat)
     for i, (kind, base, inner) in enumerate(KIND_SAMPLES):
         meta = {"palette": {"base": base, "inner": inner, "rim": "#e8fbf6", "highlight": "#ffffff", "bubble": base}, "material": kind if kind not in ("fur", "feather") else "jelly", "skin": {"coat": kind if kind in ("fur", "feather") else "bare"}, "gloss": 0.7, "translucency": 0.6}
         mat = materials.creature_material(f"Wesen-Material · {materials.MATERIAL_KIND_LABEL[kind]}", meta)
-        _sample_sphere(f"Musterkugel · {materials.MATERIAL_KIND_LABEL[kind]}", mat, scol, (i * 2.2, 4.5, 0.8))
-        _text(f"Name · {kind}", materials.MATERIAL_KIND_LABEL[kind], scol, (i * 2.2 - 0.6, 3.2, 0), 0.3, label_mat)
+        o = _sample_sphere(f"Musterkugel · {materials.MATERIAL_KIND_LABEL[kind]}", mat, scol, (1.5 + i * STEP, 16.5, 0.8 * S))
+        o.scale = (S, S, S)
+        _text(f"Name · {kind}", materials.MATERIAL_KIND_LABEL[kind], scol, (1.5 + i * STEP, 14.0, 0), 0.5, label_mat, "CENTER")
         st.asset(mat, "Materialien/Wesen", f"Wesen-Material {materials.MATERIAL_KIND_LABEL[kind]} (Gruppe EE · Wesen-Körper)", ("Material", kind))
-    _text("Titel · Muster", "Muster", scol, (0, 1.8, 0), 0.8, label_mat)
+    _text("Titel · Muster", "Muster", scol, (0, 11.0, 0), 1.1, label_mat)
     for i, (kind, label, base, pal) in enumerate(PATTERN_SAMPLES):
         meta = {"palette": {"base": base, "inner": pal["ink"], "rim": pal["light"], "highlight": "#ffffff", "bubble": base}, "material": "jelly", "skin": {"coat": "bare"}, "gloss": 0.3, "translucency": 0.2, "pattern": {"kind": kind, "scale": 1.0, "contrast": 0.8, "rotation": 0.0, **pal}}
         mat = materials.creature_material(f"Wesen-Muster · {label}", meta)
-        _sample_sphere(f"Musterkugel · {label}", mat, scol, (i * 2.2, 0.0, 0.8))
-        _text(f"Name · Muster {label}", label, scol, (i * 2.2 - 0.6, -1.3, 0), 0.3, label_mat)
+        o = _sample_sphere(f"Musterkugel · {label}", mat, scol, (1.5 + i * STEP, 7.0, 0.8 * S))
+        o.scale = (S, S, S)
+        _text(f"Name · Muster {label}", label, scol, (1.5 + i * STEP, 4.5, 0), 0.5, label_mat, "CENTER")
         st.asset(mat, "Materialien/Muster", f"Muster {label} (prozedural im Ruheraum des Körpers, Attribut ee_rest)", ("Muster", kind))
-    for o in scol.objects:
-        o.location.y += 12
     for m in ("Tint", "Ink", "Bone", "Accent", "Iris"):
         st.asset(materials.module_material(m), "Materialien/Module", materials.MODULE_MATERIALS[m][2], ("Modul", m))
     st.report.append(f"Materialien: {rows} Palettenreihen, {len(KIND_SAMPLES) + len(PATTERN_SAMPLES)} Musterkugeln")

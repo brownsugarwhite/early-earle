@@ -6,7 +6,7 @@ unverfälscht heraus. Die Map bekommt dazu je Welt eine Kamera wie im Spiel (Hö
 import math
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 from .util import hex_to_rgba
 
@@ -52,8 +52,6 @@ def _sun(scene, direction_to_sun, energy=4.0):
 
 def look_rotation(location, target, up=(0, 0, 1)):
     """Kamera-Drehung: −Z schaut auf das Ziel, +Y möglichst nach `up` (auf dem Planeten: die Normale)."""
-    from mathutils import Matrix
-
     f = (Vector(target) - Vector(location)).normalized()
     u = Vector(up).normalized()
     r = f.cross(u)
@@ -77,22 +75,131 @@ def _camera(scene, name, location, target, lens=35.0, clip_end=600.0, up=(0, 0, 
     return o
 
 
-def bounds_of(col):
-    """Weltgrenzen aller sichtbaren Mesh-/Text-Objekte (rekursiv) einer Collection."""
+def corners(mn, mx):
+    return [Vector((x, y, z)) for x in (mn.x, mx.x) for y in (mn.y, mx.y) for z in (mn.z, mx.z)]
+
+
+def _basis(direction, up):
+    f = -Vector(direction).normalized()  # Blickrichtung (Kamera → Ziel)
+    r = f.cross(Vector(up).normalized())
+    if r.length < 1e-6:
+        r = f.cross(Vector((0, 1, 0)))
+    r.normalize()
+    return f, r, r.cross(f)
+
+
+def fit(points, direction, lens=35.0, aspect=1.6, margin=1.06, up=(0, 0, 1), sensor=36.0):
+    """Perspektive: Kamera aus Richtung `direction` genau so weit zurück, dass alle Punkte ins Bild passen
+    (Sensor-Anpassung „Auto“ wie in Blender: die längere Bildseite bekommt 36 mm), Bildmitte = Mitte der Projektion.
+    Gibt (Kameraposition, Zielpunkt) zurück."""
+    pts = [Vector(p) for p in points]
+    target = sum(pts, Vector()) / max(1, len(pts))
+    f, r, u = _basis(direction, up)
+    half = sensor / 2 / lens
+    th, tv = (half, half / aspect) if aspect >= 1 else (half * aspect, half)
+    th, tv = th / margin, tv / margin
+    ext = max(((p - target).length for p in pts), default=1.0) or 1.0
+
+    def distance(t):
+        d = 0.0
+        for p in pts:
+            q = p - t
+            x, y, z = q.dot(r), q.dot(u), q.dot(f)
+            d = max(d, abs(x) / th - z, abs(y) / tv - z, -z + 0.05 * ext)
+        return d
+
+    for _ in range(4):
+        dist = distance(target)
+        loc = target - f * dist
+        xs, ys = [], []
+        for p in pts:
+            q = p - loc
+            z = max(q.dot(f), 1e-6)
+            xs.append(q.dot(r) / z)
+            ys.append(q.dot(u) / z)
+        target = target + (r * ((min(xs) + max(xs)) / 2) + u * ((min(ys) + max(ys)) / 2)) * dist
+    dist = distance(target)
+    return target - f * dist, target
+
+
+def fit_ortho(points, direction, aspect=1.6, margin=1.06, up=(0, 0, 1)):
+    """Orthografisch: (Kameraposition, Ziel, ortho_scale) für alle Punkte aus Richtung `direction`."""
+    pts = [Vector(p) for p in points]
+    f, r, u = _basis(direction, up)
+    xs = [p.dot(r) for p in pts]
+    ys = [p.dot(u) for p in pts]
+    zs = [p.dot(f) for p in pts]
+    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    w, h = max(xs) - min(xs), max(ys) - min(ys)
+    scale = max(w, h * aspect) if aspect >= 1 else max(w / aspect, h)
+    target = r * cx + u * cy + f * ((min(zs) + max(zs)) / 2)
+    depth = max(zs) - min(zs)
+    return target - f * (depth + 10.0), target, scale * margin
+
+
+def frame(mn, mx, direction=(-0.55, -1.0, 0.75), lens=35.0, margin=1.06, aspect=1.6, up=(0, 0, 1)):
+    """Kameraposition, die die Box aus Richtung `direction` genau füllt (Perspektive)."""
+    return fit(corners(mn, mx), direction, lens, aspect, margin, up)
+
+
+def bounds_of(col, _seen=None):
+    """Weltgrenzen aller sichtbaren Mesh-/Text-Objekte (rekursiv) einer Collection — samt Collection-Instanzen
+    (Module an den Sockeln) und GN-Instanzwolken."""
+    seen = _seen if _seen is not None else set()
     mn = Vector((1e9, 1e9, 1e9))
     mx = Vector((-1e9, -1e9, -1e9))
     found = False
 
-    def visit(c):
+    def grow(o):
+        """Instanz-Punktwolken (GN „EE · Instanzen“/„EE · Glyphen“): um die Größe der Vorlage erweitern."""
+        for mod in o.modifiers:
+            if mod.type != "NODES" or mod.node_group is None:
+                continue
+            for item in mod.node_group.interface.items_tree:
+                if getattr(item, "item_type", "") == "SOCKET" and item.in_out == "INPUT" and item.name == "Vorlage":
+                    tmpl = mod.get(item.identifier)
+                    if tmpl is not None:
+                        s = 1.0
+                        a = o.data.attributes.get("ee_scale") if o.type == "MESH" else None
+                        if a is not None and len(a.data):
+                            import numpy as np
+
+                            arr = np.zeros(len(a.data) * 3, np.float32)
+                            a.data.foreach_get("vector", arr)
+                            s = float(np.abs(arr).max())
+                        return max(tmpl.dimensions) * 0.5 * s
+            if mod.node_group.name == "EE · Punkte":
+                return 0.1
+        return 0.0
+
+    def add(w, pad=0.0):
         nonlocal mn, mx, found
+        mn = Vector((min(mn.x, w.x - pad), min(mn.y, w.y - pad), min(mn.z, w.z - pad)))
+        mx = Vector((max(mx.x, w.x + pad), max(mx.y, w.y + pad), max(mx.z, w.z + pad)))
+        found = True
+
+    def visit(c):
+        if c.name in seen:
+            return
+        seen.add(c.name)
         for o in c.objects:
+            if o.hide_render:
+                continue
+            if o.type == "EMPTY" and o.instance_type == "COLLECTION" and o.instance_collection is not None:
+                ic = o.instance_collection
+                if ic.name in seen:
+                    continue
+                imn, imx = bounds_of(ic, set(seen))
+                if (imx - imn).length > 1e-6 and imn.x < 1e8:
+                    m = o.matrix_world @ Matrix.Translation(-ic.instance_offset)
+                    for p in corners(imn, imx):
+                        add(m @ p)
+                continue
             if o.type not in ("MESH", "FONT", "CURVE"):
                 continue
+            pad = grow(o)
             for v in o.bound_box:
-                w = o.matrix_world @ Vector(v)
-                mn = Vector((min(mn.x, w.x), min(mn.y, w.y), min(mn.z, w.z)))
-                mx = Vector((max(mx.x, w.x), max(mx.y, w.y), max(mx.z, w.z)))
-                found = True
+                add(o.matrix_world @ Vector(v), pad)
         for ch in c.children:
             visit(ch)
 
@@ -100,16 +207,6 @@ def bounds_of(col):
     if not found:
         return Vector((0, 0, 0)), Vector((1, 1, 1))
     return mn, mx
-
-
-def frame(mn, mx, direction=(-0.55, -1.0, 0.75), lens=35.0, margin=1.1):
-    """Kameraposition, die die Box aus Richtung `direction` füllt (Perspektive)."""
-    center = (mn + mx) / 2
-    radius = (mx - mn).length / 2
-    fov = 2 * math.atan(18.0 / lens)
-    dist = radius / math.sin(fov / 2) * margin
-    d = Vector(direction).normalized()
-    return center + d * dist, center
 
 
 def _base(scene, name):
@@ -153,14 +250,16 @@ def _map_cameras(scene, st, col):
         cam = _camera(scene, f"Kamera · Welt {w['id'][1:]} {w['name']}", loc, target, lens, 600.0, n)
         cam["ee_welt"] = w["id"]
         cams.append((cam, n, back))
-    mn, mx = Vector((-R - 12, -R - 12, -R - 12)), Vector((R + 12, R + 12, R + 12))
-    loc, target = frame(mn, mx, (0.35, -1.0, 0.45), 35.0, 0.95)
+    # Übersicht: der Planet samt Bewuchs und Riesenbaum (Kugel R + 9) füllt das Bild; die Vorlagen-Reihe daneben darf angeschnitten sein
+    shell = [Vector((i, j, k)).normalized() * (R + 9.0) for i in (-1, 0, 1) for j in (-1, 0, 1) for k in (-1, 0, 1) if (i, j, k) != (0, 0, 0)]
+    loc, target = fit(shell, (0.35, -1.0, 0.45), 35.0, 1.6, 1.08)
     overview = _camera(scene, "Kamera · Planet (Übersicht)", loc, target, 35.0, 1000.0)
     return cams, overview
 
 
 def setup_scenes(st):
     first = st.scene  # heißt „Wesen“ (Baus-Szene)
+    st.view_layer.update()  # Weltmatrizen nach dem Auslegen aktuell (Grenzen für die Kameras)
     scenes = {}
     for name in SCENE_ORDER:
         col = st.sections.get(name)
@@ -177,6 +276,7 @@ def setup_scenes(st):
     # Szenen ohne Inhalt (Teilbau): die Bauszene bleibt „Wesen“
     for name, sc in scenes.items():
         col = st.sections[name]
+        sc.view_layers[0].update()
         if name == "Map":
             cams, overview = _map_cameras(sc, st, col)
             main = cams[0][0] if cams else overview
@@ -191,19 +291,26 @@ def setup_scenes(st):
                 sun["ee_hinweis"] = "Earle-Sonne: 12° über dem Horizont, 70° seitlich zur Blickrichtung der Welt-01-Kamera (wie im Spiel)"
             else:
                 _sun(sc, (0.3, -0.5, 0.8))
-        elif name == "Materialien":
+        elif name in ("Materialien", "Wesen", "Module"):
+            # Raster (Paletten, Wesen je Stufe, Module je Slot): orthografisch, damit alles gleich groß erscheint
             mn, mx = bounds_of(col)
-            center = (mn + mx) / 2
-            size = max(mx.x - mn.x, mx.y - mn.y)
-            cam = _camera(sc, "Kamera · Materialien", center + Vector((0, 0, size * 0.9)), center, 35.0, 2000.0)
+            direction, up = {"Materialien": ((0, 0, 1), (0, 1, 0)), "Wesen": ((0.0, -0.8, 1.0), (0, 0, 1)), "Module": ((0.0, -0.8, 1.0), (0, 0, 1))}[name]
+            loc, target, scale = fit_ortho(corners(mn, mx), direction, 1.6, 1.03, up=up)
+            cam = _camera(sc, f"Kamera · {name}", loc, target, 35.0, 4000.0, up=up)
+            cam.data.type = "ORTHO"
+            cam.data.ortho_scale = scale
             sc.camera = cam
-            _sun(sc, (-0.4, -0.5, 0.75))
+            _sun(sc, (-0.4, -0.5, 0.75) if name == "Materialien" else (-0.45, -0.55, 0.7))
         else:
             mn, mx = bounds_of(col)
-            direction = {"Spielfeld": (0.0, -0.45, 1.0), "Module": (0.0, -1.0, 0.9), "REX": (-0.6, -1.0, 0.35), "Eigenes Wesen": (-0.7, -1.0, 0.55)}.get(name, (-0.15, -1.0, 1.25))
+            margin = {"Spielfeld": 1.05, "REX": 1.12}.get(name, 1.06)
+            if name == "Eigenes Wesen" and getattr(st, "template", None):
+                mn, mx = bounds_of(st.template[0])  # das Wesen, nicht die ganze Wiese
+                margin = 1.3
+            direction = {"Spielfeld": (0.0, -0.45, 1.0), "REX": (-0.6, -1.0, 0.35), "Eigenes Wesen": (-0.7, -1.0, 0.55)}.get(name, (-0.55, -1.0, 0.75))
             lens = 35.0
-            loc, target = frame(mn, mx, direction, lens, {"Wesen": 0.62, "Module": 0.7}.get(name, 1.0))
-            cam = _camera(sc, f"Kamera · {name}", loc, target, lens, 2000.0)
+            loc, target = frame(mn, mx, direction, lens, margin)
+            cam = _camera(sc, f"Kamera · {name}", loc, target, lens, 4000.0)
             sc.camera = cam
             _sun(sc, (-0.45, -0.55, 0.7) if name != "Spielfeld" else (-0.7, 0.3, 0.45))
     st.scenes = scenes

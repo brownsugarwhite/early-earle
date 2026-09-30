@@ -26,8 +26,8 @@ const server = await createServer({
   server: { middlewareMode: true, hmr: false, watch: null },
   appType: 'custom',
   logLevel: 'warn',
-  // Eigener Cache: der Dev-Server des Spiels behält seinen.
-  cacheDir: path.join(out, '.vite-cache'),
+  // Eigener Cache (der Dev-Server des Spiels behält seinen) — unter node_modules, damit Lint und Git ihn übergehen.
+  cacheDir: path.join(here, 'node_modules', '.vite-export3d'),
   optimizeDeps: { noDiscovery: true },
 });
 let code = 1;

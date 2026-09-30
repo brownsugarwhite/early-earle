@@ -34,7 +34,8 @@ WIE DIE WESEN GERIGGED SIND
   Wirbel.01… (Schlange). Beine: Hüfte → Knie → Fuß mit IK-Ziel „IK-Fuß.vorn.L“ usw.
   (Wurzel bewegen = alles; Körper bewegen = Füße bleiben stehen). Unterkiefer dreht am Scharnier.
   Knochensammlungen: Wurzel, Körper, Kopf, Hals, Rüssel, Schwanz, Wirbelsäule, Beine, IK.
-  Die Kugeln selbst liegen ausgeblendet in „<Wesen> · Kugeln“ (Auge im Outliner einschalten).
+  Die Kugeln selbst liegen ausgeblendet in „<Wesen> · Kugeln“, Hüften, Halsansatz, Maul und
+  Kiefergelenk in „<Wesen> · Gelenke“ (Auge im Outliner einschalten).
   Module sitzen auf Sockel-Empties (Instanz der Modul-Collection), gehängt an den Knochen ihrer
   Ankerkugel; die Tönung steht als Eigenschaft ee_tint/ee_ink/ee_bone/ee_accent am Sockel.
 
@@ -50,7 +51,8 @@ EIGENES WESEN BAUEN (Kurzfassung)
      Dann 3D-Ansicht → Seitenleiste (N) → Reiter „early earle“.
   2. Szene „Eigenes Wesen“: Kugeln verschieben/skalieren (Skalierung = Radius), Rollen in den
      Eigenschaften (ee_rolle, ee_kette, ee_bein), Module an Sockeln tauschen (Instanzieren →
-     Collection), Name/Basis-Art/Farbe an „Wesen-Wurzel“. Die Vorschau zeigt den Körper live.
+     Collection), Name/Basis-Art/Farbe an „Wesen-Wurzel“. Die Vorschau zeigt den Körper live
+     (sie vereint alles in „Eigenes Wesen · Kugeln“ — dort nur Kugeln ablegen).
      Oder: ein Wesen aus der Szene „Wesen“ duplizieren (Collection kopieren) und ändern.
   3. „early earle: Wesen exportieren“ → content/genome/custom/<id>.json
   4. Spiel: /lab/creature → „Eigene Wesen“ wählen (Dev-Server lädt die Datei sofort neu).

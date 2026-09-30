@@ -87,10 +87,11 @@ def build_modules(st):
     st.report.append(f"Module: {len(st.module_cols)}")
 
 
-def _label(text, col, loc, size, mat):
+def _label(text, col, loc, size, mat, align="LEFT"):
     cu = bpy.data.curves.new(text, "FONT")
     cu.body = text
     cu.size = size
+    cu.align_x = align
     cu.materials.append(mat)
     o = bpy.data.objects.new(f"Beschriftung · {text}", cu)
     link(o, col)
@@ -99,7 +100,14 @@ def _label(text, col, loc, size, mat):
     return o
 
 
+GAP_X = 0.9  # Abstand zwischen zwei Wesen einer Reihe
+GAP_Y = 1.1  # Abstand zwischen zwei Reihen (zusätzlich zur Beschriftungszeile)
+LABEL_LINE = 0.9  # Platz für „Stufe N“ vor der Reihe
+
+
 def build_wesen(st):
+    """Je Gruppe (Art / Blob-Linie / Eigene Wesen) eine Reihe, Stufen nebeneinander. Ausgelegt wird nach den
+    echten Grenzen (Körper + Module), damit sich nichts überlappt; alle Wesen einer Reihe stehen auf einer Linie."""
     from . import materials
 
     folder = os.path.join(st.export, "wesen")
@@ -119,28 +127,36 @@ def build_wesen(st):
         items = [e for e in entries if e["group"] == group]
         gcol = collection(f"Wesen · {group}", top)
         x = 0.0
-        row_depth = 3.0
-        _label(group, labels, (-7.5, y, 0), 0.9, label_mat)
+        row = []  # (armature, min, max, meta, Mitte x)
         for e in items:
             path = os.path.join(st.export, e["file"])
             try:
-                col, ao, meta = wesen_mod.build_creature(path, gcol, Vector((x, y, 0.0)), st.module_cols, st.view_layer)
+                col, ao, meta = wesen_mod.build_creature(path, gcol, Vector((0.0, 0.0, 0.0)), st.module_cols, st.view_layer)
             except Exception as ex:  # ein kaputtes Wesen hält den Bau nicht auf
                 st.report.append(f"! Wesen {e['id']}: {ex}")
                 traceback.print_exc()
                 continue
-            sk = meta.get("skeleton", {})
-            width = float(sk.get("width", 2.0))
-            length = float(sk.get("length", 2.0))
-            ao.location = (x + width / 2, y, float(meta.get("restLift", 0.0)))
-            _label(f"Stufe {meta.get('tier')}", labels, (x + width / 2 - 0.5, y - length / 2 - 0.9, 0), 0.32, label_mat)
-            x += max(width, 1.6) + 1.6
-            row_depth = max(row_depth, length + 2.4)
+            ao.location = (0.0, 0.0, float(meta.get("restLift", 0.0)))
+            st.view_layer.update()
+            mn, mx = szenen.bounds_of(col)
+            ao.location.x += x - mn.x
+            row.append((ao, mn, mx, meta, x + (mx.x - mn.x) / 2))
+            x += (mx.x - mn.x) + GAP_X
             st.creatures.append((col, ao, meta))
             cat = "Wesen/Eigene Wesen" if meta.get("custom") else f"Wesen/{group}"
             desc = f"{meta.get('label')} — {meta.get('bodyTypeLabel', '')}, Material {meta.get('material')}, Fell {(meta.get('skin') or {}).get('coatLabel', '')}, Muster {(meta.get('skin') or {}).get('patternLabel', '')}"
             st.asset(col, cat, desc, (meta.get("species", ""), f"Stufe {meta.get('tier')}", meta.get("zone", "")))
-        y -= row_depth
+        if not row:
+            continue
+        back = max(r[2].y for r in row)
+        front = min(r[1].y for r in row)
+        dy = y - back
+        for ao, _mn, _mx, meta, cx in row:
+            ao.location.y += dy
+            _label(f"Stufe {meta.get('tier')}", labels, (cx, front + dy - 0.6, 0), 0.36, label_mat, "CENTER")
+        _label(group, labels, (-1.0, y - (back - front) / 2 - 0.3, 0), 0.9, label_mat, "RIGHT")
+        y = front + dy - LABEL_LINE - GAP_Y
+    st.view_layer.update()
     st.report.append(f"Wesen: {len(st.creatures)}")
 
 

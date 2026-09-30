@@ -1,5 +1,7 @@
 # Blender-Pipeline (P4)
 
+> **Bibliothek:** `assets/blender/early-earle-bibliothek.blend` enthält alles, was das Spiel in 3D erzeugt (Map, Wesen mit Rigs, REX, Spielfeld, Module, Paletten) und die Vorlage für eigene Wesen. Neu bauen: `pnpm assets:blender` (`build_library.py` + `ee_bibliothek/`, Export: `tools/export3d/`). Eigene Wesen exportiert das Add-on `ee_wesen.py` nach `content/genome/custom/`. Module aus der Bibliothek zurück ins Spiel: `export_assets.py -- --collection Module --only <id>`. Alles Weitere: [`docs/BLENDER.md`](../../docs/BLENDER.md).
+
 Florian baut Figuren-Module (Augen, Hörner, Flügel, Ohren, Rüssel, Zähne, Beine, …) in Blender; das Spiel hängt sie prozedural an Sockel des Blob-Körpers und animiert sie selbst (Federn, Noise, IK). Keine Konturen an Modulen; Kanten entstehen aus Wertkontrast.
 
 ## Konventionen in der .blend

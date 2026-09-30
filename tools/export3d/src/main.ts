@@ -43,11 +43,10 @@ export async function main(opts: { root: string; out: string; argv: string[] }):
   const t0 = Date.now();
   console.log(`early earle 3D-Export → ${out}${quick ? ' (schnell)' : ''}`);
 
-  // Fresh export (keep the Vite cache).
+  // Fresh export. A `.vite-cache` left by older runs goes too (the cache lives in tools/export3d/node_modules now).
   if (existsSync(out)) {
     for (const entry of readdirSync(out)) {
-      if (entry === '.vite-cache') continue;
-      if (only && !only.has(entry) && entry !== 'manifest.json') continue;
+      if (only && !only.has(entry) && entry !== 'manifest.json' && entry !== '.vite-cache') continue;
       rmSync(join(out, entry), { recursive: true, force: true });
     }
   }

@@ -4,8 +4,9 @@ Wesen: je Art und Stufe eine Collection mit
     Ketten wie im Spiel (Hals, Rüssel, Schwanz, Wirbelsäule), Unterkiefer am Scharnier, Beine als
     Hüfte → Knie → Fuß mit IK-Ziel je Fuß; Knochensammlungen Körper/Kopf/Hals/Rüssel/Schwanz/Beine/IK/Wurzel.
   • Körper-Mesh: das Mesh des Spiels mit den Skin-Gewichten des Spiels als Vertex-Gruppen (Armature-Modifier).
-  • Kugeln: die SDF-Kugeln als Kugel-Empties (Anzeigegröße 1, Skalierung = Radius) mit Rolle/Kette/Bein,
-    dazu Hüften, Halsansatz, Maul — das Gerüst, aus dem ein eigenes Wesen exportiert wird (ausgeblendet).
+  • Kugeln: die SDF-Kugeln als Kugel-Empties (Anzeigegröße 1, Skalierung = Radius) mit Rolle/Kette/Bein;
+    Gelenke: Hüften, Halsansatz, Rüsselansatz, Maul, Kiefergelenk — das Gerüst, aus dem ein eigenes Wesen
+    exportiert wird (beides ausgeblendet).
   • Sockel: Empties an den Sockel-Frames des Spiels, die das Modul als Collection-Instanz tragen (Tönung als
     Eigenschaft ee_tint/ee_ink/ee_bone/ee_accent), an den Knochen ihrer Ankerkugel gehängt.
 Die Vorlage „Eigenes Wesen“ nutzt dieselben Bausteine ohne Rig (Wurzel = Empty, Live-Vorschau per GN).
@@ -119,8 +120,9 @@ def _attach(obj, root, bone, world):
     obj.matrix_world = world
 
 
-def design_handles(prefix, meta, sph_col, sock_col, root, sphere_bone, module_cols, view_layer):
-    """Kugeln, Hüften, Halsansatz, Rüsselansatz, Maul, Kiefergelenk und Sockel (mit Modul-Instanzen) eines Wesens.
+def design_handles(prefix, meta, sph_col, joint_col, sock_col, root, sphere_bone, module_cols, view_layer):
+    """Kugeln (`sph_col`), Hüften, Halsansatz, Rüsselansatz, Maul, Kiefergelenk (`joint_col`) und Sockel mit
+    Modul-Instanzen (`sock_col`) eines Wesens. In `sph_col` liegen nur Kugeln: die Live-Vorschau vereint alles dort.
 
     `sphere_bone`: Kugelindex → Knochenname (Bibliothek) oder None (Vorlage: alles hängt an der Wurzel).
     """
@@ -142,7 +144,7 @@ def design_handles(prefix, meta, sph_col, sock_col, root, sphere_bone, module_co
         if b.get("role") == "hip":
             hip_parent[b["name"]] = b.get("parent")
     for l in cj.get("legs", []):
-        e = empty(f"{prefix} · Hüfte {LEG_LABEL.get(l['leg'], l['leg'])}", sph_col, "CUBE", 0.06)
+        e = empty(f"{prefix} · Hüfte {LEG_LABEL.get(l['leg'], l['leg'])}", joint_col, "CUBE", 0.06)
         _attach(e, root, hip_parent.get(f"Hüfte.{LEG_LABEL.get(l['leg'], l['leg'])}") if sphere_bone else None, base @ Matrix.Translation(g2b(l["hip"])))
         set_props(e, {"ee_huefte": l["leg"], "ee_beuge": int(l.get("bend", 1))})
     head = next((s for s in spheres if s["role"] == "head"), None)
@@ -156,11 +158,11 @@ def design_handles(prefix, meta, sph_col, sock_col, root, sphere_bone, module_co
             _attach(e, sphere_obj.get(index, root), None, world)
 
     if cj.get("neck"):
-        e = empty(f"{prefix} · Halsansatz", sph_col, "CONE", 0.08)
+        e = empty(f"{prefix} · Halsansatz", joint_col, "CONE", 0.08)
         on_sphere(e, core["index"], base @ Matrix.Translation(g2b(cj["neck"]["base"])))
         set_props(e, {"ee_hals_basis": True, "ee_max_biegung": float(cj["neck"].get("maxBend", 0.6))})
     if cj.get("trunk"):
-        e = empty(f"{prefix} · Rüsselansatz", sph_col, "CONE", 0.06)
+        e = empty(f"{prefix} · Rüsselansatz", joint_col, "CONE", 0.06)
         on_sphere(e, head["index"] if head else core["index"], base @ Matrix.Translation(g2b(cj["trunk"]["root"])))
         set_props(e, {"ee_ruessel_wurzel": True})
     mouth = cj.get("mouth")
@@ -168,11 +170,11 @@ def design_handles(prefix, meta, sph_col, sock_col, root, sphere_bone, module_co
         a = by_name[mouth["anchor"]]
         d = Vector(mouth["dir"]).normalized()
         p = Vector(a["center"]) + d * float(a["r"])
-        e = empty(f"{prefix} · Maul", sph_col, "SINGLE_ARROW", 0.12)
+        e = empty(f"{prefix} · Maul", joint_col, "SINGLE_ARROW", 0.12)
         on_sphere(e, a["index"], base @ Matrix.Translation(g2b(p)))
         set_props(e, {"ee_maul_anker": a["name"], "ee_breite": float(mouth["width"]), "ee_oeffnung": float(mouth["open"])})
         if mouth.get("hinge"):
-            h = empty(f"{prefix} · Kiefergelenk", sph_col, "PLAIN_AXES", 0.06)
+            h = empty(f"{prefix} · Kiefergelenk", joint_col, "PLAIN_AXES", 0.06)
             on_sphere(h, head["index"] if head else a["index"], base @ Matrix.Translation(g2b(mouth["hinge"])))
             set_props(h, {"ee_kiefer_gelenk": True})
     consts = meta.get("constants", {})
@@ -234,11 +236,13 @@ def build_creature(path, parent_col, position, module_cols, view_layer, show_sph
     body_node = next(g.nodes[i] for i in root["children"] if "mesh" in g.nodes[i])
     _body(name, g, body_node, meta, col, ao, bone_names)
     sph_col = collection(f"{name} · Kugeln", col)
+    joint_col = collection(f"{name} · Gelenke", col)
     sock_col = collection(f"{name} · Sockel", col)
     sphere_bone = {b["sphere"]: b["name"] for b in meta["bones"] if b["sphere"] >= 0}
-    design_handles(name, meta, sph_col, sock_col, ao, sphere_bone, module_cols, view_layer)
+    design_handles(name, meta, sph_col, joint_col, sock_col, ao, sphere_bone, module_cols, view_layer)
     if not show_spheres:
         hide_collection(view_layer, sph_col, True)
+        hide_collection(view_layer, joint_col, True)
     props = {
         "ee_id": meta["id"],
         "ee_art": meta["species"],
@@ -292,8 +296,9 @@ def build_template(meta, parent_col, module_cols, view_layer, ee_wesen):
     )
     root["ee_wesen_json"] = json.dumps(cj, ensure_ascii=False)
     sph_col = collection("Eigenes Wesen · Kugeln", col)
+    joint_col = collection("Eigenes Wesen · Gelenke", col)
     sock_col = collection("Eigenes Wesen · Sockel", col)
-    design_handles("Vorlage", meta, sph_col, sock_col, root, None, module_cols, view_layer)
+    design_handles("Vorlage", meta, sph_col, joint_col, sock_col, root, None, module_cols, view_layer)
     mat = materials.creature_material("Wesen · Mein Wesen", meta)
     prev = ee_wesen.add_preview(col, sph_col, root, mat)
     prev.name = "Eigenes Wesen · Vorschau"

@@ -24,6 +24,7 @@ import {
   type SpeciesChoice,
 } from '../lab/creature/LabCreatureScene';
 import { BUNDLED_RULES } from '../lab/creature/content';
+import { CUSTOM_CREATURES } from '../lab/creature/customCreatures';
 import '../lab/creature/creatureLab.css';
 
 const MODES: Array<{ id: LabMode; label: string }> = [
@@ -230,7 +231,20 @@ export function LabCreature() {
       ) : (
         <Seg label="Stufe" value={settings.tier} options={TIERS.slice(0, 10).map((t) => ({ id: t, label: String(t) }))} onChange={(tier) => set({ tier })} testId="ctl-tier" />
       )}
-      <Seg label="Körper" value={settings.species} options={BODY_CHOICES} onChange={(species) => set({ species, bodyType: 'auto', ...(species !== 'auto' && species !== 'blob' && settings.tier < 5 ? { tier: 5 } : {}) })} testId="ctl-body" />
+      <Seg label="Körper" value={settings.species} options={BODY_CHOICES} onChange={(species) => set({ species, bodyType: 'auto', custom: null, ...(species !== 'auto' && species !== 'blob' && settings.tier < 5 ? { tier: 5 } : {}) })} testId="ctl-body" />
+      {CUSTOM_CREATURES.length > 0 ? (
+        <div className="creature-row" data-testid="ctl-custom" title="Eigene Wesen aus Blender (content/genome/custom, docs/BLENDER.md)">
+          <span className="creature-label">Eigene Wesen</span>
+          <button type="button" className="creature-btn" data-active={settings.custom === null} onClick={() => set({ custom: null })}>
+            —
+          </button>
+          {CUSTOM_CREATURES.map((c) => (
+            <button key={c.id} type="button" className="creature-btn" data-active={settings.custom === c.id} disabled={!c.def} title={c.issues.length ? c.issues.join('\n') : c.file} onClick={() => set({ custom: c.id })} data-testid={`custom-${c.id}`}>
+              {c.def ? c.name : `${c.name} ⚠`}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="creature-row">
         <Seg label="Beine" value={settings.legs} options={LEG_CHOICES} onChange={(legs) => set({ legs })} testId="ctl-legs" />
         <button type="button" className="creature-btn" data-active={settings.topDown} onClick={() => set({ topDown: !settings.topDown })} data-testid="btn-topdown">
