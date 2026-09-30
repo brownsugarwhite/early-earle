@@ -162,7 +162,7 @@ export function LabShadow() {
   return (
     <div ref={frameRef} className="shadow-lab" data-mode={params.mode}>
       <LabFrame
-        title="P2e Schatten-Lab · Shadows v2"
+        title="Schatten-Lab · v3 Kontakt"
         controls={
           hideUi ? undefined : (
             <>
