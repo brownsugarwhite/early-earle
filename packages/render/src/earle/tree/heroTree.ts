@@ -237,7 +237,7 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
     }
     return domes[domes.length - 1]!;
   };
-  const sites = domes.length === 0 ? 0 : mobil ? 22 : 54;
+  const sites = domes.length === 0 ? 0 : mobil ? 26 : 60;
   for (let s = 0; s < sites; s++) {
     const d = pickDome();
     const y0 = 0.35 + rand() * 0.5;
@@ -250,7 +250,7 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
       const phi = phi0 + ((rand() - 0.5) * 0.26) / Math.max(0.3, rr);
       const nx = rr * Math.cos(phi);
       const nz = rr * Math.sin(phi);
-      const size = 0.16 + rand() * 0.1;
+      const size = 0.3 + rand() * 0.16;
       const px = d.center.x + nx * d.r;
       const py = d.center.y + y * d.r * d.sy;
       const pz = d.center.z + nz * d.r;

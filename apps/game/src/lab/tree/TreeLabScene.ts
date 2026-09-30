@@ -86,7 +86,7 @@ export interface TreeLabStats {
 const VIEWS: Record<TreeView, OrbitView> = {
   default: { yaw: -0.55, pitch: 0.2, distance: 78, target: [0, 16, 0] },
   // from the ground looking up: bark lines, snow patches, the drift and the fork against the sky (image 01)
-  trunk: { yaw: 0.95, pitch: -0.08, distance: 30, target: [0.5, 9, 0] },
+  trunk: { yaw: 0.95, pitch: -0.06, distance: 17, target: [0.5, 8.5, 0] },
   canopy: { yaw: -0.45, pitch: 0.45, distance: 56, target: [0, 24, 0] },
   blossoms: { yaw: 0.25, pitch: 0.42, distance: 24, target: [4, 27, 1.5] },
   path: { yaw: -0.55, pitch: 0.2, distance: 78, target: [0, 16, 0] },

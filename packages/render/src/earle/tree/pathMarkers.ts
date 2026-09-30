@@ -361,10 +361,10 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
       _m.compose(_p, _q, _s.set(1.0 * k, 1, 0.42 * k));
     } else {
       const away = sun.clone().addScaledVector(nrm, -sun.dot(nrm));
-      if (away.lengthSq() > 1e-6) away.normalize().multiplyScalar(-0.45 * k);
+      if (away.lengthSq() > 1e-6) away.normalize().multiplyScalar(-0.24 * k);
       _p.add(away).addScaledVector(nrm, 0.008);
       _q.setFromUnitVectors(new Vector3(0, 1, 0), nrm);
-      _m.compose(_p, _q, _s.set(0.95 * k, 1, 0.95 * k));
+      _m.compose(_p, _q, _s.set(0.92 * k, 1, 0.92 * k));
     }
     shadows.setMatrixAt(i, _m);
   };
