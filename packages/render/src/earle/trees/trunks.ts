@@ -6,7 +6,8 @@ import { TreeMeshBuilder, add, bezier, bezier3, dirFrom, norm, scale, type TubeP
  * Stamm-Archetypen der Bäume v3 (Einheit: Stammhöhe H = 1, Fuß im Ursprung, +Y oben). Keine geraden Zylinder:
  * leicht S-förmig geschwungene, sich verjüngende Stämme mit Wurzelanlauf, der in den Boden sinkt (y < 0, nichts
  * schwebt), Knoten als Radiusbeulen, Gabelungen in Äste, die sich zu feinen Spitzen verjüngen.
- * - `fork`: Hainbaum — Stamm gabelt sich in drei Äste, die in der Krone verschwinden (wenige Vertices, viele Instanzen).
+ * - `fork`: Hainbaum — Stamm gabelt sich in drei Äste, die in der Krone verschwinden (wenige Vertices, viele Instanzen);
+ *   waagrecht schmal skaliert auch der Schaft der Tannen, Pappeln und Kathedralenbäume.
  * - `fan`: Schirm- und Spitzenbaum — kurzer Stamm, fünf Äste als Fächer mit Nebenästen (sichtbares Astwerk).
  * - `oak`: knorrige Earle-Eiche (Bild 04) — gedrehter Stamm, bogig ausladende Äste, die nach unten schwingen, feine
  *   hängende Zweige; die Spitzen tragen die Sternnadeln (siehe `OakGeometry.tips`).
@@ -83,33 +84,6 @@ export function createForkTrunk(seed = 11): BufferGeometry {
       [c * reach, -0.14, s * reach],
     ];
     b.tube(taperAlong(path, r0 * 1.25, 0.018), 4, 3, 0);
-  }
-  return b.toGeometry();
-}
-
-/**
- * Hoher Schaft (Kathedralen- und Juwelenwald, Ebene_23, Bild 02): schlanker, fast gerader Stamm mit sanfter
- * S-Schwingung und kaum Verjüngung, oben (ab 0.8 H) zwei bis drei kurze Gabeläste in die Krone. Radius 0.035 H (dünn
- * wie Earles Fäden; die Welt macht ihn per Dicke zum breiten Juwelenschaft).
- */
-export function createPoleTrunk(seed = 7): BufferGeometry {
-  const rand = mulberry32(hash32('trunk-pole', seed));
-  const b = new TreeMeshBuilder();
-  const r0 = 0.022;
-  const pts = stem(rand, -0.06, 0.86, 9, r0, 0.7, 0.012, 0.25);
-  const vTop = b.tube(pts, 6, 0);
-  const top = pts[pts.length - 1]!;
-  const F = top.p;
-  const az0 = rand() * Math.PI * 2;
-  for (let k = 0; k < 3; k++) {
-    const az = az0 + (k / 3) * Math.PI * 2 + (rand() - 0.5) * 0.5;
-    const el = 1.05 + rand() * 0.25;
-    const L = 0.16 + rand() * 0.06;
-    const d = dirFrom(az, el);
-    const p0: V3 = [F[0], F[1] - 0.03, F[2]];
-    const p1 = add(F, scale(d, L * 0.5));
-    const p2 = add(add(F, scale(d, L)), [0, L * 0.3, 0]);
-    b.tube(taperAlong(bezier(p0, p1, p2, 3), top.r * 0.75, 0.005), 4, 1, vTop);
   }
   return b.toGeometry();
 }

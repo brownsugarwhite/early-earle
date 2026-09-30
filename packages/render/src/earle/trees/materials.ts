@@ -84,7 +84,9 @@ class CrownLightingModel extends LightingModel {
     const cast = mix(float(1), shadow, castW);
     const lit = min(aaStep(term, ndl), cast);
     const ndlHull = o.hullNormalView ? normalize(o.hullNormalView).dot(L) : ndl;
-    let v = ndlHull.sub(term).mul(o.bandScale);
+    // Rundum leuchtende Kronen (Terminator < 0, Juwelen): Bänder über die ganze Kugel verteilt statt am Terminator
+    const scaleN = select(term.lessThan(0), float(0.55), float(o.bandScale));
+    let v = ndlHull.sub(term).mul(scaleN);
     if (o.lift) v = v.add(o.lift);
     // Kronen: ein Band mehr als die geteilte Einstellung — der hellste Streifen ist ein schmaler Lichtsaum an der
     // Sonnenkante (Potenz staucht die oberen Bänder), die Masse bleibt ruhig im unteren Band

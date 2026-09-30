@@ -133,8 +133,7 @@ describe('Bäume v3: Punkte ohne Ploppen', () => {
     expect(t.crowns.pine.count).toBe(2);
     expect(t.trunks.oak.count).toBe(2);
     expect(t.trunks.fan.count).toBe(4);
-    expect(t.trunks.pole.count).toBe(2);
-    expect(t.trunks.fork.count).toBe(4); // dome und jewel
+    expect(t.trunks.fork.count).toBe(6); // dome, jewel und pine (schmal)
     expect(t.hMax).toBeGreaterThan(2);
     veg.dispose();
   });

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { BufferGeometry } from 'three/webgpu';
 import { createBareCard } from './bare';
 import { LACE_ROSETTES, PINE_TIERS, createColumnCrown, createDomeCrown, createLaceShell, createPineCrown } from './crowns';
-import { createFanTrunk, createForkTrunk, createOakTrunk, createPoleTrunk } from './trunks';
+import { createFanTrunk, createForkTrunk, createOakTrunk } from './trunks';
 
 function positions(g: BufferGeometry): Float32Array {
   return g.getAttribute('position').array as Float32Array;
@@ -24,7 +24,7 @@ function allFinite(g: BufferGeometry): boolean {
 }
 
 describe('Bäume v3: Stämme', () => {
-  const trunks = { fork: createForkTrunk(11), pole: createPoleTrunk(7), fan: createFanTrunk(5), oak: createOakTrunk(3).geometry };
+  const trunks = { fork: createForkTrunk(11), fan: createFanTrunk(5), oak: createOakTrunk(3).geometry };
 
   it('sind deterministisch je Seed', () => {
     expect(Array.from(positions(createForkTrunk(11)))).toEqual(Array.from(positions(trunks.fork)));
@@ -50,7 +50,6 @@ describe('Bäume v3: Stämme', () => {
   it('bleiben im Vertex-Budget (Instanzen im Haupt- und Schattenpass)', () => {
     for (const [name, g] of Object.entries(trunks)) console.info(`Stamm ${name}: ${g.getAttribute('position').count} Vertices`);
     expect(trunks.fork.getAttribute('position').count).toBeLessThanOrEqual(160);
-    expect(trunks.pole.getAttribute('position').count).toBeLessThanOrEqual(120);
     expect(trunks.fan.getAttribute('position').count).toBeLessThanOrEqual(420);
     expect(trunks.oak.getAttribute('position').count).toBeLessThanOrEqual(9000);
   });
