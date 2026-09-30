@@ -9,15 +9,18 @@ import { instancingNode } from '../instances';
  * generisch — normale Meshes (Stamm) mit ihren Attributen, InstancedMesh (Kuppeln) als Instanzen, instanzierte
  * Billboards (Punkte, Glyphen, Sternnadeln, Blüten) als Punktwolken mit Normale und allen Instanzdaten plus ihrer
  * Glyph-Vorlage. Die Äste (Instanzen aus Anfang/Ende/Radien) werden zu echten Röhren. Baumraum: Fuß im Ursprung,
- * +Y oben; `holder` = Lage auf dem Planeten.
+ * +Y oben; die Wurzel-Matrix = Lage auf der Ebene (Slot-Matrix, absolute Ebenenkoordinaten, ADR 0002). Die großen
+ * Geschwister des Riesenbaums (Bäume v4) stehen im selben Baumraum und kommen als eigene Gruppe mit.
  */
 
 interface SiteLike {
   tree: { group: Object3D; parts: Record<string, Mesh>; rows?: unknown; stats?: unknown };
-  holder: Object3D;
+  /** Slot-Matrix Baumraum → Ebene (absolut). */
+  matrix: Matrix4;
   height: number;
   first: number;
   last: number;
+  grand?: { parts: Record<string, unknown>; stats?: unknown; specs?: unknown; feet?: unknown } | null;
 }
 
 type Inst = InstancedBufferAttribute;
@@ -76,13 +79,10 @@ function branchTubes(g: BufferGeometry, count: number): { pos: Float32Array; nor
   return { pos: new Float32Array(pos), nor: new Float32Array(nor), idx: new Uint32Array(idx), level: new Float32Array(lev) };
 }
 
-export function exportHeroTree(ctx: ExportContext, site: SiteLike): Record<string, unknown> {
-  const w = new GlbWriter();
-  const tree = site.tree;
-  const children: number[] = [];
+/** Exports the part meshes of a tree (giant or siblings) as child nodes of `w`; returns the part stats. */
+function exportParts(ctx: ExportContext, w: GlbWriter, title: string, partsIn: Record<string, unknown>, children: number[]): Record<string, unknown> {
   const parts: Record<string, unknown> = {};
-  tree.group.updateMatrixWorld(true);
-  for (const [key, obj] of Object.entries(tree.parts)) {
+  for (const [key, obj] of Object.entries(partsIn)) {
     const mesh = obj as Mesh;
     const g = mesh.geometry as BufferGeometry & { isInstancedBufferGeometry?: boolean; instanceCount?: number };
     const im = mesh as unknown as InstancedMesh & { isInstancedMesh?: boolean };
@@ -91,12 +91,12 @@ export function exportHeroTree(ctx: ExportContext, site: SiteLike): Record<strin
       if (key === 'branches' && g.getAttribute('segA')) {
         const count = g.instanceCount ?? 0;
         const t = branchTubes(g, count);
-        const mat = w.material('Riesenbaum · Äste', [0.02, 0.05, 0.1, 1], { part: key });
+        const mat = w.material(`${title} · Äste`, [0.02, 0.05, 0.1, 1], { part: key });
         const m = w.mesh('Äste', [{ attributes: { POSITION: w.accessor(t.pos, 'VEC3', { minmax: true }), NORMAL: w.accessor(t.nor, 'VEC3'), _LEVEL: w.accessor(t.level, 'SCALAR') }, indices: w.accessor(t.idx, 'SCALAR'), material: mat }]);
-        children.push(w.node({ name: 'Riesenbaum · Äste', mesh: m, extras: { part: key, segments: count } }));
+        children.push(w.node({ name: `${title} · Äste`, mesh: m, extras: { part: key, segments: count } }));
         parts[key] = { segments: count };
       } else if (im.isInstancedMesh) {
-        const mat = w.material(`Riesenbaum · ${key}`, [0.2, 0.2, 0.5, 1], { part: key });
+        const mat = w.material(`${title} · ${key}`, [0.2, 0.2, 0.5, 1], { part: key });
         const tmpl = w.mesh(`${key} Vorlage`, [primitiveOf(w, g, mat)]);
         const attrs = instAttrs(g);
         const items = [];
@@ -110,7 +110,7 @@ export function exportHeroTree(ctx: ExportContext, site: SiteLike): Record<strin
           }
           items.push({ m: Array.from(im.instanceMatrix.array.slice(i * 16, i * 16 + 16)), attrs: a });
         }
-        const node = instancingNode(w, `Riesenbaum · ${key}`, tmpl, items, { part: key, name: label });
+        const node = instancingNode(w, `${title} · ${key}`, tmpl, items, { part: key, name: label });
         if (node >= 0) children.push(node);
         parts[key] = { instances: items.length };
       } else if (g.isInstancedBufferGeometry) {
@@ -145,27 +145,46 @@ export function exportHeroTree(ctx: ExportContext, site: SiteLike): Record<strin
         const pts = w.mesh(`${key} Punkte`, [{ mode: 0, attributes }]);
         // Glyph-Vorlage (Sechseck, Stern, Blüte, Motiv) in der XY-Ebene
         const tmplArrays = geometryArrays(g, ['part', 'petal']);
-        const tmplMat = w.material(`Riesenbaum · ${key} Glyphe`, [0.9, 0.9, 0.8, 1], { part: key });
+        const tmplMat = w.material(`${title} · ${key} Glyphe`, [0.9, 0.9, 0.8, 1], { part: key });
         const tmpl = w.mesh(`${key} Glyphe`, [primitiveOf(w, tmplArrays, tmplMat)]);
-        const tmplNode = w.node({ name: `Riesenbaum · ${key} Glyphe`, mesh: tmpl, extras: { part: key, template: true } });
-        children.push(w.node({ name: `Riesenbaum · ${key}`, mesh: pts, children: [tmplNode], extras: { part: key, points: count, name: label } }));
+        const tmplNode = w.node({ name: `${title} · ${key} Glyphe`, mesh: tmpl, extras: { part: key, template: true } });
+        children.push(w.node({ name: `${title} · ${key}`, mesh: pts, children: [tmplNode], extras: { part: key, points: count, name: label } }));
         parts[key] = { points: count };
       } else {
         const extra = Object.keys(g.attributes).filter((n) => !['position', 'normal', 'uv'].includes(n));
-        const mat = w.material(`Riesenbaum · ${key}`, [0.05, 0.2, 0.5, 1], { part: key });
+        const mat = w.material(`${title} · ${key}`, [0.05, 0.2, 0.5, 1], { part: key });
         const m = w.mesh(key, [primitiveOf(w, g, mat, extra)]);
         mesh.updateMatrix();
-        children.push(w.node({ name: `Riesenbaum · ${key === 'trunk' ? 'Stamm' : key}`, mesh: m, matrix: mesh.matrix.elements, extras: { part: key, attributes: extra } }));
+        const label2 = key === 'trunk' ? 'Stamm' : key === 'wood' ? 'Holz' : key;
+        children.push(w.node({ name: `${title} · ${label2}`, mesh: m, matrix: mesh.matrix.elements, extras: { part: key, attributes: extra } }));
         parts[key] = { vertices: (g.getAttribute('position') as BufferAttribute).count };
       }
     } catch (e) {
-      ctx.warn('map', `Riesenbaum-Teil ${key}: ${String(e)}`);
+      ctx.warn('map', `${title}-Teil ${key}: ${String(e)}`);
     }
   }
-  site.holder.updateMatrix();
-  const holder = new Matrix4().copy(site.holder.matrix).multiply(tree.group.matrix);
+  return parts;
+}
+
+export function exportHeroTree(ctx: ExportContext, site: SiteLike): Record<string, unknown> {
+  const w = new GlbWriter();
+  const tree = site.tree;
+  const children: number[] = [];
+  tree.group.updateMatrixWorld(true);
+  const parts = exportParts(ctx, w, 'Riesenbaum', tree.parts, children);
+  // Geschwister (Bäume v4): derselbe Baumraum, eine Gruppe unter dem Riesenbaum
+  let grand: Record<string, unknown> | null = null;
+  if (site.grand) {
+    const gChildren: number[] = [];
+    const gParts = exportParts(ctx, w, 'Geschwister', site.grand.parts, gChildren);
+    children.push(w.node({ name: 'Geschwister', children: gChildren, extras: { ee: 'geschwister', parts: gParts, stats: site.grand.stats ?? null, specs: site.grand.specs ?? null } }));
+    grand = gParts;
+  }
+  // Lage auf der Ebene: Slot-Matrix (absolut) · lokale Matrix der Baumgruppe
+  tree.group.updateMatrix();
+  const placed = new Matrix4().copy(site.matrix).multiply(tree.group.matrix);
   const rows = (tree as { rows?: unknown }).rows ?? null;
-  w.root(w.node({ name: 'Riesenbaum', children, matrix: holder.elements, extras: { ee: 'riesenbaum', height: site.height, levels: [site.first + 1, site.last + 1], rows, stats: (tree as { stats?: unknown }).stats ?? null, parts } }));
+  w.root(w.node({ name: 'Riesenbaum', children, matrix: placed.elements, extras: { ee: 'riesenbaum', height: site.height, levels: [site.first + 1, site.last + 1], rows, stats: (tree as { stats?: unknown }).stats ?? null, parts, grand } }));
   const file = ctx.writeGlb('map/riesenbaum.glb', w);
-  return { file, parts };
+  return { file, parts, grand };
 }

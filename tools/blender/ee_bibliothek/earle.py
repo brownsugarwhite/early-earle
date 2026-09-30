@@ -13,7 +13,8 @@ from .nodes import NT, group_socket, new_group, new_material, set_blend
 from .util import hex_to_rgba
 
 ATLAS_W = 8
-ATLAS_H = 128
+# Zeilen des Palettenatlas: die Ebene (ADR 0002) belegt Welt-Slots zu je 32 Zeilen (PLANET_ATLAS_HEIGHT 1024)
+ATLAS_H = 1024
 _cache = {}
 
 
