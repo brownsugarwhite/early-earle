@@ -31,7 +31,24 @@
     "motif": "rim",
     "rows": { "spacing": 0.2, "width": 0.34 }
   },
-  "props": { "trash": 0.13, "pools": 0.016, "animals": 0.014 },
+  "props": { "animals": 0.014 },
+  "trash": {
+    "style": "rost",
+    "debris": 1.3,
+    "debrisKinds": { "tyre": 0.2, "barrel": 0.12, "crate": 0.14, "can": 0.14, "pipe": 0.1, "bale": 0.08, "shard": 0.08, "bottle": 0.08, "coil": 0.04, "girder": 0.02 },
+    "cluster": [7, 16],
+    "heaps": 0.014,
+    "heapHeight": [2.6, 4.8],
+    "heapShapes": [0.4, 0.4, 0.2],
+    "ruins": 0.009,
+    "ruinHeight": [2.0, 3.6],
+    "goo": 0.035,
+    "vents": 0.012,
+    "veil": 1,
+    "veilHeights": [0.55, 1.0, 1.45],
+    "neon": 1,
+    "pathClear": 1.1
+  },
   "fogStripes": 0.1,
   "fog": { "start": 9, "range": 16 },
   "view": {

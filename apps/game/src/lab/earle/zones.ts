@@ -28,6 +28,8 @@ export interface WorldContent {
   ground: GroundTreatment;
   vegetation: PlanetVegetationFamily;
   props?: PlanetPropSpec;
+  /** Müll v2 und Neon-Schleier der Welt (`trash`-Abschnitt, siehe `@ee/world` TrashSpec + Palettenstil). */
+  trash?: import('@ee/render/earle/trash/index.ts').TrashWorldSpec;
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;

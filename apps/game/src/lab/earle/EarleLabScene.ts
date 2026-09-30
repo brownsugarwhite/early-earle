@@ -6,6 +6,8 @@ import { Trackball } from './trackball';
 import { resolveQuality, type QualityLevel, type QualityPreset, type ResolvedQuality } from './quality';
 import { CHUNKS_PER_FACE, HERO_TREE_WORLD, NODES_PER_ZONE, PLANET_RADIUS, WORLD_CONTENTS, ZONE_CONTENTS, nearWorldOfZone, planetLandmarks, planetWorlds, planetZones } from './zones';
 import { createHeroTreeSite, type HeroTreeSite } from './heroTreeSite';
+import { createPlanetTrash } from './trash';
+import type { TrashField } from '@ee/render/earle/trash/index.ts';
 import { NodePath, type BentLayout } from '../../flow/NodePath';
 
 export interface EarleLabParams {
@@ -103,6 +105,8 @@ export class EarleLabScene implements SceneController {
   private world: EarlePlanet | null = null;
   private fogStripes: FogStripes | null = null;
   private treeSite: HeroTreeSite | null = null;
+  /** Müll v2 und Neon-Schleier (heilt mit dem Fortschritt; ein Schritt am Regler spielt die Feier). */
+  private trash: TrashField | null = null;
   private nodePath: NodePath | null = null;
   private elapsed = 0;
   private nearClear = 0.25;
@@ -186,6 +190,8 @@ export class EarleLabScene implements SceneController {
     this.nodePath = null;
     this.treeSite?.dispose();
     this.treeSite = null;
+    this.trash?.dispose();
+    this.trash = null;
     this.world?.dispose();
     this.fogStripes?.dispose();
     for (const d of this.disposables) d.dispose();
@@ -215,6 +221,9 @@ export class EarleLabScene implements SceneController {
     this.planet.add(world.group);
     // Riesenbaum (Welt 01) mit dem Levelabschnitt 80–95 über Stamm und Krone
     this.treeSite = createHeroTreeSite(world, { worldIndex: HERO_TREE_WORLD, quality: p.name, seed: this.params.seed, landmarks });
+    this.trash = createPlanetTrash(world, { quality: p.name, seed: this.params.seed, densityScale: this.params.trash / 100 });
+    this.trash.setProgress(this.params.progress, false);
+    this.planet.add(this.trash.group);
     this.buildNodePath();
     world.terrainBands.value = this.params.bands;
     world.fog.steps.value = this.params.fogSteps;
@@ -328,11 +337,13 @@ export class EarleLabScene implements SceneController {
       next.cracksClosed.forEach((closed, i) => world.setCrackClosed(i, closed));
       if (!force && next.trash !== prev.trash) {
         world.setTrashScale(Math.max(0, next.trash) / 100);
+        this.trash?.setDensity(Math.max(0, next.trash) / 100);
         this.shadowDirty = true;
       }
       if (force || next.progress !== prev.progress) {
         world.setProgress(next.progress);
         this.treeSite?.setProgress(next.progress);
+        this.trash?.setProgress(next.progress, !force);
         this.nodePath?.setProgress(Math.max(0, Math.min(next.progress, world.path.nodes.length - 1)), next.progress);
         this.shadowDirty = true;
         if (!force) this.turnToNode(Math.max(0, Math.min(next.progress, world.path.nodes.length - 1)));
@@ -725,6 +736,11 @@ export class EarleLabScene implements SceneController {
     // Überblendung: fremde Instanzen nahe der Kamera treten weg/zurück → Schattenpass mitziehen
     if (world.viewBlending) this.shadowDirty = true;
     world.tickView(dt);
+    if (this.trash) {
+      this.trash.setNearClear(this.nearClear);
+      this.trash.setFootClear(this.footClear);
+      if (this.trash.update(this.camera, camWorld, this.planet.matrixWorld, this.frustum, dt)) this.shadowDirty = true;
+    }
     const site = this.treeSite;
     if (site) {
       const wasVisible = site.holder.visible;
@@ -738,7 +754,7 @@ export class EarleLabScene implements SceneController {
     }
 
     if (this.shadowDirty) {
-      const hTotal = Math.max(world.hTotal, site?.holder.visible ? site.height + 1 : 0);
+      const hTotal = Math.max(world.hTotal, site?.holder.visible ? site.height + 1 : 0, world.field.hMax + (this.trash?.hMax ?? 0) + 1);
       if (!world.bounds.isEmpty()) this.sun.fitShadow(world.bounds, this.planet.matrixWorld, hTotal);
       this.sun.requestUpdate();
       this.shadowPasses++;
@@ -807,6 +823,7 @@ export class EarleLabScene implements SceneController {
     this.trackball.detach();
     this.nodePath?.dispose();
     this.treeSite?.dispose();
+    this.trash?.dispose();
     this.world?.dispose();
     this.fogStripes?.dispose();
     for (const d of this.disposables) d.dispose();

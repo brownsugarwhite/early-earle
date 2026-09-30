@@ -10,6 +10,8 @@ import type { BentLayout, PathPalette, PathWorldColors } from './NodePath';
 import { buildLevelPath } from './levelPath';
 import { CHUNKS_PER_FACE, HERO_TREE_WORLD, NODES_PER_ZONE, PLANET_RADIUS, WORLD_CONTENTS, planetLandmarks, planetWorlds, planetZones } from '../lab/earle/zones';
 import { TREE_LEVELS, createHeroTreeSite, type HeroTreeSite } from '../lab/earle/heroTreeSite';
+import { createPlanetTrash } from '../lab/earle/trash';
+import type { TrashField } from '@ee/render/earle/trash/index.ts';
 
 export { PLANET_RADIUS, CHUNKS_PER_FACE, TREE_LEVELS };
 /** Splash ink (#081b25): the scene background matches the splash PNG so the reveal is seamless. */
@@ -100,6 +102,8 @@ export class MapWorld {
   readonly fogStripes: FogStripes;
   /** The giant tree of world 01 and the level stretch on it. */
   readonly treeSite: HeroTreeSite;
+  /** Trash v2 and the neon fog veil (start world, pockets elsewhere); heals with the progress. */
+  readonly trash: TrashField;
   /** Level path over the whole planet: node i ↔ LEVELS[i] (levels 80–95 climb the tree). Carries `bend` for NodePath. */
   readonly layout: PathLayout;
   /** The ground route through the landscape before the tree stretch was spliced in. */
@@ -192,6 +196,10 @@ export class MapWorld {
     // Corridor and growth follow the final path (stones on the tree, dots on bark and crown).
     this.world.setPath(built.spiral);
     const layout: BentLayout = { ...built.layout, bend: (p: Vec3Node) => this.world.bendNode(p) };
+    // Trash v2 (neon debris, ruins, heaps, veil): placed after the final path, so its corridor stays clear.
+    this.trash = createPlanetTrash(this.world, { quality: q.name, seed: options.seed ?? 7, densityScale: options.trashScale ?? 1 });
+    this.trash.setFootClear(MAP_VIEW.footClear);
+    this.planet.add(this.trash.group);
     this.layout = layout;
 
     // --- sky and fog stripes -----------------------------------------------------------------------
@@ -252,6 +260,7 @@ export class MapWorld {
   setProgress(done: number): void {
     this.world.setProgress(done);
     this.treeSite.setProgress(done);
+    this.trash.setProgress(done);
     this.shadowDirty = true;
   }
 
@@ -261,6 +270,7 @@ export class MapWorld {
    */
   setFootClear(units: number): void {
     this.world.vegetation.setFootClear(units);
+    this.trash.setFootClear(units);
     this.shadowDirty = true;
   }
 
@@ -272,6 +282,7 @@ export class MapWorld {
   /** Trash density of the start world (chunks re-scatter). */
   setTrashScale(scale: number): void {
     this.world.setTrashScale(scale);
+    this.trash.setDensity(scale);
     this.shadowDirty = true;
   }
 
@@ -345,6 +356,7 @@ export class MapWorld {
     this.world.setViewDirection(dirLocal);
     if (this.world.viewBlending) this.shadowDirty = true; // neighbours fade in/out near the camera
     this.world.tickView(dt);
+    if (this.trash.update(this.camera, camWorld, this.planet.matrixWorld, this.frustum, dt)) this.shadowDirty = true;
     this.fogStripes.layout(1, this.world.curvature.value);
 
     const treeWasVisible = this.treeSite.holder.visible;
@@ -353,7 +365,7 @@ export class MapWorld {
 
     if (this.shadowDirty) {
       if (!this.world.bounds.isEmpty()) {
-        const hTotal = Math.max(this.world.hTotal, this.treeSite.holder.visible ? this.treeSite.height + 1 : 0);
+        const hTotal = Math.max(this.world.hTotal, this.treeSite.holder.visible ? this.treeSite.height + 1 : 0, this.world.field.hMax + this.trash.hMax + 1);
         this.sun.fitShadow(this.world.bounds, this.planet.matrixWorld, hTotal);
       }
       this.sun.requestUpdate();
@@ -370,6 +382,7 @@ export class MapWorld {
   dispose(): void {
     this.fogStripes.dispose();
     this.treeSite.dispose();
+    this.trash.dispose();
     this.world.dispose();
     for (const d of this.disposables) d.dispose();
     this.sun.dispose();

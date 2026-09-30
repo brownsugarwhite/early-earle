@@ -2,6 +2,7 @@ export const WORLD_VERSION = '0.0.2';
 
 export { hash32, mulberry32 } from './rng';
 export { GradientNoise3 } from './noise';
+export * from './trash/index';
 export {
   createCapField,
   generateCapPatch,
