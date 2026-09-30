@@ -29,7 +29,6 @@ import { EarleMaterial } from './EarleMaterial';
 import { PaletteAtlas, addWorldPalette, worldPaletteFromZone, type WorldPalette, type WorldRows, type ZonePalette } from './palette';
 import { GROWTH_SLOTS, PlanetVegetation, type VegetationPropEntry, type VegetationTreeEntry, type VegetationWorldRows } from './planetVegetation';
 import type { ShadowFactorFn } from './trees/treeLayer';
-import type { ShadowTint } from '../shadow/shadowTint';
 import { PaletteLookup, aaStep, arrayElement, createFogSettings, patternTime, stripeMask, type FloatNode, type FogSettings, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from './tsl';
 import { createWaterMaterial } from './water/waterSurface';
 import { buildWaterGeometry, waterGeometry } from './water/waterMesh';
@@ -77,11 +76,6 @@ export interface EarlePlanetWorld {
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
-  /**
-   * Schattentönung der Welt (Schatten v3): Farbe und Stärke 0..1, zu der die Tinte des Geländes im Schatten gemischt
-   * wird (Schnee: blau wie Earles Tannenwald, grau wie bei der roten Scheune). Fehlt → reine Tinte.
-   */
-  shadowTint?: { color: string; amount: number };
 }
 
 export interface EarlePlanetQuality {
@@ -118,10 +112,9 @@ export interface EarlePlanetOptions {
   trashScale?: number;
   /**
    * Schatten des Sonnen-Rigs (Schatten v3): `factor` = glatter Schattenwert an einer Weltposition (Vertex-Stufe; die
-   * Kronenpunkte skalieren damit im Schlagschatten aus 0), `tint` = Schattentönung je Welt (Gelände, Felsen, Wasser,
-   * Requisiten mischen ihre Tinte im Schatten zur Farbe der Welt). Beides z. B. vom `SunRig`.
+   * Kronenpunkte skalieren damit im Schlagschatten aus 0), z. B. `(p, o) => sunRig.shadowFactor(p, o)`.
    */
-  shadow?: { factor?: ShadowFactorFn | null; tint?: ShadowTint | null } | null;
+  shadow?: { factor?: ShadowFactorFn | null } | null;
 }
 
 interface ChunkCpu {
@@ -449,9 +442,6 @@ export class EarlePlanet {
     // Gemeißelte Hänge: Wertstufen entlang der Höhenlinien (Stufensprung im Bandwert je Höhenschicht)
     const chisel = wa.w;
     const contour = fract(heightAttr.mul(5.0).add(0.5)).sub(0.5).mul(0.34);
-    // Schattentönung je Welt (Uniforms des Sonnen-Rigs; die Werte kommen aus den Weltdateien)
-    const shadowTint = options.shadow?.tint ?? null;
-    if (shadowTint) this.worlds.forEach((w, i) => (w.shadowTint ? shadowTint.set(i, w.shadowTint.color, w.shadowTint.amount) : shadowTint.clear(i)));
 
     this.terrainMaterial = new EarleMaterial({
       lookup: this.lookup,
@@ -469,7 +459,6 @@ export class EarlePlanet {
       layers: [snowField],
       positionNode: warp(positionLocal),
       fogDistNode: positionView.length().add(this.veilNode(worldIndex)),
-      shadowTint: shadowTint ? { tint: shadowTint, world: worldIndex } : null,
     });
 
     // --- Felsen, Wasser, Scheunen, Schneewehen -----------------------------------------------------------
@@ -500,7 +489,6 @@ export class EarlePlanet {
       warp,
       capacity: options.quality.capacity.trees > 1500 ? 700 : 360,
       growth: slotGrowth,
-      shadowTint,
     });
     this.group.add(this.drifts.mesh);
 
