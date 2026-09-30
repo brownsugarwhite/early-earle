@@ -473,16 +473,17 @@ export class EarlePlanet {
     // damit auf beiden Seiten einer Bandkante fast gleich — die Kante bleibt ein harter Sprung:
     // - zur Sonne hin heller (Kugelnormale: die sonnenseitige Hälfte des Bildes, Ebene 19),
     // - Kamm hell → Tal tief (Höhe),
-    // - vorn tief, zum Mittelgrund heller (Bildtiefe: die Höhe im Bild — unterer Bildrand = nächster Boden, in jeder
-    //   Kameraeinstellung gleich; dahinter übernehmen die Wertstufen der Luftperspektive).
+    // - vorn tief, zum Horizont heller (Bildtiefe: die Höhe im Bild — unterer Bildrand = nächster Boden −1, Horizont
+    //   +1, bei FOV 50–61° in jeder Kameraeinstellung gleich; dahinter übernehmen die Wertstufen der Luftperspektive).
     const sphereN = varying(modelViewMatrix.mul(vec4(normalize(positionGeometry), 0)).xyz, 'vTerrainSphereN');
     const sphereUp = normalize(sphereN);
     const crest = heightAttr.mul(2).sub(1);
-    const depth = clamp(positionView.y.div(positionView.length()).mul(3).add(0.2), -1, 1);
-    // Eine gemeinsame Richtung (unten links tief → oben zur Sonne hell), damit große Flächen den Verlauf deutlich zeigen
+    const depth = clamp(positionView.y.div(positionView.length()).mul(4.5).add(0.9), -1, 1);
+    // Eine gemeinsame Richtung (vorn tief → hinten und zur Sonne hell), die über das ganze Bild läuft: große Flächen
+    // zeigen den Verlauf deutlich, kleine Formen sehen nur ein Stück davon
     const terrainGradient = ({ L }: { L: Vec3Node }): FloatNode => {
       const sunSide = clamp(sphereUp.dot(L).sub(0.17).mul(3.5), -1, 1);
-      return clamp(depth.mul(0.6).add(sunSide.mul(0.5)).add(crest.mul(0.25)), -1, 1) as unknown as FloatNode;
+      return clamp(depth.mul(0.7).add(sunSide.mul(0.4)).add(crest.mul(0.3)), -1, 1) as unknown as FloatNode;
     };
     // Talnebel (Ebene 20): am Talgrund dicht und hell, zu den Kämmen hin ausdünnend; direkt vor der Linse frei
     const valley = float(1).sub(smoothstep(0.0, 0.5, heightAttr));
