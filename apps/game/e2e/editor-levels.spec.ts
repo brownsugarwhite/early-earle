@@ -26,11 +26,12 @@ async function freshStorage(page: Page): Promise<void> {
   });
 }
 
-async function openLevel3(page: Page): Promise<void> {
-  await page.goto('/editor/levels?file=003.json');
+// Level 7 „Um die Ecke“ (5×5, Pfeiler [2,1], 34 Züge) bleibt unverändert, seit die Tutorial-Level 1–6 kleine Bretter sind.
+async function openLevel7(page: Page): Promise<void> {
+  await page.goto('/editor/levels?file=007.json');
   await expect(page.getByTestId('editor-top')).toBeVisible();
   await expect(page.getByTestId('editor-levels')).toHaveAttribute('data-endpoint', 'ok', { timeout: 15_000 });
-  await expect(page.getByTestId('level-button')).toHaveAttribute('aria-label', /003\.json/, { timeout: 15_000 });
+  await expect(page.getByTestId('level-button')).toHaveAttribute('aria-label', /007\.json/, { timeout: 15_000 });
   await expect(page.getByTestId('board')).toBeVisible();
 }
 
@@ -71,11 +72,11 @@ test.describe('iPhone 393×852', () => {
     const errors = collectErrors(page);
     await request.delete(`/__content/levels/${DRAFT_FILE}`).catch(() => undefined);
     await freshStorage(page);
-    await openLevel3(page);
+    await openLevel7(page);
     const cdp = await page.context().newCDPSession(page);
 
     // Werkzeug „Riss“ aus der Zuletzt-Reihe; ein Tipp macht [0,0] zum Riss.
-    await expect(page.getByTestId('board').locator('[data-cell]')).toHaveCount(16);
+    await expect(page.getByTestId('board').locator('[data-cell]')).toHaveCount(25);
     await page.getByTestId('recent-void').tap();
     await expect(page.getByTestId('dock-tool')).toHaveAttribute('data-tool', 'void');
     await page.getByTestId('cell-0-0').tap();
@@ -84,15 +85,15 @@ test.describe('iPhone 393×852', () => {
     await expect(page.getByTestId('save-btn')).toHaveAttribute('data-state', 'dirty');
     await expect(page.getByTestId('validation')).toHaveAttribute('data-ok', 'true');
 
-    // Ziehen malt: Zeile 1 von [0,1] bis [2,1] — ein einziger Undo-Schritt.
-    await touchDrag(cdp, await center(page, 'cell-0-1'), await center(page, 'cell-2-1'));
-    for (const x of [0, 1, 2]) await expect(page.getByTestId(`cell-${x}-1`)).toHaveAttribute('data-mask', '#');
-    await expect(page.getByTestId('cell-3-1')).toHaveAttribute('data-mask', '.');
+    // Ziehen malt: Zeile 2 von [0,2] bis [2,2] — ein einziger Undo-Schritt.
+    await touchDrag(cdp, await center(page, 'cell-0-2'), await center(page, 'cell-2-2'));
+    for (const x of [0, 1, 2]) await expect(page.getByTestId(`cell-${x}-2`)).toHaveAttribute('data-mask', '#');
+    await expect(page.getByTestId('cell-3-2')).toHaveAttribute('data-mask', '.');
     await page.getByTestId('undo-btn').tap();
-    await expect(page.getByTestId('cell-0-1')).toHaveAttribute('data-mask', '.');
-    await expect(page.getByTestId('cell-2-1')).toHaveAttribute('data-mask', '.');
+    await expect(page.getByTestId('cell-0-2')).toHaveAttribute('data-mask', '.');
+    await expect(page.getByTestId('cell-2-2')).toHaveAttribute('data-mask', '.');
     await page.getByTestId('redo-btn').tap();
-    await expect(page.getByTestId('cell-2-1')).toHaveAttribute('data-mask', '#');
+    await expect(page.getByTestId('cell-2-2')).toHaveAttribute('data-mask', '#');
 
     // Nochmal tippen schaltet zurück (Riss → Zelle), Rückgängig holt den Riss wieder.
     await page.getByTestId('cell-0-0').tap();
@@ -100,15 +101,15 @@ test.describe('iPhone 393×852', () => {
     await page.getByTestId('undo-btn').tap();
     await expect(page.getByTestId('cell-0-0')).toHaveAttribute('data-mask', '#');
 
-    // Langdruck auf den Start-Blob [2,0] öffnet das Zellmenü; Stufe 3 → 4 (16).
-    await longPress(page, cdp, await center(page, 'cell-2-0'));
+    // Langdruck auf den Start-Blob [4,4] öffnet das Zellmenü; Stufe 3 → 4 (16).
+    await longPress(page, cdp, await center(page, 'cell-4-4'));
     const menu = page.getByTestId('cell-menu');
     await expect(menu).toBeVisible();
-    await expect(menu).toContainText('Zelle 2,0');
-    await expect(page.getByTestId('cell-2-0')).toHaveAttribute('data-selected', 'true');
+    await expect(menu).toContainText('Zelle 4,4');
+    await expect(page.getByTestId('cell-4-4')).toHaveAttribute('data-selected', 'true');
     await menu.getByRole('button', { name: 'Stufe erhöhen' }).tap();
     await expect(page.getByTestId('cell-blob-tier-value')).toHaveText('16');
-    await expect(page.getByTestId('cell-2-0')).toHaveAttribute('aria-label', /Blob 16/);
+    await expect(page.getByTestId('cell-4-4')).toHaveAttribute('aria-label', /Blob 16/);
     await page.getByTestId('cell-menu-close').tap();
     await expect(menu).toHaveCount(0);
 
@@ -146,7 +147,7 @@ test.describe('iPhone 393×852', () => {
     await expect(page.getByTestId('tab-kette')).toHaveAttribute('data-active', 'true');
     await expect(page.getByTestId('chain-chart')).toBeVisible();
     await expect(page.getByTestId('chain-list').locator('[data-testid^="chain-row-"]')).toHaveCount(100);
-    await expect(page.getByTestId('chain-row-003')).toHaveAttribute('data-current', 'true');
+    await expect(page.getByTestId('chain-row-007')).toHaveAttribute('data-current', 'true');
 
     // Unter neuem Namen sichern (PUT auf eine _-Datei).
     await page.getByTestId('tab-datei').tap();
@@ -154,10 +155,10 @@ test.describe('iPhone 393×852', () => {
     await page.getByTestId('file-save-btn').tap();
     await expect.poll(() => listFiles(request), { timeout: 15_000 }).toContain(DRAFT_FILE);
     const saved = (await (await request.get(`/__content/levels/${DRAFT_FILE}`)).json()) as { id: string; grid: { mask: string[] }; start: { at: number[]; blob: { tier: number } }[] };
-    expect(saved.id).toBe('tjorizo-003');
-    expect(saved.grid.mask[0]).toBe('#...');
-    expect(saved.grid.mask[1]).toBe('###.');
-    expect(saved.start.find((s) => s.at[0] === 2 && s.at[1] === 0)?.blob.tier).toBe(4);
+    expect(saved.id).toBe('tjorizo-007');
+    expect(saved.grid.mask[0]).toBe('#....');
+    expect(saved.grid.mask[2]).toBe('###..');
+    expect(saved.start.find((s) => s.at[0] === 4 && s.at[1] === 4)?.blob.tier).toBe(4);
 
     // Vite lädt nach der Dateiänderung neu; der Editor kommt auf derselben Datei zurück, gesichert.
     await expect(page.getByTestId('level-button')).toHaveAttribute('aria-label', new RegExp(DRAFT_FILE.replace('.', '\\.')), { timeout: 20_000 });
@@ -176,7 +177,7 @@ test.describe('iPhone 393×852', () => {
   test('Zwei Finger zoomen das Brett, ohne etwas zu malen', async ({ page }) => {
     const errors = collectErrors(page);
     await freshStorage(page);
-    await openLevel3(page);
+    await openLevel7(page);
     const cdp = await page.context().newCDPSession(page);
     const before = (await page.getByTestId('board').boundingBox())!;
     const c = { x: before.x + before.width / 2, y: before.y + before.height / 2 };
@@ -197,10 +198,10 @@ test.describe('iPhone 393×852', () => {
 test('Desktop: Solver-Reiter und Chip, ASCII, Testen per Taste', async ({ page }) => {
   const errors = collectErrors(page);
   await freshStorage(page);
-  await openLevel3(page);
+  await openLevel7(page);
   await expect(page.locator('canvas')).toBeVisible();
   await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu|webgl2/, { timeout: 30_000 });
-  // Level 3 ist kalibriert: der Chip zeigt die Versuche aus _calibration.json im Band.
+  // Level 7 ist kalibriert: der Chip zeigt die Versuche aus _calibration.json im Band.
   await expect(page.getByTestId('solver-chip')).toHaveAttribute('data-verdict', 'ok');
 
   await page.getByTestId('tab-solver').click();
@@ -219,8 +220,8 @@ test('Desktop: Solver-Reiter und Chip, ASCII, Testen per Taste', async ({ page }
 
   // ASCII-Ansicht zeigt das Brett im levelFromAscii-Format.
   await page.getByTestId('tab-ascii').click();
-  await expect(page.getByTestId('ascii-board')).toContainText('tjorizo-003');
-  await expect(page.getByTestId('ascii-board')).toContainText('. . 3 .');
+  await expect(page.getByTestId('ascii-board')).toContainText('tjorizo-007');
+  await expect(page.getByTestId('ascii-board')).toContainText('. . P 2 .');
 
   // Testen: „t“ schaltet um, ein Zug per Pfeiltaste verändert den Zugzähler, Escape zurück zum Bauen.
   await page.keyboard.press('t');

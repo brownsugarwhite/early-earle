@@ -1,5 +1,5 @@
 import { SPECIAL_OFF } from '@ee/core';
-import { GOAL_LABEL, MATERIAL_LABEL, STYLE_LABEL, ZONE_LABEL, cellKey, goalText, moundCells, type BlobDef, type FloorDef, type LevelDraft } from './draft';
+import { GOAL_LABEL, MATERIAL_LABEL, STYLE_LABEL, ZONE_LABEL, cellKey, goalText, moundCells, scriptEntryText, type BlobDef, type FloorDef, type LevelDraft } from './draft';
 
 /**
  * ASCII-Ansicht eines Entwurfs im Token-Format von `levelFromAscii` (packages/core/src/testing/ascii.ts):
@@ -88,6 +88,7 @@ export function draftSummary(d: LevelDraft): string {
   const total = d.spawn.table.reduce((s, t) => s + t.weight, 0);
   const table = d.spawn.table.map((t) => `${t.kind === 'amoeba' ? 'A' : 2 ** t.tier} ${Math.round((100 * t.weight) / total)} %`).join(', ');
   lines.push(`Spawn: ${table} · Quellen: ${d.spawn.sources.length ? d.spawn.sources.map((s) => `[${s[0]},${s[1]}]`).join(' ') : 'keine'} · Fallback: ${d.spawn.fallback === 'anyEmpty' ? 'überall' : 'keiner'}`);
+  if (d.spawn.script?.length) lines.push(`Skript: ${d.spawn.script.map(scriptEntryText).join(', ')}`);
   if (d.fences.length) lines.push(`Zäune: ${d.fences.map((f) => `[${f.a[0]},${f.a[1]}]–[${f.b[0]},${f.b[1]}]`).join(' ')}`);
   const [lo, hi] = d.difficulty.targetAttempts;
   lines.push(`Band: ${lo}–${hi} Versuche${d.difficulty.style ? ` · ${STYLE_LABEL[d.difficulty.style]}` : ''}`);

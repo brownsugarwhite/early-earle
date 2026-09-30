@@ -18,6 +18,7 @@ export type GlyphName =
   | 'blob'
   | 'genome'
   | 'rex'
+  | 'falls'
   | 'audio'
   | 'mac'
   | 'phone'
@@ -66,6 +67,14 @@ const PATHS: Record<GlyphName, ReactNode> = {
     </>
   ),
   rex: <path fillRule="evenodd" d="M5 3h9a7 7 0 0 1 7 7v3h-7v2h6v2a4 4 0 0 1-4 4H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M7.4 8.8a2.6 2.6 0 1 0 5.2 0a2.6 2.6 0 1 0 -5.2 0z" />,
+  // Crag with a waterfall into a pool (the landmarks lab).
+  falls: (
+    <>
+      <path d="M2.5 22 L4.6 7.5 L7.6 2.5 L10.4 4.6 L12 22 Z M10.8 5.2 H15.6 V7 H10.9 Z" />
+      <path d="M13.2 7 h2.4 v11.4 h-2.4z M16.9 8.6 h1 v8.6 h-1z" />
+      <path d="M9.6 20.6a6.8 1.9 0 1 0 13.6 0a6.8 1.9 0 1 0 -13.6 0z" />
+    </>
+  ),
   audio: (
     <>
       <path d="M2 9h4l5.5-4.8v15.6L6 15H2z" />

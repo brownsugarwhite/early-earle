@@ -22,6 +22,7 @@ import {
   screenSize,
   select,
   smoothstep,
+  step,
   uniformArray,
   varying,
   vec2,
@@ -29,12 +30,15 @@ import {
   vec4,
 } from 'three/tsl';
 import { TREE_PROPORTIONS, hash32, type PlanetTree, type TreeFamily, type TreeKind } from '@ee/world';
-import { arrayElement, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from '../tsl';
+import { arrayElement, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from '../tsl';
 import { createHexagon } from '../vegetation';
 import { createBareCard } from './bare';
-import { LACE_ROSETTES, createColumnCrown, createDomeCrown, createLaceShell, createPineCrown, type CrownTemplate } from './crowns';
+import { createColumnCrown, createDomeCrown, createPineCrown, type CrownTemplate } from './crowns';
+import { instanceFog } from './fog';
 import { BARK_STYLE, BarkMaterial, CrownMaterial, DotMaterial } from './materials';
-import { createFanTrunk, createForkTrunk, createOakTrunk, type OakGeometry } from './trunks';
+import { stipple } from './patterns';
+import { crownShadeTexture } from './shade';
+import { FORK_TOP, FORK_Y, LACE_ENVELOPE, createFanTrunk, createForkTrunk, createOakTrunk, type FanGeometry, type OakGeometry } from './trunks';
 
 /** Wachstums-Slots (je geladenem Chunk); gleich wie `GROWTH_SLOTS` der Vegetation. */
 export const TREE_SLOTS = 64;
@@ -90,6 +94,24 @@ export interface TreeLayerOptions {
   dotRadius?: number;
 }
 
+/**
+ * Optionale Felder der Vegetationsfamilie, die nur die Bäume lesen (Weltdatei, Abschnitt `vegetation`):
+ * - `stippleCell`: Zellgröße der Tüpfel in den Kuppeln (Welteinheiten, Standard 0.11; Juwelenwald feiner, Bild 02);
+ * - `shadeGlow`: Glühen der Schattenseiten der Kronen 0..1 (Standard 0.12; Ebene 16 dunkles Türkis, Ebene 32 Glut);
+ * - `capTerminator`: Terminator der Kuppelkappen von Schirm- und Spitzenbaum (Standard wie die Form; Juwelenwald wie
+ *   die Juwelenkuppeln, Bild 02: auch die Kappe über dem Spitzenschleier leuchtet farbig);
+ * - `crownVeins`: Astnetz in den Säulenkronen 0..1 (Standard 0; Kathedralenwald 1, Ebene 16);
+ * - `crownLiftVariance`: Helligkeit der Kronen je Baum streuen 0..1 (Standard 0; Ebene 16: dunkelgrüne und hell-
+ *   türkise Kronen nebeneinander).
+ */
+export interface TreeFamilyExtras {
+  stippleCell?: number;
+  shadeGlow?: number;
+  capTerminator?: number;
+  crownVeins?: number;
+  crownLiftVariance?: number;
+}
+
 export interface TreeEntry {
   tree: PlanetTree;
   slot: number;
@@ -112,8 +134,13 @@ export interface KindForm {
   /** Kronenmaßstab (waagrecht, senkrecht) in r. */
   crownS: [number, number];
   trunk: TrunkKind | null;
-  /** Stammhöhe (Einheit der Archetypen) in r. */
+  /** Maßstab des Stamm-Archetyps in r (Gabel: Einheit H; Fächer: Einheit Kronenradius; Eiche: Stammhöhe). */
   trunkH: number;
+  /**
+   * Gabelhöhe in r (nur Gabel-Archetyp): der Vertex-Shader streckt den Schaft bis dorthin, das Astnetz behält die
+   * Größe `trunkH` — schlanke Kathedralen- und Pappelbäume tragen ihr feines Astnetz in der Krone statt Stäbe darüber.
+   */
+  forkAt?: number;
   /** Stammdicke relativ zum Archetyp. */
   thick: number;
   dots: 'crown' | 'lace' | 'stars' | 'pine' | 'none';
@@ -123,27 +150,36 @@ export interface KindForm {
 
 /**
  * Formen: Kronenhöhen und -maße passen zu TREE_PROPORTIONS (hull/top), damit Schatten-Höhe, Nähe-Ausblendung und die
- * Streuung dasselbe annehmen. Kuppel-Gabeln sitzen unter der Krone (Äste verschwinden darin), Schirm- und Spitzenbäume
- * zeigen ihren Astfächer unter einer flachen Kappe.
+ * Streuung dasselbe annehmen. Die Äste der Gabel enden in der Krone (Kuppel, Säule, Kiefer); Schirm- und Spitzenbaum
+ * tragen das Spitzen-Skelett, dessen Hauptäste in der flachen Kappe verschwinden.
  */
 export const TREE_FORMS: Record<Exclude<TreeKind, 'bare'>, KindForm> = {
   dome: { crown: 'dome', crownY: TREE_PROPORTIONS.dome.hull, crownS: [1, 1], trunk: 'fork', trunkH: 0.95, thick: 1, dots: 'crown', terminator: 0.32 },
-  stacked: { crown: 'column', crownY: TREE_PROPORTIONS.stacked.hull, crownS: [0.62, 1.2], trunk: 'fork', trunkH: 0.62, thick: 0.9, dots: 'crown', terminator: 0.32 },
+  stacked: { crown: 'column', crownY: TREE_PROPORTIONS.stacked.hull, crownS: [0.62, 1.2], trunk: 'fork', trunkH: 1.0, forkAt: 0.5, thick: 0.9, dots: 'crown', terminator: 0.15 },
   bulb: { crown: 'dome', crownY: TREE_PROPORTIONS.bulb.hull, crownS: [0.95, 1.15], trunk: 'fork', trunkH: 0.8, thick: 1.1, dots: 'crown', terminator: 0.25 },
   // Juwelenkuppel (Bild 02): gestapelte Kuppel-Masse in Juwelenfarben, sitzt fast am Boden, leuchtet fast rundum
-  jewel: { crown: 'dome', crownY: TREE_PROPORTIONS.jewel.hull, crownS: [1.08, 1.0], trunk: 'fork', trunkH: 0.5, thick: 1.4, dots: 'crown', terminator: -1.05 },
+  // Terminator unter 0: die Kuppeln leuchten weit herum, die abgewandte Unterseite wird dunkel und glüht mit ihrer
+  // Schattentextur (Bild 02: dunkle, getüpfelte Unterseiten)
+  jewel: { crown: 'dome', crownY: TREE_PROPORTIONS.jewel.hull, crownS: [1.08, 1.0], trunk: 'fork', trunkH: 0.5, thick: 1.4, dots: 'crown', terminator: -0.75 },
   // Hohe, schlanke Stämme: derselbe Gabel-Archetyp, waagrecht schmal (ein Mesh weniger je Pass)
   cone: { crown: 'pine', crownY: 0.4, crownS: [1, 2.4], trunk: 'fork', trunkH: 0.55, thick: 0.38, dots: 'pine', terminator: 0.25 },
   pine: { crown: 'pine', crownY: 0.12, crownS: [1, 3.6], trunk: 'fork', trunkH: 0.4, thick: 0.44, dots: 'pine', terminator: 0.22 },
-  tall: { crown: 'pine', crownY: 3.3, crownS: [1, 1.5], trunk: 'fork', trunkH: 3.9, thick: 0.3, dots: 'pine', terminator: 0.25 },
-  spire: { crown: 'column', crownY: TREE_PROPORTIONS.spire.hull, crownS: [0.78, 1.25], trunk: 'fork', trunkH: 7.0, thick: 0.3, dots: 'crown', terminator: 0.3 },
-  umbrella: { crown: 'dome', crownY: TREE_PROPORTIONS.umbrella.hull, crownS: [1.06, 0.6], trunk: 'fan', trunkH: 1.05, thick: 1, dots: 'crown', terminator: 0.3 },
-  lace: { crown: 'dome', crownY: TREE_PROPORTIONS.lace.hull + 0.3, crownS: [0.97, 0.62], trunk: 'fan', trunkH: 0.86, thick: 0.9, dots: 'lace', terminator: 0.3 },
+  // Pappel (Luzz): langer Schaft, die Gabel knapp unter der Kiefernkrone, das Astnetz steigt in sie hinein
+  tall: { crown: 'pine', crownY: 3.3, crownS: [1, 1.5], trunk: 'fork', trunkH: 1.3, forkAt: 3.0, thick: 0.3, dots: 'pine', terminator: 0.25 },
+  // Kathedralenbaum (Ebene 16/23): der helle Schaft steigt hoch, gabelt sich weit unter der Säule in ein feines Netz,
+  // das in die Säule hineinwächst
+  spire: { crown: 'column', crownY: TREE_PROPORTIONS.spire.hull, crownS: [0.78, 1.25], trunk: 'fork', trunkH: 4.6, forkAt: 4.4, thick: 0.3, dots: 'crown', terminator: 0.15 },
+  umbrella: { crown: 'dome', crownY: TREE_PROPORTIONS.umbrella.hull, crownS: [1.06, 0.6], trunk: 'fan', trunkH: 0.74, thick: 1, dots: 'crown', terminator: 0.12 },
+  lace: { crown: 'dome', crownY: TREE_PROPORTIONS.lace.hull + 0.3, crownS: [0.97, 0.62], trunk: 'fan', trunkH: 1.0, thick: 1, dots: 'lace', terminator: 0.12 },
   oak: { crown: null, crownY: TREE_PROPORTIONS.oak.hull, crownS: [1, 1], trunk: 'oak', trunkH: TREE_PROPORTIONS.oak.trunk, thick: 1, dots: 'stars', terminator: 0.3 },
 };
 
-/** Punktarten (Bruchteil der Zeile · 8): Krone, Juwelenkrone, Kiefernschnee, Randfunkeln, Spitze, Sternnadel. */
-export const DOT_KIND = { crown: 0, jewel: 1, pine: 2, rim: 3, lace: 4, star: 5 } as const;
+/**
+ * Punktarten (Bruchteil der Zeile · 8): Krone, Juwelenkrone, Kiefernschnee, Randfunkeln, Spitze, Sternnadel, Bogen
+ * (gepunktete Oberkante einer Teilkuppel). Ein Viertel-Achtel darüber trägt, ob der Punkt Schlagschatten annimmt —
+ * gerundet (`Math.round(fract · 8)`, wie der Blender-Export liest) bleibt es die Art.
+ */
+export const DOT_KIND = { crown: 0, jewel: 1, pine: 2, rim: 3, lace: 4, star: 5, scallop: 6 } as const;
 
 const _Y = new Vector3(0, 1, 0);
 const _q2 = new Quaternion();
@@ -153,6 +189,7 @@ const _p = new Vector3();
 const _s = new Vector3();
 const _v = new Vector3();
 const _n = new Vector3();
+const _d = new Vector3();
 const _up = new Vector3();
 const _axis = new Vector3();
 
@@ -177,6 +214,12 @@ export function treeQuaternion(t: PlanetTree, out: Quaternion, lean = true): Qua
   return out.multiply(_q2.setFromAxisAngle(_Y, treeHash(t.position, 3) * Math.PI * 2));
 }
 
+/** Streckung des Gabel-Schafts (1 = Archetyp) einer Form: Gabelhöhe `forkAt` bei Archetyp-Maßstab H. */
+export function stemStretch(form: KindForm, H: number, r: number): number {
+  if (form.trunk !== 'fork' || form.forkAt === undefined || H <= 0) return 1;
+  return Math.max(1, (form.forkAt * r) / (FORK_Y * H));
+}
+
 interface DotBlock {
   key: string;
   slot: number;
@@ -197,15 +240,19 @@ interface DotBlock {
 
 /** Dauer der Ein-/Ausblendung der Punkte eines Chunks (s). */
 const DOT_FADE_SECONDS = 0.6;
+/** Anteil der Kronenpunkte, der als gepunktete Oberkante der Teilkuppeln gesetzt wird (Earles Bögen). */
+const SCALLOP_SHARE = 0.4;
 
 /**
- * Bäume v3 auf dem Planeten: Kronen (Kuppel-Masse, Juwel, Säule, Stufenkiefer), organische Stämme (Gabel, Fächer,
- * Eiche), kahle Linienbäume als Karten und der Punkt-Pool (Kronenpunkte mit Randfunkeln, Spitzenschleier, Sternnadeln).
+ * Bäume v4 auf dem Planeten: Kronen (Kuppel-Masse, Juwel, Säule, Stufenkiefer), organische Stämme (Gabel mit gestrecktem
+ * Schaft für die schlanken Formen, Spitzen-Skelett, Eiche), kahle Linienbäume als Karten und der Punkt-Pool (Kronenpunkte
+ * mit Randfunkeln, gepunktete Bögen der Teilkuppeln, Spitzenschleier am Skelett, Sternnadeln).
  *
  * Punkte ohne Ploppen: je Baum eine feste, deterministische Punktmenge (Hash der Baumposition, unabhängig von Sonne,
- * Reihenfolge und Budget); im Shader skalieren sie mit N·L der Kronen-Schattierungsnormale weich auf 0 (am Terminator
- * sind sie verschwunden, bevor die Krone Tinte wird) und blenden unter der Kollaps-Grenze weich aus. Chunks, die Punkte
- * bekommen oder verlieren, blenden je Slot über ≈ 0.6 s ein bzw. aus (die Punkte bleiben so lange im Puffer).
+ * Reihenfolge und Budget); im Shader skalieren sie mit N·L der Kronen-Schattierungsnormale weich auf 0 und blenden unter
+ * der Kollaps-Grenze weich aus. Chunks, die Punkte bekommen oder verlieren, blenden je Slot über ≈ 0.6 s ein bzw. aus.
+ * Nebel je Baum (eine Tiefenebene je Baum, `trees/fog.ts`), Schlagschatten je Teilkuppel ganz oder gar nicht — nichts
+ * wirkt halbdurchsichtig.
  */
 export class TreeLayer {
   readonly crowns: Record<CrownKind, InstancedMesh>;
@@ -215,7 +262,7 @@ export class TreeLayer {
   /** Höchster Baum im aktuellen Inhalt (Welteinheiten, für die Schattenkamera). */
   hMax = 2;
   private readonly templates: Record<CrownKind, CrownTemplate>;
-  private readonly laceShell: Float32Array;
+  private readonly fan: FanGeometry;
   private readonly oak: OakGeometry;
   private readonly geometries: BufferGeometry[] = [];
   private readonly materials: Array<{ dispose(): void }> = [];
@@ -225,6 +272,10 @@ export class TreeLayer {
   private readonly worldTerrain: UniformArrayLike;
   private readonly worldStipple: UniformArrayLike;
   private readonly worldFlowers: UniformArrayLike;
+  private readonly worldCell: UniformArrayLike;
+  private readonly worldGlow: UniformArrayLike;
+  private readonly worldVeins: UniformArrayLike;
+  private readonly worldLiftVar: UniformArrayLike;
   private blocks = new Map<number, DotBlock>();
   private dotsDirty = false;
   private lastTick = -1;
@@ -243,16 +294,22 @@ export class TreeLayer {
     this.worldTerrain = perWorld((w) => options.worldRows[w]!.terrain);
     this.worldStipple = perWorld((w) => fam(w)?.stipple ?? 0.75);
     this.worldFlowers = perWorld((w) => fam(w)?.flowers ?? (fam(w)?.motif === 'cross' || fam(w)?.motif === 'diamond' ? 0.35 : 0));
+    const extras = (w: number): TreeFamilyExtras => (fam(w) as (TreeFamily & TreeFamilyExtras) | undefined) ?? {};
+    this.worldCell = perWorld((w) => extras(w).stippleCell ?? 0.11);
+    this.worldGlow = perWorld((w) => extras(w).shadeGlow ?? 0.12);
+    this.worldVeins = perWorld((w) => extras(w).crownVeins ?? 0);
+    this.worldLiftVar = perWorld((w) => extras(w).crownLiftVariance ?? 0);
 
     // Detailstufe aus der Qualitätsstufe (Hoch: 60+ Punkte je Baum): feinere Teilkuppeln, glattere Silhouetten
     const detail = options.dotsPerTree[0] >= 50 ? 'hoch' : 'mobil';
     this.templates = { dome: createDomeCrown(detail), domeHi: createDomeCrown(detail === 'hoch' ? 'ultra' : 'hoch'), column: createColumnCrown(detail), pine: createPineCrown() };
-    this.laceShell = createLaceShell(LACE_ROSETTES);
+    this.fan = createFanTrunk(5);
     this.oak = createOakTrunk(3);
 
     // Gepackte Instanzattribute (WebGPU: ≤ 8 Vertex-Puffer je Pipeline):
     // treeA = (Fuß xyz, Rang), treeB = (Kronenmitte bzw. Spitze xyz, Slot), treeC = (Kronenzeile, Akzentzeile, Stil, Variante),
-    // treeD: Krone = (Mustermaßstab waagrecht, senkrecht, Ausblendradius, Terminator); Stamm = (H, Dicke, Ausblendradius, Welt)
+    // treeD: Krone = (Mustermaßstab waagrecht, senkrecht, Ausblendradius, Terminator);
+    //        Stamm = (H, Gabel: Astnetz-Stauchung / Fächer: Schleier an, Ausblendradius, Welt + Anlauf)
     const treeA = () => attribute('treeA', 'vec4');
     const treeB = () => attribute('treeB', 'vec4');
     const treeC = () => attribute('treeC', 'vec4');
@@ -263,13 +320,20 @@ export class TreeLayer {
       const base = treeA().xyz;
       return base.add(p.sub(base).mul(treeScale()));
     };
+    /** Nebel je Baum: Abstand der Kamera zum (gekrümmten) Fuß — Stamm, Krone und Punkte eines Baums teilen ihn. */
+    const fogOf = (row: FloatNode, foot: Vec3Node, name: string) => {
+      const d = varying(modelViewMatrix.mul(vec4(warp(foot), 1)).xyz.length(), name);
+      const dist = shared.fogDist(row, d);
+      return (c: Vec3Node): Vec3Node => instanceFog(c, fog, lookup, dist);
+    };
 
     // --- Kronen ------------------------------------------------------------------------------------------
     const crowns = {} as Record<CrownKind, InstancedMesh>;
     const stippleOf: Record<CrownKind, { cell: number; size: number; flowers: boolean }> = {
       dome: { cell: 0.11, size: 0.3, flowers: true },
       domeHi: { cell: 0.11, size: 0.3, flowers: true },
-      column: { cell: 0.1, size: 0.3, flowers: false },
+      // Säulen tragen wie bei Earle (Ebene 16) kleine Blütenmotive in den Tüpfeln
+      column: { cell: 0.1, size: 0.3, flowers: true },
       pine: { cell: 0.05, size: 0.3, flowers: false },
     };
     for (const kind of CROWN_KINDS) {
@@ -281,10 +345,13 @@ export class TreeLayer {
       // Hüllnormale: Richtung von der (mitwachsenden) Kronenmitte zum Punkt, im View-Raum
       const hullPlanet = grownFrom(positionLocal).sub(grownFrom(treeB().xyz));
       const hullN = varying(modelViewMatrix.mul(vec4(hullPlanet, 0)).xyz, 'vCrownHullN');
-      // Schlagschatten nur auf der unteren Kronenhälfte (Kuppel-Scheitel bleiben hell, Fugen zwischen den Kuppeln dunkel)
-      const hullUp = normalize(hullPlanet).dot(normalize(treeA().xyz));
+      // Schlagschatten je Teilkuppel ganz oder gar nicht (Attribut der Krone): Gürtel und untere Kränze nehmen ihn an,
+      // Schultern und Scheitel bleiben hell (Bild 03) — eine klare Tintenform, nie ein halbdurchsichtiger Verlauf.
       // Juwelenkuppeln (Terminator < 0) leuchten rundum — kein Schlagschatten auf ihnen (Bild 02)
-      const castWeight = varying(smoothstep(0.5, -0.15, hullUp).mul(select(treeD().w.lessThan(0), float(0), float(1))), 'vCrownCastW');
+      const castWeight = varying(step(0.5, attribute('crownCast', 'float')).mul(select(treeD().w.lessThan(0), float(0), float(1))), 'vCrownCastW');
+      const patternPos = varying(positionGeometry.mul(vec3(treeD().x, treeD().y, treeD().x)), 'vCrownPattern');
+      const patternNormal = varying(normalGeometry, 'vCrownPatternN');
+      const flowerCell = kind === 'column' ? 0.22 : 0.26;
       const material = new CrownMaterial({
         lookup,
         fog,
@@ -292,24 +359,40 @@ export class TreeLayer {
         bandScale: 2.0,
         rowNode: row,
         fogDistNode: shared.fogDist(row),
+        fogFn: fogOf(row, treeA().xyz, 'vCrownFogDist'),
         terminatorNode: treeD().w,
         growthNode: shared.slotGrowth(treeB().w),
         positionNode: warp(grownFrom(positionLocal)),
-        patternPos: varying(positionGeometry.mul(vec3(treeD().x, treeD().y, treeD().x)), 'vCrownPattern'),
-        patternNormal: varying(normalGeometry, 'vCrownPatternN'),
-        stipple: { cell: cfg.cell, size: cfg.size, density: kind === 'pine' ? float(0.55) : arrayElement(this.worldStipple, world) },
+        patternPos,
+        patternNormal,
+        stipple: { cell: kind === 'dome' || kind === 'domeHi' ? arrayElement(this.worldCell, world) : cfg.cell, size: cfg.size, density: kind === 'pine' ? float(0.55) : arrayElement(this.worldStipple, world) },
         inkBody: kind === 'pine',
-        flowers: cfg.flowers ? { density: arrayElement(this.worldFlowers, world), cell: 0.26 } : null,
-        // Juwelenkuppeln leuchten fast rundum (Bild 02): Bänder etwas angehoben
-        lift: select(treeD().w.lessThan(0), float(0.12), float(0)),
+        flowers: cfg.flowers ? { density: arrayElement(this.worldFlowers, world), cell: flowerCell } : null,
+        // Juwelenkuppeln leuchten fast rundum (Bild 02): Bänder etwas angehoben; je Welt streut die Helligkeit je Baum
+        lift: select(treeD().w.lessThan(0), float(0.12), float(0)).add(arrayElement(this.worldLiftVar, world).mul(fract(treeC().w.mul(7.31)).sub(0.35))),
         hullNormalView: hullN,
         castWeight: kind === 'pine' ? null : castWeight,
+        // Schattenseite: dunkel auf dunkel statt schwarzer Fläche (Kiefern sind ohnehin Tintenkörper mit Punkten)
+        shadeTexture:
+          kind === 'pine'
+            ? null
+            : crownShadeTexture({
+                lookup,
+                patternPos,
+                density: arrayElement(this.worldStipple, world).mul(0.85),
+                glow: arrayElement(this.worldGlow, world).mul(float(0.7).add(fract(treeC().w.mul(3.7)).mul(0.6))),
+                veins:
+                  kind === 'column'
+                    ? { amount: arrayElement(this.worldVeins, world), radius: treeD().x.mul(0.62), half: treeD().y.mul(1.1), color: lookup.pal(0, treeC().y).rgb as unknown as Vec3Node }
+                    : null,
+                flowers: cfg.flowers ? { normal: patternNormal, cell: flowerCell, density: arrayElement(this.worldFlowers, world) } : null,
+              }),
       });
       this.materials.push(material);
       const mesh = new InstancedMesh(geometry, material, kind === 'domeHi' ? 64 : options.capacity.trees);
       mesh.name = `planet-crown-${kind}`;
       mesh.castShadow = true;
-      mesh.receiveShadow = true; // Schlagschatten anderer Bäume und Hügel: Krone wird Tinte (eine Tintenform)
+      mesh.receiveShadow = true; // Schlagschatten anderer Bäume und Hügel: untere Teilkuppeln werden Tinte (eine Tintenform)
       mesh.frustumCulled = false;
       mesh.count = 0;
       crowns[kind] = mesh;
@@ -319,34 +402,69 @@ export class TreeLayer {
 
     // --- Stämme ------------------------------------------------------------------------------------------
     const trunks = {} as Record<TrunkKind, InstancedMesh>;
-    const trunkGeos: Record<TrunkKind, BufferGeometry> = { fork: createForkTrunk(11), fan: createFanTrunk(5), oak: this.oak.geometry };
+    const trunkGeos: Record<TrunkKind, BufferGeometry> = { fork: createForkTrunk(11), fan: this.fan.geometry, oak: this.oak.geometry };
     for (const kind of TRUNK_KINDS) {
       const geometry = trunkGeos[kind];
       const cap = this.trunkCapacity(kind);
       this.attachTreeAttributes(geometry, cap);
       const bark = attribute('bark', 'vec4');
       const H = treeD().x;
-      const thick = treeD().y;
       // Dicke je Instanz steckt in der Instanzmatrix (waagrecht gestreckt): der Wurzelanlauf wird breiter, nicht höher
       const n = normalize(normalLocal);
       const row = treeC().x;
       // treeD.w = Welt + (1 − Anlauf)·0.5: schlanke Schäfte (Tannen, Pappeln, Kathedralen) mit schmalem Wurzelanlauf
       const world = floor(treeD().w);
       const keep = float(1).sub(fract(treeD().w).mul(2));
+      const level = bark.z;
       let placed: Vec3Node = positionLocal;
+      let barkV: FloatNode = bark.y;
+      let shadowPlaced: Vec3Node | null = null;
+      let veil: { mask: FloatNode; color: Vec3Node } | null = null;
       if (kind === 'fork') {
-        // Anlauf des Gabel-Archetyps (createForkTrunk: flare(y, 1.6, 0.075)) waagrecht auf `keep` zurücknehmen
-        const up = normalize(treeA().xyz);
+        const up = normalize(treeB().xyz.sub(treeA().xyz));
         const rel = positionLocal.sub(treeA().xyz);
         const along = up.mul(rel.dot(up));
-        const F = float(1).add(float(1.6).mul(positionGeometry.y.add(0.02).max(0).div(0.075).negate().exp()));
+        const y = positionGeometry.y;
+        // Anlauf des Gabel-Archetyps (flare(y, 1.6, 0.075)) waagrecht auf `keep` zurücknehmen
+        const F = float(1).add(float(1.6).mul(y.add(0.02).max(0).div(0.075).negate().exp()));
         const k = float(1).add(keep.mul(F.sub(1))).div(F);
-        placed = treeA().xyz.add(along).add(rel.sub(along).mul(k));
+        // Astnetz: waagrecht auf die Form zurückgestaucht (breite Juwelen-Schäfte tragen dasselbe schmale Netz)
+        const squeeze = mix(float(1), treeD().y, smoothstep(FORK_Y - 0.04, FORK_Y + 0.12, y));
+        // Schaft strecken: die Gabel sitzt bei `forkAt`, das Astnetz behält seine Größe (Spitze = treeB)
+        const S = float(1).add(treeB().xyz.sub(treeA().xyz).length().div(H).sub(FORK_TOP).div(FORK_Y));
+        const lift = up.mul(H.mul(S.sub(1)).mul(clamp(y, 0, FORK_Y)));
+        placed = treeA().xyz.add(along).add(lift).add(rel.sub(along).mul(k).mul(squeeze));
+        barkV = bark.y.add(S.sub(1).mul(clamp(bark.y.sub(0.28), 0, FORK_Y)));
+      } else if (kind === 'fan') {
+        // Schleier (Innenseite der unteren Schale, Ebene 4): nur beim Spitzenbaum (treeD.y = 1), nie im Schattenpass
+        const isVeil = level.greaterThan(3.5);
+        const hideVeil = isVeil.and(treeD().y.lessThan(0.5));
+        // Halbscheibe senkrecht hinter der Baummitte, um die Baumachse zur Kamera gedreht (flacher Grund, keine Schale)
+        const up = normalize(treeB().xyz.sub(treeA().xyz));
+        const centre = treeA().xyz.add(up.mul(H.mul(LACE_ENVELOPE.cy)));
+        const toCam = shared.camLocal.sub(centre);
+        const view = normalize(toCam.sub(up.mul(toCam.dot(up))));
+        const right = normalize(cross(up, view));
+        const disc = centre
+          .add(right.mul(positionGeometry.x.mul(H).mul(LACE_ENVELOPE.rx * 0.94)))
+          .add(up.mul(positionGeometry.y.mul(H).mul(LACE_ENVELOPE.ry * 0.94)))
+          .sub(view.mul(H.mul(LACE_ENVELOPE.rx * 0.55)));
+        placed = select(hideVeil, treeA().xyz, select(isVeil, disc, positionLocal));
+        shadowPlaced = select(isVeil, treeA().xyz, positionLocal);
+        // Grundfarbe: das helle Stammlicht der Welt (Akzent 0), wo es dunkel ist, die hellste Kronenstufe
+        const acc0 = lookup.pal(0, treeC().y).rgb as unknown as Vec3Node;
+        const pale = select(acc0.dot(vec3(0.3, 0.59, 0.11)).greaterThan(0.45), acc0, lookup.pal(5, treeC().x).rgb) as unknown as Vec3Node;
+        // feine dunkle Tüpfel auf dem hellen Grund (Bild 02), aus der Ferne ein leichter Grauschleier derselben Tinte
+        const veilInk = lookup.pal(0, treeC().x).rgb as unknown as Vec3Node;
+        const vst = stipple(varying(positionGeometry.mul(H), 'vVeilPos') as unknown as Vec3Node, 0.045, 0.3, float(1), 0.7);
+        const veilCol = mix(mix(pale, veilInk, 0.14), veilInk, vst.mask);
+        veil = { mask: varying(select(isVeil, float(1), float(0)), 'vBarkVeil'), color: veilCol };
       }
       const material = new BarkMaterial({
         lookup,
         fog,
         fogDistNode: shared.fogDist(row),
+        fogFn: fogOf(row, treeA().xyz, 'vBarkFogDist'),
         positionNode: warp(grownFrom(placed)),
         rowNode: row,
         accentNode: treeC().y,
@@ -354,12 +472,14 @@ export class TreeLayer {
         styleNode: treeC().z,
         variantNode: treeC().w,
         snowNode: arrayElement(this.worldSnow, world),
-        bark: varying(vec4(bark.x, bark.y.mul(H), bark.z, bark.w.mul(H).mul(thick)), 'vBark') as unknown as Vec4Node,
+        bark: varying(vec4(bark.x, barkV.mul(H), bark.z, bark.w.mul(H)), 'vBark') as unknown as Vec4Node,
         objPos: varying(positionGeometry.mul(H), 'vBarkPos'),
         normalPlanet: varying(n, 'vBarkN'),
         upPlanet: varying(normalize(treeA().xyz), 'vBarkUp'),
         growthNode: shared.slotGrowth(treeB().w),
+        veil,
       });
+      if (shadowPlaced) (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(grownFrom(shadowPlaced));
       this.materials.push(material);
       const mesh = new InstancedMesh(geometry, material, cap);
       mesh.name = `planet-trunk-${kind}`;
@@ -399,7 +519,7 @@ export class TreeLayer {
         return base.add(right.mul(gx.mul(size).mul(flip))).add(up.mul(positionGeometry.y.mul(size)));
       };
       const material = new MeshBasicNodeMaterial({ side: DoubleSide });
-      material.colorNode = steppedFog(lookup.pal(3, data.w).rgb as unknown as Vec3Node, fog, lookup, shared.fogDist(data.w));
+      material.colorNode = fogOf(data.w, base, 'vBareFogDist')(lookup.pal(3, data.w).rgb as unknown as Vec3Node);
       material.positionNode = warp(billboard(normalize(shared.camLocal.sub(base))));
       (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(billboard(shared.sunDirLocal));
       const mesh = new InstancedMesh(geometry, material, n);
@@ -437,7 +557,10 @@ export class TreeLayer {
       const dd = attribute('dotData', 'vec4'); // Größe, Rang, Zufall, Slot
       const rowKind = attribute('dotRow', 'float');
       const row = floor(rowKind.add(0.01));
-      const kind = floor(fract(rowKind).mul(8.0).add(0.5));
+      // Art im Achtel, darüber ein Viertel-Achtel: nimmt Schlagschatten an (Rundung liefert weiter die Art)
+      const kf = fract(rowKind).mul(8.0);
+      const kind = floor(kf.add(0.1));
+      const castBit = step(0.125, kf.sub(kind));
       const hullAttr = attribute('dotHull', 'vec4');
       const toCam = shared.camLocal.sub(hullAttr.xyz);
       const nearDots = smoothstep(shared.nearClear, shared.nearClear.add(1.6), toCam.length().sub(hullAttr.w.mul(1.2))).mul(shared.footFade(base));
@@ -453,21 +576,26 @@ export class TreeLayer {
       const rim = smoothstep(0.66, 0.3, facingCam);
       const isRim = kind.greaterThan(2.5).and(kind.lessThan(3.5));
       const isLace = kind.greaterThan(3.5).and(kind.lessThan(4.5));
-      const isStar = kind.greaterThan(4.5);
+      const isStar = kind.greaterThan(4.5).and(kind.lessThan(5.5));
+      const isScallop = kind.greaterThan(5.5);
       const isPine = kind.greaterThan(1.5).and(kind.lessThan(2.5));
       const isJewel = kind.greaterThan(0.5).and(kind.lessThan(1.5));
-      // Schlagschatten wie die Krone darunter: Punkte auf der oberen Kuppel bleiben, an der Unterseite deckt ihn der Schatten
-      const castW = select(isPine.or(isStar), float(1), select(isJewel, float(0), smoothstep(0.5, -0.15, nrm.dot(normalize(base)))));
+      // Schlagschatten wie die Krone darunter: je Teilkuppel ganz (untere Kränze) oder gar nicht (Schultern, Scheitel)
+      const castW = select(isPine.or(isStar).or(isLace), float(1), select(isJewel, float(0), castBit));
       // Glatter Schattenwert am Punktmittelpunkt (Vertex-Stufe, weich über ≈ 1–2 Punktdurchmesser): im Schlagschatten
       // skalieren die Punkte stetig aus 0, statt je Fragment Tinte zu werden (kein Verschwinden und Wiederauftauchen,
       // wenn eine Schattenkante beim Drehen über die Krone wandert)
       const shadowAt = shared.shadowFactor;
       const sunAt = shadowAt ? shadowAt(modelWorldMatrix.mul(vec4(center, 1)).xyz as unknown as Vec3Node, { softness: DOT_SHADOW_SOFTNESS }) : float(1);
       const inSun = smoothstep(0.15, 0.85, mix(float(1), sunAt, castW));
-      // Sternnadeln immer; Spitze und Kiefernschnee auch im Schatten (kleiner); Kronenpunkte skalieren aus 0.
+      // Sternnadeln immer; Spitze, Bögen und Kiefernschnee auch im Schatten (kleiner); Kronenpunkte skalieren aus 0.
       // (Der Schattenwert steht außerhalb aller `select`-Zweige: je Zweig würde TSL seine Abtastung erneut erzeugen.)
-      const growLight = select(isStar, float(1), select(isLace, float(0.72).add(light.mul(0.28)), select(isPine, float(0.6).add(light.mul(0.4)), select(isRim, light.mul(rim), light))));
-      const shrink = select(isStar, float(0.3), select(isLace, float(0.4), select(isPine, float(0.45), float(1))));
+      const growLight = select(
+        isStar,
+        float(1),
+        select(isLace, float(0.72).add(light.mul(0.28)), select(isPine, float(0.6).add(light.mul(0.4)), select(isRim, light.mul(rim), select(isScallop, float(0.55).add(light.mul(0.45)), light)))),
+      );
+      const shrink = select(isStar, float(0.3), select(isLace, float(0.4), select(isPine.or(isScallop), float(0.45), float(1))));
       const grow = growLight.mul(float(1).sub(shrink.mul(float(1).sub(inSun))));
       const depth = viewC.z.negate().max(0.05);
       const pxPerUnit = shared.projScaleY.mul(screenSize.y).mul(0.5).div(depth);
@@ -488,22 +616,25 @@ export class TreeLayer {
       const disc = vec3(positionGeometry.x, positionGeometry.y, 0).mul(sizeEff.mul(collapse));
       // mix statt select: beide Formen hängen am Schattenwert (ein `select` erzeugte dessen Abtastung je Zweig neu)
       const viewPos = viewC.xyz.add(mix(disc, needle, select(isStar, float(1), float(0))));
-      const dist = varying(depth, 'vTreeDotDist');
       // Farbe: Stufen 3..5 gerastert nach Licht + Zufall (Punkt für Punkt ein getüpfelter Verlauf wie bei Earle)
       const vLight = varying(light, 'vTreeDotLight');
       const vKind = varying(kind, 'vTreeDotKind');
       const jitter = varying(dd.z, 'vTreeDotJitter');
       const crownIdx = float(3).add(clamp(floor(vLight.mul(1.6).add(jitter.mul(0.9))), 0, 2));
-      const laceIdx = select(vLight.greaterThan(jitter.mul(0.7).add(0.15)), float(4), float(1));
+      // Spitzenschleier (Bild 02): feine dunkle Punkte vor dem hellen Grund — Sonnenseite in der Schattenpunktfarbe, sonst Tinte
+      const laceIdx = select(vLight.greaterThan(jitter.mul(0.7).add(0.2)), float(3), float(0));
       const starIdx = select(jitter.greaterThan(0.2), float(7), float(5));
       const pineIdx = select(vLight.greaterThan(jitter.mul(0.8).add(0.1)), float(5), float(4));
+      // Bögen: hell auf der Lichtseite, in der Schattenpunktfarbe auf der Schattenseite (Ebene 1/32)
+      const scallopIdx = select(vLight.greaterThan(0.3), select(jitter.greaterThan(0.45), float(5), float(4)), float(3));
       const idx = select(
         vKind.lessThan(1.5),
         crownIdx,
-        select(vKind.lessThan(2.5), pineIdx, select(vKind.lessThan(3.5), float(5), select(vKind.lessThan(4.5), laceIdx, starIdx))),
+        select(vKind.lessThan(2.5), pineIdx, select(vKind.lessThan(3.5), float(5), select(vKind.lessThan(4.5), laceIdx, select(vKind.lessThan(5.5), starIdx, scallopIdx)))),
       );
-      // Im Schlagschatten: Kronenpunkte, Spitze und Nadeln werden Tinte (wie die Krone darunter), Kiefernschnee dunkler
-      const shadowIdx = select(vKind.greaterThan(1.5).and(vKind.lessThan(2.5)), float(3), float(0));
+      // Im Schlagschatten: Kronenpunkte, Spitze und Nadeln werden Tinte (wie die Krone darunter), Kiefernschnee und
+      // Bögen nehmen die Schattenpunktfarbe
+      const shadowIdx = select(vKind.greaterThan(1.5).and(vKind.lessThan(2.5)).or(vKind.greaterThan(5.5)), float(3), float(0));
       // Mit dem glatten Schattenwert färbt er den ganzen Punkt auf einmal (Kronen- und Randpunkte behalten ihre Lichtfarbe,
       // sie schrumpfen); ohne ihn wie bisher je Fragment aus der Schattenkarte
       const keepsColour = select(kind.lessThan(1.5).or(isRim), float(1), float(0));
@@ -513,7 +644,8 @@ export class TreeLayer {
         fog,
         castWeight: shadowAt ? null : varying(castW, 'vTreeDotCastW'),
         shade,
-        fogDistNode: shared.fogDist(row, dist),
+        fogDistNode: shared.fogDist(row, varying(depth, 'vTreeDotDist')),
+        fogFn: fogOf(row, base, 'vTreeDotFogDist'),
         litColor: lookup.pal(idx, row).rgb as unknown as Vec3Node,
         shadowColor: lookup.pal(shadowIdx, row).rgb as unknown as Vec3Node,
       });
@@ -558,6 +690,20 @@ export class TreeLayer {
     return rows.canopy[Math.min(variants - 1, Math.floor(t.variant * variants))] ?? rows.canopy[0] ?? 0;
   }
 
+  /**
+   * Zeilen der Kronenpunkte oben, in der Mitte und unten: in Welten mit Farbvarianten (Juwelenwald, Bild 02) tragen die
+   * Punkte der oberen Teilkuppeln die Nachbarfamilie auf der einen, die der unteren die auf der anderen Seite — eine
+   * Kuppel wird ein getüpfelter Verlauf aus mehreren Juwelenfarben (rot → violett → blau, Türkis-Akzente).
+   */
+  private dotRows(t: PlanetTree): [number, number, number] {
+    const rows = this.rows(t);
+    const own = this.canopyRow(t);
+    const n = Math.max(1, Math.min(rows.canopy.length, this.family(t)?.rowVariants ?? 1));
+    if (n < 2) return [own, own, own];
+    const i = Math.min(n - 1, Math.floor(t.variant * n));
+    return [rows.canopy[(i + n - 1) % n] ?? own, own, rows.canopy[(i + 1) % n] ?? own];
+  }
+
   private aspect(t: PlanetTree): number {
     return this.family(t)?.aspect ?? 1;
   }
@@ -568,14 +714,24 @@ export class TreeLayer {
     return BARK_STYLE[name] ?? 0;
   }
 
+  /** Breitenfaktor der Welt für schlanke bzw. volle Schäfte (Familie, Standard 0.04). */
+  private widthFactor(t: PlanetTree, form: KindForm): number {
+    const w = (this.family(t)?.trunkWidth ?? 0.04) / 0.04;
+    // Schlanke Formen (Dicke < 0.5) dürfen per Welt breit werden (Juwelenwald: breite gestreifte Schäfte)
+    return Math.min(form.thick < 0.5 ? 3 : 2.2, Math.max(0.6, w));
+  }
+
   /** Stammdicke je Instanz: Familie (Anteil am Kronenradius, Standard 0.04) relativ zum Archetyp. */
   private thickness(t: PlanetTree, form: KindForm): number {
     // Eiche und Fächer haben eigene Proportionen (die Dicke streckt waagrecht und würde die Äste aus der Krone schieben)
     if (form.trunk === 'oak' || form.trunk === 'fan') return 1;
-    const w = (this.family(t)?.trunkWidth ?? 0.04) / 0.04;
-    // Schlanke Formen (Dicke < 0.5) dürfen per Welt breit werden (Juwelenwald: breite gestreifte Schäfte)
-    const clampW = Math.min(form.thick < 0.5 ? 3 : 2.2, Math.max(0.6, w));
-    return form.thick * clampW;
+    return form.thick * this.widthFactor(t, form);
+  }
+
+  /** Terminator der Krone: Form, für Kuppelkappen (Schirm, Spitze) je Welt überschreibbar (`capTerminator`). */
+  private terminator(t: PlanetTree, form: KindForm): number {
+    const cap = (this.family(t) as (TreeFamily & TreeFamilyExtras) | undefined)?.capTerminator;
+    return cap !== undefined && (t.kind === 'lace' || t.kind === 'umbrella') ? cap : form.terminator;
   }
 
   /** Kronen-Mesh eines Baums: große Kuppeln (Fokus, Solitäre) nehmen die feine Geometrie. */
@@ -594,9 +750,14 @@ export class TreeLayer {
     return out.compose(_p, q, _s);
   }
 
-  /** Instanzmatrix des Stamms (einheitliche Skalierung H). */
+  /** Archetyp-Maßstab H des Stamms (Welteinheiten). */
+  private trunkScale(t: PlanetTree, form: KindForm): number {
+    return form.trunkH * t.canopyRadius * (form.crown === 'pine' ? 1 : Math.min(1.3, this.aspect(t)));
+  }
+
+  /** Instanzmatrix des Stamms (Maßstab H, waagrecht mit der Dicke gestreckt). */
   trunkMatrix(t: PlanetTree, form: KindForm, q: Quaternion, out: Matrix4): Matrix4 {
-    const H = form.trunkH * t.canopyRadius * (form.crown === 'pine' ? 1 : Math.min(1.3, this.aspect(t)));
+    const H = this.trunkScale(t, form);
     const k = this.thickness(t, form);
     _p.set(t.position[0], t.position[1], t.position[2]);
     out.compose(_p, q, _s.set(H * k, H, H * k));
@@ -644,7 +805,7 @@ export class TreeLayer {
         a.setXYZW(i, t.position[0], t.position[1], t.position[2], t.rank);
         b.setXYZW(i, t.position[0] + _v.x, t.position[1] + _v.y, t.position[2] + _v.z, e.slot);
         c.setXYZW(i, this.canopyRow(t), this.rows(t).accent, this.barkStyle(t), t.variant);
-        d.setXYZW(i, form.crownS[0] * r, form.crownS[1] * r * asp, r * Math.max(1, form.crownS[1] * asp), form.terminator);
+        d.setXYZW(i, form.crownS[0] * r, form.crownS[1] * r * asp, r * Math.max(1, form.crownS[1] * asp), this.terminator(t, form));
         // Höchster Punkt, an dem die Krone Schlagschatten zeigt: Kiefern ganz (Tintenkörper), Kuppeln und Säulen bis
         // knapp über die Mitte (die obere Kuppel bleibt hell, siehe castWeight)
         const top = form.crown === 'pine' ? (form.crownY + form.crownS[1]) * r : (form.crownY + 0.5 * form.crownS[1]) * r * asp;
@@ -671,13 +832,18 @@ export class TreeLayer {
         this.trunkMatrix(t, form, q, _m);
         mesh.setMatrixAt(i, _m);
         const H = _s.x;
-        const top = kind === 'oak' ? this.oak.top : 1.3;
+        // Spitze der Achse: Gabel mit gestrecktem Schaft (der Shader liest die Streckung aus dieser Länge zurück)
+        const S = stemStretch(form, H, t.canopyRadius);
+        const top = kind === 'oak' ? this.oak.top : kind === 'fan' ? this.fan.top : FORK_TOP + (S - 1) * FORK_Y;
         _v.set(0, top * H, 0).applyQuaternion(q);
         a.setXYZW(i, t.position[0], t.position[1], t.position[2], t.rank);
         b.setXYZW(i, t.position[0] + _v.x, t.position[1] + _v.y, t.position[2] + _v.z, e.slot);
         c.setXYZW(i, this.canopyRow(t), this.rows(t).accent, this.barkStyle(t), t.variant);
         const keep = form.thick < 0.5 ? 0.35 : 1;
-        d.setXYZW(i, H, this.thickness(t, form), kind === 'oak' ? this.oak.spread * H : Math.max(0.3, t.canopyRadius * 0.4), t.world + (1 - keep) * 0.5);
+        // .y: Gabel = Stauchung des Astnetzes (breite Schäfte, schmales Netz), Fächer = Schleier an (Spitzenbaum)
+        const y = kind === 'fork' ? 1 / this.widthFactor(t, form) : kind === 'fan' ? (form.dots === 'lace' ? 1 : 0) : 1;
+        const fadeR = kind === 'oak' ? this.oak.spread * H : kind === 'fan' ? this.fan.spread * H : Math.max(0.3, t.canopyRadius * 0.4);
+        d.setXYZW(i, H, y, fadeR, t.world + (1 - keep) * 0.5);
         if (kind === 'oak') hMax = Math.max(hMax, this.oak.top * H);
       });
       for (const attr of [a, b, c, d, mesh.instanceMatrix]) commit(attr, list.length);
@@ -789,6 +955,11 @@ export class TreeLayer {
     return out;
   }
 
+  /** Punkte je Spitzenbaum im Budget: Rosetten an den Zweigspitzen und Perlen entlang der Zweige. */
+  private laceDotCount(stride: number): number {
+    return Math.ceil(this.fan.tips.length / stride) * 7 + Math.ceil(this.fan.beads.length / stride);
+  }
+
   /** Erzeugt die Punkte eines Chunks (deterministisch je Baum). */
   private buildBlock(slot: number, key: string, list: TreeEntry[]): DotBlock {
     const rel: number[] = [];
@@ -806,7 +977,7 @@ export class TreeLayer {
       const t = e.tree;
       if (t.kind === 'bare') continue;
       const d = TREE_FORMS[t.kind].dots;
-      if (d === 'lace') fixed += LACE_ROSETTES * 7 * (hi ? 1 : 0.5);
+      if (d === 'lace') fixed += this.laceDotCount(hi ? 1 : 2);
       if (d === 'stars') fixed += this.oak.tips.length * (hi ? 9 : 3);
       weightSum += this.dotWeight(t);
     }
@@ -821,18 +992,21 @@ export class TreeLayer {
       const form = TREE_FORMS[t.kind];
       if (form.dots === 'none') continue;
       const rowIdx = this.canopyRow(t);
+      const [rowTop, , rowLow] = this.dotRows(t);
       treeQuaternion(t, q);
       const rand = mulberryFrom(treeHash(t.position, 9));
       const r = t.canopyRadius;
-      const push = (px: number, py: number, pz: number, nx: number, ny: number, nz: number, size: number, kind: number, hx: number, hy: number, hz: number, fadeR: number, lift = 0.6) => {
+      const push = (px: number, py: number, pz: number, nx: number, ny: number, nz: number, size: number, kind: number, cast: number, hx: number, hy: number, hz: number, fadeR: number, lift = 0.6, dotRow = rowIdx) => {
         const off = size * lift;
         rel.push(px + nx * off - t.position[0], py + ny * off - t.position[1], pz + nz * off - t.position[2]);
         base.push(t.position[0], t.position[1], t.position[2]);
         nrm.push(nx, ny, nz);
         data.push(size, t.rank, rand(), slot);
-        row.push(rowIdx + kind * 0.125);
+        row.push(dotRow + (kind + (cast > 0.5 ? 0.25 : 0)) * 0.125);
         hull.push(hx, hy, hz, fadeR);
       };
+      /** Zeile eines Kronenpunkts nach seiner Höhe in der Krone (Probe im Objektraum, −1 unten … 1 oben). */
+      const rowAt = (yObj: number, h: number): number => (yObj > 0.3 + 0.25 * h ? rowTop : yObj < -0.2 - 0.25 * h ? rowLow : rowIdx);
       if (form.dots === 'stars') {
         // Sternnadeln der Eiche (Bild 04): goldene Büschel aus feinen Nadeln (gestreckte Punkte), strahlig im Raum
         this.trunkMatrix(t, form, q, _m);
@@ -841,8 +1015,8 @@ export class TreeLayer {
         const hx = t.position[0] + _v.x;
         const hy = t.position[1] + _v.y;
         const hz = t.position[2] + _v.z;
-        const step = (this.options.dotsPerTree[0] >= 50 ? 1 : 2) * fixedStride;
-        const needles = this.options.dotsPerTree[0] >= 50 ? 9 : 6;
+        const step = (hi ? 1 : 2) * fixedStride;
+        const needles = hi ? 9 : 6;
         const golden = Math.PI * (3 - Math.sqrt(5));
         for (let i = 0; i < this.oak.tips.length; i += step) {
           const tip = this.oak.tips[i]!;
@@ -856,7 +1030,7 @@ export class TreeLayer {
             const ph = k * golden + phase;
             _n.set(rr * Math.cos(ph), yy, rr * Math.sin(ph)).applyQuaternion(q).normalize();
             const l = len * (0.75 + 0.5 * rand());
-            push(_p.x + _n.x * l * 0.5, _p.y + _n.y * l * 0.5, _p.z + _n.z * l * 0.5, _n.x, _n.y, _n.z, l * 0.5, DOT_KIND.star, hx, hy, hz, this.oak.spread * H, 0);
+            push(_p.x + _n.x * l * 0.5, _p.y + _n.y * l * 0.5, _p.z + _n.z * l * 0.5, _n.x, _n.y, _n.z, l * 0.5, DOT_KIND.star, 1, hx, hy, hz, this.oak.spread * H, 0);
           }
         }
         continue;
@@ -870,35 +1044,75 @@ export class TreeLayer {
       const fadeR = r * Math.max(1, form.crownS[1] * this.aspect(t));
       const sizeBase = this.dotRadius * Math.min(1.1, Math.max(0.4, r));
       if (form.dots === 'lace') {
-        // Spitzenschleier: Rosetten auf der unteren Schale (eigene Matrix: Kugel um die Hülle, nicht flachgedrückt)
-        _v.set(0, TREE_PROPORTIONS.lace.hull * r, 0).applyQuaternion(q);
-        const sm = new Matrix4().compose(_p.set(t.position[0] + _v.x, t.position[1] + _v.y, t.position[2] + _v.z), q, _s.set(r * 0.98, r * 0.92, r * 0.98));
-        const snm = new Matrix3().getNormalMatrix(sm);
-        const shell = this.laceShell;
-        const stride = (this.options.dotsPerTree[0] >= 50 ? 1 : 2) * fixedStride;
-        for (let ri = 0; ri < LACE_ROSETTES; ri += stride) {
-          for (let k = 0; k < 7; k++) {
-            const o = (ri * 7 + k) * 6;
-            _p.set(shell[o]!, shell[o + 1]!, shell[o + 2]!).applyMatrix4(sm);
-            _n.set(shell[o + 3]!, shell[o + 4]!, shell[o + 5]!).applyMatrix3(snm).normalize();
-            push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, sizeBase * (k === 0 ? 0.6 : 0.42) * Math.sqrt(stride), DOT_KIND.lace, hx, hy, hz, fadeR * 1.6, 0);
+        // Spitzenschleier am Skelett (Bild 02, Ebene 19): Rosetten an den Zweigspitzen, Perlen entlang der hängenden
+        // Zweige — jeder Punkt sitzt auf dem Astwerk des Fächer-Archetyps (dieselbe Matrix wie der Stamm)
+        const tm = this.trunkMatrix(t, form, q, new Matrix4());
+        const H = _s.x;
+        const tnm = new Matrix3().getNormalMatrix(tm);
+        const stride = (hi ? 1 : 2) * fixedStride;
+        _v.set(0, LACE_ENVELOPE.cy * H, 0).applyQuaternion(q);
+        const lx = t.position[0] + _v.x;
+        const ly = t.position[1] + _v.y;
+        const lz = t.position[2] + _v.z;
+        const s0 = sizeBase * 0.4;
+        for (let i = 0; i < this.fan.tips.length; i += stride) {
+          const tip = this.fan.tips[i]!;
+          _p.set(tip.p[0], tip.p[1], tip.p[2]).applyMatrix4(tm);
+          _n.set(tip.n[0], tip.n[1], tip.n[2]).applyMatrix3(tnm).normalize();
+          _d.set(tip.d[0], tip.d[1], tip.d[2]).transformDirection(tm);
+          push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, s0, DOT_KIND.lace, 1, lx, ly, lz, fadeR * 1.6, 0);
+          // Rosette: sechs kleinere Punkte in der Schalenebene rund um die Spitze (Ebene 19: runde Punktbüschel)
+          _axis.crossVectors(_n, _d).normalize();
+          const ring = s0 * 3.4 * Math.sqrt(stride);
+          const ph = rand() * Math.PI * 2;
+          for (let k = 0; k < 6; k++) {
+            const a = ph + (k / 6) * Math.PI * 2;
+            const ca = Math.cos(a) * ring;
+            const sa = Math.sin(a) * ring;
+            const ox = _d.x * ca + _axis.x * sa;
+            const oy = _d.y * ca + _axis.y * sa;
+            const oz = _d.z * ca + _axis.z * sa;
+            push(_p.x + ox, _p.y + oy, _p.z + oz, _n.x, _n.y, _n.z, s0 * 0.72, DOT_KIND.lace, 1, lx, ly, lz, fadeR * 1.6, 0);
           }
         }
+        for (let i = 0; i < this.fan.beads.length; i += stride) {
+          const bead = this.fan.beads[i]!;
+          _p.set(bead.p[0], bead.p[1], bead.p[2]).applyMatrix4(tm);
+          _n.set(bead.n[0], bead.n[1], bead.n[2]).applyMatrix3(tnm).normalize();
+          push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, s0 * 0.62, DOT_KIND.lace, 1, lx, ly, lz, fadeR * 1.6, 0);
+        }
+        void H;
       }
       const tpl = this.templates[form.crown];
+      // Kronen, die rundum leuchten (Juwel, Kappen mit `capTerminator` < 0), tragen Juwelenpunkte (gleiche Lichtschwelle)
+      const kind0 = form.dots === 'pine' ? DOT_KIND.pine : this.terminator(t, form) < 0 ? DOT_KIND.jewel : DOT_KIND.crown;
+      const budget = Math.min(maxPerTree, Math.max(4, Math.round(perWeight * this.dotWeight(t))));
+      // Kronenpunkte und die gepunkteten Bögen der Teilkuppeln teilen sich das Budget (Kiefern ohne Bögen)
+      const rimsTotal = tpl.rims.length / 6;
+      const rimCount = form.dots === 'pine' ? 0 : Math.min(rimsTotal, Math.round(budget * SCALLOP_SHARE));
       const samples = tpl.samples;
       const total = samples.length / 6;
-      const count = Math.min(total, maxPerTree, Math.max(4, Math.round(perWeight * this.dotWeight(t))));
+      const count = Math.min(total, Math.max(4, budget - rimCount));
       const start = Math.floor(treeHash(t.position, 5) * total);
-      const kind0 = form.dots === 'pine' ? DOT_KIND.pine : t.kind === 'jewel' ? DOT_KIND.jewel : DOT_KIND.crown;
       // Tannenpunkte: feste Größe (die schmalen Kronen würden sie sonst unter die Pixelgrenze drücken)
       const pineSize = form.dots === 'pine' ? 0.042 / Math.max(1e-3, sizeBase) : 1;
       for (let k = 0; k < count; k++) {
-        const o = ((start + k) % total) * 6;
+        const j = (start + k) % total;
+        const o = j * 6;
         _p.set(samples[o]!, samples[o + 1]!, samples[o + 2]!).applyMatrix4(_m);
         _n.set(samples[o + 3]!, samples[o + 4]!, samples[o + 5]!).applyMatrix3(_nm).normalize();
         const kind = kind0 !== DOT_KIND.pine && k % 4 === 0 ? DOT_KIND.rim : kind0;
-        push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, sizeBase * pineSize * (0.8 + 0.4 * rand()) * (kind === DOT_KIND.rim ? 1.25 : 1), kind, hx, hy, hz, fadeR);
+        const dr = rowAt(samples[o + 1]!, rand() - 0.5);
+        push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, sizeBase * pineSize * (0.8 + 0.4 * rand()) * (kind === DOT_KIND.rim ? 1.25 : 1), kind, tpl.sampleCast[j] ?? 1, hx, hy, hz, fadeR, 0.6, dr);
+      }
+      const rims = tpl.rims;
+      const rStart = Math.floor(treeHash(t.position, 6) * Math.max(1, rimsTotal));
+      for (let k = 0; k < rimCount; k++) {
+        const j = (rStart + k) % rimsTotal;
+        const o = j * 6;
+        _p.set(rims[o]!, rims[o + 1]!, rims[o + 2]!).applyMatrix4(_m);
+        _n.set(rims[o + 3]!, rims[o + 4]!, rims[o + 5]!).applyMatrix3(_nm).normalize();
+        push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, sizeBase * (0.55 + 0.2 * rand()), DOT_KIND.scallop, tpl.rimCast[j] ?? 1, hx, hy, hz, fadeR, 0.5, rowAt(rims[o + 1]!, rand() - 0.5));
       }
     }
     const count = row.length;

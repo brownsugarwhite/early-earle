@@ -49,12 +49,13 @@ struct GlassHudRoot: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 if !s.actions.isEmpty {
-                    // One decision for the whole row: all labels when they fit, else equal icon pills. Never "…".
-                    let compact = width > 0 && ActionPill.fullRowWidth(s.actions, spacing: 12) > width - 32
-                    HStack(spacing: 12) {
-                        ForEach(s.actions) { a in
+                    // One decision for the whole row (ActionRowLayout): labels, or the primary label with round
+                    // icon pills, or equal icon pills. Never "…".
+                    let row = ActionRowLayout.make(s.actions, width: width > 0 ? width - 32 : 0)
+                    HStack(spacing: row.spacing) {
+                        ForEach(Array(s.actions.enumerated()), id: \.element.id) { i, a in
                             let pillTint = a.tint.flatMap { Color(validHex: $0)?.opacity(0.7) } ?? (a.primary ? accent : tint)
-                            ActionPill(action: a, compact: compact) { model.onAction?(a.id) }
+                            ActionPill(action: a, style: row.style(i), height: row.height, padding: row.labelPadding, textScale: row.textScale) { model.onAction?(a.id) }
                                 .modifier(GlassSurface(tint: pillTint, shape: Capsule(), interactive: !a.disabled, id: "action-\(a.id)", ns: ns))
                                 .modifier(ReportRect(key: "action-\(a.id)", model: model))
                                 .transition(.opacity.combined(with: .scale(scale: 0.85)))
@@ -91,19 +92,25 @@ struct TopPill: View {
                         .opacity(0.75)
                         .lineLimit(1)
                 }
+                // A numeric title ("2048" in the classic mode) gets the display face; names stay in the grotesk.
                 Text(top.title)
-                    .font(.system(size: 15, weight: .black))
+                    .font(GlassFonts.isShortNumber(top.title) ? GlassFonts.number(for: top.title, size: 19, relativeTo: .headline) : .system(size: 15, weight: .black))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
             if !top.moves.isEmpty {
-                VStack(spacing: 3) {
+                VStack(spacing: 1) {
+                    // The big number in Caprasimo (numbers and short titles only, like the web HUD's 'EE Heavy').
                     Text(top.moves)
-                        .font(.system(size: 20, weight: .black))
+                        .font(GlassFonts.number(for: top.moves, size: 26))
                         .monospacedDigit()
-                    Text("ZÜGE")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+                    Text((top.movesLabel.isEmpty ? "Züge" : top.movesLabel).uppercased())
                         .font(.system(size: 9, weight: .black))
                         .tracking(1.6)
+                        .lineLimit(1)
                         .opacity(0.75)
                 }
                 .frame(minWidth: 44)
@@ -122,62 +129,119 @@ struct TopPill: View {
     }
 }
 
-@available(iOS 16.0, *)
-struct ActionPill: View {
-    let action: HudAction
-    /// Icon only (row too tight for labels); the pill then shares the row width equally with the others.
-    var compact = false
-    let tap: () -> Void
+/// How one pill is drawn in the action row.
+enum PillStyle: Equatable {
+    /// Icon and label (a capsule sized by its text).
+    case label
+    /// Icon only, in a circle (height × height).
+    case round
+    /// Icon only, sharing the row width equally with the other stretched pills.
+    case stretch
+}
+
+/// One decision for the whole action row, never "…":
+/// 1. every pill with its label (`iconOnly` pills are circles);
+/// 2. else, when there is a primary action, it keeps its label and every other pill becomes a round icon pill —
+///    padding, gaps and circles tighten step by step (gaps stay above the glass container's 10-pt blend distance);
+/// 3. else equal icon pills over the full row (the level's four actions); `iconOnly` pills stay round.
+struct ActionRowLayout: Equatable {
+    var styles: [PillStyle]
+    var spacing: CGFloat
+    /// Pill height = diameter of the round pills.
+    var height: CGFloat
+    var labelPadding: CGFloat
+    var textScale: CGFloat
 
     static let labelFont = UIFont.systemFont(ofSize: 15, weight: .black)
     static let tracking: CGFloat = 0.9
-    /// Width of an `iconOnly` pill (with the 48-pt height a near-round capsule).
-    static let iconOnlyWidth: CGFloat = 52
+    /// Icon (18 pt) plus the gap to the label.
+    static let iconWidth: CGFloat = 18 + 8
 
-    /// Width of the row with all labels (icon + label + padding per pill, plus spacing).
-    static func fullRowWidth(_ actions: [HudAction], spacing: CGFloat) -> CGFloat {
-        var total: CGFloat = 0
-        for a in actions {
-            if a.iconOnly, a.icon != nil {
-                total += iconOnlyWidth
-                continue
-            }
-            let label = a.label.uppercased() as NSString
-            let text = ceil(label.size(withAttributes: [.font: labelFont, .kern: tracking]).width)
-            let icon: CGFloat = a.icon != nil ? 18 + 8 : 0
-            total += max(96, text + icon + 44)
-        }
-        return total + CGFloat(max(0, actions.count - 1)) * spacing
+    /// (label padding, gap, circle, text scale) from roomy to tight.
+    static let condensedSteps: [(pad: CGFloat, gap: CGFloat, round: CGFloat, scale: CGFloat)] = [
+        (22, 12, 48, 1),
+        (16, 12, 48, 1),
+        (16, 11, 46, 1),
+        (14, 11, 44, 1),
+        (12, 11, 44, 0.85)
+    ]
+
+    func style(_ i: Int) -> PillStyle {
+        i < styles.count ? styles[i] : .label
     }
+
+    static func textWidth(_ label: String, scale: CGFloat = 1) -> CGFloat {
+        let text = label.uppercased() as NSString
+        return ceil(text.size(withAttributes: [.font: labelFont, .kern: tracking]).width * scale)
+    }
+
+    static func labelPillWidth(_ a: HudAction, padding: CGFloat, scale: CGFloat) -> CGFloat {
+        max(96, textWidth(a.label, scale: scale) + (a.icon != nil ? iconWidth : 0) + 2 * padding)
+    }
+
+    /// `width`: room for the row (points); 0 = unknown yet (first layout pass) → labels.
+    static func make(_ actions: [HudAction], width: CGFloat) -> ActionRowLayout {
+        let gaps = CGFloat(max(0, actions.count - 1))
+        let full = actions.map { $0.iconOnly && $0.icon != nil ? PillStyle.round : .label }
+        let fullWidth = zip(actions, full).reduce(CGFloat(0)) { sum, pair in
+            sum + (pair.1 == .round ? 48 : labelPillWidth(pair.0, padding: 22, scale: 1))
+        } + gaps * 12
+        if width <= 0 || fullWidth <= width {
+            return ActionRowLayout(styles: full, spacing: 12, height: 48, labelPadding: 22, textScale: 1)
+        }
+        if actions.contains(where: { $0.primary && !$0.iconOnly }) {
+            // A pill without an icon cannot become an icon: it keeps its label too.
+            let styles = actions.map { ($0.primary && !$0.iconOnly) || $0.icon == nil ? PillStyle.label : .round }
+            for step in condensedSteps {
+                let w = zip(actions, styles).reduce(CGFloat(0)) { sum, pair in
+                    sum + (pair.1 == .round ? step.round : labelPillWidth(pair.0, padding: step.pad, scale: step.scale))
+                } + gaps * step.gap
+                if w <= width {
+                    return ActionRowLayout(styles: styles, spacing: step.gap, height: step.round, labelPadding: step.pad, textScale: step.scale)
+                }
+            }
+        }
+        let styles = actions.map { a -> PillStyle in a.icon == nil ? .label : (a.iconOnly ? .round : .stretch) }
+        return ActionRowLayout(styles: styles, spacing: 12, height: 48, labelPadding: 22, textScale: 1)
+    }
+}
+
+@available(iOS 16.0, *)
+struct ActionPill: View {
+    let action: HudAction
+    var style: PillStyle = .label
+    var height: CGFloat = 48
+    var padding: CGFloat = 22
+    var textScale: CGFloat = 1
+    let tap: () -> Void
 
     var body: some View {
         Button(action: tap) {
             Group {
-                if compact, let icon = action.icon {
+                if style == .stretch, let icon = action.icon {
                     Image(systemName: icon)
                         .font(.system(size: 18, weight: .black))
                         .frame(maxWidth: .infinity)
-                } else if action.iconOnly, let icon = action.icon {
+                } else if style == .round, let icon = action.icon {
                     Image(systemName: icon)
                         .font(.system(size: 18, weight: .black))
-                        .frame(width: Self.iconOnlyWidth)
+                        .frame(width: height)
                 } else {
                     HStack(spacing: 8) {
                         if let icon = action.icon {
                             Image(systemName: icon).font(.system(size: 14, weight: .black))
                         }
                         Text(action.label.uppercased())
-                            .font(.system(size: 15, weight: .black))
-                            .tracking(Self.tracking)
+                            .font(.system(size: 15 * textScale, weight: .black))
+                            .tracking(ActionRowLayout.tracking)
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
                     }
-                    .padding(.horizontal, 22)
+                    .padding(.horizontal, padding)
                     .frame(minWidth: 96)
                 }
             }
-            .padding(.vertical, 14)
-            .frame(minHeight: 48)
+            .frame(height: height)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)

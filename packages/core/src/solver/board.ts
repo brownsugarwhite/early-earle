@@ -39,7 +39,11 @@ export function hashBoard(b: Board): number {
   }
   h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
   h ^= b.movesLeft * 0x27d4eb2f;
-  h ^= (b.spawnQueue[0]?.tier ?? 0) * 0x165667b1;
+  // Preview tier plus its scripted cell (bits 5+, 0 without one), and the spawn-script position.
+  // Both terms vanish for levels without a script, so their hashes are unchanged.
+  const next = b.spawnQueue[0];
+  h ^= ((next?.tier ?? 0) + (next?.at !== undefined ? (next.at + 1) << 5 : 0)) * 0x165667b1;
+  h ^= Math.imul(b.scriptPos, 0x2f6b9d3d);
   h ^=
     (b.maxTier |
       (b.released << 4) |
