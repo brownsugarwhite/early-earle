@@ -2524,13 +2524,27 @@ html.ed-lock body {
   .map-detail {
     flex-direction: row;
   }
+  /* Das Plakat im eigenen Seitenverhältnis (nichts abgeschnitten), mittig auf Tinte. */
   .map-poster-wrap {
     flex: 1 1 55%;
     height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 36px;
+  }
+  .map-poster {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 360 / 200;
+    box-shadow: var(--sun-shadow) var(--ink-soft);
   }
   .map-panel {
     flex: 0 0 min(500px, 45vw);
     box-shadow: -6px 0 0 var(--khaki-deep);
+  }
+  .map-panel > .map-actions {
+    flex-wrap: wrap;
   }
 }
 @media (max-width: 559px) {

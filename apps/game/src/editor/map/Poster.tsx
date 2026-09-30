@@ -8,6 +8,24 @@ const pick = (arr: unknown, i: number, fallback: string): string => {
 };
 const one = (v: unknown, fallback: string): string => (isHex(v) ? v : fallback);
 
+/** The poster's single accent (Earle's red barn / pink tower): the most colourful entry (largest chroma). */
+function strongest(list: unknown, fallback: string): string {
+  if (!Array.isArray(list)) return fallback;
+  let best = fallback;
+  let bestChroma = -1;
+  for (const v of list) {
+    if (!isHex(v)) continue;
+    const n = parseInt(v.slice(1), 16);
+    const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    const chroma = Math.max(...rgb) - Math.min(...rgb);
+    if (chroma > bestChroma) {
+      bestChroma = chroma;
+      best = v;
+    }
+  }
+  return best;
+}
+
 /** Dome tree: ink trunk, a flat dome, light dots only on the sun side (right) — Earle, no outlines. */
 function Tree({ x, y, s, dome, dots, ink }: { x: number; y: number; s: number; dome: string; dots: string[]; ink: string }) {
   const r = 16 * s;
@@ -50,7 +68,7 @@ export function Poster({ kind, json }: { kind: MapKind; json: Json }) {
   const fogAlpha = world && Array.isArray(p.fogAlpha) ? (p.fogAlpha as number[]) : [];
   const sun = world ? one(p.sun, '#f7f6d8') : '#f7f6d8';
   const sunRing = world ? one(p.sunRing, sun) : pick(p.sky, 1, '#caf5e4');
-  const accent = world ? pick(p.accent, 4, '#c8542a') : pick(p.accents, 0, '#c8542a');
+  const accent = strongest(world ? p.accent : p.accents, '#c8542a');
   const skyH = 118;
   const bandH = skyH / skyBands.length;
 
@@ -70,7 +88,7 @@ export function Poster({ kind, json }: { kind: MapKind; json: Json }) {
       <Tree x={112} y={140} s={1} dome={c(0)} dots={dotColors} ink={ink} />
       <Tree x={236} y={140} s={0.9} dome={c(2)} dots={dotColors} ink={ink} />
       {/* One accent (the red barn / pink tower of the reference): a small gabled block. */}
-      <path d="M296 146 h18 v-10 l-9 -7 l-9 7 z" fill={accent} />
+      <path d="M290 150 h26 v-13 l-13 -10 l-13 10 z" fill={accent} />
       <path d="M0 176 C 80 160, 170 162, 240 172 C 290 164, 330 164, 360 170 V200 H0 Z" fill={t(1)} />
       {/* Long shadow in the sun direction (sun right → shadow falls left). */}
       <path d="M150 176 C 120 178, 60 182, 10 186 L 10 190 C 70 188, 130 184, 162 180 Z" fill={t(0)} />
