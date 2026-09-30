@@ -14,6 +14,8 @@ export interface WaterGeometryData {
   wa: Float32Array;
   /** (Welt-Index, Strömung, Körper-Hash, Art 0 See / 1 Fluss) je Vertex. */
   wb: Float32Array;
+  /** Merkmals-Index je Vertex (Seen 0..L−1, Flüsse L..): Wachstum/Heilung je Gewässer. */
+  wg: Float32Array;
   indices: Uint32Array;
 }
 
@@ -22,7 +24,10 @@ interface Acc {
   nor: number[];
   wa: number[];
   wb: number[];
+  wg: number[];
   idx: number[];
+  /** Merkmals-Index des gerade gebauten Gewässers. */
+  feature: number;
 }
 
 function push(acc: Acc, dir: Vec3, r: number, u: number, v: number, e: number, frozen: number, world: number, flow: number, id: number, kind: number): number {
@@ -30,6 +35,7 @@ function push(acc: Acc, dir: Vec3, r: number, u: number, v: number, e: number, f
   acc.nor.push(dir[0], dir[1], dir[2]);
   acc.wa.push(u, v, e, frozen);
   acc.wb.push(world, flow, id, kind);
+  acc.wg.push(acc.feature);
   return acc.pos.length / 3 - 1;
 }
 
@@ -169,10 +175,15 @@ function lakeProbe(lake: Lake, R: number, p: Vec3, out: { e: number; theta: numb
  * Flusssegmente nach ihrem Mittelpunkt). Positionen im Planetenraum auf dem Wasserspiegel. null = kein Wasser.
  */
 export function buildWaterGeometry(features: PlanetFeatures, radius: number, owns: (dir: Vec3) => boolean): WaterGeometryData | null {
-  const acc: Acc = { pos: [], nor: [], wa: [], wb: [], idx: [] };
-  for (const lake of features.lakes) if (owns(lake.frame.c)) addLake(acc, lake, radius);
+  const acc: Acc = { pos: [], nor: [], wa: [], wb: [], wg: [], idx: [], feature: 0 };
+  features.lakes.forEach((lake, i) => {
+    acc.feature = i;
+    if (owns(lake.frame.c)) addLake(acc, lake, radius);
+  });
   const mid: Vec3 = [0, 0, 0];
-  for (const river of features.rivers) {
+  for (let ri = 0; ri < features.rivers.length; ri++) {
+    const river = features.rivers[ri]!;
+    acc.feature = features.lakes.length + ri;
     const keep = (i: number): boolean => {
       const a = river.points[i]!;
       const b = river.points[i + 1]!;
@@ -195,6 +206,7 @@ export function buildWaterGeometry(features: PlanetFeatures, radius: number, own
     normals: new Float32Array(acc.nor),
     wa: new Float32Array(acc.wa),
     wb: new Float32Array(acc.wb),
+    wg: new Float32Array(acc.wg),
     indices: new Uint32Array(acc.idx),
   };
 }
@@ -205,6 +217,7 @@ export function waterGeometry(data: WaterGeometryData): BufferGeometry {
   g.setAttribute('normal', new BufferAttribute(data.normals, 3));
   g.setAttribute('wa', new BufferAttribute(data.wa, 4));
   g.setAttribute('wb', new BufferAttribute(data.wb, 4));
+  g.setAttribute('wg', new BufferAttribute(data.wg, 1));
   g.setIndex(new BufferAttribute(data.indices, 1));
   g.computeBoundingSphere();
   return g;

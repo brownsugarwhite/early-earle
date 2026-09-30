@@ -86,6 +86,8 @@ export interface DriftOptions {
   veil: (world: FloatNode) => FloatNode;
   warp: (p: Vec3Node) => Vec3Node;
   capacity: number;
+  /** Wachstum/Heilung 0..1 je Chunk-Slot (Instanzattribut); fehlt → immer geheilt. */
+  growth?: (slot: FloatNode) => FloatNode;
 }
 
 export interface DriftPlacement {
@@ -95,6 +97,8 @@ export interface DriftPlacement {
   size: number;
   yaw: number;
   world: number;
+  /** Chunk-Slot (Wachstum). */
+  slot: number;
 }
 
 /**
@@ -111,7 +115,7 @@ export class DriftLandmarks {
     this.geometry = createDriftGeometry();
     this.data = new InstancedBufferAttribute(new Float32Array(o.capacity * 4), 4);
     this.geometry.setAttribute('driftData', this.data);
-    const inst = attribute('driftData', 'vec4'); // (Welt, Variante, –, –)
+    const inst = attribute('driftData', 'vec4'); // (Welt, Variante, Chunk-Slot, –)
     const world = inst.x;
     const row = arrayElement(o.snowRows, world);
     // Tüpfel am Rand: Punktraster im Objektraum, Dichte steigt zum Rand
@@ -132,6 +136,7 @@ export class DriftLandmarks {
       pattern: { mask: dots, color: mix(o.lookup.pal(2, row).rgb, o.lookup.pal(1, row).rgb, 0.5) },
       positionNode: o.warp(positionLocal),
       fogDistNode: positionView.length().add(o.veil(world)),
+      growthNode: o.growth ? o.growth(inst.z) : null,
     });
     const mesh = new InstancedMesh(this.geometry, this.material, o.capacity);
     mesh.name = 'planet-drifts';
@@ -154,7 +159,8 @@ export class DriftLandmarks {
       _m.compose(_p.set(d.position[0], d.position[1], d.position[2]), _q, _s.set(d.size, d.size * 0.9, d.size));
       this.mesh.setMatrixAt(i, _m);
       arr[i * 4] = d.world;
-      arr[i * 4 + 1] = (d.yaw / (Math.PI * 2)) % 1;
+      arr[i * 4 + 1] = (((d.yaw / (Math.PI * 2)) % 1) + 1) % 1;
+      arr[i * 4 + 2] = d.slot;
     }
     this.mesh.count = n;
     this.mesh.instanceMatrix.needsUpdate = true;

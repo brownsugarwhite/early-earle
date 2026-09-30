@@ -11,6 +11,8 @@ export interface WaterMaterialOptions {
   /** Zusatz-Nebeldistanz (Schleier) je Welt-Index. */
   veil: (world: FloatNode) => FloatNode;
   warp: (p: Vec3Node) => Vec3Node;
+  /** Wachstum/Heilung 0..1 je Merkmals-Index (Vertex-Attribut `wg`); fehlt → immer geheilt. */
+  growth?: (feature: FloatNode) => FloatNode;
 }
 
 /** Zufallsvektor 0..1 je Zelle. */
@@ -118,6 +120,8 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
     pattern: { mask: float(1), color: col, shadowColor: shadowCol },
     positionNode: o.warp(positionLocal),
     fogDistNode: positionView.length().add(o.veil(world)),
+    // Vor der Heilung trüb wie das verdorrte Gelände ringsum
+    growthNode: o.growth ? o.growth(attribute('wg', 'float')) : null,
   });
 }
 

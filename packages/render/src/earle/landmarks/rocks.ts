@@ -17,6 +17,8 @@ export interface RockGeometryData {
   normals: Float32Array;
   /** (u Umfang/Hanglinie, z Rahmenhöhe, Code, Variante) je Vertex. */
   rk: Float32Array;
+  /** Merkmals-Index je Vertex (Wachstum/Heilung je Formation). */
+  rg: Float32Array;
   indices: Uint32Array;
   /** Höchste Deckfläche (über dem Grundradius) für die Schattenkamera. */
   maxHeight: number;
@@ -29,19 +31,29 @@ type V3 = [number, number, number];
  * Fuß zur (verjüngten, ggf. geneigten) Deckfläche, Deckfläche als Fächer, Nadeln mit versetzter Spitze. Rahmen der
  * Formation (Oben = Normale am Mittelpunkt), Positionen im Planetenraum.
  */
-export function buildRockGeometry(formations: readonly RockFormation[], radius: number, worldOf: (f: RockFormation) => number): RockGeometryData {
+export function buildRockGeometry(
+  formations: readonly RockFormation[],
+  radius: number,
+  worldOf: (f: RockFormation) => number,
+  featureOf: (f: RockFormation, index: number) => number = (_f, i) => i,
+): RockGeometryData {
   const pos: number[] = [];
   const nor: number[] = [];
   const rk: number[] = [];
+  const rg: number[] = [];
   const idx: number[] = [];
   let maxHeight = 0;
+  let feature = 0;
   const vtx = (p: V3, n: V3, u: number, z: number, code: number, variant: number): number => {
     pos.push(p[0], p[1], p[2]);
     nor.push(n[0], n[1], n[2]);
     rk.push(u, z, code, variant);
+    rg.push(feature);
     return pos.length / 3 - 1;
   };
-  for (const f of formations) {
+  for (let fi = 0; fi < formations.length; fi++) {
+    const f = formations[fi]!;
+    feature = featureOf(f, fi);
     const world = worldOf(f);
     const kind = KIND_CODE[f.kind] ?? 0;
     const up = f.frame.c;
@@ -147,7 +159,7 @@ export function buildRockGeometry(formations: readonly RockFormation[], radius: 
       }
     });
   }
-  return { positions: new Float32Array(pos), normals: new Float32Array(nor), rk: new Float32Array(rk), indices: new Uint32Array(idx), maxHeight };
+  return { positions: new Float32Array(pos), normals: new Float32Array(nor), rk: new Float32Array(rk), rg: new Float32Array(rg), indices: new Uint32Array(idx), maxHeight };
 }
 
 export function rockGeometry(data: RockGeometryData): BufferGeometry {
@@ -155,6 +167,7 @@ export function rockGeometry(data: RockGeometryData): BufferGeometry {
   g.setAttribute('position', new BufferAttribute(data.positions, 3));
   g.setAttribute('normal', new BufferAttribute(data.normals, 3));
   g.setAttribute('rk', new BufferAttribute(data.rk, 4));
+  g.setAttribute('rg', new BufferAttribute(data.rg, 1));
   g.setIndex(new BufferAttribute(data.indices, 1));
   g.computeBoundingSphere();
   return g;
@@ -169,6 +182,8 @@ export interface RockMaterialOptions {
   /** Zusatz-Nebeldistanz (Schleier) je Welt-Index. */
   veil: (world: FloatNode) => FloatNode;
   warp: (p: Vec3Node) => Vec3Node;
+  /** Wachstum/Heilung 0..1 je Merkmals-Index (Vertex-Attribut `rg`); fehlt → immer geheilt. */
+  growth?: (feature: FloatNode) => FloatNode;
 }
 
 /**
@@ -250,6 +265,7 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
     layers: [{ mask: isCap, color: capLit, shadowColor: mix(ink, capColor, 0.34) }],
     positionNode: o.warp(positionLocal),
     fogDistNode: positionView.length().add(o.veil(world)),
+    growthNode: o.growth ? o.growth(attribute('rg', 'float')) : null,
   });
 }
 

@@ -150,6 +150,8 @@ export interface BarnOptions {
   veil: (world: FloatNode) => FloatNode;
   warp: (p: Vec3Node) => Vec3Node;
   capacity: number;
+  /** Wachstum/Heilung 0..1 je Chunk-Slot (Instanzattribut); fehlt → immer geheilt. */
+  growth?: (slot: FloatNode) => FloatNode;
 }
 
 /**
@@ -168,7 +170,7 @@ export class BarnLandmarks {
     this.data = new InstancedBufferAttribute(new Float32Array(o.capacity * 4), 4);
     this.geometry.setAttribute('barnData', this.data);
     const bn = attribute('bn', 'vec4');
-    const inst = attribute('barnData', 'vec4'); // (Welt, Variante, –, –)
+    const inst = attribute('barnData', 'vec4'); // (Welt, Variante, Chunk-Slot, –)
     const part = bn.x;
     const fu = bn.y;
     const fv = bn.z;
@@ -220,6 +222,7 @@ export class BarnLandmarks {
       ],
       positionNode: o.warp(positionLocal),
       fogDistNode: positionView.length().add(o.veil(world)),
+      growthNode: o.growth ? o.growth(inst.z) : null,
     });
     const mesh = new InstancedMesh(this.geometry, this.material, o.capacity);
     mesh.name = 'planet-barns';
@@ -231,12 +234,12 @@ export class BarnLandmarks {
   }
 
   /** Scheunen setzen (Fuß auf dem Boden, Oben = Normale, Drehung yaw, Maßstab). Liefert die höchste Firsthöhe. */
-  set(barns: ReadonlyArray<{ prop: PlanetProp; world: number }>): number {
+  set(barns: ReadonlyArray<{ prop: PlanetProp; world: number; slot: number }>): number {
     const n = Math.min(barns.length, this.data.count);
     const arr = this.data.array as Float32Array;
     let top = 0;
     for (let i = 0; i < n; i++) {
-      const { prop, world } = barns[i]!;
+      const { prop, world, slot } = barns[i]!;
       _up.set(prop.normal[0], prop.normal[1], prop.normal[2]).normalize();
       // Senkrecht zur Kugel statt zum Hang: Scheunen stehen aufrecht, der Fuß ist versenkt
       _radial.set(prop.position[0], prop.position[1], prop.position[2]).normalize();
@@ -249,6 +252,7 @@ export class BarnLandmarks {
       this.mesh.setMatrixAt(i, _m);
       arr[i * 4] = world;
       arr[i * 4 + 1] = prop.variant;
+      arr[i * 4 + 2] = slot;
       top = Math.max(top, RIDGE * prop.scale);
     }
     this.mesh.count = n;
