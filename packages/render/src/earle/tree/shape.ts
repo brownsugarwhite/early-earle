@@ -491,7 +491,7 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
     const ang = Math.atan2(d.center.z - cz, d.center.x - cx);
     // image 02: warm tones gather at the top and on one flank, cool ones below — patches, not horizontal stripes
     const patch = Math.sin(ang * 1.5 + seed * 0.7 + h * 2.2);
-    d.tone = Math.min(1, Math.max(0, 0.8 * h - 0.02 + 0.2 * patch + (d.hash - 0.5) * 0.32));
+    d.tone = Math.min(1, Math.max(0, 0.78 * h - 0.02 + 0.2 * patch + (d.hash - 0.5) * 0.5));
   }
 
   const roofAt = (x: number, z: number, fallback: number): { y: number; normal: Vector3; dome: number } => {
@@ -599,7 +599,7 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
     const sway = (i % 2 === 0 ? 1 : -1) * (0.08 + 0.12 * rand());
     const lift = R * (0.22 + 0.12 * rand());
     const tipRho = R * 1.45 * reach;
-    const tipY = trunk.groundY(cx + Math.cos(ang) * tipRho, cz + Math.sin(ang) * tipRho) + H * (0.28 + 0.18 * rand());
+    const tipY = trunk.groundY(cx + Math.cos(ang) * tipRho, cz + Math.sin(ang) * tipRho) + H * (0.5 + 0.22 * rand());
     const ctrl = [
       b.clone().addScaledVector(dir(ang), rT * 0.3).add(new Vector3(0, -0.6, 0)),
       b.clone().addScaledVector(dir(ang), rT + 1.2).add(new Vector3(0, 1.4, 0)),
@@ -753,12 +753,12 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
       if (depth === 0 && (k === 1 || k === 3 || k === 4) && rand() < 0.7) {
         const side = new Vector3().crossVectors(d, UP).normalize().multiplyScalar(rand() < 0.5 ? -1 : 1);
         hang(q, d.clone().addScaledVector(side, 1.0), length * (0.4 + 0.2 * rand()), r1 * 0.8, rank, Math.min(2, order + 1), depth + 1);
-        if (rand() < 0.5) needles.push({ pos: q.clone(), normal: out.clone().setY(0).normalize(), size: R * (0.014 + 0.01 * rand()), rank, order: order + 1 });
+        if (rand() < 0.22) needles.push({ pos: q.clone(), normal: out.clone().setY(0).normalize(), size: R * (0.02 + 0.012 * rand()), rank, order: order + 1 });
       }
       p = q;
       r = r1;
     }
-    needles.push({ pos: p.clone(), normal: out.clone().setY(0).normalize(), size: R * (0.02 + 0.016 * rand()), rank, order });
+    if (depth > 0 || rand() < 0.6) needles.push({ pos: p.clone(), normal: out.clone().setY(0).normalize(), size: R * (0.026 + 0.02 * rand()), rank, order });
   };
   const exposedWood = limbs.filter((l) => l.kind !== 'leader');
   for (const l of exposedWood) {
@@ -779,7 +779,7 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
       const o2 = outward.clone().multiplyScalar(0.55).addScaledVector(side, 0.55).addScaledVector(t, 0.25).normalize();
       const start = p.clone().addScaledVector(new Vector3(0, -1, 0), rad * 0.6);
       const rank = Math.min(1, Math.hypot(p.x - cx, p.z - cz) / (R * 1.4));
-      hang(start, o2, R * (0.2 + 0.24 * rand()), Math.min(0.045, rad * 0.3), rank, 0, 0);
+      hang(start, o2, R * (0.22 + 0.26 * rand()), Math.min(0.07, rad * 0.35), rank, 0, 0);
     }
   }
   // rim fringe: lace hanging from under the canopy rim (between the limbs)
@@ -793,7 +793,7 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
       p.y = d.center.y - d.r * d.sy * 0.55;
       if (doorSector(a)) continue;
       const outward = dir(a).multiplyScalar(0.5).add(new Vector3(0, -0.35, 0));
-      hang(p, outward, R * (0.18 + 0.18 * rand()), 0.045, Math.min(1, rho / (R * 1.2)), 0, 0);
+      hang(p, outward, R * (0.18 + 0.2 * rand()), 0.06, Math.min(1, rho / (R * 1.2)), 0, 0);
     }
   }
   // needles along the exposed limb tops (a few, image 04)

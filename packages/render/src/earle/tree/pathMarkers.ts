@@ -1,6 +1,6 @@
-import { BufferGeometry, Color, CylinderGeometry, Float32BufferAttribute, Group, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshBasicNodeMaterial, Quaternion, Vector3 } from 'three/webgpu';
+import { BufferGeometry, CylinderGeometry, Float32BufferAttribute, Group, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshBasicNodeMaterial, Quaternion, Vector3 } from 'three/webgpu';
 import type { Node } from 'three/webgpu';
-import { attribute, color, float, fract, fwidth, max, mix, normalLocal, positionGeometry, positionLocal, smoothstep, step, uniform } from 'three/tsl';
+import { attribute, color, float, fract, fwidth, max, mix, positionGeometry, positionLocal, smoothstep, step, uniform } from 'three/tsl';
 import type { Vec3 } from '@ee/world';
 import { heroNodeScale, type HeroPathNode, type HeroTreePath } from './treePath';
 
@@ -427,4 +427,3 @@ export function nodePosition(v: Vec3, out = new Vector3()): Vector3 {
   return out.set(v[0], v[1], v[2]);
 }
 
-void Color;

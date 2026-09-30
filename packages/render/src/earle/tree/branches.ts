@@ -1,4 +1,4 @@
-import { Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial, Vector3 } from 'three/webgpu';
+import { DoubleSide, Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial, Vector3 } from 'three/webgpu';
 import type { UniformNode } from 'three/webgpu';
 import {
   attribute,
@@ -72,7 +72,9 @@ export function createLaceMesh(o: LaceMeshOptions): CountLodMesh {
   const n = Math.max(1, o.twigs.length);
   const geometry = new InstancedBufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute([0, -1, 0, 1, -1, 0, 1, 1, 0, 0, 1, 0], 3));
-  geometry.setIndex([0, 1, 2, 0, 2, 3]);
+  // side = cross(segment, view) points "down" on screen for a segment running to the right: this order is
+  // counter-clockwise on screen (front face); the material is double-sided anyway (ribbons turn with the view)
+  geometry.setIndex([0, 2, 1, 0, 3, 2]);
   const a = new Float32Array(n * 3);
   const b = new Float32Array(n * 3);
   const d = new Float32Array(n * 4);
@@ -110,6 +112,7 @@ export function createLaceMesh(o: LaceMeshOptions): CountLodMesh {
   const width = max(w.min(screenSize.y.mul(0.0025).div(pxPerUnit)), float(0.75).div(pxPerUnit));
   const world = P.add(side.mul(width.mul(positionGeometry.y)));
   const material = new MeshBasicNodeMaterial();
+  material.side = DoubleSide;
   material.vertexNode = cameraProjectionMatrix.mul(cameraViewMatrix.mul(vec4(world, 1)));
   const outDir = modelWorldMatrix.mul(vec4(cos(D.w), 0.2, sin(D.w), 0)).xyz.normalize();
   const ndl = varying(outDir.dot(bb.sunDirWorld), 'vLaceNdl');
