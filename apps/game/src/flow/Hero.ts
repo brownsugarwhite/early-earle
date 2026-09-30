@@ -247,8 +247,21 @@ export class Hero {
     const r = this.scale * 0.95;
     this.shadowProxy.position.set(center[0], center[1] - 0.05 * this.scale, center[2]);
     this.shadowProxy.scale.set(r * (across + (along - across) * ax * ax), r * sy, r * (across + (along - across) * az * az));
-    this.shadowProxy.visible = this.root.visible;
+    this.shadowProxy.visible = this.root.visible && !this.far;
   }
+
+  /**
+   * Behind the display horizon (the map panned far away): body and shadow proxy skip their draws. Independent of
+   * `root.visible`, which the choreography owns.
+   */
+  setFar(far: boolean): void {
+    if (far === this.far) return;
+    this.far = far;
+    this.mesh.visible = !far;
+    this.shadowProxy.visible = this.root.visible && !far;
+  }
+
+  private far = false;
 
   dispose(): void {
     for (const d of this.disposables) d.dispose();

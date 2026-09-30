@@ -192,6 +192,8 @@ export class FlowScene implements SceneController {
   private readonly shadowBox = new Box3();
   /** Board pipeline warm-up started in `mount` (WebGPU), awaited by `warm` for the boot progress. */
   private boardWarm: Promise<void> | null = null;
+  /** The warm-up above has settled (its demo board no longer draws); true without one. */
+  private boardWarmDone = true;
   /** What the choreographies (choreo/, progression/) see of the scene (`createStage()`, plane poses). */
   private stage: FlowStage | null = null;
   /** The running (or last) depart/walk; `log` describes its route (tests, Werkstatt). */
@@ -325,6 +327,8 @@ export class FlowScene implements SceneController {
       this.boardWarm = board.warmup(demoState(), async (root) => {
         await ctx.renderer.compileAsync(root, world.camera, world.scene);
       });
+      this.boardWarmDone = false;
+      void this.boardWarm.finally(() => (this.boardWarmDone = true));
     }
     // Diagnostics and e2e hooks: the endless pan and the streaming stats
     if (typeof window !== 'undefined') (window as unknown as { __flow?: unknown }).__flow = this.debugApi();
@@ -439,6 +443,9 @@ export class FlowScene implements SceneController {
       }
     }
 
+    // Panned far away (free mode): behind the horizon the hero and its shadow proxy draw nothing (camera of last frame)
+    const hp = hero.pose.position;
+    hero.setFar(this.phase === 'map' && !hero.isFlying && world.world.beyondHorizon(hp.x, hp.z, hp.y + 2 * hero.scale + 0.5));
     hero.update(dt, world.camera);
     // A launched creature keeps its parts on the hero (until it lands in the next level).
     if (board.carrying) {
@@ -1854,6 +1861,10 @@ export class FlowScene implements SceneController {
           slots: w.world.slots.entries().length,
           evictions: w.world.slots.evictions,
           shadowPasses: w.shadowPasses,
+          /** Draw calls of the last frame (all passes). */
+          drawCalls: (this.ctx?.renderer.info as { render?: { drawCalls?: number } } | undefined)?.render?.drawCalls ?? 0,
+          /** The board's pipeline warm-up has settled (its demo board drew along until then). */
+          warm: this.boardWarmDone,
         };
       },
     };

@@ -1150,6 +1150,9 @@ export class EarlePlanet {
     const camZ = _v.z + this.focus.z;
     const camDist = cameraWorld.length();
     const horizon = Math.acos(Math.min(1, R / Math.max(R + 0.01, camDist)));
+    this.viewFoot.x = camX;
+    this.viewFoot.z = camZ;
+    this.viewHorizon = horizon;
     const camDir = _c.copy(cameraWorld).normalize();
     const camAlpha = Math.hypot(_v.x, _v.z) / R;
     const reach = Math.min(this.viewRadius, (horizon + camAlpha + 0.35) * R + CHUNK_SIZE);
@@ -1729,6 +1732,23 @@ export class EarlePlanet {
   }
 
   private viewChunkList: Array<{ cx: number; cz: number; dist: number }> = [];
+
+  /**
+   * Steht etwas an Ebenenpunkt (x, z), `top` Einheiten über der Kugel (Boden + Höhe), mit waagrechter Ausdehnung `reach`
+   * für die Kamera des letzten `update` ganz hinter dem Horizont der Anzeigekugel? Ein Gegenstand der Höhe H lugt bis
+   * acos(R / (R + H)) über den Horizont (Bogen vom Kamerafuß); dazu 0,05 rad Rand. Vor dem ersten `update`: nie.
+   */
+  beyondHorizon(x: number, z: number, top: number, reach = 0): boolean {
+    if (this.viewHorizon < 0) return false;
+    const R = this.options.radius;
+    const arc = Math.hypot(x - this.viewFoot.x, z - this.viewFoot.z) - reach;
+    const peek = Math.acos(R / (R + Math.max(0, top)));
+    return arc / R > Math.min(Math.PI * 0.9, this.viewHorizon + peek + 0.05);
+  }
+
+  /** Kamerafuß in der Ebene und Horizontwinkel des letzten `update` (−1 = noch keins). */
+  private readonly viewFoot = { x: 0, z: 0 };
+  private viewHorizon = -1;
 
   /** Geladene Chunks. */
   get loadedCount(): number {

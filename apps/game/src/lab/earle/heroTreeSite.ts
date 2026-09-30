@@ -199,7 +199,8 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
   });
   let grand: GrandTrees | null = null;
   let grandReach = 0;
-  let grandTop = 0;
+  // Horizon culling per tree (plane foot, top above the sphere, crown reach): the giant and each sibling
+  const cullParts: Array<{ x: number; z: number; top: number; reach: number }> = [{ x: slot.position[0], z: slot.position[2], top: slot.position[1] + height, reach: planShape.R * 1.55 * TREE_SCALE }];
   if (sites.length > 0) {
     grand = createGrandTrees({
       sites,
@@ -218,10 +219,10 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
       const site = sites[i]!;
       const reach = spec.crown * (spec.form === 'schirm' ? 1.6 : 1.7);
       grandReach = Math.max(grandReach, (Math.hypot(site.x, site.z) + reach) * TREE_SCALE);
-      grandTop = Math.max(grandTop, (grand!.tops[i]! + 1) * TREE_SCALE);
       // Own clearing on the plane (the giant's clearing ends at ≈ 9 units, the siblings stand 11–16 units out)
       gp.set(site.x, 0, site.z).applyMatrix4(slotMatrix);
       world.setLandmark({ id: `hero-tree-grand-${i}`, world: options.worldIndex, x: gp.x, z: gp.z, yawDeg: 0, scale: TREE_SCALE, clearRadius: reach * TREE_SCALE * 0.8 });
+      cullParts.push({ x: gp.x, z: gp.z, top: world.heightAt(gp.x, gp.z) + (grand!.tops[i]! + 1) * TREE_SCALE, reach: reach * TREE_SCALE });
     });
   }
   const grandIds = sites.map((_, i) => `hero-tree-grand-${i}`);
@@ -293,15 +294,25 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
       sightOverride = point ? { point: point.clone(), radius } : null;
     },
     update(dt, camera, sunDirWorld, cameraWorld, frustum) {
-      // Cull behind the horizon or outside the frustum (7 draw calls + 3 shadow casters otherwise). The horizon test runs
-      // on the plane (arc from the camera's foot to the tree's foot): the display mapping only holds up to π·R from the
-      // focus — the tree 200 units ahead would otherwise come round the globe once and stand next to the camera.
+      // Cull behind the horizon or outside the frustum (giant and siblings: 11 draw calls + 4 shadow casters per cascade
+      // otherwise). The horizon test runs on the plane (arc from the camera's foot to each tree's foot, less its crown
+      // reach): a tree of height H peeks up to acos(R / (R + H)) over the horizon — seen from world 07 the giant
+      // 67 units ahead is still hidden. The display mapping only holds up to π·R from the focus — the tree 200 units ahead
+      // would otherwise come round the globe once and stand next to the camera.
       const R = world.options.radius;
       world.mapping.toFlatCpu(cameraWorld, _v);
-      const arc = Math.hypot(footPlane.x - world.focus.x - _v.x, footPlane.z - world.focus.z - _v.z);
+      const footX = _v.x + world.focus.x;
+      const footZ = _v.z + world.focus.z;
       const horizon = Math.acos(Math.min(1, R / Math.max(R + 0.01, cameraWorld.length())));
-      const reach = Math.min(Math.PI * 0.9, horizon + (Math.max(height, grandTop) + 8 + grandReach) / R);
-      if (arc / R > reach) {
+      let peeks = false;
+      for (const part of cullParts) {
+        const arc = Math.hypot(part.x - footX, part.z - footZ) - part.reach;
+        if (arc / R <= Math.min(Math.PI * 0.9, horizon + Math.acos(R / (R + Math.max(0, part.top))) + 0.05)) {
+          peeks = true;
+          break;
+        }
+      }
+      if (!peeks) {
         holder.visible = false;
         return;
       }
