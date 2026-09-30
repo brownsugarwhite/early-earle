@@ -62,7 +62,7 @@
 .hud-title { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: 0.02em; line-height: 1.1; display: flex; flex-direction: column; }
 .hud-title small { font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.75; font-weight: 900; }
 .hud-stat { display: flex; flex-direction: column; align-items: center; min-width: 44px; line-height: 1; }
-.hud-stat b { font-size: 20px; font-weight: 900; }
+.hud-stat b { font-family: var(--font-heavy); font-size: 20px; font-weight: 900; } /* Zugzahl bzw. Klassik-Punkte: Caprasimo */
 .hud-stat span { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.75; margin-top: 3px; }
 .hud-goal { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--paper); font-size: 12px; font-weight: 900; box-shadow: 4px 2px 0 var(--ink-soft); }
 .hud-goal[data-done='true'] { background: var(--neon); }

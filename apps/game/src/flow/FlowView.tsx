@@ -14,6 +14,7 @@ import { WERKSTATT_ENABLED } from '../overlay/WerkstattButton';
 import { clampCurrent, STORY_AFTER_LEVEL_1 } from './progression/gate';
 import { pickSwipeDirection } from './tutorial/swipeDirection';
 import { installAudio } from '../audio/wiring';
+import '../klassik';
 import '../styles/flow.css';
 
 /** The one-take composition: canvas + glass HUD + splash overlay. `/` starts at the splash, `/play` on the map. */

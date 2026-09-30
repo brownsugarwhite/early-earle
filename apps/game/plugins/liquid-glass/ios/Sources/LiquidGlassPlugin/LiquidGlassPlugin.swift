@@ -19,6 +19,11 @@ public class LiquidGlassPlugin: CAPPlugin, CAPBridgedPlugin {
     /// `GlassOverlay` (iOS 16+) — typed access only inside `#available` blocks.
     private var overlayBox: AnyObject?
 
+    override public func load() {
+        // The HUD's big number is set in Caprasimo (bundled with this package, see Package.swift).
+        GlassFonts.register()
+    }
+
     @objc func isAvailable(_ call: CAPPluginCall) {
         var available = false
         var glass = false
