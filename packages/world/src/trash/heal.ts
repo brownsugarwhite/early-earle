@@ -98,14 +98,15 @@ export interface HealOptions {
 }
 
 /**
- * Heilschwelle aus dem nächsten Pfadpunkt: Knoten i geschafft → Fortschritt i + 1; direkt am Knoten ist der Müll dann
- * schon weg (Versatz 0.6 statt 1), weiter weg vom Pfad heilt später (die Heilung läuft wie eine Welle vom Pfad nach
- * außen), spätestens beim Zonenfinale (alle Knoten der Zone).
+ * Heilschwelle aus dem nächsten Pfadpunkt: Knoten i geschafft → Fortschritt i + 1 räumt den Weg bis zum nächsten
+ * Knoten frei (Versatz 0.1: genau dort, wohin die Kamera nach dem Sieg dreht, läuft die Feier), weiter weg vom Pfad
+ * heilt später (die Heilung läuft wie eine Welle vom Pfad nach außen), spätestens beim Zonenfinale (alle Knoten der
+ * Zone). Fortschritt 0 lässt alles stehen (Mindestschwelle Zonenanfang + HEAL_SPAN).
  */
 export function healThreshold(hit: PathHit, o: HealOptions): number {
   const zoneStart = o.zone * o.nodesPerZone;
   const zoneEnd = (o.zone + 1) * o.nodesPerZone;
-  const raw = hit.s + 0.6 + o.perUnit * hit.dist + o.delay;
+  const raw = hit.s + 0.1 + o.perUnit * hit.dist + o.delay;
   return Math.min(zoneEnd, Math.max(zoneStart + HEAL_SPAN, raw));
 }
 

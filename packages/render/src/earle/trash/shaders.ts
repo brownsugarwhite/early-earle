@@ -60,6 +60,8 @@ export interface TrashShaderContext {
   /** Zeile der Neon-Rampe und der Moosfarben (je Welt; Welt → Zeile über Tabelle). */
   neonRow: (world: FloatNode) => FloatNode;
   mossRow: (world: FloatNode) => FloatNode;
+  /** Blütenzeile (Stufe 1 = Papierweiß der Welt: sauberer Nebel beim Heilen). */
+  bloomRow: (world: FloatNode) => FloatNode;
   snowWorld: (world: FloatNode) => FloatNode;
   /** Gesamtfaktor für Neon (Lab-Regler, 1 = Inhalt) und für die Deckkraft des Schleiers. */
   neonScale: TSLUniform;
@@ -106,7 +108,7 @@ function attrs() {
  * Nähe-Ausblendung wie bei der Vegetation: Instanzen, deren Achse der Kamera näher kommt als `nearClear`, und solche
  * in der Lichtung unter der Kamera (`footClear`) schrumpfen weg — nichts schneidet in die Linse.
  */
-function fades(ctx: TrashShaderContext, base: Vec3Node, top: Vec3Node, radius: FloatNode, world: FloatNode): FloatNode {
+function fades(ctx: TrashShaderContext, base: Vec3Node, top: Vec3Node, radius: FloatNode, world: FloatNode, footless: FloatNode | null = null): FloatNode {
   const axis = top.sub(base);
   const len2 = axis.dot(axis).max(1e-4);
   const t = clamp(ctx.camLocal.sub(base).dot(axis).div(len2), 0, 1);
@@ -116,7 +118,9 @@ function fades(ctx: TrashShaderContext, base: Vec3Node, top: Vec3Node, radius: F
   const camUp = normalize(ctx.camLocal);
   const along = base.dot(camUp);
   const lateral = base.sub(camUp.mul(along)).length();
-  const foot = select(along.greaterThan(0).and(ctx.footClear.greaterThan(0.01)), smoothstep(ctx.footClear, ctx.footClear.add(1.8), lateral), float(1));
+  let foot = select(along.greaterThan(0).and(ctx.footClear.greaterThan(0.01)), smoothstep(ctx.footClear, ctx.footClear.add(1.8), lateral), float(1)) as unknown as FloatNode;
+  // Bodennahes (Blüten, Funken) bleibt auch in der Lichtung unter der Kamera: es verstellt nichts
+  if (footless) foot = mix(foot, float(1), footless);
   // Fremde Welten nahe der Kamera treten weg (wie die Vegetation)
   const d = ctx.camLocal.sub(base).length();
   const foreign = mix(float(1), smoothstep(11, 14, d), ctx.foreign(world));
@@ -473,12 +477,13 @@ export function createSporeMaterial(ctx: TrashShaderContext): MeshBasicNodeMater
   const isFloat = kind.greaterThan(0.5).and(kind.lessThan(1.5));
   const isBloom = kind.greaterThan(2.5);
   const center = ctx.warp(select(isCol, colPos, select(isFloat, flPos, select(isBloom, bloomPos, burstPos))) as unknown as Vec3Node);
-  const sizeW = select(isCol, colSize, select(isFloat, flSize, select(isBloom, bloomSize, burstSize))).mul(fades(ctx, src, src.add(up.mul(0.5)), float(0.3), world));
+  const sizeW = select(isCol, colSize, select(isFloat, flSize, select(isBloom, bloomSize, burstSize))).mul(fades(ctx, src, src.add(up.mul(0.5)), float(0.3), world, step(1.5, kind)));
   const viewC = modelViewMatrix.mul(vec4(center, 1));
   const depth = viewC.z.negate().max(0.05);
   const pxPerUnit = ctx.projScaleY.mul(screenSize.y).mul(0.5).div(depth);
   const px = sizeW.mul(pxPerUnit);
-  const maxPx = screenSize.y.mul(3.4 / 900);
+  // Ausbrüche der Feier etwas größer als die ruhigen Sporen (4.4 statt 3.4 px bei 900 px Bildhöhe)
+  const maxPx = screenSize.y.mul(select(kind.greaterThan(1.5).and(kind.lessThan(2.5)), float(4.4), float(3.4)).div(900));
   const sizeEff = clamp(sizeW, float(1.1).div(pxPerUnit), maxPx.div(pxPerUnit)).mul(step(ctx.collapsePx, px));
   const material = new MeshBasicNodeMaterial();
   material.vertexNode = cameraProjectionMatrix.mul(vec4(viewC.xyz.add(vec3(positionGeometry.x, positionGeometry.y, 0).mul(sizeEff)), 1));
@@ -559,7 +564,10 @@ export function createVeilMaterial(ctx: TrashShaderContext, radius: number): Mes
   const litC = ctx.lookup.pal(4, neonRow).rgb;
   const paleC = ctx.lookup.pal(5, neonRow).rgb;
   const wispCol = mix(litC, paleC, core.mul(inCore));
-  const col = select(isHaze, deepC, mix(wispCol, paleC, fine.mul(0.5)));
+  const neonCol = select(isHaze, deepC, mix(wispCol, paleC, fine.mul(0.5)));
+  // Beim Heilen wird aus dem Gift Earle-Nebel: Neon bleicht zu Papierweiß aus, bevor die Schwade vergeht
+  const cleanC = ctx.lookup.pal(1, ctx.bloomRow(wv)).rgb;
+  const col = mix(neonCol, cleanC, smoothstep(0.05, 0.55, clear));
   material.colorNode = steppedFog(col, ctx.fog, ctx.fogLookup, camDist.add(ctx.veil(wv)));
   material.opacityNode = min(alpha, float(0.85));
   return material;

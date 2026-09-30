@@ -25,6 +25,7 @@ import {
   healAmount,
   type ChunkId,
   type ChunkTrash,
+  type VeilSpore,
   type PlanetField,
   type SpiralPath,
   type TrashItem,
@@ -203,6 +204,7 @@ export class TrashField {
       ) as unknown as UniformArrayLike;
     const neonTable = table((r) => r.rows.neon);
     const mossTable = table((r) => r.mossRow);
+    const bloomTable = table((r) => r.rows.bloom);
     const snowTable = table((r) => (r.snow ? 1 : 0));
 
     const fog = planet.fog;
@@ -223,6 +225,7 @@ export class TrashField {
       foreign,
       neonRow: (w) => arrayElement(neonTable, w),
       mossRow: (w) => arrayElement(mossTable, w),
+      bloomRow: (w) => arrayElement(bloomTable, w),
       snowWorld: (w) => arrayElement(snowTable, w),
       neonScale: this.neonScale,
       veilScale: this.veilScale,
@@ -556,12 +559,14 @@ export class TrashField {
     const veils: ChunkTrash[] = [];
     /** Blüten: auch geheilte Elemente (dort blüht es), nur in den nahen Chunks. */
     const blooms: TrashItem[] = [];
+    const nodeBlooms: VeilSpore[] = [];
     let hMax = 0;
     for (const key of this.active) {
       const chunk = this.cache.get(key);
       if (!chunk) continue;
       const near = nearSet.has(key);
       if (chunk.veil) veils.push(chunk);
+      if (near) nodeBlooms.push(...chunk.nodeBlooms);
       for (const it of chunk.items) {
         // Blüten nur, wo die Heilung angekommen ist oder in der nächsten Feier ankommt (Rest folgt beim nächsten Umbau)
         if (near && it.heal < NEVER_HEALS * 0.5 && it.heal <= floor + 1.5) blooms.push(it);
@@ -582,7 +587,7 @@ export class TrashField {
     this.fill(this.rings, lists.ring, false);
     this.fill(this.blocks, lists.block, false);
     this.fill(this.goo, lists.goo, false);
-    this.fillSpores(veils, lists.big, lists.tube.filter((t) => t.kind === 'vent'), alive, blooms);
+    this.fillSpores(veils, lists.big, lists.tube.filter((t) => t.kind === 'vent'), alive, blooms, nodeBlooms);
     this.fillVeil(veils);
   }
 
@@ -623,7 +628,7 @@ export class TrashField {
     mesh.count = n;
   }
 
-  private fillSpores(veils: ChunkTrash[], bigs: TrashItem[], vents: TrashItem[], alive: (heal: number) => boolean, blooms: TrashItem[]): void {
+  private fillSpores(veils: ChunkTrash[], bigs: TrashItem[], vents: TrashItem[], alive: (heal: number) => boolean, blooms: TrashItem[], nodeBlooms: VeilSpore[]): void {
     const g = this.sporeGeometry;
     const a = g.getAttribute('spA') as InstancedBufferAttribute;
     const b = g.getAttribute('spB') as InstancedBufferAttribute;
@@ -687,6 +692,16 @@ export class TrashField {
           for (let k = 0; k < 2 && n < cap; k++) push(it.position, upV, it.variant * 11 + k * 0.5, 0.05, it.heal, 2, it.world);
         }
       }
+    }
+    // Blütenkranz um geschaffte Knoten (jeder dritte Punkt steigt vorher als heller Funke auf): die Feier nach dem Sieg
+    {
+      const bloomRow = (world: number) => (this.worldRows[world] ?? this.worldRows.find((r) => r))?.rows.bloom ?? 0;
+      nodeBlooms.forEach((b, k) => {
+        const l = Math.hypot(b.position[0], b.position[1], b.position[2]) || 1;
+        const world = this.options.planet.field.worldAt(b.position[0] / l, b.position[1] / l, b.position[2] / l);
+        if (healAmount(b.heal, this.progressFloor) < 1 && k % 3 === 0) push(b.position, b.up, b.phase * 13, 0.06, b.heal, 2, world);
+        if (push(b.position, b.up, b.phase * 5.3, b.size, b.heal, 3, world)) c.setZ(n - 1, bloomRow(world));
+      });
     }
     // Schwebende Sporen im Schleier
     outer: for (const ch of veils) {

@@ -147,6 +147,22 @@ describe('TrashPlanner', () => {
     expect(gone).toBeLessThan(zone0.length * 0.85);
   });
 
+  it('legt Blütenkränze um die Knoten der Müll-Welten (blühen, sobald der Knoten geschafft ist)', () => {
+    const blooms = all.flatMap((c) => c.trash.nodeBlooms);
+    expect(blooms.length).toBeGreaterThan(100);
+    const zone0 = path.nodes.filter((n) => n.zone === 0).map((n) => n.index);
+    for (const b of blooms) {
+      // Schwelle = Knotenindex + 1 (ganzzahlig), Blüte am Boden
+      expect(Number.isInteger(b.heal)).toBe(true);
+      const r = Math.hypot(...b.position);
+      const g = 32 + field.heightAt(b.position[0] / r, b.position[1] / r, b.position[2] / r);
+      expect(Math.abs(r - g)).toBeLessThan(0.05);
+    }
+    // Startwelt: fast jeder Knoten der Zone 0 hat seinen Kranz
+    const withRing = new Set(blooms.map((b) => b.heal - 1));
+    expect(zone0.filter((i) => withRing.has(i)).length).toBeGreaterThan(zone0.length * 0.6);
+  });
+
   it('lässt überwachsene Ruinen stehen (heals: false)', () => {
     const forest: Array<TrashSpec | undefined> = worlds.map(() => undefined);
     forest[0] = { ruins: 0.02, debris: 0.3, neon: 0, heals: false };

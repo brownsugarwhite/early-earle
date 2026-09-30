@@ -139,6 +139,11 @@ export interface ChunkTrash {
   items: TrashItem[];
   veil: VeilGrid | null;
   spores: VeilSpore[];
+  /**
+   * Blüten um die Knoten dieses Chunks (Kranz 1.2–3.2 Einheiten): sie blühen auf, sobald der Knoten geschafft ist
+   * (Heilschwelle = Knotenindex + 1) — die Feier nach dem Sieg, bleibende Spur der Heilung längs des Wegs.
+   */
+  nodeBlooms: VeilSpore[];
   /** Höchstes Element (Welteinheiten über dem Fuß), für die Schattenkamera. */
   hMax: number;
 }

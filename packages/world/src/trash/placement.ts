@@ -89,7 +89,7 @@ export class TrashPlanner {
   /** Müll und Schleier eines Chunks. */
   chunk(id: ChunkId): ChunkTrash {
     const items: TrashItem[] = [];
-    const out: ChunkTrash = { items, veil: null, spores: [], hMax: 0 };
+    const out: ChunkTrash = { items, veil: null, spores: [], nodeBlooms: [], hMax: 0 };
     if (!this.active || !this.touches(id)) return out;
     const R = this.ctx.field.params.radius;
     const halfExtent = this.halfExtent(id);
@@ -287,6 +287,39 @@ export class TrashPlanner {
     // --- Schleier und Sporen ---------------------------------------------------------------------------------
     out.veil = this.veil(id);
     if (out.veil) out.spores = this.spores(id, out.veil, halfExtent, R);
+    out.nodeBlooms = this.nodeBlooms(id);
+    return out;
+  }
+
+  /** Blütenkranz um jeden Knoten des Chunks, dessen Welt heilenden Müll trägt. */
+  private nodeBlooms(id: ChunkId): VeilSpore[] {
+    const out: VeilSpore[] = [];
+    const f = this.ctx.field;
+    const R = f.params.radius;
+    for (const node of this.ctx.nodes) {
+      const p = node.position;
+      const l = Math.hypot(p[0], p[1], p[2]) || 1;
+      const c = f.chunkOf(p[0] / l, p[1] / l, p[2] / l);
+      if (c.face !== id.face || c.cx !== id.cx || c.cy !== id.cy) continue;
+      const loc = this.specAt([p[0] / l, p[1] / l, p[2] / l]);
+      if (!loc.spec || loc.spec.heals === false) continue;
+      // Nur Knoten am Boden (die Stufen am Riesenbaum liegen über dem Gelände)
+      if (l - (R + f.heightAt(p[0] / l, p[1] / l, p[2] / l)) > 0.5) continue;
+      const rand = mulberry32(hash32('trash-node-bloom', node.index, this.ctx.seed));
+      const up: Vec3 = [p[0] / l, p[1] / l, p[2] / l];
+      const n = Math.round(18 * Math.min(1.3, (this.ctx.debrisScale ?? 1) + 0.3));
+      for (let k = 0; k < n; k++) {
+        const a = rand() * Math.PI * 2;
+        const r = 1.2 + Math.sqrt(rand()) * 1.6;
+        const d = this.offsetDir(p, up, a, r);
+        const g = R + f.heightAt(d[0], d[1], d[2]) + 0.01;
+        const pos: Vec3 = [d[0] * g, d[1] * g, d[2] * g];
+        // nicht auf die Wegpunkte
+        if (this.path.locate(pos, _hit).dist < 0.45) continue;
+        if (this.ctx.isBlocked?.(d[0], d[1], d[2])) continue;
+        out.push({ position: pos, up: d, heal: node.index + 1, phase: rand(), size: 0.03 + rand() * 0.025 });
+      }
+    }
     return out;
   }
 
