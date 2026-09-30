@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { applyMove, createState, gullDropFor, gullTimes, levelFromAscii, setGullMode } from '@ee/core';
 import { chainNote, inSet, stepFrom, ZONE_KEYS, ZONE_MUSIC } from './scales';
 import { rexSchedule, wordSyllables, babbleSyllables, BABBLE_MAX_S } from './rex';
 import { planMove, travelTime } from './timeline';
@@ -158,5 +159,70 @@ describe('combo harmony', () => {
       .sounds.filter((s) => s.id === 'merge')
       .map((s) => s.p.step ?? 0);
     expect(steps).toEqual([0, 2, 4]);
+  });
+});
+
+describe('gull', () => {
+  afterEach(() => setGullMode('auto'));
+  // 1+1 and 2+2 merge on a swipe left (tier 3 = goal): a spawn and the win in one move.
+  const board = `
+    1 . . 1
+    2 . . 2
+    . . . .
+    . . . .
+  `;
+
+  it('a gull spawn: cries across the stereo field, wings, fall, splat on the shared impact time; no pop sound', () => {
+    const level = levelFromAscii(board, { id: 'gull-audio', goals: [{ type: 'reachTier', tier: 5 }] });
+    const s0 = createState(level, 77);
+    const res = applyMove(s0, 'left')!;
+    const spawn = res.events.find((e) => e.type === 'spawn');
+    expect(spawn).toBeDefined();
+    setGullMode('off');
+    const plain = planMove(res, { zone: 'tjorizo', prev: s0, guess: blob });
+    expect(plain.gullAt).toBeNull();
+    const spawnAt = plain.sounds.find((s) => s.id === 'spawn')!.t;
+    expect(plain.sounds.some((s) => s.id.startsWith('gull') || s.id === 'splat' || s.id === 'dropFall')).toBe(false);
+
+    setGullMode('always');
+    const drop = gullDropFor(res)!;
+    const plan = planMove(res, { zone: 'tjorizo', prev: s0, guess: blob });
+    const g = gullTimes(spawnAt);
+    expect(plan.gullAt).toBeCloseTo(g.impactAt, 9);
+    expect(plan.sounds.some((s) => s.id === 'spawn')).toBe(false);
+    const one = (id: string) => plan.sounds.find((s) => s.id === id)!;
+    expect(one('splat').t).toBeCloseTo(g.impactAt, 9);
+    expect(one('splat').p.tier).toBe(drop.tier);
+    expect(one('dropFall').t).toBeCloseTo(g.releaseAt, 9);
+    expect(one('gullWings').t).toBeCloseTo(g.releaseAt - 0.12, 9);
+    const cries = plan.sounds.filter((s) => s.id === 'gullCall');
+    expect(cries).toHaveLength(1 + drop.call);
+    expect(cries[0]!.t).toBeCloseTo(g.callAt, 9);
+    expect(cries[0]!.p.pan).toBeCloseTo(-0.7 * drop.side, 9);
+    if (cries.length > 1) expect(cries[cries.length - 1]!.p.pan).toBeCloseTo(0.7 * drop.side, 9);
+    for (const c of cries) expect(c.p.dir).toBe(drop.side > 0 ? 'right' : 'left');
+    expect(cries.filter((c) => c.p.kind === 'laugh')).toHaveLength(drop.laugh ? 1 : 0);
+    // Cries pan monotonically in flight direction.
+    for (let i = 1; i < cries.length; i++) expect((cries[i]!.p.pan! - cries[i - 1]!.p.pan!) * drop.side).toBeGreaterThan(0);
+  });
+
+  it('Level 1 (auto): the gull brings the first spawn; the win stinger waits for the splat', () => {
+    const level = levelFromAscii(board, { id: 'tjorizo-001', goals: [{ type: 'reachTier', tier: 3 }] });
+    const s0 = createState(level, 1001);
+    const res = applyMove(s0, 'left')!;
+    expect(res.state.status).toBe('won');
+    const plan = planMove(res, { zone: 'tjorizo', prev: s0, guess: blob });
+    expect(plan.gullAt).not.toBeNull();
+    expect(plan.gullAt!).toBeGreaterThanOrEqual(1.0);
+    expect(plan.won).toBe(true);
+    expect(plan.endAt).toBeGreaterThan(plan.gullAt!);
+    expect(plan.sounds.find((s) => s.id === 'won')!.t).toBeGreaterThan(plan.gullAt!);
+  });
+
+  it('synthetic moves without a level keep their plain spawn pop in auto mode', () => {
+    const { res, prev } = syntheticMove({ tier: 3, material: 'jelly', merges: 1, cells: 2, extra: [{ type: 'spawn', phase: 6, id: 999, at: [3, 3], tier: 1, kind: 'normal', material: 'jelly' }] });
+    const plan = planMove(res, { zone: 'tjorizo', prev, guess: blob });
+    expect(plan.gullAt).toBeNull();
+    expect(plan.sounds.some((s) => s.id === 'spawn')).toBe(true);
   });
 });

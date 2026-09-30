@@ -150,6 +150,27 @@ describe('Möwe: Regel', () => {
     }
   });
 
+  it('fliegt über das Brett an: Zellen links der Mitte nach links (side −1), rechts der Mitte nach rechts', () => {
+    let left = 0;
+    let right = 0;
+    for (const level of ALL.slice(0, 25)) {
+      for (const res of play(level, hash32(level.id, 9), 3, 20)) {
+        const drop = gullDropFor(res, 'always');
+        if (!drop) continue;
+        const dx = drop.at[0] - (res.state.geo.w - 1) / 2;
+        if (dx < -0.25) {
+          expect(drop.side).toBe(-1);
+          left++;
+        } else if (dx > 0.25) {
+          expect(drop.side).toBe(1);
+          right++;
+        }
+      }
+    }
+    expect(left).toBeGreaterThan(10);
+    expect(right).toBeGreaterThan(10);
+  });
+
   it('ist deterministisch: gleiches Level, gleicher Seed, gleiche Züge → dieselben Möwen', () => {
     for (const level of ALL.slice(0, 30)) {
       const seed = hash32(level.id, 7);
@@ -179,7 +200,8 @@ describe('Möwe: Regel', () => {
           expect(back.current).toBe(h.current);
           const again = applyMove(back.current, dir)!;
           expect(gullDropFor(again)).toEqual(drop);
-          // zurück und ein anderer Wisch: dieselbe Zugnummer → wieder die Möwe (sofern ein passender Spawn kommt), gleicher Flug
+          // zurück und ein anderer Wisch: dieselbe Zugnummer → wieder die Möwe (sofern ein passender Spawn kommt), gleiche
+          // Schneise und Rufe (die Seite folgt der Zelle)
           for (const other of dirs) {
             if (other === dir) continue;
             const alt = applyMove(back.current, other)!;
@@ -187,7 +209,7 @@ describe('Möwe: Regel', () => {
             const d2 = gullDropFor(alt);
             if (s && gullTiers(level).includes(s.tier)) {
               expect(d2).not.toBeNull();
-              const pick = ({ side, corridor, call, laugh }: GullDrop) => ({ side, corridor, call, laugh });
+              const pick = ({ corridor, call, laugh }: GullDrop) => ({ corridor, call, laugh });
               expect(pick(d2!)).toEqual(pick(drop));
             } else expect(d2).toBeNull();
           }

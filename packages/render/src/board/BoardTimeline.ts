@@ -1,5 +1,5 @@
 import { Vector3 } from 'three/webgpu';
-import type { Blob, Coord, LevelState, MergeEvent, MoveResult } from '@ee/core';
+import { GULL_SETTLE_S, gullDropFor, gullTimes, type Blob, type Coord, type GullDrop, type GullTimes, type LevelState, type MergeEvent, type MoveResult, type SpawnEvent } from '@ee/core';
 import type { BodyType, Vec3 } from '@ee/genome';
 import type { BoardRenderer } from './BoardRenderer';
 import type { BlobVisual } from './BoardBlobs';
@@ -8,6 +8,7 @@ import type { FxScope } from './boardFx';
 import { genomeMergeMove, mergeMoveKind, mergeWarp, turnCurve, type MoveEventLike, type MoveSampleLike } from './boardMoves';
 import { easeIn, easeInOut, easeOut, easeOutBack, easeOutCubic, easeSpring, easeSpringSoft, easeWalk, smoothstep, type TweenOptions } from './boardTween';
 import { blossomDescs, jitter } from './boardElements';
+import { gullCenter, type GullFlight } from './gullPath';
 
 /** Base timings (seconds). Travel time grows with the distance (see `travelTime`); merges run ≈ 0.5–0.7 s. */
 export const SLIDE_S = 0.15;
@@ -109,6 +110,9 @@ export class BoardTimeline {
       mergeOf.set(e.ids[1], e);
     }
     const vis = (id: number): BlobVisual | undefined => blobs.get(id) ?? alias.get(id);
+    // Presentation only: does a gull bring this move's spawn (shared rule with audio and haptics)?
+    const gull = gullDropFor(res);
+    let gullImpact = -1;
 
     // ---------------------------------------------------------------- phase 1: slides (each at its own pace)
     const moves = new Map<number, MoveInfo>();
@@ -312,6 +316,13 @@ export class BoardTimeline {
           const delay = Math.max(tEnd - 0.2, afterMerges);
           const blob = blobAt(e.id);
           if (!blob) break;
+          if (gull && gull.spawnId === e.id) {
+            // Flatsch: the gull's shadow crosses the board and drops the blob from above (no vent puff).
+            const g = this.dropIn(e, blob, gull, delay, finalState, vis);
+            gullImpact = g.impactAt;
+            mark(g.impactAt + GULL_SETTLE_S);
+            break;
+          }
           const v = blobs.makeVisual(blob, e.at);
           v.pop = 0.001;
           v.labelAlpha = 0;
@@ -709,7 +720,8 @@ export class BoardTimeline {
       }
     }
 
-    tw.after(Math.max(slideEnd + 0.05, maxSwap + 0.22), hooks.onInputOpen);
+    // A gull move keeps the input closed until the blob has landed (a queued swipe hurries both, see `hurry`).
+    tw.after(Math.max(slideEnd + 0.05, maxSwap + 0.22, gullImpact + 0.02), hooks.onInputOpen);
     tw.after(tEnd + 0.02, () => {
       r.reconcile(finalState);
       hooks.onSettled();
@@ -1295,6 +1307,180 @@ export class BoardTimeline {
     const rad = child.radius;
     const waist = r.layout.top + rad * 0.7;
     r.particles.burst('droplet', r.now, target[0], waist, target[1], 8 + Math.min(10, tier * 2), { up: 1.8 + tier * 0.1, spread: 1.3, life: 0.75, size: 0.07, colors: [pal.paper, pal.sky, child.genome.baseColor], seed: child.id, ring: rad * 1.05 });
+  }
+
+  // ---------------------------------------------------------------------------------------- gull drop
+
+  /**
+   * Flatsch — the gull brings this spawn. Its shadow crosses the board and passes the cell exactly at `releaseAt`
+   * (`gullTimes`, shared with audio and haptics). The blob exists from the start of the move but is not drawn
+   * (`pending`); at the release it falls from above the top of the view with gravity and a vertical stretch (its
+   * contact shadow grows on its own, its shadow proxy only returns near the ground) and claps onto the plate at
+   * `impactAt`: flat for a moment, then the spring, an "oof" toward the camera, crown, six ink splats, droplet ring,
+   * ripple, plate wave, a small kick and camera punch; the eight neighbours are shoved away, the four direct ones hop.
+   */
+  private dropIn(e: SpawnEvent, blob: Blob, drop: GullDrop, spawnAt: number, finalState: LevelState, vis: (id: number) => BlobVisual | undefined): GullTimes {
+    const r = this.r;
+    const tw = this.tw;
+    const { blobs, layout } = r;
+    const pal = r.palette;
+    const g = gullTimes(spawnAt);
+    const [x, z] = layout.cellToLocal(e.at[0], e.at[1]);
+    const top = layout.top;
+    const v = blobs.makeVisual(blob, e.at);
+    v.pending = true;
+    v.pop = 1;
+    v.labelAlpha = 0;
+    // Above the top of the view: the camera's height over the plate, a little lower, never on the board.
+    const cam = blobs.cameraLocal;
+    const h0 = Math.min(9, Math.max(4, cam.y - top - 1.5));
+    v.lift = h0;
+    const flight = r.launchGull(drop, g, [x, z]);
+    this.gullGust(flight, e.id, finalState, vis);
+    // The "oof" (and the fall's leading edge) face the camera.
+    let fx = cam.x - x;
+    let fz = cam.z - z;
+    const fl = Math.hypot(fx, fz) || 1;
+    fx /= fl;
+    fz /= fl;
+    const fall = g.impactAt - g.releaseAt;
+    tw.add(
+      fall,
+      (t) => {
+        v.pending = false;
+        v.lift = h0 * (1 - t * t);
+        // Stretched along the fall, the faster the longer.
+        v.squash = { axis: [0, 1, 0], amount: 0.18 + 0.5 * t };
+        v.moveDir = [fx, fz];
+        v.mouth = 0.25 * t;
+      },
+      { delay: g.releaseAt, ease: linear },
+    );
+    const impact = g.impactAt;
+    // Impact: flat on the plate for 0.08 s, then the spring takes over (impulse + jiggle).
+    tw.add(
+      0.08,
+      (t) => {
+        v.pending = false;
+        v.lift = 0;
+        v.squash = { axis: [0, 1, 0], amount: -0.6 * (1 - 0.3 * t) };
+        v.mouth = 0;
+      },
+      {
+        delay: impact,
+        ease: linear,
+        done: () => {
+          v.squash = null;
+          blobs.driver.impulse(v.id, [0, 1, 0], 1.4);
+          v.jiggle = 1;
+        },
+      },
+    );
+    // "Oof": the mouth pops open toward the camera and closes again.
+    tw.add(
+      0.36,
+      (t) => {
+        v.moveDir = [fx, fz];
+        v.mouth = 0.95 * Math.sin(Math.PI * Math.min(1, t * 1.25)) * (t < 0.8 ? 1 : (1 - t) * 5);
+      },
+      { delay: impact + 0.03, ease: linear, done: () => (v.mouth = 0) },
+    );
+    tw.add(0.24, (t) => (v.labelAlpha = t), { delay: impact + 0.12, ease: easeOut, done: () => (v.labelAlpha = 1) });
+    // Flatsch: a splash in the zone palette with the blob's jelly, bigger than any merge of its tier — it fell a long way.
+    const size = Math.max(0.2, blobs.worldScale(blob.tier));
+    const colors = [pal.paper, pal.sky, v.genome.baseColor, pal.teal, pal.paper, v.genome.rimColor];
+    const seed = e.id * 17 + 5;
+    r.fx.crown(tw, impact, x, z, size * 1.55, colors, seed, 1.5);
+    r.fx.inkSplats(tw, impact + 0.01, x, z, size * 2.1, seed, 6);
+    r.fx.ripple(tw, impact + 0.02, x, z, size * 1.1, size * 3.4, pal.paper, 2);
+    r.fx.plateWave(tw, impact, x, z, 1.1, 2.4);
+    tw.after(impact, () => {
+      r.splat(new Vector3(x, top, z), 1.0, v.genome.baseColor);
+      r.particles.burst('droplet', r.now, x, top + size * 0.4, z, 10, { up: 1.2, spread: 2.2, life: 0.55, size: 0.06, colors: [pal.paper, v.genome.baseColor, pal.sky], seed: seed + 1, ring: size * 1.2 });
+      r.kick(0.18);
+      r.punch(0.28);
+      r.emitJuice('spawn');
+      r.reportCreature(v, 'spawn');
+    });
+    // Neighbours: the eight around are shoved away from the impact, the four direct ones hop.
+    const w = layout.w;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const cx = e.at[0] + dx;
+        const cy = e.at[1] + dy;
+        if (cx < 0 || cy < 0 || cx >= w || cy >= layout.h) continue;
+        const nb = finalState.cells[cy * w + cx];
+        if (!nb) continue;
+        const diag = dx !== 0 && dy !== 0;
+        const l = Math.hypot(dx, dy);
+        const ux = dx / l;
+        const uz = dy / l;
+        const at = impact + 0.03 + (diag ? 0.03 : 0);
+        tw.after(at, () => {
+          const n = vis(nb.id);
+          if (!n || n === v) return;
+          blobs.driver.impulse(n.id, [ux, 0.35, uz], diag ? 0.55 : 0.9);
+          n.jiggle = Math.max(n.jiggle, diag ? 0.6 : 1);
+        });
+        if (!diag) {
+          tw.add(
+            0.28,
+            (t) => {
+              const n = vis(nb.id);
+              if (n && n !== v) n.lift = 0.1 * Math.sin(Math.PI * t);
+            },
+            {
+              delay: at,
+              ease: easeOut,
+              done: () => {
+                const n = vis(nb.id);
+                if (n && n !== v) n.lift = 0;
+              },
+            },
+          );
+        }
+      }
+    }
+    return g;
+  }
+
+  /**
+   * The creatures the gull's shadow sweeps over flinch as it passes (the gust of its wings): a small spring kick along
+   * the flight, the closer to the path the stronger. They feel the gull even where its shadow merges with others.
+   */
+  private gullGust(flight: GullFlight, spawnId: number, finalState: LevelState, vis: (id: number) => BlobVisual | undefined): void {
+    const { blobs, layout } = this.r;
+    const { enterAt, releaseAt } = flight.spec.times;
+    const reach = flight.spec.span * 0.45;
+    const c = { x: 0, z: 0, hx: 0, hz: 0 };
+    const w = layout.w;
+    finalState.cells.forEach((b, i) => {
+      if (!b || b.id === spawnId) return;
+      const [bx, bz] = layout.cellToLocal(i % w, Math.floor(i / w));
+      let best = Infinity;
+      let at = 0;
+      let hx = 0;
+      let hz = 0;
+      for (let t = enterAt; t <= releaseAt + 0.35; t += 1 / 60) {
+        gullCenter(flight, t, c);
+        const d = Math.hypot(c.x - bx, c.z - bz);
+        if (d < best) {
+          best = d;
+          at = t;
+          hx = c.hx;
+          hz = c.hz;
+        }
+      }
+      if (best > reach) return;
+      const k = 1 - best / reach;
+      this.tw.after(at, () => {
+        const n = vis(b.id);
+        if (!n || n.pending) return;
+        blobs.driver.impulse(n.id, [hx, -0.5, hz], 0.25 + 0.35 * k);
+        n.jiggle = Math.max(n.jiggle, 0.35 + 0.4 * k);
+      });
+    });
   }
 
   private popOut(v: BlobVisual, delay: number, id: number): void {

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
+import { parseGullMode, setGullMode } from '@ee/core';
 import { App } from './App';
 import './styles/fonts.css';
 import './styles/tokens.css';
@@ -20,6 +21,10 @@ if (tour.length && location.pathname === '/') {
       dispatchEvent(new PopStateEvent('popstate'));
     }, Number(import.meta.env.VITE_START_TOUR_MS) || 15000);
 }
+
+// Test switch for the gull (`?gull=always|off|auto`): every spawn, none, or the rhythm rule (default).
+const gullMode = parseGullMode(new URLSearchParams(location.search).get('gull'));
+if (gullMode) setGullMode(gullMode);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

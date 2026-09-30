@@ -1,4 +1,4 @@
-import type { Blob, Coord, LevelState, MergeEvent, MoveResult } from '@ee/core';
+import { GULL_SETTLE_S, gullDropFor, gullTimes, type Blob, type Coord, type GullDrop, type GullTimes, type LevelState, type MergeEvent, type MoveResult } from '@ee/core';
 import type { CreatureGuess } from './bodies';
 import type { BodyKind, Material, SfxId, SfxParams, SwipeDir } from './sfx';
 import type { ZoneKey } from './scales';
@@ -31,6 +31,8 @@ export interface MovePlan {
   merges: number;
   /** Highest merge impact time (s), for chirps after big merges. */
   bigMergeAt: number | null;
+  /** The gull's drop lands ("Flatsch", s after the move started): the haptics tap here. Null without a gull. */
+  gullAt: number | null;
 }
 
 export interface PlanContext {
@@ -287,6 +289,8 @@ export function planMove(res: MoveResult<LevelState>, ctx: PlanContext): MovePla
   let won = false;
   let lost = false;
   let endAt = afterMerges;
+  const gull = gullDropFor(res);
+  let gullAt: number | null = null;
   for (const e of res.events) {
     switch (e.type) {
       case 'push':
@@ -321,6 +325,14 @@ export function planMove(res: MoveResult<LevelState>, ctx: PlanContext): MovePla
         break;
       case 'spawn': {
         const at = Math.max(tEnd - 0.2, afterMerges);
+        if (gull && gull.spawnId === e.id) {
+          // The board's shadow and drop run on the same times (`gullTimes`), so does the end mark.
+          const g = gullTimes(at);
+          gullSounds(add, gull, g, pan(e.at), e.tier, e.material as Material);
+          gullAt = g.impactAt;
+          mark(g.impactAt + GULL_SETTLE_S);
+          break;
+        }
         add(at, 'spawn', { tier: e.tier, material: e.material as Material, kind: e.kind, pan: pan(e.at) }, 0);
         mark(at + 0.26);
         break;
@@ -415,7 +427,30 @@ export function planMove(res: MoveResult<LevelState>, ctx: PlanContext): MovePla
     }
   }
 
-  return { sounds: capAndStagger(sounds), won, lost, endAt, maxTier, merges: merges.length, bigMergeAt };
+  return { sounds: capAndStagger(sounds), won, lost, endAt, maxTier, merges: merges.length, bigMergeAt, gullAt };
+}
+
+/**
+ * The gull's pass: its cries sweep across the stereo field in the direction it flies (−0.7·side → +0.7·side; one to
+ * three cries by variant, the last one a laugh when it laughs), the wing whoosh just before the release, the whistle of
+ * the falling blob from the release, the wet splat on the impact. Parameters for the recipes (sfxExtra): `gullCall`
+ * reads `p.step` (call variant 0..2), `p.kind` ('laugh' for the laughing cry) and may let its pan drift toward `p.dir`
+ * by 1.4 per `p.dur` seconds (the whole crossing); `dropFall` falls for `p.dur` s; `splat` sizes by `p.tier`.
+ */
+function gullSounds(add: (t: number, id: SfxId, p: SfxParams, prio?: number) => void, drop: GullDrop, g: GullTimes, cellPan: number, tier: number, material: Material): void {
+  const from = -0.7 * drop.side;
+  const to = 0.7 * drop.side;
+  const cries = 1 + drop.call;
+  const span = Math.max(0.2, g.exitAt - 0.25 - g.callAt);
+  for (let k = 0; k < cries; k++) {
+    const f = cries === 1 ? 0 : k / (cries - 1);
+    const t = g.callAt + f * span * 0.72;
+    const laugh = drop.laugh && k === cries - 1;
+    add(t, 'gullCall', { pan: from + (to - from) * (cries === 1 ? 0 : f), step: drop.call, dur: span, dir: drop.side > 0 ? 'right' : 'left', ...(laugh ? { kind: 'laugh' } : {}) }, k === 0 ? 2 : 1);
+  }
+  add(g.releaseAt - 0.12, 'gullWings', { pan: cellPan * 0.5, dur: 0.5 }, 1);
+  add(g.releaseAt, 'dropFall', { tier, pan: cellPan, dur: g.impactAt - g.releaseAt }, 1);
+  add(g.impactAt, 'splat', { tier, material, pan: cellPan }, 2);
 }
 
 /** Applies the per-sound caps and flams identical sounds that would start within 25 ms of each other. */

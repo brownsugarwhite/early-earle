@@ -47,7 +47,10 @@ export interface GullDrop {
   /** Zielzelle (x, y). */
   at: Coord;
   tier: number;
-  /** Flug quer zum Bildschirm: −1 nach links, 1 nach rechts (Panorama des Rufs läuft mit). */
+  /**
+   * Flug quer zum Bildschirm: −1 nach links, 1 nach rechts (Panorama des Rufs läuft mit). Die Möwe kommt über das Brett:
+   * Zellen links der Mitte fliegt sie nach links an (von rechts unten), rechts der Mitte nach rechts.
+   */
   side: -1 | 1;
   /** Flugschneise 0..2 (Winkel zur Bildschirm-Senkrechten und Bogen). */
   corridor: 0 | 1 | 2;
@@ -138,11 +141,16 @@ export function gullDropFor(res: MoveResult<LevelState>, which: GullMode = mode)
   }
   if (!spawn) return null;
   const h = mixed('gullLook', levelId, seed, moveNo);
+  // Anflug übers Brett: eine Zelle links der Mitte wird von rechts unten angeflogen (Flug nach links oben), eine
+  // rechts der Mitte von links unten; die Mittelspalte würfelt. (Brett-x = Bildschirm-rechts in Flow und Lab.)
+  const w = st.geo?.w ?? 0;
+  const dx = spawn.at[0] - (w - 1) / 2;
+  const side: -1 | 1 = w > 0 && Math.abs(dx) > 0.25 ? (dx < 0 ? -1 : 1) : h & 1 ? 1 : -1;
   return {
     spawnId: spawn.id,
     at: [spawn.at[0], spawn.at[1]],
     tier: spawn.tier,
-    side: h & 1 ? 1 : -1,
+    side,
     corridor: ((h >>> 1) % 3) as 0 | 1 | 2,
     call: ((h >>> 3) % 3) as 0 | 1 | 2,
     laugh: ((h >>> 5) & 3) === 0,
