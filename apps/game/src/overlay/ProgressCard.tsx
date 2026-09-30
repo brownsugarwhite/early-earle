@@ -4,14 +4,15 @@ import { Glyph } from './glyphs';
 import { useProgress, type CollectInput, type GameMode } from '../state/progress';
 import { FLOW_LEVELS } from '../flow/levels';
 import { STORY_AFTER_LEVEL_1 } from '../flow/progression/gate';
+import { catalogInputs } from '../collection/catalog';
+import { BUNDLED_RULES } from '../lab/creature/content';
 import './progressCard.css';
 
 /**
- * Katalog aller Wesen für „Sammlung füllen“. Die Sammlungs-Baustelle meldet ihn an (`registerCollectionCatalog(
- * catalogInputs)`); bis dahin gibt es den Knopf nicht.
- * TODO(B5): nach dem Merge in der Sammlung `registerCollectionCatalog(catalogInputs)` aufrufen.
+ * Katalog aller Wesen für „Sammlung füllen“: der ganze Wesen-Katalog der Sammlung (253 Wesen mit den mitgelieferten
+ * Genom-Regeln). Tests oder Labs können ihn über `registerCollectionCatalog` ersetzen.
  */
-let catalog: (() => CollectInput[]) | null = null;
+let catalog: (() => CollectInput[]) | null = () => catalogInputs(BUNDLED_RULES);
 export function registerCollectionCatalog(fn: (() => CollectInput[]) | null): void {
   catalog = fn;
 }

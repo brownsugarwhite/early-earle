@@ -24,7 +24,7 @@ import { demoState } from '../lab/grid/demoLevel';
 import type { GroundFrame } from './MapCreatures';
 import type { CameraPose, EntryBlob, FlowStage } from './choreo/stage';
 import type { RouteStop } from './choreo/route';
-import { createStageGround } from './choreo/stageGround';
+import { createMapGround } from './mapGround';
 import { CreatureHost } from './choreo/creatureHost';
 import { playIntro } from './choreo/intro';
 import { Departure, type TravelLog } from './choreo/depart';
@@ -924,6 +924,8 @@ export class FlowScene implements SceneController {
     const stage = this.stageOf(index);
     this.boardPlacement = { node: index, away: stage.away };
     const position = stage.position;
+    // Map-Wesen, die hier wohnen, ploppen weg, solange das Plateau steht (heimlaufende bleiben).
+    this.creatureHost?.api?.setExclusion?.(position, 3.2);
     const normal = stage.normal;
     const camLocal = world.planet.worldToLocal(world.camera.getWorldPosition(new Vector3()));
     tangentFrame(normal, stage.facing ?? camLocal.sub(position), _m4);
@@ -972,6 +974,8 @@ export class FlowScene implements SceneController {
   private setPhase(p: FlowPhase): void {
     if (import.meta.env.DEV) console.debug(`[flow] ${this.phase} → ${p}`);
     this.phase = p;
+    // Die Platte ist versunken: die Wesen am Knoten kommen zurück.
+    if (p === 'travel' || p === 'map') this.creatureHost?.api?.setExclusion?.(null);
     useFlowStore.getState().setPhase(p);
   }
 
@@ -1369,7 +1373,8 @@ export class FlowScene implements SceneController {
       return out;
     };
     const mapFocusPoint = (out: Vector3): Vector3 => out.copy(this.mapTargetDir).applyQuaternion(_q.copy(world.planet.quaternion).invert()).multiplyScalar(PLANET_RADIUS);
-    const ground = createStageGround({ layout, groundAt, display: (p, out) => world.bend(p, out), focus: mapFocusPoint });
+    // Boden der Map-Wesen: Netz-Snap, Wasser und Felsen (flow/mapGround.ts; ADR 0002: MapWorld.mapGround()).
+    const ground = createMapGround(world, layout, { focus: mapFocusPoint });
     return {
       hero,
       board,
