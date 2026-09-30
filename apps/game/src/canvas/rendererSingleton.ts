@@ -1,4 +1,5 @@
 import { WebGPURenderer } from 'three/webgpu';
+import { installTslFunctionCacheFix } from '@ee/render';
 
 let renderer: WebGPURenderer | null = null;
 let initPromise: Promise<WebGPURenderer> | null = null;
@@ -18,6 +19,8 @@ export function getRenderer(): Promise<WebGPURenderer> {
   canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
+  // Per-pipeline TSL function code: without it later pipelines lose buffer declarations (see @ee/render).
+  installTslFunctionCacheFix();
   const r = new WebGPURenderer({ canvas, antialias: true, forceWebGL: wantsWebGL() });
   initPromise = r.init().then(() => {
     renderer = r;

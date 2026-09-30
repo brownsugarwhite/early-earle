@@ -141,3 +141,24 @@ Committet und gepusht (jeweils isoliert geprüft: Typecheck, Unit-Tests, betroff
 
 In Arbeit: alle Arten auf dem Mesh-Weg (iPhone/Mobil), Spielfeld Pass 4 (Schritte der Stampfbeine, Mobil-Check, Map-Kamera MAP_VIEW + Baum-Schiene im Flow).
 Sicherheitsnetz: geplante Aufgabe `early-earle-weiterarbeiten` (alle 3 h, nur wenn das Projekt 2 h ruht).
+
+## Nachtrag 2026-09-30 (Morgen): Stand Nacht 2 und Simulator-Prüfung
+
+Neu seit dem letzten Nachtrag (alles committet, jeweils isoliert geprüft):
+- **REX als 3D-Wesen** (`/lab/rex`): türkiser Dino nach dem illudiy-Logo, Spiralaugen im Shader, Kiefer spricht Silben, Jubeln, Verzweifeln, Zeigen, Spähen, Schwindel, Feiern. Auf der Map schaut er über die Sprechblase, im Level steht er neben dem Plateau.
+- **Klang** (`/lab/audio`): prozedurale Merge-Töne (Zonen-Pentatonik), Material-Landungen, Sprung-zur-Kamera, REX-Kauderwelsch, Ambiente für alle zehn Welten, ruhige Musik; Ton-Schalter im HUD und nativ.
+- **Alle Arten als Mesh-Körper** (Hoch und Mobil) mit Vorab-Kompilierung; Stress-Brett „Herde“ mit 21 Arten bei 60 fps.
+- **Fortschritt** bleibt gespeichert (Level, Bestwerte, zuletzt gewählter Knoten); Hochformat-Kamera für das iPhone.
+
+Simulator-Durchlauf (iPhone Air, Splash → Map → Level 1 → Sieg → Level 2) und Prüfung im Chrome-WebGPU fanden vier Fehler, alle behoben:
+
+| Fehler | Ursache | Behebung |
+|---|---|---|
+| **WebGPU: Plateau und Wesen unsichtbar** (nur Schatten) | three.js baut TSL-Layout-Funktionen einmal pro Backend und gibt den Code an spätere Pipelines weiter, ohne deren Puffer zu deklarieren (WGSL: „unresolved value NodeBuffer“) | Funktions-Cache pro Builder (`packages/render/src/common/tslFunctionCache.ts`); neuer E2E-Test `webgpu.spec.ts` mit echter GPU (lokal; auf CI übersprungen) |
+| Native Knopfleiste im Level zeigte nur „…“ und stieß an den Rand | vier Pillen mit Mindestbreite passten nicht aufs iPhone | eine Entscheidung für die ganze Leiste: Beschriftung, wenn sie passt, sonst gleich breite Symbol-Pillen |
+| REX auf der Map unten hart abgeschnitten | im Web-View fehlt die DOM-Sprechblase, REX nahm eine feste Ersatzkante | natives Layout-Ereignis meldet Sprechblase und Knopfleiste; REX nutzt diese Maße |
+| Web-Knopfleiste brach auf Handybreite in zwei Zeilen um | Beschriftungen zu breit | unter 480 px nur Symbole in einer Zeile |
+
+Außerdem: lokale Wartezeiten im Flow-E2E an SwiftShader angepasst, ESLint ignoriert iOS-Build-Ausgaben.
+
+Offen: Test auf Florians iPhone als native App (Signatur mit Apple-ID, siehe `docs/IOS.md`), dort läuft WebGPU; REX springt beim Sieg kurz über den Brettrand (bewusst gelassen, das Level ist dann vorbei); Zielanzeige „Stufe 8“ zeigt den 2048-Wert statt der Stufe (Designfrage).

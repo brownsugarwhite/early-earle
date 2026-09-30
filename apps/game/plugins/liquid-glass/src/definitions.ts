@@ -48,6 +48,14 @@ export interface GlassAvailability {
 }
 
 /** Heights in CSS px so the web HUD can offset its own elements. */
+/** A native element's frame in CSS px of the web view (points). */
+export interface GlassRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
 export interface GlassLayout {
   /** Bottom edge of the top pill (from the top of the web view). */
   top: number;
@@ -56,6 +64,10 @@ export interface GlassLayout {
   safeTop: number;
   safeBottom: number;
   glass: boolean;
+  /** REX line box (paper card), when shown. Older native builds omit it. */
+  line?: GlassRect | null;
+  /** Union of the action pills, when shown. Older native builds omit it. */
+  actions?: GlassRect | null;
 }
 
 export interface GlassActionEvent {

@@ -2,7 +2,7 @@
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/*.d.ts', 'apps/godot/**', 'ref/**'] },
+  { ignores: ['**/dist/**', '**/node_modules/**', '**/*.d.ts', 'apps/godot/**', 'ref/**', 'apps/game/ios/build/**', 'apps/game/ios/App/App/public/**', 'apps/game/android/**/build/**'] },
   ...tseslint.configs.recommended,
   {
     rules: {

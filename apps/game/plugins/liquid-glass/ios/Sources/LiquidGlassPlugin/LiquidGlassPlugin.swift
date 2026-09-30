@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 
 /// `LiquidGlass` (JS name) — native SwiftUI HUD above the WKWebView.
-/// Methods: isAvailable, show, update, hide, setSafeInsets. Events: `action` ({ id }), `layout` ({ top, bottom, safeTop, safeBottom, glass }).
+/// Methods: isAvailable, show, update, hide, setSafeInsets. Events: `action` ({ id }), `layout` ({ top, bottom, safeTop, safeBottom, glass, line, actions }).
 @objc(LiquidGlassPlugin)
 public class LiquidGlassPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "LiquidGlassPlugin"

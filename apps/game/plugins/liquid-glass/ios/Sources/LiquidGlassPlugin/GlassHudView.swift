@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // The native HUD: top pill (level, moves, goals), REX line, action row.
 // iOS 26+: Liquid Glass (`glassEffect` inside one `GlassEffectContainer`, pills morph via `glassEffectID`).
@@ -10,6 +11,8 @@ import SwiftUI
 struct GlassHudRoot: View {
     @ObservedObject var model: GlassHudModel
     @Namespace private var ns
+    /// Width of the HUD area (for the action row's label/icon decision).
+    @State private var width: CGFloat = 0
 
     var body: some View {
         Group {
@@ -40,13 +43,18 @@ struct GlassHudRoot: View {
                 if let rex = s.rex {
                     RexLine(text: rex)
                         .id("rex-\(rex)")
+                        // Reported for REX's rim on the map (he peeks over this box); not a hit rect. One key per
+                        // line: while a new line slides in, the old one's `onDisappear` must not drop the new frame.
+                        .modifier(ReportRect(key: "rex-\(rex)", model: model))
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 if !s.actions.isEmpty {
+                    // One decision for the whole row: all labels when they fit, else equal icon pills. Never "…".
+                    let compact = width > 0 && ActionPill.fullRowWidth(s.actions, spacing: 12) > width - 32
                     HStack(spacing: 12) {
                         ForEach(s.actions) { a in
                             let pillTint = a.tint.flatMap { Color(validHex: $0)?.opacity(0.7) } ?? (a.primary ? accent : tint)
-                            ActionPill(action: a) { model.onAction?(a.id) }
+                            ActionPill(action: a, compact: compact) { model.onAction?(a.id) }
                                 .modifier(GlassSurface(tint: pillTint, shape: Capsule(), interactive: !a.disabled, id: "action-\(a.id)", ns: ns))
                                 .modifier(ReportRect(key: "action-\(a.id)", model: model))
                                 .transition(.opacity.combined(with: .scale(scale: 0.85)))
@@ -59,6 +67,11 @@ struct GlassHudRoot: View {
         .padding(.bottom, 14 + model.extraBottom)
         .padding(.horizontal, 16)
         .foregroundStyle(Palette.ink)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { w in
+            width = w
+        }
     }
 }
 
@@ -112,25 +125,53 @@ struct TopPill: View {
 @available(iOS 16.0, *)
 struct ActionPill: View {
     let action: HudAction
+    /// Icon only (row too tight for labels); the pill then shares the row width equally with the others.
+    var compact = false
     let tap: () -> Void
+
+    static let labelFont = UIFont.systemFont(ofSize: 15, weight: .black)
+    static let tracking: CGFloat = 0.9
+
+    /// Width of the row with all labels (icon + label + padding per pill, plus spacing).
+    static func fullRowWidth(_ actions: [HudAction], spacing: CGFloat) -> CGFloat {
+        var total: CGFloat = 0
+        for a in actions {
+            let label = a.label.uppercased() as NSString
+            let text = ceil(label.size(withAttributes: [.font: labelFont, .kern: tracking]).width)
+            let icon: CGFloat = a.icon != nil ? 18 + 8 : 0
+            total += max(96, text + icon + 44)
+        }
+        return total + CGFloat(max(0, actions.count - 1)) * spacing
+    }
 
     var body: some View {
         Button(action: tap) {
-            HStack(spacing: 8) {
-                if let icon = action.icon {
-                    Image(systemName: icon).font(.system(size: 14, weight: .black))
+            Group {
+                if compact, let icon = action.icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .black))
+                        .frame(maxWidth: .infinity)
+                } else {
+                    HStack(spacing: 8) {
+                        if let icon = action.icon {
+                            Image(systemName: icon).font(.system(size: 14, weight: .black))
+                        }
+                        Text(action.label.uppercased())
+                            .font(.system(size: 15, weight: .black))
+                            .tracking(Self.tracking)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    .padding(.horizontal, 22)
+                    .frame(minWidth: 96)
                 }
-                Text(action.label.uppercased())
-                    .font(.system(size: 15, weight: .black))
-                    .tracking(0.9)
-                    .lineLimit(1)
             }
             .padding(.vertical, 14)
-            .padding(.horizontal, 22)
-            .frame(minWidth: 96, minHeight: 48)
+            .frame(minHeight: 48)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(action.label)
         .disabled(action.disabled)
         .opacity(action.disabled ? 0.4 : 1)
     }

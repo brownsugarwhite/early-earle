@@ -8,7 +8,8 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: process.env.CI ? 'line' : 'list',
-  globalTimeout: 15 * 60_000,
+  // SwiftShader on the GitHub runners needs ~16 min for the whole suite (audio, REX, flow with long CI waits).
+  globalTimeout: (process.env.CI ? 32 : 15) * 60_000,
   expect: { timeout: 10_000 },
   use: {
     baseURL: 'http://127.0.0.1:4173',

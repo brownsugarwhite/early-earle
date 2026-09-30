@@ -22,6 +22,7 @@ import {
 import { useFlowStore, type FlowPhase } from './flowStore';
 import { useGridStore } from '../lab/grid/gridStore';
 import { rexIntroFor, rexLine } from '../lab/grid/rex';
+import { nativeGlassLayout } from '../native/liquidGlass';
 import type { MapWorld } from './MapWorld';
 import type { PathLayout } from './path';
 
@@ -387,10 +388,19 @@ export class Rex {
         const r = el.getBoundingClientRect();
         return r.width > 0 && r.height > 0 ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom } : null;
       };
-      const top = rect('.flow-hud [data-testid="hud-top"]');
-      if (top) hudTop = top.bottom;
-      lineBox = rect('.flow-hud [data-testid="rex-line"]');
-      actions = rect('.flow-hud .hud-actions');
+      const native = nativeGlassLayout();
+      if (native) {
+        // iOS app: the native Liquid-Glass overlay replaces the DOM HUD; its frames come with the layout event.
+        if (native.top > 0) hudTop = native.top;
+        lineBox = native.line ?? null;
+        actions = native.actions ?? null;
+        if (!actions && native.bottom > 0) actions = { left: 0, top: h - native.bottom, right: w, bottom: h };
+      } else {
+        const top = rect('.flow-hud [data-testid="hud-top"]');
+        if (top) hudTop = top.bottom;
+        lineBox = rect('.flow-hud [data-testid="rex-line"]');
+        actions = rect('.flow-hud .hud-actions');
+      }
       const bottomBand = lineBox ?? actions;
       if (bottomBand) hudBottom = Math.min(lineBox?.top ?? Infinity, actions?.top ?? Infinity);
     }

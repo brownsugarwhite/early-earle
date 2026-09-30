@@ -13,17 +13,32 @@ export interface NativeGlass {
 
 const NONE: NativeGlass = { active: false, glass: false };
 let probe: Promise<NativeGlass> | null = null;
+/** Last `layout` event of the native overlay (frames of the top pill, REX line and action row). */
+let latestLayout: GlassLayout | null = null;
 
 /** Cached availability check; resolves to `NONE` on the web without touching the bridge. */
 export function probeNativeGlass(): Promise<NativeGlass> {
   if (!probe) {
     probe = Capacitor.isNativePlatform()
       ? LiquidGlass.isAvailable()
-          .then((a) => ({ active: a.available, glass: a.glass }))
+          .then((a) => {
+            const s = { active: a.available, glass: a.glass };
+            // One app-wide listener keeps the native frames for non-React code (REX's rim, board spot).
+            if (s.active) void LiquidGlass.addListener('layout', (l) => (latestLayout = l)).catch(() => undefined);
+            return s;
+          })
           .catch(() => NONE)
       : Promise.resolve(NONE);
   }
   return probe;
+}
+
+/**
+ * Frames of the native HUD while it is shown (CSS px of the web view), else null. The DOM HUD is not rendered in
+ * the app, so code that measures `.flow-hud` elements reads these instead.
+ */
+export function nativeGlassLayout(): GlassLayout | null {
+  return shown ? latestLayout : null;
 }
 
 /** `{ active, glass }` once the probe has answered (`NONE` until then and on the web). */

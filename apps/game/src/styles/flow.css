@@ -69,7 +69,9 @@
   position: absolute; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 14px);
   display: flex; flex-direction: column; gap: 10px; align-items: center;
 }
-.hud-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.hud-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: nowrap; max-width: 100%; }
+.hud-actions .glass-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.hud-actions .btn-ico { font-size: 1.05em; line-height: 1; }
 .glass-btn {
   font: inherit; font-weight: 900; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase;
   padding: 14px 22px; min-width: 96px; min-height: 48px; cursor: pointer; color: var(--ink);
@@ -103,6 +105,11 @@
 .flow-dev .perf-badge { transform: scale(0.9); transform-origin: left center; }
 
 @media (max-width: 480px) {
+  /* Level row (rewind, restart, map, sound): icons only, equal widths, one row — never wraps under the board. */
+  .hud-actions[data-count='4'] { width: 100%; max-width: 520px; }
+  .hud-actions[data-count='4'] .glass-btn { flex: 1 1 0; min-width: 0; width: auto; padding: 0; }
+  .hud-actions[data-count='4'] .btn-label { display: none; }
+  .hud-actions[data-count='4'] .btn-ico { font-size: 20px; }
   .hud-top { gap: 10px; padding: 8px 12px; }
   .hud-title { font-size: 13px; }
   .hud-goal { font-size: 11px; }

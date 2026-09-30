@@ -98,22 +98,48 @@ final class GlassOverlay {
 
     /// Hit rects for the passthrough container + `layout` event (points == CSS px in the WKWebView).
     private func rectsChanged(_ rects: [String: CGRect]) {
-        container.hitRects = Array(rects.values)
+        // The REX line is paper, not a control: it reports its frame but lets swipes through.
+        container.hitRects = rects.filter { !$0.key.hasPrefix("rex-") }.map { $0.value }
+        // During a line change the old and the new card overlap: the union covers both.
+        let lineRects = rects.filter { $0.key.hasPrefix("rex-") }.map { $0.value }
+        let lineUnion = lineRects.dropFirst().reduce(lineRects.first) { acc, r in acc?.union(r) }
         let height = Double(container.bounds.height)
         let safe = container.safeAreaInsets
         let top = rects["top"].map { Double($0.maxY) } ?? 0
-        let actionsMinY = rects.filter { $0.key.hasPrefix("action-") }.values.map { Double($0.minY) }.min()
-        let bottom = actionsMinY.map { max(0, height - $0) } ?? 0
-        let layout: [String: Double] = [
+        let actionRects = rects.filter { $0.key.hasPrefix("action-") }.map { $0.value }
+        let actionsUnion = actionRects.dropFirst().reduce(actionRects.first) { acc, r in acc?.union(r) }
+        let bottom = actionsUnion.map { max(0, height - Double($0.minY)) } ?? 0
+        var layout: [String: Double] = [
             "top": top,
             "bottom": bottom,
             "safeTop": Double(safe.top),
             "safeBottom": Double(safe.bottom)
         ]
+        // Flat keys for the change check; nested rects in the payload.
+        func put(_ name: String, _ r: CGRect?) {
+            guard let r else { return }
+            layout[name + "Left"] = Double(r.minX)
+            layout[name + "Top"] = Double(r.minY)
+            layout[name + "Right"] = Double(r.maxX)
+            layout[name + "Bottom"] = Double(r.maxY)
+        }
+        put("line", lineUnion)
+        put("actions", actionsUnion)
         guard layout != lastLayout else { return }
         lastLayout = layout
-        var payload: [String: Any] = layout
-        payload["glass"] = Self.hasLiquidGlass
+        var payload: [String: Any] = [
+            "top": top,
+            "bottom": bottom,
+            "safeTop": Double(safe.top),
+            "safeBottom": Double(safe.bottom),
+            "glass": Self.hasLiquidGlass
+        ]
+        func rectPayload(_ r: CGRect?) -> Any {
+            guard let r else { return NSNull() }
+            return ["left": Double(r.minX), "top": Double(r.minY), "right": Double(r.maxX), "bottom": Double(r.maxY)]
+        }
+        payload["line"] = rectPayload(lineUnion)
+        payload["actions"] = rectPayload(actionsUnion)
         onLayout?(payload)
     }
 }

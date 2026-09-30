@@ -218,7 +218,8 @@ export function FlowHud() {
                 </button>
               </div>
             ) : null}
-            <div className="hud-actions">
+            {/* Four actions in the level: on narrow phones the row shows icons only (one row, equal widths). */}
+            <div className="hud-actions" data-count={phase === 'level' ? 4 : phase === 'map' ? 2 : 0}>
               {phase === 'map' ? (
                 <button className="glass-btn glass primary" data-testid="play-btn" onClick={() => request('flyIn', current)}>
                   Spielen ▶
@@ -226,14 +227,23 @@ export function FlowHud() {
               ) : null}
               {phase === 'level' ? (
                 <>
-                  <button className="glass-btn glass" onClick={rewindMove} disabled={!rewindable}>
-                    ⟲ Zurück
+                  <button className="glass-btn glass" onClick={rewindMove} disabled={!rewindable} aria-label="Zurück" data-testid="rewind-btn">
+                    <span className="btn-ico" aria-hidden="true">
+                      ⟲
+                    </span>
+                    <span className="btn-label">Zurück</span>
                   </button>
-                  <button className="glass-btn glass" onClick={restart}>
-                    ↻ Neu
+                  <button className="glass-btn glass" onClick={restart} aria-label="Neu" data-testid="restart-btn">
+                    <span className="btn-ico" aria-hidden="true">
+                      ↻
+                    </span>
+                    <span className="btn-label">Neu</span>
                   </button>
-                  <button className="glass-btn glass" onClick={() => request('leave')}>
-                    ◀ Map
+                  <button className="glass-btn glass" onClick={() => request('leave')} aria-label="Map" data-testid="map-btn">
+                    <span className="btn-ico" aria-hidden="true">
+                      ◀
+                    </span>
+                    <span className="btn-label">Map</span>
                   </button>
                 </>
               ) : null}
