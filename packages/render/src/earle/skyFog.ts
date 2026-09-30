@@ -2,7 +2,10 @@ import { BackSide, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, SphereGeom
 import type { BufferGeometry, UniformNode } from 'three/webgpu';
 import { cameraPosition, clamp, float, mix, positionWorld, sin, smoothstep, time, uniform, uv } from 'three/tsl';
 import { aaStep, type FloatNode, type PaletteLookup, type Vec3Node } from './tsl';
-import { dither, earleGradients, fountain, glow } from './gradients';
+import { SAW_GRADIENT, dither, earleGradients, glow, stepRamp, stepRamp2 } from './gradients';
+
+/** Sägezahn der Himmelsbänder: ± dieser Anteil des Stufenabstands um die Bandfarbe (der Sprung bleibt 40 %). */
+const SKY_SAW = SAW_GRADIENT * 1.5;
 
 export interface SkyDomeOptions {
   lookup: PaletteLookup;
@@ -29,11 +32,12 @@ export interface SkyDomeOptions {
 }
 
 /**
- * Himmelskuppel als Irisdruck (Ebene 19, 27, 29, 46): weicher Verlauf vom hellen Horizont in den tiefen Zenit durch die
- * Himmelsstufen der Palette (`earleGradients.air` 0 = die alten harten Stufen), ein breiter Airbrush-Schein am Horizont
- * zur Sonne hin (Ebene 22, 36, 07: das Licht hat eine Richtung) und eine flache Sonnenscheibe mit flachem Ring — die
- * einzigen harten Kanten am Himmel. Richtung aus der Weltposition relativ zur Kamera → der Horizont bleibt waagrecht,
- * egal wie die Kamera geneigt ist. Ein Hauch Rauschen (±½ LSB) verhindert 8-Bit-Treppen im großen Verlauf.
+ * Himmelskuppel im Siebdruck mit Verlauf innen: die Himmelsstufen der Palette als harte Bänder vom hellen Horizont zum
+ * tiefen Zenit (wie bisher), jedes Band mit eigenem senkrechten Verlauf — unten heller, oben tiefer, dann der Sprung ins
+ * nächste Band (`earleGradients.air` 0 = reine Stufen). Dazu dezent ein Airbrush-Schein zur Sonne (Ebene 22, 36, 07: das
+ * Licht hat eine Richtung) und eine flache Sonnenscheibe mit flachem Ring. Richtung aus der Weltposition relativ zur
+ * Kamera → der Horizont bleibt waagrecht, egal wie die Kamera geneigt ist. Ein Hauch Rauschen (±½ LSB) verhindert
+ * 8-Bit-Treppen in den Verläufen.
  */
 export function createSkyDome(options: SkyDomeOptions): Mesh {
   const { lookup } = options;
@@ -44,21 +48,25 @@ export function createSkyDome(options: SkyDomeOptions): Mesh {
   const t = clamp(dir.y.sub(horizon).div(options.spread ?? 0.6).add(0.03), 0, 0.999);
   const x = t.mul(options.steps - 1);
   const air = earleGradients.air;
-  // Luft: linear gemischt (die Himmelsstufen liegen nah beieinander; spart die Druckfarben-Mischung auf vielen Pixeln)
-  const ramp = { linear: true };
-  const skyA = fountain(lookup, x, options.skyRow, 0, air, ramp).rgb as unknown as Vec3Node;
-  const sky = options.skyRowB && options.skyMix ? (mix(skyA, fountain(lookup, x, options.skyRowB, 0, air, ramp).rgb, options.skyMix) as unknown as Vec3Node) : skyA;
+  // Harte Himmelsbänder, jedes als Sägezahn-Verlauf (linear gemischt: nahe Stufen, viele Pixel)
+  const saw = { saw: true, linear: true };
+  const amount = air.mul(SKY_SAW);
+  const sky = (
+    options.skyRowB && options.skyMix
+      ? stepRamp2(lookup, x, options.skyRow, options.skyRowB, options.skyMix, 0, 0, amount, saw)
+      : stepRamp(lookup, x, options.skyRow, 0, 0, amount, saw)
+  ).rgb as unknown as Vec3Node;
   const d = dir.dot(options.sunDirWorld);
   const disc = aaStep(Math.cos((2.4 * Math.PI) / 180), d);
   const ring = aaStep(Math.cos((5.2 * Math.PI) / 180), d);
   const rowA = typeof options.skyRow === 'number' ? float(options.skyRow) : options.skyRow;
   const rowForSun = options.skyRowB && options.skyMix ? mix(rowA, options.skyRowB, options.skyMix.greaterThan(0.5).select(float(1), float(0))) : rowA;
   const ringColor = lookup.pal(options.ringIndex, rowForSun).rgb as unknown as Vec3Node;
-  // Schein zur Sonne: breit (bis ≈ 80° neben der Sonne), am Horizont am stärksten, zum Zenit ausklingend
+  // Schein zur Sonne, dezent: breit (bis ≈ 80° neben der Sonne), am Horizont am stärksten, zum Zenit ausklingend
   const low = float(1).sub(t);
   const sunGlow = glow(d, 0.97, Math.cos((80 * Math.PI) / 180))
     .mul(low.mul(low))
-    .mul(air.mul(0.6));
+    .mul(air.mul(0.3));
   let lit = mix(sky, ringColor, sunGlow) as unknown as Vec3Node;
   if (options.glow) {
     // Rundum am Horizont: schmaler, sehr heller Schein (Ringfarbe zur Sonne hin), nach oben quadratisch ausklingend

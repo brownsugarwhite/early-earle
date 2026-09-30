@@ -1,7 +1,7 @@
 import { abs, attribute, float, floor, fract, fwidth, hash, max, min, mix, positionLocal, positionView, select, sin, smoothstep, sqrt, step, vec2 } from 'three/tsl';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, patternTime, periodFade, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec2Node, type Vec3Node } from '../tsl';
-import { earleGradients, mixInk } from '../gradients';
+import { STEP_GRADIENT, earleGradients, shiftTone } from '../gradients';
 
 export interface WaterMaterialOptions {
   lookup: PaletteLookup;
@@ -86,11 +86,7 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
   const pebble = smoothstep(radiusCell.add(fw), radiusCell.sub(fw), vor.f1);
   // Zellen fern ausblenden (unter ~8 px), dort übernehmen Linienbänder
   const near = smoothstep(0.16, 0.08, fw);
-  // Vom Ufer in die Tiefe (Ebene 29, 38): am Ufer die helle Stufe, zur Mitte der Grundton, in großen Seen tiefer —
-  // ein weicher Verlauf unter den Wellen-Silhouetten (Uferabstand e in Welteinheiten)
-  const soft = earleGradients.surface;
-  const shoreTone = mixInk(pal(3), pal(2), smoothstep(0.0, 1.3, e));
-  const base = mix(pal(2), mixInk(shoreTone, pal(1), smoothstep(1.1, 3.6, e).mul(0.55)), soft);
+  const base = pal(2);
   const dark = pal(1);
   const light = pal(3);
   const pebbleCol = mix(base, dark, step(vor.key, float(0.35)));
@@ -119,6 +115,10 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
   const cracks = smoothstep(float(0.06).add(fw), float(0.06).sub(fw), vor.edge).mul(periodFade(p.x, 3.0));
   const iceCol = mix(mix(plates, pal(3), shallow.mul(0.5)), pal(6), cracks);
   col = mix(col, iceCol, frozen);
+  // Verlauf über die ganze Wasserfläche (Ebene 29): hinten hell, vorn tief — unter den harten Wellenformen, die ihre
+  // Kanten behalten (alle Töne wandern gemeinsam, höchstens 40 % zur Nachbarstufe)
+  const depthG = smoothstep(4.0, 22.0, positionView.length()).mul(2).sub(1);
+  col = shiftTone(col, pal(3), pal(1), depthG, earleGradients.surface.mul(STEP_GRADIENT).mul(frozen.oneMinus()));
   // Schatten: tiefe Wasserfarbe; auf Eis eine Stufe unter dem Eis
   const shadowCol = mix(pal(0), mix(pal(2), pal(3), 0.4), frozen);
   return new EarleMaterial({

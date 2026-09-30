@@ -3,7 +3,6 @@ import type { Node, NodeBuilder } from 'three/webgpu';
 import { atan, float, fract, fwidth, length, min, mix, normalView, smoothstep, uniform, vec3 } from 'three/tsl';
 import { hexToLinear } from '../common/tsl';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type Vec2Node, type Vec3Node } from '../earle/tsl';
-import { earleGradients } from '../earle/gradients';
 
 /** Optional stepped distance fog (the planet's atlas + settings) so the board matches the map during fly-ins. */
 export interface BoardFog {
@@ -78,10 +77,7 @@ class BoardLightingModel extends LightingModel {
     const lit = min(aaStep(b.terminator, ndl), shadow);
     let col = mix(b.shade, b.albedo, lit);
     if (b.facet) {
-      // Sun-facing facets: a soft light ramp (Earle gradient) instead of a hard step; the ink edge stays crisp
-      const t = b.facet.threshold;
-      const ramp = mix(aaStep(t, ndl), smoothstep(t - 0.35, t + 0.25, ndl), earleGradients.surface);
-      const hi = ramp.mul(lit).mul(b.facet.amount);
+      const hi = aaStep(b.facet.threshold, ndl).mul(lit).mul(b.facet.amount);
       col = mix(col, b.albedo.mul(1.16).add(0.015), hi);
     }
     (input.reflectedLight.directDiffuse as Vec3Node).addAssign(col);
