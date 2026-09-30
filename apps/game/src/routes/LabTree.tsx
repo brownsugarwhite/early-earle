@@ -77,7 +77,7 @@ function sameParams(a: TreeLabParams, b: TreeLabParams): boolean {
  * Giant tree lab `/lab/tree`: gnarled trunk with fountain limbs, bark lines and snow, jewel domes, lace with golden
  * needles, blossoms and the level path lying on the tree. URL: `?view=trunk|canopy|blossoms|path|far`, `?ui=0`
  * hides the controls, `?t=0.6` sets the rail position, `?family=`, `?bark=ink|jewel`, `?snow=0..1`,
- * `?stage=schnee|huegel`, `?bloom=`, `?growth=`, `?quality=hoch|mobil`, `?progress=`.
+ * `?stage=schnee|huegel`, `?bloom=`, `?growth=`, `?quality=hoch|mobil`, `?progress=`, `?grand=0..6` (Geschwister).
  */
 export function LabTree() {
   const [searchParams] = useSearchParams();
@@ -105,6 +105,8 @@ export function LabTree() {
     if (progress !== null) p.progress = Number(progress);
     const sun = searchParams.get('sun');
     if (sun !== null) p.sunElevation = Math.min(20, Math.max(6, Number(sun)));
+    const grand = searchParams.get('grand');
+    if (grand !== null) p.grand = Math.min(6, Math.max(0, Math.round(Number(grand))));
     return p;
   }, [searchParams]);
   const controller = useMemo(() => {
@@ -166,6 +168,7 @@ export function LabTree() {
             <Range label="Wachstum" value={params.growth} min={0} max={1} step={0.01} format={(v) => `${Math.round(v * 100)} %`} onChange={(v) => set({ growth: v })} testId="rng-growth" />
             <Range label="Sonne Höhe" value={params.sunElevation} min={6} max={20} step={0.5} format={(v) => `${v}°`} onChange={(v) => set({ sunElevation: v })} testId="rng-sun" />
             <Range label="Sonne Azimut" value={params.sunAzimuth} min={20} max={110} step={1} format={(v) => `${v}°`} onChange={(v) => set({ sunAzimuth: v })} />
+            <Range label="Geschwister" value={params.grand} min={0} max={6} step={1} onChange={(v) => set({ grand: v })} testId="rng-grand" />
             <Range label="Knoten" value={params.progress} min={0} max={Math.max(1, (stats?.nodes ?? 24) - 1)} step={1} onChange={(v) => set({ progress: v })} testId="rng-progress" />
             <Range label="Fahrt" value={params.rideT} min={0} max={1} step={0.005} format={(v) => `${Math.round(v * 100)} %`} onChange={(v) => set({ rideT: v, ride: false })} testId="rng-ride" />
             <Select<QualityLevel>
