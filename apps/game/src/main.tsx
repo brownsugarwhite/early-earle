@@ -2,6 +2,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { App } from './App';
+import { boot } from './boot/bootProgress';
+import type { EeBoot } from './boot/bootInline';
 import './styles/fonts.css';
 import './styles/tokens.css';
 import './styles/app.css';
@@ -19,6 +21,23 @@ if (tour.length && location.pathname === '/') {
       history.pushState(null, '', base + tour[i]);
       dispatchEvent(new PopStateEvent('popstate'));
     }, Number(import.meta.env.VITE_START_TOUR_MS) || 15000);
+}
+
+// Loader aus index.html übernehmen (gleicher Stamm, keine Lücke); das Bündel läuft.
+const inlineBoot = (window as unknown as { __eeBoot?: EeBoot }).__eeBoot;
+boot.adopt(inlineBoot);
+boot.done('bundle');
+if (import.meta.env.DEV) (window as unknown as { __eeBootProgress?: unknown }).__eeBootProgress = boot;
+void boot.track('font', document.fonts?.load('64px "EE Heavy"') ?? Promise.resolve());
+// Nur `/` zeigt Loader und Splash; andere Einstiegsrouten (/play, Labs, Editoren) räumen ihn sofort weg.
+{
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+  const path = (location.pathname.startsWith(base) ? location.pathname.slice(base.length) : location.pathname) || '/';
+  if (path !== '/') {
+    inlineBoot?.stop();
+    boot.detach();
+    document.getElementById('ee-splash')?.remove();
+  }
 }
 
 createRoot(document.getElementById('root')!).render(
