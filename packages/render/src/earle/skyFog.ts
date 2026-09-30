@@ -1,7 +1,8 @@
 import { BackSide, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, SphereGeometry, Vector3 } from 'three/webgpu';
 import type { BufferGeometry, UniformNode } from 'three/webgpu';
 import { cameraPosition, clamp, float, mix, positionWorld, sin, smoothstep, time, uniform, uv } from 'three/tsl';
-import { aaStep, type FloatNode, type PaletteLookup } from './tsl';
+import { aaStep, type FloatNode, type PaletteLookup, type Vec3Node } from './tsl';
+import { dither, earleGradients, fountain, glow, mixInk } from './gradients';
 
 export interface SkyDomeOptions {
   lookup: PaletteLookup;
@@ -23,9 +24,11 @@ export interface SkyDomeOptions {
 }
 
 /**
- * Himmelskuppel mit gestufter Rampe (exakte Palettenfarben, 1-px-Kanten) und flacher Sonnenscheibe plus einem
- * flachen Ring. Richtung aus der Weltposition relativ zur Kamera → Horizont bleibt waagrecht, egal wie die
- * Kamera geneigt ist.
+ * Himmelskuppel als Irisdruck (Ebene 19, 27, 29, 46): weicher Verlauf vom hellen Horizont in den tiefen Zenit durch die
+ * Himmelsstufen der Palette (`earleGradients.air` 0 = die alten harten Stufen), ein breiter Airbrush-Schein am Horizont
+ * zur Sonne hin (Ebene 22, 36, 07: das Licht hat eine Richtung) und eine flache Sonnenscheibe mit flachem Ring — die
+ * einzigen harten Kanten am Himmel. Richtung aus der Weltposition relativ zur Kamera → der Horizont bleibt waagrecht,
+ * egal wie die Kamera geneigt ist. Ein Hauch Rauschen (±½ LSB) verhindert 8-Bit-Treppen im großen Verlauf.
  */
 export function createSkyDome(options: SkyDomeOptions): Mesh {
   const { lookup } = options;
@@ -35,14 +38,21 @@ export function createSkyDome(options: SkyDomeOptions): Mesh {
   const horizon = options.horizonY ?? 0;
   const t = clamp(dir.y.sub(horizon).div(options.spread ?? 0.6).add(0.03), 0, 0.999);
   const x = t.mul(options.steps - 1);
-  const skyA = lookup.bands(x, options.skyRow, 0).rgb;
-  const sky = options.skyRowB && options.skyMix ? mix(skyA, lookup.bands(x, options.skyRowB, 0).rgb, options.skyMix) : skyA;
+  const air = earleGradients.air;
+  const skyA = fountain(lookup, x, options.skyRow, 0, air).rgb as unknown as Vec3Node;
+  const sky = options.skyRowB && options.skyMix ? (mix(skyA, fountain(lookup, x, options.skyRowB, 0, air).rgb, options.skyMix) as unknown as Vec3Node) : skyA;
   const d = dir.dot(options.sunDirWorld);
   const disc = aaStep(Math.cos((2.4 * Math.PI) / 180), d);
   const ring = aaStep(Math.cos((5.2 * Math.PI) / 180), d);
   const rowA = typeof options.skyRow === 'number' ? float(options.skyRow) : options.skyRow;
   const rowForSun = options.skyRowB && options.skyMix ? mix(rowA, options.skyRowB, options.skyMix.greaterThan(0.5).select(float(1), float(0))) : rowA;
-  const withRing = mix(sky, lookup.pal(options.ringIndex, rowForSun).rgb, ring);
+  const ringColor = lookup.pal(options.ringIndex, rowForSun).rgb as unknown as Vec3Node;
+  // Schein zur Sonne: breit (bis ≈ 80° neben der Sonne), am Horizont am stärksten, zum Zenit ausklingend
+  const sunGlow = glow(d, 0.97, Math.cos((80 * Math.PI) / 180))
+    .mul(float(1).sub(t).pow(1.5))
+    .mul(air.mul(0.55));
+  const lit = mixInk(sky, ringColor, sunGlow);
+  const withRing = mix(dither(lit), ringColor, ring);
   material.colorNode = mix(withRing, lookup.pal(options.sunIndex, rowForSun).rgb, disc);
   const mesh = new Mesh(geometry, material);
   mesh.name = 'sky';
@@ -76,8 +86,9 @@ export interface FogStripeOptions {
 }
 
 /**
- * 3–5 waagrechte Nebelstreifen (Earles weiße Schlieren): dünne, kameraseitige Ebenen zwischen den Hügeln,
- * harte Oberkante, weich auslaufende Unterkante, langsam ziehende Dichte über einen Zeit-Uniform.
+ * 3–5 waagrechte Nebelstreifen (Earles weiße Nebelbänke): dünne, kameraseitige Ebenen zwischen den Hügeln, am Fuß
+ * dicht und hell, nach oben als Verlauf ausdünnend (`earleGradients.air` 0 = alte harte Oberkante), langsam ziehende
+ * Dichte über einen Zeit-Uniform.
  */
 export class FogStripes {
   readonly group = new Group();
@@ -109,19 +120,26 @@ export class FogStripes {
       const phase = uniform(i * 1.7);
       const stripeAlpha = uniform(maxAlpha * (1 - 0.08 * i));
       const drift = time.mul(this.speed);
-      // Nebelbank wie Ebene_20: Oberkante wellt sich langsam (Hügelkuppen ragen hindurch), kräftiger Kern, Unterkante
-      // läuft in zwei Serigrafie-Stufen aus — keine Linie, eine liegende Fläche
       const crest = sin(u.mul(Math.PI * 2 * 3.1).add(drift.mul(0.03)).add(phase)).mul(0.07).add(sin(u.mul(Math.PI * 2 * 7.3).sub(drift.mul(0.02))).mul(0.035));
-      const top = smoothstep(float(0.93).add(crest), float(0.84).add(crest), v);
-      const core = smoothstep(0.2, 0.5, v);
-      const bottom = mix(float(0.45), float(1), core).mul(smoothstep(0.0, 0.2, v));
       const wave = sin(u.mul(Math.PI * 2 * 2.3).add(drift.mul(0.045)).add(phase)).mul(0.5).add(0.5);
       const wave2 = sin(u.mul(Math.PI * 2 * 5.1).sub(drift.mul(0.03)).add(phase.mul(2))).mul(0.5).add(0.5);
       const wave3 = sin(u.mul(Math.PI * 2 * 11.7).add(drift.mul(0.02)).add(phase.mul(3))).mul(0.5).add(0.5);
       // Lange, fast durchgehende Bänder mit wenigen Lücken (Ebene_20), keine spitzen Schlieren
       const density = smoothstep(0.14, 0.42, wave.mul(0.55).add(wave2.mul(0.3)).add(wave3.mul(0.15)));
-      material.colorNode = lookup.pal(options.colorIndex, options.fogRow).rgb;
-      const alpha = top.mul(bottom).mul(density).mul(stripeAlpha);
+      // Alt (Verläufe aus): harte, gewellte Oberkante, Unterkante in zwei Stufen
+      const oldTop = smoothstep(float(0.93).add(crest), float(0.84).add(crest), v);
+      const oldBottom = mix(float(0.45), float(1), smoothstep(0.2, 0.5, v)).mul(smoothstep(0.0, 0.2, v));
+      // Earle (Ebene_20, Bild 03): die Nebelbank liegt im Tal — am Fuß dicht und hell mit weich gewellter Unterkante,
+      // das untere Drittel satt, nach oben dünnt sie als langer Verlauf aus (die Hügel tauchen oben aus ihr auf)
+      const foot = smoothstep(float(0.0).add(crest.mul(0.5)), float(0.16).add(crest.mul(0.5)), v);
+      const body = float(1).sub(smoothstep(0.3, 0.97, v));
+      const air = earleGradients.air;
+      const profile = mix(oldTop.mul(oldBottom), foot.mul(body.pow(1.25)), air);
+      // Farbe: am Fuß die hellste Nebelstufe, nach oben eine Spur tiefer (Stufe darunter)
+      const bright = lookup.pal(options.colorIndex, options.fogRow).rgb as unknown as Vec3Node;
+      const deeper = lookup.pal(Math.max(0, options.colorIndex - 1), options.fogRow).rgb as unknown as Vec3Node;
+      material.colorNode = mixInk(bright, deeper, smoothstep(0.35, 1.0, v).mul(air).mul(0.5));
+      const alpha = profile.mul(density).mul(stripeAlpha);
       material.opacityNode = options.strength ? alpha.mul(options.strength) : alpha;
       this.materials.push(material);
       const mesh = new Mesh(geometry, material);

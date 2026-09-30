@@ -216,6 +216,8 @@ export class EarleLabScene implements SceneController {
       },
       path: { nodesPerZone: NODES_PER_ZONE, turns: 2.75, clearNode: 2.0, clearPath: 0.8 },
       loadsPerFrame: 2,
+      // Schattentönung je Welt (blaue Schatten auf Schnee …) aus den Weltdateien
+      shadowTint: this.sun.shadowTint,
     });
     this.world = world;
     this.planet.add(world.group);

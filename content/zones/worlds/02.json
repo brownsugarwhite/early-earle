@@ -63,6 +63,7 @@
   },
   "fogStripes": 1,
   "fog": { "start": 8, "range": 16 },
+  "valleyMist": 0.65,
   "view": {
     "height": 12.0,
     "forward": 0,

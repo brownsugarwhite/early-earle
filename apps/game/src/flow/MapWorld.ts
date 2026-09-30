@@ -157,6 +157,8 @@ export class MapWorld {
       },
       path: { nodesPerZone: NODES_PER_ZONE, turns: 2.75, clearNode: 2.0, clearPath: 0.8 },
       loadsPerFrame: 2,
+      // Schattentönung je Welt (blaue Schatten auf Schnee …) aus den Weltdateien
+      shadowTint: this.sun.shadowTint,
     });
     this.world.curvature.value = options.curvature ?? MAP_VIEW.curvature;
     this.world.vegetation.setNearClear(MAP_VIEW.nearClear);
@@ -243,6 +245,7 @@ export class MapWorld {
       bands: this.world.terrainBands,
       terrainRow: (w) => this.world.rows[Math.max(0, Math.min(this.world.rows.length - 1, w))]!.terrain,
       colors: (w) => worldPathColors(w),
+      shadowTint: this.sun.shadowTint,
     };
   }
 

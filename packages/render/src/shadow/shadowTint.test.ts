@@ -12,8 +12,13 @@ describe('ShadowTint (Schattentönung je Welt)', () => {
     expect(t.color.z).toBeGreaterThan(t.color.x);
     tint.set(1, 0xff0000, -0.5);
     expect(tint.get(1)!.amount).toBe(0);
+    tint.set(3, '#155a80', 0.9, 0.4);
+    expect(tint.get(3)!.lift).toBeCloseTo(0.4);
+    tint.set(3, '#155a80', 0.9, 2);
+    expect(tint.get(3)!.lift).toBe(1);
     tint.clear(2);
     expect(tint.get(2)!.amount).toBe(0);
+    expect(tint.get(2)!.lift).toBe(0);
     // außerhalb: ignoriert
     tint.set(9, '#ffffff', 1);
     expect(tint.get(9)).toBeNull();
@@ -24,6 +29,7 @@ describe('ShadowTint (Schattentönung je Welt)', () => {
     const n = tint.node(float(3));
     expect(n.color).toBeTruthy();
     expect(n.amount).toBeTruthy();
+    expect(n.lift).toBeTruthy();
     const ink = tint.tintInk(vec3(0.05, 0.06, 0.07) as never, float(3) as never, float(0.5) as never);
     expect((ink as unknown as { isNode: boolean }).isNode).toBe(true);
   });

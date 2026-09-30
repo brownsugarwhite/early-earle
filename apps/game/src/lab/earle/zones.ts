@@ -36,6 +36,10 @@ export interface WorldContent {
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
+  /** Schattentönung (Earle: blaue Schatten auf Schnee, Bild 05): Farbe und Anteil 0..1 zur Tinte hin gemischt. */
+  shadowTint?: { color: string; amount: number; lift?: number };
+  /** Talnebel 0..1 (Ebene 20, Bild 03): helle Nebelbank am Talgrund, nach oben ausdünnend. */
+  valleyMist?: number;
   /** Fokus-Element der Komposition (Baum oder Requisit am Slot; nahe Welten neben dem Pfad). */
   /**
    * Fokus der Weltkomposition: mit `kind` ein Fokus-Element (Scheune, Wurzelbaum …) am Slot, ohne `kind` nur ein
@@ -125,6 +129,8 @@ export function planetWorlds(): EarlePlanetWorld[] {
       fogStripes: w.fogStripes,
       fog: w.fog,
       view: w.view,
+      ...(w.shadowTint ? { shadowTint: w.shadowTint } : {}),
+      ...(w.valleyMist !== undefined ? { valleyMist: w.valleyMist } : {}),
     };
   });
 }

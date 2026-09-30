@@ -37,6 +37,7 @@ import {
 import { hash32, mulberry32 } from '@ee/world';
 import { createHexagon } from '../vegetation';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from '../tsl';
+import { earleGradients, fountain, mixInk } from '../gradients';
 import { LOD_FADE, applyLod, lodScale, popScale, type BillboardUniforms } from './branches';
 import { InkMaterial } from './inkMaterial';
 import { familyTone, type CanopyFamily } from './palette';
@@ -99,8 +100,8 @@ const _s = new Vector3();
 
 /**
  * Jewel canopy (image 02, Ebene 33): all domes in one InstancedMesh with the ink material —
- * - **tone gradient**: each dome runs through two neighbouring families (teal → blue → violet → magenta → red) in
- *   three hard serigraph steps along its own direction (warmer on top), banded by the light;
+ * - **tone gradient**: each dome runs through two neighbouring families (teal → blue → violet → magenta → red) as a
+ *   split-fountain gradient along its own direction (warmer on top), with a soft light ramp — the ink edge stays crisp;
  * - **micro-dot stipple**: object-space 3D cells, one dot per cell measured in the tangent plane (every dot shows
  *   whole, none swims), several tints plus a rare complementary accent; the dot radius scales with the light —
  *   in the shade the dots shrink smoothly to zero instead of popping;
@@ -158,20 +159,24 @@ export function createCanopy(o: CanopyOptions): Canopy {
       const P = varying(pTree, 'vDomePos') as unknown as Vec3Node;
       const dh = vInfo.w;
       const qn = normalize(varying(unit, 'vDomeUnit'));
-      // tone: two neighbouring families along the dome's own direction, three hard steps
+      // tone: two neighbouring families along the dome's own direction (image 02: red → violet → blue within one
+      // dome). Split-fountain gradient between the families (`earleGradients.surface` 0 = the old three hard steps)
+      const soft = earleGradients.surface;
       const g = qn.y.mul(0.85).add(qn.x.mul(vTone.y)).add(qn.z.mul(vTone.z));
       const tone = clamp(vTone.x.add(g.mul(0.42)), 0, 3.999);
       const ts = tone.mul(3);
       const fts = fract(ts);
       const wts = fwidth(ts).max(1e-4);
-      const stepped = floor(ts).add(smoothstep(float(1).sub(wts), float(1), fts)).div(3);
+      // the gradient is centred on the old steps (same average tone, no edges)
+      const stepped = mix(floor(ts).add(smoothstep(float(1).sub(wts), float(1), fts)).div(3), tone.sub(1 / 6).max(0), soft);
       const fam = floor(stepped);
       const fr = stepped.sub(fam);
       const rowA = fam.add(domeRow0);
       const rowB = min(fam.add(1), float(4)).add(domeRow0);
+      // light: a soft ramp through the dome's light steps (top lit, underside deeper), the terminator stays crisp
       const band = clamp(ndl.sub(TERMINATOR).mul(2.3), 0, 0.999).mul(o.bands.sub(1));
-      const litCol = mix(lookup.bands(band, rowA, 1).rgb, lookup.bands(band, rowB, 1).rgb, fr);
-      const inkCol = mix(lookup.pal(0, rowA).rgb, lookup.pal(0, rowB).rgb, fr);
+      const litCol = mixInk(fountain(lookup, band, rowA, 1, soft).rgb as unknown as Vec3Node, fountain(lookup, band, rowB, 1, soft).rgb as unknown as Vec3Node, fr);
+      const inkCol = mixInk(lookup.pal(0, rowA).rgb as unknown as Vec3Node, lookup.pal(0, rowB).rgb as unknown as Vec3Node, fr);
       let col: Vec3Node = mix(inkCol, litCol, lit);
 
       // tangent frame of the surface (object space) for the stipple

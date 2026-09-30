@@ -1,6 +1,6 @@
 import { Box3, BufferAttribute, BufferGeometry, Frustum, Group, Matrix4, Mesh, Object3D, Quaternion, Sphere, Vector3, Vector4 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
-import { abs, acos, asin, atan, attribute, clamp, cos, dot, float, fract, int, max, mix, normalGeometry, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray } from 'three/tsl';
+import { abs, acos, asin, atan, attribute, clamp, cos, dot, float, fract, int, max, mix, modelViewMatrix, normalGeometry, normalView, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, varying, vec4 } from 'three/tsl';
 import {
   PlanetField,
   chunkAngularRadius,
@@ -25,6 +25,8 @@ import {
   type Vec3,
 } from '@ee/world';
 import { EarleMaterial } from './EarleMaterial';
+import { aaSaw, earleGradients } from './gradients';
+import type { ShadowTint } from '../shadow/shadowTint';
 import { PaletteAtlas, addWorldPalette, worldPaletteFromZone, type WorldPalette, type WorldRows, type ZonePalette } from './palette';
 import { GROWTH_SLOTS, PlanetVegetation, type VegetationPropEntry, type VegetationTreeEntry, type VegetationWorldRows } from './planetVegetation';
 import { PaletteLookup, aaStep, arrayElement, createFogSettings, patternTime, stripeMask, type FloatNode, type FogSettings, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from './tsl';
@@ -74,6 +76,13 @@ export interface EarlePlanetWorld {
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
+  /**
+   * Schattentönung der Welt (Earle: Schatten auf Schnee blau, Bild 05; auf der goldenen Wiese tiefes Oliv): Farbe und
+   * Anteil 0..1, mit dem die Tintenform auf dem Gelände (und Wehen, Pfad) zur Tönung gemischt wird. Fehlt → Tinte.
+   */
+  shadowTint?: { color: string; amount: number; lift?: number };
+  /** Talnebel 0..1 (Ebene 20, Bild 03): helle Nebelbank am Talgrund, nach oben ausdünnend. Fehlt → 0. */
+  valleyMist?: number;
 }
 
 export interface EarlePlanetQuality {
@@ -108,6 +117,11 @@ export interface EarlePlanetOptions {
   nearHalfWidthDeg?: number;
   /** Müll-Dichtefaktor (Startwelt). */
   trashScale?: number;
+  /**
+   * Schattentönung je Welt (`SunRig.shadowTint`): der Planet schreibt die Tönungen der Welten hinein und tönt damit
+   * die Tintenform von Gelände und Schneewehen. Fehlt → ungetönte Tinte.
+   */
+  shadowTint?: ShadowTint | null;
 }
 
 interface ChunkCpu {
@@ -158,6 +172,8 @@ export class EarlePlanet {
   readonly skyMix: TSLUniform;
   /** Stärke der Nebelstreifen der aktuellen Welt (0..1), für `FogStripes.strength`. */
   readonly stripeStrength = uniform(1);
+  /** Talnebel der Blick-Welt (0..1, mit der Überblendung): helle Nebelbank am Talgrund des Geländes. */
+  readonly mistStrength = uniform(0);
   /** Krümmungs-Boost (0 = echte Kugel) und Blickrichtung im Planetenraum für den Warp. */
   readonly curvature = uniform(0);
   readonly lookDirLocal = uniform(new Vector3(0, 1, 0));
@@ -286,6 +302,7 @@ export class EarlePlanet {
     this.skyRowB = uniform(this.rows[0]!.sky);
     this.skyMix = uniform(0);
     this.stripeStrength.value = first.fogStripes;
+    this.mistStrength.value = first.valleyMist ?? 0;
     this.crackClosed = options.zones.map(() => false);
     this.crackWidths = options.zones.slice(0, -1).map(() => uniform(this.crackWidth));
     this.angularRadius = chunkAngularRadius(options.chunksPerFace);
@@ -431,10 +448,22 @@ export class EarlePlanet {
     // Planetenraum eine feine organische Welligkeit (bricht die Interpolation des Vertex-Felds)
     const sp = positionGeometry.mul(1.9);
     const snowWob = sin(sp.x.add(sin(sp.z.mul(1.3)).mul(1.7))).mul(0.035).add(sin(sp.y.mul(2.3).add(sp.x.mul(0.7))).mul(0.025));
-    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08) };
+    // Schatten auf dem Schneefeld laufen von tiefem zu hellerem Blau (sonnenzugewandte Hänge heller, Bild 05)
+    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08), shadowLift: 0.4 };
     // Gemeißelte Hänge: Wertstufen entlang der Höhenlinien (Stufensprung im Bandwert je Höhenschicht)
     const chisel = wa.w;
-    const contour = fract(heightAttr.mul(5.0).add(0.5)).sub(0.5).mul(0.34);
+    // Sägezahn mit 1-px-Kante: jede Höhenschicht verläuft in sich, die Stufe zur nächsten bleibt eine klare Kante
+    const contour = aaSaw(heightAttr.mul(5.0).add(0.5)).sub(0.5).mul(0.34);
+    // Verlaufsnormale: Geländenormale zur Kugelnormale hin gemischt → ein ruhiger Verlauf über den Hügel (Kamm hell,
+    // Hang zur Sonne heller), kleine Dellen und Uferrinnen zeigen keine Dreiecke; die Tintenform folgt weiter dem Relief
+    const sphereN = varying(modelViewMatrix.mul(vec4(normalize(positionGeometry), 0)).xyz, 'vTerrainSphereN');
+    const gradientNormal = mix(normalView, normalize(sphereN), 0.8);
+    // Talnebel (Ebene 20): am Talgrund dicht und hell, zu den Kämmen hin ausdünnend; direkt vor der Linse frei
+    const valley = float(1).sub(smoothstep(0.0, 0.5, heightAttr));
+    const mist = valley.mul(valley).mul(smoothstep(4.0, 13.0, positionView.length())).mul(this.mistStrength).mul(earleGradients.air);
+    // Schattentönung je Welt (SunRig.shadowTint): Tönungen der Weltdateien eintragen
+    const tint = options.shadowTint ?? null;
+    if (tint) this.worlds.forEach((w, i) => (w.shadowTint ? tint.set(i, w.shadowTint.color, w.shadowTint.amount, w.shadowTint.lift ?? 0) : tint.clear(i)));
 
     this.terrainMaterial = new EarleMaterial({
       lookup: this.lookup,
@@ -444,7 +473,11 @@ export class EarlePlanet {
       bands: this.terrainBands,
       bandScale: 2.0,
       terminator: 0.02,
-      lift: heightAttr.mul(0.45).add(contour.mul(chisel)),
+      // Kamm → Tal: Kuppen heller, Mulden tiefer (Earles Hügel), dazu die Meißelschichten
+      lift: heightAttr.mul(0.5).add(contour.mul(chisel)),
+      gradientNormalNode: gradientNormal,
+      shadowTint: tint ? { tint, world: worldIndex, up: sphereN } : null,
+      mistNode: mist,
       crackNode: crack,
       crackLipNode: lip,
       growthNode,
@@ -482,6 +515,7 @@ export class EarlePlanet {
       warp,
       capacity: options.quality.capacity.trees > 1500 ? 700 : 360,
       growth: slotGrowth,
+      shadowTint: tint,
     });
     this.group.add(this.drifts.mesh);
 
@@ -736,6 +770,7 @@ export class EarlePlanet {
       this.skyMix.value = t;
       this.fog.mix.value = t;
       this.stripeStrength.value = wa.fogStripes + (wb.fogStripes - wa.fogStripes) * t;
+      this.mistStrength.value = (wa.valleyMist ?? 0) + ((wb.valleyMist ?? 0) - (wa.valleyMist ?? 0)) * t;
       this.fogStart = wa.fog.start + (wb.fog.start - wa.fog.start) * t;
       this.fogRange = wa.fog.range + (wb.fog.range - wa.fog.range) * t;
       this.applyFog();

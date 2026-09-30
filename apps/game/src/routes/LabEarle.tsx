@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { earleGradients, setGradientAmount } from '@ee/render';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { DEFAULT_EARLE_PARAMS, EarleLabScene, type EarleLabParams } from '../lab/earle/EarleLabScene';
@@ -129,6 +130,9 @@ function LabEarlePlanet() {
   const [viewWorld, setViewWorld] = useState(-1);
   const [showRef, setShowRef] = useState(searchParams.get('ref') === '1');
   const [refMissing, setRefMissing] = useState(false);
+  // Verläufe (Earle-Irisdruck): 0 = alte harte Stufen, 1 = Verläufe; ein geteilter Uniform, kein Neukompilieren
+  const [verlauf, setVerlauf] = useState(() => earleGradients.surface.value);
+  useEffect(() => setGradientAmount(verlauf), [verlauf]);
   const controller = useMemo(() => new EarleLabScene(initial), [initial]);
 
   useEffect(() => {
@@ -208,6 +212,16 @@ function LabEarlePlanet() {
             />
             <Range label="Sonne Höhe" value={params.sunElevation} min={6} max={15} step={0.5} format={(v) => `${v}°`} onChange={(v) => set({ sunElevation: v })} />
             <Range label="Sonne Azimut" value={params.sunAzimuth} min={20} max={110} step={1} format={(v) => `${v}°`} onChange={(v) => set({ sunAzimuth: v })} />
+            <Range
+              label="Verläufe"
+              testId="earle-verlauf"
+              value={verlauf}
+              min={0}
+              max={1}
+              step={0.05}
+              format={(v) => (v < 0.02 ? 'Stufen' : `${Math.round(v * 100)} %`)}
+              onChange={setVerlauf}
+            />
             <Range label="Bänder" value={params.bands} min={2} max={5} step={1} onChange={(v) => set({ bands: v })} />
             <Range label="Nebelstufen" value={params.fogSteps} min={3} max={6} step={1} onChange={(v) => set({ fogSteps: v })} />
             <Range label="Dichte" value={params.density} min={20} max={200} step={10} format={(v) => `${v} %`} onChange={(v) => set({ density: v })} />
