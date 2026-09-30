@@ -1,6 +1,7 @@
-import { abs, attribute, float, floor, fract, fwidth, hash, max, min, mix, positionLocal, positionView, select, sin, smoothstep, sqrt, step, vec2 } from 'three/tsl';
+import { abs, attribute, clamp, float, floor, fract, fwidth, hash, max, min, mix, positionLocal, positionView, select, sin, smoothstep, sqrt, step, vec2 } from 'three/tsl';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, patternTime, periodFade, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec2Node, type Vec3Node } from '../tsl';
+import { seaColor } from './seaSurface';
 
 export interface WaterMaterialOptions {
   lookup: PaletteLookup;
@@ -116,7 +117,12 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
   const iceCol = mix(mix(plates, pal(3), shallow.mul(0.5)), pal(6), cracks);
   col = mix(col, iceCol, frozen);
   // Schatten: tiefe Wasserfarbe; auf Eis eine Stufe unter dem Eis
-  const shadowCol = mix(pal(0), mix(pal(2), pal(3), 0.4), frozen);
+  let shadowCol: Vec3Node = mix(pal(0), mix(pal(2), pal(3), 0.4), frozen) as unknown as Vec3Node;
+  // Meer (Art 3, Welt 14): Earles gestaffelte Kräusel statt der Seezellen; als Faktor gemischt (kein `select`-Zweig)
+  const isSea = clamp(float(1).sub(abs(wb.w.sub(3)).mul(2)), 0, 1);
+  const sea = seaColor({ lookup: o.lookup, row, x: u, z: v, shore: attribute('wg', 'vec2').y, body });
+  col = mix(col, sea.color, isSea) as unknown as Vec3Node;
+  shadowCol = mix(shadowCol, sea.shadow, isSea) as unknown as Vec3Node;
   return new EarleMaterial({
     lookup: o.lookup,
     row: 0,
@@ -127,7 +133,8 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
     terminatorNode: float(-1),
     pattern: { mask: float(1), color: col, shadowColor: shadowCol },
     positionNode: o.warp(positionLocal),
-    fogDistNode: positionView.length().add(o.veil(world)),
+    // Meer: weniger Luftperspektive (sein ferner Glanz ist selbst hell; Ebene 29), sonst wie das Gelände
+    fogDistNode: positionView.length().mul(mix(float(1), float(0.55), isSea)).add(o.veil(world)),
     // Vor der Heilung trüb wie das verdorrte Gelände ringsum
     growthNode: o.growth ? o.growth(attribute('wg', 'vec2').x) : null,
   });

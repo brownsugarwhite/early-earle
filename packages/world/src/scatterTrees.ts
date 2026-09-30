@@ -11,10 +11,12 @@ import type { PlanetVegetationFamily } from './planet';
  * Astwerk scheint durch — Bilder 02, Ebene_19), Schirmbaum (`umbrella`, flache Kuppel auf sichtbarem Astfächer —
  * Ebene_1/20/36) und die knorrige Earle-Eiche (`oak`, Solitär mit bogig hängenden Ästen und Sternnadeln — Bild 04).
  */
-export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel' | 'lace' | 'umbrella' | 'oak';
+export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel' | 'lace' | 'umbrella' | 'oak'
+  // Windbaum (Welt 14, Ebene 29): knorrig, zur Leeseite geneigt, Spitzenwerk an der Kronenkante
+  | 'wind';
 
 /** Alle Baumarten (z. B. zur Unterscheidung Baum ↔ Requisit bei Fokus-Elementen). */
-export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak'];
+export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak', 'wind'];
 
 export interface TreeInstance {
   /** Fußpunkt auf der Oberfläche (Patch-Raum). */
@@ -70,6 +72,8 @@ export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number;
   umbrella: { radius: 0.9, trunk: 1.05, hull: 1.6, top: 2.15 },
   // Earle-Eiche: knorriger Stamm, bogig ausladende, hängende Äste; "Krone" = Astwerk mit Sternnadeln (Bild 04)
   oak: { radius: 1.5, trunk: 0.75, hull: 1.35, top: 2.35 },
+  // Windbaum: gedrungener Stamm, Fächerkrone zur Leeseite (Karte bis ≈ 2.7 r hoch, 2.7 r zur Seite)
+  wind: { radius: 1.2, trunk: 0.95, hull: 1.55, top: 2.7 },
 };
 
 // --- Earle-Komposition der Welten -------------------------------------------------------------------

@@ -14,28 +14,42 @@
     "sky": ["#fcf2d2", "#f7e6cb", "#ecdcc4", "#dcd2bc", "#c9c6b3", "#b3b5a9"],
     "sun": "#fffbe6",
     "sunRing": "#fdf3d6",
-    "fog": ["#b3b5a9", "#6f7f80", "#8e9a96", "#aeb4aa", "#d2cebb", "#f2e9cf"],
-    "fogAlpha": [0, 0.3, 0.5, 0.68, 0.82, 0.94],
+    "fog": ["#b3b5a9", "#6f7f80", "#86938f", "#9ca69f", "#aeb5ab", "#bfc2b5"],
+    "fogAlpha": [0, 0.3, 0.48, 0.64, 0.76, 0.86],
     "accent": ["#4a3c36", "#2a2220", "#140f0e", "#1a1412", "#5a4a42", "#6a5a50", "#2a2220", "#8e9a96"],
     "water": ["#0b0d0c", "#171d1f", "#2b3a3c", "#4a6066", "#8aa6ae", "#cdd6cf", "#1e2a2e", "#efe6cf"],
-    "rock": ["#140f0e", "#241c1a", "#322825", "#3e332f", "#4a3e38", "#52463f", "#1a1412", "#5e5048"]
+    "rock": ["#140f0e", "#241c1a", "#322825", "#3e332f", "#4a3e38", "#52463f", "#1a1412", "#5e5048"],
+    "cloud": ["#6d7a7c", "#8b9895", "#a3aca6", "#b8bdb3", "#cbc9bb", "#dcd6c4", "#efe6d0", "#5c6868"]
   },
   "terrain": { "amplitude": 2.6, "wavelength": 1.6, "slope": 0.3 },
   "ground": "smooth",
   "vegetation": {
-    "density": 0.05,
+    "density": 0.07,
     "clumpiness": 0,
-    "kinds": { "bare": 1 },
-    "scale": [1.1, 1.6],
+    "kinds": { "wind": 1 },
+    "scale": [1.5, 2.3],
     "trunkStyle": "ink",
     "motif": "dots"
   },
   "props": {  },
   "features": {
-    "lakes": { "count": 1, "radius": [6, 7], "stretch": 2.6, "pathDistance": [9, 12] }
+    "coast": { "side": 1, "distance": [7, 11], "cliff": 5.0, "rise": 0.45, "ridge": 12, "slopeAlong": 1.3 }
   },
+  "landmarkChance": 0,
   "fogStripes": 0,
-  "fog": { "start": 8, "range": 22 },
-  "view": { "height": 3.0, "forward": 6, "look": 10, "fov": 55, "curvature": 0.12, "focus": [-0.1, 0.1], "nearClear": 1.2, "footClear": 0 },
-  "focal": { "along": 0.5, "lateral": 7 }
+  "fog": { "start": 14, "range": 30 },
+  "view": {
+    "height": 2.2,
+    "forward": 4,
+    "look": 12,
+    "lookSide": -5.5,
+    "lookHeight": -2.5,
+    "fov": 72,
+    "curvature": -0.85,
+    "focus": [-0.1, 0.1],
+    "nearClear": 1.2,
+    "footClear": 0,
+    "aim": [7, 8]
+  },
+  "focal": { "along": 0.35, "lateral": 11 }
 }

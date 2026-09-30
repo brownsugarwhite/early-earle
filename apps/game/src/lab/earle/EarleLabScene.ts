@@ -91,6 +91,22 @@ const CLEARANCE = 1.3;
 const _Y = new Vector3(0, 1, 0);
 
 /**
+ * sin der Horizont-Elevation für eine Kamera im Abstand `camR` vom Kugelmittelpunkt: reine Kugel analytisch; mit
+ * negativem Krümmungs-Boost (flachere Erde, Kompositionen der Welten 13/14) liegt der Horizont höher — dann die höchste
+ * Elevation der Anzeigekurve r(α) = R·(1 − c·(1 − cos α)).
+ */
+export function horizonSin(R: number, c: number, camR: number): number {
+  const sphere = -Math.sin(Math.acos(Math.min(1, R / Math.max(R + 0.01, camR))));
+  if (c >= 0) return sphere;
+  let best = -Math.PI / 2;
+  for (let a = 0.02; a < 1.9; a += 0.02) {
+    const r = R * (1 - c * (1 - Math.cos(a)));
+    best = Math.max(best, Math.atan2(r * Math.cos(a) - camR, r * Math.sin(a)));
+  }
+  return Math.max(sphere, Math.sin(best));
+}
+
+/**
  * P2c Earle-Lab auf der unendlichen Ebene (ADR 0002): die Welten entlang des Pfads (zehn Earle-Serigrafien, danach
  * prozedurale Welten), Nachbarwelten links und rechts, als Kugel um den Fokus angezeigt. Weltwähler gleitet zum Bildfokus
  * der Welt; Ziehen schiebt den Fokus endlos in jede Richtung. Perspektive je Welt (Kamerahöhe, Blickpunkt, FOV 80–90°,
@@ -424,6 +440,7 @@ export class EarleLabScene implements SceneController {
     out.fov = OVERVIEW.fov + (preset.fov - OVERVIEW.fov) * t;
     out.curvature = OVERVIEW.curvature + (preset.curvature - OVERVIEW.curvature) * t;
     out.lookHeight = (preset.lookHeight ?? 0) * t;
+    out.lookSide = (preset.lookSide ?? 0) * t;
     if (p > 1) {
       const e = (p - 1) / 0.4; // 0..1 Übertreibung
       out.curvature *= 1 + 1.5 * e;
@@ -465,7 +482,7 @@ export class EarleLabScene implements SceneController {
     this.cameraOffset(v, this.camera.position);
     this.camera.position.y += this.lift + this.groundLift;
     this.rig.updateMatrixWorld(true);
-    this.camera.lookAt(this.rig.localToWorld(this.tmp.set(0, this.groundLift + (v.lookHeight ?? 0), -v.look)));
+    this.camera.lookAt(this.rig.localToWorld(this.tmp.set(v.lookSide ?? 0, this.groundLift + (v.lookHeight ?? 0), -v.look)));
     if (Math.abs(this.camera.fov - v.fov) > 1e-3) {
       this.camera.fov = v.fov;
       this.camera.updateProjectionMatrix();
@@ -538,7 +555,7 @@ export class EarleLabScene implements SceneController {
     cam.fov = v.fov;
     this.cameraOffset(v, cam.position).add(this.rig.position);
     cam.position.y += this.groundLift;
-    cam.lookAt(this.tmp.set(0, this.groundLift + (v.lookHeight ?? 0), -v.look).add(this.rig.position));
+    cam.lookAt(this.tmp.set(v.lookSide ?? 0, this.groundLift + (v.lookHeight ?? 0), -v.look).add(this.rig.position));
     cam.updateMatrixWorld(true);
     cam.updateProjectionMatrix();
     const world = this.world!;
@@ -724,6 +741,7 @@ export class EarleLabScene implements SceneController {
     v.fov += (target.fov - v.fov) * k;
     v.curvature += (target.curvature - v.curvature) * k;
     v.lookHeight = (v.lookHeight ?? 0) + ((target.lookHeight ?? 0) - (v.lookHeight ?? 0)) * k;
+    v.lookSide = (v.lookSide ?? 0) + ((target.lookSide ?? 0) - (v.lookSide ?? 0)) * k;
     this.followWorldSun(world.worldData(world.viewWorld).view, k);
     world.curvature.value = v.curvature;
     const viewData = world.worldData(world.viewWorld).view;
@@ -783,7 +801,7 @@ export class EarleLabScene implements SceneController {
     world.setSunDirection(this.sunDirWorld.value);
 
     const camR = camWorld.length();
-    this.skyHorizon.value = -Math.sin(Math.acos(Math.min(1, PLANET_RADIUS / Math.max(PLANET_RADIUS + 0.01, camR))));
+    this.skyHorizon.value = horizonSin(PLANET_RADIUS, v.curvature, camR);
     this.tmpM.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
     this.frustum.setFromProjectionMatrix(this.tmpM, this.camera.coordinateSystem);
     if (world.update(this.camera, camWorld, this.frustum)) this.shadowDirty = true;

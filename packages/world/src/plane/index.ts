@@ -46,6 +46,9 @@ export {
   lakeAt as planeLakeAt,
   lakeRadiusAt as planeLakeRadiusAt,
   riverSegmentAt as planeRiverSegmentAt,
+  seaCoastAt as planeSeaCoastAt,
+  seaField as planeSeaField,
+  seaHeight as planeSeaHeight,
   pathDistance as planePathDistance,
   type RegionFeatures,
   type RegionProvider,
@@ -57,6 +60,7 @@ export type {
   Lake as PlaneLake,
   LedgeAnchor as PlaneLedgeAnchor,
   River as PlaneRiver,
+  Sea as PlaneSea,
   RockColumn as PlaneRockColumn,
   RockFormation as PlaneRockFormation,
 } from './features/types';

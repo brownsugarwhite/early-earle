@@ -17,6 +17,33 @@ export interface WorldFeatureSpec {
   drifts?: DriftSpec;
   /** Gemeißelte Hänge: zusätzliche Wertstufen entlang der Höhenlinien (0 = aus, 1 = kräftig). */
   chisel?: number;
+  /** Meer mit Landzunge neben dem Pfad (nur auf der Ebene; Welt 14, Ebene 29). */
+  coast?: CoastSpec;
+}
+
+/**
+ * Meer mit Landzunge (Ebene 29): eine große Bucht neben dem Pfad im Pfadabschnitt der Welt; die Küste mit Buchten und
+ * Landzungen, an den Enden und am fernen Rand geschlossen; das Land steigt von der Klippe zu einem Grat an.
+ */
+export interface CoastSpec {
+  /** Seite des Meeres (1 = rechts vom Pfad, −1 = links), Standard 1. */
+  side?: 1 | -1;
+  /** Abstand der Küstenlinie vom Pfad-Rückgrat [min, max] (Landzungen bis Buchten), Standard [6, 10]. */
+  distance?: [number, number];
+  /** Buchten längs des Abschnitts (Wellen der Küstenlinie), Standard 1.6. */
+  bays?: number;
+  /** Meeresspiegel (Höhe), Standard −0.4. */
+  level?: number;
+  /** Klippenhöhe über dem Spiegel, Standard 2.4. */
+  cliff?: number;
+  /** Anstieg des Landes je Einheit landeinwärts, Standard 0.2. */
+  rise?: number;
+  /** Abstand des Grats von der Klippe (Einheiten), Standard 10. */
+  ridge?: number;
+  /** Anfang und Ende der Bucht als Anteil des Abschnitts, Standard [0.1, 0.9]. */
+  ends?: [number, number];
+  /** Höhenabfall der Landzunge längs der Bucht (0 = gleich hoch, 1 = vorn anderthalbfach, am Ende halb), Standard 0. */
+  slopeAlong?: number;
 }
 
 /** Lage relativ zum Levelpfad (nahe Welten) bzw. zum Bildfokus der Welt (ferne Welten ohne Pfad). */

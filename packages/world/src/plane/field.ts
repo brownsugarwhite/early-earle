@@ -60,7 +60,7 @@ export const PLANE_LANDMARK_PLAN: LandmarkPlanParams = {
   kinds: { ...DEFAULT_LANDMARK_PLAN.kinds, swamp: { weight: 1.1, pathDistance: [10, 60], maxRelief: 2.8, maxSlope: 0.34 } },
 };
 
-const TREE_KINDS = new Set<string>(['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak']);
+const TREE_KINDS = new Set<string>(['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak', 'wind']);
 export function isTreeKind(k: string): k is TreeKind {
   return TREE_KINDS.has(k);
 }

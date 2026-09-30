@@ -68,6 +68,8 @@ export interface WorldView {
   sun?: { elevation: number; azimuth: number };
   /** Scheitel neben dem Bildfokus (Rig-Raum: x rechts, z zur Kamera) statt `focus` — Untersichten ohne Bodenstrahl. */
   aim?: [number, number];
+  /** Blickpunkt seitlich (Welteinheiten, + rechts): die Kamera dreht sich zur Seite (Welt 14: zur Landzunge). */
+  lookSide?: number;
 }
 
 /** Eine Welt mit ihren Darstellungsdaten (Autorenwelt aus `content/`, oder prozedural erzeugt). */
@@ -1511,17 +1513,18 @@ export class EarlePlanet {
     const ax = Math.round(this.focus.x);
     const az = Math.round(this.focus.z);
     this.featureAnchor = { x: ax, z: az };
-    const regions: RegionFeatures[] = regionKeys.map((k) => this.field.features.region(k)).filter((r) => r.lakes.length + r.rivers.length + r.formations.length > 0);
+    const regions: RegionFeatures[] = regionKeys.map((k) => this.field.features.region(k)).filter((r) => r.lakes.length + r.rivers.length + r.seas.length + r.formations.length > 0);
     const ranges: Array<[number, number]> = [];
     const waterInputs: WaterRegionInput[] = [];
     const formations: Array<{ f: RegionFeatures['formations'][number]; feature: number }> = [];
     for (const r of regions) {
-      const z0 = Math.min(...[...r.lakes.map((l) => l.cz - l.reach), ...r.formations.map((f) => f.cz - f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[1]))]);
-      const z1 = Math.max(...[...r.lakes.map((l) => l.cz + l.reach), ...r.formations.map((f) => f.cz + f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[1]))]);
+      const z0 = Math.min(...[...r.lakes.map((l) => l.cz - l.reach), ...r.formations.map((f) => f.cz - f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[1])), ...r.seas.map((m) => m.zBottom)]);
+      const z1 = Math.max(...[...r.lakes.map((l) => l.cz + l.reach), ...r.formations.map((f) => f.cz + f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[1])), ...r.seas.map((m) => m.zTop)]);
       const range = this.nodeRangeFor(z0, z1);
-      if (r.lakes.length + r.rivers.length > 0) {
-        waterInputs.push({ lakes: r.lakes, rivers: r.rivers, slot: this.slots.slotOf(r.world), featureBase: ranges.length });
-        for (let i = 0; i < r.lakes.length + r.rivers.length; i++) ranges.push(range);
+      const bodies = r.lakes.length + r.rivers.length + r.seas.length;
+      if (bodies > 0) {
+        waterInputs.push({ lakes: r.lakes, rivers: r.rivers, seas: r.seas, slot: this.slots.slotOf(r.world), featureBase: ranges.length });
+        for (let i = 0; i < bodies; i++) ranges.push(range);
       }
       for (const f of r.formations) {
         formations.push({ f, feature: ranges.length });
@@ -1701,6 +1704,7 @@ function proceduralView(v: WorldView): WorldView {
   delete rest.lookHeight;
   delete rest.sun;
   delete rest.aim;
+  delete rest.lookSide;
   return rest;
 }
 

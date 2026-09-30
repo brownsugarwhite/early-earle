@@ -20,9 +20,10 @@ import type { FloatNode, PaletteLookup, Vec3Node } from '../tsl';
 export interface CloudLayerSpec {
   /**
    * `bank` = Haufenbank (flacher Fuß, Blumenkohl-Kopf), `streak` = flacher Linsenstreifen, `dome` = einzelne Kuppel,
-   * `wash` = flaches Himmelsband (tiefes Nachtblau oben im Bild, harte gewellte Unterkante, innen verlaufend).
+   * `wash` = flaches Himmelsband (tiefes Nachtblau oben im Bild, harte gewellte Unterkante, innen verlaufend),
+   * `land` = ferne Landzunge auf dem Horizont (Ebene 29: flache, blasse graublaue Form, links steil, lang auslaufend).
    */
-  kind?: 'bank' | 'streak' | 'dome' | 'wash';
+  kind?: 'bank' | 'streak' | 'dome' | 'wash' | 'land';
   /** Azimut der Mitte, Grad von der Blickachse (+ = rechts). */
   az: number;
   /** Halbe Breite (Grad). */
@@ -53,7 +54,7 @@ export interface CloudBanksOptions {
 }
 
 const DEG = Math.PI / 180;
-const KIND: Record<NonNullable<CloudLayerSpec['kind']>, number> = { bank: 0, streak: 1, dome: 2, wash: 3 };
+const KIND: Record<NonNullable<CloudLayerSpec['kind']>, number> = { bank: 0, streak: 1, dome: 2, wash: 3, land: 4 };
 
 /** Geometrie einer Wolkenwelt: je Schicht ein Streifen aus Quads (u längs, v hoch), Parameter je Vertex. */
 export function cloudGeometry(spec: CloudBankSpec, segments = 28): BufferGeometry {
@@ -155,6 +156,7 @@ export class CloudBanks {
     const isStreak = clamp(float(1).sub(abs(kind.sub(1)).mul(2)), 0, 1);
     const isDome = clamp(float(1).sub(abs(kind.sub(2)).mul(2)), 0, 1);
     const isWash = clamp(float(1).sub(abs(kind.sub(3)).mul(2)), 0, 1);
+    const isLand = clamp(float(1).sub(abs(kind.sub(4)).mul(2)), 0, 1);
     const x = u;
     const y = v;
     const ax = abs(x.mul(2).sub(1));
@@ -176,7 +178,13 @@ export class CloudBanks {
     const base = env.mul(float(1).sub(rP.mul(1.15)));
     const bankCrest = base.add(cauli.mul(pow(env, float(0.35))));
     const streakCrest = env.mul(float(0.8).add(s3.mul(0.12)));
-    const crest = mix(mix(bankCrest, streakCrest, isStreak), float(1), isWash);
+    // Landzunge: links steil (Klippe), lang und flach zur Spitze hin abfallend, an der Spitze ein kleiner Absatz
+    const landCrest = smoothstep(0.0, 0.07, x)
+      .mul(float(1).sub(smoothstep(0.07, 0.86, x).mul(0.58)))
+      .mul(float(1).sub(smoothstep(0.86, 0.9, x).mul(0.62)))
+      .mul(float(1).sub(smoothstep(0.93, 1.0, x)))
+      .add(sin(x.mul(31.0).add(seed.mul(3.0))).mul(0.015));
+    const crest = mix(mix(mix(bankCrest, streakCrest, isStreak), float(1), isWash), landCrest, isLand);
     // Band: Unterkante leicht gewellt (harte Kante), sonst die ganze Schicht
     const washEdge = sin(x.mul(3.1).add(seed.mul(4.0))).mul(0.035).add(sin(x.mul(7.3).add(seed)).mul(0.01)).add(0.05);
     const bottom = mix(float(0.002), washEdge, isWash);
@@ -223,6 +231,9 @@ export class CloudBanks {
     // Himmelsband: Nachtblau (Stufe 7), zur Unterkante hin ein Stück Richtung Tiefschatten verlaufend
     const wash = mixInk(pal(7), pal(0), clamp(float(1).sub(y), 0, 1).mul(0.42));
     color = mix(color, wash, isWash) as unknown as Vec3Node;
+    // Landzunge: Graublau (Stufe 1) zur Spitze und in der Ferne heller (Stufe 3), eine Form mit innerem Verlauf
+    const land = mixInk(pal(1), pal(3), clamp(x.mul(0.55).add(tone.mul(0.5)).add(float(1).sub(y).mul(0.12)), 0, 1));
+    color = mix(color, land, isLand) as unknown as Vec3Node;
     this.material.colorNode = color;
     this.material.opacityNode = inside.mul(opacity);
   }
