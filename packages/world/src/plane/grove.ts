@@ -13,6 +13,8 @@ export interface PlaneGroveField {
   readonly seed: number;
   heightNormAt(x: number, z: number): number;
   surfaceAt(x: number, z: number, outPos: Vec3, outNormal: Vec3): number;
+  /** Geländehöhe (Welteinheiten), für Kammbäume nach absoluter Höhe (`crest.aboveHeight`). */
+  heightAt?(x: number, z: number): number;
 }
 
 const noiseCache = new Map<number, { mass: GradientNoise2; warp: GradientNoise2 }>();
@@ -73,6 +75,12 @@ function crestSlot(x: number, z: number, spacing: number | undefined, seed: numb
   return Math.hypot(x - ax, z - az) < spacing * 0.16;
 }
 
+/** Liegt (x, z) hoch genug für Kammbäume: relative Höhe `above` oder absolute Höhe `aboveHeight` (Steilhang in Welt 12). */
+function onCrest(field: PlaneGroveField, x: number, z: number, crest: NonNullable<GroveSpec['crest']>): boolean {
+  if (crest.aboveHeight !== undefined && field.heightAt) return field.heightAt(x, z) >= crest.aboveHeight;
+  return field.heightNormAt(x, z) >= crest.above;
+}
+
 /** Entscheidet für einen Streukandidaten, ob und welcher Baum dort steht (ohne `grove` altes Verhalten). */
 export function planeComposeGroveTree(field: PlaneGroveField, x: number, z: number, fam: PlanetVegetationFamily, kind: TreeKind, scale: number, rand: () => number): GroveTree | null {
   const grove = (fam as TreeFamily).grove;
@@ -99,12 +107,14 @@ export function planeComposeGroveTree(field: PlaneGroveField, x: number, z: numb
   }
   // Kammbäume (Schirmbäume auf den Kämmen, Tannen auf dem Grat): nur Welten mit `crest` ziehen hier Zufall
   const crest = grove.crest;
-  if (crest && field.heightNormAt(x, z) >= crest.above && crestSlot(x, z, crest.spacing, field.seed) && rand() < crest.chance) {
+  let maxSlope = grove.maxSlope ?? 0.35;
+  if (crest && onCrest(field, x, z, crest) && crestSlot(x, z, crest.spacing, field.seed) && rand() < crest.chance) {
     const [a, b] = crest.scale ?? [s0 + (s1 - s0) * 0.5, s1];
     out = { kind: pickTreeKind(crest.kinds, rand()), scale: a + (b - a) * rand() };
+    // Kammbäume stehen auch am Steilhang (Ebene 7: Tannen auf der steilen Flanke) — eigene Hanggrenze, Standard keine
+    maxSlope = crest.maxSlope ?? 1;
   }
   if (!out) return null;
-  const maxSlope = grove.maxSlope ?? 0.35;
   if (maxSlope < 1) {
     const pos: Vec3 = [0, 0, 0];
     const nor: Vec3 = [0, 0, 0];

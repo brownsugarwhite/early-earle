@@ -112,7 +112,9 @@ export interface TreeLayerOptions {
  *   türkise Kronen nebeneinander);
  * - `kindRows`: Kronenzeile je Art (Index in Hauptzeile + Varianten) statt der Zufallsvariante — eine Zahl oder eine
  *   Liste, aus der je Baum gewählt wird (Ebene 7: Tannen immer in der dunklen Zeile, Schuppenbüsche meist türkis, einige
- *   rot und hellgrün).
+ *   rot und hellgrün);
+ * - `kindRowPatch`: Zellgröße (Welteinheiten), in der die Wahl aus `kindRows` gleich bleibt — Farbflecken statt
+ *   verstreuter Einzelbüsche (Ebene 7: ein Fleck roter Büsche, daneben hellgrüne).
  */
 export interface TreeFamilyExtras {
   stippleCell?: number;
@@ -121,6 +123,7 @@ export interface TreeFamilyExtras {
   crownVeins?: number;
   crownLiftVariance?: number;
   kindRows?: Partial<Record<TreeKind, number | number[]>>;
+  kindRowPatch?: number;
 }
 
 export interface TreeEntry {
@@ -362,8 +365,11 @@ export class TreeLayer {
       return base.add(p.sub(base).mul(treeScale()));
     };
     /** Nebel je Baum: Abstand der Kamera zum (gekrümmten) Fuß — Stamm, Krone und Punkte eines Baums teilen ihn. */
-    const fogOf = (row: FloatNode, foot: Vec3Node, name: string) => {
-      const d = varying(modelViewMatrix.mul(vec4(warp(foot), 1)).xyz.length(), name);
+    const fogOf = (row: FloatNode, foot: Vec3Node, name: string, rise?: { height: FloatNode; perUnit: number }) => {
+      // Aufsteigender Nebel (Earle-Tannen, Ebene 7): je Einheit über dem Fuß ein Stück mehr Nebel — die Tanne verblasst
+      // nach oben im Goldnebel, in den Nebelstufen der Welt (harte Stufen, wie der übrige Nebel)
+      const lift = rise ? rise.height.max(0).mul(rise.perUnit) : float(0);
+      const d = varying(modelViewMatrix.mul(vec4(warp(foot), 1)).xyz.length().add(lift), name);
       const dist = shared.fogDist(row, d);
       return (c: Vec3Node): Vec3Node => instanceFog(c, fog, lookup, dist);
     };
@@ -404,7 +410,7 @@ export class TreeLayer {
         bandScale: 2.0,
         rowNode: row,
         fogDistNode: shared.fogDist(row),
-        fogFn: fogOf(row, treeA().xyz, 'vCrownFogDist'),
+        fogFn: kind === 'fir' ? fogOf(row, treeA().xyz, 'vFirFogDist', { height: grownFrom(positionLocal).y.sub(treeA().y), perUnit: 2.6 }) : fogOf(row, treeA().xyz, 'vCrownFogDist'),
         terminatorNode: treeD().w,
         growthNode: shared.slotGrowth(treeB().w),
         positionNode: warp(grownFrom(positionLocal)),
@@ -759,9 +765,13 @@ export class TreeLayer {
 
   /** Index der Kronenzeile aus `kindRows` der Welt (−1 = keine Vorgabe für die Art). */
   private kindRowIndex(t: PlanetTree, count: number): number {
-    const k = (this.family(t) as (TreeFamily & TreeFamilyExtras) | undefined)?.kindRows?.[t.kind];
+    const fam = this.family(t) as (TreeFamily & TreeFamilyExtras) | undefined;
+    const k = fam?.kindRows?.[t.kind];
     if (k === undefined) return -1;
-    const i = Array.isArray(k) ? (k[Math.min(k.length - 1, Math.floor(t.variant * k.length))] ?? 0) : k;
+    // Flecken: je Zelle derselbe Zufallswert (mit leicht verrauschter Zellgrenze), sonst je Baum
+    const patch = fam?.kindRowPatch;
+    const r = patch ? treeHash([Math.floor((t.position[0] + 0.6 * Math.sin(t.position[2] * 0.7)) / patch), 0, Math.floor((t.position[2] + 0.6 * Math.sin(t.position[0] * 0.7)) / patch)], 17) : t.variant;
+    const i = Array.isArray(k) ? (k[Math.min(k.length - 1, Math.floor(r * k.length))] ?? 0) : k;
     return Math.max(0, Math.min(count - 1, Math.round(i)));
   }
 

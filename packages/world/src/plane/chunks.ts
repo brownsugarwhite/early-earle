@@ -343,6 +343,14 @@ function poissonInChunk(seed: number, cx: number, cz: number, salt: string, minD
   return pts.map(([x, y]) => [x + cx * CHUNK_SIZE, y + cz * CHUNK_SIZE]);
 }
 
+/** Steht ein Fuß auf Höhe `h` im Nebelmeer der Welt (Spiegel aus `mist.sea`, siehe `@ee/render` ground/fogSea)? */
+function belowSea(field: PlaneField, world: number, h: number, margin: number): boolean {
+  const spec = field.spec(world);
+  const sea = spec.mist?.sea;
+  if (!sea) return false;
+  return h < (sea.height ?? sea.level * spec.terrain.amplitude) + 0.15 + margin * 0.3;
+}
+
 /** Wahrzeichen-Freiräume (Fokus-Slots der Regionen im Chunk + externe Wahrzeichen). */
 function landmarkCleared(slots: readonly LandmarkSlot[], x: number, z: number, radius: number): boolean {
   for (const l of slots) if (Math.hypot(x - l.position[0], z - l.position[2]) < l.clearRadius + radius) return true;
@@ -416,6 +424,8 @@ export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, opt
     const hn = field.features.region(key).snow ? field.heightNormAt(x, z) : 0;
     if (field.features.blocksTree(key, x, z, canopyRadius, hn)) continue;
     field.surfaceAt(x, z, pos, nor);
+    // Nebelmeer (Welt 12): unter dem Nebelspiegel wächst nichts, es wäre im Nebel versunken
+    if (belowSea(field, world, pos[1], canopyRadius)) continue;
     snapToMesh(options.mesh, pos);
     const hullH = prop.hull * canopyRadius;
     raw.push({
@@ -541,6 +551,7 @@ export function scatterPlaneProps(field: PlaneField, cx: number, cz: number, opt
       if (field.landmarkBlocks(x, z, foot)) continue;
       if (field.features.blocksProp(key, x, z, foot)) continue;
       field.surfaceAt(x, z, pos, nor);
+      if (belowSea(field, w, pos[1], 0)) continue;
       snapToMesh(options.mesh, pos);
       items.push({ prop: { kind: r.kind, position: [pos[0], pos[1], pos[2]], normal: [nor[0], nor[1], nor[2]], scale: r.scale, yaw, zone: 0, world: w, rank: 0, variant }, priority });
     }

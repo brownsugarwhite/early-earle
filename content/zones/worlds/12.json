@@ -8,62 +8,81 @@
   "zone": "wooding",
   "sources": ["Ebene 7.png"],
   "palette": {
-    "ink": "#100f07",
-    "terrain": ["#0f1712", "#122520", "#1a3d36", "#2f6d60", "#74bca9"],
+    "ink": "#0e0d07",
+    "terrain": ["#0c1411", "#10201c", "#163630", "#3f8f80", "#9fe8d4"],
     "canopy": ["#0e2a26", "#1c4a42", "#2f7a6c", "#7ccab7", "#cdf5ec", "#e8f8f1", "#9fe3d3"],
     "canopyVariants": [
       ["#4a1216", "#8c262e", "#b8434b", "#e0868c", "#f7cccb", "#ffeae2", "#d9a0a0"],
       ["#3d5a14", "#7aa82a", "#aed65a", "#d9f59a", "#f4ffd2", "#ffffff", "#c8f06a"],
       ["#120f08", "#19170e", "#26241a", "#5e5540", "#a8966e", "#e2cf9e", "#7a6c50"]
     ],
-    "sky": ["#fee8aa", "#f8dd9e", "#eed299", "#e1c997", "#d3c29c", "#c4b99f"],
+    "sky": ["#f8e2a8", "#f0d9a4", "#e7d1a2", "#decaa1", "#d5c3a0", "#cbbc9e"],
     "sun": "#fff5cc",
     "sunRing": "#fde9b2",
-    "fog": ["#8a7650", "#b89d6c", "#d7bb84", "#ebcf96", "#f7dea6", "#ffe9b2"],
-    "fogAlpha": [0, 0.38, 0.58, 0.74, 0.87, 0.95],
-    "accent": ["#74bca9", "#1c4a42", "#2f7a6c", "#0e2a26", "#aed65a", "#cdf5ec", "#b8434b", "#cdf5ec"],
-    "rock": ["#0d0c07", "#17150d", "#221e13", "#3a3322", "#64573a", "#2c271a", "#1d1a11", "#d7bb84"]
+    "fog": ["#c6b692", "#f6e2ab", "#ecd7a2", "#e3cf9f", "#dac8a0", "#d2c2a0"],
+    "fogAlpha": [0, 0.25, 0.45, 0.62, 0.76, 0.86],
+    "accent": ["#74bca9", "#1c4a42", "#2f7a6c", "#0e2a26", "#aed65a", "#e6ffb0", "#b8434b", "#f0979c"],
+    "water": ["#8a7650", "#b89d6c", "#e2c68c", "#efd49a", "#fae2a8", "#ffebb6", "#c9b894", "#fff0c4"],
+    "rock": ["#0b0a06", "#100e08", "#14120b", "#19160e", "#1f1b11", "#14120b", "#0e0c07", "#2a251a"]
   },
-  "terrain": { "amplitude": 5.0, "wavelength": 1.6, "slope": 0.7 },
-  "ground": "smooth",
+  "terrain": {
+    "amplitude": 1.6,
+    "wavelength": 1.0,
+    "stretch": 0.6,
+    "slope": 0.1,
+    "flank": { "side": 1, "height": 11, "from": 3, "crest": 11.5, "to": 24, "taper": 14 }
+  },
+  "ground": "scalesStreaked",
   "vegetation": {
-    "density": 0.9,
+    "density": 1.2,
     "clumpiness": 0,
     "kinds": { "shrub": 1 },
-    "scale": [0.8, 1.3],
+    "scale": [0.45, 0.7],
     "trunkStyle": "ink",
     "motif": "rim",
-    "stipple": 0.95,
+    "stipple": 0.9,
     "rowVariants": 4,
-    "kindRows": { "fir": 3, "shrub": [0, 0, 0, 0, 0, 1, 1, 2] },
+    "kindRows": { "fir": 3, "shrub": 0 },
     "grove": {
-      "cover": 0.7,
-      "wavelength": 6,
-      "fill": 0.97,
-      "satellites": 0.4,
-      "specimens": 0.004,
+      "cover": 0.45,
+      "wavelength": 5,
+      "fill": 0.92,
+      "satellites": 0.3,
+      "coreScale": 0.1,
+      "specimens": 0.002,
       "specimenKinds": { "fir": 1 },
-      "specimenScale": [1.6, 2.4],
-      "crest": { "kinds": { "fir": 1 }, "above": 0.7, "chance": 0.05, "scale": [1.6, 2.6] },
-      "maxSlope": 0.7
+      "specimenScale": [1.4, 2.0],
+      "crest": { "kinds": { "fir": 1 }, "above": 1, "aboveHeight": 5.5, "chance": 0.85, "scale": [1.6, 2.6], "spacing": 1.7 },
+      "maxSlope": 0.3
     }
   },
   "props": {},
   "features": {
-    "rocks": [{ "kind": "spires", "count": 3, "size": [2.2, 3.4], "height": [0.8, 1.8], "pathDistance": [6, 16] }]
+    "rocks": [{ "kind": "spires", "count": 8, "size": [1.6, 2.6], "height": [2.0, 2.9], "pathDistance": [3, 20], "side": -1 }]
   },
   "landmarks": { "fallsRock": 0, "cliffFall": 0, "twinFalls": 0, "ruin": 0, "swamp": 0 },
-  "mist": { "banks": 2, "height": [0.5, 0.9], "thickness": [2, 3.5], "length": [16, 26], "opacity": 0.7, "sea": { "level": 0.3, "banks": 8, "thickness": [2.5, 4] } },
+  "mist": {
+    "banks": 4,
+    "height": [1.8, 3.2],
+    "thickness": [2.5, 4.0],
+    "length": [14, 24],
+    "opacity": 0.55,
+    "sea": { "level": 0.8, "banks": 6, "lateral": [-22, 3], "thickness": [2.0, 3.0], "height": 1.9 },
+    "mountains": { "count": 4, "lateral": [-12, 22], "height": [18, 28], "width": [26, 40], "ahead": [14, 34] }
+  },
   "fogStripes": 1,
-  "fog": { "start": 7, "range": 16 },
+  "fog": { "start": 11, "range": 26 },
   "view": {
-    "height": 6.0,
-    "forward": 8,
-    "look": 8,
-    "fov": 58,
-    "curvature": 0.12,
-    "focus": [0.1, -0.1],
+    "height": 8,
+    "forward": 30,
+    "look": 6,
+    "fov": 38,
+    "curvature": -0.6,
+    "yaw": -30,
+    "ornament": "branch",
+    "focus": [0.15, -0.45],
     "nearClear": 1.2,
     "footClear": 3.0
-  }
+  },
+  "focal": { "along": 0.5, "lateral": 1 }
 }

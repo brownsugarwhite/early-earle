@@ -40,13 +40,14 @@ import { PLANET_ATLAS_HEIGHT, SLOT_COUNT, SLOT_ROWS, WorldSlots, slotLandmarkRow
 import { LandmarkSet } from './landmarks/set/LandmarkSet';
 import { MistBanks } from './mist/mistBanks';
 import { createScaleCarpet, type ScaleCarpet } from './ground/scaleCarpet';
+import { fogSeaLayer } from './ground/fogSea';
 import type { LandmarkInstance } from '@ee/world';
 
 /**
  * Bodenbehandlung je Welt (Terrain-Ornament): glatt, Schneelinien, Wiese, Perspektivlinien, Rampen, Schneegrate,
- * Buschteppich aus Schuppenbögen (Welten 11/12, Ebene 20/7).
+ * Buschteppich aus Schuppenbögen (Welt 11, Ebene 20) und Schuppenbüsche mit Lichtlinien (Welt 12, Ebene 7).
  */
-export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges' | 'scales';
+export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges' | 'scales' | 'scalesStreaked';
 
 /** Kameradistanz (Welteinheiten, Kamera → Blickpunkt), für die die Nebelwerte der Welten gesetzt sind. */
 export const FOG_REFERENCE_DISTANCE = 9;
@@ -67,6 +68,10 @@ export interface WorldView {
   nearClear?: number;
   /** Lichtung unter der Kamera (seitlicher Radius, Welteinheiten): ruhiges unteres Bildband. */
   footClear?: number;
+  /** Blickrichtung der Komposition (Grad um die Hochachse, + = nach links; Standard 0 = längs des Pfads). */
+  yaw?: number;
+  /** Vordergrund-Ornament der Komposition (Welt 12: der fraktale Ast oben links, Ebene 7). */
+  ornament?: 'branch';
 }
 
 /** Eine Welt mit ihren Darstellungsdaten (Autorenwelt aus `content/`, oder prozedural erzeugt). */
@@ -188,7 +193,7 @@ interface LoadedChunk {
 }
 
 /** Bodenornament je Behandlung (Wiese, Rampen und Schneegrate leben von Form und Bändern, nicht von Linien). */
-const GROUND_KIND: Record<GroundTreatment, number> = { smooth: 0, meadow: 0, ramps: 0, snowRidges: 0, snowLines: 1, floorLines: 2, scales: 3 };
+const GROUND_KIND: Record<GroundTreatment, number> = { smooth: 0, meadow: 0, ramps: 0, snowRidges: 0, snowLines: 1, floorLines: 2, scales: 3, scalesStreaked: 4 };
 const DEFAULT_VIEW: WorldView = { height: 9, forward: 8, look: 4, fov: 70, curvature: 0 };
 /** Periode (Welteinheiten) der Bodenornament-Koordinaten: Muster bleiben beim Umbruch des Fokus deckungsgleich. */
 const PATTERN_PERIOD = 700;
@@ -294,6 +299,8 @@ export class EarlePlanet {
   private readonly barnRows: UniformArrayLike;
   private readonly plainTerrainRows: UniformArrayLike;
   private readonly driftRows: UniformArrayLike;
+  /** Nebelspiegel je Welt-Slot (Welt 12: darunter ist der Boden Nebelmeer; 0 = keins). */
+  private readonly slotSea: UniformArrayLike;
   /** Fokus modulo PATTERN_PERIOD (Muster in Ebenenkoordinaten ohne Genauigkeitsverlust). */
   private readonly patternOrigin = uniform(new Vector3());
   private readonly anchors = new Map<Object3D, { x: number; z: number }>();
@@ -365,6 +372,7 @@ export class EarlePlanet {
     this.barnRows = rowsBy((r) => r.barn);
     this.plainTerrainRows = rowsBy((r) => r.terrain);
     this.driftRows = rowsBy((r) => r.snow);
+    this.slotSea = uniformArray(new Array<number>(SLOT_COUNT).fill(0), 'float') as unknown as UniformArrayLike;
     this.slots = new WorldSlots(this.atlas, (w) => this.worldData(w).palette, (slot, world) => this.onSlotAssigned(slot, world));
     const first = this.worldData(0);
     const firstSlot = this.slots.slotOf(0);
@@ -445,8 +453,10 @@ export class EarlePlanet {
     // Schneefelder (Bild 05): Kante mit feiner organischer Welligkeit (Frequenzen ganzzahlig in 700 → periodisch)
     const po = pw.add(this.patternOrigin);
     // Buschteppich (Ebene 20/7): Schuppenbögen der Büsche als Ornament statt der Linien
-    this.carpet = createScaleCarpet(this.lookup, rowNode, po, normalGeometry as unknown as Vec3Node);
+    this.carpet = createScaleCarpet(this.lookup, rowNode, po, normalGeometry as unknown as Vec3Node, step(3.5, kind), rowNode.add(7));
     const isCarpet = kind.greaterThan(2.5);
+    // Nebelmeer (Welt 12): unter dem Nebelspiegel des Slots ist der Boden Nebel, Farben aus der Wasserzeile (Slot + 10)
+    const seaLayer = fogSeaLayer(this.lookup, rowNode.add(10), arrayElement(this.slotSea, slotF), pw.y, po);
     const k = (f: number) => (Math.round((f * PATTERN_PERIOD) / (Math.PI * 2)) * Math.PI * 2) / PATTERN_PERIOD;
     const snowWob = sin(po.x.mul(k(1.9)).add(sin(po.z.mul(k(1.9 * 1.3))).mul(1.7)))
       .mul(0.035)
@@ -468,7 +478,7 @@ export class EarlePlanet {
       crackLipNode: lip,
       growthNode,
       pattern: { mask: select(isCarpet, this.carpet.mask, mask), color: select(isCarpet, this.carpet.color, patternColor), shadowColor: select(isCarpet, this.carpet.shadowColor, patternShadow) },
-      layers: [snowField],
+      layers: [snowField, seaLayer],
       positionNode: warp(positionLocal as unknown as Vec3Node),
       fogDistNode: positionView.length().add(this.veilNode(slotF)),
     });
@@ -590,6 +600,8 @@ export class EarlePlanet {
     const hasSnow = !!(w.palette.snow && spec.features?.snowFields);
     this.slotA.array[slot]!.set(rows.terrain, GROUND_KIND[w.ground], w.ground === 'floorLines' ? 4 : 1, Math.max(0, spec.features?.chisel ?? 0));
     this.slotB.array[slot]!.set(rows.water, w.palette.snow ? rows.snow : rows.terrain, hasSnow ? 1 : 0, rows.rock);
+    const sea = spec.mist?.sea;
+    this.slotSea.array[slot] = sea ? (sea.height ?? sea.level * spec.terrain.amplitude) : 0;
     // Fokus der Perspektivlinien: setzt `rebuildContent` aus der nächsten Region der Welt
     this.slotFocusPlane[slot] = null;
     this.slotFocus.array[slot]!.set(1e4, 1e4, 0, 0);

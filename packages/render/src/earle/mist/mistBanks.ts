@@ -1,5 +1,5 @@
 import { DoubleSide, Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial, Vector3 } from 'three/webgpu';
-import { attribute, clamp, cross, exp, float, floor, fract, fwidth, max, mix, normalize, positionGeometry, select, sin, smoothstep, uniform, uv, vec2, vec3 } from 'three/tsl';
+import { abs, attribute, clamp, cross, exp, float, floor, fract, fwidth, max, mix, normalize, positionGeometry, select, sin, smoothstep, uniform, uv, vec2, vec3 } from 'three/tsl';
 import type { MistBank } from '@ee/world';
 import type { FloatNode, PaletteLookup, Vec3Node } from '../tsl';
 
@@ -64,7 +64,8 @@ export class MistBanks {
     const u = uv().x;
     const v = uv().y;
     const seed = B.z;
-    const isSea = B.w.greaterThan(0.5);
+    const isSea = B.w.greaterThan(0.5).and(B.w.lessThan(1.5));
+    const isMountain = B.w.greaterThan(1.5);
     // langsam gewellte Ränder (je Bank eigene Phase)
     const wob = sin(u.mul(8.3).add(seed.mul(41.0))).mul(0.07).add(sin(u.mul(21.7).add(seed.mul(17.0))).mul(0.03));
     // Band: Gauß um die (gewellte) Mitte, die Unterkante etwas länger (der Nebel liegt auf)
@@ -73,21 +74,29 @@ export class MistBanks {
     const band = exp(dv.div(sigma).mul(dv.div(sigma)).negate());
     // Nebelmeer: bis knapp unter die Oberkante dicht, oben weich
     const sea = smoothstep(float(0.98).add(wob), float(0.52).add(wob), v).mul(smoothstep(0.0, 0.06, v));
-    const profile = select(isSea, sea, band);
+    // Berg (Ebene 7): gezackte Oberkante aus drei Wellen, darunter eine Fläche, die nach oben verblasst
+    const ridge = float(0.62)
+      .add(sin(u.mul(7.3).add(seed.mul(29.0))).mul(0.16))
+      .add(sin(u.mul(17.9).add(seed.mul(11.0))).mul(0.07))
+      .add(abs(sin(u.mul(41.0).add(seed.mul(5.0)))).mul(0.05));
+    const fwv = fwidth(v).max(1e-4);
+    const mountain = smoothstep(ridge.add(fwv), ridge.sub(fwv), v).mul(mix(float(0.95), float(0.35), v.div(ridge.max(0.2)).clamp(0, 1)));
+    const profile = select(isMountain, mountain, select(isSea, sea, band));
     // Enden: weich und unregelmäßig
     const endA = float(0.2).add(sin(v.mul(6.1).add(seed.mul(9.0))).mul(0.08));
     const endB = float(0.8).sub(sin(v.mul(4.7).add(seed.mul(13.0))).mul(0.08));
     const ends = smoothstep(0.0, endA, u).mul(smoothstep(1.0, endB, u));
     // Schlieren längs des Bands (Ebene 20: lange, fast durchgehende Bänder mit wenigen Lücken)
     const streak = float(0.78).add(sin(u.mul(17.0).add(seed.mul(7.0)).add(v.mul(2.2))).mul(0.12)).add(sin(u.mul(43.0).add(seed.mul(3.0))).mul(0.06));
-    const a = clamp(profile.mul(ends).mul(select(isSea, float(1), streak)), 0, 1);
+    const a = clamp(profile.mul(select(isMountain, smoothstep(0.0, 0.12, u).mul(smoothstep(1.0, 0.88, u)), ends)).mul(select(isSea.or(isMountain), float(1), streak)), 0, 1);
     // Airbrush-Korn: Zellen von etwa 1,5 Bildpunkten im Band (schwimmt nicht mit dem Bildschirm), am stärksten im
     // Übergang — die Kante ist gespritzt wie bei Earle, der Kern bleibt ruhig
     const px = max(fwidth(u), float(1e-5)).mul(1.6);
     const py = max(fwidth(v), float(1e-5)).mul(1.6);
     const cell = floor(vec2(u.div(px), v.div(py)));
     const grain = fract(sin(cell.x.mul(12.9898).add(cell.y.mul(78.233)).add(seed.mul(37.0))).mul(43758.5453));
-    const edge = a.mul(float(1).sub(a)).mul(4);
+    // Korn nur an den weichen Rändern von Bank und Meer (die Bergkante bleibt eine klare Form)
+    const edge = a.mul(float(1).sub(a)).mul(4).mul(select(isMountain, float(0), float(1)));
     // Nahe an der Kamera löst sich die Bank auf (kein Nebelvorhang vor der Linse; sie liegt im Mittelgrund)
     const near = smoothstep(3.5, 9.0, this.camLocal.sub(centre).length());
     const alpha = clamp(a.add(grain.sub(0.5).mul(0.55).mul(edge)), 0, 1).mul(B.y).mul(near);
@@ -98,7 +107,8 @@ export class MistBanks {
     const k = select(isSea, float(1).sub(v).mul(0.9).add(a.mul(0.3)), a) as unknown as FloatNode;
     let col = mix(edgeCol, midCol, smoothstep(0.12, 0.5, k));
     col = mix(col, coreCol, smoothstep(0.5, 0.92, k));
-    m.colorNode = col;
+    // Berge: Stufe 0 der Nebelzeile (ohne Deckkraft im Distanznebel, frei für die Bergfarbe — grauer als der Himmel)
+    m.colorNode = select(isMountain, options.lookup.pal(0, row).rgb, col);
     m.opacityNode = alpha;
     this.material = m;
 
@@ -121,6 +131,8 @@ export class MistBanks {
     const a = g.getAttribute('mistA') as InstancedBufferAttribute;
     const b = g.getAttribute('mistB') as InstancedBufferAttribute;
     const c = g.getAttribute('mistC') as InstancedBufferAttribute;
+    // Berge zuerst (hinten), dann Bänke und Meer: eine Zeichnung, die Instanzen in dieser Reihenfolge
+    banks = [...banks].sort((p, q) => (q.kind === 2 ? 1 : 0) - (p.kind === 2 ? 1 : 0));
     const n = Math.min(this.capacity, banks.length);
     let hMax = 0;
     for (let i = 0; i < n; i++) {

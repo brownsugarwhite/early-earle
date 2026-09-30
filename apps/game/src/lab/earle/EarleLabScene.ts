@@ -1,6 +1,6 @@
 import { Color, Frustum, Matrix4, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
-import { EarlePlanet, FogStripes, PLANET_SHADOW_LAYER, SunRig, createSkyDome, skySunIndices, type WorldView } from '@ee/render';
+import { EarlePlanet, FogStripes, PLANET_SHADOW_LAYER, SunRig, createForegroundBranch, createSkyDome, skySunIndices, type ForegroundBranch, type WorldView } from '@ee/render';
 import type { SceneController, SceneContext } from '../../canvas/SceneController';
 import { PanBall } from './panball';
 import { resolveQuality, type QualityLevel, type QualityPreset, type ResolvedQuality } from './quality';
@@ -112,6 +112,9 @@ export class EarleLabScene implements SceneController {
   private ctx: SceneContext | null = null;
   private world: EarlePlanet | null = null;
   private fogStripes: FogStripes | null = null;
+  /** Vordergrund-Ast der Komposition (Welt 12, Ebene 7), an der Kamera. */
+  private branch: ForegroundBranch | null = null;
+  private branchFade = 0;
   private treeSite: HeroTreeSite | null = null;
   /** Müll v2 und Neon-Schleier (heilt mit dem Fortschritt; ein Schritt am Regler spielt die Feier). */
   private trash: TrashField | null = null;
@@ -275,6 +278,10 @@ export class EarleLabScene implements SceneController {
       strength: world.stripeStrength,
     });
     this.rig.add(this.fogStripes.group);
+    this.branch?.dispose();
+    this.branch = createForegroundBranch();
+    this.branch.setOpacity(0);
+    this.camera.add(this.branch.group);
     this.lastCurvature = -1;
     this.shadowDirty = true;
   }
@@ -605,11 +612,18 @@ export class EarleLabScene implements SceneController {
     return f ? [f[0], f[1]] : [0, 0];
   }
 
+  /** Blickrichtung der Komposition einer Welt (Rig um die Hochachse; Welt 12 blickt schräg auf den Steilhang). */
+  private applyWorldYaw(id: number): void {
+    this.yaw = ((this.world?.worldData(id).view.yaw ?? 0) * Math.PI) / 180;
+    this.rig.quaternion.setFromAxisAngle(_Y, this.yaw);
+  }
+
   /** Sofort zum Bildfokus von Welt `id`. */
   snapToWorld(id: number): void {
     const world = this.world;
     const p = this.worldFocusPoint(id);
     if (!world || !p) return;
+    this.applyWorldYaw(id);
     const f = this.focusFor(p.x, p.z, id, this.worldFocusNdc(id));
     world.setFocus(f.x, f.z);
     this.glide = null;
@@ -623,6 +637,7 @@ export class EarleLabScene implements SceneController {
     const world = this.world;
     const p = this.worldFocusPoint(id);
     if (!world || !p) return;
+    this.applyWorldYaw(id);
     const f = this.focusFor(p.x, p.z, id, this.worldFocusNdc(id));
     const dist = Math.hypot(f.x - world.focus.x, f.z - world.focus.z);
     // Weite Wege springen vorab bis kurz davor (die Welt dazwischen streamt sonst in Sekunden durch)
@@ -702,6 +717,13 @@ export class EarleLabScene implements SceneController {
     // Nebel mit der Kameradistanz nach hinten schieben (Hügelblick: Wertstufen im Mittel-/Hintergrund)
     world.setFogDistance(this.params.rail >= 0 ? 9 : this.camera.position.distanceTo(this.tmp.set(0, 0, -v.look)));
     this.fogStripes?.layout(Math.max(0.6, v.look / 6), v.curvature);
+    // Vordergrund-Ornament der Welt (Ast oben links) nur in der Komposition, weich mit der Weltwahl
+    if (this.branch) {
+      const want = viewData.ornament === 'branch' && this.params.rail < 0 ? Math.max(0, Math.min(1, (this.params.perspective - 0.6) / 0.4)) : 0;
+      this.branchFade += (want - this.branchFade) * k;
+      this.branch.setOpacity(this.branchFade);
+      if (this.branchFade > 0.001) this.branch.layout(this.camera);
+    }
 
     this.scene.updateMatrixWorld(true);
     // Kompositionshöhe: Gelände am Blickpunkt (Mittel aus Blickpunkt und zwei Nachbarproben längs der Blickachse)
@@ -853,6 +875,7 @@ export class EarleLabScene implements SceneController {
     this.trash?.dispose();
     this.world?.dispose();
     this.fogStripes?.dispose();
+    this.branch?.dispose();
     for (const d of this.disposables) d.dispose();
     this.sun.dispose();
     if (this.ctx) {

@@ -25,6 +25,8 @@ export interface PlacementSpec {
   pathDistance?: [number, number];
   /** Abstand zum Fokus der Welt (Fokus-Slot oder Weltmitte) [min, max]. Standard [3, 16]. */
   focusDistance?: [number, number];
+  /** Seite des Pfads (1 = rechts, −1 = links; Standard zufällig). Nur auf der Ebene (Pfadregionen). */
+  side?: 1 | -1;
 }
 
 export interface LakeSpec extends PlacementSpec {

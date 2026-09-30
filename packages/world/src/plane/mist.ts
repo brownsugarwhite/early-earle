@@ -23,18 +23,25 @@ export interface MistSpec {
   /**
    * Nebelmeer (Ebene 7): zusätzliche breite, dichte Bänke am Talgrund. `level` = Oberkante über dem tiefsten Gelände
    * (Anteil der Amplitude), `banks` = Anzahl je Region, `lateral` = seitliche Lage [min, max] relativ zum Rückgrat
-   * (Welteinheiten, + = rechts; Standard beide Seiten).
+   * (Welteinheiten, + = rechts; Standard beide Seiten). `height` = Nebelspiegel des Geländes (absolute Höhe in
+   * Welteinheiten; darunter wird der Boden zu Nebel, siehe `@ee/render` `ground/fogSea`), Standard `level` × Amplitude.
    */
-  sea?: { level: number; banks: number; lateral?: [number, number]; thickness?: [number, number] };
+  sea?: { level: number; banks: number; lateral?: [number, number]; thickness?: [number, number]; height?: number };
   /**
    * Eine Bank hinter dem Fokus-Element der Region (vom Pfad aus gesehen dahinter, −z): der Schirmbaum steht als dunkle
    * Silhouette vor dem hellen Nebel (Ebene 20). Abstand und Höhe über dem Fuß des Fokus (Welteinheiten).
    */
   focal?: { behind: number; height: number };
+  /**
+   * Blasse Bergsilhouetten im Hintergrund (Ebene 7): flache Formen mit gezackter Oberkante, die nach oben verblassen, je
+   * Region `count` Stück seitlich des Pfads (`lateral` [min, max], + = rechts), `ahead` [min, max] Einheiten vor dem Ende
+   * des Pfadabschnitts (Standard: im Abschnitt), Höhe und Breite in Welteinheiten.
+   */
+  mountains?: { count: number; lateral: [number, number]; height: [number, number]; width?: [number, number]; ahead?: [number, number] };
 }
 
-/** Art einer Bank: 0 = Band zwischen den Hügeln, 1 = Nebelmeer (dicht unten, weich oben). */
-export type MistKind = 0 | 1;
+/** Art einer Bank: 0 = Band zwischen den Hügeln, 1 = Nebelmeer (dicht unten, weich oben), 2 = Bergsilhouette. */
+export type MistKind = 0 | 1 | 2;
 
 export interface MistBank {
   /** Mitte (Ebene: x, Höhe, z). */
@@ -137,6 +144,20 @@ export class PlaneMist {
     if (spec.focal && focal) {
       const [fx, fy, fz] = focal.position;
       out.push({ x: fx, y: fy + spec.focal.height, z: fz - spec.focal.behind, length: l1 * 0.9, thickness: t1, opacity, seed: rand(), world: region.world, kind: 0 });
+    }
+    const mountains = spec.mountains;
+    if (mountains && region.kind === 'path') {
+      const [w0, w1] = mountains.width ?? [26, 40];
+      const [a0, a1] = mountains.lateral;
+      for (let i = 0; i < mountains.count; i++) {
+        const ahead = mountains.ahead;
+        const z = ahead ? z0 - (ahead[0] + (ahead[1] - ahead[0]) * rand()) : z1 + (z0 - z1) * ((i + 0.2 + 0.6 * rand()) / Math.max(1, mountains.count));
+        const x = centreX(z) + a0 + (a1 - a0) * rand();
+        const height = mountains.height[0] + (mountains.height[1] - mountains.height[0]) * rand();
+        // Fuß im Nebel: die Silhouette beginnt knapp unter dem Gelände, Mitte eine halbe Höhe darüber
+        const y = field.heightAt(x, z) - 1 + height * 0.5;
+        out.push({ x, y, z, length: w0 + (w1 - w0) * rand(), thickness: height, opacity: 1, seed: rand(), world: region.world, kind: 2 });
+      }
     }
     const sea = spec.sea;
     if (sea) {

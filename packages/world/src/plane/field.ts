@@ -9,6 +9,7 @@ import { PlaneFeatures, type RegionSite } from './features/index';
 import type { LedgeAnchor, RockColumn, RockFormation } from './features/types';
 import type { LandmarkSlot, PlanetLandmarkParams, PlanetPropKind, PlanetVegetationFamily, WorldSpec } from './types';
 import { PlaneLandmarks, type PlaneLandmarkOptions } from './landmarks';
+import { flankHeight, type FlankSpec } from './flank';
 import type { LandmarkPlanParams } from '../landmarks/types';
 import { DEFAULT_LANDMARK_PLAN } from '../landmarks/placement';
 
@@ -20,6 +21,9 @@ export interface ResolvedShape {
   slope: number;
   /** Streckung der Hügel quer zum Pfad (x), 1 = rund (siehe `PlanetTerrainShape.stretch`). */
   stretch?: number;
+  /** Steilhang neben dem Pfad (Welt 12) und sein Anteil (1 in der Welt, an Grenzen gemischt). */
+  flank?: FlankSpec;
+  flankW?: number;
 }
 
 export interface PlaneFieldParams {
@@ -37,7 +41,7 @@ export interface PlaneFieldParams {
 }
 
 function resolveShape(s: WorldSpec['terrain']): ResolvedShape {
-  return { amplitude: s.amplitude, wavelength: s.wavelength ?? 1, ridge: s.ridge ?? 0, floor: s.floor ?? 0, slope: s.slope ?? 0, stretch: s.stretch ?? 1 };
+  return { amplitude: s.amplitude, wavelength: s.wavelength ?? 1, ridge: s.ridge ?? 0, floor: s.floor ?? 0, slope: s.slope ?? 0, stretch: s.stretch ?? 1, ...(s.flank ? { flank: s.flank, flankW: 1 } : {}) };
 }
 
 function mixShape(a: ResolvedShape, b: ResolvedShape, t: number, out: ResolvedShape): ResolvedShape {
@@ -47,6 +51,14 @@ function mixShape(a: ResolvedShape, b: ResolvedShape, t: number, out: ResolvedSh
   out.floor = a.floor + (b.floor - a.floor) * t;
   out.slope = a.slope + (b.slope - a.slope) * t;
   out.stretch = (a.stretch ?? 1) + ((b.stretch ?? 1) - (a.stretch ?? 1)) * t;
+  const flank = a.flank ?? b.flank;
+  if (flank) {
+    out.flank = flank;
+    out.flankW = (a.flank ? (a.flankW ?? 1) : 0) + ((b.flank ? (b.flankW ?? 1) : 0) - (a.flank ? (a.flankW ?? 1) : 0)) * t;
+  } else if (out.flank) {
+    delete out.flank;
+    delete out.flankW;
+  }
   return out;
 }
 
@@ -115,7 +127,7 @@ export class PlaneField {
     this.ramps = new GradientNoise2(hash32('plane-ramps', params.seed));
     this.biome = new GradientNoise2(hash32('plane-biome', params.seed));
     this.forest = new GradientNoise2(hash32('plane-forest', params.seed));
-    this.hMax = Math.max(3.6, ...params.catalog.authored.map((w) => w.terrain.amplitude));
+    this.hMax = Math.max(3.6, ...params.catalog.authored.map((w) => w.terrain.amplitude + (w.terrain.flank?.height ?? 0)));
     this.features = new PlaneFeatures(
       {
         seed: params.seed,
@@ -268,7 +280,9 @@ export class PlaneField {
     }
     base = Math.min(1, Math.max(0, base));
     const h = s.floor > 0 ? smoothstep(s.floor, 1, base) : base;
-    return s.amplitude * h;
+    // Steilhang neben dem Pfad (Welt 12): Bergrücken parallel zum Pfad
+    const flank = s.flank && (s.flankW ?? 1) > 0 ? flankHeight(this.layout, s.flank, x, z) * (s.flankW ?? 1) : 0;
+    return s.amplitude * h + flank;
   }
 
   /** Natürliches Gelände (Planung der Merkmale). */
@@ -322,7 +336,7 @@ export class PlaneField {
       key = rs.region.key;
       shape = knownShape ?? this.shapeAt(x, z, rs);
     }
-    const sh: ResolvedShape = { amplitude: shape.amplitude, wavelength: shape.wavelength, ridge: shape.ridge, floor: shape.floor, slope: shape.slope, stretch: shape.stretch ?? 1 };
+    const sh: ResolvedShape = { amplitude: shape.amplitude, wavelength: shape.wavelength, ridge: shape.ridge, floor: shape.floor, slope: shape.slope, stretch: shape.stretch ?? 1, ...(shape.flank ? { flank: shape.flank, flankW: shape.flankW ?? 1 } : {}) };
     const h0 = this.heightWithShape(x, z, sh, key);
     outPos[0] = x;
     outPos[1] = h0;

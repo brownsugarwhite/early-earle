@@ -14,7 +14,7 @@ import { add, norm, scale, type V3 } from './mesh';
  */
 
 /** Höhe der Tannenkrone (Einheit r). */
-export const FIR_HEIGHT = 5.4;
+export const FIR_HEIGHT = 6.4;
 
 export function createFirCrown(detail: 'hoch' | 'mobil' = 'hoch'): CrownTemplate {
   const rand = mulberry32(hash32('fir-crown-v1'));
@@ -39,7 +39,7 @@ export function createFirCrown(detail: 'hoch' | 'mobil' = 'hoch'): CrownTemplate
     const yb = y;
     const yt = yb + h * (1.9 + 0.6 * rand());
     // schmaler werdend, mit Sprüngen (eine breite Etage über einer schmalen, wie in Ebene 7)
-    const r = (1 - 0.72 * Math.pow(t, 1.15)) * (0.7 + 0.46 * rand());
+    const r = (1 - 0.72 * Math.pow(t, 1.15)) * (0.62 + 0.4 * rand());
     tiers.push({ yb, yt, r: Math.max(0.12, r), tilt: [(rand() - 0.5) * 0.18, 0, (rand() - 0.5) * 0.18], skew: rand() * Math.PI * 2 });
     y += h * (0.92 + 0.16 * rand());
   }

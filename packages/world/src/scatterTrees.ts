@@ -77,7 +77,7 @@ export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number;
   // Buschröschen (Ebene 20 Buschteppich, Ebene 7 Schuppenbusch): kleiner runder Busch ohne sichtbaren Stamm
   shrub: { radius: 0.5, trunk: 0, hull: 0.28, top: 1.08 },
   // Earle-Tanne (Ebene 7): schmal, hängende Etagen, unregelmäßige Silhouette, Spitze als dünner Dorn
-  fir: { radius: 0.42, trunk: 0.3, hull: 2.9, top: 6.2 },
+  fir: { radius: 0.42, trunk: 0.3, hull: 3.4, top: 7.2 },
 };
 
 // --- Earle-Komposition der Welten -------------------------------------------------------------------
@@ -118,9 +118,11 @@ export interface GroveSpec {
    * Kammbäume (Ebene 20: Schirmbäume einzeln oder paarweise auf den Kämmen; Ebene 7: Tannen auf dem Grat): ab der Höhe
    * `above` (Anteil 0..1 der lokalen Amplitude) steht mit der Wahrscheinlichkeit `chance` je Kandidat ein Baum der
    * Arten `kinds` (Größe `scale`, Standard: obere Hälfte von `scale`) statt des Hain-, Rand- oder Wiesenbaums; mit
-   * `spacing` höchstens einzeln oder paarweise je Gitterzelle dieser Kantenlänge (keine Klumpen).
+   * `spacing` höchstens einzeln oder paarweise je Gitterzelle dieser Kantenlänge (keine Klumpen); `aboveHeight` =
+   * absolute Mindesthöhe in Welteinheiten statt `above` (Grat des Steilhangs, Welt 12). Kammbäume ignorieren
+   * `maxSlope` des Hains (sie stehen auch am Steilhang), außer `crest.maxSlope` ist gesetzt.
    */
-  crest?: { kinds: Partial<Record<TreeKind, number>>; above: number; chance: number; scale?: [number, number]; spacing?: number };
+  crest?: { kinds: Partial<Record<TreeKind, number>>; above: number; aboveHeight?: number; chance: number; scale?: [number, number]; spacing?: number; maxSlope?: number };
 }
 
 /** Rindenstil der Bäume v3 (ersetzt `trunkStyle`, wenn gesetzt): Kalligrafie = weiße Linien auf Tinte (Bild 01). */

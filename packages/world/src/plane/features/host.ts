@@ -68,7 +68,10 @@ export function placementCandidate(host: PlaneFeatureHost, site: RegionSite, spe
     const lo = eMin + reach;
     const hi = Math.min(eMax + reach, half - BORDER_MARGIN - reach);
     if (hi < lo) return null;
-    const u = (lo + (hi - lo) * rand()) * (rand() < 0.5 ? -1 : 1);
+    const d = lo + (hi - lo) * rand();
+    const r = rand();
+    // feste Seite (z. B. Felsstümpfe im Nebelmeer links vom Pfad, gegenüber dem Steilhang), sonst zufällig
+    const u = d * (spec.side ?? (r < 0.5 ? -1 : 1));
     out[0] = host.backbone(z) + u;
     out[1] = z;
   } else {
