@@ -48,6 +48,8 @@ const HERO_MAP_SCALE = 0.48;
  * fungus it sits like a blob on a bracket, on the crown's flower stones a little larger (the crown camera is further).
  */
 const HERO_TREE_SCALE: Record<'root' | 'bark' | 'limb' | 'dome', number> = { root: 0.72, bark: 0.66, limb: 0.72, dome: 0.88 };
+/** 3D hero size at the splash dot relative to the SVG blob's equal-area radius (measured side by side, ≈ same width). */
+const HERO_DOT_FIT = 0.9;
 /** Depth (in front of the camera) at which the hero floats as the splash i-dot. */
 const SPLASH_DEPTH = 4;
 /**
@@ -1021,9 +1023,10 @@ export class FlowScene implements SceneController {
     cam.localToWorld(center);
     world.planet.updateWorldMatrix(true, false);
     world.planet.worldToLocal(center);
-    // Baked dot radius → world radius at depth d; the body's visual radius ≈ 1 blob unit.
+    // Dot radius → world radius at depth d; the body's visual radius ≈ 1 blob unit. Tuned against the SVG blob of the
+    // splash (equal-area radius of Florian's drawing): the 3D body appears as wide as the drawn one at the hand-off.
     const tanHalf = Math.tan((cam.fov * Math.PI) / 360);
-    const rWorld = (dot.rPx * 1.1 * 2 * d * tanHalf) / ctx.height;
+    const rWorld = (dot.rPx * HERO_DOT_FIT * 2 * d * tanHalf) / ctx.height;
     cam.getWorldQuaternion(_q);
     const planetQ = world.planet.getWorldQuaternion(new Quaternion()).invert();
     hero.setCentered(center, planetQ.multiply(_q), Math.max(0.03, rWorld / 1.05));

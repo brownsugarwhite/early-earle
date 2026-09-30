@@ -2,8 +2,10 @@ import { test, expect, type Page } from '@playwright/test';
 
 // Loader und Splash (B1): Fortschritt im HTML, Aufbau nach 100 %, "Tippen", Übergabe an den 3D-Helden.
 // Läuft wie die anderen Smoke-Tests auf SwiftShader/WebGL2 — Zeiten großzügig (die Maschine teilt sich die Last).
-const SLOW = process.env.CI ? 180_000 : 180_000;
-test.setTimeout(process.env.CI ? 420_000 : 360_000);
+// Unter SwiftShader linkt der Boot die Programme der Map vor 100 % (Map-Pose, abgedeckt) — unter Last friert die Seite
+// dabei zeitweise ein; großzügige Grenzen.
+const SLOW = 300_000;
+test.setTimeout(600_000);
 
 const PARTS = ['frame', 'panel', 'blob', 'flame', 'reg', 'star-l', 'star-m', 'star-r'];
 
