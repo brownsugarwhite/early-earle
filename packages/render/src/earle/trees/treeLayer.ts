@@ -166,9 +166,9 @@ export const TREE_FORMS: Record<Exclude<TreeKind, 'bare'>, KindForm> = {
   pine: { crown: 'pine', crownY: 0.12, crownS: [1, 3.6], trunk: 'fork', trunkH: 0.4, thick: 0.44, dots: 'pine', terminator: 0.22 },
   // Pappel (Luzz): langer Schaft, die Gabel knapp unter der Kiefernkrone, das Astnetz steigt in sie hinein
   tall: { crown: 'pine', crownY: 3.3, crownS: [1, 1.5], trunk: 'fork', trunkH: 1.3, forkAt: 3.0, thick: 0.3, dots: 'pine', terminator: 0.25 },
-  // Kathedralenbaum (Ebene 16/23): der helle Schaft steigt hoch, gabelt sich weit unter der Krone in ein feines Netz,
-  // das in sie hineinwächst; die Krone eine hohe, runde Kuppel (Ogive), keine schmale Zypresse
-  spire: { crown: 'column', crownY: TREE_PROPORTIONS.spire.hull, crownS: [1.15, 1.15], trunk: 'fork', trunkH: 4.6, forkAt: 4.4, thick: 0.3, dots: 'crown', terminator: 0.15 },
+  // Kathedralenbaum (Ebene 16/23/43): der helle Schaft gabelt sich schon auf halber Höhe in ein feines, steiles Netz,
+  // das als Fächer unter der Krone steht und in sie hineinwächst; die Krone eine hohe, runde Kuppel (Ogive)
+  spire: { crown: 'column', crownY: TREE_PROPORTIONS.spire.hull, crownS: [1.15, 1.15], trunk: 'fork', trunkH: 5.5, forkAt: 3.4, thick: 0.3, dots: 'crown', terminator: 0.15 },
   umbrella: { crown: 'dome', crownY: TREE_PROPORTIONS.umbrella.hull, crownS: [1.06, 0.6], trunk: 'fan', trunkH: 0.74, thick: 1, dots: 'crown', terminator: 0.12 },
   lace: { crown: 'dome', crownY: TREE_PROPORTIONS.lace.hull + 0.3, crownS: [0.97, 0.62], trunk: 'fan', trunkH: 1.0, thick: 1, dots: 'lace', terminator: 0.12 },
   oak: { crown: null, crownY: TREE_PROPORTIONS.oak.hull, crownS: [1, 1], trunk: 'oak', trunkH: TREE_PROPORTIONS.oak.trunk, thick: 1, dots: 'stars', terminator: 0.3 },

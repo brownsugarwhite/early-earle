@@ -31,14 +31,14 @@
     "scale": [0.8, 1.5],
     "trunkStyle": "glow",
     "bark": "glow",
-    "trunkWidth": 0.05,
+    "trunkWidth": 0.032,
     "motif": "dots",
     "rowVariants": 2,
     "flowers": 0.45,
     "stipple": 0.95,
     "dots": 1.35,
     "shadeGlow": 0.35,
-    "crownVeins": 0.6,
+    "crownVeins": 0.3,
     "crownLiftVariance": 0.3,
     "grove": {
       "cover": 0.9,
@@ -60,14 +60,14 @@
   "skyGlow": 0,
   "fog": { "start": 3, "range": 9 },
   "view": {
-    "height": 2.6,
-    "forward": 5,
-    "look": 7,
+    "height": 2.0,
+    "forward": 4,
+    "look": 18,
     "fov": 58,
-    "curvature": 0.1,
-    "focus": [-0.3, -0.18],
+    "curvature": 0.03,
+    "focus": [-0.55, -0.3],
     "nearClear": 0.8,
-    "footClear": 1.4
+    "footClear": 2.2
   },
-  "focal": { "kind": "pillar", "scale": 1.15, "latFrac": 0.5, "yawDeg": 0, "clear": 1.2 }
+  "focal": { "kind": "pillar", "scale": 1.0, "latFrac": 0.5, "yawDeg": 0, "clear": 1.2 }
 }

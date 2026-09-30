@@ -47,7 +47,8 @@ export function glassBark(o: GlassBarkOptions): Vec3Node {
   const fwy = fwidth(sy).max(1e-4);
   const inX = smoothstep(halfX.add(fwx), halfX.sub(fwx), abs(fx.sub(0.5)));
   const inY = smoothstep(float(0.06).sub(fwy), float(0.06).add(fwy), fy).mul(smoothstep(float(0.94).add(fwy), float(0.94).sub(fwy), fy));
-  const idx = floor(hash(cid.add(11)).mul(6.99)).add(1);
+  // Überwiegend Blau, Violett, Hellblau und Grün, seltener Rot, Gelb und Cyan (Ebene 3)
+  const idx = floor(hash(cid.add(11)).pow(1.5).mul(6.99)).add(1);
   const streak = o.lookup.pal(idx, o.acc).rgb.mul(mix(float(0.38), float(1), litSoft)) as unknown as Vec3Node;
   // Aus der Ferne (Streifen unter ≈ 2 px): ruhiger Mittelton statt Flimmern
   const fine = smoothstep(float(0.5), float(0.25), fwx);
