@@ -1,12 +1,21 @@
 import { LightingModel, NodeMaterial } from 'three/webgpu';
 import type { Node, NodeBuilder } from 'three/webgpu';
-import { abs, clamp, dot, float, floor, fract, fwidth, max, min, mix, normalView, normalize, select, sin, smoothstep, step, vec3 } from 'three/tsl';
+import { abs, clamp, cos, dot, float, floor, fract, fwidth, max, min, mix, normalView, normalize, select, sin, smoothstep, step, varying, vec3 } from 'three/tsl';
 import { aaStep, palByKey, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node, type Vec4Node } from '../tsl';
+import { earleGradients, fountain, hueRotate } from '../gradients';
 import { blotches, flowLines, flowers, stipple, valueNoise3 } from './patterns';
 import type { ShadeTexture } from './shade';
 
 /** Nebel je Instanz (Bäume v4, siehe `trees/fog.ts`): ersetzt den gestuften Nebel je Fragment, wenn gesetzt. */
 export type FogFn = (color: Vec3Node) => Vec3Node;
+
+/**
+ * Juwelenkuppeln (Bild 02): Farbtondrehung zur Unterseite (Bogenmaß) — rot → magenta → violett → blau → türkis, wie
+ * Earles Irisdruck innerhalb einer Kuppel. Oben bleibt die Palettenfarbe.
+ */
+const JEWEL_TURN = 1.2;
+/** Kuppeln von oben beleuchtet (Earle): Aufhellung des Scheitels bzw. Abdunklung der Unterseite im Verlauf. */
+const DOME_TOP_LIGHT = 0.2;
 
 /**
  * Kronenmaterial der Bäume v3: Earle-Licht wie `EarleMaterial` (`lit = min(aaStep(N·L), Schatten)` → Bänder →
@@ -111,7 +120,13 @@ class CrownLightingModel extends LightingModel {
       (input.reflectedLight.directDiffuse as Vec3Node).addAssign(col);
       return;
     }
-    let litColor = o.lookup.bands(band, row, 1).rgb as unknown as Vec3Node;
+    const soft = earleGradients.surface;
+    // Kuppel-Verlauf (Irisdruck): die Masse läuft weich von der dunklen Unterseite zum Lichtsaum, Scheitel heller
+    const upness = normalize(o.patternNormal).y;
+    const vDome = v.add(upness.mul(DOME_TOP_LIGHT).mul(soft));
+    // Obergrenze mitten im obersten Band (harte Stufen: kein Lichtstrich; Verlauf: der Saum erreicht die hellste Stufe)
+    const bandG = clamp(vDome, 0, 1).pow(1.6).mul(o.bands).min(o.bands.sub(0.5));
+    let litColor = fountain(o.lookup, bandG, row, 1, soft).rgb as unknown as Vec3Node;
     // Punkte wachsen mit dem Licht: am Terminator 0, voll erst auf der Sonnenseite (weich, kein Ploppen)
     const grow = smoothstep(term.add(0.02), term.add(0.5), ndl).mul(cast);
     const st = stipple(o.patternPos, o.stipple.cell, o.stipple.size, grow, o.stipple.density);
@@ -119,8 +134,16 @@ class CrownLightingModel extends LightingModel {
     // einzelne zwei Stufen — ruhige Textur statt Konfetti
     const bandIdx = floor(band).add(1);
     const up = float(1).add(step(0.8, st.key.mul(0.5).add(grow.mul(0.55))));
-    const dotColor = o.lookup.pal(clamp(bandIdx.add(up), 2, 5), row).rgb as unknown as Vec3Node;
+    const dotStep = o.lookup.pal(clamp(bandIdx.add(up), 2, 5), row).rgb as unknown as Vec3Node;
+    // Mit Verlauf folgen die Punktfarben dem Verlauf darunter (keine Farbsprünge der Punkte an den alten Bandkanten)
+    const dotRamp = fountain(o.lookup, bandG.add(up).max(1.5), row, 1, soft, { maxX: 4, linear: true }).rgb as unknown as Vec3Node;
+    const dotColor = mix(dotStep, dotRamp, soft) as unknown as Vec3Node;
     litColor = mix(litColor, dotColor, st.mask);
+    // Juwelen (Terminator < 0): Farbton dreht zur Unterseite (rot → violett → blau, Bild 02). Winkel, cos und sin je
+    // Vertex (Normale und Terminator sind Vertex-Größen), die Drehung um die Grauachse (Rodrigues) je Pixel
+    const isJewel = select(term.lessThan(0), float(1), float(0));
+    const angle = float(1).sub(normalize(o.patternNormal).y).mul(-0.5 * JEWEL_TURN).mul(isJewel);
+    litColor = hueRotate(litColor, mix(float(1), varying(cos(angle)), soft), varying(sin(angle)).mul(soft));
     if (o.flowers) {
       const fl = flowers(o.patternPos, o.patternNormal, o.flowers.cell, grow, o.flowers.density);
       const flowerColor = mix(o.lookup.pal(6, row).rgb, o.lookup.pal(7, row).rgb, step(0.5, fl.key)) as unknown as Vec3Node;

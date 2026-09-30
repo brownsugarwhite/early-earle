@@ -53,7 +53,7 @@ import {
   vec3,
   vec4,
 } from 'three/tsl';
-import { BoardSurfaceMaterial, EarleMaterial, hexNode, type FogSettings, type PaletteLookup, type TSLUniform } from '@ee/render';
+import { BoardSurfaceMaterial, EarleMaterial, earleGradients, hexNode, type FogSettings, type PaletteLookup, type SunRig, type TSLUniform } from '@ee/render';
 import { completeLayout, type NodeSite, type PathLayout, type RibbonSample } from './path';
 
 /** Stone radius of a level node (Earle: small figures in a big landscape, never coins that dominate the map). */
@@ -116,6 +116,8 @@ export interface PathPalette {
   /** Terrain palette row of an Earle world. */
   terrainRow(world: number): number;
   colors(world: number): PathWorldColors;
+  /** Per-world shadow tint of the map (the ribbon's shadows match the ground it lies on, e.g. blue on snow). */
+  shadowTint?: SunRig['shadowTint'] | null;
 }
 
 export interface NodePathOptions {
@@ -678,6 +680,8 @@ export class NodePath {
     const row = new Float32Array(total * cols);
     const hgt = new Float32Array(total * cols);
     const seg = new Float32Array(total * cols);
+    // (world, across −1 left … 0 centre … 1 right): shadow tint per world, a soft crown across the ribbon
+    const wx = new Float32Array(total * cols * 2);
     const index: number[] = [];
     let base = 0;
     for (const strip of strips) {
@@ -697,6 +701,8 @@ export class NodePath {
           row[i * cols + c] = palette.terrainRow(r.world);
           hgt[i * cols + c] = r.heightNorm;
           seg[i * cols + c] = r.seg + Math.min(0.999, r.u);
+          wx[(i * cols + c) * 2] = r.world;
+          wx[(i * cols + c) * 2 + 1] = c - 1;
         }
       });
       for (let j = 0; j < strip.length - 1; j++) {
@@ -716,6 +722,7 @@ export class NodePath {
     geo.setAttribute('rRow', new BufferAttribute(row, 1));
     geo.setAttribute('rH', new BufferAttribute(hgt, 1));
     geo.setAttribute('rSeg', new BufferAttribute(seg, 1));
+    geo.setAttribute('rWx', new BufferAttribute(wx, 2));
     geo.setIndex(index);
     geo.computeBoundingSphere();
     const rSeg = attribute('rSeg', 'float') as unknown as FloatNode;
@@ -724,6 +731,10 @@ export class NodePath {
     const inCeleb = step(celeb.y, rSeg).mul(step(rSeg, celeb.y.add(0.999)));
     const passed = step(celeb.x.add(rSeg.sub(celeb.y).mul(celeb.w)), this.uTime as unknown as FloatNode);
     const walked = smoothstep(0.0, 0.25, (this.uDone as unknown as FloatNode).sub(rSeg)).mul(mix(float(1), passed, inCeleb));
+    const rWx = attribute('rWx', 'vec2');
+    // Earle's sunlit field (Ebene 36): a soft crown across the ribbon — the middle a touch lighter than its edges
+    const across = float(1).sub(rWx.y.abs()).mul(0.12).sub(0.06).mul(earleGradients.surface);
+    const tint = palette.shadowTint ?? null;
     const mat = new EarleMaterial({
       lookup: palette.lookup,
       row: palette.terrainRow(strips.find((st) => st.length > 0)?.[0]?.world ?? 0),
@@ -733,7 +744,9 @@ export class NodePath {
       bandScale: 2.0,
       terminator: 0.02,
       // One to two value steps above the ground it lies on: a sunlit field between the dark masses.
-      lift: (attribute('rH', 'float') as unknown as FloatNode).mul(0.45).add(0.78),
+      lift: (attribute('rH', 'float') as unknown as FloatNode).mul(0.45).add(0.78).add(across),
+      // shadow gradient led by the planet's sphere normal, like the terrain under it (one shadow shape)
+      shadowTint: tint ? { tint, world: rWx.x as unknown as FloatNode, up: modelViewMatrix.mul(vec4(normalize(positionLocal), 0)).xyz as unknown as Vec3Node } : null,
       growthNode: mix(float(0.78), float(1), walked),
       positionNode: place(positionLocal as unknown as Vec3Node, NUDGE_RIBBON),
     });

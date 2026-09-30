@@ -1,6 +1,7 @@
 import { abs, attribute, float, floor, fract, fwidth, hash, max, min, mix, positionLocal, positionView, select, sin, smoothstep, sqrt, step, vec2 } from 'three/tsl';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, patternTime, periodFade, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec2Node, type Vec3Node } from '../tsl';
+import { earleGradients, mixInk } from '../gradients';
 
 export interface WaterMaterialOptions {
   lookup: PaletteLookup;
@@ -85,7 +86,11 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
   const pebble = smoothstep(radiusCell.add(fw), radiusCell.sub(fw), vor.f1);
   // Zellen fern ausblenden (unter ~8 px), dort übernehmen Linienbänder
   const near = smoothstep(0.16, 0.08, fw);
-  const base = pal(2);
+  // Vom Ufer in die Tiefe (Ebene 29, 38): am Ufer die helle Stufe, zur Mitte der Grundton, in großen Seen tiefer —
+  // ein weicher Verlauf unter den Wellen-Silhouetten (Uferabstand e in Welteinheiten)
+  const soft = earleGradients.surface;
+  const shoreTone = mixInk(pal(3), pal(2), smoothstep(0.0, 1.3, e));
+  const base = mix(pal(2), mixInk(shoreTone, pal(1), smoothstep(1.1, 3.6, e).mul(0.55)), soft);
   const dark = pal(1);
   const light = pal(3);
   const pebbleCol = mix(base, dark, step(vor.key, float(0.35)));

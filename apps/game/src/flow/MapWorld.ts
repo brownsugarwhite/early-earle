@@ -159,6 +159,8 @@ export class MapWorld {
       loadsPerFrame: 2,
       // Schatten v3: Kronenpunkte skalieren mit dem glatten Schattenwert aus 0 (`?dotshadow=0` = alter Vergleich)
       shadow: { factor: typeof location !== 'undefined' && location.search.includes('dotshadow=0') ? null : (p, o) => this.sun.shadowFactor(p, o) },
+      // Schattentönung je Welt (blaue Schatten auf Schnee …) aus den Weltdateien
+      shadowTint: this.sun.shadowTint,
     });
     this.world.curvature.value = options.curvature ?? MAP_VIEW.curvature;
     this.world.vegetation.setNearClear(MAP_VIEW.nearClear);
@@ -188,6 +190,7 @@ export class MapWorld {
       skyRowB: this.world.skyRowB,
       skyMix: this.world.skyMix,
       horizonY: this.skyHorizon,
+      glow: this.world.skyGlow,
     });
     this.camera.add(sky);
     this.disposables.push(sky.geometry, sky.material as { dispose(): void });
@@ -211,7 +214,7 @@ export class MapWorld {
    * flowers and pedestals take each world's ink, jewel accent, rock, scrap, sand and water.
    */
   pathPalette(): PathPalette {
-    return planetPathPalette(this.world);
+    return planetPathPalette(this.world, this.sun.shadowTint);
   }
 
   /** Direction to the sun in world space (unit). */
@@ -556,13 +559,14 @@ export function spliceTreePath(world: EarlePlanet, route: RoutedGround, site: He
 }
 
 /** Palette context of the path visuals on a planet (see `MapWorld.pathPalette`). */
-export function planetPathPalette(world: EarlePlanet): PathPalette {
+export function planetPathPalette(world: EarlePlanet, shadowTint: PathPalette['shadowTint'] = null): PathPalette {
   return {
     lookup: world.lookup,
     fog: world.fog,
     bands: world.terrainBands,
     terrainRow: (w) => world.rows[Math.max(0, Math.min(world.rows.length - 1, w))]!.terrain,
     colors: (w) => worldPathColors(w),
+    shadowTint,
   };
 }
 

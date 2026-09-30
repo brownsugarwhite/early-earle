@@ -1,9 +1,10 @@
 import { BufferAttribute, BufferGeometry, Group, Mesh, Vector2, Vector3 } from 'three/webgpu';
-import { abs, attribute, float, fract, length, mix, modelViewMatrix, normalGeometry, positionGeometry, select, uniform, vec3, vec4 } from 'three/tsl';
+import { abs, attribute, float, fract, length, mix, modelViewMatrix, normalGeometry, positionGeometry, select, smoothstep, uniform, vec3, vec4 } from 'three/tsl';
 import { hexToLinear } from '../common/tsl';
 import { BoardSurfaceMaterial, stripes, type BoardFog } from './boardMaterial';
 import type { BoardPalette } from './boardPalette';
 import { aaStep, type FloatNode, type Vec2Node, type Vec3Node } from '../earle/tsl';
+import { earleGradients, mixInk } from '../earle/gradients';
 
 export interface PlateauShape {
   /** Half extents of the flat top (world units) and its centre offset along z. */
@@ -243,6 +244,16 @@ export class BoardPlateau {
     base = select(band.lessThan(4.5), base, ink) as unknown as Vec3Node;
     // Hill form has no terraces: blend the bands toward one meadow tone while the hill is still round.
     base = mix(mix(top, s1, band.mul(0.2).clamp(0, 1)), base, m) as unknown as Vec3Node;
+    // Earle gradient (like the rocks): the skirt runs from its lit lip to a deeper foot — each band in itself a
+    // gradient, the band edges stay crisp; the top glows a touch in its middle and deepens toward its rim.
+    const soft = earleGradients.surface;
+    const pgy = (positionGeometry as unknown as Vec3Node).y;
+    const footward = smoothstep(0.0, -1.3, pgy).mul(band.greaterThan(0.5).select(float(1), float(0)));
+    const half0 = this.gridHalf as unknown as Vec2Node;
+    const pg0 = positionGeometry as unknown as Vec3Node;
+    const rimward = smoothstep(0.75, 1.5, length(vec3(pg0.x.div(half0.x.add(0.8)), 0, pg0.z.sub(this.gridCenterZ).div(half0.y.add(0.8)))));
+    const deepen = footward.mul(0.42).add(rimward.mul(band.lessThan(0.5).select(float(0.14), float(0)))).mul(soft);
+    base = mixInk(base, mixInk(base, ink, 0.55), deepen);
     // Walls: fine vertical striations (Earle's cliff hatching), integer count around the ring (no seam).
     const lines = stripes(along, this.uStriation.max(0.25), 0.1).mul(striate).mul(m).mul(this.uStriation.min(1).max(0.35));
     let albedo = mix(base, base.mul(0.7), lines) as unknown as Vec3Node;
