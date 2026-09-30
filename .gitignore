@@ -38,3 +38,4 @@ apps/game/public/refs/
 docs/progress/audio/*.wav
 apps/game/ios/build-device/
 apps/game/plugins/liquid-glass/.swiftpm/
+.claude/worktrees/

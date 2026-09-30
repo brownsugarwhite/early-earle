@@ -27,6 +27,8 @@ const GOAL_LABEL: Record<string, string> = {
   clearScrap: 'Schrott',
   deliver: 'Liefern',
   score: 'Punkte',
+  clearRot: 'Fäulnis',
+  calmStrays: 'Streuner',
 };
 
 function goalText(g: GoalProgress): string {
