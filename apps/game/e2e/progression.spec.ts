@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { collectErrors, flowState, nodeOnScreen, request, seedProgress, TRANSITION_MS, waitForRenderer, waitPhase, waitScene, winLevel, type FlowHandles } from './helpers';
+import { collectErrors, flowState, nodeOnScreen, request, seedProgress, TRANSITION_MS, waitForRenderer, waitPhase, waitScene, winLevel, type FlowHandles, waitSplashIdle } from './helpers';
 
 // Iteration 4 · Flow und Fortschritt: echter und freier Modus, Intro, Landung auf dem geschafften Knoten und der Weg
 // über die Punkte, REX-Szene nach Level 1, gesperrte Knoten, Scroll-Grenze. SwiftShader/WebGL2 wie die anderen Tests;
@@ -8,8 +8,6 @@ test.setTimeout(process.env.CI ? 420_000 : 360_000);
 if (process.env.EE_GPU) test.use({ launchOptions: { args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] } });
 
 const PHONE = { width: 393, height: 852 };
-/** Der Loader geht erst nach dem Aufwärmen aller Karten-Shader auf 100 % — unter SwiftShader dauert das. */
-const LOADER_MS = process.env.CI ? 240_000 : 150_000;
 
 /**
  * Merkt sich im Seitenkontext alle Phasen und Takte (`flow/cue`) ab jetzt. Zustand meldet einen Phasenwechsel, der
@@ -45,8 +43,7 @@ test('Erster Start (echt): Tippen → Intro direkt in Level 1 → Sieg → Landu
   await page.goto('/?quality=mobil');
   await waitForRenderer(page);
   await waitPhase(page, 'splash');
-  // Getippt wird erst, wenn der Loader fertig ist und „Tippen“ steht (vorher nimmt der Splash keine Tipps an)
-  await expect(page.getByTestId('splash')).toHaveAttribute('data-phase', 'idle', { timeout: LOADER_MS });
+  await waitSplashIdle(page);
   await record(page);
   await page.mouse.click(PHONE.width / 2, PHONE.height * 0.8);
   await waitPhase(page, 'level');
@@ -137,9 +134,10 @@ test('Echt: die Karte dreht nur begrenzt und federt nach einem weiten Zug zurüc
   let peak = 0;
   // Der Zug beginnt über der unteren HUD-Leiste (bei y ≈ 775–840 liegt „Spielen“: dort käme der Zeiger nie zur Karte)
   for (let k = 0; k < 2; k++) {
-    await page.mouse.move(60, 700);
+    // Start in der freien Kartenfläche (unten liegen Knopfleiste und REX-Zeile, links die Entwicklerleiste)
+    await page.mouse.move(330, 640);
     await page.mouse.down();
-    for (let i = 1; i <= 16; i++) await page.mouse.move(60 + (i * 280) / 16, 700 - (i * 620) / 16);
+    for (let i = 1; i <= 16; i++) await page.mouse.move(330 - (i * 280) / 16, 640 - (i * 560) / 16);
     peak = Math.max(peak, (await scrollState(page))!.excess);
     await page.mouse.up();
   }

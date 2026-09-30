@@ -30,6 +30,14 @@ export async function waitForRenderer(page: Page): Promise<void> {
   await expect.poll(() => page.evaluate(() => (window as unknown as { __ee?: { controller?: { elapsed?: number } } }).__ee?.controller?.elapsed ?? 0), { timeout: TRANSITION_MS }).toBeGreaterThan(0);
 }
 
+/**
+ * Der Splash nimmt Tipps erst im Leerlauf an („Tippen“ steht): vorher lädt der Loader (bis alle Karten-Shader
+ * aufgewärmt sind, unter SwiftShader dauert das) und das Logo baut sich auf; ein Tipp spult den Aufbau nur vor.
+ */
+export async function waitSplashIdle(page: Page, timeout = 150_000): Promise<void> {
+  await expect(page.getByTestId('splash')).toHaveAttribute('data-phase', 'idle', { timeout });
+}
+
 export async function waitPhase(page: Page, phase: Phase | RegExp, timeout = TRANSITION_MS): Promise<void> {
   await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', phase, { timeout });
 }

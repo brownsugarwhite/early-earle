@@ -1,12 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Unter SwiftShader (CI) laufen die Kamerafahrten mit 0,1-s-Schritten bei wenigen fps → deutlich längere Wartezeiten.
-// SwiftShader renders the fly-in (with the board pipelines compiling ahead) at a few fps: generous locally too — on a
-// busy Mac (other GPU tests running) the fly-in to level 1 took ≈ 62 s on main and ≈ 65 s on the plane (2026-09-30).
+// Die Szenenuhr zählt Bildschritte (höchstens 0,1 s je Bild): unter SwiftShader (≈ 1 fps, lokal wie auf CI) dauern
+// Kamerafahrten und Übergänge ein Vielfaches ihrer Sollzeit.
 const TRANSITION_MS = 90_000;
 /** Der Loader geht erst nach dem Aufwärmen aller Karten-Shader auf 100 % — unter SwiftShader dauert das. */
 const LOADER_MS = process.env.CI ? 240_000 : 150_000;
-test.setTimeout(360_000);
+test.setTimeout(process.env.CI ? 480_000 : 360_000);
 
 // P5 Flow-Lab: one take without cuts. Runs on the WebGL2 fallback (SwiftShader) like the smoke tests.
 

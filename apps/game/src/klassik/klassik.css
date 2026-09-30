@@ -4,14 +4,6 @@
 .klassik-layer { position: fixed; inset: 0; z-index: 30; pointer-events: none; font-family: var(--font-display); color: var(--ink); }
 .klassik-layer > * { pointer-events: none; }
 
-/* Einstieg auf der Karte (Web): quadratischer Glasknopf wie Ton und Werkstatt, „2048“ in Caprasimo; leuchtet
-   in der Akzentfarbe, solange ein neues Format ungesehen ist (natives HUD: runde Pille mit SF Symbol). */
-.flow-hud .glass-btn.entry-btn[data-testid='entry-classic'] {
-  min-width: 48px; width: 52px; padding: 0 0 2px; display: inline-grid; place-items: center;
-  font-family: var(--font-heavy); font-size: 14px; letter-spacing: 0; text-transform: none;
-}
-.flow-hud .glass-btn.entry-btn[data-testid='entry-classic'][data-highlight='true'] { --glass-tint: color-mix(in srgb, var(--pink) 70%, transparent); }
-
 /* ---------- Blatt ---------- */
 .kl-sheet-wrap { position: absolute; inset: 0; pointer-events: auto; }
 .kl-backdrop { position: absolute; inset: 0; background: rgba(8, 27, 37, 0.5); animation: kl-fade 0.2s ease-out; }
