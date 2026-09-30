@@ -223,7 +223,8 @@ test('/play startet auf der Map mit Glas-HUD; Spielen fliegt ins Level, Wisch/Ta
     if (state === 'depart' || state === 'map') break;
   }
   await expect(hud).toHaveAttribute('data-flow-state', /depart|map/, { timeout: TRANSITION_MS });
-  await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: TRANSITION_MS });
+  // Aufbruch und Weg über die Punkte (depart → travel → map): zwei Choreografien hintereinander auf der Szenenuhr
+  await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: TRANSITION_MS * 2 });
   await expect(page.getByTestId('hud-top').locator('h1')).toContainText('Level 2');
   expect(errors).toEqual([]);
 });
