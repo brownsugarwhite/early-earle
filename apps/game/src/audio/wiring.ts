@@ -17,9 +17,6 @@ import type { Material } from './sfx';
  * Idempotent and ref-counted like the haptics (StrictMode mounts twice).
  */
 
-/** The flow's board resolves creatures with the Tjorizo genome for every level (FlowScene `ZONE`). */
-const BOARD_ZONE = 'tjorizo';
-
 /** Flow timings mirrored from FlowScene (T_HOP, T_RISE_AT, T_HERO_LAUNCH, T_HERO_FLIGHT). */
 const T_HOP = 1.4;
 const T_RISE_AT = 0.26;
@@ -122,7 +119,8 @@ function wire(): () => void {
         const plan = planMove(s.lastMove, {
           zone,
           prev: prev.state,
-          guess: (tier, id, kind, material: Material) => guessCreature(BOARD_ZONE, tier, id, kind, material),
+          // The board draws the creatures of the level's zone (BoardRenderer.load → setCreatureZone).
+          guess: (tier, id, kind, material: Material) => guessCreature(s.level?.zone ?? 'tjorizo', tier, id, kind, material),
         });
         audio.playMove(plan.sounds);
         if (plan.won) {

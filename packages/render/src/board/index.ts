@@ -13,3 +13,4 @@ export * from './BoardBlobs';
 export * from './BoardTimeline';
 export * from './BoardRenderer';
 export * from './boardHooks';
+export * from './BoardStamp';
