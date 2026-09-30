@@ -113,21 +113,20 @@ export class PlaneField {
     this.biome = new GradientNoise2(hash32('plane-biome', params.seed));
     this.forest = new GradientNoise2(hash32('plane-forest', params.seed));
     this.hMax = Math.max(3.6, ...params.catalog.authored.map((w) => w.terrain.amplitude));
-    const self = this;
     this.features = new PlaneFeatures(
       {
         seed: params.seed,
-        worldId: (w) => self.catalog.spec(w).id,
-        regionKeyAt: (x, z) => self.layout.sample(x, z, self.rs2).region.key,
-        baseHeightAt: (x, z) => self.baseHeightAt(x, z),
-        amplitudeAt: (x, z) => self.amplitudeAt(x, z),
-        backbone: (z) => self.layout.backbone(z),
-        backboneSlope: (z) => self.layout.backboneSlope(z),
-        bandHalf: (z) => self.layout.bandHalf(z),
+        worldId: (w) => this.catalog.spec(w).id,
+        regionKeyAt: (x, z) => this.layout.sample(x, z, this.rs2).region.key,
+        baseHeightAt: (x, z) => this.baseHeightAt(x, z),
+        amplitudeAt: (x, z) => this.amplitudeAt(x, z),
+        backbone: (z) => this.layout.backbone(z),
+        backboneSlope: (z) => this.layout.backboneSlope(z),
+        bandHalf: (z) => this.layout.bandHalf(z),
       },
       {
-        site: (key) => self.regionSite(key),
-        featureSpec: (w) => self.catalog.spec(w).features as WorldFeatureSpec | undefined,
+        site: (key) => this.regionSite(key),
+        featureSpec: (w) => this.catalog.spec(w).features as WorldFeatureSpec | undefined,
       },
     );
     this.landmarks =
@@ -136,14 +135,14 @@ export class PlaneField {
         : new PlaneLandmarks(
             {
               seed: params.seed,
-              heightAt: (x, z) => self.heightNoLandmarks(x, z),
-              isWater: (x, z, m) => self.features.isWater(self.layout.sample(x, z, self.rs3).region.key, x, z, m),
-              isBlocked: (x, z, r) => self.landmarkBlocked(x, z, r),
-              pathDistance: (x, z) => self.backboneDistance(x, z),
-              worldAt: (x, z) => self.layout.sample(x, z, self.rs3).world,
-              regionAt: (x, z) => self.layout.sample(x, z, self.rs3).region,
-              segment: (k) => self.layout.segment(k),
-              backbone: (z) => self.layout.backbone(z),
+              heightAt: (x, z) => this.heightNoLandmarks(x, z),
+              isWater: (x, z, m) => this.features.isWater(this.layout.sample(x, z, this.rs3).region.key, x, z, m),
+              isBlocked: (x, z, r) => this.landmarkBlocked(x, z, r),
+              pathDistance: (x, z) => this.backboneDistance(x, z),
+              worldAt: (x, z) => this.layout.sample(x, z, this.rs3).world,
+              regionAt: (x, z) => this.layout.sample(x, z, this.rs3).region,
+              segment: (k) => this.layout.segment(k),
+              backbone: (z) => this.layout.backbone(z),
             },
             { plan: PLANE_LANDMARK_PLAN, ...(params.landmarks ?? {}) },
           );

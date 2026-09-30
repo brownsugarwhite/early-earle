@@ -1,4 +1,4 @@
-import { Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial, Vector3 } from 'three/webgpu';
+import { Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial } from 'three/webgpu';
 import type { Node } from 'three/webgpu';
 import { attribute, cameraProjectionMatrix, cameraViewMatrix, color, float, mix, modelWorldMatrix, positionGeometry, smoothstep, uniform, vec3, vec4 } from 'three/tsl';
 import type { MapWorld } from '../../flow/MapWorld';

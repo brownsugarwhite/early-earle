@@ -54,7 +54,7 @@ import type { PlaneProp as PlanetProp, PlaneTree as PlanetTree, PlaneVegetationF
 import type { WorldSlots } from './worldSlots';
 import { SLOT_COUNT, SLOT_ROWS } from './worldSlots';
 import { EarleMaterial } from './EarleMaterial';
-import { arrayElement, hatchMask, patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from './tsl';
+import { hatchMask, patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
 import { createHexagon, mergeGeometries } from './vegetation';
 import { CROWN_KINDS, TreeLayer, type CrownKind, type ShadowFactorFn } from './trees/treeLayer';
 

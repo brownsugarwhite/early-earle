@@ -200,7 +200,6 @@ export class PlaneLandmarks {
     const x0 = gi * GRID - R;
     const z0 = gk * GRID - R;
     const x1 = (gi + 1) * GRID + R;
-    const z1 = (gk + 1) * GRID + R;
     // Regionen im erweiterten Feld (Abtastung dichter als die kleinste Region)
     const seen = new Set<string>();
     const found: LandmarkInstance[] = [];

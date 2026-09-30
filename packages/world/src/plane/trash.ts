@@ -182,7 +182,6 @@ export class PlaneTrashPlanner {
     const items: TrashItem[] = [];
     const out: PlaneChunkTrash = { items, veil: null, spores: [], nodeBlooms: [], hMax: 0 };
     if (!this.touches(cx, cz)) return out;
-    const ox = cx * CHUNK_SIZE;
     const oz = cz * CHUNK_SIZE;
     this.useNodes(oz - NODE_REACH, oz + CHUNK_SIZE + NODE_REACH);
     const density = this.ctx.densityScale ?? 1;

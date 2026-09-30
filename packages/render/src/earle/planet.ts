@@ -191,7 +191,6 @@ const _w = new Vector3();
 const _c = new Vector3();
 const _sphere = new Sphere();
 const _q = new Quaternion();
-const _q2 = new Quaternion();
 const _s = new Vector3();
 const _Y = new Vector3(0, 1, 0);
 

@@ -1,4 +1,4 @@
-import { Color, Mesh, NodeMaterial, PerspectiveCamera, QuadMesh, Quaternion, Vector3 } from 'three/webgpu';
+import { Color, Mesh, NodeMaterial, PerspectiveCamera, QuadMesh, Vector3 } from 'three/webgpu';
 import type { Material, NodeBuilder, UniformNode } from 'three/webgpu';
 import { Fn, float, fract, ivec2, mix, normalWorld, property, texture, uniform, uv, vec3, vec4 } from 'three/tsl';
 import type { SceneController, SceneContext } from '../../canvas/SceneController';
@@ -163,7 +163,6 @@ function parseSizes(text: string): Array<{ width: number; height: number }> | nu
 }
 
 const _v = new Vector3();
-const _q = new Quaternion();
 const _Y = new Vector3(0, 1, 0);
 const INK = new Color('#081b25');
 
