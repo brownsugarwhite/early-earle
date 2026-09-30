@@ -7,6 +7,8 @@ import {
   chunkDirection,
   chunkKey,
   chunkList,
+  frameAt,
+  offsetDir,
   generateChunkMesh,
   scatterChunkProps,
   scatterChunkTrees,
@@ -190,6 +192,9 @@ export class EarlePlanet {
   private readonly featureCount: number;
   private readonly featureGrowth: UniformArrayLike;
   private featureRanges: Array<[number, number]> = [];
+  /** Chunks, in die Felsen bzw. Gewässer reichen: ohne geladenen Chunk bleiben die Meshes unsichtbar (spart Draw Calls). */
+  private readonly rockChunks = new Set<string>();
+  private readonly waterChunks = new Set<string>();
   private readonly ids: ChunkId[];
   private readonly centres: Vector3[];
   private readonly loaded = new Map<string, LoadedChunk>();
@@ -465,6 +470,7 @@ export class EarlePlanet {
     this.rocks = rockData.indices.length > 0 ? this.featureMesh('planet-rocks', rockGeometry(rockData), this.rockMaterial, true) : null;
     const waterData = buildWaterGeometry(features, R, () => true, (x, y, z) => this.field.heightAt(x, y, z));
     this.water = waterData ? this.featureMesh('planet-water', waterGeometry(waterData), this.waterMaterial, false) : null;
+    this.collectFeatureChunks();
     this.featureRanges = this.computeFeatureRanges();
     this.applyFeatureGrowth();
     const barnRows = uniformArray(this.rows.map((r) => r.barn), 'float') as unknown as UniformArrayLike;
@@ -987,6 +993,25 @@ export class EarlePlanet {
     return { mesh, trees, props, nodeRange };
   }
 
+  /** Chunk-Schlüssel, die jede Formation bzw. jedes Gewässer berührt (Mitte und Rand des Grundrisses). */
+  private collectFeatureChunks(): void {
+    const f = this.field.features;
+    const R = this.options.radius;
+    const add = (set: Set<string>, c: Vec3, radius: number): void => {
+      const frame = frameAt(c);
+      const d: Vec3 = [0, 0, 0];
+      for (let i = -1; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const r = i < 0 ? 0 : radius;
+        offsetDir(frame, R, Math.cos(a) * r, Math.sin(a) * r, d);
+        set.add(chunkKey(this.field.chunkOf(d[0], d[1], d[2])));
+      }
+    };
+    for (const form of f.formations) add(this.rockChunks, form.frame.c, form.footprint + 0.5);
+    for (const lake of f.lakes) add(this.waterChunks, lake.frame.c, lake.reach);
+    for (const river of f.rivers) for (let i = 0; i < river.points.length; i += 4) add(this.waterChunks, river.points[i]!, 1.5);
+  }
+
   private rebuildContent(): void {
     const nearSet = new Set(this.nearKeys.split('|').filter(Boolean));
     const trees: VegetationTreeEntry[] = [];
@@ -1023,6 +1048,9 @@ export class EarlePlanet {
     this.vegetation.setContent(trees, props);
     this.landmarkTop = this.barns.set(barns);
     this.drifts.set(drifts);
+    // Felsen und Wasser nur zeichnen (Haupt- und Schattenpass), wenn einer ihrer Chunks geladen ist
+    if (this.rocks) this.rocks.visible = [...this.rockChunks].some((k) => this.loaded.has(k));
+    if (this.water) this.water.visible = [...this.waterChunks].some((k) => this.loaded.has(k));
     if (!this.bounds.isEmpty()) this.bounds.expandByScalar(this.hTotal);
   }
 
