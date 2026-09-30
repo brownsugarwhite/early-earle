@@ -169,10 +169,14 @@ export class FlowScene implements SceneController {
     this.splashBacking.visible = false;
     world.camera.add(this.splashBacking);
 
-    // REX, snakes and giraffe necks raymarch on WebGPU in the Hoch preset; Mobil/WebGL2 draw mesh bodies only.
-    this.board = new LevelBoard(ZONE, { octaves: q.blobOctaves, raymarch: ctx.backend === 'webgpu' && q.name === 'hoch' });
+    // Species animals are skinned meshes (Hoch and Mobil), blobs the jiggle mesh: the board needs no raymarcher.
+    this.board = new LevelBoard(ZONE, { octaves: q.blobOctaves, raymarch: false });
     world.planet.add(this.board.root);
     this.board.onSettled = (state) => this.onBoardSettled(state);
+    // REX keeps clear of the whole path (not only the current node) and knows the plateau.
+    this.rex?.attachFlow({ world, layout, board: this.board });
+    // Species meshes and part modules the board prepares ahead compile in the background (WebGPU).
+    if (ctx.backend === 'webgpu') this.board.setCompiler((root) => ctx.renderer.compileAsync(root, world.camera, world.scene));
 
     this.trackball = new Trackball({
       radius: PLANET_RADIUS,

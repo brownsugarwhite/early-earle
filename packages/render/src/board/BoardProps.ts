@@ -1,5 +1,6 @@
 import {
   BoxGeometry,
+  BufferAttribute,
   BufferGeometry,
   ConeGeometry,
   CylinderGeometry,
@@ -16,7 +17,8 @@ import {
   TorusGeometry,
   Vector3,
 } from 'three/webgpu';
-import { abs, asin, atan, attribute, float, floor, fract, length, mix, normalize, normalView, positionGeometry, positionViewDirection, select, uv, vec2, vec3 } from 'three/tsl';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { abs, asin, atan, attribute, float, floor, fract, length, mix, normalize, normalView, positionGeometry, positionLocal, positionViewDirection, select, step, uv, vec2, vec3 } from 'three/tsl';
 import { aaStep, type FloatNode, type Vec2Node, type Vec3Node, type Vec4Node } from '../earle/tsl';
 import { hexToLinear } from '../common/tsl';
 import { BoardSurfaceMaterial, hexNode, polar, stripes, type BoardFog } from './boardMaterial';
@@ -24,6 +26,14 @@ import type { BoardPalette } from './boardPalette';
 
 export type PropFamily = 'box' | 'hex' | 'spire' | 'shard' | 'disc' | 'ring' | 'sphere' | 'dome' | 'hoop';
 export const PROP_FAMILIES: readonly PropFamily[] = ['box', 'hex', 'spire', 'shard', 'disc', 'ring', 'sphere', 'dome', 'hoop'];
+
+/**
+ * Draw groups: the families of a group share one instanced draw — their unit meshes are merged and every
+ * instance keeps only its own family's triangles (the others collapse to a point in the vertex stage). Grouped
+ * by shadow role and weight: bush domes (many, heavy), the flat shadowless discs/rings/hoops, and the small
+ * faceted solids. A board draws its props in ≤ 3 calls instead of one per family (up to 9).
+ */
+export const PROP_GROUPS: readonly (readonly PropFamily[])[] = [['dome'], ['disc', 'ring', 'hoop'], ['box', 'hex', 'spire', 'shard', 'sphere']];
 
 /** Surface motifs (fragment stage, `propData.x`). */
 export const MOTIF = {
@@ -114,11 +124,13 @@ export interface PropInstance {
   born: number;
 }
 
-interface FamilyPool {
-  family: PropFamily;
+interface GroupPool {
+  families: readonly PropFamily[];
   mesh: InstancedMesh;
   color: InstancedBufferAttribute;
   data: InstancedBufferAttribute;
+  /** Per instance: index of its family within the group. */
+  fam: InstancedBufferAttribute;
   free: number[];
   high: number;
   capacity: number;
@@ -142,14 +154,27 @@ function familyGeometry(family: PropFamily): BufferGeometry {
       return new CylinderGeometry(0.46, 0.5, 1, 6).translate(0, 0.5, 0);
     case 'spire':
       return new ConeGeometry(0.5, 1, 5).translate(0, 0.5, 0);
-    case 'shard':
-      return new OctahedronGeometry(0.5).translate(0, 0.5, 0);
+    case 'shard': {
+      // Non-indexed (flat facets): index it 1:1 so it merges with the indexed families.
+      const g = new OctahedronGeometry(0.5).translate(0, 0.5, 0);
+      g.setIndex(Array.from({ length: g.getAttribute('position').count }, (_, i) => i));
+      return g;
+    }
     case 'disc':
       return new CylinderGeometry(0.5, 0.5, 1, 28).translate(0, 0.5, 0);
     case 'ring':
       return new TorusGeometry(0.5, 0.075, 8, 28).rotateX(-Math.PI / 2).translate(0, 0.075, 0);
-    case 'sphere':
-      return new IcosahedronGeometry(0.5, 1).translate(0, 0.5, 0);
+    case 'sphere': {
+      // Smooth icosphere, indexed (42 vertices instead of 240 unshared ones).
+      const ico = new IcosahedronGeometry(0.5, 1);
+      ico.deleteAttribute('uv');
+      ico.deleteAttribute('normal');
+      const g = mergeVertices(ico, 1e-4);
+      ico.dispose();
+      g.computeVertexNormals();
+      g.setAttribute('uv', new BufferAttribute(new Float32Array(g.getAttribute('position').count * 2), 2));
+      return g.translate(0, 0.5, 0);
+    }
     case 'dome':
       // Unit-height hemisphere (radius 0.5, base at y = 0): scale y sets the dome's height directly.
       return new SphereGeometry(0.5, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 2, 1);
@@ -159,48 +184,74 @@ function familyGeometry(family: PropFamily): BufferGeometry {
   }
 }
 
+/** The merged unit meshes of a draw group, each vertex tagged with its family's index in the group. */
+function groupGeometry(families: readonly PropFamily[]): BufferGeometry {
+  const parts = families.map((family, i) => {
+    const g = familyGeometry(family);
+    for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal' && name !== 'uv') g.deleteAttribute(name);
+    g.clearGroups();
+    g.setAttribute('propFamV', new BufferAttribute(new Float32Array(g.getAttribute('position').count).fill(i), 1));
+    return g;
+  });
+  if (parts.length === 1) return parts[0]!;
+  const merged = mergeGeometries(parts, false);
+  for (const g of parts) g.dispose();
+  if (!merged) throw new Error('BoardProps: prop geometries do not merge');
+  return merged;
+}
+
 /**
  * Every element visual on the board is an instance of one of seven unit primitives (box, hex prism, faceted
  * spire, shard, disc, ring, sphere) with a per-instance colour and motif — one draw call per family in
  * use. Idle motion (bob, spin, pulse, sway, drift, rise) and transition offsets are composed on the CPU
  * every frame; motifs (hatch, tower tallies, rim dots, swirl, countdown arc, glow, tip light) live in the
- * fragment stage with fwidth anti-aliasing. Props cast and receive the sun's razor shadows.
+ * fragment stage with fwidth anti-aliasing. Props cast and receive the sun's razor shadows. The families
+ * draw in `PROP_GROUPS` (≤ 3 calls).
  */
 export class BoardProps {
   readonly group = new Group();
-  private readonly pools = new Map<PropFamily, FamilyPool>();
+  private readonly pools: GroupPool[] = [];
+  private readonly poolOf = new Map<PropFamily, { pool: GroupPool; index: number }>();
   private readonly instances = new Map<string, PropInstance>();
   private readonly materials: BoardSurfaceMaterial[] = [];
   private readonly geometries: BufferGeometry[] = [];
 
   constructor(palette: BoardPalette, timeNode: FloatNode, fog?: BoardFog) {
     this.group.name = 'board-props';
-    for (const family of PROP_FAMILIES) {
-      const capacity = CAPACITY[family];
-      const geometry = familyGeometry(family);
+    for (const families of PROP_GROUPS) {
+      const capacity = families.reduce((n, f) => n + CAPACITY[f], 0);
+      const geometry = groupGeometry(families);
       const color = new InstancedBufferAttribute(new Float32Array(capacity * 3), 3).setUsage(DynamicDrawUsage);
       const data = new InstancedBufferAttribute(new Float32Array(capacity * 4), 4).setUsage(DynamicDrawUsage);
+      const fam = new InstancedBufferAttribute(new Float32Array(capacity), 1).setUsage(DynamicDrawUsage);
       geometry.setAttribute('propColor', color);
       geometry.setAttribute('propData', data);
-      const material = this.createMaterial(palette, timeNode, fog);
+      geometry.setAttribute('propFam', fam);
+      const material = this.createMaterial(palette, timeNode, fog, families.length > 1);
       const mesh = new InstancedMesh(geometry, material, capacity);
-      mesh.name = `board-props-${family}`;
+      mesh.name = `board-props-${families.join('+')}`;
       mesh.frustumCulled = false;
-      // Flat discs and rings throw no visible shadow at this sun height: skip them in the shadow pass.
-      mesh.castShadow = family !== 'disc' && family !== 'ring' && family !== 'hoop';
+      // Flat discs and rings throw no visible shadow at this sun height: their group skips the shadow pass.
+      mesh.castShadow = families.some((f) => f !== 'disc' && f !== 'ring' && f !== 'hoop');
       mesh.receiveShadow = true;
       mesh.instanceMatrix.setUsage(DynamicDrawUsage);
       mesh.instanceMatrix.array.fill(0);
       mesh.count = 0;
       mesh.visible = false;
       this.group.add(mesh);
-      this.pools.set(family, { family, mesh, color, data, free: [], high: 0, capacity, dirtyAttr: true });
+      const pool: GroupPool = { families, mesh, color, data, fam, free: [], high: 0, capacity, dirtyAttr: true };
+      this.pools.push(pool);
+      families.forEach((f, index) => this.poolOf.set(f, { pool, index }));
       this.materials.push(material);
       this.geometries.push(geometry);
     }
   }
 
-  private createMaterial(palette: BoardPalette, t: FloatNode, fog?: BoardFog): BoardSurfaceMaterial {
+  private poolFor(family: PropFamily): GroupPool {
+    return this.poolOf.get(family)!.pool;
+  }
+
+  private createMaterial(palette: BoardPalette, t: FloatNode, fog: BoardFog | undefined, grouped: boolean): BoardSurfaceMaterial {
     const c = attribute('propColor', 'vec3') as Vec3Node;
     const d = attribute('propData', 'vec4') as Vec4Node;
     const motif = d.x;
@@ -260,7 +311,10 @@ export class BoardProps {
     const isDome = aaStep(7.5, motif);
     const shadeMotif = mix(mix(ink, albedo, 0.32), mix(ink, c, 0.22), isDome);
     const shade = mix(shadeMotif, glowing, isGlow) as unknown as Vec3Node;
-    return new BoardSurfaceMaterial({ albedo, shade, terminator: 0.02, facet: { threshold: 0.5, amount: 0.5 }, fog });
+    // Grouped families: an instance keeps its own family's triangles, the rest collapse (zero area, culled).
+    const keep = grouped ? step(abs((attribute('propFamV', 'float') as FloatNode).sub(attribute('propFam', 'float') as FloatNode)), 0.5) : null;
+    const positionNode = keep ? ((positionLocal as unknown as Vec3Node).mul(keep) as unknown as Vec3Node) : undefined;
+    return new BoardSurfaceMaterial({ albedo, shade, terminator: 0.02, facet: { threshold: 0.5, amount: 0.5 }, fog, positionNode });
   }
 
   has(key: string): boolean {
@@ -275,10 +329,17 @@ export class BoardProps {
     return this.instances.size;
   }
 
-  /** Draw calls this frame (families with instances). */
+  /** Draw calls this frame (draw groups with instances). */
   get drawCalls(): number {
     let n = 0;
-    for (const p of this.pools.values()) if (p.mesh.count > 0) n++;
+    for (const p of this.pools) if (p.mesh.count > 0) n++;
+    return n;
+  }
+
+  /** Draw groups holding props right now (before the frame's `update`: level loads plan with it). */
+  get groupsInUse(): number {
+    let n = 0;
+    for (const p of this.pools) if (p.high > p.free.length) n++;
     return n;
   }
 
@@ -294,7 +355,7 @@ export class BoardProps {
   add(key: string, desc: PropDesc, now: number): PropInstance | null {
     const existing = this.instances.get(key);
     if (existing) this.remove(key);
-    const pool = this.pools.get(desc.family)!;
+    const pool = this.poolFor(desc.family);
     let slot = pool.free.pop();
     if (slot === undefined) {
       if (pool.high >= pool.capacity) return null;
@@ -360,7 +421,7 @@ export class BoardProps {
       inst.hatch = desc.hatch ?? 8;
       inst.param = desc.param ?? 0;
       inst.glow = desc.glow ?? 0;
-      this.writeAttributes(this.pools.get(inst.family)!, inst);
+      this.writeAttributes(this.poolFor(inst.family), inst);
     }
     if (desc.idle) inst.idle = desc.idle;
     return inst;
@@ -370,17 +431,17 @@ export class BoardProps {
     const inst = this.instances.get(key);
     if (!inst || inst.param === param) return;
     inst.param = param;
-    this.writeAttributes(this.pools.get(inst.family)!, inst);
+    this.writeAttributes(this.poolFor(inst.family), inst);
   }
 
   setColor(key: string, color: string): void {
     const inst = this.instances.get(key);
     if (!inst || inst.color === color) return;
     inst.color = color;
-    this.writeAttributes(this.pools.get(inst.family)!, inst);
+    this.writeAttributes(this.poolFor(inst.family), inst);
   }
 
-  private writeAttributes(pool: FamilyPool, inst: PropInstance): void {
+  private writeAttributes(pool: GroupPool, inst: PropInstance): void {
     const [r, g, b] = hexToLinear(inst.color);
     const ca = pool.color.array as Float32Array;
     ca[inst.slot * 3] = r;
@@ -391,13 +452,14 @@ export class BoardProps {
     da[inst.slot * 4 + 1] = inst.hatch;
     da[inst.slot * 4 + 2] = inst.param;
     da[inst.slot * 4 + 3] = inst.glow;
+    (pool.fam.array as Float32Array)[inst.slot] = this.poolOf.get(inst.family)!.index;
     pool.dirtyAttr = true;
   }
 
   remove(key: string): void {
     const inst = this.instances.get(key);
     if (!inst) return;
-    const pool = this.pools.get(inst.family)!;
+    const pool = this.poolFor(inst.family);
     pool.mesh.instanceMatrix.array.set(ZERO16, inst.slot * 16);
     pool.mesh.instanceMatrix.needsUpdate = true;
     pool.free.push(inst.slot);
@@ -411,7 +473,7 @@ export class BoardProps {
   /** Composes every instance matrix (base ⊕ idle ⊕ transition) and uploads. */
   update(now: number): void {
     for (const inst of this.instances.values()) {
-      const pool = this.pools.get(inst.family)!;
+      const pool = this.poolFor(inst.family);
       let ox = inst.ox;
       let oy = inst.oy;
       const oz = inst.oz;
@@ -458,13 +520,14 @@ export class BoardProps {
       _m.compose(_p, _q, _s);
       pool.mesh.instanceMatrix.array.set(_m.elements, inst.slot * 16);
     }
-    for (const pool of this.pools.values()) {
+    for (const pool of this.pools) {
       pool.mesh.count = pool.high;
       pool.mesh.visible = pool.high > 0;
       pool.mesh.instanceMatrix.needsUpdate = true;
       if (pool.dirtyAttr) {
         pool.color.needsUpdate = true;
         pool.data.needsUpdate = true;
+        pool.fam.needsUpdate = true;
         pool.dirtyAttr = false;
       }
     }
@@ -473,8 +536,9 @@ export class BoardProps {
   dispose(): void {
     for (const g of this.geometries) g.dispose();
     for (const m of this.materials) m.dispose();
-    for (const p of this.pools.values()) p.mesh.removeFromParent();
-    this.pools.clear();
+    for (const p of this.pools) p.mesh.removeFromParent();
+    this.pools.length = 0;
+    this.poolOf.clear();
     this.instances.clear();
     this.group.removeFromParent();
   }

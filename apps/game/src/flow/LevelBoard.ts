@@ -1,4 +1,4 @@
-import type { Camera, Group, Vector2, Vector3 } from 'three/webgpu';
+import type { Camera, Group, Object3D, Vector2, Vector3 } from 'three/webgpu';
 import type { LevelState } from '@ee/core';
 import type { ZoneId } from '@ee/genome';
 import { BOARD_CELL, BOARD_PITCH, BOARD_TOP, BoardRenderer, ModuleLibrary, type BoardFog, type BoardZoneInput, type CarrierBody, type CreatureMode, type Footprint, type JuiceKind } from '@ee/render';
@@ -17,7 +17,10 @@ export interface LevelBoardOptions {
   fog?: BoardFog | undefined;
   palette?: BoardZoneInput;
   juice?: boolean;
-  /** Raymarch REX/snake/giraffe bodies (WebGPU in the Hoch preset); Mobil and WebGL2 draw meshes only. */
+  /**
+   * Raymarch solid bodies the mesh path does not take (WebGPU, Hoch). Species animals are skinned meshes and
+   * blobs the jiggle mesh, so the game passes false; kept for close-up experiments.
+   */
   raymarch?: boolean;
 }
 
@@ -55,6 +58,8 @@ export class LevelBoard {
   private renderedLevelId = '';
   private hiddenOnLoad = false;
   private disposed = false;
+  /** Resolves once the creature modules and rules are in (or failed to load): species can be prepared. */
+  readonly creaturesReady: Promise<void>;
   /** Called after a move's timeline settled (also on load). */
   onSettled: ((state: LevelState) => void) | null = null;
   /** Called after a level (re)load rebuilt the board (the scene may start the rise choreography). */
@@ -81,11 +86,12 @@ export class LevelBoard {
     this.root.name = 'level-board';
     this.lift.name = 'level-lift';
     const mode = opts.creatures ?? 'all';
-    if (mode !== 'none') {
-      void creatureLibrary().then((c) => {
-        if (c && !this.disposed) this.renderer.setCreatures(c.library, c.rules, mode);
-      });
-    }
+    this.creaturesReady =
+      mode === 'none'
+        ? Promise.resolve()
+        : creatureLibrary().then((c) => {
+            if (c && !this.disposed) this.renderer.setCreatures(c.library, c.rules, mode);
+          });
   }
 
   // ---------- Store binding ----------
@@ -270,12 +276,23 @@ export class LevelBoard {
   }
 
   /**
+   * Background compiler for what the board prepares ahead (species meshes, part modules of likely merge
+   * results): pass the scene's `renderer.compileAsync` (WebGPU; on WebGL2 compiles are synchronous anyway).
+   */
+  setCompiler(compile: ((root: Object3D) => Promise<void>) | null): void {
+    this.renderer.blobs.compiler = compile;
+  }
+
+  /**
    * Pipeline warm-up: builds every board material (all element families) off the critical path so the first
    * fly-in does not stall on shader compiles. Resolves when done; the board is hidden again unless a level
    * was bound meanwhile.
    */
   async warmup(state: LevelState, compile: (root: Group) => Promise<void>): Promise<void> {
     if (this.unsubscribe) return;
+    // The skinned species bodies and their coats compile too: wait for the creature rules first.
+    await this.creaturesReady;
+    if (this.unsubscribe || this.disposed) return;
     this.renderer.warmup(state);
     try {
       await compile(this.root);

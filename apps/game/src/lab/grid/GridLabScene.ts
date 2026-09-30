@@ -75,15 +75,32 @@ export class GridLabScene implements SceneController {
     if (!board) {
       const mobil = useAppStore.getState().effectiveQuality === 'mobil';
       const octaves = mobil ? 1 : 2;
-      // Raymarched REX/snake/giraffe bodies on WebGPU in the Hoch preset; Mobil draws mesh bodies only.
-      const raymarch = !mobil && this.ctx?.backend === 'webgpu';
-      board = new LevelBoard(zone, { octaves, creatures: 'all', raymarch });
+      // Species animals are skinned meshes (Hoch and Mobil), blobs the jiggle mesh: no raymarcher on the board.
+      board = new LevelBoard(zone, { octaves, creatures: 'all', raymarch: false });
       board.onLoaded = () => {
         this.frameCamera();
         this.fitShadow();
         board?.playRise();
       };
       this.boards.set(zone, board);
+      // Skinned species bodies and their coats compile before the first merge needs them (WebGPU compiles
+      // asynchronously; WebGL2 would link synchronously and stall instead).
+      const ctx = this.ctx;
+      if (ctx?.backend === 'webgpu') {
+        board.setCompiler((root) => ctx.renderer.compileAsync(root, this.camera, this.scene));
+        const b = board;
+        void b.creaturesReady.then(async () => {
+          const restore = b.renderer.showForCompile();
+          let done: Promise<unknown> = Promise.resolve();
+          try {
+            done = ctx.renderer.compileAsync(b.root, this.camera, this.scene);
+          } catch {
+            // compiles on first use instead
+          }
+          restore();
+          await done.catch(() => undefined);
+        });
+      }
     }
     if (this.board !== board) {
       if (this.board) {

@@ -14,12 +14,14 @@ import {
 } from '@ee/core';
 import { LEVELS } from '../../content/levels';
 import { rexIntroFor, rexLine } from './rex';
-import { CREATURE_DEMO_LEVEL, DEMO_LEVEL, creatureDemoState, demoState } from './demoLevel';
+import { CREATURE_DEMO_LEVEL, DEMO_LEVEL, HERD_DEMO_LEVEL, creatureDemoState, demoState, herdDemoState } from './demoLevel';
 
 /** `levelIndex` of the Elemente-Schau demo board (not part of `LEVELS`). */
 export const DEMO_LEVEL_INDEX = -1;
 /** `levelIndex` of the Wesen-Schau demo board (body archetypes, every merge style in one swipe). */
 export const CREATURE_DEMO_INDEX = -2;
+/** `levelIndex` of the Herde demo board (21 species of mixed tiers: the mesh-path stress board). */
+export const HERD_DEMO_INDEX = -3;
 
 export interface GridLabState {
   levelIndex: number;
@@ -76,6 +78,22 @@ export const useGridStore = create<GridLabState>((set, get) => ({
     }
     if (index === CREATURE_DEMO_INDEX) {
       get().loadCreatureDemo(attempt);
+      return;
+    }
+    if (index === HERD_DEMO_INDEX) {
+      const state = herdDemoState(3000 + attempt);
+      set({
+        levelIndex: HERD_DEMO_INDEX,
+        level: HERD_DEMO_LEVEL,
+        history: createHistory(state, 8),
+        state,
+        lastMove: null,
+        moveSeq: 0,
+        animating: false,
+        pendingDir: null,
+        attempt,
+        rex: 'Herde: einundzwanzig Arten auf einem Brett.',
+      });
       return;
     }
     const level = LEVELS[index];

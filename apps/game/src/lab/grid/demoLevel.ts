@@ -144,3 +144,68 @@ export const CREATURE_DEMO_LEVEL: LevelDef = {
 export function creatureDemoState(seed = 1234): LevelState {
   return createState(CREATURE_DEMO_LEVEL, seed);
 }
+
+/**
+ * "Herde": 21 species animals of mixed tiers (5–8) and 7 blobs on one board of the Wooding zone — the mesh-path
+ * stress board (one shared mesh per species, fur fins/shells and feather cards on the mesh block). One swipe
+ * up merges the REX with a mouse, a giraffe with a mouse and an elephant with a duck.
+ */
+export const HERD_DEMO_LEVEL: LevelDef = {
+  schemaVersion: 1,
+  id: 'demo-herde',
+  zone: 'wooding',
+  name: 'Herde',
+  grid: { w: 6, h: 6, mask: ['......', '......', '......', '......', '......', '......'] },
+  fences: [],
+  floors: [],
+  blockers: [],
+  threats: [],
+  start: [
+    { at: [0, 0], blob: { tier: 2 } }, // 1 blob
+    { at: [1, 0], blob: { tier: 6 } }, // 2 REX
+    { at: [2, 0], blob: { tier: 7 } }, // 3 duck (feathers)
+    { at: [3, 0], blob: { tier: 7 } }, // 4 snake
+    { at: [4, 0], blob: { tier: 6 } }, // 5 retriever (fur)
+    { at: [5, 0], blob: { tier: 8 } }, // 6 elephant
+    { at: [0, 1], blob: { tier: 1 } }, // 7 blob
+    { at: [0, 5], blob: { tier: 2 } }, // 8 blob
+    { at: [2, 1], blob: { tier: 8 } }, // 9 snake
+    { at: [3, 1], blob: { tier: 3 } }, // 10 blob
+    { at: [1, 5], blob: { tier: 1 } }, // 11 blob
+    { at: [5, 1], blob: { tier: 5 } }, // 12 giraffe
+    { at: [0, 2], blob: { tier: 5 } }, // 13 mouse (fur)
+    { at: [1, 2], blob: { tier: 6 } }, // 14 mouse (fur) → merges up into the REX
+    { at: [3, 5], blob: { tier: 3 } }, // 15 blob
+    { at: [3, 2], blob: { tier: 5 } }, // 16 retriever (fur)
+    { at: [4, 2], blob: { tier: 7 } }, // 17 elephant
+    { at: [5, 2], blob: { tier: 5 } }, // 18 mouse (fur) → merges up into the giraffe
+    { at: [0, 3], blob: { tier: 7 } }, // 19 retriever (fur)
+    { at: [1, 3], blob: { tier: 5 } }, // 20 retriever (fur)
+    { at: [2, 3], blob: { tier: 6 } }, // 21 elephant
+    { at: [4, 3], blob: { tier: 7 } }, // 22 snake
+    { at: [5, 3], blob: { tier: 6 } }, // 23 elephant
+    { at: [0, 4], blob: { tier: 7 } }, // 24 REX
+    { at: [2, 4], blob: { tier: 6 } }, // 25 duck → merges up into the elephant
+    { at: [3, 4], blob: { tier: 2 } }, // 26 blob
+    { at: [4, 4], blob: { tier: 6 } }, // 27 retriever
+    { at: [5, 4], blob: { tier: 6 } }, // 28 giraffe
+  ],
+  spawn: {
+    sources: [[5, 5]],
+    table: [
+      { tier: 1, weight: 6 },
+      { tier: 2, weight: 3 },
+    ],
+    preview: true,
+    fallback: 'anyEmpty',
+  },
+  goals: [{ type: 'reachTier', tier: 12 }],
+  moves: 99,
+  cap: 12,
+  specials: { lineAt: 13, burstAt: 13 },
+  difficulty: { targetAttempts: [1, 1.2], style: 'journey' },
+};
+
+export function herdDemoState(seed = 1234): LevelState {
+  return createState(HERD_DEMO_LEVEL, seed);
+}

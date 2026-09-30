@@ -1,5 +1,5 @@
 import { DynamicDrawUsage, Group, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, SphereGeometry, Vector3 } from 'three/webgpu';
-import type { Camera } from 'three/webgpu';
+import type { Camera, Object3D } from 'three/webgpu';
 import type { Blob, Coord, LevelState } from '@ee/core';
 import { NO_FLOOR, buildBody, creatureGenome, genomeFor, mixHex, resolveCreature, scaleForTier, squashScales, type BlobParams, type BodyType, type CreatureSpec, type GenomeRules, type PartSpec, type Vec3, type ZoneId } from '@ee/genome';
 import { SpringJiggle } from '@ee/physics';
@@ -17,11 +17,12 @@ import {
   type BlobShadingUniforms,
   type PatternParams,
 } from '../blob/index';
-import { CreatureMergeChoreo, CreaturePool, legDefsFor, type CreatureRig, type ModuleLibrary, type PartPool } from '../creature/index';
+import { CreatureMergeChoreo, CreaturePool, legDefsFor, meshBodyEligible, type CreatureRig, type ModuleLibrary, type PartPool } from '../creature/index';
 import type { BoardLabels } from './BoardLabels';
 import { labelIndexForTier } from './BoardLabels';
 import { MOTIF, type BoardProps, type PropDesc } from './BoardProps';
 import { CreatureDrive, archetypeFit } from './boardCreature';
+import { BoardMeshBodies } from './boardMeshBodies';
 import type { BoardLayout } from './boardElements';
 import type { BoardPalette } from './boardPalette';
 
@@ -49,8 +50,10 @@ export interface BlobVisual {
   fit: number;
   /** Locomotion of archetype bodies (null for blobs: those are tween-driven). */
   drive: CreatureDrive | null;
-  /** Drawn by the raymarch candidate (REX, snakes, giraffe necks on WebGPU in the Hoch preset). */
+  /** Drawn by the raymarch candidate (solid bodies the mesh path does not take, WebGPU in the Hoch preset). */
   raymarch: boolean;
+  /** Mesh path (species animals): the spec re-keyed onto its shared species mesh; null = jiggle/raymarch body. */
+  meshSpec: CreatureSpec | null;
   pattern: PatternParams | null;
   x: number;
   z: number;
@@ -154,8 +157,24 @@ const LIGHT_CAMERA = new Vector3(-0.66, 0.6, 0.5).normalize();
 const REST_SQUASH = -0.07;
 /** Shadow proxies per creature: posed body spheres plus one per leg. */
 const PROXIES_PER_CREATURE = 18;
+/**
+ * Draw calls the board aims for in its main pass (plateau, plates, props, bodies, coats, parts): creature
+ * parts get what the rest leaves (see `budgetSpec`).
+ */
+export const BOARD_DC_TARGET = 30;
+/** Kept free inside the target: the traced mouths' draw and one for particle bursts. */
+const DC_RESERVE = 2;
 /** Keep order of part slots when the board's part draw-call budget is tight (legs always stay). */
 const SLOT_PRIORITY: Record<string, number> = { leg: 100, eye: 90, horn: 60, ear: 55, crest: 50, tail: 45, wing: 40, trunk: 35, tooth: 30 };
+/**
+ * Draw-call value of a part module on a crowded board (creatures served per draw call × weight): the
+ * features that make a species readable from above first — a duck's beak above all, the REX crest, ears and
+ * horns.
+ */
+const PART_WEIGHT: Record<string, number> = { crest: 2.5, ear: 2, horn: 2, tail: 1.2, wing: 1, trunk: 1, tooth: 1 };
+const BEAK_WEIGHT = 10;
+/** Share of the part budget the eye modules may take before the rarer eye modules give way to a shared one. */
+const EYE_SHARE = 0.7;
 /** Archetype bodies need parts (legs, eyes); amoebae stay blobs (their violet core is a blob motif). */
 const ARCHETYPE_KINDS: ReadonlySet<Blob['kind']> = new Set(['normal', 'line', 'burst', 'stray']);
 
@@ -165,10 +184,11 @@ function blobOverflow(tier: number): number {
 }
 
 /**
- * The creatures on the board: jiggle-mesh bodies (one instanced draw) plus raymarched bodies for REX, snakes
- * and giraffe necks on WebGPU (a second draw only while one is on the board), smooth sphere proxies on the
- * shadow layer (posed body spheres and legs) so every creature throws a razor shadow, tier badges, modular
- * parts from the CreaturePool (walkers' legs follow the locomotion pose with IK) and per-state attachments:
+ * The creatures on the board: blobs as jiggle-mesh bodies (one instanced draw), species animals on the mesh
+ * path (`BoardMeshBodies`: skinned species meshes shared across tiers, fur fins/shells and feather cards on
+ * their own block — Hoch and Mobil), smooth sphere proxies on the shadow layer (posed body spheres and legs)
+ * so every creature throws a razor shadow, tier badges, modular parts from the CreaturePool within the
+ * board's draw-call target (`BOARD_DC_TARGET`, planned per level: eyes first) and per-state attachments:
  * ice shards for crusted blobs, "zzz" dots and a closed lid for sleepers, orbiting dots for charged
  * (line/burst) blobs, a shifting violet core for amoebae, an ink mouth that opens on the leading side;
  * strays are rust-tinted. From tier 5 the lines turn into their archetype (quadruped/snake, REX from 6,
@@ -180,6 +200,8 @@ export class BoardBlobs {
   readonly mesh: InstancedMesh;
   /** Raymarch bodies (null when the backend/preset draws everything as meshes). */
   readonly meshA: InstancedMesh | null = null;
+  /** Species animals as skinned meshes with their coats (own block; null when unavailable). */
+  readonly meshBodies: BoardMeshBodies | null = null;
   readonly proxies: InstancedMesh;
   readonly visuals = new Map<number, BlobVisual>();
   readonly driver = new SpringJiggle();
@@ -213,6 +235,26 @@ export class BoardBlobs {
   castersMoved = false;
   /** A walker's foot landed (board-local x, z; strength ≈ 0.3 trot … 1.2 stomp): the board puffs dust. */
   onFootfall: ((x: number, z: number, strength: number, v: BlobVisual) => void) | null = null;
+  /** Draw calls of everything but bodies and parts (plateau, plates, props, labels) — set by the renderer. */
+  otherDrawCalls: (() => number) | null = null;
+  /** Body draw calls the current level will need (planned at load, refreshed per move). */
+  private plannedBodyDc = 0;
+  /** Pool keys of the part modules the level plans with (reserved in the part budget). */
+  private plannedKeys = new Set<string>();
+  /** Crowded boards: eye modules that give way to a shared one (asset → substitute). */
+  private eyeSubstitutes = new Map<string, string>();
+  /** The shared eye module of a crowded board (kept across re-plans while it is on the board). */
+  private sharedEye: string | null = null;
+  /** Resolved creatures by tier/seed for planning and preparation (not for rigs). */
+  private readonly rawSpecs = new Map<string, CreatureSpec | null>();
+  /**
+   * Background pipeline compiler (the scene's `renderer.compileAsync` for this board, WebGPU): species
+   * meshes and part modules prepared ahead are compiled before their first draw instead of on it (every new
+   * instanced mesh builds its node state once — ≈ 60 ms for a species body).
+   */
+  compiler: ((root: Object3D) => Promise<void>) | null = null;
+  private compilePending = false;
+  private compiling = false;
   readonly capacity: number;
 
   constructor(readonly options: BoardBlobsOptions) {
@@ -248,6 +290,16 @@ export class BoardBlobs {
         this.meshA = null;
       }
     }
+    try {
+      this.meshBodies = new BoardMeshBodies(this.capacity, this.uniforms, quality, b.glyph, this.mobile);
+      this.meshBodies.onNewMesh = () => {
+        this.compilePending = true;
+      };
+      this.meshBodies.onSpec = (spec) => this.preparePools(spec);
+      this.disposables.push(this.meshBodies);
+    } catch {
+      this.meshBodies = null;
+    }
     for (let i = this.capacity - 1; i >= 0; i--) this.freeSlots.push(i);
 
     const proxyGeo = new SphereGeometry(1, 12, 8);
@@ -263,6 +315,7 @@ export class BoardBlobs {
     this.disposables.push(proxyGeo, proxyMat);
     this.group.add(this.mesh, this.proxies);
     if (this.meshA) this.group.add(this.meshA);
+    if (this.meshBodies) this.group.add(this.meshBodies.group);
   }
 
   /** Enables modular creature parts (needs the loaded module library and the genome rules). */
@@ -281,7 +334,293 @@ export class BoardBlobs {
     this.library = library;
     this.rules = rules;
     this.scaleCache.clear();
+    // The board may already hold its level (the modules arrived late): plan its body draws before the rigs.
+    if (this.creatureMode !== 'none' && this.visuals.size > 0) this.plan(this.visuals.values());
     for (const v of this.visuals.values()) this.refreshRig(v, true);
+    // Species meshes of the zone are built in the background (one per frame) before the first level needs them.
+    this.prepareZone();
+  }
+
+  // ---------- mesh path preparation ----------
+
+  /** Resolves the creature a blob of `tier` seeded `seed` becomes (archetypes; walkers without legs stay blobs). */
+  private specOf(tier: number, seed: number, archetypes = true): CreatureSpec | null {
+    const rules = this.rules;
+    if (!rules) return null;
+    const key = `${tier}|${seed}|${archetypes ? 'a' : 'b'}`;
+    const hit = this.rawSpecs.get(key);
+    if (hit !== undefined) return hit;
+    let spec: CreatureSpec | null = null;
+    try {
+      spec = resolveCreature(creatureGenome(this.options.zone, tier, seed), rules, { archetypes });
+      const walker = spec.bodyType === 'quadruped' || spec.bodyType === 'biped' || spec.bodyType === 'heavy';
+      if (walker && (spec.skeleton.legs?.length ?? 0) === 0) spec = null;
+    } catch {
+      spec = null;
+    }
+    if (this.rawSpecs.size > 512) this.rawSpecs.clear();
+    this.rawSpecs.set(key, spec);
+    return spec;
+  }
+
+  /**
+   * Body draw calls of a set of creatures: one per shared species mesh (estimated by species shape), the coat
+   * passes of the preset, the jiggle mesh for blobs and the raymarch mesh.
+   */
+  private bodyDc(shapes: Set<string>, fur: boolean, feather: boolean, jiggle: boolean, ray: boolean): number {
+    const shells = !this.mobile && (this.meshBodies?.shells ?? false);
+    const coats = (fur ? (shells ? 2 : 1) : 0) + (feather && !this.mobile ? 1 : 0);
+    return shapes.size + coats + (jiggle ? 1 : 0) + (ray ? 1 : 0);
+  }
+
+  /** Body draw calls of the creatures adopted right now. */
+  private bodyDcNow(): number {
+    const shapes = new Set<string>();
+    let fur = false;
+    let feather = false;
+    let jiggle = false;
+    let ray = false;
+    for (const v of this.visuals.values()) {
+      const m = v.meshSpec;
+      if (m) {
+        shapes.add(`${m.species}|${m.legStyle}|${m.body.spheres.length}|${m.tier}`);
+        if (m.skin.coat === 'fur') fur = true;
+        else if (m.skin.coat === 'feather') feather = true;
+      } else if (v.raymarch) ray = true;
+      else jiggle = true;
+    }
+    return this.bodyDc(shapes, fur, feather, jiggle, ray);
+  }
+
+  /** Pool keys (`module#segment#prim`: one draw call each) of a part module. */
+  private moduleKeys(asset: string): string[] {
+    const m = this.library?.get(asset);
+    if (!m) return [];
+    const out: string[] = [];
+    m.segments.forEach((seg, si) => seg.prims.forEach((_p, pi) => out.push(`${m.id}#${si}#${pi}`)));
+    return out;
+  }
+
+  /** Module draw calls the parts may use: what the board's other draws leave of the target. */
+  private partBudget(): number {
+    const cap = this.mobile ? 12 : 16;
+    const others = this.otherDrawCalls?.() ?? 5;
+    const bodies = Math.max(this.plannedBodyDc, this.bodyDcNow());
+    return Math.max(4, Math.min(cap, BOARD_DC_TARGET - DC_RESERVE - others - bodies));
+  }
+
+  /**
+   * Plans a level's draws before its creatures are resolved (load, and per move with the state after it):
+   * the body draws (one per species shape, coats, jiggle mesh) and which part modules fit the rest of the
+   * target — eye modules first (most creatures per draw call first), then the others the same way. On a
+   * crowded Hoch board whose eyes do not fit, the fur shells step back (the fins still carry the coat).
+   * `budgetSpec` then keeps the planned modules for every creature and admits others only into what is left.
+   */
+  private plan(blobs: Iterable<{ tier: number; seed: number; kind: Blob['kind'] }>): void {
+    const shapes = new Set<string>();
+    let fur = false;
+    let feather = false;
+    let jiggle = false;
+    const specs: CreatureSpec[] = [];
+    for (const b of blobs) {
+      const arche = ARCHETYPE_KINDS.has(b.kind);
+      const spec = this.specOf(b.tier, b.seed, arche);
+      if (spec) specs.push(spec);
+      if (spec && this.meshBodies && arche && spec.bodyType !== 'blob' && meshBodyEligible(spec)) {
+        shapes.add(`${spec.species}|${spec.legStyle}|${spec.body.spheres.length}`);
+        if (spec.skin.coat === 'fur') fur = true;
+        else if (spec.skin.coat === 'feather') feather = true;
+      } else jiggle = true;
+    }
+    const mb = this.meshBodies;
+    if (mb) mb.shells = true;
+    this.plannedBodyDc = this.bodyDc(shapes, fur, feather, jiggle, false);
+    // Part modules with the creatures they serve.
+    interface ModuleUse {
+      asset: string;
+      keys: string[];
+      users: number;
+      eye: boolean;
+      weight: number;
+    }
+    const assets = new Map<string, ModuleUse>();
+    for (const spec of specs) {
+      const seen = new Set<string>();
+      for (const p of spec.parts) {
+        if (p.role !== null || seen.has(p.asset)) continue;
+        seen.add(p.asset);
+        let e = assets.get(p.asset);
+        if (!e) {
+          const keys = this.moduleKeys(p.asset);
+          if (keys.length === 0) continue;
+          e = { asset: p.asset, keys, users: 0, eye: p.slot === 'eye', weight: p.asset.startsWith('beak') ? BEAK_WEIGHT : (PART_WEIGHT[p.slot] ?? 1) };
+          assets.set(p.asset, e);
+        }
+        e.users++;
+      }
+    }
+    let budget = this.partBudget();
+    this.eyeSubstitutes = new Map();
+    const all = new Set<string>();
+    for (const e of assets.values()) for (const k of e.keys) all.add(k);
+    if (all.size <= budget) {
+      // Everything fits: every creature keeps its own modules.
+      this.plannedKeys = all;
+      this.sharedEye = null;
+      return;
+    }
+    // Modules already on the board stay first in line (a re-plan after a move must not swap features of the
+    // creatures that remain).
+    const live = this.livePoolKeys();
+    const isLive = (e: ModuleUse): boolean => e.keys.every((k) => live.has(k));
+    const byValue = (a: ModuleUse, b: ModuleUse, va: number, vb: number): number => Number(isLive(b)) - Number(isLive(a)) || vb - va;
+    // Eyes first: the most used full eye (≥ 3 prims) is the shared one (the current one while it is still on
+    // the board), the others follow by creatures per draw call within a share of the budget; the eye modules
+    // left over give way to the shared one (a crowded board's creatures share their eyes, none goes blind).
+    const eyes = [...assets.values()].filter((e) => e.eye).sort((a, b) => byValue(a, b, a.users / a.keys.length, b.users / b.keys.length));
+    const full = eyes.filter((e) => e.keys.length >= 3);
+    const current = eyes.find((e) => e.asset === this.sharedEye && isLive(e));
+    const primary = current ?? (full.length > 0 ? full : eyes).reduce<ModuleUse | null>((best, e) => (!best || e.users > best.users ? e : best), null);
+    const eyeCap = Math.max(primary?.keys.length ?? 0, Math.floor(budget * EYE_SHARE));
+    const admitted: ModuleUse[] = primary ? [primary] : [];
+    let eyeDc = primary?.keys.length ?? 0;
+    for (const e of eyes) {
+      if (e === primary || eyeDc + e.keys.length > eyeCap) continue;
+      admitted.push(e);
+      eyeDc += e.keys.length;
+    }
+    for (const e of eyes) if (primary && !admitted.includes(e)) this.eyeSubstitutes.set(e.asset, primary.asset);
+    this.sharedEye = this.eyeSubstitutes.size > 0 ? (primary?.asset ?? null) : null;
+    if (mb && fur && !this.mobile && budget < eyeDc) {
+      // Not even the shared eyes fit: the fur shells give their draw call to them (the fins keep the coat).
+      mb.shells = false;
+      this.plannedBodyDc -= 1;
+      budget = this.partBudget();
+    }
+    const keys = new Set<string>();
+    for (const e of admitted) for (const k of e.keys) keys.add(k);
+    const rest = [...assets.values()].filter((e) => !e.eye).sort((a, b) => byValue(a, b, (a.users * a.weight) / a.keys.length, (b.users * b.weight) / b.keys.length));
+    for (const e of rest) {
+      const need = e.keys.filter((k) => !keys.has(k));
+      if (keys.size + need.length <= budget) for (const k of need) keys.add(k);
+    }
+    this.plannedKeys = keys;
+  }
+
+  /**
+   * Queues the species meshes a level needs ahead of time: the merge results the next blob ids produce
+   * (every present tier + 1; the creatures on the board are meshed when they are adopted). Cheap — the
+   * specs resolve lazily in `pumpPrepare`.
+   */
+  prepareLevel(state: LevelState): void {
+    const m = this.meshBodies;
+    if (!m || !this.rules || this.creatureMode === 'none') {
+      this.plannedBodyDc = 0;
+      this.plannedKeys = new Set();
+      return;
+    }
+    const blobs: Array<{ tier: number; seed: number; kind: Blob['kind'] }> = [];
+    for (const b of state.cells) if (b) blobs.push({ tier: b.tier, seed: b.id * 31 + 7, kind: b.kind });
+    this.plan(blobs);
+    const tiers = new Set<number>();
+    for (const b of state.cells) {
+      if (!b || !ARCHETYPE_KINDS.has(b.kind)) continue;
+      if (b.tier >= 4) tiers.add(b.tier + 1);
+      if (b.tier >= 5) tiers.add(b.tier);
+    }
+    const seq = state.blobSeq;
+    for (let id = seq + 1; id <= seq + 12; id++) {
+      for (const t of tiers) {
+        const seed = id * 31 + 7;
+        m.enqueue(`${t}|${seed}`, () => this.specOf(t, seed));
+      }
+    }
+  }
+
+  /**
+   * Queues every species of the zone (tiers 5–11): call while the board waits (splash, map). Middle tiers
+   * first: a shared mesh built from a tier-8 body fits the tiers on both sides best.
+   */
+  prepareZone(): void {
+    const m = this.meshBodies;
+    if (!m || !this.rules || this.creatureMode === 'none') return;
+    for (const t of [8, 7, 9, 6, 10, 5, 11]) {
+      for (let id = 1; id <= 24; id++) {
+        const seed = id * 31 + 7;
+        m.enqueue(`${t}|${seed}`, () => this.specOf(t, seed));
+      }
+    }
+  }
+
+  /** Works on the prepare queue (see `BoardMeshBodies.pump`); true while work is left. */
+  pumpPrepare(budgetMs: number, allowMesh = true): boolean {
+    return this.meshBodies?.pump(budgetMs, allowMesh) ?? false;
+  }
+
+  /** Part pools (one instanced draw per module segment prim) for a creature that may show up soon. */
+  private preparePools(spec: CreatureSpec): void {
+    const pool = this.pool;
+    const library = this.library;
+    if (!pool || !library) return;
+    for (const p of spec.parts) {
+      const m = library.get(p.asset);
+      if (!m) continue;
+      m.segments.forEach((seg, si) =>
+        seg.prims.forEach((_prim, pi) => {
+          const before = pool.group.children.length;
+          pool.poolFor(m, si, pi);
+          if (pool.group.children.length > before) this.compilePending = true;
+        }),
+      );
+    }
+  }
+
+  /**
+   * Compiles what was prepared since the last call (new species meshes, part pools) in the background: they
+   * are shown for the compiler's synchronous traversal only, the node builds and pipelines follow
+   * asynchronously. One compile in flight at a time.
+   */
+  compileAhead(): void {
+    const compile = this.compiler;
+    if (!this.compilePending || this.compiling || !compile) return;
+    this.compilePending = false;
+    const shown: Object3D[] = [];
+    const show = (o: Object3D): void => {
+      if (o.visible) return;
+      o.visible = true;
+      shown.push(o);
+    };
+    if (this.meshBodies) for (const o of this.meshBodies.meshes) show(o);
+    if (this.pool) for (const o of this.pool.group.children) show(o);
+    this.compiling = true;
+    let done: Promise<void>;
+    try {
+      done = compile(this.group);
+    } catch {
+      done = Promise.resolve();
+    }
+    for (const o of shown) o.visible = false;
+    void done
+      .catch(() => undefined)
+      .then(() => {
+        this.compiling = false;
+      });
+  }
+
+  /**
+   * Pipeline warm-up before `renderer.compileAsync`: the skinned species material and the coat passes of the
+   * preset get one collapsed instance each (the next frame resets them). False when nothing could be warmed.
+   */
+  warmPipelines(): boolean {
+    const m = this.meshBodies;
+    if (!m) return false;
+    return m.warm(this.capacity - 1, () => {
+      for (let id = 1; id <= 24; id++) {
+        const spec = this.specOf(7, id * 31 + 7);
+        if (spec && meshBodyEligible(spec)) return spec;
+      }
+      return null;
+    });
   }
 
   get partDrawCalls(): number {
@@ -292,9 +631,9 @@ export class BoardBlobs {
     return pool.drawCalls + (mouths?.mesh?.visible ? 1 : 0);
   }
 
-  /** Draw calls of the bodies (jiggle mesh, raymarch mesh while used). */
+  /** Draw calls of the bodies (jiggle mesh, raymarch mesh while used, species meshes and their coats). */
   get bodyDrawCalls(): number {
-    return (this.mesh.count > 0 ? 1 : 0) + (this.meshA && this.meshA.count > 0 ? 1 : 0);
+    return (this.mesh.count > 0 ? 1 : 0) + (this.meshA && this.meshA.count > 0 ? 1 : 0) + (this.meshBodies?.drawCalls ?? 0);
   }
 
   /** World scale of a blob body of a tier on this board (blob units → board units). */
@@ -392,28 +731,26 @@ export class BoardBlobs {
    * whose eye module does not fit keeps its painted eye.
    */
   private budgetSpec(spec: CreatureSpec): CreatureSpec {
-    const library = this.library;
-    if (!library || spec.parts.length === 0) return spec;
-    const budget = this.mobile ? 12 : 16;
-    const live = this.livePoolKeys();
-    const keys = (asset: string): string[] => {
-      const m = library.get(asset);
-      if (!m) return [];
-      const out: string[] = [];
-      m.segments.forEach((seg, si) => seg.prims.forEach((_p, pi) => out.push(`${m.id}#${si}#${pi}`)));
-      return out;
-    };
-    const order = [...spec.parts].sort((a, b) => (b.role !== null ? 1000 : SLOT_PRIORITY[b.slot] ?? 0) + b.since * 0.01 - ((a.role !== null ? 1000 : SLOT_PRIORITY[a.slot] ?? 0) + a.since * 0.01));
+    if (!this.library || spec.parts.length === 0) return spec;
+    // Crowded board: rarer eye modules give way to the shared one (see `plan`).
+    const subs = this.eyeSubstitutes;
+    const source = subs.size > 0 && spec.parts.some((p) => p.slot === 'eye' && subs.has(p.asset)) ? spec.parts.map((p) => (p.slot === 'eye' && subs.has(p.asset) ? { ...p, asset: subs.get(p.asset)! } : p)) : spec.parts;
+    // Parts get what the board's other draws leave of the target: the level's planned modules (see `plan`)
+    // are reserved, other modules fit into the rest (creatures whose eye modules do not fit keep painted eyes).
+    const budget = this.partBudget();
+    const reserved = this.livePoolKeys();
+    for (const k of this.plannedKeys) reserved.add(k);
+    const order = [...source].sort((a, b) => (b.role !== null ? 1000 : SLOT_PRIORITY[b.slot] ?? 0) + b.since * 0.01 - ((a.role !== null ? 1000 : SLOT_PRIORITY[a.slot] ?? 0) + a.since * 0.01));
     const kept = new Set<PartSpec>();
     for (const p of order) {
-      const need = keys(p.asset).filter((k) => !live.has(k));
-      if (p.role !== null || need.length === 0 || live.size + need.length <= budget) {
+      const need = this.moduleKeys(p.asset).filter((k) => !reserved.has(k));
+      if (p.role !== null || need.length === 0 || reserved.size + need.length <= budget) {
         kept.add(p);
-        for (const k of need) live.add(k);
+        for (const k of need) reserved.add(k);
       }
     }
-    if (kept.size === spec.parts.length) return spec;
-    const parts = spec.parts.filter((p) => kept.has(p));
+    if (kept.size === spec.parts.length && source === spec.parts) return spec;
+    const parts = source.filter((p) => kept.has(p));
     let body = spec.body;
     if (!parts.some((p) => p.slot === 'eye') && spec.parts.some((p) => p.slot === 'eye')) {
       // Eye modules dropped: the painted eye of the body comes back.
@@ -449,7 +786,7 @@ export class BoardBlobs {
     v.spec = spec;
     v.rig = rig;
     v.body = spec?.bodyType ?? 'blob';
-    v.raymarch = this.wantsRaymarch(spec);
+    v.meshSpec = null;
     const skin = spec?.skin;
     v.pattern = skin && skin.pattern !== 'none' ? makePattern(skin.pattern, spec.body.baseColor, { scale: skin.patternScale, rotation: skin.patternRotation }) : null;
     if (spec && rig && v.body !== 'blob') {
@@ -459,17 +796,21 @@ export class BoardBlobs {
       v.drive = new CreatureDrive(spec, legDefsFor(spec, rig), { seed: v.seed, scale: v.fit, coilAllowed: coiled, yaw });
       // Walkers are drawn every frame with a new pose: trace their sockets every other frame on phones.
       rig.traceInterval = this.mobile ? 2 : 1;
+      // Species animals are skinned meshes (Hoch and Mobil); the shared species mesh is prepared ahead.
+      v.meshSpec = this.meshBodies?.specFor(spec) ?? null;
     } else {
       v.fit = this.worldScale(v.tier);
       v.drive = null;
     }
+    v.raymarch = !v.meshSpec && this.wantsRaymarch(spec);
     v.genome = this.paramsFor(v);
     this.driver.configure(v.id, { viscosity: v.genome.viscosity });
   }
 
   /**
-   * Raymarch only where it is needed and shades right: bodies the mesh trace cannot follow (`skeleton.raymarch`),
-   * never snakes (their coil) or gas bodies (both render dark there), never in the Mobil preset.
+   * Raymarch only where it is needed and shades right: bodies the mesh trace cannot follow (`skeleton.raymarch`)
+   * that the mesh path does not take either, never snakes (their coil) or gas bodies (both render dark
+   * there), never in the Mobil preset.
    */
   private wantsRaymarch(spec: CreatureSpec | null): boolean {
     return !!(spec && spec.skeleton.raymarch && this.blockA && !this.mobile && spec.bodyType !== 'snake' && spec.material !== 'gas');
@@ -483,8 +824,9 @@ export class BoardBlobs {
     if (mobile === this.mobile) return;
     this.mobile = mobile;
     applyBlobQuality(this.quality, mobile ? BLOB_QUALITY_MOBILE : BLOB_QUALITY_HIGH);
+    if (this.meshBodies) this.meshBodies.mobile = mobile;
     for (const v of this.visuals.values()) {
-      v.raymarch = this.wantsRaymarch(v.spec);
+      v.raymarch = !v.meshSpec && this.wantsRaymarch(v.spec);
       if (v.rig && v.drive) v.rig.traceInterval = mobile ? 2 : 1;
     }
   }
@@ -548,6 +890,7 @@ export class BoardBlobs {
       fit: this.worldScale(blob.tier),
       drive: null,
       raymarch: false,
+      meshSpec: null,
       pattern: null,
       x,
       z,
@@ -610,6 +953,7 @@ export class BoardBlobs {
     if (v.slot >= 0) {
       this.block.hide(v.slot);
       this.blockA?.hide(v.slot);
+      this.meshBodies?.hide(v.slot);
       this.freeSlots.push(v.slot);
     }
     this.driver.remove(id);
@@ -741,6 +1085,8 @@ export class BoardBlobs {
         const kids = this.resolveSpec(result.tier, result.id * 31 + 7, result.kind);
         if (kids) {
           fx.child = kids;
+          // The child's species mesh (usually prepared during the fly-in) is looked up now, not at the swap.
+          this.meshBodies?.specFor(kids.spec);
           if (settled.rig) fx.choreo = new CreatureMergeChoreo(settled.rig, mover?.rig ?? settled.rig, kids.rig, { seed: settled.id });
           else for (const p of kids.rig.parts) kids.rig.setChoreo(p.spec.id, { offset: [0, 0, 0], scale: 0, spin: 0 });
         }
@@ -823,6 +1169,8 @@ export class BoardBlobs {
     let proxyCount = 0;
     let moved = false;
     const ground = layout.top;
+    const meshBodies = this.meshBodies;
+    meshBodies?.begin();
     for (const v of this.visuals.values()) {
       v.jiggle = Math.max(0, v.jiggle - dt * 1.4);
       const visible = v.slot >= 0 && !v.hidden && !v.fogged && v.pop > 0.001 && this.globalPop > 0.001;
@@ -830,6 +1178,7 @@ export class BoardBlobs {
         if (v.slot >= 0) {
           this.block.hide(v.slot);
           this.blockA?.hide(v.slot);
+          meshBodies?.hide(v.slot);
         }
         if (v.rig) {
           v.rig.setBody({ params: v.genome, center: [v.x, -50, v.z], scale: 0.0001, time: gpuTime, surface: 'mesh' });
@@ -1041,13 +1390,20 @@ export class BoardBlobs {
           });
         }
       }
-      if (v.raymarch && this.blockA) {
+      if (v.meshSpec && meshBodies && drive) {
+        // Mesh path: the posed spheres skin the shared species mesh; coats run on the same block slot.
+        meshBodies.draw(v.slot, v.meshSpec, params, { center, scale }, dyn, drive.rotation);
+        this.block.hide(v.slot);
+        this.blockA?.hide(v.slot);
+      } else if (v.raymarch && this.blockA) {
         this.blockA.write(v.slot, params, { center, scale }, dyn);
         this.block.hide(v.slot);
+        meshBodies?.hide(v.slot);
         maxSlotA = Math.max(maxSlotA, v.slot);
       } else {
         this.block.write(v.slot, params, { center, scale }, dyn);
         this.blockA?.hide(v.slot);
+        meshBodies?.hide(v.slot);
         maxSlot = Math.max(maxSlot, v.slot);
       }
       if (v.rig) {
@@ -1058,6 +1414,7 @@ export class BoardBlobs {
     }
     this.mesh.count = maxSlot + 1;
     if (this.meshA) this.meshA.count = maxSlotA + 1;
+    meshBodies?.end();
     this.proxies.count = proxyCount;
     this.proxies.instanceMatrix.needsUpdate = true;
     this.castersMoved = moved;

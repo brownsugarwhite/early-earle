@@ -157,6 +157,8 @@ export class BoardRenderer {
       this.particles.burst('spore', t, x, this.layout.top + 0.02, z, n, { up: 0.18 + 0.2 * strength, spread: 0.35 + 0.3 * strength, life: 0.45 + 0.2 * strength, size: 0.032 + 0.03 * strength, colors: [pal.soil, pal.paper, pal.soilDeep], seed: Math.floor(t * 997 + x * 131 + z * 71) });
     };
     this.lift.add(this.plateau.group, this.cells.mesh, this.props.group, this.particles.group, this.blobs.group, this.labels.mesh);
+    // Part budget: the draws besides bodies and parts (plateau, plates, prop groups, tier labels).
+    this.blobs.otherDrawCalls = () => 1 + (this.cells.cells.length > 0 ? 1 : 0) + this.props.groupsInUse + (this.labels.mesh.visible ? 1 : 0);
     this.timeline = new BoardTimeline(this);
     this.root.visible = false;
   }
@@ -390,6 +392,9 @@ export class BoardRenderer {
     this.streams = set.streams;
     this.goalLabels = set.goalLabels;
     for (const id of [...this.blobs.visuals.keys()]) this.blobs.removeVisual(id, this.props);
+    // Plans the level's body draws (parts get what the target leaves) and queues the species meshes of the
+    // likely merge results (prepared in the background: fly-in, first frames).
+    this.blobs.prepareLevel(state);
     this.blobs.reconcile(state, this.props);
     if (hidden) {
       for (const v of this.blobs.visuals.values()) v.pop = 0.001;
@@ -452,6 +457,8 @@ export class BoardRenderer {
     const tag = `move:${++this.moveCounter}`;
     this.moveTag = tag;
     this.playing++;
+    // The next merge results (new blob ids) get their species meshes while this move plays.
+    this.blobs.prepareLevel(finalState);
     this.timeline.play(
       res,
       finalState,
@@ -481,6 +488,7 @@ export class BoardRenderer {
     this.labels.mesh.visible = show;
     this.blobs.mesh.visible = show;
     if (this.blobs.meshA) this.blobs.meshA.visible = show;
+    if (this.blobs.meshBodies) this.blobs.meshBodies.group.visible = show;
     this.blobs.proxies.visible = show;
     if (on) this.root.visible = true;
   }
@@ -631,11 +639,33 @@ export class BoardRenderer {
     this.labels.mesh.visible = true;
     this.cells.mesh.visible = true;
     this.blobs.mesh.count = Math.max(1, this.blobs.mesh.count);
+    // Skinned species bodies and the coat passes compile with the rest (no hitch on the first merge).
+    this.blobs.warmPipelines();
     this.root.visible = true;
   }
 
   endWarmup(): void {
     this.root.visible = false;
+  }
+
+  /**
+   * Pipeline warm-up on a bound board (labs): particle kinds, tier labels, the skinned species material and
+   * the coat passes become visible for a compiler's synchronous traversal; call the returned function right
+   * after starting the compile to restore them.
+   */
+  showForCompile(): () => void {
+    const shown: Array<{ visible: boolean }> = [];
+    const show = (o: { visible: boolean }): void => {
+      if (o.visible) return;
+      o.visible = true;
+      shown.push(o);
+    };
+    for (const mesh of this.particles.group.children) show(mesh);
+    show(this.labels.mesh);
+    this.blobs.warmPipelines();
+    return () => {
+      for (const o of shown) o.visible = false;
+    };
   }
 
   // ---------------------------------------------------------------- juice
@@ -721,6 +751,10 @@ export class BoardRenderer {
     this.tweens.update();
     const now = this.now;
     this.timeNode.value = now;
+    // Species meshes ahead of time (zone species while the map shows, the level's likely merge results during
+    // the fly-in): fit checks every frame, a new mesh (6–30 ms) only while no move plays.
+    this.blobs.pumpPrepare(this.root.visible ? 1.5 : 3, !this.root.visible || this.playing === 0);
+    this.blobs.compileAhead();
     if (!this.root.visible) return;
     if (this.partsOnlyFlag) {
       this.blobs.updateCarried(dt, time.value + dt);
