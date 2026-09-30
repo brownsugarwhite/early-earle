@@ -17,6 +17,14 @@ export type GoalDef = LevelDraft['goals'][number];
 export type GoalType = GoalDef['type'];
 export type BlobDef = StartDef['blob'];
 export type ZoneId = LevelDraft['zone'];
+/** Ein fester Tutorial-Spawn aus `spawn.script` (Stufe, Art, optional Zelle). */
+export type ScriptDef = NonNullable<LevelDraft['spawn']['script']>[number];
+
+/** Rastergrenzen (Schema): Tutorial-Bretter ab 1×N, höchstens 8×8. */
+export const GRID_MIN = 1;
+export const GRID_MAX = 8;
+/** Längstes Spawn-Skript (Schema `MAX_SPAWN_SCRIPT`). */
+export const SCRIPT_MAX = 32;
 
 export const ZONES: readonly ZoneId[] = ['tjorizo', 'syrup', 'luzz', 'wooding'];
 export const ZONE_LABEL: Record<ZoneId, string> = {
@@ -199,6 +207,15 @@ function normGoal(v: unknown): GoalDef | null {
   }
 }
 
+function normScript(v: unknown): ScriptDef | null {
+  if (!isObj(v)) return null;
+  const s: ScriptDef = { tier: clampInt(v.tier, 1, 3, 1) };
+  const at = v.at === undefined ? null : coord(v.at);
+  if (at) s.at = [at[0], at[1]];
+  if (v.kind === 'amoeba' || v.kind === 'normal') s.kind = v.kind;
+  return s;
+}
+
 function fitMask(rows: readonly string[], w: number, h: number): string[] {
   const out: string[] = [];
   for (let y = 0; y < h; y++) {
@@ -213,9 +230,13 @@ export function normalizeDraft(raw: unknown): LevelDraft {
   const o = isObj(raw) ? raw : {};
   const grid = isObj(o.grid) ? o.grid : {};
   const maskIn = arr(grid.mask).filter((r): r is string => typeof r === 'string');
-  const w = clampInt(grid.w, 3, 8, maskIn[0]?.length ?? 4);
-  const h = clampInt(grid.h, 3, 8, maskIn.length || 4);
+  const w = clampInt(grid.w, GRID_MIN, GRID_MAX, maskIn[0]?.length ?? 4);
+  const h = clampInt(grid.h, GRID_MIN, GRID_MAX, maskIn.length || 4);
   const spawn = isObj(o.spawn) ? o.spawn : {};
+  const script = arr(spawn.script)
+    .map(normScript)
+    .filter((s): s is ScriptDef => s !== null)
+    .slice(0, SCRIPT_MAX);
   const table = arr(spawn.table)
     .filter(isObj)
     .map((t) => {
@@ -265,6 +286,8 @@ export function normalizeDraft(raw: unknown): LevelDraft {
     difficulty: { targetAttempts: [lo, hi] },
   };
   if (typeof o.name === 'string' && o.name.trim()) draft.name = o.name;
+  // Nur mit Einträgen: Level ohne Skript bleiben beim Sichern bytegleich.
+  if (script.length > 0) draft.spawn.script = script;
   const style = difficulty.style;
   if (style === 'explosive' || style === 'precise' || style === 'journey' || style === 'puzzle' || style === 'diligent') {
     draft.difficulty.style = style;
@@ -363,6 +386,22 @@ export function removeAt(d: LevelDraft, c: Cell, opts: RemoveOptions = {}): Leve
   };
 }
 
+/**
+ * Behält die Skript-Spawns, verliert aber Zielzellen, die `keep` nicht mehr erlaubt (der Eintrag spawnt dann
+ * auf einer Zufallszelle, die Reihenfolge der Stufen bleibt).
+ */
+function scriptKeeping(d: LevelDraft, keep: (c: Cell) => boolean): LevelDraft {
+  const script = d.spawn.script;
+  if (!script || script.every((s) => !s.at || keep(s.at))) return d;
+  const next = script.map((s): ScriptDef => {
+    if (!s.at || keep(s.at)) return s;
+    const out: ScriptDef = { tier: s.tier };
+    if (s.kind) out.kind = s.kind;
+    return out;
+  });
+  return { ...d, spawn: { ...d.spawn, script: next } };
+}
+
 /** Setzt ein Maskenzeichen; Elemente auf Zellen, die keine `.` mehr sind, fallen weg (Quellen dürfen auf `P` bleiben). */
 export function setMask(d: LevelDraft, c: Cell, ch: MaskChar): LevelDraft {
   if (!inside(d, c) || maskAt(d, c) === ch) return d;
@@ -370,6 +409,7 @@ export function setMask(d: LevelDraft, c: Cell, ch: MaskChar): LevelDraft {
   let next: LevelDraft = { ...d, grid: { ...d.grid, mask } };
   if (ch !== '.') {
     next = removeAt(next, c, { keepSource: ch === 'P', keepFences: true });
+    next = scriptKeeping(next, (s) => !sameCell(s, c));
     if (ch === '#') {
       next = {
         ...next,
@@ -385,23 +425,44 @@ export function cycleMask(ch: MaskChar | undefined): MaskChar {
   return ch === '.' ? '#' : ch === '#' ? 'P' : '.';
 }
 
-/** Ändert die Rastergröße; neue Zellen sind `.`, Elemente außerhalb fallen weg. */
+/** Ändert die Rastergröße (1..8, Tutorial-Bretter ab 1×N); neue Zellen sind `.`, Elemente außerhalb fallen weg. */
 export function resizeGrid(d: LevelDraft, w: number, h: number): LevelDraft {
-  w = Math.max(3, Math.min(8, Math.round(w)));
-  h = Math.max(3, Math.min(8, Math.round(h)));
+  w = Math.max(GRID_MIN, Math.min(GRID_MAX, Math.round(w)));
+  h = Math.max(GRID_MIN, Math.min(GRID_MAX, Math.round(h)));
   if (w === d.grid.w && h === d.grid.h) return d;
   const mask = fitMask(d.grid.mask, w, h);
   const next: LevelDraft = { ...d, grid: { w, h, mask } };
   const inb = (c: Cell) => c[0] < w && c[1] < h;
-  return {
-    ...next,
-    start: next.start.filter((s) => inb(s.at)),
-    blockers: next.blockers.filter((b) => (b.kind === 'scrapMound' ? moundCells(b.at).every(inb) : inb(b.at))),
-    floors: next.floors.filter((f) => inb(f.at)),
-    threats: next.threats.filter((t) => inb(t.at)),
-    fences: next.fences.filter((f) => inb(f.a) && inb(f.b)),
-    spawn: { ...next.spawn, sources: next.spawn.sources.filter(inb) },
-  };
+  return scriptKeeping(
+    {
+      ...next,
+      start: next.start.filter((s) => inb(s.at)),
+      blockers: next.blockers.filter((b) => (b.kind === 'scrapMound' ? moundCells(b.at).every(inb) : inb(b.at))),
+      floors: next.floors.filter((f) => inb(f.at)),
+      threats: next.threats.filter((t) => inb(t.at)),
+      fences: next.fences.filter((f) => inb(f.a) && inb(f.b)),
+      spawn: { ...next.spawn, sources: next.spawn.sources.filter(inb) },
+    },
+    inb,
+  );
+}
+
+// ---- Spawn-Skript (Tutorials) ----------------------------------------------------------
+
+/** Entfernt den Skript-Spawn `i`; ein leeres Skript verschwindet ganz (Schlüssel fällt weg). */
+export function removeScriptEntry(d: LevelDraft, i: number): LevelDraft {
+  const script = d.spawn.script ?? [];
+  if (i < 0 || i >= script.length) return d;
+  const rest = script.filter((_, k) => k !== i);
+  const spawn: LevelDraft['spawn'] = { sources: d.spawn.sources, table: d.spawn.table, preview: d.spawn.preview, fallback: d.spawn.fallback };
+  if (rest.length > 0) spawn.script = rest;
+  return { ...d, spawn };
+}
+
+/** Kurztext eines Skript-Spawns: „2“, „4 auf [1,1]“, „Amöbe auf [1,1]“. */
+export function scriptEntryText(s: ScriptDef): string {
+  const what = s.kind === 'amoeba' ? 'Amöbe' : String(2 ** s.tier);
+  return s.at ? `${what} auf [${s.at[0]},${s.at[1]}]` : what;
 }
 
 // ---- Zäune -----------------------------------------------------------------------------
