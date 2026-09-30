@@ -2,6 +2,8 @@ import type { Vec3 } from '../capPatch';
 import type { TreeKind } from '../scatterTrees';
 import type { WorldFeatureSpec } from '../features/types';
 import type { TrashSpec } from '../trash/types';
+import type { MistSpec } from './mist';
+import type { LandmarkKind } from '../landmarks/types';
 
 /**
  * Welt-Spezifikationen der unendlichen Ebene (ADR 0002). Positionen sind Ebenenkoordinaten: `[x, h, z]` mit x seitlich,
@@ -54,6 +56,11 @@ export interface PlanetTerrainShape {
   floor?: number;
   /** Anteil einer großwelligen Rampe (steile Hänge wie in Bild 04). */
   slope?: number;
+  /**
+   * Streckung der Hügel quer zum Pfad (x): > 1 = lange Kämme quer durchs Bild, die sich in die Tiefe staffeln (Ebene 20),
+   * < 1 = Hänge längs des Pfads (Ebene 7). Standard 1.
+   */
+  stretch?: number;
 }
 
 export interface PlanetPropSpec {
@@ -97,6 +104,10 @@ export interface WorldSpec {
   /** Müll v2 der Welt (Startwelt, Nester). */
   trash?: TrashSpec;
   focal?: FocalSpec;
+  /** Nebelbänke zwischen den Hügeln und Nebelmeer (Welten 11/12, siehe `plane/mist.ts`). */
+  mist?: MistSpec;
+  /** Gewichtsfaktoren der Wahrzeichen dieser Welt (0 = keine; z. B. keine Wasserfall-Felsen in der Nebelweide). */
+  landmarks?: Partial<Record<LandmarkKind, number>>;
 }
 
 /** Alter Name (Planet mit Zonenbändern); die Felder zone/side/half gibt es nicht mehr. */

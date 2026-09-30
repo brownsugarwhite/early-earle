@@ -1,7 +1,7 @@
 import { hash32 } from '../rng';
 import type { Vec3 } from '../capPatch';
 import { pickTreeKind, type GroveSpec, type GroveTree, type TreeFamily, type TreeKind } from '../scatterTrees';
-import { GradientNoise2, smoothstep } from './noise2';
+import { GradientNoise2, hash2, smoothstep } from './noise2';
 import type { PlanetVegetationFamily } from './types';
 
 /**
@@ -60,6 +60,19 @@ export function planeGroveMask(field: PlaneGroveField, x: number, z: number, gro
   return Math.min(1, Math.max(0, 0.5 + 4 * s));
 }
 
+/**
+ * Kammbaum-Platz: mit `spacing` steht höchstens ein Paar je Gitterzelle (Kantenlänge `spacing`) — nur Kandidaten nahe
+ * am verschobenen Zellanker kommen in Frage, so stehen die Schirmbäume einzeln oder paarweise statt in Klumpen.
+ */
+function crestSlot(x: number, z: number, spacing: number | undefined, seed: number): boolean {
+  if (!spacing || spacing <= 0) return true;
+  const ci = Math.floor(x / spacing);
+  const cj = Math.floor(z / spacing);
+  const ax = (ci + 0.2 + 0.6 * hash2(ci, cj, seed + 911)) * spacing;
+  const az = (cj + 0.2 + 0.6 * hash2(ci, cj, seed + 912)) * spacing;
+  return Math.hypot(x - ax, z - az) < spacing * 0.16;
+}
+
 /** Entscheidet für einen Streukandidaten, ob und welcher Baum dort steht (ohne `grove` altes Verhalten). */
 export function planeComposeGroveTree(field: PlaneGroveField, x: number, z: number, fam: PlanetVegetationFamily, kind: TreeKind, scale: number, rand: () => number): GroveTree | null {
   const grove = (fam as TreeFamily).grove;
@@ -83,6 +96,12 @@ export function planeComposeGroveTree(field: PlaneGroveField, x: number, z: numb
     const k = grove.specimenKinds ? pickTreeKind(grove.specimenKinds, rand()) : kind;
     const [a, b] = grove.specimenScale ?? [s0 + (s1 - s0) * 0.5, s1];
     out = { kind: k, scale: a + (b - a) * rand() };
+  }
+  // Kammbäume (Schirmbäume auf den Kämmen, Tannen auf dem Grat): nur Welten mit `crest` ziehen hier Zufall
+  const crest = grove.crest;
+  if (crest && field.heightNormAt(x, z) >= crest.above && crestSlot(x, z, crest.spacing, field.seed) && rand() < crest.chance) {
+    const [a, b] = crest.scale ?? [s0 + (s1 - s0) * 0.5, s1];
+    out = { kind: pickTreeKind(crest.kinds, rand()), scale: a + (b - a) * rand() };
   }
   if (!out) return null;
   const maxSlope = grove.maxSlope ?? 0.35;

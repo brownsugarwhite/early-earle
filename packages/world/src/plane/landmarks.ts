@@ -151,7 +151,8 @@ export class PlaneLandmarks {
       }
       // Sümpfe in den Startwelten (grün, viel Wasser), sonst seltener
       const swampChance = this.swampWorlds.has(world) ? this.swampChance : 0.2;
-      if (this.plan.kinds.swamp && rand() < swampChance) {
+      // Welten ohne Sümpfe (Gewicht 0 in der Weltdatei) ziehen hier keinen Zufall
+      if (this.plan.kinds.swamp && (this.plan.worldWeights?.(world).swamp ?? 1) > 0 && rand() < swampChance) {
         const seed = Math.floor(rand() * 0x7fffffff);
         const pref = out[0] ? -Math.sign(out[0].x - this.host.backbone(out[0].z)) : rand() < 0.5 ? -1 : 1;
         for (let t = 0; t < 16; t++) {

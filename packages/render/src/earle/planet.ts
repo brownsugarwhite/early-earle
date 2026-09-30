@@ -4,6 +4,7 @@ import { abs, atan, attribute, float, fract, int, length, max, mix, modelWorldMa
 import {
   CHUNK_SIZE,
   PlaneField,
+  PlaneMist,
   PlanePath,
   WorldCatalog,
   WorldLayout,
@@ -37,10 +38,15 @@ import { BarnLandmarks } from './landmarks/barn';
 import { DriftLandmarks, type DriftPlacement } from './landmarks/drifts';
 import { PLANET_ATLAS_HEIGHT, SLOT_COUNT, SLOT_ROWS, WorldSlots, slotLandmarkRows, slotRows } from './worldSlots';
 import { LandmarkSet } from './landmarks/set/LandmarkSet';
+import { MistBanks } from './mist/mistBanks';
+import { createScaleCarpet, type ScaleCarpet } from './ground/scaleCarpet';
 import type { LandmarkInstance } from '@ee/world';
 
-/** Bodenbehandlung je Welt (Terrain-Ornament): glatt, Schneelinien, Wiese, Perspektivlinien, Rampen, Schneegrate. */
-export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges';
+/**
+ * Bodenbehandlung je Welt (Terrain-Ornament): glatt, Schneelinien, Wiese, Perspektivlinien, Rampen, Schneegrate,
+ * Buschteppich aus Schuppenbögen (Welten 11/12, Ebene 20/7).
+ */
+export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges' | 'scales';
 
 /** Kameradistanz (Welteinheiten, Kamera → Blickpunkt), für die die Nebelwerte der Welten gesetzt sind. */
 export const FOG_REFERENCE_DISTANCE = 9;
@@ -182,7 +188,7 @@ interface LoadedChunk {
 }
 
 /** Bodenornament je Behandlung (Wiese, Rampen und Schneegrate leben von Form und Bändern, nicht von Linien). */
-const GROUND_KIND: Record<GroundTreatment, number> = { smooth: 0, meadow: 0, ramps: 0, snowRidges: 0, snowLines: 1, floorLines: 2 };
+const GROUND_KIND: Record<GroundTreatment, number> = { smooth: 0, meadow: 0, ramps: 0, snowRidges: 0, snowLines: 1, floorLines: 2, scales: 3 };
 const DEFAULT_VIEW: WorldView = { height: 9, forward: 8, look: 4, fov: 70, curvature: 0 };
 /** Periode (Welteinheiten) der Bodenornament-Koordinaten: Muster bleiben beim Umbruch des Fokus deckungsgleich. */
 const PATTERN_PERIOD = 700;
@@ -241,6 +247,11 @@ export class EarlePlanet {
   readonly barns: BarnLandmarks;
   /** Schneewehen am Baumfuß in den Schneewelten. */
   readonly drifts: DriftLandmarks;
+  /** Nebelbänke zwischen den Hügeln und Nebelmeer (Welten mit `mist`, Ebene 20/7). */
+  readonly mist: MistBanks;
+  private readonly mistPlan: PlaneMist;
+  /** Buschteppich des Geländes (Bodenbehandlung `scales`): Sonnenrichtung für die Punktränder. */
+  private readonly carpet: ScaleCarpet;
   /**
    * Wahrzeichen der geladenen Regionen (Fels mit Wasserfall, Felsstufe, Zwillingsfälle, Ruine, Sumpf): wenige
    * zusammengefasste Meshes, neu gebaut, wenn sich die Menge ändert (Anker = Fokus beim Bau).
@@ -433,6 +444,9 @@ export class EarlePlanet {
     const tc = attribute('tc', 'vec4');
     // Schneefelder (Bild 05): Kante mit feiner organischer Welligkeit (Frequenzen ganzzahlig in 700 → periodisch)
     const po = pw.add(this.patternOrigin);
+    // Buschteppich (Ebene 20/7): Schuppenbögen der Büsche als Ornament statt der Linien
+    this.carpet = createScaleCarpet(this.lookup, rowNode, po, normalGeometry as unknown as Vec3Node);
+    const isCarpet = kind.greaterThan(2.5);
     const k = (f: number) => (Math.round((f * PATTERN_PERIOD) / (Math.PI * 2)) * Math.PI * 2) / PATTERN_PERIOD;
     const snowWob = sin(po.x.mul(k(1.9)).add(sin(po.z.mul(k(1.9 * 1.3))).mul(1.7)))
       .mul(0.035)
@@ -453,7 +467,7 @@ export class EarlePlanet {
       crackNode: crack,
       crackLipNode: lip,
       growthNode,
-      pattern: { mask, color: patternColor, shadowColor: patternShadow },
+      pattern: { mask: select(isCarpet, this.carpet.mask, mask), color: select(isCarpet, this.carpet.color, patternColor), shadowColor: select(isCarpet, this.carpet.shadowColor, patternShadow) },
       layers: [snowField],
       positionNode: warp(positionLocal as unknown as Vec3Node),
       fogDistNode: positionView.length().add(this.veilNode(slotF)),
@@ -499,6 +513,10 @@ export class EarlePlanet {
       footClear: { camLocal: this.driftCamLocal, radius: this.rockFootClear },
     });
     this.plane.add(this.drifts.mesh);
+    // Nebelbänke (Ebene 20: Bänder zwischen den Hügelschichten; Ebene 7: Nebelmeer), je Region geplant
+    this.mistPlan = new PlaneMist(this.field);
+    this.mist = new MistBanks({ lookup: this.lookup, warp });
+    this.plane.add(this.mist.mesh);
 
     // --- Vegetation ----------------------------------------------------------------------------------------------
     this.vegetation = new PlanetVegetation({
@@ -529,7 +547,7 @@ export class EarlePlanet {
       groundAt: (x, z) => this.field.heightAt(x, z),
     });
     this.plane.add(this.landmarkSet.group);
-    for (const o of [this.barns.mesh, this.drifts.mesh, this.vegetation.group, this.landmarkSet.group]) this.anchorObject(o, 0, 0);
+    for (const o of [this.barns.mesh, this.drifts.mesh, this.mist.mesh, this.vegetation.group, this.landmarkSet.group]) this.anchorObject(o, 0, 0);
   }
 
   // --- Welten und Slots ------------------------------------------------------------------------------------------
@@ -890,6 +908,7 @@ export class EarlePlanet {
   /** Richtung zur Sonne (Welt = Ebene, die Ebene dreht sich nicht): Vegetation und Wahrzeichen. */
   setSunDirection(dir: Vector3): void {
     this.vegetation.setSunDirection(dir, dir);
+    this.carpet.sunDir.value.copy(dir);
     this.landmarkSet.setSunDirection(dir);
   }
 
@@ -1097,6 +1116,8 @@ export class EarlePlanet {
     if (this.rocks) this.rockCamLocal.value.set(_v.x - this.rocks.position.x, _v.y - this.options.radius, _v.z - this.rocks.position.z);
     this.barnCamLocal.value.set(_v.x - this.barns.mesh.position.x, _v.y - this.options.radius, _v.z - this.barns.mesh.position.z);
     this.driftCamLocal.value.set(_v.x - this.drifts.mesh.position.x, _v.y - this.options.radius, _v.z - this.drifts.mesh.position.z);
+    camera.getWorldDirection(_w);
+    this.mist.setCamera(_v.x - this.mist.mesh.position.x, _v.y - this.options.radius, _v.z - this.mist.mesh.position.z, _w.x, _w.z);
     this.vegetation.updateCamera(camera, _v.sub(this.vegetation.group.position).sub(this.plane.position));
     // Sichtlinie im Objektraum der Vegetation (Anker der Pools)
     const a = this.anchorOf(this.vegetation.group);
@@ -1430,6 +1451,8 @@ export class EarlePlanet {
     this.anchorObject(this.barns.mesh, ax, az);
     this.drifts.set(drifts);
     this.anchorObject(this.drifts.mesh, ax, az);
+    this.mist.set(this.mistPlan.in(regions), { x: ax, z: az }, (w) => this.slots.rowsOfWorld(w).fog);
+    this.anchorObject(this.mist.mesh, ax, az);
     // Perspektivlinien (Bodenlinien-Welten): Fokus je Slot = Bildfokus der nächsten Region dieser Welt
     const best = new Map<number, { d: number; f: [number, number] }>();
     for (const rk of regions) {
@@ -1581,6 +1604,7 @@ export class EarlePlanet {
     this.landmarkSet.dispose();
     this.barns.dispose();
     this.drifts.dispose();
+    this.mist.dispose();
     this.rocks?.geometry.dispose();
     this.water?.geometry.dispose();
     this.rockMaterial.dispose();

@@ -1,5 +1,5 @@
 import type { EarlePlanetWorld, GroundTreatment, WorldPalette, WorldView } from '@ee/render';
-import type { FocalSpec, PlanetPropSpec, PlanetTerrainShape, RouteEntry, TreeFamily, WorldFeatureSpec, WorldSpec } from '@ee/world';
+import type { FocalSpec, MistSpec, PlanetPropSpec, PlanetTerrainShape, RouteEntry, TreeFamily, WorldFeatureSpec, WorldSpec } from '@ee/world';
 
 /** Zonendatei `content/zones/*.json` (Schema 1). */
 export interface ZoneContent {
@@ -35,6 +35,10 @@ export interface WorldContent {
   trash?: import('@ee/render/earle/trash/index.ts').TrashWorldSpec;
   /** Geländemerkmale: Seen, Flüsse, Felsformationen, Schneefelder, Schneewehen, Meißelstufen. */
   features?: WorldFeatureSpec;
+  /** Nebelbänke zwischen den Hügeln und Nebelmeer (Welten 11/12, Ebene 20 und Ebene 7). */
+  mist?: MistSpec;
+  /** Gewichtsfaktoren der Wahrzeichen (0 = keine), z. B. `{ "fallsRock": 0 }`. */
+  landmarks?: WorldSpec['landmarks'];
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
@@ -87,6 +91,9 @@ export const AUTHORED_ROUTE: RouteEntry[] = [
   { world: worldIndex('w08'), levels: 9 }, // Rote Scheune
   { world: worldIndex('w01'), levels: 16, length: 34 }, // Flechtenbaum mit dem Riesenbaum (Level 80–95)
   { world: worldIndex('w03'), levels: 5 }, // Kuppelbaum (erstes Wäldchen, Level 100)
+  // Künftige Level 101–120 (Autorenwelten nach Ebene 20 und Ebene 7); beim Integrieren mit `future: true`
+  { world: worldIndex('w11'), levels: 10 }, // Nebelweide (Ebene 20)
+  { world: worldIndex('w12'), levels: 10 }, // Goldnebelhang (Ebene 7)
 ];
 
 /** Index der Welt mit dem Riesenbaum (Flechtenbaum, Referenz 01). */
@@ -117,6 +124,8 @@ export function worldSpecOf(w: WorldContent): WorldSpec {
     ...(w.features ? { features: w.features } : {}),
     ...(w.trash ? { trash: w.trash as unknown as NonNullable<WorldSpec['trash']> } : {}),
     ...(focal ? { focal } : {}),
+    ...(w.mist ? { mist: w.mist } : {}),
+    ...(w.landmarks ? { landmarks: w.landmarks } : {}),
   };
 }
 

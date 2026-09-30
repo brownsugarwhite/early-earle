@@ -135,7 +135,7 @@ export class PlaneFeatures {
     };
     if (!spec) return out;
     const salt = spec.seed ?? 0;
-    out.snow = spec.snowFields ? new SnowFields(spec.snowFields, host.seed + salt, `${host.worldId(world)}:${key}`) : null;
+    out.snow = spec.snowFields ? new SnowFields(spec.snowFields, host.seed + salt, `${host.worldId(world)}:${key}`, site.focus) : null;
     const occupied: Occupied[] = site.keepClear.map((k) => ({ x: k.x, z: k.z, radius: k.radius }));
     let made = 0;
     if (spec.rivers) {

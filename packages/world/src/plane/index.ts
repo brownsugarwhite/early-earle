@@ -75,3 +75,4 @@ export type {
   WorldSpec,
 } from './types';
 export { PlaneTrashPlanner, type PlaneChunkTrash, type PlaneTrashContext, type PlaneTrashNode, type PlaneVeilGrid } from './trash';
+export { PlaneMist, type MistBank, type MistKind, type MistSpec } from './mist';

@@ -56,7 +56,9 @@ function mixTerrain(a: PlanetTerrainShape, b: PlanetTerrainShape, t: number, ran
   const ridge = Math.min(0.9, Math.max(0, lerp(a.ridge ?? 0, b.ridge ?? 0, t) + (rand() < 0.2 ? rand() * 0.35 : 0)));
   const floor = Math.min(0.7, Math.max(0, lerp(a.floor ?? 0, b.floor ?? 0, t)));
   const slope = Math.min(0.9, Math.max(0, lerp(a.slope ?? 0, b.slope ?? 0, t) + (rand() - 0.5) * 0.2));
-  return { amplitude: Math.max(0.6, Math.min(3.6, amplitude)), wavelength: Math.max(0.6, Math.min(2.4, wavelength)), ridge, floor, slope };
+  // Streckung der Kämme (Welten 11/12) erbt sich gemischt; Eltern ohne Streckung → runde Hügel wie bisher
+  const stretch = lerp(a.stretch ?? 1, b.stretch ?? 1, t);
+  return { amplitude: Math.max(0.6, Math.min(3.6, amplitude)), wavelength: Math.max(0.6, Math.min(2.4, wavelength)), ridge, floor, slope, ...(stretch !== 1 ? { stretch } : {}) };
 }
 
 function mixKinds(a: Partial<Record<TreeKind, number>>, b: Partial<Record<TreeKind, number>>, t: number, rand: () => number): Partial<Record<TreeKind, number>> {
@@ -158,6 +160,8 @@ export function proceduralWorldSpec(id: number, authored: readonly WorldSpec[], 
   const t = recipe.t;
   const features = mixFeatures(A.features, B.features, t, rand);
   const focal = mixFocal(A.focal, B.focal, t, rand);
+  // Nebelbänke von der dominanten Elternwelt (ohne Zufall: die übrigen Mutationen bleiben unverändert)
+  const mist = (t < 0.5 ? A : B).mist;
   return {
     id: `p${id}`,
     terrain: mixTerrain(A.terrain, B.terrain, t, rand),
@@ -165,5 +169,6 @@ export function proceduralWorldSpec(id: number, authored: readonly WorldSpec[], 
     props: mixProps(A.props, B.props, t, rand),
     ...(features ? { features } : {}),
     ...(focal ? { focal } : {}),
+    ...(mist ? { mist } : {}),
   };
 }

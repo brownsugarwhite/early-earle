@@ -77,6 +77,11 @@ export interface SnowFieldSpec {
   cover: number;
   /** Maßstab der Felder (1 = Standard, größer = weitere Felder). */
   scale?: number;
+  /**
+   * Feld am Bildfokus der Region (Ebene, Welt 11: die leuchtende Wiese vor den Schirmbäumen): Radius und Versatz (x, z)
+   * vom Fokus. Nur auf der Ebene.
+   */
+  focus?: { radius: number; offset?: [number, number] };
 }
 
 export interface DriftSpec {

@@ -19,6 +19,8 @@ interface WorldFile {
   features?: WorldSpec['features'];
   trash?: WorldSpec['trash'];
   focal?: { kind?: string; scale?: number; latFrac?: number; deltaDeg?: number; yawDeg?: number; along?: number; lateral?: number };
+  mist?: WorldSpec['mist'];
+  landmarks?: WorldSpec['landmarks'];
 }
 
 const contentDir = fileURLToPath(new URL('../../../../content/zones/worlds', import.meta.url));
@@ -54,6 +56,8 @@ export function authoredSpecs(): WorldSpec[] {
       ...(w.features ? { features: w.features } : {}),
       ...(w.trash ? { trash: w.trash } : {}),
       ...(focal ? { focal } : {}),
+      ...(w.mist ? { mist: w.mist } : {}),
+      ...(w.landmarks ? { landmarks: w.landmarks } : {}),
     };
   });
 }
@@ -70,6 +74,9 @@ export const AUTHORED_ROUTE: RouteEntry[] = [
   { world: 7, levels: 9 }, // 08 Rote Scheune
   { world: 0, levels: 16, length: 34 }, // 01 Flechtenbaum mit dem Riesenbaum (Level 80–95)
   { world: 2, levels: 5 }, // 03 Kuppelbaum (erstes Wäldchen, Level 100)
+  // Künftige Level 101–120 (beim Integrieren mit `future: true`, dann bleiben 100 spielbar)
+  { world: 10, levels: 10 }, // 11 Nebelweide (Ebene 20)
+  { world: 11, levels: 10 }, // 12 Goldnebelhang (Ebene 7)
 ];
 
 export function testField(seed = 7): PlaneField {

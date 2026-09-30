@@ -10,11 +10,13 @@ import type { PlanetVegetationFamily } from './planet';
  * Bäume v3 (Feedback 2026-09-30): Spitzenbaum (`lace`, Kuppelkappe über einem Spitzenschleier aus Punktrosetten, das
  * Astwerk scheint durch — Bilder 02, Ebene_19), Schirmbaum (`umbrella`, flache Kuppel auf sichtbarem Astfächer —
  * Ebene_1/20/36) und die knorrige Earle-Eiche (`oak`, Solitär mit bogig hängenden Ästen und Sternnadeln — Bild 04).
+ * Welten 11/12 (Ebene 20, Ebene 7): Schirmbaum als Pilzhut (`parasol`), Buschröschen der Buschteppiche und
+ * Schuppenbüsche (`shrub`) und die Earle-Tanne mit hängenden Etagen (`fir`).
  */
-export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel' | 'lace' | 'umbrella' | 'oak';
+export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel' | 'lace' | 'umbrella' | 'oak' | 'parasol' | 'shrub' | 'fir';
 
 /** Alle Baumarten (z. B. zur Unterscheidung Baum ↔ Requisit bei Fokus-Elementen). */
-export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak'];
+export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak', 'parasol', 'shrub', 'fir'];
 
 export interface TreeInstance {
   /** Fußpunkt auf der Oberfläche (Patch-Raum). */
@@ -70,6 +72,12 @@ export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number;
   umbrella: { radius: 0.9, trunk: 1.05, hull: 1.6, top: 2.15 },
   // Earle-Eiche: knorriger Stamm, bogig ausladende, hängende Äste; "Krone" = Astwerk mit Sternnadeln (Bild 04)
   oak: { radius: 1.5, trunk: 0.75, hull: 1.35, top: 2.35 },
+  // Schirmbaum (Ebene 20): breiter, flacher Pilzhut, unten gerade abgeschnitten, auf kurzem, dünnem, gegabeltem Stamm
+  parasol: { radius: 1.0, trunk: 0.76, hull: 0.98, top: 1.24 },
+  // Buschröschen (Ebene 20 Buschteppich, Ebene 7 Schuppenbusch): kleiner runder Busch ohne sichtbaren Stamm
+  shrub: { radius: 0.5, trunk: 0, hull: 0.28, top: 1.08 },
+  // Earle-Tanne (Ebene 7): schmal, hängende Etagen, unregelmäßige Silhouette, Spitze als dünner Dorn
+  fir: { radius: 0.42, trunk: 0.3, hull: 2.9, top: 6.2 },
 };
 
 // --- Earle-Komposition der Welten -------------------------------------------------------------------
@@ -106,6 +114,13 @@ export interface GroveSpec {
   maxSlope?: number;
   /** Umkehren: Wald überall, offene Wiesenbänder an den Höhenlinien (Nebelhügel, Bild 02 vom 29.09.). */
   invert?: boolean;
+  /**
+   * Kammbäume (Ebene 20: Schirmbäume einzeln oder paarweise auf den Kämmen; Ebene 7: Tannen auf dem Grat): ab der Höhe
+   * `above` (Anteil 0..1 der lokalen Amplitude) steht mit der Wahrscheinlichkeit `chance` je Kandidat ein Baum der
+   * Arten `kinds` (Größe `scale`, Standard: obere Hälfte von `scale`) statt des Hain-, Rand- oder Wiesenbaums; mit
+   * `spacing` höchstens einzeln oder paarweise je Gitterzelle dieser Kantenlänge (keine Klumpen).
+   */
+  crest?: { kinds: Partial<Record<TreeKind, number>>; above: number; chance: number; scale?: [number, number]; spacing?: number };
 }
 
 /** Rindenstil der Bäume v3 (ersetzt `trunkStyle`, wenn gesetzt): Kalligrafie = weiße Linien auf Tinte (Bild 01). */
