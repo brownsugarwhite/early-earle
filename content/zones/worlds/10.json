@@ -37,7 +37,10 @@
     "motif": "diamond",
     "rowVariants": 4,
     "flowers": 0.55,
-    "stipple": 0.85,
+    "stipple": 0.95,
+    "stippleCell": 0.062,
+    "shadeGlow": 0.3,
+    "capTerminator": -0.75,
     "grove": {
       "cover": 0.5,
       "wavelength": 10,

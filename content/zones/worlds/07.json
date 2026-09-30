@@ -11,7 +11,7 @@
   "palette": {
     "ink": "#060a1c",
     "terrain": ["#0f1c3e", "#173064", "#204a8a", "#2e6aa8", "#4a90c0"],
-    "canopy": ["#0e2430", "#17403e", "#2a5e50", "#6aae88", "#c4e8b8", "#e6f2a8", "#8fdcec"],
+    "canopy": ["#143c3e", "#1f5448", "#2f6e58", "#6aae88", "#c4e8b8", "#e6f2a8", "#8fdcec"],
     "sky": ["#dcf6f4", "#a0e0ea", "#5fc0d8", "#2f90c0", "#1a5a9a", "#0d2f6a"],
     "sun": "#f4fbff",
     "sunRing": "#c8f0f6",
@@ -32,6 +32,11 @@
     "trunkWidth": 0.045,
     "motif": "dots",
     "flowers": 0.3,
+    "stipple": 0.95,
+    "dots": 1.35,
+    "shadeGlow": 0.4,
+    "crownVeins": 1,
+    "crownLiftVariance": 0.45,
     "grove": {
       "cover": 0.66,
       "wavelength": 9,

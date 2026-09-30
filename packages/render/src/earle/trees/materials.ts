@@ -31,7 +31,7 @@ export interface CrownMaterialOptions {
   /** Objektraum-Normale für die Tangentialebene der Blüten (Fragmentstufe). */
   patternNormal: Vec3Node;
   /** Tüpfel: Zellgröße (Welteinheiten), Punktradius relativ zur Zelle, Dichte (Knoten, z. B. je Welt). */
-  stipple: { cell: number; size: number; density: FloatNode };
+  stipple: { cell: number | FloatNode; size: number; density: FloatNode };
   /**
    * Tintenkörper (Tannen, Bild 05): die Krone bleibt rundum Tinte, nur die hellen Punkte zeichnen sie — sonnenseitig
    * größer und heller, auf der Schattenseite klein und gedämpft (nie ganz weg: der Tannenwald ist aus Punkten gemacht).

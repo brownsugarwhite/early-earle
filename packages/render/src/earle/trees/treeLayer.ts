@@ -94,6 +94,24 @@ export interface TreeLayerOptions {
   dotRadius?: number;
 }
 
+/**
+ * Optionale Felder der Vegetationsfamilie, die nur die Bäume lesen (Weltdatei, Abschnitt `vegetation`):
+ * - `stippleCell`: Zellgröße der Tüpfel in den Kuppeln (Welteinheiten, Standard 0.11; Juwelenwald feiner, Bild 02);
+ * - `shadeGlow`: Glühen der Schattenseiten der Kronen 0..1 (Standard 0.12; Ebene 16 dunkles Türkis, Ebene 32 Glut);
+ * - `capTerminator`: Terminator der Kuppelkappen von Schirm- und Spitzenbaum (Standard wie die Form; Juwelenwald wie
+ *   die Juwelenkuppeln, Bild 02: auch die Kappe über dem Spitzenschleier leuchtet farbig);
+ * - `crownVeins`: Astnetz in den Säulenkronen 0..1 (Standard 0; Kathedralenwald 1, Ebene 16);
+ * - `crownLiftVariance`: Helligkeit der Kronen je Baum streuen 0..1 (Standard 0; Ebene 16: dunkelgrüne und hell-
+ *   türkise Kronen nebeneinander).
+ */
+export interface TreeFamilyExtras {
+  stippleCell?: number;
+  shadeGlow?: number;
+  capTerminator?: number;
+  crownVeins?: number;
+  crownLiftVariance?: number;
+}
+
 export interface TreeEntry {
   tree: PlanetTree;
   slot: number;
@@ -137,10 +155,12 @@ export interface KindForm {
  */
 export const TREE_FORMS: Record<Exclude<TreeKind, 'bare'>, KindForm> = {
   dome: { crown: 'dome', crownY: TREE_PROPORTIONS.dome.hull, crownS: [1, 1], trunk: 'fork', trunkH: 0.95, thick: 1, dots: 'crown', terminator: 0.32 },
-  stacked: { crown: 'column', crownY: TREE_PROPORTIONS.stacked.hull, crownS: [0.62, 1.2], trunk: 'fork', trunkH: 1.0, forkAt: 0.5, thick: 0.9, dots: 'crown', terminator: 0.32 },
+  stacked: { crown: 'column', crownY: TREE_PROPORTIONS.stacked.hull, crownS: [0.62, 1.2], trunk: 'fork', trunkH: 1.0, forkAt: 0.5, thick: 0.9, dots: 'crown', terminator: 0.15 },
   bulb: { crown: 'dome', crownY: TREE_PROPORTIONS.bulb.hull, crownS: [0.95, 1.15], trunk: 'fork', trunkH: 0.8, thick: 1.1, dots: 'crown', terminator: 0.25 },
   // Juwelenkuppel (Bild 02): gestapelte Kuppel-Masse in Juwelenfarben, sitzt fast am Boden, leuchtet fast rundum
-  jewel: { crown: 'dome', crownY: TREE_PROPORTIONS.jewel.hull, crownS: [1.08, 1.0], trunk: 'fork', trunkH: 0.5, thick: 1.4, dots: 'crown', terminator: -1.05 },
+  // Terminator unter 0: die Kuppeln leuchten weit herum, die abgewandte Unterseite wird dunkel und glüht mit ihrer
+  // Schattentextur (Bild 02: dunkle, getüpfelte Unterseiten)
+  jewel: { crown: 'dome', crownY: TREE_PROPORTIONS.jewel.hull, crownS: [1.08, 1.0], trunk: 'fork', trunkH: 0.5, thick: 1.4, dots: 'crown', terminator: -0.75 },
   // Hohe, schlanke Stämme: derselbe Gabel-Archetyp, waagrecht schmal (ein Mesh weniger je Pass)
   cone: { crown: 'pine', crownY: 0.4, crownS: [1, 2.4], trunk: 'fork', trunkH: 0.55, thick: 0.38, dots: 'pine', terminator: 0.25 },
   pine: { crown: 'pine', crownY: 0.12, crownS: [1, 3.6], trunk: 'fork', trunkH: 0.4, thick: 0.44, dots: 'pine', terminator: 0.22 },
@@ -148,9 +168,9 @@ export const TREE_FORMS: Record<Exclude<TreeKind, 'bare'>, KindForm> = {
   tall: { crown: 'pine', crownY: 3.3, crownS: [1, 1.5], trunk: 'fork', trunkH: 1.3, forkAt: 3.0, thick: 0.3, dots: 'pine', terminator: 0.25 },
   // Kathedralenbaum (Ebene 16/23): der helle Schaft steigt hoch, gabelt sich weit unter der Säule in ein feines Netz,
   // das in die Säule hineinwächst
-  spire: { crown: 'column', crownY: TREE_PROPORTIONS.spire.hull, crownS: [0.78, 1.25], trunk: 'fork', trunkH: 3.8, forkAt: 5.0, thick: 0.3, dots: 'crown', terminator: 0.3 },
-  umbrella: { crown: 'dome', crownY: TREE_PROPORTIONS.umbrella.hull, crownS: [1.06, 0.6], trunk: 'fan', trunkH: 0.74, thick: 1, dots: 'crown', terminator: 0.3 },
-  lace: { crown: 'dome', crownY: TREE_PROPORTIONS.lace.hull + 0.3, crownS: [0.97, 0.62], trunk: 'fan', trunkH: 1.0, thick: 1, dots: 'lace', terminator: 0.3 },
+  spire: { crown: 'column', crownY: TREE_PROPORTIONS.spire.hull, crownS: [0.78, 1.25], trunk: 'fork', trunkH: 4.6, forkAt: 4.4, thick: 0.3, dots: 'crown', terminator: 0.15 },
+  umbrella: { crown: 'dome', crownY: TREE_PROPORTIONS.umbrella.hull, crownS: [1.06, 0.6], trunk: 'fan', trunkH: 0.74, thick: 1, dots: 'crown', terminator: 0.12 },
+  lace: { crown: 'dome', crownY: TREE_PROPORTIONS.lace.hull + 0.3, crownS: [0.97, 0.62], trunk: 'fan', trunkH: 1.0, thick: 1, dots: 'lace', terminator: 0.12 },
   oak: { crown: null, crownY: TREE_PROPORTIONS.oak.hull, crownS: [1, 1], trunk: 'oak', trunkH: TREE_PROPORTIONS.oak.trunk, thick: 1, dots: 'stars', terminator: 0.3 },
 };
 
@@ -251,6 +271,10 @@ export class TreeLayer {
   private readonly worldTerrain: UniformArrayLike;
   private readonly worldStipple: UniformArrayLike;
   private readonly worldFlowers: UniformArrayLike;
+  private readonly worldCell: UniformArrayLike;
+  private readonly worldGlow: UniformArrayLike;
+  private readonly worldVeins: UniformArrayLike;
+  private readonly worldLiftVar: UniformArrayLike;
   private blocks = new Map<number, DotBlock>();
   private dotsDirty = false;
   private lastTick = -1;
@@ -269,6 +293,11 @@ export class TreeLayer {
     this.worldTerrain = perWorld((w) => options.worldRows[w]!.terrain);
     this.worldStipple = perWorld((w) => fam(w)?.stipple ?? 0.75);
     this.worldFlowers = perWorld((w) => fam(w)?.flowers ?? (fam(w)?.motif === 'cross' || fam(w)?.motif === 'diamond' ? 0.35 : 0));
+    const extras = (w: number): TreeFamilyExtras => (fam(w) as (TreeFamily & TreeFamilyExtras) | undefined) ?? {};
+    this.worldCell = perWorld((w) => extras(w).stippleCell ?? 0.11);
+    this.worldGlow = perWorld((w) => extras(w).shadeGlow ?? 0.12);
+    this.worldVeins = perWorld((w) => extras(w).crownVeins ?? 0);
+    this.worldLiftVar = perWorld((w) => extras(w).crownLiftVariance ?? 0);
 
     // Detailstufe aus der Qualitätsstufe (Hoch: 60+ Punkte je Baum): feinere Teilkuppeln, glattere Silhouetten
     const detail = options.dotsPerTree[0] >= 50 ? 'hoch' : 'mobil';
@@ -320,6 +349,8 @@ export class TreeLayer {
       // Juwelenkuppeln (Terminator < 0) leuchten rundum — kein Schlagschatten auf ihnen (Bild 02)
       const castWeight = varying(step(0.5, attribute('crownCast', 'float')).mul(select(treeD().w.lessThan(0), float(0), float(1))), 'vCrownCastW');
       const patternPos = varying(positionGeometry.mul(vec3(treeD().x, treeD().y, treeD().x)), 'vCrownPattern');
+      const patternNormal = varying(normalGeometry, 'vCrownPatternN');
+      const flowerCell = kind === 'column' ? 0.22 : 0.26;
       const material = new CrownMaterial({
         lookup,
         fog,
@@ -332,16 +363,29 @@ export class TreeLayer {
         growthNode: shared.slotGrowth(treeB().w),
         positionNode: warp(grownFrom(positionLocal)),
         patternPos,
-        patternNormal: varying(normalGeometry, 'vCrownPatternN'),
-        stipple: { cell: cfg.cell, size: cfg.size, density: kind === 'pine' ? float(0.55) : arrayElement(this.worldStipple, world) },
+        patternNormal,
+        stipple: { cell: kind === 'dome' || kind === 'domeHi' ? arrayElement(this.worldCell, world) : cfg.cell, size: cfg.size, density: kind === 'pine' ? float(0.55) : arrayElement(this.worldStipple, world) },
         inkBody: kind === 'pine',
-        flowers: cfg.flowers ? { density: arrayElement(this.worldFlowers, world), cell: kind === 'column' ? 0.22 : 0.26 } : null,
-        // Juwelenkuppeln leuchten fast rundum (Bild 02): Bänder etwas angehoben
-        lift: select(treeD().w.lessThan(0), float(0.12), float(0)),
+        flowers: cfg.flowers ? { density: arrayElement(this.worldFlowers, world), cell: flowerCell } : null,
+        // Juwelenkuppeln leuchten fast rundum (Bild 02): Bänder etwas angehoben; je Welt streut die Helligkeit je Baum
+        lift: select(treeD().w.lessThan(0), float(0.12), float(0)).add(arrayElement(this.worldLiftVar, world).mul(fract(treeC().w.mul(7.31)).sub(0.35))),
         hullNormalView: hullN,
         castWeight: kind === 'pine' ? null : castWeight,
         // Schattenseite: dunkel auf dunkel statt schwarzer Fläche (Kiefern sind ohnehin Tintenkörper mit Punkten)
-        shadeTexture: kind === 'pine' ? null : crownShadeTexture({ lookup, patternPos, density: arrayElement(this.worldStipple, world).mul(0.85) }),
+        shadeTexture:
+          kind === 'pine'
+            ? null
+            : crownShadeTexture({
+                lookup,
+                patternPos,
+                density: arrayElement(this.worldStipple, world).mul(0.85),
+                glow: arrayElement(this.worldGlow, world).mul(float(0.7).add(fract(treeC().w.mul(3.7)).mul(0.6))),
+                veins:
+                  kind === 'column'
+                    ? { amount: arrayElement(this.worldVeins, world), radius: treeD().x.mul(0.62), half: treeD().y.mul(1.1), color: lookup.pal(0, treeC().y).rgb as unknown as Vec3Node }
+                    : null,
+                flowers: cfg.flowers ? { normal: patternNormal, cell: flowerCell, density: arrayElement(this.worldFlowers, world) } : null,
+              }),
       });
       this.materials.push(material);
       const mesh = new InstancedMesh(geometry, material, kind === 'domeHi' ? 64 : options.capacity.trees);
@@ -683,6 +727,12 @@ export class TreeLayer {
     return form.thick * this.widthFactor(t, form);
   }
 
+  /** Terminator der Krone: Form, für Kuppelkappen (Schirm, Spitze) je Welt überschreibbar (`capTerminator`). */
+  private terminator(t: PlanetTree, form: KindForm): number {
+    const cap = (this.family(t) as (TreeFamily & TreeFamilyExtras) | undefined)?.capTerminator;
+    return cap !== undefined && (t.kind === 'lace' || t.kind === 'umbrella') ? cap : form.terminator;
+  }
+
   /** Kronen-Mesh eines Baums: große Kuppeln (Fokus, Solitäre) nehmen die feine Geometrie. */
   private crownMeshOf(t: PlanetTree, form: KindForm): CrownKind {
     if (form.crown !== 'dome') return form.crown ?? 'dome';
@@ -754,7 +804,7 @@ export class TreeLayer {
         a.setXYZW(i, t.position[0], t.position[1], t.position[2], t.rank);
         b.setXYZW(i, t.position[0] + _v.x, t.position[1] + _v.y, t.position[2] + _v.z, e.slot);
         c.setXYZW(i, this.canopyRow(t), this.rows(t).accent, this.barkStyle(t), t.variant);
-        d.setXYZW(i, form.crownS[0] * r, form.crownS[1] * r * asp, r * Math.max(1, form.crownS[1] * asp), form.terminator);
+        d.setXYZW(i, form.crownS[0] * r, form.crownS[1] * r * asp, r * Math.max(1, form.crownS[1] * asp), this.terminator(t, form));
         // Höchster Punkt, an dem die Krone Schlagschatten zeigt: Kiefern ganz (Tintenkörper), Kuppeln und Säulen bis
         // knapp über die Mitte (die obere Kuppel bleibt hell, siehe castWeight)
         const top = form.crown === 'pine' ? (form.crownY + form.crownS[1]) * r : (form.crownY + 0.5 * form.crownS[1]) * r * asp;
@@ -1033,7 +1083,8 @@ export class TreeLayer {
         void H;
       }
       const tpl = this.templates[form.crown];
-      const kind0 = form.dots === 'pine' ? DOT_KIND.pine : t.kind === 'jewel' ? DOT_KIND.jewel : DOT_KIND.crown;
+      // Kronen, die rundum leuchten (Juwel, Kappen mit `capTerminator` < 0), tragen Juwelenpunkte (gleiche Lichtschwelle)
+      const kind0 = form.dots === 'pine' ? DOT_KIND.pine : this.terminator(t, form) < 0 ? DOT_KIND.jewel : DOT_KIND.crown;
       const budget = Math.min(maxPerTree, Math.max(4, Math.round(perWeight * this.dotWeight(t))));
       // Kronenpunkte und die gepunkteten Bögen der Teilkuppeln teilen sich das Budget (Kiefern ohne Bögen)
       const rimsTotal = tpl.rims.length / 6;
