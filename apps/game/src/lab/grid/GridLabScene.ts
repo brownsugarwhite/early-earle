@@ -8,6 +8,8 @@ import { ZONE_CONTENTS } from '../earle/zones';
 import { useGridStore } from './gridStore';
 
 const INK = '#081b25';
+/** The camera frames at least 3×3 cells (tutorial boards start at 1×3). */
+const MIN_FRAME_CELLS = 3;
 const _v = new Vector3();
 const _q = new Quaternion();
 const _box = new Box3();
@@ -146,12 +148,14 @@ export class GridLabScene implements SceneController {
   /**
    * Fits the plateau (skirt and goal ledge included) into the part of the screen the HUD leaves free:
    * width against the horizontal FOV, depth (foreshortened by the pitch) against the vertical FOV, then the
-   * camera tilts down so the plateau centres in that band instead of the whole canvas.
+   * camera tilts down so the plateau centres in that band instead of the whole canvas. Tiny tutorial boards
+   * (1×3, 3×2) are framed like a 3×3, so their creatures keep the size they have on a normal board.
    */
   private frameCamera(): void {
     const board = this.board;
     const top = board?.topY ?? 0.35;
-    const fp = board?.footprint ?? { minX: -2.4, maxX: 2.4, minZ: -3, maxZ: 2.4 };
+    const r = board?.renderer;
+    const fp = r ? r.footprintFor(Math.max(r.w, MIN_FRAME_CELLS), Math.max(r.h, MIN_FRAME_CELLS)) : { minX: -2.4, maxX: 2.4, minZ: -3, maxZ: 2.4 };
     const W = fp.maxX - fp.minX;
     const D = fp.maxZ - fp.minZ;
     const cam = this.camera;

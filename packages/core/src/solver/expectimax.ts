@@ -6,10 +6,16 @@
  * functions (`runPreSpawn`, `placeSpawn`, `finalizeMove`), so the solver plays by
  * exactly the same rules as the game. It never touches the game RNG: chance
  * nodes are enumerated (or deterministically sub-sampled) with their probabilities.
+ *
+ * Spawn scripts (tutorials) make parts of a chance node deterministic: a scripted
+ * cell that is free is the only branch, and while the script lasts the next
+ * preview is its next entry (no branching over tiers).
  */
 
 import {
   finalizeMove,
+  forcedSpawnCell,
+  peekScript,
   placeSpawn,
   runPreSpawn,
   spawnCandidates,
@@ -109,18 +115,28 @@ export class Searcher {
       return this.nodeValue(c, depth, ply);
     }
     const queued = b.spawnQueue[0] ?? this.likely;
+    // A scripted cell that is free is the only outcome (the engine spawns there without a draw).
+    const forced = forcedSpawnCell(queued, buf, count);
     const maxCells = this.cfg.chanceSamples[ply] ?? 0;
-    const cells = maxCells > 0 && count > maxCells ? maxCells : count;
+    const cells = forced >= 0 ? 1 : maxCells > 0 && count > maxCells ? maxCells : count;
     const stride = count / cells;
-    const branchTiers = depth > 0 && ply < this.cfg.fullTierPlies && this.dist.length > 1;
+    // While the spawn script lasts the next preview is known: no chance node over tiers.
+    const scripted = peekScript(b);
+    const branchTiers =
+      !scripted && depth > 0 && ply < this.cfg.fullTierPlies && this.dist.length > 1;
     let total = 0;
     for (let k = 0; k < cells; k++) {
-      const cell = buf[Math.min(count - 1, Math.floor((k + 0.5) * stride))]!;
+      const cell = forced >= 0 ? forced : buf[Math.min(count - 1, Math.floor((k + 0.5) * stride))]!;
       copyBoardInto(c, b);
       placeSpawn(c, cell, queued, null);
       c.spawnQueue.length = 0;
       finalizeMove(c, null);
-      if (branchTiers) {
+      if (scripted) {
+        // mirrors refillQueue: the script entry becomes the preview and the script advances
+        c.spawnQueue[0] = scripted;
+        c.scriptPos++;
+        total += this.nodeValue(c, depth, ply);
+      } else if (branchTiers) {
         let v = 0;
         for (let t = 0; t < this.dist.length; t++) {
           const o = this.dist[t]!;
