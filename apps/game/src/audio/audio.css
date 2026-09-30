@@ -1,0 +1,9 @@
+/* Sound toggle in the flow HUD: a square glass action (same .glass-btn), icon only. No outlines/borders;
+   the muted state reads through the icon and a quieter glass tint. */
+.glass-btn.sound-toggle {
+  min-width: 48px; width: 48px; padding: 0;
+  display: inline-grid; place-items: center;
+}
+.glass-btn.sound-toggle .sound-icon { display: block; }
+.glass-btn.sound-toggle[data-muted='true'] { --glass-tint: color-mix(in srgb, var(--paper) 22%, transparent); color: var(--ink-soft); }
+.glass-btn.sound-toggle[data-muted='true'] .sound-icon { opacity: 0.7; }

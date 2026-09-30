@@ -15,6 +15,8 @@ import {
   type GlassHudState,
 } from '../native/liquidGlass';
 import { useFlowStore, type FlowPhase } from './flowStore';
+import { SoundToggle } from '../audio/SoundToggle';
+import { useAudioSettings } from '../audio/settings';
 
 const GOAL_LABEL: Record<string, string> = {
   reachTier: 'Stufe',
@@ -76,6 +78,7 @@ interface HudFacts {
   rex: string | null;
   status: string;
   rewindable: boolean;
+  muted: boolean;
 }
 
 /** The native overlay's mirror of the store: same texts and actions as the CSS HUD (ids → handlers below). */
@@ -97,6 +100,7 @@ function nativeHudState(f: HudFacts): GlassHudState | null {
       );
     }
   }
+  if (f.phase === 'map' || f.phase === 'level') actions.push({ id: 'sound', label: 'Ton', icon: f.muted ? 'speaker.slash.fill' : 'speaker.wave.2.fill' });
   return {
     top: { title: f.title, subtitle: f.subtitle, moves: f.moves, goals: f.goals },
     actions,
@@ -124,6 +128,8 @@ export function FlowHud() {
   const rewindMove = useGridStore((s) => s.rewindMove);
   const restart = useGridStore((s) => s.restart);
   const native = useNativeGlass();
+  const muted = useAudioSettings((s) => s.muted);
+  const toggleMuted = useAudioSettings((s) => s.toggleMuted);
 
   // Haptics for the whole flow (native only; no-op on the web).
   useEffect(() => installHaptics(), []);
@@ -143,7 +149,7 @@ export function FlowHud() {
   const goals = inLevel && state ? state.goalProgress.map((g) => ({ text: goalText(g), done: g.done })) : goalPreview(shownLevel).map((text) => ({ text, done: false }));
 
   // Mirror to the native overlay; the JSON key keeps the effect quiet while nothing visible changed.
-  const nativeState = native.active ? nativeHudState({ phase, subtitle, title, moves, goals, rex, status, rewindable }) : null;
+  const nativeState = native.active ? nativeHudState({ phase, subtitle, title, moves, goals, rex, status, rewindable, muted }) : null;
   const nativeJson = nativeState ? JSON.stringify(nativeState) : '';
   useEffect(() => {
     if (!native.active) return;
@@ -168,6 +174,9 @@ export function FlowHud() {
         break;
       case 'map':
         request('leave');
+        break;
+      case 'sound':
+        toggleMuted();
         break;
       default:
         break;
@@ -228,6 +237,7 @@ export function FlowHud() {
                   </button>
                 </>
               ) : null}
+              {phase === 'map' || phase === 'level' ? <SoundToggle /> : null}
             </div>
           </footer>
         </>

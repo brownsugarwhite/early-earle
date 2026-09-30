@@ -7,6 +7,7 @@ import { FlowSplash } from './FlowSplash';
 import { useFlowStore } from './flowStore';
 import { useGridStore } from '../lab/grid/gridStore';
 import { useProgress } from '../state/progress';
+import { installAudio } from '../audio/wiring';
 import '../styles/flow.css';
 
 /** The one-take composition: canvas + glass HUD + splash overlay. `/` starts at the splash, `/play` on the map. */
@@ -37,6 +38,8 @@ export function FlowView({ start }: FlowSceneOptions) {
       offGrid();
     };
   }, []);
+  // Audio: procedural sound for moves, flow phases, REX, music and ambience (unlocks on the first tap).
+  useEffect(() => installAudio(), []);
   const controller = useMemo(() => new FlowScene({ start }), [start]);
   return (
     <div className="flow-root">

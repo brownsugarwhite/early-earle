@@ -33,3 +33,6 @@ apps/game/android/app/src/main/assets/public/
 
 # Referenz-Thumbnails im Lab (urheberrechtlich geschützt) – nur lokal
 apps/game/public/refs/
+
+# Audio-Vorschauen als WAV (werden per E2E erzeugt, ins Repo nur als .m4a)
+docs/progress/audio/*.wav
