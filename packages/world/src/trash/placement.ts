@@ -307,7 +307,7 @@ export class TrashPlanner {
       if (l - (R + f.heightAt(p[0] / l, p[1] / l, p[2] / l)) > 0.5) continue;
       const rand = mulberry32(hash32('trash-node-bloom', node.index, this.ctx.seed));
       const up: Vec3 = [p[0] / l, p[1] / l, p[2] / l];
-      const n = Math.round(18 * Math.min(1.3, (this.ctx.debrisScale ?? 1) + 0.3));
+      const n = 7;
       for (let k = 0; k < n; k++) {
         const a = rand() * Math.PI * 2;
         const r = 1.2 + Math.sqrt(rand()) * 1.6;

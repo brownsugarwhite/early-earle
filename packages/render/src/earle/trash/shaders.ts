@@ -497,8 +497,8 @@ export function createSporeMaterial(ctx: TrashShaderContext): MeshBasicNodeMater
   material.vertexNode = cameraProjectionMatrix.mul(vec4(viewC.xyz.add(vec3(positionGeometry.x, positionGeometry.y, 0).mul(sizeEff)), 1));
   const dist = varying(depth, 'vTrashSporeDist');
   // Säule neon → hell nach oben; Schweber neon; Ausbruch: helle Earle-Punkte (Gas wird zu Licht)
-  // Blüten: eine der fünf Blütenfarben der Welt je Punkt
-  const bloomIdx = floor(fract(phase.mul(7.13)).mul(5)).add(1);
+  // Blüten: Farbstufe in der Art kodiert (3 + Stufe/10): goldene Mitte, Blätter in Papier, Rosa, Mint oder Apricot
+  const bloomIdx = floor(kind.sub(3).mul(10).add(0.5)).clamp(1, 5);
   const idx = select(isCol, select(c.greaterThan(0.55), float(5), float(4)), select(isFloat, float(4), select(isBloom, bloomIdx, float(5))));
   material.colorNode = steppedFog(ctx.lookup.pal(idx, row).rgb, ctx.fog, ctx.fogLookup, dist.add(ctx.veil(world)));
   return material;

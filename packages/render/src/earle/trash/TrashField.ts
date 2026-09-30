@@ -661,46 +661,62 @@ export class TrashField {
       const top = _p.set(it.position[0], it.position[1], it.position[2]).addScaledVector(_v.set(it.up[0], it.up[1], it.up[2]), it.size[1] * 0.75);
       for (let k = 0; k < count; k++) push(top, it.up, it.variant * 17 + k * 0.618, 0.07 + 0.04 * ((k * 5) % 3) / 2, it.heal, 2, it.world);
     }
-    // Blüten, wo Müll lag: Kleinteile 1–2, Pfützen und Quellen 3, Berge und Ruinen ein Kranz um den Fuß
+    // Blüten, wo Müll lag: kleine Rosetten (goldene Mitte, vier Blütenblätter — Earles Kreuz- und Rautenmotive), einzeln
+    // statt Konfetti: Kleinteile jede dritte, Pfützen und Quellen eine, Berge fünf und Ruinen vier rund um den Fuß
     {
+      const planet = this.options.planet;
       const bloomRow = (world: number) => (this.worldRows[world] ?? this.worldRows.find((r) => r))?.rows.bloom ?? 0;
       const t1 = new Vector3();
       const t2 = new Vector3();
       const upV = new Vector3();
       const pos = new Vector3();
-      for (const it of blooms) {
-        upV.set(it.up[0], it.up[1], it.up[2]).normalize();
+      const petal = new Vector3();
+      /** Eine Rosette an `at` (auf den Boden gelegt): Mitte gold (Stufe 2), Blätter in einer der anderen Farben. */
+      const flower = (at: Vector3, heal: number, world: number, seed: number): void => {
+        const len = at.length() || 1;
+        const ground = planet.options.radius + planet.field.heightAt(at.x / len, at.y / len, at.z / len);
+        at.multiplyScalar((ground + 0.012) / len);
+        const petalCi = [1, 3, 4, 5][Math.floor((seed * 7.31) % 1 * 4)] ?? 3;
+        const row = bloomRow(world);
+        const rot = seed * 6.283;
+        for (let k = 0; k < 5 && n < cap; k++) {
+          if (k === 0) petal.copy(at);
+          else {
+            const a = rot + ((k - 1) / 4) * Math.PI * 2;
+            petal.copy(at).addScaledVector(t1, Math.cos(a) * 0.05).addScaledVector(t2, Math.sin(a) * 0.05);
+          }
+          push(petal, upV, seed * 5.1 + k * 0.13, k === 0 ? 0.03 : 0.026, heal, 3 + (k === 0 ? 2 : petalCi) / 10, world);
+          c.setZ(n - 1, row);
+        }
+      };
+      const frame = (up: Vec3) => {
+        upV.set(up[0], up[1], up[2]).normalize();
         t1.set(upV.y, -upV.z, upV.x).cross(upV).normalize();
         t2.crossVectors(upV, t1);
+      };
+      for (const it of blooms) {
+        frame(it.up);
         const big = it.kind === 'heap' || it.kind === 'ruin';
-        const count = big ? (it.kind === 'heap' ? 12 : 8) : it.kind === 'goo' || it.kind === 'vent' ? 3 : it.variant < 0.5 ? 1 : 2;
-        const radius = big ? Math.max(it.size[0], it.size[2]) * 0.42 : it.kind === 'goo' ? it.size[0] * 0.3 : 0.12;
+        const count = big ? (it.kind === 'heap' ? 5 : 4) : it.kind === 'goo' || it.kind === 'vent' ? 1 : it.variant < 0.35 ? 1 : 0;
+        const radius = big ? Math.max(it.size[0], it.size[2]) * 0.45 : it.kind === 'goo' ? it.size[0] * 0.2 : 0.05;
         for (let k = 0; k < count; k++) {
           const ang = (k / count) * Math.PI * 2 + it.variant * 9;
-          const r = radius * (0.6 + 0.4 * (((k * 7 + 3) % 5) / 4));
-          pos.set(it.position[0], it.position[1], it.position[2]).addScaledVector(t1, Math.cos(ang) * r).addScaledVector(t2, Math.sin(ang) * r);
-          // auf den Boden legen (der Fuß der Teile ist eingesenkt, der Kranz liegt am Hang)
-          const len = pos.length() || 1;
-          const ground = this.options.planet.options.radius + this.options.planet.field.heightAt(pos.x / len, pos.y / len, pos.z / len);
-          pos.multiplyScalar((ground + 0.01) / len);
-          if (n >= cap) break;
-          push(pos, upV, it.variant * 3.7 + k * 0.29, 0.03 + 0.015 * ((k * 5) % 3), it.heal, 3, it.world);
-          c.setZ(n - 1, bloomRow(it.world));
+          pos.set(it.position[0], it.position[1], it.position[2]).addScaledVector(t1, Math.cos(ang) * radius).addScaledVector(t2, Math.sin(ang) * radius);
+          flower(pos, it.heal, it.world, (it.variant * 13.7 + k * 0.37) % 1);
         }
         // Kleinteile und Pfützen, die in der nächsten Feier heilen: zwei helle Punkte steigen auf (Gas wird zu Licht)
         if (!big && it.kind !== 'vent' && healAmount(it.heal, this.progressFloor) < 1) {
           for (let k = 0; k < 2 && n < cap; k++) push(it.position, upV, it.variant * 11 + k * 0.5, 0.05, it.heal, 2, it.world);
         }
       }
-    }
-    // Blütenkranz um geschaffte Knoten (jeder dritte Punkt steigt vorher als heller Funke auf): die Feier nach dem Sieg
-    {
-      const bloomRow = (world: number) => (this.worldRows[world] ?? this.worldRows.find((r) => r))?.rows.bloom ?? 0;
-      nodeBlooms.forEach((b, k) => {
+      // Rosetten um geschaffte Knoten (vorher steigt an jeder ein heller Funke auf): die Feier nach dem Sieg
+      nodeBlooms.forEach((b) => {
         const l = Math.hypot(b.position[0], b.position[1], b.position[2]) || 1;
-        const world = this.options.planet.field.worldAt(b.position[0] / l, b.position[1] / l, b.position[2] / l);
-        if (healAmount(b.heal, this.progressFloor) < 1 && k % 3 === 0) push(b.position, b.up, b.phase * 13, 0.06, b.heal, 2, world);
-        if (push(b.position, b.up, b.phase * 5.3, b.size, b.heal, 3, world)) c.setZ(n - 1, bloomRow(world));
+        const world = planet.field.worldAt(b.position[0] / l, b.position[1] / l, b.position[2] / l);
+        frame(b.up);
+        if (healAmount(b.heal, this.progressFloor) < 1) push(b.position, b.up, b.phase * 13, 0.06, b.heal, 2, world);
+        pos.set(b.position[0], b.position[1], b.position[2]);
+        flower(pos, b.heal, world, b.phase);
       });
     }
     // Schwebende Sporen im Schleier
