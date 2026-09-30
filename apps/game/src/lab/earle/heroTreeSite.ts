@@ -1,6 +1,7 @@
 import { Group, Matrix4, Sphere, Vector3 } from 'three/webgpu';
-import type { Camera, Frustum } from 'three/webgpu';
-import { createHeroTree, transformHeroTreePath, type HeroTree, type HeroTreePath, type TreeQuality } from '@ee/render/earle/tree/index.ts';
+import type { Camera, Frustum, Node } from 'three/webgpu';
+import { uniform, vec4 } from 'three/tsl';
+import { computeTreeShape, createHeroTree, transformHeroTreePath, type HeroTree, type HeroTreePath, type TreeQuality } from '@ee/render/earle/tree/index.ts';
 import type { EarlePlanet } from '@ee/render';
 import type { PlanetLandmarkParams, SpiralNode, SpiralPath, Vec3 } from '@ee/world';
 
@@ -74,19 +75,16 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
   const after = ground.nodes[last + 1]!;
   const R = world.options.radius;
 
-  const tree = createHeroTree({
-    atlas: world.atlas,
-    lookup: world.lookup,
-    fog: world.fog,
-    fogLookup: world.lookup,
-    quality: options.quality,
+  // 1) Plan the slot with the pure form on a sphere (no GPU objects): the root tip (path start) must face the
+  //    last ground node
+  const treeOptions = {
     seed: options.seed,
-    nodes: count,
-    meadow: false,
     pathClearance: PUCK_CLEARANCE / TREE_SCALE,
-  });
-  const plan = tree.shape.plan;
-  const height = (tree.shape.crownTop + 3) * TREE_SCALE;
+    groundRadius: world.options.radius / TREE_SCALE,
+  };
+  const planShape = computeTreeShape({ ...treeOptions, quality: options.quality });
+  const plan = planShape.plan;
+  const height = (planShape.crownTop + 3) * TREE_SCALE;
 
   // Foot: a little ahead of the last ground node along its latitude circle (the spiral runs east there), so the tree
   // stays inside world 01 and its root tip faces the spiral
@@ -98,7 +96,7 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
   const fDir = bDir.clone().applyAxisAngle(new Vector3(0, 1, 0), -turn);
   const foot: Vec3 = [fDir.x, fDir.y, fDir.z];
   void slerpDir;
-  const base: PlanetLandmarkParams = { id: 'hero-tree', world: options.worldIndex, dir: foot, scale: TREE_SCALE, clearRadius: tree.shape.R * 1.25 * TREE_SCALE };
+  const base: PlanetLandmarkParams = { id: 'hero-tree', world: options.worldIndex, dir: foot, scale: TREE_SCALE, clearRadius: planShape.R * 1.55 * TREE_SCALE };
   // Yaw: the root tip (path start) points at the last ground node
   world.setLandmarks([...options.landmarks, base]);
   let slot = world.getLandmarkSlot('hero-tree')!;
@@ -117,9 +115,42 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
   }
   world.setLandmarks([...options.landmarks, { ...base, yawDeg: bestYaw }]);
   slot = world.getLandmarkSlot('hero-tree')!;
-
-  const holder = world.addLandmark(tree.group, 'hero-tree')!;
   const slotMatrix = world.landmarkMatrix(slot, new Matrix4());
+  const slotInv = slotMatrix.clone().invert();
+
+  // 2) The tree on the real terrain of the slot: roots, snow drift and the first nodes follow the ground (nothing
+  //    floats over a dip, nothing hangs in the air at the rim of the foot)
+  const gp = new Vector3();
+  const groundAt = (x: number, z: number): number => {
+    gp.set(x, 0, z).applyMatrix4(slotMatrix);
+    const r = world.surfaceRadius(gp);
+    gp.setLength(r).applyMatrix4(slotInv);
+    return gp.y;
+  };
+  // The tree bends with the planet's curvature boost exactly like terrain, vegetation and path stones: every tree
+  // vertex goes slot space → planet space → bendNode → back
+  const slotU = uniform(slotMatrix.clone());
+  const slotInvU = uniform(slotInv.clone());
+  type V3 = Node<'vec3'>;
+  const warp = (p: V3): V3 => {
+    const planetPos = slotU.mul(vec4(p, 1)).xyz as unknown as V3;
+    return slotInvU.mul(vec4(world.bendNode(planetPos), 1)).xyz as unknown as V3;
+  };
+  const tree = createHeroTree({
+    ...treeOptions,
+    groundAt,
+    warp,
+    atlas: world.atlas,
+    lookup: world.lookup,
+    fog: world.fog,
+    fogLookup: world.lookup,
+    quality: options.quality,
+    nodes: count,
+    meadow: false,
+    // map framing: hero, the next nodes and the tree together (≈ 7 / 11 world units from the node)
+    rail: { trunkDistance: 18, crownDistance: 28 },
+  });
+  const holder = world.addLandmark(tree.group, 'hero-tree')!;
   const path = transformHeroTreePath(tree.path, slotMatrix);
 
   // --- Splice: ground nodes [0, first) + tree nodes + ground nodes (last, end]; dots with connectors --------------
@@ -177,14 +208,17 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
   const firstTree = path.nodes[0]!;
   const lastTree = path.nodes[path.nodes.length - 1]!;
   connect(before.position, firstTree.position, 0);
-  connect(lastTree.position, after.position, Math.min(6, 1.5 + 0.12 * new Vector3(...lastTree.position).distanceTo(new Vector3(...after.position))));
+  if (path.exit) {
+    // the way down lies on the tree too: over the canopy and along the ground limb to the ground, then on the ground
+    for (const d of path.exit.dots) dots.push({ position: d.position, normal: d.normal });
+    connect(path.exit.ground, after.position, 0);
+  } else connect(lastTree.position, after.position, Math.min(6, 1.5 + 0.12 * new Vector3(...lastTree.position).distanceTo(new Vector3(...after.position))));
   let length = 0;
   for (let i = 1; i < nodes.length; i++) length += new Vector3(...nodes[i]!.position).distanceTo(new Vector3(...nodes[i - 1]!.position));
   const levelPath: SpiralPath = { nodes, dots, length };
   world.setPath(levelPath);
 
   const slotPos = new Vector3(...slot.position);
-  const bent = new Vector3();
   let lastBloom = -1;
   return {
     tree,
@@ -203,9 +237,7 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
       path.sampleRail(t, outPos, outLook);
     },
     update(dt, camera, sunDirWorld, cameraWorld, planetMatrixWorld, frustum) {
-      // Follow the curvature boost at the foot (the tree itself stays straight, like the terrain under it)
-      world.bend(slotPos, bent);
-      holder.position.copy(bent);
+      // the curvature bend happens per vertex (warp); the holder stays at the unbent slot
       // Cull when behind the horizon or outside the frustum (7 draw calls + 3 shadow casters otherwise)
       _w.copy(slotPos).applyMatrix4(planetMatrixWorld);
       const camDir = _v.copy(cameraWorld).normalize();

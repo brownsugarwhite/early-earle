@@ -5,24 +5,25 @@ import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLooku
 
 export interface InkMaterialOptions {
   /**
-   * Farbe aus `lit` (0 = Tinte: Eigen- oder Schlagschatten, 1 = beleuchtet, 1-px-Übergang) und dem rohen N·L.
-   * Wird einmal beim Shader-Aufbau aufgerufen und darf eigene Knoten (Attribute, Uniforms) verwenden.
+   * Colour from `lit` (0 = ink: self or cast shadow, 1 = lit, 1-px transition), the raw N·L, the raw shadow
+   * factor (cast shadows only, without the terminator) and the light direction (view space). Called once while the
+   * shader is built; may use its own nodes (attributes, uniforms).
    */
-  shade: (lit: FloatNode, ndl: FloatNode) => Vec3Node;
-  /** Terminator: N·L darunter → Tinte (Standard 0). */
+  shade: (lit: FloatNode, ndl: FloatNode, shadow: FloatNode, lightDir: Vec3Node) => Vec3Node;
+  /** Terminator: N·L below → ink (default 0). */
   terminator?: number;
-  /** Gestufter Distanznebel (optional). */
+  /** Stepped distance fog (optional). */
   fog?: FogSettings | null;
-  /** Atlas, in dem die Nebelzeile liegt (kann ein anderer sein als der der Baumfarben). */
+  /** Atlas holding the fog row (may differ from the tree colours' atlas). */
   lookup?: PaletteLookup | null;
   normalNode?: Vec3Node | null;
   positionNode?: Vec3Node | null;
 }
 
 /**
- * Earle-Tintenmaterial mit freier Farbfunktion: `lit = min(aaStep(N·L, terminator), shadow)` wie das
- * EarleMaterial (Eigen- und Schlagschatten verschmelzen zu einer Form), aber die Fläche wird nicht aus einer
- * Palettenzeile, sondern aus einem beliebigen Shader (Stammbänder, Flechten) gefüllt. Kein Ambient, kein Specular.
+ * Earle ink material with a free colour function: `lit = min(aaStep(N·L, terminator), shadow)` like the
+ * EarleMaterial (self and cast shadow merge into one ink shape), but the surface is filled by an arbitrary shader
+ * (bark lines, snow, dome stipple) instead of one palette row. No ambient, no specular.
  */
 export class InkMaterial extends NodeMaterial {
   static override get type(): string {
@@ -55,9 +56,9 @@ class InkLightingModel extends LightingModel {
     const L = input.lightDirection as Vec3Node;
     const lightColor = input.lightColor as Vec3Node;
     const ndl = normalView.dot(L);
-    const shadow = lightColor.r; // weiße Sonne → r = Schattenfaktor
+    const shadow = lightColor.r; // white sun → r = shadow factor
     const lit = min(aaStep(e.terminator, ndl), shadow);
-    const col = e.shade(lit, ndl);
+    const col = e.shade(lit, ndl, shadow, L);
     (input.reflectedLight.directDiffuse as Vec3Node).addAssign(col);
   }
 

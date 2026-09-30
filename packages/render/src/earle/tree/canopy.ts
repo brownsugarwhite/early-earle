@@ -1,16 +1,4 @@
-import {
-  DynamicDrawUsage,
-  Float32BufferAttribute,
-  InstancedBufferAttribute,
-  InstancedBufferGeometry,
-  InstancedMesh,
-  Matrix4,
-  Mesh,
-  MeshBasicNodeMaterial,
-  Quaternion,
-  SphereGeometry,
-  Vector3,
-} from 'three/webgpu';
+import { InstancedBufferAttribute, InstancedBufferGeometry, InstancedMesh, Matrix4, Mesh, MeshBasicNodeMaterial, Quaternion, SphereGeometry, Vector3 } from 'three/webgpu';
 import type { UniformNode } from 'three/webgpu';
 import {
   abs,
@@ -19,69 +7,76 @@ import {
   cameraProjectionMatrix,
   cameraViewMatrix,
   clamp,
+  cross,
   float,
+  floor,
+  fract,
+  fwidth,
+  hash,
+  length,
   max,
+  min,
   mix,
   modelViewMatrix,
   modelWorldMatrix,
   normalize,
+  normalView,
   positionGeometry,
   positionLocal,
   screenSize,
   select,
   smoothstep,
+  sqrt,
   step,
   uniform,
   varying,
+  vec2,
+  vec3,
   vec4,
 } from 'three/tsl';
 import { hash32, mulberry32 } from '@ee/world';
 import { createHexagon } from '../vegetation';
-import { steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from '../tsl';
-import { popScale, type BillboardUniforms } from './branches';
+import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from '../tsl';
+import { LOD_FADE, applyLod, lodScale, popScale, type BillboardUniforms } from './branches';
 import { InkMaterial } from './inkMaterial';
-import type { CanopyFamily, SolidFamily } from './palette';
+import { familyTone, type CanopyFamily } from './palette';
 import type { Dome } from './shape';
 
 export type { Dome } from './shape';
 
 export interface CanopyQuality {
-  /**
-   * Punkte je Kuppel über die ganze Oberkugel (kleinste, größte Kuppel). Sichtbar ist davon nur ein Band entlang
-   * der Silhouette (Bogenränder) plus wenige blasse Punkte innen — die Dichte am Rand ist also ein Vielfaches.
-   */
+  /** Rim fringe dots per dome over the upper sphere (smallest, largest dome); only the silhouette band shows. */
   dotsPerDome: [number, number];
-  glyphsPerDome: [number, number];
-}
-
-/** Millefleurs-Motiv am Boden (Ebene 21/3): 0 Raute, 1 Kreuz, 2 Vierpunkt-Raute; Farbe 0..3 der Motivzeile. */
-export interface MeadowMotif {
-  pos: Vector3;
-  size: number;
-  kind: 0 | 1 | 2;
-  colour: number;
+  /** Sphere segments (width, height). */
+  sphere: [number, number];
+  /** Procedural four-dot flowers on the domes. */
+  flowers: boolean;
 }
 
 export interface CanopyOptions {
   domes: Dome[];
   lookup: PaletteLookup;
   fog: FogSettings;
-  /** Atlas der Nebelzeile (Standard: `lookup`). */
+  /** Atlas holding the fog row (default `lookup`). */
   fogLookup?: PaletteLookup;
   /**
-   * Zentrum einer Hüllkugel der ganzen Krone: die Kuppelnormalen werden zu `crownBlend` Anteil mit ihr gemischt →
-   * jede Kuppel behält ihre Lichtsichel, die Krone liest sich trotzdem als eine beleuchtete Masse (STYLE §5.5).
+   * Centre of a hull sphere of the whole crown: dome normals are blended with it by `crownBlend` → every dome keeps
+   * its light crescent, yet the canopy reads as one lit mass (STYLE §5.5).
    */
   crownHull?: Vector3;
   crownBlend?: number;
-  rows: { canopy: Record<SolidFamily, number>; motif: Record<SolidFamily, number> };
+  rows: { domes: number; motif: number };
   bands: TSLUniform;
   family: CanopyFamily;
   quality: CanopyQuality;
   bb: BillboardUniforms;
-  /** Bodenmotive im selben Draw Call wie die Kronenmotive. */
-  meadow?: MeadowMotif[];
-  /** Punktgröße relativ zum Standard (kleine Büsche brauchen größere Punkte, Standard 1). */
+  /** Size of the micro-dot cells in tree units (Standard 0.2). */
+  dotCell?: number;
+  /** Lift of the light used for the dome banding towards the tree's up axis (Standard 0.9; 0 = the real sun). */
+  lightLift?: number;
+  /** Position warp in tree space (e.g. the planet's curvature bend); patterns stay on unwarped coordinates. */
+  warp?: (p: Vec3Node) => Vec3Node;
+  /** Rim dot size relative to the default (small bushes need bigger dots). */
   dotScale?: number;
   seed: number;
 }
@@ -89,9 +84,12 @@ export interface CanopyOptions {
 export interface Canopy {
   domes: InstancedMesh;
   dots: Mesh;
-  glyphs: Mesh;
-  counts: { domes: number; dots: number; glyphs: number; meadow: number };
+  counts: { domes: number; dots: number };
   setFamily(f: CanopyFamily): void;
+  /** Share of rim dots drawn (LOD 0..1). */
+  setDotShare(share: number): void;
+  /** Re-sorts the dome instances front to back for a camera position in canopy space; true if the order changed. */
+  sortForCamera(camera: Vector3): boolean;
   dispose(): void;
 }
 
@@ -99,137 +97,219 @@ const _m = new Matrix4();
 const _q = new Quaternion();
 const _s = new Vector3();
 
-/** Glyph: Raute (Teil 0), Kreuz (Teil 1), Vierpunkt-Blüte (Teil 2) im selben Vertexpuffer; Teil-Attribut wählt. */
-export function createGlyphGeometry(): { position: Float32BufferAttribute; part: Float32BufferAttribute; index: number[] } {
-  const pos: number[] = [];
-  const part: number[] = [];
-  const idx: number[] = [];
-  const quad = (cx: number, cy: number, hx: number, hy: number, p: number, rot45: boolean) => {
-    const b = pos.length / 3;
-    // gegen den Uhrzeigersinn → Vorderseite zeigt zur Kamera (oben, links, unten, rechts)
-    if (rot45) pos.push(cx, cy + hy, 0, cx - hx, cy, 0, cx, cy - hy, 0, cx + hx, cy, 0);
-    else pos.push(cx - hx, cy - hy, 0, cx + hx, cy - hy, 0, cx + hx, cy + hy, 0, cx - hx, cy + hy, 0);
-    part.push(p, p, p, p);
-    idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
-  };
-  quad(0, 0, 0.8, 1, 0, true); // Raute
-  quad(0, 0, 1, 0.26, 1, false); // Kreuz waagrecht
-  quad(0, 0, 0.26, 1, 1, false); // Kreuz senkrecht
-  for (const [x, y] of [
-    [0.62, 0],
-    [-0.62, 0],
-    [0, 0.62],
-    [0, -0.62],
-  ] as Array<[number, number]>)
-    quad(x, y, 0.34, 0.34, 2, true); // Blüte aus vier Punkten
-  return { position: new Float32BufferAttribute(pos, 3), part: new Float32BufferAttribute(part, 1), index: idx };
-}
-
 /**
- * Farbkoordinate eines Clusters: 0 = Rot, 1 = Violett, 2 = Blau. Die Farbe wandert über die Krone (Ebene 3/21:
- * Rot → Violett → Blau), am Rand stärker als in der Mitte; `jewel` spannt die ganze Skala auf.
- */
-export function familyCoord(family: CanopyFamily, angle: number, rho: number, jitter: number): number {
-  const sw = Math.sin(angle);
-  const k = 0.35 + 0.65 * rho;
-  const j = (jitter - 0.5) * 0.12;
-  const c =
-    family === 'jewel' ? 1 + 0.95 * sw : family === 'blue' ? 1.62 + 0.38 * sw * k : family === 'red' ? 0.38 + 0.38 * sw * k : 1 + 0.45 * sw * k;
-  return Math.min(2, Math.max(0, c + j));
-}
-
-/**
- * Kuppelkrone (Ebene 33/21/3): Kuppeln als ein InstancedMesh (Tinte + Lichtbänder wie das EarleMaterial, Normalen
- * vom Kuppelzentrum mit etwas Kronen-Hülle gemischt). **Punkte** sitzen dicht auf der ganzen Oberkugel, sichtbar
- * aber nur entlang der jeweiligen Silhouette (1 − |N·V|), sonnenseitig und am oberen Umriss dichter — so zeichnen
- * sie in jeder Ansicht die Bogenränder der übereinanderliegenden Kuppeln nach; innen bleiben wenige blasse Punkte.
- * **Farbe** wandert je Cluster zwischen zwei Familienzeilen (Rot → Violett → Blau). **Motive** (Vierpunkt-Rauten,
- * Kreuze) klein und spärlich; optional Millefleurs am Boden im selben Draw Call.
+ * Jewel canopy (image 02, Ebene 33): all domes in one InstancedMesh with the ink material —
+ * - **tone gradient**: each dome runs through two neighbouring families (teal → blue → violet → magenta → red) in
+ *   three hard serigraph steps along its own direction (warmer on top), banded by the light;
+ * - **micro-dot stipple**: object-space 3D cells, one dot per cell measured in the tangent plane (every dot shows
+ *   whole, none swims), several tints plus a rare complementary accent; the dot radius scales with the light —
+ *   in the shade the dots shrink smoothly to zero instead of popping;
+ * - **four-dot flowers**: coarser cells, four dots in a diamond in the tangent plane, from the motif row;
+ * - **rim fringe** (instanced hexagons): dots over the upper sphere that grow in only along the lit silhouette,
+ *   all factors continuous (rimness, sun, growth) → they glide along the rim as the view turns, never pop.
  */
 export function createCanopy(o: CanopyOptions): Canopy {
-  const rand = mulberry32(hash32('hero-canopy', o.seed));
+  const rand = mulberry32(hash32('hero-canopy-v3', o.seed));
   const { lookup, fog, bb } = o;
   const domes = o.domes;
   const n = Math.max(1, domes.length);
   const fogLookup = o.fogLookup ?? lookup;
+  const DOT = o.dotCell ?? 0.2;
 
-  // --- Kuppeln ---------------------------------------------------------------------------------------
-  const sphere = new SphereGeometry(1, 20, 14);
+  // --- Domes ----------------------------------------------------------------------------------------------------
+  const sphere = new SphereGeometry(1, o.quality.sphere[0], o.quality.sphere[1]);
   const hull = new Float32Array(n * 3);
-  const rank = new Float32Array(n);
-  const domeFam = new Float32Array(n * 3);
+  const info = new Float32Array(n * 4);
+  const toneArr = new Float32Array(n * 4);
   sphere.setAttribute('hullCenter', new InstancedBufferAttribute(hull, 3));
-  sphere.setAttribute('domeRank', new InstancedBufferAttribute(rank, 1));
-  sphere.setAttribute('domeFam', new InstancedBufferAttribute(domeFam, 3).setUsage(DynamicDrawUsage));
+  sphere.setAttribute('domeInfo', new InstancedBufferAttribute(info, 4));
+  sphere.setAttribute('domeTone', new InstancedBufferAttribute(toneArr, 4));
   const hullAttr = attribute('hullCenter', 'vec3') as unknown as Vec3Node;
-  const rankAttr = attribute('domeRank', 'float') as unknown as FloatNode;
-  const famAttr = attribute('domeFam', 'vec3') as unknown as Vec3Node;
-  const pop = popScale(rankAttr, bb.crown);
+  const infoAttr = attribute('domeInfo', 'vec4');
+  const toneAttr = attribute('domeTone', 'vec4');
+  const pop = popScale(infoAttr.z as unknown as FloatNode, bb.crown);
   const crownHull: UniformNode<'vec3', Vector3> = uniform(o.crownHull ? o.crownHull.clone() : new Vector3(0, 0, 0));
-  const blend = o.crownHull ? (o.crownBlend ?? 0.3) : 0;
-  const nDome = positionLocal.sub(hullAttr).normalize();
-  const nCrown = positionLocal.sub(crownHull).normalize();
+  const blend = o.crownHull ? (o.crownBlend ?? 0.28) : 0;
+  // everything the shading needs comes from attributes (unit sphere point, hull, radii) — never from the warped
+  // position, so patterns stay glued to the dome while the planet's curvature bend moves the vertices
+  const unit = positionGeometry as unknown as Vec3Node;
+  const scaleU = vec3(infoAttr.x, infoAttr.x.mul(infoAttr.y), infoAttr.x);
+  const pTree = hullAttr.add(unit.mul(scaleU));
+  const nDome = normalize(unit.mul(vec3(1, infoAttr.y, 1)));
+  const nCrown = pTree.sub(crownHull).normalize();
   const nMix = nDome.mul(1 - blend).add(nCrown.mul(blend));
-  const TERMINATOR = 0.22;
+  const warp = o.warp ?? ((p: Vec3Node) => p);
+  const TERMINATOR = 0.16;
+  const vInfo = varying(infoAttr, 'vDomeInfo');
+  const vTone = varying(toneAttr, 'vDomeTone');
+  const domeRow0 = o.rows.domes;
+  const motifRow = o.rows.motif;
+  const flowers = o.quality.flowers;
+
+  // Earle lights his domes from above (image 02, Ebene 16): the banding uses the sun lifted towards the tree's up
+  // axis — lit crowns, dark undersides — while cast shadows stay those of the real low sun (long ink shapes)
+  const lift = o.lightLift ?? 0.9;
+  const upView = modelViewMatrix.mul(vec4(0, 1, 0, 0)).xyz.normalize();
   const domeMaterial = new InkMaterial({
-    // wie EarleMaterial: Tinte + Lichtbänder ab dem Terminator; Farbe zwischen zwei Familienzeilen gemischt
-    shade: (lit, ndl) => {
-      const band = clamp(ndl.sub(TERMINATOR).mul(2.2), 0, 0.999).mul(o.bands.sub(1));
-      const litColor = mix(lookup.bands(band, famAttr.x, 1).rgb, lookup.bands(band, famAttr.y, 1).rgb, famAttr.z);
-      const ink = mix(lookup.pal(0, famAttr.x).rgb, lookup.pal(0, famAttr.y).rgb, famAttr.z);
-      return mix(ink, litColor, lit);
+    shade: (_litSun, _ndlSun, shadow, L) => {
+      const Ld = normalize(L.add(upView.mul(lift)));
+      const ndl = normalView.dot(Ld);
+      const lit = min(aaStep(TERMINATOR, ndl), shadow);
+      const P = varying(pTree, 'vDomePos') as unknown as Vec3Node;
+      const dh = vInfo.w;
+      const qn = normalize(varying(unit, 'vDomeUnit'));
+      // tone: two neighbouring families along the dome's own direction, three hard steps
+      const g = qn.y.mul(0.85).add(qn.x.mul(vTone.y)).add(qn.z.mul(vTone.z));
+      const tone = clamp(vTone.x.add(g.mul(0.42)), 0, 3.999);
+      const ts = tone.mul(3);
+      const fts = fract(ts);
+      const wts = fwidth(ts).max(1e-4);
+      const stepped = floor(ts).add(smoothstep(float(1).sub(wts), float(1), fts)).div(3);
+      const fam = floor(stepped);
+      const fr = stepped.sub(fam);
+      const rowA = fam.add(domeRow0);
+      const rowB = min(fam.add(1), float(4)).add(domeRow0);
+      const band = clamp(ndl.sub(TERMINATOR).mul(2.3), 0, 0.999).mul(o.bands.sub(1));
+      const litCol = mix(lookup.bands(band, rowA, 1).rgb, lookup.bands(band, rowB, 1).rgb, fr);
+      const inkCol = mix(lookup.pal(0, rowA).rgb, lookup.pal(0, rowB).rgb, fr);
+      let col: Vec3Node = mix(inkCol, litCol, lit);
+
+      // tangent frame of the surface (object space) for the stipple
+      const nObj = nDome as unknown as Vec3Node;
+      const nrm = normalize(varying(nObj, 'vDomeNormalObj'));
+      const light = smoothstep(-0.04, 0.42, ndl).mul(shadow);
+
+      // micro-dots: one per 3D cell, distance measured in the tangent plane → whole dots, no swimming
+      const C = P.div(DOT);
+      const cell = floor(C);
+      const cid = fract(cell.x.div(256)).mul(256).add(fract(cell.y.div(256)).mul(256).mul(256)).add(fract(cell.z.div(256)).mul(256).mul(65536)).floor();
+      // two hashes per cell; the other random values are derived from them (cheap on phones)
+      const h1 = hash(cid);
+      const h2 = hash(cid.add(7));
+      const h3 = fract(h1.mul(17.31).add(h2.mul(3.7)));
+      const h4 = fract(h2.mul(23.17).add(h1.mul(5.3)));
+      const cc = cell.add(0.5).add(vec3(h1, h2, h3).sub(0.5).mul(0.38));
+      const dv = C.sub(cc);
+      const dn = dv.dot(nrm);
+      const d = sqrt(max(dv.dot(dv).sub(dn.mul(dn)), float(0)));
+      const fw = fwidth(C.x).add(fwidth(C.y)).mul(0.5).max(1e-4);
+      const far = smoothstep(float(0.42), float(0.2), fw); // cells under ~2.5 px: the stipple melts into the tint
+      const dotR = float(0.17).add(h4.mul(0.12)).mul(light);
+      const dotMask = smoothstep(dotR.add(fw), dotR.sub(fw).max(0), d).mul(step(0.12, h2)).mul(far);
+      // mostly one band lighter (a woven texture), some light tints, rare sparkles and complementary accents
+      const pick = fract(h1.mul(41.9).add(h2.mul(11.3)));
+      const lighter = min(floor(band).add(2), float(3));
+      const dotIdx = select(pick.lessThan(0.62), lighter, select(pick.lessThan(0.88), float(5), select(pick.lessThan(0.96), float(6), float(7))));
+      const dotCol = mix(lookup.pal(dotIdx, rowA).rgb, lookup.pal(dotIdx, rowB).rgb, fr);
+      col = mix(col, dotCol, dotMask);
+      // at distance the stipple becomes a lighter tint of the lit side (same average, no shimmer)
+      col = mix(col, mix(col, dotCol, 0.22), float(1).sub(far).mul(light).mul(0.8));
+
+      if (flowers) {
+        const FC = 0.95;
+        const F = P.div(FC);
+        const fcell = floor(F);
+        const fid = fract(fcell.x.div(256)).mul(256).add(fract(fcell.y.div(256)).mul(256).mul(256)).add(fract(fcell.z.div(256)).mul(256).mul(65536)).floor().add(dh.mul(97).floor());
+        const fh = hash(fid.add(3));
+        const on = step(fh, float(0.34));
+        const fc = fcell.add(0.5).add(vec3(fract(fh.mul(13.1)), fract(fh.mul(27.7)), fract(fh.mul(51.3))).sub(0.5).mul(0.4));
+        const fv = F.sub(fc);
+        const t1 = normalize(cross(nrm, select(abs(nrm.y).lessThan(0.9), vec3(0, 1, 0), vec3(1, 0, 0))));
+        const t2 = cross(nrm, t1);
+        const lx = fv.dot(t1);
+        const ly = fv.dot(t2);
+        const s = float(0.13);
+        const dd = min(min(length(vec2(lx.sub(s), ly)), length(vec2(lx.add(s), ly))), min(length(vec2(lx, ly.sub(s))), length(vec2(lx, ly.add(s)))));
+        const ffw = fwidth(F.x).max(1e-4);
+        const fr0 = float(0.062).mul(light);
+        const petal = smoothstep(fr0.add(ffw), fr0.sub(ffw).max(0), dd).mul(on).mul(smoothstep(float(0.2), float(0.08), ffw));
+        const mcol = lookup.pal(floor(fract(fh.mul(91.7)).mul(7.99)), motifRow).rgb;
+        col = mix(col, mcol, petal);
+      }
+      return col;
     },
     terminator: TERMINATOR,
     fog,
     lookup: fogLookup,
     normalNode: modelViewMatrix.mul(vec4(nMix, 0)).xyz.normalize(),
-    positionNode: hullAttr.add(positionLocal.sub(hullAttr).mul(pop)),
+    positionNode: warp(hullAttr.add(positionLocal.sub(hullAttr).mul(pop))),
   });
   const domeMesh = new InstancedMesh(sphere, domeMaterial, n);
   domeMesh.name = 'hero-domes';
   domeMesh.castShadow = true;
+  // STYLE §5.5: crowns do not read the shadow map — each dome is its own light/ink shape (lifted light), the long
+  // shadows fall onto the ground and the wood. Saves the cascade sampling on the most expensive surface, and the
+  // stipple dots are never cut by a cast-shadow edge (they only scale with the light)
   domeMesh.receiveShadow = false;
   domeMesh.frustumCulled = false;
-  domes.forEach((d, i) => {
-    _s.set(d.r, d.r * d.sy, d.r);
-    _m.compose(d.center, _q.identity(), _s);
-    domeMesh.setMatrixAt(i, _m);
-    hull[i * 3] = d.center.x;
-    hull[i * 3 + 1] = d.center.y;
-    hull[i * 3 + 2] = d.center.z;
-    rank[i] = d.rank;
-  });
-  domeMesh.instanceMatrix.needsUpdate = true;
+  // Instance slot → dome index. The slots are re-sorted front to back when the camera moves (see sortForCamera):
+  // the stippled dome shader is the most expensive one of the tree, early-z then shades each pixel about once.
+  // Note: no DynamicDrawUsage anywhere — three r186 re-uploads such attributes on every frame; updates go through
+  // needsUpdate (version bump) only when something changed.
+  let order = domes.map((_, i) => i);
+  const domeTone = new Float32Array(n * 4);
+  const writeInstances = () => {
+    order.forEach((di, slot) => {
+      const d = domes[di]!;
+      _s.set(d.r, d.r * d.sy, d.r);
+      _m.compose(d.center, _q.identity(), _s);
+      domeMesh.setMatrixAt(slot, _m);
+      hull[slot * 3] = d.center.x;
+      hull[slot * 3 + 1] = d.center.y;
+      hull[slot * 3 + 2] = d.center.z;
+      info[slot * 4] = d.r;
+      info[slot * 4 + 1] = d.sy;
+      info[slot * 4 + 2] = d.rank;
+      info[slot * 4 + 3] = d.hash;
+      toneArr.set(domeTone.subarray(di * 4, di * 4 + 4), slot * 4);
+    });
+    domeMesh.instanceMatrix.needsUpdate = true;
+    (sphere.getAttribute('hullCenter') as InstancedBufferAttribute).needsUpdate = true;
+    (sphere.getAttribute('domeInfo') as InstancedBufferAttribute).needsUpdate = true;
+    (sphere.getAttribute('domeTone') as InstancedBufferAttribute).needsUpdate = true;
+  };
+  writeInstances();
   domeMesh.count = domes.length;
+  const sortKey = new Float32Array(n);
+  const sortForCamera = (camTree: Vector3): boolean => {
+    for (let i = 0; i < domes.length; i++) {
+      const d = domes[i]!;
+      // distance to the nearest point of the dome's bounding sphere (front surface first)
+      sortKey[i] = d.center.distanceTo(camTree) - d.r;
+    }
+    const next = domes.map((_, i) => i).sort((a, b) => sortKey[a]! - sortKey[b]!);
+    let same = true;
+    for (let i = 0; i < next.length; i++) {
+      if (next[i] !== order[i]) {
+        same = false;
+        break;
+      }
+    }
+    if (same) return false;
+    order = next;
+    writeInstances();
+    return true;
+  };
 
-  // --- Punkte und Motive auf den Kuppeln ------------------------------------------------------------------
+  // --- Rim fringe dots ------------------------------------------------------------------------------------------
   const dotRel: number[] = [];
   const dotHull: number[] = [];
   const dotNormal: number[] = [];
   const dotData: number[] = [];
   const dotDome: number[] = [];
-  const glyphRel: number[] = [];
-  const glyphHull: number[] = [];
-  const glyphNormal: number[] = [];
-  const glyphData: number[] = [];
-  const glyphDome: number[] = [];
   const rMin = Math.min(...domes.map((d) => d.r));
   const rMax = Math.max(...domes.map((d) => d.r));
   const golden = Math.PI * (3 - Math.sqrt(5));
-  const Y_MIN = -0.25;
-  const Y_MAX = 0.99;
+  const Y_MIN = -0.2;
   domes.forEach((d, di) => {
     const sizeT = rMax > rMin ? (d.r - rMin) / (rMax - rMin) : 1;
-    const area = sizeT * sizeT;
-    const dotCount = Math.round(o.quality.dotsPerDome[0] + (o.quality.dotsPerDome[1] - o.quality.dotsPerDome[0]) * area);
-    const glyphCount = Math.round(o.quality.glyphsPerDome[0] + (o.quality.glyphsPerDome[1] - o.quality.glyphsPerDome[0]) * area);
-    const dotR = Math.max(0.024, 0.0125 * d.r) * (o.dotScale ?? 1);
-    // goldene Spirale über die Kugel, Band y ∈ [Y_MIN, Y_MAX]; Normale = echte Ellipsoidnormale (für die Silhouette)
-    const m = Math.round(dotCount / ((Y_MAX - Y_MIN) / 2));
+    const count = Math.round(o.quality.dotsPerDome[0] + (o.quality.dotsPerDome[1] - o.quality.dotsPerDome[0]) * sizeT * sizeT);
+    const dotR = Math.max(0.03, 0.0135 * d.r) * (o.dotScale ?? 1);
+    const m = Math.round(count / ((1 - Y_MIN) / 2));
     const phase = rand() * Math.PI * 2;
     for (let i = 0; i < m; i++) {
       const y = 1 - (2 * (i + 0.5)) / m;
-      if (y < Y_MIN || y > Y_MAX) continue;
+      if (y < Y_MIN) continue;
       const rr = Math.sqrt(1 - y * y);
       const phi = i * golden + phase;
       const nx = rr * Math.cos(phi);
@@ -241,93 +321,79 @@ export function createCanopy(o: CanopyOptions): Canopy {
       tx /= tl;
       ty /= tl;
       tz /= tl;
-      const size = dotR * (0.75 + 0.5 * rand());
-      dotRel.push(nx * d.r + tx * size * 0.6, y * d.r * d.sy + ty * size * 0.6, nz * d.r + tz * size * 0.6);
+      const size = dotR * (0.7 + 0.6 * rand());
+      dotRel.push(nx * d.r + tx * size * 0.55, y * d.r * d.sy + ty * size * 0.55, nz * d.r + tz * size * 0.55);
       dotHull.push(d.center.x, d.center.y, d.center.z);
       dotNormal.push(tx, ty, tz);
-      dotData.push(size, d.rank, rand(), 0);
+      dotData.push(size, d.rank, rand(), rand());
       dotDome.push(di);
     }
-    // Motive: wenige, kleine Vierpunkt-Rauten (Ebene 3/21), seltener Kreuze und Rauten, auf der Kuppelfläche
-    for (let g = 0; g < glyphCount; g++) {
-      const y = -0.05 + rand() * 0.8;
-      const rr = Math.sqrt(1 - y * y);
-      const phi = rand() * Math.PI * 2;
-      const nx = rr * Math.cos(phi);
-      const nz = rr * Math.sin(phi);
-      const size = Math.max(0.05, d.r * (0.016 + 0.012 * rand()));
-      glyphRel.push(nx * d.r + nx * size, y * d.r * d.sy + y * size, nz * d.r + nz * size);
-      glyphHull.push(d.center.x, d.center.y, d.center.z);
-      glyphNormal.push(nx, y, nz);
-      const k = rand();
-      const kind = k < 0.65 ? 2 : k < 0.85 ? 1 : 0;
-      glyphData.push(size, d.rank, kind, Math.floor(rand() * 3.999));
-      glyphDome.push(di);
-    }
   });
-  const crownGlyphs = glyphDome.length;
-  for (const mm of o.meadow ?? []) {
-    glyphRel.push(0, 0, 0);
-    glyphHull.push(mm.pos.x, mm.pos.y, mm.pos.z);
-    glyphNormal.push(0, 1, 0);
-    glyphData.push(mm.size, 0, mm.kind, mm.colour);
-    glyphDome.push(-1);
-  }
-
+  // shuffle-free LOD: interleave so any prefix covers all domes evenly
+  const dotOrder = dotDome.map((_, i) => i).sort((a, b) => dotData[a * 4 + 3]! - dotData[b * 4 + 3]!);
+  const reorder = (src: number[], k: number): Float32Array => {
+    const out = new Float32Array(Math.max(1, dotOrder.length) * k);
+    dotOrder.forEach((from, to) => {
+      for (let c = 0; c < k; c++) out[to * k + c] = src[from * k + c]!;
+    });
+    return out;
+  };
+  const dotDomeSorted = dotOrder.map((i) => dotDome[i]!);
   const dotGeo = new InstancedBufferGeometry();
   const hex = createHexagon();
   dotGeo.setAttribute('position', hex.position);
   dotGeo.setIndex(hex.index);
-  const nd = Math.max(1, dotRel.length / 3);
-  const dotFam = new Float32Array(nd * 3);
-  dotGeo.setAttribute('dotRel', new InstancedBufferAttribute(new Float32Array(dotRel.length ? dotRel : [0, 0, 0]), 3));
-  dotGeo.setAttribute('dotHull', new InstancedBufferAttribute(new Float32Array(dotHull.length ? dotHull : [0, 0, 0]), 3));
-  dotGeo.setAttribute('dotNormal', new InstancedBufferAttribute(new Float32Array(dotNormal.length ? dotNormal : [0, 1, 0]), 3));
-  dotGeo.setAttribute('dotData', new InstancedBufferAttribute(new Float32Array(dotData.length ? dotData : [0, 0, 0, 0]), 4));
-  dotGeo.setAttribute('dotFam', new InstancedBufferAttribute(dotFam, 3).setUsage(DynamicDrawUsage));
-  dotGeo.instanceCount = dotRel.length / 3;
+  const nd = Math.max(1, dotOrder.length);
+  const dotTone = new Float32Array(nd);
+  dotGeo.setAttribute('dotRel', new InstancedBufferAttribute(reorder(dotRel, 3), 3));
+  dotGeo.setAttribute('dotHull', new InstancedBufferAttribute(reorder(dotHull, 3), 3));
+  dotGeo.setAttribute('dotNormal', new InstancedBufferAttribute(dotOrder.length ? reorder(dotNormal, 3) : new Float32Array([0, 1, 0]), 3));
+  dotGeo.setAttribute('dotData', new InstancedBufferAttribute(reorder(dotData, 4), 4));
+  dotGeo.setAttribute('dotTone', new InstancedBufferAttribute(dotTone, 1));
+  const dotTotal = dotOrder.length;
+  const dotLod: TSLUniform = uniform(dotTotal + LOD_FADE);
+  dotGeo.instanceCount = dotTotal;
   dotGeo.boundingSphere = null;
 
-  const billboard = (rel: Vec3Node, hullC: Vec3Node, nrm: Vec3Node, size: FloatNode, rk: FloatNode, minPx: number) => {
-    const s = popScale(rk, bb.crown);
-    const centre = hullC.add(rel.mul(s));
-    const worldC = modelWorldMatrix.mul(vec4(centre, 1)).xyz;
-    const nW = modelWorldMatrix.mul(vec4(nrm, 0)).xyz.normalize();
-    const ndl = nW.dot(bb.sunDirWorld);
-    const viewC = cameraViewMatrix.mul(vec4(worldC, 1));
-    const depth = viewC.z.negate().max(0.05);
-    const pxPerUnit = bb.projScaleY.mul(screenSize.y).mul(0.5).div(depth);
-    const sizeW = size.mul(s);
-    const px = sizeW.mul(pxPerUnit);
-    const sizeEff = max(sizeW, float(minPx).div(pxPerUnit));
-    return { ndl, nW, px, sizeEff, worldC };
-  };
-
-  let dotMesh: Mesh;
   let dotMaterial: MeshBasicNodeMaterial;
+  let dotMesh: Mesh;
   {
     const rel = attribute('dotRel', 'vec3') as unknown as Vec3Node;
     const hullC = attribute('dotHull', 'vec3') as unknown as Vec3Node;
     const nrm = attribute('dotNormal', 'vec3') as unknown as Vec3Node;
     const dd = attribute('dotData', 'vec4');
-    const fam = attribute('dotFam', 'vec3') as unknown as Vec3Node;
-    const b = billboard(rel, hullC, nrm, dd.x, dd.y, 1.1);
-    // Silhouettenband: 1 − |N·V| (Blick von der Kamera), sonnenseitig und am oberen Umriss dichter
-    const rimness = float(1).sub(abs(b.nW.dot(normalize(cameraPosition.sub(b.worldC)))));
-    const sunW = smoothstep(-0.3, 0.35, b.ndl);
-    const upW = smoothstep(-0.45, 0.2, nrm.y);
-    const density = smoothstep(0.28, 0.72, rimness).mul(mix(float(0.35), float(1), sunW)).mul(mix(float(0.3), float(1), upW));
-    const onRim = step(dd.z, density);
-    const faint = step(dd.z, float(0.035)).mul(float(1).sub(onRim));
-    const visible = step(bb.collapsePx, b.px).mul(max(onRim, faint));
-    const offset = bb.camRight.mul(positionGeometry.x).add(bb.camUp.mul(positionGeometry.y)).mul(b.sizeEff.mul(visible));
+    const dtone = attribute('dotTone', 'float') as unknown as FloatNode;
+    const s = popScale(dd.y as unknown as FloatNode, bb.crown).mul(lodScale(dotLod));
+    const centre = hullC.add(rel.mul(s));
+    const worldC = modelWorldMatrix.mul(vec4(warp(centre), 1)).xyz;
+    const nW = modelWorldMatrix.mul(vec4(nrm, 0)).xyz.normalize();
+    const upW = modelWorldMatrix.mul(vec4(0, 1, 0, 0)).xyz.normalize();
+    const ndl = nW.dot(normalize(bb.sunDirWorld.add(upW.mul(lift))));
+    const viewC = cameraViewMatrix.mul(vec4(worldC, 1));
+    const depth = viewC.z.negate().max(0.05);
+    const pxPerUnit = bb.projScaleY.mul(screenSize.y).mul(0.5).div(depth);
+    // continuous visibility: silhouette band × sun × upper side × growth — dots grow and shrink, never pop
+    const rimness = float(1).sub(abs(nW.dot(normalize(cameraPosition.sub(worldC)))));
+    const rimW = smoothstep(dd.z.mul(0.3).add(0.42), dd.z.mul(0.3).add(0.62), rimness);
+    const sunW = smoothstep(-0.02, 0.4, ndl);
+    const upSide = smoothstep(-0.3, 0.25, nrm.y);
+    const grow = rimW.mul(sunW).mul(upSide);
+    // never larger than ~1.2 % of the screen height (close to the lens the fringe stays fine)
+    const sizeW = dd.x.mul(s).mul(grow).min(screenSize.y.mul(0.012).div(pxPerUnit));
+    const px = sizeW.mul(pxPerUnit);
+    // under the pixel threshold the dot shrinks smoothly to nothing (no hard collapse)
+    const collapse = smoothstep(bb.collapsePx.mul(0.6), bb.collapsePx.mul(1.4), px);
+    const offset = bb.camRight.mul(positionGeometry.x).add(bb.camUp.mul(positionGeometry.y)).mul(sizeW.mul(collapse));
     const material = new MeshBasicNodeMaterial();
-    material.vertexNode = cameraProjectionMatrix.mul(cameraViewMatrix.mul(vec4(b.worldC.add(offset), 1)));
-    const ndl = varying(b.ndl, 'vHeroDotNdl');
-    const rimV = varying(onRim, 'vHeroDotRim');
-    // Randpunkte tragen die Clusterfarbe (mittlere Stufe, Ebene 3); nur die direkt angestrahlten werden fast weiß
-    const idx = select(rimV.lessThan(0.5), float(3), select(ndl.greaterThan(0.7), float(5), select(ndl.greaterThan(0.0), float(4), float(3))));
-    const colour = mix(lookup.pal(idx, fam.x).rgb, lookup.pal(idx, fam.y).rgb, fam.z).mul(mix(float(0.7), float(1), rimV));
+    material.vertexNode = cameraProjectionMatrix.mul(cameraViewMatrix.mul(vec4(worldC.add(offset), 1)));
+    const vNdl = varying(ndl, 'vHeroDotNdl');
+    const vTone = varying(dtone, 'vHeroDotTone');
+    const fam = floor(vTone);
+    const frr = fract(vTone);
+    const rowA = fam.add(domeRow0);
+    const rowB = min(fam.add(1), float(4)).add(domeRow0);
+    const idx = select(vNdl.greaterThan(0.55), float(6), float(5));
+    const colour = mix(lookup.pal(idx, rowA).rgb, lookup.pal(idx, rowB).rgb, step(0.5, frr));
     material.colorNode = steppedFog(colour, fog, fogLookup);
     dotMesh = new Mesh(dotGeo, material);
     dotMesh.name = 'hero-dots';
@@ -337,98 +403,35 @@ export function createCanopy(o: CanopyOptions): Canopy {
     dotMaterial = material;
   }
 
-  // --- Motive (Krone + Boden) -----------------------------------------------------------------------
-  const glyphGeo = new InstancedBufferGeometry();
-  const glyph = createGlyphGeometry();
-  glyphGeo.setAttribute('position', glyph.position);
-  glyphGeo.setAttribute('part', glyph.part);
-  glyphGeo.setIndex(glyph.index);
-  const ng = Math.max(1, glyphRel.length / 3);
-  const glyphRowArr = new Float32Array(ng);
-  glyphGeo.setAttribute('glyphRel', new InstancedBufferAttribute(new Float32Array(glyphRel.length ? glyphRel : [0, 0, 0]), 3));
-  glyphGeo.setAttribute('glyphHull', new InstancedBufferAttribute(new Float32Array(glyphHull.length ? glyphHull : [0, 0, 0]), 3));
-  glyphGeo.setAttribute('glyphNormal', new InstancedBufferAttribute(new Float32Array(glyphNormal.length ? glyphNormal : [0, 1, 0]), 3));
-  glyphGeo.setAttribute('glyphData', new InstancedBufferAttribute(new Float32Array(glyphData.length ? glyphData : [0, 0, 0, 0]), 4));
-  glyphGeo.setAttribute('glyphRow', new InstancedBufferAttribute(glyphRowArr, 1).setUsage(DynamicDrawUsage));
-  glyphGeo.instanceCount = glyphRel.length / 3;
-  glyphGeo.boundingSphere = null;
-  let glyphMesh: Mesh;
-  let glyphMaterial: MeshBasicNodeMaterial;
-  {
-    const rel = attribute('glyphRel', 'vec3') as unknown as Vec3Node;
-    const hullC = attribute('glyphHull', 'vec3') as unknown as Vec3Node;
-    const nrm = attribute('glyphNormal', 'vec3') as unknown as Vec3Node;
-    const gd = attribute('glyphData', 'vec4');
-    const row = attribute('glyphRow', 'float') as unknown as FloatNode;
-    const part = attribute('part', 'float') as unknown as FloatNode;
-    const b = billboard(rel, hullC, nrm, gd.x, gd.y, 1.4);
-    const ndl = varying(b.ndl, 'vHeroGlyphNdl');
-    const isPart = step(-0.5, part.sub(gd.z)).mul(step(-0.5, gd.z.sub(part))); // part == kind
-    const visible = step(bb.collapsePx.mul(2.0), b.px).mul(isPart);
-    const offset = bb.camRight.mul(positionGeometry.x).add(bb.camUp.mul(positionGeometry.y)).mul(b.sizeEff.mul(visible));
-    const material = new MeshBasicNodeMaterial();
-    material.vertexNode = cameraProjectionMatrix.mul(cameraViewMatrix.mul(vec4(b.worldC.add(offset), 1)));
-    const shade = mix(float(0.42), float(1), smoothstep(-0.15, 0.35, ndl));
-    const colourIdx = varying(gd.w, 'vHeroGlyphColor');
-    material.colorNode = steppedFog(lookup.pal(colourIdx, row).rgb.mul(shade), fog, fogLookup);
-    glyphMesh = new Mesh(glyphGeo, material);
-    glyphMesh.name = 'hero-glyphs';
-    glyphMesh.castShadow = false;
-    glyphMesh.receiveShadow = false;
-    glyphMesh.frustumCulled = false;
-    glyphMaterial = material;
-  }
-
-  // --- Farbverlauf je Cluster --------------------------------------------------------------------------
-  const centre = new Vector3();
-  for (const d of domes) centre.add(d.center);
-  centre.divideScalar(Math.max(1, domes.length));
-  const clusterPos = new Map<number, { x: number; z: number; n: number }>();
-  for (const d of domes) {
-    const c = clusterPos.get(d.cluster) ?? { x: 0, z: 0, n: 0 };
-    c.x += d.center.x;
-    c.z += d.center.z;
-    c.n++;
-    clusterPos.set(d.cluster, c);
-  }
-  let maxRho = 1e-3;
-  for (const c of clusterPos.values()) maxRho = Math.max(maxRho, Math.hypot(c.x / c.n - centre.x, c.z / c.n - centre.z));
-  const phase0 = mulberry32(hash32('hero-canopy-phase', o.seed))() * Math.PI * 2;
-  const coordOf = (d: Dome, f: CanopyFamily): number => {
-    const c = clusterPos.get(d.cluster)!;
-    const ang = Math.atan2(c.z / c.n - centre.z, c.x / c.n - centre.x) + phase0;
-    const rho = Math.hypot(c.x / c.n - centre.x, c.z / c.n - centre.z) / maxRho;
-    return familyCoord(f, ang, rho, d.hash);
-  };
-  const rowsFor = (c: number): [number, number, number] => (c <= 1 ? [o.rows.canopy.red, o.rows.canopy.purple, c] : [o.rows.canopy.purple, o.rows.canopy.blue, c - 1]);
-  const motifFor = (c: number): number => (c < 0.55 ? o.rows.motif.red : c < 1.45 ? o.rows.motif.purple : o.rows.motif.blue);
+  // --- Colour mode ------------------------------------------------------------------------------------------------
+  const phase = rand() * Math.PI * 2;
   const setFamily = (f: CanopyFamily) => {
-    const coords = domes.map((d) => coordOf(d, f));
-    coords.forEach((c, i) => domeFam.set(rowsFor(c), i * 3));
-    for (let i = 0; i < dotDome.length; i++) dotFam.set(rowsFor(coords[dotDome[i]!]!), i * 3);
-    for (let i = 0; i < glyphDome.length; i++) {
-      const di = glyphDome[i]!;
-      glyphRowArr[i] = di < 0 ? o.rows.motif.purple : motifFor(coords[di]!);
-    }
-    (sphere.getAttribute('domeFam') as InstancedBufferAttribute).needsUpdate = true;
-    (dotGeo.getAttribute('dotFam') as InstancedBufferAttribute).needsUpdate = true;
-    (glyphGeo.getAttribute('glyphRow') as InstancedBufferAttribute).needsUpdate = true;
+    domes.forEach((d, i) => {
+      const a = phase + d.hash * Math.PI * 2;
+      domeTone[i * 4] = Math.min(3.999, familyTone(f, d.tone));
+      domeTone[i * 4 + 1] = Math.cos(a) * 0.35;
+      domeTone[i * 4 + 2] = Math.sin(a) * 0.35;
+      domeTone[i * 4 + 3] = 0;
+    });
+    order.forEach((di, slot) => toneArr.set(domeTone.subarray(di * 4, di * 4 + 4), slot * 4));
+    for (let i = 0; i < dotDomeSorted.length; i++) dotTone[i] = Math.min(3.999, familyTone(f, domes[dotDomeSorted[i]!]!.tone) + 0.3);
+    (sphere.getAttribute('domeTone') as InstancedBufferAttribute).needsUpdate = true;
+    (dotGeo.getAttribute('dotTone') as InstancedBufferAttribute).needsUpdate = true;
   };
   setFamily(o.family);
 
   return {
     domes: domeMesh,
     dots: dotMesh,
-    glyphs: glyphMesh,
-    counts: { domes: domes.length, dots: dotRel.length / 3, glyphs: crownGlyphs, meadow: glyphDome.length - crownGlyphs },
+    counts: { domes: domes.length, dots: dotTotal },
     setFamily,
+    sortForCamera,
+    setDotShare: (share) => applyLod(dotLod, dotGeo, dotTotal, share),
     dispose: () => {
       sphere.dispose();
       dotGeo.dispose();
-      glyphGeo.dispose();
       domeMaterial.dispose();
       dotMaterial.dispose();
-      glyphMaterial.dispose();
     },
   };
 }
