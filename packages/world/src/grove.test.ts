@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { composeGroveTree, groveMask, pickTreeKind, type GroveFieldLike, type GroveSpec } from './scatterTrees';
+import { composeGroveTree, groundSink, groveMask, pickTreeKind, type GroveFieldLike, type GroveSpec } from './scatterTrees';
 import { PlanetField, chunkList, scatterChunkTrees, type PlanetParams, type PlanetVegetationFamily } from './planet';
 
 // Bäume v3: Earle-Komposition (Haine an Höhenlinien, Wiesen, Solitäre, freie Felswände)
@@ -150,5 +150,22 @@ describe('Earle-Komposition (grove)', () => {
       total += a.length;
     }
     expect(total).toBeGreaterThan(50);
+  });
+});
+
+describe('Bodenhaftung (groundSink)', () => {
+  const base = { params: { radius: 32, seed: 1 }, heightNormAt: () => 0, surfaceAt: () => 0 };
+  const d: [number, number, number] = [0, 1, 0];
+
+  it('Kuppe: der Baum sinkt bis zur Netz-Sehne', () => {
+    const crest = { ...base, heightAt: (dx: number) => 3 * (1 - Math.abs(dx) * 20) };
+    expect(groundSink(crest, d, 0.8)).toBeGreaterThan(0.2);
+    expect(groundSink(crest, d, 0.8)).toBeLessThanOrEqual(1.5);
+  });
+
+  it('Ebene und Mulde: kein Absenken; ohne Höhenfunktion 0', () => {
+    expect(groundSink({ ...base, heightAt: () => 1 }, d, 0.8)).toBeCloseTo(0, 6);
+    expect(groundSink({ ...base, heightAt: (dx: number) => Math.abs(dx) * 20 }, d, 0.8)).toBe(0);
+    expect(groundSink(base, d, 0.8)).toBe(0);
   });
 });

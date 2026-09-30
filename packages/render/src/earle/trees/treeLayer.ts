@@ -83,9 +83,12 @@ export interface TreeEntry {
   withDots: boolean;
 }
 
-export type CrownKind = 'dome' | 'column' | 'pine';
+/** Kronen-Meshes: Kuppel-Masse, dieselbe fein aufgelöst für große Bäume (Fokus, Solitäre), Säule, Stufenkiefer. */
+export type CrownKind = 'dome' | 'domeHi' | 'column' | 'pine';
 export type TrunkKind = 'fork' | 'pole' | 'fan' | 'oak';
-export const CROWN_KINDS: CrownKind[] = ['dome', 'column', 'pine'];
+export const CROWN_KINDS: CrownKind[] = ['dome', 'domeHi', 'column', 'pine'];
+/** Ab diesem Kronenradius (Welteinheiten, waagrecht) nimmt eine Kuppel die feine Geometrie. */
+const DOME_HI_RADIUS = 1.45;
 export const TRUNK_KINDS: TrunkKind[] = ['fork', 'pole', 'fan', 'oak'];
 
 /** Form je Baumart (Einheit Kronenradius r). */
@@ -229,7 +232,7 @@ export class TreeLayer {
 
     // Detailstufe aus der Qualitätsstufe (Hoch: 60+ Punkte je Baum): feinere Teilkuppeln, glattere Silhouetten
     const detail = options.dotsPerTree[0] >= 50 ? 'hoch' : 'mobil';
-    this.templates = { dome: createDomeCrown(detail), column: createColumnCrown(detail), pine: createPineCrown() };
+    this.templates = { dome: createDomeCrown(detail), domeHi: createDomeCrown(detail === 'hoch' ? 'ultra' : 'hoch'), column: createColumnCrown(detail), pine: createPineCrown() };
     this.laceShell = createLaceShell(LACE_ROSETTES);
     this.oak = createOakTrunk(3);
 
@@ -251,12 +254,13 @@ export class TreeLayer {
     const crowns = {} as Record<CrownKind, InstancedMesh>;
     const stippleOf: Record<CrownKind, { cell: number; size: number; flowers: boolean }> = {
       dome: { cell: 0.11, size: 0.3, flowers: true },
+      domeHi: { cell: 0.11, size: 0.3, flowers: true },
       column: { cell: 0.1, size: 0.3, flowers: false },
       pine: { cell: 0.05, size: 0.3, flowers: false },
     };
     for (const kind of CROWN_KINDS) {
       const geometry = this.templates[kind].geometry;
-      this.attachTreeAttributes(geometry, options.capacity.trees);
+      this.attachTreeAttributes(geometry, kind === 'domeHi' ? 64 : options.capacity.trees);
       const row = treeC().x;
       const world = arrayElement(shared.rowWorld, row);
       const cfg = stippleOf[kind];
@@ -287,7 +291,7 @@ export class TreeLayer {
         castWeight: kind === 'pine' ? null : castWeight,
       });
       this.materials.push(material);
-      const mesh = new InstancedMesh(geometry, material, options.capacity.trees);
+      const mesh = new InstancedMesh(geometry, material, kind === 'domeHi' ? 64 : options.capacity.trees);
       mesh.name = `planet-crown-${kind}`;
       mesh.castShadow = true;
       mesh.receiveShadow = true; // Schlagschatten anderer Bäume und Hügel: Krone wird Tinte (eine Tintenform)
@@ -533,6 +537,12 @@ export class TreeLayer {
     return form.thick * clampW;
   }
 
+  /** Kronen-Mesh eines Baums: große Kuppeln (Fokus, Solitäre) nehmen die feine Geometrie. */
+  private crownMeshOf(t: PlanetTree, form: KindForm): CrownKind {
+    if (form.crown !== 'dome') return form.crown ?? 'dome';
+    return t.canopyRadius * form.crownS[0] >= DOME_HI_RADIUS ? 'domeHi' : 'dome';
+  }
+
   /** Instanzmatrix der Krone (Planetenraum). */
   crownMatrix(t: PlanetTree, form: KindForm, q: Quaternion, out: Matrix4): Matrix4 {
     const r = t.canopyRadius;
@@ -567,14 +577,14 @@ export class TreeLayer {
         continue;
       }
       const form = TREE_FORMS[e.tree.kind];
-      if (form.crown) perCrown.get(form.crown)!.push(e);
+      if (form.crown) perCrown.get(this.crownMeshOf(e.tree, form))!.push(e);
       if (form.trunk) perTrunk.get(form.trunk)!.push(e);
       hMax = Math.max(hMax, TREE_PROPORTIONS[e.tree.kind].top * e.tree.canopyRadius * Math.max(1, this.aspect(e.tree)));
     }
     const q = new Quaternion();
     for (const kind of CROWN_KINDS) {
       const mesh = this.crowns[kind];
-      const list = perCrown.get(kind)!.slice(0, cap);
+      const list = perCrown.get(kind)!.slice(0, kind === 'domeHi' ? 64 : cap);
       const g = mesh.geometry;
       const a = g.getAttribute('treeA') as InstancedBufferAttribute;
       const b = g.getAttribute('treeB') as InstancedBufferAttribute;

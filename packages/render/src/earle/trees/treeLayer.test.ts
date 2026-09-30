@@ -129,7 +129,7 @@ describe('Bäume v3: Punkte ohne Ploppen', () => {
     const veg = makeVegetation();
     veg.setContent(entries(trees(0.05, 0.02, 12), 1), []);
     const t = veg.trees;
-    expect(t.crowns.dome.count).toBe(8); // dome, umbrella, lace, jewel je zweimal
+    expect(t.crowns.dome.count + t.crowns.domeHi.count).toBe(8); // dome, umbrella, lace, jewel je zweimal
     expect(t.crowns.pine.count).toBe(2);
     expect(t.trunks.oak.count).toBe(2);
     expect(t.trunks.fan.count).toBe(4);

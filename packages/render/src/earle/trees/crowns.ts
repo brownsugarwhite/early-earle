@@ -185,14 +185,15 @@ function flatten(part: Part, f: number): void {
  * Kuppel-Masse (Hainbaum, Schirm- und Spitzenbaum-Kappe): Kern + 12 Teilkuppeln in drei Kränzen, Hüllzentrum im
  * Ursprung, Radius ≈ 1, y um DOME_FLAT gestaucht. ≈ 330 Vertices.
  */
-export function createDomeCrown(detail: 'hoch' | 'mobil' = 'hoch'): CrownTemplate {
+export function createDomeCrown(detail: 'ultra' | 'hoch' | 'mobil' = 'hoch'): CrownTemplate {
   const caps = domeCaps();
   // Kappen wölben sich sichtbar aus der Masse, die Hülle führt das Licht (die Krone leuchtet als eine Form)
   const shade = blendShade(0.24);
   const part = emptyPart();
-  const hi = detail === 'hoch';
-  ellipsoid(part, [0, 0, 0], 0.8, 0.8, 0.8, hi ? 12 : 9, hi ? 8 : 6, blendShade(0.1));
-  for (const c of caps) cap(part, scale(c.dir, c.dist), c.rc, c.dir, (100 * Math.PI) / 180, hi ? 8 : 6, 3, shade);
+  // Ultra: für große Fokus- und Solitärbäume (glatte Silhouette auch bildfüllend)
+  const [ew, eh, ca, cr] = detail === 'ultra' ? [20, 13, 16, 6] : detail === 'hoch' ? [12, 8, 8, 3] : [9, 6, 6, 3];
+  ellipsoid(part, [0, 0, 0], 0.8, 0.8, 0.8, ew, eh, blendShade(0.1));
+  for (const c of caps) cap(part, scale(c.dir, c.dist), c.rc, c.dir, (100 * Math.PI) / 180, ca, cr, shade);
   flatten(part, DOME_FLAT);
   // Proben für Punkte: auf den äußeren Kappenflächen, nicht in Nachbarkappen
   const rand = mulberry32(hash32('dome-samples-v3'));

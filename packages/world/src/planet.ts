@@ -1,6 +1,6 @@
 import { GradientNoise3 } from './noise';
 import { hash32, mulberry32 } from './rng';
-import { TREE_KIND_LIST, TREE_PROPORTIONS, composeGroveTree, type TreeInstance, type TreeKind } from './scatterTrees';
+import { TREE_KIND_LIST, TREE_PROPORTIONS, composeGroveTree, groundSink, type TreeInstance, type TreeKind } from './scatterTrees';
 import type { Vec3 } from './capPatch';
 import { areaSplit, decideWorld, pathLongitude, smoothstep01, wrapAngle, type WorldTables } from './worldLayout';
 
@@ -801,6 +801,8 @@ export interface ChunkScatterOptions {
   clear?: (p: Vec3, radius: number) => boolean;
   /** Rand in lokalen uv, in dem nichts steht (Standard 0.02). */
   edgeMargin?: number;
+  /** Gitterabstand des Chunk-Netzes in Welteinheiten: Bäume sinken auf Kuppen so tief wie die Netz-Sehne (kein Schweben). */
+  meshSpacing?: number;
 }
 
 /** Poisson-Disc im lokalen Chunk-Raum, deterministisch über `hash32('chunk', zone, face, cx, cy)`. */
@@ -921,6 +923,9 @@ export function scatterChunkTrees(field: PlanetField, id: ChunkId, options: Chun
     const prop = TREE_PROPORTIONS[kind];
     const canopyRadius = prop.radius * scale;
     field.surfaceAt(d[0], d[1], d[2], pos, nor);
+    // Bodenhaftung auf dem Dreiecksnetz (Kuppen/Grate: Netz unter der glatten Oberfläche), scatterTrees.ts
+    const sink = options.meshSpacing ? groundSink(field, d, options.meshSpacing) : 0;
+    if (sink > 0) for (let k = 0; k < 3; k++) pos[k] = pos[k]! - d[k]! * sink;
     if (isCleared(field, options, pos, canopyRadius)) continue;
     const trunkHeight = prop.trunk * canopyRadius;
     const hullH = prop.hull * canopyRadius;

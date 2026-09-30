@@ -816,7 +816,9 @@ export class EarlePlanet {
       for (const d of dots) if (Math.hypot(p[0] - d[0], p[1] - d[1], p[2] - d[2]) < cp + radius * 0.5) return true;
       return false;
     };
-    const trees = scatterChunkTrees(this.field, id, { densityScale: q.densityScale, clear });
+    // meshSpacing: Bäume sinken auf Kuppen/Graten bis zur Netz-Sehne (Bäume v3, kein Schweben); Halbdiagonale → Kante
+    const meshSpacing = (this.options.radius * this.angularRadius * Math.SQRT2) / Math.max(1, q.chunkRes - 1);
+    const trees = scatterChunkTrees(this.field, id, { densityScale: q.densityScale, clear, meshSpacing });
     const props = scatterChunkProps(this.field, id, { densityScale: q.densityScale, trashScale: this.trashScale, clear });
     const nodeRange: [number, number] = nodeIdx.length > 0 ? [Math.min(...nodeIdx), Math.max(...nodeIdx)] : [nearestIdx, nearestIdx];
     return { mesh, trees, props, nodeRange };

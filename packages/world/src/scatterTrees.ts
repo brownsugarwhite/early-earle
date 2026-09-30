@@ -133,6 +133,37 @@ export interface GroveFieldLike {
   readonly params: { radius: number; seed: number };
   heightNormAt(dx: number, dy: number, dz: number): number;
   surfaceAt(dx: number, dy: number, dz: number, outPos: Vec3, outNormal: Vec3): number;
+  /** Geländehöhe in Welteinheiten (für die Bodenhaftung auf dem Dreiecksnetz). */
+  heightAt?(dx: number, dy: number, dz: number): number;
+}
+
+/**
+ * Bodenhaftung: wie tief ein Baum unter die analytische Oberfläche sinken muss, damit er auch auf dem gröberen
+ * Dreiecksnetz des Chunks nicht schwebt. Auf Kuppen und Graten liegt das Netz (Sehne zwischen den Gitterpunkten)
+ * unter der glatten Oberfläche; geschätzt wird die tiefste Sehne über ±spacing/2 in zwei Richtungen. In Mulden liegt
+ * das Netz höher — dann steckt der Fuß ohnehin im Boden (0).
+ */
+export function groundSink(field: GroveFieldLike, dir: Vec3, spacing: number): number {
+  if (!field.heightAt) return 0;
+  const R = field.params.radius;
+  const [dx, dy, dz] = dir;
+  const h0 = field.heightAt(dx, dy, dz);
+  // Tangentialbasis
+  const ax = Math.abs(dy) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+  let t1 = [ax[1]! * dz - ax[2]! * dy, ax[2]! * dx - ax[0]! * dz, ax[0]! * dy - ax[1]! * dx];
+  const l1 = Math.hypot(t1[0]!, t1[1]!, t1[2]!) || 1;
+  t1 = t1.map((v) => v / l1);
+  const t2 = [dy * t1[2]! - dz * t1[1]!, dz * t1[0]! - dx * t1[2]!, dx * t1[1]! - dy * t1[0]!];
+  const e = (spacing * 0.5) / R;
+  const h = (t: number[], s: number): number => {
+    const x = dx + t[0]! * e * s;
+    const y = dy + t[1]! * e * s;
+    const z = dz + t[2]! * e * s;
+    const l = Math.hypot(x, y, z) || 1;
+    return field.heightAt!(x / l, y / l, z / l);
+  };
+  const chord = Math.min((h(t1, 1) + h(t1, -1)) * 0.5, (h(t2, 1) + h(t2, -1)) * 0.5);
+  return Math.max(0, Math.min(1.5, h0 - chord));
 }
 
 export interface GroveTree {
