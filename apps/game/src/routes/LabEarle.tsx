@@ -130,7 +130,7 @@ function LabEarlePlanet() {
   const [viewWorld, setViewWorld] = useState(-1);
   const [showRef, setShowRef] = useState(searchParams.get('ref') === '1');
   const [refMissing, setRefMissing] = useState(false);
-  const controller = useMemo(() => new EarleLabScene(initial), [initial]);
+  const controller = useMemo(() => new EarleLabScene(initial, { progressFromUrl: searchParams.has('progress') }), [initial, searchParams]);
 
   useEffect(() => {
     controller.setParams(params);

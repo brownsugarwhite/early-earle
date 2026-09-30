@@ -83,6 +83,8 @@ const T_DEPART = 1.3;
 const T_CELEBRATE_AT = 0.69;
 const T_CELEBRATE = 0.78;
 const T_GLIDE = 1.0;
+/** Mindestabstand (Welteinheiten) der Kartenkamera über Felswänden, Türmen und Wahrzeichen zwischen ihr und dem Fokus. */
+const MAP_CLEARANCE = 6.5;
 /** Farther than this (plane units), a glide to a node jumps to its last stretch first (0.4 of this distance). */
 const GLIDE_JUMP = 150;
 /**
@@ -106,6 +108,8 @@ const _m4 = new Matrix4();
 const _v = new Vector3();
 const _v2 = new Vector3();
 const _v3 = new Vector3();
+const _cw = new Vector3();
+const _cp = new Vector3();
 const _q = new Quaternion();
 const _q2 = new Quaternion();
 
@@ -307,12 +311,21 @@ export class FlowScene implements SceneController {
     if (this.phase === 'map' && elapsed >= this.cameraTweenUntil && world.cameraRailFor(useFlowStore.getState().current, this.railScratch)) this.applyPose(this.mapPose());
     // A standing hero keeps its node (the display follows the view).
     if (this.phase === 'map' && !hero.isFlying) hero.setPose(this.nodePose(useFlowStore.getState().current));
-    // Map lift follows the current node's elevation (a level on a rock plateau lifts the orbit camera)
+    // Map lift follows the current node's elevation (a level on a rock plateau lifts the orbit camera) while the view is
+    // near it; the camera also rises over rock walls, towers and landmarks between it and the focus (panning far out)
     if (this.phase === 'map') {
-      const want = this.liftFor(useFlowStore.getState().current);
-      if (Math.abs(want - this.mapLift) > 1e-3) {
-        this.mapLift += (want - this.mapLift) * (1 - Math.exp(-dt / 0.45));
-        if (elapsed >= this.cameraTweenUntil && !world.cameraRailFor(useFlowStore.getState().current, this.railScratch)) this.applyPose(this.mapPose());
+      const cur = useFlowStore.getState().current;
+      const n = world.layout.node(cur).position;
+      const f = world.focus;
+      const want = Math.hypot(n[0] - f.x, n[2] - f.z) < 14 ? this.liftFor(cur) : 0;
+      const rise = this.clearanceRise();
+      const k = 1 - Math.exp(-dt / 0.45);
+      const moved = Math.abs(want - this.mapLift) > 1e-3 || Math.abs(rise - this.mapRise) > 1e-3;
+      if (moved) {
+        this.mapLift += (want - this.mapLift) * k;
+        // rise quickly, sink slowly (no bobbing over a ragged wall)
+        this.mapRise += (rise - this.mapRise) * (rise > this.mapRise ? Math.min(1, k * 2.5) : k * 0.6);
+        if (elapsed >= this.cameraTweenUntil && !world.cameraRailFor(cur, this.railScratch)) this.applyPose(this.mapPose());
       }
     }
 
@@ -479,6 +492,7 @@ export class FlowScene implements SceneController {
     this.panBall?.stop();
     this.mapLift = this.liftFor(index);
     this.applyView(this.viewFor(index));
+    this.mapRise = this.clearanceRise();
   }
 
   /** Same, as a glide over the plane (cancelled by a drag). */
@@ -530,12 +544,43 @@ export class FlowScene implements SceneController {
    * The plain orbit view over the apex (rig space; the view brings the node under it), lifted by the elevation of a
    * level on a landmark (a rock plateau, a ruin terrace): the camera keeps the same framing above the stone.
    */
-  private orbitPose(zoom = this.zoom, view: MapViewLike = this.mapViewCamera(), lift = this.mapLift): CameraPose {
+  private orbitPose(zoom = this.zoom, view: MapViewLike = this.mapViewCamera(), lift = this.mapLift, rise = this.mapRise): CameraPose {
     const position = view.offset.clone().multiplyScalar(zoom);
-    position.y += lift;
+    position.y += lift + rise;
     const look = _v.copy(view.look);
     look.y += lift;
     return { position, quaternion: lookAtQuaternion(position, look, _Y, new Quaternion()), fov: view.fov };
+  }
+
+  /** Camera-only rise of the map view (clearance over rocks near the camera; the look point stays). */
+  private mapRise = 0;
+
+  /**
+   * How far the orbit camera must rise so it stays `MAP_CLEARANCE` above every surface (rock walls, towers, mesas,
+   * landmark tops) under it and on the way to the focus — sampled on the plane between the camera's foot and the focus.
+   */
+  private clearanceRise(): number {
+    const world = this.world;
+    if (!world) return 0;
+    const cam = world.camera;
+    cam.getWorldPosition(_cw);
+    const c = world.fromDisplay(_cw, _cp);
+    const baseH = c.y - this.mapRise - this.mapLift;
+    const f = world.focus;
+    const dx = f.x - c.x;
+    const dz = f.z - c.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const sx = -dz / len;
+    const sz = dx / len;
+    let maxH = -Infinity;
+    for (const t of [0, 0.2, 0.4, 0.6]) {
+      for (const side of [-2.5, 0, 2.5]) {
+        const x = c.x + dx * t + sx * side;
+        const z = c.z + dz * t + sz * side;
+        maxH = Math.max(maxH, world.walkableHeight(x, z));
+      }
+    }
+    return Math.max(0, maxH + MAP_CLEARANCE - baseH);
   }
 
   /** Elevation of node `index` above the ground around it (levels on landmarks), 0 elsewhere. */

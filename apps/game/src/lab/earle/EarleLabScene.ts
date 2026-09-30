@@ -150,8 +150,15 @@ export class EarleLabScene implements SceneController {
   private lastCurvature = -1;
   /** Anzahl angeforderter Schattenpässe (für die Leerlauf-Kontrolle). */
   shadowPasses = 0;
+  /**
+   * Die gewählte Welt geheilt zeigen: eine Autorenwelt weiter vorn auf der Route wäre beim Standard-Fortschritt noch
+   * kahl (ihre Bäume wachsen erst mit dem Fortschritt) — das Lab zeigt sie geheilt (wirksamer Fortschritt = mindestens
+   * ihr letzter Level). Aus, sobald `?progress=` oder der Regler den Fortschritt setzt.
+   */
+  private progressFollowsWorld: boolean;
 
-  constructor(initial: Partial<EarleLabParams> = {}) {
+  constructor(initial: Partial<EarleLabParams> = {}, options: { progressFromUrl?: boolean } = {}) {
+    this.progressFollowsWorld = options.progressFromUrl !== true;
     this.params = { ...DEFAULT_EARLE_PARAMS, ...initial };
     this.preset = resolveQuality(this.params.quality);
     this.sun = new SunRig({
@@ -233,7 +240,9 @@ export class EarleLabScene implements SceneController {
     this.pathLayout = new FlowPath(world, this.treeSite, HERO_TREE_WORLD);
     world.setPathCorridor((x0, z0, x1, z1) => this.pathLayout!.corridor(x0, z0, x1, z1));
     this.trash = createPlanetTrash(world, this.pathLayout, { quality: p.name, seed: this.params.seed, densityScale: this.params.trash / 100 });
-    this.trash.setProgress(this.params.progress, false);
+    this.trash.setProgress(this.currentProgress, false);
+    // neue Welt: der wirksame Fortschritt wird in applyParams wieder gesetzt
+    this.effectiveProgress = -1;
     world.plane.add(this.trash.group);
     this.buildNodePath();
     world.terrainBands.value = this.params.bands;
@@ -291,8 +300,8 @@ export class EarleLabScene implements SceneController {
       sunDirWorld: this.sun.directionWorld(new Vector3()),
       onProgress: (cur, done) => site?.setPathState(cur, done),
     });
-    const current = Math.max(0, Math.min(this.params.progress, layout.lastPlayable));
-    this.nodePath.setProgress(current, this.params.progress);
+    const current = Math.max(0, Math.min(this.currentProgress, layout.lastPlayable));
+    this.nodePath.setProgress(current, this.currentProgress);
   }
 
   /** Pixel-Ratio-Override: CanvasHost setzt min(DPR, 2), das Preset deckelt weiter (Mobil 1.5). */
@@ -343,6 +352,8 @@ export class EarleLabScene implements SceneController {
 
   private applyParams(next: EarleLabParams, force: boolean): void {
     const prev = this.params;
+    // Regler bewegt → der Fortschritt gehört dem Benutzer
+    if (!force && next.progress !== prev.progress) this.progressFollowsWorld = false;
     const keys = Object.keys(next) as Array<keyof EarleLabParams>;
     const changed = force || keys.some((k) => next[k] !== prev[k]);
     this.params = next;
@@ -366,15 +377,19 @@ export class EarleLabScene implements SceneController {
         this.trash?.setDensity(Math.max(0, next.trash) / 100);
         this.shadowDirty = true;
       }
-      if (force || next.progress !== prev.progress || next.cracksClosed !== prev.cracksClosed) {
-        world.setProgress(next.progress);
-        world.setCracksClosedBelow(next.cracksClosed ? 1e9 : world.layout.segmentOfLevel(next.progress + 1) + 1);
-        this.treeSite?.setProgress(next.progress);
-        this.trash?.setProgress(next.progress, !force);
+      // Wirksamer Fortschritt: der Regler, oder (Standard) mindestens der letzte Level der gewählten Autorenwelt
+      const progress = this.progressFollowsWorld && next.world >= 0 ? Math.max(next.progress, this.healedProgress(next.world)) : next.progress;
+      const before = this.effectiveProgress;
+      this.effectiveProgress = progress;
+      if (force || progress !== before || next.cracksClosed !== prev.cracksClosed) {
+        world.setProgress(progress);
+        world.setCracksClosedBelow(next.cracksClosed ? 1e9 : world.layout.segmentOfLevel(progress + 1) + 1);
+        this.treeSite?.setProgress(progress);
+        this.trash?.setProgress(progress, !force);
         const last = this.pathLayout?.lastPlayable ?? LEVEL_COUNT - 1;
-        this.nodePath?.setProgress(Math.max(0, Math.min(next.progress, last)), next.progress);
+        this.nodePath?.setProgress(Math.max(0, Math.min(progress, last)), progress);
         this.shadowDirty = true;
-        if (!force && next.progress !== prev.progress) this.turnToNode(Math.max(0, Math.min(next.progress, last)));
+        if (!force && next.progress !== prev.progress) this.turnToNode(Math.max(0, Math.min(progress, last)));
       }
       if (!force && next.path !== prev.path) this.buildNodePath();
       if (!force && next.world !== prev.world && next.world >= 0) this.turnToWorld(next.world);
@@ -553,6 +568,24 @@ export class EarleLabScene implements SceneController {
    * Bildfokus einer Welt (Ebene): ihr Fokus-Element (Scheune, Wurzelbaum …) oder Bildanker im Pfadabschnitt der Welt
    * (Autorenwelten auf ihrer Route, prozedurale Welten dahinter), sonst die Mitte des Abschnitts.
    */
+  /** Wirksamer Fortschritt (Regler oder die geheilte gewählte Welt); −1 = noch nicht gesetzt. */
+  private effectiveProgress = -1;
+
+  private get currentProgress(): number {
+    return this.effectiveProgress >= 0 ? this.effectiveProgress : this.params.progress;
+  }
+
+  /** Fortschritt, bei dem die Autorenwelt `id` ganz geheilt ist (letzter Level ihres Abschnitts geschafft); sonst 0. */
+  private healedProgress(id: number): number {
+    const layout = this.world?.layout;
+    if (!layout) return 0;
+    for (let k = 0; k < layout.authored; k++) {
+      const seg = layout.segment(k);
+      if (seg.world === id && seg.levels > 0) return Math.min(LEVEL_COUNT, seg.firstLevel + seg.levels + 1);
+    }
+    return 0;
+  }
+
   private worldFocusPoint(id: number): { x: number; z: number } | null {
     const world = this.world;
     if (!world) return null;
