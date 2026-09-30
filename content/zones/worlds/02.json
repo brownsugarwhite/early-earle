@@ -31,6 +31,20 @@
     "forestThreshold": 0.4
   },
   "props": { "animals": 0.01 },
+  "trash": {
+    "style": "nebel",
+    "debris": 0.5,
+    "debrisKinds": { "shard": 0.3, "girder": 0.25, "bale": 0.15, "crate": 0.15, "coil": 0.15 },
+    "cluster": [4, 9],
+    "ruins": 0.014,
+    "ruinHeight": [1.8, 3.4],
+    "ruinShapes": [0.3, 0.25, 0.25, 0.2],
+    "goo": 0.006,
+    "veil": 0.35,
+    "veilHeights": [0.9, 1.7],
+    "neon": 0.45,
+    "pockets": { "density": 0.0025, "radius": [4, 7] }
+  },
   "fogStripes": 1,
   "fog": { "start": 8, "range": 16 },
   "view": {

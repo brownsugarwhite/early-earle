@@ -32,6 +32,21 @@
     "forestThreshold": 0.46
   },
   "props": { "rocks": 0.004 },
+  "trash": {
+    "style": "schnee",
+    "debris": 1.0,
+    "cluster": [5, 11],
+    "heaps": 0.012,
+    "heapHeight": [2.2, 3.8],
+    "heapShapes": [0.3, 0.5, 0.2],
+    "ruins": 0.004,
+    "goo": 0.012,
+    "vents": 0.006,
+    "veil": 0.45,
+    "veilHeights": [1.2, 1.9],
+    "neon": 0.55,
+    "pockets": { "density": 0.0022, "radius": [4, 7] }
+  },
   "fogStripes": 0,
   "fog": { "start": 10, "range": 18 },
   "view": {

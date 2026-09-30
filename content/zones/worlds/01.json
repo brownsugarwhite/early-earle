@@ -32,6 +32,17 @@
     "motif": "cross"
   },
   "props": { "animals": 0.012 },
+  "trash": {
+    "style": "wald",
+    "debris": 0.25,
+    "debrisKinds": { "shard": 0.5, "bale": 0.2, "crate": 0.3 },
+    "cluster": [3, 6],
+    "ruins": 0.01,
+    "ruinHeight": [1.6, 3.0],
+    "neon": 0,
+    "heals": false,
+    "pockets": { "density": 0.0015, "radius": [3, 5] }
+  },
   "fogStripes": 0.2,
   "fog": { "start": 9, "range": 16 },
   "view": {

@@ -34,6 +34,21 @@
     "rowVariants": 2
   },
   "props": { "animals": 0.014, "pools": 0.006 },
+  "trash": {
+    "style": "sirup",
+    "debris": 1.1,
+    "debrisKinds": { "pipe": 0.3, "barrel": 0.24, "can": 0.1, "girder": 0.1, "crate": 0.1, "tyre": 0.1, "coil": 0.06 },
+    "cluster": [5, 12],
+    "heaps": 0.007,
+    "heapHeight": [2.2, 3.8],
+    "heapShapes": [0.5, 0.2, 0.3],
+    "goo": 0.03,
+    "vents": 0.008,
+    "veil": 0.5,
+    "veilHeights": [0.9, 1.7],
+    "neon": 0.7,
+    "pockets": { "density": 0.003, "radius": [4, 7] }
+  },
   "fogStripes": 0.15,
   "fog": { "start": 8, "range": 16 },
   "view": {
