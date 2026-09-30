@@ -1,5 +1,4 @@
-import { Box3, DirectionalLight, Matrix4, Object3D, Sphere, Vector3 } from 'three/webgpu';
-import type { Mesh } from 'three/webgpu';
+import { Box3, DirectionalLight, Matrix4, Object3D, Vector3 } from 'three/webgpu';
 import type { DepthTexture, LightShadow, NodeBuilder, PerspectiveCamera, UniformNode } from 'three/webgpu';
 import { Fn, fwidth, lightTargetDirection, normalView, smoothstep, uniform } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node } from './tsl';
@@ -8,6 +7,7 @@ import { shadowFactorNode, type ShadowFactorSource } from '../shadow/shadowFacto
 import { ShadowTint } from '../shadow/shadowTint';
 import { createDefaultShadowFilter, createDepthCompare, createEarleShadowFilter, createShadowFrameUniforms, type ShadowFrameUniforms, type ShadowTaps } from '../shadow/filters';
 import type { CascadeSize, ReceiverVolume } from '../shadow/fit';
+import { PlanetVolumeCollector } from '../shadow/volumes';
 import { needsManualDepthCompare, type ManualCompareOption } from '../shadow/webglCompat';
 
 /**
@@ -115,13 +115,19 @@ export const PLANET_COVER_TOLERANCE = 1.2;
  * Schale = Radius + [−Krümmungs-Warp, hMax], Bodenschätzung aus dem analytischen Feld inklusive desselben Warps wie im
  * Vertex-Shader (ferne Erde sinkt um (1 − cos θ)·c·R). `planet` darf ein Getter sein (Labs bauen die Welt neu).
  *
- * Schatten v3: alle Kaskaden sitzen am Boden (± `PLANET_COVER_TOLERANCE`); Empfänger über dem Boden im Planeten
- * (Riesenbaum-Stamm und -Äste, Brett, Requisiten mit `receiveShadow`) werden je Refit als Kugeln eingesammelt — alles
- * außer den Geländechunks (`chunk-*` oder `userData.shadowGround = true`). `userData.shadowVolume = false` nimmt ein
- * Objekt aus.
+ * Schatten v3: alle Kaskaden sitzen am Boden (± `coverTolerance`, Standard `PLANET_COVER_TOLERANCE`); Empfänger, die
+ * deutlich darüber aufragen (Riesenbaum-Holz und -Kuppeln, Scheune), sammelt `PlanetVolumeCollector` je Refit als grobe
+ * Kugelhülle ein (`shadow/volumes.ts`: nur die Teile über dem Bodenband; flache, weite Schichten, große Instanz-Streu
+ * und Geländechunks nicht). `userData.shadowVolume = true | false` erzwingt bzw. verbietet ein Volumen,
+ * `userData.shadowGround = true` markiert Gelände.
  */
-export function planetShadowReceivers(planet: ShadowPlanetLike | (() => ShadowPlanetLike | null | undefined), planetObject: Object3D): ViewReceivers {
+export function planetShadowReceivers(
+  planet: ShadowPlanetLike | (() => ShadowPlanetLike | null | undefined),
+  planetObject: Object3D,
+  options: { coverTolerance?: number } = {},
+): ViewReceivers {
   const get = typeof planet === 'function' ? planet : () => planet;
+  const coverTolerance = options.coverTolerance ?? PLANET_COVER_TOLERANCE;
   const sphere = {
     center: planetObject,
     get radius(): number {
@@ -134,7 +140,7 @@ export function planetShadowReceivers(planet: ShadowPlanetLike | (() => ShadowPl
     get maxHeight(): number {
       return (get()?.field.hMax ?? 0) + 0.3;
     },
-    coverTolerance: PLANET_COVER_TOLERANCE,
+    coverTolerance,
     surface: (dirLocal: Vector3): number => {
       const p = get();
       if (!p) return 1;
@@ -145,39 +151,12 @@ export function planetShadowReceivers(planet: ShadowPlanetLike | (() => ShadowPl
       return r - away * c * p.options.radius;
     },
   };
-  const pool: ReceiverVolume[] = [];
-  const volumes = (): ReceiverVolume[] => {
-    let n = 0;
-    planetObject.traverseVisible((o) => {
-      const mesh = o as Mesh;
-      if (!mesh.isMesh || mesh.receiveShadow !== true) return;
-      const data = mesh.userData as { shadowGround?: boolean; shadowVolume?: boolean };
-      if (data.shadowGround === true || data.shadowVolume === false || mesh.name.startsWith('chunk-')) return;
-      const inst = mesh as Mesh & { isInstancedMesh?: boolean; boundingSphere?: Sphere | null; computeBoundingSphere?(): void };
-      let local: Sphere | null = null;
-      if (inst.isInstancedMesh) {
-        if (!inst.boundingSphere) inst.computeBoundingSphere?.();
-        local = inst.boundingSphere ?? null;
-      } else {
-        if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
-        local = mesh.geometry.boundingSphere;
-      }
-      if (!local) return;
-      const v = pool[n] ?? (pool[n] = { center: new Vector3(), radius: 0 });
-      _sphere.copy(local).applyMatrix4(mesh.matrixWorld);
-      v.center.copy(_sphere.center);
-      // etwas Rand für den Krümmungs-Warp (GPU) und die Kaskaden-Kante
-      v.radius = _sphere.radius * 1.08 + 0.3;
-      n++;
-    });
-    pool.length = n;
-    return pool;
-  };
+  const collector = new PlanetVolumeCollector();
+  const volumes = (): ReceiverVolume[] => collector.collect(planetObject, get() ?? null, coverTolerance);
   return { sphere, volumes };
 }
 
 const _corner = new Vector3();
-const _sphere = new Sphere();
 const _min = new Vector3();
 const _max = new Vector3();
 const _m = new Matrix4();
@@ -387,9 +366,16 @@ export class SunRig implements ShadowFactorSource {
   /**
    * Ein-Zeilen-Integration für die Planetenkarte: Kaskaden an `camera`, Empfänger = Planetenschale mit Bodenschätzung
    * aus dem analytischen Feld (inkl. Krümmungs-Warp). `planet` darf ein Getter sein, wenn die Welt neu gebaut wird.
+   * `options.coverTolerance`: Höhe des Bodenbands (Standard `PLANET_COVER_TOLERANCE`), z. B. größer, wenn eine
+   * Instanz-Schicht hoher Empfänger (Wald mit empfangenden Kronen) auch am Bildrand Schlagschatten tragen soll.
    */
-  fitToPlanet(camera: PerspectiveCamera, planet: ShadowPlanetLike | (() => ShadowPlanetLike | null | undefined), planetObject: Object3D): void {
-    this.fitToView(camera, planetShadowReceivers(planet, planetObject));
+  fitToPlanet(
+    camera: PerspectiveCamera,
+    planet: ShadowPlanetLike | (() => ShadowPlanetLike | null | undefined),
+    planetObject: Object3D,
+    options: { coverTolerance?: number } = {},
+  ): void {
+    this.fitToView(camera, planetShadowReceivers(planet, planetObject, options));
   }
 
   /** Debug-Darstellung: 0 aus, 1 Kaskadenmuster, 2 Texelgitter. */
