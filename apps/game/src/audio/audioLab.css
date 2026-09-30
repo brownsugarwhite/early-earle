@@ -7,23 +7,23 @@
 .al-note { margin: -4px 0 12px; font-size: 13px; opacity: 0.75; }
 .al-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 10px; }
 .al-stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; font: 12px/1.2 ui-monospace, Menlo, monospace; }
-.al-stats span { padding: 6px 9px; background: var(--ink); color: var(--paper); box-shadow: 3px 1px 0 var(--khaki-deep); }
+.al-stats span { padding: 6px 9px; background: var(--ink); color: var(--paper); box-shadow: -3px 1px 0 var(--khaki-deep); }
 .al-stats b { color: var(--neon); }
-.al-bench { font: 12px ui-monospace, Menlo, monospace; padding: 8px 10px; background: var(--neon); color: var(--ink); box-shadow: 3px 1px 0 var(--ink-soft); }
+.al-bench { font: 12px ui-monospace, Menlo, monospace; padding: 8px 10px; background: var(--neon); color: var(--ink); box-shadow: -3px 1px 0 var(--ink-soft); }
 .al-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .al-sfx {
   font: inherit; font-weight: 900; font-size: 14px; text-align: left; padding: 14px 12px; min-height: 52px;
   background: var(--khaki); color: var(--ink); border: 0; cursor: pointer; box-shadow: var(--sun-shadow) var(--ink-soft);
   transition: transform 70ms ease, box-shadow 70ms ease;
 }
-.al-sfx:active { transform: translate(4px, 2px); box-shadow: 4px 1px 0 var(--ink-soft); background: var(--neon); }
+.al-sfx:active { transform: translate(-4px, 2px); box-shadow: -4px 1px 0 var(--ink-soft); background: var(--neon); }
 .al-sfx:focus-visible, .al-chip:focus-visible, .al-line:focus-visible { outline: none; box-shadow: var(--sun-shadow) var(--neon); }
 .al-sfx.al-wide { grid-column: span 2; background: var(--pink); }
 .al-pick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
 .al-pick-label { min-width: 64px; font-weight: 900; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
 .al-chip {
   font: inherit; font-weight: 700; font-size: 13px; padding: 8px 11px; background: var(--paper); color: var(--ink); border: 0; cursor: pointer;
-  box-shadow: 4px 2px 0 var(--ink-soft);
+  box-shadow: -4px 2px 0 var(--ink-soft);
 }
 .al-chip[data-on='true'] { background: var(--neon); }
 .al-chip:disabled { opacity: 0.45; cursor: default; }
@@ -38,7 +38,7 @@
 .al-text:focus { outline: none; box-shadow: var(--sun-shadow) var(--neon); }
 .al-select { max-width: 100%; font: inherit; font-size: 16px; padding: 10px 34px 10px 12px; background: var(--paper) var(--ee-chevron) no-repeat right 10px center / 14px 14px; color: var(--ink); border: 0; border-radius: 0; -webkit-appearance: none; appearance: none; box-shadow: var(--sun-shadow) var(--ink-soft); }
 .al-lines { display: flex; flex-wrap: wrap; gap: 8px; }
-.al-line { font: inherit; font-size: 13px; padding: 8px 10px; background: var(--teal); color: var(--ink); border: 0; cursor: pointer; box-shadow: 4px 2px 0 var(--ink-soft); text-align: left; }
+.al-line { font: inherit; font-size: 13px; padding: 8px 10px; background: var(--teal); color: var(--ink); border: 0; cursor: pointer; box-shadow: -4px 2px 0 var(--ink-soft); text-align: left; }
 .al-previews { display: grid; gap: 8px; }
 .al-preview { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center; padding: 8px 10px; background: rgba(15, 28, 34, 0.55); }
 .al-preview-label { font-weight: 700; }

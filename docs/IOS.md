@@ -90,7 +90,7 @@ Stand 2026-09-30. Die App hat keine Adresszeile — deshalb gibt es die **Werkst
 
 1. Auf dem Mac den HTTP-Dev-Server starten: `pnpm --filter @ee/game dev:http` (Port 5174, im ganzen WLAN erreichbar; HTTPS auf 5173 geht aus der App nicht — selbst signiertes Zertifikat).
 2. iPhone im **gleichen WLAN**. Fragt iOS beim ersten Verbinden nach **„Lokales Netzwerk“** → erlauben (später: `Einstellungen ▸ early earle ▸ Lokales Netzwerk`).
-3. In der Werkstatt steht oben das **Speicherziel**: „Mac verbunden · <Mac-Name>“ (grün) oder „Mac nicht erreichbar“ (rost). Die **Mac-Adresse** ist dort einstellbar (Standard `http://192.168.1.55:5174`, nur IP reicht: Port 5174 wird ergänzt), „Verbindung testen“ prüft sofort.
+3. In der Werkstatt steht oben das **Speicherziel**: „Mac verbunden · <Mac-Name>“ (grün) oder „Mac nicht erreichbar“ (rost). Die **Mac-Adresse** ist dort einstellbar (Standard `http://192.168.1.55:5174`, nur IP reicht: Port 5174 wird ergänzt; „Übernehmen“). **„Testen“** pingt den Mac und schreibt und löscht eine Wegwerfdatei (`content/genome/_werkstatt-test.json`) — „✓ Schreiben geht“ heißt: Speichern klappt. `earlyearle://werkstatt?test=1` macht das beim Öffnen.
 4. **Verbunden:** Level-, Wesen- und Map-Editor schreiben direkt nach `content/` auf dem Mac (gleicher Dev-Endpunkt `/__content/...` wie im Browser, mit Validierung). Hinweis „Gespeichert auf dem Mac“.
 5. **Nicht erreichbar:** gespeichert wird **lokal auf dem iPhone** („Lokal gespeichert“, der Speicher-Knopf ist dann khaki statt türkis/pink). Lokale Stände überstehen Neustarts. **„Teilen“** öffnet das iOS-Teilen-Blatt mit der JSON-Datei (AirDrop an den Mac, Dateien, Mail). Sobald der Mac wieder erreichbar ist, lädt der Editor den lokalen Stand als „ungesichert“ — **Sichern** bringt ihn auf den Mac (bei abweichendem Stand auf dem Mac mit Rückfrage).
 
@@ -101,6 +101,13 @@ Technik: `apps/game/src/editor/content/` (`target.ts` Speicherziel + Verbindungs
 - **Level-Editor** (schon iPhone-first): Status unter dem Levelnamen zeigt das Ziel („Auf dem Mac“ / „Lokal gespeichert“ / „Stand der App“), Reiter „Datei“: „Auf den Mac sichern“ bzw. „Lokal sichern“, „Teilen“.
 - **Wesen-Editor**: Vorschau oben mit wischbarer Vorschau-Leiste (Galerie/Einzeln/Vergleichen/Bewegung, Stufen als Auswahl), darunter eine Aktionszeile (Rückgängig, Wiederholen, Speichern, Teilen), Zonen und Bereiche als je eine wischbare Zeile.
 - **Map-Editor** (neu): die zehn Welten (`content/zones/worlds/NN.json`) und vier Zonen als Liste mit Farbstreifen; pro Datei ein flaches **Serigrafie-Plakat** der Palette (Himmelsbänder, Sonne, Hügel, Nebelstreifen, Kuppelbäume mit Sonnenpunkten), Reiter **Farben** (Antippen öffnet die iOS-Farbwahl), **Werte** (Hügel, Bäume, Nebel, Kamera), **Text**, **JSON**. Ungesicherte Änderungen bleiben auf dem Gerät; „Im Earle-Lab“ öffnet die Welt im Lab.
+
+**Geprüft im Simulator (iPhone Air, iOS 27, 2026-09-30)**
+
+- Native Map-Leiste „Spielen · Ton · 🔧“ (runde Glas-Pille, die Beschriftungen bleiben), Werkstatt, Labs mit Sheet (zu/halb/voll, Safe Areas), alle drei Editoren; die Editoren laden vom Mac („Auf dem Mac“).
+- Von `capacitor://localhost` zum Dev-Server: Ping, CORS-Preflight, `PUT` und `DELETE` — gegen `127.0.0.1:5186` und gegen eine LAN-IP (`192.168.1.55`, Test-Server): „Mac verbunden · ✓ Schreiben geht“, also ATS mit `NSAllowsLocalNetworking` in Ordnung. Auf dem echten iPhone kommt ggf. noch die Frage nach „Lokales Netzwerk“ dazu (nicht im Simulator prüfbar).
+- Screenshots: `docs/progress/werkstatt-app-*.png` (Simulator), `werkstatt-handy-*.png` (393 × 852), `werkstatt-desktop-*.png`.
+- Test-Builds ohne Tippen: `VITE_START_ROUTE="/werkstatt?test=1|/lab/earle?sheet=halb"` (mehrere Routen im Wechsel, `VITE_START_TOUR_MS`) und `VITE_MAC_URL=http://127.0.0.1:5186` vor `ios:sim` — `xcrun simctl openurl` fragt im Simulator erst „In ‚early earle‘ öffnen?“.
 
 **Bekannte Grenzen**
 

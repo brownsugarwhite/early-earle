@@ -34,20 +34,18 @@ async function expectStageFree(page: Page): Promise<void> {
   if (canvas && sheet) expect(canvas.y + canvas.height).toBeLessThanOrEqual(sheet.y + 1);
 }
 
-/** Waits until the sheet has stopped moving (its height transition runs on the main thread, slow under SwiftShader). */
-async function sheetSettled(page: Page): Promise<void> {
-  let last = -1;
-  await expect
-    .poll(
-      async () => {
-        const y = Math.round((await page.getByTestId('lab-sheet').boundingBox())?.y ?? -2);
-        const still = y === last;
-        last = y;
-        return still;
-      },
-      { intervals: [150], timeout: 10_000 },
-    )
-    .toBe(true);
+/**
+ * Waits until the sheet's top edge sits at its snap point: `halb` = 46 % of the frame (max 520 px) from the bottom,
+ * `voll` = the header's bottom. The height transition runs on the main thread, which is slow under SwiftShader —
+ * "not moving for a moment" is not enough there.
+ */
+async function sheetAt(page: Page, state: 'halb' | 'voll'): Promise<void> {
+  const target = await page.evaluate((s) => {
+    const frame = document.querySelector('[data-testid="lab-frame"]')!.getBoundingClientRect();
+    if (s === 'voll') return document.querySelector('.lab-header')!.getBoundingClientRect().bottom;
+    return frame.bottom - Math.min(frame.height * 0.46, 520);
+  }, state);
+  await expect.poll(async () => Math.abs(((await page.getByTestId('lab-sheet').boundingBox())?.y ?? -100) - target), { timeout: 15_000 }).toBeLessThan(3);
 }
 
 /** Without the Mac: every request to the content endpoint fails like an unreachable LAN address. */
@@ -102,7 +100,7 @@ test.describe('iPhone 393×852', () => {
     await page.getByTestId('lab-sheet-toggle').tap();
     await expect(frame).toHaveAttribute('data-sheet', 'halb');
     await expect(page.getByTestId('grid-level-select')).toBeVisible();
-    await sheetSettled(page);
+    await sheetAt(page, 'halb');
     await expectStageFree(page);
     const stageHalf = (await page.getByTestId('lab-stage').boundingBox())!.height;
     expect(stageHalf).toBeGreaterThan(852 * 0.5);
@@ -113,7 +111,7 @@ test.describe('iPhone 393×852', () => {
     const handle = (await page.getByTestId('lab-sheet-handle').boundingBox())!;
     await touchDrag(cdp, { x: handle.x + handle.width / 2, y: handle.y + 10 }, { x: handle.x + handle.width / 2, y: 90 }, 14);
     await expect(frame).toHaveAttribute('data-sheet', 'voll');
-    await sheetSettled(page);
+    await sheetAt(page, 'voll');
     const back = (await page.getByTestId('lab-back').boundingBox())!;
     expect((await page.getByTestId('lab-sheet').boundingBox())!.y).toBeGreaterThanOrEqual(back.y + back.height - 1);
     await expect(page.getByTestId('lab-back')).toBeVisible();

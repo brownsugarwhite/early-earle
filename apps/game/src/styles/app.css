@@ -146,13 +146,13 @@ code { font-family: ui-monospace, Menlo, monospace; background: rgba(255,255,255
 .lab-sheet-body .earle-ctl { flex: 1 1 140px; box-sizing: border-box; min-width: 0; }
 .lab-sheet-body .blob-lab-controls,
 .lab-sheet-body .creature-controls { max-height: none; overflow: visible; }
-/* Eckige Schieber (Labs, Wesen- und Map-Editor): Spur in Khaki-Tiefe, Papier-Griff mit hartem Schatten. */
-:is(.lab-sheet, .ced-frame, .map-ed) input[type='range'] { -webkit-appearance: none; appearance: none; height: 34px; margin: 0; padding: 0; background: transparent; cursor: pointer; }
-:is(.lab-sheet, .ced-frame, .map-ed) input[type='range']::-webkit-slider-runnable-track { height: 8px; background: var(--khaki-deep); }
-:is(.lab-sheet, .ced-frame, .map-ed) input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; margin-top: -9px; border: 0; border-radius: 0; background: var(--paper); box-shadow: -4px 2px 0 var(--ink); }
-:is(.lab-sheet, .ced-frame, .map-ed) input[type='range']:active::-webkit-slider-thumb { background: var(--neon); }
-:is(.lab-sheet, .ced-frame, .map-ed) input[type='range']::-moz-range-track { height: 8px; background: var(--khaki-deep); }
-:is(.lab-sheet, .ced-frame, .map-ed) input[type='range']::-moz-range-thumb { width: 26px; height: 26px; border: 0; border-radius: 0; background: var(--paper); box-shadow: -4px 2px 0 var(--ink); }
+/* Eckige Schieber (Labs, Audio-Lab, Wesen- und Map-Editor): Spur in Khaki-Tiefe, Papier-Griff mit hartem Schatten. */
+:is(.lab-sheet, .audio-lab, .ced-frame, .map-ed) input[type='range'] { -webkit-appearance: none; appearance: none; height: 34px; margin: 0; padding: 0; background: transparent; cursor: pointer; }
+:is(.lab-sheet, .audio-lab, .ced-frame, .map-ed) input[type='range']::-webkit-slider-runnable-track { height: 8px; background: var(--khaki-deep); }
+:is(.lab-sheet, .audio-lab, .ced-frame, .map-ed) input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; margin-top: -9px; border: 0; border-radius: 0; background: var(--paper); box-shadow: -4px 2px 0 var(--ink); }
+:is(.lab-sheet, .audio-lab, .ced-frame, .map-ed) input[type='range']:active::-webkit-slider-thumb { background: var(--neon); }
+:is(.lab-sheet, .audio-lab, .ced-frame, .map-ed) input[type='range']::-moz-range-track { height: 8px; background: var(--khaki-deep); }
+:is(.lab-sheet, .audio-lab, .ced-frame, .map-ed) input[type='range']::-moz-range-thumb { width: 26px; height: 26px; border: 0; border-radius: 0; background: var(--paper); box-shadow: -4px 2px 0 var(--ink); }
 /* iOS zeichnet Auswahllisten und Häkchen rund und mit Rahmen: hier eckig und konturlos wie der Rest. */
 :root {
   --ee-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 9 L12 17 L20 9 L18 7 L12 13 L6 7 Z' fill='%230f1c22'/%3E%3C/svg%3E");
