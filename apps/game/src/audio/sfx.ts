@@ -3,6 +3,7 @@ import { bass, clamp, crackle, flutter, glass, glide, kalimba, mallet, marimba, 
 import { chainNote, mtof, stepFrom, ZONE_MUSIC, type ZoneKey } from './scales';
 import { roar, yawn, yip } from './voice';
 import { EXTRA_TRIM_DB, extraPlayers } from './sfxExtra';
+import { currentTrim, jitter, richOf, sfxVoice, V, withTrim, Z, type Player } from './sfxKit';
 
 /**
  * The sound catalogue. Every sound is a small recipe on a borrowed strip, parameterised by zone (key),
@@ -44,21 +45,6 @@ export interface SfxParams {
   step?: number;
 }
 
-type Player = (g: AudioGraph, t: number, p: SfxParams) => void;
-
-const Z = (p: SfxParams): ZoneKey => p.zone ?? 'tjorizo';
-const V = (p: SfxParams): number => clamp(p.vel ?? 1, 0, 1.5);
-const richOf = (tier: number): number => clamp((tier - 2) / 8, 0, 1);
-/** Small random detune factor (± `cents`). */
-const jitter = (g: AudioGraph, cents: number): number => Math.pow(2, ((g.rand() * 2 - 1) * cents) / 1200);
-
-/** Level trim of the sound being built (set by `playSfx`, applied to its strips). */
-let trim = 1;
-
-function sfxVoice(g: AudioGraph, t: number, dur: number, prio: number, p: SfxParams, reverb: number, gain = 1): Strip | null {
-  return g.voice('sfx', t, dur, prio, p.pan ?? 0, reverb, gain * trim);
-}
-
 // ------------------------------------------------------------------------------------------ movement
 
 const slide: Player = (g, t, p) => {
@@ -66,7 +52,7 @@ const slide: Player = (g, t, p) => {
   const n = Math.max(1, p.count ?? 1);
   const dur = clamp(p.dur ?? 0.2 + 0.09 * cells, 0.16, 0.9);
   const side = p.dir === 'left' ? 1 : p.dir === 'right' ? -1 : 0;
-  const s = g.voice('sfx', t, dur * 1.4, 1, side * 0.35, 0.06, trim);
+  const s = g.voice('sfx', t, dur * 1.4, 1, side * 0.35, 0.06, currentTrim());
   if (!s) return;
   s.panTo(-side * 0.35, t, dur);
   const up = p.dir === 'up' ? 1.14 : p.dir === 'down' ? 0.88 : 1;
@@ -860,10 +846,5 @@ const TRIM_DB: Partial<Record<SfxId, number>> = {
 };
 
 export function playSfx(g: AudioGraph, id: SfxId, t: number, p: SfxParams = {}): void {
-  trim = Math.pow(10, (TRIM_DB[id] ?? 0) / 20);
-  try {
-    PLAYERS[id](g, Math.max(t, g.ctx.currentTime, 0.001), p);
-  } finally {
-    trim = 1;
-  }
+  withTrim(TRIM_DB[id] ?? 0, () => PLAYERS[id](g, Math.max(t, g.ctx.currentTime, 0.001), p));
 }

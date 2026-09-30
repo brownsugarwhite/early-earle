@@ -431,24 +431,17 @@ export function planMove(res: MoveResult<LevelState>, ctx: PlanContext): MovePla
 }
 
 /**
- * The gull's pass: its cries sweep across the stereo field in the direction it flies (−0.7·side → +0.7·side; one to
- * three cries by variant, the last one a laugh when it laughs), the wing whoosh just before the release, the whistle of
- * the falling blob from the release, the wet splat on the impact. Parameters for the recipes (sfxExtra): `gullCall`
- * reads `p.step` (call variant 0..2), `p.kind` ('laugh' for the laughing cry) and may let its pan drift toward `p.dir`
- * by 1.4 per `p.dur` seconds (the whole crossing); `dropFall` falls for `p.dur` s; `splat` sizes by `p.tier`.
+ * The gull's pass (recipes in sfxExtra): its call as it comes in — one, two or three "kjau" by variant (`p.kind` 'a' |
+ * 'b' | 'c'), starting on the side it comes from (−0.7·side) and panning the way it flies (`p.dir`); a laughing
+ * "ha-ha-ha-ha" (`p.kind` 'laugh') as it leaves, when it laughs; the wing beats passing over from just before the
+ * release (panning the same way); the whistle of the falling blob for the fall time (`p.dur`); the wet splat on the
+ * impact (big from tier 2).
  */
 function gullSounds(add: (t: number, id: SfxId, p: SfxParams, prio?: number) => void, drop: GullDrop, g: GullTimes, cellPan: number, tier: number, material: Material): void {
-  const from = -0.7 * drop.side;
-  const to = 0.7 * drop.side;
-  const cries = 1 + drop.call;
-  const span = Math.max(0.2, g.exitAt - 0.25 - g.callAt);
-  for (let k = 0; k < cries; k++) {
-    const f = cries === 1 ? 0 : k / (cries - 1);
-    const t = g.callAt + f * span * 0.72;
-    const laugh = drop.laugh && k === cries - 1;
-    add(t, 'gullCall', { pan: from + (to - from) * (cries === 1 ? 0 : f), step: drop.call, dur: span, dir: drop.side > 0 ? 'right' : 'left', ...(laugh ? { kind: 'laugh' } : {}) }, k === 0 ? 2 : 1);
-  }
-  add(g.releaseAt - 0.12, 'gullWings', { pan: cellPan * 0.5, dur: 0.5 }, 1);
+  const dir = drop.side > 0 ? 'right' : 'left';
+  add(g.callAt, 'gullCall', { kind: (['a', 'b', 'c'] as const)[drop.call], pan: -0.7 * drop.side, dir }, 2);
+  if (drop.laugh) add(g.releaseAt + 0.45, 'gullCall', { kind: 'laugh', pan: 0.35 * drop.side, dir }, 1);
+  add(g.releaseAt - 0.12, 'gullWings', { pan: -0.4 * drop.side, dir, dur: Math.max(0.4, g.exitAt - g.releaseAt) }, 1);
   add(g.releaseAt, 'dropFall', { tier, pan: cellPan, dur: g.impactAt - g.releaseAt }, 1);
   add(g.impactAt, 'splat', { tier, material, pan: cellPan }, 2);
 }
