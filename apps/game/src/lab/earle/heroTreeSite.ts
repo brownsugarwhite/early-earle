@@ -11,6 +11,7 @@ import {
   type HeroTreePath,
   type TreeQuality,
 } from '@ee/render/earle/tree/index.ts';
+import { createGrandTrees, grandSpec, layoutGrandTrees, type GrandTreeSite, type GrandTrees } from '@ee/render/earle/tree/grand.ts';
 import type { EarlePlanet } from '@ee/render';
 import type { PlaneLandmarkSlot } from '@ee/world';
 
@@ -33,6 +34,17 @@ const RAIL_LANDSCAPE = { trunkDistance: 18, crownDistance: 28 } as const;
 const RAIL_PORTRAIT = { trunkDistance: 30, crownDistance: 38, clearSight: true } as const;
 /** Radius (world units) of the sight disc around the current node that the hanging twigs keep clear. */
 const SIGHT_RADIUS = 1.8;
+/**
+ * Big siblings of the giant tree (Florian: "um den riesigen Baum auch noch ein paar mehr große Bäume in ähnlichem
+ * Stil"): same style, about half the size, each with its own clearing on the plane.
+ */
+const GRAND_COUNT = 4;
+/**
+ * Ring of the siblings in giant crown radii (tree units; × 0.4 → ≈ 13–19 world units from the giant's foot): a little
+ * further out than the lab's 1.8–2.7 — the map's rail cameras circle the giant at 20–43 tree units, the siblings stand
+ * behind them, never between a camera and its node.
+ */
+const GRAND_RADII: readonly [number, number] = [2.2, 3.2];
 
 export interface TreeRail {
   position: Vector3;
@@ -58,6 +70,8 @@ export interface HeroTreeSite {
   slot: PlaneLandmarkSlot;
   /** Tree height above its foot in world units (shadow fit, culling). */
   height: number;
+  /** The big siblings around the giant (children of the tree group: same slot space and display warp); null = none fit. */
+  grand: GrandTrees | null;
   /**
    * The level path ON the tree (shelf fungi on the bark, flower stones on roots, limbs and domes, flush dots, the ring
    * of the current node) — child of the tree group, mapped with the tree (same warp).
@@ -159,8 +173,58 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
   const path = transformHeroTreePath(tree.path, slotMatrix);
   // The phone rail (same nodes, a wider camera band that keeps its view of the node clear of limbs); built here, not
   // on first use (≈ 16 ms on an M3 — no hitch at the start of a camera move onto the tree)
-  const portraitPath = transformHeroTreePath(heroTreePath({ nodes: count, shape: tree.shape, rail: RAIL_PORTRAIT }), slotMatrix);
+  const portraitTree = heroTreePath({ nodes: count, shape: tree.shape, rail: RAIL_PORTRAIT });
+  const portraitPath = transformHeroTreePath(portraitTree, slotMatrix);
   const railPath = (portrait: boolean): HeroTreePath => (portrait ? portraitPath : path);
+
+  // 3) The big siblings: sites in tree space around the giant, off the path start, the incoming and outgoing ground
+  //    path and every rail camera (and its sight line); each gets a clearing on the plane (scattered trees, rocks, lakes,
+  //    trash and landmarks keep off). Built into the tree group: same slot space, same display warp.
+  const inverse = slotMatrix.clone().invert();
+  const toTree = (p: readonly number[]): Vector3 => new Vector3(p[0]!, p[1]!, p[2]!).applyMatrix4(inverse);
+  const ground: Vector3[] = [];
+  for (let k = first - 7; k < first; k++) if (k >= 0) ground.push(toTree(world.path.node(k).position));
+  for (let k = last + 1; k <= last + 6; k++) ground.push(toTree(world.path.node(k).position));
+  const sites = planGrandSites({
+    seed: options.seed,
+    heroCrown: tree.shape.R,
+    startAngle: plan.startAngle,
+    rails: [tree.path, portraitTree],
+    ground,
+    groundAt,
+    inWorld: (x, z) => {
+      gp.set(x, 0, z).applyMatrix4(slotMatrix);
+      return world.field.sample(gp.x, gp.z).world === options.worldIndex;
+    },
+  });
+  let grand: GrandTrees | null = null;
+  let grandReach = 0;
+  let grandTop = 0;
+  if (sites.length > 0) {
+    grand = createGrandTrees({
+      sites,
+      seed: options.seed,
+      quality: options.quality === 'hoch' ? 'hoch' : 'mobil',
+      groundAt,
+      warp,
+      lookup: tree.lookup,
+      rows: tree.rows,
+      billboard: tree.billboard,
+      fog: world.fog,
+      fogLookup: world.lookup,
+    });
+    tree.group.add(grand.group);
+    grand.specs.forEach((spec, i) => {
+      const site = sites[i]!;
+      const reach = spec.crown * (spec.form === 'schirm' ? 1.6 : 1.7);
+      grandReach = Math.max(grandReach, (Math.hypot(site.x, site.z) + reach) * TREE_SCALE);
+      grandTop = Math.max(grandTop, (grand!.tops[i]! + 1) * TREE_SCALE);
+      // Own clearing on the plane (the giant's clearing ends at ≈ 9 units, the siblings stand 11–16 units out)
+      gp.set(site.x, 0, site.z).applyMatrix4(slotMatrix);
+      world.setLandmark({ id: `hero-tree-grand-${i}`, world: options.worldIndex, x: gp.x, z: gp.z, yawDeg: 0, scale: TREE_SCALE, clearRadius: reach * TREE_SCALE * 0.8 });
+    });
+  }
+  const grandIds = sites.map((_, i) => `hero-tree-grand-${i}`);
 
   // The level path on the tree: fungi on the bark, stones on roots, limbs and domes, dots flush on the surface (tree
   // space, same warp as the tree) — the flow's NodePath leaves these nodes to the markers
@@ -197,6 +261,7 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
     matrix: slotMatrix,
     slot,
     height,
+    grand,
     markers,
     railFor(index, outPos, outLook, portrait = false) {
       if (index < first || index > last) return false;
@@ -235,7 +300,7 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
       world.mapping.toFlatCpu(cameraWorld, _v);
       const arc = Math.hypot(footPlane.x - world.focus.x - _v.x, footPlane.z - world.focus.z - _v.z);
       const horizon = Math.acos(Math.min(1, R / Math.max(R + 0.01, cameraWorld.length())));
-      const reach = Math.min(Math.PI * 0.9, horizon + (height + 8) / R);
+      const reach = Math.min(Math.PI * 0.9, horizon + (Math.max(height, grandTop) + 8 + grandReach) / R);
       if (arc / R > reach) {
         holder.visible = false;
         return;
@@ -243,10 +308,11 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
       world.toDisplay(footPlane, _w);
       const up = _v.copy(_w).normalize();
       _sphere.center.copy(_w).addScaledVector(up, height * 0.5);
-      _sphere.radius = height * 0.8 + 2;
+      _sphere.radius = Math.max(height * 0.8, grandReach) + 2;
       holder.visible = frustum.intersectsSphere(_sphere);
       if (!holder.visible) return;
       tree.updateCamera(camera);
+      grand?.updateCamera(camera);
       tree.setSunDirection(sunDirWorld);
       tree.update(dt);
       // Markers: clock, and the contact shadows of the stones follow the sun in tree space
@@ -276,9 +342,78 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
     },
     dispose() {
       world.removeLandmark('hero-tree');
+      for (const id of grandIds) world.removeLandmark(id);
       markers.dispose();
+      grand?.dispose();
       tree.dispose();
     },
   };
 }
 
+/**
+ * Sites of the big siblings (tree space, the giant's foot at the origin): `layoutGrandTrees` spreads them over the free
+ * arc (off the path start at the root tip); a site that comes near a rail camera, blocks a rail camera's sight line to
+ * its node, stands on the ground path before or after the stretch or outside the tree's world is taken out of the arc
+ * and the layout runs again. Sites that never fit are dropped (fewer siblings rather than one in the way).
+ */
+function planGrandSites(o: {
+  seed: number;
+  heroCrown: number;
+  startAngle: number;
+  rails: HeroTreePath[];
+  ground: Vector3[];
+  groundAt: (x: number, z: number) => number;
+  inWorld: (x: number, z: number) => boolean;
+}): GrandTreeSite[] {
+  // Rail cameras and their look points (tree space), finely sampled
+  const probes: Array<{ p: Vector3; l: Vector3 }> = [];
+  for (const rail of o.rails) {
+    for (let i = 0; i <= 120; i++) {
+      const p = new Vector3();
+      const l = new Vector3();
+      rail.sampleRail(i / 120, p, l);
+      probes.push({ p, l });
+    }
+  }
+  const avoid: Array<{ angle: number; width: number }> = [{ angle: o.startAngle, width: 0.7 }];
+  // Incoming path (the nodes before the stretch) and the way on after it
+  for (const g of o.ground) avoid.push({ angle: Math.atan2(g.z, g.x), width: Math.min(0.6, Math.max(0.18, 9 / Math.max(1, Math.hypot(g.x, g.z)))) });
+  const centre = new Vector3();
+  const conflicts = (site: GrandTreeSite, index: number): boolean => {
+    const spec = grandSpec(index, o.seed, site.spec);
+    const reach = spec.crown * (spec.form === 'schirm' ? 1.6 : 1.7);
+    if (!o.inWorld(site.x, site.z)) return true;
+    const foot = o.groundAt(site.x, site.z);
+    centre.set(site.x, foot + spec.height + spec.crown * 0.5, site.z);
+    const r = reach * 0.9;
+    for (const g of o.ground) if (Math.hypot(g.x - site.x, g.z - site.z) < reach + 3) return true;
+    for (const { p, l } of probes) {
+      // Camera in (or right next to) the crown, or beside the trunk below it
+      const lateral = Math.hypot(p.x - site.x, p.z - site.z);
+      if (Math.hypot(lateral, (p.y - centre.y) / 1.2) < r + 4) return true;
+      if (lateral < 4 && p.y < centre.y) return true;
+      // Sight line camera → node through the crown
+      if (segmentHitsSphere(p, l, centre, r * 0.85)) return true;
+    }
+    return false;
+  };
+  for (let iter = 0; iter < 24; iter++) {
+    const sites = layoutGrandTrees({ count: GRAND_COUNT, seed: o.seed, heroCrown: o.heroCrown, minRadius: o.heroCrown * GRAND_RADII[0], maxRadius: o.heroCrown * GRAND_RADII[1], avoid });
+    const bad = sites.findIndex((site, i) => conflicts(site, i));
+    if (bad < 0) return sites;
+    avoid.push({ angle: Math.atan2(sites[bad]!.z, sites[bad]!.x), width: 0.2 });
+  }
+  // No full set fits: keep the sites that do (their forms follow their original order)
+  const sites = layoutGrandTrees({ count: GRAND_COUNT, seed: o.seed, heroCrown: o.heroCrown, minRadius: o.heroCrown * GRAND_RADII[0], maxRadius: o.heroCrown * GRAND_RADII[1], avoid });
+  return sites.flatMap((site, i) => (conflicts(site, i) ? [] : [{ ...site, spec: { ...grandSpec(i, o.seed, site.spec) } }]));
+}
+
+/** Does the segment a → b pass through the sphere (centre c, radius r)? */
+function segmentHitsSphere(a: Vector3, b: Vector3, c: Vector3, r: number): boolean {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const dz = b.z - a.z;
+  const len2 = dx * dx + dy * dy + dz * dz;
+  const t = len2 > 1e-9 ? Math.min(1, Math.max(0, ((c.x - a.x) * dx + (c.y - a.y) * dy + (c.z - a.z) * dz) / len2)) : 0;
+  return Math.hypot(a.x + dx * t - c.x, a.y + dy * t - c.y, a.z + dz * t - c.z) < r;
+}

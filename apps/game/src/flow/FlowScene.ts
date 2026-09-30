@@ -1530,6 +1530,8 @@ export class FlowScene implements SceneController {
       /** Glide the view to a node (like after a won level). */
       goToNode: (i: number) => this.glideViewToNode(i),
       view: () => ({ ...this.currentView(), phase: this.phase }),
+      /** Map zoom (like a pinch; clamped 0.7–1.7). */
+      zoom: (z: number) => this.setZoom(z),
       /** Dev: the world object (inspection in scripted checks). */
       world: () => (import.meta.env.DEV ? this.world : null),
       stats: () => {
