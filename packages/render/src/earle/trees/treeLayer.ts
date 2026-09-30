@@ -259,7 +259,11 @@ export class TreeLayer {
       const world = arrayElement(shared.rowWorld, row);
       const cfg = stippleOf[kind];
       // Hüllnormale: Richtung von der (mitwachsenden) Kronenmitte zum Punkt, im View-Raum
-      const hullN = varying(modelViewMatrix.mul(vec4(grownFrom(positionLocal).sub(grownFrom(treeB().xyz)), 0)).xyz, 'vCrownHullN');
+      const hullPlanet = grownFrom(positionLocal).sub(grownFrom(treeB().xyz));
+      const hullN = varying(modelViewMatrix.mul(vec4(hullPlanet, 0)).xyz, 'vCrownHullN');
+      // Schlagschatten nur auf der unteren Kronenhälfte (Kuppel-Scheitel bleiben hell, Fugen zwischen den Kuppeln dunkel)
+      const hullUp = normalize(hullPlanet).dot(normalize(treeA().xyz));
+      const castWeight = varying(smoothstep(0.5, -0.15, hullUp), 'vCrownCastW');
       const material = new CrownMaterial({
         lookup,
         fog,
@@ -278,6 +282,7 @@ export class TreeLayer {
         // Juwelenkuppeln leuchten fast rundum (Bild 02): Bänder etwas angehoben
         lift: select(treeD().w.lessThan(0), float(0.12), float(0)),
         hullNormalView: hullN,
+        castWeight: kind === 'pine' ? null : castWeight,
       });
       this.materials.push(material);
       const mesh = new InstancedMesh(geometry, material, options.capacity.trees);
@@ -457,9 +462,12 @@ export class TreeLayer {
       );
       // Im Schlagschatten: Kronenpunkte, Spitze und Nadeln werden Tinte (wie die Krone darunter), Kiefernschnee dunkler
       const shadowIdx = select(vKind.greaterThan(1.5).and(vKind.lessThan(2.5)), float(3), float(0));
+      // Schlagschatten wie die Krone darunter: Punkte auf der oberen Kuppel bleiben, an der Unterseite deckt ihn der Schatten
+      const dotCastW = varying(select(isPine.or(isStar), float(1), smoothstep(0.5, -0.15, nrm.dot(normalize(base)))), 'vTreeDotCastW');
       const material = new DotMaterial({
         lookup,
         fog,
+        castWeight: dotCastW,
         fogDistNode: shared.fogDist(row, dist),
         litColor: lookup.pal(idx, row).rgb as unknown as Vec3Node,
         shadowColor: lookup.pal(shadowIdx, row).rgb as unknown as Vec3Node,

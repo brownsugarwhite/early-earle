@@ -42,6 +42,12 @@ export interface CrownMaterialOptions {
    * die Kappennormale den Terminator formt (bucklige Grenze Licht/Tinte, wie Earles Kuppelränder).
    */
   hullNormalView?: Vec3Node | null;
+  /**
+   * Anteil des Schlagschattens 0..1 (Fragmentstufe): 1 an der Unterseite, 0 auf der Kuppel. Bei 10° Sonne läge sonst jede
+   * Krone hinter der ersten Reihe ganz im Schatten ihres Vordermanns — Earle malt Haine als Kuppeln mit hellen Scheiteln
+   * und dunklen Fugen dazwischen (Bild 03).
+   */
+  castWeight?: FloatNode | null;
 }
 
 export class CrownMaterial extends NodeMaterial {
@@ -74,7 +80,8 @@ class CrownLightingModel extends LightingModel {
     const term = o.terminatorNode;
     // Schlagschatten nur auf der Sonnenseite: die Rückseite liegt hinter der eigenen (in der Karte stehenden) dunklen
     // Seite — Juwelenkuppeln (Terminator < 0) leuchten sonst nicht mehr rundum
-    const cast = mix(float(1), shadow, smoothstep(-0.02, 0.1, ndl));
+    const castW = smoothstep(-0.02, 0.1, ndl).mul(o.castWeight ?? float(1));
+    const cast = mix(float(1), shadow, castW);
     const lit = min(aaStep(term, ndl), cast);
     const ndlHull = o.hullNormalView ? normalize(o.hullNormalView).dot(L) : ndl;
     let v = ndlHull.sub(term).mul(o.bandScale);
@@ -135,6 +142,8 @@ export interface DotMaterialOptions {
   /** Farbe im Licht und im Schlagschatten (je Punkt). */
   litColor: Vec3Node;
   shadowColor: Vec3Node;
+  /** Anteil des Schlagschattens (wie die Krone darunter: Kuppel-Scheitel frei, Unterseite ganz). */
+  castWeight?: FloatNode | null;
 }
 
 /**
@@ -164,7 +173,7 @@ class DotLightingModel extends LightingModel {
   }
 
   override direct(input: Parameters<LightingModel['direct']>[0]): void {
-    const shadow = (input.lightColor as Vec3Node).r;
+    const shadow = mix(float(1), (input.lightColor as Vec3Node).r, this.o.castWeight ?? float(1));
     (input.reflectedLight.directDiffuse as Vec3Node).addAssign(mix(this.o.shadowColor, this.o.litColor, shadow));
   }
 
