@@ -42,8 +42,10 @@ import {
   CREATURE_MERGE_TOTAL_MS,
   MERGE_BLEND_MS,
   CreatureMergeChoreo,
+  CreatureMeshBodies,
   CreatureMotion,
   CreaturePool,
+  meshBodyEligible,
   createBlobParticleMesh,
   createFeatherCardMesh,
   createFurFinMesh,
@@ -67,7 +69,7 @@ import type { SceneController, SceneContext } from '../../canvas/SceneController
 import { useAppStore } from '../../state/store';
 import { BUNDLED_RULES, MODULE_URLS } from './content';
 
-export type LabMode = 'single' | 'gallery' | 'grid' | 'herd' | 'merge' | 'motion' | 'sheet' | 'compare' | 'sketch';
+export type LabMode = 'single' | 'gallery' | 'grid' | 'herd' | 'zoo' | 'merge' | 'motion' | 'sheet' | 'compare' | 'sketch';
 export type BodyCandidate = 'a' | 'b';
 export type Quality = 'high' | 'mobile' | 'auto';
 export type MotionAction = 'walk' | 'jump' | 'slither' | 'stand' | 'turn';
@@ -97,6 +99,8 @@ export interface CreatureLabSettings {
   legs: LegChoice;
   /** Board camera: look down at ~65° in every view. */
   topDown: boolean;
+  /** Species drawn as skinned meshes (the iPhone/board path); off = the traced icosphere / raymarch. */
+  meshBodies: boolean;
   /** Motion section: what a tap on the plate does. */
   action: MotionAction;
   /** Speed multiplier 0.3..2.5. */
@@ -122,6 +126,7 @@ export const DEFAULT_CREATURE_LAB_SETTINGS: CreatureLabSettings = {
   species: 'auto',
   legs: 'auto',
   topDown: false,
+  meshBodies: true,
   action: 'walk',
   speed: 1,
   mass: 1,
@@ -154,6 +159,9 @@ export interface CreatureLabInfo {
   massKg: number;
   speed: number;
   motionState: string;
+  /** Skinned species meshes this frame: instances and vertices. */
+  meshInstances: number;
+  meshVertices: number;
 }
 
 interface LabCreature {
@@ -229,6 +237,7 @@ const INK = '#0f1c22';
 /** The lab shows the full creature system: the rules pick archetypes per zone/tier/seed. */
 const ARCHETYPES = { archetypes: true } as const;
 const MOBILE_DPR_CAP = 1.5;
+const IDENTITY_ROT: Rot3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 const MOBILE_MAX_SPHERES = 5;
 /** Motion plate half extents (world). */
 const MOTION_HALF: [number, number] = [3.1, 2.1];
@@ -261,10 +270,13 @@ export class LabCreatureScene implements SceneController {
   private readonly quality = createBlobQualityUniforms();
   private readonly blockA = new BlobParamBlock(CAPACITY);
   private readonly blockB = new BlobParamBlock(CAPACITY);
+  /** Skinned species bodies (mesh path) and their coats' passes. */
+  private readonly blockC = new BlobParamBlock(CAPACITY);
+  private meshBodies: CreatureMeshBodies | null = null;
   private meshA: InstancedMesh | null = null;
   private meshB: InstancedMesh | null = null;
   /** Surface passes per block (Materials agent, P1b): fur shells, feather cards, gas/fire/liquid particles. */
-  private passes: { a: SurfacePasses; b: SurfacePasses } | null = null;
+  private passes: { a: SurfacePasses; b: SurfacePasses; c: SurfacePasses } | null = null;
   private pool: CreaturePool | null = null;
   private plate: Mesh | null = null;
   private readonly plateOffset = uniform(0.5);
@@ -331,7 +343,10 @@ export class LabCreatureScene implements SceneController {
       this.disposables.push(fur.material, fur.mesh.geometry, fins.material, fins.mesh.geometry, feather.material, feather.mesh.geometry, particles.material, particles.mesh.geometry);
       return { fur: fur.mesh, fins: fins.mesh, finCards: fins.cards, finSilhouetteOnly: fins.silhouetteOnly, feather: feather.mesh, particles: particles.mesh, cards: feather.cards, perBlob: particles.perBlob };
     };
-    this.passes = { a: makePasses(this.blockA), b: makePasses(this.blockB) };
+    this.meshBodies = new CreatureMeshBodies(this.blockC, { uniforms: this.uniforms, quality: this.quality, glyph: b.glyph });
+    this.scene.add(this.meshBodies.group);
+    this.disposables.push(this.meshBodies);
+    this.passes = { a: makePasses(this.blockA), b: makePasses(this.blockB), c: makePasses(this.blockC) };
     this.plate = this.createPlate();
     this.scene.add(this.plate);
     this.pool = new CreaturePool(this.library, this.uniforms, { capacity: 512 });
@@ -345,10 +360,15 @@ export class LabCreatureScene implements SceneController {
     // first merge does not stall on a shader compile; hidden instances keep the frame empty.
     a.mesh.count = 1;
     b.mesh.count = 1;
+    // The skinned species material: one hidden instance of a small species mesh compiles its pipeline.
+    const warmSpec = resolveCreature({ zone: 'tjorizo', tier: 5, seed: 1, species: 'duck' }, this.rules);
+    this.meshBodies.begin();
+    this.meshBodies.add(0, { spec: warmSpec, params: warmSpec.body, rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1] });
+    this.meshBodies.end();
     // The Hoch-only passes are pre-warmed only when starting in Hoch (Mobil never draws them; a later
     // switch compiles them once).
     const warmPasses = this.effectiveQuality === 'high';
-    for (const ps of [this.passes.a, this.passes.b]) {
+    for (const ps of [this.passes.a, this.passes.b, this.passes.c]) {
       ps.fur.count = warmPasses ? 1 : 0;
       ps.fins.count = 1;
       ps.feather.count = warmPasses ? 1 : 0;
@@ -357,7 +377,9 @@ export class LabCreatureScene implements SceneController {
     await ctx.renderer.compileAsync(this.scene, this.camera);
     a.mesh.count = 0;
     b.mesh.count = 0;
-    for (const ps of [this.passes.a, this.passes.b]) {
+    this.meshBodies.begin();
+    this.meshBodies.end();
+    for (const ps of [this.passes.a, this.passes.b, this.passes.c]) {
       ps.fur.count = 0;
       ps.fins.count = 0;
       ps.feather.count = 0;
@@ -465,7 +487,7 @@ export class LabCreatureScene implements SceneController {
    * a tap on a creature pokes it instead. Returns what happened.
    */
   commandAt(ndc: { x: number; y: number }): 'poke' | 'command' | null {
-    if (this.settings.mode !== 'motion' && this.settings.mode !== 'herd') return this.pokeAt(ndc) ? 'poke' : null;
+    if (this.settings.mode !== 'motion' && !this.crowdMode) return this.pokeAt(ndc) ? 'poke' : null;
     const hit = this.pointOnPlane(ndc, 0);
     if (!hit) return null;
     const near = this.nearest(hit.x, hit.z);
@@ -473,13 +495,18 @@ export class LabCreatureScene implements SceneController {
       this.pokeCreature(near.c, [hit.x - near.c.at[0], 0.25, hit.z - near.c.at[1]]);
       return 'poke';
     }
-    const half = this.settings.mode === 'herd' ? HERD_HALF : MOTION_HALF;
+    const half = this.crowdMode ? HERD_HALF : MOTION_HALF;
     const x = Math.max(-half[0], Math.min(half[0], hit.x));
     const z = Math.max(-half[1], Math.min(half[1], hit.z));
-    const c = this.settings.parcours || this.settings.mode === 'herd' ? near?.c : this.creatures[0];
+    const c = this.settings.parcours || this.crowdMode ? near?.c : this.creatures[0];
     if (!c?.motion) return null;
     this.commandTo(c, x, z);
     return 'command';
+  }
+
+  /** Crowd stages (herd, zoo): every walker wanders, taps steer the nearest one. */
+  private get crowdMode(): boolean {
+    return this.settings.mode === 'herd' || this.settings.mode === 'zoo';
   }
 
   /** Last motion button (re-applied after rebuilds, so switching the archetype keeps it walking). */
@@ -493,7 +520,7 @@ export class LabCreatureScene implements SceneController {
 
   private applyAct(action: MotionAction): void {
     this.settings.action = action;
-    const heroes = this.settings.parcours || this.settings.mode === 'herd' ? this.creatures.filter((c) => c.motion) : this.creatures.slice(0, 1);
+    const heroes = this.settings.parcours || this.crowdMode ? this.creatures.filter((c) => c.motion) : this.creatures.slice(0, 1);
     for (const c of heroes) {
       const m = c.motion;
       if (!m) continue;
@@ -506,7 +533,7 @@ export class LabCreatureScene implements SceneController {
           break;
         }
         case 'jump': {
-          const half = this.settings.mode === 'herd' ? HERD_HALF : MOTION_HALF;
+          const half = this.crowdMode ? HERD_HALF : MOTION_HALF;
           const dist = 0.8 + Math.random() * 1.4;
           const ang = Math.random() * Math.PI * 2;
           const x = Math.max(-half[0], Math.min(half[0], c.at[0] + Math.cos(ang) * dist));
@@ -764,7 +791,7 @@ export class LabCreatureScene implements SceneController {
 
   /** Mouth buttons: open/close, chew, roar, yawn on the hero (every walker in the parcours). */
   mouthAction(a: MouthAction): void {
-    const heroes = this.settings.parcours || this.settings.mode === 'herd' || this.settings.mode === 'sketch' ? this.creatures.filter((c) => c.motion && !c.partnerOf) : this.creatures.slice(0, 1);
+    const heroes = this.settings.parcours || this.crowdMode || this.settings.mode === 'sketch' ? this.creatures.filter((c) => c.motion && !c.partnerOf) : this.creatures.slice(0, 1);
     for (const c of heroes) {
       const ctl = c.motion?.controller;
       if (!ctl) continue;
@@ -799,9 +826,9 @@ export class LabCreatureScene implements SceneController {
    * is not jumping picks a new target on the far side (cheap, O(n²) for ≤ 36 creatures).
    */
   private separate(): void {
-    if (this.settings.mode !== 'motion' && this.settings.mode !== 'herd') return;
+    if (this.settings.mode !== 'motion' && !this.crowdMode) return;
     const list = this.creatures.filter((c) => c.motion && c.alive && Number.isFinite(c.wanderAt));
-    const half = this.settings.mode === 'herd' ? HERD_HALF : MOTION_HALF;
+    const half = this.crowdMode ? HERD_HALF : MOTION_HALF;
     for (let i = 0; i < list.length; i++) {
       const a = list[i]!;
       for (let j = i + 1; j < list.length; j++) {
@@ -829,7 +856,7 @@ export class LabCreatureScene implements SceneController {
     if (ctl.currentMode !== 'idle') return;
     c.wanderAt -= dt;
     if (c.wanderAt > 0) return;
-    const half = this.settings.mode === 'herd' ? HERD_HALF : MOTION_HALF;
+    const half = this.crowdMode ? HERD_HALF : MOTION_HALF;
     const rng = this.wanderRng;
     const x = (rng.next() * 2 - 1) * half[0] * 0.9;
     const z = (rng.next() * 2 - 1) * half[1] * 0.9;
@@ -988,6 +1015,17 @@ export class LabCreatureScene implements SceneController {
           this.creatures.push(c);
         }
         break;
+      case 'zoo': {
+        // Board stress check: 36 tier-6 animals of every species wander at once (the skinned mesh path).
+        const zoo: Species[] = ['retriever', 'mouse', 'giraffe', 'rex', 'duck', 'elephant', 'snake'];
+        for (let i = 0; i < 36; i++) {
+          const c = this.makeCreature(this.genome(6, s.seed + i * 13, undefined, zoo[i % zoo.length]!), [((i % 6) - 2.5) * 1.15, (Math.floor(i / 6) - 2.5) * 1.15], null, { wander: true, yaw: (i * 2.4) % (Math.PI * 2), coil: false });
+          c.rig.traceInterval = 4;
+          c.wanderAt = 0;
+          this.creatures.push(c);
+        }
+        break;
+      }
       case 'merge':
         this.creatures.push(this.makeCreature(this.genome(s.tier, s.seed), [-0.8, 0], 'A', { motion: false }));
         this.creatures.push(this.makeCreature(this.genome(s.tier, s.seed + 1), [0.8, 0], 'B', { motion: false }));
@@ -1029,7 +1067,7 @@ export class LabCreatureScene implements SceneController {
     this.applyOverrides();
     this.layoutPlate();
     this.placeCamera();
-    if (this.lastAct && (s.mode === 'motion' || s.mode === 'herd')) this.applyAct(this.lastAct);
+    if (this.lastAct && (s.mode === 'motion' || this.crowdMode)) this.applyAct(this.lastAct);
     this.emitInfo();
   }
 
@@ -1155,6 +1193,7 @@ export class LabCreatureScene implements SceneController {
       case 'grid':
         return { width: 7, depth: 7 };
       case 'herd':
+      case 'zoo':
         return { width: HERD_HALF[0] * 2 + 1, depth: HERD_HALF[1] * 2 + 1 };
       case 'merge':
         return { width: 3.6, depth: 1.6 };
@@ -1203,9 +1242,9 @@ export class LabCreatureScene implements SceneController {
     const s = this.creatures[0]?.spec.worldScale ?? 0.4;
     const maxS = this.creatures.reduce((m, c) => Math.max(m, c.spec.worldScale), s);
     const hero = this.followHero();
-    const flat = mode === 'grid' || mode === 'herd' || mode === 'sheet' || mode === 'sketch' || (mode === 'motion' && !hero);
+    const flat = mode === 'grid' || mode === 'herd' || mode === 'zoo' || mode === 'sheet' || mode === 'sketch' || (mode === 'motion' && !hero);
     // The sketch is drawn from above; the board camera looks down at ~65° (Draufsicht).
-    const elev = mode === 'sketch' ? 1.36 : this.settings.topDown ? 1.13 : mode === 'grid' || mode === 'herd' ? 0.88 : mode === 'sheet' ? 0.72 : mode === 'motion' ? (hero ? 0.3 : 0.62) : mode === 'single' ? 0.3 : 0.42;
+    const elev = mode === 'sketch' ? 1.36 : this.settings.topDown || mode === 'zoo' ? 1.13 : mode === 'grid' || mode === 'herd' ? 0.88 : mode === 'sheet' ? 0.72 : mode === 'motion' ? (hero ? 0.3 : 0.62) : mode === 'single' ? 0.3 : 0.42;
     // Creature height incl. parts (crest/horns stick out ≈ one body radius).
     const height = flat ? 1.2 : maxS * 3.8 + 0.4;
     const vFov = (this.camera.fov * Math.PI) / 180;
@@ -1232,9 +1271,10 @@ export class LabCreatureScene implements SceneController {
     }
     this.followBaseY = centreY;
     if (framed && this.settings.topDown) {
-      // From above the creature's length (not its height) fills the frame.
+      // From above the creature's length (not its height) fills the frame — with room for a swinging
+      // neck, a trunk or a tail pointing at the camera.
       const long = framed.spec.worldScale * Math.max(2.2, framed.spec.skeleton.length);
-      camDist = Math.max(camDist, (long * 1.25) / (2 * tanV));
+      camDist = Math.max(camDist, (long * 1.6) / (2 * tanV));
       centreY = 0.1;
       this.followBaseY = centreY;
       target.set(framed.at[0], centreY, framed.at[1]);
@@ -1328,14 +1368,18 @@ export class LabCreatureScene implements SceneController {
     const m = this.merge;
     const mergeT = m ? m.t - SLIDE_MS : -1;
     const frame = m && mergeT >= 0 ? m.timeline.sample(mergeT) : null;
-    // Each block fills its own slots (raymarched bodies in A, mesh bodies in B): 2 × 36 instances.
+    // Each block fills its own slots (raymarched bodies in A, traced blob meshes in B, skinned species
+    // meshes in C): 3 × 36 instances.
     let slotA = 0;
     let slotB = 0;
+    let slotC = 0;
+    const bodies = this.meshBodies;
+    bodies?.begin();
     let anyA = false;
     let usesFur = false;
     let usesFeather = false;
     let usesParticles = false;
-    const crowd = s.mode === 'herd' || s.mode === 'grid' || s.mode === 'sheet' || s.mode === 'gallery';
+    const crowd = s.mode === 'herd' || s.mode === 'zoo' || s.mode === 'grid' || s.mode === 'sheet' || s.mode === 'gallery';
     for (const c of this.creatures) {
       const isChildPending = m && c === m.child && !c.alive;
       if (!c.alive && !isChildPending) continue;
@@ -1352,6 +1396,9 @@ export class LabCreatureScene implements SceneController {
       };
       // Skin (Materials agent): coats render as fur shells / feather cards, patterns in the style block.
       const skin = c.spec.skin;
+      // Mesh path (the board's and the iPhone's): species as skinned meshes; raymarch only for the hero
+      // view. The block is written exactly as for a raymarched body — `bodies.add` sets its pattern frame.
+      const meshPath = !!bodies && s.meshBodies && !showA && meshBodyEligible(c.spec) && !(m && (c === m.a || c === m.b || c === m.child));
       if (skin.coat !== 'bare') {
         dyn.material = skin.coat;
         if (skin.coat === 'fur') usesFur = true;
@@ -1376,7 +1423,7 @@ export class LabCreatureScene implements SceneController {
       // cannot follow them): they raymarch — except on the WebGL2 fallback (old devices, SwiftShader),
       // where marching a long 10–14-sphere body stalls the frame; there the mesh draws them with small
       // dents at the overhangs instead.
-      let forceA = c.spec.skeleton.raymarch && this.ctx?.backend !== 'webgl2';
+      let forceA = !meshPath && c.spec.skeleton.raymarch && this.ctx?.backend !== 'webgl2';
       if (mobile && c.spec.bodyType === 'blob') dyn.maxSpheres = MOBILE_MAX_SPHERES;
       let hideBody = false;
       let offsetScale = 0.22;
@@ -1450,9 +1497,15 @@ export class LabCreatureScene implements SceneController {
       if (forceA) delete dyn.maxSpheres;
 
       // A full mesh block spills into the raymarch block (the sketch stage has > 36 bodies + droplets).
-      const inA = showA || forceA || slotB >= CAPACITY;
+      const inA = !meshPath && (showA || forceA || slotB >= CAPACITY);
       if (hideBody) {
         // nothing drawn
+      } else if (meshPath) {
+        if (slotC < CAPACITY) {
+          this.blockC.write(slotC, params, place, dyn);
+          bodies!.add(slotC, { spec: c.spec, params, rotation: pose ? pose.rotation : IDENTITY_ROT, lod: crowd ? 'board' : 'near' });
+          slotC++;
+        }
       } else if (inA) {
         if (slotA < CAPACITY) this.blockA.write(slotA++, params, place, dyn);
         anyA = true;
@@ -1471,7 +1524,7 @@ export class LabCreatureScene implements SceneController {
         maxSpheres: dyn.maxSpheres,
         time: gpuTime,
         noiseOctaves: octaves,
-        surface: showA || forceA ? 'exact' : 'mesh',
+        surface: (showA || forceA) && !meshPath ? 'exact' : 'mesh',
         rotation: pose ? pose.rotation : c.yaw !== 0 ? this.yawRotation(c) : undefined,
         pose,
         noiseMaterial: skin.coat !== 'bare' ? 'jelly' : undefined,
@@ -1497,6 +1550,8 @@ export class LabCreatureScene implements SceneController {
     }
     for (let i = slotA; i < CAPACITY; i++) this.blockA.hide(i);
     for (let i = slotB; i < CAPACITY; i++) this.blockB.hide(i);
+    for (let i = slotC; i < CAPACITY; i++) this.blockC.hide(i);
+    bodies?.end();
     const aOn = showA || m !== null || anyA;
     const bOn = !showA;
     if (this.meshA) this.meshA.count = aOn ? slotA : 0;
@@ -1506,7 +1561,7 @@ export class LabCreatureScene implements SceneController {
     const passes = this.passes;
     if (passes) {
       const high = !mobile;
-      for (const [ps, on, n] of [[passes.a, aOn, slotA], [passes.b, bOn, slotB]] as const) {
+      for (const [ps, on, n] of [[passes.a, aOn, slotA], [passes.b, bOn, slotB], [passes.c, true, slotC]] as const) {
         ps.fur.count = on && high && usesFur ? n : 0;
         ps.fins.count = on && usesFur ? n * ps.finCards : 0;
         ps.finSilhouetteOnly.value = high ? 0 : 1;
@@ -1546,6 +1601,8 @@ export class LabCreatureScene implements SceneController {
       massKg: ctl ? Math.round(ctl.mass * 10) / 10 : 0,
       speed: pose ? Math.round(pose.speed * 100) / 100 : 0,
       motionState: state,
+      meshInstances: this.meshBodies ? this.meshBodies.instanceCount : 0,
+      meshVertices: this.meshBodies ? this.meshBodies.vertexCount : 0,
     });
   }
 }

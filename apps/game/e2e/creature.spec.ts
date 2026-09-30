@@ -105,6 +105,12 @@ test('/lab/creature Bewegung: Arten laufen, springen, schlängeln, fressen; Parc
   await page.getByTestId('motion-walk').click();
   await expect(info).toContainText('läuft im Kreis', { timeout: 10_000 });
   await expect(info).toContainText(/\d\.\d\d m\/s/, { timeout: 10_000 });
+  // Species bodies are skinned meshes (board/iPhone path); "Arten-Mesh" switches back to icosphere/raymarch.
+  await expect(info).toContainText(/Mesh 1 × \(\d+k Vertices\)/, { timeout: 10_000 });
+  await page.getByTestId('btn-meshbodies').click();
+  await expect(info).not.toContainText('Mesh 1 ×', { timeout: 10_000 });
+  await page.getByTestId('btn-meshbodies').click();
+  await expect(info).toContainText('Mesh 1 ×', { timeout: 10_000 });
 
   // Slime jump: the blob ducks, flies, splats and comes to rest again.
   await page.getByTestId('ctl-body').getByRole('button', { name: 'Blob', exact: true }).click();
@@ -113,10 +119,11 @@ test('/lab/creature Bewegung: Arten laufen, springen, schlängeln, fressen; Parc
   await expect(info).toContainText(/duckt sich|fliegt|platscht|federt/, { timeout: 10_000 });
   await expect(info).toContainText('steht', { timeout: 15_000 });
 
-  // "Schlängeln" switches to the snake (always raymarched) and slithers.
+  // "Schlängeln" switches to the snake (a skinned mesh bending along its trail) and slithers.
   await page.getByTestId('motion-slither').click();
   await expect(info).toContainText('Schlange · Schlängeln', { timeout: 10_000 });
   await expect(info).toContainText('läuft im Kreis', { timeout: 10_000 });
+  await expect(info).toContainText('Mesh 1 ×', { timeout: 10_000 });
 
   // REX and the elephant exist too; sliders take effect without errors.
   await page.getByTestId('ctl-body').getByRole('button', { name: 'REX', exact: true }).click();
@@ -153,6 +160,11 @@ test('/lab/creature Bewegung: Arten laufen, springen, schlängeln, fressen; Parc
   // "Zufall" produces variety: species × zone × tier × seed.
   await page.getByTestId('btn-random').click();
   await expect(info).toContainText(/Figuren/, { timeout: 10_000 });
+
+  // A full board of species: 36 tier-6 animals, all on the mesh path (one instanced mesh per species).
+  await page.getByTestId('ctl-mode').getByRole('button', { name: '36 × Arten', exact: true }).click();
+  await expect(info).toContainText('36 Figuren', { timeout: 30_000 });
+  await expect(info).toContainText(/Mesh 36 × \(\d+k Vertices\)/, { timeout: 30_000 });
   expect(errors).toEqual([]);
 });
 

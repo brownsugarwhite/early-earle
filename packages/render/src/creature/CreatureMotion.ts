@@ -124,10 +124,11 @@ export class CreatureMotion {
   /**
    * Extra rotation (radians about up) to add to the pattern's own rotation this frame: patterns laid out
    * in raw rest space (the giraffe's patches) turn with the heading this way; every other pattern follows
-   * the (posed) eye direction the body shader uses as its forward axis.
+   * the (posed) eye direction the body shader uses as its forward axis. Mesh bodies need nothing:
+   * `CreatureMeshBodies.add` resets the pattern rotation of their slot (the flag stays for old callers).
    */
-  patternYaw(pose: Pose): number {
-    return this.restFrame ? pose.yaw : 0;
+  patternYaw(pose: Pose, meshBody = false): number {
+    return this.restFrame && !meshBody ? pose.yaw : 0;
   }
 
   get pose(): Pose {
@@ -148,8 +149,9 @@ export class CreatureMotion {
    * neck, trunk, jaw, the snake's spine on its trail) plus, for blobs, the flat base kept on the ground
    * (the cut plane sinks away when the body lifts off and rises into the body while it crouches). The same
    * object every frame (mutated in place: consumers read it within the frame, nothing may cache it).
+   * `frame: 'rest'` keeps the rest forward axis (raw-space patterns); mesh bodies set their own frame.
    */
-  posedParams(pose: Pose): BlobParams {
+  posedParams(pose: Pose, frame: 'posed' | 'rest' = 'posed'): BlobParams {
     const params = (this.params ??= { ...this.spec.body, spheres: this.posed });
     // Splat droplets are *not* part of the body: the jiggle mesh cannot draw disconnected islands, so
     // they are drawn as their own tiny blob instances (see `dropletParams`).
@@ -199,7 +201,9 @@ export class CreatureMotion {
     if (!this.spec.paintedEye) {
       // The shrunk painted eye points at the face: the body's forward axis for stripes, lattices, fur flow.
       const e = this.eye.dir;
-      if (this.restFrame) {
+      // Rest frame (mesh bodies of bare animals, the giraffe's raw-space patches): the forward axis stays
+      // the rest one — the pattern coordinates are the rest body's.
+      if (this.restFrame || frame === 'rest') {
         e[0] = this.restEye[0];
         e[1] = this.restEye[1];
         e[2] = this.restEye[2];
@@ -227,11 +231,20 @@ export class CreatureMotion {
 
   /**
    * Face cap for `BlobDynamics.face`: the eye modules' cap turned with the pose (and the neck lead), so
-   * patterns and fur step back around the eyes. Null for painted eyes (the renderer derives it).
+   * patterns and fur step back around the eyes. Null for painted eyes (the renderer derives it). Mesh
+   * bodies write their own (rest-frame) face cap in `CreatureMeshBodies.add`.
    */
-  faceMask(pose: Pose): FaceMaskLike | null {
+  faceMask(pose: Pose, frame: 'posed' | 'rest' = 'posed'): FaceMaskLike | null {
     const cap = this.cap;
     if (!cap) return null;
+    if (frame === 'rest') {
+      const m = this.mask;
+      m.dir[0] = cap.dir[0];
+      m.dir[1] = cap.dir[1];
+      m.dir[2] = cap.dir[2];
+      m.radius = cap.radius;
+      return m;
+    }
     let x = cap.dir[0];
     const y = cap.dir[1];
     let z = cap.dir[2];

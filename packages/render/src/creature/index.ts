@@ -12,6 +12,8 @@ export * from './CreaturePool';
 export * from './CreatureRig';
 export * from './CreatureMergeChoreo';
 export * from './CreatureMotion';
+export * from './bodyMesh';
+export * from './CreatureMeshBodies';
 // Merge moves and facing (pure timelines from @ee/genome), re-exported for the board.
 export {
   MergeMove,
