@@ -82,7 +82,7 @@ Referenz für die Sitzungslänge: Puzzle-Sitzungen dauern im Mittel ≈ 5,6 Minu
 
 ### 5.1 Grundregeln
 
-- Raster **4×4 bis 6×6** mit Masken (Risse = Zellen, die nicht existieren) und Pfeilern.
+- Raster **4×4 bis 6×6** mit Masken (Risse = Zellen, die nicht existieren) und Pfeilern. Tutorial-Bretter sind kleiner, ab 1×3 (Abschnitt 6.6).
 - Ein Wisch bewegt alle Figuren in die Wischrichtung; zwei gleiche Stufen, die aufeinandertreffen, verschmelzen zur nächsten Stufe.
 - Nach jedem Zug spawnt eine Figur **aus einer Gasquelle** (Spawn-Tabelle pro Level). Der **nächste Spawn ist immer sichtbar** (Vorschau wie in Threes).
 - **Zuglimit** pro Level. Verändert kein Wisch mehr etwas, oder sind die Züge aufgebraucht, ist der Versuch verloren: **keine Leben, sofort neu**.
@@ -227,6 +227,40 @@ Der Bot prüft Lösbarkeit und schätzt Versuche — aber er liefert die Gewinnw
 
 Abbruchrate pro Level (Playrix-Praxis: Level mit > 2 % Abbruch per A/B-Test ersetzen). Kings Regel: **Spaß getrennt von Schwierigkeit messen** (Zeit bis Abbruch, Zeit bis Sieg); „Retention gewinnt immer".
 
+### 6.6 Tutorial-Bretter (Nachtrag Iteration 4, 2026-09-30)
+
+Florian: Nach „Tippen" springt der Blob direkt in Level 1, das die Grundmechanik zeigt; die ersten Level haben nur so viele Zellen, wie ihre Mechanik zum Erklären braucht.
+
+- **Raster ab 1×N.** Das Level-Schema erlaubt 1..8 × 1..8 mit mindestens zwei spielbaren Zellen (vorher ab 3×3). Das Plateau wird für mindestens 2×2 Zellen angelegt, damit ein 1×3-Streifen auf einem Plateau steht und nicht auf einem Steg. Die Kamera rahmt mindestens 3×3 Zellen (Grid-Lab; im Flow `FlowScene.levelPose`), die Wesen behalten ihre gewohnte Größe.
+- **Spawn-Skript** (`spawn.script`, optional, höchstens 32 Einträge). Eintrag k ist der k-te Spawn: Stufe 1–3, Art (normal oder Amöbe), optional eine Zelle. Solange das Skript läuft, zeigt die Vorschau seinen nächsten Eintrag, und es wird nicht gewürfelt. Ist die Zielzelle beim Spawn belegt, landet der Blob auf einer zufälligen freien Zelle. Danach gilt die Spawn-Tabelle. Die Skript-Position steckt im Zustand, Rückspulen würfelt also auch hier nicht neu. Der Solver rechnet eine freie Zielzelle als einen einzigen Zweig und die Vorschau aus dem Skript ohne Zufallsknoten.
+- **Zugband.** Die 30–38 Züge aus 6.1 gelten ab 4×4. Kleine Bretter bekommen so viele Züge, wie ihre Mechanik braucht.
+
+**Level 1–6** (IDs unverändert, Level 7–10 unverändert; kalibriert mit `tools/levels/calibrate.ts`, Gewinnrate Anfänger-Bot / starker Bot). Bretter in ASCII-Stufen wie in `levelFromAscii` (1 = 2, 2 = 4, 3 = 8; `P` Pfeiler, `X1` Schrott, `s` Spore, `w` verdorrt), Startblobs und Ziele als Werte:
+
+| # | Name | Brett | Ziel | Züge | Anfänger / stark |
+|---|---|---|---|---|---|
+| 1 | Zwei werden eins | 1×3 `1 1 2`, Skript: Stufe 1 | Stufe 3 (8) | frei | 100 % / 100 % |
+| 2 | Züge zählen | 3×2 `1 1 . / 2 . .` | Stufe 4 (16) | 10 | 95 % / 100 % |
+| 3 | Weiter so | 3×3, Start 4 · 2 · 2 | Stufe 4 (16) | 16 | 100 % / 100 % |
+| 4 | Punkte sammeln | 3×3, Start 4 · 4 · 2 · 2 | 60 Punkte | 20 | 100 % / 100 % |
+| 5 | Der Vierundsechziger | 4×4, Start 16 · 8 · 8 · 4 · 4 · 2 · 2 | Stufe 6 (64) | 35 | 96 % / 100 % |
+| 6 | Der Pfeiler | 3×3 `1 . 1 / . P . / . 2 .` | Stufe 4 (16) | 18 | 100 % / 100 % |
+
+Level 1 ist unverlierbar: Hoch und runter verändern auf einem 1×3-Streifen nichts. Der erste Seitwisch verschmilzt die beiden 2er, das Skript füllt die Lücke mit einer 2, der zweite Seitwisch macht die 8. Ein Test durchsucht alle Wische, Spawnzellen und Vorschauen und findet nur Siege nach genau zwei Wischen. Level 5 war mit 30 Zügen geplant; auf 4×4 braucht der Anfänger-Bot 35 (bei 30 gewinnt er nur 82–90 %).
+
+**Einführungslevel späterer Mechaniken, verkleinert** (die Folgelevel 12, 13, 15, 17, 19, 22, 23 und 25 behalten ihr Raster):
+
+| # | Mechanik | vorher | jetzt (festes Brett) | Idee | Züge | Anfänger / stark |
+|---|---|---|---|---|---|---|
+| 11 | Schrott | 4×4, zufällig | 3×3 `1 1 X1 / . . . / X1 2 2` | Verschmelzen neben dem Schrott knackt ihn: einmal nach rechts, einmal nach links | 12 | 100 % / 100 % |
+| 14 | Sporen | 4×4, zufällig | 3×3 `1 1 s / . . . / s 2 2` | Die Sporen liegen am Reihenende, die Verschmelzung landet darauf | 12 | 100 % / 100 % |
+| 16 | Amöbe | 4×4, zufällig | 3×3 `. 3 . / . . . / 2 . 2`, Skript: Amöbe in die Mitte | Jeder erste Wisch lässt die Mitte frei; die Amöbe hebt die 16 zur 32 | 16 | 100 % / 100 % |
+| 18 | Aufbruch | 4×4, Kappe 5 | 3×3 `3 3 . / . . . / . 2 2`, Kappe 4, zwei Aufbrüche | Der erste Seitwisch lässt das obere Paar aufbrechen, das zweite wird gebaut | 16 | 100 % / 100 % |
+| 21 | Verdorrt | 4×4, zufällig | 3×3 `w . 2 / 1 . 2 / 1 . w` | Die verdorrten Zellen liegen am Spaltenende: hoch heilt links, runter heilt rechts | 12 | 100 % / 100 % |
+| 24 | Strahl | 5×5, zufällig | 4×4 `1 1 2 2` über zwei doppelten Schrottzellen | Zwei Paare ergeben zwei Verschmelzungen und damit einen Strahl-Blob; er zündet in etwa 9 von 10 Spielen | 24 | 98 % / 100 % |
+
+**REX dazu** (`content/rex/lines.json`): Level 1 „Wisch zur Seite." Nach dem ersten Wisch „Da kommt Nachschub für uns." Nach dem ersten Sieg die Szene `afterLevel1` (Vorschlag, frei änderbar): „Schau, es bleibt bei uns." / „Die Erde ist zerbrochen." / „Jeder Stein heilt ein Stück." / „Da vorne wartet der nächste." Neue Auslöser: `locked` „Noch zu. Erst der davor.", `collection.new` „Neu! Ab in den Setzkasten.", `classic.unlock` „Neues Raster frei!"
+
 ## 7. Evolution: das Genom-System
 
 Ziel: 100.000e Varianten aus wenigen handgefertigten Modulen, ohne handgemachte Animation, komplett datengetrieben, im Editor justierbar.
@@ -307,7 +341,7 @@ Aus der Analyse von Candy Crush, Best Fiends und Royal Match:
 | Zonenfinale (25, 50, 75, 100) | großer emotionaler Beat: Riss schließt sich, Tiere kehren zurück |
 | Combos, Fehlversuche | Kommentar, Jubel, komische Verzweiflung |
 
-Alle Sprüche liegen in `content/rex/lines.json` (pro Anlass), zweisprachig ab Phase 3 (DE/EN).
+Alle Sprüche liegen in `content/rex/lines.json` (pro Anlass), zweisprachig ab Phase 3 (DE/EN). Szenen stehen dort als `scenes.<id>`: Sätze, die REX nacheinander sagt, jeder höchstens 8 Wörter (zuerst `afterLevel1`, Abschnitt 6.6).
 
 ## 10. UI und HUD
 

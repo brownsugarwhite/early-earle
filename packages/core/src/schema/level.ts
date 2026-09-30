@@ -10,8 +10,9 @@
  *
  * `spawn.script` (optional) fixes the first spawns of a level: entry k is the k-th spawn
  * (tier, kind, optionally the cell). While the script lasts the preview shows its next
- * entry and no random number is drawn for the tier; an `at` cell that is taken when the
- * spawn happens falls back to a random free cell. After the script the table takes over.
+ * entry and no random number is drawn for the tier; an `at` cell that is not a free spawn
+ * cell when the spawn happens (taken, or not next to a gas source) falls back to a random
+ * spawn cell. After the script the table takes over.
  */
 
 import { z } from 'zod';
