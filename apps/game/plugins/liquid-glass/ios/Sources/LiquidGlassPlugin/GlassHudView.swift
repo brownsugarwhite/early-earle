@@ -94,7 +94,7 @@ struct TopPill: View {
                 }
                 // A numeric title ("2048" in the classic mode) gets the display face; names stay in the grotesk.
                 Text(top.title)
-                    .font(GlassFonts.isShortNumber(top.title) ? GlassFonts.number(19, relativeTo: .headline) : .system(size: 15, weight: .black))
+                    .font(GlassFonts.isShortNumber(top.title) ? GlassFonts.number(for: top.title, size: 19, relativeTo: .headline) : .system(size: 15, weight: .black))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -102,7 +102,7 @@ struct TopPill: View {
                 VStack(spacing: 1) {
                     // The big number in Caprasimo (numbers and short titles only, like the web HUD's 'EE Heavy').
                     Text(top.moves)
-                        .font(GlassFonts.number(26))
+                        .font(GlassFonts.number(for: top.moves, size: 26))
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)

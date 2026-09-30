@@ -138,10 +138,16 @@ Stand 2026-09-30 (Iteration 4). Alle Klänge sind prozedural (Web Audio in der W
 
 **Wie der Ton in der App startet**
 
-- Die WebView der App braucht **keine Geste** (Capacitor setzt `mediaTypesRequiringUserActionForPlayback = []`): die Engine startet den Audio-Kontext gleich beim Start (`audio.arm()` in `src/audio/engine.ts`, nur in der App) — der Splash klingt ohne Tippen. Im Browser (Safari, Chrome) bleibt es bei der Regel „erster Tipp startet den Ton“.
+- Die WebView der App braucht **keine Geste** (Capacitor setzt `mediaTypesRequiringUserActionForPlayback = []`): die Engine startet den Audio-Kontext, sobald sie geladen ist (`audio.arm(true)` in `src/audio/engine.ts`, nur in der App, also vor dem ersten Klang des Splashs) — der Splash klingt ohne Tippen. Im Browser (Safari, Chrome) bleibt es bei der Regel „erster Tipp startet den Ton“.
 - **Native Glas-Pillen** (Spielen, Setzkasten, Klassik, Ton, Werkstatt …) sind Berührungen, die die WebView nie sieht: jeder Tipp ruft vor der Aktion `audio.unlock()` und spielt den Glas-Tink (`dispatchNativeAction` in `src/native/liquidGlass.ts`).
 - **Wachhund**: WebKit lässt ein `resume()` ohne Geste unendlich hängen (es lehnt nie ab). Ist der Kontext 400 ms nach `resume()` (Start, Ton wieder an, Rückkehr in den Vordergrund) nicht `running`, hängt die Engine die Tipp-Entsperrung wieder ein; der nächste Tipp startet den Ton.
 - Hintergrund und Unterbrechungen: beim Verlassen der App pausiert die Engine (`suspend`), beim Zurückkommen läuft sie weiter; nach Anruf/Siri/Wecker (`interrupted`) startet sie beim nächsten Tipp oder beim nächsten Wechsel in den Vordergrund.
+
+**Geprüft im Simulator (iPhone 17e, 390 × 844 pt, iOS 27, Debug-Build, 2026-09-30)**
+
+- Ohne einen einzigen Tipp: Audio-Lab zeigt „Kontext running · 48000 Hz“ und über 100 gestartete Klänge aus Karte und Level (`docs/progress/iter4-native-audiolab-running.png`).
+- Karte mit fünf Pillen in einer Reihe, nichts abgeschnitten: „▶ SPIELEN“ + Setzkasten (Akzent-Tönung) + Klassik + Ton + Werkstatt als Kreise (`iter4-native-map-pills.png`; Setzkasten/Klassik für das Bild als Platzhalter registriert, die echten Einträge kommen aus den Baustellen Sammlung und Klassik). Auf 390 pt greift die vierte Stufe (44-pt-Kreise), auf 393 pt die dritte (46 pt).
+- Level 2 „30 ZÜGE“ in Caprasimo (`iter4-native-level-zuege.png`), Klassik-Überschreibung „2048 · 12480 PUNKTE“ (`iter4-native-klassik-punkte.png`). Level 1 ohne Zuglimit zeigt „∞“ in der Systemschrift: Caprasimos ∞ ist ein leeres Kästchen (`GlassFonts.covers`).
 
 **Bekannte Grenzen**
 
