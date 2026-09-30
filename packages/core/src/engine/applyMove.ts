@@ -27,6 +27,10 @@
  *   release          +2^tier (graduation)      deliver +2^tier
  *   tier bomb        +8 per removed blob
  *   win              +5 × movesLeft
+ *
+ * Klassik (`level.mode === 'classic'`, freies 2048): zwei Start-Blobs, Gelee in jeder Zone,
+ * keine Spezialteile, keine Aufbrüche, kein Zugzähler, kein Sieg; verloren nur mit `stuck`.
+ * Punkte = Summe der Merge-Werte (2^Stufe).
  */
 
 import type { MoveEvent, MoveResult, Phase, PromoteEvent, SpecialKind } from '../events';
@@ -612,6 +616,8 @@ function fireSpecial(b: Board, fs: FiredSpecial, ev: MoveEvent[] | null): void {
 }
 
 function specialsPhase(b: Board, d: number, ev: MoveEvent[] | null): void {
+  // Klassik (freies 2048): keine Spezialteile, weder Beförderung noch Zündung.
+  if (b.level.mode === 'classic') return;
   for (let k = 0; k < ctx.fired.length; k++) fireSpecial(b, ctx.fired[k]!, ev);
 
   const { lineAt, burstAt } = b.level.specials;
@@ -741,6 +747,8 @@ function dynamicsPhase(b: Board, d: number, ev: MoveEvent[] | null): void {
 // ---- phase 5: graduation --------------------------------------------------------
 
 function graduationPhase(b: Board, ev: MoveEvent[] | null): void {
+  // Klassik: keine Kappe, kein Aufbruch, keine Stufenbombe; die Stufen wachsen unbegrenzt.
+  if (b.level.mode === 'classic') return;
   const geo = b.geo;
   const n = geo.n;
   const cap = b.level.cap;
@@ -975,6 +983,15 @@ export function computeGoalProgress(b: Board): GoalProgress[] {
 }
 
 export function finalizeMove(b: Board, ev: MoveEvent[] | null): void {
+  if (b.level.mode === 'classic') {
+    // Klassik: kein Zugzähler, kein Sieg; vorbei erst, wenn keine Richtung mehr etwas ändert.
+    b.moveNo++;
+    if (!anyDirectionChanges(b)) {
+      b.status = 'lost';
+      if (ev) ev.push({ type: 'lost', phase: P7, reason: 'stuck' });
+    }
+    return;
+  }
   b.moveNo++;
   b.movesLeft--;
   const prev = b.goalProgress;
@@ -1052,6 +1069,8 @@ export function toLevelState(b: Board): LevelState {
 // ---- createState ------------------------------------------------------------------
 
 function zoneMaterial(level: LevelDef): number {
+  // Klassik spielt in jeder Zone mit Gelee (Gas schwebte über Risse, das wäre kein 2048 mehr).
+  if (level.mode === 'classic') return MATERIAL_INDEX.jelly;
   switch (level.zone) {
     case 'syrup':
       return MATERIAL_INDEX.liquid;
@@ -1218,9 +1237,11 @@ export function createState(level: LevelDef, seed: number): LevelState {
     }
   }
 
-  // spawn preview; an empty board gets its first blob right away
+  // spawn preview; an empty board gets its first blob right away (Klassik: zwei wie in 2048)
   refillQueue(b);
-  if (countBlobs(b) === 0) spawnPhase(b, null);
+  const starts =
+    level.mode === 'classic' ? Math.max(0, 2 - countBlobs(b)) : countBlobs(b) === 0 ? 1 : 0;
+  for (let k = 0; k < starts; k++) spawnPhase(b, null);
 
   b.goalProgress = computeGoalProgress(b);
   return toLevelState(b);

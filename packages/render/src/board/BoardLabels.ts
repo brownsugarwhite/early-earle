@@ -7,6 +7,8 @@ const ROWS = 4;
 const CELL_PX = 128;
 /** Atlas cells: index = tier − 1 → 2^tier; the last cell is "?" (unknown / preview). */
 export const LABEL_UNKNOWN = COLS * ROWS - 1;
+/** Höchste Stufe mit eigenem Schild: 15 = 32768 (Klassik wächst über die Kappe 12 hinaus). */
+export const LABEL_MAX_TIER = LABEL_UNKNOWN;
 
 let sharedAtlas: CanvasTexture | null = null;
 
@@ -19,13 +21,18 @@ function createAtlas(paper: string, ink: string): CanvasTexture {
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   for (let i = 0; i < COLS * ROWS; i++) {
-    const text = i === LABEL_UNKNOWN ? '?' : i < 12 ? String(2 ** (i + 1)) : '';
-    if (!text) continue;
+    const text = i === LABEL_UNKNOWN ? '?' : String(2 ** (i + 1));
     const cx = (i % COLS) * CELL_PX + CELL_PX / 2;
     // Canvas rows top-down; uv v runs bottom-up, so row r of the texture is index row (ROWS − 1 − r).
     const cy = (ROWS - 1 - Math.floor(i / COLS)) * CELL_PX + CELL_PX / 2 + 4;
-    const size = text.length > 3 ? 46 : text.length > 2 ? 54 : 64;
+    let size = text.length > 4 ? 38 : text.length > 3 ? 46 : text.length > 2 ? 54 : 64;
     g.font = `900 ${size}px "Helvetica Neue", Arial, sans-serif`;
+    // Fünfstellige Werte (8192 … 32768) passen samt Schattenversatz in die Zelle.
+    const fit = (CELL_PX - 14) / (g.measureText(text).width + 4);
+    if (fit < 1) {
+      size = Math.floor(size * fit);
+      g.font = `900 ${size}px "Helvetica Neue", Arial, sans-serif`;
+    }
     // Ink offset shadow in the sun direction, then paper on top (neo-brutalist type, no outline).
     g.fillStyle = ink;
     g.fillText(text, cx + 4, cy + 2);
@@ -116,7 +123,7 @@ export class BoardLabels {
   }
 }
 
-/** Atlas index for a tier badge. */
+/** Atlas index for a tier badge (tiers 1–15, "?" beyond). */
 export function labelIndexForTier(tier: number): number {
-  return tier >= 1 && tier <= 12 ? tier - 1 : LABEL_UNKNOWN;
+  return tier >= 1 && tier <= LABEL_MAX_TIER ? tier - 1 : LABEL_UNKNOWN;
 }
