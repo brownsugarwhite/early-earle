@@ -216,14 +216,14 @@ export function createBigMaterial(ctx: TrashShaderContext): TrashMaterial {
       const inRow = step(fract(rowCoord.div(4).add(0.1)), float(0.25));
       const gl = glyphs(ang.mul(16 / (Math.PI * 2)), rowCoord, a.variant).mul(inRow).mul(side).mul(float(1).sub(cap));
       // Neon-Rinnen: von der Krone in die Falten hinab wie Schneestreifen in Earles Bergen, nach unten spitz
-      const colU = ang.mul(9 / (Math.PI * 2)).add(a.variant.mul(7));
+      const colU = ang.mul(10 / (Math.PI * 2)).add(a.variant.mul(7));
       const colId = floor(colU);
       const hc = rnd(colId.mul(3.7).add(a.variant.mul(91)));
       const yEnd = rnd(colId.mul(11.3).add(2.0)).mul(0.45).add(0.18);
       const cx = abs(fract(colU).sub(0.5));
       const taper = smoothstep(yEnd, float(0.95), p.y).mul(0.13).add(0.02);
       const fwc = fwidth(colU).max(1e-5);
-      const leak = smoothstep(taper.add(fwc), taper.sub(fwc), cx).mul(step(yEnd, p.y)).mul(step(hc, float(0.5))).mul(side).mul(float(1).sub(skirt));
+      const leak = smoothstep(taper.add(fwc), taper.sub(fwc), cx).mul(step(yEnd, p.y)).mul(step(hc, float(0.45))).mul(side).mul(float(1).sub(skirt));
       // Neonmoos auf Absätzen und Kappen: geschlossene Bänder, sektorweise unterbrochen (keine Zellen)
       const up = smoothstep(0.35, 0.7, n.y);
       const sector = rnd(floor(ang.mul(7 / (Math.PI * 2)).add(a.variant.mul(3))).add(a.variant.mul(17)));
@@ -345,7 +345,10 @@ export function createDebrisMaterial(ctx: TrashShaderContext, kind: 'tube' | 'ri
         const barrelCol = mix(mix(litCol, deep, hoops), neonLit, topCap.mul(neonAmt));
         const chimCol = mix(litCol, neonLit, rim.mul(neonAmt));
         litSide = select(isCan, canCol, select(isPipe, pipeCol, select(isBarrel, barrelCol, select(isChimney, chimCol, litCol))));
-        inkSide = mix(ink, neonDim, select(isChimney, rim, select(isBarrel, topCap, float(0))).mul(neonAmt));
+        // Tintenseite mit Ornament eine Stufe heller (Reifen der Fässer, Muffen, Etikettkante): dunkle Silhouetten
+        // im Gegenlicht tragen Zeichnung statt schwarz zu verklumpen
+        const inkOrn = select(isPipe, muffs, select(isBarrel, hoops, select(isCan, seam.max(stripeMask(p.y.mul(3.3).add(0.5), 0.08).mul(sideF)), float(0))));
+        inkSide = mix(mix(ink, deep, inkOrn.mul(0.85)), neonDim, select(isChimney, rim, select(isBarrel, topCap, float(0))).mul(neonAmt));
         // Flasche aus Neonglas: glimmt auch im Schatten
         const bottleGlow = step(abs(shape.sub(1)), float(0.5)).mul(neonAmt);
         inkSide = mix(inkSide, neonDim, bottleGlow.mul(0.8));
@@ -357,7 +360,7 @@ export function createDebrisMaterial(ctx: TrashShaderContext, kind: 'tube' | 'ri
         const coil = stripeMask(ang.mul(46 / (Math.PI * 2)).add(p.y.mul(0.5)), 0.42);
         const isCoil = shape.greaterThan(0.5);
         litSide = select(isCoil, mix(litCol, deep, coil), mix(litCol, pale, tread.mul(0.8)));
-        inkSide = mix(ink, neonDim, select(isCoil, coil.mul(neonAmt).mul(0.8), float(0)));
+        inkSide = mix(mix(ink, deep, select(isCoil, coil.mul(0.6), tread.mul(0.8))), neonDim, select(isCoil, coil.mul(neonAmt).mul(0.8), float(0)));
         litSide = mix(litSide, neonLit, select(isCoil, coil.mul(neonAmt), float(0)));
       } else {
         // Kiste: Bretter; Ballen: gepresste Schichten mit Glyphen; Scherbe: hell, Kante in Neon; Träger: Nieten
@@ -376,7 +379,8 @@ export function createDebrisMaterial(ctx: TrashShaderContext, kind: 'tube' | 'ri
           mix(litCol, deep, planks.min(1)),
           select(isBale, mix(mix(litCol, deep, layers), pale, baleGl), select(isShard, mix(litCol, neonLit, shardEdge.mul(neonAmt)), mix(litCol, pale, rivets))),
         );
-        inkSide = mix(ink, neonDim, select(isShard, shardEdge.mul(neonAmt).mul(0.6), float(0)));
+        const inkOrn = select(isCrate, planks.min(1), select(isBale, max(layers, baleGl), select(isShard, float(0), rivets)));
+        inkSide = mix(mix(ink, deep, inkOrn.mul(0.8)), neonDim, select(isShard, shardEdge.mul(neonAmt).mul(0.6), float(0)));
       }
       return mix(inkSide, litSide, lit);
     },
@@ -462,10 +466,14 @@ export function createSporeMaterial(ctx: TrashShaderContext): MeshBasicNodeMater
   const bt = smoothstep(0.15, 1.0, t);
   const burstPos = src.add(up.mul(bt.mul(2.4).add(sin(phase.mul(12)).mul(0.2)))).add(side.mul(cos(phase.mul(37)).mul(bt).mul(0.9))).add(side2.mul(sin(phase.mul(53)).mul(bt).mul(0.9)));
   const burstSize = size0.mul(sin(bt.mul(Math.PI))).mul(step(0.16, t));
+  // Art 3: Blüte am Boden, wo Müll lag (Earle-Natur übernimmt): wächst am Ende der Heilung auf und bleibt, atmet leicht
+  const bloomPos = src.add(up.mul(0.03));
+  const bloomSize = size0.mul(smoothstep(0.7, 1.0, t)).mul(sin(patternTime.mul(0.8).add(phase.mul(30))).mul(0.12).add(1));
   const isCol = kind.lessThan(0.5);
   const isFloat = kind.greaterThan(0.5).and(kind.lessThan(1.5));
-  const center = ctx.warp(select(isCol, colPos, select(isFloat, flPos, burstPos)) as unknown as Vec3Node);
-  const sizeW = select(isCol, colSize, select(isFloat, flSize, burstSize)).mul(fades(ctx, src, src.add(up.mul(0.5)), float(0.3), world));
+  const isBloom = kind.greaterThan(2.5);
+  const center = ctx.warp(select(isCol, colPos, select(isFloat, flPos, select(isBloom, bloomPos, burstPos))) as unknown as Vec3Node);
+  const sizeW = select(isCol, colSize, select(isFloat, flSize, select(isBloom, bloomSize, burstSize))).mul(fades(ctx, src, src.add(up.mul(0.5)), float(0.3), world));
   const viewC = modelViewMatrix.mul(vec4(center, 1));
   const depth = viewC.z.negate().max(0.05);
   const pxPerUnit = ctx.projScaleY.mul(screenSize.y).mul(0.5).div(depth);
@@ -476,7 +484,9 @@ export function createSporeMaterial(ctx: TrashShaderContext): MeshBasicNodeMater
   material.vertexNode = cameraProjectionMatrix.mul(vec4(viewC.xyz.add(vec3(positionGeometry.x, positionGeometry.y, 0).mul(sizeEff)), 1));
   const dist = varying(depth, 'vTrashSporeDist');
   // Säule neon → hell nach oben; Schweber neon; Ausbruch: helle Earle-Punkte (Gas wird zu Licht)
-  const idx = select(isCol, select(c.greaterThan(0.55), float(5), float(4)), select(isFloat, float(4), float(5)));
+  // Blüten: eine der fünf Blütenfarben der Welt je Punkt
+  const bloomIdx = floor(fract(phase.mul(7.13)).mul(5)).add(1);
+  const idx = select(isCol, select(c.greaterThan(0.55), float(5), float(4)), select(isFloat, float(4), select(isBloom, bloomIdx, float(5))));
   material.colorNode = steppedFog(ctx.lookup.pal(idx, row).rgb, ctx.fog, ctx.fogLookup, dist.add(ctx.veil(world)));
   return material;
 }

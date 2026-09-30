@@ -94,7 +94,7 @@ describe('TrashPlanner', () => {
       if (it.kind === 'heap' || it.kind === 'ruin') {
         for (const n of path.nodes) {
           const d = Math.hypot(it.position[0] - n.position[0], it.position[1] - n.position[1], it.position[2] - n.position[2]);
-          expect(d).toBeGreaterThan(4.2 + radius - 0.05);
+          expect(d).toBeGreaterThan(3.4 + radius - 0.05);
         }
       }
     }

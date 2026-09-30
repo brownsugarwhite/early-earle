@@ -206,6 +206,44 @@ function spike(b: FlatBuilder, base: V3, dir: V3, length: number, width: number,
   }
 }
 
+/**
+ * Kiste auf einem Absatz (Silhouette im Gegenlicht: Kanten statt Rauschen). Mitte unten `base`, Maße (w, h, d),
+ * Drehung um y; kein Boden (steht auf dem Absatz).
+ */
+function junkBox(b: FlatBuilder, base: V3, w: number, h: number, d: number, yaw: number, tilt = 0): void {
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  const ct = Math.cos(tilt);
+  const st = Math.sin(tilt);
+  const P = (x: number, y: number, z: number): V3 => {
+    // Neigung um die lokale z-Achse, dann Drehung um y
+    const x1 = x * ct - y * st;
+    const y1 = x * st + y * ct;
+    return [base[0] + x1 * c + z * s, base[1] + y1, base[2] - x1 * s + z * c];
+  };
+  const hw = w / 2;
+  const hd = d / 2;
+  const v = [P(-hw, 0, -hd), P(hw, 0, -hd), P(hw, 0, hd), P(-hw, 0, hd), P(-hw, h, -hd), P(hw, h, -hd), P(hw, h, hd), P(-hw, h, hd)];
+  const up: V3 = [-st, ct, 0];
+  const n = (x: number, z: number): V3 => [x * c + z * s, 0, -x * s + z * c];
+  b.tier = 1;
+  b.quad(v[4]!, v[7]!, v[6]!, v[5]!, up);
+  b.quad(v[0]!, v[4]!, v[5]!, v[1]!, n(0, -1));
+  b.quad(v[1]!, v[5]!, v[6]!, v[2]!, n(1, 0));
+  b.quad(v[2]!, v[6]!, v[7]!, v[3]!, n(0, 1));
+  b.quad(v[3]!, v[7]!, v[4]!, v[0]!, n(-1, 0));
+}
+
+/** Kisten reihum auf einem Absatz verteilen (Anzahl, Größe relativ zur Höhe 1). */
+function junkOnLedge(b: FlatBuilder, poly: Array<[number, number]>, ring: Ring, count: number, size: number, rand: () => number): void {
+  for (let k = 0; k < count; k++) {
+    const t = (k + rand() * 0.6) / count;
+    const p = onRing(poly, ring, t, 0.86 + rand() * 0.08);
+    const w = size * (0.6 + rand() * 0.8);
+    junkBox(b, [p[0], p[1] - 0.005, p[2]], w, w * (0.5 + rand() * 0.9), w * (0.6 + rand() * 0.6), rand() * Math.PI, (rand() - 0.5) * 0.5);
+  }
+}
+
 /** Punkt auf der Außenseite eines Rings (für Sporne). */
 function onRing(poly: Array<[number, number]>, r: Ring, t: number, inset = 0.92): V3 {
   const n = poly.length;
@@ -253,6 +291,12 @@ function addHeaps(b: FlatBuilder): void {
     spike(b, onRing(poly, rings[8]!, 0.6, 0.3), [-0.5, 0.9, 0.3], 0.16, 0.014, rand);
     spike(b, onRing(poly, rings[4]!, 0.35, 0.95), [0.9, 0.25, 0.4], 0.14, 0.016, rand);
     spike(b, onRing(poly, rings[6]!, 0.8, 0.95), [-0.3, 0.2, -0.9], 0.12, 0.012, rand);
+    spike(b, onRing(poly, rings[8]!, 0.35, 0.5), [0.1, 1, -0.6], 0.2, 0.014, rand);
+    spike(b, onRing(poly, rings[2]!, 0.62, 0.97), [-0.8, 0.3, 0.6], 0.16, 0.018, rand);
+    // Kisten und Ballen auf den Terrassen: kantige Silhouette im Gegenlicht
+    junkOnLedge(b, poly, rings[2]!, 7, 0.07, rand);
+    junkOnLedge(b, poly, rings[4]!, 5, 0.06, rand);
+    junkOnLedge(b, poly, rings[6]!, 4, 0.05, rand);
   }
   // Turm: Earles roter Turm (Ebene 44/45): Schürze, steiler Kern, gebrochene Krone
   {
@@ -274,6 +318,12 @@ function addHeaps(b: FlatBuilder): void {
     spike(b, onRing(poly, rings[7]!, 0.2, 0.6), [0.2, 1, -0.2], 0.2, 0.02, rand);
     spike(b, onRing(poly, rings[7]!, 0.7, 0.5), [-0.35, 1, 0.15], 0.13, 0.016, rand);
     spike(b, onRing(poly, rings[5]!, 0.45, 0.95), [0.8, 0.35, 0.5], 0.12, 0.014, rand);
+    // Krone aus Trägern (gebrochene Silhouette wie Earles Felsnadeln)
+    spike(b, onRing(poly, rings[7]!, 0.45, 0.7), [0.5, 1, 0.3], 0.26, 0.018, rand);
+    spike(b, onRing(poly, rings[7]!, 0.9, 0.7), [-0.2, 1, -0.5], 0.17, 0.014, rand);
+    spike(b, onRing(poly, rings[3]!, 0.15, 0.97), [-0.9, 0.5, 0.2], 0.12, 0.016, rand);
+    junkOnLedge(b, poly, rings[5]!, 5, 0.055, rand);
+    junkOnLedge(b, poly, rings[2]!, 6, 0.08, rand);
   }
   // Grat: lang gezogener Kamm (Instanz streckt x), gezackte Firstlinie
   {
@@ -292,19 +342,22 @@ function addHeaps(b: FlatBuilder): void {
     lathe(b, poly, rings, 0.8);
     spike(b, onRing(poly, rings[5]!, 0.05, 0.3), [0.6, 1, 0], 0.18, 0.016, rand);
     spike(b, onRing(poly, rings[5]!, 0.55, 0.3), [-0.7, 0.8, 0.1], 0.2, 0.016, rand);
+    spike(b, onRing(poly, rings[5]!, 0.3, 0.5), [0.2, 1, 0.5], 0.14, 0.014, rand);
+    spike(b, onRing(poly, rings[5]!, 0.8, 0.5), [-0.3, 1, -0.4], 0.16, 0.014, rand);
+    junkOnLedge(b, poly, rings[2]!, 7, 0.07, rand);
   }
 }
 
-/** Spitzbogen-Kurve als Punkte (Earles gotische Fenster und Bögen): von (x0, y0) zur Spitze (0, yTop). */
+/**
+ * Gotischer Spitzbogen (Earles Kathedralen- und Ruinenbögen): zwei Kreisbögen, die sich in der Spitze treffen. Von
+ * (x0, y0) — Kämpfer links (x0 < 0) oder rechts (x0 > 0) — zur Spitze (0, yTop); Punkte nach `out`.
+ */
 function gothicArc(x0: number, y0: number, yTop: number, steps: number, out: Vector2[], reverse = false): void {
   const pts: Vector2[] = [];
+  const top = Math.PI / 3;
   for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    // Viertelellipse, zur Spitze hin zugespitzt
-    const a = t * (Math.PI / 2);
-    const x = x0 * Math.cos(a) ** 1.25;
-    const y = y0 + (yTop - y0) * Math.sin(a);
-    pts.push(new Vector2(x, y));
+    const t = (i / steps) * top;
+    pts.push(new Vector2(x0 * (2 * Math.cos(t) - 1), y0 + ((yTop - y0) * Math.sin(t)) / Math.sin(top)));
   }
   if (reverse) pts.reverse();
   out.push(...pts);
@@ -324,22 +377,25 @@ function addRuins(b: FlatBuilder): void {
     b.part = BIG_PART_RUIN;
     b.tier = 1;
     const w = 0.525;
-    const outline: Vector2[] = [new Vector2(-w, 0), new Vector2(-0.3, 0), new Vector2(-0.3, 0.52)];
-    gothicArc(-0.3, 0.52, 0.8, 5, outline);
-    outline.push(new Vector2(0.06, 0.8), new Vector2(0.1, 0.78), new Vector2(0.13, 0.86), new Vector2(0.17, 0.83), new Vector2(0.2, 0.91), new Vector2(0.12, 0.95));
+    // Innen ein schlanker Spitzbogen (Stich ≈ Spannweite), außen ein flacherer Giebelbogen; die rechte Bogenhälfte ist
+    // knapp hinter dem Scheitel abgebrochen, der rechte Pfeiler steht als Stumpf daneben
+    const iw = 0.25;
+    const outline: Vector2[] = [new Vector2(-w, 0), new Vector2(-iw, 0)];
+    gothicArc(-iw, 0.44, 0.84, 6, outline);
+    outline.push(new Vector2(0.05, 0.8), new Vector2(0.09, 0.84), new Vector2(0.12, 0.8), new Vector2(0.15, 0.88), new Vector2(0.19, 0.85), new Vector2(0.17, 0.95));
     const outer: Vector2[] = [];
-    gothicArc(-w, 0.58, 1.0, 6, outer, true);
+    gothicArc(-w, 0.56, 1.02, 6, outer, true);
     outline.push(...outer);
     const arch = new Shape(outline);
     const pillar = new Shape([
-      new Vector2(0.3, 0),
+      new Vector2(iw, 0),
       new Vector2(w, 0),
-      new Vector2(w, 0.48),
-      new Vector2(0.47, 0.55),
-      new Vector2(0.42, 0.5),
-      new Vector2(0.37, 0.6),
-      new Vector2(0.32, 0.53),
-      new Vector2(0.3, 0.56),
+      new Vector2(w, 0.42),
+      new Vector2(0.47, 0.5),
+      new Vector2(0.41, 0.44),
+      new Vector2(0.35, 0.57),
+      new Vector2(0.29, 0.47),
+      new Vector2(iw, 0.5),
     ]);
     extrude(b, [arch, pillar], 0.24);
     // Sockel-Stufe unter beiden Pfeilern
@@ -390,13 +446,14 @@ function addRuins(b: FlatBuilder): void {
       new Vector2(-w, 0.7),
     ]);
     for (const cx of [-0.3, 0.26]) {
-      const hole: Vector2[] = [new Vector2(cx - 0.085, 0.2), new Vector2(cx + 0.085, 0.2), new Vector2(cx + 0.085, 0.46)];
-      const arc: Vector2[] = [];
-      gothicArc(0.085, 0.46, 0.64, 4, arc, true);
-      for (const p of arc) hole.push(new Vector2(cx + p.x, p.y));
+      // Fenster: unten links → unten rechts → rechter Bogen hinauf zur Spitze → linker Bogen hinab
+      const hole: Vector2[] = [new Vector2(cx - 0.085, 0.2), new Vector2(cx + 0.085, 0.2)];
+      const arcR: Vector2[] = [];
+      gothicArc(0.085, 0.46, 0.66, 4, arcR);
+      for (const p of arcR) hole.push(new Vector2(cx + p.x, p.y));
       const arcL: Vector2[] = [];
-      gothicArc(-0.085, 0.46, 0.64, 4, arcL);
-      for (const p of arcL.reverse()) hole.push(new Vector2(cx + p.x, p.y));
+      gothicArc(-0.085, 0.46, 0.66, 4, arcL, true);
+      for (const p of arcL.slice(1)) hole.push(new Vector2(cx + p.x, p.y));
       wall.holes.push(new Shape(hole));
     }
     const rose: Vector2[] = [];

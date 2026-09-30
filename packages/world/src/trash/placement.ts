@@ -47,7 +47,7 @@ const HEAL_PER_UNIT = 0.12;
 const VEIL_PER_UNIT = 0.08;
 /** Freiraum um Knoten (das Spielbrett faltet sich dort aus dem Boden): Kleinteile / große Elemente. */
 const NODE_CLEAR_SMALL = 1.7;
-const NODE_CLEAR_BIG = 4.2;
+const NODE_CLEAR_BIG = 3.4;
 
 interface Pocket {
   dir: Vec3;
@@ -199,11 +199,18 @@ export class TrashPlanner {
         const count = Math.round(c0 + (c1 - c0) * r2);
         // Längsachse der Verwehung: Höhenlinie (senkrecht zum Hanggefälle), leicht verrauscht
         const axis = this.contourAngle(d) + (r3 - 0.5) * 0.9;
-        const length = 1.3 + rand() * 2.4;
-        const width = 0.45 + rand() * 0.6;
+        // Dichte Haufen statt loser Streuung (Earle: Massen mit klarer Kontur, dazwischen Ruhe)
+        const length = 1.0 + rand() * 1.6;
+        const width = 0.4 + rand() * 0.5;
         const placed: Vec3[] = [];
         const centre = this.surface(d);
         const up = centre.normal;
+        const R = this.ctx.field.params.radius;
+        // Neon-Schleim mitten im Haufen (jeder dritte): die Teile liegen darin
+        if ((spec.goo ?? 0) > 0 && rand() < 0.35) {
+          const g = this.placeGoo(centre.position, 0.3 + rand() * 0.25, rand, spec);
+          if (g) items.push(g);
+        }
         for (let k = 0; k < count * 3 && placed.length < count; k++) {
           // Dichte fällt zur Spitze der Verwehung ab (Tropfenform)
           const u = (rand() + rand() + rand()) / 3 - 0.5;
@@ -211,11 +218,12 @@ export class TrashPlanner {
           const along = u * length;
           const across = v * width * (1 - Math.abs(u) * 1.2);
           const p = this.offsetDir(centre.position, up, axis, along, across);
-          if (placed.some((q) => dist3(q, p) < 0.2)) continue;
+          // Abstand über die Richtungen (p ist eine Einheitsrichtung): mindestens 0.16 Welteinheiten
+          if (placed.some((q) => dist3(q, p) * R < 0.16)) continue;
           const kind = pickDebris(spec.debrisKinds, rand());
           const it = this.placeDebris(kind, p, rand, spec, 0);
           if (!it) continue;
-          placed.push(it.position);
+          placed.push(p);
           items.push(it);
         }
       }
@@ -646,17 +654,17 @@ export class TrashPlanner {
       }
       case 'shard': {
         // Scherben stecken schräg im Boden wie Earles kleine Felszähne
-        const w = 0.16 + r1 * 0.22;
-        size = [w, w * (1.2 + r2 * 1.1), 0.04 + r4 * 0.03];
+        const w = 0.14 + r1 * 0.16;
+        size = [w, w * (1.0 + r2 * 0.8), 0.04 + r4 * 0.03];
         lean = 0.15 + r3 * 0.55;
         embed = size[1] * 0.25;
         break;
       }
       case 'girder': {
         const w = 0.06 + r1 * 0.04;
-        size = [w * 1.4, 0.9 + r2 * 1.2, w];
-        lean = Math.PI / 2 - 0.15 - r3 * 0.5; // schräg aus dem Boden ragend
-        embed = size[1] * 0.2;
+        size = [w * 1.4, 0.8 + r2 * 0.8, w];
+        lean = Math.PI / 2 - 0.05 - r3 * 0.25; // flach, ein Ende steckt im Boden (lange Schatten bleiben Linien)
+        embed = size[1] * 0.12 + w * 0.3;
         break;
       }
     }

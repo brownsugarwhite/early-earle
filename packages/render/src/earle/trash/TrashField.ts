@@ -16,6 +16,7 @@ import type { Camera, Frustum, Material, UniformNode } from 'three/webgpu';
 import { abs, mix, step, uniform, uniformArray } from 'three/tsl';
 import {
   HEAL_SPAN,
+  NEVER_HEALS,
   TrashPlanner,
   chunkAngularRadius,
   chunkDirection,
@@ -366,7 +367,7 @@ export class TrashField {
   /** Deckkraft des Neon-Schleiers (0..2, 1 = Inhalt). Sofort wirksam (Uniform). */
   setVeil(scale: number): void {
     this.veilScale.value = Math.max(0, scale);
-    this.veil.visible = scale > 0.001;
+    this.veil.visible = scale > 0.001 && this.veilGeometry.drawRange.count > 0;
   }
 
   /** Lichtung unter der Kamera (wie die Vegetation, 0 = aus). */
@@ -553,6 +554,8 @@ export class TrashField {
     const lists: Record<MeshKind, TrashItem[]> = { big: [], tube: [], ring: [], block: [], goo: [] };
     const nearSet = new Set(this.nearKey.split('|').filter(Boolean));
     const veils: ChunkTrash[] = [];
+    /** Blüten: auch geheilte Elemente (dort blüht es), nur in den nahen Chunks. */
+    const blooms: TrashItem[] = [];
     let hMax = 0;
     for (const key of this.active) {
       const chunk = this.cache.get(key);
@@ -560,6 +563,8 @@ export class TrashField {
       const near = nearSet.has(key);
       if (chunk.veil) veils.push(chunk);
       for (const it of chunk.items) {
+        // Blüten nur, wo die Heilung angekommen ist oder in der nächsten Feier ankommt (Rest folgt beim nächsten Umbau)
+        if (near && it.heal < NEVER_HEALS * 0.5 && it.heal <= floor + 1.5) blooms.push(it);
         if (!alive(it.heal)) continue;
         if (it.kind === 'heap' || it.kind === 'ruin') {
           lists.big.push(it);
@@ -577,7 +582,7 @@ export class TrashField {
     this.fill(this.rings, lists.ring, false);
     this.fill(this.blocks, lists.block, false);
     this.fill(this.goo, lists.goo, false);
-    this.fillSpores(veils, lists.big, lists.tube.filter((t) => t.kind === 'vent'), alive);
+    this.fillSpores(veils, lists.big, lists.tube.filter((t) => t.kind === 'vent'), alive, blooms);
     this.fillVeil(veils);
   }
 
@@ -618,7 +623,7 @@ export class TrashField {
     mesh.count = n;
   }
 
-  private fillSpores(veils: ChunkTrash[], bigs: TrashItem[], vents: TrashItem[], alive: (heal: number) => boolean): void {
+  private fillSpores(veils: ChunkTrash[], bigs: TrashItem[], vents: TrashItem[], alive: (heal: number) => boolean, blooms: TrashItem[]): void {
     const g = this.sporeGeometry;
     const a = g.getAttribute('spA') as InstancedBufferAttribute;
     const b = g.getAttribute('spB') as InstancedBufferAttribute;
@@ -650,6 +655,38 @@ export class TrashField {
       const count = it.kind === 'heap' ? 28 : 14;
       const top = _p.set(it.position[0], it.position[1], it.position[2]).addScaledVector(_v.set(it.up[0], it.up[1], it.up[2]), it.size[1] * 0.75);
       for (let k = 0; k < count; k++) push(top, it.up, it.variant * 17 + k * 0.618, 0.07 + 0.04 * ((k * 5) % 3) / 2, it.heal, 2, it.world);
+    }
+    // Blüten, wo Müll lag: Kleinteile 1–2, Pfützen und Quellen 3, Berge und Ruinen ein Kranz um den Fuß
+    {
+      const bloomRow = (world: number) => (this.worldRows[world] ?? this.worldRows.find((r) => r))?.rows.bloom ?? 0;
+      const t1 = new Vector3();
+      const t2 = new Vector3();
+      const upV = new Vector3();
+      const pos = new Vector3();
+      for (const it of blooms) {
+        upV.set(it.up[0], it.up[1], it.up[2]).normalize();
+        t1.set(upV.y, -upV.z, upV.x).cross(upV).normalize();
+        t2.crossVectors(upV, t1);
+        const big = it.kind === 'heap' || it.kind === 'ruin';
+        const count = big ? (it.kind === 'heap' ? 12 : 8) : it.kind === 'goo' || it.kind === 'vent' ? 3 : it.variant < 0.5 ? 1 : 2;
+        const radius = big ? Math.max(it.size[0], it.size[2]) * 0.42 : it.kind === 'goo' ? it.size[0] * 0.3 : 0.12;
+        for (let k = 0; k < count; k++) {
+          const ang = (k / count) * Math.PI * 2 + it.variant * 9;
+          const r = radius * (0.6 + 0.4 * (((k * 7 + 3) % 5) / 4));
+          pos.set(it.position[0], it.position[1], it.position[2]).addScaledVector(t1, Math.cos(ang) * r).addScaledVector(t2, Math.sin(ang) * r);
+          // auf den Boden legen (der Fuß der Teile ist eingesenkt, der Kranz liegt am Hang)
+          const len = pos.length() || 1;
+          const ground = this.options.planet.options.radius + this.options.planet.field.heightAt(pos.x / len, pos.y / len, pos.z / len);
+          pos.multiplyScalar((ground + 0.01) / len);
+          if (n >= cap) break;
+          push(pos, upV, it.variant * 3.7 + k * 0.29, 0.03 + 0.015 * ((k * 5) % 3), it.heal, 3, it.world);
+          c.setZ(n - 1, bloomRow(it.world));
+        }
+        // Kleinteile und Pfützen, die in der nächsten Feier heilen: zwei helle Punkte steigen auf (Gas wird zu Licht)
+        if (!big && it.kind !== 'vent' && healAmount(it.heal, this.progressFloor) < 1) {
+          for (let k = 0; k < 2 && n < cap; k++) push(it.position, upV, it.variant * 11 + k * 0.5, 0.05, it.heal, 2, it.world);
+        }
+      }
     }
     // Schwebende Sporen im Schleier
     outer: for (const ch of veils) {
@@ -714,6 +751,8 @@ export class TrashField {
     commit(vw, v);
     commit(index, o);
     g.setDrawRange(0, o);
+    // Leeres Gitter: gar nicht zeichnen (ein Draw mit 0 Indizes kostet einen Aufruf und warnt unter WebGPU)
+    this.veil.visible = o > 0 && this.veilScale.value > 0.001;
   }
 
   dispose(): void {

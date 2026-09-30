@@ -8,7 +8,7 @@ import { PaletteAtlas } from '../palette';
 export type TrashStyle = 'rost' | 'sirup' | 'nebel' | 'schnee' | 'wald';
 
 /** Materialzeilen des Mülls (Reihenfolge = Zeilenversatz je Welt). */
-export const TRASH_MATERIALS = ['heap', 'ruin', 'rust', 'bone', 'teal', 'dark', 'glass', 'neon'] as const;
+export const TRASH_MATERIALS = ['heap', 'ruin', 'rust', 'bone', 'teal', 'dark', 'glass', 'neon', 'bloom'] as const;
 export type TrashMaterialName = (typeof TRASH_MATERIALS)[number];
 
 interface StyleRamps {
@@ -35,6 +35,7 @@ const STYLES: Record<TrashStyle, StyleRamps> = {
       dark: ['#161e12', '#24301c', '#3a4a2a', '#56663a', '#7a8a50'],
       glass: ['#1c4a0c', '#3f8412', '#8fdc1a', '#b8ff2a', '#e6ffa8'],
       neon: NEON,
+      bloom: ['#f7f6d8', '#f0dc78', '#e5aed4', '#b8e0c8', '#f4b476'],
     },
     moss: ['#b8ff2a', '#4f8f14'],
   },
@@ -49,6 +50,7 @@ const STYLES: Record<TrashStyle, StyleRamps> = {
       dark: ['#14122a', '#221e40', '#343058', '#4c4674', '#6c6494'],
       glass: ['#2a1a4a', '#5a3a8a', '#f17023', '#f8a040', '#fce0a0'],
       neon: NEON,
+      bloom: ['#f6efbe', '#f8b070', '#e2e8ff', '#d8d8a0', '#f17023'],
     },
     moss: ['#b8ff2a', '#4f8f14'],
   },
@@ -63,6 +65,7 @@ const STYLES: Record<TrashStyle, StyleRamps> = {
       dark: ['#0a1a14', '#12281e', '#1e3a2c', '#2e5040', '#466a56'],
       glass: ['#1c4a0c', '#3f8412', '#8fdc1a', '#b8ff2a', '#e6ffa8'],
       neon: NEON,
+      bloom: ['#eaf6f4', '#d6f05a', '#b8e6ec', '#a8d66a', '#e6d24a'],
     },
     moss: ['#c6ff5a', '#3f7a24'],
   },
@@ -77,6 +80,7 @@ const STYLES: Record<TrashStyle, StyleRamps> = {
       dark: ['#0a0d14', '#12161e', '#1c2230', '#2a3244', '#3e485e'],
       glass: ['#1c4a0c', '#3f8412', '#8fdc1a', '#b8ff2a', '#e6ffa8'],
       neon: NEON,
+      bloom: ['#f7f6ee', '#c8d8f0', '#eef2f8', '#9ab0d0', '#e5aed4'],
     },
     moss: ['#f7f6ee', '#9ab0d0'],
     snow: true,
@@ -92,6 +96,7 @@ const STYLES: Record<TrashStyle, StyleRamps> = {
       dark: ['#12180e', '#1c2616', '#2a3820', '#3c4e2c', '#56683e'],
       glass: ['#12301a', '#1f5a2a', '#35b43e', '#8fd93c', '#d6f05a'],
       neon: ['#12301a', '#1f5a2a', '#35b43e', '#8fd93c', '#d6f05a'],
+      bloom: ['#f2e34a', '#f4f4ef', '#d92f2b', '#a894ff', '#7ed321'],
     },
     moss: ['#8fd93c', '#1f5a2a'],
   },

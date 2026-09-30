@@ -48,8 +48,9 @@ describe('Müll-Geometrie', () => {
     const g = createBigTrashGeometry();
     const heaps = outwardShare(g, (part) => part < 2.5);
     expect(heaps.count).toBeGreaterThan(50);
-    // Sporne und versetzte Terrassen zeigen teils schräg nach innen → nicht 100 %
-    expect(heaps.share).toBeGreaterThan(0.9);
+    // Sporne, versetzte Terrassen und die Kisten auf den Absätzen (geschlossene Körper, deren Innenseite zur Achse
+    // zeigt) → deutlich unter 100 %; entscheidend ist das Winding
+    expect(heaps.share).toBeGreaterThan(0.65);
     expect(heaps.windingOk).toBeGreaterThan(0.99);
   });
   it('Ruinen: Winding passt zur Normale', () => {
