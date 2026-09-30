@@ -151,7 +151,8 @@ test.describe('iPhone 393×852', () => {
   test('Level-Editor ohne Mac: lokal sichern, der Stand bleibt nach dem Neuladen', async ({ page }) => {
     const errors = collectErrors(page);
     await blockContent(page);
-    await page.goto('/editor/levels?file=003.json');
+    // Level 7 (5×5) bleibt unverändert; die Tutorial-Level 1–6 sind kleine Bretter.
+    await page.goto('/editor/levels?file=007.json');
     await expect(page.getByTestId('editor-levels')).toHaveAttribute('data-endpoint', 'offline', { timeout: 15_000 });
     await expect(page.getByTestId('board')).toBeVisible();
     await page.getByTestId('recent-void').tap();
@@ -162,8 +163,8 @@ test.describe('iPhone 393×852', () => {
     await expect(page.getByTestId('toast')).toContainText('Lokal gespeichert');
     await expect(page.getByTestId('dirty-dot')).toHaveAttribute('data-dirty', 'false');
     await expect(page.getByTestId('dirty-dot')).toContainText('Lokal gespeichert');
-    const stored = await page.evaluate(() => localStorage.getItem('ee.content.local.levels/003.json'));
-    expect((JSON.parse(stored!) as { json: { grid: { mask: string[] } } }).json.grid.mask[0]).toBe('#...');
+    const stored = await page.evaluate(() => localStorage.getItem('ee.content.local.levels/007.json'));
+    expect((JSON.parse(stored!) as { json: { grid: { mask: string[] } } }).json.grid.mask[0]).toBe('#....');
     // Still without the Mac after a reload: the local state is the saved state.
     await page.reload();
     await expect(page.getByTestId('cell-0-0')).toHaveAttribute('data-mask', '#', { timeout: 15_000 });
