@@ -1,0 +1,88 @@
+/* Klassik: Format-Blatt auf der Karte und „Bestwert!“-Stempel. Regeln: keine Konturen, flache Flächen, harte
+   Versatzschatten in Sonnenrichtung (--sun-shadow), kein Weichzeichner; Caprasimo nur für Titel und Zahlen. */
+
+.klassik-layer { position: fixed; inset: 0; z-index: 30; pointer-events: none; font-family: var(--font-display); color: var(--ink); }
+.klassik-layer > * { pointer-events: none; }
+
+/* Einstieg auf der Karte (Web): quadratischer Glasknopf wie Ton und Werkstatt, „2048“ in Caprasimo; leuchtet
+   in der Akzentfarbe, solange ein neues Format ungesehen ist (natives HUD: runde Pille mit SF Symbol). */
+.flow-hud .glass-btn.entry-btn[data-testid='entry-classic'] {
+  min-width: 48px; width: 52px; padding: 0 0 2px; display: inline-grid; place-items: center;
+  font-family: var(--font-heavy); font-size: 14px; letter-spacing: 0; text-transform: none;
+}
+.flow-hud .glass-btn.entry-btn[data-testid='entry-classic'][data-highlight='true'] { --glass-tint: color-mix(in srgb, var(--pink) 70%, transparent); }
+
+/* ---------- Blatt ---------- */
+.kl-sheet-wrap { position: absolute; inset: 0; pointer-events: auto; }
+.kl-backdrop { position: absolute; inset: 0; background: rgba(8, 27, 37, 0.5); animation: kl-fade 0.2s ease-out; }
+.kl-sheet {
+  position: absolute; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 16px);
+  margin: 0 auto; max-width: 560px; max-height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 40px);
+  overflow-y: auto; padding: 16px 16px 20px;
+  background: var(--paper); color: var(--ink); box-shadow: var(--sun-shadow) var(--ink-soft); outline: none;
+  animation: kl-rise 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+.kl-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.kl-title { margin: 0; font-family: var(--font-heavy); font-weight: 900; font-size: 32px; line-height: 1; }
+.kl-close {
+  flex: none; width: 44px; height: 44px; border: 0; padding: 0 0 3px; cursor: pointer;
+  background: var(--ink); color: var(--paper); font: 900 28px/1 var(--font-display);
+  box-shadow: -4px 2px 0 var(--khaki-deep); transition: transform 80ms ease, box-shadow 80ms ease;
+}
+.kl-close:active { transform: translate(-3px, 1px); box-shadow: -1px 1px 0 var(--khaki-deep); }
+.kl-close:focus-visible { outline: none; box-shadow: -4px 2px 0 var(--neon); }
+
+.kl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 14px 12px; }
+.kl-card {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px;
+  min-height: 132px; padding: 14px 6px 12px; border: 0; border-radius: 0; cursor: pointer;
+  background: var(--tone); color: var(--ink); font: inherit;
+  box-shadow: -6px 3px 0 var(--ink-soft); transition: transform 80ms ease, box-shadow 80ms ease;
+}
+.kl-card:active { transform: translate(-4px, 2px); box-shadow: -2px 1px 0 var(--ink-soft); }
+.kl-card:focus-visible { outline: none; box-shadow: -6px 3px 0 var(--neon); }
+.kl-card[data-locked='true'] { background: #c9c8b4; color: rgba(15, 28, 34, 0.62); cursor: default; box-shadow: -6px 3px 0 rgba(36, 44, 11, 0.3); }
+.kl-card[data-locked='true']:active { transform: none; }
+
+/* Rasterzeichnung: spielbare Zellen dunkel, Pfeiler hell, Risse leer. */
+.kl-mini { display: grid; grid-template-columns: repeat(var(--w), 1fr); gap: 3px; width: 56px; }
+.kl-mini span { aspect-ratio: 1; background: var(--ink-soft); }
+.kl-mini span[data-cell='pillar'] { background: var(--paper); }
+.kl-mini span[data-cell='void'] { background: transparent; }
+.kl-card[data-locked='true'] .kl-mini span[data-cell='open'] { background: rgba(36, 44, 11, 0.28); }
+.kl-card[data-locked='true'] .kl-mini span[data-cell='pillar'] { background: rgba(247, 246, 216, 0.75); }
+
+.kl-name { font-family: var(--font-heavy); font-size: 21px; line-height: 1; }
+.kl-best { display: inline-flex; align-items: center; gap: 4px; min-height: 18px; font-family: var(--font-heavy); font-size: 17px; line-height: 1; }
+.kl-star { width: 14px; height: 14px; fill: currentColor; }
+.kl-lock { display: inline-flex; align-items: baseline; gap: 5px; margin-top: 2px; font-size: 10px; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; }
+.kl-lock b { font-family: var(--font-heavy); font-size: 20px; letter-spacing: 0; }
+
+/* ---------- „Bestwert!“: schlägt schräg ein, steht kurz, geht ---------- */
+.kl-stamp {
+  position: absolute; left: 50%; top: calc(env(safe-area-inset-top) + 19%);
+  padding: 10px 20px 12px; background: var(--neon); color: var(--ink);
+  font-family: var(--font-heavy); font-size: 44px; line-height: 1; white-space: nowrap;
+  box-shadow: var(--sun-shadow) var(--ink);
+  transform: translate(-50%, 0) rotate(-6deg);
+  animation: kl-stamp 1.9s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+@keyframes kl-stamp {
+  0% { opacity: 0; transform: translate(-50%, 0) rotate(-14deg) scale(2.1); }
+  14% { opacity: 1; transform: translate(-50%, 0) rotate(-5deg) scale(0.92); }
+  22% { transform: translate(-50%, 0) rotate(-6deg) scale(1); }
+  82% { opacity: 1; transform: translate(-50%, 0) rotate(-6deg) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -10px) rotate(-6deg) scale(1); }
+}
+@keyframes kl-rise { from { transform: translateY(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes kl-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (min-width: 700px) {
+  .kl-sheet { max-width: 640px; padding: 20px 22px 24px; }
+  .kl-cards { grid-template-columns: repeat(4, 1fr); gap: 18px 16px; }
+  .kl-card { min-height: 150px; }
+  .kl-mini { width: 64px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kl-sheet, .kl-backdrop { animation: none; }
+}

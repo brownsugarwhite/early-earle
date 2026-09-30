@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import {
+  classicLevel,
+  classicSeed as firstClassicSeed,
   createHistory,
   createState,
   record,
@@ -8,11 +10,14 @@ import {
   applyMove,
   type Dir,
   type History,
+  type KlassikFormat,
   type LevelDef,
   type LevelState,
   type MoveResult,
+  type ZoneId,
 } from '@ee/core';
 import { LEVELS } from '../../content/levels';
+import { formatById } from '../../klassik/formats';
 import { rexIntroFor, rexLine } from './rex';
 import { CREATURE_DEMO_LEVEL, DEMO_LEVEL, HERD_DEMO_LEVEL, creatureDemoState, demoState, herdDemoState } from './demoLevel';
 
@@ -22,6 +27,21 @@ export const DEMO_LEVEL_INDEX = -1;
 export const CREATURE_DEMO_INDEX = -2;
 /** `levelIndex` of the Herde demo board (21 species of mixed tiers: the mesh-path stress board). */
 export const HERD_DEMO_INDEX = -3;
+
+/** Spielart des Bretts: die Level des Pfads (`story`) oder Klassik (freies 2048 am aktuellen Knoten). */
+export type GridSession = 'story' | 'classic';
+
+/** Klassik-Level je (Format, Zone) einmal: gleiche Identität über Neustarts (Geometrie-Cache, Klang „Neu“). */
+const classicLevels = new Map<string, LevelDef>();
+function classicLevelFor(format: KlassikFormat, zone: ZoneId): LevelDef {
+  const key = `${format.id}|${zone}`;
+  let level = classicLevels.get(key);
+  if (!level) {
+    level = classicLevel(format, zone);
+    classicLevels.set(key, level);
+  }
+  return level;
+}
 
 export interface GridLabState {
   levelIndex: number;
@@ -38,6 +58,19 @@ export interface GridLabState {
   pendingDir: Dir | null;
   rex: string | null;
   attempt: number;
+  /**
+   * Spielart: `story` (Level des Pfads) oder `classic` (Klassik). In Klassik lädt `loadLevel(index)` das Format am
+   * Knoten `index` (dessen Zone) statt des Levels; Rückspulen ist aus. Die Sammlung liest das Feld (Klassik sammelt nicht).
+   */
+  session: GridSession;
+  /** Format der Klassik-Sitzung (null in der Geschichte). */
+  classicFormat: KlassikFormat | null;
+  /** Seed-Basis der Klassik-Sitzung; der Versuch wird addiert (Neu = neues Brett). */
+  classicSeed: number;
+  /** Schaltet auf Klassik (lädt nichts: der nächste `loadLevel`, z. B. der Anflug, spielt das Format). false = unbekannt. */
+  startClassic: (formatId: string, seed?: number) => boolean;
+  /** Zurück zur Geschichte (lädt nichts neu). */
+  endClassic: () => void;
   loadLevel: (index: number, attempt?: number) => void;
   /** Loads the Elemente-Schau demo board (every element type on one board). */
   loadDemo: (attempt?: number) => void;
@@ -71,7 +104,40 @@ export const useGridStore = create<GridLabState>((set, get) => ({
   pendingDir: null,
   rex: null,
   attempt: 1,
+  session: 'story',
+  classicFormat: null,
+  classicSeed: 0,
+  startClassic: (formatId, seed) => {
+    const format = formatById(formatId);
+    if (!format) return false;
+    set({ session: 'classic', classicFormat: format, classicSeed: seed ?? firstClassicSeed(format.id) });
+    return true;
+  },
+  endClassic: () => {
+    if (get().session !== 'story') set({ session: 'story', classicFormat: null });
+  },
   loadLevel: (index, attempt = 1) => {
+    const { session, classicFormat, classicSeed } = get();
+    if (session === 'classic' && classicFormat && index >= 0) {
+      // Klassik am Knoten `index`: Raster des Formats, Zone des Knotens (Musik, Klang); kein Rückspulen (History 0).
+      const level = classicLevelFor(classicFormat, LEVELS[index]?.zone ?? 'tjorizo');
+      const state = createState(level, (classicSeed + attempt) | 0);
+      set({
+        levelIndex: index,
+        level,
+        history: createHistory(state, 0),
+        state,
+        lastMove: null,
+        moveSeq: 0,
+        animating: false,
+        pendingDir: null,
+        attempt,
+        rex: rexLine('classic.start') ?? 'Klassik. Wie weit kommst du?',
+      });
+      return;
+    }
+    // Ein Schaubrett (Grid-Lab) beendet eine liegen gebliebene Klassik-Sitzung.
+    if (session === 'classic') set({ session: 'story', classicFormat: null });
     if (index === DEMO_LEVEL_INDEX) {
       get().loadDemo(attempt);
       return;
@@ -169,8 +235,9 @@ export const useGridStore = create<GridLabState>((set, get) => ({
     return true;
   },
   rewindMove: () => {
-    const { history, animating } = get();
-    if (!history || animating || !canRewind(history)) return;
+    const { history, animating, session } = get();
+    // Klassik ist echtes 2048: kein Rückspulen.
+    if (!history || animating || session === 'classic' || !canRewind(history)) return;
     const h = rewind(history);
     set({ history: h, state: h.current, lastMove: null, moveSeq: get().moveSeq + 1, rex: 'Zurück. Nichts passiert.' });
   },
