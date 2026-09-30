@@ -14,66 +14,8 @@ import { PlanetFeatures, type FeatureHost, type FeatureSample, type LedgeAnchor,
  * Alles deterministisch: `seed = hash32('chunk', zone, face, cx, cy)`.
  */
 
-/** Stamm-Stil der Vegetation (Shader-Zweig): Tinte, weiße Kathedralenstämme, gestreifte Juwelenstämme, Flechtenbänder. */
-export type TrunkStyle = 'ink' | 'white' | 'striped' | 'lichen';
-/** Punktmotiv in den Kronen: einzelne Punkte, Rauten (4 Punkte), Kreuze (5 Punkte), nur am Rand. */
-export type CanopyMotif = 'dots' | 'diamond' | 'cross' | 'rim';
-
-export interface PlanetVegetationFamily {
-  /** Bäume pro Welteinheit² vor Waldmaske und Qualitätsfaktor. */
-  density: number;
-  /** 0 = gleichmäßig, 1 = nur Waldflecken. */
-  clumpiness: number;
-  kinds: Partial<Record<TreeKind, number>>;
-  /** Größenfaktor-Bereich. */
-  scale: [number, number];
-  /** Requisiten der Zone (Altformat): Schrotthaufen (dunkle Boxen) oder Öl-/Sirupbecken. */
-  props?: 'scrap' | 'pool' | null;
-  propDensity?: number;
-  /** Tiere (Silhouetten) pro Welteinheit² auf offenen Flächen. */
-  animalDensity?: number;
-  trunkStyle?: TrunkStyle;
-  /** Stammbreite relativ zum Kronenradius (Standard 0.04). */
-  trunkWidth?: number;
-  /** Höhenfaktor der Krone (1 = Proportion der Form; Kiefern 1.3 = spitzer). */
-  aspect?: number;
-  motif?: CanopyMotif;
-  /** Anzahl Farbvarianten der Kronenzeile (Juwelenwald: 4 Zeilen rot/blau/violett/türkis). */
-  rowVariants?: number;
-  /** Schwelle der Waldmaske 0..1 (Standard 0.51; kleiner = mehr Wald, z. B. Nebelhügel 0.42). */
-  forestThreshold?: number;
-  /**
-   * Hecken (Bilder 09, Ebene_36): Bäume stehen in Reihen entlang der Höhenlinien — Abstand der Reihen in
-   * Höhen-Einheiten (Anteil der Amplitude) und Breite einer Reihe (Anteil des Abstands).
-   */
-  rows?: { spacing: number; width: number };
-}
-
-export interface PlanetTerrainShape {
-  /** Hügelhöhe in Welteinheiten. */
-  amplitude: number;
-  /** Wellenlängenfaktor relativ zu `hillWavelength` (1 = Standard, 2 = doppelt so weite Hügel). */
-  wavelength?: number;
-  /** 0 = runde "gemeißelte" Hügel, 1 = messerscharfe Grate (ridged noise). */
-  ridge?: number;
-  /** Schwelle 0..1: unterhalb Ebene, oberhalb erhebt sich der Hügel (0 = alles gewellt). */
-  floor?: number;
-  /** Anteil einer großwelligen Rampe (steile Hänge wie in Bild 04). */
-  slope?: number;
-}
-
-export interface PlanetPropSpec {
-  /** Müll (Schrotthügel, Monolithe, Gasquellen, Reifen, Rohre) pro Welteinheit². */
-  trash?: number;
-  /** Öl-/Sirupbecken pro Welteinheit². */
-  pools?: number;
-  /** Rote Scheunen pro Welteinheit² (sehr sparsam). */
-  barns?: number;
-  /** Felsen/Felsnadeln pro Welteinheit². */
-  rocks?: number;
-  /** Tiere (Silhouetten) pro Welteinheit². */
-  animals?: number;
-}
+import type { CanopyMotif, PlanetPropKind, PlanetPropSpec, PlanetTerrainShape, PlanetVegetationFamily, TrunkStyle } from './plane/types';
+export type { CanopyMotif, PlanetPropKind, PlanetPropSpec, PlanetTerrainShape, PlanetVegetationFamily, TrunkStyle };
 
 export interface PlanetWorldParams {
   id: string;
@@ -195,8 +137,6 @@ export interface PlanetTree extends TreeInstance {
   /** Deterministischer Zufallswert 0..1 (Farbvariante, Motiv-Phase). */
   variant: number;
 }
-
-export type PlanetPropKind = 'scrap' | 'pool' | 'animal' | 'mound' | 'monolith' | 'vent' | 'tire' | 'pipe' | 'barn' | 'rock';
 
 export interface PlanetProp {
   kind: PlanetPropKind;
