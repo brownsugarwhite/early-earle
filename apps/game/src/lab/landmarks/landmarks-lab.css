@@ -1,0 +1,64 @@
+/* Landmarken-Lab: Art-Leiste, Info-Zeile, Ansichts-Knöpfe — konturlos, Versatzschatten in Sonnenrichtung. */
+.lm-seg {
+  display: flex;
+  gap: 0;
+  box-shadow: 5px 2px 0 var(--ink-soft);
+  white-space: nowrap;
+}
+.lm-seg button {
+  min-height: 44px;
+  padding: 0 11px;
+  border: 0;
+  background: var(--khaki);
+  color: var(--ink);
+  font: 800 12px/1 var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+.lm-seg button.is-on {
+  background: var(--ink);
+  color: var(--neon, #b8ff2a);
+}
+.lm-info {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 6px 10px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 12px/1.35 ui-monospace, Menlo, monospace;
+  box-shadow: var(--sun-shadow) var(--khaki-deep);
+}
+.lm-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-basis: 100%;
+}
+.lm-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  background: var(--sky-1, #7ce6d5);
+  color: var(--ink);
+  font: 900 12px/1 var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  box-shadow: var(--sun-shadow) var(--ink-soft);
+  cursor: pointer;
+}
+.lm-btn[data-active='true'] {
+  background: var(--pink);
+}
+.lm-btn:active {
+  transform: translate(-4px, 2px);
+  box-shadow: -4px 1px 0 var(--ink-soft);
+}
+.lm-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lm-toggles .earle-ctl {
+  min-width: 0;
+}

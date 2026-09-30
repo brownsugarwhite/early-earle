@@ -3,6 +3,10 @@ import type { Node, NodeBuilder } from 'three/webgpu';
 import { abs, clamp, dot, float, floor, fract, fwidth, max, min, mix, normalView, normalize, select, sin, smoothstep, step, vec3 } from 'three/tsl';
 import { aaStep, palByKey, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node, type Vec4Node } from '../tsl';
 import { blotches, flowLines, flowers, stipple, valueNoise3 } from './patterns';
+import type { ShadeTexture } from './shade';
+
+/** Nebel je Instanz (Bäume v4, siehe `trees/fog.ts`): ersetzt den gestuften Nebel je Fragment, wenn gesetzt. */
+export type FogFn = (color: Vec3Node) => Vec3Node;
 
 /**
  * Kronenmaterial der Bäume v3: Earle-Licht wie `EarleMaterial` (`lit = min(aaStep(N·L), Schatten)` → Bänder →
@@ -27,7 +31,7 @@ export interface CrownMaterialOptions {
   /** Objektraum-Normale für die Tangentialebene der Blüten (Fragmentstufe). */
   patternNormal: Vec3Node;
   /** Tüpfel: Zellgröße (Welteinheiten), Punktradius relativ zur Zelle, Dichte (Knoten, z. B. je Welt). */
-  stipple: { cell: number; size: number; density: FloatNode };
+  stipple: { cell: number | FloatNode; size: number; density: FloatNode };
   /**
    * Tintenkörper (Tannen, Bild 05): die Krone bleibt rundum Tinte, nur die hellen Punkte zeichnen sie — sonnenseitig
    * größer und heller, auf der Schattenseite klein und gedämpft (nie ganz weg: der Tannenwald ist aus Punkten gemacht).
@@ -48,6 +52,10 @@ export interface CrownMaterialOptions {
    * und dunklen Fugen dazwischen (Bild 03).
    */
   castWeight?: FloatNode | null;
+  /** Bäume v4: Textur der Schattenseite (dunkel auf dunkel, `trees/shade.ts`), liegt über der Farbe. */
+  shadeTexture?: ShadeTexture | null;
+  /** Bäume v4: Nebel je Instanz statt je Fragment. */
+  fogFn?: FogFn | null;
 }
 
 export class CrownMaterial extends NodeMaterial {
@@ -119,6 +127,7 @@ class CrownLightingModel extends LightingModel {
       litColor = mix(litColor, flowerColor, fl.mask);
     }
     let col = mix(ink, litColor, lit);
+    if (o.shadeTexture) col = o.shadeTexture(col, { lit, ndl, term, cast, row });
     if (o.growthNode) {
       const l = col.dot(vec3(0.3, 0.5, 0.2));
       const withered = mix(vec3(l), col, 0.35).mul(vec3(0.9, 0.82, 0.68));
@@ -131,7 +140,7 @@ class CrownLightingModel extends LightingModel {
     const context = builder.context as { outgoingLight?: Node };
     if (!context.outgoingLight) return;
     const out = context.outgoingLight as Vec3Node;
-    out.assign(steppedFog(out, this.o.fog, this.o.lookup, this.o.fogDistNode));
+    out.assign(this.o.fogFn ? this.o.fogFn(out) : steppedFog(out, this.o.fog, this.o.lookup, this.o.fogDistNode));
   }
 }
 
@@ -151,6 +160,8 @@ export interface DotMaterialOptions {
    * Schattenkarte je Fragment — der Punkt wechselt die Farbe als Ganzes, nie halb.
    */
   shade?: FloatNode | null;
+  /** Bäume v4: Nebel je Instanz statt je Fragment. */
+  fogFn?: FogFn | null;
 }
 
 /**
@@ -188,7 +199,7 @@ class DotLightingModel extends LightingModel {
     const context = builder.context as { outgoingLight?: Node };
     if (!context.outgoingLight) return;
     const out = context.outgoingLight as Vec3Node;
-    out.assign(steppedFog(out, this.o.fog, this.o.lookup, this.o.fogDistNode));
+    out.assign(this.o.fogFn ? this.o.fogFn(out) : steppedFog(out, this.o.fog, this.o.lookup, this.o.fogDistNode));
   }
 }
 
@@ -219,6 +230,13 @@ export interface BarkMaterialOptions {
   normalPlanet: Vec3Node;
   upPlanet: Vec3Node;
   growthNode: FloatNode | null;
+  /** Bäume v4: Nebel je Instanz statt je Fragment. */
+  fogFn?: FogFn | null;
+  /**
+   * Bäume v4: heller Grund des Spitzenschleiers (Innenseite der unteren Schale, Bild 02): `mask` 1 auf diesen
+   * Vertices, `color` die blasse Fläche, vor der Skelett und Punkte stehen.
+   */
+  veil?: { mask: FloatNode; color: Vec3Node } | null;
 }
 
 export class BarkMaterial extends NodeMaterial {
@@ -341,6 +359,7 @@ class BarkLightingModel extends LightingModel {
     const snowMask = max(solid, specks.mask);
     const snowCol = mix(o.lookup.pal(3, o.terrainRowNode).rgb, o.lookup.pal(5, o.terrainRowNode).rgb, lit) as unknown as Vec3Node;
     col = mix(col, snowCol, snowMask);
+    if (o.veil) col = mix(col, o.veil.color, o.veil.mask);
     if (o.growthNode) {
       const l = col.dot(vec3(0.3, 0.5, 0.2));
       col = mix(mix(vec3(l), col, 0.35).mul(vec3(0.9, 0.82, 0.68)), col, smoothstep(0, 1, o.growthNode));
@@ -352,6 +371,6 @@ class BarkLightingModel extends LightingModel {
     const context = builder.context as { outgoingLight?: Node };
     if (!context.outgoingLight) return;
     const out = context.outgoingLight as Vec3Node;
-    out.assign(steppedFog(out, this.o.fog, this.o.lookup, this.o.fogDistNode));
+    out.assign(this.o.fogFn ? this.o.fogFn(out) : steppedFog(out, this.o.fog, this.o.lookup, this.o.fogDistNode));
   }
 }
