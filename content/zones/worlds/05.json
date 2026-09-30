@@ -53,7 +53,7 @@
   },
   "fogStripes": 0,
   "fog": { "start": 7, "range": 13 },
-  "shadowTint": { "color": "#2f4db8", "amount": 0.78 },
+  "shadowTint": { "color": "#3560d8", "amount": 0.95 },
   "view": {
     "height": 6.0,
     "forward": 9,

@@ -53,7 +53,7 @@ import {
   vec3,
   vec4,
 } from 'three/tsl';
-import { BoardSurfaceMaterial, EarleMaterial, hexNode, type FogSettings, type PaletteLookup, type TSLUniform } from '@ee/render';
+import { BoardSurfaceMaterial, EarleMaterial, hexNode, type FogSettings, type PaletteLookup, type SunRig, type TSLUniform } from '@ee/render';
 import { completeLayout, type NodeSite, type PathLayout, type RibbonSample } from './path';
 
 /** Stone radius of a level node (Earle: small figures in a big landscape, never coins that dominate the map). */
@@ -116,6 +116,8 @@ export interface PathPalette {
   /** Terrain palette row of an Earle world. */
   terrainRow(world: number): number;
   colors(world: number): PathWorldColors;
+  /** Shadow tint per world (`SunRig.shadowTint`): the ribbon's shadows take the same colour as the terrain's. */
+  shadowTint?: SunRig['shadowTint'] | null;
 }
 
 export interface NodePathOptions {
@@ -678,6 +680,7 @@ export class NodePath {
     const row = new Float32Array(total * cols);
     const hgt = new Float32Array(total * cols);
     const seg = new Float32Array(total * cols);
+    const wld = new Float32Array(total * cols);
     const index: number[] = [];
     let base = 0;
     for (const strip of strips) {
@@ -697,6 +700,7 @@ export class NodePath {
           row[i * cols + c] = palette.terrainRow(r.world);
           hgt[i * cols + c] = r.heightNorm;
           seg[i * cols + c] = r.seg + Math.min(0.999, r.u);
+          wld[i * cols + c] = r.world;
         }
       });
       for (let j = 0; j < strip.length - 1; j++) {
@@ -716,6 +720,7 @@ export class NodePath {
     geo.setAttribute('rRow', new BufferAttribute(row, 1));
     geo.setAttribute('rH', new BufferAttribute(hgt, 1));
     geo.setAttribute('rSeg', new BufferAttribute(seg, 1));
+    if (palette.shadowTint) geo.setAttribute('rWorld', new BufferAttribute(wld, 1));
     geo.setIndex(index);
     geo.computeBoundingSphere();
     const rSeg = attribute('rSeg', 'float') as unknown as FloatNode;
@@ -736,6 +741,8 @@ export class NodePath {
       lift: (attribute('rH', 'float') as unknown as FloatNode).mul(0.45).add(0.78),
       growthNode: mix(float(0.78), float(1), walked),
       positionNode: place(positionLocal as unknown as Vec3Node, NUDGE_RIBBON),
+      // Shadows on the ribbon in the world's shadow tint, like the terrain around it (blue on snow)
+      shadowTint: palette.shadowTint ? { tint: palette.shadowTint, world: attribute('rWorld', 'float') as unknown as FloatNode } : null,
     });
     const mesh = new Mesh(geo, mat);
     mesh.name = 'path-ribbon';

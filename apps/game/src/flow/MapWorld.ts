@@ -211,7 +211,7 @@ export class MapWorld {
    * flowers and pedestals take each world's ink, jewel accent, rock, scrap, sand and water.
    */
   pathPalette(): PathPalette {
-    return planetPathPalette(this.world);
+    return planetPathPalette(this.world, this.sun.shadowTint);
   }
 
   /** Direction to the sun in world space (unit). */
@@ -472,8 +472,10 @@ export function worldPathColors(w: number): PathWorldColors {
   }
   const t = p.terrain;
   const rock = p.monolith?.[3] ?? mixHex(mixHex(t[2] ?? '#8c8c70', '#8a8272', 0.45), p.ink, 0.12);
+  // Contact shadows of stones and dots in the world's shadow tint (linear mix like the terrain's): blue on snow
+  const tint = content.shadowTint;
   const colors: PathWorldColors = {
-    ink: p.ink,
+    ink: tint ? mixLinearHex(p.ink, tint.color, tint.amount) : p.ink,
     petal,
     rock,
     rockShade: p.monolith?.[1] ?? mixHex(t[0] ?? '#303020', p.ink, 0.55),
@@ -483,6 +485,13 @@ export function worldPathColors(w: number): PathWorldColors {
   };
   pathColorCache.set(w, colors);
   return colors;
+}
+
+/** Mix two sRGB hex colours in linear light (like the GPU mixes the shadow tint), back to sRGB hex. */
+function mixLinearHex(a: string, b: string, t: number): string {
+  const ca = new Color(a);
+  const cb = new Color(b);
+  return `#${ca.lerp(cb, t).getHexString()}`;
 }
 
 /** Nearest intersection point of a ray with the sphere of radius r around the origin, or null. */
@@ -555,14 +564,15 @@ export function spliceTreePath(world: EarlePlanet, route: RoutedGround, site: He
   return { ...built.layout, bend: (p: Vec3Node) => world.bendNode(p) };
 }
 
-/** Palette context of the path visuals on a planet (see `MapWorld.pathPalette`). */
-export function planetPathPalette(world: EarlePlanet): PathPalette {
+/** Palette context of the path visuals on a planet (see `MapWorld.pathPalette`); `shadowTint` = the sun rig's tints. */
+export function planetPathPalette(world: EarlePlanet, shadowTint: SunRig['shadowTint'] | null = null): PathPalette {
   return {
     lookup: world.lookup,
     fog: world.fog,
     bands: world.terrainBands,
     terrainRow: (w) => world.rows[Math.max(0, Math.min(world.rows.length - 1, w))]!.terrain,
     colors: (w) => worldPathColors(w),
+    shadowTint,
   };
 }
 

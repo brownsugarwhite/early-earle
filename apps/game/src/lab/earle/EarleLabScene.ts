@@ -277,7 +277,7 @@ export class EarleLabScene implements SceneController {
     this.scene.updateMatrixWorld(true);
     const sunLocal = this.sun.directionWorld(new Vector3()).applyQuaternion(this.planet.quaternion.clone().invert());
     const isTree = (i: number) => i >= site.first && i <= site.last;
-    this.nodePath = new NodePath(layout, sunLocal, { onProgress: (cur, done) => site.setPathState(cur, done) }, { palette: planetPathPalette(world), external: isTree });
+    this.nodePath = new NodePath(layout, sunLocal, { onProgress: (cur, done) => site.setPathState(cur, done) }, { palette: planetPathPalette(world, this.sun.shadowTint), external: isTree });
     const current = Math.max(0, Math.min(this.params.progress, layout.nodes.length - 1));
     this.nodePath.setProgress(current, this.params.progress);
     this.planet.add(this.nodePath.group);
