@@ -9,7 +9,7 @@
   "sources": ["Ebene_29.jpg"],
   "palette": {
     "ink": "#140f0e",
-    "terrain": ["#161110", "#1f1917", "#2f2724", "#3c332f", "#4a403a"],
+    "terrain": ["#120e0d", "#1a1412", "#2f2724", "#4a403a", "#5e524a"],
     "canopy": ["#1e1816", "#2a2220", "#3a2e2a", "#524740", "#5e544c", "#6a5a50", "#7a6a5e"],
     "sky": ["#fcf2d2", "#f7e6cb", "#ecdcc4", "#dcd2bc", "#c9c6b3", "#b3b5a9"],
     "sun": "#fffbe6",
