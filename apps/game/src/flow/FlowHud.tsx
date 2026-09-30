@@ -247,7 +247,7 @@ export function FlowHud() {
                 className="flow-rex"
                 data-testid="rex-line"
                 data-story={story ?? undefined}
-                role={story ? 'button' : undefined}
+                aria-live="polite"
                 onClick={story ? () => request('story') : undefined}
               >
                 <span className="rex-name">REX</span> {rex}
