@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHUNK_SIZE, chunkMeshHeightAt, generatePlaneChunk, scatterPlaneProps, scatterPlaneTrees } from './chunks';
-import { LATERAL_WORLD_BASE, PROLOGUE_WORLD_BASE } from './layout';
+import { LATERAL_WORLD_BASE, PROLOGUE_WORLD_BASE, WorldLayout } from './layout';
 import { GradientNoise2 } from './noise2';
 import { PlanePath } from './path';
 import { proceduralWorldSpec } from './procedural';
@@ -57,6 +57,23 @@ describe('WorldLayout', () => {
     expect(layout.segment(-1).world).toBe(PROLOGUE_WORLD_BASE + 1);
     expect(layout.segment(10).world).toBe(10);
     expect(layout.segment(25).world).toBe(25);
+  });
+
+  it('counts future route entries (worlds without playable levels yet) for the layout, not as playable levels', () => {
+    const route = [...AUTHORED_ROUTE, { world: 4, levels: 10, future: true as const }, { world: 6, levels: 10, future: true as const }];
+    const withFuture = new WorldLayout({ seed: 7, route, authored: 10 });
+    // spielbar bleiben die Level 1–100; die künftigen Abschnitte tragen die Level 101–120, danach prozedural
+    expect(withFuture.authoredLevels).toBe(100);
+    expect(withFuture.segment(10)).toMatchObject({ world: 4, firstLevel: 101, levels: 10 });
+    expect(withFuture.segment(11)).toMatchObject({ world: 6, firstLevel: 111, levels: 10 });
+    expect(withFuture.segment(12)).toMatchObject({ world: 10, firstLevel: 121, levels: 10 });
+    expect(withFuture.segmentOfLevel(105)).toBe(10);
+    expect(withFuture.segmentOfLevel(125)).toBe(12);
+    // Lage der Autorenabschnitte unverändert
+    for (let k = 0; k < 10; k++) expect(withFuture.segment(k)).toEqual(layout.segment(k));
+    // Ab dem ersten künftigen Eintrag zählt nichts mehr mit (auch ein späterer Eintrag ohne Flag nicht)
+    const mixed = new WorldLayout({ seed: 7, route: [...AUTHORED_ROUTE, { world: 4, levels: 10, future: true as const }, { world: 6, levels: 10 }], authored: 10 });
+    expect(mixed.authoredLevels).toBe(100);
   });
 
   it('puts the path world in the band and neighbour worlds left and right — new ones as far as you pan', () => {
