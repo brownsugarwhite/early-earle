@@ -1,5 +1,5 @@
 /**
- * Startet den Vite-Dev-Server selbst (ohne SSL, 127.0.0.1:4173), wartet auf Bereitschaft,
+ * Startet den Vite-Dev-Server selbst (ohne SSL, 127.0.0.1:4173 oder E2E_PORT), wartet auf Bereitschaft,
  * führt die Playwright-Smoke-Tests aus und beendet den Server hart (SIGKILL auf die Prozessgruppe).
  * Grund: Playwrights eigener webServer-Teardown wartete minutenlang auf Vite (Port blieb belegt).
  */
@@ -9,7 +9,8 @@ import path from 'node:path';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const appDir = path.resolve(here, '..');
-const port = 4173;
+// Parallel agents/worktrees: each run gets its own port (E2E_PORT), Playwright reads the same variable.
+const port = Number(process.env.E2E_PORT ?? 4173);
 const url = `http://127.0.0.1:${port}/`;
 
 const server = spawn(

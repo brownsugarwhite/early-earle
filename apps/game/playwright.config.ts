@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// E2E_PORT: separate servers for parallel runs (scripts/e2e.mjs starts the server on the same port).
+const PORT = Number(process.env.E2E_PORT ?? 4173);
+
 // Smoke-Tests: laufen ohne GPU (SwiftShader/WebGL2). Golden-Screenshots gehören auf den Mac, nicht in CI.
 // 127.0.0.1 statt localhost: Node löst localhost zuerst nach ::1 auf, Vite lauscht auf IPv4 → sonst hängt der Server-Check.
 export default defineConfig({
@@ -12,16 +15,16 @@ export default defineConfig({
   globalTimeout: (process.env.CI ? 32 : 15) * 60_000,
   expect: { timeout: 10_000 },
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: `http://127.0.0.1:${PORT}`,
     ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',
     launchOptions: { args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] },
   },
   webServer: {
-    command: 'NO_SSL=1 node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4173 --strictPort',
+    command: `NO_SSL=1 node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port ${PORT} --strictPort`,
     stdout: 'ignore',
     stderr: 'pipe',
-    url: 'http://127.0.0.1:4173',
+    url: `http://127.0.0.1:${PORT}`,
     // scripts/e2e.mjs startet den Server selbst und setzt PW_REUSE_SERVER=1; direkter `playwright test` startet ihn hier.
     reuseExistingServer: !process.env.CI || process.env.PW_REUSE_SERVER === '1',
     timeout: 120_000,

@@ -36,3 +36,5 @@ apps/game/public/refs/
 
 # Audio-Vorschauen als WAV (werden per E2E erzeugt, ins Repo nur als .m4a)
 docs/progress/audio/*.wav
+apps/game/ios/build-device/
+apps/game/plugins/liquid-glass/.swiftpm/
