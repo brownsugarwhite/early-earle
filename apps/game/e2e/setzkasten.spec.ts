@@ -75,11 +75,12 @@ test('Setzkasten: über den Karten-Einstieg öffnen, Zähler, Wesen antippen →
   await expect(card).toContainText('2');
   await expect(card).toContainText('gefunden in Level 1');
   await expect(card).toHaveAttribute('data-earned', 'true');
-  // Budget: höchstens 36 Wesen in Sicht, 12 davon lebendig.
-  const stats = await page.evaluate(() => (window as unknown as { __ee: { setzkasten: { stats: { members: number; alive: number } } } }).__ee.setzkasten.stats);
+  // Budget: höchstens 36 Wesen in Sicht, 12 davon lebendig, 45 Draw Calls (Szene; der Ausgabe-Pass kommt dazu).
+  const stats = await page.evaluate(() => (window as unknown as { __ee: { setzkasten: { stats: { members: number; alive: number; drawCalls: number } } } }).__ee.setzkasten.stats);
   expect(stats.members).toBeGreaterThan(0);
   expect(stats.members).toBeLessThanOrEqual(36);
   expect(stats.alive).toBeLessThanOrEqual(12);
+  expect(stats.drawCalls).toBeLessThanOrEqual(44);
   await page.keyboard.press('Escape');
   await expect(card).toHaveCount(0);
 
