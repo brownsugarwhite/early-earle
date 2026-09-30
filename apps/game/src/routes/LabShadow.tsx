@@ -162,7 +162,7 @@ export function LabShadow() {
   return (
     <div ref={frameRef} className="shadow-lab" data-mode={params.mode}>
       <LabFrame
-        title="Schatten-Lab · v3 Kontakt"
+        title="P2e Schatten-Lab · Shadows v2"
         controls={
           hideUi ? undefined : (
             <>
@@ -316,11 +316,11 @@ export function LabShadow() {
             ) : (
               <span>Einzelkarte (keine Kamera gebunden)</span>
             )}
+            {stats?.shadowPassMs !== null && stats?.shadowPassMs !== undefined ? <span data-testid="shadow-pass-ms">Schattenpass {fmt(stats.shadowPassMs, 2)} ms</span> : null}
             <span>
               {stats?.backend ?? '…'} · {stats ? `${stats.canvas[0]}×${stats.canvas[1]}` : ''} · DPR {fmt(stats?.dpr ?? 0, 2)} · CPU {fmt(stats?.cpuMs ?? 0, 2)} ms · Chunks {stats?.chunks ?? 0}
               {stats?.manualCompare ? ' · Tiefenvergleich manuell' : ''}
             </span>
-            {stats?.shadowPassMs !== null && stats?.shadowPassMs !== undefined ? <span data-testid="shadow-pass-ms">Schattenpass {fmt(stats.shadowPassMs, 2)} ms</span> : null}
           </aside>
         )}
       </LabFrame>
