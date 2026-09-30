@@ -98,8 +98,9 @@ export const LIVE_IN = 11;
 export const LIVE_OUT = 13;
 const LIVE_EVERY = 0.5;
 const POP_S = 0.25;
-/** Wandern um den Wohnort: Radius, Pausen. */
+/** Wandern um den Wohnort: Radius, Pausen; Mindestabstand zweier Wohnorte am selben Knoten. */
 const WANDER_R = 0.9;
+const HOME_GAP = 0.75;
 const PAUSE_MIN = 3;
 const PAUSE_MAX = 8;
 /** Schattenpass höchstens 10 × (Mobil 6 ×) je Sekunde, solange Wesen sich bewegen. */
@@ -186,9 +187,14 @@ export function createMapCreatures(ground: MapGround, options: MapCreaturesOptio
 
   /** Der Rahmen eines Wohnorts: Normale nach oben, eine feste Tangente (je Schlüssel gedreht). */
   const makeResident = (entry: CollectionEntry): Resident => {
-    const slot = slotsAt.get(entry.node) ?? 0;
-    slotsAt.set(entry.node, slot + 1);
-    const hasHome = ground.homeSpot(entry.node, slot, _frame);
+    // Der nächste freie Platz am Knoten, der nicht auf einem Nachbarn liegt.
+    let slot = slotsAt.get(entry.node) ?? 0;
+    let hasHome = false;
+    for (let tries = 0; tries < 8; tries++) {
+      hasHome = ground.homeSpot(entry.node, slot++, _frame);
+      if (hasHome && !residents.some((o) => o.hasHome && o.entry.node === entry.node && o.home.distanceTo(_frame.position) < HOME_GAP)) break;
+    }
+    slotsAt.set(entry.node, slot);
     const home = _frame.position.clone();
     const normal = _frame.normal.clone().normalize();
     const t1 = new Vector3(0, 1, 0);
