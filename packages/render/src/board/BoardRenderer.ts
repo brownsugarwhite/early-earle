@@ -36,6 +36,33 @@ const MARGIN = 0.42;
 const RIM_CLEARANCE = 0.34;
 /** Extra ledge on the far side for the goal totems. */
 const GOAL_LEDGE = 0.8;
+/**
+ * Tutorial boards start at 1×N: the plateau (and its goal ledge) is laid out for at least this many cells per
+ * side, i.e. half extents of at least one pitch — a 1×3 strip stands on a plateau, not on a sliver.
+ */
+export const MIN_PLATEAU_CELLS = 2;
+/** Superellipse exponent of the plateau outline used when fitting the corners. */
+const SHAPE_N = 4.5;
+
+/**
+ * Half extents of the plateau top for a w×h grid: the grid (at least MIN_PLATEAU_CELLS per side) plus the margin
+ * and the goal ledge, grown until the near grid corner keeps its clearance from the rounded outline.
+ */
+function plateauHalf(w: number, h: number): { a: number; b: number } {
+  const gx = (Math.max(w, MIN_PLATEAU_CELLS) * BOARD_PITCH) / 2;
+  const gz = (Math.max(h, MIN_PLATEAU_CELLS) * BOARD_PITCH) / 2;
+  let a = gx + MARGIN;
+  let b = gz + MARGIN + GOAL_LEDGE / 2;
+  // The rounded outline cuts the corners: grow it until the near grid corner keeps its clearance.
+  const cx = gx + RIM_CLEARANCE;
+  const cz = gz + GOAL_LEDGE / 2 + RIM_CLEARANCE;
+  const f = Math.pow(Math.pow(cx / a, SHAPE_N) + Math.pow(cz / b, SHAPE_N), 1 / SHAPE_N);
+  if (f > 1) {
+    a *= f;
+    b *= f;
+  }
+  return { a, b };
+}
 /** Render layer of the blob shadow proxies (only the sun's shadow camera has it enabled) — same as the hero's. */
 export const BOARD_SHADOW_LAYER = 1;
 const ATTACHMENT_PREFIXES = ['crust:', 'zzz:', 'lid:', 'orbit:', 'core:', 'contact:'];
@@ -208,6 +235,17 @@ export class BoardRenderer {
     return { minX: -s.halfX - out, maxX: s.halfX + out, minZ: s.centerZ - s.halfZ - out, maxZ: s.centerZ + s.halfZ + out };
   }
 
+  /**
+   * Footprint the plateau of a w×h grid would have here (same site, same skirt) — for camera framing with a
+   * minimum size: `footprintFor(Math.max(w, 3), Math.max(h, 3))` frames tiny tutorial boards like a 3×3.
+   */
+  footprintFor(w: number, h: number): Footprint {
+    const { a, b } = plateauHalf(w, h);
+    const out = this.plateau.skirtExtent;
+    const cz = -GOAL_LEDGE / 2;
+    return { minX: -a - out, maxX: a + out, minZ: cz - b - out, maxZ: cz + b + out };
+  }
+
   cellToLocal(x: number, y: number): [number, number] {
     return this.layout.cellToLocal(x, y);
   }
@@ -217,7 +255,8 @@ export class BoardRenderer {
   }
 
   private makeLayout(w: number, h: number): BoardLayout {
-    const goalZ = -(h * BOARD_PITCH) / 2 - MARGIN - GOAL_LEDGE * 0.42;
+    // The goal totems stand on the ledge of the (minimum-size) plateau, not right behind a one-row strip.
+    const goalZ = -(Math.max(h, MIN_PLATEAU_CELLS) * BOARD_PITCH) / 2 - MARGIN - GOAL_LEDGE * 0.42;
     return {
       w,
       h,
@@ -232,21 +271,10 @@ export class BoardRenderer {
   private applyShape(): void {
     const { w, h } = this.layout;
     const depth = Math.max(1.05, this.topY - this.terrain.minD + 0.6);
-    const gx = (w * BOARD_PITCH) / 2;
-    const gz = (h * BOARD_PITCH) / 2;
-    let a = gx + MARGIN;
-    let b = gz + MARGIN + GOAL_LEDGE / 2;
-    // The rounded outline cuts the corners: grow it until the near grid corner keeps its clearance.
-    const n = 4.5;
-    const cx = gx + RIM_CLEARANCE;
-    const cz = gz + GOAL_LEDGE / 2 + RIM_CLEARANCE;
-    const f = Math.pow(Math.pow(cx / a, n) + Math.pow(cz / b, n), 1 / n);
-    if (f > 1) {
-      a *= f;
-      b *= f;
-    }
+    // Plateau at least MIN_PLATEAU_CELLS per side; the ink bed under the plates stays the real grid.
+    const { a, b } = plateauHalf(w, h);
     this.plateau.setShape({ halfX: a, halfZ: b, centerZ: -GOAL_LEDGE / 2, depth, ground: this.terrain.minD - this.topY });
-    this.plateau.setGrid(gx + BOARD_SEAM * 0.5, gz + BOARD_SEAM * 0.5, 0);
+    this.plateau.setGrid((w * BOARD_PITCH) / 2 + BOARD_SEAM * 0.5, (h * BOARD_PITCH) / 2 + BOARD_SEAM * 0.5, 0);
   }
 
   /**

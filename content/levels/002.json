@@ -4,9 +4,9 @@
   "zone": "tjorizo",
   "name": "Züge zählen",
   "grid": {
-    "w": 4,
-    "h": 4,
-    "mask": ["....", "....", "....", "...."]
+    "w": 3,
+    "h": 2,
+    "mask": ["...", "..."]
   },
   "fences": [],
   "floors": [],
@@ -14,27 +14,21 @@
   "threats": [],
   "start": [
     {
-      "at": [2, 3],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [3, 2],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [0, 2],
-      "blob": {
-        "tier": 1
-      }
-    },
-    {
       "at": [0, 0],
       "blob": {
         "tier": 1
+      }
+    },
+    {
+      "at": [1, 0],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 2
       }
     }
   ],
@@ -59,7 +53,7 @@
       "tier": 4
     }
   ],
-  "moves": 30,
+  "moves": 10,
   "cap": 12,
   "specials": {
     "lineAt": 16,

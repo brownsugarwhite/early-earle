@@ -125,6 +125,8 @@ export interface LevelSpec {
     amoeba?: number;
     sources?: Coord[];
     fallback?: 'none' | 'anyEmpty';
+    /** Fixed first spawns (tutorials), passed through to `spawn.script`. */
+    script?: { tier: number; at?: Coord; kind?: 'normal' | 'amoeba' }[];
   };
   specials?: { lineAt?: number; burstAt?: number };
   style?: DifficultyStyle;
@@ -274,6 +276,14 @@ export function generateLevel(spec: LevelSpec): LevelDef {
       spec.spawn?.fallback ??
       (spec.spawn?.sources && spec.spawn.sources.length > 0 ? 'none' : 'anyEmpty'),
   };
+  if (spec.spawn?.script && spec.spawn.script.length > 0) {
+    spawn.script = spec.spawn.script.map((s) => {
+      const e: NonNullable<LevelInput['spawn']['script']>[number] = { tier: s.tier };
+      if (s.at) e.at = [s.at[0], s.at[1]];
+      if (s.kind) e.kind = s.kind;
+      return e;
+    });
+  }
 
   // Fixed board: reuse the ASCII parser, then stamp id/name/difficulty.
   if (spec.board) {

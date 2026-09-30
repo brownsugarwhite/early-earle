@@ -126,6 +126,60 @@ describe('LevelSchema', () => {
   });
 });
 
+describe('tiny tutorial boards and spawn scripts', () => {
+  const tiny = (w: number, h: number, mask: string[]): LevelInput => ({
+    ...base(),
+    grid: { w, h, mask },
+    start: [{ at: [0, 0], blob: { tier: 1 } }],
+  });
+
+  it('accepts 1×3 and 2×2 grids', () => {
+    expect(errorsOf(tiny(3, 1, ['...']))).toEqual([]);
+    expect(errorsOf(tiny(2, 2, ['..', '..']))).toEqual([]);
+    expect(errorsOf(tiny(1, 4, ['.', '.', '.', '.']))).toEqual([]);
+    const lvl = LevelSchema.parse(tiny(3, 1, ['...']));
+    expect(lvl.grid).toEqual({ w: 3, h: 1, mask: ['...'] });
+  });
+
+  it('rejects boards with fewer than two playable cells', () => {
+    expect(errorsOf(tiny(1, 1, ['.'])).join()).toMatch(/at least 2 playable cells/);
+    expect(errorsOf(tiny(3, 1, ['.#P'])).join()).toMatch(/at least 2 playable cells/);
+    expect(errorsOf(tiny(2, 1, ['..']))).toEqual([]);
+    expect(errorsOf(tiny(0, 1, [''])).length).toBeGreaterThan(0);
+  });
+
+  it('keeps the spawn script optional (no key when absent) and validates its cells', () => {
+    const plain = LevelSchema.parse(base());
+    expect('script' in plain.spawn).toBe(false);
+    const ok = base();
+    ok.spawn.script = [
+      { tier: 1 },
+      { tier: 2, at: [1, 1] },
+      { tier: 1, kind: 'amoeba', at: [3, 3] },
+    ];
+    expect(errorsOf(ok)).toEqual([]);
+    expect(LevelSchema.parse(ok).spawn.script).toEqual(ok.spawn.script);
+    const onPillar = base();
+    onPillar.spawn.script = [{ tier: 1, at: [2, 2] }];
+    expect(errorsOf(onPillar).join()).toMatch(/spawn\.script\.0\.at: \[2,2\] is not a '\.' cell/);
+    const outside = base();
+    outside.spawn.script = [{ tier: 1, at: [5, 0] }];
+    expect(errorsOf(outside).join()).toMatch(/outside/);
+    const badTier = base();
+    badTier.spawn.script = [{ tier: 4 }];
+    expect(errorsOf(badTier).length).toBeGreaterThan(0);
+    const long = base();
+    long.spawn.script = Array.from({ length: 33 }, () => ({ tier: 1 }));
+    expect(errorsOf(long).length).toBeGreaterThan(0);
+  });
+
+  it('counts a scripted amoeba as the amoeba element', () => {
+    const lvl = base();
+    lvl.spawn.script = [{ tier: 1, kind: 'amoeba' }];
+    expect(countElementKinds(LevelSchema.parse(lvl)).has('amoeba')).toBe(true);
+  });
+});
+
 describe('content files', () => {
   it('every content/levels/NNN.json validates', () => {
     const files = readdirSync(`${contentDir}levels`).filter((f) => /^\d{3}\.json$/.test(f));

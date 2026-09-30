@@ -1,4 +1,4 @@
-import { sourceAdjacentCells, type LevelDraft } from '../draft';
+import { removeScriptEntry, scriptEntryText, sourceAdjacentCells, type LevelDraft } from '../draft';
 import { useEditorStore } from '../editorStore';
 import { ToolIcon, UiIcon } from '../icons';
 import { Row, Seg, Section, Stepper, Toggle } from '../ui';
@@ -17,6 +17,7 @@ export function SpawnTab() {
   const setSpawn = (p: Partial<LevelDraft['spawn']>, key?: string) => update((d) => ({ ...d, spawn: { ...d.spawn, ...p } }), key);
   const total = spawn.table.reduce((s, t) => s + t.weight, 0);
   const setRow = (i: number, row: TableRow, key?: string) => setSpawn({ table: spawn.table.map((r, k) => (k === i ? row : r)) }, key);
+  const script = spawn.script ?? [];
 
   return (
     <>
@@ -37,6 +38,21 @@ export function SpawnTab() {
           </button>
         </Row>
       </Section>
+      {script.length > 0 ? (
+        <Section title="Skript" aside={<span className="ed-stat"><b>{script.length}</b> feste Spawns</span>}>
+          <p className="ed-hint">Die ersten Spawns in dieser Reihenfolge (Tutorial). Ist die Zielzelle belegt, landet der Blob auf einer freien Zelle. Danach gilt die Tabelle.</p>
+          {script.map((s, i) => (
+            <div className="ed-goal" key={i} data-testid={`spawn-script-${i}`}>
+              <span className="ed-stat">
+                <b>{i + 1}.</b> {scriptEntryText(s)}
+              </span>
+              <button type="button" className="ed-btn ed-btn-sq ed-btn-ghost" aria-label={`Skript-Spawn ${i + 1} entfernen`} onClick={() => update((d) => removeScriptEntry(d, i))} data-testid={`spawn-script-remove-${i}`}>
+                <UiIcon name="trash" size={18} />
+              </button>
+            </div>
+          ))}
+        </Section>
+      ) : null}
       <Section
         title="Spawn-Tabelle"
         aside={
