@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULT_SPECIES_RULES, SPECIES, SPECIES_LABELS, ZONES, materialForTierRules, paletteFor, speciesRuleFor, type ZoneId } from '@ee/genome';
 import { PATTERN_KINDS, PATTERN_LABELS, REX_PALETTE, TJORIZO_PALETTE, boardPaletteFor, speciesPalette } from '@ee/render';
-import { BARK_PALETTE, BLOSSOM_CENTER_PALETTE, BLOSSOM_PALETTE, FAMILY_PALETTES, LICHEN_PALETTE, STAR_PALETTE } from '@ee/render/earle/tree/index.ts';
+import { BARK_PALETTE, BLOSSOM_CENTER_PALETTE, BLOSSOM_PALETTE, DOME_FAMILIES, LICHEN_PALETTE, MOTIF_PALETTE, SNOW_PALETTE, STAR_PALETTE } from '@ee/render/earle/tree/index.ts';
 import type { ExportContext } from '../context';
 
 /**
@@ -124,7 +124,10 @@ export async function exportPalettes(ctx: ExportContext): Promise<{ file: string
     rows: [
       { name: 'Rinde', colors: [...BARK_PALETTE] },
       { name: 'Flechten', colors: [...LICHEN_PALETTE] },
-      ...Object.entries(FAMILY_PALETTES).map(([f, p]) => ({ name: `Kronenfamilie ${f}`, colors: [p.ink, ...p.bands, ...p.dots, ...p.motifs] })),
+      // Riesenbaum v3: Kuppelfamilien im Verlauf (Tinte, drei Lichtbänder, Punkte Schatten/Licht/Saum, Akzent)
+      ...DOME_FAMILIES.map((f) => ({ name: `Kuppelfamilie ${f.name}`, colors: [...f.steps] })),
+      { name: 'Kronenblüten', colors: [...MOTIF_PALETTE] },
+      { name: 'Schnee', colors: [...SNOW_PALETTE] },
       { name: 'Blüten', colors: [...BLOSSOM_PALETTE] },
       { name: 'Blütenmitten', colors: [...BLOSSOM_CENTER_PALETTE] },
       { name: 'Sternnadeln', colors: [...STAR_PALETTE] },
