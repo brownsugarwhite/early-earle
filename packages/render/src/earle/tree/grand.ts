@@ -141,15 +141,24 @@ export function layoutGrandTrees(o: { count: number; seed?: number; heroCrown?: 
   const r0 = o.minRadius ?? R * 1.8;
   const r1 = o.maxRadius ?? R * 2.7;
   const n = Math.max(1, Math.min(6, Math.round(o.count)));
-  const sites: GrandTreeSite[] = [];
   const blocked = (a: number): boolean => (o.avoid ?? []).some((s) => Math.abs(wrapAngle(a - s.angle)) < s.width);
-  let a = rand() * Math.PI * 2;
+  // freie Winkel rundum (720 Schritte); die Bäume teilen sich den freien Bogen gleichmäßig (nie zwei hintereinander)
+  const STEPS = 720;
+  const free: number[] = [];
+  const a0 = rand() * Math.PI * 2;
+  for (let k = 0; k < STEPS; k++) {
+    const a = a0 + (k / STEPS) * Math.PI * 2;
+    if (!blocked(a)) free.push(a);
+  }
+  if (free.length === 0) for (let k = 0; k < STEPS; k++) free.push(a0 + (k / STEPS) * Math.PI * 2);
+  const sites: GrandTreeSite[] = [];
   for (let i = 0; i < n; i++) {
-    let ang = a + (rand() - 0.5) * 0.5;
-    for (let k = 0; k < 24 && blocked(ang); k++) ang += 0.15;
-    const rho = r0 + (r1 - r0) * rand();
+    const f = (i + 0.5 + (rand() - 0.5) * 0.35) / n;
+    const ang = free[Math.min(free.length - 1, Math.max(0, Math.floor(f * free.length)))]!;
+    // abwechselnd näher und weiter (Tiefe statt Kranz)
+    const t = i % 2 === 0 ? rand() * 0.45 : 0.55 + rand() * 0.45;
+    const rho = r0 + (r1 - r0) * t;
     sites.push({ x: Math.cos(ang) * rho, z: Math.sin(ang) * rho, yaw: rand() * Math.PI * 2 });
-    a += (Math.PI * 2) / n;
   }
   return sites;
 }

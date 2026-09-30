@@ -272,7 +272,7 @@ export class TreeLabScene implements SceneController {
           heroCrown: tree.shape.R,
           avoid: [
             { angle: plan.startAngle, width: 0.7 },
-            { angle: 2.2, width: 0.6 },
+            { angle: 2.25, width: 0.85 },
           ],
         }),
         seed: this.params.seed,
