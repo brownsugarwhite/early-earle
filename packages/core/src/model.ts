@@ -110,6 +110,8 @@ export const CELL_PILLAR = 2;
 export interface SpawnEntry {
   tier: number;
   kind: 'normal' | 'amoeba';
+  /** Scripted cell (index); used when it is a free spawn cell at spawn time, otherwise a random one. */
+  at?: number;
 }
 
 export interface GoalProgress {
@@ -163,6 +165,8 @@ export interface Board {
   status: Status;
   /** Pre-drawn spawns; index 0 is the next one (the preview). */
   spawnQueue: SpawnEntry[];
+  /** Spawn-script entries already drawn into the queue (`level.spawn.script`; 0 without a script). */
+  scriptPos: number;
 
   // goal counters
   released: number;
@@ -247,6 +251,7 @@ export function cloneBoard(b: Board): Board {
     blobSeq: b.blobSeq,
     status: b.status,
     spawnQueue: b.spawnQueue.slice(),
+    scriptPos: b.scriptPos,
     released: b.released,
     delivered: b.delivered,
     deliveredByTier: b.deliveredByTier.slice(),
@@ -286,6 +291,7 @@ export function copyBoardInto(dst: Board, src: Board): void {
   const q = dst.spawnQueue;
   q.length = src.spawnQueue.length;
   for (let i = 0; i < q.length; i++) q[i] = src.spawnQueue[i]!;
+  dst.scriptPos = src.scriptPos;
   dst.released = src.released;
   dst.delivered = src.delivered;
   dst.deliveredByTier.set(src.deliveredByTier);

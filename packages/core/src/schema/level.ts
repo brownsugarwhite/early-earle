@@ -4,6 +4,14 @@
  * Coordinates are `[x, y]` with `x` the column (0..w-1) and `y` the row (0..h-1).
  * `grid.mask` holds `h` rows of `w` characters: `.` playable cell, `#` void ("Riss"),
  * `P` pillar. Every `at` must point at a `.` cell.
+ *
+ * Grids run from 1×N (tutorial boards: only as many cells as the mechanic needs) up to
+ * 8×8; every level needs at least two playable cells.
+ *
+ * `spawn.script` (optional) fixes the first spawns of a level: entry k is the k-th spawn
+ * (tier, kind, optionally the cell). While the script lasts the preview shows its next
+ * entry and no random number is drawn for the tier; an `at` cell that is taken when the
+ * spawn happens falls back to a random free cell. After the script the table takes over.
  */
 
 import { z } from 'zod';
@@ -79,6 +87,16 @@ const Goal = z.discriminatedUnion('type', [
 
 export const DIFFICULTY_STYLES = ['explosive', 'precise', 'journey', 'puzzle', 'diligent'] as const;
 
+/** Longest allowed spawn script (tutorial levels need a handful). */
+export const MAX_SPAWN_SCRIPT = 32;
+
+/** One scripted spawn: tier 1–3, optional kind and cell. */
+const ScriptedSpawn = z.object({
+  tier: Int.min(1).max(3),
+  at: Coord.optional(),
+  kind: z.enum(['normal', 'amoeba']).optional(),
+});
+
 export const LevelSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -86,11 +104,11 @@ export const LevelSchema = z
     zone: z.enum(ZONE_IDS),
     name: z.string().min(1).optional(),
     grid: z.object({
-      w: Int.min(3).max(8),
-      h: Int.min(3).max(8),
+      w: Int.min(1).max(8),
+      h: Int.min(1).max(8),
       mask: z
         .array(z.string().regex(/^[.#P]+$/))
-        .min(3)
+        .min(1)
         .max(8),
     }),
     fences: z.array(z.object({ a: Coord, b: Coord })).default([]),
@@ -111,6 +129,8 @@ export const LevelSchema = z
         .min(1),
       preview: z.boolean().default(true),
       fallback: z.enum(['none', 'anyEmpty']).default('none'),
+      /** Fixed first spawns (tutorials); no default, so levels without it stay byte-identical. */
+      script: z.array(ScriptedSpawn).max(MAX_SPAWN_SCRIPT).optional(),
     }),
     goals: z.array(Goal).min(1),
     moves: Int.min(1).max(99),
@@ -134,6 +154,13 @@ export const LevelSchema = z
     mask.forEach((row, y) => {
       if (row.length !== w) issue(`mask row ${y} must have ${w} chars`, ['grid', 'mask', y]);
     });
+    // Two playable cells are the least a merge needs (1×N tutorial boards are fine).
+    let playable = 0;
+    for (let y = 0; y < Math.min(h, mask.length); y++) {
+      const row = mask[y] ?? '';
+      for (let x = 0; x < Math.min(w, row.length); x++) if (row.charAt(x) === '.') playable++;
+    }
+    if (playable < 2) issue('grid needs at least 2 playable cells', ['grid', 'mask']);
     const cellAt = (c: readonly [number, number]): string | undefined =>
       mask[c[1]]?.charAt(c[0]) || undefined;
     const isCell = (c: readonly [number, number]) => cellAt(c) === '.';
@@ -190,6 +217,10 @@ export const LevelSchema = z
     if (lvl.spawn.sources.length === 0 && lvl.spawn.fallback !== 'anyEmpty') {
       issue("spawn without sources needs fallback 'anyEmpty'", ['spawn', 'fallback']);
     }
+    // Scripted spawn cells must be playable cells.
+    lvl.spawn.script?.forEach((s, i) => {
+      if (s.at) checkCell(s.at, ['spawn', 'script', i, 'at']);
+    });
 
     // Portals paired (exactly two cells per portalId).
     const portals = new Map<string, number>();
@@ -264,6 +295,7 @@ export type GoalDef = LevelDef['goals'][number];
 export type GoalType = GoalDef['type'];
 export type StartBlobDef = LevelDef['start'][number]['blob'];
 export type SpawnTableEntry = LevelDef['spawn']['table'][number];
+export type ScriptedSpawnDef = NonNullable<LevelDef['spawn']['script']>[number];
 
 /** Distinct element kinds a level uses (for the "max 4 kinds" rule and the calibration table). */
 export function countElementKinds(lvl: {
@@ -273,7 +305,10 @@ export function countElementKinds(lvl: {
   blockers: { kind: string }[];
   threats: { kind: string }[];
   start: { blob: { kind?: string | undefined } }[];
-  spawn: { table: { kind?: string | undefined }[] };
+  spawn: {
+    table: { kind?: string | undefined }[];
+    script?: { kind?: string | undefined }[] | undefined;
+  };
   specials: { lineAt: number; burstAt: number };
 }): Set<string> {
   const kinds = new Set<string>();
@@ -284,7 +319,8 @@ export function countElementKinds(lvl: {
   for (const t of lvl.threats) kinds.add(t.kind);
   if (
     lvl.start.some((s) => s.blob.kind === 'amoeba') ||
-    lvl.spawn.table.some((t) => t.kind === 'amoeba')
+    lvl.spawn.table.some((t) => t.kind === 'amoeba') ||
+    (lvl.spawn.script ?? []).some((t) => t.kind === 'amoeba')
   ) {
     kinds.add('amoeba');
   }
