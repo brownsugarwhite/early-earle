@@ -35,8 +35,7 @@
   },
   "props": { "barns": 0.0015, "animals": 0.008 },
   "features": {
-    "lakes": { "count": 1, "radius": [1.6, 2.2], "stretch": 2.5, "pathDistance": [2.4, 3.2], "focusDistance": [4, 9] },
-    "rocks": [{ "kind": "mesa", "count": 1, "size": [4.5, 5.5], "height": [2.4, 3.0], "pathDistance": [2.6, 3.4] }],
+    "lakes": { "count": 1, "radius": [1.4, 1.9], "stretch": 2.6, "pathDistance": [1.8, 2.8], "focusDistance": [7, 13] },
     "chisel": 0.6
   },
   "fogStripes": 0.3,

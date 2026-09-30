@@ -83,11 +83,6 @@ export class PlanetFeatures {
       if (!spec) return;
       const salt = spec.seed ?? 0;
       const id = host.worldId(world);
-      if (spec.rocks && spec.rocks.length > 0) {
-        const r = generateRocks(host, world, spec.rocks, featureRandom(host.seed, id, 'rocks', salt), occupied);
-        this.formations.push(...r.formations);
-        this.ledgeAnchors.push(...r.ledges);
-      }
       // Flüsse mit Mündungsseen, danach übrige Seen
       let made = 0;
       if (spec.rivers) {
@@ -99,6 +94,12 @@ export class PlanetFeatures {
       if (spec.lakes && spec.lakes.count > made) {
         const lakes = generateLakes(host, world, spec.lakes, spec.lakes.count - made, featureRandom(host.seed, id, 'lakes', salt), occupied, made);
         this.lakes.push(...lakes);
+      }
+      // Felsen danach (sie weichen Wasser aus; Seen brauchen Mulden und sind wählerischer)
+      if (spec.rocks && spec.rocks.length > 0) {
+        const r = generateRocks(host, world, spec.rocks, featureRandom(host.seed, id, 'rocks', salt), occupied);
+        this.formations.push(...r.formations);
+        this.ledgeAnchors.push(...r.ledges);
       }
     });
     // Index: Seen und Flusssegmente, Formationen

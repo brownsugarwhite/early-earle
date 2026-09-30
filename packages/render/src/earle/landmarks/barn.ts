@@ -205,12 +205,13 @@ export class BarnLandmarks {
       rowNode: row,
       fog: o.fog,
       bands: o.bands,
-      // Die Scheune ist der Akzent des Bildes: Wände fast rundum im Licht (rote Bänder, Glut in der Mitte), nur die
-      // genau abgewandte Seite fällt in Tinte; keine Schlagschatten auf der Scheune (receiveShadow aus)
-      bandScale: 1.0,
+      // Die Scheune ist der Akzent des Bildes (Bild 01): Wände rundum leuchtend rot in Bändern (sonnenseitig heller,
+      // Glut in der Wandmitte), keine Tintenseite und keine Schlagschatten auf den Wänden (receiveShadow aus)
+      bandScale: 0.8,
       terminator: 0.02,
-      terminatorNode: float(-0.45),
-      lift: glow.mul(isWall),
+      terminatorNode: float(-1.2),
+      // Wände eine Stufe heller (leuchtendes Rot wie Bild 01), Glut in der Wandmitte
+      lift: glow.add(0.12).mul(isWall),
       pattern: { mask: woodMask, color: mix(lines, o.lookup.pal(1, row).rgb, 0.25), shadowColor: mix(ink, o.lookup.pal(1, row).rgb, 0.5) },
       layers: [
         { mask: isPart(ROOF), color: snow, shadowColor: snowShade, castOnly: true },

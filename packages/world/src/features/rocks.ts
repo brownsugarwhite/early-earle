@@ -69,9 +69,9 @@ function lateralReachOf(kind: RockKind, size: number): number {
     case 'wall':
       return size * TERRACE_DEPTH * 0.5 + 0.35;
     case 'tower':
-      return size * 1.1;
+      return size * 0.5 * 1.9 + 0.3;
     case 'mesa':
-      return size * 0.45;
+      return size * 0.44;
     case 'spires':
       return size * 0.62;
   }
@@ -251,89 +251,103 @@ function buildTerraces(
   return { columns, ledges, footprint };
 }
 
-/** Turm-Monolith (Ebene_44/45): gestufter Sockel, verjüngter Schaft, kleine Krone. Kante zur Front. */
-function buildTower(host: FeatureHost, frame: FeatureFrame, front: [number, number], size: number, height: number, rand: () => number): Built {
-  const W = size * 0.5;
-  const rot = Math.atan2(front[1], front[0]) + Math.PI / 4 + (rand() - 0.5) * 0.3;
-  const sides = rand() < 0.75 ? 4 : 6;
-  const k = sides === 4 ? Math.SQRT2 : 1.15;
-  const z0 = ground(host, frame, 0, 0);
-  const columns: RockColumn[] = [];
-  const ledges: Built['ledges'] = [];
-  const tiers = [
-    { r: 2.1, h: 0.075 },
-    { r: 1.68, h: 0.135 },
-    { r: 1.32, h: 0.19 },
+/** Rechteck mit gefasten Ecken um (0, 0): Halbachsen `a` längs `g`, `b` längs `f`, Fase `c` (Anteil). */
+function chamferedRect(g: [number, number], f: [number, number], a: number, b: number, c: number): Poly {
+  const pts: Array<[number, number]> = [
+    [a, b * (1 - c)],
+    [a * (1 - c), b],
+    [-a * (1 - c), b],
+    [-a, b * (1 - c)],
+    [-a, -b * (1 - c)],
+    [-a * (1 - c), -b],
+    [a * (1 - c), -b],
+    [a, -b * (1 - c)],
   ];
-  for (let i = 0; i < tiers.length; i++) {
-    const t = tiers[i]!;
-    const poly = regularPolygon(0, 0, W * t.r * k, sides, rot);
-    const top = z0 + height * t.h;
-    columns.push(column(poly, footBase(host, frame, poly), top, { taper: 0.97, tier: i, part: 1 }));
-    const inner = i + 1 < tiers.length ? tiers[i + 1]!.r : 1;
-    const rr = W * (t.r + inner) * 0.5 * (sides === 4 ? 1.08 : 0.95);
-    ledges.push({ x: front[0] * rr, y: front[1] * rr, z: top, step: i, radius: W * (t.r - inner) * 0.55 + 0.2 });
-  }
-  const shaft = regularPolygon(0, 0, W * k, sides, rot);
-  columns.push(column(shaft, z0 + height * tiers[tiers.length - 1]!.h - 0.3, z0 + height * 0.93, { taper: 0.72 }));
-  const crown = regularPolygon(0, 0, W * k * 0.66, sides, rot);
-  columns.push(column(crown, z0 + height * 0.89, z0 + height, { taper: 0.9, part: 2, capStyle: 1 }));
-  return { columns, ledges, footprint: W * tiers[0]!.r * k };
+  const poly: Poly = pts.map(([u, v]) => [g[0] * u + f[0] * v, g[1] * u + f[1] * v]);
+  if (polygonArea(poly) < 0) poly.reverse();
+  return poly;
 }
 
 /**
- * Schräger Tafelfels (Ebene_27): ein Felsblock, der zu einer Seite steil ansteigt — drei hintereinander gestaffelte,
- * schräg abgeschnittene Platten (hinten die höchste), stark verjüngt, jede Deckfläche eine geneigte Facette im
- * Streiflicht. Die oberste Platte trägt am flachen Ende eine kleine begehbare Kante (Anker).
+ * Turm-Monolith (Ebene_44/45): breiter, geböschter Sockel längs des Weltbands (Schuttkegel, die Seiten fangen das
+ * Streiflicht), darauf eine flache Plattform, der verjüngte Schaft mit harten Facetten und eine kleine Krone.
  */
-function buildMesa(host: FeatureHost, frame: FeatureFrame, front: [number, number], size: number, height: number, rand: () => number): Built {
-  const Lh = size * 0.5;
-  const Dh = size * 0.26;
+function buildTower(host: FeatureHost, frame: FeatureFrame, front: [number, number], size: number, height: number, rand: () => number): Built {
+  const W = size * 0.5;
+  const f: [number, number] = [front[0], front[1]];
+  const g: [number, number] = [-front[1], front[0]];
   const z0 = ground(host, frame, 0, 0);
-  // Längsachse quer zur Front (längs des Bands), hohe Seite zufällig
-  const ax = -front[1];
-  const ay = front[0];
-  const hi = rand() < 0.5 ? 1 : -1;
-  const shape = (cx: number, cy: number, l: number, d: number, n: number): Poly => {
-    const poly: Poly = [];
-    for (let i = 0; i < n; i++) {
-      const t = (i / n) * Math.PI * 2 + (rand() - 0.5) * 0.2;
-      const rr = 0.9 + rand() * 0.16;
-      // Zur hohen Seite spitz zulaufend (Keil)
-      const c = Math.cos(t);
-      const u = c * l * rr;
-      const v = Math.sin(t) * d * rr * (1 - 0.45 * Math.max(0, c * hi));
-      poly.push([cx + ax * u - front[0] * v, cy + ay * u - front[1] * v]);
-    }
-    if (polygonArea(poly) < 0) poly.reverse();
-    return poly;
-  };
   const columns: RockColumn[] = [];
   const ledges: Built['ledges'] = [];
-  // Platten: hinten hoch, vorne niedriger, gegeneinander längs versetzt
+  // Sockel: gefastes Rechteck längs des Bands, stark geböscht
+  const base = chamferedRect(g, f, W * 3.2, W * 1.9, 0.3 + rand() * 0.15);
+  const baseTop = z0 + height * 0.14;
+  columns.push(column(base, footBase(host, frame, base), baseTop, { taper: 0.6, tier: 0, part: 1, capStyle: 1 }));
+  // Plattform: niedrige Stufe mit senkrechten Wänden, Deckfläche begehbar (Anker an einem Ende)
+  const plat = chamferedRect(g, f, W * 2.0, W * 1.2, 0.2);
+  const platTop = baseTop + height * 0.045;
+  columns.push(column(plat, baseTop - 0.3, platTop, { taper: 0.98, tier: 1, part: 1, capStyle: 1 }));
+  const end = rand() < 0.5 ? 1 : -1;
+  ledges.push({ x: g[0] * W * 1.5 * end, y: g[1] * W * 1.5 * end, z: platTop, step: 0, radius: W * 0.42 });
+  // Schaft: quadratisch, verjüngt, harte Facetten (eine Kante zur Front → Licht- und Tintenseite)
+  const shaft = regularPolygon(0, 0, W * Math.SQRT2, 4, Math.atan2(f[1], f[0]) + Math.PI / 4 + (rand() - 0.5) * 0.2);
+  columns.push(column(shaft, platTop - 0.3, z0 + height * 0.93, { taper: 0.66 }));
+  // Krone: kleiner abgesetzter Block
+  const crown = regularPolygon(0, 0, W * Math.SQRT2 * 0.6, 4, Math.atan2(f[1], f[0]) + Math.PI / 4);
+  columns.push(column(crown, z0 + height * 0.9, z0 + height, { taper: 0.88, part: 2, capStyle: 1 }));
+  let footprint = 0;
+  for (const c of columns) footprint = Math.max(footprint, Math.hypot(c.cx, c.cy) + c.r);
+  return { columns, ledges, footprint };
+}
+
+/**
+ * Schräger Tafelfels (Ebene_27, gespiegelt): gelehnte Felsplatten, deren Oberseite als steile Rampe von Süd nach Nord
+ * ansteigt; am Nordende bricht jede Platte senkrecht ab. Die Karte blickt längs des Bands nach Osten, die Sonne steht
+ * rechts vorn (Süd) — die Rampen sind die hellen Flächen im Streiflicht, Stirnwände und Westseiten Tinte. Mehrere
+ * Platten gestaffelt (jede niedriger, weiter vorn und talwärts), davor ein flacher Sockelstein (Anker).
+ */
+function buildMesa(host: FeatureHost, frame: FeatureFrame, _front: [number, number], size: number, height: number, rand: () => number): Built {
+  const L = size * 0.5; // halbe Länge Süd–Nord
+  const D = size * 0.19; // halbe Breite Ost–West
+  const z0 = ground(host, frame, 0, 0);
+  /** Keil: Süd (−y) schmal und niedrig, Nord (+y) breit und hoch; Ecken leicht verworfen. x = Ost, y = Nord. */
+  const slab = (cx: number, cy: number, l: number, d: number): Poly => {
+    const pts: Poly = [
+      [cx + d * 0.55, cy - l],
+      [cx + d * (0.95 + rand() * 0.05), cy - l * 0.1],
+      [cx + d, cy + l * 0.94],
+      [cx + d * 0.8, cy + l],
+      [cx - d * 0.85, cy + l],
+      [cx - d, cy + l * 0.9],
+      [cx - d * (0.92 + rand() * 0.08), cy - l * 0.3],
+      [cx - d * 0.5, cy - l],
+    ];
+    if (polygonArea(pts) < 0) pts.reverse();
+    return pts;
+  };
+  const columns: RockColumn[] = [];
   const plates = [
-    { back: 0.55, along: 0.12, l: 1.0, d: 0.62, h: 1.0 },
-    { back: 0.05, along: -0.1, l: 0.86, d: 0.55, h: 0.74 },
-    { back: -0.5, along: -0.26, l: 0.64, d: 0.45, h: 0.46 },
+    { x: 0, y: 0, l: L, d: D, h: 1.0 },
+    { x: -D * 1.25, y: -L * 0.3, l: L * 0.76, d: D * 0.8, h: 0.68 },
+    { x: -D * 2.3, y: -L * 0.55, l: L * 0.55, d: D * 0.65, h: 0.42 },
   ];
-  plates.forEach((pl, k) => {
-    const cx = ax * pl.along * Lh * hi - front[0] * pl.back * Dh;
-    const cy = ay * pl.along * Lh * hi - front[1] * pl.back * Dh;
-    const l = Lh * pl.l * (0.94 + rand() * 0.12);
-    const poly = shape(cx, cy, l, Dh * pl.d * 1.6, 10);
-    const h = height * pl.h * (0.94 + rand() * 0.1);
-    // Neigung längs: vom flachen Ende (−hi) zum hohen Ende (+hi) um 70 % der Höhe; etwas zur Front abfallend
-    const s = (h * 0.7) / (2 * l);
-    const tilt: [number, number] = [ax * s * hi - front[0] * 0.12, ay * s * hi - front[1] * 0.12];
-    columns.push(column(poly, footBase(host, frame, poly), z0 + h * 0.62, { taper: 0.8, tilt, capStyle: 1, tier: k }));
-    if (k === 0) {
-      // Anker am flachen Ende der obersten Platte
-      const ex = cx - ax * l * 0.45 * hi;
-      const ey = cy - ay * l * 0.45 * hi;
-      const col = columns[columns.length - 1]!;
-      ledges.push({ x: ex, y: ey, z: columnTopAt(col, ex, ey), step: 1, radius: 0.5 });
-    }
-  });
+  const nPlates = rand() < 0.3 ? 2 : 3;
+  for (let k = 0; k < nPlates; k++) {
+    const pl = plates[k]!;
+    const poly = slab(pl.x, pl.y, pl.l, pl.d);
+    const hMax = height * pl.h * (0.94 + rand() * 0.1);
+    // Rampe: am Südende knapp über dem Boden, am Nordende volle Höhe; leicht nach Westen geneigt (bricht das Licht)
+    const s = (hMax - 0.35) / (2 * pl.l);
+    const tilt: [number, number] = [-0.06, s];
+    columns.push(column(poly, footBase(host, frame, poly), z0 + (hMax + 0.35) * 0.5, { taper: 0.98, tilt, capStyle: 1, tier: k, part: k === 0 ? 0 : 3 }));
+  }
+  // Sockelstein vor den Platten (West, zur Kamera): flache, begehbare Stufe
+  const px = -D * (nPlates === 3 ? 3.4 : 2.3);
+  const py = -L * 0.05;
+  const ped = regularPolygon(px, py, 0.75 + rand() * 0.2, 7, rand() * Math.PI);
+  const pedTop = ground(host, frame, px, py) + height * 0.16;
+  columns.push(column(ped, footBase(host, frame, ped), pedTop, { taper: 0.9, tier: 0, part: 3, bevel: 0.08 }));
+  const ledges: Built['ledges'] = [{ x: px, y: py, z: pedTop, step: 0, radius: 0.5 }];
   let footprint = 0;
   for (const c of columns) footprint = Math.max(footprint, Math.hypot(c.cx, c.cy) + c.r);
   return { columns, ledges, footprint };
@@ -473,7 +487,7 @@ export function generateRocks(host: FeatureHost, world: number, specs: readonly 
         continue;
       }
       let placed = false;
-      for (let tries = 0; tries < 60 && !placed; tries++) {
+      for (let tries = 0; tries < 80 && !placed; tries++) {
         const size = spec.size[0] + (spec.size[1] - spec.size[0]) * rand();
         const height = spec.height[0] + (spec.height[1] - spec.height[0]) * rand();
         const reach = lateralReachOf(spec.kind, size);

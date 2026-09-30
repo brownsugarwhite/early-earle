@@ -448,7 +448,7 @@ export class EarlePlanet {
     this.water = waterData ? this.featureMesh('planet-water', waterGeometry(waterData), this.waterMaterial, false) : null;
     const barnRows = uniformArray(this.rows.map((r) => r.barn), 'float') as unknown as UniformArrayLike;
     const plainTerrainRows = uniformArray(this.rows.map((r) => r.terrain), 'float') as unknown as UniformArrayLike;
-    this.barns = new BarnLandmarks({ lookup: this.lookup, fog: this.fog, bands: this.canopyBands, barnRows, terrainRows: plainTerrainRows, veil: (w) => this.veilNode(w), warp, capacity: 24 });
+    this.barns = new BarnLandmarks({ lookup: this.lookup, fog: this.fog, bands: this.terrainBands, barnRows, terrainRows: plainTerrainRows, veil: (w) => this.veilNode(w), warp, capacity: 24 });
     this.group.add(this.barns.mesh);
     const driftRows = uniformArray(this.rows.map((r) => r.snow), 'float') as unknown as UniformArrayLike;
     this.drifts = new DriftLandmarks({ lookup: this.lookup, fog: this.fog, bands: this.canopyBands, snowRows: driftRows, veil: (w) => this.veilNode(w), warp, capacity: options.quality.capacity.trees > 1500 ? 700 : 360 });
@@ -528,19 +528,19 @@ export class EarlePlanet {
     return Math.max(this.field.hMax + this.vegetation.hMax + 1, rocks) + this.curvature.value * this.options.radius * 0.25;
   }
 
-  /**
-   * Radius (vom Planetenmittelpunkt) der begehbaren Oberfläche in einer Richtung des Planetenraums: Gelände (mit Seen
-   * und Flussrinnen) oder — auf einer Felsformation — deren Deckfläche (Kamera-Freiheit, Brett und Knoten auf Felsen).
-   */
+  /** Terrain-Radius (vom Planetenmittelpunkt, inkl. Seebecken und Flussrinnen) in einer Richtung des Planetenraums. */
   surfaceRadius(dir: Vector3): number {
     const l = dir.length() || 1;
-    return this.options.radius + this.field.surfaceHeightAt(dir.x / l, dir.y / l, dir.z / l);
+    return this.options.radius + this.field.heightAt(dir.x / l, dir.y / l, dir.z / l);
   }
 
-  /** Radius nur des Geländes (ohne Felsen) in einer Richtung des Planetenraums. */
-  terrainRadius(dir: Vector3): number {
+  /**
+   * Radius der begehbaren Oberfläche: Gelände oder — auf einer Felsformation — deren Deckfläche (Knoten auf Felsen,
+   * Kamera-Freiheit über Felswänden). `surfaceRadius` bleibt das reine Gelände.
+   */
+  walkableRadius(dir: Vector3): number {
     const l = dir.length() || 1;
-    return this.options.radius + this.field.heightAt(dir.x / l, dir.y / l, dir.z / l);
+    return this.options.radius + this.field.surfaceHeightAt(dir.x / l, dir.y / l, dir.z / l);
   }
 
   /** Liegt die Richtung (Planetenraum) im Wasser (See/Fluss, optional mit Uferrand in Welteinheiten)? */
@@ -935,8 +935,12 @@ export class EarlePlanet {
       }
       for (const prop of chunk.cpu.props) {
         // Scheunen zeichnet das Wahrzeichen (Earle-Scheune), nicht der Requisiten-Pool
-        if (prop.kind === 'barn') barns.push({ prop, world: prop.world });
-        else props.push({ prop, slot: chunk.slot });
+        if (prop.kind === 'barn') {
+          barns.push({ prop, world: prop.world });
+          // Schneewehen an den Längswänden (Bild 01): der Wandfuß steht im Schnee
+          const spec = driftSpecs[prop.world];
+          if (spec) for (const d of barnDrifts(prop, spec.size ?? 1)) drifts.push(d);
+        } else props.push({ prop, slot: chunk.slot });
       }
       const b = chunk.cpu.mesh.bounds;
       this.bounds.expandByPoint(_v.set(b.min[0], b.min[1], b.min[2]));
@@ -973,6 +977,33 @@ export class EarlePlanet {
 function smooth01(x: number): number {
   const t = Math.min(1, Math.max(0, x));
   return t * t * (3 - 2 * t);
+}
+
+/**
+ * Schneewehen am Fuß einer Scheune: an Längswänden, Anbau und Giebeln, im Scheunenraum gesetzt und in den
+ * Planetenraum gedreht.
+ */
+function barnDrifts(prop: PlanetProp, size: number): DriftPlacement[] {
+  const n = new Vector3(prop.normal[0], prop.normal[1], prop.normal[2]).normalize();
+  const radial = new Vector3(prop.position[0], prop.position[1], prop.position[2]).normalize();
+  const up = n.lerp(radial, 0.85).normalize();
+  const q = new Quaternion().setFromUnitVectors(_Y, up).multiply(new Quaternion().setFromAxisAngle(_Y, prop.yaw));
+  const s = prop.scale;
+  // Scheunenraum nach der Drehung der Geometrie: First längs x (±0.78), Wände bei z = ±0.5, Anbau bei z −0.5…−1.0
+  const spots: Array<[number, number, number, number]> = [
+    // x, z, Größe, Drehung
+    [-0.45, 0.62, 0.55, 0.2],
+    [0.4, 0.66, 0.5, 2.1],
+    [0.15, -1.1, 0.5, 3.6],
+    [0.92, 0.05, 0.45, 5.0],
+    [-0.9, -0.3, 0.42, 1.2],
+  ];
+  const out: DriftPlacement[] = [];
+  for (const [x, z, r, yaw] of spots) {
+    const p = new Vector3(x * s, 0, z * s).applyQuaternion(q).add(new Vector3(prop.position[0], prop.position[1], prop.position[2]));
+    out.push({ position: [p.x, p.y, p.z], normal: [up.x, up.y, up.z], size: r * s * size, yaw: prop.yaw + yaw, world: prop.world });
+  }
+  return out;
 }
 
 /** `uniformArray(Vector4[], 'vec4')` ohne die generischen Typen. */

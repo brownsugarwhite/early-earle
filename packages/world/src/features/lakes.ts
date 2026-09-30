@@ -87,7 +87,7 @@ export function generateLakes(host: FeatureHost, world: number, spec: LakeSpec, 
   const stretch = spec.stretch ?? (near ? 2.2 : 0.55);
   for (let n = 0; n < count; n++) {
     let best: { lake: Lake; score: number } | null = null;
-    for (let tries = 0; tries < 48; tries++) {
+    for (let tries = 0; tries < 96; tries++) {
       const radius = spec.radius[0] + (spec.radius[1] - spec.radius[0]) * rand();
       const wobble = lakeWobble(rand);
       const lateral = lakeLateralReach(radius, stretch, wobble);
