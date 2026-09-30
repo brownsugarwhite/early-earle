@@ -23,7 +23,7 @@
     "sun": "#fff4d0",
     "sunRing": "#f8ecc8",
     "fog": ["#9c95a8", "#6e6878", "#a19aa6", "#bdb4b4", "#d6ccbe", "#ece0c6"],
-    "fogAlpha": [0, 0.3, 0.48, 0.64, 0.78, 0.9],
+    "fogAlpha": [0, 0.24, 0.4, 0.55, 0.7, 0.84],
     "accent": ["#e8f0ff", "#2030c0", "#7030c0", "#1a1438", "#20a060", "#d02020", "#f0e040", "#5ff0ff"]
   },
   "terrain": { "amplitude": 0.7, "wavelength": 2 },
@@ -51,7 +51,7 @@
   "props": {},
   "fogStripes": 0,
   "skyGlow": 0.45,
-  "fog": { "start": 6, "range": 12 },
+  "fog": { "start": 8, "range": 16 },
   "view": {
     "height": 5.5,
     "forward": 9,

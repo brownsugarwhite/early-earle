@@ -458,7 +458,7 @@ export class EarlePlanet {
     const sp = positionGeometry.mul(1.9);
     const snowWob = sin(sp.x.add(sin(sp.z.mul(1.3)).mul(1.7))).mul(0.035).add(sin(sp.y.mul(2.3).add(sp.x.mul(0.7))).mul(0.025));
     // Schatten auf dem Schneefeld laufen von tiefem zu hellerem Blau (sonnenzugewandte Hänge heller, Bild 05)
-    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08), shadowLift: 0.4 };
+    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08), shadowLift: 0.1 };
     // Gemeißelte Hänge: Wertstufen entlang der Höhenlinien (Stufensprung im Bandwert je Höhenschicht)
     const chisel = wa.w;
     // Sägezahn mit 1-px-Kante: jede Höhenschicht verläuft in sich, die Stufe zur nächsten bleibt eine klare Kante

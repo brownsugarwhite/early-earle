@@ -67,6 +67,12 @@ export interface FountainOptions {
   roomPx?: readonly [number, number];
   /** Linear mischen statt wie Druckfarbe (billiger; für Luft/Nebel, deren Stufen nah beieinander liegen). */
   linear?: boolean;
+  /**
+   * Nachlauf des Verlaufs in Stufen (Standard 0.5 = zentriert: Bandmitte = Palettenfarbe). Größer = der Verlauf erreicht
+   * jede Stufe später (Luftperspektive: Mittelgrund satter, die Ferne wird trotzdem voll neblig). Die harte Stufe
+   * (soft 0) bleibt unabhängig davon an der alten Bandgrenze.
+   */
+  lag?: number;
 }
 
 /**
@@ -89,14 +95,16 @@ export function fountain(lookup: PaletteLookup, x: FloatNode, row: FloatNode | n
   const fw = fwidth(x);
   const room = smoothstep(float(1 / roomPx[0]), float(1 / roomPx[1]), fw);
   const s = asNode(soft).mul(room);
-  // um eine halbe Stufe verschoben: Bandmitte = Palettenfarbe; die harte Stufe springt bei t = ½ (= alte Bandgrenze)
-  let xe = x.sub(0.5).max(0);
+  // um den Nachlauf verschoben (Standard ½: Bandmitte = Palettenfarbe); die harte Stufe springt bei t = 1 − Nachlauf,
+  // also genau an der alten Bandgrenze
+  const lag = options.lag ?? 0.5;
+  let xe = x.sub(lag).max(0);
   if (options.maxX !== undefined) xe = xe.min(asNode(options.maxX));
   const i = floor(xe);
   const t = xe.sub(i);
   // fwidth kann 0 sein (x konstant, z. B. geclampt) → smoothstep(a, a, …) wäre undefiniert
   const w = fw.max(1e-4).mul(0.5);
-  const edge = smoothstep(float(0.5).sub(w), float(0.5).add(w), t);
+  const edge = smoothstep(float(1 - lag).sub(w), float(1 - lag).add(w), t);
   const k = mix(edge, t, s);
   const a = lookup.pal(i.add(base), row);
   const b = lookup.pal(i.add(base + 1), row);

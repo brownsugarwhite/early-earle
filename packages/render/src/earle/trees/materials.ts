@@ -9,7 +9,7 @@ import { blotches, flowLines, flowers, stipple, valueNoise3 } from './patterns';
  * Juwelenkuppeln (Bild 02): Farbtondrehung zur Unterseite (Bogenmaß) — rot → magenta → violett → blau → türkis, wie
  * Earles Irisdruck innerhalb einer Kuppel. Oben bleibt die Palettenfarbe.
  */
-const JEWEL_TURN = 1.6;
+const JEWEL_TURN = 1.2;
 /** Kuppeln von oben beleuchtet (Earle): Aufhellung des Scheitels bzw. Abdunklung der Unterseite im Verlauf. */
 const DOME_TOP_LIGHT = 0.2;
 
