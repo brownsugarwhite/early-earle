@@ -1,8 +1,8 @@
-import { BufferGeometry, DoubleSide, InstancedBufferAttribute, InstancedBufferGeometry, InstancedMesh, Matrix3, Matrix4, Mesh, MeshBasicNodeMaterial, Quaternion, Vector3 } from 'three/webgpu';
+import { BufferGeometry, DoubleSide, Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, InstancedMesh, Matrix3, Matrix4, Mesh, MeshBasicNodeMaterial, Quaternion, Vector3 } from 'three/webgpu';
 import {
   abs,
   attribute,
-  cameraProjectionMatrix,
+  cameraWorldMatrix,
   clamp,
   cross,
   float,
@@ -11,6 +11,7 @@ import {
   int,
   max,
   modelViewMatrix,
+  modelWorldMatrixInverse,
   normalGeometry,
   normalLocal,
   normalize,
@@ -30,7 +31,7 @@ import { arrayElement, steppedFog, type FloatNode, type FogSettings, type Palett
 import { createHexagon } from '../vegetation';
 import { createBareCard } from './bare';
 import { LACE_ROSETTES, createColumnCrown, createDomeCrown, createLaceShell, createPineCrown, type CrownTemplate } from './crowns';
-import { BARK_STYLE, BarkMaterial, CrownMaterial } from './materials';
+import { BARK_STYLE, BarkMaterial, CrownMaterial, DotMaterial } from './materials';
 import { createFanTrunk, createForkTrunk, createOakTrunk, createPoleTrunk, type OakGeometry } from './trunks';
 
 /** Wachstums-Slots (je geladenem Chunk); gleich wie `GROWTH_SLOTS` der Vegetation. */
@@ -247,9 +248,9 @@ export class TreeLayer {
     // --- Kronen ------------------------------------------------------------------------------------------
     const crowns = {} as Record<CrownKind, InstancedMesh>;
     const stippleOf: Record<CrownKind, { cell: number; size: number; flowers: boolean }> = {
-      dome: { cell: 0.075, size: 0.3, flowers: true },
-      column: { cell: 0.07, size: 0.3, flowers: false },
-      pine: { cell: 0.052, size: 0.36, flowers: false },
+      dome: { cell: 0.11, size: 0.3, flowers: true },
+      column: { cell: 0.1, size: 0.3, flowers: false },
+      pine: { cell: 0.07, size: 0.34, flowers: false },
     };
     for (const kind of CROWN_KINDS) {
       const geometry = this.templates[kind].geometry;
@@ -257,6 +258,8 @@ export class TreeLayer {
       const row = treeC().x;
       const world = arrayElement(shared.rowWorld, row);
       const cfg = stippleOf[kind];
+      // Hüllnormale: Richtung von der (mitwachsenden) Kronenmitte zum Punkt, im View-Raum
+      const hullN = varying(modelViewMatrix.mul(vec4(grownFrom(positionLocal).sub(grownFrom(treeB().xyz)), 0)).xyz, 'vCrownHullN');
       const material = new CrownMaterial({
         lookup,
         fog,
@@ -273,12 +276,13 @@ export class TreeLayer {
         flowers: cfg.flowers ? { density: arrayElement(this.worldFlowers, world), cell: 0.26 } : null,
         // Juwelenkuppeln leuchten fast rundum (Bild 02): Bänder etwas angehoben
         lift: select(treeD().w.lessThan(0), float(0.12), float(0)),
+        hullNormalView: hullN,
       });
       this.materials.push(material);
       const mesh = new InstancedMesh(geometry, material, options.capacity.trees);
       mesh.name = `planet-crown-${kind}`;
       mesh.castShadow = true;
-      mesh.receiveShadow = false;
+      mesh.receiveShadow = true; // Schlagschatten anderer Bäume und Hügel: Krone wird Tinte (eine Tintenform)
       mesh.frustumCulled = false;
       mesh.count = 0;
       crowns[kind] = mesh;
@@ -322,7 +326,7 @@ export class TreeLayer {
       const mesh = new InstancedMesh(geometry, material, cap);
       mesh.name = `planet-trunk-${kind}`;
       mesh.castShadow = true;
-      mesh.receiveShadow = false;
+      mesh.receiveShadow = true;
       mesh.frustumCulled = false;
       mesh.count = 0;
       trunks[kind] = mesh;
@@ -376,6 +380,7 @@ export class TreeLayer {
       const geometry = new InstancedBufferGeometry();
       const hex = createHexagon();
       geometry.setAttribute('position', hex.position);
+      geometry.setAttribute('normal', new Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
       geometry.setIndex(hex.index);
       const n = options.capacity.dots;
       geometry.setAttribute('dotRel', new InstancedBufferAttribute(new Float32Array(n * 3), 3));
@@ -388,7 +393,6 @@ export class TreeLayer {
       geometry.boundingSphere = null;
       this.dotsGeometry = geometry;
 
-      const material = new MeshBasicNodeMaterial();
       const rel = attribute('dotRel', 'vec3');
       const base = attribute('dotBase', 'vec3');
       const nrm = attribute('dotNormal', 'vec3');
@@ -437,13 +441,12 @@ export class TreeLayer {
       const needle = vec3(dirN.mul(positionGeometry.x.mul(halfLen)).add(vec2(dirN.y.negate(), dirN.x).mul(positionGeometry.y.mul(halfW))), 0);
       const disc = vec3(positionGeometry.x, positionGeometry.y, 0).mul(sizeEff.mul(collapse));
       const viewPos = viewC.xyz.add(select(isStar, needle, disc));
-      material.vertexNode = cameraProjectionMatrix.mul(vec4(viewPos, 1));
       const dist = varying(depth, 'vTreeDotDist');
       // Farbe: Stufen 3..5 gerastert nach Licht + Zufall (Punkt für Punkt ein getüpfelter Verlauf wie bei Earle)
       const vLight = varying(light, 'vTreeDotLight');
       const vKind = varying(kind, 'vTreeDotKind');
       const jitter = varying(dd.z, 'vTreeDotJitter');
-      const crownIdx = float(3).add(clamp(floor(vLight.mul(2.3).add(jitter.mul(0.8))), 0, 2));
+      const crownIdx = float(3).add(clamp(floor(vLight.mul(1.6).add(jitter.mul(0.9))), 0, 2));
       const laceIdx = select(vLight.greaterThan(jitter.mul(0.7).add(0.15)), float(4), float(1));
       const starIdx = select(jitter.greaterThan(0.2), float(7), float(5));
       const pineIdx = select(vLight.greaterThan(jitter.mul(0.8).add(0.1)), float(5), float(4));
@@ -452,11 +455,22 @@ export class TreeLayer {
         crownIdx,
         select(vKind.lessThan(2.5), pineIdx, select(vKind.lessThan(3.5), float(5), select(vKind.lessThan(4.5), laceIdx, starIdx))),
       );
-      material.colorNode = steppedFog(lookup.pal(idx, row).rgb as unknown as Vec3Node, fog, lookup, shared.fogDist(row, dist));
+      // Im Schlagschatten: Kronenpunkte, Spitze und Nadeln werden Tinte (wie die Krone darunter), Kiefernschnee dunkler
+      const shadowIdx = select(vKind.greaterThan(1.5).and(vKind.lessThan(2.5)), float(3), float(0));
+      const material = new DotMaterial({
+        lookup,
+        fog,
+        fogDistNode: shared.fogDist(row, dist),
+        litColor: lookup.pal(idx, row).rgb as unknown as Vec3Node,
+        shadowColor: lookup.pal(shadowIdx, row).rgb as unknown as Vec3Node,
+      });
+      // Position im Planetenraum aus dem Billboard (View → Welt → Objekt): Schatten, Nebel und Tiefe stimmen je Fragment
+      material.positionNode = modelWorldMatrixInverse.mul(cameraWorldMatrix.mul(vec4(viewPos, 1))).xyz;
+      material.normalNode = normalize(modelViewMatrix.mul(vec4(nrm, 0)).xyz);
       const mesh = new Mesh(geometry, material);
       mesh.name = 'planet-dots';
       mesh.castShadow = false;
-      mesh.receiveShadow = false;
+      mesh.receiveShadow = true;
       mesh.frustumCulled = false;
       this.dots = mesh;
       this.geometries.push(geometry);
@@ -567,7 +581,6 @@ export class TreeLayer {
       });
       for (const attr of [a, b, c, d, mesh.instanceMatrix]) commit(attr, list.length);
       mesh.count = list.length;
-      mesh.visible = list.length > 0;
     }
     for (const kind of TRUNK_KINDS) {
       const mesh = this.trunks[kind];
@@ -594,7 +607,6 @@ export class TreeLayer {
       });
       for (const attr of [a, b, c, d, mesh.instanceMatrix]) commit(attr, list.length);
       mesh.count = list.length;
-      mesh.visible = list.length > 0;
     }
     {
       const list = bareList.slice(0, cap);
@@ -616,7 +628,6 @@ export class TreeLayer {
       });
       for (const a of [b, u, dat, va, this.bare.instanceMatrix]) commit(a, list.length);
       this.bare.count = list.length;
-      this.bare.visible = list.length > 0;
     }
     this.hMax = hMax;
     this.updateDotBlocks(entries);
@@ -630,8 +641,10 @@ export class TreeLayer {
    * Laden und Entladen der Nachbarn ändert sich an einem Baum nichts.
    */
   private get dotsPerChunk(): number {
-    const near = this.options.dotsPerTree[0] >= 50 ? 5 : 3;
-    return Math.floor(this.options.capacity.dots / near);
+    const hi = this.options.dotsPerTree[0] >= 50;
+    const near = hi ? 5 : 3;
+    // Funkeln, keine Konfetti: die Textur der Kronen tragen die Tüpfel im Material, die Instanzen setzen die Lichter
+    return Math.min(hi ? 4200 : 1600, Math.floor(this.options.capacity.dots / near));
   }
 
   /** Gewicht eines Baums an den Kronenpunkten seines Chunks (Kronenfläche × Welt-Faktor). */

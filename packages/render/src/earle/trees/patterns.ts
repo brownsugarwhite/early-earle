@@ -34,13 +34,15 @@ export function stipple(p: Vec3Node, cell: Num, size: Num, grow: FloatNode, dens
   const h2 = rehash(h1, 11);
   const h3 = rehash(h2, 23);
   const h4 = rehash(h3, 37);
-  const jit = vec3(h1, h2, h3).sub(0.5).mul(0.46);
+  // Versatz so klein, dass die Scheibe in ihrer Zelle bleibt (sonst schneiden die Zellwände gerade Kanten hinein)
+  const jit = vec3(h1, h2, h3).sub(0.5).mul(float(1).sub(f(size).mul(2)).max(0).mul(0.9));
   const d = length(fr.sub(0.5).sub(jit)).mul(cellN);
   const present = select(h4.lessThan(f(density)), float(1), float(0));
   const rad = cellN.mul(f(size)).mul(grow).mul(present);
-  const fw = fwidth(d).max(1e-5);
-  const disc = smoothstep(rad.add(fw), rad.sub(fw), d).mul(clamp(rad.div(fw), 0, 1));
+  // Pixelgröße aus der stetigen Koordinate (fwidth(d) springt an den Zellwänden → sonst helle Linien auf den Kanten)
   const cellsPerPx = fwidth(q.x).add(fwidth(q.y)).add(fwidth(q.z)).mul(0.5);
+  const fw = cellsPerPx.mul(cellN).max(1e-5);
+  const disc = smoothstep(rad.add(fw), rad.sub(fw), d).mul(clamp(rad.div(fw), 0, 1));
   const fade = smoothstep(0.42, 0.24, cellsPerPx);
   return { mask: disc.mul(fade), key: rehash(h4, 41) };
 }
@@ -68,11 +70,11 @@ export function flowers(p: Vec3Node, n: Vec3Node, cell: Num, grow: FloatNode, de
   const a = cellN.mul(0.2);
   const dx = min(length(vec2(abs(x).sub(a), y)), length(vec2(x, abs(y).sub(a))));
   const rad = cellN.mul(0.085).mul(grow);
-  const fw = fwidth(dx).max(1e-5);
+  const cellsPerPx = fwidth(q.x).add(fwidth(q.y)).add(fwidth(q.z)).mul(0.5);
+  const fw = cellsPerPx.mul(cellN).max(1e-5);
   const disc = smoothstep(rad.add(fw), rad.sub(fw), dx).mul(clamp(rad.div(fw), 0, 1));
   const near = smoothstep(cellN.mul(0.34), cellN.mul(0.2), abs(off));
   const present = select(rehash(h3, 5).lessThan(f(density)), float(1), float(0));
-  const cellsPerPx = fwidth(q.x).add(fwidth(q.y)).mul(0.5);
   const fade = smoothstep(0.3, 0.16, cellsPerPx);
   return { mask: disc.mul(near).mul(present).mul(fade), key: rehash(h3, 17) };
 }
@@ -94,9 +96,9 @@ export function blotches(p: Vec3Node, cell: Num, size: Num, density: Num, wobble
   const d = length(fr.sub(0.5).sub(jit));
   const present = select(h4.lessThan(f(density)), float(1), float(0));
   const rad = f(size).mul(float(0.7).add(h2.mul(0.6))).mul(float(0.72).add(wobble.mul(0.56))).mul(present);
-  const fw = fwidth(d).max(1e-5);
-  const mask = smoothstep(rad.add(fw), rad.sub(fw), d);
   const cellsPerPx = fwidth(q.x).add(fwidth(q.y)).add(fwidth(q.z)).mul(0.5);
+  const fw = cellsPerPx.max(1e-5);
+  const mask = smoothstep(rad.add(fw), rad.sub(fw), d);
   return { mask: mask.mul(smoothstep(0.5, 0.3, cellsPerPx)), key: rehash(h4, 21) };
 }
 

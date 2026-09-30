@@ -67,7 +67,7 @@ export function createForkTrunk(seed = 11): BufferGeometry {
     const p0: V3 = [F[0], F[1] - 0.06, F[2]];
     const p1 = add(F, scale(d, L * 0.5));
     const p2 = add(add(F, scale(d, L)), [0, L * 0.22, 0]);
-    b.tube(taperAlong(bezier(p0, p1, p2, 4), rF * 0.68, 0.012), 4, 1, vTop);
+    b.tube(taperAlong(bezier(p0, p1, p2, 3), rF * 0.68, 0.012), 4, 1, vTop);
   }
   // Wurzelanläufe: kurze, flache Stränge, die schräg in den Boden laufen
   const rootAz = rand() * Math.PI * 2;
@@ -237,14 +237,16 @@ export function createOakTrunk(seed = 3): OakGeometry {
   for (let k = 0; k < limbs; k++) {
     const az = az0 + (k / limbs) * Math.PI * 2 + (rand() - 0.5) * 0.5;
     const steep = k === 0 || k === 4;
-    const L = steep ? 1.45 : 1.45 + rand() * 0.6;
+    // Zwei Äste schwingen tief hinab bis fast zum Boden (Bild 04 links: die Fontäne fällt)
+    const droop = k === 2 || k === 5;
+    const L = steep ? 1.45 : droop ? 1.7 + rand() * 0.4 : 1.45 + rand() * 0.6;
     // Fontäne (Bild 04): steil hinauf, oben hinaus, am Ende hinab
-    const up = steep ? 1.2 : 0.8 + rand() * 0.35;
+    const up = steep ? 1.2 : droop ? 0.7 : 0.8 + rand() * 0.35;
     const startY = F[1] - (steep ? 0.02 : 0.05 + rand() * 0.22);
     const p0: V3 = [F[0] * 0.85, startY, F[2] * 0.85];
     const p1 = add(p0, scale(dirFrom(az, up), L * 0.55));
-    const p2 = add(p0, add(scale(dirFrom(az, 0), L * 0.7), [0, steep ? L * 0.85 : L * 0.6, 0]));
-    const p3 = add(p0, add(scale(dirFrom(az + (rand() - 0.5) * 0.3, 0), L * (steep ? 0.75 : 1.0)), [0, steep ? L * 0.7 : L * 0.12, 0]));
+    const p2 = add(p0, add(scale(dirFrom(az, 0), L * 0.75), [0, steep ? L * 0.85 : droop ? L * 0.35 : L * 0.6, 0]));
+    const p3 = add(p0, add(scale(dirFrom(az + (rand() - 0.5) * 0.3, 0), L * (steep ? 0.75 : 1.0)), [0, steep ? L * 0.7 : droop ? -L * 0.42 : L * 0.12, 0]));
     const path = bezier3(p0, p1, p2, p3, 10);
     const limb = taperAlong(path, rF * (steep ? 0.62 : 0.55), 0.006, 0.08);
     b.tube(limb, 7, 1, vTop, (a) => 1 + 0.08 * Math.sin(2 * a + k));

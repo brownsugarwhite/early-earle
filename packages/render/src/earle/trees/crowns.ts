@@ -187,11 +187,12 @@ function flatten(part: Part, f: number): void {
  */
 export function createDomeCrown(detail: 'hoch' | 'mobil' = 'hoch'): CrownTemplate {
   const caps = domeCaps();
-  const shade = blendShade(0.62);
+  // Kappen wölben sich sichtbar aus der Masse, die Hülle führt das Licht (die Krone leuchtet als eine Form)
+  const shade = blendShade(0.24);
   const part = emptyPart();
   const hi = detail === 'hoch';
-  ellipsoid(part, [0, 0, 0], 0.8, 0.8, 0.8, hi ? 12 : 9, hi ? 8 : 6, blendShade(0.2));
-  for (const c of caps) cap(part, scale(c.dir, c.dist), c.rc, c.dir, (100 * Math.PI) / 180, hi ? 9 : 6, hi ? 4 : 3, shade);
+  ellipsoid(part, [0, 0, 0], 0.8, 0.8, 0.8, hi ? 12 : 9, hi ? 8 : 6, blendShade(0.1));
+  for (const c of caps) cap(part, scale(c.dir, c.dist), c.rc, c.dir, (100 * Math.PI) / 180, hi ? 8 : 6, 3, shade);
   flatten(part, DOME_FLAT);
   // Proben für Punkte: auf den äußeren Kappenflächen, nicht in Nachbarkappen
   const rand = mulberry32(hash32('dome-samples-v3'));
@@ -312,7 +313,7 @@ export function createColumnCrown(detail: 'hoch' | 'mobil' = 'hoch'): CrownTempl
   const rand = mulberry32(hash32('column-caps'));
   const part = emptyPart();
   const hull: V3 = [0.62, 1.05, 0.62];
-  ellipsoid(part, [0, 0, 0], 0.52, 1.0, 0.52, hi ? 10 : 8, hi ? 9 : 7, blendShade(0.25, hull));
+  ellipsoid(part, [0, 0, 0], 0.52, 1.0, 0.52, hi ? 9 : 7, hi ? 8 : 6, blendShade(0.25, hull));
   const caps: Array<{ c: V3; rc: number; dir: V3 }> = [];
   const tiers: Array<[number, number, number]> = [
     [-0.62, 0.36, 4],
@@ -328,8 +329,8 @@ export function createColumnCrown(detail: 'hoch' | 'mobil' = 'hoch'): CrownTempl
     }
   });
   caps.push({ c: [0, 0.78, 0], rc: 0.3, dir: [0, 1, 0] });
-  const shade = blendShade(0.6, hull);
-  for (const c of caps) cap(part, c.c, c.rc, c.dir, (105 * Math.PI) / 180, hi ? 8 : 6, hi ? 4 : 3, shade, [1, 1.35, 1]);
+  const shade = blendShade(0.26, hull);
+  for (const c of caps) cap(part, c.c, c.rc, c.dir, (105 * Math.PI) / 180, hi ? 7 : 6, 3, shade, [1, 1.35, 1]);
   const list: number[] = [];
   for (const c of caps) {
     const [t1, t2] = basis(c.dir);

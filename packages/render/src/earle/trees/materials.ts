@@ -32,6 +32,11 @@ export interface CrownMaterialOptions {
   flowers?: { density: FloatNode; cell: number } | null;
   /** Aufhellung der Bänder (z. B. Juwelenkuppeln leuchten rundum). */
   lift?: FloatNode | null;
+  /**
+   * Hüllnormale im View-Raum (Fragmentstufe): führt die Lichtbänder über den ganzen Baum (ein ruhiger Verlauf), während
+   * die Kappennormale den Terminator formt (bucklige Grenze Licht/Tinte, wie Earles Kuppelränder).
+   */
+  hullNormalView?: Vec3Node | null;
 }
 
 export class CrownMaterial extends NodeMaterial {
@@ -63,16 +68,23 @@ class CrownLightingModel extends LightingModel {
     const ndl = normalView.dot(L);
     const term = o.terminatorNode;
     const lit = min(aaStep(term, ndl), shadow);
-    let v = ndl.sub(term).mul(o.bandScale);
+    const ndlHull = o.hullNormalView ? normalize(o.hullNormalView).dot(L) : ndl;
+    let v = ndlHull.sub(term).mul(o.bandScale);
     if (o.lift) v = v.add(o.lift);
-    const band = clamp(v, 0, 0.999).mul(o.bands.sub(1));
+    // Kronen: ein Band mehr als die geteilte Einstellung — der hellste Streifen ist ein schmaler Lichtsaum an der
+    // Sonnenkante (Potenz staucht die oberen Bänder), die Masse bleibt ruhig im unteren Band
+    // Obergrenze mitten im obersten Band: an der Sättigungskante wäre fract ≈ 1 bei fwidth > 0 → heller Strich
+    const band = clamp(v, 0, 1).pow(1.6).mul(o.bands).min(o.bands.sub(0.5));
     const row = o.rowNode;
     let litColor = o.lookup.bands(band, row, 1).rgb as unknown as Vec3Node;
     // Punkte wachsen mit dem Licht: am Terminator 0, voll erst auf der Sonnenseite (weich, kein Ploppen)
     const grow = smoothstep(term.add(0.02), term.add(0.5), ndl).mul(shadow);
     const st = stipple(o.patternPos, o.stipple.cell, o.stipple.size, grow, o.stipple.density);
-    const bright = step(0.62, st.key.mul(0.55).add(grow.mul(0.6)));
-    const dotColor = mix(o.lookup.pal(4, row).rgb, o.lookup.pal(5, row).rgb, bright) as unknown as Vec3Node;
+    // Getüpfelter Verlauf wie bei Earle (Bild 03): jeder Punkt eine Stufe heller als das Band unter ihm, nahe am Licht
+    // einzelne zwei Stufen — ruhige Textur statt Konfetti
+    const bandIdx = floor(band).add(1);
+    const up = float(1).add(step(0.8, st.key.mul(0.5).add(grow.mul(0.55))));
+    const dotColor = o.lookup.pal(clamp(bandIdx.add(up), 2, 5), row).rgb as unknown as Vec3Node;
     litColor = mix(litColor, dotColor, st.mask);
     if (o.flowers) {
       const fl = flowers(o.patternPos, o.patternNormal, o.flowers.cell, grow, o.flowers.density);
@@ -87,6 +99,56 @@ class CrownLightingModel extends LightingModel {
       col = mix(withered, col, smoothstep(0, 1, o.growthNode));
     }
     (input.reflectedLight.directDiffuse as Vec3Node).addAssign(col);
+  }
+
+  override finish(builder: NodeBuilder): void {
+    const context = builder.context as { outgoingLight?: Node };
+    if (!context.outgoingLight) return;
+    const out = context.outgoingLight as Vec3Node;
+    out.assign(steppedFog(out, this.o.fog, this.o.lookup, this.o.fogDistNode));
+  }
+}
+
+// --- Punkte -----------------------------------------------------------------------------------------------
+
+export interface DotMaterialOptions {
+  lookup: PaletteLookup;
+  fog: FogSettings;
+  fogDistNode: FloatNode;
+  /** Farbe im Licht und im Schlagschatten (je Punkt). */
+  litColor: Vec3Node;
+  shadowColor: Vec3Node;
+}
+
+/**
+ * Material der instanzierten Punkte: empfängt den Schlagschatten wie die Krone darunter (dieselbe Schattenkarte, je
+ * Fragment) — wandert eine Schattenkante über eine Krone, deckt sie deren Punkte so stetig zu wie die Kronenfläche selbst
+ * (kein Ploppen). Die Größe der Punkte folgt im Vertex-Shader dem N·L der Krone (weich aus 0).
+ */
+export class DotMaterial extends NodeMaterial {
+  static override get type(): string {
+    return 'EarleDotMaterial';
+  }
+
+  constructor(readonly dot: DotMaterialOptions) {
+    super();
+    this.lights = true;
+    this.fog = false;
+  }
+
+  override setupLightingModel(): LightingModel {
+    return new DotLightingModel(this.dot);
+  }
+}
+
+class DotLightingModel extends LightingModel {
+  constructor(private readonly o: DotMaterialOptions) {
+    super();
+  }
+
+  override direct(input: Parameters<LightingModel['direct']>[0]): void {
+    const shadow = (input.lightColor as Vec3Node).r;
+    (input.reflectedLight.directDiffuse as Vec3Node).addAssign(mix(this.o.shadowColor, this.o.litColor, shadow));
   }
 
   override finish(builder: NodeBuilder): void {
