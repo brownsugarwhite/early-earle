@@ -123,6 +123,8 @@ export class BootProgress {
   private finishFrom: { t: number; s: number } | null = null;
   private readonly completeCbs: Array<() => void> = [];
   private block: { step: BootStep; start: number } | null = null;
+  /** Während einer angekündigten Blockade gehört der Stamm dem Compositor-Übergang (Takte überschreiben ihn nicht). */
+  private hold: { step: BootStep; until: number } | null = null;
   private readonly frameDts: number[] = [];
   private steady = 0;
   private looping = false;
@@ -241,6 +243,7 @@ export class BootProgress {
     const t = this.now() - this.t0;
     this.doneAt[step] = t;
     for (const w of this.waiters.get(step)?.splice(0) ?? []) w();
+    if (this.hold && this.hold.step === step) this.hold = null;
     if (this.block && this.block.step === step) {
       const dur = this.now() - this.block.start;
       const old = this.learned.blocks[step];
@@ -290,6 +293,8 @@ export class BootProgress {
     const goalAfter = this.goal({ [step]: 1 });
     const target = this.predict(t + dur, goalAfter);
     this.driver?.set(target, dur);
+    // bis der Schritt fertig ist (höchstens doppelte erwartete Dauer) nicht mehr umsteuern
+    this.hold = { step, until: t + 2 * dur + 100 };
     await new Promise<void>((r) => this.raf(() => this.raf(r)));
     this.block = { step, start: this.now() };
   }
@@ -383,7 +388,9 @@ export class BootProgress {
       this.finish();
       return 1;
     }
-    if (this.driver) {
+    if (this.hold && nowMs > this.hold.until) this.hold = null;
+    if (this.driver && this.hold) this.driver.mirror(this.driver.read());
+    else if (this.driver) {
       const ahead = g >= 1 ? Math.min(1, this.finishFrom!.s + (1 - this.finishFrom!.s) * Math.min(1, (nowMs + LEAD_MS - this.finishFrom!.t) / this.finishMs)) : this.predict(nowMs + LEAD_MS, g);
       this.driver.set(Math.min(ahead, (elapsed + LEAD_MS) / this.minTotalMs), LEAD_MS);
       // Zahl und Schatten zeigen, was der Stamm gerade wirklich zeigt (er läuft dem Takt voraus)

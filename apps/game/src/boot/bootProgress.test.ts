@@ -168,10 +168,17 @@ describe('bootProgress', () => {
     expect(ms).toBe(450); // Standard vor gelernten Werten
     expect(target).toBeGreaterThan(shown);
     expect(target).toBeLessThanOrEqual(boot.goal({ mount: 1 }) + 1e-9);
+    // Takte während der Blockade überschreiben das Compositor-Ziel nicht
+    const n = driver.sets.length;
+    env.advance(100, boot);
+    expect(driver.sets.length).toBe(n);
     // Blockdauer wird gelernt, sobald der Schritt fertig ist
-    env.advance(300);
+    env.advance(200);
     boot.done('mount');
     expect(boot.learnedData.blocks.mount).toBeCloseTo(300, 0);
+    // danach steuert der Takt wieder
+    env.advance(32, boot);
+    expect(driver.sets.length).toBeGreaterThan(n);
   });
 
   it('gelernte Anteile: EMA in localStorage, nächster Start nutzt sie', () => {
