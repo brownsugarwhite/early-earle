@@ -48,6 +48,8 @@ export interface TrashPlanetLike {
   readonly viewWorld: number;
   readonly viewBlending: boolean;
   readonly terrainBands: TSLUniform;
+  /** Blickpunkt-Richtung im Planetenraum (Zentrum des Krümmungs-Warps; Tangentialebene der Schwaden). */
+  readonly lookDirLocal: { value: Vector3 };
   readonly worlds: ReadonlyArray<{ palette: { ink: string } }>;
   bendNode(p: Vec3Node): Vec3Node;
 }
@@ -144,6 +146,9 @@ export class TrashField {
   private readonly collapsePx = uniform(0.75);
   private readonly viewA = uniform(0);
   private readonly viewB = uniform(0);
+  private readonly wispAcross = uniform(new Vector3(0, 0, 1));
+  private readonly wispAlong = uniform(new Vector3(1, 0, 0));
+  private wispInit = false;
   private readonly neonScale = uniform(1);
   private readonly veilScale = uniform(1);
   private readonly sporeGeometry: InstancedBufferGeometry;
@@ -229,6 +234,8 @@ export class TrashField {
       snowWorld: (w) => arrayElement(snowTable, w),
       neonScale: this.neonScale,
       veilScale: this.veilScale,
+      wispAcross: this.wispAcross as unknown as UniformNode<'vec3', Vector3>,
+      wispAlong: this.wispAlong as unknown as UniformNode<'vec3', Vector3>,
     };
 
     const makeInstanced = (name: string, geometry: BufferGeometry, material: Material, cap: number, shadows: boolean, withAxis: boolean): InstancedMesh => {
@@ -480,6 +487,7 @@ export class TrashField {
     // Kamera im Planetenraum, Projektionsmaßstab
     this.projScaleY.value = camera.projectionMatrix.elements[5]!;
     this.camLocal.value.copy(cameraWorld).applyMatrix4(_inv.copy(planetMatrixWorld).invert());
+    this.updateWispAxes(camera, dt);
 
     // Schleier über Nachbarwelten: Blick-Welt A/B wie der Planet (A = vorige, solange überblendet wird)
     const vb = planet.viewWorld;
@@ -506,6 +514,27 @@ export class TrashField {
       }
     }
     return shadow;
+  }
+
+  /**
+   * Schwaden-Achsen: Bildwaagrechte der Kamera in die Tangentialebene am Blickpunkt projiziert (Planetenraum), weich
+   * nachgeführt (τ ≈ 1.2 s): im Stand liegen die Schwaden quer im Bild, nach einer Drehung legen sie sich neu.
+   */
+  private updateWispAxes(camera: Camera, dt: number): void {
+    const look = _c.copy(this.options.planet.lookDirLocal.value).normalize();
+    // Kamera-Rechts (Welt) → Planetenraum: nur Rotation (inverse Planetenmatrix ohne Translation)
+    const right = _v.set(1, 0, 0).applyQuaternion(camera.getWorldQuaternion(_q)).transformDirection(_inv);
+    right.addScaledVector(look, -right.dot(look));
+    if (right.lengthSq() < 1e-8) return;
+    right.normalize();
+    const k = this.wispInit ? 1 - Math.exp(-dt / 1.2) : 1;
+    this.wispInit = true;
+    const across = this.wispAcross.value.lerp(right, k);
+    across.addScaledVector(look, -across.dot(look));
+    // Kehrtwende (Achse fast gegenläufig): direkt übernehmen statt durch null zu mitteln
+    if (across.lengthSq() < 1e-6) across.copy(right);
+    across.normalize();
+    this.wispAlong.value.crossVectors(look, across).normalize();
   }
 
   // --- Puffer ------------------------------------------------------------------------------------------------

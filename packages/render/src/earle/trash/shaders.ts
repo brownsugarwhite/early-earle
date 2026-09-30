@@ -8,6 +8,7 @@ import {
   cameraProjectionMatrix,
   clamp,
   cos,
+  dot,
   float,
   floor,
   fract,
@@ -63,6 +64,12 @@ export interface TrashShaderContext {
   /** Blütenzeile (Stufe 1 = Papierweiß der Welt: sauberer Nebel beim Heilen). */
   bloomRow: (world: FloatNode) => FloatNode;
   snowWorld: (world: FloatNode) => FloatNode;
+  /**
+   * Achsen der Schwaden (Planetenraum, Einheitsvektoren, langsam der Kamera nachgeführt): quer = Bildwaagrechte
+   * (Schwaden liegen längs dieser Achse), längs = Blickrichtung in der Tangentialebene (Stapel in die Tiefe).
+   */
+  wispAcross: UniformNode<'vec3', Vector3>;
+  wispAlong: UniformNode<'vec3', Vector3>;
   /** Gesamtfaktor für Neon (Lab-Regler, 1 = Inhalt) und für die Deckkraft des Schleiers. */
   neonScale: TSLUniform;
   veilScale: TSLUniform;
@@ -523,13 +530,12 @@ export function createVeilMaterial(ctx: TrashShaderContext, radius: number): Mes
   const st = varying(strength.mul(mix(float(0.35), float(1), open)), 'vTrashVeilStrength');
   const lay = varying(layer, 'vTrashVeilLayer');
   const wv = varying(vW, 'vTrashVeilWorld');
-  // Koordinaten auf der Kugel: u = Ost–West-Bogen, v = Nord–Süd-Bogen (Schwaden längs v gestreckt → im Kartenblick
-  // entlang des Pfads liegen sie waagrecht im Bild)
-  const d = normalize(positionGeometry);
-  const lat = asin(clamp(d.y, -0.999, 0.999));
-  const lon = atan(d.z, d.x);
-  const u = lon.mul(cos(lat)).mul(radius);
-  const v = lat.mul(radius);
+  // Koordinaten: u = Tiefe (Blickrichtung in der Tangentialebene), v = Bildwaagrechte. Die Schwaden sind längs v
+  // gestreckt → sie liegen immer quer im Bild wie Earles Nebelstreifen; die Achsen folgen der Kamera langsam (nach
+  // einer Drehung legt sich der Nebel in ein, zwei Sekunden neu), die Lage im Gelände bleibt fest (Höhenlinien, Heilung)
+  const u = dot(positionGeometry, ctx.wispAlong);
+  const v = dot(positionGeometry, ctx.wispAcross);
+  void radius;
   const time = patternTime;
   const ph = lay.mul(1.7);
   const camDist = positionView.length();
