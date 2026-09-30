@@ -1,15 +1,16 @@
-import { Box3, CircleGeometry, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Quaternion, Vector3 } from 'three/webgpu';
+import { Box3, CircleGeometry, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Quaternion, Vector2, Vector3 } from 'three/webgpu';
 import type { Dir, LevelState } from '@ee/core';
 import type { SceneController, SceneContext } from '../canvas/SceneController';
 import { FLOW_LEVELS } from './levels';
 import { useProgress } from '../state/progress';
 import { useGridStore } from '../lab/grid/gridStore';
 import { rexIntroFor, rexLine } from '../lab/grid/rex';
-import { Trackball } from '../lab/earle/trackball';
+import { PanBall } from '../lab/earle/panball';
+import { WORLD_CONTENTS } from '../lab/earle/zones';
 import rexUrl from '../../../../assets/ref-florian/07-illudiy-logo-rex.png';
 import { useFlowStore, type FlowPhase, type FlowRequest } from './flowStore';
 import { MAP_VIEW, MAP_VIEW_PORTRAIT, MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
-import type { NodeSite, PathLayout, PathNode } from './path';
+import type { NodeSite } from './path';
 import { plateauStyleFor } from './siteStyle';
 import { NodePath } from './NodePath';
 import { Hero, SHADOW_PROXY_LAYER, type HeroPose } from './Hero';
@@ -26,10 +27,17 @@ export interface FlowSceneOptions {
 }
 
 interface CameraPose {
-  /** Rig-local (the rig sits at the planet's apex and never rotates). */
+  /** Rig-local (the rig sits at the globe's apex; it only turns about its vertical, the view yaw). */
   position: Vector3;
   quaternion: Quaternion;
   fov: number;
+}
+
+/** A view of the infinite world: the plane point at the apex (focus) and the view yaw (rig turn about the vertical). */
+interface MapView {
+  x: number;
+  z: number;
+  yaw: number;
 }
 
 const ZONE = 'tjorizo';
@@ -40,7 +48,7 @@ const SPLASH_FOV = 58;
 const LEVEL_FOV = 40;
 /** Phones: a touch wider, so the landscape beyond the grid keeps some perspective. */
 const LEVEL_FOV_PORTRAIT = 44;
-/** Hero size on the map (MAP_VIEW frames the planet wider than the old map camera). */
+/** Hero size on the map (MAP_VIEW frames the globe wider than the old map camera). */
 const HERO_MAP_SCALE = 0.48;
 /**
  * Hero size on the giant tree relative to the map (the rail camera is 2–3× closer than the map camera): on a shelf
@@ -73,7 +81,7 @@ const T_DEPART = 1.3;
 /** Depart celebration (flow clock from the depart's launch): start and how long the wave runs to the next node. */
 const T_CELEBRATE_AT = 0.69;
 const T_CELEBRATE = 0.78;
-const T_AUTO_ROTATE = 1.0;
+const T_GLIDE = 1.0;
 /**
  * Board v2 fly-in (flow clock): the plateau starts heaving at T_RISE_AT (its own ≈1.3 s wall-clock
  * choreography), the hero rides the hill up, crouches and jumps onto its cell at T_HERO_LAUNCH.
@@ -96,42 +104,56 @@ const _v = new Vector3();
 const _v2 = new Vector3();
 const _v3 = new Vector3();
 const _q = new Quaternion();
+const _q2 = new Quaternion();
 
 function lookAtQuaternion(eye: Vector3, target: Vector3, up: Vector3, out: Quaternion): Quaternion {
   _m4.lookAt(eye, target, up);
   return out.setFromRotationMatrix(_m4);
 }
 
+/** Shortest signed angle from a to b (rad). */
+function angleDelta(a: number, b: number): number {
+  let d = (b - a) % (Math.PI * 2);
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
 /**
  * P5 Flow-Lab: one continuous take. State machine splash → hop → map → flyIn → level → depart → map,
  * driven by the flow store; every transition is a single camera tween plus the hero's arc flights.
- * The world (terrain, vegetation, sky, sun) is the P2 composition, the level is the P3 core rendered on
- * a plate that rises out of the terrain, the blobs are candidate (b) from P1.
+ * The world is the infinite Earle plane shown as a globe around the focus (ADR 0002): the map pans the focus (the feel
+ * of turning an endless globe, forward and back, left and right), "go to node" glides it. The level is the P3 core
+ * rendered on a plate that rises out of the terrain, the blobs are candidate (b) from P1.
  */
 export class FlowScene implements SceneController {
   private ctx: SceneContext | null = null;
   private world: MapWorld | null = null;
-  private layout: PathLayout | null = null;
   private nodePath: NodePath | null = null;
   private hero: Hero | null = null;
   private rex: Rex | null = null;
   private board: LevelBoard | null = null;
-  private trackball: Trackball | null = null;
+  private panBall: PanBall | null = null;
   private readonly tweens = new Tweens();
   private readonly quality = resolveFlowQuality();
   private phase: FlowPhase = 'splash';
   private zoom = 1;
-  private readonly mapTargetDir = new Vector3(0, 1, 0);
+  /** Flat offset (rig-local ground, from the apex) where the current node sits on screen (map target). */
+  private readonly mapTarget = new Vector2(0, -8);
+  /** Rig-local ground direction at the map target that runs up the screen. */
+  private readonly mapUp = new Vector2(0, -1);
   private readonly probeCamera = new PerspectiveCamera(MAP_FOV, 1, 0.3, 700);
   private readonly railScratch = { position: new Vector3(), lookAt: new Vector3() };
-  /** Ground direction (world) at the map target that runs up the screen. */
-  private readonly mapUpDir = new Vector3(0, 0, -1);
+  /** The view yaw (rig turn about the vertical through the apex). */
+  private viewYaw = 0;
+  /** Where the board stands (plane pose); its root is mapped onto the display every frame. */
+  private readonly boardPlane = { position: new Vector3(), quaternion: new Quaternion(), active: false };
   private readonly unsubscribes: Array<() => void> = [];
   private detachInput: (() => void) | null = null;
   private pointer: { x: number; y: number; t: number; id: number } | null = null;
   private lastRequestSeq = 0;
   private elapsed = 0;
-  private trackballAttached = false;
+  private panAttached = false;
   private levelPoseDirty = false;
   /** Scene time until which a camera move runs (the tree rail must not override it). */
   private cameraTweenUntil = 0;
@@ -142,7 +164,7 @@ export class FlowScene implements SceneController {
   private boardShadowGrace = 0;
   /**
    * Shadow map fitted tightly around the plateau (level view, late fly-in, early depart) instead of the
-   * whole loaded planet: 2048² over ≈ 16 units keeps the board's razor shadows free of stair steps.
+   * whole visible globe: 2048² over ≈ 16 units keeps the board's razor shadows free of stair steps.
    */
   private shadowFocus = false;
   private readonly shadowBox = new Box3();
@@ -156,26 +178,26 @@ export class FlowScene implements SceneController {
     ctx.renderer.shadowMap.enabled = true;
     const q = this.quality;
 
-    // The chunked planet lays out the spiral path (all zones, 25 nodes each) and clears a corridor for it.
+    // The infinite world lays out the level path (authored route 1–100, then procedural worlds) and clears its corridor.
     const world = new MapWorld({ quality: q, seed: 7 });
-    const layout = world.layout;
-    this.layout = layout;
     this.world = world;
 
-    // Nodes and path on the planet (sun direction in planet space for the offset shadows). The giant tree draws its
-    // own stretch (fungi on the bark, stones on roots and domes, flush dots); NodePath keeps the ground and the taps.
+    // Nodes and path on the plane (a window around the view). The giant tree draws its own stretch (fungi on the bark,
+    // stones on roots and domes, flush dots); NodePath keeps the ground and the taps.
     world.rig.updateWorldMatrix(true, true);
-    const sunLocal = world.sunDirection(new Vector3());
-    this.nodePath = new NodePath(
-      layout,
-      sunLocal,
-      { onProgress: (current, done) => world.setProgress(done, current) },
-      { palette: world.pathPalette(), external: (i) => world.isTreeNode(i) },
-    );
-    world.planet.add(this.nodePath.group);
+    this.nodePath = new NodePath({
+      planet: world.world,
+      layout: world.layout,
+      palette: world.pathPalette(),
+      external: (i) => world.isTreeNode(i),
+      sunDirWorld: world.sunDirection(new Vector3()),
+      onProgress: (current, done) => world.setProgress(done, current),
+    });
 
     this.hero = new Hero(ZONE, { octaves: q.blobOctaves });
     world.planet.add(this.hero.root);
+    // The hero lives on the plane (flights between nodes), its root on the display globe
+    this.hero.mapper = (p, qq, op, oq) => world.planeToDisplay(p, qq, op, oq);
     world.sun.light.shadow.camera.layers.enable(SHADOW_PROXY_LAYER);
 
     this.rex = new Rex(rexUrl, 3.4);
@@ -194,16 +216,15 @@ export class FlowScene implements SceneController {
     this.board = new LevelBoard(ZONE, { octaves: q.blobOctaves, raymarch: false });
     world.planet.add(this.board.root);
     this.board.onSettled = (state) => this.onBoardSettled(state);
-    // REX keeps clear of the whole path (not only the current node) and knows the plateau.
-    this.rex?.attachFlow({ world, layout, board: this.board });
+    // REX keeps clear of the path around the current node and knows the plateau.
+    this.rex?.attachFlow({ world, board: this.board });
     // Species meshes and part modules the board prepares ahead compile in the background (WebGPU).
     if (ctx.backend === 'webgpu') this.board.setCompiler((root) => ctx.renderer.compileAsync(root, world.camera, world.scene));
 
-    this.trackball = new Trackball({
-      radius: PLANET_RADIUS,
-      tau: 0.4,
-      maxTilt: Math.PI, // full planet: no spring, the far side is revealed by rolling
+    this.panBall = new PanBall({
       worldUnitsPerPixel: () => this.worldUnitsPerPixel(),
+      yaw: () => this.viewYaw,
+      onPan: (dx, dz) => this.panBy(dx, dz),
       onZoom: (f) => this.setZoom(this.zoom * f),
     });
 
@@ -212,11 +233,12 @@ export class FlowScene implements SceneController {
 
     this.resize(ctx);
     const store = useFlowStore.getState();
-    const current = Math.min(store.current, layout.nodes.length - 1);
+    const last = world.layout.lastPlayable;
+    const current = Math.max(0, Math.min(store.current, last));
     store.setCurrent(current);
-    // Wachstum der Welt aus dem gespeicherten Fortschritt (erreichte Knoten), nicht nur aus dem aktuellen.
-    this.nodePath.setProgress(current, Math.max(current, Math.min(useProgress.getState().reached, layout.nodes.length - 1)));
-    this.snapPlanetToNode(current);
+    // Growth of the world from the stored progress (reached nodes), not only from the current one.
+    this.nodePath.setProgress(current, Math.max(current, Math.min(useProgress.getState().reached, last + 1)));
+    this.snapViewToNode(current);
     // A re-mount (React StrictMode, Vite HMR) resumes the stored phase instead of restarting the take.
     const phase = store.phase;
     if (phase === 'level' || phase === 'flyIn' || phase === 'depart') this.enterLevelImmediate(store.playing ?? current);
@@ -231,6 +253,8 @@ export class FlowScene implements SceneController {
         await ctx.renderer.compileAsync(root, world.camera, world.scene);
       });
     }
+    // Diagnostics and e2e hooks: the endless pan and the streaming stats
+    if (typeof window !== 'undefined') (window as unknown as { __flow?: unknown }).__flow = this.debugApi();
   }
 
   resize(ctx: SceneContext): void {
@@ -242,8 +266,8 @@ export class FlowScene implements SceneController {
     this.computeMapTarget();
     if (this.phase === 'level') this.levelPoseDirty = true;
     // Rotating the phone switches between the portrait and landscape map cameras.
-    if (this.phase === 'map' && wasPortrait !== this.portrait && this.layout) {
-      this.snapPlanetToNode(useFlowStore.getState().current);
+    if (this.phase === 'map' && wasPortrait !== this.portrait) {
+      this.snapViewToNode(useFlowStore.getState().current);
       this.applyPose(this.mapPose());
     }
   }
@@ -253,25 +277,24 @@ export class FlowScene implements SceneController {
     const hero = this.hero;
     const board = this.board;
     const nodePath = this.nodePath;
-    if (!world || !hero || !board || !nodePath || !this.trackball) return;
+    if (!world || !hero || !board || !nodePath || !this.panBall) return;
     this.elapsed = elapsed;
     this.tweens.update(dt);
 
-    if (this.phase === 'map' && this.trackballAttached) {
-      if (this.trackball.step(dt)) {
-        world.planet.quaternion.copy(this.trackball.quaternion);
-        world.markShadowDirty();
-      }
+    if (this.phase === 'map' && this.panAttached) {
+      if (this.panBall.step(dt)) world.markShadowDirty();
     }
     if (this.phase === 'splash') this.placeHeroAtSplashDot();
     if (this.splashBacking?.visible) this.placeSplashBacking();
+    // The board stands on the plane: its root follows the display every frame (the view may glide)
+    this.syncBoard();
     if (this.levelPoseDirty && this.phase === 'level') {
       this.levelPoseDirty = false;
       this.applyPose(this.levelPose());
     }
-    // On the giant tree the map camera rides its rail, which turns with the planet (drags, auto-rotation).
+    // On the giant tree the map camera rides its rail, which moves with the view (pans, glides).
     if (this.phase === 'map' && elapsed >= this.cameraTweenUntil && world.cameraRailFor(useFlowStore.getState().current, this.railScratch)) this.applyPose(this.mapPose());
-    // The curvature boost bends the far terrain with the view: a standing hero stays on its (bent) node.
+    // A standing hero keeps its node (the display follows the view).
     if (this.phase === 'map' && !hero.isFlying) hero.setPose(this.nodePose(useFlowStore.getState().current));
 
     hero.update(dt, world.camera);
@@ -292,17 +315,17 @@ export class FlowScene implements SceneController {
     if (board.root.visible && (board.animating || board.moved)) this.boardShadowGrace = 0.6;
     else this.boardShadowGrace = Math.max(0, this.boardShadowGrace - dt);
     if (hero.isFlying || hero.jiggle > 0.02 || this.tweens.active > 0 || this.boardShadowGrace > 0) world.markShadowDirty();
-    // On the giant tree, sky, fog and the curvature centre follow the node the camera frames (the centre ray would
-    // run past the crown onto a neighbour world far behind it)
+    // On the giant tree, sky and fog follow the node the camera frames (the centre ray would run past the crown onto
+    // a neighbour world far behind it)
     const flow = useFlowStore.getState();
     const focusNode = this.phase === 'depart' ? this.departTarget : this.phase === 'map' ? flow.current : this.phase === 'flyIn' || this.phase === 'level' ? (flow.playing ?? flow.current) : -1;
-    const focus = focusNode >= 0 && world.isTreeNode(focusNode) ? this.layout!.nodes[focusNode] : undefined;
+    const focus = focusNode >= 0 && world.isTreeNode(focusNode) ? world.layout.node(focusNode) : undefined;
     world.setViewFocus(focus ? _v.set(focus.position[0], focus.position[1], focus.position[2]) : null, this.cut);
     this.cut = false;
     // A plateau under or on the giant tree: the curtain of hanging twigs keeps it clear while it is played
     const playing = flow.playing;
     const underTree = board.root.visible && this.phase !== 'map' && playing !== null && world.isTreeNode(playing);
-    world.setTreeSight(underTree ? board.root.position : null, 4.5);
+    world.setTreeSight(underTree ? this.boardPlane.position : null, 4.5);
     world.update();
     if (this.shadowFocus && board.root.visible) this.fitBoardShadow(false);
     // Screen-space shake and zoom punch (board juice): nudge the camera along its own axes for this frame only.
@@ -326,8 +349,8 @@ export class FlowScene implements SceneController {
     this.tweens.clear();
     this.detachInput?.();
     this.detachInput = null;
-    this.trackball?.detach();
-    this.trackballAttached = false;
+    this.panBall?.detach();
+    this.panAttached = false;
     for (const u of this.unsubscribes) u();
     this.unsubscribes.length = 0;
     this.board?.dispose();
@@ -344,52 +367,146 @@ export class FlowScene implements SceneController {
     this.rex = null;
     this.nodePath = null;
     this.world = null;
+    if (typeof window !== 'undefined') delete (window as unknown as { __flow?: unknown }).__flow;
     if (this.ctx) this.ctx.renderer.shadowMap.enabled = false;
     this.ctx = null;
   }
 
-  // ================================================================================ camera
+  // ================================================================================ view (focus, yaw)
+
+  /** Current view: focus of the world and the rig's yaw. */
+  private currentView(): MapView {
+    const f = this.world!.focus;
+    return { x: f.x, z: f.z, yaw: this.viewYaw };
+  }
+
+  private applyView(v: MapView): void {
+    const world = this.world!;
+    world.setFocus(v.x, v.z);
+    if (v.yaw !== this.viewYaw) {
+      this.viewYaw = v.yaw;
+      world.rig.quaternion.setFromAxisAngle(_Y, v.yaw);
+      world.rig.updateMatrixWorld(true);
+      world.markShadowDirty();
+    }
+  }
+
+  /** Pan (map drag and its momentum): the focus moves over the endless plane. */
+  private panBy(dx: number, dz: number): void {
+    if (this.phase !== 'map') return;
+    this.tweens.cancel('glide');
+    const f = this.world!.focus;
+    this.applyView({ x: f.x + dx, z: f.z + dz, yaw: this.viewYaw });
+  }
 
   /**
-   * Map camera (rig space). On the giant tree (levels 80–95) the Worlds agent's camera rail replaces the
-   * orbit view: it stays behind the node, close to the bark, and rotates with the planet. `rail = false`
-   * gives the plain orbit pose (used to aim the planet rotation).
+   * The view that brings node `index` onto the map target: focus = node − target offset (turned by the yaw). In
+   * portrait the view also turns so the path ahead (a few nodes) runs up the screen, away from the camera (not on the
+   * giant tree: the rail camera frames the tree itself).
    */
+  private viewFor(index: number): MapView {
+    const world = this.world!;
+    const node = world.layout.node(index).position;
+    let yaw = this.viewYaw;
+    if (this.portrait && !world.isTreeNode(index)) {
+      const ahead = world.layout.node(index + MAP_VIEW_PORTRAIT.lookAhead).position;
+      const dx = ahead[0] - node[0];
+      const dz = ahead[2] - node[2];
+      if (Math.hypot(dx, dz) > 1e-3) {
+        // angle θ = atan2(x, z); a turn by ψ about +Y adds ψ
+        const want = Math.atan2(dx, dz);
+        const have = Math.atan2(this.mapUp.x, this.mapUp.y);
+        yaw = this.viewYaw + angleDelta(this.viewYaw, want - have);
+      }
+    } else if (!this.portrait && !world.isTreeNode(index)) {
+      // Landscape: the path heads away from the camera (−z) — the view turns back to the plane's forward
+      yaw = this.viewYaw + angleDelta(this.viewYaw, 0);
+    }
+    const c = Math.cos(yaw);
+    const s = Math.sin(yaw);
+    const tx = this.mapTarget.x * c + this.mapTarget.y * s;
+    const tz = -this.mapTarget.x * s + this.mapTarget.y * c;
+    return { x: node[0] - tx, z: node[2] - tz, yaw };
+  }
+
+  /** Brings `index` onto the map target — instantly. */
+  private snapViewToNode(index: number): void {
+    this.computeMapTarget();
+    this.tweens.cancel('glide');
+    this.panBall?.stop();
+    this.applyView(this.viewFor(index));
+  }
+
+  /** Same, as a glide over the plane (cancelled by a drag). */
+  private glideViewToNode(index: number, duration = T_GLIDE, ease = easeInOut): void {
+    const from = this.currentView();
+    const to = this.viewFor(index);
+    this.tweens.cancel('glide');
+    this.panBall?.stop();
+    this.tweens.add(
+      duration,
+      (t) => {
+        this.applyView({ x: lerp(from.x, to.x, t), z: lerp(from.z, to.z, t), yaw: lerp(from.yaw, to.yaw, t) });
+        this.world!.markShadowDirty();
+      },
+      { ease, tag: 'glide' },
+    );
+  }
+
+  // ================================================================================ camera
+
   /** Portrait screens (phones) get their own map camera: higher, steeper, the path running up the screen. */
   private get portrait(): boolean {
     return (this.world?.camera.aspect ?? 1) < 1;
   }
 
-  private mapView(): MapViewLike {
+  private mapViewCamera(): MapViewLike {
     return this.portrait ? MAP_VIEW_PORTRAIT : MAP_VIEW;
   }
 
-  private mapPose(zoom = this.zoom, rail = true, view: MapViewLike = this.mapView()): CameraPose {
+  /**
+   * Map camera (rig space). On the giant tree (levels 80–95) the camera rail replaces the orbit view: it stays behind
+   * the node, close to the bark, and moves with the view. `rail = false` gives the plain orbit pose.
+   */
+  private mapPose(zoom = this.zoom, rail = true, view: MapViewLike = this.mapViewCamera()): CameraPose {
     const w = this.world;
     if (!w || !rail) return this.orbitPose(zoom, view);
-    return this.mapPoseFor(useFlowStore.getState().current, w.planet.quaternion, zoom, view);
+    return this.mapPoseFor(useFlowStore.getState().current, this.currentView(), zoom, view);
   }
 
-  /** The plain orbit view over the apex (rig space; the planet turns the node under it). */
-  private orbitPose(zoom = this.zoom, view: MapViewLike = this.mapView()): CameraPose {
+  /** The plain orbit view over the apex (rig space; the view brings the node under it). */
+  private orbitPose(zoom = this.zoom, view: MapViewLike = this.mapViewCamera()): CameraPose {
     const position = view.offset.clone().multiplyScalar(zoom);
     return { position, quaternion: lookAtQuaternion(position, view.look, _Y, new Quaternion()), fov: view.fov };
   }
 
+  /** Display position of a plane point for a given view (focus), not only the current one. */
+  private displayAt(p: Vector3, v: MapView, out: Vector3): Vector3 {
+    const world = this.world!;
+    out.set(p.x - v.x, PLANET_RADIUS + p.y, p.z - v.z);
+    return world.world.mapping.toDisplayCpu(out, out);
+  }
+
+  /** World (display) point → rig space for a given view (rig at the apex, turned by the view's yaw). */
+  private rigLocal(p: Vector3, v: MapView, out: Vector3): Vector3 {
+    _q2.setFromAxisAngle(_Y, -v.yaw);
+    return out.copy(p).sub(this.world!.rig.position).applyQuaternion(_q2);
+  }
+
   /**
-   * Map camera for node `index` with the planet at rotation `planetQ` (rig space): on the giant tree the camera rail
-   * (phones: the wider portrait rail), which turns with the planet; elsewhere the orbit view.
+   * Map camera for node `index` with the view `v` (rig space): on the giant tree the camera rail (phones: the wider
+   * portrait rail) mapped onto the display for that view; elsewhere the orbit view.
    */
-  private mapPoseFor(index: number, planetQ: Quaternion, zoom = this.zoom, view: MapViewLike = this.mapView()): CameraPose {
+  private mapPoseFor(index: number, v: MapView, zoom = this.zoom, view: MapViewLike = this.mapViewCamera()): CameraPose {
     const w = this.world;
     const r = w ? w.cameraRailFor(index, undefined, this.portrait) : null;
     if (!w || !r) return this.orbitPose(zoom, view);
-    // Planet at the origin (no scale), rig at the apex without rotation: rig = planetQ · p − rig position
-    w.rig.updateWorldMatrix(true, false);
-    const toRig = (p: Vector3): Vector3 => w.rig.worldToLocal(p.applyQuaternion(planetQ));
-    const eye = toRig(r.position.clone());
-    const at = toRig(r.lookAt.clone());
-    const up = r.position.clone().normalize().applyQuaternion(planetQ);
+    const eyeD = this.displayAt(r.position, v, new Vector3());
+    const atD = this.displayAt(r.lookAt, v, new Vector3());
+    const upD = eyeD.clone().normalize();
+    const eye = this.rigLocal(eyeD, v, new Vector3());
+    const at = this.rigLocal(atD, v, new Vector3());
+    const up = upD.applyQuaternion(_q2.setFromAxisAngle(_Y, -v.yaw));
     return { position: eye, quaternion: lookAtQuaternion(eye, at, up, new Quaternion()), fov: view.fov };
   }
 
@@ -399,22 +516,15 @@ export class FlowScene implements SceneController {
    */
   private treeBend(to: CameraPose): Vector3 {
     const w = this.world!;
-    w.planet.updateWorldMatrix(true, false);
-    w.rig.updateWorldMatrix(true, false);
-    const foot = w.rig.worldToLocal(w.planet.localToWorld(w.treeFoot(new Vector3())));
-    const up = foot.clone().add(w.rig.position).normalize();
-    const mid = this.world!.camera.position.clone().add(to.position).multiplyScalar(0.5);
+    const v = this.currentView();
+    const footD = this.displayAt(w.treeFoot(new Vector3()), v, new Vector3());
+    const foot = this.rigLocal(footD, v, new Vector3());
+    const up = footD.normalize().applyQuaternion(_q2.setFromAxisAngle(_Y, -v.yaw));
+    const mid = w.camera.position.clone().add(to.position).multiplyScalar(0.5);
     const away = mid.sub(foot);
     away.addScaledVector(up, -away.dot(up));
     if (away.lengthSq() < 1e-6) away.set(1, 0, 0);
     return away.normalize().addScaledVector(up, 0.7).normalize();
-  }
-
-  /** Planet rotation that brings node `index` onto the map target (from the current rotation). */
-  private planetQuatFor(index: number): Quaternion {
-    const q0 = this.world!.planet.quaternion.clone();
-    const delta = this.nodeAlignment(index);
-    return delta ? delta.multiply(q0) : q0;
   }
 
   private splashPose(): CameraPose {
@@ -432,6 +542,7 @@ export class FlowScene implements SceneController {
   private levelPose(): CameraPose {
     const world = this.world!;
     const board = this.board!;
+    this.syncBoard();
     const aspect = world.camera.aspect;
     const portrait = aspect < 1;
     const W = this.ctx?.width ?? 800;
@@ -508,8 +619,11 @@ export class FlowScene implements SceneController {
     // Tilt so the grid and its goal ledge centre in the band (content above the centre → look up a little).
     const phi = Math.atan(((b.maxY + b.minY) / 2) * tanV);
     const alpha = phi - Math.atan(bandC * tanV);
-    const quaternion = cam.quaternion.clone().multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), alpha));
-    const position = eye.clone().sub(world.rig.position);
+    const worldQ = cam.quaternion.clone().multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), alpha));
+    // World → rig space (the rig may be turned by the view yaw)
+    const v = this.currentView();
+    const position = this.rigLocal(eye, v, new Vector3());
+    const quaternion = new Quaternion().setFromAxisAngle(_Y, -v.yaw).multiply(worldQ);
     return { position, quaternion, fov };
   }
 
@@ -561,7 +675,7 @@ export class FlowScene implements SceneController {
   private worldUnitsPerPixel(): number {
     const h = this.ctx?.height ?? 800;
     const cam = this.world?.camera;
-    const view = this.mapView();
+    const view = this.mapViewCamera();
     const fov = cam?.fov ?? view.fov;
     const dist = view.offset.clone().multiplyScalar(this.zoom).distanceTo(view.look);
     return (2 * dist * Math.tan((fov * Math.PI) / 360)) / h;
@@ -569,12 +683,16 @@ export class FlowScene implements SceneController {
 
   private setZoom(z: number): void {
     this.zoom = Math.min(1.7, Math.max(0.7, z));
-    if (this.phase === 'map' && this.tweens.active === 0) this.applyPose(this.mapPose());
+    if (this.phase === 'map' && !this.tweenBusy('camera')) this.applyPose(this.mapPose());
+  }
+
+  private tweenBusy(tag: 'camera'): boolean {
+    return tag === 'camera' && this.elapsed < this.cameraTweenUntil;
   }
 
   /**
-   * World direction (from the planet centre) that appears on the lower third of the map view — in portrait a little
-   * left of centre — and the ground direction there that runs up the screen (portrait: the path is turned onto it).
+   * Flat point (rig space, from the apex) that appears on the lower third of the map view — in portrait a little left
+   * of centre — and the ground direction there that runs up the screen (portrait: the path is turned onto it).
    */
   private computeMapTarget(): void {
     const world = this.world;
@@ -583,12 +701,13 @@ export class FlowScene implements SceneController {
     const cam = this.probeCamera;
     cam.aspect = world.camera.aspect;
     cam.fov = pose.fov;
+    // Probe in rig space without the yaw: rig-local = world − rig position
     cam.position.copy(pose.position).add(world.rig.position);
     cam.quaternion.copy(pose.quaternion);
     cam.updateMatrixWorld(true);
     cam.updateProjectionMatrix();
     const target = this.portrait ? MAP_VIEW_PORTRAIT.target : { x: 0, y: MAP_TARGET_NDC_Y };
-    const hit = (x: number, y: number, out: Vector3): boolean => {
+    const hitFlat = (x: number, y: number, out: Vector2): boolean => {
       const origin = cam.position;
       const dir = _v2.set(x, y, 0.5).unproject(cam).sub(origin).normalize();
       const r = PLANET_RADIUS + 0.9;
@@ -596,113 +715,65 @@ export class FlowScene implements SceneController {
       const c = origin.lengthSq() - r * r;
       const disc = b * b - c;
       if (disc < 0) return false;
-      out.copy(origin).addScaledVector(dir, -b - Math.sqrt(disc)).normalize();
+      _v.copy(origin).addScaledVector(dir, -b - Math.sqrt(disc));
+      world.world.mapping.toFlatCpu(_v, _v);
+      out.set(_v.x, _v.z);
       return true;
     };
-    if (!hit(target.x, target.y, this.mapTargetDir)) this.mapTargetDir.set(0, 1, 0);
+    if (!hitFlat(target.x, target.y, this.mapTarget)) this.mapTarget.set(0, -8);
     // Screen-up on the ground at the target: toward the point a little higher on the screen.
-    if (hit(target.x, target.y + 0.12, this.mapUpDir)) this.mapUpDir.sub(this.mapTargetDir);
-    else this.mapUpDir.set(0, 0, -1);
-    this.mapUpDir.addScaledVector(this.mapTargetDir, -this.mapUpDir.dot(this.mapTargetDir)).normalize();
+    const upPt = new Vector2();
+    if (hitFlat(target.x, target.y + 0.12, upPt)) this.mapUp.copy(upPt).sub(this.mapTarget);
+    else this.mapUp.set(0, -1);
+    if (this.mapUp.lengthSq() < 1e-8) this.mapUp.set(0, -1);
+    this.mapUp.normalize();
   }
+
+  // ================================================================================ poses on the plane
 
   /**
-   * Planet rotation that brings `index` onto the map target; in portrait it also turns the planet about that point
-   * so the path ahead (a few nodes) runs up the screen, away from the camera.
-   */
-  private nodeAlignment(index: number): Quaternion | null {
-    const world = this.world!;
-    const nodes = this.layout!.nodes;
-    const node = nodes[index];
-    if (!node) return null;
-    const delta = new Quaternion().setFromUnitVectors(this.nodeDirWorld(node, _v), this.mapTargetDir);
-    const ahead = nodes[Math.min(nodes.length - 1, index + MAP_VIEW_PORTRAIT.lookAhead)];
-    if (this.portrait && ahead && ahead !== node && !world.cameraRailFor(index)) {
-      const t = this.mapTargetDir;
-      const p = this.nodeDirWorld(ahead, _v).applyQuaternion(delta);
-      p.addScaledVector(t, -p.dot(t));
-      if (p.lengthSq() > 1e-10) {
-        p.normalize();
-        const ang = Math.atan2(t.dot(_v2.crossVectors(p, this.mapUpDir)), p.dot(this.mapUpDir));
-        delta.premultiply(_q.setFromAxisAngle(t, ang));
-      }
-    }
-    return delta;
-  }
-
-  private nodeDirWorld(node: PathNode, out: Vector3): Vector3 {
-    return out.set(node.position[0], node.position[1], node.position[2]).applyQuaternion(this.world!.planet.quaternion).normalize();
-  }
-
-  /** Rotates the planet so `node` sits in the lower third — instantly. */
-  private snapPlanetToNode(index: number): void {
-    const world = this.world!;
-    this.computeMapTarget();
-    const delta = this.nodeAlignment(index);
-    if (!delta) return;
-    world.planet.quaternion.premultiply(delta);
-    this.trackball!.quaternion.copy(world.planet.quaternion);
-    world.markShadowDirty();
-  }
-
-  /** Same, as a smooth slerp (cancelled by a drag). */
-  private rotatePlanetToNode(index: number, duration = T_AUTO_ROTATE, ease = easeInOut): void {
-    const world = this.world!;
-    const delta = this.nodeAlignment(index);
-    if (!delta) return;
-    const q0 = world.planet.quaternion.clone();
-    const q1 = delta.multiply(q0);
-    this.tweens.cancel('autoRotate');
-    this.tweens.add(
-      duration,
-      (t) => {
-        world.planet.quaternion.slerpQuaternions(q0, q1, t);
-        this.trackball!.quaternion.copy(world.planet.quaternion);
-        world.markShadowDirty();
-      },
-      { ease, tag: 'autoRotate' },
-    );
-  }
-
-  // ================================================================================ poses on the planet
-
-  /**
-   * Hero pose standing on a node, facing the camera (planet-local). On the giant tree it sits on its node's marker: on
-   * top of the shelf fungus (up = the fungus seat, the body clears the bark) or the flower stone on a root or dome —
-   * a little smaller there, since the rail camera is closer than the map camera.
+   * Hero pose standing on a node, facing the camera (plane). On the giant tree it sits on its node's marker: on top of
+   * the shelf fungus (up = the fungus seat, the body clears the bark) or the flower stone on a root or dome — a little
+   * smaller there, since the rail camera is closer than the map camera.
    */
   private nodePose(index: number, scale = HERO_MAP_SCALE): HeroPose {
     const world = this.world!;
-    const i = Math.min(index, this.layout!.nodes.length - 1);
-    const node = this.layout!.nodes[i]!;
-    const surface = world.treeSurface(i);
+    const node = world.layout.node(index);
+    const surface = world.treeSurface(index);
     const s = surface ? scale * (HERO_TREE_SCALE[surface] ?? 1) : scale;
     const seat = new Vector3();
     const up = new Vector3();
-    const onTree = surface !== null && world.treeSeat(i, s * 0.95, seat, up);
-    // Nodes (and the hero on them) follow the far terrain's curvature boost.
-    const position = world.bend(onTree ? seat : new Vector3(node.position[0], node.position[1], node.position[2]));
+    const onTree = surface !== null && world.treeSeat(index, s * 0.95, seat, up);
+    const position = onTree ? seat : new Vector3(node.position[0], node.position[1], node.position[2]);
     const normal = onTree ? up : new Vector3(node.normal[0], node.normal[1], node.normal[2]);
-    const camLocal = world.planet.worldToLocal(world.camera.getWorldPosition(new Vector3()));
-    const fwd = camLocal.sub(position);
+    const camPlane = world.fromDisplay(world.camera.getWorldPosition(new Vector3()), new Vector3());
+    const fwd = camPlane.sub(position);
     tangentFrame(normal, fwd, _m4);
     return { position, quaternion: new Quaternion().setFromRotationMatrix(_m4), scale: s };
   }
 
-  /** Hero pose on a board cell (planet-local) for the risen plate. */
+  /** Hero pose on a board cell (plane) for the risen plate. */
   private boardPose(local: Vector3, scale: number): HeroPose {
     const board = this.board!;
     const position = local.clone();
     position.y += board.topY;
-    position.applyMatrix4(board.root.matrix);
-    const quaternion = board.root.quaternion.clone();
-    return { position, quaternion, scale };
+    position.applyQuaternion(this.boardPlane.quaternion).add(this.boardPlane.position);
+    return { position, quaternion: this.boardPlane.quaternion.clone(), scale };
+  }
+
+  /** The board's root on the display from its plane pose (every frame while it stands). */
+  private syncBoard(): void {
+    const world = this.world;
+    const board = this.board;
+    if (!world || !board || !this.boardPlane.active) return;
+    world.planeToDisplay(this.boardPlane.position, this.boardPlane.quaternion, board.root.position, board.root.quaternion);
+    board.root.updateMatrix();
   }
 
   /**
-   * Fits the sun's shadow camera around the plateau plus a margin (after `world.update`, which may have
-   * refitted it to the planet). The fit is stable while the planet does not rotate, so the shadow pass only
-   * re-renders when something moved (`markShadowDirty`) or when `force` switches the fit.
+   * Fits the sun's shadow cascades around the plateau plus a margin (after `world.update`). The fit is stable while
+   * the view does not move, so the shadow pass only re-renders when something moved (`markShadowDirty`) or when
+   * `force` switches the fit.
    */
   private fitBoardShadow(force: boolean): void {
     const world = this.world;
@@ -721,25 +792,26 @@ export class FlowScene implements SceneController {
     if (this.shadowFocus === on) return;
     this.shadowFocus = on;
     if (on) this.fitBoardShadow(true);
-    else this.world?.markShadowDirty(); // MapWorld refits to the planet and re-renders
+    else this.world?.markShadowDirty(); // MapWorld drops the clip and re-renders
   }
 
   /**
-   * Where the level of a node is played: on the node, or on its stage (a trunk node plays on the root terrace). The
-   * plateau stands level (radial up), whatever the slope under the stone. A stage that circles a landmark takes its
+   * Where the level of a node is played (plane): on the node, or on its stage (a trunk node plays on the root terrace).
+   * The plateau stands level (plane up), whatever the slope under the stone. A stage that circles a landmark takes its
    * sunlit side (the root terrace: the low sun can sit below the local horizon a few degrees from the look point).
    */
   private stageOf(index: number): { position: Vector3; normal: Vector3; facing: Vector3 | null; site: NodeSite; world: number; terrain: [number, number] | null; away: boolean } {
-    const node = this.layout!.nodes[index]!;
-    const st = node.stage;
     const world = this.world!;
+    const node = world.layout.node(index);
+    const st = node.stage;
     let position = new Vector3(...(st?.position ?? node.position));
     let facing: Vector3 | null = st?.facing ? new Vector3(...st.facing) : null;
     if (st?.orbit) {
       const foot = new Vector3(...st.orbit.foot);
       const up = new Vector3(...st.orbit.up);
       world.rig.updateWorldMatrix(true, true);
-      const sun = world.sunDirection(new Vector3()).applyQuaternion(world.planet.getWorldQuaternion(_q).invert());
+      // Plane axes are world axes: the sun direction applies as it is
+      const sun = world.sunDirection(new Vector3());
       const toSun = sun.addScaledVector(up, -sun.dot(up));
       const nodeDir = new Vector3(...node.position).sub(foot);
       nodeDir.addScaledVector(up, -nodeDir.dot(up)).normalize();
@@ -750,9 +822,10 @@ export class FlowScene implements SceneController {
         // …on a spot where no limb of the giant tree hangs between the level camera and the plateau (turning around
         // the trunk as little as possible, so the sun still rakes across the board)
         const place = (dir: Vector3): { position: Vector3; facing: Vector3 } => {
-          const q = foot.clone().addScaledVector(dir, st.orbit!.radius).normalize();
+          const q = foot.clone().addScaledVector(dir, st.orbit!.radius);
+          q.y = world.walkableHeight(q.x, q.z);
           // The camera comes from the side (the sun rakes across the board, the trunk rises behind it).
-          return { position: q.multiplyScalar(world.surfaceRadius(q)), facing: dir.clone().applyAxisAngle(up, 0.95) };
+          return { position: q, facing: dir.clone().applyAxisAngle(up, 0.95) };
         };
         let best = place(dir0);
         for (const deg of [0, 25, -25, 50, -50, 75, -75, 100, -100]) {
@@ -766,13 +839,12 @@ export class FlowScene implements SceneController {
         facing = best.facing;
       }
     }
-    const normal = position.clone().normalize();
     const away = !!st && position.distanceTo(new Vector3(...node.position)) > 0.8;
-    return { position, normal, facing, site: st?.site ?? node.site ?? 'meadow', world: node.world ?? 0, terrain: st?.terrain ?? null, away };
+    return { position, normal: new Vector3(0, 1, 0), facing, site: st?.site ?? node.site ?? 'meadow', world: node.world ?? 0, terrain: st?.terrain ?? null, away };
   }
 
   /**
-   * Is a plateau at `position` (planet space), seen by the level camera from `facing`, free of the giant tree? The level
+   * Is a plateau at `position` (plane), seen by the level camera from `facing`, free of the giant tree? The level
    * camera hangs ≈ 9 units above and 4 toward `facing`; the lines from there to the plateau's centre and corners must
    * keep clear of trunk, limbs and domes.
    */
@@ -798,37 +870,35 @@ export class FlowScene implements SceneController {
   }
 
   /**
-   * Places the (hidden) board where its level is played: tangent frame facing the camera (or the stage's facing),
-   * plate height from the terrain, and the look of the place (plateau family, colours and rim from the site and
-   * the local Earle world).
+   * Places the (hidden) board where its level is played: level frame facing the camera (or the stage's facing), plate
+   * height from the terrain as it is displayed, and the look of the place (plateau family, colours and rim from the
+   * site and the local Earle world).
    */
   private placeBoardAt(index: number): void {
     const world = this.world!;
     const board = this.board!;
     const stage = this.stageOf(index);
-    const position = stage.position;
-    const normal = stage.normal;
-    const camLocal = world.planet.worldToLocal(world.camera.getWorldPosition(new Vector3()));
-    tangentFrame(normal, stage.facing ?? camLocal.sub(position), _m4);
-    board.root.position.copy(position);
-    board.root.quaternion.setFromRotationMatrix(_m4);
-    board.root.updateMatrix();
-    board.setSite(plateauStyleFor(stage.site, stage.world), index);
+    const camPlane = world.fromDisplay(world.camera.getWorldPosition(new Vector3()), new Vector3());
+    tangentFrame(stage.normal, stage.facing ?? camPlane.sub(stage.position), _m4);
+    this.boardPlane.position.copy(stage.position);
+    this.boardPlane.quaternion.setFromRotationMatrix(_m4);
+    this.boardPlane.active = true;
+    this.syncBoard();
+    const data = world.world.worldData(stage.world);
+    const zone = stage.world < WORLD_CONTENTS.length ? WORLD_CONTENTS[stage.world]?.zone : undefined;
+    board.setSite(plateauStyleFor(stage.site, data.palette, zone), index);
     if (stage.terrain) {
       board.setTerrain(stage.terrain[0], stage.terrain[1]);
     } else {
-      // Terrain under the footprint (skirt included): the top clears the highest point, the skirt and the sunk
-      // hill reach below the lowest.
+      // Terrain under the footprint (skirt included), as displayed: the top clears the highest point, the skirt and
+      // the sunk hill reach below the lowest.
       const fp = board.footprint;
-      const rNode = position.length();
       let maxD = -Infinity;
       let minD = Infinity;
       const N = 6;
       for (let j = 0; j <= N; j++) {
         for (let i = 0; i <= N; i++) {
-          _v.set(fp.minX + ((fp.maxX - fp.minX) * i) / N, 0, fp.minZ + ((fp.maxZ - fp.minZ) * j) / N).applyMatrix4(board.root.matrix);
-          const r = world.surfaceRadius(_v2.copy(_v).normalize());
-          const d = r - rNode;
+          const d = world.groundLocalY(board.root, fp.minX + ((fp.maxX - fp.minX) * i) / N, fp.minZ + ((fp.maxZ - fp.minZ) * j) / N);
           maxD = Math.max(maxD, d);
           minD = Math.min(minD, d);
         }
@@ -857,27 +927,33 @@ export class FlowScene implements SceneController {
     useFlowStore.getState().setPhase(p);
   }
 
-  private attachTrackball(): void {
-    if (!this.trackballAttached && this.ctx && this.trackball) {
-      this.trackball.attach(this.ctx.canvas);
-      this.trackballAttached = true;
+  private attachPan(): void {
+    if (!this.panAttached && this.ctx && this.panBall) {
+      this.panBall.attach(this.ctx.canvas);
+      this.panAttached = true;
     }
   }
 
-  private detachTrackball(): void {
-    if (this.trackballAttached && this.trackball) {
-      this.trackball.detach();
-      this.trackballAttached = false;
+  private detachPan(): void {
+    if (this.panAttached && this.panBall) {
+      this.panBall.detach();
+      this.panBall.stop();
+      this.panAttached = false;
     }
+  }
+
+  private hideBoard(): void {
+    this.board!.root.visible = false;
+    this.boardPlane.active = false;
   }
 
   private enterSplashImmediate(): void {
     this.cut = true;
     this.tweens.clear();
-    this.detachTrackball();
+    this.detachPan();
     this.setShadowFocus(false);
     this.board!.dropCarried();
-    this.board!.root.visible = false;
+    this.hideBoard();
     this.board!.unbind();
     this.hero!.root.visible = true;
     this.rex?.setVisible(false);
@@ -898,11 +974,11 @@ export class FlowScene implements SceneController {
     this.setShadowFocus(false);
     this.setLevelNode(null);
     if (this.board!.carrying) this.board!.setPartsOnly(true);
-    else this.board!.root.visible = false;
+    else this.hideBoard();
     this.board!.unbind();
     const current = useFlowStore.getState().current;
     this.zoom = 1;
-    this.snapPlanetToNode(current);
+    this.snapViewToNode(current);
     this.applyPose(this.mapPose());
     this.world!.setFootClear(MAP_VIEW.footClear);
     this.hero!.root.visible = true;
@@ -911,7 +987,7 @@ export class FlowScene implements SceneController {
     this.stripesY = 0;
     if (this.splashBacking) this.splashBacking.visible = false;
     this.setPhase('map');
-    this.attachTrackball();
+    this.attachPan();
     useFlowStore.getState().setRex(rexIntroFor(current + 1) ?? 'Tipp auf den Knoten.');
   }
 
@@ -937,11 +1013,12 @@ export class FlowScene implements SceneController {
   private enterLevelImmediate(node: number): void {
     this.cut = true;
     this.tweens.clear();
-    this.detachTrackball();
+    this.detachPan();
     const board = this.board!;
     const hero = this.hero!;
     const flow = useFlowStore.getState();
     this.zoom = 1;
+    this.snapViewToNode(node);
     this.applyPose(this.mapPose());
     if (this.splashBacking) this.splashBacking.visible = false;
     const grid = useGridStore.getState();
@@ -976,14 +1053,15 @@ export class FlowScene implements SceneController {
     const center = this.cameraPoint(dot.x, dot.y, d, new Vector3());
     cam.updateWorldMatrix(true, false);
     cam.localToWorld(center);
-    world.planet.updateWorldMatrix(true, false);
-    world.planet.worldToLocal(center);
     // Baked dot radius → world radius at depth d; the body's visual radius ≈ 1 blob unit.
     const tanHalf = Math.tan((cam.fov * Math.PI) / 360);
     const rWorld = (dot.rPx * 1.1 * 2 * d * tanHalf) / ctx.height;
     cam.getWorldQuaternion(_q);
-    const planetQ = world.planet.getWorldQuaternion(new Quaternion()).invert();
-    hero.setCentered(center, planetQ.multiply(_q), Math.max(0.03, rWorld / 1.05));
+    // Display pose → the hero's plane pose (its mapper maps it straight back)
+    const planePos = new Vector3();
+    const planeQ = new Quaternion();
+    world.displayToPlane(center, _q, planePos, planeQ);
+    hero.setCentered(planePos, planeQ, Math.max(0.03, rWorld / 1.05));
   }
 
   /** The backing disc sits just behind the hero, 1.6× the mask hole, in camera space. */
@@ -1025,7 +1103,7 @@ export class FlowScene implements SceneController {
     this.tweens.after(T_HOP, () => {
       this.rex?.setVisible(true);
       this.setPhase('map');
-      this.attachTrackball();
+      this.attachPan();
       useFlowStore.getState().setRex(rexIntroFor(current + 1) ?? 'Tipp auf den Knoten.');
     });
   }
@@ -1034,15 +1112,24 @@ export class FlowScene implements SceneController {
 
   private startFlyIn(index: number): void {
     if (this.phase !== 'map') return;
+    const world = this.world!;
     const hero = this.hero!;
     const board = this.board!;
     const store = useFlowStore.getState();
-    const node = Math.min(Math.max(0, index), this.layout!.nodes.length - 1);
-    this.detachTrackball();
-    this.tweens.cancel('autoRotate');
+    const node = Math.max(0, index);
+    // Locked stones ("bald"): no level yet — REX says so
+    if (node > world.layout.lastPlayable || !FLOW_LEVELS[node]) {
+      store.setRex(rexLine('locked') ?? 'Bald. Hier wächst noch was.');
+      return;
+    }
+    this.detachPan();
+    this.tweens.cancel('glide');
+    // The view brings the node onto the map target first (a tap on a far node): the fly-in starts from there
+    this.snapViewToNode(node);
+    this.applyPose(this.mapPose());
     this.setPhase('flyIn');
     // The close board shot needs no clearing around the map camera's foot (restored after the depart).
-    this.world!.setFootClear(0);
+    world.setFootClear(0);
     store.setPlaying(node);
     if (node !== store.current) {
       store.setCurrent(node);
@@ -1062,7 +1149,7 @@ export class FlowScene implements SceneController {
     // Camera: dolly + FOV as before, bent into a slight arc toward the sun side — on the giant tree a wider arc away
     // from the trunk (from the rail beside the bark down to the root terrace, or over the domes onto the crown).
     const levelPose = this.levelPose();
-    if (this.world!.isTreeNode(node)) this.tweenCamera(levelPose, T_FLY_IN, easeInOutQuint, undefined, TREE_ARC, this.treeBend(levelPose));
+    if (world.isTreeNode(node)) this.tweenCamera(levelPose, T_FLY_IN, easeInOutQuint, undefined, TREE_ARC, this.treeBend(levelPose));
     else this.tweenCamera(levelPose, T_FLY_IN, easeInOutQuint, undefined, CAMERA_ARC);
     this.rex?.setVisible(false);
     const stripes0 = this.stripesY;
@@ -1085,7 +1172,7 @@ export class FlowScene implements SceneController {
             lifted = true;
             hero.impulse(0.7);
           }
-          _v.set(0, y, 0).applyMatrix4(board.root.matrix);
+          _v.set(0, y, 0).applyQuaternion(this.boardPlane.quaternion).add(this.boardPlane.position);
           hero.setPose({ position: _v.clone(), quaternion: riding.quaternion, scale: riding.scale });
         },
         { delay: T_RISE_AT, ease: (t) => t },
@@ -1136,7 +1223,7 @@ export class FlowScene implements SceneController {
     this.tweens.cancel('won');
     this.setPhase('depart');
     const current = flow.current;
-    const next = won ? Math.min(current + 1, this.layout!.nodes.length - 1) : current;
+    const next = won ? current + 1 : current;
     const top = won ? board.topBlob() : board.entryBlob(hero.tier);
     flow.setRex(won ? (rexLine('release') ?? 'Geh. Wir kommen nach.') : (rexLine('lose') ?? 'Nochmal.'));
 
@@ -1157,14 +1244,11 @@ export class FlowScene implements SceneController {
 
   /** Board-local xz direction from the plateau centre toward a node (null = toward the camera). */
   private boardDirectionTo(node: number | null): Vector3 {
-    const board = this.board!;
     const out = new Vector3(0, 0, 1);
     if (node === null) return out;
-    const n = this.layout!.nodes[node];
-    if (!n) return out;
-    board.root.updateMatrix();
-    const inv = _m4.copy(board.root.matrix).invert();
-    const p = new Vector3(n.position[0], n.position[1], n.position[2]).applyMatrix4(inv);
+    const n = this.world!.layout.node(node);
+    const p = new Vector3(n.position[0], n.position[1], n.position[2]).sub(this.boardPlane.position);
+    p.applyQuaternion(_q.copy(this.boardPlane.quaternion).invert());
     p.y = 0;
     if (p.lengthSq() < 1e-6) return out;
     return p.normalize();
@@ -1175,6 +1259,7 @@ export class FlowScene implements SceneController {
     if (this.phase !== 'depart') return;
     const hero = this.hero!;
     const board = this.board!;
+    const world = this.world!;
     const flow = useFlowStore.getState();
     if (top && local) {
       const info = board.blobInfo(top.id);
@@ -1198,8 +1283,8 @@ export class FlowScene implements SceneController {
       if (top && local) board.splat(local, board.blobInfo(top.id)?.scale ?? board.worldScale(top.tier));
     });
     // Onto or off the giant tree: the camera heads straight for the next node's view (its rail pose on the tree) while
-    // the planet turns that node into place — one move, no cut when the rail takes over.
-    const railMove = won && next !== current && (this.world!.isTreeNode(next) || this.world!.isTreeNode(current));
+    // the view glides to that node — one move, no cut when the rail takes over.
+    const railMove = won && next !== current && (world.isTreeNode(next) || world.isTreeNode(current));
     this.departTarget = railMove ? next : current;
     this.tweens.after(0.22, () => {
       // The flight target is computed once the camera starts pulling out (faces the map camera).
@@ -1207,11 +1292,11 @@ export class FlowScene implements SceneController {
       hero.flyTo(pose, { duration: T_DEPART - 0.2, arc: 2.6, ease: easeInOut });
     });
     this.tweens.after(0.24, () => {
-      const target = railMove ? this.mapPoseFor(next, this.planetQuatFor(next)) : this.mapPose();
+      const target = railMove ? this.mapPoseFor(next, this.viewFor(next)) : this.mapPose();
       // leaving a level under or on the giant tree: swing around the wood (see startFlyIn)
-      const bend = this.world!.isTreeNode(current) ? this.treeBend(target) : null;
+      const bend = world.isTreeNode(current) ? this.treeBend(target) : null;
       this.tweenCamera(target, T_DEPART, easeInOutQuint, undefined, bend ? TREE_ARC : CAMERA_ARC, bend);
-      if (railMove) this.rotatePlanetToNode(next, T_DEPART, easeInOutQuint);
+      if (railMove) this.glideViewToNode(next, T_DEPART, easeInOutQuint);
       const s0 = this.stripesY;
       this.tweens.add(0.9, (t) => (this.stripesY = lerp(s0, 0, t)), { ease: easeInOut });
       board.playSink(top?.id ?? null);
@@ -1229,7 +1314,7 @@ export class FlowScene implements SceneController {
     this.tweens.after(0.24 + T_DEPART, () => {
       // The plateau is gone; a carried creature keeps its parts on the hero until the next level.
       if (board.carrying) board.setPartsOnly(true);
-      else board.root.visible = false;
+      else this.hideBoard();
       board.unbind();
       if (won) {
         flow.setCurrent(next);
@@ -1237,12 +1322,13 @@ export class FlowScene implements SceneController {
       }
       flow.setPlaying(null);
       this.rex?.setVisible(true);
-      this.world!.setFootClear(MAP_VIEW.footClear);
+      world.setFootClear(MAP_VIEW.footClear);
       this.setPhase('map');
-      this.attachTrackball();
-      if (!railMove) this.rotatePlanetToNode(next);
+      this.attachPan();
+      if (!railMove) this.glideViewToNode(next);
       const intro = won ? rexIntroFor(next + 1) : null;
       if (intro) flow.setRex(intro);
+      else if (won && next > world.layout.lastPlayable) flow.setRex(rexLine('locked') ?? 'Weiter geht’s bald. Die Welt wächst noch.');
     });
   }
 
@@ -1254,20 +1340,20 @@ export class FlowScene implements SceneController {
   /** Debug: hop the hero to the next node on the map (no level). */
   private hopToNext(): void {
     if (this.phase !== 'map') return;
+    const world = this.world!;
     const flow = useFlowStore.getState();
-    const next = Math.min(flow.current + 1, this.layout!.nodes.length - 1);
-    if (next === flow.current) return;
-    const railMove = this.world!.isTreeNode(next) || this.world!.isTreeNode(flow.current);
-    const q1 = railMove ? this.planetQuatFor(next) : null;
+    const next = flow.current + 1;
+    if (next > world.layout.lastPlayable + 1) return;
+    const railMove = world.isTreeNode(next) || world.isTreeNode(flow.current);
     this.hero!.flyTo(this.nodePose(next), { duration: 0.9, arc: 1.8, ease: easeInOut });
     this.nodePath!.celebrate(flow.current, next, 0.85);
     flow.setCurrent(next);
     this.nodePath!.setProgress(next, Math.max(this.nodePath!.doneCount, next));
-    if (q1) {
-      // Along the giant tree: the camera glides to the next rail pose while the planet turns (no cut)
-      this.tweenCamera(this.mapPoseFor(next, q1), T_AUTO_ROTATE, easeInOut);
-      this.rotatePlanetToNode(next, T_AUTO_ROTATE, easeInOut);
-    } else this.rotatePlanetToNode(next);
+    if (railMove) {
+      // Along the giant tree: the camera glides to the next rail pose while the view glides (no cut)
+      this.tweenCamera(this.mapPoseFor(next, this.viewFor(next)), T_GLIDE, easeInOut);
+      this.glideViewToNode(next, T_GLIDE, easeInOut);
+    } else this.glideViewToNode(next);
   }
 
   // ================================================================================ requests and input
@@ -1293,7 +1379,7 @@ export class FlowScene implements SceneController {
         if (this.phase === 'level') this.startDepart(false);
         break;
       case 'map':
-        this.detachTrackball();
+        this.detachPan();
         this.enterMapImmediate();
         break;
       case 'splash':
@@ -1307,7 +1393,7 @@ export class FlowScene implements SceneController {
   private attachInput(canvas: HTMLCanvasElement): void {
     const down = (e: PointerEvent) => {
       this.pointer = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId };
-      if (this.phase === 'map') this.tweens.cancel('autoRotate');
+      if (this.phase === 'map') this.tweens.cancel('glide');
     };
     const up = (e: PointerEvent) => {
       const p = this.pointer;
@@ -1367,5 +1453,39 @@ export class FlowScene implements SceneController {
   private move(dir: Dir): void {
     if (this.phase !== 'level') return;
     useGridStore.getState().move(dir);
+  }
+
+  // ================================================================================ diagnostics (e2e, bench)
+
+  /** A small API on `window.__flow`: pan programmatically, read the streaming stats and the view. */
+  private debugApi(): Record<string, unknown> {
+    return {
+      /** Pan by (dx, dz) plane units (like a drag; the map phase only). */
+      pan: (dx: number, dz: number) => this.panBy(dx, dz),
+      /** Jump the view to a plane point. */
+      focus: (x: number, z: number) => {
+        this.tweens.cancel('glide');
+        this.applyView({ x, z, yaw: this.viewYaw });
+      },
+      /** Glide the view to a node (like after a won level). */
+      goToNode: (i: number) => this.glideViewToNode(i),
+      view: () => ({ ...this.currentView(), phase: this.phase }),
+      stats: () => {
+        const w = this.world;
+        if (!w) return null;
+        return {
+          focus: { x: w.focus.x, z: w.focus.z },
+          streaming: { ...w.world.stats },
+          caches: w.world.cacheSizes,
+          chunkBuilds: w.world.chunkBuilds,
+          viewWorld: w.viewWorld,
+          window: this.nodePath?.windowRange ?? null,
+          windowBuilds: this.nodePath?.windowBuilds ?? 0,
+          slots: w.world.slots.entries().length,
+          evictions: w.world.slots.evictions,
+          shadowPasses: w.shadowPasses,
+        };
+      },
+    };
   }
 }

@@ -1,7 +1,6 @@
 import { mixHex } from '@ee/genome';
-import type { PlateauStyle } from '@ee/render';
+import type { PlateauStyle, WorldPalette } from '@ee/render';
 import { DOME_FAMILIES } from '@ee/render/earle/tree/index.ts';
-import { WORLD_CONTENTS } from '../lab/earle/zones';
 import type { NodeSite } from './path';
 
 /**
@@ -10,11 +9,10 @@ import type { NodeSite } from './path';
  * among tall domes, a ledge a rock shelf with striated walls (red rust towers in the golden meadow, the Earle
  * monoliths), a trash field rusty soil with scrap and a neon glint, a shore a sand bar in its pool (oil, syrup,
  * water), the crown of the giant tree a flattened dome with dotted skin among crown puffs, snow a drift with pines.
+ * `palette` = the local world's palette (authored or procedural), `zone` its story zone (syrup shores).
  */
-export function plateauStyleFor(site: NodeSite, world: number): PlateauStyle {
-  const content = WORLD_CONTENTS[Math.max(0, Math.min(WORLD_CONTENTS.length - 1, world))];
-  const p = content?.palette;
-  if (!p) throw new Error(`no world ${world}`);
+export function plateauStyleFor(site: NodeSite, palette: WorldPalette, zone?: string): PlateauStyle {
+  const p = palette;
   const t = p.terrain;
   const t0 = t[0] ?? '#303020';
   const t1 = t[1] ?? t0;
@@ -72,7 +70,7 @@ export function plateauStyleFor(site: NodeSite, world: number): PlateauStyle {
     }
     case 'shore': {
       const sand = mixHex(t4, '#f2e2b0', 0.5);
-      const syrup = content.zone === 'syrup';
+      const syrup = zone === 'syrup';
       const water = syrup ? '#2a1206' : mixHex(ink, '#10202a', 0.4);
       const band = syrup ? '#f17023' : (p.accent[7] ?? '#7ce6d5');
       return {

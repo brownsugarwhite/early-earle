@@ -5,7 +5,7 @@ import type { SceneController, SceneContext } from '../../canvas/SceneController
 import { MapWorld, MAP_VIEW, MAP_VIEW_PORTRAIT, PLANET_RADIUS } from '../../flow/MapWorld';
 import { FLOW_QUALITY } from '../../flow/quality';
 import { NodePath } from '../../flow/NodePath';
-import { Trackball } from '../earle/trackball';
+import { PanBall } from '../earle/panball';
 import { createShadowTestDots } from './shadowDots';
 import { flatNormalWorld, type CascadedShadows, type CascadedShadowStats, type ShadowCascadePreset, type ShadowTaps } from '@ee/render/shadow/index.ts';
 
@@ -182,7 +182,9 @@ export class ShadowLabScene implements SceneController {
   private nodePath: NodePath | null = null;
   private readonly magCamera = new PerspectiveCamera(70, 1, 0.3, 700);
   private readonly probe = new PerspectiveCamera(70, 1, 0.3, 700);
-  private trackball: Trackball | null = null;
+  private panBall: PanBall | null = null;
+  /** Drehung der Ansicht um die Senkrechte am Scheitel (rad): „drehen" dreht Kamera und Sonne über der Ebene. */
+  private yaw = 0;
   private readonly listeners = new Set<(p: ShadowLabParams) => void>();
   private cpuMs = 0;
   private needsSnap = true;
@@ -213,13 +215,16 @@ export class ShadowLabScene implements SceneController {
   mount(ctx: SceneContext): void {
     this.ctx = ctx;
     ctx.renderer.shadowMap.enabled = true;
-    this.trackball = new Trackball({
-      radius: PLANET_RADIUS,
-      tau: 0.4,
-      maxTilt: Math.PI,
+    this.panBall = new PanBall({
       worldUnitsPerPixel: () => this.worldUnitsPerPixel(),
+      yaw: () => this.yaw,
+      onPan: (dx, dz) => {
+        const w = this.world;
+        if (!w) return;
+        w.setFocus(w.focus.x + dx, w.focus.z + dz);
+      },
     });
-    this.trackball.attach(ctx.canvas);
+    this.panBall.attach(ctx.canvas);
     this.buildWorld();
     this.resize(ctx);
   }
@@ -231,9 +236,7 @@ export class ShadowLabScene implements SceneController {
     this.world = world;
     world.rig.add(this.magCamera);
     world.rig.updateWorldMatrix(true, true);
-    const sunLocal = world.sunDirection(new Vector3());
-    this.nodePath = new NodePath(world.layout, sunLocal);
-    world.planet.add(this.nodePath.group);
+    this.nodePath = new NodePath({ planet: world.world, layout: world.layout, sunDirWorld: world.sunDirection(new Vector3()) });
     this.nodePath.setProgress(p.node, p.node);
     if (p.progress > 0) world.setProgress(p.progress);
     // --- Die neue API, genau so wie ein Konsument sie nutzt -----------------------------------------------
@@ -271,7 +274,7 @@ export class ShadowLabScene implements SceneController {
       if (this.params.legacy === 2) world.sun.setSharpen(false);
       return;
     }
-    world.sun.fitToPlanet(world.camera, () => this.world?.world, world.planet, { coverAbove: this.params.crownHeight });
+    world.sun.fitToDisplay(world.camera, () => this.world?.world, world.world.plane, { coverAbove: this.params.crownHeight });
   }
 
   private disposeWorld(): void {
@@ -353,7 +356,8 @@ export class ShadowLabScene implements SceneController {
   private applyCamera(cam: PerspectiveCamera, pose: ViewPose): void {
     cam.position.copy(pose.offset);
     cam.up.set(0, 1, 0);
-    cam.lookAt(_v.copy(pose.look).add(this.world!.rig.position));
+    this.world!.rig.updateMatrixWorld(true);
+    cam.lookAt(this.world!.rig.localToWorld(_v.copy(pose.look)));
     cam.fov = pose.fov;
     cam.updateProjectionMatrix();
   }
@@ -365,13 +369,23 @@ export class ShadowLabScene implements SceneController {
     return (2 * dist * Math.tan((pose.fov * Math.PI) / 360)) / h;
   }
 
-  /** Planet so drehen, dass der Fokusknoten auf `ndcY` liegt, Pfad Richtung Horizont (wie FlowScene). */
+  /**
+   * Fokus so setzen, dass der Fokusknoten auf `ndcY` liegt, Pfad Richtung Horizont (wie FlowScene): die Ansicht dreht
+   * sich um die Senkrechte, bis der Weg zum nächsten Knoten in die Bildtiefe zeigt, plus `spin` Grad.
+   */
   private snapToNode(): void {
     const world = this.world;
     if (!world || !this.ctx) return;
     const pose = this.pose();
-    const node = world.layout.nodes[Math.min(this.params.node, world.layout.nodes.length - 1)];
-    if (!node) return;
+    const node = world.layout.node(this.params.node);
+    const next = world.layout.node(this.params.node + 1);
+    // Kurs: Weg zum nächsten Knoten zeigt in die Bildtiefe (−z im Rig), plus Spin
+    const dx = next.position[0] - node.position[0];
+    const dz = next.position[2] - node.position[2];
+    const heading = Math.hypot(dx, dz) > 1e-4 ? Math.atan2(dx, dz) - Math.PI : 0;
+    this.setYaw(heading + (this.params.spin * Math.PI) / 180);
+    this.appliedSpin = this.params.spin;
+    // Zielpunkt im Rig (ohne Drehung): Strahl der Probe-Kamera auf die Kugel, flacher Versatz vom Scheitel
     const cam = this.probe;
     cam.aspect = this.ctx.width / this.ctx.height;
     cam.fov = pose.fov;
@@ -386,25 +400,23 @@ export class ShadowLabScene implements SceneController {
     const b = origin.dot(dir);
     const c = origin.lengthSq() - r * r;
     const disc = b * b - c;
-    const target = disc >= 0 ? origin.clone().addScaledVector(dir, -b - Math.sqrt(disc)).normalize() : new Vector3(0, 1, 0);
-    world.planet.quaternion.identity();
-    world.planet.updateMatrixWorld(true);
-    const nodeDir = new Vector3(node.position[0], node.position[1], node.position[2]).normalize();
-    world.planet.quaternion.setFromUnitVectors(nodeDir, target);
-    // Kurs: Pfadrichtung (zum nächsten Knoten) zeigt in die Bildtiefe
-    const next = world.layout.nodes[Math.min(this.params.node + 1, world.layout.nodes.length - 1)];
-    if (next && next !== node) {
-      const a = new Vector3(next.position[0], next.position[1], next.position[2]).sub(new Vector3(node.position[0], node.position[1], node.position[2]));
-      a.applyQuaternion(world.planet.quaternion);
-      a.addScaledVector(target, -a.dot(target)).normalize();
-      const fwd = new Vector3(0, 0, -1).addScaledVector(target, target.z).normalize();
-      const angle = Math.atan2(target.dot(new Vector3().crossVectors(a, fwd)), a.dot(fwd));
-      world.planet.quaternion.premultiply(_q.setFromAxisAngle(target, angle));
-    }
-    world.planet.quaternion.premultiply(_q.setFromAxisAngle(target, (this.params.spin * Math.PI) / 180));
-    this.appliedSpin = this.params.spin;
-    this.trackball?.quaternion.copy(world.planet.quaternion);
+    const hit = disc >= 0 ? origin.clone().addScaledVector(dir, -b - Math.sqrt(disc)) : new Vector3(0, PLANET_RADIUS, -6);
+    world.world.mapping.toFlatCpu(hit, hit);
+    const cs = Math.cos(this.yaw);
+    const sn = Math.sin(this.yaw);
+    const ox = hit.x * cs + hit.z * sn;
+    const oz = -hit.x * sn + hit.z * cs;
+    world.setFocus(node.position[0] - ox, node.position[2] - oz);
     world.world.curvature.value = pose.curvature;
+    world.markShadowDirty();
+  }
+
+  private setYaw(yaw: number): void {
+    const world = this.world;
+    this.yaw = yaw;
+    if (!world) return;
+    world.rig.quaternion.setFromAxisAngle(_Y, yaw);
+    world.rig.updateMatrixWorld(true);
     world.markShadowDirty();
   }
 
@@ -420,24 +432,16 @@ export class ShadowLabScene implements SceneController {
 
   update(dt: number, _elapsed: number, ctx: SceneContext): void {
     const world = this.world;
-    const tb = this.trackball;
-    if (!world || !tb || this.benchRunning) return;
+    const pan = this.panBall;
+    if (!world || !pan || this.benchRunning) return;
     const t0 = performance.now();
     this.elapsed += dt;
     if (this.needsSnap) {
       this.snapToNode();
       this.needsSnap = false;
     }
-    let rotated = tb.step(dt);
-    if (this.params.rotate !== 0 && dt > 0 && !tb.isDragging) {
-      _q.setFromAxisAngle(_Y, ((this.params.rotate * Math.PI) / 180) * dt);
-      tb.quaternion.premultiply(_q);
-      rotated = true;
-    }
-    if (rotated) {
-      world.planet.quaternion.copy(tb.quaternion);
-      world.markShadowDirty();
-    }
+    if (pan.step(dt)) world.markShadowDirty();
+    if (this.params.rotate !== 0 && dt > 0 && !pan.isDragging) this.setYaw(this.yaw + ((this.params.rotate * Math.PI) / 180) * dt);
     this.frameWorld();
     this.render(ctx);
     const ms = performance.now() - t0;
@@ -694,15 +698,10 @@ export class ShadowLabScene implements SceneController {
     }
   }
 
-  /** Für Skripte (Bildfolgen beim Drehen): Planet um `deg` Grad um die Hochachse drehen und einen Frame rendern. */
+  /** Für Skripte (Bildfolgen beim Drehen): Ansicht um `deg` Grad um die Senkrechte am Scheitel drehen. */
   stepRotation(deg: number): void {
-    const world = this.world;
-    const tb = this.trackball;
-    if (!world || !tb || !this.ctx) return;
-    _q.setFromAxisAngle(_Y, (deg * Math.PI) / 180);
-    tb.quaternion.premultiply(_q);
-    world.planet.quaternion.copy(tb.quaternion);
-    world.markShadowDirty();
+    if (!this.world || !this.ctx) return;
+    this.setYaw(this.yaw + (deg * Math.PI) / 180);
   }
 
   getStats(): ShadowLabStats {
@@ -736,8 +735,8 @@ export class ShadowLabScene implements SceneController {
   }
 
   dispose(): void {
-    this.trackball?.detach();
-    this.trackball = null;
+    this.panBall?.detach();
+    this.panBall = null;
     this.disposeWorld();
     if (this.ctx) this.ctx.renderer.shadowMap.enabled = false;
     this.listeners.clear();

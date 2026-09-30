@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
-import { DEFAULT_EARLE_PARAMS, EarleLabScene, type EarleLabParams } from '../lab/earle/EarleLabScene';
+import { DEFAULT_EARLE_PARAMS, EarleLabScene, LAB_WORLD_COUNT, type EarleLabParams } from '../lab/earle/EarleLabScene';
 import { BenchPanel } from '../lab/earle/BenchPanel';
 import { TreeGalleryScene, galleryParamsFromUrl } from '../lab/earle/TreeGalleryScene';
 import type { QualityLevel, ResolvedQuality } from '../lab/earle/quality';
-import { NODES_PER_ZONE, WORLD_CONTENTS, ZONE_CONTENTS } from '../lab/earle/zones';
+import { LEVEL_COUNT, WORLD_CONTENTS, zoneOfLevel } from '../lab/earle/zones';
 import '../lab/earle/earle-lab.css';
 
 function Range({
@@ -38,10 +38,10 @@ function Range({
 }
 
 function sameParams(a: EarleLabParams, b: EarleLabParams): boolean {
-  return (Object.keys(b) as Array<keyof EarleLabParams>).every((k) => (k === 'cracksClosed' ? a.cracksClosed.join() === b.cracksClosed.join() : a[k] === b[k]));
+  return (Object.keys(b) as Array<keyof EarleLabParams>).every((k) => a[k] === b[k]);
 }
 
-const NODE_COUNT = NODES_PER_ZONE * ZONE_CONTENTS.length;
+const NODE_COUNT = LEVEL_COUNT;
 
 /** Startparameter aus der URL: `?world=08&p=1.2&trash=150&progress=40&sun=10` (Screenshots, Vergleiche). */
 function paramsFromUrl(search: URLSearchParams): Partial<EarleLabParams> {
@@ -50,8 +50,9 @@ function paramsFromUrl(search: URLSearchParams): Partial<EarleLabParams> {
     const v = search.get(k);
     return v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null;
   };
+  // ?world=08 (Autorenwelt) oder ?world=14 (prozedurale Pfadwelt 14)
   const w = num('world');
-  if (w !== null && w >= 1 && w <= WORLD_CONTENTS.length) out.world = Math.round(w) - 1;
+  if (w !== null && w >= 1 && w <= LAB_WORLD_COUNT) out.world = Math.round(w) - 1;
   const p = num('p');
   if (p !== null) out.perspective = Math.max(0, Math.min(1.4, p));
   const trash = num('trash');
@@ -155,8 +156,9 @@ function LabEarlePlanet() {
   useEffect(() => setRefMissing(false), [viewWorld]);
 
   const set = (patch: Partial<EarleLabParams>) => setParams((p) => ({ ...p, ...patch }));
-  const zoneOf = (node: number) => ZONE_CONTENTS[Math.min(ZONE_CONTENTS.length - 1, Math.floor(node / NODES_PER_ZONE))]?.name ?? '';
-  const current = WORLD_CONTENTS[viewWorld];
+  const zoneOf = (node: number) => zoneOfLevel(node + 1)?.name ?? '';
+  const authored = WORLD_CONTENTS[viewWorld];
+  const current = viewWorld >= 0 ? controller.worldLabel(viewWorld) : null;
 
   return (
     <LabFrame
@@ -174,6 +176,11 @@ function LabEarlePlanet() {
                 {WORLD_CONTENTS.map((w, i) => (
                   <option key={w.id} value={i}>
                     {w.ref} {w.name}
+                  </option>
+                ))}
+                {Array.from({ length: LAB_WORLD_COUNT - WORLD_CONTENTS.length }, (_, j) => WORLD_CONTENTS.length + j).map((id) => (
+                  <option key={`p${id}`} value={id}>
+                    {String(id + 1).padStart(2, '0')} prozedural
                   </option>
                 ))}
               </select>
@@ -224,25 +231,14 @@ function LabEarlePlanet() {
               <span>Schatten nachschärfen</span>
               <input type="checkbox" checked={params.hardShadow} onChange={(e) => set({ hardShadow: e.target.checked })} />
             </label>
-            {ZONE_CONTENTS.slice(0, -1).map((z, i) => (
-              <label key={z.id} className="earle-ctl earle-ctl--toggle">
-                <span>
-                  Riss {z.name} | {ZONE_CONTENTS[i + 1]?.name} zu
-                </span>
-                <input
-                  type="checkbox"
-                  checked={params.cracksClosed[i] ?? false}
-                  onChange={(e) => {
-                    const next = [...params.cracksClosed];
-                    next[i] = e.target.checked;
-                    set({ cracksClosed: next });
-                  }}
-                />
-              </label>
-            ))}
+            <label className="earle-ctl earle-ctl--toggle">
+              <span>Alle Pfadrisse zu</span>
+              <input type="checkbox" checked={params.cracksClosed} onChange={(e) => set({ cracksClosed: e.target.checked })} data-testid="earle-cracks" />
+            </label>
             <p className="earle-hint">
-              Ziehen rollt den Planeten, Pinch/Rad zoomt. Welt wählen dreht zu ihrer Mitte; Perspektive 0 = alte Übersicht, 100 % = Earle-Komposition der Welt, darüber
-              übertrieben. Fortschritt heilt die Chunks entlang des Pfads, der Müll versinkt. Level 80–95 steigen den Riesenbaum hinauf. <code>?world=08&amp;ref=1</code>, <code>?rail=88</code> (Baum-Schiene), <code>?bench=1</code> misst.
+              Ziehen dreht die Kugel endlos (vorwärts, zurück, links, rechts), Pinch/Rad zoomt. Welt wählen gleitet zu ihrem Bildfokus (01–10 Autorenwelten, ab 11 prozedural);
+              Perspektive 0 = alte Übersicht, 100 % = Earle-Komposition der Welt, darüber übertrieben. Fortschritt heilt die Chunks entlang des Pfads, der Müll versinkt, die Risse
+              schließen sich. Level 80–95 steigen den Riesenbaum hinauf. <code>?world=08&amp;ref=1</code>, <code>?world=14</code>, <code>?rail=88</code> (Baum-Schiene), <code>?bench=1</code> misst.
               Bäume aus der Nähe: <a href="?gallery=1&amp;world=5">Baum-Galerie</a> (<code>?gallery=1&amp;world=05&amp;kinds=oak,lace&amp;spin=20</code>).
             </p>
           </>
@@ -255,15 +251,15 @@ function LabEarlePlanet() {
           <strong>{current.ref}</strong> {current.name}
         </aside>
       ) : null}
-      {!bench && showRef && current ? (
+      {!bench && showRef && authored ? (
         <figure className="earle-ref" data-testid="earle-ref">
           {refMissing ? (
-            <span className="earle-ref__missing">Referenz {current.ref} fehlt lokal (apps/game/public/refs/)</span>
+            <span className="earle-ref__missing">Referenz {authored.ref} fehlt lokal (apps/game/public/refs/)</span>
           ) : (
-            <img src={`${import.meta.env.BASE_URL}refs/${current.ref}.png`} alt={`Referenz ${current.ref}: ${current.title}`} onError={() => setRefMissing(true)} />
+            <img src={`${import.meta.env.BASE_URL}refs/${authored.ref}.png`} alt={`Referenz ${authored.ref}: ${authored.title}`} onError={() => setRefMissing(true)} />
           )}
           <figcaption>
-            {current.ref} · {current.title}
+            {authored.ref} · {authored.title}
           </figcaption>
         </figure>
       ) : null}
