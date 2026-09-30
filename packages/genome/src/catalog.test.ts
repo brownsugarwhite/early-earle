@@ -66,7 +66,8 @@ describe('creatureCatalog', () => {
       // No sampled look outside the catalog.
       for (const sp of hits.keys()) expect(row.some((e) => e.species === sp), `${zone}:${tier}:${sp}`).toBe(true);
     }
-  });
+    // 180 000 Linien: allein gut 2 s, in der vollen (parallelen) Suite deutlich mehr.
+  }, 60_000);
 });
 
 describe('lineSpecies', () => {
@@ -90,5 +91,5 @@ describe('lineSpecies', () => {
       expect(seed, e.key).not.toBeNull();
       expect(lineSpecies(rules, e.zone, e.tier, seed!).species).toBe(e.species);
     }
-  });
+  }, 30_000);
 });

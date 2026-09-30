@@ -115,7 +115,7 @@ function wire(): () => void {
 function registerEntry(): () => void {
   const unseen = () => useProgress.getState().unseenCount() > 0;
   let lit = unseen();
-  useMapEntries.getState().register({ id: COLLECTION_ENTRY_ID, label: 'Setzkasten', icon: 'square.grid.3x3.fill', glyph: '▦', order: 10, open: openSetzkasten, highlight: lit });
+  const unregister = useMapEntries.getState().register({ id: COLLECTION_ENTRY_ID, label: 'Setzkasten', icon: 'square.grid.3x3.fill', glyph: '▦', order: 10, open: openSetzkasten, highlight: lit });
   const off = useProgress.subscribe((s, prev) => {
     if (s.collection === prev.collection && s.mode === prev.mode) return;
     const now = unseen();
@@ -125,6 +125,6 @@ function registerEntry(): () => void {
   });
   return () => {
     off();
-    useMapEntries.setState({ entries: useMapEntries.getState().entries.filter((e) => e.id !== COLLECTION_ENTRY_ID) });
+    unregister();
   };
 }
