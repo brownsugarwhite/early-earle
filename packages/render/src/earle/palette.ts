@@ -173,16 +173,19 @@ export function addZonePalette(atlas: PaletteAtlas, zone: ZonePalette, prefix = 
   return { terrain, canopy, sky, fog };
 }
 
-/** Schreibt eine Weltpalette (5–8 Zeilen) in den Atlas. */
-export function addWorldPalette(atlas: PaletteAtlas, world: WorldPalette, prefix: string): WorldRows {
+/**
+ * Schreibt eine Weltpalette (5–10 Zeilen) in den Atlas. `need` spart Atlaszeilen: ohne Gewässer bzw. Felsen in der
+ * Welt fallen die abgeleiteten Wasser-/Felszeilen weg (die Zeile zeigt dann auf die Terrainzeile).
+ */
+export function addWorldPalette(atlas: PaletteAtlas, world: WorldPalette, prefix: string, need: { water?: boolean; rock?: boolean } = {}): WorldRows {
   const base = addZonePalette(atlas, world, prefix);
   const canopyRows = [base.canopy];
   (world.canopyVariants ?? []).forEach((steps, i) => canopyRows.push(atlas.addRow({ name: `${prefix}/canopy${i + 1}`, steps: [world.ink, ...steps] })));
   const accent = atlas.addRow({ name: `${prefix}/accent`, steps: world.accent.slice(0, 8) });
   const monolith = world.monolith ? atlas.addRow({ name: `${prefix}/monolith`, steps: world.monolith }) : base.terrain;
   const barn = world.barn ? atlas.addRow({ name: `${prefix}/barn`, steps: world.barn }) : base.terrain;
-  const water = atlas.addRow({ name: `${prefix}/water`, steps: (world.water ?? waterFromSky(world)).slice(0, 8) });
-  const rock = atlas.addRow({ name: `${prefix}/rock`, steps: (world.rock ?? rockFromTerrain(world)).slice(0, 8) });
+  const water = world.water || need.water !== false ? atlas.addRow({ name: `${prefix}/water`, steps: (world.water ?? waterFromSky(world)).slice(0, 8) }) : base.terrain;
+  const rock = world.rock || need.rock !== false ? atlas.addRow({ name: `${prefix}/rock`, steps: (world.rock ?? rockFromTerrain(world)).slice(0, 8) }) : base.terrain;
   const snow = world.snow ? atlas.addRow({ name: `${prefix}/snow`, steps: world.snow.slice(0, 8) }) : base.terrain;
   return { ...base, canopyRows, accent, monolith, barn, water, rock, snow };
 }

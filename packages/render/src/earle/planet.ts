@@ -262,7 +262,14 @@ export class EarlePlanet {
       ...(options.landmarks ? { landmarks: options.landmarks } : {}),
       ...(options.nearHalfWidthDeg !== undefined ? { nearHalfWidthDeg: options.nearHalfWidthDeg } : {}),
     });
-    this.rows = this.worlds.map((w) => addWorldPalette(this.atlas, w.palette, w.id));
+    // Wasser-/Felszeilen nur für Welten, die Gewässer bzw. Felsen haben (Atlas hat 128 Zeilen für alle Agenten)
+    const feat = this.field.features;
+    this.rows = this.worlds.map((w, i) =>
+      addWorldPalette(this.atlas, w.palette, w.id, {
+        water: feat.lakes.some((l) => l.world === i) || feat.rivers.some((r) => r.world === i),
+        rock: feat.formations.some((f) => f.world === i),
+      }),
+    );
     this.lookup = new PaletteLookup(this.atlas.texture, this.atlas.width, this.atlas.height);
     const first = this.worlds[0]!;
     this.fogStart = first.fog.start;
