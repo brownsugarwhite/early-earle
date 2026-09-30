@@ -38,3 +38,6 @@ export {
 
 // generator
 export * from './generator/index';
+
+// presentation rules (never touch the board RNG)
+export * from './presentation/gull';

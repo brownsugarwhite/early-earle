@@ -158,6 +158,8 @@ export interface Board {
   score: number;
   /** mulberry32 state. */
   rng: number;
+  /** Seed the level was started with (presentation rules hash it, e.g. the gull; never drawn from). */
+  readonly seed: number;
   /** Last blob id handed out. */
   blobSeq: number;
   status: Status;
@@ -244,6 +246,7 @@ export function cloneBoard(b: Board): Board {
     moveNo: b.moveNo,
     score: b.score,
     rng: b.rng,
+    seed: b.seed,
     blobSeq: b.blobSeq,
     status: b.status,
     spawnQueue: b.spawnQueue.slice(),
