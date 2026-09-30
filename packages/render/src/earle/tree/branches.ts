@@ -1,5 +1,5 @@
 import { DoubleSide, Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial, Vector3 } from 'three/webgpu';
-import type { UniformNode } from 'three/webgpu';
+import type { UniformNode, Vector4 } from 'three/webgpu';
 import {
   attribute,
   cameraPosition,
@@ -19,6 +19,7 @@ import {
   select,
   sin,
   smoothstep,
+  step,
   uniform,
   varying,
   vec4,
@@ -36,6 +37,30 @@ export interface BillboardUniforms {
   /** Crown growth 0..1 (instances appear by rank). */
   crown: TSLUniform;
   clock: TSLUniform;
+  /**
+   * Sight line (world space): xyz = a point the camera must see (the level node with the hero on it), w = its radius
+   * (0 = off). Lace strands and needle stars in front of it fade out (see `sightFade`).
+   */
+  sight?: UniformNode<'vec4', Vector4>;
+}
+
+/**
+ * 1 → 0 for a point `p` (world space) inside the cone from the camera to `bb.sight` (radius `sight.w` at the focus,
+ * narrowing toward the lens, i.e. a fixed disc on screen around the focus) and in front of it: the curtain of hanging
+ * twigs never hides the node the camera frames. Behind the focus nothing fades. Off while `sight.w` is 0.
+ */
+export function sightFade(p: Vec3Node, bb: BillboardUniforms): FloatNode {
+  const s = bb.sight;
+  if (!s) return float(1);
+  const f = s.xyz as unknown as Vec3Node;
+  const r = s.w as unknown as FloatNode;
+  const d = f.sub(cameraPosition);
+  const t = p.sub(cameraPosition).dot(d).div(d.dot(d).max(1e-4));
+  const closest = cameraPosition.add(d.mul(t.clamp(0, 1)));
+  const rr = r.mul(t.clamp(0.15, 1));
+  const inside = smoothstep(rr.mul(0.6), rr, p.sub(closest).length());
+  const ahead = smoothstep(1.02, 0.94, t).mul(smoothstep(0.02, 0.06, t));
+  return mix(float(1), inside, ahead.mul(step(0.0001, r))) as unknown as FloatNode;
 }
 
 /** Instances that fade out over this many slots at the LOD cut-off (they shrink to zero instead of popping). */
@@ -131,7 +156,7 @@ export function createLaceMesh(o: LaceMeshOptions): CountLodMesh {
   const w = mix(D.x, D.y, along).mul(worldScale).mul(s);
   // a hairline at least (0.75 px), at most 0.15 % of the screen height: twigs close to the lens stay fine lines;
   // strands closer than ~6 tree units to the lens fade out (the camera brushes through the curtain, no cables)
-  const nearFade = smoothstep(3.5, 6.5, depth.div(worldScale));
+  const nearFade = smoothstep(3.5, 6.5, depth.div(worldScale)).mul(sightFade(P, bb));
   const width = max(w.min(screenSize.y.mul(0.0015).div(pxPerUnit)), float(0.75).div(pxPerUnit)).mul(nearFade);
   const world = P.add(side.mul(width.mul(positionGeometry.y)));
   const material = new MeshBasicNodeMaterial();
@@ -235,7 +260,7 @@ export function createStarMesh(o: StarMeshOptions): CountLodMesh {
   // near fade: a star that would cover more than ~3 % of the screen height shrinks smoothly to nothing (the lens
   // passes through the lace without bursts in its face)
   const frac = px.div(screenSize.y);
-  const near = float(1).sub(smoothstep(0.028, 0.055, frac));
+  const near = float(1).sub(smoothstep(0.028, 0.055, frac)).mul(sightFade(worldC, bb));
   const ang = D.z.mul(Math.PI * 2).add(bb.clock.mul(D.z.sub(0.5)).mul(0.05));
   const ca = cos(ang);
   const sa = sin(ang);

@@ -505,6 +505,8 @@ export class SunRig implements ShadowFactorSource {
    * Kosten je Aufruf: 4 (kubisch) bzw. 9 (weich) Vergleichs-Taps je Kaskade, meist eine Kaskade.
    * Im Einzelkartenbetrieb (keine Kamera gebunden) konstant 1. Nach einem Kaskaden-Neubau (Qualitätswechsel) baut
    * das Konsumentenmaterial automatisch neu.
+   * Achtung: den Wert nicht in `select`-/`If`-Zweigen verwenden — TSL baut Knoten je Zweig neu auf, die Abtastung
+   * stünde dann mehrfach im Shader; stattdessen außerhalb berechnen und mit `mix` weiterverwenden (siehe Kronenpunkte).
    */
   shadowFactor(positionWorld: Vec3Node, options: CascadeSampleOptions = {}): FloatNode {
     return shadowFactorNode(this, positionWorld, options);

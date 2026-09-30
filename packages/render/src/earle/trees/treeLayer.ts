@@ -10,7 +10,9 @@ import {
   fract,
   int,
   max,
+  mix,
   modelViewMatrix,
+  modelWorldMatrix,
   modelWorldMatrixInverse,
   normalGeometry,
   normalLocal,
@@ -37,6 +39,15 @@ import { createFanTrunk, createForkTrunk, createOakTrunk, type OakGeometry } fro
 /** Wachstums-Slots (je geladenem Chunk); gleich wie `GROWTH_SLOTS` der Vegetation. */
 export const TREE_SLOTS = 64;
 
+/**
+ * Glatter Schattenwert (1 = Sonne, 0 = Schlagschatten) an einer Weltposition, im Vertex-Shader lesbar — z. B.
+ * `(p, o) => sunRig.shadowFactor(p, o)`. Die Punkte skalieren damit im Schatten stetig aus 0.
+ */
+export type ShadowFactorFn = (positionWorld: Vec3Node, options?: { softness?: number }) => FloatNode;
+
+/** Weichheit (Welteinheiten) des Schattenwerts der Punkte: etwa ein bis zwei Punktdurchmesser. */
+const DOT_SHADOW_SOFTNESS = 0.12;
+
 /** Was die Baumschicht aus der Planetenvegetation übernimmt (geteilte Knoten und Uniforms). */
 export interface TreeLayerShared {
   lookup: PaletteLookup;
@@ -61,6 +72,8 @@ export interface TreeLayerShared {
   sunDirLocal: { value: Vector3 } & Vec3Node;
   projScaleY: TSLUniform;
   collapsePx: TSLUniform;
+  /** Schattenwert für die Punkte (Vertex-Stufe); fehlt → Punkte folgen nur N·L. */
+  shadowFactor?: ShadowFactorFn | null;
 }
 
 export interface TreeWorldRows {
@@ -442,12 +455,20 @@ export class TreeLayer {
       const isLace = kind.greaterThan(3.5).and(kind.lessThan(4.5));
       const isStar = kind.greaterThan(4.5);
       const isPine = kind.greaterThan(1.5).and(kind.lessThan(2.5));
-      // Sternnadeln immer; Spitze und Kiefernschnee auch im Schatten (kleiner); Kronenpunkte skalieren aus 0
-      const grow = select(
-        isStar,
-        float(1),
-        select(isLace, float(0.72).add(light.mul(0.28)), select(isPine, float(0.6).add(light.mul(0.4)), select(isRim, light.mul(rim), light))),
-      );
+      const isJewel = kind.greaterThan(0.5).and(kind.lessThan(1.5));
+      // Schlagschatten wie die Krone darunter: Punkte auf der oberen Kuppel bleiben, an der Unterseite deckt ihn der Schatten
+      const castW = select(isPine.or(isStar), float(1), select(isJewel, float(0), smoothstep(0.5, -0.15, nrm.dot(normalize(base)))));
+      // Glatter Schattenwert am Punktmittelpunkt (Vertex-Stufe, weich über ≈ 1–2 Punktdurchmesser): im Schlagschatten
+      // skalieren die Punkte stetig aus 0, statt je Fragment Tinte zu werden (kein Verschwinden und Wiederauftauchen,
+      // wenn eine Schattenkante beim Drehen über die Krone wandert)
+      const shadowAt = shared.shadowFactor;
+      const sunAt = shadowAt ? shadowAt(modelWorldMatrix.mul(vec4(center, 1)).xyz as unknown as Vec3Node, { softness: DOT_SHADOW_SOFTNESS }) : float(1);
+      const inSun = smoothstep(0.15, 0.85, mix(float(1), sunAt, castW));
+      // Sternnadeln immer; Spitze und Kiefernschnee auch im Schatten (kleiner); Kronenpunkte skalieren aus 0.
+      // (Der Schattenwert steht außerhalb aller `select`-Zweige: je Zweig würde TSL seine Abtastung erneut erzeugen.)
+      const growLight = select(isStar, float(1), select(isLace, float(0.72).add(light.mul(0.28)), select(isPine, float(0.6).add(light.mul(0.4)), select(isRim, light.mul(rim), light))));
+      const shrink = select(isStar, float(0.3), select(isLace, float(0.4), select(isPine, float(0.45), float(1))));
+      const grow = growLight.mul(float(1).sub(shrink.mul(float(1).sub(inSun))));
       const depth = viewC.z.negate().max(0.05);
       const pxPerUnit = shared.projScaleY.mul(screenSize.y).mul(0.5).div(depth);
       const sizeW = dd.x.mul(s).mul(grow).mul(slotFade);
@@ -465,7 +486,8 @@ export class TreeLayer {
       const halfW = max(halfLen.mul(0.1), float(0.7).div(pxPerUnit)).mul(collapse);
       const needle = vec3(dirN.mul(positionGeometry.x.mul(halfLen)).add(vec2(dirN.y.negate(), dirN.x).mul(positionGeometry.y.mul(halfW))), 0);
       const disc = vec3(positionGeometry.x, positionGeometry.y, 0).mul(sizeEff.mul(collapse));
-      const viewPos = viewC.xyz.add(select(isStar, needle, disc));
+      // mix statt select: beide Formen hängen am Schattenwert (ein `select` erzeugte dessen Abtastung je Zweig neu)
+      const viewPos = viewC.xyz.add(mix(disc, needle, select(isStar, float(1), float(0))));
       const dist = varying(depth, 'vTreeDotDist');
       // Farbe: Stufen 3..5 gerastert nach Licht + Zufall (Punkt für Punkt ein getüpfelter Verlauf wie bei Earle)
       const vLight = varying(light, 'vTreeDotLight');
@@ -482,13 +504,15 @@ export class TreeLayer {
       );
       // Im Schlagschatten: Kronenpunkte, Spitze und Nadeln werden Tinte (wie die Krone darunter), Kiefernschnee dunkler
       const shadowIdx = select(vKind.greaterThan(1.5).and(vKind.lessThan(2.5)), float(3), float(0));
-      // Schlagschatten wie die Krone darunter: Punkte auf der oberen Kuppel bleiben, an der Unterseite deckt ihn der Schatten
-      const isJewel = kind.greaterThan(0.5).and(kind.lessThan(1.5));
-      const dotCastW = varying(select(isPine.or(isStar), float(1), select(isJewel, float(0), smoothstep(0.5, -0.15, nrm.dot(normalize(base))))), 'vTreeDotCastW');
+      // Mit dem glatten Schattenwert färbt er den ganzen Punkt auf einmal (Kronen- und Randpunkte behalten ihre Lichtfarbe,
+      // sie schrumpfen); ohne ihn wie bisher je Fragment aus der Schattenkarte
+      const keepsColour = select(kind.lessThan(1.5).or(isRim), float(1), float(0));
+      const shade = shadowAt ? varying(mix(inSun, float(1), keepsColour), 'vTreeDotShade') : null;
       const material = new DotMaterial({
         lookup,
         fog,
-        castWeight: dotCastW,
+        castWeight: shadowAt ? null : varying(castW, 'vTreeDotCastW'),
+        shade,
         fogDistNode: shared.fogDist(row, dist),
         litColor: lookup.pal(idx, row).rgb as unknown as Vec3Node,
         shadowColor: lookup.pal(shadowIdx, row).rgb as unknown as Vec3Node,
@@ -499,7 +523,8 @@ export class TreeLayer {
       const mesh = new Mesh(geometry, material);
       mesh.name = 'planet-dots';
       mesh.castShadow = false;
-      mesh.receiveShadow = true;
+      // Der glatte Schattenwert der Vertex-Stufe ersetzt die Schattenkarte je Fragment (spart deren Taps)
+      mesh.receiveShadow = !shadowAt;
       mesh.frustumCulled = false;
       this.dots = mesh;
       this.geometries.push(geometry);
@@ -606,6 +631,7 @@ export class TreeLayer {
       const b = g.getAttribute('treeB') as InstancedBufferAttribute;
       const c = g.getAttribute('treeC') as InstancedBufferAttribute;
       const d = g.getAttribute('treeD') as InstancedBufferAttribute;
+      let shadowHeight = 0;
       list.forEach((e, i) => {
         const t = e.tree;
         const form = TREE_FORMS[t.kind as Exclude<TreeKind, 'bare'>];
@@ -619,9 +645,16 @@ export class TreeLayer {
         b.setXYZW(i, t.position[0] + _v.x, t.position[1] + _v.y, t.position[2] + _v.z, e.slot);
         c.setXYZW(i, this.canopyRow(t), this.rows(t).accent, this.barkStyle(t), t.variant);
         d.setXYZW(i, form.crownS[0] * r, form.crownS[1] * r * asp, r * Math.max(1, form.crownS[1] * asp), form.terminator);
+        // Höchster Punkt, an dem die Krone Schlagschatten zeigt: Kiefern ganz (Tintenkörper), Kuppeln und Säulen bis
+        // knapp über die Mitte (die obere Kuppel bleibt hell, siehe castWeight)
+        const top = form.crown === 'pine' ? (form.crownY + form.crownS[1]) * r : (form.crownY + 0.5 * form.crownS[1]) * r * asp;
+        shadowHeight = Math.max(shadowHeight, top);
       });
       for (const attr of [a, b, c, d, mesh.instanceMatrix]) commit(attr, list.length);
       mesh.count = list.length;
+      // Schatten v3: verteilte Empfänger über dem Boden → die gröbste Kaskade deckt auch Boden + diese Höhe ab (Kronen
+      // am sonnenabgewandten Bildrand behalten ihre Schlagschatten, die Punkte dort ihren Schattenwert)
+      mesh.userData.shadowHeight = shadowHeight;
     }
     for (const kind of TRUNK_KINDS) {
       const mesh = this.trunks[kind];

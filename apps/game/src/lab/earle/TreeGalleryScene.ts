@@ -98,6 +98,8 @@ export class TreeGalleryScene implements SceneController {
       dotsPerTree: [60, 200],
       collapsePx: 0.75,
       rowCount: this.atlas.rowCount,
+      // Punkte skalieren im Schlagschatten mit dem glatten Schattenwert aus 0 (wie auf der Karte; `dotshadow=0` = alt)
+      shadowFactor: typeof location !== 'undefined' && location.search.includes('dotshadow=0') ? null : (p, o) => this.sun.shadowFactor(p, o),
     });
     this.planet.add(this.vegetation.group);
 
@@ -134,7 +136,8 @@ export class TreeGalleryScene implements SceneController {
       this.trees.map((tree) => ({ tree, slot: 0, withDots: true })),
       [],
     );
-    this.sun.fitToView(this.camera, { sphere: { center: this.planet, radius: R, minHeight: -0.5, maxHeight: 1, surface: () => R }, casterHeight: 8 });
+    // Empfänger bis in die Kronen (die Punkte lesen den Schattenwert dort)
+    this.sun.fitToView(this.camera, { sphere: { center: this.planet, radius: R, minHeight: -0.5, maxHeight: 6, surface: () => R }, casterHeight: 8 });
     this.resize(ctx);
   }
 

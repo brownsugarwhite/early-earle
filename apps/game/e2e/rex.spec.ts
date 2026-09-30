@@ -51,7 +51,7 @@ test('/lab/rex zeigt REX auf der Wiese und spielt jede Animation', async ({ page
   expect(errors).toEqual([]);
 });
 
-test('/lab/rex iPhone-Karte: REX an der Ecke über der Sprechblase, Level: neben der Platte', async ({ page }) => {
+test('/lab/rex iPhone-Karte: REX an der Ecke über der Sprechblase, Level: oben rechts hinter der Platte wie im Flow', async ({ page }) => {
   const errors = collectErrors(page);
   await useMobilPreset(page);
   await page.setViewportSize({ width: 1400, height: 960 });
@@ -68,7 +68,7 @@ test('/lab/rex iPhone-Karte: REX an der Ecke über der Sprechblase, Level: neben
 
   await page.getByTestId('rex-view-level').click();
   await waitForRenderer(page);
-  await expect(info).toContainText(/Level: (side|front|back) (links|rechts)/, { timeout: 60_000 });
+  await expect(info).toContainText(/Level: back rechts/, { timeout: 60_000 });
   expect(errors).toEqual([]);
 });
 

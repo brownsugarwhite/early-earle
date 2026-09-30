@@ -1,6 +1,7 @@
 import { BoxGeometry, DynamicDrawUsage, Euler, InstancedBufferAttribute, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
-import { Fn, If, attribute, cos, float, floor, fract, fwidth, mix, mx_worley_noise_vec2, sin, smoothstep, uv, vec2, vec3 } from 'three/tsl';
+import { Fn, If, attribute, cos, float, floor, fract, fwidth, mix, mx_worley_noise_vec2, sin, smoothstep, uniform, uv, vec2, vec3 } from 'three/tsl';
 import { BoardSurfaceMaterial, hexNode, stripes, type BoardFog } from './boardMaterial';
+import { hexToLinear } from '../common/tsl';
 import type { BoardPalette } from './boardPalette';
 import type { FloatNode, Vec2Node, Vec3Node, Vec4Node } from '../earle/tsl';
 import { lerp } from './boardTween';
@@ -34,6 +35,12 @@ export interface CellState {
   lift: number;
 }
 
+/** sRGB hex → linear colour in a vec3 uniform. */
+function setLinear(u: { value: Vector3 }, hex: string): void {
+  const [r, g, b] = hexToLinear(hex);
+  u.value.set(r, g, b);
+}
+
 const _m = new Matrix4();
 const _m2 = new Matrix4();
 const _q = new Quaternion();
@@ -55,6 +62,16 @@ export class BoardCells {
   private readonly material: BoardSurfaceMaterial;
   private readonly geometry: BoxGeometry;
   private dataDirty = true;
+  private readonly uPlate = uniform(new Vector3());
+  private readonly uPlateLine = uniform(new Vector3());
+  private readonly uInk = uniform(new Vector3());
+
+  /** Stone plates in the colours of the place (site style): plate, its hatch lines and the ink of the shade. */
+  setStoneColors(plate: string, plateLine: string, ink: string): void {
+    setLinear(this.uPlate, plate);
+    setLinear(this.uPlateLine, plateLine);
+    setLinear(this.uInk, ink);
+  }
 
   constructor(
     palette: BoardPalette,
@@ -74,6 +91,14 @@ export class BoardCells {
     const flash = d.z;
     const seed = d.w;
     const t = timeNode ?? float(0);
+    // Stone plate, its hatch and the ink are uniforms: the plates take the colours of the place the level stands in
+    // (`setStoneColors`, from the site style) — no shader compile per site
+    const uPlate = this.uPlate;
+    const uPlateLine = this.uPlateLine;
+    const uInk = this.uInk;
+    setLinear(uPlate, palette.plate);
+    setLinear(uPlateLine, palette.plateLine);
+    setLinear(uInk, palette.ink);
     const col = Fn(() => {
       const uvT = uv() as unknown as Vec2Node;
       // Everything with derivatives first (uniform control flow, required by WGSL), then one branch per kind
@@ -84,7 +109,7 @@ export class BoardCells {
       const phi = dirIdx.mul(Math.PI / 3).add(seed.mul(0.37).sin().mul(0.07));
       const lineCoord = uvT.x.mul(cos(phi)).add(uvT.y.mul(sin(phi))).add(seed.mul(0.11));
       const tone = fract(seed.mul(13.37)).sub(0.5).mul(0.1).add(1);
-      const stone = mix(hexNode(palette.plate).mul(tone), hexNode(palette.plateLine), stripes(lineCoord, 15, 0.09).mul(0.34));
+      const stone = mix((uPlate as unknown as Vec3Node).mul(tone), uPlateLine as unknown as Vec3Node, stripes(lineCoord, 15, 0.09).mul(0.34));
       const healedLines = stripes(lineCoord, 18, 0.1).mul(heal).mul(0.4);
       // Oil: ink pool with thin wavy light bands drifting across (Earle's dark water).
       const wave = uvT.y.add(uvT.x.mul(8).add(t.mul(0.7)).add(seed).sin().mul(0.05)).add(t.mul(0.04));
@@ -117,7 +142,7 @@ export class BoardCells {
     })() as unknown as Vec3Node;
     const albedo = mix(col, hexNode(palette.paper), flash.mul(0.85)) as unknown as Vec3Node;
     // In shadow the plate keeps its pattern a value step down (cracks, oil bands and hatch stay readable).
-    const shade = mix(mix(hexNode(palette.ink), col, 0.36), hexNode(palette.paper), flash.mul(0.6)) as unknown as Vec3Node;
+    const shade = mix(mix(uInk as unknown as Vec3Node, col, 0.36), hexNode(palette.paper), flash.mul(0.6)) as unknown as Vec3Node;
     this.material = new BoardSurfaceMaterial({ albedo, shade, terminator: 0.02, fog });
 
     this.mesh = new InstancedMesh(this.geometry, this.material, capacity);

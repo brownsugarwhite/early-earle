@@ -1,7 +1,17 @@
-import { Group, Matrix4, Sphere, Vector3 } from 'three/webgpu';
+import { Group, Matrix3, Matrix4, Quaternion, Sphere, Vector3 } from 'three/webgpu';
 import type { Camera, Frustum, Node } from 'three/webgpu';
 import { uniform, vec4 } from 'three/tsl';
-import { computeTreeShape, createHeroTree, transformHeroTreePath, type HeroTree, type HeroTreePath, type TreeQuality } from '@ee/render/earle/tree/index.ts';
+import {
+  computeTreeShape,
+  createHeroPathMarkers,
+  createHeroTree,
+  heroTreePath,
+  transformHeroTreePath,
+  type HeroPathMarkers,
+  type HeroTree,
+  type HeroTreePath,
+  type TreeQuality,
+} from '@ee/render/earle/tree/index.ts';
 import type { EarlePlanet } from '@ee/render';
 import type { PlanetLandmarkParams, SpiralNode, SpiralPath, Vec3 } from '@ee/world';
 
@@ -12,6 +22,19 @@ export const TREE_SCALE = 0.4;
 /** Distance puck ↔ bark in world units (the path is computed in tree units: 0.9 / scale). */
 const PUCK_CLEARANCE = 0.9;
 const DOT_SPACING = 0.6;
+/**
+ * Marker sizes on the planet (tree units, relative to the tree lab): the shelf fungi are large enough for the hero to
+ * sit on (≈ 1.2 world units wide, ≈ 0.5 deep), the flower stones and dots match the ground path.
+ */
+const MARKER_SCALES = { fungus: 1.45, stone: 0.9, dot: 0.95 } as const;
+/**
+ * Camera rail distances (tree units). Landscape: hero, the next nodes and the tree read together. Portrait (phones,
+ * ≈ 30° horizontal field of view): further out, so the trunk takes about half the width instead of more than all of it.
+ */
+const RAIL_LANDSCAPE = { trunkDistance: 18, crownDistance: 28 } as const;
+const RAIL_PORTRAIT = { trunkDistance: 30, crownDistance: 38, clearSight: true } as const;
+/** Radius (world units) of the sight disc around the current node that the hanging twigs keep clear. */
+const SIGHT_RADIUS = 1.8;
 
 export interface TreeRail {
   position: Vector3;
@@ -34,12 +57,33 @@ export interface HeroTreeSite {
   last: number;
   /** Spliced level path (ground spiral + tree stretch + connectors). */
   levelPath: SpiralPath;
+  /** Slot matrix tree space → planet space (unbent). */
+  matrix: Matrix4;
   /** Tree height above its foot in world units (shadow fit, culling). */
   height: number;
-  /** Camera rail for node `index` (planet space); false outside the stretch. */
-  railFor(index: number, outPos: Vector3, outLook: Vector3): boolean;
+  /**
+   * The level path ON the tree (shelf fungi on the bark, flower stones on roots, limbs and domes, flush dots, the ring
+   * of the current node) — child of the tree group, bent with the tree (same warp).
+   */
+  markers: HeroPathMarkers;
+  /** Camera rail for node `index` (planet space); false outside the stretch. `portrait`: the wider phone rail. */
+  railFor(index: number, outPos: Vector3, outLook: Vector3, portrait?: boolean): boolean;
   /** Continuous rail sample 0..1 over the whole stretch (planet space). */
-  sampleRail(t: number, outPos: Vector3, outLook: Vector3): void;
+  sampleRail(t: number, outPos: Vector3, outLook: Vector3, portrait?: boolean): void;
+  /**
+   * Where a figure of `radius` world units stands on node `index` (global): on its shelf fungus or flower stone, planet
+   * space (unbent, like the layout's nodes) with its up axis (the fungus seat on the bark). False outside the stretch.
+   */
+  seatFor(index: number, radius: number, outPos: Vector3, outUp: Vector3): boolean;
+  /** Current node and completed count (global node indices) → ring, colours, light wave, bloom of reached nodes. */
+  setPathState(current: number, done: number): void;
+  /** Hide the marker of node `index` (global; its level plateau stands there) or none. */
+  setHiddenNode(index: number | null): void;
+  /**
+   * The point the hanging twigs keep clear (planet space, unbent; e.g. the level plateau under the tree) with its radius
+   * in world units; `null` = the current node on the tree.
+   */
+  setSightOverride(point: Vector3 | null, radius: number): void;
   /** Once per frame: culling, curvature follow, billboards, sun, clock. */
   update(dt: number, camera: Camera, sunDirWorld: Vector3, cameraWorld: Vector3, planetMatrixWorld: Matrix4, frustum: Frustum): void;
   /** Completed nodes → bloom (Wooding heals). */
@@ -148,10 +192,38 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
     nodes: count,
     meadow: false,
     // map framing: hero, the next nodes and the tree together (≈ 7 / 11 world units from the node)
-    rail: { trunkDistance: 18, crownDistance: 28 },
+    rail: RAIL_LANDSCAPE,
   });
   const holder = world.addLandmark(tree.group, 'hero-tree')!;
   const path = transformHeroTreePath(tree.path, slotMatrix);
+  // The phone rail (same nodes, a wider camera band that keeps its view of the node clear of limbs); built here, not
+  // on first use (≈ 16 ms on an M3 — no hitch at the start of a camera move onto the tree)
+  const portraitPath = transformHeroTreePath(heroTreePath({ nodes: count, shape: tree.shape, rail: RAIL_PORTRAIT }), slotMatrix);
+  const railPath = (portrait: boolean): HeroTreePath => (portrait ? portraitPath : path);
+
+  // The level path on the tree: fungi on the bark, stones on roots, limbs and domes, dots flush on the surface (tree
+  // space, same warp as the tree) — the flow's NodePath leaves these nodes to the markers
+  const sunLocal = new Vector3(0.5, 0.2, 0.5).normalize();
+  const markers = createHeroPathMarkers({
+    path: tree.path,
+    warp,
+    sunDirLocal: sunLocal,
+    scales: MARKER_SCALES,
+    fog: { settings: world.fog, lookup: world.lookup },
+    // The tree's way down (ground limb) leads away from the next ground node on this planet: the hero glides from the
+    // crown instead, and the trail resumes at the edge of the clearing (levelPath.ts)
+    exitDots: false,
+  });
+  tree.group.add(markers.group);
+  const normalMatrix = new Matrix3().getNormalMatrix(slotMatrix);
+  const _qInv = new Quaternion();
+  const _sun = new Vector3();
+  const _focus = new Vector3();
+  const _up = new Vector3();
+  let clock = 0;
+  let currentLocal = -1;
+  let lastDone = -1;
+  let sightOverride: { point: Vector3; radius: number } | null = null;
 
   // --- Splice: ground nodes [0, first) + tree nodes + ground nodes (last, end]; dots with connectors --------------
   const toSpiralNode = (index: number, zone: number, position: Vec3, normal: Vec3): SpiralNode => {
@@ -227,14 +299,37 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
     first,
     last,
     levelPath,
+    matrix: slotMatrix,
     height,
-    railFor(index, outPos, outLook) {
+    markers,
+    railFor(index, outPos, outLook, portrait = false) {
       if (index < first || index > last) return false;
-      path.sampleRail(path.railTForNode(index - first), outPos, outLook);
+      const p = railPath(portrait);
+      p.sampleRail(p.railTForNode(index - first), outPos, outLook);
       return true;
     },
-    sampleRail(t, outPos, outLook) {
-      path.sampleRail(t, outPos, outLook);
+    sampleRail(t, outPos, outLook, portrait = false) {
+      railPath(portrait).sampleRail(t, outPos, outLook);
+    },
+    seatFor(index, radius, outPos, outUp) {
+      if (index < first || index > last) return false;
+      if (!markers.seat(index - first, outPos, outUp, radius / TREE_SCALE)) return false;
+      outPos.applyMatrix4(slotMatrix);
+      outUp.applyMatrix3(normalMatrix).normalize();
+      return true;
+    },
+    setPathState(current, done) {
+      const cur = current >= first && current <= last ? current - first : -1;
+      if (cur === currentLocal && done === lastDone) return;
+      currentLocal = cur;
+      lastDone = done;
+      markers.setProgress(cur, Math.min(count, Math.max(0, done - first)));
+    },
+    setHiddenNode(index) {
+      markers.setHidden(index !== null && index >= first && index <= last ? index - first : null);
+    },
+    setSightOverride(point, radius) {
+      sightOverride = point ? { point: point.clone(), radius } : null;
     },
     update(dt, camera, sunDirWorld, cameraWorld, planetMatrixWorld, frustum) {
       // the curvature bend happens per vertex (warp); the holder stays at the unbent slot
@@ -253,6 +348,25 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
       tree.updateCamera(camera);
       tree.setSunDirection(sunDirWorld);
       tree.update(dt);
+      // Markers: clock, and the contact shadows of the stones follow the sun in tree space (the planet rolls under it)
+      clock += dt;
+      markers.update(clock);
+      tree.group.getWorldQuaternion(_qInv).invert();
+      _sun.copy(sunDirWorld).applyQuaternion(_qInv).normalize();
+      if (_sun.dot(sunLocal) < 0.99995) {
+        sunLocal.copy(_sun);
+        markers.setSunDirection(sunLocal);
+      }
+      // The current node on the tree stays in sight: lace and needle stars in front of it fade (the rail camera looks
+      // through the curtain of hanging twigs); a level plateau under the tree takes over while it is played
+      if (sightOverride) {
+        world.bend(_focus.copy(sightOverride.point), _focus).applyMatrix4(planetMatrixWorld);
+        tree.setSightFocus(_focus, sightOverride.radius);
+      } else if (currentLocal >= 0 && markers.seat(currentLocal, _focus, _up, 0)) {
+        _focus.applyMatrix4(slotMatrix).addScaledVector(_up.applyMatrix3(normalMatrix).normalize(), 0.35);
+        world.bend(_focus, _focus).applyMatrix4(planetMatrixWorld);
+        tree.setSightFocus(_focus, SIGHT_RADIUS);
+      } else tree.setSightFocus(null);
     },
     setProgress(done) {
       const bloom = Math.min(1, Math.max(0, (done - (first - 6)) / (last - first + 6)));
@@ -263,6 +377,7 @@ export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: nu
     },
     dispose() {
       world.removeLandmark('hero-tree');
+      markers.dispose();
       tree.dispose();
     },
   };

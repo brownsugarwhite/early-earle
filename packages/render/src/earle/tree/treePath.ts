@@ -127,8 +127,11 @@ export interface HeroTreePathOptions extends TreeShapeOptions {
   dotSpacing?: number;
   /** Dots keep this distance from nodes (Standard 1.1). */
   dotClearance?: number;
-  /** Camera rail: distance on the trunk / above the crown (tree units). */
-  rail?: { trunkDistance?: number; crownDistance?: number; height?: number };
+  /**
+   * Camera rail: distance on the trunk / above the crown (tree units); `clearSight` pulls cameras whose view of their
+   * node is blocked by wood or domes closer to it (far rails outside the skirt of fountain limbs).
+   */
+  rail?: { trunkDistance?: number; crownDistance?: number; height?: number; clearSight?: boolean };
   /** Kept for compatibility (the crown walk follows the canopy, not a fixed arc). */
   ridgeSweepDeg?: number;
 }
@@ -433,6 +436,7 @@ export function heroTreePath(o: HeroTreePathOptions): HeroTreePath {
     trunk.axisAt(y + 1.6, _b);
     colliders.push({ kind: 'capsule', a: v3(_a), b: v3(_b), ra: trunk.radiusAt(y) + 0.2, rb: trunk.radiusAt(y + 1.6) + 0.2 });
   }
+  const trunkColliders = colliders.length;
   for (const l of shape.limbs) {
     const c = l.curve;
     const len = tubeLength(c);
@@ -612,6 +616,11 @@ export function heroTreePath(o: HeroTreePathOptions): HeroTreePath {
     if (!moved) break;
     if (it % 4 === 3) camS = smoothCyl(camS, 1);
   }
+  if (o.rail?.clearSight) {
+    // limbs and domes block the view; the trunk never does (the rail stands on the node's side of it)
+    const sightOf = makeClearance(colliders.slice(trunkColliders));
+    camS = clearSightLines(camS, (i) => posAt((i / railN) * total, new Vector3()), sightOf, clearanceOf, PAD);
+  }
   const lookS = smoothV(looks, 4);
   // validation on the interpolated rail: wherever a Catmull-Rom sub-sample comes closer than 0.9 to a volume,
   // push the neighbouring samples out along the clearance gradient (a few rounds)
@@ -648,6 +657,77 @@ export function heroTreePath(o: HeroTreePathOptions): HeroTreePath {
 
   const curveAt = (t: number, out: Vector3): Vector3 => posAt(Math.min(1, Math.max(0, t)) * total, out);
   return makePath(nodes, dots, total, rail, curveAt, colliders, exit);
+}
+
+/**
+ * Keeps the line of sight from each rail camera to the path point it frames free of wood and domes (a far rail sits
+ * outside the weeping skirt of fountain limbs, which would hang between the lens and a node near the ground): an
+ * occluded camera slides toward its point (never closer than 40 % of its distance) until the view is clear and it keeps
+ * `pad` from every volume. The pull is spread along the rail (minimum over a window, then averaged), so a run of samples
+ * moves together and the rail stays smooth. `sight` = clearance of the volumes that may block the view (limbs, roots,
+ * domes — not the trunk); blocked means the line passes through one of them and comes out again well before the point
+ * (the volume the point itself lies in never counts). `clearance` (all volumes) keeps the moved camera free.
+ */
+function clearSightLines(cams: Vector3[], targetAt: (i: number) => Vector3, sight: (p: Vector3) => number, clearance: (p: Vector3) => number, pad: number): Vector3[] {
+  const targets = cams.map((_, i) => targetAt(i));
+  const probe = new Vector3();
+  const pos = new Vector3();
+  const blocked = (c: Vector3, t: Vector3): boolean => {
+    const d = c.distanceTo(t);
+    if (d < 2) return false;
+    const steps = Math.max(8, Math.ceil(d / 0.25));
+    let inside = false;
+    let depth = 0;
+    let at = 0;
+    for (let k = 1; k < steps; k++) {
+      const f = k / steps; // 0 at the camera … 1 at the point
+      const rest = (1 - f) * d;
+      if (rest < 0.6) break;
+      probe.copy(c).lerp(t, f);
+      const cl = sight(probe);
+      if (cl < 0) {
+        if (cl < depth) {
+          depth = cl;
+          at = f * d;
+        }
+        inside = true;
+      } else if (inside && cl > 0.2) {
+        // what the line crossed must be a real piece of wood on screen: deeper than 0.2 and wider than ≈ 0.9° as seen
+        // from the camera (a thin twig far off does not hide a node)
+        if (rest > 1.2 && depth < -0.2 && -depth / Math.max(0.5, at) > 0.015) return true;
+        inside = false;
+        depth = 0;
+      }
+    }
+    return false;
+  };
+  // the node and the figure standing on it (≈ 1.3 units above the surface point)
+  const figure = new Vector3();
+  const pull = cams.map((c, i) => {
+    const t = targets[i]!;
+    figure.copy(t).addScaledVector(UP, 1.3);
+    for (let f = 1; f >= 0.4; f -= 0.04) {
+      pos.copy(t).lerp(c, f);
+      if (!blocked(pos, t) && !blocked(pos, figure) && (f === 1 || clearance(pos) >= pad)) return f;
+    }
+    return 0.4;
+  });
+  const W = 8;
+  const minF = pull.map((_, i) => {
+    let m = 1;
+    for (let j = Math.max(0, i - W); j <= Math.min(pull.length - 1, i + W); j++) m = Math.min(m, pull[j]!);
+    return m;
+  });
+  const smooth = minF.map((_, i) => {
+    let s = 0;
+    let n = 0;
+    for (let j = Math.max(0, i - W); j <= Math.min(minF.length - 1, i + W); j++) {
+      s += minF[j]!;
+      n++;
+    }
+    return s / n;
+  });
+  return cams.map((c, i) => targets[i]!.clone().lerp(c, smooth[i]!));
 }
 
 /**

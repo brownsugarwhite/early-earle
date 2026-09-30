@@ -39,6 +39,7 @@ export {
   chunkIdOf,
   chunkKey,
   chunkList,
+  chunkMeshRadiusAt,
   generateChunkMesh,
   scatterChunkProps,
   scatterChunkTrees,

@@ -120,6 +120,12 @@ export interface PathPalette {
 
 export interface NodePathOptions {
   palette?: PathPalette | null;
+  /**
+   * Nodes another renderer draws (the giant tree's own markers: shelf fungi on the bark, flower stones on its roots and
+   * domes): no stone, flower or ring here — only the invisible pick disc, so the tap still flies in. Dots lying on the
+   * tree (`on` bark/crown) are left to that renderer as well.
+   */
+  external?: ((index: number) => boolean) | null;
 }
 
 const _Y = new Vector3(0, 1, 0);
@@ -320,6 +326,8 @@ export class NodePath {
     this.uSun.value.copy(sunDirLocal).normalize();
     const palette = options.palette ?? null;
     if (palette) this.applyWorldColors(palette);
+    const external = options.external ?? null;
+    this.external = external;
 
     /** Planet-space point → bent, then nudged toward the camera in depth only. */
     const place = (p: Vec3Node, nudge: number): Vec3Node => {
@@ -364,7 +372,8 @@ export class NodePath {
         this.quats.push(q);
         iP.set([node.position[0], node.position[1], node.position[2], i], i * 4);
         iQ.set([q.x, q.y, q.z, q.w], i * 4);
-        iA.set([NODE_RADIUS, SITE_CODE[node.site ?? 'meadow'], Math.min(MAX_WORLDS - 1, node.world ?? 0), hash01(i, 9)], i * 4);
+        // Radius 0 = drawn elsewhere (stone, contact shadow and flower collapse; the pick disc stays)
+        iA.set([external?.(i) ? 0 : NODE_RADIUS, SITE_CODE[node.site ?? 'meadow'], Math.min(MAX_WORLDS - 1, node.world ?? 0), hash01(i, 9)], i * 4);
       });
       geo.setAttribute('iP', new InstancedBufferAttribute(iP, 4));
       geo.setAttribute('iQ', new InstancedBufferAttribute(iQ, 4));
@@ -446,7 +455,7 @@ export class NodePath {
 
     // ------------------------------------------------------------------------------------------ dots
     {
-      const dotsIn = layout.dots;
+      const dotsIn = external ? layout.dots.filter((d) => d.on !== 'bark' && d.on !== 'crown') : layout.dots;
       const m = Math.max(1, dotsIn.length);
       const base = pebbleGeometry(9, false);
       const geo = instanced(base, dotsIn.length);
@@ -536,7 +545,7 @@ export class NodePath {
 
     // ------------------------------------------------------------------------------------------ pedestals
     {
-      const withBase = nodes.map((nd, i) => ({ nd, i, fam: PEDESTAL_OF[nd.site ?? 'meadow'] ?? 0 })).filter((e) => e.fam > 0);
+      const withBase = nodes.map((nd, i) => ({ nd, i, fam: external?.(i) ? 0 : (PEDESTAL_OF[nd.site ?? 'meadow'] ?? 0) })).filter((e) => e.fam > 0);
       if (withBase.length > 0) {
         const base = pedestalGeometry();
         const geo = instanced(base, withBase.length);
@@ -744,7 +753,16 @@ export class NodePath {
     this.uCurrent.value = current;
     this.uDone.value = done;
     this.placeRing(current);
+    this.syncRing();
     this.hooks.onProgress?.(current, done);
+  }
+
+  private readonly external: ((index: number) => boolean) | null;
+  private levelNode: number | null = null;
+
+  /** The ring shows on the current node — unless its level plateau stands there or another renderer draws the node. */
+  private syncRing(): void {
+    this.ring.visible = !this.external?.(this.current) && (this.levelNode === null || this.levelNode !== this.current);
   }
 
   /**
@@ -759,10 +777,14 @@ export class NodePath {
 
   private ringHandover: { at: number; node: number } | null = null;
 
-  /** Hide the stone (and ring) of the node whose level is being played (the plateau stands there); null = none. */
+  /**
+   * Hide the stone (and ring) of the node whose level is being played (the plateau stands there); null = none. Nodes
+   * drawn elsewhere (the giant tree's markers) are hidden by their own renderer.
+   */
   setLevelNode(index: number | null): void {
     this.uHide.value = index ?? -10;
-    this.ring.visible = index === null || index !== this.current;
+    this.levelNode = index;
+    this.syncRing();
   }
 
   private placeRing(index: number): void {

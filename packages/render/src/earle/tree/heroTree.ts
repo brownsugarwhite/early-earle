@@ -1,4 +1,4 @@
-import { Box3, Group, Matrix4, Mesh, Vector3 } from 'three/webgpu';
+import { Box3, Group, Matrix4, Mesh, Vector3, Vector4 } from 'three/webgpu';
 import type { Camera, InstancedMesh, Object3D } from 'three/webgpu';
 import { attribute, normalLocal, positionGeometry, positionLocal, uniform } from 'three/tsl';
 import { hash32, mulberry32 } from '@ee/world';
@@ -104,6 +104,11 @@ export interface HeroTree {
   /** Once per frame: camera axes and projection for the billboards; picks the detail level from the screen size. */
   updateCamera(camera: Camera): void;
   setCollapsePx(px: number): void;
+  /**
+   * Keep a point in sight (world space, e.g. the level node with the hero): lace strands and needle stars between the
+   * camera and a disc of `radius` world units around it fade out. `null` = off.
+   */
+  setSightFocus(pointWorld: Vector3 | null, radius?: number): void;
   /** Detail share of lace, needles and rim dots (0..1), overrides the automatic choice until set to null. */
   setDetail(share: number | null): void;
   getDetail(): number;
@@ -146,6 +151,7 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
     collapsePx: uniform(mobil ? 1.2 : 0.8),
     crown: uniform(1),
     clock,
+    sight: uniform(new Vector4(0, 0, 0, 0)),
   };
   const bloom: TSLUniform = uniform(options.bloom ?? 1);
   const bands: TSLUniform = uniform(3);
@@ -363,6 +369,11 @@ export function createHeroTree(options: HeroTreeOptions = {}): HeroTree {
     },
     setCollapsePx: (px) => {
       bb.collapsePx.value = px;
+    },
+    setSightFocus: (point, radius = 1) => {
+      const s = bb.sight!.value;
+      if (point) s.set(point.x, point.y, point.z, Math.max(0, radius));
+      else s.w = 0;
     },
     setDetail: (share) => {
       detailOverride = share;

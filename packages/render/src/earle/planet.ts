@@ -7,6 +7,7 @@ import {
   chunkDirection,
   chunkKey,
   chunkList,
+  chunkMeshRadiusAt,
   frameAt,
   offsetDir,
   generateChunkMesh,
@@ -27,6 +28,7 @@ import {
 import { EarleMaterial } from './EarleMaterial';
 import { PaletteAtlas, addWorldPalette, worldPaletteFromZone, type WorldPalette, type WorldRows, type ZonePalette } from './palette';
 import { GROWTH_SLOTS, PlanetVegetation, type VegetationPropEntry, type VegetationTreeEntry, type VegetationWorldRows } from './planetVegetation';
+import type { ShadowFactorFn } from './trees/treeLayer';
 import { PaletteLookup, aaStep, arrayElement, createFogSettings, patternTime, stripeMask, type FloatNode, type FogSettings, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from './tsl';
 import { createWaterMaterial } from './water/waterSurface';
 import { buildWaterGeometry, waterGeometry } from './water/waterMesh';
@@ -108,6 +110,11 @@ export interface EarlePlanetOptions {
   nearHalfWidthDeg?: number;
   /** Müll-Dichtefaktor (Startwelt). */
   trashScale?: number;
+  /**
+   * Schatten des Sonnen-Rigs (Schatten v3): `factor` = glatter Schattenwert an einer Weltposition (Vertex-Stufe; die
+   * Kronenpunkte skalieren damit im Schlagschatten aus 0), z. B. `(p, o) => sunRig.shadowFactor(p, o)`.
+   */
+  shadow?: { factor?: ShadowFactorFn | null } | null;
 }
 
 interface ChunkCpu {
@@ -501,6 +508,7 @@ export class EarlePlanet {
       veil: (worldIndex) => this.veilNode(worldIndex),
       foreign: (worldIndex) => this.foreignNode(worldIndex),
       rowCount: this.atlas.rowCount,
+      shadowFactor: options.shadow?.factor ?? null,
     });
     this.group.add(this.vegetation.group);
   }
@@ -1013,6 +1021,27 @@ export class EarlePlanet {
     const meshSpacing = (this.options.radius * this.angularRadius * Math.SQRT2) / Math.max(1, q.chunkRes - 1);
     const trees = scatterChunkTrees(this.field, id, { densityScale: q.densityScale, clear, meshSpacing });
     const props = scatterChunkProps(this.field, id, { densityScale: q.densityScale, trashScale: this.trashScale, clear });
+    // Nichts schwebt: wo das gezeichnete Dreiecksnetz unter dem Fuß liegt (Kuppen, Grate, Felskanten — die Sehnen-
+    // schätzung sieht dort nur ±½ Zelle), sinken Bäume, Tiere und Requisiten genau auf das Netz
+    const cpf = this.options.chunksPerFace;
+    const onMesh = (p: Vec3): number => {
+      const r = chunkMeshRadiusAt(mesh, cpf, p);
+      const l = Math.hypot(p[0], p[1], p[2]);
+      if (r === null || l <= r) return 0;
+      const k = r / l;
+      const shift = r - l;
+      p[0] *= k;
+      p[1] *= k;
+      p[2] *= k;
+      return shift;
+    };
+    for (const t of trees) {
+      const shift = onMesh(t.position);
+      if (shift === 0) continue;
+      const l = Math.hypot(t.position[0], t.position[1], t.position[2]) || 1;
+      for (let k = 0; k < 3; k++) t.hullCenter[k] = t.hullCenter[k]! + (t.position[k]! / l) * shift;
+    }
+    for (const p of props) onMesh(p.position);
     const nodeRange: [number, number] = nodeIdx.length > 0 ? [Math.min(...nodeIdx), Math.max(...nodeIdx)] : [nearestIdx, nearestIdx];
     return { mesh, trees, props, nodeRange };
   }

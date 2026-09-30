@@ -157,45 +157,19 @@ export class MapWorld {
       },
       path: { nodesPerZone: NODES_PER_ZONE, turns: 2.75, clearNode: 2.0, clearPath: 0.8 },
       loadsPerFrame: 2,
+      // Schatten v3: Kronenpunkte skalieren mit dem glatten Schattenwert aus 0 (`?dotshadow=0` = alter Vergleich)
+      shadow: { factor: typeof location !== 'undefined' && location.search.includes('dotshadow=0') ? null : (p, o) => this.sun.shadowFactor(p, o) },
     });
     this.world.curvature.value = options.curvature ?? MAP_VIEW.curvature;
     this.world.vegetation.setNearClear(MAP_VIEW.nearClear);
     this.world.vegetation.setFootClear(MAP_VIEW.footClear);
     this.planet.add(this.world.group);
 
-    // The level path leads through the landscape: the spiral is only its backbone (hillsides and valley floors,
-    // organic S-curves, nodes on flat ground or on the element they visit). Routed before the giant tree splices in.
-    const firstTree = TREE_LEVELS[0] - 1;
-    const lastTree = TREE_LEVELS[1] - 1;
-    this.route = routeGroundPath(this.world.field, this.world.path, {
-      nodesPerZone: NODES_PER_ZONE,
-      seed: options.seed ?? 7,
-      keepGround: [firstTree - 1, lastTree + 1],
-      provider: options.anchors === undefined ? featurePathProvider(this.world.field) : options.anchors,
-    });
-    this.world.setPath(this.route);
-
-    // The giant tree: slot next to the path, levels 80–95 on trunk and crown (splices the level path)
+    // The level path leads through the landscape (routed before the giant tree splices in), then the giant tree carries
+    // levels 80–95 on trunk and crown
+    this.route = routeWorldPath(this.world, options.seed ?? 7, options.anchors);
     this.treeSite = createHeroTreeSite(this.world, { worldIndex: HERO_TREE_WORLD, quality: q.name, seed: options.seed ?? 7, landmarks });
-    const slot = this.world.getLandmarkSlot('hero-tree');
-    const built = buildLevelPath(
-      this.world,
-      this.route,
-      slot
-        ? {
-            first: this.treeSite.first,
-            last: this.treeSite.last,
-            path: this.treeSite.tree.path,
-            shape: this.treeSite.tree.shape,
-            domes: this.treeSite.tree.domes,
-            matrix: this.world.landmarkMatrix(slot, new Matrix4()),
-            world: HERO_TREE_WORLD,
-          }
-        : null,
-    );
-    // Corridor and growth follow the final path (stones on the tree, dots on bark and crown).
-    this.world.setPath(built.spiral);
-    const layout: BentLayout = { ...built.layout, bend: (p: Vec3Node) => this.world.bendNode(p) };
+    const layout = spliceTreePath(this.world, this.route, this.treeSite);
     // Trash v2 (neon debris, ruins, heaps, veil): placed after the final path, so its corridor stays clear.
     this.trash = createPlanetTrash(this.world, { quality: q.name, seed: options.seed ?? 7, densityScale: options.trashScale ?? 1 });
     this.trash.setFootClear(MAP_VIEW.footClear);
@@ -237,13 +211,7 @@ export class MapWorld {
    * flowers and pedestals take each world's ink, jewel accent, rock, scrap, sand and water.
    */
   pathPalette(): PathPalette {
-    return {
-      lookup: this.world.lookup,
-      fog: this.world.fog,
-      bands: this.world.terrainBands,
-      terrainRow: (w) => this.world.rows[Math.max(0, Math.min(this.world.rows.length - 1, w))]!.terrain,
-      colors: (w) => worldPathColors(w),
-    };
+    return planetPathPalette(this.world);
   }
 
   /** Direction to the sun in world space (unit). */
@@ -256,13 +224,80 @@ export class MapWorld {
     this.shadowDirty = true;
   }
 
-  /** Completed nodes → per-chunk growth along the path (trash sinks, trees grow, the giant tree blooms). */
-  setProgress(done: number): void {
+  /**
+   * Completed nodes → per-chunk growth along the path (trash sinks, trees grow, the giant tree blooms); `current` (the
+   * node with the ring) drives the markers on the giant tree.
+   */
+  setProgress(done: number, current = -1): void {
+    this.treeSite.setPathState(current, done);
+    if (done === this.lastDone) return;
+    this.lastDone = done;
     this.world.setProgress(done);
     this.treeSite.setProgress(done);
     this.trash.setProgress(done);
     this.shadowDirty = true;
   }
+
+  private lastDone = -1;
+
+  /** Is node `index` drawn by the giant tree's own markers (fungi, stones on the tree) instead of NodePath? */
+  isTreeNode(index: number): boolean {
+    return index >= this.treeSite.first && index <= this.treeSite.last;
+  }
+
+  /** What a node of the giant tree rests on (root, bark, limb, dome), null for ground nodes. */
+  treeSurface(index: number): 'root' | 'bark' | 'limb' | 'dome' | null {
+    return this.isTreeNode(index) ? (this.treeSite.tree.path.nodes[index - this.treeSite.first]?.surface ?? null) : null;
+  }
+
+  /**
+   * Where the hero (body radius `radius`, world units) stands on a node of the giant tree: on top of its shelf fungus
+   * (up = the fungus seat, the body clears the bark) or its flower stone — planet space, unbent. Null elsewhere.
+   */
+  treeSeat(index: number, radius: number, outPos: Vector3, outUp: Vector3): boolean {
+    return this.treeSite.seatFor(index, radius, outPos, outUp);
+  }
+
+  /** Hide the giant tree's marker of node `index` while its level plateau stands there (crown levels), or none. */
+  setTreeLevelNode(index: number | null): void {
+    this.treeSite.setHiddenNode(index);
+  }
+
+  /** Foot of the giant tree (planet space, unbent). */
+  treeFoot(out: Vector3): Vector3 {
+    return out.set(0, 0, 0).applyMatrix4(this.treeSite.matrix);
+  }
+
+  /** Distance (planet space, world units, saturating at ≈ 3.5) from a point to the giant tree's trunk, limbs and domes. */
+  treeClearance(p: Vector3): number {
+    return this.treeSite.path.clearance(p);
+  }
+
+  /**
+   * Keep a point in sight through the giant tree's curtain of hanging twigs (planet space, e.g. the level plateau under
+   * the tree, radius in world units); `null` = the current node on the tree (map).
+   */
+  setTreeSight(point: Vector3 | null, radius = 3): void {
+    this.treeSite.setSightOverride(point, radius);
+  }
+
+  /**
+   * Look point for sky, fog and the curvature centre (planet space) — e.g. the node on the giant tree the rail camera
+   * looks at — instead of the ground under the camera's centre ray (which lands on a neighbour world behind the tree).
+   * `null` = the ray (map, level).
+   */
+  setViewFocus(point: Vector3 | null, immediate = false): void {
+    // the last focus stays for the blend out
+    if (point) this.viewFocus.copy(point);
+    this.hasViewFocus = point !== null;
+    // cuts (start, re-mount, jumps): no blend
+    if (immediate) this.focusBlend = point ? 1 : 0;
+  }
+
+  private readonly viewFocus = new Vector3();
+  private hasViewFocus = false;
+  /** 0 = look point from the camera ray, 1 = the focus (blended, see `update`). */
+  private focusBlend = 0;
 
   /**
    * Clearing around the camera's foot (lateral radius in world units; MAP_VIEW.footClear by default, 0 = off), e.g.
@@ -311,15 +346,15 @@ export class MapWorld {
    * for ground nodes. The rail stays behind the node, close to the bark on the trunk, higher and further out above
    * the crown, and craning over the valley in between.
    */
-  cameraRailFor(levelIndex: number, out?: MapRail): MapRail | null {
+  cameraRailFor(levelIndex: number, out?: MapRail, portrait = false): MapRail | null {
     const r = out ?? { position: new Vector3(), lookAt: new Vector3() };
-    return this.treeSite.railFor(levelIndex, r.position, r.lookAt) ? r : null;
+    return this.treeSite.railFor(levelIndex, r.position, r.lookAt, portrait) ? r : null;
   }
 
   /** Continuous rail over the whole tree stretch (t 0..1, planet space) for camera moves between tree nodes. */
-  sampleTreeRail(t: number, out?: MapRail): MapRail {
+  sampleTreeRail(t: number, out?: MapRail, portrait = false): MapRail {
     const r = out ?? { position: new Vector3(), lookAt: new Vector3() };
-    this.treeSite.sampleRail(t, r.position, r.lookAt);
+    this.treeSite.sampleRail(t, r.position, r.lookAt, portrait);
     return r;
   }
 
@@ -349,9 +384,21 @@ export class MapWorld {
     // World under the camera's look point drives sky, fog, stripes (and the curvature warp centre).
     const look = _v.set(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(new Quaternion()));
     const hit = raySphere(camWorld, look, PLANET_RADIUS + 0.5);
-    // Fog follows the camera distance (hill view, fly-ins, rail): value steps stay in the middle and far ground
-    if (hit) this.world.setFogDistance(_w.copy(hit).multiplyScalar(PLANET_RADIUS + 0.5).distanceTo(camWorld));
     const dirWorld = hit ?? camWorld.clone().normalize();
+    // Fog follows the camera distance (hill view, fly-ins, rail): value steps stay in the middle and far ground
+    let fogDist = hit ? _w.copy(hit).multiplyScalar(PLANET_RADIUS + 0.5).distanceTo(camWorld) : -1;
+    // A focus on the giant tree (rail camera): its world and its distance — the centre ray would pass the crown and land
+    // on a neighbour world far behind (foreign fog and veil over the whole tree). Blended in and out over ≈ 0.6 s, so
+    // the curvature centre and the fog steps glide when the camera moves onto or off the tree
+    this.focusBlend = Math.min(1, Math.max(0, this.focusBlend + (this.hasViewFocus ? dt : -dt) / 0.6));
+    const wf = this.focusBlend * this.focusBlend * (3 - 2 * this.focusBlend);
+    if (wf > 0) {
+      const focusWorld = _w.copy(this.viewFocus).applyMatrix4(this.planet.matrixWorld);
+      const fd = focusWorld.distanceTo(camWorld);
+      fogDist = fogDist < 0 ? fd : fogDist + (fd - fogDist) * wf;
+      dirWorld.lerp(focusWorld.normalize(), wf).normalize();
+    }
+    if (fogDist >= 0) this.world.setFogDistance(fogDist);
     const dirLocal = dirWorld.applyQuaternion(_q);
     this.world.setViewDirection(dirLocal);
     if (this.world.viewBlending) this.shadowDirty = true; // neighbours fade in/out near the camera
@@ -457,6 +504,66 @@ export function tangentFrame(normal: Vector3, forwardHint: Vector3, out: Matrix4
   fwd.normalize();
   const right = new Vector3().crossVectors(up, fwd).normalize();
   return out.makeBasis(right, up, fwd);
+}
+
+/**
+ * Lays the level path through the landscape (MapWorld, Earle lab): the spiral is only its backbone (hillsides and
+ * valley floors, organic S-curves, nodes on flat ground or on the element they visit, around lakes, rivers and rock
+ * feet). Keeps the nodes around the giant tree's stretch on the ground and hands the route to the planet (corridor).
+ * `anchors`: the terrain features' provider by default, `null` = none.
+ */
+export function routeWorldPath(world: EarlePlanet, seed: number, anchors?: PathAnchorProvider | null): RoutedGround {
+  const firstTree = TREE_LEVELS[0] - 1;
+  const lastTree = TREE_LEVELS[1] - 1;
+  const route = routeGroundPath(world.field, world.path, {
+    nodesPerZone: NODES_PER_ZONE,
+    seed,
+    keepGround: [firstTree - 1, lastTree + 1],
+    provider: anchors === undefined ? featurePathProvider(world.field) : anchors,
+  });
+  world.setPath(route);
+  return route;
+}
+
+/**
+ * Splices the giant tree's stretch into the routed path: its nodes lie exactly on the tree's surfaces (root, bark, limb
+ * → ground/bark, dome → crown) and its dots are used as they are — the tree's own markers draw them, NodePath keeps
+ * the ground (`external`). Sets the final path as the planet's corridor and growth input; returns the bent layout.
+ */
+export function spliceTreePath(world: EarlePlanet, route: RoutedGround, site: HeroTreeSite): BentLayout {
+  const slot = world.getLandmarkSlot('hero-tree');
+  const surfaceOf = { root: 'ground', bark: 'bark', limb: 'bark', dome: 'crown' } as const;
+  const built = buildLevelPath(
+    world,
+    route,
+    slot
+      ? {
+          first: site.first,
+          last: site.last,
+          path: site.tree.path,
+          shape: site.tree.shape,
+          domes: site.tree.domes,
+          matrix: world.landmarkMatrix(slot, new Matrix4()),
+          world: HERO_TREE_WORLD,
+          surface: site.tree.path.nodes.map((n) => ({ position: n.position, normal: n.normal, on: surfaceOf[n.surface] })),
+          dotsOnSurface: true,
+        }
+      : null,
+  );
+  // Corridor and growth follow the final path (stones on the tree, dots on bark and crown).
+  world.setPath(built.spiral);
+  return { ...built.layout, bend: (p: Vec3Node) => world.bendNode(p) };
+}
+
+/** Palette context of the path visuals on a planet (see `MapWorld.pathPalette`). */
+export function planetPathPalette(world: EarlePlanet): PathPalette {
+  return {
+    lookup: world.lookup,
+    fog: world.fog,
+    bands: world.terrainBands,
+    terrainRow: (w) => world.rows[Math.max(0, Math.min(world.rows.length - 1, w))]!.terrain,
+    colors: (w) => worldPathColors(w),
+  };
 }
 
 /**

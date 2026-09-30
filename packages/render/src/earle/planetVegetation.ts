@@ -52,7 +52,7 @@ import type { PlanetProp, PlanetTree, PlanetVegetationFamily, TreeFamily } from 
 import { EarleMaterial } from './EarleMaterial';
 import { arrayElement, hatchMask, patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from './tsl';
 import { createHexagon, mergeGeometries } from './vegetation';
-import { CROWN_KINDS, TreeLayer, type CrownKind } from './trees/treeLayer';
+import { CROWN_KINDS, TreeLayer, type CrownKind, type ShadowFactorFn } from './trees/treeLayer';
 
 /** Zahl der Wachstums-Slots (ein Slot je geladenem Chunk). */
 export const GROWTH_SLOTS = 64;
@@ -93,6 +93,11 @@ export interface PlanetVegetationOptions {
    * `false`, wenn eine eigene Müll-Welt ihn ersetzt; Felsen, Scheunen und Tiere bleiben.
    */
   builtinTrash?: boolean;
+  /**
+   * Glatter Schattenwert an einer Weltposition (Vertex-Stufe), z. B. `(p, o) => sunRig.shadowFactor(p, o)`: die
+   * Kronenpunkte skalieren im Schlagschatten stetig aus 0. Fehlt → Punkte empfangen den Schatten je Fragment.
+   */
+  shadowFactor?: ShadowFactorFn | null;
 }
 
 export interface VegetationTreeEntry {
@@ -274,6 +279,7 @@ export class PlanetVegetation {
         sunDirLocal: this.sunDirLocal,
         projScaleY: this.projScaleY,
         collapsePx: this.collapsePx,
+        shadowFactor: options.shadowFactor ?? null,
       },
       {
         worldRows: options.worldRows,
@@ -428,15 +434,22 @@ export class PlanetVegetation {
       const g = slotGrowth(data.z);
       const vis = clamp(g.sub(0.5).sub(data.y.mul(0.4)).div(0.1), 0, 1);
       const size = data.x.mul(vis).mul(nearFade(base, base.add(up.mul(0.8)), float(0.6))).mul(foreignNear(data.w, base));
-      const billboard = (toward: Vec3Node): Vec3Node => {
+      /**
+       * Karte am Fuß, quer zu `toward`. `lean`: die Hochachse kippt in die Bildebene (Blickrichtung ⟂) — von der steilen
+       * Kartenkamera bliebe eine senkrechte Karte ein Strich (cos 60° der Höhe), während ihre zur Sonne gedrehte
+       * Schattenkarte einen langen Schatten wirft: der Schatten sah losgelöst aus. So liest sich die Kuh als ganze
+       * Silhouette, ihr Schatten beginnt an denselben Füßen.
+       */
+      const billboard = (toward: Vec3Node, lean: boolean): Vec3Node => {
         const right = normalize(cross(up, toward));
-        return base.add(right.mul(positionGeometry.x.mul(size))).add(up.mul(positionGeometry.y.mul(size)));
+        const cardUp = lean ? normalize(cross(toward, right)) : up;
+        return base.add(right.mul(positionGeometry.x.mul(size))).add(cardUp.mul(positionGeometry.y.mul(size)));
       };
       const material = new MeshBasicNodeMaterial({ side: DoubleSide });
       material.colorNode = steppedFog(lookup.pal(0, data.w).rgb, fog, lookup, fogDist(data.w));
-      material.positionNode = warp(billboard(normalize(this.camLocal.sub(base))));
-      // Schattenpass: Karte zur Sonne drehen → lange Kuh-Schatten wie bei Earle
-      (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(billboard(this.sunDirLocal));
+      material.positionNode = warp(billboard(normalize(this.camLocal.sub(base)), true));
+      // Schattenpass: Karte senkrecht zur Sonne gedreht → lange Kuh-Schatten wie bei Earle
+      (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(billboard(this.sunDirLocal, false));
       const mesh = new InstancedMesh(geometry, material, n);
       mesh.name = 'planet-animals';
       mesh.castShadow = true;

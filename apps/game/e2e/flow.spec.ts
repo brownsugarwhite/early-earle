@@ -44,7 +44,12 @@ interface Vec3Like {
 }
 interface FlowDebug {
   layout: { nodes: Array<{ site?: string; position: [number, number, number]; normal: [number, number, number]; rise?: number }>; dots: unknown[]; ribbon?: unknown[][] };
-  world: { surfaceRadius(d: Vec3Like & { length(): number }): number; camera: { position: Vec3Like & { constructor: new (x: number, y: number, z: number) => Vec3Like & { project(c: unknown): Vec3Like } } } };
+  world: {
+    surfaceRadius(d: Vec3Like & { length(): number }): number;
+    isTreeNode(i: number): boolean;
+    treeSite: { markers: { group: { getObjectByName(n: string): { count: number } | undefined } } };
+    camera: { position: Vec3Like & { constructor: new (x: number, y: number, z: number) => Vec3Like & { project(c: unknown): Vec3Like } } };
+  };
   board: { w: number; h: number; topY: number; root: { localToWorld<T>(v: T): T } };
   rex: { mode: string; spot: { kind: string; side: string; rect: { left: number; right: number; top: number; bottom: number } } | null };
 }
@@ -61,10 +66,15 @@ test('Handy: Levelpfad liegt in der Landschaft, Spielfeld füllt die Breite, REX
     const c = (window as unknown as { __ee: { controller: FlowDebug } }).__ee.controller;
     const sites: Record<string, number> = {};
     let hover = 0;
-    for (const n of c.layout.nodes) {
+    let onTree = 0;
+    c.layout.nodes.forEach((n, i) => {
       const site = n.site ?? 'none';
       sites[site] = (sites[site] ?? 0) + 1;
-      if (site === 'bark' || site === 'crown') continue;
+      // The giant tree's nodes rest on the tree itself (roots, bark, limbs, crown domes), drawn by its own markers
+      if (c.world.isTreeNode(i)) {
+        onTree++;
+        return;
+      }
       // On the ground the stone lies on the surface; on its element (rock, mound, sand bar) the element's foot does:
       // the stone minus the element's height along the surface normal.
       const rise = n.rise ?? 0;
@@ -73,13 +83,19 @@ test('Handy: Levelpfad liegt in der Landschaft, Spielfeld füllt die Breite, REX
       const z = n.position[2] - n.normal[2] * rise;
       const len = Math.hypot(x, y, z);
       hover = Math.max(hover, Math.abs(len - c.world.surfaceRadius({ x, y, z, length: () => len })));
-    }
-    return { sites, hover, dots: c.layout.dots.length, strips: c.layout.ribbon?.length ?? 0 };
+    });
+    const m = c.world.treeSite.markers.group;
+    const markers = (m.getObjectByName('path-fungi')?.count ?? 0) + (m.getObjectByName('path-flowers')?.count ?? 0);
+    return { sites, hover, onTree, markers, fungi: m.getObjectByName('path-fungi')?.count ?? 0, dots: c.layout.dots.length, strips: c.layout.ribbon?.length ?? 0 };
   });
   expect(path.sites['ledge'] ?? 0).toBeGreaterThan(4);
   expect(path.sites['bark'] ?? 0).toBeGreaterThan(2);
   expect(path.sites['crown'] ?? 0).toBeGreaterThan(2);
   expect(path.hover).toBeLessThan(0.01);
+  // Levels 80–95 on the giant tree: every node has its marker there (shelf fungi on the bark, flower stones elsewhere)
+  expect(path.onTree).toBe(16);
+  expect(path.markers).toBe(16);
+  expect(path.fungi).toBeGreaterThan(2);
   expect(path.dots).toBeGreaterThan(600);
   expect(path.strips).toBe(2);
 
@@ -128,6 +144,43 @@ test('Handy: Levelpfad liegt in der Landschaft, Spielfeld füllt die Breite, REX
   });
   expect(width).toBeGreaterThan(0.8);
   expect(width).toBeLessThan(0.98);
+  expect(errors).toEqual([]);
+});
+
+test('Riesenbaum (Handy, Level 86): der Held sitzt auf dem Baumpilz, die Schiene sieht den Knoten', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.addInitScript(() => localStorage.setItem('ee.progress.v1', JSON.stringify({ version: 1, reached: 85, current: 85, levels: {} })));
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto('/play');
+  await waitForRenderer(page);
+  await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', 'map', { timeout: TRANSITION_MS });
+  const r = await page.evaluate(() => {
+    type V3 = Vec3Like & { clone(): V3; sub(v: Vec3Like): V3; dot(v: Vec3Like): number; applyQuaternion(q: unknown): V3; normalize(): V3; project(c: unknown): Vec3Like };
+    const c = (window as unknown as {
+      __ee: {
+        controller: FlowDebug & {
+          hero: { root: { position: V3; quaternion: unknown } };
+          world: { bend(p: V3): V3; treeSeat(i: number, r: number, p: V3, up: V3): boolean; planet: { localToWorld(v: V3): V3 } };
+        };
+      };
+    }).__ee.controller;
+    const V = c.world.camera.position.constructor as unknown as new (x: number, y: number, z: number) => V3;
+    const node = c.layout.nodes[85]!;
+    const seat = new V(0, 0, 0);
+    const up = new V(0, 0, 0);
+    const onTree = c.world.treeSeat(85, 0.3, seat, up);
+    const heroUp = new V(0, 1, 0).applyQuaternion(c.hero.root.quaternion);
+    // Out on the shelf: in front of the bark along its normal, upright along the fungus seat (not sideways on the trunk)
+    const out = c.hero.root.position.clone().sub(c.world.bend(new V(...node.position))).dot(new V(...node.normal));
+    const onScreen = c.world.planet.localToWorld(c.world.bend(new V(...node.position))).project(c.world.camera);
+    return { site: node.site, onTree, upright: heroUp.dot(up), out, x: onScreen.x, y: onScreen.y };
+  });
+  expect(r.site).toBe('bark');
+  expect(r.onTree).toBe(true);
+  expect(r.upright).toBeGreaterThan(0.97);
+  expect(r.out).toBeGreaterThan(0.05);
+  expect(Math.abs(r.x)).toBeLessThan(0.8);
+  expect(Math.abs(r.y)).toBeLessThan(0.8);
   expect(errors).toEqual([]);
 });
 

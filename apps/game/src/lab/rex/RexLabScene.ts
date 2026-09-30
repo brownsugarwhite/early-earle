@@ -401,27 +401,49 @@ export class RexLabScene implements SceneController {
     const h = board.h;
     const cells = { minX: (-w * BOARD_PITCH) / 2, maxX: (w * BOARD_PITCH) / 2, minZ: (-h * BOARD_PITCH) / 2, maxZ: (h * BOARD_PITCH) / 2 };
     const fp = board.footprint;
-    const rexHeight = Math.max(1.2, 0.4 * Math.max(fp.maxX - fp.minX, fp.maxZ - fp.minZ)) * this.params.size;
+    let rexHeight = Math.max(1.2, 0.4 * Math.max(fp.maxX - fp.minX, fp.maxZ - fp.minZ)) * this.params.size;
     const scratch = { x: 0, y: 0 };
-    const spot = chooseBoardSpot({
-      footprint: board.footprint,
-      cells,
-      topY: board.topY,
-      groundY: 0,
-      rexHeight,
-      project: (x, y, z) => {
-        _v.set(x, y, z).applyMatrix4(board.root.matrixWorld);
-        const s = projectToScreen(_v, this.camera, ctx.width, ctx.height, scratch);
-        return s ? { x: s.x, y: s.y } : null;
-      },
-      width: ctx.width,
-      height: ctx.height,
-      hudTop: hud.hudTop,
-      hudBottom: hud.hudBottom,
-      prev: this.spot,
-    });
+    const project = (x: number, y: number, z: number) => {
+      _v.set(x, y, z).applyMatrix4(board.root.matrixWorld);
+      const s = projectToScreen(_v, this.camera, ctx.width, ctx.height, scratch);
+      return s ? { x: s.x, y: s.y } : null;
+    };
+    // Phones: small, in the top-right corner behind the board like in the flow (Rex.placeAtBoard) — the bottom
+    // belongs to the grid and the actions
+    const corner = ctx.width < ctx.height;
+    const choose = () =>
+      chooseBoardSpot({
+        footprint: board.footprint,
+        cells,
+        topY: board.topY,
+        groundY: 0,
+        rexHeight,
+        project,
+        width: ctx.width,
+        height: ctx.height,
+        hudTop: hud.hudTop,
+        hudBottom: hud.hudBottom,
+        prev: this.spot,
+        corner: corner ? 'topRight' : null,
+      });
+    let spot = choose();
+    if (corner) {
+      // ≈ 12 % of the screen height at the chosen spot (he leans back toward the steep camera: ≈ 1.35× his upright
+      // projection), then settle the spot for that size — the flow's numbers
+      const target = (Math.min(118, Math.max(84, ctx.height * 0.12)) * this.params.size) / 1.35;
+      for (let k = 0; k < 3; k++) {
+        const feetY = spot.onTop ? board.topY : 0;
+        const feet = project(spot.x, feetY, spot.z);
+        const head = project(spot.x, feetY + rexHeight * 1.02, spot.z);
+        if (!feet || !head) break;
+        const px = Math.abs(feet.y - head.y);
+        if (px > 1) rexHeight *= target / px;
+        this.spot = spot;
+        spot = choose();
+      }
+    }
     this.spot = spot;
-    stageAtBoard(this.rex, spot, { groundY: 0, rexHeight, boardRoot: board.root, camera: this.camera });
+    stageAtBoard(this.rex, spot, { groundY: spot.onTop ? board.topY : 0, rexHeight, boardRoot: board.root, camera: this.camera });
   }
 
   private fitBoardShadow(): void {

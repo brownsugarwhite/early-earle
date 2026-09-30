@@ -146,12 +146,17 @@ export interface DotMaterialOptions {
   shadowColor: Vec3Node;
   /** Anteil des Schlagschattens (wie die Krone darunter: Kuppel-Scheitel frei, Unterseite ganz). */
   castWeight?: FloatNode | null;
+  /**
+   * Licht je Punkt aus der Vertex-Stufe (1 = Sonne, 0 = Schatten; glatter Schattenwert am Punktmittelpunkt): ersetzt die
+   * Schattenkarte je Fragment — der Punkt wechselt die Farbe als Ganzes, nie halb.
+   */
+  shade?: FloatNode | null;
 }
 
 /**
- * Material der instanzierten Punkte: empfängt den Schlagschatten wie die Krone darunter (dieselbe Schattenkarte, je
- * Fragment) — wandert eine Schattenkante über eine Krone, deckt sie deren Punkte so stetig zu wie die Kronenfläche selbst
- * (kein Ploppen). Die Größe der Punkte folgt im Vertex-Shader dem N·L der Krone (weich aus 0).
+ * Material der instanzierten Punkte. Mit `shade` (glatter Schattenwert je Punkt aus der Vertex-Stufe, siehe
+ * `SunRig.shadowFactor`) skalieren die Punkte im Schlagschatten stetig aus 0 und wechseln die Farbe als Ganzes; ohne
+ * empfangen sie den Schlagschatten je Fragment wie die Krone darunter. Die Größe folgt außerdem dem N·L der Krone.
  */
 export class DotMaterial extends NodeMaterial {
   static override get type(): string {
@@ -175,7 +180,7 @@ class DotLightingModel extends LightingModel {
   }
 
   override direct(input: Parameters<LightingModel['direct']>[0]): void {
-    const shadow = mix(float(1), (input.lightColor as Vec3Node).r, this.o.castWeight ?? float(1));
+    const shadow = this.o.shade ?? mix(float(1), (input.lightColor as Vec3Node).r, this.o.castWeight ?? float(1));
     (input.reflectedLight.directDiffuse as Vec3Node).addAssign(mix(this.o.shadowColor, this.o.litColor, shadow));
   }
 
