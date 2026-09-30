@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Dir } from '@ee/core';
 import { useGridStore } from '../../lab/grid/gridStore';
-import * as rexContent from '../../lab/grid/rex';
+import { rexAfterFirstMove } from '../../lab/grid/rex';
 import { useProgress } from '../../state/progress';
 import { useFlowStore } from '../flowStore';
 import { readHudBands } from '../hudBands';
@@ -11,10 +11,9 @@ import { HINT_DELAY_S, hintWanted, pickSwipeDirection } from './swipeDirection';
 /** Drehung des Pfeils (er zeigt im SVG nach rechts). */
 const ROTATION: Record<Dir, number> = { right: 0, down: 90, left: 180, up: 270 };
 
-/** REX nach dem ersten Wisch in Level 1: `rexAfterFirstMove(1)` der Inhalte, sonst die Vorschau-Zeile. */
+/** REX nach dem ersten Wisch in Level 1 (der erste Nachschub kommt). */
 function afterFirstMoveLine(): string {
-  const content = rexContent as unknown as { rexAfterFirstMove?: (level: number) => string | null };
-  return content.rexAfterFirstMove?.(1) ?? rexContent.rexLine('mechanic.preview', { level: 1 }) ?? 'Da oben: was als Nächstes kommt.';
+  return rexAfterFirstMove(1) ?? 'Da kommt Nachschub für uns.';
 }
 
 function useFirstLevelWins(): number {
