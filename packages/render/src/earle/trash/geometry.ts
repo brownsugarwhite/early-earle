@@ -17,6 +17,8 @@ export const SEG_CAP = 10;
 export const SEG_SPIKE = 11;
 export const SEG_SKIRT = 12;
 export const SEG_LEDGE = 13;
+/** Überwucherung (Kuppelbüsche an Ruinen): dunkle Masse mit Punktrand wie Earles Kronen. */
+export const SEG_BUSH = 14;
 
 /** Teilformen im großen Mesh: Müllberge 0..2, Ruinen 3..6. */
 export const BIG_PART_HEAP = 0;
@@ -234,6 +236,54 @@ function junkBox(b: FlatBuilder, base: V3, w: number, h: number, d: number, yaw:
   b.quad(v[3]!, v[7]!, v[4]!, v[0]!, n(-1, 0));
 }
 
+/**
+ * Kuppelbusch (Überwucherung): flach schattierte Halbkugel aus 3 Ringen × 7 Segmenten, Fuß leicht eingesenkt. Earle:
+ * dunkle Kuppel, der Punktrand kommt aus dem Shader.
+ */
+function bush(b: FlatBuilder, c: V3, r: number, h: number, rand: () => number): void {
+  const seg = 7;
+  const rings = [
+    [-0.25, 1.0],
+    [0.35, 0.92],
+    [0.72, 0.62],
+  ] as const;
+  const rot = rand() * Math.PI * 2;
+  const pts: V3[][] = rings.map(([y, s]) =>
+    Array.from({ length: seg }, (_, i) => {
+      const a = rot + (i / seg) * Math.PI * 2;
+      const j = 0.88 + 0.24 * rand();
+      return [c[0] + Math.cos(a) * r * s * j, c[1] + y * h, c[2] + Math.sin(a) * r * s * j] as V3;
+    }),
+  );
+  const top: V3 = [c[0], c[1] + h, c[2]];
+  b.tier = SEG_BUSH;
+  for (let k = 0; k < rings.length - 1; k++) {
+    for (let i = 0; i < seg; i++) {
+      const a0 = pts[k]![i]!;
+      const a1 = pts[k]![(i + 1) % seg]!;
+      const b1 = pts[k + 1]![(i + 1) % seg]!;
+      const b0 = pts[k + 1]![i]!;
+      const hint: V3 = [(a0[0] + a1[0]) / 2 - c[0], 0.3, (a0[2] + a1[2]) / 2 - c[2]];
+      b.quad(a0, a1, b1, b0, hint);
+    }
+  }
+  const last = pts[rings.length - 1]!;
+  for (let i = 0; i < seg; i++) b.tri(last[i]!, last[(i + 1) % seg]!, top, [0, 1, 0]);
+}
+
+/** Büsche am Fuß einer Ruine (auf einer Ellipse um die Mitte) und ein paar oben auf Absätzen. */
+function overgrow(b: FlatBuilder, rx: number, rz: number, count: number, size: number, rand: () => number, extra: V3[] = []): void {
+  for (let k = 0; k < count; k++) {
+    const a = (k / count) * Math.PI * 2 + rand() * 0.6;
+    const r = size * (0.6 + rand() * 0.6);
+    bush(b, [Math.cos(a) * rx * (0.9 + rand() * 0.25), -0.02, Math.sin(a) * rz * (0.9 + rand() * 0.25)], r, r * (0.8 + rand() * 0.5), rand);
+  }
+  for (const p of extra) {
+    const r = size * (0.45 + rand() * 0.35);
+    bush(b, p, r, r * 0.9, rand);
+  }
+}
+
 /** Kisten reihum auf einem Absatz verteilen (Anzahl, Größe relativ zur Höhe 1). */
 function junkOnLedge(b: FlatBuilder, poly: Array<[number, number]>, ring: Ring, count: number, size: number, rand: () => number): void {
   for (let k = 0; k < count; k++) {
@@ -406,6 +456,10 @@ function addRuins(b: FlatBuilder): void {
     b.tier = SEG_SKIRT;
     const skirt = new Shape([new Vector2(-w - 0.04, -0.25), new Vector2(w + 0.04, -0.25), new Vector2(w + 0.04, 0), new Vector2(-w - 0.04, 0)]);
     extrude(b, [skirt], 0.32);
+    // Überwucherung: Kuppelbüsche an den Pfeilern, einer auf dem Pfeilerstumpf
+    const rb = mulberry32(hash32('trash-ruin-bogen-bush', 1));
+    for (const [x, z, r] of [[-0.46, 0.2, 0.13], [-0.36, -0.19, 0.1], [0.44, 0.18, 0.12], [0.3, -0.2, 0.09], [0.05, 0.24, 0.08]] as const) bush(b, [x, -0.02, z], r, r * 1.1, rb);
+    bush(b, [0.4, 0.46, 0], 0.08, 0.08, rb);
   }
   // Turm: achteckig, schief (Instanz neigt), Krone weggebrochen
   {
@@ -425,6 +479,7 @@ function addRuins(b: FlatBuilder): void {
       { y: 0.86, s: 0.44, tier: 3, jag },
     ];
     lathe(b, poly, rings, 0.7);
+    overgrow(b, 0.3, 0.3, 6, 0.1, rand, [[0.2, 0.6, 0.05], [-0.12, 0.6, -0.17]]);
   }
   // Wand: Mauerscheibe mit zwei Spitzbogenfenstern und einer Rose, gezackte Abbruchkante
   {
@@ -462,6 +517,8 @@ function addRuins(b: FlatBuilder): void {
     extrude(b, [wall], 0.24);
     b.tier = SEG_SKIRT;
     extrude(b, [new Shape([new Vector2(-w - 0.03, -0.25), new Vector2(w + 0.03, -0.25), new Vector2(w + 0.03, 0.02), new Vector2(-w - 0.03, 0.02)])], 0.3);
+    const rw = mulberry32(hash32('trash-ruin-wand-bush', 2));
+    for (const [x, z, r] of [[-0.55, 0.16, 0.14], [-0.2, -0.17, 0.11], [0.12, 0.18, 0.1], [0.5, -0.16, 0.13], [0.62, 0.14, 0.09]] as const) bush(b, [x, -0.02, z], r, r * 1.05, rw);
   }
   // Säulen: Reihe gebrochener Säulen auf einem Sockel, eine Trommel liegt davor
   {

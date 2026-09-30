@@ -36,7 +36,7 @@ import {
 import { HEAL_SPAN } from '@ee/world';
 import { patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from '../tsl';
 import { TrashMaterial } from './material';
-import { SEG_CAP, SEG_SKIRT, SEG_SPIKE } from './geometry';
+import { SEG_BUSH, SEG_CAP, SEG_SKIRT, SEG_SPIKE } from './geometry';
 
 /** Uniforms und Helfer, die alle Müll-Shader teilen (eine Instanz je TrashField). */
 export interface TrashShaderContext {
@@ -278,8 +278,16 @@ export function createBigMaterial(ctx: TrashShaderContext): TrashMaterial {
       const ruinCapInk = mix(mix(neonDim, mossDim, noNeon), mossDim, isSnow);
       const ruinLit = mix(mix(mix(mix(litCol, darker, masonry.mul(0.7)), vineCol, vines.mul(0.9)), ink, slits), ruinCapLit, ruinCapMask);
       const ruinInk = mix(mix(ink, inkTex, masonry.mul(0.6)), ruinCapInk, ruinCapMask.mul(0.6));
-      const litSide = select(isRuin, ruinLit, heapLit);
-      const inkSide = select(isRuin, ruinInk, heapInk);
+      // Überwucherung (Kuppelbüsche an Ruinen): dunkle Kuppel, Punktrand in Moosfarbe auf der Lichtseite (Earles Kronen)
+      const isBush = step(abs(tier.sub(SEG_BUSH)), float(0.5));
+      const dc = p.mul(30).add(a.variant.mul(3.1));
+      const dotCell = rnd(floor(dc.x).mul(7).add(floor(dc.y).mul(113)).add(floor(dc.z).mul(311)));
+      const dfw = fwidth(dc.x).add(fwidth(dc.y)).max(1e-4);
+      const dot = smoothstep(float(0.34).add(dfw), float(0.34).sub(dfw), length(fract(dc).sub(0.5))).mul(step(dotCell, float(0.45)));
+      const bushLit = mix(mix(mossDim, ink, float(0.35)), mossLit, dot);
+      const bushInk = mix(ink, mossDim, dot.mul(0.25));
+      const litSide = mix(select(isRuin, ruinLit, heapLit), bushLit, isBush);
+      const inkSide = mix(select(isRuin, ruinInk, heapInk), bushInk, isBush);
       return mix(inkSide, litSide, lit);
     },
   });
