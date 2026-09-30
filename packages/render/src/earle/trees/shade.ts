@@ -90,7 +90,7 @@ export function crownShadeTexture(o: ShadeTextureOptions): ShadeTexture {
       out = mix(out, mix(motif, o.lookup.pal(0, s.row).rgb as unknown as Vec3Node, 0.38), fl.mask);
     }
     if (o.veins) {
-      const vein = branchVeins(o.patternPos, o.veins.radius, o.veins.half, 0.017).mul(o.veins.amount);
+      const vein = branchVeins(o.patternPos, o.veins.radius, o.veins.half, 0.012).mul(o.veins.amount);
       const veinCol = mix(mix(o.lookup.pal(0, s.row).rgb as unknown as Vec3Node, o.veins.color, 0.42), o.veins.color, s.lit);
       out = mix(out, veinCol, vein);
     }
