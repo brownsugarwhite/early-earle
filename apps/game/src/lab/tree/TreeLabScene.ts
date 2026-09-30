@@ -3,6 +3,7 @@ import { uniform } from 'three/tsl';
 import { EarleMaterial, PaletteAtlas, PaletteLookup, SunRig, createFogSettings, createSkyDome } from '@ee/render';
 import { createHeroPathMarkers, createHeroTree, type BarkStyle, type CanopyFamily, type HeroPathMarkers, type HeroTree, type TreeQuality } from '@ee/render/earle/tree/index.ts';
 import { createCanopy, type Canopy } from '@ee/render/earle/tree/canopy.ts';
+import { createGrandTrees, layoutGrandTrees, type GrandTrees } from '@ee/render/earle/tree/grand.ts';
 import type { Dome } from '@ee/render/earle/tree/shape.ts';
 import type { SceneController, SceneContext } from '../../canvas/SceneController';
 import { resolveQuality, type QualityLevel, type QualityPreset, type ResolvedQuality } from '../earle/quality';
@@ -40,6 +41,8 @@ export interface TreeLabParams {
   /** Position on the rail 0..1. */
   rideT: number;
   seed: number;
+  /** Big siblings around the giant tree (0..6, `?grand=`), see `createGrandTrees`. */
+  grand: number;
 }
 
 export const DEFAULT_TREE_PARAMS: TreeLabParams = {
@@ -63,6 +66,7 @@ export const DEFAULT_TREE_PARAMS: TreeLabParams = {
   ride: false,
   rideT: 0,
   seed: 7,
+  grand: 4,
 };
 
 export interface TreeLabStats {
@@ -148,6 +152,7 @@ export class TreeLabScene implements SceneController {
   private atlas: PaletteAtlas | null = null;
   private tree: HeroTree | null = null;
   private bushes: Canopy | null = null;
+  private grand: GrandTrees | null = null;
   private markers: HeroPathMarkers | null = null;
   private ctx: SceneContext | null = null;
   private params: TreeLabParams;
@@ -256,6 +261,36 @@ export class TreeLabScene implements SceneController {
       bushes.dots.removeFromParent();
     });
 
+    // big siblings around the giant tree (same style, smaller, each distinct): one set of meshes for all
+    if (this.params.grand > 0) {
+      const plan = tree.shape.plan;
+      const grand = createGrandTrees({
+        // free: the path start (root tip) and the sector towards the lab's default views (nobody stands in front of the giant)
+        sites: layoutGrandTrees({
+          count: this.params.grand,
+          seed: this.params.seed,
+          heroCrown: tree.shape.R,
+          avoid: [
+            { angle: plan.startAngle, width: 0.7 },
+            { angle: 2.2, width: 0.6 },
+          ],
+        }),
+        seed: this.params.seed,
+        quality,
+        groundAt: groundHeight,
+        bark: this.params.bark,
+        snow: this.params.snow,
+        lookup: tree.lookup,
+        rows: tree.rows,
+        fog,
+        fogLookup: lookup,
+        billboard: tree.billboard,
+      });
+      this.grand = grand;
+      this.world.add(grand.group);
+      this.disposables.push(() => grand.dispose());
+    }
+
     // level path lying on the tree
     this.sun.directionLocal(_sunLocal);
     const markers = createHeroPathMarkers({ path: tree.path, sunDirLocal: _sunLocal });
@@ -279,6 +314,7 @@ export class TreeLabScene implements SceneController {
     this.disposables.length = 0;
     this.tree = null;
     this.bushes = null;
+    this.grand = null;
     this.markers = null;
     this.atlas?.dispose();
     this.atlas = null;
@@ -333,7 +369,7 @@ export class TreeLabScene implements SceneController {
       const preset = resolveQuality(next.quality);
       const presetChanged = force || preset.name !== this.preset.name;
       this.preset = preset;
-      if (presetChanged || next.seed !== prev.seed || next.bark !== prev.bark || next.stage !== prev.stage || (next.snow > 0) !== (prev.snow > 0)) {
+      if (presetChanged || next.seed !== prev.seed || next.bark !== prev.bark || next.stage !== prev.stage || (next.snow > 0) !== (prev.snow > 0) || next.grand !== prev.grand) {
         this.applyDpr();
         this.sun.setMapSize(preset.shadowMapSize);
         this.build();
@@ -470,6 +506,7 @@ export class TreeLabScene implements SceneController {
     tree.setSunDirection(this.sunDirWorld.value);
     tree.updateCamera(this.camera);
     tree.update(dt);
+    this.grand?.updateCamera(this.camera);
     if (this.markers) {
       // the tree group is not rotated in the lab: world sun direction = tree-local direction
       if (this.shadowDirty) this.markers.setSunDirection(this.sunDirWorld.value);
@@ -488,6 +525,7 @@ export class TreeLabScene implements SceneController {
   /** Shadow camera: tree bounds plus the ground strip the long shadow falls on (direction −sun). */
   private fitShadow(tree: HeroTree): void {
     _box.copy(tree.bounds);
+    if (this.grand) _box.union(this.grand.bounds);
     const scale = tree.group.scale.x || 1;
     const el = Math.max(0.03, (this.params.sunElevation * Math.PI) / 180);
     const len = Math.min(220, (_box.max.y * scale) / Math.tan(el)) / scale;
