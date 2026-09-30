@@ -1,5 +1,5 @@
 import { AudioGraph, BUS_NAMES } from './graph';
-import { playSfx, type Material, type SfxParams } from './sfx';
+import { playSfx, type Material, type SfxId, type SfxParams } from './sfx';
 import { babble, chirp } from './rex';
 import { MusicLayer } from './music';
 import { AMBIENT_PRESETS, AmbientBed, ambientDetail, type WorldId } from './ambient';
@@ -11,7 +11,17 @@ import type { ZoneKey } from './scales';
  * (docs/progress/audio) and a CPU benchmark. Deterministic (seeded), faster than real time.
  */
 
-export type PreviewId = 'merge-chain' | 'splash' | 'leap-merge' | 'rex-babble' | 'ambient-10s' | 'music-20s' | 'win-lose' | 'specials-blockers';
+export type PreviewId =
+  | 'merge-chain'
+  | 'splash'
+  | 'leap-merge'
+  | 'rex-babble'
+  | 'ambient-10s'
+  | 'music-20s'
+  | 'win-lose'
+  | 'specials-blockers'
+  | 'iter4-loader'
+  | 'iter4-karte';
 
 interface PreviewSpec {
   label: string;
@@ -20,6 +30,44 @@ interface PreviewSpec {
 }
 
 const MATERIALS: readonly Material[] = ['jelly', 'liquid', 'gas', 'fire'];
+
+/** A timed run of catalogue sounds: [seconds, id, params]. */
+export type SfxRun = ReadonlyArray<readonly [number, SfxId, SfxParams]>;
+
+/**
+ * Iteration 4, loader: two blobs fall and splat, the logo stamps in, the digits clack, the flame catches, a gull
+ * flies past and calls. The same run plays in the Audio-Lab ("Loader-Ablauf") and renders as `iter4-loader`.
+ */
+export const ITER4_LOADER: SfxRun = [
+  [0.2, 'dropFall', { dur: 0.5 }],
+  [0.7, 'splat', {}],
+  [1.05, 'dropFall', { dur: 0.4, pan: 0.3 }],
+  [1.45, 'splat', { kind: 'big', pan: 0.3 }],
+  [2.1, 'stamp', { pan: -0.3 }],
+  [2.35, 'stamp', {}],
+  [2.6, 'stamp', { pan: 0.3 }],
+  [2.95, 'clack', { step: 0 }],
+  [3.1, 'clack', { step: 1 }],
+  [3.25, 'clack', { step: 2 }],
+  [3.4, 'clack', { step: 3 }],
+  [3.75, 'flameIgnite', {}],
+  [4.6, 'gullWings', { pan: -0.8, dir: 'right', dur: 1.4 }],
+  [4.9, 'gullCall', { kind: 'b', pan: -0.4, dir: 'right' }],
+];
+
+/** Iteration 4, map, collection and classic: hero landing, locked node, release, new creature, stars, gull laugh, classic end. */
+export const ITER4_KARTE: SfxRun = [
+  [0.3, 'heroLand', {}],
+  [0.9, 'locked', {}],
+  [1.6, 'creatureRelease', { pan: -0.2, dir: 'right' }],
+  [2.8, 'newCreature', {}],
+  [4.2, 'starPop', { step: 0 }],
+  [4.55, 'starPop', { step: 1 }],
+  [4.9, 'starPop', { step: 2 }],
+  [6.3, 'gullCall', { kind: 'laugh', pan: 0.5 }],
+  [7.4, 'gameOver', {}],
+  [9.6, 'newBest', {}],
+];
 
 /** A merge the way the board plays it (optional leap parts), `t` = impact. */
 function mergeAt(g: AudioGraph, t: number, p: SfxParams, style: 'splash' | 'leap' | 'coil' | 'stomp' = 'splash'): void {
@@ -147,6 +195,20 @@ export const PREVIEWS: Readonly<Record<PreviewId, PreviewSpec>> = {
       for (const [t, id, p] of at) playSfx(g, id, t, { zone, ...p });
     },
   },
+  'iter4-loader': {
+    label: 'Iteration 4 · Loader: Fallen, Flatsch, Stempel, Ziffern, Flamme, Möwe',
+    seconds: 7,
+    render: (g, zone) => {
+      for (const [t, id, p] of ITER4_LOADER) playSfx(g, id, t, { zone, ...p });
+    },
+  },
+  'iter4-karte': {
+    label: 'Iteration 4 · Karte, Setzkasten, Klassik: Landung, gesperrt, Aufbruch, neues Wesen, Sterne, Möwe lacht, Klassik',
+    seconds: 12,
+    render: (g, zone) => {
+      for (const [t, id, p] of ITER4_KARTE) playSfx(g, id, t, { zone, ...p });
+    },
+  },
 };
 
 export const PREVIEW_IDS = Object.keys(PREVIEWS) as PreviewId[];
@@ -221,15 +283,21 @@ export function encodeWav(buf: AudioBuffer): ArrayBuffer {
 export interface LevelStats {
   peakDb: number;
   rmsDb: number;
+  /** Loudest 100 ms window (RMS over both channels, 10 ms hop): the number the loudness policy (`TRIM_DB`) uses. */
+  maxRmsDb: number;
   clipped: number;
 }
 
-/** Peak / RMS (dBFS) of a rendered buffer, for the lab and the preview check. */
+const toDb = (x: number): number => (x > 0 ? Math.round(20 * Math.log10(x) * 10) / 10 : -120);
+
+/** Peak / RMS / loudest-100-ms RMS (dBFS) of a rendered buffer, for the lab, the preview check and the tests. */
 export function measure(buf: AudioBuffer): LevelStats {
   let peak = 0;
   let sum = 0;
   let clipped = 0;
   let count = 0;
+  const n = buf.length;
+  const energy = new Float64Array(n);
   for (let c = 0; c < buf.numberOfChannels; c++) {
     const d = buf.getChannelData(c);
     for (let i = 0; i < d.length; i++) {
@@ -237,11 +305,37 @@ export function measure(buf: AudioBuffer): LevelStats {
       if (a > peak) peak = a;
       if (a >= 0.999) clipped++;
       sum += a * a;
+      energy[i] = energy[i]! + a * a;
       count++;
     }
   }
-  const db = (x: number): number => (x > 0 ? Math.round(20 * Math.log10(x) * 10) / 10 : -120);
-  return { peakDb: db(peak), rmsDb: db(Math.sqrt(sum / Math.max(1, count))), clipped };
+  const win = Math.max(1, Math.round(buf.sampleRate * 0.1));
+  const hop = Math.max(1, Math.round(buf.sampleRate * 0.01));
+  let best = 0;
+  let acc = 0;
+  for (let i = 0; i < Math.min(win, n); i++) acc += energy[i]!;
+  best = acc;
+  for (let start = 0; start + win < n; start += hop) {
+    // slide the window by `hop` frames
+    for (let i = start; i < start + hop && i + win < n; i++) acc += energy[i + win]! - energy[i]!;
+    if (acc > best) best = acc;
+  }
+  const chans = Math.max(1, buf.numberOfChannels);
+  return { peakDb: toDb(peak), rmsDb: toDb(Math.sqrt(sum / Math.max(1, count))), maxRmsDb: toDb(Math.sqrt(Math.max(0, best) / (Math.min(win, n) * chans))), clipped };
+}
+
+/**
+ * One sound alone through the default mix, offline (starts at 0.1 s; `seconds` long): the level check behind the
+ * loudness policy (`TRIM_DB`, `EXTRA_TRIM_DB`), the lab's level table and the unit tests. Deterministic per `seed`.
+ */
+export async function renderSfx(id: SfxId, p: SfxParams = {}, seconds = 3, seed = 42, sampleRate = 44100): Promise<AudioBuffer> {
+  const { ctx, g } = offlineGraph(seconds, sampleRate, seed);
+  playSfx(g, id, 0.1, p);
+  return ctx.startRendering();
+}
+
+export async function sfxLevel(id: SfxId, p: SfxParams = {}, seconds = 3, seed = 42): Promise<LevelStats> {
+  return measure(await renderSfx(id, p, seconds, seed));
 }
 
 export interface BenchResult {

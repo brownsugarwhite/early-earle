@@ -140,6 +140,11 @@ export interface WorldPalette extends ZonePalette {
   rock?: string[];
   /** Schneefelder (≤ 8): 0 Schatten (gesättigtes Blau), 1.. Lichtstufen bis Creme. Fehlt → keine eigene Schneezeile. */
   snow?: string[];
+  /**
+   * Farbe der feinen Bodenlinien (Perspektivstrahlen des Juwelenwalds, Ebene 3/32: helle, feine Linien auf dunklem
+   * Grund). Liegt in der freien Stufe 6 der Terrainzeile. Fehlt → Linien in einer Terrainstufe.
+   */
+  groundLine?: string;
 }
 
 /** Tjorizo (aus dem Plan und Florians Draft): Neongrün-Himmel, Khaki-Hügel, olive Tinte. */
@@ -193,6 +198,12 @@ export function addZonePalette(atlas: PaletteAtlas, zone: ZonePalette, prefix = 
  */
 export function addWorldPalette(atlas: PaletteAtlas, world: WorldPalette, prefix: string, need: { water?: boolean; rock?: boolean } = {}): WorldRows {
   const base = addZonePalette(atlas, world, prefix);
+  if (world.groundLine) {
+    // Terrainzeile mit Linienfarbe in Stufe 6 (Tinte, 5 Lichtstufen, Linie); die Lichtbänder lesen höchstens Stufe 5
+    const t = world.terrain;
+    const five = [0, 1, 2, 3, 4].map((i) => t[Math.min(i, t.length - 1)] ?? world.ink);
+    atlas.addRow({ name: `${prefix}/terrain`, steps: [world.ink, ...five, world.groundLine] });
+  }
   const canopyRows = [base.canopy];
   (world.canopyVariants ?? []).forEach((steps, i) => canopyRows.push(atlas.addRow({ name: `${prefix}/canopy${i + 1}`, steps: [world.ink, ...steps] })));
   const accent = atlas.addRow({ name: `${prefix}/accent`, steps: world.accent.slice(0, 8) });

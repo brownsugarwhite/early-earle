@@ -10,12 +10,12 @@
   "sources": ["07.webp", "Ebene_16.jpg", "Ebene_23.jpg", "Ebene_12.jpg", "Ebene_38.jpg", "Ebene_42.jpg", "Ebene_43.jpg"],
   "palette": {
     "ink": "#060a1c",
-    "terrain": ["#0f1c3e", "#173064", "#204a8a", "#2e6aa8", "#4a90c0"],
+    "terrain": ["#0a1640", "#10286a", "#163e96", "#1d56be", "#2c74de"],
     "canopy": ["#143c3e", "#1f5448", "#2f6e58", "#6aae88", "#c4e8b8", "#e6f2a8", "#8fdcec"],
-    "sky": ["#dcf6f4", "#a0e0ea", "#5fc0d8", "#2f90c0", "#1a5a9a", "#0d2f6a"],
+    "sky": ["#f2fdff", "#9ee4f6", "#3a9ee2", "#175cc0", "#0c388c", "#061a52"],
     "sun": "#f4fbff",
     "sunRing": "#c8f0f6",
-    "fog": ["#0d2f6a", "#0b1d45", "#09173a", "#08132f", "#071027", "#060d20"],
+    "fog": ["#0d2f6a", "#0a1c46", "#10306e", "#18428a", "#2058a6", "#2a6cbe"],
     "fogAlpha": [0, 0.3, 0.5, 0.66, 0.8, 0.9],
     "accent": ["#cdf2ff", "#4f9fe0", "#1a5a9a", "#e8f4ff", "#5fb0a0", "#c8e8d8", "#2de5f8", "#15afd1"],
     "rock": ["#050a18", "#0f2240", "#1c3f6a", "#2f6a94", "#58a0bc", "#b8e04a", "#7fc8e0", "#d8f070"],
@@ -52,7 +52,8 @@
     "rivers": { "count": 1, "width": [1.4, 2.0], "length": [14, 22], "meander": 0.7, "focusDistance": [2, 10] },
     "lakes": { "count": 1, "radius": [2.4, 3.2], "stretch": 0.8 }
   },
-  "fogStripes": 0.25,
+  "fogStripes": 0,
+  "skyGlow": 0.9,
   "fog": { "start": 5, "range": 11 },
   "view": {
     "height": 7.5,

@@ -12,6 +12,8 @@ struct HudTop: Equatable {
     var title: String = ""
     var subtitle: String = ""
     var moves: String = ""
+    /// Caption under the big number; empty = "ZÜGE" (the classic mode sends "PUNKTE").
+    var movesLabel: String = ""
     var goals: [HudGoal] = []
 }
 
@@ -71,6 +73,7 @@ enum HudParser {
         t.title = string(d["title"]) ?? ""
         t.subtitle = string(d["subtitle"]) ?? ""
         t.moves = string(d["moves"]) ?? ""
+        t.movesLabel = string(d["movesLabel"]) ?? ""
         if let goals = d["goals"] as? [Any] {
             t.goals = goals.compactMap { g in
                 if let s = g as? String { return HudGoal(text: s, done: false) }

@@ -296,7 +296,8 @@ export class SunRig implements ShadowFactorSource {
    * Schattentönung je Welt (Haken für die Material-Besitzer, z. B. blaue Schatten auf Schnee): siehe `ShadowTint`.
    * Überlebt Neubauten des Lichts (reine Uniforms).
    */
-  readonly shadowTint = new ShadowTint(16);
+  /** Tönungen je Welt bzw. Welt-Slot (die Ebene belegt bis zu 24 Slots, ADR 0002). */
+  readonly shadowTint = new ShadowTint(32);
   /** Tiefe je Schattentexel (normalisiert), aus fitShadow; Basis des steigungsabhängigen Bias (alter Filter). */
   readonly depthPerTexel = uniform(0.0005);
   /** Zähler der gerenderten Schattenpässe (zur Kontrolle "nicht im Leerlauf"). */

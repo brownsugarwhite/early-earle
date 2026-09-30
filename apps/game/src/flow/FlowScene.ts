@@ -1003,7 +1003,7 @@ export class FlowScene implements SceneController {
     const zone = stage.world < WORLD_CONTENTS.length ? WORLD_CONTENTS[stage.world]?.zone : undefined;
     const lm = world.layout.node(index).landmark;
     // Auf einem Wahrzeichen: das Plateau ist aus seinem Gipfel geschnitten (Moos auf Basalt, Steinplatten, Sumpfinsel)
-    board.setSite(lm ? landmarkPlateauStyle(lm.anchor.site, landmarkPaletteFromWorld(data.palette)) : plateauStyleFor(stage.site, data.palette, zone), index);
+    board.setSite(lm ? landmarkPlateauStyle(lm.anchor.site, landmarkPaletteFromWorld(data.palette)) : plateauStyleFor(stage.site, data.palette, zone, data.shadowTint ?? null), index);
     if (stage.terrain) {
       board.setTerrain(stage.terrain[0], stage.terrain[1]);
     } else {

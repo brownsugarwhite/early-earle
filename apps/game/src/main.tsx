@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
+import { earleGradients, setGradientAmount } from '@ee/render';
 import { App } from './App';
 import './styles/fonts.css';
 import './styles/tokens.css';
@@ -20,6 +21,12 @@ if (tour.length && location.pathname === '/') {
       dispatchEvent(new PopStateEvent('popstate'));
     }, Number(import.meta.env.VITE_START_TOUR_MS) || 15000);
 }
+
+// Earle-Verläufe vergleichen: ?verlauf=0 zeigt die alten harten Siebdruckstufen, 1 (Standard) die Verläufe.
+const verlauf = new URLSearchParams(location.search).get('verlauf');
+if (verlauf !== null && verlauf !== '' && Number.isFinite(Number(verlauf))) setGradientAmount(Number(verlauf));
+// Dev hook for scripted A/B checks (surface, air, dither separately): window.__earleGradients
+if (import.meta.env.DEV) (window as unknown as { __earleGradients?: typeof earleGradients }).__earleGradients = earleGradients;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

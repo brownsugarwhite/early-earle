@@ -45,6 +45,28 @@ export function setCreatureRules(r: unknown): void {
 
 const cache = new Map<string, CreatureGuess>();
 
+/** Wahl des Aussehens wie der Brett-Hook `creatureFor` (Klassik: bestes gesammeltes Wesen je Stufe). */
+export interface GuessChoice {
+  zone: string;
+  seed: number;
+  /** Erzwungene Art (sonst würfelt das Genom sie aus dem Seed). */
+  species?: string;
+  /** Aussehen einer anderen Stufe (über 12 gekappt). */
+  tier?: number;
+}
+
+type ChoiceFn = (blob: { id: number; tier: number }) => GuessChoice | null | undefined;
+let choiceFor: ChoiceFn | null = null;
+
+/**
+ * Setzt (oder entfernt mit `null`) eine Wesenwahl, die das Brett gerade verwendet (Klassik setzt dieselbe Funktion
+ * als `BoardRenderer.defaultHooks.creatureFor`): Merge-Zeitpunkte und Schritte passen dann zum Brett.
+ */
+export function setCreatureChoice(fn: ChoiceFn | null): void {
+  choiceFor = fn;
+  cache.clear();
+}
+
 interface CoatRule {
   fur: number;
   feather: number;
@@ -52,18 +74,24 @@ interface CoatRule {
 
 /**
  * Archetype and coat of blob `id` (tier, kind, material) on a board of zone `zone`. Amoebas and every blob
- * before the rules load are plain blobs.
+ * before the rules load are plain blobs. With a creature choice set (`setCreatureChoice`) its zone, seed, tier and
+ * species decide, exactly like on the board.
  */
 export function guessCreature(zone: string, tier: number, id: number, kind: string, material: Material): CreatureGuess {
   if (!rules || kind === 'amoeba') return BLOB_GUESS;
-  const key = `${zone}|${tier}|${id}|${material}`;
+  const choice = choiceFor ? (choiceFor({ id, tier }) ?? null) : null;
+  const z = choice?.zone ?? zone;
+  const t = choice?.tier ?? tier;
+  const seed = choice?.seed ?? id * 31 + 7;
+  const forced = choice?.species;
+  const key = `${z}|${t}|${seed}|${forced ?? ''}|${material}`;
   const hit = cache.get(key);
   if (hit) return hit;
   let guess = BLOB_GUESS;
   try {
-    const seed = id * 31 + 7;
     const bodyTypeForTier = fn('bodyTypeForTier');
-    const body = (bodyTypeForTier ? bodyTypeForTier(rules, zone, tier, seed) : 'blob') as BodyKind;
+    const speciesBody = lib['SPECIES_BODY'] as Record<string, string> | undefined;
+    const body = (forced && speciesBody?.[forced] ? speciesBody[forced] : bodyTypeForTier ? bodyTypeForTier(rules, z, t, seed) : 'blob') as BodyKind;
     let coat: Coat = 'bare';
     const speciesForLine = fn('speciesForLine');
     const speciesRuleFor = fn('speciesRuleFor');
@@ -71,12 +99,12 @@ export function guessCreature(zone: string, tier: number, id: number, kind: stri
     const makeRng = fn('makeRng');
     const hash32 = fn('hash32');
     if (body !== 'blob' && speciesForLine && speciesRuleFor && bodyRuleFor && makeRng && hash32) {
-      const u = (makeRng(hash32('species', zone, seed, body)) as { next: () => number }).next();
-      const species = speciesForLine(rules, body, u) as string;
+      const u = (makeRng(hash32('species', z, seed, body)) as { next: () => number }).next();
+      const species = forced ?? (speciesForLine(rules, body, u) as string);
       const sr = speciesRuleFor(rules, species) as { coat?: CoatRule };
-      const br = bodyRuleFor(rules, zone, body) as { coat: CoatRule };
+      const br = bodyRuleFor(rules, z, body) as { coat: CoatRule };
       const c = sr.coat ?? br.coat;
-      const v = (makeRng(hash32('skin', zone, seed, body)) as { next: () => number }).next();
+      const v = (makeRng(hash32('skin', z, seed, body)) as { next: () => number }).next();
       coat = v < c.fur ? 'fur' : v < c.fur + c.feather ? 'feather' : 'bare';
     }
     if (material === 'fire') coat = 'bare';

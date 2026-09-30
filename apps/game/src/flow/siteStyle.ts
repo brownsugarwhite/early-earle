@@ -11,7 +11,13 @@ import type { NodeSite } from './path';
  * water), the crown of the giant tree a flattened dome with dotted skin among crown puffs, snow a drift with pines.
  * `palette` = the local world's palette (authored or procedural), `zone` its story zone (syrup shores).
  */
-export function plateauStyleFor(site: NodeSite, palette: WorldPalette, zone?: string): PlateauStyle {
+export function plateauStyleFor(site: NodeSite, palette: WorldPalette, zone?: string, tint?: { color: string; amount: number } | null): PlateauStyle {
+  const style = siteStyleFor(site, palette, zone);
+  // The plateau's shade takes the world's shadow tint like the ground around it (blue shadows on snow, image 05)
+  return tint ? { ...style, shade: mixHex(style.shade, tint.color, tint.amount) } : style;
+}
+
+function siteStyleFor(site: NodeSite, palette: WorldPalette, zone?: string): PlateauStyle {
   const p = palette;
   const t = p.terrain;
   const t0 = t[0] ?? '#303020';

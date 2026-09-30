@@ -231,6 +231,8 @@ export class EarleLabScene implements SceneController {
       path: { clearNode: 2.0, clearPath: 0.8, keepGround: [treeFirst - 1, treeLast + 1] },
       loadsPerFrame: 2,
       shadow: { factor: (q, o) => this.sun.shadowFactor(q, o) },
+      // Schattentönung je Welt (blaue Schatten auf Schnee …) aus den Weltdateien
+      shadowTint: this.sun.shadowTint,
     });
     this.world = world;
     this.scene.add(world.group);
@@ -261,6 +263,7 @@ export class EarleLabScene implements SceneController {
       skyRowB: world.skyRowB,
       skyMix: world.skyMix,
       horizonY: this.skyHorizon,
+      glow: world.skyGlow,
     });
     this.camera.add(sky);
     this.disposables.push(sky.geometry, sky.material as { dispose(): void }, { dispose: () => sky.removeFromParent() });
@@ -295,7 +298,7 @@ export class EarleLabScene implements SceneController {
     this.nodePath = new NodePath({
       planet: world,
       layout,
-      palette: planetPathPalette(world),
+      palette: planetPathPalette(world, this.sun.shadowTint),
       external: (i) => layout.isTreeNode(i),
       sunDirWorld: this.sun.directionWorld(new Vector3()),
       onProgress: (cur, done) => site?.setPathState(cur, done),

@@ -157,6 +157,8 @@ export class MapWorld {
       loadsPerFrame: 2,
       // Schatten v3: Kronenpunkte skalieren mit dem glatten Schattenwert aus 0 (`?dotshadow=0` = alter Vergleich)
       shadow: { factor: typeof location !== 'undefined' && location.search.includes('dotshadow=0') ? null : (p, o) => this.sun.shadowFactor(p, o) },
+      // Schattentönung je Welt (blaue Schatten auf Schnee …) aus den Weltdateien
+      shadowTint: this.sun.shadowTint,
     });
     this.world.vegetation.setNearClear(MAP_VIEW.nearClear);
     this.world.setFootClear(MAP_VIEW.footClear);
@@ -186,6 +188,7 @@ export class MapWorld {
       skyRowB: this.world.skyRowB,
       skyMix: this.world.skyMix,
       horizonY: this.skyHorizon,
+      glow: this.world.skyGlow,
     });
     this.camera.add(sky);
     this.disposables.push(sky.geometry, sky.material as { dispose(): void });
@@ -209,7 +212,7 @@ export class MapWorld {
    * flowers and pedestals take each world's ink, jewel accent, rock, scrap, sand and water.
    */
   pathPalette(): PathPalette {
-    return planetPathPalette(this.world);
+    return planetPathPalette(this.world, this.sun.shadowTint);
   }
 
   /** Direction to the sun in world space (unit). */
@@ -596,13 +599,14 @@ export function tangentFrame(normal: Vector3, forwardHint: Vector3, out: Matrix4
   return out.makeBasis(right, up, fwd);
 }
 
-/** Palette context of the path visuals on the infinite world (see `MapWorld.pathPalette`). */
-export function planetPathPalette(world: EarlePlanet): PathPalette {
+/** Palette context of the path visuals on the infinite world (see `MapWorld.pathPalette`); `shadowTint` tints the stones' shadows per world slot. */
+export function planetPathPalette(world: EarlePlanet, shadowTint: PathPalette['shadowTint'] = null): PathPalette {
   return {
     lookup: world.lookup,
     fog: world.fog,
     bands: world.terrainBands,
     terrainRow: (w) => world.rowsOfWorld(w).terrain,
     colors: (w) => worldPathColors(world.worldData(w).palette, world.worldData(w).id),
+    shadowTint,
   };
 }

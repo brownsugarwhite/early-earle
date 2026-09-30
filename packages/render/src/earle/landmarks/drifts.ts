@@ -1,7 +1,8 @@
 import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
-import { attribute, float, floor, fract, hash, max, mix, positionGeometry, positionLocal, positionView, select, smoothstep, step, vec2, vec3 } from 'three/tsl';
+import { attribute, float, floor, fract, hash, max, mix, modelViewMatrix, normalize, positionGeometry, positionLocal, positionView, select, smoothstep, step, vec2, vec3, vec4 } from 'three/tsl';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
+import type { ShadowTint } from '../../shadow/shadowTint';
 
 /**
  * Einheits-Schneewehe (Radius 1, Höhe ≈ 0.42): flacher, unregelmäßiger Hügel mit langem Schweif auf einer Seite
@@ -90,6 +91,8 @@ export interface DriftOptions {
   growth?: (slot: FloatNode) => FloatNode;
   /** Lichtung unter der Kamera (wie Bäume, Felsen, Scheunen): `camLocal` im Objektraum, `radius` 0 = aus. */
   footClear?: { camLocal: { value: Vector3 } & Vec3Node; radius: TSLUniform };
+  /** Schattentönung je Welt-Slot (wie das Gelände: Wehen im Schatten blau/grau statt Tinte). */
+  shadowTint?: ShadowTint | null;
 }
 
 export interface DriftPlacement {
@@ -143,6 +146,9 @@ export class DriftLandmarks {
       positionNode: o.warp(o.footClear ? driftSink(o.footClear.camLocal, o.footClear.radius) : positionLocal),
       fogDistNode: positionView.length().add(o.veil(world)),
       growthNode: o.growth ? o.growth(inst.z) : null,
+      // Verlauf im Schatten wie das Gelände darunter (Ebene: die Hochachse, ADR 0002): die Wehe verschmilzt mit seinem
+      // Schatten; `world` ist der Welt-Slot (die Tönungen liegen je Slot)
+      shadowTint: o.shadowTint ? { tint: o.shadowTint, world, up: normalize(modelViewMatrix.mul(vec4(0, 1, 0, 0)).xyz) as unknown as Vec3Node } : null,
     });
     const mesh = new InstancedMesh(this.geometry, this.material, o.capacity);
     mesh.name = 'planet-drifts';

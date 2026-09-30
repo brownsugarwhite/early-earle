@@ -12,16 +12,17 @@
   "palette": {
     "ink": "#07060f",
     "terrain": ["#0c0b16", "#141328", "#1c1a38", "#262448", "#303060"],
+    "groundLine": "#8c96c8",
     "canopy": ["#4a2aa8", "#6a3ad8", "#7a1f86", "#9a7af0", "#c8b0ff", "#d8c8ff", "#b8a0ff"],
     "canopyVariants": [
       ["#b01828", "#e0283a", "#b4162c", "#ff7060", "#ffa890", "#ffc8b8", "#ff9080"],
       ["#2038b8", "#3a60e8", "#5a2aa0", "#70a8ff", "#a8ccff", "#c8e0ff", "#90b8ff"],
       ["#0e7070", "#18a098", "#1a6a70", "#50e0c8", "#90f0e0", "#c0fff4", "#80e8d8"]
     ],
-    "sky": ["#f4e8c4", "#ecdcaa", "#e0cf9a", "#d3c48f", "#c4b888", "#b2a980"],
+    "sky": ["#f7efd6", "#efe3c0", "#e2d6ba", "#cbc2b8", "#aea6b6", "#9088aa"],
     "sun": "#fff4d0",
     "sunRing": "#f8ecc8",
-    "fog": ["#b2a980", "#8a8470", "#b2a980", "#c8bc90", "#dccfa0", "#ecdcaa"],
+    "fog": ["#9c95a8", "#6e6878", "#a19aa6", "#bdb4b4", "#d6ccbe", "#ece0c6"],
     "fogAlpha": [0, 0.18, 0.32, 0.46, 0.6, 0.74],
     "accent": ["#f4ecd2", "#2030c0", "#7030c0", "#a8d8f0", "#20a060", "#d02020", "#f0e040", "#5ff0ff"]
   },
@@ -52,7 +53,8 @@
   },
   "props": {},
   "fogStripes": 0,
-  "fog": { "start": 6, "range": 12 },
+  "skyGlow": 0.45,
+  "fog": { "start": 8, "range": 16 },
   "view": {
     "height": 5.5,
     "forward": 9,

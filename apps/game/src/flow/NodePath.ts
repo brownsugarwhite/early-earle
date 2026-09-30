@@ -51,7 +51,7 @@ import {
   vec3,
   vec4,
 } from 'three/tsl';
-import { BoardSurfaceMaterial, EarleMaterial, hexNode, type FogSettings, type PaletteLookup, type TSLUniform } from '@ee/render';
+import { BoardSurfaceMaterial, EarleMaterial, earleGradients, hexNode, slotOfRow, type FogSettings, type PaletteLookup, type SunRig, type TSLUniform } from '@ee/render';
 import type { Vec3 } from '@ee/world';
 import type { NodeSite, PathLayout, PathWindow, RibbonSample } from './path';
 
@@ -115,6 +115,8 @@ export interface PathPalette {
   /** Terrain palette row of an Earle world (the world's slot; stays valid while the path pins it). */
   terrainRow(world: number): number;
   colors(world: number): PathWorldColors;
+  /** Per-world shadow tint of the map (the ribbon's shadows match the ground it lies on, e.g. blue on snow). */
+  shadowTint?: SunRig['shadowTint'] | null;
 }
 
 /**
@@ -642,6 +644,7 @@ export class NodePath {
       geo.setAttribute('rRow', staticAttr(verts, 1));
       geo.setAttribute('rH', staticAttr(verts, 1));
       geo.setAttribute('rSeg', staticAttr(verts, 1));
+      geo.setAttribute('rWx', staticAttr(verts, 2));
       const index = new BufferAttribute(new Uint32Array(RIBBON_CAP * 12), 1);
       index.setUsage(StaticDrawUsage);
       geo.setIndex(index);
@@ -652,6 +655,10 @@ export class NodePath {
       const inCeleb = step(celeb.y, rSeg).mul(step(rSeg, celeb.y.add(0.999)));
       const passed = step(celeb.x.add(rSeg.sub(celeb.y).mul(celeb.w)), t);
       const walked = smoothstep(0.0, 0.25, done.sub(rSeg)).mul(mix(float(1), passed, inCeleb));
+      const rWx = attribute('rWx', 'vec2');
+      // Earle's sunlit field (Ebene 36): a soft crown across the ribbon — the middle a touch lighter than its edges
+      const across = float(1).sub(rWx.y.abs()).mul(0.12).sub(0.06).mul(earleGradients.surface);
+      const tint = palette.shadowTint ?? null;
       const mat = new EarleMaterial({
         lookup: palette.lookup,
         row: 0,
@@ -661,7 +668,10 @@ export class NodePath {
         bandScale: 2.0,
         terminator: 0.02,
         // One to two value steps above the ground it lies on: a sunlit field between the dark masses.
-        lift: (attribute('rH', 'float') as unknown as FloatNode).mul(0.45).add(0.78),
+        lift: (attribute('rH', 'float') as unknown as FloatNode).mul(0.45).add(0.78).add(across),
+        // shadow gradient led by the plane's up (the ground under it lights the same way, ADR 0002): one shadow shape;
+        // the tint table is per world slot (rWx.x)
+        shadowTint: tint ? { tint, world: rWx.x as unknown as FloatNode, up: normalize(modelViewMatrix.mul(vec4(0, 1, 0, 0)).xyz) as unknown as Vec3Node } : null,
         growthNode: mix(float(0.78), float(1), walked),
         positionNode: place(positionLocal as unknown as Vec3Node, NUDGE_RIBBON),
       });
@@ -849,6 +859,8 @@ export class NodePath {
     const row = g.getAttribute('rRow') as BufferAttribute;
     const hgt = g.getAttribute('rH') as BufferAttribute;
     const seg = g.getAttribute('rSeg') as BufferAttribute;
+    // (world slot, across −1 left … 0 centre … 1 right): shadow tint per world slot, a soft crown across the ribbon
+    const wx = g.getAttribute('rWx') as BufferAttribute;
     const index = g.getIndex()!;
     let base = 0;
     let o = 0;
@@ -869,6 +881,7 @@ export class NodePath {
           row.setX(v, rr);
           hgt.setX(v, r.heightNorm);
           seg.setX(v, r.seg + Math.min(0.999, r.u));
+          wx.setXY(v, slotOfRow(rr), c - 1);
         }
       }
       for (let j = 0; j < n - 1; j++) {
@@ -888,7 +901,7 @@ export class NodePath {
       base += n;
     }
     const verts = base * cols;
-    for (const a of [pos, nrm, row, hgt, seg]) commit(a, verts);
+    for (const a of [pos, nrm, row, hgt, seg, wx]) commit(a, verts);
     commit(index, o);
     g.setDrawRange(0, o);
     this.ribbon!.visible = o > 0;
