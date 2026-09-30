@@ -1,6 +1,7 @@
 import { Box3, CircleGeometry, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Quaternion, Vector3 } from 'three/webgpu';
 import type { Dir, LevelState } from '@ee/core';
 import type { SceneController, SceneContext } from '../canvas/SceneController';
+import type { BootReport } from '../boot/bootProgress';
 import { FLOW_LEVELS } from './levels';
 import { useProgress } from '../state/progress';
 import { useGridStore } from '../lab/grid/gridStore';
@@ -8,7 +9,7 @@ import { rexIntroFor, rexLine } from '../lab/grid/rex';
 import { Trackball } from '../lab/earle/trackball';
 import rexUrl from '../../../../assets/ref-florian/07-illudiy-logo-rex.png';
 import { useFlowStore, type FlowPhase, type FlowRequest } from './flowStore';
-import { MAP_VIEW, MAP_VIEW_PORTRAIT, MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
+import { INK_BACKGROUND, MAP_VIEW, MAP_VIEW_PORTRAIT, MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
 import type { NodeSite, PathLayout, PathNode } from './path';
 import { plateauStyleFor } from './siteStyle';
 import { NodePath } from './NodePath';
@@ -47,10 +48,15 @@ const HERO_MAP_SCALE = 0.48;
  * fungus it sits like a blob on a bracket, on the crown's flower stones a little larger (the crown camera is further).
  */
 const HERO_TREE_SCALE: Record<'root' | 'bark' | 'limb' | 'dome', number> = { root: 0.72, bark: 0.66, limb: 0.72, dome: 0.88 };
+/** 3D hero size at the splash dot relative to the SVG blob's equal-area radius (measured side by side, ≈ same width). */
+const HERO_DOT_FIT = 0.9;
 /** Depth (in front of the camera) at which the hero floats as the splash i-dot. */
 const SPLASH_DEPTH = 4;
-/** Interior colour of the splash "i" (#003f4e): the backing disc behind the hero in the mask hole. */
-const SPLASH_INTERIOR = '#003f4e';
+/**
+ * Backing disc behind the hero in the splash mask hole: the splash ink — at the hand-off the splash has already
+ * taken the i apart (panel gone), so the hole sits on the plain background.
+ */
+const SPLASH_INTERIOR = INK_BACKGROUND;
 /** Overlay fade (must match `.splash` transition in flow.css). */
 const T_SPLASH_FADE = 0.55;
 /** NDC y of the current node in the map view (lower third). */
@@ -146,6 +152,8 @@ export class FlowScene implements SceneController {
    */
   private shadowFocus = false;
   private readonly shadowBox = new Box3();
+  /** Board pipeline warm-up started in `mount` (WebGPU), awaited by `warm` for the boot progress. */
+  private boardWarm: Promise<void> | null = null;
 
   constructor(readonly options: FlowSceneOptions) {}
 
@@ -227,10 +235,46 @@ export class FlowScene implements SceneController {
     // program links would stall the first seconds instead.
     if (this.phase !== 'level' && ctx.backend === 'webgpu') {
       const board = this.board;
-      void board.warmup(demoState(), async (root) => {
+      this.boardWarm = board.warmup(demoState(), async (root) => {
         await ctx.renderer.compileAsync(root, world.camera, world.scene);
       });
     }
+  }
+
+  /**
+   * Boot progress (splash loader): creatures, board pipelines, the map's chunks (map pose while the splash covers the
+   * canvas, until the loaded count holds for 10 frames), the map's shaders (WebGPU, with progress), back to the splash.
+   */
+  async warm(report: BootReport): Promise<void> {
+    const ctx = this.ctx;
+    const world = this.world;
+    const board = this.board;
+    if (!ctx || !world || !board) return;
+    const frame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+    const limit = <T>(p: Promise<T> | null, ms: number) => Promise.race([p, new Promise<void>((r) => setTimeout(r, ms))]);
+    await limit(board.creaturesReady, 10000);
+    report('creatures', 1);
+    await limit(this.boardWarm, 10000);
+    report('board', 1);
+    const splash = this.phase === 'splash';
+    const saved = this.currentPose();
+    if (splash) this.applyPose(this.mapPose());
+    // Chunks: bis die geladene Zahl 10 Bilder lang steht (höchstens 6 s)
+    const until = performance.now() + 6000;
+    for (let last = -1, stable = 0; stable < 10 && performance.now() < until && this.world; ) {
+      await frame();
+      const n = world.world.loadedCount;
+      stable = n === last ? stable + 1 : 0;
+      last = n;
+      report('chunks', Math.min(0.95, stable / 10));
+    }
+    report('chunks', 1);
+    if (ctx.backend === 'webgpu' && this.world) {
+      const compile = ctx.renderer.compileAsync as (s: unknown, c: unknown, t: unknown, p: (e: { loaded: number; total: number }) => void) => Promise<void>;
+      await limit(compile.call(ctx.renderer, world.scene, world.camera, world.scene, (e) => report('mapShaders', e.loaded / Math.max(1, e.total))), 12000);
+    }
+    report('mapShaders', 1);
+    if (splash && this.phase === 'splash' && this.world) this.applyPose(saved);
   }
 
   resize(ctx: SceneContext): void {
@@ -979,9 +1023,10 @@ export class FlowScene implements SceneController {
     cam.localToWorld(center);
     world.planet.updateWorldMatrix(true, false);
     world.planet.worldToLocal(center);
-    // Baked dot radius → world radius at depth d; the body's visual radius ≈ 1 blob unit.
+    // Dot radius → world radius at depth d; the body's visual radius ≈ 1 blob unit. Tuned against the SVG blob of the
+    // splash (equal-area radius of Florian's drawing): the 3D body appears as wide as the drawn one at the hand-off.
     const tanHalf = Math.tan((cam.fov * Math.PI) / 360);
-    const rWorld = (dot.rPx * 1.1 * 2 * d * tanHalf) / ctx.height;
+    const rWorld = (dot.rPx * HERO_DOT_FIT * 2 * d * tanHalf) / ctx.height;
     cam.getWorldQuaternion(_q);
     const planetQ = world.planet.getWorldQuaternion(new Quaternion()).invert();
     hero.setCentered(center, planetQ.multiply(_q), Math.max(0.03, rWorld / 1.05));
@@ -1334,11 +1379,7 @@ export class FlowScene implements SceneController {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) return;
-      if (this.phase === 'splash') {
-        e.preventDefault();
-        useFlowStore.getState().request('hop');
-        return;
-      }
+      // The splash owns its keys (Enter/Space on "Tippen", src/splash/SplashStage.ts).
       if (this.phase === 'map' && (e.key === 'Enter' || e.key === ' ')) {
         e.preventDefault();
         useFlowStore.getState().request('flyIn');

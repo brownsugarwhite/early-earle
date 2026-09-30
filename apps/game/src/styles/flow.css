@@ -6,27 +6,17 @@
 .flow-root .canvas-host { position: absolute; inset: 0; }
 .flow-root canvas { touch-action: none; }
 
-/* ---------- splash ---------- */
-.splash {
-  position: absolute; inset: 0; z-index: 20;
-  background: #081b25;
-  display: grid; place-items: center;
-  cursor: pointer; user-select: none; -webkit-user-select: none;
-  transition: opacity 0.55s ease-out;
-  /* A circular hole over the baked i-dot (viewport px): the 3D hero renders through it, in front of a
-     backing disc in the same interior colour as the i. */
+/* ---------- splash ----------
+   Loader und Splash leben in #ee-splash außerhalb von #root (src/splash/markup.ts setzt das kritische CSS inline in
+   index.html). Hier: Ausblenden und das Maskenloch der Übergabe — der 3D-Held zeigt sich darin am i-Punkt, dahinter
+   rendert die Szene eine Scheibe im Splash-Ink (FlowScene). */
+#ee-splash { cursor: pointer; transition: opacity 0.55s ease-out; }
+#ee-splash[data-phase='loader'] { cursor: default; }
+#ee-splash[data-fading='true'] { opacity: 0; pointer-events: none; }
+#ee-splash[data-hole='true'] {
   -webkit-mask-image: radial-gradient(circle at var(--dot-x, 50%) var(--dot-y, 40%), transparent calc(var(--hole-r, 0px) - 0.5px), #000 calc(var(--hole-r, 0px) + 0.5px));
   mask-image: radial-gradient(circle at var(--dot-x, 50%) var(--dot-y, 40%), transparent calc(var(--hole-r, 0px) - 0.5px), #000 calc(var(--hole-r, 0px) + 0.5px));
 }
-.splash[data-fading='true'] { opacity: 0; pointer-events: none; }
-.splash-img { display: block; pointer-events: none; }
-.splash-hint {
-  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 28px);
-  text-align: center; font-family: var(--font-display); font-weight: 900; font-size: 13px; letter-spacing: 0.22em;
-  text-transform: uppercase; color: var(--paper); opacity: 0.55;
-  animation: splash-pulse 2.2s ease-in-out infinite;
-}
-@keyframes splash-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.75; } }
 .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---------- HUD ---------- */
