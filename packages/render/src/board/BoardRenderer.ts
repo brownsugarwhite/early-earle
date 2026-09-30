@@ -6,7 +6,8 @@ import { genomeFor, mixHex, type GenomeRules, type ZoneId } from '@ee/genome';
 import type { ModuleLibrary } from '../creature/index';
 import type { FloatNode } from '../earle/tsl';
 import { BoardBlobs, type BlobVisual, type CreatureMode } from './BoardBlobs';
-import type { BoardHooks } from './boardHooks';
+import type { BoardHooks, MadeCreature } from './boardHooks';
+import { BoardStamp } from './BoardStamp';
 import { BoardCells } from './BoardCells';
 import { BoardFx } from './boardFx';
 import { BoardGull } from './BoardGull';
@@ -66,6 +67,8 @@ function plateauHalf(w: number, h: number): { a: number; b: number } {
 /** Render layer of the blob shadow proxies (only the sun's shadow camera has it enabled) — same as the hero's. */
 export const BOARD_SHADOW_LAYER = 1;
 const ATTACHMENT_PREFIXES = ['crust:', 'zzz:', 'lid:', 'orbit:', 'core:', 'contact:'];
+/** "NEU!"-Stempel je Zug (Sammlung): mehr neue Wesen in einem Zug werden still eingetragen. */
+export const MAX_STAMPS_PER_MOVE = 2;
 /** Props the renderer plants itself (not part of the element set of a state). Splashes (`fx:`) remove themselves when
  * their tween ends — a settle must not cut a ripple mid-growth (the gull's drop settles 0.3 s after its impact). */
 const STATIC_PREFIXES = ['bush:', 'fx:'];
@@ -93,6 +96,8 @@ export interface Footprint {
 }
 
 const _q = new Quaternion();
+const _camQ = new Quaternion();
+const _liftInvQ = new Quaternion();
 const _inv = new Matrix4();
 
 /**
@@ -129,6 +134,9 @@ export class BoardRenderer {
   readonly fx: BoardFx;
   /** The gull that delivers spawns, seen only as its shadow (invisible caster on the shadow layer). */
   readonly gull: BoardGull;
+  /** "NEU!"-Stempel über neu erschaffenen Wesen (Sammlung). */
+  readonly stamps: BoardStamp;
+  private stampsThisMove = 0;
   readonly timeNode = uniform(0);
   /** Cells that healed in this level (keep the green look). */
   readonly healed = new Set<number>();
@@ -188,6 +196,9 @@ export class BoardRenderer {
     });
     this.fx = new BoardFx(this);
     this.gull = new BoardGull(this.tweens, options.shadowLayer ?? BOARD_SHADOW_LAYER);
+    // Aussehen je Blob: der App-Hook `creatureFor` (Klassik) darf es ersetzen; sonst Zone des Levels, Seed aus der ID.
+    this.blobs.chooser = (b) => this.hooks.creatureFor?.(b, this.blobs.zone) ?? null;
+    this.stamps = new BoardStamp({ ink: this.palette.ink, tag: this.palette.neon });
     // Footfalls of the walkers: a small dust puff per planted foot (heavier feet, bigger puffs).
     let puffs = 0;
     let puffT = -1;
@@ -203,7 +214,7 @@ export class BoardRenderer {
       const n = strength > 0.8 ? 4 : 2;
       this.particles.burst('spore', t, x, this.layout.top + 0.02, z, n, { up: 0.18 + 0.2 * strength, spread: 0.35 + 0.3 * strength, life: 0.45 + 0.2 * strength, size: 0.032 + 0.03 * strength, colors: [pal.soil, pal.paper, pal.soilDeep], seed: Math.floor(t * 997 + x * 131 + z * 71) });
     };
-    this.lift.add(this.plateau.group, this.cells.mesh, this.props.group, this.particles.group, this.blobs.group, this.labels.mesh, this.gull.group);
+    this.lift.add(this.plateau.group, this.cells.mesh, this.props.group, this.particles.group, this.blobs.group, this.labels.mesh, this.gull.group, this.stamps.group);
     // Part budget: the draws besides bodies and parts (plateau, plates, prop groups, tier labels).
     this.blobs.otherDrawCalls = () => 1 + (this.cells.cells.length > 0 ? 1 : 0) + this.props.groupsInUse + (this.labels.mesh.visible ? 1 : 0);
     this.timeline = new BoardTimeline(this);
@@ -399,6 +410,55 @@ export class BoardRenderer {
     this.blobs.setCreatures(library, rules, mode);
   }
 
+  /** Genom-Zone der Wesen (die des geladenen Levels; die Palette des Bretts bleibt die des Renderers). */
+  get creatureZone(): ZoneId {
+    return this.blobs.zone;
+  }
+
+  /** Wesen einer anderen Zone (`load` ruft es mit der Zone des Levels): Caches leeren, Arten im Hintergrund vorbereiten. */
+  setCreatureZone(zone: ZoneId): void {
+    this.blobs.setZone(zone);
+  }
+
+  /**
+   * Ein Wesen ist auf dem Brett entstanden (Merge-Wechsel, Spawn-Pop oder -Aufprall): fragt `hooks.isNewCreature`
+   * und stempelt "NEU!" darüber (höchstens `MAX_STAMPS_PER_MOVE` je Zug), dann `hooks.stampShown`. `blobId` = die ID
+   * des entstandenen Blobs (beim Merge die Ergebnis-ID; das Visual heißt bis zum Ende des Pops noch wie der Sitzende).
+   */
+  reportCreature(v: BlobVisual, via: 'merge' | 'spawn', blobId = v.id): void {
+    const hooks = this.hooks;
+    if (!hooks.isNewCreature) return;
+    const w = this.layout.w;
+    const h = this.layout.h;
+    const pitch = this.layout.pitch;
+    const cell: [number, number] = [Math.min(w - 1, Math.max(0, Math.round(v.x / pitch + (w - 1) / 2))), Math.min(h - 1, Math.max(0, Math.round(v.z / pitch + (h - 1) / 2)))];
+    const made: MadeCreature = {
+      blobId,
+      zone: v.look.zone,
+      tier: v.look.tier,
+      species: v.spec?.species ?? 'blob',
+      bodyType: v.spec?.bodyType ?? 'blob',
+      seed: v.look.seed,
+      via,
+      cell,
+    };
+    let isNew = false;
+    try {
+      isNew = hooks.isNewCreature(made);
+    } catch {
+      isNew = false;
+    }
+    if (!isNew || this.stampsThisMove >= MAX_STAMPS_PER_MOVE) return;
+    if (!this.stamps.show(v, this.now)) return;
+    this.stampsThisMove++;
+    this.kick(0.12);
+    try {
+      hooks.stampShown?.(made);
+    } catch {
+      /* Klang/Haptik dürfen das Brett nie aufhalten */
+    }
+  }
+
   /** Quality preset at runtime (Mobil: mesh bodies, one noise octave, leaner parts). */
   setQuality(mobile: boolean): void {
     this.blobs.setQuality(mobile);
@@ -427,7 +487,7 @@ export class BoardRenderer {
     if (!set) {
       set = collectElements(state, this.layout, this.palette, {
         healed: this.healed,
-        tierColor: (tier) => genomeFor(this.options.zone, tier, 1).baseColor,
+        tierColor: (tier) => genomeFor(this.creatureZone, tier, 1).baseColor,
       });
       this.desired.set(state, set);
     }
@@ -440,6 +500,9 @@ export class BoardRenderer {
     this.gull.reset();
     this.playing = 0;
     this.moveTag = null;
+    this.stamps.clear();
+    // Die Wesen sehen aus wie die Zone des Levels (Tjorizo 1–25, Syrup 26–50 …), vor Plan und Visuals.
+    this.setCreatureZone(state.level.zone);
     if (opts.keepHealed) {
       // Same level (rewind): cells that are withered again lose their green.
       for (const i of [...this.healed]) if ((state.floor[i] ?? 0) !== 0) this.healed.delete(i);
@@ -540,6 +603,7 @@ export class BoardRenderer {
     const tag = `move:${++this.moveCounter}`;
     this.moveTag = tag;
     this.playing++;
+    this.stampsThisMove = 0;
     // The next merge results (new blob ids) get their species meshes while this move plays.
     this.blobs.prepareLevel(finalState);
     this.timeline.play(
@@ -569,6 +633,7 @@ export class BoardRenderer {
     this.props.group.visible = show;
     this.particles.group.visible = show;
     this.labels.mesh.visible = show;
+    this.stamps.group.visible = show;
     this.blobs.mesh.visible = show;
     if (this.blobs.meshA) this.blobs.meshA.visible = show;
     if (this.blobs.meshBodies) this.blobs.meshBodies.group.visible = show;
@@ -676,6 +741,7 @@ export class BoardRenderer {
   playSink(keep: number | null = null): number {
     const tw = this.tweens;
     tw.cancel('appear');
+    this.stamps.clear();
     if (this.moveTag) this.tweens.finish(this.moveTag);
     let k = 0;
     for (const v of this.blobs.visuals.values()) {
@@ -854,14 +920,6 @@ export class BoardRenderer {
     this.onJuice?.(kind);
   }
 
-  /**
-   * A creature appeared on the board (merge swap, spawn pop, gull drop impact). Sammlung (B5): hook calls
-   * (`hooks.isNewCreature`, stamp) go here — no-op in this workstream; the gull's impact already calls it.
-   */
-  reportCreature(_v: BlobVisual, _via: 'merge' | 'spawn'): void {
-    // B5: Sammlung — "NEU!"-Stempel über `this.hooks`
-  }
-
   // ---------------------------------------------------------------- frame
 
   update(dt: number, camera: Camera): void {
@@ -943,6 +1001,7 @@ export class BoardRenderer {
       for (const g of this.goalLabels) this.labels.add(g.x, g.y, g.z, 0.3, labelIndexForTier(g.tier), 1, camLocal);
     }
     this.labels.end();
+    if (this.stamps.active > 0) this.stamps.update(now, camera.getWorldQuaternion(_camQ).premultiply(_liftInvQ.copy(_q).invert()));
     this.plateau.setTime(now);
   }
 
@@ -961,6 +1020,7 @@ export class BoardRenderer {
   dispose(): void {
     this.tweens.clear();
     this.gull.dispose();
+    this.stamps.dispose();
     this.blobs.dispose();
     this.labels.dispose();
     this.particles.dispose();

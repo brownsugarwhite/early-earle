@@ -5,6 +5,7 @@ import { useAppStore } from '../state/store';
 import { bus } from '../state/bus';
 import { governQuality, resetQualityGovernor } from './qualityGovernor';
 import { boot, isCanvasCovered } from '../boot/bootProgress';
+import { attachSceneOverlay, type OverlayHost } from './sceneOverlay';
 
 const MAX_DPR = 2;
 
@@ -25,6 +26,8 @@ export function CanvasHost({ controller }: { controller: SceneController }) {
     let frames = 0;
     let start = performance.now();
     let ro: ResizeObserver | null = null;
+    // Szenen-Overlay (Setzkasten): übernimmt Update und Zeichnen, die Basis bleibt montiert (sceneOverlay.ts).
+    let overlay: OverlayHost | null = null;
 
     function applySize(c: SceneContext) {
       const rect = host.getBoundingClientRect();
@@ -51,6 +54,7 @@ export function CanvasHost({ controller }: { controller: SceneController }) {
         if (!ctx) return;
         applySize(ctx);
         controller.resize?.(ctx);
+        overlay?.resize(ctx);
       });
       ro.observe(host);
       // Loader: Schrift da, dann bekommt der Stamm sein Ziel fürs Ende des (synchronen) Mounts
@@ -63,6 +67,7 @@ export function CanvasHost({ controller }: { controller: SceneController }) {
       boot.markSceneReady();
       if (controller.warm) void controller.warm(boot.report);
       else for (const s of ['creatures', 'board', 'chunks', 'mapShaders'] as const) boot.done(s);
+      overlay = attachSceneOverlay(ctx);
       start = performance.now();
       last = start;
       renderer.setAnimationLoop(() => {
@@ -74,7 +79,7 @@ export function CanvasHost({ controller }: { controller: SceneController }) {
         boot.frame(raw);
         // Nach dem Boot liegt der Splash deckend über dem Canvas: 3D pausiert (bis zum Ausklang)
         if (boot.complete && isCanvasCovered()) return;
-        controller.update(dt, (now - start) / 1000, ctx);
+        (overlay?.current(controller) ?? controller).update(dt, (now - start) / 1000, ctx);
         // Perf-Statistik: FPS und p99 der Frametime über ein 1-s-Fenster
         times.push(dt * 1000);
         frames++;
@@ -86,7 +91,7 @@ export function CanvasHost({ controller }: { controller: SceneController }) {
           const fpsNow = Math.round(frames / acc);
           const p99Now = Math.round(p99 * 10) / 10;
           useAppStore.getState().setPerf(fpsNow, p99Now, info.render?.drawCalls ?? 0);
-          governQuality(fpsNow, p99Now);
+          if (!overlay?.busy) governQuality(fpsNow, p99Now);
           times.length = 0;
           frames = 0;
           acc = 0;
@@ -99,6 +104,7 @@ export function CanvasHost({ controller }: { controller: SceneController }) {
       ro?.disconnect();
       if (ctx) {
         ctx.renderer.setAnimationLoop(null);
+        overlay?.dispose();
         controller.dispose();
         ctx.canvas.remove();
       }

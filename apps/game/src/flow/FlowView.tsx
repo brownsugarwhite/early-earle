@@ -8,6 +8,7 @@ import { useFlowStore } from './flowStore';
 import { useGridStore } from '../lab/grid/gridStore';
 import { useProgress } from '../state/progress';
 import { installAudio } from '../audio/wiring';
+import { installCollection } from '../collection/index';
 import '../klassik';
 import '../styles/flow.css';
 
@@ -41,6 +42,8 @@ export function FlowView({ start }: FlowSceneOptions) {
   }, []);
   // Audio: procedural sound for moves, flow phases, REX, music and ambience (unlocks on the first tap).
   useEffect(() => installAudio(), []);
+  // Sammlung: neue Wesen verbuchen, "NEU!" auf dem Brett, Setzkasten-Einstieg auf der Karte.
+  useEffect(() => installCollection(), []);
   const controller = useMemo(() => new FlowScene({ start }), [start]);
   return (
     <div className="flow-root">

@@ -1,7 +1,7 @@
 import { DynamicDrawUsage, Group, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, SphereGeometry, Vector3 } from 'three/webgpu';
 import type { Camera, Object3D } from 'three/webgpu';
 import type { Blob, Coord, LevelState } from '@ee/core';
-import { NO_FLOOR, buildBody, creatureGenome, genomeFor, mixHex, resolveCreature, scaleForTier, squashScales, type BlobParams, type BodyType, type CreatureSpec, type GenomeRules, type PartSpec, type Vec3, type ZoneId } from '@ee/genome';
+import { NO_FLOOR, SPECIES, ZONE_KEYS, buildBody,creatureGenome, genomeFor, mixHex, resolveCreature, scaleForTier, squashScales, type BlobParams, type BodyType, type CreatureGenome, type CreatureSpec, type GenomeRules, type PartSpec, type Species, type Vec3, type ZoneId } from '@ee/genome';
 import { SpringJiggle } from '@ee/physics';
 import {
   BLOB_QUALITY_HIGH,
@@ -25,8 +25,21 @@ import { CreatureDrive, archetypeFit } from './boardCreature';
 import { BoardMeshBodies } from './boardMeshBodies';
 import type { BoardLayout } from './boardElements';
 import type { BoardPalette } from './boardPalette';
+import type { CreatureChoice } from './boardHooks';
 
 export type CreatureMode = 'all' | 'strays' | 'none';
+
+/**
+ * Aussehen eines Blobs: Genom-Zone, Seed, erzwungene Art (null = aus dem Seed gewürfelt) und die Stufe des Aussehens.
+ * Standard: Zone des Bretts (die des Levels), Seed `id · 31 + 7`, gewürfelte Art, Stufe des Blobs; der Hook
+ * `creatureFor` der App (Klassik) darf es je Blob ersetzen.
+ */
+export interface CreatureLook {
+  zone: ZoneId;
+  seed: number;
+  species: Species | null;
+  tier: number;
+}
 
 export interface BlobVisual {
   id: number;
@@ -44,6 +57,8 @@ export interface BlobVisual {
   /** Created by a move but not drawn yet (a gull still carries this spawn); cleared by `reconcile`. */
   pending: boolean;
   seed: number;
+  /** Aussehen (Zone, Seed, Art, Stufe); `seed` = `look.seed`. */
+  look: CreatureLook;
   spec: CreatureSpec | null;
   genome: BlobParams;
   /** Body archetype drawn: blob domes below tier 5 (and lines that stay blobs), walkers/snakes above. */
@@ -212,8 +227,10 @@ export class BoardBlobs {
   private readonly blockA: BlobParamBlock | null = null;
   private readonly freeSlots: number[] = [];
   private readonly disposables: Array<{ dispose(): void }> = [];
-  private readonly scaleCache = new Map<number, number>();
+  private readonly scaleCache = new Map<string, number>();
   private readonly merges = new Map<number, MergeFx>();
+  /** Wahl des Aussehens je Blob (der Hook `creatureFor` der App, vom Renderer gesetzt); null = Standard. */
+  chooser: ((blob: { id: number; tier: number }) => CreatureChoice | null | undefined) | null = null;
   /** Part pools by mesh (resolved once through the public `poolFor`) for the draw-call trim. */
   private readonly partPools = new Map<object, PartPool>();
   private pool: CreaturePool | null = null;
@@ -343,18 +360,58 @@ export class BoardBlobs {
     this.prepareZone();
   }
 
+  // ---------- creature zone and looks ----------
+
+  /** Genom-Zone der Wesen auf diesem Brett (die des Levels; die Palette des Bretts bleibt). */
+  get zone(): ZoneId {
+    return this.options.zone;
+  }
+
+  /**
+   * Wechselt die Genom-Zone (neues Level einer anderen Zone): Maß- und Spec-Caches leeren, die Arten der Zone im
+   * Hintergrund vorbereiten. Vorhandene Visuals behalten ihr Aussehen (das Laden eines Levels baut sie neu).
+   */
+  setZone(zone: ZoneId): void {
+    if (zone === this.options.zone) return;
+    this.options.zone = zone;
+    this.scaleCache.clear();
+    this.rawSpecs.clear();
+    this.prepareZone();
+  }
+
+  /** Aussehen eines Blobs: Standard (Zone des Bretts, id · 31 + 7) oder die Wahl des Hooks `creatureFor`. */
+  lookFor(id: number, tier: number): CreatureLook {
+    let choice: CreatureChoice | null | undefined = null;
+    try {
+      choice = this.chooser?.({ id, tier });
+    } catch {
+      choice = null;
+    }
+    if (!choice) return { zone: this.options.zone, seed: id * 31 + 7, species: null, tier };
+    const species = choice.species && (SPECIES as readonly string[]).includes(choice.species) ? (choice.species as Species) : null;
+    const zone = (ZONE_KEYS as readonly string[]).includes(choice.zone) ? (choice.zone as ZoneId) : this.options.zone;
+    return { zone, seed: Number.isFinite(choice.seed) ? choice.seed : id * 31 + 7, species, tier: choice.tier ?? tier };
+  }
+
+  /** Genom eines Aussehens (erzwungene Art nur für Wesen mit Archetypen; Amöben bleiben Blobs). */
+  private genomeOf(look: CreatureLook, archetypes: boolean, bodyType?: BodyType): CreatureGenome {
+    const g = creatureGenome(look.zone, look.tier, look.seed, undefined, bodyType);
+    if (look.species && archetypes && !bodyType) g.species = look.species;
+    return g;
+  }
+
   // ---------- mesh path preparation ----------
 
-  /** Resolves the creature a blob of `tier` seeded `seed` becomes (archetypes; walkers without legs stay blobs). */
-  private specOf(tier: number, seed: number, archetypes = true): CreatureSpec | null {
+  /** Resolves the creature of a look (archetypes; walkers without legs stay blobs). */
+  private specOf(look: CreatureLook, archetypes = true): CreatureSpec | null {
     const rules = this.rules;
     if (!rules) return null;
-    const key = `${tier}|${seed}|${archetypes ? 'a' : 'b'}`;
+    const key = `${look.zone}|${look.tier}|${look.seed}|${look.species ?? ''}|${archetypes ? 'a' : 'b'}`;
     const hit = this.rawSpecs.get(key);
     if (hit !== undefined) return hit;
     let spec: CreatureSpec | null = null;
     try {
-      spec = resolveCreature(creatureGenome(this.options.zone, tier, seed), rules, { archetypes });
+      spec = resolveCreature(this.genomeOf(look, archetypes), rules, { archetypes });
       const walker = spec.bodyType === 'quadruped' || spec.bodyType === 'biped' || spec.bodyType === 'heavy';
       if (walker && (spec.skeleton.legs?.length ?? 0) === 0) spec = null;
     } catch {
@@ -418,7 +475,7 @@ export class BoardBlobs {
    * crowded Hoch board whose eyes do not fit, the fur shells step back (the fins still carry the coat).
    * `budgetSpec` then keeps the planned modules for every creature and admits others only into what is left.
    */
-  private plan(blobs: Iterable<{ tier: number; seed: number; kind: Blob['kind'] }>): void {
+  private plan(blobs: Iterable<{ look: CreatureLook; kind: Blob['kind'] }>): void {
     const shapes = new Set<string>();
     let fur = false;
     let feather = false;
@@ -426,7 +483,7 @@ export class BoardBlobs {
     const specs: CreatureSpec[] = [];
     for (const b of blobs) {
       const arche = ARCHETYPE_KINDS.has(b.kind);
-      const spec = this.specOf(b.tier, b.seed, arche);
+      const spec = this.specOf(b.look, arche);
       if (spec) specs.push(spec);
       if (spec && this.meshBodies && arche && spec.bodyType !== 'blob' && meshBodyEligible(spec)) {
         shapes.add(`${spec.species}|${spec.legStyle}|${spec.body.spheres.length}`);
@@ -521,8 +578,8 @@ export class BoardBlobs {
       this.plannedKeys = new Set();
       return;
     }
-    const blobs: Array<{ tier: number; seed: number; kind: Blob['kind'] }> = [];
-    for (const b of state.cells) if (b) blobs.push({ tier: b.tier, seed: b.id * 31 + 7, kind: b.kind });
+    const blobs: Array<{ look: CreatureLook; kind: Blob['kind'] }> = [];
+    for (const b of state.cells) if (b) blobs.push({ look: this.lookFor(b.id, b.tier), kind: b.kind });
     this.plan(blobs);
     const tiers = new Set<number>();
     for (const b of state.cells) {
@@ -533,8 +590,8 @@ export class BoardBlobs {
     const seq = state.blobSeq;
     for (let id = seq + 1; id <= seq + 12; id++) {
       for (const t of tiers) {
-        const seed = id * 31 + 7;
-        m.enqueue(`${t}|${seed}`, () => this.specOf(t, seed));
+        const look = this.lookFor(id, t);
+        m.enqueue(`${look.zone}|${look.tier}|${look.seed}|${look.species ?? ''}`, () => this.specOf(look));
       }
     }
   }
@@ -546,10 +603,11 @@ export class BoardBlobs {
   prepareZone(): void {
     const m = this.meshBodies;
     if (!m || !this.rules || this.creatureMode === 'none') return;
+    const zone = this.options.zone;
     for (const t of [8, 7, 9, 6, 10, 5, 11]) {
       for (let id = 1; id <= 24; id++) {
-        const seed = id * 31 + 7;
-        m.enqueue(`${t}|${seed}`, () => this.specOf(t, seed));
+        const look: CreatureLook = { zone, seed: id * 31 + 7, species: null, tier: t };
+        m.enqueue(`${zone}|${t}|${look.seed}|`, () => this.specOf(look));
       }
     }
   }
@@ -618,7 +676,7 @@ export class BoardBlobs {
     if (!m) return false;
     return m.warm(this.capacity - 1, () => {
       for (let id = 1; id <= 24; id++) {
-        const spec = this.specOf(7, id * 31 + 7);
+        const spec = this.specOf({ zone: this.options.zone, seed: id * 31 + 7, species: null, tier: 7 });
         if (spec && meshBodyEligible(spec)) return spec;
       }
       return null;
@@ -638,20 +696,21 @@ export class BoardBlobs {
     return (this.mesh.count > 0 ? 1 : 0) + (this.meshA && this.meshA.count > 0 ? 1 : 0) + (this.meshBodies?.drawCalls ?? 0);
   }
 
-  /** World scale of a blob body of a tier on this board (blob units → board units). */
-  worldScale(tier: number): number {
-    const cached = this.scaleCache.get(tier);
+  /** World scale of a blob body of a tier on this board (blob units → board units); `zone` = genome zone of the look. */
+  worldScale(tier: number, zone: ZoneId = this.options.zone): number {
+    const key = `${zone}|${tier}`;
+    const cached = this.scaleCache.get(key);
     if (cached !== undefined) return cached;
     let s = scaleForTier(tier);
     if (this.rules) {
       try {
-        s = resolveCreature(creatureGenome(this.options.zone, tier, 1), this.rules).worldScale;
+        s = resolveCreature(creatureGenome(zone, tier, 1), this.rules).worldScale;
       } catch {
         s = scaleForTier(tier);
       }
     }
     const out = s * this.options.layout.cell * blobOverflow(tier);
-    this.scaleCache.set(tier, out);
+    this.scaleCache.set(key, out);
     return out;
   }
 
@@ -663,7 +722,7 @@ export class BoardBlobs {
 
   private baseParams(v: BlobVisual): BlobParams {
     if (v.spec) return v.spec.body;
-    return genomeFor(this.options.zone, v.tier, v.seed);
+    return genomeFor(v.look.zone, v.look.tier, v.look.seed);
   }
 
   /** Body parameters with the state overrides (stray tint, amoeba milk, ice, sleep). */
@@ -766,18 +825,18 @@ export class BoardBlobs {
     return { ...spec, parts, body, paintedEye: !parts.some((p) => p.slot === 'eye') };
   }
 
-  /** Resolves the creature of a blob (archetype when parts are available) and its rig. */
-  private resolveSpec(tier: number, seed: number, kind: Blob['kind']): { spec: CreatureSpec; rig: CreatureRig } | null {
+  /** Resolves the creature of a look (archetype when parts are available) and its rig. */
+  private resolveSpec(look: CreatureLook, kind: Blob['kind']): { spec: CreatureSpec; rig: CreatureRig } | null {
     if (!this.pool || !this.rules) return null;
     const archetypes = ARCHETYPE_KINDS.has(kind);
-    let spec = this.budgetSpec(resolveCreature(creatureGenome(this.options.zone, tier, seed), this.rules, { archetypes }));
+    let spec = this.budgetSpec(resolveCreature(this.genomeOf(look, archetypes), this.rules, { archetypes }));
     let rig = this.pool.createRig(spec);
     // Walkers need legs — kneaded from the body (skeleton.legs) or leg modules; otherwise the blob body.
     const walker = spec.bodyType === 'quadruped' || spec.bodyType === 'biped' || spec.bodyType === 'heavy';
     const kneaded = (spec.skeleton.legs?.length ?? 0) > 0;
     if (walker && !kneaded && !rig.parts.some((p) => p.spec.slot === 'leg' && p.spec.role !== null)) {
       rig.dispose();
-      spec = this.budgetSpec(resolveCreature(creatureGenome(this.options.zone, tier, seed, undefined, 'blob'), this.rules));
+      spec = this.budgetSpec(resolveCreature(this.genomeOf(look, archetypes, 'blob'), this.rules));
       rig = this.pool.createRig(spec);
     }
     return { spec, rig };
@@ -801,7 +860,7 @@ export class BoardBlobs {
       // Species animals are skinned meshes (Hoch and Mobil); the shared species mesh is prepared ahead.
       v.meshSpec = this.meshBodies?.specFor(spec) ?? null;
     } else {
-      v.fit = this.worldScale(v.tier);
+      v.fit = this.worldScale(v.tier, v.look.zone);
       v.drive = null;
     }
     v.raymarch = !v.meshSpec && this.wantsRaymarch(spec);
@@ -845,7 +904,7 @@ export class BoardBlobs {
     }
     let made: { spec: CreatureSpec; rig: CreatureRig } | null = null;
     try {
-      made = this.resolveSpec(v.tier, v.seed, v.kind);
+      made = this.resolveSpec(v.look, v.kind);
     } catch {
       made = null;
     }
@@ -874,6 +933,7 @@ export class BoardBlobs {
   makeVisual(blob: Blob, at: Coord): BlobVisual {
     const slot = this.freeSlots.pop() ?? -1;
     const [x, z] = this.options.layout.cellToLocal(at[0], at[1]);
+    const look = this.lookFor(blob.id, blob.tier);
     const v: BlobVisual = {
       id: blob.id,
       slot,
@@ -886,11 +946,12 @@ export class BoardBlobs {
       fogged: blob.hidden === true,
       hidden: false,
       pending: false,
-      seed: blob.id * 31 + 7,
+      seed: look.seed,
+      look,
       spec: null,
-      genome: genomeFor(this.options.zone, blob.tier, blob.id * 31 + 7),
+      genome: genomeFor(look.zone, look.tier, look.seed),
       body: 'blob',
-      fit: this.worldScale(blob.tier),
+      fit: this.worldScale(blob.tier, look.zone),
       drive: null,
       raymarch: false,
       meshSpec: null,
@@ -944,6 +1005,11 @@ export class BoardBlobs {
     if (fx && !fx.swapped && fx.child && fx.child.spec.tier === blob.tier) {
       this.swapMerge(v, blob);
       return;
+    }
+    // A new tier without a merge swap (safety net): the look of the blob at that tier.
+    if (blob.tier !== v.tier) {
+      v.look = this.lookFor(blob.id, blob.tier);
+      v.seed = v.look.seed;
     }
     const changed = this.applyFlags(v, blob);
     if (changed) this.refreshRig(v, true);
@@ -1086,7 +1152,7 @@ export class BoardBlobs {
     if (this.wantsRig(settled) && this.pool && this.rules) {
       try {
         // The child is the result blob's own line (seeded by its id, as after a reload).
-        const kids = this.resolveSpec(result.tier, result.id * 31 + 7, result.kind);
+        const kids = this.resolveSpec(this.lookFor(result.id, result.tier), result.kind);
         if (kids) {
           fx.child = kids;
           // The child's species mesh (usually prepared during the fly-in) is looked up now, not at the swap.
@@ -1118,7 +1184,8 @@ export class BoardBlobs {
   swapMerge(settled: BlobVisual, result: Blob): void {
     const fx = this.merges.get(settled.id);
     this.applyFlags(settled, result);
-    settled.seed = result.id * 31 + 7;
+    settled.look = this.lookFor(result.id, result.tier);
+    settled.seed = settled.look.seed;
     settled.rigKey = `${settled.tier}:${settled.kind}`;
     if (!fx || !fx.child) {
       this.refreshRig(settled, true);

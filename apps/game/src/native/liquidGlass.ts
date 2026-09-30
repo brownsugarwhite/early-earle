@@ -61,12 +61,31 @@ let shown = false;
 let lastJson = '';
 let queue: Promise<void> = Promise.resolve();
 const swallow = (): void => undefined;
+/** Held (a full-screen web layer such as the Setzkasten covers the HUD): states are only remembered. */
+let held = false;
+let requested: GlassHudState | null = null;
 
 /**
  * Mirrors a HUD state to the native overlay: first call shows, later calls update (pills morph), `null` hides.
  * Identical states are skipped; calls are serialised so show/update/hide keep their order.
  */
 export function syncNativeGlass(state: GlassHudState | null): Promise<void> {
+  requested = state;
+  if (held) return queue;
+  return applyNativeGlass(state);
+}
+
+/**
+ * Holds the native HUD back while a full-screen web layer is open (it would float above the web view): hides it and
+ * remembers every state synced meanwhile; releasing shows the latest one again.
+ */
+export function holdNativeGlass(on: boolean): Promise<void> {
+  if (on === held) return queue;
+  held = on;
+  return applyNativeGlass(on ? null : requested);
+}
+
+function applyNativeGlass(state: GlassHudState | null): Promise<void> {
   queue = queue.then(async () => {
     if (!state) {
       if (!shown) return;

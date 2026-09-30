@@ -187,6 +187,8 @@ export class BoardTimeline {
         settled.squash = null;
         if (settled.drive && moving) settled.yawTarget = Math.atan2(dir[0], dir[1]);
         this.mergeBurst(target, settled, e.tier);
+        // Sammlung: das Ergebnis ist erschaffen (erstes seiner Art → "NEU!").
+        r.reportCreature(settled, 'merge', e.resultId);
       });
       if (settled) {
         tw.add(
@@ -335,6 +337,8 @@ export class BoardTimeline {
             },
             { delay, ease: easeSpring, done: () => (v.squash = null) },
           );
+          // Sammlung: der Spawn ist erschaffen, sobald er aufploppt.
+          tw.after(delay, () => r.reportCreature(v, 'spawn'));
           // The nearest gas source puffs.
           const src = this.nearestSource(finalState, e.at);
           if (src !== null) {
