@@ -408,10 +408,10 @@ export class NodePath {
       const at = t.sub(celeb.x.add(celeb.w));
       const pop = arrive.mul(smoothstep(0, 0.12, at)).mul(smoothstep(0.55, 0.12, at));
       const breathe = sin(t.mul(2.2)).mul(0.07).mul(isCur);
-      const grow = float(1).add(breathe).add(bloom.mul(0.22)).add(pop.mul(0.45)).sub(isDone.mul(0.1)).mul(mix(float(1), float(0.8), locked)).add(abs(shake).mul(0.14));
+      const grow = float(1).add(breathe).add(bloom.mul(0.22)).add(pop.mul(0.45)).sub(isDone.mul(0.1)).mul(mix(float(1), float(0.8), locked)).add(abs(shake).mul(0.3));
       const scale = A.x.mul(grow).mul(hidden.oneMinus());
       const gp0 = positionGeometry as unknown as Vec3Node;
-      const local = sweep(Q, vec3(gp0.x.add(shake.mul(0.42)), gp0.y, gp0.z) as unknown as Vec3Node, part, 0.32);
+      const local = sweep(Q, vec3(gp0.x.add(shake.mul(1.1)), gp0.y, gp0.z) as unknown as Vec3Node, part, 0.32);
       const face = mix(mix(mix(paper, pink, max(isCur, isDone)), paper, bloom.mul(0.5).add(pop.mul(0.6))), mix(paper, inkOf(A.z), 0.35), locked);
       const mat = new BoardSurfaceMaterial({
         albedo: mix(face, inkOf(A.z), step(0.5, part)) as unknown as Vec3Node,

@@ -23,7 +23,8 @@ async function waitForRenderer(page: Page): Promise<void> {
 
 test('/ zeigt den Splash; ein Tipp startet den Hüpfer und endet auf der Map', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('/');
+  // Freier Modus: der Hüpfer auf die Map wie bisher (im echten Modus spielt der erste Start das Intro, progression.spec).
+  await page.goto('/?mode=free');
   await expect(page.getByTestId('splash')).toBeVisible();
   await expect(page.locator('img.splash-img')).toBeVisible();
   await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', 'splash');
