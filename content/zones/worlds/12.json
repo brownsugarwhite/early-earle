@@ -58,7 +58,10 @@
   },
   "props": {},
   "features": {
-    "rocks": [{ "kind": "spires", "count": 9, "size": [1.0, 1.9], "height": [2.3, 3.1], "pathDistance": [5, 20], "side": -1 }]
+    "rocks": [
+      { "kind": "spires", "count": 9, "size": [1.0, 1.9], "height": [2.3, 3.1], "pathDistance": [5, 20], "side": -1 },
+      { "kind": "spires", "count": 3, "size": [1.2, 2.0], "height": [2.4, 3.4], "pathDistance": [1.6, 3.2], "side": 1 }
+    ]
   },
   "landmarks": { "fallsRock": 0, "cliffFall": 0, "twinFalls": 0, "ruin": 0, "swamp": 0 },
   "mist": {
@@ -78,7 +81,7 @@
     "look": 6,
     "fov": 38,
     "curvature": -0.6,
-    "yaw": -30,
+    "yaw": -36,
     "ornament": "branch",
     "focus": [0.15, -0.45],
     "nearClear": 1.2,
