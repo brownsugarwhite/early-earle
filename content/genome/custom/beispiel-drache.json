@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "id": "beispiel-drache",
+  "name": "Beispiel-Drache",
+  "base": "giraffe",
+  "zone": "tjorizo",
+  "tier": 6,
+  "seed": 7,
+  "material": "jelly",
+  "colors": {
+    "base": "#6c4fd8",
+    "accent": "#39bbeb"
+  },
+  "skin": {
+    "coat": "bare",
+    "pattern": "diamonds",
+    "patternScale": 1.0664,
+    "patternRotation": -0.1504
+  },
+  "sminK": 0.22,
+  "size": 1.0,
+  "restLift": 0.78,
+  "spheres": [
+    {
+      "name": "Körper",
+      "role": "core",
+      "center": [0.0, 0.08, 0.3],
+      "r": 0.60902
+    },
+    {
+      "name": "Hinterteil",
+      "role": "rump",
+      "center": [0.0, 0.1, -0.44],
+      "r": 0.58872
+    },
+    {
+      "name": "Hals.01",
+      "role": "neck",
+      "center": [0.0, 0.42, 0.9],
+      "r": 0.27,
+      "chain": 0
+    },
+    {
+      "name": "Kopf",
+      "role": "head",
+      "center": [0.0, 1.12, 1.52],
+      "r": 0.52
+    },
+    {
+      "name": "Schnauze",
+      "role": "face",
+      "center": [0.0, 1.02, 1.98],
+      "r": 0.3
+    },
+    {
+      "name": "Fuß.vorn.L",
+      "role": "foot",
+      "center": [0.37, -0.55, 0.44],
+      "r": 0.23,
+      "leg": "FL"
+    },
+    {
+      "name": "Fuß.vorn.R",
+      "role": "foot",
+      "center": [-0.37, -0.55, 0.44],
+      "r": 0.23,
+      "leg": "FR"
+    },
+    {
+      "name": "Fuß.hinten.L",
+      "role": "foot",
+      "center": [0.33, -0.55, -0.28],
+      "r": 0.23,
+      "leg": "BL"
+    },
+    {
+      "name": "Fuß.hinten.R",
+      "role": "foot",
+      "center": [-0.33, -0.55, -0.28],
+      "r": 0.23,
+      "leg": "BR"
+    },
+    {
+      "name": "Hals.02",
+      "role": "neck",
+      "center": [0.0, 0.78, 1.2],
+      "r": 0.24,
+      "chain": 1
+    }
+  ],
+  "legs": [
+    {
+      "leg": "FL",
+      "hip": [0.33, -0.2, 0.42],
+      "bend": 1
+    },
+    {
+      "leg": "FR",
+      "hip": [-0.33, -0.2, 0.42],
+      "bend": 1
+    },
+    {
+      "leg": "BL",
+      "hip": [0.29, -0.18, -0.26],
+      "bend": -1
+    },
+    {
+      "leg": "BR",
+      "hip": [-0.29, -0.18, -0.26],
+      "bend": -1
+    }
+  ],
+  "neck": {
+    "base": [0.0, 0.26271, 0.67759],
+    "maxBend": 0.9
+  },
+  "mouth": {
+    "anchor": "Schnauze",
+    "dir": [0.0, -0.47885, 0.8779],
+    "width": 0.8,
+    "open": 0.75
+  },
+  "parts": [
+    {
+      "slot": "eye",
+      "asset": "eye_cute",
+      "anchor": "Kopf",
+      "theta": 0.38116,
+      "phi": 0.72875,
+      "mirror": 1,
+      "tilt": 0.0,
+      "roll": 0.0,
+      "sink": 0.035,
+      "scale": 0.62459,
+      "ref": "up"
+    },
+    {
+      "slot": "eye",
+      "asset": "eye_cute",
+      "anchor": "Kopf",
+      "theta": -0.37115,
+      "phi": 0.70582,
+      "mirror": 1,
+      "tilt": 0.0,
+      "roll": 0.0,
+      "sink": 0.035,
+      "scale": 0.65588,
+      "ref": "up"
+    },
+    {
+      "slot": "ear",
+      "asset": "ear_pointy",
+      "anchor": "Kopf",
+      "theta": 1.29972,
+      "phi": 0.61947,
+      "mirror": 1,
+      "tilt": -0.1,
+      "roll": 0.0,
+      "sink": 0.05,
+      "scale": 1.32328,
+      "ref": "up"
+    },
+    {
+      "slot": "ear",
+      "asset": "ear_pointy",
+      "anchor": "Kopf",
+      "theta": -1.27425,
+      "phi": 0.64131,
+      "mirror": 1,
+      "tilt": -0.1,
+      "roll": 0.0,
+      "sink": 0.05,
+      "scale": 1.38213,
+      "ref": "up"
+    },
+    {
+      "slot": "trunk",
+      "asset": "nose_dot",
+      "anchor": "Schnauze",
+      "theta": 0.00833,
+      "phi": 0.34781,
+      "mirror": 1,
+      "tilt": -0.75,
+      "roll": 0.0,
+      "sink": 0.03,
+      "scale": 0.802,
+      "ref": "up"
+    },
+    {
+      "slot": "tail",
+      "asset": "tail_plume",
+      "anchor": "Hinterteil",
+      "theta": 3.14159,
+      "phi": 0.42704,
+      "mirror": 1,
+      "tilt": 0.2,
+      "roll": 0.0,
+      "sink": 0.06,
+      "scale": 0.92132,
+      "ref": "up"
+    },
+    {
+      "slot": "horn",
+      "asset": "horn_curl",
+      "anchor": "Kopf",
+      "theta": 0.49998,
+      "phi": 0.95,
+      "mirror": 1,
+      "tilt": -0.3,
+      "roll": 0.0,
+      "sink": 0.05,
+      "scale": 0.8,
+      "tint": "bone"
+    },
+    {
+      "slot": "wing",
+      "asset": "wing_bat",
+      "anchor": "Körper",
+      "theta": 2.28412,
+      "phi": 0.52405,
+      "mirror": 1,
+      "tilt": 0.7,
+      "roll": 0.0,
+      "sink": 0.05,
+      "scale": 1.15,
+      "tint": "accent"
+    },
+    {
+      "slot": "horn",
+      "asset": "horn_curl",
+      "anchor": "Kopf",
+      "theta": -0.49998,
+      "phi": 0.95,
+      "mirror": -1,
+      "tilt": -0.3,
+      "roll": 0.0,
+      "sink": 0.05,
+      "scale": 0.8,
+      "tint": "bone"
+    },
+    {
+      "slot": "wing",
+      "asset": "wing_bat",
+      "anchor": "Körper",
+      "theta": -2.28412,
+      "phi": 0.52405,
+      "mirror": -1,
+      "tilt": 0.7,
+      "roll": 0.0,
+      "sink": 0.05,
+      "scale": 1.15,
+      "tint": "accent"
+    },
+    {
+      "slot": "crest",
+      "asset": "crest_fin",
+      "anchor": "Hinterteil",
+      "theta": 3.14159,
+      "phi": 0.99999,
+      "mirror": 1,
+      "tilt": 0.1,
+      "roll": 0.0,
+      "sink": 0.05,
+      "scale": 1.0,
+      "tint": "accent"
+    }
+  ],
+  "source": {
+    "tool": "Blender ee_wesen.py",
+    "file": "full1.blend",
+    "exported": "2026-09-30T07:33:18Z"
+  }
+}

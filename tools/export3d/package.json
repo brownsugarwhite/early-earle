@@ -1,0 +1,24 @@
+{
+  "name": "@ee/tools-export3d",
+  "version": "0.0.1",
+  "private": true,
+  "description": "3D-Export für die Blender-Bibliothek: Wesen, Module, REX, Map, Spielfeld und Paletten aus den echten Generatoren als GLB + Manifest (tools/blender/build_library.py baut daraus assets/blender/early-earle-bibliothek.blend)",
+  "type": "module",
+  "scripts": {
+    "export": "node run.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ee/core": "workspace:*",
+    "@ee/genome": "workspace:*",
+    "@ee/render": "workspace:*",
+    "@ee/world": "workspace:*",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/three": "^0.186.0",
+    "typescript": "~5.9.0",
+    "vite": "^8.3.1"
+  }
+}
