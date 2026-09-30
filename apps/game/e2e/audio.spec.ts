@@ -6,8 +6,9 @@ import { fileURLToPath } from 'node:url';
 // toggle and remembers it (localStorage `ee.audio.v1`). EE_AUDIO_PREVIEWS=1 also renders the WAV previews
 // offline into docs/progress/audio/.
 
-const TRANSITION_MS = process.env.CI ? 45_000 : 15_000;
-test.setTimeout(process.env.CI ? 180_000 : 90_000);
+// SwiftShader: /play reaches the map twice (reload) — generous locally too, like the flow spec.
+const TRANSITION_MS = process.env.CI ? 45_000 : 45_000;
+test.setTimeout(process.env.CI ? 180_000 : 180_000);
 
 function collectErrors(page: Page): string[] {
   const errors: string[] = [];
