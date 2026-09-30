@@ -20,7 +20,8 @@
     "accent": ["#0c0a1e", "#2a2f9c", "#0c0a1e", "#100e24", "#8a9a58", "#d8d8a0", "#f17023", "#db292f"],
     "canopyVariants": [
       ["#141432", "#1e1e46", "#2a2a50", "#8a9a58", "#d8d8a0", "#b8c8a0", "#f0e8c0"]
-    ]
+    ],
+    "rock": ["#120c26", "#4a3470", "#8a64a8", "#c49ad0", "#f0c8e0", "#ebdc8c", "#2e1f4c", "#fbe8f0"]
   },
   "terrain": { "amplitude": 4.4, "wavelength": 1.6, "slope": 0.6, "ridge": 0.15 },
   "ground": "meadow",
@@ -34,6 +35,13 @@
     "rowVariants": 2
   },
   "props": { "animals": 0.014, "pools": 0.006 },
+  "features": {
+    "rocks": [
+      { "kind": "terraces", "count": 1, "size": [8, 10], "height": [3.4, 4.4], "steps": 3, "pathDistance": [2.6, 3.4], "focusDistance": [5, 10] },
+      { "kind": "wall", "count": 1, "size": [16, 22], "height": [4, 5.5], "steps": 3 },
+      { "kind": "spires", "count": 2, "size": [2.4, 3.4], "height": [3.4, 5], "pathDistance": [2.6, 3.8] }
+    ]
+  },
   "fogStripes": 0.15,
   "fog": { "start": 8, "range": 16 },
   "view": {

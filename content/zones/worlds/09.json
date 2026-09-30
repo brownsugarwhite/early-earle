@@ -18,7 +18,8 @@
     "fog": ["#162c30", "#122428", "#1e3a3a", "#345e50", "#4a7a60", "#7fa070"],
     "fogAlpha": [0, 0.3, 0.48, 0.64, 0.78, 0.9],
     "accent": ["#0c1a12", "#c8542a", "#0c1a12", "#0c1a12", "#5fb0a0", "#b8e0c8", "#d8382a", "#7ce6d5"],
-    "monolith": ["#2a0806", "#6e1a10", "#b0301a", "#e04a22", "#f2703a"]
+    "monolith": ["#2a0806", "#6e1a10", "#b0301a", "#e04a22", "#f2703a"],
+    "rock": ["#1c0610", "#6a0e24", "#b01e2e", "#e0402a", "#f47a3a", "#f39a86", "#40081a", "#2a0a14"]
   },
   "terrain": { "amplitude": 2.4, "wavelength": 1.5, "slope": 0.4 },
   "ground": "meadow",
@@ -32,6 +33,9 @@
     "rows": { "spacing": 0.2, "width": 0.34 }
   },
   "props": { "trash": 0.13, "pools": 0.016, "animals": 0.014 },
+  "features": {
+    "rocks": [{ "kind": "tower", "count": 1, "size": [1.7, 2.0], "height": [7, 8.5], "pathDistance": [2.8, 3.6], "focusDistance": [6, 11] }]
+  },
   "fogStripes": 0.1,
   "fog": { "start": 9, "range": 16 },
   "view": {

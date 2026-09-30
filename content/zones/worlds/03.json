@@ -19,7 +19,9 @@
     "fog": ["#c4c2a8", "#a8a894", "#c2c0a8", "#d8d6bc", "#e8e4cc", "#f2eedc"],
     "fogAlpha": [0, 0.3, 0.5, 0.68, 0.82, 0.92],
     "accent": ["#2a1e18", "#4a3a2c", "#2a1e18", "#2c2018", "#9ba14a", "#c9cc6e", "#9a9c98", "#6a6c6a"],
-    "barn": ["#3a3a3c", "#8a8c90", "#b0b2b4", "#d4d4d0", "#eeece6"]
+    "barn": ["#3a3a3c", "#8a8c90", "#b0b2b4", "#d4d4d0", "#eeece6"],
+    "water": ["#3a4852", "#52646e", "#728892", "#9fb2b6", "#d0dad4", "#eef0e6", "#44545c", "#c0ccc8"],
+    "rock": ["#2a1e18", "#5a4e44", "#8a8270", "#b8b294", "#e2dcc0", "#d9d9b8", "#3e342c", "#f0ead0"]
   },
   "terrain": { "amplitude": 1.8, "wavelength": 1.8 },
   "ground": "smooth",
@@ -32,6 +34,11 @@
     "motif": "rim"
   },
   "props": { "barns": 0.0015, "animals": 0.008 },
+  "features": {
+    "lakes": { "count": 1, "radius": [1.6, 2.2], "stretch": 2.5, "pathDistance": [2.4, 3.2], "focusDistance": [4, 9] },
+    "rocks": [{ "kind": "mesa", "count": 1, "size": [4.5, 5.5], "height": [2.4, 3.0], "pathDistance": [2.6, 3.4] }],
+    "chisel": 0.6
+  },
   "fogStripes": 0.3,
   "fog": { "start": 6, "range": 12 },
   "view": {

@@ -1,5 +1,5 @@
 import { TJORIZO_PALETTE, zonePaletteFromContent, type EarlePlanetWorld, type EarlePlanetZone, type GroundTreatment, type WorldPalette, type WorldView } from '@ee/render';
-import type { PlanetLandmarkParams, PlanetPropSpec, PlanetTerrainShape, PlanetVegetationFamily } from '@ee/world';
+import type { PlanetLandmarkParams, PlanetPropSpec, PlanetTerrainShape, PlanetVegetationFamily, WorldFeatureSpec } from '@ee/world';
 
 /** Zonendatei `content/zones/*.json` (Schema 1). */
 export interface ZoneContent {
@@ -28,6 +28,8 @@ export interface WorldContent {
   ground: GroundTreatment;
   vegetation: PlanetVegetationFamily;
   props?: PlanetPropSpec;
+  /** Geländemerkmale: Seen, Flüsse, Felsformationen, Schneefelder, Schneewehen, Meißelstufen. */
+  features?: WorldFeatureSpec;
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
@@ -114,6 +116,7 @@ export function planetWorlds(): EarlePlanetWorld[] {
         terrain: w.terrain,
         vegetation: w.vegetation,
         props: w.props ?? {},
+        ...(w.features ? { features: w.features } : {}),
       },
       ground: w.ground,
       fogStripes: w.fogStripes,

@@ -117,6 +117,15 @@ export interface WorldPalette extends ZonePalette {
   accent: string[];
   monolith?: string[];
   barn?: string[];
+  /**
+   * Wasser (8): 0 Tiefe/Spiegelung im Schatten, 1 dunkel, 2 Grundton, 3 hell (Flachwasser), 4 Glanzstreifen,
+   * 5 Gischt/Eis-Hell, 6 Linien (Eisrisse), 7 Reserve. Fehlt → aus dem Himmel abgeleitet (Wasser spiegelt den Himmel).
+   */
+  water?: string[];
+  /** Fels (8): 0 Tinte, 1–4 Lichtstufen, 5 Deckfläche (Moos/Schnee), 6 Schraffurlinien, 7 Glyphen. Fehlt → aus Terrain. */
+  rock?: string[];
+  /** Schneefelder (≤ 8): 0 Schatten (gesättigtes Blau), 1.. Lichtstufen bis Creme. Fehlt → keine eigene Schneezeile. */
+  snow?: string[];
 }
 
 /** Tjorizo (aus dem Plan und Florians Draft): Neongrün-Himmel, Khaki-Hügel, olive Tinte. */
@@ -147,6 +156,12 @@ export interface WorldRows extends ZoneRows {
   accent: number;
   monolith: number;
   barn: number;
+  /** Wasserzeile (Seen, Flüsse). */
+  water: number;
+  /** Felszeile (Formationen, Steilwände). */
+  rock: number;
+  /** Schneefeldzeile oder die Terrainzeile, wenn die Welt keine eigene hat. */
+  snow: number;
 }
 
 /** Schreibt eine Zonenpalette als vier Zeilen in den Atlas (Prefix erlaubt mehrere Zonen im selben Atlas). */
@@ -166,7 +181,39 @@ export function addWorldPalette(atlas: PaletteAtlas, world: WorldPalette, prefix
   const accent = atlas.addRow({ name: `${prefix}/accent`, steps: world.accent.slice(0, 8) });
   const monolith = world.monolith ? atlas.addRow({ name: `${prefix}/monolith`, steps: world.monolith }) : base.terrain;
   const barn = world.barn ? atlas.addRow({ name: `${prefix}/barn`, steps: world.barn }) : base.terrain;
-  return { ...base, canopyRows, accent, monolith, barn };
+  const water = atlas.addRow({ name: `${prefix}/water`, steps: (world.water ?? waterFromSky(world)).slice(0, 8) });
+  const rock = atlas.addRow({ name: `${prefix}/rock`, steps: (world.rock ?? rockFromTerrain(world)).slice(0, 8) });
+  const snow = world.snow ? atlas.addRow({ name: `${prefix}/snow`, steps: world.snow.slice(0, 8) }) : base.terrain;
+  return { ...base, canopyRows, accent, monolith, barn, water, rock, snow };
+}
+
+/**
+ * Wasser spiegelt den Himmel, eine Stufe tiefer als er (hebt sich vom Terrain ab): Tiefe, dunkel, Grundton, hell,
+ * Glanz, Sonne, Linien, Horizont. Die Tiefe bleibt ein erkennbarer Farbton (nicht die Terrain-Tinte).
+ */
+export function waterFromSky(p: WorldPalette): string[] {
+  const s = p.sky;
+  const zenith = s[s.length - 1] ?? p.ink;
+  const horizon = s[0] ?? zenith;
+  const mid = s[Math.floor(s.length / 2)] ?? zenith;
+  return [
+    mixRgb(zenith, p.ink, 0.45),
+    mixRgb(zenith, p.ink, 0.2),
+    mixRgb(zenith, mid, 0.4),
+    mixRgb(mid, horizon, 0.5),
+    mixRgb(horizon, '#ffffff', 0.25),
+    p.sun,
+    mixRgb(zenith, p.ink, 0.3),
+    horizon,
+  ];
+}
+
+/** Fels aus dem Terrain: Tinte, zwei dunkle und zwei helle Stufen, Deckfläche = hellste Terrainstufe, Linien, Akzent. */
+export function rockFromTerrain(p: WorldPalette): string[] {
+  const t = p.terrain;
+  const dark = t[0] ?? p.ink;
+  const light = t[t.length - 1] ?? dark;
+  return [p.ink, mixRgb(p.ink, dark, 0.55), dark, t[2] ?? light, light, t[3] ?? light, mixRgb(p.ink, dark, 0.3), p.accent[6] ?? light];
 }
 
 /** Index der Sonnenscheibe bzw. des Sonnenrings in der Himmelszeile. */
