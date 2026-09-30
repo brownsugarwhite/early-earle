@@ -56,8 +56,8 @@
   "focal": { "along": 0.5, "lateral": 17 },
   "clouds": {
     "layers": [
-      { "kind": "wash", "az": -32, "width": 34, "el": 56, "height": 30, "seed": 0.3 },
-      { "kind": "wash", "az": 38, "width": 20, "el": 60, "height": 26, "seed": 1.7 },
+      { "kind": "wash", "az": -32, "width": 34, "el": 36, "height": 30, "seed": 0.3 },
+      { "kind": "wash", "az": 38, "width": 20, "el": 40, "height": 26, "seed": 1.7 },
       { "kind": "streak", "az": -4.5, "width": 20.2, "el": 75.4, "height": 3.9, "tone": 0.9, "puffs": 3 },
       { "kind": "streak", "az": 24.5, "width": 23.8, "el": 77.6, "height": 2.7, "tone": 0.85 },
       { "kind": "streak", "az": -0.4, "width": 18.5, "el": 70.8, "height": 3.5, "tone": 0.8 },
