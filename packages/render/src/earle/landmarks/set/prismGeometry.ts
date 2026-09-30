@@ -1,6 +1,7 @@
-import { lancetHeight, type ArcadeSpec, type Prism, type PrismCap, type PrismSurface } from '@ee/world';
+import { ShapeUtils, Vector2 } from 'three/webgpu';
+import { wallAxis, wallPoint, type Prism, type PrismCap, type PrismSurface, type WallSpec } from '@ee/world';
 import { earClip } from '../rocks';
-import { GeoBuffer, frameDir, framePoint, type LandmarkFrame } from './buffers';
+import { GeoBuffer, frameDir, framePoint, hash01, type LandmarkFrame } from './buffers';
 import type { LandmarkRows } from './palette';
 
 /** Surface codes of the rock/stone material (`lb.x`). */
@@ -22,8 +23,14 @@ export const ROCK_LAYOUT = {
   la: 4,
   /** (surface code, face code, wall row, cap row) */
   lb: 4,
-  /** (distance below the top edge of the face [world units], 0, 0, 0): the lit gold edge of stone faces */
+  /**
+   * Per face (the facet is one serigraph layer): (distance below the face's top edge [world units] — the lit gold
+   * edge of stone, height share 0 at the face's foot … 1 at its top — the facet's own gradient, the face centre's
+   * height over the landmark 0..1 — its step up the monolith, a key 0..1 per face).
+   */
   lc: 4,
+  /** Painted lancet window of the face: (across from the window's centre line, half width, sill, apex) [world units]. */
+  ld: 4,
 };
 
 type V3 = [number, number, number];
@@ -41,13 +48,16 @@ function norm(a: V3): V3 {
 function dot(a: V3, b: V3): number {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
+function clamp01(x: number): number {
+  return x < 0 ? 0 : x > 1 ? 1 : x;
+}
 
-/** Wall and cap rows for a surface. */
+/** Wall and cap rows for a surface; cut stone and rubble take their moss (caps, dots on worn tops) from the moss row. */
 function rowsFor(surface: PrismSurface, rows: LandmarkRows): [number, number] {
   switch (surface) {
     case 'stone':
     case 'rubble':
-      return [rows.stone, rows.stone];
+      return [rows.stone, rows.moss];
     case 'roof':
       return [rows.roof, rows.roof];
     case 'bark':
@@ -59,15 +69,22 @@ function rowsFor(surface: PrismSurface, rows: LandmarkRows): [number, number] {
   }
 }
 
+const NO_LANCET = [0, 0, 0, 0];
+/** Roles without the golden lichen edge. */
+const NO_LICHEN = new Set(['stair', 'landing', 'step', 'rubble', 'rim']);
+
 /**
  * Faceted prisms (flat shaded, own vertices per face) into `out`: walls from the sunk foot to the top ring (taper,
  * tilt, jag), a flat/tilted cap (ear-clipped) or an apex fan (spires). Positions in the set's space via `frame`.
+ * `refHeight`: height of the landmark (the faces' step up the monolith, `lc.z`); 0 = per prism.
  */
-export function addPrisms(out: GeoBuffer, prisms: readonly Prism[], frame: LandmarkFrame, rows: LandmarkRows): void {
+export function addPrisms(out: GeoBuffer, prisms: readonly Prism[], frame: LandmarkFrame, rows: LandmarkRows, refHeight = 0): void {
   for (const p of prisms) {
     const n = p.base.length;
     if (n < 3) continue;
     const [rowWall, rowCap] = rowsFor(p.surface, rows);
+    // treads, rubble and rim stones carry no lichen edge (it would read as a nosing on every step)
+    const lichen = !NO_LICHEN.has(p.role);
     const sc = SURFACE_CODE[p.surface];
     const [cx, cz] = centroidOf(p.top);
     const topY = p.top.map(([x, z], i) => p.y1 + p.tilt[0] * (x - cx) + p.tilt[1] * (z - cz) + (p.jag[i] ?? 0));
@@ -75,9 +92,11 @@ export function addPrisms(out: GeoBuffer, prisms: readonly Prism[], frame: Landm
     const yMax = Math.max(...topY) + p.apex;
     const span = Math.max(0.5, yMax - Math.max(yMin, 0));
     const grad = (y: number) => Math.min(1, Math.max(0, y / span));
+    const ref = refHeight > 0 ? refHeight : span;
+    const step = (y: number) => clamp01(y / ref);
     const P = (x: number, y: number, z: number): V3 => framePoint(frame, x, y, z);
-    const vtx = (pos: V3, nrm: V3, u: number, y: number, face: number, row: number, td = 0) =>
-      out.vertex({ position: pos, normal: nrm, la: [u, y, grad(y), p.variant], lb: [sc, face, row, rowCap], lc: [td, 0, 0, 0] });
+    const vtx = (pos: V3, nrm: V3, u: number, y: number, face: number, row: number, lc: readonly number[], ld: readonly number[] = NO_LANCET) =>
+      out.vertex({ position: pos, normal: nrm, la: [u, y, grad(y), p.variant], lb: [sc, face, row, rowCap], lc, ld });
     const [bcx, bcz] = centroidOf(p.base);
     // walls
     let perim = p.variant * 7;
@@ -95,15 +114,25 @@ export function addPrisms(out: GeoBuffer, prisms: readonly Prism[], frame: Landm
       const mid = frameDir(frame, (a[0] + b[0]) * 0.5 - bcx, 0, (a[1] + b[1]) * 0.5 - bcz);
       if (dot(nrm, mid) < 0) nrm = [-nrm[0], -nrm[1], -nrm[2]];
       const edge = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      const i0 = vtx(A, nrm, perim, p.y0, FACE_WALL, rowWall, topY[i]! - p.y0);
-      const i1v = vtx(B, nrm, perim + edge, p.y0, FACE_WALL, rowWall, topY[i1]! - p.y0);
-      const i2 = vtx(TB, nrm, perim + edge, topY[i1]!, FACE_WALL, rowWall);
-      const i3 = vtx(TA, nrm, perim, topY[i]!, FACE_WALL, rowWall);
+      const edgeTop = Math.hypot(tb[0] - ta[0], tb[1] - ta[1]);
+      // the facet: its own gradient (foot → top), its step up the landmark, its key
+      const centre = step((Math.max(p.y0, 0) + (topY[i]! + topY[i1]!) * 0.5) * 0.5);
+      const key = hash01(p.variant * 97 + 3, i, 0.29);
+      const lancet = p.lancets?.find((l) => l.face === i);
+      const ld = (half: number, side: number): number[] => (lancet ? [side * half - lancet.s, lancet.width * 0.5, lancet.sill, lancet.apex] : NO_LANCET);
+      const far = lichen ? 0 : 99;
+      const i0 = vtx(A, nrm, perim, p.y0, FACE_WALL, rowWall, [topY[i]! - p.y0 + far, 0, centre, key], ld(edge * 0.5, -1));
+      const i1v = vtx(B, nrm, perim + edge, p.y0, FACE_WALL, rowWall, [topY[i1]! - p.y0 + far, 0, centre, key], ld(edge * 0.5, 1));
+      const i2 = vtx(TB, nrm, perim + edge, topY[i1]!, FACE_WALL, rowWall, [far, 1, centre, key], ld(edgeTop * 0.5, 1));
+      const i3 = vtx(TA, nrm, perim, topY[i]!, FACE_WALL, rowWall, [far, 1, centre, key], ld(edgeTop * 0.5, -1));
       out.triFacing(i0, i1v, i2, nrm);
       out.triFacing(i0, i2, i3, nrm);
       perim += edge;
     }
     const up = frameDir(frame, 0, 1, 0) as V3;
+    const capLc = [0, 1, step(yMax), hash01(p.variant * 53 + 1, 0.61)];
+    // a cap's base row: moss caps and level tops print in the cap row, cut stone tops in the wall's own stone
+    const capBase = CAP_FACE[p.cap] === FACE_CUT ? rowWall : rowCap;
     if (p.apex > 1e-3) {
       const ax = cx + p.apexOffset[0];
       const az = cz + p.apexOffset[1];
@@ -118,9 +147,10 @@ export function addPrisms(out: GeoBuffer, prisms: readonly Prism[], frame: Landm
         let nrm = norm(cross(sub(TB, TA), sub(C, TA)));
         if (dot(nrm, up) < 0) nrm = [-nrm[0], -nrm[1], -nrm[2]];
         const e = Math.hypot(tb[0] - ta[0], tb[1] - ta[1]);
-        const a0 = vtx(TA, nrm, i * e, topY[i]!, FACE_FACET, rowWall);
-        const a1 = vtx(TB, nrm, (i + 1) * e, topY[i1]!, FACE_FACET, rowWall);
-        const a2 = vtx(C, nrm, (i + 0.5) * e, ay, FACE_FACET, rowWall);
+        const lc = [0, 0, step((topY[i]! + ay) * 0.5), hash01(p.variant * 31 + 7, i, 0.83)];
+        const a0 = vtx(TA, nrm, i * e, topY[i]!, FACE_FACET, rowWall, lc);
+        const a1 = vtx(TB, nrm, (i + 1) * e, topY[i1]!, FACE_FACET, rowWall, lc);
+        const a2 = vtx(C, nrm, (i + 0.5) * e, ay, FACE_FACET, rowWall, [0, 1, lc[2]!, lc[3]!]);
         out.triFacing(a0, a1, a2, nrm);
       }
     } else {
@@ -138,9 +168,9 @@ export function addPrisms(out: GeoBuffer, prisms: readonly Prism[], frame: Landm
           const TB = P(tb[0], topY[i1]!, tb[1]);
           let nrm = norm(cross(sub(TB, TA), sub(C, TA)));
           if (dot(nrm, up) < 0) nrm = [-nrm[0], -nrm[1], -nrm[2]];
-          const a0 = vtx(TA, nrm, ta[0], topY[i]!, face, rowCap);
-          const a1 = vtx(TB, nrm, tb[0], topY[i1]!, face, rowCap);
-          const a2 = vtx(C, nrm, cx, cy, face, rowCap);
+          const a0 = vtx(TA, nrm, ta[0], topY[i]!, face, capBase, capLc);
+          const a1 = vtx(TB, nrm, tb[0], topY[i1]!, face, capBase, capLc);
+          const a2 = vtx(C, nrm, cx, cy, face, capBase, capLc);
           out.triFacing(a0, a1, a2, nrm);
         }
       } else {
@@ -150,7 +180,7 @@ export function addPrisms(out: GeoBuffer, prisms: readonly Prism[], frame: Landm
         let nrm = norm(cross(sub(T0, Cc), sub(T1, Cc)));
         if (dot(nrm, up) < 0) nrm = [-nrm[0], -nrm[1], -nrm[2]];
         // cap coordinates: plane (x, z) of the landmark (moss dots, flagstones stay glued to the top)
-        const ring = p.top.map(([x, z], i) => vtx(P(x, topY[i]!, z), nrm, x, z, face, rowCap));
+        const ring = p.top.map(([x, z], i) => vtx(P(x, topY[i]!, z), nrm, x, z, face, capBase, capLc));
         for (const [a, b, c] of earClip(p.top)) out.triFacing(ring[a]!, ring[b]!, ring[c]!, nrm);
       }
     }
@@ -167,133 +197,106 @@ function centroidOf(poly: ReadonlyArray<readonly [number, number]>): [number, nu
   return [x / poly.length, z / poly.length];
 }
 
+function signedArea2(poly: ReadonlyArray<readonly [number, number]>): number {
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i]!;
+    const q = poly[(i + 1) % poly.length]!;
+    a += p[0] * q[1] - q[0] * p[1];
+  }
+  return a * 0.5;
+}
+
+/** Highest point of an outline above `s` (its top edge there). */
+function topAt(outline: ReadonlyArray<readonly [number, number]>, s: number): number {
+  let best = -Infinity;
+  for (let i = 0; i < outline.length; i++) {
+    const p = outline[i]!;
+    const q = outline[(i + 1) % outline.length]!;
+    const lo = Math.min(p[0], q[0]);
+    const hi = Math.max(p[0], q[0]);
+    if (s < lo - 1e-6 || s > hi + 1e-6) continue;
+    const t = hi - lo < 1e-6 ? 1 : (s - p[0]) / (q[0] - p[0]);
+    best = Math.max(best, hi - lo < 1e-6 ? Math.max(p[1], q[1]) : p[1] + (q[1] - p[1]) * t);
+  }
+  return best === -Infinity ? 0 : best;
+}
+
 /**
- * Lancet arcade (ruin): piers and pointed arches as one stone wall with openings — front and back faces between the
- * intrados and the outer rectangle, the intrados surface, pier sides and the top. Broken bays keep only the lower
- * part of their arch (the spandrel above breaks off in a jagged line).
+ * Tracery walls (ruin): each slab extruded from its outline in the wall's own plane — front and back faces
+ * triangulated around the lancet holes (earcut), the thickness as flat side faces (jambs, sills, the arches'
+ * intrados, the broken top as cut stone). Leaning with the wall; one facet per face like the prisms.
  */
-export function addArcade(out: GeoBuffer, a: ArcadeSpec, frame: LandmarkFrame, rows: LandmarkRows): void {
-  const sc = 3; // stone
-  const dx = a.to[0] - a.from[0];
-  const dz = a.to[1] - a.from[1];
-  const len = Math.hypot(dx, dz) || 1;
-  const ux = dx / len;
-  const uz = dz / len;
-  // front normal: toward the plateau centre side (local −(wall normal) … pick the side facing +z of the landmark)
-  let nx = -uz;
-  let nz = ux;
-  if (nz < 0) {
-    nx = -nx;
-    nz = -nz;
-  }
-  const half = a.depth / 2;
-  const topY = a.y + a.pierHeight + a.rise + 0.45;
-  const bayW = (len - a.pier) / a.bays;
-  const span = bayW - a.pier;
-  const P = (s: number, y: number, side: number): V3 => framePoint(frame, a.from[0] + ux * s + nx * half * side, y, a.from[1] + uz * s + nz * half * side);
-  const N = (x: number, y: number, z: number): V3 => norm(frameDir(frame, x, y, z) as V3);
-  const grad = (y: number) => Math.min(1, Math.max(0, (y - a.y) / (topY - a.y)));
-  const vtx = (pos: V3, nrm: V3, u: number, y: number, face = 0) => out.vertex({ position: pos, normal: nrm, la: [u, y, grad(y) * 0.6 + 0.4, 0.37], lb: [sc, face, rows.stone, rows.stone], lc: [Math.max(0, topY - y), 0, 0, 0] });
-  const quad = (p0: V3, p1: V3, p2: V3, p3: V3, nrm: V3, u0: number, u1: number, y0: number, y1: number, y2: number, y3: number, face = 0) => {
-    const i0 = vtx(p0, nrm, u0, y0, face);
-    const i1 = vtx(p1, nrm, u1, y1, face);
-    const i2 = vtx(p2, nrm, u1, y2, face);
-    const i3 = vtx(p3, nrm, u0, y3, face);
-    out.triFacing(i0, i1, i2, nrm);
-    out.triFacing(i0, i2, i3, nrm);
-  };
-  const SEG = 10;
-  // end piers next to a broken bay lost their upper courses
-  const pierH = (b: number) => ((b === 0 && a.broken[0] !== undefined) || (b === a.bays && a.broken[a.bays - 1] !== undefined) ? topY - 0.9 : topY);
-  /** Spandrel top over bay `b` at u (jagged where the bay broke). */
-  const spandrelTop = (b: number, u: number, arch: number): number => {
-    const keep = a.broken[b];
-    if (keep === undefined) return topY;
-    return Math.max(arch + 0.02, topY - (u / Math.max(0.01, keep)) * 0.9);
-  };
-  for (const side of [1, -1]) {
-    const nrm = N(nx * side, 0, nz * side);
-    // piers (full height rectangles) and spandrels above each opening
-    for (let b = 0; b <= a.bays; b++) {
-      const s0 = b * bayW;
-      const s1 = s0 + a.pier;
-      const h = pierH(b);
-      quad(P(s0, a.y - 0.3, side), P(s1, a.y - 0.3, side), P(s1, h, side), P(s0, h, side), nrm, s0, s1, a.y, a.y, h, h);
-    }
-    for (let b = 0; b < a.bays; b++) {
-      const s0 = b * bayW + a.pier;
-      const keep = a.broken[b] ?? 1;
-      for (let k = 0; k < SEG; k++) {
-        const u0 = k / SEG;
-        const u1 = (k + 1) / SEG;
-        if (u0 >= keep) continue;
-        const y0 = a.y + a.pierHeight + lancetHeight(u0, span, a.rise);
-        const y1 = a.y + a.pierHeight + lancetHeight(u1, span, a.rise);
-        const t0 = spandrelTop(b, u0, y0);
-        const t1 = spandrelTop(b, u1, y1);
-        quad(P(s0 + u0 * span, y0, side), P(s0 + u1 * span, y1, side), P(s0 + u1 * span, t1, side), P(s0 + u0 * span, t0, side), nrm, s0 + u0 * span, s0 + u1 * span, y0, y1, t1, t0);
-      }
-    }
-  }
-  const up = N(0, 1, 0);
-  // intrados (arch undersides), jagged tops of broken spandrels and the jamb faces of the piers
-  for (let b = 0; b < a.bays; b++) {
-    const s0 = b * bayW + a.pier;
-    const keep = a.broken[b];
-    for (let k = 0; k < SEG; k++) {
-      const u0 = k / SEG;
-      const u1 = (k + 1) / SEG;
-      if (keep !== undefined && u0 >= keep) continue;
-      const y0 = a.y + a.pierHeight + lancetHeight(u0, span, a.rise);
-      const y1 = a.y + a.pierHeight + lancetHeight(u1, span, a.rise);
-      const ts = (u1 - u0) * span;
-      const ty = y1 - y0;
-      // normal points down/in toward the opening (perpendicular to the arch tangent, in the arch plane)
-      let n: V3 = N(ux * ty, -ts, uz * ty);
-      if (n[1] > 0) n = [-n[0], -n[1], -n[2]];
-      quad(P(s0 + u0 * span, y0, 1), P(s0 + u1 * span, y1, 1), P(s0 + u1 * span, y1, -1), P(s0 + u0 * span, y0, -1), n, s0 + u0 * span, s0 + u1 * span, y0, y1, y1, y0);
-      if (keep !== undefined) {
-        const t0 = spandrelTop(b, u0, y0);
-        const t1 = spandrelTop(b, u1, y1);
-        let tn: V3 = N(-ux * (t1 - t0), ts, -uz * (t1 - t0));
-        if (tn[1] < 0) tn = [-tn[0], -tn[1], -tn[2]];
-        quad(P(s0 + u0 * span, t0, 1), P(s0 + u1 * span, t1, 1), P(s0 + u1 * span, t1, -1), P(s0 + u0 * span, t0, -1), tn, s0 + u0 * span, s0 + u1 * span, t0, t1, t1, t0, 4);
-      }
-    }
-    if (keep !== undefined) {
-      // the broken end of the spandrel: a vertical cut from the arch to the jagged top
-      const u = keep;
-      const y = a.y + a.pierHeight + lancetHeight(u, span, a.rise);
-      const t = spandrelTop(b, u, y);
-      const n = N(ux, 0, uz);
-      quad(P(s0 + u * span, y, 1), P(s0 + u * span, y, -1), P(s0 + u * span, t, -1), P(s0 + u * span, t, 1), n, 0, a.depth, y, y, t, t);
-    }
-    const jamb = (s: number, dir: number) => {
-      const n = N(ux * dir, 0, uz * dir);
-      const yTop = a.y + a.pierHeight;
-      quad(P(s, a.y - 0.3, 1), P(s, a.y - 0.3, -1), P(s, yTop, -1), P(s, yTop, 1), n, 0, a.depth, a.y, a.y, yTop, yTop);
+export function addWalls(out: GeoBuffer, walls: readonly WallSpec[], frame: LandmarkFrame, rows: LandmarkRows, refHeight: number): void {
+  const sc = SURFACE_CODE.stone;
+  for (const w of walls) {
+    if (w.outline.length < 3) continue;
+    const { ux, uz } = wallAxis(w);
+    const ref = Math.max(0.5, refHeight);
+    const hMin = Math.min(...w.outline.map((p) => p[1]));
+    const P = (s: number, h: number, side: number): V3 => {
+      const q = wallPoint(w, s, h, side);
+      return framePoint(frame, q[0], q[1], q[2]);
     };
-    jamb(s0, 1);
-    jamb(s0 + span, -1);
-  }
-  // tops: pier tops, intact spandrels (one strip over pier + bay), then the two ends
-  for (let b = 0; b <= a.bays; b++) {
-    const s0 = b * bayW;
-    const h = pierH(b);
-    const intact = b < a.bays && a.broken[b] === undefined && h === topY;
-    const s1 = s0 + a.pier + (intact ? span : 0);
-    quad(P(s0, h, 1), P(s1, h, 1), P(s1, h, -1), P(s0, h, -1), up, s0, s1, h, h, h, h, 4);
-    if (!intact && b < a.bays && a.broken[b] === undefined) {
-      // pier lowered but its bay intact: the bay's top strip on its own
-      quad(P(s0 + a.pier, topY, 1), P(s0 + a.pier + span, topY, 1), P(s0 + a.pier + span, topY, -1), P(s0 + a.pier, topY, -1), up, s0 + a.pier, s0 + a.pier + span, topY, topY, topY, topY, 4);
+    const la = (s: number, h: number) => [s, w.y + h, clamp01((w.y + h) / ref), w.variant];
+    const lcOf = (s: number, h: number, centre: number, key: number) => {
+      const top = topAt(w.outline, s);
+      return [Math.max(0, top - h), clamp01((h - hMin) / Math.max(0.3, top - hMin)), centre, key];
+    };
+    // in-plane basis (local): along the foot line, up with the lean
+    const along: V3 = [ux, 0, uz];
+    const upL: V3 = [w.normal[0] * w.lean, 1, w.normal[1] * w.lean];
+    const toSet = (v: V3): V3 => norm(frameDir(frame, v[0], v[1], v[2]) as V3);
+    const meanTop = w.outline.reduce((s, p) => s + Math.max(p[1], 0), 0) / w.outline.length;
+    const faceCentre = clamp01((w.y + (Math.max(hMin, 0) + meanTop) * 0.5) / ref);
+    // front (outer, +normal) and back faces around the holes
+    const contour = w.outline.map(([s, h]) => new Vector2(s, h));
+    const holes = w.holes.map((hole) => hole.map(([s, h]) => new Vector2(s, h)));
+    const tris = ShapeUtils.triangulateShape(contour, holes);
+    // (after triangulating: it drops a repeated end point, the indices follow the arrays it kept)
+    const flat = [...contour, ...holes.flat()].map((v) => [v.x, v.y] as const);
+    for (const side of [1, -1]) {
+      const nrm = toSet([w.normal[0] * side, -w.lean * side, w.normal[1] * side]);
+      const key = hash01(w.variant * 71 + 5, side, 0.4);
+      const idx = flat.map(([s, h]) => out.vertex({ position: P(s, h, side), normal: nrm, la: la(s, h), lb: [sc, FACE_WALL, rows.stone, rows.moss], lc: lcOf(s, h, faceCentre, key), ld: NO_LANCET }));
+      for (const t of tris) out.triFacing(idx[t[0]!]!, idx[t[1]!]!, idx[t[2]!]!, nrm);
     }
-  }
-  for (const [s, dir, b] of [
-    [0, -1, 0],
-    [len, 1, a.bays],
-  ] as const) {
-    const n = N(ux * dir, 0, uz * dir);
-    const h = pierH(b);
-    quad(P(s, a.y - 0.3, 1), P(s, a.y - 0.3, -1), P(s, h, -1), P(s, h, 1), n, 0, a.depth, a.y, a.y, h, h);
+    // the thickness: one flat face per edge of the outline and the holes
+    const rings: Array<{ pts: ReadonlyArray<readonly [number, number]>; into: boolean }> = [{ pts: w.outline, into: false }, ...w.holes.map((h) => ({ pts: h, into: true }))];
+    let e = 0;
+    for (const ring of rings) {
+      const ccwRing = signedArea2(ring.pts) > 0;
+      // outward from the solid: right of the edge for a counter-clockwise outline, the opposite into a hole
+      const sign = (ccwRing ? 1 : -1) * (ring.into ? -1 : 1);
+      for (let i = 0; i < ring.pts.length; i++) {
+        const p = ring.pts[i]!;
+        const q = ring.pts[(i + 1) % ring.pts.length]!;
+        const ds = q[0] - p[0];
+        const dh = q[1] - p[1];
+        const l = Math.hypot(ds, dh);
+        if (l < 1e-5) continue;
+        const ns = (dh / l) * sign;
+        const nh = (-ds / l) * sign;
+        const nLocal: V3 = [along[0] * ns + upL[0] * nh, along[1] * ns + upL[1] * nh, along[2] * ns + upL[2] * nh];
+        const nrm = toSet(nLocal);
+        const up = nLocal[1] > 0.55;
+        const face = up ? FACE_CUT : FACE_WALL;
+        const key = hash01(w.variant * 13 + 11, e++, 0.7);
+        const centre = clamp01((w.y + (p[1] + q[1]) * 0.5) / ref);
+        // (no lichen edge on the thickness: along a broken top it would gild the whole flank of every tooth)
+        const lc = (s: number, h: number) => (up ? [0, 1, centre, key] : [99, lcOf(s, h, centre, key)[1]!, centre, key]);
+        // cut tops carry plane coordinates like the prism caps; the sides run along the edge
+        const u0 = up ? p[0] : 0;
+        const u1 = up ? q[0] : l;
+        const v = (s: number, h: number, side: number, u: number) =>
+          out.vertex({ position: P(s, h, side), normal: nrm, la: up ? [u, side * w.depth * 0.5, clamp01((w.y + h) / ref), w.variant] : [u, w.y + h, clamp01((w.y + h) / ref), w.variant], lb: [sc, face, rows.stone, rows.moss], lc: lc(s, h), ld: NO_LANCET });
+        const a = v(p[0], p[1], 1, u0);
+        const b = v(q[0], q[1], 1, u1);
+        const c = v(q[0], q[1], -1, u1);
+        const d = v(p[0], p[1], -1, u0);
+        out.triFacing(a, b, c, nrm);
+        out.triFacing(a, c, d, nrm);
+      }
+    }
   }
 }

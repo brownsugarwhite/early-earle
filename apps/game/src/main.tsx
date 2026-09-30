@@ -44,7 +44,8 @@ void boot.track('font', document.fonts?.load('64px "EE Heavy"') ?? Promise.resol
     document.getElementById('ee-splash')?.remove();
   }
 }
-// Earle-Verläufe vergleichen: ?verlauf=0 zeigt die alten harten Siebdruckstufen, 1 (Standard) die Verläufe.
+// Earle-Verläufe vergleichen: ?verlauf=0 zeigt den reinen Siebdruck (nur die harten Stufen), 1 (Standard) die Stufen
+// plus Verlauf innen.
 const verlauf = new URLSearchParams(location.search).get('verlauf');
 if (verlauf !== null && verlauf !== '' && Number.isFinite(Number(verlauf))) setGradientAmount(Number(verlauf));
 // Dev hook for scripted A/B checks (surface, air, dither separately): window.__earleGradients

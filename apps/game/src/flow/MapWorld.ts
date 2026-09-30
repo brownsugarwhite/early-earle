@@ -418,6 +418,18 @@ export class MapWorld {
     return this.world.walkableHeight(x, z);
   }
 
+  /**
+   * How far the landmark of node `index` rises above the node's stone (the ruin's tower over its terrace), 0 without a
+   * landmark — the map camera pulls back for tall silhouettes.
+   */
+  landmarkRiseAbove(index: number): number {
+    const lm = this.layout.node(index).landmark;
+    if (!lm) return 0;
+    const inst = this.world.landmarkList.find((l) => l.placement.id === lm.id);
+    if (!inst) return 0;
+    return Math.max(0, inst.placement.y + inst.blueprint.height - lm.anchor.position[1]);
+  }
+
   // --- progress ----------------------------------------------------------------------------------------
 
   /**

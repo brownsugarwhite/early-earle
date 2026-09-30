@@ -424,12 +424,15 @@ export class FlowScene implements SceneController {
       const cur = useFlowStore.getState().current;
       const n = world.layout.node(cur).position;
       const f = world.focus;
-      const want = Math.hypot(n[0] - f.x, n[2] - f.z) < 14 ? this.liftFor(cur) : 0;
+      const near = Math.hypot(n[0] - f.x, n[2] - f.z) < 14;
+      const want = near ? this.liftFor(cur) : 0;
+      const wantPull = near ? this.pullFor(cur) : 1;
       const rise = this.clearanceRise();
       const k = 1 - Math.exp(-dt / 0.45);
-      const moved = Math.abs(want - this.mapLift) > 1e-3 || Math.abs(rise - this.mapRise) > 1e-3;
+      const moved = Math.abs(want - this.mapLift) > 1e-3 || Math.abs(rise - this.mapRise) > 1e-3 || Math.abs(wantPull - this.mapPull) > 1e-3;
       if (moved) {
         this.mapLift += (want - this.mapLift) * k;
+        this.mapPull += (wantPull - this.mapPull) * k;
         // rise quickly, sink slowly (no bobbing over a ragged wall)
         this.mapRise += (rise - this.mapRise) * (rise > this.mapRise ? Math.min(1, k * 2.5) : k * 0.6);
         if (elapsed >= this.cameraTweenUntil && !world.cameraRailFor(cur, this.railScratch)) this.applyPose(this.mapPose());
@@ -620,6 +623,7 @@ export class FlowScene implements SceneController {
     this.tweens.cancel('glide');
     this.panBall?.stop();
     this.mapLift = this.liftFor(index);
+    this.mapPull = this.pullFor(index);
     this.applyView(this.viewFor(index));
     this.mapRise = this.clearanceRise();
   }
@@ -702,8 +706,8 @@ export class FlowScene implements SceneController {
    * The plain orbit view over the apex (rig space; the view brings the node under it), lifted by the elevation of a
    * level on a landmark (a rock plateau, a ruin terrace): the camera keeps the same framing above the stone.
    */
-  private orbitPose(zoom = this.zoom, view: MapViewLike = this.mapViewCamera(), lift = this.mapLift, rise = this.mapRise): CameraPose {
-    const position = view.offset.clone().multiplyScalar(zoom);
+  private orbitPose(zoom = this.zoom, view: MapViewLike = this.mapViewCamera(), lift = this.mapLift, rise = this.mapRise, pull = this.mapPull): CameraPose {
+    const position = view.offset.clone().multiplyScalar(zoom * pull);
     position.y += lift + rise;
     const look = _v.copy(view.look);
     look.y += lift;
@@ -720,10 +724,13 @@ export class FlowScene implements SceneController {
   private clearanceRise(): number {
     const world = this.world;
     if (!world) return 0;
-    const cam = world.camera;
-    cam.getWorldPosition(_cw);
+    // Aus der Kartenpose ohne Anhebung, nicht aus der Kamera: beim Sprung auf einen Knoten steht sie noch woanders
+    // (Splash, Level, Ursprung) — gemessen daran stieg sie über der hohen Ruine erst auf über 60 Einheiten
+    const pose = this.orbitPose(this.zoom, this.mapViewCamera(), this.mapLift, 0);
+    world.rig.updateMatrixWorld(true);
+    _cw.copy(pose.position).applyMatrix4(world.rig.matrixWorld);
     const c = world.fromDisplay(_cw, _cp);
-    const baseH = c.y - this.mapRise - this.mapLift;
+    const baseH = c.y;
     const f = world.focus;
     const dx = f.x - c.x;
     const dz = f.z - c.z;
@@ -731,8 +738,8 @@ export class FlowScene implements SceneController {
     const sx = -dz / len;
     const sz = dx / len;
     let maxH = -Infinity;
-    // Unter der Kamera und im unteren Bildband (bis gut zur Mitte des Wegs zum Fokus), seitlich bis ± 5
-    for (const t of [0, 0.2, 0.4, 0.6]) {
+    // Unter der Kamera und bis zum Fokus (hohe Wahrzeichen wie die Ruine stehen oft genau dort), seitlich bis ± 5
+    for (const t of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
       for (const side of [-5, -2.5, 0, 2.5, 5]) {
         const x = c.x + dx * t + sx * side;
         const z = c.z + dz * t + sz * side;
@@ -747,6 +754,18 @@ export class FlowScene implements SceneController {
     const n = this.world?.layout.node(index);
     return n?.landmark ? Math.max(0, n.landmark.anchor.height - 0.8) : 0;
   }
+
+  /**
+   * Pull-back of the map camera at node `index`: a landmark that rises far above the node's stone (the ruin's tower
+   * over its terrace, ≈ 9 units) is framed from up to half again as far, so its silhouette reads in the landscape.
+   */
+  private pullFor(index: number): number {
+    const rise = this.world?.landmarkRiseAbove(index) ?? 0;
+    return 1 + Math.min(0.5, Math.max(0, rise - 2) / 12);
+  }
+
+  /** Camera pull-back of the map view (smoothed toward the current node's `pullFor`). */
+  private mapPull = 1;
 
   /** Camera lift of the map view (smoothed toward the current node's elevation). */
   private mapLift = 0;
@@ -949,7 +968,7 @@ export class FlowScene implements SceneController {
     const cam = this.world?.camera;
     const view = this.mapViewCamera();
     const fov = cam?.fov ?? view.fov;
-    const dist = view.offset.clone().multiplyScalar(this.zoom).distanceTo(view.look);
+    const dist = view.offset.clone().multiplyScalar(this.zoom * this.mapPull).distanceTo(view.look);
     return (2 * dist * Math.tan((fov * Math.PI) / 360)) / h;
   }
 
@@ -970,7 +989,7 @@ export class FlowScene implements SceneController {
     const world = this.world;
     if (!world) return;
     // the target on the ground (without a landmark lift)
-    const pose = this.orbitPose(1, this.mapViewCamera(), 0);
+    const pose = this.orbitPose(1, this.mapViewCamera(), 0, 0, 1);
     const cam = this.probeCamera;
     cam.aspect = world.camera.aspect;
     cam.fov = pose.fov;

@@ -146,9 +146,11 @@ export class DriftLandmarks {
       positionNode: o.warp(o.footClear ? driftSink(o.footClear.camLocal, o.footClear.radius) : positionLocal),
       fogDistNode: positionView.length().add(o.veil(world)),
       growthNode: o.growth ? o.growth(inst.z) : null,
-      // Verlauf im Schatten wie das Gelände darunter (Ebene: die Hochachse, ADR 0002): die Wehe verschmilzt mit seinem
-      // Schatten; `world` ist der Welt-Slot (die Tönungen liegen je Slot)
+      // Schatten getönt wie das Gelände darunter (blau auf Schnee): die Wehe verschmilzt mit seinem Schatten; oben ist
+      // die Hochachse der Ebene (ADR 0002), `world` der Welt-Slot (die Tönungen liegen je Slot)
       shadowTint: o.shadowTint ? { tint: o.shadowTint, world, up: normalize(modelViewMatrix.mul(vec4(0, 1, 0, 0)).xyz) as unknown as Vec3Node } : null,
+      // Verlauf innerhalb der Bänder: Kamm der Wehe hell, Fuß tiefer
+      gradient: positionGeometry.y.div(0.42).clamp(0, 1).mul(2).sub(1),
     });
     const mesh = new InstancedMesh(this.geometry, this.material, o.capacity);
     mesh.name = 'planet-drifts';

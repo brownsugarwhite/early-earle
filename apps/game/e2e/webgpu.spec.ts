@@ -76,8 +76,8 @@ test('Earle-Welten auf WebGPU: Wasser, Felsen, Scheune, Schneefelder und -wehen 
   const errors = collectGpuErrors(page);
   await page.setViewportSize({ width: 900, height: 700 });
   // Welten mit Geländemerkmalen: Fluss + Seen (02), Felsstufen + Wand (04), Eis + Tafelfels + Wehen (05),
-  // Schneefelder + Wand (06), Scheune (08), Turm (09)
-  for (const world of [2, 4, 5, 6, 8, 9]) {
+  // Schneefelder + Wand (06), Scheune (08), Turm (09); Riesenstämme mit Leucht- (07) und Glasfenster-Rinde (10)
+  for (const world of [2, 4, 5, 6, 7, 8, 9, 10]) {
     await page.goto(`/lab/earle?world=${world}&progress=100`);
     if (world === 2) {
       await requireWebGPU(page);

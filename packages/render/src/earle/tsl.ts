@@ -1,6 +1,6 @@
 import { abs, clamp, float, floor, fract, fwidth, hash, int, max, mix, positionView, select, smoothstep, texture, time, uniform, vec2 } from 'three/tsl';
 import type { Node, Texture, UniformNode } from 'three/webgpu';
-import { AIR_ROOM_PX, earleGradients, fountain, fountain2 } from './gradients';
+import { SAW_GRADIENT, STEP_GRADIENT, earleGradients, stepRamp, stepRamp2 } from './gradients';
 
 /** Typisierte TSL-Knoten (Swizzles und Operatoren hängen am Typparameter). */
 export type FloatNode = Node<'float'>;
@@ -42,11 +42,11 @@ export class PaletteLookup {
   }
 
   /**
-   * Irisdruck-Rampe durch die Stufen (siehe `gradients.ts`): `soft` 0 = harte Bänder wie `bands`, 1 = weicher
-   * Verlauf. Standard: der geteilte Flächen-Regler `earleGradients.surface`.
+   * Bänder mit Verlauf innen (siehe `gradients.ts`, `stepRamp`): die harten Stufen wie `bands`, dazu innerhalb jeder
+   * Stufe ein Verlauf nach der großräumigen Koordinate `g` ∈ [−1, 1]. Standardstärke: `STEP_GRADIENT` × Flächen-Regler.
    */
-  ramp(x: FloatNode, row: FloatNode | number, base: number, soft: FloatNode | number = earleGradients.surface): Vec4Node {
-    return fountain(this, x, row, base, soft);
+  ramp(x: FloatNode, row: FloatNode | number, base: number, g: FloatNode | number, amount: FloatNode | number = earleGradients.surface.mul(STEP_GRADIENT)): Vec4Node {
+    return stepRamp(this, x, row, base, g, amount);
   }
 
   /**
@@ -85,25 +85,16 @@ export function createFogSettings(init: { row: number; rowB?: number; steps: num
   };
 }
 
-/** Anteil des Verlaufs in den Nebelstufen (1 = ganz weich, 0 = harte Stufen): ein Rest der Stufe bleibt als Band. */
-export const FOG_SOFTNESS = 0.85;
-
 /**
- * Luftperspektive: mischt `color` nach Distanz zur Kamera mit der Nebelfarbe (Alpha der Nebelzeile = Nebelanteil).
- * Die Nebelstufen bleiben als ferne Wertstufen erhalten, laufen aber innen weich zur nächsten (Irisdruck, siehe
- * `fountain`; `earleGradients.air` 0 = harte Stufen wie früher). Silhouetten (ein naher Hügel vor einem fernen)
- * bleiben dabei harte Wertsprünge — Earles gestaffelte Hügelbänder. `dist` optional (Standard: Länge von positionView).
+ * Gestufte Luftperspektive: mischt `color` nach Distanz zur Kamera stufenweise mit der Nebelfarbe (Alpha der Nebelzeile =
+ * Nebelanteil). Die Wertstufen bleiben harte Kanten wie im Siebdruck; innerhalb jeder Stufe läuft ein Sägezahn-Verlauf
+ * (vorn klarer, hinten dunstiger — Earles Hügelbänder, je oben hell und unten tief, Ebene 19/36), `earleGradients.air`
+ * 0 = reine Stufen. `dist` optional (Standard: Länge von positionView).
  */
 export function steppedFog(color: Vec3Node, fog: FogSettings, lookup: PaletteLookup, dist?: FloatNode): Vec3Node {
   const d = dist ?? positionView.length();
   const x = clamp(d.sub(fog.start).mul(fog.invRange), 0, 0.999).mul(fog.steps.sub(1));
-  // Die fernste Stufe bleibt flach (wie bisher: Schleier über Nachbarwelten und Horizont in derselben Wertstufe),
-  // die näheren Stufen laufen zur jeweils nächsten
-  const soft = earleGradients.air.mul(FOG_SOFTNESS);
-  const top = fog.steps.sub(2);
-  // Nachlauf ¾ Stufe: der Mittelgrund bleibt satt (Earles klare Wertstufen), erst zur nächsten Stufe hin wird es neblig
-  const air = { maxX: top, roomPx: AIR_ROOM_PX, linear: true, lag: 0.75 };
-  const f = fountain2(lookup, x, fog.row, fog.rowB, fog.mix, 0, soft, air);
+  const f = stepRamp2(lookup, x, fog.row, fog.rowB, fog.mix, 0, 0, earleGradients.air.mul(SAW_GRADIENT), { saw: true, linear: true });
   return mix(color, f.rgb, f.a);
 }
 

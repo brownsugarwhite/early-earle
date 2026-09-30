@@ -1,6 +1,6 @@
 import { Box3, BufferAttribute, BufferGeometry, Frustum, Group, Matrix4, Mesh, MeshBasicNodeMaterial, Object3D, Quaternion, Sphere, Vector3, Vector4 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
-import { abs, atan, attribute, float, fract, fwidth, int, length, max, mix, modelViewMatrix, modelWorldMatrix, normalGeometry, normalView, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, varying, vec2, vec3, vec4 } from 'three/tsl';
+import { abs, atan, attribute, cameraViewMatrix, clamp, float, fract, fwidth, int, length, max, mix, modelViewMatrix, modelWorldMatrix, normalGeometry, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, varying, vec2, vec3, vec4 } from 'three/tsl';
 import {
   CHUNK_SIZE,
   PlaneField,
@@ -87,6 +87,11 @@ export interface EarlePlanetWorld {
   valleyMist?: number;
   /** Leuchtender Horizont 0..1 (Ebene 16: heller Schein hinter den Baumreihen, am Horizont rundum). Fehlt → 0. */
   skyGlow?: number;
+  /**
+   * Fluchtpunkt der Bodenlinien (`ground: floorLines`, Ebene 3/32) als Versatz vom Bildfokus der Welt in Welteinheiten
+   * (Ebene: Ost = voraus längs des Pfads, −z; Nord = quer, +x). Fehlt → Bildfokus (Strahlen und Ringe um die Mitte).
+   */
+  floorAnchor?: { east?: number; north?: number };
 }
 
 export interface EarlePlanetQuality {
@@ -313,6 +318,8 @@ export class EarlePlanet {
   /** Fokuspunkt je Slot im flachen Raum (Perspektivlinien des Juwelenwalds), je Frame nachgeführt. */
   private readonly slotFocus: { array: Vector4[] };
   private readonly slotFocusPlane: Array<[number, number] | null> = new Array<[number, number] | null>(SLOT_COUNT).fill(null);
+  /** Strahlen der Perspektivlinien je Slot (48; mit fernem Fluchtpunkt `floorAnchor` 144). */
+  private readonly slotRays: number[] = new Array<number>(SLOT_COUNT).fill(48);
   private readonly rockRows: UniformArrayLike;
   private readonly waterRows: UniformArrayLike;
   private readonly barnRows: UniformArrayLike;
@@ -474,8 +481,10 @@ export class EarlePlanet {
     const ang = length(dxy);
     const theta = atan(dxy.y, dxy.x);
     const flat = smoothstep(0.86, 0.97, normalGeometry.y);
-    // Perspektivlinien (Ebene 3/32): fein und dicht wie gezogene Tuschelinien — 48 Strahlen, Ringe alle 2.4 Einheiten
-    const lines = stripeMask(select(isSnow, snowCoord, theta.mul(48 / (Math.PI * 2))), select(isSnow, float(0.09), float(0.022))).mul(select(isSnow, float(1), smoothstep(0.48, 1.9, ang)));
+    // Perspektivlinien (Ebene 3/32): fein und dicht wie gezogene Tuschelinien — 48 Strahlen (mit fernem Fluchtpunkt,
+    // `floorAnchor`, 144, damit sie vorn dicht bleiben; Anzahl je Slot in focusS.z), Ringe alle 2.4 Einheiten
+    const rays = select(focusS.z.greaterThan(0.5), focusS.z, float(48));
+    const lines = stripeMask(select(isSnow, snowCoord, theta.mul(rays).div(Math.PI * 2)), select(isSnow, float(0.09), float(0.022))).mul(select(isSnow, float(1), smoothstep(0.48, 1.9, ang)));
     const rings = stripeMask(ang.div(2.4).add(drift), 0.018).mul(select(isSnow, float(0), float(1)));
     const mask = max(lines, rings).mul(flat).mul(select(kind.greaterThan(0.5).and(kind.lessThan(2.5)), float(1), float(0)));
     const patternColor = this.lookup.pal(wa.z, rowNode).rgb;
@@ -490,18 +499,30 @@ export class EarlePlanet {
     const snowWob = sin(po.x.mul(k(1.9)).add(sin(po.z.mul(k(1.9 * 1.3))).mul(1.7)))
       .mul(0.035)
       .add(sin(po.y.mul(2.3 * 1.9).add(po.x.mul(k(0.7 * 1.9)))).mul(0.025));
-    // Schatten auf dem Schneefeld laufen von tiefem zu hellerem Blau (sonnenzugewandte Hänge heller, Bild 05)
-    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08), shadowLift: 0.15 };
+    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08) };
     // Gemeißelte Hänge: Wertstufen entlang der Höhenlinien (Stufensprung im Bandwert je Höhenschicht)
     const chisel = wa.w;
     // Sägezahn mit 1-px-Kante: jede Höhenschicht verläuft in sich, die Stufe zur nächsten bleibt eine klare Kante
     const contour = aaSaw(heightAttr.mul(5.0).add(0.5)).sub(0.5).mul(0.34);
-    // Verlaufsnormale: Geländenormale zur Hochachse der Ebene hin gemischt (ADR 0002: Licht rechnet in der Ebene, dort
-    // ist „oben“ überall +y — früher die Kugelnormale) → ein ruhiger Verlauf über den Hügel (Kamm hell, Hang zur Sonne
-    // heller), kleine Dellen und Uferrinnen zeigen keine Dreiecke; die Tintenform folgt weiter dem Relief
+    // Verlauf innerhalb der Lichtbänder (Ebene 19/20/36: jede Wiese, jedes Schneefeld verläuft in sich), großräumig und
+    // damit auf beiden Seiten einer Bandkante fast gleich — die Kante bleibt ein harter Sprung:
+    // - zur Sonne hin heller (Normale der Anzeigekugel: die sonnenseitige Hälfte des Bildes, Ebene 19),
+    // - Kamm hell → Tal tief (Höhe),
+    // - vorn tief, zum Horizont heller (Bildtiefe: die Höhe im Bild — unterer Bildrand = nächster Boden −1, Horizont
+    //   +1, bei FOV 50–61° in jeder Kameraeinstellung gleich; dahinter übernehmen die Wertstufen der Luftperspektive).
+    // Schattentönung und Tintenform rechnen weiter in der Ebene (ADR 0002): dort ist „oben“ die Hochachse der Ebene.
     const planeUpN = varying(modelViewMatrix.mul(vec4(0, 1, 0, 0)).xyz, 'vTerrainPlaneUp');
-    const sphereUp = normalize(planeUpN);
-    const gradientNormal = mix(normalView, sphereUp, 0.8);
+    const planeUp = normalize(planeUpN);
+    // Die Anzeigekugel liegt um den Weltursprung: ihre Normale zeigt vom Mittelpunkt zur angezeigten Position
+    const globeUp = normalize(positionView.sub(cameraViewMatrix.mul(vec4(0, 0, 0, 1)).xyz));
+    const crest = heightAttr.mul(2).sub(1);
+    const depth = clamp(positionView.y.div(positionView.length()).mul(4.5).add(0.9), -1, 1);
+    // Eine gemeinsame Richtung (vorn tief → hinten und zur Sonne hell), die über das ganze Bild läuft: große Flächen
+    // zeigen den Verlauf deutlich, kleine Formen sehen nur ein Stück davon
+    const terrainGradient = ({ L }: { L: Vec3Node }): FloatNode => {
+      const sunSide = clamp(globeUp.dot(L).sub(0.17).mul(3.5), -1, 1);
+      return clamp(depth.mul(0.7).add(sunSide.mul(0.4)).add(crest.mul(0.3)), -1, 1) as unknown as FloatNode;
+    };
     // Talnebel (Ebene 20): am Talgrund dicht und hell, zu den Kämmen hin ausdünnend; direkt vor der Linse frei
     const valley = float(1).sub(smoothstep(0.0, 0.5, heightAttr));
     const mist = varying(valley.mul(valley).mul(smoothstep(4.0, 13.0, positionView.length())), 'vTerrainMist').mul(this.mistStrength).mul(earleGradients.air);
@@ -518,10 +539,12 @@ export class EarlePlanet {
       bands: this.terrainBands,
       bandScale: 2.0,
       terminator: 0.02,
-      // Kamm → Tal: Kuppen heller, Mulden tiefer (Earles Hügel), dazu die Meißelschichten
-      lift: heightAttr.mul(0.5).add(contour.mul(chisel)),
-      gradientNormalNode: gradientNormal,
-      shadowTint: tint ? { tint, world: slotF, up: sphereUp } : null,
+      // Höhe → hellere Kuppen, dazu die Meißelschichten (harte Bänder wie im Siebdruck)
+      lift: heightAttr.mul(0.45).add(contour.mul(chisel)),
+      gradient: terrainGradient,
+      // große, gleichfarbige Flächen (Wiese, Schnee, Wüste) zeigen den Verlauf deutlich: bis 45 % zur Nachbarstufe
+      gradientAmount: earleGradients.surface.mul(0.45),
+      shadowTint: tint ? { tint, world: slotF, up: planeUp } : null,
       mist: { amount: mist, color: this.mistColor as unknown as Vec3Node },
       crackNode: crack,
       crackLipNode: lip,
@@ -648,7 +671,8 @@ export class EarlePlanet {
     this.slotB.array[slot]!.set(rows.water, w.palette.snow ? rows.snow : rows.terrain, hasSnow ? 1 : 0, rows.rock);
     // Fokus der Perspektivlinien: setzt `rebuildContent` aus der nächsten Region der Welt
     this.slotFocusPlane[slot] = null;
-    this.slotFocus.array[slot]!.set(1e4, 1e4, 0, 0);
+    this.slotRays[slot] = w.floorAnchor ? 144 : 48;
+    this.slotFocus.array[slot]!.set(1e4, 1e4, this.slotRays[slot]!, 0);
     this.vegetation?.onSlotAssigned(slot, world);
     this.applySlotTint(slot, world);
   }
@@ -696,7 +720,7 @@ export class EarlePlanet {
   private syncSlotFocus(): void {
     for (let s = 0; s < SLOT_COUNT; s++) {
       const f = this.slotFocusPlane[s];
-      if (f) this.slotFocus.array[s]!.set(f[0] - this.focus.x, f[1] - this.focus.z, 0, 0);
+      if (f) this.slotFocus.array[s]!.set(f[0] - this.focus.x, f[1] - this.focus.z, this.slotRays[s]!, 0);
     }
   }
 
@@ -1580,16 +1604,20 @@ export class EarlePlanet {
     this.anchorObject(this.barns.mesh, ax, az);
     this.drifts.set(drifts);
     this.anchorObject(this.drifts.mesh, ax, az);
-    // Perspektivlinien (Bodenlinien-Welten): Fokus je Slot = Bildfokus der nächsten Region dieser Welt
+    // Perspektivlinien (Bodenlinien-Welten): Fokus je Slot = Bildfokus der nächsten Region dieser Welt, verschoben um
+    // `floorAnchor` (Ebene: Ost = voraus längs des Pfads, −z; Nord = quer, +x) — ein ferner Fluchtpunkt, auf den die
+    // Strahlen wie Earles Perspektivlinien zulaufen
     const best = new Map<number, { d: number; f: [number, number] }>();
     for (const rk of regions) {
       const region = this.field.region(rk);
-      if (this.worldData(region.world).ground !== 'floorLines') continue;
+      const data = this.worldData(region.world);
+      if (data.ground !== 'floorLines') continue;
       const f = this.field.regionSite(rk).focus;
       const d = Math.hypot(f[0] - this.focus.x, f[1] - this.focus.z);
       const slot = this.slots.slotOf(region.world);
       const prev = best.get(slot);
-      if (!prev || d < prev.d) best.set(slot, { d, f: [f[0], f[1]] });
+      const fa = data.floorAnchor;
+      if (!prev || d < prev.d) best.set(slot, { d, f: [f[0] + (fa?.north ?? 0), f[1] - (fa?.east ?? 0)] });
     }
     for (const [slot, b] of best) this.slotFocusPlane[slot] = b.f;
     this.syncSlotFocus();

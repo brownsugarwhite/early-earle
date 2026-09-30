@@ -8,8 +8,11 @@ import type { TrashSpec } from '../trash/types';
  * z entlang des Levelpfads (vorwärts = −z) und h der Höhe über der Grundfläche.
  */
 
-/** Stamm-Stil der Vegetation (Shader-Zweig): Tinte, weiße Kathedralenstämme, gestreifte Juwelenstämme, Flechtenbänder. */
-export type TrunkStyle = 'ink' | 'white' | 'striped' | 'lichen';
+/**
+ * Stamm-Stil der Vegetation (Shader-Zweig): Tinte, weiße Kathedralenstämme, gestreifte Juwelenstämme, Flechtenbänder,
+ * leuchtend blaue Kathedralenstämme mit Lichtkante (Ebene 16).
+ */
+export type TrunkStyle = 'ink' | 'white' | 'striped' | 'lichen' | 'glow';
 /** Punktmotiv in den Kronen: einzelne Punkte, Rauten (4 Punkte), Kreuze (5 Punkte), nur am Rand. */
 export type CanopyMotif = 'dots' | 'diamond' | 'cross' | 'rim';
 
