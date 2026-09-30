@@ -54,14 +54,21 @@ export interface ContentTargetState {
   /** Last problem in plain German (for the Werkstatt card). */
   error: string | null;
   checkedAt: number;
+  /** Result of the last write test (Werkstatt „Testen“), null = not tested since the address changed. */
+  write: { ok: boolean; message: string } | null;
   setMacUrl: (url: string) => boolean;
   /** Probes the endpoint (cached for a few seconds unless `force`). Resolves to "reachable". */
   check: (force?: boolean) => Promise<boolean>;
+  /** Full test: ping, then write and delete a throwaway file (content/genome/_werkstatt-test.json). */
+  testWrite: () => Promise<boolean>;
   /** A request failed on the network: show the local fallback until the next check. */
   markOffline: (error: string) => void;
 }
 
 let inflight: Promise<boolean> | null = null;
+let writeInflight: Promise<boolean> | null = null;
+/** Throwaway file of the write test: in genome/ (no module globs there, so no reload in open dev tabs), `_` = deletable. */
+const WRITE_TEST_FILE = '_werkstatt-test.json';
 
 export const useContentTarget = create<ContentTargetState>((set, get) => ({
   mode: CONTENT_MODE,
@@ -70,6 +77,7 @@ export const useContentTarget = create<ContentTargetState>((set, get) => ({
   host: null,
   error: null,
   checkedAt: 0,
+  write: null,
   setMacUrl: (url) => {
     const n = normalizeMacUrl(url);
     if (!n) return false;
@@ -78,8 +86,36 @@ export const useContentTarget = create<ContentTargetState>((set, get) => ({
     } catch {
       /* not remembered */
     }
-    set({ macUrl: n, status: 'unbekannt', host: null, error: null, checkedAt: 0 });
+    set({ macUrl: n, status: 'unbekannt', host: null, error: null, checkedAt: 0, write: null });
     return true;
+  },
+  testWrite: () => {
+    // One test at a time (a second tap, or React's double effect in dev, joins the running one).
+    if (writeInflight) return writeInflight;
+    const run = async (): Promise<boolean> => {
+      if (!(await get().check(true))) {
+        set({ write: { ok: false, message: 'Mac nicht erreichbar' } });
+        return false;
+      }
+      const url = contentUrl('genome', WRITE_TEST_FILE);
+      try {
+        const put = await contentFetch(url, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ schemaVersion: 1, test: 'werkstatt', at: new Date().toISOString() }) }, 6000);
+        if (!put.ok) {
+          set({ write: { ok: false, message: `Schreiben abgelehnt (${put.status})` } });
+          return false;
+        }
+        const del = await contentFetch(url, { method: 'DELETE' }, 6000).catch(() => null);
+        set({ write: { ok: true, message: del?.ok ? 'Schreiben geht' : 'Schreiben geht (Testdatei liegt noch)' } });
+        return true;
+      } catch {
+        set({ write: { ok: false, message: 'Schreiben: keine Verbindung' } });
+        return false;
+      }
+    };
+    writeInflight = run().finally(() => {
+      writeInflight = null;
+    });
+    return writeInflight;
   },
   check: (force = false) => {
     const s = get();

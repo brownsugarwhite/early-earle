@@ -6,23 +6,35 @@ const hostOf = (url: string) => url.replace(/^https?:\/\//, '');
 
 /**
  * Save target of the editors, as a card (Werkstatt): connected to the Mac → saves go straight into `content/`;
- * not reachable → saves stay on the device and can be shared as JSON. In the app the Mac address is editable
- * (default http://192.168.1.55:5174) with a connection test.
+ * not reachable → saves stay on the device and can be shared as JSON. „Testen“ pings the Mac and writes/deletes
+ * a throwaway file. In the app the Mac address is editable (default http://192.168.1.55:5174).
+ * `autoTest` (Werkstatt `?test=1`, e.g. `earlyearle://werkstatt?test=1`) runs the full test on open.
  */
-export function ConnectionCard() {
+export function ConnectionCard({ autoTest = false }: { autoTest?: boolean }) {
   const mode = useContentTarget((s) => s.mode);
   const macUrl = useContentTarget((s) => s.macUrl);
   const status = useContentTarget((s) => s.status);
   const host = useContentTarget((s) => s.host);
   const error = useContentTarget((s) => s.error);
+  const write = useContentTarget((s) => s.write);
   const setMacUrl = useContentTarget((s) => s.setMacUrl);
   const check = useContentTarget((s) => s.check);
+  const testWrite = useContentTarget((s) => s.testWrite);
   const [draft, setDraft] = useState(macUrl);
   const [invalid, setInvalid] = useState(false);
+  const [testing, setTesting] = useState(false);
 
+  const runTest = async () => {
+    setTesting(true);
+    await testWrite();
+    setTesting(false);
+  };
+
+  // Once on open: the full test when asked for (?test=1), else just the ping.
   useEffect(() => {
-    void check(true);
-  }, [check]);
+    if (autoTest) void runTest();
+    else void check(true);
+  }, []);
   useEffect(() => setDraft(macUrl), [macUrl]);
 
   const online = status === 'verbunden';
@@ -44,10 +56,15 @@ export function ConnectionCard() {
           <b data-testid="werkstatt-connection-title">{title}</b>
           <small>{sub}</small>
         </div>
-        <button type="button" className="ws-btn" onClick={() => void check(true)} disabled={status === 'prüft'} data-testid="werkstatt-check">
-          Prüfen
+        <button type="button" className="ws-btn" onClick={() => void runTest()} disabled={testing || status === 'prüft'} data-testid="werkstatt-check">
+          {testing ? 'Teste …' : 'Testen'}
         </button>
       </div>
+      {write ? (
+        <p className="ws-conn-write" data-ok={write.ok} data-testid="werkstatt-write">
+          {write.ok ? '✓' : '✕'} {write.message}
+        </p>
+      ) : null}
       <p className="ws-conn-hint">
         {online
           ? 'Editoren speichern direkt in content/ auf dem Mac.'
@@ -60,7 +77,7 @@ export function ConnectionCard() {
             e.preventDefault();
             const ok = setMacUrl(draft);
             setInvalid(!ok);
-            if (ok) void check(true);
+            if (ok) void runTest();
           }}
         >
           <label className="ws-field">
@@ -81,7 +98,7 @@ export function ConnectionCard() {
             />
           </label>
           <button type="submit" className="ws-btn ws-btn-primary" data-testid="werkstatt-mac-test">
-            Verbindung testen
+            Übernehmen
           </button>
           <small className="ws-conn-note">Auf dem Mac: pnpm --filter @ee/game dev:http · gleiches WLAN</small>
         </form>

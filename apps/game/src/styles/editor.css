@@ -2484,6 +2484,12 @@ html.ed-lock body {
   font: 700 16px/1 var(--font-body);
   box-shadow: -5px 2px 0 var(--ink-soft);
 }
+.map-field select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 34px;
+  background: var(--paper) var(--ee-chevron) no-repeat right 12px center / 14px 14px;
+}
 .map-json textarea {
   width: 100%;
   min-height: 45vh;
@@ -2533,5 +2539,13 @@ html.ed-lock body {
   }
   .map-target-host {
     display: none;
+  }
+  /* Sieben Farbfelder (Kronen-Rampe) passen in eine Zeile. */
+  .map-swatch {
+    width: 40px;
+    height: 40px;
+  }
+  .map-ramp {
+    gap: 8px;
   }
 }

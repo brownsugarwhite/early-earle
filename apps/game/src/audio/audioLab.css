@@ -33,9 +33,10 @@
 .al-slider { display: grid; grid-template-columns: 70px 1fr 34px; gap: 10px; align-items: center; font-weight: 700; font-size: 13px; }
 .al-slider input { width: 100%; accent-color: var(--neon); }
 .al-slider b { font: 12px ui-monospace, Menlo, monospace; text-align: right; }
-.al-text { flex: 1 1 320px; font: inherit; font-size: 15px; padding: 11px 12px; background: var(--paper); color: var(--ink); border: 0; box-shadow: var(--sun-shadow) var(--ink-soft); }
+/* 16 px: kein Zoom beim Tippen auf dem iPhone; eckig ohne iOS-Rahmen. */
+.al-text { flex: 1 1 260px; min-width: 0; font: inherit; font-size: 16px; padding: 11px 12px; background: var(--paper); color: var(--ink); border: 0; border-radius: 0; -webkit-appearance: none; appearance: none; box-shadow: var(--sun-shadow) var(--ink-soft); }
 .al-text:focus { outline: none; box-shadow: var(--sun-shadow) var(--neon); }
-.al-select { font: inherit; padding: 10px 12px; background: var(--paper); color: var(--ink); border: 0; box-shadow: var(--sun-shadow) var(--ink-soft); }
+.al-select { max-width: 100%; font: inherit; font-size: 16px; padding: 10px 34px 10px 12px; background: var(--paper) var(--ee-chevron) no-repeat right 10px center / 14px 14px; color: var(--ink); border: 0; border-radius: 0; -webkit-appearance: none; appearance: none; box-shadow: var(--sun-shadow) var(--ink-soft); }
 .al-lines { display: flex; flex-wrap: wrap; gap: 8px; }
 .al-line { font: inherit; font-size: 13px; padding: 8px 10px; background: var(--teal); color: var(--ink); border: 0; cursor: pointer; box-shadow: 4px 2px 0 var(--ink-soft); text-align: left; }
 .al-previews { display: grid; gap: 8px; }

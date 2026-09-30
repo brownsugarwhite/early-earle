@@ -111,7 +111,8 @@ export function contentApi(opts: ContentApiOptions): Plugin {
             }
             // Level-Dateien mit dem stabilen Formatierer der Werkzeuge schreiben (kompakte Koordinaten, saubere Diffs)
             const pretty = (dir === 'levels' ? formatJson(json) : JSON.stringify(json, null, 2)) + '\n';
-            const tmp = target + '.tmp-' + process.pid;
+            // One tmp file per request: two PUTs of the same file at once must not rename each other's tmp away.
+            const tmp = `${target}.tmp-${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
             await fs.mkdir(path.dirname(target), { recursive: true });
             await fs.writeFile(tmp, pretty, 'utf8');
             await fs.rename(tmp, target);

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { Glyph } from '../overlay/glyphs';
 import { WERKSTATT_EDITORS, WERKSTATT_LABS, type WerkstattEntry } from '../overlay/werkstattCatalog';
 import { ConnectionCard } from '../editor/content/ConnectionCard';
@@ -34,6 +34,8 @@ function Tile({ entry }: { entry: WerkstattEntry }) {
  * through the wrench on the map (native glass pill) — the app has no URL bar.
  */
 export function Werkstatt() {
+  // `?test=1` (earlyearle://werkstatt?test=1): full connection test with a write on open.
+  const autoTest = new URLSearchParams(useLocation().search).get('test') === '1';
   return (
     <div className="page-scroll ws-scroll">
       <main className="page werkstatt" data-testid="werkstatt">
@@ -53,7 +55,7 @@ export function Werkstatt() {
           </div>
         </header>
 
-        <ConnectionCard />
+        <ConnectionCard autoTest={autoTest} />
 
         <section className="ws-group" aria-labelledby="ws-h-editoren">
           <h2 id="ws-h-editoren" className="ws-h">
