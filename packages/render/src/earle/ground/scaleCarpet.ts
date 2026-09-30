@@ -109,10 +109,11 @@ export function createScaleCarpet(lookup: PaletteLookup, row: FloatNode, po: Vec
   const toward = dot(vec2(sin(ak), cos(ak).negate()), sunN) as unknown as FloatNode;
   // Bogenstück zur Sonne (Busch für Busch etwas anders lang), im Hanglicht wachsend
   const arcLit = mix(smoothstep(float(0.05).add(c.h.mul(0.35)), float(0.55).add(c.h.mul(0.3)), toward), float(1), decor);
-  const grow = mix(arcLit.mul(float(0.45).add(slopeLit.mul(0.55))), float(0.85), decor);
+  // Ebene 20: auch im Schatten des Hangs tragen die Büsche zur Sonne einen Punktrand (kleiner, gedämpft)
+  const grow = mix(arcLit.mul(float(0.62).add(slopeLit.mul(0.38))), float(0.85), decor);
   // einzelne Punkte fehlen (gebrochene Bögen wie gemalt)
   const keep = fract(sin(ak.mul(17.3).add(c.h.mul(113.0))).mul(4375.5)).lessThan(0.82);
-  const rimRad = float(0.055 * CARPET_CELL).mul(grow);
+  const rimRad = float(0.068 * CARPET_CELL).mul(grow);
   const rim = smoothstep(rimRad.add(fw), rimRad.sub(fw), dRim)
     .mul(clamp(rimRad.div(fw), 0, 1))
     .mul(select(onArc.and(keep), float(1), float(0)));
@@ -148,7 +149,7 @@ export function createScaleCarpet(lookup: PaletteLookup, row: FloatNode, po: Vec
   const mid = lookup.pal(4, row).rgb as unknown as Vec3Node;
   const dim = mix(lookup.pal(2, row).rgb, lookup.pal(3, row).rgb, 0.5) as unknown as Vec3Node;
   // Bogenpunkte: im vollen Licht die hellste Stufe, sonst eine darunter; innere Punkte gedämpft
-  let rimCol = mix(mid, lit, smoothstep(0.3, 0.8, slopeLit.mul(arcLit))) as unknown as Vec3Node;
+  let rimCol = mix(mix(dim, mid, arcLit), lit, smoothstep(0.3, 0.8, slopeLit.mul(arcLit))) as unknown as Vec3Node;
   let innerCol = dim;
   let streakCol = mid;
   if (accentRow) {
@@ -172,8 +173,14 @@ export function createScaleCarpet(lookup: PaletteLookup, row: FloatNode, po: Vec
     innerCol = mix(mix(innerCol, lookup.pal(6, accentRow).rgb as unknown as Vec3Node, red), lookup.pal(4, accentRow).rgb as unknown as Vec3Node, lime) as unknown as Vec3Node;
   }
   const isRim = rim.greaterThan(inner);
-  // Ebene 7: nicht jeder Busch trägt Bögen (dunkle Lücken zwischen den Schuppenbüschen)
-  const bushOn = mix(float(1), step(0.28, fract(c.h.mul(7.13))), decor);
+  // Ebene 7: nicht jeder Busch trägt Bögen (dunkle Lücken zwischen den Schuppenbüschen); Ebene 20: Buschfelder und
+  // glatte dunkle Hangflächen im Wechsel (großräumige Maske, periodisch in 700)
+  const field = float(0.5)
+    .add(sin(po.x.mul(k700(0.21)).add(po.z.mul(k700(0.13))).add(1.3)).mul(0.28))
+    .add(sin(po.z.mul(k700(0.37)).sub(po.x.mul(k700(0.09))).add(4.1)).mul(0.22))
+    .add(sin(po.x.mul(k700(0.61)).add(2.7)).mul(0.12));
+  const fieldOn = mix(smoothstep(0.34, 0.42, field), float(1), decor);
+  const bushOn = mix(float(1), step(0.28, fract(c.h.mul(7.13))), decor).mul(fieldOn);
   const dots = max(rim, inner.mul(0.8)).mul(bushOn);
   const mask = max(dots.mul(visible), streak.mul(smoothstep(2.0, 5.0, float(period).div(fw))));
   const color = select(streak.greaterThan(dots), streakCol, select(isRim, rimCol, innerCol)) as unknown as Vec3Node;

@@ -1,5 +1,6 @@
 import { hash32, mulberry32 } from '../rng';
 import type { PlaneField } from './field';
+import { ridgeTrainValley } from './flank';
 
 /**
  * Nebelbänke der unendlichen Ebene (Welten 11/12, Ebene 20 und Ebene 7): waagrechte Airbrush-Bänke, die zwischen den
@@ -130,10 +131,13 @@ export class PlaneMist {
     const [l0, l1] = spec.length ?? [12, 22];
     const opacity = spec.opacity ?? 0.85;
     const n = Math.max(0, Math.round(spec.banks));
+    const ridges = field.spec(region.world).terrain.ridges;
     for (let i = 0; i < n; i++) {
-      // gleichmäßig längs der Region, leicht verschoben: Bänke in jeder Tiefe (Staffelung wie in Ebene 20)
-      const z = z1 + (z0 - z1) * ((i + 0.2 + 0.6 * rand()) / n);
+      // gleichmäßig längs der Region, leicht verschoben: Bänke in jeder Tiefe (Staffelung wie in Ebene 20); mit einer
+      // Hügelstaffel liegen sie in den Tälern zwischen den Kämmen
+      let z = z1 + (z0 - z1) * ((i + 0.2 + 0.6 * rand()) / n);
       const x = centreX(z) + (rand() * 2 - 1) * half;
+      if (ridges) z = ridgeTrainValley(ridges, field.seed, x, z);
       const length = l0 + (l1 - l0) * rand();
       const [lo] = ground(x, z, length);
       const y = lo + amp * (h0 + (h1 - h0) * rand());

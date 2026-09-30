@@ -13,8 +13,8 @@ export class SnowFields {
   private readonly cover: number;
   private readonly k: number;
 
-  /** Feld am Bildfokus (Mitte x, z und Radius) oder null. */
-  private readonly focus: [number, number, number] | null;
+  /** Felder am Bildfokus (Mitte x, z und Radius). */
+  private readonly focus: Array<[number, number, number]>;
 
   constructor(spec: SnowFieldSpec, seed: number, worldId: string, focus?: readonly [number, number]) {
     this.broad = new GradientNoise2(hash32('snow-broad', worldId, seed));
@@ -22,8 +22,8 @@ export class SnowFields {
     this.cover = Math.min(0.95, Math.max(0.05, spec.cover));
     // Wellenlänge ≈ 10 Welteinheiten × Maßstab
     this.k = 1 / (10 * (spec.scale ?? 1));
-    const f = spec.focus;
-    this.focus = f && focus ? [focus[0] + (f.offset?.[0] ?? 0), focus[1] + (f.offset?.[1] ?? 0), Math.max(0.5, f.radius)] : null;
+    const list = spec.focus ? (Array.isArray(spec.focus) ? spec.focus : [spec.focus]) : [];
+    this.focus = focus ? list.map((f) => [focus[0] + (f.offset?.[0] ?? 0), focus[1] + (f.offset?.[1] ?? 0), Math.max(0.5, f.radius)] as [number, number, number]) : [];
   }
 
   /** Feldwert (> 0 Schnee) aus Ort und relativer Höhe 0..1. */
@@ -33,8 +33,7 @@ export class SnowFields {
     const w = this.fine.fbm(x * k * 2.2 - 5.3, z * k * 3.1 - 0.7, 1);
     const valley = 0.5 - Math.min(1, Math.max(0, heightNorm));
     let v = n * 0.62 + w * 0.16 + valley * 0.55 + (this.cover - 0.5) * 0.9;
-    const f = this.focus;
-    if (f) {
+    for (const f of this.focus) {
       // Feld am Bildfokus: weich gewellter Rand (das Rauschen bleibt in der Kante)
       const d = Math.hypot((x - f[0]) / f[2], (z - f[1]) / (f[2] * 0.7));
       v = Math.max(v, 0.55 * (1 - d * d) + w * 0.2 + n * 0.15);

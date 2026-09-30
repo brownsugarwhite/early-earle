@@ -132,7 +132,8 @@ describe('Welten 11/12 (Ebene 20, Ebene 7)', () => {
     const snow = field.features.region(key).snow!;
     expect(snow).not.toBeNull();
     const focal = field.focalSlot(key)!;
-    const f = field.spec(w11).features!.snowFields!.focus!;
+    const focus = field.spec(w11).features!.snowFields!.focus!;
+    const f = Array.isArray(focus) ? focus[0]! : focus;
     const fx = focal.position[0] + (f.offset?.[0] ?? 0);
     const fz = focal.position[2] + (f.offset?.[1] ?? 0);
     expect(snow.value(fx, fz, field.heightNormAt(fx, fz))).toBeGreaterThan(0);

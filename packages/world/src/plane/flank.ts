@@ -1,5 +1,5 @@
 import type { WorldLayout } from './layout';
-import { smoothstep } from './noise2';
+import { hash2, smoothstep } from './noise2';
 
 /**
  * Steilhang neben dem Pfad (Welt 12, Ebene 7): ein langer Bergrücken parallel zum Pfad, dessen dem Pfad zugewandte
@@ -39,4 +39,46 @@ export function flankHeight(layout: WorldLayout, flank: FlankSpec, x: number, z:
   const inside = Math.min(seg.zStart - z, z - seg.zEnd);
   const taper = smoothstep(0, flank.taper ?? 12, inside);
   return flank.height * up * down * taper;
+}
+
+/**
+ * Hügelstaffel (Welt 11, Ebene 20): Kämme quer zum Blick, in regelmäßigen Abständen längs z — Hügel hinter Hügel, jeder
+ * Kamm eine eigene dunkle Masse, dazwischen Täler für die Nebelbänke. Der Kamm wellt sich seitlich (Phase aus einem
+ * langsamen Rauschen) und ist je Reihe unterschiedlich hoch; Profil gerundet oben, weich im Tal.
+ */
+export interface RidgeTrainSpec {
+  /** Abstand der Kämme längs z (Welteinheiten). */
+  period: number;
+  /** Höhe eines Kamms (Welteinheiten); je Reihe ±`vary` gestreut. */
+  height: number;
+  vary?: number;
+  /** Seitliches Wellen der Kammlinie (Anteil der Periode, Standard 0.3) und seine Wellenlänge in x (Standard 3 × Periode). */
+  wobble?: number;
+  wobbleLength?: number;
+}
+
+/** Phase der Hügelstaffel an (x, z): ganzzahlig im Tal, +0,5 auf dem Kamm. */
+function ridgePhase(spec: RidgeTrainSpec, seed: number, x: number, z: number): number {
+  const p = Math.max(1, spec.period);
+  const wl = spec.wobbleLength ?? p * 3;
+  const w = spec.wobble ?? 0.3;
+  return z / p + w * (Math.sin((x / wl) * Math.PI * 2 + seed * 0.001) * 0.7 + Math.sin((x / wl) * Math.PI * 4.3 + 1.7) * 0.3);
+}
+
+/** Nächstes Tal der Hügelstaffel längs z an der Stelle x (für die Nebelbänke zwischen den Kämmen). */
+export function ridgeTrainValley(spec: RidgeTrainSpec, seed: number, x: number, z: number): number {
+  const u = ridgePhase(spec, seed, x, z);
+  return z + (Math.round(u) - u) * Math.max(1, spec.period);
+}
+
+/** Zusatzhöhe der Hügelstaffel an (x, z). */
+export function ridgeTrainHeight(spec: RidgeTrainSpec, seed: number, x: number, z: number): number {
+  const u = ridgePhase(spec, seed, x, z);
+  const row = Math.floor(u);
+  const t = u - row;
+  const vary = spec.vary ?? 0.3;
+  const k = 1 - vary + 2 * vary * hash2(row, 17, seed);
+  // gerundeter Kamm (t = 0.5), weiches Tal an den Reihengrenzen
+  const s = Math.sin(Math.PI * t);
+  return spec.height * k * s * s * (1.4 - 0.4 * s);
 }

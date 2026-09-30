@@ -4,7 +4,7 @@ import type { WorldFeatureSpec } from '../features/types';
 import type { TrashSpec } from '../trash/types';
 import type { MistSpec } from './mist';
 import type { LandmarkKind } from '../landmarks/types';
-import type { FlankSpec } from './flank';
+import type { FlankSpec, RidgeTrainSpec } from './flank';
 
 /**
  * Welt-Spezifikationen der unendlichen Ebene (ADR 0002). Positionen sind Ebenenkoordinaten: `[x, h, z]` mit x seitlich,
@@ -64,6 +64,8 @@ export interface PlanetTerrainShape {
   stretch?: number;
   /** Steilhang neben dem Pfad (Welt 12, Ebene 7), siehe `plane/flank.ts`. */
   flank?: FlankSpec;
+  /** Hügelstaffel quer zum Blick (Welt 11, Ebene 20), siehe `plane/flank.ts`. */
+  ridges?: RidgeTrainSpec;
 }
 
 export interface PlanetPropSpec {

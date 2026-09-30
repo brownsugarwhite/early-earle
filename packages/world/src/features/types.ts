@@ -74,16 +74,21 @@ export interface RockSpec extends PlacementSpec {
   side?: 1 | -1;
 }
 
+export interface SnowFieldPatch {
+  radius: number;
+  offset?: [number, number];
+}
+
 export interface SnowFieldSpec {
   /** Anteil der Fläche unter Schnee (0..1, Standard 0.45). */
   cover: number;
   /** Maßstab der Felder (1 = Standard, größer = weitere Felder). */
   scale?: number;
   /**
-   * Feld am Bildfokus der Region (Ebene, Welt 11: die leuchtende Wiese vor den Schirmbäumen): Radius und Versatz (x, z)
-   * vom Fokus. Nur auf der Ebene.
+   * Felder am Bildfokus der Region (Ebene, Welt 11: die leuchtenden Wiesen vor den Schirmbäumen): Radius und Versatz
+   * (x, z) vom Fokus, eines oder mehrere. Nur auf der Ebene.
    */
-  focus?: { radius: number; offset?: [number, number] };
+  focus?: SnowFieldPatch | SnowFieldPatch[];
   /** Wiese statt Schnee (Welt 11): flache leuchtende Fläche mit Verlauf nach innen, nur Schlagschatten (Farben: `snow`). */
   meadow?: boolean;
 }

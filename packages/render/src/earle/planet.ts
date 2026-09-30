@@ -91,6 +91,11 @@ export interface EarlePlanetWorld {
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
+  /**
+   * Terminator des Geländes (N·L darunter Tinte; Standard 0,02). Welt 11 (Ebene 20): 0,22 — flache Kuppen bleiben dunkle
+   * Masse, nur die zur Sonne geneigten Kämme leuchten.
+   */
+  groundTerminator?: number;
   /** Prozedural erzeugt (nur lesbar im Editor). */
   procedural?: boolean;
 }
@@ -309,6 +314,8 @@ export class EarlePlanet {
   private readonly slotSea: UniformArrayLike;
   /** Wiese statt Schnee je Welt-Slot (Welt 11: die Schneefelder sind leuchtende Wiesen mit Verlauf; 0/1). */
   private readonly slotMeadow: UniformArrayLike;
+  /** Terminator des Geländes je Welt-Slot (`groundTerminator`, Standard 0,02). */
+  private readonly slotTerminator: UniformArrayLike;
   /** Fokus modulo PATTERN_PERIOD (Muster in Ebenenkoordinaten ohne Genauigkeitsverlust). */
   private readonly patternOrigin = uniform(new Vector3());
   private readonly anchors = new Map<Object3D, { x: number; z: number }>();
@@ -382,6 +389,7 @@ export class EarlePlanet {
     this.driftRows = rowsBy((r) => r.snow);
     this.slotSea = uniformArray(new Array<number>(SLOT_COUNT).fill(-1e4), 'float') as unknown as UniformArrayLike;
     this.slotMeadow = uniformArray(new Array<number>(SLOT_COUNT).fill(0), 'float') as unknown as UniformArrayLike;
+    this.slotTerminator = uniformArray(new Array<number>(SLOT_COUNT).fill(0.02), 'float') as unknown as UniformArrayLike;
     this.slots = new WorldSlots(this.atlas, (w) => this.worldData(w).palette, (slot, world) => this.onSlotAssigned(slot, world));
     const first = this.worldData(0);
     const firstSlot = this.slots.slotOf(0);
@@ -486,6 +494,7 @@ export class EarlePlanet {
       bands: this.terrainBands,
       bandScale: 2.0,
       terminator: 0.02,
+      terminatorNode: arrayElement(this.slotTerminator, slotF),
       lift: heightAttr.mul(0.45).add(contour.mul(chisel)),
       crackNode: crack,
       crackLipNode: lip,
@@ -616,6 +625,7 @@ export class EarlePlanet {
     const sea = spec.mist?.sea;
     this.slotSea.array[slot] = sea ? (sea.height ?? sea.level * spec.terrain.amplitude) : -1e4;
     this.slotMeadow.array[slot] = hasSnow && spec.features?.snowFields?.meadow ? 1 : 0;
+    this.slotTerminator.array[slot] = w.groundTerminator ?? 0.02;
     // Fokus der Perspektivlinien: setzt `rebuildContent` aus der nächsten Region der Welt
     this.slotFocusPlane[slot] = null;
     this.slotFocus.array[slot]!.set(1e4, 1e4, 0, 0);

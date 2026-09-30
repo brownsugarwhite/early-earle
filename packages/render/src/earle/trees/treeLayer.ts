@@ -198,9 +198,10 @@ export const TREE_FORMS: Record<Exclude<TreeKind, 'bare'>, KindForm> = {
   lace: { crown: 'dome', crownY: TREE_PROPORTIONS.lace.hull + 0.3, crownS: [0.97, 0.62], trunk: 'fan', trunkH: 1.0, thick: 1, dots: 'lace', terminator: 0.12 },
   oak: { crown: null, crownY: TREE_PROPORTIONS.oak.hull, crownS: [1, 1], trunk: 'oak', trunkH: TREE_PROPORTIONS.oak.trunk, thick: 1, dots: 'stars', terminator: 0.3 },
   // Schirmbaum (Ebene 20): der Hut sitzt mit seiner Unterseite auf den Astenden, feiner Punktrand an der Hutkante
-  parasol: { crown: 'parasol', crownY: TREE_PROPORTIONS.parasol.trunk, crownS: [1, 1], trunk: 'parasol', trunkH: 1, thick: 1, dots: 'crown', terminator: 0.14, rimShare: 0.6, scallopShare: 0.15, dotSize: 0.55 },
+  parasol: { crown: 'parasol', crownY: TREE_PROPORTIONS.parasol.trunk, crownS: [1, 1], trunk: 'parasol', trunkH: 1, thick: 1, dots: 'crown', terminator: 0.3, rimShare: 0.6, scallopShare: 0.15, dotSize: 0.55 },
   // Buschröschen (Ebene 20/7): Punktrand an der Silhouette zur Sonne, ganze Schuppenbögen um den Scheitel
-  shrub: { crown: 'shrub', crownY: TREE_PROPORTIONS.shrub.hull, crownS: [1, 1], trunk: null, trunkH: 0, thick: 1, dots: 'crown', terminator: 0.16, rimShare: 0.5, scallopShare: 0.55, scallopsInOrder: true, dotSize: 0.85 },
+  // (Terminator über dem der Punkte: der Körper bleibt dunkel, zur Sonne zuerst der Punktrand, dann ein schmaler Lichtsaum)
+  shrub: { crown: 'shrub', crownY: TREE_PROPORTIONS.shrub.hull, crownS: [1, 1], trunk: null, trunkH: 0, thick: 1, dots: 'crown', terminator: 0.42, rimShare: 0.5, scallopShare: 0.55, scallopsInOrder: true, dotSize: 0.85 },
   // Earle-Tanne (Ebene 7): dunkle hängende Etagen, der Gabel-Schaft steckt in der untersten Etage
   fir: { crown: 'fir', crownY: TREE_PROPORTIONS.fir.trunk, crownS: [1, 1], trunk: 'fork', trunkH: 0.5, thick: 0.4, dots: 'none', terminator: 0.22 },
 };

@@ -42,6 +42,8 @@ export interface WorldContent {
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
+  /** Terminator des Geländes (Standard 0,02; Welt 11: dunkle Hügelmassen, nur die Kämme im Licht). */
+  groundTerminator?: number;
   /**
    * Fokus der Weltkomposition: mit `kind` ein Fokus-Element (Scheune, Wurzelbaum …) am Slot, ohne `kind` nur ein
    * Bildanker. Lage je Region: `along` (0 = Beginn des Pfadabschnitts … 1 = Ende) und `lateral` (Welteinheiten, + =
@@ -140,6 +142,7 @@ export function planetWorlds(): EarlePlanetWorld[] {
     fogStripes: w.fogStripes,
     fog: w.fog,
     view: w.view,
+    ...(w.groundTerminator !== undefined ? { groundTerminator: w.groundTerminator } : {}),
   }));
 }
 

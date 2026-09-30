@@ -9,7 +9,7 @@ import { PlaneFeatures, type RegionSite } from './features/index';
 import type { LedgeAnchor, RockColumn, RockFormation } from './features/types';
 import type { LandmarkSlot, PlanetLandmarkParams, PlanetPropKind, PlanetVegetationFamily, WorldSpec } from './types';
 import { PlaneLandmarks, type PlaneLandmarkOptions } from './landmarks';
-import { flankHeight, type FlankSpec } from './flank';
+import { flankHeight, ridgeTrainHeight, type FlankSpec, type RidgeTrainSpec } from './flank';
 import type { LandmarkPlanParams } from '../landmarks/types';
 import { DEFAULT_LANDMARK_PLAN } from '../landmarks/placement';
 
@@ -24,6 +24,9 @@ export interface ResolvedShape {
   /** Steilhang neben dem Pfad (Welt 12) und sein Anteil (1 in der Welt, an Grenzen gemischt). */
   flank?: FlankSpec;
   flankW?: number;
+  /** Hügelstaffel (Welt 11) und ihr Anteil. */
+  ridges?: RidgeTrainSpec;
+  ridgesW?: number;
 }
 
 export interface PlaneFieldParams {
@@ -41,7 +44,16 @@ export interface PlaneFieldParams {
 }
 
 function resolveShape(s: WorldSpec['terrain']): ResolvedShape {
-  return { amplitude: s.amplitude, wavelength: s.wavelength ?? 1, ridge: s.ridge ?? 0, floor: s.floor ?? 0, slope: s.slope ?? 0, stretch: s.stretch ?? 1, ...(s.flank ? { flank: s.flank, flankW: 1 } : {}) };
+  return {
+    amplitude: s.amplitude,
+    wavelength: s.wavelength ?? 1,
+    ridge: s.ridge ?? 0,
+    floor: s.floor ?? 0,
+    slope: s.slope ?? 0,
+    stretch: s.stretch ?? 1,
+    ...(s.flank ? { flank: s.flank, flankW: 1 } : {}),
+    ...(s.ridges ? { ridges: s.ridges, ridgesW: 1 } : {}),
+  };
 }
 
 function mixShape(a: ResolvedShape, b: ResolvedShape, t: number, out: ResolvedShape): ResolvedShape {
@@ -58,6 +70,14 @@ function mixShape(a: ResolvedShape, b: ResolvedShape, t: number, out: ResolvedSh
   } else if (out.flank) {
     delete out.flank;
     delete out.flankW;
+  }
+  const ridges = a.ridges ?? b.ridges;
+  if (ridges) {
+    out.ridges = ridges;
+    out.ridgesW = (a.ridges ? (a.ridgesW ?? 1) : 0) + ((b.ridges ? (b.ridgesW ?? 1) : 0) - (a.ridges ? (a.ridgesW ?? 1) : 0)) * t;
+  } else if (out.ridges) {
+    delete out.ridges;
+    delete out.ridgesW;
   }
   return out;
 }
@@ -127,7 +147,7 @@ export class PlaneField {
     this.ramps = new GradientNoise2(hash32('plane-ramps', params.seed));
     this.biome = new GradientNoise2(hash32('plane-biome', params.seed));
     this.forest = new GradientNoise2(hash32('plane-forest', params.seed));
-    this.hMax = Math.max(3.6, ...params.catalog.authored.map((w) => w.terrain.amplitude + (w.terrain.flank?.height ?? 0)));
+    this.hMax = Math.max(3.6, ...params.catalog.authored.map((w) => w.terrain.amplitude + (w.terrain.flank?.height ?? 0) + (w.terrain.ridges?.height ?? 0) * 1.4));
     this.features = new PlaneFeatures(
       {
         seed: params.seed,
@@ -282,7 +302,9 @@ export class PlaneField {
     const h = s.floor > 0 ? smoothstep(s.floor, 1, base) : base;
     // Steilhang neben dem Pfad (Welt 12): Bergrücken parallel zum Pfad
     const flank = s.flank && (s.flankW ?? 1) > 0 ? flankHeight(this.layout, s.flank, x, z) * (s.flankW ?? 1) : 0;
-    return s.amplitude * h + flank;
+    // Hügelstaffel (Welt 11): Kamm hinter Kamm quer zum Blick
+    const ridges = s.ridges && (s.ridgesW ?? 1) > 0 ? ridgeTrainHeight(s.ridges, this.seed, x, z) * (s.ridgesW ?? 1) : 0;
+    return s.amplitude * h + flank + ridges;
   }
 
   /** Natürliches Gelände (Planung der Merkmale). */
@@ -336,7 +358,16 @@ export class PlaneField {
       key = rs.region.key;
       shape = knownShape ?? this.shapeAt(x, z, rs);
     }
-    const sh: ResolvedShape = { amplitude: shape.amplitude, wavelength: shape.wavelength, ridge: shape.ridge, floor: shape.floor, slope: shape.slope, stretch: shape.stretch ?? 1, ...(shape.flank ? { flank: shape.flank, flankW: shape.flankW ?? 1 } : {}) };
+    const sh: ResolvedShape = {
+      amplitude: shape.amplitude,
+      wavelength: shape.wavelength,
+      ridge: shape.ridge,
+      floor: shape.floor,
+      slope: shape.slope,
+      stretch: shape.stretch ?? 1,
+      ...(shape.flank ? { flank: shape.flank, flankW: shape.flankW ?? 1 } : {}),
+      ...(shape.ridges ? { ridges: shape.ridges, ridgesW: shape.ridgesW ?? 1 } : {}),
+    };
     const h0 = this.heightWithShape(x, z, sh, key);
     outPos[0] = x;
     outPos[1] = h0;
