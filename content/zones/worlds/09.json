@@ -23,13 +23,23 @@
   "terrain": { "amplitude": 2.4, "wavelength": 1.5, "slope": 0.4 },
   "ground": "meadow",
   "vegetation": {
-    "density": 0.55,
-    "clumpiness": 0.8,
-    "kinds": { "dome": 0.8, "stacked": 0.2 },
-    "scale": [0.7, 1.5],
+    "density": 1,
+    "clumpiness": 0,
+    "kinds": { "dome": 0.82, "stacked": 0.12, "umbrella": 0.06 },
+    "scale": [0.65, 1.4],
     "trunkStyle": "ink",
     "motif": "rim",
-    "rows": { "spacing": 0.2, "width": 0.34 }
+    "grove": {
+      "cover": 0.12,
+      "contours": [0.14, 0.42, 0.72],
+      "contourWidth": 0.075,
+      "wavelength": 8,
+      "fill": 0.95,
+      "satellites": 0.3,
+      "specimens": 0.008,
+      "specimenKinds": { "umbrella": 0.4, "dome": 0.6 },
+      "edgeKinds": { "dome": 1 }
+    }
   },
   "props": { "trash": 0.13, "pools": 0.016, "animals": 0.014 },
   "fogStripes": 0.1,

@@ -1,6 +1,6 @@
 import { GradientNoise3 } from './noise';
 import { hash32, mulberry32 } from './rng';
-import { TREE_PROPORTIONS, type TreeInstance, type TreeKind } from './scatterTrees';
+import { TREE_KIND_LIST, TREE_PROPORTIONS, composeGroveTree, type TreeInstance, type TreeKind } from './scatterTrees';
 import type { Vec3 } from './capPatch';
 import { areaSplit, decideWorld, pathLongitude, smoothstep01, wrapAngle, type WorldTables } from './worldLayout';
 
@@ -914,8 +914,10 @@ export function scatterChunkTrees(field: PlanetField, id: ChunkId, options: Chun
       pAccept = rel * smoothstep(1 - fam.rows.width, 1 - fam.rows.width * 0.4, q);
     }
     if (rand() > pAccept) continue;
-    const kind = pickKind(fam.kinds, rand());
-    const scale = fam.scale[0] + (fam.scale[1] - fam.scale[0]) * (0.35 * rand() + 0.65 * rand());
+    // Earle-Komposition (Haine an Höhenlinien, Wiesen, Solitäre; ohne `vegetation.grove` unverändert): scatterTrees.ts
+    const pick = composeGroveTree(field, d, fam, pickKind(fam.kinds, rand()), fam.scale[0] + (fam.scale[1] - fam.scale[0]) * (0.35 * rand() + 0.65 * rand()), rand);
+    if (!pick) continue;
+    const { kind, scale } = pick;
     const prop = TREE_PROPORTIONS[kind];
     const canopyRadius = prop.radius * scale;
     field.surfaceAt(d[0], d[1], d[2], pos, nor);
@@ -975,7 +977,7 @@ export function scatterChunkTrees(field: PlanetField, id: ChunkId, options: Chun
   return raw.map((e, i) => ({ ...e.tree, rank: n > 0 ? i / n : 0, growth: n > 0 ? i / n : 0 }));
 }
 
-const TREE_KIND_SET = new Set<string>(['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel']);
+const TREE_KIND_SET = new Set<string>(TREE_KIND_LIST);
 function isTreeKind(k: string): k is TreeKind {
   return TREE_KIND_SET.has(k);
 }

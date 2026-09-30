@@ -14,7 +14,22 @@ export {
   type DisplacedSphereParams,
   type Vec3,
 } from './capPatch';
-export { scatterTrees, TREE_PROPORTIONS, type ScatterParams, type TreeInstance, type TreeKind } from './scatterTrees';
+export {
+  scatterTrees,
+  composeGroveTree,
+  groveMask,
+  pickTreeKind,
+  TREE_KIND_LIST,
+  TREE_PROPORTIONS,
+  type BarkStyleName,
+  type GroveFieldLike,
+  type GroveSpec,
+  type GroveTree,
+  type ScatterParams,
+  type TreeFamily,
+  type TreeInstance,
+  type TreeKind,
+} from './scatterTrees';
 export { areaSplit, decideWorld, pathLongitude, wrapAngle, smoothstep01, type WorldTables } from './worldLayout';
 export {
   PlanetField,

@@ -4,6 +4,7 @@ import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { DEFAULT_EARLE_PARAMS, EarleLabScene, type EarleLabParams } from '../lab/earle/EarleLabScene';
 import { BenchPanel } from '../lab/earle/BenchPanel';
+import { TreeGalleryScene, galleryParamsFromUrl } from '../lab/earle/TreeGalleryScene';
 import type { QualityLevel, ResolvedQuality } from '../lab/earle/quality';
 import { NODES_PER_ZONE, WORLD_CONTENTS, ZONE_CONTENTS } from '../lab/earle/zones';
 import '../lab/earle/earle-lab.css';
@@ -79,6 +80,40 @@ function paramsFromUrl(search: URLSearchParams): Partial<EarleLabParams> {
  */
 export function LabEarle() {
   const [searchParams] = useSearchParams();
+  return searchParams.get('gallery') === '1' ? <LabTreeGallery /> : <LabEarlePlanet />;
+}
+
+/**
+ * Baum-Galerie (`?gallery=1&world=05&kinds=oak,lace&dist=7&h=2&sun=10&az=70&spin=20`): alle Baumarten einer Welt aus der
+ * Nähe — organische Stämme, Rinde, Schnee, Kronen, Punkte; `spin` lässt die Sonne kreisen (Punkte im Schatten).
+ */
+function LabTreeGallery() {
+  const [searchParams] = useSearchParams();
+  const params = useMemo(() => galleryParamsFromUrl(searchParams), [searchParams]);
+  const controller = useMemo(() => new TreeGalleryScene(params), [params]);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const w = window as unknown as { __treeGallery?: TreeGalleryScene };
+    w.__treeGallery = controller;
+    return () => {
+      if (w.__treeGallery === controller) delete w.__treeGallery;
+    };
+  }, [controller]);
+  const world = WORLD_CONTENTS[params.world];
+  return (
+    <LabFrame title="Earle-Lab · Baum-Galerie">
+      <CanvasHost controller={controller} />
+      {world ? (
+        <aside className="earle-world-tag" data-testid="earle-world-tag" data-world={world.ref}>
+          <strong>{world.ref}</strong> {world.name} · Bäume
+        </aside>
+      ) : null}
+    </LabFrame>
+  );
+}
+
+function LabEarlePlanet() {
+  const [searchParams] = useSearchParams();
   const bench = searchParams.get('bench') === '1';
   const benchPresets = useMemo(
     () =>
@@ -99,6 +134,15 @@ export function LabEarle() {
   useEffect(() => {
     controller.setParams(params);
   }, [controller, params]);
+  // Dev hook for scripted checks (frame sequences while rotating, dot/tree counts): window.__earleLab
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const w = window as unknown as { __earleLab?: EarleLabScene };
+    w.__earleLab = controller;
+    return () => {
+      if (w.__earleLab === controller) delete w.__earleLab;
+    };
+  }, [controller]);
   useEffect(
     () =>
       controller.subscribe((p) => {

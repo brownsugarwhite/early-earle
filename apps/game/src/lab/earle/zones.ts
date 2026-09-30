@@ -1,5 +1,5 @@
 import { TJORIZO_PALETTE, zonePaletteFromContent, type EarlePlanetWorld, type EarlePlanetZone, type GroundTreatment, type WorldPalette, type WorldView } from '@ee/render';
-import type { PlanetLandmarkParams, PlanetPropSpec, PlanetTerrainShape, PlanetVegetationFamily } from '@ee/world';
+import type { PlanetLandmarkParams, PlanetPropSpec, PlanetTerrainShape, PlanetVegetationFamily, TreeFamily } from '@ee/world';
 
 /** Zonendatei `content/zones/*.json` (Schema 1). */
 export interface ZoneContent {
@@ -26,7 +26,8 @@ export interface WorldContent {
   palette: WorldPalette;
   terrain: PlanetTerrainShape;
   ground: GroundTreatment;
-  vegetation: PlanetVegetationFamily;
+  /** Vegetation (Bäume v3): Dichte, Arten, Komposition `grove`, Rinde `bark`, Schnee, Tüpfel, Blüten, Fokus-Baum. */
+  vegetation: TreeFamily;
   props?: PlanetPropSpec;
   fogStripes: number;
   fog: { start: number; range: number };
@@ -131,6 +132,10 @@ export function planetLandmarks(): PlanetLandmarkParams[] {
   const out: PlanetLandmarkParams[] = [];
   WORLD_CONTENTS.forEach((w, i) => {
     if (!w.focal) return;
+    // Fokus-Baum aus der Vegetation (z. B. die Earle-Eiche in Welt 05) ersetzt die Art des Fokus-Elements
+    const tree = w.focal.kind && w.focal.kind !== 'barn' ? w.vegetation.focalTree : undefined;
+    const kind = tree?.kind ?? w.focal.kind;
+    const scale = tree ? (tree.scale ?? 1) : (w.focal.scale ?? 1);
     out.push({
       id: `focal-${w.ref}`,
       world: i,
@@ -138,8 +143,8 @@ export function planetLandmarks(): PlanetLandmarkParams[] {
       deltaDeg: w.focal.deltaDeg ?? 40,
       yawDeg: w.focal.yawDeg ?? 0,
       scale: 1,
-      clearRadius: !w.focal.kind ? 0 : w.focal.kind === 'barn' ? 4.5 : 3.2,
-      ...(w.focal.kind ? { instance: { kind: w.focal.kind, scale: w.focal.scale ?? 1 } } : {}),
+      clearRadius: !kind ? 0 : kind === 'barn' ? 4.5 : kind === 'oak' ? 2.4 * scale : 3.2,
+      ...(kind ? { instance: { kind, scale } } : {}),
     });
   });
   return out;

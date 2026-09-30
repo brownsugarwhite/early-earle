@@ -28,14 +28,24 @@
   "terrain": { "amplitude": 0.7, "wavelength": 2 },
   "ground": "floorLines",
   "vegetation": {
-    "density": 0.22,
-    "clumpiness": 0.5,
-    "kinds": { "jewel": 0.7, "spire": 0.15, "bare": 0.15 },
-    "scale": [0.9, 2.0],
+    "density": 0.42,
+    "clumpiness": 0,
+    "kinds": { "jewel": 0.6, "spire": 0.2, "lace": 0.1, "bare": 0.1 },
+    "scale": [0.9, 2],
     "trunkStyle": "striped",
-    "trunkWidth": 0.95,
+    "trunkWidth": 0.12,
     "motif": "diamond",
-    "rowVariants": 4
+    "rowVariants": 4,
+    "flowers": 0.55,
+    "stipple": 0.85,
+    "grove": {
+      "cover": 0.5,
+      "wavelength": 10,
+      "fill": 0.9,
+      "satellites": 0.2,
+      "specimens": 0.02,
+      "specimenKinds": { "lace": 0.6, "spire": 0.4 }
+    }
   },
   "props": {},
   "fogStripes": 0,
