@@ -139,3 +139,28 @@ describe('Bäume v3: Punkte ohne Ploppen', () => {
     veg.dispose();
   });
 });
+
+describe('Bäume v4: Punktarten', () => {
+  it('Art und Schlagschatten-Bit im Bruchteil der Zeile: gerundet bleibt es die Art (Blender-Export)', () => {
+    const veg = makeVegetation();
+    veg.setContent(entries(trees(0.05, 0.02, 12), 2), []);
+    const g = veg.dots.geometry as InstancedBufferGeometry;
+    const rk = g.getAttribute('dotRow') as InstancedBufferAttribute;
+    const kinds = new Set<number>();
+    let withCast = 0;
+    for (let i = 0; i < g.instanceCount; i++) {
+      const v = rk.getX(i);
+      const row = Math.floor(v + 0.01);
+      const f = (v - row) * 8;
+      const kind = Math.round(f);
+      expect(kind).toBe(Math.floor(f + 0.1));
+      kinds.add(kind);
+      if (f - kind > 0.125) withCast++;
+    }
+    // Kronenpunkte, Randfunkeln, Spitze, Sternnadeln und Bögen kommen vor; ein Teil nimmt Schlagschatten an
+    for (const k of [0, 3, 4, 5, 6]) expect(kinds.has(k), `Art ${k}`).toBe(true);
+    expect(withCast).toBeGreaterThan(0);
+    expect(withCast).toBeLessThan(g.instanceCount);
+    veg.dispose();
+  });
+});
