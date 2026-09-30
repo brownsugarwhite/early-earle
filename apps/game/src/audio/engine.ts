@@ -645,6 +645,10 @@ export class AudioEngine {
 /** The page's engine. */
 export const audio = new AudioEngine();
 
+// iOS app: start right away (no gesture needed there), before any component schedules its first sound — the
+// splash mounts before the flow's own effects run.
+if (NATIVE_APP && typeof window !== 'undefined') queueMicrotask(() => audio.arm(true));
+
 // Handle for poking at the engine from the console (`__eeAudio.stats()`): dev server, and the iOS app for the
 // Safari Web Inspector (debug builds are inspectable, docs/IOS.md "Ton").
 if ((import.meta.env.DEV || NATIVE_APP) && typeof window !== 'undefined') (window as unknown as { __eeAudio?: AudioEngine }).__eeAudio = audio;
