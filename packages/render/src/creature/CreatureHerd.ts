@@ -774,10 +774,11 @@ function prio(p: PartSpec): number {
   return SLOT_PRIORITY[p.slot] ?? 10;
 }
 
-/** An undiscovered look: the same shape in ink (no pattern, no coat, no gloss, no eye slit). */
+/** An undiscovered look: the same shape in ink (no pattern, no coat, no gloss, no eye slit, no flames or gas). */
 export function silhouetteSpec(spec: CreatureSpec, ink: string): CreatureSpec {
   const body: BlobParams = {
     ...spec.body,
+    material: 'jelly',
     baseColor: ink,
     innerColor: ink,
     rimColor: ink,
@@ -791,6 +792,7 @@ export function silhouetteSpec(spec: CreatureSpec, ink: string): CreatureSpec {
   return {
     ...spec,
     body,
+    material: 'jelly',
     palette: { baseColor: ink, innerColor: ink, rimColor: ink, highlightColor: ink, bubbleColor: ink },
     skin: { ...spec.skin, coat: 'bare', pattern: 'none' },
     parts: spec.parts.map((p) => ({ ...p, tint: ink })),

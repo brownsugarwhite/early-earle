@@ -54,6 +54,8 @@ function mapIdle(): Promise<void> {
  */
 export async function prewarmSetzkasten(): Promise<void> {
   if (typeof window === 'undefined') return;
+  // `?setzkastenWarm=0`: nicht vorwärmen (Messungen, Vergleich).
+  if (new URLSearchParams(location.search).get('setzkastenWarm') === '0') return;
   const { getRenderer, detectBackend } = await import('../canvas/rendererSingleton');
   const renderer = await getRenderer();
   await mapIdle();

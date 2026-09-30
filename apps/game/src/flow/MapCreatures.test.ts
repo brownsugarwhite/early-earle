@@ -110,6 +110,21 @@ describe('createMapCreatures', () => {
     c.dispose();
   });
 
+  it('an exclusion (a level plateau on the node) sends the creatures living there away until it is lifted', () => {
+    const focus = new Vector3(3, 0, 0);
+    const c = createMapCreatures(testGround(focus), { cap: 6, mobile: true, shadowLayer: 1, library: null, rules });
+    c.restore([entry(1, 1, 'blob', 'near'), entry(4, 2, 'blob', 'far')]);
+    run(c, 1);
+    expect(c.liveCount).toBe(2);
+    c.setExclusion!(new Vector3(3, 0, 1.3), 2);
+    run(c, 0.6);
+    expect(c.probe!().filter((p) => p.live).map((p) => p.key)).toEqual(['far']);
+    c.setExclusion!(null);
+    run(c, 0.6);
+    expect(c.liveCount).toBe(2);
+    c.dispose();
+  });
+
   it('scales with the tier, relative to the hero on the map', () => {
     expect(mapScaleForTier(1)).toBeCloseTo(0.48 * 0.42, 5);
     expect(mapScaleForTier(9)).toBeCloseTo(0.48 * 0.9, 5);

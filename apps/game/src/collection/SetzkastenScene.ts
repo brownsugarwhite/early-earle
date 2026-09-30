@@ -35,7 +35,7 @@ const SHADOW_LEFT = 0.11;
 const CASE_SHADOW: [number, number] = [-0.32, 0.16];
 /** Kamera: kleines Sichtfeld (fast orthografisch), Blick von oben wie auf das Spielbrett. */
 const FOV = 22;
-const PITCH = (58 * Math.PI) / 180;
+const PITCH = (63 * Math.PI) / 180;
 /** Budget: Wesen in Sicht, davon lebendig; Spurintervall der lebenden. */
 const MAX_IN_VIEW = 36;
 const MAX_ALIVE = 12;
@@ -53,8 +53,9 @@ interface Slot {
   entry: CatalogEntry;
   earned: CollectionEntry | null;
   member: HerdMember | null;
-  /** Sekunden in Sicht (ungesehene Wesen werden danach als gesehen markiert). */
+  /** Sekunden in Sicht (ungesehene Wesen hüpfen danach einmal). */
   inView: number;
+  celebrated: boolean;
   marker: number;
 }
 
@@ -178,19 +179,26 @@ export class SetzkastenScene implements SceneController {
     this.placeCamera();
     this.updateMembership(false);
     // Wesen in Happen anlegen (jeder Happen: zwei Rigs, ihre erste Spur, höchstens ein neues Artenmesh).
-    for (let guard = 0; guard < 30 && !this.ctx && !this.disposed; guard++) {
+    let worst = 0;
+    for (let guard = 0; guard < 40 && !this.ctx && !this.disposed; guard++) {
       await idle();
       if (this.ctx || this.disposed) return;
+      const t0 = performance.now();
       const before = herd.size;
-      this.fillMembers(2);
+      this.fillMembers(1);
       herd.update(0, this.camera);
+      worst = Math.max(worst, performance.now() - t0);
       if (herd.size === before) break;
     }
+    if (import.meta.env.DEV) console.debug(`[setzkasten] vorwärmen: längster Happen ${worst.toFixed(1)} ms`);
     if (this.ctx || this.disposed) return;
     if (backend === 'webgpu') {
       await idle();
+      const t0 = performance.now();
       try {
-        await renderer.compileAsync(this.scene, this.camera);
+        const done = renderer.compileAsync(this.scene, this.camera);
+        if (import.meta.env.DEV) console.debug(`[setzkasten] vorwärmen: Pipelines (synchroner Teil) ${(performance.now() - t0).toFixed(1)} ms`);
+        await done;
       } catch {
         /* beim ersten Zeichnen */
       }
@@ -309,6 +317,7 @@ export class SetzkastenScene implements SceneController {
    * zeigt sofort ein fertiges Bild). `destroy` gibt alles frei.
    */
   dispose(): void {
+    if (this.ctx) this.markShown();
     this.flushSeen();
     for (const u of this.unsub) u();
     this.unsub.length = 0;
@@ -450,7 +459,7 @@ export class SetzkastenScene implements SceneController {
     const layout = layoutCase(entries, this.orientation);
     this.layout = layout;
     const collection = useProgress.getState().collection;
-    this.slots = layout.cells.map((cell) => ({ cell, entry: cell.entry, earned: collection[cell.entry.key] ?? null, member: null, inView: 0, marker: -1 }));
+    this.slots = layout.cells.map((cell) => ({ cell, entry: cell.entry, earned: collection[cell.entry.key] ?? null, member: null, inView: 0, celebrated: false, marker: -1 }));
     // Die Arten der Zone im Hintergrund vermaschen (erst die Fächer oben).
     for (const s of this.slots) if (s.entry.species !== 'blob') herd.prepare(this.genomeOf(s));
     this.buildWalls(layout, colors);
@@ -474,7 +483,7 @@ export class SetzkastenScene implements SceneController {
     const locked = this.locked();
     const unseen = this.slots.filter((s) => s.earned && !s.earned.seen).length;
     // Kisten: Tischschatten, Boden, Wände, Schatten (je Wand einer), Marken, Deckel.
-    const count = 2 + walls.length * 2 + unseen + (locked ? 3 : 0) + 4;
+    const count = 2 + walls.length * 2 + unseen + (locked ? 40 : 0) + 4;
     if (!this.walls || this.lastWalls < count) {
       this.walls?.removeFromParent();
       this.wallGeometry?.dispose();
@@ -532,13 +541,22 @@ export class SetzkastenScene implements SceneController {
       s.marker = -1;
       if (!s.earned || s.earned.seen) continue;
       const c = s.cell;
-      s.marker = box(ox + c.u + 0.2, 0.02, oz + c.v + 0.2, 0.18, 0.04, 0.12, colors.accent);
+      s.marker = box(ox + c.u + 0.24, 0.035, oz + c.v + 0.2, 0.28, 0.07, 0.14, colors.accent);
     }
     if (locked) {
-      // Deckel: eine geschlossene Holzplatte über dem ganzen Kasten, mit Griffleiste und hartem Schatten.
+      // Deckel: Bretter quer zum Kasten (zwei Töne im Wechsel, nur Wertkontrast), darunter ein harter Schatten.
       box(cx + CASE_SHADOW[0] * 0.5, WALL_H + 0.02, cz + CASE_SHADOW[1] * 0.5, W + 0.14, 0.03, H + 0.14, colors.ink);
-      box(cx, WALL_H + 0.06, cz, W + 0.14, 0.08, H + 0.14, mixHex(colors.wood, colors.floor, 0.35));
-      box(cx, WALL_H + 0.12, cz + H * 0.32, Math.min(W, H) * 0.3, 0.05, 0.12, colors.wood);
+      const light = mixHex(colors.wood, colors.floor, 0.25);
+      const dark = mixHex(colors.wood, colors.floor, 0.6);
+      const portrait = this.orientation === 'portrait';
+      const span = portrait ? H + 0.14 : W + 0.14;
+      const boards = Math.max(3, Math.round(span / 1.35));
+      const bw = span / boards;
+      for (let i = 0; i < boards; i++) {
+        const t = -span / 2 + bw * (i + 0.5);
+        if (portrait) box(cx, WALL_H + 0.06, cz + t, W + 0.14, 0.08, bw, i % 2 === 0 ? light : dark);
+        else box(cx + t, WALL_H + 0.06, cz, bw, 0.08, H + 0.14, i % 2 === 0 ? light : dark);
+      }
     }
     mesh.count = n;
     mesh.instanceMatrix.needsUpdate = true;
@@ -564,6 +582,7 @@ export class SetzkastenScene implements SceneController {
 
   private switchZone(zone: ZoneId, dir: number): void {
     if (zone === this.zone) return;
+    this.markShown();
     this.flushSeen();
     this.zone = zone;
     this.zoom = 0;
@@ -595,10 +614,10 @@ export class SetzkastenScene implements SceneController {
     const free = 1 - (this.insetTop + this.insetBottom) / Math.max(1, this.height);
     if (portrait) {
       // Kastenbreite + Rand füllt die Bildschirmbreite.
-      this.dist = (layout.width / 2 + 0.45) / tanH;
+      this.dist = (layout.width / 2 + 0.3) / tanH;
     } else {
       // Kastentiefe (4) + Rand füllt das freie Band unter dem Kopf; der Blick senkt sich, damit er mittig liegt.
-      const need = (layout.height + 0.8) * Math.sin(PITCH) + WALL_H * Math.cos(PITCH);
+      const need = (layout.height + 2.4) * Math.sin(PITCH) + WALL_H * Math.cos(PITCH);
       this.dist = need / 2 / (tanV * Math.max(0.3, free));
     }
     // Sichtbare Kanten relativ zum Blickpunkt (bei Blickpunkt 0 gemessen; die Kamera verschiebt sich starr):
@@ -810,27 +829,35 @@ export class SetzkastenScene implements SceneController {
     s.member = null;
   }
 
-  /** Ungesehene Wesen, die eine Weile in Sicht waren, gelten als gesehen (sie hüpfen einmal, die Marke verschwindet). */
+  /**
+   * Ungesehene Wesen hüpfen einmal, wenn sie eine Weile in Sicht waren; ihre Neu-Marke bleibt, bis die Karte sie zeigt
+   * oder der Kasten geschlossen bzw. umgeblättert wird (dann gilt alles Gezeigte als gesehen).
+   */
   private trackSeen(dt: number): void {
     for (const s of this.slots) {
-      if (!s.earned || s.earned.seen || s.marker < 0) continue;
+      if (!s.earned || s.earned.seen || s.celebrated) continue;
       if (!s.member || s.member.pop < 0.99) {
         s.inView = 0;
         continue;
       }
       s.inView += dt;
       if (s.inView < 0.8) continue;
-      this.seenQueue.push(s.entry.key);
+      s.celebrated = true;
       this.celebrate(s);
-      if (this.walls) {
-        _m.makeScale(0, 0, 0);
-        this.walls.setMatrixAt(s.marker, _m);
-        this.walls.instanceMatrix.needsUpdate = true;
-      }
-      s.marker = -1;
-      s.earned = { ...s.earned, seen: true };
     }
-    if (this.seenQueue.length > 0) this.flushSeen();
+  }
+
+  private hideMarker(s: Slot): void {
+    if (s.marker < 0 || !this.walls) return;
+    _m.makeScale(0, 0, 0);
+    this.walls.setMatrixAt(s.marker, _m);
+    this.walls.instanceMatrix.needsUpdate = true;
+    s.marker = -1;
+  }
+
+  /** Wer im Kasten zu sehen war (ein Wesen im Fach), gilt beim Schließen oder Blättern als gesehen. */
+  private markShown(): void {
+    for (const s of this.slots) if (s.member && s.earned && !s.earned.seen && !this.seenQueue.includes(s.entry.key)) this.seenQueue.push(s.entry.key);
   }
 
   private flushSeen(): void {
@@ -878,7 +905,10 @@ export class SetzkastenScene implements SceneController {
     const e = s.entry;
     const levelNo = s.earned ? s.earned.node + 1 : null;
     useSetzkasten.getState().setCard({ key: e.key, zone: e.zone, tier: e.tier, species: e.species, earned: !!s.earned, level: levelNo, p: e.p });
-    if (s.earned && !s.earned.seen) this.seenQueue.push(e.key);
+    if (s.earned && !s.earned.seen) {
+      this.seenQueue.push(e.key);
+      this.hideMarker(s);
+    }
     this.flushSeen();
     // Heranfahren: das Fach in die obere Bildhälfte (die Karte liegt unten).
     const c = this.cellCenter(s.cell, _p).add(this.caseOffset);

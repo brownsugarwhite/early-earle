@@ -3,6 +3,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { BoardRenderer, type BoardHooks, type MadeCreature } from '@ee/render';
 import type { ZoneId } from '@ee/genome';
 import { useGridStore } from '../lab/grid/gridStore';
+import { rexLine } from '../lab/grid/rex';
 import { useFlowStore } from '../flow/flowStore';
 import { useMapEntries } from '../flow/mapEntries';
 import { useProgress } from '../state/progress';
@@ -49,11 +50,27 @@ export function foundThisLevel(): readonly import('../state/progress').Collectio
   return current?.found ?? [];
 }
 
+/** Level-Lauf, in dem REX den ersten Stempel schon kommentiert hat. */
+let rexRun = '';
+
 function stampFeedback(made: MadeCreature): void {
+  if (import.meta.env.DEV) {
+    // Tests zählen die gezeigten Stempel.
+    const ee = ((window as unknown as { __ee?: Record<string, unknown> }).__ee ??= {});
+    ee['stamps'] = ((ee['stamps'] as number | undefined) ?? 0) + 1;
+  }
   const zone: ZoneId | undefined = isZoneKey(made.zone) ? (made.zone as ZoneId) : undefined;
   audio.sfx('stamp', zone ? { zone, tier: made.tier } : { tier: made.tier });
   audio.sfx('newCreature', zone ? { zone, tier: made.tier } : { tier: made.tier }, 0.08);
   if (Capacitor.isNativePlatform()) void Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => undefined);
+  // REX kommentiert den ersten Stempel eines Levelversuchs ("Neu! Ab in den Setzkasten."), nie über Sieg/Niederlage.
+  const grid = useGridStore.getState();
+  const run = `${grid.level?.id ?? ''}#${grid.attempt}`;
+  if (run !== rexRun && grid.state?.status === 'playing') {
+    rexRun = run;
+    const line = rexLine('collection.new');
+    if (line) useGridStore.setState({ rex: line });
+  }
 }
 
 function wire(): () => void {
@@ -78,7 +95,7 @@ function wire(): () => void {
       void prewarmSetzkasten().catch((e: unknown) => {
         if (import.meta.env.DEV) console.warn('[setzkasten] Vorwärmen fehlgeschlagen', e);
       }),
-    2500,
+    6000,
   );
   return () => {
     clearTimeout(warmTimer);

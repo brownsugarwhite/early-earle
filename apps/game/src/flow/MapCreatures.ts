@@ -65,6 +65,11 @@ export interface MapCreaturesApi {
   setLibrary?(library: ModuleLibrary | null, rules?: GenomeRules | null): void;
   /** Ein Wesen ist daheim angekommen (Aufbruch, Einfallen): der Flow kann es als "wohnt auf der Map" markieren. */
   onPlaced?: ((key: string) => void) | null;
+  /**
+   * Sperrzone (Raum der Map-Gruppe, vor der Anzeige): Wesen, die dort wohnen, ploppen weg und kommen erst wieder, wenn
+   * sie aufgehoben ist — z. B. um das Plateau, solange ein Level auf dem Knoten steht. `null` hebt sie auf.
+   */
+  setExclusion?(center: Vector3 | null, radius?: number): void;
   /** Lebende Wesen (Tests, Debug). */
   readonly liveCount?: number;
   /** Zustand je Wesen (Tests, Debug): Kontaktpunkt der Füße, der angezeigte Boden darunter, Wohnort, Phase. */
@@ -265,11 +270,15 @@ export function createMapCreatures(ground: MapGround, options: MapCreaturesOptio
     return r;
   };
 
+  /** Sperrzone (Plateau eines Levels): dort wohnende Wesen ruhen. */
+  let exclusion: { center: Vector3; radius: number } | null = null;
+  const excluded = (r: Resident): boolean => !!exclusion && !r.pinned && r.home.distanceTo(exclusion.center) < exclusion.radius;
+
   /** Welche Wesen leben: gepinnte immer, sonst die nächsten am Blickpunkt (11 rein, 13 raus), höchstens `cap`. */
   const updateLive = (): void => {
     const f = ground.focus(_f);
     const ranked = residents
-      .filter((r) => r.hasHome && !r.leaving && !r.hold)
+      .filter((r) => r.hasHome && !r.leaving && !r.hold && !excluded(r))
       .map((r) => ({ r, d: r.home.distanceTo(f) }))
       .filter(({ r, d }) => r.pinned || d < (r.member ? LIVE_OUT : LIVE_IN))
       .sort((a, b) => Number(b.r.pinned) - Number(a.r.pinned) || a.d - b.d);
@@ -487,6 +496,11 @@ export function createMapCreatures(ground: MapGround, options: MapCreaturesOptio
       library = lib;
       if (r) rules = r;
       if (herd) herd.setLibrary(lib, r ?? null);
+    },
+    setExclusion(center, radius = 3.2) {
+      exclusion = center ? { center: center.clone(), radius } : null;
+      updateLive();
+      liveT = LIVE_EVERY;
     },
     probe() {
       return residents.map((r) => {
