@@ -26,6 +26,9 @@ const ZONE_COLORS: Record<ZoneId, CaseColors> = {
   wooding: { table: '#1d2008', wood: '#98b392', floor: '#6c7a5c', ink: '#252d08', silhouette: '#2b3314', accent: '#ddd042' },
 };
 
+/** Die Tischfarbe einer Zone (Hintergrund der Szene): die DOM-Schicht legt damit ein deckendes Band unter den Kopf. */
+export const caseTableColor = (zone: ZoneId): string => ZONE_COLORS[zone].table;
+
 /** Wände: Stärke, Höhe über dem Boden; Boden-Dicke; Tintenschatten (Versatz nach links unten, Sonne rechts oben). */
 const WALL_T = 0.08;
 const WALL_H = 0.3;
@@ -521,23 +524,34 @@ export class SetzkastenScene implements SceneController {
     const H = layout.height + WALL_T;
     const cx = ox + layout.width / 2;
     const cz = oz + layout.height / 2;
-    // Harter Versatzschatten des ganzen Kastens auf dem Tisch (nach links unten), dann der Boden.
-    box(cx + CASE_SHADOW[0], -FLOOR_T - 0.02, cz + CASE_SHADOW[1], W + 0.1, 0.02, H + 0.1, colors.ink);
-    box(cx, -FLOOR_T / 2, cz, W + 0.1, FLOOR_T, H + 0.1, colors.floor);
+    // Ein Tintenstreifen auf dem Boden, auf den Kasten beschnitten (nichts schwebt vor oder neben ihm).
+    const strip = (x0: number, x1: number, z0: number, z1: number): void => {
+      const a = Math.max(x0, cx - W / 2);
+      const b = Math.min(x1, cx + W / 2);
+      const c = Math.max(z0, cz - H / 2);
+      const d = Math.min(z1, cz + H / 2);
+      if (b - a > 1e-4 && d - c > 1e-4) box((a + b) / 2, 0.004, (c + d) / 2, b - a, 0.006, d - c, colors.ink);
+    };
+    // Harter Versatzschatten des ganzen Kastens auf dem Tisch (nach links unten), dann der Boden: bündig mit den
+    // Außenwänden, damit kein Bodenrand als dünne Linie neben dem Kasten stehen bleibt.
+    box(cx + CASE_SHADOW[0], -FLOOR_T - 0.02, cz + CASE_SHADOW[1], W, 0.02, H, colors.ink);
+    box(cx, -FLOOR_T / 2, cz, W, FLOOR_T, H, colors.floor);
     for (const w of walls) {
       const horizontal = Math.abs(w.v0 - w.v1) < 1e-6;
       const len = horizontal ? Math.abs(w.u1 - w.u0) : Math.abs(w.v1 - w.v0);
       const mx = ox + (w.u0 + w.u1) / 2;
       const mz = oz + (w.v0 + w.v1) / 2;
       const tone = w.outer ? mixHex(colors.wood, colors.ink, 0.12) : colors.wood;
+      // Die vordere und die linke Außenwand werfen ihren Schatten auf den Tisch: den zeichnet der Kastenschatten.
+      const onTable = w.outer && (horizontal ? Math.abs(w.v0 - layout.height) < 1e-6 : Math.abs(w.u0) < 1e-6);
       if (horizontal) {
         box(mx, WALL_H / 2, mz, len + WALL_T, WALL_H, WALL_T, tone);
         // Schatten fällt nach vorn (zur Kamera, bildunten): ein Tintenstreifen vor der Wand.
-        box(mx - SHADOW_LEFT * 0.5, 0.004, mz + WALL_T / 2 + SHADOW_NEAR / 2, len, 0.006, SHADOW_NEAR, colors.ink);
+        if (!onTable) strip(mx - SHADOW_LEFT * 0.5 - len / 2, mx - SHADOW_LEFT * 0.5 + len / 2, mz + WALL_T / 2, mz + WALL_T / 2 + SHADOW_NEAR);
       } else {
         box(mx, WALL_H / 2, mz, WALL_T, WALL_H, len + WALL_T, tone);
         // Schatten fällt nach links: ein Tintenstreifen links der Wand.
-        box(mx - WALL_T / 2 - SHADOW_LEFT / 2, 0.004, mz + SHADOW_NEAR * 0.5, SHADOW_LEFT, 0.006, len, colors.ink);
+        if (!onTable) strip(mx - WALL_T / 2 - SHADOW_LEFT, mx - WALL_T / 2, mz + SHADOW_NEAR * 0.5 - len / 2, mz + SHADOW_NEAR * 0.5 + len / 2);
       }
     }
     // Neu-Marken: ein kleines Akzent-Plättchen oben links im Fach, bis das Wesen gesehen wurde.

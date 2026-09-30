@@ -74,7 +74,21 @@ body.sk-open .flow-hud * {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  isolation: isolate;
   animation: sk-head-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.08s both;
+}
+/* Deckendes Band in der Tischfarbe der Zone: der Kasten scrollt (und zoomt) darunter, nichts scheint durch Titel und
+   Reiter. Ruhend ist es unsichtbar, weil die Szene dieselbe Farbe als Hintergrund hat. */
+.sk-head::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: -16px;
+  right: -76px;
+  top: calc(-1 * (env(safe-area-inset-top) + 12px) - 12px);
+  bottom: -6px;
+  background: var(--sk-table, #1b2410);
+  pointer-events: none;
 }
 @keyframes sk-head-in {
   from {
@@ -143,11 +157,11 @@ body.sk-open .flow-hud * {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--tab-bg);
+  /* Gedämpft, aber deckend: beim Heranzoomen liegen Wesen unter dem Kopf, sie dürfen nicht durchscheinen. */
+  background: color-mix(in srgb, var(--tab-bg) 70%, #1b2410);
   color: var(--tab-fg);
   box-shadow: -4px 2px 0 var(--ink);
-  opacity: 0.72;
-  transition: opacity 0.15s ease, transform 80ms ease;
+  transition: background-color 0.15s ease, transform 80ms ease;
 }
 .sk-tab b {
   font-family: var(--font-heavy);
@@ -157,7 +171,7 @@ body.sk-open .flow-hud * {
 }
 .sk-tab[data-active='true'] {
   flex: 1 1 auto;
-  opacity: 1;
+  background: var(--tab-bg);
   justify-content: space-between;
 }
 .sk-tab-name {

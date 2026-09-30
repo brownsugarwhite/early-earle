@@ -9,7 +9,7 @@ import { BUNDLED_RULES } from '../lab/creature/content';
 import { holdNativeGlass } from '../native/liquidGlass';
 import { audio } from '../audio/engine';
 import { catalogFor, rarityOf, SPECIES_NAME, ZONE_LEVELS, ZONE_NAME } from './catalog';
-import { SetzkastenScene } from './SetzkastenScene';
+import { caseTableColor, SetzkastenScene } from './SetzkastenScene';
 import { useSetzkasten, type CreatureCard } from './setzkastenStore';
 import './setzkasten.css';
 
@@ -219,7 +219,16 @@ function SetzkastenLayer({ scene: sc }: { scene: SetzkastenScene }) {
   const locked = reached < first - 1 && perZone(zone).have === 0;
 
   return (
-    <div ref={layerRef} className="sk-layer" data-testid="setzkasten" data-ready={ready} data-closing={closing} role="dialog" aria-label="Setzkasten">
+    <div
+      ref={layerRef}
+      className="sk-layer"
+      data-testid="setzkasten"
+      data-ready={ready}
+      data-closing={closing}
+      role="dialog"
+      aria-label="Setzkasten"
+      style={{ '--sk-table': caseTableColor(zone) } as CSSProperties}
+    >
       <div className="sk-drawer" aria-hidden="true" />
       <button className="sk-close" onClick={closeSetzkasten} aria-label="Schließen" data-testid="setzkasten-close">
         <span aria-hidden="true">✕</span>
