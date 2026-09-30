@@ -81,7 +81,7 @@ export function LabGrid() {
   const isDemo = levelIndex === DEMO_LEVEL_INDEX || levelIndex === CREATURE_DEMO_INDEX || levelIndex === HERD_DEMO_INDEX;
   const levelNo = levelIndex + 1;
   const noLimit = (level?.moves ?? 0) >= 99;
-  const title = levelIndex === CREATURE_DEMO_INDEX ? 'P3 Grid-Lab — Wesen-Schau' : levelIndex === HERD_DEMO_INDEX ? 'P3 Grid-Lab — Herde' : isDemo ? 'P3 Grid-Lab — Elemente-Schau' : `P3 Grid-Lab — Level ${levelNo}${level ? ` · ${level.name ?? level.id}` : ''}`;
+  const title = levelIndex === CREATURE_DEMO_INDEX ? 'P3 Spielfeld-Lab — Wesen-Schau' : levelIndex === HERD_DEMO_INDEX ? 'P3 Spielfeld-Lab — Herde' : isDemo ? 'P3 Spielfeld-Lab — Elemente-Schau' : `P3 Spielfeld-Lab — Level ${levelNo}${level ? ` · ${level.name ?? level.id}` : ''}`;
 
   const won = status === 'won' && !isDemo && levelIndex + 1 < LEVELS.length;
 
