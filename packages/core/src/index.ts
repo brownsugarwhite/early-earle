@@ -3,6 +3,7 @@ export const CORE_VERSION = '0.1.0';
 // schemas
 export * from './schema/level';
 export * from './schema/zone';
+export * from './schema/klassik';
 
 // model + events
 export * from './model';
@@ -38,3 +39,6 @@ export {
 
 // generator
 export * from './generator/index';
+
+// presentation rules (never touch the board RNG)
+export * from './presentation/gull';

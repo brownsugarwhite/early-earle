@@ -1,5 +1,5 @@
 import { Box3, BufferGeometry, Color, Float32BufferAttribute, Group, Mesh, Object3D, PerspectiveCamera, Scene, Vector3 } from 'three/webgpu';
-import { uniform } from 'three/tsl';
+import { clamp, positionLocal, uniform } from 'three/tsl';
 import { EarleMaterial, PaletteAtlas, PaletteLookup, SunRig, createFogSettings, createSkyDome } from '@ee/render';
 import { createHeroPathMarkers, createHeroTree, type BarkStyle, type CanopyFamily, type HeroPathMarkers, type HeroTree, type TreeQuality } from '@ee/render/earle/tree/index.ts';
 import { createCanopy, type Canopy } from '@ee/render/earle/tree/canopy.ts';
@@ -225,7 +225,16 @@ export class TreeLabScene implements SceneController {
 
     // ground: radial grid, flat under the tree, gentle hills from r > 30 (chiselled, no ridges)
     const ground = createGroundGeometry(200, p.name === 'mobil' ? 90 : 150, p.name === 'mobil' ? 80 : 128);
-    const groundMaterial = new EarleMaterial({ lookup, row: groundRow, fog, bands: this.groundBands, bandScale: 1.6, terminator: 0.0 });
+    // harte Bänder wie bisher, jedes mit Verlauf innen: Kamm hell, Senke tiefer (Hügel bis ≈ 8 Einheiten hoch)
+    const groundMaterial = new EarleMaterial({
+      lookup,
+      row: groundRow,
+      fog,
+      bands: this.groundBands,
+      bandScale: 1.6,
+      terminator: 0.0,
+      gradient: clamp(positionLocal.y.div(4).sub(1), -1, 1),
+    });
     const groundMesh = new Mesh(ground, groundMaterial);
     groundMesh.name = 'ground';
     groundMesh.receiveShadow = true;

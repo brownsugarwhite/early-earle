@@ -214,8 +214,8 @@ export interface RockMaterialOptions {
 }
 
 /**
- * Fels-Material (Earle-Monolithe): harte Facetten in 4 Lichtbändern, Schattenseite Tinte; Ornament je Art (Linie in
- * etwas drin, nie drum herum):
+ * Fels-Material (Earle-Monolithe): harte Facetten in 4 Lichtbändern, jede mit Verlauf innen (oben hell, zum Fuß tiefer,
+ * Ebene 45), Schattenseite Tinte; Ornament je Art (Linie in etwas drin, nie drum herum):
  * - Basalt (Terrassen, Wand): dichte senkrechte Riefen (Ebene_12), im Schatten als dunkle Linien sichtbar (Ebene_7),
  *   Moosköpfe mit feinen hellen Tupfen;
  * - Turm: gebrochene senkrechte Striche und wandernde Zickzack-Glyphenbänder, dichter am Sockel (Ebene_44/45);
@@ -281,7 +281,11 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
   const mf = fract(mp).sub(vec2(hash(mcell.x.add(mcell.y.mul(91.0))).mul(0.5).add(0.25), hash(mcell.x.mul(17.0).add(mcell.y.mul(3.0))).mul(0.5).add(0.25)));
   const moss = aaStep(mf.length(), float(0.16)).mul(step(hash(mcell.x.mul(5.0).add(mcell.y.mul(23.0))), float(0.55))).mul(periodFade(mp.x, 2.2)).mul(isKind(0));
   const capLit = mix(capColor, mix(capColor, vec3(1, 1, 1), 0.35), moss);
-  // Roter Monolith (Ebene 45): eigene Lichtfarben für Wände und Bänke, Schattenseite reine Tinte
+  // Verlauf innerhalb der Facetten (Ebene 27, 45, 46): oben hell, zum Fuß tiefer. Rahmenhöhe z in Welteinheiten (Fuß
+  // versenkt ≈ −0.5, Köpfe 3–8); die Facettenkanten bleiben harte Sprünge
+  const heightGrad = smoothstep(-0.6, 6.5, z).mul(2).sub(1);
+  // Roter Monolith (Ebene 45): eigene Lichtfarben für Wände und Bänke (Stufen mit Verlauf innen, siehe monolith.ts;
+  // sie decken die Lichtseite ganz, der Höhenverlauf oben greift dort nicht), Schattenseite reine Tinte
   const isMonoF = isKind(4);
   const mono = monolithShading({ lookup: o.lookup, row, sunDir: o.sunDir ?? (vec3(0.8, 0.21, 0.56).normalize() as unknown as Vec3Node), isTier });
   return new EarleMaterial({
@@ -294,6 +298,7 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
     terminator: 0.04,
     // Turm-Schaft heller (Glut, Ebene_45), Sockel eine Spur dunkler
     lift: isKind(1).mul(float(0.12).sub(isTier.mul(0.16))),
+    gradient: heightGrad,
     // Linien im Licht dunkel (Stufe 6), im Schatten hell (Stufe 3 halb in Tinte): die Riefen lesen sich auch auf der
     // Tintenseite (Ebene_7: türkise Striche auf schwarzem Fels)
     pattern: {
@@ -309,8 +314,9 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
 }
 
 /**
- * Säule nahe am Kamerafuß: Höhe über dem Fuß schrumpft weich auf 0 (seitlicher Abstand Rand ↔ Kamerafuß). Der
- * Monolith (Art 4) bleibt stehen: sein Plateau ist so groß, dass es sonst schon aus der Ferne versänke.
+ * Säule nahe am Kamerafuß: schrumpft weich ganz auf ihren Fußpunkt (seitlicher Abstand Rand ↔ Kamerafuß) — nur die
+ * Höhe zu drücken ließe flache Deckel im ruhigen Vordergrund liegen. Der Monolith (Art 4) bleibt stehen: sein Plateau
+ * ist so groß, dass es sonst schon aus der Ferne versänke.
  */
 function sinkNearCamera(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
   const rc = attribute('rc', 'vec4');
@@ -321,7 +327,7 @@ function sinkNearCamera(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
   const mono = step(15.5, local).mul(step(local, float(19.5)));
   const keep = max(select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1)), mono);
   const p = positionLocal as unknown as Vec3Node;
-  return vec3(p.x, rc.y.add(p.y.sub(rc.y).mul(max(keep, float(0.02)))), p.z) as unknown as Vec3Node;
+  return vec3(rc.x.add(p.x.sub(rc.x).mul(keep)), rc.y.add(p.y.sub(rc.y).mul(keep)), rc.z.add(p.z.sub(rc.z).mul(keep))) as unknown as Vec3Node;
 }
 
 // --- kleine Vektorhelfer ------------------------------------------------------------------------------------

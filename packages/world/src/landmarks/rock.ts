@@ -1,5 +1,5 @@
 import { hash32, mulberry32 } from '../rng';
-import { FOOT_SINK, SHORE_SAMPLES, TAU, blobPolygon, centroid, ccw, clamp, dirAt, lerp, lowestGround, prism, prismPeak, shoreAt, wobblyShore } from './shapes';
+import { FOOT_SINK, SHORE_SAMPLES, TAU, blobPolygon, centroid, ccw, clamp, dirAt, lerp, lowestGround, prism, prismPeak, shoreAt, wallCorners, wobblyShore } from './shapes';
 import type { CarveShape, FallSpec, LandmarkBlueprint, LandmarkKind, LandmarkWaypoint, LocalGround, MistPuff, P2, P3, PoolSpec, Prism, WaterConnection } from './types';
 
 /** Board footprint the plateaus must carry (5×5 and 6×6 boards incl. their skirt ≈ 4.4–4.9 world units). */
@@ -415,17 +415,23 @@ function satellites(rand: () => number, core: Core, ground: LocalGround, count: 
   return out;
 }
 
-type RockParts = Omit<LandmarkBlueprint, 'kind' | 'seed' | 'radius' | 'height' | 'arcades' | 'vines' | 'bushes' | 'swamp'>;
+type RockParts = Omit<LandmarkBlueprint, 'kind' | 'seed' | 'radius' | 'height' | 'walls' | 'vines' | 'bushes' | 'swamp'>;
 
 /** Bounds, mirror, and the finished blueprint. */
-export function finishBlueprint(kind: LandmarkKind, seed: number, parts: RockParts & Partial<Pick<LandmarkBlueprint, 'arcades' | 'vines' | 'bushes' | 'swamp'>>, mirror: boolean): LandmarkBlueprint {
-  const bp: LandmarkBlueprint = { kind, seed, radius: 0, height: 0, arcades: [], vines: [], bushes: [], swamp: null, ...parts };
+export function finishBlueprint(kind: LandmarkKind, seed: number, parts: RockParts & Partial<Pick<LandmarkBlueprint, 'walls' | 'vines' | 'bushes' | 'swamp'>>, mirror: boolean): LandmarkBlueprint {
+  const bp: LandmarkBlueprint = { kind, seed, radius: 0, height: 0, walls: [], vines: [], bushes: [], swamp: null, ...parts };
   if (mirror) mirrorBlueprint(bp);
   let r = 0;
   let h = 0;
   for (const p of bp.prisms) {
     for (const [x, z] of p.base) r = Math.max(r, Math.hypot(x, z));
     h = Math.max(h, prismPeak(p));
+  }
+  for (const w of bp.walls) {
+    for (const [x, y, z] of wallCorners(w)) {
+      r = Math.max(r, Math.hypot(x, z));
+      h = Math.max(h, y);
+    }
   }
   for (const p of bp.pools) r = Math.max(r, Math.hypot(p.center[0], p.center[1]) + p.radius * 1.3);
   for (const c of bp.connections) r = Math.max(r, Math.hypot(c.position[0], c.position[2]) + 0.5);
@@ -453,11 +459,14 @@ export function mirrorBlueprint(bp: LandmarkBlueprint): void {
   const m2 = (p: P2): P2 => [0 - p[0], p[1]];
   const m3 = (p: P3): P3 => [0 - p[0], p[1], p[2]];
   for (const p of bp.prisms) {
+    const n = p.base.length;
     p.base = p.base.map(m2).reverse();
     p.top = p.top.map(m2).reverse();
     p.jag = [...p.jag].reverse();
     p.tilt = [0 - p.tilt[0], p.tilt[1]];
     p.apexOffset = m2(p.apexOffset);
+    // face i (edge i → i+1) becomes face n − 2 − i of the reversed ring, running the other way
+    if (p.lancets) p.lancets = p.lancets.map((l) => ({ ...l, face: (((n - 2 - l.face) % n) + n) % n, s: 0 - l.s }));
   }
   for (const f of bp.falls) {
     f.path = f.path.map(m3);
@@ -471,13 +480,11 @@ export function mirrorBlueprint(bp: LandmarkBlueprint): void {
     if (p.outlet) p.outlet.path = p.outlet.path.map(m3);
   }
   for (const m of bp.mist) m.center = m3(m.center);
-  for (const a of bp.arcades) {
-    const from = m2(a.from);
-    a.from = m2(a.to);
-    a.to = from;
-    const broken: Record<number, number> = {};
-    for (const [k, v] of Object.entries(a.broken)) broken[a.bays - 1 - Number(k)] = v;
-    a.broken = broken;
+  for (const w of bp.walls) {
+    // the wall's own frame mirrors with it (s still runs from → to): the outline and its holes stay as they are
+    w.from = m2(w.from);
+    w.to = m2(w.to);
+    w.normal = m2(w.normal);
   }
   for (const v of bp.vines) {
     v.path = v.path.map(m3);

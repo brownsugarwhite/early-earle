@@ -19,7 +19,10 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORT}`,
     ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',
-    launchOptions: { args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] },
+    // EE_GPU=1: alle Specs auf der echten GPU (Mac/Metal) statt SwiftShader — schnell, auch wenn der Rechner ausgelastet ist
+    launchOptions: {
+      args: process.env.EE_GPU ? ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] : ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'],
+    },
   },
   webServer: {
     command: `NO_SSL=1 node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port ${PORT} --strictPort`,

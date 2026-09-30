@@ -161,8 +161,9 @@ export interface BarnOptions {
 
 /**
  * Alle Scheunen des Planeten als ein InstancedMesh: rote Wände mit feinen senkrechten Maserungslinien und Astlöchern
- * und einem radialen Glutverlauf (Mitte hell, Ränder dunkler, Bild 01), Schneedach immer hell (nur Schlagschatten),
- * dünne graue Plattenkante, Tinte unter dem Dach. Fuß versenkt; wirft und empfängt Schatten.
+ * und einer radialen Glut in harten Ringen, jeder mit Verlauf innen (Mitte hell, Ränder dunkler, Bild 01), Schneedach
+ * immer hell (nur Schlagschatten), dünne graue Plattenkante, Tinte unter dem Dach. Fuß versenkt; wirft und empfängt
+ * Schatten.
  */
 export class BarnLandmarks {
   readonly mesh: InstancedMesh;
@@ -190,9 +191,11 @@ export class BarnLandmarks {
     const terrain = arrayElement(o.terrainRows, world);
     const isPart = (p: number): FloatNode => step(abs(part.sub(p)), float(0.5));
     const isWall = isPart(WALL);
-    // Glut: Mitte der Wandfläche hell, zu den Rändern dunkler (weich gestuft über die Bänder)
+    // Glut (Bild 01, Ebene 37): die Wand leuchtet aus ihrer Mitte heraus, zu den Rändern tiefer rot — in harten Ringen
+    // durch die Scheunenstufen (Siebdruck), jeder Ring verläuft in sich zur Mitte hin heller (`gradient`)
     const dc = vec2(fu.sub(0.5), fv.sub(0.42).mul(1.2)).length();
     const glow = smoothstep(0.72, 0.05, dc).mul(0.5).sub(0.12);
+    const glowGradient = smoothstep(0.8, 0.0, dc).mul(2).sub(1).mul(isWall);
     // Maserung: feine senkrechte Linien mit unregelmäßigem Abstand, leicht gewellt; Astlöcher als kleine Ellipsen
     const b = board.mul(46.0).add(variant.mul(7.0));
     const wav = sin(fv.mul(9.0).add(floor(b).mul(1.7))).mul(0.12);
@@ -223,6 +226,7 @@ export class BarnLandmarks {
       terminatorNode: float(-1.2),
       // Wände eine Stufe heller (leuchtendes Rot wie Bild 01), Glut in der Wandmitte
       lift: glow.add(0.12).mul(isWall),
+      gradient: glowGradient,
       pattern: { mask: woodMask, color: mix(lines, o.lookup.pal(1, row).rgb, 0.25), shadowColor: mix(ink, o.lookup.pal(1, row).rgb, 0.5) },
       layers: [
         { mask: isPart(ROOF), color: snow, shadowColor: snowShade, castOnly: true },
@@ -301,6 +305,7 @@ function barnSink(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
   const lateral = vec2(foot.x.sub(camLocal.x), foot.z.sub(camLocal.z)).length().sub(foot.w);
   const r = radius as unknown as FloatNode;
   const keep = select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1));
+  // die ganze Scheune schrumpft zu ihrem Fuß (flach gedrückt blieben Dach und Wände als beige Deckel liegen)
   const p = positionLocal as unknown as Vec3Node;
-  return vec3(p.x, foot.y.add(p.y.sub(foot.y).mul(max(keep, float(0.02)))), p.z) as unknown as Vec3Node;
+  return vec3(foot.x.add(p.x.sub(foot.x).mul(keep)), foot.y.add(p.y.sub(foot.y).mul(keep)), foot.z.add(p.z.sub(foot.z).mul(keep))) as unknown as Vec3Node;
 }

@@ -4,7 +4,7 @@ import type { FloatNode, Vec3Node } from '../../tsl';
 import { GeoBuffer, type LandmarkFrame } from './buffers';
 import { createLandmarkUniforms, type LandmarkMaterialContext, type LandmarkUniforms } from './context';
 import type { LandmarkRows } from './palette';
-import { ROCK_LAYOUT, addArcade, addPrisms } from './prismGeometry';
+import { ROCK_LAYOUT, addPrisms, addWalls } from './prismGeometry';
 import { createLandmarkRockMaterial, rockFamilyOf } from './rockMaterial';
 import { DotBatch, FALL_LAYOUT, addFallDots, addFalls, createDotMesh, createFallMaterial, createMistMesh } from './waterfall';
 import { WATER_LAYOUT, addPoolsAndStreams, createPoolMaterial } from './water';
@@ -98,9 +98,10 @@ export class LandmarkSet {
     const rock = new GeoBuffer(ROCK_LAYOUT);
     const stone = new GeoBuffer(ROCK_LAYOUT);
     // rock and stone as two shader families (each evaluates only its own ornaments)
-    const addBoth = (prisms: readonly Prism[], frame: LandmarkFrame, rows: LandmarkRows) => {
+    const addBoth = (prisms: readonly Prism[], frame: LandmarkFrame, rows: LandmarkRows, height = 0) => {
       addPrisms(rock, prisms.filter((p) => rockFamilyOf(p.surface) === 'rock'), frame, rows);
-      addPrisms(stone, prisms.filter((p) => rockFamilyOf(p.surface) === 'stone'), frame, rows);
+      // cut stone: every face steps up the whole landmark (Earle's monoliths lighten toward the top)
+      addPrisms(stone, prisms.filter((p) => rockFamilyOf(p.surface) === 'stone'), frame, rows, height);
     };
     const falls = new GeoBuffer(FALL_LAYOUT);
     const water = new GeoBuffer(WATER_LAYOUT);
@@ -118,8 +119,8 @@ export class LandmarkSet {
       const frame = this.frameOf(inst);
       const rows = this.rowsFor(inst.placement.world);
       earthRow = rows.earth;
-      addBoth(bp.prisms, frame, rows);
-      for (const a of bp.arcades) addArcade(stone, a, frame, rows);
+      addBoth(bp.prisms, frame, rows, bp.height);
+      addWalls(stone, bp.walls, frame, rows, bp.height);
       addFalls(falls, bp.falls, frame, rows, bp.seed + i);
       addPoolsAndStreams(water, bp.pools, bp.falls, frame, rows, [0, 0]);
       addFallDots(dots, bp.falls, bp.mist, frame, rows, detail, bp.seed + i * 7);

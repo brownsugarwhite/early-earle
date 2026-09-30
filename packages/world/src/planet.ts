@@ -1,6 +1,6 @@
 import { GradientNoise3 } from './noise';
 import { hash32, mulberry32 } from './rng';
-import { TREE_KIND_LIST, TREE_PROPORTIONS, composeGroveTree, groundSink, type TreeInstance, type TreeKind } from './scatterTrees';
+import { TREE_KIND_LIST, TREE_PROPORTIONS, composeGroveTree, groundSink, type TreeFamily, type TreeInstance, type TreeKind } from './scatterTrees';
 import type { Vec3 } from './capPatch';
 import { areaSplit, decideWorld, pathLongitude, smoothstep01, wrapAngle, type WorldTables } from './worldLayout';
 import { PlanetFeatures, type FeatureHost, type FeatureSample, type LedgeAnchor, type WorldFeatureSpec } from './features';
@@ -982,6 +982,65 @@ function isCleared(field: PlanetField, options: ChunkScatterOptions, p: Vec3, ra
   return false;
 }
 
+/**
+ * Riesenstämme eines Chunks (`vegetation.giants`, Ebene 16/3): Poisson mit dem kleinsten Mindestabstand aller Welten
+ * mit Riesen, je Punkt die Welt am Ort (ohne Riesen verworfen, größerer Abstand ausgedünnt). Frei von Pfad,
+ * Wahrzeichen, Wasser, Felsen und Steilhängen; eigener Zufallsstrom, Welten ohne Riesen bleiben unverändert. Etwas
+ * Abstand zum Chunkrand, damit Bäume des Nachbar-Chunks nicht im Stamm stehen.
+ */
+function scatterChunkGiants(field: PlanetField, id: ChunkId, options: ChunkScatterOptions): Array<{ tree: PlanetTree; priority: number; clear: number }> {
+  let spacing = Infinity;
+  for (const w of field.worlds) {
+    const g = (w.vegetation as TreeFamily).giants;
+    if (g && g.spacing > 0) spacing = Math.min(spacing, g.spacing);
+  }
+  if (!Number.isFinite(spacing)) return [];
+  const centre: Vec3 = [0, 0, 0];
+  chunkDirection(id, field.params.chunksPerFace, 0, 0, centre);
+  const rand = mulberry32(hash32('giants', field.zoneIndex(centre[0], centre[1], centre[2]), id.face, id.cx, id.cy, field.params.seed));
+  const pos: Vec3 = [0, 0, 0];
+  const nor: Vec3 = [0, 0, 0];
+  const out: Array<{ tree: PlanetTree; priority: number; clear: number }> = [];
+  for (const q of poissonInChunk(field, id, 'giants', spacing, 0.12)) {
+    const d = q.dir;
+    const [r1, r2, r3, r4] = [rand(), rand(), rand(), rand()];
+    const world = field.worldAt(d[0], d[1], d[2]);
+    const spec = (field.worlds[world]!.vegetation as TreeFamily).giants;
+    if (!spec || r1 > (spec.share ?? 1) * Math.min(1, (spacing / spec.spacing) ** 2)) continue;
+    const kind = spec.kind ?? 'pillar';
+    const scale = spec.scale[0] + (spec.scale[1] - spec.scale[0]) * r2;
+    const prop = TREE_PROPORTIONS[kind];
+    const canopyRadius = prop.radius * scale;
+    field.surfaceAt(d[0], d[1], d[2], pos, nor);
+    if (1 - (nor[0] * d[0] + nor[1] * d[1] + nor[2] * d[2]) > 0.2) continue;
+    const sink = options.meshSpacing ? groundSink(field, d, options.meshSpacing) : 0;
+    if (sink > 0) for (let k = 0; k < 3; k++) pos[k] = pos[k]! - d[k]! * sink;
+    if (isCleared(field, options, pos, canopyRadius)) continue;
+    if (field.features.blocksTree(d[0], d[1], d[2], canopyRadius, world, field.features.snow[world] ? field.heightNormAt(d[0], d[1], d[2]) : 0)) continue;
+    const hullH = prop.hull * canopyRadius;
+    out.push({
+      tree: {
+        position: [pos[0], pos[1], pos[2]],
+        normal: [nor[0], nor[1], nor[2]],
+        kind,
+        scale,
+        canopyRadius,
+        trunkHeight: prop.trunk * canopyRadius,
+        hullCenter: [pos[0] + nor[0] * hullH, pos[1] + nor[1] * hullH, pos[2] + nor[2] * hullH],
+        growth: 0,
+        zone: field.zoneIndex(d[0], d[1], d[2]),
+        world,
+        rank: 0,
+        variant: r4,
+      },
+      // Die alten Riesen stehen früh (erste Hälfte des Wachstums)
+      priority: 0.5 * r3,
+      clear: spec.clear ?? 0.9,
+    });
+  }
+  return out;
+}
+
 export function scatterChunkTrees(field: PlanetField, id: ChunkId, options: ChunkScatterOptions = {}): PlanetTree[] {
   const cpf = field.params.chunksPerFace;
   const centreDir: Vec3 = [0, 0, 0];
@@ -996,6 +1055,9 @@ export function scatterChunkTrees(field: PlanetField, id: ChunkId, options: Chun
   const pos: Vec3 = [0, 0, 0];
   const nor: Vec3 = [0, 0, 0];
   const raw: Array<{ tree: PlanetTree; priority: number }> = [];
+  // Riesenstämme (`vegetation.giants`, Ebene 16/3): eigene Streuung; die übrigen Bäume halten Abstand zu ihren Stämmen
+  const giants = scatterChunkGiants(field, id, options);
+  for (const g of giants) raw.push(g);
   for (const q of pts) {
     const d = q.dir;
     // Welt am Baum (kann von der Chunk-Welt abweichen): eigene Familie
@@ -1027,6 +1089,7 @@ export function scatterChunkTrees(field: PlanetField, id: ChunkId, options: Chun
     const sink = options.meshSpacing ? groundSink(field, d, options.meshSpacing) : 0;
     if (sink > 0) for (let k = 0; k < 3; k++) pos[k] = pos[k]! - d[k]! * sink;
     if (isCleared(field, options, pos, canopyRadius)) continue;
+    if (giants.length > 0 && giants.some((g) => Math.hypot(pos[0] - g.tree.position[0], pos[1] - g.tree.position[1], pos[2] - g.tree.position[2]) < g.clear + canopyRadius * 0.35)) continue;
     // Geländemerkmale: kein Baum im Wasser, auf Felsen oder im Schneefeld
     if (field.features.blocksTree(d[0], d[1], d[2], canopyRadius, world, field.features.snow[world] ? field.heightNormAt(d[0], d[1], d[2]) : 0)) continue;
     const trunkHeight = prop.trunk * canopyRadius;

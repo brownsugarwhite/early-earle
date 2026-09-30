@@ -25,6 +25,8 @@ interface Flight {
   elapsed: number;
   ease: Ease;
   done: (() => void) | undefined;
+  /** Landing impulse strength (1.1 = a full landing, small for the hops along the path). */
+  land: number;
 }
 
 /** Logical pose → pose of `root` (e.g. plane → display sphere); runs every frame. */
@@ -150,7 +152,7 @@ export class Hero {
   }
 
   /** Arc flight from the current pose to `to`; the body stretches along the velocity and squashes on landing. */
-  flyTo(to: HeroPose, opts: { duration: number; arc: number; ease?: Ease; done?: () => void }): void {
+  flyTo(to: HeroPose, opts: { duration: number; arc: number; ease?: Ease; done?: () => void; land?: number }): void {
     const from = this.currentPose();
     const up = _v.set(0, 1, 0).applyQuaternion(from.quaternion).add(_v2.set(0, 1, 0).applyQuaternion(to.quaternion));
     if (up.lengthSq() < 1e-6) up.set(0, 1, 0);
@@ -163,6 +165,7 @@ export class Hero {
       elapsed: 0,
       ease: opts.ease ?? easeInOut,
       done: opts.done,
+      land: opts.land ?? 1.1,
     };
   }
 
@@ -204,7 +207,9 @@ export class Hero {
         this.scale = f.to.scale;
         this.flight = null;
         this.flightSquash = null;
-        this.impulse(1.1);
+        this.impulse(f.land);
+        // The root stands on the landing point before the callback looks at it (the walk logs its landings)
+        this.syncRoot();
         f.done?.();
       }
     }

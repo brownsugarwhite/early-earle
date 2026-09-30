@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Generates the app icon, the launch image and the PWA icons from Florian's splash
+# Generates the app icon and the PWA icons from Florian's splash
 # (assets/ref-florian/02-splashscreen-illudiy-i.png) with CoreGraphics (no ImageMagick needed).
+# The launch image is the loader's first frame instead: `node scripts/launch-frame.mjs` (LaunchLoader.imageset).
 #   pnpm ios:icons
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 SRC="${1:-../../assets/ref-florian/02-splashscreen-illudiy-i.png}"
 ICONSET=ios/App/App/Assets.xcassets/AppIcon.appiconset
-SPLASHSET=ios/App/App/Assets.xcassets/Splash.imageset
 PWA=public/icons
 mkdir -p "$PWA"
 
@@ -51,7 +51,4 @@ render "$PWA/icon-512.png"           512  1.25 435 655
 render "$PWA/icon-192.png"           192  1.25 435 655
 render "$PWA/icon-512-maskable.png"  512  0.78 435 655         # keeps the emblem inside the maskable safe zone
 render "$PWA/apple-touch-icon-180.png" 180 1.25 435 655
-render "$SPLASHSET/splash-2732x2732.png" 2732 0.5868 419 714    # full splash height on a square ink canvas (aspect-fill)
-cp "$SPLASHSET/splash-2732x2732.png" "$SPLASHSET/splash-2732x2732-1.png"
-cp "$SPLASHSET/splash-2732x2732.png" "$SPLASHSET/splash-2732x2732-2.png"
-echo "Icons and launch image written."
+echo "Icons written (launch image: node scripts/launch-frame.mjs)."

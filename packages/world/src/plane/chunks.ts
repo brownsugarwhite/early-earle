@@ -368,6 +368,71 @@ function snapToMesh(mesh: PlaneChunkMesh | null | undefined, p: Vec3): number {
   return shift;
 }
 
+/**
+ * Riesenstämme eines Chunks (`vegetation.giants`, Ebene 16/3): Poisson mit dem kleinsten Mindestabstand der Welten im
+ * Chunk, je Punkt die Welt am Ort (ohne Riesen verworfen, größerer Abstand ausgedünnt). Frei von Pfad, Wahrzeichen,
+ * Wasser, Felsen und Steilhängen; eigener Zufallsstrom, Welten ohne Riesen bleiben unverändert. Etwas Abstand zum
+ * Chunkrand, damit Bäume des Nachbar-Chunks nicht im Stamm stehen.
+ */
+function scatterPlaneGiants(field: PlaneField, cx: number, cz: number, regions: readonly string[], slots: readonly LandmarkSlot[], options: PlaneScatterOptions): Array<{ tree: PlanetTree; priority: number; clear: number }> {
+  let spacing = Infinity;
+  for (const k of regions) {
+    const g = (field.spec(field.region(k).world).vegetation as TreeFamily).giants;
+    if (g && g.spacing > 0) spacing = Math.min(spacing, g.spacing);
+  }
+  if (!Number.isFinite(spacing)) return [];
+  const rand = mulberry32(hash32('plane-giants', cx, cz, field.seed));
+  const rs = {} as RegionSample;
+  const pos: Vec3 = [0, 0, 0];
+  const nor: Vec3 = [0, 0, 0];
+  const out: Array<{ tree: PlanetTree; priority: number; clear: number }> = [];
+  for (const [x, z] of poissonInChunk(field.seed, cx, cz, 'giants', spacing, 1.2)) {
+    const r1 = rand();
+    const r2 = rand();
+    const r3 = rand();
+    const r4 = rand();
+    field.sample(x, z, rs);
+    const world = rs.world;
+    const spec = (field.spec(world).vegetation as TreeFamily).giants;
+    if (!spec || r1 > (spec.share ?? 1) * Math.min(1, (spacing / spec.spacing) ** 2)) continue;
+    const kind = spec.kind ?? 'pillar';
+    const scale = spec.scale[0] + (spec.scale[1] - spec.scale[0]) * r2;
+    const prop = TREE_PROPORTIONS[kind];
+    const canopyRadius = prop.radius * scale;
+    field.surfaceAt(x, z, pos, nor);
+    // kein Riese am Steilhang (Ebene: oben ist +y)
+    if (1 - nor[1] > 0.2) continue;
+    if (options.clear?.(x, z, canopyRadius)) continue;
+    if (landmarkCleared(slots, x, z, canopyRadius)) continue;
+    if (field.landmarkBlocks(x, z, canopyRadius * 0.6)) continue;
+    const key = rs.region.key;
+    const hn = field.features.region(key).snow ? field.heightNormAt(x, z) : 0;
+    if (field.features.blocksTree(key, x, z, canopyRadius, hn)) continue;
+    snapToMesh(options.mesh, pos);
+    const hullH = prop.hull * canopyRadius;
+    out.push({
+      tree: {
+        position: [pos[0], pos[1], pos[2]],
+        normal: [nor[0], nor[1], nor[2]],
+        kind,
+        scale,
+        canopyRadius,
+        trunkHeight: prop.trunk * canopyRadius,
+        hullCenter: [pos[0], pos[1] + hullH, pos[2]],
+        growth: 0,
+        zone: 0,
+        world,
+        rank: 0,
+        variant: r4,
+      },
+      // Die alten Riesen stehen früh (erste Hälfte des Wachstums)
+      priority: 0.5 * r3,
+      clear: spec.clear ?? 0.9,
+    });
+  }
+  return out;
+}
+
 export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, options: PlaneScatterOptions = {}): PlanetTree[] {
   const ox = cx * CHUNK_SIZE;
   const oz = cz * CHUNK_SIZE;
@@ -376,17 +441,19 @@ export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, opt
   const family = field.spec(rs.world).vegetation;
   const regions = chunkRegions(field, cx, cz);
   const slots = field.landmarksIn(regions);
+  // Riesenstämme (`vegetation.giants`, Ebene 16/3): eigene Streuung; die übrigen Bäume halten Abstand zu ihren Stämmen
+  const giants = scatterPlaneGiants(field, cx, cz, regions, slots, options);
   // Dichte: die dichteste Welt im Chunk bestimmt das Poisson-Raster, dünnere lichten aus
   let maxDensity = family.density;
   for (const k of regions) maxDensity = Math.max(maxDensity, field.spec(field.region(k).world).vegetation.density);
   const density = maxDensity * (options.densityScale ?? 1);
-  if (density <= 0) return [];
-  const minDist = Math.sqrt(1 / (density * 1.7));
+  const minDist = Math.sqrt(1 / (Math.max(1e-6, density) * 1.7));
   const rand = mulberry32(hash32('plane-trees', cx, cz, field.seed));
-  const pts = poissonInChunk(field.seed, cx, cz, 'trees', minDist, options.edgeMargin ?? 0.15);
+  const pts = density > 0 ? poissonInChunk(field.seed, cx, cz, 'trees', minDist, options.edgeMargin ?? 0.15) : [];
   const pos: Vec3 = [0, 0, 0];
   const nor: Vec3 = [0, 0, 0];
   const raw: Array<{ tree: PlanetTree; priority: number }> = [];
+  for (const g of giants) raw.push(g);
   for (const [x, z] of pts) {
     field.sample(x, z, rs);
     const world = rs.world;
@@ -417,6 +484,7 @@ export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, opt
     const canopyRadius = prop.radius * scale;
     if (options.clear?.(x, z, canopyRadius)) continue;
     if (landmarkCleared(slots, x, z, canopyRadius)) continue;
+    if (giants.length > 0 && giants.some((g) => Math.hypot(x - g.tree.position[0], z - g.tree.position[2]) < g.clear + canopyRadius * 0.35)) continue;
     // Wahrzeichen (Fels, Ruine, Becken, Sumpf): keine Bäume in Stein und Wasser
     if (field.landmarkBlocks(x, z, canopyRadius * 0.6)) continue;
     const hn = field.features.region(key).snow ? field.heightNormAt(x, z) : 0;

@@ -24,6 +24,8 @@ export interface VoiceSyllable {
   glide: number;
   /** 0..1 */
   amp: number;
+  /** Tied to the next syllable (no release at its end): one breath across a pitch or vowel change ("kyow"). */
+  legato?: boolean;
 }
 
 export interface VoiceStyle {
@@ -103,6 +105,8 @@ export interface SpeakOptions {
   reverb?: number;
   /** Fade the voice out from this relative time (long lines trail off). */
   fadeFrom?: number;
+  /** Pans from `pan` to this position over the line (a call from something moving). */
+  panTo?: number;
 }
 
 /** Speaks a syllable sequence from context time `t`; returns the end time (or `t` when the pool is full). */
@@ -115,6 +119,9 @@ export function speak(g: AudioGraph, t: number, syl: readonly VoiceSyllable[], s
   if (!s) return t;
   const end = t + dur;
   const size = style.size;
+  if (opts.panTo !== undefined) s.panTo(opts.panTo, t, dur);
+  // Onsets reach a little before their syllable; never before the context's time zero (a line right after unlock).
+  const at = (x: number): number => Math.max(0, x);
 
   // Source, vibrato, breath.
   const src = s.osc('sine', first.pitch, t, end);
@@ -194,10 +201,10 @@ export function speak(g: AudioGraph, t: number, syl: readonly VoiceSyllable[], s
     const peak = y.amp * (y.stress ? 1 : 0.78);
     // Onsets: nasals/liquids start closed and open into the vowel; plosives click; fricatives hiss before.
     if (y.onset === 'nasal') {
-      f1.frequency.setTargetAtTime(260 * size, t0 - 0.03, 0.01);
-      f2.frequency.setTargetAtTime(1100 * size, t0 - 0.03, 0.01);
+      f1.frequency.setTargetAtTime(260 * size, at(t0 - 0.03), 0.01);
+      f2.frequency.setTargetAtTime(1100 * size, at(t0 - 0.03), 0.01);
     } else if (y.onset === 'liquid') {
-      f2.frequency.setTargetAtTime(1150 * size, t0 - 0.03, 0.01);
+      f2.frequency.setTargetAtTime(1150 * size, at(t0 - 0.03), 0.01);
     }
     f1.frequency.setTargetAtTime(b1 * size, t0 + (y.onset === 'nasal' ? 0.02 : 0), 0.016);
     f2.frequency.setTargetAtTime(b2 * size, t0 + (y.onset === 'nasal' || y.onset === 'liquid' ? 0.02 : 0), 0.02);
@@ -206,20 +213,20 @@ export function speak(g: AudioGraph, t: number, syl: readonly VoiceSyllable[], s
       f1.frequency.setTargetAtTime(c1 * size, t0 + len * 0.45, 0.03);
       f2.frequency.setTargetAtTime(c2 * size, t0 + len * 0.45, 0.035);
     }
-    src.frequency.setTargetAtTime(y.pitch, t0 - 0.01, 0.012);
+    src.frequency.setTargetAtTime(y.pitch, at(t0 - 0.01), 0.012);
     if (y.glide !== 0) src.frequency.setTargetAtTime(y.pitch * (1 + y.glide), t0 + len * 0.25, len * 0.35);
     const attack = y.onset === 'nasal' || y.onset === 'liquid' ? 0.03 : 0.014;
     amp.gain.setTargetAtTime(peak, t0, attack / 2.5);
     amp.gain.setTargetAtTime(peak * 0.82, t0 + len * 0.4, len * 0.3);
-    amp.gain.setTargetAtTime(0, t1 - Math.min(0.05, len * 0.3), 0.018);
+    if (!y.legato) amp.gain.setTargetAtTime(0, t1 - Math.min(0.05, len * 0.3), 0.018);
     if (y.onset === 'plosive') {
-      cf.frequency.setValueAtTime(1900 * size, t0 - 0.012);
-      perc(cg.gain, t0 - 0.012, 0.22 * y.amp, 0.001, 0.025);
+      cf.frequency.setValueAtTime(1900 * size, at(t0 - 0.012));
+      perc(cg.gain, at(t0 - 0.012), 0.22 * y.amp, 0.001, 0.025);
     } else if (y.onset === 'fricative') {
-      cf.frequency.setValueAtTime(4800, t0 - 0.05);
-      cg.gain.setValueAtTime(0, t0 - 0.055);
-      cg.gain.linearRampToValueAtTime(0.1 * y.amp, t0 - 0.03);
-      cg.gain.setTargetAtTime(0, t0 - 0.004, 0.01);
+      cf.frequency.setValueAtTime(4800, at(t0 - 0.05));
+      cg.gain.setValueAtTime(0, at(t0 - 0.055));
+      cg.gain.linearRampToValueAtTime(0.1 * y.amp, at(t0 - 0.03));
+      cg.gain.setTargetAtTime(0, at(t0 - 0.004), 0.01);
     }
   }
   return end;

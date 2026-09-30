@@ -1,6 +1,7 @@
 import { abs, attribute, clamp, float, floor, fract, fwidth, hash, max, min, mix, positionLocal, positionView, select, sin, smoothstep, sqrt, step, vec2 } from 'three/tsl';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, patternTime, periodFade, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec2Node, type Vec3Node } from '../tsl';
+import { STEP_GRADIENT, earleGradients, shiftTone } from '../gradients';
 import { seaColor } from './seaSurface';
 
 export interface WaterMaterialOptions {
@@ -116,6 +117,10 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
   const cracks = smoothstep(float(0.06).add(fw), float(0.06).sub(fw), vor.edge).mul(periodFade(p.x, 3.0));
   const iceCol = mix(mix(plates, pal(3), shallow.mul(0.5)), pal(6), cracks);
   col = mix(col, iceCol, frozen);
+  // Verlauf über die ganze Wasserfläche (Ebene 29): hinten hell, vorn tief — unter den harten Wellenformen, die ihre
+  // Kanten behalten (alle Töne wandern gemeinsam, höchstens 40 % zur Nachbarstufe)
+  const depthG = smoothstep(4.0, 22.0, positionView.length()).mul(2).sub(1);
+  col = shiftTone(col, pal(3), pal(1), depthG, earleGradients.surface.mul(STEP_GRADIENT).mul(frozen.oneMinus()));
   // Schatten: tiefe Wasserfarbe; auf Eis eine Stufe unter dem Eis
   let shadowCol: Vec3Node = mix(pal(0), mix(pal(2), pal(3), 0.4), frozen) as unknown as Vec3Node;
   // Meer (Art 3, Welt 14): Earles gestaffelte Kräusel statt der Seezellen; als Faktor gemischt (kein `select`-Zweig)

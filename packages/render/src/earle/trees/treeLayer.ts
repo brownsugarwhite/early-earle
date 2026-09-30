@@ -41,7 +41,7 @@ import { instanceFog } from './fog';
 import { BARK_STYLE, BarkMaterial, CrownMaterial, DotMaterial } from './materials';
 import { stipple } from './patterns';
 import { crownShadeTexture } from './shade';
-import { FORK_TOP, FORK_Y, LACE_ENVELOPE, createFanTrunk, createForkTrunk, createOakTrunk, type FanGeometry, type OakGeometry } from './trunks';
+import { FORK_TOP, FORK_Y, LACE_ENVELOPE, PILLAR_TOP, PILLAR_Y, createFanTrunk, createForkTrunk, createOakTrunk, createPillarTrunk, type FanGeometry, type OakGeometry } from './trunks';
 
 /** Wachstums-Slots (je geladenem Chunk); gleich wie `GROWTH_SLOTS` der Vegetation. */
 export const TREE_SLOTS = 64;
@@ -125,11 +125,11 @@ export interface TreeEntry {
 
 /** Kronen-Meshes: Kuppel-Masse, dieselbe fein aufgelöst für große Bäume (Fokus, Solitäre), Säule, Stufenkiefer. */
 export type CrownKind = 'dome' | 'domeHi' | 'column' | 'pine';
-export type TrunkKind = 'fork' | 'fan' | 'oak';
+export type TrunkKind = 'fork' | 'fan' | 'oak' | 'pillar';
 export const CROWN_KINDS: CrownKind[] = ['dome', 'domeHi', 'column', 'pine'];
 /** Ab diesem Kronenradius (Welteinheiten, waagrecht) nimmt eine Kuppel die feine Geometrie. */
 const DOME_HI_RADIUS = 1.45;
-export const TRUNK_KINDS: TrunkKind[] = ['fork', 'fan', 'oak'];
+export const TRUNK_KINDS: TrunkKind[] = ['fork', 'fan', 'oak', 'pillar'];
 
 /** Form je Baumart (Einheit Kronenradius r). */
 export interface KindForm {
@@ -177,12 +177,14 @@ export const TREE_FORMS: Record<Exclude<TreeKind, CardKind>, KindForm> = {
   pine: { crown: 'pine', crownY: 0.12, crownS: [1, 3.6], trunk: 'fork', trunkH: 0.4, thick: 0.44, dots: 'pine', terminator: 0.22 },
   // Pappel (Luzz): langer Schaft, die Gabel knapp unter der Kiefernkrone, das Astnetz steigt in sie hinein
   tall: { crown: 'pine', crownY: 3.3, crownS: [1, 1.5], trunk: 'fork', trunkH: 1.3, forkAt: 3.0, thick: 0.3, dots: 'pine', terminator: 0.25 },
-  // Kathedralenbaum (Ebene 16/23): der helle Schaft steigt hoch, gabelt sich weit unter der Säule in ein feines Netz,
-  // das in die Säule hineinwächst
-  spire: { crown: 'column', crownY: TREE_PROPORTIONS.spire.hull, crownS: [0.78, 1.25], trunk: 'fork', trunkH: 4.6, forkAt: 4.4, thick: 0.3, dots: 'crown', terminator: 0.15 },
+  // Kathedralenbaum (Ebene 16/23/43): der helle Schaft gabelt sich schon auf halber Höhe in ein feines, steiles Netz,
+  // das als Fächer unter der Krone steht und in sie hineinwächst; die Krone eine hohe, runde Kuppel (Ogive)
+  spire: { crown: 'column', crownY: TREE_PROPORTIONS.spire.hull, crownS: [1.15, 1.15], trunk: 'fork', trunkH: 5.5, forkAt: 3.4, thick: 0.3, dots: 'crown', terminator: 0.15 },
   umbrella: { crown: 'dome', crownY: TREE_PROPORTIONS.umbrella.hull, crownS: [1.06, 0.6], trunk: 'fan', trunkH: 0.74, thick: 1, dots: 'crown', terminator: 0.12 },
   lace: { crown: 'dome', crownY: TREE_PROPORTIONS.lace.hull + 0.3, crownS: [0.97, 0.62], trunk: 'fan', trunkH: 1.0, thick: 1, dots: 'lace', terminator: 0.12 },
   oak: { crown: null, crownY: TREE_PROPORTIONS.oak.hull, crownS: [1, 1], trunk: 'oak', trunkH: TREE_PROPORTIONS.oak.trunk, thick: 1, dots: 'stars', terminator: 0.3 },
+  // Riesenstamm (Ebene 16/3): eigener, fein runder Archetyp, verzweigt bei der Stammhöhe; breite Kuppel hoch darüber
+  pillar: { crown: 'dome', crownY: TREE_PROPORTIONS.pillar.hull, crownS: [1.5, 1.1], trunk: 'pillar', trunkH: TREE_PROPORTIONS.pillar.trunk / PILLAR_Y, thick: 1, dots: 'crown', terminator: 0.32 },
 };
 
 /**
@@ -355,7 +357,7 @@ export class TreeLayer {
     };
     for (const kind of CROWN_KINDS) {
       const geometry = this.templates[kind].geometry;
-      this.attachTreeAttributes(geometry, kind === 'domeHi' ? 64 : options.capacity.trees);
+      this.attachTreeAttributes(geometry, kind === 'domeHi' ? this.hiCapacity : options.capacity.trees);
       const row = treeC().x;
       const world = shared.slotOfRow(row);
       const cfg = stippleOf[kind];
@@ -406,7 +408,7 @@ export class TreeLayer {
               }),
       });
       this.materials.push(material);
-      const mesh = new InstancedMesh(geometry, material, kind === 'domeHi' ? 64 : options.capacity.trees);
+      const mesh = new InstancedMesh(geometry, material, kind === 'domeHi' ? this.hiCapacity : options.capacity.trees);
       mesh.name = `planet-crown-${kind}`;
       mesh.castShadow = true;
       mesh.receiveShadow = true; // Schlagschatten anderer Bäume und Hügel: untere Teilkuppeln werden Tinte (eine Tintenform)
@@ -419,7 +421,7 @@ export class TreeLayer {
 
     // --- Stämme ------------------------------------------------------------------------------------------
     const trunks = {} as Record<TrunkKind, InstancedMesh>;
-    const trunkGeos: Record<TrunkKind, BufferGeometry> = { fork: createForkTrunk(11), fan: this.fan.geometry, oak: this.oak.geometry };
+    const trunkGeos: Record<TrunkKind, BufferGeometry> = { fork: createForkTrunk(11), fan: this.fan.geometry, oak: this.oak.geometry, pillar: createPillarTrunk(7) };
     for (const kind of TRUNK_KINDS) {
       const geometry = trunkGeos[kind];
       const cap = this.trunkCapacity(kind);
@@ -495,6 +497,7 @@ export class TreeLayer {
         upPlanet: varying(vec3(0, 1, 0), 'vBarkUp'),
         growthNode: shared.slotGrowth(treeB().w),
         veil,
+        giant: kind === 'pillar',
       });
       if (shadowPlaced) (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(grownFrom(shadowPlaced));
       this.materials.push(material);
@@ -731,8 +734,13 @@ export class TreeLayer {
     }
   }
 
+  /** Plätze der fein aufgelösten Kuppel (Hoch 160, Mobil 80); darüber nehmen große Kuppeln die normale Geometrie. */
+  private get hiCapacity(): number {
+    return Math.min(this.options.capacity.trees, this.options.dotsPerTree[0] >= 50 ? 160 : 80);
+  }
+
   private trunkCapacity(kind: TrunkKind): number {
-    return kind === 'oak' ? 24 : kind === 'fan' ? Math.max(16, Math.round(this.options.capacity.trees * 0.3)) : this.options.capacity.trees;
+    return kind === 'oak' ? 24 : kind === 'pillar' ? 48 : kind === 'fan' ? Math.max(16, Math.round(this.options.capacity.trees * 0.3)) : this.options.capacity.trees;
   }
 
   private attachTreeAttributes(geometry: BufferGeometry, n: number): void {
@@ -806,8 +814,8 @@ export class TreeLayer {
 
   /** Stammdicke je Instanz: Familie (Anteil am Kronenradius, Standard 0.04) relativ zum Archetyp. */
   private thickness(t: PlanetTree, form: KindForm): number {
-    // Eiche und Fächer haben eigene Proportionen (die Dicke streckt waagrecht und würde die Äste aus der Krone schieben)
-    if (form.trunk === 'oak' || form.trunk === 'fan') return 1;
+    // Eiche, Fächer und Riesenstamm haben eigene Proportionen (die Dicke streckt waagrecht und würde die Äste aus der Krone schieben)
+    if (form.trunk === 'oak' || form.trunk === 'fan' || form.trunk === 'pillar') return 1;
     return form.thick * this.widthFactor(t, form);
   }
 
@@ -880,10 +888,17 @@ export class TreeLayer {
       if (form.trunk) perTrunk.get(form.trunk)!.push(e);
       hMax = Math.max(hMax, TREE_PROPORTIONS[e.tree.kind].top * e.tree.canopyRadius * Math.max(1, this.aspect(e.tree)));
     }
+    // Feine Kuppeln: nahe Chunks zuerst; was nicht mehr hineinpasst, nimmt die normale Kuppel (nie verschwinden —
+    // der Juwelenwald hat viele große Kuppeln)
+    const hiList = perCrown.get('domeHi')!;
+    if (hiList.length > this.hiCapacity) {
+      hiList.sort((x, y) => Number(y.withDots) - Number(x.withDots));
+      perCrown.get('dome')!.push(...hiList.splice(this.hiCapacity));
+    }
     const q = new Quaternion();
     for (const kind of CROWN_KINDS) {
       const mesh = this.crowns[kind];
-      const list = perCrown.get(kind)!.slice(0, kind === 'domeHi' ? 64 : cap);
+      const list = perCrown.get(kind)!.slice(0, kind === 'domeHi' ? this.hiCapacity : cap);
       const g = mesh.geometry;
       const a = g.getAttribute('treeA') as InstancedBufferAttribute;
       const b = g.getAttribute('treeB') as InstancedBufferAttribute;
@@ -931,7 +946,7 @@ export class TreeLayer {
         const H = _s.x;
         // Spitze der Achse: Gabel mit gestrecktem Schaft (der Shader liest die Streckung aus dieser Länge zurück)
         const S = stemStretch(form, H, t.canopyRadius);
-        const top = kind === 'oak' ? this.oak.top : kind === 'fan' ? this.fan.top : FORK_TOP + (S - 1) * FORK_Y;
+        const top = kind === 'oak' ? this.oak.top : kind === 'fan' ? this.fan.top : kind === 'pillar' ? PILLAR_TOP : FORK_TOP + (S - 1) * FORK_Y;
         _v.set(0, top * H, 0).applyQuaternion(q);
         a.setXYZW(i, t.position[0] - ox, t.position[1], t.position[2] - oz, t.rank);
         b.setXYZW(i, t.position[0] - ox + _v.x, t.position[1] + _v.y, t.position[2] - oz + _v.z, e.slot);
@@ -939,7 +954,8 @@ export class TreeLayer {
         const keep = form.thick < 0.5 ? 0.35 : 1;
         // .y: Gabel = Stauchung des Astnetzes (breite Schäfte, schmales Netz), Fächer = Schleier an (Spitzenbaum)
         const y = kind === 'fork' ? 1 / this.widthFactor(t, form) : kind === 'fan' ? (form.dots === 'lace' ? 1 : 0) : 1;
-        const fadeR = kind === 'oak' ? this.oak.spread * H : kind === 'fan' ? this.fan.spread * H : Math.max(0.3, t.canopyRadius * 0.4);
+        // Riesenstamm: wie seine Krone (Stamm und Krone treten gemeinsam aus dem Bild)
+        const fadeR = kind === 'oak' ? this.oak.spread * H : kind === 'fan' ? this.fan.spread * H : kind === 'pillar' ? t.canopyRadius : Math.max(0.3, t.canopyRadius * 0.4);
         // Welt-Slot (Tabellen) + halber Anlauf-Anteil
         d.setXYZW(i, H, y, fadeR, this.options.slots.slotOf(t.world) + (1 - keep) * 0.5);
         if (kind === 'oak') hMax = Math.max(hMax, this.oak.top * H);

@@ -20,7 +20,8 @@ export {
 } from './palette';
 // `aaStep` und die Node-Typaliase bleiben paketintern (common/ exportiert gleichnamige Helfer).
 export { PaletteLookup, createFogSettings, steppedFog, patternSpeed, type FogSettings, type TSLUniform } from './tsl';
-export { EarleMaterial, type EarleMaterialOptions, type EarlePattern } from './EarleMaterial';
+export { EarleMaterial, type EarleGradient, type EarleMaterialOptions, type EarlePattern } from './EarleMaterial';
+export { earleGradients, setGradientAmount, stepRamp, shiftTone, mixInk, STEP_GRADIENT, SAW_GRADIENT } from './gradients';
 export { SunRig, createHardShadowFilter, displayShadowReceivers, displayShadowWarp, type ShadowDisplayLike, type SunOptions } from './hardShadow';
 export { EarleVegetation, TREE_KINDS, CANOPY_KINDS, createBareTreeGeometry, type VegetationOptions } from './vegetation';
 export { PlanetVegetation, GROWTH_SLOTS, CANOPY_MESHES, createPropGeometry, type CanopyMesh, type PlanetVegetationOptions, type VegetationTreeEntry, type VegetationPropEntry, type VegetationWorldRows } from './planetVegetation';

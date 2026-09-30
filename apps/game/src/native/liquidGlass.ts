@@ -1,6 +1,7 @@
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { LiquidGlass, type GlassHudState, type GlassLayout } from '@ee/liquid-glass';
 import { useEffect, useRef, useState } from 'react';
+import { audio } from '../audio/engine';
 
 export type { GlassAction, GlassHudState, GlassLayout, GlassTop } from '@ee/liquid-glass';
 
@@ -60,12 +61,31 @@ let shown = false;
 let lastJson = '';
 let queue: Promise<void> = Promise.resolve();
 const swallow = (): void => undefined;
+/** Held (a full-screen web layer such as the Setzkasten covers the HUD): states are only remembered. */
+let held = false;
+let requested: GlassHudState | null = null;
 
 /**
  * Mirrors a HUD state to the native overlay: first call shows, later calls update (pills morph), `null` hides.
  * Identical states are skipped; calls are serialised so show/update/hide keep their order.
  */
 export function syncNativeGlass(state: GlassHudState | null): Promise<void> {
+  requested = state;
+  if (held) return queue;
+  return applyNativeGlass(state);
+}
+
+/**
+ * Holds the native HUD back while a full-screen web layer is open (it would float above the web view): hides it and
+ * remembers every state synced meanwhile; releasing shows the latest one again.
+ */
+export function holdNativeGlass(on: boolean): Promise<void> {
+  if (on === held) return queue;
+  held = on;
+  return applyNativeGlass(on ? null : requested);
+}
+
+function applyNativeGlass(state: GlassHudState | null): Promise<void> {
   queue = queue.then(async () => {
     if (!state) {
       if (!shown) return;
@@ -91,6 +111,20 @@ export function hideNativeGlass(): Promise<void> {
   return syncNativeGlass(null);
 }
 
+/**
+ * A native pill tap: the web view never sees this touch, so it cannot count as the audio gesture. Wake the audio
+ * first (in the app no gesture is needed), tink like a glass button, then run the action.
+ */
+export function dispatchNativeAction(id: string, handler: (id: string) => void): void {
+  try {
+    audio.unlock();
+    audio.ui('glass');
+  } catch {
+    // sound must never block an action
+  }
+  handler(id);
+}
+
 /** Subscribes to native action taps (ids from the `actions` sent with the state). */
 export function useNativeGlassActions(handler: (id: string) => void, enabled: boolean): void {
   const ref = useRef(handler);
@@ -101,7 +135,7 @@ export function useNativeGlassActions(handler: (id: string) => void, enabled: bo
     if (!enabled) return;
     let alive = true;
     let handle: PluginListenerHandle | null = null;
-    void LiquidGlass.addListener('action', (e) => ref.current(e.id)).then((h) => {
+    void LiquidGlass.addListener('action', (e) => dispatchNativeAction(e.id, ref.current)).then((h) => {
       if (alive) handle = h;
       else void h.remove();
     });

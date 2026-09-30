@@ -38,12 +38,30 @@ export interface WorldContent {
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
+  /** Schattentönung (Earle: blaue Schatten auf Schnee, Bild 05): Farbe und Anteil 0..1 zur Tinte hin gemischt. */
+  shadowTint?: { color: string; amount: number; lift?: number };
+  /** Talnebel 0..1 (Ebene 20, Bild 03): helle Nebelbank am Talgrund, nach oben ausdünnend. */
+  valleyMist?: number;
+  /** Leuchtender Horizont 0..1 (Ebene 16: heller Schein hinter den Baumreihen). */
+  skyGlow?: number;
+  /** Fluchtpunkt der Bodenlinien (Ost/Nord vom Weltmittelpunkt, Welteinheiten), siehe `EarlePlanetWorld.floorAnchor`. */
+  floorAnchor?: { east?: number; north?: number };
   /**
    * Fokus der Weltkomposition: mit `kind` ein Fokus-Element (Scheune, Wurzelbaum …) am Slot, ohne `kind` nur ein
    * Bildanker. Lage je Region: `along` (0 = Beginn des Pfadabschnitts … 1 = Ende) und `lateral` (Welteinheiten, + =
    * rechts vom Pfad); ältere Dateien: `latFrac` (→ along) und `deltaDeg` (→ Seite und Abstand).
    */
-  focal?: { kind?: NonNullable<FocalSpec['kind']>; scale?: number; along?: number; lateral?: number; latFrac?: number; deltaDeg?: number; yawDeg?: number };
+  focal?: {
+    kind?: NonNullable<FocalSpec['kind']>;
+    scale?: number;
+    along?: number;
+    lateral?: number;
+    latFrac?: number;
+    deltaDeg?: number;
+    yawDeg?: number;
+    /** Freiraum um das Fokus-Element (Welteinheiten; Standard je Art, z. B. 3.2 für Bäume, 4.5 für die Scheune). */
+    clear?: number;
+  };
   /** Wolkenbänke am Himmel (Welt 13): Schichten in Grad über dem Horizont, siehe `@ee/render` CloudBankSpec. */
   clouds?: CloudBankSpec;
   /** Anteil der Wahrzeichen (Wasserfall-Fels, Ruine, Sumpf) 0..1; Standard 1. */
@@ -109,7 +127,14 @@ export function focalOf(w: WorldContent): FocalSpec | undefined {
   // Alte Kugel: deltaDeg = Bogen neben dem Pfad (R 32) — auf der Ebene 75 % davon, mindestens 6 (der Pfad schwingt ±3,2),
   // höchstens 12 (ganz in der Pfadwelt); ohne Angabe wählt das Feld die Seite (Abstand 10)
   const lateral = f.lateral ?? (f.deltaDeg !== undefined ? Math.sign(f.deltaDeg || 1) * Math.min(12, Math.max(6, ((Math.abs(f.deltaDeg) * Math.PI) / 180) * 32 * 0.75)) : undefined);
-  return { ...(kind ? { kind } : {}), scale, along: f.along ?? f.latFrac ?? 0.5, ...(lateral !== undefined ? { lateral } : {}), yawDeg: f.yawDeg ?? 0 };
+  return {
+    ...(kind ? { kind } : {}),
+    scale,
+    along: f.along ?? f.latFrac ?? 0.5,
+    ...(lateral !== undefined ? { lateral } : {}),
+    yawDeg: f.yawDeg ?? 0,
+    ...(f.clear !== undefined ? { clearRadius: f.clear } : {}),
+  };
 }
 
 /** Parameter einer Autorenwelt für die Ebene (`@ee/world`). */
@@ -138,6 +163,10 @@ export function planetWorlds(): EarlePlanetWorld[] {
     fogStripes: w.fogStripes,
     fog: w.fog,
     view: w.view,
+    ...(w.shadowTint ? { shadowTint: w.shadowTint } : {}),
+    ...(w.valleyMist !== undefined ? { valleyMist: w.valleyMist } : {}),
+    ...(w.skyGlow !== undefined ? { skyGlow: w.skyGlow } : {}),
+    ...(w.floorAnchor ? { floorAnchor: w.floorAnchor } : {}),
     ...(w.clouds ? { clouds: w.clouds } : {}),
   }));
 }

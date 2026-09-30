@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 // P7 REX: the lab (every animation, iPhone map/level previews) and the flow without the old logo billboard.
 // Runs on the WebGL2 fallback (SwiftShader) like the other smoke tests: generous budgets, Mobil preset.
 
-test.setTimeout(process.env.CI ? 240_000 : 150_000);
+test.setTimeout(process.env.CI ? 360_000 : 300_000);
 
 function collectErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -15,8 +15,9 @@ function collectErrors(page: Page): string[] {
 }
 
 async function waitForRenderer(page: Page): Promise<void> {
-  await expect(page.locator('canvas')).toBeVisible();
-  await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu|webgl2/, { timeout: 30_000 });
+  // Unter SwiftShader und Last braucht der Renderer (und nach einem Ansichtswechsel die neue Szene) oft über 10 s.
+  await expect(page.locator('canvas')).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu|webgl2/, { timeout: 45_000 });
 }
 
 async function useMobilPreset(page: Page): Promise<void> {
@@ -98,7 +99,8 @@ test('/play zeigt kein Logo-Billboard mehr, sondern den 3D-REX', async ({ page }
           });
           return `sprites=${sprites} rex=${rex} mode=${c?.rex?.mode} up=${c?.rex?.character?.hidden === false}`;
         }),
-      { timeout: 60_000 },
+      // REX kommt nach ≈ 2,5 s Szenenzeit; die Szenenuhr zählt Bildschritte, unter SwiftShader ≈ 1 fps.
+      { timeout: 150_000 },
     )
     .toBe('sprites=0 rex=1 mode=map up=true');
   expect(logoImages).toEqual([]);

@@ -1,6 +1,6 @@
 import { BasicShadowMap, LinearFilter, NearestFilter, VSMShadowMap, Vector2, Vector3 } from 'three/webgpu';
 import type { DepthTexture, LightShadow, NodeBuilder, UniformNode } from 'three/webgpu';
-import { BasicShadowFilter, Fn, PCFShadowFilter, VSMShadowFilter, abs, cross, dFdx, dFdy, float, floor, fwidth, max, mix, normalWorld, positionWorld, reference, smoothstep, step, texture, uniform, vec2 } from 'three/tsl';
+import { BasicShadowFilter, Fn, PCFShadowFilter, VSMShadowFilter, abs, clamp, cross, dFdx, dFdy, float, floor, fwidth, ivec2, max, mix, normalWorld, positionWorld, reference, smoothstep, step, textureLoad, uniform, vec2 } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node } from '../earle/tsl';
 import { depthCompareLevel } from './compareLevel';
 import { resolveManualCompare, type ManualCompareOption } from './webglCompat';
@@ -109,25 +109,34 @@ export type DepthCompareZFn = (uv: Vec2Node, z: FloatNode) => FloatNode;
  * - Hardware: Vergleichs-Sampler auf Level 0 (jede Shader-Stufe, siehe `compareLevel.ts`), LINEAR = 2×2-PCF in
  *   einem Tap (NEAREST: vier Taps, im Shader gemischt).
  * - Manuell (Plattform ohne funktionierende Vergleichs-Sampler, siehe `webglCompat.ts`): Vergleichsmodus aus, NEAREST
- *   (Tiefe ist nicht linear filterbar), Tiefe als gewöhnliche Textur lesen, `step` vergleichen, vier Texel bilinear
- *   mischen — dasselbe Feld wie Hardware-PCF.
+ *   (Tiefe ist nicht linear filterbar), die vier Texel exakt per `textureLoad` lesen (`texelFetch`, am Rand geklemmt),
+ *   `step` vergleichen, bilinear mischen — dasselbe Feld wie Hardware-PCF. Nicht `texture(…).level(0)`: three r186
+ *   hängt beim GLSL-`textureLod` auf Tiefentexturen kein `.x` an (vec4 in eine float-Variable, WebKit/ANGLE:
+ *   „dimension mismatch“, 17 Fragment-Shader im iOS-Simulator), bei `texelFetch` schon.
  * Muss vor der ersten Bindung laufen (die Entscheidung ändert die Textur-Parameter).
  */
 export function createDepthCompareZ(depthTexture: DepthTexture, shadow: LightShadow, builder: NodeBuilder, manualCompare?: ManualCompareOption): DepthCompareZFn {
   const manual = resolveManualCompare(manualCompare, builder);
+  const mapSize = reference('mapSize', 'vec2', shadow) as unknown as Vec2Node;
   if (manual) {
     depthTexture.compareFunction = null;
     depthTexture.minFilter = NearestFilter;
     depthTexture.magFilter = NearestFilter;
+    const reversed = (builder.renderer as { reversedDepthBuffer?: boolean }).reversedDepthBuffer === true;
+    const last = mapSize.sub(1);
+    return (uv: Vec2Node, z: FloatNode): FloatNode => {
+      const st = uv.mul(mapSize).sub(0.5);
+      const i = floor(st);
+      const f = st.sub(i) as unknown as Vec2Node;
+      const at = (ox: number, oy: number): FloatNode => {
+        const d = textureLoad(depthTexture, ivec2(clamp(i.add(vec2(ox, oy)), vec2(0), last))) as unknown as FloatNode;
+        return (reversed ? step(d, z) : step(z, d)) as unknown as FloatNode;
+      };
+      return mix(mix(at(0, 0), at(1, 0), f.x), mix(at(0, 1), at(1, 1), f.x), f.y) as unknown as FloatNode;
+    };
   }
-  const reversed = (builder.renderer as { reversedDepthBuffer?: boolean }).reversedDepthBuffer === true;
-  const tap = (uv: Vec2Node, z: FloatNode): FloatNode => {
-    if (!manual) return depthCompareLevel(depthTexture, uv, z);
-    const d = texture(depthTexture, uv).level(float(0)) as unknown as FloatNode;
-    return (reversed ? step(d, z) : step(z, d)) as unknown as FloatNode;
-  };
-  if (!manual && depthTexture.minFilter === LinearFilter) return tap;
-  const mapSize = reference('mapSize', 'vec2', shadow) as unknown as Vec2Node;
+  const tap = (uv: Vec2Node, z: FloatNode): FloatNode => depthCompareLevel(depthTexture, uv, z);
+  if (depthTexture.minFilter === LinearFilter) return tap;
   const texel = vec2(1).div(mapSize);
   return (uv: Vec2Node, z: FloatNode): FloatNode => {
     const st = uv.mul(mapSize).sub(0.5);

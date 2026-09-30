@@ -1,5 +1,6 @@
 import { abs, clamp, float, floor, fract, fwidth, hash, int, max, mix, positionView, select, smoothstep, texture, time, uniform, vec2 } from 'three/tsl';
 import type { Node, Texture, UniformNode } from 'three/webgpu';
+import { SAW_GRADIENT, STEP_GRADIENT, earleGradients, stepRamp, stepRamp2 } from './gradients';
 
 /** Typisierte TSL-Knoten (Swizzles und Operatoren hängen am Typparameter). */
 export type FloatNode = Node<'float'>;
@@ -41,6 +42,14 @@ export class PaletteLookup {
   }
 
   /**
+   * Bänder mit Verlauf innen (siehe `gradients.ts`, `stepRamp`): die harten Stufen wie `bands`, dazu innerhalb jeder
+   * Stufe ein Verlauf nach der großräumigen Koordinate `g` ∈ [−1, 1]. Standardstärke: `STEP_GRADIENT` × Flächen-Regler.
+   */
+  ramp(x: FloatNode, row: FloatNode | number, base: number, g: FloatNode | number, amount: FloatNode | number = earleGradients.surface.mul(STEP_GRADIENT)): Vec4Node {
+    return stepRamp(this, x, row, base, g, amount);
+  }
+
+  /**
    * Bänder: `x` ist ein kontinuierlicher Bandwert (0 .. steps-1). Innerhalb eines Bandes liegt die exakte
    * Palettenfarbe `base + floor(x)`; nur an der Bandgrenze wird ~1 px zur nächsten Stufe geblendet.
    */
@@ -77,13 +86,15 @@ export function createFogSettings(init: { row: number; rowB?: number; steps: num
 }
 
 /**
- * Mischt `color` nach Distanz zur Kamera stufenweise mit der Nebelfarbe (Alpha der Nebelzeile = Nebelanteil).
- * `dist` optional (Standard: Länge von positionView).
+ * Gestufte Luftperspektive: mischt `color` nach Distanz zur Kamera stufenweise mit der Nebelfarbe (Alpha der Nebelzeile =
+ * Nebelanteil). Die Wertstufen bleiben harte Kanten wie im Siebdruck; innerhalb jeder Stufe läuft ein Sägezahn-Verlauf
+ * (vorn klarer, hinten dunstiger — Earles Hügelbänder, je oben hell und unten tief, Ebene 19/36), `earleGradients.air`
+ * 0 = reine Stufen. `dist` optional (Standard: Länge von positionView).
  */
 export function steppedFog(color: Vec3Node, fog: FogSettings, lookup: PaletteLookup, dist?: FloatNode): Vec3Node {
   const d = dist ?? positionView.length();
   const x = clamp(d.sub(fog.start).mul(fog.invRange), 0, 0.999).mul(fog.steps.sub(1));
-  const f = mix(lookup.bands(x, fog.row, 0), lookup.bands(x, fog.rowB, 0), fog.mix);
+  const f = stepRamp2(lookup, x, fog.row, fog.rowB, fog.mix, 0, 0, earleGradients.air.mul(SAW_GRADIENT), { saw: true, linear: true });
   return mix(color, f.rgb, f.a);
 }
 

@@ -1,10 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { applyMove, createState, gullDropFor, gullTimes, levelFromAscii, setGullMode } from '@ee/core';
 import { chainNote, inSet, stepFrom, ZONE_KEYS, ZONE_MUSIC } from './scales';
 import { rexSchedule, wordSyllables, babbleSyllables, BABBLE_MAX_S } from './rex';
 import { planMove, travelTime } from './timeline';
 import { syntheticMove } from './demo';
 import { MusicGenerator, type MusicNote } from './music';
-import { encodeWav } from './render';
+import { encodeWav, measure, renderSfx, sfxLevel } from './render';
+import { installMiniOffline } from './miniOffline';
+import { EXTRA_CHECKS, EXTRA_LEVEL_TARGETS, EXTRA_SFX_IDS, EXTRA_TRIM_DB } from './sfxExtra';
+import { SFX_IDS, type SfxId } from './sfx';
 import type { CreatureGuess } from './bodies';
 
 const blob = (): CreatureGuess => ({ body: 'blob', coat: 'bare' });
@@ -158,5 +162,210 @@ describe('combo harmony', () => {
       .sounds.filter((s) => s.id === 'merge')
       .map((s) => s.p.step ?? 0);
     expect(steps).toEqual([0, 2, 4]);
+  });
+});
+
+describe('gull', () => {
+  afterEach(() => setGullMode('auto'));
+  // 1+1 and 2+2 merge on a swipe left (tier 3 = goal): a spawn and the win in one move.
+  const board = `
+    1 . . 1
+    2 . . 2
+    . . . .
+    . . . .
+  `;
+
+  it('a gull spawn: call from the side it comes from, wings, fall, splat on the shared impact time; no pop sound', () => {
+    const level = levelFromAscii(board, { id: 'gull-audio', goals: [{ type: 'reachTier', tier: 5 }] });
+    const s0 = createState(level, 77);
+    const res = applyMove(s0, 'left')!;
+    const spawn = res.events.find((e) => e.type === 'spawn');
+    expect(spawn).toBeDefined();
+    setGullMode('off');
+    const plain = planMove(res, { zone: 'tjorizo', prev: s0, guess: blob });
+    expect(plain.gullAt).toBeNull();
+    const spawnAt = plain.sounds.find((s) => s.id === 'spawn')!.t;
+    expect(plain.sounds.some((s) => s.id.startsWith('gull') || s.id === 'splat' || s.id === 'dropFall')).toBe(false);
+
+    setGullMode('always');
+    const drop = gullDropFor(res)!;
+    const plan = planMove(res, { zone: 'tjorizo', prev: s0, guess: blob });
+    const g = gullTimes(spawnAt);
+    const dir = drop.side > 0 ? 'right' : 'left';
+    expect(plan.gullAt).toBeCloseTo(g.impactAt, 9);
+    expect(plan.sounds.some((s) => s.id === 'spawn')).toBe(false);
+    const one = (id: string) => plan.sounds.find((s) => s.id === id)!;
+    expect(one('splat').t).toBeCloseTo(g.impactAt, 9);
+    expect(one('splat').p.tier).toBe(drop.tier);
+    expect(one('dropFall').t).toBeCloseTo(g.releaseAt, 9);
+    expect(one('dropFall').p.dur).toBeCloseTo(g.impactAt - g.releaseAt, 9);
+    expect(one('gullWings').t).toBeCloseTo(g.releaseAt - 0.12, 9);
+    expect(one('gullWings').p.dir).toBe(dir);
+    const calls = plan.sounds.filter((s) => s.id === 'gullCall');
+    expect(calls[0]!.t).toBeCloseTo(g.callAt, 9);
+    expect(calls[0]!.p.kind).toBe(['a', 'b', 'c'][drop.call]);
+    expect(calls[0]!.p.pan).toBeCloseTo(-0.7 * drop.side, 9);
+    expect(calls[0]!.p.dir).toBe(dir);
+    expect(calls.filter((c) => c.p.kind === 'laugh')).toHaveLength(drop.laugh ? 1 : 0);
+    expect(calls).toHaveLength(drop.laugh ? 2 : 1);
+  });
+
+  it('every call variant and the laugh occur over many moves', () => {
+    const kinds = new Set<string>();
+    const level = levelFromAscii(board, { id: 'gull-variants', goals: [{ type: 'reachTier', tier: 9 }] });
+    setGullMode('always');
+    for (let seed = 1; seed <= 60; seed++) {
+      const s0 = createState(level, seed);
+      const res = applyMove(s0, 'left')!;
+      for (const s of planMove(res, { zone: 'tjorizo', prev: s0, guess: blob }).sounds) if (s.id === 'gullCall') kinds.add(String(s.p.kind));
+    }
+    expect([...kinds].sort()).toEqual(['a', 'b', 'c', 'laugh']);
+  });
+
+  it('Level 1 (auto): the gull brings the first spawn; the win stinger waits for the splat', () => {
+    const level = levelFromAscii(board, { id: 'tjorizo-001', goals: [{ type: 'reachTier', tier: 3 }] });
+    const s0 = createState(level, 1001);
+    const res = applyMove(s0, 'left')!;
+    expect(res.state.status).toBe('won');
+    const plan = planMove(res, { zone: 'tjorizo', prev: s0, guess: blob });
+    expect(plan.gullAt).not.toBeNull();
+    expect(plan.gullAt!).toBeGreaterThanOrEqual(1.0);
+    expect(plan.won).toBe(true);
+    expect(plan.endAt).toBeGreaterThan(plan.gullAt!);
+    expect(plan.sounds.find((s) => s.id === 'won')!.t).toBeGreaterThan(plan.gullAt!);
+  });
+
+  it('synthetic moves without a level keep their plain spawn pop in auto mode', () => {
+    const { res, prev } = syntheticMove({ tier: 3, material: 'jelly', merges: 1, cells: 2, extra: [{ type: 'spawn', phase: 6, id: 999, at: [3, 3], tier: 1, kind: 'normal', material: 'jelly' }] });
+    const plan = planMove(res, { zone: 'tjorizo', prev, guess: blob });
+    expect(plan.gullAt).toBeNull();
+    expect(plan.sounds.some((s) => s.id === 'spawn')).toBe(true);
+  });
+});
+
+// ------------------------------------------------------------------------------------------ offline renders
+
+/** Mono mix of a render. */
+function mono(buf: AudioBuffer): Float32Array {
+  const m = new Float32Array(buf.length);
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < m.length; i++) m[i] = m[i]! + d[i]! / buf.numberOfChannels;
+  }
+  return m;
+}
+
+/** Fundamental (Hz) of a 40 ms window at `t` s by normalised autocorrelation in 500–2600 Hz, null when quiet. */
+function pitchAt(m: Float32Array, sr: number, t: number): number | null {
+  const n = Math.round(sr * 0.04);
+  const s0 = Math.round(t * sr);
+  let e = 0;
+  for (let i = 0; i < n; i++) e += m[s0 + i]! * m[s0 + i]!;
+  if (e < 1e-6) return null;
+  const lo = Math.floor(sr / 2600);
+  const hi = Math.ceil(sr / 500);
+  const r = (lag: number): number => {
+    let acc = 0;
+    for (let i = 0; i < n; i++) acc += m[s0 + i]! * m[s0 + i + lag]!;
+    return acc / e;
+  };
+  // The first lag whose correlation is near the best one (avoids octave errors on strong second harmonics).
+  let best = -1;
+  for (let lag = lo; lag <= hi; lag++) best = Math.max(best, r(lag));
+  for (let lag = lo; lag <= hi; lag++) {
+    const v = r(lag);
+    if (v >= 0.9 * best && v >= r(lag - 1) && v >= r(lag + 1)) return sr / lag;
+  }
+  return null;
+}
+
+// Offline renders cost 0.05–0.4 s each (more while the whole suite runs in parallel).
+describe('Iteration-4-Klänge (offline gerendert)', { timeout: 30_000 }, () => {
+  // Node has no OfflineAudioContext: the tests render through the small spec renderer (≈ Chromium ± 0.7 dB).
+  let uninstall: () => void = () => undefined;
+  beforeAll(() => {
+    uninstall = installMiniOffline();
+  });
+  afterAll(() => uninstall());
+
+  it('hat für jede neue ID einen Soll-Pegel und mindestens eine Prüf-Variante', () => {
+    for (const id of EXTRA_SFX_IDS) {
+      expect(SFX_IDS).toContain(id);
+      expect(EXTRA_LEVEL_TARGETS[id]).toBeLessThan(-15);
+      expect(EXTRA_CHECKS.some((c) => c.id === id)).toBe(true);
+    }
+    // Trims stay small corrections, not a second mixer.
+    for (const v of Object.values(EXTRA_TRIM_DB)) expect(Math.abs(v)).toBeLessThanOrEqual(10);
+  });
+
+  it.each(EXTRA_CHECKS.map((c) => [c.label, c] as const))('%s: hörbar, ohne Clipping, im Pegel der Politik', async (_label, c) => {
+    const l = await sfxLevel(c.id, c.p, 3);
+    // Not silent, clearly under full scale, and within ±1.5 dB of its place in the loudness policy.
+    expect(l.peakDb).toBeGreaterThan(-40);
+    expect(l.peakDb).toBeLessThan(-6);
+    expect(l.clipped).toBe(0);
+    expect(l.maxRmsDb).toBeGreaterThan(c.target - 1.5);
+    expect(l.maxRmsDb).toBeLessThan(c.target + 1.5);
+  });
+
+  it('ist deterministisch: gleicher Seed → gleiche Samples, anderer Seed → andere Variation', async () => {
+    for (const id of EXTRA_SFX_IDS) {
+      const a = mono(await renderSfx(id, {}, 1.6, 7, 22050));
+      const b = mono(await renderSfx(id, {}, 1.6, 7, 22050));
+      expect(a).toEqual(b);
+    }
+    // Without `kind` the gull picks a variant and a pitch from the graph's random stream.
+    const g1 = mono(await renderSfx('gullCall', {}, 1.6, 7, 22050));
+    const g2 = mono(await renderSfx('gullCall', {}, 1.6, 8, 22050));
+    expect(g1).not.toEqual(g2);
+  });
+
+  it('Möwe „kjau“: steigt um ≈ +35 % auf ≈ 1,5 kHz und fällt dann deutlich', async () => {
+    const buf = await renderSfx('gullCall', { kind: 'a' }, 1.2, 42);
+    const m = mono(buf);
+    const sr = buf.sampleRate;
+    // The call starts at 0.1 s: "ky" (0.065 s) rises, "ow" falls.
+    const start = pitchAt(m, sr, 0.1 + 0.005)!;
+    const peak = pitchAt(m, sr, 0.1 + 0.09)!;
+    const end = pitchAt(m, sr, 0.1 + 0.29)!;
+    expect(start).toBeGreaterThan(1000);
+    expect(start).toBeLessThan(1250);
+    expect(peak / start).toBeGreaterThan(1.2);
+    expect(peak).toBeGreaterThan(1350);
+    expect(peak).toBeLessThan(1650);
+    expect(end / peak).toBeLessThan(0.75);
+  });
+
+  it('Stern 1 → 2 → 3 wird lauter und höher; großer Flatsch lauter als der kleine', async () => {
+    const lv = async (id: SfxId, p: object): Promise<number> => (await sfxLevel(id, p, 2)).maxRmsDb;
+    const s0 = await lv('starPop', { step: 0 });
+    const s1 = await lv('starPop', { step: 1 });
+    const s2 = await lv('starPop', { step: 2 });
+    expect(s1).toBeGreaterThan(s0);
+    expect(s2).toBeGreaterThan(s1);
+    expect(await lv('splat', { kind: 'big' })).toBeGreaterThan((await lv('splat', {})) + 2);
+    expect(await lv('splat', { tier: 2 })).toBeCloseTo(await lv('splat', { kind: 'big' }), 0);
+  });
+});
+
+describe('Grundkatalog offline (Stichproben gegen Chromium-Messung)', { timeout: 30_000 }, () => {
+  let uninstall: () => void = () => undefined;
+  beforeAll(() => {
+    uninstall = installMiniOffline();
+  });
+  afterAll(() => uninstall());
+
+  // Chromium (/lab/audio, OfflineAudioContext 44.1 kHz) measured these loudest-100-ms levels; the policy of TRIM_DB.
+  it.each([
+    ['merge', { tier: 2 }, -21.2],
+    ['merge', { tier: 7 }, -16.9],
+    ['won', {}, -19.6],
+    ['land', {}, -32.9],
+    ['splash', {}, -36.4],
+    ['uiTick', {}, -40],
+    ['creatureVoice', {}, -22.2],
+  ] as const)('%s %o ≈ %d dBFS', async (id, p, db) => {
+    const l = measure(await renderSfx(id, p, 3));
+    expect(Math.abs(l.maxRmsDb - db)).toBeLessThanOrEqual(0.8);
   });
 });

@@ -1,7 +1,8 @@
 import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
-import { attribute, float, floor, fract, hash, max, mix, positionGeometry, positionLocal, positionView, select, smoothstep, step, vec2, vec3 } from 'three/tsl';
+import { attribute, float, floor, fract, hash, mix, modelViewMatrix, normalize, positionGeometry, positionLocal, positionView, select, smoothstep, step, vec2, vec3, vec4 } from 'three/tsl';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
+import type { ShadowTint } from '../../shadow/shadowTint';
 
 /**
  * Einheits-Schneewehe (Radius 1, Höhe ≈ 0.42): flacher, unregelmäßiger Hügel mit langem Schweif auf einer Seite
@@ -90,6 +91,8 @@ export interface DriftOptions {
   growth?: (slot: FloatNode) => FloatNode;
   /** Lichtung unter der Kamera (wie Bäume, Felsen, Scheunen): `camLocal` im Objektraum, `radius` 0 = aus. */
   footClear?: { camLocal: { value: Vector3 } & Vec3Node; radius: TSLUniform };
+  /** Schattentönung je Welt-Slot (wie das Gelände: Wehen im Schatten blau/grau statt Tinte). */
+  shadowTint?: ShadowTint | null;
 }
 
 export interface DriftPlacement {
@@ -143,6 +146,11 @@ export class DriftLandmarks {
       positionNode: o.warp(o.footClear ? driftSink(o.footClear.camLocal, o.footClear.radius) : positionLocal),
       fogDistNode: positionView.length().add(o.veil(world)),
       growthNode: o.growth ? o.growth(inst.z) : null,
+      // Schatten getönt wie das Gelände darunter (blau auf Schnee): die Wehe verschmilzt mit seinem Schatten; oben ist
+      // die Hochachse der Ebene (ADR 0002), `world` der Welt-Slot (die Tönungen liegen je Slot)
+      shadowTint: o.shadowTint ? { tint: o.shadowTint, world, up: normalize(modelViewMatrix.mul(vec4(0, 1, 0, 0)).xyz) as unknown as Vec3Node } : null,
+      // Verlauf innerhalb der Bänder: Kamm der Wehe hell, Fuß tiefer
+      gradient: positionGeometry.y.div(0.42).clamp(0, 1).mul(2).sub(1),
     });
     const mesh = new InstancedMesh(this.geometry, this.material, o.capacity);
     mesh.name = 'planet-drifts';
@@ -200,8 +208,8 @@ function driftSink(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
   const lateral = vec2(foot.x.sub(camLocal.x), foot.z.sub(camLocal.z)).length().sub(foot.w);
   const r = radius as unknown as FloatNode;
   const keep = select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1));
-  // die ganze Wehe schrumpft zum Fuß (flach gedrückt bliebe ein weißer Fleck im ruhigen Vordergrund)
-  const k = max(keep, float(0.02));
+  // die ganze Wehe schrumpft auf ihren Fuß (flach gedrückt bliebe ein weißer Fleck im ruhigen Vordergrund)
+  const k = keep;
   const p = positionLocal as unknown as Vec3Node;
   return vec3(foot.x.add(p.x.sub(foot.x).mul(k)), foot.y.add(p.y.sub(foot.y).mul(k)), foot.z.add(p.z.sub(foot.z).mul(k))) as unknown as Vec3Node;
 }

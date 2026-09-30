@@ -221,7 +221,8 @@ export function createBigMaterial(ctx: TrashShaderContext): TrashMaterial {
       const upFace = smoothstep(0.45, 0.8, normalGeometry.y);
       const v = ndl.sub(term).mul(2.1).add(upFace.mul(0.55));
       const bandX = clamp(v, 0, 0.999).mul(ctx.bands.sub(1));
-      const litCol = ctx.lookup.bands(bandX, row, 1).rgb;
+      // harte Bänder, jedes mit Verlauf innen: oben heller, zum Fuß tiefer (Berge und Ruinen sind große Formen)
+      const litCol = ctx.lookup.ramp(bandX, row, 1, clamp(p.y.mul(2).sub(1), -1, 1)).rgb;
       const ink = ctx.lookup.pal(0, row).rgb;
       // eine Stufe dunkler als das Band (im dunkelsten Band: Tinte) — Farbe der feinen Striche
       const darker = ctx.lookup.pal(floor(bandX), row).rgb;

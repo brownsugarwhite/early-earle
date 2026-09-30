@@ -1,4 +1,4 @@
-import type { LocalGround, P2, P3, Prism, PrismCap, PrismSurface } from './types';
+import type { LocalGround, P2, P3, Prism, PrismCap, PrismSurface, WallSpec } from './types';
 
 /** Shore samples of pools and islands (directions around the centre). */
 export const SHORE_SAMPLES = 24;
@@ -176,6 +176,31 @@ export function prismPeak(p: Prism): number {
     hi = Math.max(hi, prismTopAt(p, x, z) + (p.jag[i] ?? 0));
   });
   return Math.max(hi, p.y1) + p.apex;
+}
+
+/** Unit direction of a wall's foot line (from → to) and its length. */
+export function wallAxis(w: WallSpec): { ux: number; uz: number; length: number } {
+  const dx = w.to[0] - w.from[0];
+  const dz = w.to[1] - w.from[1];
+  const length = Math.hypot(dx, dz) || 1;
+  return { ux: dx / length, uz: dz / length, length };
+}
+
+/**
+ * A point of a tracery wall (local): `s` along the foot line, `h` above the wall's floor, `side` −1 (inner face) …
+ * +1 (outer face, along `normal`); the lean shifts it outward with the height.
+ */
+export function wallPoint(w: WallSpec, s: number, h: number, side: number): P3 {
+  const { ux, uz } = wallAxis(w);
+  const off = side * w.depth * 0.5 + w.lean * h;
+  return [w.from[0] + ux * s + w.normal[0] * off, w.y + h, w.from[1] + uz * s + w.normal[1] * off];
+}
+
+/** Every outline point of a wall on both faces (local) — bounds, clearance and shadow checks. */
+export function wallCorners(w: WallSpec): P3[] {
+  const out: P3[] = [];
+  for (const [s, h] of w.outline) out.push(wallPoint(w, s, h, -1), wallPoint(w, s, h, 1));
+  return out;
 }
 
 /** Rotates a local (x, z) by `yaw` (local +z → (sin yaw, cos yaw)). */

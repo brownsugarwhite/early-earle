@@ -2,6 +2,8 @@ import { LightingModel, NodeMaterial } from 'three/webgpu';
 import type { Node, NodeBuilder } from 'three/webgpu';
 import { clamp, min, mix, normalView, smoothstep, uniform, vec3 } from 'three/tsl';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
+import { STEP_GRADIENT, earleGradients, mixInk, stepRamp } from './gradients';
+import type { ShadowTint } from '../shadow/shadowTint';
 
 export interface EarlePattern {
   /** Maske 0..1 des Ornaments (Linien, Schraffur, Flechten) — nur im Licht sichtbar, nie in der Tinte. */
@@ -31,6 +33,12 @@ export interface EarleLayer {
   /** Ornament der Schicht (nur im Licht). */
   pattern?: EarlePattern | null;
 }
+
+/**
+ * Großräumige Koordinate des Verlaufs innerhalb der Lichtstufen, g ∈ [−1, 1] (siehe `gradients.ts`, `stepRamp`): > 0 zur
+ * helleren Nachbarstufe, < 0 zur dunkleren. Als Funktion bekommt sie die Lichtrichtung (View-Raum) und N·L.
+ */
+export type EarleGradient = FloatNode | ((light: { L: Vec3Node; ndl: FloatNode }) => FloatNode);
 
 export interface EarleMaterialOptions {
   lookup: PaletteLookup;
@@ -67,12 +75,36 @@ export interface EarleMaterialOptions {
   fogDistNode?: FloatNode | null;
   /** Überblendete Oberflächen (in Reihenfolge), z. B. Schneefeld, dann Wasser. */
   layers?: EarleLayer[] | null;
+  /**
+   * Verlauf innerhalb der Lichtstufen (Earle: jede Siebdruckschicht trägt ihren eigenen Verlauf): großräumige Koordinate
+   * g ∈ [−1, 1] — Kamm → Tal, Hang zur Sonne, Tiefe, oben → unten. Die Bänder selbst, der Terminator und die
+   * Schlagschatten bleiben harte Kanten; der Verlauf erreicht höchstens `gradientAmount` des Abstands zur Nachbarstufe.
+   * Fehlt → reine Siebdruckbänder. Gilt auch für Schichten mit eigener Zeile (Schneefeld).
+   */
+  gradient?: EarleGradient | null;
+  /** Stärke des Verlaufs (Anteil des Stufenabstands). Standard: `STEP_GRADIENT` × `earleGradients.surface`. */
+  gradientAmount?: FloatNode | number | null;
+  /**
+   * Schattentönung je Welt (`SunRig.shadowTint`, z. B. blaue Schatten auf Schnee): die ganze Tintenform (Eigen- und
+   * Schlagschatten) wird zur Tönung der Welt `world` gemischt; Ornamente im Schatten behalten ihren Abstand zur Tinte.
+   * Risse bleiben tiefe, ungetönte Tinte. Die Tönung wird je Pixel aus der Welt gelesen (an Weltgrenzen hart, kein
+   * Übergang über ein Dreieck). Schatten bleiben flache Tintenformen; nur mit `lift` der Welt (Standard 0, höchstens ein
+   * Hauch) hellt `up` (View-Raum, Einheitsvektor, z. B. die Kugelnormale des Planeten) sie zur Sonne hin minimal auf.
+   */
+  shadowTint?: { tint: ShadowTint; world: FloatNode; up?: Vec3Node | null } | null;
+  /**
+   * Talnebel 0..1 je Fragment (Ebene 20, Bild 03): nach der Luftperspektive zur Nebelfarbe `color` gemischt — dicht
+   * am Talgrund, nach oben ausdünnend (eine liegende Nebelbank, hell an ihrem Fuß). Fehlt → kein Talnebel.
+   */
+  mist?: { amount: FloatNode; color: Vec3Node } | null;
 }
 
 /**
- * Earle-Material: `lit = min(aaStep(N·L, terminator), shadow)` → Bandwert → exakte Palettenfarbe, danach
- * gestufter Nebel. Kein Ambient, kein Specular, keine Kontur. Die Sonne ist weiß mit Intensität 1, deshalb
- * transportiert `lightColor` genau den Schattenfaktor (three multipliziert den Schatten in die Lichtfarbe).
+ * Earle-Material: `lit = min(aaStep(N·L, terminator), shadow)` → Bandwert → exakte Palettenfarbe der Lichtstufe (harte
+ * Siebdruckbänder) mit Verlauf innen (`gradient`), danach gestufte Luftperspektive. Kein Ambient, kein Specular, keine
+ * Kontur.
+ * Die Sonne ist weiß mit Intensität 1, deshalb transportiert `lightColor` genau den Schattenfaktor (three multipliziert
+ * den Schatten in die Lichtfarbe).
  */
 export class EarleMaterial extends NodeMaterial {
   static override get type(): string {
@@ -96,6 +128,10 @@ export class EarleMaterial extends NodeMaterial {
     terminatorNode: FloatNode | null;
     fogDistNode: FloatNode | null;
     layers: EarleLayer[];
+    gradient: EarleGradient | null;
+    gradientAmount: FloatNode | number;
+    shadowTint: { tint: ShadowTint; world: FloatNode; up?: Vec3Node | null } | null;
+    mist: { amount: FloatNode; color: Vec3Node } | null;
   };
 
   constructor(options: EarleMaterialOptions) {
@@ -119,6 +155,10 @@ export class EarleMaterial extends NodeMaterial {
       terminatorNode: options.terminatorNode ?? null,
       fogDistNode: options.fogDistNode ?? null,
       layers: options.layers ?? [],
+      gradient: options.gradient ?? null,
+      gradientAmount: options.gradientAmount ?? earleGradients.surface.mul(STEP_GRADIENT),
+      shadowTint: options.shadowTint ?? null,
+      mist: options.mist ?? null,
     };
     if (options.normalNode) this.normalNode = options.normalNode;
     if (options.positionNode) this.positionNode = options.positionNode;
@@ -147,12 +187,30 @@ class EarleLightingModel extends LightingModel {
     if (e.bandNode) v = e.bandNode;
     const band = clamp(v, 0, 0.999).mul(e.bands.sub(1));
     const row = e.rowNode ?? e.row;
-    let litColor = e.lookup.bands(band, row, 1).rgb;
+    // Harte Siebdruckbänder; mit `gradient` verläuft jede Stufe in sich (nie über ihre Kante)
+    const g = e.gradient ? (typeof e.gradient === 'function' ? e.gradient({ L, ndl }) : e.gradient) : null;
+    const lightStep = (x: FloatNode, r: FloatNode | TSLUniform): Vec3Node =>
+      (g ? stepRamp(e.lookup, x, r, 1, g, e.gradientAmount) : e.lookup.bands(x, r, 1)).rgb as unknown as Vec3Node;
+    const rampColor = lightStep(band, row);
+    let litColor = rampColor;
     if (e.pattern) litColor = mix(litColor, e.pattern.color, e.pattern.mask);
-    const ink = e.lookup.pal(0, row).rgb;
-    const shadowSide = e.pattern?.shadowColor ? mix(ink, e.pattern.shadowColor, e.pattern.mask) : ink;
+    const ink = e.lookup.pal(0, row).rgb as unknown as Vec3Node;
+    // Schattentönung je Welt: die Tintenform zur Tönung hin (blau auf Schnee); Ornamente im Schatten wandern um denselben
+    // Betrag mit. Die Schattenform bleibt flach — nur `lift` der Welt (Standard 0) hellt sie zur Sonne hin minimal auf
+    let inkT = ink;
+    if (e.shadowTint) {
+      const t = e.shadowTint.tint.node(e.shadowTint.world);
+      inkT = mix(ink, t.color, t.amount) as unknown as Vec3Node;
+      if (e.shadowTint.up) {
+        const facing = smoothstep(-0.25, 0.55, e.shadowTint.up.dot(L)).mul(t.lift).mul(earleGradients.surface);
+        inkT = mixInk(inkT, rampColor, facing.mul(0.6));
+      }
+    }
+    const shift = inkT.sub(ink);
+    const shadowSide = e.pattern?.shadowColor ? mix(inkT, e.pattern.shadowColor.add(shift), e.pattern.mask) : inkT;
     let col = mix(shadowSide, litColor, lit);
-    // Überblendete Oberflächen (Schneefeld, Wasser): eigene Zeile oder feste Farben, gleiche Bänder bzw. nur Schlagschatten
+    // Überblendete Oberflächen (Schneefeld, Wasser): eigene Zeile oder feste Farben, gleiche Bänder (mit demselben Verlauf
+    // innen) bzw. nur Schlagschatten; ihr Schatten ist eine flache Form (Stufe 0 der Zeile)
     for (const layer of e.layers) {
       const litL = layer.castOnly ? min(shadow, 1) : lit;
       let lc: Vec3Node;
@@ -160,17 +218,17 @@ class EarleLightingModel extends LightingModel {
       if (layer.row) {
         const vL = layer.lift ? v.add(layer.lift) : v;
         const bandL = clamp(vL, 0, 0.999).mul(e.bands.sub(1));
-        lc = e.lookup.bands(bandL, layer.row, 1).rgb;
-        sc = layer.shadowColor ?? e.lookup.pal(0, layer.row).rgb;
+        lc = lightStep(bandL, layer.row);
+        sc = layer.shadowColor ?? (e.lookup.pal(0, layer.row).rgb as unknown as Vec3Node);
       } else {
         lc = layer.color ?? litColor;
-        sc = layer.shadowColor ?? ink;
+        sc = layer.shadowColor ?? inkT;
       }
       if (layer.pattern) lc = mix(lc, layer.pattern.color, layer.pattern.mask);
       col = mix(col, mix(sc, lc, litL), layer.mask);
     }
     if (e.growthNode) {
-      // Verdorrt: Richtung Grauwert und ein bräunlicher Stich, exakt gestuft bleibt es trotzdem
+      // Verdorrt: Richtung Grauwert und ein bräunlicher Stich
       const l = col.dot(vec3(0.3, 0.5, 0.2));
       const withered = mix(vec3(l), col, 0.35).mul(vec3(0.9, 0.82, 0.68));
       col = mix(withered, col, smoothstep(0, 1, e.growthNode));
@@ -185,6 +243,8 @@ class EarleLightingModel extends LightingModel {
     const context = builder.context as { outgoingLight?: Node };
     if (!context.outgoingLight) return;
     const out = context.outgoingLight as Vec3Node;
-    out.assign(steppedFog(out, e.fog, e.lookup, e.fogDistNode ?? undefined));
+    const aired = steppedFog(out, e.fog, e.lookup, e.fogDistNode ?? undefined);
+    if (e.mist) out.assign(mix(aired, e.mist.color, e.mist.amount));
+    else out.assign(aired);
   }
 }

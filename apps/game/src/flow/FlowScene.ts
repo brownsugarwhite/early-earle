@@ -1,37 +1,43 @@
 import { Box3, CircleGeometry, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Quaternion, Vector2, Vector3 } from 'three/webgpu';
 import type { Dir, LevelState } from '@ee/core';
 import type { SceneController, SceneContext } from '../canvas/SceneController';
+import type { BootReport } from '../boot/bootProgress';
 import { FLOW_LEVELS } from './levels';
 import { useProgress } from '../state/progress';
+import { bus } from '../state/bus';
 import { useGridStore } from '../lab/grid/gridStore';
 import { rexIntroFor, rexLine } from '../lab/grid/rex';
 import { PanBall, type PanConstrain } from '../lab/earle/panball';
 import { WORLD_CONTENTS } from '../lab/earle/zones';
 import rexUrl from '../../../../assets/ref-florian/07-illudiy-logo-rex.png';
 import { useFlowStore, type FlowPhase, type FlowRequest } from './flowStore';
-import { MAP_VIEW, MAP_VIEW_PORTRAIT, MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
+import { INK_BACKGROUND, MAP_VIEW, MAP_VIEW_PORTRAIT, MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
 import type { NodeSite } from './path';
 import { plateauStyleFor } from './siteStyle';
 import { landmarkPaletteFromWorld, landmarkPlateauStyle } from '@ee/render/earle/landmarks/set/index.ts';
 import { NodePath } from './NodePath';
 import { Hero, SHADOW_PROXY_LAYER, type HeroPose } from './Hero';
-import { Rex } from './Rex';
+import { Rex, useRexAnchor } from './Rex';
 import { LevelBoard, PITCH } from './LevelBoard';
 import { readHudBands } from './hudBands';
 import { resolveFlowQuality } from './quality';
-import { Tweens, easeInOut, easeInOutQuint, easeOut, lerp } from './tween';
+import { Tweens, easeInOut, easeInOutQuint, easeOut, lerp, type Ease } from './tween';
 import { demoState } from '../lab/grid/demoLevel';
+import type { CameraPose, EntryBlob, FlowStage } from './choreo/stage';
+import type { RouteStop } from './choreo/route';
+import { CreatureHost } from './choreo/creatureHost';
+import { playIntro } from './choreo/intro';
+import { Departure, type TravelLog } from './choreo/depart';
+import { refuseNode } from './choreo/locked';
+import { canEnterNode, shouldPlayIntro, storyAfterWin } from './progression/gate';
+import { createMapFocusConstraint, type MapFocusConstraint, type MapLimit } from './progression/mapFocus';
+import { SCROLL_MARGIN } from './progression/scrollLimit';
+import { RexStory } from './rexStory';
+import { storyLines } from './storyLines';
 
 export interface FlowSceneOptions {
   /** `/` starts at the splash, `/play` on the map. */
   start: 'splash' | 'map';
-}
-
-interface CameraPose {
-  /** Rig-local (the rig sits at the globe's apex; it only turns about its vertical, the view yaw). */
-  position: Vector3;
-  quaternion: Quaternion;
-  fov: number;
 }
 
 /** A view of the infinite world: the plane point at the apex (focus) and the view yaw (rig turn about the vertical). */
@@ -56,10 +62,15 @@ const HERO_MAP_SCALE = 0.48;
  * fungus it sits like a blob on a bracket, on the crown's flower stones a little larger (the crown camera is further).
  */
 const HERO_TREE_SCALE: Record<'root' | 'bark' | 'limb' | 'dome', number> = { root: 0.72, bark: 0.66, limb: 0.72, dome: 0.88 };
+/** 3D hero size at the splash dot relative to the SVG blob's equal-area radius (measured side by side, ≈ same width). */
+const HERO_DOT_FIT = 0.9;
 /** Depth (in front of the camera) at which the hero floats as the splash i-dot. */
 const SPLASH_DEPTH = 4;
-/** Interior colour of the splash "i" (#003f4e): the backing disc behind the hero in the mask hole. */
-const SPLASH_INTERIOR = '#003f4e';
+/**
+ * Backing disc behind the hero in the splash mask hole: the splash ink — at the hand-off the splash has already
+ * taken the i apart (panel gone), so the hole sits on the plain background.
+ */
+const SPLASH_INTERIOR = INK_BACKGROUND;
 /** Overlay fade (must match `.splash` transition in flow.css). */
 const T_SPLASH_FADE = 0.55;
 /** NDC y of the current node in the map view (lower third). */
@@ -75,13 +86,12 @@ interface MapViewLike {
   fov: number;
 }
 const REX_DEPTH = 12;
-/** Timings in seconds (plan: pull-back ≈ 1.4 s, fly-in ≈ 1.2 s; the plateau has its own choreography). */
+/**
+ * Timings in seconds (plan: pull-back ≈ 1.4 s, fly-in ≈ 1.2 s; the plateau has its own choreography). Intro, depart
+ * and the walk to the next node live in choreo/ (intro.ts, depart.ts).
+ */
 const T_HOP = 1.4;
 const T_FLY_IN = 1.2;
-const T_DEPART = 1.3;
-/** Depart celebration (flow clock from the depart's launch): start and how long the wave runs to the next node. */
-const T_CELEBRATE_AT = 0.69;
-const T_CELEBRATE = 0.78;
 const T_GLIDE = 1.0;
 /** Mindestabstand (Welteinheiten) der Kartenkamera über Felswänden, Türmen und Wahrzeichen zwischen ihr und dem Fokus. */
 const MAP_CLEARANCE = 6.5;
@@ -127,11 +137,12 @@ function angleDelta(a: number, b: number): number {
 }
 
 /**
- * P5 Flow-Lab: one continuous take. State machine splash → hop → map → flyIn → level → depart → map,
- * driven by the flow store; every transition is a single camera tween plus the hero's arc flights.
- * The world is the infinite Earle plane shown as a globe around the focus (ADR 0002): the map pans the focus (the feel
- * of turning an endless globe, forward and back, left and right), "go to node" glides it. The level is the P3 core
- * rendered on a plate that rises out of the terrain, the blobs are candidate (b) from P1.
+ * P5 Flow-Lab: one continuous take. State machine splash → hop → map → flyIn → level → depart → travel → map (first run
+ * in the real mode: splash → intro → level), driven by the flow store; every transition is a single camera tween plus
+ * the hero's arc flights. The world is the infinite Earle plane shown as a globe around the focus (ADR 0002): the map
+ * pans the focus (the feel of turning an endless globe, forward and back, left and right), "go to node" glides it. The
+ * level is the P3 core rendered on a plate that rises out of the terrain, the blobs are candidate (b) from P1. The
+ * choreographies of iteration 4 (choreo/, progression/) talk to the scene through `FlowStage` (`createStage()`).
  */
 export class FlowScene implements SceneController {
   private ctx: SceneContext | null = null;
@@ -155,14 +166,14 @@ export class FlowScene implements SceneController {
   private viewYaw = 0;
   /**
    * Where the board stands (plane pose: position (x, h, z), orientation in plane axes); while `active` its root is
-   * mapped onto the display every frame. Entry point for the flow choreography (FlowStage): `placeBoardAt`,
-   * `levelPose` and `boardPose` all read it.
+   * mapped onto the display every frame. `placeBoardAt`, `levelPose`, `boardPose` and the stage's board frames read it.
    */
   readonly boardPlane = { position: new Vector3(), quaternion: new Quaternion(), active: false };
   private readonly unsubscribes: Array<() => void> = [];
   private detachInput: (() => void) | null = null;
   private pointer: { x: number; y: number; t: number; id: number } | null = null;
   private lastRequestSeq = 0;
+  /** Scene clock (s): every choreography runs on it; `timeScale` 0 holds a frame. */
   private elapsed = 0;
   private panAttached = false;
   private levelPoseDirty = false;
@@ -179,8 +190,42 @@ export class FlowScene implements SceneController {
    */
   private shadowFocus = false;
   private readonly shadowBox = new Box3();
+  /** Board pipeline warm-up started in `mount` (WebGPU), awaited by `warm` for the boot progress. */
+  private boardWarm: Promise<void> | null = null;
+  /** What the choreographies (choreo/, progression/) see of the scene (`createStage()`, plane poses). */
+  private stage: FlowStage | null = null;
+  /** The running (or last) depart/walk; `log` describes its route (tests, Werkstatt). */
+  private departure: Departure | null = null;
+  private creatureHost: CreatureHost | null = null;
+  private mapFocus: MapFocusConstraint | null = null;
+  private boardPlacement: { node: number; away: boolean } | null = null;
+  /** REX tells a scene on the map (after level 1); a tap turns the page. */
+  private readonly story = new RexStory({
+    say: (line) => useFlowStore.getState().setRex(line),
+    rexVisible: () => useRexAnchor.getState().visible,
+    end: (id) => {
+      const flow = useFlowStore.getState();
+      flow.setStory(null);
+      this.rex?.pointAtNode(flow.current);
+      useProgress.getState().markStorySeen(id);
+    },
+  });
+  /** Dev/E2E: scene clock multiplier (0 holds a frame, e.g. for screenshots mid-walk). */
+  timeScale = 1;
 
   constructor(readonly options: FlowSceneOptions) {}
+
+  /** Dev/E2E: the route of the last depart or walk (hops, landings). */
+  get travelLog(): TravelLog | null {
+    return this.departure?.log ?? null;
+  }
+
+  /** Dev/E2E: how far the map view is from the walkable path (real mode on the map), else null. */
+  scrollState(): { excess: number; distance: number; margin: number } | null {
+    const w = this.world;
+    const hit = w && this.mapFocus ? this.mapFocus.measure({ x: w.focus.x, y: 0, z: w.focus.z }) : null;
+    return hit ? { excess: hit.excess, distance: hit.distance, margin: hit.margin } : null;
+  }
 
   // ================================================================================ lifecycle
 
@@ -232,6 +277,10 @@ export class FlowScene implements SceneController {
     // Species meshes and part modules the board prepares ahead compile in the background (WebGPU).
     if (ctx.backend === 'webgpu') this.board.setCompiler((root) => ctx.renderer.compileAsync(root, world.camera, world.scene));
 
+    // Real mode: the map only pans so far that the point under the map target stays near the walkable path (rubber
+    // band + spring back); free mode pans the endless plane without a limit.
+    this.mapFocus = createMapFocusConstraint({ layout: world.layout, target: (f) => this.targetOf(f), limit: () => this.scrollLimit() });
+    const mapFocus = this.mapFocus;
     this.panBall = new PanBall({
       worldUnitsPerPixel: () => this.worldUnitsPerPixel(),
       yaw: () => this.viewYaw,
@@ -239,9 +288,14 @@ export class FlowScene implements SceneController {
       onZoom: (f) => this.setZoom(this.zoom * f),
       focus: () => {
         const f = world.focus;
-        return { x: f.x, y: world.walkableHeight(f.x, f.z), z: f.z };
+        return { x: f.x, y: 0, z: f.z };
       },
+      constrain: (f) => mapFocus.constrain(f),
     });
+
+    this.stage = this.createStage();
+    // Creatures earned in the levels live around their nodes (MapCreatures on the plane ground, shown on the globe).
+    this.creatureHost = new CreatureHost({ ground: this.stage.ground, planet: world.planet, quality: q, markShadowDirty: () => world.markShadowDirty() });
 
     this.attachInput(ctx.canvas);
     this.unsubscribes.push(useFlowStore.subscribe((s) => this.onStoreChange(s.pending)));
@@ -252,11 +306,15 @@ export class FlowScene implements SceneController {
     const current = Math.max(0, Math.min(store.current, last));
     store.setCurrent(current);
     // Growth of the world from the stored progress (reached nodes), not only from the current one.
-    this.nodePath.setProgress(current, Math.max(current, Math.min(useProgress.getState().reached, last + 1)));
+    const progress = useProgress.getState();
+    this.nodePath.setProgress(current, Math.max(current, Math.min(progress.reached, last + 1)));
+    // Real mode: stones beyond the reached node are locked (free mode: everything open).
+    this.nodePath.setReach(progress.mode === 'real' ? progress.reached : -1);
     this.snapViewToNode(current);
-    // A re-mount (React StrictMode, Vite HMR) resumes the stored phase instead of restarting the take.
+    // A re-mount (React StrictMode, Vite HMR) resumes the stored phase instead of restarting the take (a walk that was
+    // under way ends on the map: `current` is already the next node).
     const phase = store.phase;
-    if (phase === 'level' || phase === 'flyIn' || phase === 'depart') this.enterLevelImmediate(store.playing ?? current);
+    if (phase === 'level' || phase === 'flyIn' || phase === 'depart' || phase === 'intro') this.enterLevelImmediate(store.playing ?? current);
     else if (phase === 'splash' || phase === 'hop') this.enterSplashImmediate();
     else this.enterMapImmediate();
     // Build the board's pipelines (all element families) while the player looks at the splash/map. WebGPU
@@ -264,12 +322,48 @@ export class FlowScene implements SceneController {
     // program links would stall the first seconds instead.
     if (this.phase !== 'level' && ctx.backend === 'webgpu') {
       const board = this.board;
-      void board.warmup(demoState(), async (root) => {
+      this.boardWarm = board.warmup(demoState(), async (root) => {
         await ctx.renderer.compileAsync(root, world.camera, world.scene);
       });
     }
     // Diagnostics and e2e hooks: the endless pan and the streaming stats
     if (typeof window !== 'undefined') (window as unknown as { __flow?: unknown }).__flow = this.debugApi();
+  }
+
+  /**
+   * Boot progress (splash loader): creatures, board pipelines, the map's chunks (map pose while the splash covers the
+   * canvas, until the loaded count holds for 10 frames), the map's shaders (WebGPU, with progress), back to the splash.
+   */
+  async warm(report: BootReport): Promise<void> {
+    const ctx = this.ctx;
+    const world = this.world;
+    const board = this.board;
+    if (!ctx || !world || !board) return;
+    const frame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+    const limit = <T>(p: Promise<T> | null, ms: number) => Promise.race([p, new Promise<void>((r) => setTimeout(r, ms))]);
+    await limit(board.creaturesReady, 10000);
+    report('creatures', 1);
+    await limit(this.boardWarm, 10000);
+    report('board', 1);
+    const splash = this.phase === 'splash';
+    const saved = this.currentPose();
+    if (splash) this.applyPose(this.mapPose());
+    // Chunks: bis die geladene Zahl 10 Bilder lang steht (höchstens 6 s)
+    const until = performance.now() + 6000;
+    for (let last = -1, stable = 0; stable < 10 && performance.now() < until && this.world; ) {
+      await frame();
+      const n = world.world.loadedCount;
+      stable = n === last ? stable + 1 : 0;
+      last = n;
+      report('chunks', Math.min(0.95, stable / 10));
+    }
+    report('chunks', 1);
+    if (ctx.backend === 'webgpu' && this.world) {
+      const compile = ctx.renderer.compileAsync as (s: unknown, c: unknown, t: unknown, p: (e: { loaded: number; total: number }) => void) => Promise<void>;
+      await limit(compile.call(ctx.renderer, world.scene, world.camera, world.scene, (e) => report('mapShaders', e.loaded / Math.max(1, e.total))), 12000);
+    }
+    report('mapShaders', 1);
+    if (splash && this.phase === 'splash' && this.world) this.applyPose(saved);
   }
 
   resize(ctx: SceneContext): void {
@@ -287,21 +381,34 @@ export class FlowScene implements SceneController {
     }
   }
 
-  update(dt: number, elapsed: number, ctx: SceneContext): void {
+  update(frameDt: number, _wallElapsed: number, ctx: SceneContext): void {
     const world = this.world;
     const hero = this.hero;
     const board = this.board;
     const nodePath = this.nodePath;
     if (!world || !hero || !board || !nodePath || !this.panBall) return;
-    this.elapsed = elapsed;
+    // The scene clock (every choreography runs on it; `timeScale` 0 holds a frame for screenshots).
+    const dt = frameDt * this.timeScale;
+    this.elapsed += dt;
+    const elapsed = this.elapsed;
     this.tweens.update(dt);
+    this.story.update(dt);
+    if (this.phase === 'map' && !this.story.active) {
+      const pending = useFlowStore.getState().pendingStory;
+      if (pending) {
+        useFlowStore.getState().setPendingStory(null);
+        this.tellStory(pending);
+      }
+    }
 
     if (this.phase === 'map' && this.panAttached) {
       if (this.panBall.step(dt)) world.markShadowDirty();
     }
     if (this.phase === 'splash') this.placeHeroAtSplashDot();
     if (this.splashBacking?.visible) this.placeSplashBacking();
-    // The board stands on the plane: its root follows the display every frame (the view may glide)
+    // The board stands on the plane: its root follows the display every frame (the view may glide); once the plateau
+    // has sunk and the board is hidden, it stands nowhere
+    if (this.boardPlane.active && !board.root.visible) this.boardPlane.active = false;
     this.syncBoard();
     if (this.levelPoseDirty && this.phase === 'level') {
       this.levelPoseDirty = false;
@@ -317,12 +424,15 @@ export class FlowScene implements SceneController {
       const cur = useFlowStore.getState().current;
       const n = world.layout.node(cur).position;
       const f = world.focus;
-      const want = Math.hypot(n[0] - f.x, n[2] - f.z) < 14 ? this.liftFor(cur) : 0;
+      const near = Math.hypot(n[0] - f.x, n[2] - f.z) < 14;
+      const want = near ? this.liftFor(cur) : 0;
+      const wantPull = near ? this.pullFor(cur) : 1;
       const rise = this.clearanceRise();
       const k = 1 - Math.exp(-dt / 0.45);
-      const moved = Math.abs(want - this.mapLift) > 1e-3 || Math.abs(rise - this.mapRise) > 1e-3;
+      const moved = Math.abs(want - this.mapLift) > 1e-3 || Math.abs(rise - this.mapRise) > 1e-3 || Math.abs(wantPull - this.mapPull) > 1e-3;
       if (moved) {
         this.mapLift += (want - this.mapLift) * k;
+        this.mapPull += (wantPull - this.mapPull) * k;
         // rise quickly, sink slowly (no bobbing over a ragged wall)
         this.mapRise += (rise - this.mapRise) * (rise > this.mapRise ? Math.min(1, k * 2.5) : k * 0.6);
         if (elapsed >= this.cameraTweenUntil && !world.cameraRailFor(cur, this.railScratch)) this.applyPose(this.mapPose());
@@ -335,6 +445,7 @@ export class FlowScene implements SceneController {
       board.setCarrier({ matrixWorld: hero.root.matrixWorld, params: hero.genome, standY: hero.standY(), scale: hero.scale, jiggle: hero.jiggle, visible: hero.root.visible });
     }
     board.update(dt, world.camera);
+    this.creatureHost?.update(dt, world.camera, elapsed);
     nodePath.update(elapsed, world.sunDirection(_v3));
     if (this.rex) {
       this.rex.update(dt, elapsed);
@@ -348,9 +459,11 @@ export class FlowScene implements SceneController {
     else this.boardShadowGrace = Math.max(0, this.boardShadowGrace - dt);
     if (hero.isFlying || hero.jiggle > 0.02 || this.tweens.active > 0 || this.boardShadowGrace > 0) world.markShadowDirty();
     // On the giant tree, sky and fog follow the node the camera frames (the centre ray would run past the crown onto
-    // a neighbour world far behind it)
+    // a neighbour world far behind it); during the depart the camera heads for the completed node, during the walk for
+    // the next one: both `current`
     const flow = useFlowStore.getState();
-    const focusNode = this.phase === 'depart' ? this.departTarget : this.phase === 'map' ? flow.current : this.phase === 'flyIn' || this.phase === 'level' ? (flow.playing ?? flow.current) : -1;
+    const p = this.phase;
+    const focusNode = p === 'map' || p === 'depart' || p === 'travel' ? flow.current : p === 'flyIn' || p === 'level' || p === 'intro' ? (flow.playing ?? flow.current) : -1;
     const focus = focusNode >= 0 && world.isTreeNode(focusNode) ? world.layout.node(focusNode) : undefined;
     world.setViewFocus(focus ? _v.set(focus.position[0], focus.position[1], focus.position[2]) : null, this.cut);
     this.cut = false;
@@ -358,8 +471,8 @@ export class FlowScene implements SceneController {
     const playing = flow.playing;
     const underTree = board.root.visible && this.phase !== 'map' && playing !== null && world.isTreeNode(playing);
     world.setTreeSight(underTree ? this.boardPlane.position : null, 4.5);
-    // Sichtlinie frei: keine Krone zwischen Kamera und Held (Karte) bzw. Plateau (Level)
-    if (this.phase === 'map' || this.phase === 'hop') {
+    // Sichtlinie frei: keine Krone zwischen Kamera und Held (Karte, Weg) bzw. Plateau (Level)
+    if (p === 'map' || p === 'hop' || (p === 'travel' && !this.boardPlane.active)) {
       const n = world.layout.node(flow.current).position;
       world.world.setSightTarget(world.isTreeNode(flow.current) ? null : [n[0], n[1] + 0.4, n[2]], 0.8);
     } else if (this.boardPlane.active) {
@@ -387,6 +500,11 @@ export class FlowScene implements SceneController {
 
   dispose(): void {
     this.tweens.clear();
+    this.story.finishNow();
+    this.departure?.finishNow();
+    this.creatureHost?.dispose();
+    this.creatureHost = null;
+    this.stage = null;
     this.detachInput?.();
     this.detachInput = null;
     this.panBall?.detach();
@@ -414,10 +532,10 @@ export class FlowScene implements SceneController {
 
   // ================================================================================ view (focus, yaw)
   //
-  // Entry points for the flow choreography (FlowStage, ADR 0002): `nodePose(i)` (hero on a node, plane pose — the hero's
-  // mapper puts it on the display globe), `snapViewToNode(i)` / `glideViewToNode(i)` (bring a node onto the map target:
-  // focus + view yaw), `currentView()` / `world.focus` (the map's focus point), `boardPlane` (where the level plays),
-  // `setPanConstrain(fn)` (scroll limit with rubber band in real mode; `null` = free, endless).
+  // The stage (`createStage()`) forwards the choreographies into these: `nodePose(i)` (hero on a node, plane pose — the
+  // hero's mapper puts it on the display globe), `snapViewToNode(i)` / `glideViewToNode(i)` (bring a node onto the map
+  // target: focus + view yaw), `mapFocusPoint()` (the plane point under the map target), `boardPlane` (where the level
+  // plays), the PanBall's `constrain` (scroll limit with rubber band in the real mode; free mode: endless).
 
   /** Scroll limit of the map pan (real mode: around unlocked nodes, rubber band); `null` = free (endless globe). */
   setPanConstrain(fn: PanConstrain | null): void {
@@ -447,6 +565,20 @@ export class FlowScene implements SceneController {
     this.tweens.cancel('glide');
     const f = this.world!.focus;
     this.applyView({ x: f.x + dx, z: f.z + dz, yaw: this.viewYaw });
+  }
+
+  /** The plane point under the map target (where the current node sits on screen) for the view focus `f`. */
+  private targetOf(f: { x: number; z: number }): { x: number; y: number; z: number } {
+    const c = Math.cos(this.viewYaw);
+    const s = Math.sin(this.viewYaw);
+    return { x: f.x + this.mapTarget.x * c + this.mapTarget.y * s, y: 0, z: f.z - this.mapTarget.x * s + this.mapTarget.y * c };
+  }
+
+  /** The point the map shows (plane, on the ground): under the map target — scroll limit and the creatures' life. */
+  private mapFocusPoint(out: Vector3): Vector3 {
+    const world = this.world!;
+    const t = this.targetOf(world.focus);
+    return out.set(t.x, world.walkableHeight(t.x, t.z), t.z);
   }
 
   /**
@@ -491,6 +623,7 @@ export class FlowScene implements SceneController {
     this.tweens.cancel('glide');
     this.panBall?.stop();
     this.mapLift = this.liftFor(index);
+    this.mapPull = this.pullFor(index);
     this.applyView(this.viewFor(index));
     this.mapRise = this.clearanceRise();
   }
@@ -519,6 +652,35 @@ export class FlowScene implements SceneController {
     );
   }
 
+  /** Is node `i` already where the map shows its current node (on the map target, the path turned up the screen)? */
+  private isFocused(i: number): boolean {
+    const v = this.viewFor(i);
+    const c = this.currentView();
+    return Math.hypot(v.x - c.x, v.z - c.z) < 0.05 && Math.abs(angleDelta(c.yaw, v.yaw)) < 0.01;
+  }
+
+  /** The view glides to node `i` (on the giant tree the camera rides to its rail pose as the view glides). */
+  private focusNode(i: number, duration: number, ease: Ease): void {
+    const world = this.world!;
+    if (world.cameraRailFor(i)) this.tweenCamera(this.mapPoseFor(i, this.viewFor(i)), duration, ease);
+    this.glideViewToNode(i, duration, ease);
+  }
+
+  /**
+   * Camera back into the map view of node `i` (on the giant tree onto its rail), the view gliding there if it is not
+   * there yet; from a plateau under or on the tree the dolly swings around the wood.
+   */
+  private cameraToMap(i: number, duration: number, ease: Ease): void {
+    const world = this.world!;
+    const board = this.board!;
+    const target = world.cameraRailFor(i) ? this.mapPoseFor(i, this.viewFor(i)) : this.mapPose();
+    // From the plateau: a slight arc (around the wood when it stood under or on the giant tree); along the rail: none.
+    const fromBoard = board.root.visible;
+    const bend = fromBoard && world.isTreeNode(this.boardPlacement?.node ?? i) ? this.treeBend(target) : null;
+    this.tweenCamera(target, duration, ease, undefined, fromBoard ? (bend ? TREE_ARC : CAMERA_ARC) : 0, bend);
+    if (!this.isFocused(i)) this.glideViewToNode(i, duration, ease);
+  }
+
   // ================================================================================ camera
 
   /** Portrait screens (phones) get their own map camera: higher, steeper, the path running up the screen. */
@@ -544,8 +706,8 @@ export class FlowScene implements SceneController {
    * The plain orbit view over the apex (rig space; the view brings the node under it), lifted by the elevation of a
    * level on a landmark (a rock plateau, a ruin terrace): the camera keeps the same framing above the stone.
    */
-  private orbitPose(zoom = this.zoom, view: MapViewLike = this.mapViewCamera(), lift = this.mapLift, rise = this.mapRise): CameraPose {
-    const position = view.offset.clone().multiplyScalar(zoom);
+  private orbitPose(zoom = this.zoom, view: MapViewLike = this.mapViewCamera(), lift = this.mapLift, rise = this.mapRise, pull = this.mapPull): CameraPose {
+    const position = view.offset.clone().multiplyScalar(zoom * pull);
     position.y += lift + rise;
     const look = _v.copy(view.look);
     look.y += lift;
@@ -562,10 +724,13 @@ export class FlowScene implements SceneController {
   private clearanceRise(): number {
     const world = this.world;
     if (!world) return 0;
-    const cam = world.camera;
-    cam.getWorldPosition(_cw);
+    // Aus der Kartenpose ohne Anhebung, nicht aus der Kamera: beim Sprung auf einen Knoten steht sie noch woanders
+    // (Splash, Level, Ursprung) — gemessen daran stieg sie über der hohen Ruine erst auf über 60 Einheiten
+    const pose = this.orbitPose(this.zoom, this.mapViewCamera(), this.mapLift, 0);
+    world.rig.updateMatrixWorld(true);
+    _cw.copy(pose.position).applyMatrix4(world.rig.matrixWorld);
     const c = world.fromDisplay(_cw, _cp);
-    const baseH = c.y - this.mapRise - this.mapLift;
+    const baseH = c.y;
     const f = world.focus;
     const dx = f.x - c.x;
     const dz = f.z - c.z;
@@ -573,8 +738,8 @@ export class FlowScene implements SceneController {
     const sx = -dz / len;
     const sz = dx / len;
     let maxH = -Infinity;
-    // Unter der Kamera und im unteren Bildband (bis gut zur Mitte des Wegs zum Fokus), seitlich bis ± 5
-    for (const t of [0, 0.2, 0.4, 0.6]) {
+    // Unter der Kamera und bis zum Fokus (hohe Wahrzeichen wie die Ruine stehen oft genau dort), seitlich bis ± 5
+    for (const t of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
       for (const side of [-5, -2.5, 0, 2.5, 5]) {
         const x = c.x + dx * t + sx * side;
         const z = c.z + dz * t + sz * side;
@@ -589,6 +754,18 @@ export class FlowScene implements SceneController {
     const n = this.world?.layout.node(index);
     return n?.landmark ? Math.max(0, n.landmark.anchor.height - 0.8) : 0;
   }
+
+  /**
+   * Pull-back of the map camera at node `index`: a landmark that rises far above the node's stone (the ruin's tower
+   * over its terrace, ≈ 9 units) is framed from up to half again as far, so its silhouette reads in the landscape.
+   */
+  private pullFor(index: number): number {
+    const rise = this.world?.landmarkRiseAbove(index) ?? 0;
+    return 1 + Math.min(0.5, Math.max(0, rise - 2) / 12);
+  }
+
+  /** Camera pull-back of the map view (smoothed toward the current node's `pullFor`). */
+  private mapPull = 1;
 
   /** Camera lift of the map view (smoothed toward the current node's elevation). */
   private mapLift = 0;
@@ -791,7 +968,7 @@ export class FlowScene implements SceneController {
     const cam = this.world?.camera;
     const view = this.mapViewCamera();
     const fov = cam?.fov ?? view.fov;
-    const dist = view.offset.clone().multiplyScalar(this.zoom).distanceTo(view.look);
+    const dist = view.offset.clone().multiplyScalar(this.zoom * this.mapPull).distanceTo(view.look);
     return (2 * dist * Math.tan((fov * Math.PI) / 360)) / h;
   }
 
@@ -812,7 +989,7 @@ export class FlowScene implements SceneController {
     const world = this.world;
     if (!world) return;
     // the target on the ground (without a landmark lift)
-    const pose = this.orbitPose(1, this.mapViewCamera(), 0);
+    const pose = this.orbitPose(1, this.mapViewCamera(), 0, 0, 1);
     const cam = this.probeCamera;
     cam.aspect = world.camera.aspect;
     cam.fov = pose.fov;
@@ -865,6 +1042,28 @@ export class FlowScene implements SceneController {
     const fwd = camPlane.sub(position);
     tangentFrame(normal, fwd, _m4);
     return { position, quaternion: new Quaternion().setFromRotationMatrix(_m4), scale: s };
+  }
+
+  /**
+   * Hero pose on a stop of the walk (plane, like the dots): on the dot, upright on its normal, facing along the path
+   * and turned 3/4 toward the camera (the face stays readable while it walks away). The stops index the dots of the
+   * window [seg, seg + 1] (choreo/depart.ts asks the same window).
+   */
+  private routePose(seg: number, stop: RouteStop): HeroPose {
+    const world = this.world!;
+    const dot = stop.dot >= 0 ? world.layout.window(seg, seg + 1).dots[stop.dot] : undefined;
+    if (!dot) return this.nodePose(seg + 1);
+    const p = new Vector3(dot.position[0], dot.position[1], dot.position[2]);
+    const normal = new Vector3(dot.normal[0], dot.normal[1], dot.normal[2]).normalize();
+    const nextNode = world.layout.node(seg + 1).position;
+    const ahead = new Vector3(nextNode[0], nextNode[1], nextNode[2]).sub(p);
+    ahead.addScaledVector(normal, -ahead.dot(normal));
+    if (ahead.lengthSq() > 1e-8) ahead.normalize();
+    const toCam = world.fromDisplay(world.camera.getWorldPosition(new Vector3()), new Vector3()).sub(p);
+    toCam.addScaledVector(normal, -toCam.dot(normal));
+    if (toCam.lengthSq() > 1e-8) toCam.normalize();
+    tangentFrame(normal, ahead.multiplyScalar(0.55).addScaledVector(toCam, 0.45), _m4);
+    return { position: p, quaternion: new Quaternion().setFromRotationMatrix(_m4), scale: HERO_MAP_SCALE };
   }
 
   /** Hero pose on a board cell (plane) for the risen plate. */
@@ -989,10 +1188,13 @@ export class FlowScene implements SceneController {
    * height from the terrain as it is displayed, and the look of the place (plateau family, colours and rim from the
    * site and the local Earle world).
    */
-  private placeBoardAt(index: number): void {
+  private placeBoardAt(index: number): { away: boolean } {
     const world = this.world!;
     const board = this.board!;
     const stage = this.stageOf(index);
+    this.boardPlacement = { node: index, away: stage.away };
+    // Map creatures living here pop away while the plateau stands (the ones walking home stay).
+    this.creatureHost?.api?.setExclusion?.(stage.position, 3.2);
     const camPlane = world.fromDisplay(world.camera.getWorldPosition(new Vector3()), new Vector3());
     tangentFrame(stage.normal, stage.facing ?? camPlane.sub(stage.position), _m4);
     this.boardPlane.position.copy(stage.position);
@@ -1003,7 +1205,7 @@ export class FlowScene implements SceneController {
     const zone = stage.world < WORLD_CONTENTS.length ? WORLD_CONTENTS[stage.world]?.zone : undefined;
     const lm = world.layout.node(index).landmark;
     // Auf einem Wahrzeichen: das Plateau ist aus seinem Gipfel geschnitten (Moos auf Basalt, Steinplatten, Sumpfinsel)
-    board.setSite(lm ? landmarkPlateauStyle(lm.anchor.site, landmarkPaletteFromWorld(data.palette)) : plateauStyleFor(stage.site, data.palette, zone), index);
+    board.setSite(lm ? landmarkPlateauStyle(lm.anchor.site, landmarkPaletteFromWorld(data.palette)) : plateauStyleFor(stage.site, data.palette, zone, data.shadowTint ?? null), index);
     if (stage.terrain) {
       board.setTerrain(stage.terrain[0], stage.terrain[1]);
     } else {
@@ -1028,6 +1230,7 @@ export class FlowScene implements SceneController {
     const sun = world.sunDirection(new Vector3()).applyQuaternion(board.root.getWorldQuaternion(_q).invert());
     board.setSunDirection(sun);
     board.root.visible = true;
+    return { away: stage.away };
   }
 
   // ================================================================================ phases
@@ -1041,6 +1244,8 @@ export class FlowScene implements SceneController {
   private setPhase(p: FlowPhase): void {
     if (import.meta.env.DEV) console.debug(`[flow] ${this.phase} → ${p}`);
     this.phase = p;
+    // Die Platte ist versunken: die Wesen am Knoten kommen zurück.
+    if (p === 'travel' || p === 'map') this.creatureHost?.api?.setExclusion?.(null);
     useFlowStore.getState().setPhase(p);
   }
 
@@ -1158,7 +1363,7 @@ export class FlowScene implements SceneController {
     this.setPhase('level');
   }
 
-  /** Hero floats in front of the camera exactly over the baked i-dot of the splash PNG. */
+  /** Hero floats in front of the camera exactly over the i-dot of the splash (the SVG blob's width). */
   private placeHeroAtSplashDot(): void {
     const ctx = this.ctx;
     const world = this.world;
@@ -1170,9 +1375,10 @@ export class FlowScene implements SceneController {
     const center = this.cameraPoint(dot.x, dot.y, d, new Vector3());
     cam.updateWorldMatrix(true, false);
     cam.localToWorld(center);
-    // Baked dot radius → world radius at depth d; the body's visual radius ≈ 1 blob unit.
+    // Dot radius → world radius at depth d; the body's visual radius ≈ 1 blob unit. Tuned against the SVG blob of the
+    // splash (equal-area radius of Florian's drawing): the 3D body appears as wide as the drawn one at the hand-off.
     const tanHalf = Math.tan((cam.fov * Math.PI) / 360);
-    const rWorld = (dot.rPx * 1.1 * 2 * d * tanHalf) / ctx.height;
+    const rWorld = (dot.rPx * HERO_DOT_FIT * 2 * d * tanHalf) / ctx.height;
     cam.getWorldQuaternion(_q);
     // Display pose → the hero's plane pose (its mapper maps it straight back)
     const planePos = new Vector3();
@@ -1204,18 +1410,11 @@ export class FlowScene implements SceneController {
     this.zoom = 1;
     this.tweenCamera(this.mapPose(), T_HOP, easeInOutQuint);
     // The backing disc fades exactly like the DOM overlay (same duration), then disappears.
-    const mat = this.splashBackingMat;
-    if (mat) {
-      this.tweens.add(T_SPLASH_FADE, (t) => (mat.opacity = 1 - t), {
-        ease: easeOut,
-        done: () => {
-          if (this.splashBacking) this.splashBacking.visible = false;
-        },
-      });
-    }
+    this.fadeSplashBacking(T_SPLASH_FADE);
     // The hop itself: a short beat after the tap, landing just before the camera settles.
     this.tweens.after(0.1, () => {
-      hero.flyTo(this.nodePose(current), { duration: T_HOP - 0.32, arc: 1.6, ease: easeInOut });
+      this.cue('hop');
+      hero.flyTo(this.nodePose(current), { duration: T_HOP - 0.32, arc: 1.6, ease: easeInOut, done: () => this.cue('land') });
     });
     this.tweens.after(T_HOP, () => {
       this.rex?.setVisible(true);
@@ -1239,12 +1438,15 @@ export class FlowScene implements SceneController {
       store.setRex(rexLine('locked') ?? 'Bald. Hier wächst noch was.');
       return;
     }
+    this.story.finishNow();
     this.detachPan();
     this.tweens.cancel('glide');
     // The view brings the node onto the map target first (a tap on a far node): the fly-in starts from there
     this.snapViewToNode(node);
     this.applyPose(this.mapPose());
     this.setPhase('flyIn');
+    this.cue('select');
+    this.cue('flyIn');
     // The close board shot needs no clearing around the map camera's foot (restored after the depart).
     world.setFootClear(0);
     store.setPlaying(node);
@@ -1274,7 +1476,10 @@ export class FlowScene implements SceneController {
 
     // The hill heaves out of the terrain under the hero and flattens into the stepped plateau; plates swing
     // up in a wave from the near edge, props pop, blobs pop (the board's own wall-clock choreography).
-    this.tweens.after(T_RISE_AT, () => board.playRise());
+    this.tweens.after(T_RISE_AT, () => {
+      board.playRise();
+      this.cue('rise');
+    });
     // The hero stands on the node = the plateau's centre: it rides the heave up until it jumps. On a stage beside
     // the node (the root terrace below a stone on the bark) it stays put and leaps down.
     const riding = this.nodePose(node);
@@ -1299,20 +1504,15 @@ export class FlowScene implements SceneController {
     this.tweens.after(T_HERO_LAUNCH - 0.14, () => hero.impulse(1.0));
     const scale = entry ? board.worldScale(entry.tier) : 0.02;
     const local = entry ? entry.local.clone() : new Vector3(0, 0, 0);
+    this.tweens.after(T_HERO_LAUNCH - 0.1, () => this.cue('heroJump'));
     this.tweens.after(T_HERO_LAUNCH, () => {
       hero.flyTo(this.boardPose(local, scale), {
         duration: T_HERO_FLIGHT * (stage.away ? 1.35 : 1),
         arc: stage.away ? 2.2 : 1.15,
         ease: easeInOut,
         done: () => {
-          board.dropCarried();
-          const color = entry ? board.blobInfo(entry.id)?.genome.baseColor : undefined;
-          if (entry) {
-            hero.setTier(entry.tier);
-            board.revealBlob(entry.id, 1.4);
-          }
-          board.splat(local, scale, color);
-          hero.root.visible = false;
+          this.landOnEntry(entry, local, scale);
+          this.cue('land');
         },
       });
     });
@@ -1321,156 +1521,189 @@ export class FlowScene implements SceneController {
     this.tweens.after(T_FLY_IN + 0.12, () => this.setPhase('level'));
   }
 
-  // ---------- depart / leave: level → map ----------
+  // ---------- depart, walk, story: level → map (choreo/depart.ts, rexStory.ts) ----------
 
   private onBoardSettled(state: LevelState): void {
     if (this.phase !== 'level') return;
-    if (state.status === 'won') this.tweens.after(0.6, () => this.startDepart(true), 'won');
+    if (state.status === 'won') this.tweens.after(0.6, () => this.depart(true), 'won');
   }
 
   /**
-   * `won`: the top blob lifts off with a pop and flies to the next node; otherwise the hero leaves the
-   * plate back to its own node. Plate sinks, camera pulls out (reverse fly-in), REX comments.
+   * `won`: the goal creature leaves the plateau (new ones move to the map), the hero pops out, lands on the completed
+   * node and walks the dots to the next one; otherwise it lands back on its own node. See choreo/depart.ts.
    */
-  private startDepart(won: boolean): void {
-    if (this.phase !== 'level') return;
-    const hero = this.hero!;
-    const board = this.board!;
-    const flow = useFlowStore.getState();
+  private depart(won: boolean): void {
+    if (this.phase !== 'level' || !this.stage) return;
     this.tweens.cancel('won');
-    this.setPhase('depart');
-    const current = flow.current;
-    const next = won ? current + 1 : current;
-    const top = won ? board.topBlob() : board.entryBlob(hero.tier);
-    flow.setRex(won ? (rexLine('release') ?? 'Geh. Wir kommen nach.') : (rexLine('lose') ?? 'Nochmal.'));
-
-    // First the creature leaves its cell in its own style — hops, walks, slithers or plods to the plateau rim
-    // on the side of the next node (toward the camera when it stays) — then the hero takes over for the arc.
-    let walk = 0;
-    let from = top?.local ?? null;
-    if (top) {
-      const dir = this.boardDirectionTo(next === current ? null : next);
-      const ex = board.exitCreature(top.id, dir.x, dir.z);
-      if (ex) {
-        walk = ex.at;
-        from = ex.local;
-      }
-    }
-    this.tweens.after(walk, () => this.launchDepart(won, top, from, next, current), 'depart');
+    this.departure = Departure.fromLevel(this.stage, won, { arrived: (node, w) => this.onArrived(node, w) });
   }
 
-  /** Board-local xz direction from the plateau centre toward a node (null = toward the camera). */
-  private boardDirectionTo(node: number | null): Vector3 {
-    const out = new Vector3(0, 0, 1);
-    if (node === null) return out;
-    const n = this.world!.layout.node(node);
-    const p = new Vector3(n.position[0], n.position[1], n.position[2]).sub(this.boardPlane.position);
-    p.applyQuaternion(_q.copy(this.boardPlane.quaternion).invert());
-    p.y = 0;
-    if (p.lengthSq() < 1e-6) return out;
-    return p.normalize();
-  }
-
-  /** The hero takes the creature's body at the rim, splats and flies the arc; the plateau sinks behind it. */
-  private launchDepart(won: boolean, top: { id: number; tier: number; local: Vector3 } | null, local: Vector3 | null, next: number, current: number): void {
-    if (this.phase !== 'depart') return;
-    const hero = this.hero!;
-    const board = this.board!;
-    const world = this.world!;
-    const flow = useFlowStore.getState();
-    if (top && local) {
-      const info = board.blobInfo(top.id);
-      board.setBlobHidden(top.id, true);
-      hero.setTier(top.tier);
-      if (info) hero.genome = { ...info.genome, eye: info.spec?.body.eye ?? hero.genome.eye };
-      if (info?.spec) {
-        const withParts = board.carry(top.id);
-        // Parts bring their own eyes: keep the painted slit only when the creature has none.
-        if (withParts && info.spec.parts.some((part) => part.slot === 'eye')) hero.genome = { ...hero.genome, eye: { ...hero.genome.eye, size: 0 } };
-      }
-      hero.setPose(this.boardPose(local, info?.scale ?? board.worldScale(top.tier)));
-    } else {
-      hero.setPose(this.boardPose(new Vector3(0, 0, 0), 0.05));
-    }
-    hero.root.visible = true;
-    hero.impulse(1.3);
-
-    // Launch: splat on the rim, then the long arc to the node; the plateau folds up and sinks behind it.
-    this.tweens.after(0.2, () => {
-      if (top && local) board.splat(local, board.blobInfo(top.id)?.scale ?? board.worldScale(top.tier));
-    });
-    // Onto or off the giant tree: the camera heads straight for the next node's view (its rail pose on the tree) while
-    // the view glides to that node — one move, no cut when the rail takes over.
-    const railMove = won && next !== current && (world.isTreeNode(next) || world.isTreeNode(current));
-    this.departTarget = railMove ? next : current;
-    this.tweens.after(0.22, () => {
-      // The flight target is computed once the camera starts pulling out (faces the map camera).
-      const pose = this.nodePose(next);
-      hero.flyTo(pose, { duration: T_DEPART - 0.2, arc: 2.6, ease: easeInOut });
-    });
-    this.tweens.after(0.24, () => {
-      const target = railMove ? this.mapPoseFor(next, this.viewFor(next)) : this.mapPose();
-      // leaving a level under or on the giant tree: swing around the wood (see startFlyIn)
-      const bend = world.isTreeNode(current) ? this.treeBend(target) : null;
-      this.tweenCamera(target, T_DEPART, easeInOutQuint, undefined, bend ? TREE_ARC : CAMERA_ARC, bend);
-      if (railMove) this.glideViewToNode(next, T_DEPART, easeInOutQuint);
-      const s0 = this.stripesY;
-      this.tweens.add(0.9, (t) => (this.stripesY = lerp(s0, 0, t)), { ease: easeInOut });
-      board.playSink(top?.id ?? null);
-    });
-    this.tweens.after(0.24 + T_DEPART * 0.4, () => this.setShadowFocus(false));
-    // Celebration along the path while the camera pulls out: the won stone opens into a flower, the stretch to the
-    // next node pops dot by dot behind the flying hero, the ring grows in around it as it lands.
-    this.tweens.after(T_CELEBRATE_AT, () => {
-      const path = this.nodePath!;
-      this.setLevelNode(null);
-      if (!won) return;
-      path.celebrate(current, next, T_CELEBRATE);
-      path.setProgress(next, Math.max(path.doneCount, current + 1));
-    });
-    this.tweens.after(0.24 + T_DEPART, () => {
-      // The plateau is gone; a carried creature keeps its parts on the hero until the next level.
-      if (board.carrying) board.setPartsOnly(true);
-      else this.hideBoard();
-      board.unbind();
-      if (won) {
-        flow.setCurrent(next);
-        this.nodePath!.setProgress(next, Math.max(this.nodePath!.doneCount, current + 1));
-      }
-      flow.setPlaying(null);
-      this.rex?.setVisible(true);
-      world.setFootClear(MAP_VIEW.footClear);
-      this.setPhase('map');
-      this.attachPan();
-      if (!railMove) this.glideViewToNode(next);
-      const intro = won ? rexIntroFor(next + 1) : null;
-      if (intro) flow.setRex(intro);
-      else if (won && next > world.layout.lastPlayable) flow.setRex(rexLine('locked') ?? 'Weiter geht’s bald. Die Welt wächst noch.');
-    });
-  }
-
-  /** Node the camera heads for during a depart (the next node when the move enters or leaves the giant tree). */
-  private departTarget = 0;
-  /** The camera jumped (start, re-mount, immediate phase): view focus without blend on the next frame. */
-  private cut = true;
-
-  /** Debug: hop the hero to the next node on the map (no level). */
-  private hopToNext(): void {
-    if (this.phase !== 'map') return;
+  /** Dev "Depart" on the map: walk to the next node without a level — only onto unlocked ground. */
+  private walkToNext(): void {
+    if (this.phase !== 'map' || !this.stage) return;
     const world = this.world!;
     const flow = useFlowStore.getState();
     const next = flow.current + 1;
     if (next > world.layout.lastPlayable + 1) return;
-    const railMove = world.isTreeNode(next) || world.isTreeNode(flow.current);
-    this.hero!.flyTo(this.nodePose(next), { duration: 0.9, arc: 1.8, ease: easeInOut });
-    this.nodePath!.celebrate(flow.current, next, 0.85);
-    flow.setCurrent(next);
-    this.nodePath!.setProgress(next, Math.max(this.nodePath!.doneCount, next));
-    if (railMove) {
-      // Along the giant tree: the camera glides to the next rail pose while the view glides (no cut)
-      this.tweenCamera(this.mapPoseFor(next, this.viewFor(next)), T_GLIDE, easeInOut);
-      this.glideViewToNode(next, T_GLIDE, easeInOut);
-    } else this.glideViewToNode(next);
+    if (!canEnterNode(next, useProgress.getState())) {
+      refuseNode(this.stage, next);
+      return;
+    }
+    this.story.finishNow();
+    this.detachPan();
+    this.departure = Departure.walk(this.stage, flow.current, next, { arrived: (node, w) => this.onArrived(node, w) });
+  }
+
+  /** The hero stands on the map again: REX tells the scene after level 1, or introduces the next level. */
+  private onArrived(node: number, won: boolean): void {
+    if (!won) return;
+    const story = storyAfterWin(node - 1, useProgress.getState());
+    if (story) {
+      this.tellStory(story);
+      return;
+    }
+    const flow = useFlowStore.getState();
+    const intro = rexIntroFor(node + 1);
+    if (intro) flow.setRex(intro);
+    else if (node > this.world!.layout.lastPlayable) flow.setRex(rexLine('locked') ?? 'Weiter geht’s bald. Die Welt wächst noch.');
+  }
+
+  private tellStory(id: string): void {
+    useFlowStore.getState().setStory(id);
+    this.story.start(id, storyLines(id));
+  }
+
+  /** The hero lands on its blob of the board and becomes it (fly-in, intro). */
+  private landOnEntry(entry: EntryBlob | null, local: Vector3, scale: number): void {
+    const board = this.board!;
+    const hero = this.hero!;
+    board.dropCarried();
+    const color = entry ? board.blobInfo(entry.id)?.genome.baseColor : undefined;
+    if (entry) {
+      hero.setTier(entry.tier);
+      board.revealBlob(entry.id, 1.4);
+    }
+    board.splat(local, scale, color);
+    hero.root.visible = false;
+  }
+
+  /** Choreography beat for sound and haptics. */
+  private cue(cue: string, strength?: number): void {
+    bus.emit('flow/cue', strength === undefined ? { cue } : { cue, strength });
+  }
+
+  /** Real mode on the map: how far the view may leave the walkable path (null = no limit). */
+  private scrollLimit(): MapLimit | null {
+    const p = useProgress.getState();
+    if (p.mode !== 'real' || this.phase !== 'map' || !this.world) return null;
+    return { reached: Math.min(p.reached, this.world.layout.lastPlayable + 1), margin: this.portrait ? SCROLL_MARGIN.portrait : SCROLL_MARGIN.landscape };
+  }
+
+  /** The splash backing disc fades like the DOM overlay (the hop and the intro). */
+  private fadeSplashBacking(duration: number): void {
+    const mat = this.splashBackingMat;
+    if (!mat || !this.splashBacking?.visible) return;
+    this.tweens.add(duration, (t) => (mat.opacity = 1 - t), {
+      ease: easeOut,
+      done: () => {
+        if (this.splashBacking) this.splashBacking.visible = false;
+      },
+    });
+  }
+
+  /** The camera jumped (start, re-mount, immediate phase): view focus without blend on the next frame. */
+  private cut = true;
+
+  /**
+   * The stage the choreographies play on (choreo/stage.ts): one block of one-line forwards into this scene. Poses and
+   * frames are plane poses (x, h, z — the hero's mapper and `ground.display` put them on the globe), the board stands
+   * on `boardPlane`, the view is the focus plus the yaw (`glideViewToNode` / `snapViewToNode`), the ground is
+   * `MapWorld.mapGround()`.
+   */
+  private createStage(): FlowStage {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const scene = this;
+    const world = this.world!;
+    const board = this.board!;
+    const hero = this.hero!;
+    const nodePath = this.nodePath!;
+    // Boden der Map-Wesen: Netz, Wasser, Felsen und Anzeige-Abbildung der Ebene; Blickpunkt = unter dem Kartenziel.
+    const ground = world.mapGround({ focus: (out) => this.mapFocusPoint(out) });
+    const boardPlane = this.boardPlane;
+    return {
+      hero,
+      board,
+      path: nodePath,
+      rex: this.rex,
+      layout: world.layout,
+      tweens: this.tweens,
+      ground,
+      get creatures() {
+        return scene.creatureHost?.api ?? null;
+      },
+      get boardPlacement() {
+        return scene.boardPlacement;
+      },
+      get portrait() {
+        return scene.portrait;
+      },
+      now: () => this.elapsed,
+      setPhase: (p) => this.setPhase(p),
+      cue: (cue, strength) => this.cue(cue, strength),
+      nodePose: (i, scale) => this.nodePose(i, scale),
+      routePose: (seg, stop) => this.routePose(seg, stop),
+      boardPose: (local, scale) => this.boardPose(local, scale),
+      boardFrame: (local, out) => {
+        out.position.set(local.x, local.y + board.topY, local.z).applyQuaternion(boardPlane.quaternion).add(boardPlane.position);
+        out.normal.set(0, 1, 0).applyQuaternion(boardPlane.quaternion);
+        return out;
+      },
+      boardSurface: (local, out) => {
+        out.set(local.x, board.surfaceY(local.x, local.z), local.z).applyQuaternion(boardPlane.quaternion).add(boardPlane.position);
+        return board.root.visible;
+      },
+      boardDirectionTo: (p) => {
+        const out = new Vector3(0, 0, 1);
+        if (!p) return out;
+        const local = p.clone().sub(boardPlane.position).applyQuaternion(_q.copy(boardPlane.quaternion).invert());
+        local.y = 0;
+        return local.lengthSq() < 1e-6 ? out : local.normalize();
+      },
+      levelPose: () => this.levelPose(),
+      tweenCamera: (to, duration, opts = {}) => this.tweenCamera(to, duration, opts.ease ?? easeInOutQuint, opts.done, opts.arc ?? 0),
+      cameraToMap: (i, duration, ease = easeInOutQuint) => this.cameraToMap(i, duration, ease),
+      fadeSplash: (duration) => this.fadeSplashBacking(duration),
+      focusNode: (i, duration, ease = easeInOut) => this.focusNode(i, duration, ease),
+      snapFocus: (i) => this.snapViewToNode(i),
+      isFocused: (i) => this.isFocused(i),
+      mapFocusPoint: (out) => this.mapFocusPoint(out),
+      placeBoardAt: (i) => this.placeBoardAt(i),
+      setLevelNode: (i) => this.setLevelNode(i),
+      setShadowFocus: (on) => this.setShadowFocus(on),
+      landOnEntry: (entry, local, scale) => this.landOnEntry(entry, local, scale),
+      stripesTo: (y, duration) => {
+        const s0 = this.stripesY;
+        this.tweens.cancel('stripes');
+        this.tweens.add(duration, (t) => (this.stripesY = lerp(s0, y, t)), { ease: easeInOut, tag: 'stripes' });
+      },
+      setFootClear: (on) => world.setFootClear(on ? MAP_VIEW.footClear : 0),
+      isTreeNode: (i) => world.isTreeNode(i),
+      isRailSegment: (a, b) => world.isTreeNode(a) || world.isTreeNode(b),
+      groundAt: (p, out) => {
+        ground.ground(p, out);
+        return out;
+      },
+      display: (p, out) => world.toDisplay(p, out),
+      enterMap: () => {
+        useFlowStore.getState().setPlaying(null);
+        if (!board.root.visible) this.boardPlane.active = false;
+        this.rex?.setVisible(true);
+        world.setFootClear(MAP_VIEW.footClear);
+        this.setPhase('map');
+        this.attachPan();
+      },
+      holdHeroAtSplash: () => this.placeHeroAtSplashDot(),
+    };
   }
 
   // ================================================================================ requests and input
@@ -1483,24 +1716,42 @@ export class FlowScene implements SceneController {
     if (import.meta.env.DEV) console.debug(`[flow] request ${req.kind}${req.node !== undefined ? ` node ${req.node}` : ''} in ${this.phase}`);
     switch (req.kind) {
       case 'hop':
-        this.startHop();
+        // First run in the real mode: the blob jumps straight into level 1 (choreo/intro.ts) instead of onto the map.
+        if (this.phase === 'splash' && this.stage && shouldPlayIntro(useProgress.getState(), FLOW_LEVELS[0]?.level.id)) playIntro(this.stage);
+        else this.startHop();
         break;
-      case 'flyIn':
-        if (this.phase === 'map') this.startFlyIn(req.node ?? useFlowStore.getState().current);
+      case 'intro':
+        if (this.phase === 'splash' && this.stage) playIntro(this.stage);
         break;
+      case 'flyIn': {
+        if (this.phase !== 'map' || !this.stage) break;
+        const node = req.node ?? useFlowStore.getState().current;
+        // Real mode: locked nodes shake their head, REX says why — nothing else happens.
+        if (canEnterNode(node, useProgress.getState())) this.startFlyIn(node);
+        else refuseNode(this.stage, node);
+        break;
+      }
       case 'depart':
-        if (this.phase === 'level') this.startDepart(true);
-        else if (this.phase === 'map') this.hopToNext();
+        if (this.phase === 'level') this.depart(true);
+        else if (this.phase === 'map') this.walkToNext();
         break;
       case 'leave':
-        if (this.phase === 'level') this.startDepart(false);
+        if (this.phase === 'level') this.depart(false);
         break;
       case 'map':
+        // A depart or walk under way lands its progress first (the next node is reached, creatures moved in).
+        this.departure?.finishNow();
+        this.story.finishNow();
         this.detachPan();
         this.enterMapImmediate();
         break;
       case 'splash':
+        this.departure?.finishNow();
+        this.story.finishNow();
         this.enterSplashImmediate();
+        break;
+      case 'story':
+        this.story.tap();
         break;
       default:
         break;
@@ -1521,6 +1772,8 @@ export class FlowScene implements SceneController {
       const dist = Math.hypot(dx, dy);
       const dt = performance.now() - p.t;
       if (this.phase === 'map' && dist < 10 && dt < 450) {
+        // REX is telling his scene: a tap turns the page (in the app the native line lets taps through to here).
+        if (this.story.tap()) return;
         const rect = canvas.getBoundingClientRect();
         const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         const ndcY = 1 - ((e.clientY - rect.top) / rect.height) * 2;
@@ -1536,11 +1789,7 @@ export class FlowScene implements SceneController {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) return;
-      if (this.phase === 'splash') {
-        e.preventDefault();
-        useFlowStore.getState().request('hop');
-        return;
-      }
+      // The splash owns its keys (Enter/Space on "Tippen", src/splash/SplashStage.ts).
       if (this.phase === 'map' && (e.key === 'Enter' || e.key === ' ')) {
         e.preventDefault();
         useFlowStore.getState().request('flyIn');

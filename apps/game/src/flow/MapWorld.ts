@@ -1,7 +1,7 @@
 import { Color, Frustum, Group, Matrix4, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import { CloudBanks, EarlePlanet, FogStripes, PLANET_SHADOW_LAYER, SunRig, createSkyDome, followViewClouds, skySunIndices, type WorldPalette } from '@ee/render';
-import type { Vec3 } from '@ee/world';
+import { hash32, type Vec3 } from '@ee/world';
 import { mixHex } from '@ee/genome';
 import type { FlowQuality } from './quality';
 import type { GroundFrame, MapGround } from './MapCreatures';
@@ -159,6 +159,8 @@ export class MapWorld {
       loadsPerFrame: 2,
       // Schatten v3: Kronenpunkte skalieren mit dem glatten Schattenwert aus 0 (`?dotshadow=0` = alter Vergleich)
       shadow: { factor: typeof location !== 'undefined' && location.search.includes('dotshadow=0') ? null : (p, o) => this.sun.shadowFactor(p, o) },
+      // Schattentönung je Welt (blaue Schatten auf Schnee …) aus den Weltdateien
+      shadowTint: this.sun.shadowTint,
     });
     this.world.vegetation.setNearClear(MAP_VIEW.nearClear);
     this.world.setFootClear(MAP_VIEW.footClear);
@@ -188,6 +190,7 @@ export class MapWorld {
       skyRowB: this.world.skyRowB,
       skyMix: this.world.skyMix,
       horizonY: this.skyHorizon,
+      glow: this.world.skyGlow,
     });
     this.camera.add(sky);
     this.disposables.push(sky.geometry, sky.material as { dispose(): void });
@@ -213,7 +216,7 @@ export class MapWorld {
    * flowers and pedestals take each world's ink, jewel accent, rock, scrap, sand and water.
    */
   pathPalette(): PathPalette {
-    return planetPathPalette(this.world);
+    return planetPathPalette(this.world, this.sun.shadowTint);
   }
 
   /** Direction to the sun in world space (unit). */
@@ -291,52 +294,144 @@ export class MapWorld {
 
   /**
    * The ground seam for everything that walks or rests on the map (MapCreatures, ADR 0002): points in plane
-   * coordinates (x, h, z) — `ground` puts feet on the walkable surface (terrain or rock top), `homeSpot` finds dry
-   * spots in the clearing around a node (off the path, off water and rock feet), `display` maps a plane point onto the
-   * display globe, `focus` is the view focus (the plane point at the apex, on the ground).
+   * coordinates (x, h, z). `ground` / `groundPoint` put feet on the drawn surface (the loaded chunk's triangles, the
+   * deck on rock formations, else the smooth height) a hair below it, `homeSpot` finds dry spots beside the path at a
+   * node (1.1–1.5 from the stone, off the dots, off water and rock; nodes on the giant tree live around the trunk on
+   * the root terrace), `walkable` is dry and rock-free ground, `display` maps a plane point onto the display globe and
+   * `displayRotation` gives the globe's turn there (feet frames stand on the curved ground), `focus` is the point the
+   * map shows (default: the apex).
    */
-  mapGround(): MapGround {
+  mapGround(opts: { focus?: (out: Vector3) => Vector3 } = {}): MapGround & { walkable(p: Vector3): boolean } {
     const world = this.world;
     const layout = this.layout;
     const pos: Vec3 = [0, 0, 0];
     const nor: Vec3 = [0, 0, 0];
-    const frame = (x: number, z: number, out: GroundFrame): void => {
-      world.surfaceAt(x, z, pos, nor);
-      const h = world.walkableHeight(x, z);
-      out.position.set(x, Math.max(h, pos[1]), z);
-      out.normal.set(nor[0], nor[1], nor[2]);
+    const flat = new Vector3();
+    const spot = new Vector3();
+    /** Feet sink this far under the drawn surface (nothing floats). */
+    const SINK = 0.02;
+    /** Homes: distance to the node, clearance to the dots, clearing around the node. */
+    const HOME_MIN = 1.1;
+    const HOME_MAX = 1.5;
+    const DOT_CLEAR = 0.45;
+    const CLEARING = 1.95;
+    const surfaceY = (x: number, z: number): number => {
+      if (world.field.rockAt(x, z, 0) !== null) return world.walkableHeight(x, z);
+      return world.meshHeightAt(x, z) ?? world.heightAt(x, z);
     };
-    const golden = Math.PI * (3 - Math.sqrt(5));
+    const walkable = (p: Vector3): boolean => !world.isWater(p.x, p.z, 0.25) && world.field.rockAt(p.x, p.z, 0.25) === null;
+    const ground = (p: Vector3, out: GroundFrame): void => {
+      world.surfaceAt(p.x, p.z, pos, nor);
+      out.position.set(p.x, surfaceY(p.x, p.z) - SINK, p.z);
+      // half way to the vertical: creatures do not stand askew on a slope
+      out.normal.set(nor[0], nor[1] + 1, nor[2]).normalize();
+    };
+    const nearDots = new Map<number, Array<[number, number]>>();
+    /** Dots within 4 units of the node (plane x, z). */
+    const dotsNear = (node: number): Array<[number, number]> => {
+      let list = nearDots.get(node);
+      if (list) return list;
+      const c = layout.node(node).position;
+      list = layout
+        .window(Math.max(0, node - 1), node + 1)
+        .dots.filter((d) => Math.hypot(d.position[0] - c[0], d.position[2] - c[2]) < 4)
+        .map((d) => [d.position[0], d.position[2]] as [number, number]);
+      if (nearDots.size > 256) nearDots.clear();
+      nearDots.set(node, list);
+      return list;
+    };
+    /** Root terrace of the giant tree (the nodes on its trunk and crown live there). */
+    let terrace: { foot: Vec3; radius: number } | null | undefined;
+    const terraceOf = (): { foot: Vec3; radius: number } | null => {
+      if (terrace !== undefined) return terrace;
+      terrace = null;
+      for (let i = layout.treeFirst; i >= 0 && i <= layout.treeLast; i++) {
+        const o = layout.node(i).stage?.orbit;
+        if (o) {
+          terrace = { foot: o.foot, radius: o.radius };
+          break;
+        }
+      }
+      return terrace;
+    };
     return {
       homeSpot: (node, slot, out) => {
         const n = layout.node(node);
-        const cx = n.position[0];
-        const cz = n.position[2];
-        const win = layout.window(Math.max(0, node - 1), node + 1);
-        // Rings around the node's clearing (1.8–3.4 units), the slot's angle turns by the golden angle
-        for (let tries = 0; tries < 24; tries++) {
-          const k = slot + tries * 7;
-          const a = k * golden + node * 0.37;
-          const r = 1.8 + ((k * 0.618) % 1) * 1.6;
-          const x = cx + Math.cos(a) * r;
-          const z = cz + Math.sin(a) * r;
-          if (world.isWater(x, z, 0.4) || world.field.rockAt(x, z, 0.4) !== null) continue;
-          // off the path: not on the dots or stones of the node's neighbourhood
-          const onPath = win.dots.some((d) => Math.hypot(d.position[0] - x, d.position[2] - z) < 0.55) || win.nodes.some((m) => Math.hypot(m.position[0] - x, m.position[2] - z) < 1.2);
-          if (onPath) continue;
-          frame(x, z, out);
+        const c = n.position;
+        const onTree = this.isTreeNode(node);
+        const t = onTree ? terraceOf() : null;
+        // path direction at the node (toward the next minus from the previous), and the side across it
+        const prev = layout.node(Math.max(0, node - 1)).position;
+        const next = layout.node(node + 1).position;
+        let ax = next[0] - prev[0];
+        let az = next[2] - prev[2];
+        const al = Math.hypot(ax, az);
+        if (al > 1e-6) {
+          ax /= al;
+          az /= al;
+        } else {
+          ax = 0;
+          az = -1;
+        }
+        const side = (hash32('map-side', node, slot) & 1) === 0 ? 1 : -1;
+        for (let attempt = 0; attempt < 14; attempt++) {
+          const h = hash32('map-home', node, slot, attempt);
+          const u1 = (h & 0xffff) / 0xffff;
+          const u2 = ((h >>> 16) & 0xffff) / 0xffff;
+          let x: number;
+          let z: number;
+          if (onTree && t) {
+            // around the trunk on the root terrace, each node at its own angle, its creatures side by side
+            const base = hash32('map-terrace', node) / 0xffffffff;
+            const ang = (base + slot * 0.021 + (u1 - 0.5) * 0.03) * Math.PI * 2;
+            const r = t.radius + 0.6 + u2 * 1.4 + attempt * 0.15;
+            x = t.foot[0] + Math.cos(ang) * r;
+            z = t.foot[2] + Math.sin(ang) * r;
+          } else {
+            // beside the path (side hashed per node and slot), 1.1–1.5 from the node
+            const ang = (u1 - 0.5) * 1.6 + (attempt > 6 ? Math.PI : 0);
+            const d = HOME_MIN + (HOME_MAX - HOME_MIN) * u2;
+            const across = Math.cos(ang) * d * side;
+            const along = Math.sin(ang) * d;
+            x = c[0] + az * across + ax * along;
+            z = c[2] - ax * across + az * along;
+          }
+          spot.set(x, surfaceY(x, z), z);
+          if (!walkable(spot)) continue;
+          if (onTree) {
+            if (this.treeClearance(spot) < 1.2) continue;
+          } else {
+            if (Math.hypot(x - c[0], z - c[2]) > CLEARING) continue;
+            if (dotsNear(node).some((d) => Math.hypot(d[0] - x, d[1] - z) < DOT_CLEAR)) continue;
+          }
+          ground(spot, out);
           return true;
         }
         return false;
       },
-      ground: (p, out) => frame(p.x, p.z, out),
+      ground,
+      groundPoint: (p, out) => out.set(p.x, surfaceY(p.x, p.z) - SINK, p.z),
+      walkable,
       display: (p, out) => world.toDisplay(p, out),
-      focus: (out) => out.set(world.focus.x, world.walkableHeight(world.focus.x, world.focus.z), world.focus.z),
+      displayRotation: (p, out) => world.mapping.rotationAt(world.toFlat(p, flat), out),
+      focus: opts.focus ?? ((out) => out.set(world.focus.x, world.walkableHeight(world.focus.x, world.focus.z), world.focus.z)),
     };
   }
 
   walkableHeight(x: number, z: number): number {
     return this.world.walkableHeight(x, z);
+  }
+
+  /**
+   * How far the landmark of node `index` rises above the node's stone (the ruin's tower over its terrace), 0 without a
+   * landmark — the map camera pulls back for tall silhouettes.
+   */
+  landmarkRiseAbove(index: number): number {
+    const lm = this.layout.node(index).landmark;
+    if (!lm) return 0;
+    const inst = this.world.landmarkList.find((l) => l.placement.id === lm.id);
+    if (!inst) return 0;
+    return Math.max(0, inst.placement.y + inst.blueprint.height - lm.anchor.position[1]);
   }
 
   // --- progress ----------------------------------------------------------------------------------------
@@ -602,13 +697,14 @@ export function tangentFrame(normal: Vector3, forwardHint: Vector3, out: Matrix4
   return out.makeBasis(right, up, fwd);
 }
 
-/** Palette context of the path visuals on the infinite world (see `MapWorld.pathPalette`). */
-export function planetPathPalette(world: EarlePlanet): PathPalette {
+/** Palette context of the path visuals on the infinite world (see `MapWorld.pathPalette`); `shadowTint` tints the stones' shadows per world slot. */
+export function planetPathPalette(world: EarlePlanet, shadowTint: PathPalette['shadowTint'] = null): PathPalette {
   return {
     lookup: world.lookup,
     fog: world.fog,
     bands: world.terrainBands,
     terrainRow: (w) => world.rowsOfWorld(w).terrain,
     colors: (w) => worldPathColors(world.worldData(w).palette, world.worldData(w).id),
+    shadowTint,
   };
 }

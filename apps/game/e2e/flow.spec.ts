@@ -1,10 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Unter SwiftShader (CI) laufen die Kamerafahrten mit 0,1-s-Schritten bei wenigen fps → deutlich längere Wartezeiten.
-// SwiftShader renders the fly-in (with the board pipelines compiling ahead) at a few fps: generous locally too — on a
-// busy Mac (other GPU tests running) the fly-in to level 1 took ≈ 62 s on main and ≈ 65 s on the plane (2026-09-30).
+// Die Szenenuhr zählt Bildschritte (höchstens 0,1 s je Bild): unter SwiftShader (≈ 1 fps, lokal wie auf CI) dauern
+// Kamerafahrten und Übergänge ein Vielfaches ihrer Sollzeit.
 const TRANSITION_MS = 90_000;
-test.setTimeout(360_000);
+/** Der Loader geht erst nach dem Aufwärmen aller Karten-Shader auf 100 % — unter SwiftShader dauert das. */
+const LOADER_MS = process.env.CI ? 240_000 : 150_000;
+test.setTimeout(process.env.CI ? 480_000 : 360_000);
 
 // P5 Flow-Lab: one take without cuts. Runs on the WebGL2 fallback (SwiftShader) like the smoke tests.
 
@@ -23,13 +24,16 @@ async function waitForRenderer(page: Page): Promise<void> {
 }
 
 test('/ zeigt den Splash; ein Tipp startet den Hüpfer und endet auf der Map', async ({ page }) => {
+  test.setTimeout(process.env.CI ? 480_000 : 330_000);
   const errors = collectErrors(page);
-  await page.goto('/');
+  // Freier Modus: der Hüpfer auf die Map wie bisher (im echten Modus spielt der erste Start das Intro, progression.spec).
+  await page.goto('/?mode=free');
+  // Loader und Splash liegen außerhalb von #root (index.html); nach 100 % baut sich das Logo auf, dann "Tippen"
   await expect(page.getByTestId('splash')).toBeVisible();
-  await expect(page.locator('img.splash-img')).toBeVisible();
   await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', 'splash');
   await waitForRenderer(page);
-  await page.mouse.click(400, 300);
+  await expect(page.getByTestId('splash')).toHaveAttribute('data-phase', 'idle', { timeout: LOADER_MS });
+  await page.mouse.click(200, 300);
   await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', /hop|map/, { timeout: TRANSITION_MS });
   await expect(page.getByTestId('flow-hud')).toHaveAttribute('data-flow-state', 'map', { timeout: TRANSITION_MS });
   await expect(page.getByTestId('splash')).toHaveCount(0, { timeout: TRANSITION_MS });
@@ -219,7 +223,8 @@ test('/play startet auf der Map mit Glas-HUD; Spielen fliegt ins Level, Wisch/Ta
     if (state === 'depart' || state === 'map') break;
   }
   await expect(hud).toHaveAttribute('data-flow-state', /depart|map/, { timeout: TRANSITION_MS });
-  await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: TRANSITION_MS });
+  // Aufbruch und Weg über die Punkte (depart → travel → map): zwei Choreografien hintereinander auf der Szenenuhr
+  await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: TRANSITION_MS * 2 });
   await expect(page.getByTestId('hud-top').locator('h1')).toContainText('Level 2');
   expect(errors).toEqual([]);
 });
