@@ -2,6 +2,7 @@ import { LightingModel, NodeMaterial } from 'three/webgpu';
 import type { Node, NodeBuilder } from 'three/webgpu';
 import { clamp, min, mix, normalView, smoothstep, uniform, vec3 } from 'three/tsl';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
+import type { ShadowTint } from '../shadow/shadowTint';
 
 export interface EarlePattern {
   /** Maske 0..1 des Ornaments (Linien, Schraffur, Flechten) — nur im Licht sichtbar, nie in der Tinte. */
@@ -67,6 +68,12 @@ export interface EarleMaterialOptions {
   fogDistNode?: FloatNode | null;
   /** Überblendete Oberflächen (in Reihenfolge), z. B. Schneefeld, dann Wasser. */
   layers?: EarleLayer[] | null;
+  /**
+   * Schattentönung je Welt (Schatten v3, `SunRig.shadowTint`): die Tintenform (Eigen- und Schlagschatten) mischt zur
+   * Farbe der Welt `world` — z. B. blaue Schatten auf Schnee wie in Earles Tannenwald. Ohne gesetzte Tönung (amount 0)
+   * bleibt die Tinte exakt; Risse bleiben tiefe Tinte, Schichten mit eigener Schattenfarbe (Schneefeld, Wasser) bleiben.
+   */
+  shadowTint?: { tint: ShadowTint; world: FloatNode } | null;
 }
 
 /**
@@ -96,6 +103,7 @@ export class EarleMaterial extends NodeMaterial {
     terminatorNode: FloatNode | null;
     fogDistNode: FloatNode | null;
     layers: EarleLayer[];
+    shadowTint: { tint: ShadowTint; world: FloatNode } | null;
   };
 
   constructor(options: EarleMaterialOptions) {
@@ -119,6 +127,7 @@ export class EarleMaterial extends NodeMaterial {
       terminatorNode: options.terminatorNode ?? null,
       fogDistNode: options.fogDistNode ?? null,
       layers: options.layers ?? [],
+      shadowTint: options.shadowTint ?? null,
     };
     if (options.normalNode) this.normalNode = options.normalNode;
     if (options.positionNode) this.positionNode = options.positionNode;
@@ -150,7 +159,10 @@ class EarleLightingModel extends LightingModel {
     let litColor = e.lookup.bands(band, row, 1).rgb;
     if (e.pattern) litColor = mix(litColor, e.pattern.color, e.pattern.mask);
     const ink = e.lookup.pal(0, row).rgb;
-    const shadowSide = e.pattern?.shadowColor ? mix(ink, e.pattern.shadowColor, e.pattern.mask) : ink;
+    // Tintenform in der Schattenfarbe der Welt (eine Form aus Eigen- und Schlagschatten, nur ihre Farbe wird getönt)
+    const tint = e.shadowTint;
+    const tinted = (c: Vec3Node): Vec3Node => (tint ? tint.tint.tintInk(c, tint.world) : c);
+    const shadowSide = tinted((e.pattern?.shadowColor ? mix(ink, e.pattern.shadowColor, e.pattern.mask) : ink) as unknown as Vec3Node);
     let col = mix(shadowSide, litColor, lit);
     // Überblendete Oberflächen (Schneefeld, Wasser): eigene Zeile oder feste Farben, gleiche Bänder bzw. nur Schlagschatten
     for (const layer of e.layers) {

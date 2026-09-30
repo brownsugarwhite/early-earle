@@ -147,6 +147,7 @@ const WorldSchema = z
     vegetation: z.object({ density: z.number().min(0) }).passthrough(),
     fog: z.object({ start: z.number(), range: z.number().positive() }).passthrough(),
     view: z.object({ fov: z.number().min(10).max(120) }).passthrough(),
+    shadowTint: z.object({ color: Hex, amount: z.number().min(0).max(1) }).optional(),
   })
   .passthrough();
 

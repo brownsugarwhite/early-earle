@@ -36,6 +36,11 @@ export interface WorldContent {
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
+  /**
+   * Schattentönung (Schatten v3): Farbe und Stärke 0..1, zu der die Tinte des Geländes im Schatten gemischt wird —
+   * Schnee bekommt Earles blaue (Tannenwald) bzw. graue (rote Scheune) Schatten. Fehlt → reine Tinte.
+   */
+  shadowTint?: { color: string; amount: number };
   /** Fokus-Element der Komposition (Baum oder Requisit am Slot; nahe Welten neben dem Pfad). */
   /**
    * Fokus der Weltkomposition: mit `kind` ein Fokus-Element (Scheune, Wurzelbaum …) am Slot, ohne `kind` nur ein
@@ -125,6 +130,7 @@ export function planetWorlds(): EarlePlanetWorld[] {
       fogStripes: w.fogStripes,
       fog: w.fog,
       view: w.view,
+      ...(w.shadowTint ? { shadowTint: w.shadowTint } : {}),
     };
   });
 }

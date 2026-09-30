@@ -76,6 +76,11 @@ export interface EarlePlanetWorld {
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
+  /**
+   * Schattentönung der Welt (Schatten v3): Farbe und Stärke 0..1, zu der die Tinte des Geländes im Schatten gemischt
+   * wird (Schnee: blau wie Earles Tannenwald, grau wie bei der roten Scheune). Fehlt → reine Tinte.
+   */
+  shadowTint?: { color: string; amount: number };
 }
 
 export interface EarlePlanetQuality {
@@ -443,6 +448,9 @@ export class EarlePlanet {
     // Gemeißelte Hänge: Wertstufen entlang der Höhenlinien (Stufensprung im Bandwert je Höhenschicht)
     const chisel = wa.w;
     const contour = fract(heightAttr.mul(5.0).add(0.5)).sub(0.5).mul(0.34);
+    // Schattentönung je Welt (Uniforms des Sonnen-Rigs; die Werte kommen aus den Weltdateien)
+    const shadowTint = options.shadow?.tint ?? null;
+    if (shadowTint) this.worlds.forEach((w, i) => (w.shadowTint ? shadowTint.set(i, w.shadowTint.color, w.shadowTint.amount) : shadowTint.clear(i)));
 
     this.terrainMaterial = new EarleMaterial({
       lookup: this.lookup,
@@ -460,6 +468,7 @@ export class EarlePlanet {
       layers: [snowField],
       positionNode: warp(positionLocal),
       fogDistNode: positionView.length().add(this.veilNode(worldIndex)),
+      shadowTint: shadowTint ? { tint: shadowTint, world: worldIndex } : null,
     });
 
     // --- Felsen, Wasser, Scheunen, Schneewehen -----------------------------------------------------------
@@ -490,6 +499,7 @@ export class EarlePlanet {
       warp,
       capacity: options.quality.capacity.trees > 1500 ? 700 : 360,
       growth: slotGrowth,
+      shadowTint,
     });
     this.group.add(this.drifts.mesh);
 

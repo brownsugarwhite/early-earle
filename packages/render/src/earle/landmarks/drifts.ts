@@ -2,6 +2,7 @@ import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, InstancedMes
 import { attribute, float, floor, fract, hash, mix, positionGeometry, positionLocal, positionView, step, vec2 } from 'three/tsl';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
+import type { ShadowTint } from '../../shadow/shadowTint';
 
 /**
  * Einheits-Schneewehe (Radius 1, Höhe ≈ 0.42): flacher, unregelmäßiger Hügel mit langem Schweif auf einer Seite
@@ -88,6 +89,8 @@ export interface DriftOptions {
   capacity: number;
   /** Wachstum/Heilung 0..1 je Chunk-Slot (Instanzattribut); fehlt → immer geheilt. */
   growth?: (slot: FloatNode) => FloatNode;
+  /** Schattentönung je Welt (wie das Gelände: Schnee im Schatten blau bzw. grau statt Tinte). */
+  shadowTint?: ShadowTint | null;
 }
 
 export interface DriftPlacement {
@@ -137,6 +140,7 @@ export class DriftLandmarks {
       positionNode: o.warp(positionLocal),
       fogDistNode: positionView.length().add(o.veil(world)),
       growthNode: o.growth ? o.growth(inst.z) : null,
+      shadowTint: o.shadowTint ? { tint: o.shadowTint, world } : null,
     });
     const mesh = new InstancedMesh(this.geometry, this.material, o.capacity);
     mesh.name = 'planet-drifts';
