@@ -35,6 +35,7 @@ const MODES: Array<{ id: LabMode; label: string }> = [
   { id: 'compare', label: 'Vergleichen' },
   { id: 'grid', label: '36 × Stufe 4' },
   { id: 'herd', label: '36 × Vierbeiner' },
+  { id: 'zoo', label: '36 × Arten' },
   { id: 'merge', label: 'Verschmelzen' },
 ];
 const CANDIDATES: Array<{ id: BodyCandidate; label: string }> = [
@@ -98,7 +99,7 @@ export function Slider({ label, value, min, max, step, onChange, format, testId 
   );
 }
 
-const EMPTY_INFO: CreatureLabInfo = { creatures: 0, parts: 0, partDrawCalls: 0, modules: 0, missing: [], merging: false, inheritance: [], partIds: [], rigMs: 0, motionMs: 0, bodyType: null, species: null, gait: null, massKg: 0, speed: 0, motionState: '' };
+const EMPTY_INFO: CreatureLabInfo = { creatures: 0, parts: 0, partDrawCalls: 0, modules: 0, missing: [], merging: false, inheritance: [], partIds: [], rigMs: 0, motionMs: 0, bodyType: null, species: null, gait: null, massKg: 0, speed: 0, motionState: '', meshInstances: 0, meshVertices: 0 };
 
 /** "Zufall": species × zone × tier × seed — characterful variety, not just another seed. */
 function randomVariety(mode: LabMode): Partial<CreatureLabSettings> {
@@ -123,6 +124,7 @@ function StatusLine({ subscribe, quality, initial }: { subscribe: Set<(i: Creatu
     <span className="creature-info creature-status" data-testid="creature-lab-info" data-warn={info.missing.length > 0}>
       {info.creatures} Figuren · {info.parts} Teile · {info.partDrawCalls} Teil-Draw-Calls · {info.modules} Module · Rig {info.rigMs} ms · Bewegung {info.motionMs} ms · Qualität {resolveQuality(quality) === 'mobile' ? 'Mobil' : 'Hoch'}
       {info.bodyType ? ` · ${bodyLabel} · ${gaitLabel} · Masse ${info.massKg}${info.motionState ? ` · ${info.motionState}` : ''}${info.speed > 0.01 ? ` · ${info.speed} m/s` : ''}` : ''}
+      {info.meshInstances > 0 ? ` · Mesh ${info.meshInstances} × (${Math.round(info.meshVertices / 1000)}k Vertices)` : ''}
       {info.merging ? ' · verschmilzt…' : ''}
       {info.missing.length ? ` · fehlend: ${info.missing.join(', ')}` : ''}
       {info.inheritance.length ? `\nKind erbt: ${info.inheritance.join(' · ')}` : ''}
@@ -214,7 +216,7 @@ export function LabCreature() {
 
   const selectedPart = info.partIds.find((p) => p.id === selected) ?? null;
   const ov = selectedPart ? settings.overrides[selectedPart.id] ?? {} : {};
-  const motionMode = settings.mode === 'motion' || settings.mode === 'herd' || settings.mode === 'sketch';
+  const motionMode = settings.mode === 'motion' || settings.mode === 'herd' || settings.mode === 'zoo' || settings.mode === 'sketch';
 
   const controls = (
     <div className="creature-controls" data-testid="creature-lab-controls" ref={controlsRef}>
@@ -233,6 +235,9 @@ export function LabCreature() {
         <Seg label="Beine" value={settings.legs} options={LEG_CHOICES} onChange={(legs) => set({ legs })} testId="ctl-legs" />
         <button type="button" className="creature-btn" data-active={settings.topDown} onClick={() => set({ topDown: !settings.topDown })} data-testid="btn-topdown">
           Draufsicht 65°
+        </button>
+        <button type="button" className="creature-btn" data-active={settings.meshBodies} onClick={() => set({ meshBodies: !settings.meshBodies })} data-testid="btn-meshbodies" title="Arten als geskinnte Meshes (Board/iPhone-Pfad); aus = Icosphere/Raymarch">
+          Arten-Mesh
         </button>
       </div>
       <div className="creature-row">
