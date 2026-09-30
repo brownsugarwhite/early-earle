@@ -9,11 +9,13 @@ import { Trackball } from '../lab/earle/trackball';
 import rexUrl from '../../../../assets/ref-florian/07-illudiy-logo-rex.png';
 import { useFlowStore, type FlowPhase, type FlowRequest } from './flowStore';
 import { MAP_VIEW, MAP_VIEW_PORTRAIT, MapWorld, PLANET_RADIUS, tangentFrame } from './MapWorld';
-import type { PathLayout, PathNode } from './path';
+import type { NodeSite, PathLayout, PathNode } from './path';
+import { plateauStyleFor } from './siteStyle';
 import { NodePath } from './NodePath';
 import { Hero, SHADOW_PROXY_LAYER, type HeroPose } from './Hero';
 import { Rex } from './Rex';
-import { LevelBoard } from './LevelBoard';
+import { LevelBoard, PITCH } from './LevelBoard';
+import { readHudBands } from './hudBands';
 import { resolveFlowQuality } from './quality';
 import { Tweens, easeInOut, easeInOutQuint, easeOut, lerp } from './tween';
 import { demoState } from '../lab/grid/demoLevel';
@@ -36,6 +38,8 @@ const MAP_FOV = MAP_VIEW.fov;
 const SPLASH_ZOOM = 0.62;
 const SPLASH_FOV = 58;
 const LEVEL_FOV = 40;
+/** Phones: a touch wider, so the landscape beyond the grid keeps some perspective. */
+const LEVEL_FOV_PORTRAIT = 44;
 /** Hero size on the map (MAP_VIEW frames the planet wider than the old map camera). */
 const HERO_MAP_SCALE = 0.48;
 /** Depth (in front of the camera) at which the hero floats as the splash i-dot. */
@@ -61,6 +65,9 @@ const REX_DEPTH = 12;
 const T_HOP = 1.4;
 const T_FLY_IN = 1.2;
 const T_DEPART = 1.3;
+/** Depart celebration (flow clock from the depart's launch): start and how long the wave runs to the next node. */
+const T_CELEBRATE_AT = 0.69;
+const T_CELEBRATE = 0.78;
 const T_AUTO_ROTATE = 1.0;
 /**
  * Board v2 fly-in (flow clock): the plateau starts heaving at T_RISE_AT (its own ≈1.3 s wall-clock
@@ -80,6 +87,7 @@ const _Y = new Vector3(0, 1, 0);
 const _m4 = new Matrix4();
 const _v = new Vector3();
 const _v2 = new Vector3();
+const _v3 = new Vector3();
 const _q = new Quaternion();
 
 function lookAtQuaternion(eye: Vector3, target: Vector3, up: Vector3, out: Quaternion): Quaternion {
@@ -150,7 +158,7 @@ export class FlowScene implements SceneController {
     // Nodes and path on the planet (sun direction in planet space for the offset shadows).
     world.rig.updateWorldMatrix(true, true);
     const sunLocal = world.sunDirection(new Vector3());
-    this.nodePath = new NodePath(layout, sunLocal, { onProgress: (_current, done) => world.setProgress(done) });
+    this.nodePath = new NodePath(layout, sunLocal, { onProgress: (_current, done) => world.setProgress(done) }, { palette: world.pathPalette() });
     world.planet.add(this.nodePath.group);
 
     this.hero = new Hero(ZONE, { octaves: q.blobOctaves });
@@ -259,7 +267,7 @@ export class FlowScene implements SceneController {
       board.setCarrier({ matrixWorld: hero.root.matrixWorld, params: hero.genome, standY: hero.standY(), scale: hero.scale, jiggle: hero.jiggle, visible: hero.root.visible });
     }
     board.update(dt, world.camera);
-    nodePath.update(elapsed);
+    nodePath.update(elapsed, world.sunDirection(_v3));
     if (this.rex) {
       this.rex.update(dt, elapsed);
       const rexNdc = this.portrait ? REX_NDC_PORTRAIT : REX_NDC;
@@ -364,35 +372,83 @@ export class FlowScene implements SceneController {
     const board = this.board!;
     const aspect = world.camera.aspect;
     const portrait = aspect < 1;
+    const W = this.ctx?.width ?? 800;
     const H = this.ctx?.height ?? 800;
-    // HUD insets in CSS px: top pill / REX line + action row (portrait wraps taller).
-    const topInset = (portrait ? 104 : 86) / H;
-    const bottomInset = (portrait ? 180 : 150) / H;
-    const usable = Math.max(0.35, 1 - topInset - bottomInset);
-    const bandCenter = bottomInset - topInset;
-    const fp = board.footprint;
-    const W = fp.maxX - fp.minX;
-    const D = fp.maxZ - fp.minZ;
-    const cz = (fp.minZ + fp.maxZ) / 2;
-    const tanV = Math.tan((LEVEL_FOV * Math.PI) / 360);
-    const tanH = tanV * aspect;
+    const fov = portrait ? LEVEL_FOV_PORTRAIT : LEVEL_FOV;
+    const tanV = Math.tan((fov * Math.PI) / 360);
+    // The free band between the top pill and the bottom row (native frames in the app, DOM on the web).
+    const hud = readHudBands('level', W, H);
+    const side = Math.max(hud.safe.left, hud.safe.right);
+    const margin = (portrait ? Math.max(14, Math.min(26, W * 0.05)) : Math.max(24, W * 0.04)) + side;
+    const bandTop = 1 - (2 * (hud.top + 8)) / H;
+    const bandBottom = 1 - (2 * (hud.bottom - 8)) / H;
+    const bandH = Math.max(0.3, bandTop - bandBottom);
+    const bandC = (bandTop + bandBottom) / 2;
+    // Phones: the grid fills the width (safe margins); landscape: the grid and its goal ledge fill the band's height.
+    const targetW = (2 * (W - 2 * margin)) / W;
+    const gx = (board.w * PITCH) / 2;
+    const gz = (board.h * PITCH) / 2;
+    const top = board.topY;
+    const goalZ = board.goalZ;
+    const pts: Array<[number, number, number]> = [
+      [-gx, top, gz],
+      [gx, top, gz],
+      [-gx, top, -gz],
+      [gx, top, -gz],
+      [-gx * 0.5, top + 0.35, goalZ],
+      [gx * 0.5, top + 0.35, goalZ],
+    ];
     // Creatures read from above (designer sketch): the level camera looks down ≈ 67° (portrait) / 63°.
     const pitch = portrait ? 1.17 : 1.1;
-    const breathe = portrait ? 1.12 : 1.16;
-    const dW = (W / 2 / tanH) * breathe;
-    const dD = ((D * Math.sin(pitch) + 1.2 * Math.cos(pitch)) / 2 / (tanV * usable)) * breathe;
-    const dist = Math.max(dW, dD);
-    const top = board.topY;
-    const eye = new Vector3(0, top + dist * Math.sin(pitch), cz + dist * Math.cos(pitch));
-    const target = new Vector3(0, top - 0.1, cz);
+    const cz = (gz + goalZ) / 2;
+    const target = new Vector3(0, top, cz);
+    const cam = this.probeCamera;
+    cam.fov = fov;
+    cam.aspect = aspect;
+    cam.updateProjectionMatrix();
     board.root.updateWorldMatrix(true, false);
-    board.root.localToWorld(eye);
-    board.root.localToWorld(target);
     const up = _Y.clone().applyQuaternion(board.root.getWorldQuaternion(_q));
-    const quaternion = lookAtQuaternion(eye, target, up, new Quaternion());
-    quaternion.multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.atan(bandCenter * tanV)));
-    eye.sub(world.rig.position);
-    return { position: eye, quaternion, fov: LEVEL_FOV };
+    const targetW4 = target.clone();
+    board.root.localToWorld(targetW4);
+    const eye = new Vector3();
+    const bounds = (): { minX: number; maxX: number; minY: number; maxY: number } => {
+      cam.updateMatrixWorld(true);
+      const b = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+      pts.forEach(([x, y, z], i) => {
+        _v.set(x, y, z);
+        board.root.localToWorld(_v);
+        _v.project(cam);
+        if (i < 4) {
+          b.minX = Math.min(b.minX, _v.x);
+          b.maxX = Math.max(b.maxX, _v.x);
+        }
+        b.minY = Math.min(b.minY, _v.y);
+        b.maxY = Math.max(b.maxY, _v.y);
+      });
+      return b;
+    };
+    const setEye = (d: number): void => {
+      eye.set(0, top + d * Math.sin(pitch), cz + d * Math.cos(pitch));
+      board.root.localToWorld(eye);
+      cam.position.copy(eye);
+      lookAtQuaternion(eye, targetW4, up, cam.quaternion);
+    };
+    // Projected sizes shrink ∝ 1/d: a few fixed-point steps settle the distance.
+    let d = Math.max(4, (gx + gz) * 2.2);
+    for (let it = 0; it < 5; it++) {
+      setEye(d);
+      const b = bounds();
+      const k = Math.max((b.maxX - b.minX) / targetW, (b.maxY - b.minY) / (bandH * 0.94));
+      d *= k;
+    }
+    setEye(d);
+    const b = bounds();
+    // Tilt so the grid and its goal ledge centre in the band (content above the centre → look up a little).
+    const phi = Math.atan(((b.maxY + b.minY) / 2) * tanV);
+    const alpha = phi - Math.atan(bandC * tanV);
+    const quaternion = cam.quaternion.clone().multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), alpha));
+    const position = eye.clone().sub(world.rig.position);
+    return { position, quaternion, fov };
   }
 
   private currentPose(): CameraPose {
@@ -595,35 +651,78 @@ export class FlowScene implements SceneController {
     else this.world?.markShadowDirty(); // MapWorld refits to the planet and re-renders
   }
 
-  /** Places the (hidden) board at a node: tangent frame facing the camera, plate height from the terrain. */
+  /**
+   * Where the level of a node is played: on the node, or on its stage (a trunk node plays on the root terrace). The
+   * plateau stands level (radial up), whatever the slope under the stone. A stage that circles a landmark takes its
+   * sunlit side (the root terrace: the low sun can sit below the local horizon a few degrees from the look point).
+   */
+  private stageOf(index: number): { position: Vector3; normal: Vector3; facing: Vector3 | null; site: NodeSite; world: number; terrain: [number, number] | null; away: boolean } {
+    const node = this.layout!.nodes[index]!;
+    const st = node.stage;
+    const world = this.world!;
+    let position = new Vector3(...(st?.position ?? node.position));
+    let facing: Vector3 | null = st?.facing ? new Vector3(...st.facing) : null;
+    if (st?.orbit) {
+      const foot = new Vector3(...st.orbit.foot);
+      const up = new Vector3(...st.orbit.up);
+      world.rig.updateWorldMatrix(true, true);
+      const sun = world.sunDirection(new Vector3()).applyQuaternion(world.planet.getWorldQuaternion(_q).invert());
+      const toSun = sun.addScaledVector(up, -sun.dot(up));
+      const nodeDir = new Vector3(...node.position).sub(foot);
+      nodeDir.addScaledVector(up, -nodeDir.dot(up)).normalize();
+      if (toSun.lengthSq() > 1e-6) {
+        toSun.normalize();
+        // Mostly toward the sun, a little toward the node (every trunk level a slightly different view of the tree).
+        const dir = toSun.multiplyScalar(0.75).addScaledVector(nodeDir, 0.25).normalize();
+        const q = foot.clone().addScaledVector(dir, st.orbit.radius).normalize();
+        position = q.multiplyScalar(world.surfaceRadius(q));
+        // The camera comes from the side (the sun rakes across the board, the trunk rises behind it).
+        facing = dir.clone().applyAxisAngle(up, 0.95);
+      }
+    }
+    const normal = position.clone().normalize();
+    const away = !!st && position.distanceTo(new Vector3(...node.position)) > 0.8;
+    return { position, normal, facing, site: st?.site ?? node.site ?? 'meadow', world: node.world ?? 0, terrain: st?.terrain ?? null, away };
+  }
+
+  /**
+   * Places the (hidden) board where its level is played: tangent frame facing the camera (or the stage's facing),
+   * plate height from the terrain, and the look of the place (plateau family, colours and rim from the site and
+   * the local Earle world).
+   */
   private placeBoardAt(index: number): void {
     const world = this.world!;
     const board = this.board!;
-    const node = this.layout!.nodes[index]!;
-    const position = new Vector3(node.position[0], node.position[1], node.position[2]);
-    const normal = new Vector3(node.normal[0], node.normal[1], node.normal[2]);
+    const stage = this.stageOf(index);
+    const position = stage.position;
+    const normal = stage.normal;
     const camLocal = world.planet.worldToLocal(world.camera.getWorldPosition(new Vector3()));
-    tangentFrame(normal, camLocal.sub(position), _m4);
+    tangentFrame(normal, stage.facing ?? camLocal.sub(position), _m4);
     board.root.position.copy(position);
     board.root.quaternion.setFromRotationMatrix(_m4);
     board.root.updateMatrix();
-    // Terrain under the footprint (skirt included): the top clears the highest point, the skirt and the sunk
-    // hill reach below the lowest.
-    const fp = board.footprint;
-    const rNode = position.length();
-    let maxD = -Infinity;
-    let minD = Infinity;
-    const N = 6;
-    for (let j = 0; j <= N; j++) {
-      for (let i = 0; i <= N; i++) {
-        _v.set(fp.minX + ((fp.maxX - fp.minX) * i) / N, 0, fp.minZ + ((fp.maxZ - fp.minZ) * j) / N).applyMatrix4(board.root.matrix);
-        const r = world.surfaceRadius(_v2.copy(_v).normalize());
-        const d = r - rNode;
-        maxD = Math.max(maxD, d);
-        minD = Math.min(minD, d);
+    board.setSite(plateauStyleFor(stage.site, stage.world), index);
+    if (stage.terrain) {
+      board.setTerrain(stage.terrain[0], stage.terrain[1]);
+    } else {
+      // Terrain under the footprint (skirt included): the top clears the highest point, the skirt and the sunk
+      // hill reach below the lowest.
+      const fp = board.footprint;
+      const rNode = position.length();
+      let maxD = -Infinity;
+      let minD = Infinity;
+      const N = 6;
+      for (let j = 0; j <= N; j++) {
+        for (let i = 0; i <= N; i++) {
+          _v.set(fp.minX + ((fp.maxX - fp.minX) * i) / N, 0, fp.minZ + ((fp.maxZ - fp.minZ) * j) / N).applyMatrix4(board.root.matrix);
+          const r = world.surfaceRadius(_v2.copy(_v).normalize());
+          const d = r - rNode;
+          maxD = Math.max(maxD, d);
+          minD = Math.min(minD, d);
+        }
       }
+      board.setTerrain(Math.min(0, minD), Math.max(0, maxD));
     }
-    board.setTerrain(Math.min(0, minD), Math.max(0, maxD));
     // Sun in board space: peel direction of the scrap layers and the plateau's ink offset shadow.
     world.rig.updateWorldMatrix(true, true);
     board.root.updateWorldMatrix(true, false);
@@ -677,6 +776,7 @@ export class FlowScene implements SceneController {
   private enterMapImmediate(): void {
     this.tweens.clear();
     this.setShadowFocus(false);
+    this.nodePath?.setLevelNode(null);
     if (this.board!.carrying) this.board!.setPartsOnly(true);
     else this.board!.root.visible = false;
     this.board!.unbind();
@@ -729,6 +829,7 @@ export class FlowScene implements SceneController {
     board.dropCarried();
     board.bind();
     this.placeBoardAt(node);
+    if (!this.stageOf(node).away) this.nodePath?.setLevelNode(node);
     board.setRise(1);
     board.setMorph(1);
     board.setBlobPop(1);
@@ -831,6 +932,9 @@ export class FlowScene implements SceneController {
     // The level arrives hidden: a round hill under the terrain, plates folded into it, props and blobs at 0.
     board.bind({ hidden: true });
     this.placeBoardAt(node);
+    const stage = this.stageOf(node);
+    // The plateau heaves up where the node's stone lies (unless the level plays on a stage beside the node).
+    if (!stage.away) this.nodePath!.setLevelNode(node);
     const entry = board.entryBlob(hero.tier);
     if (entry) board.setBlobHidden(entry.id, true);
 
@@ -843,31 +947,34 @@ export class FlowScene implements SceneController {
     // The hill heaves out of the terrain under the hero and flattens into the stepped plateau; plates swing
     // up in a wave from the near edge, props pop, blobs pop (the board's own wall-clock choreography).
     this.tweens.after(T_RISE_AT, () => board.playRise());
-    // The hero stands on the node = the plateau's centre: it rides the heave up until it jumps.
+    // The hero stands on the node = the plateau's centre: it rides the heave up until it jumps. On a stage beside
+    // the node (the root terrace below a stone on the bark) it stays put and leaps down.
     const riding = this.nodePose(node);
     let lifted = false;
-    this.tweens.add(
-      T_HERO_LAUNCH - T_RISE_AT,
-      () => {
-        const y = board.surfaceY(0, 0);
-        if (y <= 0.001) return;
-        if (!lifted) {
-          lifted = true;
-          hero.impulse(0.7);
-        }
-        _v.set(0, y, 0).applyMatrix4(board.root.matrix);
-        hero.setPose({ position: _v.clone(), quaternion: riding.quaternion, scale: riding.scale });
-      },
-      { delay: T_RISE_AT, ease: (t) => t },
-    );
+    if (!stage.away) {
+      this.tweens.add(
+        T_HERO_LAUNCH - T_RISE_AT,
+        () => {
+          const y = board.surfaceY(0, 0);
+          if (y <= 0.001) return;
+          if (!lifted) {
+            lifted = true;
+            hero.impulse(0.7);
+          }
+          _v.set(0, y, 0).applyMatrix4(board.root.matrix);
+          hero.setPose({ position: _v.clone(), quaternion: riding.quaternion, scale: riding.scale });
+        },
+        { delay: T_RISE_AT, ease: (t) => t },
+      );
+    }
     // Crouch, then the jump onto its own cell; the landing splats and hands over to that blob.
     this.tweens.after(T_HERO_LAUNCH - 0.14, () => hero.impulse(1.0));
     const scale = entry ? board.worldScale(entry.tier) : 0.02;
     const local = entry ? entry.local.clone() : new Vector3(0, 0, 0);
     this.tweens.after(T_HERO_LAUNCH, () => {
       hero.flyTo(this.boardPose(local, scale), {
-        duration: T_HERO_FLIGHT,
-        arc: 1.15,
+        duration: T_HERO_FLIGHT * (stage.away ? 1.35 : 1),
+        arc: stage.away ? 2.2 : 1.15,
         ease: easeInOut,
         done: () => {
           board.dropCarried();
@@ -978,6 +1085,15 @@ export class FlowScene implements SceneController {
       board.playSink(top?.id ?? null);
     });
     this.tweens.after(0.24 + T_DEPART * 0.4, () => this.setShadowFocus(false));
+    // Celebration along the path while the camera pulls out: the won stone opens into a flower, the stretch to the
+    // next node pops dot by dot behind the flying hero, the ring grows in around it as it lands.
+    this.tweens.after(T_CELEBRATE_AT, () => {
+      const path = this.nodePath!;
+      path.setLevelNode(null);
+      if (!won) return;
+      path.celebrate(current, next, T_CELEBRATE);
+      path.setProgress(next, Math.max(path.doneCount, current + 1));
+    });
     this.tweens.after(0.24 + T_DEPART, () => {
       // The plateau is gone; a carried creature keeps its parts on the hero until the next level.
       if (board.carrying) board.setPartsOnly(true);
@@ -1005,6 +1121,7 @@ export class FlowScene implements SceneController {
     const next = Math.min(flow.current + 1, this.layout!.nodes.length - 1);
     if (next === flow.current) return;
     this.hero!.flyTo(this.nodePose(next), { duration: 0.9, arc: 1.8, ease: easeInOut });
+    this.nodePath!.celebrate(flow.current, next, 0.85);
     flow.setCurrent(next);
     this.nodePath!.setProgress(next, Math.max(this.nodePath!.doneCount, next));
     this.rotatePlanetToNode(next);

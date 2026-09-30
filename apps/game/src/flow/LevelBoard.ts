@@ -1,7 +1,7 @@
 import type { Camera, Group, Object3D, Vector2, Vector3 } from 'three/webgpu';
 import type { LevelState } from '@ee/core';
 import type { ZoneId } from '@ee/genome';
-import { BOARD_CELL, BOARD_PITCH, BOARD_TOP, BoardRenderer, ModuleLibrary, type BoardFog, type BoardZoneInput, type CarrierBody, type CreatureMode, type Footprint, type JuiceKind } from '@ee/render';
+import { BOARD_CELL, BOARD_PITCH, BOARD_TOP, BoardRenderer, ModuleLibrary, type BoardFog, type BoardZoneInput, type CarrierBody, type CreatureMode, type Footprint, type JuiceKind, type PlateauStyle } from '@ee/render';
 import { useGridStore } from '../lab/grid/gridStore';
 import { pulseRex } from '../lab/grid/juice';
 import { ZONE_CONTENTS } from '../lab/earle/zones';
@@ -168,6 +168,11 @@ export class LevelBoard {
     return this.renderer.topY;
   }
 
+  /** Board-local z of the goal totems on the far ledge. */
+  get goalZ(): number {
+    return this.renderer.layout.goalZ;
+  }
+
   get sunkY(): number {
     return this.renderer.sunkY;
   }
@@ -208,6 +213,11 @@ export class LevelBoard {
   static dimensionsFromStore(): [number, number] {
     const st = useGridStore.getState().state;
     return st ? [st.geo.w, st.geo.h] : [4, 4];
+  }
+
+  /** The place the level stands in (plateau family, colours, rim); null = the zone meadow. */
+  setSite(style: PlateauStyle | null, seed = 0): void {
+    this.renderer.setSite(style, seed);
   }
 
   setTerrain(minD: number, maxD: number): void {
@@ -299,7 +309,10 @@ export class LevelBoard {
     } catch {
       // compile on first use instead
     }
-    if (!this.unsubscribe && !this.renderer.blobs.carrying) this.renderer.endWarmup();
+    // A level bound while the pipelines compiled owns the renderer now: forgetting its id here made the next move
+    // look like a level change (loaded instead of played → no timeline, no settle, no depart after a win).
+    if (this.unsubscribe) return;
+    if (!this.renderer.blobs.carrying) this.renderer.endWarmup();
     this.renderedLevelId = '';
   }
 
