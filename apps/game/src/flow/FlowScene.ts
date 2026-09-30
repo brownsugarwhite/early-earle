@@ -297,7 +297,8 @@ export class FlowScene implements SceneController {
     const flow = useFlowStore.getState();
     const focusNode = this.phase === 'depart' ? this.departTarget : this.phase === 'map' ? flow.current : this.phase === 'flyIn' || this.phase === 'level' ? (flow.playing ?? flow.current) : -1;
     const focus = focusNode >= 0 && world.isTreeNode(focusNode) ? this.layout!.nodes[focusNode] : undefined;
-    world.setViewFocus(focus ? _v.set(focus.position[0], focus.position[1], focus.position[2]) : null);
+    world.setViewFocus(focus ? _v.set(focus.position[0], focus.position[1], focus.position[2]) : null, this.cut);
+    this.cut = false;
     // A plateau under or on the giant tree: the curtain of hanging twigs keeps it clear while it is played
     const playing = flow.playing;
     const underTree = board.root.visible && this.phase !== 'map' && playing !== null && world.isTreeNode(playing);
@@ -871,6 +872,7 @@ export class FlowScene implements SceneController {
   }
 
   private enterSplashImmediate(): void {
+    this.cut = true;
     this.tweens.clear();
     this.detachTrackball();
     this.setShadowFocus(false);
@@ -891,6 +893,7 @@ export class FlowScene implements SceneController {
   }
 
   private enterMapImmediate(): void {
+    this.cut = true;
     this.tweens.clear();
     this.setShadowFocus(false);
     this.setLevelNode(null);
@@ -932,6 +935,7 @@ export class FlowScene implements SceneController {
 
   /** Straight into a playable level (re-mounts, debug): board placed and risen, camera over the plate. */
   private enterLevelImmediate(node: number): void {
+    this.cut = true;
     this.tweens.clear();
     this.detachTrackball();
     const board = this.board!;
@@ -1244,6 +1248,8 @@ export class FlowScene implements SceneController {
 
   /** Node the camera heads for during a depart (the next node when the move enters or leaves the giant tree). */
   private departTarget = 0;
+  /** The camera jumped (start, re-mount, immediate phase): view focus without blend on the next frame. */
+  private cut = true;
 
   /** Debug: hop the hero to the next node on the map (no level). */
   private hopToNext(): void {

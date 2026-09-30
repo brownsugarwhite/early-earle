@@ -286,13 +286,18 @@ export class MapWorld {
    * looks at — instead of the ground under the camera's centre ray (which lands on a neighbour world behind the tree).
    * `null` = the ray (map, level).
    */
-  setViewFocus(point: Vector3 | null): void {
+  setViewFocus(point: Vector3 | null, immediate = false): void {
+    // the last focus stays for the blend out
     if (point) this.viewFocus.copy(point);
     this.hasViewFocus = point !== null;
+    // cuts (start, re-mount, jumps): no blend
+    if (immediate) this.focusBlend = point ? 1 : 0;
   }
 
   private readonly viewFocus = new Vector3();
   private hasViewFocus = false;
+  /** 0 = look point from the camera ray, 1 = the focus (blended, see `update`). */
+  private focusBlend = 0;
 
   /**
    * Clearing around the camera's foot (lateral radius in world units; MAP_VIEW.footClear by default, 0 = off), e.g.
@@ -377,20 +382,23 @@ export class MapWorld {
     if (this.world.update(this.camera, camWorld, this.planet.matrixWorld, this.frustum)) this.shadowDirty = true;
 
     // World under the camera's look point drives sky, fog, stripes (and the curvature warp centre).
-    let dirWorld: Vector3;
-    if (this.hasViewFocus) {
-      // A focus on the giant tree (rail camera): its world and its distance — the centre ray would pass the crown and
-      // land on a neighbour world far behind (foreign fog and veil over the whole tree)
+    const look = _v.set(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(new Quaternion()));
+    const hit = raySphere(camWorld, look, PLANET_RADIUS + 0.5);
+    const dirWorld = hit ?? camWorld.clone().normalize();
+    // Fog follows the camera distance (hill view, fly-ins, rail): value steps stay in the middle and far ground
+    let fogDist = hit ? _w.copy(hit).multiplyScalar(PLANET_RADIUS + 0.5).distanceTo(camWorld) : -1;
+    // A focus on the giant tree (rail camera): its world and its distance — the centre ray would pass the crown and land
+    // on a neighbour world far behind (foreign fog and veil over the whole tree). Blended in and out over ≈ 0.6 s, so
+    // the curvature centre and the fog steps glide when the camera moves onto or off the tree
+    this.focusBlend = Math.min(1, Math.max(0, this.focusBlend + (this.hasViewFocus ? dt : -dt) / 0.6));
+    const wf = this.focusBlend * this.focusBlend * (3 - 2 * this.focusBlend);
+    if (wf > 0) {
       const focusWorld = _w.copy(this.viewFocus).applyMatrix4(this.planet.matrixWorld);
-      this.world.setFogDistance(focusWorld.distanceTo(camWorld));
-      dirWorld = focusWorld.clone().normalize();
-    } else {
-      const look = _v.set(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(new Quaternion()));
-      const hit = raySphere(camWorld, look, PLANET_RADIUS + 0.5);
-      // Fog follows the camera distance (hill view, fly-ins, rail): value steps stay in the middle and far ground
-      if (hit) this.world.setFogDistance(_w.copy(hit).multiplyScalar(PLANET_RADIUS + 0.5).distanceTo(camWorld));
-      dirWorld = hit ?? camWorld.clone().normalize();
+      const fd = focusWorld.distanceTo(camWorld);
+      fogDist = fogDist < 0 ? fd : fogDist + (fd - fogDist) * wf;
+      dirWorld.lerp(focusWorld.normalize(), wf).normalize();
     }
+    if (fogDist >= 0) this.world.setFogDistance(fogDist);
     const dirLocal = dirWorld.applyQuaternion(_q);
     this.world.setViewDirection(dirLocal);
     if (this.world.viewBlending) this.shadowDirty = true; // neighbours fade in/out near the camera
