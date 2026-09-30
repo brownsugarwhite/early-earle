@@ -1,17 +1,25 @@
 import type { BufferGeometry } from 'three/webgpu';
 import { hash32, mulberry32 } from '@ee/world';
-import { TreeMeshBuilder, add, bezier, bezier3, dirFrom, norm, scale, type TubePoint, type V3 } from './mesh';
+import { TreeMeshBuilder, add, bezier, bezier3, cross, dirFrom, len, norm, scale, sub, type TubePoint, type V3 } from './mesh';
 
 /**
- * Stamm-Archetypen der Bäume v3 (Einheit: Stammhöhe H = 1, Fuß im Ursprung, +Y oben). Keine geraden Zylinder:
- * leicht S-förmig geschwungene, sich verjüngende Stämme mit Wurzelanlauf, der in den Boden sinkt (y < 0, nichts
- * schwebt), Knoten als Radiusbeulen, Gabelungen in Äste, die sich zu feinen Spitzen verjüngen.
- * - `fork`: Hainbaum — Stamm gabelt sich in drei Äste, die in der Krone verschwinden (wenige Vertices, viele Instanzen);
- *   waagrecht schmal skaliert auch der Schaft der Tannen, Pappeln und Kathedralenbäume.
- * - `fan`: Schirm- und Spitzenbaum — kurzer Stamm, fünf Äste als Fächer mit Nebenästen (sichtbares Astwerk).
- * - `oak`: knorrige Earle-Eiche (Bild 04) — gedrehter Stamm, bogig ausladende Äste, die nach unten schwingen, feine
- *   hängende Zweige; die Spitzen tragen die Sternnadeln (siehe `OakGeometry.tips`).
+ * Stamm-Archetypen der Bäume v4 (Fuß im Ursprung, +Y oben). Keine geraden Stäbe: jeder Ast ist eine geschwungene,
+ * sich verjüngende Kurve (kubisch, mit leichtem S und aufwärts gebogener Spitze), gabelt sich und endet haarfein —
+ * wie Earles Astzeichnungen (Ebene 15/16/23, Bild 02/04). Wurzelanläufe sinken in den Boden (nichts schwebt).
+ * - `fork`: Gabel-Archetyp (Einheit H): Schaft bis `FORK_Y`, drei steile Äste mit je zwei Nebenästen (Vase). Für die
+ *   Hainbäume verschwinden die Äste in der Kuppel; für die schlanken Kathedralen-, Pappel- und Säulenbäume streckt der
+ *   Vertex-Shader nur den Schaft (`FORK_Y` → Gabelhöhe) — das feine Astnetz bleibt so groß wie die Krone und steigt in
+ *   die Säule hinein, statt als Stäbe darüber hinauszuragen.
+ * - `fan`: Spitzenbaum-Skelett (Einheit Kronenradius r, Bild 02, Ebene 19, 16.47.13): kurzer Stamm, fünf Hauptäste
+ *   steigen zum Kronenrand, von ihnen hängen Nebenäste und Zweige bis auf die untere Kugelschale des Schleiers; an jeder
+ *   Zweigspitze sitzt eine Punktrosette (`tips`), entlang der Zweige Perlen (`beads`) — die Punkte hängen am Skelett.
+ * - `oak`: knorrige Earle-Eiche (Bild 04), Spitzen tragen die Sternnadeln.
  */
+
+/** Höhe der Gabel im Gabel-Archetyp (Einheit H); darunter streckt der Vertex-Shader den Schaft. */
+export const FORK_Y = 0.62;
+/** Oberkante des Gabel-Archetyps (Einheit H): höchste Astspitze (Achse Fuß → Spitze für die Nähe-Ausblendung). */
+export const FORK_TOP = 1.3;
 
 /** Wurzelanlauf: Radiusfaktor über dem Boden (Stammfuß breit, ab ≈ 0.25 H schlank). */
 function flare(y: number, strength: number, reach: number): number {
@@ -41,7 +49,7 @@ function stem(rand: () => number, y0: number, y1: number, n: number, r0: number,
   return out;
 }
 
-/** Punkte entlang einer Kurve mit linear abnehmendem Radius (Ast: dick am Ansatz, fein an der Spitze). */
+/** Punkte entlang einer Kurve mit abnehmendem Radius (Ast: dick am Ansatz, haarfein an der Spitze). */
 function taperAlong(path: V3[], r0: number, r1: number, bulge = 0): TubePoint[] {
   return path.map((p, i) => {
     const t = i / (path.length - 1);
@@ -49,35 +57,24 @@ function taperAlong(path: V3[], r0: number, r1: number, bulge = 0): TubePoint[] 
   });
 }
 
-/** Hainbaum: Stamm mit Gabelung in drei Äste (in der Krone), drei Wurzelanläufe. ≈ 130 Vertices. */
-export function createForkTrunk(seed = 11): BufferGeometry {
-  const rand = mulberry32(hash32('trunk-fork', seed));
-  const b = new TreeMeshBuilder();
-  const r0 = 0.07;
-  const pts = stem(rand, -0.28, 0.74, 6, r0, 1.6, 0.03);
-  const vTop = b.tube(pts, 6, 0);
-  const top = pts[pts.length - 1]!;
-  const F = top.p;
-  const rF = top.r;
-  const limbs = 3;
-  const az0 = rand() * Math.PI * 2;
-  for (let k = 0; k < limbs; k++) {
-    const az = az0 + (k / limbs) * Math.PI * 2 + (rand() - 0.5) * 0.6;
-    const el = 0.95 + rand() * 0.3;
-    const L = 0.55 + rand() * 0.2;
-    const d = dirFrom(az, el);
-    const p0: V3 = [F[0], F[1] - 0.06, F[2]];
-    const p1 = add(F, scale(d, L * 0.5));
-    const p2 = add(add(F, scale(d, L)), [0, L * 0.22, 0]);
-    b.tube(taperAlong(bezier(p0, p1, p2, 3), rF * 0.68, 0.012), 4, 1, vTop);
-  }
-  // Wurzelanläufe: kurze, flache Stränge, die schräg in den Boden laufen
+/** Punkt und Tangente auf einer Punktliste bei Anteil t (0..1). */
+function along(path: V3[], t: number): { p: V3; d: V3; i: number } {
+  const x = Math.min(0.999, Math.max(0, t)) * (path.length - 1);
+  const i = Math.floor(x);
+  const f = x - i;
+  const a = path[i]!;
+  const b = path[i + 1]!;
+  return { p: [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f], d: norm(sub(b, a)), i };
+}
+
+/** Kurze, flache Wurzelanläufe, die schräg in den Boden laufen. */
+function roots(b: TreeMeshBuilder, rand: () => number, r0: number, count: number, reach0: number): void {
   const rootAz = rand() * Math.PI * 2;
-  for (let k = 0; k < 3; k++) {
-    const az = rootAz + (k / 3) * Math.PI * 2 + (rand() - 0.5) * 0.7;
+  for (let k = 0; k < count; k++) {
+    const az = rootAz + (k / count) * Math.PI * 2 + (rand() - 0.5) * 0.7;
     const c = Math.cos(az);
     const s = Math.sin(az);
-    const reach = 0.2 + rand() * 0.08;
+    const reach = reach0 * (1 + 0.4 * rand());
     const path: V3[] = [
       [0, 0.12, 0],
       [c * reach * 0.55, 0.0, s * reach * 0.55],
@@ -85,55 +82,207 @@ export function createForkTrunk(seed = 11): BufferGeometry {
     ];
     b.tube(taperAlong(path, r0 * 1.25, 0.018), 4, 3, 0);
   }
-  return b.toGeometry();
 }
 
 /**
- * Schirm-/Spitzenbaum: kurzer Stamm (bis 0.42 H), fünf Hauptäste im Fächer bis in die Kuppel (y ≈ 1.1–1.4, Spannweite
- * ≈ 0.8 H), je zwei Nebenäste; alles verjüngt sich zu feinen Spitzen (Ebene_1, Bildschirmfoto 16.47.13, Bild 02).
+ * Gabel-Archetyp (Hainbaum, Juwel, Tanne, Kathedrale, Pappel, Säule): Schaft bis `FORK_Y`, drei steile Äste (62–74°)
+ * mit leichtem S und aufwärts gebogener Spitze, je zwei Nebenäste, die zur Seite ausschwingen und wieder steigen
+ * (Vase, Ebene 16/23). Alles verjüngt sich haarfein. ≈ 280 Vertices.
  */
-export function createFanTrunk(seed = 5): BufferGeometry {
-  const rand = mulberry32(hash32('trunk-fan', seed));
+export function createForkTrunk(seed = 11): BufferGeometry {
+  const rand = mulberry32(hash32('trunk-fork-v4', seed));
   const b = new TreeMeshBuilder();
-  const r0 = 0.075;
-  const pts = stem(rand, -0.28, 0.42, 6, r0, 1.4, 0.025, 0.2);
+  const r0 = 0.07;
+  const pts = stem(rand, -0.28, FORK_Y, 6, r0, 1.6, 0.025);
   const vTop = b.tube(pts, 7, 0);
   const top = pts[pts.length - 1]!;
   const F = top.p;
+  const rF = top.r;
+  const az0 = rand() * Math.PI * 2;
+  for (let k = 0; k < 3; k++) {
+    const az = az0 + (k / 3) * Math.PI * 2 + (rand() - 0.5) * 0.5;
+    const el = 1.08 + rand() * 0.22;
+    const L = (FORK_TOP - FORK_Y) * (0.82 + 0.16 * rand());
+    const sway = (rand() - 0.5) * 0.5;
+    const p0: V3 = [F[0], F[1] - 0.05, F[2]];
+    const p1 = add(F, scale(dirFrom(az, el - 0.12), L * 0.34));
+    const p2 = add(F, scale(dirFrom(az + sway * 0.6, el), L * 0.68));
+    const p3 = add(F, scale(dirFrom(az + sway, Math.min(1.45, el + 0.2)), L));
+    const path = bezier3(p0, p1, p2, p3, 5);
+    const limb = taperAlong(path, rF * 0.72, 0.008, 0.04);
+    b.tube(limb, 5, 1, vTop);
+    // Nebenäste: schwingen zur Seite aus und steigen wieder (keine Gerade, eine kleine Lyra)
+    for (const [t, side] of [
+      [0.42 + rand() * 0.08, k % 2 === 0 ? 1 : -1],
+      [0.66 + rand() * 0.08, k % 2 === 0 ? -1 : 1],
+    ] as const) {
+      const at = along(path, t);
+      const rAt = limb[at.i]!.r;
+      const sAz = az + side * (0.55 + rand() * 0.35);
+      const sl = L * (0.34 + 0.12 * rand());
+      const q0 = at.p;
+      const q1 = add(q0, scale(dirFrom(sAz, 0.55 + rand() * 0.2), sl * 0.45));
+      const q2 = add(q0, scale(dirFrom(sAz - side * 0.2, 1.15 + rand() * 0.2), sl));
+      b.tube(taperAlong(bezier(q0, q1, q2, 4), rAt * 0.62, 0.005), 4, 2, vTop);
+    }
+  }
+  roots(b, rand, r0, 3, 0.2);
+  return b.toGeometry();
+}
+
+// --- Spitzenbaum-Skelett ---------------------------------------------------------------------------------------
+
+/**
+ * Schleier des Spitzenbaums (Einheit Kronenradius): Mittelpunkt der Kugelschale und ihre Radien. Der Äquator liegt auf
+ * der Höhe der breitesten Stelle der Kuppel (Kronenmitte 2.05 r): Kuppel oben und Schleier unten ergeben zusammen einen
+ * Kreis wie in Bild 02.
+ */
+export const LACE_ENVELOPE = { cy: 2.0, rx: 0.93, ry: 0.98 } as const;
+
+export interface LaceTip {
+  /** Zweigspitze (Rosettenmitte) im Archetyp. */
+  p: V3;
+  /** Außennormale der Schale an der Spitze (Licht der Rosette). */
+  n: V3;
+  /** Richtung des Zweigs an der Spitze (die Rosette öffnet sich quer dazu). */
+  d: V3;
+}
+
+export interface FanGeometry {
+  geometry: BufferGeometry;
+  /** Zweigspitzen mit Punktrosetten (hängen am Skelett, auf der unteren Schale). */
+  tips: LaceTip[];
+  /** Perlen entlang der hängenden Zweige (Punkte auf dem Skelett). */
+  beads: LaceTip[];
+  /** Höchster Punkt und größte Ausladung (Archetyp-Einheiten). */
+  top: number;
+  spread: number;
+}
+
+/**
+ * Spitzenbaum-Skelett (Einheit Kronenradius r; Fuß im Ursprung): kurzer, leicht geschwungener Stamm bis ≈ 0.62 r, fünf
+ * Hauptäste steigen in weichen S-Bögen zum Rand der Kuppel (enden in ihr), von ihnen hängen Nebenäste nach außen und
+ * unten bis auf die untere Schale des Schleiers (`LACE_ENVELOPE`); dort fächern kurze Zweige auf, jede Spitze trägt
+ * eine Punktrosette. So hängen alle Punkte sichtbar am Astwerk (Bild 02: „die Punkte verraten das Skelett“).
+ */
+export function createFanTrunk(seed = 5): FanGeometry {
+  const rand = mulberry32(hash32('trunk-lace-v4', seed));
+  const b = new TreeMeshBuilder();
+  const tips: LaceTip[] = [];
+  const beads: LaceTip[] = [];
+  const E = LACE_ENVELOPE;
+  const C: V3 = [0, E.cy, 0];
+  let topY = 0;
+  let spread = 0;
+  const note = (p: V3) => {
+    topY = Math.max(topY, p[1]);
+    spread = Math.max(spread, Math.hypot(p[0], p[2]));
+  };
+  /** Punkt der unteren Schale in Richtung (Azimut, Elevation unter dem Äquator) und ihre Normale. */
+  const onShell = (az: number, el: number): { p: V3; n: V3 } => {
+    const d: V3 = [Math.cos(az) * Math.cos(el), Math.sin(el), Math.sin(az) * Math.cos(el)];
+    const p: V3 = [C[0] + d[0] * E.rx, C[1] + d[1] * E.ry, C[2] + d[2] * E.rx];
+    return { p, n: norm([d[0] / E.rx, d[1] / E.ry, d[2] / E.rx]) };
+  };
+  const r0 = 0.062;
+  const yF = 0.62;
+  const pts = stem(rand, -0.25, yF, 6, r0, 1.35, 0.03, 0.28);
+  const vTop = b.tube(pts, 7, 0);
+  const F = pts[pts.length - 1]!.p;
+  const rF = pts[pts.length - 1]!.r;
   const limbs = 5;
   const az0 = rand() * Math.PI * 2;
   for (let k = 0; k < limbs; k++) {
-    const az = az0 + (k / limbs) * Math.PI * 2 + (rand() - 0.5) * 0.5;
-    const el = 0.62 + rand() * 0.45; // 35–62° über der Horizontalen
-    const L = 0.72 + rand() * 0.2;
-    const d = dirFrom(az, el);
-    const p0: V3 = [F[0], F[1] - 0.08, F[2]];
-    const p1 = add(F, scale(d, L * 0.45));
-    const p2 = add(add(F, scale(d, L * 0.8)), [0, L * 0.18, 0]);
-    const p3 = add(add(F, scale(d, L)), [0, L * 0.42, 0]);
-    const path = bezier3(p0, p1, p2, p3, 6);
-    const limb = taperAlong(path, top.r * 0.6, 0.01, 0.06);
-    const vEnd = b.tube(limb, 5, 1, vTop);
-    void vEnd;
-    // Nebenäste bei 45 % und 70 %
-    for (const [t, side] of [
-      [0.45, 1],
-      [0.7, -1],
-    ] as const) {
-      const i = Math.round(t * (path.length - 1));
-      const at = path[i]!;
-      const rAt = limb[i]!.r;
-      const sAz = az + side * (0.55 + rand() * 0.35);
-      const sEl = el + 0.25 + rand() * 0.25;
-      const sd = dirFrom(sAz, Math.min(1.35, sEl));
-      const sl = L * (0.3 + rand() * 0.12);
-      const q0 = at;
-      const q1 = add(at, scale(sd, sl * 0.55));
-      const q2 = add(add(at, scale(sd, sl)), [0, sl * 0.25, 0]);
-      b.tube(taperAlong(bezier(q0, q1, q2, 3), rAt * 0.7, 0.006), 4, 2, vTop + t * L);
+    const az = az0 + (k / limbs) * Math.PI * 2 + (rand() - 0.5) * 0.45;
+    const reach = 0.56 + 0.12 * rand();
+    const twist = (rand() - 0.5) * 0.35;
+    // Hauptast: aus der Gabel steil hinauf, dann nach außen zum Kuppelrand und in die Kuppel hinein
+    const p0: V3 = [F[0], F[1] - 0.06, F[2]];
+    const p1 = add(F, add(scale(dirFrom(az, 0), 0.16), [0, 0.3, 0]));
+    const p2: V3 = [Math.cos(az + twist * 0.5) * reach * 0.72, 1.28 + 0.08 * rand(), Math.sin(az + twist * 0.5) * reach * 0.72];
+    const p3: V3 = [Math.cos(az + twist) * reach, 1.8 + 0.06 * rand(), Math.sin(az + twist) * reach];
+    const path = bezier3(p0, p1, p2, p3, 7);
+    const limb = taperAlong(path, rF * 0.62, 0.01, 0.05);
+    b.tube(limb, 5, 1, vTop);
+    for (const p of path) note(p);
+    // Nebenäste: hängen nach außen und unten bis auf die Schale
+    const subs = 3 + (rand() < 0.5 ? 1 : 0);
+    for (let j = 0; j < subs; j++) {
+      const t = 0.3 + (j / subs) * 0.55 + rand() * 0.06;
+      const at = along(path, t);
+      const rAt = limb[at.i]!.r;
+      const side = j % 2 === 0 ? 1 : -1;
+      const tAz = az + twist * t + side * (0.25 + rand() * 0.4);
+      // innere Nebenäste hängen tief, äußere bleiben nahe am Rand
+      const tEl = -(0.25 + (1 - t) * 1.05 + rand() * 0.2);
+      const target = onShell(tAz, tEl);
+      const dir = sub(target.p, at.p);
+      const dl = len(dir);
+      const out = norm([Math.cos(tAz), 0, Math.sin(tAz)]);
+      const q0 = at.p;
+      // sanft hinaus und dann hinab (kein Haken): Earles feine Linien laufen fächerförmig zur Schale
+      const q1 = add(q0, add(scale(out, dl * 0.34), [0, dl * 0.04, 0]));
+      const q2 = add(target.p, add(scale(out, -dl * 0.06), [0, dl * 0.2, 0]));
+      const q3 = target.p;
+      const sp = bezier3(q0, q1, q2, q3, 6);
+      const subT = taperAlong(sp, rAt * 0.62, 0.006);
+      b.tube(subT, 4, 2, vTop);
+      for (const p of sp) note(p);
+      // Perlen entlang des hängenden Teils
+      for (const f of [0.4, 0.55, 0.7, 0.84, 0.94]) {
+        const a = along(sp, f);
+        beads.push({ p: a.p, n: norm(sub(a.p, C)), d: a.d });
+      }
+      // Zweige an der Spitze: fächern quer zum Nebenast über die Schale auf, jede Spitze eine Rosette
+      const twigs = 3 + (rand() < 0.5 ? 1 : 0);
+      const endDir = along(sp, 0.98).d;
+      const across = norm(cross(endDir, target.n));
+      for (let m = 0; m < twigs; m++) {
+        const spreadA = (m - (twigs - 1) / 2) * 0.55 + (rand() - 0.5) * 0.25;
+        const tl = 0.12 + 0.08 * rand();
+        const dirT = norm(add(add(scale(endDir, 0.55), scale(across, spreadA)), [0, -0.35, 0]));
+        const end = add(target.p, scale(dirT, tl));
+        // Spitze zurück auf die Schale ziehen (die Rosetten bilden die Kugelform)
+        const rel = sub(end, C);
+        const k2 = Math.hypot(rel[0] / E.rx, rel[1] / E.ry, rel[2] / E.rx) || 1;
+        const tip: V3 = [C[0] + rel[0] / k2, C[1] + rel[1] / k2, C[2] + rel[2] / k2];
+        const mid = add(scale(add(target.p, tip), 0.5), scale(target.n, tl * 0.18));
+        const twig = bezier(target.p, mid, tip, 3);
+        b.tube(taperAlong(twig, 0.0055, 0.0028), 3, 2, vTop);
+        note(tip);
+        const n = norm([rel[0] / (E.rx * E.rx), rel[1] / (E.ry * E.ry), rel[2] / (E.rx * E.rx)]);
+        tips.push({ p: tip, n, d: norm(sub(tip, mid)) });
+      }
+      tips.push({ p: target.p, n: target.n, d: endDir });
     }
   }
-  return b.toGeometry();
+  roots(b, rand, r0, 3, 0.18);
+  veilShell(b);
+  return { geometry: b.toGeometry(), tips, beads, top: topY, spread };
+}
+
+/** Ebene des Schleier-Grunds im Rindenattribut (`bark.z`): der Shader färbt diese Vertices blass, der Schattenpass lässt sie weg. */
+export const LACE_VEIL_LEVEL = 4;
+
+/**
+ * Heller Grund des Spitzenschleiers (Bild 02: helle Fläche, vor der das Skelett und die feinen Punkte stehen): eine
+ * untere Halbscheibe (Einheitsradius, XY-Ebene), die der Vertex-Shader senkrecht hinter die Baummitte stellt und um die
+ * Baumachse zur Kamera dreht — immer eine flache, gemalte Fläche wie bei Earle, nie eine Schale.
+ */
+function veilShell(b: TreeMeshBuilder): void {
+  const seg = 24;
+  const pos: number[] = [0, 0, 0];
+  const nor: number[] = [0, 0, 1];
+  const bark: number[] = [0.5, 0, LACE_VEIL_LEVEL, 0];
+  const idx: number[] = [];
+  for (let i = 0; i <= seg; i++) {
+    const a = Math.PI + (i / seg) * Math.PI;
+    pos.push(Math.cos(a), Math.sin(a), 0);
+    nor.push(0, 0, 1);
+    bark.push(i / seg, 1, LACE_VEIL_LEVEL, 0);
+  }
+  for (let i = 1; i <= seg; i++) idx.push(0, i, i + 1);
+  b.append(pos, nor, bark, idx);
 }
 
 export interface OakGeometry {
@@ -181,8 +330,8 @@ export function createOakTrunk(seed = 3): OakGeometry {
   const lobe = (a: number, ring: number): number => {
     const y = ys[ring] ?? 0;
     const flute = 0.12 * Math.sin(3 * a + twist + Math.max(0, y) * 2.6);
-    const roots = 0.45 * Math.max(0, Math.cos(5 * a + rootPhase)) ** 2 * Math.exp(-Math.max(0, y + 0.1) / 0.16);
-    return 1 + flute + roots;
+    const rootsL = 0.45 * Math.max(0, Math.cos(5 * a + rootPhase)) ** 2 * Math.exp(-Math.max(0, y + 0.1) / 0.16);
+    return 1 + flute + rootsL;
   };
   const vTop = b.tube(trunk, 14, 0, 0, lobe);
   const F = trunk[n - 3]!.p;
