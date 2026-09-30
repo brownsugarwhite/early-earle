@@ -29,6 +29,8 @@ import {
 } from '../index';
 
 const SEEDS = [1, 7, 42, 1234, 99001];
+// the geometric invariants hold for every seed, not just a handful
+const MANY = Array.from({ length: 80 }, (_, i) => 3 + i * 7919);
 const hills = (x: number, z: number) => 1.1 * Math.sin(x * 0.05 + 0.3) * Math.cos(z * 0.043) + 0.6 * Math.sin((x + z) * 0.09);
 const localHills: LocalGround = (x, z) => 0.35 * Math.sin(x * 0.21 + 1) + 0.25 * Math.cos(z * 0.17);
 
@@ -61,7 +63,7 @@ describe('landmark blueprints', () => {
 
   it('carry a level anchor of at least MIN_PLATEAU_RADIUS on a flat, clear top', () => {
     for (const kind of LANDMARK_KINDS) {
-      for (const seed of SEEDS) {
+      for (const seed of MANY) {
         for (const mirror of [false, true]) {
           const bp = landmarkBlueprint(kind, seed, { ground: localHills, mirror });
           expect(bp.anchors.length, `${kind} ${seed}`).toBe(1);
@@ -94,7 +96,7 @@ describe('landmark blueprints', () => {
   it('keep the board in the sun: long shadows (sun 10° high, 55–85° right of the view) miss the usable top', () => {
     const tan = Math.tan((10 * Math.PI) / 180);
     for (const kind of LANDMARK_KINDS) {
-      for (const seed of SEEDS) {
+      for (const seed of MANY) {
         const bp = landmarkBlueprint(kind, seed, { ground: localHills });
         const a = anchorTop(bp);
         const samples: Array<[number, number, number]> = [];
@@ -132,7 +134,7 @@ describe('landmark blueprints', () => {
 
   it('have a walkable route: ground → top (ascent) and top → ground (descent), in hops the hero can take', () => {
     for (const kind of LANDMARK_KINDS) {
-      for (const seed of SEEDS) {
+      for (const seed of MANY) {
         const bp = landmarkBlueprint(kind, seed, { ground: localHills });
         const a = anchorTop(bp);
         const { ascent, descent } = bp.route;
@@ -169,7 +171,7 @@ describe('landmark blueprints', () => {
 
   it('pour every fall into its pool and keep the pool below the ground around it', () => {
     for (const kind of ['fallsRock', 'cliffFall', 'twinFalls'] as LandmarkKind[]) {
-      for (const seed of SEEDS) {
+      for (const seed of MANY) {
         const bp = landmarkBlueprint(kind, seed, { ground: localHills });
         expect(bp.falls.length).toBe(kind === 'twinFalls' ? 2 : 1);
         for (const f of bp.falls) {
@@ -376,7 +378,7 @@ describe('planLandmarks', () => {
 
   it('planning radii cover the built blueprints', () => {
     for (const kind of LANDMARK_KINDS) {
-      for (const seed of SEEDS) {
+      for (const seed of MANY) {
         const bp = landmarkBlueprint(kind, seed, { ground: localHills });
         expect(bp.radius, `${kind} ${seed}`).toBeLessThanOrEqual(LANDMARK_RADIUS[kind]);
       }

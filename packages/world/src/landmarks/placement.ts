@@ -8,11 +8,11 @@ import { LANDMARK_KINDS } from './types';
  * blueprint's exact `radius` is at most this large.
  */
 export const LANDMARK_RADIUS: Record<LandmarkKind, number> = {
-  fallsRock: 16,
-  cliffFall: 14.5,
-  twinFalls: 16,
-  ruin: 13.5,
-  swamp: 13,
+  fallsRock: 16.5,
+  cliffFall: 15.8,
+  twinFalls: 16.5,
+  ruin: 14,
+  swamp: 13.5,
 };
 
 /**
@@ -106,7 +106,7 @@ function yawFor(x: number, z: number, env: LandmarkEnv, r: number): number {
  * one draw decides whether it holds a landmark (`density`), one draw picks the kind (weights × `worldWeights` at the
  * candidate), up to `tries` jittered candidates are checked against water, blocked ground, the path distance band,
  * terrain relief and slope (`env` callbacks). Centres of different cells are at least `cell · (1 − 2·jitter)` apart;
- * with the default cell (56) and jitter (0.2) that is ≥ 33.6 ≥ 2 × the largest planning radius (16) — footprints never
+ * with the default cell (56) and jitter (0.2) that is ≥ 33.6 ≥ 2 × the largest planning radius (16.5) — footprints never
  * overlap.
  */
 export function planLandmarks(region: LandmarkRegion, seed: number, params: LandmarkPlanParams, env: LandmarkEnv): LandmarkPlacement[] {
