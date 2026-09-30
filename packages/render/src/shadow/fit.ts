@@ -33,6 +33,18 @@ export interface ReceiverShellSpec {
    * Besitzer erhöht ihn, wenn sich Kamera oder Planetendrehung merklich geändert haben).
    */
   surfaceEpoch?: number;
+  /**
+   * Schatten v3: auch die gröbste Kaskade an den Boden fitten (± `coverTolerance` Welteinheiten um den geschätzten
+   * Bodenpunkt, dazu `volumes`). Ohne diesen Wert deckt sie die ganze Schale ab — in der Hochformat-Karte waren das
+   * 45 × 35 Einheiten Luft statt 22 × 8 Einheiten sichtbarem Boden (Faktor 2 in X und 4,5 in Y an Auflösung verschenkt).
+   */
+  coverTolerance?: number | null;
+}
+
+/** Zusätzliche Empfänger über dem Boden (Welt-Kugeln: Riesenbaum-Stamm, Brett): immer in allen Kaskaden gefittet. */
+export interface ReceiverVolume {
+  center: Vector3;
+  radius: number;
 }
 
 export interface ReceiverSlabSpec {
@@ -87,6 +99,8 @@ export interface FitInput {
   keepPsi?: boolean;
   /** Texelgrößen der feinen Kaskaden festhalten (Rollen): Gitter bleibt stehen, Rechtecke werden nur verschoben. */
   lockTexels?: boolean;
+  /** Empfänger über dem Boden (Welt-Kugeln), zusätzlich zum Bodenfokus. */
+  volumes?: ReceiverVolume[] | null;
 }
 
 export interface CascadeFit {
@@ -212,6 +226,9 @@ export class CascadeFitter {
   /** Fokusintervall (um den geschätzten Bodenpunkt) und Bodenpunkt je Strahl. */
   private readonly ga = new Float64Array(MAX_RAYS);
   private readonly gb = new Float64Array(MAX_RAYS);
+  /** Intervall der gröbsten Kaskade je Strahl (Schale oder Bodenfokus mit `coverTolerance`). */
+  private readonly ca = new Float64Array(MAX_RAYS);
+  private readonly cb = new Float64Array(MAX_RAYS);
   private readonly tg = new Float64Array(MAX_RAYS);
   /** Cache der Bodenschätzung je Abtastpunkt (Index über alle Proben, nicht nur gültige Strahlen). */
   private readonly cacheTg = new Float64Array(MAX_RAYS).fill(NaN);
@@ -397,11 +414,51 @@ export class CascadeFitter {
           gb = tb;
         }
       }
+      // Gröbste Kaskade: ganze Schale (alt) oder Bodenfokus mit größerer Toleranz (v3)
+      let ca = ta;
+      let cb = tb;
+      const coverTol = input.shell?.coverTolerance;
+      if (surf && coverTol !== undefined && coverTol !== null) {
+        if (gb > ga) {
+          _p.copy(_d).multiplyScalar(tg).add(_o).sub(input.shell!.center).normalize();
+          const cosN = Math.max(0.25, -_p.dot(_d));
+          ca = Math.max(ta, tg - coverTol / cosN);
+          cb = Math.min(tb, tg + coverTol / cosN);
+        } else {
+          ca = cb = tb;
+        }
+      }
+      // Empfänger-Volumen (Riesenbaum, Brett): Strahlabschnitt in der Kugel zu beiden Intervallen
+      const vols = input.volumes;
+      if (vols) {
+        for (const v of vols) {
+          const h = raySphere(_o, _d, v.center, v.radius);
+          if (!h || h[1] <= ta || h[0] >= tb) continue;
+          const v0 = Math.max(ta, h[0]);
+          const v1 = Math.min(tb, h[1]);
+          if (gb > ga) {
+            ga = Math.min(ga, v0);
+            gb = Math.max(gb, v1);
+          } else {
+            ga = v0;
+            gb = v1;
+          }
+          if (cb > ca) {
+            ca = Math.min(ca, v0);
+            cb = Math.max(cb, v1);
+          } else {
+            ca = v0;
+            cb = v1;
+          }
+        }
+      }
       this.ga[i] = ga;
       this.gb[i] = gb;
       this.tg[i] = tg;
+      this.ca[i] = ca;
+      this.cb[i] = cb;
       if (gb > ga || !surf) dMin = Math.min(dMin, ga * c);
-      dMax = Math.max(dMax, tb * c);
+      if (cb > ca) dMax = Math.max(dMax, cb * c);
     };
     for (let i = 0; i < EDGE_SAMPLES; i++) {
       const u = -1 + (2 * i) / (EDGE_SAMPLES - 1);
@@ -414,6 +471,10 @@ export class CascadeFitter {
       for (let i = 0; i < GRID_X; i++) addRay(-1 + (2 * (i + 0.5)) / GRID_X, -1 + (2 * (j + 0.5)) / GRID_Y);
     }
     out.rays = rays;
+    if (rays > 0 && !(dMax > 0)) {
+      // Kein Boden und kein Volumen sichtbar (nur Himmel): nichts zu beschatten
+      rays = 0;
+    }
     if (rays === 0) {
       out.empty = true;
       for (const c of out.cascades) c.active = false;
@@ -469,8 +530,8 @@ export class CascadeFitter {
       let m = 0;
       for (let i = 0; i < rays; i++) {
         const c = this.cos[i]!;
-        const ta = cover ? this.ta[i]! : this.ga[i]!;
-        const tb = Math.min(cover ? this.tb[i]! : this.gb[i]!, lim / c);
+        const ta = cover ? this.ca[i]! : this.ga[i]!;
+        const tb = Math.min(cover ? this.cb[i]! : this.gb[i]!, lim / c);
         if (!(ta < tb)) continue;
         for (const t of [ta, tb]) {
           const x = _o.x + this.dx[i]! * t;
@@ -589,12 +650,19 @@ export class CascadeFitter {
       const cover = k === n - 1;
       // Rollen (Kamera/Sonne fest): feine Kaskaden behalten ihre Texelgröße → das Abtastgitter steht still. Wächst die
       // Bodenregion über das Rechteck hinaus, wird es nur zentriert; der Rand fällt an die nächste Kaskade.
+      const focusedCover = cover && input.shell?.surface && input.shell.coverTolerance !== undefined && input.shell.coverTolerance !== null;
       const locked = !cover && input.lockTexels === true && cf.active;
+      // Bodengefittete gröbste Kaskade beim Rollen: Texel halten, solange die Region hineinpasst und nicht viel kleiner
+      // wird (Hügel ziehen durch → Region atmet leicht; ohne Hysterese sprängen die Kanten bei jedem Stufenwechsel)
+      const coverLocked = focusedCover && input.lockTexels === true && cf.active;
       let tx: number;
       let ty: number;
       if (locked) {
         tx = needX > cf.texelX * 2 || needX < cf.texelX * 0.5 ? quantizeTexel(needX) : cf.texelX;
         ty = needY > cf.texelY * 2 || needY < cf.texelY * 0.5 ? quantizeTexel(needY) : cf.texelY;
+      } else if (coverLocked) {
+        tx = needX > cf.texelX || needX < cf.texelX * 0.6 ? quantizeTexel(needX * 1.12) : cf.texelX;
+        ty = needY > cf.texelY || needY < cf.texelY * 0.6 ? quantizeTexel(needY * 1.12) : cf.texelY;
       } else {
         tx = pick(needX, cf.texelX, cf.active);
         ty = pick(needY, cf.texelY, cf.active);

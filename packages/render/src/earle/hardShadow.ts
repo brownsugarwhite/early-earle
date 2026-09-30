@@ -1,10 +1,12 @@
-import { Box3, DirectionalLight, Matrix4, Object3D, Vector3 } from 'three/webgpu';
+import { Box3, DirectionalLight, Matrix4, Object3D, Sphere, Vector3 } from 'three/webgpu';
+import type { Mesh } from 'three/webgpu';
 import type { DepthTexture, LightShadow, NodeBuilder, PerspectiveCamera, UniformNode } from 'three/webgpu';
 import { Fn, fwidth, lightTargetDirection, normalView, smoothstep, uniform } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node } from './tsl';
-import { CascadedShadows, type CascadedShadowStats, type ViewReceivers } from '../shadow/CascadedShadows';
+import { CascadedShadows, type CascadeSampleOptions, type CascadedShadowStats, type ViewReceivers } from '../shadow/CascadedShadows';
+import { shadowFactorNode, type ShadowFactorSource } from '../shadow/shadowFactor';
 import { createDefaultShadowFilter, createDepthCompare, createEarleShadowFilter, createShadowFrameUniforms, type ShadowFrameUniforms, type ShadowTaps } from '../shadow/filters';
-import type { CascadeSize } from '../shadow/fit';
+import type { CascadeSize, ReceiverVolume } from '../shadow/fit';
 import { needsManualDepthCompare, type ManualCompareOption } from '../shadow/webglCompat';
 
 /**
@@ -45,9 +47,11 @@ export const SHADOW_CASCADE_PRESETS: Record<ShadowCascadePreset, CascadeSize[]> 
     { width: 1024, height: 2048 },
     { width: 1024, height: 2048 },
   ],
+  // Mobil (Schatten v3): zwei gleich große Karten — mit der bodengefitteten gröbsten Kaskade fällt die ferne Stufe in der
+  // Hochformat-Karte von ≈ 17 auf ≈ 6 px je Texel (vorher 1024², über 45 × 35 Einheiten Luft gespannt)
   mobil: [
     { width: 1024, height: 2048 },
-    { width: 1024, height: 1024 },
+    { width: 1024, height: 2048 },
   ],
 };
 
@@ -101,11 +105,19 @@ export interface ShadowPlanetLike {
   surfaceRadius(dirLocal: Vector3): number;
 }
 
+/** Toleranz der bodengefitteten gröbsten Kaskade um den geschätzten Boden (Welteinheiten). */
+export const PLANET_COVER_TOLERANCE = 1.2;
+
 /**
  * Empfänger für einen Earle-Planeten (Ein-Zeilen-Integration):
  * `sun.fitToView(camera, planetShadowReceivers(() => this.world, this.planet))`.
  * Schale = Radius + [−Krümmungs-Warp, hMax], Bodenschätzung aus dem analytischen Feld inklusive desselben Warps wie im
  * Vertex-Shader (ferne Erde sinkt um (1 − cos θ)·c·R). `planet` darf ein Getter sein (Labs bauen die Welt neu).
+ *
+ * Schatten v3: alle Kaskaden sitzen am Boden (± `PLANET_COVER_TOLERANCE`); Empfänger über dem Boden im Planeten
+ * (Riesenbaum-Stamm und -Äste, Brett, Requisiten mit `receiveShadow`) werden je Refit als Kugeln eingesammelt — alles
+ * außer den Geländechunks (`chunk-*` oder `userData.shadowGround = true`). `userData.shadowVolume = false` nimmt ein
+ * Objekt aus.
  */
 export function planetShadowReceivers(planet: ShadowPlanetLike | (() => ShadowPlanetLike | null | undefined), planetObject: Object3D): ViewReceivers {
   const get = typeof planet === 'function' ? planet : () => planet;
@@ -121,6 +133,7 @@ export function planetShadowReceivers(planet: ShadowPlanetLike | (() => ShadowPl
     get maxHeight(): number {
       return (get()?.field.hMax ?? 0) + 0.3;
     },
+    coverTolerance: PLANET_COVER_TOLERANCE,
     surface: (dirLocal: Vector3): number => {
       const p = get();
       if (!p) return 1;
@@ -131,10 +144,39 @@ export function planetShadowReceivers(planet: ShadowPlanetLike | (() => ShadowPl
       return r - away * c * p.options.radius;
     },
   };
-  return { sphere };
+  const pool: ReceiverVolume[] = [];
+  const volumes = (): ReceiverVolume[] => {
+    let n = 0;
+    planetObject.traverseVisible((o) => {
+      const mesh = o as Mesh;
+      if (!mesh.isMesh || mesh.receiveShadow !== true) return;
+      const data = mesh.userData as { shadowGround?: boolean; shadowVolume?: boolean };
+      if (data.shadowGround === true || data.shadowVolume === false || mesh.name.startsWith('chunk-')) return;
+      const inst = mesh as Mesh & { isInstancedMesh?: boolean; boundingSphere?: Sphere | null; computeBoundingSphere?(): void };
+      let local: Sphere | null = null;
+      if (inst.isInstancedMesh) {
+        if (!inst.boundingSphere) inst.computeBoundingSphere?.();
+        local = inst.boundingSphere ?? null;
+      } else {
+        if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
+        local = mesh.geometry.boundingSphere;
+      }
+      if (!local) return;
+      const v = pool[n] ?? (pool[n] = { center: new Vector3(), radius: 0 });
+      _sphere.copy(local).applyMatrix4(mesh.matrixWorld);
+      v.center.copy(_sphere.center);
+      // etwas Rand für den Krümmungs-Warp (GPU) und die Kaskaden-Kante
+      v.radius = _sphere.radius * 1.08 + 0.3;
+      n++;
+    });
+    pool.length = n;
+    return pool;
+  };
+  return { sphere, volumes };
 }
 
 const _corner = new Vector3();
+const _sphere = new Sphere();
 const _min = new Vector3();
 const _max = new Vector3();
 const _m = new Matrix4();
@@ -151,7 +193,7 @@ const _m = new Matrix4();
  *   Lichtbasis um ψ gedreht; Refit automatisch, wenn sich Kamera/Sonne bewegen. `fitShadow()` wirkt dann als
  *   Clip-Box (z. B. Brett-Fokus im Flow), `requestUpdate()` rendert alle Kaskaden neu.
  */
-export class SunRig {
+export class SunRig implements ShadowFactorSource {
   readonly root = new Object3D();
   readonly target = new Object3D();
   light!: DirectionalLight;
@@ -180,6 +222,9 @@ export class SunRig {
   private referenceOn = false;
   private fixedPsiDeg: number | null = null;
   private biasTuning = { casterOffset: 0.04, grazing: 0.006 };
+  private contactTuning: { dilation: number; shift: number; planeBias: boolean; baseBias: number } = { dilation: 0.6, shift: 1, planeBias: true, baseBias: 0.25 };
+  /** Materialien mit `shadowFactor()`-Knoten: nach einem Kaskaden-Neubau neu bauen (neue Karten binden). */
+  private readonly shadowConsumers = new Set<{ needsUpdate: boolean; addEventListener?(type: string, fn: () => void): void }>();
   private smoothCasters: boolean;
   private tapsOverride: ShadowTaps | null;
   private manualCompare: boolean | null;
@@ -254,6 +299,7 @@ export class SunRig {
       cascaded.fixedPsiDeg = this.fixedPsiDeg;
       cascaded.preFit = () => this.syncCascadedFrame();
       cascaded.setBias(this.biasTuning.casterOffset, this.biasTuning.grazing);
+      cascaded.setContact(this.contactTuning);
       shadow.shadowNode = cascaded.node;
       shadow.filterNode = null;
       this.cascaded = cascaded;
@@ -264,6 +310,8 @@ export class SunRig {
     }
     this.applyAngles();
     if (this.lastClip) this.fitShadow(this.lastClip.bounds, this.lastClip.matrix, this.lastClip.hTotal);
+    // Konsumenten von `shadowFactor()` binden sonst weiter die alten Karten
+    for (const m of this.shadowConsumers) m.needsUpdate = true;
   }
 
   setSharpen(sharpen: boolean): void {
@@ -391,6 +439,62 @@ export class SunRig {
 
   get biasSettings(): { casterOffset: number; grazing: number } {
     return { ...this.biasTuning };
+  }
+
+  /**
+   * Kontakt (Schatten v3, live): `dilation` = Werfer-Mindestbreite (Texel je Seite, dünne reine Werfer im Schattenpass,
+   * 0 = aus), `shift` = Kontaktversatz reiner Werfer (Texel entlang −Licht-Y: der Schatten beginnt unter dem Fuß, 0 =
+   * aus), `planeBias` = Empfängerebenen-Bias (Taps folgen der Facette; aus = alter symmetrischer Kernel-Bias),
+   * `baseBias` = Grundbias in Anteilen einer mittleren Texelkante.
+   */
+  setContact(options: { dilation?: number; shift?: number; planeBias?: boolean; baseBias?: number }): void {
+    this.contactTuning = { ...this.contactTuning, ...options };
+    this.cascaded?.setContact(this.contactTuning);
+    this.frame.planeBias.value = this.contactTuning.planeBias ? 1 : 0;
+    this.frame.baseBias.value = this.contactTuning.baseBias;
+  }
+
+  get contactSettings(): { dilation: number; shift: number; planeBias: boolean; baseBias: number } {
+    return { ...this.contactTuning };
+  }
+
+  // --- Schattenwert für Konsumenten (Kronenpunkte, Tönungen) -------------------------------------------------
+
+  /** Aktuelle Kaskaden (null im Einzelkartenbetrieb). Teil von `ShadowFactorSource`. */
+  get cascadedShadows(): CascadedShadows | null {
+    return this.cascaded;
+  }
+
+  /** Teil von `ShadowFactorSource`: Material merken, damit es nach einem Kaskaden-Neubau neu gebaut wird. */
+  trackShadowConsumer(material: object): void {
+    const m = material as { needsUpdate: boolean; addEventListener?(type: string, fn: () => void): void };
+    if (this.shadowConsumers.has(m)) return;
+    this.shadowConsumers.add(m);
+    m.addEventListener?.('dispose', () => this.shadowConsumers.delete(m));
+  }
+
+  /**
+   * **Glatter, zeitlich ruhiger Schattenwert** an einer Weltposition: 1 = Sonne, 0 = Schatten (Schlagschatten *und*
+   * dunkle Seite glatter Werfer, denn die Karte enthält deren Schattenseite). Ohne 1-px-Schwelle, stetig im Raum,
+   * nutzbar im **Vertex- und Fragment-Shader** jedes Materials (Vergleich auf Level 0, keine Ableitungen).
+   *
+   * Gedacht für die Kronenpunkte: je Instanz im Vertex-Shader lesen und die Punktgröße damit aus 0 skalieren, z. B.
+   * ```ts
+   * const centerWorld = modelWorldMatrix.mul(vec4(centerLocal, 1)).xyz;
+   * const sun = sunRig.shadowFactor(centerWorld, { softness: 0.12 }); // Radius ≈ 1–2 Punktdurchmesser
+   * const scale = smoothstep(0.15, 0.85, sun).mul(smoothstep(-0.1, 0.25, ndl));
+   * ```
+   * - `softness` (Welteinheiten): Lichtanteil über eine Scheibe quer zur Sonne statt der Kante → der Wert wandert
+   *   beim Drehen gleichmäßig durch 0..1, statt mit einzelnen Texeln zu springen. 0/weglassen = kubischer B-Spline
+   *   (≈ 2 Texel Übergang).
+   * - `taps`: 1 (bilinear, billig), 4 (kubisch, Standard), 9 (quintisch).
+   * - `plane`: Weltnormale einer Empfängerebene (Taps folgen ihr), sonst Punktprobe.
+   * Kosten je Aufruf: 4 (kubisch) bzw. 9 (weich) Vergleichs-Taps je Kaskade, meist eine Kaskade.
+   * Im Einzelkartenbetrieb (keine Kamera gebunden) konstant 1. Nach einem Kaskaden-Neubau (Qualitätswechsel) baut
+   * das Konsumentenmaterial automatisch neu.
+   */
+  shadowFactor(positionWorld: Vec3Node, options: CascadeSampleOptions = {}): FloatNode {
+    return shadowFactorNode(this, positionWorld, options);
   }
 
   /** Wird beim Bauen der Filter gelesen: manuellen Tiefenvergleich erzwingen, verbieten oder automatisch. */

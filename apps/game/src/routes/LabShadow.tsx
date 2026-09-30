@@ -6,7 +6,11 @@ import { DEFAULT_SHADOW_PARAMS, ShadowLabScene, type ShadowLabMode, type ShadowL
 import '../lab/earle/earle-lab.css';
 import '../lab/shadow/shadow-lab.css';
 
-/** Startparameter aus der URL: `?view=iphone&mode=split&sun=10&az=70&mag=0.5,0.55&debug=1&cascades=mobil&taps=4`. */
+/**
+ * Startparameter aus der URL: `?view=karte&mode=split&sun=10&az=70&mag=0.5,0.55&debug=3&cascades=mobil&taps=4&node=52&progress=60`
+ * (Kontakt: `dil` Werfer-Mindestbreite in Texeln, `shift` Kontaktversatz in Texeln, `plane=0|1` Empfängerebenen-Bias, `base` Grundbias,
+ * `gap` Diagnosefenster, `map=1..3` Tiefenkarte einblenden, `map=11..13` groß).
+ */
 function paramsFromUrl(search: URLSearchParams): Partial<ShadowLabParams> {
   const out: Partial<ShadowLabParams> = {};
   const num = (k: string): number | null => {
@@ -16,17 +20,19 @@ function paramsFromUrl(search: URLSearchParams): Partial<ShadowLabParams> {
   const mode = search.get('mode');
   if (mode === 'neu' || mode === 'alt' || mode === 'split') out.mode = mode;
   const view = search.get('view');
-  if (view === 'iphone' || view === 'earle' || view === 'uebersicht' || view === 'nah' || view === 'oben') out.view = view;
+  if (view === 'karte' || view === 'huegel' || view === 'iphone' || view === 'earle' || view === 'uebersicht' || view === 'nah' || view === 'oben') out.view = view;
   const sun = num('sun');
   if (sun !== null) out.sunElevation = Math.max(4, Math.min(30, sun));
   const az = num('az');
   if (az !== null) out.sunAzimuth = Math.max(-180, Math.min(180, az));
   const c = search.get('cascades');
   if (c === 'hoch' || c === 'mobil' || c === 'ultra') out.cascades = c;
+  const sizes = search.get('sizes');
+  if (sizes) out.sizes = sizes;
   const taps = num('taps');
   if (taps === 0 || taps === 1 || taps === 4 || taps === 9) out.taps = taps;
   const debug = num('debug');
-  if (debug === 0 || debug === 1 || debug === 2) out.debug = debug;
+  if (debug === 0 || debug === 1 || debug === 2 || debug === 3 || debug === 4) out.debug = debug;
   const mag = search.get('mag');
   if (mag === '0') out.magnifier = false;
   else if (mag) {
@@ -42,6 +48,18 @@ function paramsFromUrl(search: URLSearchParams): Partial<ShadowLabParams> {
   if (q === 'hoch' || q === 'mobil') out.quality = q;
   const node = num('node');
   if (node !== null) out.node = Math.max(0, Math.round(node));
+  const progress = num('progress');
+  if (progress !== null) out.progress = Math.max(0, Math.min(100, Math.round(progress)));
+  const dil = num('dil');
+  if (dil !== null) out.dilation = Math.max(0, Math.min(3, dil));
+  const shift = num('shift');
+  if (shift !== null) out.shift = Math.max(0, Math.min(4, shift));
+  const plane = search.get('plane');
+  if (plane === '0' || plane === '1') out.planeBias = plane === '1';
+  const base = num('base');
+  if (base !== null) out.baseBias = Math.max(0, Math.min(2, base));
+  const gap = num('gap');
+  if (gap !== null) out.gap = Math.max(0.02, Math.min(3, gap));
   const spin = num('spin');
   if (spin !== null) out.spin = spin;
   const lambda = num('lambda');
@@ -56,6 +74,8 @@ function paramsFromUrl(search: URLSearchParams): Partial<ShadowLabParams> {
   if (compare === 0 || compare === 1) out.compare = compare;
   const legacy = num('legacy');
   if (legacy === 0 || legacy === 1 || legacy === 2) out.legacy = legacy;
+  const inset = num('map');
+  if (inset !== null) out.mapInset = Math.max(0, Math.min(13, Math.round(inset)));
   const repeat = num('repeat');
   if (repeat !== null) out.repeat = Math.max(1, Math.min(40, Math.round(repeat)));
   return out;
@@ -72,7 +92,16 @@ function Range(props: { label: string; value: number; min: number; max: number; 
   );
 }
 
-const VIEW_LABELS: Record<ShadowLabView, string> = { iphone: 'iPhone (Flow-Karte)', earle: 'Earle-Komposition', uebersicht: 'Übersicht', nah: 'Nah am Hang', oben: 'Draufsicht (Diagnose)' };
+const VIEW_LABELS: Record<ShadowLabView, string> = {
+  karte: 'Karte (iPhone hoch)',
+  huegel: 'Hügelblick (quer)',
+  iphone: 'iPhone quer (alt)',
+  earle: 'Earle-Komposition',
+  uebersicht: 'Übersicht',
+  nah: 'Nah am Hang',
+  oben: 'Draufsicht (Diagnose)',
+};
+const DEBUG_LABELS = ['aus', 'Kaskaden', 'Texel', 'Kontakt', 'Feld'];
 const MODE_LABELS: Record<ShadowLabMode, string> = { neu: 'Neu', alt: 'Alt', split: 'Alt | Neu' };
 
 function fmt(v: number, d = 1): string {
@@ -90,6 +119,7 @@ export function LabShadow() {
   const [params, setParams] = useState<ShadowLabParams>(initial);
   const [stats, setStats] = useState<ShadowLabStats | null>(null);
   const [placing, setPlacing] = useState(false);
+  const [benching, setBenching] = useState(false);
   const [, setTick] = useState(0);
   const controller = useMemo(() => new ShadowLabScene(initial), [initial]);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -176,13 +206,32 @@ export function LabShadow() {
               </label>
               <label className="earle-ctl earle-ctl--select" data-testid="shadow-debug">
                 <span>Debug</span>
-                <output>{['aus', 'Kaskaden', 'Texel'][params.debug]}</output>
+                <output>{DEBUG_LABELS[params.debug]}</output>
                 <select value={params.debug} onChange={(e) => set({ debug: Number(e.target.value) as ShadowLabParams['debug'] })}>
                   <option value={0}>aus</option>
                   <option value={1}>Kaskaden (schlicht · Diagonalen · Kreuz)</option>
                   <option value={2}>Texelgitter</option>
+                  <option value={3}>Kontakt (Spalt magenta · Kontakt grün · verloren cyan)</option>
+                  <option value={4}>Feld (Schattenwert grau · Kante rot · Texel)</option>
                 </select>
               </label>
+              {params.debug === 3 ? (
+                <p className="earle-hint shadow-legend" data-testid="shadow-contact-legend">
+                  <b className="is-gap">Spalt</b> Werfer direkt davor, trotzdem Licht (schwebt) · <b className="is-ok">Kontakt</b> Schatten reicht bis zum Werfer ·{' '}
+                  <b className="is-lost">verloren</b> dünner Schatten vom Filter geschluckt · <b className="is-grown">gewachsen</b>
+                </p>
+              ) : null}
+              <Range label="Werfer-Mindestbreite" testId="shadow-dilation" value={params.dilation} min={0} max={2} step={0.05} format={(v) => (v ? `${v.toFixed(2)} Texel` : 'aus')} onChange={(v) => set({ dilation: v })} />
+              <Range label="Kontaktversatz" testId="shadow-shift" value={params.shift} min={0} max={3} step={0.1} format={(v) => (v ? `${v.toFixed(1)} Texel` : 'aus')} onChange={(v) => set({ shift: v })} />
+              <label className="earle-ctl earle-ctl--toggle">
+                <span>Ebenen-Bias</span>
+                <input type="checkbox" checked={params.planeBias} onChange={(e) => set({ planeBias: e.target.checked })} data-testid="shadow-plane" />
+              </label>
+              <Range label="Grundbias" value={params.baseBias} min={0} max={1} step={0.05} format={(v) => `${v.toFixed(2)} Texel`} onChange={(v) => set({ baseBias: v })} />
+              {params.debug >= 3 ? (
+                <Range label="Kontaktfenster" value={params.gap} min={0.05} max={1.5} step={0.05} format={(v) => `${v.toFixed(2)} m`} onChange={(v) => set({ gap: v })} />
+              ) : null}
+              <Range label="Fortschritt" testId="shadow-progress" value={params.progress} min={0} max={100} step={1} format={(v) => `${v} Level`} onChange={(v) => set({ progress: v })} />
               <Range label="Drehung" testId="shadow-rotate" value={params.rotate} min={0} max={20} step={0.5} format={(v) => (v ? `${v}°/s` : 'aus')} onChange={(v) => set({ rotate: v })} />
               <Range label="Knoten" value={params.node} min={0} max={99} step={1} onChange={(v) => set({ node: v })} />
               <Range label="Werfer-Versatz" value={params.slopeBias} min={0} max={0.2} step={0.005} format={(v) => v.toFixed(3)} onChange={(v) => set({ slopeBias: v })} />
@@ -207,9 +256,22 @@ export function LabShadow() {
               <button type="button" className={`shadow-btn${placing ? ' is-on' : ''}`} onClick={() => setPlacing((p) => !p)} data-testid="shadow-mag-place">
                 {placing ? 'Klick auf eine Kante …' : 'Lupe setzen'}
               </button>
+              <button
+                type="button"
+                className={`shadow-btn${benching ? ' is-on' : ''}`}
+                disabled={benching}
+                onClick={() => {
+                  setBenching(true);
+                  void controller.benchShadowPass().finally(() => setBenching(false));
+                }}
+                data-testid="shadow-bench"
+              >
+                {benching ? 'Misst …' : 'Schattenpass messen'}
+              </button>
               <p className="earle-hint">
                 Ziehen rollt den Planeten, ⌥/Alt-Klick setzt die Lupe. Links alt (eine 2048²/1024²-Karte über den geladenen Planeten, 1 Tap), rechts neu
-                (Kaskaden an der Kamera, B-Spline-Kante, 1-px-Schnitt). <code>?view=iphone&amp;mode=split&amp;mag=0.5,0.6&amp;debug=1</code>
+                (Kaskaden an der Kamera, B-Spline-Kante, 1-px-Schnitt, Werfer-Mindestbreite, Ebenen-Bias). Debug „Kontakt“ färbt Spalte zwischen Werfer und
+                Schatten magenta. <code>?view=karte&amp;node=52&amp;progress=60&amp;debug=3</code>
               </p>
             </>
           )
@@ -253,6 +315,7 @@ export function LabShadow() {
               {stats?.backend ?? '…'} · {stats ? `${stats.canvas[0]}×${stats.canvas[1]}` : ''} · DPR {fmt(stats?.dpr ?? 0, 2)} · CPU {fmt(stats?.cpuMs ?? 0, 2)} ms · Chunks {stats?.chunks ?? 0}
               {stats?.manualCompare ? ' · Tiefenvergleich manuell' : ''}
             </span>
+            {stats?.shadowPassMs !== null && stats?.shadowPassMs !== undefined ? <span data-testid="shadow-pass-ms">Schattenpass {fmt(stats.shadowPassMs, 2)} ms</span> : null}
           </aside>
         )}
       </LabFrame>
