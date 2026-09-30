@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PlanetField, chunkAngularRadius, chunkDirection, chunkList, generateChunkMesh, scatterChunkProps, scatterChunkTrees, spiralPath, type PlanetParams } from './planet';
+import { PlanetField, chunkAngularRadius, chunkDirection, chunkList, chunkMeshRadiusAt, generateChunkMesh, scatterChunkProps, scatterChunkTrees, spiralPath, type PlanetParams } from './planet';
 
 const zones: PlanetParams['zones'] = [
   { id: 'tjorizo', hillAmplitude: 1.8, vegetation: { density: 0.2, clumpiness: 0.6, kinds: { dome: 0.7, cone: 0.3 }, scale: [0.7, 1.4], props: 'scrap', propDensity: 0.03, animalDensity: 0.012 } },
@@ -143,5 +143,68 @@ describe('spiralPath', () => {
     const a = spiralPath(field, { nodesPerZone: 25 });
     const b = spiralPath(field, { nodesPerZone: 25 });
     expect(a.nodes).toEqual(b.nodes);
+  });
+});
+
+describe('chunkMeshRadiusAt (Bodenhaftung auf dem gerenderten Netz)', () => {
+  const field = new PlanetField(params);
+  /** Brute force: Strahl vom Mittelpunkt gegen alle Dreiecke des Chunks, äußerster Treffer. */
+  const bruteForce = (mesh: ReturnType<typeof generateChunkMesh>, d: [number, number, number]): number | null => {
+    const P = mesh.positions;
+    const I = mesh.indices;
+    const at = (i: number): [number, number, number] => [P[i * 3]!, P[i * 3 + 1]!, P[i * 3 + 2]!];
+    let best: number | null = null;
+    for (let k = 0; k < I.length; k += 3) {
+      const a = at(I[k]!);
+      const b = at(I[k + 1]!);
+      const c = at(I[k + 2]!);
+      const e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]] as const;
+      const e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]] as const;
+      const q = [d[1] * e2[2] - d[2] * e2[1], d[2] * e2[0] - d[0] * e2[2], d[0] * e2[1] - d[1] * e2[0]] as const;
+      const det = e1[0] * q[0] + e1[1] * q[1] + e1[2] * q[2];
+      if (Math.abs(det) < 1e-12) continue;
+      const s = [-a[0], -a[1], -a[2]] as const;
+      const u = (s[0] * q[0] + s[1] * q[1] + s[2] * q[2]) / det;
+      if (u < 0 || u > 1) continue;
+      const r = [s[1] * e1[2] - s[2] * e1[1], s[2] * e1[0] - s[0] * e1[2], s[0] * e1[1] - s[1] * e1[0]] as const;
+      const v = (d[0] * r[0] + d[1] * r[1] + d[2] * r[2]) / det;
+      if (v < 0 || u + v > 1) continue;
+      const t = (e2[0] * r[0] + e2[1] * r[1] + e2[2] * r[2]) / det;
+      if (t > 0 && (best === null || t > best)) best = t;
+    }
+    return best;
+  };
+
+  it('trifft genau das gezeichnete Dreieck (Vergleich mit allen Dreiecken)', () => {
+    for (const id of [
+      { face: 2, cx: 1, cy: 1 },
+      { face: 0, cx: 0, cy: 2 },
+      { face: 5, cx: 2, cy: 0 },
+    ]) {
+      const mesh = generateChunkMesh(field, id, 13);
+      for (let k = 0; k < 40; k++) {
+        const lu = Math.sin(k * 12.9898) * 0.98;
+        const lv = Math.cos(k * 78.233) * 0.98;
+        const d = chunkDirection(id, 3, lu, lv, [0, 0, 0]);
+        const r = chunkMeshRadiusAt(mesh, 3, d);
+        const ref = bruteForce(mesh, d);
+        expect(r).not.toBeNull();
+        expect(ref).not.toBeNull();
+        expect(Math.abs(r! - ref!)).toBeLessThan(1e-4);
+      }
+    }
+  });
+
+  it('liefert null außerhalb des Chunks', () => {
+    const mesh = generateChunkMesh(field, { face: 2, cx: 1, cy: 1 }, 9);
+    expect(chunkMeshRadiusAt(mesh, 3, chunkDirection({ face: 2, cx: 0, cy: 0 }, 3, -0.5, -0.5, [0, 0, 0]))).toBeNull();
+    expect(chunkMeshRadiusAt(mesh, 3, [0, -1, 0])).toBeNull();
+  });
+
+  it('findet für jeden gestreuten Baum das Netz darunter', () => {
+    for (const id of chunkList(3).filter((_, i) => i % 5 === 0)) {
+      const mesh = generateChunkMesh(field, id, 13);
+      for (const t of scatterChunkTrees(field, id, { meshSpacing: 1 })) expect(chunkMeshRadiusAt(mesh, 3, t.position)).not.toBeNull();
+    }
   });
 });

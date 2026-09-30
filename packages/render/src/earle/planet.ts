@@ -7,6 +7,7 @@ import {
   chunkDirection,
   chunkKey,
   chunkList,
+  chunkMeshRadiusAt,
   frameAt,
   offsetDir,
   generateChunkMesh,
@@ -1032,6 +1033,27 @@ export class EarlePlanet {
     const meshSpacing = (this.options.radius * this.angularRadius * Math.SQRT2) / Math.max(1, q.chunkRes - 1);
     const trees = scatterChunkTrees(this.field, id, { densityScale: q.densityScale, clear, meshSpacing });
     const props = scatterChunkProps(this.field, id, { densityScale: q.densityScale, trashScale: this.trashScale, clear });
+    // Nichts schwebt: wo das gezeichnete Dreiecksnetz unter dem Fuß liegt (Kuppen, Grate, Felskanten — die Sehnen-
+    // schätzung sieht dort nur ±½ Zelle), sinken Bäume, Tiere und Requisiten genau auf das Netz
+    const cpf = this.options.chunksPerFace;
+    const onMesh = (p: Vec3): number => {
+      const r = chunkMeshRadiusAt(mesh, cpf, p);
+      const l = Math.hypot(p[0], p[1], p[2]);
+      if (r === null || l <= r) return 0;
+      const k = r / l;
+      const shift = r - l;
+      p[0] *= k;
+      p[1] *= k;
+      p[2] *= k;
+      return shift;
+    };
+    for (const t of trees) {
+      const shift = onMesh(t.position);
+      if (shift === 0) continue;
+      const l = Math.hypot(t.position[0], t.position[1], t.position[2]) || 1;
+      for (let k = 0; k < 3; k++) t.hullCenter[k] = t.hullCenter[k]! + (t.position[k]! / l) * shift;
+    }
+    for (const p of props) onMesh(p.position);
     const nodeRange: [number, number] = nodeIdx.length > 0 ? [Math.min(...nodeIdx), Math.max(...nodeIdx)] : [nearestIdx, nearestIdx];
     return { mesh, trees, props, nodeRange };
   }

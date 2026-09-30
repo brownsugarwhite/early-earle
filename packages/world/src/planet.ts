@@ -882,6 +882,74 @@ export function generateChunkMesh(field: PlanetField, id: ChunkId, res: number):
   };
 }
 
+/**
+ * Radius (Abstand zum Planetenmittelpunkt) des gerenderten Dreiecksnetzes eines Chunks in Richtung `dir`: genau das
+ * Dreieck, das die GPU zeichnet (Gitterzelle aus der gnomonischen Chunk-Koordinate, dann Strahl–Dreieck). Auf Kuppen,
+ * Graten und an Felskanten liegt das Netz unter der glatten Oberfläche — was dort steht, muss bis hierher sinken, sonst
+ * schwebt es. `null`, wenn die Richtung nicht in diesem Chunk liegt.
+ */
+export function chunkMeshRadiusAt(mesh: ChunkMeshData, chunksPerFace: number, dir: Vec3): number | null {
+  const id = mesh.id;
+  const f = FACES[id.face]!;
+  const l = Math.hypot(dir[0], dir[1], dir[2]) || 1;
+  const dx = dir[0] / l;
+  const dy = dir[1] / l;
+  const dz = dir[2] / l;
+  const o = f.origin[0] * dx + f.origin[1] * dy + f.origin[2] * dz;
+  if (o <= 1e-6) return null;
+  const px = dx / o - f.origin[0];
+  const py = dy / o - f.origin[1];
+  const pz = dz / o - f.origin[2];
+  const fu = px * f.right[0] + py * f.right[1] + pz * f.right[2];
+  const fv = px * f.up[0] + py * f.up[1] + pz * f.up[2];
+  // Chunk-lokal 0..1, dann Gitter (n × n Vertices)
+  const u01 = ((fu + 1) / 2) * chunksPerFace - id.cx;
+  const v01 = ((fv + 1) / 2) * chunksPerFace - id.cy;
+  if (u01 < -1e-4 || u01 > 1 + 1e-4 || v01 < -1e-4 || v01 > 1 + 1e-4) return null;
+  const n = Math.round(Math.sqrt(mesh.vertexCount));
+  const gx = Math.min(n - 1 - 1e-6, Math.max(0, u01 * (n - 1)));
+  const gy = Math.min(n - 1 - 1e-6, Math.max(0, v01 * (n - 1)));
+  const i = Math.floor(gx);
+  const j = Math.floor(gy);
+  const a = j * n + i;
+  const b = a + 1;
+  const c = a + n;
+  const d = c + 1;
+  const P = mesh.positions;
+  // Dreiecke der Zelle wie in generateChunkMesh: (a, b, c) und (b, d, c); beide testen, den Treffer nehmen
+  const hit = (i0: number, i1: number, i2: number): number | null => {
+    const ax = P[i0 * 3]!;
+    const ay = P[i0 * 3 + 1]!;
+    const az = P[i0 * 3 + 2]!;
+    const e1x = P[i1 * 3]! - ax;
+    const e1y = P[i1 * 3 + 1]! - ay;
+    const e1z = P[i1 * 3 + 2]! - az;
+    const e2x = P[i2 * 3]! - ax;
+    const e2y = P[i2 * 3 + 1]! - ay;
+    const e2z = P[i2 * 3 + 2]! - az;
+    // Strahl vom Mittelpunkt entlang (dx, dy, dz): Möller–Trumbore
+    const qx = dy * e2z - dz * e2y;
+    const qy = dz * e2x - dx * e2z;
+    const qz = dx * e2y - dy * e2x;
+    const det = e1x * qx + e1y * qy + e1z * qz;
+    if (Math.abs(det) < 1e-12) return null;
+    const inv = 1 / det;
+    const sx = -ax;
+    const sy = -ay;
+    const sz = -az;
+    const u = (sx * qx + sy * qy + sz * qz) * inv;
+    if (u < -1e-4 || u > 1 + 1e-4) return null;
+    const rx = sy * e1z - sz * e1y;
+    const ry = sz * e1x - sx * e1z;
+    const rz = sx * e1y - sy * e1x;
+    const v = (dx * rx + dy * ry + dz * rz) * inv;
+    if (v < -1e-4 || u + v > 1 + 1e-4) return null;
+    const t = (e2x * rx + e2y * ry + e2z * rz) * inv;
+    return t > 0 ? t : null;
+  };
+  return hit(a, b, c) ?? hit(b, d, c);
+}
+
 // --- Streuung je Chunk ------------------------------------------------------------------------------
 
 export interface ChunkScatterOptions {
