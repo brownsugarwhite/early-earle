@@ -1,4 +1,4 @@
-import { DoubleSide, Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh } from 'three/webgpu';
+import { DoubleSide, Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, type Material } from 'three/webgpu';
 import { abs, atan, attribute, cos, float, floor, fract, length, max, mix, modelViewMatrix, positionGeometry, positionLocal, sin, smoothstep, step, vec2, vec3, vec4 } from 'three/tsl';
 import { swampWater, type Prism, type SwampParts } from '@ee/world';
 import { EarleMaterial } from '../../EarleMaterial';
@@ -223,7 +223,7 @@ export function addPads(batch: PadBatch, dots: DotBatch, s: SwampParts, frame: L
 }
 
 /** Pads: flat discs with a notch, radial veins and a light rim; one instanced draw. */
-export function createPadMesh(batch: PadBatch, ctx: LandmarkMaterialContext): Mesh | null {
+export function createPadMesh(batch: PadBatch, ctx: LandmarkMaterialContext, reuse?: Material | null): Mesh | null {
   if (batch.count === 0) return null;
   const seg = 16;
   const notch = 0.55;
@@ -241,6 +241,16 @@ export function createPadMesh(batch: PadBatch, ctx: LandmarkMaterialContext): Me
   geometry.setAttribute('pa', new InstancedBufferAttribute(new Float32Array(batch.a), 4));
   geometry.setAttribute('pb', new InstancedBufferAttribute(new Float32Array(batch.b), 4));
   geometry.instanceCount = batch.count;
+  const mesh = new Mesh(geometry, reuse ?? createPadMaterial(ctx));
+  mesh.name = 'landmark-pads';
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+/** Lily pad material (instance attributes only: one compile for every rebuild). */
+export function createPadMaterial(ctx: LandmarkMaterialContext): EarleMaterial {
   const pa = attribute('pa', 'vec4');
   const pb = attribute('pb', 'vec4');
   const unit = positionGeometry as unknown as Vec3Node;
@@ -267,12 +277,7 @@ export function createPadMesh(batch: PadBatch, ctx: LandmarkMaterialContext): Me
     positionNode: ctx.warp ? ctx.warp(pos3) : pos3,
     fogDistNode: fogDistance(ctx),
   });
-  const mesh = new Mesh(geometry, m);
-  mesh.name = 'landmark-pads';
-  mesh.castShadow = false;
-  mesh.receiveShadow = true;
-  mesh.frustumCulled = false;
-  return mesh;
+  return m;
 }
 
 // ------------------------------------------------------------------------------------------------ reeds

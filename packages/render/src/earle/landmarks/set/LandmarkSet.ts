@@ -1,11 +1,11 @@
 import { Group, Mesh, type BufferGeometry, type Camera, type Material, type PerspectiveCamera } from 'three/webgpu';
-import type { LandmarkInstance } from '@ee/world';
+import type { LandmarkInstance, Prism } from '@ee/world';
 import type { FloatNode, Vec3Node } from '../../tsl';
 import { GeoBuffer, type LandmarkFrame } from './buffers';
 import { createLandmarkUniforms, type LandmarkMaterialContext, type LandmarkUniforms } from './context';
 import type { LandmarkRows } from './palette';
 import { ROCK_LAYOUT, addArcade, addPrisms } from './prismGeometry';
-import { createLandmarkRockMaterial } from './rockMaterial';
+import { createLandmarkRockMaterial, rockFamilyOf } from './rockMaterial';
 import { DotBatch, FALL_LAYOUT, addFallDots, addFalls, createDotMesh, createFallMaterial, createMistMesh } from './waterfall';
 import { WATER_LAYOUT, addPoolsAndStreams, createPoolMaterial } from './water';
 import { BushBatch, VINE_LAYOUT, addBushes, addVines, createBushMesh, createVineMaterial } from './growth';
@@ -96,6 +96,12 @@ export class LandmarkSet {
     this.instances = instances;
     const detail = this.quality === 'mobil' ? 0.55 : 1;
     const rock = new GeoBuffer(ROCK_LAYOUT);
+    const stone = new GeoBuffer(ROCK_LAYOUT);
+    // rock and stone as two shader families (each evaluates only its own ornaments)
+    const addBoth = (prisms: readonly Prism[], frame: LandmarkFrame, rows: LandmarkRows) => {
+      addPrisms(rock, prisms.filter((p) => rockFamilyOf(p.surface) === 'rock'), frame, rows);
+      addPrisms(stone, prisms.filter((p) => rockFamilyOf(p.surface) === 'stone'), frame, rows);
+    };
     const falls = new GeoBuffer(FALL_LAYOUT);
     const water = new GeoBuffer(WATER_LAYOUT);
     const dots = new DotBatch();
@@ -112,8 +118,8 @@ export class LandmarkSet {
       const frame = this.frameOf(inst);
       const rows = this.rowsFor(inst.placement.world);
       earthRow = rows.earth;
-      addPrisms(rock, bp.prisms, frame, rows);
-      for (const a of bp.arcades) addArcade(rock, a, frame, rows);
+      addBoth(bp.prisms, frame, rows);
+      for (const a of bp.arcades) addArcade(stone, a, frame, rows);
       addFalls(falls, bp.falls, frame, rows, bp.seed + i);
       addPoolsAndStreams(water, bp.pools, bp.falls, frame, rows, [0, 0]);
       addFallDots(dots, bp.falls, bp.mist, frame, rows, detail, bp.seed + i * 7);
@@ -130,7 +136,7 @@ export class LandmarkSet {
           const sn = Math.sin(frame.yaw);
           return groundAt(frame.x + x * c + z * sn + this.origin.x, frame.z - x * sn + z * c + this.origin.z);
         };
-        addPrisms(rock, swampPrisms(s), frame, rows);
+        addBoth(swampPrisms(s), frame, rows);
         addSwampWater(marsh, s, frame, rows);
         if (groundAt) addSwampBank(bank, s, frame, rows, local);
         addPads(pads, dots, s, frame, rows, bp.seed + i);
@@ -141,7 +147,8 @@ export class LandmarkSet {
     });
     const ctx = this.ctx;
     const uni = this.uniforms;
-    this.addMesh('rock', rock, () => createLandmarkRockMaterial(ctx, uni), true, true);
+    this.addMesh('rock', rock, () => createLandmarkRockMaterial(ctx, uni, 'rock'), true, true);
+    this.addMesh('stone', stone, () => createLandmarkRockMaterial(ctx, uni, 'stone'), true, true);
     this.addMesh('falls', falls, () => createFallMaterial(ctx, uni), false, true);
     this.addMesh('water', water, () => createPoolMaterial(ctx, uni), false, true);
     this.addMesh('vines', vines, () => createVineMaterial(ctx, uni), false, true);
@@ -149,13 +156,13 @@ export class LandmarkSet {
     const bankRows = { earth: earthRow };
     this.addMesh('bank', bank, () => createSwampBankMaterial(ctx, bankRows), false, true);
     this.addMesh('reeds', reeds, () => createReedMaterial(ctx, uni), false, true);
-    const mistMesh = createMistMesh(mist, ctx, uni, detail);
+    const mistMesh = createMistMesh(mist, ctx, uni, detail, this.materials.get('mist'));
     if (mistMesh) this.adopt('mist', mistMesh);
-    const bushMesh = createBushMesh(bushes, ctx, detail);
+    const bushMesh = createBushMesh(bushes, ctx, detail, this.materials.get('bushes'));
     if (bushMesh) this.adopt('bushes', bushMesh);
-    const padMesh = createPadMesh(pads, ctx);
+    const padMesh = createPadMesh(pads, ctx, this.materials.get('pads'));
     if (padMesh) this.adopt('pads', padMesh);
-    if (dots.count > 0) this.adopt('dots', createDotMesh(dots, ctx, uni, this.shade));
+    if (dots.count > 0) this.adopt('dots', createDotMesh(dots, ctx, uni, this.shade, this.materials.get('dots')));
     this.statsCache = this.computeStats(dots.count, mist.length);
   }
 
@@ -179,11 +186,10 @@ export class LandmarkSet {
     this.meshes.set(role, mesh);
   }
 
-  /** Meshes that own their material and geometry (instanced dots, mist). */
+  /** Instanced meshes (dots, mist, bushes, pads): new geometry per build, the material cached per role. */
   private adopt(role: string, mesh: Mesh): void {
     this.geometries.push(mesh.geometry);
-    const prev = this.materials.get(role);
-    if (prev) prev.dispose();
+    // the material is kept across rebuilds (instance attributes only): no shader recompile on a new region
     this.materials.set(role, mesh.material as Material);
     this.group.add(mesh);
     this.meshes.set(role, mesh);

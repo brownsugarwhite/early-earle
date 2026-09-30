@@ -1,4 +1,4 @@
-import { InstancedBufferAttribute, InstancedBufferGeometry, Mesh, SphereGeometry } from 'three/webgpu';
+import { InstancedBufferAttribute, InstancedBufferGeometry, Mesh, SphereGeometry, type Material } from 'three/webgpu';
 import { atan, attribute, float, fract, mix, modelViewMatrix, normalize, positionGeometry, positionLocal, step, vec2, vec3, vec4 } from 'three/tsl';
 import type { BushSpec, VineSpec } from '@ee/world';
 import { EarleMaterial } from '../../EarleMaterial';
@@ -66,7 +66,7 @@ export function addBushes(batch: BushBatch, dots: DotBatch, specs: readonly Bush
  * shadow side, a fine stipple of lighter dots inside the lit face (the dotted rim itself are instanced dots, see
  * `DOT_RIM`). One instanced draw for every bush and swamp tussock of the set.
  */
-export function createBushMesh(batch: BushBatch, ctx: LandmarkMaterialContext, detail: number): Mesh | null {
+export function createBushMesh(batch: BushBatch, ctx: LandmarkMaterialContext, detail: number, reuse?: Material | null): Mesh | null {
   if (batch.count === 0) return null;
   const sphere = new SphereGeometry(1, detail >= 1 ? 20 : 14, detail >= 1 ? 12 : 9);
   const geometry = new InstancedBufferGeometry();
@@ -77,6 +77,16 @@ export function createBushMesh(batch: BushBatch, ctx: LandmarkMaterialContext, d
   geometry.setAttribute('bb', new InstancedBufferAttribute(new Float32Array(batch.b), 4));
   geometry.instanceCount = batch.count;
   sphere.dispose();
+  const mesh = new Mesh(geometry, reuse ?? createBushMaterial(ctx));
+  mesh.name = 'landmark-bushes';
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+/** Dome bush material (instance attributes only: one compile for every rebuild). */
+export function createBushMaterial(ctx: LandmarkMaterialContext): EarleMaterial {
   const ba = attribute('ba', 'vec4');
   const bb = attribute('bb', 'vec4');
   const unit = positionGeometry as unknown as Vec3Node;
@@ -106,12 +116,7 @@ export function createBushMesh(batch: BushBatch, ctx: LandmarkMaterialContext, d
     positionNode: ctx.warp ? ctx.warp(pos) : pos,
     fogDistNode: fogDistance(ctx),
   });
-  const mesh = new Mesh(geometry, material);
-  mesh.name = 'landmark-bushes';
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  mesh.frustumCulled = false;
-  return mesh;
+  return material;
 }
 
 // ------------------------------------------------------------------------------------------------ vines

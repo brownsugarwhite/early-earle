@@ -1,4 +1,4 @@
-import { DoubleSide, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial, SphereGeometry } from 'three/webgpu';
+import { DoubleSide, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial, SphereGeometry, type Material } from 'three/webgpu';
 import {
   abs,
   attribute,
@@ -254,12 +254,11 @@ export function addFallDots(batch: DotBatch, falls: readonly FallSpec[], mist: r
  * under `collapsePx`. Optional `shade`: the sun's shadow factor at a world position (dots in the rock's shadow turn to
  * the cool mist shade).
  */
-export function createDotMesh(batch: DotBatch, ctx: LandmarkMaterialContext, uni: LandmarkUniforms, shade?: (worldPos: Vec3Node) => FloatNode): Mesh {
+export function createDotMesh(batch: DotBatch, ctx: LandmarkMaterialContext, uni: LandmarkUniforms, shade?: (worldPos: Vec3Node) => FloatNode, reuse?: Material | null): Mesh {
   const geometry = new InstancedBufferGeometry();
   const hex = createHexagon();
   geometry.setAttribute('position', hex.position);
   geometry.setIndex(hex.index);
-  const n = Math.max(1, batch.count);
   const arr = (src: number[]) => new Float32Array(src.length ? src : [0, 0, 0, -1]);
   geometry.setAttribute('d0', new InstancedBufferAttribute(arr(batch.a0), 4));
   geometry.setAttribute('d1', new InstancedBufferAttribute(arr(batch.a1), 4));
@@ -267,7 +266,16 @@ export function createDotMesh(batch: DotBatch, ctx: LandmarkMaterialContext, uni
   geometry.setAttribute('d3', new InstancedBufferAttribute(arr(batch.a3), 4));
   geometry.instanceCount = batch.count;
   geometry.boundingSphere = null;
-  void n;
+  const mesh = new Mesh(geometry, reuse ?? createDotMaterial(ctx, uni, shade));
+  mesh.name = 'landmark-dots';
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+/** The dots' material (reads only instance attributes: one compile, reused for every rebuild of a set). */
+export function createDotMaterial(ctx: LandmarkMaterialContext, uni: LandmarkUniforms, shade?: (worldPos: Vec3Node) => FloatNode): MeshBasicNodeMaterial {
   const d0 = attribute('d0', 'vec4');
   const d1 = attribute('d1', 'vec4');
   const d2 = attribute('d2', 'vec4');
@@ -331,18 +339,13 @@ export function createDotMesh(batch: DotBatch, ctx: LandmarkMaterialContext, uni
   const dark = ctx.lookup.pal(2, rowNode).rgb as unknown as Vec3Node;
   const colour = mix(dark, lit, smoothstep(0.2, 0.8, vShade));
   material.colorNode = steppedFog(colour, ctx.fog, ctx.lookup, fogDistance(ctx));
-  const mesh = new Mesh(geometry, material);
-  mesh.name = 'landmark-dots';
-  mesh.castShadow = false;
-  mesh.receiveShadow = false;
-  mesh.frustumCulled = false;
-  return mesh;
+  return material;
 }
 
 // ------------------------------------------------------------------------------------------------ mist puffs
 
 /** Mist puffs as one instanced draw (unit sphere + per-puff centre/radius/squash/tier). */
-export function createMistMesh(mist: ReadonlyArray<{ puff: MistPuff; frame: LandmarkFrame; row: number }>, ctx: LandmarkMaterialContext, uni: LandmarkUniforms, detail: number): Mesh | null {
+export function createMistMesh(mist: ReadonlyArray<{ puff: MistPuff; frame: LandmarkFrame; row: number }>, ctx: LandmarkMaterialContext, uni: LandmarkUniforms, detail: number, reuse?: Material | null): Mesh | null {
   if (mist.length === 0) return null;
   const sphere = new SphereGeometry(1, detail >= 1 ? 18 : 12, detail >= 1 ? 11 : 8);
   const geometry = new InstancedBufferGeometry();
@@ -360,6 +363,16 @@ export function createMistMesh(mist: ReadonlyArray<{ puff: MistPuff; frame: Land
   geometry.setAttribute('mq', new InstancedBufferAttribute(b, 4));
   geometry.instanceCount = mist.length;
   sphere.dispose();
+  const mesh = new Mesh(geometry, reuse ?? createMistMaterial(ctx, uni));
+  mesh.name = 'landmark-mist';
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+/** Mist puff material: banded cream puffs, stepped by tier, breathing and drifting (vertex stage). */
+export function createMistMaterial(ctx: LandmarkMaterialContext, uni: LandmarkUniforms): EarleMaterial {
   const mp = attribute('mp', 'vec4');
   const mq = attribute('mq', 'vec4');
   const t = patternTime.mul(uni.flow);
@@ -384,10 +397,5 @@ export function createMistMesh(mist: ReadonlyArray<{ puff: MistPuff; frame: Land
     positionNode: ctx.warp ? ctx.warp(pos) : pos,
     fogDistNode: fogDistance(ctx),
   });
-  const mesh = new Mesh(geometry, material);
-  mesh.name = 'landmark-mist';
-  mesh.castShadow = false;
-  mesh.receiveShadow = true;
-  mesh.frustumCulled = false;
-  return mesh;
+  return material;
 }
