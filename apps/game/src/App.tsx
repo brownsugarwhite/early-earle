@@ -8,6 +8,7 @@ import { LabGrid } from './routes/LabGrid';
 import { LabCreature } from './routes/LabCreature';
 import { LabTree } from './routes/LabTree';
 import { LabShadow } from './routes/LabShadow';
+import { LabRex } from './routes/LabRex';
 import { EditorLevels } from './routes/EditorLevels';
 import { EditorCreatures } from './routes/EditorCreatures';
 import { EditorMap } from './routes/EditorMap';
@@ -24,6 +25,7 @@ export function App() {
       <Route path="/lab/creature" element={<LabCreature />} />
       <Route path="/lab/tree" element={<LabTree />} />
       <Route path="/lab/shadow" element={<LabShadow />} />
+      <Route path="/lab/rex" element={<LabRex />} />
       <Route path="/editor/levels" element={<EditorLevels />} />
       <Route path="/editor/creatures" element={<EditorCreatures />} />
       <Route path="/editor/map" element={<EditorMap />} />

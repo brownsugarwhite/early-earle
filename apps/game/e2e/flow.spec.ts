@@ -1,8 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 
 // Unter SwiftShader (CI) laufen die Kamerafahrten mit 0,1-s-Schritten bei wenigen fps → deutlich längere Wartezeiten.
-const TRANSITION_MS = process.env.CI ? 45_000 : 10_000;
-test.setTimeout(process.env.CI ? 180_000 : 60_000);
+const TRANSITION_MS = process.env.CI ? 90_000 : 10_000;
+test.setTimeout(process.env.CI ? 360_000 : 60_000);
 
 // P5 Flow-Lab: one take without cuts. Runs on the WebGL2 fallback (SwiftShader) like the smoke tests.
 
