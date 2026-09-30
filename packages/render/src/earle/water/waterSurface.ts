@@ -22,7 +22,7 @@ function hash2(c: Vec2Node): Vec2Node {
  * Voronoi-Zellen (3×3 Nachbarschaft): Abstand zur nächsten Zellkante (F2 − F1, in Zelleinheiten) und ein Schlüssel
  * 0..1 der nächsten Zelle.
  */
-function cells(p: Vec2Node, wobble: FloatNode): { edge: FloatNode; key: FloatNode } {
+function cells(p: Vec2Node, wobble: FloatNode): { edge: FloatNode; key: FloatNode; f1: FloatNode } {
   const c = floor(p);
   const f = fract(p);
   let d1: FloatNode = float(8);
@@ -43,7 +43,7 @@ function cells(p: Vec2Node, wobble: FloatNode): { edge: FloatNode; key: FloatNod
       d1 = select(closer, d, d1) as unknown as FloatNode;
     }
   }
-  return { edge: sqrt(d2).sub(sqrt(d1)), key };
+  return { edge: sqrt(d2).sub(sqrt(d1)), key, f1: sqrt(d1) };
 }
 
 /**
@@ -78,14 +78,16 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
   const p = vec2(u.mul(ku).sub(t.mul(flow).mul(0.2)).add(body.mul(41.0)), v.mul(kv));
   const vor = cells(p, t.mul(0.35));
   const fw = fwidth(p.x).add(fwidth(p.y)).max(1e-5);
-  const net = smoothstep(float(0.12).add(fw), float(0.12).sub(fw), vor.edge);
+  // Wasser (Ebene_48): runde, liegende Wellenkiesel (dunkle Zellen) in einem helleren Netz; Größe je Zelle variiert
+  const radiusCell = float(0.34).add(vor.key.mul(0.12));
+  const pebble = smoothstep(radiusCell.add(fw), radiusCell.sub(fw), vor.f1);
   // Zellen fern ausblenden (unter ~8 px), dort übernehmen Linienbänder
   const near = smoothstep(0.16, 0.08, fw);
   const base = pal(2);
   const dark = pal(1);
   const light = pal(3);
-  let col: Vec3Node = mix(base, dark, step(vor.key, float(0.3)).mul(near));
-  col = mix(col, mix(base, light, 0.7), net.mul(near));
+  const pebbleCol = mix(base, dark, step(vor.key, float(0.35)));
+  let col: Vec3Node = mix(base, mix(mix(base, light, 0.55), pebbleCol, pebble), near);
   // Ferne Linienbänder quer zur Achse (waagrecht im Blick längs des Bands), in einigen Streifen dichter
   const band = aaStep(0.1, sin(u.mul(0.9).add(v.mul(0.35)).add(body.mul(9.0))));
   const lines = stripeMask(u.mul(5.5).sub(t.mul(flow).mul(0.08)), 0.34).mul(near.oneMinus()).mul(float(0.55).add(band.mul(0.45)));

@@ -94,7 +94,7 @@ export class FogStripes {
     const heightStep = options.heightStep ?? 0.25;
     const curvature = options.curvatureRadius ?? 40;
     const width = options.width ?? 70;
-    const thickness = options.thickness ?? 0.7;
+    const thickness = options.thickness ?? 1.5;
     const maxAlpha = options.maxAlpha ?? 0.85;
     this.group.name = 'FogStripes';
     this.layoutSpec = { first, spacing, baseHeight, heightStep, radius: curvature };
@@ -105,16 +105,21 @@ export class FogStripes {
       const material = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, fog: false });
       const u = uv().x;
       const v = uv().y;
-      const top = smoothstep(0.985, 0.9, v);
-      const bottom = smoothstep(0.0, 0.6, v);
       // Phase und Deckkraft je Streifen als Uniform: alle Streifen teilen denselben Shader-Code (ein Programm)
       const phase = uniform(i * 1.7);
       const stripeAlpha = uniform(maxAlpha * (1 - 0.08 * i));
       const drift = time.mul(this.speed);
+      // Nebelbank wie Ebene_20: Oberkante wellt sich langsam (Hügelkuppen ragen hindurch), kräftiger Kern, Unterkante
+      // läuft in zwei Serigrafie-Stufen aus — keine Linie, eine liegende Fläche
+      const crest = sin(u.mul(Math.PI * 2 * 3.1).add(drift.mul(0.03)).add(phase)).mul(0.07).add(sin(u.mul(Math.PI * 2 * 7.3).sub(drift.mul(0.02))).mul(0.035));
+      const top = smoothstep(float(0.93).add(crest), float(0.84).add(crest), v);
+      const core = smoothstep(0.2, 0.5, v);
+      const bottom = mix(float(0.45), float(1), core).mul(smoothstep(0.0, 0.2, v));
       const wave = sin(u.mul(Math.PI * 2 * 2.3).add(drift.mul(0.045)).add(phase)).mul(0.5).add(0.5);
       const wave2 = sin(u.mul(Math.PI * 2 * 5.1).sub(drift.mul(0.03)).add(phase.mul(2))).mul(0.5).add(0.5);
       const wave3 = sin(u.mul(Math.PI * 2 * 11.7).add(drift.mul(0.02)).add(phase.mul(3))).mul(0.5).add(0.5);
-      const density = smoothstep(0.32, 0.8, wave.mul(0.55).add(wave2.mul(0.3)).add(wave3.mul(0.15)));
+      // Lange, fast durchgehende Bänder mit wenigen Lücken (Ebene_20), keine spitzen Schlieren
+      const density = smoothstep(0.14, 0.42, wave.mul(0.55).add(wave2.mul(0.3)).add(wave3.mul(0.15)));
       material.colorNode = lookup.pal(options.colorIndex, options.fogRow).rgb;
       const alpha = top.mul(bottom).mul(density).mul(stripeAlpha);
       material.opacityNode = options.strength ? alpha.mul(options.strength) : alpha;
