@@ -1,4 +1,4 @@
-import { abs, clamp, cross, dot, float, floor, fract, fwidth, hash, length, min, mix, normalize, select, sin, smoothstep, vec2, vec3 } from 'three/tsl';
+import { abs, atan, clamp, cross, dot, float, floor, fract, fwidth, hash, length, min, mix, normalize, select, sin, smoothstep, step, vec2, vec3 } from 'three/tsl';
 import type { FloatNode, Vec3Node } from '../tsl';
 
 /**
@@ -133,4 +133,44 @@ export function flowLines(u: FloatNode, along: FloatNode, lines: FloatNode, widt
   const line = smoothstep(hw.add(fw), hw.sub(fw), dist);
   const fade = smoothstep(0.4, 0.2, fw);
   return line.mul(keep).mul(fade);
+}
+
+/**
+ * Astnetz in einer Säulenkrone (Ebene 16 Kathedralenwald: die hellen Stämme verzweigen sich in der Krone zu einem
+ * feinen Netz, das durch das getüpfelte Laub scheint): Linien in Zylinderkoordinaten um die Kronenachse — unten vier
+ * Äste rundum, die sich nach oben dreimal gabeln (8, 16, 32), jede Gabel ein weicher Y-Bogen, die Linien verjüngen sich
+ * und enden unter dem Scheitel. Rundum periodisch (keine Naht), Breite in Welteinheiten, mit `fwidth` geglättet und
+ * ausgeblendet, sobald die Linien unter ≈ 1 px fallen. `p` Musterkoordinate (Welteinheiten, Kronenmitte im Ursprung),
+ * `radius`/`half` Hüllradius und halbe Höhe (Welteinheiten). Rückgabe: Deckung 0..1.
+ */
+export function branchVeins(p: Vec3Node, radius: FloatNode, half: FloatNode, width: Num, salt = 0): FloatNode {
+  const u = atan(p.z, p.x).div(Math.PI * 2).add(0.5); // 0..1 rundum
+  const v = clamp(p.y.div(half).mul(0.5).add(0.5), 0, 1); // 0 unten … 1 oben
+  const circ = radius.mul(Math.PI * 2);
+  // Gabelhöhen (Anteil der Kronenhöhe) und Übergangsbreite
+  const b1 = float(0.22);
+  const b2 = float(0.46);
+  const b3 = float(0.68);
+  const span = float(0.14);
+  // Ebene: 4 · 2^k Linien, k = Zahl der Gabeln unter v
+  const k = step(b1, v).add(step(b2, v)).add(step(b3, v));
+  const n = float(4).mul(select(k.lessThan(0.5), float(1), select(k.lessThan(1.5), float(2), select(k.lessThan(2.5), float(4), float(8)))));
+  const bk = select(k.lessThan(0.5), float(-1), select(k.lessThan(1.5), b1, select(k.lessThan(2.5), b2, b3)));
+  const t = select(k.lessThan(0.5), float(1), smoothstep(bk, bk.add(span), v));
+  // Elternzelle m (zwei Kinder 2m, 2m+1); je Zelle ein kleiner Versatz (gewachsen, nicht gezirkelt)
+  const cellU = u.mul(n.mul(0.5));
+  const m = floor(cellU);
+  const hm = hash(m.add(k.mul(97)).add(salt + 311)) as unknown as FloatNode;
+  const jit = hm.sub(0.5).mul(0.3);
+  const parent = m.add(0.5).add(jit.mul(0.4)).div(n.mul(0.5));
+  const c0 = m.mul(2).add(0.5).add(jit).div(n);
+  const c1 = m.mul(2).add(1.5).add(jit).div(n);
+  const p0 = mix(parent, c0, t);
+  const p1 = mix(parent, c1, t);
+  const d = min(abs(u.sub(p0)), abs(u.sub(p1))).mul(circ);
+  // Breite: dick unten, fein oben; die Linien enden unter dem Scheitel (Spitzen)
+  const w = f(width).mul(float(1).sub(v.mul(0.72))).mul(smoothstep(0.97, 0.84, v));
+  const fw = fwidth(d).max(1e-5);
+  const line = smoothstep(w.add(fw), w.sub(fw), d).mul(clamp(w.div(fw), 0, 1));
+  return line;
 }
