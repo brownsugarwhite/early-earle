@@ -116,6 +116,11 @@ export interface CascadedShadowsOptions {
   casterDilation?: number;
   /** Kontaktversatz reiner Werfer (Texel entlang −Licht-Y, Standard 1). */
   casterShift?: number;
+  /**
+   * Empfängerebenen-Bias (Standard an). `false` kompiliert den alten symmetrischen Kernel-Bias ein (A/B-Vergleich im Lab;
+   * Umschalten baut die Kaskaden neu).
+   */
+  planeBias?: boolean;
   lambda?: number;
   blend?: number;
   normalBias?: number;
@@ -470,7 +475,7 @@ export class CascadedShadows {
   /** Aufweitung reiner Werfer (Texel je Seite), live änderbar. */
   casterDilation: number;
   private readonly fitter = new CascadeFitter();
-  private readonly axes: Pick<ShadowFrameUniforms, 'axisX' | 'axisY' | 'axisL' | 'grazing' | 'baseBias' | 'planeBias'>;
+  private readonly axes: Pick<ShadowFrameUniforms, 'axisX' | 'axisY' | 'axisL' | 'grazing' | 'baseBias'>;
   /** Empfängerebene je Fragment (flache Weltnormale), vor der Kaskadenwahl in gleichförmigem Kontrollfluss gesetzt. */
   private readonly planeNormal = property('vec3', 'eeShadowPlaneN') as unknown as Vec3Node & { assign(v: unknown): void };
   private signature: number[] = [];
@@ -506,7 +511,7 @@ export class CascadedShadows {
     this.casterShift = options.casterShift ?? 1;
     this.casterSettings.smooth = options.smoothCasters ?? true;
     const shared = createShadowFrameUniforms();
-    this.axes = { axisX: shared.axisX, axisY: shared.axisY, axisL: shared.axisL, grazing: shared.grazing, baseBias: shared.baseBias, planeBias: shared.planeBias };
+    this.axes = { axisX: shared.axisX, axisY: shared.axisY, axisL: shared.axisL, grazing: shared.grazing, baseBias: shared.baseBias };
     for (const size of options.sizes) this.cascades.push(this.createEntry(size, options.taps, 'field', this.axes));
     if (options.referenceSize) {
       const s = options.referenceSize;
@@ -535,7 +540,8 @@ export class CascadedShadows {
         taps,
         output,
         terminatorOnly: true,
-        plane: this.planeNormal,
+        plane: this.options.planeBias === false ? null : this.planeNormal,
+        legacyBias: this.options.planeBias === false,
         ...(this.options.manualCompare !== undefined ? { manualCompare: this.options.manualCompare } : {}),
       });
     const light = new CascadeLight(shadow);
@@ -1023,9 +1029,9 @@ export class CascadedShadows {
 
   /**
    * Kontakt-Einstellungen (live): Werfer-Aufweitung (Texel je Seite, 0 = aus), Kontaktversatz (Texel entlang −Licht-Y,
-   * 0 = aus), Empfängerebenen-Bias an/aus, Grundbias (Anteil einer mittleren Texelkante).
+   * 0 = aus), Grundbias (Anteil einer mittleren Texelkante). Der Empfängerebenen-Bias ist eine Bau-Option (`planeBias`).
    */
-  setContact(options: { dilation?: number; shift?: number; planeBias?: boolean; baseBias?: number }): void {
+  setContact(options: { dilation?: number; shift?: number; baseBias?: number }): void {
     if (options.dilation !== undefined) {
       this.casterDilation = Math.max(0, options.dilation);
       this.casterSettings.dilate = this.casterDilation > 0;
@@ -1035,7 +1041,6 @@ export class CascadedShadows {
       this.casterSettings.shift = this.casterShift > 0;
     }
     for (const c of this.cascades) this.applyCasterXf(c);
-    if (options.planeBias !== undefined) this.axes.planeBias.value = options.planeBias ? 1 : 0;
     if (options.baseBias !== undefined) this.axes.baseBias.value = Math.max(0, options.baseBias);
     this.markDirty();
   }
@@ -1044,7 +1049,7 @@ export class CascadedShadows {
     return {
       dilation: this.casterSettings.dilate ? this.casterDilation : 0,
       shift: this.casterSettings.shift ? this.casterShift : 0,
-      planeBias: this.axes.planeBias.value > 0.5,
+      planeBias: this.options.planeBias !== false,
       baseBias: this.axes.baseBias.value,
     };
   }

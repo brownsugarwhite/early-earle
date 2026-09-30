@@ -10,7 +10,7 @@ import type { FloatNode, Vec2Node } from '../earle/tsl';
  * `texture(sampler2DShadow, …)` in GLSL) und meldet im Vertex-Shader einen Fehler. Außerdem verlangt WGSL für
  * `textureSampleCompare` gleichförmigen Kontrollfluss (implizite Ableitungen) — die Kaskaden-Auswahl liegt aber in
  * `if`-Blöcken. Dieser Knoten gibt stattdessen `textureSampleCompareLevel` (WGSL, alle Stufen, keine Ableitungen)
- * bzw. `textureLod(sampler2DShadow, vec3(uv, z), 0.0)` (GLSL ES 3.0, alle Stufen) aus. Schattenkarten haben nur
+ * bzw. `texture(sampler2DShadow, vec3(uv, z))` (GLSL ES 3.0, alle Stufen; im Vertex-Shader Basislevel) aus. Schattenkarten haben nur
  * Level 0, das Ergebnis ist identisch (mit LINEAR-Filter: 2×2-Hardware-PCF).
  *
  * Damit können Konsumenten (z. B. die Kronenpunkte) den Schatten je Instanz im Vertex-Shader lesen.
@@ -44,7 +44,9 @@ class CompareLevelTextureNode extends Base {
     const [builder, textureProperty, uvSnippet, , biasSnippet, depthSnippet, compareSnippet, gradSnippet, gatherSnippet, offsetSnippet] = args;
     if (compareSnippet && !depthSnippet && !gradSnippet && !gatherSnippet && !biasSnippet && !offsetSnippet) {
       const backend = (builder.renderer as unknown as { backend?: { isWebGLBackend?: boolean } }).backend;
-      if (backend?.isWebGLBackend === true) return `textureLod( ${textureProperty}, vec3( ${uvSnippet}, ${compareSnippet} ), 0.0 )`;
+      // GLSL ES 3.0: `texture(sampler2DShadow, …)` ist in jeder Stufe erlaubt (Vertex: Basislevel) und in ANGLE/SwiftShader
+      // deutlich schneller als `textureLod` auf Vergleichs-Samplern
+      if (backend?.isWebGLBackend === true) return `texture( ${textureProperty}, vec3( ${uvSnippet}, ${compareSnippet} ) )`;
       return `textureSampleCompareLevel( ${textureProperty}, ${textureProperty}_sampler, ${uvSnippet}, ${compareSnippet} )`;
     }
     return super.generateSnippet(...args);

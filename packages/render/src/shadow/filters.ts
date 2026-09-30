@@ -46,8 +46,6 @@ export interface ShadowFrameUniforms {
   grazing: UniformNode<'float', number>;
   /** Grundbias in Texeln (Anteil der mittleren Texelkante, Standard 0,25). */
   baseBias: UniformNode<'float', number>;
-  /** 1 = Empfängerebenen-Bias (Taps folgen der Ebene), 0 = alter symmetrischer Kernel-Bias (Vergleich im Lab). */
-  planeBias: UniformNode<'float', number>;
 }
 
 export function createShadowFrameUniforms(): ShadowFrameUniforms {
@@ -59,7 +57,6 @@ export function createShadowFrameUniforms(): ShadowFrameUniforms {
     range: uniform(100),
     grazing: uniform(0.006),
     baseBias: uniform(0.25),
-    planeBias: uniform(1),
   };
 }
 
@@ -96,6 +93,8 @@ export interface ShadowFilterOptions {
   terminatorOnly?: boolean;
   /** Empfängerebene (Standard: `'derivatives'`). */
   plane?: ReceiverPlaneSource;
+  /** Alter symmetrischer Kernel-Bias statt der Empfängerebene (A/B-Vergleich im Lab, fest einkompiliert). */
+  legacyBias?: boolean;
 }
 
 type ShadowFilterInputs = { depthTexture: DepthTexture; shadowCoord: Vec3Node; shadow: LightShadow; depthLayer?: unknown };
@@ -263,8 +262,9 @@ export function planeDepthGradient(n: Vec3Node, frame: ShadowFrameUniforms): Vec
 
 /**
  * Gemeinsame Bias-/Ebenenlogik der Filter: liefert `zAt(Δ)` für `bsplineField`.
- * - Ebene an (`planeBias` = 1): z + ∇z·Δ − (Grundbias + Rest am Terminator).
- * - Ebene aus: alter symmetrischer Bias (Kernelradius × Hangneigung, nahe am Terminator).
+ * - Mit Ebene: z + ∇z·Δ − (Grundbias + Rest am Terminator).
+ * - Ohne Ebene (`plane` null): Punktprobe; mit `legacy` der alte symmetrische Bias (Kernelradius × Hangneigung nahe am
+ *   Terminator, nur für den A/B-Vergleich im Lab — wird dann fest einkompiliert, kein Uniform-Schalter).
  */
 export function receiverDepth(options: {
   frame: ShadowFrameUniforms;
@@ -275,20 +275,22 @@ export function receiverDepth(options: {
   kernelRadius: number;
   terminatorOnly: boolean;
   reversed: boolean;
+  /** Alter symmetrischer Kernel-Bias statt der Ebene (Lab-Vergleich). */
+  legacy?: boolean;
 }): (delta: Vec2Node | null) => FloatNode {
   const { frame, z, plane, shading, kernelRadius, terminatorOnly, reversed } = options;
   const n = shading ?? plane;
   const nl = n ? n.dot(frame.axisL) : float(1);
   const nearTerminator = n ? (terminatorOnly ? smoothstep(0.02, 0.14, nl).oneMinus() : float(1)) : float(0);
   const base = frame.texel.x.add(frame.texel.y).mul(frame.baseBias).div(frame.range);
-  // Alter symmetrischer Bias: exakte Tiefenneigung je Texel × Kernelradius (nur für den A/B-Vergleich im Lab)
-  let legacy: FloatNode = float(0);
-  if (n) {
-    const ln = max(nl, 0.06);
-    const slope = abs(n.dot(frame.axisX)).mul(frame.texel.x).add(abs(n.dot(frame.axisY)).mul(frame.texel.y)).div(ln);
-    legacy = frame.grazing.div(max(nl, 0.05)).add(slope.mul(kernelRadius)).mul(nearTerminator).div(frame.range) as unknown as FloatNode;
-  }
-  if (!plane) {
+  if (options.legacy || !plane) {
+    // Alter symmetrischer Bias: exakte Tiefenneigung je Texel × Kernelradius (nur Lab-Vergleich) bzw. Punktprobe
+    let legacy: FloatNode = float(0);
+    if (options.legacy && n) {
+      const ln = max(nl, 0.06);
+      const slope = abs(n.dot(frame.axisX)).mul(frame.texel.x).add(abs(n.dot(frame.axisY)).mul(frame.texel.y)).div(ln);
+      legacy = frame.grazing.div(max(nl, 0.05)).add(slope.mul(kernelRadius)).mul(nearTerminator).div(frame.range) as unknown as FloatNode;
+    }
     const b = base.add(legacy);
     const zb = (reversed ? z.add(b) : z.sub(b)) as unknown as FloatNode;
     return () => zb;
@@ -296,12 +298,11 @@ export function receiverDepth(options: {
   const g = planeDepthGradient(plane, frame);
   // Rest: der bilineare Tap vergleicht 2×2 Texel mit einer Tiefe → halbe Texelneigung, nur am Terminator nötig
   const residual = abs(g.x).add(abs(g.y)).mul(0.5).add(frame.grazing.div(max(nl, 0.05)).div(frame.range)).mul(nearTerminator);
-  const on = frame.planeBias;
-  const b = base.add(mix(legacy, residual, on));
+  const b = base.add(residual);
   const z0 = (reversed ? z.add(b) : z.sub(b)) as unknown as FloatNode;
   return (delta: Vec2Node | null): FloatNode => {
     if (!delta) return z0;
-    const dz = g.dot(delta).mul(on);
+    const dz = g.dot(delta);
     return (reversed ? z0.sub(dz) : z0.add(dz)) as unknown as FloatNode;
   };
 }
@@ -330,6 +331,7 @@ export function createEarleShadowFilter(options: ShadowFilterOptions) {
       kernelRadius,
       terminatorOnly: options.terminatorOnly === true,
       reversed,
+      legacy: options.legacyBias === true,
     });
     const mapSize = reference('mapSize', 'vec2', shadow) as unknown as Vec2Node;
     const compare = createDepthCompareZ(depthTexture, shadow, builder, options.manualCompare);

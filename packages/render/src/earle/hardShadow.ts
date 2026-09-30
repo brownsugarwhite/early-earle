@@ -296,6 +296,7 @@ export class SunRig implements ShadowFactorSource {
         referenceFilter: createHardShadowFilter(light, this.depthPerTexel, this.manualCompareFn),
         manualCompare: this.manualCompareFn,
         smoothCasters: this.smoothCasters,
+        planeBias: this.contactTuning.planeBias,
       });
       cascaded.camera = this.viewCamera;
       cascaded.receivers = this.viewReceivers;
@@ -311,7 +312,13 @@ export class SunRig implements ShadowFactorSource {
       this.cascaded = cascaded;
     } else {
       shadow.filterNode = this.sharpen
-        ? createEarleShadowFilter({ frame: this.frame, taps: this.taps, output: 'threshold', manualCompare: this.manualCompareFn })
+        ? createEarleShadowFilter({
+            frame: this.frame,
+            taps: this.taps,
+            output: 'threshold',
+            manualCompare: this.manualCompareFn,
+            ...(this.contactTuning.planeBias ? {} : { plane: null, legacyBias: true }),
+          })
         : createDefaultShadowFilter(this.manualCompareFn);
     }
     this.applyAngles();
@@ -454,10 +461,12 @@ export class SunRig implements ShadowFactorSource {
    * `baseBias` = Grundbias in Anteilen einer mittleren Texelkante.
    */
   setContact(options: { dilation?: number; shift?: number; planeBias?: boolean; baseBias?: number }): void {
+    const planeChanged = options.planeBias !== undefined && options.planeBias !== this.contactTuning.planeBias;
     this.contactTuning = { ...this.contactTuning, ...options };
-    this.cascaded?.setContact(this.contactTuning);
-    this.frame.planeBias.value = this.contactTuning.planeBias ? 1 : 0;
     this.frame.baseBias.value = this.contactTuning.baseBias;
+    // Ebenen-Bias ist fest einkompiliert (kein Uniform-Zweig im Shader): Umschalten baut neu
+    if (planeChanged) this.rebuild();
+    else this.cascaded?.setContact(this.contactTuning);
   }
 
   get contactSettings(): { dilation: number; shift: number; planeBias: boolean; baseBias: number } {
