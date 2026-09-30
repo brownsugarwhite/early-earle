@@ -20,8 +20,9 @@ export type P2 = [number, number];
  *   foot, a stair of basalt columns spiralling up (Ebene 12/25/44/45);
  * - `cliffFall`: a broad, lower rock step with a smaller fall out of the front wall;
  * - `twinFalls`: a massif with two crags and two falls framing a frontal column stair;
- * - `ruin`: a tall gothic ruin (terrace with a stair along its facade, lancet arcade, a broken tower, vines and
- *   dome bushes — Ebene 22, Sleeping-Beauty backgrounds);
+ * - `ruin`: a tall gothic ruin growing out of rock (a battered keep carrying the level terrace, a stair winding up
+ *   its wall, leaning lancet walls with broken tops, a half-collapsed arch, a spire tower, buttresses, a tree growing
+ *   out of the top, vines and dome bushes — Ebene 22, the Sleeping-Beauty backgrounds);
  * - `swamp`: green marsh ponds with lily pads, reeds, gas bubbles and a hummock island for a level (start worlds).
  */
 export type LandmarkKind = 'fallsRock' | 'cliffFall' | 'twinFalls' | 'ruin' | 'swamp';
@@ -35,9 +36,10 @@ export type LocalGround = (x: number, z: number) => number;
 
 /**
  * Surface family of a prism (material code): basalt column (vertical striations, moss caps), crag (striations plus
- * Earle's zigzag glyph bands, towering), wet rock (dark streaks beside a fall), cut stone (ruin blocks, brick
- * courses), rubble (tumbled ruin blocks), roof (the tower's spire, dark slate), island (swamp hummock: meadow cap,
- * earthy walls), bark (dead snags: dark wood with fine grain).
+ * Earle's zigzag glyph bands, towering), wet rock (dark streaks beside a fall), cut stone (ruin masonry: fine
+ * vertical strokes, a few irregular joints, lichen on the lit top edge), rubble (tumbled ruin blocks), roof (the
+ * tower's spire, dark slate), island (swamp hummock: meadow cap, earthy walls), bark (snags and the ruin's tree: dark
+ * wood with fine grain).
  */
 export type PrismSurface = 'basalt' | 'crag' | 'wet' | 'stone' | 'rubble' | 'roof' | 'island' | 'bark';
 
@@ -78,6 +80,21 @@ export interface Prism {
   role: string;
   /** Pattern phase 0..1 (deterministic). */
   variant: number;
+  /** Lancet windows painted into wall faces (stone only, at most one per face). */
+  lancets?: LancetSpec[];
+}
+
+/**
+ * A lancet window painted into one wall face of a prism as an ink shape (Ebene 22's turret slits, a blind portal):
+ * face `face` is the wall from `base[face]` to `base[face + 1]`; the window is centred `s` from the face's middle
+ * (along that edge), `width` wide, from `sill` up to its pointed `apex` (local heights).
+ */
+export interface LancetSpec {
+  face: number;
+  s: number;
+  width: number;
+  sill: number;
+  apex: number;
 }
 
 /** A waterfall: a curved water sheet along a polyline, source (in a cleft) → impact (in a pool). */
@@ -120,22 +137,30 @@ export interface MistPuff {
   phase: number;
 }
 
-/** A lancet arcade on the ruin terrace (piers + pointed arches, some broken). */
-export interface ArcadeSpec {
-  /** Start and end of the arcade's centreline (local, on the terrace top). */
+/**
+ * A tracery wall of the ruin (Ebene 22's broken arch, the Sleeping-Beauty nave walls): a stone slab along the foot
+ * line `from` → `to`, `depth` thick. Its shape is drawn in the wall's own plane — `s` along the foot line (0 …
+ * length), `h` up from the floor `y` (negative = sunk into the floor) — as an outline with a broken top, pierced by
+ * lancet openings (holes). The slab leans outward along `normal` by `lean` per unit of height.
+ */
+export interface WallSpec {
   from: P2;
   to: P2;
-  /** Height of the floor it stands on. */
+  /** Outward side (unit, xz, perpendicular to from → to): the slab leans this way. */
+  normal: P2;
+  /** Height of the floor the outline's h = 0 stands on. */
   y: number;
-  /** Pier height to the springing line, arch rise above it, wall depth, pier width. */
-  pierHeight: number;
-  rise: number;
   depth: number;
-  pier: number;
-  /** Number of openings. */
-  bays: number;
-  /** Broken bays (index → share of the arch that still stands, 0..1). */
-  broken: Record<number, number>;
+  /** Closed outline in (s, h), counter-clockwise; its lowest points reach below the floor (sunk foot). */
+  outline: P2[];
+  /** Openings cut through the slab (lancet windows), closed polygons in (s, h) inside the outline. */
+  holes: P2[][];
+  /** Horizontal offset along `normal` per unit of height (0 = plumb). */
+  lean: number;
+  /** Role for tests/tools: nave, arch, pier … */
+  role: string;
+  /** Pattern phase 0..1 (deterministic). */
+  variant: number;
 }
 
 /** A vine (thorn creeper, Ebene 22): a polyline climbing a surface, with curls; drawn as a thin ink ribbon. */
@@ -248,7 +273,8 @@ export interface LandmarkBlueprint {
   falls: FallSpec[];
   pools: PoolSpec[];
   mist: MistPuff[];
-  arcades: ArcadeSpec[];
+  /** Tracery walls (ruin). */
+  walls: WallSpec[];
   vines: VineSpec[];
   bushes: BushSpec[];
   swamp: SwampParts | null;

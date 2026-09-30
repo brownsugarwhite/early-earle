@@ -429,6 +429,10 @@ export class LandmarkLabScene implements SceneController {
     const a = inst?.anchors[0];
     const facing: P2 = a?.facing ?? [0, 1];
     const facingYaw = Math.atan2(facing[0], facing[1]);
+    // the tall ruin: its tower rises far above the terrace — frame the whole silhouette, look up from the front-left
+    const peak = bp?.height ?? H;
+    if (this.params.kind === 'ruin' && view === 'karte') return { yaw: 0.2, pitch: 0.5, distance: Math.max(38, peak * 2.35), target: [0, y0 + Math.max(H * 0.45, peak * 0.38), 0] };
+    if (this.params.kind === 'ruin' && view === 'unten') return { yaw: -0.38, pitch: 0.04, distance: Math.max(26, R * 2.2), target: [-1.5, y0 + H * 1.15, -2.5] };
     switch (view) {
       case 'unten': {
         // from the pool's side, low, looking up at the massif (Earle's monoliths from below)
