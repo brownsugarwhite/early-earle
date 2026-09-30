@@ -9,7 +9,7 @@ import { blotches, flowLines, flowers, stipple, valueNoise3 } from './patterns';
  * Juwelenkuppeln (Bild 02): Farbtondrehung zur Unterseite (Bogenmaß) — rot → magenta → violett → blau → türkis, wie
  * Earles Irisdruck innerhalb einer Kuppel. Oben bleibt die Palettenfarbe.
  */
-const JEWEL_TURN = 1.05;
+const JEWEL_TURN = 1.6;
 /** Kuppeln von oben beleuchtet (Earle): Aufhellung des Scheitels bzw. Abdunklung der Unterseite im Verlauf. */
 const DOME_TOP_LIGHT = 0.2;
 
@@ -126,7 +126,10 @@ class CrownLightingModel extends LightingModel {
     // einzelne zwei Stufen — ruhige Textur statt Konfetti
     const bandIdx = floor(band).add(1);
     const up = float(1).add(step(0.8, st.key.mul(0.5).add(grow.mul(0.55))));
-    const dotColor = o.lookup.pal(clamp(bandIdx.add(up), 2, 5), row).rgb as unknown as Vec3Node;
+    const dotStep = o.lookup.pal(clamp(bandIdx.add(up), 2, 5), row).rgb as unknown as Vec3Node;
+    // Mit Verlauf folgen die Punktfarben dem Verlauf darunter (keine Farbsprünge der Punkte an den alten Bandkanten)
+    const dotRamp = fountain(o.lookup, bandG.add(up).max(1.5), row, 1, soft, 4).rgb as unknown as Vec3Node;
+    const dotColor = mix(dotStep, dotRamp, soft) as unknown as Vec3Node;
     litColor = mix(litColor, dotColor, st.mask);
     // Juwelen (Terminator < 0): Farbton dreht zur Unterseite (rot → violett → blau, Bild 02)
     const isJewel = select(term.lessThan(0), float(1), float(0));

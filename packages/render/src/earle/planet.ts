@@ -83,6 +83,8 @@ export interface EarlePlanetWorld {
   shadowTint?: { color: string; amount: number; lift?: number };
   /** Talnebel 0..1 (Ebene 20, Bild 03): helle Nebelbank am Talgrund, nach oben ausdünnend. Fehlt → 0. */
   valleyMist?: number;
+  /** Leuchtender Horizont 0..1 (Ebene 16: heller Schein hinter den Baumreihen, am Horizont rundum). Fehlt → 0. */
+  skyGlow?: number;
 }
 
 export interface EarlePlanetQuality {
@@ -174,6 +176,8 @@ export class EarlePlanet {
   readonly stripeStrength = uniform(1);
   /** Talnebel der Blick-Welt (0..1, mit der Überblendung): helle Nebelbank am Talgrund des Geländes. */
   readonly mistStrength = uniform(0);
+  /** Leuchtender Horizont der Blick-Welt (0..1, mit der Überblendung), für `createSkyDome({ glow })`. */
+  readonly skyGlow = uniform(0);
   /** Krümmungs-Boost (0 = echte Kugel) und Blickrichtung im Planetenraum für den Warp. */
   readonly curvature = uniform(0);
   readonly lookDirLocal = uniform(new Vector3(0, 1, 0));
@@ -303,6 +307,7 @@ export class EarlePlanet {
     this.skyMix = uniform(0);
     this.stripeStrength.value = first.fogStripes;
     this.mistStrength.value = first.valleyMist ?? 0;
+    this.skyGlow.value = first.skyGlow ?? 0;
     this.crackClosed = options.zones.map(() => false);
     this.crackWidths = options.zones.slice(0, -1).map(() => uniform(this.crackWidth));
     this.angularRadius = chunkAngularRadius(options.chunksPerFace);
@@ -336,7 +341,7 @@ export class EarlePlanet {
     // Linienfarbe: Schneestreifen eine Stufe dunkler als der Schnee; Bodenlinien des Juwelenwalds (Ebene_3) dunkel auf
     // dunklem Grund — nur zwei Stufen heller als die Bodentinte
     const worldA = uniformArray(
-      this.worlds.map((w, i) => new Vector4(this.rows[i]!.terrain, GROUND_KIND[w.ground], w.ground === 'floorLines' ? 4 : 1, this.field.features.chisel[i] ?? 0)),
+      this.worlds.map((w, i) => new Vector4(this.rows[i]!.terrain, GROUND_KIND[w.ground], w.ground === 'floorLines' ? (w.palette.groundLine ? 6 : 4) : 1, this.field.features.chisel[i] ?? 0)),
       'vec4',
     ) as unknown as UniformVec4ArrayLike;
     const worldB = uniformArray(
@@ -431,10 +436,11 @@ export class EarlePlanet {
     const e2U = uniform(e2);
     const ang = acos(clamp(dot(d, anchorU), -1, 1));
     const theta = atan(dot(d, e2U), dot(d, e1U));
-    const lines = stripeMask(select(isSnow, snowCoord, theta.mul(36 / (Math.PI * 2))), select(isSnow, float(0.09), float(0.035))).mul(
+    // Perspektivlinien (Ebene 3/32): fein und dicht wie gezogene Tuschelinien — 48 Strahlen, Ringe alle 2.4 Einheiten
+    const lines = stripeMask(select(isSnow, snowCoord, theta.mul(48 / (Math.PI * 2))), select(isSnow, float(0.09), float(0.022))).mul(
       select(isSnow, float(1), smoothstep(0.015, 0.06, ang)),
     );
-    const rings = stripeMask(ang.mul(R / 2.4).add(drift), 0.035).mul(select(isSnow, float(0), float(1)));
+    const rings = stripeMask(ang.mul(R / 2.4).add(drift), 0.018).mul(select(isSnow, float(0), float(1)));
     const mask = max(lines, rings).mul(flat).mul(select(kind.greaterThan(0.5).and(kind.lessThan(2.5)), float(1), float(0)));
     const patternColor = this.lookup.pal(wa.z, rowNode).rgb;
     // Schneelinien und Bodenlinien laufen durch die Schatten (dort halb in Tinte gemischt), Grat-Streifen nur im Licht
@@ -771,6 +777,7 @@ export class EarlePlanet {
       this.fog.mix.value = t;
       this.stripeStrength.value = wa.fogStripes + (wb.fogStripes - wa.fogStripes) * t;
       this.mistStrength.value = (wa.valleyMist ?? 0) + ((wb.valleyMist ?? 0) - (wa.valleyMist ?? 0)) * t;
+      this.skyGlow.value = (wa.skyGlow ?? 0) + ((wb.skyGlow ?? 0) - (wa.skyGlow ?? 0)) * t;
       this.fogStart = wa.fog.start + (wb.fog.start - wa.fog.start) * t;
       this.fogRange = wa.fog.range + (wb.fog.range - wa.fog.range) * t;
       this.applyFog();

@@ -21,6 +21,11 @@ export interface SkyDomeOptions {
   /** Elevationsspanne (als y-Differenz) über die die Rampe läuft. Standard 0.6. */
   spread?: number;
   radius?: number;
+  /**
+   * Leuchtender Horizont 0..1 (Uniform der Blick-Welt, z. B. `EarlePlanet.skyGlow`): ein heller Airbrush-Schein rundum
+   * am Horizont in der Ringfarbe, zur Sonnenfarbe hin (Ebene 16: Licht hinter den Baumreihen). Fehlt → aus.
+   */
+  glow?: UniformNode<'float', number>;
 }
 
 /**
@@ -51,7 +56,13 @@ export function createSkyDome(options: SkyDomeOptions): Mesh {
   const sunGlow = glow(d, 0.97, Math.cos((80 * Math.PI) / 180))
     .mul(float(1).sub(t).pow(1.5))
     .mul(air.mul(0.55));
-  const lit = mixInk(sky, ringColor, sunGlow);
+  let lit = mixInk(sky, ringColor, sunGlow);
+  if (options.glow) {
+    // Rundum am Horizont: schmaler, sehr heller Schein (Ringfarbe zur Sonne hin), nach oben quadratisch ausklingend
+    const sunColor = lookup.pal(options.sunIndex, rowForSun).rgb as unknown as Vec3Node;
+    const band = float(1).sub(smoothstep(0.0, 0.3, t));
+    lit = mixInk(lit, mixInk(ringColor, sunColor, 0.45), band.mul(band).mul(options.glow).mul(air));
+  }
   const withRing = mix(dither(lit), ringColor, ring);
   material.colorNode = mix(withRing, lookup.pal(options.sunIndex, rowForSun).rgb, disc);
   const mesh = new Mesh(geometry, material);

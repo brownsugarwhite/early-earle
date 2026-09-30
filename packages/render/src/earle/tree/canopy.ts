@@ -163,7 +163,8 @@ export function createCanopy(o: CanopyOptions): Canopy {
       // dome). Split-fountain gradient between the families (`earleGradients.surface` 0 = the old three hard steps)
       const soft = earleGradients.surface;
       const g = qn.y.mul(0.85).add(qn.x.mul(vTone.y)).add(qn.z.mul(vTone.z));
-      const tone = clamp(vTone.x.add(g.mul(0.42)), 0, 3.999);
+      // wider spread with the gradient (image 02: one dome runs red → violet → blue from its top down)
+      const tone = clamp(vTone.x.add(g.mul(mix(float(0.42), float(0.62), soft))), 0, 3.999);
       const ts = tone.mul(3);
       const fts = fract(ts);
       const wts = fwidth(ts).max(1e-4);
@@ -201,11 +202,15 @@ export function createCanopy(o: CanopyOptions): Canopy {
       const far = smoothstep(float(0.42), float(0.2), fw); // cells under ~2.5 px: the stipple melts into the tint
       const dotR = float(0.17).add(h4.mul(0.12)).mul(light);
       const dotMask = smoothstep(dotR.add(fw), dotR.sub(fw).max(0), d).mul(step(0.12, h2)).mul(far);
-      // mostly one band lighter (a woven texture), some light tints, rare sparkles and complementary accents
+      // mostly one band lighter (a woven texture), some light tints, rare sparkles and complementary accents. The
+      // "one band lighter" dots follow the gradient under them (no dot-colour steps at the old band edges)
       const pick = fract(h1.mul(41.9).add(h2.mul(11.3)));
       const lighter = min(floor(band).add(2), float(3));
       const dotIdx = select(pick.lessThan(0.62), lighter, select(pick.lessThan(0.88), float(5), select(pick.lessThan(0.96), float(6), float(7))));
-      const dotCol = mix(lookup.pal(dotIdx, rowA).rgb, lookup.pal(dotIdx, rowB).rgb, fr);
+      const dotStep = mix(lookup.pal(dotIdx, rowA).rgb, lookup.pal(dotIdx, rowB).rgb, fr) as unknown as Vec3Node;
+      const brightest = mixInk(lookup.pal(3, rowA).rgb as unknown as Vec3Node, lookup.pal(3, rowB).rgb as unknown as Vec3Node, fr);
+      const dotSoft = mixInk(litCol, brightest, 0.6);
+      const dotCol = mix(dotStep, dotSoft, select(pick.lessThan(0.62), soft, float(0))) as unknown as Vec3Node;
       col = mix(col, dotCol, dotMask);
       // at distance the stipple becomes a lighter tint of the lit side (same average, no shimmer)
       col = mix(col, mix(col, dotCol, 0.22), float(1).sub(far).mul(light).mul(0.8));

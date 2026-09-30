@@ -241,6 +241,7 @@ export class EarleLabScene implements SceneController {
       skyRowB: world.skyRowB,
       skyMix: world.skyMix,
       horizonY: this.skyHorizon,
+      glow: world.skyGlow,
     });
     this.camera.add(sky);
     this.disposables.push(sky.geometry, sky.material as { dispose(): void }, { dispose: () => sky.removeFromParent() });

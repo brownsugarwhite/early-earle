@@ -216,6 +216,7 @@ export class MapWorld {
       skyRowB: this.world.skyRowB,
       skyMix: this.world.skyMix,
       horizonY: this.skyHorizon,
+      glow: this.world.skyGlow,
     });
     this.camera.add(sky);
     this.disposables.push(sky.geometry, sky.material as { dispose(): void });
