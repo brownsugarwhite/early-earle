@@ -63,7 +63,7 @@ export type HeroCollider =
 
 /** Parameters of the attached node animations (no offsets away from the surface). */
 export interface HeroNodeMotion {
-  /** A newly unlocked node grows out of its surface (scale 0 → 1 along `seat`), seconds. */
+  /** Duration (s) of the bloom pulse when a node is reached, or of growing out of the surface when it appears. */
   sprout: number;
   /** Breathing of the current node: relative scale amplitude and period (s); anchored at the surface point. */
   breathAmplitude: number;
@@ -77,12 +77,20 @@ export interface HeroNodeMotion {
 
 export const HERO_NODE_MOTION: HeroNodeMotion = { sprout: 0.9, breathAmplitude: 0.07, breathPeriod: 2.6, waveSpeed: 7, waveLength: 9, hover: 0 };
 
-/** Scale of a node marker at time `time` (s): sprouting since `since` (s), breathing when current. */
-export function heroNodeScale(motion: HeroNodeMotion, time: number, current: boolean, since = -Infinity): number {
-  const sprout = smooth01((time - since) / Math.max(1e-3, motion.sprout));
-  const pop = sprout < 1 ? sprout * (1 + 0.18 * Math.sin(sprout * Math.PI)) : 1;
+/**
+ * Scale of a node marker at time `time` (s), anchored at its surface point (no offset, ever):
+ * - `since` = time the node was reached: a short bloom pulse (1 → 1.28 → 1 over `motion.sprout` s);
+ * - `appear = true`: the node grows out of the surface instead (0 → 1 with a small overshoot), for nodes that were
+ *   hidden before (e.g. a stretch that unlocks);
+ * - `current`: breathing ± `motion.breathAmplitude`.
+ */
+export function heroNodeScale(motion: HeroNodeMotion, time: number, current: boolean, since = -Infinity, appear = false): number {
+  const u = smooth01((time - since) / Math.max(1e-3, motion.sprout));
+  let s = 1;
+  if (appear) s = u < 1 ? u * (1 + 0.18 * Math.sin(u * Math.PI)) : 1;
+  else if (u < 1) s = 1 + 0.28 * Math.sin(u * Math.PI);
   const breath = current ? 1 + motion.breathAmplitude * Math.sin((time / motion.breathPeriod) * Math.PI * 2) : 1;
-  return pop * breath;
+  return s * breath;
 }
 
 export interface HeroTreePath {

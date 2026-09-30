@@ -19,9 +19,9 @@ export interface HeroPathMarkerOptions {
 
 export interface HeroPathMarkers {
   group: Group;
-  /** `current` gets the ring and breathes; nodes < `done` are completed; newly unlocked nodes sprout. */
+  /** `current` gets the ring and breathes; nodes < `done` are completed; newly reached nodes bloom (pulse). */
   setProgress(current: number, done: number): void;
-  /** Animations (seconds): sprouting, breathing, the light wave along the dots. */
+  /** Animations (seconds): bloom pulse, breathing, the light wave along the dots. */
   update(time: number): void;
   setSunDirection(dirLocal: Vector3): void;
   dispose(): void;
@@ -206,7 +206,7 @@ function frameOf(node: HeroPathNode): Matrix4 {
  * - **root, limb, dome**: flat stones lying on the surface (sunk a little), contact shadow away from the sun;
  * - **dots**: flush discs on the surface, a light wave runs along them towards the current node;
  * - **current node**: the one fat pink → violet outline (hero element), breathing anchored at the surface;
- *   newly unlocked nodes sprout out of the surface.
+ *   newly reached nodes bloom with a short pulse (all scaling anchored at the surface point).
  * 5 draw calls (fungi, stones, shadows, dots, ring).
  */
 export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers {
@@ -396,7 +396,7 @@ export function createHeroPathMarkers(o: HeroPathMarkerOptions): HeroPathMarkers
   return {
     group,
     setProgress(cur, d) {
-      // a newly reached node grows out of its surface (fungus sprouting from the bark, stone rising from a dome)
+      // newly reached nodes bloom: a short pulse anchored at the surface point
       if (current >= 0 && cur > current) for (let i = current + 1; i <= cur; i++) unlockedAt[i] = now;
       current = cur;
       done = d;

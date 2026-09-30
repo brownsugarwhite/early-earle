@@ -184,7 +184,12 @@ describe('heroTreePath: nodes lie on the tree', () => {
   it('node motion stays attached: no hover, breathing and sprouting scale around the surface point', () => {
     expect(HERO_NODE_MOTION.hover).toBe(0);
     expect(heroNodeScale(HERO_NODE_MOTION, 10, false)).toBe(1);
-    expect(heroNodeScale(HERO_NODE_MOTION, 10, false, 10)).toBe(0);
+    // appearing: grows out of the surface from 0
+    expect(heroNodeScale(HERO_NODE_MOTION, 10, false, 10, true)).toBe(0);
+    expect(heroNodeScale(HERO_NODE_MOTION, 10 + HERO_NODE_MOTION.sprout, false, 10, true)).toBeCloseTo(1, 6);
+    // reached: a bloom pulse that starts and ends at 1
+    expect(heroNodeScale(HERO_NODE_MOTION, 10, false, 10)).toBeCloseTo(1, 6);
+    expect(heroNodeScale(HERO_NODE_MOTION, 10 + HERO_NODE_MOTION.sprout * 0.5, false, 10)).toBeGreaterThan(1.1);
     expect(heroNodeScale(HERO_NODE_MOTION, 10 + HERO_NODE_MOTION.sprout, false, 10)).toBeCloseTo(1, 6);
     for (let t = 0; t < 5; t += 0.1) {
       const s = heroNodeScale(HERO_NODE_MOTION, t, true);
