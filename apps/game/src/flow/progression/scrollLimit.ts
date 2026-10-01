@@ -1,12 +1,12 @@
 /**
- * Scroll-Grenze des echten Modus (Iteration 4, Punkt 4): Die Karte lässt sich nur so weit drehen, dass der Blickpunkt
+ * Scroll-Grenze des echten Modus (Iteration 4, Punkt 4): Die Karte lässt sich nur so weit schwenken, dass der Blickpunkt
  * in der Nähe des schon begehbaren Pfads bleibt — Knoten 0 … `reached` plus ein Stück der nächsten Strecke als
  * Vorgeschmack. Rein und ohne three.js: Punkte sind `{x, y, z}`.
  *
- * - **Kugel (heute)**: Punkte im Planetenraum, radial auf den Radius R projiziert (`onSphere`); Abstände sind Sehnen,
- *   bei ein paar Welteinheiten auf R = 32 gleich den Bögen.
- * - **Ebene (ADR 0002)**: Punkte als (x, 0, z) (`onPlane`), dieselben Funktionen. Der Vertrag für den Pan-Ball bleibt
- *   einfach: Blickpunkt + freigeschaltete Polylinie → `nearestInRegion` → `{ anchor, excess }`.
+ * - **Ebene (ADR 0002, das Spiel)**: Punkte als (x, 0, z) (`onPlane`). Der Vertrag für den Pan-Ball ist einfach:
+ *   Blickpunkt + freigeschaltete Polylinie → `nearestInRegion` → `{ anchor, excess }` (progression/mapFocus.ts).
+ * - **Kugel (alt)**: Punkte radial auf den Radius R projiziert (`onSphere`); Abstände sind Sehnen, bei ein paar
+ *   Welteinheiten auf R = 32 gleich den Bögen.
  */
 export interface P3 {
   x: number;

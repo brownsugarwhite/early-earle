@@ -15,15 +15,18 @@ export interface PaletteRowSpec {
 
 export class PaletteAtlas {
   static readonly WIDTH = 8;
+  /** Standardhöhe (Zeilen); die Karte nutzt mehr (Welt-Slots der unendlichen Ebene). */
   static readonly HEIGHT = 128;
   readonly texture: DataTexture;
   private readonly data: Uint8Array;
   private readonly rows = new Map<string, { index: number; steps: number }>();
   private nextRow = 0;
+  private readonly rowsTotal: number;
 
-  constructor() {
-    this.data = new Uint8Array(PaletteAtlas.WIDTH * PaletteAtlas.HEIGHT * 4);
-    this.texture = new DataTexture(this.data, PaletteAtlas.WIDTH, PaletteAtlas.HEIGHT, RGBAFormat, UnsignedByteType);
+  constructor(height = PaletteAtlas.HEIGHT) {
+    this.rowsTotal = height;
+    this.data = new Uint8Array(PaletteAtlas.WIDTH * height * 4);
+    this.texture = new DataTexture(this.data, PaletteAtlas.WIDTH, height, RGBAFormat, UnsignedByteType);
     this.texture.magFilter = NearestFilter;
     this.texture.minFilter = NearestFilter;
     this.texture.generateMipmaps = false;
@@ -39,7 +42,29 @@ export class PaletteAtlas {
   }
 
   get height(): number {
-    return PaletteAtlas.HEIGHT;
+    return this.rowsTotal;
+  }
+
+  /** Die ersten `count` Zeilen für feste Blöcke reservieren (Welt-Slots); benannte Zeilen folgen dahinter. */
+  reserve(count: number): void {
+    this.nextRow = Math.max(this.nextRow, count);
+  }
+
+  /** Zeile `index` direkt schreiben (feste Blöcke, z. B. Welt-Slots). */
+  setRow(index: number, steps: readonly string[], alphas?: readonly number[]): void {
+    if (index < 0 || index >= this.rowsTotal) throw new Error(`Palette row ${index} out of range`);
+    if (steps.length === 0) throw new Error(`Palette row ${index} needs steps`);
+    for (let x = 0; x < PaletteAtlas.WIDTH; x++) {
+      const hex = steps[Math.min(x, steps.length - 1)]!;
+      const a = alphas?.[Math.min(x, (alphas?.length ?? 1) - 1)] ?? 1;
+      const o = (index * PaletteAtlas.WIDTH + x) * 4;
+      const [r, g, b] = hexToRgb8(hex);
+      this.data[o] = r;
+      this.data[o + 1] = g;
+      this.data[o + 2] = b;
+      this.data[o + 3] = Math.round(Math.min(1, Math.max(0, a)) * 255);
+    }
+    this.texture.needsUpdate = true;
   }
 
   /** Fügt eine Rampe hinzu (oder ersetzt sie, wenn der Name existiert) und liefert den Zeilenindex. */
@@ -49,20 +74,9 @@ export class PaletteAtlas {
     }
     const existing = this.rows.get(spec.name);
     const index = existing ? existing.index : this.nextRow++;
-    if (index >= PaletteAtlas.HEIGHT) throw new Error('Palette atlas is full');
-    for (let x = 0; x < PaletteAtlas.WIDTH; x++) {
-      // Überzählige Stufen wiederholen die letzte Farbe, damit Band-Lookups nie ins Leere greifen
-      const hex = spec.steps[Math.min(x, spec.steps.length - 1)]!;
-      const a = spec.alphas?.[Math.min(x, spec.steps.length - 1)] ?? 1;
-      const o = (index * PaletteAtlas.WIDTH + x) * 4;
-      const [r, g, b] = hexToRgb8(hex);
-      this.data[o] = r;
-      this.data[o + 1] = g;
-      this.data[o + 2] = b;
-      this.data[o + 3] = Math.round(Math.min(1, Math.max(0, a)) * 255);
-    }
+    if (index >= this.rowsTotal) throw new Error('Palette atlas is full');
+    this.setRow(index, spec.steps, spec.alphas);
     this.rows.set(spec.name, { index, steps: spec.steps.length });
-    this.texture.needsUpdate = true;
     return index;
   }
 

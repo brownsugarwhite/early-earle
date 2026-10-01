@@ -30,6 +30,7 @@ import {
   fwidth,
   int,
   max,
+  min,
   mix,
   modelViewMatrix,
   normalGeometry,
@@ -45,17 +46,20 @@ import {
   uniform,
   uniformArray,
   varying,
+  vec2,
   vec3,
   vec4,
 } from 'three/tsl';
-import type { PlanetProp, PlanetTree, PlanetVegetationFamily, TreeFamily } from '@ee/world';
+import type { PlaneProp as PlanetProp, PlaneTree as PlanetTree, PlaneVegetationFamily as PlanetVegetationFamily, TreeFamily } from '@ee/world';
+import type { WorldSlots } from './worldSlots';
+import { SLOT_COUNT, SLOT_ROWS } from './worldSlots';
 import { EarleMaterial } from './EarleMaterial';
-import { arrayElement, hatchMask, patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from './tsl';
+import { hatchMask, patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
 import { createHexagon, mergeGeometries } from './vegetation';
 import { CROWN_KINDS, TreeLayer, type CrownKind, type ShadowFactorFn } from './trees/treeLayer';
 
-/** Zahl der Wachstums-Slots (ein Slot je geladenem Chunk). */
-export const GROWTH_SLOTS = 64;
+/** Zahl der Wachstums-Slots (ein Slot je geladenem Chunk; die Ebene lädt bis ≈ 60 Chunks). */
+export const GROWTH_SLOTS = 96;
 const POP = 0.15;
 
 /** Palettenzeilen einer Welt für die Vegetation und Requisiten. */
@@ -72,21 +76,20 @@ export interface PlanetVegetationOptions {
   lookup: PaletteLookup;
   fog: FogSettings;
   bands: TSLUniform;
-  /** Zeilen und Familie je Welt-Index. */
-  worldRows: VegetationWorldRows[];
-  families: PlanetVegetationFamily[];
+  /** Welt-Slots (Palettenzeilen je Welt); Instanzen tragen Zeilen und Slots, nie Weltkennungen. */
+  slots: WorldSlots;
+  /** Vegetationsfamilie einer Welt (Kennung). */
+  family: (world: number) => PlanetVegetationFamily;
   capacity: { trees: number; dots: number; props: number; animals: number };
-  /** Schleier über Nachbarwelten: Zusatz-Nebeldistanz je Welt-Index (TSL); fehlt → kein Schleier. */
-  veil?: (worldIndex: FloatNode) => FloatNode;
-  /** Fremdheit 0..1 einer Welt (0 = Blick-Welt, 1 = Nachbar); nahe fremde Instanzen treten aus dem Bild. */
-  foreign?: (worldIndex: FloatNode) => FloatNode;
-  /** Zeilen im Atlas beim Aufbau (Tabelle Zeile → Welt für den Schleier). */
-  rowCount?: number;
+  /** Schleier über Nachbarwelten: Zusatz-Nebeldistanz je Welt-Slot (TSL); fehlt → kein Schleier. */
+  veil?: (slot: FloatNode) => FloatNode;
+  /** Fremdheit 0..1 eines Welt-Slots (0 = Blick-Welt, 1 = Nachbar); nahe fremde Instanzen treten aus dem Bild. */
+  foreign?: (slot: FloatNode) => FloatNode;
   dotsPerTree: [number, number];
   collapsePx: number;
   dotRadius?: number;
   seed?: number;
-  /** Krümmungs-Warp aller Planetenraum-Positionen (Perspektiv-Boost), identisch mit dem Terrain. */
+  /** Anzeige-Abbildung (Objektraum → Objektraum, wie das Terrain). */
   warp?: ((p: Vec3Node) => Vec3Node) | undefined;
   /**
    * Eingebauten Müll (Schrotthügel, Monolithe, Gasquellen, Reifen, Rohre, Ölbecken, Sporen) streuen (Standard true).
@@ -189,6 +192,13 @@ export class PlanetVegetation {
    * Nachbarn bleiben ferne Nebelstufen und ragen nicht groß ins Bild (0 = aus).
    */
   private readonly foreignClear = uniform(11);
+  /**
+   * Sichtlinie (Karte): Ziel (Objektraum der Vegetation, z. B. der aktuelle Knoten) und Radius. Bäume und Requisiten,
+   * deren Achse der Linie Kamera → Ziel näher kommt als ihr Radius + `sightRadius`, schrumpfen weg — kein Juwelenbaum
+   * steht zwischen Kamera und Held. Radius 0 = aus.
+   */
+  private readonly sightTarget = uniform(new Vector3(0, -1000, 0));
+  private readonly sightRadius = uniform(0);
   private readonly geometries: BufferGeometry[] = [];
   private readonly materials: Array<{ dispose(): void }> = [];
   private readonly sporesGeometry: InstancedBufferGeometry;
@@ -203,15 +213,11 @@ export class PlanetVegetation {
     const { lookup, fog } = options;
     const warp = this.warp;
 
-    // Schleier: Palettenzeile → Welt (jede Welt hat eigene Zeilen), fremde Welten bekommen Zusatz-Nebeldistanz
-    const rowWorldValues = new Array<number>(Math.max(1, (options.rowCount ?? 0) + 8)).fill(-1);
-    options.worldRows.forEach((r, w) => {
-      for (const row of [r.terrain, ...r.canopy, r.accent, r.monolith, r.barn]) if (row >= 0 && row < rowWorldValues.length) rowWorldValues[row] = w;
-    });
-    const rowWorld = uniformArray(rowWorldValues, 'float') as unknown as UniformArrayLike;
+    // Schleier: Palettenzeile → Welt-Slot (feste Zeilenblöcke je Slot), fremde Welten bekommen Zusatz-Nebeldistanz
+    const slotOfRow = (row: FloatNode): FloatNode => select(row.lessThan(SLOT_COUNT * SLOT_ROWS), floor(row.add(0.01).div(SLOT_ROWS)), float(-1));
     const veilOfRow = (row: FloatNode): FloatNode => {
       if (!options.veil) return float(0);
-      const w = arrayElement(rowWorld, row);
+      const w = slotOfRow(row);
       return select(w.lessThan(-0.5), float(0), options.veil(w));
     };
     /** Nebeldistanz eines Fragments: Kameraabstand + Schleier seiner Welt. */
@@ -219,7 +225,7 @@ export class PlanetVegetation {
     /** Fremde Instanz nahe der Kamera → 0 (tritt weg), eigene Welt → 1. */
     const foreignNear = (row: FloatNode, base: Vec3Node): FloatNode => {
       if (!options.foreign) return float(1);
-      const w = arrayElement(rowWorld, row);
+      const w = slotOfRow(row);
       const f = select(w.lessThan(-0.5), float(0), options.foreign(w));
       const d = this.camLocal.sub(base).length();
       return mix(float(1), smoothstep(this.foreignClear, this.foreignClear.add(3), d), f);
@@ -243,13 +249,18 @@ export class PlanetVegetation {
      * schrumpfen weg — die Kamera steht nie in einer Krone, einem Stamm oder einer Scheune.
      */
     const footFade = (base: Vec3Node): FloatNode => {
-      const camUp = normalize(this.camLocal);
-      const along = base.dot(camUp);
-      // Nur der Fuß zählt: große Elemente außerhalb der Lichtung (Scheune, Fokusbaum) bleiben ganz
-      const lateral = base.sub(camUp.mul(along)).length();
+      // Ebene: seitlicher Abstand des Fußes zur Hochachse der Kamera (nur der Fuß zählt: große Elemente außerhalb der
+      // Lichtung bleiben ganz)
+      const lateral = vec2(base.x.sub(this.camLocal.x), base.z.sub(this.camLocal.z)).length();
       const clear = smoothstep(this.footClear, this.footClear.add(1.8), lateral);
-      // Nur auf der Kameraseite des Planeten und nur, wenn eingeschaltet
-      return select(along.greaterThan(0).and(this.footClear.greaterThan(0.01)), clear, float(1));
+      return select(this.footClear.greaterThan(0.01), clear, float(1));
+    };
+    /** Abstand eines Punkts zur Sichtlinie Kamera → Ziel (nur zwischen den Enden, am Ziel selbst nicht). */
+    const sightDist = (p: Vec3Node): FloatNode => {
+      const ab = this.sightTarget.sub(this.camLocal);
+      const len2 = ab.dot(ab).max(1e-4);
+      const t = clamp(p.sub(this.camLocal).dot(ab).div(len2), 0, 0.92);
+      return p.sub(this.camLocal.add(ab.mul(t))).length() as unknown as FloatNode;
     };
     const nearFade = (base: Vec3Node, top: Vec3Node, radius: FloatNode): FloatNode => {
       const axis = top.sub(base);
@@ -257,7 +268,10 @@ export class PlanetVegetation {
       const t = clamp(this.camLocal.sub(base).dot(axis).div(len2), 0, 1);
       const closest = base.add(axis.mul(t));
       const gap = this.camLocal.sub(closest).length().sub(radius);
-      return smoothstep(this.nearClear, this.nearClear.add(1.6), gap).mul(footFade(base));
+      // Sichtlinie: drei Punkte der Achse (Fuß, Mitte, Spitze) gegen die Linie Kamera → Ziel
+      const sd = min(min(sightDist(base.add(axis.mul(0.3))), sightDist(base.add(axis.mul(0.65)))), sightDist(top)).sub(radius);
+      const sight = select(this.sightRadius.greaterThan(0.01), smoothstep(this.sightRadius, this.sightRadius.add(1.4), sd), float(1));
+      return smoothstep(this.nearClear, this.nearClear.add(1.6), gap).mul(footFade(base)).mul(sight);
     };
 
     // --- Bäume v3 (Kronen, Stämme, Linienbäume, Punkte): trees/treeLayer.ts ------------------------------
@@ -273,7 +287,7 @@ export class PlanetVegetation {
         slotGrowth,
         nearFade,
         footFade,
-        rowWorld,
+        slotOfRow,
         nearClear: this.nearClear,
         camLocal: this.camLocal,
         sunDirLocal: this.sunDirLocal,
@@ -282,14 +296,16 @@ export class PlanetVegetation {
         shadowFactor: options.shadowFactor ?? null,
       },
       {
-        worldRows: options.worldRows,
-        families: options.families as TreeFamily[],
+        slots: options.slots,
+        family: (w) => options.family(w) as TreeFamily,
         capacity: { trees: options.capacity.trees, dots: options.capacity.dots },
         dotsPerTree: options.dotsPerTree,
         ...(options.dotRadius !== undefined ? { dotRadius: options.dotRadius } : {}),
       },
     );
     for (const m of this.trees.meshes) this.group.add(m);
+    // Stämme: dünne Schattenlinien — nur in den zwei feinen Kaskaden (die Kronen werfen in allen)
+    for (const m of Object.values(this.trees.trunks)) m.userData.shadowCascades = 2;
 
     // --- Requisiten -------------------------------------------------------------------------------------
     // Gepackte Attribute: propA = (Fußpunkt xyz, Rang), propB = (Normale xyz, Höhe), propC = (Slot, Zeile, Zeile 2, Typ + Variante)
@@ -391,7 +407,7 @@ export class PlanetVegetation {
       const color = byType<Vec3Node>([lookup.pal(4, row).rgb, lookup.pal(5, row).rgb, ink, lookup.pal(3, row).rgb, lookup.pal(3, row).rgb, lookup.pal(1, row2).rgb, ink]);
       const material = new EarleMaterial({
         lookup,
-        row: options.worldRows[0]?.terrain ?? 0,
+        row: 0,
         rowNode: select(isRoof, row2, row),
         fogDistNode: fogDist(row),
         fog,
@@ -409,6 +425,8 @@ export class PlanetVegetation {
         positionNode: warp(propGrown(part)),
       });
       this.props = makeProp('planet-props', createPropGeometry(), material, options.capacity.props);
+      // kleine Werfer (Müll, Reifen, Rohre, Felsbrocken): nur in den zwei feinen Kaskaden
+      this.props.userData.shadowCascades = 2;
     }
     {
       // Ölbecken: glänzende Tintenellipsen mit einem hellen Reflexband (Akzent 7), langsam driftend
@@ -456,6 +474,7 @@ export class PlanetVegetation {
       const mesh = new InstancedMesh(geometry, material, n);
       mesh.name = 'planet-animals';
       mesh.castShadow = true;
+      mesh.userData.shadowCascades = 2;
       mesh.receiveShadow = false;
       mesh.frustumCulled = false;
       mesh.count = 0;
@@ -513,17 +532,27 @@ export class PlanetVegetation {
   }
 
   private rowsOf(world: number): VegetationWorldRows {
-    return this.options.worldRows[world] ?? this.options.worldRows[0] ?? { terrain: 0, canopy: [0], accent: 0, monolith: 0, barn: 0 };
+    const r = this.options.slots.rowsOfWorld(world);
+    return { terrain: r.terrain, canopy: r.canopyRows, accent: r.accent, monolith: r.monolith, barn: r.barn };
   }
 
   private familyOf(world: number): PlanetVegetationFamily | undefined {
-    return this.options.families[world];
+    return this.options.family(world);
   }
 
-  /** Schreibt alle Instanzpuffer neu (bei Wechsel der geladenen/nahen Chunks). */
-  setContent(trees: VegetationTreeEntry[], props: VegetationPropEntry[]): void {
+  /** Ein Welt-Slot wurde neu belegt (Tabellen der Baumschicht nachführen). */
+  onSlotAssigned(slot: number, world: number): void {
+    this.trees.onSlotAssigned(slot, world);
+  }
+
+  /**
+   * Schreibt alle Instanzpuffer neu (bei Wechsel der geladenen/nahen Chunks). Positionen der Ebene werden relativ zum
+   * Anker `origin` gespeichert (der Besitzer setzt die Gruppe an Anker − Fokus).
+   */
+  setContent(trees: VegetationTreeEntry[], props: VegetationPropEntry[], origin: { x: number; z: number } = { x: 0, z: 0 }): void {
+    this.origin = origin;
     // Bäume v3: Kronen, Stämme, Linienbäume und Punkte (deterministisch je Baum, Blende je Chunk)
-    this.trees.setContent(trees);
+    this.trees.setContent(trees, origin);
     let hMax = this.trees.hMax;
 
     // Requisiten
@@ -539,9 +568,10 @@ export class PlanetVegetation {
       const b = geo.getAttribute('animBase') as InstancedBufferAttribute;
       const u = geo.getAttribute('animUp') as InstancedBufferAttribute;
       const dat = geo.getAttribute('animData') as InstancedBufferAttribute;
+      const { x: ax, z: az } = this.origin;
       animalList.forEach((e, i) => {
         const p = e.prop;
-        b.setXYZ(i, p.position[0], p.position[1], p.position[2]);
+        b.setXYZ(i, p.position[0] - ax, p.position[1], p.position[2] - az);
         u.setXYZ(i, p.normal[0], p.normal[1], p.normal[2]);
         dat.setXYZW(i, p.scale * 0.7, p.rank, e.slot, this.rowsOf(p.world).canopy[0] ?? 0);
         _m.identity();
@@ -563,7 +593,7 @@ export class PlanetVegetation {
         const p = e.prop;
         const h = propSize(p)[1];
         for (let k = 0; k < 6 && n < capS; k++) {
-          sa.setXYZW(n, p.position[0] + p.normal[0] * h, p.position[1] + p.normal[1] * h, p.position[2] + p.normal[2] * h, (k + p.variant * 3) / 6);
+          sa.setXYZW(n, p.position[0] + p.normal[0] * h - this.origin.x, p.position[1] + p.normal[1] * h, p.position[2] + p.normal[2] * h - this.origin.z, (k + p.variant * 3) / 6);
           sb.setXYZW(n, p.normal[0], p.normal[1], p.normal[2], 0.05 + 0.04 * ((k * 7) % 3));
           sc.setXYZW(n, e.slot, p.rank, this.rowsOf(p.world).accent, 0);
           n++;
@@ -575,7 +605,11 @@ export class PlanetVegetation {
     this.hMax = hMax;
   }
 
+  /** Anker der Instanzpositionen (Ebene). */
+  private origin = { x: 0, z: 0 };
+
   private fillProps(mesh: InstancedMesh, list: VegetationPropEntry[]): void {
+    const { x: ax, z: az } = this.origin;
     const geo = mesh.geometry;
     const a = geo.getAttribute('propA') as InstancedBufferAttribute;
     const b = geo.getAttribute('propB') as InstancedBufferAttribute;
@@ -585,7 +619,7 @@ export class PlanetVegetation {
       _n.set(p.normal[0], p.normal[1], p.normal[2]).normalize();
       _q.setFromUnitVectors(_Y, _n);
       _q.multiply(_qYaw.setFromAxisAngle(_Y, p.yaw));
-      _p.set(p.position[0], p.position[1], p.position[2]);
+      _p.set(p.position[0] - ax, p.position[1], p.position[2] - az);
       const [sx, sy, sz] = propSize(p);
       _s.set(sx, sy, sz);
       _m.compose(_p, _q, _s);
@@ -593,7 +627,7 @@ export class PlanetVegetation {
       const rows = this.rowsOf(p.world);
       const row = p.kind === 'monolith' ? rows.monolith : p.kind === 'barn' ? rows.barn : rows.terrain;
       const row2 = p.kind === 'pool' || p.kind === 'pipe' ? rows.accent : rows.terrain;
-      a.setXYZW(i, p.position[0], p.position[1], p.position[2], p.rank);
+      a.setXYZW(i, p.position[0] - ax, p.position[1], p.position[2] - az, p.rank);
       b.setXYZW(i, _n.x, _n.y, _n.z, sy);
       c.setXYZW(i, e.slot, row, row2, PROP_TYPE[p.kind] + Math.min(0.998, Math.max(0, p.variant)));
     });
@@ -611,6 +645,16 @@ export class PlanetVegetation {
     this.footClear.value = Math.max(0, units);
   }
 
+  /** Sichtlinie Kamera → Ziel (Objektraum der Vegetation) frei halten; `null` = aus. */
+  setSightLine(target: Vector3 | null, radius = 0.6): void {
+    if (!target) {
+      this.sightRadius.value = 0;
+      return;
+    }
+    this.sightTarget.value.copy(target);
+    this.sightRadius.value = Math.max(0.02, radius);
+  }
+
   /** Abstand, unter dem Instanzen fremder Welten wegtreten (0 = aus). */
   setForeignClear(units: number): void {
     this.foreignClear.value = Math.max(0, units);
@@ -622,13 +666,13 @@ export class PlanetVegetation {
     (this.growthSlots as unknown as { array: number[] }).array[slot] = Math.min(1, Math.max(0, growth));
   }
 
-  /** Sonnenrichtung in Welt- und Planetenkoordinaten (Punkt-Tönung, Karten-Schatten, Punktverteilung). */
+  /** Sonnenrichtung in Welt- und Ebenenkoordinaten (Punkt-Tönung, Karten-Schatten, Punktverteilung). */
   setSunDirection(world: Vector3, local: Vector3): void {
     this.sunDirWorld.value.copy(world).normalize();
     this.sunDirLocal.value.copy(local).normalize();
   }
 
-  /** Einmal pro Frame: Kameraachsen, Projektionsmaßstab und Kameraposition im Planetenraum. */
+  /** Einmal pro Frame: Kameraachsen, Projektionsmaßstab und Kameraposition im Objektraum der Vegetation (flach). */
   updateCamera(camera: Camera, cameraLocal: Vector3): void {
     this.projScaleY.value = camera.projectionMatrix.elements[5]!;
     this.camLocal.value.copy(cameraLocal);

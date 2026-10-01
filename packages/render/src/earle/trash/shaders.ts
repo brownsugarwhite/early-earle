@@ -72,6 +72,13 @@ export interface TrashShaderContext {
   /** Gesamtfaktor für Neon (Lab-Regler, 1 = Inhalt) und für die Deckkraft des Schleiers. */
   neonScale: TSLUniform;
   veilScale: TSLUniform;
+  /**
+   * Unendliche Ebene (ADR 0002): der Müll liegt im flachen Raum (oben = +y, Lichtung unter der Kamera waagrecht
+   * gemessen), die Schwaden-Koordinaten bekommen den Anker der Puffer (modulo 4096) dazu — sie bleiben beim Schwenken
+   * und beim Neuaufbau an ihrem Ort in der Welt.
+   */
+  planar?: boolean;
+  patternOffset?: UniformNode<'vec3', Vector3>;
 }
 
 const SPAN = HEAL_SPAN;
@@ -121,10 +128,17 @@ function fades(ctx: TrashShaderContext, base: Vec3Node, top: Vec3Node, radius: F
   const closest = base.add(axis.mul(t));
   const gap = ctx.camLocal.sub(closest).length().sub(radius);
   const near = smoothstep(ctx.nearClear, ctx.nearClear.add(1.6), gap);
-  const camUp = normalize(ctx.camLocal);
-  const along = base.dot(camUp);
-  const lateral = base.sub(camUp.mul(along)).length();
-  let foot = select(along.greaterThan(0).and(ctx.footClear.greaterThan(0.01)), smoothstep(ctx.footClear, ctx.footClear.add(1.8), lateral), float(1)) as unknown as FloatNode;
+  let foot: FloatNode;
+  if (ctx.planar) {
+    // Ebene: waagrechter Abstand zum Kamerafuß
+    const lateral = length(base.xz.sub(ctx.camLocal.xz));
+    foot = select(ctx.footClear.greaterThan(0.01), smoothstep(ctx.footClear, ctx.footClear.add(1.8), lateral), float(1)) as unknown as FloatNode;
+  } else {
+    const camUp = normalize(ctx.camLocal);
+    const along = base.dot(camUp);
+    const lateral = base.sub(camUp.mul(along)).length();
+    foot = select(along.greaterThan(0).and(ctx.footClear.greaterThan(0.01)), smoothstep(ctx.footClear, ctx.footClear.add(1.8), lateral), float(1)) as unknown as FloatNode;
+  }
   // Bodennahes (Blüten, Funken) bleibt auch in der Lichtung unter der Kamera: es verstellt nichts
   if (footless) foot = mix(foot, float(1), footless);
   // Fremde Welten nahe der Kamera treten weg (wie die Vegetation)
@@ -533,8 +547,9 @@ export function createVeilMaterial(ctx: TrashShaderContext, radius: number): Mes
   // Koordinaten: u = Tiefe (Blickrichtung in der Tangentialebene), v = Bildwaagrechte. Die Schwaden sind längs v
   // gestreckt → sie liegen immer quer im Bild wie Earles Nebelstreifen; die Achsen folgen der Kamera langsam (nach
   // einer Drehung legt sich der Nebel in ein, zwei Sekunden neu), die Lage im Gelände bleibt fest (Höhenlinien, Heilung)
-  const u = dot(positionGeometry, ctx.wispAlong);
-  const v = dot(positionGeometry, ctx.wispAcross);
+  const pg = (ctx.patternOffset ? positionGeometry.add(ctx.patternOffset) : positionGeometry) as unknown as Vec3Node;
+  const u = dot(pg, ctx.wispAlong);
+  const v = dot(pg, ctx.wispAcross);
   void radius;
   const time = patternTime;
   const ph = lay.mul(1.7);

@@ -72,7 +72,7 @@ Abgeglichen mit der Stil-Recherche (Quellen in `RESEARCH.md`). Vorbilder: *The B
 
 ### 5.1 Licht
 
-**Eine Richtungssonne**, relativ zum Blickpunkt definiert: Höhe **9–12°** über dem Horizont (Earles Schatten sind 5–6× so lang wie der Werfer; aus einem Bild abgeleitet ≈ 11°), **60–80° seitlich** zur Blickachse, damit Schatten als horizontale Bänder über den Bildschirm laufen. Für P2 konkret: Höhe 10°, Azimut 70°, Sonne als Kind der Kamera (Schatten bleiben horizontal, während der Planet rotiert). **Kein Ambient, kein Specular, kein Environment-Licht.** In voll beleuchteten Flächen verschwindet Detail in flachem Licht; große Lichtflächen verlaufen innerhalb ihrer Stufe (siehe 5.10).
+**Eine Richtungssonne**, relativ zum Blickpunkt definiert: Höhe **9–12°** über dem Horizont (Earles Schatten sind 5–6× so lang wie der Werfer; aus einem Bild abgeleitet ≈ 11°), **60–80° seitlich** zur Blickachse, damit Schatten als horizontale Bänder über den Bildschirm laufen. Für P2 konkret: Höhe 10°, Azimut 70°, Sonne als Kind der Kamera (Schatten bleiben horizontal, während die Kugel sich dreht — seit ADR 0002 gleitet dabei der Fokus über die unendliche Ebene, die Sonne dreht mit dem Blick). **Kein Ambient, kein Specular, kein Environment-Licht.** In voll beleuchteten Flächen verschwindet Detail in flachem Licht; große Lichtflächen verlaufen innerhalb ihrer Stufe (siehe 5.10).
 
 ### 5.2 Palette
 
@@ -90,8 +90,9 @@ Glatte Meshes, **harte Lichtstufen im Material** (Lichtwert → Stufe → exakte
 - Shadow-Map mit Hardware-Vergleichs-Sampler (WebGL2 `sampler2DShadow`, WebGPU `textureSampleCompare`), danach per **`smoothstep(0.5 ± fwidth)` nachgeschärft** → gerade, anti-aliasierte Kanten ohne Treppen und ohne Weichzeichnung. Auflösung 2048² (1024² Low-End).
 - Lichtfrustum eng an das Sichtbare gefittet plus Rand `h_max / tan θ` Richtung Sonne, texelweise gesnappt (kein Flimmern), Slope-Scaled Bias + Normal Offset.
 - **`lit = min(aaStep(Terminator), Schatten)`** → Eigenschatten und Schlagschatten verschmelzen zu **einer Tintenform**, wie bei Earle. Diese Kante wird **nie** weich; Verläufe gibt es nur innerhalb der Lichtstufen, die Schattenform bleibt flach.
-- **Schattentönung je Welt** (`SunRig.shadowTint`, Weltdatei `shadowTint: { color, amount, lift? }`): Earles Schatten auf Schnee sind blau (Bild 05), im Winterdunst grau-blau (Bild 01). Die Tintenform wird flach zur Tönung gemischt — Gelände, Wehen und Pfad bleiben eine Schattenform. `lift` (Standard 0) hellt sie höchstens einen Hauch zur Sonne hin auf. Standard: ungetönte Tinte.
-- Schattenpass nur mit **Terrain und glatten Proxy-Formen pro Baumtyp** (nie mit den Punkten); nur bei Bewegung (Rotation, Wachstum) neu rendern.
+- **Schattentönung je Welt** (`SunRig.shadowTint`, Weltdatei `shadowTint: { color, amount, lift? }`): Earles Schatten auf Schnee sind blau (Bild 05), im Winterdunst grau-blau (Bild 01). Die Tintenform wird flach zur Tönung gemischt — Gelände, Wehen und Pfad bleiben eine Schattenform. `lift` (Standard 0) hellt sie höchstens einen Hauch zur Sonne hin auf, geführt von der Hochachse der Ebene (ADR 0002). Die Tönungen liegen je Welt-Slot. Standard: ungetönte Tinte.
+- Schattenpass nur mit **Terrain und glatten Proxy-Formen pro Baumtyp** (nie mit den Punkten); nur bei Bewegung (Schwenken, Wachstum) neu rendern.
+- **Ebene (ADR 0002):** Schatten rechnen in der Ebene, nicht auf der angezeigten Kugel. Schattenraum = Ebene mit dem Kugelabfall um den Fokus (`y − (x² + z²)(1 + c)/(2R)`) — so fallen die Schatten bei 10° Sonne wie auf der alten Kugel statt endlos lang. Das Gelände wirft über Stellvertreter je 3 × 3 Chunks (nur Schattenkamera), kleine Werfer (Müll, Requisiten, Tiere, Sockel, Büsche, Stämme) nur in den zwei feinen Kaskaden; Kronen, Gelände, Felsen, Scheunen und Wahrzeichen in allen. Der Verlauf in den Lichtstufen des Geländes folgt dagegen der **angezeigten** Kugel (zur Sonne gewandte Bildhälfte heller, wie auf der alten Kugel).
 - **Low-End-Stufe**: kein Schattenpass, sondern Horizon-Maps (überleben das Rollen des Planeten) + analytische Ellipsoid-Schatten (Quilez-Formel).
 - Nicht verwenden: three.js `SunLight`/CSM (weiche Kaskaden bekämpfen den Hartkanten-Look), Stencil-Volumes.
 
@@ -111,9 +112,11 @@ Luftperspektive als **harte Wertstufen nach Distanz** (**4–6 Stufen**, Firewat
 
 Bei Vertex-Shader-Krümmung (regionale Ansicht) nur die **finale Projektion** biegen; Schattenkoordinaten, Bounding-Boxen und Tap-Raycasts aus der **ungebogenen** Position rechnen.
 
+Seit ADR 0002 ist die Welt eine **unendliche Ebene**, angezeigt als Kugel (R = 32, Krümmungs-Boost 0,14) um den Blickpunkt (azimutal, abstandstreu: `packages/render/src/earle/display.ts`). Licht (flache Normalen, eine Sonne) und Schatten rechnen in der Ebene, jede Stelle sieht die Sonne gleich flach — keine Nachtseite, lange Schatten bis zum Horizont. Die Abbildung gilt nur bis π · R vom Fokus: Fernes wird über den **Bogen auf der Ebene** gekullt, nie über seine Anzeigeposition. Der Vordergrund bleibt ruhig: unter der Kamera treten Bäume weg und Felsen, Scheunen und Wehen sinken in den Boden (Lichtung 4,5 Einheiten), die langen Schatten der Mittelgrund-Elemente fallen hinein.
+
 ### 5.8 Budget
 
-DPR ≤ 2 (1,5 auf Low-End) · eine `InstancedMesh` pro Baumtyp · **≤ 100 Draw Calls** · Schattenpass nur bei Bewegung · KTX2-Texturen erst ab Phase 1 (in Phase 0 gibt es nur den Paletten-Atlas und 64²-Gesichts-SDFs) · Material-Kompilierung beim Laden (`compileAsync`).
+DPR ≤ 2 (1,5 auf Low-End) · eine `InstancedMesh` pro Baumtyp · **≤ 100 Draw Calls** (Karte, Hoch: in Ruhe 36–50, beim Schwenken mit Schattenpass 63–112) · Schattenpass nur bei Bewegung · KTX2-Texturen erst ab Phase 1 (in Phase 0 gibt es nur den Paletten-Atlas und 64²-Gesichts-SDFs) · Material-Kompilierung beim Laden (`compileAsync`).
 
 ### 5.9 Keine Post-Kette
 

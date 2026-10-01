@@ -1,5 +1,5 @@
-import { TJORIZO_PALETTE, zonePaletteFromContent, type EarlePlanetWorld, type EarlePlanetZone, type GroundTreatment, type WorldPalette, type WorldView } from '@ee/render';
-import type { PlanetLandmarkParams, PlanetPropSpec, PlanetTerrainShape, PlanetVegetationFamily, TreeFamily, WorldFeatureSpec } from '@ee/world';
+import type { EarlePlanetWorld, GroundTreatment, WorldPalette, WorldView } from '@ee/render';
+import type { FocalSpec, PlanetPropSpec, PlanetTerrainShape, RouteEntry, TreeFamily, WorldFeatureSpec, WorldSpec } from '@ee/world';
 
 /** Zonendatei `content/zones/*.json` (Schema 1). */
 export interface ZoneContent {
@@ -19,8 +19,10 @@ export interface WorldContent {
   ref: string;
   name: string;
   title: string;
+  /** Story-Zone der Welt (HUD-Name der Level); die Lage auf der Ebene folgt der Route (ADR 0002). */
   zone: string;
-  side: 'near' | 'far';
+  /** Alte Lage auf dem Planeten (nah am Pfad / Gegenseite) — ohne Bedeutung auf der unendlichen Ebene. */
+  side?: 'near' | 'far';
   half?: 0 | 1;
   sources?: string[];
   palette: WorldPalette;
@@ -44,14 +46,16 @@ export interface WorldContent {
   skyGlow?: number;
   /** Fluchtpunkt der Bodenlinien (Ost/Nord vom Weltmittelpunkt, Welteinheiten), siehe `EarlePlanetWorld.floorAnchor`. */
   floorAnchor?: { east?: number; north?: number };
-  /** Fokus-Element der Komposition (Baum oder Requisit am Slot; nahe Welten neben dem Pfad). */
   /**
    * Fokus der Weltkomposition: mit `kind` ein Fokus-Element (Scheune, Wurzelbaum …) am Slot, ohne `kind` nur ein
-   * Bildanker (z. B. Welt 01: die breiteste Stelle des Bands, der Riesenbaum steht am Horizont).
+   * Bildanker. Lage je Region: `along` (0 = Beginn des Pfadabschnitts … 1 = Ende) und `lateral` (Welteinheiten, + =
+   * rechts vom Pfad); ältere Dateien: `latFrac` (→ along) und `deltaDeg` (→ Seite und Abstand).
    */
   focal?: {
-    kind?: NonNullable<PlanetLandmarkParams['instance']>['kind'];
+    kind?: NonNullable<FocalSpec['kind']>;
     scale?: number;
+    along?: number;
+    lateral?: number;
     latFrac?: number;
     deltaDeg?: number;
     yawDeg?: number;
@@ -63,124 +67,103 @@ export interface WorldContent {
 const modules = import.meta.glob<{ default: ZoneContent }>('@content/zones/*.json', { eager: true });
 const worldModules = import.meta.glob<{ default: WorldContent }>('@content/zones/worlds/*.json', { eager: true });
 
-/** Zonen in Levelreihenfolge (Nordpol → Südpol auf dem Planeten). */
+/** Zonen in Levelreihenfolge. */
 export const ZONE_CONTENTS: ZoneContent[] = Object.values(modules)
   .map((m) => m.default)
   .sort((a, b) => a.levelRange[0] - b.levelRange[0]);
 
-/** Zehn Welten in Referenzreihenfolge (01 … 10). */
+/** Zehn Welten in Referenzreihenfolge (01 … 10); Kennung = Index. */
 export const WORLD_CONTENTS: WorldContent[] = Object.values(worldModules)
   .map((m) => m.default)
   .sort((a, b) => a.index - b.index);
 
-/** Planetenradius (Lab und Flow teilen denselben Planeten). 40 → 32: stärkere Krümmung, näherer Horizont. */
+/** Anzeigeradius der Kugel (Lab und Flow teilen dieselbe Anzeige). 40 → 32: stärkere Krümmung, näherer Horizont. */
 export const PLANET_RADIUS = 32;
-/** Chunks je Würfelseite (3 → 54 Chunks à 30°). */
-export const CHUNKS_PER_FACE = 3;
 
-/** Knoten je Zone aus dem Levelbereich (25). */
-export const NODES_PER_ZONE = Math.max(1, ...ZONE_CONTENTS.map((z) => z.levelRange[1] - z.levelRange[0] + 1));
+/** Autorenlevel (1 … 100). Danach folgen Knoten für künftige Level („bald"). */
+export const LEVEL_COUNT = Math.max(1, ...ZONE_CONTENTS.map((z) => z.levelRange[1]));
 
-/**
- * Vegetationsfamilien je Zone (Altformat, Rückfall ohne Weltendateien): Tjorizo Kuppel-Cluster + Schrotthaufen,
- * Syrup hängende Knollen + Öl-/Sirupbecken, Luzz hohe dünne Stämme mit kleinen Kronen, Wooding volle Kuppelwälder.
- */
-const FAMILIES: Record<string, { hillAmplitude: number; vegetation: PlanetVegetationFamily }> = {
-  tjorizo: {
-    hillAmplitude: 1.8,
-    vegetation: { density: 0.2, clumpiness: 0.6, kinds: { dome: 0.68, cone: 0.16, stacked: 0.16 }, scale: [0.7, 1.45], props: 'scrap', propDensity: 0.03, animalDensity: 0.012 },
-  },
-  syrup: {
-    hillAmplitude: 1.2,
-    vegetation: { density: 0.13, clumpiness: 0.4, kinds: { bulb: 0.72, dome: 0.28 }, scale: [0.8, 1.5], props: 'pool', propDensity: 0.022, animalDensity: 0.008 },
-  },
-  luzz: {
-    hillAmplitude: 2.4,
-    vegetation: { density: 0.16, clumpiness: 0.3, kinds: { tall: 0.8, cone: 0.2 }, scale: [0.8, 1.3], animalDensity: 0.006 },
-  },
-  wooding: {
-    hillAmplitude: 1.6,
-    vegetation: { density: 0.38, clumpiness: 0.75, kinds: { dome: 0.85, stacked: 0.15 }, scale: [0.7, 1.4], animalDensity: 0.016 },
-  },
-};
-
-const FALLBACK = FAMILIES['tjorizo']!;
-
-/** Zonenspezifikationen für den Planeten: Palette aus der Zonendatei (Tjorizo handabgestimmt), Familie aus der Tabelle. */
-export function planetZones(): EarlePlanetZone[] {
-  return ZONE_CONTENTS.map((z) => {
-    const fam = FAMILIES[z.id] ?? FALLBACK;
-    return {
-      id: z.id,
-      palette: z.id === 'tjorizo' ? TJORIZO_PALETTE : zonePaletteFromContent(z.palette),
-      params: { id: z.id, hillAmplitude: fam.hillAmplitude, vegetation: fam.vegetation },
-    };
-  });
-}
-
-/** Die zehn Welten aus `content/zones/worlds/` als Planetenwelten (Zonenband aus der Zonen-ID). */
-export function planetWorlds(): EarlePlanetWorld[] {
-  return WORLD_CONTENTS.map((w) => {
-    const zone = ZONE_CONTENTS.findIndex((z) => z.id === w.zone);
-    if (zone < 0) throw new Error(`World ${w.id} refers to unknown zone "${w.zone}"`);
-    return {
-      id: w.id,
-      name: w.name,
-      palette: w.palette,
-      params: {
-        id: w.id,
-        zone,
-        side: w.side,
-        ...(w.half !== undefined ? { half: w.half } : {}),
-        terrain: w.terrain,
-        vegetation: w.vegetation,
-        props: w.props ?? {},
-        ...(w.features ? { features: w.features } : {}),
-      },
-      ground: w.ground,
-      fogStripes: w.fogStripes,
-      fog: w.fog,
-      view: w.view,
-      ...(w.shadowTint ? { shadowTint: w.shadowTint } : {}),
-      ...(w.valleyMist !== undefined ? { valleyMist: w.valleyMist } : {}),
-      ...(w.skyGlow !== undefined ? { skyGlow: w.skyGlow } : {}),
-      ...(w.floorAnchor ? { floorAnchor: w.floorAnchor } : {}),
-    };
-  });
+/** Index einer Welt nach ihrer Kennung (`w01` …). */
+function worldIndex(id: string): number {
+  const i = WORLD_CONTENTS.findIndex((w) => w.id === id);
+  if (i < 0) throw new Error(`Unknown world ${id}`);
+  return i;
 }
 
 /**
- * Fokus-Elemente der Weltkompositionen als Landmark-Slots (die rote Scheune in 08, der Wurzelbaum in 05, …).
- * Der Riesenbaum (Welt 01) kommt dazu, sobald der Pfad bekannt ist (`createHeroTreeSite`).
+ * Autorenroute der Level 1–100 entlang −z (ADR 0002): die Welten nach den Story-Zonen, je etwa 10 Level; der
+ * Riesenbaum trägt die Level 80–95 auf kurzer Strecke (Stamm und Krone), das erste Wäldchen schließt mit Level 100.
  */
-export function planetLandmarks(): PlanetLandmarkParams[] {
-  const out: PlanetLandmarkParams[] = [];
-  WORLD_CONTENTS.forEach((w, i) => {
-    if (!w.focal) return;
-    // Fokus-Baum aus der Vegetation (z. B. die Earle-Eiche in Welt 05) ersetzt die Art des Fokus-Elements
-    const tree = w.focal.kind && w.focal.kind !== 'barn' ? w.vegetation.focalTree : undefined;
-    const kind = tree?.kind ?? w.focal.kind;
-    const scale = tree ? (tree.scale ?? 1) : (w.focal.scale ?? 1);
-    out.push({
-      id: `focal-${w.ref}`,
-      world: i,
-      latFrac: w.focal.latFrac ?? 0.5,
-      deltaDeg: w.focal.deltaDeg ?? 40,
-      yawDeg: w.focal.yawDeg ?? 0,
-      scale: 1,
-      clearRadius: !kind ? 0 : (w.focal.clear ?? (kind === 'barn' ? 4.5 : kind === 'oak' ? 2.4 * scale : 3.2)),
-      ...(kind ? { instance: { kind, scale } } : {}),
-    });
-  });
-  return out;
-}
+export const AUTHORED_ROUTE: RouteEntry[] = [
+  { world: worldIndex('w09'), levels: 10 }, // Goldene Wiese (Start, vermüllt)
+  { world: worldIndex('w06'), levels: 10 }, // Schneekiefern
+  { world: worldIndex('w04'), levels: 10 }, // Violette Hänge
+  { world: worldIndex('w10'), levels: 10 }, // Juwelenwald
+  { world: worldIndex('w05'), levels: 10 }, // Wurzelwelt
+  { world: worldIndex('w02'), levels: 10 }, // Nebelhügel
+  { world: worldIndex('w07'), levels: 10 }, // Kathedralenwald
+  { world: worldIndex('w08'), levels: 9 }, // Rote Scheune
+  { world: worldIndex('w01'), levels: 16, length: 34 }, // Flechtenbaum mit dem Riesenbaum (Level 80–95)
+  { world: worldIndex('w03'), levels: 5 }, // Kuppelbaum (erstes Wäldchen, Level 100)
+];
 
 /** Index der Welt mit dem Riesenbaum (Flechtenbaum, Referenz 01). */
 export const HERO_TREE_WORLD = Math.max(0, WORLD_CONTENTS.findIndex((w) => w.id === 'w01'));
 
-/** Welt-Index der nahen (Story-)Welt eines Zonenindex. */
-export function nearWorldOfZone(zone: number): number {
-  const zoneId = ZONE_CONTENTS[zone]?.id;
-  const idx = WORLD_CONTENTS.findIndex((w) => w.zone === zoneId && w.side === 'near');
-  return Math.max(0, idx);
+/** Fokus der Weltdatei → Ebene (along/lateral; ältere Dateien: latFrac/deltaDeg). */
+export function focalOf(w: WorldContent): FocalSpec | undefined {
+  const f = w.focal;
+  if (!f) return undefined;
+  // Fokus-Baum aus der Vegetation (z. B. die Earle-Eiche in Welt 05) ersetzt die Art des Fokus-Elements
+  const tree = f.kind && f.kind !== 'barn' ? w.vegetation.focalTree : undefined;
+  const kind = tree?.kind ?? f.kind;
+  const scale = tree ? (tree.scale ?? 1) : (f.scale ?? 1);
+  // Alte Kugel: deltaDeg = Bogen neben dem Pfad (R 32) — auf der Ebene 75 % davon, mindestens 6 (der Pfad schwingt ±3,2),
+  // höchstens 12 (ganz in der Pfadwelt); ohne Angabe wählt das Feld die Seite (Abstand 10)
+  const lateral = f.lateral ?? (f.deltaDeg !== undefined ? Math.sign(f.deltaDeg || 1) * Math.min(12, Math.max(6, ((Math.abs(f.deltaDeg) * Math.PI) / 180) * 32 * 0.75)) : undefined);
+  return {
+    ...(kind ? { kind } : {}),
+    scale,
+    along: f.along ?? f.latFrac ?? 0.5,
+    ...(lateral !== undefined ? { lateral } : {}),
+    yawDeg: f.yawDeg ?? 0,
+    ...(f.clear !== undefined ? { clearRadius: f.clear } : {}),
+  };
+}
+
+/** Parameter einer Autorenwelt für die Ebene (`@ee/world`). */
+export function worldSpecOf(w: WorldContent): WorldSpec {
+  const focal = focalOf(w);
+  return {
+    id: w.id,
+    terrain: w.terrain,
+    vegetation: w.vegetation,
+    props: w.props ?? {},
+    ...(w.features ? { features: w.features } : {}),
+    ...(w.trash ? { trash: w.trash as unknown as NonNullable<WorldSpec['trash']> } : {}),
+    ...(focal ? { focal } : {}),
+  };
+}
+
+/** Die zehn Autorenwelten aus `content/zones/worlds/` als Welten der Karte (Kennung = Index). */
+export function planetWorlds(): EarlePlanetWorld[] {
+  return WORLD_CONTENTS.map((w) => ({
+    id: w.id,
+    name: w.name,
+    palette: w.palette,
+    params: worldSpecOf(w),
+    ground: w.ground,
+    fogStripes: w.fogStripes,
+    fog: w.fog,
+    view: w.view,
+    ...(w.shadowTint ? { shadowTint: w.shadowTint } : {}),
+    ...(w.valleyMist !== undefined ? { valleyMist: w.valleyMist } : {}),
+    ...(w.skyGlow !== undefined ? { skyGlow: w.skyGlow } : {}),
+    ...(w.floorAnchor ? { floorAnchor: w.floorAnchor } : {}),
+  }));
+}
+
+/** Story-Zone eines Levels (1-basiert; HUD-Name). Level jenseits 100: die letzte Zone. */
+export function zoneOfLevel(level: number): ZoneContent | undefined {
+  return ZONE_CONTENTS.find((z) => level >= z.levelRange[0] && level <= z.levelRange[1]) ?? ZONE_CONTENTS[ZONE_CONTENTS.length - 1];
 }

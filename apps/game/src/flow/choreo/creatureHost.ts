@@ -21,7 +21,7 @@ export class CreatureHost {
   constructor(
     private readonly opts: {
       ground: MapGround;
-      /** Eltern der Wesen-Gruppe (heute `world.planet`, nach ADR 0002 der Ebenen-Anker). */
+      /** Eltern der Wesen-Gruppe (`world.planet`, der Anzeigeraum; die Wesen setzen sich über `ground.display`). */
       planet: Object3D;
       quality: FlowQuality;
       markShadowDirty(): void;

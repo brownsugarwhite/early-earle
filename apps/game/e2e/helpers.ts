@@ -112,13 +112,13 @@ export async function winLevel(page: Page, maxMoves = 40): Promise<void> {
 export async function nodeOnScreen(page: Page, index: number): Promise<{ x: number; y: number } | null> {
   return page.evaluate((i) => {
     type V3 = { x: number; y: number; z: number; project(c: unknown): V3 };
+    // ADR 0002: der Knoten liegt auf der Ebene, `nodeDisplay` bildet ihn auf die Anzeigekugel ab
     const c = (window as unknown as {
-      __ee: { controller: { layout: { nodes: Array<{ position: [number, number, number] }> }; world: { bend(p: V3): V3; planet: { localToWorld(v: V3): V3 }; camera: { position: { constructor: new (x: number, y: number, z: number) => V3 } } } } };
+      __ee: { controller: { world: { nodeDisplay(i: number, out: V3): V3; camera: { position: { constructor: new (x: number, y: number, z: number) => V3 } } } } };
     }).__ee.controller;
     const V = c.world.camera.position.constructor;
-    const n = c.layout.nodes[i];
-    if (!n) return null;
-    const p = c.world.planet.localToWorld(c.world.bend(new V(...n.position))).project(c.world.camera);
+    if (i < 0) return null;
+    const p = c.world.nodeDisplay(i, new V(0, 0, 0)).project(c.world.camera);
     if (Math.abs(p.x) > 0.92 || Math.abs(p.y) > 0.92 || p.z > 1) return null;
     return { x: ((p.x + 1) / 2) * innerWidth, y: ((1 - p.y) / 2) * innerHeight };
   }, index);

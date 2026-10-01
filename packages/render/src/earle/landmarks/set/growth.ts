@@ -80,6 +80,8 @@ export function createBushMesh(batch: BushBatch, ctx: LandmarkMaterialContext, d
   const mesh = new Mesh(geometry, reuse ?? createBushMaterial(ctx));
   mesh.name = 'landmark-bushes';
   mesh.castShadow = true;
+  // kleine Werfer: nur in den zwei feinen Kaskaden
+  mesh.userData.shadowCascades = 2;
   mesh.receiveShadow = true;
   mesh.frustumCulled = false;
   return mesh;

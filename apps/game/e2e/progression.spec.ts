@@ -132,6 +132,7 @@ test('Echt: die Karte dreht nur begrenzt und federt nach einem weiten Zug zurüc
   expect(start!.margin).toBe(2.5);
   // Far drags across the screen: the rubber band holds the view close to the path while the finger is down
   let peak = 0;
+  // Der Zug beginnt über der unteren HUD-Leiste (bei y ≈ 775–840 liegt „Spielen“: dort käme der Zeiger nie zur Karte)
   for (let k = 0; k < 2; k++) {
     // Start in der freien Kartenfläche (unten liegen Knopfleiste und REX-Zeile, links die Entwicklerleiste)
     await page.mouse.move(330, 640);
@@ -159,7 +160,7 @@ test('Frei (?mode=free): Knoten 50 öffnet sein Level wie bisher, das Frei-Schil
   expect(s.mode).toBe('free');
   expect(s.current).toBe(50);
   await expect(page.getByTestId('mode-tag')).toBeVisible();
-  // Free mode rolls the whole planet: no scroll limit
+  // Free mode pans the endless plane: no scroll limit
   expect(await scrollState(page)).toBeNull();
   await page.getByTestId('play-btn').click();
   await waitPhase(page, 'level');
@@ -189,8 +190,9 @@ test('Weg: bei jeder Landung steht der Held auf einem Pfadpunkt, zuletzt auf dem
   expect(log!.landings.at(-1)!.dot).toBe(-1);
   expect((await flowState(page)).current).toBe(11);
   const onNode = await page.evaluate(() => {
-    const c = (window as unknown as { __ee: { controller: { hero: { root: { position: { distanceTo(v: unknown): number } } }; nodePose(i: number): { position: unknown } } } }).__ee.controller;
-    return c.hero.root.position.distanceTo(c.nodePose(11).position);
+    // ADR 0002: die Pose liegt auf der Ebene, der Held auf der Anzeige
+    const c = (window as unknown as { __ee: { controller: { hero: { root: { position: { distanceTo(v: unknown): number } } }; nodePose(i: number): { position: unknown }; world: { toDisplay(p: unknown): unknown } } } }).__ee.controller;
+    return c.hero.root.position.distanceTo(c.world.toDisplay(c.nodePose(11).position));
   });
   expect(onNode).toBeLessThan(0.1);
   expect(await cues(page)).toContain('hop');

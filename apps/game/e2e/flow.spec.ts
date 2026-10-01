@@ -47,10 +47,20 @@ interface Vec3Like {
   y: number;
   z: number;
 }
+/** A level node on the infinite plane (ADR 0002): plane coordinates (x, h, z), `rise` = height of its element. */
+interface PlaneNodeLike {
+  index: number;
+  site?: string;
+  position: [number, number, number];
+  normal: [number, number, number];
+  rise?: number;
+  landmark?: unknown;
+}
 interface FlowDebug {
-  layout: { nodes: Array<{ site?: string; position: [number, number, number]; normal: [number, number, number]; rise?: number }>; dots: unknown[]; ribbon?: unknown[][] };
   world: {
-    surfaceRadius(d: Vec3Like & { length(): number }): number;
+    /** The level path (windowed): node(i), window(first, last) → nodes, dots, ribbon strips. */
+    layout: { lastPlayable: number; node(i: number): PlaneNodeLike; window(first: number, last: number): { nodes: PlaneNodeLike[]; dots: unknown[]; ribbon: unknown[][] } };
+    heightAt(x: number, z: number): number;
     isTreeNode(i: number): boolean;
     treeSite: { markers: { group: { getObjectByName(n: string): { count: number } | undefined } } };
     camera: { position: Vec3Like & { constructor: new (x: number, y: number, z: number) => Vec3Like & { project(c: unknown): Vec3Like } } };
@@ -69,29 +79,30 @@ test('Handy: Levelpfad liegt in der Landschaft, Spielfeld füllt die Breite, REX
   // The path: varied sites (rock ledges, clearings, the giant tree's bark and crown), stones resting on the ground.
   const path = await page.evaluate(() => {
     const c = (window as unknown as { __ee: { controller: FlowDebug } }).__ee.controller;
+    const layout = c.world.layout;
+    // Levels 1–100 (the plane's path is endless: a window over the playable stretch)
+    const win = layout.window(0, layout.lastPlayable);
     const sites: Record<string, number> = {};
     let hover = 0;
     let onTree = 0;
-    c.layout.nodes.forEach((n, i) => {
+    win.nodes.forEach((n) => {
       const site = n.site ?? 'none';
       sites[site] = (sites[site] ?? 0) + 1;
-      // The giant tree's nodes rest on the tree itself (roots, bark, limbs, crown domes), drawn by its own markers
-      if (c.world.isTreeNode(i)) {
+      // The giant tree's nodes rest on the tree itself (roots, bark, limbs, crown domes), drawn by its own markers;
+      // levels on landmarks stand on their plateau (rock, ruin terrace, swamp island)
+      if (c.world.isTreeNode(n.index)) {
         onTree++;
         return;
       }
-      // On the ground the stone lies on the surface; on its element (rock, mound, sand bar) the element's foot does:
-      // the stone minus the element's height along the surface normal.
+      if (n.landmark) return;
+      // On the ground the stone lies on the terrain; on its element (rock, mound, sand bar) the element's foot does:
+      // the stone minus the element's height (the plane: straight up).
       const rise = n.rise ?? 0;
-      const x = n.position[0] - n.normal[0] * rise;
-      const y = n.position[1] - n.normal[1] * rise;
-      const z = n.position[2] - n.normal[2] * rise;
-      const len = Math.hypot(x, y, z);
-      hover = Math.max(hover, Math.abs(len - c.world.surfaceRadius({ x, y, z, length: () => len })));
+      hover = Math.max(hover, Math.abs(n.position[1] - rise - c.world.heightAt(n.position[0], n.position[2])));
     });
     const m = c.world.treeSite.markers.group;
     const markers = (m.getObjectByName('path-fungi')?.count ?? 0) + (m.getObjectByName('path-flowers')?.count ?? 0);
-    return { sites, hover, onTree, markers, fungi: m.getObjectByName('path-fungi')?.count ?? 0, dots: c.layout.dots.length, strips: c.layout.ribbon?.length ?? 0 };
+    return { sites, hover, onTree, markers, fungi: m.getObjectByName('path-fungi')?.count ?? 0, dots: win.dots.length, strips: win.ribbon.length };
   });
   expect(path.sites['ledge'] ?? 0).toBeGreaterThan(4);
   expect(path.sites['bark'] ?? 0).toBeGreaterThan(2);
@@ -165,20 +176,21 @@ test('Riesenbaum (Handy, Level 86): der Held sitzt auf dem Baumpilz, die Schiene
     const c = (window as unknown as {
       __ee: {
         controller: FlowDebug & {
-          hero: { root: { position: V3; quaternion: unknown } };
-          world: { bend(p: V3): V3; treeSeat(i: number, r: number, p: V3, up: V3): boolean; planet: { localToWorld(v: V3): V3 } };
+          // The hero's plane pose (the display mapping puts `root` onto the globe)
+          hero: { pose: { position: V3; quaternion: unknown } };
+          world: { treeSeat(i: number, r: number, p: V3, up: V3): boolean; nodeDisplay(i: number, out: V3): V3 };
         };
       };
     }).__ee.controller;
     const V = c.world.camera.position.constructor as unknown as new (x: number, y: number, z: number) => V3;
-    const node = c.layout.nodes[85]!;
+    const node = c.world.layout.node(85);
     const seat = new V(0, 0, 0);
     const up = new V(0, 0, 0);
     const onTree = c.world.treeSeat(85, 0.3, seat, up);
-    const heroUp = new V(0, 1, 0).applyQuaternion(c.hero.root.quaternion);
+    const heroUp = new V(0, 1, 0).applyQuaternion(c.hero.pose.quaternion);
     // Out on the shelf: in front of the bark along its normal, upright along the fungus seat (not sideways on the trunk)
-    const out = c.hero.root.position.clone().sub(c.world.bend(new V(...node.position))).dot(new V(...node.normal));
-    const onScreen = c.world.planet.localToWorld(c.world.bend(new V(...node.position))).project(c.world.camera);
+    const out = c.hero.pose.position.clone().sub(new V(...node.position)).dot(new V(...node.normal));
+    const onScreen = c.world.nodeDisplay(85, new V(0, 0, 0)).project(c.world.camera);
     return { site: node.site, onTree, upright: heroUp.dot(up), out, x: onScreen.x, y: onScreen.y };
   });
   expect(r.site).toBe('bark');
@@ -211,7 +223,8 @@ test('/play startet auf der Map mit Glas-HUD; Spielen fliegt ins Level, Wisch/Ta
     if (state === 'depart' || state === 'map') break;
   }
   await expect(hud).toHaveAttribute('data-flow-state', /depart|map/, { timeout: TRANSITION_MS });
-  await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: TRANSITION_MS });
+  // Aufbruch und Weg über die Punkte (depart → travel → map): zwei Choreografien hintereinander auf der Szenenuhr
+  await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: TRANSITION_MS * 2 });
   await expect(page.getByTestId('hud-top').locator('h1')).toContainText('Level 2');
   expect(errors).toEqual([]);
 });

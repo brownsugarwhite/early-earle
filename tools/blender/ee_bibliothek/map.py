@@ -170,6 +170,9 @@ def build_map(st):
     tcol = collection("Map · Vorlagen", top)
     templates = {}
     R = float(info.get("radius", 32))
+    # Vorlagen-Reihe neben dem Inhalt: Kugel (alt) rechts vom Planeten, Ebene rechts vom Fenster
+    win = info.get("window")
+    row_x = float(win["x1"]) + 8 if info.get("plane") and win else R + 8
     for k, ni in enumerate(roots.get("Vorlagen", {}).get("children", [])):
         node = vg.nodes[ni]
         e = node.get("extras", {})
@@ -178,7 +181,7 @@ def build_map(st):
         me.materials.append(earle.instance_material(KIND_MATERIAL.get(fam, "Map · Weitere"), fam))
         o = bpy.data.objects.new(f"Vorlage · {e.get('label')}", me)
         link(o, tcol)
-        o.location = Vector((R + 8 + (k % 6) * 3.0, -((k // 6) * 3.0), 0))
+        o.location = Vector((row_x + (k % 6) * 3.0, -((k // 6) * 3.0), 0))
         set_props(o, {"ee_vorlage": e.get("template"), "ee_gruppe": e.get("group")})
         templates[e.get("template")] = o
         st.asset(o, f"Map/{e.get('group', 'Vorlagen')}", f"Vorlage {e.get('label')} (Spiel-Geometrie; Farbe je Instanz aus der Palettenzeile)", ("Map", e.get("group", "")))
@@ -263,7 +266,7 @@ def build_map(st):
         e.matrix_world = Matrix.Translation(g2b(l["position"])) @ n.to_track_quat("Z", "Y").to_matrix().to_4x4()
         inst = l.get("instance") or {}
         set_props(e, {"ee_slot": l["id"], "ee_welt_index": l["world"], "ee_freiraum": float(l["clearRadius"]), "ee_fokus": inst.get("kind"), "ee_drehung_grad": float(l.get("yawDeg", 0))})
-    set_props(top, {"ee_radius": R, "ee_chunks_je_seite": info.get("chunksPerFace"), "ee_kruemmung": info.get("curvature")})
+    set_props(top, {"ee_radius": R, "ee_chunks_je_seite": info.get("chunksPerFace"), "ee_kruemmung": info.get("curvature"), "ee_ebene": bool(info.get("plane")), "ee_fenster": json.dumps(info.get("window"))})
     st.map_info = info
 
 
@@ -282,11 +285,21 @@ def build_hero_tree(st, top, info):
     from . import materials
 
     bark_row = rows.get("bark", 0)
-    for ni in root.get("children", []):
+
+    def build_part(ni, parent):
         node = g.nodes[ni]
         e = node.get("extras", {})
         part = e.get("part", "")
         name = node["name"]
+        if "mesh" not in node and "extensions" not in node:
+            # Gruppe (Geschwister des Riesenbaums, Bäume v4): leerer Halter im selben Baumraum, Teile darunter
+            grp = empty(name, col, "PLAIN_AXES", 1.0)
+            grp.parent = parent
+            grp.matrix_parent_inverse = Matrix.Identity(4)
+            set_props(grp, {"ee_teil": e.get("ee", "gruppe"), "ee_statistik": json.dumps(e.get("stats"))})
+            for ci in node.get("children", []):
+                build_part(ci, grp)
+            return
         if "extensions" in node:
             # Kuppeln: Kugel-Vorlage + Instanzen (Familienzeilen je Kuppel)
             me, _ = _mesh_from_prims(f"{name} · Vorlage", g, node["mesh"])
@@ -325,14 +338,17 @@ def build_hero_tree(st, top, info):
                 else:
                     a = me.attributes.new(attr_name, "FLOAT_VECTOR", "POINT")
                     a.data.foreach_set("vector", np.ascontiguousarray(np.concatenate([arr, np.zeros((len(arr), 3 - arr.shape[1]), np.float32)], axis=1)).ravel())
-            me.materials.append(_bark_material(bark_row) if part == "trunk" else materials.ramp_material("Riesenbaum · Äste", ["#06091a", "#114a86"], (0.3,)))
+            me.materials.append(_bark_material(bark_row) if part in ("trunk", "wood") else materials.ramp_material("Riesenbaum · Äste", ["#06091a", "#114a86"], (0.3,)))
             o = bpy.data.objects.new(name, me)
             link(o, col)
             if node.get("matrix"):
                 o.matrix_basis = mat_g2b(g.node_matrix(node))
-        o.parent = holder
+        o.parent = parent
         o.matrix_parent_inverse = Matrix.Identity(4)
         set_props(o, {"ee_teil": part})
+
+    for ni in root.get("children", []):
+        build_part(ni, holder)
     set_props(holder, {"ee_hoehe": rex.get("height"), "ee_level": json.dumps(rex.get("levels")), "ee_statistik": json.dumps(rex.get("stats"))})
     st.asset(col, "Map/Riesenbaum", "Der Riesenbaum (Flechtenbaum, Welt 01) mit Stamm, Ästen, Kuppelkrone, Punkten, Motiven, Sternnadeln und Blüten", ("Map", "Riesenbaum"))
 

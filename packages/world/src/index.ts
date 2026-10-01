@@ -98,3 +98,6 @@ export {
   type SnowFieldSpec,
   type WorldFeatureSpec,
 } from './features';
+
+// Unendliche Ebene (ADR 0002)
+export * from './plane/index';

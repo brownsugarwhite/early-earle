@@ -1,6 +1,6 @@
-import { Color, Group, Mesh, PerspectiveCamera, Quaternion, Scene, SphereGeometry, Vector3 } from 'three/webgpu';
+import { CircleGeometry, Color, Group, Mesh, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
 import { float, positionLocal, uniform } from 'three/tsl';
-import { EarleMaterial, PaletteAtlas, PaletteLookup, PlanetVegetation, SunRig, addWorldPalette, createFogSettings, createSkyDome, skySunIndices, type WorldRows } from '@ee/render';
+import { EarleMaterial, PLANET_ATLAS_HEIGHT, PaletteAtlas, PaletteLookup, PlanetVegetation, SunRig, WorldSlots, createFogSettings, createSkyDome, skySunIndices, type WorldRows } from '@ee/render';
 import { GRAND_FORMS, createGrandTrees, type GrandTrees } from '@ee/render/earle/tree/grand.ts';
 import { TREE_PROPORTIONS, type PlanetTree, type TreeFamily, type TreeKind } from '@ee/world';
 import type { SceneContext, SceneController } from '../../canvas/SceneController';
@@ -38,8 +38,8 @@ const _q = new Quaternion();
 const _v = new Vector3();
 
 /**
- * Baum-Galerie: eine Reihe Bäume der gewählten Welt auf einer kleinen Planetenkappe (gleicher Radius wie die Map, damit
- * Lot, Warp und Schatten dieselben Annahmen treffen), Sonne 9–12° mit den Kaskadenschatten, Himmel der Welt. Zum
+ * Baum-Galerie: eine Reihe Bäume der gewählten Welt auf flachem Boden (die Ebene der unendlichen Welt, ohne
+ * Anzeige-Abbildung: aus der Nähe ist die Kugel flach), Sonne 9–12° mit den Kaskadenschatten, Himmel der Welt. Zum
  * Beurteilen aus der Nähe: organische Stämme, Rindenlinien, Schnee, Kronen, Punkte; mit `spin` kreist die Sonne.
  */
 export class TreeGalleryScene implements SceneController {
@@ -48,8 +48,8 @@ export class TreeGalleryScene implements SceneController {
   private readonly planet = new Group();
   private readonly rig = new Group();
   private readonly sun: SunRig;
-  private readonly atlas = new PaletteAtlas();
-  private readonly rows: WorldRows[];
+  private readonly atlas = new PaletteAtlas(PLANET_ATLAS_HEIGHT);
+  private readonly slots: WorldSlots;
   private readonly lookup: PaletteLookup;
   private vegetation: PlanetVegetation | null = null;
   private grand: GrandTrees | null = null;
@@ -65,7 +65,12 @@ export class TreeGalleryScene implements SceneController {
   constructor(readonly params: TreeGalleryParams) {
     this.azimuth = params.sunAzimuth;
     this.sun = new SunRig({ mapSize: 2048, sharpen: true, elevationDeg: params.sunElevation, azimuthDeg: params.sunAzimuth });
-    this.rows = WORLD_CONTENTS.map((w) => addWorldPalette(this.atlas, w.palette, w.id));
+    // Welt-Slots wie auf der Karte (die Vegetation liest Zeilen und Tabellen je Slot)
+    this.slots = new WorldSlots(
+      this.atlas,
+      (w) => WORLD_CONTENTS[w]!.palette,
+      (slot, w) => this.vegetation?.onSlotAssigned(slot, w),
+    );
     this.lookup = new PaletteLookup(this.atlas.texture, this.atlas.width, this.atlas.height);
   }
 
@@ -74,7 +79,7 @@ export class TreeGalleryScene implements SceneController {
     ctx.renderer.shadowMap.enabled = true;
     const world = Math.min(WORLD_CONTENTS.length - 1, Math.max(0, this.params.world));
     const content = WORLD_CONTENTS[world]!;
-    const rows = this.rows[world]!;
+    const rows: WorldRows = this.slots.rowsOfWorld(world);
     this.scene.background = new Color(content.palette.sky[1] ?? '#88aacc');
     this.scene.add(this.planet, this.rig);
     this.rig.position.set(0, R, 0);
@@ -84,8 +89,8 @@ export class TreeGalleryScene implements SceneController {
 
     const fog = createFogSettings({ row: rows.fog, steps: 5, start: 60, range: 80 });
     const bands = uniform(3);
-    // Boden: Kappe der Planetenkugel in der Terrainzeile der Welt
-    const groundGeo = new SphereGeometry(R, 160, 80, 0, Math.PI * 2, 0, 0.5);
+    // Boden: flache Scheibe (Ebene) in der Terrainzeile der Welt, im Planetenraum am Scheitel
+    const groundGeo = new CircleGeometry(80, 96).rotateX(-Math.PI / 2).translate(0, R, 0);
     const groundMat = new EarleMaterial({ lookup: this.lookup, row: rows.terrain, fog, bands: uniform(4), bandScale: 2, terminator: 0.02, lift: float(0.35), positionNode: positionLocal });
     this.ground = new Mesh(groundGeo, groundMat);
     this.ground.castShadow = true;
@@ -101,16 +106,18 @@ export class TreeGalleryScene implements SceneController {
       lookup: this.lookup,
       fog,
       bands,
-      worldRows: this.rows.map((r) => ({ terrain: r.terrain, canopy: r.canopyRows, accent: r.accent, monolith: r.monolith, barn: r.barn })),
-      families: WORLD_CONTENTS.map((w) => w.vegetation),
+      slots: this.slots,
+      family: (w) => WORLD_CONTENTS[Math.min(WORLD_CONTENTS.length - 1, Math.max(0, w))]!.vegetation,
       capacity: { trees: 64, dots: 20000, props: 8, animals: 8 },
       dotsPerTree: [60, 200],
       collapsePx: 0.75,
-      rowCount: this.atlas.rowCount,
       // Punkte skalieren im Schlagschatten mit dem glatten Schattenwert aus 0 (wie auf der Karte; `dotshadow=0` = alt)
       shadowFactor: typeof location !== 'undefined' && location.search.includes('dotshadow=0') ? null : (p, o) => this.sun.shadowFactor(p, o),
     });
     this.planet.add(this.vegetation.group);
+    // Tabellen des schon belegten Slots nachtragen (die Vegetation gab es beim Belegen noch nicht)
+    this.vegetation.onSlotAssigned(this.slots.slotOf(world), world);
+    this.vegetation.group.position.y = R;
 
     // Reihe der Bäume: auf einem Bogen quer zur Blickrichtung, Abstand nach Kronengröße
     const fam = content.vegetation as TreeFamily;
@@ -122,17 +129,16 @@ export class TreeGalleryScene implements SceneController {
     kinds.forEach((kind, i) => {
       const r = sizes[i]!;
       x += r * 1.3;
-      const dir = new Vector3(x / R, 1, 0).normalize();
-      const pos = dir.clone().multiplyScalar(R);
+      // Ebene: Fuß auf dem Boden (y = 0 im Raum der Vegetation), oben = +y
       const hull = TREE_PROPORTIONS[kind].hull * r;
       this.trees.push({
-        position: [pos.x, pos.y, pos.z],
-        normal: [dir.x, dir.y, dir.z],
+        position: [x, 0, 0],
+        normal: [0, 1, 0],
         kind,
         scale: 1,
         canopyRadius: r,
         trunkHeight: TREE_PROPORTIONS[kind].trunk * r,
-        hullCenter: [pos.x + dir.x * hull, pos.y + dir.y * hull, pos.z + dir.z * hull],
+        hullCenter: [x, hull, 0],
         growth: 0,
         zone: 0,
         world,
@@ -145,12 +151,11 @@ export class TreeGalleryScene implements SceneController {
       this.trees.map((tree) => ({ tree, slot: 0, withDots: true })),
       [],
     );
-    // Geschwister des Riesenbaums: zweite Reihe hinter den Welt-Bäumen, auf der Planetenkappe (Baumraum × 0.4)
+    // Geschwister des Riesenbaums: zweite Reihe hinter den Welt-Bäumen, auf dem flachen Boden (Baumraum × 0.4)
     if (this.params.grand > 0) {
       const holder = new Group();
       holder.position.set(0, R, 0);
       holder.scale.setScalar(TREE_SCALE);
-      const Rt = R / TREE_SCALE;
       const n = Math.min(6, Math.round(this.params.grand));
       const back = -14 / TREE_SCALE;
       const sites = Array.from({ length: n }, (_, i) => ({ x: (i - (n - 1) / 2) * 26, z: back + (i % 2) * 6, yaw: i * 1.7, spec: { form: GRAND_FORMS[i % GRAND_FORMS.length]! } }));
@@ -158,7 +163,8 @@ export class TreeGalleryScene implements SceneController {
         sites,
         seed: 7,
         quality: 'hoch',
-        groundAt: (x, z) => Math.sqrt(Math.max(0, Rt * Rt - x * x - (z * z))) - Rt,
+        // Ebene: der Boden ist flach (keine Kugelkappe)
+        groundAt: () => 0,
         bark: content.vegetation.trunkStyle === 'striped' ? 'jewel' : 'ink',
         snow: (content.vegetation as TreeFamily).snow ?? 0.6,
         fog,
@@ -168,8 +174,11 @@ export class TreeGalleryScene implements SceneController {
       this.planet.add(holder);
       this.grand = grand;
     }
-    // Empfänger bis in die Kronen (die Punkte lesen den Schattenwert dort)
-    this.sun.fitToView(this.camera, { sphere: { center: this.planet, radius: R, minHeight: -0.5, maxHeight: 6, surface: () => R }, casterHeight: this.params.grand > 0 ? 12 : 8 });
+    // Empfänger: flacher Boden bis in die Kronen (die Punkte lesen den Schattenwert dort)
+    this.sun.fitToView(this.camera, {
+      plane: { origin: new Vector3(0, R, 0), normal: new Vector3(0, 1, 0), minHeight: -0.5, maxHeight: 6 },
+      casterHeight: this.params.grand > 0 ? 12 : 8,
+    });
     this.resize(ctx);
   }
 
@@ -196,7 +205,8 @@ export class TreeGalleryScene implements SceneController {
     this.planet.getWorldQuaternion(_q).invert();
     veg.setSunDirection(this.sunDirWorld.value, _v.copy(this.sunDirWorld.value).applyQuaternion(_q));
     const camWorld = this.camera.getWorldPosition(new Vector3());
-    veg.updateCamera(this.camera, camWorld.clone().applyQuaternion(_q));
+    // Kamera im Raum der Vegetation (Boden bei y = R)
+    veg.updateCamera(this.camera, camWorld.clone().applyQuaternion(_q).sub(this.vegetation!.group.position));
     if (this.grand) {
       this.grand.setSunDirection(this.sunDirWorld.value);
       this.grand.updateCamera(this.camera);

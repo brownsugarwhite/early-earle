@@ -245,8 +245,8 @@ export function bsplineField(compare: DepthCompareZFn, uv: Vec2Node, mapSize: Ve
  * Flache Weltnormale der gerenderten Facette aus Bildschirmableitungen (nur Fragment-Shader, gleichförmiger
  * Kontrollfluss). Fällt auf die Schattierungsnormale zurück, wo die Ableitungen entarten.
  */
-export function flatNormalWorld(): Vec3Node {
-  const p = positionWorld as unknown as Vec3Node;
+export function flatNormalWorld(position?: Vec3Node): Vec3Node {
+  const p = position ?? (positionWorld as unknown as Vec3Node);
   const c = cross(dFdx(p) as unknown as Vec3Node, dFdy(p) as unknown as Vec3Node) as unknown as Vec3Node;
   const len2 = c.dot(c);
   const n = normalWorld as unknown as Vec3Node;

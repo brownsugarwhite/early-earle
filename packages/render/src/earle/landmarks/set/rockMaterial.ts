@@ -72,7 +72,6 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
   let ivy: FloatNode = float(0);
   let lancet: FloatNode = float(0);
   let facet: { dark: FloatNode; light: FloatNode } | null = null;
-  let soft: FloatNode | null = null;
   const layers: EarleLayer[] = [moss];
 
   if (family === 'rock') {
@@ -178,7 +177,6 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
       dark: pow(gf.oneMinus(), 1.15).mul(0.45).mul(inFacet) as unknown as FloatNode,
       light: smoothstep(0.4, 1.0, gf).mul(0.36).mul(inFacet) as unknown as FloatNode,
     };
-    soft = float(0) as unknown as FloatNode;
     // joints and strokes barely show in the ink
     lineShadow = mix(ink, pal(2), 0.22) as unknown as Vec3Node;
     // worn tops (terrace, treads, broken walls): a few long joints, moss dots gathering in patches
@@ -231,7 +229,6 @@ export function createLandmarkRockMaterial(ctx: LandmarkMaterialContext, uni: La
     lift,
     pattern: { mask: patternMask, color: patternColor, shadowColor: patternShadow },
     layers,
-    ...(soft ? { softNode: soft } : {}),
     positionNode: ctx.warp ? ctx.warp(positionLocal as unknown as Vec3Node) : null,
     fogDistNode: fogDistance(ctx),
   });

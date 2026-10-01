@@ -10,8 +10,8 @@ import { creatureLibrary } from './LevelBoard';
  * Erspielte Wesen auf der Map (Iteration 4, Punkt 5). Vertrag zwischen Flow (erzeugt, aktualisiert, ruft `release`
  * beim Aufbruch) und der Sammlungs-Baustelle (baut die echte Darstellung).
  *
- * Nahtstelle für ADR 0002: Alle Positionen kommen über `MapGround` — heute Kugel (surfaceRadius, bend), später die
- * unendliche Ebene mit Anzeige-Abbildung. Nichts darf schweben: Füße immer auf `ground()`.
+ * ADR 0002: Alle Positionen kommen über `MapGround` (`MapWorld.mapGround()`) — Punkte der unendlichen Ebene (x, h, z),
+ * gezeigt über die Anzeige-Abbildung auf der Kugel. Nichts darf schweben: Füße immer auf `ground()`.
  */
 export interface GroundFrame {
   /** Punkt auf dem Boden (im Raum der Map-Gruppe, vor der Anzeige-Abbildung). */
@@ -25,8 +25,13 @@ export interface MapGround {
   homeSpot(node: number, slot: number, out: GroundFrame): boolean;
   /** Projiziert einen Punkt auf begehbaren Boden (Füße auf dem Netz). */
   ground(p: Vector3, out: GroundFrame): void;
-  /** Anzeige-Abbildung (heute `world.bend`), damit Wesen mit der überzeichneten Krümmung gehen. */
+  /** Anzeige-Abbildung (Ebene → Anzeigekugel, ADR 0002), damit Wesen mit der Krümmung gehen. */
   display(p: Vector3, out: Vector3): Vector3;
+  /**
+   * Optional: Drehung der Anzeige am Bodenpunkt `p` (die Ebene liegt auf der Kugel: dort ist „oben“ die Kugelnormale).
+   * Der Rahmen des Wesens dreht sich mit, die Füße stehen auf dem gebogenen Boden. Ohne: keine Drehung.
+   */
+  displayRotation?(p: Vector3, out: Quaternion): Quaternion;
   /** Blickpunkt der Karte (derselbe, den die Scroll-Grenze benutzt): entscheidet, welche Wesen leben. */
   focus(out: Vector3): Vector3;
   /** Optional: trocken und kein Fels (Wanderziele); ohne gilt jeder Punkt nahe dem Wohnort. */
@@ -47,7 +52,7 @@ export interface MapCreaturesOptions {
 }
 
 export interface MapCreaturesApi {
-  /** Kind von `world.planet` (bzw. später des Ebenen-Ankers). */
+  /** Kind von `world.planet` (Anzeigeraum; die Wesen setzen sich über `display` selbst auf die Kugel). */
   readonly group: Group;
   /**
    * Beim Start: alle Wesen mit `placedOnMap` an ihre Wohnorte setzen. Wieder aufgerufen (Moduswechsel, geleerte
@@ -155,6 +160,8 @@ const _p = new Vector3();
 const _q = new Vector3();
 const _f = new Vector3();
 const _m = new Matrix4();
+const _rq = new Quaternion();
+const _fq = new Quaternion();
 const _frame: GroundFrame = { position: new Vector3(), normal: new Vector3() };
 
 /**
@@ -206,6 +213,16 @@ export function createMapCreatures(ground: MapGround, options: MapCreaturesOptio
     const frame = new Quaternion().setFromRotationMatrix(_m);
     const r: Resident = { entry, key: entry.key, home, normal, t1, t2, frame, hasHome, member: null, phase: 'home', timer: pause(entry.key, 0), pop: 0, popDir: 1, size: 1, ride: null, fallV: 0, twin: null, pinned: false, hold: false, leaving: false };
     return r;
+  };
+
+  /** Rahmen des Wesens in der Anzeige: der Bodenrahmen, gedreht wie die Anzeige am Bodenpunkt `g`. */
+  const shownFrame = (r: Resident, g: Vector3): Quaternion => (ground.displayRotation ? _fq.copy(ground.displayRotation(g, _rq)).multiply(r.frame) : _fq.copy(r.frame));
+
+  /** Wo ein Wesen gerade steht, im Raum des Bodens (vor der Anzeige): Wohnort + lokale Lage. */
+  const groundCenter = (r: Resident, out: Vector3): Vector3 => {
+    const m = r.member;
+    const [x, z] = m?.motion ? m.motion.controller.position : [m?.x ?? 0, m?.z ?? 0];
+    return out.copy(r.home).addScaledVector(r.t1, x).addScaledVector(r.t2, z);
   };
 
   /** Bodenpunkt (billiger Weg, wenn der Boden ihn anbietet). */
@@ -308,9 +325,11 @@ export function createMapCreatures(ground: MapGround, options: MapCreaturesOptio
     _q.copy(r.home).addScaledVector(r.t1, x).addScaledVector(r.t2, z);
     const g = groundPoint(_q, _f);
     const h = _q.copy(g).sub(r.home).dot(r.normal);
-    // Der Kontaktpunkt (x, h, z) des Rahmens soll auf dem angezeigten Bodenpunkt liegen.
+    // Der Kontaktpunkt (x, h, z) des Rahmens soll auf dem angezeigten Bodenpunkt liegen; der Rahmen dreht mit der Anzeige.
     ground.display(g, _p);
-    _q.set(x, h, z).applyQuaternion(r.frame);
+    const frame = shownFrame(r, g);
+    m.quaternion.copy(frame);
+    _q.set(x, h, z).applyQuaternion(frame);
     m.origin.copy(_p).sub(_q);
   };
 
@@ -369,9 +388,8 @@ export function createMapCreatures(ground: MapGround, options: MapCreaturesOptio
           r.leaving = true;
           break;
         }
-        // Zum Zwilling laufen (seine Position im eigenen Rahmen), dort verschwinden.
-        const tw = twin.member.center;
-        _q.copy(tw).sub(r.home);
+        // Zum Zwilling laufen (seine Position im eigenen Rahmen, im Raum des Bodens), dort verschwinden.
+        groundCenter(twin, _q).sub(r.home);
         const tx = _q.dot(r.t1);
         const tz = _q.dot(r.t2);
         const [x, z] = ctl.position;
@@ -522,7 +540,9 @@ export function createMapCreatures(ground: MapGround, options: MapCreaturesOptio
         const raw = groundPoint(new Vector3().copy(r.home).addScaledVector(r.t1, x).addScaledVector(r.t2, z), new Vector3());
         const shown = ground.display(raw, new Vector3());
         const h = raw.clone().sub(r.home).dot(r.normal);
-        const contact = new Vector3(x, h, z).applyQuaternion(r.frame).add(m.origin).addScaledVector(r.normal, m.lift);
+        // Wie die Herde: Rahmen (mit der Anzeige gedreht) und das Anheben entlang seiner Hochachse
+        const frame = shownFrame(r, raw).clone();
+        const contact = new Vector3(x, h, z).applyQuaternion(frame).add(m.origin).addScaledVector(new Vector3(0, 1, 0).applyQuaternion(frame), m.lift);
         return { key: r.key, live: true, phase: r.phase, contact, ground: shown, groundRaw: raw, home: r.home.clone(), fromHome: Math.hypot(x, z) };
       });
     },
@@ -554,7 +574,7 @@ export function createMapCreatures(ground: MapGround, options: MapCreaturesOptio
     m.pop = r.size;
     if (r.phase === 'walkHome') m.motion?.controller.walkTo(0, 0);
     if (r.phase === 'twin' && twin?.member) {
-      _q.copy(twin.member.center).sub(r.home);
+      groundCenter(twin, _q).sub(r.home);
       m.motion?.controller.walkTo(_q.dot(r.t1), _q.dot(r.t2));
     }
     const d = Math.hypot(x, z);

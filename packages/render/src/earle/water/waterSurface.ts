@@ -67,7 +67,8 @@ export function createWaterMaterial(o: WaterMaterialOptions): EarleMaterial {
   const world = wb.x;
   const flow = wb.y;
   const body = wb.z;
-  const isRiver = wb.w.greaterThan(0.5);
+  // Art: 0 See, 1 Fluss, 2 Sumpf (wie ein See gezeichnet; eigene Sümpfe kommen als Wahrzeichen)
+  const isRiver = abs(wb.w.sub(1)).lessThan(0.5);
   const isIce = frozen.greaterThan(0.5);
   const row = arrayElement(o.waterRows, world);
   const pal = (i: number) => o.lookup.pal(i, row).rgb;

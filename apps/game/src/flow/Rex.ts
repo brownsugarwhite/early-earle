@@ -24,7 +24,6 @@ import { useGridStore } from '../lab/grid/gridStore';
 import { rexIntroFor, rexLine } from '../lab/grid/rex';
 import { readHudBands } from './hudBands';
 import type { MapWorld } from './MapWorld';
-import type { PathLayout } from './path';
 
 /** Where REX's speech bubble should attach (the HUD's REX line box): his mouth on screen, CSS px of the viewport. */
 export interface RexAnchorState {
@@ -48,7 +47,6 @@ export const useRexAnchor = create<RexAnchorState>(() => ({ x: 0, y: 0, visible:
 /** What FlowScene can hand over once (optional): exact node positions and the board. */
 export interface RexFlowContext {
   world: MapWorld;
-  layout: PathLayout;
   board: { root: Object3D; footprint: RexBoardBox; topY: number; w: number; h: number };
 }
 
@@ -376,14 +374,11 @@ export class Rex {
     return this.hud;
   }
 
-  /** World position of a path node (bent like the terrain), or null without the flow context. */
+  /** World (display) position of a path node, or null without the flow context. */
   private nodeWorld(i: number, out: Vector3): Vector3 | null {
     const f = this.flow;
-    const n = f?.layout.nodes[i];
-    if (!f || !n) return null;
-    f.world.bend(out.set(n.position[0], n.position[1], n.position[2]), out);
-    f.world.planet.updateWorldMatrix(true, false);
-    return f.world.planet.localToWorld(out);
+    if (!f || i < 0) return null;
+    return f.world.nodeDisplay(i, out);
   }
 
   private placeOnMap(camera: PerspectiveCamera, dt: number): void {
@@ -523,14 +518,11 @@ export class Rex {
     return Math.max(1.2, LEVEL_HEIGHT * Math.max(fp.maxX - fp.minX, fp.maxZ - fp.minZ)) * this.sizeScale;
   }
 
-  /** Terrain height beside the plateau in board-local y (0 without the world). */
+  /** Terrain height beside the plateau in board-local y, as displayed (0 without the world). */
   private terrainAt(root: Object3D, x: number, z: number): number {
     const world = this.flow?.world;
     if (!world) return 0;
-    root.updateMatrix();
-    const p = _v.set(x, 0, z).applyMatrix4(root.matrix);
-    const r = world.surfaceRadius(_v2.copy(p).normalize());
-    return Math.max(-0.6, Math.min(0.6, r - p.length()));
+    return Math.max(-0.6, Math.min(0.6, world.groundLocalY(root, x, z)));
   }
 
   private pointAtBoard(): void {

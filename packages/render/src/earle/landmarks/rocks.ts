@@ -1,6 +1,7 @@
 import { BufferAttribute, BufferGeometry } from 'three/webgpu';
 import { abs, attribute, float, floor, fract, fwidth, hash, max, mix, positionLocal, positionView, select, sin, smoothstep, step, vec2, vec3 } from 'three/tsl';
-import { columnTopAt, framePoint, type RockColumn, type RockFormation, type RockKind } from '@ee/world';
+import type { Vector3 } from 'three/webgpu';
+import { planeColumnTopAt as columnTopAt, type PlaneRockColumn as RockColumn, type PlaneRockFormation as RockFormation, type RockKind } from '@ee/world';
 import { EarleMaterial } from '../EarleMaterial';
 import { aaStep, arrayElement, hatchMask, patternTime, periodFade, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node } from '../tsl';
 
@@ -19,6 +20,8 @@ export interface RockGeometryData {
   rk: Float32Array;
   /** Merkmals-Index je Vertex (Wachstum/Heilung je Formation). */
   rg: Float32Array;
+  /** Säule je Vertex: Mitte (x, z relativ zum Anker), Fußhöhe, Radius — für die Lichtung unter der Kamera. */
+  rc: Float32Array;
   indices: Uint32Array;
   /** Höchste Deckfläche (über dem Grundradius) für die Schattenkamera. */
   maxHeight: number;
@@ -28,57 +31,64 @@ type V3 = [number, number, number];
 
 /**
  * Säulen-Geometrie aller Formationen (flach schattiert: eigene Vertices je Fläche): Wände als Quads vom versenkten
- * Fuß zur (verjüngten, ggf. geneigten) Deckfläche, Deckfläche als Fächer, Nadeln mit versetzter Spitze. Rahmen der
- * Formation (Oben = Normale am Mittelpunkt), Positionen im Planetenraum.
+ * Fuß zur (verjüngten, ggf. geneigten) Deckfläche, Deckfläche als Fächer, Nadeln mit versetzter Spitze. Ebene: Oben =
+ * +y, Grundrisse um den Formationsmittelpunkt (a = x, b = z), Positionen relativ zum Anker (ax, az) des Meshes.
+ * `slotOf` liefert den Welt-Slot (Palettenzeilen) je Formation.
  */
 export function buildRockGeometry(
   formations: readonly RockFormation[],
-  radius: number,
-  worldOf: (f: RockFormation) => number,
+  anchor: { x: number; z: number },
+  slotOf: (f: RockFormation) => number,
   featureOf: (f: RockFormation, index: number) => number = (_f, i) => i,
 ): RockGeometryData {
   const pos: number[] = [];
   const nor: number[] = [];
   const rk: number[] = [];
   const rg: number[] = [];
+  const rc: number[] = [];
   const idx: number[] = [];
   let maxHeight = 0;
   let feature = 0;
+  // Säule, zu der die nächsten Vertices gehören (Mitte relativ zum Anker, Fuß, Radius)
+  const column = { x: 0, z: 0, base: 0, r: 0 };
   const vtx = (p: V3, n: V3, u: number, z: number, code: number, variant: number): number => {
     pos.push(p[0], p[1], p[2]);
     nor.push(n[0], n[1], n[2]);
     rk.push(u, z, code, variant);
     rg.push(feature);
+    rc.push(column.x, column.base, column.z, column.r);
     return pos.length / 3 - 1;
   };
+  const up: V3 = [0, 1, 0];
   for (let fi = 0; fi < formations.length; fi++) {
     const f = formations[fi]!;
     feature = featureOf(f, fi);
-    const world = worldOf(f);
+    const world = slotOf(f);
     const kind = KIND_CODE[f.kind] ?? 0;
-    const up = f.frame.c;
-    const P = (x: number, y: number, z: number): V3 => framePoint(f.frame, radius, x, y, z, [0, 0, 0]);
+    const ox = f.cx - anchor.x;
+    const oz = f.cz - anchor.z;
+    const P = (a: number, b: number, h: number): V3 => [ox + a, h, oz + b];
     f.columns.forEach((col, ci) => {
       const n = col.polygon.length;
       if (n < 3) return;
+      column.x = ox + col.cx;
+      column.z = oz + col.cy;
+      column.base = col.base;
+      column.r = Math.max(...col.polygon.map(([x, y]) => Math.hypot(x - col.cx, y - col.cy)));
       const variant = fract1(f.variant * 7.13 + ci * 0.618);
       const wallFace = col.part === 1 || col.part === 2 || (col.part === 3 && f.kind === 'mesa') ? FACE_TIER : FACE_WALL;
       const code = world * 16 + kind * 4;
-      // Deckfläche: Spitze (Nadel), geneigte Facette oder flacher Kopf in Deckfarbe
       const capFace = col.capStyle === 1 ? FACE_FACET : FACE_CAP;
-      // Oberer Wandring: Böschung (Versatz nach innen) oder Verjüngung zum Schwerpunkt
       const shoulder: Array<[number, number]> =
         col.shoulder && col.shoulder.length === n
           ? col.shoulder
           : col.polygon.map(([x, y]) => [col.cx + (x - col.cx) * col.taper, col.cy + (y - col.cy) * col.taper] as [number, number]);
-      // Moosbank: Fase vom Wandring zur eingerückten Deckfläche (nur mit explizitem Deckring)
       const hasCap = !!col.cap && col.cap.length === n;
       const bevel = hasCap && capFace === FACE_CAP && col.apex <= 1e-3 ? Math.min(col.bevel, (col.top - col.base) * 0.2) : 0;
       const topPoly: Array<[number, number]> = bevel > 0 ? col.cap! : shoulder;
       const shoulderZ = shoulder.map(([x, y]) => columnTopAt(col, x, y) - bevel);
       const topZ = topPoly.map(([x, y]) => columnTopAt(col, x, y));
       for (const z of topZ) maxHeight = Math.max(maxHeight, z + col.apex);
-      // Wände (Fuß → Wandring) und Fase (Wandring → Deckfläche)
       let perim = variant * 3;
       for (let i = 0; i < n; i++) {
         const i1 = (i + 1) % n;
@@ -92,9 +102,7 @@ export function buildRockGeometry(
         const TA = P(ta[0], ta[1], shoulderZ[i]!);
         const TB = P(tb[0], tb[1], shoulderZ[i1]!);
         const nrm = normalize(cross(sub(B, A), sub(TA, A)));
-        const mx = (a[0] + b[0]) * 0.5 - col.cx;
-        const my = (a[1] + b[1]) * 0.5 - col.cy;
-        const out: V3 = [f.frame.east[0] * mx + f.frame.north[0] * my, f.frame.east[1] * mx + f.frame.north[1] * my, f.frame.east[2] * mx + f.frame.north[2] * my];
+        const out: V3 = [(a[0] + b[0]) * 0.5 - col.cx, 0, (a[1] + b[1]) * 0.5 - col.cy];
         if (dot(nrm, out) < 0) scale(nrm, -1);
         const i0 = vtx(A, nrm, perim, col.base, code + wallFace, variant);
         const i1v = vtx(B, nrm, perim + edge, col.base, code + wallFace, variant);
@@ -159,7 +167,7 @@ export function buildRockGeometry(
       }
     });
   }
-  return { positions: new Float32Array(pos), normals: new Float32Array(nor), rk: new Float32Array(rk), rg: new Float32Array(rg), indices: new Uint32Array(idx), maxHeight };
+  return { positions: new Float32Array(pos), normals: new Float32Array(nor), rk: new Float32Array(rk), rg: new Float32Array(rg), rc: new Float32Array(rc), indices: new Uint32Array(idx), maxHeight };
 }
 
 export function rockGeometry(data: RockGeometryData): BufferGeometry {
@@ -168,6 +176,7 @@ export function rockGeometry(data: RockGeometryData): BufferGeometry {
   g.setAttribute('normal', new BufferAttribute(data.normals, 3));
   g.setAttribute('rk', new BufferAttribute(data.rk, 4));
   g.setAttribute('rg', new BufferAttribute(data.rg, 1));
+  g.setAttribute('rc', new BufferAttribute(data.rc, 4));
   g.setIndex(new BufferAttribute(data.indices, 1));
   g.computeBoundingSphere();
   return g;
@@ -177,13 +186,19 @@ export interface RockMaterialOptions {
   lookup: PaletteLookup;
   fog: FogSettings;
   bands: TSLUniform;
-  /** Felszeile je Welt-Index. */
+  /** Felszeile je Welt-Slot. */
   rockRows: UniformArrayLike;
-  /** Zusatz-Nebeldistanz (Schleier) je Welt-Index. */
+  /** Zusatz-Nebeldistanz (Schleier) je Welt-Slot. */
   veil: (world: FloatNode) => FloatNode;
   warp: (p: Vec3Node) => Vec3Node;
   /** Wachstum/Heilung 0..1 je Merkmals-Index (Vertex-Attribut `rg`); fehlt → immer geheilt. */
   growth?: (feature: FloatNode) => FloatNode;
+  /**
+   * Lichtung unter der Kamera (wie bei den Bäumen): Säulen, deren Rand seitlich näher als `radius` am Kamerafuß steht,
+   * sinken in den Boden — keine Felswand füllt das Bild, wenn die Karte über sie schwenkt. `camLocal` = Kamera im
+   * Objektraum des Fels-Meshes, `radius` 0 = aus.
+   */
+  footClear?: { camLocal: { value: Vector3 } & Vec3Node; radius: TSLUniform };
 }
 
 /**
@@ -267,10 +282,23 @@ export function createRockMaterial(o: RockMaterialOptions): EarleMaterial {
     // Tintenseite (Ebene_7: türkise Striche auf schwarzem Fels)
     pattern: { mask, color: lineColor, shadowColor: mix(ink, o.lookup.pal(3, row).rgb, 0.42) },
     layers: [{ mask: isCap, color: capLit, shadowColor: mix(ink, capColor, 0.34) }],
-    positionNode: o.warp(positionLocal),
+    positionNode: o.warp(o.footClear ? sinkNearCamera(o.footClear.camLocal, o.footClear.radius) : positionLocal),
     fogDistNode: positionView.length().add(o.veil(world)),
     growthNode: o.growth ? o.growth(attribute('rg', 'float')) : null,
   });
+}
+
+/**
+ * Säule nahe am Kamerafuß: schrumpft weich ganz auf ihren Fußpunkt (seitlicher Abstand Rand ↔ Kamerafuß) — nur die
+ * Höhe zu drücken ließe flache Deckel im ruhigen Vordergrund liegen.
+ */
+function sinkNearCamera(camLocal: Vec3Node, radius: TSLUniform): Vec3Node {
+  const rc = attribute('rc', 'vec4');
+  const lateral = vec2(rc.x.sub(camLocal.x), rc.z.sub(camLocal.z)).length().sub(rc.w);
+  const r = radius as unknown as FloatNode;
+  const keep = select(r.greaterThan(0.01), smoothstep(r, r.add(3.0), lateral), float(1));
+  const p = positionLocal as unknown as Vec3Node;
+  return vec3(rc.x.add(p.x.sub(rc.x).mul(keep)), rc.y.add(p.y.sub(rc.y).mul(keep)), rc.z.add(p.z.sub(rc.z).mul(keep))) as unknown as Vec3Node;
 }
 
 // --- kleine Vektorhelfer ------------------------------------------------------------------------------------

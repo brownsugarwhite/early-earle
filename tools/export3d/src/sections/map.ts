@@ -1,5 +1,5 @@
-import { chunkList, generateChunkMesh, scatterChunkProps, scatterChunkTrees, type ChunkId, type ChunkMeshData, type PlanetProp, type PlanetTree } from '@ee/world';
-import type { EarlePlanet } from '@ee/render';
+import { CHUNK_SIZE, type PlaneChunkMesh, type PlaneProp, type PlaneTree } from '@ee/world';
+import { SLOT_COUNT, slotOfRow, type EarlePlanet } from '@ee/render';
 import type { BufferGeometry, InstancedBufferAttribute, InstancedMesh, Mesh } from 'three';
 import type { ExportContext } from '../context';
 import { GlbWriter, hexToLinearRgba } from '../glb';
@@ -8,23 +8,27 @@ import { frameMatrix, instancingNode, type InstanceItem } from '../instances';
 import { exportHeroTree } from './mapTree';
 
 /**
- * Map: der Planet genau so, wie ihn das Spiel baut (`MapWorld` aus apps/game/src/flow: zehn Welten auf vier
- * Zonenbändern, Spiralpfad mit dem Riesenbaum-Abschnitt, Wahrzeichen). Je Chunk werden Terrain und Streuung
- * mit den Funktionen des Spiels erzeugt; die Vegetation schreibt ihre Instanzpuffer mit `setContent` —
- * exportiert werden genau diese Puffer (Instanzmatrizen + Palettenzeilen), je Welt und Art getrennt.
+ * Map: ein endliches Fenster der unendlichen Ebene (ADR 0002), genau so, wie das Spiel es baut (`MapWorld` aus
+ * apps/game/src/flow): die zehn Autorenwelten entlang des Levelpfads (Level 1–100, Band ± Pfadbreite), Streuung
+ * mit Pfadkorridor, Wahrzeichen, Riesenbaum samt Geschwistern. Exportiert wird die Ebene selbst (x seitlich, h Höhe,
+ * z längs des Pfads, vorwärts −z) — die Kugel ist im Spiel nur die Anzeige-Abbildung um den Fokus (Radius und
+ * Krümmung stehen in `welten.json`). Je Chunk werden Terrain und Streuung mit den Funktionen des Spiels erzeugt; die
+ * Vegetation schreibt ihre Instanzpuffer mit `setContent` (Ursprung 0 → absolute Ebenenkoordinaten) — exportiert
+ * werden genau diese Puffer (Instanzmatrizen + Palettenzeilen), je Welt und Art getrennt.
  *
  * Unbekannte neue Vegetations-/Requisiten-Meshes (Änderungen anderer Agenten) landen generisch unter
  * „weitere“ (Grundgeometrie + Instanzmatrizen) und werden als Hinweis gemeldet.
  */
 
 type PlanetInternals = {
-  buildChunk?: (id: ChunkId) => { mesh: ChunkMeshData; trees: PlanetTree[]; props: PlanetProp[] };
+  buildChunk(cx: number, cz: number, res: number): { mesh: PlaneChunkMesh; trees: PlaneTree[]; props: PlaneProp[] };
 };
 
 interface WorldInfo {
   index: number;
   id: string;
   name: string;
+  /** Pfadabschnitt der Welt (Autorenroute), −1 = nur seitlich im Fenster. */
   zone: number;
   rows: Record<string, number | number[]>;
 }
@@ -40,7 +44,9 @@ const PROP_KINDS: Array<{ type: number; key: string; label: string; part: number
   { type: 6, key: 'scheune', label: 'Scheune', part: 4 },
 ];
 const PROP_PART_LABELS = ['Klumpen', 'Turm', 'Reifen', 'Rohr', 'Scheune'];
-const CANOPY_LABELS: Record<string, string> = { dome: 'Kuppel', stacked: 'Stapelkuppel', cone: 'Kegel', sphere: 'Kugel', spire: 'Turmspitze' };
+/** Bäume v4: Kronen- und Stamm-Meshes der Baumschicht (`trees/treeLayer.ts`). */
+const CROWN_LABELS: Record<string, string> = { dome: 'Kuppel', domeHi: 'Kuppel (fein)', column: 'Säule', pine: 'Stufenkiefer' };
+const TRUNK_LABELS: Record<string, string> = { fork: 'Gabel', fan: 'Spitzen-Skelett', oak: 'Eiche' };
 
 interface Collected {
   /** kind → world → items */
@@ -97,18 +103,22 @@ function hash01(i: number): number {
   return x - Math.floor(x);
 }
 
-/** Reads the vegetation instance buffers after `setContent` (one chunk) into the collection. */
+/** Reads the vegetation instance buffers after `setContent` (one chunk, origin 0) into the collection. */
 function readVegetation(ctx: ExportContext, planet: EarlePlanet, rowWorld: (row: number) => number, c: Collected, first: boolean, seq: { n: number }): void {
   for (const mesh of planet.vegetation.meshes as Array<InstancedMesh | Mesh>) {
     const name = mesh.name;
     const g = mesh.geometry as BufferGeometry & { instanceCount?: number };
     const im = mesh as InstancedMesh;
     const count = (im as { isInstancedMesh?: boolean }).isInstancedMesh ? im.count : g.instanceCount ?? 0;
-    if (name.startsWith('planet-canopy-') || name === 'planet-trunks') {
-      const shape = name === 'planet-trunks' ? 'trunk' : name.slice('planet-canopy-'.length);
-      const kind = shape === 'trunk' ? 'stamm' : `krone-${shape}`;
+    if (name.startsWith('planet-crown-') || name.startsWith('planet-trunk-')) {
+      // Bäume v4: Kronen (Kuppel, feine Kuppel, Säule, Stufenkiefer) und Stämme (Gabel, Spitzen-Skelett, Eiche). Die
+      // Instanzmatrix trägt Lage, Drehung und Maßstab; das Strecken der Gabel-Schäfte (`forkAt`) und das Stauchen
+      // des Astnetzes macht der Vertex-Shader — in der Vorlage steht der Archetyp.
+      const crown = name.startsWith('planet-crown-');
+      const shape = name.slice(crown ? 'planet-crown-'.length : 'planet-trunk-'.length);
+      const kind = crown ? `krone-${shape}` : `stamm-${shape}`;
       if (first && !c.templates.has(kind)) {
-        const label = shape === 'trunk' ? 'Stamm' : `Krone ${CANOPY_LABELS[shape] ?? shape}`;
+        const label = crown ? `Krone ${CROWN_LABELS[shape] ?? shape}` : `Stamm ${TRUNK_LABELS[shape] ?? shape}`;
         c.templates.set(kind, { arrays: geometryArrays(g), label, group: 'Vegetation' });
         c.kindInfo.set(kind, { label, group: 'Vegetation', template: kind });
       }
@@ -118,7 +128,10 @@ function readVegetation(ctx: ExportContext, planet: EarlePlanet, rowWorld: (row:
       for (let i = 0; i < count; i++) {
         const m = Array.from(im.instanceMatrix.array.slice(i * 16, i * 16 + 16));
         const row = Cc ? Cc.getX(i) : 0;
-        add(c, kind, rowWorld(row), { m, attrs: { row, accent: Cc ? Cc.getY(i) : 0, style: Cc ? Cc.getZ(i) : 0, variant: Cc ? Cc.getW(i) : 0, rank: A ? A.getW(i) : 0, jewel: D ? D.getW(i) : 0 } });
+        add(c, kind, rowWorld(row), {
+          m,
+          attrs: { row, accent: Cc ? Cc.getY(i) : 0, style: Cc ? Cc.getZ(i) : 0, variant: Cc ? Cc.getW(i) : 0, rank: A ? A.getW(i) : 0, jewel: crown && D ? D.getW(i) : 0 },
+        });
       }
     } else if (name === 'planet-bare') {
       const kind = 'kahl';
@@ -190,6 +203,7 @@ function readVegetation(ctx: ExportContext, planet: EarlePlanet, rowWorld: (row:
       for (let i = 0; i < count; i++) {
         const v = rk.getX(i);
         const row = Math.floor(v + 0.01);
+        // Art im Achtel (gerundet; ein Viertel-Achtel darüber = nimmt Schlagschatten an)
         const kind = Math.round((v - row) * 8);
         const w = rowWorld(row);
         let d = c.dots.get(w);
@@ -243,69 +257,78 @@ export async function exportMap(ctx: ExportContext): Promise<Record<string, unkn
   const quality = { ...FLOW_QUALITY.hoch, terrainRes: ctx.quick ? 48 : 120 };
   const mw = new MapWorld({ quality, seed: 7 });
   const planet = mw.world;
-  const field = planet.field;
-  const cpf = field.params.chunksPerFace;
-
-  // --- Welten, Palettenzeilen ----------------------------------------------------------------------------
-  const rowToWorld = new Map<number, number>();
-  const worlds: WorldInfo[] = planet.worlds.map((w, i) => {
-    const r = planet.rows[i]!;
-    for (const row of [r.terrain, r.canopy, r.sky, r.fog, r.accent, r.monolith, r.barn, ...r.canopyRows]) if (!rowToWorld.has(row)) rowToWorld.set(row, i);
-    return { index: i, id: w.id, name: w.name, zone: w.params.zone, rows: { terrain: r.terrain, canopy: r.canopy, canopyRows: r.canopyRows, sky: r.sky, fog: r.fog, accent: r.accent, monolith: r.monolith, barn: r.barn } };
-  });
-  const rowWorld = (row: number): number => rowToWorld.get(Math.round(row)) ?? -1;
-  const atlas = readAtlas(planet);
-
-  // --- Chunks: Terrain + Streuung (Instanzpuffer der Vegetation je Chunk) ---------------------------------
+  const layout = planet.layout;
   const internals = planet as unknown as PlanetInternals;
+  // Netzauflösung je Chunk (Gitterpunkte je Seite; Spiel nah 33 → 0,5 Einheiten)
+  const res = ctx.quick ? 17 : 33;
+
+  // --- Fenster: die Autorenroute (Level 1–100) samt Vorland und Seitenband ----------------------------------------
+  const segments = Array.from({ length: layout.authored }, (_, k) => layout.segment(k)).filter((s) => s.levels > 0);
+  const zTop = (segments[0]?.zStart ?? 0) + 24;
+  const zBottom = (segments[segments.length - 1]?.zEnd ?? -400) - 24;
+  const across = layout.bandHalfWidth + CHUNK_SIZE;
+  const chunkIds: Array<[number, number]> = [];
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  for (let cz = Math.floor(zBottom / CHUNK_SIZE); cz <= Math.floor(zTop / CHUNK_SIZE); cz++) {
+    const zm = (cz + 0.5) * CHUNK_SIZE;
+    const xb = layout.backbone(zm);
+    const c0 = Math.floor((xb - across) / CHUNK_SIZE);
+    const c1 = Math.floor((xb + across) / CHUNK_SIZE);
+    for (let cx = c0; cx <= c1; cx++) chunkIds.push([cx, cz]);
+    x0 = Math.min(x0, c0 * CHUNK_SIZE);
+    x1 = Math.max(x1, (c1 + 1) * CHUNK_SIZE);
+  }
+  const window = { x0, x1, z0: Math.floor(zBottom / CHUNK_SIZE) * CHUNK_SIZE, z1: (Math.floor(zTop / CHUNK_SIZE) + 1) * CHUNK_SIZE };
+
+  // --- Chunks: Terrain + Streuung (Instanzpuffer der Vegetation je Chunk) ---------------------------------------
+  const cpus = chunkIds.map(([cx, cz]) => internals.buildChunk.call(planet, cx, cz, res));
+  // Alle Welten des Fensters bekommen ihren Slot für den ganzen Export (die Palettenzeilen der Instanzen bleiben gültig)
+  const windowWorlds = [...new Set(cpus.flatMap((c) => c.mesh.worlds))].sort((a, b) => a - b);
+  if (windowWorlds.length > SLOT_COUNT) ctx.warn('map', `${windowWorlds.length} Welten im Fenster, nur ${SLOT_COUNT} Slots — Palettenzeilen später Chunks können wechseln`);
+  planet.pinWorlds('export', windowWorlds.slice(0, SLOT_COUNT));
+  for (const w of windowWorlds.slice(0, SLOT_COUNT)) planet.rowsOfWorld(w);
+  const rowWorld = (row: number): number => {
+    const slot = slotOfRow(Math.round(row));
+    return slot >= 0 ? planet.slots.worldOf(slot) : -1;
+  };
   const collected: Collected = { sets: new Map(), templates: new Map(), kindInfo: new Map(), dots: new Map() };
-  const chunks: ChunkMeshData[] = [];
   let first = true;
   const seq = { n: 0 };
-  let usedFallback = false;
-  for (const id of chunkList(cpf)) {
-    let cpu: { mesh: ChunkMeshData; trees: PlanetTree[]; props: PlanetProp[] };
-    if (typeof internals.buildChunk === 'function') cpu = internals.buildChunk.call(planet, id);
-    else {
-      usedFallback = true;
-      cpu = { mesh: generateChunkMesh(field, id, Math.round(quality.terrainRes / 3)), trees: scatterChunkTrees(field, id), props: scatterChunkProps(field, id) };
-    }
-    chunks.push(cpu.mesh);
-    const c = cpu.mesh.center;
-    const l = Math.hypot(c[0], c[1], c[2]) || 1;
-    const dir = { x: c[0] / l, y: c[1] / l, z: c[2] / l };
-    // Sonne senkrecht über dem Chunk: die Kronenpunkte liegen auf der Oberseite (wie beim Blick von oben).
-    planet.vegetation.setSunDirection(dir as never, dir as never);
+  // Sonne senkrecht über der Ebene: die Kronenpunkte liegen auf der Oberseite (wie beim Blick von oben)
+  const up = { x: 0, y: 1, z: 0 };
+  planet.vegetation.setSunDirection(up as never, up as never);
+  for (const cpu of cpus) {
     planet.vegetation.setContent(
       cpu.trees.map((tree) => ({ tree, slot: 0, withDots: true })),
       cpu.props.map((prop) => ({ prop, slot: 0 })),
+      { x: 0, z: 0 },
     );
     readVegetation(ctx, planet, rowWorld, collected, first, seq);
     first = false;
   }
-  if (usedFallback) ctx.warn('map', 'EarlePlanet.buildChunk fehlt — Streuung ohne Pfadkorridor (Fallback über @ee/world)');
 
-  // --- Terrain je Welt (Dreiecke nach Welt des Schwerpunkts, Nähte zwischen Chunks verschweißt) ----------
+  // --- Terrain je Welt (Dreiecke nach Welt des Schwerpunkts, ohne Schürzen, Nähte zwischen Chunks verschweißt) ------
   const terrainW = new GlbWriter();
   const terrainNodes: number[] = [];
-  const perWorld = new Map<number, { pos: number[]; nor: number[]; height: number[]; border: number[]; zone: number[]; idx: number[]; map: Map<string, number> }>();
-  for (const ch of chunks) {
+  const perWorld = new Map<number, { pos: number[]; nor: number[]; height: number[]; border: number[]; zone: number[]; idx: number[]; map: Map<string, number>; sum: [number, number, number, number] }>();
+  for (const { mesh: ch } of cpus) {
     const idx = ch.indices;
+    const grid = ch.n * ch.n;
     for (let t = 0; t < idx.length; t += 3) {
       const a = idx[t]!;
       const b = idx[t + 1]!;
       const cc = idx[t + 2]!;
-      const cx = (ch.positions[a * 3]! + ch.positions[b * 3]! + ch.positions[cc * 3]!) / 3;
-      const cy = (ch.positions[a * 3 + 1]! + ch.positions[b * 3 + 1]! + ch.positions[cc * 3 + 1]!) / 3;
-      const cz = (ch.positions[a * 3 + 2]! + ch.positions[b * 3 + 2]! + ch.positions[cc * 3 + 2]!) / 3;
-      const l = Math.hypot(cx, cy, cz) || 1;
-      const w = field.worldAt(cx / l, cy / l, cz / l);
+      if (a >= grid || b >= grid || cc >= grid) continue; // Schürze (nur gegen Risse zwischen Detailstufen)
+      const cx = (ch.positions[a * 3]! + ch.positions[b * 3]! + ch.positions[cc * 3]!) / 3 + ch.ox;
+      const cz = (ch.positions[a * 3 + 2]! + ch.positions[b * 3 + 2]! + ch.positions[cc * 3 + 2]!) / 3 + ch.oz;
+      const w = planet.worldAt(cx, cz);
       let pw = perWorld.get(w);
-      if (!pw) perWorld.set(w, (pw = { pos: [], nor: [], height: [], border: [], zone: [], idx: [], map: new Map() }));
+      if (!pw) perWorld.set(w, (pw = { pos: [], nor: [], height: [], border: [], zone: [], idx: [], map: new Map(), sum: [0, 0, 0, 0] }));
       for (const v of [a, b, cc]) {
-        const x = ch.positions[v * 3]!;
+        const x = ch.positions[v * 3]! + ch.ox;
         const y = ch.positions[v * 3 + 1]!;
-        const z = ch.positions[v * 3 + 2]!;
+        const z = ch.positions[v * 3 + 2]! + ch.oz;
         const key = `${Math.round(x * 1e4)},${Math.round(y * 1e4)},${Math.round(z * 1e4)}`;
         let nv = pw.map.get(key);
         if (nv === undefined) {
@@ -313,18 +336,40 @@ export async function exportMap(ctx: ExportContext): Promise<Record<string, unkn
           pw.map.set(key, nv);
           pw.pos.push(x, y, z);
           pw.nor.push(ch.normals[v * 3]!, ch.normals[v * 3 + 1]!, ch.normals[v * 3 + 2]!);
-          pw.height.push(ch.height[v]!);
-          pw.border.push(ch.border[v]!);
-          pw.zone.push(ch.zone[v]!);
+          pw.height.push(ch.heightNorm[v]!);
+          // Abstand zur nächsten Weltgrenze (Risse im Material) und Welt des Vertex (Ebene: keine Zonenbänder)
+          pw.border.push(Math.abs(ch.sd[v]!));
+          pw.zone.push(ch.own[v]!);
+          pw.sum[0] += x;
+          pw.sum[1] += y;
+          pw.sum[2] += z;
+          pw.sum[3] += 1;
         }
         pw.idx.push(nv);
       }
     }
   }
+  // Welten im Fenster: Abschnitt der Autorenroute (−1 = nur seitlich) und Palettenzeilen ihres Slots
+  const segmentOf = new Map<number, number>();
+  for (const s of segments) if (!segmentOf.has(s.world)) segmentOf.set(s.world, s.k);
+  const worldIds = [...new Set([...perWorld.keys(), ...windowWorlds])].sort((a, b) => a - b);
+  const worlds: WorldInfo[] = worldIds.map((i) => {
+    const w = planet.worldData(i);
+    const r = planet.rowsOfWorld(i);
+    return {
+      index: i,
+      id: w.id,
+      name: w.name,
+      zone: segmentOf.get(i) ?? -1,
+      rows: { terrain: r.terrain, canopy: r.canopy, canopyRows: r.canopyRows, sky: r.sky, fog: r.fog, accent: r.accent, monolith: r.monolith, barn: r.barn, water: r.water, rock: r.rock, snow: r.snow },
+    };
+  });
+  const worldById = new Map(worlds.map((w) => [w.index, w]));
+  const atlas = readAtlas(planet);
   let terrainVerts = 0;
   for (const [w, pw] of [...perWorld.entries()].sort((x, y) => x[0] - y[0])) {
-    const info = worlds[w];
-    const palette = planet.worlds[w]?.palette;
+    const info = worldById.get(w);
+    const palette = planet.worldData(w).palette;
     const mat = terrainW.material(`Terrain · ${info?.name ?? w}`, hexToLinearRgba(palette?.terrain[2] ?? '#808080'), { world: w, row: info?.rows.terrain ?? 0 });
     const mesh = terrainW.mesh(`Terrain ${info?.id ?? w}`, [
       {
@@ -340,9 +385,9 @@ export async function exportMap(ctx: ExportContext): Promise<Record<string, unkn
       },
     ]);
     terrainVerts += pw.pos.length / 3;
-    terrainNodes.push(terrainW.node({ name: `Terrain · ${info ? `${info.id} ${info.name}` : w}`, mesh, extras: { world: w, worldId: info?.id, worldName: info?.name, zone: info?.zone, row: info?.rows.terrain, ground: planet.worlds[w]?.ground } }));
+    terrainNodes.push(terrainW.node({ name: `Terrain · ${info ? `${info.id} ${info.name}` : w}`, mesh, extras: { world: w, worldId: info?.id, worldName: info?.name, zone: info?.zone, row: info?.rows.terrain, ground: planet.worldData(w).ground } }));
   }
-  terrainW.root(terrainW.node({ name: 'Planet', children: terrainNodes, extras: { ee: 'terrain', radius: field.params.radius, chunksPerFace: cpf, vertices: terrainVerts } }));
+  terrainW.root(terrainW.node({ name: 'Ebene', children: terrainNodes, extras: { ee: 'terrain', plane: true, radius: planet.mapping.R, chunkSize: CHUNK_SIZE, window, vertices: terrainVerts } }));
   const terrainFile = ctx.writeGlb('map/terrain.glb', terrainW);
 
   // --- Vegetation, Requisiten, Müll: Vorlagen + Instanzen je Welt ----------------------------------------
@@ -362,7 +407,7 @@ export async function exportMap(ctx: ExportContext): Promise<Record<string, unkn
     const mesh = templateMesh.get(info.template);
     if (mesh === undefined) continue;
     for (const [w, items] of byWorld) {
-      const node = instancingNode(vegW, `${info.label} · ${worlds[w]?.name ?? 'Welt ?'}`, mesh, items, { kind, label: info.label, group: info.group, template: info.template, world: w });
+      const node = instancingNode(vegW, `${info.label} · ${worldById.get(w)?.name ?? 'Welt ?'}`, mesh, items, { kind, label: info.label, group: info.group, template: info.template, world: w });
       if (node >= 0) setNodes.push(node);
       counts[kind] = (counts[kind] ?? 0) + items.length;
     }
@@ -372,7 +417,7 @@ export async function exportMap(ctx: ExportContext): Promise<Record<string, unkn
   for (const [w, d] of collected.dots) {
     const n = d.size.length;
     dotCount += n;
-    const mesh = vegW.mesh(`Punkte ${worlds[w]?.id ?? w}`, [
+    const mesh = vegW.mesh(`Punkte ${worldById.get(w)?.id ?? w}`, [
       {
         mode: 0,
         attributes: {
@@ -384,24 +429,27 @@ export async function exportMap(ctx: ExportContext): Promise<Record<string, unkn
         },
       },
     ]);
-    setNodes.push(vegW.node({ name: `Kronenpunkte · ${worlds[w]?.name ?? w}`, mesh, extras: { kind: 'punkte', label: 'Kronenpunkte', group: 'Vegetation', world: w, count: n } }));
+    setNodes.push(vegW.node({ name: `Kronenpunkte · ${worldById.get(w)?.name ?? w}`, mesh, extras: { kind: 'punkte', label: 'Kronenpunkte', group: 'Vegetation', world: w, count: n } }));
   }
   vegW.root(vegW.node({ name: 'Vorlagen', children: templateNodes, extras: { ee: 'vorlagen' } }));
   vegW.root(vegW.node({ name: 'Streuung', children: setNodes, extras: { ee: 'streuung', kinds: Object.fromEntries(collected.kindInfo) } }));
   const vegFile = ctx.writeGlb('map/vegetation.glb', vegW);
 
-  // --- Riesenbaum ------------------------------------------------------------------------------------------
+  // --- Riesenbaum samt Geschwistern -------------------------------------------------------------------------------
   let tree: Record<string, unknown> | null = null;
-  try {
-    tree = exportHeroTree(ctx, mw.treeSite);
-  } catch (e) {
-    ctx.warn('map', `Riesenbaum: ${String(e)}`);
+  if (mw.treeSite) {
+    try {
+      tree = exportHeroTree(ctx, mw.treeSite);
+    } catch (e) {
+      ctx.warn('map', `Riesenbaum: ${String(e)}`);
+    }
   }
 
   // --- Levelpfad, Wahrzeichen ----------------------------------------------------------------------------
   const pathW = new GlbWriter();
-  const pathNodes = mw.layout.nodes;
-  const spiral = planet.path.nodes;
+  const lastNode = mw.layout.lastPlayable + 5;
+  const win = mw.layout.window(0, lastNode);
+  const pathNodes = win.nodes;
   const nodePos = new Float32Array(pathNodes.length * 3);
   const nodeNor = new Float32Array(pathNodes.length * 3);
   const nodeLevel = new Float32Array(pathNodes.length);
@@ -411,56 +459,102 @@ export async function exportMap(ctx: ExportContext): Promise<Record<string, unkn
     nodePos.set(n.position, i * 3);
     nodeNor.set(n.normal, i * 3);
     nodeLevel[i] = n.index + 1;
-    nodeZone[i] = spiral[i]?.zone ?? 0;
-    const l = Math.hypot(n.position[0], n.position[1], n.position[2]) || 1;
-    nodeWorld[i] = field.worldAt(n.position[0] / l, n.position[1] / l, n.position[2] / l);
+    nodeZone[i] = layout.segmentOfLevel(n.index + 1);
+    nodeWorld[i] = n.world ?? planet.worldAt(n.position[0], n.position[2]);
   });
   const nodesMesh = pathW.mesh('Levelknoten', [
     { mode: 0, attributes: { POSITION: pathW.accessor(nodePos, 'VEC3', { minmax: true }), NORMAL: pathW.accessor(nodeNor, 'VEC3'), _LEVEL: pathW.accessor(nodeLevel, 'SCALAR'), _ZONE: pathW.accessor(nodeZone, 'SCALAR'), _WORLD: pathW.accessor(nodeWorld, 'SCALAR') } },
   ]);
-  const dotPos = new Float32Array(mw.layout.dots.length * 3);
-  const dotNor = new Float32Array(mw.layout.dots.length * 3);
-  mw.layout.dots.forEach((d, i) => {
+  const dotPos = new Float32Array(win.dots.length * 3);
+  const dotNor = new Float32Array(win.dots.length * 3);
+  win.dots.forEach((d, i) => {
     dotPos.set(d.position, i * 3);
     dotNor.set(d.normal, i * 3);
   });
   const dotsMesh = pathW.mesh('Pfadpunkte', [{ mode: 0, attributes: { POSITION: pathW.accessor(dotPos, 'VEC3', { minmax: true }), NORMAL: pathW.accessor(dotNor, 'VEC3') } }]);
-  const landmarks = planet.landmarkSlots.map((s) => ({ id: s.id, world: s.world, zone: s.zone, position: s.position, normal: s.normal, yawDeg: s.yawDeg, scale: s.scale, clearRadius: s.clearRadius, instance: s.instance ?? null }));
+  // Wahrzeichen: externe Slots (Riesenbaum, Geschwister) und die geplanten Felsen, Ruinen und Sümpfe im Fenster
+  const landmarks: Array<Record<string, unknown>> = planet.field.externalLandmarks.map((s) => ({
+    id: s.id,
+    world: s.world,
+    zone: segmentOf.get(s.world) ?? -1,
+    position: s.position,
+    normal: s.normal,
+    yawDeg: s.yawDeg,
+    scale: s.scale,
+    clearRadius: s.clearRadius,
+    instance: s.instance ?? null,
+  }));
+  for (const lm of planet.field.landmarks?.inRect(window.x0, window.z0, window.x1, window.z1) ?? []) {
+    const p = lm.placement;
+    landmarks.push({
+      id: p.id,
+      world: p.world,
+      zone: segmentOf.get(p.world) ?? -1,
+      position: [p.x, p.y, p.z],
+      normal: [0, 1, 0],
+      yawDeg: (p.yaw * 180) / Math.PI,
+      scale: 1,
+      clearRadius: p.radius,
+      instance: { kind: p.kind, seed: p.seed, anchors: lm.anchors.map((a) => ({ site: a.site, position: a.position, radius: a.radius })) },
+    });
+  }
+  const tl = mw.treeSite ? [mw.treeSite.first + 1, mw.treeSite.last + 1] : [0, 0];
   pathW.root(
     pathW.node({
       name: 'Levelpfad',
-      children: [pathW.node({ name: 'Levelknoten', mesh: nodesMesh, extras: { count: pathNodes.length } }), pathW.node({ name: 'Pfadpunkte', mesh: dotsMesh, extras: { count: mw.layout.dots.length } })],
-      extras: { ee: 'pfad', treeLevels: [mw.treeSite.first + 1, mw.treeSite.last + 1], length: mw.layout.length, landmarks },
+      children: [pathW.node({ name: 'Levelknoten', mesh: nodesMesh, extras: { count: pathNodes.length } }), pathW.node({ name: 'Pfadpunkte', mesh: dotsMesh, extras: { count: win.dots.length } })],
+      extras: { ee: 'pfad', treeLevels: tl, length: mw.layout.lastPlayable + 1, locked: pathNodes.filter((n) => n.locked).length, landmarks },
     }),
   );
   const pathFile = ctx.writeGlb('map/pfad.glb', pathW);
 
   // --- Weltinfos für Materialien und Szene --------------------------------------------------------------
-  const worldInfo = planet.worlds.map((w, i) => ({
-    ...worlds[i],
-    palette: w.palette,
-    ground: w.ground,
-    fogStripes: w.fogStripes,
-    fog: w.fog,
-    view: w.view,
-    terrain: w.params.terrain,
-    vegetation: w.params.vegetation,
-    props: w.params.props ?? {},
-    center: field.worldCenterDir(i),
-    side: w.params.side,
-  }));
+  const worldInfo = worlds.map((wi) => {
+    const w = planet.worldData(wi.index);
+    const t = perWorld.get(wi.index);
+    // Welten der Route: der Bodenknoten nächst der Mitte ihres Abschnitts (der Riesenbaum-Abschnitt: der Knoten davor,
+    // Blick auf den Baum); seitliche Welten: Mitte ihres Stücks im Fenster
+    const seg = segments.find((s) => s.world === wi.index);
+    const onTree = (i: number): boolean => mw.treeSite !== null && i >= mw.treeSite.first && i <= mw.treeSite.last;
+    let pick = -1;
+    if (seg) {
+      const a = seg.firstLevel - 1;
+      const b = a + seg.levels - 1;
+      const m = a + Math.floor(seg.levels / 2);
+      for (let d = 0; d <= seg.levels && pick < 0; d++) for (const i of [m - d, m + d]) if (pick < 0 && i >= a && i <= b && !onTree(i)) pick = i;
+      if (pick < 0) pick = Math.max(0, a - 1);
+    }
+    const mid = pick >= 0 ? mw.layout.node(pick).position : null;
+    return {
+      ...wi,
+      palette: w.palette,
+      ground: w.ground,
+      fogStripes: w.fogStripes,
+      fog: w.fog,
+      view: w.view,
+      terrain: w.params.terrain,
+      vegetation: w.params.vegetation,
+      props: w.params.props ?? {},
+      procedural: w.procedural ?? false,
+      // Blickpunkt der Welt (Ebene) — die Kameras der Szenen blicken dorthin
+      center: mid ? [mid[0], mid[1], mid[2]] : t && t.sum[3] > 0 ? [t.sum[0] / t.sum[3], t.sum[1] / t.sum[3], t.sum[2] / t.sum[3]] : null,
+    };
+  });
   const info = {
-    radius: field.params.radius,
-    chunksPerFace: cpf,
-    zones: planet.options.zones.map((z) => ({ id: z.id })),
+    plane: true,
+    radius: planet.mapping.R,
+    curvature: planet.curvature.value,
+    chunkSize: CHUNK_SIZE,
+    window,
+    forward: [0, 0, -1],
     worlds: worldInfo,
     atlas,
     sun: { elevationDeg: 10, azimuthDeg: 70 },
-    curvature: planet.curvature.value,
-    heroTreeWorld: mw.treeSite ? worlds.findIndex((w) => w.index === (landmarks.find((l) => l.id === 'hero-tree')?.world ?? -1)) : -1,
+    heroTreeWorld: landmarks.find((l) => l.id === 'hero-tree')?.world ?? -1,
   };
   ctx.writeJson('map/welten.json', info);
-  const result = { terrain: terrainFile, vegetation: vegFile, path: pathFile, tree, worlds: worlds.length, terrainVertices: terrainVerts, instances: counts, dots: dotCount, atlasRows: atlas.length };
-  ctx.log(`Map: ${worlds.length} Welten, ${terrainVerts} Terrain-Vertices, ${Object.values(counts).reduce((a, b) => a + b, 0)} Instanzen, ${dotCount} Kronenpunkte`);
+  planet.pinWorlds('export', null);
+  const result = { terrain: terrainFile, vegetation: vegFile, path: pathFile, tree, worlds: worlds.length, chunks: cpus.length, terrainVertices: terrainVerts, instances: counts, dots: dotCount, atlasRows: atlas.length };
+  ctx.log(`Map (Ebene, Fenster ${Math.round(window.x1 - window.x0)} × ${Math.round(window.z1 - window.z0)}): ${worlds.length} Welten, ${cpus.length} Chunks, ${terrainVerts} Terrain-Vertices, ${Object.values(counts).reduce((a, b) => a + b, 0)} Instanzen, ${dotCount} Kronenpunkte`);
   return result;
 }

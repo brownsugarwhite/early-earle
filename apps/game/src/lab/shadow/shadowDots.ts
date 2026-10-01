@@ -1,4 +1,4 @@
-import { Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial, Vector3 } from 'three/webgpu';
+import { Float32BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, Mesh, MeshBasicNodeMaterial } from 'three/webgpu';
 import type { Node } from 'three/webgpu';
 import { attribute, cameraProjectionMatrix, cameraViewMatrix, color, float, mix, modelWorldMatrix, positionGeometry, smoothstep, uniform, vec3, vec4 } from 'three/tsl';
 import type { MapWorld } from '../../flow/MapWorld';
@@ -17,23 +17,17 @@ export function createShadowTestDots(world: MapWorld, nodeIndex: number, options
   const spacing = options.spacing ?? 0.32;
   const rings = options.rings ?? 14;
   const lift = options.lift ?? 0.04;
-  const node = world.layout.nodes[Math.min(nodeIndex, world.layout.nodes.length - 1)] ?? world.layout.nodes[0]!;
-  const n = new Vector3(node.position[0], node.position[1], node.position[2]).normalize();
-  const e1 = new Vector3(0, 1, 0).cross(n);
-  if (e1.lengthSq() < 1e-6) e1.set(1, 0, 0);
-  e1.normalize();
-  const e2 = new Vector3().crossVectors(n, e1).normalize();
+  // Raster in der Ebene um den Knoten (Mesh am Knoten verankert: kleine Zahlen, Anzeige-Abbildung im Vertex-Shader)
+  const node = world.layout.node(nodeIndex);
+  const nx = node.position[0];
+  const nz = node.position[2];
   const bases: number[] = [];
   const sides: number[] = [];
-  const p = new Vector3();
-  const dir = new Vector3();
   for (let j = -rings; j <= rings; j++) {
     for (let i = -rings; i <= rings; i++) {
-      p.copy(n).multiplyScalar(world.world.options.radius).addScaledVector(e1, i * spacing).addScaledVector(e2, j * spacing);
-      dir.copy(p).normalize();
-      const r = world.surfaceRadius(dir) + lift;
-      p.copy(dir).multiplyScalar(r);
-      bases.push(p.x, p.y, p.z);
+      const x = i * spacing;
+      const z = j * spacing;
+      bases.push(x, world.heightAt(nx + x, nz + z) + lift, z);
       sides.push(i < 0 ? 1 : 0);
     }
   }
@@ -55,7 +49,7 @@ export function createShadowTestDots(world: MapWorld, nodeIndex: number, options
   const softness = options.softness ?? 0.12;
   const base = attribute('dotBase', 'vec3') as unknown as Vec3Node;
   const soft = attribute('dotSoft', 'float') as unknown as FloatNode;
-  const bent = world.world.bendNode(base as never) as unknown as Vec3Node;
+  const bent = world.world.mapping.warp(base as never) as unknown as Vec3Node;
   const centerWorld = (modelWorldMatrix as unknown as { mul(v: unknown): Node<'vec4'> }).mul(vec4(bent, 1)).xyz as unknown as Vec3Node;
   // Die API: glatter Schattenwert an der Weltposition, im Vertex-Shader
   const sunSoft = world.sun.shadowFactor(centerWorld, { softness });
@@ -73,12 +67,14 @@ export function createShadowTestDots(world: MapWorld, nodeIndex: number, options
   mesh.frustumCulled = false;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
-  world.planet.add(mesh);
+  world.world.plane.add(mesh);
+  world.world.anchorObject(mesh, nx, nz);
   return {
     mesh,
     size,
     dispose(): void {
-      world.planet.remove(mesh);
+      world.world.releaseObject(mesh);
+      mesh.removeFromParent();
       geometry.dispose();
       material.dispose();
     },

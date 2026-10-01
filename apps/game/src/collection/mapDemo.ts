@@ -1,9 +1,7 @@
 import { Vector3 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
-import type { PathLayout } from '../flow/path';
 import type { MapWorld } from '../flow/MapWorld';
-import { createMapCreatures, type MapCreaturesApi } from '../flow/MapCreatures';
-import { createMapGround, type MapGroundAdapter } from '../flow/mapGround';
+import { createMapCreatures, type MapCreaturesApi, type MapGround } from '../flow/MapCreatures';
 import { useFlowStore } from '../flow/flowStore';
 import { useProgress, collectionKey, type CollectionEntry } from '../state/progress';
 import { BUNDLED_RULES } from '../lab/creature/content';
@@ -15,7 +13,7 @@ import { catalogFor, levelIdOf, seedFor } from './catalog';
  * aktuellen Knoten (oder den gespeicherten, wenn es schon welche auf der Map gibt). `window.__ee.mapCreatures`
  * löst Aufbrüche und Einfallen aus (Tests, Screenshots). So erzeugt der Flow sie später selbst:
  *
- *   const ground = createMapGround(world, layout);
+ *   const ground = world.mapGround();
  *   const creatures = createMapCreatures(ground, { cap: mobile ? 7 : 14, mobile, shadowLayer: SHADOW_PROXY_LAYER, library, rules });
  *   world.planet.add(creatures.group);
  *   creatures.restore(Object.values(useProgress.getState().collection));
@@ -23,13 +21,12 @@ import { catalogFor, levelIdOf, seedFor } from './catalog';
  */
 interface FlowDebug {
   world?: MapWorld;
-  layout?: PathLayout;
   update(dt: number, elapsed: number, ctx: unknown): void;
 }
 
 export interface MapCreaturesDemo {
   creatures: MapCreaturesApi;
-  ground: MapGroundAdapter;
+  ground: MapGround & { walkable(p: Vector3): boolean };
   entries: CollectionEntry[];
   /** Ein neues Wesen verlässt ein (gedachtes) Plateau am Knoten `node` und läuft heim; Sekunden bis zur Ankunft. */
   release(node?: number): number;
@@ -45,7 +42,7 @@ export function installMapCreaturesDemo(): () => void {
     if (stop) return;
     const ee = (window as unknown as { __ee?: { controller?: FlowDebug } & Record<string, unknown> }).__ee;
     const scene = ee?.controller;
-    if (!scene?.world || !scene.layout) {
+    if (!scene?.world) {
       setTimeout(tryAttach, 250);
       return;
     }
@@ -60,16 +57,16 @@ export function installMapCreaturesDemo(): () => void {
 
 function attach(scene: FlowDebug, ee: Record<string, unknown>): () => void {
   const world = scene.world!;
-  const layout = scene.layout!;
+  const layout = world.layout;
   const mobile = window.innerWidth < 700;
-  const ground = createMapGround(world, layout);
+  const ground = world.mapGround();
   const creatures = createMapCreatures(ground, { cap: mobile ? 7 : 14, mobile, shadowLayer: 1 });
   world.planet.add(creatures.group);
   creatures.onPlaced = (key) => {
     if (useProgress.getState().collection[key]) useProgress.getState().markPlaced(key);
   };
   const placed = Object.values(useProgress.getState().collection).filter((e) => e.placedOnMap);
-  const entries = placed.length > 0 ? placed : demoEntries(useFlowStore.getState().current, layout.nodes.length);
+  const entries = placed.length > 0 ? placed : demoEntries(useFlowStore.getState().current, layout.lastPlayable + 1);
   creatures.restore(entries);
   // Die Szene zeichnet in `update`: die Wesen davor aktualisieren (ihr Schattenpass ist dann schon angefordert).
   const original = scene.update;
@@ -85,12 +82,10 @@ function attach(scene: FlowDebug, ee: Record<string, unknown>): () => void {
     entries,
     release(node = useFlowStore.getState().current) {
       const e = fresh(node, extra++);
-      const n = layout.nodes[node]!;
-      // Der Plateau-Rand: ein Punkt 2,6 vor dem Knoten (wie ein Brett-Rand), das Plateau sinkt in 0,9 s.
+      const n = layout.node(node);
+      // Der Plateau-Rand: ein Punkt 2,6 neben dem Knoten (wie ein Brett-Rand, Ebene), das Plateau sinkt in 0,9 s.
       const c = new Vector3(n.position[0], n.position[1], n.position[2]);
-      const up = c.clone().normalize();
-      const side = new Vector3(0, 1, 0).cross(up).normalize();
-      const rim = c.clone().addScaledVector(side, 2.6);
+      const rim = c.clone().add(new Vector3(2.6, 0, 0));
       const frame = { position: new Vector3(), normal: new Vector3() };
       ground.ground(rim, frame);
       const top = frame.position.clone().addScaledVector(frame.normal, 0.35);

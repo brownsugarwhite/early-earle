@@ -22,8 +22,11 @@ export {
 export { PaletteLookup, createFogSettings, steppedFog, patternSpeed, type FogSettings, type TSLUniform } from './tsl';
 export { EarleMaterial, type EarleGradient, type EarleMaterialOptions, type EarlePattern } from './EarleMaterial';
 export { earleGradients, setGradientAmount, stepRamp, shiftTone, mixInk, STEP_GRADIENT, SAW_GRADIENT } from './gradients';
-export { SunRig, createHardShadowFilter, type SunOptions } from './hardShadow';
+export { SunRig, createHardShadowFilter, displayShadowReceivers, displayShadowWarp, type ShadowDisplayLike, type SunOptions } from './hardShadow';
 export { EarleVegetation, TREE_KINDS, CANOPY_KINDS, createBareTreeGeometry, type VegetationOptions } from './vegetation';
 export { PlanetVegetation, GROWTH_SLOTS, CANOPY_MESHES, createPropGeometry, type CanopyMesh, type PlanetVegetationOptions, type VegetationTreeEntry, type VegetationPropEntry, type VegetationWorldRows } from './planetVegetation';
-export { EarlePlanet, type EarlePlanetOptions, type EarlePlanetQuality, type EarlePlanetZone, type EarlePlanetWorld, type GroundTreatment, type WorldView } from './planet';
+export { EarlePlanet, FOG_REFERENCE_DISTANCE, PLANET_SHADOW_LAYER, proceduralWorld, type EarlePlanetOptions, type EarlePlanetQuality, type EarlePlanetWorld, type GroundTreatment, type PathCorridor, type WorldView } from './planet';
+export { DisplayMapping } from './display';
+export { WorldSlots, SLOT_COUNT, SLOT_ROWS, PLANET_ATLAS_HEIGHT, slotLandmarkRows, slotRows, slotOfRow, writeSlotPalette } from './worldSlots';
+export { proceduralPalette, hexToOklab, oklabToHex, type PaletteRecipe } from './proceduralPalette';
 export { FogStripes, createSkyDome, type FogStripeOptions, type SkyDomeOptions } from './skyFog';

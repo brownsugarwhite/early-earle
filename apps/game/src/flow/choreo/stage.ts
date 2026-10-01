@@ -11,54 +11,27 @@ import type { RouteStop } from './route';
 
 /*
  * ================================================================================================================
- * ADR 0002: diese Nahtstellen portieren
+ * ADR 0002: die Bühne auf der unendlichen Ebene
  * ================================================================================================================
  * Die Choreografien der Iteration 4 (Intro, Aufbruch + Weg, Sperre, Scroll-Grenze, REX-Szene, Wesen auf der Map)
  * sprechen die Welt nur über `FlowStage` an. FlowScene baut die Bühne in `createStage()` (ein Block mit einzeiligen
- * Weiterleitungen); beim Umbau auf die unendliche Ebene wird nur dieser Block neu verdrahtet:
+ * Weiterleitungen), verdrahtet auf die unendliche Ebene:
  *
- *  Bühne (heute, Kugel)                               →  unendliche Ebene (ADR 0002)
- *  ----------------------------------------------------------------------------------------------------------------
- *  nodePose(i, scale)       FlowScene.nodePose        →  FlowScene.nodePose (Ebenenpose; Hero.mapper bildet sie je
- *                           (world.bend + tangentFrame)   Frame auf die Anzeige ab)
- *  routePose(seg, stop)     Pfadpunkt gebogen,        →  Pfadpunkt als Ebenenpose (x, 0, z), Blick entlang des Pfads
- *                           tangentFrame(Normale, Pfad)
- *  boardPose(local, s)      Brett-lokal → Planet      →  Brett steht auf einer Ebenenpose (boardPlane), root pro Frame
- *  boardFrame(local)        Brett-lokal → Bodenrahmen →  dito, Ebenenkoordinaten (für MapCreatures.release)
- *  boardSurface(local)      Oberkante des sinkenden Plateaus (ride der Übergabe) → dito auf der Ebene
- *  boardDirectionTo(p)      Planet → Brett-lokal xz   →  Ebene → Brett-lokal xz
- *  placeBoardAt(i)          FlowScene.placeBoardAt    →  Brett auf die Ebenenpose des Knotens/der Bühne
- *  levelPose()              FlowScene.levelPose       →  unverändert (Brett-lokal gerahmt, dann Anzeige)
- *  cameraToMap(i, d)        mapPoseFor(i, planetQuatFor(i)) + Baum-Bogen + rotatePlanetToNode
- *                                                     →  glideViewToNode(i) + Kamera auf die MapView-Pose
- *  focusNode(i, d, ease)    rotatePlanetToNode / Schiene am Baum
- *                                                     →  glideViewToNode (Fokus + Blickwinkel über MapView {x, z, yaw})
- *  snapFocus(i)             snapPlanetToNode          →  snapViewToNode
- *  isFocused(i)             Knotenrichtung ≈ mapTargetDir
- *                                                     →  |Fokus − Knoten| klein
- *  mapFocusPoint(out)       q⁻¹ · mapTargetDir · R (Planetenraum)
- *                                                     →  world.focus (Ebenenpunkt am Scheitel)
- *  groundAt(p) / display(p) surfaceRadius / world.bend
- *                                                     →  MapWorld.mapGround() (Boden + Anzeige-Abbildung)
- *  ground (MapGround)       choreo/stageGround.ts (Übergang) bzw. B5s flow/mapGround.ts
- *                                                     →  MapWorld.mapGround()
- *  isRailSegment(a, b)      Riesenbaum-Strecke        →  dito (Baum steht dann in einer Region)
- *  enterMap()               Trackball an, REX, Fußlichtung
- *                                                     →  PanBall an (lab/earle/panball.ts), REX, Fußlichtung
- *
- *  Außerhalb der Bühne, ebenfalls zu portieren:
- *  - progression/mapFocus.ts: Trackball-`constrain(q, achse)` aus der Scroll-Grenze → PanBall-`constrain(fokus)`,
- *    der dieselben reinen Funktionen aus progression/scrollLimit.ts ruft (Punkte als (x, 0, z) statt radial auf R).
- *  - progression/scrollLimit.ts: rein, bleibt (Ebene: `onPlane`, Kugel: `onSphere`).
- *  - choreo/stageGround.ts: Übergangs-MapGround aus der Bühne → durch MapWorld.mapGround() (bzw. B5s mapGround.ts)
- *    ersetzen.
- *  - NodePath.setReach(n) / NodePath.wobble(i): Uniforms uReach/uWobble oben auf dem Fenster über den unendlichen
- *    Pfad (gesperrte Steine hinter Level 100 sind dort ohnehin gedimmt).
- *  - Hero.flyTo({ land }): Landeimpuls der Hüpfer.
+ *  - Posen und Rahmen sind Ebenenposen (x, h, z; oben = +y): `nodePose`, `routePose` (Punkt des Fensters
+ *    [seg, seg + 1] des unendlichen Pfads), `boardPose`/`boardFrame`/`boardSurface`/`boardDirectionTo` über die
+ *    Brett-Pose `FlowScene.boardPlane`. Der Held bildet seine Pose je Frame auf die Anzeige ab (`Hero.mapper`),
+ *    das Brett folgt `boardPlane` (`syncBoard`), die Wesen gehen über `ground.display`.
+ *  - Blickpunkt: `focusNode`/`snapFocus` → `glideViewToNode`/`snapViewToNode` (Fokus + Blickwinkel), `isFocused`
+ *    = die Ansicht steht schon auf dem Knoten, `cameraToMap` = Kartenpose (am Riesenbaum die Schiene) + Gleiten,
+ *    `mapFocusPoint` = der Ebenenpunkt unter dem Kartenziel (dort steht der aktuelle Knoten im Bild).
+ *  - `ground` = `MapWorld.mapGround()` (gezeichnetes Netz, Wasser, Felsen, Anzeige-Abbildung samt Drehung),
+ *    `groundAt`/`display` = dieselbe Ebene bzw. die Anzeige-Abbildung.
+ *  - `enterMap` = Pan-Ball an (lab/earle/panball.ts), REX, Fußlichtung; die Scroll-Grenze ist sein
+ *    `constrain(fokus)` (progression/mapFocus.ts, reine Funktionen aus progression/scrollLimit.ts, `onPlane`).
  * ================================================================================================================
  */
 
-/** Kamera-Pose im Rig-Raum (das Rig sitzt am Scheitel und dreht sich nie). */
+/** Kamera-Pose im Rig-Raum (das Rig sitzt am Scheitel und dreht sich nur um die Senkrechte, den Blickwinkel). */
 export interface CameraPose {
   position: Vector3;
   quaternion: Quaternion;
@@ -113,9 +86,9 @@ export interface FlowStage {
   routePose(seg: number, stop: RouteStop): HeroPose;
   /** Held auf dem Brett (brett-lokaler Punkt auf der Oberkante). */
   boardPose(local: Vector3, scale: number): HeroPose;
-  /** Brett-lokaler Punkt auf der Oberkante → Bodenrahmen (Raum der Map-Gruppe, vor der Anzeige-Abbildung). */
+  /** Brett-lokaler Punkt auf der Oberkante → Bodenrahmen (Ebene, vor der Anzeige-Abbildung). */
   boardFrame(local: Vector3, out: GroundFrame): GroundFrame;
-  /** Oberkante des (sinkenden) Plateaus über dem brett-lokalen Punkt, im Raum der Map-Gruppe; false = Brett weg. */
+  /** Oberkante des (sinkenden) Plateaus über dem brett-lokalen Punkt, in der Ebene; false = Brett weg. */
   boardSurface(local: Vector3, out: Vector3): boolean;
   /** Brett-lokale xz-Richtung vom Plateaumittelpunkt zu einem Punkt (null = zur Kamera). */
   boardDirectionTo(p: Vector3 | null): Vector3;
@@ -136,7 +109,7 @@ export interface FlowStage {
   focusNode(i: number, duration: number, ease?: Ease): void;
   snapFocus(i: number): void;
   isFocused(i: number): boolean;
-  /** Der Punkt, den die Karte gerade zeigt (Planetenraum; Scroll-Grenze und MapCreatures). */
+  /** Der Punkt, den die Karte gerade zeigt (Ebene, unter dem Kartenziel; Scroll-Grenze und MapCreatures). */
   mapFocusPoint(out: Vector3): Vector3;
 
   // ---------------------------------------------------------------------------------------------- Brett
@@ -156,13 +129,13 @@ export interface FlowStage {
   isTreeNode(i: number): boolean;
   /** Strecke auf den, am oder vom Riesenbaum (Kameraschiene statt Hüpfer). */
   isRailSegment(a: number, b: number): boolean;
-  /** Punkt auf begehbaren Boden projiziert (Planetenraum, ungebogen). */
+  /** Punkt auf begehbaren Boden projiziert (Ebene, vor der Anzeige-Abbildung). */
   groundAt(p: Vector3, out: GroundFrame): GroundFrame;
-  /** Anzeige-Abbildung (heute `world.bend`). */
+  /** Anzeige-Abbildung (Ebene → Kugel). */
   display(p: Vector3, out: Vector3): Vector3;
 
   // ---------------------------------------------------------------------------------------------- Karte
-  /** Phase `map`: Trackball an, REX sichtbar, Fußlichtung, kein Level mehr. */
+  /** Phase `map`: Pan-Ball an, REX sichtbar, Fußlichtung, kein Level mehr. */
   enterMap(): void;
   /** Held zurück auf den Punkt des Splash-i (nach einem Sprung des Blickpunkts unter dem Overlay). */
   holdHeroAtSplash(): void;

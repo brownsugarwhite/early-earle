@@ -1,8 +1,9 @@
 import { Box3, DirectionalLight, Matrix4, Object3D, Vector3 } from 'three/webgpu';
 import type { DepthTexture, LightShadow, NodeBuilder, PerspectiveCamera, UniformNode } from 'three/webgpu';
-import { Fn, fwidth, lightTargetDirection, normalView, smoothstep, uniform } from 'three/tsl';
+import { Fn, dot, fwidth, lightTargetDirection, normalView, smoothstep, uniform, vec2, vec3 } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node } from './tsl';
-import { CascadedShadows, type CascadeSampleOptions, type CascadedShadowStats, type ViewReceivers } from '../shadow/CascadedShadows';
+import { CascadedShadows, type CascadeSampleOptions, type CascadedShadowStats, type ShadowWarp, type ViewReceivers } from '../shadow/CascadedShadows';
+import type { DisplayMapping } from './display';
 import { shadowFactorNode, type ShadowFactorSource } from '../shadow/shadowFactor';
 import { ShadowTint } from '../shadow/shadowTint';
 import { createDefaultShadowFilter, createDepthCompare, createEarleShadowFilter, createShadowFrameUniforms, type ShadowFrameUniforms, type ShadowTaps } from '../shadow/filters';
@@ -160,6 +161,106 @@ export function planetShadowReceivers(
   return { sphere, volumes };
 }
 
+/** Was die Schatten von der unendlichen Welt brauchen (strukturell, passt auf `EarlePlanet`). */
+export interface ShadowDisplayLike {
+  readonly mapping: DisplayMapping;
+  readonly focus: { x: number; z: number };
+  readonly field: { hMax: number; heightAt(x: number, z: number): number };
+  /** Höhe auf den Dreiecken des geladenen Chunks (null = nicht geladen): das gezeichnete Gelände, ohne Rauschen. */
+  meshHeightAt?(x: number, z: number): number | null;
+}
+
+/**
+ * Verzug Anzeige ↔ Schattenraum einer Anzeige-Abbildung: der Schattenraum ist die Ebene um den Fokus mit dem Abfall der
+ * Anzeigekugel (Paraboloid `y − (x² + z²) / 2Rₛ`, Rₛ = R / (1 + c)). So fallen Schlagschatten wie auf der alten Kugel:
+ * die Erde fällt vom Werfer weg, hohe Werfer (Türme, Wahrzeichen) werfen keine endlos langen Schatten bei 10° Sonne,
+ * nahe am Fokus ist der Raum eben (Eigen- und Schlagschatten eine Form, Licht mit den ebenen Normalen). x/z bleiben
+ * Ebenenkoordinaten: das Texelgitter bleibt beim Schwenken ruhig.
+ */
+export function displayShadowWarp(mapping: DisplayMapping): ShadowWarp {
+  const inv = (): number => (1 + mapping.curvature.value) / (2 * mapping.radius.value);
+  // (1 + c) / 2R aus denselben Uniforms wie die Abbildung (der Krümmungs-Boost ändert sich mit der Welt)
+  const invNode = (mapping.curvature as unknown as FloatNode).add(1).div((mapping.radius as unknown as FloatNode).mul(2));
+  return {
+    node: (p) => {
+      const f = mapping.toFlat(p);
+      const q = vec2(f.x, f.z);
+      return vec3(f.x, f.y.sub(dot(q, q).mul(invNode)), f.z) as unknown as Vec3Node;
+    },
+    cpu: {
+      toShadow: (p) => {
+        mapping.toFlatCpu(p, p);
+        p.y -= (p.x * p.x + p.z * p.z) * inv();
+        return p;
+      },
+      toView: (p) => {
+        p.y += (p.x * p.x + p.z * p.z) * inv();
+        return mapping.toDisplayCpu(p, p);
+      },
+    },
+  };
+}
+
+/** Flacher Weltpunkt (Ebene − Fokus, y = R + h) → Schattenraum (Paraboloid-Abfall wie `displayShadowWarp`). */
+function flatToShadow(mapping: DisplayMapping, p: Vector3): Vector3 {
+  const rs = mapping.radius.value / (1 + mapping.curvature.value);
+  p.y -= (p.x * p.x + p.z * p.z) / (2 * rs);
+  return p;
+}
+
+/**
+ * Empfänger der unendlichen Welt (ADR 0002): Schale um die Anzeigekugel, Bodenschätzung je Blickrichtung aus dem
+ * Höhenfeld der Ebene (dieselbe Abbildung wie im Vertex-Shader, mit dem Krümmungs-Boost), Volumen der hohen Empfänger
+ * (Riesenbaum, Felsen, Scheunen) im flachen Schattenraum.
+ */
+export function displayShadowReceivers(world: ShadowDisplayLike | (() => ShadowDisplayLike | null | undefined), planeObject: Object3D, options: PlanetReceiverOptions = {}): ViewReceivers {
+  const get = typeof world === 'function' ? world : () => world;
+  const coverTolerance = options.coverTolerance ?? PLANET_COVER_TOLERANCE;
+  const collector = new PlanetVolumeCollector();
+  const origin = new Object3D();
+  const sphere = {
+    center: origin,
+    get radius(): number {
+      return get()?.mapping.radius.value ?? 1;
+    },
+    get minHeight(): number {
+      const w = get();
+      // ferne Erde sinkt mit dem Krümmungs-Boost (bis ≈ 0,45 · c · R bei 90°)
+      return w ? -0.3 - w.mapping.curvature.value * w.mapping.radius.value * 0.6 : 0;
+    },
+    get maxHeight(): number {
+      return (get()?.field.hMax ?? 0) + 0.3;
+    },
+    coverTolerance,
+    get coverAbove(): number {
+      return Math.max(options.coverAbove ?? 0, collector.receiverHeight);
+    },
+    surface: (dir: Vector3): number => {
+      const w = get();
+      if (!w) return 1;
+      const R = w.mapping.radius.value;
+      const c = w.mapping.curvature.value;
+      const rxz = Math.hypot(dir.x, dir.z);
+      const alpha = Math.atan2(rxz, dir.y);
+      const k = rxz > 1e-9 ? (alpha * R) / rxz : 0;
+      const x = w.focus.x + dir.x * k;
+      const z = w.focus.z + dir.z * k;
+      // das gezeichnete Gelände (Dreiecke der geladenen Chunks) statt des Rauschfelds: beim Drehen und Schwenken läuft
+      // der Fit jedes Bild, die Rauschabfragen kosteten dort ≈ 7 ms (M3); außerhalb der Chunks das Feld
+      const h = w.meshHeightAt?.(x, z) ?? w.field.heightAt(x, z);
+      return R + h - (1 - Math.cos(alpha)) * c * R;
+    },
+  };
+  const volumes = (): ReceiverVolume[] => {
+    const w = get();
+    const list = collector.collect(planeObject, w ? { heightAt: (x, z) => w.meshHeightAt?.(x, z) ?? w.field.heightAt(x, z), focus: w.focus } : null, coverTolerance);
+    // flache Weltpunkte → Schattenraum (Kugelabfall)
+    if (w) for (const v of list) flatToShadow(w.mapping, v.center);
+    return list;
+  };
+  return { sphere, volumes };
+}
+
 /** Optionen für `planetShadowReceivers` / `SunRig.fitToPlanet`. */
 export interface PlanetReceiverOptions {
   /** Halbe Höhe des Bodenbands (Standard `PLANET_COVER_TOLERANCE`). */
@@ -201,7 +302,8 @@ export class SunRig implements ShadowFactorSource {
    * Schattentönung je Welt (Haken für die Material-Besitzer, z. B. blaue Schatten auf Schnee): siehe `ShadowTint`.
    * Überlebt Neubauten des Lichts (reine Uniforms).
    */
-  readonly shadowTint = new ShadowTint(16);
+  /** Tönungen je Welt bzw. Welt-Slot (die Ebene belegt bis zu 24 Slots, ADR 0002). */
+  readonly shadowTint = new ShadowTint(32);
   /** Tiefe je Schattentexel (normalisiert), aus fitShadow; Basis des steigungsabhängigen Bias (alter Filter). */
   readonly depthPerTexel = uniform(0.0005);
   /** Zähler der gerenderten Schattenpässe (zur Kontrolle "nicht im Leerlauf"). */
@@ -225,6 +327,8 @@ export class SunRig implements ShadowFactorSource {
   private smoothCasters: boolean;
   private tapsOverride: ShadowTaps | null;
   private manualCompare: boolean | null;
+  /** Verzug Anzeige ↔ Schattenraum (unendliche Ebene) oder null. */
+  private warp: ShadowWarp | null = null;
 
   constructor(options: SunOptions = {}) {
     this.root.name = 'SunRig';
@@ -282,6 +386,7 @@ export class SunRig implements ShadowFactorSource {
     if (cascadedMode) {
       const cascaded = new CascadedShadows(light, {
         sizes: this.cascadeSizes,
+        warp: this.warp,
         taps: this.taps,
         referenceSize: this.wantReference ? this.mapSize : null,
         referenceFilter: createHardShadowFilter(light, this.depthPerTexel, this.manualCompareFn),
@@ -314,6 +419,7 @@ export class SunRig implements ShadowFactorSource {
     }
     this.applyAngles();
     if (this.lastClip) this.fitShadow(this.lastClip.bounds, this.lastClip.matrix, this.lastClip.hTotal);
+    else if (this.cascaded && this.casterHeightFree !== null) this.cascaded.casterHeight = this.casterHeightFree;
     // Konsumenten von `shadowFactor()` binden sonst weiter die alten Karten
     for (const m of this.shadowConsumers) m.needsUpdate = true;
   }
@@ -388,6 +494,53 @@ export class SunRig implements ShadowFactorSource {
     options: PlanetReceiverOptions = {},
   ): void {
     this.fitToView(camera, planetShadowReceivers(planet, planetObject, options));
+  }
+
+  /**
+   * Ein-Zeilen-Integration für die unendliche Welt (ADR 0002): Kaskaden an `camera`, Schatten in der flachen Ebene
+   * (Werfer und Empfänger über die Umkehr-Abbildung), Empfänger = Anzeigekugel mit Bodenschätzung aus der Ebene,
+   * Volumen der hohen Empfänger aus `planeObject`.
+   */
+  fitToDisplay(camera: PerspectiveCamera, world: ShadowDisplayLike | (() => ShadowDisplayLike | null | undefined), planeObject: Object3D, options: PlanetReceiverOptions = {}): void {
+    const w = typeof world === 'function' ? world() : world;
+    let rebuild = false;
+    if (w && this.warpMapping !== w.mapping) {
+      this.warp = displayShadowWarp(w.mapping);
+      this.warpMapping = w.mapping;
+      rebuild = true;
+    }
+    this.viewReceivers = displayShadowReceivers(world, planeObject, options);
+    this.viewCamera = camera;
+    if (rebuild || !this.cascaded) this.rebuild();
+    else {
+      this.cascaded.camera = camera;
+      this.cascaded.receivers = this.viewReceivers;
+    }
+  }
+
+  private warpMapping: DisplayMapping | null = null;
+
+  /**
+   * Kaskaden ohne Clip-Box (unendliche Ebene: die Empfänger sind die sichtbare Kugel, geladen ist, was man sieht), nur
+   * die Werferhöhe. Hebt eine Clip-Box (Brett-Fokus) wieder auf.
+   */
+  setCasterHeight(hTotal: number): void {
+    this.lastClip = null;
+    this.casterHeightFree = hTotal;
+    if (this.cascaded) {
+      this.cascaded.clip = null;
+      this.cascaded.casterHeight = hTotal;
+    }
+  }
+
+  private casterHeightFree: number | null = null;
+
+  /** Verzug (Ebene) aufheben — alte Konsumenten ohne Anzeige-Abbildung. */
+  clearWarp(): void {
+    if (!this.warp) return;
+    this.warp = null;
+    this.warpMapping = null;
+    this.rebuild();
   }
 
   /** Debug-Darstellung: 0 aus, 1 Kaskadenmuster, 2 Texelgitter. */

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { Vector3, type InstancedBufferAttribute, type InstancedBufferGeometry } from 'three/webgpu';
 import { uniform } from 'three/tsl';
-import type { PlanetTree, TreeFamily, TreeKind } from '@ee/world';
-import { PaletteAtlas, addWorldPalette, type WorldPalette } from '../palette';
+import type { PlaneTree as PlanetTree, TreeFamily, TreeKind } from '@ee/world';
+import { PaletteAtlas, type WorldPalette } from '../palette';
+import { WorldSlots } from '../worldSlots';
 import { PaletteLookup, createFogSettings } from '../tsl';
 import { PlanetVegetation, type VegetationTreeEntry } from '../planetVegetation';
 
@@ -21,18 +22,18 @@ const palette: WorldPalette = {
 const family: TreeFamily = { density: 1, clumpiness: 0, kinds: { dome: 1 }, scale: [0.8, 1.4], bark: 'calligraphy', snow: 0.5 };
 
 function makeVegetation(dots = 20000): PlanetVegetation {
-  const atlas = new PaletteAtlas();
-  const rows = addWorldPalette(atlas, palette, 'w');
+  const atlas = new PaletteAtlas(512);
+  const slots = new WorldSlots(atlas, () => palette, () => {});
+  const rows = slots.rowsOfWorld(0);
   return new PlanetVegetation({
     lookup: new PaletteLookup(atlas.texture, atlas.width, atlas.height),
     fog: createFogSettings({ row: rows.fog, steps: 5, start: 10, range: 20 }),
     bands: uniform(3),
-    worldRows: [{ terrain: rows.terrain, canopy: rows.canopyRows, accent: rows.accent, monolith: rows.monolith, barn: rows.barn }],
-    families: [family],
+    slots,
+    family: () => family,
     capacity: { trees: 200, dots, props: 8, animals: 8 },
     dotsPerTree: [60, 200],
     collapsePx: 0.75,
-    rowCount: atlas.rowCount,
   });
 }
 

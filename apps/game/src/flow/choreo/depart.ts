@@ -6,6 +6,7 @@ import { bus } from '../../state/bus';
 import { collectionKey, useProgress, type CollectionEntry } from '../../state/progress';
 import { useFlowStore } from '../flowStore';
 import { easeInOut, easeInOutQuint, type Ease } from '../tween';
+import type { PathDot } from '../path';
 import { hopArc, routeStops, walkDuration, type RouteStop } from './route';
 import type { FlowStage } from './stage';
 
@@ -85,12 +86,15 @@ function matchEntry(fresh: CollectionEntry[], spec: CreatureSpec | null | undefi
 }
 
 const _v = new Vector3();
+const _w = new Vector3();
 
 export class Departure {
   readonly from: number;
   readonly to: number;
   log: TravelLog;
   private fresh: CollectionEntry[] = [];
+  /** Pfadpunkte der Strecke (Fenster [from, to] des unendlichen Pfads; `RouteStop.dot` zählt darin). */
+  private dots: readonly PathDot[] = [];
   private released = false;
   private landed = false;
   private arrivedFlag = false;
@@ -113,7 +117,8 @@ export class Departure {
   static fromLevel(stage: FlowStage, won: boolean, hooks: DepartureHooks = {}): Departure {
     const flow = useFlowStore.getState();
     const from = flow.playing ?? flow.current;
-    const to = won ? Math.min(from + 1, stage.layout.nodes.length - 1) : from;
+    // Der Pfad ist unendlich (ADR 0002): nach dem letzten Autorenlevel geht es auf den gesperrten Knoten „bald“
+    const to = won ? from + 1 : from;
     const d = new Departure(stage, won && to !== from, from, to, hooks);
     d.leaveLevel(won);
     return d;
@@ -223,8 +228,8 @@ export class Departure {
       const slot = Object.values(useProgress.getState().collection).filter((e) => e.placedOnMap && e.node === entry.node).length;
       if (stage.ground.homeSpot(entry.node, slot, frame)) target = frame.position;
     }
-    const node = stage.layout.nodes[this.to];
-    if (!target && node) target = new Vector3(node.position[0], node.position[1], node.position[2]);
+    const node = stage.layout.node(this.to);
+    if (!target) target = new Vector3(node.position[0], node.position[1], node.position[2]);
     const dir = stage.boardDirectionTo(this.to === this.from && !entry ? null : target);
     return [dir.x, dir.z];
   }
@@ -294,7 +299,9 @@ export class Departure {
     const T = DEPART_TIMES;
     const { from, to } = this;
     const rail = stage.isRailSegment(from, to);
-    const stops = rail ? [] : routeStops(stage.layout.dots, from);
+    // Die Punkte der Strecke aus dem Fenster [from, to] (FlowScene.routePose fragt dasselbe Fenster)
+    this.dots = stage.layout.window(from, to).dots;
+    const stops = rail ? [] : routeStops(this.dots, from);
     const walk = rail ? T.arc : walkDuration(stops.length);
     this.log = { mode: rail ? 'arc' : 'hops', from, to, walk, stops, landings: [] };
     // The flower opens under the hero, the stretch pops dot by dot in time with the hops, the ring grows in at `to`.
@@ -308,7 +315,7 @@ export class Departure {
         stage.setPhase('travel');
         useFlowStore.getState().setCurrent(to);
         if (rail) {
-          // Along the giant tree: one arc while the camera rides its rail and the planet turns (as before).
+          // Along the giant tree: one arc while the camera rides its rail and the view glides (as before).
           stage.cameraToMap(to, walk + 0.2, easeInOutQuint);
           hero.flyTo(stage.nodePose(to), { duration: walk, arc: T.arcHeight, ease: easeInOut, done: () => this.arrive(-1, 1) });
           return;
@@ -336,7 +343,8 @@ export class Departure {
     const hero = stage.hero;
     const last = k === stops.length - 1;
     const target = stop.dot < 0 ? stage.nodePose(this.to) : stage.routePose(this.from, stop);
-    const length = hero.root.position.distanceTo(target.position);
+    // Posen liegen in der Ebene, der Held in der Anzeige: Länge des Hüpfers dort, wo man ihn sieht
+    const length = hero.root.position.distanceTo(stage.display(target.position, _w));
     const landAt = this.walkStart + stop.u * walk;
     hero.flyTo(target, {
       duration: Math.max(0.06, landAt - stage.now()),
@@ -360,10 +368,10 @@ export class Departure {
 
   private logLanding(dot: number, u: number): void {
     const { stage } = this;
-    const d = stage.layout.dots[dot];
+    const d = dot >= 0 ? this.dots[dot] : undefined;
     let target: Vector3;
-    if (dot >= 0 && d) target = stage.display(_v.set(d.position[0], d.position[1], d.position[2]), new Vector3());
-    else target = stage.nodePose(this.to).position;
+    if (d) target = stage.display(_v.set(d.position[0], d.position[1], d.position[2]), new Vector3());
+    else target = stage.display(stage.nodePose(this.to).position, new Vector3());
     this.log.landings.push({ dot, u, distance: stage.hero.root.position.distanceTo(target) });
   }
 

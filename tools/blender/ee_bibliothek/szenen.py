@@ -224,8 +224,39 @@ def _base(scene, name):
     scene.unit_settings.system = "METRIC"
 
 
+def _map_cameras_plane(scene, st, info):
+    """Ebene (ADR 0002): je Welt eine Kamera hinter und über der Mitte ihres Stücks im Fenster, Blick längs des Pfads
+    (Spiel vorwärts −z → Blender +y); Übersicht über das ganze Fenster. Die Kugel ist im Spiel nur die Anzeige."""
+    cams = []
+    up = Vector((0, 0, 1))
+    back = Vector((0, -1, 0))
+    for w in info.get("worlds", []):
+        c = w.get("center")
+        view = w.get("view") or {}
+        if not c or w.get("zone", -1) < 0:
+            continue
+        p = Vector((c[0], -c[2], c[1]))  # Spielraum → Blender
+        height = float(view.get("height", 9))
+        fwd = float(view.get("forward", 4))
+        look = float(view.get("look", 5))
+        loc = p + up * (height + 0.8) + back * fwd
+        target = p - back * look
+        fov = math.radians(float(view.get("fov", 52)))
+        lens = 18.0 / math.tan(fov / 2)
+        cam = _camera(scene, f"Kamera · Welt {w['id'][1:]} {w['name']}", loc, target, lens, 600.0, up)
+        cam["ee_welt"] = w["id"]
+        cams.append((cam, up, back))
+    win = info.get("window") or {"x0": -60, "x1": 60, "z0": -400, "z1": 30}
+    shell = [Vector((x, -z, h)) for x in (win["x0"], win["x1"]) for z in (win["z0"], win["z1"]) for h in (0.0, 12.0)]
+    loc, target = fit(shell, (0.35, -1.0, 0.45), 35.0, 1.6, 1.08)
+    overview = _camera(scene, "Kamera · Ebene (Übersicht)", loc, target, 35.0, 4000.0)
+    return cams, overview
+
+
 def _map_cameras(scene, st, col):
     info = st.map_info or {}
+    if info.get("plane"):
+        return _map_cameras_plane(scene, st, info)
     R = float(info.get("radius", 32))
     cams = []
     for w in info.get("worlds", []):

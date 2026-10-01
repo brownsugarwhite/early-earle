@@ -1,11 +1,11 @@
 import { Box3, Group, Matrix4, Mesh, PerspectiveCamera, Quaternion, SphereGeometry, Vector3 } from 'three/webgpu';
-import type { Scene } from 'three/webgpu';
+import type { Object3D, Scene } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import { EarleMaterial, PaletteAtlas, PaletteLookup, SunRig, createFogSettings, createSkyDome } from '@ee/render';
-import { NodePath } from '../../flow/NodePath';
+import { NodePath, type NodePathWorld } from '../../flow/NodePath';
 import { Hero } from '../../flow/Hero';
 import { MAP_VIEW } from '../../flow/MapWorld';
-import type { PathLayout } from '../../flow/path';
+import type { PathDot, PathLayout, PathNode } from '../../flow/path';
 
 const R = 32;
 const GROUND = ['#606e4f', '#7f8b58', '#9aa463', '#b3bb6d', '#cfd58a'];
@@ -98,21 +98,38 @@ export function createMockMap(scene: Scene, camera: PerspectiveCamera, aspect: n
     const d = currentDir.clone().applyAxisAngle(axisX, -s * stepAngle).applyAxisAngle(axisZ, swing);
     nodeDirs.push(d.normalize());
   }
-  const layout: PathLayout = {
-    nodes: nodeDirs.map((d, index) => ({ index, u: 0, v: 0, position: [d.x * R, d.y * R, d.z * R], normal: [d.x, d.y, d.z] })),
-    dots: [],
-    length: count * 2.4,
-  };
+  const pathNodes: PathNode[] = nodeDirs.map((d, index) => ({ index, position: [d.x * R, d.y * R, d.z * R], normal: [d.x, d.y, d.z] }));
+  const dots: PathDot[] = [];
   for (let k = 0; k < count - 1; k++) {
     for (let j = 1; j <= 3; j++) {
       const d = nodeDirs[k]!.clone().lerp(nodeDirs[k + 1]!, j / 4).normalize();
-      layout.dots.push({ position: [d.x * R, d.y * R, d.z * R], normal: [d.x, d.y, d.z] });
+      dots.push({ position: [d.x * R, d.y * R, d.z * R], normal: [d.x, d.y, d.z], seg: k, u: j / 4 });
     }
   }
+  const layout: PathLayout = {
+    node: (i) => pathNodes[Math.max(0, Math.min(count - 1, Math.floor(i)))]!,
+    window: (first, last) => {
+      const a = Math.max(0, first);
+      const b = Math.min(count - 1, last);
+      return { first: a, nodes: pathNodes.slice(a, b + 1), dots: dots.filter((d) => (d.seg ?? 0) >= a - 1 && (d.seg ?? 0) <= b), ribbon: [] };
+    },
+    nearestNode: () => current,
+    lastPlayable: count - 1,
+  };
+  // The miniature has no plane: the path lies directly in the cap's space (no display mapping)
+  const host: NodePathWorld = {
+    plane: planet,
+    focus: { x: 0, z: 0 },
+    mapping: { warp: (p: never) => p },
+    anchorObject: (o: Object3D, x: number, z: number) => o.position.set(x, o.position.y, z),
+    releaseObject: () => undefined,
+    toDisplay: (p, out = new Vector3()) => {
+      planet.updateMatrixWorld(true);
+      return (Array.isArray(p) ? out.set(p[0], p[1], p[2]) : out.copy(p)).applyMatrix4(planet.matrixWorld);
+    },
+  };
   sun.directionWorld(sunDirWorld.value);
-  const sunLocal = sunDirWorld.value.clone();
-  const nodePath = new NodePath(layout, sunLocal);
-  planet.add(nodePath.group);
+  const nodePath = new NodePath({ planet: host, layout, sunDirWorld: sunDirWorld.value.clone() });
   nodePath.setProgress(current, current);
 
   const hero = new Hero('tjorizo', { octaves: 1 });

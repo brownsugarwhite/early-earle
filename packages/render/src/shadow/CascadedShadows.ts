@@ -1,4 +1,4 @@
-import { DepthTexture, DoubleSide, FrontSide, GreaterEqualCompare, LessEqualCompare, LinearFilter, NoBlending, NodeMaterial, Object3D, Quaternion, RenderTarget, ShadowBaseNode, ShadowNode, Vector2, Vector3, Vector4 } from 'three/webgpu';
+import { DepthTexture, DoubleSide, FrontSide, GreaterEqualCompare, LessEqualCompare, LinearFilter, Matrix4, NoBlending, NodeMaterial, Object3D, Quaternion, RenderTarget, ShadowBaseNode, ShadowNode, Vector2, Vector3, Vector4 } from 'three/webgpu';
 import type { BufferGeometry, Camera, DirectionalLight, LightShadow, Node, NodeBuilder, PerspectiveCamera, Renderer, Scene, UniformNode } from 'three/webgpu';
 import {
   Discard,
@@ -31,7 +31,7 @@ import {
   vec4,
 } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node, Vec4Node } from '../earle/tsl';
-import { CascadeFitter, createFitResult, type CascadeSize, type ClipBoxSpec, type FitInput, type FitResult, type ReceiverShellSpec, type ReceiverSlabSpec, type ReceiverVolume } from './fit';
+import { CascadeFitter, createFitResult, type CascadeSize, type ClipBoxSpec, type FitInput, type FitResult, type ReceiverShellSpec, type ReceiverSlabSpec, type ReceiverVolume, type ShadowSpaceWarp } from './fit';
 import {
   bsplineField,
   createDepthCompareZ,
@@ -103,8 +103,20 @@ export interface ViewReceivers {
   volumes?: (() => ReceiverVolume[]) | null;
 }
 
+/**
+ * Schatten in Ebenenkoordinaten (ADR 0002): die Kamera sieht die Anzeigekugel, Werfer und Empfänger liegen für den
+ * Schatten in der flachen Ebene. `node` bildet eine Anzeigeposition in den Schattenraum ab (TSL: Werfer im Schattenpass,
+ * Empfänger je Fragment, Schattenwerte der Kronenpunkte), `cpu` dasselbe für den Kaskaden-Fit.
+ */
+export interface ShadowWarp {
+  node(p: Vec3Node): Vec3Node;
+  cpu: ShadowSpaceWarp;
+}
+
 export interface CascadedShadowsOptions {
   sizes: CascadeSize[];
+  /** Verzug Anzeige- → Schattenraum (null = gleicher Raum, alte Konsumenten). */
+  warp?: ShadowWarp | null;
   taps: ShadowTaps;
   /** Referenzkarte („Alt“) für Vergleiche; Kantenlänge der quadratischen Karte. */
   referenceSize?: number | null;
@@ -266,8 +278,21 @@ class TerminatorShadowNode extends ShadowNode {
     private readonly axes: Pick<ShadowFrameUniforms, 'axisX' | 'axisY' | 'axisL'>,
     private readonly casterXf: UniformNode<'vec4', Vector4>,
     private readonly owned: { target: RenderTarget; depth: DepthTexture },
+    private readonly warp: ShadowWarp | null = null,
+    /** Index der Kaskade (0 = die feinste, kameranächste). */
+    private readonly cascadeIndex = 0,
   ) {
     super(light, shadow);
+  }
+
+  /**
+   * Empfängerposition für den Kartenvergleich: mit Verzug (Ebene) die flache Position des Fragments — dieselbe, in der
+   * die Werfer liegen (three nimmt sonst die angezeigte Position, die Karten lägen neben den Werfern).
+   */
+  override setupShadowPosition(builder: NodeBuilder): void {
+    const b = builder as unknown as { context: { shadowPositionWorld?: Vec3Node }; material: { receivedShadowPositionNode?: Vec3Node | null } };
+    const src = (b.material.receivedShadowPositionNode ?? b.context.shadowPositionWorld ?? positionWorld) as unknown as Vec3Node;
+    (shadowPositionWorld as unknown as { assign(v: unknown): void }).assign(this.warp ? this.warp.node(src) : src);
   }
 
   /** Eigene, vorab angelegte Tiefenkarte statt einer neuen je Aufbau (Konsumenten binden dieselbe Textur). */
@@ -298,14 +323,14 @@ class TerminatorShadowNode extends ShadowNode {
    * vs. facettiertes Gelände: 1 cm Schweben = 6 cm Lichtspalt bei 10° Sonne) oder die Kante am Linienende rundet.
    * Vor dem Werfer (sonnenseitig) entsteht kein Schatten — der Tiefentest schützt den näheren Boden.
    */
-  private casterClip(dilate: boolean): Vec4Node {
+  private casterClip(dilate: boolean, shift = true): Vec4Node {
     const X = this.axes.axisX as unknown as Vec3Node;
     const Y = this.axes.axisY as unknown as Vec3Node;
     const xf = this.casterXf as unknown as Vec4Node;
     const L = this.axes.axisL as unknown as Vec3Node;
     // Versatz Richtung Boden (Lichtbild) + Hub zur Sonne (Tiefe): am Fuß registrieren auch die sonnenseitigen Taps den
     // Werfer, das Linienende rundet nicht mehr vor dem Fuß ab (dünne Linien: Feld am Fuß ≈ ¾ · ½ < 0,5)
-    let off: Vec3Node = Y.mul(xf.z.negate()).add(L.mul(xf.w)) as unknown as Vec3Node;
+    let off: Vec3Node = (shift ? Y.mul(xf.z.negate()).add(L.mul(xf.w)) : vec3(0, 0, 0)) as unknown as Vec3Node;
     if (dilate) {
       const n = normalWorldGeometry as unknown as Vec3Node;
       const np = n.sub(L.mul(n.dot(L)));
@@ -313,7 +338,9 @@ class TerminatorShadowNode extends ShadowNode {
       const dir = np.div(len.max(1e-5)).mul(step(1e-4, len));
       off = off.add(X.mul(dir.dot(X).mul(xf.x)).add(Y.mul(dir.dot(Y).mul(xf.y)))) as unknown as Vec3Node;
     }
-    const p = (positionWorld as unknown as Vec3Node).add(off);
+    // Ebene: Werfer aus der Anzeigekugel in den flachen Schattenraum
+    const pw = positionWorld as unknown as Vec3Node;
+    const p = (this.warp ? this.warp.node(pw) : pw).add(off);
     return (cameraProjectionMatrix as unknown as { mul(v: unknown): Vec4Node }).mul((cameraViewMatrix as unknown as { mul(v: unknown): Vec4Node }).mul(vec4(p, 1)));
   }
 
@@ -345,7 +372,8 @@ class TerminatorShadowNode extends ShadowNode {
         m.colorNode = vec4(0, 0, 0, 1);
         (m as unknown as { isShadowPassMaterial: boolean }).isShadowPassMaterial = true;
       }
-      if (dilate || shift) m.vertexNode = this.casterClip(dilate);
+      // Mit Verzug (Ebene) läuft jeder Werfer durch den eigenen Vertex-Schritt (Anzeige → Schattenraum)
+      if (dilate || shift || this.warp) m.vertexNode = this.casterClip(dilate, shift);
       this.materials.set(key, m);
     }
     if (withBias) this.applyBias(m);
@@ -362,7 +390,10 @@ class TerminatorShadowNode extends ShadowNode {
           return;
         }
         const mat = material as CasterMaterialState | null;
-        const data = object.userData as { shadowSelfBias?: boolean; shadowSmooth?: boolean; shadowDilate?: boolean; shadowContact?: boolean };
+        const data = object.userData as { shadowSelfBias?: boolean; shadowSmooth?: boolean; shadowDilate?: boolean; shadowContact?: boolean; shadowCascades?: number };
+        // Kleine Werfer (Müll, Requisiten, Tiere, Sockel): nur in den feinen Kaskaden — in der gröbsten wären ihre
+        // Schatten kleiner als ein Texel, der Zeichenaufruf je Kaskade bliebe (`userData.shadowCascades = n`: Kaskaden 0 … n−1)
+        if (typeof data.shadowCascades === 'number' && this.cascadeIndex >= data.shadowCascades) return;
         const self = object.receiveShadow === true && data.shadowSelfBias !== false;
         const smooth =
           this.casters.smooth &&
@@ -388,7 +419,7 @@ class TerminatorShadowNode extends ShadowNode {
         let override: NodeMaterial | null = null;
         if (smooth) override = this.getMaterial('smooth', self && this.selfBias.slopeScale > 0, dilate, shift && !self);
         else if (self && this.selfBias.slopeScale > 0) override = this.getMaterial('bias', true, false);
-        else if (dilate || shift) override = this.getMaterial('plain', false, dilate, shift);
+        else if (dilate || shift || (this.warp && mat?.isNodeMaterial === true)) override = this.getMaterial('plain', false, dilate, shift);
         if (!override) {
           base(object, scene, camera, geometry, material, ...rest);
           return;
@@ -442,6 +473,35 @@ const _v2 = new Vector3();
 const _size = new Vector2();
 const _dirLocal = new Vector3();
 const _invQ = new Quaternion();
+const _yawQ = new Quaternion();
+const _yawM = new Matrix4();
+const _keyM = new Matrix4();
+const _keySun = new Vector3();
+const _yu = new Vector3();
+const _yf = new Vector3();
+const _yr = new Vector3();
+const _yc = new Vector3();
+
+/**
+ * Drehung um die Hochachse `up` (durch den Ursprung), die den Blick der Kamera auf −z (in der Ebene ⊥ `up`) dreht —
+ * der „gierfreie“ Rahmen der Kamera. Dreht die Ansicht mit Kamera und Sonne gemeinsam um die Hochachse (ADR 0002: das
+ * Rig dreht über der Ebene; früher drehte sich die Kugel unter fester Kamera), ist die Lage in diesem Rahmen dieselbe.
+ */
+function yawFreeRotation(camera: PerspectiveCamera, up: Vector3, out: Quaternion): Quaternion {
+  const u = _yu.copy(up).normalize();
+  const e = camera.matrixWorld.elements;
+  const f = _yf.set(-e[8]!, -e[9]!, -e[10]!);
+  f.addScaledVector(u, -f.dot(u));
+  // senkrecht nach unten: die Hochachse des Bildes gibt die Richtung
+  if (f.lengthSq() < 1e-8) f.set(e[4]!, e[5]!, e[6]!).addScaledVector(u, -_yc.set(e[4]!, e[5]!, e[6]!).dot(u));
+  if (f.lengthSq() < 1e-8) return out.identity();
+  f.normalize();
+  const ref = _yr.set(0, 0, -1).addScaledVector(u, u.z);
+  if (ref.lengthSq() < 1e-8) ref.set(1, 0, 0).addScaledVector(u, -u.x);
+  ref.normalize();
+  const angle = Math.atan2(u.dot(_yc.crossVectors(f, ref)), f.dot(ref));
+  return out.setFromAxisAngle(u, angle);
+}
 
 /** Feste Scheibenverteilung (goldener Winkel, 8 Punkte + Mitte) für weiche Schattenwerte. */
 const SOFT_DISC: Array<[number, number]> = (() => {
@@ -576,7 +636,7 @@ export class CascadedShadows {
       target.texture.name = 'EarleShadowMap';
       target.texture.type = shadow.mapType;
       target.depthTexture = depth;
-      node = new TerminatorShadowNode(light as unknown as DirectionalLight, shadow, selfBias, this.casterSettings, this.axes, casterXf, { target, depth }) as unknown as Node;
+      node = new TerminatorShadowNode(light as unknown as DirectionalLight, shadow, selfBias, this.casterSettings, this.axes, casterXf, { target, depth }, this.options.warp ?? null, this.cascades.length) as unknown as Node;
     }
     return { light, shadow, node, frame, split: uniform(0), active: uniform(0), band: uniform(new Vector4(0.002, 0.004, 0.002, 0.004)), size, selfBias, casterXf, target, depth };
   }
@@ -608,11 +668,15 @@ export class CascadedShadows {
     const useReference = this.useReference;
     const debugMode = this.debugMode;
     const planeNormal = this.planeNormal;
+    const warp = this.options.warp ?? null;
     return Fn(() => {
       node.setupShadowPosition(builder);
+      // Ebene: Empfänger schlagen mit ihrer flachen Position nach (Anzeige → Schattenraum je Fragment)
+      const spw = shadowPositionWorld as unknown as Vec3Node;
+      const ps = warp ? (hoist(warp.node(spw), 'vec3') as Vec3Node) : spw;
       // Empfängerebene einmal je Fragment, vor jeder Verzweigung (Ableitungen brauchen gleichförmigen Kontrollfluss)
-      planeNormal.assign(flatNormalWorld());
-      const p = vec4(shadowPositionWorld as unknown as Vec3Node, 1) as unknown as Vec4Node;
+      planeNormal.assign(flatNormalWorld(ps));
+      const p = vec4(ps, 1) as unknown as Vec4Node;
       const depth = (positionView as unknown as Vec3Node).z.negate() as unknown as FloatNode;
       const field = float(0).toVar('eeShadowField') as unknown as FloatNode & { assign(v: unknown): void; addAssign(v: unknown): void };
       const rem = float(1).toVar('eeShadowRem') as unknown as FloatNode & { assign(v: unknown): void; mulAssign(v: unknown): void };
@@ -670,10 +734,12 @@ export class CascadedShadows {
    * ein über eine Scheibe gemittelter Lichtanteil (stetig, zeitlich ruhig). Muss innerhalb eines Aufbaus aufgerufen
    * werden (`builder` für die Plattformentscheidung Hardware-/Handvergleich).
    */
-  sampleField(p: Vec3Node, builder: NodeBuilder, options: CascadeSampleOptions = {}): FloatNode {
+  sampleField(pView: Vec3Node, builder: NodeBuilder, options: CascadeSampleOptions = {}): FloatNode {
     const taps = options.taps ?? 4;
     const depth =
-      options.viewDepth ?? ((cameraViewMatrix as unknown as { mul(v: unknown): Vec4Node }).mul(vec4(p, 1)).z.negate() as unknown as FloatNode);
+      options.viewDepth ?? ((cameraViewMatrix as unknown as { mul(v: unknown): Vec4Node }).mul(vec4(pView, 1)).z.negate() as unknown as FloatNode);
+    const warp = this.options.warp ?? null;
+    const p = warp ? warp.node(pView) : pView;
     const soft = options.softness === undefined || options.softness === null ? null : typeof options.softness === 'number' ? (options.softness > 0 ? float(options.softness) : null) : options.softness;
     const reversed = (builder.renderer as { reversedDepthBuffer?: boolean }).reversedDepthBuffer === true;
     // Knoten des Aufrufers vor jeder Verzweigung auswerten (sonst setzt three ihre Variable nur im ersten Zweig)
@@ -735,7 +801,8 @@ export class CascadedShadows {
    * `gap` in Welteinheiten entlang der Sonne; `plane` wie bei den Empfängern (flache Facettennormale).
    */
   contactDiagnostics(builder: NodeBuilder, options: { gap: FloatNode; epsilon: FloatNode; plane: Vec3Node; shading: Vec3Node; mode?: FloatNode }): Vec3Node {
-    const p = positionWorld as unknown as Vec3Node;
+    const pw = positionWorld as unknown as Vec3Node;
+    const p = this.options.warp ? this.options.warp.node(pw) : pw;
     const depth = (positionView as unknown as Vec3Node).z.negate() as unknown as FloatNode;
     const reversed = (builder.renderer as { reversedDepthBuffer?: boolean }).reversedDepthBuffer === true;
     const plane = hoist(options.plane, 'vec3');
@@ -926,7 +993,13 @@ export class CascadedShadows {
       slab.hMin = r.plane.minHeight;
       slab.hMax = r.plane.maxHeight;
     }
-    const key = [...camera.matrixWorld.elements, ...camera.projectionMatrix.elements, this.sunDir.x, this.sunDir.y, this.sunDir.z, size.x, size.y, this.fixedPsiDeg ?? -999];
+    // Schlüssel im gierfreien Rahmen der Kamera: dreht die Ansicht mit Kamera und Sonne gemeinsam um die Hochachse
+    // (Rig-Drehung über der Ebene, das „Rollen“ im Lab), bleibt die Lage dieselbe → ψ und die Texel der feinen
+    // Kaskaden bleiben stehen (Gitter steht), wie früher beim Drehen der Kugel unter fester Kamera
+    const yaw = yawFreeRotation(camera, this.upRef, _yawQ);
+    _keyM.copy(camera.matrixWorld).premultiply(_yawM.makeRotationFromQuaternion(yaw));
+    _keySun.copy(this.sunDir).applyQuaternion(yaw);
+    const key = [..._keyM.elements, ...camera.projectionMatrix.elements, _keySun.x, _keySun.y, _keySun.z, size.x, size.y, this.fixedPsiDeg ?? -999];
     for (const c of this.cascades) key.push(c.size.width, c.size.height);
     let keepPsi = key.length === this.psiKey.length;
     for (let i = 0; keepPsi && i < key.length; i++) keepPsi = Math.abs(key[i]! - this.psiKey[i]!) <= 1e-7;
@@ -955,6 +1028,7 @@ export class CascadedShadows {
       keepPsi,
       lockTexels: keepPsi,
       volumes: this.volumeScratch,
+      warp: this.options.warp?.cpu ?? null,
     };
     const fit = this.fitter.fit(input, this.fitResult);
     this.refits++;
