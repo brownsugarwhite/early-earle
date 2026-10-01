@@ -2,14 +2,16 @@ import { LightingModel, NodeMaterial } from 'three/webgpu';
 import type { Node, NodeBuilder } from 'three/webgpu';
 import { min, normalView, uniform } from 'three/tsl';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from '../tsl';
+import { curvedLightView, earleLight } from '../lightCurvature';
 
 export interface InkMaterialOptions {
   /**
-   * Colour from `lit` (0 = ink: self or cast shadow, 1 = lit, 1-px transition), the raw N·L, the raw shadow
-   * factor (cast shadows only, without the terminator) and the light direction (view space). Called once while the
-   * shader is built; may use its own nodes (attributes, uniforms).
+   * Colour from `lit` (0 = ink: self or cast shadow, 1 = lit, 1-px transition), the raw N·L_b, the raw shadow
+   * factor (cast shadows only, without the terminator) and the light directions (view space): `lightDir` = L_b curved
+   * with the light globe (bands, gradients), `lightDirInk` = L_t curved with the ink globe (terminator, same curvature
+   * as the shadow space). Called once while the shader is built; may use its own nodes (attributes, uniforms).
    */
-  shade: (lit: FloatNode, ndl: FloatNode, shadow: FloatNode, lightDir: Vec3Node) => Vec3Node;
+  shade: (lit: FloatNode, ndl: FloatNode, shadow: FloatNode, lightDir: Vec3Node, lightDirInk: Vec3Node) => Vec3Node;
   /** Terminator: N·L below → ink (default 0). */
   terminator?: number;
   /** Stepped distance fog (optional). */
@@ -53,12 +55,15 @@ class InkLightingModel extends LightingModel {
 
   override direct(input: Parameters<LightingModel['direct']>[0]): void {
     const e = this.material.ink;
-    const L = input.lightDirection as Vec3Node;
+    const L0 = input.lightDirection as Vec3Node;
     const lightColor = input.lightColor as Vec3Node;
+    // light curvature (R2): bands with the light globe, terminator with the ink globe
+    const L = curvedLightView(L0, earleLight.bands);
+    const Lt = curvedLightView(L0, earleLight.ink);
     const ndl = normalView.dot(L);
     const shadow = lightColor.r; // white sun → r = shadow factor
-    const lit = min(aaStep(e.terminator, ndl), shadow);
-    const col = e.shade(lit, ndl, shadow, L);
+    const lit = min(aaStep(e.terminator, normalView.dot(Lt)), shadow);
+    const col = e.shade(lit, ndl, shadow, L, Lt);
     (input.reflectedLight.directDiffuse as Vec3Node).addAssign(col);
   }
 

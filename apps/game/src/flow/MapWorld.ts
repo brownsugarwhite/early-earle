@@ -162,6 +162,8 @@ export class MapWorld {
       },
       path: { clearNode: 2.0, clearPath: 0.8, ...(withTree ? { keepGround: [treeFirst - 1, treeLast + 1] } : {}) },
       loadsPerFrame: 2,
+      // Werfer sonnenwärts (`?sonnenband=<Einheiten>`, 0 = aus; Standard 40): Hügelschatten aus dem Off beim Schwenken
+      ...(typeof location !== 'undefined' && /[?&]sonnenband=(\d+(\.\d+)?)/.test(location.search) ? { sunwardReach: Number(/[?&]sonnenband=(\d+(\.\d+)?)/.exec(location.search)![1]) } : {}),
       // Schatten v3: Kronenpunkte skalieren mit dem glatten Schattenwert aus 0 (`?dotshadow=0` = alter Vergleich)
       shadow: { factor: typeof location !== 'undefined' && location.search.includes('dotshadow=0') ? null : (p, o) => this.sun.shadowFactor(p, o) },
       // Schattentönung je Welt (blaue Schatten auf Schnee …) aus den Weltdateien
@@ -243,11 +245,14 @@ export class MapWorld {
     return this.world.focus;
   }
 
-  /** Moves the view: the plane point (x, z) goes to the apex (chunks stream, shadows follow). */
+  /**
+   * Moves the view: the plane point (x, z) goes to the apex (chunks stream). The shadow cascades follow the focus by
+   * themselves (texel grid pinned to the plane, `CascadedShadows.slide`): a pan alone is no reason to redraw them —
+   * only content changes (`world.update()` → rebuilt) and the callers' `markShadowDirty()` are.
+   */
   setFocus(x: number, z: number): void {
     if (x === this.world.focus.x && z === this.world.focus.z) return;
     this.world.setFocus(x, z);
-    this.shadowDirty = true;
   }
 
   /** Plane point → display (scene) position. */

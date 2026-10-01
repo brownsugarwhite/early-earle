@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { parseGullMode, setGullMode } from '@ee/core';
-import { earleGradients, setGradientAmount } from '@ee/render';
+import { earleGradients, earleLight, setGradientAmount, setLightCurvature, setShadowPlaneSmooth } from '@ee/render';
 import { App } from './App';
 import { boot } from './boot/bootProgress';
 import type { EeBoot } from './boot/bootInline';
@@ -50,6 +50,23 @@ const verlauf = new URLSearchParams(location.search).get('verlauf');
 if (verlauf !== null && verlauf !== '' && Number.isFinite(Number(verlauf))) setGradientAmount(Number(verlauf));
 // Dev hook for scripted A/B checks (surface, air, dither separately): window.__earleGradients
 if (import.meta.env.DEV) (window as unknown as { __earleGradients?: typeof earleGradients }).__earleGradients = earleGradients;
+// Lichtkrümmung (Karte v5): ?lichtkugel= Krümmung der Lichtbänder (0 flach … 1 Kugel, Standard 0,4), ?tintenkugel=
+// Krümmung von Terminator, Schattenraum und Werfer-Discard (Standard 0 = ebene, translationsinvariante Schatten).
+{
+  const search = new URLSearchParams(location.search);
+  const num = (k: string): number | undefined => {
+    const v = search.get(k);
+    return v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined;
+  };
+  const bands = num('lichtkugel');
+  const ink = num('tintenkugel');
+  if (bands !== undefined || ink !== undefined) setLightCurvature({ ...(bands !== undefined ? { bands } : {}), ...(ink !== undefined ? { ink } : {}) });
+  // ?planeSmooth= Empfängerebene der Schatten: 0 flache Facette (Standard) … 1 geglättete Schattierungsnormale
+  const planeSmooth = num('planeSmooth');
+  if (planeSmooth !== undefined) setShadowPlaneSmooth(planeSmooth);
+  // Dev hook: window.__earleLight.bands.value / .ink.value
+  if (import.meta.env.DEV) (window as unknown as { __earleLight?: typeof earleLight }).__earleLight = earleLight;
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

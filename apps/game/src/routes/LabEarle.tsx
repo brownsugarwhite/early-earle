@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { earleGradients, setGradientAmount } from '@ee/render';
+import { earleGradients, earleLight, setGradientAmount, setLightCurvature } from '@ee/render';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { DEFAULT_EARLE_PARAMS, EarleLabScene, LAB_WORLD_COUNT, labWorldCount, type EarleLabParams } from '../lab/earle/EarleLabScene';
@@ -148,6 +148,16 @@ function LabEarlePlanet() {
     const before = earleGradients.surface.value;
     return () => setGradientAmount(before);
   }, []);
+  // Lichtkrümmung (Karte v5, R0/R2): Lichtkugel = Krümmung der Lichtbänder (0 flach … 1 alte Kugel), Tintenkugel =
+  // Krümmung von Terminator, Schattenraum und Werfer-Discard — geteilte Uniforms, kein Neukompilieren
+  const [lichtkugel, setLichtkugel] = useState(() => earleLight.bands.value);
+  const [tintenkugel, setTintenkugel] = useState(() => earleLight.ink.value);
+  useEffect(() => setLightCurvature({ bands: lichtkugel }), [lichtkugel]);
+  useEffect(() => setLightCurvature({ ink: tintenkugel }), [tintenkugel]);
+  useEffect(() => {
+    const before = { bands: earleLight.bands.value, ink: earleLight.ink.value };
+    return () => setLightCurvature(before);
+  }, []);
   const controller = useMemo(() => new EarleLabScene(initial, { progressFromUrl: searchParams.has('progress') }), [initial, searchParams]);
 
   useEffect(() => {
@@ -242,6 +252,26 @@ function LabEarlePlanet() {
               step={0.05}
               format={(v) => (v < 0.02 ? 'Stufen' : `${Math.round(v * 100)} %`)}
               onChange={setVerlauf}
+            />
+            <Range
+              label="Lichtkugel"
+              testId="earle-lichtkugel"
+              value={lichtkugel}
+              min={0}
+              max={1}
+              step={0.05}
+              format={(v) => (v < 0.025 ? 'flach' : v > 0.975 ? 'Kugel' : `${Math.round(v * 100)} %`)}
+              onChange={setLichtkugel}
+            />
+            <Range
+              label="Tintenkugel"
+              testId="earle-tintenkugel"
+              value={tintenkugel}
+              min={0}
+              max={1}
+              step={0.05}
+              format={(v) => (v < 0.025 ? 'eben' : v > 0.975 ? 'Kugel' : `${Math.round(v * 100)} %`)}
+              onChange={setTintenkugel}
             />
             <Range label="Bänder" value={params.bands} min={2} max={5} step={1} onChange={(v) => set({ bands: v })} />
             <Range label="Nebelstufen" value={params.fogSteps} min={3} max={6} step={1} onChange={(v) => set({ fogSteps: v })} />

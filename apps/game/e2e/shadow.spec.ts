@@ -19,11 +19,15 @@ interface CascadeStat {
   texelX: number;
   texelY: number;
   split: number;
+  originPlaneX: number;
+  originPlaneY: number;
+  dirtyPasses: number;
 }
 
 interface LabStats {
-  cascades: { cascades: CascadeStat[]; refits: number; passes: number; dMin: number; dMax: number } | null;
+  cascades: { cascades: CascadeStat[]; refits: number; passes: number; slides: number; dirtyPasses: number[]; dMin: number; dMax: number } | null;
   passes: number;
+  chunks: number;
 }
 
 const stats = (page: Page) =>
@@ -128,6 +132,86 @@ test('/lab/shadow Schatten v3: Kontakt-Diagnose, Feldansicht, Kontaktregler und 
   await page.waitForTimeout(2500);
   await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 0 }));
   await page.getByTestId('shadow-dots').click();
+  expect(errors).toEqual([]);
+});
+
+// Karte v5 (R1): Schwenken ohne Neuzeichnen. Das Texelgitter heftet an der Ebene (Rechtecke in Ebenenkoordinaten mit
+// Rand), beim Schwenken gleiten die Kaskaden (`slide`) statt neu zu fitten; erst nach > 2 Einheiten Fokusweg läuft ein
+// Refit (Bodenschätzung), und nur eine Kaskade, deren Rand aufgebraucht ist (die feine), snappt neu und zeichnet. Die
+// ferne Kaskade behält ihren Ursprung in der Ebene. Inhalt, der sich ändert (Chunks am Rand, animierter Müll, Wachstum),
+// markiert über `MapWorld.markShadowDirty` weiter alle Kaskaden — diese Pässe (`passes` des Labs) werden herausgerechnet.
+test('/lab/shadow Schwenken: Kaskaden gleiten an der Ebene — höchstens 2 Refits, Ursprung der fernen Kaskade fest, nur die feinen zeichnen nach', async ({ page }) => {
+  test.setTimeout(420_000);
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 900, height: 560 });
+  await page.goto('/lab/shadow?q=mobil&view=karte&node=52&progress=60&mode=neu&mag=0&cascades=hoch');
+  await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu|webgl2/, { timeout: 60_000 });
+  await expect.poll(async () => (await stats(page)).cascades?.cascades.filter((c) => c.active).length ?? 0, { timeout: 90_000 }).toBe(3);
+  type Ctl = { controller: { pan(dx: number, dz: number): void } };
+  const pan = (dx: number, dz: number) => page.evaluate(([x, z]) => (window as unknown as { __ee: Ctl }).__ee.controller.pan(x!, z!), [dx, dz]);
+  const frame = () => page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+  // Aufwärmen: die Strecke einmal vorlaufen (Chunks laden), zurück, und zur Ruhe kommen lassen
+  for (let i = 0; i < 8; i++) {
+    await pan(0, -0.5);
+    await frame();
+  }
+  for (let i = 0; i < 8; i++) {
+    await pan(0, 0.5);
+    await frame();
+  }
+  let settled = await stats(page);
+  await expect
+    .poll(
+      async () => {
+        const s = await stats(page);
+        const quiet = s.passes === settled.passes && s.chunks === settled.chunks;
+        settled = s;
+        return quiet;
+      },
+      { timeout: 60_000, intervals: [1500] },
+    )
+    .toBe(true);
+  const before = await stats(page);
+  // 30 Schritte à 0,1 Einheit nach vorn (3 Einheiten: einmal über die 2-Einheiten-Schwelle für den Refit)
+  for (let i = 0; i < 30; i++) {
+    await pan(0, -0.1);
+    await frame();
+  }
+  await frame();
+  const after = await stats(page);
+  const b = before.cascades!;
+  const a = after.cascades!;
+  // Refits: einer je 2 Einheiten Fokusweg (Bodenschätzung), dazu je einer, wenn sich Empfänger-Volumen, Empfängerhöhe
+  // oder das Höhenband der Chunks im Bild ändern (Inhalt am Rand) — mit Hysterese zeichnet ein Refit nichts neu, solange
+  // die Rechtecke bleiben; er kostet ≈ 2 ms. Jedes Bild ein Refit (wie vorher) wären 30.
+  expect(a.refits - b.refits).toBeLessThanOrEqual(4);
+  expect(a.slides - b.slides).toBeGreaterThanOrEqual(20);
+  // Ferne Kaskade: Ursprung in der Ebene fest (Rand 0,3 ≈ 10 Einheiten), gleiche Texel. Die mittlere darf höchstens
+  // einmal neu snappen (ihr Rand quer zur Sonne ≈ 2–3 Einheiten; ein Hügel, der ins Bild kommt, braucht ihn auf) —
+  // und wenn, dann auf dem Texelgitter der Ebene
+  const far = a.cascades.length - 1;
+  expect(a.cascades[far]!.originPlaneX).toBe(b.cascades[far]!.originPlaneX);
+  expect(a.cascades[far]!.originPlaneY).toBe(b.cascades[far]!.originPlaneY);
+  for (const k of [1, 2]) {
+    expect(a.cascades[k]!.texelX).toBe(b.cascades[k]!.texelX);
+    expect(a.cascades[k]!.texelY).toBe(b.cascades[k]!.texelY);
+    const c = a.cascades[k]!;
+    expect(Math.abs(c.originPlaneX / c.texelX - Math.round(c.originPlaneX / c.texelX))).toBeLessThan(1e-6);
+    expect(Math.abs(c.originPlaneY / c.texelY - Math.round(c.originPlaneY / c.texelY))).toBeLessThan(1e-6);
+  }
+  // Schattenpässe jenseits der Inhaltsänderungen (`content` = Aufrufe von `markShadowDirty` durch die Welt): die ferne
+  // Kaskade zeichnet von sich aus nie, die mittlere höchstens einmal (ein Neu-Snap), die feine am öftesten (sie snappt
+  // am Rand neu), aber nie jedes Bild
+  const content = after.passes - before.passes;
+  const d0 = a.dirtyPasses[0]! - b.dirtyPasses[0]!;
+  const d1 = a.dirtyPasses[1]! - b.dirtyPasses[1]!;
+  const d2 = a.dirtyPasses[2]! - b.dirtyPasses[2]!;
+  expect(d2).toBeLessThanOrEqual(content);
+  expect(d1).toBeGreaterThanOrEqual(d2);
+  expect(d1).toBeLessThanOrEqual(content + 1);
+  expect(d0).toBeGreaterThanOrEqual(d1);
+  expect(d0).toBeLessThanOrEqual(content + 6);
+  expect(d0 - d2).toBeLessThanOrEqual(6);
   expect(errors).toEqual([]);
 });
 

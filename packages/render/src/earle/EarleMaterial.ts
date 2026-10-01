@@ -3,6 +3,7 @@ import type { Node, NodeBuilder } from 'three/webgpu';
 import { clamp, min, mix, normalView, smoothstep, uniform, vec3 } from 'three/tsl';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
 import { STEP_GRADIENT, earleGradients, mixInk, stepRamp } from './gradients';
+import { curvedLightView, earleLight } from './lightCurvature';
 import type { ShadowTint } from '../shadow/shadowTint';
 
 export interface EarlePattern {
@@ -100,9 +101,11 @@ export interface EarleMaterialOptions {
 }
 
 /**
- * Earle-Material: `lit = min(aaStep(N·L, terminator), shadow)` → Bandwert → exakte Palettenfarbe der Lichtstufe (harte
- * Siebdruckbänder) mit Verlauf innen (`gradient`), danach gestufte Luftperspektive. Kein Ambient, kein Specular, keine
- * Kontur.
+ * Earle-Material: `lit = min(aaStep(N·L_t, terminator), shadow)` → Bandwert aus N·L_b → exakte Palettenfarbe der
+ * Lichtstufe (harte Siebdruckbänder) mit Verlauf innen (`gradient`), danach gestufte Luftperspektive. Kein Ambient, kein
+ * Specular, keine Kontur. Lichtkrümmung (R0/R2, `lightCurvature.ts`): L_b = Licht mit der Lichtkugel gekrümmt (die
+ * Bänder wandern beim Schwenken, nach unten auf Stufe 0 geklemmt — keine Nachtseite), L_t mit der Tintenkugel (dieselbe
+ * Krümmung wie Schattenraum und Werfer-Discard: Eigen- und Schlagschatten bleiben eine Tintenform).
  * Die Sonne ist weiß mit Intensität 1, deshalb transportiert `lightColor` genau den Schattenfaktor (three multipliziert
  * den Schatten in die Lichtfarbe).
  */
@@ -176,13 +179,17 @@ class EarleLightingModel extends LightingModel {
 
   override direct(input: Parameters<LightingModel['direct']>[0]): void {
     const e = this.material.earle;
-    const L = input.lightDirection as Vec3Node;
+    const L0 = input.lightDirection as Vec3Node;
     const lightColor = input.lightColor as Vec3Node;
+    // Lichtkugel für Bänder, Verlauf und Schattentönung; Tintenkugel für den Terminator
+    const L = curvedLightView(L0, earleLight.bands);
+    const Lt = curvedLightView(L0, earleLight.ink);
     const ndl = normalView.dot(L);
+    const ndlInk = normalView.dot(Lt);
     const shadow = lightColor.r; // weiße Sonne → r = Schattenfaktor (1 = beleuchtet)
     const term = e.terminatorNode ?? e.terminator;
-    const lit = min(aaStep(term, ndl), shadow); // Eigen- und Schlagschatten = eine Tintenform
-    let v = ndl.sub(term).mul(e.bandScale); // Bänder beginnen am Terminator
+    const lit = min(aaStep(term, ndlInk), shadow); // Eigen- und Schlagschatten = eine Tintenform
+    let v = ndl.sub(term).mul(e.bandScale); // Bänder beginnen am Terminator; clamp unten = Stufe 0 (keine Nachtseite)
     if (e.lift) v = v.add(e.lift);
     if (e.bandNode) v = e.bandNode;
     const band = clamp(v, 0, 0.999).mul(e.bands.sub(1));

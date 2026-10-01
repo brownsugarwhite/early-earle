@@ -10,6 +10,7 @@ import { createDefaultShadowFilter, createDepthCompare, createEarleShadowFilter,
 import type { CascadeSize, ReceiverVolume } from '../shadow/fit';
 import { PlanetVolumeCollector } from '../shadow/volumes';
 import { needsManualDepthCompare, type ManualCompareOption } from '../shadow/webglCompat';
+import { earleLight } from './lightCurvature';
 
 /**
  * Alter nachschärfender Schattenfilter (P2, bleibt als Export und als „Alt“-Referenz erhalten).
@@ -168,6 +169,8 @@ export interface ShadowDisplayLike {
   readonly field: { hMax: number; heightAt(x: number, z: number): number };
   /** Höhe auf den Dreiecken des geladenen Chunks (null = nicht geladen): das gezeichnete Gelände, ohne Rauschen. */
   meshHeightAt?(x: number, z: number): number | null;
+  /** Höhenband (min, max) der Chunks im Bild — ändert es sich merklich, fitten die Kaskaden neu (sonst gleiten sie). */
+  readonly viewHeightBand?: readonly [number, number];
   /**
    * Höchstes Gelände der Chunks im Bild (Steilhänge und Hügelstaffeln über der Hügelamplitude, Welten 06/11/12): die
    * Empfänger reichen bis dorthin, sonst fehlen die Schlagschatten oben am Hang.
@@ -176,16 +179,19 @@ export interface ShadowDisplayLike {
 }
 
 /**
- * Verzug Anzeige ↔ Schattenraum einer Anzeige-Abbildung: der Schattenraum ist die Ebene um den Fokus mit dem Abfall der
- * Anzeigekugel (Paraboloid `y − (x² + z²) / 2Rₛ`, Rₛ = R / (1 + c)). So fallen Schlagschatten wie auf der alten Kugel:
- * die Erde fällt vom Werfer weg, hohe Werfer (Türme, Wahrzeichen) werfen keine endlos langen Schatten bei 10° Sonne,
- * nahe am Fokus ist der Raum eben (Eigen- und Schlagschatten eine Form, Licht mit den ebenen Normalen). x/z bleiben
- * Ebenenkoordinaten: das Texelgitter bleibt beim Schwenken ruhig.
+ * Verzug Anzeige ↔ Schattenraum einer Anzeige-Abbildung: der Schattenraum ist die Ebene um den Fokus, wahlweise mit dem
+ * Abfall der Anzeigekugel (Paraboloid `y − (x² + z²) · k_t / 2R`, `k_t` = Tintenkugel `earleLight.ink`, R0/R1).
+ *
+ * Standard k_t = 0 (Karte v5): der Schattenraum ist die **ebene** Ebene → Schatten sind translationsinvariant (gleiche
+ * Form überall im Bild, wie in Earles Gemälden) und atmen beim Schwenken nicht; Licht (Terminator mit `curvedLightView(L,
+ * ink)`), Schattenraum und Werfer-Discard rechnen in derselben Krümmung. k_t = 1 ist die alte Kugel: die Erde fällt vom
+ * Werfer weg, hohe Werfer werfen keine endlos langen Schatten bei 10° Sonne, Nachtseite und Atmen kommen zurück. x/z
+ * bleiben Ebenenkoordinaten (Fokus-relativ); das Texelgitter heftet der Fit in Ebenenkoordinaten an (`gridOffset`).
  */
 export function displayShadowWarp(mapping: DisplayMapping): ShadowWarp {
-  const inv = (): number => (1 + mapping.curvature.value) / (2 * mapping.radius.value);
-  // (1 + c) / 2R aus denselben Uniforms wie die Abbildung (der Krümmungs-Boost ändert sich mit der Welt)
-  const invNode = (mapping.curvature as unknown as FloatNode).add(1).div((mapping.radius as unknown as FloatNode).mul(2));
+  const inv = (): number => earleLight.ink.value / (2 * mapping.radius.value);
+  // k_t / 2R aus denselben Uniforms wie Licht und Discard
+  const invNode = (earleLight.ink as unknown as FloatNode).div((mapping.radius as unknown as FloatNode).mul(2));
   return {
     node: (p) => {
       const f = mapping.toFlat(p);
@@ -203,13 +209,16 @@ export function displayShadowWarp(mapping: DisplayMapping): ShadowWarp {
         return mapping.toDisplayCpu(p, p);
       },
     },
+    // Teil der Pose-Signatur: ändert sich die Tintenkugel, passt der Fit nicht mehr
+    key: () => earleLight.ink.value,
+    // Nur bei k_t = 0 ist der Schattenraum eine Verschiebung der Ebene → Kaskaden dürfen beim Schwenken gleiten
+    translationInvariant: () => earleLight.ink.value === 0,
   };
 }
 
 /** Flacher Weltpunkt (Ebene − Fokus, y = R + h) → Schattenraum (Paraboloid-Abfall wie `displayShadowWarp`). */
 function flatToShadow(mapping: DisplayMapping, p: Vector3): Vector3 {
-  const rs = mapping.radius.value / (1 + mapping.curvature.value);
-  p.y -= (p.x * p.x + p.z * p.z) / (2 * rs);
+  p.y -= ((p.x * p.x + p.z * p.z) * earleLight.ink.value) / (2 * mapping.radius.value);
   return p;
 }
 
@@ -260,12 +269,18 @@ export function displayShadowReceivers(world: ShadowDisplayLike | (() => ShadowD
   const volumes = (): ReceiverVolume[] => {
     const w = get();
     const list = collector.collect(planeObject, w ? { heightAt: (x, z) => w.meshHeightAt?.(x, z) ?? w.field.heightAt(x, z), focus: w.focus } : null, coverTolerance);
-    // flache Weltpunkte → Schattenraum (Kugelabfall)
+    // flache Weltpunkte → Schattenraum (Kugelabfall, bei k_t = 0 keiner)
     if (w) for (const v of list) flatToShadow(w.mapping, v.center);
     return list;
   };
-  return { sphere, volumes };
+  // Texelgitter an der Ebene: Ebenenkoordinaten des Schattenraum-Ursprungs = Fokus; Höhenband der Chunks im Bild
+  const gridOrigin = (): { x: number; z: number } => get()?.focus ?? ORIGIN_XZ;
+  const heightBand = (): readonly [number, number] => get()?.viewHeightBand ?? NO_BAND;
+  return { sphere, volumes, gridOrigin, heightBand };
 }
+
+const ORIGIN_XZ = { x: 0, z: 0 };
+const NO_BAND: readonly [number, number] = [0, 0];
 
 /** Optionen für `planetShadowReceivers` / `SunRig.fitToPlanet`. */
 export interface PlanetReceiverOptions {

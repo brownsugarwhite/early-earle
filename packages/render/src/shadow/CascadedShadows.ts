@@ -15,6 +15,7 @@ import {
   min,
   mix,
   mod,
+  normalWorld,
   normalWorldGeometry,
   positionView,
   positionWorld,
@@ -31,7 +32,7 @@ import {
   vec4,
 } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node, Vec4Node } from '../earle/tsl';
-import { CascadeFitter, createFitResult, type CascadeSize, type ClipBoxSpec, type FitInput, type FitResult, type ReceiverShellSpec, type ReceiverSlabSpec, type ReceiverVolume, type ShadowSpaceWarp } from './fit';
+import { CascadeFitter, DEFAULT_DEPTH_MARGIN, createFitResult, defaultMargins, type CascadeFit, type CascadeSize, type ClipBoxSpec, type FitInput, type FitResult, type ReceiverShellSpec, type ReceiverSlabSpec, type ReceiverVolume, type ShadowSpaceWarp } from './fit';
 import {
   bsplineField,
   createDepthCompareZ,
@@ -46,6 +47,7 @@ import {
   type ShadowTaps,
 } from './filters';
 import type { ManualCompareOption } from './webglCompat';
+import { curvedLightWorld, earleLight } from '../earle/lightCurvature';
 
 /**
  * Kaskadierte, an die Kamera gefittete Earle-Schatten als eigener Schattenknoten (`light.shadow.shadowNode`).
@@ -101,6 +103,13 @@ export interface ViewReceivers {
   casterHeight?: number;
   /** Empfänger über dem Boden als Welt-Kugeln (je Refit abgefragt), z. B. Riesenbaum-Stamm oder Brett. */
   volumes?: (() => ReceiverVolume[]) | null;
+  /**
+   * Ebenenkoordinaten des Schattenraum-Ursprungs (Fokus der unendlichen Ebene, ADR 0002): das Texelgitter heftet sich
+   * an die Ebene; beim Schwenken gleiten die Kaskaden (Karte behalten, Lichtkamera mitschieben) statt neu zu zeichnen.
+   */
+  gridOrigin?: (() => { x: number; z: number }) | null;
+  /** Höhenband (min, max) der Chunks im Bild: ändert es sich merklich (> 0,5), wird neu gefittet. */
+  heightBand?: (() => readonly [number, number]) | null;
 }
 
 /**
@@ -111,6 +120,13 @@ export interface ViewReceivers {
 export interface ShadowWarp {
   node(p: Vec3Node): Vec3Node;
   cpu: ShadowSpaceWarp;
+  /** Parameter des Verzugs (z. B. die Tintenkugel k_t): Teil der Pose-Signatur, eine Änderung fittet neu. */
+  key?: () => number;
+  /**
+   * Ist der Schattenraum eine reine Verschiebung der Ebene (k_t = 0)? Nur dann dürfen die Kaskaden beim Schwenken
+   * gleiten (Karte behalten, Lichtkamera mitschieben); sonst wird beim Schwenken neu gefittet und gezeichnet.
+   */
+  translationInvariant?: () => boolean;
 }
 
 export interface CascadedShadowsOptions {
@@ -148,6 +164,8 @@ export interface CascadedShadowsOptions {
   bias?: number;
   /** Tiefe manuell vergleichen (siehe `ShadowFilterOptions.manualCompare`); Standard: automatisch. */
   manualCompare?: ManualCompareOption;
+  /** Rand je Kaskade (Anteil der Empfängerausdehnung je Seite); Standard `defaultMargins(n)` = 0,1 / 0,2 / 0,3. */
+  margins?: readonly number[];
 }
 
 export interface CascadeStats {
@@ -158,16 +176,57 @@ export interface CascadeStats {
   texelX: number;
   texelY: number;
   active: boolean;
+  /** Rechteckursprung in Ebenenkoordinaten (Vielfache des Texels; beim Schwenken fest, bis das Rechteck neu snappt). */
+  originPlaneX: number;
+  originPlaneY: number;
+  /** Schattenpässe dieser Kaskade seit dem Start. */
+  dirtyPasses: number;
 }
 
 export interface CascadedShadowStats {
   cascades: CascadeStats[];
   psiDeg: number;
+  /** Vollständige Fits (Pose geändert, Höhenband geändert, > 2 Einheiten Fokusweg). */
   refits: number;
+  /** Bilder mit mindestens einem Schattenpass. */
   passes: number;
+  /** Bilder, in denen die Kaskaden nur mitgeschoben wurden (Schwenken ohne Neuzeichnen). */
+  slides: number;
+  /** Schattenpässe je Kaskade. */
+  dirtyPasses: number[];
   rays: number;
   dMin: number;
   dMax: number;
+}
+
+/**
+ * Empfängerebene der Kaskaden: 0 = flache Facettennormale aus den Bildschirmableitungen (exakt, aber an Hügelgraten
+ * knickt der Ebenen-Bias je Facette), 1 = interpolierte Schattierungsnormale (glatt). Geteilter Uniform (`?planeSmooth=`,
+ * Schatten-Lab-Regler), kein Neukompilieren.
+ */
+export const shadowReceiverPlane = {
+  smooth: uniform(0) as UniformNode<'float', number>,
+};
+
+/** Empfängerebene glätten: 0 Facette … 1 Schattierungsnormale. */
+export function setShadowPlaneSmooth(value: number): void {
+  if (Number.isFinite(value)) shadowReceiverPlane.smooth.value = Math.min(1, Math.max(0, value));
+}
+
+/** Fokusweg (Welteinheiten), nach dem beim Schwenken spätestens neu gefittet wird (Bodenschätzung veraltet). */
+export const REFIT_PAN_DISTANCE = 2;
+/** Änderung des Höhenbands der Chunks im Bild, ab der neu gefittet wird. */
+const HEIGHT_BAND_STEP = 0.5;
+
+/** Zustand, zu dem der Inhalt einer Kaskadenkarte gehört (Ebenenkoordinaten): nur wenn er sich ändert, wird gezeichnet. */
+interface DrawnState {
+  active: boolean;
+  texelX: number;
+  texelY: number;
+  originPlaneX: number;
+  originPlaneY: number;
+  depthPlane0: number;
+  depthPlane1: number;
 }
 
 /** Optionen für `sampleField` (Schattenwert an beliebiger Weltposition, jede Shader-Stufe). */
@@ -360,9 +419,12 @@ class TerminatorShadowNode extends ShadowNode {
       m.blending = NoBlending;
       m.fog = false;
       if (kind === 'smooth') {
-        const L = this.axes.axisL;
+        const L = this.axes.axisL as unknown as Vec3Node;
         m.colorNode = Fn(() => {
-          If((normalWorldGeometry as unknown as Vec3Node).dot(L).greaterThan(0), () => {
+          // Terminator mit der Tintenkugel (R2): dieselbe Krümmung wie das Licht der Empfänger und der Schattenraum.
+          // Vor dem `If` als Variable (TSL legt Knoten sonst im Zweig an, in dem sie zuerst gebaut werden)
+          const Lt = curvedLightWorld(L, positionWorld as unknown as Vec3Node, earleLight.ink).toVar('eeDiscardL');
+          If((normalWorldGeometry as unknown as Vec3Node).dot(Lt).greaterThan(0), () => {
             Discard();
           });
           return vec4(0, 0, 0, 1);
@@ -551,8 +613,23 @@ export class CascadedShadows {
   /** Empfängerebene je Fragment (flache Weltnormale), vor der Kaskadenwahl in gleichförmigem Kontrollfluss gesetzt. */
   private readonly planeNormal = property('vec3', 'eeShadowPlaneN') as unknown as Vec3Node & { assign(v: unknown): void };
   private signature: number[] = [];
-  private dirty = true;
+  /** Pan-Signatur (Volumen in Ebenenkoordinaten, Empfängerhöhe, Höhenband): Änderung → Refit ohne Posewechsel. */
+  private panSignature: number[] = [];
+  /** Schmutzige Kaskaden (neu zeichnen); `markDirty()` setzt alle. */
+  private readonly dirty: boolean[] = [];
+  /** Zustand, zu dem der Inhalt jeder Karte gehört (Ebenenkoordinaten). */
+  private readonly drawn: DrawnState[] = [];
   private referenceDirty = true;
+  /** Ebenenkoordinaten des Schattenraum-Ursprungs (Fokus) jetzt, beim letzten Fit und beim letzten Bodenmarsch. */
+  private readonly gridOffset = new Vector3();
+  private readonly fitGridOffset = new Vector3();
+  private readonly marchGrid = new Vector3();
+  private lastHeightBand: readonly [number, number] = [0, 0];
+  private marchBandKey = '';
+  slides = 0;
+  readonly dirtyPasses: number[] = [];
+  /** Rand je Kaskade (Anteil der Empfängerausdehnung je Seite), live änderbar (wirkt beim nächsten Refit). */
+  margins: number[];
   private readonly shellScratch: ReceiverShellSpec = { center: new Vector3(), rMin: 0, rMax: 1 };
   private readonly slabScratch: ReceiverSlabSpec = { origin: new Vector3(), normal: new Vector3(0, 1, 0), hMin: 0, hMax: 1 };
   /** Empfänger-Volumen des letzten Signaturaufbaus (je Frame einmal abgefragt). */
@@ -584,7 +661,13 @@ export class CascadedShadows {
     this.casterSettings.smooth = options.smoothCasters ?? true;
     const shared = createShadowFrameUniforms();
     this.axes = { axisX: shared.axisX, axisY: shared.axisY, axisL: shared.axisL, grazing: shared.grazing, baseBias: shared.baseBias };
-    for (const size of options.sizes) this.cascades.push(this.createEntry(size, options.taps, 'field', this.axes));
+    this.margins = options.margins ? [...options.margins] : defaultMargins(options.sizes.length);
+    for (const size of options.sizes) {
+      this.cascades.push(this.createEntry(size, options.taps, 'field', this.axes));
+      this.dirty.push(true);
+      this.dirtyPasses.push(0);
+      this.drawn.push({ active: false, texelX: 0, texelY: 0, originPlaneX: NaN, originPlaneY: NaN, depthPlane0: NaN, depthPlane1: NaN });
+    }
     if (options.referenceSize) {
       const s = options.referenceSize;
       this.reference = this.createEntry({ width: s, height: s }, 1, 'threshold', null, options.referenceFilter);
@@ -643,7 +726,7 @@ export class CascadedShadows {
 
   /** Inhalt geändert (Planet gerollt, Wachstum, Werfer bewegt): alle Karten neu rendern. */
   markDirty(): void {
-    this.dirty = true;
+    this.dirty.fill(true);
     this.referenceDirty = true;
   }
 
@@ -674,8 +757,10 @@ export class CascadedShadows {
       // Ebene: Empfänger schlagen mit ihrer flachen Position nach (Anzeige → Schattenraum je Fragment)
       const spw = shadowPositionWorld as unknown as Vec3Node;
       const ps = warp ? (hoist(warp.node(spw), 'vec3') as Vec3Node) : spw;
-      // Empfängerebene einmal je Fragment, vor jeder Verzweigung (Ableitungen brauchen gleichförmigen Kontrollfluss)
-      planeNormal.assign(flatNormalWorld(ps));
+      // Empfängerebene einmal je Fragment, vor jeder Verzweigung (Ableitungen brauchen gleichförmigen Kontrollfluss):
+      // flache Facettennormale, mit `planeSmooth` zur interpolierten Schattierungsnormale geglättet (Normalen der Ebene
+      // werden nicht abgebildet — beide liegen im Schattenraum)
+      planeNormal.assign(mix(flatNormalWorld(ps), normalWorld as unknown as Vec3Node, shadowReceiverPlane.smooth));
       const p = vec4(ps, 1) as unknown as Vec4Node;
       const depth = (positionView as unknown as Vec3Node).z.negate() as unknown as FloatNode;
       const field = float(0).toVar('eeShadowField') as unknown as FloatNode & { assign(v: unknown): void; addAssign(v: unknown): void };
@@ -880,16 +965,12 @@ export class CascadedShadows {
     if (this.reference) this.reference.shadow.camera.layers.mask = mask;
 
     renderer.getDrawingBufferSize(_size);
+    // Gitterursprung (Fokus der Ebene) jetzt
+    const origin = this.receivers.gridOrigin?.();
+    if (origin) this.gridOffset.set(origin.x, 0, origin.z);
+    else this.gridOffset.set(0, 0, 0);
     const sig = this.buildSignature(camera, _size);
-    let changed = sig.length !== this.signature.length;
-    if (!changed) {
-      for (let i = 0; i < sig.length; i++) {
-        if (Math.abs(sig[i]! - this.signature[i]!) > 1e-6 * Math.max(1, Math.abs(sig[i]!))) {
-          changed = true;
-          break;
-        }
-      }
-    }
+    let changed = !sameSignature(sig, this.signature);
     // Koordinatensystem der Lichtkameras wie die rendernde Kamera (sonst passt die Schattenmatrix nicht zur Karte,
     // falls ein Konsument vor dem ersten Empfänger rendert)
     for (const c of this.cascades) {
@@ -901,19 +982,65 @@ export class CascadedShadows {
         changed = true;
       }
     }
+    const pan = this.buildPanSignature();
     if (changed) {
+      // Pose (Kamera, Sonne, Projektion, Kaskaden, Werferhöhe, Verzug) geändert: voller Fit
       this.signature = sig;
+      this.panSignature = pan;
       this.refit(camera, _size);
+    } else {
+      const panChanged = !sameSignature(pan, this.panSignature);
+      const moved = !this.gridOffset.equals(this.fitGridOffset);
+      const warpOk = this.options.warp ? (this.options.warp.translationInvariant?.() ?? false) : true;
+      if (panChanged || (moved && (!warpOk || this.gridOffset.distanceTo(this.fitGridOffset) > REFIT_PAN_DISTANCE))) {
+        // Höhenband/Volumen geändert, Schattenraum nicht verschiebungsinvariant oder zu weit geschwenkt: neu fitten —
+        // mit Hysterese im Fitter zeichnen nur Kaskaden neu, deren Rechteck wirklich wechselt
+        this.panSignature = pan;
+        this.refit(camera, _size);
+      } else if (moved) {
+        this.slide();
+      }
     }
-    if (this.dirty) {
-      for (const c of this.cascades) if (c.active.value > 0.5) c.shadow.needsUpdate = true;
-      this.passes++;
-      this.dirty = false;
+    let any = false;
+    for (let k = 0; k < this.cascades.length; k++) {
+      const c = this.cascades[k]!;
+      if (!this.dirty[k] || c.active.value <= 0.5) {
+        this.dirty[k] = false;
+        continue;
+      }
+      c.shadow.needsUpdate = true;
+      this.dirty[k] = false;
+      this.dirtyPasses[k]!++;
+      any = true;
     }
+    if (any) this.passes++;
     if (this.reference && this.referenceActive && this.referenceDirty) {
       this.reference.shadow.needsUpdate = true;
       this.referenceDirty = false;
     }
+  }
+
+  /** Volumen (in Ebenenkoordinaten, damit sie beim Schwenken stillstehen), Empfängerhöhe, Höhenband der Chunks. */
+  private buildPanSignature(): number[] {
+    const r = this.receivers;
+    const s: number[] = [];
+    const vols = r.volumes?.() ?? null;
+    this.volumeScratch = vols;
+    const g = this.gridOffset;
+    if (vols) for (const v of vols) s.push(3, v.center.x + g.x, v.center.y + g.y, v.center.z + g.z, v.radius);
+    // nach `volumes` (der Sammler liest dabei die Höhen-Hinweise der Empfänger)
+    if (r.sphere) s.push(4, r.sphere.coverTolerance ?? -1, r.sphere.coverAbove ?? -1);
+    const band = r.heightBand?.();
+    if (band) {
+      // nur merkliche Änderungen (Stufen von HEIGHT_BAND_STEP) zählen
+      const lo = Math.floor(band[0] / HEIGHT_BAND_STEP);
+      const hi = Math.ceil(band[1] / HEIGHT_BAND_STEP);
+      const prevLo = Math.floor(this.lastHeightBand[0] / HEIGHT_BAND_STEP);
+      const prevHi = Math.ceil(this.lastHeightBand[1] / HEIGHT_BAND_STEP);
+      if (lo !== prevLo || hi !== prevHi) this.lastHeightBand = [band[0], band[1]];
+      s.push(5, Math.floor(this.lastHeightBand[0] / HEIGHT_BAND_STEP), Math.ceil(this.lastHeightBand[1] / HEIGHT_BAND_STEP));
+    }
+    return s;
   }
 
   private resolveVector(v: Vector3 | Object3D | undefined, out: Vector3): Vector3 {
@@ -941,13 +1068,11 @@ export class CascadedShadows {
       s.push(2, _v.x, _v.y, _v.z, r.plane.minHeight, r.plane.maxHeight);
     }
     s.push(r.maxDistance ?? -1);
-    const vols = r.volumes?.() ?? null;
-    this.volumeScratch = vols;
-    if (vols) for (const v of vols) s.push(3, v.center.x, v.center.y, v.center.z, v.radius);
-    // nach `volumes` (der Sammler liest dabei die Höhen-Hinweise der Empfänger)
-    if (r.sphere) s.push(4, r.sphere.coverTolerance ?? -1, r.sphere.coverAbove ?? -1);
     if (this.clip) s.push(...this.clip.toLocal.elements, this.clip.min.x, this.clip.min.y, this.clip.min.z, this.clip.max.x, this.clip.max.y, this.clip.max.z);
     for (const c of this.cascades) s.push(c.size.width, c.size.height);
+    // Verzug-Parameter (Tintenkugel): der Schattenraum selbst ändert sich
+    s.push(this.options.warp?.key?.() ?? 0);
+    for (const m of this.margins) s.push(m);
     return s;
   }
 
@@ -965,13 +1090,18 @@ export class CascadedShadows {
       if (surface) {
         if (c.isObject3D) c.getWorldQuaternion(_invQ);
         else _invQ.identity();
-        // Neu messen, wenn sich die Kamera bewegt oder der Planet seit dem letzten Marsch merklich gedreht hat
+        // Neu messen, wenn sich die Kamera bewegt, der Planet seit dem letzten Marsch merklich gedreht hat, der Fokus
+        // der Ebene weit genug gewandert ist (Boden unter den Strahlen ein anderer) oder das Höhenband wechselte
         const camNow = [...camera.matrixWorld.elements, ...camera.projectionMatrix.elements];
         let camMoved = camNow.length !== this.marchCam.length;
         for (let i = 0; !camMoved && i < camNow.length; i++) camMoved = Math.abs(camNow[i]! - this.marchCam[i]!) > 1e-6;
-        if (camMoved || this.marchQuat.angleTo(_invQ) > this.marchAngle) {
+        const panned = this.gridOffset.distanceTo(this.marchGrid) > REFIT_PAN_DISTANCE * 0.5;
+        const bandKey = `${Math.floor(this.lastHeightBand[0] / HEIGHT_BAND_STEP)}:${Math.ceil(this.lastHeightBand[1] / HEIGHT_BAND_STEP)}`;
+        if (camMoved || panned || bandKey !== this.marchBandKey || this.marchQuat.angleTo(_invQ) > this.marchAngle) {
           this.surfaceEpoch++;
           this.marchQuat.copy(_invQ);
+          this.marchGrid.copy(this.gridOffset);
+          this.marchBandKey = bandKey;
           this.marchCam.length = 0;
           this.marchCam.push(...camNow);
         }
@@ -1029,37 +1159,44 @@ export class CascadedShadows {
       lockTexels: keepPsi,
       volumes: this.volumeScratch,
       warp: this.options.warp?.cpu ?? null,
+      gridOffset: this.gridOffset,
+      margin: this.margins,
     };
     const fit = this.fitter.fit(input, this.fitResult);
     this.refits++;
+    this.fitGridOffset.copy(this.gridOffset);
     this.apply(fit);
-    this.dirty = true;
   }
 
+  /**
+   * Fit übernehmen: Lichtkameras aus den Rechtecken (Ebenenkoordinaten) und dem Auge; schmutzig wird nur eine Kaskade,
+   * deren Karteninhalt sich ändert (Texel, Rechteckursprung oder Tiefenfenster in Ebenenkoordinaten) — ein Refit nach
+   * einem Schwenk, der dank Rand dieselben Rechtecke liefert, zeichnet nichts neu.
+   */
   private apply(fit: FitResult): void {
     this.axes.axisX.value.copy(fit.X);
     this.axes.axisY.value.copy(fit.Y);
     this.axes.axisL.value.copy(fit.L);
-    const ex = fit.X.dot(fit.eye);
-    const ey = fit.Y.dot(fit.eye);
     this.cascades.forEach((c, k) => {
       const cf = fit.cascades[k]!;
-      c.active.value = !fit.empty && cf.active ? 1 : 0;
-      if (!c.active.value) return;
-      c.light.position.copy(fit.eye);
-      c.light.target.position.copy(fit.eye).sub(fit.L);
-      c.light.updateMatrixWorld(true);
-      c.light.target.updateMatrixWorld(true);
-      const cam = c.shadow.camera as unknown as { up: Vector3; left: number; right: number; top: number; bottom: number; near: number; far: number; updateProjectionMatrix(): void };
-      cam.up.copy(fit.Y);
-      cam.left = cf.x0 - ex;
-      cam.right = cf.x1 - ex;
-      cam.bottom = cf.y0 - ey;
-      cam.top = cf.y1 - ey;
-      cam.near = cf.near;
-      cam.far = cf.far;
-      cam.updateProjectionMatrix();
-      c.shadow.updateMatrices(c.light as unknown as DirectionalLight);
+      const active = !fit.empty && cf.active;
+      c.active.value = active ? 1 : 0;
+      const d = this.drawn[k]!;
+      if (!active) {
+        d.active = false;
+        return;
+      }
+      if (!d.active || d.texelX !== cf.texelX || d.texelY !== cf.texelY || d.originPlaneX !== cf.originPlaneX || d.originPlaneY !== cf.originPlaneY || d.depthPlane0 !== cf.depthPlane0 || d.depthPlane1 !== cf.depthPlane1) {
+        this.dirty[k] = true;
+        d.active = true;
+        d.texelX = cf.texelX;
+        d.texelY = cf.texelY;
+        d.originPlaneX = cf.originPlaneX;
+        d.originPlaneY = cf.originPlaneY;
+        d.depthPlane0 = cf.depthPlane0;
+        d.depthPlane1 = cf.depthPlane1;
+      }
+      this.applyCamera(c, cf, fit);
       c.frame.texel.value.set(cf.texelX, cf.texelY);
       c.frame.range.value = Math.max(1e-3, cf.far - cf.near);
       // Hardware-Slope-Bias = Faktor × Tiefenänderung je Texel: mit der kleineren Texelkante ist der Versatz entlang jeder
@@ -1069,6 +1206,97 @@ export class CascadedShadows {
       c.split.value = cf.split;
       // Überblendband: von 2,5 Texeln (Filter-Fußabdruck) bis 4 Texel vom Rand
       c.band.value.set(2.5 / c.size.width, 4 / c.size.width, 2.5 / c.size.height, 4 / c.size.height);
+    });
+  }
+
+  /**
+   * Lichtkamera einer Kaskade aus den Ebenengrößen und dem aktuellen Gitterursprung: Auge = eyePlane − gridOffset,
+   * Rechteck = originPlane − X/Y · gridOffset, Tiefen aus dem Fenster in Ebenenkoordinaten. Alle Projektionsgrößen sind
+   * damit beim Schwenken konstant, nur die Position wandert — der Karteninhalt bleibt gültig.
+   */
+  private applyCamera(c: CascadeEntry, cf: CascadeFit, fit: FitResult): void {
+    const g = this.gridOffset;
+    _v.copy(fit.eyePlane).sub(g);
+    const ex = fit.X.dot(_v);
+    const ey = fit.Y.dot(_v);
+    const el = fit.L.dot(_v);
+    c.light.position.copy(_v);
+    c.light.target.position.copy(_v).sub(fit.L);
+    c.light.updateMatrixWorld(true);
+    c.light.target.updateMatrixWorld(true);
+    const gX = fit.X.dot(g);
+    const gY = fit.Y.dot(g);
+    const gL = fit.L.dot(g);
+    cf.x0 = cf.originPlaneX - gX;
+    cf.x1 = cf.x0 + c.size.width * cf.texelX;
+    cf.y0 = cf.originPlaneY - gY;
+    cf.y1 = cf.y0 + c.size.height * cf.texelY;
+    cf.near = Math.max(0.05, el - (cf.depthPlane1 - gL));
+    cf.far = el - (cf.depthPlane0 - gL);
+    const cam = c.shadow.camera as unknown as { up: Vector3; left: number; right: number; top: number; bottom: number; near: number; far: number; updateProjectionMatrix(): void };
+    cam.up.copy(fit.Y);
+    cam.left = cf.x0 - ex;
+    cam.right = cf.x1 - ex;
+    cam.bottom = cf.y0 - ey;
+    cam.top = cf.y1 - ey;
+    cam.near = cf.near;
+    cam.far = cf.far;
+    cam.updateProjectionMatrix();
+    c.shadow.updateMatrices(c.light as unknown as DirectionalLight);
+  }
+
+  /**
+   * Schwenken ohne Refit: die Rechtecke stehen in Ebenenkoordinaten fest, die Lichtkameras rücken um den Fokusweg nach
+   * (Karteninhalt bleibt gültig, kein Schattenpass). Erst wenn der Empfängerbedarf der letzten Messung (im Schattenraum
+   * fest, weil die Kamera steht) den Rand eines Rechtecks oder sein Tiefenfenster verlässt, snappt **nur diese** Kaskade
+   * neu und wird schmutzig.
+   */
+  private slide(): void {
+    const fit = this.fitResult;
+    if (fit.empty) return;
+    const g = this.gridOffset;
+    const gX = fit.X.dot(g);
+    const gY = fit.Y.dot(g);
+    const gL = fit.L.dot(g);
+    fit.eye.copy(fit.eyePlane).sub(g);
+    fit.gridOffset.copy(g);
+    this.fitGridOffset.copy(g);
+    this.slides++;
+    this.cascades.forEach((c, k) => {
+      const cf = fit.cascades[k]!;
+      if (!cf.active) return;
+      const padX = 4 * cf.texelX + (cf.needX1 - cf.needX0) * 0.02;
+      const padY = 4 * cf.texelY + (cf.needY1 - cf.needY0) * 0.02;
+      const x0 = cf.originPlaneX - gX;
+      const y0 = cf.originPlaneY - gY;
+      // Passt der Bedarf gar nicht ins Rechteck (Texel gesperrt, Hügel ins Bild gekommen), bleibt es stehen — die
+      // gröbere Kaskade deckt den Rest, der nächste Refit wächst das Texel; sonst snappte es jedes Bild neu
+      const fitsX = cf.needX1 - cf.needX0 <= c.size.width * cf.texelX - 2 * padX;
+      const fitsY = cf.needY1 - cf.needY0 <= c.size.height * cf.texelY - 2 * padY;
+      const rectOk = (!fitsX || (x0 + padX <= cf.needX0 && x0 + c.size.width * cf.texelX - padX >= cf.needX1)) && (!fitsY || (y0 + padY <= cf.needY0 && y0 + c.size.height * cf.texelY - padY >= cf.needY1));
+      const depthOk = cf.depthPlane0 - gL <= cf.needZ0 && cf.depthPlane1 - gL >= cf.needZ1;
+      if (!rectOk || !depthOk) {
+        // Neu snappen: Bedarf mittig im Rechteck (Ebenenkoordinaten), Tiefenfenster mit Rand
+        if (!rectOk) {
+          cf.originPlaneX = Math.round(((cf.needX0 + cf.needX1) * 0.5 + gX - c.size.width * cf.texelX * 0.5) / cf.texelX) * cf.texelX;
+          cf.originPlaneY = Math.round(((cf.needY0 + cf.needY1) * 0.5 + gY - c.size.height * cf.texelY * 0.5) / cf.texelY) * cf.texelY;
+        }
+        if (!depthOk) {
+          cf.depthPlane0 = cf.needZ0 - DEFAULT_DEPTH_MARGIN + gL;
+          cf.depthPlane1 = cf.needZ1 + DEFAULT_DEPTH_MARGIN + gL;
+          // Auge muss vor dem Fenster bleiben (sonst Nahebene < 0)
+          const el = fit.L.dot(fit.eyePlane);
+          if (el < cf.depthPlane1 + 0.5) fit.eyePlane.addScaledVector(fit.L, cf.depthPlane1 + 8.5 - el);
+        }
+        const d = this.drawn[k]!;
+        d.originPlaneX = cf.originPlaneX;
+        d.originPlaneY = cf.originPlaneY;
+        d.depthPlane0 = cf.depthPlane0;
+        d.depthPlane1 = cf.depthPlane1;
+        this.dirty[k] = true;
+      }
+      this.applyCamera(c, cf, fit);
+      c.frame.range.value = Math.max(1e-3, cf.far - cf.near);
     });
   }
 
@@ -1161,11 +1389,24 @@ export class CascadedShadows {
     return {
       cascades: this.cascades.map((c, k) => {
         const cf = fit.cascades[k]!;
-        return { width: c.size.width, height: c.size.height, pxPerTexel: cf.pxPerTexel, split: cf.split, texelX: cf.texelX, texelY: cf.texelY, active: c.active.value > 0.5 };
+        return {
+          width: c.size.width,
+          height: c.size.height,
+          pxPerTexel: cf.pxPerTexel,
+          split: cf.split,
+          texelX: cf.texelX,
+          texelY: cf.texelY,
+          active: c.active.value > 0.5,
+          originPlaneX: cf.originPlaneX,
+          originPlaneY: cf.originPlaneY,
+          dirtyPasses: this.dirtyPasses[k] ?? 0,
+        };
       }),
       psiDeg: (fit.psi * 180) / Math.PI,
       refits: this.refits,
       passes: this.passes,
+      slides: this.slides,
+      dirtyPasses: [...this.dirtyPasses],
       rays: fit.rays,
       dMin: fit.dMin,
       dMax: fit.dMax,
@@ -1180,6 +1421,15 @@ export class CascadedShadows {
     }
     (this.node as unknown as { dispose(): void }).dispose();
   }
+}
+
+/** Zwei Signaturen gleich (relative Toleranz 1e-6)? */
+function sameSignature(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (Math.abs(a[i]! - b[i]!) > 1e-6 * Math.max(1, Math.abs(a[i]!))) return false;
+  }
+  return true;
 }
 
 let hoistCount = 0;

@@ -81,6 +81,8 @@ function paramsFromUrl(search: URLSearchParams): Partial<ShadowLabParams> {
   if (crown !== null) out.crownHeight = Math.max(0, Math.min(8, crown));
   const repeat = num('repeat');
   if (repeat !== null) out.repeat = Math.max(1, Math.min(40, Math.round(repeat)));
+  const planeSmooth = num('planeSmooth');
+  if (planeSmooth !== null) out.planeSmooth = Math.max(0, Math.min(1, planeSmooth));
   return out;
 }
 
@@ -235,6 +237,16 @@ export function LabShadow() {
                 <input type="checkbox" checked={params.planeBias} onChange={(e) => set({ planeBias: e.target.checked })} data-testid="shadow-plane" />
               </label>
               <Range label="Grundbias" value={params.baseBias} min={0} max={1} step={0.05} format={(v) => `${v.toFixed(2)} Texel`} onChange={(v) => set({ baseBias: v })} />
+              <Range
+                label="Empfängerebene glätten"
+                testId="shadow-plane-smooth"
+                value={params.planeSmooth}
+                min={0}
+                max={1}
+                step={0.05}
+                format={(v) => (v < 0.025 ? 'Facette' : v > 0.975 ? 'glatt' : `${Math.round(v * 100)} %`)}
+                onChange={(v) => set({ planeSmooth: v })}
+              />
               {params.debug >= 3 ? (
                 <Range label="Kontaktfenster" value={params.gap} min={0.05} max={1.5} step={0.05} format={(v) => `${v.toFixed(2)} m`} onChange={(v) => set({ gap: v })} />
               ) : null}
@@ -327,6 +339,9 @@ export function LabShadow() {
                 ))}
                 <span>
                   ψ {fmt(cs.psiDeg, 0)}° · Tiefe {fmt(cs.dMin)}–{fmt(cs.dMax)} · Refits {cs.refits} · Pässe {stats?.passes ?? 0}
+                </span>
+                <span data-testid="shadow-slide-info">
+                  Slides {cs.slides} · Kaskadenpässe {cs.dirtyPasses.join(' / ')}
                 </span>
               </>
             ) : (

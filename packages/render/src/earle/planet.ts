@@ -28,6 +28,7 @@ import {
 import { DisplayMapping } from './display';
 import { EarleMaterial } from './EarleMaterial';
 import { aaSaw, earleGradients } from './gradients';
+import { earleLight } from './lightCurvature';
 import type { ShadowTint } from '../shadow/shadowTint';
 import { PaletteAtlas, hexToRgb8, type WorldPalette, type WorldRows } from './palette';
 import { GROWTH_SLOTS, PlanetVegetation, type VegetationPropEntry, type VegetationTreeEntry } from './planetVegetation';
@@ -175,6 +176,12 @@ export interface EarlePlanetOptions {
   path: { clearNode: number; clearPath: number; keepGround?: readonly number[] };
   /** Chunks, die pro Frame höchstens erzeugt werden (zusätzlich gilt `loadBudgetMs`). */
   loadsPerFrame?: number;
+  /**
+   * Werfer sonnenwärts (Karte v5, R1.4): Chunks außerhalb des Bildes in Richtung Sonne bleiben geladen und ihre
+   * Schatten-Kacheln sichtbar, solange ihre Schattenbahn das Bild erreichen kann (Reichweite in Einheiten, Deckel;
+   * Standard 40, 0 = aus). Kostet je zusätzlicher Kachel einen Zeichenaufruf je Kaskade.
+   */
+  sunwardReach?: number;
   /** Zeitbudget je Frame für den Chunkbau (ms, Standard 7). */
   loadBudgetMs?: number;
   /** Frames, nach denen ein unsichtbarer Chunk entladen wird. */
@@ -287,6 +294,17 @@ const _s = new Vector3();
 const _Y = new Vector3(0, 1, 0);
 
 /**
+ * Abstand des nächsten Punkts der Schattenbahn eines Werfers bei (dx, dz) (relativ zum Kamerafuß) zum Kamerafuß: der
+ * Werfer wirft entlang −Sonne bis `reach`; liegt er sonnenwärts, rückt seine Bahn um bis zu `reach` heran, sonst zählt
+ * sein eigener Abstand.
+ */
+function sunwardDistance(dx: number, dz: number, sunX: number, sunZ: number, reach: number): number {
+  const along = dx * sunX + dz * sunZ;
+  const t = Math.min(reach, Math.max(0, along));
+  return Math.hypot(dx - sunX * t, dz - sunZ * t);
+}
+
+/**
  * Die unendliche Welt, angezeigt als Kugel (ADR 0002): Chunks 16 × 16 Einheiten der Ebene werden um den Fokus geladen
  * und entladen (deterministisch je Chunk, Detailstufe nach Abstand, Budget je Frame), jede Welt bekommt einen Slot
  * (Palettenzeilen, Tabellen), die Anzeige-Abbildung biegt jede Ebene-Position im Vertex-Shader auf die Kugel um den
@@ -379,6 +397,7 @@ export class EarlePlanet {
   private readonly cache = new Map<string, ChunkCpu>();
   private readonly slotsUsed: Array<string | null> = new Array<string | null>(GROWTH_SLOTS).fill(null);
   private readonly loadsPerFrame: number;
+  private readonly sunwardReach: number;
   private readonly loadBudgetMs: number;
   private readonly unloadAfter: number;
   private readonly viewRadius: number;
@@ -457,6 +476,7 @@ export class EarlePlanet {
     this.plane.position.set(0, options.radius, 0);
     this.group.add(this.plane);
     this.loadsPerFrame = options.loadsPerFrame ?? 2;
+    this.sunwardReach = Math.max(0, options.sunwardReach ?? 40);
     this.loadBudgetMs = options.loadBudgetMs ?? 7;
     this.unloadAfter = options.unloadAfterFrames ?? 45;
     this.crackWidth = options.crackWidth ?? 0.55;
@@ -915,6 +935,7 @@ export class EarlePlanet {
   setPathCorridor(fn: ((x0: number, z0: number, x1: number, z1: number) => PathCorridor) | null): void {
     this.corridorFn = fn;
     this.cache.clear();
+    this.chunkTops.clear();
     for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
     this.contentDirty = true;
   }
@@ -1008,6 +1029,7 @@ export class EarlePlanet {
     if (Math.abs(scale - this.trashScale) < 1e-6) return;
     this.trashScale = scale;
     this.cache.clear();
+    this.chunkTops.clear();
     for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
     this.contentDirty = true;
   }
@@ -1280,6 +1302,7 @@ export class EarlePlanet {
   setLandmark(params: PlaneLandmarkParams): PlaneLandmarkSlot {
     const slot = this.field.setLandmark(params);
     this.cache.clear();
+    this.chunkTops.clear();
     for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
     this.path.invalidate();
     this.contentDirty = true;
@@ -1351,29 +1374,52 @@ export class EarlePlanet {
     const reach = Math.min(this.viewRadius, (horizon + camAlpha + 0.35) * R + CHUNK_SIZE);
     const limit = Math.cos(Math.min(Math.PI, horizon + (CHUNK_SIZE * 0.75) / R + 0.12));
     const half = CHUNK_SIZE / 2;
-    const cx0 = Math.floor((this.focus.x - reach) / CHUNK_SIZE);
-    const cx1 = Math.floor((this.focus.x + reach) / CHUNK_SIZE);
-    const cz0 = Math.floor((this.focus.z - reach) / CHUNK_SIZE);
-    const cz1 = Math.floor((this.focus.z + reach) / CHUNK_SIZE);
-    const wanted: Array<{ key: string; cx: number; cz: number; dist: number; visible: boolean; res: number }> = [];
     const hTop = this.terrainTop + 6;
+    // Werfer sonnenwärts (Karte v5, R1.4): Chunks außerhalb des Bildes in Richtung Sonne werfen ihre langen Hügelschatten
+    // ins Bild — sie bleiben geladen, wenn ihr Gelände (fünf Feldproben, gecacht) über dem Kamerafuß aufragt und der
+    // nächste Punkt ihrer Schattenbahn (bis Überhöhung / tan el, Deckel `sunwardReach`) näher als 30 Einheiten am
+    // Kamerafuß liegt. Sonst ploppen Hügelschatten beim Schwenken. Jede zusätzliche Kachel kostet einen Zeichenaufruf je
+    // Kaskade — deshalb nur Hügel, keine Bäume (deren ferne Schatten sind dünn).
+    const sun = this.rockSunDir.value;
+    const sunH = Math.hypot(sun.x, sun.z);
+    const sunX = sunH > 1e-6 ? sun.x / sunH : 0;
+    const sunZ = sunH > 1e-6 ? sun.z / sunH : 0;
+    const tanEl = Math.max(0.05, sun.y / Math.max(1e-6, sunH));
+    const sunReach = Math.min(this.sunwardReach, hTop / tanEl);
+    const hFoot = sunReach > 0 ? this.field.heightAt(camX, camZ) : 0;
+    this.sunBand.set(sunX, sunZ, sunReach);
+    const cx0 = Math.floor((this.focus.x - reach - Math.max(0, -sunX) * sunReach) / CHUNK_SIZE);
+    const cx1 = Math.floor((this.focus.x + reach + Math.max(0, sunX) * sunReach) / CHUNK_SIZE);
+    const cz0 = Math.floor((this.focus.z - reach - Math.max(0, -sunZ) * sunReach) / CHUNK_SIZE);
+    const cz1 = Math.floor((this.focus.z + reach + Math.max(0, sunZ) * sunReach) / CHUNK_SIZE);
+    const wanted: Array<{ key: string; cx: number; cz: number; dist: number; visible: boolean; res: number }> = [];
     for (let cz = cz0; cz <= cz1; cz++) {
       for (let cx = cx0; cx <= cx1; cx++) {
         const mx = cx * CHUNK_SIZE + half;
         const mz = cz * CHUNK_SIZE + half;
+        const camD = Math.hypot(mx - camX, mz - camZ);
+        // Sonnenwärtiger Hügel-Werfer: Schattenbahn (Überhöhung über dem Kamerafuß / tan el) erreicht das Bild
+        let sunwardKeep = false;
+        if (sunReach > 0 && camD > 30) {
+          const along = (mx - camX) * sunX + (mz - camZ) * sunZ;
+          if (along > 0) {
+            const rise = this.chunkTop(cx, cz) - hFoot + 1;
+            const reachC = Math.min(sunReach, Math.max(0, rise) / tanEl);
+            sunwardKeep = reachC > 0 && sunwardDistance(mx - camX, mz - camZ, sunX, sunZ, reachC) <= 30;
+          }
+        }
         const fd = Math.hypot(mx - this.focus.x, mz - this.focus.z);
-        if (fd > reach + half * Math.SQRT2) continue;
+        if (fd > reach + half * Math.SQRT2 && !sunwardKeep) continue;
         // Anzeige-Kugel des Chunks (Mitte, halbe Höhe)
         _w.set(mx - this.focus.x, R + hTop * 0.4, mz - this.focus.z);
         this.mapping.toDisplayCpu(_w, _w);
         const facing = _w.clone().normalize().dot(camDir);
-        if (facing < limit) continue;
+        if (facing < limit && !sunwardKeep) continue;
         _sphere.center.copy(_w);
         _sphere.radius = half * Math.SQRT2 + hTop * 0.6;
-        const visible = frustum.intersectsSphere(_sphere);
-        // Chunks knapp außerhalb des Bildes bleiben geladen (Schattenwerfer, sanftes Schwenken)
-        const camD = Math.hypot(mx - camX, mz - camZ);
-        if (!visible && camD > 30) continue;
+        const visible = facing >= limit && frustum.intersectsSphere(_sphere);
+        // Chunks knapp außerhalb des Bildes bleiben geladen (Schattenwerfer, sanftes Schwenken), Hügel sonnenwärts weiter
+        if (!visible && camD > 30 && !sunwardKeep) continue;
         const res = camD < 34 ? this.options.quality.chunkRes : (this.options.quality.lodRes ?? Math.max(9, Math.round((this.options.quality.chunkRes - 1) / 2) + 1));
         wanted.push({ key: `${cx}:${cz}`, cx, cz, dist: camD, visible, res });
       }
@@ -1388,6 +1434,9 @@ export class EarlePlanet {
     // Erste Füllung (Start, Qualitätswechsel im Lab): die nächsten Chunks sofort, bis FIRST_FILL_MS — der Rest folgt mit
     // dem normalen Budget über die nächsten Bilder (vorher alle in einem Bild: ≈ 250 ms bei 20 Chunks, M3)
     const firstFill = this.loaded.size === 0;
+    // Detailstufenwechsel eines nahen Chunks: seine Schatten-Kachel sofort neu bauen (sonst zieht der Schatten des
+    // Reliefs bis zu 6 Bilder nach, während die Facetten schon gewechselt haben)
+    let forceTiles = false;
     for (const w of wanted) {
       const chunk = this.loaded.get(w.key);
       if (chunk && chunk.res === w.res) {
@@ -1403,6 +1452,7 @@ export class EarlePlanet {
       if (this.loadChunk(w.cx, w.cz, w.key, w.res, chunk ?? null)) {
         loads++;
         changed = true;
+        if (chunk && w.dist < 34) forceTiles = true;
       }
       buildMs += performance.now() - b0;
     }
@@ -1466,16 +1516,25 @@ export class EarlePlanet {
     // Kugel hielte sie in beiden Pässen
     let visibleCount = 0;
     let viewTop = 0;
+    // Höhenband der Chunks im Bild (Schatten: ändert es sich merklich, fitten die Kaskaden neu statt zu gleiten)
+    let bandLo = Infinity;
+    let bandHi = -Infinity;
     for (const chunk of this.loaded.values()) {
       chunk.inView = this.chunkInView(chunk, frustum);
       if (!chunk.inView) continue;
       visibleCount++;
       viewTop = Math.max(viewTop, chunk.cpu.mesh.maxH);
+      bandLo = Math.min(bandLo, chunk.cpu.mesh.minH);
+      bandHi = Math.max(bandHi, chunk.cpu.mesh.maxH);
     }
     this.viewTop = viewTop;
+    if (bandLo <= bandHi) {
+      this.heightBand[0] = bandLo;
+      this.heightBand[1] = bandHi;
+    }
     this.rebuildTerrainTiles();
     for (const tile of this.terrainTiles.values()) this.updateTerrainTileBounds(tile);
-    this.rebuildShadowTiles();
+    this.rebuildShadowTiles(forceTiles);
     for (const tile of this.shadowTiles.values()) this.updateTileBounds(tile, camX, camZ, horizonReach);
     this.stats.visible = visibleCount;
     // Nebelbänke (kein Schatten, nur der Hauptpass): zeichnen, wenn eine Bank diesseits des Horizonts im Bild liegt —
@@ -1633,7 +1692,11 @@ export class EarlePlanet {
 
   private lastTileRebuild = -1000;
 
-  /** Grenzkugel einer Schatten-Kachel im Schattenraum (Ebene mit dem Kugelabfall um den Fokus, `displayShadowWarp`). */
+  /**
+   * Grenzkugel einer Schatten-Kachel im Schattenraum (Ebene, mit der Tintenkugel k_t der Kugelabfall um den Fokus,
+   * `displayShadowWarp`). Kacheln sonnenwärts außerhalb des Bildes bleiben sichtbar, solange ihre Schattenbahn das Bild
+   * erreichen kann (gleiches Band wie das Laden in `update`).
+   */
   private updateTileBounds(tile: ShadowTile, camX: number, camZ: number, horizonReach: number): void {
     const mesh = tile.mesh;
     if (!mesh) return;
@@ -1641,13 +1704,14 @@ export class EarlePlanet {
     const half = (SHADOW_TILE * CHUNK_SIZE) / 2;
     const cx = tile.tx * SHADOW_TILE * CHUNK_SIZE + half;
     const cz = tile.tz * SHADOW_TILE * CHUNK_SIZE + half;
-    const beyond = Math.hypot(cx - camX, cz - camZ) > horizonReach + half * 0.5;
+    const sb = this.sunBand;
+    const beyond = sunwardDistance(cx - camX, cz - camZ, sb.x, sb.y, sb.z) > horizonReach + half * 0.5;
     mesh.visible = !beyond;
     if (beyond) return;
     const fx = cx - this.focus.x;
     const fz = cz - this.focus.z;
     const cy = (tile.minH + tile.maxH) * 0.5;
-    const k = (1 + this.mapping.curvature.value) / (2 * R);
+    const k = earleLight.ink.value / (2 * R);
     const d = Math.hypot(fx, fz);
     const dMax = d + half * Math.SQRT2;
     const bs = mesh.geometry.boundingSphere ?? (mesh.geometry.boundingSphere = new Sphere());
@@ -2099,6 +2163,37 @@ export class EarlePlanet {
 
   /** Kamerafuß in der Ebene und Horizontwinkel des letzten `update` (−1 = noch keins). */
   private readonly viewFoot = { x: 0, z: 0 };
+  /** Sonnenrichtung in der Ebene (x, z, Einheitsvektor) und Reichweite der Schattenbahn (Einheiten), je `update`. */
+  private readonly sunBand = new Vector3(0, 0, 0);
+  /** Höhenband (min, max) der Chunks im Bild (letztes `update`). */
+  private readonly heightBand: [number, number] = [0, 0];
+
+  /** Höhenband (min, max) der Chunks im Bild — Teil der Pan-Signatur der Schattenkaskaden (`ShadowDisplayLike`). */
+  get viewHeightBand(): readonly [number, number] {
+    return this.heightBand;
+  }
+
+  /** Höchste von fünf Feldproben eines Chunks (Mitte, Ecken), gecacht je Chunk — für die Werfer sonnenwärts. */
+  private readonly chunkTops = new Map<string, number>();
+  private chunkTop(cx: number, cz: number): number {
+    const key = `${cx}:${cz}`;
+    let h = this.chunkTops.get(key);
+    if (h === undefined) {
+      const x0 = cx * CHUNK_SIZE;
+      const z0 = cz * CHUNK_SIZE;
+      const q = CHUNK_SIZE * 0.25;
+      h = Math.max(
+        this.field.heightAt(x0 + CHUNK_SIZE * 0.5, z0 + CHUNK_SIZE * 0.5),
+        this.field.heightAt(x0 + q, z0 + q),
+        this.field.heightAt(x0 + CHUNK_SIZE - q, z0 + q),
+        this.field.heightAt(x0 + q, z0 + CHUNK_SIZE - q),
+        this.field.heightAt(x0 + CHUNK_SIZE - q, z0 + CHUNK_SIZE - q),
+      );
+      if (this.chunkTops.size > 2000) this.chunkTops.clear();
+      this.chunkTops.set(key, h);
+    }
+    return h;
+  }
   private viewHorizon = -1;
 
   /** Geladene Chunks. */

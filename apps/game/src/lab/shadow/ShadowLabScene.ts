@@ -7,7 +7,7 @@ import { FLOW_QUALITY } from '../../flow/quality';
 import { NodePath } from '../../flow/NodePath';
 import { PanBall } from '../earle/panball';
 import { createShadowTestDots } from './shadowDots';
-import { flatNormalWorld, type CascadedShadows, type CascadedShadowStats, type ShadowCascadePreset, type ShadowTaps } from '@ee/render/shadow/index.ts';
+import { flatNormalWorld, setShadowPlaneSmooth, shadowReceiverPlane, type CascadedShadows, type CascadedShadowStats, type ShadowCascadePreset, type ShadowTaps } from '@ee/render/shadow/index.ts';
 
 /** Anzeige: nur neu, nur alt (P2-Verfahren) oder geteilt (links alt, rechts neu, gleiches Bild). */
 export type ShadowLabMode = 'neu' | 'alt' | 'split';
@@ -74,6 +74,8 @@ export interface ShadowLabParams {
   crownHeight: number;
   /** Tiefenvergleich: -1 automatisch, 0 Hardware-Vergleichs-Sampler, 1 manuell im Shader (WebGL2-Rückfall). */
   compare: -1 | 0 | 1;
+  /** Empfängerebene der Kaskaden: 0 flache Facette (Ableitungen) … 1 geglättete Schattierungsnormale (R1.6). */
+  planeSmooth: number;
 }
 
 export const DEFAULT_SHADOW_PARAMS: ShadowLabParams = {
@@ -108,6 +110,7 @@ export const DEFAULT_SHADOW_PARAMS: ShadowLabParams = {
   mapInset: 0,
   dots: false,
   crownHeight: 0,
+  planeSmooth: 0,
 };
 
 export interface ShadowLabStats {
@@ -123,6 +126,8 @@ export interface ShadowLabStats {
   manualCompare: boolean | null;
   /** Letzte Schattenpass-Messung (ms je Pass, GPU+CPU, WebGPU) oder null. */
   shadowPassMs: number | null;
+  /** Empfängerebene (geteilter Uniform): 0 Facette … 1 geglättet. */
+  planeSmooth: number;
 }
 
 interface ViewPose {
@@ -251,6 +256,7 @@ export class ShadowLabScene implements SceneController {
     sun.setDebug(p.debug >= 3 ? 0 : (p.debug as 0 | 1 | 2));
     this.diagGap.value = p.gap;
     this.diagMode.value = p.debug === 4 ? 1 : 0;
+    setShadowPlaneSmooth(p.planeSmooth);
 
     this.needsSnap = true;
     this.appliedSpin = 0;
@@ -341,6 +347,7 @@ export class ShadowLabScene implements SceneController {
         }
         if (next.dots !== prev.dots || (next.dots && next.node !== prev.node)) this.syncTestDots();
         if (next.crownHeight !== prev.crownHeight) this.bindView();
+        if (next.planeSmooth !== prev.planeSmooth) setShadowPlaneSmooth(next.planeSmooth);
       }
     }
     for (const l of this.listeners) l(this.getParams());
@@ -439,7 +446,9 @@ export class ShadowLabScene implements SceneController {
       this.snapToNode();
       this.needsSnap = false;
     }
-    if (pan.step(dt)) world.markShadowDirty();
+    // Schwenken: der Fokus wandert, die Kaskaden gleiten an der Ebene mit (`CascadedShadows.slide`) — kein Schattenpass
+    // nur wegen des Schwenks (der Flow markiert ihn bis R4 noch selbst, siehe FlowScene)
+    pan.step(dt);
     if (this.params.rotate !== 0 && dt > 0 && !pan.isDragging) this.setYaw(this.yaw + ((this.params.rotate * Math.PI) / 180) * dt);
     this.frameWorld();
     this.render(ctx);
@@ -703,6 +712,19 @@ export class ShadowLabScene implements SceneController {
     this.setYaw(this.yaw + (deg * Math.PI) / 180);
   }
 
+  /** Für Skripte/E2E (Schwenken): Fokus um (dx, dz) Ebeneneinheiten verschieben — wie ein Zug, ohne Trägheit. */
+  pan(dx: number, dz: number): void {
+    const w = this.world;
+    if (!w) return;
+    w.setFocus(w.focus.x + dx, w.focus.z + dz);
+  }
+
+  /** Aktueller Fokus (Ebene) für Skripte/E2E. */
+  get focus(): { x: number; z: number } {
+    const f = this.world?.focus;
+    return f ? { x: f.x, z: f.z } : { x: 0, z: 0 };
+  }
+
   getStats(): ShadowLabStats {
     const world = this.world;
     const r = this.ctx?.renderer;
@@ -716,6 +738,7 @@ export class ShadowLabScene implements SceneController {
       cpuMs: this.cpuMs,
       manualCompare: world?.sun.manualCompareActive ?? null,
       shadowPassMs: this.shadowPassMs,
+      planeSmooth: shadowReceiverPlane.smooth.value,
     };
   }
 
