@@ -14,6 +14,37 @@ export { TJORIZO_SPECS, tjorizoSpec, P3_LEVEL_INDICES } from './tjorizo';
 export { SYRUP_SPECS, syrupSpec } from './syrup';
 export { LUZZ_SPECS, luzzSpec } from './luzz';
 export { WOODING_SPECS, woodingSpec } from './wooding';
+export {
+  CURVE_LAST_LEVEL,
+  CURVE_TYPES,
+  LANDMARK_SPIKES,
+  LEGACY_LAST_LEVEL,
+  NEW_ELEMENTS,
+  ZONE_LENGTHS,
+  ZONE_RANGES,
+  ZONE_WORLDS,
+  curveBand,
+  curveSpec,
+  curveSpecs,
+  legacyTargetAttempts,
+  spikeLevels,
+  zoneCap,
+  zoneMoveRamp,
+  zoneOfLevel,
+  zoneRamp,
+  type CurveSpec,
+  type CurveType,
+} from './curve';
+export {
+  CURVE_LIMITS,
+  validateCurve,
+  levelSignature,
+  type CalibrationBot,
+  type CalibrationEntry,
+  type CurveIssue,
+  type CurveLevelInfo,
+  type CurveReport,
+} from './validate';
 
 import type { LevelSpec } from './generateLevel';
 import { tjorizoSpec } from './tjorizo';
