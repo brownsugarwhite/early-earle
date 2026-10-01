@@ -240,7 +240,7 @@ export const CURVE_TYPE_LABEL: Record<CurveType, string> = {
  * Anfänger-Bot sein Versuche-Band trifft — dabei weicht es stark vom Grundbudget ab (0,3–1,7 ×). Die Spannen spiegeln
  * `MOVE_RANGE` aus `tools/levels/tune.ts`; Üben hat Spielraum bis 34 (Level 64 steht mit 33 in `tuning.ts`).
  */
-const CURVE_MOVE_RANGE: Record<CurveType, [number, number]> = {
+export const CURVE_MOVE_RANGE: Record<CurveType, [number, number]> = {
   tutorial: [6, 30],
   intro: [10, 30],
   practice: [10, 34],
