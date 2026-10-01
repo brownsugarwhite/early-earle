@@ -1,5 +1,5 @@
 import { Matrix4, Quaternion, Vector3 } from 'three/webgpu';
-import { atan, cos, float, length, max, min, modelWorldMatrix, modelWorldMatrixInverse, sin, uniform, vec2, vec3, vec4 } from 'three/tsl';
+import { atan, cos, cross, dot, float, length, max, min, modelWorldMatrix, modelWorldMatrixInverse, sin, uniform, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, Vec3Node } from './tsl';
 
 /**
@@ -63,6 +63,26 @@ export class DisplayMapping {
   }
 
   /**
+   * Starre Drehung des Anzeige-Rahmens am flachen Punkt `f` auf eine Richtung `v` des flachen Raums (TSL) —
+   * Gegenstück zu `rotationAt`: Rodrigues um die Achse `(f.z, 0, −f.x) / d` mit dem Winkel `min(d / R, π)`,
+   * `d = |f.xz|`. Am Scheitel (d = 0) ist die Achse 0 und der Winkel 0: `v` bleibt, ohne NaN. Die Hochachse
+   * (0, 1, 0) wird zur Kugelnormale am Anzeigeort; Längen bleiben.
+   */
+  rotateDir(f: Vec3Node, v: Vec3Node): Vec3Node {
+    const d = length(vec2(f.x, f.z));
+    const inv = float(1).div(max(d, float(1e-6)));
+    const axis = vec3(f.z.mul(inv), 0, f.x.negate().mul(inv));
+    const angle = min(d.div(this.radius), float(Math.PI));
+    const s = sin(angle);
+    const c = cos(angle);
+    // v' = v·cos + (a × v)·sin + a·(a · v)·(1 − cos)
+    return v
+      .mul(c)
+      .add(cross(axis, v).mul(s))
+      .add(axis.mul(dot(axis, v).mul(float(1).sub(c)))) as unknown as Vec3Node;
+  }
+
+  /**
    * Objektraum-Verzug für Materialien, deren Modellmatrix `positionLocal` in den flachen Raum legt:
    * `M⁻¹ · display(M · p)` (three wendet M danach wieder an). Ersetzt den alten `bendNode`.
    */
@@ -105,6 +125,29 @@ export class DisplayMapping {
     // Achse u_t = (−q̂z, 0, q̂x) · (−1): Drehung um (q̂z, 0, −q̂x) um +α
     _axis.set(p.z / d, 0, -p.x / d);
     return out.setFromAxisAngle(_axis, Math.min(d / R, Math.PI));
+  }
+
+  /**
+   * CPU-Spiegel von `rotateDir` (dieselbe Rodrigues-Formel Term für Term; `rotationAt` liefert dieselbe Drehung als
+   * Quaternion). `out` darf `v` sein.
+   */
+  rotateDirCpu(f: Vector3, v: Vector3, out = new Vector3()): Vector3 {
+    const d = Math.hypot(f.x, f.z);
+    const inv = 1 / Math.max(d, 1e-6);
+    const ax = f.z * inv;
+    const az = -f.x * inv;
+    const angle = Math.min(d / this.radius.value, Math.PI);
+    const s = Math.sin(angle);
+    const c = Math.cos(angle);
+    const vx = v.x;
+    const vy = v.y;
+    const vz = v.z;
+    // a × v mit a = (ax, 0, az)
+    const cx = -az * vy;
+    const cy = az * vx - ax * vz;
+    const cz = ax * vy;
+    const k = (ax * vx + az * vz) * (1 - c);
+    return out.set(vx * c + cx * s + ax * k, vy * c + cy * s, vz * c + cz * s + az * k);
   }
 
   /** Matrix: flacher Rahmen am Punkt `p` (Ursprung dort, Achsen des flachen Raums) → Anzeigeraum (starr). */

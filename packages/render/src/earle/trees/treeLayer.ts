@@ -2,6 +2,8 @@ import { BufferGeometry, DoubleSide, Float32BufferAttribute, InstancedBufferAttr
 import {
   abs,
   attribute,
+  cameraPosition,
+  cameraViewMatrix,
   cameraWorldMatrix,
   clamp,
   cross,
@@ -34,6 +36,8 @@ import { TREE_PROPORTIONS, hash32, type PlaneTree as PlanetTree, type TreeFamily
 import type { WorldSlots } from '../worldSlots';
 import { SLOT_COUNT } from '../worldSlots';
 import { arrayElement, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from '../tsl';
+import { curvedLightWorld, earleLight } from '../lightCurvature';
+import { displayCard, flatCard, type CardDisplay } from './billboard';
 import { createHexagon } from '../vegetation';
 import { createBareCard } from './bare';
 import { createWindCard } from './wind';
@@ -65,10 +69,10 @@ const SKIRT_CELL = 0.046;
  * Glatter Schattenwert (1 = Sonne, 0 = Schlagschatten) an einer Weltposition, im Vertex-Shader lesbar — z. B.
  * `(p, o) => sunRig.shadowFactor(p, o)`. Die Punkte skalieren damit im Schatten stetig aus 0.
  */
-export type ShadowFactorFn = (positionWorld: Vec3Node, options?: { softness?: number }) => FloatNode;
+export type ShadowFactorFn = (positionWorld: Vec3Node, options?: { softness?: number | null; taps?: DotShadowTaps | 9 }) => FloatNode;
 
-/** Weichheit (Welteinheiten) des Schattenwerts der Punkte: etwa ein bis zwei Punktdurchmesser. */
-const DOT_SHADOW_SOFTNESS = 0.12;
+/** Bilineare Vergleiche je Kaskade für den Schattenwert der Punkte: 4 = kubisches B-Spline-Feld (Hoch), 1 = bilinear (Mobil). */
+export type DotShadowTaps = 1 | 4;
 
 /** Was die Baumschicht aus der Planetenvegetation übernimmt (geteilte Knoten und Uniforms). */
 export interface TreeLayerShared {
@@ -96,6 +100,10 @@ export interface TreeLayerShared {
   collapsePx: TSLUniform;
   /** Schattenwert für die Punkte (Vertex-Stufe); fehlt → Punkte folgen nur N·L. */
   shadowFactor?: ShadowFactorFn | null;
+  /** Anzeige-Abbildung für Karten und Punkte (Fuß abbilden, Rahmen drehen); null = flach (ohne Kugel). */
+  display: CardDisplay | null;
+  /** Neigung der Baumkarten in die Bildebene 0 … 1 (`earleCards.lean`, `?kartenlean=`). */
+  cardLean: FloatNode;
 }
 
 export interface TreeWorldRows {
@@ -112,6 +120,8 @@ export interface TreeLayerOptions {
   capacity: { trees: number; dots: number };
   dotsPerTree: [number, number];
   dotRadius?: number;
+  /** Vergleiche je Kaskade für den Schattenwert der Punkte (Standard 4; Mobil 1, siehe `setDotShadowTaps`). */
+  dotShadowTaps?: DotShadowTaps;
 }
 
 /**
@@ -379,6 +389,8 @@ export class TreeLayer {
   private lastTick = -1;
   private readonly dotRadius: number;
   private windCard = { height: 2.7, capacity: 16 };
+  /** Vergleiche je Kaskade für den Schattenwert der Punkte (beim Aufbau des Punkt-Materials gelesen). */
+  private dotTaps: DotShadowTaps = 4;
 
   constructor(
     private readonly shared: TreeLayerShared,
@@ -387,6 +399,7 @@ export class TreeLayer {
     const { lookup, fog } = shared;
     const warp = shared.warp;
     this.dotRadius = options.dotRadius ?? 0.06;
+    this.dotTaps = options.dotShadowTaps ?? 4;
     // Tabellen je Welt-Slot (unendliche Ebene: nachgeführt, wenn ein Slot neu belegt wird, siehe onSlotAssigned)
     const perSlot = (v: number): UniformArrayLike => uniformArray(new Array<number>(SLOT_COUNT).fill(v), 'float') as unknown as UniformArrayLike;
     this.worldSnow = perSlot(0);
@@ -709,17 +722,18 @@ export class TreeLayer {
       const spread = float(0.78).add(fract(variant.mul(7.31)).mul(0.5));
       const curl = fract(variant.mul(3.17)).sub(0.5).mul(0.28);
       const gx = positionGeometry.x.mul(spread).add(positionGeometry.y.mul(positionGeometry.y).mul(curl).mul(0.12));
-      const billboard = (toward: Vec3Node): Vec3Node => {
-        const right = normalize(cross(up, toward));
-        return base.add(right.mul(gx.mul(size).mul(flip))).add(up.mul(positionGeometry.y.mul(size)));
-      };
+      const cardX = gx.mul(size).mul(flip);
+      const cardY = positionGeometry.y.mul(size);
       const material = new MeshBasicNodeMaterial({ side: DoubleSide });
       material.colorNode = fogOf(data.w, base, 'vBareFogDist')(lookup.pal(3, data.w).rgb as unknown as Vec3Node);
-      material.positionNode = warp(billboard(normalize(shared.camLocal.sub(base))));
+      // Karte im Anzeigeraum (trees/billboard.ts): quer zur echten Richtung zur Kamera, um `lean` in die Bildebene
+      // gekippt — dreht sich beim Schwenken zur Kamera statt von ihr weg, am Horizont und im unteren Bild kein Strich
+      material.positionNode = displayCard({ base, up, lean: shared.cardLean, display: shared.display }).at(cardX, cardY);
       // Welten ohne Astschatten (`bareShadows: 0`): die Karte fällt im Schattenpass auf ihren Fuß zusammen
       const bareWorld = max(float(0), shared.slotOfRow(data.w));
       const casts = arrayElement(this.worldBareShadow, bareWorld).greaterThan(0.5);
-      (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(select(casts, billboard(shared.sunDirLocal), base));
+      // Schattenpass flach zur Sonne (der Schattenraum ist eben), danach gebogen wie bisher
+      (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(select(casts, flatCard(base, up, shared.sunDirLocal, cardX, cardY), base));
       const mesh = new InstancedMesh(geometry, material, n);
       mesh.name = 'planet-bare';
       mesh.castShadow = true;
@@ -753,19 +767,17 @@ export class TreeLayer {
       const tuft = step(0.75, positionGeometry.z);
       const keep = float(1).sub(tuft.mul(float(1).sub(step(0.25, variant))));
       const spread = float(0.85).add(fract(variant.mul(7.31)).mul(0.3));
-      const billboard = (toward: Vec3Node): Vec3Node => {
-        const right = normalize(cross(up, toward));
-        // Leeseite = Ebene +x (Wind vom Land zum Meer): die Karte spiegelt sich, wenn die Blickrichtung wechselt
-        const lee = step(0, right.x).mul(2).sub(1);
-        const gx = positionGeometry.x.mul(spread).mul(keep);
-        const gy = positionGeometry.y.mul(keep);
-        return base.add(right.mul(gx.mul(size).mul(lee))).add(up.mul(gy.mul(size)));
-      };
+      const frame = displayCard({ base, up, lean: shared.cardLean, display: shared.display });
+      // Leeseite = Ebene +x (Wind vom Land zum Meer): die Karte spiegelt sich, wenn die Blickrichtung wechselt — weich:
+      // im Durchgang (Blick fast entlang x) dreht sie auf die Kante statt zu springen
+      const lee = clamp(frame.right.dot(frame.dir(vec3(1, 0, 0) as unknown as Vec3Node)).div(0.25), -1, 1);
+      const gx = positionGeometry.x.mul(spread).mul(keep);
+      const gy = positionGeometry.y.mul(keep);
       const material = new MeshBasicNodeMaterial({ side: DoubleSide });
       const branchCol = lookup.pal(3, data.w).rgb as unknown as Vec3Node;
       const tuftCol = lookup.pal(4, data.w).rgb as unknown as Vec3Node;
       material.colorNode = fogOf(data.w, base, 'vWindFogDist')(mix(branchCol, tuftCol, tuft) as unknown as Vec3Node);
-      material.positionNode = warp(billboard(normalize(shared.camLocal.sub(base))));
+      material.positionNode = frame.at(gx.mul(size).mul(lee), gy.mul(size));
       const mesh = new InstancedMesh(geometry, material, n);
       mesh.name = 'planet-wind';
       // Kein Schlagschatten: Ebene 29 steht im Gegenlicht, die Landzunge ist eine ruhige, dunkle Fläche; das feine
@@ -814,13 +826,25 @@ export class TreeLayer {
       const nearDots = smoothstep(shared.nearClear, shared.nearClear.add(1.6), toCam.length().sub(hullAttr.w.mul(1.2))).mul(shared.footFade(base));
       const slotFade = (this.dotFade as unknown as { element(i: unknown): FloatNode }).element(int(dd.w));
       const s = shared.popScale(dd.y, dd.w).mul(nearDots).mul(shared.foreignNear(row, base));
-      const center = warp(base.add(rel.mul(s)));
+      // Punktmitte: flach (Welt) → Anzeigeraum (Welt) → Objektraum (= `warp(base + rel·s)`); die Weltposition tragen
+      // Licht, Randtest und Schattenwert, die Objektposition das Billboard
+      const display = shared.display;
+      const pFlat = base.add(rel.mul(s));
+      const fW = modelWorldMatrix.mul(vec4(pFlat, 1)).xyz as unknown as Vec3Node;
+      const centerW = display ? display.toDisplay(fW) : fW;
+      const center = display ? (modelWorldMatrixInverse.mul(vec4(centerW, 1)).xyz as unknown as Vec3Node) : pFlat;
+      // Schattierungsnormale des Punkts im Anzeigeraum (Welt): mit dem Rahmen am Ort gedreht
+      const nrmW = modelWorldMatrix.mul(vec4(nrm, 0)).xyz as unknown as Vec3Node;
+      const nrmD = display ? display.rotateDir(fW, nrmW) : nrmW;
       const viewC = modelViewMatrix.mul(vec4(center, 1));
-      // Licht der Kronen-Schattierungsnormale: Punkte skalieren weich aus 0 (gleiche Schwelle wie die Tüpfel der Krone)
-      const ndl = nrm.dot(shared.sunDirLocal);
+      // Licht der Kronen-Schattierungsnormale: Punkte skalieren weich aus 0 (gleiche Schwelle wie die Tüpfel der Krone).
+      // Lichtkugel (R2) wie die Bänder der Krone darunter: die Sonne am Ort des Punkts mit der Krümmung `bands` gedreht
+      const sunL = curvedLightWorld(shared.sunDirLocal, centerW, earleLight.bands);
+      const ndl = nrm.dot(sunL);
       const term = select(kind.lessThan(0.5), float(0.32), select(kind.lessThan(1.5), float(TREE_FORMS.jewel.terminator), select(kind.lessThan(2.5), float(0.1), float(0.3))));
       const light = smoothstep(term.add(0.02), term.add(0.5), ndl);
-      const facingCam = abs(nrm.dot(normalize(shared.camLocal.sub(center))));
+      // Randtest in einem Raum (Anzeige): Normale und Richtung zur Kamera beide gebogen (vorher flach gegen gebogen)
+      const facingCam = abs(nrmD.dot(normalize((cameraPosition as unknown as Vec3Node).sub(centerW))));
       const rim = smoothstep(0.66, 0.3, facingCam);
       const isRim = kind.greaterThan(2.5).and(kind.lessThan(3.5));
       const isLace = kind.greaterThan(3.5).and(kind.lessThan(4.5));
@@ -832,12 +856,22 @@ export class TreeLayer {
       const isJewel = kind.greaterThan(0.5).and(kind.lessThan(1.5));
       // Schlagschatten wie die Krone darunter: je Teilkuppel ganz (untere Kränze) oder gar nicht (Schultern, Scheitel)
       const castW = select(isPine.or(isStar).or(isLace), float(1), select(isJewel, float(0), castBit));
-      // Glatter Schattenwert am Punktmittelpunkt (Vertex-Stufe, weich über ≈ 1–2 Punktdurchmesser): im Schlagschatten
-      // skalieren die Punkte stetig aus 0, statt je Fragment Tinte zu werden (kein Verschwinden und Wiederauftauchen,
-      // wenn eine Schattenkante beim Drehen über die Krone wandert)
+      // Glatter Schattenwert am Punktmittelpunkt (Vertex-Stufe): im Schlagschatten skalieren die Punkte stetig aus 0,
+      // statt je Fragment Tinte zu werden (kein Verschwinden und Wiederauftauchen, wenn eine Schattenkante beim Drehen
+      // über die Krone wandert). B-Spline-Feld mit `dotShadowTaps` bilinearen Vergleichen je Kaskade (Hoch 4 = kubisch,
+      // Mobil 1) statt der 9 Taps der Weichheitsscheibe; die engere Rampe gleicht das schmalere Feld aus. Die Zahl wird
+      // beim Aufbau gelesen (Getter): `setDotShadowTaps` baut das Material neu.
       const shadowAt = shared.shadowFactor;
-      const sunAt = shadowAt ? shadowAt(modelWorldMatrix.mul(vec4(center, 1)).xyz as unknown as Vec3Node, { softness: DOT_SHADOW_SOFTNESS }) : float(1);
-      const inSun = smoothstep(0.15, 0.85, mix(float(1), sunAt, castW));
+      const tapsNow = (): DotShadowTaps => this.dotTaps;
+      const sunAt = shadowAt
+        ? shadowAt(centerW, {
+            softness: null,
+            get taps(): DotShadowTaps {
+              return tapsNow();
+            },
+          })
+        : float(1);
+      const inSun = smoothstep(0.25, 0.75, mix(float(1), sunAt, castW));
       // Sternnadeln immer; Spitze, Bögen und Kiefernschnee auch im Schatten (kleiner); Kronenpunkte skalieren aus 0.
       // (Der Schattenwert steht außerhalb aller `select`-Zweige: je Zweig würde TSL seine Abtastung erneut erzeugen.)
       const growLight = select(
@@ -858,7 +892,7 @@ export class TreeLayer {
       // Weicher Kollaps unter collapsePx (kein hartes Ein/Aus)
       const collapse = smoothstep(shared.collapsePx.mul(0.45), shared.collapsePx.mul(1.25), px);
       // Nadeln (Sternbüschel): Billboard entlang der projizierten Nadelrichtung gestreckt, ≥ 0.7 px breit
-      const dirV = modelViewMatrix.mul(vec4(nrm, 0)).xy;
+      const dirV = cameraViewMatrix.mul(vec4(nrmD, 0)).xy;
       const dirN = dirV.div(dirV.length().max(1e-4));
       const halfLen = sizeEff.mul(collapse);
       const halfW = max(halfLen.mul(0.1), float(0.7).div(pxPerUnit)).mul(collapse);
@@ -875,7 +909,7 @@ export class TreeLayer {
       // Wintereiche: golden auf der Sonnenseite der Krone, dunkel auf der abgewandten (Ebene 11: rechts Gold, links Tinte)
       // … und oben mehr als unten (Ebene 11: das Gold sitzt in der oberen Krone, die hängenden Zweige bleiben dunkel)
       const frostRel = normalize(base.add(rel).sub(hullAttr.xyz));
-      const frostSide = smoothstep(-0.2, 0.3, frostRel.dot(shared.sunDirLocal).add(frostRel.y.mul(0.35)));
+      const frostSide = smoothstep(-0.2, 0.3, frostRel.dot(sunL).add(frostRel.y.mul(0.35)));
       const vLight = varying(mix(light, frostSide, select(isFrost, float(1), float(0))), 'vTreeDotLight');
       const vKind = varying(kind, 'vTreeDotKind');
       const jitter = varying(dd.z, 'vTreeDotJitter');
@@ -927,6 +961,23 @@ export class TreeLayer {
       this.geometries.push(geometry);
       this.materials.push(material);
     }
+  }
+
+  /** Vergleiche je Kaskade, mit denen der Schattenwert der Punkte gelesen wird (1 oder 4). */
+  get dotShadowTaps(): DotShadowTaps {
+    return this.dotTaps;
+  }
+
+  /**
+   * Schattenwert der Punkte mit 1 (Mobil) oder 4 (Hoch, Standard) bilinearen Vergleichen je Kaskade lesen. Die Zahl
+   * bestimmt die Form des Samplers (B-Spline-Ordnung) und ist im Shader eine Konstante: eine Änderung baut das
+   * Punkt-Material einmal neu (Qualitätsstufe; vor dem ersten Bild gesetzt kostet sie nichts).
+   */
+  setDotShadowTaps(taps: number): void {
+    const next: DotShadowTaps = taps >= 2.5 ? 4 : 1;
+    if (next === this.dotTaps) return;
+    this.dotTaps = next;
+    (this.dots.material as { needsUpdate: boolean }).needsUpdate = true;
   }
 
   /**

@@ -1,20 +1,22 @@
 import { BufferGeometry, DoubleSide, Float32BufferAttribute, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshBasicNodeMaterial } from 'three/webgpu';
 import type { Vector3 } from 'three/webgpu';
-import { attribute, cross, float, mix, normalize, positionGeometry, positionView, sqrt, vec3 } from 'three/tsl';
+import { attribute, float, mix, positionGeometry, positionView, sqrt, vec3 } from 'three/tsl';
 import { steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type Vec3Node } from '../tsl';
+import { displayCard, flatCard, type CardDisplay } from '../trees/billboard';
 
 /**
  * Weiße Pferde (Ebene 45, Welt 13): winzige grasende Silhouetten am Fuß des Monolithen, Maßstabsfiguren mit Schatten.
- * Karte wie die Tiere der Vegetation (zur Kamera gedreht und in die Bildebene gekippt, im Schattenpass zur Sonne), aber
- * hell: der helle Stammton der Welt (Akzent 0), zur Bauchseite ein Hauch dunkler (Verlauf in der Form). Ein Mesh mit
- * wenigen Instanzen; unsichtbar ohne Pferde.
+ * Karte wie die Tiere der Vegetation (im Anzeigeraum zur Kamera gedreht und in die Bildebene gekippt, im Schattenpass
+ * flach zur Sonne; trees/billboard.ts), aber hell: der helle Stammton der Welt (Akzent 0), zur Bauchseite ein Hauch
+ * dunkler (Verlauf in der Form). Ein Mesh mit wenigen Instanzen; unsichtbar ohne Pferde.
  */
 export interface HorseHerdOptions {
   lookup: PaletteLookup;
   fog: FogSettings;
   warp: (p: Vec3Node) => Vec3Node;
-  /** Kamera im Objektraum des Meshes (wie beim Fels-Mesh) und Richtung zur Sonne. */
-  camLocal: { value: Vector3 } & Vec3Node;
+  /** Die Abbildung hinter `warp` (Karte im Anzeigeraum); fehlt → flach. */
+  display?: CardDisplay | null;
+  /** Richtung zur Sonne im Objektraum des Meshes (Schattenkarte). Die Karte selbst nimmt die Kamera des Bilds. */
   sunDir: { value: Vector3 } & Vec3Node;
   /** Zusatz-Nebeldistanz (Schleier) je Welt-Slot. */
   veil?: (slot: FloatNode) => FloatNode;
@@ -72,12 +74,9 @@ export class HorseHerd {
     geometry.setAttribute('horseData', new InstancedBufferAttribute(new Float32Array(n * 4), 4)); // Größe, Spiegelung, Zeile, Slot
     const base = attribute('horseBase', 'vec3');
     const data = attribute('horseData', 'vec4');
-    const up = vec3(0, 1, 0);
-    const card = (toward: Vec3Node, lean: boolean): Vec3Node => {
-      const right = normalize(cross(up, toward));
-      const cardUp = lean ? normalize(cross(toward, right)) : up;
-      return base.add(right.mul(positionGeometry.x.mul(data.x).mul(data.y))).add(cardUp.mul(positionGeometry.y.mul(data.x))) as unknown as Vec3Node;
-    };
+    const up = vec3(0, 1, 0) as unknown as Vec3Node;
+    const cardX = positionGeometry.x.mul(data.x).mul(data.y) as unknown as FloatNode;
+    const cardY = positionGeometry.y.mul(data.x) as unknown as FloatNode;
     const material = new MeshBasicNodeMaterial({ side: DoubleSide });
     const white = o.lookup.pal(0, data.z).rgb as unknown as Vec3Node;
     // Verlauf in der Form: Rücken hell, zu Bauch und Beinen ein Hauch kühler und dunkler (√-Mischung wie Druckfarbe)
@@ -85,8 +84,8 @@ export class HorseHerd {
     const col = shade.mul(shade) as unknown as Vec3Node;
     const fogDist = o.veil ? positionView.length().add(o.veil(data.w)) : positionView.length();
     material.colorNode = steppedFog(col, o.fog, o.lookup, fogDist as unknown as FloatNode);
-    material.positionNode = o.warp(card(normalize(o.camLocal.sub(base)) as unknown as Vec3Node, true));
-    (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = o.warp(card(o.sunDir as unknown as Vec3Node, false));
+    material.positionNode = displayCard({ base: base as unknown as Vec3Node, up, lean: 1, display: o.display ?? null }).at(cardX, cardY);
+    (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = o.warp(flatCard(base as unknown as Vec3Node, up, o.sunDir as unknown as Vec3Node, cardX, cardY));
     const mesh = new InstancedMesh(geometry, material, n);
     mesh.name = 'planet-horses';
     mesh.castShadow = true;

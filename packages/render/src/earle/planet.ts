@@ -753,7 +753,7 @@ export class EarlePlanet {
       shadowTint: this.shadowTint,
     });
     this.plane.add(this.drifts.mesh);
-    this.horses = new HorseHerd({ lookup: this.lookup, fog: this.fog, warp, camLocal: this.rockCamLocal, sunDir: this.rockSunDir, veil: (w) => this.veilNode(w) });
+    this.horses = new HorseHerd({ lookup: this.lookup, fog: this.fog, warp, display: this.mapping, sunDir: this.rockSunDir, veil: (w) => this.veilNode(w) });
     this.plane.add(this.horses.mesh);
     // Nebelbänke (Ebene 20: Bänder zwischen den Hügelschichten; Ebene 7: Nebelmeer), je Region geplant
     this.mistPlan = new PlaneMist(this.field);
@@ -772,6 +772,7 @@ export class EarlePlanet {
       collapsePx: options.quality.collapsePx,
       seed: options.seed,
       warp,
+      display: this.mapping,
       veil: (slot) => this.veilNode(slot),
       foreign: (slot) => this.foreignNode(slot),
       shadowFactor: options.shadow?.factor ?? null,
@@ -1277,6 +1278,11 @@ export class EarlePlanet {
     this.vegetation.setSunDirection(dir, dir);
     this.carpet.sunDir.value.copy(dir);
     this.landmarkSet.setSunDirection(dir);
+  }
+
+  /** Schattenwert der Kronenpunkte: 1 (Mobil) oder 4 (Hoch, Standard) Vergleiche je Kaskade (R4: Qualitätsstufe). */
+  setDotShadowTaps(taps: number): void {
+    this.vegetation.setDotShadowTaps(taps);
   }
 
   /**
