@@ -18,7 +18,7 @@ interface WorldFile {
   props?: WorldSpec['props'];
   features?: WorldSpec['features'];
   trash?: WorldSpec['trash'];
-  focal?: { kind?: string; scale?: number; latFrac?: number; deltaDeg?: number; yawDeg?: number; along?: number; lateral?: number };
+  focal?: { kind?: string; scale?: number; latFrac?: number; deltaDeg?: number; yawDeg?: number; along?: number; lateral?: number; clear?: number; companions?: FocalSpec['companions'] };
   landmarkChance?: number;
   mist?: WorldSpec['mist'];
   landmarks?: WorldSpec['landmarks'];
@@ -43,7 +43,15 @@ export function focalOf(w: WorldFile): FocalSpec | undefined {
   // Alte Kugel: deltaDeg = Bogen neben dem Pfad (R 32) — auf der Ebene 75 % davon, mindestens 6 (der Pfad schwingt ±3,2),
   // höchstens 12 (ganz in der Pfadwelt); ohne Angabe wählt das Feld die Seite (Abstand 10)
   const lateral = f.lateral ?? (f.deltaDeg !== undefined ? Math.sign(f.deltaDeg || 1) * Math.min(12, Math.max(6, ((Math.abs(f.deltaDeg) * Math.PI) / 180) * 32 * 0.75)) : undefined);
-  return { ...(kind ? { kind } : {}), scale, along: f.along ?? f.latFrac ?? 0.5, ...(lateral !== undefined ? { lateral } : {}), yawDeg: f.yawDeg ?? 0 };
+  return {
+    ...(kind ? { kind } : {}),
+    scale,
+    along: f.along ?? f.latFrac ?? 0.5,
+    ...(lateral !== undefined ? { lateral } : {}),
+    ...(f.yawDeg !== undefined ? { yawDeg: f.yawDeg } : {}),
+    ...(f.clear !== undefined ? { clearRadius: f.clear } : {}),
+    ...(f.companions?.length ? { companions: f.companions } : {}),
+  };
 }
 
 export function authoredSpecs(): WorldSpec[] {

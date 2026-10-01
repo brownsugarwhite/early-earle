@@ -143,6 +143,8 @@ export interface DriftSpec {
   trees?: number;
   /** Größenfaktor (Standard 1). */
   size?: number;
+  /** Größenfaktor der Wehen an Scheunen (Standard 1; 0 = keine). Bild 01: die Wand steht gerade im tiefen Schnee. */
+  barns?: number;
 }
 
 // --- Laufzeit ------------------------------------------------------------------------------------------

@@ -64,6 +64,7 @@ const TRUNK_LABELS: Record<string, string> = {
   sprawl: 'Ausleger (Kuppelbaum)',
   domeOak: 'Kuppeleiche (mit Tüpfelrock)',
   winterOak: 'Wintereiche',
+  maple: 'Schnee-Ahorn',
 };
 
 interface Collected {

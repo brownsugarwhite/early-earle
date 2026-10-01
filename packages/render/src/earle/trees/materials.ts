@@ -8,6 +8,8 @@ import type { ShadeTexture } from './shade';
 import { glassBark } from './glassBark';
 import { glowBark } from './glowBark';
 import { paleBark } from './paleBark';
+import { winterLines, winterSnow } from './winterBark';
+import { MAPLE_SNOW_LEVEL } from './maple';
 
 /** Nebel je Instanz (Bäume v4, siehe `trees/fog.ts`): ersetzt den gestuften Nebel je Fragment, wenn gesetzt. */
 export type FogFn = (color: Vec3Node) => Vec3Node;
@@ -246,9 +248,10 @@ class DotLightingModel extends LightingModel {
 /**
  * Rindenstile (Index im Instanzattribut, nur anhängen — der Blender-Export liest dieselben Zahlen): Tinte, weiß
  * (Kathedrale), Juwelenstreifen, Flechten, Kalligrafie, Leuchten, Lavendel (Ebene 21), Schwarz (Ebene 11: flache Tinte
- * ohne Linien, nur der Schnee zeichnet den Stamm).
+ * ohne Linien, nur der Schnee zeichnet den Stamm), Winter (Schnee-Ahorn, Bild 01: gekämmte Linienbüschel und große
+ * Schneeformen — die Ahorn-Stämme tragen ihn immer, ihr Material ist `winter`; andere Stämme zeichnen ihn wie Schwarz).
  */
-export const BARK_STYLE = { ink: 0, white: 1, striped: 2, lichen: 3, calligraphy: 4, glow: 5, pale: 6, black: 7 } as const;
+export const BARK_STYLE = { ink: 0, white: 1, striped: 2, lichen: 3, calligraphy: 4, glow: 5, pale: 6, black: 7, winter: 8 } as const;
 export type BarkStyle = keyof typeof BARK_STYLE;
 
 export interface BarkMaterialOptions {
@@ -281,6 +284,11 @@ export interface BarkMaterialOptions {
   veil?: { mask: FloatNode; color: Vec3Node } | null;
   /** Riesenstamm (Archetyp `pillar`): Rindenstile, die dicke und dünne Stämme unterscheiden (Leuchten), nehmen die dicke Form. */
   giant?: boolean;
+  /**
+   * Schnee-Ahorn (Archetyp `maple`, Bild 01): Winterrinde (`winterBark.ts`) — gekämmte weiße Linienbüschel am Stamm,
+   * Schnee in großen Formen durchgehend auf den Oberseiten der Äste, gespritzter Rand.
+   */
+  winter?: boolean;
 }
 
 export class BarkMaterial extends NodeMaterial {
@@ -328,6 +336,7 @@ class BarkLightingModel extends LightingModel {
     // Geborgene Stile (nur anhängen): Lavendel 6, Schwarz 7, Winter 8 — je ein abgeschlossenes Intervall
     const isPale = style.greaterThan(5.5).and(style.lessThan(6.5));
     const isBlack = style.greaterThan(6.5).and(style.lessThan(7.5));
+    const isWinter = style.greaterThan(7.5);
     // Weiße Kathedralenstämme bleiben fast rundum hell (Ebene_23), sonst Tinte ab dem Terminator
     const term = select(isWhite, float(-0.35), float(0.02));
     const lit = aaStep(term, ndl);
@@ -344,10 +353,16 @@ class BarkLightingModel extends LightingModel {
     const light = select(luma(accLight).greaterThan(0.45), accLight, o.lookup.pal(5, o.terrainRowNode).rgb) as unknown as Vec3Node;
     // Kalligrafie (Bild 01): feine, wellige helle Linien entlang des Stamms, im Licht hell, im Schatten grau
     // Feine Kalligrafie (Bild 01): viele schmale, wellige Striche, die abschnittsweise abbrechen (Holzmaserung)
-    const calli = flowLines(u.add(variant), v.mul(2.4), linesAround(level), select(isCalli, float(0.2), float(0.14)), select(isCalli, float(0.32), float(0.72)), 3).mul(
-      select(isBlack, float(0), float(1)),
-    );
-    const lineShadow = mix(ink, light, 0.3);
+    // Winterrinde (Schnee-Ahorn): gekämmte Linienbüschel, weiß und grau (winterBark.ts) — nur im Material mit `winter`
+    // (die Ahorn-Stämme); Schwarz und Winter auf anderen Stämmen: flache Tinte ohne Linien, der Schnee zeichnet
+    const winterL = o.winter ? winterLines(u.add(variant), v, level, o.objPos) : null;
+    const calli = winterL
+      ? winterL.mask
+      : flowLines(u.add(variant), v.mul(2.4), linesAround(level), select(isCalli, float(0.2), float(0.14)), select(isCalli, float(0.32), float(0.72)), 3).mul(
+          select(isBlack.or(isWinter), float(0), float(1)),
+        );
+    const lineLight = winterL ? (mix(mix(ink, light, 0.5), light, winterL.bright) as unknown as Vec3Node) : light;
+    const lineShadow = mix(ink, lineLight, 0.3);
     // Flechten (Bilder 03, 35): unregelmäßige Flecken, jeder in einer flachen Farbe der Akzentzeile (Hellgrün, Gelb)
     const p = o.objPos;
     // Flecken längs des Stamms gestreckt (Pinselstriche in Wuchsrichtung), Rand zweifach verbeult
@@ -382,7 +397,7 @@ class BarkLightingModel extends LightingModel {
     const litCol = select(
       isWhite,
       white,
-      select(isStriped, striped, select(isLichen, mix(mix(dark, lichenCol, blotch), light, calli.mul(0.6)), mix(ink, light, calli))),
+      select(isStriped, striped, select(isLichen, mix(mix(dark, lichenCol, blotch), light, calli.mul(0.6)), mix(ink, lineLight, calli))),
     ) as unknown as Vec3Node;
     const shadowCol = select(
       isWhite,
@@ -414,8 +429,21 @@ class BarkLightingModel extends LightingModel {
     const thr = float(1.08).sub(o.snowNode.mul(0.5));
     const solid = smoothstep(thr, thr.add(0.05), side);
     const specks = stipple(p, 0.03, 0.66, smoothstep(thr.sub(0.4), thr, side), 0.95);
-    const snowMask = max(solid, specks.mask);
-    const snowCol = mix(o.lookup.pal(3, o.terrainRowNode).rgb, o.lookup.pal(5, o.terrainRowNode).rgb, lit) as unknown as Vec3Node;
+    // Winterrinde (Schnee-Ahorn, Bild 01): große ruhige Schneeformen, Äste durchgehend obenauf, gespritzter Rand
+    const snowMask = o.winter ? winterSnow({ up, u, v, level, p, snow: o.snowNode }) : max(solid, specks.mask);
+    const snowLit = o.lookup.pal(5, o.terrainRowNode).rgb as unknown as Vec3Node;
+    // Winterrinde: Schnee im Schatten ist ein warmes Grau (Bild 01), keine zweite Weißstufe
+    const snowShade = (o.winter ? mix(ink, snowLit, 0.74) : o.lookup.pal(3, o.terrainRowNode).rgb) as unknown as Vec3Node;
+    let snowCol = mix(snowShade, snowLit, lit) as unknown as Vec3Node;
+    if (o.winter) {
+      // Schneesaum am Fuß: wie das Schneefeld (dieselbe Lichtstufe, empfängt den Schlagschatten des Stamms) — er geht
+      // ohne Kante in den Boden über, der Schatten läuft über ihn hinweg
+      const skirt = step(MAPLE_SNOW_LEVEL - 0.5, level);
+      const skirtLit = min(lit, (input.lightColor as Vec3Node).r);
+      const field = o.lookup.pal(1, o.terrainRowNode).rgb as unknown as Vec3Node;
+      const skirtCol = mix(mix(ink, field, 0.8), field, skirtLit);
+      snowCol = mix(snowCol, skirtCol, skirt) as unknown as Vec3Node;
+    }
     col = mix(col, snowCol, snowMask);
     if (o.veil) col = mix(col, o.veil.color, o.veil.mask);
     if (o.growthNode) {

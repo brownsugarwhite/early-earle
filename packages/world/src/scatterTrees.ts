@@ -17,6 +17,8 @@ import type { PlanetVegetationFamily } from './planet';
  * dicken Stamm, dessen Äste fast waagrecht unter der Krone hinausgreifen.
  * Kuppeleiche (`domeOak`, Ebene 19): dunkle Kuppelkappe über einem getüpfelten Rock am Astwerk; Wintereiche
  * (`winterOak`, Ebene 11): schwarzer Riesenstamm, Astschlingen, hängende Wurzeläste, Sternbüschel.
+ * Schnee-Ahorn (`maple`, Bild 01 „Rote Scheune“): massiger Stamm, sechs mächtige Äste wie eine Hand, Schnee auf den
+ * Oberseiten — der alte Riese vor der roten Scheune (Welt 08).
  */
 export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel' | 'lace' | 'umbrella' | 'oak' | 'pillar'
   // Windbaum (Welt 14, Ebene 29): knorrig, zur Leeseite geneigt, Spitzenwerk an der Kronenkante
@@ -25,11 +27,11 @@ export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 
   // Schwarze Randtanne (Welt 06, Ebene 10): schmale, spitze Silhouette ohne Punkte, Sägezahn vor dem Schnee
   | 'spruce'
   // Geborgene Arten der Nachschärfung (nur anhängen, nie umsortieren): Kuppelbaum (Welten 01/03, Ebene 33), Kuppel-
-  // und Wintereiche (Welten 04/05, Ebene 19/11)
-  | 'kuppel' | 'domeOak' | 'winterOak';
+  // und Wintereiche (Welten 04/05, Ebene 19/11), Schnee-Ahorn (Welt 08, Bild 01)
+  | 'kuppel' | 'domeOak' | 'winterOak' | 'maple';
 
 /** Alle Baumarten (z. B. zur Unterscheidung Baum ↔ Requisit bei Fokus-Elementen). */
-export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak', 'pillar', 'wind', 'parasol', 'shrub', 'fir', 'spruce', 'kuppel', 'domeOak', 'winterOak'];
+export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak', 'pillar', 'wind', 'parasol', 'shrub', 'fir', 'spruce', 'kuppel', 'domeOak', 'winterOak', 'maple'];
 
 export interface TreeInstance {
   /** Fußpunkt auf der Oberfläche (Patch-Raum). */
@@ -104,6 +106,8 @@ export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number;
   domeOak: { radius: 1.0, trunk: 0.4, hull: 0.88, top: 1.66 },
   // Wintereiche (Welt 05, Ebene 11): schwarzer Riesenstamm, Astschlingen, hängende Wurzeläste, Sternbüschel
   winterOak: { radius: 1.6, trunk: 0.66, hull: 0.95, top: 1.55 },
+  // Schnee-Ahorn (Bild 01): kurzer, massiger Stamm bis zur Verzweigung, die Äste laden weit aus und steigen hoch
+  maple: { radius: 1.3, trunk: 0.46, hull: 1.05, top: 1.75 },
 };
 
 // --- Earle-Komposition der Welten -------------------------------------------------------------------
@@ -159,10 +163,11 @@ export interface GroveSpec {
 /**
  * Rindenstil der Bäume v3 (ersetzt `trunkStyle`, wenn gesetzt): Kalligrafie = weiße Linien auf Tinte (Bild 01),
  * Leuchten = blau bis cyan leuchtende Stämme mit heller Lichtkante (Ebene 16), Lavendel = blasse lavendelblaue Stämme mit
- * Lichtstreifen (Ebene 21, Welt 01), Schwarz = flache Tinte ohne Linien, nur der Schnee zeichnet den Stamm (Ebene 11).
- * Reihenfolge = Index im Instanzattribut (`BARK_STYLE`): nur anhängen.
+ * Lichtstreifen (Ebene 21, Welt 01), Schwarz = flache Tinte ohne Linien, nur der Schnee zeichnet den Stamm (Ebene 11),
+ * Winter = gekämmte Linienbüschel und große Schneeformen (Schnee-Ahorn, Bild 01: seine Stämme tragen ihn immer; andere
+ * Stämme zeichnen ihn wie Schwarz). Reihenfolge = Index im Instanzattribut (`BARK_STYLE`): nur anhängen.
  */
-export type BarkStyleName = 'ink' | 'white' | 'striped' | 'lichen' | 'calligraphy' | 'glow' | 'pale' | 'black';
+export type BarkStyleName = 'ink' | 'white' | 'striped' | 'lichen' | 'calligraphy' | 'glow' | 'pale' | 'black' | 'winter';
 
 /**
  * Riesenstämme einer Welt (Abschnitt `vegetation.giants`, Ebene 16 und Ebene 3): einzelne, sehr dicke Stämme zwischen

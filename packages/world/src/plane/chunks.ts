@@ -552,6 +552,7 @@ export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, opt
         world: l.world,
         rank: 0,
         variant: 0.37,
+        ...(l.turnTree ? { yaw: (l.yawDeg * Math.PI) / 180 } : {}),
       },
       priority: -1,
     });

@@ -29,7 +29,7 @@ export interface TreeGalleryParams {
   grand: number;
 }
 
-export const GALLERY_KINDS: TreeKind[] = ['dome', 'umbrella', 'lace', 'oak', 'jewel', 'stacked', 'spire', 'pine', 'bare', 'domeOak', 'winterOak'];
+export const GALLERY_KINDS: TreeKind[] = ['dome', 'umbrella', 'lace', 'oak', 'jewel', 'stacked', 'spire', 'pine', 'bare', 'kuppel', 'domeOak', 'winterOak', 'maple'];
 
 const R = 32;
 /** Maßstab des Riesenbaums auf der Karte (Baumeinheit → Welteinheit), gleich für seine Geschwister. */

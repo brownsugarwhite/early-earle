@@ -130,6 +130,7 @@ export class PlaneField {
   private readonly tmpE: ResolvedShape = { amplitude: 0, wavelength: 1, ridge: 0, floor: 0, slope: 0 };
   private readonly external = new Map<string, LandmarkSlot>();
   private readonly focalCache = new Map<string, LandmarkSlot | null>();
+  private readonly companionCache = new Map<string, LandmarkSlot[]>();
   /** Wahrzeichen der Ebene (null = aus). Ihre Becken und Teiche liegen im Höhenfeld. */
   readonly landmarks: PlaneLandmarks | null;
   private readonly rs3 = {} as RegionSample;
@@ -229,6 +230,7 @@ export class PlaneField {
     for (const l of this.external.values()) if (Math.hypot(x - l.position[0], z - l.position[2]) < l.clearRadius + radius) return true;
     const focal = this.focalSlot(key);
     if (focal && Math.hypot(x - focal.position[0], z - focal.position[2]) < focal.clearRadius + radius * 0.8) return true;
+    for (const c of this.companionSlots(key)) if (Math.hypot(x - c.position[0], z - c.position[2]) < c.clearRadius + radius * 0.8) return true;
     return false;
   }
 
@@ -466,6 +468,7 @@ export class PlaneField {
     const focus: [number, number] = focal ? [focal.position[0], focal.position[2]] : [region.cx, region.cz];
     const keepClear: RegionSite['keepClear'] = [];
     if (focal && focal.clearRadius > 0) keepClear.push({ x: focal.position[0], z: focal.position[2], radius: focal.clearRadius });
+    for (const c of this.companionSlots(key)) if (c.clearRadius > 0) keepClear.push({ x: c.position[0], z: c.position[2], radius: c.clearRadius });
     for (const l of this.external.values()) if (l.region === key && l.clearRadius > 0) keepClear.push({ x: l.position[0], z: l.position[2], radius: l.clearRadius });
     return { region, segment, focus, cellRadius: Math.min(this.layout.cellAcross, this.layout.cellAlong) * 0.5, keepClear };
   }
@@ -508,7 +511,7 @@ export class PlaneField {
       nor[2] = -gz / l;
       const kind = focal.kind;
       const scale = focal.scale ?? 1;
-      const clearRadius = focal.clearRadius ?? (!kind ? 0 : kind === 'barn' ? 4.5 : kind === 'oak' || kind === 'winterOak' ? 2.4 * scale : 3.2);
+      const clearRadius = focal.clearRadius ?? defaultClearRadius(kind, scale);
       slot = {
         id: `focal-${key}`,
         world: region.world,
@@ -519,11 +522,52 @@ export class PlaneField {
         scale: 1,
         clearRadius,
         ...(kind ? { instance: { kind, scale } } : {}),
+        // Baum mit Gesicht: gesetztes `yawDeg` dreht den Fokus-Baum (Wintereiche Ebene 11), sonst gehasht wie alle
+        ...(focal.yawDeg !== undefined ? { turnTree: true } : {}),
       };
     }
     if (this.focalCache.size > 2048) this.focalCache.clear();
     this.focalCache.set(key, slot);
     return slot;
+  }
+
+  /**
+   * Begleiter des Fokus-Elements einer Region (Weltkomposition, `focal.companions`): feste Versätze zum Fokus, Fuß auf
+   * dem natürlichen Gelände. Nur Begleiter in derselben Region (an einer Grenze fällt einer weg); leer ohne Fokus.
+   */
+  companionSlots(key: string): LandmarkSlot[] {
+    const hit = this.companionCache.get(key);
+    if (hit) return hit;
+    const focal = this.focalSlot(key);
+    const list = focal ? (this.catalog.spec(focal.world).focal?.companions ?? []) : [];
+    const out: LandmarkSlot[] = [];
+    list.forEach((c, i) => {
+      const x = focal!.position[0] + c.dx;
+      const z = focal!.position[2] + c.dz;
+      const rs = this.layout.sample(x, z, this.rs2);
+      if (rs.region.key !== key) return;
+      const shape = this.shapeAt(x, z, rs);
+      const e = 0.19;
+      const gx = (this.naturalHeight(x + e, z, shape) - this.naturalHeight(x - e, z, shape)) / (2 * e);
+      const gz = (this.naturalHeight(x, z + e, shape) - this.naturalHeight(x, z - e, shape)) / (2 * e);
+      const l = Math.hypot(gx, 1, gz);
+      const scale = c.scale ?? 1;
+      out.push({
+        id: `focal-${key}-c${i}`,
+        world: focal!.world,
+        region: key,
+        position: [x, this.naturalHeight(x, z, shape), z],
+        normal: [-gx / l, 1 / l, -gz / l],
+        yawDeg: c.yawDeg ?? 0,
+        scale: 1,
+        clearRadius: c.clearRadius ?? defaultClearRadius(c.kind, scale),
+        instance: { kind: c.kind, scale },
+        turnTree: true,
+      });
+    });
+    if (this.companionCache.size > 2048) this.companionCache.clear();
+    this.companionCache.set(key, out);
+    return out;
   }
 
   /** Alle Wahrzeichen (Fokus-Slots der Regionen + externe) in den gegebenen Regionen. */
@@ -533,6 +577,7 @@ export class PlaneField {
     for (const k of set) {
       const f = this.focalSlot(k);
       if (f) out.push(f);
+      for (const c of this.companionSlots(k)) out.push(c);
     }
     for (const l of this.external.values()) if (set.has(l.region)) out.push(l);
     return out;
@@ -600,4 +645,13 @@ export class PlaneField {
   static isPropInstance(kind: TreeKind | PlanetPropKind): kind is PlanetPropKind {
     return !isTreeKind(kind);
   }
+}
+
+/** Standard-Freiraum eines Fokus-Elements bzw. Begleiters nach Art (Scheune 4.5, Eiche und Schnee-Ahorn nach Größe). */
+function defaultClearRadius(kind: TreeKind | PlanetPropKind | undefined, scale: number): number {
+  if (!kind) return 0;
+  if (kind === 'barn') return 4.5;
+  if (kind === 'oak' || kind === 'winterOak') return 2.4 * scale;
+  if (kind === 'maple') return 1.6 * scale;
+  return 3.2;
 }

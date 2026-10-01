@@ -1887,7 +1887,8 @@ export class EarlePlanet {
         trees.push({ tree, slot: chunk.slot, withDots });
         const rf = this.field.features.peek(this.field.sample(tree.position[0], tree.position[2]).region.key);
         const spec = rf?.drifts ?? this.catalog.spec(tree.world).features?.drifts ?? null;
-        if (spec && tree.variant < (spec.trees ?? 1)) {
+        // der Schnee-Ahorn trägt seinen Schneehügel selbst (trees/maple.ts)
+        if (spec && tree.variant < (spec.trees ?? 1) && tree.kind !== 'maple') {
           const size = Math.min(1.7, Math.max(0.45, tree.canopyRadius * 0.42)) * (spec.size ?? 1);
           drifts.push({ position: [tree.position[0] - ax, tree.position[1], tree.position[2] - az], normal: tree.normal, size, yaw: tree.variant * 97.1, world: this.slots.slotOf(tree.world), slot: chunk.slot });
         }
@@ -1896,7 +1897,7 @@ export class EarlePlanet {
         if (prop.kind === 'barn') {
           barns.push({ prop, world: this.slots.slotOf(prop.world), slot: chunk.slot });
           const spec = this.catalog.spec(prop.world).features?.drifts;
-          if (spec) for (const d of barnDrifts(prop, spec.size ?? 1, chunk.slot, this.slots.slotOf(prop.world), ax, az)) drifts.push(d);
+          if (spec && (spec.barns ?? 1) > 0) for (const d of barnDrifts(prop, (spec.size ?? 1) * (spec.barns ?? 1), chunk.slot, this.slots.slotOf(prop.world), ax, az)) drifts.push(d);
         } else props.push({ prop, slot: chunk.slot });
       }
     }

@@ -51,6 +51,7 @@ import { CROWN_EDGE_PACK } from './cushionEdge';
 import { CAP_SAG, DOME_OAK_SKIRT_LEVEL, createDomeOakTrunk, skirtDotCount, skirtDots, skirtStipple, type DomeOakGeometry } from './domeOak';
 import { WINTER_OAK_CROWN, createWinterOakTrunk, frostDotCount, frostDots, type WinterOakGeometry } from './winterOak';
 import { hairRibbon, hairline } from './hairline';
+import { createMapleTrunk, type MapleGeometry } from './maple';
 
 /** Wachstums-Slots (je geladenem Chunk); gleich wie `GROWTH_SLOTS` der Vegetation. */
 export const TREE_SLOTS = 64;
@@ -126,13 +127,15 @@ export interface TreeLayerOptions {
  *   Liste, aus der je Baum gewählt wird (Ebene 7: Tannen immer in der dunklen Zeile, Schuppenbüsche meist türkis, einige
  *   rot und hellgrün);
  * - `kindRowPatch`: Zellgröße (Welteinheiten), in der die Wahl aus `kindRows` gleich bleibt — Farbflecken statt
- *   verstreuter Einzelbüsche (Ebene 7: ein Fleck roter Büsche, daneben hellgrüne).
+ *   verstreuter Einzelbüsche (Ebene 7: ein Fleck roter Büsche, daneben hellgrüne);
  * - `crownLift`: Lichtbänder aller Kronen der Welt verschieben (Standard 0; Ebene 33: −0.9, die Kronen bleiben dunkel,
  *   das Licht tragen die Tupfen und die hellen Kissenkanten);
  * - `dotBase`: unterste Palettenstufe der Tüpfel im Licht (Standard 2; Ebene 33: 4 — helle Tupfen auf dunkler Krone);
  * - `cushionDots`: Tupfenbögen der Kuppel-Massen 0..1 (Standard 0): die Tüpfel sitzen an den Oberkanten der Teilkuppeln,
  *   auch auf der Schattenseite (von oben beleuchtet wie bei Earle, Ebene 21/33, Bild 03), das Kisseninnere bleibt dunkel;
- * - `tufts`: Tüpfel als Blatttupfen, oben spitz 0..1 (Standard 0; Ebene 33).
+ * - `tufts`: Tüpfel als Blatttupfen, oben spitz 0..1 (Standard 0; Ebene 33);
+ * - `bareShadows`: kahle Linienbäume werfen Schatten (Standard 1; 0 = keine — Bild 01: der Schnee unter dem Winterwald
+ *   liegt ruhig, ohne Streifen aus Astschatten).
  */
 export interface TreeFamilyExtras {
   stippleCell?: number;
@@ -146,6 +149,7 @@ export interface TreeFamilyExtras {
   dotBase?: number;
   cushionDots?: number;
   tufts?: number;
+  bareShadows?: number;
 }
 
 export interface TreeEntry {
@@ -160,11 +164,11 @@ export interface TreeEntry {
  * Kissenkrone des Kuppelbaums (Ebene 33). Nur anhängen (Reihenfolge = Mesh-Reihenfolge, Blender-Export).
  */
 export type CrownKind = 'dome' | 'domeHi' | 'column' | 'pine' | 'parasol' | 'shrub' | 'fir' | 'kuppel';
-export type TrunkKind = 'fork' | 'fan' | 'oak' | 'pillar' | 'parasol' | 'sprawl' | 'domeOak' | 'winterOak';
+export type TrunkKind = 'fork' | 'fan' | 'oak' | 'pillar' | 'parasol' | 'sprawl' | 'domeOak' | 'winterOak' | 'maple';
 export const CROWN_KINDS: CrownKind[] = ['dome', 'domeHi', 'column', 'pine', 'parasol', 'shrub', 'fir', 'kuppel'];
 /** Ab diesem Kronenradius (Welteinheiten, waagrecht) nimmt eine Kuppel die feine Geometrie. */
 const DOME_HI_RADIUS = 1.45;
-export const TRUNK_KINDS: TrunkKind[] = ['fork', 'fan', 'oak', 'pillar', 'parasol', 'sprawl', 'domeOak', 'winterOak'];
+export const TRUNK_KINDS: TrunkKind[] = ['fork', 'fan', 'oak', 'pillar', 'parasol', 'sprawl', 'domeOak', 'winterOak', 'maple'];
 
 /** Form je Baumart (Einheit Kronenradius r). */
 export interface KindForm {
@@ -247,6 +251,8 @@ export const TREE_FORMS: Record<Exclude<TreeKind, CardKind>, KindForm> = {
   domeOak: { crown: 'dome', crownY: TREE_PROPORTIONS.domeOak.hull, crownS: [1, 0.86], trunk: 'domeOak', trunkH: 1, thick: 1, dots: 'skirt', terminator: 0.22 },
   // Wintereiche (trees/winterOak.ts): keine Kuppel — die Krone ist das Astwerk mit Sternbüscheln; Einheit H = Stammhöhe
   winterOak: { crown: null, crownY: TREE_PROPORTIONS.winterOak.hull, crownS: [1, 1], trunk: 'winterOak', trunkH: TREE_PROPORTIONS.winterOak.trunk, thick: 1, dots: 'frost', terminator: 0.3 },
+  // Schnee-Ahorn (Bild 01): kahler Riese, eigener Archetyp (Einheit = Verzweigungshöhe), Schnee und Linien in der Rinde
+  maple: { crown: null, crownY: TREE_PROPORTIONS.maple.hull, crownS: [1, 1], trunk: 'maple', trunkH: TREE_PROPORTIONS.maple.trunk, thick: 1, dots: 'none', terminator: 0.3 },
 };
 
 /**
@@ -350,6 +356,7 @@ export class TreeLayer {
   private readonly parasolTrunk: ParasolTrunk;
   private readonly domeOak: DomeOakGeometry;
   private readonly winterOak: WinterOakGeometry;
+  private readonly maple: MapleGeometry;
   private readonly geometries: BufferGeometry[] = [];
   private readonly materials: Array<{ dispose(): void }> = [];
   private readonly dotsGeometry: InstancedBufferGeometry;
@@ -366,6 +373,7 @@ export class TreeLayer {
   private readonly worldDotBase: UniformArrayLike;
   private readonly worldCushion: UniformArrayLike;
   private readonly worldTuft: UniformArrayLike;
+  private readonly worldBareShadow: UniformArrayLike;
   private blocks = new Map<number, DotBlock>();
   private dotsDirty = false;
   private lastTick = -1;
@@ -393,6 +401,7 @@ export class TreeLayer {
     this.worldDotBase = perSlot(2);
     this.worldCushion = perSlot(0);
     this.worldTuft = perSlot(0);
+    this.worldBareShadow = perSlot(1);
     for (const [slot, world] of options.slots.entries()) this.onSlotAssigned(slot, world);
 
     // Detailstufe aus der Qualitätsstufe (Hoch: 60+ Punkte je Baum): feinere Teilkuppeln, glattere Silhouetten
@@ -413,6 +422,7 @@ export class TreeLayer {
     this.parasolTrunk = createParasolTrunk(TREE_PROPORTIONS.parasol.trunk);
     this.domeOak = createDomeOakTrunk(9);
     this.winterOak = createWinterOakTrunk(5, { detail });
+    this.maple = createMapleTrunk(8);
 
     // Gepackte Instanzattribute (WebGPU: ≤ 8 Vertex-Puffer je Pipeline):
     // treeA = (Fuß xyz, Rang), treeB = (Kronenmitte bzw. Spitze xyz, Slot), treeC = (Kronenzeile, Akzentzeile, Stil, Variante),
@@ -554,6 +564,7 @@ export class TreeLayer {
       sprawl: this.sprawl.geometry,
       domeOak: this.domeOak.geometry,
       winterOak: this.winterOak.geometry,
+      maple: this.maple.geometry,
     };
     for (const kind of TRUNK_KINDS) {
       const geometry = trunkGeos[kind];
@@ -632,6 +643,10 @@ export class TreeLayer {
         const toCam = normalize(shared.camLocal.sub(p)) as unknown as Vec3Node;
         placed = mix(hairline(p, nrm, w, warp, shared.projScaleY), hairRibbon(p, nrm, bark.x, w, toCam, warp, shared.projScaleY), isRibbon) as unknown as Vec3Node;
         shadowPlaced = mix(p, hairRibbon(p, nrm, bark.x, w, shared.sunDirLocal as unknown as Vec3Node, warp, null), isRibbon) as unknown as Vec3Node;
+      } else if (kind === 'maple') {
+        // Schnee-Ahorn: nur Stamm und Äste werfen Schatten (Bild 01: ruhige Schattenformen auf dem Schnee); die feinen
+        // Zweige fallen im Schattenpass auf den Fuß zusammen, statt als Tüpfelteppich über den Schnee zu streuen
+        shadowPlaced = select(level.greaterThan(0.5), treeA().xyz, positionLocal);
       }
       const material = new BarkMaterial({
         lookup,
@@ -652,6 +667,7 @@ export class TreeLayer {
         growthNode: shared.slotGrowth(treeB().w),
         veil,
         giant: kind === 'pillar',
+        winter: kind === 'maple',
       });
       if (shadowPlaced) (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(grownFrom(shadowPlaced));
       if (skirtCut) {
@@ -700,7 +716,10 @@ export class TreeLayer {
       const material = new MeshBasicNodeMaterial({ side: DoubleSide });
       material.colorNode = fogOf(data.w, base, 'vBareFogDist')(lookup.pal(3, data.w).rgb as unknown as Vec3Node);
       material.positionNode = warp(billboard(normalize(shared.camLocal.sub(base))));
-      (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(billboard(shared.sunDirLocal));
+      // Welten ohne Astschatten (`bareShadows: 0`): die Karte fällt im Schattenpass auf ihren Fuß zusammen
+      const bareWorld = max(float(0), shared.slotOfRow(data.w));
+      const casts = arrayElement(this.worldBareShadow, bareWorld).greaterThan(0.5);
+      (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(select(casts, billboard(shared.sunDirLocal), base));
       const mesh = new InstancedMesh(geometry, material, n);
       mesh.name = 'planet-bare';
       mesh.castShadow = true;
@@ -932,7 +951,7 @@ export class TreeLayer {
   private trunkCapacity(kind: TrunkKind): number {
     if (kind === 'winterOak') return 16;
     if (kind === 'domeOak') return Math.min(600, Math.max(16, Math.round(this.options.capacity.trees * 0.25)));
-    return kind === 'oak' ? 24 : kind === 'pillar' ? 48 : kind === 'fan' || kind === 'parasol' ? Math.max(16, Math.round(this.options.capacity.trees * 0.3)) : this.options.capacity.trees;
+    return kind === 'oak' || kind === 'maple' ? 24 : kind === 'pillar' ? 48 : kind === 'fan' || kind === 'parasol' ? Math.max(16, Math.round(this.options.capacity.trees * 0.3)) : this.options.capacity.trees;
   }
 
   private attachTreeAttributes(geometry: BufferGeometry, n: number): void {
@@ -968,6 +987,7 @@ export class TreeLayer {
     this.worldDotBase.array[slot] = x.dotBase ?? 2;
     this.worldCushion.array[slot] = x.cushionDots ?? 0;
     this.worldTuft.array[slot] = x.tufts ?? 0;
+    this.worldBareShadow.array[slot] = x.bareShadows ?? 1;
   }
 
   /** Kronenzeile eines Baums (Juwelenwald: Farbvarianten; `kindRows`: feste Zeile je Art). */
@@ -1011,6 +1031,8 @@ export class TreeLayer {
   }
 
   private barkStyle(t: PlanetTree): number {
+    // Schnee-Ahorn: immer Winterrinde (sein Material ist `winter`; der Stil steht der Ausfuhr zur Verfügung)
+    if (t.kind === 'maple') return BARK_STYLE.winter;
     const f = this.family(t);
     const name = f?.bark ?? f?.trunkStyle ?? 'ink';
     return BARK_STYLE[name] ?? 0;
@@ -1025,8 +1047,8 @@ export class TreeLayer {
 
   /** Stammdicke je Instanz: Familie (Anteil am Kronenradius, Standard 0.04) relativ zum Archetyp. */
   private thickness(t: PlanetTree, form: KindForm): number {
-    // Eiche, Fächer, Riesenstamm, Schirmbaum, Ausleger, Kuppel- und Wintereiche haben eigene Proportionen (die Dicke streckt waagrecht und würde die Äste aus der Krone schieben)
-    if (form.trunk === 'oak' || form.trunk === 'fan' || form.trunk === 'pillar' || form.trunk === 'parasol' || form.trunk === 'sprawl' || form.trunk === 'domeOak' || form.trunk === 'winterOak') return 1;
+    // Eiche, Fächer, Riesenstamm, Schirmbaum, Ausleger, Kuppel- und Wintereiche, Schnee-Ahorn haben eigene Proportionen (die Dicke streckt waagrecht und würde die Äste aus der Krone schieben)
+    if (form.trunk === 'oak' || form.trunk === 'fan' || form.trunk === 'pillar' || form.trunk === 'parasol' || form.trunk === 'sprawl' || form.trunk === 'domeOak' || form.trunk === 'winterOak' || form.trunk === 'maple') return 1;
     return form.thick * this.widthFactor(t, form);
   }
 
@@ -1176,7 +1198,9 @@ export class TreeLayer {
                       ? this.domeOak.top
                       : kind === 'winterOak'
                         ? this.winterOak.top
-                        : FORK_TOP + (S - 1) * FORK_Y;
+                        : kind === 'maple'
+                          ? this.maple.top
+                          : FORK_TOP + (S - 1) * FORK_Y;
         _v.set(0, top * H, 0).applyQuaternion(q);
         a.setXYZW(i, t.position[0] - ox, t.position[1], t.position[2] - oz, t.rank);
         b.setXYZW(i, t.position[0] - ox + _v.x, t.position[1] + _v.y, t.position[2] - oz + _v.z, e.slot);
@@ -1184,7 +1208,8 @@ export class TreeLayer {
         const keep = form.thick < 0.5 ? 0.35 : 1;
         // .y: Gabel = Stauchung des Astnetzes (breite Schäfte, schmales Netz), Fächer = Schleier an (Spitzenbaum)
         const y = kind === 'fork' ? 1 / this.widthFactor(t, form) : kind === 'fan' ? (form.dots === 'lace' ? 1 : 0) : 1;
-        // Riesenstamm: wie seine Krone (Stamm und Krone treten gemeinsam aus dem Bild)
+        // Riesenstamm: wie seine Krone (Stamm und Krone treten gemeinsam aus dem Bild); Schnee-Ahorn: nur der Stamm (die
+        // Weltkomposition steht nah vor ihm, seine Äste dürfen aus dem Bild ragen)
         const fadeR =
           kind === 'oak'
             ? this.oak.spread * H
@@ -1200,11 +1225,14 @@ export class TreeLayer {
                       ? this.domeOak.spread * H
                       : kind === 'winterOak'
                         ? this.winterOakFade(H)
-                        : Math.max(0.3, t.canopyRadius * 0.4);
+                        : kind === 'maple'
+                          ? 1.1 * H
+                          : Math.max(0.3, t.canopyRadius * 0.4);
         // Welt-Slot (Tabellen) + halber Anlauf-Anteil
         d.setXYZW(i, H, y, fadeR, this.options.slots.slotOf(t.world) + (1 - keep) * 0.5);
         if (kind === 'oak') hMax = Math.max(hMax, this.oak.top * H);
         if (kind === 'winterOak') hMax = Math.max(hMax, this.winterOak.top * H);
+        if (kind === 'maple') hMax = Math.max(hMax, this.maple.top * H);
       });
       for (const attr of [a, b, c, d, mesh.instanceMatrix]) commit(attr, list.length);
       mesh.count = list.length;

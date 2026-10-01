@@ -1,5 +1,5 @@
 import { hash32, mulberry32 } from '../rng';
-import type { TreeFamily, TreeKind } from '../scatterTrees';
+import { TREE_KIND_LIST, type TreeFamily, type TreeKind } from '../scatterTrees';
 import type { LakeSpec, RiverSpec, RockSpec, WorldFeatureSpec } from '../features/types';
 import type { FocalSpec, PlanetPropSpec, PlanetTerrainShape, WorldSpec } from './types';
 
@@ -153,7 +153,19 @@ function mixFocal(a: FocalSpec | undefined, b: FocalSpec | undefined, t: number,
   const dom = t < 0.5 ? (a ?? b) : (b ?? a);
   if (!dom) return undefined;
   const lateral = (rand() < 0.5 ? -1 : 1) * (4 + rand() * 5);
-  return { ...dom, along: 0.3 + rand() * 0.4, lateral };
+  const focal: FocalSpec = { ...dom, along: 0.3 + rand() * 0.4, lateral };
+  // Begleiter (Weltkomposition einer Autorenwelt) nicht übernehmen: näher am Pfad stünden sie ihm im Weg. Ein reiner
+  // Bildanker gibt stattdessen sein erstes Begleit-Requisit als Fokus-Element weiter (Welt 08: die rote Scheune)
+  const prop = !dom.kind ? dom.companions?.find((c) => !TREE_KIND_LIST.includes(c.kind as TreeKind)) : undefined;
+  if (prop) {
+    focal.kind = prop.kind;
+    focal.scale = prop.scale ?? 1;
+    focal.yawDeg = prop.yawDeg ?? 0;
+    if (prop.clearRadius !== undefined) focal.clearRadius = prop.clearRadius;
+    else delete focal.clearRadius;
+  }
+  delete focal.companions;
+  return focal;
 }
 
 /** Spezifikation (Gelände, Vegetation, Requisiten, Merkmale) einer prozeduralen Welt. */
