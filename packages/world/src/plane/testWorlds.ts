@@ -24,6 +24,8 @@ interface WorldFile {
   landmarkChance?: number;
   mist?: WorldSpec['mist'];
   landmarks?: WorldSpec['landmarks'];
+  /** Dach der Scheunen (Standard Schnee). */
+  barnRoof?: WorldSpec['barnRoof'];
   /** Angedeutete Zone (w16): gesperrt, nur Silhouetten. */
   hinted?: boolean;
   /** false: nie Nachbarwelt einer Seitenzelle (nur `?prozedural=1`). */
@@ -75,6 +77,7 @@ export function authoredSpecs(): WorldSpec[] {
       ...(w.landmarkChance !== undefined ? { landmarkChance: w.landmarkChance } : {}),
       ...(w.mist ? { mist: w.mist } : {}),
       ...(w.landmarks ? { landmarks: w.landmarks } : {}),
+      ...(w.barnRoof ? { barnRoof: w.barnRoof } : {}),
     };
   });
 }

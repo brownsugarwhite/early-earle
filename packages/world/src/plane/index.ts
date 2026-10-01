@@ -80,6 +80,7 @@ export type {
   RockFormation as PlaneRockFormation,
 } from './features/types';
 export type {
+  BarnRoofStyle,
   CanopyMotif,
   FocalCompanion,
   FocalSpec,

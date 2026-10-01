@@ -6,7 +6,7 @@ import { PaletteAtlas, type WorldPalette } from '../palette';
 import { WorldSlots } from '../worldSlots';
 import { PaletteLookup, createFogSettings } from '../tsl';
 import { PlanetVegetation } from '../planetVegetation';
-import { MAPLE_SNOW_LEVEL, MAPLE_WEATHER_U, createMapleTrunk } from './maple';
+import { MAPLE_SNOW_LEVEL, MAPLE_SNOW_RIM, MAPLE_WEATHER_U, createMapleTrunk } from './maple';
 import { treeQuaternion } from './treeLayer';
 import { Quaternion } from 'three/webgpu';
 
@@ -15,10 +15,14 @@ const pos = maple.geometry.getAttribute('position').array as Float32Array;
 const bark = maple.geometry.getAttribute('bark').array as Float32Array;
 const count = pos.length / 3;
 
-/** Vertices einer Rinden-Ebene (0 Stamm, 1 Ast, 2 Zweig, 5 Schneesaum). */
+/** Vertices einer Rinden-Ebene (0 Stamm, 1 Ast, 2 Zweig, 5 … 5.4 Schneesaum innen → Rand). */
 function vertsOf(level: number): Array<[number, number, number]> {
   const out: Array<[number, number, number]> = [];
-  for (let i = 0; i < count; i++) if (bark[i * 4 + 2] === level) out.push([pos[i * 3]!, pos[i * 3 + 1]!, pos[i * 3 + 2]!]);
+  const hi = level === MAPLE_SNOW_LEVEL ? level + MAPLE_SNOW_RIM + 1e-6 : level;
+  for (let i = 0; i < count; i++) {
+    const l = bark[i * 4 + 2]!;
+    if (l >= level && l <= hi) out.push([pos[i * 3]!, pos[i * 3 + 1]!, pos[i * 3 + 2]!]);
+  }
   return out;
 }
 
@@ -57,10 +61,26 @@ describe('Schnee-Ahorn (Welt 08, Bild 01)', () => {
     // der Rand des Schneesaums liegt rundum unter dem Boden
     const skirt = vertsOf(MAPLE_SNOW_LEVEL);
     expect(skirt.length).toBeGreaterThan(200);
-    const rim = skirt.filter((p) => Math.hypot(p[0], p[2]) > 1.85);
+    const rim = skirt.filter((p) => Math.hypot(p[0], p[2]) > 1.6);
     expect(rim.length).toBeGreaterThan(20);
-    for (const p of rim.filter((q) => Math.hypot(q[0], q[2]) > 2.3)) expect(p[1]).toBeLessThan(0);
+    for (const p of rim.filter((q) => Math.hypot(q[0], q[2]) > 1.95)) expect(p[1]).toBeLessThan(0);
+    // die Rinden-Ebene des Saums läuft von innen (5) nach außen (5.4): Verlauf vom Weiß am Stamm zum Ton des Felds
+    const levels = Array.from({ length: count }, (_, i) => bark[i * 4 + 2]!).filter((l) => l >= MAPLE_SNOW_LEVEL - 0.01);
+    expect(Math.min(...levels)).toBeCloseTo(MAPLE_SNOW_LEVEL, 6);
+    expect(Math.max(...levels)).toBeCloseTo(MAPLE_SNOW_LEVEL + MAPLE_SNOW_RIM, 6);
     for (const level of [1, 2]) expect(Math.min(...vertsOf(level).map((p) => p[1])), `Ebene ${level}`).toBeGreaterThan(0.6);
+  });
+
+  it('der Schneesaum deckt die Wurzelanläufe: kein Stamm-Vertex nahe dem Boden steht außerhalb über dem Saum', () => {
+    const skirt = vertsOf(MAPLE_SNOW_LEVEL);
+    // Höhe des Saums je Richtung und Abstand (gröbste Näherung: höchster Saum-Vertex im selben Sektor weiter außen)
+    const sector = (p: readonly number[]) => Math.round((Math.atan2(p[2]!, p[0]!) / (Math.PI * 2)) * 56);
+    for (const p of vertsOf(0)) {
+      const r = Math.hypot(p[0], p[2]);
+      if (p[1] < 0 || p[1] > 0.12 || r < 1.0) continue;
+      const cover = skirt.filter((q) => sector(q) === sector(p) && Math.hypot(q[0], q[2]) >= r - 0.02);
+      expect(Math.max(...cover.map((q) => q[1])), `Wurzel bei r ${r.toFixed(2)}`).toBeGreaterThan(p[1] - 0.02);
+    }
   });
 
   it('jeder Ast hängt am Baum: sein Ansatz liegt im Stamm oder auf einem früheren Ast', () => {

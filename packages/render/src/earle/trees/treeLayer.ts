@@ -644,8 +644,10 @@ export class TreeLayer {
         placed = mix(hairline(p, nrm, w, warp, shared.projScaleY), hairRibbon(p, nrm, bark.x, w, toCam, warp, shared.projScaleY), isRibbon) as unknown as Vec3Node;
         shadowPlaced = mix(p, hairRibbon(p, nrm, bark.x, w, shared.sunDirLocal as unknown as Vec3Node, warp, null), isRibbon) as unknown as Vec3Node;
       } else if (kind === 'maple') {
-        // Schnee-Ahorn: nur Stamm und Äste werfen Schatten (Bild 01: ruhige Schattenformen auf dem Schnee); die feinen
-        // Zweige fallen im Schattenpass auf den Fuß zusammen, statt als Tüpfelteppich über den Schnee zu streuen
+        // Schnee-Ahorn: Zweigenden als Haarlinien (mindestens ≈ 1 px breit, Ebene 6: feine Federstriche statt Splitter);
+        // nur Stamm und Äste werfen Schatten (ruhige Schattenformen auf dem Schnee) — die feinen Zweige fallen im
+        // Schattenpass auf den Fuß zusammen, statt als Tüpfelteppich über den Schnee zu streuen
+        placed = hairline(positionLocal as unknown as Vec3Node, normalize(normalLocal) as unknown as Vec3Node, bark.w.mul(H), warp, shared.projScaleY);
         shadowPlaced = select(level.greaterThan(0.5), treeA().xyz, positionLocal);
       }
       const material = new BarkMaterial({

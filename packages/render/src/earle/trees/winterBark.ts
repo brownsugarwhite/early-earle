@@ -1,57 +1,65 @@
-import { abs, cos, float, floor, fract, fwidth, hash, max, select, sin, smoothstep, step, vec3 } from 'three/tsl';
-import type { FloatNode, Vec3Node } from '../tsl';
-import { valueNoise3 } from './patterns';
+import { abs, cos, float, floor, fract, fwidth, hash, max, mix, select, sin, smoothstep, step, vec3 } from 'three/tsl';
+import { aaStep, periodFade, type FloatNode, type Vec3Node } from '../tsl';
+import { stipple, valueNoise3 } from './patterns';
 import { MAPLE_SNOW_LEVEL, MAPLE_WEATHER_U } from './maple';
 
 /**
- * Winterrinde des Schnee-Ahorns (Bild 01 „Rote Scheune“): feine, wellige weiße Linien auf dem schwarzen Stamm, wie
- * gekämmt — sie laufen in Büscheln (je Büschel ein Dutzend Linien, die gemeinsam schwingen), brechen abschnittsweise ab,
- * einzelne leuchten weiß, andere stehen grau. Zwischen den Büscheln bleibt der Stamm reine Tinte; die Äste sind fast
- * nur Tinte mit Schnee obenauf. Der Schnee liegt in großen, ruhigen Formen (Oberseiten, eine Wetterseite des Stamms),
- * nur ihr Rand ist gespritzt: zwei Körnungen Tüpfel vor der Kante und dunkle Löcher knapp dahinter — Earles
- * Siebdruck-Rand statt einer glatten Linie, aber kein Fleckenmuster über den ganzen Stamm.
+ * Winterrinde des Schnee-Ahorns (Ebene 6, Bild 01 „Rote Scheune“): der Stamm ist Tinte, seine Lichtseite ein flaches Grau
+ * (materials.ts), darauf feine weiße und graue Linien wie gekämmt — in deterministischen Bündeln (je Bündel ≈ zehn
+ * Linien, die gemeinsam schwingen und zu ihren Enden zusammenlaufen), nur am Stamm und nur auf seiner Lichtseite, nie auf
+ * den Ästen. Der Schnee liegt in harten Formen (Oberseiten, eine Wetterseite des Stamms) mit einem feinen Tüpfelsaum vor
+ * der Kante; seine Unterseite ist eine flache graue Stufe (materials.ts).
  *
- * Alles im Baumraum (u rundum, v längs in Welteinheiten, Objektposition in Welteinheiten), nie Screen-Space; Linien und
- * Tüpfel unter ≈ 2–3 px blenden aus (kein Flimmern).
+ * Alles im Baumraum (u rundum, v längs in Welteinheiten, Objektposition in Welteinheiten), nie Screen-Space; Linien sind
+ * 1 px breit (`fwidth`), unter ≈ 2,5 px Abstand blenden sie zu ihrer mittleren Deckung über (kein Flimmern).
  */
 export interface WinterLines {
-  /** Deckung der Linien 0..1. */
+  /** Deckung der Linien 0..1 (vor der Lichtseite; materials.ts multipliziert das Licht hinein). */
   mask: FloatNode;
   /** 1 = weiße Linie, 0 = graue. */
   bright: FloatNode;
 }
 
-export function winterLines(u: FloatNode, v: FloatNode, level: FloatNode, objPos: Vec3Node): WinterLines {
-  // Linien rundum: am Stamm dicht (in einem Büschel liegen die Linien eng, Bild 01); die Äste bleiben Tinte mit Schnee
-  const isTrunk = level.lessThan(0.5);
-  const lines = float(132);
-  const phase = u.mul(6.2831853);
-  // gekämmter Fluss: benachbarte Linien schwingen gemeinsam (Einheit: Linienabstände) in langen S-Bögen, dazu ein
-  // Nachzittern — die Phase ändert sich rundum langsam, so bleiben die Linien eines Büschels parallel
-  const flow = sin(v.mul(3.4).add(sin(phase.mul(2.0).add(v.mul(1.2))).mul(1.6)))
-    .mul(4.2)
-    .add(sin(v.mul(8.5).add(phase.mul(3.0))).mul(0.9));
-  const wave = u.mul(lines).add(flow);
-  const raw = floor(wave);
-  const idx = raw.sub(floor(raw.div(lines)).mul(lines)); // Index modulo Linienzahl (nahtlos rundum)
-  const dist = abs(fract(wave).sub(0.5));
-  // Striche: jede Linie in Stücken längs, etwa drei Viertel gezeichnet
-  const seg = floor(v.mul(2.2).add(hash(idx.mul(13.1).add(55.0)).mul(3.0)));
-  const keep = step(hash(idx.mul(31.0).add(seg.mul(7.0)).add(9123.0)), float(0.7));
-  const hw = float(0.22).mul(float(0.55).add(hash(idx.mul(97.0).add(seg.mul(13.0)).add(4321.0)).mul(0.9))).mul(0.5);
-  const fw = fwidth(wave).max(1e-5);
-  const line = smoothstep(hw.add(fw), hw.sub(fw), dist);
-  const fade = smoothstep(0.42, 0.22, fw);
-  // Büschel: Rauschen im Baumraum — Linien nur in Gruppen, dazwischen reine Tinte
-  const tuft = smoothstep(0.48, 0.58, valueNoise3(objPos.mul(vec3(3.8, 1.6, 3.8)), 13));
-  const bright = step(0.4, hash(idx.mul(17.0).add(seg.mul(3.0)).add(777.0)));
-  return { mask: line.mul(keep).mul(fade).mul(tuft).mul(select(isTrunk, float(1), float(0))), bright };
+/** Bündel rundum (ganzzahlig → nahtlos) und Linien je Bündel. */
+const BUNDLE_CELLS = 13;
+const BUNDLE_LINES = 10;
+
+export function winterLines(u: FloatNode, v: FloatNode, level: FloatNode): WinterLines {
+  const isTrunk = select(level.lessThan(0.5), float(1), float(0));
+  // Zelle rundum (Bündel) und Abschnitt längs (jedes Bündel bricht nach 0,5–1 Einheiten ab, versetzt je Zelle)
+  const cu = u.mul(BUNDLE_CELLS);
+  const raw = floor(cu);
+  const cell = raw.sub(floor(raw.div(BUNDLE_CELLS)).mul(BUNDLE_CELLS));
+  const segLen = hash(cell.mul(3.7).add(11.0)).mul(0.5).add(0.5);
+  const sv = v.div(segLen).add(hash(cell.mul(5.3).add(7.0)).mul(3.0));
+  const seg = floor(sv);
+  const t = fract(sv);
+  const present = step(hash(cell.mul(17.0).add(seg.mul(31.0)).add(901.0)), float(0.45));
+  // gekämmter Fluss: das ganze Bündel schwingt in langen S-Bögen (alle Linien parallel), zu den Enden laufen sie zusammen
+  const sway = sin(v.mul(1.9).add(cell.mul(2.3))).mul(0.1).add(sin(v.mul(4.7).add(cell.mul(0.9))).mul(0.04));
+  const local = fract(cu).sub(0.5).sub(sway);
+  const pinch = float(1).add(abs(t.sub(0.5)).mul(1.4));
+  const wv = local.mul(BUNDLE_LINES).mul(pinch);
+  const idx = floor(wv);
+  const fw = fwidth(wv).max(1e-5);
+  const line = smoothstep(float(1.0), float(0.0), abs(fract(wv).sub(0.5)).div(fw));
+  // Breite des Bündels (Linien) atmet zu den Enden hin auf null; jede Linie beginnt und endet etwas versetzt
+  const halfW = float(BUNDLE_LINES * 0.3).mul(smoothstep(0.0, 0.3, t)).mul(smoothstep(1.0, 0.7, t));
+  const inside = step(abs(idx.add(0.5)), halfW);
+  const lk = hash(idx.mul(13.1).add(seg.mul(7.3)).add(cell.mul(3.1)).add(17.0));
+  const span = step(lk.mul(0.3), t).mul(step(t, float(1).sub(fract(lk.mul(7.7)).mul(0.3))));
+  const keep = step(fract(lk.mul(3.3)), float(0.85));
+  // aus der Ferne: mittlere Deckung des Bündels (ein grauer Strich statt flimmernder Linien)
+  const mean = fw.clamp(0, 1).mul(halfW.div(BUNDLE_LINES * 0.3)).mul(0.45);
+  const mask = mix(mean, line.mul(inside).mul(span).mul(keep), periodFade(wv, 2.5)).mul(present).mul(isTrunk);
+  const bright = step(0.4, hash(idx.mul(17.0).add(seg.mul(3.0)).add(cell.mul(5.0)).add(777.0)));
+  return { mask, bright };
 }
 
 export interface WinterSnowInput {
   /** Normale · Lot (1 = Oberseite). */
   up: FloatNode;
-  /** Rinde: u rundum, v längs (Welteinheiten), Ebene (0 Stamm, 1 Ast, 2 Zweig). */
+  /** Rinde: u rundum, v längs (Welteinheiten), Ebene (0 Stamm, 1 Ast, 2 Zweig, 5.x Schneesaum). */
   u: FloatNode;
   v: FloatNode;
   level: FloatNode;
@@ -61,44 +69,49 @@ export interface WinterSnowInput {
   snow: FloatNode;
 }
 
+export interface WinterSnow {
+  /** Schnee 0..1 (harte Form mit 1 px Kante plus Tüpfelsaum). */
+  cover: FloatNode;
+  /** 1 = Oberseite (weiß im Licht), 0 = Unterseite (flache graue Stufe). */
+  top: FloatNode;
+}
+
 /**
- * Schnee auf der Winterrinde (Bild 01): Oberseiten von Stamm, Ästen und (als Saum) Zweigen, eine Wetterseite des
- * Stamms und der steilen Äste; große Formen (grobes Rauschen), der Rand fein verbeult und gespritzt. Rückgabe: Maske.
+ * Schnee auf der Winterrinde (Ebene 6): Oberseiten von Ästen (durchgehend als Kappe) und Zweigen (als Saum), eine
+ * Wetterseite des Stamms, die vom Fuß aufsteigt. Harte Formen — die Kante ist eine 1-px-Stufe (`aaStep`) einer ruhigen,
+ * leicht verbeulten Grenze; davor ein Saum feiner Tüpfel, die nach außen kleiner und seltener werden (Siebdruck-Spritzer
+ * statt eines Fleckenmusters). Die Kappe teilt sich in Oberseite und Unterseite (flache graue Stufe).
  */
-export function winterSnow(o: WinterSnowInput): FloatNode {
+export function winterSnow(o: WinterSnowInput): WinterSnow {
   const { up, u, v, level, p } = o;
-  // grobe Formen (Flecken so groß wie ein Viertel Stamm), feiner Rand
+  // ruhige Formen (Flecken so groß wie ein Viertel Stamm), die Kante nur leicht verbeult
   const broad = valueNoise3(p.mul(vec3(2.2, 1.1, 2.2)), 21).sub(0.5);
-  const fine = valueNoise3(p.mul(vec3(11.0, 5.0, 11.0)), 23).sub(0.5);
+  const fine = valueNoise3(p.mul(vec3(9.0, 4.0, 9.0)), 23).sub(0.5);
   const isTrunk = level.lessThan(0.5);
   const isTwig = level.greaterThan(1.5);
-  // Oberseiten: Äste durchgehend (der Schnee liegt als Band obenauf), Zweige als Saum
+  // Oberseiten: Äste durchgehend (der Schnee liegt als Kappe obenauf), Zweige als Saum
   const perLevel = select(isTwig, float(0.6), float(1));
   const topSide = smoothstep(0.12, 0.55, up.add(broad.mul(0.3))).mul(perLevel);
-  // Wetterseite: fest im Archetyp (dorthin läuft auch der Schneehügel aus, maple.ts), an den steilen Ästen schmaler,
-  // nie an der Unterseite
+  // Wetterseite: fest im Archetyp (dorthin läuft auch der Schneehügel aus, maple.ts), an den steilen Ästen schmaler
   const windward = cos(u.sub(MAPLE_WEATHER_U).mul(6.2831853)).add(broad.mul(1.1));
   const weatherW = select(isTrunk, float(0.95), select(isTwig, float(0), smoothstep(-0.15, 0.35, up).mul(0.72)));
-  // Am Stamm klettert der Schnee vom Fuß auf (Bild 01: die Wetterseite ist unten ganz weiß und läuft bis etwa zur
+  // Am Stamm klettert der Schnee vom Fuß auf (Ebene 6: die Wetterseite ist unten ganz weiß und läuft bis etwa zur
   // halben Stammhöhe aus), an den Ästen liegt er auf ihrer ganzen Länge
-  const climb = select(isTrunk, smoothstep(3.6, 1.9, v.add(broad.mul(0.9))), smoothstep(0.3, 1.2, v));
+  const climb = select(isTrunk, smoothstep(1.8, 0.8, v.add(broad.mul(0.6))), smoothstep(0.3, 1.2, v));
   const weather = smoothstep(0.1, 0.6, windward).mul(weatherW).mul(climb);
-  // Spritzer: die Kante schneidet ein fraktales Rauschen (drei Oktaven) — Inseln aus Schnee vor ihr, Löcher aus Tinte
-  // dahinter, groß und klein gemischt wie gespritzte Farbe; feine Oktaven blenden aus, bevor sie flimmern
-  const octave = (freq: number, salt: number, amp: number): FloatNode => {
-    const q = p.mul(freq);
-    const px = fwidth(q.x).add(fwidth(q.y)).add(fwidth(q.z));
-    return valueNoise3(q, salt).sub(0.5).mul(amp).mul(smoothstep(0.9, 0.35, px));
-  };
-  const splat = fine.mul(0.12).add(octave(24, 25, 0.2)).add(octave(55, 27, 0.16));
-  const side = max(topSide, weather).mul(step(0.01, o.snow)).add(splat);
+  const side = max(topSide, weather).mul(step(0.01, o.snow)).add(fine.mul(0.08));
   const thr = float(1.08).sub(o.snow.mul(0.5));
-  const fw = fwidth(side).max(1e-4);
-  const cover = smoothstep(thr.sub(fw), thr.add(fw), side);
-  // Am Stamm klebt der Schnee in Flecken (Bild 01): dunkle Inseln im Weiß, fern der Kante, groß und klein
-  const holeNoise = valueNoise3(p.mul(vec3(7.0, 3.2, 7.0)), 29).add(octave(19, 31, 0.3));
-  const fwh = fwidth(holeNoise).max(1e-4);
-  const holes = smoothstep(float(0.66).sub(fwh), float(0.66).add(fwh), holeNoise).mul(smoothstep(thr.add(0.12), thr.add(0.3), side)).mul(select(isTrunk, float(1), float(0)));
-  // Schneehügel am Fuß: ganz Schnee
-  return select(level.greaterThan(MAPLE_SNOW_LEVEL - 0.5), float(1), cover.mul(float(1).sub(holes)));
+  // harte Kante (1 px)
+  const core = aaStep(thr, side);
+  // Tüpfelsaum vor der Kante: feine Punkte (Zelle 0,03 Einheiten ≈ 1–2 px auf Kartendistanz), nach außen kleiner
+  const band = 0.16;
+  const near = smoothstep(thr.sub(band), thr, side).mul(float(1).sub(core));
+  const dots = stipple(p, 0.03, 0.34, near, 0.75).mask;
+  const cover = max(core, dots);
+  // Oberseite der Kappe weiß, ihre Flanke (zur Seite, nach unten) eine flache graue Stufe; die Wetterseite des Stamms
+  // zählt als Oberseite (sie steht im Licht des Schneehügels)
+  const top = max(aaStep(0.42, up.add(fine.mul(0.15))), select(isTrunk, aaStep(0.5, weather), float(0)));
+  // Schneehügel am Fuß: ganz Schnee, ganz Oberseite
+  const mound = level.greaterThan(MAPLE_SNOW_LEVEL - 0.5);
+  return { cover: select(mound, float(1), cover), top: select(mound, float(1), top) };
 }

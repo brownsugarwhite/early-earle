@@ -119,7 +119,17 @@ export interface FocalCompanion {
   yawDeg?: number;
   /** Freiraum um den Begleiter (Standard nach Art wie beim Fokus). */
   clearRadius?: number;
+  /**
+   * Requisiten-Variante 0..1 (Standard 0.37). Scheune: unter 0.2 Satteldach, 0.2–0.45 Pultdach-Scheune mit einer großen
+   * Dachfläche (Ebene 6), ab 0.45 Satteldach mit Anbau.
+   */
+  variant?: number;
+  /** Dachstil einer Scheune, abweichend von `WorldSpec.barnRoof` (Welt 08: Tintendächer nach Ebene 37 neben der Schneescheune). */
+  roof?: BarnRoofStyle;
 }
+
+/** Dach der Scheunen: Schneeplatte mit grauem Traufbrett (Ebene 6) oder Tintendach (Ebene 37, Screenshot 8). */
+export type BarnRoofStyle = 'snow' | 'ink';
 
 /** Eine Welt (Autorenwelt aus `content/zones/worlds/NN.json` oder prozedural erzeugt). */
 export interface WorldSpec {
@@ -141,10 +151,20 @@ export interface WorldSpec {
   mist?: MistSpec;
   /** Gewichtsfaktoren der Wahrzeichen dieser Welt (0 = keine; z. B. keine Wasserfall-Felsen in der Nebelweide). */
   landmarks?: Partial<Record<LandmarkKind, number>>;
+  /** Dach der Scheunen dieser Welt (Standard Schnee); Begleiter können es einzeln überschreiben (`FocalCompanion.roof`). */
+  barnRoof?: BarnRoofStyle;
 }
 
 /** Alter Name (Planet mit Zonenbändern); die Felder zone/side/half gibt es nicht mehr. */
 export type PlanetWorldParams = WorldSpec;
+
+/** Element an einem Wahrzeichen-Slot (Baum oder Requisit); Variante und Dach nur für Requisiten (Scheune). */
+export interface LandmarkInstance {
+  kind: TreeKind | PlanetPropKind;
+  scale: number;
+  variant?: number;
+  roof?: BarnRoofStyle;
+}
 
 export interface LandmarkSlot {
   id: string;
@@ -159,7 +179,7 @@ export interface LandmarkSlot {
   yawDeg: number;
   scale: number;
   clearRadius: number;
-  instance?: { kind: TreeKind | PlanetPropKind; scale: number };
+  instance?: LandmarkInstance;
   /**
    * Baum-Instanz dreht sich nach `yawDeg` (Begleiter der Weltkomposition, Fokus-Bäume mit `yawDeg` in der Weltdatei);
    * sonst Drehung aus der Position.
@@ -177,7 +197,7 @@ export interface PlanetLandmarkParams {
   yawDeg?: number;
   scale: number;
   clearRadius: number;
-  instance?: { kind: TreeKind | PlanetPropKind; scale: number };
+  instance?: LandmarkInstance;
 }
 
 export interface PlanetTree {
@@ -217,4 +237,6 @@ export interface PlanetProp {
   rank: number;
   variant: number;
   zone: number;
+  /** Dach einer Scheune, abweichend vom Dach der Welt (Begleiter der Weltkomposition); fehlt → `WorldSpec.barnRoof`. */
+  roof?: BarnRoofStyle;
 }

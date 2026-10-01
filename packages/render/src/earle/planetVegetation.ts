@@ -1,5 +1,4 @@
 import {
-  BoxGeometry,
   BufferGeometry,
   CircleGeometry,
   CylinderGeometry,
@@ -785,40 +784,10 @@ export function createTowerGeometry(): BufferGeometry {
   return merged;
 }
 
-/** Scheune: Quader mit Satteldach (Firstrichtung x), Breite 1.6, Tiefe 1.0, Traufhöhe 0.7, First 1.15. */
-export function createBarnGeometry(): BufferGeometry {
-  const body = new BoxGeometry(1.6, 0.7, 1.0);
-  body.translate(0, 0.35, 0);
-  const pos: number[] = [];
-  const idx: number[] = [];
-  const tri = (a: number[], b: number[], c: number[]) => {
-    const s = pos.length / 3;
-    pos.push(...a, ...b, ...c);
-    idx.push(s, s + 1, s + 2);
-  };
-  // Dachflächen (leicht überstehend) und Giebel
-  const y0 = 0.7;
-  const y1 = 1.15;
-  const o = 0.06;
-  tri([-0.8 - o, y0, 0.5 + o], [0.8 + o, y0, 0.5 + o], [0.8 + o, y1, 0]);
-  tri([-0.8 - o, y0, 0.5 + o], [0.8 + o, y1, 0], [-0.8 - o, y1, 0]);
-  tri([0.8 + o, y0, -0.5 - o], [-0.8 - o, y0, -0.5 - o], [-0.8 - o, y1, 0]);
-  tri([0.8 + o, y0, -0.5 - o], [-0.8 - o, y1, 0], [0.8 + o, y1, 0]);
-  tri([0.8, y0, 0.5], [0.8, y0, -0.5], [0.8, y1, 0]);
-  tri([-0.8, y0, -0.5], [-0.8, y0, 0.5], [-0.8, y1, 0]);
-  const roof = new BufferGeometry();
-  roof.setAttribute('position', new Float32BufferAttribute(pos, 3));
-  roof.setIndex(idx);
-  roof.computeVertexNormals();
-  const merged = mergeGeometries([body, roof]);
-  body.dispose();
-  roof.dispose();
-  return merged;
-}
-
 /**
  * Alle festen Requisiten in einer Geometrie (ein Mesh, eine Pipeline): Teilform je Vertex im Attribut `part`
- * (0 Klumpen, 1 Turm, 2 Reifen, 3 Rohr, 4 Scheune); der Vertex-Shader behält nur die Teilform des Instanztyps.
+ * (0 Klumpen, 1 Turm, 2 Reifen, 3 Rohr); der Vertex-Shader behält nur die Teilform des Instanztyps. Scheunen zeichnet
+ * ein eigenes Mesh (`landmarks/barn.ts`); Typ 6 hat hier keine Teilform mehr.
  */
 export function createPropGeometry(): BufferGeometry {
   const tire = new TorusGeometry(0.5, 0.17, 6, 14);
@@ -827,7 +796,7 @@ export function createPropGeometry(): BufferGeometry {
   const pipe = new CylinderGeometry(0.16, 0.16, 2.4, 8, 1, false);
   pipe.rotateZ(Math.PI / 2);
   pipe.translate(0, 0.16, 0);
-  const parts = [createLumpGeometry(), createTowerGeometry(), tire, pipe, createBarnGeometry()];
+  const parts = [createLumpGeometry(), createTowerGeometry(), tire, pipe];
   const pos: number[] = [];
   const nor: number[] = [];
   const part: number[] = [];

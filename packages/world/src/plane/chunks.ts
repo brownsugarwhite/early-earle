@@ -687,7 +687,19 @@ export function scatterPlaneProps(field: PlaneField, cx: number, cz: number, opt
     if (px < ox || px >= ox + CHUNK_SIZE || pz < oz || pz >= oz + CHUNK_SIZE) continue;
     const p: Vec3 = [px, py, pz];
     snapToMesh(options.mesh, p);
-    out.push({ kind: inst.kind as PlanetPropKind, position: p, normal: [l.normal[0], l.normal[1], l.normal[2]], scale: inst.scale, yaw: (l.yawDeg * Math.PI) / 180, zone: 0, world: l.world, rank: 0, variant: 0.37 });
+    out.push({
+      kind: inst.kind as PlanetPropKind,
+      position: p,
+      normal: [l.normal[0], l.normal[1], l.normal[2]],
+      scale: inst.scale,
+      yaw: (l.yawDeg * Math.PI) / 180,
+      zone: 0,
+      world: l.world,
+      rank: 0,
+      // Variante der Komposition (Scheune: 0.37 = Pultdach-Scheune ohne Anbau, Ebene 6), Dach abweichend von der Welt
+      variant: inst.variant ?? 0.37,
+      ...(inst.roof ? { roof: inst.roof } : {}),
+    });
   }
   void NO_WATER;
   return out;
