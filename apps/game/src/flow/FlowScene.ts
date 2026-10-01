@@ -103,6 +103,8 @@ const RAIL_HANDOVER: readonly [number, number] = [26, 44];
 const MAP_CLEARANCE = 6.5;
 /** Farther than this (plane units), a glide to a node jumps to its last stretch first (0.4 of this distance). */
 const GLIDE_JUMP = 150;
+/** Tween-Tags reiner Ansichtsbewegungen (kein Werfer bewegt sich: kein Schattenpass, R4.4). */
+const VIEW_ONLY_TWEENS = ['glide', 'camera', 'stripes'] as const;
 /**
  * Board v2 fly-in (flow clock): the plateau starts heaving at T_RISE_AT (its own ≈1.3 s wall-clock
  * choreography), the hero rides the hill up, crouches and jumps onto its cell at T_HERO_LAUNCH.
@@ -412,9 +414,9 @@ export class FlowScene implements SceneController {
       }
     }
 
-    if (this.phase === 'map' && this.panAttached) {
-      if (this.panBall.step(dt)) world.markShadowDirty();
-    }
+    // Schwenken und Trägheit: kein Schattenpass — die Kaskaden gleiten (Texelgitter an der Ebene), geänderte Werfer
+    // und die Lichtungen um die Kamera zeichnen nur ihre Kaskaden neu (MapWorld.update, R4.4)
+    if (this.phase === 'map' && this.panAttached) this.panBall.step(dt);
     if (this.phase === 'splash') this.placeHeroAtSplashDot();
     if (this.splashBacking?.visible) this.placeSplashBacking();
     // The board stands on the plane: its root follows the display every frame (the view may glide); once the plateau
@@ -471,7 +473,8 @@ export class FlowScene implements SceneController {
     // Moving casters (hero flights, wobble, the rising plateau, sliding blobs) need a fresh shadow pass.
     if (board.root.visible && (board.animating || board.moved)) this.boardShadowGrace = 0.6;
     else this.boardShadowGrace = Math.max(0, this.boardShadowGrace - dt);
-    if (hero.isFlying || hero.jiggle > 0.02 || this.tweens.active > 0 || this.boardShadowGrace > 0) world.markShadowDirty();
+    // (Gleiten, Kamerafahrten und Nebelstreifen bewegen keine Werfer: Pose-/Pan-Signatur der Kaskaden, R4.4)
+    if (hero.isFlying || hero.jiggle > 0.02 || this.tweens.activeExcept(VIEW_ONLY_TWEENS) > 0 || this.boardShadowGrace > 0) world.markShadowDirty();
     // On the giant tree, sky and fog follow the node the camera frames (the centre ray would run past the crown onto
     // a neighbour world far behind it); during the depart the camera heads for the completed node, during the walk for
     // the next one: both `current`
@@ -571,7 +574,7 @@ export class FlowScene implements SceneController {
       this.viewYaw = v.yaw;
       world.rig.quaternion.setFromAxisAngle(_Y, v.yaw);
       world.rig.updateMatrixWorld(true);
-      world.markShadowDirty();
+      // Gieren dreht Kamera und Sonne: Pose-Signatur → Refit, gedrehte Lichtachsen machen die Kaskaden schmutzig (R4.4)
     }
   }
 
@@ -665,7 +668,6 @@ export class FlowScene implements SceneController {
       duration,
       (t) => {
         this.applyView({ x: lerp(from.x, to.x, t), z: lerp(from.z, to.z, t), yaw: lerp(from.yaw, to.yaw, t) });
-        this.world!.markShadowDirty();
       },
       { ease, tag: 'glide' },
     );

@@ -3,22 +3,34 @@
  * Chunk-Generierung auch in Workern und Tests ohne Spiellogik läuft.
  */
 
-/** 32-bit-Hash (FNV-1a mit Murmur-Finalizer) über Zahlen und Strings, z. B. `hash32('tjorizo', cx, cy)`. */
+/** Geteilter Puffer für die Bytes einer Zahl (Float64, Plattform-Bytereihenfolge wie zuvor je Aufruf neu angelegt). */
+const HASH_F64 = new Float64Array(1);
+const HASH_U8 = new Uint8Array(HASH_F64.buffer);
+
+/**
+ * 32-bit-Hash (FNV-1a mit Murmur-Finalizer) über Zahlen und Strings, z. B. `hash32('tjorizo', cx, cy)`.
+ *
+ * Ohne Allokation je Aufruf (R4: vorher je Zahl ein neues Float64Array + Uint8Array — beim Schwenken ≈ 3 µs je
+ * `treeHash`, 77 % von `TreeLayer.setContent`); dieselben Bytes in derselben Reihenfolge → identische Werte.
+ */
 export function hash32(...parts: ReadonlyArray<number | string>): number {
   let h = 0x811c9dc5;
-  const mixByte = (b: number) => {
-    h ^= b & 0xff;
-    h = Math.imul(h, 0x01000193);
-  };
-  for (const part of parts) {
+  for (let p = 0; p < parts.length; p++) {
+    const part = parts[p]!;
     if (typeof part === 'string') {
-      for (let i = 0; i < part.length; i++) mixByte(part.charCodeAt(i));
-      mixByte(0xff);
+      for (let i = 0; i < part.length; i++) {
+        h ^= part.charCodeAt(i) & 0xff;
+        h = Math.imul(h, 0x01000193);
+      }
+      h ^= 0xff;
+      h = Math.imul(h, 0x01000193);
     } else {
       // Zahlen bitweise (auch Nachkommastellen) einmischen
-      const f = new Float64Array([part]);
-      const u = new Uint8Array(f.buffer);
-      for (let i = 0; i < 8; i++) mixByte(u[i] ?? 0);
+      HASH_F64[0] = part;
+      for (let i = 0; i < 8; i++) {
+        h ^= HASH_U8[i]!;
+        h = Math.imul(h, 0x01000193);
+      }
     }
   }
   // Murmur3-Finalizer für bessere Streuung

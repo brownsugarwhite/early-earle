@@ -224,6 +224,8 @@ export interface PathCorridor {
 const LINGER_CHUNKS = 12;
 /** Frist der ersten Füllung (ms): so viele der nächsten Chunks wie hineinpassen, der Rest mit dem Budget je Bild. */
 const FIRST_FILL_MS = 60;
+/** Inhalt (Vegetation, Requisiten) höchstens alle so viele Bilder neu (R4.6; Schatten-Regionen ebenso, MapWorld). */
+const CONTENT_REBUILD_FRAMES = 6;
 
 /**
  * Grundbestand vor der Heilung (nie leeres Gelände): Welten ohne ganzes Müllfeld zeigen schon die Hälfte ihrer Bäume
@@ -402,6 +404,13 @@ export class EarlePlanet {
   private mistBanks: readonly MistBank[] = [];
   /** Chunks, die Inhalt tragen (nicht hinter dem Horizont): Neubau des Inhalts, wenn sich die Menge ändert. */
   private contentKeys = '';
+  /** Inhalt des letzten Neubaus je Chunk (R4.4: geänderte Chunks → Schatten nur in ihrer Region neu zeichnen). */
+  private builtContent = new Map<string, ChunkCpu>();
+  /** Geänderte Werfer seit dem letzten `takeShadowRegion` (Ebene: x, h, z) bzw. „alles neu“. */
+  private readonly shadowRegion = new Box3();
+  private shadowRegionAll = false;
+  /** Aktive Regionen der Merkmal-Meshes (Felsen): Zu- und Abgänge markieren ihre Formationen. */
+  private activeRegionSet = new Set<string>();
   private readonly cache = new Map<string, ChunkCpu>();
   private readonly slotsUsed: Array<string | null> = new Array<string | null>(GROWTH_SLOTS).fill(null);
   private readonly loadsPerFrame: number;
@@ -1342,6 +1351,11 @@ export class EarlePlanet {
   private sightPlane: Vec3 | null = null;
   private sightRadius = 0.6;
 
+  /** Ziel der Sichtlinie (Ebene) oder null — Schatten der Sichtlinien-Lichtung (R4.4). */
+  get sightTarget(): Readonly<Vec3> | null {
+    return this.sightPlane;
+  }
+
   /** Wahrzeichen im Bild (gebaut). */
   get landmarkList(): readonly LandmarkInstance[] {
     return this.landmarkInstances;
@@ -1547,7 +1561,7 @@ export class EarlePlanet {
     for (const chunk of this.loaded.values()) {
       const m = chunk.cpu.mesh;
       chunk.beyond = Math.hypot(m.ox + half - camX, m.oz + half - camZ) > horizonReach;
-      if (!chunk.beyond) content.push(chunk.key);
+      if (this.carriesContent(chunk)) content.push(`${chunk.key}@${chunk.res}`);
     }
     const contentKeys = content.sort().join('|');
     if (contentKeys !== this.contentKeys) {
@@ -1555,9 +1569,10 @@ export class EarlePlanet {
       changed = true;
     }
     if (changed) this.contentDirty = true;
-    const pending = wanted.some((w) => !this.loaded.has(w.key));
     let rebuilt = false;
-    if (this.contentDirty && (!pending || this.lastRebuild < 0 || this.frame - this.lastRebuild >= 6)) {
+    // R4.6: höchstens alle CONTENT_REBUILD_FRAMES Bilder (beim Schwenken änderte sich die Menge fast jedes Bild; die
+    // Änderungen liegen am Rand im Nebel bzw. knapp außerhalb des Bildes und sammeln sich bis zum nächsten Neubau)
+    if (this.contentDirty && (this.lastRebuild < 0 || this.frame - this.lastRebuild >= CONTENT_REBUILD_FRAMES)) {
       this.rebuildContent();
       this.contentDirty = false;
       this.lastRebuild = this.frame;
@@ -1691,7 +1706,12 @@ export class EarlePlanet {
           if (c) parts.push(c.cpu.mesh);
         }
       }
+      const ox = tile.tx * SHADOW_TILE * CHUNK_SIZE;
+      const oz = tile.tz * SHADOW_TILE * CHUNK_SIZE;
+      const span = SHADOW_TILE * CHUNK_SIZE;
       if (tile.mesh) {
+        // Schattenregion: der alte Gelände-Werfer der Kachel fällt weg (sichtbar gewesen)
+        if (tile.mesh.visible) this.addShadowBox(ox, oz, ox + span, oz + span, tile.minH - 0.5, tile.maxH + 0.5);
         tile.mesh.removeFromParent();
         tile.mesh.geometry.dispose();
         this.releaseObject(tile.mesh);
@@ -1701,8 +1721,6 @@ export class EarlePlanet {
         this.shadowTiles.delete(tile.key);
         continue;
       }
-      const ox = tile.tx * SHADOW_TILE * CHUNK_SIZE;
-      const oz = tile.tz * SHADOW_TILE * CHUNK_SIZE;
       let verts = 0;
       let idx = 0;
       for (const m of parts) {
@@ -1754,6 +1772,8 @@ export class EarlePlanet {
       tile.mesh = mesh;
       tile.minH = minH;
       tile.maxH = maxH;
+      // neue Kachel: sichtbar ab `updateTileBounds` — ihre Region zählt dort (Sichtbarkeitswechsel) bzw. hier
+      mesh.visible = false;
     }
     if (any) this.lastTileRebuild = this.frame;
   }
@@ -1774,6 +1794,8 @@ export class EarlePlanet {
     const cz = tile.tz * SHADOW_TILE * CHUNK_SIZE + half;
     const sb = this.sunBand;
     const beyond = sunwardDistance(cx - camX, cz - camZ, sb.x, sb.y, sb.z) > horizonReach + half * 0.5;
+    // Schattenregion: Gelände-Werfer der Kachel kommt hinzu oder fällt weg
+    if (mesh.visible === beyond) this.addShadowBox(cx - half, cz - half, cx + half, cz + half, tile.minH - 0.5, tile.maxH + 0.5);
     mesh.visible = !beyond;
     if (beyond) return;
     const fx = cx - this.focus.x;
@@ -2049,12 +2071,12 @@ export class EarlePlanet {
       loadedTop = Math.max(loadedTop, m.maxH);
       this.bounds.expandByPoint(_v.set(m.ox - this.focus.x, this.options.radius + m.minH, m.oz - this.focus.z));
       this.bounds.expandByPoint(_v.set(m.ox + CHUNK_SIZE - this.focus.x, this.options.radius + m.maxH, m.oz + CHUNK_SIZE - this.focus.z));
-      // Inhalt nur diesseits des Horizonts (wartende Chunks hinter der Kamera tragen nichts bei)
-      if (chunk.beyond) continue;
+      // Inhalt nur diesseits des Horizonts und nur gewollter Chunks (wartende hinter der Kamera tragen nichts bei)
+      if (!this.carriesContent(chunk)) continue;
       for (const key of m.regions) regions.add(key);
       for (const tree of chunk.cpu.trees) {
         trees.push({ tree, slot: chunk.slot, withDots });
-        const rf = this.field.features.peek(this.field.sample(tree.position[0], tree.position[2]).region.key);
+        const rf = this.field.features.peek(this.treeRegionKey(tree));
         const spec = rf?.drifts ?? this.catalog.spec(tree.world).features?.drifts ?? null;
         // der Schnee-Ahorn trägt seinen Schneehügel selbst (trees/maple.ts)
         if (spec && tree.variant < (spec.trees ?? 1) && tree.kind !== 'maple') {
@@ -2071,6 +2093,12 @@ export class EarlePlanet {
       }
     }
     this.loadedTop = loadedTop;
+    // Schattenregion (R4.4): Chunks, deren Inhalt hinzukommt, wegfällt oder wechselt (Detailstufe)
+    const built = new Map<string, ChunkCpu>();
+    for (const chunk of this.loaded.values()) if (this.carriesContent(chunk)) built.set(chunk.key, chunk.cpu);
+    for (const [key, cpu] of built) if (this.builtContent.get(key) !== cpu) this.addShadowChunk(cpu);
+    for (const [key, cpu] of this.builtContent) if (!built.has(key)) this.addShadowChunk(cpu);
+    this.builtContent = built;
     this.vegetation.setContent(trees, props, { x: ax, z: az });
     this.anchorObject(this.vegetation.group, ax, az);
     this.landmarkTop = this.barns.set(barns, { x: ax, z: az });
@@ -2107,11 +2135,39 @@ export class EarlePlanet {
     // Felsen und Wasser der aktiven Regionen (ein Mesh je Schicht)
     const key = [...regions].sort().join('|') + `#${this.field.version}`;
     if (key !== this.activeRegionsKey) {
+      // Schattenregion: Felsformationen der Regionen, die hinzukommen oder wegfallen (Version gewechselt: alles)
+      if (key.split('#')[1] !== this.activeRegionsKey.split('#')[1]) this.shadowRegionAll = true;
+      const changed = [...regions].filter((r) => !this.activeRegionSet.has(r));
+      for (const r of this.activeRegionSet) if (!regions.has(r)) changed.push(r);
+      for (const rk of changed) {
+        for (const f of this.field.features.region(rk).formations) {
+          const r = f.footprint + 1;
+          this.addShadowBox(f.cx - r, f.cz - r, f.cx + r, f.cz + r, f.height - 40, f.height + 1);
+        }
+      }
+      this.activeRegionSet = new Set(regions);
       this.activeRegionsKey = key;
       this.buildFeatureMeshes([...regions]);
     }
     if (!this.bounds.isEmpty()) this.bounds.expandByScalar(this.hTotal);
   }
+
+  /** Trägt der Chunk Inhalt? Diesseits des Horizonts und in diesem Bild gewollt (sichtbar, nah oder sonnenwärts). */
+  private carriesContent(chunk: LoadedChunk): boolean {
+    return !chunk.beyond && chunk.lastSeen === this.frame;
+  }
+
+  /** Regionsschlüssel am Fuß eines Baums (gecacht: die Feldprobe kostete ≈ 25 % von `rebuildContent`). */
+  private treeRegionKey(tree: PlaneTree): string {
+    let key = this.treeRegions.get(tree);
+    if (key === undefined) {
+      key = this.field.sample(tree.position[0], tree.position[2]).region.key;
+      this.treeRegions.set(tree, key);
+    }
+    return key;
+  }
+
+  private readonly treeRegions = new WeakMap<PlaneTree, string>();
 
   /** Wahrzeichen der geladenen Chunks: Menge bestimmen, bei Änderung neu bauen (Anker = gerundeter Fokus). */
   private rebuildLandmarks(): void {
@@ -2132,6 +2188,17 @@ export class EarlePlanet {
     const list = x0 < x1 ? lm.inRect(x0, z0, x1, z1) : [];
     const key = list.map((l) => l.placement.id).sort().join('|') + `#${lm.version}`;
     if (key === this.landmarkKey) return;
+    // Schattenregion: Wahrzeichen, die hinzukommen oder wegfallen (Fußkreis, Höhe des Bauplans)
+    const before = new Map(this.landmarkInstances.map((l) => [l.placement.id, l]));
+    const after = new Set(list.map((l) => l.placement.id));
+    const mark = (l: LandmarkInstance): void => {
+      const pl = l.placement;
+      const r = Math.max(pl.radius, l.blueprint.radius) + 2;
+      this.addShadowBox(pl.x - r, pl.z - r, pl.x + r, pl.z + r, pl.y - 1, pl.y + l.blueprint.height + 1);
+    };
+    for (const l of list) if (!before.has(l.placement.id)) mark(l);
+    for (const [id, l] of before) if (!after.has(id)) mark(l);
+    if (key.split('#')[1] !== this.landmarkKey.split('#')[1]) this.shadowRegionAll = true; // Version gewechselt
     this.landmarkKey = key;
     this.landmarkInstances = list;
     this.landmarkOrigin.x = Math.round(this.focus.x);
@@ -2220,6 +2287,33 @@ export class EarlePlanet {
     this.plane.add(mesh);
     this.anchorObject(mesh, ax, az);
     return mesh;
+  }
+
+  /**
+   * Werfer, die sich seit dem letzten Aufruf geändert haben (R4.4): Box in Ebenenkoordinaten (x, h, z) über Chunk-Inhalt,
+   * Gelände-Stellvertreter und Felsen, oder „alles“ (Wahrzeichen, Wachstum). Der Besitzer der Sonne zeichnet damit nur
+   * die Kaskaden neu, die die Box treffen (`SunRig.markDirtyRegion`).
+   */
+  takeShadowRegion(out: Box3): 'none' | 'region' | 'all' {
+    const all = this.shadowRegionAll;
+    const empty = this.shadowRegion.isEmpty();
+    out.copy(this.shadowRegion);
+    this.shadowRegion.makeEmpty();
+    this.shadowRegionAll = false;
+    return all ? 'all' : empty ? 'none' : 'region';
+  }
+
+  /** Werfer-Box (Ebene) zur Schattenregion hinzufügen. */
+  private addShadowBox(x0: number, z0: number, x1: number, z1: number, h0: number, h1: number): void {
+    this.shadowRegion.expandByPoint(_v.set(x0, h0, z0));
+    this.shadowRegion.expandByPoint(_v.set(x1, h1, z1));
+  }
+
+  /** Inhalt eines Chunks (Bäume samt Kronen über den Rand, Requisiten, Scheunen) als geänderte Werfer. */
+  private addShadowChunk(cpu: ChunkCpu): void {
+    const m = cpu.mesh;
+    const top = Math.max(this.vegetation.hMax, this.landmarkTop, 4) + 1;
+    this.addShadowBox(m.ox - 3, m.oz - 3, m.ox + CHUNK_SIZE + 3, m.oz + CHUNK_SIZE + 3, m.minH - 0.5, m.maxH + top);
   }
 
   /** Sichtbare Chunks des letzten `update` (Ebene), die kameranächsten zuerst (Müll, Diagnose). */

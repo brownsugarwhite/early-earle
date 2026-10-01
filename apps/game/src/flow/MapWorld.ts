@@ -1,4 +1,4 @@
-import { Color, Frustum, Group, Matrix4, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
+import { Box3, Color, Frustum, Group, Matrix4, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import { CloudBanks, EarlePlanet, FogStripes, PLANET_SHADOW_LAYER, SunRig, createSkyDome, followViewClouds, skySunIndices, type WorldPalette } from '@ee/render';
 import { hash32, type Vec3 } from '@ee/world';
@@ -80,6 +80,25 @@ const _w = new Vector3();
 const _q = new Quaternion();
 const _m = new Matrix4();
 const _f = new Vector3();
+const _box = new Box3();
+
+/**
+ * Schatten der kameranahen Lichtungen (R4.4): Bäume am Kamerafuß, auf der Sichtlinie und fremde Bäume nahe der Kamera
+ * schrumpfen im Haupt- und im Schattenpass. Beim Schwenken zeichnen die Kaskaden in dieser Zone neu, sobald der
+ * Kamerafuß so weit gewandert ist (Einheiten; die Blende der Lichtung ist 1,8 breit) — sonst blieben Schatten
+ * geschrumpfter Bäume stehen.
+ */
+const FADE_STEP = 2;
+/** Radius der Lichtungszone um den Kamerafuß (Fremdwelt-Lichtung 11 + 3 Blende, Kronen). */
+const FADE_RADIUS = 15;
+/**
+ * Geänderte Werfer (Inhalt am Rand, Müll, Lichtungen) zeichnen ihre Kaskaden höchstens so oft neu (s): beim Schwenken
+ * ≤ 10 Schattenpass-Runden je Sekunde; neue Bäume am Rand bekommen ihren Schatten bis zu 0,1 s später. Bewegte Werfer
+ * (Held, Brett, Wachstum: `markShadowDirty`) zeichnen sofort.
+ */
+const REGION_FLUSH_S = 0.1;
+/** …und nicht öfter als alle so viele Bilder (120-Hz-Anzeigen, gedrosselte Messbilder). */
+const REGION_FLUSH_FRAMES = 6;
 
 /**
  * The Earle world of the flow on the infinite plane (ADR 0002, Route 15 + 1): the streamed world (the 15 authored
@@ -122,6 +141,18 @@ export class MapWorld {
   private shadowDirty = true;
   private lastTime = -1;
   shadowPasses = 0;
+  /** Davon Schattenpässe nur einer Region (R4.4: geänderte Werfer, Lichtungen; nur die getroffenen Kaskaden). */
+  regionPasses = 0;
+  /** Geänderte Werfer (Ebene x, h, z), die im nächsten Bild ihre Kaskaden neu zeichnen. */
+  private readonly pendingRegion = new Box3();
+  /** Kamerafuß (Ebene) beim letzten Neuzeichnen der Lichtungszone. */
+  private readonly fadeFoot = { x: NaN, z: NaN };
+  private fadeSight: string = '';
+  /** Werferhöhe der Kaskaden (klebrig: steigt sofort, sinkt erst bei 2 Einheiten Abstand — sonst Refit je Inhalt). */
+  private casterHeight = -1;
+  private lastRegionFlush = -Infinity;
+  private lastRegionFrame = -1000;
+  private frameNo = 0;
 
   constructor(readonly options: MapWorldOptions) {
     const q = options.quality;
@@ -576,6 +607,7 @@ export class MapWorld {
   /** Once per frame before rendering: streaming, sun/sky uniforms, world blend, billboard axes, shadow refresh. */
   update(): void {
     const now = performance.now() / 1000;
+    this.frameNo++;
     const dt = this.lastTime < 0 ? 0 : Math.min(0.1, now - this.lastTime);
     this.lastTime = now;
     this.scene.updateMatrixWorld(true);
@@ -589,7 +621,11 @@ export class MapWorld {
     this.skyHorizon.value = -Math.sin(Math.acos(Math.min(1, R / Math.max(R + 0.01, camR))));
     _m.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
     this.frustum.setFromProjectionMatrix(_m, this.camera.coordinateSystem);
-    if (this.world.update(this.camera, camWorld, this.frustum)) this.shadowDirty = true;
+    this.world.update(this.camera, camWorld, this.frustum);
+    // Geänderte Werfer (Chunk-Inhalt, Gelände-Stellvertreter, Felsen, Wahrzeichen): nur ihre Kaskaden neu (R4.4)
+    const changed = this.world.takeShadowRegion(_box);
+    if (changed === 'all') this.shadowDirty = true;
+    else if (changed === 'region') this.pendingRegion.union(_box);
 
     // World under the camera's look point drives sky, fog and stripes
     const look = _v.set(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(_q));
@@ -610,10 +646,15 @@ export class MapWorld {
     if (fogDist >= 0) this.world.setFogDistance(fogDist);
     this.world.setViewPoint(lookPlane.x, lookPlane.z, this.viewCut);
     this.viewCut = false;
-    if (this.world.viewBlending) this.shadowDirty = true; // neighbours fade in/out near the camera
+    // Lichtungen um die Kamera (Fuß, Sichtlinie, Nachbarwelten beim Überblenden): Zone neu zeichnen, wenn gewandert
+    this.trackFadeZone(camWorld, this.world.viewBlending);
     this.world.tickView(dt);
     followViewClouds(this.clouds, this.world, this.camera.position, this.skyHorizon.value);
-    if (this.trash?.update(this.camera, camWorld, this.frustum, dt)) this.shadowDirty = true;
+    if (this.trash?.update(this.camera, camWorld, this.frustum, dt)) {
+      // Müll-Chunks gewechselt: nur ihre Region (Heil-Feier: alle Kaskaden)
+      if (this.trash.takeShadowRegion(_box)) this.pendingRegion.union(_box);
+      else this.shadowDirty = true;
+    }
     this.fogStripes.layout(1, this.world.curvature.value);
 
     const site = this.treeSite;
@@ -623,13 +664,67 @@ export class MapWorld {
       if (site.holder.visible !== treeWasVisible) this.shadowDirty = true;
     }
 
-    if (this.shadowDirty) {
+    if (this.shadowDirty || !this.pendingRegion.isEmpty()) {
       const treeH = site?.holder.visible ? site.height + 1 : 0;
-      this.sun.setCasterHeight(Math.max(this.world.hTotal, treeH, this.world.terrainTop + (this.trash?.hMax ?? 0) + 1));
+      const want = Math.ceil(Math.max(this.world.hTotal, treeH, this.world.terrainTop + (this.trash?.hMax ?? 0) + 1));
+      if (want > this.casterHeight || want < this.casterHeight - 2) {
+        this.casterHeight = want;
+        this.sun.setCasterHeight(want);
+      }
+    }
+    if (this.shadowDirty) {
       this.sun.requestUpdate();
       this.shadowPasses++;
       this.shadowDirty = false;
+      this.pendingRegion.makeEmpty();
+    } else if (!this.pendingRegion.isEmpty() && now - this.lastRegionFlush >= REGION_FLUSH_S - 1e-3 && this.frameNo - this.lastRegionFrame >= REGION_FLUSH_FRAMES) {
+      this.lastRegionFlush = now;
+      this.lastRegionFrame = this.frameNo;
+      // Ebene → flacher Raum (relativ zum Fokus, y = R + h)
+      const f = this.world.focus;
+      _box.copy(this.pendingRegion);
+      _box.min.set(_box.min.x - f.x, _box.min.y + PLANET_RADIUS, _box.min.z - f.z);
+      _box.max.set(_box.max.x - f.x, _box.max.y + PLANET_RADIUS, _box.max.z - f.z);
+      if (this.sun.markDirtyRegion(_box) > 0) {
+        this.regionPasses++;
+        this.shadowPasses++;
+      }
+      this.pendingRegion.makeEmpty();
     }
+  }
+
+  /**
+   * Lichtungszone (R4.4): Kamerafuß ± FADE_RADIUS und die Sichtlinie bis zu ihrem Ziel (höchstens 30 Einheiten) — neu,
+   * sobald der Fuß FADE_STEP gewandert ist, das Sichtziel wechselt oder Nachbarwelten überblenden.
+   */
+  private trackFadeZone(camWorld: Vector3, blending: boolean): void {
+    const foot = this.fromDisplay(camWorld, _f);
+    const sight = this.world.sightTarget;
+    const sightKey = sight ? `${sight[0]},${sight[2]}` : '';
+    const moved = !(Math.hypot(foot.x - this.fadeFoot.x, foot.z - this.fadeFoot.z) < FADE_STEP);
+    if (!moved && !blending && sightKey === this.fadeSight) return;
+    const lo = -this.world.terrainTop - 2;
+    const hi = this.world.hTotal + 1;
+    const add = (x: number, z: number, r: number) => {
+      this.pendingRegion.expandByPoint(_w.set(x - r, lo, z - r));
+      this.pendingRegion.expandByPoint(_w.set(x + r, hi, z + r));
+    };
+    const zone = (fx: number, fz: number) => {
+      if (!Number.isFinite(fx)) return;
+      add(fx, fz, FADE_RADIUS);
+      if (sight) {
+        // Sichtlinie: vom Fuß zum Ziel, auf 30 Einheiten gekürzt
+        const dx = sight[0] - fx;
+        const dz = sight[2] - fz;
+        const k = Math.min(1, 30 / Math.max(1e-6, Math.hypot(dx, dz)));
+        add(fx + dx * k, fz + dz * k, 4);
+      }
+    };
+    zone(this.fadeFoot.x, this.fadeFoot.z);
+    zone(foot.x, foot.z);
+    this.fadeFoot.x = foot.x;
+    this.fadeFoot.z = foot.z;
+    this.fadeSight = sightKey;
   }
 
   dispose(): void {

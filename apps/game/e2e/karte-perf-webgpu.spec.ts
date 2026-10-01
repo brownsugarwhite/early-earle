@@ -18,9 +18,15 @@ test.use({ launchOptions: { args: ['--use-angle=metal', '--enable-gpu', '--ignor
 test.setTimeout(480_000);
 
 const OUT = fileURLToPath(new URL('../../../docs/progress/', import.meta.url));
-const P99_PAN_MAX_MS = Number(process.env.EE_PERF_P99 ?? 80);
-/** Ziel aus dem Plan (R4, Hoch am Mac); verfehlt = Anmerkung, kein Fehler (noch). */
+// R4 (2026-10-01): 80 → 50 ms und Schattenpässe/s ≤ 30. Die Planziele (p99 20, Pässe ≤ 10) stehen als Anmerkung —
+// nach R4.4/R4.6 lag der Hauptthread beim Schwenken bei 3–4 ms Median, die Bildzeit unter fremder GPU-Last aber bei
+// p99 16–38 ms und die Pässe bei 15–23/s (Refits der Kamera-Nachführung/Empfänger-Volumen, Kaskade 0 beim schnellen
+// Schwenken); siehe docs/progress/karte-perf-mac-baseline.md „nach R4“.
+const P99_PAN_MAX_MS = Number(process.env.EE_PERF_P99 ?? 50);
+const PASSES_PAN_MAX = Number(process.env.EE_PERF_PASSES ?? 30);
+/** Ziele aus dem Plan (R4, Hoch am Mac); verfehlt = Anmerkung, kein Fehler (noch). */
 const P99_PAN_TARGET_MS = 20;
+const PASSES_PAN_TARGET = 10;
 const GPU_ERROR = /WGSL|ShaderModule|pipeline creation failed|Invalid RenderPipeline|unresolved value|Invalid (BindGroup|Buffer|Texture)/i;
 
 function collectErrors(page: Page): string[] {
@@ -113,7 +119,11 @@ for (const c of CASES) {
     if (pan!.bild.p99 > P99_PAN_TARGET_MS) {
       test.info().annotations.push({ type: 'Ziel verfehlt', description: `p99 Bild beim Schwenken ${pan!.bild.p99} ms > ${P99_PAN_TARGET_MS} ms (CPU p99 ${pan!.cpu.p99} ms)` });
     }
+    if (pan!.schattenPaesseProS > PASSES_PAN_TARGET) {
+      test.info().annotations.push({ type: 'Ziel verfehlt', description: `Schattenpässe/s beim Schwenken ${pan!.schattenPaesseProS} > ${PASSES_PAN_TARGET}` });
+    }
     expect(pan!.bild.p99, `p99 Bild beim Schwenken (${c.preset}, ${c.ort})`).toBeLessThanOrEqual(P99_PAN_MAX_MS);
+    expect(pan!.schattenPaesseProS, `Schattenpässe/s beim Schwenken (${c.preset}, ${c.ort})`).toBeLessThanOrEqual(PASSES_PAN_MAX);
     expect(errors).toEqual([]);
   });
 }
