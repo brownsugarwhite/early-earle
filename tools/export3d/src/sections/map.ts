@@ -9,7 +9,8 @@ import { exportHeroTree } from './mapTree';
 
 /**
  * Map: ein endliches Fenster der unendlichen Ebene (ADR 0002), genau so, wie das Spiel es baut (`MapWorld` aus
- * apps/game/src/flow): die zehn Autorenwelten entlang des Levelpfads (Level 1–100, Band ± Pfadbreite), Streuung
+ * apps/game/src/flow): die Route 15 + 1 aus `content/zones/route.json` — 15 Autorenwelten entlang des Levelpfads
+ * (Level 1–184) und der Torknoten der angedeuteten Zone 16, Band ± Pfadbreite (seitlich die angedeutete Zone), Streuung
  * mit Pfadkorridor, Wahrzeichen, Riesenbaum samt Geschwistern. Exportiert wird die Ebene selbst (x seitlich, h Höhe,
  * z längs des Pfads, vorwärts −z) — die Kugel ist im Spiel nur die Anzeige-Abbildung um den Fokus (Radius und
  * Krümmung stehen in `welten.json`). Je Chunk werden Terrain und Streuung mit den Funktionen des Spiels erzeugt; die
@@ -262,8 +263,8 @@ export async function exportMap(ctx: ExportContext): Promise<Record<string, unkn
   // Netzauflösung je Chunk (Gitterpunkte je Seite; Spiel nah 33 → 0,5 Einheiten)
   const res = ctx.quick ? 17 : 33;
 
-  // --- Fenster: die Autorenroute (Level 1–100) samt Vorland und Seitenband ----------------------------------------
-  const segments = Array.from({ length: layout.authored }, (_, k) => layout.segment(k)).filter((s) => s.levels > 0);
+  // --- Fenster: die Route (Level 1–184 und der Torknoten) samt Vorland und Seitenband ------------------------------
+  const segments = Array.from({ length: layout.routeLength }, (_, k) => layout.segment(k)).filter((s) => s.levels > 0);
   const zTop = (segments[0]?.zStart ?? 0) + 24;
   const zBottom = (segments[segments.length - 1]?.zEnd ?? -400) - 24;
   const across = layout.bandHalfWidth + CHUNK_SIZE;
@@ -447,7 +448,8 @@ export async function exportMap(ctx: ExportContext): Promise<Record<string, unkn
 
   // --- Levelpfad, Wahrzeichen ----------------------------------------------------------------------------
   const pathW = new GlbWriter();
-  const lastNode = mw.layout.lastPlayable + 5;
+  // bis zum Torknoten (der Pfad endet dort; gesperrte Knoten ohne Leveldatei zählen mit)
+  const lastNode = mw.layout.lastNode;
   const win = mw.layout.window(0, lastNode);
   const pathNodes = win.nodes;
   const nodePos = new Float32Array(pathNodes.length * 3);

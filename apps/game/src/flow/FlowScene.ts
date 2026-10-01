@@ -236,7 +236,8 @@ export class FlowScene implements SceneController {
     ctx.renderer.shadowMap.enabled = true;
     const q = this.quality;
 
-    // The infinite world lays out the level path (authored route 1–100, then procedural worlds) and clears its corridor.
+    // The infinite world lays out the level path (Route 15 + 1: levels 1–184, the gate node of the hinted zone 16; around
+    // and behind it only the hinted zone) and clears its corridor.
     const world = new MapWorld({ quality: q, seed: 7 });
     this.world = world;
 
@@ -700,7 +701,7 @@ export class FlowScene implements SceneController {
   }
 
   /**
-   * Map camera (rig space). On the giant tree (levels 80–95) the camera rail replaces the orbit view: it stays behind
+   * Map camera (rig space). On the giant tree (levels 99–114) the camera rail replaces the orbit view: it stays behind
    * the node, close to the bark, and moves with the view. `rail = false` gives the plain orbit pose.
    */
   private mapPose(zoom = this.zoom, rail = true, view: MapViewLike = this.mapViewCamera()): CameraPose {

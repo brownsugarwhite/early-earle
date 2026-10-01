@@ -237,9 +237,12 @@ export class PlanePath {
     return this.field.layout.segmentAtDistance(-z);
   }
 
-  /** Nächster Knoten (global) zu einem Punkt der Ebene, gesucht in den Abschnitten um z. */
+  /**
+   * Nächster Knoten (global) zu einem Punkt der Ebene, gesucht in den Abschnitten um z (hinter dem Tor: um den
+   * Torabschnitt, dort liegen die nächsten Knoten).
+   */
   nearestNode(x: number, z: number): number {
-    const k0 = this.segmentAtZ(z);
+    const k0 = Math.min(this.segmentAtZ(z), this.field.layout.lastSegment);
     let best = -1;
     let bestD = Infinity;
     for (let k = k0 - 1; k <= k0 + 1; k++) {

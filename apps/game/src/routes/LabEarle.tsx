@@ -72,7 +72,7 @@ function paramsFromUrl(search: URLSearchParams): Partial<EarleLabParams> {
   const q = search.get('quality');
   if (q === 'hoch' || q === 'mobil' || q === 'auto') out.quality = q;
   if (search.get('path') === '1') out.path = true;
-  // ?rail=88 → Kamera auf der Baum-Schiene bei Level 88 (Knoten 87); zeigt auch den Pfad
+  // ?rail=107 → Kamera auf der Baum-Schiene bei Level 107 (Knoten 106); zeigt auch den Pfad
   const rail = num('rail');
   if (rail !== null && rail >= 1) {
     out.rail = Math.round(rail) - 1;
@@ -264,9 +264,9 @@ function LabEarlePlanet() {
               <input type="checkbox" checked={params.cracksClosed} onChange={(e) => set({ cracksClosed: e.target.checked })} data-testid="earle-cracks" />
             </label>
             <p className="earle-hint">
-              Ziehen dreht die Kugel endlos (vorwärts, zurück, links, rechts), Pinch/Rad zoomt. Welt wählen gleitet zu ihrem Bildfokus (01–10 Autorenwelten, ab 11 prozedural);
+              Ziehen dreht die Kugel endlos (vorwärts, zurück, links, rechts), Pinch/Rad zoomt. Welt wählen gleitet zu ihrem Bildfokus (01–15 Autorenwelten, 16 angedeutete Zone „Bald“; prozedurale Welten nur mit <code>?prozedural=1</code>);
               Perspektive 0 = alte Übersicht, 100 % = Earle-Komposition der Welt, darüber übertrieben. Fortschritt heilt die Chunks entlang des Pfads, der Müll versinkt, die Risse
-              schließen sich. Level 80–95 steigen den Riesenbaum hinauf. <code>?world=08&amp;ref=1</code>, <code>?world=14</code>, <code>?rail=88</code> (Baum-Schiene), <code>?bench=1</code> misst.
+              schließen sich. Level 99–114 steigen den Riesenbaum hinauf. <code>?world=08&amp;ref=1</code>, <code>?world=16</code>, <code>?rail=107</code> (Baum-Schiene), <code>?bench=1</code> misst.
               Bäume aus der Nähe: <a href="?gallery=1&amp;world=5">Baum-Galerie</a> (<code>?gallery=1&amp;world=05&amp;kinds=oak,lace&amp;spin=20</code>).
             </p>
           </>
