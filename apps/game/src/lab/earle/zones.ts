@@ -1,5 +1,7 @@
 import type { CloudBankSpec, EarlePlanetWorld, GroundTreatment, WorldPalette, WorldView } from '@ee/render';
-import type { FocalCompanion, FocalSpec, MistSpec, PlanetPropSpec, PlanetTerrainShape, RouteEntry, TreeFamily, WorldFeatureSpec, WorldSpec } from '@ee/world';
+import { resolveRoute, type FocalCompanion, type FocalSpec, type MistSpec, type PlanetPropSpec, type PlanetTerrainShape, type ResolvedRoute, type RouteEntry, type TreeFamily, type WorldFeatureSpec, type WorldSpec } from '@ee/world';
+import routeJson from '@content/zones/route.json';
+import { LEVELS } from '../../content/levels';
 
 /** Zonendatei `content/zones/*.json` (Schema 1). */
 export interface ZoneContent {
@@ -7,7 +9,8 @@ export interface ZoneContent {
   id: string;
   name: string;
   palette: { sky: string[]; terrainLight: string; terrainDark: string; ink: string; accents?: string[] };
-  levelRange: [number, number];
+  /** Legacy (bis Route 15 + 1): die Zone eines Levels steht jetzt in seiner Leveldatei (`LevelDef.zone`). */
+  levelRange?: [number, number];
   material: string;
 }
 
@@ -79,26 +82,28 @@ export interface WorldContent {
   clouds?: CloudBankSpec;
   /** Anteil der Wahrzeichen (Wasserfall-Fels, Ruine, Sumpf) 0..1; Standard 1. */
   landmarkChance?: number;
+  /** Angedeutete Zone (w16, Route 15 + 1): gesperrt, „bald“; liegt seitlich, hinter dem Tor und vor dem Start. */
+  hinted?: boolean;
+  /** false: nie Nachbarwelt einer Seitenzelle (nur mit `?prozedural=1`). */
+  lateral?: boolean;
 }
 
-const modules = import.meta.glob<{ default: ZoneContent }>('@content/zones/*.json', { eager: true });
+// `route.json` liegt neben den Zonendateien, ist aber keine (Schema `RouteSchema`, siehe unten)
+const modules = import.meta.glob<{ default: ZoneContent }>(['@content/zones/*.json', '!@content/zones/route.json'], { eager: true });
 const worldModules = import.meta.glob<{ default: WorldContent }>('@content/zones/worlds/*.json', { eager: true });
 
-/** Zonen in Levelreihenfolge. */
+/** Story-Zonen (Legacy-Reihenfolge nach `levelRange`, sonst nach Kennung). */
 export const ZONE_CONTENTS: ZoneContent[] = Object.values(modules)
   .map((m) => m.default)
-  .sort((a, b) => a.levelRange[0] - b.levelRange[0]);
+  .sort((a, b) => (a.levelRange?.[0] ?? 1e9) - (b.levelRange?.[0] ?? 1e9) || a.id.localeCompare(b.id));
 
-/** Zehn Welten in Referenzreihenfolge (01 … 10); Kennung = Index. */
+/** Die Autorenwelten in Referenzreihenfolge (01 … 16, w16 = angedeutete Zone); Kennung = Index. */
 export const WORLD_CONTENTS: WorldContent[] = Object.values(worldModules)
   .map((m) => m.default)
   .sort((a, b) => a.index - b.index);
 
 /** Anzeigeradius der Kugel (Lab und Flow teilen dieselbe Anzeige). 40 → 32: stärkere Krümmung, näherer Horizont. */
 export const PLANET_RADIUS = 32;
-
-/** Autorenlevel (1 … 100). Danach folgen Knoten für künftige Level („bald"). */
-export const LEVEL_COUNT = Math.max(1, ...ZONE_CONTENTS.map((z) => z.levelRange[1]));
 
 /** Index einer Welt nach ihrer Kennung (`w01` …). */
 function worldIndex(id: string): number {
@@ -108,26 +113,40 @@ function worldIndex(id: string): number {
 }
 
 /**
- * Autorenroute der Level 1–100 entlang −z (ADR 0002): die Welten nach den Story-Zonen, je etwa 10 Level; der
- * Riesenbaum trägt die Level 80–95 auf kurzer Strecke (Stamm und Krone), das erste Wäldchen schließt mit Level 100.
+ * Die Kartenroute aus `content/zones/route.json` (Route 15 + 1, ADR 0002 Nachtrag): 15 Autorenwelten entlang −z, je
+ * Abschnitt Welt und Levelzahl, dahinter die angedeutete Zone 16 mit dem Torknoten; seitlich, dahinter und vor dem
+ * Start liegt überall die angedeutete Welt.
  */
-export const AUTHORED_ROUTE: RouteEntry[] = [
-  { world: worldIndex('w09'), levels: 10 }, // Goldene Wiese (Start, vermüllt)
-  { world: worldIndex('w06'), levels: 10 }, // Schneekiefern
-  { world: worldIndex('w04'), levels: 10 }, // Violette Hänge
-  { world: worldIndex('w10'), levels: 10 }, // Juwelenwald
-  { world: worldIndex('w05'), levels: 10 }, // Wurzelwelt
-  { world: worldIndex('w02'), levels: 10 }, // Nebelhügel
-  { world: worldIndex('w07'), levels: 10 }, // Kathedralenwald
-  { world: worldIndex('w08'), levels: 9 }, // Rote Scheune
-  { world: worldIndex('w01'), levels: 16, length: 34 }, // Flechtenbaum mit dem Riesenbaum (Level 80–95)
-  { world: worldIndex('w03'), levels: 5 }, // Kuppelbaum (erstes Wäldchen, Level 100)
-  // künftige Level 101–140: Autorenwelten nach Earle-Gemälden, gesperrt („bald“), voll gewachsen
-  { world: worldIndex('w11'), levels: 10, future: true }, // Nebelweide (Ebene 20)
-  { world: worldIndex('w12'), levels: 10, future: true }, // Goldnebelhang (Ebene 7)
-  { world: worldIndex('w13'), levels: 10, future: true }, // Roter Monolith (Ebene 45)
-  { world: worldIndex('w14'), levels: 10, future: true }, // Stille Bucht (Ebene 29)
-];
+export const ROUTE: ResolvedRoute = resolveRoute(routeJson, worldIndex);
+
+/** Abschnitte der Route (Welt-Indizes). */
+export const AUTHORED_ROUTE: RouteEntry[] = ROUTE.entries;
+
+/** Spielbare Level der Route (bis zur angedeuteten Zone): 184. Davon gibt es `LEVELS.length` als Leveldateien. */
+export const LEVEL_COUNT = ROUTE.levelCount;
+
+/** Levelnummern (1-basiert) des Riesenbaums [erster, letzter] aus dem Routeneintrag mit `tree`. */
+export const TREE_RANGE: readonly [number, number] = ROUTE.treeRange ?? [0, -1];
+
+/** Letzter Knoten der Karte (0-basiert): der Torknoten der angedeuteten Zone. */
+export const LAST_NODE = ROUTE.lastNode;
+
+/** Level des Torknotens (1-basiert), `null` ohne Tor. */
+export const GATE_LEVEL = ROUTE.gateLevel;
+
+/** Spielbare Knoten: Route und vorhandene Leveldateien (Level 101–184 entstehen parallel) — letzter spielbarer + 1. */
+export const PLAYABLE_COUNT = Math.max(0, Math.min(LEVEL_COUNT, LEVELS.length));
+
+/** Optionen der Weltenlage für `EarlePlanet` (Route 15 + 1; `procedural` = alter Weltenmodus, nur Lab). */
+export function routeOptions(procedural = false): { route: RouteEntry[]; beyondWorld: number; nodeSpacing: number; noLateral: number[]; procedural?: true } {
+  return {
+    route: AUTHORED_ROUTE,
+    beyondWorld: ROUTE.beyondWorld,
+    nodeSpacing: ROUTE.nodeSpacing,
+    noLateral: WORLD_CONTENTS.flatMap((w, i) => (w.lateral === false ? [i] : [])),
+    ...(procedural ? { procedural: true as const } : {}),
+  };
+}
 
 /** Index der Welt mit dem Riesenbaum (Flechtenbaum, Referenz 01). */
 export const HERO_TREE_WORLD = Math.max(0, WORLD_CONTENTS.findIndex((w) => w.id === 'w01'));
@@ -171,7 +190,7 @@ export function worldSpecOf(w: WorldContent): WorldSpec {
   };
 }
 
-/** Die zehn Autorenwelten aus `content/zones/worlds/` als Welten der Karte (Kennung = Index). */
+/** Die Autorenwelten aus `content/zones/worlds/` als Welten der Karte (Kennung = Index; w16 = angedeutete Zone). */
 export function planetWorlds(): EarlePlanetWorld[] {
   return WORLD_CONTENTS.map((w) => ({
     id: w.id,
@@ -191,7 +210,21 @@ export function planetWorlds(): EarlePlanetWorld[] {
   }));
 }
 
-/** Story-Zone eines Levels (1-basiert; HUD-Name). Level jenseits 100: die letzte Zone. */
+/**
+ * Story-Zone eines Levels (1-basiert; HUD-Name): aus der Leveldatei (`LevelDef.zone`). Level ohne Datei (noch nicht
+ * erzeugt, Torknoten): die Story-Zone der Welt ihres Routenabschnitts, sonst die letzte Zone.
+ */
 export function zoneOfLevel(level: number): ZoneContent | undefined {
-  return ZONE_CONTENTS.find((z) => level >= z.levelRange[0] && level <= z.levelRange[1]) ?? ZONE_CONTENTS[ZONE_CONTENTS.length - 1];
+  const id = LEVELS[level - 1]?.zone ?? zoneOfRouteLevel(level);
+  return ZONE_CONTENTS.find((z) => z.id === id) ?? ZONE_CONTENTS[ZONE_CONTENTS.length - 1];
+}
+
+/** Story-Zone der Welt, deren Routenabschnitt den Level trägt (ohne Leveldatei). */
+function zoneOfRouteLevel(level: number): string | undefined {
+  let first = 1;
+  for (const r of AUTHORED_ROUTE) {
+    if (level >= first && level < first + r.levels) return WORLD_CONTENTS[r.world]?.zone;
+    first += r.levels;
+  }
+  return undefined;
 }

@@ -196,13 +196,14 @@ describe('content files', () => {
     }
   });
 
-  it('every content/zones/*.json validates', () => {
-    const files = readdirSync(`${contentDir}zones`).filter((f) => f.endsWith('.json'));
+  it('every content/zones/*.json validates (route.json is the route, see route.test.ts)', () => {
+    const files = readdirSync(`${contentDir}zones`).filter((f) => f.endsWith('.json') && f !== 'route.json');
     expect(files.length).toBeGreaterThanOrEqual(2);
     for (const f of files) {
       const zone = ZoneSchema.parse(JSON.parse(readFileSync(`${contentDir}zones/${f}`, 'utf8')));
       expect(`${zone.id}.json`).toBe(f);
-      expect(zone.levelRange[1]).toBeGreaterThan(zone.levelRange[0]);
+      // Legacy-Feld (die Zone eines Levels steht in seiner Leveldatei): wenn vorhanden, ein echter Bereich
+      if (zone.levelRange) expect(zone.levelRange[1]).toBeGreaterThan(zone.levelRange[0]);
     }
   });
 });

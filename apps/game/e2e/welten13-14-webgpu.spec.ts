@@ -78,7 +78,8 @@ test('Welten 13 und 14 im Earle-Lab: Kompositionen quer (Hoch) und hoch (Mobil),
 
 test('Karte an den Knoten der Welten 13 und 14 (Handy): Monolith, Meer und Windbäume ohne GPU-Fehler', async ({ page }) => {
   const errors = collectErrors(page);
-  // Freier Modus, Level 100 erreicht: die Welten 13 und 14 liegen dahinter (gesperrt, aber auf der Karte)
+  // Freier Modus, Level 100 erreicht: die Welten 13 (Level 149–160) und 14 (161–172) liegen weiter vorn auf der Route
+  // (Route 15 + 1; ohne ihre Leveldateien gesperrt, aber auf der Karte)
   await page.addInitScript(() => {
     const slot = { reached: 99, current: 99, levels: {}, collection: {}, seen: { intro: true, stories: ['afterLevel1'] } };
     localStorage.setItem('ee.progress.v2', JSON.stringify({ version: 2, mode: 'free', slots: { free: slot, real: slot } }));
@@ -96,10 +97,10 @@ test('Karte an den Knoten der Welten 13 und 14 (Handy): Monolith, Meer und Windb
     });
   // die Flow-Szene kann nach dem Map-Zustand noch einmal mounten: erst warten, bis ihre Debug-API steht
   await page.waitForFunction(() => !!(window as unknown as { __flow?: unknown }).__flow, undefined, { timeout: 30_000 });
-  await page.evaluate(() => (window as unknown as { __flow: Flow }).__flow.goToNode(124));
+  await page.evaluate(() => (window as unknown as { __flow: Flow }).__flow.goToNode(154));
   await expect.poll(async () => (await planet()).horses, { timeout: 60_000 }).toBeGreaterThanOrEqual(7);
   await page.waitForTimeout(2000);
-  await page.evaluate(() => (window as unknown as { __flow: Flow }).__flow.goToNode(134));
+  await page.evaluate(() => (window as unknown as { __flow: Flow }).__flow.goToNode(166));
   await expect.poll(async () => (await planet()).wind, { timeout: 60_000 }).toBeGreaterThan(0);
   expect((await planet()).water).toBe(true);
   await page.waitForTimeout(2500);

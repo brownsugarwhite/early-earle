@@ -4,6 +4,7 @@ export const CORE_VERSION = '0.1.0';
 export * from './schema/level';
 export * from './schema/zone';
 export * from './schema/klassik';
+export * from './schema/route';
 
 // model + events
 export * from './model';

@@ -24,8 +24,10 @@ export interface PathNode {
   rise?: number;
   /** Wo das Level gespielt wird, wenn nicht auf dem Knoten selbst (Rinde → Wurzelterrasse am Stammfuß). */
   stage?: PathStage;
-  /** Künftiges Level (nach dem letzten Autorenlevel): gesperrt, „bald". */
+  /** Künftiges Level (ohne Leveldatei, Torknoten): gesperrt, „bald". */
   locked?: boolean;
+  /** Torknoten der angedeuteten Zone (Route 15 + 1): der letzte Knoten, gesperrt — „Hier wächst die nächste Welt.“ */
+  gate?: boolean;
   /** Der Knoten liegt auf einem Wahrzeichen (Felsplateau, Ruinenterrasse, Sumpfinsel): Plateaustil und Anker. */
   landmark?: PlanePathNode['landmark'];
 }
@@ -80,14 +82,16 @@ export interface PathWindow {
  * Freihaltung für die Streuung.
  */
 export interface PathLayout {
-  /** Knoten i (0-basiert, Level i + 1), unbegrenzt. */
+  /** Knoten i (0-basiert, Level i + 1), geklemmt auf [0, lastNode]. */
   node(index: number): PathNode;
-  /** Knoten, Punkte und Lichtband der Knoten [first, last]. */
+  /** Knoten, Punkte und Lichtband der Knoten [first, last] (geklemmt auf den letzten Knoten). */
   window(first: number, last: number): PathWindow;
   /** Nächster Knoten zu einem Punkt der Ebene. */
   nearestNode(x: number, z: number): number;
-  /** Letzter spielbarer Knoten (Autorenlevel − 1). */
+  /** Letzter spielbarer Knoten (Level mit Datei auf der Route − 1). */
   readonly lastPlayable: number;
+  /** Letzter Knoten überhaupt (Route 15 + 1: der Torknoten der angedeuteten Zone); dahinter endet der Pfad. */
+  readonly lastNode: number;
 }
 
 /** 0..1-Smoothstep, für die CPU-Tweens der Pfad-Darstellung. */

@@ -117,8 +117,9 @@ export class Departure {
   static fromLevel(stage: FlowStage, won: boolean, hooks: DepartureHooks = {}): Departure {
     const flow = useFlowStore.getState();
     const from = flow.playing ?? flow.current;
-    // Der Pfad ist unendlich (ADR 0002): nach dem letzten Autorenlevel geht es auf den gesperrten Knoten „bald“
-    const to = won ? from + 1 : from;
+    // Nach dem letzten spielbaren Level geht es auf den gesperrten Knoten „bald“; am Torknoten endet der Pfad
+    // (Route 15 + 1): dahinter gibt es keinen Knoten, der Held bleibt stehen
+    const to = won ? Math.min(from + 1, stage.layout.lastNode) : from;
     const d = new Departure(stage, won && to !== from, from, to, hooks);
     d.leaveLevel(won);
     return d;

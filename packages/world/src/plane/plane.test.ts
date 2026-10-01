@@ -4,7 +4,7 @@ import { LATERAL_WORLD_BASE, PROLOGUE_WORLD_BASE, WorldLayout } from './layout';
 import { GradientNoise2 } from './noise2';
 import { PlanePath } from './path';
 import { proceduralWorldSpec } from './procedural';
-import { AUTHORED_ROUTE, authoredSpecs, testField } from './testWorlds';
+import { AUTHORED_ROUTE, ROUTE, authoredSpecs, testField } from './testWorlds';
 
 describe('GradientNoise2', () => {
   it('is deterministic, bounded and never repeats on the old 256-cell period', () => {
@@ -36,23 +36,33 @@ describe('GradientNoise2', () => {
 describe('WorldLayout', () => {
   const field = testField();
   const layout = field.layout;
+  const beyond = ROUTE.beyondWorld;
 
-  it('lays the authored route along −z: worlds 09, 06, 04, 10, 05, 02, 07, 08, 01, 03 for levels 1–100', () => {
+  it('lays the route of content/zones/route.json along −z: 15 authored worlds, then the gate of the hinted zone 16', () => {
     const order = AUTHORED_ROUTE.map((r) => r.world);
     for (let k = 0; k < order.length; k++) expect(layout.segment(k).world).toBe(order[k]);
-    // spielbar: bis zum ersten künftigen Eintrag (Welten 11/12 tragen künftige Level; ohne `future` zählen sie mit)
+    // spielbar: bis zum ersten angedeuteten Eintrag (Zone 16 trägt nur den Torknoten)
     let playable = 0;
     for (const r of AUTHORED_ROUTE) {
-      if ((r as { future?: boolean }).future) break;
+      if (r.state === 'hinted') break;
       playable += r.levels;
     }
     expect(layout.authoredLevels).toBe(playable);
+    expect(layout.authoredLevels).toBe(184);
+    expect(layout.lastLevel).toBe(185);
+    expect(layout.gateLevel).toBe(185);
+    expect(layout.treeRange).toEqual([99, 114]);
+    expect(layout.lastSegment).toBe(AUTHORED_ROUTE.length - 1);
     expect(layout.segmentOfLevel(1)).toBe(0);
-    expect(layout.segmentOfLevel(80)).toBe(8);
-    expect(layout.segmentOfLevel(95)).toBe(8);
-    expect(layout.segmentOfLevel(96)).toBe(9);
-    expect(layout.segmentOfLevel(101)).toBe(10);
-    expect(layout.segmentOfLevel(5000)).toBe(10 + Math.floor((5000 - 101) / 10));
+    expect(layout.segmentOfLevel(14)).toBe(0);
+    expect(layout.segmentOfLevel(15)).toBe(1);
+    expect(layout.segmentOfLevel(99)).toBe(8);
+    expect(layout.segmentOfLevel(114)).toBe(8);
+    expect(layout.segmentOfLevel(115)).toBe(9);
+    expect(layout.segmentOfLevel(184)).toBe(14);
+    expect(layout.segmentOfLevel(185)).toBe(15);
+    // hinter dem Tor gibt es keine Level: geklemmt auf den Torabschnitt
+    expect(layout.segmentOfLevel(5000)).toBe(15);
     // Abschnitte schließen lückenlos aneinander, vorwärts = −z
     for (let k = -3; k < 30; k++) {
       const a = layout.segment(k);
@@ -60,30 +70,37 @@ describe('WorldLayout', () => {
       expect(a.zEnd).toBeCloseTo(b.zStart, 9);
       expect(a.zEnd).toBeLessThan(a.zStart);
     }
-    expect(layout.segment(-1).world).toBe(PROLOGUE_WORLD_BASE + 1);
-    expect(layout.segment(10).world).toBe(10);
-    expect(layout.segment(25).world).toBe(25);
+    // vor dem Start, am Tor und dahinter: die angedeutete Welt (keine prozeduralen Welten)
+    expect(layout.segment(-1)).toMatchObject({ world: beyond, levels: 0, hinted: true });
+    expect(layout.segment(15)).toMatchObject({ world: beyond, firstLevel: 185, levels: 1, hinted: true });
+    expect(layout.segment(16)).toMatchObject({ world: beyond, levels: 0, hinted: true });
+    expect(layout.segment(40)).toMatchObject({ world: beyond, levels: 0, hinted: true });
+    expect(layout.segment(3).hinted).toBe(false);
+    expect(layout.isHinted(beyond)).toBe(true);
+    expect(layout.isHinted(AUTHORED_ROUTE[3]!.world)).toBe(false);
   });
 
-  it('counts future route entries (worlds without playable levels yet) for the layout, not as playable levels', () => {
-    const playable = AUTHORED_ROUTE.filter((r) => !r.future);
-    const route = [...playable, { world: 4, levels: 10, future: true as const }, { world: 6, levels: 10, future: true as const }];
-    const withFuture = new WorldLayout({ seed: 7, route, authored: 10 });
-    // spielbar bleiben die Level 1–100; die künftigen Abschnitte tragen die Level 101–120, danach prozedural
-    expect(withFuture.authoredLevels).toBe(100);
-    expect(withFuture.segment(10)).toMatchObject({ world: 4, firstLevel: 101, levels: 10 });
-    expect(withFuture.segment(11)).toMatchObject({ world: 6, firstLevel: 111, levels: 10 });
-    expect(withFuture.segment(12)).toMatchObject({ world: 10, firstLevel: 121, levels: 10 });
-    expect(withFuture.segmentOfLevel(105)).toBe(10);
-    expect(withFuture.segmentOfLevel(125)).toBe(12);
+  it('counts hinted route entries for the layout, not as playable levels', () => {
+    const playable = AUTHORED_ROUTE.filter((r) => r.state !== 'hinted');
+    const route = [...playable, { world: 4, levels: 10, state: 'hinted' as const }, { world: 6, levels: 10, state: 'hinted' as const }];
+    const withHinted = new WorldLayout({ seed: 7, route, authored: 16, beyondWorld: beyond });
+    // spielbar bleiben die Level 1–184; die angedeuteten Abschnitte tragen die Level 185–204, danach nichts mehr
+    expect(withHinted.authoredLevels).toBe(184);
+    expect(withHinted.gateLevel).toBe(185);
+    expect(withHinted.lastLevel).toBe(204);
+    expect(withHinted.segment(15)).toMatchObject({ world: 4, firstLevel: 185, levels: 10, hinted: true });
+    expect(withHinted.segment(16)).toMatchObject({ world: 6, firstLevel: 195, levels: 10, hinted: true });
+    expect(withHinted.segment(17)).toMatchObject({ world: beyond, levels: 0 });
+    expect(withHinted.segmentOfLevel(190)).toBe(15);
+    expect(withHinted.segmentOfLevel(200)).toBe(16);
     // Lage der Autorenabschnitte unverändert
-    for (let k = 0; k < 10; k++) expect(withFuture.segment(k)).toEqual(layout.segment(k));
-    // Ab dem ersten künftigen Eintrag zählt nichts mehr mit (auch ein späterer Eintrag ohne Flag nicht)
-    const mixed = new WorldLayout({ seed: 7, route: [...playable, { world: 4, levels: 10, future: true as const }, { world: 6, levels: 10 }], authored: 10 });
-    expect(mixed.authoredLevels).toBe(100);
+    for (let k = 0; k < 15; k++) expect(withHinted.segment(k)).toEqual(layout.segment(k));
+    // Ab dem ersten angedeuteten Eintrag zählt nichts mehr mit (auch ein späterer Eintrag ohne Flag nicht)
+    const mixed = new WorldLayout({ seed: 7, route: [...playable, { world: 4, levels: 10, state: 'hinted' as const }, { world: 6, levels: 10 }], authored: 16 });
+    expect(mixed.authoredLevels).toBe(184);
   });
 
-  it('puts the path world in the band and neighbour worlds left and right — new ones as far as you pan', () => {
+  it('puts the path world in the band and only the hinted zone left and right — no cracks between hinted cells', () => {
     const k = 3;
     const seg = layout.segment(k);
     const z = (seg.zStart + seg.zEnd) / 2;
@@ -91,13 +108,44 @@ describe('WorldLayout', () => {
     expect(layout.sample(xb, z).world).toBe(seg.world);
     const seen = new Set<number>();
     for (let x = -1500; x <= 1500; x += 30) seen.add(layout.sample(xb + x, z).world);
-    // Weit draußen nur prozedurale Welten, und viele verschiedene
-    const far = [...seen].filter((w) => w >= LATERAL_WORLD_BASE);
-    expect(far.length).toBeGreaterThan(40);
-    // Seitlich neben den Autorenwelten stehen Autorenwelten (die alten „fernen“ Welten)
-    const near = layout.sample(xb + layout.bandHalf(z) + 6, z).world;
-    expect(near).toBeLessThan(14); // Autorenwelten 01–14
+    expect([...seen].sort((a, b) => a - b)).toEqual([seg.world, beyond].sort((a, b) => a - b));
+    // gleich neben dem Band: die angedeutete Zone, mit Riss am Bandrand
+    const edge = layout.sample(xb + layout.bandHalf(z) + 0.3, z);
+    expect(edge.world).toBe(beyond);
+    expect(edge.neighbor).toBe(seg.world);
+    expect(edge.border).toBeLessThan(1);
+    // weit draußen: Zellen der angedeuteten Welt grenzen nur an sich selbst → kein Riss
+    for (const x of [-900, -300, 300, 900]) {
+      const s = layout.sample(xb + x, z);
+      expect(s.world).toBe(beyond);
+      expect(s.border).toBeGreaterThan(100);
+    }
+    // hinter dem Tor: keine Abschnittsgrenze zwischen Torabschnitt und Zone dahinter
+    const g = layout.segment(16);
+    const gz = g.zStart - 0.2;
+    expect(layout.sample(layout.backbone(gz), gz).border).toBeGreaterThan(1);
+  });
+
+  it('with the lab flag `procedural`: procedural worlds behind the route and in far cells, authored neighbours near it', () => {
+    const p = testField(7, { procedural: true }).layout;
+    const n = AUTHORED_ROUTE.length;
+    expect(p.procedural).toBe(true);
+    expect(p.segment(n).world).toBe(p.authored);
+    expect(p.segment(n + 9).world).toBe(p.authored + 9);
+    expect(p.segment(-1).world).toBe(PROLOGUE_WORLD_BASE + 1);
+    expect(p.segmentOfLevel(5000)).toBe(n + Math.floor((5000 - 186) / 10));
+    const k = 3;
+    const seg = p.segment(k);
+    const z = (seg.zStart + seg.zEnd) / 2;
+    const xb = p.backbone(z);
+    const seen = new Set<number>();
+    for (let x = -1500; x <= 1500; x += 30) seen.add(p.sample(xb + x, z).world);
+    expect([...seen].filter((w) => w >= LATERAL_WORLD_BASE).length).toBeGreaterThan(40);
+    const near = p.sample(xb + p.bandHalf(z) + 6, z).world;
+    expect(near).toBeLessThan(p.authored);
     expect(near).not.toBe(seg.world);
+    // die angedeutete Zone (Weltdatei `lateral: false`) wird nie Nachbarwelt
+    for (let j = -20; j <= 20; j++) for (const c of [-2, -1, 1, 2]) expect(p.cellWorld(c, j)).not.toBe(ROUTE.beyondWorld);
   });
 
   it('is deterministic and independent of the query order', () => {
@@ -193,15 +241,16 @@ describe('PlaneField and chunks', () => {
 describe('PlanePath', () => {
   const field = testField();
   const path = new PlanePath(field, { seed: 7 });
+  const last = ROUTE.levelCount - 1;
 
-  it('has nodes 1–100 on the authored route, in order, about one spacing apart', () => {
-    const nodes = path.nodes(0, 99);
-    expect(nodes).toHaveLength(100);
+  it('has nodes 1–184 on the authored route, in order, about one spacing apart', () => {
+    const nodes = path.nodes(0, last);
+    expect(nodes).toHaveLength(184);
     nodes.forEach((n, i) => {
       expect(n.index).toBe(i);
       if (i > 0) {
         expect(n.s).toBeGreaterThan(nodes[i - 1]!.s);
-        // der Riesenbaum-Abschnitt (80–95) ist kurz, dort liegen die Knoten dichter; Level auf einem Wahrzeichen liegen
+        // der Riesenbaum-Abschnitt (99–114) ist kurz, dort liegen die Knoten dichter; Level auf einem Wahrzeichen liegen
         // neben der Route oben auf dem Plateau (bis ≈ 22 Einheiten)
         const d = Math.hypot(n.position[0] - nodes[i - 1]!.position[0], n.position[2] - nodes[i - 1]!.position[2]);
         const onLandmark = !!n.landmark || !!nodes[i - 1]!.landmark;
@@ -210,11 +259,11 @@ describe('PlanePath', () => {
       }
     });
     expect(nodes[0]!.world).toBe(AUTHORED_ROUTE[0]!.world);
-    expect(nodes[99]!.world).toBe(AUTHORED_ROUTE[9]!.world);
+    expect(nodes[last]!.world).toBe(AUTHORED_ROUTE[14]!.world);
   });
 
   it('climbs landmarks: some levels stand on a plateau, the dots go up the steps and down again', () => {
-    const nodes = path.nodes(0, 99);
+    const nodes = path.nodes(0, last);
     const on = nodes.filter((n) => n.landmark);
     expect(on.length).toBeGreaterThan(2);
     for (const n of on) {
@@ -231,23 +280,59 @@ describe('PlanePath', () => {
     }
   });
 
-  it('continues forever: random access far along the path, deterministic', () => {
-    const far = path.node(4999);
-    const again = new PlanePath(testField(), { seed: 7 }).node(4999);
+  it('ends at the gate node of the hinted zone: clamped nodes, no path behind it, the ribbon stops 1.5 after it', () => {
+    expect(path.lastNode).toBe(184);
+    const gate = path.node(184);
+    expect(gate.world).toBe(ROUTE.beyondWorld);
+    expect(gate.segment).toBe(15);
+    // ein Stein knapp über dem Nebelmeer der angedeuteten Zone
+    expect(gate.site).toBe('ledge');
+    const sea = field.spec(ROUTE.beyondWorld).mist?.sea;
+    if (sea) expect(gate.position[1]).toBeGreaterThan(sea.height ?? sea.level * field.spec(ROUTE.beyondWorld).terrain.amplitude);
+    // geklemmt: hinter dem Tor gibt es keine Knoten
+    expect(path.node(5000)).toBe(gate);
+    expect(path.nodes(180, 400).map((n) => n.index)).toEqual([180, 181, 182, 183, 184]);
+    // die Punkte des letzten Abschnitts (w15) führen bis zum Tor, am Tor beginnt kein Übergang mehr
+    const w15 = path.segment(14);
+    const bridge = w15.dots.filter((d) => d.seg === last);
+    expect(bridge.length).toBeGreaterThan(3);
+    const end = bridge[bridge.length - 1]!;
+    expect(Math.hypot(end.position[0] - gate.position[0], end.position[2] - gate.position[2])).toBeLessThan(1.2);
+    const gateSeg = path.segment(15);
+    expect(gateSeg.nodes).toHaveLength(1);
+    expect(gateSeg.dots).toHaveLength(0);
+    // das Lichtband endet 1,5 hinter dem Torknoten
+    const tail = gateSeg.ribbon[gateSeg.ribbon.length - 1]!;
+    const dTail = Math.hypot(tail.position[0] - gate.position[0], tail.position[2] - gate.position[2]);
+    expect(dTail).toBeGreaterThan(1.0);
+    expect(dTail).toBeLessThan(1.5 + 0.3);
+    // dahinter: keine Knoten, Punkte oder Bänder
+    for (const k of [16, 17, 30]) {
+      const seg = path.segment(k);
+      expect(seg.nodes.length + seg.dots.length + seg.ribbon.length).toBe(0);
+    }
+    // deterministisch
+    expect(new PlanePath(testField(), { seed: 7 }).node(184).position).toEqual(gate.position);
+  });
+
+  it('continues forever only with the lab flag `procedural`: random access far along the path, deterministic', () => {
+    const p = new PlanePath(testField(7, { procedural: true }), { seed: 7 });
+    const far = p.node(4999);
+    const again = new PlanePath(testField(7, { procedural: true }), { seed: 7 }).node(4999);
     expect(far.position).toEqual(again.position);
     expect(far.position[2]).toBeLessThan(-15000);
     // Übergang zwischen Abschnitten: Punkte führen vom letzten Knoten eines Abschnitts zum ersten des nächsten
-    const seg = path.segment(12);
-    const last = seg.nodes[seg.nodes.length - 1]!;
-    const next = path.segment(13).nodes[0]!;
-    const bridge = seg.dots.filter((d) => d.seg === last.index);
+    const seg = p.segment(20);
+    const lastNode = seg.nodes[seg.nodes.length - 1]!;
+    const next = p.segment(21).nodes[0]!;
+    const bridge = seg.dots.filter((d) => d.seg === lastNode.index);
     expect(bridge.length).toBeGreaterThan(3);
     const end = bridge[bridge.length - 1]!;
     expect(Math.hypot(end.position[0] - next.position[0], end.position[2] - next.position[2])).toBeLessThan(1.2);
   });
 
   it('keeps the route near its backbone and off the lateral cracks', () => {
-    for (let k = 0; k < 12; k++) {
+    for (let k = 0; k < 16; k++) {
       const seg = path.segment(k);
       for (const o of seg.offsets) expect(Math.abs(o)).toBeLessThanOrEqual(3.2 + 1e-6);
     }

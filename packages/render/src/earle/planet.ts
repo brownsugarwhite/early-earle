@@ -156,8 +156,16 @@ export interface EarlePlanetOptions {
   seed: number;
   /** Autorenwelten (Kennungen 0 … n−1). */
   worlds: EarlePlanetWorld[];
-  /** Autorenroute (Level 1 … Summe). */
+  /** Autorenroute (Level 1 … Summe; `content/zones/route.json`, Route 15 + 1). */
   route: RouteEntry[];
+  /** Welt jenseits der Route (seitlich, hinter dem Tor, vor dem Start): die angedeutete Zone (w16). */
+  beyondWorld?: number;
+  /** Welten, die nie Nachbarwelt einer Seitenzelle werden (nur mit `procedural`). */
+  noLateral?: readonly number[];
+  /** Abstand zweier Level entlang z (Standard 4,2). */
+  nodeSpacing?: number;
+  /** Altes Verhalten mit prozeduralen Welten hinter und neben der Route (Lab `?prozedural=1`). Standard false. */
+  procedural?: boolean;
   quality: EarlePlanetQuality;
   hillWavelength?: number;
   /**
@@ -458,11 +466,20 @@ export class EarlePlanet {
     this.mapping = new DisplayMapping(options.radius, options.curvature ?? 0);
 
     // --- Datenmodell ------------------------------------------------------------------------------------------
+    this.layout = new WorldLayout({
+      seed: options.seed,
+      route: options.route,
+      authored: options.worlds.length,
+      ...(options.beyondWorld !== undefined ? { beyondWorld: options.beyondWorld } : {}),
+      ...(options.noLateral ? { noLateral: options.noLateral } : {}),
+      ...(options.nodeSpacing !== undefined ? { nodeSpacing: options.nodeSpacing } : {}),
+      ...(options.procedural ? { procedural: true } : {}),
+    });
     this.catalog = new WorldCatalog(
       options.worlds.map((w) => w.params),
       options.seed,
+      { procedural: this.layout.procedural, hinted: this.layout.beyondWorld },
     );
-    this.layout = new WorldLayout({ seed: options.seed, route: options.route, authored: options.worlds.length });
     this.field = new PlaneField({ seed: options.seed, layout: this.layout, catalog: this.catalog, ...(options.hillWavelength !== undefined ? { hillWavelength: options.hillWavelength } : {}) });
     this.path = new PlanePath(this.field, { seed: options.seed, provider: featureProvider(this.field), ...(options.path.keepGround ? { keepGround: options.path.keepGround } : {}) });
 
@@ -757,9 +774,13 @@ export class EarlePlanet {
 
   // --- Welten und Slots ------------------------------------------------------------------------------------------
 
-  /** Darstellungsdaten einer Welt (Autorenwelt oder prozedural erzeugt, im Cache). */
+  /**
+   * Darstellungsdaten einer Welt (Autorenwelt oder prozedural erzeugt, im Cache). Ohne `procedural` (Route 15 + 1) sind
+   * fremde Kennungen (Hinted-Varianten, W2) die angedeutete Welt selbst — wie eine Autorenwelt.
+   */
   worldData(id: number): EarlePlanetWorld {
     if (id >= 0 && id < this.worlds.length) return this.worlds[id]!;
+    if (!this.layout.procedural) return this.worlds[this.layout.beyondWorld] ?? this.worlds[this.worlds.length - 1]!;
     let w = this.worldCache.get(id);
     if (!w) {
       w = proceduralWorld(id, this.worlds, this.catalog);
@@ -898,11 +919,11 @@ export class EarlePlanet {
     this.contentDirty = true;
   }
 
-  /** Knoten und Punkte des Bodenpfads in einem Rechteck (Ebene). */
+  /** Knoten und Punkte des Bodenpfads in einem Rechteck (Ebene); Abschnitte ohne Level (Vorland, hinter dem Tor) zählen nicht. */
   groundCorridor(x0: number, z0: number, x1: number, z1: number): PathCorridor {
     const out: PathCorridor = { nodes: [], dots: [] };
     const k0 = this.layout.segmentAtDistance(-z1) - 1;
-    const k1 = this.layout.segmentAtDistance(-z0) + 1;
+    const k1 = Math.min(this.layout.segmentAtDistance(-z0) + 1, this.layout.lastSegment);
     for (let k = Math.max(0, k0); k <= k1; k++) {
       const seg = this.path.segment(k);
       for (const n of seg.nodes) if (n.position[0] >= x0 && n.position[0] <= x1 && n.position[2] >= z0 && n.position[2] <= z1) out.nodes.push([n.position[0], n.position[2]]);
@@ -913,13 +934,17 @@ export class EarlePlanet {
 
   // --- Fortschritt, Wachstum ------------------------------------------------------------------------------------
 
-  /** Knotenindex (0-basiert, gebrochen) an einer z-Koordinate aus der Weltenlage (ohne Pfad zu bauen). */
+  /**
+   * Knotenindex (0-basiert, gebrochen) an einer z-Koordinate aus der Weltenlage (ohne Pfad zu bauen), geklemmt auf
+   * [−1, lastNode]: vor dem Start −1, hinter dem Tor der Torknoten.
+   */
   nodeIndexAtZ(z: number): number {
     const k = this.layout.segmentAtDistance(-z);
+    if (k > this.layout.lastSegment) return this.lastNode;
     const seg = this.layout.segment(k);
     if (seg.levels <= 0) return -1;
     const f = (seg.zStart - z) / Math.max(1e-6, seg.zStart - seg.zEnd);
-    return seg.firstLevel - 1 + f * seg.levels - 0.5;
+    return Math.min(this.lastNode, seg.firstLevel - 1 + f * seg.levels - 0.5);
   }
 
   private nodeRangeFor(z0: number, z1: number): [number, number] {
@@ -2091,9 +2116,14 @@ export class EarlePlanet {
     return { chunks: this.loaded.size, cpu: this.cache.size, regions: this.field.features.size, slots: this.slots.entries().length };
   }
 
-  /** Letzter Knoten der Autorenroute (0-basiert). */
+  /** Letzter spielbare Knoten der Autorenroute (0-basiert). */
   get lastAuthoredNode(): number {
     return this.layout.authoredLevels - 1;
+  }
+
+  /** Letzter Knoten überhaupt (0-basiert): der Torknoten der angedeuteten Zone; mit `procedural` ∞. */
+  get lastNode(): number {
+    return this.layout.lastLevel - 1;
   }
 
   /** Knoten des Bodenpfads (Kurzform). */

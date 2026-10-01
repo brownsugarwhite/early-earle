@@ -16,7 +16,9 @@ function layout(): PathLayout {
       return { first, nodes, dots, ribbon: [] };
     },
     nearestNode: (_x, z) => Math.max(0, Math.round(-z / 4)),
-    lastPlayable: 99,
+    // Route 15 + 1: 184 spielbare Level, der Torknoten danach
+    lastPlayable: 183,
+    lastNode: 184,
   };
 }
 

@@ -161,7 +161,8 @@ export class PlaneMist {
       out.push({ x: fx, y: fy + spec.focal.height, z: fz - spec.focal.behind, length: l1 * 0.9, thickness: t1, opacity, seed: rand(), world: region.world, kind: 0 });
     }
     const mountains = spec.mountains;
-    if (mountains && region.kind === 'path') {
+    // Nur voraus (k ≥ 0): ein Abschnitt hinter dem Start (angedeutete Welt) setzte seine Berge sonst in die Startwelt
+    if (mountains && region.kind === 'path' && region.k >= 0) {
       const [w0, w1] = mountains.width ?? [26, 40];
       const [a0, a1] = mountains.lateral;
       for (let i = 0; i < mountains.count; i++) {

@@ -60,6 +60,8 @@ Zonennamen aus Florians Draft (Screenshot 6).
 
 Jede Zone endet mit einem **Riss-Level** (25, 50, 75, 100) und hat einen **Mid-Zone-Spike** (13, 38, 63, 88). Level 100 ist „das erste Wäldchen": Die Kugel ergrünt sichtbar, mit Ausblick auf Zone 5+ (Ozean, Eis, Stadtruine, …). Das Zonensystem ist unendlich erweiterbar: neue Zone = neue Palette, 1–2 neue Elemente, neue Material-/Asset-Familie.
 
+> **Nachtrag 2026-10 (Route 15 + 1, ADR 0002):** Die Karte trägt jetzt **15 Autorenwelten mit 184 Leveln** und dahinter eine angedeutete, gesperrte Zone 16 (Torknoten „Bald“); die Reihenfolge steht in `content/zones/route.json`. Die vier Story-Zonen oben bleiben die Namen und Materialfamilien der Level 1–100; welche Story-Zone ein Level hat, steht seit dem Umbau in seiner Leveldatei (`zone`), nicht mehr in einem festen Levelbereich — die Level 101–184 übernehmen die Story-Zone der Welt ihres Abschnitts.
+
 ### 3.4 Aufbruch statt Tod („Evolve & Release")
 
 Erreicht ein Blob die Zielstufe eines Levels (die **Kappe**), stirbt er nicht und verschwindet nicht einfach: Er **verlässt das Raster** mit einer Kamerafahrt und taucht als neues Wesen in der Map-Zone auf. Die Map füllt sich so mit den Wesen, die der Spieler selbst erschaffen hat — sie sind die „Mutationspartner", die pezenpez sucht. Vorbilder: World of Goo (Goo-Bälle in die Röhre) und Terra Nil („keine Spur hinterlassen"). Spielmechanisch entlastet der Aufbruch das Brett (Prinzip „Maximalstufe verschwindet" aus 2048 Variants) und ist gleichzeitig der Story-Moment.
