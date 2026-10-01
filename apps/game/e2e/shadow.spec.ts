@@ -206,12 +206,11 @@ test('/lab/shadow Schwenken: Kaskaden gleiten an der Ebene — höchstens 2 Refi
   const d0 = a.dirtyPasses[0]! - b.dirtyPasses[0]!;
   const d1 = a.dirtyPasses[1]! - b.dirtyPasses[1]!;
   const d2 = a.dirtyPasses[2]! - b.dirtyPasses[2]!;
+  // R4.4: Inhaltsänderungen zeichnen nur die Kaskaden, deren Rechteck die geänderte Region trifft (`content` zählt
+  // volle und Regions-Pässe) — die Reihenfolge d0 ≥ d1 ≥ d2 gilt damit nicht mehr, nur die Obergrenzen
   expect(d2).toBeLessThanOrEqual(content);
-  expect(d1).toBeGreaterThanOrEqual(d2);
   expect(d1).toBeLessThanOrEqual(content + 1);
-  expect(d0).toBeGreaterThanOrEqual(d1);
   expect(d0).toBeLessThanOrEqual(content + 6);
-  expect(d0 - d2).toBeLessThanOrEqual(6);
   expect(errors).toEqual([]);
 });
 

@@ -137,7 +137,7 @@ export class MapWorld {
   private shadowDirty = true;
   private lastTime = -1;
   shadowPasses = 0;
-  /** Schattenpässe nur einer Region (R4.4: geänderte Werfer, Lichtungen), Zähler wie `shadowPasses`. */
+  /** Davon Schattenpässe nur einer Region (R4.4: geänderte Werfer, Lichtungen; nur die getroffenen Kaskaden). */
   regionPasses = 0;
   /** Geänderte Werfer (Ebene x, h, z), die im nächsten Bild ihre Kaskaden neu zeichnen. */
   private readonly pendingRegion = new Box3();
@@ -681,7 +681,10 @@ export class MapWorld {
       _box.copy(this.pendingRegion);
       _box.min.set(_box.min.x - f.x, _box.min.y + PLANET_RADIUS, _box.min.z - f.z);
       _box.max.set(_box.max.x - f.x, _box.max.y + PLANET_RADIUS, _box.max.z - f.z);
-      if (this.sun.markDirtyRegion(_box) > 0) this.regionPasses++;
+      if (this.sun.markDirtyRegion(_box) > 0) {
+        this.regionPasses++;
+        this.shadowPasses++;
+      }
       this.pendingRegion.makeEmpty();
     }
   }
