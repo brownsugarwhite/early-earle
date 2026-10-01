@@ -6,7 +6,7 @@ import { UiIcon } from '../levels/icons';
 import { IS_NATIVE, useContentTarget } from '../content/target';
 import { downloadJson, shareJson, shareMessage } from '../content/share';
 import { Poster } from './Poster';
-import { PROCEDURAL_COUNT, ProceduralDetail, ProceduralList, useProceduralWorlds } from './procedural';
+import { PROCEDURAL_COUNT, ProceduralDetail, ProceduralList, proceduralEnabled, useProceduralWorlds } from './procedural';
 import { getAt, isHex, loadMapFiles, saveMapFile, setAt, validateMap, type Json, type MapFile, type MapKind } from './mapContent';
 
 type Tab = 'farben' | 'werte' | 'text' | 'json';
@@ -56,10 +56,11 @@ const WORLD_NUMBERS: NumberField[] = [
   { path: ['view', 'fov'], label: 'Brennweite (FOV)', min: 20, max: 90, step: 1 },
   { path: ['view', 'curvature'], label: 'Krümmung', min: 0, max: 0.4, step: 0.005 },
 ];
-const ZONE_NUMBERS: NumberField[] = [
-  { path: ['levelRange', 0], label: 'Level von', min: 1, max: 100, step: 1 },
-  { path: ['levelRange', 1], label: 'Level bis', min: 1, max: 100, step: 1 },
-];
+/**
+ * Zonen tragen seit Route 15 + 1 keinen Levelbereich mehr (die Zone eines Levels steht in seiner Leveldatei, die Route in
+ * `content/zones/route.json`); `levelRange` bleibt als Legacy-Feld im JSON-Reiter.
+ */
+const ZONE_NUMBERS: NumberField[] = [];
 const ZONE_IDS = ['tjorizo', 'syrup', 'luzz', 'wooding'] as const;
 const MATERIALS = [
   ['jelly', 'Gelee'],
@@ -194,9 +195,10 @@ export function MapEditor() {
   const [files, setFiles] = useState<MapFile[] | null>(null);
   const [online, setOnline] = useState(false);
   const [kind, setKind] = useState<MapKind | 'prozedural'>('welt');
-  // Prozedurale Welten ab Welt 11 (nur lesen): Auswahl nach Kennung
+  // Prozedurale Welten hinter den Weltdateien (nur lesen, nur mit `?prozedural=1`): Auswahl nach Kennung
   const [procSel, setProcSel] = useState<number | null>(null);
-  const procedural = useProceduralWorlds();
+  const showProcedural = useMemo(() => proceduralEnabled(), []);
+  const procedural = useProceduralWorlds(showProcedural);
   const [selected, setSelected] = useState<string | null>(() => new URLSearchParams(location.search).get('file'));
   const [drafts, setDrafts] = useState<Record<string, Json>>({});
   const [tab, setTab] = useState<Tab>('farben');
@@ -343,7 +345,7 @@ export function MapEditor() {
               [
                 ['welt', 'Welten'],
                 ['zone', 'Zonen'],
-                ['prozedural', 'Prozedural'],
+                ...(showProcedural ? ([['prozedural', 'Prozedural']] as const) : []),
               ] as const
             ).map(([k, label]) => (
               <button key={k} type="button" role="radio" aria-checked={kind === k} className="map-chip" data-active={kind === k} onClick={() => setKind(k)} data-testid={`map-kind-${k}`}>
@@ -364,7 +366,7 @@ export function MapEditor() {
                     <span className="map-card-text">
                       <b>{String(j.name ?? f.file)}</b>
                       <small>
-                        {f.kind === 'welt' ? `${String(j.zone ?? '')} · ${String(j.title ?? '')}` : `Level ${(j.levelRange as number[] | undefined)?.join('–') ?? '?'} · ${String(j.material ?? '')}`}
+                        {f.kind === 'welt' ? `${String(j.zone ?? '')} · ${String(j.title ?? '')}` : `${String(j.material ?? '')}`}
                       </small>
                       <Strip json={j} />
                     </span>

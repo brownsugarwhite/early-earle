@@ -8,11 +8,19 @@ import { Poster } from './Poster';
 
 /** Seed der Karte (MapWorld) — dieselben prozeduralen Welten wie im Spiel und im Earle-Lab. */
 const MAP_SEED = 7;
-/** Prozedurale Welten in der Liste: Welt 11 … 40 (wie der Weltwähler des Earle-Labs). */
+/** Prozedurale Welten in der Liste: 30 Welten hinter den Weltdateien (wie der Weltwähler des Earle-Labs mit `?prozedural=1`). */
 export const PROCEDURAL_COUNT = 30;
 
+/**
+ * Prozedurale Welten sind seit Route 15 + 1 ein Lab-Modus: der Map-Editor zeigt sie nur mit dem Schalter
+ * `?prozedural=1` (wie das Earle-Lab).
+ */
+export function proceduralEnabled(): boolean {
+  return typeof location !== 'undefined' && new URLSearchParams(location.search).get('prozedural') === '1';
+}
+
 export interface ProceduralEntry {
-  /** Weltkennung (0-basiert; 10 = Welt 11). */
+  /** Weltkennung (0-basiert; 16 = Welt 17, die erste hinter den 16 Weltdateien). */
   id: number;
   json: Json;
   parents: [string, string];
@@ -21,16 +29,18 @@ export interface ProceduralEntry {
 }
 
 /**
- * Die prozeduralen Welten ab Welt 11 (ADR 0002: nach Level 100 erzeugt die Ebene ihre Welten aus den zehn Autorenwelten
- * — zwei Eltern, Mischanteil, Farbdreh). Sie haben keine Datei: der Editor zeigt sie nur (Poster, Palette, Werte als
- * JSON); ändern lassen sie sich über ihre Eltern.
+ * Die prozeduralen Welten hinter den Weltdateien (ADR 0002, nur mit `?prozedural=1`: die Ebene erzeugt ihre Welten aus
+ * den Autorenwelten — zwei Eltern, Mischanteil, Farbdreh). Sie haben keine Datei: der Editor zeigt sie nur (Poster,
+ * Palette, Werte als JSON); ändern lassen sie sich über ihre Eltern. Ohne den Schalter: keine.
  */
-export function useProceduralWorlds(): ProceduralEntry[] {
+export function useProceduralWorlds(enabled = proceduralEnabled()): ProceduralEntry[] {
   return useMemo(() => {
+    if (!enabled) return [];
     const authored = planetWorlds();
     const catalog = new WorldCatalog(
       authored.map((w) => w.params),
       MAP_SEED,
+      { procedural: true },
     );
     const out: ProceduralEntry[] = [];
     for (let k = 0; k < PROCEDURAL_COUNT; k++) {
@@ -60,7 +70,7 @@ export function useProceduralWorlds(): ProceduralEntry[] {
       });
     }
     return out;
-  }, []);
+  }, [enabled]);
 }
 
 function Strip({ json }: { json: Json }) {
@@ -115,7 +125,7 @@ export function ProceduralDetail({ entry }: { entry: ProceduralEntry }) {
       </div>
       <div className="map-panel">
         <div className="map-actions">
-          <Link className="map-btn" to={`/lab/earle?world=${entry.id + 1}`} data-testid="map-open-lab">
+          <Link className="map-btn" to={`/lab/earle?prozedural=1&world=${entry.id + 1}`} data-testid="map-open-lab">
             Im Earle-Lab
           </Link>
         </div>

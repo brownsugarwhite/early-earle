@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router';
 import { earleGradients, setGradientAmount } from '@ee/render';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
-import { DEFAULT_EARLE_PARAMS, EarleLabScene, LAB_WORLD_COUNT, type EarleLabParams } from '../lab/earle/EarleLabScene';
+import { DEFAULT_EARLE_PARAMS, EarleLabScene, LAB_WORLD_COUNT, labWorldCount, type EarleLabParams } from '../lab/earle/EarleLabScene';
 import { BenchPanel } from '../lab/earle/BenchPanel';
 import { TreeGalleryScene, galleryParamsFromUrl } from '../lab/earle/TreeGalleryScene';
 import type { QualityLevel, ResolvedQuality } from '../lab/earle/quality';
@@ -51,12 +51,16 @@ function paramsFromUrl(search: URLSearchParams): Partial<EarleLabParams> {
     const v = search.get(k);
     return v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null;
   };
-  // ?world=08 (Autorenwelt) oder ?world=24 (prozedurale Pfadwelt 24); Autorenwelten nach ihrer Nummer (ref), auch
-  // wenn davor Nummern fehlen
+  // ?prozedural=1: alter Weltenmodus (prozedurale Welten hinter und neben der Route); ohne nur die 15 Autorenwelten und
+  // die angedeutete Zone 16
+  const procedural = search.get('prozedural') === '1';
+  if (procedural) out.procedural = true;
+  // ?world=08 (Autorenwelt), ?world=16 (angedeutete Zone) oder mit ?prozedural=1 ?world=20 (prozedurale Pfadwelt 20);
+  // Autorenwelten nach ihrer Nummer (ref), auch wenn davor Nummern fehlen
   const w = num('world');
   const byRef = w !== null ? WORLD_CONTENTS.findIndex((c) => Number(c.ref) === Math.round(w)) : -1;
   if (byRef >= 0) out.world = byRef;
-  else if (w !== null && w >= 1 && w <= LAB_WORLD_COUNT) out.world = Math.round(w) - 1;
+  else if (w !== null && w >= 1 && w <= labWorldCount(procedural)) out.world = Math.round(w) - 1;
   const p = num('p');
   if (p !== null) out.perspective = Math.max(0, Math.min(1.4, p));
   const trash = num('trash');
@@ -78,7 +82,8 @@ function paramsFromUrl(search: URLSearchParams): Partial<EarleLabParams> {
 }
 
 /**
- * P2c Earle-Lab auf dem Planeten: zehn Welten (Wähler dreht dorthin, Referenzbild zum Vergleich), Perspektive
+ * P2c Earle-Lab auf dem Planeten: 15 Autorenwelten und die angedeutete Zone 16 (Wähler dreht dorthin, Referenzbild zum
+ * Vergleich; mit `?prozedural=1` dazu 30 prozedurale Pfadwelten), Perspektive
  * (Übersicht → Earle-Komposition → übertrieben), Müll-Dichte der Startwelt, Fortschritt (heilt Chunks entlang
  * des Pfads, Müll versinkt), Sonne, Bänder, Nebel, Dichte, Qualität, Risse und der Schattenfilter-Vergleich.
  * `?bench=1` misst automatisch.
@@ -175,7 +180,7 @@ function LabEarlePlanet() {
 
   return (
     <LabFrame
-      title={bench ? 'P2c Earle-Lab · Bench' : 'P2c Earle-Lab · Zehn Welten'}
+      title={bench ? 'P2c Earle-Lab · Bench' : 'P2c Earle-Lab · Route 15 + 1'}
       controls={
         bench ? undefined : (
           <>
@@ -188,10 +193,10 @@ function LabEarlePlanet() {
                 </option>
                 {WORLD_CONTENTS.map((w, i) => (
                   <option key={w.id} value={i}>
-                    {w.ref} {w.name}
+                    {w.ref} {w.hinted ? 'Bald (angedeutet)' : w.name}
                   </option>
                 ))}
-                {Array.from({ length: LAB_WORLD_COUNT - WORLD_CONTENTS.length }, (_, j) => WORLD_CONTENTS.length + j).map((id) => (
+                {Array.from({ length: labWorldCount(params.procedural) - LAB_WORLD_COUNT }, (_, j) => LAB_WORLD_COUNT + j).map((id) => (
                   <option key={`p${id}`} value={id}>
                     {String(id + 1).padStart(2, '0')} prozedural
                   </option>
