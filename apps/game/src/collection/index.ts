@@ -14,7 +14,7 @@ import { wireCollection, type CollectionWiring } from './wiring';
 import { destroySetzkasten, openSetzkasten, prewarmSetzkasten } from './Setzkasten';
 import { installMapCreaturesDemo } from './mapDemo';
 
-export { catalogInputs, catalogFor, catalogEntry, levelIdOf, rarityOf, seedFor, SPECIES_NAME, ZONE_NAME, ZONE_LEVELS } from './catalog';
+export { catalogInputs, catalogFor, catalogEntry, levelIdOf, rarityOf, seedFor, SPECIES_NAME, ZONE_NAME, zoneFirstLevel, zoneLevels, zoneOfNode } from './catalog';
 export { earnedFromEvents, blobSeed, type EarnedLook } from './earn';
 export { openSetzkasten, closeSetzkasten, isSetzkastenOpen } from './Setzkasten';
 

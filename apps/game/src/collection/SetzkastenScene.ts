@@ -5,7 +5,7 @@ import type { SceneContext, SceneController } from '../canvas/SceneController';
 import type { CollectionEntry } from '../state/progress';
 import { useProgress } from '../state/progress';
 import { audio } from '../audio/engine';
-import { catalogFor, seedFor, ZONE_LEVELS } from './catalog';
+import { catalogFor, seedFor, zoneFirstLevel } from './catalog';
 import { caseWalls, layoutCase, type CaseCell, type CaseLayout, type CaseOrientation } from './setzkastenLayout';
 import { useSetzkasten } from './setzkastenStore';
 
@@ -481,7 +481,7 @@ export class SetzkastenScene implements SceneController {
 
   private locked(): boolean {
     const reached = useProgress.getState().reached;
-    const first = ZONE_LEVELS[this.zone][0];
+    const first = zoneFirstLevel(this.zone);
     return reached < first - 1 && !this.slots.some((s) => s.earned);
   }
 
