@@ -1849,7 +1849,10 @@ export class FlowScene implements SceneController {
         this.applyView({ x, z, yaw: this.viewYaw });
       },
       node: () => useFlowStore.getState().current,
+      mode: () => useProgress.getState().mode,
       preset: () => this.quality.name,
+      // Echter Modus: das Gummiband zöge den Schwenk zurück — während der Messung aus
+      panLimit: (on) => this.setPanConstrain(on && this.mapFocus ? (f) => this.mapFocus!.constrain(f) : null),
       frameHook: (hook) => {
         if (!hook) {
           Reflect.deleteProperty(this, 'update');

@@ -133,6 +133,8 @@ export interface MapBenchReport {
   ua: string;
   backend: 'webgpu' | 'webgl2';
   preset: 'hoch' | 'mobil';
+  /** Spielstand-Modus (echt: Gummiband während der Messung aus). */
+  modus: string;
   /** CSS-Größe des Canvas. */
   viewport: [number, number];
   /** DPR des CanvasHost (vorher/nachher). */
@@ -163,7 +165,11 @@ export interface MapBenchHost {
   /** Sprung des Fokus (kein Gleiten). */
   setFocus(x: number, z: number): void;
   node(): number;
+  /** Spielstand-Modus (echt/frei). */
+  mode(): string;
   preset(): 'hoch' | 'mobil';
+  /** Scroll-Grenze (Gummiband im echten Modus) an/aus. */
+  panLimit(on: boolean): void;
   /** Bild-Haken statt `update`: `hook(run)` je Bild, `run()` führt das echte Bild aus; `null` baut ihn zurück. */
   frameHook(hook: ((run: () => void) => void) | null): void;
 }
@@ -584,6 +590,7 @@ async function measure(host: MapBenchHost, options: MapBenchOptions): Promise<Ma
   };
 
   host.frameHook(hook);
+  host.panLimit(false);
   try {
     // --- Aufwärmen: Bilder laufen, dann warmupMs, dann 30 ruhige Bilder in Folge (< 22 ms, höchstens 8 s)
     setStatus({ step: 'Aufwärmen …' });
@@ -756,6 +763,7 @@ async function measure(host: MapBenchHost, options: MapBenchOptions): Promise<Ma
       ua: typeof navigator !== 'undefined' ? navigator.userAgent : '',
       backend: ctx.backend,
       preset: host.preset(),
+      modus: host.mode(),
       viewport: [ctx.width, ctx.height],
       baseDpr: saved.baseDpr,
       node: host.node(),
@@ -773,6 +781,7 @@ async function measure(host: MapBenchHost, options: MapBenchOptions): Promise<Ma
     return report;
   } finally {
     host.frameHook(null);
+    host.panLimit(true);
     loop.dpr = 0;
     for (const r of restores.reverse()) r();
     const world = host.world();
