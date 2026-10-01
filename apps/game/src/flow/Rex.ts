@@ -21,7 +21,7 @@ import {
 } from '@ee/render';
 import { useFlowStore, type FlowPhase } from './flowStore';
 import { useGridStore } from '../lab/grid/gridStore';
-import { rexIntroFor, rexLine } from '../lab/grid/rex';
+import { isZoneEnd, rexIntroFor, rexLine } from '../lab/grid/rex';
 import { readHudBands } from './hudBands';
 import type { MapWorld } from './MapWorld';
 
@@ -60,8 +60,6 @@ const NODE_NDC_Y = -0.36;
 const IDLE_S = 20;
 /** REX's height beside the plateau relative to the plateau's larger side (the level camera scales with it). */
 const LEVEL_HEIGHT = 0.4;
-/** Zone finales get the big celebration. */
-const FINALES = new Set([25, 50, 75, 100]);
 
 const _v = new Vector3();
 const _v2 = new Vector3();
@@ -82,7 +80,7 @@ function levelNoOf(id: string | undefined): number {
  *   corners (duck → move → pop) when the path comes his way.
  * - **Level**: stands on the ground beside the plateau (the side with room; a front corner on phones), rises out
  *   of the ground when the plate is up, sinks back on the way out.
- * - **Events**: combo ≥ 2 → cheer, win → celebrate (big one at zone finales), lose → despair, new mechanic →
+ * - **Events**: combo ≥ 2 → cheer, win → celebrate (big one at zone ends: levels 14, 26 … 184), lose → despair, new mechanic →
  *   peek + point, lines → talk (jaw on syllables), 20 s without input → dizzy + the idle line.
  * - **Anchor**: `useRexAnchor` (his mouth on screen) for the HUD's speech bubble.
  */
@@ -327,7 +325,7 @@ export class Rex {
           const lost = res.events.some((e) => e.type === 'lost');
           const combo = res.mergeCount;
           const levelNo = levelNoOf(s.level?.id);
-          if (won) this.react(() => this.character.celebrate(FINALES.has(levelNo) ? 2 : 1), 0.35);
+          if (won) this.react(() => this.character.celebrate(isZoneEnd(levelNo) ? 2 : 1), 0.35);
           else if (lost) this.react(() => this.character.despair(), 0.45);
           else if (combo >= 2) this.react(() => this.character.cheer(combo >= 3 ? 2 : 1), 0.22);
         }

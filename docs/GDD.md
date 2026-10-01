@@ -372,8 +372,9 @@ Aus der Analyse von Candy Crush, Best Fiends und Royal Match:
 |---|---|
 | Neue Mechanik | Mikro-Satz, höchstens **8 Wörter**; REX zeigt statt zu erklären |
 | Alle 5–10 Level | kurze Szene |
-| Zonenanfänge (1, 26, 51, 76) und Zonenmitten (13, 38, 63, 88) | Kapitel-Szene |
-| Zonenfinale (25, 50, 75, 100) | großer emotionaler Beat: Riss schließt sich, Tiere kehren zurück |
+| Zonenanfänge (1, 15, 27, 39, 51, 63, 75, 87, 99, 115, 125, 137, 149, 161, 173) und Zonenmitten | Kapitel-Szene |
+| Zonenenden (14, 26, 38, 50, 62, 74, 86, 98, 114, 124, 136, 148, 160, 172, 184) | großer emotionaler Beat: Riss schließt sich, Tiere kehren zurück (`finale.zone`; REX feiert groß) |
+| Bosse (jeweils das Zonenende ab 62, Abschnitt 6.7) | eigene Boss-Zeile (`hard.boss`); Level 14 behält die Spore-Einführung |
 | Combos, Fehlversuche | Kommentar, Jubel, komische Verzweiflung |
 
 Alle Sprüche liegen in `content/rex/lines.json` (pro Anlass), zweisprachig ab Phase 3 (DE/EN). Szenen stehen dort als `scenes.<id>`: Sätze, die REX nacheinander sagt, jeder höchstens 8 Wörter (zuerst `afterLevel1`, Abschnitt 6.6).

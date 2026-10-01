@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import rexJson from '@content/rex/lines.json';
-import { rexAfterFirstMove, rexIntroFor, rexIntroTrigger, rexLine, rexScene } from './rex';
+import { CURVE_LAST_LEVEL, curveSpec } from '@ee/core';
+import { ZONE_END_LEVELS, isBossLevel, isZoneEnd, rexAfterFirstMove, rexIntroFor, rexIntroTrigger, rexLine, rexScene } from './rex';
 
 const data = rexJson as unknown as {
   rules: { maxWordsMicro: number };
@@ -32,7 +33,7 @@ describe('REX-Zeilen (content/rex/lines.json)', () => {
   });
 
   it('Einführungen der neuen Mechaniken treffen ihr Level', () => {
-    for (const n of [1, 2, 6, 8, 10, 11, 14, 16, 17, 18, 19, 20, 21, 24, 25]) {
+    for (const n of [1, 2, 6, 8, 10, 11, 14, 16, 17, 18, 19, 20, 21, 24]) {
       const t = rexIntroTrigger(n);
       expect(t, `Level ${n}`).not.toBeNull();
       expect(data.triggers[t!], `${t}`).toBeDefined();
@@ -42,6 +43,27 @@ describe('REX-Zeilen (content/rex/lines.json)', () => {
     expect(rexIntroFor(2)).toBe('Jeder Wisch zählt. Siehst du?');
     expect(rexIntroFor(6)).toBe('Fels. Nutz ihn als Wand.');
     expect(rexIntroFor(8)).toBe("Rückspulen. Einmal. Sag's niemandem.");
+  });
+
+  it('Zonenenden der Kurve (14, 26, 38, 50, 62 … 184) tragen den großen Beat, Bosse ihre eigene Zeile', () => {
+    expect([...ZONE_END_LEVELS]).toEqual([14, 26, 38, 50, 62, 74, 86, 98, 114, 124, 136, 148, 160, 172, 184]);
+    // die alten Finale-Level 25/75/100 sind keine Zonenenden mehr
+    for (const n of [25, 75, 100]) {
+      expect(isZoneEnd(n), `Level ${n}`).toBe(false);
+      expect(rexIntroTrigger(n), `Level ${n}`).toBeNull();
+    }
+    for (const n of ZONE_END_LEVELS) {
+      expect(isZoneEnd(n)).toBe(true);
+      expect(rexIntroFor(n), `Level ${n}`).not.toBeNull();
+      // jeder Boss (Typ aus der Kurve) liegt auf einem Zonenende
+      expect(isBossLevel(n), `Level ${n}`).toBe(curveSpec(n).type === 'boss');
+    }
+    for (let n = 1; n <= CURVE_LAST_LEVEL; n++) if (isBossLevel(n)) expect(isZoneEnd(n), `Boss ${n}`).toBe(true);
+    // Boss und Zonenende ohne Mechanik-Einführung; auf Level 14 geht die Spore vor
+    expect(rexIntroTrigger(14)).toBe('mechanic.spore');
+    for (const n of [26, 38, 50]) expect(rexIntroTrigger(n), `Level ${n}`).toBe('finale.zone');
+    for (const n of [62, 74, 86, 98, 114, 124, 136, 148, 160, 172, 184]) expect(rexIntroTrigger(n), `Level ${n}`).toBe('hard.boss');
+    expect(rexIntroFor(CURVE_LAST_LEVEL + 1)).toBeNull();
   });
 
   it('Auslöser ohne Level: gesperrter Knoten, Setzkasten, Klassik', () => {
