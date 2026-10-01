@@ -21,9 +21,9 @@
     "accent": ["#f4b0d8", "#46347a", "#140a24", "#1a1030", "#6a52a8", "#9a84d4", "#e88a7a", "#fff0f8"],
     "water": ["#2c1f52", "#46347a", "#6a52a8", "#8a72c8", "#a890dc", "#c4b0ec", "#5a4a98", "#f4b0d8"],
     "rock": ["#140a24", "#2c1f52", "#46347a", "#6a52a8", "#9a84d4", "#e8c8f0", "#1e1236", "#f4b0d8"],
-    "cloud": ["#5a4a98", "#a888d8", "#c8a0e0", "#dcb4e8", "#ecc4ec", "#f8d8f0", "#fff0f8", "#46347a"]
+    "cloud": ["#5a4a98", "#a888d8", "#c8a0e0", "#dcb4e8", "#ecc4ec", "#f8d8f0", "#fff0f8", "#9a84d4"]
   },
-  "terrain": { "amplitude": 0.8, "wavelength": 2.2, "floor": 0.2 },
+  "terrain": { "amplitude": 0.6, "wavelength": 2.2, "floor": 0.3 },
   "ground": "smooth",
   "vegetation": {
     "density": 0,
@@ -37,11 +37,11 @@
   "landmarkChance": 0,
   "mist": {
     "banks": 2,
-    "height": [0.4, 0.9],
+    "height": [2.6, 4.0],
     "thickness": [1.0, 1.8],
     "length": [14, 24],
     "opacity": 0.6,
-    "sea": { "level": 0.5, "banks": 4, "thickness": [1.6, 2.6], "height": 0.35 },
+    "sea": { "level": 2.0, "banks": 4, "thickness": [1.6, 2.6], "height": 1.25 },
     "mountains": { "count": 3, "lateral": [-40, 40], "height": [12, 22], "width": [26, 44], "ahead": [8, 40] }
   },
   "fogStripes": 0.8,
