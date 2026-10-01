@@ -160,7 +160,15 @@ export function createWaterMaterial(o: WaterMaterialOptions): WaterMaterial {
   const dark = pal(1);
   const light = pal(3);
   const pebbleCol = mix(base, dark, step(vor.key, float(0.35)));
-  let col: Vec3Node = mix(base, mix(mix(base, light, 0.55), pebbleCol, pebble), near);
+  // Ferne Wellenbänder (Ebene 1/48: helle und dunkle Schlieren quer zur Achse, im Bild waagrecht): eine ruhige Welle längs
+  // u, seitlich verbogen; ihre Phase läuft mit der Periode → die Bänder wogen, die Kanten bleiben hart (Eis: still)
+  const warpV = sin(v.mul(0.21).add(body.mul(5.0)).add(ph)).mul(1.6);
+  const swell = sin(u.mul(0.62).add(warpV).add(body.mul(11.0))).add(sin(u.mul(1.37).sub(v.mul(0.17)).add(ph.mul(2)).add(body.mul(3.0))).mul(0.45));
+  const swellLight = aaStep(0.8, swell).mul(still);
+  const swellDark = aaStep(0.8, swell.negate()).mul(still);
+  const net = mix(base, light, 0.55);
+  const far = mix(mix(base, net, swellLight), mix(base, dark, 0.6), swellDark);
+  let col: Vec3Node = mix(far, mix(net, pebbleCol, pebble), near);
   // Ferne Linienbänder quer zur Achse (waagrecht im Blick längs des Bands): sie driften längs der Strömung (Seen 60 %),
   // eine breite Hüllkurve läuft gegenläufig darüber — dichtere Streifen wandern als Moiré durch die Linien
   const lineDrift = t.mul(motion.drift).mul(select(isRiver, float(1), float(0.6)));
@@ -212,7 +220,8 @@ export function createWaterMaterial(o: WaterMaterialOptions): WaterMaterial {
   const toxicMask = isToxic.mul(poisonMask(growth, front, TOXIC_HEAL_FROM));
   const tp = (k: number) => toxicPalette(code, k);
   // Schleimkörper: die Wellenzellen als dunkle, zähe Schleimbuckel im Neon-Grundton, das Netz heller
-  let tox: Vec3Node = mix(tp(2), mix(mix(tp(2), tp(3), 0.35), mix(tp(2), tp(1), step(vor.key, float(0.45))), pebble), near) as unknown as Vec3Node;
+  const toxFar = mix(mix(tp(2), mix(tp(2), tp(3), 0.5), swellLight), tp(1), swellDark);
+  let tox: Vec3Node = mix(toxFar, mix(mix(tp(2), tp(3), 0.35), mix(tp(2), tp(1), step(vor.key, float(0.45))), pebble), near) as unknown as Vec3Node;
   // Schleimringe: konzentrische Neonringe um die Zellkerne (F1), die langsam nach außen wandern
   const ringCoord = vor.f1.mul(5.2).sub(ph.mul(1.5));
   const rings = stripeMask(ringCoord, 0.2).mul(aaStep(0, radiusCell.add(0.06).sub(vor.f1))).mul(near);
