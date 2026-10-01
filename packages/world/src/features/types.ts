@@ -72,6 +72,17 @@ export interface LakeSpec extends PlacementSpec {
   stretch?: number;
   /** Zugefroren (Bild Ebene_43): keine Wellen, Eisrisse, helle Fläche. */
   frozen?: boolean;
+  /**
+   * Giftsee (Müll v3, Florians Punkt 11): neonfarbenes Wasser im Müllstil der Welt mit Schleimringen und Blasen, das
+   * mit dem Fortschritt zu klarem Wasser heilt. `true` = alle Seen der Welt, eine Zahl n = die letzten n Seen (in der
+   * Reihenfolge der Planung: erst die Mündungsseen der Flüsse, dann die freien Seen). Nur auf der Ebene.
+   */
+  toxic?: boolean | number;
+  /**
+   * Breite des Uferbands an Land (Welteinheiten, 1,5–2,5; 0 = keines): eine hellere Wertstufe mit flachen dunklen
+   * Spiegelformen, über die das Wasser in die Karte übergeht (Earle, Ebene 1). Standard 2. Nur auf der Ebene.
+   */
+  shore?: number;
 }
 
 export interface RiverSpec extends PlacementSpec {
@@ -83,6 +94,10 @@ export interface RiverSpec extends PlacementSpec {
   /** Mäander-Stärke 0..1 (Standard 0.5). */
   meander?: number;
   frozen?: boolean;
+  /** Giftfluss (Müll v3): neonfarben wie ein Giftsee; sein Mündungssee ist ebenfalls giftig. Nur auf der Ebene. */
+  toxic?: boolean;
+  /** Breite des Uferbands an Land (Welteinheiten, 1,5–2,5; 0 = keines), Standard 1.6. Nur auf der Ebene. */
+  shore?: number;
 }
 
 /**

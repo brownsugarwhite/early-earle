@@ -1,5 +1,5 @@
 import { featureRandom, type PlaneFeatureHost, type RegionSite } from './host';
-import { WET, carve, generateLakes, lakeAt, lakeRadiusAt, type Occupied } from './lakes';
+import { DEFAULT_LAKE_BAND, DEFAULT_RIVER_BAND, WET, carve, generateLakes, lakeAt, lakeRadiusAt, shoreValue, type Occupied } from './lakes';
 import { generateRivers, riverHeight, riverSegmentAt } from './rivers';
 import { columnAt, columnPeak, columnTopAt, generateRocks } from './rocks';
 import { SnowFields } from './snow';
@@ -8,7 +8,7 @@ import type { DriftSpec, FeatureSample, Lake, LedgeAnchor, River, RockColumn, Ro
 
 export type * from './types';
 export { SnowFields } from './snow';
-export { WATER_BED, WATER_OVERLAP, SHORE_E, lakeAt, lakeRadiusAt, carve } from './lakes';
+export { WATER_BED, WATER_OVERLAP, SHORE_E, DEFAULT_LAKE_BAND, DEFAULT_RIVER_BAND, lakeAt, lakeRadiusAt, carve, shoreValue } from './lakes';
 export { columnAt, columnPeak, columnTopAt } from './rocks';
 export { riverSegmentAt } from './rivers';
 export { seaCoastAt, seaField, seaHeight } from './sea';
@@ -35,6 +35,8 @@ export interface RegionFeatures {
   maxRockHeight: number;
   /** Umfassende Box des Wassers bzw. der Felsen (x0, z0, x1, z1) oder null. */
   waterBox: [number, number, number, number] | null;
+  /** Box des Wassers samt Uferbändern (⊇ `waterBox`) oder null. */
+  shoreBox: [number, number, number, number] | null;
   rockBox: [number, number, number, number] | null;
   /** Zähler der Neuplanung (ein externes Wahrzeichen hat die Region verändert). */
   version: number;
@@ -136,6 +138,7 @@ export class PlaneFeatures {
       drifts: spec?.drifts ?? null,
       maxRockHeight: -Infinity,
       waterBox: EMPTY_BOX,
+      shoreBox: EMPTY_BOX,
       rockBox: EMPTY_BOX,
       version: this.versions.get(key) ?? 0,
     };
@@ -147,6 +150,16 @@ export class PlaneFeatures {
       const sea = makeSea(host, site, world, spec.coast, featureRandom(host.seed, key, 'sea', salt));
       if (sea) out.seas.push(sea);
     }
+    // Der Monolith steht im Bildfokus (Welt 13): er wird vor dem Wasser geplant, damit ein See vor ihm liegt statt ihn zu
+    // verdrängen; alle anderen Felsen wie bisher nach dem Wasser (gleicher Zufallsstrom, solange es keinen Monolithen gibt)
+    const rocks = spec.rocks ?? [];
+    const early = rocks.filter((r) => r.kind === 'monolith');
+    const late = early.length > 0 ? rocks.filter((r) => r.kind !== 'monolith') : rocks;
+    if (early.length > 0) {
+      const r = generateRocks(host, site, world, early, featureRandom(host.seed, key, 'rocks', salt), occupied);
+      out.formations.push(...r.formations);
+      out.ledges.push(...r.ledges);
+    }
     let made = 0;
     if (spec.rivers) {
       const r = generateRivers(host, site, world, spec.rivers, spec.lakes, featureRandom(host.seed, key, 'rivers', salt), occupied, 0);
@@ -157,19 +170,31 @@ export class PlaneFeatures {
     if (spec.lakes && spec.lakes.count > made) {
       out.lakes.push(...generateLakes(host, site, world, spec.lakes, spec.lakes.count - made, featureRandom(host.seed, key, 'lakes', salt), occupied, made));
     }
-    if (spec.rocks && spec.rocks.length > 0) {
-      const r = generateRocks(host, site, world, spec.rocks, featureRandom(host.seed, key, 'rocks', salt), occupied);
+    markWater(out, spec);
+    if (late.length > 0) {
+      const r = generateRocks(host, site, world, late, featureRandom(host.seed, key, early.length > 0 ? 'rocks-late' : 'rocks', salt), occupied);
       out.formations.push(...r.formations);
       out.ledges.push(...r.ledges);
     }
     // Boxen für schnelle Ablehnung
     const grow = (box: [number, number, number, number] | null, x0: number, z0: number, x1: number, z1: number): [number, number, number, number] =>
       box ? [Math.min(box[0], x0), Math.min(box[1], z0), Math.max(box[2], x1), Math.max(box[3], z1)] : [x0, z0, x1, z1];
-    for (const l of out.lakes) out.waterBox = grow(out.waterBox, l.cx - l.reach, l.cz - l.reach, l.cx + l.reach, l.cz + l.reach);
-    for (const sea of out.seas) out.waterBox = grow(out.waterBox, sea.box[0], sea.box[1], sea.box[2], sea.box[3]);
+    for (const l of out.lakes) {
+      out.waterBox = grow(out.waterBox, l.cx - l.reach, l.cz - l.reach, l.cx + l.reach, l.cz + l.reach);
+      const b = l.reach + (l.band ?? 0);
+      out.shoreBox = grow(out.shoreBox, l.cx - b, l.cz - b, l.cx + b, l.cz + b);
+    }
+    for (const sea of out.seas) {
+      out.waterBox = grow(out.waterBox, sea.box[0], sea.box[1], sea.box[2], sea.box[3]);
+      out.shoreBox = grow(out.shoreBox, sea.box[0], sea.box[1], sea.box[2], sea.box[3]);
+    }
     for (const r of out.rivers) {
       const pad = Math.max(...r.widths) * 0.5 + r.shore + 0.3;
-      for (const p of r.points) out.waterBox = grow(out.waterBox, p[0] - pad, p[1] - pad, p[0] + pad, p[1] + pad);
+      const padB = Math.max(pad, Math.max(...r.widths) * 0.5 + (r.band ?? 0) + 0.3);
+      for (const p of r.points) {
+        out.waterBox = grow(out.waterBox, p[0] - pad, p[1] - pad, p[0] + pad, p[1] + pad);
+        out.shoreBox = grow(out.shoreBox, p[0] - padB, p[1] - padB, p[0] + padB, p[1] + padB);
+      }
     }
     for (const f of out.formations) {
       out.rockBox = grow(out.rockBox, f.cx - f.footprint - 1.5, f.cz - f.footprint - 1.5, f.cx + f.footprint + 1.5, f.cz + f.footprint + 1.5);
@@ -267,17 +292,38 @@ export class PlaneFeatures {
     return out;
   }
 
-  /** Merkmale an einem Punkt für das Terrain-Material (je Vertex): Uferabstand, Eis, Musterkoordinate, Schnee, Sumpf. */
+  /**
+   * Merkmale an einem Punkt für das Terrain-Material (je Vertex): Uferabstand, Eis, Musterkoordinate, Schnee, Sumpf,
+   * Uferband und Gift.
+   */
   sample(key: string, x: number, z: number, heightNorm: number, out: FeatureSample): FeatureSample {
     out.water = NO_WATER;
     out.frozen = 0;
     out.along = 0;
     out.swamp = 0;
+    out.shore = 1;
+    out.toxic = 0;
     const r = this.region(key);
-    const box = r.waterBox;
+    const box = r.shoreBox ?? r.waterBox;
     if (box && x >= box[0] && x <= box[2] && z >= box[1] && z <= box[3]) {
+      // Wasserwerte wie bisher nur in der Wasserbox (das Uferband reicht weiter)
+      const wb = r.waterBox;
+      const wet = !!wb && x >= wb[0] && x <= wb[2] && z >= wb[1] && z <= wb[3];
+      // Uferband: der kleinste Bandwert aller Gewässer (stetig, auch wo sich zwei Bänder treffen); Gift vom selben Gewässer
+      let shore = 1;
+      let toxic = 0;
       for (const lake of r.lakes) {
-        if (!lakeAt(lake, x, z, this.lakeHit)) continue;
+        const band = lake.band ?? 0;
+        if (!lakeAt(lake, x, z, this.lakeHit, band)) continue;
+        const s = shoreValue(this.lakeHit.e, band);
+        if (s < shore) {
+          shore = s;
+          toxic = lake.toxic ? 1 : 0;
+        }
+        // Wasserwert wie bisher nur innerhalb der Reichweite des Sees
+        const dx = x - lake.cx;
+        const dz = z - lake.cz;
+        if (!wet || dx * dx + dz * dz > lake.reach * lake.reach) continue;
         const w = -this.lakeHit.e;
         if (w > out.water) {
           out.water = w;
@@ -288,8 +334,13 @@ export class PlaneFeatures {
       }
       for (const river of r.rivers) {
         this.nearestRiver(river, x, z, 9);
+        const s = shoreValue(this.segHit.e, river.band ?? 0);
+        if (s < shore) {
+          shore = s;
+          toxic = river.toxic ? 1 : 0;
+        }
         const w = -this.segHit.e;
-        if (w > out.water) {
+        if (wet && w > out.water) {
           out.water = w;
           out.frozen = river.frozen ? 1 : 0;
           out.along = this.segHit.along;
@@ -298,6 +349,11 @@ export class PlaneFeatures {
       }
       for (const sea of r.seas) {
         const w = seaField(sea, x, z, this.seaHit);
+        // Meer: kein Uferband (die Klippe ist sein Ufer); im Wasser 0
+        if (w > 0 && shore > 0) {
+          shore = 0;
+          toxic = 0;
+        }
         if (w > out.water) {
           out.water = w;
           out.frozen = 0;
@@ -305,11 +361,35 @@ export class PlaneFeatures {
           out.swamp = 0;
         }
       }
+      out.shore = shore;
+      out.toxic = shore < 1 ? toxic : 0;
     }
     out.water = Math.max(NO_WATER, Math.min(8, out.water));
     out.snow = r.snow ? r.snow.value(x, z, heightNorm) : -1;
     if (out.water > 0) out.snow = Math.min(out.snow, -0.05);
     return out;
+  }
+
+  /**
+   * Abstand zum Ufer des nächsten Giftsees/-flusses der Region (≥ 0 an Land, < 0 im Wasser) oder `Infinity`, wenn
+   * keiner in Reichweite (`reach` Einheiten über das Ufer hinaus) liegt. Für den Müll: Schleim und Gasquellen
+   * sammeln sich an den Giftufern.
+   */
+  toxicShoreDistance(key: string, x: number, z: number, reach = 3): number {
+    const r = this.region(key);
+    const box = r.shoreBox ?? r.waterBox;
+    if (!box || x < box[0] - reach || x > box[2] + reach || z < box[1] - reach || z > box[3] + reach) return Infinity;
+    let best = Infinity;
+    for (const lake of r.lakes) {
+      if (!lake.toxic || !lakeAt(lake, x, z, this.lakeHit, reach)) continue;
+      best = Math.min(best, this.lakeHit.e);
+    }
+    for (const river of r.rivers) {
+      if (!river.toxic) continue;
+      this.nearestRiver(river, x, z, 9 + reach);
+      best = Math.min(best, this.segHit.e);
+    }
+    return best <= reach ? best : Infinity;
   }
 
   /** Uferabstand (> 0 im Wasser) an einem Punkt, `NO_WATER` außerhalb der Reichweite. */
@@ -421,5 +501,29 @@ export class PlaneFeatures {
       for (const sea of r.seas) if (seaField(sea, c.x, c.z) > -c.radius) return true;
     }
     return false;
+  }
+}
+
+/**
+ * Uferbänder und Gift der Gewässer einer Region (nach der Planung, deterministisch): Seen und Flüsse tragen die
+ * Bandbreite ihrer Angabe (Sümpfe keine); `lakes.toxic` vergiftet alle bzw. die letzten n Seen, ein Giftfluss auch
+ * seinen Mündungssee.
+ */
+function markWater(out: RegionFeatures, spec: WorldFeatureSpec): void {
+  const lakes = out.lakes;
+  const ls = spec.lakes;
+  const n = lakes.length;
+  const poisoned = ls?.toxic === true ? n : typeof ls?.toxic === 'number' ? Math.max(0, Math.min(n, Math.round(ls.toxic))) : 0;
+  lakes.forEach((lake, i) => {
+    lake.band = lake.swamp ? 0 : Math.max(0, ls?.shore ?? DEFAULT_LAKE_BAND);
+    if (i >= n - poisoned) lake.toxic = true;
+  });
+  const rs = spec.rivers;
+  for (const river of out.rivers) {
+    river.band = Math.max(0, rs?.shore ?? DEFAULT_RIVER_BAND);
+    if (!rs?.toxic) continue;
+    river.toxic = true;
+    const mouth = lakes[river.lake];
+    if (mouth) mouth.toxic = true;
   }
 }

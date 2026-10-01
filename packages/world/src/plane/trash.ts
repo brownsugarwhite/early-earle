@@ -83,6 +83,14 @@ const NODE_CLEAR_SMALL = 1.7;
 const NODE_CLEAR_BIG = 3.4;
 /** z-Reichweite der Pfadknoten je Chunk (Heilung, Freiraum). */
 const NODE_REACH = 48;
+/**
+ * Giftufer (Müll v3): Schleim und Gasquellen sammeln sich im Band 0,3–1,8 Einheiten vom Ufer der Giftseen und -flüsse,
+ * dort dreimal so dicht wie sonst (zwei Zusatzdurchgänge mit eigenen Kandidaten; der Grunddurchgang bleibt unverändert).
+ */
+const TOXIC_SHORE: readonly [number, number] = [0.3, 1.8];
+const TOXIC_SHORE_BOOST = 3;
+/** Nester mit `anchor: 'water'`: Kandidaten bis zu diesem Uferabstand (Einheiten) kommen zuerst an die Reihe. */
+const POCKET_WATER_REACH = 3;
 
 interface Pocket {
   x: number;
@@ -339,6 +347,20 @@ export class PlaneTrashPlanner {
         const g = this.placeGoo(x, z, 0.5 + r2 * 0.8, rand, spec);
         if (g) items.push(g);
       }
+      // Giftufer: zusätzlicher Schleim im Uferband der Giftseen und -flüsse (auch über der Senkengrenze)
+      const shore = this.samples(cx, cz, 'goo-shore', Math.sqrt(1 / (gooMax * (TOXIC_SHORE_BOOST - 1) * 1.7)));
+      const randS = mulberry32(seedOf('trash-goo-shore'));
+      for (const [x, z] of shore) {
+        const r1 = randS();
+        const r2 = randS();
+        if (!this.onToxicShore(x, z)) continue;
+        const loc = this.specAt(x, z);
+        const spec = loc.spec;
+        if (!spec?.goo) continue;
+        if (r1 > (spec.goo * density * loc.weight) / gooMax) continue;
+        const g = this.placeGoo(x, z, 0.45 + r2 * 0.7, randS, spec);
+        if (g) items.push(g);
+      }
     }
     const ventMax = maxOf((s) => s.vents ?? 0) * density;
     if (ventMax > 0) {
@@ -350,30 +372,19 @@ export class PlaneTrashPlanner {
         const spec = loc.spec;
         if (!spec?.vents) continue;
         if (r1 > (spec.vents * density * loc.weight) / ventMax) continue;
-        const s = this.surface(x, z);
-        if (!this.free(x, z, 0.9, false)) continue;
-        this.locator.locate(x, z, _hit);
-        const heal = this.heal(spec, HEAL_PER_UNIT, HEAL_DELAY.vent, loc, x, z);
-        const h = 0.34 + rand() * 0.3;
-        const r = 0.13 + rand() * 0.05;
-        items.push({
-          kind: 'vent',
-          shape: VENT_CHIMNEY_SHAPE,
-          position: sink(s.position, s.normal, 0.06),
-          up: s.normal,
-          yaw: rand() * Math.PI * 2,
-          lean: rand() * 0.12,
-          leanDir: rand() * Math.PI * 2,
-          size: [r * 2, h, r * 2],
-          heal,
-          world: loc.world,
-          zone: loc.zone,
-          variant: rand(),
-          neon: Math.max(0.5, spec.neon ?? 1),
-        });
-        const g = this.placeGoo(x, z, 0.4 + rand() * 0.25, rand, spec, heal);
-        if (g) items.push(g);
-        out.hMax = Math.max(out.hMax, h);
+        out.hMax = Math.max(out.hMax, this.placeVent(x, z, rand, spec, loc, items));
+      }
+      // Giftufer: zusätzliche Gasquellen im Uferband
+      const shore = this.samples(cx, cz, 'vent-shore', Math.sqrt(1 / (ventMax * (TOXIC_SHORE_BOOST - 1) * 1.7)));
+      const randS = mulberry32(seedOf('trash-vent-shore'));
+      for (const [x, z] of shore) {
+        const r1 = randS();
+        if (!this.onToxicShore(x, z)) continue;
+        const loc = this.specAt(x, z);
+        const spec = loc.spec;
+        if (!spec?.vents) continue;
+        if (r1 > (spec.vents * density * loc.weight) / ventMax) continue;
+        out.hMax = Math.max(out.hMax, this.placeVent(x, z, randS, spec, loc, items));
       }
     }
 
@@ -382,6 +393,44 @@ export class PlaneTrashPlanner {
     if (out.veil) out.spores = this.spores(cx, cz, out.veil);
     out.nodeBlooms = this.nodeBlooms(cx, cz);
     return out;
+  }
+
+  /** Gasquelle mit Schornstein und Schleimpfütze an (x, z); liefert ihre Höhe (0, wenn der Platz nicht frei ist). */
+  private placeVent(x: number, z: number, rand: () => number, spec: TrashSpec, loc: LocalSpec, items: TrashItem[]): number {
+    const s = this.surface(x, z);
+    if (!this.free(x, z, 0.9, false)) return 0;
+    this.locator.locate(x, z, _hit);
+    const heal = this.heal(spec, HEAL_PER_UNIT, HEAL_DELAY.vent, loc, x, z);
+    const h = 0.34 + rand() * 0.3;
+    const r = 0.13 + rand() * 0.05;
+    items.push({
+      kind: 'vent',
+      shape: VENT_CHIMNEY_SHAPE,
+      position: sink(s.position, s.normal, 0.06),
+      up: s.normal,
+      yaw: rand() * Math.PI * 2,
+      lean: rand() * 0.12,
+      leanDir: rand() * Math.PI * 2,
+      size: [r * 2, h, r * 2],
+      heal,
+      world: loc.world,
+      zone: loc.zone,
+      variant: rand(),
+      neon: Math.max(0.5, spec.neon ?? 1),
+    });
+    const g = this.placeGoo(x, z, 0.4 + rand() * 0.25, rand, spec, heal);
+    if (g) items.push(g);
+    return h;
+  }
+
+  private readonly rsTmp = {} as ReturnType<PlaneField['sample']>;
+
+  /** Liegt (x, z) im Uferband eines Giftsees oder -flusses (0,3–1,8 Einheiten vom Ufer, an Land)? */
+  private onToxicShore(x: number, z: number): boolean {
+    const f = this.ctx.field;
+    const key = f.sample(x, z, this.rsTmp).region.key;
+    const d = f.features.toxicShoreDistance(key, x, z, TOXIC_SHORE[1]);
+    return d >= TOXIC_SHORE[0] && d <= TOXIC_SHORE[1];
   }
 
   /** Blütenkranz um jeden Knoten des Chunks, dessen Welt heilenden Müll trägt. */
@@ -516,6 +565,14 @@ export class PlaneTrashPlanner {
       const t = inside[i]!;
       inside[i] = inside[j]!;
       inside[j] = t;
+    }
+    // `anchor: 'water'`: Kandidaten am Ufer (bis POCKET_WATER_REACH, auch knapp im Wasser) zuerst, in gemischter Folge
+    if (pk.anchor === 'water') {
+      const wet: Array<[number, number]> = [];
+      const dry: Array<[number, number]> = [];
+      for (const c of inside) (f.features.waterDepthAt(key, c[0], c[1]) >= -POCKET_WATER_REACH ? wet : dry).push(c);
+      inside.length = 0;
+      inside.push(...wet, ...dry);
     }
     const nodes = this.ctx.nodes(zA - 8, zB + 8);
     const loc = new Locator(nodes);

@@ -60,6 +60,9 @@ export interface PlaneChunkMesh {
   /** Uferabstand, Schneefeld, Musterkoordinate längs des Gewässers, Eis (4 je Vertex). */
   feature: Float32Array;
   swamp: Float32Array;
+  /** Uferband 0..1 (0 im Wasser, 1 außerhalb) und Gift 0/1 je Vertex (W7, `FeatureSample.shore/toxic`). */
+  shore: Float32Array;
+  toxic: Float32Array;
   indices: Uint16Array | Uint32Array;
   minH: number;
   maxH: number;
@@ -93,7 +96,9 @@ export function generatePlaneChunk(field: PlaneField, cx: number, cz: number, re
   const along = new Float32Array(count);
   const feature = new Float32Array(count * 4);
   const swamp = new Float32Array(count);
-  const fs: FeatureSample = { water: 0, frozen: 0, along: 0, snow: -1, swamp: 0 };
+  const shore = new Float32Array(count);
+  const toxic = new Float32Array(count);
+  const fs: FeatureSample = { water: 0, frozen: 0, along: 0, snow: -1, swamp: 0, shore: 1, toxic: 0 };
   const rs = {} as RegionSample;
   const pos: Vec3 = [0, 0, 0];
   const nor: Vec3 = [0, 0, 0];
@@ -153,6 +158,8 @@ export function generatePlaneChunk(field: PlaneField, cx: number, cz: number, re
       feature[k * 4 + 2] = fs.along;
       feature[k * 4 + 3] = fs.frozen;
       swamp[k] = fs.swamp ?? 0;
+      shore[k] = fs.shore ?? 1;
+      toxic[k] = fs.toxic ?? 0;
       worlds.add(rs.world);
       regions.add(key);
       if (h < minH) minH = h;
@@ -182,6 +189,8 @@ export function generatePlaneChunk(field: PlaneField, cx: number, cz: number, re
     along[k] = along[src]!;
     for (let c = 0; c < 4; c++) feature[k * 4 + c] = feature[src * 4 + c]!;
     swamp[k] = swamp[src]!;
+    shore[k] = shore[src]!;
+    toxic[k] = toxic[src]!;
   });
   const quads = (n - 1) * (n - 1);
   const skirtTris = perim * 2;
@@ -235,6 +244,8 @@ export function generatePlaneChunk(field: PlaneField, cx: number, cz: number, re
     along,
     feature,
     swamp,
+    shore,
+    toxic,
     indices,
     minH,
     maxH,

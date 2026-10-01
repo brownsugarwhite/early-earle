@@ -47,10 +47,12 @@
     "veil": 0.35,
     "veilHeights": [0.9, 1.7],
     "neon": 0.45,
-    "pockets": { "density": 0.0025, "radius": [4, 7] }
+    "pockets": { "density": 0.0025, "radius": [4, 7], "anchor": "water" }
   },
   "features": {
-    "snowFields": { "cover": 0.3, "scale": 1.5, "angle": 12, "stretch": 2.6, "valley": 0.5, "meadow": true, "focus": [{"radius": 3.2, "offset": [1.5, -1.0]}] }
+    "snowFields": { "cover": 0.3, "scale": 1.5, "angle": 12, "stretch": 2.6, "valley": 0.5, "meadow": true, "focus": [{"radius": 3.2, "offset": [1.5, -1.0]}] },
+    "lakes": { "count": 3, "radius": [2.6, 3.6], "stretch": 0.4, "pathDistance": [2.5, 8], "shore": 1.8 },
+    "rivers": { "count": 2, "width": [1.2, 2.4], "length": [16, 24], "meander": 0.4, "pathDistance": [3, 6], "shore": 1.6 }
   },
   "landmarks": { "fallsRock": 0, "cliffFall": 0, "twinFalls": 0, "ruin": 0, "swamp": 0 },
   "mist": { "banks": 14, "height": [0.5, 1.5], "thickness": [1.0, 2.2], "length": [10, 22], "opacity": 0.7, "tinted": 0.35 },

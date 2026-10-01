@@ -34,7 +34,8 @@
   "features": {
     "rocks": [
       { "kind": "monolith", "count": 1, "size": [16, 16.5], "height": [21, 22], "pathDistance": [3, 30] }
-    ]
+    ],
+    "lakes": { "count": 1, "radius": [3.2, 4.2], "stretch": 0.6, "pathDistance": [2.5, 6], "side": -1, "focusDistance": [0, 8] }
   },
   "landmarkChance": 0,
   "fogStripes": 0,

@@ -31,6 +31,9 @@
     "motif": "diamond"
   },
   "props": {},
+  "features": {
+    "rivers": { "count": 1, "width": [0.8, 1.2], "length": [12, 18], "meander": 0.6, "pathDistance": [2.4, 4] }
+  },
   "landmarkChance": 0,
   "fogStripes": 0.6,
   "fog": { "start": 10, "range": 22 },

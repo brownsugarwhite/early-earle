@@ -59,7 +59,7 @@
     "veil": 0.5,
     "veilHeights": [0.9, 1.7],
     "neon": 0.7,
-    "pockets": { "density": 0.003, "radius": [4, 7] }
+    "pockets": { "density": 0.003, "radius": [4, 7], "anchor": "water" }
   },
   "features": {
     "rocks": [
@@ -67,7 +67,7 @@
       { "kind": "wall", "count": 1, "size": [16, 22], "height": [5.5, 7.5], "steps": 3 },
       { "kind": "spires", "count": 2, "size": [2.4, 3.4], "height": [3.4, 5], "pathDistance": [2.6, 3.8] }
     ],
-    "lakes": { "count": 1, "radius": [1.7, 2.3], "stretch": 2.3, "pathDistance": [2.2, 3.0] }
+    "lakes": { "count": 2, "radius": [1.7, 2.3], "stretch": 2.3, "pathDistance": [2.2, 3.0], "toxic": 1 }
   },
   "fogStripes": 0.15,
   "fog": { "start": 9, "range": 18 },

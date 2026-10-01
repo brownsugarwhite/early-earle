@@ -65,8 +65,11 @@ export interface TrashSpec {
   veilHeights?: number[];
   /** Neon-Anteil 0..1: 1 = leckender Schleim, Neonmoos, Sporen; 0 = alte, grün überwachsene Ruinen. */
   neon?: number;
-  /** Müll nur in Nestern (andere Welten): Nester je Welteinheit² und ihr Radius [min, max]. */
-  pockets?: { density: number; radius: [number, number] };
+  /**
+   * Müll nur in Nestern (andere Welten): Nester je Welteinheit² und ihr Radius [min, max]. `anchor: 'water'` = die
+   * Nester suchen zuerst die Ufer der Seen und Flüsse ihrer Region (Müll v3, nur auf der Ebene).
+   */
+  pockets?: { density: number; radius: [number, number]; anchor?: 'water' };
   /** Mindestabstand zum Levelpfad (Welteinheiten, Standard 1.2; große Elemente halten zusätzlich ihren Radius). */
   pathClear?: number;
   /**
