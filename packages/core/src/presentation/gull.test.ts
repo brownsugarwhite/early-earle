@@ -7,6 +7,7 @@ import type { MoveResult, SpawnEvent } from '../events';
 import { materializeCells, type LevelState } from '../model';
 import { hash32, mulberry32 } from '../rng';
 import { LevelSchema, type LevelDef } from '../schema/level';
+import { LAST_LEVEL } from '../generator/index';
 import {
   GULL_FIRST_LEVEL,
   GULL_WINDOW,
@@ -72,8 +73,8 @@ function fingerprint(s: LevelState): string {
 afterEach(() => setGullMode('auto'));
 
 describe('Möwe: Regel', () => {
-  it('liest die zwei niedrigsten Stufen der Spawn-Tabelle (alle 100 Level: Stufe 1 und 2)', () => {
-    expect(ALL.length).toBe(100);
+  it('liest die zwei niedrigsten Stufen der Spawn-Tabelle (alle Level: Stufe 1 und 2)', () => {
+    expect(ALL.length).toBe(LAST_LEVEL);
     for (const level of ALL) expect(gullTiers(level), level.id).toEqual([1, 2]);
     expect(gullTiers({ spawn: { table: [{ tier: 3, weight: 1 }, { tier: 1, weight: 1 }, { tier: 3, weight: 2 }, { tier: 2, weight: 1 }] } } as LevelDef)).toEqual([1, 2]);
   });
@@ -97,7 +98,7 @@ describe('Möwe: Regel', () => {
     expect(offs.some((o, i) => i > 0 && o === offs[i - 1])).toBe(true);
   });
 
-  it('Zufallsspiel über alle 100 Level: Möwe genau auf den Rhythmuszügen mit passendem Spawn, Abstände 3–5', () => {
+  it('Zufallsspiel über alle Level: Möwe genau auf den Rhythmuszügen mit passendem Spawn, Abstände 3–5', () => {
     let gulls = 0;
     let moves = 0;
     for (const level of ALL) {

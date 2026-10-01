@@ -142,11 +142,11 @@ test.describe('iPhone 393×852', () => {
     await expect(page.getByTestId('hud-moves')).toHaveText('Züge 33');
     await page.getByTestId('edit-btn').tap();
 
-    // Kette: alle 100 Level mit Kurve; das offene Level ist markiert.
+    // Kette: alle 184 Level (eine Zeile je Level-Datei) mit Kurve; das offene Level ist markiert.
     await page.getByTestId('level-button').tap();
     await expect(page.getByTestId('tab-kette')).toHaveAttribute('data-active', 'true');
     await expect(page.getByTestId('chain-chart')).toBeVisible();
-    await expect(page.getByTestId('chain-list').locator('[data-testid^="chain-row-"]')).toHaveCount(100);
+    await expect(page.getByTestId('chain-list').locator('[data-testid^="chain-row-"]')).toHaveCount(184);
     await expect(page.getByTestId('chain-row-007')).toHaveAttribute('data-current', 'true');
 
     // Unter neuem Namen sichern (PUT auf eine _-Datei).
