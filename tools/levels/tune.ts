@@ -52,6 +52,8 @@ const NOVICE_PROBE = 200;
 const STRONG_PROBE = 50;
 const STRONG_PROBE_MIN = 0.94;
 const STRONG_GATE = 0.9;
+/** Boss: der starke Bot soll ihn meistens schaffen (Können statt Glück), sonst Rückfall ohne Schranke. */
+const BOSS_STRONG_MIN = 0.6;
 /** So viele Varianten mit passendem Anfänger-Budget werden gesammelt, bevor der starke Bot prüft. */
 const CANDIDATES = 6;
 /** Spitzen brauchen mehr Varianten: der starke Bot muss beim knappen Budget sicher bleiben. */
@@ -88,9 +90,11 @@ function tuneOf(k: Knobs, moves: number): Tune {
   return t;
 }
 
-const specFor = (base: LevelSpec, k: Knobs, moves: number): LevelSpec => applyTune(base, tuneOf(k, moves));
+const specFor = (base: LevelSpec, k: Knobs, moves: number): LevelSpec =>
+  applyTune(base, tuneOf(k, moves));
 const shape = (base: LevelSpec, k: Knobs) => JSON.stringify(specFor(base, k, 1));
-const cost = (k: Knobs) => Math.abs(k.d) + 0.5 * Math.abs(k.s) + (k.t2 === 1 ? 0 : k.t2 === 2 || k.t2 === 0.5 ? 0.7 : 1.2);
+const cost = (k: Knobs) =>
+  Math.abs(k.d) + 0.5 * Math.abs(k.s) + (k.t2 === 1 ? 0 : k.t2 === 2 || k.t2 === 0.5 ? 0.7 : 1.2);
 
 /** Alle unterscheidbaren Varianten, die nächsten zuerst. */
 function ladder(base: LevelSpec): Knobs[] {
@@ -127,7 +131,11 @@ function windowOf(band: [number, number]): Window {
 }
 
 /** Budgets in der Spanne, bei denen der Anfänger im Band liegt (beste zuerst). */
-function noviceFits(nv: Probe, win: Window, range: [number, number]): { m: number; score: number }[] {
+function noviceFits(
+  nv: Probe,
+  win: Window,
+  range: [number, number],
+): { m: number; score: number }[] {
   const out: { m: number; score: number }[] = [];
   for (let m = range[0]; m <= Math.min(range[1], nv.budget); m++) {
     const pN = pAt(nv, m);
@@ -192,7 +200,9 @@ export function tuneLevel(index: number): TuneResult {
     const v: Verified = { tune, att, pS: st.pWin, ok };
     if (!best || (v.ok && !best.ok) || (!best.ok && score(v) < score(best))) best = v;
     rounds++;
-    log.push(`verify ${JSON.stringify(tune)} att=${att?.toFixed(2) ?? '∞'} S=${st.pWin.toFixed(2)}${ok ? ' ✓' : ''}`);
+    log.push(
+      `verify ${JSON.stringify(tune)} att=${att?.toFixed(2) ?? '∞'} S=${st.pWin.toFixed(2)}${ok ? ' ✓' : ''}`,
+    );
     return v;
   };
 
@@ -215,45 +225,66 @@ export function tuneLevel(index: number): TuneResult {
       }
     }
     if (VERBOSE && fits.length > 0)
-      log.push(`novice ${JSON.stringify(k)}: m ${fits.map((f) => f.m).sort((a, b) => a - b).join(',')}`);
+      log.push(
+        `novice ${JSON.stringify(k)}: m ${fits
+          .map((f) => f.m)
+          .sort((a, b) => a - b)
+          .join(',')}`,
+      );
   }
 
-  // 3–4: starker Bot und Prüfung.
-  for (const cand of candidates) {
-    if (rounds >= ROUNDS) break;
-    let pick = cand.fits[0]!.m;
-    if (needStrong || spike) {
-      const st = probeLevel(cand.level, 'strong', STRONG_PROBE, budget);
-      probes++;
-      const ok = cand.fits.filter((f) => !needStrong || pAt(st, f.m) >= STRONG_PROBE_MIN);
-      if (ok.length === 0) {
-        log.push(`strong ${JSON.stringify(cand.k)}: zu unsicher (S(${cand.fits[0]!.m})=${pAt(st, cand.fits[0]!.m).toFixed(2)})`);
-        continue;
+  // 3–4: starker Bot und Prüfung. Boss: erst Varianten, die der starke Bot ≥ 60 % schafft
+  // (Können statt Glück), dann notfalls ohne diese Schranke.
+  const passes = needStrong ? [STRONG_PROBE_MIN] : [BOSS_STRONG_MIN, 0];
+  for (const floor of passes) {
+    if (best?.ok) break;
+    for (const cand of candidates) {
+      if (rounds >= ROUNDS) break;
+      let pick = cand.fits[0]!.m;
+      if (needStrong || spike) {
+        const st = probeLevel(cand.level, 'strong', STRONG_PROBE, budget);
+        probes++;
+        const ok = cand.fits.filter((f) => pAt(st, f.m) >= floor);
+        if (ok.length === 0) {
+          log.push(
+            `strong ${JSON.stringify(cand.k)}: zu unsicher (S(${cand.fits[0]!.m})=${pAt(st, cand.fits[0]!.m).toFixed(2)})`,
+          );
+          continue;
+        }
+        // Spitzen: unter fast gleich guten Budgets das knappste (Near-Miss).
+        const rest = (m: number) => (pAt(st, m) > 0 ? (m - meanWinAt(st, m)) / m : 0);
+        ok.sort(
+          (a, b) =>
+            a.score + (spike ? 0.3 * rest(a.m) : 0) - (b.score + (spike ? 0.3 * rest(b.m) : 0)),
+        );
+        pick = ok[0]!.m;
       }
-      // Spitzen: unter fast gleich guten Budgets das knappste (Near-Miss).
-      const rest = (m: number) => (pAt(st, m) > 0 ? (m - meanWinAt(st, m)) / m : 0);
-      ok.sort((a, b) => a.score + (spike ? 0.3 * rest(a.m) : 0) - (b.score + (spike ? 0.3 * rest(b.m) : 0)));
-      pick = ok[0]!.m;
+      let m = pick;
+      let v = verify(cand.k, m);
+      const tried = new Set<number>([m]);
+      while (!v.ok && rounds < ROUNDS) {
+        let next = m;
+        if (needStrong && v.pS < STRONG_GATE && (v.att === null || v.att >= band[0])) next = m + 1;
+        else if (v.att === null || v.att > band[1])
+          next = m + (v.att === null || v.att > band[1] * 1.25 ? 2 : 1);
+        else if (v.att < band[0]) next = m - (v.att < band[0] - (band[1] - band[0]) * 0.5 ? 2 : 1);
+        else break;
+        if (next < 4 || next > 98 || tried.has(next)) break;
+        tried.add(next);
+        m = next;
+        v = verify(cand.k, m);
+      }
+      if (v.ok) break;
     }
-    let m = pick;
-    let v = verify(cand.k, m);
-    const tried = new Set<number>([m]);
-    while (!v.ok && rounds < ROUNDS) {
-      let next = m;
-      if (needStrong && v.pS < STRONG_GATE && (v.att === null || v.att >= band[0])) next = m + 1;
-      else if (v.att === null || v.att > band[1]) next = m + (v.att === null || v.att > band[1] * 1.25 ? 2 : 1);
-      else if (v.att < band[0]) next = m - (v.att < band[0] - (band[1] - band[0]) * 0.5 ? 2 : 1);
-      else break;
-      if (next < 4 || next > 98 || tried.has(next)) break;
-      tried.add(next);
-      m = next;
-      v = verify(cand.k, m);
-    }
-    if (v.ok) break;
   }
 
   if (!best && nearest) verify(nearest.k, nearest.m);
-  const fin: Verified = best ?? { tune: { moves: generateLevel(base).moves }, att: null, pS: 0, ok: false };
+  const fin: Verified = best ?? {
+    tune: { moves: generateLevel(base).moves },
+    att: null,
+    pS: 0,
+    ok: false,
+  };
   return { index, tune: fin.tune, ok: fin.ok, att: fin.att, pS: fin.pS, band, probes, rounds, log };
 }
 
@@ -289,7 +320,9 @@ async function runWorker(): Promise<void> {
 }
 
 async function runParent(): Promise<void> {
-  const positional = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1]!.startsWith('--')));
+  const positional = args.filter(
+    (a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1]!.startsWith('--')),
+  );
   const from = Number(positional[0] ?? LEGACY_LAST_LEVEL + 1);
   const to = Number(positional[1] ?? positional[0] ?? LAST_LEVEL);
   const only = opt('only', '')
@@ -298,39 +331,51 @@ async function runParent(): Promise<void> {
     .filter((n) => n > 0);
   const indices = only.length
     ? only
-    : Array.from({ length: to - from + 1 }, (_, i) => from + i).filter((i) => i > LEGACY_LAST_LEVEL);
+    : Array.from({ length: to - from + 1 }, (_, i) => from + i).filter(
+        (i) => i > LEGACY_LAST_LEVEL,
+      );
   const jobs = Math.max(1, Math.min(Number(opt('jobs', '6')), indices.length));
   const dry = args.includes('--dry');
   // Teure Level (Spitzen, Boss) zuerst, damit die Arbeiter am Ende nicht auf einen Nachzügler warten.
-  const queue = [...indices].sort((a, b) => Number(curveSpec(b).spike) - Number(curveSpec(a).spike) || a - b);
+  const queue = [...indices].sort(
+    (a, b) => Number(curveSpec(b).spike) - Number(curveSpec(a).spike) || a - b,
+  );
   const results: TuneResult[] = [];
   const t0 = performance.now();
 
   await Promise.all(
-    Array.from({ length: jobs }, () =>
-      new Promise<void>((done, fail) => {
-        const child = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--worker'], {
-          stdio: ['pipe', 'pipe', 'inherit'],
-        });
-        const feed = () => {
-          const next = queue.shift();
-          if (next === undefined) child.stdin.end();
-          else child.stdin.write(`${next}\n`);
-        };
-        createInterface({ input: child.stdout }).on('line', (line) => {
-          if (!line.startsWith('{')) return;
-          const r = JSON.parse(line) as TuneResult;
-          results.push(r);
-          const c = curveSpec(r.index);
-          console.log(
-            `${String(r.index).padStart(3)} ${c.type.padEnd(9)} [${r.band.join('–')}] → ${JSON.stringify(r.tune)} att=${r.att?.toFixed(2) ?? '∞'} S=${r.pS.toFixed(2)} ${r.ok ? 'ok' : 'FAIL'} (${r.probes} Sonden, ${r.rounds} Runden, ${((performance.now() - t0) / 1000).toFixed(0)}s)`,
+    Array.from(
+      { length: jobs },
+      () =>
+        new Promise<void>((done, fail) => {
+          const child = spawn(
+            process.execPath,
+            [...process.execArgv, fileURLToPath(import.meta.url), '--worker'],
+            {
+              stdio: ['pipe', 'pipe', 'inherit'],
+            },
           );
-          if (!r.ok || VERBOSE) for (const l of r.log) console.log(`      ${l}`);
+          const feed = () => {
+            const next = queue.shift();
+            if (next === undefined) child.stdin.end();
+            else child.stdin.write(`${next}\n`);
+          };
+          createInterface({ input: child.stdout }).on('line', (line) => {
+            if (!line.startsWith('{')) return;
+            const r = JSON.parse(line) as TuneResult;
+            results.push(r);
+            const c = curveSpec(r.index);
+            console.log(
+              `${String(r.index).padStart(3)} ${c.type.padEnd(9)} [${r.band.join('–')}] → ${JSON.stringify(r.tune)} att=${r.att?.toFixed(2) ?? '∞'} S=${r.pS.toFixed(2)} ${r.ok ? 'ok' : 'FAIL'} (${r.probes} Sonden, ${r.rounds} Runden, ${((performance.now() - t0) / 1000).toFixed(0)}s)`,
+            );
+            if (!r.ok || VERBOSE) for (const l of r.log) console.log(`      ${l}`);
+            feed();
+          });
+          child.on('exit', (code) =>
+            code === 0 ? done() : fail(new Error(`worker exit ${code}`)),
+          );
           feed();
-        });
-        child.on('exit', (code) => (code === 0 ? done() : fail(new Error(`worker exit ${code}`))));
-        feed();
-      }),
+        }),
     ),
   );
 

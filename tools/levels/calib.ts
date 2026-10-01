@@ -45,7 +45,11 @@ export function summarize(r: SimResult): BotSummary {
 }
 
 /** Kalibriert einen Bot auf einem Level (wie `calibrate.ts` seit jeher). */
-export function calibrateBot(level: LevelDef, bot: BotName, opts: CalibOptions = DEFAULT_CALIB): BotSummary {
+export function calibrateBot(
+  level: LevelDef,
+  bot: BotName,
+  opts: CalibOptions = DEFAULT_CALIB,
+): BotSummary {
   const result = simulate(level, bot, calibrationSeeds(level.id, opts.maxSeeds), {
     stopHalfWidth: opts.halfWidth,
     minSeeds: 20,

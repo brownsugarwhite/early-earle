@@ -99,7 +99,8 @@ parts.push(
 ZONE_RANGES.forEach(([a, b], z) => {
   const x0 = M.l + ((a - 1) / LAST_LEVEL) * plotW;
   const x1 = M.l + (b / LAST_LEVEL) * plotW;
-  if (z % 2 === 1) parts.push(`<rect x="${x0}" y="${M.t}" width="${x1 - x0}" height="${plotH}" fill="#f4f3ef"/>`);
+  if (z % 2 === 1)
+    parts.push(`<rect x="${x0}" y="${M.t}" width="${x1 - x0}" height="${plotH}" fill="#f4f3ef"/>`);
   parts.push(
     `<text x="${(x0 + x1) / 2}" y="${M.t - 8}" font-size="11" text-anchor="middle" fill="${INK2}">${z + 1} · ${ZONE_WORLDS[z]}</text>`,
   );
@@ -113,7 +114,9 @@ for (const v of [1, 1.5, 2, 3, 4, 5]) {
 }
 for (const [a] of ZONE_RANGES.slice(1)) {
   const xb = M.l + ((a - 1) / LAST_LEVEL) * plotW;
-  parts.push(`<line x1="${xb}" x2="${xb}" y1="${M.t}" y2="${M.t + plotH}" stroke="${MUTED}" stroke-width="1" stroke-dasharray="2 3"/>`);
+  parts.push(
+    `<line x1="${xb}" x2="${xb}" y1="${M.t}" y2="${M.t + plotH}" stroke="${MUTED}" stroke-width="1" stroke-dasharray="2 3"/>`,
+  );
 }
 // eingefrorene Level 1–50
 const xL = M.l + (LEGACY_LAST_LEVEL / LAST_LEVEL) * plotW;
@@ -137,7 +140,9 @@ for (const c of curve) {
   const g = groupOf(c);
   if (a === null) {
     outside.push(c);
-    parts.push(`<text x="${x(c.index)}" y="${y(YMAX) + 4}" font-size="12" text-anchor="middle" fill="${CRITICAL}">∞</text>`);
+    parts.push(
+      `<text x="${x(c.index)}" y="${y(YMAX) + 4}" font-size="12" text-anchor="middle" fill="${CRITICAL}">∞</text>`,
+    );
     continue;
   }
   const cx = x(c.index);
@@ -153,13 +158,20 @@ for (const c of curve) {
     );
   if (!inBand(c)) {
     outside.push(c);
-    parts.push(`<circle cx="${cx}" cy="${cy}" r="7.5" fill="none" stroke="${CRITICAL}" stroke-width="1.5"/>`);
+    parts.push(
+      `<circle cx="${cx}" cy="${cy}" r="7.5" fill="none" stroke="${CRITICAL}" stroke-width="1.5"/>`,
+    );
   }
-  if (c.landmark) parts.push(`<text x="${cx}" y="${cy - 10}" font-size="10" text-anchor="middle" fill="${INK2}">${esc(c.landmark.split(' (')[0]!)}</text>`);
+  if (c.landmark)
+    parts.push(
+      `<text x="${cx}" y="${cy - 10}" font-size="10" text-anchor="middle" fill="${INK2}">${esc(c.landmark.split(' (')[0]!)}</text>`,
+    );
 }
 // x-Achse
 for (const i of [1, 14, 26, 38, 50, 62, 74, 86, 98, 114, 124, 136, 148, 160, 172, 184])
-  parts.push(`<text x="${x(i)}" y="${M.t + plotH + 18}" font-size="11" text-anchor="middle" fill="${INK2}">${i}</text>`);
+  parts.push(
+    `<text x="${x(i)}" y="${M.t + plotH + 18}" font-size="11" text-anchor="middle" fill="${INK2}">${i}</text>`,
+  );
 parts.push(
   `<text x="${M.l + plotW / 2}" y="${M.t + plotH + 38}" font-size="12" text-anchor="middle" fill="${INK2}">Level (Zonengrenzen gestrichelt)</text>`,
   `<text transform="translate(18 ${M.t + plotH / 2}) rotate(-90)" font-size="12" text-anchor="middle" fill="${INK2}">Versuche (1 / Gewinnrate Anfänger)</text>`,
@@ -172,12 +184,21 @@ const legend = (shape: string, label: string) => {
   parts.push(`<text x="${lx + 16}" y="${ly}" font-size="12" fill="${INK}">${label}</text>`);
   lx += 16 + label.length * 6.6 + 22;
 };
-legend(`<rect x="$X" y="$Y" width="10" height="10" transform="translate(-5 -5)" fill="${BAND}"/>`, 'Soll-Band');
+legend(
+  `<rect x="$X" y="$Y" width="10" height="10" transform="translate(-5 -5)" fill="${BAND}"/>`,
+  'Soll-Band',
+);
 legend(`<circle cx="$X" cy="$Y" r="4" fill="${COLOR.leicht}"/>`, 'Lehren, Üben, Spaß');
 legend(`<circle cx="$X" cy="$Y" r="4" fill="${COLOR.normal}"/>`, 'Normal, Kombi');
 legend(`<circle cx="$X" cy="$Y" r="4" fill="${COLOR.spitze}"/>`, 'Hart (groß: superhart)');
-legend(`<path d="M $X ${ly - 9.5} l 5.5 5.5 l -5.5 5.5 l -5.5 -5.5 Z" fill="${COLOR.spitze}"/>`, 'Boss');
-legend(`<circle cx="$X" cy="$Y" r="6" fill="none" stroke="${CRITICAL}" stroke-width="1.5"/>`, `außerhalb des Bands (${outside.length})`);
+legend(
+  `<path d="M $X ${ly - 9.5} l 5.5 5.5 l -5.5 5.5 l -5.5 -5.5 Z" fill="${COLOR.spitze}"/>`,
+  'Boss',
+);
+legend(
+  `<circle cx="$X" cy="$Y" r="6" fill="none" stroke="${CRITICAL}" stroke-width="1.5"/>`,
+  `außerhalb des Bands (${outside.length})`,
+);
 parts.push('</svg>');
 writeFileSync(outSvg, parts.join('\n') + '\n');
 
@@ -185,7 +206,11 @@ writeFileSync(outSvg, parts.join('\n') + '\n');
 
 const infos: CurveLevelInfo[] = curve.map((c) => {
   const spec = levelSpec(c.index);
-  const info: CurveLevelInfo = { index: c.index, level: generateLevel(spec), fixed: spec.board !== undefined };
+  const info: CurveLevelInfo = {
+    index: c.index,
+    level: generateLevel(spec),
+    fixed: spec.board !== undefined,
+  };
   if (c.index > LEGACY_LAST_LEVEL) info.zoneSet = zoneSetOf(c.index);
   return info;
 });
@@ -259,7 +284,9 @@ for (const w of report.issues) {
   groups.set(k, [...(groups.get(k) ?? []), w.message]);
 }
 for (const [k, msgs] of groups) {
-  md.push(`- ${k} (${msgs.length}): ${msgs.slice(0, 12).join('; ')}${msgs.length > 12 ? ' …' : ''}`);
+  md.push(
+    `- ${k} (${msgs.length}): ${msgs.slice(0, 12).join('; ')}${msgs.length > 12 ? ' …' : ''}`,
+  );
 }
 md.push('');
 ZONE_RANGES.forEach(([a, b], z) => {
@@ -276,7 +303,13 @@ ZONE_RANGES.forEach(([a, b], z) => {
     const s = strong(c.index);
     const [lo, hi] = c.targetAttempts;
     const dev =
-      a2 === null ? '**nie gewonnen**' : a2 < lo - 1e-9 ? `leichter (−${f2(lo - a2)})` : a2 > hi + 1e-9 ? `**schwerer (+${f2(a2 - hi)})**` : '';
+      a2 === null
+        ? '**nie gewonnen**'
+        : a2 < lo - 1e-9
+          ? `leichter (−${f2(lo - a2)})`
+          : a2 > hi + 1e-9
+            ? `**schwerer (+${f2(a2 - hi)})**`
+            : '';
     md.push(
       `| ${c.index} | ${esc(e?.name ?? '')} | ${TYPE_DE[c.type]}${c.newElement ? ` (${c.newElement})` : ''} | ${info.level.goals.map(goalLabel).join(' + ')} | ${info.level.grid.w}×${info.level.grid.h}${info.fixed ? ' fest' : ''} | ${info.level.moves} | ${f2(lo)}–${f2(hi)} | ${a2 === null ? '∞' : f2(a2)} | ${s === null ? '–' : `${Math.round(s * 100)} %`} | ${dev} | ${knobs(c.index)} |`,
     );
@@ -292,7 +325,10 @@ if (process.argv.includes('--png')) {
   // Playwright liegt in apps/game (E2E); hier nur geliehen, daher ein schmaler Typ.
   interface Shot {
     launch(): Promise<{
-      newPage(o: { viewport: { width: number; height: number }; deviceScaleFactor: number }): Promise<{
+      newPage(o: {
+        viewport: { width: number; height: number };
+        deviceScaleFactor: number;
+      }): Promise<{
         setContent(html: string): Promise<void>;
         locator(sel: string): { screenshot(o: { path: string }): Promise<unknown> };
       }>;
@@ -303,7 +339,9 @@ if (process.argv.includes('--png')) {
   const { chromium } = req('@playwright/test') as { chromium: Shot };
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 2 });
-  await page.setContent(`<html><body style="margin:0">${readFileSync(outSvg, 'utf8')}</body></html>`);
+  await page.setContent(
+    `<html><body style="margin:0">${readFileSync(outSvg, 'utf8')}</body></html>`,
+  );
   await page.locator('svg').screenshot({ path: outPng });
   await browser.close();
   console.log(`wrote ${outPng}`);

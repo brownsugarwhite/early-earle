@@ -71,7 +71,10 @@ export function dialSpec(spec: LevelSpec, d: number): LevelSpec {
         out.goals[i] = { ...g, count: clamp(g.count + d, 1, 6) };
         return out;
       case 'score':
-        out.goals[i] = { ...g, points: Math.max(20, Math.round((g.points * (1 + 0.15 * d)) / 10) * 10) };
+        out.goals[i] = {
+          ...g,
+          points: Math.max(20, Math.round((g.points * (1 + 0.15 * d)) / 10) * 10),
+        };
         return out;
       case 'collectSpores':
         if (fixed) continue;
@@ -93,7 +96,8 @@ export function dialSpec(spec: LevelSpec, d: number): LevelSpec {
         return out;
       case 'heal':
         if (fixed) continue;
-        if (spec.elements.includes('withered')) counts.withered = clamp((counts.withered ?? 3) + d, 1, 9);
+        if (spec.elements.includes('withered'))
+          counts.withered = clamp((counts.withered ?? 3) + d, 1, 9);
         else counts.deepWithered = clamp((counts.deepWithered ?? 2) + d, 1, 6);
         out.counts = counts;
         return out;

@@ -23,15 +23,7 @@ import { TJORIZO_SPECS } from './tjorizo';
 import { SYRUP_SPECS } from './syrup';
 
 export type CurveType =
-  | 'tutorial'
-  | 'intro'
-  | 'practice'
-  | 'normal'
-  | 'fun'
-  | 'combine'
-  | 'hard'
-  | 'superhard'
-  | 'boss';
+  'tutorial' | 'intro' | 'practice' | 'normal' | 'fun' | 'combine' | 'hard' | 'superhard' | 'boss';
 
 export const CURVE_TYPES: readonly CurveType[] = [
   'tutorial',
@@ -46,7 +38,9 @@ export const CURVE_TYPES: readonly CurveType[] = [
 ];
 
 /** Level je Kartenzone (Route w09 · w06 · w04 · w10 · w05 · w02 · w07 · w08 · w01 · w03 · w11 · w12 · w13 · w14 · w15). */
-export const ZONE_LENGTHS: readonly number[] = [14, 12, 12, 12, 12, 12, 12, 12, 16, 10, 12, 12, 12, 12, 12];
+export const ZONE_LENGTHS: readonly number[] = [
+  14, 12, 12, 12, 12, 12, 12, 12, 16, 10, 12, 12, 12, 12, 12,
+];
 
 /** Welt je Kartenzone (nur für Berichte). */
 export const ZONE_WORLDS: readonly string[] = [
@@ -368,7 +362,11 @@ function legacyCurveType(index: number, type: LevelType): CurveType {
 // ---- curveSpec ------------------------------------------------------------------------
 
 /** Kartenzone (1-basiert) und Position eines Levels. */
-export function zoneOfLevel(index: number): { zoneIndex: number; positionInZone: number; zoneLength: number } {
+export function zoneOfLevel(index: number): {
+  zoneIndex: number;
+  positionInZone: number;
+  zoneLength: number;
+} {
   if (!Number.isInteger(index) || index < 1 || index > CURVE_LAST_LEVEL)
     throw new Error(`level ${index} is outside the curve (1–${CURVE_LAST_LEVEL})`);
   for (let z = 0; z < ZONE_RANGES.length; z++) {
@@ -430,11 +428,7 @@ export function curveSpec(index: number): CurveSpec {
       (prevSlot.type === 'hard' || prevSlot.type === 'superhard' || prevSlot.type === 'boss');
     const reset = pos === 1;
     const base: [number, number] =
-      type === 'normal'
-        ? breather
-          ? BREATHER_BAND
-          : normalBand(slot.t ?? 0.5)
-        : BASE_BAND[type];
+      type === 'normal' ? (breather ? BREATHER_BAND : normalBand(slot.t ?? 0.5)) : BASE_BAND[type];
     spec = {
       index,
       type,

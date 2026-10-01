@@ -94,9 +94,14 @@ function loadLevel(file: string): LevelDef {
   return LevelSchema.parse(JSON.parse(readFileSync(resolve(levelsDir, file), 'utf8')));
 }
 
-function runJob(job: Job): { file: string; bots: Partial<Record<BotName, BotSummary>>; loss?: number | null } {
+function runJob(job: Job): {
+  file: string;
+  bots: Partial<Record<BotName, BotSummary>>;
+  loss?: number | null;
+} {
   const level = loadLevel(job.file);
-  if (job.lossOnly) return { file: job.file, bots: {}, loss: noviceLossProgress(level, job.n ?? maxSeeds) };
+  if (job.lossOnly)
+    return { file: job.file, bots: {}, loss: noviceLossProgress(level, job.n ?? maxSeeds) };
   const out: Partial<Record<BotName, BotSummary>> = {};
   for (const bot of job.bots) out[bot] = calibrateBot(level, bot, calibOpts);
   return { file: job.file, bots: out };
@@ -169,7 +174,8 @@ for (const file of files) {
 
 function apply(r: ReturnType<typeof runJob>): void {
   const e = entries.get(r.file)!;
-  if (r.loss !== undefined && e.bots.novice) e.bots.novice = { ...e.bots.novice, lossProgress: r.loss };
+  if (r.loss !== undefined && e.bots.novice)
+    e.bots.novice = { ...e.bots.novice, lossProgress: r.loss };
   for (const [bot, s] of Object.entries(r.bots) as [BotName, BotSummary][]) {
     e.bots[bot] = s;
     process.stdout.write(
@@ -181,24 +187,32 @@ function apply(r: ReturnType<typeof runJob>): void {
 if (pending.length > 0 && jobs > 1) {
   const queue = [...pending];
   await Promise.all(
-    Array.from({ length: Math.min(jobs, queue.length) }, () =>
-      new Promise<void>((done, fail) => {
-        const child = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), ...args, '--worker'], {
-          stdio: ['pipe', 'pipe', 'inherit'],
-        });
-        const feed = () => {
-          const next = queue.shift();
-          if (next === undefined) child.stdin.end();
-          else child.stdin.write(JSON.stringify(next) + '\n');
-        };
-        createInterface({ input: child.stdout }).on('line', (line) => {
-          if (!line.startsWith('{')) return;
-          apply(JSON.parse(line) as ReturnType<typeof runJob>);
+    Array.from(
+      { length: Math.min(jobs, queue.length) },
+      () =>
+        new Promise<void>((done, fail) => {
+          const child = spawn(
+            process.execPath,
+            [...process.execArgv, fileURLToPath(import.meta.url), ...args, '--worker'],
+            {
+              stdio: ['pipe', 'pipe', 'inherit'],
+            },
+          );
+          const feed = () => {
+            const next = queue.shift();
+            if (next === undefined) child.stdin.end();
+            else child.stdin.write(JSON.stringify(next) + '\n');
+          };
+          createInterface({ input: child.stdout }).on('line', (line) => {
+            if (!line.startsWith('{')) return;
+            apply(JSON.parse(line) as ReturnType<typeof runJob>);
+            feed();
+          });
+          child.on('exit', (code) =>
+            code === 0 ? done() : fail(new Error(`worker exit ${code}`)),
+          );
           feed();
-        });
-        child.on('exit', (code) => (code === 0 ? done() : fail(new Error(`worker exit ${code}`))));
-        feed();
-      }),
+        }),
     ),
   );
 } else {
@@ -303,9 +317,13 @@ if (strict) {
       `\nwarn: strong < 90 % on frozen levels ${weakLegacy.map((v) => v.e.id).join(', ')} (1–50 bleiben unverändert)`,
     );
   if (outOfBand.length > 0 || weak.length > 0) {
-    console.error(`\n--strict: ${outOfBand.length} level(s) outside their band, ${weak.length} with strong < 90 %`);
+    console.error(
+      `\n--strict: ${outOfBand.length} level(s) outside their band, ${weak.length} with strong < 90 %`,
+    );
     for (const v of outOfBand)
-      console.error(`  ${v.e.id}: ${v.band} (${num(v.e.bots.novice?.attemptsEst ?? null, 2)} ∉ [${v.e.targetAttempts.join(', ')}])`);
+      console.error(
+        `  ${v.e.id}: ${v.band} (${num(v.e.bots.novice?.attemptsEst ?? null, 2)} ∉ [${v.e.targetAttempts.join(', ')}])`,
+      );
     for (const v of weak) console.error(`  ${v.e.id}: strong ${pct(v.e.bots.strong?.pWin)}`);
     process.exit(1);
   }
