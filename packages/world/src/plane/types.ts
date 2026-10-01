@@ -178,6 +178,11 @@ export interface PlanetTree {
   variant: number;
   /** Alter Name des Zonenbands (ohne Bedeutung auf der Ebene, 0). */
   zone: number;
+  /**
+   * Drehung um die Hochachse (rad), nur für Fokus-Bäume mit `yawDeg` ≠ 0 im Slot: Bäume mit Gesicht (die Wintereiche,
+   * Ebene 11) zeigen der Weltkomposition ihre schönste Seite. Fehlt → zufällig aus der Position wie alle Bäume.
+   */
+  yaw?: number;
 }
 
 export interface PlanetProp {

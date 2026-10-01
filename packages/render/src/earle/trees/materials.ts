@@ -245,9 +245,10 @@ class DotLightingModel extends LightingModel {
 
 /**
  * Rindenstile (Index im Instanzattribut, nur anhängen — der Blender-Export liest dieselben Zahlen): Tinte, weiß
- * (Kathedrale), Juwelenstreifen, Flechten, Kalligrafie, Leuchten, Lavendel (Ebene 21).
+ * (Kathedrale), Juwelenstreifen, Flechten, Kalligrafie, Leuchten, Lavendel (Ebene 21), Schwarz (Ebene 11: flache Tinte
+ * ohne Linien, nur der Schnee zeichnet den Stamm).
  */
-export const BARK_STYLE = { ink: 0, white: 1, striped: 2, lichen: 3, calligraphy: 4, glow: 5, pale: 6 } as const;
+export const BARK_STYLE = { ink: 0, white: 1, striped: 2, lichen: 3, calligraphy: 4, glow: 5, pale: 6, black: 7 } as const;
 export type BarkStyle = keyof typeof BARK_STYLE;
 
 export interface BarkMaterialOptions {
@@ -326,6 +327,7 @@ class BarkLightingModel extends LightingModel {
     const isGlow = style.greaterThan(4.5).and(style.lessThan(5.5));
     // Geborgene Stile (nur anhängen): Lavendel 6, Schwarz 7, Winter 8 — je ein abgeschlossenes Intervall
     const isPale = style.greaterThan(5.5).and(style.lessThan(6.5));
+    const isBlack = style.greaterThan(6.5).and(style.lessThan(7.5));
     // Weiße Kathedralenstämme bleiben fast rundum hell (Ebene_23), sonst Tinte ab dem Terminator
     const term = select(isWhite, float(-0.35), float(0.02));
     const lit = aaStep(term, ndl);
@@ -342,7 +344,9 @@ class BarkLightingModel extends LightingModel {
     const light = select(luma(accLight).greaterThan(0.45), accLight, o.lookup.pal(5, o.terrainRowNode).rgb) as unknown as Vec3Node;
     // Kalligrafie (Bild 01): feine, wellige helle Linien entlang des Stamms, im Licht hell, im Schatten grau
     // Feine Kalligrafie (Bild 01): viele schmale, wellige Striche, die abschnittsweise abbrechen (Holzmaserung)
-    const calli = flowLines(u.add(variant), v.mul(2.4), linesAround(level), select(isCalli, float(0.2), float(0.14)), select(isCalli, float(0.32), float(0.72)), 3);
+    const calli = flowLines(u.add(variant), v.mul(2.4), linesAround(level), select(isCalli, float(0.2), float(0.14)), select(isCalli, float(0.32), float(0.72)), 3).mul(
+      select(isBlack, float(0), float(1)),
+    );
     const lineShadow = mix(ink, light, 0.3);
     // Flechten (Bilder 03, 35): unregelmäßige Flecken, jeder in einer flachen Farbe der Akzentzeile (Hellgrün, Gelb)
     const p = o.objPos;

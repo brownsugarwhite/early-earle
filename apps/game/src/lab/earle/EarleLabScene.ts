@@ -564,7 +564,7 @@ export class EarleLabScene implements SceneController {
   }
 
   /** Fokus-Versatz (Rig-Raum ohne Drehung), an dem ein Punkt bei der Komposition `v` an der Bildstelle `ndc` erscheint. */
-  private targetOffset(v: WorldView, ndc: [number, number]): { x: number; z: number } {
+  private targetOffset(v: WorldView, ndc: [number, number], groundY = 0.9): { x: number; z: number } {
     const [ndcX, ndcY] = ndc;
     const cam = this.probe;
     cam.aspect = this.camera.aspect;
@@ -578,7 +578,7 @@ export class EarleLabScene implements SceneController {
     if (ndcX === 0 && ndcY === 0) return { x: 0, z: -v.look };
     const origin = cam.position.clone();
     const dir = this.tmp.set(ndcX, ndcY, 0.5).unproject(cam).sub(origin).normalize();
-    const r = PLANET_RADIUS + 0.9;
+    const r = PLANET_RADIUS + groundY;
     const b = origin.dot(dir);
     const c = origin.lengthSq() - r * r;
     const disc = b * b - c;
@@ -589,8 +589,8 @@ export class EarleLabScene implements SceneController {
   }
 
   /** Fokus, der den Ebenenpunkt (x, z) an die Bildstelle `ndc` der Welt-Komposition bringt (Ansicht ohne Drehung). */
-  private focusFor(x: number, z: number, worldId: number, ndc: [number, number]): { x: number; z: number } {
-    const o = this.targetOffset(this.viewFor(worldId), ndc);
+  private focusFor(x: number, z: number, worldId: number, ndc: [number, number], groundY?: number): { x: number; z: number } {
+    const o = this.targetOffset(this.viewFor(worldId), ndc, groundY);
     const c = Math.cos(this.yaw);
     const s = Math.sin(this.yaw);
     return { x: x - (o.x * c + o.z * s), z: z - (-o.x * s + o.z * c) };
@@ -684,7 +684,7 @@ export class EarleLabScene implements SceneController {
       const s = Math.sin(this.yaw);
       return { x: p.x + aim[0] * c + aim[1] * s, z: p.z - aim[0] * s + aim[1] * c };
     }
-    return this.focusFor(p.x, p.z, id, this.worldFocusNdc(id));
+    return this.worldFocusFor(id, p);
   }
 
   /**
@@ -696,6 +696,39 @@ export class EarleLabScene implements SceneController {
     this.yaw = ((view.yaw ?? 0) * Math.PI) / 180;
     this.rig.quaternion.setFromAxisAngle(_Y, this.yaw);
     this.shadowDirty = true;
+  }
+
+  /** Geländehöhe am Blickpunkt, wenn der Fokus bei (fx, fz) liegt (wie `update` sie für die Kamera nachführt). */
+  private liftAt(fx: number, fz: number, v: WorldView): number {
+    const world = this.world!;
+    const c = Math.cos(this.yaw);
+    const s = Math.sin(this.yaw);
+    let sum = 0;
+    for (const ahead of [-2, 0, 3]) {
+      const oz = -(v.look + ahead);
+      sum += world.heightAt(fx + oz * s, fz + oz * c);
+    }
+    return Math.max(0, sum / 3);
+  }
+
+  /**
+   * Fokus zum Bildfokus einer Welt. Kompositionen mit `view.lookHeight` (auch 0: flache Kamera, steile Hänge) rechnen
+   * die Geländehöhe am Blickpunkt (wie sie die Kamera nachführt) und die Höhe des Fokus-Elements vorab ein (zwei
+   * Durchgänge) — sonst verschöbe das Nachführen der Höhe das Bild, das Fokus-Element landete nicht an seiner
+   * Bildstelle (Welt 04: der Kuppelbaum auf dem Hang statt auf dem Kamm). Ohne `lookHeight` in der Weltdatei wie bisher.
+   */
+  private worldFocusFor(id: number, p: { x: number; z: number }): { x: number; z: number } {
+    const ndc = this.worldFocusNdc(id);
+    let f = this.focusFor(p.x, p.z, id, ndc);
+    const v = this.viewFor(id);
+    if (this.presetOf(id).lookHeight !== undefined && this.world) {
+      const groundY = this.world.heightAt(p.x, p.z) + 0.3;
+      for (let i = 0; i < 2; i++) {
+        this.groundLift = this.liftAt(f.x, f.z, v);
+        f = this.focusFor(p.x, p.z, id, ndc, groundY);
+      }
+    }
+    return f;
   }
 
   /** Sofort zum Bildfokus von Welt `id`. */

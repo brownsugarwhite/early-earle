@@ -508,7 +508,7 @@ export class PlaneField {
       nor[2] = -gz / l;
       const kind = focal.kind;
       const scale = focal.scale ?? 1;
-      const clearRadius = focal.clearRadius ?? (!kind ? 0 : kind === 'barn' ? 4.5 : kind === 'oak' ? 2.4 * scale : 3.2);
+      const clearRadius = focal.clearRadius ?? (!kind ? 0 : kind === 'barn' ? 4.5 : kind === 'oak' || kind === 'winterOak' ? 2.4 * scale : 3.2);
       slot = {
         id: `focal-${key}`,
         world: region.world,

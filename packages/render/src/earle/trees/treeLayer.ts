@@ -10,6 +10,7 @@ import {
   fract,
   int,
   max,
+  min,
   mix,
   modelViewMatrix,
   modelWorldMatrix,
@@ -47,9 +48,17 @@ import { createShrubCrown } from './shrub';
 import { createFirCrown } from './fir';
 import { createKuppelCrown, createSprawlTrunk, type SprawlGeometry } from './kuppel';
 import { CROWN_EDGE_PACK } from './cushionEdge';
+import { CAP_SAG, DOME_OAK_SKIRT_LEVEL, createDomeOakTrunk, skirtDotCount, skirtDots, skirtStipple, type DomeOakGeometry } from './domeOak';
+import { WINTER_OAK_CROWN, createWinterOakTrunk, frostDotCount, frostDots, type WinterOakGeometry } from './winterOak';
+import { hairRibbon, hairline } from './hairline';
 
 /** Wachstums-Slots (je geladenem Chunk); gleich wie `GROWTH_SLOTS` der Vegetation. */
 export const TREE_SLOTS = 64;
+
+/** Kennung der Kuppeleiche in `treeC.z` der Kronen (flache Unterseite der Kuppel, `CAP_SAG`). */
+const CAP_FLAG = 100;
+/** Zellgröße der Tüpfel in der Rockschale der Kuppeleiche (Archetyp-Einheiten = Kronenradien). */
+const SKIRT_CELL = 0.046;
 
 /**
  * Glatter Schattenwert (1 = Sonne, 0 = Schlagschatten) an einer Weltposition, im Vertex-Shader lesbar — z. B.
@@ -151,11 +160,11 @@ export interface TreeEntry {
  * Kissenkrone des Kuppelbaums (Ebene 33). Nur anhängen (Reihenfolge = Mesh-Reihenfolge, Blender-Export).
  */
 export type CrownKind = 'dome' | 'domeHi' | 'column' | 'pine' | 'parasol' | 'shrub' | 'fir' | 'kuppel';
-export type TrunkKind = 'fork' | 'fan' | 'oak' | 'pillar' | 'parasol' | 'sprawl';
+export type TrunkKind = 'fork' | 'fan' | 'oak' | 'pillar' | 'parasol' | 'sprawl' | 'domeOak' | 'winterOak';
 export const CROWN_KINDS: CrownKind[] = ['dome', 'domeHi', 'column', 'pine', 'parasol', 'shrub', 'fir', 'kuppel'];
 /** Ab diesem Kronenradius (Welteinheiten, waagrecht) nimmt eine Kuppel die feine Geometrie. */
 const DOME_HI_RADIUS = 1.45;
-export const TRUNK_KINDS: TrunkKind[] = ['fork', 'fan', 'oak', 'pillar', 'parasol', 'sprawl'];
+export const TRUNK_KINDS: TrunkKind[] = ['fork', 'fan', 'oak', 'pillar', 'parasol', 'sprawl', 'domeOak', 'winterOak'];
 
 /** Form je Baumart (Einheit Kronenradius r). */
 export interface KindForm {
@@ -174,7 +183,7 @@ export interface KindForm {
   forkAt?: number;
   /** Stammdicke relativ zum Archetyp. */
   thick: number;
-  dots: 'crown' | 'lace' | 'stars' | 'pine' | 'none';
+  dots: 'crown' | 'lace' | 'stars' | 'pine' | 'none' | 'skirt' | 'frost';
   /** Terminator der Krone (N·L darunter Tinte). */
   terminator: number;
   /** Anteil der Kronenpunkte, die als Randpunkte nur an der Silhouette zur Sonne stehen (Standard 0.25). */
@@ -233,6 +242,11 @@ export const TREE_FORMS: Record<Exclude<TreeKind, CardKind>, KindForm> = {
   spruce: { crown: 'pine', crownY: 0.08, crownS: [0.9, 4.1], trunk: 'fork', trunkH: 0.3, thick: 0.4, dots: 'none', terminator: 0.95 },
   // Kuppelbaum (Ebene 33, trees/kuppel.ts): Kissenkrone tief auf dem Ausleger-Stamm, die Punkte fast nur in den Bögen
   kuppel: { crown: 'kuppel', crownY: TREE_PROPORTIONS.kuppel.hull, crownS: [1, 1], trunk: 'sprawl', trunkH: 1, thick: 1, dots: 'crown', terminator: 0.18, scallopShare: 0.85, dotBoost: 2.5 },
+  // Kuppeleiche (trees/domeOak.ts): Kuppel-Masse mit flacher Unterseite (`CAP_SAG`) auf dem Äquator des Rocks, Skelett
+  // in Kronenradien mit der Rockschale, Tüpfelrock am Astwerk
+  domeOak: { crown: 'dome', crownY: TREE_PROPORTIONS.domeOak.hull, crownS: [1, 0.86], trunk: 'domeOak', trunkH: 1, thick: 1, dots: 'skirt', terminator: 0.22 },
+  // Wintereiche (trees/winterOak.ts): keine Kuppel — die Krone ist das Astwerk mit Sternbüscheln; Einheit H = Stammhöhe
+  winterOak: { crown: null, crownY: TREE_PROPORTIONS.winterOak.hull, crownS: [1, 1], trunk: 'winterOak', trunkH: TREE_PROPORTIONS.winterOak.trunk, thick: 1, dots: 'frost', terminator: 0.3 },
 };
 
 /**
@@ -240,7 +254,7 @@ export const TREE_FORMS: Record<Exclude<TreeKind, CardKind>, KindForm> = {
  * (gepunktete Oberkante einer Teilkuppel). Ein Viertel-Achtel darüber trägt, ob der Punkt Schlagschatten annimmt —
  * gerundet (`Math.round(fract · 8)`, wie der Blender-Export liest) bleibt es die Art.
  */
-export const DOT_KIND = { crown: 0, jewel: 1, pine: 2, rim: 3, lace: 4, star: 5, scallop: 6 } as const;
+export const DOT_KIND = { crown: 0, jewel: 1, pine: 2, rim: 3, lace: 4, star: 5, scallop: 6, frost: 7 } as const;
 
 const _Y = new Vector3(0, 1, 0);
 const _q2 = new Quaternion();
@@ -272,7 +286,7 @@ export function treeQuaternion(t: PlanetTree, out: Quaternion, lean = true): Qua
     const tilt = (treeHash(t.position, 2) - 0.5) * 0.14;
     out.multiply(_q2.setFromAxisAngle(_axis.set(Math.cos(a), 0, Math.sin(a)), tilt));
   }
-  return out.multiply(_q2.setFromAxisAngle(_Y, treeHash(t.position, 3) * Math.PI * 2));
+  return out.multiply(_q2.setFromAxisAngle(_Y, t.yaw ?? treeHash(t.position, 3) * Math.PI * 2));
 }
 
 /** Streckung des Gabel-Schafts (1 = Archetyp) einer Form: Gabelhöhe `forkAt` bei Archetyp-Maßstab H. */
@@ -334,6 +348,8 @@ export class TreeLayer {
   private readonly sprawl: SprawlGeometry;
   private readonly oak: OakGeometry;
   private readonly parasolTrunk: ParasolTrunk;
+  private readonly domeOak: DomeOakGeometry;
+  private readonly winterOak: WinterOakGeometry;
   private readonly geometries: BufferGeometry[] = [];
   private readonly materials: Array<{ dispose(): void }> = [];
   private readonly dotsGeometry: InstancedBufferGeometry;
@@ -395,6 +411,8 @@ export class TreeLayer {
     this.sprawl = createSprawlTrunk(9);
     this.oak = createOakTrunk(3);
     this.parasolTrunk = createParasolTrunk(TREE_PROPORTIONS.parasol.trunk);
+    this.domeOak = createDomeOakTrunk(9);
+    this.winterOak = createWinterOakTrunk(5, { detail });
 
     // Gepackte Instanzattribute (WebGPU: ≤ 8 Vertex-Puffer je Pipeline):
     // treeA = (Fuß xyz, Rang), treeB = (Kronenmitte bzw. Spitze xyz, Slot), treeC = (Kronenzeile, Akzentzeile, Stil, Variante),
@@ -436,10 +454,19 @@ export class TreeLayer {
     };
     for (const kind of CROWN_KINDS) {
       const geometry = this.templates[kind].geometry;
-      this.attachTreeAttributes(geometry, kind === 'domeHi' ? this.hiCapacity : options.capacity.trees);
+      this.attachTreeAttributes(geometry, this.crownCapacity(kind));
       const row = treeC().x;
       const world = shared.slotOfRow(row);
       const cfg = stippleOf[kind];
+      // Kuppeleiche (treeC.z = CAP_FLAG): die Kuppel-Masse mit flach gedrückter Unterseite — eine Halbkuppel mit bogigem
+      // Saum, unter der der Rock beginnt (dasselbe Mesh wie die Hainkuppeln, kein eigener Zeichenaufruf)
+      let crownPos: Vec3Node = positionLocal as unknown as Vec3Node;
+      if (kind === 'dome' || kind === 'domeHi') {
+        const up = normalize(treeB().xyz.sub(treeA().xyz));
+        const below = min(positionLocal.sub(treeB().xyz).dot(up), 0);
+        const capped = positionLocal.sub(up.mul(below.mul(1 - CAP_SAG)));
+        crownPos = mix(positionLocal, capped, step(CAP_FLAG * 0.5, treeC().z)) as unknown as Vec3Node;
+      }
       // Hüllnormale: Richtung von der (mitwachsenden) Kronenmitte zum Punkt, im View-Raum
       const hullPlanet = grownFrom(positionLocal).sub(grownFrom(treeB().xyz));
       const hullN = varying(modelViewMatrix.mul(vec4(hullPlanet, 0)).xyz, 'vCrownHullN');
@@ -469,7 +496,7 @@ export class TreeLayer {
         fogFn: kind === 'fir' ? fogOf(row, treeA().xyz, 'vFirFogDist', { height: grownFrom(positionLocal).y.sub(treeA().y), perUnit: 2.6 }) : fogOf(row, treeA().xyz, 'vCrownFogDist'),
         terminatorNode: treeD().w,
         growthNode: shared.slotGrowth(treeB().w),
-        positionNode: warp(grownFrom(positionLocal)),
+        positionNode: warp(grownFrom(crownPos)),
         patternPos,
         patternNormal,
         stipple: {
@@ -505,7 +532,7 @@ export class TreeLayer {
         skyDots: edgeRim && cushion ? edgeRim.mul(cushion) : null,
       });
       this.materials.push(material);
-      const mesh = new InstancedMesh(geometry, material, kind === 'domeHi' ? this.hiCapacity : options.capacity.trees);
+      const mesh = new InstancedMesh(geometry, material, this.crownCapacity(kind));
       mesh.name = `planet-crown-${kind}`;
       mesh.castShadow = true;
       mesh.receiveShadow = true; // Schlagschatten anderer Bäume und Hügel: untere Teilkuppeln werden Tinte (eine Tintenform)
@@ -525,6 +552,8 @@ export class TreeLayer {
       pillar: createPillarTrunk(7),
       parasol: this.parasolTrunk.geometry,
       sprawl: this.sprawl.geometry,
+      domeOak: this.domeOak.geometry,
+      winterOak: this.winterOak.geometry,
     };
     for (const kind of TRUNK_KINDS) {
       const geometry = trunkGeos[kind];
@@ -543,6 +572,7 @@ export class TreeLayer {
       let barkV: FloatNode = bark.y;
       let shadowPlaced: Vec3Node | null = null;
       let veil: { mask: FloatNode; color: Vec3Node } | null = null;
+      let skirtCut: { mask: FloatNode; dots: FloatNode } | null = null;
       if (kind === 'fork') {
         const up = normalize(treeB().xyz.sub(treeA().xyz));
         const rel = positionLocal.sub(treeA().xyz);
@@ -582,6 +612,26 @@ export class TreeLayer {
         const vst = stipple(varying(positionGeometry.mul(H), 'vVeilPos') as unknown as Vec3Node, 0.045, 0.3, float(1), 0.7);
         const veilCol = mix(mix(pale, veilInk, 0.14), veilInk, vst.mask);
         veil = { mask: varying(select(isVeil, float(1), float(0)), 'vBarkVeil'), color: veilCol };
+      } else if (kind === 'domeOak') {
+        // Feine Zweige als Haarlinien (mindestens ≈ 1 px breit), der Schattenpass wirft die unverbreiterte Form; die
+        // Rockschale (Ebene DOME_OAK_SKIRT_LEVEL) trägt die Tüpfel als Muster und fällt im Schattenpass in den Fuß
+        const isSkirt = step(DOME_OAK_SKIRT_LEVEL - 0.5, level);
+        placed = hairline(positionLocal as unknown as Vec3Node, normalize(normalLocal) as unknown as Vec3Node, bark.w.mul(H), warp, shared.projScaleY);
+        shadowPlaced = mix(positionLocal, treeA().xyz, isSkirt) as unknown as Vec3Node;
+        const light = varying(smoothstep(-0.15, 0.45, normalize(normalLocal).dot(shared.sunDirLocal)), 'vSkirtLight') as unknown as FloatNode;
+        const st = skirtStipple(varying(positionGeometry, 'vSkirtPattern') as unknown as Vec3Node, varying(bark.x, 'vSkirtH') as unknown as FloatNode, light, SKIRT_CELL);
+        skirtCut = { mask: varying(isSkirt, 'vSkirtMask') as unknown as FloatNode, dots: st.mask };
+        veil = { mask: skirtCut.mask, color: lookup.pal(st.index, row).rgb as unknown as Vec3Node };
+      } else if (kind === 'winterOak') {
+        // Röhren (Stamm, Äste) als Haarlinien, die haarfeinen Zweige als Bänder zur Kamera (im Schattenpass zur Sonne).
+        // Das Normalen-Attribut trägt bei Röhren die Außennormale, bei Bändern die Zweigrichtung (bark.x −1/2 = Band)
+        const p = positionLocal as unknown as Vec3Node;
+        const nrm = normalize(normalLocal) as unknown as Vec3Node;
+        const w = bark.w.mul(H) as unknown as FloatNode;
+        const isRibbon = select(bark.x.lessThan(-0.5).or(bark.x.greaterThan(1.5)), float(1), float(0));
+        const toCam = normalize(shared.camLocal.sub(p)) as unknown as Vec3Node;
+        placed = mix(hairline(p, nrm, w, warp, shared.projScaleY), hairRibbon(p, nrm, bark.x, w, toCam, warp, shared.projScaleY), isRibbon) as unknown as Vec3Node;
+        shadowPlaced = mix(p, hairRibbon(p, nrm, bark.x, w, shared.sunDirLocal as unknown as Vec3Node, warp, null), isRibbon) as unknown as Vec3Node;
       }
       const material = new BarkMaterial({
         lookup,
@@ -604,6 +654,11 @@ export class TreeLayer {
         giant: kind === 'pillar',
       });
       if (shadowPlaced) (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(grownFrom(shadowPlaced));
+      if (skirtCut) {
+        // Tüpfelrock: wo kein Tüpfel ist, bleibt die Schale offen (Alpha-to-Coverage, kein discard); Stamm und Äste deckend
+        material.opacityNode = mix(float(1), skirtCut.dots, skirtCut.mask);
+        material.alphaToCoverage = true;
+      }
       this.materials.push(material);
       const mesh = new InstancedMesh(geometry, material, cap);
       mesh.name = `planet-trunk-${kind}`;
@@ -750,8 +805,10 @@ export class TreeLayer {
       const rim = smoothstep(0.66, 0.3, facingCam);
       const isRim = kind.greaterThan(2.5).and(kind.lessThan(3.5));
       const isLace = kind.greaterThan(3.5).and(kind.lessThan(4.5));
-      const isStar = kind.greaterThan(4.5).and(kind.lessThan(5.5));
-      const isScallop = kind.greaterThan(5.5);
+      // Sternbüschel der Wintereiche (Art 7) sind Nadeln wie die Sternnadeln, nur ihre Farbe folgt der Seite des Baums
+      const isFrost = kind.greaterThan(6.5);
+      const isStar = kind.greaterThan(4.5).and(kind.lessThan(5.5)).or(isFrost);
+      const isScallop = kind.greaterThan(5.5).and(kind.lessThan(6.5));
       const isPine = kind.greaterThan(1.5).and(kind.lessThan(2.5));
       const isJewel = kind.greaterThan(0.5).and(kind.lessThan(1.5));
       // Schlagschatten wie die Krone darunter: je Teilkuppel ganz (untere Kränze) oder gar nicht (Schultern, Scheitel)
@@ -796,7 +853,11 @@ export class TreeLayer {
       // mix statt select: beide Formen hängen am Schattenwert (ein `select` erzeugte dessen Abtastung je Zweig neu)
       const viewPos = viewC.xyz.add(mix(disc, needle, select(isStar, float(1), float(0))));
       // Farbe: Stufen 3..5 gerastert nach Licht + Zufall (Punkt für Punkt ein getüpfelter Verlauf wie bei Earle)
-      const vLight = varying(light, 'vTreeDotLight');
+      // Wintereiche: golden auf der Sonnenseite der Krone, dunkel auf der abgewandten (Ebene 11: rechts Gold, links Tinte)
+      // … und oben mehr als unten (Ebene 11: das Gold sitzt in der oberen Krone, die hängenden Zweige bleiben dunkel)
+      const frostRel = normalize(base.add(rel).sub(hullAttr.xyz));
+      const frostSide = smoothstep(-0.2, 0.3, frostRel.dot(shared.sunDirLocal).add(frostRel.y.mul(0.35)));
+      const vLight = varying(mix(light, frostSide, select(isFrost, float(1), float(0))), 'vTreeDotLight');
       const vKind = varying(kind, 'vTreeDotKind');
       const jitter = varying(dd.z, 'vTreeDotJitter');
       const crownIdx = float(3).add(clamp(floor(vLight.mul(1.6).add(jitter.mul(0.9))), 0, 2));
@@ -806,14 +867,20 @@ export class TreeLayer {
       const pineIdx = select(vLight.greaterThan(jitter.mul(0.8).add(0.1)), float(5), float(4));
       // Bögen: hell auf der Lichtseite, in der Schattenpunktfarbe auf der Schattenseite (Ebene 1/32)
       const scallopIdx = select(vLight.greaterThan(0.3), select(jitter.greaterThan(0.45), float(5), float(4)), float(3));
+      // Wintereiche: die zwei Motivfarben (Gold) im Licht, der zweite Kronenton (dunkles Blau) im Schatten
+      const frostIdx = select(vLight.greaterThan(jitter.mul(0.35).add(0.3)), select(jitter.greaterThan(0.35), float(7), float(6)), float(2));
       const idx = select(
         vKind.lessThan(1.5),
         crownIdx,
-        select(vKind.lessThan(2.5), pineIdx, select(vKind.lessThan(3.5), float(5), select(vKind.lessThan(4.5), laceIdx, select(vKind.lessThan(5.5), starIdx, scallopIdx)))),
+        select(
+          vKind.lessThan(2.5),
+          pineIdx,
+          select(vKind.lessThan(3.5), float(5), select(vKind.lessThan(4.5), laceIdx, select(vKind.lessThan(5.5), starIdx, select(vKind.lessThan(6.5), scallopIdx, frostIdx)))),
+        ),
       );
       // Im Schlagschatten: Kronenpunkte, Spitze und Nadeln werden Tinte (wie die Krone darunter), Kiefernschnee und
-      // Bögen nehmen die Schattenpunktfarbe
-      const shadowIdx = select(vKind.greaterThan(1.5).and(vKind.lessThan(2.5)).or(vKind.greaterThan(5.5)), float(3), float(0));
+      // Bögen nehmen die Schattenpunktfarbe, die Sternbüschel der Wintereiche ihre dunkle Farbe
+      const shadowIdx = select(vKind.greaterThan(1.5).and(vKind.lessThan(2.5)).or(vKind.greaterThan(5.5).and(vKind.lessThan(6.5))), float(3), select(vKind.greaterThan(6.5), float(2), float(0)));
       // Mit dem glatten Schattenwert färbt er den ganzen Punkt auf einmal (Kronen- und Randpunkte behalten ihre Lichtfarbe,
       // sie schrumpfen); ohne ihn wie bisher je Fragment aus der Schattenkarte
       const keepsColour = select(kind.lessThan(1.5).or(isRim), float(1), float(0));
@@ -843,12 +910,28 @@ export class TreeLayer {
     }
   }
 
+  /**
+   * Ausblendradius der Wintereiche (Nähe-Ausblendung): nur der dichte Kern um den Stamm, nicht die ganze Ausladung — ihre
+   * Krone ist lichtes Astwerk, und Earles Blick (Ebene 11) steht nah unter ihr; mit der vollen Ausladung schrumpfte der
+   * Baum schon weg, sobald die Kamera unter den äußersten Zweigen steht.
+   */
+  private winterOakFade(H: number): number {
+    return this.winterOak.spread * H * 0.4;
+  }
+
+  /** Plätze je Kronen-Mesh: feine Kuppel (Hoch 160, Mobil 80), sonst alle. */
+  private crownCapacity(kind: CrownKind): number {
+    return kind === 'domeHi' ? this.hiCapacity : this.options.capacity.trees;
+  }
+
   /** Plätze der fein aufgelösten Kuppel (Hoch 160, Mobil 80); darüber nehmen große Kuppeln die normale Geometrie. */
   private get hiCapacity(): number {
     return Math.min(this.options.capacity.trees, this.options.dotsPerTree[0] >= 50 ? 160 : 80);
   }
 
   private trunkCapacity(kind: TrunkKind): number {
+    if (kind === 'winterOak') return 16;
+    if (kind === 'domeOak') return Math.min(600, Math.max(16, Math.round(this.options.capacity.trees * 0.25)));
     return kind === 'oak' ? 24 : kind === 'pillar' ? 48 : kind === 'fan' || kind === 'parasol' ? Math.max(16, Math.round(this.options.capacity.trees * 0.3)) : this.options.capacity.trees;
   }
 
@@ -942,8 +1025,8 @@ export class TreeLayer {
 
   /** Stammdicke je Instanz: Familie (Anteil am Kronenradius, Standard 0.04) relativ zum Archetyp. */
   private thickness(t: PlanetTree, form: KindForm): number {
-    // Eiche, Fächer, Riesenstamm, Schirmbaum und Ausleger haben eigene Proportionen (die Dicke streckt waagrecht und würde die Äste aus der Krone schieben)
-    if (form.trunk === 'oak' || form.trunk === 'fan' || form.trunk === 'pillar' || form.trunk === 'parasol' || form.trunk === 'sprawl') return 1;
+    // Eiche, Fächer, Riesenstamm, Schirmbaum, Ausleger, Kuppel- und Wintereiche haben eigene Proportionen (die Dicke streckt waagrecht und würde die Äste aus der Krone schieben)
+    if (form.trunk === 'oak' || form.trunk === 'fan' || form.trunk === 'pillar' || form.trunk === 'parasol' || form.trunk === 'sprawl' || form.trunk === 'domeOak' || form.trunk === 'winterOak') return 1;
     return form.thick * this.widthFactor(t, form);
   }
 
@@ -1026,7 +1109,7 @@ export class TreeLayer {
     const q = new Quaternion();
     for (const kind of CROWN_KINDS) {
       const mesh = this.crowns[kind];
-      const list = perCrown.get(kind)!.slice(0, kind === 'domeHi' ? this.hiCapacity : cap);
+      const list = perCrown.get(kind)!.slice(0, this.crownCapacity(kind));
       const g = mesh.geometry;
       const a = g.getAttribute('treeA') as InstancedBufferAttribute;
       const b = g.getAttribute('treeB') as InstancedBufferAttribute;
@@ -1044,7 +1127,8 @@ export class TreeLayer {
         _v.set(0, form.crownY * r * asp, 0).applyQuaternion(q);
         a.setXYZW(i, t.position[0] - ox, t.position[1], t.position[2] - oz, t.rank);
         b.setXYZW(i, t.position[0] - ox + _v.x, t.position[1] + _v.y, t.position[2] - oz + _v.z, e.slot);
-        c.setXYZW(i, this.canopyRow(t), this.rows(t).accent, this.barkStyle(t), t.variant);
+        // .z der Kronen: Kuppeleiche (flache Unterseite der Kuppel) — die Kronen lesen den Rindenstil nicht
+        c.setXYZW(i, this.canopyRow(t), this.rows(t).accent, t.kind === 'domeOak' ? CAP_FLAG : this.barkStyle(t), t.variant);
         d.setXYZW(i, form.crownS[0] * r, form.crownS[1] * r * asp, r * Math.max(1, form.crownS[1] * asp), this.terminator(t, form));
         // Höchster Punkt, an dem die Krone Schlagschatten zeigt: Kiefern ganz (Tintenkörper), Kuppeln und Säulen bis
         // knapp über die Mitte (die obere Kuppel bleibt hell, siehe castWeight)
@@ -1077,7 +1161,22 @@ export class TreeLayer {
         const H = _s.x;
         // Spitze der Achse: Gabel mit gestrecktem Schaft (der Shader liest die Streckung aus dieser Länge zurück)
         const S = stemStretch(form, H, t.canopyRadius);
-        const top = kind === 'oak' ? this.oak.top : kind === 'fan' ? this.fan.top : kind === 'pillar' ? PILLAR_TOP : kind === 'parasol' ? this.parasolTrunk.top : kind === 'sprawl' ? this.sprawl.top : FORK_TOP + (S - 1) * FORK_Y;
+        const top =
+          kind === 'oak'
+            ? this.oak.top
+            : kind === 'fan'
+              ? this.fan.top
+              : kind === 'pillar'
+                ? PILLAR_TOP
+                : kind === 'parasol'
+                  ? this.parasolTrunk.top
+                  : kind === 'sprawl'
+                    ? this.sprawl.top
+                    : kind === 'domeOak'
+                      ? this.domeOak.top
+                      : kind === 'winterOak'
+                        ? this.winterOak.top
+                        : FORK_TOP + (S - 1) * FORK_Y;
         _v.set(0, top * H, 0).applyQuaternion(q);
         a.setXYZW(i, t.position[0] - ox, t.position[1], t.position[2] - oz, t.rank);
         b.setXYZW(i, t.position[0] - ox + _v.x, t.position[1] + _v.y, t.position[2] - oz + _v.z, e.slot);
@@ -1097,10 +1196,15 @@ export class TreeLayer {
                   ? this.parasolTrunk.spread * H
                   : kind === 'sprawl'
                     ? this.sprawl.spread * H
-                    : Math.max(0.3, t.canopyRadius * 0.4);
+                    : kind === 'domeOak'
+                      ? this.domeOak.spread * H
+                      : kind === 'winterOak'
+                        ? this.winterOakFade(H)
+                        : Math.max(0.3, t.canopyRadius * 0.4);
         // Welt-Slot (Tabellen) + halber Anlauf-Anteil
         d.setXYZW(i, H, y, fadeR, this.options.slots.slotOf(t.world) + (1 - keep) * 0.5);
         if (kind === 'oak') hMax = Math.max(hMax, this.oak.top * H);
+        if (kind === 'winterOak') hMax = Math.max(hMax, this.winterOak.top * H);
       });
       for (const attr of [a, b, c, d, mesh.instanceMatrix]) commit(attr, list.length);
       mesh.count = list.length;
@@ -1184,7 +1288,7 @@ export class TreeLayer {
     const r = t.canopyRadius;
     const k = this.family(t)?.dots ?? 1;
     // Tannen sind schmal, aber hoch (Silhouette ≈ 3.6 r²): der Tannenwald ist aus Punkten gemacht (Bild 05)
-    return r * r * (form.dots === 'lace' ? 0.5 : form.dots === 'pine' ? 2.6 : 1) * k * (form.dotBoost ?? 1);
+    return r * r * (form.dots === 'lace' ? 0.5 : form.dots === 'skirt' ? 0.7 : form.dots === 'pine' ? 2.6 : 1) * k * (form.dotBoost ?? 1);
   }
 
   private blockKey(slot: number, list: TreeEntry[]): string {
@@ -1264,17 +1368,27 @@ export class TreeLayer {
     const hi = this.options.dotsPerTree[0] >= 50;
     let fixed = 0;
     let weightSum = 0;
+    let winterOaks = 0;
     for (const e of list) {
       const t = e.tree;
       if (isCardKind(t.kind)) continue;
       const d = TREE_FORMS[t.kind].dots;
       if (d === 'lace') fixed += this.laceDotCount(hi ? 1 : 2);
       if (d === 'stars') fixed += this.oak.tips.length * (hi ? 9 : 3);
+      if (d === 'skirt') fixed += skirtDotCount(this.domeOak, hi ? 1 : 2);
+      if (d === 'frost') winterOaks++;
       weightSum += this.dotWeight(t);
     }
+    // Wintereichen (Sternbüschel, der Held der Welt 05): zusammen 85 % des Chunk-Anteils, mit anderen festen Punkten
+    // (Spitzenschleier, Tüpfelrock, Sternnadeln) im selben Chunk die Hälfte; jede k-te Zweigspitze trägt ein Büschel
+    const frostNeedles = hi ? 8 : 6;
+    const frostShare = fixed > 0 ? 0.5 : 0.85;
+    const frostBudget = winterOaks > 0 ? Math.floor((frostShare * this.dotsPerChunk) / winterOaks) : 0;
+    const frostStride = Math.max(1, Math.ceil((this.winterOak.tips.length * frostNeedles) / Math.max(1, frostBudget)));
+    const frostFixed = winterOaks > 0 ? winterOaks * frostDotCount(this.winterOak, frostStride, frostNeedles) : 0;
     // Spitze und Sternnadeln bekommen höchstens 70 % des Chunk-Anteils (sonst dünner: jede k-te Rosette bzw. Nadel)
-    const fixedStride = Math.max(1, Math.ceil(fixed / Math.max(1, 0.7 * this.dotsPerChunk)));
-    fixed = Math.ceil(fixed / fixedStride);
+    const fixedStride = Math.max(1, Math.ceil(fixed / Math.max(1, 0.7 * this.dotsPerChunk - frostFixed)));
+    fixed = Math.ceil(fixed / fixedStride) + frostFixed;
     const perWeight = weightSum > 0 ? Math.max(0, this.dotsPerChunk - fixed) / weightSum : 0;
     const maxPerTree = this.options.dotsPerTree[1];
     for (const e of list) {
@@ -1301,6 +1415,23 @@ export class TreeLayer {
       };
       /** Zeile eines Kronenpunkts nach seiner Höhe in der Krone (Probe im Objektraum, −1 unten … 1 oben). */
       const rowAt = (yObj: number, h: number): number => (yObj > 0.3 + 0.25 * h ? rowTop : yObj < -0.2 - 0.25 * h ? rowLow : rowIdx);
+      if (form.dots === 'frost') {
+        // Sternbüschel der Wintereiche (Ebene 11): Nadeln rundum an den Zweigspitzen; golden auf der Sonnenseite, dunkel
+        // im Schatten (Art `frost`, der Punkt-Shader wählt die Farbe nach der Seite des Baums)
+        this.trunkMatrix(t, form, q, _m);
+        const H = _s.x;
+        _v.set(0, WINTER_OAK_CROWN.cy * H, 0).applyQuaternion(q);
+        const hx = footX + _v.x;
+        const hy = t.position[1] + _v.y;
+        const hz = footZ + _v.z;
+        const spreadW = this.winterOakFade(H);
+        frostDots(this.winterOak, frostStride, frostNeedles, rand, (p, d, half) => {
+          _p.set(p[0], p[1], p[2]).applyMatrix4(_m);
+          _n.set(d[0], d[1], d[2]).applyQuaternion(q).normalize();
+          push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, half * H, DOT_KIND.frost, 1, hx, hy, hz, spreadW, 0);
+        });
+        continue;
+      }
       if (form.dots === 'stars') {
         // Sternnadeln der Eiche (Bild 04): goldene Büschel aus feinen Nadeln (gestreckte Punkte), strahlig im Raum
         this.trunkMatrix(t, form, q, _m);
@@ -1377,6 +1508,17 @@ export class TreeLayer {
         }
         void H;
       }
+      if (form.dots === 'skirt') {
+        // Tüpfelrock der Kuppeleiche (Ebene 19): Bäusche um die Zweigspitzen und Perlen an den Zweigen — alle am Skelett
+        const tm = this.trunkMatrix(t, form, q, new Matrix4());
+        const tnm = new Matrix3().getNormalMatrix(tm);
+        const s0 = sizeBase * 0.6;
+        skirtDots(this.domeOak, (hi ? 1 : 2) * fixedStride, rand, (p, nn, size) => {
+          _p.set(p[0], p[1], p[2]).applyMatrix4(tm);
+          _n.set(nn[0], nn[1], nn[2]).applyMatrix3(tnm).normalize();
+          push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, s0 * size, DOT_KIND.lace, 1, hx, hy, hz, fadeR * 1.4, 0);
+        });
+      }
       const tpl = this.templates[form.crown];
       // Kronen, die rundum leuchten (Juwel, Kappen mit `capTerminator` < 0), tragen Juwelenpunkte (gleiche Lichtschwelle)
       const kind0 = form.dots === 'pine' ? DOT_KIND.pine : this.terminator(t, form) < 0 ? DOT_KIND.jewel : DOT_KIND.crown;
@@ -1392,10 +1534,13 @@ export class TreeLayer {
       const pineSize = form.dots === 'pine' ? 0.042 / Math.max(1e-3, sizeBase) : 1;
       // Randpunkte: jeder n-te Kronenpunkt steht nur an der Silhouette zur Sonne (Buschröschen, Schirmbaum: jeder zweite)
       const rimEvery = Math.max(1, Math.round(1 / Math.max(0.05, form.rimShare ?? 0.25)));
+      // Kuppeleiche: die Proben der Unterseite liegen auf der flach gedrückten Schale (wie das Mesh, nichts schwebt)
+      const sag = t.kind === 'domeOak' ? CAP_SAG : 1;
+      const sagY = (y: number): number => (y < 0 ? y * sag : y);
       for (let k = 0; k < count; k++) {
         const j = (start + k) % total;
         const o = j * 6;
-        _p.set(samples[o]!, samples[o + 1]!, samples[o + 2]!).applyMatrix4(_m);
+        _p.set(samples[o]!, sagY(samples[o + 1]!), samples[o + 2]!).applyMatrix4(_m);
         _n.set(samples[o + 3]!, samples[o + 4]!, samples[o + 5]!).applyMatrix3(_nm).normalize();
         const kind = kind0 !== DOT_KIND.pine && k % rimEvery === 0 ? DOT_KIND.rim : kind0;
         const dr = rowAt(samples[o + 1]!, rand() - 0.5);
@@ -1406,7 +1551,7 @@ export class TreeLayer {
       for (let k = 0; k < rimCount; k++) {
         const j = (rStart + k) % rimsTotal;
         const o = j * 6;
-        _p.set(rims[o]!, rims[o + 1]!, rims[o + 2]!).applyMatrix4(_m);
+        _p.set(rims[o]!, sagY(rims[o + 1]!), rims[o + 2]!).applyMatrix4(_m);
         _n.set(rims[o + 3]!, rims[o + 4]!, rims[o + 5]!).applyMatrix3(_nm).normalize();
         push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, sizeBase * (0.55 + 0.2 * rand()), DOT_KIND.scallop, tpl.rimCast[j] ?? 1, hx, hy, hz, fadeR, 0.5, rowAt(rims[o + 1]!, rand() - 0.5));
       }
