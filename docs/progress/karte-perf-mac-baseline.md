@@ -253,3 +253,34 @@ w09 1,3 → 5,7 ms) — die GPU-Rangfolge ist unter fremder GPU-Last also nicht 
 
 `karte-perf-hoch.json`, `karte-perf-hoch-w07.json`, `karte-perf-mobil.json`, `karte-perf-mobil-w07.json` (Lauf 1;
 ein neuer Lauf der Spec überschreibt sie).
+
+## Nach R4 (R4.4 Schatten-Kadenz, R4.6 Inhalt) — `r4/leistung`, 2026-10-01
+
+Stand: main edaa026 + `69d69de` (hash32 ohne Allokation), `b2c529f` (R4.4), `312e792` (R4.6). Gleicher Befehl
+(`E2E_PORT=4441`), JSONs dieses Ordners = Lauf „nachher“. „Vorher“ = derselbe Befehl auf edaa026 kurz zuvor
+(16:15–16:21, Load 10–36). **Last:** nachher 16:47–16:54, Load 10–16, dazu fremde Headless-Chromium-Läufe auf derselben
+GPU — die GPU-Replays lagen nachher 2–4 × über vorher (Leerlauf Hoch w09 3,6 → 6,1 ms, ohne Änderung am Leerlauf):
+**Bild-p99 und GPU sind diesmal nicht vergleichbar, Hauptthread, Draw Calls und Schattenpässe schon.**
+
+Schwenken · alles · DPR 2 (vorher → nachher):
+
+| Fall | CPU med / p99 | Inhalt-Neubau (Anteil der Bilder; p99) | Schattenpässe/s (Kaskaden/s) | dc med / max | Bild med / p99 |
+|---|---|---|---|---|---|
+| Hoch w09 | 7,3 / 21,8 → **3,9 / 9,0** | 68 % (12,4) → 17 % (2,0) | 60 (180) → **22,5 (57,5)** | 82 / 96 → **39 / 92** | 10,5 / 27,6 → 13,3 / 37,7 |
+| Hoch w07 | 16,6 / 29,4 → **3,3 / 18,6** | 66 % (21,3) → 17 % (7,8) | 50,5 (151,5) → **21 (44,5)** | 93 / 121 → **50 / 119** | 23,9 / 38,0 → 10,9 / 35,8 |
+| Mobil w09 | 6,7 / 18,2 → **3,7 / 6,7** | 69 % (7,7) → 17 % (1,3) | 60 (119,5) → **19,5 (36)** | 72 / 82 → **38 / 79** | 11,2 / 24,7 → 10,8 / 16,1 |
+| Mobil w07 | 12,2 / 23,9 → **4,2 / 14,8** | 71 % (15,4) → 17 % (7,3) | 55 (108,5) → **15,5 (27,5)** | 81 / 102 → **41 / 99** | 18,2 / 29,6 → 14,7 / 33,4 |
+
+Je Hebel (Diagnose-Schwenk 150 Bilder à 0,8 Einheiten, Welt 07 Hoch, CPU-Profil/Zähler, Mac unter Last):
+
+| Hebel | Messwert |
+|---|---|
+| `hash32` ohne Allokation (je Zahl kein Float64Array mehr; identische Werte) | `TreeLayer.setContent` 18,0 → 3,2 ms je Aufruf, `rebuildContent` 21,0 → 6,4 ms |
+| R4.4 Schatten-Kadenz (kein Pass beim Schwenken/Gleiten/Gieren, Regionen geänderter Werfer ≤ 10/s, Lichtungszone, Snap-Pause 6 Bilder für feine Kaskaden, ψ/Texel-Schlüssel mit Toleranz) | Runden 140 → 52 je 150 Bilder, Kaskaden 413 → 114 |
+| R4.6 Inhalt nur aus gewollten Chunks, höchstens alle 6 Bilder, Regionsschlüssel je Baum gecacht | Neubauten 98 → 25, Summe 464 → 122 ms, Instanzen 945 → 346 |
+
+Planziele (Hoch am M3): Hauptthread-Median ≤ 5 ms **erfüllt** (3,3–3,9); Draw Calls Median ≤ 80 **erfüllt**, Max ≤ 100
+in w07 nicht (119/121: Bilder mit Schattenrunde); Schattenpässe ≤ 10/s **nicht** (15–23/s); CPU-p99 ≤ 12 in w07 nicht
+(18,6: Inhalt-Neubau bis 12 ms + Fit-Spitzen). Rest der Pässe (`dirtyCauses`): Refits der Kamera-Nachführung über
+Hindernissen (w09: Pose-Refit jedes Bild) und der Empfänger-Volumen (w07: ≈ 1 von 3 Bildern), Regionen vom Rand.
+Nicht umgesetzt: DPR-Deckel und Karten-Governor (R4.1–R4.3), Instanz-Kulling der Pools (Grenzkugeln), Depth16 (R4.7).
