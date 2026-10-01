@@ -54,7 +54,7 @@
   "features": {
     "rocks": [{ "kind": "terraces", "count": 1, "size": [7, 9], "height": [3.2, 4.6], "steps": 4, "focusDistance": [16, 24] }],
     "rivers": { "count": 1, "width": [1.4, 2.0], "length": [14, 22], "meander": 0.7, "focusDistance": [12, 20] },
-    "lakes": { "count": 1, "radius": [2.4, 3.2], "stretch": 0.8 }
+    "lakes": { "count": 1, "radius": [3.0, 4.0], "stretch": 0.4 }
   },
   "fogStripes": 0,
   "skyGlow": 0,

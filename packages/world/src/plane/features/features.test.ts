@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { WorldCatalog } from '../catalog';
 import { PlaneField } from '../field';
 import { AUTHORED_ROUTE, ROUTE, authoredSpecs, testLayout } from '../testWorlds';
-import type { WorldFeatureSpec } from '../types';
+import type { WorldFeatureSpec } from './types';
 import { DEFAULT_LAKE_BAND, DEFAULT_RIVER_BAND, lakeAt, shoreValue } from './lakes';
 import type { FeatureSample, Lake, River } from './types';
 

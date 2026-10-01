@@ -150,6 +150,16 @@ export class PlaneFeatures {
       const sea = makeSea(host, site, world, spec.coast, featureRandom(host.seed, key, 'sea', salt));
       if (sea) out.seas.push(sea);
     }
+    // Der Monolith steht im Bildfokus (Welt 13): er wird vor dem Wasser geplant, damit ein See vor ihm liegt statt ihn zu
+    // verdrängen; alle anderen Felsen wie bisher nach dem Wasser (gleicher Zufallsstrom, solange es keinen Monolithen gibt)
+    const rocks = spec.rocks ?? [];
+    const early = rocks.filter((r) => r.kind === 'monolith');
+    const late = early.length > 0 ? rocks.filter((r) => r.kind !== 'monolith') : rocks;
+    if (early.length > 0) {
+      const r = generateRocks(host, site, world, early, featureRandom(host.seed, key, 'rocks', salt), occupied);
+      out.formations.push(...r.formations);
+      out.ledges.push(...r.ledges);
+    }
     let made = 0;
     if (spec.rivers) {
       const r = generateRivers(host, site, world, spec.rivers, spec.lakes, featureRandom(host.seed, key, 'rivers', salt), occupied, 0);
@@ -161,8 +171,8 @@ export class PlaneFeatures {
       out.lakes.push(...generateLakes(host, site, world, spec.lakes, spec.lakes.count - made, featureRandom(host.seed, key, 'lakes', salt), occupied, made));
     }
     markWater(out, spec);
-    if (spec.rocks && spec.rocks.length > 0) {
-      const r = generateRocks(host, site, world, spec.rocks, featureRandom(host.seed, key, 'rocks', salt), occupied);
+    if (late.length > 0) {
+      const r = generateRocks(host, site, world, late, featureRandom(host.seed, key, early.length > 0 ? 'rocks-late' : 'rocks', salt), occupied);
       out.formations.push(...r.formations);
       out.ledges.push(...r.ledges);
     }
