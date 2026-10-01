@@ -1,3 +1,4 @@
+import { CURVE_LAST_LEVEL, spikeLevels } from '@ee/core';
 import type { Vec3 } from '../capPatch';
 import type { LandmarkAnchor, LandmarkInstance, LandmarkWaypoint } from '../landmarks/types';
 import type { PlaneField } from './field';
@@ -104,7 +105,10 @@ export interface PlanePathOptions {
   dotSpacing?: number;
   dotClearance?: number;
   provider?: PlanePathProvider | null;
-  /** Level (1-basiert) mit dramatischem Felsvorsprung (Standard 13, 38, 63, 88; danach jeder 25.). */
+  /**
+   * Level (1-basiert) mit dramatischem Felsvorsprung. Standard: die Spitzen der Schwierigkeitskurve (hart, superhart, Boss,
+   * `spikeLevels()` aus `@ee/core`); hinter Level 184 (nur im endlosen Labor) jedes 25. Level.
+   */
   spikes?: readonly number[];
   /** Knotenindizes (0-basiert), die flacher Boden bleiben (z. B. beim Riesenbaum). */
   keepGround?: readonly number[];
@@ -183,7 +187,7 @@ export class PlanePath {
     };
     this.provider = options.provider ?? null;
     this.keep = new Set(options.keepGround ?? []);
-    this.spikes = new Set((options.spikes ?? [13, 38, 63, 88]).map((l) => l - 1));
+    this.spikes = new Set((options.spikes ?? spikeLevels()).map((l) => l - 1));
     this.phase0 = hash01(this.opts.seed, 11) * Math.PI * 2;
     this.visitLandmarks = options.landmarks ?? true;
   }
@@ -581,7 +585,7 @@ export class PlanePath {
       const trash = field.spec(w).trash;
       const forest = field.forestAt(p.x, p.z);
       const rnd = hash01(index, seed + 3);
-      const spike = this.spikes.has(index) || (index >= 100 && index % 25 === 12);
+      const spike = this.spikes.has(index) || (index >= CURVE_LAST_LEVEL && index % 25 === 12);
       let site: NodeSite = 'meadow';
       if (!this.keep.has(index) && index >= 2) {
         if (spike || r.spread > 1.25 || r.relief > 0.55) site = 'ledge';

@@ -1,3 +1,4 @@
+import { spikeLevels } from '@ee/core';
 import { describe, expect, it } from 'vitest';
 import { CHUNK_SIZE, chunkMeshHeightAt, generatePlaneChunk, scatterPlaneProps, scatterPlaneTrees } from './chunks';
 import { LATERAL_WORLD_BASE, PROLOGUE_WORLD_BASE, WorldLayout } from './layout';
@@ -260,6 +261,24 @@ describe('PlanePath', () => {
     });
     expect(nodes[0]!.world).toBe(AUTHORED_ROUTE[0]!.world);
     expect(nodes[last]!.world).toBe(AUTHORED_ROUTE[14]!.world);
+  });
+
+  it('puts the spikes of the difficulty curve (hard, superhard, boss) on rock ledges unless a landmark takes the node', () => {
+    const spikes = spikeLevels();
+    expect(spikes.length).toBeGreaterThan(30);
+    for (const level of spikes) {
+      const n = path.node(level - 1);
+      if (n.landmark || level < 3) continue;
+      expect(n.site, `Level ${level}`).toBe('ledge');
+      expect(n.rise, `Level ${level}`).toBeGreaterThan(0.4);
+    }
+  });
+
+  it('lets the option `spikes` replace the curve spikes (1-based levels)', () => {
+    const only = new PlanePath(field, { seed: 7, spikes: [20] });
+    const n = only.node(19);
+    expect(n.landmark).toBeUndefined();
+    expect(n.site).toBe('ledge');
   });
 
   it('climbs landmarks: some levels stand on a plateau, the dots go up the steps and down again', () => {
