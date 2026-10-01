@@ -11,13 +11,14 @@ export function planetTrash(): Array<TrashWorldSpec | undefined> {
 
 /**
  * Knoten des Levelpfads in einem z-Bereich (Ebene): Heilschwellen und Freiraum des Mülls. Mit dem Flow-Pfad (Riesenbaum
- * eingespleißt) oder dem Bodenpfad der Welt.
+ * eingespleißt) oder dem Bodenpfad der Welt. Die Abschnitte um den Bereich zählen mit (Makroformen, W3: die Knoten eines
+ * Abschnitts liegen nicht mehr streng in seinem z-Bereich, an den Grenzen schwingt der Pfad hinüber); in Pfadreihenfolge.
  */
 function pathNodes(world: EarlePlanet, path: PathLayout | null): (z0: number, z1: number) => PlaneTrashNode[] {
   return (z0, z1) => {
     const layout = world.layout;
-    const k0 = Math.max(0, layout.segmentAtDistance(-z1));
-    const k1 = Math.max(0, layout.segmentAtDistance(-z0));
+    const k0 = Math.max(0, layout.segmentAtDistance(-z1) - 1);
+    const k1 = Math.max(0, Math.min(layout.segmentAtDistance(-z0) + 1, layout.lastSegment));
     const out: PlaneTrashNode[] = [];
     for (let k = k0; k <= k1; k++) {
       const seg = layout.segment(k);

@@ -5,12 +5,15 @@ import type { PlaneField } from './field';
 import type { RegionSample } from './layout';
 
 /**
- * Der unendliche Levelpfad der Ebene (ADR 0002). Das Rückgrat `x_b(z)` der Weltenlage ist nur die Leitlinie: je
- * Pfadabschnitt (eine Welt) wählt ein Viterbi-Lauf über seitliche Versätze die günstigste glatte Linie (Hänge und
- * Talsohlen statt Kuppen und Mulden, sanftes Gelände, langsame Mäander, weg von Wasser und Felsfüßen, Felsanker
- * ziehen an). Die Abschnittsgrenzen liegen auf dem Rückgrat (Versatz 0, weich eingeblendet) — jeder Abschnitt ist
- * unabhängig und deterministisch, beliebiger Zugriff (auch Level 10 000). Knoten gleichabständig je Abschnitt, auf
- * dem flachsten Boden in der Nähe, mit ihrem Element (Wiese, Hain, Felsvorsprung, Müllfeld, Ufer).
+ * Der unendliche Levelpfad der Ebene (ADR 0002). Je Pfadabschnitt (eine Welt) gibt die Makroform (W3, `macro.ts`:
+ * Mäander, Serpentine, Schnecke, Gratweg, Kletterweg; sonst das Rückgrat `x_b(z)`) die Mittellinie vor; ein Viterbi-Lauf
+ * über seitliche Versätze längs ihrer Normalen wählt darum die günstigste glatte Linie (Hänge und Talsohlen statt
+ * Kuppen und Mulden — bevorzugte Höhe je Welt, `WorldSpec.path` —, sanftes Gelände, kleine Mäander, weg von Wasser,
+ * Felsfüßen und Fokus-Elementen, Felsanker ziehen an; an Kehren und Schleifen enger). Die Abschnittsgrenzen liegen auf
+ * dem Rückgrat (Versatz 0, weich eingeblendet) — jeder Abschnitt ist unabhängig und deterministisch, beliebiger Zugriff
+ * (auch Level 10 000). z ist längs des Pfads nicht mehr monoton (Serpentinen, Schnecken), die Bogenlänge `s` der
+ * Knoten schon. Knoten gleichabständig je Abschnitt, auf dem flachsten Boden in der Nähe, mit ihrem Element (Wiese,
+ * Hain, Felsvorsprung, Müllfeld, Ufer).
  *
  * Reine Daten (kein three.js). Positionen in Ebenenkoordinaten `[x, h, z]`.
  */
@@ -84,7 +87,7 @@ export interface PlanePathSegment {
   /** Routenlänge (Welteinheiten) und z-Länge des Abschnitts. */
   length: number;
   zLength: number;
-  /** Seitlicher Versatz je Probe gegenüber dem Rückgrat (Diagnose). */
+  /** Seitlicher Versatz je Probe gegenüber der Mittellinie der Makroform (Diagnose). */
   offsets: number[];
 }
 
@@ -97,7 +100,7 @@ export interface PlanePathProvider {
 
 export interface PlanePathOptions {
   seed?: number;
-  /** Seitlicher Spielraum der Route um das Rückgrat (Standard 3.2). */
+  /** Seitlicher Spielraum der Route um die Mittellinie der Makroform (Standard 3.2; an Kehren enger). */
   halfWidth?: number;
   /** Schrittweite des Rückgrats (Standard 0.3). */
   step?: number;
@@ -262,6 +265,29 @@ export class PlanePath {
     return Math.max(0, best);
   }
 
+  /**
+   * Knoten im Rechteck [x0, x1] × [z0, z1] ± `reach`: [kleinster, größter] Index der Knoten der Abschnitte um das
+   * Rechteck, die hineinfallen, oder null. z ist längs des Pfads nicht monoton (Makroformen, W3) — Wachstum und Freihaltung
+   * fragen nach Lage, nicht nach z. Mit x0 = −∞, x1 = +∞ alle Knoten auf der Höhe des Rechtecks.
+   */
+  nodeRangeInRect(x0: number, z0: number, x1: number, z1: number, reach = 12): [number, number] | null {
+    const layout = this.field.layout;
+    const k0 = layout.segmentAtDistance(-(z1 + reach)) - 1;
+    const k1 = Math.min(layout.segmentAtDistance(-(z0 - reach)) + 1, layout.lastSegment);
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (let k = Math.max(0, k0); k <= k1; k++) {
+      for (const n of this.segment(k).nodes) {
+        const x = n.position[0];
+        const z = n.position[2];
+        if (x < x0 - reach || x > x1 + reach || z < z0 - reach || z > z1 + reach) continue;
+        lo = Math.min(lo, n.index);
+        hi = Math.max(hi, n.index);
+      }
+    }
+    return lo <= hi ? [lo, hi] : null;
+  }
+
   // --- Route je Abschnitt --------------------------------------------------------------------------------
 
   private route(k: number): Route {
@@ -277,8 +303,9 @@ export class PlanePath {
     return r;
   }
 
-  private meanderAt(d: number): number {
-    const { meanderA, meanderL } = this.opts;
+  /** Kleiner Mäander der Verfeinerung an der Stelle d (Bogenlänge ab dem Abschnittsbeginn, versetzt um dessen Lage). */
+  private meanderAt(d: number, meanderA = this.opts.meanderA): number {
+    const { meanderL } = this.opts;
     const p = this.phase0;
     const lam = meanderL * (1 + 0.28 * Math.sin(d / 41 + p) + 0.12 * Math.sin(d / 17 + 2.1));
     const amp = meanderA * (0.75 + 0.25 * Math.sin(d / 29 + 1.3 + p));
@@ -291,18 +318,31 @@ export class PlanePath {
     const layout = field.layout;
     const seg = layout.segment(k);
     const W = this.opts.halfWidth;
-    const step = this.opts.step;
     const zStart = seg.zStart;
     const zEnd = seg.zEnd;
-    const zLen = zStart - zEnd;
-    const M = Math.max(8, Math.round(zLen / step) + 1);
-    const bb: Array<{ x: number; z: number; bx: number; bz: number }> = [];
-    for (let i = 0; i < M; i++) {
-      const z = zStart - (zLen * i) / (M - 1);
-      const slope = layout.backboneSlope(z);
-      // Laufrichtung (−slope, −1), rechts davon (1, −slope)
-      const l = Math.hypot(1, slope);
-      bb.push({ x: layout.backbone(z), z, bx: 1 / l, bz: -slope / l });
+    // Mittellinie der Makroform (W3): Proben gleichabständig längs der Bogenlänge, Normalen rechts der Laufrichtung; der
+    // Viterbi verfeinert seitlich darum (±W, an Kehren und Schleifen enger: `room`)
+    const macro = layout.macro(k);
+    const M = macro.pts.length;
+    const step = macro.length / Math.max(1, M - 1);
+    const bb: Array<{ x: number; z: number; bx: number; bz: number; room: number; s: number }> = macro.pts.map((p, i) => ({
+      x: p[0],
+      z: p[1],
+      bx: macro.normals[i]![0],
+      bz: macro.normals[i]![1],
+      room: Math.min(W, macro.room[i]!),
+      s: macro.s[i]!,
+    }));
+    // Einbettung je Welt (`WorldSpec.path`): bevorzugte Höhe, Gewicht der Neigung, kleiner Mäander
+    const tune = field.spec(seg.world).path ?? {};
+    const hTarget = tune.height ?? 0.32;
+    const slopeW = tune.slope ?? 2.4;
+    const meanderA = tune.meander !== undefined ? tune.meander * W : this.opts.meanderA;
+    // Fokus-Element und Begleiter des Abschnitts bleiben frei (die Makroform hält Abstand, die Verfeinerung auch)
+    const keep: Array<{ x: number; z: number; r: number }> = [];
+    const regionKey = `p${k}`;
+    for (const slot of [field.focalSlot(regionKey), ...field.companionSlots(regionKey)]) {
+      if (slot && slot.instance && slot.clearRadius > 0) keep.push({ x: slot.position[0], z: slot.position[2], r: slot.clearRadius + 0.6 });
     }
     const K = 29;
     const mid = (K - 1) / 2;
@@ -323,6 +363,9 @@ export class PlanePath {
         heights[i * K + j] = field.heightWithShape(cx, cz, sh, rs.region.key);
         amps[i * K + j] = Math.max(0.2, sh.amplitude);
         let e = 0;
+        // Außerhalb des Spielraums (Kehre, andere Schleife der Linie): ausgeschlossen
+        if (Math.abs(offsets[j]!) > b.room + 1e-6) e += 1e3;
+        for (const c of keep) if (Math.hypot(cx - c.x, cz - c.z) < c.r) e += 4;
         // Seitliche Weltgrenzen (Risse) meiden; Abschnittsgrenzen quert der Pfad ohnehin
         if (rs.borderId < 0) e += 2.2 * Math.pow(Math.max(0, 1 - rs.border / 1.8), 2);
         if (this.provider?.cost) e += 3 * Math.max(0, this.provider.cost(cx, cz));
@@ -336,7 +379,8 @@ export class PlanePath {
     }
     const cost = new Float32Array(M * K);
     for (let i = 0; i < M; i++) {
-      const target = this.meanderAt(-bb[i]!.z);
+      // Mäander über die Bogenlänge (die Mittellinie läuft auch quer und zurück)
+      const target = Math.max(-bb[i]!.room, Math.min(bb[i]!.room, this.meanderAt(-zStart + bb[i]!.s, meanderA)));
       for (let j = 0; j < K; j++) {
         const h = heights[i * K + j]!;
         const hn = h / amps[i * K + j]!;
@@ -349,8 +393,8 @@ export class PlanePath {
         const slope = Math.hypot(gx, gy);
         const o = offsets[j]!;
         let c = 0;
-        c += 1.1 * (hn - 0.32) * (hn - 0.32);
-        c += 2.4 * slope * slope;
+        c += 1.1 * (hn - hTarget) * (hn - hTarget);
+        c += slopeW * slope * slope;
         c += 0.9 * Math.pow(Math.abs(o - target) / W, 1.5);
         c += 0.9 * Math.pow(Math.abs(o) / W, 6);
         c += extra[i * K + j]!;
@@ -386,7 +430,8 @@ export class PlanePath {
     const ramp = Math.max(2, Math.round(3.2 / step));
     off = off.map((v, i) => {
       const e = Math.min(i, M - 1 - i);
-      return v * smoothstep(0, ramp, e);
+      const r = bb[i]!.room;
+      return Math.max(-r, Math.min(r, v)) * smoothstep(0, ramp, e);
     });
     const pts: V2[] = [];
     const s: number[] = [];

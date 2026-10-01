@@ -1,6 +1,9 @@
 import type { RouteShape, RouteShapeParams } from '@ee/core';
 import { GradientNoise2, hash2, smoothstep } from './noise2';
 import { hash32 } from '../rng';
+import { focalClearRadius, macroCenterline, type MacroCircle, type MacroHit, type MacroLine } from './macro';
+import { ridgeTrainCrest } from './flank';
+import type { WorldSpec } from './types';
 
 /**
  * Weltenlage der unendlichen Ebene (ADR 0002, Nachtrag „Route 15 + 1“): der Levelpfad läuft entlang −z auf einem
@@ -48,7 +51,10 @@ export interface RouteEntry {
   state?: RouteEntryState;
   /** Der Abschnitt trägt den Riesenbaum (seine Level steigen Stamm und Krone hinauf). */
   tree?: true;
-  /** Makroform des Pfads (W3, hier nur durchgereicht). */
+  /**
+   * Makroform des Pfads (W3, `plane/macro.ts`): Mäander, Serpentine, Schnecke, Gratweg, Kletterweg. Ohne Form (und im
+   * Riesenbaum-Abschnitt, in angedeuteten Abschnitten, im Vorland) läuft die Mittellinie auf dem Rückgrat.
+   */
   shape?: RouteShape;
   shapeParams?: RouteShapeParams;
 }
@@ -84,6 +90,16 @@ export interface LayoutParams {
   bandHalfWidth?: number;
   /** Zellmaß der Seitenwelten: quer (v) und längs (z). Standard 38 × 44. */
   cell?: { across: number; along: number };
+  /**
+   * Weltspezifikation je Kennung (Makroformen: Lage des Fokus-Elements und seiner Begleiter, Freiraum, Hügelstaffel des
+   * Gratwegs). Ohne sie kennen die Makroformen keinen Fokus (Tests mit eigener Route).
+   */
+  specOf?: (world: number) => WorldSpec | undefined;
+}
+
+/** Nächster Punkt der Pfad-Mittellinie (`WorldLayout.pathNearest`): Abschnitt und Treffer. */
+export interface PlanePathHit extends MacroHit {
+  k: number;
 }
 
 export interface PathSegment {
@@ -176,8 +192,11 @@ export class WorldLayout {
   private readonly cellWorldCache = new Map<string, number>();
   private readonly siteSalt: number;
   private readonly cellWorldSalt: number;
+  private readonly specOf: ((world: number) => WorldSpec | undefined) | null;
+  private readonly macroCache = new Map<number, MacroLine>();
 
   constructor(params: LayoutParams) {
+    this.specOf = params.specOf ?? null;
     this.seed = params.seed;
     this.nodeSpacing = params.nodeSpacing ?? 4.2;
     this.proceduralLevels = params.proceduralLevels ?? 10;
@@ -337,6 +356,146 @@ export class WorldLayout {
   isHinted(world: number): boolean {
     if (this.hintedWorlds.has(world)) return true;
     return !this.procedural && world >= HINTED_WORLD_BASE && world < HINTED_WORLD_BASE + HINTED_VARIANT_LIMIT;
+  }
+
+  // --- Makroform (W3) --------------------------------------------------------------------------------------
+
+  /**
+   * Makroform des Abschnitts k aus der Route, oder null (gerade auf dem Rückgrat): ohne `shape`, im Riesenbaum-Abschnitt,
+   * in angedeuteten Abschnitten, ohne Level, im Vorland und hinter der Route.
+   */
+  shapeOf(k: number): { shape: RouteShape; params: RouteShapeParams } | null {
+    if (k < 0 || k >= this.route.length) return null;
+    const r = this.route[k]!;
+    if (!r.shape || r.tree || r.state === 'hinted' || r.levels <= 0) return null;
+    return { shape: r.shape, params: r.shapeParams ?? {} };
+  }
+
+  /**
+   * Mittellinie des Pfads im Abschnitt k (`plane/macro.ts`, im Cache): beginnt und endet auf dem Rückgrat, Bogenlänge
+   * `levels × nodeSpacing`. Ohne Makroform das Rückgrat selbst.
+   */
+  macro(k: number): MacroLine {
+    const hit = this.macroCache.get(k);
+    if (hit) return hit;
+    const line = this.buildMacro(k);
+    if (this.macroCache.size >= 96) {
+      const oldest = this.macroCache.keys().next().value;
+      if (oldest !== undefined) this.macroCache.delete(oldest);
+    }
+    this.macroCache.set(k, line);
+    return line;
+  }
+
+  private buildMacro(k: number): MacroLine {
+    const seg = this.segment(k);
+    const backbone = (z: number): number => this.backbone(z);
+    const band = (z: number): number => this.bandHalf(z);
+    const sh = this.shapeOf(k);
+    if (!sh) return macroCenterline(seg, backbone, band, this.seed, 'straight');
+    const spec = this.specOf?.(seg.world);
+    const focal = spec?.focal;
+    const keepClear: MacroCircle[] = [];
+    const spiralFocal = sh.shape === 'spiral' && (sh.params.centre ?? 'focal') === 'focal';
+    let centreClear = 0;
+    if (focal) {
+      const r = focal.clearRadius ?? focalClearRadius(focal.kind, focal.scale ?? 1);
+      if (spiralFocal) centreClear = r;
+      else {
+        // Fokus-Element und Begleiter bleiben frei (die Form wählt die Seite)
+        const p = this.focalBase(k, focal.along, focal.lateral);
+        if (r > 0) keepClear.push({ x: p.x, z: p.z, radius: r });
+        for (const c of focal.companions ?? []) {
+          const cr = c.clearRadius ?? focalClearRadius(c.kind, c.scale ?? 1);
+          if (cr > 0) keepClear.push({ x: p.x + c.dx, z: p.z + c.dz, radius: cr });
+        }
+      }
+    }
+    const ridges = spec?.terrain.ridges;
+    const crestAt = sh.shape === 'ridge' && ridges ? (x: number, z: number): number => ridgeTrainCrest(ridges, this.seed, x, z) : undefined;
+    return macroCenterline(seg, backbone, band, this.seed, sh.shape, sh.params, {
+      arc: seg.levels * this.nodeSpacing,
+      keepClear,
+      centreClear,
+      ...(crestAt ? { crestAt } : {}),
+    });
+  }
+
+  /** Fokus des Pfadabschnitts k am Rückgrat: `along` (0 … 1, geklemmt 0,1 … 0,9) und `lateral` (Standard ±10 aus dem Seed). */
+  private focalBase(k: number, along: number | undefined, lateral: number | undefined): { x: number; z: number } {
+    const seg = this.segment(k);
+    const z = seg.zStart + (seg.zEnd - seg.zStart) * Math.min(0.9, Math.max(0.1, along ?? 0.5));
+    const u = lateral ?? (hash2(k, 7, this.seed) < 0.5 ? -1 : 1) * 10;
+    return { x: this.backbone(z) + u, z };
+  }
+
+  /**
+   * Lage des Fokus-Elements im Pfadabschnitt k (Weltkomposition): das Zentrum der Schnecke, wenn der Abschnitt eine
+   * Makroform `spiral` um den Fokus trägt, sonst `along`/`lateral` am Rückgrat (die Makroform hält es frei).
+   */
+  focalPoint(k: number, focal: { along?: number; lateral?: number }): { x: number; z: number } {
+    const sh = this.shapeOf(k);
+    if (sh && sh.shape === 'spiral' && (sh.params.centre ?? 'focal') === 'focal') {
+      const c = this.macro(k).centre;
+      if (c) return { x: c[0], z: c[1] };
+    }
+    return this.focalBase(k, focal.along, focal.lateral);
+  }
+
+  private readonly hitA = {} as MacroHit;
+
+  /**
+   * Nächster Punkt der Pfad-Mittellinie zu (x, z): gesucht in den Mittellinien des Abschnitts bei z und seiner Nachbarn
+   * (die Makroformen bleiben im z-Bereich ihres Abschnitts).
+   */
+  pathNearest(x: number, z: number, out?: PlanePathHit): PlanePathHit {
+    const o = out ?? ({} as PlanePathHit);
+    const k0 = this.segmentAtDistance(-z);
+    let best = Infinity;
+    for (let k = k0 - 1; k <= k0 + 1; k++) {
+      const h = this.macro(k).nearest(x, z, this.hitA);
+      if (h.d < best) {
+        best = h.d;
+        Object.assign(o, h);
+        o.k = k;
+      }
+    }
+    return o;
+  }
+
+  private readonly hitB = {} as PlanePathHit;
+
+  /**
+   * Abstand zur Pfad-Mittellinie (Makroform) — ersetzt den Abstand zum Rückgrat überall, wo Merkmale, Wahrzeichen und
+   * Fokus-Elemente den Pfad meiden. Der Viterbi-Lauf schwingt bis ±`ROUTE_HALF_WIDTH` darum.
+   */
+  pathDistance(x: number, z: number): number {
+    return this.pathNearest(x, z, this.hitB).d;
+  }
+
+  /** Seite eines Punkts zur Pfad-Mittellinie: +1 rechts der Laufrichtung, −1 links. */
+  pathSide(x: number, z: number): number {
+    return this.pathNearest(x, z, this.hitB).side;
+  }
+
+  /** Punkt und Normale (rechts der Laufrichtung) der Mittellinie des Abschnitts k beim Bogenanteil t (0 … 1). */
+  pathPoint(k: number, t: number): { x: number; z: number; nx: number; nz: number } {
+    const m = this.macro(k);
+    return m.at(Math.min(1, Math.max(0, t)) * m.length);
+  }
+
+  /**
+   * Äußerste seitliche Lage der Mittellinie auf der Seite `side` nahe z (Versatz zum Rückgrat, + = in Richtung `side`):
+   * Merkmale „neben dem Pfad“ messen von hier (auch an Serpentinen und Schnecken vorbei). 0 ohne Mittellinie in der Nähe.
+   */
+  pathEnvelope(z: number, side: number, window = 4): number {
+    const k0 = this.segmentAtDistance(-z);
+    let best: number | null = null;
+    for (let k = k0 - 1; k <= k0 + 1; k++) {
+      const e = this.macro(k).envelope(z, side, window);
+      if (e !== null && (best === null || e > best)) best = e;
+    }
+    return best ?? 0;
   }
 
   /** Verrauschte Abschnittsgrenze: Versatz entlang z (Welteinheiten) an der Stelle x. */

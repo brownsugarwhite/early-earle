@@ -6,8 +6,8 @@ import type { PathSegment, Region } from './layout';
 /**
  * Wahrzeichen der unendlichen Ebene (ADR 0002): Fels mit Wasserfall, Felsstufe, Zwillingsfälle, hohe Ruine, grüner
  * Sumpf (`@ee/world/landmarks`). Geplant **je Region** der Weltenlage wie die übrigen Merkmale (deterministisch aus dem
- * Schlüssel der Region): je Pfadabschnitt meist ein Held-Wahrzeichen neben dem Pfad (12–20 Einheiten, der Pfad besucht
- * es), in den Startwelten dazu ein Sumpf; je Seitenzelle gelegentlich eines. Der Kern jedes Wahrzeichens liegt ganz in
+ * Schlüssel der Region): je Pfadabschnitt meist ein Held-Wahrzeichen neben dem Pfad (12–20 Einheiten außen neben der
+ * Makroform-Mittellinie, der Pfad besucht es), in den Startwelten dazu ein Sumpf; je Seitenzelle gelegentlich eines. Der Kern jedes Wahrzeichens liegt ganz in
  * seiner Welt (kein Riss durch Fels und Becken); zwei Wahrzeichen überlappen nie. Gebaut auf dem echten Gelände (Höhen
  * ohne Wahrzeichen); das Höhenfeld der Welt trägt danach ihre Becken, Bäche und Sumpfteiche (`ground`), Streuung, Müll
  * und Pfad fragen `blocks`, `waterAt` und `surfaceAt`.
@@ -19,7 +19,7 @@ export interface PlaneLandmarkHost {
   isWater(x: number, z: number, margin: number): boolean;
   /** Belegt (Felsformationen, Riesenbaum, Fokus-Elemente) oder über eine Weltgrenze hinweg. */
   isBlocked(x: number, z: number, radius: number): boolean;
-  /** Abstand zur Mittellinie des Levelpfads (≥ 0). */
+  /** Abstand zum Korridor des Levelpfads (Makroform-Mittellinie minus Spielraum, ≥ 0). */
   pathDistance(x: number, z: number): number;
   worldAt(x: number, z: number): number;
   /** Region am Punkt (Weltenlage). */
@@ -28,6 +28,15 @@ export interface PlaneLandmarkHost {
   landmarkChance?(world: number): number;
   segment(k: number): PathSegment;
   backbone(z: number): number;
+  /**
+   * Äußerste seitliche Lage der Pfad-Mittellinie auf der Seite `side` nahe z (Versatz zum Rückgrat, W3): Held-Wahrzeichen
+   * und Sümpfe stehen `12,5 … 19,5` bzw. `14 … 28` außen davon. Ohne: 0 (Rückgrat).
+   */
+  pathEnvelope?(z: number, side: number): number;
+  /** Seite eines Punkts zur Pfad-Mittellinie (+1 rechts der Laufrichtung). Ohne: zum Rückgrat. */
+  pathSide?(x: number, z: number): number;
+  /** Zentrum einer Schnecke um ein Wahrzeichen im Abschnitt k (`centre: landmark`): dort steht das Held-Wahrzeichen. */
+  landmarkCentre?(k: number): [number, number] | null;
 }
 
 export interface PlaneLandmarkOptions {
@@ -138,11 +147,22 @@ export class PlaneLandmarks {
         const kind = pick(this.weights(world, HERO_KINDS), rand());
         const sideDraw = rand() < 0.5 ? -1 : 1;
         const seed = Math.floor(rand() * 0x7fffffff);
-        if (kind) {
+        // Schnecke um ein Wahrzeichen: zuerst ihr Zentrum (ohne Pfadabstand — der Pfad umrundet es)
+        const centre = kind ? (this.host.landmarkCentre?.(region.k) ?? null) : null;
+        if (kind && centre) {
+          const params: LandmarkKindParams = { ...this.plan.kinds[kind]! };
+          delete params.pathDistance;
+          const u = centre[0] - this.host.backbone(centre[1]);
+          const p = this.candidate(kind, centre[0], centre[1], this.yawToward(u, 0.5), seed, world, params, out);
+          if (p) out.push(p);
+        }
+        if (kind && out.length === 0) {
           for (let t = 0; t < 10; t++) {
             const side = t % 2 === 0 ? sideDraw : -sideDraw;
             const z = seg.zStart - len * (0.3 + rand() * 0.4);
-            const u = side * (12.5 + rand() * 7);
+            const d = 12.5 + rand() * 7;
+            // Abstand von der äußeren Lage der Pfad-Mittellinie auf dieser Seite (Makroform), nicht vom Rückgrat
+            const u = side * ((this.host.pathEnvelope?.(z, side) ?? 0) + d);
             const x = this.host.backbone(z) + u;
             const p = this.candidate(kind, x, z, this.yawToward(u, rand()), seed, world, this.plan.kinds[kind]!, out);
             if (p) {
@@ -157,11 +177,12 @@ export class PlaneLandmarks {
       // Welten ohne Sümpfe (Gewicht 0 in der Weltdatei) ziehen hier keinen Zufall
       if (this.plan.kinds.swamp && (this.plan.worldWeights?.(world).swamp ?? 1) > 0 && rand() < swampChance) {
         const seed = Math.floor(rand() * 0x7fffffff);
-        const pref = out[0] ? -Math.sign(out[0].x - this.host.backbone(out[0].z)) : rand() < 0.5 ? -1 : 1;
+        const sideOf = (x: number, z: number): number => (this.host.pathSide ? this.host.pathSide(x, z) : Math.sign(x - this.host.backbone(z)));
+        const pref = out[0] ? -sideOf(out[0].x, out[0].z) || 1 : rand() < 0.5 ? -1 : 1;
         for (let t = 0; t < 16; t++) {
           const side = t % 3 === 2 ? -pref : pref;
           const z = seg.zStart - len * (0.15 + rand() * 0.7);
-          const u = side * (14 + rand() * 14);
+          const u = side * ((this.host.pathEnvelope?.(z, side) ?? 0) + 14 + rand() * 14);
           const x = this.host.backbone(z) + u;
           const p = this.candidate('swamp', x, z, this.yawToward(u, rand()), seed, world, this.plan.kinds.swamp, out);
           if (p) {

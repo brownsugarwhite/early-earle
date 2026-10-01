@@ -86,6 +86,8 @@ export interface WorldContent {
   clouds?: CloudBankSpec;
   /** Anteil der Wahrzeichen (Wasserfall-Fels, Ruine, Sumpf) 0..1; Standard 1. */
   landmarkChance?: number;
+  /** Einbettung des Pfads (bevorzugte Höhe, Neigungsgewicht, kleiner Mäander), siehe `@ee/world` PathTuning (W3). */
+  path?: WorldSpec['path'];
   /** Angedeutete Zone (w16, Route 15 + 1): gesperrt, „bald“; liegt seitlich, hinter dem Tor und vor dem Start. */
   hinted?: boolean;
   /** false: nie Nachbarwelt einer Seitenzelle (nur mit `?prozedural=1`). */
@@ -192,6 +194,7 @@ export function worldSpecOf(w: WorldContent): WorldSpec {
     ...(w.mist ? { mist: w.mist } : {}),
     ...(w.landmarks ? { landmarks: w.landmarks } : {}),
     ...(w.barnRoof ? { barnRoof: w.barnRoof } : {}),
+    ...(w.path ? { path: w.path } : {}),
   };
 }
 

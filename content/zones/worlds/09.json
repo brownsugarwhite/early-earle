@@ -23,6 +23,7 @@
     "rock": ["#1c0610", "#6a0e24", "#b01e2e", "#e0402a", "#f47a3a", "#f39a86", "#40081a", "#2a0a14"]
   },
   "terrain": { "amplitude": 2.4, "wavelength": 1.5, "slope": 0.4 },
+  "path": { "height": 0.3 },
   "ground": "meadow",
   "vegetation": {
     "density": 0.72,

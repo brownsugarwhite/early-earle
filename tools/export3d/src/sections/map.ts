@@ -286,15 +286,26 @@ export async function exportMap(ctx: ExportContext): Promise<Record<string, unkn
   const segments = Array.from({ length: layout.routeLength }, (_, k) => layout.segment(k)).filter((s) => s.levels > 0);
   const zTop = (segments[0]?.zStart ?? 0) + 24;
   const zBottom = (segments[segments.length - 1]?.zEnd ?? -400) - 24;
-  const across = layout.bandHalfWidth + CHUNK_SIZE;
+  // Seitlich: die Mittellinien der Makroformen (W3) ± 24 je Chunk-Reihe (Kehren und Schnecken reichen weiter hinaus
+  // als das Rückgrat), ohne Mittellinie in der Nähe das Rückgrat ± 24
+  const reach = 24;
+  const macroPts = Array.from({ length: layout.routeLength }, (_, k) => layout.macro(k).pts).flat();
   const chunkIds: Array<[number, number]> = [];
   let x0 = Infinity;
   let x1 = -Infinity;
   for (let cz = Math.floor(zBottom / CHUNK_SIZE); cz <= Math.floor(zTop / CHUNK_SIZE); cz++) {
-    const zm = (cz + 0.5) * CHUNK_SIZE;
-    const xb = layout.backbone(zm);
-    const c0 = Math.floor((xb - across) / CHUNK_SIZE);
-    const c1 = Math.floor((xb + across) / CHUNK_SIZE);
+    const za = cz * CHUNK_SIZE - reach;
+    const zb = (cz + 1) * CHUNK_SIZE + reach;
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const [x, z] of macroPts) {
+      if (z < za || z > zb) continue;
+      lo = Math.min(lo, x);
+      hi = Math.max(hi, x);
+    }
+    if (lo > hi) lo = hi = layout.backbone((cz + 0.5) * CHUNK_SIZE);
+    const c0 = Math.floor((lo - reach) / CHUNK_SIZE);
+    const c1 = Math.floor((hi + reach) / CHUNK_SIZE);
     for (let cx = c0; cx <= c1; cx++) chunkIds.push([cx, cz]);
     x0 = Math.min(x0, c0 * CHUNK_SIZE);
     x1 = Math.max(x1, (c1 + 1) * CHUNK_SIZE);

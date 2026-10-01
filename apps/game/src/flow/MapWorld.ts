@@ -48,8 +48,12 @@ export const MAP_VIEW_PORTRAIT = {
   fov: 61,
   /** NDC of the current node (x a little left: REX stands at the lower right). */
   target: { x: -0.1, y: -0.36 },
-  /** Nodes ahead the view turns toward screen-up (the path runs away from the camera). */
-  lookAhead: 3,
+  /**
+   * Nodes before/after the current one whose chord gives the path's direction the view turns toward screen-up (the path
+   * runs away from the camera). 1 = the local tangent: macro shapes (W3) fold the path — serpentines and snails run
+   * across and back, a node three ahead can lie behind the camera.
+   */
+  lookAhead: 1,
 } as const;
 
 export interface MapWorldOptions {

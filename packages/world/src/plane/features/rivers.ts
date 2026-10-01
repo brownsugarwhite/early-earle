@@ -5,15 +5,29 @@ import type { Lake, LakeSpec, River, RiverSpec } from './types';
 
 const STEP = 0.6;
 
-/** Punkt auf der Mittellinie der Region bei z mit seitlichem Versatz (Pfadregion: Rückgrat, Zelle: Fokus). */
+/**
+ * Seitliche Lage der Pfad-Mittellinie auf der Seite `side` bei z (Versatz zum Rückgrat, + = in Richtung `side`):
+ * äußerste Lage im Fenster ±4 (Makroform, auch Kehren und Schnecke), über ±2 gemittelt — nie innerhalb der Linie.
+ */
+function pathEdge(host: PlaneFeatureHost, z: number, side: number): number {
+  let acc = 0;
+  for (let j = -2; j <= 2; j++) acc += host.pathEnvelope(z + j, side, 4);
+  return acc / 5;
+}
+
+/**
+ * Punkt neben dem Pfad bzw. am Bildfokus bei z mit seitlichem Versatz: Pfadregion — `lateral` gemessen vom äußeren
+ * Rand der Pfad-Mittellinie auf seiner Seite (W3: Makroform statt Rückgrat), Zelle — vom Fokus.
+ */
 function bandPoint(host: PlaneFeatureHost, site: RegionSite, z: number, lateral: number): [number, number] {
-  const x0 = site.region.kind === 'path' ? host.backbone(z) : site.focus[0];
-  return [x0 + lateral, z];
+  if (site.region.kind !== 'path') return [site.focus[0] + lateral, z];
+  const side = lateral >= 0 ? 1 : -1;
+  return [host.backbone(z) + side * (pathEdge(host, z, side) + Math.abs(lateral)), z];
 }
 
 /**
  * Flüsse einer Region, jeweils mit einem See an der Mündung: Der Fluss läuft längs des Pfads (Pfadregion: im freien
- * Streifen neben dem Pfadkorridor; Seitenzelle: seitlich am Bildfokus vorbei) und mäandert, fließt zum tieferen
+ * Streifen außen neben der Pfad-Mittellinie — Makroform, W3; Seitenzelle: seitlich am Bildfokus vorbei) und mäandert, fließt zum tieferen
  * Ende. Wasserspiegel = laufendes Geländeminimum (monoton fallend), geglättet; die Breite wächst zur Mündung.
  */
 export function generateRivers(
@@ -45,15 +59,23 @@ export function generateRivers(
         zMid = site.focus[1] + (dMin + (dMax - dMin) * rand()) * (rand() < 0.5 ? -1 : 1);
       }
       const half = regionHalfWidth(host, site, zMid);
-      const lMax = half - BORDER_MARGIN - width * 0.5 - 0.2;
-      const lMin = onPath ? (spec.pathDistance?.[0] ?? 2) + width * 0.5 + 0.3 : -lMax;
-      if (lMax - lMin < 0.6) break;
       const sign = rand() < 0.5 ? -1 : 1;
+      const zA = zMid + length * 0.5;
+      const zB = zMid - length * 0.5;
+      // Pfadregion: der Fluss läuft außen an der Pfad-Mittellinie entlang — der Platz zum Bandrand schrumpft um ihren
+      // größten Ausschlag auf dieser Seite
+      let edgeMax = 0;
+      if (onPath) for (let z = zB; z <= zA + 1e-6; z += 1) edgeMax = Math.max(edgeMax, pathEdge(host, z, sign));
+      const lMax = half - BORDER_MARGIN - width * 0.5 - 0.2 - edgeMax;
+      const pathGap = (spec.pathDistance?.[0] ?? 2) + width * 0.5 + 0.3;
+      const lMin = onPath ? pathGap : -lMax;
+      if (lMax - lMin < 0.6) {
+        if (onPath) continue;
+        break;
+      }
       const farInner = 2.2;
       const lMid = onPath ? (lMin + lMax) * 0.5 : farInner + rand() * Math.max(0, lMax - farInner - 1.2);
       const amp = onPath ? Math.min(lMax - lMid, lMid - lMin) * (0.35 + 0.65 * meander) : Math.min(lMax - lMid, lMid - 1.0, lMax * 0.4) * (0.35 + 0.65 * meander);
-      const zA = zMid + length * 0.5;
-      const zB = zMid - length * 0.5;
       if (zA > zHi - 0.5 || zB < zLo + 0.5) continue;
       const k = 0.8 + rand() * 1.1;
       const phase = rand() * Math.PI * 2;
@@ -65,7 +87,7 @@ export function generateRivers(
         const env = Math.sin(Math.PI * Math.min(1, t * 1.15));
         const lat = sign * (lMid + amp * env * Math.sin(Math.PI * 2 * k * t + phase));
         const p = bandPoint(host, site, zA + (zB - zA) * t, lat);
-        if (host.regionKeyAt(p[0], p[1]) !== site.region.key || !isFree(occupied, p[0], p[1], width * 0.5, 0.6)) {
+        if (host.regionKeyAt(p[0], p[1]) !== site.region.key || !isFree(occupied, p[0], p[1], width * 0.5, 0.6) || (onPath && host.pathDistance(p[0], p[1]) < pathGap * 0.9)) {
           ok = false;
           break;
         }
@@ -79,7 +101,7 @@ export function generateRivers(
       }
       const stretch = lakeSpec?.stretch ?? (onPath ? 2.2 : 1.1);
       const wobble = lakeWobble(rand);
-      const room = Math.min(half - BORDER_MARGIN - Math.abs(sign * lMid), onPath ? Math.abs(lMid) - (spec.pathDistance?.[0] ?? 2) * 0.8 : Infinity);
+      const room = Math.min(half - BORDER_MARGIN - edgeMax - Math.abs(sign * lMid), onPath ? Math.abs(lMid) - (spec.pathDistance?.[0] ?? 2) * 0.8 : Infinity);
       const lr = lakeSpec?.radius ?? [width * 1.3, width * 2.0];
       let radius = lr[0] + (lr[1] - lr[0]) * rand();
       while (radius > 0.8 && lakeLateralReach(radius, stretch, wobble) > room) radius *= 0.9;
