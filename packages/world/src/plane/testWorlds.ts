@@ -24,6 +24,7 @@ interface WorldFile {
   landmarkChance?: number;
   mist?: WorldSpec['mist'];
   landmarks?: WorldSpec['landmarks'];
+  path?: WorldSpec['path'];
   /** Angedeutete Zone (w16): gesperrt, nur Silhouetten. */
   hinted?: boolean;
   /** false: nie Nachbarwelt einer Seitenzelle (nur `?prozedural=1`). */
@@ -75,6 +76,7 @@ export function authoredSpecs(): WorldSpec[] {
       ...(w.landmarkChance !== undefined ? { landmarkChance: w.landmarkChance } : {}),
       ...(w.mist ? { mist: w.mist } : {}),
       ...(w.landmarks ? { landmarks: w.landmarks } : {}),
+      ...(w.path ? { path: w.path } : {}),
     };
   });
 }
@@ -97,6 +99,7 @@ export const AUTHORED_ROUTE: RouteEntry[] = ROUTE.entries;
 /** Weltenlage wie im Spiel (ohne prozedurale Welten; `procedural` für das alte Verhalten). */
 export function testLayout(seed = 7, options: { procedural?: boolean } = {}): WorldLayout {
   const files = loadWorldFiles();
+  const specs = authoredSpecs();
   return new WorldLayout({
     seed,
     route: AUTHORED_ROUTE,
@@ -104,6 +107,7 @@ export function testLayout(seed = 7, options: { procedural?: boolean } = {}): Wo
     nodeSpacing: ROUTE.nodeSpacing,
     beyondWorld: ROUTE.beyondWorld,
     noLateral: files.flatMap((w, i) => (w.lateral === false ? [i] : [])),
+    specOf: (w) => specs[w],
     ...(options.procedural ? { procedural: true } : {}),
   });
 }

@@ -141,6 +141,19 @@ export interface WorldSpec {
   mist?: MistSpec;
   /** Gewichtsfaktoren der Wahrzeichen dieser Welt (0 = keine; z. B. keine Wasserfall-Felsen in der Nebelweide). */
   landmarks?: Partial<Record<LandmarkKind, number>>;
+  /** Einbettung des Pfads in das Gelände dieser Welt (Kosten der lokalen Verfeinerung), siehe `PathTuning`. */
+  path?: PathTuning;
+}
+
+/**
+ * Einbettung des Pfads je Welt (Viterbi-Lauf um die Makroform, `PlanePath.buildRoute`): bevorzugte relative Höhe
+ * (Standard 0,32 — Hänge und Talsohlen; Welt 09: 0,3 zwischen den Kuppelbändern an den Höhenlinien; Gratweg: hoch),
+ * Gewicht der Hangneigung (Standard 2,4) und Amplitude des kleinen Mäanders als Anteil des Spielraums (Standard 0,78).
+ */
+export interface PathTuning {
+  height?: number;
+  slope?: number;
+  meander?: number;
 }
 
 /** Alter Name (Planet mit Zonenbändern); die Felder zone/side/half gibt es nicht mehr. */

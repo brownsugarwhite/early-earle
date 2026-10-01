@@ -474,6 +474,8 @@ export class EarlePlanet {
       ...(options.noLateral ? { noLateral: options.noLateral } : {}),
       ...(options.nodeSpacing !== undefined ? { nodeSpacing: options.nodeSpacing } : {}),
       ...(options.procedural ? { procedural: true } : {}),
+      // Makroformen (W3): Fokus-Elemente und Hügelstaffel der Autorenwelten
+      specOf: (w) => options.worlds[w]?.params,
     });
     this.catalog = new WorldCatalog(
       options.worlds.map((w) => w.params),

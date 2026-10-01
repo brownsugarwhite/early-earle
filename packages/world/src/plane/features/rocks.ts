@@ -7,7 +7,8 @@ import type { LedgeAnchor, RockColumn, RockFormation, RockKind, RockSpec } from 
 /**
  * Felsformationen nach Earle auf der Ebene (Port der Kugel-Version): Basaltsäulen-Stufen mit Moosbänken, Turm-Monolith,
  * schräger Tafelfels, Felsnadeln und die riesige Felswand am Regionsrand. Grundrisse relativ zum Formationsmittelpunkt
- * (a = x, b = z), Höhen absolut. Die Schauseite zeigt zum Pfad (Pfadregionen) bzw. zum Bildfokus (Seitenzellen).
+ * (a = x, b = z), Höhen absolut. Die Schauseite zeigt zum Pfad (Pfadregionen: zur Makroform-Mittellinie) bzw. zum
+ * Bildfokus (Seitenzellen).
  */
 
 /** Versenkung der Säulenfüße unter den tiefsten Geländepunkt ihres Grundrisses (nichts schwebt). */
@@ -87,11 +88,17 @@ function lateralReachOf(kind: RockKind, size: number): number {
   }
 }
 
-/** Schauseite (Einheitsvektor in (a, b)): Pfadregion → zum Rückgrat, Seitenzelle → zum Bildfokus bzw. zur Kamera (+z). */
+/**
+ * Schauseite (Einheitsvektor in (a, b)): Pfadregion → zum nächsten Punkt der Pfad-Mittellinie (Makroform: an Kehren und
+ * Schnecken auch längs z), Seitenzelle → zum Bildfokus bzw. zur Kamera (+z).
+ */
 function frontOf(host: PlaneFeatureHost, site: RegionSite, f: Frame): [number, number] {
   if (site.region.kind === 'path') {
-    const dx = host.backbone(f.cz) - f.cx;
-    return Math.abs(dx) < 0.3 ? [0, 1] : [Math.sign(dx), 0];
+    const n = host.pathNearest(f.cx, f.cz);
+    const dx = n.x - f.cx;
+    const dz = n.z - f.cz;
+    const l = Math.hypot(dx, dz);
+    return l < 0.3 ? [0, 1] : [dx / l, dz / l];
   }
   const dx = site.focus[0] - f.cx;
   const dz = site.focus[1] - f.cz;
@@ -99,19 +106,26 @@ function frontOf(host: PlaneFeatureHost, site: RegionSite, f: Frame): [number, n
   return l < 2 ? [0, 1] : [dx / l, dz / l];
 }
 
+/** Mindestabstand jedes Felsens zur Pfad-Mittellinie in Pfadregionen (der Viterbi schwingt ±3,2, meidet Fels per Kosten). */
+export const ROCK_PATH_MIN = 2.2;
+
 function fitsRegion(host: PlaneFeatureHost, site: RegionSite, f: Frame, columns: RockColumn[], minPath: number): boolean {
   const key = site.region.key;
+  const onPath = site.region.kind === 'path';
+  const keep = onPath ? Math.max(ROCK_PATH_MIN, minPath) : 0;
   for (const c of columns) {
-    for (let i = 0; i < c.polygon.length; i += 2) {
+    for (let i = 0; i < c.polygon.length; i++) {
       const [a, b] = c.polygon[i]!;
       const x = f.cx + a;
       const z = f.cz + b;
+      // Abstand zur Pfad-Mittellinie an jeder Ecke; die Regionsprüfung (teurer) an jeder zweiten
+      if (keep > 0 && pathDistance(host, x, z) < keep) return false;
+      if (i % 2 === 1) continue;
       if (host.regionKeyAt(x, z) !== key) return false;
       // Rand zur Grenze: auch die Nachbarpunkte um die Ecke liegen in der Region
       for (const [ox, oz] of [[BORDER_MARGIN * 0.8, 0], [-BORDER_MARGIN * 0.8, 0], [0, BORDER_MARGIN * 0.8], [0, -BORDER_MARGIN * 0.8]] as const) {
         if (host.regionKeyAt(x + ox, z + oz) !== key) return false;
       }
-      if (site.region.kind === 'path' && minPath > 0 && pathDistance(host, x, z) < minPath) return false;
     }
   }
   return true;
@@ -421,9 +435,10 @@ function buildWall(host: PlaneFeatureHost, site: RegionSite, world: number, spec
       const h = height * (0.55 + 0.45 * Math.sin(Math.PI * t)) * (0.85 + 0.3 * rand());
       for (let inset = 0; inset <= 2.4; inset += 0.6) {
         const lateral = sgn * (half - BORDER_MARGIN - depth * 0.55 - 0.3 - inset);
-        if (onPath && Math.abs(lateral) - depth * 0.5 < minPath) break;
+        // Die Wand steht am Bandrand (Rückgrat + Bandbreite); vom Pfad (Makroform) hält sie Abstand
         const x0 = onPath ? host.backbone(z) : site.focus[0];
         const f: Frame = { cx: x0 + lateral, cz: z };
+        if (onPath && pathDistance(host, f.cx, f.cz) - depth * 0.5 < minPath) break;
         if (host.regionKeyAt(f.cx, f.cz) !== site.region.key || !isFree(occupied, f.cx, f.cz, WALL_SEGMENT * 0.45, 0.2)) continue;
         const front = onPath ? frontOf(host, site, f) : ([-sgn, 0] as [number, number]);
         const built = buildTerraces(host, f, front, WALL_SEGMENT * 1.04, h, steps, rand, { rubble: !onPath && j % 2 === 0, depth, blocks: [2.2, 3.6], jitter: 0.16 });
@@ -452,9 +467,20 @@ function placeMonolith(host: PlaneFeatureHost, site: RegionSite, world: number, 
   const height = spec.height[0] + (spec.height[1] - spec.height[0]) * rand();
   const [fx, fz] = site.focus;
   const minPath = (spec.pathDistance?.[0] ?? 2) * 0.75;
-  const away = site.region.kind === 'path' ? Math.sign(fx - host.backbone(fz)) || 1 : 0;
+  // Ausweichrichtung: vom nächsten Punkt der Pfad-Mittellinie weg (Schnecke: nach außen gilt nicht — das Zentrum liegt
+  // innen; dort rückt er in z)
+  let ax = 0;
+  let az = 0;
+  if (site.region.kind === 'path') {
+    const n = host.pathNearest(fx, fz);
+    const l = Math.hypot(fx - n.x, fz - n.z);
+    if (l > 1e-6) {
+      ax = (fx - n.x) / l;
+      az = (fz - n.z) / l;
+    } else ax = 1;
+  }
   for (let t = 0; t < 12; t++) {
-    const f: Frame = { cx: fx + away * t * 0.6, cz: fz + (t % 2 === 0 ? 1 : -1) * Math.floor((t + 1) / 2) * 0.8 };
+    const f: Frame = { cx: fx + ax * t * 0.6, cz: fz + az * t * 0.6 + (t % 2 === 0 ? 1 : -1) * Math.floor((t + 1) / 2) * 0.8 };
     const built = buildMonolith(host, f.cx, f.cz, size, height, rand);
     if (!fitsRegion(host, site, f, built.columns, minPath)) continue;
     if (!isFree(occupied, f.cx, f.cz, built.footprint * 0.8, 0.5)) continue;

@@ -10,6 +10,7 @@ export {
   PROLOGUE_WORLD_BASE,
   cellIndex,
   type LayoutParams,
+  type PlanePathHit,
   type PathSegment,
   type Region,
   type RegionKind,
@@ -92,8 +93,22 @@ export type {
   PlanetTree as PlaneTree,
   PlanetVegetationFamily as PlaneVegetationFamily,
   TrunkStyle as PlaneTrunkStyle,
+  PathTuning,
   WorldSpec,
 } from './types';
+export {
+  KEEP_GAP as MACRO_KEEP_GAP,
+  MACRO_DEFAULTS,
+  MacroLine,
+  focalClearRadius,
+  macroCenterline,
+  macroZLength,
+  type MacroCircle,
+  type MacroHit,
+  type MacroInput,
+  type MacroSegment,
+  type MacroShape,
+} from './macro';
 export { PlaneTrashPlanner, type PlaneChunkTrash, type PlaneTrashContext, type PlaneTrashNode, type PlaneVeilGrid } from './trash';
 export { PlaneMist, type MistBank, type MistKind, type MistSpec } from './mist';
-export { flankHeight, ridgeTrainHeight, ridgeTrainValley, type FlankSpec, type RidgeTrainSpec } from './flank';
+export { flankHeight, ridgeTrainCrest, ridgeTrainHeight, ridgeTrainValley, type FlankSpec, type RidgeTrainSpec } from './flank';

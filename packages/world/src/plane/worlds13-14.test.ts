@@ -34,13 +34,16 @@ describe('Welten 13 und 14 (Level 149–172)', () => {
     }
   });
 
-  it('Welt 13: ein Monolith neben dem Pfad, mit Plateau-Ankern und sieben Pferden am Fuß', () => {
+  it('Welt 13: ein Monolith, den die Schnecke des Pfads umrundet, mit Plateau-Ankern und sieben Pferden am Fuß', () => {
     const r = field.features.region(`p${k13}`);
     const monoliths = r.formations.filter((f) => f.kind === 'monolith');
     expect(monoliths).toHaveLength(1);
     const m = monoliths[0]!;
-    // der Turm steht abseits: der Pfad läuft am Plateau vorbei
-    expect(Math.abs(m.cx - field.layout.backbone(m.cz))).toBeGreaterThan(8);
+    // Makroform (W3): der Turm steht im Zentrum der Schnecke, die Mittellinie umläuft das Plateau mit Abstand
+    const macro = field.layout.macro(k13);
+    expect(macro.shape).toBe('spiral');
+    expect(Math.hypot(m.cx - macro.centre![0], m.cz - macro.centre![1])).toBeLessThan(3);
+    expect(field.layout.pathDistance(m.cx, m.cz)).toBeGreaterThan(11);
     // höher als alles andere in der Welt, mit Stufen (mehrere Säulen) und Anker auf dem Plateau
     expect(m.height - (m.ground ?? 0)).toBeGreaterThan(15);
     expect(m.columns.length).toBeGreaterThan(4);

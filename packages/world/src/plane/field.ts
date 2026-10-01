@@ -3,7 +3,8 @@ import type { Vec3 } from '../capPatch';
 import { TREE_KIND_LIST, type TreeKind } from '../scatterTrees';
 import type { WorldFeatureSpec } from '../features/types';
 import { GradientNoise2, hash2, smoothstep } from './noise2';
-import { WorldLayout, type Region, type RegionSample } from './layout';
+import { WorldLayout, type PlanePathHit, type Region, type RegionSample } from './layout';
+import { ROUTE_HALF_WIDTH, focalClearRadius } from './macro';
 import type { WorldCatalog } from './catalog';
 import { PlaneFeatures, type RegionSite } from './features/index';
 import type { LedgeAnchor, RockColumn, RockFormation } from './features/types';
@@ -161,6 +162,14 @@ export class PlaneField {
         backbone: (z) => this.layout.backbone(z),
         backboneSlope: (z) => this.layout.backboneSlope(z),
         bandHalf: (z) => this.layout.bandHalf(z),
+        pathDistance: (x, z) => this.layout.pathDistance(x, z),
+        pathNearest: (x, z) => this.layout.pathNearest(x, z, this.pathHit),
+        pathPoint: (k, t) => this.layout.pathPoint(k, t),
+        pathTAtZ: (k, z, pick) => {
+          const m = this.layout.macro(k);
+          return m.s[m.indexAtZ(z, pick)]! / Math.max(1e-6, m.length);
+        },
+        pathEnvelope: (z, side, window) => this.layout.pathEnvelope(z, side, window),
       },
       {
         site: (key) => this.regionSite(key),
@@ -176,11 +185,14 @@ export class PlaneField {
               heightAt: (x, z) => this.heightNoLandmarks(x, z),
               isWater: (x, z, m) => this.features.isWater(this.layout.sample(x, z, this.rs3).region.key, x, z, m),
               isBlocked: (x, z, r) => this.landmarkBlocked(x, z, r),
-              pathDistance: (x, z) => this.backboneDistance(x, z),
+              pathDistance: (x, z) => this.pathCorridorDistance(x, z),
               worldAt: (x, z) => this.layout.sample(x, z, this.rs3).world,
               regionAt: (x, z) => this.layout.sample(x, z, this.rs3).region,
               segment: (k) => this.layout.segment(k),
               backbone: (z) => this.layout.backbone(z),
+              pathEnvelope: (z, side) => this.layout.pathEnvelope(z, side),
+              pathSide: (x, z) => this.layout.pathSide(x, z),
+              landmarkCentre: (k) => this.landmarkCentre(k),
               landmarkChance: (w) => this.catalog.spec(w).landmarkChance ?? 1,
             },
             {
@@ -192,14 +204,21 @@ export class PlaneField {
           );
   }
 
+  private readonly pathHit = {} as PlanePathHit;
+
   /**
-   * Abstand zur Mittellinie des Levelpfads, geschätzt aus dem Rückgrat (der Pfad schwingt höchstens ±3,2 darum): ohne
-   * den Pfad zu bauen (die Wahrzeichen werden vor dem Pfad geplant, der Pfad besucht sie danach).
+   * Abstand zum Korridor des Levelpfads: Abstand zur Makroform-Mittellinie (W3) minus dem Spielraum der Verfeinerung
+   * (±3,2) — ohne den Pfad zu bauen (die Wahrzeichen werden vor dem Pfad geplant, der Pfad besucht sie danach).
    */
-  backboneDistance(x: number, z: number): number {
-    const slope = this.layout.backboneSlope(z);
-    const u = Math.abs(x - this.layout.backbone(z)) / Math.hypot(1, slope);
-    return Math.max(0, u - 3.2);
+  pathCorridorDistance(x: number, z: number): number {
+    return Math.max(0, this.layout.pathDistance(x, z) - ROUTE_HALF_WIDTH);
+  }
+
+  /** Zentrum einer Schnecke um ein Wahrzeichen (`shape: spiral`, `centre: landmark`) im Abschnitt k, sonst null. */
+  landmarkCentre(k: number): [number, number] | null {
+    const sh = this.layout.shapeOf(k);
+    if (!sh || sh.shape !== 'spiral' || sh.params.centre !== 'landmark') return null;
+    return this.layout.macro(k).centre;
   }
 
   /**
@@ -484,11 +503,10 @@ export class PlaneField {
       let x: number;
       let z: number;
       if (region.kind === 'path') {
-        const seg = this.layout.segment(region.k);
-        const along = focal.along ?? 0.5;
-        z = seg.zStart + (seg.zEnd - seg.zStart) * Math.min(0.9, Math.max(0.1, along));
-        const lateral = focal.lateral ?? (hash2(region.k, 7, this.seed) < 0.5 ? -1 : 1) * 10;
-        x = this.layout.backbone(z) + lateral;
+        // Lage aus der Weltenlage: `along`/`lateral` am Rückgrat, im Abschnitt mit Schnecke um den Fokus ihr Zentrum
+        const p = this.layout.focalPoint(region.k, focal);
+        x = p.x;
+        z = p.z;
       } else {
         const jx = (hash2(region.c, region.j, this.seed + 17) - 0.5) * 6;
         const jz = (hash2(region.c, region.j, this.seed + 23) - 0.5) * 6;
@@ -649,9 +667,5 @@ export class PlaneField {
 
 /** Standard-Freiraum eines Fokus-Elements bzw. Begleiters nach Art (Scheune 4.5, Eiche und Schnee-Ahorn nach Größe). */
 function defaultClearRadius(kind: TreeKind | PlanetPropKind | undefined, scale: number): number {
-  if (!kind) return 0;
-  if (kind === 'barn') return 4.5;
-  if (kind === 'oak' || kind === 'winterOak') return 2.4 * scale;
-  if (kind === 'maple') return 1.6 * scale;
-  return 3.2;
+  return focalClearRadius(kind, scale);
 }

@@ -1,5 +1,5 @@
 import { smoothstep } from './geometry';
-import { BORDER_MARGIN, bandAxisAngle, pathDistance, placementCandidate, regionHalfWidth, type PlaneFeatureHost, type RegionSite } from './host';
+import { BORDER_MARGIN, bandAxisAngle, pathDistance, placementCandidate, type PlaneFeatureHost, type RegionSite } from './host';
 import type { Lake, LakeSpec } from './types';
 
 /** Belegte Kreise (Ebene, Radius in Welteinheiten) anderer Merkmale — Mindestabstand bei der Platzierung. */
@@ -69,7 +69,7 @@ export function makeLake(
   const shore = lakeShore(radius);
   const k = Math.sqrt(stretch);
   const reach = radius * wobbleAmp(wobble) * Math.max(k, 1 / k) + shore;
-  const lake: Lake = { id, world, region: site.region.key, cx: x, cz: z, radius, stretch, axis: bandAxisAngle(host, site, z), wobble, level: 0, shore, frozen, reach, ...(swamp ? { swamp: true } : {}) };
+  const lake: Lake = { id, world, region: site.region.key, cx: x, cz: z, radius, stretch, axis: bandAxisAngle(host, site, x, z), wobble, level: 0, shore, frozen, reach, ...(swamp ? { swamp: true } : {}) };
   let lo = Infinity;
   let hi = -Infinity;
   for (let i = 0; i < 28; i++) {
@@ -118,7 +118,7 @@ export function generateLakes(host: PlaneFeatureHost, site: RegionSite, world: n
   return out;
 }
 
-/** Liegt das ganze Seeufer (plus Böschung) in der Region und außerhalb des Pfadkorridors? */
+/** Liegt das ganze Seeufer (plus Böschung) in der Region und außerhalb des Pfadkorridors (Abstand zur Makroform-Mittellinie)? */
 export function lakeFits(host: PlaneFeatureHost, site: RegionSite, lake: Lake, minPath: number): boolean {
   const key = site.region.key;
   for (let i = 0; i < 20; i++) {
@@ -140,7 +140,6 @@ export function lakeFits(host: PlaneFeatureHost, site: RegionSite, lake: Lake, m
     const r = lakeRadiusAt(lake, (sgn * Math.PI) / 2) / k + lake.shore + pad;
     if (host.regionKeyAt(lake.cx - sa * r * sgn, lake.cz + ca * r * sgn) !== key) return false;
   }
-  void regionHalfWidth;
   return true;
 }
 

@@ -76,6 +76,13 @@ export function ridgeTrainValley(spec: RidgeTrainSpec, seed: number, x: number, 
   return z + (Math.round(u) - u) * Math.max(1, spec.period);
 }
 
+/** Nächste Kammlinie der Hügelstaffel längs z an der Stelle x (Gratweg der Makroform `ridge`). */
+export function ridgeTrainCrest(spec: RidgeTrainSpec, seed: number, x: number, z: number): number {
+  const u = ridgePhase(spec, seed, x, z);
+  const c = Math.round(u - 0.5) + 0.5;
+  return z + (c - u) * Math.max(1, spec.period);
+}
+
 /** Zusatzhöhe der Hügelstaffel an (x, z). */
 export function ridgeTrainHeight(spec: RidgeTrainSpec, seed: number, x: number, z: number): number {
   const u = ridgePhase(spec, seed, x, z);

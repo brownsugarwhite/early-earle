@@ -5,8 +5,10 @@
  * hinter dem Tor, vor dem Start).
  *
  * Abgeleitet (Loader `@ee/world` `resolveRoute`): Levelzahl (bis zum ersten `hinted`), Riesenbaum-Abschnitt
- * (`tree`), letzter Knoten (Torknoten), Level des Tors. Makroformen (`shape`, `shapeParams`) und Grenztröge (`gorges`)
- * sind hier nur deklariert — ihre Bedeutung kommt mit den Baustellen W3 und W5c.
+ * (`tree`), letzter Knoten (Torknoten), Level des Tors. Makroformen (`shape`, `shapeParams`, W3) formen den Pfad je
+ * Abschnitt (`@ee/world` `plane/macro.ts`); die z-Länge eines Abschnitts mit Makroform folgt aus der Form und steht
+ * ausdrücklich in `length` (Test: `length === macroZLength(shape, levels × nodeSpacing, shapeParams)`). Grenztröge
+ * (`gorges`) sind nur deklariert — ihre Bedeutung kommt mit W5c.
  */
 
 import { z } from 'zod';
@@ -21,7 +23,12 @@ export type RouteState = (typeof ROUTE_STATES)[number];
 
 const WorldId = z.string().regex(/^w\d{2}$/, 'Weltkennung wie "w09"');
 
-/** Parameter der Makroform (W3); alle optional, die Form wählt Standardwerte. */
+/**
+ * Parameter der Makroform (W3); alle optional, die Form wählt Standardwerte. `amplitude`: seitliche Ausdehnung (Mäander,
+ * Kletterweg, Serpentine, Gratweg); `turns`: Halbwellen (Mäander), Kehren (Serpentine) bzw. Umlauf der Schnecke (Anteil
+ * einer Umrundung); `side`: Seite (+1 rechts, −1 links; beim Mäander einseitige Bögen); `centre`: Zentrum der Schnecke
+ * (Fokus-Element oder Wahrzeichen); `radius`: Kehrenradius (Serpentine) bzw. Bogenradius der Schnecke.
+ */
 export const RouteShapeParamsSchema = z
   .object({
     amplitude: z.number().positive(),
@@ -38,12 +45,12 @@ export const RouteEntrySchema = z.object({
   world: WorldId,
   /** Anzahl Level (Knoten) im Abschnitt; ein angedeuteter Abschnitt trägt nur den Torknoten (1) oder keinen (0). */
   levels: z.number().int().min(0),
-  /** Länge entlang z (Welteinheiten); Standard `levels × nodeSpacing`. */
+  /** Länge entlang z (Welteinheiten); Standard `levels × nodeSpacing`, mit Makroform aus der Form abgeleitet. */
   length: z.number().positive().optional(),
   state: z.enum(ROUTE_STATES).optional(),
   /** Der Abschnitt trägt den Riesenbaum (seine Level steigen Stamm und Krone hinauf). Höchstens einer. */
   tree: z.literal(true).optional(),
-  /** Makroform des Pfads (W3, nur deklariert). */
+  /** Makroform des Pfads (W3): Mäander, Serpentine, Schnecke, Gratweg, Kletterweg. */
   shape: z.enum(ROUTE_SHAPES).optional(),
   shapeParams: RouteShapeParamsSchema.optional(),
   /** Freie Notiz (Weltname, Referenz) — ohne Bedeutung für das Spiel. */
