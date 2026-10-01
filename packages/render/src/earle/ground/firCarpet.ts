@@ -1,5 +1,5 @@
 import { Vector3 } from 'three/webgpu';
-import { abs, clamp, dot, float, floor, fract, log2, max, min, mix, normalize, round, select, sin, smoothstep, step, uniform, vec2 } from 'three/tsl';
+import { abs, clamp, dot, float, floor, fract, log2, min, mix, normalize, round, select, sin, smoothstep, step, uniform, vec2 } from 'three/tsl';
 import type { FloatNode, PaletteLookup, TSLUniform, Vec3Node } from '../tsl';
 
 /**
