@@ -6,11 +6,12 @@ import type { HeroTreeSite } from '../lab/earle/heroTreeSite';
 import { segmentOf, type PathDot, type PathLayout, type PathNode, type PathWindow, type RibbonSample } from './path';
 
 /**
- * The flow's level path on the infinite plane (ADR 0002): the routed ground path of `@ee/world` (`PlanePath`, per
- * path segment, random access up to any level) plus the stretch that climbs the giant tree (levels 80–95). On the tree
- * every stone lies ON it — flush on the bark while the path spirals up the trunk, then resting on the crown domes —
- * never hovering beside it. Trunk levels are played on the root terrace at the trunk's foot; crown levels on the crown.
- * Nodes after the last authored level continue the path as locked ("bald") stones.
+ * The flow's level path on the infinite plane (ADR 0002, Route 15 + 1): the routed ground path of `@ee/world`
+ * (`PlanePath`, per path segment, random access up to the gate node) plus the stretch that climbs the giant tree
+ * (levels 99–114, `TREE_RANGE`). On the tree every stone lies ON it — flush on the bark while the path spirals up the
+ * trunk, then resting on the crown domes — never hovering beside it. Trunk levels are played on the root terrace at the
+ * trunk's foot; crown levels on the crown. Nodes without a level file and the gate node of the hinted zone 16 are
+ * locked ("bald") stones; the path ends at the gate (`lastNode`).
  *
  * All positions in plane coordinates `[x, h, z]`. Windows (`window(first, last)`) feed the path renderer; `corridor`
  * keeps the scatter off the final path (stones on the tree, connectors to and from it).
@@ -77,8 +78,12 @@ interface Connector {
 const CACHE = 64;
 
 export class FlowPath implements PathLayout {
-  /** Last playable node (0-based): the last authored level. */
+  /** Last playable node (0-based): the last route level that has a level file. */
   readonly lastPlayable: number;
+  /** Last node at all (0-based): the gate node of the hinted zone (the path ends there). */
+  readonly lastNode: number;
+  /** The gate node (0-based), −1 without one. */
+  readonly gateNode: number;
   /** Node range on the giant tree (−1 without the tree). */
   readonly treeFirst: number;
   readonly treeLast: number;
@@ -93,8 +98,13 @@ export class FlowPath implements PathLayout {
     readonly planet: EarlePlanet,
     readonly site: HeroTreeSite | null,
     treeWorld = 0,
+    /** Levels with a file (`LEVELS.length`): later route nodes stay locked until their files exist. */
+    playable = Number.POSITIVE_INFINITY,
   ) {
-    this.lastPlayable = planet.lastAuthoredNode;
+    this.lastPlayable = Math.min(planet.lastAuthoredNode, playable - 1);
+    this.lastNode = planet.lastNode;
+    const gate = planet.layout.gateLevel;
+    this.gateNode = gate !== null && Number.isFinite(this.lastNode) ? gate - 1 : -1;
     this.treeWorld = treeWorld;
     this.treeFirst = site ? site.first : -1;
     this.treeLast = site ? site.last : -1;
@@ -106,9 +116,9 @@ export class FlowPath implements PathLayout {
     return this.site !== null && i >= this.treeFirst && i <= this.treeLast;
   }
 
-  /** Node i (0-based), unbounded. */
+  /** Node i (0-based), clamped to [0, lastNode] (no nodes behind the gate). */
   node(index: number): PathNode {
-    const i = Math.max(0, Math.floor(index));
+    const i = Math.max(0, Math.min(Math.floor(index), this.lastNode));
     let n = this.nodes.get(i);
     if (n) return n;
     n = this.isTreeNode(i) ? this.treeNode(i) : this.groundNode(this.planet.path.node(i));
@@ -130,6 +140,7 @@ export class FlowPath implements PathLayout {
       world: g.world,
       rise: g.rise,
       ...(g.index > this.lastPlayable ? { locked: true } : {}),
+      ...(g.index === this.gateNode ? { gate: true } : {}),
     };
     const lm = g.landmark;
     if (lm) {
@@ -175,8 +186,8 @@ export class FlowPath implements PathLayout {
 
   /** Knoten, Punkte und Lichtband der Knoten [first, last] (Punkte und Band ab dem Zugang zu `first`). */
   window(first: number, last: number): PathWindow {
-    const a = Math.max(0, Math.floor(first));
-    const b = Math.max(a, Math.floor(last));
+    const a = Math.max(0, Math.min(Math.floor(first), this.lastNode));
+    const b = Math.max(a, Math.min(Math.floor(last), this.lastNode));
     const nodes: PathNode[] = [];
     for (let i = a; i <= b; i++) nodes.push(this.node(i));
     const dots = this.dotsInRange(a - 1, b);
@@ -187,8 +198,8 @@ export class FlowPath implements PathLayout {
   /** Path segments whose ground data can hold seg values in [a, b]. */
   private segmentsFor(a: number, b: number): number[] {
     const layout = this.planet.layout;
-    const k0 = layout.segmentOfLevel(Math.max(1, a + 1));
-    const k1 = layout.segmentOfLevel(Math.max(1, b + 1));
+    const k0 = layout.segmentOfLevel(Math.max(1, Math.min(a, this.lastNode) + 1));
+    const k1 = layout.segmentOfLevel(Math.max(1, Math.min(b, this.lastNode) + 1));
     const out: number[] = [];
     for (let k = Math.max(0, k0 - 1); k <= k1; k++) out.push(k);
     return out;
@@ -244,7 +255,8 @@ export class FlowPath implements PathLayout {
     const out: PathCorridor = { nodes: [], dots: [] };
     const layout = this.planet.layout;
     const k0 = layout.segmentAtDistance(-z1) - 1;
-    const k1 = layout.segmentAtDistance(-z0) + 1;
+    // Abschnitte hinter dem Tor tragen keinen Pfad (wie das Vorland)
+    const k1 = Math.min(layout.segmentAtDistance(-z0) + 1, layout.lastSegment);
     for (let k = Math.max(0, k0); k <= k1; k++) {
       const c = this.segmentCorridor(k);
       for (const n of c.nodes) if (n[0] >= x0 && n[0] <= x1 && n[1] >= z0 && n[1] <= z1) out.nodes.push(n);

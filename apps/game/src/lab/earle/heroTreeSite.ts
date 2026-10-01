@@ -14,9 +14,13 @@ import {
 import { createGrandTrees, grandSpec, layoutGrandTrees, type GrandTreeSite, type GrandTrees } from '@ee/render/earle/tree/grand.ts';
 import type { EarlePlanet } from '@ee/render';
 import type { PlaneLandmarkSlot } from '@ee/world';
+import { TREE_RANGE } from './zones';
 
-/** Levels (1-based) whose nodes leave the ground path and climb the giant tree (trunk → ramp → crown rim). */
-export const TREE_LEVELS: readonly [number, number] = [80, 95];
+/**
+ * Levels (1-based) whose nodes leave the ground path and climb the giant tree (trunk → ramp → crown rim): the route
+ * entry with `tree` in `content/zones/route.json` (Route 15 + 1: levels 99–114).
+ */
+export { TREE_RANGE };
 /** Tree size on the map: 0.4 × the tree lab size → ≈ 10 units tall, crown ≈ 12 wide (3–6× the other trees). */
 export const TREE_SCALE = 0.4;
 /** Distance puck ↔ bark in world units (the path is computed in tree units: 0.9 / scale). */
@@ -109,8 +113,8 @@ const _sphere = new Sphere();
  * features, the path is re-routed around it) and prepares rails and markers.
  */
 export function createHeroTreeSite(world: EarlePlanet, options: { worldIndex: number; quality: TreeQuality; seed: number }): HeroTreeSite {
-  const first = TREE_LEVELS[0] - 1;
-  const last = TREE_LEVELS[1] - 1;
+  const first = TREE_RANGE[0] - 1;
+  const last = TREE_RANGE[1] - 1;
   const count = last - first + 1;
   const before = world.path.node(first - 1);
 

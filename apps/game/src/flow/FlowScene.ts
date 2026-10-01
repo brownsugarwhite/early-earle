@@ -28,7 +28,7 @@ import type { RouteStop } from './choreo/route';
 import { CreatureHost } from './choreo/creatureHost';
 import { playIntro } from './choreo/intro';
 import { Departure, type TravelLog } from './choreo/depart';
-import { refuseNode } from './choreo/locked';
+import { gateLine, isGateNode, refuseNode } from './choreo/locked';
 import { canEnterNode, shouldPlayIntro, storyAfterWin } from './progression/gate';
 import { createMapFocusConstraint, type MapFocusConstraint, type MapLimit } from './progression/mapFocus';
 import { SCROLL_MARGIN } from './progression/scrollLimit';
@@ -1440,9 +1440,9 @@ export class FlowScene implements SceneController {
     const board = this.board!;
     const store = useFlowStore.getState();
     const node = Math.max(0, index);
-    // Locked stones ("bald"): no level yet — REX says so
+    // Locked stones ("bald"): no level (file) yet — REX says so; the gate node of the hinted zone has its own line
     if (node > world.layout.lastPlayable || !FLOW_LEVELS[node]) {
-      store.setRex(rexLine('locked') ?? 'Bald. Hier wächst noch was.');
+      store.setRex(isGateNode(world.layout, node) ? gateLine(node) : (rexLine('locked') ?? 'Bald. Hier wächst noch was.'));
       return;
     }
     this.story.finishNow();
@@ -1551,7 +1551,7 @@ export class FlowScene implements SceneController {
     const world = this.world!;
     const flow = useFlowStore.getState();
     const next = flow.current + 1;
-    if (next > world.layout.lastPlayable + 1) return;
+    if (next > world.layout.lastPlayable + 1 || next > world.layout.lastNode) return;
     if (!canEnterNode(next, useProgress.getState())) {
       refuseNode(this.stage, next);
       return;
@@ -1572,6 +1572,7 @@ export class FlowScene implements SceneController {
     const flow = useFlowStore.getState();
     const intro = rexIntroFor(node + 1);
     if (intro) flow.setRex(intro);
+    else if (isGateNode(this.world!.layout, node)) flow.setRex(gateLine(node));
     else if (node > this.world!.layout.lastPlayable) flow.setRex(rexLine('locked') ?? 'Weiter geht’s bald. Die Welt wächst noch.');
   }
 

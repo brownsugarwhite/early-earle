@@ -728,11 +728,13 @@ export class NodePath {
 
   /** Refills all buffers for the nodes around `centre` (plus the current node's neighbourhood). */
   private buildWindow(centre: number): void {
-    let first = Math.max(0, centre - WINDOW_BEHIND);
-    let last = centre + WINDOW_AHEAD;
+    // The path ends at the gate node (Route 15 + 1): the window never reaches beyond the last node
+    const lastNode = this.layout.lastNode;
+    let first = Math.max(0, Math.min(centre, lastNode) - WINDOW_BEHIND);
+    let last = Math.min(centre + WINDOW_AHEAD, lastNode);
     // The current node (ring) stays inside while it is near the view
     if (this.current < first && first - this.current < 12) first = this.current;
-    if (this.current > last && this.current - last < 12) last = this.current;
+    if (this.current > last && this.current - last < 12) last = Math.min(this.current, lastNode);
     last = Math.min(last, first + NODE_CAP - 1);
     const win = this.layout.window(first, last);
     this.win = win;
