@@ -857,8 +857,11 @@ export class CascadeFitter {
       let tx: number;
       let ty: number;
       if (locked) {
-        tx = needX > cf.texelX * 2 || needX < cf.texelX * 0.5 ? quantizeTexel(needX) : cf.texelX;
-        ty = needY > cf.texelY * 2 || needY < cf.texelY * 0.5 ? quantizeTexel(needY) : cf.texelY;
+        // Gesperrtes Texel halten, solange der Bedarf (samt Rand) höchstens 25 % über das Rechteck hinausragt — sonst
+        // wächst es (ein Neuzeichnen), statt dass die Kaskade dauerhaft zu klein bleibt und beim Schwenken jedes Bild
+        // neu snappt
+        tx = needX > cf.texelX * 1.25 || needX < cf.texelX * 0.5 ? quantizeTexel(needX) : cf.texelX;
+        ty = needY > cf.texelY * 1.25 || needY < cf.texelY * 0.5 ? quantizeTexel(needY) : cf.texelY;
       } else if (coverLocked) {
         tx = needX > cf.texelX || needX < cf.texelX * 0.6 ? quantizeTexel(needX * 1.12) : cf.texelX;
         ty = needY > cf.texelY || needY < cf.texelY * 0.6 ? quantizeTexel(needY * 1.12) : cf.texelY;

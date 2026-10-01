@@ -1269,7 +1269,11 @@ export class CascadedShadows {
       const padY = 4 * cf.texelY + (cf.needY1 - cf.needY0) * 0.02;
       const x0 = cf.originPlaneX - gX;
       const y0 = cf.originPlaneY - gY;
-      const rectOk = x0 + padX <= cf.needX0 && x0 + c.size.width * cf.texelX - padX >= cf.needX1 && y0 + padY <= cf.needY0 && y0 + c.size.height * cf.texelY - padY >= cf.needY1;
+      // Passt der Bedarf gar nicht ins Rechteck (Texel gesperrt, Hügel ins Bild gekommen), bleibt es stehen — die
+      // gröbere Kaskade deckt den Rest, der nächste Refit wächst das Texel; sonst snappte es jedes Bild neu
+      const fitsX = cf.needX1 - cf.needX0 <= c.size.width * cf.texelX - 2 * padX;
+      const fitsY = cf.needY1 - cf.needY0 <= c.size.height * cf.texelY - 2 * padY;
+      const rectOk = (!fitsX || (x0 + padX <= cf.needX0 && x0 + c.size.width * cf.texelX - padX >= cf.needX1)) && (!fitsY || (y0 + padY <= cf.needY0 && y0 + c.size.height * cf.texelY - padY >= cf.needY1));
       const depthOk = cf.depthPlane0 - gL <= cf.needZ0 && cf.depthPlane1 - gL >= cf.needZ1;
       if (!rectOk || !depthOk) {
         // Neu snappen: Bedarf mittig im Rechteck (Ebenenkoordinaten), Tiefenfenster mit Rand
