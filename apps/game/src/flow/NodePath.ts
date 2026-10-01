@@ -367,6 +367,8 @@ export class NodePath {
   private readonly quats: Quaternion[] = [];
   private readonly anchor = { x: 0, z: 0 };
   private windowCentre = -1e9;
+  /** The current node when the window was last built (−1 = none yet). */
+  private windowCurrent = -1;
   private current = 0;
   private done = 0;
   private time = 0;
@@ -717,7 +719,9 @@ export class NodePath {
     const f = this.planet.focus;
     const centre = Math.max(0, Math.round(this.layout.nearestNode(f.x, f.z)));
     const want = Math.max(centre, 0);
-    if (this.win && Math.abs(want - this.windowCentre) <= WINDOW_SLACK && this.inWindow(this.current)) return;
+    // The current node only forces a rebuild when it changed since the last one: a view far from it (free panning, the
+    // gate far ahead of the last playable level) would otherwise rebuild the window every frame
+    if (this.win && Math.abs(want - this.windowCentre) <= WINDOW_SLACK && (this.inWindow(this.current) || this.current === this.windowCurrent)) return;
     this.buildWindow(want);
   }
 
@@ -739,6 +743,7 @@ export class NodePath {
     const win = this.layout.window(first, last);
     this.win = win;
     this.windowCentre = centre;
+    this.windowCurrent = this.current;
     this.windowBuilds++;
     const f = this.planet.focus;
     const ax = Math.round(f.x);
