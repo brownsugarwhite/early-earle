@@ -6,8 +6,9 @@ import { fileURLToPath } from 'node:url';
 // 393 × 852 → `__flow.bench()` (src/flow/mapBench.ts: Leerlauf/Schwenken × alles/ohne Schatten/ohne Punkte/ohne
 // Vegetation, DPR 2/1,75/1,5, A/B mit onSubmittedWorkDone) → docs/progress/karte-perf-<preset>[-w07].json. Am Start
 // (Welt 09, Level 1) und bei Level 66 (Welt 07). Regressionswächter vorerst mit weicher Grenze: p99 der seriellen
-// Bildzeit beim Schwenken ≤ 60 ms (`EE_PERF_P99`). Das Ziel 20 ms (später 12) reißt schon die Baseline (2026-10-01:
-// 28–49 ms, Ursache vor allem `rebuildContent` in ≈ 60 % der Schwenk-Bilder, siehe docs/progress/karte-perf-mac-baseline.md)
+// Bildzeit beim Schwenken ≤ 80 ms (`EE_PERF_P99`). Das Ziel 20 ms (später 12) reißt schon die Baseline (2026-10-01,
+// Mac unter Last: 28–66 ms; Ursache vor allem `rebuildContent` in ≈ 60 % der Schwenk-Bilder mit Spitzen bis ≈ 47 ms,
+// siehe docs/progress/karte-perf-mac-baseline.md)
 // — es steht als Hinweis in den Anmerkungen; nach R4.6 auf 20, nach R4.2–R4.7 auf 12 senken. Auf CI übersprungen
 // (keine GPU), ebenso ohne WebGPU-Adapter. Lauf: `E2E_PORT=4351 node scripts/e2e.mjs e2e/karte-perf-webgpu.spec.ts`
 // (≈ 5 min); schreibt die JSONs neu.
@@ -17,7 +18,7 @@ test.use({ launchOptions: { args: ['--use-angle=metal', '--enable-gpu', '--ignor
 test.setTimeout(480_000);
 
 const OUT = fileURLToPath(new URL('../../../docs/progress/', import.meta.url));
-const P99_PAN_MAX_MS = Number(process.env.EE_PERF_P99 ?? 60);
+const P99_PAN_MAX_MS = Number(process.env.EE_PERF_P99 ?? 80);
 /** Ziel aus dem Plan (R4, Hoch am Mac); verfehlt = Anmerkung, kein Fehler (noch). */
 const P99_PAN_TARGET_MS = 20;
 const GPU_ERROR = /WGSL|ShaderModule|pipeline creation failed|Invalid RenderPipeline|unresolved value|Invalid (BindGroup|Buffer|Texture)/i;
