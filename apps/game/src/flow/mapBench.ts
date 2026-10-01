@@ -18,11 +18,13 @@ import type { MapWorld } from './MapWorld';
  *   der Hauptpass noch kodiert). CPU-Marken per `performance.now()`: `world.update` ohne Chunk-Bau und Inhalt-Neubau,
  *   Chunk-Bau (`stats.buildMs`), Inhalt-Neubau (`rebuildContent`), Fit (`beforeRender` der Kaskaden: Signatur, Refit,
  *   Pässe anstoßen), Encode (`renderer.render` ohne Fit), Szene (Held, Weg, Wesen … = Rest des Bildes).
- * - **Replay** (GPU je Reihe): dasselbe Bild 2 × und 8 × direkt hintereinander, je 8 Proben im Wechsel; aus den Medianen
+ * - **Replay** (GPU je Reihe): dasselbe Bild 2 × und 8 × direkt hintereinander, je 8 Proben; aus den Medianen
  *   `T(B) = B·g + L` folgen die Kosten je Bild `g` (= max(Encode, GPU) bei voll getakteter GPU) und die feste
  *   Rückmeldezeit `L` je Warten auf `onSubmittedWorkDone` (Chrome/Metal ≈ 2,5 ms; steckt in jedem `Bild` der
  *   Bildreihe). Schwenken: jedes Replay-Bild mit Schattenpass, wie beim Schwenken jedes Bild. Die Posten (Schatten,
- *   Punkte, Vegetation, DPR) sind Differenzen der Reihen.
+ *   Punkte, Vegetation, DPR) sind Differenzen der Reihen; ihre GPU-Anteile werden
+ *   gepaart gemessen: das Replay einer Varianten- oder DPR-Reihe wechselt Probe für Probe mit „alles“ bei DPR 2 am selben
+ *   Bild (wie `benchShadowPass` im Schatten-Lab) — Drift durch Wärme, Takt oder fremde GPU-Last fällt heraus.
  *
  * Achtung beim Lesen von `Bild`: Es enthält `L` und den Hochlauf einer GPU, die zwischen den Bildern ruht (nach 10 ms
  * Pause ≈ +3,5 ms auf dem M3) — als Bildzeit also konservativ; die GPU-Posten stehen in `gpu`.
@@ -60,6 +62,8 @@ export interface MapBenchRow {
   warten: MapBenchStat;
   /** Replay: ms je Bild bei Bildern direkt hintereinander (= max(Encode, GPU), ohne Rückmeldezeit); null ohne Messung. */
   gpu: number | null;
+  /** Gepaartes „alles“ bei der Basis-DPR, im selben Replay im Wechsel gemessen (Varianten- und DPR-Reihen; sonst null). */
+  gpuBasis: number | null;
   /** Feste Rückmeldezeit je Warten auf onSubmittedWorkDone (aus dem Replay; steckt in `bild` und `gpuRest`). */
   gpuSync: number | null;
   /** Encode-Anteil im Replay (CPU ms je Bild): liegt er nahe `gpu`, ist das Replay CPU-gebunden. */
@@ -267,6 +271,11 @@ function minus(a: Kennzahlen, b: Kennzahlen): Kennzahlen {
   return { gpu: a.gpu !== null && b.gpu !== null ? r2(a.gpu - b.gpu) : null, bild: r2(a.bild - b.bild), cpu: r2(a.cpu - b.cpu), gpuRest: r2(a.gpuRest - b.gpuRest) };
 }
 
+/** GPU-Differenz aus dem gepaarten Replay der Reihe (im Wechsel gemessen), sonst die Differenz der Reihen. */
+function gepaart(k: Kennzahlen, r: MapBenchRow): Kennzahlen {
+  return r.gpuBasis !== null && r.gpu !== null ? { ...k, gpu: r2(r.gpuBasis - r.gpu) } : k;
+}
+
 function mittel(a: Kennzahlen, b: Kennzahlen): Kennzahlen {
   return { gpu: a.gpu !== null && b.gpu !== null ? r2((a.gpu + b.gpu) / 2) : a.gpu, bild: r2((a.bild + b.bild) / 2), cpu: r2((a.cpu + b.cpu) / 2), gpuRest: r2((a.gpuRest + b.gpuRest) / 2) };
 }
@@ -274,7 +283,8 @@ function mittel(a: Kennzahlen, b: Kennzahlen): Kennzahlen {
 /**
  * Posten aus den Reihen (je Szene, bei der Basis-DPR): Basis = „alles“ (Mittel aus Start und Kontrolle, wenn
  * vorhanden), Posten = Basis − Reihe ohne ihn; Rest = Basis − Schatten − Vegetation inkl. Punkte; DPR-Stufen als
- * Ersparnis gegenüber der Basis; Drift = Kontrolle − Start.
+ * Ersparnis gegenüber der Basis; Drift = Kontrolle − Start. GPU-Differenzen der Varianten und DPR-Stufen kommen aus
+ * dem gepaarten Replay der Reihe (`gpuBasis − gpu`), wenn vorhanden.
  */
 export function computePosten(rows: MapBenchRow[], baseDpr: number): MapBenchPosten[] {
   const out: MapBenchPosten[] = [];
@@ -288,7 +298,7 @@ export function computePosten(rows: MapBenchRow[], baseDpr: number): MapBenchPos
     const push = (posten: string, k: Kennzahlen) => out.push({ szene, posten, ...k });
     const delta = (variante: MapBenchVariante): Kennzahlen | null => {
       const r = find(variante);
-      return r ? minus(base, kennzahlen(r)) : null;
+      return r ? gepaart(minus(base, kennzahlen(r)), r) : null;
     };
     const schatten = delta('ohne-schatten');
     const punkte = delta('ohne-punkte');
@@ -301,7 +311,7 @@ export function computePosten(rows: MapBenchRow[], baseDpr: number): MapBenchPos
     if (schatten && vegetation) push('Rest (Gelände, Himmel, Nebel, Weg, Held …)', minus(minus(base, schatten), vegetation));
     for (const r of rows) {
       if (r.szene !== szene || r.variante !== 'alles' || r.kontrolle || Math.abs(r.dpr - baseDpr) < 1e-6) continue;
-      push(`DPR ${fmtDpr(baseDpr)} → ${fmtDpr(r.dpr)} (Ersparnis)`, minus(base, kennzahlen(r)));
+      push(`DPR ${fmtDpr(baseDpr)} → ${fmtDpr(r.dpr)} (Ersparnis)`, gepaart(minus(base, kennzahlen(r)), r));
     }
     if (ctl) push('Drift (Kontrolle − Start)', minus(kennzahlen(ctl), kennzahlen(start)));
   }
@@ -644,40 +654,66 @@ async function measure(host: MapBenchHost, options: MapBenchOptions): Promise<Ma
       world.world.vegetation.group.visible = v === 'ohne-vegetation' ? false : saved.veg;
       world.markShadowDirty();
     };
-    const replay = async (forcePass: boolean): Promise<{ gpu: number; sync: number; encode: number }> => {
+    /**
+     * Replay am Stand des letzten Bildes. Gepaart (Varianten- und DPR-Reihen): im Wechsel mit „alles“ bei der Basis-DPR
+     * am selben Bild — die GPU-Differenz des Postens ist dann frei von Drift (Wärme, Takt, fremde GPU-Last).
+     */
+    const replay = async (forcePass: boolean, spec: MapBenchRowSpec, baseDpr: number): Promise<{ gpu: number; sync: number; encode: number; gpuBasis: number | null }> => {
       loop.mode = 'hold';
       const { world } = alive();
       const nodeFrame = (renderer as unknown as { _nodes?: { nodeFrame?: { update(): void } } })._nodes?.nodeFrame;
       const [b1, b2] = opts.replayBatches;
-      const totals = new Map<number, number[]>([
-        [b1, []],
-        [b2, []],
-      ]);
+      const paired = spec.variante !== 'alles' || Math.abs(spec.dpr - baseDpr) > 1e-6;
+      const states: Array<'reihe' | 'basis'> = paired ? ['reihe', 'basis'] : ['reihe'];
+      const totals = { reihe: [[], []] as number[][], basis: [[], []] as number[][] };
       const enc: number[] = [];
-      const once = async (batch: number) => {
-        await done();
-        resetAcc();
-        const t = performance.now();
-        for (let b = 0; b < batch; b++) {
+      const setState = (st: 'reihe' | 'basis') => {
+        applyVariant(st === 'reihe' ? spec.variante : 'alles');
+        const d = st === 'reihe' ? spec.dpr : baseDpr;
+        if (Math.abs(renderer.getPixelRatio() - d) > 1e-6) renderer.setPixelRatio(d);
+      };
+      const render = (n: number) => {
+        for (let b = 0; b < n; b++) {
           // Ein neues „Bild“ je Replay (sonst zeichnet three den Schatten nur einmal je frameId)
           renderer.info.reset();
           nodeFrame?.update();
           if (forcePass) world.sun.requestUpdate();
           renderer.render(world.scene, world.camera);
         }
-        await done();
-        totals.get(batch)!.push(performance.now() - t);
-        enc.push(acc.render / batch);
       };
-      await once(b2); // Einschwingen (GPU hochtakten)
-      totals.get(b2)!.length = 0;
-      enc.length = 0;
-      for (let s = 0; s < opts.replaySamples; s++) {
-        await once(b1);
-        await once(b2);
+      const once = async (st: 'reihe' | 'basis', k: 0 | 1) => {
+        const batch = k === 0 ? b1 : b2;
+        await done();
+        resetAcc();
+        const t = performance.now();
+        render(batch);
+        await done();
+        totals[st][k]!.push(performance.now() - t);
+        if (st === 'reihe') enc.push(acc.render / batch);
+      };
+      try {
+        for (let s = -1; s < opts.replaySamples; s++) {
+          // Reihenfolge je Probe wechseln (keine Seite immer zuerst)
+          for (const st of s % 2 === 0 ? states : [...states].reverse()) {
+            if (paired) setState(st);
+            await done();
+            render(b1); // Einschwingen nach dem Umschalten (Puffer, Refit) — nicht gemessen
+            if (s < 0) render(b2); // erste Runde: GPU hochtakten
+            await once(st, 0);
+            await once(st, 1);
+          }
+          if (s < 0) {
+            totals.reihe = [[], []];
+            totals.basis = [[], []];
+            enc.length = 0;
+          }
+        }
+      } finally {
+        if (paired) setState('reihe');
       }
-      const fit = fitReplay(b1, median(totals.get(b1)!), b2, median(totals.get(b2)!));
-      return { ...fit, encode: median(enc) };
+      const fit = (t: number[][]) => fitReplay(b1, median(t[0]!), b2, median(t[1]!));
+      const own = fit(totals.reihe);
+      return { ...own, encode: median(enc), gpuBasis: paired ? fit(totals.basis).gpu : null };
     };
 
     for (let i = 0; i < plan.length; i++) {
@@ -716,7 +752,7 @@ async function measure(host: MapBenchHost, options: MapBenchOptions): Promise<Ma
       loop.pan = null;
       const builds = alive().world.world.chunkBuilds - builds0;
       // Replay (GPU-gebunden), Schwenken mit Schattenpass je Bild
-      const rep = await replay(pan);
+      const rep = await replay(pan, spec, opts.dprs[0] ?? 2);
       loop.mode = 'natural';
       const s = loop.samples.slice(0, opts.frames);
       const col = (k: keyof FrameSample) => s.map((x) => x[k]);
@@ -735,6 +771,7 @@ async function measure(host: MapBenchHost, options: MapBenchOptions): Promise<Ma
         gpuRest: stat(col('gpuRest')),
         warten: stat(col('warten')),
         gpu: r2(rep.gpu),
+        gpuBasis: rep.gpuBasis === null ? null : r2(rep.gpuBasis),
         gpuSync: r2(rep.sync),
         replayEncode: r2(rep.encode),
         teile: {
@@ -809,6 +846,7 @@ function printReport(report: MapBenchReport): void {
       'Bild med/p99': ms(r.bild),
       'CPU med/p99': ms(r.cpu),
       'GPU Replay': r.gpu,
+      'GPU alles (gepaart)': r.gpuBasis,
       'Rückmeldung L': r.gpuSync,
       'Replay-Encode': r.replayEncode,
       'GPU-Rest med': r.gpuRest.med,

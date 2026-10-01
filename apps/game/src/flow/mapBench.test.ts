@@ -3,7 +3,7 @@ import { benchPlan, computePosten, fitReplay, stat, type MapBenchRow, type MapBe
 
 const s = (med: number): MapBenchStat => ({ med, p99: med, max: med });
 
-function row(szene: MapBenchRow['szene'], variante: MapBenchRow['variante'], dpr: number, k: { bild: number; cpu: number; gpu: number | null; gpuRest: number }, kontrolle = false): MapBenchRow {
+function row(szene: MapBenchRow['szene'], variante: MapBenchRow['variante'], dpr: number, k: { bild: number; cpu: number; gpu: number | null; gpuRest: number; gpuBasis?: number }, kontrolle = false): MapBenchRow {
   return {
     szene,
     variante,
@@ -16,6 +16,7 @@ function row(szene: MapBenchRow['szene'], variante: MapBenchRow['variante'], dpr
     gpuRest: s(k.gpuRest),
     warten: s(0),
     gpu: k.gpu,
+    gpuBasis: k.gpuBasis ?? null,
     gpuSync: 2.5,
     replayEncode: 1,
     teile: { update: s(0), bau: s(0), inhalt: s(0), inhaltAnteil: 0, fit: s(0), encode: s(0), szene: s(0) },
@@ -82,6 +83,9 @@ describe('mapBench', () => {
     expect(p['Drift (Kontrolle − Start)']).toMatchObject({ gpu: 2, bild: 2, cpu: 0 });
     // Ohne Leerlauf-Reihen keine Leerlauf-Posten; fehlendes Replay bleibt null
     expect(computePosten(rows, 2).every((x) => x.szene === 'schwenken')).toBe(true);
+    // Gepaartes Replay: die GPU-Differenz kommt aus der Reihe selbst (gpuBasis − gpu), Bild/CPU weiter aus den Reihen
+    const paired = computePosten([...rows.slice(0, 1), row('schwenken', 'ohne-punkte', 2, { bild: 9, cpu: 4, gpu: 7, gpuRest: 4.5, gpuBasis: 7.6 })], 2);
+    expect(paired.find((x) => x.posten === 'Punkte')).toMatchObject({ gpu: 0.6, bild: 1 });
     const noGpu = computePosten([row('leerlauf', 'alles', 2, { bild: 5, cpu: 2, gpu: null, gpuRest: 3 }), row('leerlauf', 'ohne-punkte', 2, { bild: 4, cpu: 2, gpu: 3, gpuRest: 2 })], 2);
     expect(noGpu.find((x) => x.posten === 'Punkte')?.gpu).toBeNull();
   });
