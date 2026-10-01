@@ -653,6 +653,10 @@ export class EarleLabScene implements SceneController {
   private worldFocusPoint(id: number): { x: number; z: number } | null {
     const world = this.world;
     if (!world) return null;
+    // Komposition auf einem Wahrzeichen (Welt 01: der Riesenbaum, Ebene 21)
+    const anchor = WORLD_CONTENTS[id]?.focal?.landmark;
+    const lm = anchor ? world.getLandmarkSlot(anchor) : undefined;
+    if (lm) return { x: lm.position[0], z: lm.position[2] };
     const n = AUTHORED_ROUTE.length;
     let k = AUTHORED_ROUTE.findIndex((r) => r.world === id);
     if (k < 0 && id >= world.worlds.length) k = n + (id - world.worlds.length);

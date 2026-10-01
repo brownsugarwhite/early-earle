@@ -67,6 +67,11 @@ export interface WorldContent {
     yawDeg?: number;
     /** Freiraum um das Fokus-Element (Welteinheiten; Standard je Art, z. B. 3.2 für Bäume, 4.5 für die Scheune). */
     clear?: number;
+    /**
+     * Bildanker der Komposition auf einem Wahrzeichen statt am Fokus-Slot (Kennung, z. B. `hero-tree`: Welt 01 rahmt den
+     * Riesenbaum wie Ebene 21 den blauen Stamm). Nur das Earle-Lab liest ihn; der Slot der Welt bleibt, wie er ist.
+     */
+    landmark?: string;
   };
   /** Wolkenbänke am Himmel (Welt 13): Schichten in Grad über dem Horizont, siehe `@ee/render` CloudBankSpec. */
   clouds?: CloudBankSpec;

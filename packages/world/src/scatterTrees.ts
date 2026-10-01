@@ -13,16 +13,20 @@ import type { PlanetVegetationFamily } from './planet';
  * Riesenstamm (`pillar`, Ebene 16 und Ebene 3): sehr dicker Stamm, die Krone hoch über dem Wald — rahmt das Bild.
  * Welten 11/12 (Ebene 20, Ebene 7): Schirmbaum als Pilzhut (`parasol`), Buschröschen der Buschteppiche und
  * Schuppenbüsche (`shrub`) und die Earle-Tanne mit hängenden Etagen (`fir`).
+ * Kuppelbaum (`kuppel`, Ebene 33): breite, windgeformte Kissenkrone aus geschuppten Teilkuppeln auf einem kurzen,
+ * dicken Stamm, dessen Äste fast waagrecht unter der Krone hinausgreifen.
  */
 export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel' | 'lace' | 'umbrella' | 'oak' | 'pillar'
   // Windbaum (Welt 14, Ebene 29): knorrig, zur Leeseite geneigt, Spitzenwerk an der Kronenkante
   | 'wind'
   | 'parasol' | 'shrub' | 'fir'
   // Schwarze Randtanne (Welt 06, Ebene 10): schmale, spitze Silhouette ohne Punkte, Sägezahn vor dem Schnee
-  | 'spruce';
+  | 'spruce'
+  // Geborgene Arten der Nachschärfung (nur anhängen, nie umsortieren): Kuppelbaum (Welten 01/03, Ebene 33)
+  | 'kuppel';
 
 /** Alle Baumarten (z. B. zur Unterscheidung Baum ↔ Requisit bei Fokus-Elementen). */
-export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak', 'pillar', 'wind', 'parasol', 'shrub', 'fir', 'spruce'];
+export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak', 'pillar', 'wind', 'parasol', 'shrub', 'fir', 'spruce', 'kuppel'];
 
 export interface TreeInstance {
   /** Fußpunkt auf der Oberfläche (Patch-Raum). */
@@ -91,6 +95,8 @@ export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number;
   fir: { radius: 0.42, trunk: 0.3, hull: 3.4, top: 7.2 },
   // Schwarze Randtanne (Ebene 10): schmaler Kegel aus Sägezahn-Stufen, fast ohne Stamm
   spruce: { radius: 0.36, trunk: 0.12, hull: 1.9, top: 4.2 },
+  // Kuppelbaum (Ebene 33): doppelt so breit wie hoch, die Krone sitzt tief auf kurzem Stamm (Unterseite ≈ 0.35 r)
+  kuppel: { radius: 1.0, trunk: 0.38, hull: 0.86, top: 1.46 },
 };
 
 // --- Earle-Komposition der Welten -------------------------------------------------------------------
@@ -136,13 +142,19 @@ export interface GroveSpec {
    * `maxSlope` des Hains (sie stehen auch am Steilhang), außer `crest.maxSlope` ist gesetzt.
    */
   crest?: { kinds: Partial<Record<TreeKind, number>>; above: number; aboveHeight?: number; chance: number; scale?: [number, number]; spacing?: number; maxSlope?: number };
+  /**
+   * Haine auf den sonnenabgewandten Hängen 0..1 (nur auf der Ebene): die Hainmasse wächst dort, wo der Hang von der
+   * Kartensonne wegschaut — Earles schwarze, getüpfelte Hänge neben den Wiesen im Licht (Ebene 21, Ebene 20).
+   */
+  shade?: number;
 }
 
 /**
  * Rindenstil der Bäume v3 (ersetzt `trunkStyle`, wenn gesetzt): Kalligrafie = weiße Linien auf Tinte (Bild 01),
- * Leuchten = blau bis cyan leuchtende Stämme mit heller Lichtkante (Ebene 16).
+ * Leuchten = blau bis cyan leuchtende Stämme mit heller Lichtkante (Ebene 16), Lavendel = blasse lavendelblaue Stämme mit
+ * Lichtstreifen (Ebene 21, Welt 01). Reihenfolge = Index im Instanzattribut (`BARK_STYLE`): nur anhängen.
  */
-export type BarkStyleName = 'ink' | 'white' | 'striped' | 'lichen' | 'calligraphy' | 'glow';
+export type BarkStyleName = 'ink' | 'white' | 'striped' | 'lichen' | 'calligraphy' | 'glow' | 'pale';
 
 /**
  * Riesenstämme einer Welt (Abschnitt `vegetation.giants`, Ebene 16 und Ebene 3): einzelne, sehr dicke Stämme zwischen
