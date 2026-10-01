@@ -31,6 +31,10 @@ export interface Lake {
   reach: number;
   /** Grüner Sumpf: flaches, bewachsenes Wasser mit Inseln (Startwelten). */
   swamp?: boolean;
+  /** Giftsee (Müll v3): Neon im Müllstil der Welt, heilt mit dem Fortschritt. */
+  toxic?: boolean;
+  /** Breite des Uferbands an Land (Welteinheiten; 0 = keines), siehe `LakeSpec.shore`. */
+  band?: number;
 }
 
 export interface River {
@@ -48,6 +52,10 @@ export interface River {
   lake: number;
   /** Bogenlänge je Punkt (Muster längs des Flusses). */
   along: number[];
+  /** Giftfluss (Müll v3); sein Mündungssee ist dann ebenfalls giftig. */
+  toxic?: boolean;
+  /** Breite des Uferbands an Land (Welteinheiten; 0 = keines), siehe `RiverSpec.shore`. */
+  band?: number;
 }
 
 /** Eine Säule einer Formation: Grundriss relativ zum Formationsmittelpunkt (a = x, b = z). */
@@ -157,4 +165,11 @@ export interface FeatureSample {
   snow: number;
   /** 1 = grüner Sumpf. */
   swamp?: number;
+  /**
+   * Uferband (landseits): 0 im Wasser und an der Uferlinie, steigt über die Bandbreite (`Lake.band`/`River.band`) auf 1
+   * am Bandrand; 1 = außerhalb jedes Uferbands (oder Gewässer ohne Band, Meer, Sumpf).
+   */
+  shore?: number;
+  /** 1 = das Uferband bzw. Wasser gehört zu einem Giftsee/-fluss (nur wo `shore` < 1). */
+  toxic?: number;
 }

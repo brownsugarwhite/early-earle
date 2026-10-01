@@ -144,14 +144,29 @@ export function lakeFits(host: PlaneFeatureHost, site: RegionSite, lake: Lake, m
   return true;
 }
 
+/** Standardbreite des Uferbands an Land (Seen bzw. Flüsse), siehe `LakeSpec.shore`/`RiverSpec.shore`. */
+export const DEFAULT_LAKE_BAND = 2.0;
+export const DEFAULT_RIVER_BAND = 1.6;
+
+/**
+ * Uferband-Wert an einem Punkt mit Uferabstand `e` (< 0 im Wasser): 0 im Wasser und an der Uferlinie, linear bis 1 am
+ * Bandrand `band`; ohne Band (0) überall an Land 1.
+ */
+export function shoreValue(e: number, band: number): number {
+  if (e <= 0) return 0;
+  if (band <= 0) return 1;
+  return e >= band ? 1 : e / band;
+}
+
 /**
  * Wirkung eines Sees an einem Punkt: Uferabstand e (Welteinheiten, < 0 im Wasser), Winkel im gestreckten Raum und
- * Koordinate längs der Achse. Liefert false außerhalb der Reichweite.
+ * Koordinate längs der Achse. Liefert false außerhalb der Reichweite (plus `pad`, z. B. die Breite des Uferbands).
  */
-export function lakeAt(lake: Lake, x: number, z: number, out: { e: number; theta: number; u?: number }): boolean {
+export function lakeAt(lake: Lake, x: number, z: number, out: { e: number; theta: number; u?: number }, pad = 0): boolean {
   const dx = x - lake.cx;
   const dz = z - lake.cz;
-  if (dx * dx + dz * dz > lake.reach * lake.reach) return false;
+  const reach = lake.reach + pad;
+  if (dx * dx + dz * dz > reach * reach) return false;
   const ca = Math.cos(lake.axis);
   const sa = Math.sin(lake.axis);
   const k = Math.sqrt(lake.stretch);
