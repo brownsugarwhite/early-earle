@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Vector3, type InstancedBufferAttribute, type InstancedBufferGeometry } from 'three/webgpu';
-import { uniform } from 'three/tsl';
+import { float, uniform } from 'three/tsl';
+import { DisplayMapping } from '../display';
+import type { FloatNode } from '../tsl';
 import type { PlaneTree as PlanetTree, TreeFamily, TreeKind } from '@ee/world';
 import { PaletteAtlas, type WorldPalette } from '../palette';
 import { WorldSlots } from '../worldSlots';
@@ -161,6 +163,45 @@ describe('Bäume v4: Punktarten', () => {
     for (const k of [0, 3, 4, 5, 6]) expect(kinds.has(k), `Art ${k}`).toBe(true);
     expect(withCast).toBeGreaterThan(0);
     expect(withCast).toBeLessThan(g.instanceCount);
+    veg.dispose();
+  });
+});
+
+describe('Karten v2 (R3): Anzeigeraum und Punkt-Schatten-Taps', () => {
+  it('Karten, Tiere und Punkte bauen mit Abbildung; Taps lesen beim Aufbau (4 → 1 baut das Punkt-Material neu)', () => {
+    const seen: Array<{ softness?: number | null; taps?: number }> = [];
+    const atlas = new PaletteAtlas(512);
+    const slots = new WorldSlots(atlas, () => palette, () => {});
+    const rows = slots.rowsOfWorld(0);
+    const display = new DisplayMapping(32, 0.14);
+    const veg = new PlanetVegetation({
+      lookup: new PaletteLookup(atlas.texture, atlas.width, atlas.height),
+      fog: createFogSettings({ row: rows.fog, steps: 5, start: 10, range: 20 }),
+      bands: uniform(3),
+      slots,
+      family: () => family,
+      capacity: { trees: 64, dots: 2000, props: 8, animals: 8 },
+      dotsPerTree: [60, 200],
+      collapsePx: 0.75,
+      warp: (p) => display.warp(p),
+      display,
+      shadowFactor: (_p, o) => {
+        if (o) seen.push(o);
+        return float(1) as unknown as FloatNode;
+      },
+    });
+    const t = veg.trees;
+    for (const mesh of [t.bare, t.wind, veg.animals, t.dots]) expect((mesh.material as unknown as { positionNode?: unknown }).positionNode, mesh.name).toBeTruthy();
+    expect((t.bare.material as unknown as { castShadowPositionNode?: unknown }).castShadowPositionNode).toBeTruthy();
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.softness).toBeNull();
+    expect(seen[0]!.taps).toBe(4);
+    const v0 = (t.dots.material as unknown as { version: number }).version;
+    veg.setDotShadowTaps(4);
+    expect((t.dots.material as unknown as { version: number }).version).toBe(v0);
+    veg.setDotShadowTaps(1);
+    expect(seen[0]!.taps).toBe(1);
+    expect((t.dots.material as unknown as { version: number }).version).toBeGreaterThan(v0);
     veg.dispose();
   });
 });
