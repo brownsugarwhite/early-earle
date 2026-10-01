@@ -90,7 +90,8 @@ test('Unendliche Kugel: 5000 Einheiten vorwärts und seitwärts schwenken — St
   await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgpu', { timeout: 30_000 });
   const f = flow(page);
   // The board's pipeline warm-up draws a demo board along (start-up, not panning): pan once it has settled
-  await expect.poll(async () => (await f.stats()).warm, { timeout: 30_000 }).toBe(true);
+  // `window.__flow` steht erst am Ende von `FlowScene.mount()` (nach dem Brett-Warmup-Setup), HUD und Perf-Schild davor
+  await expect.poll(async () => page.evaluate(() => (window as unknown as { __flow?: FlowHandle }).__flow?.stats().warm ?? false), { timeout: 30_000 }).toBe(true);
   await page.waitForTimeout(1000);
   const s0 = await f.stats();
 

@@ -140,7 +140,7 @@ test('/lab/shadow Schatten v3: Kontakt-Diagnose, Feldansicht, Kontaktregler und 
 // Refit (Bodenschätzung), und nur eine Kaskade, deren Rand aufgebraucht ist (die feine), snappt neu und zeichnet. Die
 // mittlere und die ferne Kaskade behalten ihren Ursprung in der Ebene; sie zeichnen höchstens, wenn Inhalt nachlädt
 // (Chunks am Rand) — dann alle gemeinsam.
-test('/lab/shadow Schwenken: Kaskaden gleiten an der Ebene — höchstens 2 Refits, Ursprung der groben Kaskaden fest, nur die feine zeichnet nach', async ({ page }) => {
+test('/lab/shadow Schwenken: Kaskaden gleiten an der Ebene — höchstens 2 Refits, Ursprung der fernen Kaskade fest, nur die feinen zeichnen nach', async ({ page }) => {
   test.setTimeout(420_000);
   const errors = collectErrors(page);
   await page.setViewportSize({ width: 900, height: 560 });
@@ -183,22 +183,30 @@ test('/lab/shadow Schwenken: Kaskaden gleiten an der Ebene — höchstens 2 Refi
   const a = after.cascades!;
   expect(a.refits - b.refits).toBeLessThanOrEqual(2);
   expect(a.slides - b.slides).toBeGreaterThanOrEqual(20);
-  // grobe Kaskaden: Ursprung in der Ebene fest (Rand 0,2 / 0,3 reicht für 3 Einheiten), gleiche Texel
+  // Ferne Kaskade: Ursprung in der Ebene fest (Rand 0,3 ≈ 10 Einheiten), gleiche Texel. Die mittlere darf höchstens
+  // einmal neu snappen (ihr Rand quer zur Sonne ≈ 2–3 Einheiten; ein Hügel, der ins Bild kommt, braucht ihn auf) —
+  // und wenn, dann auf dem Texelgitter der Ebene
+  const far = a.cascades.length - 1;
+  expect(a.cascades[far]!.originPlaneX).toBe(b.cascades[far]!.originPlaneX);
+  expect(a.cascades[far]!.originPlaneY).toBe(b.cascades[far]!.originPlaneY);
   for (const k of [1, 2]) {
-    expect(a.cascades[k]!.originPlaneX).toBe(b.cascades[k]!.originPlaneX);
-    expect(a.cascades[k]!.originPlaneY).toBe(b.cascades[k]!.originPlaneY);
     expect(a.cascades[k]!.texelX).toBe(b.cascades[k]!.texelX);
     expect(a.cascades[k]!.texelY).toBe(b.cascades[k]!.texelY);
+    const c = a.cascades[k]!;
+    expect(Math.abs(c.originPlaneX / c.texelX - Math.round(c.originPlaneX / c.texelX))).toBeLessThan(1e-6);
+    expect(Math.abs(c.originPlaneY / c.texelY - Math.round(c.originPlaneY / c.texelY))).toBeLessThan(1e-6);
   }
-  // Schattenpässe: die groben Kaskaden zeichnen nur gemeinsam (Inhalt nachgeladen), höchstens wenige Male; die feine
-  // mindestens so oft (sie snappt am Rand neu), aber nicht jedes Bild
+  // Schattenpässe: die ferne Kaskade zeichnet nur, wenn Inhalt nachlädt (dann alle gemeinsam), höchstens wenige Male;
+  // die mittlere höchstens einmal öfter (ein Neu-Snap), die feine am öftesten (sie snappt am Rand neu), aber nie
+  // jedes Bild
   const d0 = a.dirtyPasses[0]! - b.dirtyPasses[0]!;
   const d1 = a.dirtyPasses[1]! - b.dirtyPasses[1]!;
   const d2 = a.dirtyPasses[2]! - b.dirtyPasses[2]!;
-  expect(d1).toBe(d2);
-  expect(d1).toBeLessThanOrEqual(3);
+  expect(d2).toBeLessThanOrEqual(3);
+  expect(d1).toBeGreaterThanOrEqual(d2);
+  expect(d1).toBeLessThanOrEqual(d2 + 1);
   expect(d0).toBeGreaterThanOrEqual(d1);
-  expect(d0).toBeLessThanOrEqual(d1 + 6);
+  expect(d0).toBeLessThanOrEqual(d2 + 6);
   expect(errors).toEqual([]);
 });
 
