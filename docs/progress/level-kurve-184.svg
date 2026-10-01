@@ -1,0 +1,459 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 600" width="1600" height="600" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif">
+<title>Schwierigkeitskurve Level 1–184: Soll-Band und gemessene Versuche (Anfänger-Bot)</title>
+<rect width="1600" height="600" fill="#fcfcfb"/>
+<text x="64" y="28" font-size="20" font-weight="600" fill="#0b0b0b">Schwierigkeitskurve 184 Level — Versuche je Level (Anfänger-Bot)</text>
+<text x="64" y="50" font-size="13" fill="#52514e">Graues Band = Soll (curveSpec), Punkt = gemessen (1 / Gewinnrate). Kalibrierung 2026-10-01, Solver 0.1.0, ≤ 200 Seeds.</text>
+<text x="121.52173913043478" y="62" font-size="11" text-anchor="middle" fill="#52514e">1 · w09</text>
+<rect x="179.04347826086956" y="70" width="98.60869565217394" height="438" fill="#f4f3ef"/>
+<text x="228.34782608695653" y="62" font-size="11" text-anchor="middle" fill="#52514e">2 · w06</text>
+<text x="326.95652173913044" y="62" font-size="11" text-anchor="middle" fill="#52514e">3 · w04</text>
+<rect x="376.2608695652174" y="70" width="98.60869565217388" height="438" fill="#f4f3ef"/>
+<text x="425.5652173913043" y="62" font-size="11" text-anchor="middle" fill="#52514e">4 · w10</text>
+<text x="524.1739130434783" y="62" font-size="11" text-anchor="middle" fill="#52514e">5 · w05</text>
+<rect x="573.4782608695652" y="70" width="98.60869565217388" height="438" fill="#f4f3ef"/>
+<text x="622.7826086956522" y="62" font-size="11" text-anchor="middle" fill="#52514e">6 · w02</text>
+<text x="721.3913043478261" y="62" font-size="11" text-anchor="middle" fill="#52514e">7 · w07</text>
+<rect x="770.6956521739131" y="70" width="98.60869565217388" height="438" fill="#f4f3ef"/>
+<text x="820" y="62" font-size="11" text-anchor="middle" fill="#52514e">8 · w08</text>
+<text x="935.0434782608695" y="62" font-size="11" text-anchor="middle" fill="#52514e">9 · w01</text>
+<rect x="1000.7826086956521" y="70" width="82.17391304347836" height="438" fill="#f4f3ef"/>
+<text x="1041.8695652173913" y="62" font-size="11" text-anchor="middle" fill="#52514e">10 · w03</text>
+<text x="1132.2608695652175" y="62" font-size="11" text-anchor="middle" fill="#52514e">11 · w11</text>
+<rect x="1181.5652173913043" y="70" width="98.60869565217399" height="438" fill="#f4f3ef"/>
+<text x="1230.8695652173913" y="62" font-size="11" text-anchor="middle" fill="#52514e">12 · w12</text>
+<text x="1329.4782608695652" y="62" font-size="11" text-anchor="middle" fill="#52514e">13 · w13</text>
+<rect x="1378.7826086956522" y="70" width="98.60869565217399" height="438" fill="#f4f3ef"/>
+<text x="1428.0869565217392" y="62" font-size="11" text-anchor="middle" fill="#52514e">14 · w14</text>
+<text x="1526.695652173913" y="62" font-size="11" text-anchor="middle" fill="#52514e">15 · w15</text>
+<line x1="64" x2="1576" y1="508" y2="508" stroke="#ecebe6" stroke-width="1"/>
+<text x="56" y="512" font-size="11" text-anchor="end" fill="#52514e">1</text>
+<line x1="64" x2="1576" y1="458.22727272727275" y2="458.22727272727275" stroke="#ecebe6" stroke-width="1"/>
+<text x="56" y="462.22727272727275" font-size="11" text-anchor="end" fill="#52514e">1,5</text>
+<line x1="64" x2="1576" y1="408.45454545454544" y2="408.45454545454544" stroke="#ecebe6" stroke-width="1"/>
+<text x="56" y="412.45454545454544" font-size="11" text-anchor="end" fill="#52514e">2</text>
+<line x1="64" x2="1576" y1="308.9090909090909" y2="308.9090909090909" stroke="#ecebe6" stroke-width="1"/>
+<text x="56" y="312.9090909090909" font-size="11" text-anchor="end" fill="#52514e">3</text>
+<line x1="64" x2="1576" y1="209.36363636363637" y2="209.36363636363637" stroke="#ecebe6" stroke-width="1"/>
+<text x="56" y="213.36363636363637" font-size="11" text-anchor="end" fill="#52514e">4</text>
+<line x1="64" x2="1576" y1="109.81818181818181" y2="109.81818181818181" stroke="#ecebe6" stroke-width="1"/>
+<text x="56" y="113.81818181818181" font-size="11" text-anchor="end" fill="#52514e">5</text>
+<line x1="179.04347826086956" x2="179.04347826086956" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="277.6521739130435" x2="277.6521739130435" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="376.2608695652174" x2="376.2608695652174" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="474.86956521739125" x2="474.86956521739125" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="573.4782608695652" x2="573.4782608695652" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="672.0869565217391" x2="672.0869565217391" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="770.6956521739131" x2="770.6956521739131" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="869.304347826087" x2="869.304347826087" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="1000.7826086956521" x2="1000.7826086956521" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="1082.9565217391305" x2="1082.9565217391305" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="1181.5652173913043" x2="1181.5652173913043" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="1280.1739130434783" x2="1280.1739130434783" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="1378.7826086956522" x2="1378.7826086956522" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="1477.3913043478262" x2="1477.3913043478262" y1="70" y2="508" stroke="#8a8984" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="474.86956521739125" x2="474.86956521739125" y1="70" y2="508" stroke="#52514e" stroke-width="1.5"/>
+<text x="468.86956521739125" y="86" font-size="11" text-anchor="end" fill="#52514e">1–50 eingefroren (alte Bänder)</text>
+<text x="480.86956521739125" y="86" font-size="11" fill="#52514e">51–184 nach der Kurve</text>
+<rect x="65" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>1 tutorial: Soll 1,00–1,10</title></rect>
+<rect x="73.21739130434783" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>2 tutorial: Soll 1,00–1,10</title></rect>
+<rect x="81.43478260869566" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>3 tutorial: Soll 1,00–1,10</title></rect>
+<rect x="89.65217391304348" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>4 tutorial: Soll 1,00–1,10</title></rect>
+<rect x="97.86956521739131" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>5 tutorial: Soll 1,00–1,10</title></rect>
+<rect x="106.08695652173914" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>6 tutorial: Soll 1,00–1,10</title></rect>
+<rect x="114.30434782608697" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>7 practice: Soll 1,00–1,10</title></rect>
+<rect x="122.52173913043478" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>8 practice: Soll 1,00–1,10</title></rect>
+<rect x="130.7391304347826" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>9 normal: Soll 1,00–1,10</title></rect>
+<rect x="138.95652173913044" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>10 fun: Soll 1,00–1,10</title></rect>
+<rect x="147.17391304347828" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>11 intro: Soll 1,00–1,10</title></rect>
+<rect x="155.3913043478261" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>12 practice: Soll 1,00–1,10</title></rect>
+<rect x="163.6086956521739" y="408.45454545454544" width="6.217391304347826" height="39.81818181818181" rx="1" fill="#dcdbd5"><title>13 hard: Soll 1,60–2,00</title></rect>
+<rect x="171.82608695652175" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>14 intro: Soll 1,00–1,10</title></rect>
+<rect x="180.0434782608696" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>15 practice: Soll 1,00–1,10</title></rect>
+<rect x="188.2608695652174" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>16 intro: Soll 1,00–1,10</title></rect>
+<rect x="196.47826086956522" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>17 practice: Soll 1,00–1,10</title></rect>
+<rect x="204.69565217391306" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>18 intro: Soll 1,00–1,10</title></rect>
+<rect x="212.91304347826087" y="408.45454545454544" width="6.217391304347826" height="39.81818181818181" rx="1" fill="#dcdbd5"><title>19 hard: Soll 1,60–2,00</title></rect>
+<rect x="221.1304347826087" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>20 fun: Soll 1,00–1,10</title></rect>
+<rect x="229.34782608695653" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>21 intro: Soll 1,00–1,10</title></rect>
+<rect x="237.56521739130437" y="478.1363636363636" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>22 practice: Soll 1,10–1,30</title></rect>
+<rect x="245.7826086956522" y="468.1818181818182" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>23 normal: Soll 1,20–1,40</title></rect>
+<rect x="254.00000000000003" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>24 intro: Soll 1,00–1,10</title></rect>
+<rect x="262.2173913043478" y="408.45454545454544" width="6.217391304347826" height="39.81818181818181" rx="1" fill="#dcdbd5"><title>25 hard: Soll 1,60–2,00</title></rect>
+<rect x="270.4347826086956" y="478.1363636363636" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>26 practice: Soll 1,10–1,30</title></rect>
+<rect x="278.65217391304344" y="478.1363636363636" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>27 practice: Soll 1,10–1,30</title></rect>
+<rect x="286.8695652173913" y="408.45454545454544" width="6.217391304347826" height="39.81818181818181" rx="1" fill="#dcdbd5"><title>28 hard: Soll 1,60–2,00</title></rect>
+<rect x="295.08695652173907" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>29 normal: Soll 1,00–1,10</title></rect>
+<rect x="303.30434782608694" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>30 fun: Soll 1,00–1,10</title></rect>
+<rect x="311.52173913043475" y="478.1363636363636" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>31 practice: Soll 1,10–1,30</title></rect>
+<rect x="319.7391304347826" y="468.1818181818182" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>32 normal: Soll 1,20–1,40</title></rect>
+<rect x="327.95652173913044" y="468.1818181818182" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>33 normal: Soll 1,20–1,40</title></rect>
+<rect x="336.17391304347825" y="478.1363636363636" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>34 practice: Soll 1,10–1,30</title></rect>
+<rect x="344.39130434782606" y="468.1818181818182" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>35 normal: Soll 1,20–1,40</title></rect>
+<rect x="352.6086956521739" y="408.45454545454544" width="6.217391304347826" height="39.81818181818181" rx="1" fill="#dcdbd5"><title>36 hard: Soll 1,60–2,00</title></rect>
+<rect x="360.8260869565217" y="468.1818181818182" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>37 normal: Soll 1,20–1,40</title></rect>
+<rect x="369.0434782608695" y="468.1818181818182" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>38 normal: Soll 1,20–1,40</title></rect>
+<rect x="377.2608695652174" y="408.45454545454544" width="6.217391304347826" height="39.81818181818181" rx="1" fill="#dcdbd5"><title>39 hard: Soll 1,60–2,00</title></rect>
+<rect x="385.4782608695652" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>40 fun: Soll 1,00–1,10</title></rect>
+<rect x="393.695652173913" y="478.1363636363636" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>41 practice: Soll 1,10–1,30</title></rect>
+<rect x="401.9130434782609" y="468.1818181818182" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>42 normal: Soll 1,20–1,40</title></rect>
+<rect x="410.1304347826087" y="478.1363636363636" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>43 practice: Soll 1,10–1,30</title></rect>
+<rect x="418.3478260869565" y="468.1818181818182" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>44 normal: Soll 1,20–1,40</title></rect>
+<rect x="426.5652173913043" y="408.45454545454544" width="6.217391304347826" height="39.81818181818181" rx="1" fill="#dcdbd5"><title>45 hard: Soll 1,60–2,00</title></rect>
+<rect x="434.78260869565213" y="478.1363636363636" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>46 practice: Soll 1,10–1,30</title></rect>
+<rect x="443" y="468.1818181818182" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>47 normal: Soll 1,20–1,40</title></rect>
+<rect x="451.21739130434776" y="468.1818181818182" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>48 normal: Soll 1,20–1,40</title></rect>
+<rect x="459.4347826086956" y="408.45454545454544" width="6.217391304347826" height="39.81818181818181" rx="1" fill="#dcdbd5"><title>49 hard: Soll 1,60–2,00</title></rect>
+<rect x="467.65217391304344" y="498.04545454545456" width="6.217391304347826" height="9.954545454545439" rx="1" fill="#dcdbd5"><title>50 fun: Soll 1,00–1,10</title></rect>
+<rect x="475.86956521739125" y="488.0909090909091" width="6.217391304347826" height="13.93636363636358" rx="1" fill="#dcdbd5"><title>51 intro: Soll 1,06–1,20</title></rect>
+<rect x="484.0869565217391" y="467.18636363636364" width="6.217391304347826" height="28.868181818181824" rx="1" fill="#dcdbd5"><title>52 practice: Soll 1,12–1,41</title></rect>
+<rect x="492.30434782608694" y="447.2772727272727" width="6.217391304347826" height="30.859090909090924" rx="1" fill="#dcdbd5"><title>53 normal: Soll 1,30–1,61</title></rect>
+<rect x="500.5217391304348" y="484.1090909090909" width="6.217391304347826" height="19.909090909090878" rx="1" fill="#dcdbd5"><title>54 fun: Soll 1,04–1,24</title></rect>
+<rect x="508.73913043478257" y="285.0181818181818" width="6.217391304347826" height="129.40909090909093" rx="1" fill="#dcdbd5"><title>55 hard: Soll 1,94–3,24</title></rect>
+<rect x="516.9565217391305" y="484.1090909090909" width="6.217391304347826" height="17.91818181818178" rx="1" fill="#dcdbd5"><title>56 intro: Soll 1,06–1,24</title></rect>
+<rect x="525.1739130434783" y="431.35" width="6.217391304347826" height="46.7863636363636" rx="1" fill="#dcdbd5"><title>57 combine: Soll 1,30–1,77</title></rect>
+<rect x="533.3913043478261" y="434.33636363636367" width="6.217391304347826" height="35.836363636363615" rx="1" fill="#dcdbd5"><title>58 normal: Soll 1,38–1,74</title></rect>
+<rect x="541.608695652174" y="285.0181818181818" width="6.217391304347826" height="129.40909090909093" rx="1" fill="#dcdbd5"><title>59 hard: Soll 1,94–3,24</title></rect>
+<rect x="549.8260869565217" y="484.1090909090909" width="6.217391304347826" height="19.909090909090878" rx="1" fill="#dcdbd5"><title>60 fun: Soll 1,04–1,24</title></rect>
+<rect x="558.0434782608696" y="414.42727272727274" width="6.217391304347826" height="40.81363636363636" rx="1" fill="#dcdbd5"><title>61 normal: Soll 1,53–1,94</title></rect>
+<rect x="566.2608695652174" y="159.59090909090912" width="6.217391304347826" height="172.21363636363634" rx="1" fill="#dcdbd5"><title>62 boss: Soll 2,77–4,50</title></rect>
+<rect x="574.4782608695652" y="488.0909090909091" width="6.217391304347826" height="13.93636363636358" rx="1" fill="#dcdbd5"><title>63 intro: Soll 1,06–1,20</title></rect>
+<rect x="582.695652173913" y="465.19545454545454" width="6.217391304347826" height="30.859090909090924" rx="1" fill="#dcdbd5"><title>64 practice: Soll 1,12–1,43</title></rect>
+<rect x="590.9130434782609" y="444.2909090909091" width="6.217391304347826" height="32.849999999999966" rx="1" fill="#dcdbd5"><title>65 normal: Soll 1,31–1,64</title></rect>
+<rect x="599.1304347826087" y="484.1090909090909" width="6.217391304347826" height="19.909090909090878" rx="1" fill="#dcdbd5"><title>66 fun: Soll 1,04–1,24</title></rect>
+<rect x="607.3478260869565" y="276.0590909090909" width="6.217391304347826" height="134.38636363636363" rx="1" fill="#dcdbd5"><title>67 hard: Soll 1,98–3,33</title></rect>
+<rect x="615.5652173913044" y="484.1090909090909" width="6.217391304347826" height="17.91818181818178" rx="1" fill="#dcdbd5"><title>68 intro: Soll 1,06–1,24</title></rect>
+<rect x="623.7826086956522" y="428.3636363636364" width="6.217391304347826" height="48.7772727272727" rx="1" fill="#dcdbd5"><title>69 combine: Soll 1,31–1,80</title></rect>
+<rect x="632" y="431.35" width="6.217391304347826" height="36.831818181818164" rx="1" fill="#dcdbd5"><title>70 normal: Soll 1,40–1,77</title></rect>
+<rect x="640.2173913043479" y="276.0590909090909" width="6.217391304347826" height="134.38636363636363" rx="1" fill="#dcdbd5"><title>71 hard: Soll 1,98–3,33</title></rect>
+<rect x="648.4347826086957" y="484.1090909090909" width="6.217391304347826" height="19.909090909090878" rx="1" fill="#dcdbd5"><title>72 fun: Soll 1,04–1,24</title></rect>
+<rect x="656.6521739130435" y="410.44545454545454" width="6.217391304347826" height="42.80454545454546" rx="1" fill="#dcdbd5"><title>73 normal: Soll 1,55–1,98</title></rect>
+<rect x="664.8695652173914" y="159.59090909090912" width="6.217391304347826" height="165.24545454545455" rx="1" fill="#dcdbd5"><title>74 boss: Soll 2,84–4,50</title></rect>
+<rect x="673.0869565217392" y="488.0909090909091" width="6.217391304347826" height="13.93636363636358" rx="1" fill="#dcdbd5"><title>75 intro: Soll 1,06–1,20</title></rect>
+<rect x="681.304347826087" y="464.2" width="6.217391304347826" height="30.859090909090924" rx="1" fill="#dcdbd5"><title>76 practice: Soll 1,13–1,44</title></rect>
+<rect x="689.5217391304349" y="442.3" width="6.217391304347826" height="33.845454545454515" rx="1" fill="#dcdbd5"><title>77 normal: Soll 1,32–1,66</title></rect>
+<rect x="697.7391304347826" y="483.1136363636364" width="6.217391304347826" height="20.904545454545428" rx="1" fill="#dcdbd5"><title>78 fun: Soll 1,04–1,25</title></rect>
+<rect x="705.9565217391305" y="268.0954545454546" width="6.217391304347826" height="138.36818181818182" rx="1" fill="#dcdbd5"><title>79 hard: Soll 2,02–3,41</title></rect>
+<rect x="714.1739130434783" y="483.1136363636364" width="6.217391304347826" height="18.91363636363633" rx="1" fill="#dcdbd5"><title>80 intro: Soll 1,06–1,25</title></rect>
+<rect x="722.3913043478261" y="425.3772727272727" width="6.217391304347826" height="50.7681818181818" rx="1" fill="#dcdbd5"><title>81 combine: Soll 1,32–1,83</title></rect>
+<rect x="730.608695652174" y="429.3590909090909" width="6.217391304347826" height="37.827272727272714" rx="1" fill="#dcdbd5"><title>82 normal: Soll 1,41–1,79</title></rect>
+<rect x="738.8260869565217" y="268.0954545454546" width="6.217391304347826" height="138.36818181818182" rx="1" fill="#dcdbd5"><title>83 hard: Soll 2,02–3,41</title></rect>
+<rect x="747.0434782608696" y="483.1136363636364" width="6.217391304347826" height="20.904545454545428" rx="1" fill="#dcdbd5"><title>84 fun: Soll 1,04–1,25</title></rect>
+<rect x="755.2608695652174" y="406.4636363636364" width="6.217391304347826" height="44.795454545454504" rx="1" fill="#dcdbd5"><title>85 normal: Soll 1,57–2,02</title></rect>
+<rect x="763.4782608695652" y="159.59090909090912" width="6.217391304347826" height="158.2772727272727" rx="1" fill="#dcdbd5"><title>86 boss: Soll 2,91–4,50</title></rect>
+<rect x="771.695652173913" y="488.0909090909091" width="6.217391304347826" height="12.940909090909031" rx="1" fill="#dcdbd5"><title>87 intro: Soll 1,07–1,20</title></rect>
+<rect x="779.9130434782609" y="462.20909090909095" width="6.217391304347826" height="32.849999999999966" rx="1" fill="#dcdbd5"><title>88 practice: Soll 1,13–1,46</title></rect>
+<rect x="788.1304347826087" y="440.3090909090909" width="6.217391304347826" height="34.840909090909065" rx="1" fill="#dcdbd5"><title>89 normal: Soll 1,33–1,68</title></rect>
+<rect x="796.3478260869565" y="482.1181818181818" width="6.217391304347826" height="21.899999999999977" rx="1" fill="#dcdbd5"><title>90 fun: Soll 1,04–1,26</title></rect>
+<rect x="804.5652173913044" y="259.1363636363636" width="6.217391304347826" height="144.34090909090912" rx="1" fill="#dcdbd5"><title>91 hard: Soll 2,05–3,50</title></rect>
+<rect x="812.7826086956522" y="482.1181818181818" width="6.217391304347826" height="18.91363636363633" rx="1" fill="#dcdbd5"><title>92 intro: Soll 1,07–1,26</title></rect>
+<rect x="821" y="423.3863636363636" width="6.217391304347826" height="51.76363636363635" rx="1" fill="#dcdbd5"><title>93 combine: Soll 1,33–1,85</title></rect>
+<rect x="829.2173913043479" y="426.3727272727273" width="6.217391304347826" height="38.82272727272726" rx="1" fill="#dcdbd5"><title>94 normal: Soll 1,43–1,82</title></rect>
+<rect x="837.4347826086957" y="259.1363636363636" width="6.217391304347826" height="144.34090909090912" rx="1" fill="#dcdbd5"><title>95 hard: Soll 2,05–3,50</title></rect>
+<rect x="845.6521739130436" y="482.1181818181818" width="6.217391304347826" height="21.899999999999977" rx="1" fill="#dcdbd5"><title>96 fun: Soll 1,04–1,26</title></rect>
+<rect x="853.8695652173914" y="403.47727272727275" width="6.217391304347826" height="45.790909090909054" rx="1" fill="#dcdbd5"><title>97 normal: Soll 1,59–2,05</title></rect>
+<rect x="862.0869565217391" y="159.59090909090912" width="6.217391304347826" height="152.3045454545454" rx="1" fill="#dcdbd5"><title>98 boss: Soll 2,97–4,50</title></rect>
+<rect x="870.304347826087" y="488.0909090909091" width="6.217391304347826" height="15.92727272727268" rx="1" fill="#dcdbd5"><title>99 fun: Soll 1,04–1,20</title></rect>
+<rect x="878.5217391304349" y="460.21818181818185" width="6.217391304347826" height="33.845454545454515" rx="1" fill="#dcdbd5"><title>100 practice: Soll 1,14–1,48</title></rect>
+<rect x="886.7391304347827" y="437.32272727272726" width="6.217391304347826" height="36.831818181818164" rx="1" fill="#dcdbd5"><title>101 normal: Soll 1,34–1,71</title></rect>
+<rect x="894.9565217391304" y="481.1227272727273" width="6.217391304347826" height="22.895454545454527" rx="1" fill="#dcdbd5"><title>102 fun: Soll 1,04–1,27</title></rect>
+<rect x="903.1739130434783" y="251.1727272727273" width="6.217391304347826" height="148.32272727272726" rx="1" fill="#dcdbd5"><title>103 hard: Soll 2,09–3,58</title></rect>
+<rect x="911.3913043478261" y="473.1590909090909" width="6.217391304347826" height="20.904545454545485" rx="1" fill="#dcdbd5"><title>104 normal: Soll 1,14–1,35</title></rect>
+<rect x="919.608695652174" y="420.40000000000003" width="6.217391304347826" height="53.754545454545394" rx="1" fill="#dcdbd5"><title>105 combine: Soll 1,34–1,88</title></rect>
+<rect x="927.8260869565219" y="423.3863636363636" width="6.217391304347826" height="40.81363636363636" rx="1" fill="#dcdbd5"><title>106 normal: Soll 1,44–1,85</title></rect>
+<rect x="936.0434782608695" y="251.1727272727273" width="6.217391304347826" height="148.32272727272726" rx="1" fill="#dcdbd5"><title>107 hard: Soll 2,09–3,58</title></rect>
+<rect x="944.2608695652174" y="481.1227272727273" width="6.217391304347826" height="22.895454545454527" rx="1" fill="#dcdbd5"><title>108 fun: Soll 1,04–1,27</title></rect>
+<rect x="952.4782608695652" y="413.4318181818182" width="6.217391304347826" height="43.80000000000001" rx="1" fill="#dcdbd5"><title>109 normal: Soll 1,51–1,95</title></rect>
+<rect x="960.6956521739131" y="399.49545454545455" width="6.217391304347826" height="47.78181818181815" rx="1" fill="#dcdbd5"><title>110 normal: Soll 1,61–2,09</title></rect>
+<rect x="968.9130434782609" y="159.59090909090912" width="6.217391304347826" height="118.45909090909083" rx="1" fill="#dcdbd5"><title>111 superhard: Soll 3,31–4,50</title></rect>
+<rect x="977.1304347826086" y="481.1227272727273" width="6.217391304347826" height="22.895454545454527" rx="1" fill="#dcdbd5"><title>112 fun: Soll 1,04–1,27</title></rect>
+<rect x="985.3478260869565" y="420.40000000000003" width="6.217391304347826" height="53.754545454545394" rx="1" fill="#dcdbd5"><title>113 combine: Soll 1,34–1,88</title></rect>
+<rect x="993.5652173913044" y="159.59090909090912" width="6.217391304347826" height="145.33636363636361" rx="1" fill="#dcdbd5"><title>114 boss: Soll 3,04–4,50</title></rect>
+<rect x="1001.7826086956522" y="488.0909090909091" width="6.217391304347826" height="15.92727272727268" rx="1" fill="#dcdbd5"><title>115 fun: Soll 1,04–1,20</title></rect>
+<rect x="1010" y="459.2227272727273" width="6.217391304347826" height="34.840909090909065" rx="1" fill="#dcdbd5"><title>116 practice: Soll 1,14–1,49</title></rect>
+<rect x="1018.2173913043479" y="435.3318181818182" width="6.217391304347826" height="37.82727272727266" rx="1" fill="#dcdbd5"><title>117 normal: Soll 1,35–1,73</title></rect>
+<rect x="1026.4347826086955" y="242.2136363636364" width="6.217391304347826" height="154.2954545454545" rx="1" fill="#dcdbd5"><title>118 hard: Soll 2,12–3,67</title></rect>
+<rect x="1034.6521739130435" y="473.1590909090909" width="6.217391304347826" height="20.904545454545485" rx="1" fill="#dcdbd5"><title>119 normal: Soll 1,14–1,35</title></rect>
+<rect x="1042.8695652173913" y="417.4136363636364" width="6.217391304347826" height="55.74545454545449" rx="1" fill="#dcdbd5"><title>120 combine: Soll 1,35–1,91</title></rect>
+<rect x="1051.086956521739" y="420.40000000000003" width="6.217391304347826" height="41.80909090909091" rx="1" fill="#dcdbd5"><title>121 normal: Soll 1,46–1,88</title></rect>
+<rect x="1059.304347826087" y="480.1272727272727" width="6.217391304347826" height="23.890909090909076" rx="1" fill="#dcdbd5"><title>122 fun: Soll 1,04–1,28</title></rect>
+<rect x="1067.5217391304348" y="396.5090909090909" width="6.217391304347826" height="48.77727272727276" rx="1" fill="#dcdbd5"><title>123 normal: Soll 1,63–2,12</title></rect>
+<rect x="1075.7391304347825" y="159.59090909090912" width="6.217391304347826" height="138.36818181818182" rx="1" fill="#dcdbd5"><title>124 boss: Soll 3,11–4,50</title></rect>
+<rect x="1083.9565217391303" y="488.0909090909091" width="6.217391304347826" height="15.92727272727268" rx="1" fill="#dcdbd5"><title>125 fun: Soll 1,04–1,20</title></rect>
+<rect x="1092.1739130434783" y="457.2318181818182" width="6.217391304347826" height="35.836363636363615" rx="1" fill="#dcdbd5"><title>126 practice: Soll 1,15–1,51</title></rect>
+<rect x="1100.391304347826" y="433.3409090909091" width="6.217391304347826" height="38.82272727272721" rx="1" fill="#dcdbd5"><title>127 normal: Soll 1,36–1,75</title></rect>
+<rect x="1108.6086956521738" y="479.1318181818182" width="6.217391304347826" height="24.886363636363626" rx="1" fill="#dcdbd5"><title>128 fun: Soll 1,04–1,29</title></rect>
+<rect x="1116.8260869565217" y="233.2545454545455" width="6.217391304347826" height="159.2727272727272" rx="1" fill="#dcdbd5"><title>129 hard: Soll 2,16–3,76</title></rect>
+<rect x="1125.0434782608695" y="473.1590909090909" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>130 normal: Soll 1,15–1,35</title></rect>
+<rect x="1133.2608695652173" y="414.42727272727274" width="6.217391304347826" height="57.73636363636359" rx="1" fill="#dcdbd5"><title>131 combine: Soll 1,36–1,94</title></rect>
+<rect x="1141.4782608695652" y="417.4136363636364" width="6.217391304347826" height="43.80000000000001" rx="1" fill="#dcdbd5"><title>132 normal: Soll 1,47–1,91</title></rect>
+<rect x="1149.695652173913" y="233.2545454545455" width="6.217391304347826" height="159.2727272727272" rx="1" fill="#dcdbd5"><title>133 hard: Soll 2,16–3,76</title></rect>
+<rect x="1157.9130434782608" y="479.1318181818182" width="6.217391304347826" height="24.886363636363626" rx="1" fill="#dcdbd5"><title>134 fun: Soll 1,04–1,29</title></rect>
+<rect x="1166.1304347826085" y="392.5272727272727" width="6.217391304347826" height="50.76818181818186" rx="1" fill="#dcdbd5"><title>135 normal: Soll 1,65–2,16</title></rect>
+<rect x="1174.3478260869565" y="109.81818181818181" width="6.217391304347826" height="181.1727272727273" rx="1" fill="#dcdbd5"><title>136 boss: Soll 3,18–5,00</title></rect>
+<rect x="1182.5652173913043" y="488.0909090909091" width="6.217391304347826" height="15.92727272727268" rx="1" fill="#dcdbd5"><title>137 fun: Soll 1,04–1,20</title></rect>
+<rect x="1190.7826086956522" y="456.23636363636365" width="6.217391304347826" height="36.831818181818164" rx="1" fill="#dcdbd5"><title>138 practice: Soll 1,15–1,52</title></rect>
+<rect x="1198.9999999999998" y="430.3545454545455" width="6.217391304347826" height="40.81363636363636" rx="1" fill="#dcdbd5"><title>139 normal: Soll 1,37–1,78</title></rect>
+<rect x="1207.2173913043478" y="478.1363636363636" width="6.217391304347826" height="25.881818181818176" rx="1" fill="#dcdbd5"><title>140 fun: Soll 1,04–1,30</title></rect>
+<rect x="1215.4347826086955" y="225.2909090909091" width="6.217391304347826" height="163.2545454545454" rx="1" fill="#dcdbd5"><title>141 hard: Soll 2,20–3,84</title></rect>
+<rect x="1223.6521739130435" y="473.1590909090909" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>142 normal: Soll 1,15–1,35</title></rect>
+<rect x="1231.8695652173913" y="411.4409090909091" width="6.217391304347826" height="59.72727272727275" rx="1" fill="#dcdbd5"><title>143 combine: Soll 1,37–1,97</title></rect>
+<rect x="1240.086956521739" y="415.4227272727273" width="6.217391304347826" height="43.80000000000001" rx="1" fill="#dcdbd5"><title>144 normal: Soll 1,49–1,93</title></rect>
+<rect x="1248.3043478260868" y="225.2909090909091" width="6.217391304347826" height="163.2545454545454" rx="1" fill="#dcdbd5"><title>145 hard: Soll 2,20–3,84</title></rect>
+<rect x="1256.5217391304348" y="478.1363636363636" width="6.217391304347826" height="25.881818181818176" rx="1" fill="#dcdbd5"><title>146 fun: Soll 1,04–1,30</title></rect>
+<rect x="1264.7391304347825" y="388.5454545454545" width="6.217391304347826" height="52.75909090909096" rx="1" fill="#dcdbd5"><title>147 normal: Soll 1,67–2,20</title></rect>
+<rect x="1272.9565217391303" y="109.81818181818181" width="6.217391304347826" height="175.2" rx="1" fill="#dcdbd5"><title>148 boss: Soll 3,24–5,00</title></rect>
+<rect x="1281.1739130434783" y="488.0909090909091" width="6.217391304347826" height="14.93181818181813" rx="1" fill="#dcdbd5"><title>149 fun: Soll 1,05–1,20</title></rect>
+<rect x="1289.391304347826" y="454.24545454545455" width="6.217391304347826" height="38.82272727272726" rx="1" fill="#dcdbd5"><title>150 practice: Soll 1,15–1,54</title></rect>
+<rect x="1297.6086956521738" y="428.3636363636364" width="6.217391304347826" height="40.81363636363636" rx="1" fill="#dcdbd5"><title>151 normal: Soll 1,39–1,80</title></rect>
+<rect x="1305.8260869565217" y="477.1409090909091" width="6.217391304347826" height="25.881818181818176" rx="1" fill="#dcdbd5"><title>152 fun: Soll 1,05–1,31</title></rect>
+<rect x="1314.0434782608695" y="216.33181818181816" width="6.217391304347826" height="169.22727272727275" rx="1" fill="#dcdbd5"><title>153 hard: Soll 2,23–3,93</title></rect>
+<rect x="1322.2608695652173" y="473.1590909090909" width="6.217391304347826" height="19.909090909090935" rx="1" fill="#dcdbd5"><title>154 normal: Soll 1,15–1,35</title></rect>
+<rect x="1330.4782608695652" y="408.45454545454544" width="6.217391304347826" height="60.7227272727273" rx="1" fill="#dcdbd5"><title>155 combine: Soll 1,39–2,00</title></rect>
+<rect x="1338.695652173913" y="412.43636363636364" width="6.217391304347826" height="45.79090909090911" rx="1" fill="#dcdbd5"><title>156 normal: Soll 1,50–1,96</title></rect>
+<rect x="1346.9130434782608" y="216.33181818181816" width="6.217391304347826" height="169.22727272727275" rx="1" fill="#dcdbd5"><title>157 hard: Soll 2,23–3,93</title></rect>
+<rect x="1355.1304347826085" y="477.1409090909091" width="6.217391304347826" height="25.881818181818176" rx="1" fill="#dcdbd5"><title>158 fun: Soll 1,05–1,31</title></rect>
+<rect x="1363.3478260869565" y="385.5590909090909" width="6.217391304347826" height="53.75454545454545" rx="1" fill="#dcdbd5"><title>159 normal: Soll 1,69–2,23</title></rect>
+<rect x="1371.5652173913043" y="109.81818181818181" width="6.217391304347826" height="168.23181818181814" rx="1" fill="#dcdbd5"><title>160 boss: Soll 3,31–5,00</title></rect>
+<rect x="1379.7826086956522" y="488.0909090909091" width="6.217391304347826" height="14.93181818181813" rx="1" fill="#dcdbd5"><title>161 fun: Soll 1,05–1,20</title></rect>
+<rect x="1387.9999999999998" y="453.25" width="6.217391304347826" height="38.82272727272726" rx="1" fill="#dcdbd5"><title>162 practice: Soll 1,16–1,55</title></rect>
+<rect x="1396.2173913043478" y="426.3727272727273" width="6.217391304347826" height="41.80909090909091" rx="1" fill="#dcdbd5"><title>163 normal: Soll 1,40–1,82</title></rect>
+<rect x="1404.4347826086955" y="476.1454545454545" width="6.217391304347826" height="26.877272727272725" rx="1" fill="#dcdbd5"><title>164 fun: Soll 1,05–1,32</title></rect>
+<rect x="1412.6521739130435" y="208.36818181818188" width="6.217391304347826" height="173.20909090909083" rx="1" fill="#dcdbd5"><title>165 hard: Soll 2,27–4,01</title></rect>
+<rect x="1420.8695652173913" y="473.1590909090909" width="6.217391304347826" height="18.913636363636385" rx="1" fill="#dcdbd5"><title>166 normal: Soll 1,16–1,35</title></rect>
+<rect x="1429.086956521739" y="405.46818181818185" width="6.217391304347826" height="62.71363636363634" rx="1" fill="#dcdbd5"><title>167 combine: Soll 1,40–2,03</title></rect>
+<rect x="1437.3043478260868" y="409.45" width="6.217391304347826" height="46.78636363636366" rx="1" fill="#dcdbd5"><title>168 normal: Soll 1,52–1,99</title></rect>
+<rect x="1445.5217391304348" y="208.36818181818188" width="6.217391304347826" height="173.20909090909083" rx="1" fill="#dcdbd5"><title>169 hard: Soll 2,27–4,01</title></rect>
+<rect x="1453.7391304347825" y="476.1454545454545" width="6.217391304347826" height="26.877272727272725" rx="1" fill="#dcdbd5"><title>170 fun: Soll 1,05–1,32</title></rect>
+<rect x="1461.9565217391303" y="381.5772727272727" width="6.217391304347826" height="55.74545454545455" rx="1" fill="#dcdbd5"><title>171 normal: Soll 1,71–2,27</title></rect>
+<rect x="1470.1739130434783" y="109.81818181818181" width="6.217391304347826" height="161.2636363636364" rx="1" fill="#dcdbd5"><title>172 boss: Soll 3,38–5,00</title></rect>
+<rect x="1478.391304347826" y="488.0909090909091" width="6.217391304347826" height="14.93181818181813" rx="1" fill="#dcdbd5"><title>173 fun: Soll 1,05–1,20</title></rect>
+<rect x="1486.6086956521738" y="451.2590909090909" width="6.217391304347826" height="40.81363636363636" rx="1" fill="#dcdbd5"><title>174 practice: Soll 1,16–1,57</title></rect>
+<rect x="1494.8260869565217" y="423.3863636363636" width="6.217391304347826" height="43.80000000000001" rx="1" fill="#dcdbd5"><title>175 normal: Soll 1,41–1,85</title></rect>
+<rect x="1503.0434782608695" y="475.15" width="6.217391304347826" height="27.872727272727275" rx="1" fill="#dcdbd5"><title>176 fun: Soll 1,05–1,33</title></rect>
+<rect x="1511.2608695652173" y="199.409090909091" width="6.217391304347826" height="179.18181818181813" rx="1" fill="#dcdbd5"><title>177 hard: Soll 2,30–4,10</title></rect>
+<rect x="1519.4782608695652" y="473.1590909090909" width="6.217391304347826" height="18.913636363636385" rx="1" fill="#dcdbd5"><title>178 normal: Soll 1,16–1,35</title></rect>
+<rect x="1527.695652173913" y="402.4818181818182" width="6.217391304347826" height="64.70454545454544" rx="1" fill="#dcdbd5"><title>179 combine: Soll 1,41–2,06</title></rect>
+<rect x="1535.9130434782608" y="406.4636363636364" width="6.217391304347826" height="48.7772727272727" rx="1" fill="#dcdbd5"><title>180 normal: Soll 1,53–2,02</title></rect>
+<rect x="1544.1304347826085" y="199.409090909091" width="6.217391304347826" height="179.18181818181813" rx="1" fill="#dcdbd5"><title>181 hard: Soll 2,30–4,10</title></rect>
+<rect x="1552.3478260869565" y="475.15" width="6.217391304347826" height="27.872727272727275" rx="1" fill="#dcdbd5"><title>182 fun: Soll 1,05–1,33</title></rect>
+<rect x="1560.5652173913043" y="378.5909090909091" width="6.217391304347826" height="56.7409090909091" rx="1" fill="#dcdbd5"><title>183 normal: Soll 1,73–2,30</title></rect>
+<rect x="1568.7826086956522" y="109.81818181818181" width="6.217391304347826" height="154.29545454545456" rx="1" fill="#dcdbd5"><title>184 boss: Soll 3,45–5,00</title></rect>
+<circle cx="68.1086956521739" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>1 Zwei werden eins (tutorial): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="76.32608695652173" cy="502.8951048951049" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>2 Züge zählen (tutorial): 1,05 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="84.54347826086956" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>3 Weiter so (tutorial): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="92.76086956521739" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>4 Punkte sammeln (tutorial): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="100.97826086956522" cy="503.73376623376623" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>5 Der Vierundsechziger (tutorial): 1,04 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="109.19565217391305" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>6 Der Pfeiler (tutorial): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="117.41304347826087" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>7 Um die Ecke (practice): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="125.63043478260869" cy="498.04545454545456" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>8 Zurückspulen (practice): 1,10 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="133.8478260869565" cy="502.8951048951049" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>9 Punkte am Pfeiler (normal): 1,05 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="142.06521739130434" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>10 Ehrenrunde (fun): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="150.2826086956522" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>11 Schrott (intro): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="158.5" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>12 Mehr Schrott (practice): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="166.7173913043478" cy="410.42574257425747" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>13 Schrotthügel (hard): 1,98 Versuche, Soll 1,60–2,00</title></circle>
+<text x="166.7173913043478" y="400.42574257425747" font-size="10" text-anchor="middle" fill="#52514e">Müllfelsen</text>
+<circle cx="174.93478260869566" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>14 Sporen (intro): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="183.1521739130435" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>15 Sporenfeld (practice): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="191.3695652173913" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>16 Die Amöbe (intro): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="199.58695652173913" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>17 Pflücken (practice): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="207.80434782608697" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>18 Aufbruch (intro): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="216.02173913043478" cy="416.1118881118881" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>19 Zwei Aufbrüche (hard): 1,92 Versuche, Soll 1,60–2,00</title></circle>
+<circle cx="224.2391304347826" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>20 Ehrenrunde II (fun): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="232.45652173913044" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>21 Verdorrt (intro): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="240.67391304347828" cy="484.64983164983164" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>22 Tief verdorrt (practice): 1,23 Versuche, Soll 1,10–1,30</title></circle>
+<circle cx="248.8913043478261" cy="484.64983164983164" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>23 Heilen am Pfeiler (normal): 1,23 Versuche, Soll 1,20–1,40</title></circle>
+<circle cx="257.10869565217394" cy="506.0090909090909" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>24 Der Strahl (intro): 1,02 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="265.32608695652175" cy="410.42574257425747" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>25 Der erste Riss (hard): 1,98 Versuche, Soll 1,60–2,00</title></circle>
+<circle cx="273.54347826086956" cy="494.77368086458995" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>26 Fossilwand (practice): 1,13 Versuche, Soll 1,10–1,30</title></circle>
+<circle cx="281.7608695652174" cy="484.64983164983164" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>27 Flüssig (practice): 1,23 Versuche, Soll 1,10–1,30</title></circle>
+<circle cx="289.97826086956525" cy="414.25330979699913" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>28 Sirupfalle (hard): 1,94 Versuche, Soll 1,60–2,00</title></circle>
+<circle cx="298.195652173913" cy="508" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>29 Verschnaufer (normal): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="306.4130434782609" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>30 Ehrenrunde III (fun): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="314.6304347826087" cy="487.61117196056955" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>31 Der Käfig (practice): 1,20 Versuche, Soll 1,10–1,30</title></circle>
+<circle cx="322.84782608695656" cy="485.4037925264919" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>32 Zwei Käfige (normal): 1,23 Versuche, Soll 1,20–1,40</title></circle>
+<circle cx="331.0652173913044" cy="484.64983164983164" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>33 Käfig hinter der Wand (normal): 1,23 Versuche, Soll 1,20–1,40</title></circle>
+<circle cx="339.2826086956522" cy="493.0356506238859" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>34 Der Knall (practice): 1,15 Versuche, Soll 1,10–1,30</title></circle>
+<circle cx="347.5" cy="480.73595830920675" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>35 Tausch (normal): 1,27 Versuche, Soll 1,20–1,40</title></circle>
+<circle cx="355.7173913043478" cy="445.6829268292683" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>36 Sirupsumpf (hard): 1,63 Versuche, Soll 1,60–2,00</title></circle>
+<circle cx="363.9347826086956" cy="484.64983164983164" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>37 Rettung im Sirup (normal): 1,23 Versuche, Soll 1,20–1,40</title></circle>
+<circle cx="372.15217391304344" cy="478.2656434474616" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>38 Sirupkreuzung (normal): 1,30 Versuche, Soll 1,20–1,40</title></circle>
+<circle cx="380.3695652173913" cy="423.2020202020202" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>39 Knall am Käfig (hard): 1,85 Versuche, Soll 1,60–2,00</title></circle>
+<circle cx="388.5869565217391" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>40 Ehrenrunde IV (fun): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="396.80434782608694" cy="486.88429752066116" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>41 Kruste (practice): 1,21 Versuche, Soll 1,10–1,30</title></circle>
+<circle cx="405.0217391304348" cy="485.4037925264919" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>42 Doppelkruste (normal): 1,23 Versuche, Soll 1,20–1,40</title></circle>
+<circle cx="413.2391304347826" cy="493.49668874172187" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>43 Rissformen (practice): 1,15 Versuche, Soll 1,10–1,30</title></circle>
+<circle cx="421.45652173913044" cy="479.92307692307696" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>44 Riss und Kruste (normal): 1,28 Versuche, Soll 1,20–1,40</title></circle>
+<circle cx="429.67391304347825" cy="444.35618479880776" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>45 Sirupschlucht (hard): 1,64 Versuche, Soll 1,60–2,00</title></circle>
+<circle cx="437.89130434782606" cy="492.2491369390104" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>46 Gasquelle (practice): 1,16 Versuche, Soll 1,10–1,30</title></circle>
+<circle cx="446.10869565217394" cy="479.92307692307696" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>47 Quellen und Dürre (normal): 1,28 Versuche, Soll 1,20–1,40</title></circle>
+<circle cx="454.3260869565217" cy="485.4037925264919" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>48 Quellen und Käfige (normal): 1,23 Versuche, Soll 1,20–1,40</title></circle>
+<circle cx="462.54347826086956" cy="446.9882697947214" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>49 Quellensturm (hard): 1,61 Versuche, Soll 1,60–2,00</title></circle>
+<circle cx="470.7608695652174" cy="508" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>50 Der zweite Riss (fun): 1,00 Versuche, Soll 1,00–1,10</title></circle>
+<circle cx="478.9782608695652" cy="499.031941031941" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>51 Schläfer (intro): 1,09 Versuche, Soll 1,06–1,20</title></circle>
+<circle cx="487.19565217391306" cy="481.5385500575374" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>52 Weckruf (practice): 1,27 Versuche, Soll 1,12–1,41</title></circle>
+<circle cx="495.4130434782609" cy="462.2236230922362" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>53 Gas (normal): 1,46 Versuche, Soll 1,30–1,61</title></circle>
+<circle cx="503.63043478260875" cy="492.58651026392965" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>54 Funkenregen (fun): 1,15 Versuche, Soll 1,04–1,24</title></circle>
+<circle cx="511.8478260869565" cy="361.7542087542088" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>55 Tiefschlaf (hard): 2,47 Versuche, Soll 1,94–3,24</title></circle>
+<circle cx="520.0652173913044" cy="495.64764432647644" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>56 Fäulnis (intro): 1,12 Versuche, Soll 1,06–1,24</title></circle>
+<circle cx="528.2826086956521" cy="445.6829268292683" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>57 Fauler Schlaf (combine): 1,63 Versuche, Soll 1,30–1,77</title></circle>
+<circle cx="536.5" cy="457.853041695147" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>58 Fäulnis eindämmen (normal): 1,50 Versuche, Soll 1,38–1,74</title></circle>
+<circle cx="544.7173913043479" cy="348.98583234946875" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>59 Weckknall (hard): 2,60 Versuche, Soll 1,94–3,24</title></circle>
+<circle cx="552.9347826086956" cy="490.22402597402595" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>60 Ehrenrunde V (fun): 1,18 Versuche, Soll 1,04–1,24</title></circle>
+<circle cx="561.1521739130435" cy="435.9153605015674" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>61 Bettruhe (normal): 1,72 Versuche, Soll 1,53–1,94</title></circle>
+<path d="M 569.3695652173913 309.264705882353 L 574.8695652173913 314.764705882353 L 569.3695652173913 320.264705882353 L 563.8695652173913 314.764705882353 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>62 Die Wurzelkammer (boss): 2,94 Versuche, Soll 2,77–4,50</title></path>
+<circle cx="577.5869565217391" cy="498.5603448275862" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>63 Giftwolke (intro): 1,09 Versuche, Soll 1,06–1,20</title></circle>
+<circle cx="585.8043478260869" cy="467.3405889884763" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>64 Giftwolken (practice): 1,41 Versuche, Soll 1,12–1,43</title></circle>
+<circle cx="594.0217391304348" cy="461.1550802139038" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>65 Öl und Gift (normal): 1,47 Versuche, Soll 1,31–1,64</title></circle>
+<circle cx="602.2391304347826" cy="496.513986013986" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>66 Strahlenfest (fun): 1,12 Versuche, Soll 1,04–1,24</title></circle>
+<circle cx="610.4565217391304" cy="370.53246753246754" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>67 Giftfalle (hard): 2,38 Versuche, Soll 1,98–3,33</title></circle>
+<circle cx="618.6739130434783" cy="499.031941031941" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>68 Schrottberg (intro): 1,09 Versuche, Soll 1,06–1,24</title></circle>
+<circle cx="626.8913043478261" cy="465.3376623376623" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>69 Bergstrahl (combine): 1,43 Versuche, Soll 1,31–1,80</title></circle>
+<circle cx="635.1086956521739" cy="460.0707070707071" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>70 Lieferung (normal): 1,48 Versuche, Soll 1,40–1,77</title></circle>
+<circle cx="643.3260869565217" cy="397.97607655502395" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>71 Giftberg (hard): 2,11 Versuche, Soll 1,98–3,33</title></circle>
+<circle cx="651.5434782608696" cy="502.14438502673795" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>72 Ehrenrunde VI (fun): 1,06 Versuche, Soll 1,04–1,24</title></circle>
+<circle cx="659.7608695652174" cy="424.8932443703086" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>73 Bestellung im Riss (normal): 1,83 Versuche, Soll 1,55–1,98</title></circle>
+<path d="M 667.9782608695652 270.22727272727275 L 673.4782608695652 275.72727272727275 L 667.9782608695652 281.22727272727275 L 662.4782608695652 275.72727272727275 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>74 Der Nebelberg (boss): 3,33 Versuche, Soll 2,84–4,50</title></path>
+<circle cx="676.1956521739131" cy="498.5603448275862" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>75 Rohrpaar (intro): 1,09 Versuche, Soll 1,06–1,20</title></circle>
+<circle cx="684.4130434782609" cy="467.3405889884763" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>76 Feuerrohr (practice): 1,41 Versuche, Soll 1,13–1,44</title></circle>
+<circle cx="692.6304347826087" cy="460.0707070707071" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>77 Feuer und Öl (normal): 1,48 Versuche, Soll 1,32–1,66</title></circle>
+<circle cx="700.8478260869565" cy="495.64764432647644" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>78 Funkenflug (fun): 1,12 Versuche, Soll 1,04–1,25</title></circle>
+<circle cx="709.0652173913044" cy="388.76423576423576" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>79 Brennende Rohre (hard): 2,20 Versuche, Soll 2,02–3,41</title></circle>
+<circle cx="717.2826086956521" cy="489.038961038961" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>80 Nebel (intro): 1,19 Versuche, Soll 1,06–1,25</title></circle>
+<circle cx="725.5" cy="456.7190082644628" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>81 Nebelrohr (combine): 1,52 Versuche, Soll 1,32–1,83</title></circle>
+<circle cx="733.7173913043479" cy="460.0707070707071" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>82 Nebelbrand (normal): 1,48 Versuche, Soll 1,41–1,79</title></circle>
+<circle cx="741.9347826086956" cy="367.6768893756846" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>83 Nebeltor (hard): 2,41 Versuche, Soll 2,02–3,41</title></circle>
+<circle cx="750.1521739130435" cy="497.02648532569793" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>84 Ehrenrunde VII (fun): 1,11 Versuche, Soll 1,04–1,25</title></circle>
+<circle cx="758.3695652173913" cy="438.824345146379" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>85 Rohrbrand (normal): 1,69 Versuche, Soll 1,57–2,02</title></circle>
+<path d="M 766.5869565217391 295.75174825174827 L 772.0869565217391 301.25174825174827 L 766.5869565217391 306.75174825174827 L 761.0869565217391 301.25174825174827 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>86 Das Kirchenschiff (boss): 3,08 Versuche, Soll 2,91–4,50</title></path>
+<circle cx="774.8043478260869" cy="499.031941031941" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>87 Gasstrom (intro): 1,09 Versuche, Soll 1,07–1,20</title></circle>
+<circle cx="783.0217391304348" cy="477.42067736185385" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>88 Strömung (practice): 1,31 Versuche, Soll 1,13–1,46</title></circle>
+<circle cx="791.2391304347826" cy="465.3376623376623" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>89 Krustenstrom (normal): 1,43 Versuche, Soll 1,33–1,68</title></circle>
+<circle cx="799.4565217391304" cy="496.513986013986" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>90 Heilfeuer (fun): 1,12 Versuche, Soll 1,04–1,26</title></circle>
+<circle cx="807.6739130434783" cy="386.3333333333333" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>91 Stromschnelle (hard): 2,22 Versuche, Soll 2,05–3,50</title></circle>
+<circle cx="815.8913043478261" cy="492.58651026392965" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>92 Streuner (intro): 1,15 Versuche, Soll 1,07–1,26</title></circle>
+<circle cx="824.1086956521739" cy="453.2114164904863" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>93 Streuner im Strom (combine): 1,55 Versuche, Soll 1,33–1,85</title></circle>
+<circle cx="832.3260869565217" cy="448.27272727272725" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>94 Dürrestrom (normal): 1,60 Versuche, Soll 1,43–1,82</title></circle>
+<circle cx="840.5434782608696" cy="376.0443974630021" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>95 Krustenstreuner (hard): 2,33 Versuche, Soll 2,05–3,50</title></circle>
+<circle cx="848.7608695652175" cy="499.031941031941" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>96 Ehrenrunde VIII (fun): 1,09 Versuche, Soll 1,04–1,26</title></circle>
+<circle cx="856.9782608695652" cy="416.1118881118881" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>97 Verdorrte Kruste (normal): 1,92 Versuche, Soll 1,59–2,05</title></circle>
+<path d="M 865.195652173913 159.62121212121212 L 870.695652173913 165.12121212121212 L 865.195652173913 170.62121212121212 L 859.695652173913 165.12121212121212 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>98 Die Scheune brennt (boss): 4,44 Versuche, Soll 2,97–4,50</title></path>
+<circle cx="873.4130434782609" cy="495.64764432647644" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>99 Lichtung (fun): 1,12 Versuche, Soll 1,04–1,20</title></circle>
+<circle cx="881.6304347826087" cy="480.73595830920675" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>100 Tiefe Wurzeln (practice): 1,27 Versuche, Soll 1,14–1,48</title></circle>
+<circle cx="889.8478260869566" cy="456.7190082644628" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>101 Ölwurzeln (normal): 1,52 Versuche, Soll 1,34–1,71</title></circle>
+<circle cx="898.0652173913043" cy="491.8238636363636" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>102 Ehrenrunde IX (fun): 1,16 Versuche, Soll 1,04–1,27</title></circle>
+<circle cx="906.2826086956521" cy="301.25174825174827" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>103 Dornen (hard): 3,08 Versuche, Soll 2,09–3,58</title></circle>
+<circle cx="914.5" cy="477.42067736185385" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>104 Atempause (normal): 1,31 Versuche, Soll 1,14–1,35</title></circle>
+<circle cx="922.7173913043479" cy="463.2766798418972" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>105 Brennholz (combine): 1,45 Versuche, Soll 1,34–1,88</title></circle>
+<circle cx="930.9347826086957" cy="438.824345146379" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>106 Pfeilerhain (normal): 1,69 Versuche, Soll 1,44–1,85</title></circle>
+<circle cx="939.1521739130434" cy="296.4659090909091" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>107 Ölwald (hard): 3,13 Versuche, Soll 2,09–3,58</title></circle>
+<circle cx="947.3695652173913" cy="500.19251336898395" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>108 Sporenregen (fun): 1,08 Versuche, Soll 1,04–1,27</title></circle>
+<circle cx="955.5869565217391" cy="432.9043062200957" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>109 Dickicht (normal): 1,75 Versuche, Soll 1,51–1,95</title></circle>
+<circle cx="963.804347826087" cy="437.38228438228435" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>110 Wurzelbrand (normal): 1,71 Versuche, Soll 1,61–2,09</title></circle>
+<circle cx="972.0217391304348" cy="192.77272727272725" r="5" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>111 Der Riesenbaum (superhard): 4,17 Versuche, Soll 3,31–4,50</title></circle>
+<text x="972.0217391304348" y="182.77272727272725" font-size="10" text-anchor="middle" fill="#52514e">Riesenbaum</text>
+<circle cx="980.2391304347825" cy="500.19251336898395" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>112 Kronendach (fun): 1,08 Versuche, Soll 1,04–1,27</title></circle>
+<circle cx="988.4565217391304" cy="455.5676613462873" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>113 Wurzelquelle (combine): 1,53 Versuche, Soll 1,34–1,88</title></circle>
+<path d="M 996.6739130434783 295.75174825174827 L 1002.1739130434783 301.25174825174827 L 996.6739130434783 306.75174825174827 L 991.1739130434783 301.25174825174827 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>114 Der Aufzug hinab (boss): 3,08 Versuche, Soll 3,04–4,50</title></path>
+<circle cx="1004.8913043478261" cy="500.19251336898395" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>115 Funkenkuppel (fun): 1,08 Versuche, Soll 1,04–1,20</title></circle>
+<circle cx="1013.1086956521739" cy="483.1136363636364" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>116 Kuppelkäfig (practice): 1,25 Versuche, Soll 1,14–1,49</title></circle>
+<circle cx="1021.3260869565217" cy="461.1550802139038" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>117 Zaungast (normal): 1,47 Versuche, Soll 1,35–1,73</title></circle>
+<circle cx="1029.5434782608695" cy="388.76423576423576" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>118 Brennender Käfig (hard): 2,20 Versuche, Soll 2,12–3,67</title></circle>
+<circle cx="1037.7608695652175" cy="486.14855875831483" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>119 Unter der Kuppel (normal): 1,22 Versuche, Soll 1,14–1,35</title></circle>
+<circle cx="1045.9782608695652" cy="456.7190082644628" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>120 Schrottzaun (combine): 1,52 Versuche, Soll 1,35–1,91</title></circle>
+<circle cx="1054.195652173913" cy="452.0056818181818" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>121 Faule Käfige (normal): 1,56 Versuche, Soll 1,46–1,88</title></circle>
+<circle cx="1062.413043478261" cy="496.11397557666214" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>122 Ehrenrunde X (fun): 1,12 Versuche, Soll 1,04–1,28</title></circle>
+<circle cx="1070.6304347826087" cy="437.38228438228435" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>123 Gitterwerk (normal): 1,71 Versuche, Soll 1,63–2,12</title></circle>
+<path d="M 1078.8478260869565 290.9659090909091 L 1084.3478260869565 296.4659090909091 L 1078.8478260869565 301.9659090909091 L 1073.3478260869565 296.4659090909091 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>124 Die Kuppel (boss): 3,13 Versuche, Soll 3,11–4,50</title></path>
+<circle cx="1087.0652173913043" cy="497.4789356984479" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>125 Nebelweide (fun): 1,11 Versuche, Soll 1,04–1,20</title></circle>
+<circle cx="1095.2826086956522" cy="473.02457002457004" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>126 Sporen im Gras (practice): 1,35 Versuche, Soll 1,15–1,51</title></circle>
+<circle cx="1103.5" cy="466.34622823984523" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>127 Schlafende Sporen (normal): 1,42 Versuche, Soll 1,36–1,75</title></circle>
+<circle cx="1111.7173913043478" cy="493.0356506238859" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>128 Ehrenrunde XI (fun): 1,15 Versuche, Soll 1,04–1,29</title></circle>
+<circle cx="1119.9347826086957" cy="388.76423576423576" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>129 Giftnebel (hard): 2,20 Versuche, Soll 2,16–3,76</title></circle>
+<circle cx="1128.1521739130435" cy="486.14855875831483" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>130 Weidegang (normal): 1,22 Versuche, Soll 1,15–1,35</title></circle>
+<circle cx="1136.3695652173913" cy="446.9882697947214" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>131 Schlafgift (combine): 1,61 Versuche, Soll 1,36–1,94</title></circle>
+<circle cx="1144.5869565217392" cy="441.6363636363636" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>132 Nebelsporen (normal): 1,67 Versuche, Soll 1,47–1,91</title></circle>
+<circle cx="1152.804347826087" cy="342.0909090909091" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>133 Tiefer Schlaf (hard): 2,67 Versuche, Soll 2,16–3,76</title></circle>
+<circle cx="1161.0217391304348" cy="499.6270178419711" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>134 Sporenfest (fun): 1,08 Versuche, Soll 1,04–1,29</title></circle>
+<circle cx="1169.2391304347825" cy="423.2020202020202" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>135 Giftsporen (normal): 1,85 Versuche, Soll 1,65–2,16</title></circle>
+<path d="M 1177.4565217391305 169.23913043478262 L 1182.9565217391305 174.73913043478262 L 1177.4565217391305 180.23913043478262 L 1171.9565217391305 174.73913043478262 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>136 Der Nebelhirte (boss): 4,35 Versuche, Soll 3,18–5,00</title></path>
+<circle cx="1185.6739130434783" cy="499.6270178419711" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>137 Goldfeuer (fun): 1,08 Versuche, Soll 1,04–1,20</title></circle>
+<circle cx="1193.8913043478262" cy="483.1136363636364" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>138 Krustenhang (practice): 1,25 Versuche, Soll 1,15–1,52</title></circle>
+<circle cx="1202.1086956521738" cy="470.2413793103448" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>139 Streuner am Hang (normal): 1,38 Versuche, Soll 1,37–1,78</title></circle>
+<circle cx="1210.3260869565217" cy="492.58651026392965" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>140 Ehrenrunde XII (fun): 1,15 Versuche, Soll 1,04–1,30</title></circle>
+<circle cx="1218.5434782608695" cy="319.0079051383399" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>141 Krustenstrahl (hard): 2,90 Versuche, Soll 2,20–3,84</title></circle>
+<circle cx="1226.7608695652175" cy="479.92307692307696" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>142 Hangpause (normal): 1,28 Versuche, Soll 1,15–1,35</title></circle>
+<circle cx="1234.9782608695652" cy="438.824345146379" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>143 Goldstreuner (combine): 1,69 Versuche, Soll 1,37–1,97</title></circle>
+<circle cx="1243.195652173913" cy="423.2020202020202" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>144 Goldkruste (normal): 1,85 Versuche, Soll 1,49–1,93</title></circle>
+<circle cx="1251.4130434782608" cy="358.6818181818182" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>145 Wilder Hang (hard): 2,50 Versuche, Soll 2,20–3,84</title></circle>
+<circle cx="1259.6304347826087" cy="492.58651026392965" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>146 Strahlenhang (fun): 1,15 Versuche, Soll 1,04–1,30</title></circle>
+<circle cx="1267.8478260869565" cy="438.824345146379" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>147 Brandkruste (normal): 1,69 Versuche, Soll 1,67–2,20</title></circle>
+<path d="M 1276.0652173913043 252.76315789473688 L 1281.5652173913043 258.2631578947369 L 1276.0652173913043 263.7631578947369 L 1270.5652173913043 258.2631578947369 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>148 Der goldene Grat (boss): 3,51 Versuche, Soll 3,24–5,00</title></path>
+<circle cx="1284.2826086956522" cy="493.0356506238859" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>149 Monolithfest (fun): 1,15 Versuche, Soll 1,05–1,20</title></circle>
+<circle cx="1292.5" cy="485.4037925264919" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>150 Rotes Gitter (practice): 1,23 Versuche, Soll 1,15–1,54</title></circle>
+<circle cx="1300.7173913043478" cy="444.35618479880776" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>151 Schrott am Fels (normal): 1,64 Versuche, Soll 1,39–1,80</title></circle>
+<circle cx="1308.9347826086957" cy="493.49668874172187" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>152 Ehrenrunde XIII (fun): 1,15 Versuche, Soll 1,05–1,31</title></circle>
+<circle cx="1317.1521739130435" cy="358.6818181818182" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>153 Felsenkäfig (hard): 2,50 Versuche, Soll 2,23–3,93</title></circle>
+<circle cx="1325.3695652173913" cy="488.3293413173653" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>154 Rast am Fels (normal): 1,20 Versuche, Soll 1,15–1,35</title></circle>
+<circle cx="1333.5869565217392" cy="446.9882697947214" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>155 Knallkäfig (combine): 1,61 Versuche, Soll 1,39–2,00</title></circle>
+<circle cx="1341.804347826087" cy="440.2421695951108" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>156 Sirupschrott (normal): 1,68 Versuche, Soll 1,50–1,96</title></circle>
+<circle cx="1350.0217391304348" cy="361.7542087542088" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>157 Steilwand (hard): 2,47 Versuche, Soll 2,23–3,93</title></circle>
+<circle cx="1358.2391304347825" cy="497.02648532569793" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>158 Sirupblüte (fun): 1,11 Versuche, Soll 1,05–1,31</title></circle>
+<circle cx="1366.4565217391305" cy="434.42292490118575" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>159 Der Aufzug (normal): 1,74 Versuche, Soll 1,69–2,23</title></circle>
+<path d="M 1374.6739130434783 258.7852664576803 L 1380.1739130434783 264.2852664576803 L 1374.6739130434783 269.7852664576803 L 1369.1739130434783 264.2852664576803 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>160 Monolith-Gipfel (boss): 3,45 Versuche, Soll 3,31–5,00</title></path>
+<text x="1374.6739130434783" y="254.28526645768028" font-size="10" text-anchor="middle" fill="#52514e">Monolith-Gipfel</text>
+<circle cx="1382.8913043478262" cy="497.4789356984479" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>161 Stille Bucht (fun): 1,11 Versuche, Soll 1,05–1,20</title></circle>
+<circle cx="1391.1086956521738" cy="471.1818181818182" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>162 Buchtamöbe (practice): 1,37 Versuche, Soll 1,16–1,55</title></circle>
+<circle cx="1399.3260869565217" cy="453.2114164904863" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>163 Rohrbucht (normal): 1,55 Versuche, Soll 1,40–1,82</title></circle>
+<circle cx="1407.5434782608695" cy="499.031941031941" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>164 Ehrenrunde XIV (fun): 1,09 Versuche, Soll 1,05–1,32</title></circle>
+<circle cx="1415.7608695652175" cy="381.3057851239669" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>165 Schlafströmung (hard): 2,27 Versuche, Soll 2,27–4,01</title></circle>
+<circle cx="1423.9782608695652" cy="479.09970674486806" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>166 Ebbe (normal): 1,29 Versuche, Soll 1,16–1,35</title></circle>
+<circle cx="1432.195652173913" cy="444.35618479880776" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>167 Strom und Rohr (combine): 1,64 Versuche, Soll 1,40–2,03</title></circle>
+<circle cx="1440.4130434782608" cy="443.007513148009" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>168 Schlafende Bucht (normal): 1,65 Versuche, Soll 1,52–1,99</title></circle>
+<circle cx="1448.6304347826087" cy="319.0079051383399" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>169 Gezeiten (hard): 2,90 Versuche, Soll 2,27–4,01</title></circle>
+<circle cx="1456.8478260869565" cy="483.8865047995483" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>170 Bootsfest (fun): 1,24 Versuche, Soll 1,05–1,32</title></circle>
+<circle cx="1465.0652173913043" cy="423.2020202020202" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>171 Rohre im Schlaf (normal): 1,85 Versuche, Soll 1,71–2,27</title></circle>
+<path d="M 1473.2826086956522 149.56611570247935 L 1478.7826086956522 155.06611570247935 L 1473.2826086956522 160.56611570247935 L 1467.7826086956522 155.06611570247935 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>172 Die Bucht (boss): 4,55 Versuche, Soll 3,38–5,00</title></path>
+<circle cx="1481.5" cy="498.5603448275862" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>173 Blaue Terrassen (fun): 1,09 Versuche, Soll 1,05–1,20</title></circle>
+<circle cx="1489.7173913043478" cy="485.4037925264919" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>174 Terrassenkäfig (practice): 1,23 Versuche, Soll 1,16–1,57</title></circle>
+<circle cx="1497.9347826086957" cy="449.53679653679654" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>175 Giftterrasse (normal): 1,59 Versuche, Soll 1,41–1,85</title></circle>
+<circle cx="1506.1521739130435" cy="497.02648532569793" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>176 Ehrenrunde XV (fun): 1,11 Versuche, Soll 1,05–1,33</title></circle>
+<circle cx="1514.3695652173913" cy="370.53246753246754" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>177 Steile Stufen (hard): 2,38 Versuche, Soll 2,30–4,10</title></circle>
+<circle cx="1522.5869565217392" cy="480.73595830920675" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>178 Nebelband (normal): 1,27 Versuche, Soll 1,16–1,35</title></circle>
+<circle cx="1530.804347826087" cy="432.9043062200957" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>179 Bergschrott (combine): 1,75 Versuche, Soll 1,41–2,06</title></circle>
+<circle cx="1539.0217391304348" cy="445.6829268292683" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>180 Käfigstufen (normal): 1,63 Versuche, Soll 1,53–2,02</title></circle>
+<circle cx="1547.2391304347825" cy="342.0909090909091" r="3.6" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>181 Kletterpartie (hard): 2,67 Versuche, Soll 2,30–4,10</title></circle>
+<circle cx="1555.4565217391305" cy="491.00443458980044" r="3.6" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"><title>182 Gipfelfest (fun): 1,17 Versuche, Soll 1,05–1,33</title></circle>
+<circle cx="1563.6739130434783" cy="417.93506493506493" r="3.6" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"><title>183 Letzte Terrasse (normal): 1,90 Versuche, Soll 1,73–2,30</title></circle>
+<path d="M 1571.8913043478262 246.52597402597408 L 1577.3913043478262 252.02597402597408 L 1571.8913043478262 257.52597402597405 L 1566.3913043478262 252.02597402597408 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"><title>184 Die Klippe (boss): 3,57 Versuche, Soll 3,45–5,00</title></path>
+<text x="1571.8913043478262" y="242.02597402597408" font-size="10" text-anchor="middle" fill="#52514e">Klippe</text>
+<text x="68.1086956521739" y="526" font-size="11" text-anchor="middle" fill="#52514e">1</text>
+<text x="174.93478260869566" y="526" font-size="11" text-anchor="middle" fill="#52514e">14</text>
+<text x="273.54347826086956" y="526" font-size="11" text-anchor="middle" fill="#52514e">26</text>
+<text x="372.15217391304344" y="526" font-size="11" text-anchor="middle" fill="#52514e">38</text>
+<text x="470.7608695652174" y="526" font-size="11" text-anchor="middle" fill="#52514e">50</text>
+<text x="569.3695652173913" y="526" font-size="11" text-anchor="middle" fill="#52514e">62</text>
+<text x="667.9782608695652" y="526" font-size="11" text-anchor="middle" fill="#52514e">74</text>
+<text x="766.5869565217391" y="526" font-size="11" text-anchor="middle" fill="#52514e">86</text>
+<text x="865.195652173913" y="526" font-size="11" text-anchor="middle" fill="#52514e">98</text>
+<text x="996.6739130434783" y="526" font-size="11" text-anchor="middle" fill="#52514e">114</text>
+<text x="1078.8478260869565" y="526" font-size="11" text-anchor="middle" fill="#52514e">124</text>
+<text x="1177.4565217391305" y="526" font-size="11" text-anchor="middle" fill="#52514e">136</text>
+<text x="1276.0652173913043" y="526" font-size="11" text-anchor="middle" fill="#52514e">148</text>
+<text x="1374.6739130434783" y="526" font-size="11" text-anchor="middle" fill="#52514e">160</text>
+<text x="1473.2826086956522" y="526" font-size="11" text-anchor="middle" fill="#52514e">172</text>
+<text x="1571.8913043478262" y="526" font-size="11" text-anchor="middle" fill="#52514e">184</text>
+<text x="820" y="546" font-size="12" text-anchor="middle" fill="#52514e">Level (Zonengrenzen gestrichelt)</text>
+<text transform="translate(18 289) rotate(-90)" font-size="12" text-anchor="middle" fill="#52514e">Versuche (1 / Gewinnrate Anfänger)</text>
+<rect x="70" y="570" width="10" height="10" transform="translate(-5 -5)" fill="#dcdbd5"/>
+<text x="80" y="574" font-size="12" fill="#0b0b0b">Soll-Band</text>
+<circle cx="167.4" cy="570" r="4" fill="#1baf7a"/>
+<text x="177.4" y="574" font-size="12" fill="#0b0b0b">Lehren, Üben, Spaß</text>
+<circle cx="324.20000000000005" cy="570" r="4" fill="#2a78d6"/>
+<text x="334.20000000000005" y="574" font-size="12" fill="#0b0b0b">Normal, Kombi</text>
+<circle cx="448.00000000000006" cy="570" r="4" fill="#eb6834"/>
+<text x="458.00000000000006" y="574" font-size="12" fill="#0b0b0b">Hart (groß: superhart)</text>
+<path d="M 631.2 564.5 l 5.5 5.5 l -5.5 5.5 l -5.5 -5.5 Z" fill="#eb6834"/>
+<text x="641.2" y="574" font-size="12" fill="#0b0b0b">Boss</text>
+<circle cx="695.6" cy="570" r="6" fill="none" stroke="#c4262e" stroke-width="1.5"/>
+<text x="705.6" y="574" font-size="12" fill="#0b0b0b">außerhalb des Bands (0)</text>
+</svg>
