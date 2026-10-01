@@ -343,6 +343,14 @@ function poissonInChunk(seed: number, cx: number, cz: number, salt: string, minD
   return pts.map(([x, y]) => [x + cx * CHUNK_SIZE, y + cz * CHUNK_SIZE]);
 }
 
+/** Steht ein Fuß auf Höhe `h` im Nebelmeer der Welt (Spiegel aus `mist.sea`, siehe `@ee/render` ground/fogSea)? */
+function belowSea(field: PlaneField, world: number, h: number, margin: number): boolean {
+  const spec = field.spec(world);
+  const sea = spec.mist?.sea;
+  if (!sea) return false;
+  return h < (sea.height ?? sea.level * spec.terrain.amplitude) + 0.15 + margin * 0.3;
+}
+
 /** Wahrzeichen-Freiräume (Fokus-Slots der Regionen im Chunk + externe Wahrzeichen). */
 function landmarkCleared(slots: readonly LandmarkSlot[], x: number, z: number, radius: number): boolean {
   for (const l of slots) if (Math.hypot(x - l.position[0], z - l.position[2]) < l.clearRadius + radius) return true;
@@ -460,6 +468,12 @@ export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, opt
     const key = rs.region.key;
     const fam = field.spec(world).vegetation;
     if (fam.density <= 0) continue;
+    // Windbäume an der Klippenkante (Welt 14): nur im Band hinter der Klippe
+    const band = (fam as TreeFamily).coastBand;
+    if (band) {
+      const f = field.features.seaDistance(key, x, z, true);
+      if (f === null || f > -band[0] || f < -band[1]) continue;
+    }
     const rel = Math.min(1, fam.density / Math.max(1e-6, maxDensity));
     const forest = field.forestAt(x, z);
     const ft = fam.forestThreshold ?? 0.51;
@@ -484,6 +498,8 @@ export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, opt
     const hn = field.features.region(key).snow ? field.heightNormAt(x, z) : 0;
     if (field.features.blocksTree(key, x, z, canopyRadius, hn)) continue;
     field.surfaceAt(x, z, pos, nor);
+    // Nebelmeer (Welt 12): unter dem Nebelspiegel wächst nichts, es wäre im Nebel versunken
+    if (belowSea(field, world, pos[1], canopyRadius)) continue;
     snapToMesh(options.mesh, pos);
     const hullH = prop.hull * canopyRadius;
     raw.push({
@@ -573,7 +589,9 @@ export function scatterPlaneProps(field: PlaneField, cx: number, cz: number, opt
   const scale = options.densityScale ?? 1;
   const trashScale = options.trashScale ?? 1;
   // Dichten: Maximum der Welten im Chunk (jeder Kandidat prüft dann seine eigene Welt)
-  const maxOf = (k: keyof PlanetPropSpec): number => {
+  /** Dichte-Schlüssel der Requisiten (die übrigen Felder sind Einstellungen wie `animalScale`). */
+  type DensityKey = 'trash' | 'pools' | 'barns' | 'rocks' | 'animals';
+  const maxOf = (k: DensityKey): number => {
     let m = 0;
     for (const key of regions) m = Math.max(m, field.spec(field.region(key).world).props?.[k] ?? 0);
     return m;
@@ -581,7 +599,7 @@ export function scatterPlaneProps(field: PlaneField, cx: number, cz: number, opt
   const place = (
     density: number,
     salt: string,
-    specKey: keyof PlanetPropSpec,
+    specKey: DensityKey,
     pick: (rand: () => number, forest: number, spec: PlanetPropSpec | undefined, fam: PlanetVegetationFamily) => { kind: PlanetPropKind; scale: number } | null,
   ) => {
     if (density <= 0) return;
@@ -603,12 +621,21 @@ export function scatterPlaneProps(field: PlaneField, cx: number, cz: number, opt
       const variant = rand();
       const priority = rand();
       if (!r) continue;
+      if (r.kind === 'animal') {
+        // Maßstab je Welt; auf Wunsch nur auf den Wiesen (Welt 11: Kühe auf der leuchtenden Wiese)
+        r.scale *= spec.props?.animalScale ?? 1;
+        if (spec.props?.animalsOnMeadow) {
+          const snow = field.features.region(key).snow;
+          if (!snow || snow.value(x, z, field.heightNormAt(x, z)) < 0.06) continue;
+        }
+      }
       const foot = PROP_FOOTPRINT[r.kind] * r.scale;
       if (options.clear?.(x, z, foot)) continue;
       if (landmarkCleared(slots, x, z, foot)) continue;
       if (field.landmarkBlocks(x, z, foot)) continue;
       if (field.features.blocksProp(key, x, z, foot)) continue;
       field.surfaceAt(x, z, pos, nor);
+      if (belowSea(field, w, pos[1], 0)) continue;
       snapToMesh(options.mesh, pos);
       items.push({ prop: { kind: r.kind, position: [pos[0], pos[1], pos[2]], normal: [nor[0], nor[1], nor[2]], scale: r.scale, yaw, zone: 0, world: w, rank: 0, variant }, priority });
     }
@@ -634,7 +661,7 @@ export function scatterPlaneProps(field: PlaneField, cx: number, cz: number, opt
   place(maxOf('pools') * scale * trashScale, 'pool', 'pools', (rand, forest) => (forest < 0.55 && rand() < 0.85 ? { kind: 'pool', scale: 1.3 + rand() * 1.9 } : null));
   place(maxOf('barns') * scale, 'barn', 'barns', (rand, forest) => (forest < 0.6 ? { kind: 'barn', scale: 2.2 + rand() * 1.6 } : null));
   place(maxOf('rocks') * scale, 'rock', 'rocks', (rand) => (rand() < 0.8 ? { kind: 'rock', scale: 0.7 + rand() * 1.5 } : null));
-  place(maxOf('animals') * scale, 'animal', 'animals', (rand, forest) => (forest < 0.5 && rand() < 0.7 ? { kind: 'animal', scale: 0.8 + rand() * 0.35 } : null));
+  place(maxOf('animals') * scale, 'animal', 'animals', (rand, forest, spec) => ((spec?.animalsOnMeadow || forest < 0.5) && rand() < 0.7 ? { kind: 'animal', scale: 0.8 + rand() * 0.35 } : null));
   // Fokus-Requisiten der Weltkompositionen (z. B. die rote Scheune)
   for (const l of slots) {
     const inst = l.instance;

@@ -4,6 +4,7 @@ import { abs, atan, attribute, cameraViewMatrix, clamp, float, fract, fwidth, in
 import {
   CHUNK_SIZE,
   PlaneField,
+  PlaneMist,
   PlanePath,
   WorldCatalog,
   WorldLayout,
@@ -36,13 +37,22 @@ import { createWaterMaterial } from './water/waterSurface';
 import { buildWaterGeometry, waterGeometry, type WaterRegionInput } from './water/waterMesh';
 import { buildRockGeometry, createRockMaterial, rockGeometry } from './landmarks/rocks';
 import { BarnLandmarks } from './landmarks/barn';
+import { HorseHerd, type HorsePlacement } from './landmarks/horses';
 import { DriftLandmarks, type DriftPlacement } from './landmarks/drifts';
 import { PLANET_ATLAS_HEIGHT, SLOT_COUNT, SLOT_ROWS, WorldSlots, slotLandmarkRows, slotRows } from './worldSlots';
 import { LandmarkSet } from './landmarks/set/LandmarkSet';
+import type { CloudBankSpec } from './sky/cloudBanks';
+import { MistBanks } from './mist/mistBanks';
+import { createScaleCarpet, type ScaleCarpet } from './ground/scaleCarpet';
+import { fogSeaLayer } from './ground/fogSea';
+import { meadowLayer } from './ground/meadow';
 import type { LandmarkInstance } from '@ee/world';
 
-/** Bodenbehandlung je Welt (Terrain-Ornament): glatt, Schneelinien, Wiese, Perspektivlinien, Rampen, Schneegrate. */
-export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges';
+/**
+ * Bodenbehandlung je Welt (Terrain-Ornament): glatt, Schneelinien, Wiese, Perspektivlinien, Rampen, Schneegrate,
+ * Buschteppich aus Schuppenbögen (Welt 11, Ebene 20) und Schuppenbüsche mit Lichtlinien (Welt 12, Ebene 7).
+ */
+export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges' | 'scales' | 'scalesStreaked';
 
 /** Kameradistanz (Welteinheiten, Kamera → Blickpunkt), für die die Nebelwerte der Welten gesetzt sind. */
 export const FOG_REFERENCE_DISTANCE = 9;
@@ -63,6 +73,24 @@ export interface WorldView {
   nearClear?: number;
   /** Lichtung unter der Kamera (seitlicher Radius, Welteinheiten): ruhiges unteres Bildband. */
   footClear?: number;
+  /** Blickpunkt über dem Gelände (Welteinheiten): > 0 hebt den Blick (Untersicht, z. B. zum Monolithen, Ebene 45). */
+  lookHeight?: number;
+  /**
+   * Sonne der Komposition (Grad, Azimut relativ zur Blickachse wie im Sonnen-Rig: 0 = Gegenlicht vor der Kamera,
+   * 90 = rechts); fehlt die Höhe, gilt die des Lab-Reglers. Welt 11: Gegenlicht von rechts vorn (Ebene 20), Welt 13:
+   * Licht von rechts hinten auf die Schauseite des Monolithen (Ebene 45).
+   */
+  sun?: { azimuth: number; elevation?: number };
+  /** Scheitel neben dem Bildfokus (Rig-Raum: x rechts, z zur Kamera) statt `focus` — Untersichten ohne Bodenstrahl. */
+  aim?: [number, number];
+  /** Blickpunkt seitlich (Welteinheiten, + rechts): die Kamera dreht sich zur Seite (Welt 14: zur Landzunge). */
+  lookSide?: number;
+  /** Abweichungen der Komposition im Hochformat (Handy): ersetzen die Felder oben, wenn das Bild höher als breit ist. */
+  portrait?: Partial<Omit<WorldView, 'portrait'>>;
+  /** Blickrichtung der Komposition (Grad um die Hochachse, + = nach links; Standard 0 = längs des Pfads). */
+  yaw?: number;
+  /** Vordergrund-Ornament der Komposition (Welt 12: der fraktale Ast oben links, Ebene 7). */
+  ornament?: 'branch';
 }
 
 /** Eine Welt mit ihren Darstellungsdaten (Autorenwelt aus `content/`, oder prozedural erzeugt). */
@@ -76,8 +104,15 @@ export interface EarlePlanetWorld {
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
+  /**
+   * Terminator des Geländes (N·L darunter Tinte; Standard 0,02). Welt 11 (Ebene 20): 0,22 — flache Kuppen bleiben dunkle
+   * Masse, nur die zur Sonne geneigten Kämme leuchten.
+   */
+  groundTerminator?: number;
   /** Prozedural erzeugt (nur lesbar im Editor). */
   procedural?: boolean;
+  /** Wolkenbänke am Himmel der Welt (Welt 13, `sky/cloudBanks.ts`). */
+  clouds?: CloudBankSpec;
   /**
    * Schattentönung der Welt (Earle: Schatten auf Schnee blau, Bild 05; auf der goldenen Wiese tiefes Oliv): Farbe und
    * Anteil 0..1, mit dem die Tintenform auf dem Gelände (und Wehen, Pfad) zur Tönung gemischt wird. Fehlt → Tinte.
@@ -214,7 +249,7 @@ interface LoadedChunk {
 }
 
 /** Bodenornament je Behandlung (Wiese, Rampen und Schneegrate leben von Form und Bändern, nicht von Linien). */
-const GROUND_KIND: Record<GroundTreatment, number> = { smooth: 0, meadow: 0, ramps: 0, snowRidges: 0, snowLines: 1, floorLines: 2 };
+const GROUND_KIND: Record<GroundTreatment, number> = { smooth: 0, meadow: 0, ramps: 0, snowRidges: 0, snowLines: 1, floorLines: 2, scales: 3, scalesStreaked: 4 };
 const DEFAULT_VIEW: WorldView = { height: 9, forward: 8, look: 4, fov: 70, curvature: 0 };
 /** Periode (Welteinheiten) der Bodenornament-Koordinaten: Muster bleiben beim Umbruch des Fokus deckungsgleich. */
 const PATTERN_PERIOD = 700;
@@ -281,6 +316,13 @@ export class EarlePlanet {
   readonly barns: BarnLandmarks;
   /** Schneewehen am Baumfuß in den Schneewelten. */
   readonly drifts: DriftLandmarks;
+  /** Weiße Pferde am Fuß der Monolithen (Welt 13). */
+  readonly horses: HorseHerd;
+  /** Nebelbänke zwischen den Hügeln und Nebelmeer (Welten mit `mist`, Ebene 20/7). */
+  readonly mist: MistBanks;
+  private readonly mistPlan: PlaneMist;
+  /** Buschteppich des Geländes (Bodenbehandlung `scales`): Sonnenrichtung für die Punktränder. */
+  private readonly carpet: ScaleCarpet;
   /**
    * Wahrzeichen der geladenen Regionen (Fels mit Wasserfall, Felsstufe, Zwillingsfälle, Ruine, Sumpf): wenige
    * zusammengefasste Meshes, neu gebaut, wenn sich die Menge ändert (Anker = Fokus beim Bau).
@@ -327,6 +369,12 @@ export class EarlePlanet {
   private readonly barnRows: UniformArrayLike;
   private readonly plainTerrainRows: UniformArrayLike;
   private readonly driftRows: UniformArrayLike;
+  /** Nebelspiegel je Welt-Slot (Welt 12: darunter ist der Boden Nebelmeer; −10⁴ = keins). */
+  private readonly slotSea: UniformArrayLike;
+  /** Wiese statt Schnee je Welt-Slot (Welt 11: die Schneefelder sind leuchtende Wiesen mit Verlauf; 0/1). */
+  private readonly slotMeadow: UniformArrayLike;
+  /** Terminator des Geländes je Welt-Slot (`groundTerminator`, Standard 0,02). */
+  private readonly slotTerminator: UniformArrayLike;
   /** Fokus modulo PATTERN_PERIOD (Muster in Ebenenkoordinaten ohne Genauigkeitsverlust). */
   private readonly patternOrigin = uniform(new Vector3());
   private readonly anchors = new Map<Object3D, { x: number; z: number }>();
@@ -356,6 +404,8 @@ export class EarlePlanet {
   /** Kamera im Objektraum des Fels-Meshes und Lichtungsradius (Karte: wie die Bäume, `setFootClear`). */
   private readonly rockCamLocal = uniform(new Vector3(0, 100, 0)) as unknown as { value: Vector3 } & Vec3Node;
   private readonly rockFootClear = uniform(0);
+  /** Richtung zur Sonne für die Stufen des Monolithen (Fels-Material). */
+  private readonly rockSunDir = uniform(new Vector3(0.8, 0.21, 0.56).normalize()) as unknown as { value: Vector3 } & Vec3Node;
   private readonly barnCamLocal = uniform(new Vector3(0, 100, 0)) as unknown as { value: Vector3 } & Vec3Node;
   private readonly driftCamLocal = uniform(new Vector3(0, 100, 0)) as unknown as { value: Vector3 } & Vec3Node;
   /** Scheunen im geladenen Inhalt (Ebene: Mitte, Radius, Firsthöhe) — Hindernisse für die Kartenkamera. */
@@ -400,6 +450,9 @@ export class EarlePlanet {
     this.barnRows = rowsBy((r) => r.barn);
     this.plainTerrainRows = rowsBy((r) => r.terrain);
     this.driftRows = rowsBy((r) => r.snow);
+    this.slotSea = uniformArray(new Array<number>(SLOT_COUNT).fill(-1e4), 'float') as unknown as UniformArrayLike;
+    this.slotMeadow = uniformArray(new Array<number>(SLOT_COUNT).fill(0), 'float') as unknown as UniformArrayLike;
+    this.slotTerminator = uniformArray(new Array<number>(SLOT_COUNT).fill(0.02), 'float') as unknown as UniformArrayLike;
     this.slots = new WorldSlots(this.atlas, (w) => this.worldData(w).palette, (slot, world) => this.onSlotAssigned(slot, world));
     const first = this.worldData(0);
     const firstSlot = this.slots.slotOf(0);
@@ -497,11 +550,20 @@ export class EarlePlanet {
     const tc = attribute('tc', 'vec4');
     // Schneefelder (Bild 05): Kante mit feiner organischer Welligkeit (Frequenzen ganzzahlig in 700 → periodisch)
     const po = pw.add(this.patternOrigin);
+    // Buschteppich (Ebene 20/7): Schuppenbögen der Büsche als Ornament statt der Linien
+    this.carpet = createScaleCarpet(this.lookup, rowNode, po, normalGeometry as unknown as Vec3Node, step(3.5, kind), rowNode.add(7));
+    const isCarpet = kind.greaterThan(2.5);
+    // Nebelmeer (Welt 12): unter dem Nebelspiegel des Slots ist der Boden Nebel, Farben aus der Wasserzeile (Slot + 10)
+    const seaLayer = fogSeaLayer(this.lookup, rowNode.add(10), arrayElement(this.slotSea, slotF), pw.y, po);
     const k = (f: number) => (Math.round((f * PATTERN_PERIOD) / (Math.PI * 2)) * Math.PI * 2) / PATTERN_PERIOD;
     const snowWob = sin(po.x.mul(k(1.9)).add(sin(po.z.mul(k(1.9 * 1.3))).mul(1.7)))
       .mul(0.035)
       .add(sin(po.y.mul(2.3 * 1.9).add(po.x.mul(k(0.7 * 1.9)))).mul(0.025));
-    const snowField = { mask: aaStep(0, tc.y.add(snowWob)).mul(wb.z), row: wb.y, lift: float(0.08) };
+    // Wiese (Welt 11): dieselbe Feldkante, aber als flache Fläche mit Verlauf nach innen statt Schnee in Lichtbändern
+    const meadowOn = arrayElement(this.slotMeadow, slotF);
+    const fieldEdge = aaStep(0, tc.y.add(snowWob)).mul(wb.z);
+    const snowField = { mask: fieldEdge.mul(meadowOn.oneMinus()), row: wb.y, lift: float(0.08) };
+    const meadow = meadowLayer(this.lookup, wb.y, tc.y, fieldEdge, po, meadowOn);
     // Gemeißelte Hänge: Wertstufen entlang der Höhenlinien (Stufensprung im Bandwert je Höhenschicht)
     const chisel = wa.w;
     // Sägezahn mit 1-px-Kante: jede Höhenschicht verläuft in sich, die Stufe zur nächsten bleibt eine klare Kante
@@ -541,6 +603,7 @@ export class EarlePlanet {
       bands: this.terrainBands,
       bandScale: 2.0,
       terminator: 0.02,
+      terminatorNode: arrayElement(this.slotTerminator, slotF),
       // Höhe → hellere Kuppen, dazu die Meißelschichten (harte Bänder wie im Siebdruck)
       lift: heightAttr.mul(0.45).add(contour.mul(chisel)),
       gradient: terrainGradient,
@@ -551,8 +614,8 @@ export class EarlePlanet {
       crackNode: crack,
       crackLipNode: lip,
       growthNode,
-      pattern: { mask, color: patternColor, shadowColor: patternShadow },
-      layers: [snowField],
+      pattern: { mask: select(isCarpet, this.carpet.mask, mask), color: select(isCarpet, this.carpet.color, patternColor), shadowColor: select(isCarpet, this.carpet.shadowColor, patternShadow) },
+      layers: [snowField, meadow, seaLayer],
       positionNode: warp(positionLocal as unknown as Vec3Node),
       fogDistNode: positionView.length().add(this.veilNode(slotF)),
     });
@@ -570,6 +633,7 @@ export class EarlePlanet {
       warp,
       growth: featureGrowth,
       footClear: { camLocal: this.rockCamLocal, radius: this.rockFootClear },
+      sunDir: this.rockSunDir,
     });
     this.waterMaterial = createWaterMaterial({ lookup: this.lookup, fog: this.fog, bands: this.terrainBands, waterRows: this.waterRows, veil: (w) => this.veilNode(w), warp, growth: featureGrowth });
     this.barns = new BarnLandmarks({
@@ -598,6 +662,12 @@ export class EarlePlanet {
       shadowTint: this.shadowTint,
     });
     this.plane.add(this.drifts.mesh);
+    this.horses = new HorseHerd({ lookup: this.lookup, fog: this.fog, warp, camLocal: this.rockCamLocal, sunDir: this.rockSunDir, veil: (w) => this.veilNode(w) });
+    this.plane.add(this.horses.mesh);
+    // Nebelbänke (Ebene 20: Bänder zwischen den Hügelschichten; Ebene 7: Nebelmeer), je Region geplant
+    this.mistPlan = new PlaneMist(this.field);
+    this.mist = new MistBanks({ lookup: this.lookup, warp });
+    this.plane.add(this.mist.mesh);
 
     // --- Vegetation ----------------------------------------------------------------------------------------------
     this.vegetation = new PlanetVegetation({
@@ -628,7 +698,7 @@ export class EarlePlanet {
       groundAt: (x, z) => this.field.heightAt(x, z),
     });
     this.plane.add(this.landmarkSet.group);
-    for (const o of [this.barns.mesh, this.drifts.mesh, this.vegetation.group, this.landmarkSet.group]) this.anchorObject(o, 0, 0);
+    for (const o of [this.barns.mesh, this.drifts.mesh, this.mist.mesh, this.vegetation.group, this.landmarkSet.group]) this.anchorObject(o, 0, 0);
   }
 
   // --- Welten und Slots ------------------------------------------------------------------------------------------
@@ -671,6 +741,10 @@ export class EarlePlanet {
     const hasSnow = !!(w.palette.snow && spec.features?.snowFields);
     this.slotA.array[slot]!.set(rows.terrain, GROUND_KIND[w.ground], w.ground === 'floorLines' ? (w.palette.groundLine ? 6 : 4) : 1, Math.max(0, spec.features?.chisel ?? 0));
     this.slotB.array[slot]!.set(rows.water, w.palette.snow ? rows.snow : rows.terrain, hasSnow ? 1 : 0, rows.rock);
+    const sea = spec.mist?.sea;
+    this.slotSea.array[slot] = sea ? (sea.height ?? sea.level * spec.terrain.amplitude) : -1e4;
+    this.slotMeadow.array[slot] = hasSnow && spec.features?.snowFields?.meadow ? 1 : 0;
+    this.slotTerminator.array[slot] = w.groundTerminator ?? 0.02;
     // Fokus der Perspektivlinien: setzt `rebuildContent` aus der nächsten Region der Welt
     this.slotFocusPlane[slot] = null;
     this.slotRays[slot] = w.floorAnchor ? 144 : 48;
@@ -879,6 +953,11 @@ export class EarlePlanet {
     return this.viewBlend < 1;
   }
 
+  /** Blick-Welten der Überblendung (Himmel, Nebel, Wolken): A → B mit Anteil t. */
+  get viewWorlds(): { a: number; b: number; t: number } {
+    return { a: this.viewWorldA, b: this.viewWorldB, t: this.skyMix.value };
+  }
+
   /** Blickpunkt in der Ebene → Welt darunter → Himmel/Nebel/Streifen überblenden. */
   setViewPoint(x: number, z: number, immediate = false): void {
     this.setViewWorld(this.field.worldAt(x, z), immediate);
@@ -1072,12 +1151,23 @@ export class EarlePlanet {
 
   /** Höhe der höchsten Werfer über dem Boden (Schattenkamera). */
   get hTotal(): number {
-    return Math.max(this.field.hMax + this.vegetation.hMax + 1, this.field.hMax + this.landmarkTop + 1, this.field.hMax + this.landmarkSet.maxHeight + 1, 9);
+    const top = this.terrainTop;
+    return Math.max(top + this.vegetation.hMax + 1, top + this.landmarkTop + 1, top + this.landmarkSet.maxHeight + 1, 9);
   }
+
+  /** Höchstes Gelände: Hügelamplitude aller Welten oder die geladenen Chunks (Steilhang in Welt 12, Hügelstaffel in Welt 11). */
+  get terrainTop(): number {
+    return Math.max(this.field.hMax, this.loadedTop);
+  }
+
+  /** Höchster Punkt der geladenen Chunks (bei jedem Neuaufbau des Inhalts). */
+  private loadedTop = 0;
 
   /** Richtung zur Sonne (Welt = Ebene, die Ebene dreht sich nicht): Vegetation und Wahrzeichen. */
   setSunDirection(dir: Vector3): void {
+    this.rockSunDir.value.copy(dir);
     this.vegetation.setSunDirection(dir, dir);
+    this.carpet.sunDir.value.copy(dir);
     this.landmarkSet.setSunDirection(dir);
   }
 
@@ -1177,7 +1267,7 @@ export class EarlePlanet {
     const cz0 = Math.floor((this.focus.z - reach) / CHUNK_SIZE);
     const cz1 = Math.floor((this.focus.z + reach) / CHUNK_SIZE);
     const wanted: Array<{ key: string; cx: number; cz: number; dist: number; visible: boolean; res: number }> = [];
-    const hTop = this.field.hMax + 6;
+    const hTop = this.terrainTop + 6;
     for (let cz = cz0; cz <= cz1; cz++) {
       for (let cx = cx0; cx <= cx1; cx++) {
         const mx = cx * CHUNK_SIZE + half;
@@ -1290,6 +1380,8 @@ export class EarlePlanet {
     if (this.rocks) this.rockCamLocal.value.set(_v.x - this.rocks.position.x, _v.y - this.options.radius, _v.z - this.rocks.position.z);
     this.barnCamLocal.value.set(_v.x - this.barns.mesh.position.x, _v.y - this.options.radius, _v.z - this.barns.mesh.position.z);
     this.driftCamLocal.value.set(_v.x - this.drifts.mesh.position.x, _v.y - this.options.radius, _v.z - this.drifts.mesh.position.z);
+    camera.getWorldDirection(_w);
+    this.mist.setCamera(_v.x - this.mist.mesh.position.x, _v.y - this.options.radius, _v.z - this.mist.mesh.position.z, _w.x, _w.z);
     this.vegetation.updateCamera(camera, _v.sub(this.vegetation.group.position).sub(this.plane.position));
     // Sichtlinie im Objektraum der Vegetation (Anker der Pools)
     const a = this.anchorOf(this.vegetation.group);
@@ -1592,9 +1684,11 @@ export class EarlePlanet {
     const az = Math.round(this.focus.z);
     this.bounds.makeEmpty();
     const regions = new Set<string>();
+    let loadedTop = 0;
     for (const chunk of this.loaded.values()) {
       const withDots = nearSet.has(chunk.key);
       const m = chunk.cpu.mesh;
+      loadedTop = Math.max(loadedTop, m.maxH);
       for (const key of m.regions) regions.add(key);
       for (const tree of chunk.cpu.trees) {
         trees.push({ tree, slot: chunk.slot, withDots });
@@ -1615,6 +1709,7 @@ export class EarlePlanet {
       this.bounds.expandByPoint(_v.set(m.ox - this.focus.x, this.options.radius + m.minH, m.oz - this.focus.z));
       this.bounds.expandByPoint(_v.set(m.ox + CHUNK_SIZE - this.focus.x, this.options.radius + m.maxH, m.oz + CHUNK_SIZE - this.focus.z));
     }
+    this.loadedTop = loadedTop;
     this.vegetation.setContent(trees, props, { x: ax, z: az });
     this.anchorObject(this.vegetation.group, ax, az);
     this.landmarkTop = this.barns.set(barns, { x: ax, z: az });
@@ -1623,6 +1718,8 @@ export class EarlePlanet {
     this.anchorObject(this.barns.mesh, ax, az);
     this.drifts.set(drifts);
     this.anchorObject(this.drifts.mesh, ax, az);
+    this.mist.set(this.mistPlan.in(regions), { x: ax, z: az }, (w) => this.slots.rowsOfWorld(w).fog);
+    this.anchorObject(this.mist.mesh, ax, az);
     // Perspektivlinien (Bodenlinien-Welten): Fokus je Slot = Bildfokus der nächsten Region dieser Welt, verschoben um
     // `floorAnchor` (Ebene: Ost = voraus längs des Pfads, −z; Nord = quer, +x) — ein ferner Fluchtpunkt, auf den die
     // Strahlen wie Earles Perspektivlinien zulaufen
@@ -1690,18 +1787,19 @@ export class EarlePlanet {
     const ax = Math.round(this.focus.x);
     const az = Math.round(this.focus.z);
     this.featureAnchor = { x: ax, z: az };
-    const regions: RegionFeatures[] = regionKeys.map((k) => this.field.features.region(k)).filter((r) => r.lakes.length + r.rivers.length + r.formations.length > 0);
+    const regions: RegionFeatures[] = regionKeys.map((k) => this.field.features.region(k)).filter((r) => r.lakes.length + r.rivers.length + r.seas.length + r.formations.length > 0);
     const ranges: Array<[number, number]> = [];
     const worlds: number[] = [];
     const waterInputs: WaterRegionInput[] = [];
     const formations: Array<{ f: RegionFeatures['formations'][number]; feature: number }> = [];
     for (const r of regions) {
-      const z0 = Math.min(...[...r.lakes.map((l) => l.cz - l.reach), ...r.formations.map((f) => f.cz - f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[1]))]);
-      const z1 = Math.max(...[...r.lakes.map((l) => l.cz + l.reach), ...r.formations.map((f) => f.cz + f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[1]))]);
+      const z0 = Math.min(...[...r.lakes.map((l) => l.cz - l.reach), ...r.formations.map((f) => f.cz - f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[1])), ...r.seas.map((m) => m.zBottom)]);
+      const z1 = Math.max(...[...r.lakes.map((l) => l.cz + l.reach), ...r.formations.map((f) => f.cz + f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[1])), ...r.seas.map((m) => m.zTop)]);
       const range = this.nodeRangeFor(z0, z1);
-      if (r.lakes.length + r.rivers.length > 0) {
-        waterInputs.push({ lakes: r.lakes, rivers: r.rivers, slot: this.slots.slotOf(r.world), featureBase: ranges.length });
-        for (let i = 0; i < r.lakes.length + r.rivers.length; i++) {
+      const bodies = r.lakes.length + r.rivers.length + r.seas.length;
+      if (bodies > 0) {
+        waterInputs.push({ lakes: r.lakes, rivers: r.rivers, seas: r.seas, slot: this.slots.slotOf(r.world), featureBase: ranges.length });
+        for (let i = 0; i < bodies; i++) {
           ranges.push(range);
           worlds.push(r.world);
         }
@@ -1715,6 +1813,19 @@ export class EarlePlanet {
     this.featureRanges = ranges.slice(0, this.featureGrowth.array.length);
     this.featureWorlds = worlds.slice(0, this.featureGrowth.array.length);
     this.applyFeatureGrowth();
+    const horses: HorsePlacement[] = [];
+    for (const { f } of formations) {
+      if (!f.herd) continue;
+      const slot = this.slots.slotOf(f.world);
+      const row = this.slots.rowsOf(slot).accent;
+      for (const [a, b, flip] of f.herd) {
+        const x = f.cx + a;
+        const z = f.cz + b;
+        horses.push({ x, y: this.field.heightAt(x, z), z, size: 0.62, flip, row, slot });
+      }
+    }
+    this.horses.set(horses, { x: ax, z: az });
+    this.anchorObject(this.horses.mesh, ax, az);
     if (formations.length > 0) {
       const data = buildRockGeometry(
         formations.map((e) => e.f),
@@ -1803,6 +1914,8 @@ export class EarlePlanet {
     this.landmarkSet.dispose();
     this.barns.dispose();
     this.drifts.dispose();
+    this.horses.dispose();
+    this.mist.dispose();
     this.rocks?.geometry.dispose();
     this.water?.geometry.dispose();
     this.rockMaterial.dispose();
@@ -1894,12 +2007,23 @@ export function proceduralWorld(id: number, authored: readonly EarlePlanetWorld[
     ground: dom.ground,
     fogStripes: A.fogStripes + (B.fogStripes - A.fogStripes) * t,
     fog: { start: A.fog.start + (B.fog.start - A.fog.start) * t, range: A.fog.range + (B.fog.range - A.fog.range) * t },
-    view: dom.view ?? DEFAULT_VIEW,
+    view: proceduralView(dom.view ?? DEFAULT_VIEW),
     ...((A.valleyMist ?? 0) + (B.valleyMist ?? 0) > 0 ? { valleyMist: (A.valleyMist ?? 0) + ((B.valleyMist ?? 0) - (A.valleyMist ?? 0)) * t } : {}),
     ...((A.skyGlow ?? 0) + (B.skyGlow ?? 0) > 0 ? { skyGlow: (A.skyGlow ?? 0) + ((B.skyGlow ?? 0) - (A.skyGlow ?? 0)) * t } : {}),
     ...(dom.shadowTint ? { shadowTint: dom.shadowTint } : {}),
     procedural: true,
   };
+}
+
+/** Ansicht einer prozeduralen Welt: wie die Elternwelt, aber ohne deren Einzelkomposition (Untersicht, Sonne, Versatz). */
+function proceduralView(v: WorldView): WorldView {
+  const rest: WorldView = { ...v };
+  delete rest.lookHeight;
+  delete rest.sun;
+  delete rest.aim;
+  delete rest.lookSide;
+  delete rest.portrait;
+  return rest;
 }
 
 export { SLOT_ROWS, isTreeKind };

@@ -1,6 +1,7 @@
 import { centroid, distanceToPolygonEdge, pointInPolygon, polygonArea, regularPolygon, type Poly } from './geometry';
 import { BORDER_MARGIN, pathDistance, placementCandidate, regionHalfWidth, type PlaneFeatureHost, type RegionSite } from './host';
 import { isFree, type Occupied } from './lakes';
+import { buildMonolith } from './monolith';
 import type { LedgeAnchor, RockColumn, RockFormation, RockKind, RockSpec } from './types';
 
 /**
@@ -80,6 +81,8 @@ function lateralReachOf(kind: RockKind, size: number): number {
     case 'mesa':
       return size * 0.44;
     case 'spires':
+      return size * 0.62;
+    case 'monolith':
       return size * 0.62;
   }
 }
@@ -441,6 +444,32 @@ function buildWall(host: PlaneFeatureHost, site: RegionSite, world: number, spec
 }
 
 /**
+ * Monolith (Ebene 45) im Bildfokus der Region (Fokus-Slot der Welt, sonst die Mitte), ganz in der Region; gelingt es
+ * dort nicht, rückt er in kleinen Schritten zur Regionsmitte bzw. vom Pfad weg.
+ */
+function placeMonolith(host: PlaneFeatureHost, site: RegionSite, world: number, spec: RockSpec, id: string, rand: () => number, occupied: Occupied[]): { formation: RockFormation; ledges: LedgeAnchor[] } | null {
+  const size = spec.size[0] + (spec.size[1] - spec.size[0]) * rand();
+  const height = spec.height[0] + (spec.height[1] - spec.height[0]) * rand();
+  const [fx, fz] = site.focus;
+  const minPath = (spec.pathDistance?.[0] ?? 2) * 0.75;
+  const away = site.region.kind === 'path' ? Math.sign(fx - host.backbone(fz)) || 1 : 0;
+  for (let t = 0; t < 12; t++) {
+    const f: Frame = { cx: fx + away * t * 0.6, cz: fz + (t % 2 === 0 ? 1 : -1) * Math.floor((t + 1) / 2) * 0.8 };
+    const built = buildMonolith(host, f.cx, f.cz, size, height, rand);
+    if (!fitsRegion(host, site, f, built.columns, minPath)) continue;
+    if (!isFree(occupied, f.cx, f.cz, built.footprint * 0.8, 0.5)) continue;
+    let top = -Infinity;
+    for (const col of built.columns) top = Math.max(top, columnPeak(col));
+    const formation: RockFormation = { id, world, region: site.region.key, kind: 'monolith', cx: f.cx, cz: f.cz, columns: built.columns, footprint: built.footprint, height: top, variant: rand(), ground: built.ground, herd: built.herd };
+    occupied.push({ x: f.cx, z: f.cz, radius: built.footprint });
+    const ledges: LedgeAnchor[] = [];
+    pushLedges(host, ledges, { columns: built.columns, ledges: built.ledges, footprint: built.footprint }, world, site.region.key, id, 'monolith', f);
+    return { formation, ledges };
+  }
+  return null;
+}
+
+/**
  * Felsformationen einer Region nach Spezifikation: neben dem Pfad (Pfadregionen, Frontkante im Abstand
  * `pathDistance`) bzw. um den Bildfokus (Seitenzellen), ganz in der Region, frei von Seen und anderen Formationen.
  */
@@ -451,6 +480,14 @@ export function generateRocks(host: PlaneFeatureHost, site: RegionSite, world: n
   for (const spec of specs) {
     const minPath = (spec.pathDistance?.[0] ?? 2) * 0.75;
     for (let n = 0; n < spec.count; n++) {
+      if (spec.kind === 'monolith') {
+        const m = placeMonolith(host, site, world, spec, `${site.region.key}-monolith-${counter++}`, rand, occupied);
+        if (m) {
+          formations.push(m.formation);
+          ledges.push(...m.ledges);
+        }
+        continue;
+      }
       if (spec.kind === 'wall') {
         const wall = buildWall(host, site, world, spec, `${site.region.key}-wall-${counter++}`, rand, occupied);
         if (wall) {

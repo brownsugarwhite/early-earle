@@ -1,5 +1,5 @@
-import type { EarlePlanetWorld, GroundTreatment, WorldPalette, WorldView } from '@ee/render';
-import type { FocalSpec, PlanetPropSpec, PlanetTerrainShape, RouteEntry, TreeFamily, WorldFeatureSpec, WorldSpec } from '@ee/world';
+import type { CloudBankSpec, EarlePlanetWorld, GroundTreatment, WorldPalette, WorldView } from '@ee/render';
+import type { FocalSpec, MistSpec, PlanetPropSpec, PlanetTerrainShape, RouteEntry, TreeFamily, WorldFeatureSpec, WorldSpec } from '@ee/world';
 
 /** Zonendatei `content/zones/*.json` (Schema 1). */
 export interface ZoneContent {
@@ -35,6 +35,10 @@ export interface WorldContent {
   trash?: import('@ee/render/earle/trash/index.ts').TrashWorldSpec;
   /** Geländemerkmale: Seen, Flüsse, Felsformationen, Schneefelder, Schneewehen, Meißelstufen. */
   features?: WorldFeatureSpec;
+  /** Nebelbänke zwischen den Hügeln und Nebelmeer (Welten 11/12, Ebene 20 und Ebene 7). */
+  mist?: MistSpec;
+  /** Gewichtsfaktoren der Wahrzeichen (0 = keine), z. B. `{ "fallsRock": 0 }`. */
+  landmarks?: WorldSpec['landmarks'];
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
@@ -46,6 +50,8 @@ export interface WorldContent {
   skyGlow?: number;
   /** Fluchtpunkt der Bodenlinien (Ost/Nord vom Weltmittelpunkt, Welteinheiten), siehe `EarlePlanetWorld.floorAnchor`. */
   floorAnchor?: { east?: number; north?: number };
+  /** Terminator des Geländes (Standard 0,02; Welt 11: dunkle Hügelmassen, nur die Kämme im Licht). */
+  groundTerminator?: number;
   /**
    * Fokus der Weltkomposition: mit `kind` ein Fokus-Element (Scheune, Wurzelbaum …) am Slot, ohne `kind` nur ein
    * Bildanker. Lage je Region: `along` (0 = Beginn des Pfadabschnitts … 1 = Ende) und `lateral` (Welteinheiten, + =
@@ -62,6 +68,10 @@ export interface WorldContent {
     /** Freiraum um das Fokus-Element (Welteinheiten; Standard je Art, z. B. 3.2 für Bäume, 4.5 für die Scheune). */
     clear?: number;
   };
+  /** Wolkenbänke am Himmel (Welt 13): Schichten in Grad über dem Horizont, siehe `@ee/render` CloudBankSpec. */
+  clouds?: CloudBankSpec;
+  /** Anteil der Wahrzeichen (Wasserfall-Fels, Ruine, Sumpf) 0..1; Standard 1. */
+  landmarkChance?: number;
 }
 
 const modules = import.meta.glob<{ default: ZoneContent }>('@content/zones/*.json', { eager: true });
@@ -105,6 +115,11 @@ export const AUTHORED_ROUTE: RouteEntry[] = [
   { world: worldIndex('w08'), levels: 9 }, // Rote Scheune
   { world: worldIndex('w01'), levels: 16, length: 34 }, // Flechtenbaum mit dem Riesenbaum (Level 80–95)
   { world: worldIndex('w03'), levels: 5 }, // Kuppelbaum (erstes Wäldchen, Level 100)
+  // künftige Level 101–140: Autorenwelten nach Earle-Gemälden, gesperrt („bald“), voll gewachsen
+  { world: worldIndex('w11'), levels: 10, future: true }, // Nebelweide (Ebene 20)
+  { world: worldIndex('w12'), levels: 10, future: true }, // Goldnebelhang (Ebene 7)
+  { world: worldIndex('w13'), levels: 10, future: true }, // Roter Monolith (Ebene 45)
+  { world: worldIndex('w14'), levels: 10, future: true }, // Stille Bucht (Ebene 29)
 ];
 
 /** Index der Welt mit dem Riesenbaum (Flechtenbaum, Referenz 01). */
@@ -142,6 +157,9 @@ export function worldSpecOf(w: WorldContent): WorldSpec {
     ...(w.features ? { features: w.features } : {}),
     ...(w.trash ? { trash: w.trash as unknown as NonNullable<WorldSpec['trash']> } : {}),
     ...(focal ? { focal } : {}),
+    ...(w.landmarkChance !== undefined ? { landmarkChance: w.landmarkChance } : {}),
+    ...(w.mist ? { mist: w.mist } : {}),
+    ...(w.landmarks ? { landmarks: w.landmarks } : {}),
   };
 }
 
@@ -160,6 +178,8 @@ export function planetWorlds(): EarlePlanetWorld[] {
     ...(w.valleyMist !== undefined ? { valleyMist: w.valleyMist } : {}),
     ...(w.skyGlow !== undefined ? { skyGlow: w.skyGlow } : {}),
     ...(w.floorAnchor ? { floorAnchor: w.floorAnchor } : {}),
+    ...(w.clouds ? { clouds: w.clouds } : {}),
+    ...(w.groundTerminator !== undefined ? { groundTerminator: w.groundTerminator } : {}),
   }));
 }
 

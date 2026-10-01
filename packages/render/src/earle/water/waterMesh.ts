@@ -1,5 +1,5 @@
 import { BufferAttribute, BufferGeometry } from 'three/webgpu';
-import { PLANE_WATER_OVERLAP as WATER_OVERLAP, planeLakeAt, planeLakeRadiusAt as lakeRadiusAt, type PlaneLake as Lake, type PlaneRiver as River } from '@ee/world';
+import { PLANE_WATER_OVERLAP as WATER_OVERLAP, planeLakeAt, planeLakeRadiusAt as lakeRadiusAt, planeSeaField, type PlaneLake as Lake, type PlaneRiver as River, type PlaneSea as Sea } from '@ee/world';
 
 /** Tiefe (Welteinheiten), um die ein Flussende im See unter dessen Spiegel taucht (kein Z-Fighting). */
 const MOUTH_DIP = 0.015;
@@ -154,12 +154,86 @@ function addRiver(acc: Acc, river: River, lake: Lake | undefined, slot: number, 
   }
 }
 
-/** Gewässer einer Liste von Regionen (Seen, Flüsse mit Mündungssee), Positionen relativ zum Anker. */
+/** Maschenweite des Meeres (Welteinheiten); die Uferlinie liegt ohnehin unter der Klippe. */
+const SEA_STEP = 1.0;
+
+/**
+ * Meer (Ebene 29) als Gitter über der Bucht (Rückgrat-Rahmen: längs z, quer der Abstand zur Pfadküste), flach auf dem
+ * Spiegel, bis knapp unter die Klippe. Musterkoordinaten = Ebenenkoordinaten (x, z) — die Kräusel liegen quer zum
+ * Pfad, also waagrecht im Bild; `e` = Uferabstand, Art 3.
+ */
+function addSea(acc: Acc, sea: Sea, slot: number): void {
+  const id = idHash(sea.id);
+  const L = sea.zTop - sea.zBottom;
+  const zA = sea.zTop - L * Math.max(0, sea.t0 - 0.06);
+  const zB = sea.zTop - L * Math.min(1, sea.t1 + 0.06);
+  const rows = Math.max(2, Math.ceil((zA - zB) / SEA_STEP));
+  const u0 = sea.near - 1.2;
+  const u1 = sea.outer + 1.4;
+  const cols = Math.max(2, Math.ceil((u1 - u0) / SEA_STEP));
+  const hit = { t: 0, coast: 0 };
+  const grid: number[] = [];
+  const keep: boolean[] = [];
+  acc.bank = sea.cliff;
+  // Musterkoordinaten gedreht (Längsachse der Kräusel quer zum Blick der Komposition); linear, also exakt interpoliert
+  const rc = Math.cos(sea.ripple);
+  const rs = Math.sin(sea.ripple);
+  // Spiegelbild der Landzunge: Richtung zur Pfadküste (Ebene) und die spiegelnde Höhe (Klippe plus halber Anstieg zum
+  // Grat), gepackt in den Fluss-Slot: Winkel + 10 · Höhe. Der Winkel ist um π/2 gedreht und liegt in 0..2π, damit die
+  // übliche Richtung (quer zum Pfad, ±x) weit vom Sprung bei 0/2π liegt — der Wert wird im Dreieck linear gemischt.
+  const reflH = Math.max(1, Math.min(40, Math.round(sea.cliff + sea.rise * sea.ridge * 0.5)));
+  const probe = { t: 0, coast: 0 };
+  const coastAt = (x: number, z: number): number => {
+    planeSeaField(sea, x, z, probe);
+    return probe.coast;
+  };
+  for (let i = 0; i <= rows; i++) {
+    const z = zA - ((zA - zB) * i) / rows;
+    const k = Math.max(0, Math.min(sea.backbone.length - 1, Math.round(sea.zTop - z)));
+    const xb = sea.backbone[k]!;
+    for (let j = 0; j <= cols; j++) {
+      const u = u0 + ((u1 - u0) * j) / cols;
+      const x = xb + sea.side * u;
+      const f = planeSeaField(sea, x, z, hit);
+      // Uferhöhe-Slot trägt beim Meer den Abstand zur Pfadküste (Spiegelbild der Landzunge)
+      acc.bank = hit.coast;
+      const gx = coastAt(x + 0.5, z) - coastAt(x - 0.5, z);
+      const gz = coastAt(x, z + 0.5) - coastAt(x, z - 0.5);
+      let toward = Math.atan2(-gz, -gx) + Math.PI / 2;
+      if (toward > Math.PI) toward -= Math.PI * 2;
+      toward += Math.PI;
+      grid.push(push(acc, x, sea.level, z, x * rc - z * rs, x * rs + z * rc, f, 0, slot, toward + 10 * reflH, id, 3));
+      keep.push(f > -0.8);
+    }
+  }
+  const at = (i: number, j: number) => i * (cols + 1) + j;
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const a = at(i, j);
+      const b = at(i, j + 1);
+      const c = at(i + 1, j);
+      const d = at(i + 1, j + 1);
+      if (!keep[a] && !keep[b] && !keep[c] && !keep[d]) continue;
+      // Vorderseite oben (Normale +y): j läuft mit der Seite des Meeres in ±x, i nach −z
+      if (sea.side > 0) {
+        acc.idx.push(grid[a]!, grid[b]!, grid[c]!);
+        acc.idx.push(grid[b]!, grid[d]!, grid[c]!);
+      } else {
+        acc.idx.push(grid[a]!, grid[c]!, grid[b]!);
+        acc.idx.push(grid[b]!, grid[c]!, grid[d]!);
+      }
+    }
+  }
+}
+
+/** Gewässer einer Liste von Regionen (Seen, Flüsse mit Mündungssee, Meer), Positionen relativ zum Anker. */
 export interface WaterRegionInput {
   lakes: readonly Lake[];
   rivers: readonly River[];
+  /** Meer mit Landzunge (Welt 14). */
+  seas?: readonly Sea[];
   slot: number;
-  /** Merkmals-Index des ersten Gewässers dieser Region (Wachstum), Seen zuerst, dann Flüsse. */
+  /** Merkmals-Index des ersten Gewässers dieser Region (Wachstum), Seen zuerst, dann Flüsse, dann Meere. */
   featureBase: number;
 }
 
@@ -173,6 +247,10 @@ export function buildWaterGeometry(regions: readonly WaterRegionInput[], anchor:
     r.rivers.forEach((river, i) => {
       acc.feature = r.featureBase + r.lakes.length + i;
       addRiver(acc, river, r.lakes[river.lake], r.slot, height);
+    });
+    (r.seas ?? []).forEach((sea, i) => {
+      acc.feature = r.featureBase + r.lakes.length + r.rivers.length + i;
+      addSea(acc, sea, r.slot);
     });
   }
   if (acc.idx.length === 0) return null;

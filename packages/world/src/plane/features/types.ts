@@ -1,7 +1,7 @@
 import type { Vec3 } from '../../capPatch';
 import type { RockKind } from '../../features/types';
 
-export type { DriftSpec, LakeSpec, PlacementSpec, RiverSpec, RockKind, RockSpec, SnowFieldSpec, WorldFeatureSpec } from '../../features/types';
+export type { CoastSpec, DriftSpec, LakeSpec, PlacementSpec, RiverSpec, RockKind, RockSpec, SnowFieldSpec, WorldFeatureSpec } from '../../features/types';
 
 /**
  * Laufzeit-Merkmale einer Region der Ebene (ADR 0002). Ebenenkoordinaten (x, z); Höhen absolut über der Grundfläche.
@@ -85,6 +85,49 @@ export interface RockFormation {
   /** Höchste Deckfläche (absolut). */
   height: number;
   variant: number;
+  /** Geländehöhe am Fuß (nur Monolith: Bezug der Wandverläufe im Material). */
+  ground?: number;
+  /** Weiße Pferde am Fuß (nur Monolith): (a, b) relativ zur Mitte und Blickrichtung ±1. */
+  herd?: Array<[number, number, number]>;
+}
+
+/**
+ * Meer eines Pfadabschnitts (Ebene 29): Bucht mit Pfadküste, fernem Rand und geschlossenen Enden; Felder und Höhen in
+ * `features/sea.ts`. Das Rückgrat ist mitgespeichert (Abfragen ohne Wirt, auch im Render-Paket).
+ */
+export interface Sea {
+  id: string;
+  world: number;
+  region: string;
+  /** Seite des Meeres (1 = rechts vom Pfad). */
+  side: 1 | -1;
+  /** Wasserspiegel und Tiefe des Grunds darunter. */
+  level: number;
+  depth: number;
+  /** Klippenhöhe über dem Spiegel, Anstieg landeinwärts, Abstand des Grats. */
+  cliff: number;
+  rise: number;
+  ridge: number;
+  /** Küstenlinie: seitlicher Abstand vom Rückgrat zwischen `near` und `far`; ferner Rand bei `outer`. */
+  near: number;
+  far: number;
+  outer: number;
+  /** Buchten längs des Abschnitts. */
+  bays: number;
+  /** Höhenabfall der Landzunge längs der Bucht (0 = gleich hoch; 1 = vorn anderthalbfach, hinten halb). */
+  slopeAlong: number;
+  /** Drehung der Kräusel in der Ebene (Bogenmaß). */
+  ripple: number;
+  /** Anfang und Ende der Bucht (Anteil zwischen zTop und zBottom). */
+  t0: number;
+  t1: number;
+  zTop: number;
+  zBottom: number;
+  /** Rückgrat x bei z = zTop − i (Schritt 1). */
+  backbone: number[];
+  phase: [number, number, number];
+  /** Einflussbox (x0, z0, x1, z1): Wasser, Klippe, Grat. */
+  box: [number, number, number, number];
 }
 
 /** Anker für Levelknoten auf Felsen: flache Deckfläche (Ebene, absolute Höhe). */

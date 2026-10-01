@@ -3,13 +3,15 @@ import { WET, carve, generateLakes, lakeAt, lakeRadiusAt, type Occupied } from '
 import { generateRivers, riverHeight, riverSegmentAt } from './rivers';
 import { columnAt, columnPeak, columnTopAt, generateRocks } from './rocks';
 import { SnowFields } from './snow';
-import type { DriftSpec, FeatureSample, Lake, LedgeAnchor, River, RockColumn, RockFormation, WorldFeatureSpec } from './types';
+import { makeSea, seaField, seaHeight } from './sea';
+import type { DriftSpec, FeatureSample, Lake, LedgeAnchor, River, RockColumn, RockFormation, Sea, WorldFeatureSpec } from './types';
 
 export type * from './types';
 export { SnowFields } from './snow';
 export { WATER_BED, WATER_OVERLAP, SHORE_E, lakeAt, lakeRadiusAt, carve } from './lakes';
 export { columnAt, columnPeak, columnTopAt } from './rocks';
 export { riverSegmentAt } from './rivers';
+export { seaCoastAt, seaField, seaHeight } from './sea';
 export type { PlaneFeatureHost, RegionSite } from './host';
 export { pathDistance } from './host';
 
@@ -24,6 +26,8 @@ export interface RegionFeatures {
   rivers: River[];
   formations: RockFormation[];
   ledges: LedgeAnchor[];
+  /** Meer mit Landzunge (Welt 14), höchstens eins je Pfadabschnitt. */
+  seas: Sea[];
   snow: SnowFields | null;
   chisel: number;
   drifts: DriftSpec | null;
@@ -54,6 +58,7 @@ export class PlaneFeatures {
   private readonly cache = new Map<string, RegionFeatures>();
   private readonly versions = new Map<string, number>();
   private readonly lakeHit = { e: 0, theta: 0, u: 0 };
+  private readonly seaHit = { t: 0, coast: 0, edge: 0 };
   private readonly segHit = { e: 0, level: 0, along: 0 };
   /** Obergrenze des Caches (Regionen). */
   capacity = 160;
@@ -125,6 +130,7 @@ export class PlaneFeatures {
       rivers: [],
       formations: [],
       ledges: [],
+      seas: [],
       snow: null,
       chisel: Math.max(0, spec?.chisel ?? 0),
       drifts: spec?.drifts ?? null,
@@ -135,8 +141,12 @@ export class PlaneFeatures {
     };
     if (!spec) return out;
     const salt = spec.seed ?? 0;
-    out.snow = spec.snowFields ? new SnowFields(spec.snowFields, host.seed + salt, `${host.worldId(world)}:${key}`) : null;
+    out.snow = spec.snowFields ? new SnowFields(spec.snowFields, host.seed + salt, `${host.worldId(world)}:${key}`, site.focus) : null;
     const occupied: Occupied[] = site.keepClear.map((k) => ({ x: k.x, z: k.z, radius: k.radius }));
+    if (spec.coast) {
+      const sea = makeSea(host, site, world, spec.coast, featureRandom(host.seed, key, 'sea', salt));
+      if (sea) out.seas.push(sea);
+    }
     let made = 0;
     if (spec.rivers) {
       const r = generateRivers(host, site, world, spec.rivers, spec.lakes, featureRandom(host.seed, key, 'rivers', salt), occupied, 0);
@@ -156,6 +166,7 @@ export class PlaneFeatures {
     const grow = (box: [number, number, number, number] | null, x0: number, z0: number, x1: number, z1: number): [number, number, number, number] =>
       box ? [Math.min(box[0], x0), Math.min(box[1], z0), Math.max(box[2], x1), Math.max(box[3], z1)] : [x0, z0, x1, z1];
     for (const l of out.lakes) out.waterBox = grow(out.waterBox, l.cx - l.reach, l.cz - l.reach, l.cx + l.reach, l.cz + l.reach);
+    for (const sea of out.seas) out.waterBox = grow(out.waterBox, sea.box[0], sea.box[1], sea.box[2], sea.box[3]);
     for (const r of out.rivers) {
       const pad = Math.max(...r.widths) * 0.5 + r.shore + 0.3;
       for (const p of r.points) out.waterBox = grow(out.waterBox, p[0] - pad, p[1] - pad, p[0] + pad, p[1] + pad);
@@ -200,10 +211,15 @@ export class PlaneFeatures {
   }
 
   /** Höhe mit Seen und Flussrinnen (natürliches Gelände `h` als Eingabe). */
-  applyHeight(key: string, x: number, z: number, h: number): number {
+  applyHeight(key: string, x: number, z: number, h0: number): number {
     const r = this.region(key);
     const box = r.waterBox;
-    if (!box || x < box[0] || x > box[2] || z < box[1] || z > box[3]) return h;
+    if (!box || x < box[0] || x > box[2] || z < box[1] || z > box[3]) return h0;
+    let h = h0;
+    for (const sea of r.seas) {
+      const b = sea.box;
+      if (x >= b[0] && x <= b[2] && z >= b[1] && z <= b[3]) h = seaHeight(sea, seaField(sea, x, z, this.seaHit), h, this.seaHit.edge, this.seaHit.t);
+    }
     const nl = Math.min(32, r.lakes.length);
     const nr = Math.min(32, r.rivers.length);
     let wetLakes = 0;
@@ -280,6 +296,15 @@ export class PlaneFeatures {
           out.swamp = 0;
         }
       }
+      for (const sea of r.seas) {
+        const w = seaField(sea, x, z, this.seaHit);
+        if (w > out.water) {
+          out.water = w;
+          out.frozen = 0;
+          out.along = this.seaHit.t * (sea.zTop - sea.zBottom);
+          out.swamp = 0;
+        }
+      }
     }
     out.water = Math.max(NO_WATER, Math.min(8, out.water));
     out.snow = r.snow ? r.snow.value(x, z, heightNorm) : -1;
@@ -298,6 +323,7 @@ export class PlaneFeatures {
       this.nearestRiver(river, x, z, 9);
       best = Math.max(best, -this.segHit.e);
     }
+    for (const sea of r.seas) best = Math.max(best, seaField(sea, x, z));
     return best;
   }
 
@@ -330,7 +356,24 @@ export class PlaneFeatures {
       this.nearestRiver(river, x, z, 9 + margin);
       if (this.segHit.e < margin) return true;
     }
+    for (const sea of r.seas) if (seaField(sea, x, z) > -margin) return true;
     return false;
+  }
+
+  /**
+   * Uferabstand zum Meer der Region (> 0 im Wasser, < 0 an Land) oder null ohne Meer. `pathCoast`: nur Land zwischen
+   * Pfad und Pfadküste zählt (die fernen Ufer der Bucht bleiben frei — dort liefert es null).
+   */
+  seaDistance(key: string, x: number, z: number, pathCoast = false): number | null {
+    const r = this.region(key);
+    if (r.seas.length === 0) return null;
+    let best = -Infinity;
+    for (const sea of r.seas) {
+      const f = seaField(sea, x, z, this.seaHit);
+      if (pathCoast && this.seaHit.edge !== 0) continue;
+      best = Math.max(best, f);
+    }
+    return best === -Infinity ? null : best;
   }
 
   /** Felssäule an einem Punkt (mit Rand) oder null. */
@@ -375,6 +418,7 @@ export class PlaneFeatures {
       for (const riv of r.rivers) {
         for (let i = 0; i < riv.points.length; i++) if (Math.hypot(c.x - riv.points[i]![0], c.z - riv.points[i]![1]) < riv.widths[i]! * 0.5 + riv.shore + c.radius) return true;
       }
+      for (const sea of r.seas) if (seaField(sea, c.x, c.z) > -c.radius) return true;
     }
     return false;
   }

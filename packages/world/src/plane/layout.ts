@@ -21,6 +21,12 @@ export interface RouteEntry {
   levels: number;
   /** Länge entlang z (Welteinheiten); Standard `levels × nodeSpacing` (der Riesenbaum trägt 16 Level auf kurzer Strecke). */
   length?: number;
+  /**
+   * Künftige Level (Autorenwelt ohne spielbare Level, z. B. Welt 11–14 hinter Level 100): Abschnitt, Levelnummern und
+   * Welt wie gehabt, aber nicht in `authoredLevels` — die Knoten bleiben gesperrt („bald“), das Wachstum ist dort voll.
+   * Ab dem ersten künftigen Eintrag zählt keiner mehr mit.
+   */
+  future?: true;
 }
 
 export interface LayoutParams {
@@ -98,7 +104,7 @@ export class WorldLayout {
   readonly cellAcross: number;
   readonly cellAlong: number;
   readonly authored: number;
-  /** Anzahl Level der Autorenroute. */
+  /** Anzahl spielbarer Level der Autorenroute (bis zum ersten künftigen Eintrag). */
   readonly authoredLevels: number;
   private readonly route: RouteEntry[];
   /** Kumulierte Längen der Autorenroute: starts[k] = Abstand vom Start zum Beginn von Abschnitt k. */
@@ -125,7 +131,9 @@ export class WorldLayout {
     this.route = params.route.length > 0 ? params.route : [{ world: 0, levels: 10 }];
     let s = 0;
     let level = 1;
+    let playable = -1;
     for (const r of this.route) {
+      if (r.future && playable < 0) playable = level - 1;
       this.starts.push(s);
       this.firstLevels.push(level);
       s += r.length ?? r.levels * this.nodeSpacing;
@@ -133,7 +141,7 @@ export class WorldLayout {
     }
     this.starts.push(s);
     this.firstLevels.push(level);
-    this.authoredLevels = level - 1;
+    this.authoredLevels = playable >= 0 ? playable : level - 1;
     this.siteSalt = hash32('layout-site', params.seed);
     this.cellWorldSalt = hash32('layout-cellworld', params.seed);
     this.band = new GradientNoise2(hash32('layout-band', params.seed));

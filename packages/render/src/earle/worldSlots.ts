@@ -1,4 +1,4 @@
-import { waterFromSky, rockFromTerrain, type PaletteAtlas, type WorldPalette, type WorldRows } from './palette';
+import { cloudFromSky, waterFromSky, rockFromTerrain, type PaletteAtlas, type WorldPalette, type WorldRows } from './palette';
 import { LANDMARK_ROLES, landmarkPaletteFromWorld, type LandmarkRows } from './landmarks/set/palette';
 
 /**
@@ -15,6 +15,8 @@ export const SLOT_COUNT = 24;
 export const SLOT_ROWS = 32;
 /** Erste Zeile der Wahrzeichen-Palette (Fels, Stein, Dach, Moos, Erde, Wasser, Nebel, Sumpf, Ried, Busch, Ranke) im Slot. */
 const LANDMARK_ROW = 13;
+/** Zeile der Wolkenbänke im Slot (hinter den Wahrzeichen). */
+const CLOUD_ROW = 24;
 /** Zeilen des Karten-Atlas (Slots + benannte Zeilen anderer Module: Riesenbaum, Müll, …). */
 export const PLANET_ATLAS_HEIGHT = 1024;
 
@@ -33,6 +35,7 @@ export function slotRows(slot: number): WorldRows {
     water: b + 10,
     rock: b + 11,
     snow: b + 12,
+    cloud: b + CLOUD_ROW,
   };
 }
 
@@ -65,6 +68,7 @@ export function writeSlotPalette(atlas: PaletteAtlas, slot: number, p: WorldPale
   atlas.setRow(rows.water, (p.water ?? waterFromSky(p)).slice(0, 8));
   atlas.setRow(rows.rock, (p.rock ?? rockFromTerrain(p)).slice(0, 8));
   atlas.setRow(rows.snow, (p.snow ?? terrain).slice(0, 8));
+  atlas.setRow(rows.cloud!, (p.cloud ?? cloudFromSky(p)).slice(0, 8));
   // Wahrzeichen der Welt (Fels mit Wasserfall, Ruine, Sumpf) aus derselben Palette
   const lp = landmarkPaletteFromWorld(p);
   const lr = slotLandmarkRows(slot);

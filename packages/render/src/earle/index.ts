@@ -30,3 +30,5 @@ export { DisplayMapping } from './display';
 export { WorldSlots, SLOT_COUNT, SLOT_ROWS, PLANET_ATLAS_HEIGHT, slotLandmarkRows, slotRows, slotOfRow, writeSlotPalette } from './worldSlots';
 export { proceduralPalette, hexToOklab, oklabToHex, type PaletteRecipe } from './proceduralPalette';
 export { FogStripes, createSkyDome, type FogStripeOptions, type SkyDomeOptions } from './skyFog';
+export { CloudBanks, cloudGeometry, followViewClouds, type CloudBankSpec, type CloudBanksOptions, type CloudHost, type CloudLayerSpec } from './sky/cloudBanks';
+export { createForegroundBranch, type ForegroundBranch } from './ornament/branchFrame';

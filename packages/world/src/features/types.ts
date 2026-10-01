@@ -17,6 +17,38 @@ export interface WorldFeatureSpec {
   drifts?: DriftSpec;
   /** Gemeißelte Hänge: zusätzliche Wertstufen entlang der Höhenlinien (0 = aus, 1 = kräftig). */
   chisel?: number;
+  /** Meer mit Landzunge neben dem Pfad (nur auf der Ebene; Welt 14, Ebene 29). */
+  coast?: CoastSpec;
+}
+
+/**
+ * Meer mit Landzunge (Ebene 29): eine große Bucht neben dem Pfad im Pfadabschnitt der Welt; die Küste mit Buchten und
+ * Landzungen, an den Enden und am fernen Rand geschlossen; das Land steigt von der Klippe zu einem Grat an.
+ */
+export interface CoastSpec {
+  /** Seite des Meeres (1 = rechts vom Pfad, −1 = links), Standard 1. */
+  side?: 1 | -1;
+  /** Abstand der Küstenlinie vom Pfad-Rückgrat [min, max] (Landzungen bis Buchten), Standard [6, 10]. */
+  distance?: [number, number];
+  /** Buchten längs des Abschnitts (Wellen der Küstenlinie), Standard 1.6. */
+  bays?: number;
+  /** Meeresspiegel (Höhe), Standard −0.4. */
+  level?: number;
+  /** Klippenhöhe über dem Spiegel, Standard 2.4. */
+  cliff?: number;
+  /** Anstieg des Landes je Einheit landeinwärts, Standard 0.2. */
+  rise?: number;
+  /** Abstand des Grats von der Klippe (Einheiten), Standard 10. */
+  ridge?: number;
+  /** Anfang und Ende der Bucht als Anteil des Abschnitts, Standard [0.1, 0.9]. */
+  ends?: [number, number];
+  /** Höhenabfall der Landzunge längs der Bucht (0 = gleich hoch, 1 = vorn anderthalbfach, am Ende halb), Standard 0. */
+  slopeAlong?: number;
+  /**
+   * Drehung der Kräusel in der Ebene (Grad, von oben gegen den Uhrzeiger): ihre Längsachse liegt quer zum Blick der
+   * Weltkomposition (dort waagrecht wie bei Earle), Standard 0 = quer zum Pfad.
+   */
+  ripple?: number;
 }
 
 /** Lage relativ zum Levelpfad (nahe Welten) bzw. zum Bildfokus der Welt (ferne Welten ohne Pfad). */
@@ -25,6 +57,8 @@ export interface PlacementSpec {
   pathDistance?: [number, number];
   /** Abstand zum Fokus der Welt (Fokus-Slot oder Weltmitte) [min, max]. Standard [3, 16]. */
   focusDistance?: [number, number];
+  /** Seite des Pfads (1 = rechts, −1 = links; Standard zufällig). Nur auf der Ebene (Pfadregionen). */
+  side?: 1 | -1;
 }
 
 export interface LakeSpec extends PlacementSpec {
@@ -55,9 +89,10 @@ export interface RiverSpec extends PlacementSpec {
  * Felsformationen nach Earle: `terraces` = Basaltsäulen-Stufen mit Moosköpfen (Ebene_12), `tower` = Turm-Monolith
  * mit Sockelstufen und Glyphenbändern (Ebene_44/45), `mesa` = Tafelfels mit schrägen Facetten und Rissen (Ebene_27),
  * `spires` = Felsnadel-Gruppe (Ebene_46, Ebene_7), `wall` = riesige Felswand aus Basaltblöcken längs des
- * Weltbands am fernen Rand (Kulisse, Ebene_12/25).
+ * Weltbands am fernen Rand (Kulisse, Ebene_12/25), `monolith` = riesiger roter Tafelberg-Turm auf einem gestuften
+ * Plateau mit gezahnten Stufenwänden (Ebene_45, Welt 13; steht im Bildfokus der Welt).
  */
-export type RockKind = 'terraces' | 'tower' | 'mesa' | 'spires' | 'wall';
+export type RockKind = 'terraces' | 'tower' | 'mesa' | 'spires' | 'wall' | 'monolith';
 
 export interface RockSpec extends PlacementSpec {
   kind: RockKind;
@@ -72,11 +107,23 @@ export interface RockSpec extends PlacementSpec {
   side?: 1 | -1;
 }
 
+export interface SnowFieldPatch {
+  radius: number;
+  offset?: [number, number];
+}
+
 export interface SnowFieldSpec {
   /** Anteil der Fläche unter Schnee (0..1, Standard 0.45). */
   cover: number;
   /** Maßstab der Felder (1 = Standard, größer = weitere Felder). */
   scale?: number;
+  /**
+   * Felder am Bildfokus der Region (Ebene, Welt 11: die leuchtenden Wiesen vor den Schirmbäumen): Radius und Versatz
+   * (x, z) vom Fokus, eines oder mehrere. Nur auf der Ebene.
+   */
+  focus?: SnowFieldPatch | SnowFieldPatch[];
+  /** Wiese statt Schnee (Welt 11): flache leuchtende Fläche mit Verlauf nach innen, nur Schlagschatten (Farben: `snow`). */
+  meadow?: boolean;
 }
 
 export interface DriftSpec {

@@ -1,6 +1,6 @@
 import { Color, Frustum, Group, Matrix4, Object3D, PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
-import { EarlePlanet, FogStripes, PLANET_SHADOW_LAYER, SunRig, createSkyDome, skySunIndices, type WorldPalette } from '@ee/render';
+import { CloudBanks, EarlePlanet, FogStripes, PLANET_SHADOW_LAYER, SunRig, createSkyDome, followViewClouds, skySunIndices, type WorldPalette } from '@ee/render';
 import { hash32, type Vec3 } from '@ee/world';
 import { mixHex } from '@ee/genome';
 import type { FlowQuality } from './quality';
@@ -98,6 +98,8 @@ export class MapWorld {
   readonly world: EarlePlanet;
   readonly sun: SunRig;
   readonly fogStripes: FogStripes;
+  /** Cloud banks of the view world (world 13), on the rig like the fog stripes. */
+  readonly clouds: CloudBanks;
   /** The giant tree of world 01 and the level stretch on it (null without the tree). */
   readonly treeSite: HeroTreeSite | null;
   /** Trash v2 and the neon fog veil (start world, pockets elsewhere); heals with the progress (null: none). */
@@ -203,6 +205,8 @@ export class MapWorld {
       strength: this.world.stripeStrength,
     });
     this.rig.add(this.fogStripes.group);
+    this.clouds = new CloudBanks({ lookup: this.world.lookup });
+    this.rig.add(this.clouds.group);
     // Shadows in plane space: cascades at the camera, casters and receivers inverse-mapped onto the flat plane
     this.sun.fitToDisplay(this.camera, this.world, this.world.plane);
   }
@@ -592,6 +596,7 @@ export class MapWorld {
     this.viewCut = false;
     if (this.world.viewBlending) this.shadowDirty = true; // neighbours fade in/out near the camera
     this.world.tickView(dt);
+    followViewClouds(this.clouds, this.world, this.camera.position, this.skyHorizon.value);
     if (this.trash?.update(this.camera, camWorld, this.frustum, dt)) this.shadowDirty = true;
     this.fogStripes.layout(1, this.world.curvature.value);
 
@@ -604,7 +609,7 @@ export class MapWorld {
 
     if (this.shadowDirty) {
       const treeH = site?.holder.visible ? site.height + 1 : 0;
-      this.sun.setCasterHeight(Math.max(this.world.hTotal, treeH, this.world.field.hMax + (this.trash?.hMax ?? 0) + 1));
+      this.sun.setCasterHeight(Math.max(this.world.hTotal, treeH, this.world.terrainTop + (this.trash?.hMax ?? 0) + 1));
       this.sun.requestUpdate();
       this.shadowPasses++;
       this.shadowDirty = false;
@@ -613,6 +618,7 @@ export class MapWorld {
 
   dispose(): void {
     this.fogStripes.dispose();
+    this.clouds.dispose();
     this.treeSite?.dispose();
     this.trash?.dispose();
     this.world.dispose();
@@ -697,7 +703,8 @@ export function planetPathPalette(world: EarlePlanet, shadowTint: PathPalette['s
     lookup: world.lookup,
     fog: world.fog,
     bands: world.terrainBands,
-    terrainRow: (w) => world.rowsOfWorld(w).terrain,
+    // Welten mit Nebelmeer (Welt 12): das Band liegt im Nebel und nimmt dessen Farben (Wasserzeile), nicht das Gelände
+    terrainRow: (w) => (world.catalog.spec(w).mist?.sea ? world.rowsOfWorld(w).water : world.rowsOfWorld(w).terrain),
     colors: (w) => worldPathColors(world.worldData(w).palette, world.worldData(w).id),
     shadowTint,
   };

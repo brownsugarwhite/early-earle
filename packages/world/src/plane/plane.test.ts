@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHUNK_SIZE, chunkMeshHeightAt, generatePlaneChunk, scatterPlaneProps, scatterPlaneTrees } from './chunks';
-import { LATERAL_WORLD_BASE, PROLOGUE_WORLD_BASE } from './layout';
+import { LATERAL_WORLD_BASE, PROLOGUE_WORLD_BASE, WorldLayout } from './layout';
 import { GradientNoise2 } from './noise2';
 import { PlanePath } from './path';
 import { proceduralWorldSpec } from './procedural';
@@ -40,7 +40,13 @@ describe('WorldLayout', () => {
   it('lays the authored route along −z: worlds 09, 06, 04, 10, 05, 02, 07, 08, 01, 03 for levels 1–100', () => {
     const order = AUTHORED_ROUTE.map((r) => r.world);
     for (let k = 0; k < order.length; k++) expect(layout.segment(k).world).toBe(order[k]);
-    expect(layout.authoredLevels).toBe(100);
+    // spielbar: bis zum ersten künftigen Eintrag (Welten 11/12 tragen künftige Level; ohne `future` zählen sie mit)
+    let playable = 0;
+    for (const r of AUTHORED_ROUTE) {
+      if ((r as { future?: boolean }).future) break;
+      playable += r.levels;
+    }
+    expect(layout.authoredLevels).toBe(playable);
     expect(layout.segmentOfLevel(1)).toBe(0);
     expect(layout.segmentOfLevel(80)).toBe(8);
     expect(layout.segmentOfLevel(95)).toBe(8);
@@ -59,6 +65,24 @@ describe('WorldLayout', () => {
     expect(layout.segment(25).world).toBe(25);
   });
 
+  it('counts future route entries (worlds without playable levels yet) for the layout, not as playable levels', () => {
+    const playable = AUTHORED_ROUTE.filter((r) => !r.future);
+    const route = [...playable, { world: 4, levels: 10, future: true as const }, { world: 6, levels: 10, future: true as const }];
+    const withFuture = new WorldLayout({ seed: 7, route, authored: 10 });
+    // spielbar bleiben die Level 1–100; die künftigen Abschnitte tragen die Level 101–120, danach prozedural
+    expect(withFuture.authoredLevels).toBe(100);
+    expect(withFuture.segment(10)).toMatchObject({ world: 4, firstLevel: 101, levels: 10 });
+    expect(withFuture.segment(11)).toMatchObject({ world: 6, firstLevel: 111, levels: 10 });
+    expect(withFuture.segment(12)).toMatchObject({ world: 10, firstLevel: 121, levels: 10 });
+    expect(withFuture.segmentOfLevel(105)).toBe(10);
+    expect(withFuture.segmentOfLevel(125)).toBe(12);
+    // Lage der Autorenabschnitte unverändert
+    for (let k = 0; k < 10; k++) expect(withFuture.segment(k)).toEqual(layout.segment(k));
+    // Ab dem ersten künftigen Eintrag zählt nichts mehr mit (auch ein späterer Eintrag ohne Flag nicht)
+    const mixed = new WorldLayout({ seed: 7, route: [...playable, { world: 4, levels: 10, future: true as const }, { world: 6, levels: 10 }], authored: 10 });
+    expect(mixed.authoredLevels).toBe(100);
+  });
+
   it('puts the path world in the band and neighbour worlds left and right — new ones as far as you pan', () => {
     const k = 3;
     const seg = layout.segment(k);
@@ -72,7 +96,7 @@ describe('WorldLayout', () => {
     expect(far.length).toBeGreaterThan(40);
     // Seitlich neben den Autorenwelten stehen Autorenwelten (die alten „fernen“ Welten)
     const near = layout.sample(xb + layout.bandHalf(z) + 6, z).world;
-    expect(near).toBeLessThan(10);
+    expect(near).toBeLessThan(14); // Autorenwelten 01–14
     expect(near).not.toBe(seg.world);
   });
 

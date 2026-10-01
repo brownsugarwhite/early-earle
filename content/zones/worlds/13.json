@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "id": "w13",
+  "index": 12,
+  "ref": "13",
+  "name": "Roter Monolith",
+  "title": "Roter Tafelberg-Turm über der Wüste, gestapelte Wolkenbänke",
+  "zone": "syrup",
+  "sources": ["Ebene_45.jpg"],
+  "palette": {
+    "ink": "#070203",
+    "terrain": ["#2a0c0c", "#4a1612", "#6c2418", "#8e3420", "#b0482a"],
+    "canopy": ["#1a0808", "#2c0e0c", "#4a1612", "#6e2418", "#94321e", "#c8a878", "#e0c890"],
+    "sky": ["#4aaad0", "#34a0cc", "#2294c8", "#1284bc", "#0870a8", "#0b3e76"],
+    "sun": "#f2f0d6",
+    "sunRing": "#7fc4e0",
+    "fog": ["#0b2851", "#0a3d6c", "#0e5f95", "#1f7fb8", "#3a9cc8", "#6cb8d8"],
+    "fogAlpha": [0, 0.28, 0.46, 0.62, 0.76, 0.88],
+    "accent": ["#e8eef0", "#4a1612", "#070203", "#0c0405", "#8e3420", "#b0482a", "#d8283a", "#f06a8a"],
+    "rock": ["#050102", "#4a0a0c", "#8e1018", "#c81a28", "#ea2a3a", "#dc2c4e", "#2a0406", "#ff3d78"],
+    "cloud": ["#5a72b0", "#7e96c8", "#82b4c8", "#a4cfcc", "#c4dcc4", "#e0dec0", "#f2eed6", "#122e5c"]
+  },
+  "terrain": { "amplitude": 0.6, "wavelength": 2.4, "floor": 0.35 },
+  "ground": "smooth",
+  "vegetation": {
+    "density": 0,
+    "clumpiness": 0,
+    "kinds": { "bare": 1 },
+    "scale": [0.8, 1.2],
+    "trunkStyle": "ink",
+    "motif": "dots"
+  },
+  "props": {  },
+  "features": {
+    "rocks": [
+      { "kind": "monolith", "count": 1, "size": [16, 16.5], "height": [21, 22], "pathDistance": [3, 30] }
+    ]
+  },
+  "landmarkChance": 0,
+  "fogStripes": 0,
+  "fog": { "start": 60, "range": 70 },
+  "view": {
+    "height": 3.2,
+    "forward": 16,
+    "look": 2,
+    "lookHeight": 6,
+    "fov": 60,
+    "curvature": -0.9,
+    "focus": [0.45, -0.6],
+    "nearClear": 1.2,
+    "footClear": 0,
+    "sun": { "elevation": 12, "azimuth": 125 },
+    "aim": [-6, 3],
+    "portrait": { "aim": [-2, 3], "lookHeight": 6.5, "fov": 66 }
+  },
+  "focal": { "along": 0.5, "lateral": 17 },
+  "clouds": {
+    "layers": [
+      { "kind": "wash", "az": -32, "width": 34, "el": 36, "height": 30, "seed": 0.3 },
+      { "kind": "wash", "az": 38, "width": 20, "el": 40, "height": 26, "seed": 1.7 },
+      { "kind": "streak", "az": -4.5, "width": 20.2, "el": 75.4, "height": 3.9, "tone": 0.9, "puffs": 3 },
+      { "kind": "streak", "az": 24.5, "width": 23.8, "el": 77.6, "height": 2.7, "tone": 0.85 },
+      { "kind": "streak", "az": -0.4, "width": 18.5, "el": 70.8, "height": 3.5, "tone": 0.8 },
+      { "kind": "bank", "az": -3, "width": 24.0, "el": 44.6, "height": 29.1, "tone": 0.9, "puffs": 6 },
+      { "kind": "bank", "az": 34, "width": 12.9, "el": 64.5, "height": 8.3, "tone": 0.85, "puffs": 3 },
+      { "kind": "bank", "az": 35, "width": 11.6, "el": 53.8, "height": 8.3, "tone": 0.6, "puffs": 3 },
+      { "kind": "bank", "az": 36, "width": 10.3, "el": 40.1, "height": 5.6, "tone": 0.5, "puffs": 3 },
+      { "kind": "streak", "az": -19.8, "width": 5.4, "el": 62.0, "height": 2.1, "tone": 0.9 },
+      { "kind": "bank", "az": -18.6, "width": 26.4, "el": 52.1, "height": 6.3, "tone": 0.8, "puffs": 8, "rows": 1 },
+      { "kind": "bank", "az": -16, "width": 26.4, "el": 32.2, "height": 17.4, "tone": 0.55, "puffs": 7 },
+      { "kind": "bank", "az": 5.6, "width": 12.9, "el": 35.3, "height": 11.8, "tone": 0.7, "puffs": 4 },
+      { "kind": "streak", "az": -19.5, "width": 25.1, "el": 37.7, "height": 2.1, "tone": 0.75 },
+      { "kind": "dome", "az": -27.4, "width": 12.9, "el": 24.7, "height": 11.1, "tone": 0.75, "puffs": 5 },
+      { "kind": "dome", "az": -12.6, "width": 5.2, "el": 26.2, "height": 7.6, "tone": 0.6, "puffs": 3 },
+      { "kind": "streak", "az": -21.8, "width": 22.4, "el": 30.0, "height": 2.8, "tone": 0.7 },
+      { "kind": "streak", "az": -17.4, "width": 11.2, "el": 19.8, "height": 2.2, "tone": 0.65 },
+      { "kind": "streak", "az": 35, "width": 7.7, "el": 31.5, "height": 2.8, "tone": 0.7 },
+      { "kind": "bank", "az": -40, "width": 27.6, "el": 2, "height": 11.2, "tone": 0.7, "puffs": 7 },
+      { "kind": "bank", "az": 5, "width": 23.0, "el": 3, "height": 9.0, "tone": 0.6, "puffs": 6 },
+      { "kind": "bank", "az": 45, "width": 25.3, "el": 2.5, "height": 10.1, "tone": 0.75, "puffs": 6 }
+    ]
+  }
+}

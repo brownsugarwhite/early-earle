@@ -35,12 +35,16 @@ import { SLOT_COUNT } from '../worldSlots';
 import { arrayElement, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from '../tsl';
 import { createHexagon } from '../vegetation';
 import { createBareCard } from './bare';
+import { createWindCard } from './wind';
 import { createColumnCrown, createDomeCrown, createPineCrown, type CrownTemplate } from './crowns';
 import { instanceFog } from './fog';
 import { BARK_STYLE, BarkMaterial, CrownMaterial, DotMaterial } from './materials';
 import { stipple } from './patterns';
 import { crownShadeTexture } from './shade';
 import { FORK_TOP, FORK_Y, LACE_ENVELOPE, PILLAR_TOP, PILLAR_Y, createFanTrunk, createForkTrunk, createOakTrunk, createPillarTrunk, type FanGeometry, type OakGeometry } from './trunks';
+import { createParasolCrown, createParasolTrunk, type ParasolTrunk } from './parasol';
+import { createShrubCrown } from './shrub';
+import { createFirCrown } from './fir';
 
 /** Wachstums-Slots (je geladenem Chunk); gleich wie `GROWTH_SLOTS` der Vegetation. */
 export const TREE_SLOTS = 64;
@@ -106,7 +110,12 @@ export interface TreeLayerOptions {
  *   die Juwelenkuppeln, Bild 02: auch die Kappe über dem Spitzenschleier leuchtet farbig);
  * - `crownVeins`: Astnetz in den Säulenkronen 0..1 (Standard 0; Kathedralenwald 1, Ebene 16);
  * - `crownLiftVariance`: Helligkeit der Kronen je Baum streuen 0..1 (Standard 0; Ebene 16: dunkelgrüne und hell-
- *   türkise Kronen nebeneinander).
+ *   türkise Kronen nebeneinander);
+ * - `kindRows`: Kronenzeile je Art (Index in Hauptzeile + Varianten) statt der Zufallsvariante — eine Zahl oder eine
+ *   Liste, aus der je Baum gewählt wird (Ebene 7: Tannen immer in der dunklen Zeile, Schuppenbüsche meist türkis, einige
+ *   rot und hellgrün);
+ * - `kindRowPatch`: Zellgröße (Welteinheiten), in der die Wahl aus `kindRows` gleich bleibt — Farbflecken statt
+ *   verstreuter Einzelbüsche (Ebene 7: ein Fleck roter Büsche, daneben hellgrüne).
  */
 export interface TreeFamilyExtras {
   stippleCell?: number;
@@ -114,6 +123,8 @@ export interface TreeFamilyExtras {
   capTerminator?: number;
   crownVeins?: number;
   crownLiftVariance?: number;
+  kindRows?: Partial<Record<TreeKind, number | number[]>>;
+  kindRowPatch?: number;
 }
 
 export interface TreeEntry {
@@ -122,13 +133,16 @@ export interface TreeEntry {
   withDots: boolean;
 }
 
-/** Kronen-Meshes: Kuppel-Masse, dieselbe fein aufgelöst für große Bäume (Fokus, Solitäre), Säule, Stufenkiefer. */
-export type CrownKind = 'dome' | 'domeHi' | 'column' | 'pine';
-export type TrunkKind = 'fork' | 'fan' | 'oak' | 'pillar';
-export const CROWN_KINDS: CrownKind[] = ['dome', 'domeHi', 'column', 'pine'];
+/**
+ * Kronen-Meshes: Kuppel-Masse, dieselbe fein aufgelöst für große Bäume (Fokus, Solitäre), Säule, Stufenkiefer; dazu
+ * Pilzhut des Schirmbaums, Buschröschen und Etagen der Earle-Tanne (Welten 11/12, Ebene 20 und Ebene 7).
+ */
+export type CrownKind = 'dome' | 'domeHi' | 'column' | 'pine' | 'parasol' | 'shrub' | 'fir';
+export type TrunkKind = 'fork' | 'fan' | 'oak' | 'pillar' | 'parasol';
+export const CROWN_KINDS: CrownKind[] = ['dome', 'domeHi', 'column', 'pine', 'parasol', 'shrub', 'fir'];
 /** Ab diesem Kronenradius (Welteinheiten, waagrecht) nimmt eine Kuppel die feine Geometrie. */
 const DOME_HI_RADIUS = 1.45;
-export const TRUNK_KINDS: TrunkKind[] = ['fork', 'fan', 'oak', 'pillar'];
+export const TRUNK_KINDS: TrunkKind[] = ['fork', 'fan', 'oak', 'pillar', 'parasol'];
 
 /** Form je Baumart (Einheit Kronenradius r). */
 export interface KindForm {
@@ -150,6 +164,14 @@ export interface KindForm {
   dots: 'crown' | 'lace' | 'stars' | 'pine' | 'none';
   /** Terminator der Krone (N·L darunter Tinte). */
   terminator: number;
+  /** Anteil der Kronenpunkte, die als Randpunkte nur an der Silhouette zur Sonne stehen (Standard 0.25). */
+  rimShare?: number;
+  /** Anteil des Punktbudgets für die Bögen der Vorlage (Standard `SCALLOP_SHARE`). */
+  scallopShare?: number;
+  /** Bögen in Vorlagenreihenfolge statt ab einem Zufallsstart (ganze Schuppenbögen, außen zuerst). */
+  scallopsInOrder?: boolean;
+  /** Größenfaktor der Kronenpunkte (Standard 1; feiner Punktrand des Schirmbaums kleiner). */
+  dotSize?: number;
 }
 
 /**
@@ -157,7 +179,13 @@ export interface KindForm {
  * Streuung dasselbe annehmen. Die Äste der Gabel enden in der Krone (Kuppel, Säule, Kiefer); Schirm- und Spitzenbaum
  * tragen das Spitzen-Skelett, dessen Hauptäste in der flachen Kappe verschwinden.
  */
-export const TREE_FORMS: Record<Exclude<TreeKind, 'bare'>, KindForm> = {
+/** Arten, die als Linienkarte gezeichnet werden (kahler Baum, Windbaum) — ohne Krone, Stamm und Punkte. */
+export type CardKind = 'bare' | 'wind';
+export function isCardKind(k: TreeKind): k is CardKind {
+  return k === 'bare' || k === 'wind';
+}
+
+export const TREE_FORMS: Record<Exclude<TreeKind, CardKind>, KindForm> = {
   dome: { crown: 'dome', crownY: TREE_PROPORTIONS.dome.hull, crownS: [1, 1], trunk: 'fork', trunkH: 0.95, thick: 1, dots: 'crown', terminator: 0.32 },
   stacked: { crown: 'column', crownY: TREE_PROPORTIONS.stacked.hull, crownS: [0.62, 1.2], trunk: 'fork', trunkH: 1.0, forkAt: 0.5, thick: 0.9, dots: 'crown', terminator: 0.15 },
   bulb: { crown: 'dome', crownY: TREE_PROPORTIONS.bulb.hull, crownS: [0.95, 1.15], trunk: 'fork', trunkH: 0.8, thick: 1.1, dots: 'crown', terminator: 0.25 },
@@ -178,6 +206,13 @@ export const TREE_FORMS: Record<Exclude<TreeKind, 'bare'>, KindForm> = {
   oak: { crown: null, crownY: TREE_PROPORTIONS.oak.hull, crownS: [1, 1], trunk: 'oak', trunkH: TREE_PROPORTIONS.oak.trunk, thick: 1, dots: 'stars', terminator: 0.3 },
   // Riesenstamm (Ebene 16/3): eigener, fein runder Archetyp, verzweigt bei der Stammhöhe; breite Kuppel hoch darüber
   pillar: { crown: 'dome', crownY: TREE_PROPORTIONS.pillar.hull, crownS: [1.5, 1.1], trunk: 'pillar', trunkH: TREE_PROPORTIONS.pillar.trunk / PILLAR_Y, thick: 1, dots: 'crown', terminator: 0.32 },
+  // Schirmbaum (Ebene 20): der Hut sitzt mit seiner Unterseite auf den Astenden, feiner Punktrand an der Hutkante
+  parasol: { crown: 'parasol', crownY: TREE_PROPORTIONS.parasol.trunk, crownS: [1, 1], trunk: 'parasol', trunkH: 1, thick: 1, dots: 'crown', terminator: 0.3, rimShare: 0.6, scallopShare: 0.15, dotSize: 0.55 },
+  // Buschröschen (Ebene 20/7): Punktrand an der Silhouette zur Sonne, ganze Schuppenbögen um den Scheitel
+  // (Terminator über dem der Punkte: der Körper bleibt dunkel, zur Sonne zuerst der Punktrand, dann ein schmaler Lichtsaum)
+  shrub: { crown: 'shrub', crownY: TREE_PROPORTIONS.shrub.hull, crownS: [1, 1], trunk: null, trunkH: 0, thick: 1, dots: 'crown', terminator: 0.42, rimShare: 0.5, scallopShare: 0.55, scallopsInOrder: true, dotSize: 0.85 },
+  // Earle-Tanne (Ebene 7): dunkle hängende Etagen, der Gabel-Schaft steckt in der untersten Etage
+  fir: { crown: 'fir', crownY: TREE_PROPORTIONS.fir.trunk, crownS: [1, 1], trunk: 'fork', trunkH: 0.5, thick: 0.4, dots: 'none', terminator: 0.22 },
 };
 
 /**
@@ -267,12 +302,15 @@ export class TreeLayer {
   readonly crowns: Record<CrownKind, InstancedMesh>;
   readonly trunks: Record<TrunkKind, InstancedMesh>;
   readonly bare: InstancedMesh;
+  /** Windbäume (Welt 14): knorrige Linienkarten mit Spitzenwerk, zur Leeseite (+x) geneigt. */
+  readonly wind: InstancedMesh;
   readonly dots: Mesh;
   /** Höchster Baum im aktuellen Inhalt (Welteinheiten, für die Schattenkamera). */
   hMax = 2;
   private readonly templates: Record<CrownKind, CrownTemplate>;
   private readonly fan: FanGeometry;
   private readonly oak: OakGeometry;
+  private readonly parasolTrunk: ParasolTrunk;
   private readonly geometries: BufferGeometry[] = [];
   private readonly materials: Array<{ dispose(): void }> = [];
   private readonly dotsGeometry: InstancedBufferGeometry;
@@ -289,6 +327,7 @@ export class TreeLayer {
   private dotsDirty = false;
   private lastTick = -1;
   private readonly dotRadius: number;
+  private windCard = { height: 2.7, capacity: 16 };
 
   constructor(
     private readonly shared: TreeLayerShared,
@@ -311,9 +350,18 @@ export class TreeLayer {
 
     // Detailstufe aus der Qualitätsstufe (Hoch: 60+ Punkte je Baum): feinere Teilkuppeln, glattere Silhouetten
     const detail = options.dotsPerTree[0] >= 50 ? 'hoch' : 'mobil';
-    this.templates = { dome: createDomeCrown(detail), domeHi: createDomeCrown(detail === 'hoch' ? 'ultra' : 'hoch'), column: createColumnCrown(detail), pine: createPineCrown() };
+    this.templates = {
+      dome: createDomeCrown(detail),
+      domeHi: createDomeCrown(detail === 'hoch' ? 'ultra' : 'hoch'),
+      column: createColumnCrown(detail),
+      pine: createPineCrown(),
+      parasol: createParasolCrown(detail === 'hoch' ? 'ultra' : 'hoch'),
+      shrub: createShrubCrown(detail),
+      fir: createFirCrown(detail),
+    };
     this.fan = createFanTrunk(5);
     this.oak = createOakTrunk(3);
+    this.parasolTrunk = createParasolTrunk(TREE_PROPORTIONS.parasol.trunk);
 
     // Gepackte Instanzattribute (WebGPU: ≤ 8 Vertex-Puffer je Pipeline):
     // treeA = (Fuß xyz, Rang), treeB = (Kronenmitte bzw. Spitze xyz, Slot), treeC = (Kronenzeile, Akzentzeile, Stil, Variante),
@@ -330,20 +378,27 @@ export class TreeLayer {
       return base.add(p.sub(base).mul(treeScale()));
     };
     /** Nebel je Baum: Abstand der Kamera zum (gekrümmten) Fuß — Stamm, Krone und Punkte eines Baums teilen ihn. */
-    const fogOf = (row: FloatNode, foot: Vec3Node, name: string) => {
-      const d = varying(modelViewMatrix.mul(vec4(warp(foot), 1)).xyz.length(), name);
+    const fogOf = (row: FloatNode, foot: Vec3Node, name: string, rise?: { height: FloatNode; perUnit: number }) => {
+      // Aufsteigender Nebel (Earle-Tannen, Ebene 7): je Einheit über dem Fuß ein Stück mehr Nebel — die Tanne verblasst
+      // nach oben im Goldnebel, in den Nebelstufen der Welt (harte Stufen, wie der übrige Nebel)
+      const lift = rise ? rise.height.max(0).mul(rise.perUnit) : float(0);
+      const d = varying(modelViewMatrix.mul(vec4(warp(foot), 1)).xyz.length().add(lift), name);
       const dist = shared.fogDist(row, d);
       return (c: Vec3Node): Vec3Node => instanceFog(c, fog, lookup, dist);
     };
 
     // --- Kronen ------------------------------------------------------------------------------------------
     const crowns = {} as Record<CrownKind, InstancedMesh>;
-    const stippleOf: Record<CrownKind, { cell: number; size: number; flowers: boolean }> = {
+    // density: Faktor auf die Tüpfeldichte der Welt (Schirmbaum und Tanne sind fast reine Silhouetten, Ebene 20/7)
+    const stippleOf: Record<CrownKind, { cell: number; size: number; flowers: boolean; density?: number }> = {
       dome: { cell: 0.11, size: 0.3, flowers: true },
       domeHi: { cell: 0.11, size: 0.3, flowers: true },
       // Säulen tragen wie bei Earle (Ebene 16) kleine Blütenmotive in den Tüpfeln
       column: { cell: 0.1, size: 0.3, flowers: true },
       pine: { cell: 0.05, size: 0.3, flowers: false },
+      parasol: { cell: 0.09, size: 0.3, flowers: false, density: 0.12 },
+      shrub: { cell: 0.07, size: 0.32, flowers: false },
+      fir: { cell: 0.05, size: 0.3, flowers: false, density: 0 },
     };
     for (const kind of CROWN_KINDS) {
       const geometry = this.templates[kind].geometry;
@@ -368,13 +423,17 @@ export class TreeLayer {
         bandScale: 2.0,
         rowNode: row,
         fogDistNode: shared.fogDist(row),
-        fogFn: fogOf(row, treeA().xyz, 'vCrownFogDist'),
+        fogFn: kind === 'fir' ? fogOf(row, treeA().xyz, 'vFirFogDist', { height: grownFrom(positionLocal).y.sub(treeA().y), perUnit: 2.6 }) : fogOf(row, treeA().xyz, 'vCrownFogDist'),
         terminatorNode: treeD().w,
         growthNode: shared.slotGrowth(treeB().w),
         positionNode: warp(grownFrom(positionLocal)),
         patternPos,
         patternNormal,
-        stipple: { cell: kind === 'dome' || kind === 'domeHi' ? arrayElement(this.worldCell, world) : cfg.cell, size: cfg.size, density: kind === 'pine' ? float(0.55) : arrayElement(this.worldStipple, world) },
+        stipple: {
+          cell: kind === 'dome' || kind === 'domeHi' ? arrayElement(this.worldCell, world) : cfg.cell,
+          size: cfg.size,
+          density: kind === 'pine' ? float(0.55) : arrayElement(this.worldStipple, world).mul(cfg.density ?? 1),
+        },
         inkBody: kind === 'pine',
         flowers: cfg.flowers ? { density: arrayElement(this.worldFlowers, world), cell: flowerCell } : null,
         // Juwelenkuppeln leuchten fast rundum (Bild 02): Bänder etwas angehoben; je Welt streut die Helligkeit je Baum
@@ -388,7 +447,7 @@ export class TreeLayer {
             : crownShadeTexture({
                 lookup,
                 patternPos,
-                density: arrayElement(this.worldStipple, world).mul(0.85),
+                density: arrayElement(this.worldStipple, world).mul(0.85 * (cfg.density ?? 1)),
                 glow: arrayElement(this.worldGlow, world).mul(float(0.7).add(fract(treeC().w.mul(3.7)).mul(0.6))),
                 veins:
                   kind === 'column'
@@ -411,7 +470,7 @@ export class TreeLayer {
 
     // --- Stämme ------------------------------------------------------------------------------------------
     const trunks = {} as Record<TrunkKind, InstancedMesh>;
-    const trunkGeos: Record<TrunkKind, BufferGeometry> = { fork: createForkTrunk(11), fan: this.fan.geometry, oak: this.oak.geometry, pillar: createPillarTrunk(7) };
+    const trunkGeos: Record<TrunkKind, BufferGeometry> = { fork: createForkTrunk(11), fan: this.fan.geometry, oak: this.oak.geometry, pillar: createPillarTrunk(7), parasol: this.parasolTrunk.geometry };
     for (const kind of TRUNK_KINDS) {
       const geometry = trunkGeos[kind];
       const cap = this.trunkCapacity(kind);
@@ -539,6 +598,56 @@ export class TreeLayer {
       mesh.frustumCulled = false;
       mesh.count = 0;
       this.bare = mesh;
+      this.geometries.push(geometry);
+      this.materials.push(material);
+    }
+
+    // --- Windbäume (Ebene 29): knorrige Karten mit Spitzenwerk, immer zur Leeseite geneigt ----------------------------
+    {
+      const hi = options.dotsPerTree[0] >= 50;
+      const card = createWindCard(5, hi ? {} : { depth: 5, tuft: 6 });
+      const geometry = card.geometry;
+      const n = Math.max(16, Math.round(options.capacity.trees * 0.1));
+      geometry.setAttribute('windBase', new InstancedBufferAttribute(new Float32Array(n * 3), 3));
+      geometry.setAttribute('windUp', new InstancedBufferAttribute(new Float32Array(n * 3), 3));
+      geometry.setAttribute('windData', new InstancedBufferAttribute(new Float32Array(n * 4), 4)); // Größe, Rang, Slot, Kronenzeile
+      geometry.setAttribute('windVariant', new InstancedBufferAttribute(new Float32Array(n), 1));
+      const base = attribute('windBase', 'vec3');
+      const up = attribute('windUp', 'vec3');
+      const data = attribute('windData', 'vec4');
+      const variant = attribute('windVariant', 'float');
+      const size = data.x
+        .mul(shared.popScale(data.y, data.z))
+        .mul(shared.nearFade(base, base.add(up.mul(data.x.mul(card.height))), data.x.mul(1.2)))
+        .mul(shared.foreignNear(data.w, base));
+      // Spitzenwerk (z = 1) je Baum: jeder vierte Baum steht kahl (Ebene 29: der zweite Baum)
+      const tuft = step(0.75, positionGeometry.z);
+      const keep = float(1).sub(tuft.mul(float(1).sub(step(0.25, variant))));
+      const spread = float(0.85).add(fract(variant.mul(7.31)).mul(0.3));
+      const billboard = (toward: Vec3Node): Vec3Node => {
+        const right = normalize(cross(up, toward));
+        // Leeseite = Ebene +x (Wind vom Land zum Meer): die Karte spiegelt sich, wenn die Blickrichtung wechselt
+        const lee = step(0, right.x).mul(2).sub(1);
+        const gx = positionGeometry.x.mul(spread).mul(keep);
+        const gy = positionGeometry.y.mul(keep);
+        return base.add(right.mul(gx.mul(size).mul(lee))).add(up.mul(gy.mul(size)));
+      };
+      const material = new MeshBasicNodeMaterial({ side: DoubleSide });
+      const branchCol = lookup.pal(3, data.w).rgb as unknown as Vec3Node;
+      const tuftCol = lookup.pal(4, data.w).rgb as unknown as Vec3Node;
+      material.colorNode = fogOf(data.w, base, 'vWindFogDist')(mix(branchCol, tuftCol, tuft) as unknown as Vec3Node);
+      material.positionNode = warp(billboard(normalize(shared.camLocal.sub(base))));
+      const mesh = new InstancedMesh(geometry, material, n);
+      mesh.name = 'planet-wind';
+      // Kein Schlagschatten: Ebene 29 steht im Gegenlicht, die Landzunge ist eine ruhige, dunkle Fläche; das feine
+      // Astwerk würde bei tiefer Sonne als meterlanges Netz über sie laufen
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.frustumCulled = false;
+      mesh.count = 0;
+      mesh.visible = false;
+      this.wind = mesh;
+      this.windCard = { height: card.height, capacity: n };
       this.geometries.push(geometry);
       this.materials.push(material);
     }
@@ -680,7 +789,7 @@ export class TreeLayer {
   }
 
   private trunkCapacity(kind: TrunkKind): number {
-    return kind === 'oak' ? 24 : kind === 'pillar' ? 48 : kind === 'fan' ? Math.max(16, Math.round(this.options.capacity.trees * 0.3)) : this.options.capacity.trees;
+    return kind === 'oak' ? 24 : kind === 'pillar' ? 48 : kind === 'fan' || kind === 'parasol' ? Math.max(16, Math.round(this.options.capacity.trees * 0.3)) : this.options.capacity.trees;
   }
 
   private attachTreeAttributes(geometry: BufferGeometry, n: number): void {
@@ -714,11 +823,25 @@ export class TreeLayer {
     this.worldLiftVar.array[slot] = x.crownLiftVariance ?? 0;
   }
 
-  /** Kronenzeile eines Baums (Juwelenwald: Farbvarianten). */
+  /** Kronenzeile eines Baums (Juwelenwald: Farbvarianten; `kindRows`: feste Zeile je Art). */
   canopyRow(t: PlanetTree): number {
     const rows = this.rows(t);
+    const fixed = this.kindRowIndex(t, rows.canopy.length);
+    if (fixed >= 0) return rows.canopy[fixed] ?? rows.canopy[0] ?? 0;
     const variants = Math.max(1, Math.min(rows.canopy.length, this.family(t)?.rowVariants ?? 1));
     return rows.canopy[Math.min(variants - 1, Math.floor(t.variant * variants))] ?? rows.canopy[0] ?? 0;
+  }
+
+  /** Index der Kronenzeile aus `kindRows` der Welt (−1 = keine Vorgabe für die Art). */
+  private kindRowIndex(t: PlanetTree, count: number): number {
+    const fam = this.family(t) as (TreeFamily & TreeFamilyExtras) | undefined;
+    const k = fam?.kindRows?.[t.kind];
+    if (k === undefined) return -1;
+    // Flecken: je Zelle derselbe Zufallswert (mit leicht verrauschter Zellgrenze), sonst je Baum
+    const patch = fam?.kindRowPatch;
+    const r = patch ? treeHash([Math.floor((t.position[0] + 0.6 * Math.sin(t.position[2] * 0.7)) / patch), 0, Math.floor((t.position[2] + 0.6 * Math.sin(t.position[0] * 0.7)) / patch)], 17) : t.variant;
+    const i = Array.isArray(k) ? (k[Math.min(k.length - 1, Math.floor(r * k.length))] ?? 0) : k;
+    return Math.max(0, Math.min(count - 1, Math.round(i)));
   }
 
   /**
@@ -729,6 +852,7 @@ export class TreeLayer {
   private dotRows(t: PlanetTree): [number, number, number] {
     const rows = this.rows(t);
     const own = this.canopyRow(t);
+    if (this.kindRowIndex(t, rows.canopy.length) >= 0) return [own, own, own];
     const n = Math.max(1, Math.min(rows.canopy.length, this.family(t)?.rowVariants ?? 1));
     if (n < 2) return [own, own, own];
     const i = Math.min(n - 1, Math.floor(t.variant * n));
@@ -754,8 +878,8 @@ export class TreeLayer {
 
   /** Stammdicke je Instanz: Familie (Anteil am Kronenradius, Standard 0.04) relativ zum Archetyp. */
   private thickness(t: PlanetTree, form: KindForm): number {
-    // Eiche, Fächer und Riesenstamm haben eigene Proportionen (die Dicke streckt waagrecht und würde die Äste aus der Krone schieben)
-    if (form.trunk === 'oak' || form.trunk === 'fan' || form.trunk === 'pillar') return 1;
+    // Eiche, Fächer, Riesenstamm und Schirmbaum haben eigene Proportionen (die Dicke streckt waagrecht und würde die Äste aus der Krone schieben)
+    if (form.trunk === 'oak' || form.trunk === 'fan' || form.trunk === 'pillar' || form.trunk === 'parasol') return 1;
     return form.thick * this.widthFactor(t, form);
   }
 
@@ -810,11 +934,17 @@ export class TreeLayer {
     const perCrown = new Map<CrownKind, TreeEntry[]>(CROWN_KINDS.map((k) => [k, []]));
     const perTrunk = new Map<TrunkKind, TreeEntry[]>(TRUNK_KINDS.map((k) => [k, []]));
     const bareList: TreeEntry[] = [];
+    const windList: TreeEntry[] = [];
     let hMax = 2;
     for (const e of entries) {
       if (e.tree.kind === 'bare') {
         bareList.push(e);
         hMax = Math.max(hMax, TREE_PROPORTIONS.bare.top * e.tree.canopyRadius);
+        continue;
+      }
+      if (e.tree.kind === 'wind') {
+        windList.push(e);
+        hMax = Math.max(hMax, this.windCard.height * e.tree.canopyRadius);
         continue;
       }
       const form = TREE_FORMS[e.tree.kind];
@@ -841,7 +971,7 @@ export class TreeLayer {
       let shadowHeight = 0;
       list.forEach((e, i) => {
         const t = e.tree;
-        const form = TREE_FORMS[t.kind as Exclude<TreeKind, 'bare'>];
+        const form = TREE_FORMS[t.kind as Exclude<TreeKind, CardKind>];
         treeQuaternion(t, q);
         this.crownMatrix(t, form, q, _m);
         mesh.setMatrixAt(i, _m);
@@ -873,14 +1003,14 @@ export class TreeLayer {
       const d = g.getAttribute('treeD') as InstancedBufferAttribute;
       list.forEach((e, i) => {
         const t = e.tree;
-        const form = TREE_FORMS[t.kind as Exclude<TreeKind, 'bare'>];
+        const form = TREE_FORMS[t.kind as Exclude<TreeKind, CardKind>];
         treeQuaternion(t, q);
         this.trunkMatrix(t, form, q, _m);
         mesh.setMatrixAt(i, _m);
         const H = _s.x;
         // Spitze der Achse: Gabel mit gestrecktem Schaft (der Shader liest die Streckung aus dieser Länge zurück)
         const S = stemStretch(form, H, t.canopyRadius);
-        const top = kind === 'oak' ? this.oak.top : kind === 'fan' ? this.fan.top : kind === 'pillar' ? PILLAR_TOP : FORK_TOP + (S - 1) * FORK_Y;
+        const top = kind === 'oak' ? this.oak.top : kind === 'fan' ? this.fan.top : kind === 'pillar' ? PILLAR_TOP : kind === 'parasol' ? this.parasolTrunk.top : FORK_TOP + (S - 1) * FORK_Y;
         _v.set(0, top * H, 0).applyQuaternion(q);
         a.setXYZW(i, t.position[0] - ox, t.position[1], t.position[2] - oz, t.rank);
         b.setXYZW(i, t.position[0] - ox + _v.x, t.position[1] + _v.y, t.position[2] - oz + _v.z, e.slot);
@@ -889,7 +1019,7 @@ export class TreeLayer {
         // .y: Gabel = Stauchung des Astnetzes (breite Schäfte, schmales Netz), Fächer = Schleier an (Spitzenbaum)
         const y = kind === 'fork' ? 1 / this.widthFactor(t, form) : kind === 'fan' ? (form.dots === 'lace' ? 1 : 0) : 1;
         // Riesenstamm: wie seine Krone (Stamm und Krone treten gemeinsam aus dem Bild)
-        const fadeR = kind === 'oak' ? this.oak.spread * H : kind === 'fan' ? this.fan.spread * H : kind === 'pillar' ? t.canopyRadius : Math.max(0.3, t.canopyRadius * 0.4);
+        const fadeR = kind === 'oak' ? this.oak.spread * H : kind === 'fan' ? this.fan.spread * H : kind === 'pillar' ? t.canopyRadius : kind === 'parasol' ? this.parasolTrunk.spread * H : Math.max(0.3, t.canopyRadius * 0.4);
         // Welt-Slot (Tabellen) + halber Anlauf-Anteil
         d.setXYZW(i, H, y, fadeR, this.options.slots.slotOf(t.world) + (1 - keep) * 0.5);
         if (kind === 'oak') hMax = Math.max(hMax, this.oak.top * H);
@@ -918,6 +1048,29 @@ export class TreeLayer {
       for (const a of [b, u, dat, va, this.bare.instanceMatrix]) commit(a, list.length);
       this.bare.count = list.length;
     }
+    {
+      const list = windList.slice(0, this.windCard.capacity);
+      const geo = this.wind.geometry;
+      const b = geo.getAttribute('windBase') as InstancedBufferAttribute;
+      const u = geo.getAttribute('windUp') as InstancedBufferAttribute;
+      const dat = geo.getAttribute('windData') as InstancedBufferAttribute;
+      const va = geo.getAttribute('windVariant') as InstancedBufferAttribute;
+      list.forEach((e, i) => {
+        const t = e.tree;
+        treeQuaternion(t, q, false);
+        _up.set(0, 1, 0).applyQuaternion(q);
+        b.setXYZ(i, t.position[0] - ox, t.position[1], t.position[2] - oz);
+        u.setXYZ(i, _up.x, _up.y, _up.z);
+        dat.setXYZW(i, t.canopyRadius, t.rank, e.slot, this.canopyRow(t));
+        va.setX(i, t.variant);
+        _m.identity();
+        this.wind.setMatrixAt(i, _m);
+      });
+      for (const a of [b, u, dat, va, this.wind.instanceMatrix]) commit(a, list.length);
+      this.wind.count = list.length;
+      // ohne Windbäume kein Aufruf (die meisten Welten)
+      this.wind.visible = list.length > 0;
+    }
     this.hMax = hMax;
     this.updateDotBlocks(entries);
   }
@@ -945,7 +1098,7 @@ export class TreeLayer {
 
   /** Gewicht eines Baums an den Kronenpunkten seines Chunks (Kronenfläche × Welt-Faktor). */
   private dotWeight(t: PlanetTree): number {
-    if (t.kind === 'bare') return 0;
+    if (isCardKind(t.kind)) return 0;
     const form = TREE_FORMS[t.kind];
     if (form.dots === 'none' || form.dots === 'stars' || !form.crown) return 0;
     const r = t.canopyRadius;
@@ -1033,7 +1186,7 @@ export class TreeLayer {
     let weightSum = 0;
     for (const e of list) {
       const t = e.tree;
-      if (t.kind === 'bare') continue;
+      if (isCardKind(t.kind)) continue;
       const d = TREE_FORMS[t.kind].dots;
       if (d === 'lace') fixed += this.laceDotCount(hi ? 1 : 2);
       if (d === 'stars') fixed += this.oak.tips.length * (hi ? 9 : 3);
@@ -1046,7 +1199,7 @@ export class TreeLayer {
     const maxPerTree = this.options.dotsPerTree[1];
     for (const e of list) {
       const t = e.tree;
-      if (t.kind === 'bare') continue;
+      if (isCardKind(t.kind)) continue;
       const form = TREE_FORMS[t.kind];
       if (form.dots === 'none') continue;
       const rowIdx = this.canopyRow(t);
@@ -1103,7 +1256,7 @@ export class TreeLayer {
       const hy = _m.elements[13]!;
       const hz = _m.elements[14]!;
       const fadeR = r * Math.max(1, form.crownS[1] * this.aspect(t));
-      const sizeBase = this.dotRadius * Math.min(1.1, Math.max(0.4, r));
+      const sizeBase = this.dotRadius * Math.min(1.1, Math.max(0.4, r)) * (form.dotSize ?? 1);
       if (form.dots === 'lace') {
         // Spitzenschleier am Skelett (Bild 02, Ebene 19): Rosetten an den Zweigspitzen, Perlen entlang der hängenden
         // Zweige — jeder Punkt sitzt auf dem Astwerk des Fächer-Archetyps (dieselbe Matrix wie der Stamm)
@@ -1150,24 +1303,26 @@ export class TreeLayer {
       const budget = Math.min(maxPerTree, Math.max(4, Math.round(perWeight * this.dotWeight(t))));
       // Kronenpunkte und die gepunkteten Bögen der Teilkuppeln teilen sich das Budget (Kiefern ohne Bögen)
       const rimsTotal = tpl.rims.length / 6;
-      const rimCount = form.dots === 'pine' ? 0 : Math.min(rimsTotal, Math.round(budget * SCALLOP_SHARE));
+      const rimCount = form.dots === 'pine' ? 0 : Math.min(rimsTotal, Math.round(budget * (form.scallopShare ?? SCALLOP_SHARE)));
       const samples = tpl.samples;
       const total = samples.length / 6;
       const count = Math.min(total, Math.max(4, budget - rimCount));
       const start = Math.floor(treeHash(t.position, 5) * total);
       // Tannenpunkte: feste Größe (die schmalen Kronen würden sie sonst unter die Pixelgrenze drücken)
       const pineSize = form.dots === 'pine' ? 0.042 / Math.max(1e-3, sizeBase) : 1;
+      // Randpunkte: jeder n-te Kronenpunkt steht nur an der Silhouette zur Sonne (Buschröschen, Schirmbaum: jeder zweite)
+      const rimEvery = Math.max(1, Math.round(1 / Math.max(0.05, form.rimShare ?? 0.25)));
       for (let k = 0; k < count; k++) {
         const j = (start + k) % total;
         const o = j * 6;
         _p.set(samples[o]!, samples[o + 1]!, samples[o + 2]!).applyMatrix4(_m);
         _n.set(samples[o + 3]!, samples[o + 4]!, samples[o + 5]!).applyMatrix3(_nm).normalize();
-        const kind = kind0 !== DOT_KIND.pine && k % 4 === 0 ? DOT_KIND.rim : kind0;
+        const kind = kind0 !== DOT_KIND.pine && k % rimEvery === 0 ? DOT_KIND.rim : kind0;
         const dr = rowAt(samples[o + 1]!, rand() - 0.5);
         push(_p.x, _p.y, _p.z, _n.x, _n.y, _n.z, sizeBase * pineSize * (0.8 + 0.4 * rand()) * (kind === DOT_KIND.rim ? 1.25 : 1), kind, tpl.sampleCast[j] ?? 1, hx, hy, hz, fadeR, 0.6, dr);
       }
       const rims = tpl.rims;
-      const rStart = Math.floor(treeHash(t.position, 6) * Math.max(1, rimsTotal));
+      const rStart = form.scallopsInOrder ? 0 : Math.floor(treeHash(t.position, 6) * Math.max(1, rimsTotal));
       for (let k = 0; k < rimCount; k++) {
         const j = (rStart + k) % rimsTotal;
         const o = j * 6;
@@ -1275,7 +1430,7 @@ export class TreeLayer {
   }
 
   get meshes(): Array<InstancedMesh | Mesh> {
-    return [...CROWN_KINDS.map((k) => this.crowns[k]), ...TRUNK_KINDS.map((k) => this.trunks[k]), this.bare, this.dots];
+    return [...CROWN_KINDS.map((k) => this.crowns[k]), ...TRUNK_KINDS.map((k) => this.trunks[k]), this.bare, this.wind, this.dots];
   }
 
   dispose(): void {

@@ -46,6 +46,9 @@ export {
   lakeAt as planeLakeAt,
   lakeRadiusAt as planeLakeRadiusAt,
   riverSegmentAt as planeRiverSegmentAt,
+  seaCoastAt as planeSeaCoastAt,
+  seaField as planeSeaField,
+  seaHeight as planeSeaHeight,
   pathDistance as planePathDistance,
   type RegionFeatures,
   type RegionProvider,
@@ -57,6 +60,7 @@ export type {
   Lake as PlaneLake,
   LedgeAnchor as PlaneLedgeAnchor,
   River as PlaneRiver,
+  Sea as PlaneSea,
   RockColumn as PlaneRockColumn,
   RockFormation as PlaneRockFormation,
 } from './features/types';
@@ -75,3 +79,5 @@ export type {
   WorldSpec,
 } from './types';
 export { PlaneTrashPlanner, type PlaneChunkTrash, type PlaneTrashContext, type PlaneTrashNode, type PlaneVeilGrid } from './trash';
+export { PlaneMist, type MistBank, type MistKind, type MistSpec } from './mist';
+export { flankHeight, ridgeTrainHeight, ridgeTrainValley, type FlankSpec, type RidgeTrainSpec } from './flank';

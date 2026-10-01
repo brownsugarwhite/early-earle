@@ -1,6 +1,6 @@
 import { hash32 } from '../rng';
 import type { Vec3 } from '../capPatch';
-import type { TreeKind } from '../scatterTrees';
+import { TREE_KIND_LIST, type TreeKind } from '../scatterTrees';
 import type { WorldFeatureSpec } from '../features/types';
 import { GradientNoise2, hash2, smoothstep } from './noise2';
 import { WorldLayout, type Region, type RegionSample } from './layout';
@@ -9,6 +9,7 @@ import { PlaneFeatures, type RegionSite } from './features/index';
 import type { LedgeAnchor, RockColumn, RockFormation } from './features/types';
 import type { LandmarkSlot, PlanetLandmarkParams, PlanetPropKind, PlanetVegetationFamily, WorldSpec } from './types';
 import { PlaneLandmarks, type PlaneLandmarkOptions } from './landmarks';
+import { flankHeight, ridgeTrainHeight, type FlankSpec, type RidgeTrainSpec } from './flank';
 import type { LandmarkPlanParams } from '../landmarks/types';
 import { DEFAULT_LANDMARK_PLAN } from '../landmarks/placement';
 
@@ -18,6 +19,14 @@ export interface ResolvedShape {
   ridge: number;
   floor: number;
   slope: number;
+  /** Streckung der Hügel quer zum Pfad (x), 1 = rund (siehe `PlanetTerrainShape.stretch`). */
+  stretch?: number;
+  /** Steilhang neben dem Pfad (Welt 12) und sein Anteil (1 in der Welt, an Grenzen gemischt). */
+  flank?: FlankSpec;
+  flankW?: number;
+  /** Hügelstaffel (Welt 11) und ihr Anteil. */
+  ridges?: RidgeTrainSpec;
+  ridgesW?: number;
 }
 
 export interface PlaneFieldParams {
@@ -35,7 +44,16 @@ export interface PlaneFieldParams {
 }
 
 function resolveShape(s: WorldSpec['terrain']): ResolvedShape {
-  return { amplitude: s.amplitude, wavelength: s.wavelength ?? 1, ridge: s.ridge ?? 0, floor: s.floor ?? 0, slope: s.slope ?? 0 };
+  return {
+    amplitude: s.amplitude,
+    wavelength: s.wavelength ?? 1,
+    ridge: s.ridge ?? 0,
+    floor: s.floor ?? 0,
+    slope: s.slope ?? 0,
+    stretch: s.stretch ?? 1,
+    ...(s.flank ? { flank: s.flank, flankW: 1 } : {}),
+    ...(s.ridges ? { ridges: s.ridges, ridgesW: 1 } : {}),
+  };
 }
 
 function mixShape(a: ResolvedShape, b: ResolvedShape, t: number, out: ResolvedShape): ResolvedShape {
@@ -44,6 +62,23 @@ function mixShape(a: ResolvedShape, b: ResolvedShape, t: number, out: ResolvedSh
   out.ridge = a.ridge + (b.ridge - a.ridge) * t;
   out.floor = a.floor + (b.floor - a.floor) * t;
   out.slope = a.slope + (b.slope - a.slope) * t;
+  out.stretch = (a.stretch ?? 1) + ((b.stretch ?? 1) - (a.stretch ?? 1)) * t;
+  const flank = a.flank ?? b.flank;
+  if (flank) {
+    out.flank = flank;
+    out.flankW = (a.flank ? (a.flankW ?? 1) : 0) + ((b.flank ? (b.flankW ?? 1) : 0) - (a.flank ? (a.flankW ?? 1) : 0)) * t;
+  } else if (out.flank) {
+    delete out.flank;
+    delete out.flankW;
+  }
+  const ridges = a.ridges ?? b.ridges;
+  if (ridges) {
+    out.ridges = ridges;
+    out.ridgesW = (a.ridges ? (a.ridgesW ?? 1) : 0) + ((b.ridges ? (b.ridgesW ?? 1) : 0) - (a.ridges ? (a.ridgesW ?? 1) : 0)) * t;
+  } else if (out.ridges) {
+    delete out.ridges;
+    delete out.ridgesW;
+  }
   return out;
 }
 
@@ -60,7 +95,7 @@ export const PLANE_LANDMARK_PLAN: LandmarkPlanParams = {
   kinds: { ...DEFAULT_LANDMARK_PLAN.kinds, swamp: { weight: 1.1, pathDistance: [10, 60], maxRelief: 2.8, maxSlope: 0.34 } },
 };
 
-const TREE_KINDS = new Set<string>(['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak']);
+const TREE_KINDS = new Set<string>(TREE_KIND_LIST);
 export function isTreeKind(k: string): k is TreeKind {
   return TREE_KINDS.has(k);
 }
@@ -112,6 +147,8 @@ export class PlaneField {
     this.ramps = new GradientNoise2(hash32('plane-ramps', params.seed));
     this.biome = new GradientNoise2(hash32('plane-biome', params.seed));
     this.forest = new GradientNoise2(hash32('plane-forest', params.seed));
+    // Nur die Hügelamplitude: Steilhang und Hügelstaffel (Welten 11/12) zählen hier nicht — sonst wüchsen Kullkugeln und
+    // Schattenkamera in allen Welten mit; die Karte nimmt dafür die Höhe der geladenen Chunks (`EarlePlanet.hTotal`)
     this.hMax = Math.max(3.6, ...params.catalog.authored.map((w) => w.terrain.amplitude));
     this.features = new PlaneFeatures(
       {
@@ -143,8 +180,14 @@ export class PlaneField {
               regionAt: (x, z) => this.layout.sample(x, z, this.rs3).region,
               segment: (k) => this.layout.segment(k),
               backbone: (z) => this.layout.backbone(z),
+              landmarkChance: (w) => this.catalog.spec(w).landmarkChance ?? 1,
             },
-            { plan: PLANE_LANDMARK_PLAN, ...(params.landmarks ?? {}) },
+            {
+              // Gewichte je Welt: Standard (Sümpfe der Startwelten) mal die Vorgabe der Weltdatei (`landmarks`, z. B. keine
+              // Felsen mit Wasserfall in der Nebelweide)
+              plan: { ...PLANE_LANDMARK_PLAN, worldWeights: (w) => ({ ...(PLANE_LANDMARK_PLAN.worldWeights?.(w) ?? {}), ...(this.catalog.spec(w).landmarks ?? {}) }) },
+              ...(params.landmarks ?? {}),
+            },
           );
   }
 
@@ -245,20 +288,26 @@ export class PlaneField {
   /** Natürliches Gelände (ohne Seen/Flüsse) mit vorab bestimmter Form. */
   naturalHeight(x: number, z: number, s: ResolvedShape): number {
     const f = this.freq / Math.max(0.2, s.wavelength);
-    const n = this.hills.fbm(x * f, z * f, 2);
+    // Streckung quer zum Pfad: Kämme laufen quer durchs Bild und staffeln sich in die Tiefe (Ebene 20)
+    const fx = f / Math.max(0.25, s.stretch ?? 1);
+    const n = this.hills.fbm(x * fx, z * f, 2);
     const smooth = smoothstep(0, 1, 0.5 + 0.55 * n);
     let base = smooth;
     if (s.ridge > 0) {
-      const r = 1 - Math.abs(this.ridges.fbm(x * f * 0.85 + 2.7, z * f * 0.85 + 9.1, 2));
+      const r = 1 - Math.abs(this.ridges.fbm(x * fx * 0.85 + 2.7, z * f * 0.85 + 9.1, 2));
       base = smooth + (r * r - smooth) * s.ridge;
     }
     if (s.slope > 0) {
-      const ramp = 0.5 + 0.5 * this.ramps.fbm(x * f * 0.3 - 1.7, z * f * 0.3 - 2.2, 1);
+      const ramp = 0.5 + 0.5 * this.ramps.fbm(x * fx * 0.3 - 1.7, z * f * 0.3 - 2.2, 1);
       base = base * (1 - s.slope * 0.5) + ramp * s.slope;
     }
     base = Math.min(1, Math.max(0, base));
     const h = s.floor > 0 ? smoothstep(s.floor, 1, base) : base;
-    return s.amplitude * h;
+    // Steilhang neben dem Pfad (Welt 12): Bergrücken parallel zum Pfad
+    const flank = s.flank && (s.flankW ?? 1) > 0 ? flankHeight(this.layout, s.flank, x, z) * (s.flankW ?? 1) : 0;
+    // Hügelstaffel (Welt 11): Kamm hinter Kamm quer zum Blick
+    const ridges = s.ridges && (s.ridgesW ?? 1) > 0 ? ridgeTrainHeight(s.ridges, this.seed, x, z) * (s.ridgesW ?? 1) : 0;
+    return s.amplitude * h + flank + ridges;
   }
 
   /** Natürliches Gelände (Planung der Merkmale). */
@@ -312,7 +361,16 @@ export class PlaneField {
       key = rs.region.key;
       shape = knownShape ?? this.shapeAt(x, z, rs);
     }
-    const sh: ResolvedShape = { amplitude: shape.amplitude, wavelength: shape.wavelength, ridge: shape.ridge, floor: shape.floor, slope: shape.slope };
+    const sh: ResolvedShape = {
+      amplitude: shape.amplitude,
+      wavelength: shape.wavelength,
+      ridge: shape.ridge,
+      floor: shape.floor,
+      slope: shape.slope,
+      stretch: shape.stretch ?? 1,
+      ...(shape.flank ? { flank: shape.flank, flankW: shape.flankW ?? 1 } : {}),
+      ...(shape.ridges ? { ridges: shape.ridges, ridgesW: shape.ridgesW ?? 1 } : {}),
+    };
     const h0 = this.heightWithShape(x, z, sh, key);
     outPos[0] = x;
     outPos[1] = h0;
