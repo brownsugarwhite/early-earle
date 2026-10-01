@@ -55,7 +55,8 @@ import { SLOT_COUNT, SLOT_ROWS } from './worldSlots';
 import { EarleMaterial } from './EarleMaterial';
 import { hatchMask, patternTime, steppedFog, stripeMask, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from './tsl';
 import { createHexagon, mergeGeometries } from './vegetation';
-import { CROWN_KINDS, TreeLayer, type CrownKind, type ShadowFactorFn } from './trees/treeLayer';
+import { displayCard, earleCards, flatCard, type CardDisplay } from './trees/billboard';
+import { CROWN_KINDS, TreeLayer, type CrownKind, type DotShadowTaps, type ShadowFactorFn } from './trees/treeLayer';
 
 /** Zahl der Wachstums-Slots (ein Slot je geladenem Chunk; die Ebene lädt bis ≈ 60 Chunks). */
 export const GROWTH_SLOTS = 96;
@@ -90,6 +91,13 @@ export interface PlanetVegetationOptions {
   seed?: number;
   /** Anzeige-Abbildung (Objektraum → Objektraum, wie das Terrain). */
   warp?: ((p: Vec3Node) => Vec3Node) | undefined;
+  /**
+   * Die Abbildung selbst (`DisplayMapping` der Kugel, dieselbe wie hinter `warp`): Karten-Bäume, Tiere und Punkte bauen
+   * sich im Anzeigeraum (Fuß abbilden, Rahmen drehen, zur echten Kamera stellen). Fehlt → flach wie ohne `warp`.
+   */
+  display?: CardDisplay | null;
+  /** Vergleiche je Kaskade für den Schattenwert der Punkte (Standard 4; Mobil 1, `setDotShadowTaps`). */
+  dotShadowTaps?: DotShadowTaps;
   /**
    * Eingebauten Müll (Schrotthügel, Monolithe, Gasquellen, Reifen, Rohre, Ölbecken, Sporen) streuen (Standard true).
    * `false`, wenn eine eigene Müll-Welt ihn ersetzt; Felsen, Scheunen und Tiere bleiben.
@@ -211,6 +219,8 @@ export class PlanetVegetation {
     this.warp = options.warp ?? ((p) => p);
     const { lookup, fog } = options;
     const warp = this.warp;
+    // ohne `warp` ist der Objektraum schon der Anzeigeraum: die Karten bleiben flach
+    const display = options.warp ? (options.display ?? null) : null;
 
     // Schleier: Palettenzeile → Welt-Slot (feste Zeilenblöcke je Slot), fremde Welten bekommen Zusatz-Nebeldistanz
     const slotOfRow = (row: FloatNode): FloatNode => select(row.lessThan(SLOT_COUNT * SLOT_ROWS), floor(row.add(0.01).div(SLOT_ROWS)), float(-1));
@@ -293,6 +303,8 @@ export class PlanetVegetation {
         projScaleY: this.projScaleY,
         collapsePx: this.collapsePx,
         shadowFactor: options.shadowFactor ?? null,
+        display,
+        cardLean: earleCards.lean,
       },
       {
         slots: options.slots,
@@ -300,6 +312,7 @@ export class PlanetVegetation {
         capacity: { trees: options.capacity.trees, dots: options.capacity.dots },
         dotsPerTree: options.dotsPerTree,
         ...(options.dotRadius !== undefined ? { dotRadius: options.dotRadius } : {}),
+        ...(options.dotShadowTaps !== undefined ? { dotShadowTaps: options.dotShadowTaps } : {}),
       },
     );
     for (const m of this.trees.meshes) this.group.add(m);
@@ -458,21 +471,18 @@ export class PlanetVegetation {
       const vis = clamp(g.sub(0.5).sub(data.y.mul(0.4)).div(0.1), 0, 1);
       const size = data.x.mul(vis).mul(nearFade(base, base.add(up.mul(0.8)), float(0.6))).mul(foreignNear(data.w, base));
       /**
-       * Karte am Fuß, quer zu `toward`. `lean`: die Hochachse kippt in die Bildebene (Blickrichtung ⟂) — von der steilen
+       * Karte am Fuß im Anzeigeraum (trees/billboard.ts), ganz in die Bildebene gekippt (`lean` 1): von der steilen
        * Kartenkamera bliebe eine senkrechte Karte ein Strich (cos 60° der Höhe), während ihre zur Sonne gedrehte
        * Schattenkarte einen langen Schatten wirft: der Schatten sah losgelöst aus. So liest sich die Kuh als ganze
        * Silhouette, ihr Schatten beginnt an denselben Füßen.
        */
-      const billboard = (toward: Vec3Node, lean: boolean): Vec3Node => {
-        const right = normalize(cross(up, toward));
-        const cardUp = lean ? normalize(cross(toward, right)) : up;
-        return base.add(right.mul(positionGeometry.x.mul(size))).add(cardUp.mul(positionGeometry.y.mul(size)));
-      };
+      const cardX = positionGeometry.x.mul(size);
+      const cardY = positionGeometry.y.mul(size);
       const material = new MeshBasicNodeMaterial({ side: DoubleSide });
       material.colorNode = steppedFog(lookup.pal(0, data.w).rgb, fog, lookup, fogDist(data.w));
-      material.positionNode = warp(billboard(normalize(this.camLocal.sub(base)), true));
-      // Schattenpass: Karte senkrecht zur Sonne gedreht → lange Kuh-Schatten wie bei Earle
-      (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(billboard(this.sunDirLocal, false));
+      material.positionNode = displayCard({ base, up, lean: 1, display }).at(cardX, cardY);
+      // Schattenpass: Karte senkrecht zur Sonne gedreht (flach, der Schattenraum ist eben) → lange Kuh-Schatten wie bei Earle
+      (material as unknown as { castShadowPositionNode: unknown }).castShadowPositionNode = warp(flatCard(base, up, this.sunDirLocal, cardX, cardY));
       const mesh = new InstancedMesh(geometry, material, n);
       mesh.name = 'planet-animals';
       mesh.castShadow = true;
@@ -669,6 +679,14 @@ export class PlanetVegetation {
   setSlotGrowth(slot: number, growth: number): void {
     if (slot < 0 || slot >= GROWTH_SLOTS) return;
     (this.growthSlots as unknown as { array: number[] }).array[slot] = Math.min(1, Math.max(0, growth));
+  }
+
+  /**
+   * Schattenwert der Kronenpunkte mit 1 (Mobil) oder 4 (Hoch, Standard) Vergleichen je Kaskade (R4: Qualitätsstufe).
+   * Baut das Punkt-Material einmal neu, wenn sich der Wert ändert.
+   */
+  setDotShadowTaps(taps: number): void {
+    this.trees.setDotShadowTaps(taps);
   }
 
   /** Sonnenrichtung in Welt- und Ebenenkoordinaten (Punkt-Tönung, Karten-Schatten, Punktverteilung). */

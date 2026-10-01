@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { parseGullMode, setGullMode } from '@ee/core';
-import { earleGradients, earleLight, setGradientAmount, setLightCurvature, setShadowPlaneSmooth } from '@ee/render';
+import { earleCards, earleGradients, earleLight, setCardLean, setGradientAmount, setLightCurvature, setShadowPlaneSmooth } from '@ee/render';
 import { App } from './App';
 import { boot } from './boot/bootProgress';
 import type { EeBoot } from './boot/bootInline';
@@ -66,6 +66,11 @@ if (import.meta.env.DEV) (window as unknown as { __earleGradients?: typeof earle
   if (planeSmooth !== undefined) setShadowPlaneSmooth(planeSmooth);
   // Dev hook: window.__earleLight.bands.value / .ink.value
   if (import.meta.env.DEV) (window as unknown as { __earleLight?: typeof earleLight }).__earleLight = earleLight;
+  // Karten-Bäume (R3): ?kartenlean= Neigung der kahlen und Windbaum-Karten in die Bildebene (0 senkrecht … 1 ganz in
+  // der Bildebene, Standard 0,5); Dev-Haken window.__earleCards.lean.value
+  const lean = num('kartenlean');
+  if (lean !== undefined) setCardLean(lean);
+  if (import.meta.env.DEV) (window as unknown as { __earleCards?: typeof earleCards }).__earleCards = earleCards;
 }
 
 createRoot(document.getElementById('root')!).render(

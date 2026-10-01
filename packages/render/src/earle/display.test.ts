@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Quaternion, Vector3 } from 'three/webgpu';
+import { vec3 } from 'three/tsl';
 import { DisplayMapping } from './display';
 
 /**
@@ -62,5 +63,35 @@ describe('DisplayMapping (CPU)', () => {
     const up = new Vector3(0, 1, 0).applyQuaternion(q);
     const n = m.toDisplayCpu(p).normalize();
     expect(up.dot(n)).toBeCloseTo(1, 6);
+  });
+
+  it('rotateDir (Rodrigues, CPU-Spiegel der TSL-Formel) = rotationAt an drei Punkten und jenseits π·R', () => {
+    const m = new DisplayMapping(R, 0.14);
+    const dirs = [new Vector3(0, 1, 0), new Vector3(1, 0, 0), new Vector3(0.3, -0.5, 0.8).normalize()];
+    for (const p of [flat(12, 0, -9), flat(-30, 2.5, 4), flat(5, -1, 70), flat(0, 0, -130)]) {
+      const q = m.rotationAt(p, new Quaternion());
+      for (const v of dirs) {
+        const a = v.clone().applyQuaternion(q);
+        const b = m.rotateDirCpu(p, v);
+        expect(b.distanceTo(a), `p = (${p.x}, ${p.z})`).toBeLessThan(1e-9);
+        expect(b.length()).toBeCloseTo(v.length(), 12);
+      }
+    }
+  });
+
+  it('rotateDir: am Scheitel die Identität (ohne NaN), die Hochachse wird die Kugelnormale', () => {
+    const m = new DisplayMapping(R, 0.14);
+    const v = new Vector3(0.2, 0.9, -0.1);
+    const at0 = m.rotateDirCpu(flat(0, 3, 0), v);
+    expect(at0.distanceTo(v)).toBeLessThan(1e-12);
+    const p = flat(-14, 0, 21);
+    const n = m.toDisplayCpu(p).normalize();
+    expect(m.rotateDirCpu(p, new Vector3(0, 1, 0)).dot(n)).toBeCloseTo(1, 9);
+  });
+
+  it('rotateDir (TSL) baut einen Knoten', () => {
+    const m = new DisplayMapping(R, 0);
+    const node = m.rotateDir(vec3(1, R, 2) as unknown as Parameters<DisplayMapping['rotateDir']>[0], vec3(0, 1, 0) as unknown as Parameters<DisplayMapping['rotateDir']>[1]);
+    expect((node as unknown as { isNode?: boolean }).isNode).toBe(true);
   });
 });
