@@ -2,6 +2,7 @@ import { LightingModel, NodeMaterial } from 'three/webgpu';
 import type { Node, NodeBuilder } from 'three/webgpu';
 import { min, normalView, uniform } from 'three/tsl';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from '../tsl';
+import { curvedLightView, earleLight } from '../lightCurvature';
 
 export interface TrashMaterialOptions {
   /**
@@ -58,11 +59,12 @@ class TrashLightingModel extends LightingModel {
 
   override direct(input: Parameters<LightingModel['direct']>[0]): void {
     const e = this.material.trash;
-    const L = input.lightDirection as Vec3Node;
+    const L0 = input.lightDirection as Vec3Node;
     const lightColor = input.lightColor as Vec3Node;
-    const ndl = normalView.dot(L);
+    // Lichtkrümmung (R2): Tönung mit der Lichtkugel, Terminator mit der Tintenkugel
+    const ndl = normalView.dot(curvedLightView(L0, earleLight.bands));
     const shadow = lightColor.r; // weiße Sonne → r = Schattenfaktor (1 = beleuchtet)
-    const lit = min(aaStep(e.terminator as FloatNode, ndl), shadow);
+    const lit = min(aaStep(e.terminator as FloatNode, normalView.dot(curvedLightView(L0, earleLight.ink))), shadow);
     (input.reflectedLight.directDiffuse as Vec3Node).addAssign(e.shade(lit, ndl));
   }
 

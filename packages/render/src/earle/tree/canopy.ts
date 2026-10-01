@@ -153,10 +153,12 @@ export function createCanopy(o: CanopyOptions): Canopy {
   const lift = o.lightLift ?? 0.9;
   const upView = modelViewMatrix.mul(vec4(0, 1, 0, 0)).xyz.normalize();
   const domeMaterial = new InkMaterial({
-    shade: (_litSun, _ndlSun, shadow, L) => {
+    shade: (_litSun, _ndlSun, shadow, L, Lt) => {
+      // bands with the light globe (L_b), the dome terminator with the ink globe (L_t) — both lifted towards the tree's up
       const Ld = normalize(L.add(upView.mul(lift)));
+      const LdInk = normalize(Lt.add(upView.mul(lift)));
       const ndl = normalView.dot(Ld);
-      const lit = min(aaStep(TERMINATOR, ndl), shadow);
+      const lit = min(aaStep(TERMINATOR, normalView.dot(LdInk)), shadow);
       const P = varying(pTree, 'vDomePos') as unknown as Vec3Node;
       const dh = vInfo.w;
       const qn = normalize(varying(unit, 'vDomeUnit'));

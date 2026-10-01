@@ -3,6 +3,7 @@ import type { Node, NodeBuilder } from 'three/webgpu';
 import { abs, clamp, cos, dot, float, floor, fract, fwidth, max, min, mix, normalView, normalize, select, sin, smoothstep, step, varying, vec3 } from 'three/tsl';
 import { aaStep, palByKey, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node, type Vec4Node } from '../tsl';
 import { STEP_GRADIENT, earleGradients, hueRotate, stepRamp } from '../gradients';
+import { curvedLightView, earleLight } from '../lightCurvature';
 import { blotches, flowLines, flowers, stipple, valueNoise3 } from './patterns';
 import type { ShadeTexture } from './shade';
 import { glassBark } from './glassBark';
@@ -91,15 +92,19 @@ class CrownLightingModel extends LightingModel {
 
   override direct(input: Parameters<LightingModel['direct']>[0]): void {
     const o = this.o;
-    const L = input.lightDirection as Vec3Node;
+    const L0 = input.lightDirection as Vec3Node;
     const shadow = (input.lightColor as Vec3Node).r;
+    // Lichtkrümmung (R2): Bänder, Punkte und Hüllen-Licht mit der Lichtkugel, Terminator und Schlagschatten-Seite mit
+    // der Tintenkugel (wie Schattenraum und Werfer-Discard)
+    const L = curvedLightView(L0, earleLight.bands);
     const ndl = normalView.dot(L);
+    const ndlInk = normalView.dot(curvedLightView(L0, earleLight.ink));
     const term = o.terminatorNode;
     // Schlagschatten nur auf der Sonnenseite: die Rückseite liegt hinter der eigenen (in der Karte stehenden) dunklen
     // Seite — Juwelenkuppeln (Terminator < 0) leuchten sonst nicht mehr rundum
-    const castW = smoothstep(-0.02, 0.1, ndl).mul(o.castWeight ?? float(1));
+    const castW = smoothstep(-0.02, 0.1, ndlInk).mul(o.castWeight ?? float(1));
     const cast = mix(float(1), shadow, castW);
-    const lit = min(aaStep(term, ndl), cast);
+    const lit = min(aaStep(term, ndlInk), cast);
     const ndlHull = o.hullNormalView ? normalize(o.hullNormalView).dot(L) : ndl;
     // Rundum leuchtende Kronen (Terminator < 0, Juwelen): Bänder über die ganze Kugel verteilt statt am Terminator
     const scaleN = select(term.lessThan(0), float(0.55), float(o.bandScale));
@@ -293,8 +298,10 @@ class BarkLightingModel extends LightingModel {
 
   override direct(input: Parameters<LightingModel['direct']>[0]): void {
     const o = this.o;
-    const L = input.lightDirection as Vec3Node;
-    const ndl = normalView.dot(L);
+    const L0 = input.lightDirection as Vec3Node;
+    // Lichtkrümmung (R2): Glasfenster-Streifen (Bandwert) mit der Lichtkugel, Terminator mit der Tintenkugel
+    const ndl = normalView.dot(curvedLightView(L0, earleLight.bands));
+    const ndlInk = normalView.dot(curvedLightView(L0, earleLight.ink));
     const style = o.styleNode;
     const isWhite = style.greaterThan(0.5).and(style.lessThan(1.5));
     const isStriped = style.greaterThan(1.5).and(style.lessThan(2.5));
@@ -303,7 +310,7 @@ class BarkLightingModel extends LightingModel {
     const isGlow = style.greaterThan(4.5);
     // Weiße Kathedralenstämme bleiben fast rundum hell (Ebene_23), sonst Tinte ab dem Terminator
     const term = select(isWhite, float(-0.35), float(0.02));
-    const lit = aaStep(term, ndl);
+    const lit = aaStep(term, ndlInk);
     const row = o.rowNode;
     const acc = o.accentNode;
     const u = o.bark.x;

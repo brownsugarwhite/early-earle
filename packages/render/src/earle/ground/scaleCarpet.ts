@@ -1,6 +1,7 @@
 import { Vector3 } from 'three/webgpu';
-import { abs, atan, clamp, cos, dot, float, floor, fract, fwidth, length, max, mix, normalize, select, sin, smoothstep, step, uniform, vec2 } from 'three/tsl';
+import { abs, atan, clamp, cos, dot, float, floor, fract, fwidth, length, max, mix, normalize, positionWorld, select, sin, smoothstep, step, uniform, vec2 } from 'three/tsl';
 import type { FloatNode, PaletteLookup, Vec3Node } from '../tsl';
+import { curvedLightWorld, earleLight } from '../lightCurvature';
 
 /**
  * Buschteppich als Bodenornament (Welten 11/12, Ebene 20 und Ebene 7): die Hänge sind mit dicht an dicht stehenden,
@@ -96,8 +97,9 @@ export function createScaleCarpet(lookup: PaletteLookup, row: FloatNode, po: Vec
   const fw = max(fwidth(px), fwidth(pz)).max(1e-5);
   const sun2 = vec2(sunDir.x, sunDir.z);
   const sunN = sun2.div(length(sun2).max(1e-3));
-  // Licht des Hangs (flache Sonne): 0 auf der abgewandten Seite, 1 auf sonnigen Hängen
-  const ndl = dot(normalize(normal), normalize(sunDir as unknown as Vec3Node)) as unknown as FloatNode;
+  // Licht des Hangs (flache Sonne, mit der Lichtkugel gekrümmt wie die Bänder des Geländes): 0 auf der abgewandten
+  // Seite, 1 auf sonnigen Hängen
+  const ndl = dot(normalize(normal), curvedLightWorld(normalize(sunDir as unknown as Vec3Node), positionWorld as unknown as Vec3Node, earleLight.bands)) as unknown as FloatNode;
   const slopeLit = smoothstep(0.05, 0.45, ndl);
   // Punktbogen: 13 Punkte auf dem oberen Halbkreis knapp innerhalb der Kante; sichtbar nur zur Sonne hin
   const arcStep = Math.PI / 13;

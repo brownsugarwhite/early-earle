@@ -47,6 +47,7 @@ import {
   type ShadowTaps,
 } from './filters';
 import type { ManualCompareOption } from './webglCompat';
+import { curvedLightWorld, earleLight } from '../earle/lightCurvature';
 
 /**
  * Kaskadierte, an die Kamera gefittete Earle-Schatten als eigener Schattenknoten (`light.shadow.shadowNode`).
@@ -418,9 +419,12 @@ class TerminatorShadowNode extends ShadowNode {
       m.blending = NoBlending;
       m.fog = false;
       if (kind === 'smooth') {
-        const L = this.axes.axisL;
+        const L = this.axes.axisL as unknown as Vec3Node;
         m.colorNode = Fn(() => {
-          If((normalWorldGeometry as unknown as Vec3Node).dot(L).greaterThan(0), () => {
+          // Terminator mit der Tintenkugel (R2): dieselbe Krümmung wie das Licht der Empfänger und der Schattenraum.
+          // Vor dem `If` als Variable (TSL legt Knoten sonst im Zweig an, in dem sie zuerst gebaut werden)
+          const Lt = curvedLightWorld(L, positionWorld as unknown as Vec3Node, earleLight.ink).toVar('eeDiscardL');
+          If((normalWorldGeometry as unknown as Vec3Node).dot(Lt).greaterThan(0), () => {
             Discard();
           });
           return vec4(0, 0, 0, 1);

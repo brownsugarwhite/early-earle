@@ -1,5 +1,6 @@
-import { abs, attribute, clamp, exp, float, floor, fract, hash, max, mix, normalGeometry, positionGeometry, select, smoothstep, sqrt, step, vec2 } from 'three/tsl';
+import { abs, attribute, clamp, exp, float, floor, fract, hash, max, mix, normalGeometry, positionGeometry, positionWorld, select, smoothstep, sqrt, step, vec2 } from 'three/tsl';
 import { aaStep, stripeMask, type FloatNode, type PaletteLookup, type Vec3Node } from '../tsl';
+import { curvedLightWorld, earleLight } from '../lightCurvature';
 
 /**
  * Roter Monolith (Ebene 45, Welt 13) im Fels-Material: Farbe der Lichtseite (die Tinte der Schattenseite bleibt beim
@@ -49,7 +50,8 @@ export function monolithShading(o: MonolithShadingOptions): { wall: Vec3Node; ca
   const u = rk.x;
   const pal = (i: FloatNode | number): Vec3Node => o.lookup.pal(i, o.row).rgb as unknown as Vec3Node;
   const n = normalGeometry;
-  const ndl = n.dot(o.sunDir);
+  // Bandwert mit der Lichtkugel (R2): die Facettenstufen wandern beim Schwenken wie die Bänder des Geländes
+  const ndl = n.dot(curvedLightWorld(o.sunDir, positionWorld as unknown as Vec3Node, earleLight.bands));
 
   // --- Wände: Schaft, Gesims, Stufen ------------------------------------------------------------------------------
   const hRel = rk.y;
