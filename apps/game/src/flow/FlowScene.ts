@@ -34,6 +34,7 @@ import { createMapFocusConstraint, type MapFocusConstraint, type MapLimit } from
 import { SCROLL_MARGIN } from './progression/scrollLimit';
 import { RexStory } from './rexStory';
 import { storyLines } from './storyLines';
+import { runMapBench, type MapBenchHost, type MapBenchOptions } from './mapBench';
 
 export interface FlowSceneOptions {
   /** `/` starts at the splash, `/play` on the map. */
@@ -1832,6 +1833,33 @@ export class FlowScene implements SceneController {
 
   /** A small API on `window.__flow`: pan programmatically, read the streaming stats and the view. */
   private debugApi(): Record<string, unknown> {
+    // Karten-Bench (R4.1, mapBench.ts): `?bench=karte` startet sie nach dem Aufwärmen, `bench()` liefert das JSON. Sie
+    // misst über einen Bild-Haken, der nur während der Messung an Stelle von `update` steht.
+    const benchHost: MapBenchHost = {
+      ctx: () => this.ctx,
+      world: () => this.world,
+      phase: () => this.phase,
+      warm: () => this.boardWarmDone,
+      pan: (dx, dz) => this.panBy(dx, dz),
+      yaw: () => this.viewYaw,
+      focus: () => ({ x: this.world?.focus.x ?? 0, z: this.world?.focus.z ?? 0 }),
+      setFocus: (x, z) => {
+        this.tweens.cancel('glide');
+        this.panBall?.stop();
+        this.applyView({ x, z, yaw: this.viewYaw });
+      },
+      node: () => useFlowStore.getState().current,
+      preset: () => this.quality.name,
+      frameHook: (hook) => {
+        if (!hook) {
+          Reflect.deleteProperty(this, 'update');
+          return;
+        }
+        const base = FlowScene.prototype.update;
+        this.update = (dt, wall, ctx) => hook(() => base.call(this, dt, wall, ctx));
+      },
+    };
+    if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('bench') === 'karte') void runMapBench(benchHost);
     return {
       /** Pan by (dx, dz) plane units (like a drag; the map phase only). */
       pan: (dx: number, dz: number) => this.panBy(dx, dz),
@@ -1845,11 +1873,14 @@ export class FlowScene implements SceneController {
       view: () => ({ ...this.currentView(), phase: this.phase }),
       /** Map zoom (like a pinch; clamped 0.7–1.7). */
       zoom: (z: number) => this.setZoom(z),
+      /** Karten-Bench (mapBench.ts): Leerlauf/Schwenken × Schatten/Punkte/Vegetation/DPR; Promise mit dem JSON-Bericht. */
+      bench: (options?: MapBenchOptions) => runMapBench(benchHost, options),
       /** Dev: the world object (inspection in scripted checks). */
       world: () => (import.meta.env.DEV ? this.world : null),
       stats: () => {
         const w = this.world;
         if (!w) return null;
+        const slides = (w.sun.cascadeStats as { slides?: number } | null)?.slides;
         return {
           focus: { x: w.focus.x, z: w.focus.z },
           streaming: { ...w.world.stats },
@@ -1861,6 +1892,8 @@ export class FlowScene implements SceneController {
           slots: w.world.slots.entries().length,
           evictions: w.world.slots.evictions,
           shadowPasses: w.shadowPasses,
+          /** Schatten-Slides statt Refits beim Schwenken (sobald die Kaskaden sie zählen, R1). */
+          ...(slides !== undefined ? { slides } : {}),
           /** Draw calls of the last frame (all passes). */
           drawCalls: (this.ctx?.renderer.info as { render?: { drawCalls?: number } } | undefined)?.render?.drawCalls ?? 0,
           /** The board's pipeline warm-up has settled (its demo board drew along until then). */
