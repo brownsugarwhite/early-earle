@@ -581,6 +581,7 @@ export class PlanetVegetation {
       });
       for (const a of [b, u, dat, this.animals.instanceMatrix]) commit(a, animalList.length);
       this.animals.count = animalList.length;
+      this.animals.visible = animalList.length > 0;
     }
     {
       // Sporen: sechs je Gasquelle
@@ -635,6 +636,8 @@ export class PlanetVegetation {
     });
     for (const attr of [a, b, c, mesh.instanceMatrix]) commit(attr, list.length);
     mesh.count = list.length;
+    // leer → aus allen Pässen (siehe TreeLayer.setContent)
+    mesh.visible = list.length > 0;
   }
 
   /** Freiraum vor der Kamera in Welteinheiten (Kompositionen: nichts ragt in die Linse). */

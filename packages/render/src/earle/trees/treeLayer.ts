@@ -989,6 +989,9 @@ export class TreeLayer {
       });
       for (const attr of [a, b, c, d, mesh.instanceMatrix]) commit(attr, list.length);
       mesh.count = list.length;
+      // Leere Arten fallen aus allen Pässen (kein Renderobjekt, keine Bindungen je Pass; der Aufruf entfiele zwar
+      // auch bei count 0, die Vorbereitung je Pass nicht)
+      mesh.visible = list.length > 0;
       // Schatten v3: verteilte Empfänger über dem Boden → die gröbste Kaskade deckt auch Boden + diese Höhe ab (Kronen
       // am sonnenabgewandten Bildrand behalten ihre Schlagschatten, die Punkte dort ihren Schattenwert)
       mesh.userData.shadowHeight = shadowHeight;
@@ -1026,6 +1029,7 @@ export class TreeLayer {
       });
       for (const attr of [a, b, c, d, mesh.instanceMatrix]) commit(attr, list.length);
       mesh.count = list.length;
+      mesh.visible = list.length > 0;
     }
     {
       const list = bareList.slice(0, cap);
@@ -1047,6 +1051,7 @@ export class TreeLayer {
       });
       for (const a of [b, u, dat, va, this.bare.instanceMatrix]) commit(a, list.length);
       this.bare.count = list.length;
+      this.bare.visible = list.length > 0;
     }
     {
       const list = windList.slice(0, this.windCard.capacity);
