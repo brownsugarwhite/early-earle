@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-179",
+  "zone": "luzz",
+  "name": "Bergschrott",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "scrapMound",
+      "at": [3, 1],
+      "size": [2, 2],
+      "layers": 6
+    }
+  ],
+  "threats": [
+    {
+      "kind": "toxic",
+      "at": [2, 0],
+      "countdown": 7
+    },
+    {
+      "kind": "toxic",
+      "at": [0, 3],
+      "countdown": 7
+    }
+  ],
+  "start": [
+    {
+      "at": [2, 2],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 4],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 4],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [4, 4],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "clearScrap"
+    },
+    {
+      "type": "reachTier",
+      "tier": 6
+    }
+  ],
+  "moves": 32,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.41, 2.06],
+    "style": "diligent"
+  }
+}

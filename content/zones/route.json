@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "nodeSpacing": 4.2,
+  "beyond": { "world": "w16" },
+  "entries": [
+    { "world": "w09", "levels": 14, "note": "Goldene Wiese (Start, vermüllt) — Level 1–14" },
+    { "world": "w06", "levels": 12, "note": "Schneekiefern — 15–26" },
+    { "world": "w04", "levels": 12, "note": "Violette Hänge — 27–38" },
+    { "world": "w10", "levels": 12, "note": "Juwelenwald — 39–50" },
+    { "world": "w05", "levels": 12, "note": "Wurzelwelt — 51–62" },
+    { "world": "w02", "levels": 12, "note": "Nebelhügel — 63–74" },
+    { "world": "w07", "levels": 12, "note": "Kathedralenwald — 75–86" },
+    { "world": "w08", "levels": 12, "note": "Rote Scheune — 87–98" },
+    { "world": "w01", "levels": 16, "length": 34, "tree": true, "note": "Flechtenbaum mit dem Riesenbaum — 99–114" },
+    { "world": "w03", "levels": 10, "note": "Kuppelbaum — 115–124" },
+    { "world": "w11", "levels": 12, "note": "Nebelweide (Ebene 20) — 125–136" },
+    { "world": "w12", "levels": 12, "note": "Goldnebelhang (Ebene 7) — 137–148" },
+    { "world": "w13", "levels": 12, "note": "Roter Monolith (Ebene 45) — 149–160" },
+    { "world": "w14", "levels": 12, "note": "Stille Bucht (Ebene 29) — 161–172" },
+    { "world": "w15", "levels": 12, "note": "Blaue Terrassen (Ebene 12) — 173–184" },
+    { "world": "w16", "levels": 1, "length": 10.5, "state": "hinted", "note": "Zone 16 „Bald“: Torknoten 185 (gesperrt), dahinter nur die angedeutete Zone" }
+  ]
+}

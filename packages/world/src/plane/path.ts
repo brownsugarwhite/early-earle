@@ -188,19 +188,26 @@ export class PlanePath {
     this.visitLandmarks = options.landmarks ?? true;
   }
 
-  /** Knoten mit globalem Index (0-basiert). */
+  /** Letzter Knoten (0-basiert): der Torknoten am Ende der Route (Route 15 + 1); mit `procedural` ∞. */
+  get lastNode(): number {
+    return this.field.layout.lastLevel - 1;
+  }
+
+  /** Knoten mit globalem Index (0-basiert), geklemmt auf [0, lastNode] (hinter dem Tor gibt es keine Knoten). */
   node(index: number): PlanePathNode {
-    const k = this.field.layout.segmentOfLevel(index + 1);
+    const i = Math.max(0, Math.min(Math.floor(index), this.lastNode));
+    const k = this.field.layout.segmentOfLevel(i + 1);
     const seg = this.segment(k);
-    const n = seg.nodes[index - seg.firstIndex];
-    if (!n) throw new Error(`no path node ${index}`);
+    const n = seg.nodes[i - seg.firstIndex];
+    if (!n) throw new Error(`no path node ${i}`);
     return n;
   }
 
-  /** Knoten [i0, i1] (inklusive). */
+  /** Knoten [i0, i1] (inklusive, geklemmt auf den letzten Knoten). */
   nodes(i0: number, i1: number): PlanePathNode[] {
     const out: PlanePathNode[] = [];
-    for (let i = Math.max(0, i0); i <= i1; i++) out.push(this.node(i));
+    const last = Math.min(i1, this.lastNode);
+    for (let i = Math.max(0, i0); i <= last; i++) out.push(this.node(i));
     return out;
   }
 
@@ -230,9 +237,12 @@ export class PlanePath {
     return this.field.layout.segmentAtDistance(-z);
   }
 
-  /** Nächster Knoten (global) zu einem Punkt der Ebene, gesucht in den Abschnitten um z. */
+  /**
+   * Nächster Knoten (global) zu einem Punkt der Ebene, gesucht in den Abschnitten um z (hinter dem Tor: um den
+   * Torabschnitt, dort liegen die nächsten Knoten).
+   */
   nearestNode(x: number, z: number): number {
-    const k0 = this.segmentAtZ(z);
+    const k0 = Math.min(this.segmentAtZ(z), this.field.layout.lastSegment);
     let best = -1;
     let bestD = Infinity;
     for (let k = k0 - 1; k <= k0 + 1; k++) {
@@ -537,6 +547,11 @@ export class PlanePath {
     const field = this.field;
     const layout = field.layout;
     const lseg = layout.segment(k);
+    // Hinter dem Tor (Route 15 + 1): kein Weg, keine Knoten, kein Lichtband — nur die angedeutete Zone
+    if (k > layout.lastSegment) {
+      const firstIndex = Math.max(0, layout.lastLevel);
+      return { k, world: lseg.world, firstIndex, count: 0, nodes: [], dots: [], ribbon: [], samples: [], length: 0, zLength: lseg.zStart - lseg.zEnd, offsets: [] };
+    }
     const route = this.route(k);
     const n = lseg.levels;
     const firstIndex = Math.max(0, lseg.firstLevel - 1);
@@ -550,7 +565,7 @@ export class PlanePath {
       return { position: [pos[0], pos[1], pos[2]], normal: [nor[0], nor[1], nor[2]], side: [route.sides[i]![0], 0, route.sides[i]![1]], s: route.s[i]! };
     });
     const nodeS = this.nodeArcs(k);
-    const visit = this.landmarkVisit(k, route, nodeS, firstIndex);
+    const visit = lseg.hinted ? null : this.landmarkVisit(k, route, nodeS, firstIndex);
     const ring = (x: number, z: number): { spread: number; relief: number } => this.ring(x, z);
     const nodes: PlanePathNode[] = [];
     const sites: NodeSite[] = [];
@@ -594,8 +609,16 @@ export class PlanePath {
         });
         continue;
       }
+      let rise = 0;
+      if (lseg.hinted) {
+        // Torknoten der angedeuteten Zone: ein Stein knapp über dem Nebelmeer (Spiegel der Welt), kein Wahrzeichen
+        site = 'ledge';
+        const sea = field.spec(w).mist?.sea;
+        const level = sea ? (sea.height ?? sea.level * field.spec(w).terrain.amplitude) : -Infinity;
+        rise = Math.min(1.6, Math.max(0.5, level + 0.3 - pos[1]));
+      }
       sites.push(site);
-      const rise = site === 'ledge' ? 0.42 + 0.3 * hash01(index, seed + 5) : site === 'trash' ? 0.15 : site === 'shore' ? 0.07 : 0;
+      if (!lseg.hinted) rise = site === 'ledge' ? 0.42 + 0.3 * hash01(index, seed + 5) : site === 'trash' ? 0.15 : site === 'shore' ? 0.07 : 0;
       nodes.push({ index, segment: k, position: [pos[0], pos[1] + rise, pos[2]], normal: [nor[0], nor[1], nor[2]], s: sBase + nodeS[i]! * sScale, site, world: w, rise });
     }
     // Punkte: zwischen den Knoten und vom letzten Knoten bis zum ersten des nächsten Abschnitts
@@ -660,9 +683,9 @@ export class PlanePath {
       }
       pushDots(a, b, firstIndex + i, (s) => this.at(route, s), (s) => (s - a) / Math.max(1e-6, b - a));
     }
-    if (n > 0) {
-      // Übergang in den nächsten Abschnitt (dessen Route beginnt am selben Rückgratpunkt)
-      const next = this.nextWithNodes(k);
+    const next = n > 0 ? this.nextWithNodes(k) : null;
+    if (n > 0 && next) {
+      // Übergang in den nächsten Abschnitt (dessen Route beginnt am selben Rückgratpunkt); hinter dem Tor keiner
       const a = nodeS[n - 1]!;
       const restA = route.length - a;
       const nextRoute = this.route(next.k);
@@ -687,7 +710,9 @@ export class PlanePath {
       for (let i = 0; i + 1 < n; i++) if (s <= nodeS[i + 1]!) return { seg: firstIndex + i, u: (s - nodeS[i]!) / Math.max(1e-6, nodeS[i + 1]! - nodeS[i]!) };
       return { seg: firstIndex + n - 1, u: 0.5 * ((s - nodeS[n - 1]!) / Math.max(1e-6, route.length - nodeS[n - 1]!)) };
     };
-    for (let s = 0; s <= route.length + 1e-6; s += rStep) {
+    // Am Torknoten endet das Band 1,5 Einheiten hinter dem letzten Knoten (dahinter liegt nur die angedeutete Zone)
+    const ribbonEnd = k >= layout.lastSegment && n > 0 ? Math.min(route.length, nodeS[n - 1]! + 1.5) : route.length;
+    for (let s = 0; s <= ribbonEnd + 1e-6; s += rStep) {
       const p = this.at(route, s);
       field.surfaceAt(p.x, p.z, pos, nor);
       let near = Infinity;
@@ -708,8 +733,12 @@ export class PlanePath {
     return { k, world: lseg.world, firstIndex, count: n, nodes, dots, ribbon, samples, length: route.length, zLength: zLen, offsets: route.offsets };
   }
 
-  /** Nächster Abschnitt mit Knoten nach k (Vorland-Abschnitte haben keine) und der Weg dorthin. */
-  private nextWithNodes(k: number): { k: number; gap: number; firstS: number } {
+  /**
+   * Nächster Abschnitt mit Knoten nach k (Vorland-Abschnitte haben keine) und der Weg dorthin; `null` am Tor (hinter
+   * dem letzten Abschnitt mit Knoten folgt keiner mehr).
+   */
+  private nextWithNodes(k: number): { k: number; gap: number; firstS: number } | null {
+    if (k >= this.field.layout.lastSegment) return null;
     let gap = 0;
     let j = k + 1;
     for (let guard = 0; guard < 64; guard++, j++) {

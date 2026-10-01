@@ -27,7 +27,7 @@ function flare(y: number, strength: number, reach: number): number {
 }
 
 /** Geschwungener Stamm von y0 bis y1 (n Punkte), Radius r0 mit Wurzelanlauf, Knoten und leichter Verjüngung. */
-function stem(rand: () => number, y0: number, y1: number, n: number, r0: number, flareStrength: number, amp: number, taper = 0.35): TubePoint[] {
+export function stem(rand: () => number, y0: number, y1: number, n: number, r0: number, flareStrength: number, amp: number, taper = 0.35): TubePoint[] {
   const ph1 = rand() * Math.PI * 2;
   const ph2 = rand() * Math.PI * 2;
   const k1 = 1.1 + rand() * 0.6;
@@ -50,7 +50,7 @@ function stem(rand: () => number, y0: number, y1: number, n: number, r0: number,
 }
 
 /** Punkte entlang einer Kurve mit abnehmendem Radius (Ast: dick am Ansatz, haarfein an der Spitze). */
-function taperAlong(path: V3[], r0: number, r1: number, bulge = 0): TubePoint[] {
+export function taperAlong(path: V3[], r0: number, r1: number, bulge = 0): TubePoint[] {
   return path.map((p, i) => {
     const t = i / (path.length - 1);
     return { p, r: (r0 + (r1 - r0) * Math.pow(t, 0.85)) * (1 + bulge * Math.sin(t * Math.PI)) };
@@ -58,7 +58,7 @@ function taperAlong(path: V3[], r0: number, r1: number, bulge = 0): TubePoint[] 
 }
 
 /** Punkt und Tangente auf einer Punktliste bei Anteil t (0..1). */
-function along(path: V3[], t: number): { p: V3; d: V3; i: number } {
+export function along(path: V3[], t: number): { p: V3; d: V3; i: number } {
   const x = Math.min(0.999, Math.max(0, t)) * (path.length - 1);
   const i = Math.floor(x);
   const f = x - i;
@@ -68,7 +68,7 @@ function along(path: V3[], t: number): { p: V3; d: V3; i: number } {
 }
 
 /** Kurze, flache Wurzelanläufe, die schräg in den Boden laufen. */
-function roots(b: TreeMeshBuilder, rand: () => number, r0: number, count: number, reach0: number, radial = 4): void {
+export function roots(b: TreeMeshBuilder, rand: () => number, r0: number, count: number, reach0: number, radial = 4): void {
   const rootAz = rand() * Math.PI * 2;
   for (let k = 0; k < count; k++) {
     const az = rootAz + (k / count) * Math.PI * 2 + (rand() - 0.5) * 0.7;

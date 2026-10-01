@@ -1,5 +1,5 @@
 import { hash32, mulberry32 } from '../rng';
-import type { TreeFamily, TreeKind } from '../scatterTrees';
+import { TREE_KIND_LIST, type TreeFamily, type TreeKind } from '../scatterTrees';
 import type { LakeSpec, RiverSpec, RockSpec, WorldFeatureSpec } from '../features/types';
 import type { FocalSpec, PlanetPropSpec, PlanetTerrainShape, WorldSpec } from './types';
 
@@ -61,6 +61,28 @@ function mixTerrain(a: PlanetTerrainShape, b: PlanetTerrainShape, t: number, ran
   return { amplitude: Math.max(0.6, Math.min(3.6, amplitude)), wavelength: Math.max(0.6, Math.min(2.4, wavelength)), ridge, floor, slope, ...(stretch !== 1 ? { stretch } : {}) };
 }
 
+/**
+ * Geborgene Kompositionsbäume der Autorenwelten (Kuppelbaum 01/03, Kuppel- und Wintereiche 04/05, Schnee-Ahorn 08)
+ * tragen eigene Meshes — je Art ein Aufruf in jedem Pass. Prozedurale Welten nehmen dafür ihre Grundform (Kuppel,
+ * Eiche, kahler Baum): eine Mischwelt mit Erbe aus 05 brachte sonst 160 Kuppeleichen und drei Arten mehr ins Bild, das
+ * Draw-Call-Budget der Karte (Median ≤ 100 beim Schwenken) hielt nicht. Die Würfelfolge bleibt dieselbe.
+ */
+const PLAIN_KIND: Partial<Record<TreeKind, TreeKind>> = { kuppel: 'dome', domeOak: 'dome', winterOak: 'oak', maple: 'bare' };
+
+function plainKind<K extends string>(k: K): K | TreeKind {
+  return PLAIN_KIND[k as TreeKind] ?? k;
+}
+
+function plainWeights(w: Partial<Record<TreeKind, number>> | undefined): Partial<Record<TreeKind, number>> | undefined {
+  if (!w) return w;
+  const out: Partial<Record<TreeKind, number>> = {};
+  for (const [k, v] of Object.entries(w) as Array<[TreeKind, number]>) {
+    const p = plainKind(k) as TreeKind;
+    out[p] = (out[p] ?? 0) + v;
+  }
+  return out;
+}
+
 function mixKinds(a: Partial<Record<TreeKind, number>>, b: Partial<Record<TreeKind, number>>, t: number, rand: () => number): Partial<Record<TreeKind, number>> {
   const out: Partial<Record<TreeKind, number>> = {};
   const keys = new Set<TreeKind>([...(Object.keys(a) as TreeKind[]), ...(Object.keys(b) as TreeKind[])]);
@@ -71,7 +93,7 @@ function mixKinds(a: Partial<Record<TreeKind, number>>, b: Partial<Record<TreeKi
     out[k] = w * (0.75 + rand() * 0.5);
   }
   if (Object.keys(out).length === 0) out.dome = 1;
-  return out;
+  return plainWeights(out)!;
 }
 
 function mixVegetation(a: TreeFamily, b: TreeFamily, t: number, rand: () => number): TreeFamily {
@@ -89,6 +111,9 @@ function mixVegetation(a: TreeFamily, b: TreeFamily, t: number, rand: () => numb
   if (grove) {
     out.grove = {
       ...grove,
+      ...(grove.specimenKinds ? { specimenKinds: plainWeights(grove.specimenKinds)! } : {}),
+      ...(grove.edgeKinds ? { edgeKinds: plainWeights(grove.edgeKinds)! } : {}),
+      ...(grove.crest ? { crest: { ...grove.crest, kinds: plainWeights(grove.crest.kinds)! } } : {}),
       cover: Math.min(0.8, Math.max(0.05, grove.cover * (0.7 + rand() * 0.6))),
       ...(grove.contours ? { contours: grove.contours.map((c) => Math.min(0.95, Math.max(0.05, c + (rand() - 0.5) * 0.12))) } : {}),
       wavelength: (grove.wavelength ?? 9) * (0.8 + rand() * 0.45),
@@ -98,7 +123,7 @@ function mixVegetation(a: TreeFamily, b: TreeFamily, t: number, rand: () => numb
   if (rand() < 0.3 && other.bark) out.bark = other.bark;
   if (rand() < 0.25 && other.snow !== undefined && other.snow > 0) out.snow = other.snow;
   delete out.focalTree;
-  if (dom.focalTree && rand() < 0.7) out.focalTree = dom.focalTree;
+  if (dom.focalTree && rand() < 0.7) out.focalTree = { ...dom.focalTree, kind: plainKind(dom.focalTree.kind) as TreeKind };
   return out;
 }
 
@@ -153,7 +178,20 @@ function mixFocal(a: FocalSpec | undefined, b: FocalSpec | undefined, t: number,
   const dom = t < 0.5 ? (a ?? b) : (b ?? a);
   if (!dom) return undefined;
   const lateral = (rand() < 0.5 ? -1 : 1) * (4 + rand() * 5);
-  return { ...dom, along: 0.3 + rand() * 0.4, lateral };
+  const focal: FocalSpec = { ...dom, along: 0.3 + rand() * 0.4, lateral };
+  // Begleiter (Weltkomposition einer Autorenwelt) nicht übernehmen: näher am Pfad stünden sie ihm im Weg. Ein reiner
+  // Bildanker gibt stattdessen sein erstes Begleit-Requisit als Fokus-Element weiter (Welt 08: die rote Scheune)
+  const prop = !dom.kind ? dom.companions?.find((c) => !TREE_KIND_LIST.includes(c.kind as TreeKind)) : undefined;
+  if (prop) {
+    focal.kind = prop.kind;
+    focal.scale = prop.scale ?? 1;
+    focal.yawDeg = prop.yawDeg ?? 0;
+    if (prop.clearRadius !== undefined) focal.clearRadius = prop.clearRadius;
+    else delete focal.clearRadius;
+  }
+  delete focal.companions;
+  if (focal.kind) focal.kind = plainKind(focal.kind);
+  return focal;
 }
 
 /** Spezifikation (Gelände, Vegetation, Requisiten, Merkmale) einer prozeduralen Welt. */

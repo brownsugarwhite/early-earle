@@ -4,8 +4,8 @@ import { CloudBanks, EarlePlanet, FogStripes, PLANET_SHADOW_LAYER, SunRig, creat
 import type { SceneController, SceneContext } from '../../canvas/SceneController';
 import { PanBall } from './panball';
 import { resolveQuality, type QualityLevel, type QualityPreset, type ResolvedQuality } from './quality';
-import { AUTHORED_ROUTE, HERO_TREE_WORLD, LEVEL_COUNT, PLANET_RADIUS, WORLD_CONTENTS, planetWorlds, zoneOfLevel } from './zones';
-import { TREE_LEVELS, createHeroTreeSite, type HeroTreeSite } from './heroTreeSite';
+import { AUTHORED_ROUTE, HERO_TREE_WORLD, LEVEL_COUNT, PLANET_RADIUS, PLAYABLE_COUNT, WORLD_CONTENTS, planetWorlds, routeOptions, zoneOfLevel } from './zones';
+import { TREE_RANGE, createHeroTreeSite, type HeroTreeSite } from './heroTreeSite';
 import { createPlanetTrash } from './trash';
 import type { TrashField } from '@ee/render/earle/trash/index.ts';
 import { NodePath } from '../../flow/NodePath';
@@ -13,7 +13,7 @@ import { FlowPath } from '../../flow/levelPath';
 import { planetPathPalette } from '../../flow/MapWorld';
 
 export interface EarleLabParams {
-  /** Fortschritt: Anzahl geschaffter Knoten (0..100) → Wachstum je Chunk entlang des Pfads (Müll versinkt). */
+  /** Fortschritt: Anzahl geschaffter Knoten (0..184) → Wachstum je Chunk entlang des Pfads (Müll versinkt). */
   progress: number;
   /** Sonnenhöhe in Grad (6–15). */
   sunElevation: number;
@@ -33,17 +33,19 @@ export interface EarleLabParams {
   cracksClosed: boolean;
   seed: number;
   /**
-   * Gewählte Welt (Kennung: 0..9 = Autorenwelten 01..10 auf der Route, ab 10 = prozedurale Pfadwelten 11, 12, …):
-   * gleitet zu ihrem Bildfokus. −1 = keine Wahl.
+   * Gewählte Welt (Kennung: 0..15 = Weltdateien 01..16 — 15 Autorenwelten auf der Route und die angedeutete Zone 16;
+   * nur mit `procedural` ab 16 prozedurale Pfadwelten 17, 18, …): gleitet zu ihrem Bildfokus. −1 = keine Wahl.
    */
   world: number;
+  /** Alter Weltenmodus (`?prozedural=1`): prozedurale Welten hinter und neben der Route statt der angedeuteten Zone. */
+  procedural: boolean;
   /** Perspektive: 0 = alte Übersicht, 1 = Earle-Komposition der Welt (Kamera tief, FOV weit, Krümmung), bis 1.4 übertrieben. */
   perspective: number;
   /** Müll-Dichte der Startwelt in Prozent (0–200). */
   trash: number;
   /** Levelpfad (Steine, Punkte, Ring) einblenden — inkl. des Abschnitts über den Riesenbaum. */
   path: boolean;
-  /** Kamera auf der Baum-Schiene bei Knoten `rail` (0-basiert, 79–94); −1 = aus. */
+  /** Kamera auf der Baum-Schiene bei Knoten `rail` (0-basiert, 98–113); −1 = aus. */
   rail: number;
 }
 
@@ -59,14 +61,22 @@ export const DEFAULT_EARLE_PARAMS: EarleLabParams = {
   cracksClosed: false,
   seed: 7,
   world: -1,
+  procedural: false,
   perspective: 1,
   trash: 100,
   path: false,
   rail: -1,
 };
 
-/** Wählbare Welten im Lab: die zehn Autorenwelten und 30 prozedurale Pfadwelten danach. */
-export const LAB_WORLD_COUNT = WORLD_CONTENTS.length + 30;
+/** Wählbare Welten im Lab: die Weltdateien (15 Autorenwelten und die angedeutete Zone 16). */
+export const LAB_WORLD_COUNT = WORLD_CONTENTS.length;
+/** Nur mit `?prozedural=1`: so viele prozedurale Pfadwelten hinter der Route kommen im Weltwähler dazu. */
+export const LAB_PROCEDURAL_WORLDS = 30;
+
+/** Wählbare Welten (Kennungen 0 … n−1): die Weltdateien, mit `procedural` dazu 30 prozedurale Pfadwelten. */
+export function labWorldCount(procedural: boolean): number {
+  return LAB_WORLD_COUNT + (procedural ? LAB_PROCEDURAL_WORLDS : 0);
+}
 
 export interface EarleBenchInfo {
   backend: 'webgpu' | 'webgl2' | 'unknown';
@@ -107,8 +117,9 @@ export function horizonSin(R: number, c: number, camR: number): number {
 }
 
 /**
- * P2c Earle-Lab auf der unendlichen Ebene (ADR 0002): die Welten entlang des Pfads (zehn Earle-Serigrafien, danach
- * prozedurale Welten), Nachbarwelten links und rechts, als Kugel um den Fokus angezeigt. Weltwähler gleitet zum Bildfokus
+ * P2c Earle-Lab auf der unendlichen Ebene (ADR 0002, Route 15 + 1): die 15 Autorenwelten entlang des Pfads, dahinter
+ * und links und rechts die angedeutete Zone 16 (mit `?prozedural=1` der alte Modus: prozedurale Welten hinter der Route,
+ * Nachbarwelten links und rechts), als Kugel um den Fokus angezeigt. Weltwähler gleitet zum Bildfokus
  * der Welt; Ziehen schiebt den Fokus endlos in jede Richtung. Perspektive je Welt (Kamerahöhe, Blickpunkt, FOV 80–90°,
  * Krümmungs-Boost der fernen Erde) mit dem Regler „Perspektive" zwischen alter Übersicht und Earle-Komposition, Müll der
  * Startwelt (Dichte-Regler, versinkt mit dem Wachstum), Risse, Levelpfad, Sonnen-Rig mit Schatten in der Ebene.
@@ -234,13 +245,14 @@ export class EarleLabScene implements SceneController {
     for (const d of this.disposables) d.dispose();
     this.disposables.length = 0;
     const p = this.preset;
-    const treeFirst = TREE_LEVELS[0] - 1;
-    const treeLast = TREE_LEVELS[1] - 1;
+    const treeFirst = TREE_RANGE[0] - 1;
+    const treeLast = TREE_RANGE[1] - 1;
     const world = new EarlePlanet({
       radius: PLANET_RADIUS,
       seed: this.params.seed,
       worlds: planetWorlds(),
-      route: AUTHORED_ROUTE,
+      // Route 15 + 1; `?prozedural=1` = alter Weltenmodus mit prozeduralen Welten
+      ...routeOptions(this.params.procedural),
       trashScale: this.params.trash / 100,
       quality: {
         chunkRes: p.name === 'mobil' ? 25 : 33,
@@ -259,10 +271,10 @@ export class EarleLabScene implements SceneController {
     });
     this.world = world;
     this.scene.add(world.group);
-    // Levelpfad wie im Flow: durch die Landschaft geroutet, dann der Riesenbaum (Welt 01) mit dem Abschnitt 80–95 über
-    // Stamm und Krone (seine eigenen Markierungen tragen ihn)
+    // Levelpfad wie im Flow: durch die Landschaft geroutet, dann der Riesenbaum (Welt 01) mit dem Abschnitt 99–114 über
+    // Stamm und Krone (seine eigenen Markierungen tragen ihn); Knoten ohne Leveldatei bleiben „bald“
     this.treeSite = createHeroTreeSite(world, { worldIndex: HERO_TREE_WORLD, quality: p.name, seed: this.params.seed });
-    this.pathLayout = new FlowPath(world, this.treeSite, HERO_TREE_WORLD);
+    this.pathLayout = new FlowPath(world, this.treeSite, HERO_TREE_WORLD, PLAYABLE_COUNT);
     world.setPathCorridor((x0, z0, x1, z1) => this.pathLayout!.corridor(x0, z0, x1, z1));
     this.trash = createPlanetTrash(world, this.pathLayout, { quality: p.name, seed: this.params.seed, densityScale: this.params.trash / 100 });
     this.trash.setProgress(this.currentProgress, false);
@@ -373,9 +385,10 @@ export class EarleLabScene implements SceneController {
     return () => this.worldListeners.delete(listener);
   }
 
-  /** Name und Referenz einer Welt (Autorenwelt oder prozedurale Welt). */
+  /** Name und Referenz einer Welt (Autorenwelt, angedeutete Zone „Bald“ oder prozedurale Welt). */
   worldLabel(id: number): { ref: string; name: string; zone: string; authored: boolean } {
     const c = WORLD_CONTENTS[id];
+    if (c?.hinted) return { ref: c.ref, name: 'Bald', zone: 'gesperrt', authored: true };
     if (c) return { ref: c.ref, name: c.name, zone: c.zone, authored: true };
     const data = this.world?.worldData(id);
     const nr = String(id + 1).padStart(2, '0');
@@ -394,7 +407,7 @@ export class EarleLabScene implements SceneController {
       const preset = resolveQuality(next.quality);
       const presetChanged = force || preset.name !== this.preset.name;
       this.preset = preset;
-      if (presetChanged || next.seed !== prev.seed || next.density !== prev.density) {
+      if (presetChanged || next.seed !== prev.seed || next.density !== prev.density || next.procedural !== prev.procedural) {
         this.applyDpr();
         this.sun.setMapSize(preset.shadowMapSize);
         const f = this.world ? { x: this.world.focus.x, z: this.world.focus.z } : null;
@@ -418,7 +431,7 @@ export class EarleLabScene implements SceneController {
         world.setCracksClosedBelow(next.cracksClosed ? 1e9 : world.layout.segmentOfLevel(progress + 1) + 1);
         this.treeSite?.setProgress(progress);
         this.trash?.setProgress(progress, !force);
-        const last = this.pathLayout?.lastPlayable ?? LEVEL_COUNT - 1;
+        const last = this.pathLayout?.lastPlayable ?? PLAYABLE_COUNT - 1;
         this.nodePath?.setProgress(Math.max(0, Math.min(progress, last)), progress);
         this.shadowDirty = true;
         if (!force && next.progress !== prev.progress) this.turnToNode(Math.max(0, Math.min(progress, last)));
@@ -564,7 +577,7 @@ export class EarleLabScene implements SceneController {
   }
 
   /** Fokus-Versatz (Rig-Raum ohne Drehung), an dem ein Punkt bei der Komposition `v` an der Bildstelle `ndc` erscheint. */
-  private targetOffset(v: WorldView, ndc: [number, number]): { x: number; z: number } {
+  private targetOffset(v: WorldView, ndc: [number, number], groundY = 0.9): { x: number; z: number } {
     const [ndcX, ndcY] = ndc;
     const cam = this.probe;
     cam.aspect = this.camera.aspect;
@@ -578,7 +591,7 @@ export class EarleLabScene implements SceneController {
     if (ndcX === 0 && ndcY === 0) return { x: 0, z: -v.look };
     const origin = cam.position.clone();
     const dir = this.tmp.set(ndcX, ndcY, 0.5).unproject(cam).sub(origin).normalize();
-    const r = PLANET_RADIUS + 0.9;
+    const r = PLANET_RADIUS + groundY;
     const b = origin.dot(dir);
     const c = origin.lengthSq() - r * r;
     const disc = b * b - c;
@@ -589,8 +602,8 @@ export class EarleLabScene implements SceneController {
   }
 
   /** Fokus, der den Ebenenpunkt (x, z) an die Bildstelle `ndc` der Welt-Komposition bringt (Ansicht ohne Drehung). */
-  private focusFor(x: number, z: number, worldId: number, ndc: [number, number]): { x: number; z: number } {
-    const o = this.targetOffset(this.viewFor(worldId), ndc);
+  private focusFor(x: number, z: number, worldId: number, ndc: [number, number], groundY?: number): { x: number; z: number } {
+    const o = this.targetOffset(this.viewFor(worldId), ndc, groundY);
     const c = Math.cos(this.yaw);
     const s = Math.sin(this.yaw);
     return { x: x - (o.x * c + o.z * s), z: z - (-o.x * s + o.z * c) };
@@ -638,14 +651,16 @@ export class EarleLabScene implements SceneController {
     return this.effectiveProgress >= 0 ? this.effectiveProgress : this.params.progress;
   }
 
-  /** Fortschritt, bei dem die Autorenwelt `id` ganz geheilt ist (letzter Level ihres Abschnitts geschafft); sonst 0. */
+  /**
+   * Fortschritt, bei dem die Autorenwelt `id` ganz geheilt ist (letzter Level ihres Abschnitts geschafft, höchstens die
+   * spielbaren Level der Route); angedeutete Zonen und Welten ohne Abschnitt: 0.
+   */
   private healedProgress(id: number): number {
     const layout = this.world?.layout;
     if (!layout) return 0;
-    for (let k = 0; k < layout.authored; k++) {
+    for (let k = 0; k < layout.routeLength; k++) {
       const seg = layout.segment(k);
-      // bis zum letzten spielbaren Level der Weltenlage (Welten hinter Level 100 ohne `future` wachsen erst mit ihm)
-      if (seg.world === id && seg.levels > 0) return Math.min(Math.max(LEVEL_COUNT, layout.authoredLevels), seg.firstLevel + seg.levels + 1);
+      if (seg.world === id && seg.levels > 0 && !seg.hinted) return Math.min(layout.authoredLevels, seg.firstLevel + seg.levels + 1);
     }
     return 0;
   }
@@ -653,9 +668,14 @@ export class EarleLabScene implements SceneController {
   private worldFocusPoint(id: number): { x: number; z: number } | null {
     const world = this.world;
     if (!world) return null;
+    // Komposition auf einem Wahrzeichen (Welt 01: der Riesenbaum, Ebene 21)
+    const anchor = WORLD_CONTENTS[id]?.focal?.landmark;
+    const lm = anchor ? world.getLandmarkSlot(anchor) : undefined;
+    if (lm) return { x: lm.position[0], z: lm.position[2] };
     const n = AUTHORED_ROUTE.length;
     let k = AUTHORED_ROUTE.findIndex((r) => r.world === id);
-    if (k < 0 && id >= world.worlds.length) k = n + (id - world.worlds.length);
+    // prozedurale Pfadwelten (nur `?prozedural=1`) liegen hinter der Route
+    if (k < 0 && id >= world.worlds.length && world.layout.procedural) k = n + (id - world.worlds.length);
     if (k < 0) return null;
     const slot = world.field.focalSlot(`p${k}`);
     if (slot) return { x: slot.position[0], z: slot.position[2] };
@@ -680,7 +700,7 @@ export class EarleLabScene implements SceneController {
       const s = Math.sin(this.yaw);
       return { x: p.x + aim[0] * c + aim[1] * s, z: p.z - aim[0] * s + aim[1] * c };
     }
-    return this.focusFor(p.x, p.z, id, this.worldFocusNdc(id));
+    return this.worldFocusFor(id, p);
   }
 
   /**
@@ -692,6 +712,39 @@ export class EarleLabScene implements SceneController {
     this.yaw = ((view.yaw ?? 0) * Math.PI) / 180;
     this.rig.quaternion.setFromAxisAngle(_Y, this.yaw);
     this.shadowDirty = true;
+  }
+
+  /** Geländehöhe am Blickpunkt, wenn der Fokus bei (fx, fz) liegt (wie `update` sie für die Kamera nachführt). */
+  private liftAt(fx: number, fz: number, v: WorldView): number {
+    const world = this.world!;
+    const c = Math.cos(this.yaw);
+    const s = Math.sin(this.yaw);
+    let sum = 0;
+    for (const ahead of [-2, 0, 3]) {
+      const oz = -(v.look + ahead);
+      sum += world.heightAt(fx + oz * s, fz + oz * c);
+    }
+    return Math.max(0, sum / 3);
+  }
+
+  /**
+   * Fokus zum Bildfokus einer Welt. Kompositionen mit `view.lookHeight` (auch 0: flache Kamera, steile Hänge) rechnen
+   * die Geländehöhe am Blickpunkt (wie sie die Kamera nachführt) und die Höhe des Fokus-Elements vorab ein (zwei
+   * Durchgänge) — sonst verschöbe das Nachführen der Höhe das Bild, das Fokus-Element landete nicht an seiner
+   * Bildstelle (Welt 04: der Kuppelbaum auf dem Hang statt auf dem Kamm). Ohne `lookHeight` in der Weltdatei wie bisher.
+   */
+  private worldFocusFor(id: number, p: { x: number; z: number }): { x: number; z: number } {
+    const ndc = this.worldFocusNdc(id);
+    let f = this.focusFor(p.x, p.z, id, ndc);
+    const v = this.viewFor(id);
+    if (this.presetOf(id).lookHeight !== undefined && this.world) {
+      const groundY = this.world.heightAt(p.x, p.z) + 0.3;
+      for (let i = 0; i < 2; i++) {
+        this.groundLift = this.liftAt(f.x, f.z, v);
+        f = this.focusFor(p.x, p.z, id, ndc, groundY);
+      }
+    }
+    return f;
   }
 
   /** Sofort zum Bildfokus von Welt `id`. */
@@ -925,7 +978,7 @@ export class EarleLabScene implements SceneController {
       props,
       preset: this.preset.name,
       dpr: this.ctx?.renderer.getPixelRatio() ?? 0,
-      zone: node < LEVEL_COUNT ? (zoneOfLevel(node + 1)?.name ?? '') : 'bald',
+      zone: node < PLAYABLE_COUNT ? (zoneOfLevel(node + 1)?.name ?? '') : 'bald',
       world: `${label.ref} ${label.name}`,
       worldIndex: wi,
       view: { ...this.view },

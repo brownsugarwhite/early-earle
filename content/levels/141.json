@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-141",
+  "zone": "wooding",
+  "name": "Krustenstrahl",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "crust",
+      "at": [2, 2],
+      "content": {
+        "tier": 3
+      }
+    },
+    {
+      "kind": "crust",
+      "at": [4, 0],
+      "content": {
+        "tier": 3
+      }
+    },
+    {
+      "kind": "crust",
+      "at": [0, 0],
+      "content": {
+        "tier": 3
+      }
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [2, 0],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [1, 4],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 4],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "deliver",
+      "tier": 5,
+      "count": 2
+    }
+  ],
+  "moves": 15,
+  "cap": 12,
+  "specials": {
+    "lineAt": 3,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [2.2, 3.84],
+    "style": "precise"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-178",
+  "zone": "luzz",
+  "name": "Nebelband",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", "##.##", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [0, 0],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [2, 1],
+      "blob": {
+        "tier": 3,
+        "material": "jelly"
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [4, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [4, 1],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "reachTier",
+      "tier": 6
+    }
+  ],
+  "moves": 32,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.16, 1.35],
+    "style": "journey"
+  }
+}

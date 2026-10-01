@@ -19,6 +19,11 @@ export interface FlankSpec {
   to: number;
   /** Auslauf zu den Abschnittsenden (Welteinheiten, Standard 12). */
   taper?: number;
+  /**
+   * Relief statt Höhe (Welt 06): die relative Höhe 0..1 (Licht der Kuppen, Täler der Schneefelder) misst nur das
+   * Hügelrauschen, nicht den Hang — sonst stünde der ganze Hang als „Kamm“ im Licht. Standard aus (Welt 12).
+   */
+  relief?: boolean;
 }
 
 /** Ausrundung des Hangfußes und des Grats (Anteil der Flanke). */

@@ -1,6 +1,6 @@
 import { Box3, BufferAttribute, BufferGeometry, Frustum, Group, Matrix4, Mesh, MeshBasicNodeMaterial, Object3D, Quaternion, Sphere, Vector3, Vector4 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
-import { abs, atan, attribute, cameraViewMatrix, clamp, float, fract, fwidth, int, length, max, mix, modelViewMatrix, modelWorldMatrix, normalGeometry, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, varying, vec2, vec3, vec4 } from 'three/tsl';
+import { Fn, If, abs, atan, attribute, cameraViewMatrix, clamp, float, fract, fwidth, int, length, max, mix, modelViewMatrix, modelWorldMatrix, normalGeometry, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, varying, vec2, vec3, vec4 } from 'three/tsl';
 import {
   CHUNK_SIZE,
   PlaneField,
@@ -12,6 +12,7 @@ import {
   isTreeKind,
   scatterPlaneProps,
   scatterPlaneTrees,
+  type MistBank,
   type PlaneChunkMesh,
   type PlaneLandmarkParams,
   type PlaneLandmarkSlot,
@@ -47,13 +48,19 @@ import { MistBanks } from './mist/mistBanks';
 import { createScaleCarpet, type ScaleCarpet } from './ground/scaleCarpet';
 import { fogSeaLayer } from './ground/fogSea';
 import { meadowLayer } from './ground/meadow';
+import { firCarpetColors, firCarpetMask, firProjScale, viewQuarter } from './ground/firCarpet';
+import { canopyCarpetColors, canopyCarpetMask } from './ground/canopyCarpet';
 import type { LandmarkInstance } from '@ee/world';
 
 /**
  * Bodenbehandlung je Welt (Terrain-Ornament): glatt, Schneelinien, Wiese, Perspektivlinien, Rampen, Schneegrate,
  * Buschteppich aus Schuppenbögen (Welt 11, Ebene 20) und Schuppenbüsche mit Lichtlinien (Welt 12, Ebene 7).
  */
-export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges' | 'scales' | 'scalesStreaked';
+export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges' | 'scales' | 'scalesStreaked'
+  // Tannenwald aus weißen Punkten (Welt 06, Ebene 10): Tannen-Zeichen als Bodenornament, siehe ground/firCarpet
+  | 'firs'
+  // Kronendach von oben (Welt 02, Ebene 49): runde Kronen mit heller, getüpfelter Kappe, siehe ground/canopyCarpet
+  | 'canopy';
 
 /** Kameradistanz (Welteinheiten, Kamera → Blickpunkt), für die die Nebelwerte der Welten gesetzt sind. */
 export const FOG_REFERENCE_DISTANCE = 9;
@@ -150,8 +157,16 @@ export interface EarlePlanetOptions {
   seed: number;
   /** Autorenwelten (Kennungen 0 … n−1). */
   worlds: EarlePlanetWorld[];
-  /** Autorenroute (Level 1 … Summe). */
+  /** Autorenroute (Level 1 … Summe; `content/zones/route.json`, Route 15 + 1). */
   route: RouteEntry[];
+  /** Welt jenseits der Route (seitlich, hinter dem Tor, vor dem Start): die angedeutete Zone (w16). */
+  beyondWorld?: number;
+  /** Welten, die nie Nachbarwelt einer Seitenzelle werden (nur mit `procedural`). */
+  noLateral?: readonly number[];
+  /** Abstand zweier Level entlang z (Standard 4,2). */
+  nodeSpacing?: number;
+  /** Altes Verhalten mit prozeduralen Welten hinter und neben der Route (Lab `?prozedural=1`). Standard false. */
+  procedural?: boolean;
   quality: EarlePlanetQuality;
   hillWavelength?: number;
   /**
@@ -222,6 +237,11 @@ export const PLANET_SHADOW_LAYER = 1;
 const SHADOW_TILE = 3;
 /** Neubau geänderter Schatten-Kacheln höchstens alle so viele Frames. */
 const TILE_REBUILD_FRAMES = 6;
+/**
+ * Chunks je Seite einer Gelände-Kachel des Hauptpasses: das Gelände zeichnet je 2 × 2 Chunks ein Mesh (dieselben
+ * Vertices, dasselbe Material) — beim Schwenken ≈ 5 statt ≈ 10 Aufrufe für den Boden.
+ */
+const TERRAIN_TILE = 3;
 
 interface ShadowTile {
   key: string;
@@ -247,7 +267,12 @@ interface LoadedChunk {
   cz: number;
   res: number;
   cpu: ChunkCpu;
-  mesh: Mesh;
+  /** Gelände-Attribute je Vertex (Welt-Slots, Grenze, Merkmale, Wachstum) für die Gelände-Kachel. */
+  attrs: { ta: Float32Array; tb: Float32Array; tc: Float32Array; tg: Float32Array };
+  /** Hinter dem Horizont (Bogen vom Kamerafuß, letztes `update`): trägt keinen Inhalt bei. */
+  beyond: boolean;
+  /** Diesseits des Horizonts und im Bild (Kugel im Anzeigeraum, letztes `update`): seine Kachel zeichnet. */
+  inView: boolean;
   slot: number;
   lastSeen: number;
   /** Mittelpunkt (Ebene) und Radius für Kulling/Detailstufe. */
@@ -256,7 +281,7 @@ interface LoadedChunk {
 }
 
 /** Bodenornament je Behandlung (Wiese, Rampen und Schneegrate leben von Form und Bändern, nicht von Linien). */
-const GROUND_KIND: Record<GroundTreatment, number> = { smooth: 0, meadow: 0, ramps: 0, snowRidges: 0, snowLines: 1, floorLines: 2, scales: 3, scalesStreaked: 4 };
+const GROUND_KIND: Record<GroundTreatment, number> = { smooth: 0, meadow: 0, ramps: 0, snowRidges: 0, snowLines: 1, floorLines: 2, scales: 3, scalesStreaked: 4, firs: 5, canopy: 6 };
 const DEFAULT_VIEW: WorldView = { height: 9, forward: 8, look: 4, fov: 70, curvature: 0 };
 /** Periode (Welteinheiten) der Bodenornament-Koordinaten: Muster bleiben beim Umbruch des Fokus deckungsgleich. */
 const PATTERN_PERIOD = 700;
@@ -341,6 +366,10 @@ export class EarlePlanet {
   private readonly mistPlan: PlaneMist;
   /** Buschteppich des Geländes (Bodenbehandlung `scales`): Sonnenrichtung für die Punktränder. */
   private readonly carpet: ScaleCarpet;
+  /** Projektionsmaßstab für die Oktaven des Tannenteppichs (Bodenbehandlung `firs`). */
+  private readonly firProj = firProjScale();
+  /** Viertel der Blickrichtung (die Tannen-Zeichen stehen im Bild aufrecht). */
+  private readonly firQuarter = uniform(0);
   /**
    * Wahrzeichen der geladenen Regionen (Fels mit Wasserfall, Felsstufe, Zwillingsfälle, Ruine, Sumpf): wenige
    * zusammengefasste Meshes, neu gebaut, wenn sich die Menge ändert (Anker = Fokus beim Bau).
@@ -359,6 +388,12 @@ export class EarlePlanet {
   /** Schattenwerfer des Geländes je 2 × 2 Chunks (Layer PLANET_SHADOW_LAYER). */
   private readonly shadowTiles = new Map<string, ShadowTile>();
   private tileMaterial: MeshBasicNodeMaterial | null = null;
+  /** Gelände-Kacheln des Hauptpasses (je TERRAIN_TILE² Chunks ein Mesh). */
+  private readonly terrainTiles = new Map<string, ShadowTile>();
+  /** Nebelbänke des Inhalts (für den Bildtest: das Nebel-Mesh zeichnet nur, wenn eine Bank im Bild liegt). */
+  private mistBanks: readonly MistBank[] = [];
+  /** Chunks, die Inhalt tragen (nicht hinter dem Horizont): Neubau des Inhalts, wenn sich die Menge ändert. */
+  private contentKeys = '';
   private readonly cache = new Map<string, ChunkCpu>();
   private readonly slotsUsed: Array<string | null> = new Array<string | null>(GROWTH_SLOTS).fill(null);
   private readonly loadsPerFrame: number;
@@ -451,11 +486,20 @@ export class EarlePlanet {
     this.mapping = new DisplayMapping(options.radius, options.curvature ?? 0);
 
     // --- Datenmodell ------------------------------------------------------------------------------------------
+    this.layout = new WorldLayout({
+      seed: options.seed,
+      route: options.route,
+      authored: options.worlds.length,
+      ...(options.beyondWorld !== undefined ? { beyondWorld: options.beyondWorld } : {}),
+      ...(options.noLateral ? { noLateral: options.noLateral } : {}),
+      ...(options.nodeSpacing !== undefined ? { nodeSpacing: options.nodeSpacing } : {}),
+      ...(options.procedural ? { procedural: true } : {}),
+    });
     this.catalog = new WorldCatalog(
       options.worlds.map((w) => w.params),
       options.seed,
+      { procedural: this.layout.procedural, hinted: this.layout.beyondWorld },
     );
-    this.layout = new WorldLayout({ seed: options.seed, route: options.route, authored: options.worlds.length });
     this.field = new PlaneField({ seed: options.seed, layout: this.layout, catalog: this.catalog, ...(options.hillWavelength !== undefined ? { hillWavelength: options.hillWavelength } : {}) });
     this.path = new PlanePath(this.field, { seed: options.seed, provider: featureProvider(this.field), ...(options.path.keepGround ? { keepGround: options.path.keepGround } : {}) });
 
@@ -572,7 +616,30 @@ export class EarlePlanet {
     const po = pw.add(this.patternOrigin);
     // Buschteppich (Ebene 20/7): Schuppenbögen der Büsche als Ornament statt der Linien
     this.carpet = createScaleCarpet(this.lookup, rowNode, po, normalGeometry as unknown as Vec3Node, step(3.5, kind), rowNode.add(7));
-    const isCarpet = kind.greaterThan(2.5);
+    const isCarpet = kind.greaterThan(2.5).and(kind.lessThan(4.5));
+    // Tannenwald aus weißen Punkten (Welt 06): nur Welten mit `firs` rechnen ihn (Zweig); Ableitungen außerhalb des Zweigs
+    const isFirs = kind.greaterThan(4.5).and(kind.lessThan(5.5));
+    // Kronendach von oben (Welt 02): ebenfalls nur im Zweig seiner Welt
+    const isCanopy = kind.greaterThan(5.5).and(kind.lessThan(6.5));
+    const firFw = max(fwidth(po.x), fwidth(po.z)).max(1e-5);
+    const firDepth = positionView.z.negate().max(0.05);
+    const glyphSun = this.carpet.sunDir as { value: Vector3 } & Vec3Node;
+    const firData = Fn(() => {
+      const out = vec2(0, 0).toVar('glyphCarpet');
+      If(isFirs, () => {
+        const f = firCarpetMask({ po, normal: normalGeometry as unknown as Vec3Node, sunDir: glyphSun, fw: firFw, depth: firDepth, projScale: this.firProj, quarter: this.firQuarter });
+        out.assign(vec2(f.mask, f.light));
+      }).ElseIf(isCanopy, () => {
+        const c = canopyCarpetMask({ po, sunDir: glyphSun, fw: firFw, depth: firDepth, projScale: this.firProj, quarter: this.firQuarter });
+        out.assign(vec2(c.mask, c.tone));
+      });
+      return out;
+    })();
+    const firCol = firCarpetColors(this.lookup, rowNode.add(1), firData.y as unknown as FloatNode);
+    const crownCol = canopyCarpetColors(this.lookup, rowNode.add(1), firData.y as unknown as FloatNode);
+    const isGlyph = isFirs.or(isCanopy);
+    const glyphColor = select(isFirs, firCol.color, crownCol.color);
+    const glyphShadow = select(isFirs, firCol.shadowColor, crownCol.shadowColor);
     // Nebelmeer (Welt 12): unter dem Nebelspiegel des Slots ist der Boden Nebel, Farben aus der Wasserzeile (Slot + 10)
     const seaLayer = fogSeaLayer(this.lookup, rowNode.add(10), arrayElement(this.slotSea, slotF), pw.y, po);
     const k = (f: number) => (Math.round((f * PATTERN_PERIOD) / (Math.PI * 2)) * Math.PI * 2) / PATTERN_PERIOD;
@@ -634,7 +701,11 @@ export class EarlePlanet {
       crackNode: crack,
       crackLipNode: lip,
       growthNode,
-      pattern: { mask: select(isCarpet, this.carpet.mask, mask), color: select(isCarpet, this.carpet.color, patternColor), shadowColor: select(isCarpet, this.carpet.shadowColor, patternShadow) },
+      pattern: {
+        mask: select(isGlyph, firData.x, select(isCarpet, this.carpet.mask, mask)),
+        color: select(isGlyph, glyphColor, select(isCarpet, this.carpet.color, patternColor)),
+        shadowColor: select(isGlyph, glyphShadow, select(isCarpet, this.carpet.shadowColor, patternShadow)),
+      },
       layers: [snowField, meadow, seaLayer],
       positionNode: warp(positionLocal as unknown as Vec3Node),
       fogDistNode: positionView.length().add(this.veilNode(slotF)),
@@ -723,9 +794,13 @@ export class EarlePlanet {
 
   // --- Welten und Slots ------------------------------------------------------------------------------------------
 
-  /** Darstellungsdaten einer Welt (Autorenwelt oder prozedural erzeugt, im Cache). */
+  /**
+   * Darstellungsdaten einer Welt (Autorenwelt oder prozedural erzeugt, im Cache). Ohne `procedural` (Route 15 + 1) sind
+   * fremde Kennungen (Hinted-Varianten, W2) die angedeutete Welt selbst — wie eine Autorenwelt.
+   */
   worldData(id: number): EarlePlanetWorld {
     if (id >= 0 && id < this.worlds.length) return this.worlds[id]!;
+    if (!this.layout.procedural) return this.worlds[this.layout.beyondWorld] ?? this.worlds[this.worlds.length - 1]!;
     let w = this.worldCache.get(id);
     if (!w) {
       w = proceduralWorld(id, this.worlds, this.catalog);
@@ -865,11 +940,11 @@ export class EarlePlanet {
     this.contentDirty = true;
   }
 
-  /** Knoten und Punkte des Bodenpfads in einem Rechteck (Ebene). */
+  /** Knoten und Punkte des Bodenpfads in einem Rechteck (Ebene); Abschnitte ohne Level (Vorland, hinter dem Tor) zählen nicht. */
   groundCorridor(x0: number, z0: number, x1: number, z1: number): PathCorridor {
     const out: PathCorridor = { nodes: [], dots: [] };
     const k0 = this.layout.segmentAtDistance(-z1) - 1;
-    const k1 = this.layout.segmentAtDistance(-z0) + 1;
+    const k1 = Math.min(this.layout.segmentAtDistance(-z0) + 1, this.layout.lastSegment);
     for (let k = Math.max(0, k0); k <= k1; k++) {
       const seg = this.path.segment(k);
       for (const n of seg.nodes) if (n.position[0] >= x0 && n.position[0] <= x1 && n.position[2] >= z0 && n.position[2] <= z1) out.nodes.push([n.position[0], n.position[2]]);
@@ -880,13 +955,17 @@ export class EarlePlanet {
 
   // --- Fortschritt, Wachstum ------------------------------------------------------------------------------------
 
-  /** Knotenindex (0-basiert, gebrochen) an einer z-Koordinate aus der Weltenlage (ohne Pfad zu bauen). */
+  /**
+   * Knotenindex (0-basiert, gebrochen) an einer z-Koordinate aus der Weltenlage (ohne Pfad zu bauen), geklemmt auf
+   * [−1, lastNode]: vor dem Start −1, hinter dem Tor der Torknoten.
+   */
   nodeIndexAtZ(z: number): number {
     const k = this.layout.segmentAtDistance(-z);
+    if (k > this.layout.lastSegment) return this.lastNode;
     const seg = this.layout.segment(k);
     if (seg.levels <= 0) return -1;
     const f = (seg.zStart - z) / Math.max(1e-6, seg.zStart - seg.zEnd);
-    return seg.firstLevel - 1 + f * seg.levels - 0.5;
+    return Math.min(this.lastNode, seg.firstLevel - 1 + f * seg.levels - 0.5);
   }
 
   private nodeRangeFor(z0: number, z1: number): [number, number] {
@@ -1184,6 +1263,13 @@ export class EarlePlanet {
 
   /** Höchster Punkt der geladenen Chunks (bei jedem Neuaufbau des Inhalts). */
   private loadedTop = 0;
+  /** Höchster Punkt der Chunks im Bild (je Frame). */
+  private viewTop = 0;
+
+  /** Höchstes Gelände im Bild (Empfänger der Schlagschatten: Steilhänge reichen über die Hügelamplitude). */
+  get viewTerrainTop(): number {
+    return Math.max(this.field.hMax, this.viewTop);
+  }
 
   /** Richtung zur Sonne (Welt = Ebene, die Ebene dreht sich nicht): Vegetation und Wahrzeichen. */
   setSunDirection(dir: Vector3): void {
@@ -1269,6 +1355,9 @@ export class EarlePlanet {
    */
   update(camera: Camera, cameraWorld: Vector3, frustum: Frustum): boolean {
     this.frame++;
+    this.firProj.value = (camera as Camera & { projectionMatrix: { elements: number[] } }).projectionMatrix.elements[5] ?? 2;
+    camera.getWorldDirection(_w);
+    this.firQuarter.value = viewQuarter(_w.x, _w.z);
     const R = this.options.radius;
     const t0 = performance.now();
     // Kamerafußpunkt in der Ebene und Horizont
@@ -1398,6 +1487,21 @@ export class EarlePlanet {
       this.nearKeys = near;
       changed = true;
     }
+    // Chunks hinter dem Horizont (Bogen vom Kamerafuß, mit Rand für hohe Bäume und Felsen): ihr Gelände zeichnet nur
+    // mit einer Kachel diesseits mit, ihr Inhalt (Bäume, Requisiten, Merkmale, Wahrzeichen) gar nicht — beim schnellen
+    // Schwenken warten dort bis zu LINGER_CHUNKS Chunks, deren Arten sonst je Pass einen Aufruf kosteten
+    const horizonReach = (horizon + 0.12) * R + CHUNK_SIZE * 0.75 + 8;
+    const content: string[] = [];
+    for (const chunk of this.loaded.values()) {
+      const m = chunk.cpu.mesh;
+      chunk.beyond = Math.hypot(m.ox + half - camX, m.oz + half - camZ) > horizonReach;
+      if (!chunk.beyond) content.push(chunk.key);
+    }
+    const contentKeys = content.sort().join('|');
+    if (contentKeys !== this.contentKeys) {
+      this.contentKeys = contentKeys;
+      changed = true;
+    }
     if (changed) this.contentDirty = true;
     const pending = wanted.some((w) => !this.loaded.has(w.key));
     let rebuilt = false;
@@ -1407,27 +1511,35 @@ export class EarlePlanet {
       this.lastRebuild = this.frame;
       rebuilt = true;
     }
-    // Kugel der Chunks im Anzeigeraum (Haupt- und Schattenpass: three kullt mit der Geometrie-Kugel); Chunks hinter dem
-    // Horizont (Bogen vom Kamerafuß) bleiben ganz aus — die Abbildung legte sie sonst an den Gegenpol, und ihre für den
-    // Schattenpass vergrößerte Kugel hielte sie in beiden Pässen
-    const horizonReach = (horizon + 0.12) * R + CHUNK_SIZE * 0.75 + 8;
+    // Kugel der Kacheln im Anzeigeraum (Haupt- und Schattenpass: three kullt mit der Geometrie-Kugel); Kacheln ganz hinter
+    // dem Horizont bleiben aus — die Abbildung legte sie sonst an den Gegenpol, und ihre für den Schattenpass vergrößerte
+    // Kugel hielte sie in beiden Pässen
     let visibleCount = 0;
+    let viewTop = 0;
     // Höhenband der Chunks im Bild (Schatten: ändert es sich merklich, fitten die Kaskaden neu statt zu gleiten)
     let bandLo = Infinity;
     let bandHi = -Infinity;
     for (const chunk of this.loaded.values()) {
-      if (!this.updateChunkBounds(chunk, frustum, camX, camZ, horizonReach)) continue;
+      chunk.inView = this.chunkInView(chunk, frustum);
+      if (!chunk.inView) continue;
       visibleCount++;
+      viewTop = Math.max(viewTop, chunk.cpu.mesh.maxH);
       bandLo = Math.min(bandLo, chunk.cpu.mesh.minH);
       bandHi = Math.max(bandHi, chunk.cpu.mesh.maxH);
     }
+    this.viewTop = viewTop;
     if (bandLo <= bandHi) {
       this.heightBand[0] = bandLo;
       this.heightBand[1] = bandHi;
     }
+    this.rebuildTerrainTiles();
+    for (const tile of this.terrainTiles.values()) this.updateTerrainTileBounds(tile);
     this.rebuildShadowTiles(forceTiles);
     for (const tile of this.shadowTiles.values()) this.updateTileBounds(tile, camX, camZ, horizonReach);
     this.stats.visible = visibleCount;
+    // Nebelbänke (kein Schatten, nur der Hauptpass): zeichnen, wenn eine Bank diesseits des Horizonts im Bild liegt —
+    // ihr Mesh ist durchsichtig und beidseitig (zwei Aufrufe)
+    this.mist.mesh.visible = this.mistInView(frustum);
     // Welten der geladenen Chunks und des Inhalts bleiben belegt
     const inUse = new Set<number>();
     for (const chunk of this.loaded.values()) for (const w of chunk.cpu.mesh.worlds) inUse.add(w);
@@ -1452,29 +1564,31 @@ export class EarlePlanet {
     return rebuilt;
   }
 
-  /** Grenzkugel eines Chunks im Anzeigeraum in seinem Objektraum (three kullt damit); liefert „im Bild“. */
-  private updateChunkBounds(chunk: LoadedChunk, frustum: Frustum, camX: number, camZ: number, horizonReach: number): boolean {
+  /** Liegt eine Nebelbank diesseits des Horizonts im Bild (Kugel um ihre Mitte im Anzeigeraum, Länge und Dicke)? */
+  private mistInView(frustum: Frustum): boolean {
+    const R = this.options.radius;
+    for (const b of this.mistBanks) {
+      if (this.beyondHorizon(b.x, b.z, b.y + b.thickness, b.length * 0.5)) continue;
+      _w.set(b.x - this.focus.x, R + b.y, b.z - this.focus.z);
+      this.mapping.toDisplayCpu(_w, _sphere.center);
+      _sphere.radius = b.length * 0.5 + b.thickness + 2;
+      if (frustum.intersectsSphere(_sphere)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Liegt ein Chunk diesseits des Horizonts im Bild (Kugel im Anzeigeraum, wie früher die Grenzkugel seiner Mesh, mit
+   * 1,5 Rand für den Kamera-Ruck nach `update`)? Eine Gelände-Kachel zeichnet, sobald einer ihrer Chunks im Bild liegt.
+   */
+  private chunkInView(chunk: LoadedChunk, frustum: Frustum): boolean {
+    if (chunk.beyond) return false;
     const R = this.options.radius;
     const half = CHUNK_SIZE / 2;
     const m = chunk.cpu.mesh;
-    const beyond = Math.hypot(m.ox + half - camX, m.oz + half - camZ) > horizonReach;
-    chunk.mesh.visible = !beyond;
-    if (beyond) return false;
-    const fx = m.ox + half - this.focus.x;
-    const fz = m.oz + half - this.focus.z;
-    const cy = (m.minH + m.maxH) * 0.5;
-    _w.set(fx, R + cy, fz);
-    this.mapping.toDisplayCpu(_w, _v);
-    const ox = chunk.mesh.position.x;
-    const oz = chunk.mesh.position.z;
-    const r0 = half * Math.SQRT2 + (m.maxH - m.minH) * 0.5 + 1.5;
-    // Sichtbare Mesh: Kugel im Anzeigeraum (Objektraum = flacher Raum minus Objektposition)
-    const g = chunk.mesh.geometry;
-    const bs = g.boundingSphere ?? (g.boundingSphere = new Sphere());
-    bs.center.set(_v.x - ox, _v.y - R, _v.z - oz);
-    bs.radius = r0 + 0.5;
-    _sphere.center.copy(_v);
-    _sphere.radius = r0;
+    _w.set(m.ox + half - this.focus.x, R + (m.minH + m.maxH) * 0.5, m.oz + half - this.focus.z);
+    this.mapping.toDisplayCpu(_w, _sphere.center);
+    _sphere.radius = half * Math.SQRT2 + (m.maxH - m.minH) * 0.5 + 3;
     return frustum.intersectsSphere(_sphere);
   }
 
@@ -1624,11 +1738,7 @@ export class EarlePlanet {
         }
       }
     }
-    if (replaces) this.disposeChunkMesh(replaces);
     const m = cpu.mesh;
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new BufferAttribute(m.positions, 3));
-    geometry.setAttribute('normal', new BufferAttribute(m.normals, 3));
     const n = m.vertexCount;
     const ta = new Float32Array(n * 4);
     const tb = new Float32Array(n * 4);
@@ -1660,23 +1770,10 @@ export class EarlePlanet {
       // Lippe: Pfadrisse auf der Seite des nächsten Abschnitts (größere Kennung = weiter vorn), seitliche auf der Bandseite
       tg[k] = slot + (this.lipOnLo(m, k) ? 0 : 0.5);
     }
-    geometry.setAttribute('ta', new BufferAttribute(ta, 4));
-    geometry.setAttribute('tb', new BufferAttribute(tb, 4));
-    geometry.setAttribute('tc', new BufferAttribute(tc, 4));
-    geometry.setAttribute('tg', new BufferAttribute(tg, 1));
-    geometry.setIndex(new BufferAttribute(m.indices, 1));
-    geometry.boundingSphere = new Sphere();
-    const mesh = new Mesh(geometry, this.terrainMaterial);
-    mesh.name = `chunk-${key}`;
-    // Schatten wirft der Stellvertreter (eigene Grenzkugel im Schattenraum): die sichtbare Mesh kullt eng im Bild
-    mesh.castShadow = false;
-    mesh.receiveShadow = true;
-    mesh.frustumCulled = true;
-    mesh.userData.shadowGround = true;
-    this.plane.add(mesh);
-    this.anchorObject(mesh, m.ox, m.oz);
-    const chunk: LoadedChunk = { key, cx, cz, res, cpu, mesh, slot, lastSeen: this.frame, centreY: (m.minH + m.maxH) * 0.5, radius: CHUNK_SIZE * 0.72 };
+    // Gezeichnet wird die Gelände-Kachel (je 2 × 2 Chunks ein Mesh, `rebuildTerrainTiles`)
+    const chunk: LoadedChunk = { key, cx, cz, res, cpu, attrs: { ta, tb, tc, tg }, beyond: replaces?.beyond ?? false, inView: replaces?.inView ?? true, slot, lastSeen: this.frame, centreY: (m.minH + m.maxH) * 0.5, radius: CHUNK_SIZE * 0.72 };
     this.markShadowTile(cx, cz);
+    this.markTerrainTile(cx, cz);
     this.slotsUsed[slot] = key;
     this.loaded.set(key, chunk);
     this.applyGrowth(chunk);
@@ -1701,17 +1798,131 @@ export class EarlePlanet {
     return m.sd[k]! >= 0;
   }
 
-  private disposeChunkMesh(chunk: LoadedChunk): void {
-    chunk.mesh.removeFromParent();
-    chunk.mesh.geometry.dispose();
-    this.releaseObject(chunk.mesh);
-  }
-
   private unloadChunk(chunk: LoadedChunk): void {
-    this.disposeChunkMesh(chunk);
     this.slotsUsed[chunk.slot] = null;
     this.loaded.delete(chunk.key);
     this.markShadowTile(chunk.cx, chunk.cz);
+    this.markTerrainTile(chunk.cx, chunk.cz);
+  }
+
+  /** Gelände-Kachel eines Chunks als geändert markieren (Neubau noch im selben `update`: kein Loch im Bild). */
+  private markTerrainTile(cx: number, cz: number): void {
+    const tx = Math.floor(cx / TERRAIN_TILE);
+    const tz = Math.floor(cz / TERRAIN_TILE);
+    const key = `${tx}:${tz}`;
+    let tile = this.terrainTiles.get(key);
+    if (!tile) {
+      tile = { key, tx, tz, mesh: null, dirty: true, minH: 0, maxH: 0 };
+      this.terrainTiles.set(key, tile);
+    }
+    tile.dirty = true;
+  }
+
+  /**
+   * Geänderte Gelände-Kacheln neu zusammensetzen: Positionen relativ zur Kachelecke, Normalen, Gelände-Attribute und
+   * Indizes der geladenen Chunks hintereinander — dieselben Vertices wie die einzelnen Chunks, ein Aufruf je Kachel.
+   */
+  private rebuildTerrainTiles(): void {
+    for (const tile of [...this.terrainTiles.values()]) {
+      if (!tile.dirty) continue;
+      tile.dirty = false;
+      const parts: LoadedChunk[] = [];
+      for (let dz = 0; dz < TERRAIN_TILE; dz++) {
+        for (let dx = 0; dx < TERRAIN_TILE; dx++) {
+          const c = this.loaded.get(`${tile.tx * TERRAIN_TILE + dx}:${tile.tz * TERRAIN_TILE + dz}`);
+          if (c) parts.push(c);
+        }
+      }
+      if (tile.mesh) {
+        tile.mesh.removeFromParent();
+        tile.mesh.geometry.dispose();
+        this.releaseObject(tile.mesh);
+        tile.mesh = null;
+      }
+      if (parts.length === 0) {
+        this.terrainTiles.delete(tile.key);
+        continue;
+      }
+      const ox = tile.tx * TERRAIN_TILE * CHUNK_SIZE;
+      const oz = tile.tz * TERRAIN_TILE * CHUNK_SIZE;
+      let verts = 0;
+      let idx = 0;
+      for (const p of parts) {
+        verts += p.cpu.mesh.vertexCount;
+        idx += p.cpu.mesh.indices.length;
+      }
+      const pos = new Float32Array(verts * 3);
+      const nor = new Float32Array(verts * 3);
+      const ta = new Float32Array(verts * 4);
+      const tb = new Float32Array(verts * 4);
+      const tc = new Float32Array(verts * 4);
+      const tg = new Float32Array(verts);
+      const index = verts <= 65535 ? new Uint16Array(idx) : new Uint32Array(idx);
+      let v0 = 0;
+      let i0 = 0;
+      let minH = Infinity;
+      let maxH = -Infinity;
+      for (const p of parts) {
+        const m = p.cpu.mesh;
+        const n = m.vertexCount;
+        const sx = m.ox - ox;
+        const sz = m.oz - oz;
+        for (let k = 0; k < n; k++) {
+          pos[(v0 + k) * 3] = m.positions[k * 3]! + sx;
+          pos[(v0 + k) * 3 + 1] = m.positions[k * 3 + 1]!;
+          pos[(v0 + k) * 3 + 2] = m.positions[k * 3 + 2]! + sz;
+        }
+        nor.set(m.normals.subarray(0, n * 3), v0 * 3);
+        ta.set(p.attrs.ta, v0 * 4);
+        tb.set(p.attrs.tb, v0 * 4);
+        tc.set(p.attrs.tc, v0 * 4);
+        tg.set(p.attrs.tg, v0);
+        for (let k = 0; k < m.indices.length; k++) index[i0 + k] = m.indices[k]! + v0;
+        v0 += n;
+        i0 += m.indices.length;
+        minH = Math.min(minH, m.minH);
+        maxH = Math.max(maxH, m.maxH);
+      }
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new BufferAttribute(pos, 3));
+      geometry.setAttribute('normal', new BufferAttribute(nor, 3));
+      geometry.setAttribute('ta', new BufferAttribute(ta, 4));
+      geometry.setAttribute('tb', new BufferAttribute(tb, 4));
+      geometry.setAttribute('tc', new BufferAttribute(tc, 4));
+      geometry.setAttribute('tg', new BufferAttribute(tg, 1));
+      geometry.setIndex(new BufferAttribute(index, 1));
+      geometry.boundingSphere = new Sphere();
+      const mesh = new Mesh(geometry, this.terrainMaterial);
+      mesh.name = `chunk-tile-${tile.key}`;
+      // Schatten wirft der Stellvertreter (eigene Grenzkugel im Schattenraum); die Kachel kullt über ihre Chunks im Bild
+      // (`updateTerrainTileBounds`), ihre Vertices liegen erst nach dem Verzug im Shader dort, wo sie zu sehen sind
+      mesh.castShadow = false;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
+      mesh.userData.shadowGround = true;
+      this.plane.add(mesh);
+      this.anchorObject(mesh, ox, oz);
+      tile.mesh = mesh;
+      tile.minH = minH;
+      tile.maxH = maxH;
+    }
+  }
+
+  /**
+   * Gelände-Kachel zeichnet, sobald einer ihrer Chunks diesseits des Horizonts im Bild liegt (dieselbe Kugel je Chunk
+   * wie früher die Grenzkugel seiner Mesh; die Kachel wirft keinen Schatten, nur der Hauptpass zeichnet sie).
+   */
+  private updateTerrainTileBounds(tile: ShadowTile): void {
+    const mesh = tile.mesh;
+    if (!mesh) return;
+    let show = false;
+    for (let dz = 0; dz < TERRAIN_TILE && !show; dz++) {
+      for (let dx = 0; dx < TERRAIN_TILE && !show; dx++) {
+        const c = this.loaded.get(`${tile.tx * TERRAIN_TILE + dx}:${tile.tz * TERRAIN_TILE + dz}`);
+        if (c?.inView) show = true;
+      }
+    }
+    mesh.visible = show;
   }
 
   private buildChunk(cx: number, cz: number, res: number): ChunkCpu {
@@ -1756,12 +1967,17 @@ export class EarlePlanet {
       const withDots = nearSet.has(chunk.key);
       const m = chunk.cpu.mesh;
       loadedTop = Math.max(loadedTop, m.maxH);
+      this.bounds.expandByPoint(_v.set(m.ox - this.focus.x, this.options.radius + m.minH, m.oz - this.focus.z));
+      this.bounds.expandByPoint(_v.set(m.ox + CHUNK_SIZE - this.focus.x, this.options.radius + m.maxH, m.oz + CHUNK_SIZE - this.focus.z));
+      // Inhalt nur diesseits des Horizonts (wartende Chunks hinter der Kamera tragen nichts bei)
+      if (chunk.beyond) continue;
       for (const key of m.regions) regions.add(key);
       for (const tree of chunk.cpu.trees) {
         trees.push({ tree, slot: chunk.slot, withDots });
         const rf = this.field.features.peek(this.field.sample(tree.position[0], tree.position[2]).region.key);
         const spec = rf?.drifts ?? this.catalog.spec(tree.world).features?.drifts ?? null;
-        if (spec && tree.variant < (spec.trees ?? 1)) {
+        // der Schnee-Ahorn trägt seinen Schneehügel selbst (trees/maple.ts)
+        if (spec && tree.variant < (spec.trees ?? 1) && tree.kind !== 'maple') {
           const size = Math.min(1.7, Math.max(0.45, tree.canopyRadius * 0.42)) * (spec.size ?? 1);
           drifts.push({ position: [tree.position[0] - ax, tree.position[1], tree.position[2] - az], normal: tree.normal, size, yaw: tree.variant * 97.1, world: this.slots.slotOf(tree.world), slot: chunk.slot });
         }
@@ -1770,11 +1986,9 @@ export class EarlePlanet {
         if (prop.kind === 'barn') {
           barns.push({ prop, world: this.slots.slotOf(prop.world), slot: chunk.slot });
           const spec = this.catalog.spec(prop.world).features?.drifts;
-          if (spec) for (const d of barnDrifts(prop, spec.size ?? 1, chunk.slot, this.slots.slotOf(prop.world), ax, az)) drifts.push(d);
+          if (spec && (spec.barns ?? 1) > 0) for (const d of barnDrifts(prop, (spec.size ?? 1) * (spec.barns ?? 1), chunk.slot, this.slots.slotOf(prop.world), ax, az)) drifts.push(d);
         } else props.push({ prop, slot: chunk.slot });
       }
-      this.bounds.expandByPoint(_v.set(m.ox - this.focus.x, this.options.radius + m.minH, m.oz - this.focus.z));
-      this.bounds.expandByPoint(_v.set(m.ox + CHUNK_SIZE - this.focus.x, this.options.radius + m.maxH, m.oz + CHUNK_SIZE - this.focus.z));
     }
     this.loadedTop = loadedTop;
     this.vegetation.setContent(trees, props, { x: ax, z: az });
@@ -1785,7 +1999,11 @@ export class EarlePlanet {
     this.anchorObject(this.barns.mesh, ax, az);
     this.drifts.set(drifts);
     this.anchorObject(this.drifts.mesh, ax, az);
-    this.mist.set(this.mistPlan.in(regions), { x: ax, z: az }, (w) => this.slots.rowsOfWorld(w).fog);
+    this.mistBanks = this.mistPlan.in(regions);
+    this.mist.set(this.mistBanks, { x: ax, z: az }, (w) => {
+      const r = this.slots.rowsOfWorld(w);
+      return r.mist ?? r.fog;
+    });
     this.anchorObject(this.mist.mesh, ax, az);
     // Perspektivlinien (Bodenlinien-Welten): Fokus je Slot = Bildfokus der nächsten Region dieser Welt, verschoben um
     // `floorAnchor` (Ebene: Ost = voraus längs des Pfads, −z; Nord = quer, +x) — ein ferner Fluchtpunkt, auf den die
@@ -1824,6 +2042,7 @@ export class EarlePlanet {
     let x1 = -Infinity;
     let z1 = -Infinity;
     for (const chunk of this.loaded.values()) {
+      if (chunk.beyond) continue;
       const m = chunk.cpu.mesh;
       x0 = Math.min(x0, m.ox);
       z0 = Math.min(z0, m.oz);
@@ -1992,9 +2211,14 @@ export class EarlePlanet {
     return { chunks: this.loaded.size, cpu: this.cache.size, regions: this.field.features.size, slots: this.slots.entries().length };
   }
 
-  /** Letzter Knoten der Autorenroute (0-basiert). */
+  /** Letzter spielbare Knoten der Autorenroute (0-basiert). */
   get lastAuthoredNode(): number {
     return this.layout.authoredLevels - 1;
+  }
+
+  /** Letzter Knoten überhaupt (0-basiert): der Torknoten der angedeuteten Zone; mit `procedural` ∞. */
+  get lastNode(): number {
+    return this.layout.lastLevel - 1;
   }
 
   /** Knoten des Bodenpfads (Kurzform). */
@@ -2004,6 +2228,7 @@ export class EarlePlanet {
 
   dispose(): void {
     for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
+    this.rebuildTerrainTiles();
     this.rebuildShadowTiles(true);
     this.tileMaterial?.dispose();
     for (const o of this.landmarks.values()) o.removeFromParent();

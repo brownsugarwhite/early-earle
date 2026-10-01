@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { LevelSchema, countElementKinds, type LevelInput } from './level';
 import { ZoneSchema } from './zone';
+import { CURVE_LAST_LEVEL, curveSpec } from '../generator/curve';
 
 const contentDir = fileURLToPath(new URL('../../../../content/', import.meta.url));
 
@@ -181,9 +182,9 @@ describe('tiny tutorial boards and spawn scripts', () => {
 });
 
 describe('content files', () => {
-  it('every content/levels/NNN.json validates', () => {
+  it('every content/levels/NNN.json validates and carries the band of the difficulty curve', () => {
     const files = readdirSync(`${contentDir}levels`).filter((f) => /^\d{3}\.json$/.test(f));
-    expect(files.length).toBeGreaterThanOrEqual(10);
+    expect(files.length).toBe(CURVE_LAST_LEVEL);
     for (const f of files) {
       const json = JSON.parse(readFileSync(`${contentDir}levels/${f}`, 'utf8'));
       const r = LevelSchema.safeParse(json);
@@ -191,18 +192,20 @@ describe('content files', () => {
       if (r.success) {
         const index = Number(f.replace('.json', ''));
         expect(r.data.id).toBe(`${r.data.zone}-${f.replace('.json', '')}`);
-        expect(r.data.difficulty.targetAttempts[1]).toBeLessThanOrEqual(index <= 10 ? 1.1 : 2.5);
+        expect(r.data.difficulty.targetAttempts, f).toEqual(curveSpec(index).targetAttempts);
+        expect(r.data.difficulty.targetAttempts[1]).toBeLessThanOrEqual(index <= 10 ? 1.1 : 5);
       }
     }
   });
 
-  it('every content/zones/*.json validates', () => {
-    const files = readdirSync(`${contentDir}zones`).filter((f) => f.endsWith('.json'));
+  it('every content/zones/*.json validates (route.json is the route, see route.test.ts)', () => {
+    const files = readdirSync(`${contentDir}zones`).filter((f) => f.endsWith('.json') && f !== 'route.json');
     expect(files.length).toBeGreaterThanOrEqual(2);
     for (const f of files) {
       const zone = ZoneSchema.parse(JSON.parse(readFileSync(`${contentDir}zones/${f}`, 'utf8')));
       expect(`${zone.id}.json`).toBe(f);
-      expect(zone.levelRange[1]).toBeGreaterThan(zone.levelRange[0]);
+      // Legacy-Feld (die Zone eines Levels steht in seiner Leveldatei): wenn vorhanden, ein echter Bereich
+      if (zone.levelRange) expect(zone.levelRange[1]).toBeGreaterThan(zone.levelRange[0]);
     }
   });
 });

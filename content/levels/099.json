@@ -2,56 +2,60 @@
   "schemaVersion": 1,
   "id": "wooding-099",
   "zone": "wooding",
-  "name": "Letzter Riss",
+  "name": "Lichtung",
   "grid": {
-    "w": 6,
-    "h": 6,
-    "mask": ["##..##", "#....#", "......", "......", "#....#", "##..##"]
+    "w": 5,
+    "h": 5,
+    "mask": [".....", "...P.", ".....", ".....", "....."]
   },
   "fences": [],
-  "floors": [],
-  "blockers": [],
-  "threats": [
+  "floors": [
     {
-      "kind": "rot",
-      "at": [3, 2],
-      "period": 3
+      "kind": "withered",
+      "at": [0, 3]
     },
     {
-      "kind": "stray",
-      "at": [2, 3],
-      "tier": 1
+      "kind": "withered",
+      "at": [4, 1]
+    },
+    {
+      "kind": "withered",
+      "at": [2, 4]
+    },
+    {
+      "kind": "withered",
+      "at": [1, 4]
+    },
+    {
+      "kind": "withered",
+      "at": [0, 1]
     }
   ],
+  "blockers": [],
+  "threats": [],
   "start": [
     {
-      "at": [5, 3],
+      "at": [1, 0],
       "blob": {
         "tier": 4
+      }
+    },
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 3
       }
     },
     {
       "at": [3, 0],
       "blob": {
-        "tier": 4
-      }
-    },
-    {
-      "at": [3, 4],
-      "blob": {
-        "tier": 4
-      }
-    },
-    {
-      "at": [2, 4],
-      "blob": {
         "tier": 3
       }
     },
     {
-      "at": [1, 4],
+      "at": [3, 2],
       "blob": {
-        "tier": 3
+        "tier": 2
       }
     },
     {
@@ -61,19 +65,13 @@
       }
     },
     {
-      "at": [3, 3],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [1, 1],
+      "at": [4, 0],
       "blob": {
         "tier": 1
       }
     },
     {
-      "at": [0, 3],
+      "at": [1, 1],
       "blob": {
         "tier": 1
       }
@@ -96,22 +94,17 @@
   },
   "goals": [
     {
-      "type": "release",
-      "count": 1
-    },
-    {
-      "type": "calmStrays",
-      "count": 1
+      "type": "heal"
     }
   ],
-  "moves": 15,
-  "cap": 6,
+  "moves": 30,
+  "cap": 12,
   "specials": {
     "lineAt": 16,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [2, 2.5],
-    "style": "explosive"
+    "targetAttempts": [1.04, 1.2],
+    "style": "journey"
   }
 }

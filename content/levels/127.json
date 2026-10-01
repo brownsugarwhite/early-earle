@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-127",
+  "zone": "luzz",
+  "name": "Schlafende Sporen",
+  "grid": {
+    "w": 4,
+    "h": 5,
+    "mask": ["....", "....", "....", "....", "...."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "spore",
+      "at": [2, 2]
+    },
+    {
+      "kind": "spore",
+      "at": [0, 2]
+    },
+    {
+      "kind": "spore",
+      "at": [0, 0]
+    }
+  ],
+  "blockers": [
+    {
+      "kind": "sleeper",
+      "at": [3, 1],
+      "content": {
+        "tier": 2
+      }
+    },
+    {
+      "kind": "sleeper",
+      "at": [1, 1],
+      "content": {
+        "tier": 2
+      }
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [2, 4],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 2],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "collectSpores",
+      "count": 2
+    }
+  ],
+  "moves": 10,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.36, 1.75],
+    "style": "precise"
+  }
+}

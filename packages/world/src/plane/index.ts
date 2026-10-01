@@ -2,8 +2,23 @@
  * Unendliche Ebene (ADR 0002): Datenmodell der Karte. Die Kugel ist nur die Anzeige um den Blickpunkt (`@ee/render`).
  */
 export { GradientNoise2, hash2 } from './noise2';
-export { WorldLayout, LATERAL_WORLD_BASE, PROLOGUE_WORLD_BASE, cellIndex, type LayoutParams, type PathSegment, type Region, type RegionKind, type RegionSample, type RouteEntry } from './layout';
-export { WorldCatalog } from './catalog';
+export {
+  WorldLayout,
+  HINTED_VARIANT_LIMIT,
+  HINTED_WORLD_BASE,
+  LATERAL_WORLD_BASE,
+  PROLOGUE_WORLD_BASE,
+  cellIndex,
+  type LayoutParams,
+  type PathSegment,
+  type Region,
+  type RegionKind,
+  type RegionSample,
+  type RouteEntry,
+  type RouteEntryState,
+} from './layout';
+export { resolveRoute, type ResolvedRoute } from './route';
+export { WorldCatalog, type WorldCatalogOptions } from './catalog';
 export { proceduralRecipe, proceduralWorldSpec, type ProceduralRecipe } from './procedural';
 export { PlaneField, isTreeKind, type PlaneFieldParams, type ResolvedShape } from './field';
 export { planeComposeGroveTree, planeGroveMask, type PlaneGroveField } from './grove';
@@ -66,6 +81,7 @@ export type {
 } from './features/types';
 export type {
   CanopyMotif,
+  FocalCompanion,
   FocalSpec,
   LandmarkSlot as PlaneLandmarkSlot,
   PlanetLandmarkParams as PlaneLandmarkParams,

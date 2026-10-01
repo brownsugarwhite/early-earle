@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-180",
+  "zone": "luzz",
+  "name": "Käfigstufen",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", "#....", "##...", "###.."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "cage",
+      "at": [3, 0],
+      "content": {
+        "tier": 2
+      },
+      "layers": 1
+    },
+    {
+      "kind": "cage",
+      "at": [4, 2],
+      "content": {
+        "tier": 2
+      },
+      "layers": 1
+    },
+    {
+      "kind": "cage",
+      "at": [0, 0],
+      "content": {
+        "tier": 2
+      },
+      "layers": 1
+    },
+    {
+      "kind": "cage",
+      "at": [4, 4],
+      "content": {
+        "tier": 2
+      },
+      "layers": 1
+    }
+  ],
+  "threats": [
+    {
+      "kind": "toxic",
+      "at": [1, 1],
+      "countdown": 6
+    }
+  ],
+  "start": [
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 3
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "rescue",
+      "count": 4
+    }
+  ],
+  "moves": 10,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.53, 2.02],
+    "style": "precise"
+  }
+}

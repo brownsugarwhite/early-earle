@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "id": "w16",
+  "index": 15,
+  "ref": "16",
+  "name": "Bald",
+  "title": "Angedeutete Zone: Nebelmeer mit fernen Bergen (Schloss am See, Bildschirmfoto 16.55.57) — gesperrt",
+  "zone": "luzz",
+  "sources": ["Bildschirmfoto 2025-10-15 um 16.55.57.png"],
+  "hinted": true,
+  "lateral": false,
+  "palette": {
+    "ink": "#140a24",
+    "terrain": ["#1a1030", "#2c1f52", "#46347a", "#6a52a8", "#9a84d4"],
+    "canopy": ["#140a24", "#1e1236", "#2c1f52", "#46347a", "#9a84d4", "#e8c8f0", "#f4b0d8"],
+    "sky": ["#f2b4dc", "#e6a6dc", "#d89ad8", "#c890d4", "#b686cc", "#a07cc4"],
+    "sun": "#fff0f8",
+    "sunRing": "#f8d4ec",
+    "fog": ["#a07cc4", "#5a4a98", "#7a68bc", "#9a88d0", "#bca6e0", "#dcc4ec"],
+    "fogAlpha": [0, 0.28, 0.46, 0.62, 0.76, 0.88],
+    "accent": ["#f4b0d8", "#46347a", "#140a24", "#1a1030", "#6a52a8", "#9a84d4", "#e88a7a", "#fff0f8"],
+    "water": ["#2c1f52", "#46347a", "#6a52a8", "#8a72c8", "#a890dc", "#c4b0ec", "#5a4a98", "#f4b0d8"],
+    "rock": ["#140a24", "#2c1f52", "#46347a", "#6a52a8", "#9a84d4", "#e8c8f0", "#1e1236", "#f4b0d8"],
+    "cloud": ["#5a4a98", "#a888d8", "#c8a0e0", "#dcb4e8", "#ecc4ec", "#f8d8f0", "#fff0f8", "#9a84d4"]
+  },
+  "terrain": { "amplitude": 0.6, "wavelength": 2.2, "floor": 0.3 },
+  "ground": "smooth",
+  "vegetation": {
+    "density": 0,
+    "clumpiness": 0,
+    "kinds": { "bare": 1 },
+    "scale": [0.8, 1.2],
+    "trunkStyle": "ink",
+    "motif": "dots"
+  },
+  "props": {},
+  "landmarkChance": 0,
+  "mist": {
+    "banks": 2,
+    "height": [2.6, 4.0],
+    "thickness": [1.0, 1.8],
+    "length": [14, 24],
+    "opacity": 0.6,
+    "sea": { "level": 2.0, "banks": 4, "thickness": [1.6, 2.6], "height": 1.25 },
+    "mountains": { "count": 3, "lateral": [-40, 40], "height": [12, 22], "width": [26, 44], "ahead": [8, 40] }
+  },
+  "fogStripes": 0.8,
+  "fog": { "start": 12, "range": 30 },
+  "view": {
+    "height": 6.0,
+    "forward": 8,
+    "look": 10.0,
+    "fov": 52,
+    "curvature": 0.1,
+    "focus": [0.0, -0.1],
+    "nearClear": 1.2,
+    "footClear": 0
+  },
+  "focal": { "along": 0.5, "lateral": 0 },
+  "clouds": {
+    "layers": [
+      { "kind": "bank", "az": -30, "width": 30, "el": 3, "height": 8, "tone": 0.6, "puffs": 6 },
+      { "kind": "bank", "az": 22, "width": 26, "el": 2, "height": 7, "tone": 0.7, "puffs": 5 },
+      { "kind": "streak", "az": -6, "width": 40, "el": 12, "height": 2.2, "tone": 0.85 },
+      { "kind": "streak", "az": 30, "width": 22, "el": 18, "height": 1.8, "tone": 0.8 }
+    ]
+  }
+}

@@ -115,6 +115,7 @@ export function createMockMap(scene: Scene, camera: PerspectiveCamera, aspect: n
     },
     nearestNode: () => current,
     lastPlayable: count - 1,
+    lastNode: count - 1,
   };
   // The miniature has no plane: the path lies directly in the cap's space (no display mapping)
   const host: NodePathWorld = {

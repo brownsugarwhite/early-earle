@@ -1,3 +1,4 @@
+import { readdirSync } from 'node:fs';
 import { test, expect, type CDPSession, type Page } from '@playwright/test';
 
 // Werkstatt + mobile lab chrome: the way from the game into the labs/editors and back, the lab bottom sheet
@@ -5,6 +6,8 @@ import { test, expect, type CDPSession, type Page } from '@playwright/test';
 // Runs on the WebGL2 fallback (SwiftShader) like the others; nothing here writes into content/.
 
 const PHONE = { viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
+/** Weltdateien in content/zones/worlds (Route 15 + 1: 15 Autorenwelten und die angedeutete Zone 16). */
+const WORLD_FILES = readdirSync(new URL('../../../content/zones/worlds/', import.meta.url)).filter((f) => f.endsWith('.json')).length;
 const TRANSITION_MS = process.env.CI ? 90_000 : 45_000;
 test.setTimeout(process.env.CI ? 300_000 : 180_000);
 
@@ -191,7 +194,7 @@ test.describe('iPhone 393×852', () => {
 
     await page.goto('/editor/map');
     await expect(page.getByTestId('save-target')).toContainText('Lokal', { timeout: 15_000 });
-    await expect(page.locator('.map-card')).toHaveCount(10);
+    await expect(page.locator('.map-card')).toHaveCount(WORLD_FILES);
     await page.getByTestId('map-file-10').tap();
     await expect(page.getByTestId('map-poster')).toBeVisible();
     await page.getByTestId('map-tab-werte').tap();
@@ -209,7 +212,9 @@ test('Map-Editor mit Mac: Welten und Zonen aus content/zones', async ({ page }) 
   const errors = collectErrors(page);
   await page.goto('/editor/map');
   await expect(page.getByTestId('save-target')).toContainText('Mac', { timeout: 15_000 });
-  await expect(page.locator('.map-card')).toHaveCount(10);
+  await expect(page.locator('.map-card')).toHaveCount(WORLD_FILES);
+  // die Route (content/zones/route.json) ist keine Zone; prozedurale Welten nur mit ?prozedural=1
+  await expect(page.getByTestId('map-kind-prozedural')).toHaveCount(0);
   await page.getByTestId('map-kind-zone').click();
   await expect(page.locator('.map-card')).toHaveCount(4);
   await page.getByTestId('map-file-tjorizo').click();

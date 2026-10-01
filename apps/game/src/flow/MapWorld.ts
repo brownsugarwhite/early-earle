@@ -7,12 +7,12 @@ import type { FlowQuality } from './quality';
 import type { GroundFrame, MapGround } from './MapCreatures';
 import type { PathPalette, PathWorldColors } from './NodePath';
 import { FlowPath } from './levelPath';
-import { AUTHORED_ROUTE, HERO_TREE_WORLD, PLANET_RADIUS, planetWorlds } from '../lab/earle/zones';
-import { TREE_LEVELS, createHeroTreeSite, type HeroTreeSite } from '../lab/earle/heroTreeSite';
+import { HERO_TREE_WORLD, PLANET_RADIUS, PLAYABLE_COUNT, planetWorlds, routeOptions } from '../lab/earle/zones';
+import { TREE_RANGE, createHeroTreeSite, type HeroTreeSite } from '../lab/earle/heroTreeSite';
 import { createPlanetTrash } from '../lab/earle/trash';
 import type { TrashField } from '@ee/render/earle/trash/index.ts';
 
-export { PLANET_RADIUS, TREE_LEVELS };
+export { PLANET_RADIUS, TREE_RANGE };
 /** Splash ink (#081b25): the scene background matches the splash PNG so the reveal is seamless. */
 export const INK_BACKGROUND = '#081b25';
 
@@ -78,10 +78,11 @@ const _m = new Matrix4();
 const _f = new Vector3();
 
 /**
- * The Earle world of the flow on the infinite plane (ADR 0002): the streamed world (path worlds 01–10 along −z, then
- * procedural worlds; neighbour worlds left and right; cracks between them; per-chunk growth; focal elements), the giant
- * tree of world 01 whose trunk and crown carry levels 80–95, the banded EarleMaterial, pooled vegetation, sun rig with
- * shadows in plane space, sky dome and fog stripes.
+ * The Earle world of the flow on the infinite plane (ADR 0002, Route 15 + 1): the streamed world (the 15 authored
+ * path worlds of `content/zones/route.json` along −z, the gate node of the hinted zone 16; left, right, behind the gate
+ * and behind the start only the hinted zone; cracks between them; per-chunk growth; focal elements), the giant tree of
+ * world 01 whose trunk and crown carry levels 99–114, the banded EarleMaterial, pooled vegetation, sun rig with shadows
+ * in plane space, sky dome and fog stripes.
  *
  * The world is shown as a globe around the **focus** (the plane point at the apex): panning moves the focus, the
  * display mapping bends everything onto the sphere. The rig (camera, sun, sky, stripes) sits at the apex; `planet` is
@@ -104,7 +105,10 @@ export class MapWorld {
   readonly treeSite: HeroTreeSite | null;
   /** Trash v2 and the neon fog veil (start world, pockets elsewhere); heals with the progress (null: none). */
   readonly trash: TrashField | null;
-  /** Level path: node i ↔ level i + 1, unbounded (levels 80–95 climb the tree, after 100 the stones are locked). */
+  /**
+   * Level path: node i ↔ level i + 1, ending at the gate node of the hinted zone 16 (`lastNode`); levels 99–114 climb
+   * the tree, stones without a level file and the gate are locked ("bald").
+   */
   readonly layout: FlowPath;
   private readonly sunDirWorld = uniform(new Vector3(0, 1, 0));
   private readonly skyHorizon = uniform(-0.5);
@@ -136,13 +140,14 @@ export class MapWorld {
     this.sun.light.shadow.camera.layers.enable(PLANET_SHADOW_LAYER);
 
     const withTree = options.tree !== false;
-    const treeFirst = TREE_LEVELS[0] - 1;
-    const treeLast = TREE_LEVELS[1] - 1;
+    const treeFirst = TREE_RANGE[0] - 1;
+    const treeLast = TREE_RANGE[1] - 1;
     this.world = new EarlePlanet({
       radius: PLANET_RADIUS,
       seed,
       worlds: planetWorlds(),
-      route: AUTHORED_ROUTE,
+      // Route 15 + 1 (`content/zones/route.json`): seitlich und hinter dem Tor nur die angedeutete Zone
+      ...routeOptions(),
       trashScale: options.trashScale ?? 1,
       curvature: options.curvature ?? MAP_VIEW.curvature,
       quality: {
@@ -168,9 +173,11 @@ export class MapWorld {
     this.world.setFootClear(MAP_VIEW.footClear);
     this.planet.add(this.world.group);
 
-    // The giant tree stands a little ahead of level 79 (root tip facing it); its nodes replace the ground nodes 80–95
+    // The giant tree stands a little ahead of the last ground node before its stretch (root tip facing it); its nodes
+    // replace the ground nodes of TREE_RANGE (levels 99–114)
     this.treeSite = withTree ? createHeroTreeSite(this.world, { worldIndex: HERO_TREE_WORLD, quality: q.name, seed }) : null;
-    this.layout = new FlowPath(this.world, this.treeSite, HERO_TREE_WORLD);
+    // Playable: the route's levels that have a level file (101–184 are generated in parallel; the rest stay "bald")
+    this.layout = new FlowPath(this.world, this.treeSite, HERO_TREE_WORLD, PLAYABLE_COUNT);
     // Scatter keeps off the final path (stones on the tree, the connectors to and from it)
     this.world.setPathCorridor((x0, z0, x1, z1) => this.layout.corridor(x0, z0, x1, z1));
     // Trash v2 (neon debris, ruins, heaps, veil) along the final path

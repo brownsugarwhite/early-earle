@@ -2,53 +2,25 @@
   "schemaVersion": 1,
   "id": "luzz-063",
   "zone": "luzz",
-  "name": "Fauler Boden",
+  "name": "Giftwolke",
   "grid": {
-    "w": 5,
-    "h": 5,
-    "mask": [".....", ".....", ".....", ".....", "....."]
+    "w": 4,
+    "h": 4,
+    "mask": ["....", "....", "....", "...."]
   },
   "fences": [],
-  "floors": [
-    {
-      "kind": "withered",
-      "at": [4, 2]
-    },
-    {
-      "kind": "withered",
-      "at": [1, 4]
-    },
-    {
-      "kind": "withered",
-      "at": [0, 1]
-    },
-    {
-      "kind": "withered",
-      "at": [4, 0]
-    }
-  ],
+  "floors": [],
   "blockers": [],
   "threats": [
     {
-      "kind": "rot",
-      "at": [4, 1],
-      "period": 7
-    },
-    {
-      "kind": "rot",
-      "at": [0, 4],
-      "period": 7
+      "kind": "toxic",
+      "at": [1, 3],
+      "countdown": 8
     }
   ],
   "start": [
     {
-      "at": [4, 4],
-      "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [3, 0],
+      "at": [3, 2],
       "blob": {
         "tier": 3
       }
@@ -60,19 +32,19 @@
       }
     },
     {
-      "at": [3, 1],
+      "at": [3, 0],
       "blob": {
         "tier": 2
       }
     },
     {
-      "at": [3, 2],
+      "at": [3, 3],
       "blob": {
         "tier": 1
       }
     },
     {
-      "at": [2, 1],
+      "at": [0, 0],
       "blob": {
         "tier": 1
       }
@@ -95,17 +67,18 @@
   },
   "goals": [
     {
-      "type": "heal"
+      "type": "reachTier",
+      "tier": 5
     }
   ],
-  "moves": 30,
+  "moves": 20,
   "cap": 12,
   "specials": {
     "lineAt": 16,
-    "burstAt": 2
+    "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [1.2, 1.4],
-    "style": "explosive"
+    "targetAttempts": [1.06, 1.2],
+    "style": "precise"
   }
 }

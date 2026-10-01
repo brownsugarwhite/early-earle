@@ -2,90 +2,72 @@
   "schemaVersion": 1,
   "id": "wooding-085",
   "zone": "wooding",
-  "name": "Stromschnelle",
+  "name": "Rohrbrand",
   "grid": {
     "w": 5,
     "h": 5,
-    "mask": [".....", ".....", ".....", ".....", "....."]
+    "mask": ["#...#", ".....", ".....", ".....", "#...#"]
   },
   "fences": [],
   "floors": [
     {
-      "kind": "oil",
-      "at": [1, 1]
+      "kind": "portal",
+      "at": [4, 3],
+      "portalId": "a"
     },
     {
-      "kind": "oil",
-      "at": [2, 3]
-    },
-    {
-      "kind": "current",
-      "at": [0, 2],
-      "dir": "right"
-    },
-    {
-      "kind": "current",
-      "at": [1, 2],
-      "dir": "right"
-    },
-    {
-      "kind": "current",
-      "at": [2, 2],
-      "dir": "right"
-    },
-    {
-      "kind": "current",
-      "at": [3, 2],
-      "dir": "right"
+      "kind": "portal",
+      "at": [2, 0],
+      "portalId": "a"
     }
   ],
   "blockers": [],
-  "threats": [],
+  "threats": [
+    {
+      "kind": "rot",
+      "at": [2, 4],
+      "period": 3
+    }
+  ],
   "start": [
     {
-      "at": [3, 1],
+      "at": [1, 2],
       "blob": {
         "tier": 4
       }
     },
     {
-      "at": [3, 0],
-      "blob": {
-        "tier": 4
-      }
-    },
-    {
-      "at": [4, 1],
+      "at": [3, 3],
       "blob": {
         "tier": 3
       }
     },
     {
-      "at": [4, 3],
+      "at": [2, 2],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [2, 1],
       "blob": {
         "tier": 2
       }
     },
     {
-      "at": [0, 4],
+      "at": [0, 2],
       "blob": {
         "tier": 2
       }
     },
     {
-      "at": [1, 0],
+      "at": [1, 4],
       "blob": {
         "tier": 2
       }
     },
     {
-      "at": [2, 0],
-      "blob": {
-        "tier": 1
-      }
-    },
-    {
-      "at": [4, 4],
+      "at": [4, 1],
       "blob": {
         "tier": 1
       }
@@ -108,18 +90,22 @@
   },
   "goals": [
     {
-      "type": "release",
-      "count": 2
+      "type": "clearRot"
+    },
+    {
+      "type": "deliver",
+      "tier": 5,
+      "count": 1
     }
   ],
-  "moves": 18,
-  "cap": 5,
+  "moves": 10,
+  "cap": 12,
   "specials": {
     "lineAt": 16,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [1.6, 2],
-    "style": "precise"
+    "targetAttempts": [1.57, 2.02],
+    "style": "puzzle"
   }
 }

@@ -1,0 +1,1362 @@
+{
+ "ort": "Welt 07 (Level 66)",
+ "url": "/play?mode=free&level=66&quality=hoch",
+ "version": 1,
+ "startedAt": "2026-10-01T13:19:50.111Z",
+ "durationMs": 74367,
+ "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.8010.12 Safari/537.36",
+ "backend": "webgpu",
+ "preset": "hoch",
+ "modus": "free",
+ "viewport": [
+  393,
+  852
+ ],
+ "baseDpr": 1,
+ "node": 65,
+ "world": 6,
+ "focus": {
+  "x": -1.52,
+  "z": -274.56
+ },
+ "yaw": -0.21,
+ "options": {
+  "frames": 120,
+  "panPerFrame": 0.8,
+  "dprs": [
+   2,
+   1.75,
+   1.5
+  ],
+  "replaySamples": 8,
+  "replayBatches": [
+   2,
+   8
+  ],
+  "warmupMs": 1500,
+  "control": true,
+  "scenes": [
+   "leerlauf",
+   "schwenken"
+  ]
+ },
+ "rows": [
+  {
+   "szene": "leerlauf",
+   "variante": "alles",
+   "kontrolle": false,
+   "dpr": 2,
+   "canvas": [
+    786,
+    1704
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 8.45,
+    "p99": 41.5,
+    "max": 45.9
+   },
+   "cpu": {
+    "med": 2.2,
+    "p99": 4.6,
+    "max": 8
+   },
+   "gpuRest": {
+    "med": 5.6,
+    "p99": 37.7,
+    "max": 42.1
+   },
+   "warten": {
+    "med": 0.3,
+    "p99": 13.5,
+    "max": 18.7
+   },
+   "gpu": 2.77,
+   "gpuBasis": null,
+   "gpuSync": 3.07,
+   "replayEncode": 1.19,
+   "teile": {
+    "update": {
+     "med": 0.2,
+     "p99": 0.5,
+     "max": 0.5
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhalt": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhaltAnteil": 0,
+    "fit": {
+     "med": 0.1,
+     "p99": 2.1,
+     "max": 4.5
+    },
+    "encode": {
+     "med": 1.5,
+     "p99": 3.1,
+     "max": 3.3
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.8,
+     "max": 0.8
+    }
+   },
+   "drawCalls": {
+    "med": 48,
+    "max": 48
+   },
+   "schattenPaesseProS": 0,
+   "kaskadenProS": 0,
+   "refitsProBild": 0,
+   "chunksGebaut": 0,
+   "welt": 6,
+   "dauerMs": 3094
+  },
+  {
+   "szene": "leerlauf",
+   "variante": "ohne-schatten",
+   "kontrolle": false,
+   "dpr": 2,
+   "canvas": [
+    786,
+    1704
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 8.95,
+    "p99": 11.6,
+    "max": 12.3
+   },
+   "cpu": {
+    "med": 1.9,
+    "p99": 4.3,
+    "max": 6.2
+   },
+   "gpuRest": {
+    "med": 6.8,
+    "p99": 9.7,
+    "max": 9.9
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 1.1,
+    "max": 1.1
+   },
+   "gpu": 2.86,
+   "gpuBasis": 2.73,
+   "gpuSync": 2.73,
+   "replayEncode": 1.1,
+   "teile": {
+    "update": {
+     "med": 0.2,
+     "p99": 0.4,
+     "max": 0.5
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhalt": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhaltAnteil": 0,
+    "fit": {
+     "med": 0.1,
+     "p99": 2.1,
+     "max": 3.2
+    },
+    "encode": {
+     "med": 1.3,
+     "p99": 2.9,
+     "max": 2.9
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.6,
+     "max": 0.6
+    }
+   },
+   "drawCalls": {
+    "med": 48,
+    "max": 48
+   },
+   "schattenPaesseProS": 0,
+   "kaskadenProS": 0,
+   "refitsProBild": 0,
+   "chunksGebaut": 0,
+   "welt": 6,
+   "dauerMs": 3254
+  },
+  {
+   "szene": "leerlauf",
+   "variante": "ohne-punkte",
+   "kontrolle": false,
+   "dpr": 2,
+   "canvas": [
+    786,
+    1704
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 8.9,
+    "p99": 11.9,
+    "max": 14.6
+   },
+   "cpu": {
+    "med": 1.8,
+    "p99": 4.2,
+    "max": 7.3
+   },
+   "gpuRest": {
+    "med": 6.9,
+    "p99": 8.8,
+    "max": 10.2
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 1,
+    "max": 1.1
+   },
+   "gpu": 2.58,
+   "gpuBasis": 2.8,
+   "gpuSync": 3.05,
+   "replayEncode": 1.08,
+   "teile": {
+    "update": {
+     "med": 0.2,
+     "p99": 0.4,
+     "max": 0.4
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhalt": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhaltAnteil": 0,
+    "fit": {
+     "med": 0,
+     "p99": 2.1,
+     "max": 4.3
+    },
+    "encode": {
+     "med": 1.3,
+     "p99": 2.1,
+     "max": 2.8
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.7,
+     "max": 0.7
+    }
+   },
+   "drawCalls": {
+    "med": 47,
+    "max": 47
+   },
+   "schattenPaesseProS": 0,
+   "kaskadenProS": 0,
+   "refitsProBild": 0,
+   "chunksGebaut": 0,
+   "welt": 6,
+   "dauerMs": 3226
+  },
+  {
+   "szene": "leerlauf",
+   "variante": "ohne-vegetation",
+   "kontrolle": false,
+   "dpr": 2,
+   "canvas": [
+    786,
+    1704
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 6.2,
+    "p99": 10.5,
+    "max": 10.7
+   },
+   "cpu": {
+    "med": 1.6,
+    "p99": 6.7,
+    "max": 6.8
+   },
+   "gpuRest": {
+    "med": 4.3,
+    "p99": 5.5,
+    "max": 6.2
+   },
+   "warten": {
+    "med": 0.3,
+    "p99": 0.5,
+    "max": 1
+   },
+   "gpu": 0.87,
+   "gpuBasis": 2.86,
+   "gpuSync": 1.95,
+   "replayEncode": 0.82,
+   "teile": {
+    "update": {
+     "med": 0.2,
+     "p99": 0.4,
+     "max": 0.4
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhalt": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhaltAnteil": 0,
+    "fit": {
+     "med": 0,
+     "p99": 3.8,
+     "max": 3.9
+    },
+    "encode": {
+     "med": 1,
+     "p99": 2.1,
+     "max": 2.2
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.6,
+     "max": 0.6
+    }
+   },
+   "drawCalls": {
+    "med": 35,
+    "max": 35
+   },
+   "schattenPaesseProS": 0,
+   "kaskadenProS": 0,
+   "refitsProBild": 0,
+   "chunksGebaut": 0,
+   "welt": 6,
+   "dauerMs": 3072
+  },
+  {
+   "szene": "leerlauf",
+   "variante": "alles",
+   "kontrolle": false,
+   "dpr": 1.75,
+   "canvas": [
+    687,
+    1491
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 8.75,
+    "p99": 15,
+    "max": 15.2
+   },
+   "cpu": {
+    "med": 2,
+    "p99": 7.5,
+    "max": 7.9
+   },
+   "gpuRest": {
+    "med": 6.25,
+    "p99": 8.7,
+    "max": 8.9
+   },
+   "warten": {
+    "med": 0.3,
+    "p99": 1.3,
+    "max": 1.3
+   },
+   "gpu": 2.73,
+   "gpuBasis": 2.83,
+   "gpuSync": 3.18,
+   "replayEncode": 1.19,
+   "teile": {
+    "update": {
+     "med": 0.2,
+     "p99": 0.4,
+     "max": 0.4
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhalt": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhaltAnteil": 0,
+    "fit": {
+     "med": 0.1,
+     "p99": 4.2,
+     "max": 4.8
+    },
+    "encode": {
+     "med": 1.4,
+     "p99": 3,
+     "max": 3.3
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.7,
+     "max": 1
+    }
+   },
+   "drawCalls": {
+    "med": 48,
+    "max": 48
+   },
+   "schattenPaesseProS": 0,
+   "kaskadenProS": 0,
+   "refitsProBild": 0,
+   "chunksGebaut": 0,
+   "welt": 6,
+   "dauerMs": 3351
+  },
+  {
+   "szene": "leerlauf",
+   "variante": "alles",
+   "kontrolle": false,
+   "dpr": 1.5,
+   "canvas": [
+    589,
+    1278
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 8.6,
+    "p99": 10.9,
+    "max": 10.9
+   },
+   "cpu": {
+    "med": 1.8,
+    "p99": 4.1,
+    "max": 5.9
+   },
+   "gpuRest": {
+    "med": 6.5,
+    "p99": 8.3,
+    "max": 8.6
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 0.9,
+    "max": 1.1
+   },
+   "gpu": 2.57,
+   "gpuBasis": 2.85,
+   "gpuSync": 2.87,
+   "replayEncode": 1.1,
+   "teile": {
+    "update": {
+     "med": 0.2,
+     "p99": 0.4,
+     "max": 0.5
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhalt": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhaltAnteil": 0,
+    "fit": {
+     "med": 0.1,
+     "p99": 2.2,
+     "max": 3.5
+    },
+    "encode": {
+     "med": 1.3,
+     "p99": 2.6,
+     "max": 3
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.6,
+     "max": 0.6
+    }
+   },
+   "drawCalls": {
+    "med": 48,
+    "max": 48
+   },
+   "schattenPaesseProS": 0,
+   "kaskadenProS": 0,
+   "refitsProBild": 0,
+   "chunksGebaut": 0,
+   "welt": 6,
+   "dauerMs": 3287
+  },
+  {
+   "szene": "leerlauf",
+   "variante": "alles",
+   "kontrolle": true,
+   "dpr": 2,
+   "canvas": [
+    786,
+    1704
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 8.9,
+    "p99": 12.5,
+    "max": 13.8
+   },
+   "cpu": {
+    "med": 2,
+    "p99": 6,
+    "max": 6.6
+   },
+   "gpuRest": {
+    "med": 6.65,
+    "p99": 9.2,
+    "max": 9.8
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 1.8,
+    "max": 1.9
+   },
+   "gpu": 3.05,
+   "gpuBasis": null,
+   "gpuSync": 2.5,
+   "replayEncode": 1.33,
+   "teile": {
+    "update": {
+     "med": 0.2,
+     "p99": 0.4,
+     "max": 0.4
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhalt": {
+     "med": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "inhaltAnteil": 0,
+    "fit": {
+     "med": 0.1,
+     "p99": 3.5,
+     "max": 3.9
+    },
+    "encode": {
+     "med": 1.4,
+     "p99": 3.2,
+     "max": 3.3
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 1.1,
+     "max": 1.7
+    }
+   },
+   "drawCalls": {
+    "med": 48,
+    "max": 48
+   },
+   "schattenPaesseProS": 0,
+   "kaskadenProS": 0,
+   "refitsProBild": 0,
+   "chunksGebaut": 0,
+   "welt": 6,
+   "dauerMs": 2885
+  },
+  {
+   "szene": "schwenken-kalt",
+   "variante": "alles",
+   "kontrolle": false,
+   "dpr": 2,
+   "canvas": [
+    786,
+    1704
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 30.7,
+    "p99": 70.7,
+    "max": 78.6
+   },
+   "cpu": {
+    "med": 25.55,
+    "p99": 65.3,
+    "max": 68.6
+   },
+   "gpuRest": {
+    "med": 6,
+    "p99": 12.2,
+    "max": 12.8
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 1,
+    "max": 1.2
+   },
+   "gpu": 4.82,
+   "gpuBasis": null,
+   "gpuSync": 3.27,
+   "replayEncode": 2.27,
+   "teile": {
+    "update": {
+     "med": 0.4,
+     "p99": 5.6,
+     "max": 23.4
+    },
+    "bau": {
+     "med": 0,
+     "p99": 11.4,
+     "max": 11.6
+    },
+    "inhalt": {
+     "med": 16.25,
+     "p99": 36,
+     "max": 46
+    },
+    "inhaltAnteil": 0.61,
+    "fit": {
+     "med": 1.6,
+     "p99": 12.9,
+     "max": 13.4
+    },
+    "encode": {
+     "med": 4.2,
+     "p99": 6.5,
+     "max": 11.3
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 1.1,
+     "max": 40.4
+    }
+   },
+   "drawCalls": {
+    "med": 137,
+    "max": 150
+   },
+   "schattenPaesseProS": 60,
+   "kaskadenProS": 180,
+   "refitsProBild": 1,
+   "chunksGebaut": 56,
+   "welt": 10,
+   "dauerMs": 5997
+  },
+  {
+   "szene": "schwenken",
+   "variante": "alles",
+   "kontrolle": false,
+   "dpr": 2,
+   "canvas": [
+    786,
+    1704
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 30.35,
+    "p99": 66,
+    "max": 72.6
+   },
+   "cpu": {
+    "med": 23.3,
+    "p99": 48.1,
+    "max": 54.6
+   },
+   "gpuRest": {
+    "med": 6.15,
+    "p99": 21.2,
+    "max": 51.1
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 7.4,
+    "max": 8.1
+   },
+   "gpu": 5.71,
+   "gpuBasis": null,
+   "gpuSync": 2.33,
+   "replayEncode": 2.63,
+   "teile": {
+    "update": {
+     "med": 0.4,
+     "p99": 1,
+     "max": 2.4
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0.5,
+     "max": 0.5
+    },
+    "inhalt": {
+     "med": 16.4,
+     "p99": 34,
+     "max": 36.3
+    },
+    "inhaltAnteil": 0.62,
+    "fit": {
+     "med": 0.9,
+     "p99": 14.7,
+     "max": 28.5
+    },
+    "encode": {
+     "med": 4.1,
+     "p99": 7.2,
+     "max": 9.4
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.7,
+     "max": 1.5
+    }
+   },
+   "drawCalls": {
+    "med": 137,
+    "max": 150
+   },
+   "schattenPaesseProS": 60,
+   "kaskadenProS": 180,
+   "refitsProBild": 1,
+   "chunksGebaut": 0,
+   "welt": 10,
+   "dauerMs": 5828
+  },
+  {
+   "szene": "schwenken",
+   "variante": "ohne-schatten",
+   "kontrolle": false,
+   "dpr": 2,
+   "canvas": [
+    786,
+    1704
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 26.9,
+    "p99": 59.7,
+    "max": 66.8
+   },
+   "cpu": {
+    "med": 19.9,
+    "p99": 50.5,
+    "max": 59.7
+   },
+   "gpuRest": {
+    "med": 6.95,
+    "p99": 13.3,
+    "max": 13.9
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 3.6,
+    "max": 6.1
+   },
+   "gpu": 3.72,
+   "gpuBasis": 5.7,
+   "gpuSync": 3.67,
+   "replayEncode": 1.18,
+   "teile": {
+    "update": {
+     "med": 0.4,
+     "p99": 0.8,
+     "max": 0.9
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0.6,
+     "max": 0.7
+    },
+    "inhalt": {
+     "med": 14.65,
+     "p99": 41,
+     "max": 44.1
+    },
+    "inhaltAnteil": 0.62,
+    "fit": {
+     "med": 0.9,
+     "p99": 12.8,
+     "max": 14.8
+    },
+    "encode": {
+     "med": 2.1,
+     "p99": 4,
+     "max": 4.4
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.7,
+     "max": 1
+    }
+   },
+   "drawCalls": {
+    "med": 67,
+    "max": 72
+   },
+   "schattenPaesseProS": 0,
+   "kaskadenProS": 0,
+   "refitsProBild": 1,
+   "chunksGebaut": 0,
+   "welt": 10,
+   "dauerMs": 6173
+  },
+  {
+   "szene": "schwenken",
+   "variante": "ohne-punkte",
+   "kontrolle": false,
+   "dpr": 2,
+   "canvas": [
+    786,
+    1704
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 28,
+    "p99": 56.7,
+    "max": 60.8
+   },
+   "cpu": {
+    "med": 21.6,
+    "p99": 47.7,
+    "max": 49.8
+   },
+   "gpuRest": {
+    "med": 5.9,
+    "p99": 13.1,
+    "max": 15.2
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 1.5,
+    "max": 5.7
+   },
+   "gpu": 5.2,
+   "gpuBasis": 5.86,
+   "gpuSync": 4.25,
+   "replayEncode": 2.7,
+   "teile": {
+    "update": {
+     "med": 0.4,
+     "p99": 0.8,
+     "max": 0.9
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0.3,
+     "max": 0.3
+    },
+    "inhalt": {
+     "med": 15.4,
+     "p99": 38.6,
+     "max": 39.9
+    },
+    "inhaltAnteil": 0.62,
+    "fit": {
+     "med": 1,
+     "p99": 12.1,
+     "max": 12.2
+    },
+    "encode": {
+     "med": 3.8,
+     "p99": 5.6,
+     "max": 7.7
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.6,
+     "max": 0.6
+    }
+   },
+   "drawCalls": {
+    "med": 136,
+    "max": 149
+   },
+   "schattenPaesseProS": 60,
+   "kaskadenProS": 180,
+   "refitsProBild": 1,
+   "chunksGebaut": 0,
+   "welt": 10,
+   "dauerMs": 6470
+  },
+  {
+   "szene": "schwenken",
+   "variante": "ohne-vegetation",
+   "kontrolle": false,
+   "dpr": 2,
+   "canvas": [
+    786,
+    1704
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 23.6,
+    "p99": 60,
+    "max": 72.3
+   },
+   "cpu": {
+    "med": 18.7,
+    "p99": 55.3,
+    "max": 66.6
+   },
+   "gpuRest": {
+    "med": 4.1,
+    "p99": 8,
+    "max": 9.2
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 0.3,
+    "max": 1.7
+   },
+   "gpu": 2.03,
+   "gpuBasis": 4.98,
+   "gpuSync": 3.1,
+   "replayEncode": 1.5,
+   "teile": {
+    "update": {
+     "med": 0.4,
+     "p99": 0.8,
+     "max": 0.8
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0.3,
+     "max": 0.3
+    },
+    "inhalt": {
+     "med": 14.5,
+     "p99": 40.1,
+     "max": 47.7
+    },
+    "inhaltAnteil": 0.62,
+    "fit": {
+     "med": 0.7,
+     "p99": 13.5,
+     "max": 14.3
+    },
+    "encode": {
+     "med": 2.2,
+     "p99": 3.3,
+     "max": 4.1
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.6,
+     "max": 0.7
+    }
+   },
+   "drawCalls": {
+    "med": 92,
+    "max": 107
+   },
+   "schattenPaesseProS": 60,
+   "kaskadenProS": 180,
+   "refitsProBild": 1,
+   "chunksGebaut": 0,
+   "welt": 10,
+   "dauerMs": 5666
+  },
+  {
+   "szene": "schwenken",
+   "variante": "alles",
+   "kontrolle": false,
+   "dpr": 1.75,
+   "canvas": [
+    687,
+    1491
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 27.85,
+    "p99": 50.5,
+    "max": 55.5
+   },
+   "cpu": {
+    "med": 22.65,
+    "p99": 44.4,
+    "max": 49.3
+   },
+   "gpuRest": {
+    "med": 5.3,
+    "p99": 8.6,
+    "max": 10.5
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 1.1,
+    "max": 10.1
+   },
+   "gpu": 4.98,
+   "gpuBasis": 5.14,
+   "gpuSync": 2.53,
+   "replayEncode": 2.68,
+   "teile": {
+    "update": {
+     "med": 0.4,
+     "p99": 0.8,
+     "max": 0.9
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0.2,
+     "max": 0.2
+    },
+    "inhalt": {
+     "med": 16,
+     "p99": 35.2,
+     "max": 37
+    },
+    "inhaltAnteil": 0.62,
+    "fit": {
+     "med": 0.9,
+     "p99": 14.7,
+     "max": 15.5
+    },
+    "encode": {
+     "med": 4.3,
+     "p99": 5.3,
+     "max": 5.4
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.5,
+     "max": 0.5
+    }
+   },
+   "drawCalls": {
+    "med": 137,
+    "max": 150
+   },
+   "schattenPaesseProS": 60,
+   "kaskadenProS": 180,
+   "refitsProBild": 1,
+   "chunksGebaut": 0,
+   "welt": 10,
+   "dauerMs": 6290
+  },
+  {
+   "szene": "schwenken",
+   "variante": "alles",
+   "kontrolle": false,
+   "dpr": 1.5,
+   "canvas": [
+    589,
+    1278
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 28.1,
+    "p99": 54.5,
+    "max": 54.8
+   },
+   "cpu": {
+    "med": 21.5,
+    "p99": 47,
+    "max": 48.4
+   },
+   "gpuRest": {
+    "med": 5.9,
+    "p99": 14.6,
+    "max": 15.4
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 8.5,
+    "max": 8.6
+   },
+   "gpu": 4.62,
+   "gpuBasis": 5.14,
+   "gpuSync": 2.87,
+   "replayEncode": 2.49,
+   "teile": {
+    "update": {
+     "med": 0.4,
+     "p99": 0.8,
+     "max": 0.9
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0.2,
+     "max": 0.3
+    },
+    "inhalt": {
+     "med": 15.05,
+     "p99": 35.6,
+     "max": 37.6
+    },
+    "inhaltAnteil": 0.62,
+    "fit": {
+     "med": 1.1,
+     "p99": 13.1,
+     "max": 13.9
+    },
+    "encode": {
+     "med": 4.1,
+     "p99": 6.1,
+     "max": 6.6
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.6,
+     "max": 0.7
+    }
+   },
+   "drawCalls": {
+    "med": 137,
+    "max": 150
+   },
+   "schattenPaesseProS": 60,
+   "kaskadenProS": 180,
+   "refitsProBild": 1,
+   "chunksGebaut": 0,
+   "welt": 10,
+   "dauerMs": 6246
+  },
+  {
+   "szene": "schwenken",
+   "variante": "alles",
+   "kontrolle": true,
+   "dpr": 2,
+   "canvas": [
+    786,
+    1704
+   ],
+   "bilder": 120,
+   "bild": {
+    "med": 27.9,
+    "p99": 62,
+    "max": 62
+   },
+   "cpu": {
+    "med": 22.2,
+    "p99": 51.8,
+    "max": 54.3
+   },
+   "gpuRest": {
+    "med": 5.6,
+    "p99": 10.2,
+    "max": 10.7
+   },
+   "warten": {
+    "med": 0.2,
+    "p99": 3,
+    "max": 5.9
+   },
+   "gpu": 6.92,
+   "gpuBasis": null,
+   "gpuSync": 3.42,
+   "replayEncode": 3.03,
+   "teile": {
+    "update": {
+     "med": 0.35,
+     "p99": 0.8,
+     "max": 1.1
+    },
+    "bau": {
+     "med": 0,
+     "p99": 0.3,
+     "max": 0.3
+    },
+    "inhalt": {
+     "med": 14.85,
+     "p99": 40,
+     "max": 45.7
+    },
+    "inhaltAnteil": 0.62,
+    "fit": {
+     "med": 0.9,
+     "p99": 12,
+     "max": 13
+    },
+    "encode": {
+     "med": 4.2,
+     "p99": 8.2,
+     "max": 9.6
+    },
+    "szene": {
+     "med": 0.3,
+     "p99": 0.6,
+     "max": 2.3
+    }
+   },
+   "drawCalls": {
+    "med": 137,
+    "max": 150
+   },
+   "schattenPaesseProS": 60,
+   "kaskadenProS": 180,
+   "refitsProBild": 1,
+   "chunksGebaut": 0,
+   "welt": 10,
+   "dauerMs": 5912
+  }
+ ],
+ "posten": [
+  {
+   "szene": "leerlauf",
+   "posten": "gesamt (alles)",
+   "gpu": 2.91,
+   "bild": 8.68,
+   "cpu": 2.1,
+   "gpuRest": 6.13
+  },
+  {
+   "szene": "leerlauf",
+   "posten": "Schattenpässe",
+   "gpu": -0.13,
+   "bild": -0.27,
+   "cpu": 0.2,
+   "gpuRest": -0.67
+  },
+  {
+   "szene": "leerlauf",
+   "posten": "Punkte",
+   "gpu": 0.22,
+   "bild": -0.22,
+   "cpu": 0.3,
+   "gpuRest": -0.77
+  },
+  {
+   "szene": "leerlauf",
+   "posten": "Vegetation inkl. Punkte",
+   "gpu": 1.99,
+   "bild": 2.48,
+   "cpu": 0.5,
+   "gpuRest": 1.83
+  },
+  {
+   "szene": "leerlauf",
+   "posten": "Vegetation ohne Punkte",
+   "gpu": 1.77,
+   "bild": 2.7,
+   "cpu": 0.2,
+   "gpuRest": 2.6
+  },
+  {
+   "szene": "leerlauf",
+   "posten": "Rest (Gelände, Himmel, Nebel, Weg, Held …)",
+   "gpu": 1.05,
+   "bild": 6.47,
+   "cpu": 1.4,
+   "gpuRest": 4.97
+  },
+  {
+   "szene": "leerlauf",
+   "posten": "DPR 2 → 1,75 (Ersparnis)",
+   "gpu": 0.1,
+   "bild": -0.07,
+   "cpu": 0.1,
+   "gpuRest": -0.12
+  },
+  {
+   "szene": "leerlauf",
+   "posten": "DPR 2 → 1,5 (Ersparnis)",
+   "gpu": 0.28,
+   "bild": 0.08,
+   "cpu": 0.3,
+   "gpuRest": -0.37
+  },
+  {
+   "szene": "leerlauf",
+   "posten": "Drift (Kontrolle − Start)",
+   "gpu": 0.28,
+   "bild": 0.45,
+   "cpu": -0.2,
+   "gpuRest": 1.05
+  },
+  {
+   "szene": "schwenken",
+   "posten": "gesamt (alles)",
+   "gpu": 6.32,
+   "bild": 29.13,
+   "cpu": 22.75,
+   "gpuRest": 5.88
+  },
+  {
+   "szene": "schwenken",
+   "posten": "Schattenpässe",
+   "gpu": 1.98,
+   "bild": 2.23,
+   "cpu": 2.85,
+   "gpuRest": -1.07
+  },
+  {
+   "szene": "schwenken",
+   "posten": "Punkte",
+   "gpu": 0.66,
+   "bild": 1.13,
+   "cpu": 1.15,
+   "gpuRest": -0.02
+  },
+  {
+   "szene": "schwenken",
+   "posten": "Vegetation inkl. Punkte",
+   "gpu": 2.95,
+   "bild": 5.53,
+   "cpu": 4.05,
+   "gpuRest": 1.78
+  },
+  {
+   "szene": "schwenken",
+   "posten": "Vegetation ohne Punkte",
+   "gpu": 2.29,
+   "bild": 4.4,
+   "cpu": 2.9,
+   "gpuRest": 1.8
+  },
+  {
+   "szene": "schwenken",
+   "posten": "Rest (Gelände, Himmel, Nebel, Weg, Held …)",
+   "gpu": 1.39,
+   "bild": 21.37,
+   "cpu": 15.85,
+   "gpuRest": 5.17
+  },
+  {
+   "szene": "schwenken",
+   "posten": "DPR 2 → 1,75 (Ersparnis)",
+   "gpu": 0.16,
+   "bild": 1.28,
+   "cpu": 0.1,
+   "gpuRest": 0.58
+  },
+  {
+   "szene": "schwenken",
+   "posten": "DPR 2 → 1,5 (Ersparnis)",
+   "gpu": 0.52,
+   "bild": 1.03,
+   "cpu": 1.25,
+   "gpuRest": -0.02
+  },
+  {
+   "szene": "schwenken",
+   "posten": "Drift (Kontrolle − Start)",
+   "gpu": 1.21,
+   "bild": -2.45,
+   "cpu": -1.1,
+   "gpuRest": -0.55
+  }
+ ],
+ "hinweise": []
+}

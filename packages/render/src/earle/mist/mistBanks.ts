@@ -65,7 +65,9 @@ export class MistBanks {
     const v = uv().y;
     const seed = B.z;
     const isSea = B.w.greaterThan(0.5).and(B.w.lessThan(1.5));
-    const isMountain = B.w.greaterThan(1.5);
+    const isMountain = B.w.greaterThan(1.5).and(B.w.lessThan(2.5));
+    // farbiges Band (Welt 02): Profil wie ein Band, Farben aus den farbigen Tönen der Nebelzeile
+    const isTinted = B.w.greaterThan(2.5);
     // langsam gewellte Ränder (je Bank eigene Phase)
     const wob = sin(u.mul(8.3).add(seed.mul(41.0))).mul(0.07).add(sin(u.mul(21.7).add(seed.mul(17.0))).mul(0.03));
     // Band: Gauß um die (gewellte) Mitte, die Unterkante etwas länger (der Nebel liegt auf)
@@ -104,9 +106,9 @@ export class MistBanks {
     const spray = edge.mul(smoothstep(0.7, 0.15, a));
     const alpha = clamp(a.add(grain.sub(0.5).mul(0.4).mul(spray)), 0, 1).mul(B.y).mul(near);
     // Farben: Rand (Stufe 3) → Mitte (4) → Kern (5); Nebelmeer unten heller
-    const edgeCol = options.lookup.pal(3, row).rgb as unknown as Vec3Node;
-    const midCol = options.lookup.pal(4, row).rgb as unknown as Vec3Node;
-    const coreCol = options.lookup.pal(5, row).rgb as unknown as Vec3Node;
+    const edgeCol = select(isTinted, options.lookup.pal(1, row).rgb, options.lookup.pal(3, row).rgb) as unknown as Vec3Node;
+    const midCol = select(isTinted, options.lookup.pal(2, row).rgb, options.lookup.pal(4, row).rgb) as unknown as Vec3Node;
+    const coreCol = select(isTinted, options.lookup.pal(6, row).rgb, options.lookup.pal(5, row).rgb) as unknown as Vec3Node;
     const k = select(isSea, float(1).sub(v).mul(0.9).add(a.mul(0.3)), a) as unknown as FloatNode;
     let col = mix(edgeCol, midCol, smoothstep(0.12, 0.5, k));
     col = mix(col, coreCol, smoothstep(0.5, 0.92, k));

@@ -146,6 +146,11 @@ export interface WorldPalette extends ZonePalette {
    */
   cloud?: string[];
   /**
+   * Nebelbänke (8, Welt 02): 0 Bergsilhouette, 1–2 farbige Bänder (Rand, Mitte), 3–5 weiße Schlieren (Rand, Mitte, Kern),
+   * 6 Kern der farbigen Bänder, 7 Reserve. Fehlt → die Nebelzeile (wie bisher: Kern Stufe 5, Rand Stufe 3).
+   */
+  mist?: string[];
+  /**
    * Farbe der feinen Bodenlinien (Perspektivstrahlen des Juwelenwalds, Ebene 3/32: helle, feine Linien auf dunklem
    * Grund). Liegt in der freien Stufe 6 der Terrainzeile. Fehlt → Linien in einer Terrainstufe.
    */
@@ -188,6 +193,8 @@ export interface WorldRows extends ZoneRows {
   snow: number;
   /** Wolkenzeile (Wolkenbänke am Himmel); nur in den Welt-Slots der Karte. */
   cloud?: number;
+  /** Zeile der Nebelbänke (Welt-Slots der Karte; ohne eigene Farben die Nebelzeile). */
+  mist?: number;
 }
 
 /** Schreibt eine Zonenpalette als vier Zeilen in den Atlas (Prefix erlaubt mehrere Zonen im selben Atlas). */

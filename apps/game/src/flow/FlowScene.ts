@@ -28,12 +28,13 @@ import type { RouteStop } from './choreo/route';
 import { CreatureHost } from './choreo/creatureHost';
 import { playIntro } from './choreo/intro';
 import { Departure, type TravelLog } from './choreo/depart';
-import { refuseNode } from './choreo/locked';
+import { gateLine, isGateNode, refuseNode } from './choreo/locked';
 import { canEnterNode, shouldPlayIntro, storyAfterWin } from './progression/gate';
 import { createMapFocusConstraint, type MapFocusConstraint, type MapLimit } from './progression/mapFocus';
 import { SCROLL_MARGIN } from './progression/scrollLimit';
 import { RexStory } from './rexStory';
 import { storyLines } from './storyLines';
+import { runMapBench, type MapBenchHost, type MapBenchOptions } from './mapBench';
 
 export interface FlowSceneOptions {
   /** `/` starts at the splash, `/play` on the map. */
@@ -93,6 +94,11 @@ const REX_DEPTH = 12;
 const T_HOP = 1.4;
 const T_FLY_IN = 1.2;
 const T_GLIDE = 1.0;
+/**
+ * Distance of the view focus from the current tree node (plane units) over which the giant tree's camera rail hands
+ * over to the orbit view (Route 15 + 1: level 100 stands on the tree, the next worlds are far ahead).
+ */
+const RAIL_HANDOVER: readonly [number, number] = [26, 44];
 /** Mindestabstand (Welteinheiten) der Kartenkamera über Felswänden, Türmen und Wahrzeichen zwischen ihr und dem Fokus. */
 const MAP_CLEARANCE = 6.5;
 /** Farther than this (plane units), a glide to a node jumps to its last stretch first (0.4 of this distance). */
@@ -236,7 +242,8 @@ export class FlowScene implements SceneController {
     ctx.renderer.shadowMap.enabled = true;
     const q = this.quality;
 
-    // The infinite world lays out the level path (authored route 1–100, then procedural worlds) and clears its corridor.
+    // The infinite world lays out the level path (Route 15 + 1: levels 1–184, the gate node of the hinted zone 16; around
+    // and behind it only the hinted zone) and clears its corridor.
     const world = new MapWorld({ quality: q, seed: 7 });
     this.world = world;
 
@@ -471,7 +478,9 @@ export class FlowScene implements SceneController {
     const flow = useFlowStore.getState();
     const p = this.phase;
     const focusNode = p === 'map' || p === 'depart' || p === 'travel' ? flow.current : p === 'flyIn' || p === 'level' || p === 'intro' ? (flow.playing ?? flow.current) : -1;
-    const focus = focusNode >= 0 && world.isTreeNode(focusNode) ? world.layout.node(focusNode) : undefined;
+    let focus = focusNode >= 0 && world.isTreeNode(focusNode) ? world.layout.node(focusNode) : undefined;
+    // …unless the map was panned away from the tree (the rail has handed over to the orbit view): then the look point
+    if (focus && p === 'map' && Math.hypot(focus.position[0] - world.focus.x, focus.position[2] - world.focus.z) > (RAIL_HANDOVER[0] + RAIL_HANDOVER[1]) / 2) focus = undefined;
     world.setViewFocus(focus ? _v.set(focus.position[0], focus.position[1], focus.position[2]) : null, this.cut);
     this.cut = false;
     // A plateau under or on the giant tree: the curtain of hanging twigs keeps it clear while it is played
@@ -700,13 +709,25 @@ export class FlowScene implements SceneController {
   }
 
   /**
-   * Map camera (rig space). On the giant tree (levels 80–95) the camera rail replaces the orbit view: it stays behind
+   * Map camera (rig space). On the giant tree (levels 99–114) the camera rail replaces the orbit view: it stays behind
    * the node, close to the bark, and moves with the view. `rail = false` gives the plain orbit pose.
    */
   private mapPose(zoom = this.zoom, rail = true, view: MapViewLike = this.mapViewCamera()): CameraPose {
     const w = this.world;
     if (!w || !rail) return this.orbitPose(zoom, view);
-    return this.mapPoseFor(useFlowStore.getState().current, this.currentView(), zoom, view);
+    const cur = useFlowStore.getState().current;
+    const railPose = this.mapPoseFor(cur, this.currentView(), zoom, view);
+    if (!w.cameraRailFor(cur, this.railScratch)) return railPose;
+    // Panned away from the tree (free mode, glides to far nodes): the rail hands over to the orbit view — the rail
+    // camera belongs to the tree, far from the focus it would stand on the far side of the globe
+    const n = w.layout.node(cur).position;
+    const d = Math.hypot(n[0] - w.focus.x, n[2] - w.focus.z);
+    const t = Math.min(1, Math.max(0, (d - RAIL_HANDOVER[0]) / (RAIL_HANDOVER[1] - RAIL_HANDOVER[0])));
+    if (t <= 0) return railPose;
+    const orbit = this.orbitPose(zoom, view);
+    if (t >= 1) return orbit;
+    const k = t * t * (3 - 2 * t);
+    return { position: railPose.position.lerp(orbit.position, k), quaternion: railPose.quaternion.slerp(orbit.quaternion, k), fov: lerp(railPose.fov, orbit.fov, k) };
   }
 
   /**
@@ -1440,9 +1461,9 @@ export class FlowScene implements SceneController {
     const board = this.board!;
     const store = useFlowStore.getState();
     const node = Math.max(0, index);
-    // Locked stones ("bald"): no level yet — REX says so
+    // Locked stones ("bald"): no level (file) yet — REX says so; the gate node of the hinted zone has its own line
     if (node > world.layout.lastPlayable || !FLOW_LEVELS[node]) {
-      store.setRex(rexLine('locked') ?? 'Bald. Hier wächst noch was.');
+      store.setRex(isGateNode(world.layout, node) ? gateLine(node) : (rexLine('locked') ?? 'Bald. Hier wächst noch was.'));
       return;
     }
     this.story.finishNow();
@@ -1551,7 +1572,7 @@ export class FlowScene implements SceneController {
     const world = this.world!;
     const flow = useFlowStore.getState();
     const next = flow.current + 1;
-    if (next > world.layout.lastPlayable + 1) return;
+    if (next > world.layout.lastPlayable + 1 || next > world.layout.lastNode) return;
     if (!canEnterNode(next, useProgress.getState())) {
       refuseNode(this.stage, next);
       return;
@@ -1572,6 +1593,7 @@ export class FlowScene implements SceneController {
     const flow = useFlowStore.getState();
     const intro = rexIntroFor(node + 1);
     if (intro) flow.setRex(intro);
+    else if (isGateNode(this.world!.layout, node)) flow.setRex(gateLine(node));
     else if (node > this.world!.layout.lastPlayable) flow.setRex(rexLine('locked') ?? 'Weiter geht’s bald. Die Welt wächst noch.');
   }
 
@@ -1832,6 +1854,36 @@ export class FlowScene implements SceneController {
 
   /** A small API on `window.__flow`: pan programmatically, read the streaming stats and the view. */
   private debugApi(): Record<string, unknown> {
+    // Karten-Bench (R4.1, mapBench.ts): `?bench=karte` startet sie nach dem Aufwärmen, `bench()` liefert das JSON. Sie
+    // misst über einen Bild-Haken, der nur während der Messung an Stelle von `update` steht.
+    const benchHost: MapBenchHost = {
+      ctx: () => this.ctx,
+      world: () => this.world,
+      phase: () => this.phase,
+      warm: () => this.boardWarmDone,
+      pan: (dx, dz) => this.panBy(dx, dz),
+      yaw: () => this.viewYaw,
+      focus: () => ({ x: this.world?.focus.x ?? 0, z: this.world?.focus.z ?? 0 }),
+      setFocus: (x, z) => {
+        this.tweens.cancel('glide');
+        this.panBall?.stop();
+        this.applyView({ x, z, yaw: this.viewYaw });
+      },
+      node: () => useFlowStore.getState().current,
+      mode: () => useProgress.getState().mode,
+      preset: () => this.quality.name,
+      // Echter Modus: das Gummiband zöge den Schwenk zurück — während der Messung aus
+      panLimit: (on) => this.setPanConstrain(on && this.mapFocus ? (f) => this.mapFocus!.constrain(f) : null),
+      frameHook: (hook) => {
+        if (!hook) {
+          Reflect.deleteProperty(this, 'update');
+          return;
+        }
+        const base = FlowScene.prototype.update;
+        this.update = (dt, wall, ctx) => hook(() => base.call(this, dt, wall, ctx));
+      },
+    };
+    if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('bench') === 'karte') void runMapBench(benchHost);
     return {
       /** Pan by (dx, dz) plane units (like a drag; the map phase only). */
       pan: (dx: number, dz: number) => this.panBy(dx, dz),
@@ -1845,11 +1897,14 @@ export class FlowScene implements SceneController {
       view: () => ({ ...this.currentView(), phase: this.phase }),
       /** Map zoom (like a pinch; clamped 0.7–1.7). */
       zoom: (z: number) => this.setZoom(z),
+      /** Karten-Bench (mapBench.ts): Leerlauf/Schwenken × Schatten/Punkte/Vegetation/DPR; Promise mit dem JSON-Bericht. */
+      bench: (options?: MapBenchOptions) => runMapBench(benchHost, options),
       /** Dev: the world object (inspection in scripted checks). */
       world: () => (import.meta.env.DEV ? this.world : null),
       stats: () => {
         const w = this.world;
         if (!w) return null;
+        const slides = (w.sun.cascadeStats as { slides?: number } | null)?.slides;
         return {
           focus: { x: w.focus.x, z: w.focus.z },
           streaming: { ...w.world.stats },
@@ -1861,6 +1916,8 @@ export class FlowScene implements SceneController {
           slots: w.world.slots.entries().length,
           evictions: w.world.slots.evictions,
           shadowPasses: w.shadowPasses,
+          /** Schatten-Slides statt Refits beim Schwenken (sobald die Kaskaden sie zählen, R1). */
+          ...(slides !== undefined ? { slides } : {}),
           /** Draw calls of the last frame (all passes). */
           drawCalls: (this.ctx?.renderer.info as { render?: { drawCalls?: number } } | undefined)?.render?.drawCalls ?? 0,
           /** The board's pipeline warm-up has settled (its demo board drew along until then). */

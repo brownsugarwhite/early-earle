@@ -367,6 +367,8 @@ export class NodePath {
   private readonly quats: Quaternion[] = [];
   private readonly anchor = { x: 0, z: 0 };
   private windowCentre = -1e9;
+  /** The current node when the window was last built (−1 = none yet). */
+  private windowCurrent = -1;
   private current = 0;
   private done = 0;
   private time = 0;
@@ -717,7 +719,9 @@ export class NodePath {
     const f = this.planet.focus;
     const centre = Math.max(0, Math.round(this.layout.nearestNode(f.x, f.z)));
     const want = Math.max(centre, 0);
-    if (this.win && Math.abs(want - this.windowCentre) <= WINDOW_SLACK && this.inWindow(this.current)) return;
+    // The current node only forces a rebuild when it changed since the last one: a view far from it (free panning, the
+    // gate far ahead of the last playable level) would otherwise rebuild the window every frame
+    if (this.win && Math.abs(want - this.windowCentre) <= WINDOW_SLACK && (this.inWindow(this.current) || this.current === this.windowCurrent)) return;
     this.buildWindow(want);
   }
 
@@ -728,15 +732,18 @@ export class NodePath {
 
   /** Refills all buffers for the nodes around `centre` (plus the current node's neighbourhood). */
   private buildWindow(centre: number): void {
-    let first = Math.max(0, centre - WINDOW_BEHIND);
-    let last = centre + WINDOW_AHEAD;
+    // The path ends at the gate node (Route 15 + 1): the window never reaches beyond the last node
+    const lastNode = this.layout.lastNode;
+    let first = Math.max(0, Math.min(centre, lastNode) - WINDOW_BEHIND);
+    let last = Math.min(centre + WINDOW_AHEAD, lastNode);
     // The current node (ring) stays inside while it is near the view
     if (this.current < first && first - this.current < 12) first = this.current;
-    if (this.current > last && this.current - last < 12) last = this.current;
+    if (this.current > last && this.current - last < 12) last = Math.min(this.current, lastNode);
     last = Math.min(last, first + NODE_CAP - 1);
     const win = this.layout.window(first, last);
     this.win = win;
     this.windowCentre = centre;
+    this.windowCurrent = this.current;
     this.windowBuilds++;
     const f = this.planet.focus;
     const ax = Math.round(f.x);

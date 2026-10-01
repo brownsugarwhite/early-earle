@@ -6,6 +6,7 @@ import type { FeatureSample } from './features/types';
 import type { PlaneField } from './field';
 import { isTreeKind } from './field';
 import { planeComposeGroveTree } from './grove';
+import { snowEdgeTree } from './snowEdge';
 import type { RegionSample } from './layout';
 import { smoothstep } from './noise2';
 import type { LandmarkSlot, PlanetProp, PlanetPropKind, PlanetPropSpec, PlanetTree, PlanetVegetationFamily } from './types';
@@ -119,7 +120,7 @@ export function generatePlaneChunk(field: PlaneField, cx: number, cz: number, re
       const k = j * n + i;
       field.sample(x, z, rs);
       const key = rs.region.key;
-      const amp = field.shapeAt(x, z, rs).amplitude;
+      const shape = field.shapeAt(x, z, rs);
       const c = (j + 1) * m + (i + 1);
       const h = H[c]!;
       const gx = (H[c + 1]! - H[c - 1]!) / (2 * step);
@@ -137,7 +138,7 @@ export function generatePlaneChunk(field: PlaneField, cx: number, cz: number, re
       normals[k * 3] = nor[0];
       normals[k * 3 + 1] = nor[1];
       normals[k * 3 + 2] = nor[2];
-      heightNorm[k] = amp > 1e-6 ? Math.min(1, Math.max(0, h / amp)) : 0;
+      heightNorm[k] = field.heightNormOf(x, z, h, shape);
       own[k] = rs.world;
       const a = Math.min(rs.world, rs.neighbor);
       const b = Math.max(rs.world, rs.neighbor);
@@ -485,7 +486,11 @@ export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, opt
       pAccept = rel * smoothstep(1 - fam.rows.width, 1 - fam.rows.width * 0.4, q);
     }
     if (rand() > pAccept) continue;
-    const pick = planeComposeGroveTree(field, x, z, fam, pickTreeKind(fam.kinds, rand()), fam.scale[0] + (fam.scale[1] - fam.scale[0]) * (0.35 * rand() + 0.65 * rand()), rand);
+    // Schneerand (Welt 06): Randtannen am Schneefeld, Gruppen auf dem Schnee, ausgedünntes Waldinneres
+    const edgeSpec = (fam as TreeFamily).snowEdge;
+    const edge = edgeSpec ? snowEdgeTree(field, key, x, z, edgeSpec, rand) : undefined;
+    if (edge === null) continue;
+    const pick = edge ?? planeComposeGroveTree(field, x, z, fam, pickTreeKind(fam.kinds, rand()), fam.scale[0] + (fam.scale[1] - fam.scale[0]) * (0.35 * rand() + 0.65 * rand()), rand);
     if (!pick) continue;
     const { kind, scale } = pick;
     const prop = TREE_PROPORTIONS[kind];
@@ -496,7 +501,7 @@ export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, opt
     // Wahrzeichen (Fels, Ruine, Becken, Sumpf): keine Bäume in Stein und Wasser
     if (field.landmarkBlocks(x, z, canopyRadius * 0.6)) continue;
     const hn = field.features.region(key).snow ? field.heightNormAt(x, z) : 0;
-    if (field.features.blocksTree(key, x, z, canopyRadius, hn)) continue;
+    if (edge?.onSnow ? field.isWater(x, z, 0.35 + canopyRadius * 0.6) || field.rockAt(x, z, canopyRadius * 0.7 + 0.2) !== null : field.features.blocksTree(key, x, z, canopyRadius, hn)) continue;
     field.surfaceAt(x, z, pos, nor);
     // Nebelmeer (Welt 12): unter dem Nebelspiegel wächst nichts, es wäre im Nebel versunken
     if (belowSea(field, world, pos[1], canopyRadius)) continue;
@@ -547,6 +552,7 @@ export function scatterPlaneTrees(field: PlaneField, cx: number, cz: number, opt
         world: l.world,
         rank: 0,
         variant: 0.37,
+        ...(l.turnTree ? { yaw: (l.yawDeg * Math.PI) / 180 } : {}),
       },
       priority: -1,
     });

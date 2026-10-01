@@ -1,9 +1,12 @@
+import { readdirSync } from 'node:fs';
 import { test, expect, type CDPSession, type Page } from '@playwright/test';
 
 // Level-Editor v2 (iPhone zuerst): läuft wie die Smoke-Tests auf dem WebGL2-Fallback (SwiftShader).
 // Schreibt nur die _-Datei `_draft-e2e.json` (löschbar über DELETE) und räumt sie hinterher weg.
 
 const DRAFT_FILE = '_draft-e2e.json';
+/** Leveldateien in content/levels (NNN.json): die Kette zeigt jede (Level 101–184 entstehen parallel). */
+const LEVEL_FILES = readdirSync(new URL('../../../content/levels/', import.meta.url)).filter((f) => /^\d{3}\.json$/.test(f)).length;
 const PHONE = { viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
 
 function collectErrors(page: Page): string[] {
@@ -142,11 +145,11 @@ test.describe('iPhone 393×852', () => {
     await expect(page.getByTestId('hud-moves')).toHaveText('Züge 33');
     await page.getByTestId('edit-btn').tap();
 
-    // Kette: alle 100 Level mit Kurve; das offene Level ist markiert.
+    // Kette: alle Level (eine Zeile je Leveldatei, Route 15 + 1: bis 184) mit Kurve; das offene Level ist markiert.
     await page.getByTestId('level-button').tap();
     await expect(page.getByTestId('tab-kette')).toHaveAttribute('data-active', 'true');
     await expect(page.getByTestId('chain-chart')).toBeVisible();
-    await expect(page.getByTestId('chain-list').locator('[data-testid^="chain-row-"]')).toHaveCount(100);
+    await expect(page.getByTestId('chain-list').locator('[data-testid^="chain-row-"]')).toHaveCount(LEVEL_FILES);
     await expect(page.getByTestId('chain-row-007')).toHaveAttribute('data-current', 'true');
 
     // Unter neuem Namen sichern (PUT auf eine _-Datei).

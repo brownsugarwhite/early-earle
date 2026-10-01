@@ -60,6 +60,8 @@ Zonennamen aus Florians Draft (Screenshot 6).
 
 Jede Zone endet mit einem **Riss-Level** (25, 50, 75, 100) und hat einen **Mid-Zone-Spike** (13, 38, 63, 88). Level 100 ist „das erste Wäldchen": Die Kugel ergrünt sichtbar, mit Ausblick auf Zone 5+ (Ozean, Eis, Stadtruine, …). Das Zonensystem ist unendlich erweiterbar: neue Zone = neue Palette, 1–2 neue Elemente, neue Material-/Asset-Familie.
 
+> **Nachtrag 2026-10 (Route 15 + 1, ADR 0002):** Die Karte trägt jetzt **15 Autorenwelten mit 184 Leveln** und dahinter eine angedeutete, gesperrte Zone 16 (Torknoten „Bald“); die Reihenfolge steht in `content/zones/route.json`. Die vier Story-Zonen oben bleiben die Namen und Materialfamilien der Level 1–100; welche Story-Zone ein Level hat, steht seit dem Umbau in seiner Leveldatei (`zone`), nicht mehr in einem festen Levelbereich — die Level 101–184 übernehmen die Story-Zone der Welt ihres Abschnitts.
+
 ### 3.4 Aufbruch statt Tod („Evolve & Release")
 
 Erreicht ein Blob die Zielstufe eines Levels (die **Kappe**), stirbt er nicht und verschwindet nicht einfach: Er **verlässt das Raster** mit einer Kamerafahrt und taucht als neues Wesen in der Map-Zone auf. Die Map füllt sich so mit den Wesen, die der Spieler selbst erschaffen hat — sie sind die „Mutationspartner", die pezenpez sucht. Vorbilder: World of Goo (Goo-Bälle in die Röhre) und Terra Nil („keine Spur hinterlassen"). Spielmechanisch entlastet der Aufbruch das Brett (Prinzip „Maximalstufe verschwindet" aus 2048 Variants) und ist gleichzeitig der Story-Moment.
@@ -260,6 +262,39 @@ Level 1 ist unverlierbar: Hoch und runter verändern auf einem 1×3-Streifen nic
 | 24 | Strahl | 5×5, zufällig | 4×4 `1 1 2 2` über zwei doppelten Schrottzellen | Zwei Paare ergeben zwei Verschmelzungen und damit einen Strahl-Blob; er zündet in etwa 9 von 10 Spielen | 24 | 98 % / 100 % |
 
 **REX dazu** (`content/rex/lines.json`): Level 1 „Wisch zur Seite." Nach dem ersten Wisch „Da kommt Nachschub für uns." Nach dem ersten Sieg die Szene `afterLevel1` (Vorschlag, frei änderbar): „Schau, es bleibt bei uns." / „Die Erde ist zerbrochen." / „Jeder Stein heilt ein Stück." / „Da vorne wartet der nächste." Neue Auslöser: `locked` „Noch zu. Erst der davor.", `collection.new` „Neu! Ab in den Setzkasten.", `classic.unlock` „Neues Raster frei!"
+
+### 6.7 Schwierigkeitskurve 184 (Nachtrag 2026-10-01)
+
+Florian (Entscheidung 6 der Fragerunde 01.10.): 184 Level jetzt, „sehr gut ausbalanciert, damit der Spieler Spaß hat, gefordert wird und sich auf weitere Level freut". Umsetzung nach der Saga-Recherche (Candy Crush, Royal Match, Playrix, Room 8; Plan „L"). Die Kurve ist Code (`packages/core/src/generator/curve.ts`, `curveSpec(1..184)`), der Bericht mit Soll gegen Ist liegt in [`progress/level-kurve-184.md`](progress/level-kurve-184.md) (Grafik `level-kurve-184.svg/png`).
+
+**Struktur.** 15 Kartenzonen mit 14, 12 × 7, 16 (Riesenbaum), 10 (Kuppelbaum) und 12 × 5 Leveln. Jede Zone folgt einer Schablone: Lehren (oder Spaß, wenn nichts Neues kommt) · Üben · Normal · Spaß · **Hart** · Atempause · Kombi (≤ 2 Arten) · Normal · **Hart** · Spaß · Normal · **Boss** am Zonenende (vor Grenze, Aufzug oder Brücke). Der Riesenbaum hängt Normal · **Superhart** (Baum-Spitze, Level 111) · Spaß · Kombi · **Boss** an; der Kuppelbaum danach hat nur zwei Spitzen (Spitzenanteil 17–25 %). Nach jeder Spitze folgt eine Atempause, nie zwei Spitzen mit weniger als drei Leveln Abstand.
+
+| Typ | Soll-Versuche (Zone 1) | Zugfaktor |
+|---|---|---|
+| Lehren | 1,05–1,20 | 1,3 |
+| Üben | 1,10–1,35 | 1,2 |
+| Normal | wandert mit der Lage in der Zone durch 1,20–1,80 (Atempause 1,10–1,35) | 1,0 |
+| Spaß | 1,03–1,20 | 1,15 |
+| Kombi | 1,25–1,65 | 1,0 |
+| Hart | 1,80–2,90 | 0,9 |
+| Superhart | 2,90–5,00 | 0,85 |
+| Boss | 2,50–4,00, festes Brett mit allen Arten des Zonen-Sets | 0,85 |
+
+Globale Rampe auf beide Grenzen: `1 + (b − 1)·(1 + 0,045·(z − 1))` (Zone 15 × 1,63), Zugfaktor × `(1 − 0,2·(z − 1)/14)`. Deckel: höchstens 5 Versuche, bis Zone 10 höchstens 4,5; Zonenstart ≤ 1,2; Atempause ≤ 1,35. Neue Elementarten nur bis Zone 8, je Zone zwei (Position 1 und die Atempause): Schläfer und Fäulnis (Zone 5), Giftwolke und Schrottberg (6), Rohrpaar und Nebel (7), Gasstrom und Streuner (8); danach Kombinationen, feste Bretter und engere Budgets („complexity staircase"). Raster 4×4–5×5 mit Masken: Das kleine Brett ist kürzer und härter.
+
+**Level 1–50** bleiben unverändert (Inhalt, IDs, Bänder; die Kurve beschreibt sie nur). **Level 51–100** sind nach der Kurve neu typisiert und neu erzeugt (gleiche IDs und Dateizonen, neuer Inhalt — gespeicherter Fortschritt bleibt gültig), weil die alten Spitzen 63 und 88 sonst direkt hinter Zonenstarts lägen. **Level 101–184** sind neu. Story-Zonen (Material, ID-Präfix): 51–75 Luzz, 76–124 Wooding, 125–136 Luzz, 137–148 Wooding, 149–160 Syrup, 161–184 Luzz.
+
+**Kalibrierung als Gate.** Ablauf: `tune` (automatische Nachjustierung: Zugbudget, Zielgröße, Startmasse, Spawn-Rate; deterministisch, Seed bleibt) → `generate 51 184` → `calibrate --strict` (Anfänger-Versuche im Soll-Band, starker Bot ≥ 90 % außer Boss) → `report`. Stand 01.10.: alle 134 neuen Level im Band, starker Bot außerhalb der Bosse ≥ 91 %, Bosse 69–91 %; Anfänger-Median je Zone 1,45–1,63 Versuche, Spitzen 2,1–4,55. Zugbudgets 8–34 (Median 20), harte Level kurz (8–26).
+
+**Erkenntnisse aus der Kalibrierung** (für Nicole und den Editor):
+
+23. **Der Anfänger-Bot baut große Steine langsam.** Ein Stufenrennen auf 5×5 (Stufe 7 aus vielen Achtern und Sechzehnern) trennt am besten: Der starke Bot ist bei rund 20 Zügen sicher, der Anfänger gewinnt dort ein Drittel. Spitzen nutzen das; Spaß-Level brauchen deshalb mehr Startmasse als gedacht.
+24. **Feuer + Öl vernichtet Masse.** In Wooding explodiert jede Ölpfütze; Stufenziele mit Öl werden zur Lotterie. Öl dort nur mit Heil-, Schrott- oder Fäulniszielen.
+25. **Fäulnis eindämmen in Luzz** (nur per Sprengung) ist als Boss unlösbar, auch für den starken Bot; der Luzz-Boss trägt Fäulnis deshalb als Druck, das Ziel ist eine Stufe.
+26. **4×4 mit mehreren Blockern** macht auch den starken Bot unsicher (Glück statt Können); harte Level mit Streunern, Strömungen oder Käfigen laufen auf 4×5/5×5.
+27. **Near-Miss gegen Gate:** „starker Bot siegt mit ≤ 15 % Restzügen" und „starker Bot ≥ 90 %" widersprechen sich meist; Median der Restzüge bei den Spitzen 21 %. Beide Near-Miss-Checks sind deshalb Warnungen, das Gate ist das Band.
+
+**Zu verfeinern:** Die Plan-Schablone für Zone 1 (10 hart, 14 Boss auf dem Müllfelsen) lässt sich ohne Eingriff in die eingefrorenen Level nicht umsetzen; dort liegt die Spitze auf 13, der w04-Abschluss 38 ist ein normales Level. Die Spitzenliste für die Karte kommt aus `spikeLevels()`. Abbildung Bot → Mensch weiter offen (6.4, Nicoles Daten).
 
 ## 7. Evolution: das Genom-System
 

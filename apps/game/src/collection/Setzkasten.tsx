@@ -8,7 +8,7 @@ import { creatureLibrary } from '../flow/LevelBoard';
 import { BUNDLED_RULES } from '../lab/creature/content';
 import { holdNativeGlass } from '../native/liquidGlass';
 import { audio } from '../audio/engine';
-import { catalogFor, rarityOf, SPECIES_NAME, ZONE_LEVELS, ZONE_NAME } from './catalog';
+import { catalogFor, rarityOf, SPECIES_NAME, ZONE_NAME, zoneFirstLevel, zoneOfNode } from './catalog';
 import { caseTableColor, SetzkastenScene } from './SetzkastenScene';
 import { useSetzkasten, type CreatureCard } from './setzkastenStore';
 import './setzkasten.css';
@@ -78,11 +78,6 @@ export function destroySetzkasten(): void {
   scene = null;
 }
 
-/** Zone des aktuellen Knotens (dort schlägt der Setzkasten auf). */
-function zoneOfNode(node: number): ZoneId {
-  const no = node + 1;
-  return ZONE_KEYS.find((z) => no >= ZONE_LEVELS[z][0] && no <= ZONE_LEVELS[z][1]) ?? 'tjorizo';
-}
 
 /** Öffnet den Setzkasten über der Map (nur dort): eigene DOM-Schicht, 3D-Szene als Overlay auf dem einen Renderer. */
 export function openSetzkasten(): void {
@@ -215,7 +210,7 @@ function SetzkastenLayer({ scene: sc }: { scene: SetzkastenScene }) {
     const all = catalog.filter((e) => e.zone === z);
     return { have: all.filter((e) => collection[e.key]).length, all: all.length };
   };
-  const first = ZONE_LEVELS[zone][0];
+  const first = zoneFirstLevel(zone);
   const locked = reached < first - 1 && perZone(zone).have === 0;
 
   return (

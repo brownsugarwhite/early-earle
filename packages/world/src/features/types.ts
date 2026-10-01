@@ -124,6 +124,18 @@ export interface SnowFieldSpec {
   focus?: SnowFieldPatch | SnowFieldPatch[];
   /** Wiese statt Schnee (Welt 11): flache leuchtende Fläche mit Verlauf nach innen, nur Schlagschatten (Farben: `snow`). */
   meadow?: boolean;
+  /**
+   * Richtung der Bahnen (Grad, nur Ebene): 0 = quer zum Pfad (waagrecht im Bild), > 0 steigen sie nach rechts an (Bild 06:
+   * lange Schneebahnen von links unten nach rechts oben). Standard 0.
+   */
+  angle?: number;
+  /** Streckung der Bahnen längs ihrer Richtung (1 = Standard; Bild 06: 1.8 für lange, schmale Bahnen). */
+  stretch?: number;
+  /**
+   * Gewicht der Täler (Standard 0.55: Schnee sammelt sich unten, Grate tragen Wald). 0 = Schnee unabhängig von der Höhe
+   * (Welt 06: die Bahnen laufen über den ganzen Steilhang).
+   */
+  valley?: number;
 }
 
 export interface DriftSpec {
@@ -131,6 +143,8 @@ export interface DriftSpec {
   trees?: number;
   /** Größenfaktor (Standard 1). */
   size?: number;
+  /** Größenfaktor der Wehen an Scheunen (Standard 1; 0 = keine). Bild 01: die Wand steht gerade im tiefen Schnee. */
+  barns?: number;
 }
 
 // --- Laufzeit ------------------------------------------------------------------------------------------

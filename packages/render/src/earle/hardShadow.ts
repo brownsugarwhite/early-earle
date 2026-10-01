@@ -171,6 +171,11 @@ export interface ShadowDisplayLike {
   meshHeightAt?(x: number, z: number): number | null;
   /** Höhenband (min, max) der Chunks im Bild — ändert es sich merklich, fitten die Kaskaden neu (sonst gleiten sie). */
   readonly viewHeightBand?: readonly [number, number];
+  /**
+   * Höchstes Gelände der Chunks im Bild (Steilhänge und Hügelstaffeln über der Hügelamplitude, Welten 06/11/12): die
+   * Empfänger reichen bis dorthin, sonst fehlen die Schlagschatten oben am Hang.
+   */
+  readonly viewTerrainTop?: number;
 }
 
 /**
@@ -238,7 +243,8 @@ export function displayShadowReceivers(world: ShadowDisplayLike | (() => ShadowD
       return w ? -0.3 - w.mapping.curvature.value * w.mapping.radius.value * 0.6 : 0;
     },
     get maxHeight(): number {
-      return (get()?.field.hMax ?? 0) + 0.3;
+      const w = get();
+      return Math.max(w?.field.hMax ?? 0, w?.viewTerrainTop ?? 0) + 0.3;
     },
     coverTolerance,
     get coverAbove(): number {

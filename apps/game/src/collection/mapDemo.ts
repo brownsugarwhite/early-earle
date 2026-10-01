@@ -5,7 +5,7 @@ import { createMapCreatures, type MapCreaturesApi, type MapGround } from '../flo
 import { useFlowStore } from '../flow/flowStore';
 import { useProgress, collectionKey, type CollectionEntry } from '../state/progress';
 import { BUNDLED_RULES } from '../lab/creature/content';
-import { catalogFor, levelIdOf, seedFor } from './catalog';
+import { catalogFor, levelIdOf, seedFor, zoneOfNode } from './catalog';
 
 /**
  * Prüfpfad vor der Flow-Integration (B4): `/play?mapCreatures=demo` setzt die Map-Wesen auf die echte Karte der
@@ -116,7 +116,7 @@ function attach(scene: FlowDebug, ee: Record<string, unknown>): () => void {
 /** Ein Dutzend Wesen der Zone rund um den Knoten: verschiedene Stufen und Arten, teils mehrere je Knoten. */
 function demoEntries(current: number, nodeCount: number): CollectionEntry[] {
   const catalog = catalogFor(BUNDLED_RULES);
-  const zoneOf = (node: number) => (node < 25 ? 'tjorizo' : node < 50 ? 'syrup' : node < 75 ? 'luzz' : 'wooding');
+  const zoneOf = zoneOfNode;
   const out: CollectionEntry[] = [];
   const picks: Array<[number, number, string]> = [
     [0, 1, 'blob'],
@@ -144,7 +144,7 @@ function demoEntries(current: number, nodeCount: number): CollectionEntry[] {
 /** Ein neues Wesen für Aufbruch/Einfallen am Knoten (nicht in der Sammlung: nur Demo). */
 function fresh(node: number, k: number): CollectionEntry {
   const catalog = catalogFor(BUNDLED_RULES);
-  const zone = node < 25 ? 'tjorizo' : node < 50 ? 'syrup' : node < 75 ? 'luzz' : 'wooding';
+  const zone = zoneOfNode(node);
   const list = catalog.filter((c) => c.zone === zone && c.tier >= 5);
   const e = list[(k * 7 + 3) % list.length]!;
   return { key: `${collectionKey(e.zone, e.tier, e.species)}#demo${k}`, zone: e.zone, tier: e.tier, species: e.species, bodyType: e.bodyType, seed: seedFor(BUNDLED_RULES, e), levelId: levelIdOf(node), node, at: Date.now(), count: 1, seen: false, placedOnMap: false };

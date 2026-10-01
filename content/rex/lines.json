@@ -47,6 +47,7 @@
     "release": [{ "lines": ["Geh. Wir kommen nach.", "Bis draußen!"] }],
     "idle": [{ "afterSeconds": 20, "lines": ["Ich bin noch da.", "Die Gase. Die Gase…"] }],
     "locked": [{ "lines": ["Noch zu. Erst der davor."] }],
+    "gate": [{ "lines": ["Hier wächst die nächste Welt. Bald."] }],
     "collection.new": [{ "lines": ["Neu! Ab in den Setzkasten."] }],
     "classic.unlock": [{ "lines": ["Neues Raster frei!"] }]
   },

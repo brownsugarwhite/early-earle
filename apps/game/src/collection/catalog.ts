@@ -1,8 +1,32 @@
 import { creatureCatalog, seedForLook, ZONE_KEYS, type CatalogEntry, type GenomeRules, type Species, type ZoneId } from '@ee/genome';
+import { LEVELS } from '../content/levels';
 import type { CollectInput } from '../state/progress';
 
-/** Level je Zone (content/zones: levelRange) — Knoten = globale Levelnummer − 1. */
-export const ZONE_LEVELS: Readonly<Record<ZoneId, readonly [number, number]>> = { tjorizo: [1, 25], syrup: [26, 50], luzz: [51, 75], wooding: [76, 100] };
+const levelsByZone = new Map<ZoneId, number[]>();
+
+/**
+ * Levelnummern (1-basiert, aufsteigend) einer Story-Zone aus den Leveldateien (`LevelDef.zone`, Route 15 + 1: die
+ * Zonen wechseln sich entlang der Route ab) — Knoten = Levelnummer − 1. Ohne Level der Zone: leer.
+ */
+export function zoneLevels(zone: ZoneId): readonly number[] {
+  let hit = levelsByZone.get(zone);
+  if (!hit) {
+    hit = LEVELS.flatMap((l, i) => (l.zone === zone ? [i + 1] : []));
+    levelsByZone.set(zone, hit);
+  }
+  return hit;
+}
+
+/** Erster Level (1-basiert) einer Story-Zone (Setzkasten: gesperrt, bis er erreicht ist); ohne Level ∞. */
+export function zoneFirstLevel(zone: ZoneId): number {
+  return zoneLevels(zone)[0] ?? Number.POSITIVE_INFINITY;
+}
+
+/** Story-Zone eines Knotens: aus seiner Leveldatei; Knoten ohne Datei (noch nicht erzeugt) gehören zu Wooding. */
+export function zoneOfNode(node: number): ZoneId {
+  const zone = LEVELS[node]?.zone;
+  return zone && (ZONE_KEYS as readonly string[]).includes(zone) ? (zone as ZoneId) : 'wooding';
+}
 
 export const ZONE_NAME: Readonly<Record<ZoneId, string>> = { tjorizo: 'Tjorizo', syrup: 'Syrup', luzz: 'Luzz', wooding: 'Wooding' };
 
@@ -16,11 +40,9 @@ export function rarityOf(p: number): string {
   return 'sehr selten';
 }
 
-/** Level-ID eines Knotens (content/levels/NNN.json → `${zone}-NNN`). */
+/** Level-ID eines Knotens (content/levels/NNN.json → `${zone}-NNN`); ohne Leveldatei nach dem alten Muster. */
 export function levelIdOf(node: number): string {
-  const no = node + 1;
-  const zone = ZONE_KEYS.find((z) => no >= ZONE_LEVELS[z][0] && no <= ZONE_LEVELS[z][1]) ?? 'wooding';
-  return `${zone}-${String(no).padStart(3, '0')}`;
+  return LEVELS[node]?.id ?? `${zoneOfNode(node)}-${String(node + 1).padStart(3, '0')}`;
 }
 
 let cache: { rules: GenomeRules; entries: CatalogEntry[]; byKey: Map<string, CatalogEntry> } | null = null;
@@ -62,8 +84,8 @@ export function catalogInputs(rules: GenomeRules): CollectInput[] {
   return catalogFor(rules).map((e) => {
     const k = perZone.get(e.zone) ?? 0;
     perZone.set(e.zone, k + 1);
-    const [first, last] = ZONE_LEVELS[e.zone];
-    const node = first - 1 + ((k * 7) % (last - first + 1));
+    const levels = zoneLevels(e.zone);
+    const node = levels.length > 0 ? levels[(k * 7) % levels.length]! - 1 : 0;
     return { zone: e.zone, tier: e.tier, species: e.species, bodyType: e.bodyType, seed: seedFor(rules, e), levelId: levelIdOf(node), node };
   });
 }
