@@ -1,7 +1,10 @@
 import { SPECIAL_OFF } from '@ee/core';
-import { BAND_PRESETS, GOAL_LABEL, GOAL_TYPES, STYLE_LABEL, ZONES, ZONE_LABEL, defaultGoal, type GoalDef, type GoalType, type LevelDraft } from '../draft';
+import { BAND_PRESETS, GOAL_LABEL, GOAL_TYPES, STYLE_LABEL, ZONES, ZONE_LABEL, defaultGoal, levelNumber, type GoalDef, type GoalType, type LevelDraft } from '../draft';
 import { useEditorStore } from '../editorStore';
 import { Row, Seg, Section, Stepper, TextField } from '../ui';
+import { CURVE_MOVE_RANGE, attemptsBandOf } from '../validation';
+
+const moveRange = (t: keyof typeof CURVE_MOVE_RANGE): string => `${CURVE_MOVE_RANGE[t][0]}–${CURVE_MOVE_RANGE[t][1]}`;
 
 const STYLES = ['explosive', 'precise', 'journey', 'puzzle', 'diligent'] as const;
 
@@ -39,7 +42,10 @@ export function GoalsTab() {
   if (!draft) return null;
   const patch = (p: Partial<LevelDraft>, key?: string) => update((d) => ({ ...d, ...p }), key);
   const [lo, hi] = draft.difficulty.targetAttempts;
-  const preset = BAND_PRESETS.find((b) => Math.abs(b.band[0] - lo) < 1e-9 && Math.abs(b.band[1] - hi) < 1e-9)?.label ?? 'eigen';
+  // Das Band der Kurve (`curveSpec`) für dieses Level steht als erste Wahl da (Level 51–184 liegen zwischen den Presets)
+  const curve = attemptsBandOf(levelNumber(draft.id));
+  const presets = curve ? [{ label: 'Kurve', band: curve }, ...BAND_PRESETS] : BAND_PRESETS;
+  const preset = presets.find((b) => Math.abs(b.band[0] - lo) < 1e-9 && Math.abs(b.band[1] - hi) < 1e-9)?.label ?? 'eigen';
 
   return (
     <>
@@ -70,7 +76,9 @@ export function GoalsTab() {
           <Stepper label="Züge" value={draft.moves} min={1} max={99} onChange={(moves) => patch({ moves }, 'moves')} format={(m) => (m >= 99 ? 'frei' : String(m))} testId="moves" compact />
           <Stepper label="Kappe" value={draft.cap} min={3} max={12} onChange={(cap) => patch({ cap }, 'cap')} format={(c) => `${c} (${2 ** c})`} testId="cap" compact />
         </Row>
-        <p className="ed-hint">Bänder (GDD 6.1): 30–38 Züge in Level 1–20, 25–30 in 21–60, 23–27 in 61–100. Kappe 12 = kein Aufbruch.</p>
+        <p className="ed-hint">
+          Bänder (GDD 6.1, 6.7): 30–38 Züge in Level 1–20, 25–30 in 21–50; ab Level 51 nach Kurventyp — Normal {moveRange('normal')}, Hart {moveRange('hard')}, Boss {moveRange('boss')}. Kappe 12 = kein Aufbruch.
+        </p>
       </Section>
 
       <Section title="Spezialteile">
@@ -86,14 +94,14 @@ export function GoalsTab() {
           label={`Band (${preset})`}
           value={preset}
           onChange={(label) => {
-            const p = BAND_PRESETS.find((b) => b.label === label);
+            const p = presets.find((b) => b.label === label);
             if (p) patch({ difficulty: { ...draft.difficulty, targetAttempts: [p.band[0], p.band[1]] } });
           }}
-          options={BAND_PRESETS.map((b) => ({ value: b.label, label: `${b.label} ${b.band[0]}–${b.band[1]}` }))}
+          options={presets.map((b) => ({ value: b.label, label: `${b.label} ${b.band[0]}–${b.band[1]}` }))}
         />
         <Row>
-          <Stepper label="Versuche min" value={lo} min={1} max={5} step={0.1} onChange={(v) => patch({ difficulty: { ...draft.difficulty, targetAttempts: [v, hi] } }, 'band')} format={(v) => v.toFixed(1)} compact />
-          <Stepper label="Versuche max" value={hi} min={1} max={5} step={0.1} onChange={(v) => patch({ difficulty: { ...draft.difficulty, targetAttempts: [lo, v] } }, 'band')} format={(v) => v.toFixed(1)} compact />
+          <Stepper label="Versuche min" value={lo} min={1} max={5} step={0.1} onChange={(v) => patch({ difficulty: { ...draft.difficulty, targetAttempts: [v, hi] } }, 'band')} format={(v) => v.toFixed(2)} compact />
+          <Stepper label="Versuche max" value={hi} min={1} max={5} step={0.1} onChange={(v) => patch({ difficulty: { ...draft.difficulty, targetAttempts: [lo, v] } }, 'band')} format={(v) => v.toFixed(2)} compact />
         </Row>
         <Seg
           label="Stil"

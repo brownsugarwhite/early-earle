@@ -185,9 +185,9 @@ Alle erspielbar, nie erzwungen: **Rückspulen** (wichtigster Booster für Casual
 
 Blocker · Spawn-Rate (Gasquellen, Spezial-/Zielspawns) · Designstil (explosiv, präzise, Reise, knobelig, fleißig) · Layout (offen/eng, Lücken).
 
-## 6. 100-Level-Progression
+## 6. Level-Progression (184 Level)
 
-Skelett; die Einzel-Level werden generiert, Bot-kalibriert und im Editor nachjustiert.
+Skelett; die Einzel-Level werden generiert, Bot-kalibriert und im Editor nachjustiert. Die Planung begann mit 100 Leveln (6.1–6.6); seit dem Nachtrag 6.7 gibt es **184 Level** auf der Route 15 + 1, und die verbindliche Schwierigkeitskurve für alle 184 steht in 6.7 (`curveSpec`). Das Skelett in 6.2 gilt unverändert für Level 1–50; für 51–184 gehen Zonen, Typen, Bänder und Züge aus 6.7 vor.
 
 ### 6.1 Kalibrierregeln
 
@@ -195,14 +195,16 @@ Aus Royal Match, King, Playrix und Room 8:
 
 - Gemessen werden **Versuche pro Level**, nicht die Gewinnrate.
 - Ziel: Level 1–20 **≤ 1,1 Versuche** (≥ 90–95 % im ersten Anlauf); normal **1,2–1,4**; **H** (hart) **1,6–2,0**; **SH** (sehr hart) **≤ 2,5** und *kurz* („wenn ein Level wirklich hart ist, muss es auch wirklich kurz sein").
-- Züge: **30–38** (Level 1–20), **25–30** (21–60), **23–27** (61–100).
+- Züge: **30–38** (Level 1–20), **25–30** (21–50); ab Level 51 stellt die Kalibrierung das Budget je Kurventyp ein (8–34 Züge, harte Level kurz; 6.7).
 - Jedes neue Element bekommt **2–3 Solo-Einführungslevel** („lernen → prüfen → feiern"); das Einführungslevel ist leichter und enthält nur das neue Element.
 - **Nie zwei harte Level hintereinander.** Sägezahn: 5 Level steigend, das 6. fällt.
 - **Jedes 10. Level ist ein Feier-Level** („Ehrenrunde": spektakuläre Verschmelzung, Kamera).
 - Harte Level werden **markiert**.
 - Tutorial ohne Text: Der Spieler *tut* es (Plants-vs-Zombies-Regel: ≤ 8 Wörter auf dem Bildschirm). Jedes Level als Kishōtenketsu: einführen, entwickeln, wenden, abschließen.
 
-### 6.2 Skelett
+### 6.2 Skelett (ursprüngliche Planung, Level 1–100)
+
+Level 1–50 sind eingefroren und folgen dem Skelett; die Zeilen für Luzz 51–75 und Wooding 76–100 sind überholt — Level 51–184 stehen in 6.7.
 
 | Zone / Level | Neue Elemente (Level) | Zieltypen | Marker |
 |---|---|---|---|
@@ -372,8 +374,9 @@ Aus der Analyse von Candy Crush, Best Fiends und Royal Match:
 |---|---|
 | Neue Mechanik | Mikro-Satz, höchstens **8 Wörter**; REX zeigt statt zu erklären |
 | Alle 5–10 Level | kurze Szene |
-| Zonenanfänge (1, 26, 51, 76) und Zonenmitten (13, 38, 63, 88) | Kapitel-Szene |
-| Zonenfinale (25, 50, 75, 100) | großer emotionaler Beat: Riss schließt sich, Tiere kehren zurück |
+| Zonenanfänge (1, 15, 27, 39, 51, 63, 75, 87, 99, 115, 125, 137, 149, 161, 173) und Zonenmitten | Kapitel-Szene |
+| Zonenenden (14, 26, 38, 50, 62, 74, 86, 98, 114, 124, 136, 148, 160, 172, 184) | großer emotionaler Beat: Riss schließt sich, Tiere kehren zurück (`finale.zone`; REX feiert groß) |
+| Bosse (jeweils das Zonenende ab 62, Abschnitt 6.7) | eigene Boss-Zeile (`hard.boss`); Level 14 behält die Spore-Einführung |
 | Combos, Fehlversuche | Kommentar, Jubel, komische Verzweiflung |
 
 Alle Sprüche liegen in `content/rex/lines.json` (pro Anlass), zweisprachig ab Phase 3 (DE/EN). Szenen stehen dort als `scenes.<id>`: Sätze, die REX nacheinander sagt, jeder höchstens 8 Wörter (zuerst `afterLevel1`, Abschnitt 6.6).

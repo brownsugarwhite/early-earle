@@ -3,18 +3,21 @@ import { LEVELS } from '../../../content/levels';
 import { ZONES, ZONE_LABEL, levelNumber, type ZoneId } from '../draft';
 import { useEditorStore } from '../editorStore';
 import { useSolverStore } from '../solverStore';
-import { buildChain, de, VERDICT_SHORT, ZONE_COLOR, type ChainRow } from '../chain';
+import { buildChain, de, VERDICT_SHORT, ZONE_COLOR, ZONE_TICKS, type ChainRow } from '../chain';
 import { C, KindIcon, UiIcon } from '../icons';
+import { CURVE_TYPE_LABEL } from '../validation';
 
 /**
- * Kette: alle 100 Level als Schwierigkeitskurve (Band je Level schattiert, gemessene Versuche als Linie,
- * Ausreißer markiert — der Sägezahn wird sichtbar) und als Liste zum Öffnen. Entwürfe stehen oben.
+ * Kette: alle Level als Schwierigkeitskurve (Band je Level schattiert, gestrichelt die Soll-Kurve aus `curveSpec`,
+ * gemessene Versuche als Linie, Ausreißer markiert — der Sägezahn wird sichtbar) und als Liste zum Öffnen. Die Achse
+ * trägt die Zonengrenzen der Kurve (1, 15, 27 … 184). Entwürfe stehen oben.
  */
 
 type Filter = 'alle' | 'ausreisser' | ZoneId;
 
 const Y_MIN = 1;
-const Y_MAX = 2.6;
+const Y_MAX = 5;
+const Y_TICKS = [1, 2, 3, 4, 5];
 
 function measuredText(r: ChainRow): string {
   if (r.measured === undefined) return '—';
@@ -35,7 +38,7 @@ function CurveChart({ rows, current, selected, onSelect }: { rows: ChainRow[]; c
     return () => ro.disconnect();
   }, []);
 
-  const H = 158;
+  const H = 176;
   const left = 30;
   const right = 6;
   const top = 10;
@@ -62,11 +65,30 @@ function CurveChart({ rows, current, selected, onSelect }: { rows: ChainRow[]; c
   });
   if (seg) segments.push(seg);
 
-  const zoneSpans = ZONES.map((z) => {
-    const idx = rows.map((r, i) => (r.zone === z ? i : -1)).filter((i) => i >= 0);
-    if (!idx.length) return null;
-    return { z, a: idx[0]!, b: idx[idx.length - 1]! };
-  }).filter((s): s is { z: ZoneId; a: number; b: number } => s !== null);
+  // Zusammenhängende Läufe gleicher Spielzone (Luzz und Wooding kehren ab Level 125 wieder)
+  const zoneSpans: { z: ZoneId; a: number; b: number }[] = [];
+  rows.forEach((r, i) => {
+    const last = zoneSpans[zoneSpans.length - 1];
+    if (last && last.z === r.zone) last.b = i;
+    else zoneSpans.push({ z: r.zone, a: i, b: i });
+  });
+
+  // Soll-Kurve: Mitte des Kurvenbands je Level (Lücke hinter Level 184)
+  const curvePath = rows
+    .map((r, i) => (r.curve ? `${i > 0 && rows[i - 1]!.curve ? 'L' : 'M'}${x(i).toFixed(1)} ${y((r.curve[0] + r.curve[1]) / 2).toFixed(1)}` : ''))
+    .join('');
+
+  // Zonengrenzen der Kurve als Achsenticks; Beschriftung nur, wo sie Platz hat (Handybreite: jede zweite)
+  const ticks: { no: number; i: number; label: boolean; end: boolean }[] = [];
+  let lastLabelX = -Infinity;
+  ZONE_TICKS.forEach((no, k) => {
+    const i = rows.findIndex((r) => r.no === no);
+    if (i < 0) return;
+    const end = k === ZONE_TICKS.length - 1;
+    const label = x(i) - lastLabelX >= 26;
+    if (label) lastLabelX = x(i);
+    ticks.push({ no, i, label, end });
+  });
 
   const indexAt = (clientX: number): number => {
     const r = wrapRef.current!.getBoundingClientRect();
@@ -85,7 +107,7 @@ function CurveChart({ rows, current, selected, onSelect }: { rows: ChainRow[]; c
               {shownRow.no} · {shownRow.name}
             </b>
             <span>
-              Band {de(shownRow.band[0], 1)}–{de(shownRow.band[1], 1)} · gemessen {measuredText(shownRow)}
+              {shownRow.type ? `${CURVE_TYPE_LABEL[shownRow.type]} · ` : ''}Band {de(shownRow.band[0])}–{de(shownRow.band[1])} · gemessen {measuredText(shownRow)}
               {shownRow.verdict ? ` · ${VERDICT_SHORT[shownRow.verdict]}` : ''}
             </span>
           </>
@@ -120,7 +142,7 @@ function CurveChart({ rows, current, selected, onSelect }: { rows: ChainRow[]; c
           }}
           onPointerCancel={() => setScrub(null)}
         >
-          {[1, 1.5, 2, 2.5].map((v) => (
+          {Y_TICKS.map((v) => (
             <g key={v}>
               <rect x={left} y={y(v)} width={plotW} height={1} fill={C.khakiDeep} opacity={0.35} />
               <text x={left - 5} y={y(v)} textAnchor="end" dominantBaseline="central" fontSize={10} fill={C.khakiDeep} fontWeight={700}>
@@ -131,6 +153,12 @@ function CurveChart({ rows, current, selected, onSelect }: { rows: ChainRow[]; c
           {rows.map((r, i) => (
             <rect key={`b${i}`} x={x(i) - dx / 2 + 0.5} y={y(r.band[1])} width={Math.max(1, dx - 1)} height={Math.max(2, y(r.band[0]) - y(r.band[1]))} fill={ZONE_COLOR[r.zone]} opacity={0.4} />
           ))}
+          {ticks
+            .filter((t) => t.i > 0 && !t.end)
+            .map((t) => (
+              <rect key={`g${t.no}`} x={x(t.i) - dx / 2} y={top} width={1} height={plotH} fill={C.khakiDeep} opacity={0.35} />
+            ))}
+          {curvePath ? <path d={curvePath} fill="none" stroke={C.violet} strokeWidth={1.5} strokeDasharray="3 2" data-testid="chain-curve" /> : null}
           {currentIdx >= 0 ? <rect x={x(currentIdx) - 1.5} y={top} width={3} height={plotH} fill={C.neon} /> : null}
           {segments.map((d, k) => (
             <path key={k} d={d} fill="none" stroke={C.ink} strokeWidth={2} strokeLinejoin="round" />
@@ -144,28 +172,37 @@ function CurveChart({ rows, current, selected, onSelect }: { rows: ChainRow[]; c
           )}
           {shown !== null ? <rect x={x(shown) - 0.5} y={top} width={1} height={plotH} fill={C.ink} /> : null}
           {shownRow && shownRow.measured !== undefined ? <circle cx={x(shown!)} cy={y(shownRow.measured === null ? Y_MAX : shownRow.measured)} r={5} fill={C.ink} /> : null}
-          {zoneSpans.map(({ z, a, b }) => (
-            <g key={z}>
-              <rect x={x(a) - dx / 2} y={H - stripH} width={x(b) - x(a) + dx - 1} height={stripH} fill={ZONE_COLOR[z]} />
-              <text x={x(a) - dx / 2 + 4} y={H - stripH / 2} dominantBaseline="central" fontSize={11} fontWeight={900} fill={C.ink}>
-                {ZONE_LABEL[z]}
-              </text>
-            </g>
-          ))}
-          {[1, 25, 50, 75, 100].map((no) => {
-            const i = rows.findIndex((r) => r.no === no);
-            if (i < 0) return null;
+          {zoneSpans.map(({ z, a, b }) => {
+            const w = x(b) - x(a) + dx - 1;
+            // Beschriftung immer: der Name, wo er passt, sonst der Anfangsbuchstabe (Farbe nie allein)
+            const name = ZONE_LABEL[z];
+            const label = w >= 8 + 6.4 * name.length ? name : w >= 14 ? name.charAt(0) : '';
             return (
-              <text key={no} x={x(i)} y={H - stripH - 6} textAnchor="middle" fontSize={10} fill={C.khakiDeep} fontWeight={700}>
-                {no}
-              </text>
+              <g key={`${z}${a}`}>
+                <rect x={x(a) - dx / 2} y={H - stripH} width={w} height={stripH} fill={ZONE_COLOR[z]} />
+                {label ? (
+                  <text x={x(a) - dx / 2 + 4} y={H - stripH / 2} dominantBaseline="central" fontSize={11} fontWeight={900} fill={C.ink}>
+                    {label}
+                  </text>
+                ) : null}
+              </g>
             );
           })}
+          {ticks
+            .filter((t) => t.label)
+            .map((t) => (
+              <text key={t.no} x={x(t.i)} y={H - stripH - 6} textAnchor={t.end ? 'end' : t.i === 0 ? 'start' : 'middle'} fontSize={10} fill={C.khakiDeep} fontWeight={700}>
+                {t.no}
+              </text>
+            ))}
         </svg>
       </div>
       <div className="ch-legend" aria-hidden="true">
         <span>
           <i className="ch-sw-band" /> Ziel-Band
+        </span>
+        <span>
+          <i className="ch-sw-line" style={{ background: `repeating-linear-gradient(90deg, ${C.violet} 0 3px, transparent 3px 5px)` }} /> Soll-Kurve
         </span>
         <span>
           <i className="ch-sw-line" /> gemessen

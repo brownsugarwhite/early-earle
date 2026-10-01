@@ -70,7 +70,7 @@ test.describe('iPhone 393×852', () => {
     // 3 editors + 9 labs, German names, all within the phone width.
     await expect(page.locator('.ws-tile')).toHaveCount(12);
     await expect(page.getByTestId('ws-map-editor')).toContainText('Map-Editor');
-    await expect(page.getByTestId('ws-earle-lab')).toContainText('Zehn Welten auf dem Planeten');
+    await expect(page.getByTestId('ws-earle-lab')).toContainText('15 Welten + eine angedeutete');
     expect(await page.evaluate(() => document.querySelector('.ws-scroll')!.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
     // Dev server = same origin: saves go straight into the repo on the Mac.
     await expect(page.getByTestId('werkstatt-connection-title')).toHaveText('Speichert direkt auf dem Mac', { timeout: 10_000 });

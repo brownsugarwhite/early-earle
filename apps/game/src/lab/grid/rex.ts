@@ -1,3 +1,4 @@
+import { CURVE_LAST_LEVEL, ZONE_RANGES, curveSpec } from '@ee/core';
 import rexJson from '@content/rex/lines.json';
 
 interface RexEntry {
@@ -35,7 +36,7 @@ export function rexScene(id: string): string[] {
   return [...(scenes[id] ?? [])];
 }
 
-/** Level → Mechanik-Einführung (Progressions-Skelett GDD 6.2; Level 1 zeigt nur die Richtung). */
+/** Level → Mechanik-Einführung (Level 1–24, eingefroren; GDD 6.2; Level 1 zeigt nur die Richtung). */
 const INTRO_BY_LEVEL: Readonly<Record<number, string>> = {
   1: 'mechanic.swipe',
   2: 'mechanic.moves',
@@ -51,17 +52,36 @@ const INTRO_BY_LEVEL: Readonly<Record<number, string>> = {
   20: 'celebrate',
   21: 'mechanic.withered',
   24: 'mechanic.line',
-  25: 'finale.zone.tjorizo',
 };
 
-/** Auslöser der Einführung eines Levels (oder null). */
+/** Letztes Level jeder Kartenzone der Kurve (14, 26, 38, 50, 62 … 184): dort gibt es den großen Beat. */
+export const ZONE_END_LEVELS: readonly number[] = ZONE_RANGES.map((r) => r[1]);
+
+/** Ist das Level das Ende einer Kartenzone (großer Beat: Zonenfinale)? */
+export function isZoneEnd(levelNo: number): boolean {
+  return ZONE_END_LEVELS.includes(levelNo);
+}
+
+/** Ist das Level ein Boss der Kurve (ab Level 62 jeweils das Zonenende)? */
+export function isBossLevel(levelNo: number): boolean {
+  return levelNo >= 1 && levelNo <= CURVE_LAST_LEVEL && curveSpec(levelNo).type === 'boss';
+}
+
+/**
+ * Auslöser der Einführung eines Levels (oder null). Mechanik-Einführungen gehen vor (Level 14 bleibt die Spore); sonst
+ * bekommen Bosse `hard.boss` und die übrigen Zonenenden (26, 38, 50) `finale.zone`.
+ */
 export function rexIntroTrigger(levelNo: number): string | null {
-  return INTRO_BY_LEVEL[levelNo] ?? null;
+  const mechanic = INTRO_BY_LEVEL[levelNo];
+  if (mechanic) return mechanic;
+  if (isBossLevel(levelNo)) return 'hard.boss';
+  if (isZoneEnd(levelNo)) return 'finale.zone';
+  return null;
 }
 
 /** Zeile, die beim Start eines Levels gezeigt wird (Mechanik-Einführungen aus dem Progressions-Skelett). */
 export function rexIntroFor(levelNo: number): string | null {
-  const t = INTRO_BY_LEVEL[levelNo];
+  const t = rexIntroTrigger(levelNo);
   return t ? rexLine(t, { level: levelNo, seed: levelNo }) : null;
 }
 

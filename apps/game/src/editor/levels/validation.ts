@@ -3,7 +3,18 @@
  * weiche Hinweise aus GDD 5/6 (Zugbänder, Zielstufen, Spawn-Erreichbarkeit). Alle Texte deutsch.
  */
 
-import { LevelSchema, SPECIAL_OFF, countElementKinds, type LevelDef } from '@ee/core';
+import {
+  CURVE_LAST_LEVEL,
+  CURVE_LIMITS,
+  LEGACY_LAST_LEVEL,
+  LevelSchema,
+  SPECIAL_OFF,
+  countElementKinds,
+  curveSpec,
+  defaultMoves,
+  type CurveType,
+  type LevelDef,
+} from '@ee/core';
 import { levelNumber, moundCells, openCellCount, sourceAdjacentCells, type Cell, type LevelDraft } from './draft';
 
 export interface Issue {
@@ -211,16 +222,74 @@ function translate(issue: ZodIssueLike): string {
   }
 }
 
+/** Kurventypen auf Deutsch (Meldungen, Kettenansicht). */
+export const CURVE_TYPE_LABEL: Record<CurveType, string> = {
+  tutorial: 'Lehren',
+  intro: 'Einführung',
+  practice: 'Üben',
+  normal: 'Normal',
+  fun: 'Spaß',
+  combine: 'Kombinieren',
+  hard: 'Hart',
+  superhard: 'Superhart',
+  boss: 'Boss',
+};
+
 /**
- * Zugbänder aus GDD 6.1 nach Levelnummer. Gelten ab 4×4; kleinere Tutorial-Bretter (`cells` < 16) bekommen so viele
- * Züge, wie ihre Mechanik braucht.
+ * Zugspanne je Kurventyp ab Level 51. Die Kalibrierung (`tuning.ts`) wählt das Budget eines Levels so, dass der
+ * Anfänger-Bot sein Versuche-Band trifft — dabei weicht es stark vom Grundbudget ab (0,3–1,7 ×). Die Spannen spiegeln
+ * `MOVE_RANGE` aus `tools/levels/tune.ts`; Üben hat Spielraum bis 34 (Level 64 steht mit 33 in `tuning.ts`).
  */
-export function movesBand(levelNo: number, cells = 16): [number, number] | null {
-  if (levelNo <= 0 || cells < 16) return null;
-  if (levelNo <= 20) return [30, 38];
-  if (levelNo <= 60) return [25, 30];
-  return [23, 27];
+export const CURVE_MOVE_RANGE: Record<CurveType, [number, number]> = {
+  tutorial: [6, 30],
+  intro: [10, 30],
+  practice: [10, 34],
+  normal: [10, 32],
+  combine: [10, 32],
+  fun: [10, 32],
+  hard: [8, 26],
+  superhard: [8, 24],
+  boss: [12, 34],
+};
+
+/** Zugspanne für Entwürfe hinter der Kurve (Level > 184, Typ unbekannt): die weiteste Spanne aller Typen. */
+const BEYOND_MOVE_RANGE: [number, number] = [8, 34];
+
+export interface MovesBand {
+  band: [number, number];
+  /** Richtwert der Kurve: Grundzüge des Bretts (12 + 0,6 · Zellen) × Zugfaktor des Typs und der Zone (ab Level 51). */
+  suggested?: number;
 }
+
+/**
+ * Zugband eines Levels. Level 1–50 (eingefroren): die Bänder aus GDD 6.1 (30–38 bis 20, sonst 25–30). Level 51–184: die
+ * Zugspanne seines Kurventyps (`curveSpec`) samt Richtwert `moveBudgetFactor` × Grundzüge. Dahinter: weiteste Spanne.
+ * Gilt ab 4×4; kleinere Tutorial-Bretter (`cells` < 16) bekommen so viele Züge, wie ihre Mechanik braucht.
+ */
+export function movesBandOf(levelNo: number, cells = 16): MovesBand | null {
+  if (levelNo <= 0 || cells < 16) return null;
+  if (levelNo <= LEGACY_LAST_LEVEL) {
+    return { band: levelNo <= 20 ? [30, 38] : [25, 30] };
+  }
+  if (levelNo > CURVE_LAST_LEVEL) return { band: BEYOND_MOVE_RANGE };
+  const spec = curveSpec(levelNo);
+  return { band: CURVE_MOVE_RANGE[spec.type], suggested: defaultMoves(levelNo, spec.type, cells) };
+}
+
+/** Wie `movesBandOf`, nur das Band. */
+export function movesBand(levelNo: number, cells = 16): [number, number] | null {
+  return movesBandOf(levelNo, cells)?.band ?? null;
+}
+
+/** Soll-Band der Versuche aus der Kurve (Level 1–184), sonst `null`. */
+export function attemptsBandOf(levelNo: number): [number, number] | null {
+  return levelNo >= 1 && levelNo <= CURVE_LAST_LEVEL ? curveSpec(levelNo).targetAttempts : null;
+}
+
+/** Toleranz beim Vergleich von Bändern (Dateiwerte sind auf 0,01 gerundet). */
+const BAND_EPS = 0.005;
+
+const fmt = (x: number): string => String(Math.round(x * 100) / 100).replace('.', ',');
 
 function softChecks(d: LevelDraft): Issue[] {
   const out: Issue[] = [];
@@ -230,15 +299,24 @@ function softChecks(d: LevelDraft): Issue[] {
   if (!d.name || !d.name.trim()) warn('Name', 'Kein Name vergeben', 'ziele');
   if (!d.id.startsWith(d.zone)) warn('ID', `ID beginnt nicht mit der Zone „${d.zone}“`, 'ziele');
 
-  const band = movesBand(no, d.grid.w * d.grid.h);
-  if (band && d.moves < 99 && (d.moves < band[0] || d.moves > band[1])) {
-    warn('Züge', `${d.moves} Züge liegen außerhalb des Bands ${band[0]}–${band[1]} für Level ${no}`, 'ziele');
+  const mb = movesBandOf(no, d.grid.w * d.grid.h);
+  if (mb && d.moves < 99 && (d.moves < mb.band[0] || d.moves > mb.band[1])) {
+    const hint = mb.suggested !== undefined ? ` (Kurven-Richtwert ${mb.suggested})` : '';
+    warn('Züge', `${d.moves} Züge liegen außerhalb des Bands ${mb.band[0]}–${mb.band[1]} für Level ${no}${hint}`, 'ziele');
   }
   if (d.moves >= 99) warn('Züge', '99 = ohne Zuglimit (die UI blendet den Zähler aus)', 'ziele');
 
   const [lo, hi] = d.difficulty.targetAttempts;
   if (lo > hi) warn('Versuche-Band', 'Untere Grenze liegt über der oberen', 'ziele');
-  if (hi > 2.5) warn('Versuche-Band', 'Über 2,5 Versuche: härter als „sehr hart“ (GDD 6.1)', 'ziele');
+  const curve = attemptsBandOf(no);
+  if (curve) {
+    // Band der Kurve (`curveSpec`): Level 1–50 mit ihrem alten Band, ab 51 mit Rampe, Atempause und Deckel
+    if (lo < curve[0] - BAND_EPS || hi > curve[1] + BAND_EPS) {
+      warn('Versuche-Band', `${fmt(lo)}–${fmt(hi)} liegt außerhalb des Kurvenbands ${fmt(curve[0])}–${fmt(curve[1])} für Level ${no} (${CURVE_TYPE_LABEL[curveSpec(no).type]})`, 'ziele');
+    }
+  } else if (hi > CURVE_LIMITS.noviceWarn) {
+    warn('Versuche-Band', `Über ${CURVE_LIMITS.noviceWarn} Versuche: härter als der Deckel der Kurve (Zone 15)`, 'ziele');
+  }
 
   for (const [i, g] of d.goals.entries()) {
     if (g.type === 'reachTier' && g.tier > 8) warn(`Ziel ${i + 1}`, `Stufe ${g.tier} (${2 ** g.tier}) — über Stufe 8 nur in Set-Piece-Leveln`, 'ziele');
