@@ -105,7 +105,7 @@ export interface TreeShapeOptions {
   limbs?: number;
   /** Kept for compatibility (the canopy is a dome pile, not an L-system). */
   levels?: number;
-  /** Target number of fill domes on the envelope (Standard 56; path domes, floor and satellites come on top). */
+  /** Target number of fill domes on the envelope (Standard 8; path domes, floor and satellites come on top). */
   clusters?: number;
   /** Turns of the bark spiral (Standard 2). */
   pathTurns?: number;
@@ -151,6 +151,21 @@ const _v = new Vector3();
 const UP = new Vector3(0, 1, 0);
 
 const dir = (a: number): Vector3 => new Vector3(Math.cos(a), 0, Math.sin(a));
+
+/**
+ * Crown v4 (Florian 01.10.: „Krone des ersten Riesenbaums könnte noch schöner werden“; Ebene 32 / image 02): a few
+ * large overlapping domes instead of ~65 small ones. Path domes `r = R·(0.34 + 0.16·u)` along the walk (u = 0 at the
+ * doorstep … 1 at the top), spaced `0.62·(r + rNext)` → 9 with the doorstep (0.75 left only six large ones on the
+ * 56-unit walk and gaps between them); 8 fill domes on two rings; a few large flat floor domes; rim satellites.
+ */
+const PATH_DOME_R: readonly [number, number] = [0.34, 0.16];
+const PATH_DOME_STEP = 0.62;
+/** Fill domes on the envelope (Standard of `TreeShapeOptions.clusters`). */
+const FILL_DOMES = 8;
+/** Floor domes (one in the middle, the rest on a ring). */
+const FLOOR_DOMES = 4;
+/** Smaller rim satellites (scalloped lower edge). */
+const SATELLITE_DOMES = 6;
 
 export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
   const seed = o.seed ?? 7;
@@ -368,19 +383,22 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
         break;
       }
     }
+    // v4 (Ebene 32 / image 02): few LARGE overlapping domes — 8–10 along the walk, growing towards the top — instead
+    // of a cluster of berries; their crests still carry the path
     for (let guard = 0; guard < 80; guard++) {
       const u = s / spineTotal;
       const isTop = s >= spineTotal - 1e-3;
-      const r = R * (isTop ? 0.38 : 0.21 + 0.13 * u) * (isTop ? 1 : 0.94 + 0.12 * rand());
-      const sy = isTop ? 0.72 : 0.55 + 0.15 * u + 0.05 * rand();
+      const r = R * (isTop ? 0.44 : PATH_DOME_R[0] + PATH_DOME_R[1] * u) * (isTop ? 1 : 0.94 + 0.12 * rand());
+      const sy = isTop ? 0.8 : 0.68 + 0.14 * u + 0.05 * rand();
       const p = spineAt(s, new Vector3());
       // chain domes never swallow the ramp walk (the limb enters the doorstep dome, nothing covers that entry)
       let rr = r;
-      for (let k = 0; k < 6 && coversRamp(p.clone().setY(p.y - rr * sy), rr, sy); k++) rr *= 0.85;
+      for (let k = 0; k < 8 && coversRamp(p.clone().setY(p.y - rr * sy), rr, sy); k++) rr *= 0.85;
       if (!coversRamp(p.clone().setY(p.y - rr * sy), rr, sy)) addDome(p.clone().setY(p.y - rr * sy), rr, sy, isTop ? 4 : 6, true);
       if (isTop) break;
-      const rNext = R * (0.21 + 0.13 * Math.min(1, u + 0.1));
-      s = Math.min(spineTotal, s + 0.55 * (r + rNext));
+      const rNext = R * (PATH_DOME_R[0] + PATH_DOME_R[1] * Math.min(1, u + 0.1));
+      // step by the dome actually placed (a shrunk dome near the ramp is followed closely by the next one)
+      s = Math.min(spineTotal, s + PATH_DOME_STEP * (Math.max(rr, r * 0.6) + rNext));
     }
   }
   const pathDomeCount = domes.length;
@@ -400,10 +418,10 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
     const l = Math.hypot(dy, 1);
     return { nh: -dy / l, ny: 1 / l };
   };
-  const target = Math.max(28, o.clusters ?? 56);
-  // tiers (image 02): the domes of a tier sit on a ring of the envelope, each tier a scalloped band stacked on the
-  // one below and inset — a pagoda of jewel caps rather than a random heap; jitter keeps them hand-made
-  const TIERS = [0.93, 0.7, 0.47, 0.24];
+  const target = Math.max(4, o.clusters ?? FILL_DOMES);
+  // tiers (Ebene 32): two rings of large caps on the envelope — the rim and the shoulder — that overlap each other
+  // and the path domes (one mass of big stacked domes with dark cores between them, not a pagoda of small caps)
+  const TIERS = [0.9, 0.55];
   {
     const golden = Math.PI * (3 - Math.sqrt(5));
     const M = 520;
@@ -415,45 +433,49 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
       cands.push({ a: k * golden + rand() * 0.3, rho: TIERS[tier]! * Re * (0.97 + 0.06 * rand()), tier, key: rand() });
     }
     cands.sort((x, y) => x.key - y.key);
+    let fills = 0;
     for (const cd of cands) {
-      if (domes.length >= target + pathDomeCount * 0.4) break;
+      if (fills >= target) break;
       const inner = 1 - cd.rho / Re;
-      const r = R * (0.2 + 0.1 * rand()) * (1 + 0.35 * inner);
-      const sy = 0.56 + 0.1 * rand() + 0.08 * inner;
+      const r = R * (0.3 + 0.12 * rand());
+      const sy = 0.68 + 0.1 * rand() + 0.06 * inner;
       const en = envNormal(cd.rho);
       const top = yEnv(cd.rho) + (rand() - 0.4) * 0.6;
       // centre inside the envelope along its normal: the dome's crest touches the envelope
       const c = at(cd.a, cd.rho - en.nh * r * 0.3, top - r * sy * (0.74 + 0.26 * en.ny));
-      if (overlaps(c, r, 0.5)) continue;
+      if (overlaps(c, r, 0.35)) continue;
       if (coversRamp(c, r, sy)) continue;
       addDome(c, r, sy, 1 + Math.min(2, cd.tier), false);
+      fills++;
     }
   }
-  // floor: flat domes under the pile — seen from below one dark mass resting on the limbs (nothing floats)
+  // floor: a few large flat domes under the pile — seen from below one dark mass resting on the limbs (nothing floats)
   {
-    const count = 10;
+    const count = FLOOR_DOMES - 1;
     const a0 = rand() * Math.PI * 2;
     for (let i = 0; i < count; i++) {
       const a = a0 + (i / count) * Math.PI * 2;
-      const rho = Re * (0.42 + 0.14 * rand());
-      const r = R * (0.3 + 0.05 * rand());
+      const rho = Re * (0.45 + 0.1 * rand());
+      const r = R * (0.4 + 0.05 * rand());
       const c = at(a, rho, yFloor + R * 0.1);
       if (coversRamp(c, r, 0.4)) continue;
       addDome(c, r, 0.36 + 0.06 * rand(), 5, false);
     }
-    addDome(at(0, 0, yFloor + R * 0.12), R * 0.42, 0.38, 5, false);
+    addDome(at(0, 0, yFloor + R * 0.12), R * 0.44, 0.38, 5, false);
   }
-  // satellites hang lower at the rim (scalloped lower edge, image 02 stacks)
+  // satellites hang lower at the rim: a scalloped lower edge of smaller, cooler domes (image 02, lower right)
   {
-    const count = Math.round(target * 0.3);
+    const count = SATELLITE_DOMES;
     const a0 = rand() * Math.PI * 2;
     for (let i = 0; i < count; i++) {
       const a = a0 + (i / count) * Math.PI * 2 + (rand() - 0.5) * 0.25;
-      const r = R * (0.14 + 0.07 * rand());
-      const sy = 0.66 + 0.14 * rand();
+      const r = R * (0.19 + 0.07 * rand());
+      const sy = 0.72 + 0.12 * rand();
       const c = at(a, Re * (0.88 + 0.1 * rand()), yFloor + R * (0.02 + 0.08 * rand()));
-      if (overlaps(c, r, 0.45)) continue;
+      if (overlaps(c, r, 0.4)) continue;
       if (coversRamp(c, r, sy)) continue;
+      // keep the doorstep free: the ramp camera swings up over the rim there
+      if (Math.abs(wrapAngle(a - doorAng)) < 0.7) continue;
       addDome(c, r, sy, 0, false);
     }
   }
@@ -791,7 +813,8 @@ export function computeTreeShape(o: TreeShapeOptions = {}): TreeShape {
   for (const d of domes) {
     const rho = Math.hypot(d.center.x - cx, d.center.z - cz);
     if (rho < Re * 0.62 || d.cluster === 5) continue;
-    const k = d.cluster === 0 ? 2 : 3;
+    // the curtain stays as dense along the rim with fewer, larger domes: strands by the dome's size
+    const k = Math.max(2, Math.round(d.r / (d.cluster === 0 ? 1.6 : 1.5)));
     for (let j = 0; j < k; j++) {
       const a = Math.atan2(d.center.z - cz, d.center.x - cx) + (rand() - 0.5) * 1.4;
       const p = d.center.clone().addScaledVector(dir(a), d.r * (0.5 + 0.3 * rand()));

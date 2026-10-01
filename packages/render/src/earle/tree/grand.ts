@@ -207,11 +207,12 @@ function grandShape(spec: GrandTreeSpec, groundAt: (x: number, z: number) => num
   const at = (ang: number, rho: number, y: number): Vector3 => new Vector3(cx + Math.cos(ang) * rho, y, cz + Math.sin(ang) * rho);
 
   // --- Hülle und Kuppeln ---------------------------------------------------------------------------------------
+  // Krone v4 (wie der Riese, Ebene 32): weniger, größere und rundere Kuppeln, die sich überlappen
   const env: Record<GrandForm, { floor: number; top: number; re: number; tiers: number[]; r: [number, number]; sy: [number, number] }> = {
-    kuppel: { floor: 0.45, top: 1.22, re: 0.95, tiers: [0.92, 0.64, 0.36], r: [0.2, 0.29], sy: [0.56, 0.7] },
-    schirm: { floor: 0.2, top: 0.66, re: 1.22, tiers: [0.95, 0.72, 0.48, 0.22], r: [0.2, 0.26], sy: [0.44, 0.56] },
-    pagode: { floor: 0.35, top: 2.1, re: 0.64, tiers: [0.95, 0.72, 0.5, 0.28], r: [0.3, 0.38], sy: [0.58, 0.7] },
-    fontaene: { floor: 0.5, top: 1.05, re: 0.55, tiers: [0.85, 0.42], r: [0.26, 0.34], sy: [0.6, 0.72] },
+    kuppel: { floor: 0.45, top: 1.22, re: 0.95, tiers: [0.92, 0.64, 0.36], r: [0.27, 0.38], sy: [0.62, 0.76] },
+    schirm: { floor: 0.2, top: 0.66, re: 1.22, tiers: [0.95, 0.72, 0.48, 0.22], r: [0.26, 0.34], sy: [0.48, 0.6] },
+    pagode: { floor: 0.35, top: 2.1, re: 0.64, tiers: [0.95, 0.72, 0.5, 0.28], r: [0.36, 0.46], sy: [0.62, 0.74] },
+    fontaene: { floor: 0.5, top: 1.05, re: 0.55, tiers: [0.85, 0.42], r: [0.32, 0.42], sy: [0.64, 0.76] },
   };
   const E = env[form];
   const yFloor = H + E.floor * R;
@@ -238,7 +239,7 @@ function grandShape(spec: GrandTreeSpec, groundAt: (x: number, z: number) => num
     return { nh: -dy / l, ny: 1 / l };
   };
   // Scheitel
-  addDome(at(0, 0, crownTop - R * 0.3 * 0.7), R * (form === 'pagode' ? 0.34 : 0.3), 0.7, 4);
+  addDome(at(0, 0, crownTop - R * 0.3 * 0.7), R * (form === 'pagode' ? 0.4 : 0.36), 0.74, 4);
   // Kränze von außen nach innen (Pagode: jeder Kranz ein Stockwerk höher)
   const phase = rand() * Math.PI * 2;
   E.tiers.forEach((f, ti) => {
@@ -252,13 +253,13 @@ function grandShape(spec: GrandTreeSpec, groundAt: (x: number, z: number) => num
       const sy = E.sy[0] + (E.sy[1] - E.sy[0]) * rand();
       const top = yEnv(rho) + (rand() - 0.4) * 0.5 * u;
       const c = at(a, rho - en.nh * rr * 0.3, top - rr * sy * (0.74 + 0.26 * en.ny));
-      if (overlaps(c, rr, 0.5)) continue;
+      if (overlaps(c, rr, 0.42)) continue;
       addDome(c, rr, sy, 1 + Math.min(2, ti));
     }
   });
   // Boden der Krone: flache Kuppeln unter dem Haufen (von unten eine dunkle Masse auf den Ästen, nichts schwebt)
   {
-    const count = form === 'schirm' ? 8 : 5;
+    const count = form === 'schirm' ? 5 : 3;
     const a0 = rand() * Math.PI * 2;
     for (let i = 0; i < count; i++) {
       const a = a0 + (i / count) * Math.PI * 2;
@@ -268,7 +269,7 @@ function grandShape(spec: GrandTreeSpec, groundAt: (x: number, z: number) => num
   }
   // Trabanten hängen tiefer am Rand (gezackter Unterrand wie Bild 02)
   if (form !== 'pagode') {
-    const count = Math.round(domes.length * 0.28);
+    const count = Math.round(domes.length * 0.22);
     const a0 = rand() * Math.PI * 2;
     for (let i = 0; i < count; i++) {
       const a = a0 + (i / count) * Math.PI * 2 + (rand() - 0.5) * 0.3;
@@ -674,6 +675,8 @@ export function createGrandTrees(o: GrandTreesOptions): GrandTrees {
     rows: { domes: rows.domes, motif: rows.motif },
     bands: uniform(3),
     family: 'jewel',
+    // Krone v4: dieselben drei Farbbänder wie der Riese, aber jeder Baum behält seinen Ton (Türkis-, Rot-, Violettbaum)
+    bandDrift: 0.6,
     quality: mobil ? { dotsPerDome: [30, 110], sphere: [18, 12], flowers: true } : { dotsPerDome: [70, 240], sphere: [28, 18], flowers: true },
     bb,
     seed,
