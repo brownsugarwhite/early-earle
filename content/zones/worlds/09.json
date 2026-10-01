@@ -9,6 +9,7 @@
   "side": "near",
   "sources": ["09.webp", "Ebene_8.jpg", "Bildschirmfoto_2025-10-17_um_10.07.08.jpg", "Ebene_36.jpg", "Ebene_44.jpg", "Ebene_45.jpg", "Bildschirmfoto_2025-10-15_um_17.33.52.jpg", "Ebene_27.jpg"],
   "palette": {
+    "water": ["#0a2a26", "#124a42", "#1f7a6a", "#4aa894", "#a0dcc4", "#e8f8e8", "#0c3a34", "#c8ecd8"],
     "ink": "#0c1a12",
     "terrain": ["#22402a", "#4f6a34", "#9aa040", "#d8c24c", "#f0dc78"],
     "canopy": ["#122418", "#1a3222", "#2f5a4a", "#5fb0a0", "#b8e0c8", "#22baa9", "#d8c24c"],

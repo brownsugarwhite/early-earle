@@ -10,6 +10,7 @@
   "half": 0,
   "sources": ["10.webp", "Ebene_3.jpg", "Ebene_32.jpg", "Ebene_24.jpg", "Ebene_22.jpg"],
   "palette": {
+    "water": ["#06343a", "#0d5560", "#1a8a90", "#3cc0b8", "#9ae8dc", "#e4fff6", "#08404a", "#c8f6ea"],
     "ink": "#050608",
     "terrain": ["#040a0c", "#081214", "#0c1a1c", "#122426", "#1a3032"],
     "groundLine": "#3e5c5a",
