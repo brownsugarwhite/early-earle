@@ -80,6 +80,7 @@ test('Welt 12 auf der Karte (/play): Pfad im Nebelmeer, Steilhang, Tannen — ko
   await requireWebGPU(page);
   const hud = page.getByTestId('flow-hud');
   await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: 30_000 });
+  await page.waitForFunction(() => Boolean((window as unknown as { __flow?: unknown }).__flow), null, { timeout: 30_000 });
   await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgpu', { timeout: 30_000 });
   // Welt 11 (Level 101–110) und Welt 12 (111–120) liegen hinter Level 100: zum Knoten gleiten
   for (const node of [104, 114]) {
