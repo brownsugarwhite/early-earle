@@ -1,4 +1,14 @@
-import { countElementKinds, hash32, type BotName, type LevelDef } from '@ee/core';
+import {
+  CURVE_LAST_LEVEL,
+  LEGACY_LAST_LEVEL,
+  ZONE_RANGES,
+  countElementKinds,
+  curveSpec,
+  hash32,
+  type BotName,
+  type CurveType,
+  type LevelDef,
+} from '@ee/core';
 import { levelNumber, type ZoneId } from './draft';
 import { bandVerdict, type BandVerdict } from './solverClient';
 import type { FreshResult } from './solverStore';
@@ -61,10 +71,30 @@ export const ZONE_COLOR: Record<ZoneId, string> = {
   wooding: '#c9a227',
 };
 
-export type Marker = 'H' | 'SH' | 'Feier' | null;
+/** Levelnummern an den Zonengrenzen der Kurve: der Anfang jeder Kartenzone (1, 15, 27 … 173) und das letzte Level (184). */
+export const ZONE_TICKS: readonly number[] = [...ZONE_RANGES.map((r) => r[0]), CURVE_LAST_LEVEL];
 
-/** Markierung aus dem Band (GDD 6.1): H = 1,6–2,0, SH ≤ 2,5, jedes 10. Level ist Feier. */
+export type Marker = 'H' | 'SH' | 'Boss' | 'Feier' | null;
+
+/**
+ * Markierung eines Levels. Ab Level 51 aus dem Typ der Kurve (`curveSpec`: hart = H, superhart = SH, Boss, Spaß = Feier);
+ * davor und dahinter aus dem Band (GDD 6.1): H = 1,6–2,0, SH ≤ 2,5, jedes 10. Level ist Feier.
+ */
 export function markerFor(no: number, band: readonly [number, number]): Marker {
+  if (no > LEGACY_LAST_LEVEL && no <= CURVE_LAST_LEVEL) {
+    switch (curveSpec(no).type) {
+      case 'hard':
+        return 'H';
+      case 'superhard':
+        return 'SH';
+      case 'boss':
+        return 'Boss';
+      case 'fun':
+        return 'Feier';
+      default:
+        return null;
+    }
+  }
   if (band[1] >= 2.3) return 'SH';
   if (band[0] >= 1.55) return 'H';
   if (no > 0 && no % 10 === 0 && band[1] <= 1.15) return 'Feier';
@@ -79,6 +109,10 @@ export interface ChainRow {
   zone: ZoneId;
   kinds: string[];
   band: [number, number];
+  /** Soll-Band der Kurve (`curveSpec`, Level 1–184), sonst `null`. */
+  curve: [number, number] | null;
+  /** Typ in der Kurve (Level 1–184), sonst `null`. */
+  type: CurveType | null;
   moves: number;
   /** Versuche (Anfänger); null = nie gewonnen, undefined = keine Messung. */
   measured: number | null | undefined;
@@ -86,7 +120,7 @@ export interface ChainRow {
   verdict: BandVerdict | null;
   marker: Marker;
   outlier: boolean;
-  /** Hart direkt nach hart (GDD 6.1: nie zwei harte Level hintereinander). */
+  /** Hart direkt nach hart, superhart oder Boss (GDD 6.1: nie zwei harte Level hintereinander). */
   doubleHard: boolean;
 }
 
@@ -107,6 +141,7 @@ export function buildChain(levels: readonly LevelDef[], fresh: Record<string, Fr
       source = calibrationMatches(cal, level) ? 'datei' : 'veraltet';
     }
     const verdict = measured === undefined ? null : bandVerdict(measured, band);
+    const spec = no >= 1 && no <= CURVE_LAST_LEVEL ? curveSpec(no) : null;
     return {
       no,
       file: `${String(i + 1).padStart(3, '0')}.json`,
@@ -115,6 +150,8 @@ export function buildChain(levels: readonly LevelDef[], fresh: Record<string, Fr
       zone: level.zone,
       kinds: [...countElementKinds(level)],
       band,
+      curve: spec ? [spec.targetAttempts[0], spec.targetAttempts[1]] : null,
+      type: spec ? spec.type : null,
       moves: level.moves,
       measured,
       source,
@@ -124,10 +161,9 @@ export function buildChain(levels: readonly LevelDef[], fresh: Record<string, Fr
       doubleHard: false,
     };
   });
+  const hard = (m: Marker): boolean => m === 'H' || m === 'SH' || m === 'Boss';
   for (let i = 1; i < rows.length; i++) {
-    const a = rows[i - 1]!.marker;
-    const b = rows[i]!.marker;
-    if ((a === 'H' || a === 'SH') && (b === 'H' || b === 'SH')) rows[i]!.doubleHard = true;
+    if (hard(rows[i - 1]!.marker) && hard(rows[i]!.marker)) rows[i]!.doubleHard = true;
   }
   return rows;
 }
