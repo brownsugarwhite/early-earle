@@ -240,6 +240,36 @@ describe('heroTreePath: nodes lie on the tree', () => {
     }
   });
 
+  it('crown v4 (Ebene 32): a few large overlapping domes, the path on their crests', () => {
+    for (const seed of [7, 1, 3, 5]) {
+      const sh = computeTreeShape({ seed });
+      const R = sh.R;
+      const pathDomes = sh.domes.filter((d) => d.path);
+      // 8–10 domes carry the walk (doorstep included), fills 8, floor ≤ 4; ~25 domes instead of ~65
+      expect(pathDomes.length).toBeGreaterThanOrEqual(8);
+      expect(pathDomes.length).toBeLessThanOrEqual(10);
+      expect(sh.domes.filter((d) => d.cluster >= 1 && d.cluster <= 3)).toHaveLength(8);
+      expect(sh.domes.filter((d) => d.cluster === 5).length).toBeLessThanOrEqual(4);
+      expect(sh.domes.length).toBeLessThanOrEqual(32);
+      expect(sh.domes.filter((d) => d.r >= 0.27 * R).length).toBeGreaterThanOrEqual(14);
+      // the large path domes grow towards the top; each crest lies on the path spine
+      expect(Math.max(...pathDomes.map((d) => d.r))).toBeGreaterThan(0.45 * R);
+      for (const d of pathDomes) {
+        const crest = new Vector3(d.center.x, d.center.y + d.r * d.sy, d.center.z);
+        expect(Math.min(...sh.plan.spine.map((q) => q.distanceTo(crest)))).toBeLessThan(0.06);
+      }
+      // neighbours along the walk overlap (one stacked mass, no berries on a string)
+      for (let i = 1; i < pathDomes.length; i++) {
+        const a = pathDomes[i - 1]!;
+        const b = pathDomes[i]!;
+        expect(a.center.distanceTo(b.center)).toBeLessThan(0.9 * (a.r + b.r));
+      }
+      // crown nodes rest on the crests: most of them on a nearly level top
+      const crown = heroTreePath({ nodes: 16, shape: sh }).nodes.filter((n) => n.surface === 'dome');
+      expect(crown.filter((n) => n.normal[1] > 0.95).length).toBeGreaterThanOrEqual(Math.ceil(crown.length * 0.7));
+    }
+  });
+
   it('on a planet slot the roots and the first node follow the curved ground', () => {
     const curved = computeTreeShape({ groundRadius: 80 });
     const p = heroTreePath({ nodes: 16, shape: curved });

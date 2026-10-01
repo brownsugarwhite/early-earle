@@ -30,9 +30,11 @@ test('/lab/tree builds wood, jewel domes, lace, needles, blossoms and the path, 
   const info = page.getByTestId('tree-lab-info');
   await expect(info).toContainText(/Kuppeln \d+/, { timeout: 60_000 });
   const text = await info.textContent();
-  // v3: a pile of jewel domes (image 02), fountain limbs with a lace of twigs and golden needle stars (image 04)
-  expect(count(text, 'Kuppeln')).toBeGreaterThanOrEqual(40);
-  expect(count(text, 'Cluster')).toBeGreaterThanOrEqual(20);
+  // v4: a pile of a few large overlapping jewel domes (Ebene 32 / image 02, ~25 instead of ~65), fountain limbs with a
+  // lace of twigs and golden needle stars (image 04)
+  expect(count(text, 'Kuppeln')).toBeGreaterThanOrEqual(18);
+  expect(count(text, 'Kuppeln')).toBeLessThanOrEqual(34);
+  expect(count(text, 'Cluster')).toBeGreaterThanOrEqual(14);
   expect(count(text, 'Punkte')).toBeGreaterThan(5_000);
   expect(count(text, 'Zweige')).toBeGreaterThan(1_500);
   expect(count(text, 'Sterne')).toBeGreaterThan(400);

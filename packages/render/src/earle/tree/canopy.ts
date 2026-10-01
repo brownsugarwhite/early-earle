@@ -2,12 +2,14 @@ import { InstancedBufferAttribute, InstancedBufferGeometry, InstancedMesh, Matri
 import type { UniformNode } from 'three/webgpu';
 import {
   abs,
+  asin,
+  atan,
   attribute,
   cameraPosition,
   cameraProjectionMatrix,
   cameraViewMatrix,
   clamp,
-  cross,
+  cos,
   float,
   floor,
   fract,
@@ -25,6 +27,7 @@ import {
   positionLocal,
   screenSize,
   select,
+  sin,
   smoothstep,
   sqrt,
   step,
@@ -37,7 +40,7 @@ import {
 import { hash32, mulberry32 } from '@ee/world';
 import { createHexagon } from '../vegetation';
 import { aaStep, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node } from '../tsl';
-import { SAW_GRADIENT, STEP_GRADIENT, earleGradients, stepRamp } from '../gradients';
+import { STEP_GRADIENT, earleGradients, shiftTone } from '../gradients';
 import { LOD_FADE, applyLod, lodScale, popScale, type BillboardUniforms } from './branches';
 import { InkMaterial } from './inkMaterial';
 import { familyTone, type CanopyFamily } from './palette';
@@ -67,6 +70,7 @@ export interface CanopyOptions {
   crownHull?: Vector3;
   crownBlend?: number;
   rows: { domes: number; motif: number };
+  /** Kept for compatibility: v4 domes have fixed steps (three colour bands, one highlight, ink). */
   bands: TSLUniform;
   family: CanopyFamily;
   quality: CanopyQuality;
@@ -79,6 +83,8 @@ export interface CanopyOptions {
   warp?: (p: Vec3Node) => Vec3Node;
   /** Rim dot size relative to the default (small bushes need bigger dots). */
   dotScale?: number;
+  /** How far each dome's own tone leads its three colour bands (0 = Earle's red → violet → blue for all, Standard). */
+  bandDrift?: number;
   seed: number;
 }
 
@@ -99,16 +105,48 @@ const _q = new Quaternion();
 const _s = new Vector3();
 
 /**
- * Jewel canopy (image 02, Ebene 33): all domes in one InstancedMesh with the ink material —
- * - **tone gradient**: each dome runs through two neighbouring families (teal → blue → violet → magenta → red) in
- *   three hard serigraph steps along its own direction (warmer on top), banded by the light; each step and each light
- *   band carries its own inner gradient (Earle's split fountain per screen), the edges between them stay hard;
+ * Crown v4 colour bands (image 02 / Ebene 3): band coordinate = height on the dome (unit-sphere y), tilted by this
+ * share towards the lifted light (warm light, cool shade).
+ */
+const BAND_TILT = 0.45;
+/** Above: the warm cap (red); below `BAND_COOL`: the cool underside (blue); between: violet. */
+const BAND_WARM = 0.55;
+const BAND_COOL = 0.0;
+/** Lifted N·L above which the hard highlight crescent (palette step 3) lies. */
+const DOME_HIGHLIGHT = 0.62;
+/** Diamond-flower lattice cell on the dome (tree units). */
+const FLOWER_CELL = 0.7;
+/** Micro-dot cell (tree units, Standard of `CanopyOptions.dotCell`). */
+const DOT_CELL = 0.32;
+/** Rim fringe dots per dome relative to `CanopyQuality.dotsPerDome` (v4: a denser beaded edge). */
+const RIM_DOTS = 1.5;
+
+/**
+ * Families (continuous 0..4: teal, blue, violet, magenta, red) of a dome's three bands — cool underside, middle, warm
+ * cap — from its tone (0 rim … 1 top) in a colour mode: every dome runs red → violet → blue (image 02), the tone only
+ * drifts the bands (low rim domes cooler: teal → blue → magenta; the top: blue → violet → red). `drift` 0..1 lets
+ * the tone lead instead (bands around the dome's own tone): siblings keep their own colour (a teal tree, a red tree).
+ */
+export function domeBandFamilies(mode: CanopyFamily, tone: number, drift = 0): [number, number, number] {
+  const t = Math.min(1, Math.max(0, tone));
+  const dt = t - 0.6;
+  const cap = (a: number, b: number): number => Math.min(3.999, familyTone(mode, a + (b - a) * drift));
+  return [cap(0.22 + 0.5 * dt, t - 0.3), cap(0.5 + 0.45 * dt, t), cap(0.95 + 0.35 * dt, t + 0.3)];
+}
+
+/**
+ * Jewel canopy v4 (image 02, Ebene 3/32): all domes in one InstancedMesh with the ink material —
+ * - **three hard colour bands** per dome by its height (tilted a little towards the light, hand-cut wavy edge): warm
+ *   cap (red), violet middle, cool underside (blue); the families per dome come from `domeBandFamilies`. Each band
+ *   carries its own inner gradient (Earle's split fountain per screen, lighter towards its upper edge); one hard
+ *   highlight crescent towards the sun; below the terminator the ink — the dark core between overlapping domes;
  * - **micro-dot stipple**: object-space 3D cells, one dot per cell measured in the tangent plane (every dot shows
- *   whole, none swims), several tints plus a rare complementary accent; the dot radius scales with the light —
- *   in the shade the dots shrink smoothly to zero instead of popping;
- * - **four-dot flowers**: coarser cells, four dots in a diamond in the tangent plane, from the motif row;
- * - **rim fringe** (instanced hexagons): dots over the upper sphere that grow in only along the lit silhouette,
- *   all factors continuous (rimness, sun, growth) → they glide along the rim as the view turns, never pop.
+ *   whole, none swims), two tones (one light step lighter, rarely near-white); the dot radius scales with the
+ *   light — in the shade the dots shrink smoothly to zero instead of popping;
+ * - **diamond flowers as a tapestry**: a latitude/longitude lattice on each dome, every second cell four dots in a
+ *   diamond, motif colours by band;
+ * - **rim fringe** (instanced hexagons): white beads over the upper sphere that grow in only along the lit
+ *   silhouette, all factors continuous (rimness, sun, growth) → they glide along the rim as the view turns, never pop.
  */
 export function createCanopy(o: CanopyOptions): Canopy {
   const rand = mulberry32(hash32('hero-canopy-v3', o.seed));
@@ -116,7 +154,8 @@ export function createCanopy(o: CanopyOptions): Canopy {
   const domes = o.domes;
   const n = Math.max(1, domes.length);
   const fogLookup = o.fogLookup ?? lookup;
-  const DOT = o.dotCell ?? 0.2;
+  const DOT = o.dotCell ?? DOT_CELL;
+  const bandDrift = Math.min(1, Math.max(0, o.bandDrift ?? 0));
 
   // --- Domes ----------------------------------------------------------------------------------------------------
   const sphere = new SphereGeometry(1, o.quality.sphere[0], o.quality.sphere[1]);
@@ -141,7 +180,7 @@ export function createCanopy(o: CanopyOptions): Canopy {
   const nCrown = pTree.sub(crownHull).normalize();
   const nMix = nDome.mul(1 - blend).add(nCrown.mul(blend));
   const warp = o.warp ?? ((p: Vec3Node) => p);
-  const TERMINATOR = 0.16;
+  const TERMINATOR = -0.12;
   const vInfo = varying(infoAttr, 'vDomeInfo');
   const vTone = varying(toneAttr, 'vDomeTone');
   const domeRow0 = o.rows.domes;
@@ -162,32 +201,42 @@ export function createCanopy(o: CanopyOptions): Canopy {
       const P = varying(pTree, 'vDomePos') as unknown as Vec3Node;
       const dh = vInfo.w;
       const qn = normalize(varying(unit, 'vDomeUnit'));
-      // tone: two neighbouring families along the dome's own direction, three hard steps (image 02: red → violet →
-      // blue within one dome); inside each step the tone drifts on toward the next one (a saw, `earleGradients.surface`)
       const soft = earleGradients.surface;
-      const g = qn.y.mul(0.85).add(qn.x.mul(vTone.y)).add(qn.z.mul(vTone.z));
-      const tone = clamp(vTone.x.add(g.mul(0.42)), 0, 3.999);
-      const ts = tone.mul(3);
-      const fts = fract(ts);
-      const wts = fwidth(ts).max(1e-4);
-      const edgeT = smoothstep(float(1).sub(wts), float(1), fts);
-      const sawT = soft.mul(SAW_GRADIENT * 1.5);
-      const stepped = floor(ts).add(mix(fts.mul(2).sub(1).mul(sawT), float(1).sub(sawT), edgeT)).max(0).div(3);
-      const fam = floor(stepped);
-      const fr = stepped.sub(fam);
+      // three hard colour bands by height on the dome (image 02 / Ebene 3: red cap → violet → blue underside), tilted
+      // a little towards the light (warm light, cool shade) and cut with a gentle hand-made wave; the band families
+      // come per dome from `setFamily` (vTone: cool, middle, warm, edge shift)
+      const nView = normalize(varying(modelViewMatrix.mul(vec4(nDome, 0)).xyz, 'vDomeNormalView'));
+      const lon = atan(qn.z, qn.x);
+      const wave = sin(lon.mul(3).add(dh.mul(6.2832)))
+        .mul(0.06)
+        .add(sin(lon.mul(7).add(dh.mul(17.3))).mul(0.03))
+        .add(sin(lon.mul(13).add(dh.mul(41.1))).mul(0.015));
+      const hb = qn.y.mul(1 - BAND_TILT).add(nView.dot(Ld).mul(BAND_TILT)).add(wave).sub(vTone.w);
+      const sCool = aaStep(BAND_COOL, hb);
+      const sWarm = aaStep(BAND_WARM, hb);
+      const famT = clamp(mix(mix(vTone.x, vTone.y, sCool), vTone.z, sWarm), 0, 3.999);
+      const fam = floor(famT);
+      const fr = famT.sub(fam);
       const rowA = fam.add(domeRow0);
       const rowB = min(fam.add(1), float(4)).add(domeRow0);
-      // light: hard bands (lifted sun: lit crowns, dark undersides), each with its own gradient top → underside
-      const band = clamp(ndl.sub(TERMINATOR).mul(2.3), 0, 0.999).mul(o.bands.sub(1));
-      const gLight = clamp(qn.y.mul(1.2), -1, 1);
-      const lightAmount = soft.mul(STEP_GRADIENT);
-      const litCol = mix(
-        stepRamp(lookup, band, rowA, 1, gLight, lightAmount, { linear: true }).rgb,
-        stepRamp(lookup, band, rowB, 1, gLight, lightAmount, { linear: true }).rgb,
-        fr,
-      ) as unknown as Vec3Node;
-      const inkCol = mix(lookup.pal(0, rowA).rgb, lookup.pal(0, rowB).rgb, fr) as unknown as Vec3Node;
-      let col: Vec3Node = mix(inkCol, litCol, lit);
+      // each band carries its own gradient (Earle's split fountain per screen): lighter towards its upper edge; it
+      // restarts at every band edge, so the edge stays a hard jump (`?verlauf=0` shows the pure steps)
+      const gWarm = hb.sub(BAND_WARM).div(1 - BAND_WARM);
+      const gMid = hb.sub(BAND_COOL).div(BAND_WARM - BAND_COOL);
+      const gCool = hb.add(1).div(BAND_COOL + 1);
+      const gBand = clamp(select(sWarm.greaterThan(0.5), gWarm, select(sCool.greaterThan(0.5), gMid, gCool)).mul(2).sub(1), -1, 1);
+      // light: the colour bands already carry it (warm light, cool shade); on top one hard highlight crescent towards
+      // the sun (palette step 3, image 02: the orange-red flank of the red cap) and the ink below the terminator — the
+      // dark core between overlapping domes. Three bands + highlight + ink, no further stripes.
+      const famCol = (i: number): Vec3Node => mix(lookup.pal(i, rowA).rgb, lookup.pal(i, rowB).rgb, fr) as unknown as Vec3Node;
+      const hi = aaStep(DOME_HIGHLIGHT, ndl);
+      const c2 = famCol(2);
+      const c3 = famCol(3);
+      const base = mix(c2, c3, hi) as unknown as Vec3Node;
+      const lighter = mix(c3, famCol(5), hi) as unknown as Vec3Node;
+      const darker = mix(famCol(1), c2, hi) as unknown as Vec3Node;
+      const litCol = shiftTone(base, lighter, darker, gBand, soft.mul(STEP_GRADIENT));
+      let col: Vec3Node = mix(famCol(0), litCol, lit);
 
       // tangent frame of the surface (object space) for the stipple
       const nObj = nDome as unknown as Vec3Node;
@@ -209,37 +258,46 @@ export function createCanopy(o: CanopyOptions): Canopy {
       const d = sqrt(max(dv.dot(dv).sub(dn.mul(dn)), float(0)));
       const fw = fwidth(C.x).add(fwidth(C.y)).mul(0.5).max(1e-4);
       const far = smoothstep(float(0.42), float(0.2), fw); // cells under ~2.5 px: the stipple melts into the tint
-      const dotR = float(0.17).add(h4.mul(0.12)).mul(light);
+      const dotR = float(0.12).add(h4.mul(0.1)).mul(light);
       const dotMask = smoothstep(dotR.add(fw), dotR.sub(fw).max(0), d).mul(step(0.12, h2)).mul(far);
-      // mostly one band lighter (a woven texture), some light tints, rare sparkles and complementary accents
+      // two tones: mostly one light step lighter in the dome's own family (a woven texture), rarely white
       const pick = fract(h1.mul(41.9).add(h2.mul(11.3)));
-      const lighter = min(floor(band).add(2), float(3));
-      const dotIdx = select(pick.lessThan(0.62), lighter, select(pick.lessThan(0.88), float(5), select(pick.lessThan(0.96), float(6), float(7))));
-      const dotCol = mix(lookup.pal(dotIdx, rowA).rgb, lookup.pal(dotIdx, rowB).rgb, fr);
+      const dotCol = select(pick.lessThan(0.9), lighter, lookup.pal(6, motifRow).rgb);
       col = mix(col, dotCol, dotMask);
       // at distance the stipple becomes a lighter tint of the lit side (same average, no shimmer)
       col = mix(col, mix(col, dotCol, 0.22), float(1).sub(far).mul(light).mul(0.8));
 
       if (flowers) {
-        const FC = 0.95;
-        const F = P.div(FC);
-        const fcell = floor(F);
-        const fid = fract(fcell.x.div(256)).mul(256).add(fract(fcell.y.div(256)).mul(256).mul(256)).add(fract(fcell.z.div(256)).mul(256).mul(65536)).floor().add(dh.mul(97).floor());
-        const fh = hash(fid.add(3));
-        const on = step(fh, float(0.34));
-        const fc = fcell.add(0.5).add(vec3(fract(fh.mul(13.1)), fract(fh.mul(27.7)), fract(fh.mul(51.3))).sub(0.5).mul(0.4));
-        const fv = F.sub(fc);
-        const t1 = normalize(cross(nrm, select(abs(nrm.y).lessThan(0.9), vec3(0, 1, 0), vec3(1, 0, 0))));
-        const t2 = cross(nrm, t1);
-        const lx = fv.dot(t1);
-        const ly = fv.dot(t2);
-        const s = float(0.13);
+        // diamond flowers as a tapestry (image 02): a latitude/longitude lattice on the dome (rows of cells ≈ FLOWER_CELL
+        // wide, every other row shifted half a cell), every second cell carries four dots in a diamond. The lattice
+        // follows the dome, not space — the rows curve with the cap like Earle's woven motifs.
+        const rr = vInfo.x;
+        const lat = asin(clamp(qn.y, -1, 1));
+        const latScale = rr.mul(vInfo.y.add(1).mul(0.5));
+        const rowF = lat.mul(latScale).div(FLOWER_CELL);
+        const row = floor(rowF);
+        const latC = row.add(0.5).mul(FLOWER_CELL).div(latScale);
+        const ring = rr.mul(Math.PI * 2);
+        const nLon = floor(cos(latC).max(0).mul(ring).div(FLOWER_CELL)).max(1);
+        const lonF = lon.div(Math.PI * 2).add(0.5).mul(nLon).add(fract(row.mul(0.5)));
+        const colF = floor(lonF);
+        const colW = colF.sub(nLon.mul(floor(colF.div(nLon))));
+        const fh = hash(row.add(64).mul(271).add(colW).add(dh.mul(9973).floor()));
+        const on = step(fh, float(0.5)).mul(step(3.5, nLon));
+        const lx = fract(lonF).sub(0.5).add(fract(fh.mul(13.1)).sub(0.5).mul(0.14)).mul(cos(lat).max(0).mul(ring).div(nLon));
+        const ly = fract(rowF).sub(0.5).add(fract(fh.mul(27.7)).sub(0.5).mul(0.14)).mul(FLOWER_CELL);
+        const s = float(FLOWER_CELL * 0.21);
         const dd = min(min(length(vec2(lx.sub(s), ly)), length(vec2(lx.add(s), ly))), min(length(vec2(lx, ly.sub(s))), length(vec2(lx, ly.add(s)))));
-        const ffw = fwidth(F.x).max(1e-4);
-        const fr0 = float(0.062).mul(light);
-        const petal = smoothstep(fr0.add(ffw), fr0.sub(ffw).max(0), dd).mul(on).mul(smoothstep(float(0.2), float(0.08), ffw));
-        const mcol = lookup.pal(floor(fract(fh.mul(91.7)).mul(7.99)), motifRow).rgb;
-        col = mix(col, mcol, petal);
+        const pw = length(fwidth(P)).mul(0.6).max(1e-4);
+        const fr0 = float(FLOWER_CELL * 0.1).mul(light);
+        const petal = smoothstep(fr0.add(pw), fr0.sub(pw).max(0), dd).mul(on).mul(smoothstep(float(0.2), float(0.08), pw.div(FLOWER_CELL)));
+        // motif colours by band: pink/cream on the warm cap, cyan/lilac on violet, cyan/mint/white on the blue
+        const k = fract(fh.mul(91.7));
+        const warmIdx = select(k.lessThan(0.5), float(1), select(k.lessThan(0.82), float(0), float(3)));
+        const midIdx = select(k.lessThan(0.5), float(2), select(k.lessThan(0.82), float(7), float(1)));
+        const coolIdx = select(k.lessThan(0.5), float(2), select(k.lessThan(0.82), float(5), float(6)));
+        const mIdx = select(sWarm.greaterThan(0.5), warmIdx, select(sCool.greaterThan(0.5), midIdx, coolIdx));
+        col = mix(col, lookup.pal(mIdx, motifRow).rgb, petal);
       }
       return col;
     },
@@ -318,7 +376,7 @@ export function createCanopy(o: CanopyOptions): Canopy {
   const Y_MIN = -0.2;
   domes.forEach((d, di) => {
     const sizeT = rMax > rMin ? (d.r - rMin) / (rMax - rMin) : 1;
-    const count = Math.round(o.quality.dotsPerDome[0] + (o.quality.dotsPerDome[1] - o.quality.dotsPerDome[0]) * sizeT * sizeT);
+    const count = Math.round(RIM_DOTS * (o.quality.dotsPerDome[0] + (o.quality.dotsPerDome[1] - o.quality.dotsPerDome[0]) * sizeT * sizeT));
     const dotR = Math.max(0.03, 0.0135 * d.r) * (o.dotScale ?? 1);
     const m = Math.round(count / ((1 - Y_MIN) / 2));
     const phase = rand() * Math.PI * 2;
@@ -407,8 +465,9 @@ export function createCanopy(o: CanopyOptions): Canopy {
     const frr = fract(vTone);
     const rowA = fam.add(domeRow0);
     const rowB = min(fam.add(1), float(4)).add(domeRow0);
-    const idx = select(vNdl.greaterThan(0.55), float(6), float(5));
-    const colour = mix(lookup.pal(idx, rowA).rgb, lookup.pal(idx, rowB).rgb, step(0.5, frr));
+    // white beads on the lit silhouette (Ebene 32), the family's near-white where the light turns away
+    const pale = mix(lookup.pal(6, rowA).rgb, lookup.pal(6, rowB).rgb, step(0.5, frr));
+    const colour = mix(pale, lookup.pal(6, motifRow).rgb, step(0.45, vNdl));
     material.colorNode = steppedFog(colour, fog, fogLookup);
     dotMesh = new Mesh(dotGeo, material);
     dotMesh.name = 'hero-dots';
@@ -419,17 +478,17 @@ export function createCanopy(o: CanopyOptions): Canopy {
   }
 
   // --- Colour mode ------------------------------------------------------------------------------------------------
-  const phase = rand() * Math.PI * 2;
   const setFamily = (f: CanopyFamily) => {
     domes.forEach((d, i) => {
-      const a = phase + d.hash * Math.PI * 2;
-      domeTone[i * 4] = Math.min(3.999, familyTone(f, d.tone));
-      domeTone[i * 4 + 1] = Math.cos(a) * 0.35;
-      domeTone[i * 4 + 2] = Math.sin(a) * 0.35;
-      domeTone[i * 4 + 3] = 0;
+      const [cool, mid, warm] = domeBandFamilies(f, d.tone, bandDrift);
+      domeTone[i * 4] = cool;
+      domeTone[i * 4 + 1] = mid;
+      domeTone[i * 4 + 2] = warm;
+      // each dome cuts its bands a little higher or lower (hand-made, never one ruler for all)
+      domeTone[i * 4 + 3] = (d.hash - 0.5) * 0.2;
     });
     order.forEach((di, slot) => toneArr.set(domeTone.subarray(di * 4, di * 4 + 4), slot * 4));
-    for (let i = 0; i < dotDomeSorted.length; i++) dotTone[i] = Math.min(3.999, familyTone(f, domes[dotDomeSorted[i]!]!.tone) + 0.3);
+    for (let i = 0; i < dotDomeSorted.length; i++) dotTone[i] = domeBandFamilies(f, domes[dotDomeSorted[i]!]!.tone, bandDrift)[2];
     (sphere.getAttribute('domeTone') as InstancedBufferAttribute).needsUpdate = true;
     (dotGeo.getAttribute('dotTone') as InstancedBufferAttribute).needsUpdate = true;
   };
