@@ -331,11 +331,56 @@ describe('PlanePath', () => {
     expect(Math.hypot(end.position[0] - next.position[0], end.position[2] - next.position[2])).toBeLessThan(1.2);
   });
 
-  it('keeps the route near its backbone and off the lateral cracks', () => {
+  it('keeps the route near its macro centreline and off the lateral cracks', () => {
     for (let k = 0; k < 16; k++) {
       const seg = path.segment(k);
       for (const o of seg.offsets) expect(Math.abs(o)).toBeLessThanOrEqual(3.2 + 1e-6);
+      // die Probe liegt um ihren Versatz neben der Mittellinie der Makroform
+      const m = field.layout.macro(k);
+      seg.samples.forEach((s, i) => {
+        if (i % 7 !== 0) return;
+        expect(m.distance(s.position[0], s.position[2])).toBeLessThanOrEqual(3.2 + 0.05);
+      });
     }
+  });
+
+  it('folds the serpentine: z runs back and forth along the route, the arc length s of the nodes only forward', () => {
+    const k = AUTHORED_ROUTE.findIndex((r) => r.shape === 'serpentine');
+    const seg = path.segment(k);
+    let back = 0;
+    for (let i = 1; i < seg.samples.length; i++) back = Math.max(back, seg.samples[i]!.position[2] - seg.samples[i - 1]!.position[2]);
+    expect(back).toBeGreaterThan(0.05);
+    // auch die Knoten selbst: mindestens einer liegt hinter (+z) seinem Vorgänger oder läuft quer
+    const nodes = seg.nodes;
+    expect(nodes.some((n, i) => i > 0 && Math.abs(n.position[2] - nodes[i - 1]!.position[2]) < 2)).toBe(true);
+    for (let i = 1; i < nodes.length; i++) expect(nodes[i]!.s).toBeGreaterThan(nodes[i - 1]!.s);
+  });
+
+  it('finds every node from its own position (nearestNode) — folded sections included', () => {
+    for (const n of path.nodes(0, path.lastNode)) {
+      if (n.landmark) continue;
+      expect(path.nearestNode(n.position[0], n.position[2]), `Knoten ${n.index}`).toBe(n.index);
+    }
+  });
+
+  it('covers every node of a chunk with the chunk node range (growth by node rectangles)', () => {
+    for (const n of path.nodes(0, path.lastNode)) {
+      const cx = Math.floor(n.position[0] / CHUNK_SIZE);
+      const cz = Math.floor(n.position[2] / CHUNK_SIZE);
+      const r = path.nodeRangeInRect(cx * CHUNK_SIZE, cz * CHUNK_SIZE, (cx + 1) * CHUNK_SIZE, (cz + 1) * CHUNK_SIZE, 12);
+      expect(r, `Knoten ${n.index}`).not.toBeNull();
+      expect(n.index).toBeGreaterThanOrEqual(r![0]);
+      expect(n.index).toBeLessThanOrEqual(r![1]);
+      // der Bereich bleibt örtlich (eine Handvoll Knoten, nicht der ganze Abschnitt quer über die Ebene)
+      expect(r![1] - r![0]).toBeLessThan(24);
+    }
+    // weit neben dem Pfad: keine Knoten im Rechteck, auf seiner Höhe schon
+    const n = path.node(40);
+    const far = n.position[0] + 200;
+    expect(path.nodeRangeInRect(far, n.position[2], far + CHUNK_SIZE, n.position[2] + CHUNK_SIZE, 12)).toBeNull();
+    const row = path.nodeRangeInRect(-Infinity, n.position[2], Infinity, n.position[2] + CHUNK_SIZE, 12)!;
+    expect(row[0]).toBeLessThanOrEqual(40);
+    expect(row[1]).toBeGreaterThanOrEqual(40);
   });
 });
 

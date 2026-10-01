@@ -613,9 +613,12 @@ export class FlowScene implements SceneController {
       const f = lm.anchor.facing;
       yaw = this.viewYaw + angleDelta(this.viewYaw, Math.atan2(f[0], f[1]));
     } else if (this.portrait && !world.isTreeNode(index)) {
+      // Tangente des Pfads am Knoten (Makroformen, W3: Kehren und Schnecken laufen quer und zurück — der Blick folgt der
+      // örtlichen Laufrichtung, nicht einem fernen Knoten)
       const ahead = world.layout.node(index + MAP_VIEW_PORTRAIT.lookAhead).position;
-      const dx = ahead[0] - node[0];
-      const dz = ahead[2] - node[2];
+      const behind = world.layout.node(Math.max(0, index - MAP_VIEW_PORTRAIT.lookAhead)).position;
+      const dx = ahead[0] - behind[0];
+      const dz = ahead[2] - behind[2];
       if (Math.hypot(dx, dz) > 1e-3) {
         // angle θ = atan2(x, z); a turn by ψ about +Y adds ψ
         const want = Math.atan2(dx, dz);

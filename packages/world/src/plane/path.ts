@@ -261,6 +261,29 @@ export class PlanePath {
     return Math.max(0, best);
   }
 
+  /**
+   * Knoten im Rechteck [x0, x1] × [z0, z1] ± `reach`: [kleinster, größter] Index der Knoten der Abschnitte um das
+   * Rechteck, die hineinfallen, oder null. z ist längs des Pfads nicht monoton (Makroformen, W3) — Wachstum und Freihaltung
+   * fragen nach Lage, nicht nach z. Mit x0 = −∞, x1 = +∞ alle Knoten auf der Höhe des Rechtecks.
+   */
+  nodeRangeInRect(x0: number, z0: number, x1: number, z1: number, reach = 12): [number, number] | null {
+    const layout = this.field.layout;
+    const k0 = layout.segmentAtDistance(-(z1 + reach)) - 1;
+    const k1 = Math.min(layout.segmentAtDistance(-(z0 - reach)) + 1, layout.lastSegment);
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (let k = Math.max(0, k0); k <= k1; k++) {
+      for (const n of this.segment(k).nodes) {
+        const x = n.position[0];
+        const z = n.position[2];
+        if (x < x0 - reach || x > x1 + reach || z < z0 - reach || z > z1 + reach) continue;
+        lo = Math.min(lo, n.index);
+        hi = Math.max(hi, n.index);
+      }
+    }
+    return lo <= hi ? [lo, hi] : null;
+  }
+
   // --- Route je Abschnitt --------------------------------------------------------------------------------
 
   private route(k: number): Route {

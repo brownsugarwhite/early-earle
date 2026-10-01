@@ -968,7 +968,8 @@ export class EarleLabScene implements SceneController {
     }
     const wi = world?.viewWorld ?? 0;
     const label = this.worldLabel(wi);
-    const node = world ? Math.max(0, Math.round(world.nodeIndexAtZ(world.focus.z))) : 0;
+    // Knoten am Blickpunkt (W3: z ist längs des Pfads nicht monoton — nach Lage, nicht nach z)
+    const node = world ? world.path.nearestNode(world.focus.x, world.focus.z) : 0;
     return {
       drawCalls: info?.render?.drawCalls ?? 0,
       shadowPasses: this.shadowPasses,

@@ -48,6 +48,60 @@ describe('Geländemerkmale der Weltdateien (Ebene)', () => {
     }
   });
 
+  it('je Welt (Makroform, W3): kein Punkt des Wegs im Wasser oder auf Fels, die Route hält Wasser und Fels fern', () => {
+    const path = new PlanePath(field, { seed: 7 });
+    for (let k = 0; k < AUTHORED_ROUTE.length; k++) {
+      const seg = path.segment(k);
+      const id = worlds[AUTHORED_ROUTE[k]!.world]!.id;
+      // Knoten auf einem Wahrzeichen: ihre Treppen und Stufen gehören dem Wahrzeichen
+      const onLandmark = new Set(seg.nodes.filter((n) => n.landmark).flatMap((n) => [n.index - 1, n.index]));
+      for (const d of seg.dots) {
+        if (onLandmark.has(d.seg)) continue;
+        expect(field.isWater(d.position[0], d.position[2], 0), `${id}: Punkt nach Knoten ${d.seg} im Wasser`).toBe(false);
+        expect(field.rockAt(d.position[0], d.position[2], 0), `${id}: Punkt nach Knoten ${d.seg} auf Fels`).toBeNull();
+      }
+    }
+  });
+
+  it('je Welt: Felsen stehen ≥ 2,2 von der Mittellinie, Held-Wahrzeichen und Sümpfe im verlangten Pfadabstand', () => {
+    const layout = field.layout;
+    for (let k = 0; k < AUTHORED_ROUTE.length; k++) {
+      const id = worlds[AUTHORED_ROUTE[k]!.world]!.id;
+      const r = field.features.region(`p${k}`);
+      for (const f of r.formations) {
+        for (const c of f.columns) {
+          for (const [a, b] of c.polygon) {
+            expect(layout.pathDistance(f.cx + a, f.cz + b), `${id} ${f.id}`).toBeGreaterThanOrEqual(2.2 - 1e-6);
+          }
+        }
+      }
+      for (const inst of field.landmarks!.regionInstances(layout.pathRegionOf(k))) {
+        const p = inst.placement;
+        const want = field.landmarks!.plan.kinds[p.kind]?.pathDistance?.[0] ?? 0;
+        // Korridorabstand = Abstand zur Mittellinie − Spielraum 3,2
+        expect(layout.pathDistance(p.x, p.z) - 3.2, `${id} ${p.id}`).toBeGreaterThanOrEqual(Math.max(2.2, want) - 1e-6);
+      }
+    }
+  });
+
+  it('je Welt: Flüsse schneiden den Pfad nicht', () => {
+    const path = new PlanePath(field, { seed: 7 });
+    let rivers = 0;
+    for (let k = 0; k < AUTHORED_ROUTE.length; k++) {
+      const r = field.features.region(`p${k}`);
+      const samples = path.segment(k).samples;
+      for (const river of r.rivers) {
+        rivers++;
+        river.points.forEach(([x, z], i) => {
+          let d = Infinity;
+          for (const s of samples) d = Math.min(d, Math.hypot(s.position[0] - x, s.position[2] - z));
+          expect(d, `${river.id} Punkt ${i}`).toBeGreaterThan(river.widths[i]! * 0.5 + 0.3);
+        });
+      }
+    }
+    expect(rivers).toBeGreaterThan(0);
+  });
+
   it('Felsanker: jede Terrassen-, Turm- und Wandformation trägt Anker', () => {
     for (const { features } of regions) {
       for (const form of features.formations) {

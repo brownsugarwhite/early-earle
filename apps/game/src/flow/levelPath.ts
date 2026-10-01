@@ -177,11 +177,6 @@ export class FlowPath implements PathLayout {
     return best;
   }
 
-  /** Ground node index (fractional) at a z coordinate — for windows around the view. */
-  nodeIndexAtZ(z: number): number {
-    return this.planet.nodeIndexAtZ(z);
-  }
-
   // --- windows -------------------------------------------------------------------------------------------------
 
   /** Knoten, Punkte und Lichtband der Knoten [first, last] (Punkte und Band ab dem Zugang zu `first`). */

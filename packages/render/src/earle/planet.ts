@@ -937,26 +937,17 @@ export class EarlePlanet {
   // --- Fortschritt, Wachstum ------------------------------------------------------------------------------------
 
   /**
-   * Knotenindex (0-basiert, gebrochen) an einer z-Koordinate aus der Weltenlage (ohne Pfad zu bauen), geklemmt auf
-   * [−1, lastNode]: vor dem Start −1, hinter dem Tor der Torknoten.
+   * Knotenbereich [kleinster, größter] eines Rechtecks der Ebene für das Wachstum: die Knoten im Rechteck ± 12 (die
+   * Makroformen falten den Pfad, z ist längs des Pfads nicht monoton — gefaltete Abschnitte heilen „fleckig“, je nach
+   * den Knoten in der Nähe), ohne Knoten darin die Knoten auf seiner Höhe (z ± 12; seitliche Chunks wachsen wie der Pfad
+   * an ihrer Stelle). Vor dem Start, hinter dem Tor und jenseits der Autorenlevel: [−1, −1] (volles Wachstum).
    */
-  nodeIndexAtZ(z: number): number {
-    const k = this.layout.segmentAtDistance(-z);
-    if (k > this.layout.lastSegment) return this.lastNode;
-    const seg = this.layout.segment(k);
-    if (seg.levels <= 0) return -1;
-    const f = (seg.zStart - z) / Math.max(1e-6, seg.zStart - seg.zEnd);
-    return Math.min(this.lastNode, seg.firstLevel - 1 + f * seg.levels - 0.5);
-  }
-
-  private nodeRangeFor(z0: number, z1: number): [number, number] {
+  nodeRangeForRect(x0: number, z0: number, x1: number, z1: number): [number, number] {
     const reach = 12;
-    const a = this.nodeIndexAtZ(z1 + reach);
-    const b = this.nodeIndexAtZ(z0 - reach);
-    // Jenseits der Autorenlevel (Zukunft) und vor dem Start (Vorland): volles Wachstum (−1)
+    const r = this.path.nodeRangeInRect(x0, z0, x1, z1, reach) ?? this.path.nodeRangeInRect(-Infinity, z0, Infinity, z1, reach);
     const last = this.layout.authoredLevels - 1;
-    if (Math.min(a, b) > last + 0.5 || Math.max(a, b) < -0.5) return [-1, -1];
-    return [Math.max(0, Math.floor(Math.min(a, b))), Math.min(last, Math.ceil(Math.max(a, b)))];
+    if (!r || r[0] > last) return [-1, -1];
+    return [Math.max(0, r[0]), Math.min(last, r[1])];
   }
 
   private growthOf(range: [number, number]): number {
@@ -1884,7 +1875,7 @@ export class EarlePlanet {
     // die Füße sitzen dann auf der glatten Oberfläche — aus der Ferne unsichtbar)
     const trees = scatterPlaneTrees(this.field, cx, cz, { densityScale: q.densityScale, clear, mesh });
     const props = scatterPlaneProps(this.field, cx, cz, { densityScale: q.densityScale, trashScale: this.trashScale, clear, mesh });
-    return { mesh, trees, props, nodeRange: this.nodeRangeFor(oz, oz + CHUNK_SIZE) };
+    return { mesh, trees, props, nodeRange: this.nodeRangeForRect(ox, oz, ox + CHUNK_SIZE, oz + CHUNK_SIZE) };
   }
 
   // --- Inhalt (Vegetation, Merkmale, Scheunen, Wehen) --------------------------------------------------------------
@@ -2017,9 +2008,12 @@ export class EarlePlanet {
     const waterInputs: WaterRegionInput[] = [];
     const formations: Array<{ f: RegionFeatures['formations'][number]; feature: number }> = [];
     for (const r of regions) {
+      // Rechteck der Merkmale (Wachstum nach den Knoten in seiner Nähe)
       const z0 = Math.min(...[...r.lakes.map((l) => l.cz - l.reach), ...r.formations.map((f) => f.cz - f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[1])), ...r.seas.map((m) => m.zBottom)]);
       const z1 = Math.max(...[...r.lakes.map((l) => l.cz + l.reach), ...r.formations.map((f) => f.cz + f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[1])), ...r.seas.map((m) => m.zTop)]);
-      const range = this.nodeRangeFor(z0, z1);
+      const x0 = Math.min(...[...r.lakes.map((l) => l.cx - l.reach), ...r.formations.map((f) => f.cx - f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[0])), ...r.seas.map((m) => m.box[0])]);
+      const x1 = Math.max(...[...r.lakes.map((l) => l.cx + l.reach), ...r.formations.map((f) => f.cx + f.footprint), ...r.rivers.flatMap((v) => v.points.map((p) => p[0])), ...r.seas.map((m) => m.box[2])]);
+      const range = this.nodeRangeForRect(x0, z0, x1, z1);
       const bodies = r.lakes.length + r.rivers.length + r.seas.length;
       if (bodies > 0) {
         waterInputs.push({ lakes: r.lakes, rivers: r.rivers, seas: r.seas, slot: this.slots.slotOf(r.world), featureBase: ranges.length });
