@@ -15,6 +15,11 @@ export class SnowFields {
 
   /** Felder am Bildfokus (Mitte x, z und Radius). */
   private readonly focus: Array<[number, number, number]>;
+  /** Bahnrichtung (cos, sin) und Streckung längs der Bahn (Bild 06). */
+  private readonly ca: number;
+  private readonly sa: number;
+  private readonly along: number;
+  private readonly valleyWeight: number;
 
   constructor(spec: SnowFieldSpec, seed: number, worldId: string, focus?: readonly [number, number]) {
     this.broad = new GradientNoise2(hash32('snow-broad', worldId, seed));
@@ -22,6 +27,11 @@ export class SnowFields {
     this.cover = Math.min(0.95, Math.max(0.05, spec.cover));
     // Wellenlänge ≈ 10 Welteinheiten × Maßstab
     this.k = 1 / (10 * (spec.scale ?? 1));
+    const a = ((spec.angle ?? 0) * Math.PI) / 180;
+    this.ca = Math.cos(a);
+    this.sa = Math.sin(a);
+    this.along = Math.max(0.25, spec.stretch ?? 1);
+    this.valleyWeight = spec.valley ?? 0.55;
     const list = spec.focus ? (Array.isArray(spec.focus) ? spec.focus : [spec.focus]) : [];
     this.focus = focus ? list.map((f) => [focus[0] + (f.offset?.[0] ?? 0), focus[1] + (f.offset?.[1] ?? 0), Math.max(0.5, f.radius)] as [number, number, number]) : [];
   }
@@ -29,10 +39,13 @@ export class SnowFields {
   /** Feldwert (> 0 Schnee) aus Ort und relativer Höhe 0..1. */
   value(x: number, z: number, heightNorm: number): number {
     const k = this.k;
-    const n = this.broad.fbm(x * k * 0.6 + 3.1, z * k * 1.35 + 7.3, 2);
-    const w = this.fine.fbm(x * k * 2.2 - 5.3, z * k * 3.1 - 0.7, 1);
+    // Bahnkoordinaten: längs (im Bild nach rechts, um `angle` nach oben gedreht; oben = −z) und quer dazu
+    const u = this.sa === 0 ? x : x * this.ca - z * this.sa;
+    const q = this.sa === 0 ? z : x * this.sa + z * this.ca;
+    const n = this.broad.fbm((u * k * 0.6) / this.along + 3.1, q * k * 1.35 + 7.3, 2);
+    const w = this.fine.fbm((u * k * 2.2) / this.along - 5.3, q * k * 3.1 - 0.7, 1);
     const valley = 0.5 - Math.min(1, Math.max(0, heightNorm));
-    let v = n * 0.62 + w * 0.16 + valley * 0.55 + (this.cover - 0.5) * 0.9;
+    let v = n * 0.62 + w * 0.16 + valley * this.valleyWeight + (this.cover - 0.5) * 0.9;
     for (const f of this.focus) {
       // Feld am Bildfokus: weich gewellter Rand (das Rauschen bleibt in der Kante)
       const d = Math.hypot((x - f[0]) / f[2], (z - f[1]) / (f[2] * 0.7));

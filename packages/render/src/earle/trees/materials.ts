@@ -7,6 +7,9 @@ import { blotches, flowLines, flowers, stipple, valueNoise3 } from './patterns';
 import type { ShadeTexture } from './shade';
 import { glassBark } from './glassBark';
 import { glowBark } from './glowBark';
+import { paleBark } from './paleBark';
+import { winterLines, winterSnow } from './winterBark';
+import { MAPLE_SNOW_LEVEL } from './maple';
 
 /** Nebel je Instanz (Bäume v4, siehe `trees/fog.ts`): ersetzt den gestuften Nebel je Fragment, wenn gesetzt. */
 export type FogFn = (color: Vec3Node) => Vec3Node;
@@ -39,8 +42,13 @@ export interface CrownMaterialOptions {
   patternPos: Vec3Node;
   /** Objektraum-Normale für die Tangentialebene der Blüten (Fragmentstufe). */
   patternNormal: Vec3Node;
-  /** Tüpfel: Zellgröße (Welteinheiten), Punktradius relativ zur Zelle, Dichte (Knoten, z. B. je Welt). */
-  stipple: { cell: number | FloatNode; size: number; density: FloatNode };
+  /**
+   * Tüpfel: Zellgröße (Welteinheiten), Punktradius relativ zur Zelle, Dichte (Knoten, z. B. je Welt); `grow` skaliert
+   * die Tüpfel zusätzlich je Fragment (Kuppelbaum: an den Oberkanten der Kissen voll, innen klein — Ebene 33); `tuft`
+   * formt sie zu Blatttupfen; `base` = unterste Palettenstufe der Tüpfel (Standard 2; dunkle Kronen mit hellen Tupfen:
+   * Ebene 33).
+   */
+  stipple: { cell: number | FloatNode; size: number; density: FloatNode; grow?: FloatNode | null; tuft?: number | FloatNode; base?: FloatNode | null };
   /**
    * Tintenkörper (Tannen, Bild 05): die Krone bleibt rundum Tinte, nur die hellen Punkte zeichnen sie — sonnenseitig
    * größer und heller, auf der Schattenseite klein und gedämpft (nie ganz weg: der Tannenwald ist aus Punkten gemacht).
@@ -63,6 +71,12 @@ export interface CrownMaterialOptions {
   castWeight?: FloatNode | null;
   /** Bäume v4: Textur der Schattenseite (dunkel auf dunkel, `trees/shade.ts`), liegt über der Farbe. */
   shadeTexture?: ShadeTexture | null;
+  /**
+   * Himmelstupfen 0..1 je Fragment (Kantenwert der Teilkuppel × Welt-Schalter, `trees/cushionEdge.ts`): die Tüpfel an den
+   * Oberkanten stehen auch auf der Schattenseite und im Schlagschatten, in den Schattenpunktfarben der Kronenzeile —
+   * Earles Kronen sind von oben beleuchtet (Ebene 21/33, Bild 03). Dieselben Zellen wie die Sonnentüpfel.
+   */
+  skyDots?: FloatNode | null;
   /** Bäume v4: Nebel je Instanz statt je Fragment. */
   fogFn?: FogFn | null;
 }
@@ -116,7 +130,9 @@ class CrownLightingModel extends LightingModel {
       const light = smoothstep(-0.1, 0.5, ndl).mul(mix(float(0.35), float(1), cast));
       const st = stipple(o.patternPos, o.stipple.cell, o.stipple.size, float(0.55).add(light.mul(0.45)), o.stipple.density);
       const dotIdx = float(3).add(step(0.45, light.add(st.key.mul(0.3))).mul(2));
-      const col = mix(ink, o.lookup.pal(dotIdx, row).rgb as unknown as Vec3Node, st.mask);
+      // Terminator ≥ 0.9 je Instanz: reine Silhouette ohne Tüpfel (schwarze Randtanne, Welt 06)
+      const silhouette = step(0.9, o.terminatorNode);
+      const col = mix(ink, o.lookup.pal(dotIdx, row).rgb as unknown as Vec3Node, st.mask.mul(silhouette.oneMinus()));
       (input.reflectedLight.directDiffuse as Vec3Node).addAssign(col);
       return;
     }
@@ -127,12 +143,16 @@ class CrownLightingModel extends LightingModel {
     let litColor = stepRamp(o.lookup, band, row, 1, clamp(upness.mul(1.2), -1, 1), soft.mul(STEP_GRADIENT)).rgb as unknown as Vec3Node;
     // Punkte wachsen mit dem Licht: am Terminator 0, voll erst auf der Sonnenseite (weich, kein Ploppen)
     const grow = smoothstep(term.add(0.02), term.add(0.5), ndl).mul(cast);
-    const st = stipple(o.patternPos, o.stipple.cell, o.stipple.size, grow, o.stipple.density);
+    const sunGrow = o.stipple.grow ? grow.mul(o.stipple.grow) : grow;
+    // Himmelstupfen: an den Oberkanten der Teilkuppeln wachsen die Tüpfel auch auf der Schattenseite und im Schlagschatten
+    // — stetig über den Terminator und unabhängig vom Sonnenstand (Ebene 21/33, Bild 03: von oben beleuchtete Kronen)
+    const skyGrow = o.skyDots ? o.skyDots.mul(max(smoothstep(term.add(0.12), term.sub(0.2), ndl), float(1).sub(cast))).mul(0.75) : null;
+    const st = stipple(o.patternPos, o.stipple.cell, o.stipple.size, skyGrow ? max(sunGrow, skyGrow) : sunGrow, o.stipple.density, o.stipple.tuft ?? 0);
     // Getüpfelter Verlauf wie bei Earle (Bild 03): jeder Punkt eine Stufe heller als das Band unter ihm, nahe am Licht
     // einzelne zwei Stufen — ruhige Textur statt Konfetti
     const bandIdx = floor(band).add(1);
     const up = float(1).add(step(0.8, st.key.mul(0.5).add(grow.mul(0.55))));
-    const dotColor = o.lookup.pal(clamp(bandIdx.add(up), 2, 5), row).rgb as unknown as Vec3Node;
+    const dotColor = o.lookup.pal(clamp(bandIdx.add(up), o.stipple.base ?? 2, 5), row).rgb as unknown as Vec3Node;
     litColor = mix(litColor, dotColor, st.mask);
     // Juwelen (Terminator < 0): Farbton dreht zur Unterseite (rot → violett, Bild 02) — innerhalb der Facetten, der Wert
     // bleibt. Winkel, cos und sin je Vertex (Normale und Terminator sind Vertex-Größen), die Drehung je Pixel
@@ -146,6 +166,8 @@ class CrownLightingModel extends LightingModel {
     }
     let col = mix(ink, litColor, lit);
     if (o.shadeTexture) col = o.shadeTexture(col, { lit, ndl, term, cast, row });
+    // dieselben Zellen auf der Schattenseite, in den Schattenpunktfarben (Stufe 4, einige Stufe 3)
+    if (skyGrow) col = mix(col, o.lookup.pal(select(st.key.lessThan(0.6), float(4), float(3)), row).rgb as unknown as Vec3Node, st.mask.mul(float(1).sub(lit)));
     if (o.growthNode) {
       const l = col.dot(vec3(0.3, 0.5, 0.2));
       const withered = mix(vec3(l), col, 0.35).mul(vec3(0.9, 0.82, 0.68));
@@ -223,8 +245,13 @@ class DotLightingModel extends LightingModel {
 
 // --- Rinde ------------------------------------------------------------------------------------------------
 
-/** Rindenstile (Index im Instanzattribut): Tinte, weiß (Kathedrale), Juwelenstreifen, Flechten, Kalligrafie, Leuchten. */
-export const BARK_STYLE = { ink: 0, white: 1, striped: 2, lichen: 3, calligraphy: 4, glow: 5 } as const;
+/**
+ * Rindenstile (Index im Instanzattribut, nur anhängen — der Blender-Export liest dieselben Zahlen): Tinte, weiß
+ * (Kathedrale), Juwelenstreifen, Flechten, Kalligrafie, Leuchten, Lavendel (Ebene 21), Schwarz (Ebene 11: flache Tinte
+ * ohne Linien, nur der Schnee zeichnet den Stamm), Winter (Schnee-Ahorn, Bild 01: gekämmte Linienbüschel und große
+ * Schneeformen — die Ahorn-Stämme tragen ihn immer, ihr Material ist `winter`; andere Stämme zeichnen ihn wie Schwarz).
+ */
+export const BARK_STYLE = { ink: 0, white: 1, striped: 2, lichen: 3, calligraphy: 4, glow: 5, pale: 6, black: 7, winter: 8 } as const;
 export type BarkStyle = keyof typeof BARK_STYLE;
 
 export interface BarkMaterialOptions {
@@ -257,6 +284,11 @@ export interface BarkMaterialOptions {
   veil?: { mask: FloatNode; color: Vec3Node } | null;
   /** Riesenstamm (Archetyp `pillar`): Rindenstile, die dicke und dünne Stämme unterscheiden (Leuchten), nehmen die dicke Form. */
   giant?: boolean;
+  /**
+   * Schnee-Ahorn (Archetyp `maple`, Bild 01): Winterrinde (`winterBark.ts`) — gekämmte weiße Linienbüschel am Stamm,
+   * Schnee in großen Formen durchgehend auf den Oberseiten der Äste, gespritzter Rand.
+   */
+  winter?: boolean;
 }
 
 export class BarkMaterial extends NodeMaterial {
@@ -300,7 +332,11 @@ class BarkLightingModel extends LightingModel {
     const isStriped = style.greaterThan(1.5).and(style.lessThan(2.5));
     const isLichen = style.greaterThan(2.5).and(style.lessThan(3.5));
     const isCalli = style.greaterThan(3.5).and(style.lessThan(4.5));
-    const isGlow = style.greaterThan(4.5);
+    const isGlow = style.greaterThan(4.5).and(style.lessThan(5.5));
+    // Geborgene Stile (nur anhängen): Lavendel 6, Schwarz 7, Winter 8 — je ein abgeschlossenes Intervall
+    const isPale = style.greaterThan(5.5).and(style.lessThan(6.5));
+    const isBlack = style.greaterThan(6.5).and(style.lessThan(7.5));
+    const isWinter = style.greaterThan(7.5);
     // Weiße Kathedralenstämme bleiben fast rundum hell (Ebene_23), sonst Tinte ab dem Terminator
     const term = select(isWhite, float(-0.35), float(0.02));
     const lit = aaStep(term, ndl);
@@ -317,8 +353,16 @@ class BarkLightingModel extends LightingModel {
     const light = select(luma(accLight).greaterThan(0.45), accLight, o.lookup.pal(5, o.terrainRowNode).rgb) as unknown as Vec3Node;
     // Kalligrafie (Bild 01): feine, wellige helle Linien entlang des Stamms, im Licht hell, im Schatten grau
     // Feine Kalligrafie (Bild 01): viele schmale, wellige Striche, die abschnittsweise abbrechen (Holzmaserung)
-    const calli = flowLines(u.add(variant), v.mul(2.4), linesAround(level), select(isCalli, float(0.2), float(0.14)), select(isCalli, float(0.32), float(0.72)), 3);
-    const lineShadow = mix(ink, light, 0.3);
+    // Winterrinde (Schnee-Ahorn): gekämmte Linienbüschel, weiß und grau (winterBark.ts) — nur im Material mit `winter`
+    // (die Ahorn-Stämme); Schwarz und Winter auf anderen Stämmen: flache Tinte ohne Linien, der Schnee zeichnet
+    const winterL = o.winter ? winterLines(u.add(variant), v, level, o.objPos) : null;
+    const calli = winterL
+      ? winterL.mask
+      : flowLines(u.add(variant), v.mul(2.4), linesAround(level), select(isCalli, float(0.2), float(0.14)), select(isCalli, float(0.32), float(0.72)), 3).mul(
+          select(isBlack.or(isWinter), float(0), float(1)),
+        );
+    const lineLight = winterL ? (mix(mix(ink, light, 0.5), light, winterL.bright) as unknown as Vec3Node) : light;
+    const lineShadow = mix(ink, lineLight, 0.3);
     // Flechten (Bilder 03, 35): unregelmäßige Flecken, jeder in einer flachen Farbe der Akzentzeile (Hellgrün, Gelb)
     const p = o.objPos;
     // Flecken längs des Stamms gestreckt (Pinselstriche in Wuchsrichtung), Rand zweifach verbeult
@@ -353,7 +397,7 @@ class BarkLightingModel extends LightingModel {
     const litCol = select(
       isWhite,
       white,
-      select(isStriped, striped, select(isLichen, mix(mix(dark, lichenCol, blotch), light, calli.mul(0.6)), mix(ink, light, calli))),
+      select(isStriped, striped, select(isLichen, mix(mix(dark, lichenCol, blotch), light, calli.mul(0.6)), mix(ink, lineLight, calli))),
     ) as unknown as Vec3Node;
     const shadowCol = select(
       isWhite,
@@ -365,6 +409,8 @@ class BarkLightingModel extends LightingModel {
     // `select` baut seine Zweige als if/else, und geteilte Knoten (Licht) stünden dann nur im nicht genommenen Zweig
     const glow = glowBark({ lookup: o.lookup, row, acc, lit, bark: o.bark, variant, giant: o.giant ?? false });
     col = mix(col, glow, select(isGlow, float(1), float(0))) as unknown as Vec3Node;
+    // Lavendelstämme mit Lichtstreifen (Ebene 21): eigener Zweig, siehe paleBark.ts
+    col = mix(col, paleBark({ lookup: o.lookup, row, acc, lit, ndl, bark: o.bark }), select(isPale, float(1), float(0))) as unknown as Vec3Node;
     // Riesenstämme im Juwelenwald: feine Glasfenster-Streifen statt der groben Juwelenstreifen (Ebene 3), siehe glassBark.ts
     if (o.giant) col = mix(col, glassBark({ lookup: o.lookup, row, acc, lit, ndl, bark: o.bark, variant }), select(isStriped, float(1), float(0))) as unknown as Vec3Node;
     // Schnee auf den Oberseiten (Bilder 01/04): Fleckenrand aus Tüpfeln, die mit der Schneemenge wachsen
@@ -383,8 +429,21 @@ class BarkLightingModel extends LightingModel {
     const thr = float(1.08).sub(o.snowNode.mul(0.5));
     const solid = smoothstep(thr, thr.add(0.05), side);
     const specks = stipple(p, 0.03, 0.66, smoothstep(thr.sub(0.4), thr, side), 0.95);
-    const snowMask = max(solid, specks.mask);
-    const snowCol = mix(o.lookup.pal(3, o.terrainRowNode).rgb, o.lookup.pal(5, o.terrainRowNode).rgb, lit) as unknown as Vec3Node;
+    // Winterrinde (Schnee-Ahorn, Bild 01): große ruhige Schneeformen, Äste durchgehend obenauf, gespritzter Rand
+    const snowMask = o.winter ? winterSnow({ up, u, v, level, p, snow: o.snowNode }) : max(solid, specks.mask);
+    const snowLit = o.lookup.pal(5, o.terrainRowNode).rgb as unknown as Vec3Node;
+    // Winterrinde: Schnee im Schatten ist ein warmes Grau (Bild 01), keine zweite Weißstufe
+    const snowShade = (o.winter ? mix(ink, snowLit, 0.74) : o.lookup.pal(3, o.terrainRowNode).rgb) as unknown as Vec3Node;
+    let snowCol = mix(snowShade, snowLit, lit) as unknown as Vec3Node;
+    if (o.winter) {
+      // Schneesaum am Fuß: wie das Schneefeld (dieselbe Lichtstufe, empfängt den Schlagschatten des Stamms) — er geht
+      // ohne Kante in den Boden über, der Schatten läuft über ihn hinweg
+      const skirt = step(MAPLE_SNOW_LEVEL - 0.5, level);
+      const skirtLit = min(lit, (input.lightColor as Vec3Node).r);
+      const field = o.lookup.pal(1, o.terrainRowNode).rgb as unknown as Vec3Node;
+      const skirtCol = mix(mix(ink, field, 0.8), field, skirtLit);
+      snowCol = mix(snowCol, skirtCol, skirt) as unknown as Vec3Node;
+    }
     col = mix(col, snowCol, snowMask);
     if (o.veil) col = mix(col, o.veil.color, o.veil.mask);
     if (o.growthNode) {

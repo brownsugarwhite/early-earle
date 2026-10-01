@@ -17,6 +17,8 @@ export const SLOT_ROWS = 32;
 const LANDMARK_ROW = 13;
 /** Zeile der Wolkenbänke im Slot (hinter den Wahrzeichen). */
 const CLOUD_ROW = 24;
+/** Zeile der Nebelbänke im Slot (eigene Farben, sonst die Nebelzeile). */
+const MIST_ROW = 25;
 /** Zeilen des Karten-Atlas (Slots + benannte Zeilen anderer Module: Riesenbaum, Müll, …). */
 export const PLANET_ATLAS_HEIGHT = 1024;
 
@@ -36,6 +38,7 @@ export function slotRows(slot: number): WorldRows {
     rock: b + 11,
     snow: b + 12,
     cloud: b + CLOUD_ROW,
+    mist: b + MIST_ROW,
   };
 }
 
@@ -69,6 +72,7 @@ export function writeSlotPalette(atlas: PaletteAtlas, slot: number, p: WorldPale
   atlas.setRow(rows.rock, (p.rock ?? rockFromTerrain(p)).slice(0, 8));
   atlas.setRow(rows.snow, (p.snow ?? terrain).slice(0, 8));
   atlas.setRow(rows.cloud!, (p.cloud ?? cloudFromSky(p)).slice(0, 8));
+  atlas.setRow(rows.mist!, (p.mist ?? p.fog).slice(0, 8));
   // Wahrzeichen der Welt (Fels mit Wasserfall, Ruine, Sumpf) aus derselben Palette
   const lp = landmarkPaletteFromWorld(p);
   const lr = slotLandmarkRows(slot);

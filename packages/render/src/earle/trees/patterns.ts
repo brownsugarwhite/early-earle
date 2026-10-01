@@ -24,8 +24,9 @@ export function rehash(h: FloatNode, salt: number): FloatNode {
  * Tüpfel: Punkte in einem 3D-Gitter (Zelle `cell` Welteinheiten), je Zelle ein verschobener Punkt mit Radius
  * `size·cell·grow` (grow 0..1: 0 = verschwunden — die Punkte skalieren im Schatten weich aus 0), `density` = Anteil
  * besetzter Zellen. Rückgabe {mask 0..1, key 0..1 je Punkt (Farbwahl)}; Zellen unter ≈ 3 px blenden aus.
+ * `tuft` > 0 formt die Punkte zu Blatttupfen, die nach oben (+y der Musterkoordinate) spitz zulaufen (Ebene 33).
  */
-export function stipple(p: Vec3Node, cell: Num, size: Num, grow: FloatNode, density: Num): { mask: FloatNode; key: FloatNode } {
+export function stipple(p: Vec3Node, cell: Num, size: Num, grow: FloatNode, density: Num, tuft: Num = 0): { mask: FloatNode; key: FloatNode } {
   const cellN = f(cell);
   const q = p.div(cellN);
   const c = floor(q);
@@ -36,7 +37,10 @@ export function stipple(p: Vec3Node, cell: Num, size: Num, grow: FloatNode, dens
   const h4 = rehash(h3, 37);
   // Versatz so klein, dass die Scheibe in ihrer Zelle bleibt (sonst schneiden die Zellwände gerade Kanten hinein)
   const jit = vec3(h1, h2, h3).sub(0.5).mul(float(1).sub(f(size).mul(2)).max(0).mul(0.9));
-  const d = length(fr.sub(0.5).sub(jit)).mul(cellN);
+  const rel = fr.sub(0.5).sub(jit);
+  // Tupfen: waagrecht oben enger, unten weiter (Tropfen mit Spitze nach oben)
+  const narrow = typeof tuft === 'number' && tuft <= 0 ? null : float(1).add(clamp(rel.y.div(f(size).max(1e-3)), -1, 1).mul(f(tuft)));
+  const d = (narrow ? length(vec3(rel.x.mul(narrow), rel.y.mul(float(1).sub(f(tuft).mul(0.4))), rel.z.mul(narrow))) : length(rel)).mul(cellN);
   const present = select(h4.lessThan(f(density)), float(1), float(0));
   const rad = cellN.mul(f(size)).mul(grow).mul(present);
   // Pixelgröße aus der stetigen Koordinate (fwidth(d) springt an den Zellwänden → sonst helle Linien auf den Kanten)

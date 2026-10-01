@@ -304,8 +304,11 @@ export class PlanetVegetation {
       },
     );
     for (const m of this.trees.meshes) this.group.add(m);
-    // Stämme: dünne Schattenlinien — nur in den zwei feinen Kaskaden (die Kronen werfen in allen)
-    for (const m of Object.values(this.trees.trunks)) m.userData.shadowCascades = 2;
+    // Stämme: dünne Schattenlinien — nur in den zwei feinen Kaskaden (die Kronen werfen in allen); ebenso die Büsche
+    // (Strauchkronen, ≈ 1 Einheit hoch: in der gröbsten Kaskade kleiner als ein Texel, der Aufruf bliebe). Der
+    // Schnee-Ahorn ist ein Riese mit weiter Krone und wirft in allen
+    for (const m of Object.values(this.trees.trunks)) if (m !== this.trees.trunks.maple) m.userData.shadowCascades = 2;
+    this.trees.crowns.shrub.userData.shadowCascades = 2;
 
     // --- Requisiten -------------------------------------------------------------------------------------
     // Gepackte Attribute: propA = (Fußpunkt xyz, Rang), propB = (Normale xyz, Höhe), propC = (Slot, Zeile, Zeile 2, Typ + Variante)
@@ -579,6 +582,7 @@ export class PlanetVegetation {
       });
       for (const a of [b, u, dat, this.animals.instanceMatrix]) commit(a, animalList.length);
       this.animals.count = animalList.length;
+      this.animals.visible = animalList.length > 0;
     }
     {
       // Sporen: sechs je Gasquelle
@@ -633,6 +637,8 @@ export class PlanetVegetation {
     });
     for (const attr of [a, b, c, mesh.instanceMatrix]) commit(attr, list.length);
     mesh.count = list.length;
+    // leer → aus allen Pässen (siehe TreeLayer.setContent)
+    mesh.visible = list.length > 0;
   }
 
   /** Freiraum vor der Kamera in Welteinheiten (Kompositionen: nichts ragt in die Linse). */

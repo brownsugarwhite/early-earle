@@ -9,45 +9,43 @@
   "side": "near",
   "sources": ["04.webp", "Ebene_19_Kopie.jpg", "Ebene_25.jpg", "Ebene_46.jpg"],
   "palette": {
-    "ink": "#0c0a1e",
+    "ink": "#0c0e09",
     "terrain": ["#6f7046", "#a29e56", "#cfc266", "#ebdc8c", "#f6efbe"],
-    "canopy": ["#1f2a8c", "#2f45c0", "#2a2f7a", "#8fa8f0", "#e2e8ff", "#d8d8a0", "#f0e8c0"],
-    "sky": ["#e2f0fa", "#a8d0f0", "#6fa8e6", "#3f78d8", "#2c4fc0", "#2a2f9c"],
-    "sun": "#f8f4e0",
-    "sunRing": "#eaf2fa",
-    "fog": ["#2a2f9c", "#2a2f9c", "#3f5ac8", "#6f98e0", "#9fc4ee", "#c8dff6"],
-    "fogAlpha": [0, 0.4, 0.6, 0.75, 0.86, 0.94],
-    "accent": ["#0c0a1e", "#2a2f9c", "#0c0a1e", "#100e24", "#8a9a58", "#d8d8a0", "#f17023", "#db292f"],
-    "canopyVariants": [
-      ["#141432", "#1e1e46", "#2a2a50", "#8a9a58", "#d8d8a0", "#b8c8a0", "#f0e8c0"]
-    ],
+    "canopy": ["#11160b", "#1a2210", "#2c3618", "#6e7a34", "#aeae58", "#ece6c0", "#d6c3b0"],
+    "sky": ["#f6f8ee", "#e4eff2", "#cde4f2", "#b2d2ee", "#96bfe9", "#7eaee3"],
+    "sun": "#fbf9ea",
+    "sunRing": "#f2f6ea",
+    "fog": ["#2c2a8c", "#2d2b98", "#3242b2", "#3f6acc", "#72a0e2", "#bcd8f2"],
+    "fogAlpha": [0, 0.74, 0.85, 0.91, 0.95, 0.97],
+    "accent": ["#0c0e09", "#2d2b98", "#0c0e09", "#10120c", "#76853a", "#b4b65c", "#f17023", "#db292f"],
     "rock": ["#120c26", "#4a3470", "#8a64a8", "#c49ad0", "#f0c8e0", "#ebdc8c", "#2e1f4c", "#fbe8f0"],
     "water": ["#141a5a", "#22308c", "#3a58c0", "#6f98e0", "#c8dff6", "#f8f4e0", "#1a1f6a", "#9fc4ee"]
   },
-  "terrain": { "amplitude": 4.4, "wavelength": 1.6, "slope": 0.6, "ridge": 0.15 },
+  "terrain": { "amplitude": 4.4, "wavelength": 1.7, "slope": 0.65, "ridge": 0.2 },
   "ground": "meadow",
   "vegetation": {
-    "density": 0.5,
+    "density": 0.62,
     "clumpiness": 0,
-    "kinds": { "dome": 0.7, "stacked": 0.08, "umbrella": 0.1, "bare": 0.12 },
-    "scale": [0.7, 1.6],
+    "kinds": { "dome": 0.86, "umbrella": 0.08, "bare": 0.06 },
+    "scale": [1.0, 1.9],
     "trunkStyle": "ink",
     "motif": "cross",
-    "rowVariants": 2,
-    "flowers": 0.25,
+    "flowers": 0.18,
+    "stipple": 0.8,
     "grove": {
-      "cover": 0.24,
-      "contours": [0.45, 0.82],
-      "contourWidth": 0.09,
-      "wavelength": 9,
-      "fill": 0.9,
-      "satellites": 0.22,
-      "specimens": 0.01,
-      "specimenKinds": { "lace": 0.45, "umbrella": 0.45, "oak": 0.1 },
-      "specimenScale": [1.2, 1.7]
+      "cover": 0.1,
+      "contours": [0.84],
+      "contourWidth": 0.12,
+      "wavelength": 10,
+      "fill": 0.97,
+      "coreScale": 0.45,
+      "satellites": 0.24,
+      "specimens": 0.012,
+      "specimenKinds": { "domeOak": 0.85, "umbrella": 0.15 },
+      "specimenScale": [1.25, 1.9]
     }
   },
-  "props": { "animals": 0.014, "pools": 0.006 },
+  "props": { "animals": 0.016 },
   "trash": {
     "style": "sirup",
     "debris": 1.1,
@@ -65,23 +63,25 @@
   },
   "features": {
     "rocks": [
-      { "kind": "terraces", "count": 1, "size": [8, 10], "height": [3.4, 4.4], "steps": 3, "pathDistance": [2.6, 3.4], "focusDistance": [5, 10] },
+      { "kind": "terraces", "count": 1, "size": [8, 10], "height": [3.4, 4.4], "steps": 3, "pathDistance": [2.6, 3.4], "focusDistance": [9, 14] },
       { "kind": "wall", "count": 1, "size": [16, 22], "height": [5.5, 7.5], "steps": 3 },
       { "kind": "spires", "count": 2, "size": [2.4, 3.4], "height": [3.4, 5], "pathDistance": [2.6, 3.8] }
     ],
     "lakes": { "count": 1, "radius": [1.7, 2.3], "stretch": 2.3, "pathDistance": [2.2, 3.0] }
   },
   "fogStripes": 0.15,
-  "fog": { "start": 8, "range": 16 },
+  "fog": { "start": 9, "range": 18 },
+  "shadowTint": { "color": "#5d6034", "amount": 0.9 },
   "view": {
-    "height": 9.0,
-    "forward": 4,
-    "look": 5.0,
-    "fov": 52,
-    "curvature": 0.14,
-    "focus": [0.33, -0.35],
+    "height": 5.5,
+    "forward": 11,
+    "look": 8.0,
+    "lookHeight": 0.5,
+    "fov": 48,
+    "curvature": 0.05,
+    "focus": [0.42, -0.58],
     "nearClear": 1.2,
-    "footClear": 4.5
+    "footClear": 4.0
   },
-  "focal": { "kind": "bare", "scale": 2.8, "latFrac": 0.45, "deltaDeg": -12, "yawDeg": 0 }
+  "focal": { "kind": "domeOak", "scale": 2.4, "latFrac": 0.45, "deltaDeg": -12, "yawDeg": 0, "clear": 4.6 }
 }

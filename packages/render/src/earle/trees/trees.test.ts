@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { BufferGeometry } from 'three/webgpu';
 import { createBareCard } from './bare';
 import { PINE_TIERS, createColumnCrown, createDomeCrown, createPineCrown } from './crowns';
+import { CROWN_EDGE_PACK } from './cushionEdge';
 import { FORK_TOP, FORK_Y, LACE_ENVELOPE, LACE_VEIL_LEVEL, createFanTrunk, createForkTrunk, createOakTrunk } from './trunks';
 
 function positions(g: BufferGeometry): Float32Array {
@@ -151,7 +152,10 @@ describe('Bäume v4: Kronen', () => {
 
   it('Schlagschatten je Teilkuppel ganz oder gar nicht: untere Kränze nehmen ihn an, Scheitel bleiben frei', () => {
     for (const c of [createDomeCrown('hoch'), createColumnCrown('hoch')]) {
-      const cast = c.geometry.getAttribute('crownCast').array as Float32Array;
+      // Schlagschatten = ganzzahliger Teil (der Shader liest step(0.5, …)); der Bruchteil trägt den Kantenwert der
+      // Teilkuppel (Tupfenbögen, cushionEdge.ts) und bleibt unter CROWN_EDGE_PACK
+      const packed = c.geometry.getAttribute('crownCast').array as Float32Array;
+      const cast = Array.from(packed, (v) => Math.floor(v));
       const p = positions(c.geometry);
       let lowCast = 0;
       let low = 0;
@@ -160,6 +164,7 @@ describe('Bäume v4: Kronen', () => {
       let top = -Infinity;
       for (let i = 0; i < cast.length; i++) {
         expect(cast[i] === 0 || cast[i] === 1).toBe(true);
+        expect(packed[i]! - cast[i]!).toBeLessThanOrEqual(CROWN_EDGE_PACK + 1e-6);
         top = Math.max(top, p[i * 3 + 1]!);
       }
       for (let i = 0; i < cast.length; i++) {

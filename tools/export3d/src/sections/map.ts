@@ -45,8 +45,27 @@ const PROP_KINDS: Array<{ type: number; key: string; label: string; part: number
 ];
 const PROP_PART_LABELS = ['Klumpen', 'Turm', 'Reifen', 'Rohr', 'Scheune'];
 /** Bäume v4: Kronen- und Stamm-Meshes der Baumschicht (`trees/treeLayer.ts`). */
-const CROWN_LABELS: Record<string, string> = { dome: 'Kuppel', domeHi: 'Kuppel (fein)', column: 'Säule', pine: 'Stufenkiefer' };
-const TRUNK_LABELS: Record<string, string> = { fork: 'Gabel', fan: 'Spitzen-Skelett', oak: 'Eiche' };
+const CROWN_LABELS: Record<string, string> = {
+  dome: 'Kuppel',
+  domeHi: 'Kuppel (fein)',
+  column: 'Säule',
+  pine: 'Stufenkiefer',
+  parasol: 'Pilzhut',
+  shrub: 'Buschröschen',
+  fir: 'Earle-Tanne',
+  kuppel: 'Kissenkrone (Kuppelbaum)',
+};
+const TRUNK_LABELS: Record<string, string> = {
+  fork: 'Gabel',
+  fan: 'Spitzen-Skelett',
+  oak: 'Eiche',
+  pillar: 'Riesenstamm',
+  parasol: 'Schirmbaum',
+  sprawl: 'Ausleger (Kuppelbaum)',
+  domeOak: 'Kuppeleiche (mit Tüpfelrock)',
+  winterOak: 'Wintereiche',
+  maple: 'Schnee-Ahorn',
+};
 
 interface Collected {
   /** kind → world → items */

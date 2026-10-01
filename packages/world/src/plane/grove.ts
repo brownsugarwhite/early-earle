@@ -39,6 +39,21 @@ function probit(p: number): number {
   return sgn * z;
 }
 
+/**
+ * Waagrechte Richtung zur Sonne der Kartenansicht in der Ebene (Blick längs −z, Sonne 70° rechts davon, ADR 0002 und
+ * STYLE 5.1): der Wald liegt auf den abgewandten Hängen (Ebene 21/20: schwarze, getüpfelte Hänge, die Wiesen im Licht).
+ */
+const SUN_PLANE = { x: Math.sin((70 * Math.PI) / 180), z: -Math.cos((70 * Math.PI) / 180) };
+
+/** Abgewandtheit des Hangs von der Kartensonne (−0.2..1): 1 steil abgewandt, 0 flach, negativ zugewandt. */
+function shadeSide(field: PlaneGroveField, x: number, z: number): number {
+  const pos: Vec3 = [0, 0, 0];
+  const nor: Vec3 = [0, 0, 0];
+  field.surfaceAt(x, z, pos, nor);
+  const away = -(nor[0] * SUN_PLANE.x + nor[2] * SUN_PLANE.z);
+  return Math.min(1, Math.max(-0.2, away * 3));
+}
+
 /** Hainmaske 0..1 an (x, z): ≥ 0.5 im Hain (Kern → 1), Randband 0.3..0.5, darunter Wiese. */
 export function planeGroveMask(field: PlaneGroveField, x: number, z: number, grove: GroveSpec): number {
   const { mass, warp } = groveNoise(field.seed);
@@ -58,6 +73,7 @@ export function planeGroveMask(field: PlaneGroveField, x: number, z: number, gro
     const w = (grove.contourWidth ?? 0.12) * (0.55 + 0.9 * Math.min(1, Math.max(0, m)));
     for (const c of contours) s = Math.max(s, (w - Math.abs(h - c)) * 0.6);
   }
+  if (grove.shade) s += grove.shade * shadeSide(field, x, z);
   if (grove.invert) s = -s;
   return Math.min(1, Math.max(0, 0.5 + 4 * s));
 }

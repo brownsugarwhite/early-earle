@@ -103,6 +103,22 @@ export interface FocalSpec {
   yawDeg?: number;
   /** Radius, in dem keine Vegetation/Requisiten stehen (Standard nach Art). */
   clearRadius?: number;
+  /** Begleiter des Fokus-Elements (Weltkomposition, z. B. die Scheunen hinter dem Schnee-Ahorn in Welt 08). */
+  companions?: FocalCompanion[];
+}
+
+/**
+ * Begleiter eines Fokus-Elements: Baum oder Requisit mit festem Versatz zum Fokus (Ebene: `dx` seitlich, + = rechts;
+ * `dz` längs, + = zur Kamera der Weltkomposition). Nur in derselben Region wie der Fokus; die Streuung hält Abstand.
+ */
+export interface FocalCompanion {
+  kind: TreeKind | PlanetPropKind;
+  scale?: number;
+  dx: number;
+  dz: number;
+  yawDeg?: number;
+  /** Freiraum um den Begleiter (Standard nach Art wie beim Fokus). */
+  clearRadius?: number;
 }
 
 /** Eine Welt (Autorenwelt aus `content/zones/worlds/NN.json` oder prozedural erzeugt). */
@@ -144,6 +160,11 @@ export interface LandmarkSlot {
   scale: number;
   clearRadius: number;
   instance?: { kind: TreeKind | PlanetPropKind; scale: number };
+  /**
+   * Baum-Instanz dreht sich nach `yawDeg` (Begleiter der Weltkomposition, Fokus-Bäume mit `yawDeg` in der Weltdatei);
+   * sonst Drehung aus der Position.
+   */
+  turnTree?: boolean;
 }
 
 /** Ein externer Slot (z. B. der Riesenbaum, dessen Platz erst mit dem Pfad feststeht). */
@@ -178,6 +199,12 @@ export interface PlanetTree {
   variant: number;
   /** Alter Name des Zonenbands (ohne Bedeutung auf der Ebene, 0). */
   zone: number;
+  /**
+   * Drehung um die Hochachse (rad): Fokus-Bäume mit `yawDeg` im Slot (`LandmarkSlot.turnTree`) und Begleiter der
+   * Weltkomposition — Bäume mit Gesicht (Wintereiche Ebene 11, Schnee-Ahorn Bild 01) zeigen ihr ihre schönste Seite.
+   * Fehlt → aus der Position gehasht wie alle Bäume.
+   */
+  yaw?: number;
 }
 
 export interface PlanetProp {

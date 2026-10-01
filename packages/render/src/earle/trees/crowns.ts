@@ -1,6 +1,7 @@
 import { BufferGeometry, Float32BufferAttribute, Uint16BufferAttribute } from 'three/webgpu';
 import { hash32, mulberry32 } from '@ee/world';
-import { add, cross, dirFrom, len, norm, scale, type V3 } from './mesh';
+import { add, cross, dirFrom, len, norm, scale, sub, type V3 } from './mesh';
+import { cushionEdge, packCast } from './cushionEdge';
 
 /**
  * Kronen der Bäume v4 (Einheit: Kronenradius r = 1). Jede Krone ist eine Masse aus Teilkuppeln wie bei Earle (Bilder
@@ -60,7 +61,7 @@ function toGeometry(parts: Part[]): BufferGeometry {
 }
 
 /** Tangentenbasis zu einer Achse. */
-function basis(axis: V3): [V3, V3] {
+export function basis(axis: V3): [V3, V3] {
   const a: V3 = Math.abs(axis[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
   const t1 = norm(cross(axis, a));
   const t2 = cross(axis, t1);
@@ -108,34 +109,52 @@ function cap(part: Part, c: V3, rc: number, axis: V3, thetaMax: number, around: 
   }
 }
 
-/** UV-Ellipsoid (Radien rx, ry, rz) um c; `cast(y)` je Vertex (untere Hälfte nimmt Schatten an). */
+/**
+ * UV-Ellipsoid (Radien rx, ry, rz) um c; die Zeilen unter `castBelow` (y der Einheitsrichtung) nehmen Schlagschatten an.
+ * An der ersten Schattenzeile liegt eine Naht (die Zeile doppelt, oben 0, unten 1): kein Dreieck interpoliert den
+ * Schattenwert zwischen 0 und 1 — sein Bruchteil bleibt frei für den Kantenwert der Teilkuppeln (`CROWN_EDGE_PACK`).
+ */
 function ellipsoid(part: Part, c: V3, rx: number, ry: number, rz: number, wSeg: number, hSeg: number, shade: (p: V3, n: V3) => V3, castBelow: number): void {
-  const base = part.pos.length / 3;
+  let seam = hSeg + 1;
   for (let i = 0; i <= hSeg; i++) {
-    const v = i / hSeg;
-    const th = v * Math.PI;
-    for (let j = 0; j <= wSeg; j++) {
-      const ph = (j / wSeg) * Math.PI * 2;
-      const d: V3 = [Math.sin(th) * Math.cos(ph), Math.cos(th), Math.sin(th) * Math.sin(ph)];
-      const p: V3 = [c[0] + d[0] * rx, c[1] + d[1] * ry, c[2] + d[2] * rz];
-      const n = shade(p, norm([d[0] / rx, d[1] / ry, d[2] / rz]));
-      part.pos.push(p[0], p[1], p[2]);
-      part.nor.push(n[0], n[1], n[2]);
-      part.cast.push(d[1] < castBelow ? 1 : 0);
+    if (Math.cos((i / hSeg) * Math.PI) < castBelow) {
+      seam = i;
+      break;
     }
   }
-  const row = wSeg + 1;
-  for (let i = 0; i < hSeg; i++) {
-    for (let j = 0; j < wSeg; j++) {
-      const a = base + i * row + j;
-      const b = a + row;
-      part.idx.push(a, a + 1, b, a + 1, b + 1, b);
+  const grid = (i0: number, i1: number, cast: number) => {
+    const base = part.pos.length / 3;
+    for (let i = i0; i <= i1; i++) {
+      const th = (i / hSeg) * Math.PI;
+      for (let j = 0; j <= wSeg; j++) {
+        const ph = (j / wSeg) * Math.PI * 2;
+        const d: V3 = [Math.sin(th) * Math.cos(ph), Math.cos(th), Math.sin(th) * Math.sin(ph)];
+        const p: V3 = [c[0] + d[0] * rx, c[1] + d[1] * ry, c[2] + d[2] * rz];
+        const n = shade(p, norm([d[0] / rx, d[1] / ry, d[2] / rz]));
+        part.pos.push(p[0], p[1], p[2]);
+        part.nor.push(n[0], n[1], n[2]);
+        part.cast.push(cast);
+      }
     }
+    const row = wSeg + 1;
+    for (let i = 0; i < i1 - i0; i++) {
+      for (let j = 0; j < wSeg; j++) {
+        const a = base + i * row + j;
+        const b = a + row;
+        part.idx.push(a, a + 1, b, a + 1, b + 1, b);
+      }
+    }
+  };
+  if (seam <= 0) grid(0, hSeg, 1);
+  else if (seam > hSeg) grid(0, hSeg, 0);
+  else {
+    grid(0, seam, 0);
+    grid(seam, hSeg, 1);
   }
 }
 
 /** Mischt Einträge (Stride `k`) und die parallele Liste `extra` gleich (deterministisch). */
-function shuffleWith(list: number[], extra: number[], k: number, seed: string): { list: Float32Array; extra: Float32Array } {
+export function shuffleWith(list: number[], extra: number[], k: number, seed: string): { list: Float32Array; extra: Float32Array } {
   const rand = mulberry32(hash32(seed));
   const n = list.length / k;
   const order = Array.from({ length: n }, (_, i) => i);
@@ -281,7 +300,21 @@ export function createDomeCrown(detail: 'ultra' | 'hoch' | 'mobil' = 'hoch'): Cr
   // Ultra: für große Fokus- und Solitärbäume (glatte Silhouette auch bildfüllend)
   const [ew, eh, ca, cr] = detail === 'ultra' ? [20, 13, 16, 6] : detail === 'hoch' ? [12, 8, 8, 3] : [9, 6, 6, 3];
   ellipsoid(part, [0, 0, 0], 0.8, 0.8, 0.8, ew, eh, blendShade(0.1), 0.05);
-  for (const c of caps) cap(part, c.c, c.rc, c.dir, (100 * Math.PI) / 180, ca, cr, shade, c.cast);
+  const ranges: Array<[number, number]> = [];
+  for (const c of caps) {
+    const from = part.pos.length / 3;
+    cap(part, c.c, c.rc, c.dir, (100 * Math.PI) / 180, ca, cr, shade, c.cast);
+    ranges.push([from, part.pos.length / 3]);
+  }
+  // Oberkanten der Teilkuppeln (Tupfenbögen, `cushionEdge.ts`) im Bruchteil von `crownCast`, vor dem Abflachen
+  const edges = caps.map((c) => ({ c: c.c, dir: c.dir, r: c.rc }));
+  ranges.forEach(([from, to], ci) => {
+    const c = caps[ci]!;
+    for (let v = from; v < to; v++) {
+      const p: V3 = [part.pos[v * 3]!, part.pos[v * 3 + 1]!, part.pos[v * 3 + 2]!];
+      part.cast[v] = packCast(part.cast[v]!, cushionEdge(p, ci, edges, norm(sub(p, c.c))));
+    }
+  });
   flatten(part, DOME_FLAT);
   const s = capSamples(caps, [0.8, 0.8, 0.8], shade, DOME_FLAT, 'dome-samples-v4', 60, detail === 'mobil' ? 9 : 13);
   return { geometry: toGeometry([part]), ...s };

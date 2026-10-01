@@ -66,6 +66,7 @@ export type {
 } from './features/types';
 export type {
   CanopyMotif,
+  FocalCompanion,
   FocalSpec,
   LandmarkSlot as PlaneLandmarkSlot,
   PlanetLandmarkParams as PlaneLandmarkParams,
