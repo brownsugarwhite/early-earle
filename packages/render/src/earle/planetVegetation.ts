@@ -304,8 +304,10 @@ export class PlanetVegetation {
       },
     );
     for (const m of this.trees.meshes) this.group.add(m);
-    // Stämme: dünne Schattenlinien — nur in den zwei feinen Kaskaden (die Kronen werfen in allen)
+    // Stämme: dünne Schattenlinien — nur in den zwei feinen Kaskaden (die Kronen werfen in allen); ebenso die Büsche
+    // (Strauchkronen, ≈ 1 Einheit hoch: in der gröbsten Kaskade kleiner als ein Texel, der Aufruf bliebe)
     for (const m of Object.values(this.trees.trunks)) m.userData.shadowCascades = 2;
+    this.trees.crowns.shrub.userData.shadowCascades = 2;
 
     // --- Requisiten -------------------------------------------------------------------------------------
     // Gepackte Attribute: propA = (Fußpunkt xyz, Rang), propB = (Normale xyz, Höhe), propC = (Slot, Zeile, Zeile 2, Typ + Variante)
