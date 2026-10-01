@@ -213,6 +213,9 @@ export const TREE_FORMS: Record<Exclude<TreeKind, CardKind>, KindForm> = {
   shrub: { crown: 'shrub', crownY: TREE_PROPORTIONS.shrub.hull, crownS: [1, 1], trunk: null, trunkH: 0, thick: 1, dots: 'crown', terminator: 0.42, rimShare: 0.5, scallopShare: 0.55, scallopsInOrder: true, dotSize: 0.85 },
   // Earle-Tanne (Ebene 7): dunkle hängende Etagen, der Gabel-Schaft steckt in der untersten Etage
   fir: { crown: 'fir', crownY: TREE_PROPORTIONS.fir.trunk, crownS: [1, 1], trunk: 'fork', trunkH: 0.5, thick: 0.4, dots: 'none', terminator: 0.22 },
+  // Schwarze Randtanne (Ebene 10): Sägezahn-Stufen der Kiefer, schmaler und höher, reine Silhouette (Terminator ≥ 0.9:
+  // keine Tüpfel, siehe CrownMaterial `inkBody`) — der Sägezahn vor dem Schnee
+  spruce: { crown: 'pine', crownY: 0.08, crownS: [0.9, 4.1], trunk: 'fork', trunkH: 0.3, thick: 0.4, dots: 'none', terminator: 0.95 },
 };
 
 /**

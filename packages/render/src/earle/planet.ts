@@ -1,6 +1,6 @@
 import { Box3, BufferAttribute, BufferGeometry, Frustum, Group, Matrix4, Mesh, MeshBasicNodeMaterial, Object3D, Quaternion, Sphere, Vector3, Vector4 } from 'three/webgpu';
 import type { Camera } from 'three/webgpu';
-import { abs, atan, attribute, cameraViewMatrix, clamp, float, fract, fwidth, int, length, max, mix, modelViewMatrix, modelWorldMatrix, normalGeometry, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, varying, vec2, vec3, vec4 } from 'three/tsl';
+import { Fn, If, abs, atan, attribute, cameraViewMatrix, clamp, float, fract, fwidth, int, length, max, mix, modelViewMatrix, modelWorldMatrix, normalGeometry, normalize, positionGeometry, positionLocal, positionView, select, sin, smoothstep, step, uniform, uniformArray, varying, vec2, vec3, vec4 } from 'three/tsl';
 import {
   CHUNK_SIZE,
   PlaneField,
@@ -46,13 +46,19 @@ import { MistBanks } from './mist/mistBanks';
 import { createScaleCarpet, type ScaleCarpet } from './ground/scaleCarpet';
 import { fogSeaLayer } from './ground/fogSea';
 import { meadowLayer } from './ground/meadow';
+import { firCarpetColors, firCarpetMask, firProjScale, viewQuarter } from './ground/firCarpet';
+import { canopyCarpetColors, canopyCarpetMask } from './ground/canopyCarpet';
 import type { LandmarkInstance } from '@ee/world';
 
 /**
  * Bodenbehandlung je Welt (Terrain-Ornament): glatt, Schneelinien, Wiese, Perspektivlinien, Rampen, Schneegrate,
  * Buschteppich aus Schuppenbögen (Welt 11, Ebene 20) und Schuppenbüsche mit Lichtlinien (Welt 12, Ebene 7).
  */
-export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges' | 'scales' | 'scalesStreaked';
+export type GroundTreatment = 'smooth' | 'snowLines' | 'meadow' | 'floorLines' | 'ramps' | 'snowRidges' | 'scales' | 'scalesStreaked'
+  // Tannenwald aus weißen Punkten (Welt 06, Ebene 10): Tannen-Zeichen als Bodenornament, siehe ground/firCarpet
+  | 'firs'
+  // Kronendach von oben (Welt 02, Ebene 49): runde Kronen mit heller, getüpfelter Kappe, siehe ground/canopyCarpet
+  | 'canopy';
 
 /** Kameradistanz (Welteinheiten, Kamera → Blickpunkt), für die die Nebelwerte der Welten gesetzt sind. */
 export const FOG_REFERENCE_DISTANCE = 9;
@@ -249,7 +255,7 @@ interface LoadedChunk {
 }
 
 /** Bodenornament je Behandlung (Wiese, Rampen und Schneegrate leben von Form und Bändern, nicht von Linien). */
-const GROUND_KIND: Record<GroundTreatment, number> = { smooth: 0, meadow: 0, ramps: 0, snowRidges: 0, snowLines: 1, floorLines: 2, scales: 3, scalesStreaked: 4 };
+const GROUND_KIND: Record<GroundTreatment, number> = { smooth: 0, meadow: 0, ramps: 0, snowRidges: 0, snowLines: 1, floorLines: 2, scales: 3, scalesStreaked: 4, firs: 5, canopy: 6 };
 const DEFAULT_VIEW: WorldView = { height: 9, forward: 8, look: 4, fov: 70, curvature: 0 };
 /** Periode (Welteinheiten) der Bodenornament-Koordinaten: Muster bleiben beim Umbruch des Fokus deckungsgleich. */
 const PATTERN_PERIOD = 700;
@@ -323,6 +329,10 @@ export class EarlePlanet {
   private readonly mistPlan: PlaneMist;
   /** Buschteppich des Geländes (Bodenbehandlung `scales`): Sonnenrichtung für die Punktränder. */
   private readonly carpet: ScaleCarpet;
+  /** Projektionsmaßstab für die Oktaven des Tannenteppichs (Bodenbehandlung `firs`). */
+  private readonly firProj = firProjScale();
+  /** Viertel der Blickrichtung (die Tannen-Zeichen stehen im Bild aufrecht). */
+  private readonly firQuarter = uniform(0);
   /**
    * Wahrzeichen der geladenen Regionen (Fels mit Wasserfall, Felsstufe, Zwillingsfälle, Ruine, Sumpf): wenige
    * zusammengefasste Meshes, neu gebaut, wenn sich die Menge ändert (Anker = Fokus beim Bau).
@@ -552,7 +562,30 @@ export class EarlePlanet {
     const po = pw.add(this.patternOrigin);
     // Buschteppich (Ebene 20/7): Schuppenbögen der Büsche als Ornament statt der Linien
     this.carpet = createScaleCarpet(this.lookup, rowNode, po, normalGeometry as unknown as Vec3Node, step(3.5, kind), rowNode.add(7));
-    const isCarpet = kind.greaterThan(2.5);
+    const isCarpet = kind.greaterThan(2.5).and(kind.lessThan(4.5));
+    // Tannenwald aus weißen Punkten (Welt 06): nur Welten mit `firs` rechnen ihn (Zweig); Ableitungen außerhalb des Zweigs
+    const isFirs = kind.greaterThan(4.5).and(kind.lessThan(5.5));
+    // Kronendach von oben (Welt 02): ebenfalls nur im Zweig seiner Welt
+    const isCanopy = kind.greaterThan(5.5).and(kind.lessThan(6.5));
+    const firFw = max(fwidth(po.x), fwidth(po.z)).max(1e-5);
+    const firDepth = positionView.z.negate().max(0.05);
+    const glyphSun = this.carpet.sunDir as { value: Vector3 } & Vec3Node;
+    const firData = Fn(() => {
+      const out = vec2(0, 0).toVar('glyphCarpet');
+      If(isFirs, () => {
+        const f = firCarpetMask({ po, normal: normalGeometry as unknown as Vec3Node, sunDir: glyphSun, fw: firFw, depth: firDepth, projScale: this.firProj, quarter: this.firQuarter });
+        out.assign(vec2(f.mask, f.light));
+      }).ElseIf(isCanopy, () => {
+        const c = canopyCarpetMask({ po, sunDir: glyphSun, fw: firFw, depth: firDepth, projScale: this.firProj, quarter: this.firQuarter });
+        out.assign(vec2(c.mask, c.tone));
+      });
+      return out;
+    })();
+    const firCol = firCarpetColors(this.lookup, rowNode.add(1), firData.y as unknown as FloatNode);
+    const crownCol = canopyCarpetColors(this.lookup, rowNode.add(1), firData.y as unknown as FloatNode);
+    const isGlyph = isFirs.or(isCanopy);
+    const glyphColor = select(isFirs, firCol.color, crownCol.color);
+    const glyphShadow = select(isFirs, firCol.shadowColor, crownCol.shadowColor);
     // Nebelmeer (Welt 12): unter dem Nebelspiegel des Slots ist der Boden Nebel, Farben aus der Wasserzeile (Slot + 10)
     const seaLayer = fogSeaLayer(this.lookup, rowNode.add(10), arrayElement(this.slotSea, slotF), pw.y, po);
     const k = (f: number) => (Math.round((f * PATTERN_PERIOD) / (Math.PI * 2)) * Math.PI * 2) / PATTERN_PERIOD;
@@ -614,7 +647,11 @@ export class EarlePlanet {
       crackNode: crack,
       crackLipNode: lip,
       growthNode,
-      pattern: { mask: select(isCarpet, this.carpet.mask, mask), color: select(isCarpet, this.carpet.color, patternColor), shadowColor: select(isCarpet, this.carpet.shadowColor, patternShadow) },
+      pattern: {
+        mask: select(isGlyph, firData.x, select(isCarpet, this.carpet.mask, mask)),
+        color: select(isGlyph, glyphColor, select(isCarpet, this.carpet.color, patternColor)),
+        shadowColor: select(isGlyph, glyphShadow, select(isCarpet, this.carpet.shadowColor, patternShadow)),
+      },
       layers: [snowField, meadow, seaLayer],
       positionNode: warp(positionLocal as unknown as Vec3Node),
       fogDistNode: positionView.length().add(this.veilNode(slotF)),
@@ -1162,6 +1199,13 @@ export class EarlePlanet {
 
   /** Höchster Punkt der geladenen Chunks (bei jedem Neuaufbau des Inhalts). */
   private loadedTop = 0;
+  /** Höchster Punkt der Chunks im Bild (je Frame). */
+  private viewTop = 0;
+
+  /** Höchstes Gelände im Bild (Empfänger der Schlagschatten: Steilhänge reichen über die Hügelamplitude). */
+  get viewTerrainTop(): number {
+    return Math.max(this.field.hMax, this.viewTop);
+  }
 
   /** Richtung zur Sonne (Welt = Ebene, die Ebene dreht sich nicht): Vegetation und Wahrzeichen. */
   setSunDirection(dir: Vector3): void {
@@ -1246,6 +1290,9 @@ export class EarlePlanet {
    */
   update(camera: Camera, cameraWorld: Vector3, frustum: Frustum): boolean {
     this.frame++;
+    this.firProj.value = (camera as Camera & { projectionMatrix: { elements: number[] } }).projectionMatrix.elements[5] ?? 2;
+    camera.getWorldDirection(_w);
+    this.firQuarter.value = viewQuarter(_w.x, _w.z);
     const R = this.options.radius;
     const t0 = performance.now();
     // Kamerafußpunkt in der Ebene und Horizont
@@ -1362,7 +1409,13 @@ export class EarlePlanet {
     // Schattenpass vergrößerte Kugel hielte sie in beiden Pässen
     const horizonReach = (horizon + 0.12) * R + CHUNK_SIZE * 0.75 + 8;
     let visibleCount = 0;
-    for (const chunk of this.loaded.values()) if (this.updateChunkBounds(chunk, frustum, camX, camZ, horizonReach)) visibleCount++;
+    let viewTop = 0;
+    for (const chunk of this.loaded.values()) {
+      if (!this.updateChunkBounds(chunk, frustum, camX, camZ, horizonReach)) continue;
+      visibleCount++;
+      viewTop = Math.max(viewTop, chunk.cpu.mesh.maxH);
+    }
+    this.viewTop = viewTop;
     this.rebuildShadowTiles();
     for (const tile of this.shadowTiles.values()) this.updateTileBounds(tile, camX, camZ, horizonReach);
     this.stats.visible = visibleCount;
@@ -1718,7 +1771,10 @@ export class EarlePlanet {
     this.anchorObject(this.barns.mesh, ax, az);
     this.drifts.set(drifts);
     this.anchorObject(this.drifts.mesh, ax, az);
-    this.mist.set(this.mistPlan.in(regions), { x: ax, z: az }, (w) => this.slots.rowsOfWorld(w).fog);
+    this.mist.set(this.mistPlan.in(regions), { x: ax, z: az }, (w) => {
+      const r = this.slots.rowsOfWorld(w);
+      return r.mist ?? r.fog;
+    });
     this.anchorObject(this.mist.mesh, ax, az);
     // Perspektivlinien (Bodenlinien-Welten): Fokus je Slot = Bildfokus der nächsten Region dieser Welt, verschoben um
     // `floorAnchor` (Ebene: Ost = voraus längs des Pfads, −z; Nord = quer, +x) — ein ferner Fluchtpunkt, auf den die

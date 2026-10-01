@@ -17,10 +17,12 @@ import type { PlanetVegetationFamily } from './planet';
 export type TreeKind = 'dome' | 'cone' | 'stacked' | 'bulb' | 'tall' | 'pine' | 'spire' | 'bare' | 'jewel' | 'lace' | 'umbrella' | 'oak' | 'pillar'
   // Windbaum (Welt 14, Ebene 29): knorrig, zur Leeseite geneigt, Spitzenwerk an der Kronenkante
   | 'wind'
-  | 'parasol' | 'shrub' | 'fir';
+  | 'parasol' | 'shrub' | 'fir'
+  // Schwarze Randtanne (Welt 06, Ebene 10): schmale, spitze Silhouette ohne Punkte, Sägezahn vor dem Schnee
+  | 'spruce';
 
 /** Alle Baumarten (z. B. zur Unterscheidung Baum ↔ Requisit bei Fokus-Elementen). */
-export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak', 'pillar', 'wind', 'parasol', 'shrub', 'fir'];
+export const TREE_KIND_LIST: readonly TreeKind[] = ['dome', 'cone', 'stacked', 'bulb', 'tall', 'pine', 'spire', 'bare', 'jewel', 'lace', 'umbrella', 'oak', 'pillar', 'wind', 'parasol', 'shrub', 'fir', 'spruce'];
 
 export interface TreeInstance {
   /** Fußpunkt auf der Oberfläche (Patch-Raum). */
@@ -87,6 +89,8 @@ export const TREE_PROPORTIONS: Record<TreeKind, { radius: number; trunk: number;
   shrub: { radius: 0.5, trunk: 0, hull: 0.28, top: 1.08 },
   // Earle-Tanne (Ebene 7): schmal, hängende Etagen, unregelmäßige Silhouette, Spitze als dünner Dorn
   fir: { radius: 0.42, trunk: 0.3, hull: 3.4, top: 7.2 },
+  // Schwarze Randtanne (Ebene 10): schmaler Kegel aus Sägezahn-Stufen, fast ohne Stamm
+  spruce: { radius: 0.36, trunk: 0.12, hull: 1.9, top: 4.2 },
 };
 
 // --- Earle-Komposition der Welten -------------------------------------------------------------------
@@ -180,6 +184,8 @@ export interface TreeFamily extends PlanetVegetationFamily {
    * Windbäume der Landzunge (Welt 14) stehen an der Kante, als Silhouetten vor dem Himmel.
    */
   coastBand?: [number, number];
+  /** Tannen am Rand der Schneefelder und Gruppen auf dem Schnee (Welt 06, Ebene 10), siehe `plane/snowEdge.ts`. */
+  snowEdge?: import('./plane/snowEdge').SnowEdgeSpec;
 }
 
 /** Was die Komposition vom Planetenfeld braucht (strukturell, passt auf `PlanetField`). */

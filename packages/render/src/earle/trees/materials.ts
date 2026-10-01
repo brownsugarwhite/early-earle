@@ -116,7 +116,9 @@ class CrownLightingModel extends LightingModel {
       const light = smoothstep(-0.1, 0.5, ndl).mul(mix(float(0.35), float(1), cast));
       const st = stipple(o.patternPos, o.stipple.cell, o.stipple.size, float(0.55).add(light.mul(0.45)), o.stipple.density);
       const dotIdx = float(3).add(step(0.45, light.add(st.key.mul(0.3))).mul(2));
-      const col = mix(ink, o.lookup.pal(dotIdx, row).rgb as unknown as Vec3Node, st.mask);
+      // Terminator ≥ 0.9 je Instanz: reine Silhouette ohne Tüpfel (schwarze Randtanne, Welt 06)
+      const silhouette = step(0.9, o.terminatorNode);
+      const col = mix(ink, o.lookup.pal(dotIdx, row).rgb as unknown as Vec3Node, st.mask.mul(silhouette.oneMinus()));
       (input.reflectedLight.directDiffuse as Vec3Node).addAssign(col);
       return;
     }

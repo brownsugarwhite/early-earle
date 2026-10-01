@@ -168,6 +168,11 @@ export interface ShadowDisplayLike {
   readonly field: { hMax: number; heightAt(x: number, z: number): number };
   /** Höhe auf den Dreiecken des geladenen Chunks (null = nicht geladen): das gezeichnete Gelände, ohne Rauschen. */
   meshHeightAt?(x: number, z: number): number | null;
+  /**
+   * Höchstes Gelände der Chunks im Bild (Steilhänge und Hügelstaffeln über der Hügelamplitude, Welten 06/11/12): die
+   * Empfänger reichen bis dorthin, sonst fehlen die Schlagschatten oben am Hang.
+   */
+  readonly viewTerrainTop?: number;
 }
 
 /**
@@ -229,7 +234,8 @@ export function displayShadowReceivers(world: ShadowDisplayLike | (() => ShadowD
       return w ? -0.3 - w.mapping.curvature.value * w.mapping.radius.value * 0.6 : 0;
     },
     get maxHeight(): number {
-      return (get()?.field.hMax ?? 0) + 0.3;
+      const w = get();
+      return Math.max(w?.field.hMax ?? 0, w?.viewTerrainTop ?? 0) + 0.3;
     },
     coverTolerance,
     get coverAbove(): number {
