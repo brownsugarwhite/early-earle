@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { parseGullMode, setGullMode } from '@ee/core';
-import { earleGradients, earleLight, setGradientAmount, setLightCurvature } from '@ee/render';
+import { earleGradients, earleLight, setGradientAmount, setLightCurvature, setShadowPlaneSmooth } from '@ee/render';
 import { App } from './App';
 import { boot } from './boot/bootProgress';
 import type { EeBoot } from './boot/bootInline';
@@ -61,6 +61,9 @@ if (import.meta.env.DEV) (window as unknown as { __earleGradients?: typeof earle
   const bands = num('lichtkugel');
   const ink = num('tintenkugel');
   if (bands !== undefined || ink !== undefined) setLightCurvature({ ...(bands !== undefined ? { bands } : {}), ...(ink !== undefined ? { ink } : {}) });
+  // ?planeSmooth= Empfängerebene der Schatten: 0 flache Facette (Standard) … 1 geglättete Schattierungsnormale
+  const planeSmooth = num('planeSmooth');
+  if (planeSmooth !== undefined) setShadowPlaneSmooth(planeSmooth);
   // Dev hook: window.__earleLight.bands.value / .ink.value
   if (import.meta.env.DEV) (window as unknown as { __earleLight?: typeof earleLight }).__earleLight = earleLight;
 }

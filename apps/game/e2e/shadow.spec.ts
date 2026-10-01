@@ -19,11 +19,15 @@ interface CascadeStat {
   texelX: number;
   texelY: number;
   split: number;
+  originPlaneX: number;
+  originPlaneY: number;
+  dirtyPasses: number;
 }
 
 interface LabStats {
-  cascades: { cascades: CascadeStat[]; refits: number; passes: number; dMin: number; dMax: number } | null;
+  cascades: { cascades: CascadeStat[]; refits: number; passes: number; slides: number; dirtyPasses: number[]; dMin: number; dMax: number } | null;
   passes: number;
+  chunks: number;
 }
 
 const stats = (page: Page) =>
@@ -128,6 +132,73 @@ test('/lab/shadow Schatten v3: Kontakt-Diagnose, Feldansicht, Kontaktregler und 
   await page.waitForTimeout(2500);
   await page.evaluate(() => (window as unknown as { __ee: { controller: { setParams(p: object): void } } }).__ee.controller.setParams({ rotate: 0 }));
   await page.getByTestId('shadow-dots').click();
+  expect(errors).toEqual([]);
+});
+
+// Karte v5 (R1): Schwenken ohne Neuzeichnen. Das Texelgitter heftet an der Ebene (Rechtecke in Ebenenkoordinaten mit
+// Rand), beim Schwenken gleiten die Kaskaden (`slide`) statt neu zu fitten; erst nach > 2 Einheiten Fokusweg läuft ein
+// Refit (Bodenschätzung), und nur eine Kaskade, deren Rand aufgebraucht ist (die feine), snappt neu und zeichnet. Die
+// mittlere und die ferne Kaskade behalten ihren Ursprung in der Ebene; sie zeichnen höchstens, wenn Inhalt nachlädt
+// (Chunks am Rand) — dann alle gemeinsam.
+test('/lab/shadow Schwenken: Kaskaden gleiten an der Ebene — höchstens 2 Refits, Ursprung der groben Kaskaden fest, nur die feine zeichnet nach', async ({ page }) => {
+  test.setTimeout(420_000);
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 900, height: 560 });
+  await page.goto('/lab/shadow?q=mobil&view=karte&node=20&progress=30&mode=neu&mag=0&cascades=hoch');
+  await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu|webgl2/, { timeout: 60_000 });
+  await expect.poll(async () => (await stats(page)).cascades?.cascades.filter((c) => c.active).length ?? 0, { timeout: 90_000 }).toBe(3);
+  type Ctl = { controller: { pan(dx: number, dz: number): void } };
+  const pan = (dx: number, dz: number) => page.evaluate(([x, z]) => (window as unknown as { __ee: Ctl }).__ee.controller.pan(x!, z!), [dx, dz]);
+  const frame = () => page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+  // Aufwärmen: die Strecke einmal vorlaufen (Chunks laden), zurück, und zur Ruhe kommen lassen
+  for (let i = 0; i < 8; i++) {
+    await pan(0, -0.5);
+    await frame();
+  }
+  for (let i = 0; i < 8; i++) {
+    await pan(0, 0.5);
+    await frame();
+  }
+  let settled = await stats(page);
+  await expect
+    .poll(
+      async () => {
+        const s = await stats(page);
+        const quiet = s.passes === settled.passes && s.chunks === settled.chunks;
+        settled = s;
+        return quiet;
+      },
+      { timeout: 60_000, intervals: [1500] },
+    )
+    .toBe(true);
+  const before = await stats(page);
+  // 30 Schritte à 0,1 Einheit nach vorn (3 Einheiten: einmal über die 2-Einheiten-Schwelle für den Refit)
+  for (let i = 0; i < 30; i++) {
+    await pan(0, -0.1);
+    await frame();
+  }
+  await frame();
+  const after = await stats(page);
+  const b = before.cascades!;
+  const a = after.cascades!;
+  expect(a.refits - b.refits).toBeLessThanOrEqual(2);
+  expect(a.slides - b.slides).toBeGreaterThanOrEqual(20);
+  // grobe Kaskaden: Ursprung in der Ebene fest (Rand 0,2 / 0,3 reicht für 3 Einheiten), gleiche Texel
+  for (const k of [1, 2]) {
+    expect(a.cascades[k]!.originPlaneX).toBe(b.cascades[k]!.originPlaneX);
+    expect(a.cascades[k]!.originPlaneY).toBe(b.cascades[k]!.originPlaneY);
+    expect(a.cascades[k]!.texelX).toBe(b.cascades[k]!.texelX);
+    expect(a.cascades[k]!.texelY).toBe(b.cascades[k]!.texelY);
+  }
+  // Schattenpässe: die groben Kaskaden zeichnen nur gemeinsam (Inhalt nachgeladen), höchstens wenige Male; die feine
+  // mindestens so oft (sie snappt am Rand neu), aber nicht jedes Bild
+  const d0 = a.dirtyPasses[0]! - b.dirtyPasses[0]!;
+  const d1 = a.dirtyPasses[1]! - b.dirtyPasses[1]!;
+  const d2 = a.dirtyPasses[2]! - b.dirtyPasses[2]!;
+  expect(d1).toBe(d2);
+  expect(d1).toBeLessThanOrEqual(3);
+  expect(d0).toBeGreaterThanOrEqual(d1);
+  expect(d0).toBeLessThanOrEqual(d1 + 6);
   expect(errors).toEqual([]);
 });
 
