@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CHUNK_SIZE, chunkAt, scatterPlaneProps, scatterPlaneTrees } from './chunks';
 import { flankHeight } from './flank';
 import { PlaneMist } from './mist';
-import { AUTHORED_ROUTE, loadWorldFiles, testField } from './testWorlds';
+import { AUTHORED_ROUTE, ROUTE, loadWorldFiles, testField } from './testWorlds';
 import type { TreeFamily } from '../scatterTrees';
 
 /**
@@ -17,24 +17,24 @@ describe('Welten 11/12 (Ebene 20, Ebene 7)', () => {
   const k11 = AUTHORED_ROUTE.findIndex((r) => r.world === w11);
   const k12 = AUTHORED_ROUTE.findIndex((r) => r.world === w12);
 
-  it('liegen nach w03 auf der Route (je 10 künftige Level), die prozeduralen Welten beginnen dahinter', () => {
+  it('liegen nach w03 auf der Route (je 12 Level, 125–148); hinter der Route nur die angedeutete Zone', () => {
     expect(w11).toBe(10);
     expect(w12).toBe(11);
     const k03 = AUTHORED_ROUTE.findIndex((r) => r.world === files.findIndex((f) => f.id === 'w03'));
     expect(k11).toBe(k03 + 1);
     expect(k12).toBe(k03 + 2);
     const layout = field.layout;
-    expect(layout.segment(k11)).toMatchObject({ world: w11, firstLevel: 101, levels: 10 });
-    expect(layout.segment(k12)).toMatchObject({ world: w12, firstLevel: 111, levels: 10 });
-    expect(layout.segmentOfLevel(115)).toBe(k12);
-    // danach prozedural: Kennung = Anzahl der Autorenwelten (alle Dateien), fortlaufend
+    expect(layout.segment(k11)).toMatchObject({ world: w11, firstLevel: 125, levels: 12 });
+    expect(layout.segment(k12)).toMatchObject({ world: w12, firstLevel: 137, levels: 12 });
+    expect(layout.segmentOfLevel(140)).toBe(k12);
+    // hinter der Route (Route 15 + 1): keine prozeduralen Welten, nur die angedeutete Zone ohne Level
     const n = AUTHORED_ROUTE.length;
-    expect(layout.segment(n).world).toBe(files.length);
-    // hinter allen künftigen Autorenwelten (w11–w14, je 10 Level)
-    expect(layout.segment(n).firstLevel).toBe(141);
+    expect(layout.segment(n)).toMatchObject({ world: ROUTE.beyondWorld, levels: 0 });
     expect(field.catalog.isAuthored(w12)).toBe(true);
     expect(field.catalog.isAuthored(files.length)).toBe(false);
-    expect(field.catalog.spec(files.length).id).toBe(`p${files.length}`);
+    // fremde Kennungen sind ohne Lab-Flag die angedeutete Welt, mit `?prozedural=1` prozedurale Welten
+    expect(field.catalog.spec(files.length).id).toBe('w16');
+    expect(testField(7, { procedural: true }).catalog.spec(files.length).id).toBe(`p${files.length}`);
   });
 
   it('Nebelbänke je Region: deterministisch, in der Welt; Welt 12 mit Nebelmeer und Bergsilhouetten', () => {

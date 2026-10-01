@@ -1,6 +1,6 @@
 /**
  * ZoneSchema — minimal zone description for `content/zones/*.json`
- * (palette + level range). Vegetation and set-piece rules come with P2.
+ * (palette, material; legacy level range). Vegetation and set-piece rules come with P2.
  */
 
 import { z } from 'zod';
@@ -19,7 +19,11 @@ export const ZoneSchema = z.object({
     ink: Hex,
     accents: z.array(Hex).min(1).max(4),
   }),
-  levelRange: z.tuple([z.number().int().min(1), z.number().int().min(1)]),
+  /**
+   * Legacy (bis Route 15 + 1): Levelbereich der Story-Zone. Seit `content/zones/route.json` folgt die Zone eines Levels
+   * aus seiner Leveldatei (`LevelDef.zone`); das Feld bleibt optional für ältere Werkzeuge.
+   */
+  levelRange: z.tuple([z.number().int().min(1), z.number().int().min(1)]).optional(),
   /** Material unlocked in this zone. */
   material: z.enum(['jelly', 'liquid', 'gas', 'fire']),
 });

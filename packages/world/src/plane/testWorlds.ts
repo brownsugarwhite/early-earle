@@ -3,11 +3,13 @@ import { fileURLToPath } from 'node:url';
 import { WorldCatalog } from './catalog';
 import { PlaneField } from './field';
 import { WorldLayout, type RouteEntry } from './layout';
+import { resolveRoute, type ResolvedRoute } from './route';
 import type { FocalSpec, WorldSpec } from './types';
 
 /**
- * Test-Hilfe (nur Node/Vitest): die zehn Autorenwelten aus `content/zones/worlds/` als `WorldSpec`, die Autorenroute
- * und ein Feld wie im Spiel. Die App baut dasselbe aus `import.meta.glob` (apps/game/src/lab/earle/zones.ts).
+ * Test-Hilfe (nur Node/Vitest): die Autorenwelten aus `content/zones/worlds/` als `WorldSpec`, die Autorenroute aus
+ * `content/zones/route.json` und ein Feld wie im Spiel. Die App baut dasselbe aus `import.meta.glob`
+ * (apps/game/src/lab/earle/zones.ts).
  */
 
 interface WorldFile {
@@ -22,9 +24,14 @@ interface WorldFile {
   landmarkChance?: number;
   mist?: WorldSpec['mist'];
   landmarks?: WorldSpec['landmarks'];
+  /** Angedeutete Zone (w16): gesperrt, nur Silhouetten. */
+  hinted?: boolean;
+  /** false: nie Nachbarwelt einer Seitenzelle (nur `?prozedural=1`). */
+  lateral?: boolean;
 }
 
 const contentDir = fileURLToPath(new URL('../../../../content/zones/worlds', import.meta.url));
+const routeFile = fileURLToPath(new URL('../../../../content/zones/route.json', import.meta.url));
 
 export function loadWorldFiles(): WorldFile[] {
   return readdirSync(contentDir)
@@ -64,28 +71,38 @@ export function authoredSpecs(): WorldSpec[] {
   });
 }
 
-/** Autorenroute nach ADR 0002 (Welt-Indizes der Dateien: w01 = 0 … w10 = 9). */
-export const AUTHORED_ROUTE: RouteEntry[] = [
-  { world: 8, levels: 10 }, // 09 Goldene Wiese (Start, Müll)
-  { world: 5, levels: 10 }, // 06 Schneekiefern
-  { world: 3, levels: 10 }, // 04 Violette Hänge
-  { world: 9, levels: 10 }, // 10 Juwelenwald
-  { world: 4, levels: 10 }, // 05 Wurzelwelt
-  { world: 1, levels: 10 }, // 02 Nebelhügel
-  { world: 6, levels: 10 }, // 07 Kathedralenwald
-  { world: 7, levels: 9 }, // 08 Rote Scheune
-  { world: 0, levels: 16, length: 34 }, // 01 Flechtenbaum mit dem Riesenbaum (Level 80–95)
-  { world: 2, levels: 5 }, // 03 Kuppelbaum (erstes Wäldchen, Level 100)
-  // künftige Level: Autorenwelten hinter Level 100 (Index nach Kennung, die Dateien sind nach `index` sortiert)
-  { world: loadWorldFiles().findIndex((w) => w.id === 'w11'), levels: 10, future: true }, // 11 Nebelweide (Ebene 20)
-  { world: loadWorldFiles().findIndex((w) => w.id === 'w12'), levels: 10, future: true }, // 12 Goldnebelhang (Ebene 7)
-  { world: loadWorldFiles().findIndex((w) => w.id === 'w13'), levels: 10, future: true }, // 13 Roter Monolith (Ebene 45)
-  { world: loadWorldFiles().findIndex((w) => w.id === 'w14'), levels: 10, future: true }, // 14 Stille Bucht (Ebene 29)
-];
+/** Die Route aus `content/zones/route.json`, aufgelöst gegen die Weltdateien (Index nach Kennung). */
+export function loadRoute(): ResolvedRoute {
+  const files = loadWorldFiles();
+  return resolveRoute(JSON.parse(readFileSync(routeFile, 'utf8')), (id) => {
+    const i = files.findIndex((w) => w.id === id);
+    if (i < 0) throw new Error(`Unknown world ${id}`);
+    return i;
+  });
+}
 
-export function testField(seed = 7): PlaneField {
+export const ROUTE: ResolvedRoute = loadRoute();
+
+/** Autorenroute (Route 15 + 1): Welt-Indizes der Dateien (w01 = 0 … w16 = 15). */
+export const AUTHORED_ROUTE: RouteEntry[] = ROUTE.entries;
+
+/** Weltenlage wie im Spiel (ohne prozedurale Welten; `procedural` für das alte Verhalten). */
+export function testLayout(seed = 7, options: { procedural?: boolean } = {}): WorldLayout {
+  const files = loadWorldFiles();
+  return new WorldLayout({
+    seed,
+    route: AUTHORED_ROUTE,
+    authored: files.length,
+    nodeSpacing: ROUTE.nodeSpacing,
+    beyondWorld: ROUTE.beyondWorld,
+    noLateral: files.flatMap((w, i) => (w.lateral === false ? [i] : [])),
+    ...(options.procedural ? { procedural: true } : {}),
+  });
+}
+
+export function testField(seed = 7, options: { procedural?: boolean } = {}): PlaneField {
   const authored = authoredSpecs();
-  const catalog = new WorldCatalog(authored, seed);
-  const layout = new WorldLayout({ seed, route: AUTHORED_ROUTE, authored: authored.length });
+  const catalog = new WorldCatalog(authored, seed, { hinted: ROUTE.beyondWorld, ...(options.procedural ? { procedural: true } : {}) });
+  const layout = testLayout(seed, options);
   return new PlaneField({ seed, layout, catalog });
 }

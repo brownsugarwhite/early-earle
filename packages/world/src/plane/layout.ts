@@ -1,40 +1,76 @@
+import type { RouteShape, RouteShapeParams } from '@ee/core';
 import { GradientNoise2, hash2, smoothstep } from './noise2';
 import { hash32 } from '../rng';
 
 /**
- * Weltenlage der unendlichen Ebene (ADR 0002): der Levelpfad läuft entlang −z auf einem langsam schwingenden
- * Rückgrat `x_b(z)`. Die Pfadwelten bilden eine Folge von Abschnitten entlang z (Autorenwelten 01–10 für die Level
- * 1–100, danach prozedurale Welten mit je 10 Leveln, hinter dem Start ein prozedurales Vorland). Das Pfadband ist
+ * Weltenlage der unendlichen Ebene (ADR 0002, Nachtrag „Route 15 + 1“): der Levelpfad läuft entlang −z auf einem
+ * langsam schwingenden Rückgrat `x_b(z)`. Die Pfadwelten bilden eine Folge von Abschnitten entlang z — die Autorenroute
+ * aus `content/zones/route.json` (15 Autorenwelten, dahinter die angedeutete Zone mit dem Torknoten). Das Pfadband ist
  * ±`bandHalfWidth` breit (verrauschter Rand); links und rechts davon liegen Seitenzellen (Voronoi in (v, z), v =
- * Abstand vom Bandrand) mit Nachbarwelten — nahe am Start Autorenwelten, weiter draußen prozedurale Welten.
+ * Abstand vom Bandrand). Jenseits der Route — seitlich, hinter dem Tor und vor dem Start — liegt überall die
+ * angedeutete Welt `beyondWorld` (Nebelmeer, Silhouetten; Varianten kommen mit W2).
+ *
+ * Mit `procedural` (Lab `?prozedural=1`) gilt das alte Verhalten: prozedurale Pfadwelten hinter der Route, ein
+ * prozedurales Vorland hinter dem Start, Seitenzellen mit Nachbar-Autorenwelten und weiter draußen prozeduralen Welten.
  *
  * Alles deterministisch aus dem Seed; beliebiger Zugriff (keine Abhängigkeit von vorherigen Abschnitten).
  */
 
-/** Weltkennungen: 0 … authored−1 Autorenwelten, danach prozedurale Pfadwelten; Seitenzellen und Vorland eigene Räume. */
+/**
+ * Weltkennungen: 0 … authored−1 Autorenwelten (Dateien); nur mit `procedural`: danach prozedurale Pfadwelten,
+ * Seitenzellen und Vorland in eigenen Räumen.
+ */
 export const LATERAL_WORLD_BASE = 1 << 20;
 export const PROLOGUE_WORLD_BASE = 1 << 21;
+/**
+ * Angedeutete Zonen (Route 15 + 1): Kennungsraum der Silhouetten-Varianten (W2). In W1 ist die angedeutete Welt die
+ * Dateiwelt `beyondWorld` (w16) selbst; Varianten erhalten später `HINTED_WORLD_BASE + v`. Nur ohne `procedural`
+ * (dort belegen die Seitenzellen denselben Raum).
+ */
+export const HINTED_WORLD_BASE = 1 << 20;
+/** Höchstzahl der Hinted-Varianten im Kennungsraum (W2: ≤ 6). */
+export const HINTED_VARIANT_LIMIT = 16;
 
-/** Ein Abschnitt der Autorenroute (Welt und Anzahl Level). */
+/** Zustand eines Abschnitts der Route: spielbar oder angedeutet (gesperrt, „bald“). */
+export type RouteEntryState = 'playable' | 'hinted';
+
+/** Ein Abschnitt der Autorenroute (Welt und Anzahl Level), aufgelöst aus `content/zones/route.json`. */
 export interface RouteEntry {
   world: number;
   levels: number;
   /** Länge entlang z (Welteinheiten); Standard `levels × nodeSpacing` (der Riesenbaum trägt 16 Level auf kurzer Strecke). */
   length?: number;
   /**
-   * Künftige Level (Autorenwelt ohne spielbare Level, z. B. Welt 11–14 hinter Level 100): Abschnitt, Levelnummern und
-   * Welt wie gehabt, aber nicht in `authoredLevels` — die Knoten bleiben gesperrt („bald“), das Wachstum ist dort voll.
-   * Ab dem ersten künftigen Eintrag zählt keiner mehr mit.
+   * `hinted`: angedeutete Zone hinter der Route (Zone 16, gesperrt): Abschnitt, Levelnummern und Welt wie gehabt, aber
+   * nicht in `authoredLevels` — ihr Knoten ist der Torknoten („bald“), das Wachstum ist dort voll. Ab dem ersten
+   * angedeuteten Eintrag zählt keiner mehr mit. Standard `playable`.
    */
-  future?: true;
+  state?: RouteEntryState;
+  /** Der Abschnitt trägt den Riesenbaum (seine Level steigen Stamm und Krone hinauf). */
+  tree?: true;
+  /** Makroform des Pfads (W3, hier nur durchgereicht). */
+  shape?: RouteShape;
+  shapeParams?: RouteShapeParams;
 }
 
 export interface LayoutParams {
   seed: number;
   /** Autorenroute (Level 1 … Summe). */
   route: RouteEntry[];
-  /** Anzahl Autorenwelten (Kennungen 0 … authored−1); danach beginnen die prozeduralen Pfadwelten. */
+  /** Anzahl Autorenwelten (Kennungen 0 … authored−1); mit `procedural` beginnen danach die prozeduralen Pfadwelten. */
   authored: number;
+  /**
+   * Welt jenseits der Route: Seitenzellen, Abschnitte hinter dem Tor und vor dem Start (angedeutete Zone). Standard:
+   * die Welt des letzten angedeuteten Abschnitts, sonst die des letzten Abschnitts.
+   */
+  beyondWorld?: number;
+  /** Welten, die nie Nachbarwelt einer Seitenzelle werden (nur mit `procedural`; Weltdatei `lateral: false`). */
+  noLateral?: readonly number[];
+  /**
+   * Altes Verhalten (Lab `?prozedural=1`): prozedurale Pfadwelten hinter der Route, prozedurales Vorland, Seitenzellen
+   * mit Nachbar-Autorenwelten. Standard false: jenseits der Route nur `beyondWorld`, der Pfad endet am Torknoten.
+   */
+  procedural?: boolean;
   /** Abstand zweier Level entlang z (Standard 4.2 — wie der alte Spiralpfad). */
   nodeSpacing?: number;
   /** Level je prozeduraler Pfadwelt (Standard 10). */
@@ -56,9 +92,11 @@ export interface PathSegment {
   /** z-Bereich: der Abschnitt beginnt bei `zStart` und läuft nach `zEnd` (< zStart, vorwärts = −z). */
   zStart: number;
   zEnd: number;
-  /** Erster Level (1-basiert) und Anzahl; Vorland: 0 und 0. */
+  /** Erster Level (1-basiert) und Anzahl; Vorland und Abschnitte hinter dem Tor: 0 und 0. */
   firstLevel: number;
   levels: number;
+  /** Angedeuteter Abschnitt (Torknoten-Zone, hinter dem Tor, vor dem Start; nie mit `procedural` außer Routeneinträgen). */
+  hinted: boolean;
 }
 
 export type RegionKind = 'path' | 'cell';
@@ -94,6 +132,8 @@ export interface RegionSample {
 }
 
 const SPLIT_WOBBLE = 1.6;
+/** Abstand „keine Grenze in Reichweite“ (alle Nachbarregionen tragen dieselbe Welt). */
+const NO_BORDER = 1e4;
 
 export class WorldLayout {
   readonly seed: number;
@@ -104,9 +144,27 @@ export class WorldLayout {
   readonly cellAcross: number;
   readonly cellAlong: number;
   readonly authored: number;
-  /** Anzahl spielbarer Level der Autorenroute (bis zum ersten künftigen Eintrag). */
+  /** Anzahl spielbarer Level der Autorenroute (bis zum ersten angedeuteten Eintrag) — `LEVEL_COUNT`. */
   readonly authoredLevels: number;
+  /** Welt jenseits der Route (seitlich, hinter dem Tor, vor dem Start). */
+  readonly beyondWorld: number;
+  /** Altes Verhalten mit prozeduralen Welten (Lab-Flag). */
+  readonly procedural: boolean;
+  /**
+   * Letzter Level auf der Route (1-basiert, der Torknoten eingeschlossen); mit `procedural` unbegrenzt (∞). Knoten
+   * dahinter gibt es nicht: `PlanePath.node` klemmt darauf.
+   */
+  readonly lastLevel: number;
+  /** Level des Torknotens (1-basiert: erster Level des ersten angedeuteten Abschnitts), `null` ohne Tor. */
+  readonly gateLevel: number | null;
+  /** Level des Riesenbaums [erster, letzter] (1-basiert) aus dem Eintrag mit `tree`, `null` ohne. */
+  readonly treeRange: readonly [number, number] | null;
+  /** Letzter Abschnitt mit Knoten (der Torabschnitt); mit `procedural` ∞. */
+  readonly lastSegment: number;
   private readonly route: RouteEntry[];
+  /** Welten der angedeuteten Abschnitte und `beyondWorld`. */
+  private readonly hintedWorlds: Set<number>;
+  private readonly lateralPool: number[];
   /** Kumulierte Längen der Autorenroute: starts[k] = Abstand vom Start zum Beginn von Abschnitt k. */
   private readonly starts: number[] = [];
   private readonly firstLevels: number[] = [];
@@ -128,12 +186,17 @@ export class WorldLayout {
     this.cellAcross = params.cell?.across ?? 38;
     this.cellAlong = params.cell?.along ?? 44;
     this.authored = params.authored;
+    this.procedural = params.procedural ?? false;
     this.route = params.route.length > 0 ? params.route : [{ world: 0, levels: 10 }];
     let s = 0;
     let level = 1;
     let playable = -1;
-    for (const r of this.route) {
-      if (r.future && playable < 0) playable = level - 1;
+    let tree: [number, number] | null = null;
+    let lastSegment = -1;
+    for (const [k, r] of this.route.entries()) {
+      if (r.state === 'hinted' && playable < 0) playable = level - 1;
+      if (r.tree && !tree && r.levels > 0) tree = [level, level + r.levels - 1];
+      if (r.levels > 0) lastSegment = k;
       this.starts.push(s);
       this.firstLevels.push(level);
       s += r.length ?? r.levels * this.nodeSpacing;
@@ -142,6 +205,16 @@ export class WorldLayout {
     this.starts.push(s);
     this.firstLevels.push(level);
     this.authoredLevels = playable >= 0 ? playable : level - 1;
+    this.treeRange = tree;
+    this.gateLevel = playable >= 0 && level - 1 > playable ? playable + 1 : null;
+    this.lastLevel = this.procedural ? Number.POSITIVE_INFINITY : level - 1;
+    this.lastSegment = this.procedural ? Number.POSITIVE_INFINITY : lastSegment;
+    const lastHinted = [...this.route].reverse().find((r) => r.state === 'hinted');
+    this.beyondWorld = params.beyondWorld ?? lastHinted?.world ?? this.route[this.route.length - 1]!.world;
+    this.hintedWorlds = new Set([this.beyondWorld, ...this.route.filter((r) => r.state === 'hinted').map((r) => r.world)]);
+    const noLateral = new Set(params.noLateral ?? []);
+    this.lateralPool = [];
+    for (let w = 0; w < this.authored; w++) if (!noLateral.has(w) && !this.hintedWorlds.has(w)) this.lateralPool.push(w);
     this.siteSalt = hash32('layout-site', params.seed);
     this.cellWorldSalt = hash32('layout-cellworld', params.seed);
     this.band = new GradientNoise2(hash32('layout-band', params.seed));
@@ -178,35 +251,55 @@ export class WorldLayout {
 
   // --- Abschnitte ------------------------------------------------------------------------------------------
 
+  /** Anzahl der Routeneinträge (Abschnitte 0 … n−1; der letzte ist mit Tor der angedeutete Abschnitt). */
+  get routeLength(): number {
+    return this.route.length;
+  }
+
+  /** Routeneintrag des Abschnitts k (oder `undefined` außerhalb der Route). */
+  routeEntry(k: number): RouteEntry | undefined {
+    return k >= 0 ? this.route[k] : undefined;
+  }
+
+  /** Länge eines Abschnitts hinter der Route (prozedural: eine Pfadwelt; sonst wie das Vorland). */
+  private get beyondLength(): number {
+    return this.procedural ? this.proceduralLevels * this.nodeSpacing : this.prologueLength;
+  }
+
   /** Abstand vom Start (z = 0) zum Beginn von Abschnitt k (Vorland: negativ). */
   segmentStart(k: number): number {
     const n = this.route.length;
     if (k < 0) return k * this.prologueLength;
     if (k <= n) return this.starts[k]!;
-    return this.starts[n]! + (k - n) * this.proceduralLevels * this.nodeSpacing;
+    return this.starts[n]! + (k - n) * this.beyondLength;
+  }
+
+  /** Welt des Abschnitts k (ohne Objekt; schnell für `sample`). */
+  segmentWorld(k: number): number {
+    const n = this.route.length;
+    if (k < 0) return this.procedural ? PROLOGUE_WORLD_BASE + -k : this.beyondWorld;
+    if (k < n) return this.route[k]!.world;
+    return this.procedural ? this.authored + (k - n) : this.beyondWorld;
   }
 
   segment(k: number): PathSegment {
     const n = this.route.length;
     const d0 = this.segmentStart(k);
     const d1 = this.segmentStart(k + 1);
-    let world: number;
-    let firstLevel: number;
-    let levels: number;
-    if (k < 0) {
-      world = PROLOGUE_WORLD_BASE + -k;
-      firstLevel = 0;
-      levels = 0;
-    } else if (k < n) {
-      world = this.route[k]!.world;
+    const world = this.segmentWorld(k);
+    let firstLevel = 0;
+    let levels = 0;
+    let hinted = !this.procedural;
+    if (k >= 0 && k < n) {
       firstLevel = this.firstLevels[k]!;
       levels = this.route[k]!.levels;
-    } else {
-      world = this.authored + (k - n);
+      hinted = this.route[k]!.state === 'hinted';
+    } else if (k >= n && this.procedural) {
       firstLevel = this.firstLevels[n]! + (k - n) * this.proceduralLevels;
       levels = this.proceduralLevels;
+      hinted = false;
     }
-    return { k, world, zStart: -d0, zEnd: -d1, firstLevel, levels };
+    return { k, world, zStart: -d0, zEnd: -d1, firstLevel, levels, hinted };
   }
 
   /** Abschnitt, in dem die Entfernung d = −z vom Start liegt (ohne Grenzrauschen). */
@@ -214,7 +307,7 @@ export class WorldLayout {
     const n = this.route.length;
     if (d < 0) return Math.floor(d / this.prologueLength);
     const end = this.starts[n]!;
-    if (d >= end) return n + Math.floor((d - end) / (this.proceduralLevels * this.nodeSpacing));
+    if (d >= end) return n + Math.floor((d - end) / this.beyondLength);
     let lo = 0;
     let hi = n - 1;
     while (lo < hi) {
@@ -225,15 +318,25 @@ export class WorldLayout {
     return lo;
   }
 
-  /** Abschnitt mit dem Level (1-basiert). */
+  /**
+   * Abschnitt mit dem Level (1-basiert). Ohne `procedural` gibt es hinter dem Torknoten keine Level: Levelnummern
+   * jenseits des letzten liegen im letzten Abschnitt mit Knoten (geklemmt).
+   */
   segmentOfLevel(level: number): number {
     const n = this.route.length;
     if (level < 1) return 0;
     if (level < this.firstLevels[n]!) {
-      for (let k = n - 1; k >= 0; k--) if (level >= this.firstLevels[k]!) return k;
+      for (let k = n - 1; k >= 0; k--) if (level >= this.firstLevels[k]! && (this.route[k]!.levels > 0 || k === 0)) return k;
       return 0;
     }
+    if (!this.procedural) return Math.max(0, this.lastSegment);
     return n + Math.floor((level - this.firstLevels[n]!) / this.proceduralLevels);
+  }
+
+  /** Angedeutete Welt (Zone 16, hinter dem Tor, seitlich; W2: Silhouetten-Varianten)? */
+  isHinted(world: number): boolean {
+    if (this.hintedWorlds.has(world)) return true;
+    return !this.procedural && world >= HINTED_WORLD_BASE && world < HINTED_WORLD_BASE + HINTED_VARIANT_LIMIT;
   }
 
   /** Verrauschte Abschnittsgrenze: Versatz entlang z (Welteinheiten) an der Stelle x. */
@@ -290,21 +393,22 @@ export class WorldLayout {
   }
 
   /**
-   * Welt einer Seitenzelle: im Autorenbereich der Route (erste zwei Spalten) eine der anderen Autorenwelten, sonst eine
-   * eigene prozedurale Welt (eindeutige Kennung je Zelle — nie zweimal dieselbe).
+   * Welt einer Seitenzelle: ohne `procedural` die angedeutete Welt `beyondWorld` (W2: Silhouetten-Varianten). Mit
+   * `procedural` (altes Verhalten) im Autorenbereich der Route (erste zwei Spalten) eine der anderen Autorenwelten, sonst
+   * eine eigene prozedurale Welt (eindeutige Kennung je Zelle — nie zweimal dieselbe).
    */
   cellWorld(c: number, j: number): number {
+    if (!this.procedural) return this.beyondWorld;
     const key = `${c}:${j}`;
     const cached = this.cellWorldCache.get(key);
     if (cached !== undefined) return cached;
     const [, z] = this.site(c, j, this.siteTmp);
     const k = this.segmentAtDistance(-z);
     let world: number;
-    if (k >= 0 && k < this.route.length && Math.abs(c) <= 2 && this.authored > 2) {
-      const pathWorld = this.route[k]!.world;
+    const pathWorld = k >= 0 && k < this.route.length ? this.route[k]!.world : -1;
+    const pool = this.lateralPool.filter((w) => w !== pathWorld);
+    if (pathWorld >= 0 && Math.abs(c) <= 2 && pool.length > 1) {
       const salt = this.cellWorldSalt;
-      const pool: number[] = [];
-      for (let w = 0; w < this.authored; w++) if (w !== pathWorld) pool.push(w);
       let pick = pool[Math.floor(hash2(c, j, salt) * pool.length)]!;
       // Nachbarzellen (die Zelle weiter vorn in der Spalte, die Spalte näher am Band) nicht dieselbe Welt. Rekursiv
       // (endet, sobald die Nachbarzelle den Autorenbereich verlässt) — unabhängig von der Abfragereihenfolge.
@@ -347,22 +451,50 @@ export class WorldLayout {
       o.region = region;
       o.world = region.world;
       const toEdge = half - au;
-      if (toEdge < Math.min(toStart, toEnd)) {
+      // Nächste Grenze zu einer ANDEREN Welt (zwischen gleichen Welten — Torabschnitt und Zone dahinter, seitliche Zellen
+      // der angedeuteten Welt — gibt es keinen Riss); Reihenfolge wie gehabt: Rand vor Anfang vor Ende
+      let best = Infinity;
+      let which = -1;
+      let nb = region.world;
+      const startW = this.segmentWorld(k - 1);
+      const endW = this.segmentWorld(k + 1);
+      if (startW !== region.world) {
+        best = toStart;
+        which = 1;
+      }
+      if (endW !== region.world && (which < 0 || toEnd < best)) {
+        best = toEnd;
+        which = 2;
+      }
+      if (which < 0 || toEdge < best) {
+        // Welt jenseits des Bandrands: die Seitenzelle direkt daneben
+        const lateral = this.procedural ? this.cellAt(u >= 0 ? 1 : -1, 0.01, z).region.world : this.beyondWorld;
+        if (lateral !== region.world) {
+          best = toEdge;
+          which = 0;
+          nb = lateral;
+        }
+      }
+      if (which === 0) {
         o.border = Math.max(0, toEdge);
         o.borderId = -1;
         o.along = z;
-        // Welt jenseits des Bandrands: die Seitenzelle direkt daneben
-        o.neighbor = this.cellAt(u >= 0 ? 1 : -1, 0.01, z).region.world;
-      } else if (toStart <= toEnd) {
+        o.neighbor = nb;
+      } else if (which === 1) {
         o.border = Math.max(0, toStart);
         o.borderId = k;
         o.along = x;
-        o.neighbor = this.pathRegion(k - 1).world;
-      } else {
+        o.neighbor = startW;
+      } else if (which === 2) {
         o.border = Math.max(0, toEnd);
         o.borderId = k + 1;
         o.along = x;
-        o.neighbor = this.pathRegion(k + 1).world;
+        o.neighbor = endW;
+      } else {
+        o.border = NO_BORDER;
+        o.borderId = -1;
+        o.along = z;
+        o.neighbor = region.world;
       }
       return o;
     }
@@ -373,17 +505,25 @@ export class WorldLayout {
     o.region = hit.region;
     o.world = hit.region.world;
     const toBand = au - half;
-    if (toBand < hit.edge) {
+    // Welt jenseits des Bandrands: der Pfadabschnitt an dieser Stelle
+    const bandWorld = this.segmentWorld(this.segmentAtDistance(d));
+    const bandOther = bandWorld !== hit.region.world;
+    const cellOther = hit.neighbor !== hit.region.world;
+    if (bandOther && (toBand < hit.edge || !cellOther)) {
       o.border = Math.max(0, toBand);
       o.borderId = -1;
       o.along = z;
-      // Welt jenseits: der Pfadabschnitt an dieser Stelle
-      o.neighbor = this.pathRegion(this.segmentAtDistance(d)).world;
-    } else {
+      o.neighbor = bandWorld;
+    } else if (cellOther) {
       o.border = Math.max(0, hit.edge);
       o.borderId = -1;
       o.along = hit.along;
       o.neighbor = hit.neighbor;
+    } else {
+      o.border = NO_BORDER;
+      o.borderId = -1;
+      o.along = z;
+      o.neighbor = hit.region.world;
     }
     return o;
   }

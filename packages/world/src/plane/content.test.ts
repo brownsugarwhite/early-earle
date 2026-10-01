@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AUTHORED_ROUTE, loadWorldFiles, testField } from './testWorlds';
+import { AUTHORED_ROUTE, ROUTE, loadWorldFiles, testField } from './testWorlds';
 import { PlanePath } from './path';
 
 /**
@@ -40,7 +40,8 @@ describe('Geländemerkmale der Weltdateien (Ebene)', () => {
 
   it('kein Levelknoten liegt im Wasser oder auf einem Felsen (außer auf den Plateaus der Wahrzeichen)', () => {
     const path = new PlanePath(field, { seed: 7 });
-    for (const n of path.nodes(0, 99)) {
+    // alle spielbaren Level der Route (1–184) und der Torknoten
+    for (const n of path.nodes(0, ROUTE.lastNode)) {
       if (n.landmark) continue;
       expect(field.isWater(n.position[0], n.position[2], 0.6), `Knoten ${n.index} im Wasser`).toBe(false);
       expect(field.rockAt(n.position[0], n.position[2], 0.6), `Knoten ${n.index} auf Fels`).toBeNull();

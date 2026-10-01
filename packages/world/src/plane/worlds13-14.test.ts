@@ -4,30 +4,30 @@ import { PlanePath } from './path';
 import { AUTHORED_ROUTE, loadWorldFiles, testField } from './testWorlds';
 
 /**
- * Welt 13 (Roter Monolith, Ebene 45) und Welt 14 (Stille Bucht, Ebene 29) auf der unendlichen Ebene: künftige
- * Routenabschnitte hinter Level 100 (Level 101–110 und 111–120, gesperrt bis zur Freigabe). Feld wie im Spiel.
+ * Welt 13 (Roter Monolith, Ebene 45) und Welt 14 (Stille Bucht, Ebene 29) auf der unendlichen Ebene: Routenabschnitte
+ * der Level 149–160 und 161–172 (Route 15 + 1). Feld wie im Spiel.
  */
-describe('Welten 13 und 14 (künftige Abschnitte)', () => {
+describe('Welten 13 und 14 (Level 149–172)', () => {
   const field = testField();
   const worlds = loadWorldFiles();
   const k13 = AUTHORED_ROUTE.findIndex((r) => worlds[r.world]?.id === 'w13');
   const k14 = AUTHORED_ROUTE.findIndex((r) => worlds[r.world]?.id === 'w14');
   const path = new PlanePath(field, { seed: 7 });
 
-  it('liegen hinter Level 100 auf der Route und zählen nicht als spielbare Level', () => {
-    // Reihenfolge der künftigen Welten: w11, w12 (Ebene 20/7), dann w13, w14
+  it('liegen nach w11 und w12 auf der Route und tragen die Level 149–160 und 161–172', () => {
+    // Reihenfolge: w11, w12 (Ebene 20/7), dann w13, w14, w15
     expect(k13).toBe(12);
     expect(k14).toBe(13);
-    expect(field.layout.authoredLevels).toBe(100);
-    expect(field.layout.segment(k13)).toMatchObject({ world: AUTHORED_ROUTE[k13]!.world, firstLevel: 121, levels: 10 });
-    expect(field.layout.segment(k14)).toMatchObject({ world: AUTHORED_ROUTE[k14]!.world, firstLevel: 131, levels: 10 });
-    const nodes = path.nodes(120, 139);
-    for (const n of nodes.slice(0, 10)) expect(n.world, `Knoten ${n.index}`).toBe(AUTHORED_ROUTE[k13]!.world);
-    for (const n of nodes.slice(10)) expect(n.world, `Knoten ${n.index}`).toBe(AUTHORED_ROUTE[k14]!.world);
+    expect(field.layout.authoredLevels).toBe(184);
+    expect(field.layout.segment(k13)).toMatchObject({ world: AUTHORED_ROUTE[k13]!.world, firstLevel: 149, levels: 12 });
+    expect(field.layout.segment(k14)).toMatchObject({ world: AUTHORED_ROUTE[k14]!.world, firstLevel: 161, levels: 12 });
+    const nodes = path.nodes(148, 171);
+    for (const n of nodes.slice(0, 12)) expect(n.world, `Knoten ${n.index}`).toBe(AUTHORED_ROUTE[k13]!.world);
+    for (const n of nodes.slice(12)) expect(n.world, `Knoten ${n.index}`).toBe(AUTHORED_ROUTE[k14]!.world);
   });
 
   it('kein Levelknoten der beiden Welten liegt im Wasser oder auf dem Fels', () => {
-    for (const n of path.nodes(120, 139)) {
+    for (const n of path.nodes(148, 171)) {
       if (n.landmark) continue;
       expect(field.isWater(n.position[0], n.position[2], 0.6), `Knoten ${n.index} im Wasser`).toBe(false);
       expect(field.rockAt(n.position[0], n.position[2], 0.6), `Knoten ${n.index} auf Fels`).toBeNull();

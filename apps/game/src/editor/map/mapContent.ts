@@ -22,10 +22,13 @@ export interface MapFile {
   pendingLocal: boolean;
 }
 
-const bundledZones = import.meta.glob<Json>('@content/zones/*.json', { eager: true, import: 'default' });
+// `route.json` liegt neben den Zonen, ist aber keine Zonendatei (die Route bearbeitet der Map-Editor nicht)
+const bundledZones = import.meta.glob<Json>(['@content/zones/*.json', '!@content/zones/route.json'], { eager: true, import: 'default' });
 const bundledWorlds = import.meta.glob<Json>('@content/zones/worlds/*.json', { eager: true, import: 'default' });
 
 const baseName = (path: string) => path.split('/').pop()!;
+/** Die Kartenroute (`content/zones/route.json`): kein Zonen-Eintrag im Map-Editor. */
+const ROUTE_FILE = 'route.json';
 const dirOf = (kind: MapKind): MapFile['dir'] => (kind === 'welt' ? 'zones/worlds' : 'zones');
 
 function bundled(kind: MapKind): Array<{ file: string; json: Json }> {
@@ -45,7 +48,7 @@ async function listMac(dir: MapFile['dir']): Promise<string[]> {
   const r = await contentFetch(contentUrl(dir), {}, 5000);
   if (!r.ok) throw new Error(`${r.status}`);
   const j = (await r.json()) as { files?: unknown };
-  return Array.isArray(j.files) ? j.files.filter((f): f is string => typeof f === 'string' && /^[a-zA-Z0-9_.-]+\.json$/.test(f)) : [];
+  return Array.isArray(j.files) ? j.files.filter((f): f is string => typeof f === 'string' && /^[a-zA-Z0-9_.-]+\.json$/.test(f) && !(dir === 'zones' && f === ROUTE_FILE)) : [];
 }
 
 async function readMac(dir: MapFile['dir'], file: string): Promise<Json | null> {
