@@ -108,9 +108,13 @@ export function shoreBandLayers(o: ShoreBandOptions): EarleLayer[] {
     .add(0.5);
   const poisoned = toxic.mul(poisonMask(o.growth, front, o.healFrom));
   const spotCol = select(poisoned.greaterThan(0.5), toxicPalette(style, 1), o.lookup.pal(1, o.waterRow).rgb as unknown as Vec3Node) as unknown as Vec3Node;
-  // Neon-Saum an der Uferlinie (Schleimrand), wellig; nur an Giftufern vor der Heilung
-  const rimEdge = float(0.11).add(wob.mul(0.5));
-  const rim = aaStep(0, rimEdge.sub(shore)).mul(poisoned);
+  // Neon-Kruste an der Uferlinie (angeschwemmter Schleim, kein Umriss): Breite 0 … ≈ 0,2 der Bandbreite, mit Lücken; nur an
+  // Giftufern vor der Heilung
+  const crust = sin(po.x.mul(k(0.83)).add(sin(po.z.mul(k(0.57))).mul(1.3)))
+    .add(sin(po.z.mul(k(1.71)).sub(po.x.mul(k(0.43)))).mul(0.5))
+    .sub(0.15);
+  const rimEdge = clamp(crust, 0, 1.2).mul(0.17).add(wob.mul(0.3));
+  const rim = aaStep(0, rimEdge.sub(shore)).mul(aaStep(0, crust)).mul(poisoned);
   return [
     {
       mask: band,

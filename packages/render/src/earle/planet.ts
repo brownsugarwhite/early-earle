@@ -634,10 +634,11 @@ export class EarlePlanet {
     const fieldEdge = aaStep(0, tc.y.add(snowWob)).mul(wb.z);
     const snowField = { mask: fieldEdge.mul(meadowOn.oneMinus()), row: wb.y, lift: float(0.08) };
     const meadow = meadowLayer(this.lookup, wb.y, tc.y, fieldEdge, po, meadowOn);
-    // Uferband (W7): hellere Uferstufe mit flachen Spiegelformen, Neon-Saum an Giftufern (`water/shoreBand.ts`)
+    // Uferband (W7): hellere Uferstufe mit flachen Spiegelformen, Neon-Saum an Giftufern (`water/shoreBand.ts`); Welten mit
+    // Wiesen- oder Schneefeldern nehmen deren Zeile (Ebene 49: helle Wiesenbänder am Wasser statt dunklem Waldboden)
     const shoreLayers = shoreBandLayers({
       lookup: this.lookup,
-      terrainRow: rowNode,
+      terrainRow: select(wb.z.greaterThan(0.5), wb.y, rowNode),
       waterRow: wb.x,
       bands: this.terrainBands,
       code: tc.z,

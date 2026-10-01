@@ -236,8 +236,13 @@ export function createWaterMaterial(o: WaterMaterialOptions): WaterMaterial {
   tox = mix(tox, tp(4), bubbles) as unknown as Vec3Node;
   // fern: Neon-Linien auf dem Grundton (dieselben driftenden Bänder)
   tox = mix(tox, tp(3), lines) as unknown as Vec3Node;
-  // Neon-Saum an der Uferlinie (Schleimrand), wellig wie das Flachwasser
-  const rim = aaStep(0, float(0.16).add(wob.mul(0.6)).add(sway.mul(0.5)).sub(e));
+  // Neon-Saum an der Uferlinie (Schleimkruste, kein Umriss): seine Breite wechselt längs des Ufers zwischen 0 und ≈ 0,55,
+  // an gut einem Drittel des Ufers fehlt er ganz — Flecken wie angeschwemmter Schleim statt einer Linie um den See
+  const crust = sin(u.mul(0.41).add(body.mul(7.0)).add(sin(v.mul(0.33).add(body.mul(2.0))).mul(1.2)))
+    .add(sin(u.mul(1.13).add(v.mul(0.29)).add(body.mul(4.0))).mul(0.5))
+    .add(0.2);
+  const rimW = clamp(crust, 0, 1.4).mul(0.4);
+  const rim = aaStep(0, rimW.add(wob.mul(0.4)).add(sway.mul(0.5)).sub(e)).mul(aaStep(0, crust));
   tox = mix(tox, tp(3), rim) as unknown as Vec3Node;
   // dunkles Spiegelbild der Böschung bleibt (in Schleimtiefe)
   tox = mix(tox, mix(tp(1), tp(0), select(vor.edge.lessThan(0.12), float(0.6), float(0.15)).mul(near)), refl.mul(rim.oneMinus())) as unknown as Vec3Node;
