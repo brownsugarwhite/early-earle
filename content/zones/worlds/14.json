@@ -51,6 +51,7 @@
     "nearClear": 3,
     "footClear": 0,
     "aim": [12, 6],
+    "sun": { "azimuth": 70, "elevation": 15 },
     "portrait": { "lookSide": -10, "lookHeight": -4.5, "fov": 76, "aim": [6, 4] }
   },
   "focal": { "along": 0.35, "lateral": 11 },
