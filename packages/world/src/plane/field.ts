@@ -342,8 +342,18 @@ export class PlaneField {
   heightNormAt(x: number, z: number): number {
     const rs = this.layout.sample(x, z, this.rs);
     const s = this.shapeAt(x, z, rs);
+    return this.heightNormOf(x, z, this.heightWithShape(x, z, s, rs.region.key), s);
+  }
+
+  /**
+   * Relative Höhe 0..1 einer Geländehöhe `h` an (x, z) mit der Form `s`; ein Steilhang mit `relief` zählt nicht mit
+   * (Welt 06: das Relief des Hangs, nicht seine Höhe).
+   */
+  heightNormOf(x: number, z: number, h: number, s: ResolvedShape): number {
     const a = s.amplitude;
-    return a > 1e-6 ? Math.min(1, Math.max(0, this.heightWithShape(x, z, s, rs.region.key) / a)) : 0;
+    if (a <= 1e-6) return 0;
+    const base = s.flank?.relief && (s.flankW ?? 1) > 0 ? h - flankHeight(this.layout, s.flank, x, z) * (s.flankW ?? 1) : h;
+    return Math.min(1, Math.max(0, base / a));
   }
 
   /**

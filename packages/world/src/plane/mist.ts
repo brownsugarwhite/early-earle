@@ -39,10 +39,18 @@ export interface MistSpec {
    * des Pfadabschnitts (Standard: im Abschnitt), Höhe und Breite in Welteinheiten.
    */
   mountains?: { count: number; lateral: [number, number]; height: [number, number]; width?: [number, number]; ahead?: [number, number] };
+  /**
+   * Anteil der Bänder in den farbigen Tönen der Nebelzeile (Welt 02, Ebene 49: leuchtend türkisblaue Bänder zwischen
+   * den weißen Schlieren), 0..1; Standard 0.
+   */
+  tinted?: number;
 }
 
-/** Art einer Bank: 0 = Band zwischen den Hügeln, 1 = Nebelmeer (dicht unten, weich oben), 2 = Bergsilhouette. */
-export type MistKind = 0 | 1 | 2;
+/**
+ * Art einer Bank: 0 = Band zwischen den Hügeln, 1 = Nebelmeer (dicht unten, weich oben), 2 = Bergsilhouette, 3 = farbiges
+ * Band (wie 0, in den farbigen Tönen der Nebelzeile).
+ */
+export type MistKind = 0 | 1 | 2 | 3;
 
 export interface MistBank {
   /** Mitte (Ebene: x, Höhe, z). */
@@ -142,7 +150,10 @@ export class PlaneMist {
       const [lo] = ground(x, z, length);
       const y = lo + amp * (h0 + (h1 - h0) * rand());
       if (field.worldAt(x, z) !== region.world) continue;
-      out.push({ x, y, z, length, thickness: t0 + (t1 - t0) * rand(), opacity: opacity * (0.8 + 0.2 * rand()), seed: rand(), world: region.world, kind: 0 });
+      const bank: MistBank = { x, y, z, length, thickness: t0 + (t1 - t0) * rand(), opacity: opacity * (0.8 + 0.2 * rand()), seed: rand(), world: region.world, kind: 0 };
+      // farbige Bänder nur in Welten mit `tinted` (sonst kein zusätzlicher Zufall)
+      if (spec.tinted && rand() < spec.tinted) bank.kind = 3;
+      out.push(bank);
     }
     const focal = spec.focal ? field.focalSlot(key) : null;
     if (spec.focal && focal) {
