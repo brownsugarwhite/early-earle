@@ -860,6 +860,7 @@ export class EarlePlanet {
   setPathCorridor(fn: ((x0: number, z0: number, x1: number, z1: number) => PathCorridor) | null): void {
     this.corridorFn = fn;
     this.cache.clear();
+    this.chunkTops.clear();
     for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
     this.contentDirty = true;
   }
@@ -949,6 +950,7 @@ export class EarlePlanet {
     if (Math.abs(scale - this.trashScale) < 1e-6) return;
     this.trashScale = scale;
     this.cache.clear();
+    this.chunkTops.clear();
     for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
     this.contentDirty = true;
   }
@@ -1214,6 +1216,7 @@ export class EarlePlanet {
   setLandmark(params: PlaneLandmarkParams): PlaneLandmarkSlot {
     const slot = this.field.setLandmark(params);
     this.cache.clear();
+    this.chunkTops.clear();
     for (const chunk of [...this.loaded.values()]) this.unloadChunk(chunk);
     this.path.invalidate();
     this.contentDirty = true;
@@ -1283,14 +1286,18 @@ export class EarlePlanet {
     const limit = Math.cos(Math.min(Math.PI, horizon + (CHUNK_SIZE * 0.75) / R + 0.12));
     const half = CHUNK_SIZE / 2;
     const hTop = this.terrainTop + 6;
-    // Werfer sonnenwärts (Karte v5, R1.4): Chunks außerhalb des Bildes in Richtung Sonne werfen ihre langen Schatten ins
-    // Bild — sie bleiben geladen, wenn der nächste Punkt ihrer möglichen Schattenbahn (bis hTop / tan el, Deckel 40
-    // Einheiten) näher als 30 Einheiten am Kamerafuß liegt. Sonst ploppen Hügelschatten beim Schwenken.
+    // Werfer sonnenwärts (Karte v5, R1.4): Chunks außerhalb des Bildes in Richtung Sonne werfen ihre langen Hügelschatten
+    // ins Bild — sie bleiben geladen, wenn ihr Gelände (fünf Feldproben, gecacht) über dem Kamerafuß aufragt und der
+    // nächste Punkt ihrer Schattenbahn (bis Überhöhung / tan el, Deckel `sunwardReach`) näher als 30 Einheiten am
+    // Kamerafuß liegt. Sonst ploppen Hügelschatten beim Schwenken. Jede zusätzliche Kachel kostet einen Zeichenaufruf je
+    // Kaskade — deshalb nur Hügel, keine Bäume (deren ferne Schatten sind dünn).
     const sun = this.rockSunDir.value;
     const sunH = Math.hypot(sun.x, sun.z);
     const sunX = sunH > 1e-6 ? sun.x / sunH : 0;
     const sunZ = sunH > 1e-6 ? sun.z / sunH : 0;
-    const sunReach = Math.min(this.sunwardReach, hTop / Math.max(0.05, sun.y / Math.max(1e-6, sunH)));
+    const tanEl = Math.max(0.05, sun.y / Math.max(1e-6, sunH));
+    const sunReach = Math.min(this.sunwardReach, hTop / tanEl);
+    const hFoot = sunReach > 0 ? this.field.heightAt(camX, camZ) : 0;
     this.sunBand.set(sunX, sunZ, sunReach);
     const cx0 = Math.floor((this.focus.x - reach - Math.max(0, -sunX) * sunReach) / CHUNK_SIZE);
     const cx1 = Math.floor((this.focus.x + reach + Math.max(0, sunX) * sunReach) / CHUNK_SIZE);
@@ -1301,21 +1308,29 @@ export class EarlePlanet {
       for (let cx = cx0; cx <= cx1; cx++) {
         const mx = cx * CHUNK_SIZE + half;
         const mz = cz * CHUNK_SIZE + half;
-        // Nächster Punkt der Schattenbahn des Chunks zum Kamerafuß (Chunk selbst, wenn er nicht sonnenwärts liegt)
-        const shadowD = sunwardDistance(mx - camX, mz - camZ, sunX, sunZ, sunReach);
+        const camD = Math.hypot(mx - camX, mz - camZ);
+        // Sonnenwärtiger Hügel-Werfer: Schattenbahn (Überhöhung über dem Kamerafuß / tan el) erreicht das Bild
+        let sunwardKeep = false;
+        if (sunReach > 0 && camD > 30) {
+          const along = (mx - camX) * sunX + (mz - camZ) * sunZ;
+          if (along > 0) {
+            const rise = this.chunkTop(cx, cz) - hFoot + 1;
+            const reachC = Math.min(sunReach, Math.max(0, rise) / tanEl);
+            sunwardKeep = reachC > 0 && sunwardDistance(mx - camX, mz - camZ, sunX, sunZ, reachC) <= 30;
+          }
+        }
         const fd = Math.hypot(mx - this.focus.x, mz - this.focus.z);
-        if (fd > reach + half * Math.SQRT2 && shadowD > 30) continue;
+        if (fd > reach + half * Math.SQRT2 && !sunwardKeep) continue;
         // Anzeige-Kugel des Chunks (Mitte, halbe Höhe)
         _w.set(mx - this.focus.x, R + hTop * 0.4, mz - this.focus.z);
         this.mapping.toDisplayCpu(_w, _w);
         const facing = _w.clone().normalize().dot(camDir);
-        if (facing < limit && shadowD > 30) continue;
+        if (facing < limit && !sunwardKeep) continue;
         _sphere.center.copy(_w);
         _sphere.radius = half * Math.SQRT2 + hTop * 0.6;
         const visible = facing >= limit && frustum.intersectsSphere(_sphere);
-        // Chunks knapp außerhalb des Bildes bleiben geladen (Schattenwerfer, sanftes Schwenken), sonnenwärts weiter
-        const camD = Math.hypot(mx - camX, mz - camZ);
-        if (!visible && shadowD > 30) continue;
+        // Chunks knapp außerhalb des Bildes bleiben geladen (Schattenwerfer, sanftes Schwenken), Hügel sonnenwärts weiter
+        if (!visible && camD > 30 && !sunwardKeep) continue;
         const res = camD < 34 ? this.options.quality.chunkRes : (this.options.quality.lodRes ?? Math.max(9, Math.round((this.options.quality.chunkRes - 1) / 2) + 1));
         wanted.push({ key: `${cx}:${cz}`, cx, cz, dist: camD, visible, res });
       }
@@ -1937,6 +1952,28 @@ export class EarlePlanet {
   /** Höhenband (min, max) der Chunks im Bild — Teil der Pan-Signatur der Schattenkaskaden (`ShadowDisplayLike`). */
   get viewHeightBand(): readonly [number, number] {
     return this.heightBand;
+  }
+
+  /** Höchste von fünf Feldproben eines Chunks (Mitte, Ecken), gecacht je Chunk — für die Werfer sonnenwärts. */
+  private readonly chunkTops = new Map<string, number>();
+  private chunkTop(cx: number, cz: number): number {
+    const key = `${cx}:${cz}`;
+    let h = this.chunkTops.get(key);
+    if (h === undefined) {
+      const x0 = cx * CHUNK_SIZE;
+      const z0 = cz * CHUNK_SIZE;
+      const q = CHUNK_SIZE * 0.25;
+      h = Math.max(
+        this.field.heightAt(x0 + CHUNK_SIZE * 0.5, z0 + CHUNK_SIZE * 0.5),
+        this.field.heightAt(x0 + q, z0 + q),
+        this.field.heightAt(x0 + CHUNK_SIZE - q, z0 + q),
+        this.field.heightAt(x0 + q, z0 + CHUNK_SIZE - q),
+        this.field.heightAt(x0 + CHUNK_SIZE - q, z0 + CHUNK_SIZE - q),
+      );
+      if (this.chunkTops.size > 2000) this.chunkTops.clear();
+      this.chunkTops.set(key, h);
+    }
+    return h;
   }
   private viewHorizon = -1;
 
