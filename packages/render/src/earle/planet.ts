@@ -216,6 +216,8 @@ export interface PathCorridor {
 const LINGER_CHUNKS = 12;
 /** Frist der ersten Füllung (ms): so viele der nächsten Chunks wie hineinpassen, der Rest mit dem Budget je Bild. */
 const FIRST_FILL_MS = 60;
+/** Inhalt (Vegetation, Requisiten) höchstens alle so viele Bilder neu (R4.6; Schatten-Regionen ebenso, MapWorld). */
+const CONTENT_REBUILD_FRAMES = 6;
 
 /**
  * Grundbestand vor der Heilung (nie leeres Gelände): Welten ohne ganzes Müllfeld zeigen schon die Hälfte ihrer Bäume
@@ -1507,7 +1509,7 @@ export class EarlePlanet {
     for (const chunk of this.loaded.values()) {
       const m = chunk.cpu.mesh;
       chunk.beyond = Math.hypot(m.ox + half - camX, m.oz + half - camZ) > horizonReach;
-      if (!chunk.beyond) content.push(chunk.key);
+      if (this.carriesContent(chunk)) content.push(`${chunk.key}@${chunk.res}`);
     }
     const contentKeys = content.sort().join('|');
     if (contentKeys !== this.contentKeys) {
@@ -1515,9 +1517,10 @@ export class EarlePlanet {
       changed = true;
     }
     if (changed) this.contentDirty = true;
-    const pending = wanted.some((w) => !this.loaded.has(w.key));
     let rebuilt = false;
-    if (this.contentDirty && (!pending || this.lastRebuild < 0 || this.frame - this.lastRebuild >= 6)) {
+    // R4.6: höchstens alle CONTENT_REBUILD_FRAMES Bilder (beim Schwenken änderte sich die Menge fast jedes Bild; die
+    // Änderungen liegen am Rand im Nebel bzw. knapp außerhalb des Bildes und sammeln sich bis zum nächsten Neubau)
+    if (this.contentDirty && (this.lastRebuild < 0 || this.frame - this.lastRebuild >= CONTENT_REBUILD_FRAMES)) {
       this.rebuildContent();
       this.contentDirty = false;
       this.lastRebuild = this.frame;
@@ -1988,12 +1991,12 @@ export class EarlePlanet {
       loadedTop = Math.max(loadedTop, m.maxH);
       this.bounds.expandByPoint(_v.set(m.ox - this.focus.x, this.options.radius + m.minH, m.oz - this.focus.z));
       this.bounds.expandByPoint(_v.set(m.ox + CHUNK_SIZE - this.focus.x, this.options.radius + m.maxH, m.oz + CHUNK_SIZE - this.focus.z));
-      // Inhalt nur diesseits des Horizonts (wartende Chunks hinter der Kamera tragen nichts bei)
-      if (chunk.beyond) continue;
+      // Inhalt nur diesseits des Horizonts und nur gewollter Chunks (wartende hinter der Kamera tragen nichts bei)
+      if (!this.carriesContent(chunk)) continue;
       for (const key of m.regions) regions.add(key);
       for (const tree of chunk.cpu.trees) {
         trees.push({ tree, slot: chunk.slot, withDots });
-        const rf = this.field.features.peek(this.field.sample(tree.position[0], tree.position[2]).region.key);
+        const rf = this.field.features.peek(this.treeRegionKey(tree));
         const spec = rf?.drifts ?? this.catalog.spec(tree.world).features?.drifts ?? null;
         // der Schnee-Ahorn trägt seinen Schneehügel selbst (trees/maple.ts)
         if (spec && tree.variant < (spec.trees ?? 1) && tree.kind !== 'maple') {
@@ -2012,7 +2015,7 @@ export class EarlePlanet {
     this.loadedTop = loadedTop;
     // Schattenregion (R4.4): Chunks, deren Inhalt hinzukommt, wegfällt oder wechselt (Detailstufe)
     const built = new Map<string, ChunkCpu>();
-    for (const chunk of this.loaded.values()) if (!chunk.beyond) built.set(chunk.key, chunk.cpu);
+    for (const chunk of this.loaded.values()) if (this.carriesContent(chunk)) built.set(chunk.key, chunk.cpu);
     for (const [key, cpu] of built) if (this.builtContent.get(key) !== cpu) this.addShadowChunk(cpu);
     for (const [key, cpu] of this.builtContent) if (!built.has(key)) this.addShadowChunk(cpu);
     this.builtContent = built;
@@ -2068,6 +2071,23 @@ export class EarlePlanet {
     }
     if (!this.bounds.isEmpty()) this.bounds.expandByScalar(this.hTotal);
   }
+
+  /** Trägt der Chunk Inhalt? Diesseits des Horizonts und in diesem Bild gewollt (sichtbar, nah oder sonnenwärts). */
+  private carriesContent(chunk: LoadedChunk): boolean {
+    return !chunk.beyond && chunk.lastSeen === this.frame;
+  }
+
+  /** Regionsschlüssel am Fuß eines Baums (gecacht: die Feldprobe kostete ≈ 25 % von `rebuildContent`). */
+  private treeRegionKey(tree: PlaneTree): string {
+    let key = this.treeRegions.get(tree);
+    if (key === undefined) {
+      key = this.field.sample(tree.position[0], tree.position[2]).region.key;
+      this.treeRegions.set(tree, key);
+    }
+    return key;
+  }
+
+  private readonly treeRegions = new WeakMap<PlaneTree, string>();
 
   /** Wahrzeichen der geladenen Chunks: Menge bestimmen, bei Änderung neu bauen (Anker = gerundeter Fokus). */
   private rebuildLandmarks(): void {
