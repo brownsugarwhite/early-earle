@@ -34,8 +34,10 @@ import { GROWTH_SLOTS, PlanetVegetation, type VegetationPropEntry, type Vegetati
 import { proceduralPalette } from './proceduralPalette';
 import type { ShadowFactorFn } from './trees/treeLayer';
 import { PaletteLookup, aaStep, arrayElement, createFogSettings, patternTime, stripeMask, type FloatNode, type FogSettings, type TSLUniform, type UniformArrayLike, type Vec3Node, type Vec4Node } from './tsl';
-import { createWaterMaterial } from './water/waterSurface';
+import { TOXIC_HEAL_FROM, createWaterMaterial } from './water/waterSurface';
 import { buildWaterGeometry, waterGeometry, type WaterRegionInput } from './water/waterMesh';
+import { encodeShore, packTerrainFlags, shoreBandLayers } from './water/shoreBand';
+import { toxicStyleCode } from './trash/palette';
 import { buildRockGeometry, createRockMaterial, rockGeometry } from './landmarks/rocks';
 import { BarnLandmarks } from './landmarks/barn';
 import { HorseHerd, type HorsePlacement } from './landmarks/horses';
@@ -517,7 +519,8 @@ export class EarlePlanet {
     // --- Terrainmaterial (geteilt) ----------------------------------------------------------------------------
     // Gepackte Vertex-Attribute (WebGPU ≤ 8 Puffer): ta = (eigener Slot, Slot², Slot lo, Slot hi),
     // tb = (Grenzabstand ± (lo +), Risskennung, Koordinate längs des Risses, Höhe 0..1),
-    // tc = (Uferabstand, Schneefeld, Koordinate längs des Gewässers, Eis + 2·Sumpf), tg = Wachstums-Slot + Lippenseite/2
+    // tc = (Uferabstand, Schneefeld, Uferband-Code, Eis + 2·Sumpf + 4·Gift-Code; `water/shoreBand.ts`),
+    // tg = Wachstums-Slot + Lippenseite/2
     const ta = attribute('ta', 'vec4');
     const tb = attribute('tb', 'vec4');
     const tg = attribute('tg', 'float');
@@ -631,6 +634,19 @@ export class EarlePlanet {
     const fieldEdge = aaStep(0, tc.y.add(snowWob)).mul(wb.z);
     const snowField = { mask: fieldEdge.mul(meadowOn.oneMinus()), row: wb.y, lift: float(0.08) };
     const meadow = meadowLayer(this.lookup, wb.y, tc.y, fieldEdge, po, meadowOn);
+    // Uferband (W7): hellere Uferstufe mit flachen Spiegelformen, Neon-Saum an Giftufern (`water/shoreBand.ts`)
+    const shoreLayers = shoreBandLayers({
+      lookup: this.lookup,
+      terrainRow: rowNode,
+      waterRow: wb.x,
+      bands: this.terrainBands,
+      code: tc.z,
+      flags: tc.w,
+      po,
+      period: PATTERN_PERIOD,
+      growth: growthNode,
+      healFrom: TOXIC_HEAL_FROM,
+    });
     // Gemeißelte Hänge: Wertstufen entlang der Höhenlinien (Stufensprung im Bandwert je Höhenschicht)
     const chisel = wa.w;
     // Sägezahn mit 1-px-Kante: jede Höhenschicht verläuft in sich, die Stufe zur nächsten bleibt eine klare Kante
@@ -686,7 +702,7 @@ export class EarlePlanet {
         color: select(isGlyph, glyphColor, select(isCarpet, this.carpet.color, patternColor)),
         shadowColor: select(isGlyph, glyphShadow, select(isCarpet, this.carpet.shadowColor, patternShadow)),
       },
-      layers: [snowField, meadow, seaLayer],
+      layers: [...shoreLayers, snowField, meadow, seaLayer],
       positionNode: warp(positionLocal as unknown as Vec3Node),
       fogDistNode: positionView.length().add(this.veilNode(slotF)),
     });
@@ -1689,6 +1705,17 @@ export class EarlePlanet {
       }
       return s;
     };
+    // Gift-Code je Welt (Müllstil; nur gelesen, wo ein Uferband giftig ist)
+    const styleCache = new Map<number, number>();
+    const styleOf = (w: number): number => {
+      let c = styleCache.get(w);
+      if (c === undefined) {
+        const trash = this.worldData(w).params.trash as { style?: unknown } | undefined;
+        c = trash ? toxicStyleCode(trash.style) : 0;
+        styleCache.set(w, c);
+      }
+      return c;
+    };
     for (let k = 0; k < n; k++) {
       const own = slotOf(m.own[k]!);
       ta[k * 4] = own;
@@ -1701,8 +1728,9 @@ export class EarlePlanet {
       tb[k * 4 + 3] = m.heightNorm[k]!;
       tc[k * 4] = m.feature[k * 4]!;
       tc[k * 4 + 1] = m.feature[k * 4 + 1]!;
-      tc[k * 4 + 2] = m.feature[k * 4 + 2]!;
-      tc[k * 4 + 3] = m.feature[k * 4 + 3]! + 2 * m.swamp[k]!;
+      // Uferband (W7): Band 0..1 bzw. 2 − Band an Giftufern (stetig am Bandrand); dazu der Gift-Code der Welt
+      tc[k * 4 + 2] = encodeShore(m.shore[k]!, m.toxic[k]!);
+      tc[k * 4 + 3] = packTerrainFlags(m.feature[k * 4 + 3]!, m.swamp[k]!, styleOf(m.own[k]!));
       // Lippe: Pfadrisse auf der Seite des nächsten Abschnitts (größere Kennung = weiter vorn), seitliche auf der Bandseite
       tg[k] = slot + (this.lipOnLo(m, k) ? 0 : 0.5);
     }
@@ -2020,7 +2048,7 @@ export class EarlePlanet {
       const range = this.nodeRangeFor(z0, z1);
       const bodies = r.lakes.length + r.rivers.length + r.seas.length;
       if (bodies > 0) {
-        waterInputs.push({ lakes: r.lakes, rivers: r.rivers, seas: r.seas, slot: this.slots.slotOf(r.world), featureBase: ranges.length });
+        waterInputs.push({ lakes: r.lakes, rivers: r.rivers, seas: r.seas, slot: this.slots.slotOf(r.world), featureBase: ranges.length, toxicStyle: toxicStyleCode((this.worldData(r.world).params.trash as { style?: unknown } | undefined)?.style) });
         for (let i = 0; i < bodies; i++) {
           ranges.push(range);
           worlds.push(r.world);

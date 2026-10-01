@@ -1,5 +1,5 @@
 import { abs, cameraPosition, clamp, cos, dot, float, floor, fract, hash, max, mix, mod, modelWorldMatrix, normalize, positionLocal, positionView, sin, smoothstep, sqrt, varying, vec2, vec3, vec4 } from 'three/tsl';
-import { aaStep, patternTime, type FloatNode, type PaletteLookup, type Vec2Node, type Vec3Node } from '../tsl';
+import { aaStep, patternTime, type FloatNode, type PaletteLookup, type TSLUniform, type Vec2Node, type Vec3Node } from '../tsl';
 
 /**
  * Earles stilles Meer (Ebene 29, Welt 14): gestaffelte, hart begrenzte Kräuselformen — organische, waagrechte Flecken
@@ -25,6 +25,12 @@ export interface SeaOptions {
   warp: (p: Vec3Node) => Vec3Node;
   /** Spiegelbild: Richtung zur Pfadküste (Winkel + 3π/2, in 0..2π) + 10 · spiegelnde Höhe der Landzunge (Vertex-Daten). */
   mirror: FloatNode;
+  /**
+   * Bewegung (siehe `WaterMotion` in `waterSurface.ts`): Drift der Kräusel quer zum Blick (Einheiten/s, `drift` · 0,7 ≈
+   * 0,05), Lissajous-Wogen des Feldes (`fx`, `fz`, `amp`) über die Periode; das Spiegelbild wogt mit halber Amplitude.
+   * Fehlt → die alte, langsame Drift ohne Wogen.
+   */
+  motion?: { drift: TSLUniform; fx: TSLUniform; fz: TSLUniform; amp: TSLUniform; period: TSLUniform } | null;
 }
 
 /**
@@ -76,10 +82,14 @@ function mixInk(a: Vec3Node, b: Vec3Node, t: FloatNode): Vec3Node {
 export function seaColor(o: SeaOptions): { color: Vec3Node; shadow: Vec3Node } {
   const pal = (k: number): Vec3Node => o.lookup.pal(k, o.row).rgb as unknown as Vec3Node;
   // Kräusel längs der Musterachse u gestreckt (≈ 3.5 : 1; das Gitter dreht sie quer zum Blick der Komposition),
-  // langsam ziehend; die Verkürzung der Ebene macht sie fern zu schmalen Strichen, nah zu breiten Flecken
-  const drift = patternTime.mul(0.012);
+  // langsam quer zum Blick ziehend; die Verkürzung der Ebene macht sie fern zu schmalen Strichen, nah zu breiten Flecken.
+  // Das Verzerrungsfeld wogt auf einer Lissajous-Bahn: die Formen atmen, ihre Kanten bleiben hart
+  const m = o.motion ?? null;
+  const ph = m ? patternTime.mul(Math.PI * 2).div(m.period) : float(0);
+  const drift = m ? patternTime.mul(m.drift).mul(0.7 * 0.4) : patternTime.mul(0.012);
+  const sway = m ? vec2(sin(ph.mul(m.fx)), cos(ph.mul(m.fz))).mul(m.amp.mul(2.4)) : vec2(0, 0);
   const q = vec2(o.x.mul(0.4).add(drift), o.z.mul(1.4).add(o.body.mul(17.0)));
-  const w = vec2(vnoise(q.mul(0.45).add(vec2(3.1, 1.7))), vnoise(q.mul(0.45).add(vec2(7.7, 5.3)))).sub(0.5);
+  const w = vec2(vnoise(q.mul(0.45).add(vec2(3.1, 1.7)).add(sway)), vnoise(q.mul(0.45).add(vec2(7.7, 5.3)).sub(sway))).sub(0.5);
   const n1 = vnoise(q.add(w.mul(1.9)));
   const n2 = vnoise(q.mul(2.3).add(w.mul(0.9)).add(vec2(11.0, 4.0)));
   const n = n1.mul(0.7).add(n2.mul(0.3)).sub(0.5);
@@ -92,8 +102,10 @@ export function seaColor(o: SeaOptions): { color: Vec3Node; shadow: Vec3Node } {
   const view = viewOnSea(o.warp, o.mirror.sub(mirrorH.mul(10)).sub(Math.PI * 1.5));
   const tanDep = view.graze.div(sqrt(max(float(1e-4), float(1).sub(view.graze.mul(view.graze)))));
   const along = o.shore.max(0).div(max(view.toward, float(0.02)));
-  const reach = mirrorH.div(max(tanDep, float(1e-3)));
-  const refl = max(smoothstep(reach.mul(1.12), reach.mul(0.88), along), smoothstep(2.5, 0.8, o.shore));
+  // Spiegelbild wogt mit halber Amplitude der Kräusel (Rand des Bildes und Uferband schwingen längs der Küste)
+  const mirrorSway = m ? sin(o.x.mul(0.55).add(o.body.mul(5.0)).add(ph.mul(2))).mul(m.amp.mul(0.5)) : float(0);
+  const reach = mirrorH.div(max(tanDep, float(1e-3))).mul(mirrorSway.add(1));
+  const refl = max(smoothstep(reach.mul(1.12), reach.mul(0.88), along), smoothstep(2.5, 0.8, o.shore.add(mirrorSway.mul(3))));
   const bias = mix(float(0.0), float(0.24), depth).sub(refl.mul(0.45));
   const v = n.add(bias);
   // Stufen: Tal (1) | Saum (4) | Körper (2) | innerer Saum (3) | Krone (3→5)

@@ -106,6 +106,28 @@ export function isTrashStyle(s: unknown): s is TrashStyle {
   return typeof s === 'string' && s in STYLES;
 }
 
+/**
+ * Giftwasser je Müllstil (Müll v3, Giftseen und -flüsse): fünf Stufen tief → hell — 0 Tiefe (Schatten, Zellen),
+ * 1 Schleimkörper, 2 Grundton, 3 Neon (Ringe, Saum), 4 Glanz (Blasen). Rost = Neongrün `#b8ff2a` (der Akzent der
+ * Startwelt), Sirup = Bernstein, Nebel = blasses Leuchtgrün, Schnee = kaltes Türkis-Neon, Wald = Moosgrün.
+ */
+export const TOXIC_WATER: Record<TrashStyle, readonly [string, string, string, string, string]> = {
+  rost: ['#123608', '#2f6a0e', '#6cc416', '#b8ff2a', '#ecffb4'],
+  sirup: ['#3a1608', '#7a3010', '#d85e1c', '#f8a040', '#fde2a6'],
+  nebel: ['#0e2a1c', '#245a34', '#5aa84a', '#c6ff5a', '#eeffc8'],
+  schnee: ['#082a2e', '#0f5a58', '#22a88e', '#7dffd4', '#e4fff6'],
+  wald: ['#10281a', '#1f5a2a', '#35b43e', '#8fd93c', '#e2f6a0'],
+};
+
+/** Reihenfolge der Stile in den Gift-Codes (Code = Index + 1; 0 = klares Wasser). */
+export const TOXIC_STYLE_ORDER: readonly TrashStyle[] = ['rost', 'sirup', 'nebel', 'schnee', 'wald'];
+
+/** Gift-Code eines Müllstils (1…5); unbekannte oder fehlende Stile zählen als Rost (Neongrün). */
+export function toxicStyleCode(style: unknown): number {
+  const i = TOXIC_STYLE_ORDER.indexOf(isTrashStyle(style) ? style : 'rost');
+  return i + 1;
+}
+
 /** Zeilen einer Welt im Müll-Atlas (Index je Material) plus Stil-Eigenschaften. */
 export interface TrashWorldRows {
   rows: Record<TrashMaterialName, number>;
