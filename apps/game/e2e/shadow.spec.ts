@@ -138,13 +138,13 @@ test('/lab/shadow Schatten v3: Kontakt-Diagnose, Feldansicht, Kontaktregler und 
 // Karte v5 (R1): Schwenken ohne Neuzeichnen. Das Texelgitter heftet an der Ebene (Rechtecke in Ebenenkoordinaten mit
 // Rand), beim Schwenken gleiten die Kaskaden (`slide`) statt neu zu fitten; erst nach > 2 Einheiten Fokusweg läuft ein
 // Refit (Bodenschätzung), und nur eine Kaskade, deren Rand aufgebraucht ist (die feine), snappt neu und zeichnet. Die
-// mittlere und die ferne Kaskade behalten ihren Ursprung in der Ebene; sie zeichnen höchstens, wenn Inhalt nachlädt
-// (Chunks am Rand) — dann alle gemeinsam.
+// ferne Kaskade behält ihren Ursprung in der Ebene. Inhalt, der sich ändert (Chunks am Rand, animierter Müll, Wachstum),
+// markiert über `MapWorld.markShadowDirty` weiter alle Kaskaden — diese Pässe (`passes` des Labs) werden herausgerechnet.
 test('/lab/shadow Schwenken: Kaskaden gleiten an der Ebene — höchstens 2 Refits, Ursprung der fernen Kaskade fest, nur die feinen zeichnen nach', async ({ page }) => {
   test.setTimeout(420_000);
   const errors = collectErrors(page);
   await page.setViewportSize({ width: 900, height: 560 });
-  await page.goto('/lab/shadow?q=mobil&view=karte&node=20&progress=30&mode=neu&mag=0&cascades=hoch');
+  await page.goto('/lab/shadow?q=mobil&view=karte&node=52&progress=60&mode=neu&mag=0&cascades=hoch');
   await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu|webgl2/, { timeout: 60_000 });
   await expect.poll(async () => (await stats(page)).cascades?.cascades.filter((c) => c.active).length ?? 0, { timeout: 90_000 }).toBe(3);
   type Ctl = { controller: { pan(dx: number, dz: number): void } };
@@ -196,17 +196,19 @@ test('/lab/shadow Schwenken: Kaskaden gleiten an der Ebene — höchstens 2 Refi
     expect(Math.abs(c.originPlaneX / c.texelX - Math.round(c.originPlaneX / c.texelX))).toBeLessThan(1e-6);
     expect(Math.abs(c.originPlaneY / c.texelY - Math.round(c.originPlaneY / c.texelY))).toBeLessThan(1e-6);
   }
-  // Schattenpässe: die ferne Kaskade zeichnet nur, wenn Inhalt nachlädt (dann alle gemeinsam), höchstens wenige Male;
-  // die mittlere höchstens einmal öfter (ein Neu-Snap), die feine am öftesten (sie snappt am Rand neu), aber nie
-  // jedes Bild
+  // Schattenpässe jenseits der Inhaltsänderungen (`content` = Aufrufe von `markShadowDirty` durch die Welt): die ferne
+  // Kaskade zeichnet von sich aus nie, die mittlere höchstens einmal (ein Neu-Snap), die feine am öftesten (sie snappt
+  // am Rand neu), aber nie jedes Bild
+  const content = after.passes - before.passes;
   const d0 = a.dirtyPasses[0]! - b.dirtyPasses[0]!;
   const d1 = a.dirtyPasses[1]! - b.dirtyPasses[1]!;
   const d2 = a.dirtyPasses[2]! - b.dirtyPasses[2]!;
-  expect(d2).toBeLessThanOrEqual(3);
+  expect(d2).toBeLessThanOrEqual(content);
   expect(d1).toBeGreaterThanOrEqual(d2);
-  expect(d1).toBeLessThanOrEqual(d2 + 1);
+  expect(d1).toBeLessThanOrEqual(content + 1);
   expect(d0).toBeGreaterThanOrEqual(d1);
-  expect(d0).toBeLessThanOrEqual(d2 + 6);
+  expect(d0).toBeLessThanOrEqual(content + 6);
+  expect(d0 - d2).toBeLessThanOrEqual(6);
   expect(errors).toEqual([]);
 });
 
