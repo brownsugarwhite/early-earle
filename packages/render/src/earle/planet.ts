@@ -394,6 +394,13 @@ export class EarlePlanet {
   private mistBanks: readonly MistBank[] = [];
   /** Chunks, die Inhalt tragen (nicht hinter dem Horizont): Neubau des Inhalts, wenn sich die Menge ändert. */
   private contentKeys = '';
+  /** Inhalt des letzten Neubaus je Chunk (R4.4: geänderte Chunks → Schatten nur in ihrer Region neu zeichnen). */
+  private builtContent = new Map<string, ChunkCpu>();
+  /** Geänderte Werfer seit dem letzten `takeShadowRegion` (Ebene: x, h, z) bzw. „alles neu“. */
+  private readonly shadowRegion = new Box3();
+  private shadowRegionAll = false;
+  /** Aktive Regionen der Merkmal-Meshes (Felsen): Zu- und Abgänge markieren ihre Formationen. */
+  private activeRegionSet = new Set<string>();
   private readonly cache = new Map<string, ChunkCpu>();
   private readonly slotsUsed: Array<string | null> = new Array<string | null>(GROWTH_SLOTS).fill(null);
   private readonly loadsPerFrame: number;
@@ -1291,6 +1298,11 @@ export class EarlePlanet {
   private sightPlane: Vec3 | null = null;
   private sightRadius = 0.6;
 
+  /** Ziel der Sichtlinie (Ebene) oder null — Schatten der Sichtlinien-Lichtung (R4.4). */
+  get sightTarget(): Readonly<Vec3> | null {
+    return this.sightPlane;
+  }
+
   /** Wahrzeichen im Bild (gebaut). */
   get landmarkList(): readonly LandmarkInstance[] {
     return this.landmarkInstances;
@@ -1623,7 +1635,12 @@ export class EarlePlanet {
           if (c) parts.push(c.cpu.mesh);
         }
       }
+      const ox = tile.tx * SHADOW_TILE * CHUNK_SIZE;
+      const oz = tile.tz * SHADOW_TILE * CHUNK_SIZE;
+      const span = SHADOW_TILE * CHUNK_SIZE;
       if (tile.mesh) {
+        // Schattenregion: der alte Gelände-Werfer der Kachel fällt weg (sichtbar gewesen)
+        if (tile.mesh.visible) this.addShadowBox(ox, oz, ox + span, oz + span, tile.minH - 0.5, tile.maxH + 0.5);
         tile.mesh.removeFromParent();
         tile.mesh.geometry.dispose();
         this.releaseObject(tile.mesh);
@@ -1633,8 +1650,6 @@ export class EarlePlanet {
         this.shadowTiles.delete(tile.key);
         continue;
       }
-      const ox = tile.tx * SHADOW_TILE * CHUNK_SIZE;
-      const oz = tile.tz * SHADOW_TILE * CHUNK_SIZE;
       let verts = 0;
       let idx = 0;
       for (const m of parts) {
@@ -1686,6 +1701,8 @@ export class EarlePlanet {
       tile.mesh = mesh;
       tile.minH = minH;
       tile.maxH = maxH;
+      // neue Kachel: sichtbar ab `updateTileBounds` — ihre Region zählt dort (Sichtbarkeitswechsel) bzw. hier
+      mesh.visible = false;
     }
     if (any) this.lastTileRebuild = this.frame;
   }
@@ -1706,6 +1723,8 @@ export class EarlePlanet {
     const cz = tile.tz * SHADOW_TILE * CHUNK_SIZE + half;
     const sb = this.sunBand;
     const beyond = sunwardDistance(cx - camX, cz - camZ, sb.x, sb.y, sb.z) > horizonReach + half * 0.5;
+    // Schattenregion: Gelände-Werfer der Kachel kommt hinzu oder fällt weg
+    if (mesh.visible === beyond) this.addShadowBox(cx - half, cz - half, cx + half, cz + half, tile.minH - 0.5, tile.maxH + 0.5);
     mesh.visible = !beyond;
     if (beyond) return;
     const fx = cx - this.focus.x;
@@ -1991,6 +2010,12 @@ export class EarlePlanet {
       }
     }
     this.loadedTop = loadedTop;
+    // Schattenregion (R4.4): Chunks, deren Inhalt hinzukommt, wegfällt oder wechselt (Detailstufe)
+    const built = new Map<string, ChunkCpu>();
+    for (const chunk of this.loaded.values()) if (!chunk.beyond) built.set(chunk.key, chunk.cpu);
+    for (const [key, cpu] of built) if (this.builtContent.get(key) !== cpu) this.addShadowChunk(cpu);
+    for (const [key, cpu] of this.builtContent) if (!built.has(key)) this.addShadowChunk(cpu);
+    this.builtContent = built;
     this.vegetation.setContent(trees, props, { x: ax, z: az });
     this.anchorObject(this.vegetation.group, ax, az);
     this.landmarkTop = this.barns.set(barns, { x: ax, z: az });
@@ -2027,6 +2052,17 @@ export class EarlePlanet {
     // Felsen und Wasser der aktiven Regionen (ein Mesh je Schicht)
     const key = [...regions].sort().join('|') + `#${this.field.version}`;
     if (key !== this.activeRegionsKey) {
+      // Schattenregion: Felsformationen der Regionen, die hinzukommen oder wegfallen (Version gewechselt: alles)
+      if (key.split('#')[1] !== this.activeRegionsKey.split('#')[1]) this.shadowRegionAll = true;
+      const changed = [...regions].filter((r) => !this.activeRegionSet.has(r));
+      for (const r of this.activeRegionSet) if (!regions.has(r)) changed.push(r);
+      for (const rk of changed) {
+        for (const f of this.field.features.region(rk).formations) {
+          const r = f.footprint + 1;
+          this.addShadowBox(f.cx - r, f.cz - r, f.cx + r, f.cz + r, f.height - 40, f.height + 1);
+        }
+      }
+      this.activeRegionSet = new Set(regions);
       this.activeRegionsKey = key;
       this.buildFeatureMeshes([...regions]);
     }
@@ -2052,6 +2088,17 @@ export class EarlePlanet {
     const list = x0 < x1 ? lm.inRect(x0, z0, x1, z1) : [];
     const key = list.map((l) => l.placement.id).sort().join('|') + `#${lm.version}`;
     if (key === this.landmarkKey) return;
+    // Schattenregion: Wahrzeichen, die hinzukommen oder wegfallen (Fußkreis, Höhe des Bauplans)
+    const before = new Map(this.landmarkInstances.map((l) => [l.placement.id, l]));
+    const after = new Set(list.map((l) => l.placement.id));
+    const mark = (l: LandmarkInstance): void => {
+      const pl = l.placement;
+      const r = Math.max(pl.radius, l.blueprint.radius) + 2;
+      this.addShadowBox(pl.x - r, pl.z - r, pl.x + r, pl.z + r, pl.y - 1, pl.y + l.blueprint.height + 1);
+    };
+    for (const l of list) if (!before.has(l.placement.id)) mark(l);
+    for (const [id, l] of before) if (!after.has(id)) mark(l);
+    if (key.split('#')[1] !== this.landmarkKey.split('#')[1]) this.shadowRegionAll = true; // Version gewechselt
     this.landmarkKey = key;
     this.landmarkInstances = list;
     this.landmarkOrigin.x = Math.round(this.focus.x);
@@ -2137,6 +2184,33 @@ export class EarlePlanet {
     this.plane.add(mesh);
     this.anchorObject(mesh, ax, az);
     return mesh;
+  }
+
+  /**
+   * Werfer, die sich seit dem letzten Aufruf geändert haben (R4.4): Box in Ebenenkoordinaten (x, h, z) über Chunk-Inhalt,
+   * Gelände-Stellvertreter und Felsen, oder „alles“ (Wahrzeichen, Wachstum). Der Besitzer der Sonne zeichnet damit nur
+   * die Kaskaden neu, die die Box treffen (`SunRig.markDirtyRegion`).
+   */
+  takeShadowRegion(out: Box3): 'none' | 'region' | 'all' {
+    const all = this.shadowRegionAll;
+    const empty = this.shadowRegion.isEmpty();
+    out.copy(this.shadowRegion);
+    this.shadowRegion.makeEmpty();
+    this.shadowRegionAll = false;
+    return all ? 'all' : empty ? 'none' : 'region';
+  }
+
+  /** Werfer-Box (Ebene) zur Schattenregion hinzufügen. */
+  private addShadowBox(x0: number, z0: number, x1: number, z1: number, h0: number, h1: number): void {
+    this.shadowRegion.expandByPoint(_v.set(x0, h0, z0));
+    this.shadowRegion.expandByPoint(_v.set(x1, h1, z1));
+  }
+
+  /** Inhalt eines Chunks (Bäume samt Kronen über den Rand, Requisiten, Scheunen) als geänderte Werfer. */
+  private addShadowChunk(cpu: ChunkCpu): void {
+    const m = cpu.mesh;
+    const top = Math.max(this.vegetation.hMax, this.landmarkTop, 4) + 1;
+    this.addShadowBox(m.ox - 3, m.oz - 3, m.ox + CHUNK_SIZE + 3, m.oz + CHUNK_SIZE + 3, m.minH - 0.5, m.maxH + top);
   }
 
   /** Sichtbare Chunks des letzten `update` (Ebene), die kameranächsten zuerst (Müll, Diagnose). */

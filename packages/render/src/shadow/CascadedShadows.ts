@@ -227,7 +227,23 @@ interface DrawnState {
   originPlaneY: number;
   depthPlane0: number;
   depthPlane1: number;
+  /** Lichtachsen X, L (Y = L × X) beim Zeichnen: dreht die Sonne mit der Ansicht (Gieren), ist der Inhalt ungültig. */
+  axes: [number, number, number, number, number, number];
 }
+
+/**
+ * Toleranz des gierfreien Kameraschlüssels (R4.4): kleine Kamerabewegungen (Anheben über Hindernisse beim Schwenken,
+ * Zoom-Nachlauf) behalten ψ und die Texel; die Hysterese des Fitters hält dann die Rechtecke, solange der Bedarf
+ * hineinpasst — sonst zeichnete jede Kamera-Nachführung alle Kaskaden neu. Drehanteil (rad-ähnlich) und Position.
+ */
+const PSI_KEY_ROT_TOL = 2e-3;
+const PSI_KEY_POS_TOL = 0.05;
+/**
+ * Slide (R4.4): eine feine Kaskade, deren Bedarf aus dem Rechteck läuft, snappt frühestens so viele Bilder nach ihrem
+ * letzten Neuzeichnen neu — bis dahin deckt die gröbere Kaskade den Rand (Überblendband). Beim schnellen Schwenken
+ * zeichnete die feine Kaskade sonst jedes zweite Bild neu. Die gröbste snappt immer sofort (nichts dahinter).
+ */
+export const SNAP_HOLD_FRAMES = 6;
 
 /** Optionen für `sampleField` (Schattenwert an beliebiger Weltposition, jede Shader-Stufe). */
 export interface CascadeSampleOptions {
@@ -628,6 +644,11 @@ export class CascadedShadows {
   private marchBandKey = '';
   slides = 0;
   readonly dirtyPasses: number[] = [];
+  /** Ursachen neu gezeichneter Kaskaden (Diagnose, R4.4): Fit/Achsen, Slide-Snap, Region, alles. */
+  readonly dirtyCauses = { fit: 0, snap: 0, region: 0, all: 0 };
+  /** Bildzähler der gebundenen Kamera und Bild des letzten Neuzeichnens je Kaskade. */
+  private fitFrame = 0;
+  private readonly drawnFrame: number[] = [];
   /** Rand je Kaskade (Anteil der Empfängerausdehnung je Seite), live änderbar (wirkt beim nächsten Refit). */
   margins: number[];
   private readonly shellScratch: ReceiverShellSpec = { center: new Vector3(), rMin: 0, rMax: 1 };
@@ -666,7 +687,7 @@ export class CascadedShadows {
       this.cascades.push(this.createEntry(size, options.taps, 'field', this.axes));
       this.dirty.push(true);
       this.dirtyPasses.push(0);
-      this.drawn.push({ active: false, texelX: 0, texelY: 0, originPlaneX: NaN, originPlaneY: NaN, depthPlane0: NaN, depthPlane1: NaN });
+      this.drawn.push({ active: false, texelX: 0, texelY: 0, originPlaneX: NaN, originPlaneY: NaN, depthPlane0: NaN, depthPlane1: NaN, axes: [NaN, NaN, NaN, NaN, NaN, NaN] });
     }
     if (options.referenceSize) {
       const s = options.referenceSize;
@@ -728,6 +749,56 @@ export class CascadedShadows {
   markDirty(): void {
     this.dirty.fill(true);
     this.referenceDirty = true;
+    this.dirtyCauses.all++;
+  }
+
+  /**
+   * Inhalt in einer Box geändert (R4.4, Schattenraum = flacher Raum relativ zum aktuellen Gitterursprung
+   * `receivers.gridOrigin()`; Werfer samt Höhe): nur Kaskaden neu zeichnen, deren Rechteck (mit Filter-Fußabdruck) die
+   * Projektion der Box entlang L schneidet — ein orthografisches Licht zeichnet nur, was in seinem Rechteck liegt.
+   * Liefert die Zahl der getroffenen Kaskaden.
+   */
+  markDirtyRegion(min: Vector3, max: Vector3): number {
+    const fit = this.fitResult;
+    if (fit.empty) {
+      this.markDirty();
+      return this.cascades.length;
+    }
+    const o = this.receivers.gridOrigin?.();
+    const gx = o?.x ?? 0;
+    const gz = o?.z ?? 0;
+    let u0 = Infinity;
+    let u1 = -Infinity;
+    let v0 = Infinity;
+    let v1 = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      const x = (i & 1 ? max.x : min.x) + gx;
+      const y = i & 2 ? max.y : min.y;
+      const z = (i & 4 ? max.z : min.z) + gz;
+      const u = fit.X.x * x + fit.X.y * y + fit.X.z * z;
+      const v = fit.Y.x * x + fit.Y.y * y + fit.Y.z * z;
+      u0 = Math.min(u0, u);
+      u1 = Math.max(u1, u);
+      v0 = Math.min(v0, v);
+      v1 = Math.max(v1, v);
+    }
+    let hits = 0;
+    this.cascades.forEach((c, k) => {
+      const d = this.drawn[k]!;
+      if (!d.active || this.dirty[k]) return;
+      const padX = (4 + this.casterDilation) * d.texelX;
+      const padY = (4 + this.casterDilation) * d.texelY;
+      const x0 = d.originPlaneX - padX;
+      const x1 = d.originPlaneX + c.size.width * d.texelX + padX;
+      const y0 = d.originPlaneY - padY;
+      const y1 = d.originPlaneY + c.size.height * d.texelY + padY;
+      if (u1 < x0 || u0 > x1 || v1 < y0 || v0 > y1) return;
+      this.dirty[k] = true;
+      this.dirtyCauses.region++;
+      hits++;
+    });
+    if (hits > 0) this.referenceDirty = true;
+    return hits;
   }
 
   /** Überblendgewicht einer Kaskade an `uv` (Rechteckrand) und Blicktiefe `depth` (Split); die letzte deckt alles ab. */
@@ -965,6 +1036,7 @@ export class CascadedShadows {
     if (this.reference) this.reference.shadow.camera.layers.mask = mask;
 
     renderer.getDrawingBufferSize(_size);
+    this.fitFrame++;
     // Gitterursprung (Fokus der Ebene) jetzt
     const origin = this.receivers.gridOrigin?.();
     if (origin) this.gridOffset.set(origin.x, 0, origin.z);
@@ -1011,6 +1083,7 @@ export class CascadedShadows {
       c.shadow.needsUpdate = true;
       this.dirty[k] = false;
       this.dirtyPasses[k]!++;
+      this.drawnFrame[k] = this.fitFrame;
       any = true;
     }
     if (any) this.passes++;
@@ -1132,7 +1205,8 @@ export class CascadedShadows {
     const key = [..._keyM.elements, ...camera.projectionMatrix.elements, _keySun.x, _keySun.y, _keySun.z, size.x, size.y, this.fixedPsiDeg ?? -999];
     for (const c of this.cascades) key.push(c.size.width, c.size.height);
     let keepPsi = key.length === this.psiKey.length;
-    for (let i = 0; keepPsi && i < key.length; i++) keepPsi = Math.abs(key[i]! - this.psiKey[i]!) <= 1e-7;
+    // Kameramatrix (0–15) mit Toleranz (kleine Nachführungen), alles andere exakt
+    for (let i = 0; keepPsi && i < key.length; i++) keepPsi = Math.abs(key[i]! - this.psiKey[i]!) <= (i < 12 ? PSI_KEY_ROT_TOL : i < 16 ? PSI_KEY_POS_TOL : 1e-7);
     if (!keepPsi) {
       this.psiKey.length = 0;
       this.psiKey.push(...key);
@@ -1186,8 +1260,17 @@ export class CascadedShadows {
         d.active = false;
         return;
       }
-      if (!d.active || d.texelX !== cf.texelX || d.texelY !== cf.texelY || d.originPlaneX !== cf.originPlaneX || d.originPlaneY !== cf.originPlaneY || d.depthPlane0 !== cf.depthPlane0 || d.depthPlane1 !== cf.depthPlane1) {
+      const ax = d.axes;
+      const axesMoved = ax[0] !== fit.X.x || ax[1] !== fit.X.y || ax[2] !== fit.X.z || ax[3] !== fit.L.x || ax[4] !== fit.L.y || ax[5] !== fit.L.z;
+      if (!d.active || axesMoved || d.texelX !== cf.texelX || d.texelY !== cf.texelY || d.originPlaneX !== cf.originPlaneX || d.originPlaneY !== cf.originPlaneY || d.depthPlane0 !== cf.depthPlane0 || d.depthPlane1 !== cf.depthPlane1) {
+        if (!this.dirty[k]) this.dirtyCauses.fit++;
         this.dirty[k] = true;
+        ax[0] = fit.X.x;
+        ax[1] = fit.X.y;
+        ax[2] = fit.X.z;
+        ax[3] = fit.L.x;
+        ax[4] = fit.L.y;
+        ax[5] = fit.L.z;
         d.active = true;
         d.texelX = cf.texelX;
         d.texelY = cf.texelY;
@@ -1275,7 +1358,11 @@ export class CascadedShadows {
       const fitsY = cf.needY1 - cf.needY0 <= c.size.height * cf.texelY - 2 * padY;
       const rectOk = (!fitsX || (x0 + padX <= cf.needX0 && x0 + c.size.width * cf.texelX - padX >= cf.needX1)) && (!fitsY || (y0 + padY <= cf.needY0 && y0 + c.size.height * cf.texelY - padY >= cf.needY1));
       const depthOk = cf.depthPlane0 - gL <= cf.needZ0 && cf.depthPlane1 - gL >= cf.needZ1;
-      if (!rectOk || !depthOk) {
+      // Feine Kaskaden halten kurz still (die gröbere deckt den Rand), es sei denn, sie werden ohnehin neu gezeichnet;
+      // ein verlassenes Tiefenfenster snappt immer (Werfer würden sonst im Rechteck abgeschnitten)
+      const hold = k < this.cascades.length - 1 && !this.dirty[k] && this.fitFrame - (this.drawnFrame[k] ?? -1e9) < SNAP_HOLD_FRAMES;
+      if ((!rectOk && !hold) || !depthOk) {
+        if (!this.dirty[k]) this.dirtyCauses.snap++;
         // Neu snappen: Bedarf mittig im Rechteck (Ebenenkoordinaten), Tiefenfenster mit Rand
         if (!rectOk) {
           cf.originPlaneX = Math.round(((cf.needX0 + cf.needX1) * 0.5 + gX - c.size.width * cf.texelX * 0.5) / cf.texelX) * cf.texelX;

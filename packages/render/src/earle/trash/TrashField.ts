@@ -1,4 +1,5 @@
 import {
+  Box3,
   BufferAttribute,
   BufferGeometry,
   Group,
@@ -15,6 +16,7 @@ import {
 import type { Camera, Frustum, Material, Object3D, UniformNode } from 'three/webgpu';
 import { abs, clamp, mix, step, uniform, uniformArray } from 'three/tsl';
 import {
+  CHUNK_SIZE as TRASH_CHUNK,
   HEAL_SPAN,
   NEVER_HEALS,
   PlaneTrashPlanner,
@@ -166,6 +168,12 @@ export class TrashField {
   private nearSet = new Set<string>();
   private activeKey = '';
   private nearKey = '';
+  /** Aktive und nahe Chunks des letzten Neubaus und die seitdem geänderten (Schattenregion, R4.4). */
+  private builtActive = new Set<string>();
+  private builtNear = new Set<string>();
+  private readonly changedRegion = new Box3();
+  /** false: die Änderung lässt sich nicht als Region fassen (Heil-Feier, erster Bau) → alle Kaskaden. */
+  private regionOnly = false;
   private dirty = true;
   private frame = 0;
   private lastRebuild = -1000;
@@ -477,6 +485,22 @@ export class TrashField {
     }
     const pending = wanted.some((w) => !this.cache.has(w.key));
     if (this.dirty && (!pending || this.lastRebuild < 0 || this.frame - this.lastRebuild >= 8)) {
+      // Schattenregion: Chunks, die aktiv oder nah werden bzw. es nicht mehr sind (Müll ragt ≤ hMax über den Boden)
+      const nowActive = new Set(this.active);
+      const mark = (key: string): void => {
+        const i = key.indexOf(':');
+        const x = Number(key.slice(0, i)) * TRASH_CHUNK;
+        const z = Number(key.slice(i + 1)) * TRASH_CHUNK;
+        this.changedRegion.expandByPoint(_c.set(x - 3, -40, z - 3));
+        this.changedRegion.expandByPoint(_c.set(x + TRASH_CHUNK + 3, planet.field.hMax + Math.max(this.hMax, 5) + 2, z + TRASH_CHUNK + 3));
+      };
+      if (this.lastRebuild < 0) this.regionOnly = false;
+      for (const k of nowActive) if (!this.builtActive.has(k)) mark(k);
+      for (const k of this.builtActive) if (!nowActive.has(k)) mark(k);
+      for (const k of this.nearSet) if (!this.builtNear.has(k)) mark(k);
+      for (const k of this.builtNear) if (!this.nearSet.has(k)) mark(k);
+      this.builtActive = nowActive;
+      this.builtNear = new Set(this.nearSet);
       this.rebuild();
       this.dirty = false;
       this.lastRebuild = this.frame;
@@ -506,6 +530,7 @@ export class TrashField {
       const e = a.t < 0.5 ? 4 * a.t * a.t * a.t : 1 - Math.pow(-2 * a.t + 2, 3) / 2;
       this.progressU.value = a.from + (a.to - a.from) * e;
       shadow = true;
+      this.regionOnly = false;
       if (a.t >= 1) {
         this.anim = null;
         this.progressU.value = a.to;
@@ -514,6 +539,18 @@ export class TrashField {
       }
     }
     return shadow;
+  }
+
+  /**
+   * Nach `update() === true`: die geänderten Werfer als Box der Ebene (x, h, z) — true, wenn sie genügt; false, wenn alle
+   * Kaskaden neu müssen (Heil-Feier, erster Bau). Setzt die Region zurück.
+   */
+  takeShadowRegion(out: Box3): boolean {
+    const ok = this.regionOnly;
+    out.copy(this.changedRegion);
+    this.changedRegion.makeEmpty();
+    this.regionOnly = true;
+    return ok;
   }
 
   /**

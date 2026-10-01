@@ -772,6 +772,34 @@ export class SunRig implements ShadowFactorSource {
   }
 
   /**
+   * Inhalt in einer Box des flachen Raums geändert (R4.4; Ebene − Fokus, y = R + h, Werfer samt Höhe): im
+   * Kaskadenbetrieb zeichnen nur die Kaskaden neu, deren Rechteck die Box trifft (mit der Tintenkugel abgesenkt wie der
+   * Schattenraum); sonst wie `requestUpdate()`. Liefert die Zahl der neu zu zeichnenden Kaskaden.
+   */
+  markDirtyRegion(box: Box3): number {
+    const c = this.cascaded;
+    if (!c) {
+      this.requestUpdate();
+      return 1;
+    }
+    if (box.isEmpty()) return 0;
+    this.syncCascadedFrame();
+    // Tintenkugel: der Schattenraum sinkt um (x² + z²) · k_t / 2R ab dem Fokus — die Box nach unten erweitern
+    const R = this.warpMapping?.radius.value ?? 0;
+    const k = R > 0 ? earleLight.ink.value / (2 * R) : 0;
+    _min.copy(box.min);
+    _max.copy(box.max);
+    if (k > 0) {
+      const fx = Math.max(Math.abs(box.min.x), Math.abs(box.max.x));
+      const fz = Math.max(Math.abs(box.min.z), Math.abs(box.max.z));
+      _min.y -= (fx * fx + fz * fz) * k;
+    }
+    const hits = c.markDirtyRegion(_min, _max);
+    if (hits > 0) this.updatesRequested++;
+    return hits;
+  }
+
+  /**
    * Passt die orthografische Schattenkamera eng an die Grenzen des Patches (Objektraum-AABB inkl.
    * Vegetationshöhe, transformiert mit `objectMatrixWorld`) an. Rand Richtung Sonne: `hTotal / tan(θ)`.
    * Größe auf 4-Einheiten-Quanten gerundet, Mitte auf Texel gesnappt → kein Flimmern beim Rollen.

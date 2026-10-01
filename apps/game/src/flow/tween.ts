@@ -43,6 +43,13 @@ export class Tweens {
     return this.list.length;
   }
 
+  /** Laufende Tweens ohne die mit diesen Tags (z. B. reine Ansichtsbewegungen, die keinen Werfer bewegen). */
+  activeExcept(tags: readonly string[]): number {
+    let n = 0;
+    for (const t of this.list) if (t.tag === undefined || !tags.includes(t.tag)) n++;
+    return n;
+  }
+
   /** Adds a tween; `apply` receives the eased 0..1 value every frame (and exactly 1 at the end). */
   add(duration: number, apply: (t: number) => void, opts: TweenOptions = {}): void {
     this.list.push({
