@@ -18,9 +18,30 @@ import {
 } from '../schema/level';
 import { levelFromAscii, type AsciiOptions } from '../testing/ascii';
 import type { Coord, Dir, Material } from '../model';
+import {
+  CURVE_LAST_LEVEL,
+  LEGACY_LAST_LEVEL,
+  curveBand,
+  curveSpec,
+  legacyTargetAttempts,
+  type CurveType,
+} from './curve';
 
+/**
+ * Level types. Levels 1–50 use the original types (`comfort`, `skill`, `veryHard`, …); levels
+ * 51–184 use the curve types of `curve.ts` (`intro`, `practice`, `normal`, `fun`, `combine`,
+ * `superhard`, `boss`; `tutorial` and `hard` are shared).
+ */
 export type LevelType =
-  'tutorial' | 'fuu' | 'comfort' | 'skill' | 'hard' | 'veryHard' | 'celebration' | 'breather';
+  | 'tutorial'
+  | 'fuu'
+  | 'comfort'
+  | 'skill'
+  | 'hard'
+  | 'veryHard'
+  | 'celebration'
+  | 'breather'
+  | CurveType;
 export type DifficultyStyle = (typeof DIFFICULTY_STYLES)[number];
 
 export type ElementId =
@@ -138,38 +159,39 @@ export function levelId(zone: ZoneId, index: number): string {
   return `${zone}-${String(index).padStart(3, '0')}`;
 }
 
-/** Move budget per band and type (plan §7: 30–38 / 25–30 / 23–27, hard levels short). */
-export function defaultMoves(index: number, type: LevelType): number {
-  if (type === 'fuu') return 10;
-  const base = index <= 20 ? 34 : index <= 60 ? 28 : 25;
-  switch (type) {
-    case 'hard':
-      return base - 4;
-    case 'veryHard':
-      return base - 6;
-    case 'celebration':
-      return 30;
-    default:
-      return base;
+/**
+ * Move budget. Levels 1–50: per band and type (plan §7: 30–38 / 25–30 / 23–27, hard levels
+ * short). From level 51 on: a base per board size times the curve's move factor (type × zone
+ * ramp); the calibrated budget of every generated level comes from `tuning.ts`.
+ */
+export function defaultMoves(index: number, type: LevelType, cells = 25): number {
+  if (index <= LEGACY_LAST_LEVEL) {
+    if (type === 'fuu') return 10;
+    const base = index <= 20 ? 34 : index <= 60 ? 28 : 25;
+    switch (type) {
+      case 'hard':
+        return base - 4;
+      case 'veryHard':
+        return base - 6;
+      case 'celebration':
+        return 30;
+      default:
+        return base;
+    }
   }
+  const factor = index <= CURVE_LAST_LEVEL ? curveSpec(index).moveBudgetFactor : 0.7;
+  return Math.max(6, Math.round((12 + 0.6 * cells) * factor));
 }
 
+/**
+ * Target attempts (novice bot). Levels 1–50 keep their original bands (thresholds 20/60);
+ * from level 51 on the band comes from the difficulty curve (`curveSpec`). Numbers past the
+ * curve (editor drafts) get the band of their type in the last zone.
+ */
 export function targetAttempts(index: number, type: LevelType): [number, number] {
-  switch (type) {
-    case 'hard':
-      return [1.6, 2.0];
-    case 'veryHard':
-      return [2.0, 2.5];
-    case 'tutorial':
-    case 'fuu':
-    case 'celebration':
-    case 'breather':
-      return [1.0, 1.1];
-    case 'comfort':
-      return index <= 20 ? [1.0, 1.1] : [1.1, 1.3];
-    case 'skill':
-      return index <= 20 ? [1.0, 1.1] : [1.2, 1.4];
-  }
+  if (index <= LEGACY_LAST_LEVEL) return legacyTargetAttempts(index, type);
+  if (index <= CURVE_LAST_LEVEL) return curveSpec(index).targetAttempts;
+  return curveBand(type, 15);
 }
 
 // ---- deterministic placement helpers -------------------------------------------
@@ -246,7 +268,10 @@ export function generateLevel(spec: LevelSpec): LevelDef {
     spec.type === 'fuu' ||
     spec.type === 'comfort' ||
     spec.type === 'celebration' ||
-    spec.type === 'breather';
+    spec.type === 'breather' ||
+    spec.type === 'intro' ||
+    spec.type === 'practice' ||
+    spec.type === 'fun';
   const bias = spec.placement ?? (gentle ? 'edge' : 'interior');
 
   const table: LevelInput['spawn']['table'] = [{ tier: 1, weight: 9 }];
@@ -263,7 +288,7 @@ export function generateLevel(spec: LevelSpec): LevelDef {
   const cap = spec.cap ?? (has('cap') ? Math.max(3, goalTier || 5) : 12);
   const lineAt = spec.specials?.lineAt ?? (has('line') ? 3 : 16);
   const burstAt = spec.specials?.burstAt ?? (has('burst') ? 4 : 16);
-  const moves = spec.moves ?? defaultMoves(spec.index, spec.type);
+  const moves = spec.moves ?? defaultMoves(spec.index, spec.type, w * h);
   const difficulty: LevelInput['difficulty'] = {
     targetAttempts: targetAttempts(spec.index, spec.type),
   };

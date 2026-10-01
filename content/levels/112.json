@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-112",
+  "zone": "wooding",
+  "name": "Kronendach",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", "..P..", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "withered",
+      "at": [1, 0]
+    },
+    {
+      "kind": "withered",
+      "at": [3, 0]
+    },
+    {
+      "kind": "withered",
+      "at": [1, 4]
+    },
+    {
+      "kind": "withered",
+      "at": [3, 4]
+    }
+  ],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 5
+      }
+    },
+    {
+      "at": [4, 1],
+      "blob": {
+        "tier": 5
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 5
+      }
+    },
+    {
+      "at": [4, 3],
+      "blob": {
+        "tier": 5
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "heal"
+    },
+    {
+      "type": "reachTier",
+      "tier": 7
+    }
+  ],
+  "moves": 32,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.04, 1.27],
+    "style": "journey"
+  }
+}

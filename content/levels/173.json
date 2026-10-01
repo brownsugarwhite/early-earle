@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-173",
+  "zone": "luzz",
+  "name": "Blaue Terrassen",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", "#....", "##...", "###.."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "cage",
+      "at": [4, 0],
+      "content": {
+        "tier": 2
+      },
+      "layers": 1
+    },
+    {
+      "kind": "cage",
+      "at": [0, 0],
+      "content": {
+        "tier": 2
+      },
+      "layers": 1
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [1, 0],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [2, 3],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [4, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [2, 0],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "rescue",
+      "count": 2
+    }
+  ],
+  "moves": 10,
+  "cap": 12,
+  "specials": {
+    "lineAt": 2,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.05, 1.2],
+    "style": "explosive"
+  }
+}

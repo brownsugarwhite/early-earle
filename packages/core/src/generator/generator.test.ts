@@ -4,26 +4,57 @@ import { describe, expect, it } from 'vitest';
 import { generateLevel, defaultMoves, targetAttempts } from './generateLevel';
 import { P3_LEVEL_INDICES, TJORIZO_SPECS, tjorizoSpec } from './tjorizo';
 import { SYRUP_SPECS } from './syrup';
-import { LUZZ_SPECS } from './luzz';
-import { WOODING_SPECS } from './wooding';
-import { levelSpec } from './index';
+import { LAST_LEVEL, levelSpec } from './index';
+import { curveBand, curveSpec } from './curve';
+import { applyTune, baseSpec, dialSpec, startSpec } from './extended';
+import { ZONE_KITS, storyZone } from './ideas';
+import { TUNING } from './tuning';
 import { countElementKinds, LevelSchema } from '../schema/level';
 
 const levelsDir = fileURLToPath(new URL('../../../../content/levels/', import.meta.url));
 
+const ALL_SPECS = Array.from({ length: LAST_LEVEL }, (_, i) => levelSpec(i + 1));
+
 describe('generateLevel', () => {
-  it('produces valid levels for every spec of the four zones (1–100)', () => {
+  it('produces valid levels for every spec 1–184 (frozen tables 1–50, curve-derived 51–184)', () => {
     expect(TJORIZO_SPECS.length).toBe(25);
     expect(SYRUP_SPECS.length).toBe(25);
-    expect(LUZZ_SPECS.length).toBe(25);
-    expect(WOODING_SPECS.length).toBe(25);
     expect(SYRUP_SPECS.map((s) => s.index)).toEqual(Array.from({ length: 25 }, (_, i) => 26 + i));
-    expect(LUZZ_SPECS.map((s) => s.index)).toEqual(Array.from({ length: 25 }, (_, i) => 51 + i));
-    expect(WOODING_SPECS.map((s) => s.index)).toEqual(Array.from({ length: 25 }, (_, i) => 76 + i));
-    for (const spec of [...TJORIZO_SPECS, ...SYRUP_SPECS, ...LUZZ_SPECS, ...WOODING_SPECS]) {
+    expect(ZONE_KITS.map((k) => k.ideas.length)).toEqual([
+      12, 12, 12, 12, 16, 10, 12, 12, 12, 12, 12,
+    ]);
+    expect(ALL_SPECS.map((s) => s.index)).toEqual(Array.from({ length: 184 }, (_, i) => i + 1));
+    for (const spec of ALL_SPECS) {
       const level = generateLevel(spec);
       expect(level.id).toBe(`${spec.zone}-${String(spec.index).padStart(3, '0')}`);
-      expect(levelSpec(spec.index)).toBe(spec);
+      if (spec.index <= 25) expect(levelSpec(spec.index)).toBe(tjorizoSpec(spec.index));
+      if (spec.index > 50) {
+        expect(spec.zone).toBe(storyZone(spec.index));
+        expect(spec.type).toBe(curveSpec(spec.index).type);
+        // Raster 4×4–5×5 (der Pacing-Hebel), Masken eingeschlossen.
+        expect([4, 5], `${level.id} w`).toContain(level.grid.w);
+        expect([4, 5], `${level.id} h`).toContain(level.grid.h);
+        // Ziele sind erfüllbar: genug Käfige, Sporen, Streuner, Kappe für Aufbrüche.
+        for (const g of level.goals) {
+          if (g.type === 'rescue')
+            expect(
+              level.blockers.filter((b) => b.kind === 'cage').length,
+              level.id,
+            ).toBeGreaterThanOrEqual(g.count);
+          if (g.type === 'collectSpores')
+            expect(
+              level.floors.filter((f) => f.kind === 'spore').length,
+              level.id,
+            ).toBeGreaterThanOrEqual(g.count);
+          if (g.type === 'calmStrays')
+            expect(
+              level.threats.filter((t) => t.kind === 'stray').length,
+              level.id,
+            ).toBeGreaterThanOrEqual(g.count);
+          if (g.type === 'release') expect(level.cap, level.id).toBeLessThan(12);
+        }
+      }
+      expect(LevelSchema.safeParse(JSON.parse(JSON.stringify(level))).success).toBe(true);
       expect(LevelSchema.safeParse(JSON.parse(JSON.stringify(level))).success).toBe(true);
       expect(countElementKinds(level).size).toBeLessThanOrEqual(4);
       // requested elements are present
@@ -87,12 +118,21 @@ describe('generateLevel', () => {
   });
 
   it('follows the progression rules for moves and attempt bands', () => {
+    // 1–50: the original thresholds (20/60) stay, so their files stay byte-identical.
     expect(defaultMoves(5, 'comfort')).toBe(34);
     expect(defaultMoves(30, 'comfort')).toBe(28);
-    expect(defaultMoves(70, 'hard')).toBe(21);
+    expect(defaultMoves(45, 'hard')).toBe(24);
     expect(targetAttempts(3, 'tutorial')).toEqual([1, 1.1]);
     expect(targetAttempts(19, 'hard')).toEqual([1.6, 2]);
-    expect(targetAttempts(59, 'veryHard')).toEqual([2, 2.5]);
+    expect(targetAttempts(30, 'celebration')).toEqual([1, 1.1]);
+    // 51–184: the curve; hard levels get fewer moves than normal ones on the same board.
+    for (let i = 51; i <= LAST_LEVEL; i++)
+      expect(targetAttempts(i, 'normal')).toEqual(curveSpec(i).targetAttempts);
+    expect(defaultMoves(55, 'hard', 16)).toBeLessThan(defaultMoves(53, 'normal', 16));
+    expect(defaultMoves(177, 'hard', 16)).toBeLessThan(defaultMoves(55, 'hard', 16));
+    // Drafts past the curve (editor) get the band of their type in the last zone.
+    expect(targetAttempts(185, 'hard')).toEqual(curveBand('hard', 15));
+    expect(targetAttempts(190, 'skill')).toEqual(curveBand('normal', 15));
     for (const i of P3_LEVEL_INDICES) {
       const level = generateLevel(tjorizoSpec(i));
       expect(level.difficulty.targetAttempts[1]).toBeLessThanOrEqual(1.1);
@@ -140,9 +180,37 @@ describe('generateLevel', () => {
     }
   });
 
+  it('tunes 51–184 only through moves, goal size, start mass and spawn rate (seed stays)', () => {
+    for (let i = 51; i <= LAST_LEVEL; i++) {
+      const base = baseSpec(i);
+      const tuned = levelSpec(i);
+      expect(tuned.seed, `${i}`).toBe(base.seed);
+      // fixed boards keep their layout; the start knob only moves plain blobs up or down a tier
+      const layout = (b?: string) =>
+        b
+          ?.trim()
+          .split(/\s+/)
+          .map((t) => t.replace(/^\d{1,2}(\/|$)/, '#$1'));
+      expect(layout(tuned.board), `${i}`).toEqual(layout(base.board));
+      if (!TUNING[i]?.start) expect(tuned.board, `${i}`).toBe(base.board);
+      expect(tuned.elements, `${i}`).toEqual(base.elements);
+      expect(tuned.moves, `${i}`).toBe(TUNING[i]?.moves ?? base.moves);
+    }
+    // the dial changes the first adjustable goal, the start knob the start mass
+    const s = baseSpec(53);
+    expect(dialSpec(s, 1).goals[0]).toEqual({ type: 'reachTier', tier: 7 });
+    expect(startSpec(s, -1).startTiers!.length).toBe(s.startTiers!.length - 1);
+    expect(applyTune(s, { moves: 20, t2: 2 }).spawn?.tier2).toBe(2);
+    // every level keeps tier 1 and 2 in its spawn table (the gull reads them)
+    for (const spec of ALL_SPECS) {
+      const tiers = new Set(generateLevel(spec).spawn.table.map((r) => r.tier));
+      expect(tiers.has(1) && tiers.has(2), `${spec.index}`).toBe(true);
+    }
+  });
+
   it('every content/levels/NNN.json is exactly what its spec generates (run tools/levels/generate.ts after changing specs)', () => {
     const files = readdirSync(levelsDir).filter((f) => /^\d{3}\.json$/.test(f));
-    expect(files.length).toBeGreaterThanOrEqual(P3_LEVEL_INDICES.length);
+    expect(files.length).toBe(LAST_LEVEL);
     for (const f of files) {
       const i = Number(f.replace('.json', ''));
       const file = `${levelsDir}${f}`;

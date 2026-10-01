@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-171",
+  "zone": "luzz",
+  "name": "Rohre im Schlaf",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": ["#...#", ".....", ".....", ".....", "#...#"]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "portal",
+      "at": [4, 3],
+      "portalId": "a"
+    },
+    {
+      "kind": "portal",
+      "at": [1, 2],
+      "portalId": "a"
+    }
+  ],
+  "blockers": [
+    {
+      "kind": "sleeper",
+      "at": [3, 1],
+      "content": {
+        "tier": 2
+      }
+    },
+    {
+      "kind": "sleeper",
+      "at": [1, 3],
+      "content": {
+        "tier": 2
+      }
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [2, 4],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [4, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [1, 1],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 4],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "deliver",
+      "tier": 5,
+      "count": 2
+    }
+  ],
+  "moves": 26,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.71, 2.27],
+    "style": "puzzle"
+  }
+}

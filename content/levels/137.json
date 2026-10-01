@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-137",
+  "zone": "wooding",
+  "name": "Goldfeuer",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "oil",
+      "at": [1, 4]
+    },
+    {
+      "kind": "oil",
+      "at": [2, 3]
+    },
+    {
+      "kind": "oil",
+      "at": [0, 0]
+    }
+  ],
+  "blockers": [
+    {
+      "kind": "crust",
+      "at": [2, 0],
+      "content": {
+        "tier": 3
+      }
+    },
+    {
+      "kind": "crust",
+      "at": [0, 1],
+      "content": {
+        "tier": 3
+      }
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [4, 3],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [2, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "reachTier",
+      "tier": 5
+    }
+  ],
+  "moves": 27,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.04, 1.2],
+    "style": "explosive"
+  }
+}

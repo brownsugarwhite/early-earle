@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-123",
+  "zone": "wooding",
+  "name": "Gitterwerk",
+  "grid": {
+    "w": 4,
+    "h": 4,
+    "mask": ["....", "....", "....", "...."]
+  },
+  "fences": [
+    {
+      "a": [1, 2],
+      "b": [2, 2]
+    },
+    {
+      "a": [0, 2],
+      "b": [0, 3]
+    }
+  ],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "scrap",
+      "at": [2, 1],
+      "layers": 1
+    },
+    {
+      "kind": "scrap",
+      "at": [0, 1],
+      "layers": 1
+    },
+    {
+      "kind": "scrap",
+      "at": [2, 3],
+      "layers": 1
+    }
+  ],
+  "threats": [
+    {
+      "kind": "rot",
+      "at": [1, 1],
+      "period": 4
+    }
+  ],
+  "start": [
+    {
+      "at": [1, 2],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "clearScrap"
+    }
+  ],
+  "moves": 10,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.63, 2.12],
+    "style": "diligent"
+  }
+}

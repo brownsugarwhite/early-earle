@@ -7,6 +7,7 @@ import type { MoveResult, SpawnEvent } from '../events';
 import { materializeCells, type LevelState } from '../model';
 import { hash32, mulberry32 } from '../rng';
 import { LevelSchema, type LevelDef } from '../schema/level';
+import { LAST_LEVEL } from '../generator/index';
 import {
   GULL_FIRST_LEVEL,
   GULL_WINDOW,
@@ -72,9 +73,8 @@ function fingerprint(s: LevelState): string {
 afterEach(() => setGullMode('auto'));
 
 describe('Möwe: Regel', () => {
-  it('liest die zwei niedrigsten Stufen der Spawn-Tabelle (alle Leveldateien: Stufe 1 und 2)', () => {
-    // alle Leveldateien (Route 15 + 1: die Level 101–184 kommen dazu) — mindestens die ersten 100
-    expect(ALL.length).toBeGreaterThanOrEqual(100);
+  it('liest die zwei niedrigsten Stufen der Spawn-Tabelle (alle Level: Stufe 1 und 2)', () => {
+    expect(ALL.length).toBe(LAST_LEVEL);
     for (const level of ALL) expect(gullTiers(level), level.id).toEqual([1, 2]);
     expect(gullTiers({ spawn: { table: [{ tier: 3, weight: 1 }, { tier: 1, weight: 1 }, { tier: 3, weight: 2 }, { tier: 2, weight: 1 }] } } as LevelDef)).toEqual([1, 2]);
   });

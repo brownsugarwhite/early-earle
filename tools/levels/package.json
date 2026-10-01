@@ -7,6 +7,8 @@
   "scripts": {
     "generate": "tsx generate.ts",
     "calibrate": "tsx calibrate.ts",
+    "tune": "tsx tune.ts",
+    "report": "tsx report.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

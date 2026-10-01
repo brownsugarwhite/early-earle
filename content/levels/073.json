@@ -2,31 +2,54 @@
   "schemaVersion": 1,
   "id": "luzz-073",
   "zone": "luzz",
-  "name": "Lieferung",
+  "name": "Bestellung im Riss",
   "grid": {
     "w": 5,
     "h": 5,
-    "mask": [".....", ".....", ".....", ".....", "....."]
+    "mask": [".....", ".....", "##.##", ".....", "....."]
   },
-  "fences": [],
+  "fences": [
+    {
+      "a": [1, 3],
+      "b": [2, 3]
+    },
+    {
+      "a": [1, 0],
+      "b": [2, 0]
+    }
+  ],
   "floors": [],
   "blockers": [],
-  "threats": [],
+  "threats": [
+    {
+      "kind": "toxic",
+      "at": [3, 4],
+      "countdown": 6
+    }
+  ],
   "start": [
     {
-      "at": [0, 1],
+      "at": [3, 3],
+      "blob": {
+        "tier": 4,
+        "material": "jelly"
+      }
+    },
+    {
+      "at": [2, 2],
+      "blob": {
+        "tier": 3,
+        "material": "jelly"
+      }
+    },
+    {
+      "at": [0, 4],
       "blob": {
         "tier": 3
       }
     },
     {
-      "at": [1, 2],
-      "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [4, 4],
+      "at": [1, 4],
       "blob": {
         "tier": 2
       }
@@ -35,18 +58,6 @@
       "at": [4, 0],
       "blob": {
         "tier": 2
-      }
-    },
-    {
-      "at": [0, 3],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [2, 4],
-      "blob": {
-        "tier": 1
       }
     },
     {
@@ -78,14 +89,14 @@
       "count": 2
     }
   ],
-  "moves": 26,
+  "moves": 21,
   "cap": 12,
   "specials": {
     "lineAt": 16,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [1.1, 1.3],
+    "targetAttempts": [1.55, 1.98],
     "style": "diligent"
   }
 }

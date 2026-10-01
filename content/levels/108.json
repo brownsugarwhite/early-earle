@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-108",
+  "zone": "wooding",
+  "name": "Sporenregen",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "spore",
+      "at": [0, 2]
+    },
+    {
+      "kind": "spore",
+      "at": [2, 1]
+    },
+    {
+      "kind": "spore",
+      "at": [1, 1]
+    },
+    {
+      "kind": "spore",
+      "at": [4, 3]
+    },
+    {
+      "kind": "spore",
+      "at": [1, 4]
+    }
+  ],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [2, 3],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [1, 0],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [2, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 2],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [3, 1],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "collectSpores",
+      "count": 4
+    }
+  ],
+  "moves": 31,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 2
+  },
+  "difficulty": {
+    "targetAttempts": [1.04, 1.27],
+    "style": "explosive"
+  }
+}

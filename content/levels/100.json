@@ -2,84 +2,56 @@
   "schemaVersion": 1,
   "id": "wooding-100",
   "zone": "wooding",
-  "name": "Das erste Wäldchen",
+  "name": "Tiefe Wurzeln",
   "grid": {
-    "w": 6,
-    "h": 6,
-    "mask": ["......", "......", "..PP..", "..PP..", "......", "......"]
+    "w": 4,
+    "h": 4,
+    "mask": ["....", "....", "....", "...."]
   },
   "fences": [],
   "floors": [
     {
       "kind": "withered",
-      "at": [1, 0]
-    },
-    {
-      "kind": "oil",
-      "at": [2, 0]
+      "at": [3, 0]
     },
     {
       "kind": "withered",
-      "at": [4, 0]
+      "at": [3, 2]
     },
     {
       "kind": "withered",
-      "at": [0, 2]
+      "at": [0, 0]
     },
     {
-      "kind": "withered",
-      "at": [1, 5]
-    },
-    {
-      "kind": "oil",
-      "at": [3, 5]
-    },
-    {
-      "kind": "withered",
-      "at": [4, 5]
+      "kind": "deepWithered",
+      "at": [2, 3]
     }
   ],
   "blockers": [],
   "threats": [],
   "start": [
     {
-      "at": [0, 1],
+      "at": [0, 3],
       "blob": {
-        "tier": 4
+        "tier": 3
       }
     },
     {
-      "at": [1, 1],
+      "at": [2, 1],
       "blob": {
-        "tier": 5,
-        "material": "jelly"
+        "tier": 2
       }
     },
     {
-      "at": [4, 1],
+      "at": [1, 2],
       "blob": {
-        "tier": 5,
-        "material": "liquid"
+        "tier": 2
       }
     },
     {
-      "at": [1, 4],
+      "at": [2, 0],
       "blob": {
-        "tier": 5,
-        "material": "gas"
-      }
-    },
-    {
-      "at": [4, 4],
-      "blob": {
-        "tier": 5,
-        "material": "fire"
-      }
-    },
-    {
-      "at": [5, 4],
-      "blob": {
-        "tier": 4
+        "tier": 1
       }
     }
   ],
@@ -101,20 +73,16 @@
   "goals": [
     {
       "type": "heal"
-    },
-    {
-      "type": "reachTier",
-      "tier": 7
     }
   ],
-  "moves": 30,
+  "moves": 16,
   "cap": 12,
   "specials": {
     "lineAt": 16,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [1.6, 2],
-    "style": "explosive"
+    "targetAttempts": [1.14, 1.48],
+    "style": "diligent"
   }
 }

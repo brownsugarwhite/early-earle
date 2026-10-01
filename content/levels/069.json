@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "luzz-069",
   "zone": "luzz",
-  "name": "Giftriss",
+  "name": "Bergstrahl",
   "grid": {
     "w": 5,
     "h": 5,
@@ -10,57 +10,48 @@
   },
   "fences": [],
   "floors": [],
-  "blockers": [],
-  "threats": [
+  "blockers": [
     {
-      "kind": "rot",
-      "at": [4, 3],
-      "period": 3
-    },
-    {
-      "kind": "toxic",
-      "at": [4, 1],
-      "countdown": 6
-    },
-    {
-      "kind": "toxic",
-      "at": [1, 1],
-      "countdown": 6
+      "kind": "scrapMound",
+      "at": [0, 0],
+      "size": [2, 2],
+      "layers": 6
     }
   ],
+  "threats": [],
   "start": [
     {
-      "at": [0, 0],
-      "blob": {
-        "tier": 4
-      }
-    },
-    {
-      "at": [3, 3],
-      "blob": {
-        "tier": 4
-      }
-    },
-    {
-      "at": [2, 2],
+      "at": [2, 4],
       "blob": {
         "tier": 3
       }
     },
     {
-      "at": [3, 2],
+      "at": [3, 0],
       "blob": {
         "tier": 3
       }
     },
     {
-      "at": [0, 1],
+      "at": [4, 4],
       "blob": {
         "tier": 2
       }
     },
     {
-      "at": [4, 4],
+      "at": [4, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 4],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [3, 3],
       "blob": {
         "tier": 1
       }
@@ -83,18 +74,17 @@
   },
   "goals": [
     {
-      "type": "release",
-      "count": 2
+      "type": "clearScrap"
     }
   ],
-  "moves": 16,
-  "cap": 5,
+  "moves": 14,
+  "cap": 12,
   "specials": {
-    "lineAt": 16,
+    "lineAt": 3,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [2, 2.5],
-    "style": "precise"
+    "targetAttempts": [1.31, 1.8],
+    "style": "explosive"
   }
 }

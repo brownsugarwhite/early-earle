@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "id": "syrup-157",
+  "zone": "syrup",
+  "name": "Steilwand",
+  "grid": {
+    "w": 4,
+    "h": 4,
+    "mask": ["....", "....", ".P..", "...."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "scrap",
+      "at": [2, 1],
+      "layers": 2
+    },
+    {
+      "kind": "scrap",
+      "at": [0, 3],
+      "layers": 2
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 0],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "clearScrap"
+    }
+  ],
+  "moves": 12,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 3
+  },
+  "difficulty": {
+    "targetAttempts": [2.23, 3.93],
+    "style": "explosive"
+  }
+}

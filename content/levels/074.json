@@ -2,56 +2,72 @@
   "schemaVersion": 1,
   "id": "luzz-074",
   "zone": "luzz",
-  "name": "Bestellung",
+  "name": "Der Nebelberg",
   "grid": {
     "w": 5,
     "h": 5,
     "mask": [".....", ".....", ".....", ".....", "....."]
   },
-  "fences": [
+  "fences": [],
+  "floors": [
     {
-      "a": [4, 1],
-      "b": [4, 2]
+      "kind": "oil",
+      "at": [0, 2]
+    },
+    {
+      "kind": "oil",
+      "at": [4, 3]
     }
   ],
-  "floors": [],
-  "blockers": [],
-  "threats": [],
+  "blockers": [
+    {
+      "kind": "scrapMound",
+      "at": [1, 1],
+      "size": [2, 2],
+      "layers": 6
+    }
+  ],
+  "threats": [
+    {
+      "kind": "toxic",
+      "at": [3, 0],
+      "countdown": 7
+    },
+    {
+      "kind": "toxic",
+      "at": [0, 4],
+      "countdown": 7
+    }
+  ],
   "start": [
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [4, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
     {
       "at": [4, 4],
       "blob": {
         "tier": 3
-      }
-    },
-    {
-      "at": [2, 4],
-      "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [2, 1],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [1, 2],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [1, 1],
-      "blob": {
-        "tier": 1
-      }
-    },
-    {
-      "at": [4, 0],
-      "blob": {
-        "tier": 1
       }
     }
   ],
@@ -72,19 +88,21 @@
   },
   "goals": [
     {
-      "type": "deliver",
-      "tier": 5,
-      "count": 2
+      "type": "clearScrap"
+    },
+    {
+      "type": "reachTier",
+      "tier": 6
     }
   ],
   "moves": 27,
   "cap": 12,
   "specials": {
-    "lineAt": 16,
+    "lineAt": 3,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [1.2, 1.4],
-    "style": "diligent"
+    "targetAttempts": [2.84, 4.5],
+    "style": "explosive"
   }
 }

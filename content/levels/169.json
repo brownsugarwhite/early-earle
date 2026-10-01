@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-169",
+  "zone": "luzz",
+  "name": "Gezeiten",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "portal",
+      "at": [4, 3],
+      "portalId": "a"
+    },
+    {
+      "kind": "portal",
+      "at": [1, 2],
+      "portalId": "a"
+    },
+    {
+      "kind": "current",
+      "at": [2, 4],
+      "dir": "up"
+    },
+    {
+      "kind": "current",
+      "at": [2, 3],
+      "dir": "up"
+    }
+  ],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [1, 1],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [4, 0],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [2, 2],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [0, 0],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 1],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [4, 4],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [4, 1],
+      "blob": {
+        "tier": 2
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "reachTier",
+      "tier": 6
+    }
+  ],
+  "moves": 8,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [2.27, 4.01],
+    "style": "puzzle"
+  }
+}
