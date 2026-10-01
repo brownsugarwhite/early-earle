@@ -161,6 +161,12 @@ export interface EarlePlanetOptions {
   path: { clearNode: number; clearPath: number; keepGround?: readonly number[] };
   /** Chunks, die pro Frame höchstens erzeugt werden (zusätzlich gilt `loadBudgetMs`). */
   loadsPerFrame?: number;
+  /**
+   * Werfer sonnenwärts (Karte v5, R1.4): Chunks außerhalb des Bildes in Richtung Sonne bleiben geladen und ihre
+   * Schatten-Kacheln sichtbar, solange ihre Schattenbahn das Bild erreichen kann (Reichweite in Einheiten, Deckel;
+   * Standard 40, 0 = aus). Kostet je zusätzlicher Kachel einen Zeichenaufruf je Kaskade.
+   */
+  sunwardReach?: number;
   /** Zeitbudget je Frame für den Chunkbau (ms, Standard 7). */
   loadBudgetMs?: number;
   /** Frames, nach denen ein unsichtbarer Chunk entladen wird. */
@@ -356,6 +362,7 @@ export class EarlePlanet {
   private readonly cache = new Map<string, ChunkCpu>();
   private readonly slotsUsed: Array<string | null> = new Array<string | null>(GROWTH_SLOTS).fill(null);
   private readonly loadsPerFrame: number;
+  private readonly sunwardReach: number;
   private readonly loadBudgetMs: number;
   private readonly unloadAfter: number;
   private readonly viewRadius: number;
@@ -434,6 +441,7 @@ export class EarlePlanet {
     this.plane.position.set(0, options.radius, 0);
     this.group.add(this.plane);
     this.loadsPerFrame = options.loadsPerFrame ?? 2;
+    this.sunwardReach = Math.max(0, options.sunwardReach ?? 40);
     this.loadBudgetMs = options.loadBudgetMs ?? 7;
     this.unloadAfter = options.unloadAfterFrames ?? 45;
     this.crackWidth = options.crackWidth ?? 0.55;
@@ -1282,7 +1290,7 @@ export class EarlePlanet {
     const sunH = Math.hypot(sun.x, sun.z);
     const sunX = sunH > 1e-6 ? sun.x / sunH : 0;
     const sunZ = sunH > 1e-6 ? sun.z / sunH : 0;
-    const sunReach = Math.min(40, hTop / Math.max(0.05, sun.y / Math.max(1e-6, sunH)));
+    const sunReach = Math.min(this.sunwardReach, hTop / Math.max(0.05, sun.y / Math.max(1e-6, sunH)));
     this.sunBand.set(sunX, sunZ, sunReach);
     const cx0 = Math.floor((this.focus.x - reach - Math.max(0, -sunX) * sunReach) / CHUNK_SIZE);
     const cx1 = Math.floor((this.focus.x + reach + Math.max(0, sunX) * sunReach) / CHUNK_SIZE);
