@@ -6,7 +6,7 @@
   "grid": {
     "w": 5,
     "h": 5,
-    "mask": ["..#..", "..#..", "..#..", "..#..", "....."]
+    "mask": [".....", ".....", "..P..", ".....", "....."]
   },
   "fences": [],
   "floors": [],
@@ -16,35 +16,71 @@
     {
       "at": [0, 0],
       "blob": {
-        "tier": 6
+        "tier": 4
+      }
+    },
+    {
+      "at": [2, 0],
+      "blob": {
+        "tier": 3
       }
     },
     {
       "at": [4, 0],
       "blob": {
-        "tier": 6
+        "tier": 4
       }
     },
     {
-      "at": [0, 1],
-      "blob": {
-        "tier": 5
-      }
-    },
-    {
-      "at": [4, 1],
-      "blob": {
-        "tier": 5
-      }
-    },
-    {
-      "at": [0, 2],
+      "at": [1, 1],
       "blob": {
         "tier": 4
       }
     },
     {
+      "at": [3, 1],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
       "at": [4, 2],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [1, 3],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [0, 4],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [2, 4],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [4, 4],
       "blob": {
         "tier": 4
       }
@@ -71,14 +107,14 @@
       "tier": 7
     }
   ],
-  "moves": 25,
+  "moves": 32,
   "cap": 12,
   "specials": {
     "lineAt": 16,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [1, 1.1],
+    "targetAttempts": [1.04, 1.24],
     "style": "explosive"
   }
 }

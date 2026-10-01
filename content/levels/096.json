@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "wooding-096",
   "zone": "wooding",
-  "name": "Remix: Rohr und Nebel",
+  "name": "Ehrenrunde VIII",
   "grid": {
     "w": 5,
     "h": 5,
@@ -11,51 +11,51 @@
   "fences": [],
   "floors": [
     {
-      "kind": "portal",
-      "at": [1, 2],
-      "portalId": "a"
+      "kind": "withered",
+      "at": [0, 0]
     },
     {
-      "kind": "portal",
-      "at": [4, 2],
-      "portalId": "a"
+      "kind": "withered",
+      "at": [4, 0]
+    },
+    {
+      "kind": "withered",
+      "at": [0, 4]
+    },
+    {
+      "kind": "withered",
+      "at": [4, 4]
     }
   ],
-  "blockers": [
-    {
-      "kind": "cage",
-      "at": [2, 2],
-      "content": {
-        "tier": 2
-      },
-      "layers": 1
-    },
-    {
-      "kind": "fog",
-      "at": [3, 2],
-      "content": {
-        "tier": 2
-      }
-    },
-    {
-      "kind": "fog",
-      "at": [3, 3],
-      "content": {
-        "tier": 2
-      }
-    },
-    {
-      "kind": "fog",
-      "at": [1, 1],
-      "content": {
-        "tier": 2
-      }
-    }
-  ],
+  "blockers": [],
   "threats": [],
   "start": [
     {
-      "at": [4, 4],
+      "at": [1, 0],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [2, 1],
+      "blob": {
+        "tier": 5
+      }
+    },
+    {
+      "at": [1, 2],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 2],
       "blob": {
         "tier": 4
       }
@@ -63,37 +63,19 @@
     {
       "at": [2, 3],
       "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [3, 0],
-      "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [0, 3],
-      "blob": {
-        "tier": 2
+        "tier": 5
       }
     },
     {
       "at": [1, 4],
       "blob": {
-        "tier": 2
+        "tier": 3
       }
     },
     {
       "at": [3, 4],
       "blob": {
-        "tier": 1
-      }
-    },
-    {
-      "at": [4, 0],
-      "blob": {
-        "tier": 1
+        "tier": 3
       }
     }
   ],
@@ -114,22 +96,21 @@
   },
   "goals": [
     {
-      "type": "rescue",
-      "count": 1
+      "type": "heal"
     },
     {
       "type": "reachTier",
-      "tier": 6
+      "tier": 7
     }
   ],
-  "moves": 28,
+  "moves": 16,
   "cap": 12,
   "specials": {
     "lineAt": 16,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [1.2, 1.4],
-    "style": "puzzle"
+    "targetAttempts": [1.04, 1.26],
+    "style": "explosive"
   }
 }

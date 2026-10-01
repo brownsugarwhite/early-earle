@@ -2,46 +2,62 @@
   "schemaVersion": 1,
   "id": "wooding-098",
   "zone": "wooding",
-  "name": "Remix: Schläfer und Gift",
+  "name": "Die Scheune brennt",
   "grid": {
     "w": 5,
     "h": 5,
-    "mask": [".....", ".....", ".....", "..P..", "....."]
+    "mask": [".....", ".....", ".....", ".....", "....."]
   },
   "fences": [],
   "floors": [
     {
       "kind": "withered",
-      "at": [0, 1]
+      "at": [0, 0]
     },
     {
       "kind": "withered",
-      "at": [0, 3]
+      "at": [4, 0]
+    },
+    {
+      "kind": "current",
+      "at": [0, 1],
+      "dir": "right"
+    },
+    {
+      "kind": "current",
+      "at": [1, 1],
+      "dir": "right"
+    },
+    {
+      "kind": "current",
+      "at": [2, 1],
+      "dir": "right"
+    },
+    {
+      "kind": "current",
+      "at": [3, 1],
+      "dir": "right"
     },
     {
       "kind": "withered",
-      "at": [0, 2]
+      "at": [0, 4]
     },
     {
       "kind": "withered",
-      "at": [4, 3]
-    },
-    {
-      "kind": "withered",
-      "at": [2, 4]
+      "at": [4, 4]
     }
   ],
   "blockers": [
     {
-      "kind": "sleeper",
-      "at": [4, 0],
+      "kind": "crust",
+      "at": [1, 2],
       "content": {
         "tier": 3
       }
     },
     {
-      "kind": "sleeper",
-      "at": [4, 4],
+      "kind": "crust",
+      "at": [3, 4],
       "content": {
         "tier": 3
       }
@@ -49,40 +65,16 @@
   ],
   "threats": [
     {
-      "kind": "toxic",
-      "at": [1, 0],
-      "countdown": 6
+      "kind": "stray",
+      "at": [3, 2],
+      "tier": 1
     }
   ],
   "start": [
     {
-      "at": [0, 0],
+      "at": [2, 3],
       "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [3, 4],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [3, 0],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [0, 4],
-      "blob": {
-        "tier": 1
-      }
-    },
-    {
-      "at": [1, 4],
-      "blob": {
-        "tier": 1
+        "tier": 4
       }
     }
   ],
@@ -104,16 +96,20 @@
   "goals": [
     {
       "type": "heal"
+    },
+    {
+      "type": "calmStrays",
+      "count": 1
     }
   ],
-  "moves": 26,
+  "moves": 12,
   "cap": 12,
   "specials": {
     "lineAt": 16,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [1.2, 1.4],
-    "style": "precise"
+    "targetAttempts": [2.97, 4.5],
+    "style": "puzzle"
   }
 }

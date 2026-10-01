@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "id": "syrup-156",
+  "zone": "syrup",
+  "name": "Sirupschrott",
+  "grid": {
+    "w": 5,
+    "h": 4,
+    "mask": [".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "oil",
+      "at": [0, 0]
+    },
+    {
+      "kind": "oil",
+      "at": [1, 0]
+    }
+  ],
+  "blockers": [
+    {
+      "kind": "scrap",
+      "at": [2, 2],
+      "layers": 1
+    },
+    {
+      "kind": "scrap",
+      "at": [0, 3],
+      "layers": 1
+    },
+    {
+      "kind": "scrap",
+      "at": [3, 0],
+      "layers": 1
+    }
+  ],
+  "threats": [],
+  "start": [
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 3,
+        "material": "jelly"
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 1],
+      "blob": {
+        "tier": 2,
+        "material": "jelly"
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "clearScrap"
+    }
+  ],
+  "moves": 11,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.5, 1.96],
+    "style": "diligent"
+  }
+}

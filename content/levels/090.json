@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "wooding-090",
   "zone": "wooding",
-  "name": "Ehrenrunde VIII",
+  "name": "Heilfeuer",
   "grid": {
     "w": 5,
     "h": 5,
@@ -11,29 +11,67 @@
   "fences": [],
   "floors": [
     {
-      "kind": "portal",
-      "at": [2, 0],
-      "portalId": "a"
+      "kind": "withered",
+      "at": [0, 2]
     },
     {
-      "kind": "portal",
-      "at": [4, 4],
-      "portalId": "a"
+      "kind": "withered",
+      "at": [0, 4]
+    },
+    {
+      "kind": "withered",
+      "at": [1, 4]
+    },
+    {
+      "kind": "withered",
+      "at": [4, 1]
+    },
+    {
+      "kind": "withered",
+      "at": [2, 0]
+    },
+    {
+      "kind": "withered",
+      "at": [4, 2]
     }
   ],
   "blockers": [],
   "threats": [],
   "start": [
     {
-      "at": [0, 0],
+      "at": [4, 3],
       "blob": {
-        "tier": 6
+        "tier": 3
       }
     },
     {
-      "at": [0, 4],
+      "at": [3, 4],
       "blob": {
-        "tier": 6
+        "tier": 3
+      }
+    },
+    {
+      "at": [4, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [2, 4],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 1
+      }
+    },
+    {
+      "at": [1, 2],
+      "blob": {
+        "tier": 1
       }
     }
   ],
@@ -54,18 +92,17 @@
   },
   "goals": [
     {
-      "type": "reachTier",
-      "tier": 7
+      "type": "heal"
     }
   ],
-  "moves": 25,
+  "moves": 29,
   "cap": 12,
   "specials": {
     "lineAt": 16,
-    "burstAt": 16
+    "burstAt": 2
   },
   "difficulty": {
-    "targetAttempts": [1, 1.1],
+    "targetAttempts": [1.04, 1.26],
     "style": "explosive"
   }
 }

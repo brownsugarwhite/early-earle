@@ -2,57 +2,43 @@
   "schemaVersion": 1,
   "id": "wooding-083",
   "zone": "wooding",
-  "name": "Nebelwald",
+  "name": "Nebeltor",
   "grid": {
-    "w": 5,
+    "w": 4,
     "h": 5,
-    "mask": [".....", "..P..", ".....", ".....", "....."]
+    "mask": ["....", "....", "....", "....", "...."]
   },
   "fences": [],
   "floors": [
     {
-      "kind": "withered",
-      "at": [0, 2]
+      "kind": "portal",
+      "at": [2, 0],
+      "portalId": "a"
     },
     {
-      "kind": "withered",
-      "at": [3, 4]
-    },
-    {
-      "kind": "withered",
-      "at": [2, 4]
-    },
-    {
-      "kind": "withered",
-      "at": [0, 4]
-    },
-    {
-      "kind": "withered",
-      "at": [4, 0]
-    },
-    {
-      "kind": "withered",
-      "at": [4, 1]
+      "kind": "portal",
+      "at": [1, 3],
+      "portalId": "a"
     }
   ],
   "blockers": [
     {
       "kind": "fog",
-      "at": [0, 3],
+      "at": [0, 0],
       "content": {
         "tier": 2
       }
     },
     {
       "kind": "fog",
-      "at": [2, 0],
+      "at": [1, 4],
       "content": {
         "tier": 2
       }
     },
     {
       "kind": "fog",
-      "at": [1, 0],
+      "at": [2, 2],
       "content": {
         "tier": 2
       }
@@ -61,37 +47,31 @@
   "threats": [],
   "start": [
     {
-      "at": [4, 4],
+      "at": [0, 3],
       "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [3, 0],
-      "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [1, 2],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [4, 3],
-      "blob": {
-        "tier": 2
+        "tier": 4
       }
     },
     {
       "at": [3, 3],
       "blob": {
-        "tier": 1
+        "tier": 3
       }
     },
     {
-      "at": [0, 0],
+      "at": [0, 4],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [2, 1],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 1],
       "blob": {
         "tier": 1
       }
@@ -114,17 +94,18 @@
   },
   "goals": [
     {
-      "type": "heal"
+      "type": "release",
+      "count": 2
     }
   ],
-  "moves": 22,
-  "cap": 12,
+  "moves": 17,
+  "cap": 5,
   "specials": {
     "lineAt": 16,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [1.2, 1.4],
-    "style": "journey"
+    "targetAttempts": [2.02, 3.41],
+    "style": "precise"
   }
 }

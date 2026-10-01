@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-148",
+  "zone": "wooding",
+  "name": "Der goldene Grat",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "oil",
+      "at": [4, 0]
+    },
+    {
+      "kind": "oil",
+      "at": [0, 4]
+    }
+  ],
+  "blockers": [
+    {
+      "kind": "crust",
+      "at": [0, 0],
+      "content": {
+        "tier": 3
+      }
+    },
+    {
+      "kind": "crust",
+      "at": [4, 4],
+      "content": {
+        "tier": 3
+      }
+    }
+  ],
+  "threats": [
+    {
+      "kind": "stray",
+      "at": [2, 2],
+      "tier": 1
+    }
+  ],
+  "start": [
+    {
+      "at": [1, 1],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 5
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "calmStrays",
+      "count": 1
+    },
+    {
+      "type": "reachTier",
+      "tier": 6
+    }
+  ],
+  "moves": 23,
+  "cap": 12,
+  "specials": {
+    "lineAt": 3,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [3.24, 5],
+    "style": "puzzle"
+  }
+}

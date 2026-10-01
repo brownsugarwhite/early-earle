@@ -2,68 +2,84 @@
   "schemaVersion": 1,
   "id": "luzz-072",
   "zone": "luzz",
-  "name": "Schrottberge",
+  "name": "Ehrenrunde VI",
   "grid": {
     "w": 5,
     "h": 5,
     "mask": [".....", ".....", ".....", ".....", "....."]
   },
   "fences": [],
-  "floors": [],
-  "blockers": [
+  "floors": [
     {
-      "kind": "scrap",
-      "at": [3, 2],
-      "layers": 2
+      "kind": "oil",
+      "at": [0, 1]
     },
     {
-      "kind": "scrap",
-      "at": [4, 0],
-      "layers": 2
-    },
-    {
-      "kind": "scrapMound",
-      "at": [2, 3],
-      "size": [2, 2],
-      "layers": 8
+      "kind": "oil",
+      "at": [4, 1]
     }
   ],
+  "blockers": [],
   "threats": [],
   "start": [
     {
-      "at": [3, 0],
-      "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [2, 1],
-      "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [1, 3],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [1, 1],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [2, 2],
-      "blob": {
-        "tier": 1
-      }
-    },
-    {
       "at": [1, 0],
       "blob": {
-        "tier": 1
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 0],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [4, 1],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [1, 2],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 2],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [4, 3],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [1, 4],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [3, 4],
+      "blob": {
+        "tier": 4
       }
     }
   ],
@@ -84,17 +100,18 @@
   },
   "goals": [
     {
-      "type": "clearScrap"
+      "type": "reachTier",
+      "tier": 7
     }
   ],
-  "moves": 23,
+  "moves": 10,
   "cap": 12,
   "specials": {
     "lineAt": 16,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [1.2, 1.4],
-    "style": "diligent"
+    "targetAttempts": [1.04, 1.24],
+    "style": "explosive"
   }
 }

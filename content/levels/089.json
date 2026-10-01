@@ -2,95 +2,68 @@
   "schemaVersion": 1,
   "id": "wooding-089",
   "zone": "wooding",
-  "name": "Feuersturm",
+  "name": "Krustenstrom",
   "grid": {
-    "w": 5,
-    "h": 5,
-    "mask": [".....", ".....", ".....", ".....", "....."]
+    "w": 4,
+    "h": 4,
+    "mask": ["....", "....", "....", "...."]
   },
   "fences": [],
   "floors": [
     {
-      "kind": "oil",
-      "at": [0, 3]
+      "kind": "current",
+      "at": [0, 0],
+      "dir": "down"
     },
     {
-      "kind": "oil",
-      "at": [4, 4]
+      "kind": "current",
+      "at": [0, 1],
+      "dir": "down"
     },
     {
       "kind": "current",
       "at": [0, 2],
-      "dir": "right"
-    },
+      "dir": "down"
+    }
+  ],
+  "blockers": [
     {
-      "kind": "current",
+      "kind": "crust",
       "at": [1, 2],
-      "dir": "right"
+      "content": {
+        "tier": 3
+      }
     },
     {
-      "kind": "current",
-      "at": [2, 2],
-      "dir": "right"
-    },
-    {
-      "kind": "current",
-      "at": [3, 2],
-      "dir": "right"
+      "kind": "crust",
+      "at": [3, 1],
+      "content": {
+        "tier": 3
+      }
     }
   ],
-  "blockers": [],
-  "threats": [
-    {
-      "kind": "rot",
-      "at": [1, 1],
-      "period": 3
-    },
-    {
-      "kind": "rot",
-      "at": [4, 2],
-      "period": 3
-    }
-  ],
+  "threats": [],
   "start": [
     {
-      "at": [1, 3],
-      "blob": {
-        "tier": 4
-      }
-    },
-    {
-      "at": [1, 0],
+      "at": [2, 3],
       "blob": {
         "tier": 3
       }
     },
     {
-      "at": [1, 4],
+      "at": [1, 1],
       "blob": {
         "tier": 3
       }
     },
     {
-      "at": [0, 0],
+      "at": [2, 2],
       "blob": {
         "tier": 2
       }
     },
     {
       "at": [2, 1],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [4, 1],
-      "blob": {
-        "tier": 1
-      }
-    },
-    {
-      "at": [3, 4],
       "blob": {
         "tier": 1
       }
@@ -113,21 +86,18 @@
   },
   "goals": [
     {
-      "type": "clearRot"
-    },
-    {
       "type": "reachTier",
-      "tier": 5
+      "tier": 6
     }
   ],
-  "moves": 20,
+  "moves": 30,
   "cap": 12,
   "specials": {
     "lineAt": 16,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [2, 2.5],
-    "style": "explosive"
+    "targetAttempts": [1.33, 1.68],
+    "style": "precise"
   }
 }

@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-103",
+  "zone": "wooding",
+  "name": "Dornen",
+  "grid": {
+    "w": 4,
+    "h": 4,
+    "mask": ["....", "..P.", "....", "...."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "deepWithered",
+      "at": [1, 1]
+    },
+    {
+      "kind": "deepWithered",
+      "at": [2, 2]
+    }
+  ],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [1, 0],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [3, 1],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 1],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "heal"
+    }
+  ],
+  "moves": 26,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [2.09, 3.58],
+    "style": "precise"
+  }
+}

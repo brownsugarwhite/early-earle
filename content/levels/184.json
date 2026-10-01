@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-184",
+  "zone": "luzz",
+  "name": "Die Klippe",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "scrapMound",
+      "at": [1, 1],
+      "size": [2, 2],
+      "layers": 6
+    },
+    {
+      "kind": "cage",
+      "at": [0, 3],
+      "content": {
+        "tier": 2
+      },
+      "layers": 1
+    }
+  ],
+  "threats": [
+    {
+      "kind": "toxic",
+      "at": [0, 0],
+      "countdown": 6
+    },
+    {
+      "kind": "toxic",
+      "at": [4, 4],
+      "countdown": 6
+    }
+  ],
+  "start": [
+    {
+      "at": [4, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [1, 4],
+      "blob": {
+        "tier": 3
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "clearScrap"
+    },
+    {
+      "type": "rescue",
+      "count": 1
+    },
+    {
+      "type": "reachTier",
+      "tier": 6
+    }
+  ],
+  "moves": 27,
+  "cap": 12,
+  "specials": {
+    "lineAt": 3,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [3.45, 5],
+    "style": "precise"
+  }
+}

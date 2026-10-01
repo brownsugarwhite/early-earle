@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "id": "luzz-167",
+  "zone": "luzz",
+  "name": "Strom und Rohr",
+  "grid": {
+    "w": 5,
+    "h": 5,
+    "mask": [".....", ".....", ".....", ".....", "....."]
+  },
+  "fences": [],
+  "floors": [
+    {
+      "kind": "portal",
+      "at": [2, 1],
+      "portalId": "a"
+    },
+    {
+      "kind": "portal",
+      "at": [2, 4],
+      "portalId": "a"
+    },
+    {
+      "kind": "current",
+      "at": [3, 2],
+      "dir": "right"
+    },
+    {
+      "kind": "current",
+      "at": [0, 1],
+      "dir": "right"
+    },
+    {
+      "kind": "current",
+      "at": [2, 2],
+      "dir": "right"
+    }
+  ],
+  "blockers": [],
+  "threats": [],
+  "start": [
+    {
+      "at": [3, 3],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [1, 1],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [2, 0],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [0, 3],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 1
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "deliver",
+      "tier": 5,
+      "count": 2
+    }
+  ],
+  "moves": 29,
+  "cap": 12,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [1.4, 2.03],
+    "style": "diligent"
+  }
+}

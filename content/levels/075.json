@@ -2,68 +2,54 @@
   "schemaVersion": 1,
   "id": "luzz-075",
   "zone": "luzz",
-  "name": "Der dritte Riss",
+  "name": "Rohrpaar",
   "grid": {
-    "w": 6,
-    "h": 6,
-    "mask": ["##..##", "#....#", "......", "......", "#....#", "##..##"]
+    "w": 4,
+    "h": 4,
+    "mask": ["....", "....", "....", "...."]
   },
   "fences": [],
-  "floors": [],
-  "blockers": [
+  "floors": [
     {
-      "kind": "scrapMound",
-      "at": [2, 4],
-      "size": [2, 2],
-      "layers": 4
+      "kind": "portal",
+      "at": [0, 3],
+      "portalId": "a"
+    },
+    {
+      "kind": "portal",
+      "at": [3, 3],
+      "portalId": "a"
     }
   ],
+  "blockers": [],
   "threats": [],
   "start": [
     {
-      "at": [3, 0],
-      "blob": {
-        "tier": 4
-      }
-    },
-    {
       "at": [2, 3],
       "blob": {
-        "tier": 4
-      }
-    },
-    {
-      "at": [5, 3],
-      "blob": {
         "tier": 3
-      }
-    },
-    {
-      "at": [4, 4],
-      "blob": {
-        "tier": 3
-      }
-    },
-    {
-      "at": [0, 3],
-      "blob": {
-        "tier": 2
-      }
-    },
-    {
-      "at": [0, 2],
-      "blob": {
-        "tier": 2
       }
     },
     {
       "at": [2, 0],
       "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 3],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 1],
+      "blob": {
         "tier": 1
       }
     },
     {
-      "at": [5, 2],
+      "at": [1, 2],
       "blob": {
         "tier": 1
       }
@@ -86,21 +72,18 @@
   },
   "goals": [
     {
-      "type": "release",
-      "count": 1
-    },
-    {
-      "type": "clearScrap"
+      "type": "reachTier",
+      "tier": 5
     }
   ],
-  "moves": 22,
-  "cap": 6,
+  "moves": 19,
+  "cap": 12,
   "specials": {
-    "lineAt": 3,
+    "lineAt": 16,
     "burstAt": 16
   },
   "difficulty": {
-    "targetAttempts": [1.6, 2],
-    "style": "explosive"
+    "targetAttempts": [1.06, 1.2],
+    "style": "puzzle"
   }
 }

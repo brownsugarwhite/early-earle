@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "id": "wooding-145",
+  "zone": "wooding",
+  "name": "Wilder Hang",
+  "grid": {
+    "w": 4,
+    "h": 4,
+    "mask": ["....", "....", "....", "...."]
+  },
+  "fences": [],
+  "floors": [],
+  "blockers": [
+    {
+      "kind": "crust",
+      "at": [2, 0],
+      "content": {
+        "tier": 3
+      }
+    }
+  ],
+  "threats": [
+    {
+      "kind": "stray",
+      "at": [0, 0],
+      "tier": 1
+    }
+  ],
+  "start": [
+    {
+      "at": [0, 2],
+      "blob": {
+        "tier": 4
+      }
+    },
+    {
+      "at": [1, 0],
+      "blob": {
+        "tier": 3
+      }
+    },
+    {
+      "at": [2, 2],
+      "blob": {
+        "tier": 2
+      }
+    },
+    {
+      "at": [1, 2],
+      "blob": {
+        "tier": 1
+      }
+    }
+  ],
+  "spawn": {
+    "sources": [],
+    "table": [
+      {
+        "tier": 1,
+        "weight": 9
+      },
+      {
+        "tier": 2,
+        "weight": 2
+      }
+    ],
+    "preview": true,
+    "fallback": "anyEmpty"
+  },
+  "goals": [
+    {
+      "type": "release",
+      "count": 1
+    },
+    {
+      "type": "calmStrays",
+      "count": 1
+    }
+  ],
+  "moves": 8,
+  "cap": 5,
+  "specials": {
+    "lineAt": 16,
+    "burstAt": 16
+  },
+  "difficulty": {
+    "targetAttempts": [2.2, 3.84],
+    "style": "puzzle"
+  }
+}
