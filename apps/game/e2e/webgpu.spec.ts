@@ -91,11 +91,13 @@ test('Earle-Welten auf WebGPU: Wasser, Felsen, Scheune, Schneefelder und -wehen 
 test('Riesenbaum im Flow auf WebGPU: Baumpilze, Blütensteine, Schiene, Anflug auf Wurzelterrasse und Krone', async ({ page }) => {
   const errors = collectGpuErrors(page);
   await page.setViewportSize({ width: 393, height: 852 });
-  // Level 86 (Rinde → Wurzelterrasse) und 92 (Krone): Pilze, Steine, Punkte und Ring am Baum, Schattenwert der Punkte
-  for (const node of [85, 91]) {
+  // Level 104 (Rinde → Wurzelterrasse) und 110 (Krone): Pilze, Steine, Punkte und Ring am Baum, Schattenwert der Punkte
+  // (Route 15 + 1: Baum 99–114). Solange die Leveldateien 101–184 fehlen, klemmt der Flow auf das letzte spielbare
+  // Level (100, am Stammfuß) — der Test prüft dann dort.
+  for (const node of [103, 109]) {
     await page.addInitScript((n) => localStorage.setItem('ee.progress.v2', JSON.stringify({ version: 2, mode: 'free', slots: { free: { reached: n, current: n }, real: {} } })), node);
     await page.goto('/play');
-    if (node === 85) await requireWebGPU(page);
+    if (node === 103) await requireWebGPU(page);
     const hud = page.getByTestId('flow-hud');
     await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: 30_000 });
     await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgpu', { timeout: 30_000 });

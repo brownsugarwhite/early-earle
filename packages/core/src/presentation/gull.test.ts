@@ -72,8 +72,9 @@ function fingerprint(s: LevelState): string {
 afterEach(() => setGullMode('auto'));
 
 describe('Möwe: Regel', () => {
-  it('liest die zwei niedrigsten Stufen der Spawn-Tabelle (alle 100 Level: Stufe 1 und 2)', () => {
-    expect(ALL.length).toBe(100);
+  it('liest die zwei niedrigsten Stufen der Spawn-Tabelle (alle Leveldateien: Stufe 1 und 2)', () => {
+    // alle Leveldateien (Route 15 + 1: die Level 101–184 kommen dazu) — mindestens die ersten 100
+    expect(ALL.length).toBeGreaterThanOrEqual(100);
     for (const level of ALL) expect(gullTiers(level), level.id).toEqual([1, 2]);
     expect(gullTiers({ spawn: { table: [{ tier: 3, weight: 1 }, { tier: 1, weight: 1 }, { tier: 3, weight: 2 }, { tier: 2, weight: 1 }] } } as LevelDef)).toEqual([1, 2]);
   });
@@ -97,7 +98,7 @@ describe('Möwe: Regel', () => {
     expect(offs.some((o, i) => i > 0 && o === offs[i - 1])).toBe(true);
   });
 
-  it('Zufallsspiel über alle 100 Level: Möwe genau auf den Rhythmuszügen mit passendem Spawn, Abstände 3–5', () => {
+  it('Zufallsspiel über alle Level: Möwe genau auf den Rhythmuszügen mit passendem Spawn, Abstände 3–5', () => {
     let gulls = 0;
     let moves = 0;
     for (const level of ALL) {

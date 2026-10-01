@@ -1,8 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 
 // ADR 0002 "Unendliche Kugel" on the real GPU (Mac, Metal): the map pans 5000 units forward along the path and 5000
-// sideways — chunks stream in and out, the level-path window follows, world slots are recycled, the caches stay bounded,
-// the draw calls stay ≲ 100 on Hoch while panning, and nothing breaks (no WGSL/pipeline errors, no page errors).
+// sideways — chunks stream in and out, the level-path window follows up to the gate node (Route 15 + 1: behind it and to
+// the sides only the hinted zone 16), the caches stay bounded, the draw calls stay ≲ 100 on Hoch while panning, and
+// nothing breaks (no WGSL/pipeline errors, no page errors).
 // Skipped on CI (no GPU) and without a WebGPU adapter; SwiftShader would take minutes for the 200 pan steps.
 
 test.skip(!!process.env.CI, 'braucht eine echte GPU');
@@ -51,6 +52,8 @@ interface FlowStats {
 interface FlowHandle {
   pan(dx: number, dz: number): void;
   stats(): FlowStats;
+  /** Dev: MapWorld (its planet carries the layout). */
+  world(): { world: { layout: { beyondWorld: number; lastLevel: number } } } | null;
 }
 
 const flow = (page: Page) => ({
@@ -115,12 +118,16 @@ test('Unendliche Kugel: 5000 Einheiten vorwärts und seitwärts schwenken — St
   }
   const s1 = await f.stats();
   expect(s1.focus.z).toBeLessThan(s0.focus.z - 4900);
-  // Far beyond level 100: procedural worlds, the path window moved on with the view
-  expect(s1.viewWorld).toBeGreaterThanOrEqual(10);
+  // Far behind the gate node (Route 15 + 1): only the hinted zone 16, the path window moved on to the gate and stops there
+  const route = await page.evaluate(() => {
+    const layout = (window as unknown as { __flow: FlowHandle }).__flow.world()!.world.layout;
+    return { hinted: layout.beyondWorld, lastNode: layout.lastLevel - 1 };
+  });
+  expect(s1.viewWorld).toBe(route.hinted);
   expect(s1.windowBuilds).toBeGreaterThan(s0.windowBuilds);
-  expect(s1.window?.[0] ?? 0).toBeGreaterThan(500);
+  expect(s1.window?.[1]).toBe(route.lastNode);
 
-  // Sideways: 100 steps of 50 units across the band into the lateral worlds
+  // Sideways: 100 steps of 50 units across the band into the lateral (hinted) worlds
   for (let i = 0; i < 100; i++) {
     await f.pan(50, 0);
     await page.waitForTimeout(50);
@@ -132,15 +139,16 @@ test('Unendliche Kugel: 5000 Einheiten vorwärts und seitwärts schwenken — St
   await page.waitForTimeout(1500);
   const s2 = await f.stats();
   expect(s2.focus.x).toBeGreaterThan(s1.focus.x + 4900);
+  expect(s2.viewWorld).toBe(route.hinted);
   // Streaming: many chunks built on the way, only a bounded set loaded and cached
   expect(s2.chunkBuilds).toBeGreaterThan(s0.chunkBuilds + 200);
   expect(s2.streaming.loaded).toBeGreaterThan(0);
   expect(s2.caches.chunks).toBeLessThanOrEqual(160);
   expect(s2.caches.cpu).toBeLessThanOrEqual(130);
   expect(s2.caches.regions).toBeLessThanOrEqual(170);
+  // Route 15 + 1: 16 worlds at most (15 authored + the hinted zone) — they fit the 24 slots, no recycling needed
   expect(s2.caches.slots).toBeLessThanOrEqual(24);
-  // World slots were recycled (dozens of worlds passed by, 24 slots)
-  expect(s2.evictions).toBeGreaterThan(0);
+  expect(s2.evictions).toBeGreaterThanOrEqual(0);
   expect(medDc).toBeGreaterThan(0);
   expect(medDc).toBeLessThanOrEqual(100);
   expect(maxDc).toBeLessThanOrEqual(115);

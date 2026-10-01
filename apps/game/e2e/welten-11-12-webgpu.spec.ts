@@ -81,12 +81,12 @@ test('Welt 12 auf der Karte (/play): Pfad im Nebelmeer, Steilhang, Tannen — ko
   const hud = page.getByTestId('flow-hud');
   await expect(hud).toHaveAttribute('data-flow-state', 'map', { timeout: 30_000 });
   await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgpu', { timeout: 30_000 });
-  // Welt 11 (Level 101–110) und Welt 12 (111–120) liegen hinter Level 100: zum Knoten gleiten
-  for (const node of [104, 114]) {
+  // Welt 11 (Level 125–136) und Welt 12 (137–148) liegen nach w03 auf der Route (Route 15 + 1): zum Knoten gleiten
+  for (const node of [128, 142]) {
     await page.evaluate((n) => (window as unknown as { __flow: { goToNode(i: number): void } }).__flow.goToNode(n), node);
     await page.waitForTimeout(4500);
     const world = await page.evaluate(() => (window as unknown as { __flow: { stats(): { viewWorld: number } } }).__flow.stats().viewWorld);
-    expect(world, `Knoten ${node}`).toBe(node < 110 ? 10 : 11);
+    expect(world, `Knoten ${node}`).toBe(node < 136 ? 10 : 11);
   }
   expect(errors).toEqual([]);
 });

@@ -59,7 +59,8 @@ test('Riesenbaum auf WebGPU: alle Teile, beide Rinden, Mobil und die Schiene kom
 test('Riesenbaum auf dem Planeten (WebGPU): Krümmung, Schiene an Stamm und Krone', async ({ page }) => {
   const errors = collectGpuErrors(page);
   await page.setViewportSize({ width: 393, height: 852 });
-  for (const rail of [82, 88, 94]) {
+  // Baum-Schiene bei Level 101, 107, 113 (Route 15 + 1: der Riesenbaum trägt die Level 99–114)
+  for (const rail of [101, 107, 113]) {
     await page.goto(`/lab/earle?world=1&rail=${rail}&path=1`);
     await requireWebGPU(page);
     await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', 'webgpu', { timeout: 30_000 });

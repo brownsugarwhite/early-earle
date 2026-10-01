@@ -6,7 +6,8 @@ import { lineSpecies, parseGenomeRules, type GenomeRulesInput } from '@ee/genome
 import type { MadeCreature } from '@ee/render';
 import { useProgress } from '../state/progress';
 import { blobSeed, earnedFromEvents } from './earn';
-import { catalogFor, catalogInputs, levelIdOf } from './catalog';
+import { catalogFor, catalogInputs, levelIdOf, zoneFirstLevel, zoneLevels, zoneOfNode } from './catalog';
+import { LEVELS } from '../content/levels';
 import { wireCollection, type FlowLike, type GridLike } from './wiring';
 
 const rules = parseGenomeRules(JSON.parse(readFileSync(new URL('../../../../content/genome/rules.json', import.meta.url), 'utf8')) as GenomeRulesInput);
@@ -46,6 +47,24 @@ describe('catalog helpers', () => {
     expect(levelIdOf(0)).toBe('tjorizo-001');
     expect(levelIdOf(25)).toBe('syrup-026');
     expect(levelIdOf(99)).toBe('wooding-100');
+  });
+
+  it('derives the story zones from the level files (Route 15 + 1: zones alternate along the route)', () => {
+    // every level file belongs to exactly one zone list, ascending; the IDs of the levels 1–100 stay as they were
+    const all = (['tjorizo', 'syrup', 'luzz', 'wooding'] as const).flatMap((z) => zoneLevels(z));
+    expect(all.length).toBe(LEVELS.length);
+    expect(new Set(all).size).toBe(LEVELS.length);
+    for (const z of ['tjorizo', 'syrup', 'luzz', 'wooding'] as const) {
+      const levels = zoneLevels(z);
+      expect([...levels].sort((a, b) => a - b)).toEqual(levels);
+      for (const no of levels) expect(zoneOfNode(no - 1)).toBe(z);
+    }
+    expect(zoneFirstLevel('tjorizo')).toBe(1);
+    expect(zoneFirstLevel('syrup')).toBe(26);
+    expect(zoneFirstLevel('luzz')).toBe(51);
+    expect(zoneFirstLevel('wooding')).toBe(76);
+    // nodes without a level file (yet): the old pattern, never a crash
+    expect(levelIdOf(LEVELS.length + 400)).toMatch(/^[a-z]+-\d{3}$/);
   });
 });
 
