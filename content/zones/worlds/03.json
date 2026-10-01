@@ -19,7 +19,7 @@
     "fog": ["#e4d3a8", "#9c8e76", "#b8aa8c", "#d0c4a4", "#e4d9b8", "#f3ead0"],
     "fogAlpha": [0, 0.3, 0.5, 0.68, 0.82, 0.92],
     "accent": ["#2e1f20", "#4a3a2c", "#2e1f20", "#2c2018", "#9ba14a", "#c9cc6e", "#9a9c98", "#6a6c6a"],
-    "barn": ["#3a3a3c", "#8a8c90", "#b0b2b4", "#d4d4d0", "#eeece6"],
+    "barn": ["#1c1b1d", "#8a8c90", "#b0b2b4", "#d4d4d0", "#eeece6"],
     "water": ["#6a5e50", "#85796a", "#a39884", "#c2b89e", "#e0d6ba", "#f5eed6", "#76695a", "#d3cab0"],
     "rock": ["#2e1f20", "#5a4e44", "#8a8270", "#b8b294", "#e2dcc0", "#d9d9b8", "#3e342c", "#f0ead0"]
   },
@@ -53,7 +53,8 @@
       "edgeKinds": { "dome": 0.85, "stacked": 0.15 }
     }
   },
-  "props": { "barns": 0.0015, "animals": 0.008 },
+  "props": { "barns": 0, "animals": 0.008 },
+  "barnRoof": "ink",
   "features": {
     "lakes": { "count": 1, "radius": [1.4, 1.9], "stretch": 2.6, "pathDistance": [1.8, 2.8], "focusDistance": [7, 13] },
     "chisel": 0.6
@@ -70,5 +71,12 @@
     "nearClear": 2.0,
     "footClear": 2.0
   },
-  "focal": { "kind": "dome", "scale": 2.4, "latFrac": 0.7, "deltaDeg": -12, "yawDeg": 0 }
+  "focal": {
+    "kind": "dome",
+    "scale": 2.4,
+    "latFrac": 0.7,
+    "deltaDeg": -12,
+    "yawDeg": 0,
+    "companions": [{ "kind": "barn", "scale": 2.6, "dx": -5.0, "dz": -10, "yawDeg": 70, "clearRadius": 2.6 }]
+  }
 }

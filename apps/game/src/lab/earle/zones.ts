@@ -42,6 +42,8 @@ export interface WorldContent {
   mist?: MistSpec;
   /** Gewichtsfaktoren der Wahrzeichen (0 = keine), z. B. `{ "fallsRock": 0 }`. */
   landmarks?: WorldSpec['landmarks'];
+  /** Dach der Scheunen: `snow` Schneeplatte mit grauem Traufbrett (Ebene 6, Standard), `ink` Tintendach (Ebene 37, Screenshot 8). */
+  barnRoof?: WorldSpec['barnRoof'];
   fogStripes: number;
   fog: { start: number; range: number };
   view: WorldView;
@@ -55,6 +57,8 @@ export interface WorldContent {
   floorAnchor?: { east?: number; north?: number };
   /** Terminator des Geländes (Standard 0,02; Welt 11: dunkle Hügelmassen, nur die Kämme im Licht). */
   groundTerminator?: number;
+  /** Schneelinien (`ground: snowLines`): Anzahl im unteren Bildband, Abstand, Breite — siehe `EarlePlanetWorld.groundLines`. */
+  groundLines?: EarlePlanetWorld['groundLines'];
   /**
    * Fokus der Weltkomposition: mit `kind` ein Fokus-Element (Scheune, Wurzelbaum …) am Slot, ohne `kind` nur ein
    * Bildanker. Lage je Region: `along` (0 = Beginn des Pfadabschnitts … 1 = Ende) und `lateral` (Welteinheiten, + =
@@ -187,6 +191,7 @@ export function worldSpecOf(w: WorldContent): WorldSpec {
     ...(w.landmarkChance !== undefined ? { landmarkChance: w.landmarkChance } : {}),
     ...(w.mist ? { mist: w.mist } : {}),
     ...(w.landmarks ? { landmarks: w.landmarks } : {}),
+    ...(w.barnRoof ? { barnRoof: w.barnRoof } : {}),
   };
 }
 
@@ -207,6 +212,7 @@ export function planetWorlds(): EarlePlanetWorld[] {
     ...(w.floorAnchor ? { floorAnchor: w.floorAnchor } : {}),
     ...(w.clouds ? { clouds: w.clouds } : {}),
     ...(w.groundTerminator !== undefined ? { groundTerminator: w.groundTerminator } : {}),
+    ...(w.groundLines ? { groundLines: w.groundLines } : {}),
   }));
 }
 

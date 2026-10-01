@@ -43,8 +43,13 @@ const WEATHER_AZ = Math.atan2(-Math.cos(2 * Math.PI * MAPLE_WEATHER_U), -Math.si
  * Weltkomposition dreht diese Seite zur Kamera.
  */
 const OPEN_AZ = WEATHER_AZ + 1.3;
-/** Rinden-Ebene des Schneehügels am Stammfuß (der Shader färbt sie als Schnee, der Schattenpass lässt sie weg). */
+/**
+ * Rinden-Ebene des Schneehügels am Stammfuß (der Shader färbt sie als Schnee, der Schattenpass lässt sie weg): von
+ * `MAPLE_SNOW_LEVEL` am Stamm bis `MAPLE_SNOW_LEVEL + MAPLE_SNOW_RIM` am Rand (Verlauf innen: am Stamm weiß, außen der
+ * Ton des Schneefelds).
+ */
 export const MAPLE_SNOW_LEVEL = 5;
+export const MAPLE_SNOW_RIM = 0.4;
 
 /** Stufen: 0 Ast, 1 Nebenast, 2 Zweig. */
 const RADIAL = [12, 7, 4];
@@ -281,16 +286,17 @@ function snowMound(b: TreeMeshBuilder): void {
   // 1 auf der Wetterseite, 0 im Lee — breit und weich (kein Grat)
   const weather = (a: number): number => 0.5 + 0.5 * Math.cos(angleDiff(a, WEATHER_AZ));
   // im Lee so weit, dass die Wurzelanläufe ganz im Schnee stecken (kein Wurzelende sticht vor dem Saum heraus)
-  const radius = (a: number): number => (1.9 + 0.45 * weather(a) ** 2) * (1 + 0.05 * Math.sin(3 * a + 1.1));
-  // Höhe am Stamm: niedrig, auf der Wetterseite etwas höher (darüber klettert der Schnee in der Rinde, winterBark.ts)
-  const crown = (a: number): number => 0.26 + 0.24 * weather(a) ** 2;
+  const radius = (a: number): number => (1.78 + 0.35 * weather(a) ** 2) * (1 + 0.05 * Math.sin(3 * a + 1.1));
+  // Höhe am Stamm: niedrig (der Hügel verdeckt die Scheune dahinter nicht), auf der Wetterseite etwas höher — darüber
+  // klettert der Schnee in der Rinde (winterBark.ts)
+  const crown = (a: number): number => 0.19 + 0.2 * weather(a) ** 2;
   const SINK = 0.35;
   const height = (r: number, a: number): number => {
     const t = Math.min(1, Math.max(0, (radius(a) - r) / (radius(a) - 1.0)));
     // sanfte Buckel: die Schattengrenze auf der Wehe läuft geschwungen statt als gerade Linie
     const bumps = 1 + 0.14 * Math.sin(2.3 * a + 0.5) * Math.sin(2.6 * r + 0.8) + 0.08 * Math.sin(5.1 * a - 1.3);
-    // hohl wie eine Wehe: am Stamm steil, nach außen ein langer, flacher Auslauf
-    return (crown(a) * bumps + SINK) * t * t - SINK;
+    // leicht hohl wie eine Wehe: am Stamm steiler, nach außen ein flacher Auslauf (er deckt die Wurzelanläufe)
+    return (crown(a) * bumps + SINK) * t ** 1.5 - SINK;
   };
   const point = (t: number, a: number): V3 => {
     // Ringe zum Rand hin dichter (dort ist die Kante zum Boden)
@@ -310,7 +316,7 @@ function snowMound(b: TreeMeshBuilder): void {
       // Schatten und zeichnete einen Sockel); seine Form zeichnet nur der Schlagschatten des Stamms (Bild 01)
       pos.push(p[0], p[1], p[2]);
       nor.push(0, 1, 0);
-      bark.push(j / SEG, 0, MAPLE_SNOW_LEVEL, 0);
+      bark.push(j / SEG, 0, MAPLE_SNOW_LEVEL + MAPLE_SNOW_RIM * t, 0);
     }
   }
   const row = SEG + 1;

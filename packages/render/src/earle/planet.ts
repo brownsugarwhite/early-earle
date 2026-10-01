@@ -37,7 +37,7 @@ import { PaletteLookup, aaStep, arrayElement, createFogSettings, patternTime, st
 import { createWaterMaterial } from './water/waterSurface';
 import { buildWaterGeometry, waterGeometry, type WaterRegionInput } from './water/waterMesh';
 import { buildRockGeometry, createRockMaterial, rockGeometry } from './landmarks/rocks';
-import { BarnLandmarks } from './landmarks/barn';
+import { BarnLandmarks, barnRoofValue } from './landmarks/barn';
 import { HorseHerd, type HorsePlacement } from './landmarks/horses';
 import { DriftLandmarks, type DriftPlacement } from './landmarks/drifts';
 import { PLANET_ATLAS_HEIGHT, SLOT_COUNT, SLOT_ROWS, WorldSlots, slotLandmarkRows, slotRows } from './worldSlots';
@@ -134,6 +134,12 @@ export interface EarlePlanetWorld {
    * (Ebene: Ost = voraus längs des Pfads, −z; Nord = quer, +x). Fehlt → Bildfokus (Strahlen und Ringe um die Mitte).
    */
   floorAnchor?: { east?: number; north?: number };
+  /**
+   * Schneelinien (`ground: snowLines`): Abstand (Welteinheiten, Standard 0,7), Breite (Anteil des Abstands, Standard
+   * 0,09) und Anzahl — mit `count` nur die vordersten Linien im unteren Bildband (Ebene 6: fünf graue Streifen ganz
+   * unten, darüber reiner Schnee), sonst überall. Farbe: `palette.groundLine`, sonst die tiefste Schneestufe.
+   */
+  groundLines?: { count?: number; spacing?: number; width?: number };
 }
 
 export interface EarlePlanetQuality {
@@ -402,6 +408,16 @@ export class EarlePlanet {
   private readonly rockRows: UniformArrayLike;
   private readonly waterRows: UniformArrayLike;
   private readonly barnRows: UniformArrayLike;
+  /** Dach der Scheunen je Welt-Slot (`WorldSpec.barnRoof`: 0 Schnee, 1 Tinte). */
+  private readonly barnRoofRows: UniformArrayLike;
+  /**
+   * Schneelinien je Welt-Slot, gepackt (der Geländeshader darf keinen weiteren Uniform-Puffer binden, WebGPU-Grenze 12
+   * je Stufe): `slotFocus.w` = Anzahl im unteren Bildband (ganzzahlig, 0 = überall) + Abstand (< 1), `slotA.z` =
+   * Linienfarbe (Stufe der Terrainzeile) + Breite (< 1).
+   */
+  private readonly slotLinePack: number[] = new Array<number>(SLOT_COUNT).fill(0.7);
+  /** Tiefe (Blickachse), in der der untere Bildrand den Boden trifft — Beginn des Bandes der Schneelinien. */
+  private readonly lineBandNear = uniform(4);
   private readonly plainTerrainRows: UniformArrayLike;
   private readonly driftRows: UniformArrayLike;
   /** Nebelspiegel je Welt-Slot (Welt 12: darunter ist der Boden Nebelmeer; −10⁴ = keins). */
@@ -492,6 +508,7 @@ export class EarlePlanet {
     this.rockRows = rowsBy((r) => r.rock);
     this.waterRows = rowsBy((r) => r.water);
     this.barnRows = rowsBy((r) => r.barn);
+    this.barnRoofRows = uniformArray(new Array<number>(SLOT_COUNT).fill(0), 'float') as unknown as UniformArrayLike;
     this.plainTerrainRows = rowsBy((r) => r.terrain);
     this.driftRows = rowsBy((r) => r.snow);
     this.slotSea = uniformArray(new Array<number>(SLOT_COUNT).fill(-1e4), 'float') as unknown as UniformArrayLike;
@@ -574,8 +591,15 @@ export class EarlePlanet {
     const drift = patternTime.mul(0.02);
     const kind = wa.y;
     const isSnow = kind.lessThan(1.5);
-    const snowCoord = pz.div(0.7).add(drift);
     const focusS = vec4Element(this.slotFocus as unknown as UniformVec4ArrayLike, slotF);
+    // Schneelinien je Slot (gepackt, siehe `slotLinePack`): Abstand, Breite und mit Anzahl nur das untere Bildband — bis
+    // zur Tiefe des unteren Bildrands plus Anzahl × Abstand, die hinterste Linie blendet aus (fest auf dem Boden)
+    const lineCount = focusS.w.floor();
+    const lineSpacing = fract(focusS.w).max(0.05);
+    const lineWidth = fract(wa.z);
+    const snowCoord = pz.div(lineSpacing).add(drift);
+    const lineFar = this.lineBandNear.add(lineCount.mul(lineSpacing));
+    const lineBand = select(lineCount.greaterThan(0.5), smoothstep(lineFar, lineFar.sub(lineSpacing.mul(0.6)), positionView.z.negate()), float(1));
     const dxy = vec2(pw.x.sub(focusS.x), pw.z.sub(focusS.y));
     const ang = length(dxy);
     const theta = atan(dxy.y, dxy.x);
@@ -583,10 +607,10 @@ export class EarlePlanet {
     // Perspektivlinien (Ebene 3/32): fein und dicht wie gezogene Tuschelinien — 48 Strahlen (mit fernem Fluchtpunkt,
     // `floorAnchor`, 144, damit sie vorn dicht bleiben; Anzahl je Slot in focusS.z), Ringe alle 2.4 Einheiten
     const rays = select(focusS.z.greaterThan(0.5), focusS.z, float(48));
-    const lines = stripeMask(select(isSnow, snowCoord, theta.mul(rays).div(Math.PI * 2)), select(isSnow, float(0.09), float(0.022))).mul(select(isSnow, float(1), smoothstep(0.48, 1.9, ang)));
+    const lines = stripeMask(select(isSnow, snowCoord, theta.mul(rays).div(Math.PI * 2)), select(isSnow, lineWidth, float(0.022))).mul(select(isSnow, lineBand, smoothstep(0.48, 1.9, ang)));
     const rings = stripeMask(ang.div(2.4).add(drift), 0.018).mul(select(isSnow, float(0), float(1)));
     const mask = max(lines, rings).mul(flat).mul(select(kind.greaterThan(0.5).and(kind.lessThan(2.5)), float(1), float(0)));
-    const patternColor = this.lookup.pal(wa.z, rowNode).rgb;
+    const patternColor = this.lookup.pal(wa.z.floor(), rowNode).rgb;
     const runsInShadow = kind.greaterThan(0.5).and(kind.lessThan(2.5));
     const patternShadow = mix(this.lookup.pal(0, rowNode).rgb, patternColor, select(runsInShadow, float(0.4), float(0)));
 
@@ -710,9 +734,9 @@ export class EarlePlanet {
     this.barns = new BarnLandmarks({
       lookup: this.lookup,
       fog: this.fog,
-      bands: this.terrainBands,
       barnRows: this.barnRows,
       terrainRows: this.plainTerrainRows,
+      roofRows: this.barnRoofRows,
       veil: (w) => this.veilNode(w),
       warp,
       capacity: 24,
@@ -814,16 +838,27 @@ export class EarlePlanet {
     const rows = slotRows(slot);
     const spec = this.catalog.spec(world);
     const hasSnow = !!(w.palette.snow && spec.features?.snowFields);
-    this.slotA.array[slot]!.set(rows.terrain, GROUND_KIND[w.ground], w.ground === 'floorLines' ? (w.palette.groundLine ? 6 : 4) : 1, Math.max(0, spec.features?.chisel ?? 0));
+    const lineColor = w.ground === 'floorLines' ? (w.palette.groundLine ? 6 : 4) : w.ground === 'snowLines' && w.palette.groundLine ? 6 : 1;
+    const gl = w.ground === 'snowLines' ? w.groundLines : undefined;
+    const lineWidth = Math.min(0.9, Math.max(0.01, gl?.width ?? 0.09));
+    this.slotLinePack[slot] = Math.max(0, Math.round(gl?.count ?? 0)) + Math.min(0.99, Math.max(0.05, gl?.spacing ?? 0.7));
+    this.slotA.array[slot]!.set(rows.terrain, GROUND_KIND[w.ground], lineColor + lineWidth, Math.max(0, spec.features?.chisel ?? 0));
+    if (w.ground === 'snowLines' && w.palette.groundLine) {
+      // Linienfarbe der Schneelinien in Stufe 6 der Terrainzeile (Lichtbänder lesen höchstens Stufe 5)
+      const t = w.palette.terrain;
+      this.atlas.setRow(rows.terrain, [w.palette.ink, ...[0, 1, 2, 3, 4].map((i) => t[Math.min(i, t.length - 1)] ?? w.palette.ink), w.palette.groundLine]);
+    }
+
     this.slotB.array[slot]!.set(rows.water, w.palette.snow ? rows.snow : rows.terrain, hasSnow ? 1 : 0, rows.rock);
     const sea = spec.mist?.sea;
     this.slotSea.array[slot] = sea ? (sea.height ?? sea.level * spec.terrain.amplitude) : -1e4;
     this.slotMeadow.array[slot] = hasSnow && spec.features?.snowFields?.meadow ? 1 : 0;
     this.slotTerminator.array[slot] = w.groundTerminator ?? 0.02;
+    this.barnRoofRows.array[slot] = barnRoofValue(spec.barnRoof);
     // Fokus der Perspektivlinien: setzt `rebuildContent` aus der nächsten Region der Welt
     this.slotFocusPlane[slot] = null;
     this.slotRays[slot] = w.floorAnchor ? 144 : 48;
-    this.slotFocus.array[slot]!.set(1e4, 1e4, this.slotRays[slot]!, 0);
+    this.slotFocus.array[slot]!.set(1e4, 1e4, this.slotRays[slot]!, this.slotLinePack[slot]!);
     this.vegetation?.onSlotAssigned(slot, world);
     this.applySlotTint(slot, world);
   }
@@ -871,7 +906,7 @@ export class EarlePlanet {
   private syncSlotFocus(): void {
     for (let s = 0; s < SLOT_COUNT; s++) {
       const f = this.slotFocusPlane[s];
-      if (f) this.slotFocus.array[s]!.set(f[0] - this.focus.x, f[1] - this.focus.z, this.slotRays[s]!, 0);
+      if (f) this.slotFocus.array[s]!.set(f[0] - this.focus.x, f[1] - this.focus.z, this.slotRays[s]!, this.slotLinePack[s]!);
     }
   }
 
@@ -1341,6 +1376,7 @@ export class EarlePlanet {
     this.mapping.toFlatCpu(cameraWorld, _v);
     const camX = _v.x + this.focus.x;
     const camZ = _v.z + this.focus.z;
+    this.updateLineBand(camera, cameraWorld, camX, camZ, _v.y - this.options.radius);
     const camDist = cameraWorld.length();
     const horizon = Math.acos(Math.min(1, R / Math.max(R + 0.01, camDist)));
     this.viewFoot.x = camX;
@@ -1503,6 +1539,22 @@ export class EarlePlanet {
     const sp = this.sightPlane;
     this.vegetation.setSightLine(sp && a ? _w.set(sp[0] - a.x, sp[1], sp[2] - a.z) : null, this.sightRadius);
     return rebuilt;
+  }
+
+  /**
+   * Band der Schneelinien (`groundLines.count`): Tiefe entlang der Blickachse, in der der untere Bildrand den Boden
+   * unter der Kamera trifft (Höhe über dem Boden, Neigung, halber Öffnungswinkel). Blickt die Kamera über den Boden
+   * hinweg, liegt das Band weit draußen.
+   */
+  private updateLineBand(camera: Camera, cameraWorld: Vector3, camX: number, camZ: number, camY: number): void {
+    const fov = (camera as Camera & { fov?: number }).fov;
+    const half = ((fov ?? 50) * Math.PI) / 360;
+    const h = Math.max(0.2, camY - this.heightAt(camX, camZ));
+    camera.getWorldDirection(_w);
+    const up = _c.copy(cameraWorld).normalize();
+    const pitch = Math.asin(Math.min(1, Math.max(-1, -_w.dot(up))));
+    const a = pitch + half;
+    this.lineBandNear.value = a > 0.02 ? (h * Math.cos(half)) / Math.sin(a) : 1e3;
   }
 
   /** Liegt eine Nebelbank diesseits des Horizonts im Bild (Kugel um ihre Mitte im Anzeigeraum, Länge und Dicke)? */

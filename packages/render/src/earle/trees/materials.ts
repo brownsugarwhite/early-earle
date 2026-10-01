@@ -2,14 +2,14 @@ import { LightingModel, NodeMaterial } from 'three/webgpu';
 import type { Node, NodeBuilder } from 'three/webgpu';
 import { abs, clamp, cos, dot, float, floor, fract, fwidth, max, min, mix, normalView, normalize, select, sin, smoothstep, step, varying, vec3 } from 'three/tsl';
 import { aaStep, palByKey, steppedFog, type FloatNode, type FogSettings, type PaletteLookup, type TSLUniform, type Vec3Node, type Vec4Node } from '../tsl';
-import { STEP_GRADIENT, earleGradients, hueRotate, stepRamp } from '../gradients';
+import { STEP_GRADIENT, earleGradients, hueRotate, mixInk, stepRamp } from '../gradients';
 import { blotches, flowLines, flowers, stipple, valueNoise3 } from './patterns';
 import type { ShadeTexture } from './shade';
 import { glassBark } from './glassBark';
 import { glowBark } from './glowBark';
 import { paleBark } from './paleBark';
 import { winterLines, winterSnow } from './winterBark';
-import { MAPLE_SNOW_LEVEL } from './maple';
+import { MAPLE_SNOW_LEVEL, MAPLE_SNOW_RIM } from './maple';
 
 /** Nebel je Instanz (Bäume v4, siehe `trees/fog.ts`): ersetzt den gestuften Nebel je Fragment, wenn gesetzt. */
 export type FogFn = (color: Vec3Node) => Vec3Node;
@@ -355,13 +355,13 @@ class BarkLightingModel extends LightingModel {
     // Feine Kalligrafie (Bild 01): viele schmale, wellige Striche, die abschnittsweise abbrechen (Holzmaserung)
     // Winterrinde (Schnee-Ahorn): gekämmte Linienbüschel, weiß und grau (winterBark.ts) — nur im Material mit `winter`
     // (die Ahorn-Stämme); Schwarz und Winter auf anderen Stämmen: flache Tinte ohne Linien, der Schnee zeichnet
-    const winterL = o.winter ? winterLines(u.add(variant), v, level, o.objPos) : null;
+    const winterL = o.winter ? winterLines(u.add(variant), v, level) : null;
     const calli = winterL
       ? winterL.mask
       : flowLines(u.add(variant), v.mul(2.4), linesAround(level), select(isCalli, float(0.2), float(0.14)), select(isCalli, float(0.32), float(0.72)), 3).mul(
           select(isBlack.or(isWinter), float(0), float(1)),
         );
-    const lineLight = winterL ? (mix(mix(ink, light, 0.5), light, winterL.bright) as unknown as Vec3Node) : light;
+    const lineLight = winterL ? (mix(mixInk(ink, light, 0.55), light, winterL.bright) as unknown as Vec3Node) : light;
     const lineShadow = mix(ink, lineLight, 0.3);
     // Flechten (Bilder 03, 35): unregelmäßige Flecken, jeder in einer flachen Farbe der Akzentzeile (Hellgrün, Gelb)
     const p = o.objPos;
@@ -429,19 +429,27 @@ class BarkLightingModel extends LightingModel {
     const thr = float(1.08).sub(o.snowNode.mul(0.5));
     const solid = smoothstep(thr, thr.add(0.05), side);
     const specks = stipple(p, 0.03, 0.66, smoothstep(thr.sub(0.4), thr, side), 0.95);
-    // Winterrinde (Schnee-Ahorn, Bild 01): große ruhige Schneeformen, Äste durchgehend obenauf, gespritzter Rand
-    const snowMask = o.winter ? winterSnow({ up, u, v, level, p, snow: o.snowNode }) : max(solid, specks.mask);
+    // Winterrinde (Schnee-Ahorn, Ebene 6): harte Schneeformen mit Tüpfelsaum, Äste durchgehend obenauf (winterBark.ts)
+    const winterS = o.winter ? winterSnow({ up, u, v, level, p, snow: o.snowNode }) : null;
+    const snowMask = winterS ? winterS.cover : max(solid, specks.mask);
     const snowLit = o.lookup.pal(5, o.terrainRowNode).rgb as unknown as Vec3Node;
-    // Winterrinde: Schnee im Schatten ist ein warmes Grau (Bild 01), keine zweite Weißstufe
-    const snowShade = (o.winter ? mix(ink, snowLit, 0.74) : o.lookup.pal(3, o.terrainRowNode).rgb) as unknown as Vec3Node;
+    const snowShade = o.lookup.pal(3, o.terrainRowNode).rgb as unknown as Vec3Node;
     let snowCol = mix(snowShade, snowLit, lit) as unknown as Vec3Node;
-    if (o.winter) {
-      // Schneesaum am Fuß: wie das Schneefeld (dieselbe Lichtstufe, empfängt den Schlagschatten des Stamms) — er geht
-      // ohne Kante in den Boden über, der Schatten läuft über ihn hinweg
+    if (o.winter && winterS && winterL) {
+      // Rinde (Ebene 6): Schattenseite Tinte, Lichtseite ein flaches Grau; die gekämmten Linien nur auf der Lichtseite
+      const barkGrey = mixInk(ink, light, 0.14);
+      col = mix(ink, mix(barkGrey, lineLight, winterL.mask), aaStep(0.4, ndl)) as unknown as Vec3Node;
+      // Schneekappe: Oberseite im Licht weiß, Flanke und Schatten eine flache graue Stufe aus dem dunkelsten Schneeton
+      // der Welt (grau in Welt 08, in Blauwelten blau)
+      const snowGrey = mixInk(ink, o.lookup.pal(1, o.terrainRowNode).rgb as unknown as Vec3Node, 0.74);
+      snowCol = mix(snowGrey, snowLit, winterS.top.mul(lit)) as unknown as Vec3Node;
+      // Schneesaum am Fuß (Ebene 5.0–5.4 = innen → Rand): am Stamm weiß, nach außen der Ton des Schneefelds (Verlauf
+      // innen, keine Kante zum Boden); er empfängt den Schlagschatten des Stamms, sein Schatten ist das Grau des Felds
       const skirt = step(MAPLE_SNOW_LEVEL - 0.5, level);
+      const rim = smoothstep(0.1, 0.55, level.sub(MAPLE_SNOW_LEVEL).div(MAPLE_SNOW_RIM));
       const skirtLit = min(lit, (input.lightColor as Vec3Node).r);
-      const field = o.lookup.pal(1, o.terrainRowNode).rgb as unknown as Vec3Node;
-      const skirtCol = mix(mix(ink, field, 0.8), field, skirtLit);
+      const field = o.lookup.pal(2, o.terrainRowNode).rgb as unknown as Vec3Node;
+      const skirtCol = mix(mixInk(ink, field, 0.76), mixInk(snowLit, field, rim), skirtLit);
       snowCol = mix(snowCol, skirtCol, skirt) as unknown as Vec3Node;
     }
     col = mix(col, snowCol, snowMask);

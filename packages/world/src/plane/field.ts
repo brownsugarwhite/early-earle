@@ -561,7 +561,7 @@ export class PlaneField {
         yawDeg: c.yawDeg ?? 0,
         scale: 1,
         clearRadius: c.clearRadius ?? defaultClearRadius(c.kind, scale),
-        instance: { kind: c.kind, scale },
+        instance: { kind: c.kind, scale, ...(c.variant !== undefined ? { variant: c.variant } : {}), ...(c.roof ? { roof: c.roof } : {}) },
         turnTree: true,
       });
     });
