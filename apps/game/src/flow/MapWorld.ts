@@ -236,11 +236,14 @@ export class MapWorld {
     return this.world.focus;
   }
 
-  /** Moves the view: the plane point (x, z) goes to the apex (chunks stream, shadows follow). */
+  /**
+   * Moves the view: the plane point (x, z) goes to the apex (chunks stream). The shadow cascades follow the focus by
+   * themselves (texel grid pinned to the plane, `CascadedShadows.slide`): a pan alone is no reason to redraw them —
+   * only content changes (`world.update()` → rebuilt) and the callers' `markShadowDirty()` are.
+   */
   setFocus(x: number, z: number): void {
     if (x === this.world.focus.x && z === this.world.focus.z) return;
     this.world.setFocus(x, z);
-    this.shadowDirty = true;
   }
 
   /** Plane point → display (scene) position. */

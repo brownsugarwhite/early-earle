@@ -88,11 +88,12 @@ describe('CascadeFitter', () => {
       expect(Math.abs(c.x0 / c.texelX - Math.round(c.x0 / c.texelX))).toBeLessThan(1e-6);
       expect(Math.abs(c.y0 / c.texelY - Math.round(c.y0 / c.texelY))).toBeLessThan(1e-6);
       if (k > 0) {
+        // jede gröbere Kaskade deckt den Empfängerbedarf der feineren samt Filter-Fußabdruck (4 Texel)
         const f = fit.cascades[k - 1]!;
-        expect(c.x0).toBeLessThanOrEqual(f.x0 + 1e-9);
-        expect(c.x1).toBeGreaterThanOrEqual(f.x1 - 1e-9);
-        expect(c.y0).toBeLessThanOrEqual(f.y0 + 1e-9);
-        expect(c.y1).toBeGreaterThanOrEqual(f.y1 - 1e-9);
+        expect(c.x0).toBeLessThanOrEqual(f.needX0 - 4 * f.texelX + 1e-9);
+        expect(c.x1).toBeGreaterThanOrEqual(f.needX1 + 4 * f.texelX - 1e-9);
+        expect(c.y0).toBeLessThanOrEqual(f.needY0 - 4 * f.texelY + 1e-9);
+        expect(c.y1).toBeGreaterThanOrEqual(f.needY1 + 4 * f.texelY - 1e-9);
         expect(c.split).toBeGreaterThan(f.split);
       }
     });
@@ -340,5 +341,107 @@ describe('Bodengefittete gröbste Kaskade (Schatten v3)', () => {
     }
     // Hügel ziehen durch, die Bodenregion atmet: höchstens ein paar Stufenwechsel über 10° Rollen
     expect(changes).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('Gitter an der Ebene (Karte v5, R1)', () => {
+  /** Verzug der Ebene bei k_t = 0: Schattenraum = Blickraum (die Kugel des Tests steht für die Anzeige). */
+  const identity = { toShadow: (p: Vector3) => p, toView: (p: Vector3) => p };
+  const planeInput = (cam: PerspectiveCamera, g: Vector3, epoch = 1): FitInput => {
+    const base = input(cam, hills(), epoch);
+    return { ...base, shell: { ...base.shell!, coverTolerance: 1.2 }, warp: identity, gridOffset: g, margin: [0.1, 0.2, 0.3] };
+  };
+  const nearlyMultiple = (v: number, t: number) => Math.abs(v / t - Math.round(v / t)) < 1e-6;
+
+  it('snappt die Rechtecke in Ebenenkoordinaten: originPlane* sind Texelvielfache, x0 = originPlane − X · gridOffset', () => {
+    const cam = mapCamera();
+    const g = new Vector3(1234.5678, 0, -987.321);
+    const fit = new CascadeFitter().fit(planeInput(cam, g), createFitResult(3));
+    expect(fit.empty).toBe(false);
+    for (const c of fit.cascades) {
+      expect(c.active).toBe(true);
+      expect(nearlyMultiple(c.originPlaneX, c.texelX)).toBe(true);
+      expect(nearlyMultiple(c.originPlaneY, c.texelY)).toBe(true);
+      expect(c.x0).toBeCloseTo(c.originPlaneX - fit.X.dot(g), 9);
+      expect(c.y0).toBeCloseTo(c.originPlaneY - fit.Y.dot(g), 9);
+    }
+    expect(fit.eyePlane.clone().sub(g).distanceTo(fit.eye)).toBeLessThan(1e-9);
+  });
+
+  it('ein kleiner Versatz des Gitterursprungs ändert Texel nicht und verschiebt den Ursprung nur um den Versatz (± ein Texel Rundung)', () => {
+    const cam = mapCamera();
+    const d = new Vector3(0.0137, 0, 0.0211);
+    const a = new CascadeFitter().fit(planeInput(cam, new Vector3(0, 0, 0)), createFitResult(3));
+    const b = new CascadeFitter().fit(planeInput(cam, d), createFitResult(3));
+    a.cascades.forEach((ca, k) => {
+      const cb = b.cascades[k]!;
+      expect(cb.texelX).toBe(ca.texelX);
+      expect(cb.texelY).toBe(ca.texelY);
+      // beide Ursprünge sind Texelvielfache in der Ebene; der Bedarf liegt um d verschoben → höchstens d + 1 Texel
+      expect(Math.abs(cb.originPlaneX - ca.originPlaneX)).toBeLessThanOrEqual(Math.abs(a.X.dot(d)) + ca.texelX + 1e-9);
+      expect(Math.abs(cb.originPlaneY - ca.originPlaneY)).toBeLessThanOrEqual(Math.abs(a.Y.dot(d)) + ca.texelY + 1e-9);
+      expect(nearlyMultiple(cb.originPlaneX, cb.texelX)).toBe(true);
+      // im Schattenraum liegt das Rechteck damit praktisch gleich (der Inhalt kennt nur den Schattenraum)
+      expect(Math.abs(cb.x0 - ca.x0)).toBeLessThanOrEqual(ca.texelX + 1e-9);
+    });
+  });
+
+  it('Rand: jedes Rechteck hält um seinen Rand Abstand zum Empfängerbedarf (fein 10 %, mittel 20 %, fern 30 %)', () => {
+    const fit = new CascadeFitter().fit(planeInput(mapCamera(), new Vector3(5, 0, -7)), createFitResult(3));
+    const margins = [0.1, 0.2, 0.3];
+    fit.cascades.forEach((c, k) => {
+      const m = margins[k]!;
+      const w = c.needX1 - c.needX0;
+      const h = c.needY1 - c.needY0;
+      expect(w).toBeGreaterThan(0);
+      // Rand je Seite ≥ m · Bedarf (minus ein Texel Rundung der Mitte)
+      expect(c.needX0 - c.x0).toBeGreaterThanOrEqual(m * w - c.texelX);
+      expect(c.x1 - c.needX1).toBeGreaterThanOrEqual(m * w - c.texelX);
+      expect(c.needY0 - c.y0).toBeGreaterThanOrEqual(m * h - c.texelY);
+      expect(c.y1 - c.needY1).toBeGreaterThanOrEqual(m * h - c.texelY);
+      // Tiefenfenster deckt den Bedarf mit Rand
+      const gL = fit.L.dot(new Vector3(5, 0, -7));
+      expect(c.depthPlane0 - gL).toBeLessThanOrEqual(c.needZ0 - 2.9);
+      expect(c.depthPlane1 - gL).toBeGreaterThanOrEqual(c.needZ1 + 2.9);
+      expect(c.near).toBeGreaterThan(0);
+      expect(c.far).toBeGreaterThan(c.near);
+    });
+  });
+
+  it('Slide erhält originPlane*: ein Schwenk innerhalb des Rands behält Rechtecke, Tiefenfenster und Auge in der Ebene', () => {
+    const cam = mapCamera();
+    const fitter = new CascadeFitter();
+    const out = createFitResult(3);
+    const g0 = new Vector3(100, 0, -200);
+    fitter.fit(planeInput(cam, g0), out);
+    const before = out.cascades.map((c) => ({ ...c }));
+    const eyeBefore = out.eyePlane.clone();
+    // Schwenk um 0,3 vorwärts und 0,2 seitlich (gleicher Blick, gleiche Empfänger im Schattenraum)
+    const g1 = g0.clone().add(new Vector3(0.2, 0, -0.3));
+    fitter.fit({ ...planeInput(cam, g1, 2), keepPsi: true, lockTexels: true }, out);
+    const delta = g1.clone().sub(g0);
+    out.cascades.forEach((c, k) => {
+      const b = before[k]!;
+      expect(c.texelX).toBe(b.texelX);
+      expect(c.texelY).toBe(b.texelY);
+      expect(c.originPlaneX).toBe(b.originPlaneX);
+      expect(c.originPlaneY).toBe(b.originPlaneY);
+      expect(c.depthPlane0).toBe(b.depthPlane0);
+      expect(c.depthPlane1).toBe(b.depthPlane1);
+      // im Schattenraum rückt das Rechteck um genau den Fokusweg
+      expect(c.x0).toBeCloseTo(b.x0 - out.X.dot(delta), 9);
+      expect(c.y0).toBeCloseTo(b.y0 - out.Y.dot(delta), 9);
+    });
+    expect(out.eyePlane.distanceTo(eyeBefore)).toBeLessThan(1e-9);
+    // Ein Schwenk weit über den Rand hinaus snappt neu — wieder auf Texelvielfache, und deckt den Bedarf
+    const g2 = g0.clone().add(new Vector3(0, 0, -60));
+    fitter.fit({ ...planeInput(cam, g2, 3), keepPsi: true, lockTexels: true }, out);
+    out.cascades.forEach((c, k) => {
+      const b = before[k]!;
+      expect(c.originPlaneX).not.toBe(b.originPlaneX);
+      expect(nearlyMultiple(c.originPlaneX, c.texelX)).toBe(true);
+      expect(c.x0).toBeLessThanOrEqual(c.needX0);
+      expect(c.x1).toBeGreaterThanOrEqual(c.needX1);
+    });
   });
 });

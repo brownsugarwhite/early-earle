@@ -15,7 +15,16 @@ import type { PerspectiveCamera } from 'three/webgpu';
  *
  * Stabilität: Die Lichtbasis hängt am Sonnen-Rig (bewegt sich nicht, wenn der Planet rollt). Texelgrößen werden in
  * 2^(1/8)-Stufen quantisiert (mit Hysterese), Rechtecke auf das Texelgitter gesnappt → das Abtastgitter steht in
- * der Welt still, solange sich Kamera und Sonne nicht bewegen. Nur der Inhalt wandert durch das Gitter.
+ * der Welt still, solange sich Kamera und Sonne nicht bewegen.
+ *
+ * **Gitter an der Ebene (Karte v5, R1):** mit `gridOffset` (Ebenenkoordinaten des Schattenraum-Ursprungs = Fokus der
+ * unendlichen Ebene) wird in **Ebenenkoordinaten** gesnappt: `originPlaneX/Y` ist ein Vielfaches des Texels in der Ebene,
+ * das Rechteck in Schattenraum-Koordinaten (`x0 = originPlaneX − X · gridOffset`) rückt beim Schwenken um genau den
+ * Fokusweg nach. Werfer und Empfänger stehen in der Ebene still → die Schatten kleben am Gelände, keine wandernden
+ * Treppen. Jede Kaskade bekommt einen **Rand** (`margin[k]`, Anteil der Empfängerausdehnung je Seite): solange die
+ * sichtbaren Empfänger im alten Rechteck Platz haben, behält der Fit es (Hysterese über `out`) — der Besitzer muss die
+ * Karte dann nicht neu zeichnen, sondern nur die Lichtkamera mitschieben (`CascadedShadows.slide`). Dasselbe gilt für das
+ * Tiefenfenster (`depthPlane0/1`, Ebenenkoordinaten entlang L) und das Auge (`eyePlane`).
  */
 
 export interface ReceiverShellSpec {
@@ -121,11 +130,23 @@ export interface FitInput {
   volumes?: ReceiverVolume[] | null;
   /** Verzug Blick- ↔ Schattenraum (null = gleicher Raum). */
   warp?: ShadowSpaceWarp | null;
+  /**
+   * Ebenenkoordinaten des Schattenraum-Ursprungs (Fokus der unendlichen Ebene): Texelgitter, Tiefenfenster und Auge
+   * werden in Ebenenkoordinaten gesnappt und festgehalten (siehe Kopf). null = Schattenraum selbst (alte Konsumenten).
+   */
+  gridOffset?: Vector3 | null;
+  /**
+   * Rand je Kaskade als Anteil der Empfängerausdehnung je Seite (z. B. fein 0,1 / mittel 0,2 / fern 0,3): das Rechteck
+   * überlebt Schwenks bis zu diesem Weg ohne Neuzeichnen; kostet entsprechend Auflösung.
+   */
+  margin?: readonly number[] | null;
+  /** Rand des Tiefenfensters je Seite (Welteinheiten; Standard 3 ≈ ein Schwenk bis zum nächsten Refit). */
+  depthMargin?: number;
 }
 
 export interface CascadeFit {
   active: boolean;
-  /** Rechteck in absoluten Lichtraum-Koordinaten (Achsen X(ψ), Y(ψ)). */
+  /** Rechteck in absoluten Lichtraum-Koordinaten des Schattenraums (Achsen X(ψ), Y(ψ)). */
   x0: number;
   x1: number;
   y0: number;
@@ -139,6 +160,20 @@ export interface CascadeFit {
   split: number;
   /** Geschätzter größter Bildschirm-Fußabdruck eines Texels (px) an den eigenen nächsten Empfängern. */
   pxPerTexel: number;
+  /** Rechteckursprung (x0, y0) in **Ebenenkoordinaten** entlang X(ψ)/Y(ψ): Vielfache des Texels, beim Schwenken fest. */
+  originPlaneX: number;
+  originPlaneY: number;
+  /** Empfängerbedarf dieser Kaskade (Schattenraum, vor Rand und Snapping; mit den feineren Kaskaden vereinigt). */
+  needX0: number;
+  needX1: number;
+  needY0: number;
+  needY1: number;
+  /** Tiefenbedarf entlang L (Schattenraum): von den fernsten Empfängern bis zu den nächsten Werfern (`casterReach`). */
+  needZ0: number;
+  needZ1: number;
+  /** Abgedecktes Tiefenfenster entlang L in **Ebenenkoordinaten** (Inhalt mit L · p_Ebene ∈ [0, 1] ist in der Karte). */
+  depthPlane0: number;
+  depthPlane1: number;
 }
 
 export interface FitResult {
@@ -148,7 +183,12 @@ export interface FitResult {
   X: Vector3;
   Y: Vector3;
   L: Vector3;
+  /** Auge der Lichtkameras (Schattenraum, zum `gridOffset` dieses Fits). */
   eye: Vector3;
+  /** Auge in Ebenenkoordinaten (beim Schwenken fest: `eye = eyePlane − gridOffset`). */
+  eyePlane: Vector3;
+  /** `gridOffset` dieses Fits (Kopie). */
+  gridOffset: Vector3;
   dMin: number;
   dMax: number;
   cascades: CascadeFit[];
@@ -179,7 +219,29 @@ const _sph = new Sphere();
 const _w = new Vector3();
 
 function emptyCascade(): CascadeFit {
-  return { active: false, x0: 0, x1: 1, y0: 0, y1: 1, texelX: 1, texelY: 1, near: 0.1, far: 1, split: 0, pxPerTexel: 0 };
+  return {
+    active: false,
+    x0: 0,
+    x1: 1,
+    y0: 0,
+    y1: 1,
+    texelX: 1,
+    texelY: 1,
+    near: 0.1,
+    far: 1,
+    split: 0,
+    pxPerTexel: 0,
+    originPlaneX: 0,
+    originPlaneY: 0,
+    needX0: 0,
+    needX1: 0,
+    needY0: 0,
+    needY1: 0,
+    needZ0: 0,
+    needZ1: 0,
+    depthPlane0: 0,
+    depthPlane1: 0,
+  };
 }
 
 export function createFitResult(n: number): FitResult {
@@ -190,11 +252,27 @@ export function createFitResult(n: number): FitResult {
     Y: new Vector3(0, 1, 0),
     L: new Vector3(0, 0, 1),
     eye: new Vector3(),
+    eyePlane: new Vector3(),
+    gridOffset: new Vector3(),
     dMin: 0,
     dMax: 0,
     cascades: Array.from({ length: n }, emptyCascade),
     rays: 0,
   };
+}
+
+/** Standardrand je Kaskade (fein → grob) für `n` Kaskaden: 0,1 / 0,2 / 0,3 (zwei Kaskaden: 0,1 / 0,3). */
+export function defaultMargins(n: number): number[] {
+  if (n <= 1) return [0.3];
+  return Array.from({ length: n }, (_, k) => 0.1 + (0.2 * k) / (n - 1));
+}
+
+/** Standardrand des Tiefenfensters (Welteinheiten je Seite). */
+export const DEFAULT_DEPTH_MARGIN = 3;
+
+/** Ursprung in Ebenenkoordinaten auf das Texelgitter snappen: Bedarf mittig, Rand symmetrisch. */
+function snapOrigin(p0: number, p1: number, cells: number, texel: number): number {
+  return Math.round(((p0 + p1) * 0.5 - cells * texel * 0.5) / texel) * texel;
 }
 
 /** Texelgröße auf das 2^(1/8)-Raster runden (aufwärts). */
@@ -298,6 +376,8 @@ export class CascadeFitter {
 
   fit(input: FitInput, out: FitResult): FitResult {
     const cam = input.camera;
+    // Vorzustand für die Hysterese (Rechtecke, Tiefenfenster, Auge in Ebenenkoordinaten)
+    const prevValid = !out.empty && out.rays > 0;
     this.warp = input.warp ?? null;
     const warp = this.warp;
     const n = input.sizes.length;
@@ -699,13 +779,19 @@ export class CascadeFitter {
     out.X.copy(X0).multiplyScalar(cp).addScaledVector(Y0, -sp);
     out.Y.copy(X0).multiplyScalar(sp).addScaledVector(Y0, cp);
 
-    // --- 6) Rechtecke je Kaskade (verschachtelt), Texel quantisieren, auf das Gitter snappen --------------
+    // --- 6) Rechtecke je Kaskade (verschachtelt), Texel quantisieren, in Ebenenkoordinaten auf das Gitter snappen ----
+    // Ebenenkoordinaten = Schattenraum + gridOffset (entlang der Lichtachsen X(ψ), Y(ψ), L)
+    const g = input.gridOffset ?? null;
+    const gX = g ? out.X.dot(g) : 0;
+    const gY = g ? out.Y.dot(g) : 0;
+    const gL = g ? L.dot(g) : 0;
+    const keepRects = input.lockTexels === true && prevValid;
+    const depthMargin = input.depthMargin ?? DEFAULT_DEPTH_MARGIN;
     let ux0 = Infinity;
     let ux1 = -Infinity;
     let uy0 = Infinity;
     let uy1 = -Infinity;
     let zAll1 = -Infinity;
-    const zRanges: Array<[number, number]> = [];
     for (let k = 0; k < n; k++) {
       const cf = out.cascades[k]!;
       const size = input.sizes[k]!;
@@ -713,11 +799,12 @@ export class CascadeFitter {
       cf.split = splits[k]!;
       if (m === 0) {
         cf.active = false;
-        zRanges.push([0, 0]);
         continue;
       }
+      const wasActive = cf.active;
       let [x0, x1, y0, y1] = extent(m, cp, sp);
-      // verschachtelt: jede gröbere Kaskade enthält die feineren
+      // verschachtelt: jede gröbere Kaskade deckt den Bedarf der feineren samt Filter-Fußabdruck (nicht deren Rechteck:
+      // das trägt einen Rand und gleitet beim Schwenken — der grobe Bedarf bliebe sonst nie stehen)
       x0 = Math.min(x0, ux0);
       x1 = Math.max(x1, ux1);
       y0 = Math.min(y0, uy0);
@@ -748,15 +835,20 @@ export class CascadeFitter {
           z1 = Math.max(z1, vz + v.radius);
         }
       }
-      zRanges.push([z0, z1]);
-      zAll1 = Math.max(zAll1, z1);
+      // Tiefenbedarf: fernste Empfänger (− kleines Polster) bis zu den Werfern `casterReach` Richtung Sonne
+      const zPad = Math.max(0.5, (z1 - z0) * 0.05);
+      const needZ0 = z0 - zPad;
+      const needZ1 = z1 + input.casterReach;
+      zAll1 = Math.max(zAll1, needZ1);
       const w = Math.max(1e-3, x1 - x0);
       const h = Math.max(1e-3, y1 - y0);
-      const [needX, needY] = texelsFor(w, h, size);
-      const pick = (need: number, prev: number, wasActive: boolean): number => (wasActive && prev >= need && prev <= need * 1.25 ? prev : quantizeTexel(need));
+      const marginK = input.margin?.[k] ?? 0;
+      // Texel aus dem Bedarf plus Rand je Seite (der Rand kostet Auflösung, schenkt aber Schwenks ohne Neuzeichnen)
+      const [needX, needY] = texelsFor(w * (1 + 2 * marginK), h * (1 + 2 * marginK), size);
+      const pick = (need: number, prev: number, prevActive: boolean): number => (prevActive && prev >= need && prev <= need * 1.25 ? prev : quantizeTexel(need));
       const cover = k === n - 1;
-      // Rollen (Kamera/Sonne fest): feine Kaskaden behalten ihre Texelgröße → das Abtastgitter steht still. Wächst die
-      // Bodenregion über das Rechteck hinaus, wird es nur zentriert; der Rand fällt an die nächste Kaskade.
+      // Rollen/Schwenken (Kamera/Sonne fest): feine Kaskaden behalten ihre Texelgröße → das Abtastgitter steht still.
+      // Wächst die Bodenregion über das Rechteck hinaus, wird es nur zentriert; der Rand fällt an die nächste Kaskade.
       const focusedCover = cover && input.shell?.surface && input.shell.coverTolerance !== undefined && input.shell.coverTolerance !== null;
       const locked = !cover && input.lockTexels === true && cf.active;
       // Bodengefittete gröbste Kaskade beim Rollen: Texel halten, solange die Region hineinpasst und nicht viel kleiner
@@ -776,49 +868,101 @@ export class CascadeFitter {
       }
       const padX = () => input.padTexels * tx + w * padFrac;
       const padY = () => input.padTexels * ty + h * padFrac;
-      let sx0 = Math.floor((x0 - padX()) / tx) * tx;
-      let sy0 = Math.floor((y0 - padY()) / ty) * ty;
-      if (locked) {
-        if (sx0 + size.width * tx < x1 + padX()) sx0 = Math.round(((x0 + x1) * 0.5 - size.width * tx * 0.5) / tx) * tx;
-        if (sy0 + size.height * ty < y1 + padY()) sy0 = Math.round(((y0 + y1) * 0.5 - size.height * ty * 0.5) / ty) * ty;
+      // Bedarf in Ebenenkoordinaten
+      const px0 = x0 + gX;
+      const px1 = x1 + gX;
+      const py0 = y0 + gY;
+      const py1 = y1 + gY;
+      // Hysterese: das alte Rechteck (Ebenenkoordinaten) bleibt, solange der Bedarf samt Filter-Fußabdruck hineinpasst
+      // und die Texel gleich sind — der Besitzer zeichnet dann nicht neu (Slide)
+      const keep =
+        keepRects &&
+        wasActive &&
+        tx === cf.texelX &&
+        ty === cf.texelY &&
+        cf.originPlaneX + padX() <= px0 &&
+        cf.originPlaneX + size.width * tx - padX() >= px1 &&
+        cf.originPlaneY + padY() <= py0 &&
+        cf.originPlaneY + size.height * ty - padY() >= py1;
+      let ox: number;
+      let oy: number;
+      if (keep) {
+        ox = cf.originPlaneX;
+        oy = cf.originPlaneY;
       } else {
-        for (let guard = 0; guard < 6 && sx0 + size.width * tx < x1 + padX(); guard++) {
-          tx = nextTexel(tx);
-          sx0 = Math.floor((x0 - padX()) / tx) * tx;
-        }
-        for (let guard = 0; guard < 6 && sy0 + size.height * ty < y1 + padY(); guard++) {
-          ty = nextTexel(ty);
-          sy0 = Math.floor((y0 - padY()) / ty) * ty;
+        // Bedarf mittig, Rand symmetrisch; Ursprung ein Vielfaches des Texels in der Ebene
+        ox = snapOrigin(px0, px1, size.width, tx);
+        oy = snapOrigin(py0, py1, size.height, ty);
+        if (!locked) {
+          // Rechteck muss Bedarf + Fußabdruck fassen (der Rand steckt schon im Texel): sonst nächste Texelstufe
+          for (let guard = 0; guard < 6 && (ox + padX() > px0 || ox + size.width * tx - padX() < px1); guard++) {
+            tx = nextTexel(tx);
+            ox = snapOrigin(px0, px1, size.width, tx);
+          }
+          for (let guard = 0; guard < 6 && (oy + padY() > py0 || oy + size.height * ty - padY() < py1); guard++) {
+            ty = nextTexel(ty);
+            oy = snapOrigin(py0, py1, size.height, ty);
+          }
         }
       }
       cf.active = true;
       cf.texelX = tx;
       cf.texelY = ty;
-      cf.x0 = sx0;
-      cf.x1 = sx0 + size.width * tx;
-      cf.y0 = sy0;
-      cf.y1 = sy0 + size.height * ty;
-      ux0 = cf.x0;
-      ux1 = cf.x1;
-      uy0 = cf.y0;
-      uy1 = cf.y1;
+      cf.originPlaneX = ox;
+      cf.originPlaneY = oy;
+      cf.x0 = ox - gX;
+      cf.x1 = cf.x0 + size.width * tx;
+      cf.y0 = oy - gY;
+      cf.y1 = cf.y0 + size.height * ty;
+      cf.needX0 = x0;
+      cf.needX1 = x1;
+      cf.needY0 = y0;
+      cf.needY1 = y1;
+      cf.needZ0 = needZ0;
+      cf.needZ1 = needZ1;
+      // Tiefenfenster in Ebenenkoordinaten, mit derselben Hysterese (alt bleibt, solange der Bedarf hineinpasst)
+      const keepDepth = keepRects && wasActive && cf.depthPlane0 <= needZ0 + gL && cf.depthPlane1 >= needZ1 + gL && cf.depthPlane1 - cf.depthPlane0 <= (needZ1 - needZ0 + 2 * depthMargin) * 1.5 + 4;
+      if (!keepDepth) {
+        cf.depthPlane0 = needZ0 - depthMargin + gL;
+        cf.depthPlane1 = needZ1 + depthMargin + gL;
+      }
+      ux0 = x0 - padX();
+      ux1 = x1 + padX();
+      uy0 = y0 - padY();
+      uy1 = y1 + padY();
       // Anzeige: Fußabdruck an den eigenen nächsten Empfängern (Tiefe ab der vorigen Überblendung)
       const dLo = k === 0 ? 0 : splits[k - 1]! * (1 - input.blend);
       cf.pxPerTexel = footprint(cp, sp, tx, ty, dLo, splits[k]!);
     }
 
-    // --- 7) Auge und Tiefenbereiche: Werfer bis `casterReach` Richtung Sonne ---------------------------------
-    const la = L.dot(input.anchor);
-    const dist = Math.max(10, zAll1 + input.casterReach - la + 2);
-    out.eye.copy(input.anchor).addScaledVector(L, dist);
-    const le = la + dist;
+    // --- 7) Auge: in Ebenenkoordinaten festgehalten (Slide: eye = eyePlane − gridOffset) ----------------------
+    // L-Koordinate des Auges (Schattenraum) jenseits aller Tiefenfenster; X/Y vom Anker (beliebig, die Rechtecke sind
+    // absolut). Hysterese: bleibt, solange es vor allen Fenstern liegt und nicht absurd weit weg ist (Tiefenauflösung).
+    let leNeed = -Infinity;
+    for (const cf of out.cascades) if (cf.active) leNeed = Math.max(leNeed, cf.depthPlane1 - gL + 0.5);
+    if (!Number.isFinite(leNeed)) leNeed = zAll1 + depthMargin + 2;
+    const lePrev = keepRects ? L.dot(out.eyePlane) - gL : NaN;
+    const keepEye = Number.isFinite(lePrev) && lePrev >= leNeed && lePrev <= leNeed + 40;
+    let le: number;
+    if (keepEye) {
+      // Auge in der Ebene festhalten (auch X/Y: der Slide-Vergleich bleibt trivial)
+      le = lePrev;
+      out.eye.copy(out.eyePlane);
+      if (g) out.eye.sub(g);
+    } else {
+      le = leNeed + 8;
+      const la = L.dot(input.anchor);
+      out.eye.copy(input.anchor).addScaledVector(L, le - la);
+      out.eyePlane.copy(out.eye);
+      if (g) out.eyePlane.add(g);
+    }
+    if (g) out.gridOffset.copy(g);
+    else out.gridOffset.set(0, 0, 0);
     for (let k = 0; k < n; k++) {
       const cf = out.cascades[k]!;
       if (!cf.active) continue;
-      const [z0, z1] = zRanges[k]!;
-      const zPad = Math.max(0.5, (z1 - z0) * 0.05);
-      cf.near = Math.max(0.05, le - (z1 + input.casterReach));
-      cf.far = le - z0 + zPad;
+      cf.near = Math.max(0.05, le - (cf.depthPlane1 - gL));
+      cf.far = le - (cf.depthPlane0 - gL);
     }
     return out;
   }
