@@ -2,6 +2,8 @@
 
 **Status:** beschlossen am 2026-09-30 (Florian: „absolute Grundvoraussetzung“)
 
+> **Stand 2026-10-04:** umgesetzt im Prototyp 1 (Tag `prototyp-1`), ergänzt durch „Karte v5“ (15 Autorenwelten, 184 Level, angedeutete Zone 16; Nachtrag unten). Für die Produktion mit Florians neuer Map-Ausarbeitung abgleichen.
+
 ## Kontext
 
 Bisher ist die Karte ein geschlossener Planet: Radius 32, Würfelkugel mit 3 × 3 Chunks je Seite, zehn Welten als Breitenbänder, 100 Level als Spirale von Pol zu Pol. In der Blender-Bibliothek sah Florian, dass die Welt endlich ist. Seine Vorgabe: „Es soll später unbegrenzt viele Zonen geben, und man soll das Gefühl haben, unendlich lang an der Kugel zu drehen, wie bei Best Fiends oder Candy Crush, nur eben auch mehr nach links und rechts.“ Die organische Bestückung und der Earle-Look sollen bleiben oder besser werden.

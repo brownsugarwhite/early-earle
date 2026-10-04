@@ -1,4 +1,8 @@
-# Produktionsplan v0.1
+# Produktionsplan v0.1 (Prototyp 1, abgeschlossen)
+
+> **Stand 2026-10-04: Phase 0 „Prototyp 1“ ist abgeschlossen** (Git-Tag `prototyp-1`). Alles unten beschreibt den Prototyp und bleibt als Archiv und Erfahrungsschatz stehen; es ist kein Auftrag mehr. Die **Produktion mit finalem Look** beginnt mit Florians neuem Plan und Hauptprompt (Story, Charaktere, Map genauer ausgearbeitet, mit Dokumenten und Screenshots). Sobald er vorliegt, entsteht ein neuer Produktionsplan, der diese Datei ablöst.
+>
+> Abschluss, Entscheidungen, Lehren und offene Punkte: [`prototyp/README.md`](prototyp/README.md). Aktuelle Übergabe: [`UEBERGABE.md`](UEBERGABE.md). Projektgedächtnis für Sessions: [`../CLAUDE.md`](../CLAUDE.md).
 
 > Stand 2026-09-29. Quelle: Masterplan v0.1 (Abschnitte 11–16). Gamedesign: [`GDD.md`](GDD.md), Stil: [`STYLE.md`](STYLE.md), Engine-Gate: [`ADR/0001-engine.md`](ADR/0001-engine.md), Recherche: [`RESEARCH.md`](RESEARCH.md). Fortschritt wird als Screenshot je Prototyp-Stand in `docs/progress/` abgelegt.
 
@@ -199,3 +203,10 @@ Florian schickte nach dem iPhone-Test neun Wünsche mit zwei Referenzbildern (Lo
 Integration durch die Leitung: Map-Wesen auf dem echten Boden (`flow/mapGround.ts`), Sperrzone ums Plateau, „Sammlung füllen“ mit dem Katalog, `unicode-range` für Caprasimo (Mathe-Zeichen sind Platzhalter), Klassik-Spielende-Klang, „Kein Zug mehr“ im nativen HUD, gemeinsamer Stil der Karten-Einstiege, E2E an Loader und SwiftShader angepasst. Geprüft: Typecheck, 713 Unit-Tests, Lint, Build; Erststart komplett auf echter GPU ohne Konsolenfehler (Video); E2E einzeln (Flow, Fortschritt, Möwe, Tutorial, Audio, Editor, Wesen …).
 
 Offen für Florians Blick: Der Möwenschatten ist im Flow-Level so dunkel wie jeder Schatten und verschwindet unter Blobs — darf er dunkler sein, oder sollen die Wesen ihn empfangen (analytische Maske)? Setzkasten im Querformat eine Zone je Seite; Größe der Map-Wesen (0,48 × Stufenfaktor); „Tippen“-Farbe/Größe; die Loader-Zahl ist so klein wie im Mockup. iPhone-Deploy aller Stände macht die Parallel-Session am Ende (Florians Ansage).
+
+## Nachtrag 2026-10-01 bis 2026-10-04: letzte Prototyp-Tage und Abschluss
+
+- **01.10. (Karte v5 und Level 184):** Florian entschied „Route 15 + 1“: 15 Autorenwelten, 184 Level, angedeutete Zone 16, keine prozeduralen Welten im Spiel (ADR-0002, Nachtrag). Gemergt und CI-grün: Level 101–184 mit Saga-Kurve und `calibrate --strict` (GDD §6.7), Schattenkern R0–R2 (Slide statt Refit), Karten-Messung R4.1 (`?bench=karte`, Mac-Baseline, iPhone-Protokoll), Bergung A1 mit Gelände-Kacheln, Wasser W7 Teil 1, Riesenbaum-Krone v4, Scheune v3 + Schnee-Ahorn, Makroformen des Pfads (W3), Karten-Bäume R3, Nachzügler Route/184. Letzter Commit des Prototyps: `0b0122c` (CI „web“ #87 grün).
+- **02.–04.10. (Cloud-Session im Plan-Modus):** Analyse des Wesen-Systems und Plan „Wesen-Baukasten v4“ für tausende kombinierbare Wesen. Die Session endete am Wochenlimit, bevor Florian den Plan freigab; nichts wurde umgesetzt. Archiv: [`prototyp/wesen-v4-plan-unbestaetigt.md`](prototyp/wesen-v4-plan-unbestaetigt.md).
+- **04.10. (Cloud-Session):** Recherche zu KI-Bild-zu-3D-Werkzeugen ([`research/ki-3d-tools-2026-10.md`](research/ki-3d-tools-2026-10.md)), prozeduraler Wesen-Baukasten als Artefakt (v1, v2 an Florians GPT-Vorlagen vermessen). Florians Urteil: prozedural „total schlecht“, Meshy trifft den Look „fast perfekt“. Danach erklärte Florian den Stand zum Prototyp 1: Git-Tag `prototyp-1`, Abschlussdokument [`prototyp/README.md`](prototyp/README.md), Projektgedächtnis [`../CLAUDE.md`](../CLAUDE.md), Übergabe [`UEBERGABE.md`](UEBERGABE.md).
+- **Nicht mehr ausgeführt** (Liste in `prototyp/README.md` §7): u. a. Karten-Leistung R4.2–R4.7 und die iPhone-Messung, Wasser W7 Teil 2, iPhone-Deploy der letzten Stände, Aufräumen der alten Kugel-Module.

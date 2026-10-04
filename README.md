@@ -2,6 +2,9 @@
 
 Produktionstitel. Ein levelbasiertes 2048/Merge-Spiel mit Jelly-Blob-Wesen, Guide-Dino REX und einer rotierbaren Planeten-Map im Stil **"Neo-Brutalismus trifft Eyvind Earle"**. Von illudiy.
 
+> **Stand 2026-10-04: Prototyp 1 abgeschlossen** (Git-Tag `prototyp-1`). Er hat bewiesen, dass die Spielidee trägt. Die eigentliche Produktion mit finalem Look beginnt mit Florians neuem Plan (Story, Charaktere, Map). Alles in diesem Repo ist bis dahin der Prototyp-Stand.
+> Für Sessions: [`CLAUDE.md`](CLAUDE.md) (Projektgedächtnis), [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte), [`docs/UEBERGABE.md`](docs/UEBERGABE.md) (aktuelle Übergabe).
+
 - Plan und Gamedesign: `docs/` (GDD, STYLE, RESEARCH, ADR, PRODUCTION), Roh-Recherchen in `docs/research/`
 - Inhalte (Level, Zonen, Genom, REX): `content/` als JSON
 - Code: pnpm-Workspace — `packages/core` (Regeln + Solver, ohne Abhängigkeiten), `genome`, `physics`, `world`, `render` (three.js WebGPU/TSL), `apps/game` (Vite + React, Routen `/play`, `/lab/*`, `/editor/*`)
@@ -19,7 +22,7 @@ pnpm e2e          # Playwright-Smoke (ohne GPU)
 
 `?backend=webgl` an eine Route hängen, um den WebGL2-Fallback zu erzwingen. Der Perf-Badge zeigt Backend, FPS, Frametime-p99 und Draw Calls.
 
-## Testen (Stand 2026-09-29)
+## Testen (Prototyp, Stand 2026-09-29; die Tabelle ist teils veraltet, z. B. 184 Level, Werkstatt in der App)
 
 Dev-Server starten (`pnpm dev`), dann im Browser auf dem Mac `https://localhost:5173` bzw. auf dem iPhone im gleichen WLAN `https://<Mac-IP>:5173` (Zertifikat einmal bestätigen). Ohne HTTPS gibt es kein WebGPU.
 
