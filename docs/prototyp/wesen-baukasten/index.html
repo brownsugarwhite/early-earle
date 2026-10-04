@@ -1,0 +1,1594 @@
+<title>Wesen-Baukasten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap">
+<style>
+  /* Layout: links die Bühne (3D + Vorlagenleiste), rechts das Bedienpult mit den Merkmals-Slots; auf dem Handy untereinander */
+  :root {
+    --paper: #f7f6d8;
+    --stage: #fbfaef;
+    --panel: #efedc9;
+    --chip: #e3e0b5;
+    --ink: #0f1c22;
+    --ink-2: #4a5650;
+    --line: #d3d0a6;
+    --rust: #c8542a;
+    --teal: #22baa9;
+    --shade: #0f1c22;
+    --font-head: 'Bricolage Grotesque', 'Archivo', system-ui, sans-serif;
+    --font-ui: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0f1c22; --stage: #14252c; --panel: #172b33; --chip: #21373f; --ink: #f1efd2; --ink-2: #b4bfb2;
+      --line: #2c444c; --rust: #e57c52; --teal: #45d3c2; --shade: #050c0f; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0f1c22; --stage: #14252c; --panel: #172b33; --chip: #21373f; --ink: #f1efd2; --ink-2: #b4bfb2;
+    --line: #2c444c; --rust: #e57c52; --teal: #45d3c2; --shade: #050c0f; color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--font-ui); font-size: 14px; }
+  .app { box-sizing: border-box; height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; padding-inline: 16px; padding-block: 14px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; }
+  h1 { font-family: var(--font-head); font-weight: 800; font-size: 26px; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+  header p { margin: 0; color: var(--ink-2); max-width: 68ch; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 18px; min-height: 0; }
+  .stagecol { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
+  .stage { position: relative; flex: 1; min-height: 0; background: var(--stage); box-shadow: 7px 3px 0 var(--shade); overflow: hidden; }
+  .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .bar { position: absolute; display: flex; flex-wrap: wrap; gap: 6px; }
+  .bar.tl { top: 12px; left: 12px; }
+  .bar.tr { top: 12px; right: 12px; }
+  .status { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--stage) 80%, transparent); padding: 3px 6px; }
+  .busy { position: absolute; right: 12px; bottom: 10px; font-size: 12px; font-weight: 600; color: var(--rust); }
+  .seg { display: inline-flex; flex-wrap: wrap; gap: 0; box-shadow: 3px 2px 0 var(--shade); }
+  .seg button, .btn { font: 600 13px/1 var(--font-ui); color: var(--ink); background: var(--chip); border: 0; padding: 8px 11px; cursor: pointer; border-radius: 0; }
+  .seg button + button { box-shadow: inset 1px 0 0 var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .seg button:disabled { opacity: .35; cursor: default; }
+  .btn { box-shadow: 3px 2px 0 var(--shade); }
+  .btn.primary { background: var(--rust); color: #fff8ee; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .refs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .ref { all: unset; cursor: pointer; display: grid; gap: 4px; min-width: 0; }
+  .ref img { width: 100%; aspect-ratio: 2 / 1; object-fit: contain; background: #fff; display: block; box-shadow: 3px 2px 0 var(--shade); }
+  .ref span { font-size: 12px; font-weight: 600; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ref[aria-current="true"] span { color: var(--rust); }
+  .ref:focus-visible img { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .panel { background: var(--panel); overflow: auto; min-height: 0; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 14px; box-shadow: 7px 3px 0 var(--shade); }
+  .panel h2 { font-family: var(--font-head); font-weight: 800; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin: 0; color: var(--ink-2); }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .slot { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .slot-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+  .slot h3 { font-family: var(--font-head); font-weight: 700; font-size: 16px; margin: 0; }
+  .slot .seg button { padding: 6px 9px; font-size: 12px; }
+  .sliders { display: grid; gap: 6px; }
+  .sl { display: grid; grid-template-columns: 112px minmax(0, 1fr) 40px; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
+  .sl input { width: 100%; accent-color: var(--rust); margin: 0; }
+  .sl output { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .off { font-size: 12px; color: var(--ink-2); }
+  .toggles { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .toggles label { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+  .toggles input { accent-color: var(--rust); width: 16px; height: 16px; }
+  .genome { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .genome textarea { width: 100%; box-sizing: border-box; height: 92px; font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--stage); color: var(--ink); border: 0; padding: 8px; resize: vertical; }
+  .note { font-size: 12px; color: var(--ink-2); margin: 0; max-width: 60ch; }
+  .lightbox { position: fixed; inset: 0; background: color-mix(in srgb, var(--paper) 88%, transparent); display: grid; place-items: center; padding: 24px; z-index: 5; }
+  .lightbox img { max-width: min(1100px, 100%); max-height: 80vh; background: #fff; box-shadow: 7px 3px 0 var(--shade); }
+  .lightbox figure { margin: 0; display: grid; gap: 10px; justify-items: center; }
+  .lightbox figcaption { font-weight: 600; }
+  @media (max-width: 900px) {
+    .app { height: auto; }
+    main { grid-template-columns: minmax(0, 1fr); }
+    .stage { flex: none; height: 64vh; min-height: 340px; }
+    .panel { overflow: visible; }
+    .refs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 560px) { .bar.tr { top: 56px; left: 12px; right: auto; } }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Wesen-Baukasten</h1>
+    <p>Jedes Teil ist ein Generator auf demselben Skelett. Tausche Rumpf, Kopf, Maul, Fell, Mähne, Flügel und Schwanz zwischen Retriever, Drache und Löwe.</p>
+  </header>
+  <main>
+    <div class="stagecol">
+      <div class="stage" id="stage">
+        <div class="bar tl">
+          <div class="seg" role="group" aria-label="Ansicht">
+            <button type="button" id="v-front" data-view="front">Vorne</button>
+            <button type="button" id="v-side" data-view="side">Seite</button>
+            <button type="button" id="v-three" data-view="three">Schräg</button>
+          </div>
+        </div>
+        <div class="bar tr">
+          <div class="seg" role="group" aria-label="Modus">
+            <button type="button" id="m-single" data-mode="single">Baukasten</button>
+            <button type="button" id="m-gallery" data-mode="gallery">Alle drei</button>
+          </div>
+        </div>
+        <div class="status" id="status">Baue …</div>
+        <div class="busy" id="busy" hidden>baut …</div>
+      </div>
+      <div class="refs" id="refs">
+        <button type="button" class="ref" data-preset="retriever" id="ref-retriever"><img src="refs/retriever.webp" alt="Vorlage Golden Retriever, vorne und seitlich"><span>Retriever · Vorlage 1</span></button>
+        <button type="button" class="ref" data-preset="dragon" id="ref-dragon"><img src="refs/drache.webp" alt="Vorlage Drache, vorne und seitlich"><span>Drache · Vorlage 2</span></button>
+        <button type="button" class="ref" data-preset="lion" id="ref-lion"><img src="refs/loewe.webp" alt="Vorlage Löwe, vorne und seitlich"><span>Löwe · Vorlage 3</span></button>
+        <button type="button" class="ref" data-zoom="1" id="ref-chimera"><img src="refs/chimaere.webp" alt="Ziel: Mischwesen aus Retriever, Drache und Löwe"><span>Ziel · selbst bauen</span></button>
+      </div>
+    </div>
+    <aside class="panel" id="panel">
+      <h2>Vorlage laden</h2>
+      <div class="presets">
+        <button type="button" class="btn" data-load="retriever" id="p-retriever">Retriever</button>
+        <button type="button" class="btn" data-load="dragon" id="p-dragon">Drache</button>
+        <button type="button" class="btn" data-load="lion" id="p-lion">Löwe</button>
+        <button type="button" class="btn primary" id="p-random">Zufällig mischen</button>
+      </div>
+      <h2>Merkmale</h2>
+      <div id="slots"></div>
+      <div class="toggles">
+        <label><input type="checkbox" id="t-harmonize"> Farben angleichen (Flügel, Mähne, Fell, Schwanz nehmen den Hautton an)</label>
+        <label><input type="checkbox" id="t-anim" checked> Bewegung (Atmen, Flügelschlag, Schwanz)</label>
+      </div>
+      <div class="genome">
+        <h2>Genom</h2>
+        <p class="note">Das ist die komplette Beschreibung des Wesens. Kopiere sie, wenn du ein Mischwesen behalten oder ins Spiel übernehmen willst.</p>
+        <textarea id="genome" readonly aria-label="Genom als JSON"></textarea>
+        <div><button type="button" class="btn" id="copy">Genom kopieren</button> <span class="off" id="copied" hidden>Kopiert</span></div>
+      </div>
+    </aside>
+  </main>
+</div>
+<div class="lightbox" id="lightbox" hidden>
+  <figure><img src="refs/chimaere.webp" alt="Ziel: Mischwesen aus Retriever, Drache und Löwe"><figcaption>Ziel zum Selberbauen. Klicken zum Schließen.</figcaption></figure>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ============================================================
+   Kleine Helfer
+   ============================================================ */
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const A3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
+const lin = (hex) => new THREE.Color(hex);
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const DOWN = v3(0, -1, 0);
+function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function smin(a, b, k) { if (k <= 0) return Math.min(a, b); const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * 0.25; }
+function smax(a, b, k) { return -smin(-a, -b, k); }
+function bez(a, b, c, t) { const u = 1 - t; return v3().addScaledVector(a, u * u).addScaledVector(b, 2 * u * t).addScaledVector(c, t * t); }
+function bezT(a, b, c, t) { return v3().addScaledVector(b.clone().sub(a), 2 * (1 - t)).addScaledVector(c.clone().sub(b), 2 * t).normalize(); }
+function basisM(x, y, z) { return new THREE.Matrix4().makeBasis(x, y, z); }
+function perp(v) { const a = Math.abs(v.y) < 0.9 ? v3(0, 1, 0) : v3(1, 0, 0); return v3().crossVectors(v, a).normalize(); }
+function tangentOf(v, n) { const t = v.clone().addScaledVector(n, -v.dot(n)); return t.lengthSq() < 1e-8 ? perp(n) : t.normalize(); }
+function rotAround(v, axis, ang) { return v.clone().applyAxisAngle(axis, ang); }
+
+/* Farben angleichen: Farbton/Sättigung des Hauttons übernehmen, Helligkeitsstufen behalten */
+function harmonize(hex, refHex, targetHex) {
+  const c = new THREE.Color(hex), r = new THREE.Color(refHex), t = new THREE.Color(targetHex);
+  const hc = {}, hr = {}, ht = {};
+  c.getHSL(hc, THREE.SRGBColorSpace); r.getHSL(hr, THREE.SRGBColorSpace); t.getHSL(ht, THREE.SRGBColorSpace);
+  let dh = hc.h - hr.h; if (dh > 0.5) dh -= 1; if (dh < -0.5) dh += 1;
+  const h = (ht.h + dh * 0.3 + 1) % 1;
+  const s = clamp(ht.s * (hc.s / Math.max(hr.s, 0.05)), 0, 1);
+  const l = clamp(lerp(hc.l, hc.l - hr.l + ht.l, 0.65), 0.05, 0.95);
+  const o = new THREE.Color(); o.setHSL(h, s, l, THREE.SRGBColorSpace);
+  return '#' + o.getHexString(THREE.SRGBColorSpace);
+}
+
+/* ============================================================
+   Merkmals-Genom: drei Vorlagen. Jedes Merkmal ist ein Parametersatz für einen Generator.
+   Einheiten: Körperradius ≈ 1, Boden y = 0, das Wesen schaut nach +z.
+   ============================================================ */
+const PRESETS = {
+  retriever: {
+    body: { size: 1, bulk: 1, neck: 1, k: 0.2,
+      rump: { pos: [0, 0.66, -0.98], r: [0.68, 0.64, 0.66], color: 'main' },
+      belly: { pos: [0, 0.7, -0.3], r: [0.74, 0.62, 0.88], color: 'main', pat: 0 },
+      chest: { pos: [0, 1.06, 0.44], r: [0.7, 0.74, 0.6], color: 'main' },
+      bib: { pos: [0, 0.98, 0.88], r: [0.31, 0.62, 0.2], color: 'cream', w: 3 },
+      extra: [{ type: 'e', pos: [0, 1.22, -0.25], r: [0.58, 0.45, 0.72], color: 'main', w: 1 }],
+      neckBase: [0, 1.45, 0.3], neckCtrl: [0, 1.78, 0.24], headPos: [0, 1.96, 0.12], neckR: [0.56, 0.5],
+      band: null, legs: true,
+      frontLeg: { top: [0.46, 0.92, 0.56], foot: [0.6, 0.12, 0.74], r: [0.24, 0.21] },
+      paw: { r: [0.25, 0.12, 0.27], color: 'cream' },
+      haunch: { pos: [0.56, 0.46, -0.86], r: 0.47, color: 'main' }, haunchInner: null,
+      hindPaw: { pos: [0.62, 0.09, -0.36], r: [0.18, 0.09, 0.26], color: 'cream' },
+      shoulder: [0.42, 1.3, -0.17], tail: { pos: [-0.35, 0.85, -1.4], dir: [0, 0.2, -1] } },
+    head: { size: 1.32, muzzle: 1, pitch: 0.85,
+      cranium: { pos: [0, 0.12, -0.05], r: [0.46, 0.44, 0.46] },
+      cheeks: { pos: [0.24, -0.1, 0.22], r: 0.22, color: 'cream' },
+      snout: { a: [0, 0.0, 0.2], b: [0, 0.02, 0.72], ra: 0.3, rb: 0.2, color: 'cream' },
+      brow: null, chin: null,
+      eyes: [0.3, 0.27, 0.5], nose: [0, 0.04, 0.9], ears: [0.42, 0.34, 0.24],
+      hinge: [0, -0.3, 0.05], jawLen: 0.5 },
+    mouth: { open: 1.25, width: 0.25, height: 1.05, teeth: 3, fang: 1.9, gape: 0, toothLen: 0.065, tongue: 1,
+      rim: [[62, 1.9], [76, 0.7], [90, 0.6], [104, 0.7], [118, 1.9], [238, 0.95], [302, 0.95]],
+      jawR: [0.18, 0.12], jawColor: 'cream', interior: '#8e2f39', deep: '#5c1a24', tongueColor: '#e58f8c', teethColor: '#f6ecd6', lip: '#f4dfb3', frown: 0 },
+    eyes: { kind: 'happy', size: 1, ink: '#3b2615' },
+    nose: { kind: 'button', size: 1, color: '#221c20' },
+    ears: { kind: 'flop', size: 1, len: 0.86, wid: 0.48, thick: 0.08 },
+    coat: { length: 0.3, width: 0.22, density: 1, tuft: 0.3, tuftRate: 1, curl: 0.4, surf: 0.85, tones: ['#dea552', '#e8b462', '#efc171', '#f5d08c'] },
+    mane: null,
+    crest: null,
+    tail: { length: 2.5, bush: 1, curl: 1, side: -0.9, r0: 0.13, r1: 0.04, peak: 0.48, theta: [-0.7, 1.3, 2.45],
+      tones: ['#dea552', '#e8b462', '#efc171', '#f6d595'], tuft: null },
+    wings: null,
+    skin: { main: '#ebb768', light: '#f3d090', dark: '#d79e50', cream: '#f9e6bd', floorShade: 0.15, pattern: 0, patKind: 0, patColor: '#c4883d', patScale: 5 },
+  },
+  dragon: {
+    body: { size: 1, bulk: 1, neck: 1, k: 0.24,
+      rump: { pos: [0, 0.55, -0.55], r: [0.82, 0.45, 0.72], color: 'main' },
+      belly: { pos: [0, 0.38, -0.2], r: [1.1, 0.4, 1.2], color: 'main', pat: 0.8 },
+      chest: { pos: [0, 0.75, 0.45], r: [0.62, 0.55, 0.62], color: 'main' },
+      bib: null,
+      extra: [
+        { type: 'e', pos: [0, 0.95, 0.78], r: [0.52, 0.74, 0.5], rot: [0.25, 0, 0], color: 'main', w: 1 },
+        { type: 'e', pos: [0, 0.5, 0.9], r: [0.82, 0.28, 0.4], color: 'light', w: 2.2 },
+        { type: 'e', pos: [0, 0.12, -0.1], r: [0.9, 0.12, 1.0], color: 'dark', w: 2.4 }],
+      neckBase: [0, 0.75, 0.15], neckCtrl: [0, 1.7, 0.32], headPos: [0, 2.72, 0.3], neckR: [0.6, 0.42],
+      band: null, legs: false,
+      frontLeg: { top: [0.26, 0.9, 0.4], foot: [0.28, 0.12, 0.56], r: [0.17, 0.14] },
+      paw: { r: [0.16, 0.11, 0.2], color: 'main' },
+      haunch: { pos: [0.42, 0.44, -0.22], r: 0.42, color: 'main' }, haunchInner: null,
+      hindPaw: { pos: [0.5, 0.09, 0.12], r: [0.15, 0.09, 0.21], color: 'main' },
+      shoulder: [0.42, 1.3, -0.17], tail: { pos: [0, 0.35, -1.35], dir: [0, 0.1, -1] } },
+    head: { size: 1, muzzle: 1, pitch: 0.05,
+      cranium: { pos: [0, 0.0, 0.0], r: [0.4, 0.28, 0.4] },
+      cheeks: { pos: [0.22, -0.08, 0.1], r: 0.2, color: 'main' },
+      snout: { a: [0, 0.0, 0.18], b: [0, -0.02, 0.58], ra: 0.24, rb: 0.13, color: 'main' }, snoutE: { pos: [0, 0.04, 0.38], r: [0.32, 0.17, 0.26] },
+      brow: { pos: [0, 0.12, 0.14], r: [0.32, 0.08, 0.13], color: 'main' }, chin: null,
+      eyes: [0.27, 0.08, 0.12], nose: [0, 0.04, 0.68], ears: [0.22, 0.2, -0.1],
+      hinge: [0, -0.18, 0.0], jawLen: 0.45 },
+    mouth: { open: 1.4, width: 0.33, height: 1, teeth: 2.5, fang: 2.7, gape: 1.0, toothLen: 0.14, tongue: 0.6,
+      rim: [[58, 1.6], [122, 1.6]], fangsTop: [[0.08, 0.82, 4.2], [0.19, 0.66, 2.2], [0.27, 0.48, 1.4]],
+      jawR: [0.18, 0.12], jawColor: 'light', interior: '#5e1622', deep: '#c94b55', tongueColor: '#cf5262', teethColor: '#f2e3bf', lip: '#8f7ca8', frown: 0 },
+    eyes: { kind: 'round', size: 1.3, iris: '#f7c51b', pupil: '#121019', lid: '#1c1a2a' },
+    nose: { kind: 'nostrils', size: 1, color: '#14121d' },
+    ears: null,
+    coat: null,
+    mane: null,
+    crest: { length: 0.72, count: 46, width: 0.075, color: '#1e1c2d' },
+    tail: null,
+    wings: { span: 1, fingers: 4, scallop: 1, back: 1.9, bone: '#262338', dark: '#2e2a43', mid: '#3b2f52', light: '#a6579a' },
+    skin: { main: '#2c2a40', light: '#7b69a0', dark: '#1d1b2b', cream: '#8d7aa6', pattern: 1, patKind: 2, patColor: '#232136', patScale: 12, floorShade: 0.85 },
+  },
+  lion: {
+    body: { size: 1, bulk: 1, neck: 1, k: 0.26,
+      rump: { pos: [0, 0.82, -0.6], r: [1.3, 0.82, 0.95], color: 'main' },
+      belly: { pos: [0, 0.55, 0.0], r: [1.5, 0.55, 1.42], color: 'main', pat: 0.3 },
+      chest: { pos: [0, 0.98, 0.3], r: [1.15, 0.95, 0.82], color: 'main' },
+      bib: { pos: [0, 0.8, 1.06], r: [0.5, 0.6, 0.18], color: 'light', w: 2 },
+      extra: [{ type: 'e', pos: [0, 0.05, 0.0], r: [1.55, 0.12, 1.48], color: 'dark', w: 1.4 }],
+      neckBase: [0, 1.6, 0.5], neckCtrl: [0, 1.95, 0.82], headPos: [0, 2.24, 1.06], neckR: [0.56, 0.46],
+      band: null, legs: true,
+      frontLeg: { top: [0.72, 0.62, 0.9], foot: [0.82, 0.1, 1.2], r: [0.3, 0.26] },
+      paw: { r: [0.39, 0.13, 0.3], color: 'light' },
+      haunch: { pos: [1.08, 0.6, -0.42], r: 0.56, color: 'dark', w: 1.3 }, haunchInner: { off: 0.16, r: 0.38, color: 'main', w: 2.6 },
+      hindPaw: { pos: [1.26, 0.09, 0.38], r: [0.26, 0.1, 0.3], color: 'light' },
+      shoulder: [0.6, 1.7, 0.2], tail: { pos: [0.75, 0.5, -1.3], dir: [0.2, 0, -1] } },
+    head: { size: 1.18, muzzle: 1, pitch: 0.05,
+      cranium: { pos: [0, 0.08, -0.06], r: [0.49, 0.42, 0.4] },
+      cheeks: { pos: [0.22, -0.1, 0.18], r: 0.23, color: 'main' },
+      snout: { a: [0, -0.08, 0.22], b: [0, -0.12, 0.42], ra: 0.23, rb: 0.2, color: 'cream' },
+      brow: { pos: [0, 0.14, 0.25], r: [0.38, 0.09, 0.12], color: 'main' },
+      chin: { a: [0, -0.24, 0.3], b: [0, -0.74, 0.28], ra: 0.26, rb: 0.04, color: 'cream' },
+      eyes: [0.18, 0.08, 0.37], nose: [0, -0.1, 0.58], ears: [0.38, 0.4, 0.02],
+      hinge: [0, -0.2, 0.02], jawLen: 0.36 },
+    mouth: { open: 0, width: 0.15, teeth: 0, fang: 1, gape: 0, toothLen: 0.05, tongue: 0,
+      jawR: [0.14, 0.1], jawColor: 'cream', interior: '#6b1d26', deep: '#3a0c14', tongueColor: '#d9827b', teethColor: '#f4e8cf', lip: null, frown: 1 },
+    eyes: { kind: 'almond', size: 1, iris: '#f0b12a', pupil: '#2b1608', brow: '#4a2a12' },
+    nose: { kind: 'cat', size: 1, color: '#5e3220' },
+    ears: { kind: 'round', size: 1.3 },
+    coat: null,
+    mane: { radius: 1, length: 0.7, width: 0.28, density: 1, tuft: 0.5, tuftRate: 1, color: '#4f2a14', ruff: '#b67b3f', tones: ['#43230f', '#5a3118', '#774321', '#94592c'], ruffTones: ['#b97d3e', '#cb924f', '#a86c33'] },
+    crest: null,
+    tail: { length: 3.0, bush: 0, curl: 1, side: 0.85, inward: 1, r0: 0.09, r1: 0.07, peak: 0.2, theta: [0.0, 1.45, 2.1, 0.6],
+      tones: ['#4a2913', '#5f351a', '#7a4522'], tuft: { r: 0.2 }, tuftLocks: 0 },
+    wings: null,
+    skin: { main: '#c88c47', light: '#e0b06a', dark: '#8f562a', cream: '#f5ddab', pattern: 1, patKind: 1, patColor: '#97602b', patScale: 6.5, floorShade: 0.45 },
+  },
+};
+const SRC_LABEL = { retriever: 'Retriever', dragon: 'Drache', lion: 'Löwe' };
+const ALL = ['retriever', 'dragon', 'lion'];
+const SLOTS = [
+  { id: 'body', label: 'Rumpf', sources: ALL, sliders: [['size', 'Größe', 0.8, 1.3, 0.01], ['bulk', 'Fülle', 0.75, 1.35, 0.01], ['neck', 'Halslänge', 0.5, 1.6, 0.01]] },
+  { id: 'head', label: 'Kopf', sources: ALL, sliders: [['size', 'Größe', 0.7, 1.6, 0.01], ['muzzle', 'Schnauze', 0.5, 1.8, 0.01], ['pitch', 'Blick nach oben', -0.3, 1.3, 0.01]] },
+  { id: 'mouth', label: 'Maul', sources: ALL, sliders: [['open', 'Öffnung', 0, 1.5, 0.01], ['teeth', 'Zähne je Seite', 0, 9, 1], ['fang', 'Fangzähne', 0.5, 3, 0.01], ['gape', 'Rachen am Hals', 0, 1.3, 0.01]] },
+  { id: 'eyes', label: 'Augen', sources: ALL, sliders: [['size', 'Größe', 0.6, 1.8, 0.01]] },
+  { id: 'nose', label: 'Nase', sources: ALL, sliders: [['size', 'Größe', 0.5, 1.8, 0.01]] },
+  { id: 'ears', label: 'Ohren', sources: ['retriever', 'lion', null], sliders: [['size', 'Größe', 0.5, 1.7, 0.01]] },
+  { id: 'coat', label: 'Fell', sources: ['retriever', null], sliders: [['length', 'Strähnenlänge', 0.2, 0.8, 0.01], ['density', 'Dichte', 0.3, 1.6, 0.01], ['tuft', 'Zotteln', 0, 0.6, 0.01]] },
+  { id: 'mane', label: 'Mähne', sources: ['lion', null], sliders: [['radius', 'Umfang', 0.6, 1.4, 0.01], ['length', 'Strähnenlänge', 0.4, 1.0, 0.01], ['tuft', 'Zotteln', 0, 1, 0.01]] },
+  { id: 'crest', label: 'Stachelkamm', sources: ['dragon', null], sliders: [['length', 'Länge', 0.2, 1.3, 0.01], ['count', 'Anzahl', 8, 110, 1]] },
+  { id: 'tail', label: 'Schwanz', sources: ['retriever', 'lion', null], sliders: [['length', 'Länge', 0.6, 2.2, 0.01], ['bush', 'Buschigkeit', 0, 1.6, 0.01], ['curl', 'Schwung', 0, 1.5, 0.01]] },
+  { id: 'wings', label: 'Flügel', sources: ['dragon', null], sliders: [['span', 'Spannweite', 0.5, 1.4, 0.01], ['fingers', 'Finger', 1, 6, 1], ['scallop', 'Kerben', 0, 1.2, 0.01]] },
+  { id: 'skin', label: 'Haut & Farbe', sources: ALL, sliders: [['pattern', 'Musterdichte', 0, 1.5, 0.01]] },
+];
+function makeCfg(src) {
+  const c = { harmonize: false };
+  for (const sl of SLOTS) { const p = PRESETS[src][sl.id]; c[sl.id] = p ? { src, p: clone(p) } : { src: null, p: null }; }
+  return c;
+}
+
+/* ============================================================
+   SDF-Programm: Kugeln, Ellipsoide, Kegelstümpfe; Vereinigung und Abzug (Rachen)
+   ============================================================ */
+const TAGS = ['torso', 'chest', 'neck', 'head', 'muzzle', 'chin', 'ear', 'leg', 'paw', 'haunch', 'jaw', 'tongue', 'cavity', 'mane', 'tail'];
+const TAG_ID = Object.fromEntries(TAGS.map((t, i) => [t, i]));
+class Prog {
+  constructor() { this.prims = []; }
+  _add(pr, o) {
+    const p = Object.assign({ type: 0, op: 0, k: 0.08, tag: 'torso', color: 'main', w: 1, pat: 0,
+      cx: 0, cy: 0, cz: 0, r: 0, rx: 0, ry: 0, rz: 0, m: null,
+      ax: 0, ay: 0, az: 0, bx: 0, by: 0, bz: 0, ra: 0, rb: 0, bax: 0, bay: 0, baz: 0, l2: 1, rr: 0, a2: 1, il2: 1,
+      minx: 0, miny: 0, minz: 0, maxx: 0, maxy: 0, maxz: 0, tminx: 0, tminy: 0, tminz: 0, tmaxx: 0, tmaxy: 0, tmaxz: 0, open: null, col: null }, pr, o);
+    this.prims.push(p); return p;
+  }
+  sphere(c, r, o = {}) { return this._add({ type: 0, cx: c.x, cy: c.y, cz: c.z, r }, o); }
+  ellipsoid(c, rad, basis, o = {}) {
+    const m = new Float64Array(9);
+    if (basis) { const e = basis.elements; m[0] = e[0]; m[1] = e[1]; m[2] = e[2]; m[3] = e[4]; m[4] = e[5]; m[5] = e[6]; m[6] = e[8]; m[7] = e[9]; m[8] = e[10]; }
+    else { m[0] = 1; m[4] = 1; m[8] = 1; }
+    return this._add({ type: 1, cx: c.x, cy: c.y, cz: c.z, rx: rad[0], ry: rad[1], rz: rad[2], m }, o);
+  }
+  cone(a, b, ra, rb, o = {}) {
+    const bax = b.x - a.x, bay = b.y - a.y, baz = b.z - a.z, l2 = bax * bax + bay * bay + baz * baz, rr = ra - rb, a2 = l2 - rr * rr;
+    if (l2 < 1e-6 || a2 <= 1e-5) return ra >= rb ? this.sphere(a, ra, o) : this.sphere(b, rb, o);
+    return this._add({ type: 2, ax: a.x, ay: a.y, az: a.z, bx: b.x, by: b.y, bz: b.z, ra, rb, bax, bay, baz, l2, rr, a2, il2: 1 / l2 }, o);
+  }
+  finalize() {
+    for (const p of this.prims) {
+      let x0, y0, z0, x1, y1, z1;
+      if (p.type === 0) { x0 = p.cx - p.r; x1 = p.cx + p.r; y0 = p.cy - p.r; y1 = p.cy + p.r; z0 = p.cz - p.r; z1 = p.cz + p.r; }
+      else if (p.type === 1) { const R = Math.max(p.rx, p.ry, p.rz); x0 = p.cx - R; x1 = p.cx + R; y0 = p.cy - R; y1 = p.cy + R; z0 = p.cz - R; z1 = p.cz + R; }
+      else { x0 = Math.min(p.ax - p.ra, p.bx - p.rb); x1 = Math.max(p.ax + p.ra, p.bx + p.rb); y0 = Math.min(p.ay - p.ra, p.by - p.rb); y1 = Math.max(p.ay + p.ra, p.by + p.rb); z0 = Math.min(p.az - p.ra, p.bz - p.rb); z1 = Math.max(p.az + p.ra, p.bz + p.rb); }
+      p.tminx = x0; p.tminy = y0; p.tminz = z0; p.tmaxx = x1; p.tmaxy = y1; p.tmaxz = z1;
+      const pad = 2 * p.k + 0.06;
+      p.minx = x0 - pad; p.miny = y0 - pad; p.minz = z0 - pad; p.maxx = x1 + pad; p.maxy = y1 + pad; p.maxz = z1 + pad;
+    }
+  }
+}
+function primDist(p, x, y, z) {
+  if (p.type === 0) { const dx = x - p.cx, dy = y - p.cy, dz = z - p.cz; return Math.sqrt(dx * dx + dy * dy + dz * dz) - p.r; }
+  if (p.type === 1) {
+    const dx = x - p.cx, dy = y - p.cy, dz = z - p.cz, m = p.m;
+    const lx = m[0] * dx + m[1] * dy + m[2] * dz, ly = m[3] * dx + m[4] * dy + m[5] * dz, lz = m[6] * dx + m[7] * dy + m[8] * dz;
+    const ax = lx / p.rx, ay = ly / p.ry, az = lz / p.rz, k0 = Math.sqrt(ax * ax + ay * ay + az * az);
+    const bx = ax / p.rx, by = ay / p.ry, bz = az / p.rz, k1 = Math.sqrt(bx * bx + by * by + bz * bz);
+    return k1 < 1e-9 ? -Math.min(p.rx, p.ry, p.rz) : k0 * (k0 - 1) / k1;
+  }
+  const pax = x - p.ax, pay = y - p.ay, paz = z - p.az;
+  const yv = pax * p.bax + pay * p.bay + paz * p.baz, zv = yv - p.l2;
+  const qx = pax * p.l2 - p.bax * yv, qy = pay * p.l2 - p.bay * yv, qz = paz * p.l2 - p.baz * yv;
+  const x2 = qx * qx + qy * qy + qz * qz, y2 = yv * yv * p.l2, z2 = zv * zv * p.l2;
+  const k = Math.sign(p.rr) * p.rr * p.rr * x2;
+  if (Math.sign(zv) * p.a2 * z2 > k) return Math.sqrt(x2 + z2) * p.il2 - p.rb;
+  if (Math.sign(yv) * p.a2 * y2 < k) return Math.sqrt(x2 + y2) * p.il2 - p.ra;
+  return (Math.sqrt(x2 * p.a2 * p.il2) + yv * p.rr) * p.il2 - p.ra;
+}
+const FLOOR_K = 0.05;
+function makeField(prog, floorY = 0) {
+  const P = prog.prims;
+  const evalList = (list, cnt, x, y, z) => {
+    let d = 1e3;
+    for (let i = 0; i < cnt; i++) { const p = P[list[i]]; const di = primDist(p, x, y, z); d = p.op === 0 ? smin(d, di, p.k) : smax(d, -di, p.k); }
+    return smax(d, floorY - y, FLOOR_K);
+  };
+  const evalAll = (x, y, z) => {
+    let d = 1e3;
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i];
+      if (x < p.minx || x > p.maxx || y < p.miny || y > p.maxy || z < p.minz || z > p.maxz) continue;
+      const di = primDist(p, x, y, z); d = p.op === 0 ? smin(d, di, p.k) : smax(d, -di, p.k);
+    }
+    return smax(d, floorY - y, FLOOR_K);
+  };
+  // Tetraeder-Gradient: 4 Auswertungen statt 6
+  const grad = (x, y, z, e = 0.005) => {
+    const a = evalAll(x + e, y - e, z - e), b = evalAll(x - e, y - e, z + e), c = evalAll(x - e, y + e, z - e), d = evalAll(x + e, y + e, z + e);
+    return v3(a - b - c + d, -a - b + c + d, -a + b - c + d).normalize();
+  };
+  return { P, evalList, evalAll, grad, floorY };
+}
+/* Vom leeren Raum aus in Richtung D bis zur Oberfläche tasten */
+function cast(F, S0, D, maxD) {
+  if (F.evalAll(S0.x, S0.y, S0.z) <= 0) return null;
+  let t = 0;
+  for (let i = 0; i < 320; i++) {
+    const x = S0.x + D.x * t, y = S0.y + D.y * t, z = S0.z + D.z * t;
+    const d = F.evalAll(x, y, z);
+    if (d < 0.0015) { const p = v3(x, y, z); return { p, n: F.grad(x, y, z) }; }
+    t += Math.min(Math.max(d * 0.8, 0.003), 0.04);
+    if (t > maxD) return null;
+  }
+  return null;
+}
+
+/* ============================================================
+   Vernetzung: Surface Nets auf dem SDF, Farben und Regionen je Vertex
+   ============================================================ */
+function polygonize(Fv, nx, ny, nz, ox, oy, oz, h) {
+  const pos = [], idx = [], sxy = nx * ny;
+  const cubeV = new Int32Array(nx * ny * nz).fill(-1);
+  const off = [0, 1, nx, nx + 1, sxy, sxy + 1, sxy + nx, sxy + nx + 1];
+  const cxo = [0, 1, 0, 1, 0, 1, 0, 1], cyo = [0, 0, 1, 1, 0, 0, 1, 1], czo = [0, 0, 0, 0, 1, 1, 1, 1];
+  const E = [0, 1, 2, 3, 4, 5, 6, 7, 0, 2, 1, 3, 4, 6, 5, 7, 0, 4, 1, 5, 2, 6, 3, 7];
+  const val = new Float32Array(8), strides = [1, nx, sxy];
+  for (let z = 0; z < nz - 1; z++) for (let y = 0; y < ny - 1; y++) for (let x = 0; x < nx - 1; x++) {
+    const i0 = x + nx * y + sxy * z;
+    let mask = 0;
+    for (let g = 0; g < 8; g++) { const v = Fv[i0 + off[g]]; val[g] = v; if (v < 0) mask |= 1 << g; }
+    if (mask === 0 || mask === 255) continue;
+    let ax = 0, ay = 0, az = 0, cnt = 0;
+    for (let e = 0; e < 24; e += 2) {
+      const a = E[e], b = E[e + 1];
+      if (((mask >> a) & 1) === ((mask >> b) & 1)) continue;
+      const t = val[a] / (val[a] - val[b]);
+      ax += cxo[a] + t * (cxo[b] - cxo[a]); ay += cyo[a] + t * (cyo[b] - cyo[a]); az += czo[a] + t * (czo[b] - czo[a]); cnt++;
+    }
+    cubeV[i0] = pos.length / 3;
+    pos.push(ox + (x + ax / cnt) * h, oy + (y + ay / cnt) * h, oz + (z + az / cnt) * h);
+    const coord = [x, y, z];
+    for (let a3 = 0; a3 < 3; a3++) {
+      const bit = 1 << a3, s0 = mask & 1, s1 = (mask >> bit) & 1;
+      if (s0 === s1) continue;
+      const j = (a3 + 1) % 3, k = (a3 + 2) % 3;
+      if (coord[j] === 0 || coord[k] === 0) continue;
+      const dj = strides[j], dk = strides[k];
+      const A = cubeV[i0], B = cubeV[i0 - dj], C = cubeV[i0 - dj - dk], D = cubeV[i0 - dk];
+      if (B < 0 || C < 0 || D < 0) continue;
+      if (s0) idx.push(A, B, C, A, C, D); else idx.push(A, C, B, A, D, C);
+    }
+  }
+  return { pos: new Float32Array(pos), idx: new Uint32Array(idx) };
+}
+
+function meshBody(prog, F, h, mouth) {
+  const P = prog.prims;
+  let x0 = 1e9, y0 = 1e9, z0 = 1e9, x1 = -1e9, y1 = -1e9, z1 = -1e9;
+  for (const p of P) { if (p.op !== 0) continue; x0 = Math.min(x0, p.tminx); y0 = Math.min(y0, p.tminy); z0 = Math.min(z0, p.tminz); x1 = Math.max(x1, p.tmaxx); y1 = Math.max(y1, p.tmaxy); z1 = Math.max(z1, p.tmaxz); }
+  const m = 0.12; x0 -= m; z0 -= m; x1 += m; y1 += m; z1 += m; y0 = Math.max(y0 - m, F.floorY - 2 * h);
+  const nx = Math.ceil((x1 - x0) / h) + 1, ny = Math.ceil((y1 - y0) / h) + 1, nz = Math.ceil((z1 - z0) / h) + 1;
+  const Fv = new Float32Array(nx * ny * nz);
+  const BS = 8, list = new Int32Array(P.length);
+  for (let bz = 0; bz < nz; bz += BS) for (let by = 0; by < ny; by += BS) for (let bx = 0; bx < nx; bx += BS) {
+    const ex = Math.min(nx, bx + BS), ey = Math.min(ny, by + BS), ez = Math.min(nz, bz + BS);
+    const wx0 = x0 + bx * h, wx1 = x0 + (ex - 1) * h, wy0 = y0 + by * h, wy1 = y0 + (ey - 1) * h, wz0 = z0 + bz * h, wz1 = z0 + (ez - 1) * h;
+    let cnt = 0, unions = 0;
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i];
+      if (p.maxx < wx0 || p.minx > wx1 || p.maxy < wy0 || p.miny > wy1 || p.maxz < wz0 || p.minz > wz1) continue;
+      list[cnt++] = i; if (p.op === 0) unions++;
+    }
+    for (let k = bz; k < ez; k++) for (let j = by; j < ey; j++) for (let i = bx; i < ex; i++) {
+      Fv[i + nx * (j + ny * k)] = unions ? F.evalList(list, cnt, x0 + i * h, y0 + j * h, z0 + k * h) : 1;
+    }
+  }
+  const { pos, idx } = polygonize(Fv, nx, ny, nz, x0, y0, z0, h);
+  const V = pos.length / 3;
+  const nrm = new Float32Array(V * 3), col = new Float32Array(V * 3), pat = new Float32Array(V), tag = new Uint8Array(V);
+  const dist = new Float32Array(P.length);
+  const cav = P.filter((p) => p.op === 1);
+  const interior = mouth ? lin(mouth.interior) : null, deep = mouth ? lin(mouth.deep) : null, lipC = mouth && mouth.lip ? lin(mouth.lip) : null;
+  const tmpC = new THREE.Color();
+  for (let v = 0; v < V; v++) {
+    let x = pos[3 * v], y = pos[3 * v + 1], z = pos[3 * v + 2];
+    const d = F.evalAll(x, y, z), g = F.grad(x, y, z);
+    x -= g.x * d; y -= g.y * d; z -= g.z * d;
+    pos[3 * v] = x; pos[3 * v + 1] = y; pos[3 * v + 2] = z;
+    nrm[3 * v] = g.x; nrm[3 * v + 1] = g.y; nrm[3 * v + 2] = g.z;
+    let dmin = 1e9, best = -1;
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i];
+      if (p.op !== 0 || x < p.minx || x > p.maxx || y < p.miny || y > p.maxy || z < p.minz || z > p.maxz) { dist[i] = 1e9; continue; }
+      const di = primDist(p, x, y, z); dist[i] = di; if (di < dmin) { dmin = di; best = i; }
+    }
+    let r = 0, gg = 0, b = 0, ws = 0, pt = 0;
+    for (let i = 0; i < P.length; i++) {
+      if (dist[i] > dmin + 0.35) continue;
+      const p = P[i], w = Math.exp(-(dist[i] - dmin) * 24) * p.w;
+      r += p.col.r * w; gg += p.col.g * w; b += p.col.b * w; pt += p.pat * w; ws += w;
+    }
+    tmpC.setRGB(r / ws, gg / ws, b / ws);
+    let t = best >= 0 ? P[best].tag : 'torso';
+    let pm = pt / ws;
+    if (t !== 'tongue' && interior) {
+      for (const c of cav) {
+        const dc = primDist(c, x, y, z);
+        if (dc < h * 1.3) {
+          const o = c.open; const depth = (o.c.x - x) * o.n.x + (o.c.y - y) * o.n.y + (o.c.z - z) * o.n.z;
+          tmpC.copy(interior).lerp(deep, sstep(0.0, o.depth * 0.8, depth)); t = 'cavity'; pm = 0; break;
+        } else if (lipC && dc < h * 1.3 + 0.03 && P[best].tag !== 'muzzle') { tmpC.lerp(lipC, 0.8); pm = 0; }
+      }
+    }
+    if (t === 'head' || t === 'muzzle' || t === 'chin' || t === 'ear' || t === 'mane') pm = 0;
+    if (y < F.floorY + 0.012) tmpC.multiplyScalar(0.92);
+    col[3 * v] = tmpC.r; col[3 * v + 1] = tmpC.g; col[3 * v + 2] = tmpC.b;
+    pat[v] = pm; tag[v] = TAG_ID[t];
+  }
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3;
+    const ux = pos[b] - pos[a], uy = pos[b + 1] - pos[a + 1], uz = pos[b + 2] - pos[a + 2];
+    const wx = pos[c] - pos[a], wy = pos[c + 1] - pos[a + 1], wz = pos[c + 2] - pos[a + 2];
+    const fx = uy * wz - uz * wy, fy = uz * wx - ux * wz, fz = ux * wy - uy * wx;
+    const sx = nrm[a] + nrm[b] + nrm[c], sy = nrm[a + 1] + nrm[b + 1] + nrm[c + 1], sz = nrm[a + 2] + nrm[b + 2] + nrm[c + 2];
+    if (fx * sx + fy * sy + fz * sz < 0) { const tmp = idx[t + 1]; idx[t + 1] = idx[t + 2]; idx[t + 2] = tmp; }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('aPat', new THREE.BufferAttribute(pat, 1));
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  return { geo, pos, nrm, col, tag, idx, tris: idx.length / 3 };
+}
+
+/* ============================================================
+   Rumpf, Kopf, Ohren, Mähnen-Volumen, Maul: legen SDF-Primitive an und liefern die Anker des Skeletts
+   ============================================================ */
+function buildBody(prog, P) {
+  const S = P.size, Bk = P.bulk, rs = S * (0.55 + 0.45 * Bk);
+  const T = (a, sd = 1) => v3(a[0] * S * Bk * sd, a[1] * S, a[2] * S);
+  const R = (r) => [r[0] * S * Bk, r[1] * S, r[2] * S];
+  const k = P.k * S;
+  prog.ellipsoid(T(P.rump.pos), R(P.rump.r), null, { k, tag: 'torso', color: P.rump.color, pat: 1 });
+  prog.ellipsoid(T(P.belly.pos), R(P.belly.r), null, { k, tag: 'torso', color: P.belly.color, pat: P.belly.pat ?? 0.5 });
+  prog.ellipsoid(T(P.chest.pos), R(P.chest.r), null, { k, tag: 'chest', color: P.chest.color, pat: 0.6 });
+  const chestFront = T(P.chest.pos).z + R(P.chest.r)[2];
+  const nb = T(P.neckBase), nc = T(P.neckCtrl).sub(nb).multiplyScalar(P.neck).add(nb), hp = T(P.headPos).sub(nb).multiplyScalar(P.neck).add(nb);
+  const neck = [], NS = 5;
+  for (let i = 0; i <= NS; i++) { const t = i / NS; neck.push({ p: bez(nb, nc, hp, t), r: lerp(P.neckR[0], P.neckR[1], t) * rs, tan: bezT(nb, nc, hp, t) }); }
+  for (let i = 0; i < NS; i++) prog.cone(neck[i].p, neck[i + 1].p, neck[i].r, neck[i + 1].r, { k: k * 0.8, tag: 'neck', color: 'main', pat: 1 });
+  for (const n of neck) n.front = n.r * (P.band ? Math.max(1, P.band.off + P.band.scale) : 1);
+  if (P.band) {
+    const pts = neck.map((n) => { const fw = v3(0, 0, 1).addScaledVector(n.tan, -n.tan.z).normalize(); return { p: n.p.clone().addScaledVector(fw, n.r * P.band.off), r: n.r * P.band.scale }; });
+    for (let i = 0; i < NS; i++) prog.cone(pts[i].p, pts[i + 1].p, pts[i].r, pts[i + 1].r, { k: k * 0.5, tag: 'neck', color: P.band.color, w: P.band.w, pat: 0 });
+  }
+  if (P.bib) prog.ellipsoid(T(P.bib.pos), R(P.bib.r), null, { k: k * 0.6, tag: 'chest', color: P.bib.color, w: P.bib.w ?? 3, pat: 0 });
+  for (const e of P.extra || []) {
+    const rot = e.rot ? new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(e.rot[0], e.rot[1], e.rot[2])) : null;
+    prog.ellipsoid(T(e.pos), R(e.r), rot, { k: k * 0.6, tag: e.tag || 'torso', color: e.color, w: e.w ?? 2, pat: e.pat ?? 0 });
+  }
+  const paws = [];
+  if (P.legs) {
+    for (const sd of [-1, 1]) {
+      const top = T(P.frontLeg.top, sd), foot = T(P.frontLeg.foot, sd);
+      prog.cone(top, foot, P.frontLeg.r[0] * rs, P.frontLeg.r[1] * rs, { k: k * 0.45, tag: 'leg', color: 'main', pat: 0.3 });
+      const pc = foot.clone(); pc.y = P.paw.r[1] * S; pc.z += P.paw.r[2] * S * 0.35;
+      prog.ellipsoid(pc, R(P.paw.r), null, { k: k * 0.3, tag: 'paw', color: P.paw.color });
+      paws.push({ c: pc, r: R(P.paw.r) });
+      const hc = T(P.haunch.pos, sd);
+      prog.sphere(hc, P.haunch.r * rs, { k, tag: 'haunch', color: P.haunch.color, w: P.haunch.w ?? 1, pat: 1 });
+      if (P.haunchInner) prog.sphere(hc.clone().add(v3(sd * P.haunchInner.off * S, 0.03 * S, 0.06 * S)), P.haunchInner.r * rs, { k: k * 0.5, tag: 'haunch', color: P.haunchInner.color, w: P.haunchInner.w, pat: 0.4 });
+      const hw = T(P.hindPaw.pos, sd); hw.y = P.hindPaw.r[1] * S;
+      prog.ellipsoid(hw, R(P.hindPaw.r), null, { k: k * 0.35, tag: 'paw', color: P.hindPaw.color });
+      paws.push({ c: hw, r: R(P.hindPaw.r) });
+    }
+  }
+  return { S, rs, head: hp, neck, paws, chestFront, shoulders: [-1, 1].map((sd) => T(P.shoulder, sd)), tail: { pos: T(P.tail.pos), dir: A3(P.tail.dir).normalize() } };
+}
+function buildHead(prog, P, B) {
+  const s = P.size * Math.pow(B.S, 0.8), pitch = P.pitch;
+  const f = v3(0, Math.sin(pitch), Math.cos(pitch)), u = v3(0, Math.cos(pitch), -Math.sin(pitch)), x = v3(1, 0, 0);
+  const c = B.head.clone(), mz = P.muzzle, z0 = P.snout.a[2];
+  const W = (a) => c.clone().addScaledVector(x, a[0] * s).addScaledVector(u, a[1] * s).addScaledVector(f, a[2] * s);
+  const Wm = (a) => W([a[0], a[1], z0 + (a[2] - z0) * mz]);
+  const basis = basisM(x, u, f), k = 0.08 * s;
+  prog.ellipsoid(W(P.cranium.pos), P.cranium.r.map((v) => v * s), basis, { k, tag: 'head', color: 'main', pat: 0.12 });
+  if (P.brow) prog.ellipsoid(W(P.brow.pos), P.brow.r.map((v) => v * s), basis, { k: k * 0.6, tag: 'head', color: P.brow.color, pat: 0.1 });
+  if (P.cheeks) for (const sd of [-1, 1]) prog.sphere(W([P.cheeks.pos[0] * sd, P.cheeks.pos[1], P.cheeks.pos[2]]), P.cheeks.r * s, { k: k * 0.8, tag: 'head', color: P.cheeks.color });
+  if (P.snoutE) prog.ellipsoid(Wm(P.snoutE.pos), P.snoutE.r.map((v) => v * s), basis, { k: k * 0.7, tag: 'muzzle', color: P.snout.color, w: 3 });
+  else prog.cone(W(P.snout.a), Wm(P.snout.b), P.snout.ra * s, P.snout.rb * s, { k: k * 0.7, tag: 'muzzle', color: P.snout.color, w: 3 });
+  if (P.chin) prog.cone(W(P.chin.a), W(P.chin.b), P.chin.ra * s, P.chin.rb * s, { k: k * 0.6, tag: 'chin', color: P.chin.color, w: 4 });
+  return { c, f, u, x, s, W, Wm, P, hinge: W(P.hinge), jawLen: P.jawLen * mz, eyes: P.eyes, nose: Wm(P.nose), ears: P.ears };
+}
+
+function buildEars(prog, P, H) {
+  const s = H.s * P.size;
+  for (const sd of [-1, 1]) {
+    const root = H.W([H.ears[0] * sd, H.ears[1], H.ears[2]]);
+    if (P.kind === 'flop') {
+      // lange Schlappohren: hängen mit der Schwerkraft, die flache Seite zeigt schräg nach vorn
+      const down = v3(sd * 0.36, -1, -0.2).normalize();
+      const c = root.clone().addScaledVector(down, P.len * 0.46 * s);
+      const yA = down.clone().negate();
+      const xA = tangentOf(v3(sd * 0.6, 0, 0.8), yA);
+      const zA = v3().crossVectors(xA, yA).normalize();
+      prog.ellipsoid(c, [P.thick * s, P.len * 0.52 * s, P.wid * 0.5 * s], basisM(xA, yA, zA), { k: 0.03 * H.s, tag: 'ear', color: 'main' });
+      prog.ellipsoid(root.clone().addScaledVector(down, 0.08 * s), [P.thick * 1.4 * s, 0.14 * s, P.wid * 0.36 * s], basisM(xA, yA, zA), { k: 0.06 * H.s, tag: 'ear', color: 'main' });
+    } else {
+      const c = root.clone().addScaledVector(H.u, 0.08 * s).addScaledVector(H.x, sd * 0.04 * s);
+      const roll = sd * 0.35;
+      const xA = H.x.clone().multiplyScalar(Math.cos(roll)).addScaledVector(H.u, -Math.sin(roll));
+      const yA = v3().crossVectors(H.f, xA).normalize();
+      prog.ellipsoid(c, [0.11 * s, 0.16 * s, 0.055 * s], basisM(xA, yA, H.f), { k: 0.04 * H.s, tag: 'ear', color: 'main' });
+      prog.ellipsoid(c.clone().addScaledVector(H.f, 0.035 * s).addScaledVector(H.u, -0.01 * s), [0.075 * s, 0.09 * s, 0.03 * s], basisM(xA, yA, H.f), { k: 0.02 * H.s, tag: 'ear', color: 'dark', w: 4 });
+    }
+  }
+}
+
+/* Mähne als Volumen: Kranz hinter dem Gesicht, heller Halskragen, Nacken und das V über der Brust */
+/* Mähne als Volumen: großer Kranz hinter dem Gesicht, heller Kragen ums Gesicht, Nacken über den Rücken und das V über der Brust */
+function buildMane(prog, P, H, B, color, ruff) {
+  const R = P.radius, s = H.s, k = 0.18 * s, basis = basisM(H.x, H.u, H.f);
+  prog.ellipsoid(H.c.clone().addScaledVector(H.f, -0.34 * s).add(v3(0, 0.1 * R * s, 0)), [0.82 * R * s, 0.78 * R * s, 0.46 * s], basis, { k, tag: 'mane', color, w: 1.4 });
+  prog.ellipsoid(H.c.clone().addScaledVector(H.f, -0.18 * s).add(v3(0, -0.06 * s, 0)), [0.6 * R * s, 0.64 * R * s, 0.26 * s], basis, { k: k * 0.6, tag: 'mane', color: ruff, w: 2.8 });
+  prog.ellipsoid(H.c.clone().add(v3(0, -0.42 * s, -0.78 * s)), [0.92 * R * s, 0.66 * s, 0.86 * s], null, { k, tag: 'mane', color, w: 1.4 });
+  const top = v3(0, H.c.y - 0.95 * s, B.chestFront - 0.3), bottom = v3(0, 0.1 * B.S, B.chestFront - 0.02);
+  prog.cone(top, bottom, 0.5 * R * s, 0.05, { k, tag: 'mane', color, w: 1.6 });
+}
+/* Maul: Unterkiefer am Scharnier, ovale Öffnung zwischen Nasenspitze und Kieferspitze (Rachen), optional den Hals hinunter */
+function buildMouth(prog, P, H, B) {
+  const s = H.s, A = P.open, Ll = H.jawLen * s, hinge = H.hinge;
+  const out = { P, H, hinge, closed: A < 0.06, gapePath: null, cav: null };
+  const fJ = H.f.clone().multiplyScalar(Math.cos(A)).addScaledVector(H.u, -Math.sin(A)).normalize();
+  const uJ = v3().crossVectors(fJ, H.x).normalize();
+  prog.cone(hinge, hinge.clone().addScaledVector(fJ, Ll * 0.95), P.jawR[0] * s, P.jawR[1] * s, { k: 0.06 * s, tag: 'jaw', color: P.jawColor });
+  out.fJ = fJ; out.uJ = uJ;
+  if (out.closed) return out;
+  const upperTip = H.nose.clone().addScaledVector(H.f, -0.1 * s), lowerTip = hinge.clone().addScaledVector(fJ, Ll * 0.92);
+  const c = hinge.clone().multiplyScalar(0.2).addScaledVector(upperTip, 0.4).addScaledVector(lowerTip, 0.4);
+  const yC = upperTip.clone().sub(lowerTip).normalize(), zC = tangentOf(c.clone().sub(hinge), yC), xC = H.x.clone();
+  const ay = upperTip.distanceTo(lowerTip) * 0.5 * (P.height ?? 1), ax = P.width * s, az = c.distanceTo(hinge) * 0.95;
+  const center = c.clone().addScaledVector(zC, -az * 0.2);
+  prog.ellipsoid(center, [ax, ay, az], basisM(xC, yC, zC), { op: 1, k: 0.04 * s, tag: 'cavity', open: { c: c.clone().addScaledVector(zC, az * 0.7), n: zC, depth: az * 1.4 } });
+  out.cav = { center, c, xC, yC, zC, ax, ay, az }; out.upperTip = upperTip;
+  if (P.gape > 0.02) {
+    // Rachen am Hals: der Vorderkante folgen (vorläufiges Feld nur aus den Vereinigungen)
+    const tmp = new Prog(); tmp.prims = prog.prims.filter((p) => p.op === 0); tmp.finalize();
+    const Ft = makeField(tmp, 0), RZ = 0.5 * s;
+    const yEnd = Math.max(0.32 * B.S, c.y - P.gape * 2.1 * B.S), path = [c.clone()];
+    for (let i = 1; i <= 14; i++) {
+      const y = lerp(c.y - 0.1, yEnd, i / 14);
+      const hit = cast(Ft, v3(0, y, 6), v3(0, 0, -1), 10);
+      if (hit) path.push(v3(0, y, hit.p.z - RZ * 0.3));
+    }
+    const n = path.length, fwd = v3(0, 0, 1);
+    for (let i = 0; i < n - 1; i++) {
+      const a = path[i], b = path[i + 1], t = i / Math.max(1, n - 2), mid = a.clone().lerp(b, 0.5), seg = b.clone().sub(a), len = seg.length();
+      const yA = seg.normalize(), zA = tangentOf(fwd, yA), xA = v3().crossVectors(yA, zA).normalize();
+      prog.ellipsoid(mid, [ax * lerp(1.08, 0.86, t), len * 0.5 + 0.2 * s, RZ], basisM(xA, yA, zA), { op: 1, k: 0.05 * s, tag: 'cavity', open: { c: mid.clone().addScaledVector(fwd, RZ * 0.6), n: fwd, depth: RZ * 1.6 } });
+    }
+    out.gapePath = path;
+  }
+  if (P.tongue > 0) {
+    const tc = hinge.clone().addScaledVector(fJ, Ll * 0.5).addScaledVector(uJ, P.jawR[1] * s * 1.0);
+    prog.ellipsoid(tc, [ax * 0.9, 0.1 * s, Ll * 0.42 * P.tongue], basisM(H.x, uJ, fJ), { k: 0.02 * s, tag: 'tongue', color: P.tongueColor });
+  }
+  return out;
+}
+/* ============================================================
+   Materialien: weiche, gemalte Schattierung mit Papierkorn
+   ============================================================ */
+const MAT = {};
+let GRAD = null;
+const GRAIN = `
+  float grn = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
+  diffuseColor.rgb *= 0.965 + 0.07 * grn;`;
+function paintMat({ color = 0xffffff, vertexColors = false, side = THREE.FrontSide, twoSided = false, vHead = '', vMain = '', fHead = '', fColor = '', uniforms = null, key = 'paint' } = {}) {
+  const m = new THREE.MeshToonMaterial({ color, vertexColors, gradientMap: GRAD, side });
+  m.onBeforeCompile = (sh) => {
+    if (uniforms) Object.assign(sh.uniforms, uniforms);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + vHead).replace('#include <begin_vertex>', '#include <begin_vertex>\n' + vMain);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + fHead).replace('#include <color_fragment>', '#include <color_fragment>\n' + fColor + GRAIN);
+    if (twoSided) sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n  normal = normalize( vNormal );');
+  };
+  m.customProgramCacheKey = () => key;
+  return m;
+}
+function initMaterials() {
+  const vals = [122, 140, 162, 186, 208, 228, 244, 255], d = new Uint8Array(vals.length * 4);
+  vals.forEach((v, i) => { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; d[i * 4 + 3] = 255; });
+  GRAD = new THREE.DataTexture(d, vals.length, 1, THREE.RGBAFormat);
+  GRAD.minFilter = GRAD.magFilter = THREE.LinearFilter; GRAD.generateMipmaps = false; GRAD.needsUpdate = true;
+  MAT.vc = paintMat({ vertexColors: true, key: 'vc' });
+  MAT.lock = paintMat({ vertexColors: true, side: THREE.DoubleSide, twoSided: true, key: 'lock' });
+  MAT.lock.polygonOffset = true; MAT.lock.polygonOffsetFactor = -1; MAT.lock.polygonOffsetUnits = -2;
+}
+function toon(hex) { return paintMat({ color: hex }); }
+function flat(hex) { return new THREE.MeshBasicMaterial({ color: hex }); }
+const SPH = new THREE.SphereGeometry(1, 24, 16);
+function ellMesh(mat, c, rad, xA, yA, zA) {
+  const m = new THREE.Mesh(SPH, mat);
+  m.matrixAutoUpdate = false;
+  m.matrix.copy(basisM(xA, yA, zA)).scale(v3(rad[0], rad[1], rad[2])).setPosition(c);
+  return m;
+}
+function tubeGeo(points, r0, r1, radial = 8, rfn = null) {
+  const curve = new THREE.CatmullRomCurve3(points);
+  const segs = Math.max(8, points.length * 3), fr = curve.computeFrenetFrames(segs, false);
+  const pos = [], nor = [], idx = [];
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs, p = curve.getPointAt(t), r = rfn ? rfn(t) : lerp(r0, r1, t);
+    const N = fr.normals[i], Bn = fr.binormals[i];
+    for (let j = 0; j <= radial; j++) {
+      const a = (j / radial) * Math.PI * 2, nx = Math.cos(a) * N.x + Math.sin(a) * Bn.x, ny = Math.cos(a) * N.y + Math.sin(a) * Bn.y, nz = Math.cos(a) * N.z + Math.sin(a) * Bn.z;
+      pos.push(p.x + nx * r, p.y + ny * r, p.z + nz * r); nor.push(nx, ny, nz);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) { const a = i * (radial + 1) + j, b = a + radial + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setIndex(idx);
+  return { g, curve, fr, segs };
+}
+function inkLine(group, pts, r, hex) { if (pts.length < 2) return; group.add(new THREE.Mesh(tubeGeo(pts, r, r, 6, (t) => r * (0.55 + 0.45 * Math.sin(Math.PI * t))).g, flat(hex))); }
+
+/* ============================================================
+   Gesicht und Kleinteile: Zähne, Augen, Nase, Mundlinie, Krallen
+   ============================================================ */
+const TOOTH = (() => {
+  const g = new THREE.ConeGeometry(1, 1, 10, 6, false); g.translate(0, 0.5, 0);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const y = p.getY(i); p.setX(i, p.getX(i) + 0.8 * y * y); }
+  g.computeVertexNormals(); return g;
+})();
+/* Zähne am Rand der Öffnung (Winkel: 90° oben, 270° unten) und entlang des Rachens */
+function addTeeth(group, Mo, F) {
+  const P = Mo.P, H = Mo.H, s = H.s, list = [], cv = Mo.cav;
+  if (Mo.closed || !cv) return 0;
+  const c0 = cv.c.clone();
+  for (let i = 0; i < 12 && F.evalAll(c0.x, c0.y, c0.z) <= 0.01; i++) c0.addScaledVector(cv.zC, 0.03);
+  for (const [deg, size] of P.rim || []) {
+    const ph = deg * Math.PI / 180, d = cv.xC.clone().multiplyScalar(Math.cos(ph)).addScaledVector(cv.yC, Math.sin(ph)).normalize();
+    const hit = cast(F, c0, d, Math.max(cv.ax, cv.ay) * 2.5);
+    if (!hit || hit.n.dot(d) > -0.15) continue;
+    const dir = d.clone().negate().addScaledVector(cv.zC, 0.28).normalize();
+    list.push({ p: hit.p, dir, len: P.toothLen * s * size, back: cv.zC.clone().negate() });
+  }
+  for (const [fx, along, size] of P.fangsTop || []) {
+    for (const sd of [-1, 1]) {
+      const q = Mo.hinge.clone().lerp(Mo.upperTip, along).addScaledVector(H.x, sd * fx * s).addScaledVector(H.u, -0.14 * s);
+      if (F.evalAll(q.x, q.y, q.z) <= 0) continue;
+      const hit = cast(F, q, H.u, 0.5 * s);
+      if (!hit || hit.n.dot(H.u) > -0.2) continue;
+      list.push({ p: hit.p, dir: H.u.clone().multiplyScalar(-0.93).addScaledVector(H.f, 0.22).normalize(), len: P.toothLen * s * size, back: H.f.clone() });
+    }
+  }
+  if (Mo.gapePath) {
+    const path = Mo.gapePath; let total = 0;
+    for (let i = 1; i < path.length; i++) total += path[i].distanceTo(path[i - 1]);
+    const count = Math.max(2, Math.round(P.teeth * total / 0.55));
+    for (let c = 1; c <= count; c++) {
+      const want = (c / (count + 0.5)) * total; let acc = 0, pt = path[path.length - 1];
+      for (let i = 1; i < path.length; i++) { const l = path[i].distanceTo(path[i - 1]); if (acc + l >= want) { pt = path[i - 1].clone().lerp(path[i], (want - acc) / l); break; } acc += l; }
+      const t = c / count;
+      for (const sd of [-1, 1]) {
+        const q0 = pt.clone().add(v3(0, 0, -0.06)); if (F.evalAll(q0.x, q0.y, q0.z) <= 0) continue;
+        const hit = cast(F, q0, H.x.clone().multiplyScalar(sd), cv.ax * 3);
+        if (!hit) continue;
+        const vy = t < 0.22 ? -0.75 : 0.85 - 0.25 * (c % 2);
+        const dir = H.x.clone().multiplyScalar(-sd * 0.62).add(v3(0, vy, 0.3)).normalize();
+        list.push({ p: hit.p, dir, len: P.toothLen * s * P.fang * lerp(0.7, 1.05, Math.sin(Math.PI * Math.min(1, t * 1.1))) * (0.8 + 0.4 * ((c * 7 + (sd > 0 ? 3 : 0)) % 5) / 4), back: v3(0, -0.3, -1).normalize() });
+      }
+    }
+  }
+  if (!list.length) return 0;
+  const im = new THREE.InstancedMesh(TOOTH, toon(P.teethColor), list.length);
+  const mtx = new THREE.Matrix4();
+  list.forEach((t, i) => {
+    const y = t.dir; let x = t.back.clone().addScaledVector(y, -t.back.dot(y)); if (x.lengthSq() < 1e-6) x = perp(y); x.normalize();
+    const z = v3().crossVectors(x, y).normalize(), w = Math.min(t.len * 0.3, 0.085 * s);
+    mtx.makeBasis(x, y, z).scale(v3(w, t.len, w)).setPosition(t.p.clone().addScaledVector(y, -Math.min(t.len * 0.14, 0.03 * s)));
+    im.setMatrixAt(i, mtx);
+  });
+  im.castShadow = true; group.add(im);
+  return list.length;
+}
+function eyeFrame(H, n) {
+  const z = n.clone().multiplyScalar(0.55).addScaledVector(H.f, 0.45).normalize();
+  const x = v3().crossVectors(H.u, z).normalize(), y = v3().crossVectors(z, x).normalize();
+  return { x, y, z };
+}
+function addEyes(group, P, H, F) {
+  const s = H.s * P.size;
+  for (const sd of [-1, 1]) {
+    const a = H.W([H.eyes[0] * sd, H.eyes[1], H.eyes[2]]);
+    const out = a.clone().sub(H.c).normalize();
+    if (P.kind === 'happy') {
+      // geschlossenes, lachendes Auge: Bogen, der im Bild nach oben gewölbt ist
+      const pts = [], side = v3(sd, 0, 0), upW = v3(0, 1, 0);
+      for (let i = 0; i <= 8; i++) {
+        const t = i / 4 - 1;
+        const q = a.clone().addScaledVector(side, t * 0.085 * s).addScaledVector(upW, 0.045 * (1 - t * t) * s - 0.02 * s);
+        const o = q.clone().sub(H.c).normalize();
+        const hit = cast(F, q.clone().addScaledVector(o, 0.6 * H.s), o.clone().negate(), 1.2 * H.s);
+        if (hit) pts.push(hit.p.addScaledVector(hit.n, 0.004));
+      }
+      inkLine(group, pts, 0.017 * s, P.ink);
+      continue;
+    }
+    const hit = cast(F, a.clone().addScaledVector(out, 0.7 * H.s), out.clone().negate(), 1.4 * H.s);
+    if (!hit) continue;
+    const fr = eyeFrame(H, hit.n);
+    if (P.kind === 'round') {
+      const r = 0.08 * s, c = hit.p.clone().addScaledVector(hit.n, -r * 0.3);
+      group.add(ellMesh(toon(P.iris), c, [r, r, r], fr.x, fr.y, fr.z));
+      group.add(ellMesh(flat(P.pupil), c.clone().addScaledVector(fr.z, r * 0.74).addScaledVector(fr.x, -sd * r * 0.12), [r * 0.42, r * 0.5, r * 0.32], fr.x, fr.y, fr.z));
+      group.add(ellMesh(flat('#ffffff'), c.clone().addScaledVector(fr.z, r * 0.92).addScaledVector(fr.y, r * 0.38).addScaledVector(fr.x, r * 0.22), [r * 0.12, r * 0.12, r * 0.06], fr.x, fr.y, fr.z));
+      const lid = [];
+      for (let i = 0; i <= 10; i++) { const ph = lerp(0.1, 0.9, i / 10) * Math.PI; lid.push(c.clone().addScaledVector(fr.x, Math.cos(ph) * r * 1.03).addScaledVector(fr.y, Math.sin(ph) * r * 1.03).addScaledVector(fr.z, r * 0.22)); }
+      inkLine(group, lid, r * 0.17, P.lid);
+    } else {
+      const r = 0.062 * s, c = hit.p.clone().addScaledVector(hit.n, -r * 0.3), roll = sd * 0.3;
+      const mx = fr.x.clone().multiplyScalar(Math.cos(roll)).addScaledVector(fr.y, Math.sin(roll)), my = v3().crossVectors(fr.z, mx).normalize();
+      group.add(ellMesh(toon(P.iris), c, [r * 1.3, r * 0.62, r * 0.55], mx, my, fr.z));
+      group.add(ellMesh(flat(P.pupil), c.clone().addScaledVector(fr.z, r * 0.5), [r * 0.3, r * 0.34, r * 0.12], mx, my, fr.z));
+      const lid = [], brow = [];
+      for (let i = 0; i <= 10; i++) { const ph = lerp(0.06, 0.94, i / 10) * Math.PI; lid.push(c.clone().addScaledVector(mx, Math.cos(ph) * r * 1.32).addScaledVector(my, Math.sin(ph) * r * 0.66).addScaledVector(fr.z, r * 0.35)); }
+      for (let i = 0; i <= 6; i++) { const t = i / 6 - 0.5; brow.push(c.clone().addScaledVector(mx, t * r * 3).addScaledVector(my, r * 0.95).addScaledVector(fr.z, r * 0.5)); }
+      inkLine(group, lid, r * 0.16, P.brow);
+      inkLine(group, brow, r * 0.22, P.brow);
+    }
+  }
+}
+function addNose(group, P, H, F) {
+  const s = H.s * P.size;
+  const hit = cast(F, H.nose.clone().addScaledVector(H.f, 0.6 * H.s), H.f.clone().negate(), 1.4 * H.s);
+  if (!hit) return;
+  const z = hit.n, x = v3().crossVectors(H.u, z).normalize(), y = v3().crossVectors(z, x).normalize();
+  if (P.kind === 'button') {
+    group.add(ellMesh(toon(P.color), hit.p.clone().addScaledVector(z, -0.02 * s), [0.125 * s, 0.085 * s, 0.09 * s], x, y, z));
+    group.add(ellMesh(flat('#6d6468'), hit.p.clone().addScaledVector(z, 0.06 * s).addScaledVector(y, 0.035 * s).addScaledVector(x, -0.03 * s), [0.03 * s, 0.014 * s, 0.01 * s], x, y, z));
+  } else if (P.kind === 'cat') {
+    group.add(ellMesh(toon(P.color), hit.p.clone().addScaledVector(z, -0.012 * s).addScaledVector(y, 0.012 * s), [0.075 * s, 0.04 * s, 0.04 * s], x, y, z));
+    group.add(ellMesh(toon(P.color), hit.p.clone().addScaledVector(y, -0.025 * s).addScaledVector(z, -0.008 * s), [0.025 * s, 0.035 * s, 0.03 * s], x, y, z));
+  } else {
+    for (const sd of [-1, 1]) group.add(ellMesh(flat(P.color), hit.p.clone().addScaledVector(x, sd * 0.05 * s).addScaledVector(z, 0.004), [0.024 * s, 0.013 * s, 0.01 * s], x, y, z));
+  }
+}
+function addClosedMouth(group, Mo, F) {
+  const H = Mo.H, s = H.s, fr = Mo.P.frown;
+  const proj = (lx, ly) => { const q = H.W([lx, ly, 1.0]); const hit = cast(F, q, H.f.clone().negate(), 1.6 * s); return hit ? hit.p.addScaledVector(hit.n, 0.004) : null; };
+  const line = (arr) => arr.map(([a, b]) => proj(a, b)).filter(Boolean);
+  const y0 = H.P.nose[1] - 0.07;
+  inkLine(group, line([[0, y0], [0, y0 - 0.09]]), 0.013 * s, '#3b2214');
+  inkLine(group, line([[-0.16, y0 - 0.1 - 0.09 * fr], [-0.09, y0 - 0.115], [0, y0 - 0.09], [0.09, y0 - 0.115], [0.16, y0 - 0.1 - 0.09 * fr]]), 0.014 * s, '#3b2214');
+}
+function addClaws(group, B, F) {
+  const S = B.S, mat = flat('#2b1d15');
+  for (const pw of B.paws) {
+    for (const o of [-0.38, 0, 0.38]) {
+      const q = pw.c.clone().add(v3(o * pw.r[0], pw.r[1] * 0.05, pw.r[2] * 2.2));
+      const hit = cast(F, q, v3(0, 0, -1), pw.r[2] * 3);
+      if (!hit) continue;
+      const z = hit.n, x = v3().crossVectors(v3(0, 1, 0), z).normalize(), y = v3().crossVectors(z, x).normalize();
+      group.add(ellMesh(mat, hit.p.clone().addScaledVector(y, -0.01 * S), [0.014 * S, 0.05 * S, 0.012 * S], x, y, z));
+    }
+  }
+}
+
+/* ============================================================
+   Strähnen: gemalte Flammen, die der Körperoberfläche folgen; einzelne Zotteln stehen am Rand ab.
+   Fell, Mähne und Schwanzbusch nutzen denselben Generator.
+   ============================================================ */
+class Buf {
+  constructor() { this.p = []; this.n = []; this.c = []; this.i = []; }
+  v(p, n, c) { this.p.push(p.x, p.y, p.z); this.n.push(n.x, n.y, n.z); this.c.push(c.r, c.g, c.b); return this.p.length / 3 - 1; }
+  geo() {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(this.p, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(this.n, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(this.c, 3));
+    g.setIndex(this.i); return g;
+  }
+}
+const flameW = (s) => s < 0.3 ? 0.5 + 0.5 * Math.sin((s / 0.3) * Math.PI * 0.5) : Math.pow(Math.max(0, 1 - (s - 0.3) / 0.7), 0.75);
+function paintLock(buf, F, p0, t0, o) {
+  const seg = o.seg || 9, step = o.L / seg, rows = [];
+  const p = p0.clone(); let t = t0.clone();
+  for (let i = 0; i <= seg; i++) {
+    const s = i / seg;
+    const d = F.evalAll(p.x, p.y, p.z) - o.lift, n = F.grad(p.x, p.y, p.z);
+    p.addScaledVector(n, -d);
+    t = tangentOf(t, n);
+    if (o.curl) t = rotAround(t, n, o.curl / seg);
+    const b = v3().crossVectors(n, t).normalize();
+    const off = o.tuft * o.L * Math.pow(s, 1.6);
+    const od = n.clone().multiplyScalar(1 - o.droop).addScaledVector(DOWN, o.droop).addScaledVector(t, 0.35).normalize();
+    rows.push({ p: p.clone().addScaledVector(od, off).addScaledVector(b, o.sway * o.W * Math.sin(Math.PI * s)), n, b, t: t.clone(), w: o.W * flameW(s), s });
+    p.addScaledVector(t, step);
+  }
+  const start = buf.p.length / 3, col = new THREE.Color();
+  for (const r of rows) {
+    const sn = r.n.clone().addScaledVector(r.t, o.tuft * r.s).normalize();
+    col.copy(o.c0).lerp(o.c1, Math.pow(r.s, 0.85));
+    const hw = r.w * 0.5;
+    buf.v(r.p.clone().addScaledVector(r.b, -hw), sn, col.clone().multiplyScalar(o.edge));
+    buf.v(r.p.clone().addScaledVector(r.n, 0.0015 + r.w * 0.04), sn, col.clone().multiplyScalar(o.center));
+    buf.v(r.p.clone().addScaledVector(r.b, hw), sn, col.clone().multiplyScalar(o.edge));
+  }
+  for (let i = 0; i < rows.length - 1; i++) { const a = start + 3 * i, b = a + 3; buf.i.push(a, a + 1, b + 1, a, b + 1, b, a + 1, a + 2, b + 2, a + 1, b + 2, b + 1); }
+}
+function sampleSurface(M, weightFn, nFn, rnd) {
+  const { pos, nrm, col, tag, idx } = M, T = idx.length / 3, cdf = new Float64Array(T);
+  let tot = 0;
+  for (let t = 0; t < T; t++) {
+    const a = idx[3 * t] * 3, b = idx[3 * t + 1] * 3, c = idx[3 * t + 2] * 3;
+    const ux = pos[b] - pos[a], uy = pos[b + 1] - pos[a + 1], uz = pos[b + 2] - pos[a + 2], wx = pos[c] - pos[a], wy = pos[c + 1] - pos[a + 1], wz = pos[c + 2] - pos[a + 2];
+    const cx = uy * wz - uz * wy, cy = uz * wx - ux * wz, cz = ux * wy - uy * wx, ar = 0.5 * Math.sqrt(cx * cx + cy * cy + cz * cz);
+    const px = (pos[a] + pos[b] + pos[c]) / 3, py = (pos[a + 1] + pos[b + 1] + pos[c + 1]) / 3, pz = (pos[a + 2] + pos[b + 2] + pos[c + 2]) / 3;
+    const nx = nrm[a] + nrm[b] + nrm[c], ny = nrm[a + 1] + nrm[b + 1] + nrm[c + 1], nz = nrm[a + 2] + nrm[b + 2] + nrm[c + 2], nl = Math.hypot(nx, ny, nz) || 1;
+    tot += ar * weightFn(v3(px, py, pz), v3(nx / nl, ny / nl, nz / nl), TAGS[tag[idx[3 * t]]]);
+    cdf[t] = tot;
+  }
+  if (tot <= 1e-6) return [];
+  const N = Math.round(nFn(tot)), minD = Math.sqrt(tot / Math.max(N, 1)) * 0.45, cell = Math.max(minD, 1e-3);
+  const grid = new Map(), out = [];
+  for (let tries = 0; tries < N * 6 && out.length < N; tries++) {
+    const r = rnd() * tot; let lo = 0, hi = T - 1;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (cdf[mid] < r) lo = mid + 1; else hi = mid; }
+    const ia = idx[3 * lo], ib = idx[3 * lo + 1], ic = idx[3 * lo + 2];
+    const r1 = Math.sqrt(rnd()), r2 = rnd(), wa = 1 - r1, wb = r1 * (1 - r2), wc = r1 * r2;
+    const p = v3(pos[3 * ia] * wa + pos[3 * ib] * wb + pos[3 * ic] * wc, pos[3 * ia + 1] * wa + pos[3 * ib + 1] * wb + pos[3 * ic + 1] * wc, pos[3 * ia + 2] * wa + pos[3 * ib + 2] * wb + pos[3 * ic + 2] * wc);
+    const gx = Math.floor(p.x / cell), gy = Math.floor(p.y / cell), gz = Math.floor(p.z / cell);
+    let ok = true;
+    for (let dz = -1; dz <= 1 && ok; dz++) for (let dy = -1; dy <= 1 && ok; dy++) for (let dx = -1; dx <= 1 && ok; dx++) {
+      const arr = grid.get(`${gx + dx},${gy + dy},${gz + dz}`); if (!arr) continue;
+      for (const q of arr) if (q.distanceToSquared(p) < minD * minD) { ok = false; break; }
+    }
+    if (!ok) continue;
+    const k = `${gx},${gy},${gz}`; if (!grid.has(k)) grid.set(k, []); grid.get(k).push(p);
+    const n = v3(nrm[3 * ia] * wa + nrm[3 * ib] * wb + nrm[3 * ic] * wc, nrm[3 * ia + 1] * wa + nrm[3 * ib + 1] * wb + nrm[3 * ic + 1] * wc, nrm[3 * ia + 2] * wa + nrm[3 * ib + 2] * wb + nrm[3 * ic + 2] * wc).normalize();
+    const c = new THREE.Color(col[3 * ia] * wa + col[3 * ib] * wb + col[3 * ic] * wc, col[3 * ia + 1] * wa + col[3 * ib + 1] * wb + col[3 * ic + 1] * wc, col[3 * ia + 2] * wa + col[3 * ib + 2] * wb + col[3 * ic + 2] * wc);
+    out.push({ p, n, c, tag: TAGS[tag[ia]] });
+  }
+  return out;
+}
+function pickTone(tones, rnd) { const i = Math.min(tones.length - 1, Math.floor(rnd() * tones.length)); return lin(tones[i]); }
+function paintField(buf, F, M, o, rnd) {
+  const S_ = sampleSurface(M, o.weight, (A) => Math.min(o.cap, o.density * A / (o.L * o.W * 0.5) * o.cover), rnd);
+  S_.sort((a, b) => b.p.y - a.p.y);
+  const N = S_.length;
+  S_.forEach((s, i) => {
+    let t = tangentOf(o.flow(s.p, s.n, s.tag), s.n); t = rotAround(t, s.n, (rnd() - 0.5) * o.jitter);
+    const isTuft = rnd() < o.tuftRate(s.p, s.n, s.tag);
+    const L = o.L * (o.lenMul ? o.lenMul(s.p, s.n, s.tag) : 1) * (0.8 + rnd() * 0.45) * (isTuft ? 1.1 : 1);
+    const tone = pickTone(o.tones, rnd).lerp(s.c, o.surf);
+    const c0 = tone.clone().multiplyScalar(0.84 + rnd() * 0.06), c1 = tone.clone().multiplyScalar(1.0 + rnd() * 0.08);
+    paintLock(buf, F, s.p, t, { L, W: o.W * (0.8 + rnd() * 0.5) * (isTuft ? 0.72 : 1), lift: o.lift + (i / N) * o.liftRange + (isTuft ? o.liftRange : 0), tuft: isTuft ? o.tuft * (0.6 + rnd() * 0.8) : 0, droop: o.droop, sway: (rnd() - 0.5) * o.sway, curl: (rnd() - 0.5) * o.curl, c0, c1, edge: 0.9, center: 1.08, seg: o.seg || 9 });
+  });
+  return N;
+}
+const NO_FUR = new Set(['muzzle', 'cavity', 'tongue', 'jaw', 'paw', 'chin', 'mane']);
+const nearCavity = (cav, p, d) => cav.some((c) => primDist(c, p.x, p.y, p.z) < d);
+/* Fell: Streifen malt der Shader; als Geometrie bleiben nur Zotteln am Rand (Seiten, Ohrenränder, Brust, Bauch) */
+function coatField(P, H, B, cav) {
+  const faceC = H.c.clone().addScaledVector(H.f, 0.25 * H.s);
+  return {
+    strength: 1,
+    weight: (p, n, tag) => (NO_FUR.has(tag) || p.y < 0.05 || (tag === 'head' && n.dot(H.f) > 0.35) || nearCavity(cav, p, 0.08)) ? 0 : 1,
+    flow: (p, n, tag) => {
+      if (tag === 'head') return p.clone().sub(faceC).normalize().add(v3(0, -0.2, 0));
+      if (tag === 'ear' || tag === 'leg') return v3(0, -1, 0.05);
+      if ((tag === 'chest' || tag === 'torso') && n.z > 0.35) return v3(-Math.sign(p.x) * 0.4, -1, 0);
+      return v3(Math.sign(p.x) * 0.3, -1, -0.4);
+    },
+  };
+}
+function coatLocks(buf, F, M, P, H, B, rnd, tones, cav) {
+  const S = B.S, fld = coatField(P, H, B, cav);
+  const lenMul = { head: 0.6, ear: 1.1, leg: 0.6, chest: 1.0, torso: 1, haunch: 0.9, neck: 1.0 };
+  return paintField(buf, F, M, {
+    weight: (p, n, tag) => fld.weight(p, n, tag) * (tag === 'ear' ? (n.y < -0.3 ? 1.2 : 0.05) : Math.abs(n.y) < 0.5 ? 1 : 0.15),
+    flow: fld.flow,
+    lenMul: (p, n, tag) => lenMul[tag] ?? 1,
+    tuftRate: () => 1,
+    L: P.length * S, W: P.width * S, density: P.density, cover: 0.22, cap: 95, tones, surf: P.surf,
+    tuft: P.tuft, lift: 0.006, liftRange: 0.01, droop: 0.4, sway: 0.5, curl: P.curl, jitter: 0.25,
+  }, rnd);
+}
+function maneField(P, H, cav) {
+  const faceC = H.c.clone().addScaledVector(H.f, 0.3 * H.s);
+  return {
+    strength: 1.25,
+    weight: (p, n, tag) => (tag === 'mane' && !nearCavity(cav, p, 0.08)) ? 1 : 0,
+    flow: (p) => {
+      const below = H.c.y - p.y, r = p.clone().sub(faceC).normalize();
+      return below > 0.4 * H.s ? v3(-Math.sign(p.x) * 0.3, -1, 0).addScaledVector(r, 0.3) : r.add(v3(0, -0.1, 0));
+    },
+  };
+}
+function maneLocks(buf, F, M, P, H, B, rnd, tones, cav) {
+  const fld = maneField(P, H, cav);
+  return paintField(buf, F, M, {
+    weight: (p, n, tag) => fld.weight(p, n, tag) * (n.dot(H.f) < 0.45 ? 1 : 0.15),
+    flow: fld.flow,
+    tuftRate: () => 1,
+    L: P.length * H.s, W: P.width * H.s, density: P.density, cover: 0.9, cap: 260, tones, surf: 0.4,
+    tuft: P.tuft, lift: 0.006, liftRange: 0.012, droop: 0.1, sway: 0.7, curl: 0.5, jitter: 0.3, seg: 10,
+  }, rnd);
+}
+function crestSpikes(group, M, P, H, rnd, color) {
+  const S_ = sampleSurface(M, (p, n, tag) => {
+    if (!(tag === 'head' || tag === 'neck')) return 0;
+    const q = p.clone().sub(H.c);
+    if (p.y < H.c.y - 0.62 * H.s) return 0;
+    const back = -q.dot(H.f), up = q.dot(H.u);
+    return (back > 0.05 * H.s && n.z < 0.1) || (up > 0.12 * H.s && n.z < 0.6) ? 1 : 0;
+  }, () => P.count, rnd);
+  if (!S_.length) return 0;
+  const im = new THREE.InstancedMesh(TOOTH, toon(color), S_.length), m = new THREE.Matrix4();
+  S_.forEach((s, i) => {
+    const q = s.p.clone().sub(H.c).normalize();
+    const low = clamp((H.c.y - s.p.y) / H.s, 0, 1);
+    const dir = s.n.clone().multiplyScalar(0.55).addScaledVector(q, 0.45).add(v3(0, 0.55 * (1 - low), -0.5 * (0.4 + low))).normalize();
+    const len = P.length * H.s * (0.5 + rnd() * 0.75) * (1 - 0.35 * low);
+    let x = H.f.clone().negate().addScaledVector(dir, H.f.dot(dir)); if (x.lengthSq() < 1e-4) x = perp(dir); x.normalize();
+    const z = v3().crossVectors(x, dir).normalize(), w = P.width * H.s * (0.75 + rnd() * 0.5);
+    m.makeBasis(x, dir, z).scale(v3(w, len, w)).setPosition(s.p.clone().addScaledVector(dir, -len * 0.12));
+    im.setMatrixAt(i, m);
+  });
+  im.castShadow = true; group.add(im);
+  return S_.length;
+}
+/* ============================================================
+   Schwanz: eigener SDF-Körper (Feder oder Seil mit Quaste) mit eigenen Strähnen, damit er wedeln kann
+   ============================================================ */
+function buildTail(P, B, rnd, tones, ropeHex, skin) {
+  const S = B.S, L = P.length * S, base = B.tail.pos.clone();
+  const D = v3(B.tail.dir.x, 0, B.tail.dir.z).normalize(), Up = v3(0, 1, 0), X = v3(1, 0, 0);
+  const N = 30, pts = [], p = v3();
+  const th = (s) => { const K = P.theta, f = s * (K.length - 1), i = Math.min(K.length - 2, Math.floor(f)); const raw = lerp(K[i], K[i + 1], sstep(0, 1, f - i)); return K[0] + (raw - K[0]) * P.curl; };
+  const d0 = D.clone().multiplyScalar(Math.cos(P.theta[0])).addScaledVector(Up, Math.sin(P.theta[0])).normalize();
+  p.addScaledVector(d0, -0.16 * S); pts.push(p.clone());
+  for (let i = 1; i <= N; i++) {
+    const s = i / N, a = th(s);
+    const dir = D.clone().multiplyScalar(Math.cos(a)).addScaledVector(Up, Math.sin(a)).addScaledVector(X, P.side * 0.55 * (1 - 0.5 * s - (P.inward || 0) * 1.7 * s * s)).normalize();
+    p.addScaledVector(dir, L / N); pts.push(p.clone());
+  }
+  const plume = P.peak * P.bush;
+  const rad = (s) => {
+    let r = lerp(P.r0, P.r1, s) * S + plume * S * Math.pow(Math.sin(Math.PI * Math.min(1, s * 1.02)), 0.85) * (1 - 0.25 * s);
+    if (P.tuft) { const u = (s - 0.72) / 0.28; if (u > 0) r += P.tuft.r * S * Math.pow(u < 0.35 ? Math.sin(u / 0.35 * Math.PI / 2) : Math.max(0, 1 - (u - 0.35) / 0.65), 0.8); }
+    return Math.max(r, 0.014 * S);
+  };
+  const prog = new Prog();
+  const tuftHex = tones[0];
+  for (let i = 0; i < N; i++) {
+    const s = i / N;
+    prog.cone(pts[i], pts[i + 1], rad(s), rad((i + 1) / N), { k: 0.05 * S, tag: 'tail', color: P.tuft && s > 0.72 ? tuftHex : ropeHex });
+  }
+  for (const pr of prog.prims) pr.col = lin(pr.color);
+  prog.finalize();
+  const F = makeField(prog, -base.y);
+  const M = meshBody(prog, F, 0.022 * S, null);
+  const g = new THREE.Group(); g.position.copy(base);
+  const nearest = (q) => { let bi = 0, bd = 1e9; for (let i = 0; i < pts.length; i++) { const d = pts[i].distanceToSquared(q); if (d < bd) { bd = d; bi = i; } } return bi; };
+  const tflow = (q) => { const i = Math.min(N - 1, nearest(q)); return pts[i + 1].clone().sub(pts[i]); };
+  furAttributes(M, [{ strength: 1.1, weight: (q) => (plume > 0.03 || (P.tuft && nearest(q) / N > 0.72)) ? 1 : 0, flow: tflow }]);
+  const mesh = new THREE.Mesh(M.geo, bodyMaterial({ ...skin, pattern: 0, patKind: 0 })); mesh.castShadow = true; g.add(mesh);
+  const buf = new Buf();
+  const count = paintField(buf, F, M, {
+    weight: (q) => { const s = nearest(q) / N; return plume > 0.03 ? (s > 0.15 ? 1 : 0) : (P.tuft && s > 0.8 ? 1 : 0); },
+    flow: tflow,
+    tuftRate: () => 1,
+    L: (plume > 0.03 ? 0.3 : 0.5) * S, W: (plume > 0.03 ? 0.18 : 0.26) * S, density: 1, cover: plume > 0.03 ? 0.25 : 0.35, cap: plume > 0.03 ? 70 : (P.tuftLocks ?? 14), tones, surf: 0.6,
+    tuft: 0.45, lift: 0.006, liftRange: 0.01, droop: 0.0, sway: 0.6, curl: 0.5, jitter: 0.25,
+  }, rnd);
+  if (count) { const lm = new THREE.Mesh(buf.geo(), MAT.lock); lm.castShadow = true; g.add(lm); }
+  return { group: g, count, tris: M.tris };
+}
+
+/* ============================================================
+   Flügel: Fledermaushaut zwischen Fingerknochen, Farbbänder nach Abstand zu den Knochen
+   ============================================================ */
+function wingMaterial(c) {
+  return paintMat({ side: THREE.DoubleSide, key: 'wing',
+    uniforms: { uDark: { value: lin(c.dark) }, uMid: { value: lin(c.mid) }, uLight: { value: lin(c.light) }, uBone: { value: lin(c.bone) } },
+    vHead: 'attribute float aBand;\nvarying float vBand;', vMain: 'vBand = aBand;',
+    fHead: 'uniform vec3 uDark; uniform vec3 uMid; uniform vec3 uLight; uniform vec3 uBone;\nvarying float vBand;',
+    fColor: `float aa = fwidth(vBand) * 1.2;
+      vec3 wc = mix(uBone, uDark, smoothstep(0.015 - aa, 0.015 + aa, vBand));
+      wc = mix(wc, uMid, smoothstep(0.17 - aa, 0.17 + aa, vBand));
+      wc = mix(wc, uLight, smoothstep(0.24 - aa, 0.24 + aa, vBand));
+      diffuseColor.rgb = wc;` });
+}
+function segDist(p, a, b) { const abx = b[0] - a[0], aby = b[1] - a[1], t = clamp(((p[0] - a[0]) * abx + (p[1] - a[1]) * aby) / (abx * abx + aby * aby), 0, 1); return Math.hypot(p[0] - a[0] - abx * t, p[1] - a[1] - aby * t); }
+function qbez2(a, b, c, t) { const u = 1 - t; return [u * u * a[0] + 2 * u * t * b[0] + t * t * c[0], u * u * a[1] + 2 * u * t * b[1] + t * t * c[1]]; }
+/* Krallenflügel: Wurzel entlang der Körperseite, Vorderkante steigt zu einem Haken, darunter Fingerspitzen mit tiefen Bögen */
+/* Krallenflügel nach der Vorlage: Innenkante steigt an der Körperseite auf, oben ein Haken, außen Fingerspitzen mit tiefen Bögen */
+/* Krallenflügel, nach der Vorlage abgenommen: Umriss in Vorderansicht-Koordinaten (Abstand von der Körpermitte, Höhe),
+   die Flügelebene ist nach hinten geneigt (pro Einheit nach außen P.back Einheiten nach hinten). */
+const WING_TRACE = {
+  root: [0.42, 1.3], inner: [[0.47, 1.75], [0.52, 2.3], [0.55, 2.75], [0.5, 2.98]],
+  arch: [[0.62, 3.12], [0.8, 3.24], [0.95, 3.28], [1.15, 3.24], [1.33, 3.14], [1.46, 3.02]],
+  hookUnder: [[1.3, 3.06], [1.1, 3.02], [0.98, 2.9]],
+  tips: [[1.52, 2.08], [1.2, 1.53], [1.0, 1.16], [0.87, 1.05]],
+  notches: [[0.97, 2.62], [0.985, 2.35], [0.77, 1.72], [0.68, 1.31]],
+  bottom: [[0.7, 1.06], [0.58, 1.02]],
+};
+function buildWing(P, B, side, colors) {
+  const S = B.S * P.span, W = WING_TRACE, n = Math.max(1, Math.round(P.fingers));
+  // Fingerspitzen und Kerben für n Finger (bei 4 genau die abgenommenen)
+  const lerp2 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t)];
+  const along = (arr, t) => { const f = t * (arr.length - 1), i = Math.min(arr.length - 2, Math.floor(f)); return lerp2(arr[i], arr[i + 1], f - i); };
+  const tips = [], notches = [];
+  for (let i = 0; i < n; i++) tips.push(along(W.tips, n === 1 ? 0 : i / (n - 1)));
+  for (let i = 0; i < n; i++) notches.push(along(W.notches, n === 1 ? 0 : i / (n - 1)));
+  const pts = [W.root, ...W.inner, ...W.arch, ...W.hookUnder];
+  const sc = P.scallop;
+  for (let i = 0; i < n; i++) {
+    const prevTip = i === 0 ? W.arch[W.arch.length - 1] : tips[i - 1];
+    const nt = notches[i], deep = lerp2(lerp2(prevTip, tips[i], 0.5), nt, sc);
+    pts.push(lerp2(prevTip, deep, 0.55), deep, lerp2(deep, tips[i], 0.45), tips[i]);
+  }
+  pts.push(...W.bottom);
+  // weich interpolieren, Spitzen bleiben spitz (lineare Unterteilung + leichte Glättung der Kerben)
+  const crv = new THREE.CatmullRomCurve3(pts.map((q) => v3(q[0], q[1], 0)), true, 'centripetal');
+  const contour = crv.getSpacedPoints(220).slice(0, -1).map((v) => [v.x, v.y]);
+  const shape = contour.map((q) => new THREE.Vector2(q[0], q[1]));
+  const tris = THREE.ShapeUtils.triangulateShape(shape, []);
+  // feiner unterteilen, damit die Farbbänder sauber werden
+  let verts = shape.map((v) => [v.x, v.y]), faces = tris.map((t) => [...t]);
+  for (let lv = 0; lv < 2; lv++) {
+    const nf = [], cache = new Map();
+    const mid = (a, b) => { const key = a < b ? a + '_' + b : b + '_' + a; if (!cache.has(key)) { cache.set(key, verts.length); verts.push(lerp2(verts[a], verts[b], 0.5)); } return cache.get(key); };
+    for (const [a, b, c] of faces) { const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a); nf.push([a, ab, ca], [ab, b, bc], [ca, bc, c], [ab, bc, ca]); }
+    faces = nf;
+  }
+  const arm = [W.root, ...W.inner];
+  const distPoly = (q, poly, closed) => { let d = 9; for (let i = 0; i < poly.length - (closed ? 0 : 1); i++) d = Math.min(d, segDist(q, poly[i], poly[(i + 1) % poly.length])); return d; };
+  const back = P.back, sh = B.shoulders[side < 0 ? 0 : 1];
+  const to3 = (q) => v3(sh.x + side * (q[0] - W.root[0]) * S, sh.y + (q[1] - W.root[1]) * S, sh.z - (q[0] - W.root[0]) * back * S);
+  const pos = [], band = [], idx = [];
+  for (const q of verts) {
+    const p3 = to3(q); pos.push(p3.x, p3.y, p3.z);
+    const da = distPoly(q, arm, false), de = distPoly(q, contour, true);
+    band.push(de < 0.022 ? 0.0 : Math.min(da, 0.06 + de * 3.5));
+  }
+  for (const f of faces) idx.push(f[0], f[1], f[2]);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aBand', new THREE.Float32BufferAttribute(band, 1)); g.setIndex(idx); g.computeVertexNormals();
+  const pivot = to3(W.root);
+  g.translate(-pivot.x, -pivot.y, -pivot.z);
+  const grp = new THREE.Group(); grp.position.copy(pivot);
+  const innerG = new THREE.Group(); grp.add(innerG);
+  const mem = new THREE.Mesh(g, wingMaterial(colors)); mem.castShadow = true; innerG.add(mem);
+  return { group: grp, inner: innerG, side };
+}
+/* ============================================================
+   Körpermaterial mit Hautmuster (Flecken, Schuppenpunkte) im Shader
+   ============================================================ */
+/* Körper: weiche Malschattierung, Hautmuster (Flecken, Schuppenpunkte) und gemalte Flammenstreifen entlang der Fellrichtung */
+function bodyMaterial(skin) {
+  return paintMat({ vertexColors: true, key: 'body',
+    uniforms: { uPatColor: { value: lin(skin.patColor) }, uPatScale: { value: skin.patScale }, uPatKind: { value: skin.patKind }, uPatAmt: { value: skin.pattern } },
+    vHead: 'attribute float aPat;\nattribute vec3 aFlow;\nattribute float aFur;\nvarying float vPat;\nvarying vec3 vObj;\nvarying vec3 vFlow;\nvarying float vFur;',
+    vMain: 'vPat = aPat; vObj = position; vFlow = aFlow; vFur = aFur;',
+    fHead: `uniform vec3 uPatColor; uniform float uPatScale; uniform float uPatKind; uniform float uPatAmt;
+      varying float vPat; varying vec3 vObj; varying vec3 vFlow; varying float vFur;
+      vec3 hash33(vec3 p) { p = fract(p * vec3(.1031, .1030, .0973)); p += dot(p, p.yxz + 33.33); return fract((p.xxy + p.yxx) * p.zyx); }
+      float h31(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+      float vnoise(vec3 p) {
+        vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(mix(h31(i), h31(i + vec3(1,0,0)), f.x), mix(h31(i + vec3(0,1,0)), h31(i + vec3(1,1,0)), f.x), f.y),
+                   mix(mix(h31(i + vec3(0,0,1)), h31(i + vec3(1,0,1)), f.x), mix(h31(i + vec3(0,1,1)), h31(i + vec3(1,1,1)), f.x), f.y), f.z);
+      }`,
+    fColor: `if (vFur > 0.01) {
+        vec3 t = normalize(vFlow + vec3(1e-5));
+        vec3 q = vObj - t * dot(vObj, t) * 0.93;
+        float n = vnoise(q * 3.6) * 0.62 + vnoise(q * 8.5 + 11.7) * 0.38 + (vnoise(vObj * 1.3 + 3.1) - 0.5) * 0.25;
+        float aa = fwidth(n) + 0.012;
+        float k = mix(0.87, 1.0, smoothstep(0.38 - aa, 0.38 + aa, n));
+        k = mix(k, 1.1, smoothstep(0.62 - aa, 0.62 + aa, n));
+        diffuseColor.rgb *= mix(1.0, k, vFur);
+      }
+      if (uPatKind > 0.5 && vPat > 0.02 && uPatAmt > 0.001) {
+        vec3 pp = vObj * uPatScale; vec3 ip = floor(pp); vec3 fp = fract(pp);
+        float md = 9.0; float mr = 0.0;
+        for (int k = -1; k <= 1; k++) for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+          vec3 g = vec3(float(i), float(j), float(k)); vec3 hh = hash33(ip + g);
+          vec3 r = g + 0.15 + 0.7 * hh - fp; float d = dot(r, r);
+          if (d < md) { md = d; mr = hh.x; }
+        }
+        md = sqrt(md);
+        float rad = uPatKind < 1.5 ? mix(0.12, 0.26, fract(mr * 7.13)) : 0.34 * clamp(uPatAmt, 0.0, 1.5);
+        float keep = uPatKind < 1.5 ? step(mr, 0.75 * uPatAmt) * smoothstep(0.75, 1.3, vObj.y) : 1.0;
+        float aa2 = fwidth(md);
+        float sp = (1.0 - smoothstep(rad - aa2, rad + aa2, md)) * keep * smoothstep(0.2, 0.6, vPat);
+        diffuseColor.rgb = mix(diffuseColor.rgb, uPatColor, sp * (uPatKind < 1.5 ? 0.8 : 0.7));
+      }` });
+}
+/* Fellrichtung und Fellstärke je Vertex: daraus malt der Shader die Flammenstreifen */
+function furAttributes(M, fields) {
+  const V = M.pos.length / 3, flow = new Float32Array(V * 3), fur = new Float32Array(V);
+  const p = v3(), n = v3();
+  for (let v = 0; v < V; v++) {
+    p.set(M.pos[3 * v], M.pos[3 * v + 1], M.pos[3 * v + 2]); n.set(M.nrm[3 * v], M.nrm[3 * v + 1], M.nrm[3 * v + 2]);
+    const tag = TAGS[M.tag[v]];
+    for (const f of fields) {
+      const w = f.weight(p, n, tag) * f.strength;
+      if (w <= fur[v]) continue;
+      fur[v] = w;
+      const t = tangentOf(f.flow(p, n, tag), n);
+      flow[3 * v] = t.x; flow[3 * v + 1] = t.y; flow[3 * v + 2] = t.z;
+    }
+  }
+  M.geo.setAttribute('aFlow', new THREE.BufferAttribute(flow, 3));
+  M.geo.setAttribute('aFur', new THREE.BufferAttribute(fur, 1));
+}
+
+/* Mähne als geschichtete Flammenblätter: Ringe ums Gesicht (innen hell und kurz, außen dunkel und lang),
+   das V über der Brust und eine Bahn, die über Nacken und Rücken nach hinten fließt. */
+function petal(buf, base, dir, nrm, L, W, c0, c1, o = {}) {
+  if (o.cav && o.cav.length && (nearCavity(o.cav, base, 0.14) || nearCavity(o.cav, base.clone().addScaledVector(dir, L * 0.5), 0.12))) return false;
+  const seg = 10, bend = o.bend ?? 0.35, sway = o.sway ?? 0, droop = o.droop ?? 0;
+  let d = dir.clone().normalize(), n = tangentOf(nrm, d), b = v3().crossVectors(d, n).normalize();
+  const p = base.clone(), rows = [];
+  for (let i = 0; i <= seg; i++) {
+    const s = i / seg;
+    const dd = d.clone().applyAxisAngle(b, -bend * s).addScaledVector(DOWN, droop * s).normalize();
+    const nn = tangentOf(n, dd), bb = v3().crossVectors(dd, nn).normalize();
+    const q = p.clone().addScaledVector(bb, sway * W * Math.sin(Math.PI * s)); if (q.y < 0.025) q.y = 0.025;
+    rows.push({ p: q, n: nn, b: bb, w: W * flameW(s), s });
+    p.addScaledVector(dd, L / seg);
+  }
+  const start = buf.p.length / 3, col = new THREE.Color();
+  for (const r of rows) {
+    col.copy(c0).lerp(c1, Math.pow(r.s, 0.8));
+    const hw = r.w * 0.5;
+    buf.v(r.p.clone().addScaledVector(r.b, -hw), r.n.clone().addScaledVector(r.b, -0.55).normalize(), col.clone().multiplyScalar(0.88));
+    buf.v(r.p.clone().addScaledVector(r.n, r.w * 0.14), r.n, col.clone().multiplyScalar(1.1));
+    buf.v(r.p.clone().addScaledVector(r.b, hw), r.n.clone().addScaledVector(r.b, 0.55).normalize(), col.clone().multiplyScalar(0.88));
+  }
+  for (let i = 0; i < rows.length - 1; i++) { const a = start + 3 * i, bI = a + 3; buf.i.push(a, a + 1, bI + 1, a, bI + 1, bI, a + 1, a + 2, bI + 2, a + 1, bI + 2, bI + 1); }
+}
+function manePetals(F, P, H, B, rnd, tones, ruffTones, cav) {
+  const buf = new Buf(), R = P.radius, s = H.s, Lk = P.length / 0.7, tf = 1 + P.tuft * 0.4;
+  const Fc = H.c.clone().addScaledVector(H.u, -0.1 * s).addScaledVector(H.f, 0.05 * s);
+  const tone = (arr) => lin(arr[Math.floor(rnd() * arr.length)]);
+  let count = 0;
+  // Ringe ums Gesicht
+  const rings = [
+    { r: 0.46, depth: 0.0, n: 20, L: 0.32, W: 0.2, tones: ruffTones, tilt: 0.2, skip: 0.62, bend: 0.2 },
+    { r: 0.6, depth: 0.12, n: 22, L: 0.42, W: 0.24, tones: tones.slice(2), tilt: 0.35, skip: 0.42, bend: 0.25 },
+    { r: 0.74, depth: 0.26, n: 24, L: 0.52, W: 0.27, tones: tones.slice(1, 3), tilt: 0.55, skip: 0.3, bend: 0.3 },
+    { r: 0.86, depth: 0.42, n: 22, L: 0.6, W: 0.3, tones: tones.slice(0, 2), tilt: 0.75, skip: 0.22, bend: 0.3 },
+  ];
+  for (const rg of rings) {
+    for (let i = 0; i < rg.n; i++) {
+      const th = (i + 0.5 * (rnd() - 0.5)) / rg.n * Math.PI * 2; // 0 = oben
+      const bottom = Math.abs(((th + Math.PI) % (2 * Math.PI)) - Math.PI); // Abstand von oben
+      if (Math.PI - bottom < rg.skip * Math.PI) continue; // unten (Kinn/Brust) frei lassen
+      const d0 = H.x.clone().multiplyScalar(Math.sin(th)).addScaledVector(H.u, Math.cos(th));
+      const aim = Fc.clone().addScaledVector(d0, rg.r * R * s);
+      const hitR = cast(F, aim.clone().addScaledVector(H.f, 3), H.f.clone().negate(), 6);
+      const base = hitR ? hitR.p.addScaledVector(hitR.n, 0.02 + rg.depth * 0.06) : aim.addScaledVector(H.f, -rg.depth * s);
+      const side = Math.abs(Math.sin(th)), low = Math.max(0, -Math.cos(th));
+      const up = Math.max(0, Math.cos(th));
+      const tl = rg.tilt * (1 - 0.6 * up);
+      const dir = d0.clone().multiplyScalar(Math.cos(tl)).addScaledVector(H.f, -Math.sin(tl)).addScaledVector(DOWN, 0.75 * side * (1 - up) + 0.25);
+      const nrm = H.f.clone().multiplyScalar(0.85).addScaledVector(d0, 0.35);
+      const c = tone(rg.tones), c0 = c.clone().multiplyScalar(0.82 + rnd() * 0.08), c1 = c.clone().multiplyScalar(1.02 + rnd() * 0.1);
+      petal(buf, base, dir, nrm, rg.L * s * Lk * (0.85 + rnd() * 0.3) * (1 + 0.15 * side) * tf, rg.W * s * (0.85 + rnd() * 0.3), c0, c1,
+        { bend: rg.bend * (1 - 0.5 * low), droop: 0.25 * side + 0.45 * low, sway: (rnd() - 0.5) * 0.9, cav });
+      count++;
+    }
+  }
+  // V über der Brust: Reihen von Strähnen, die nach unten zur Mitte laufen
+  const top = Fc.y - 0.82 * s, bot = 0.12 * B.S, rows = 7;
+  for (let k = 0; k < rows; k++) {
+    const t = k / (rows - 1), y = lerp(top, bot, t), half = lerp(0.5, 0.06, Math.pow(t, 0.85)) * R * s;
+    const nAcross = Math.max(1, Math.round(half * 2 / (0.16 * s)));
+    for (let j = 0; j < nAcross; j++) {
+      const x = nAcross === 1 ? 0 : lerp(-half, half, j / (nAcross - 1));
+      const hit = cast(F, v3(x, y, 6), v3(0, 0, -1), 10);
+      if (!hit) continue;
+      const edge = Math.abs(x) / Math.max(half, 1e-3);
+      const arr = edge > 0.55 ? tones.slice(0, 2) : edge > 0.25 ? tones.slice(1, 3) : (t < 0.6 ? ruffTones : tones.slice(2));
+      const c = tone(arr), c0 = c.clone().multiplyScalar(0.82), c1 = c.clone().multiplyScalar(1.05);
+      const dir = v3(-x * 0.9, -1, 0.12).normalize();
+      petal(buf, hit.p.clone().addScaledVector(hit.n, 0.03 + 0.02 * (1 - edge)), dir, hit.n, Math.min(0.85 * s * Lk * (0.85 + rnd() * 0.3), (hit.p.y - 0.06) / 0.95), 0.24 * s, c0, c1, { bend: 0.12, sway: (rnd() - 0.5) * 0.6, cav });
+      count++;
+    }
+  }
+  // Bahn über Nacken und Rücken
+  const back0 = Fc.clone().addScaledVector(H.u, 0.7 * s).addScaledVector(H.f, -0.45 * s);
+  const back1 = v3(0, 1.15 * B.S, -1.15 * B.S * P.radius);
+  for (let k = 0; k < 7; k++) {
+    const t = k / 6, c3 = back0.clone().lerp(back1, t);
+    const half = lerp(0.6, 0.4, t) * R * s;
+    for (let j = 0; j < 5; j++) {
+      const x = lerp(-half, half, j / 4);
+      const hit = cast(F, v3(x, c3.y + 2.5, c3.z), v3(0, -1, 0), 6);
+      if (!hit) continue;
+      const c = tone(tones.slice(0, 3)), c0 = c.clone().multiplyScalar(0.8), c1 = c.clone().multiplyScalar(1.05);
+      const dir = v3(x * 0.7, -0.75, -1).normalize();
+      petal(buf, hit.p.clone().addScaledVector(hit.n, 0.04), dir, hit.n, 0.8 * s * Lk * (0.85 + rnd() * 0.3) * tf, 0.38 * s, c0, c1, { bend: 0.1, droop: 0.5, sway: (rnd() - 0.5) * 0.7, cav });
+      count++;
+    }
+  }
+  return { buf, count };
+}
+
+/* ============================================================
+   Wesen zusammensetzen
+   ============================================================ */
+function buildCreature(cfg, quality) {
+  const t0 = performance.now();
+  let h = quality === 'draft' ? 0.06 : 0.032;
+  const rnd = mulberry(20261004);
+  const skin = cfg.skin.p;
+  const pal = { main: skin.main, light: skin.light, dark: skin.dark, cream: skin.cream };
+  const H_ = (hex, ref) => cfg.harmonize ? harmonize(hex, ref, skin.main) : hex;
+  const tonesOf = (arr) => arr.map((c) => H_(c, arr[Math.min(1, arr.length - 1)]));
+  const prog = new Prog();
+  const B = buildBody(prog, cfg.body.p);
+  const H = buildHead(prog, cfg.head.p, B);
+  if (cfg.ears.p) buildEars(prog, cfg.ears.p, H);
+  if (cfg.mane.p) { const mp = cfg.mane.p; buildMane(prog, mp, H, B, H_(mp.color, mp.tones[1]), H_(mp.ruff, mp.tones[1])); }
+  const Mo = buildMouth(prog, cfg.mouth.p, H, B);
+  for (const p of prog.prims) p.col = p.color.startsWith('#') ? lin(p.color) : lin(pal[p.color]);
+  prog.finalize();
+  if (quality !== 'draft') {
+    let x0 = 1e9, y0 = 1e9, z0 = 1e9, x1 = -1e9, y1 = -1e9, z1 = -1e9;
+    for (const p of prog.prims) if (p.op === 0) { x0 = Math.min(x0, p.tminx); y0 = Math.min(y0, p.tminy); z0 = Math.min(z0, p.tminz); x1 = Math.max(x1, p.tmaxx); y1 = Math.max(y1, p.tmaxy); z1 = Math.max(z1, p.tmaxz); }
+    h = clamp(Math.cbrt((x1 - x0) * (y1 - y0) * (z1 - z0) / 520000), 0.028, 0.05);
+  }
+  const F = makeField(prog, 0);
+  const M = meshBody(prog, F, h, cfg.mouth.p);
+  const cav = prog.prims.filter((p) => p.op === 1);
+  const fields = [];
+  if (cfg.coat.p) fields.push(coatField(cfg.coat.p, H, B, cav));
+  if (cfg.mane.p) fields.push(maneField(cfg.mane.p, H, cav));
+  furAttributes(M, fields);
+  if (skin.floorShade) {
+    const dk = lin(skin.dark), cc = new THREE.Color(), ca = M.geo.attributes.color;
+    for (let v = 0; v < ca.count; v++) { const y = M.pos[3 * v + 1]; if (y > 0.3) continue; cc.setRGB(ca.getX(v), ca.getY(v), ca.getZ(v)).lerp(dk, sstep(0.3, 0.04, y) * skin.floorShade); ca.setXYZ(v, cc.r, cc.g, cc.b); }
+    ca.needsUpdate = true;
+  }
+  const root = new THREE.Group(), group = new THREE.Group(); root.add(group);
+  const body = new THREE.Mesh(M.geo, bodyMaterial(skin)); body.castShadow = true; group.add(body);
+  const teeth = addTeeth(group, Mo, F);
+  addEyes(group, cfg.eyes.p, H, F);
+  addNose(group, cfg.nose.p, H, F);
+  if (Mo.closed) addClosedMouth(group, Mo, F);
+  if (B.paws.length) addClaws(group, B, F);
+  const buf = new Buf(); let locks = 0, tris = M.tris;
+  if (cfg.coat.p) locks += coatLocks(buf, F, M, cfg.coat.p, H, B, rnd, tonesOf(cfg.coat.p.tones), cav);
+  if (locks) { const lm = new THREE.Mesh(buf.geo(), MAT.lock); lm.castShadow = true; group.add(lm); }
+  if (cfg.mane.p) {
+    const mp = cfg.mane.p, mt = tonesOf(mp.tones), rt = tonesOf(mp.ruffTones || [mp.ruff]);
+    const res = manePetals(F, mp, H, B, rnd, mt, rt, cav);
+    if (res.count) { const pm = new THREE.Mesh(res.buf.geo(), MAT.lock); pm.castShadow = true; group.add(pm); locks += res.count; }
+  }
+  if (cfg.crest.p) locks += crestSpikes(group, M, cfg.crest.p, H, rnd, H_(cfg.crest.p.color, cfg.crest.p.color));
+  const anim = { wings: [], tail: null };
+  if (cfg.tail.p) {
+    const tp = cfg.tail.p;
+    const ropeHex = tp.peak * tp.bush > 0.03 ? H_(tp.tones[1], tp.tones[1]) : skin.main;
+    const T = buildTail(tp, B, rnd, tonesOf(tp.tones), ropeHex, skin);
+    group.add(T.group); anim.tail = T.group; locks += T.count; tris += T.tris;
+  }
+  if (cfg.wings.p) {
+    const wp = cfg.wings.p, ref = wp.mid;
+    const colors = { bone: H_(wp.bone, ref), dark: H_(wp.dark, ref), mid: H_(wp.mid, ref), light: H_(wp.light, ref) };
+    for (const sd of [-1, 1]) { const w = buildWing(wp, B, sd, colors); group.add(w.group); anim.wings.push(w); }
+  }
+  return { root, group, anim, stats: { ms: Math.round(performance.now() - t0), tris, locks, teeth } };
+}
+
+/* ============================================================
+   Bühne
+   ============================================================ */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(12, 1, 1, 160);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.minDistance = 6; controls.maxDistance = 60; controls.maxPolarAngle = Math.PI * 0.53;
+const hemi = new THREE.HemisphereLight(0xfff6e4, 0x8a7a5c, 1.25); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.4); sun.position.set(-3.2, 6, 4.2); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 0.5, far: 20 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: 0.16, color: 0x2a1c10 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const contactTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 4, 64, 64, 62); gr.addColorStop(0, 'rgba(40,28,16,0.55)'); gr.addColorStop(1, 'rgba(40,28,16,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
+function contactShadow(w, d) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = 0.003; return m; }
+initMaterials();
+
+function themeColor() { return getComputedStyle(document.documentElement).getPropertyValue('--stage').trim() || '#fbfaef'; }
+function applyTheme() { renderer.setClearColor(new THREE.Color(themeColor())); }
+applyTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+
+function resize() { const r = stage.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(stage); resize();
+
+/* ============================================================
+   Zustand und Bedienung
+   ============================================================ */
+let cfg = makeCfg('retriever');
+let mode = 'single', view = 'front';
+let current = [];
+let anim = true;
+const YAW = { front: 0, side: Math.PI / 2, three: 0.62 };
+
+function disposeTree(o) { o.traverse((n) => { if (n.geometry && n.geometry !== SPH && n.geometry !== TOOTH) n.geometry.dispose(); if (n.material && n.material !== MAT.vc && n.material !== MAT.lock) n.material.dispose(); }); }
+function clearScene() { for (const c of current) { scene.remove(c.root); disposeTree(c.root); } current = []; }
+
+function frame() {
+  const box = new THREE.Box3();
+  for (const c of current) box.expandByObject(c.root);
+  if (box.isEmpty()) return;
+  const size = box.getSize(v3()), center = box.getCenter(v3());
+  const fov = camera.fov * Math.PI / 180, fitH = size.y * 0.5 / Math.tan(fov / 2), fitW = Math.max(size.x, size.z * (mode === 'gallery' ? 0.4 : 0.9)) * 0.5 / (Math.tan(fov / 2) * camera.aspect);
+  const dist = Math.max(fitH, fitW) * (mode === 'gallery' ? 1.0 : 1.16) + Math.max(size.z, size.x) * (mode === 'gallery' ? 0.12 : 0.25);
+  controls.target.set(center.x, center.y * 0.95, center.z);
+  camera.position.set(center.x, center.y * 0.95 + dist * 0.06, center.z + dist);
+  controls.update();
+}
+
+let building = false, pending = null;
+function requestBuild(quality = 'final', refit = false) {
+  pending = { quality, refit: refit || (pending && pending.refit) };
+  if (building) return;
+  building = true; document.getElementById('busy').hidden = false;
+  setTimeout(runBuild, 16);
+}
+function runBuild() {
+  const job = pending; pending = null;
+  try {
+    clearScene();
+    const cfgs = mode === 'gallery' ? ALL.map((s) => makeCfg(s)) : [cfg];
+    let ms = 0, tris = 0, locks = 0;
+    cfgs.forEach((c, i) => {
+      const cr = buildCreature(c, job.quality);
+      cr.root.position.x = mode === 'gallery' ? (i - 1) * 3.4 : 0;
+      cr.root.rotation.y = YAW[view];
+      cr.root.add(contactShadow(2.6 * c.body.p.size * c.body.p.bulk, 2.4 * c.body.p.size));
+      scene.add(cr.root); current.push(cr);
+      ms += cr.stats.ms; tris += cr.stats.tris; locks += cr.stats.locks;
+    });
+    document.getElementById('status').textContent = `${cfgs.length > 1 ? '3 Wesen' : 'Gebaut'} in ${ms} ms · ${tris.toLocaleString('de-DE')} Körperdreiecke · ${locks.toLocaleString('de-DE')} Strähnen`;
+    if (job.refit) frame();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('status').textContent = 'Fehler beim Bauen: ' + e.message;
+  }
+  building = false;
+  if (pending) setTimeout(runBuild, 16); else document.getElementById('busy').hidden = true;
+  updateGenome();
+}
+
+/* Bedienpult aufbauen */
+const slotsEl = document.getElementById('slots');
+function renderSlots() {
+  slotsEl.innerHTML = '';
+  for (const sl of SLOTS) {
+    const st = cfg[sl.id];
+    const sec = document.createElement('section'); sec.className = 'slot';
+    const head = document.createElement('div'); head.className = 'slot-h';
+    const h3 = document.createElement('h3'); h3.textContent = sl.label; head.appendChild(h3);
+    const seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', sl.label + ' von');
+    for (const src of sl.sources) {
+      const b = document.createElement('button'); b.type = 'button'; b.id = `src-${sl.id}-${src || 'aus'}`;
+      b.textContent = src ? SRC_LABEL[src] : 'aus';
+      b.setAttribute('aria-pressed', String(st.src === src));
+      b.disabled = mode === 'gallery';
+      b.addEventListener('click', () => { cfg[sl.id] = src ? { src, p: clone(PRESETS[src][sl.id]) } : { src: null, p: null }; renderSlots(); markRefs(); requestBuild('final'); });
+      seg.appendChild(b);
+    }
+    head.appendChild(seg); sec.appendChild(head);
+    if (st.p) {
+      const box = document.createElement('div'); box.className = 'sliders';
+      for (const [key, label, min, max, step] of sl.sliders) {
+        if (st.p[key] === undefined) continue;
+        const row = document.createElement('label'); row.className = 'sl';
+        const span = document.createElement('span'); span.textContent = label;
+        const inp = document.createElement('input'); inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = st.p[key]; inp.id = `sl-${sl.id}-${key}`; inp.disabled = mode === 'gallery';
+        const out = document.createElement('output'); out.textContent = fmt(st.p[key], step);
+        inp.addEventListener('input', () => { st.p[key] = parseFloat(inp.value); out.textContent = fmt(st.p[key], step); requestBuild('draft'); });
+        inp.addEventListener('change', () => requestBuild('final'));
+        row.append(span, inp, out); box.appendChild(row);
+      }
+      sec.appendChild(box);
+    } else {
+      const p = document.createElement('div'); p.className = 'off'; p.textContent = 'Nicht vorhanden'; sec.appendChild(p);
+    }
+    slotsEl.appendChild(sec);
+  }
+}
+const fmt = (v, step) => step >= 1 ? String(Math.round(v)) : v.toFixed(2).replace('.', ',');
+
+function presetOf() { for (const s of ALL) { if (SLOTS.every((sl) => cfg[sl.id].src === (PRESETS[s][sl.id] ? s : null))) return s; } return null; }
+function markRefs() {
+  const p = mode === 'gallery' ? null : presetOf();
+  for (const s of ALL) document.getElementById('ref-' + s).setAttribute('aria-current', String(mode === 'gallery' || p === s));
+}
+function setView(v) { view = v; for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === v)); for (const c of current) c.root.rotation.y = YAW[v]; frame(); }
+function setMode(m) { mode = m; for (const b of document.querySelectorAll('[data-mode]')) b.setAttribute('aria-pressed', String(b.dataset.mode === m)); renderSlots(); markRefs(); requestBuild('final', true); }
+function loadPreset(s) { cfg = makeCfg(s); cfg.harmonize = document.getElementById('t-harmonize').checked; if (mode !== 'single') { mode = 'single'; for (const b of document.querySelectorAll('[data-mode]')) b.setAttribute('aria-pressed', String(b.dataset.mode === 'single')); } renderSlots(); markRefs(); requestBuild('final', true); }
+function randomMix() {
+  const r = Math.random;
+  for (const sl of SLOTS) { const src = sl.sources[Math.floor(r() * sl.sources.length)]; cfg[sl.id] = src ? { src, p: clone(PRESETS[src][sl.id]) } : { src: null, p: null }; }
+  if (!cfg.wings.p && r() < 0.6) cfg.wings = { src: 'dragon', p: clone(PRESETS.dragon.wings) };
+  if (mode !== 'single') setMode('single'); else { renderSlots(); markRefs(); requestBuild('final', true); }
+}
+function updateGenome() {
+  const g = {}; for (const sl of SLOTS) g[sl.id] = cfg[sl.id].src ? { von: cfg[sl.id].src, ...cfg[sl.id].p } : null;
+  g.farbenAngleichen = cfg.harmonize;
+  document.getElementById('genome').value = JSON.stringify(g, null, 1);
+}
+
+document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+document.querySelectorAll('[data-load]').forEach((b) => b.addEventListener('click', () => loadPreset(b.dataset.load)));
+document.querySelectorAll('.ref[data-preset]').forEach((b) => b.addEventListener('click', () => loadPreset(b.dataset.preset)));
+document.getElementById('p-random').addEventListener('click', randomMix);
+document.getElementById('ref-chimera').addEventListener('click', () => { document.getElementById('lightbox').hidden = false; });
+document.getElementById('lightbox').addEventListener('click', () => { document.getElementById('lightbox').hidden = true; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.getElementById('lightbox').hidden = true; });
+document.getElementById('t-harmonize').addEventListener('change', (e) => { cfg.harmonize = e.target.checked; requestBuild('final'); });
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const animBox = document.getElementById('t-anim'); if (reduce) animBox.checked = false; anim = animBox.checked;
+animBox.addEventListener('change', (e) => { anim = e.target.checked; });
+document.getElementById('copy').addEventListener('click', () => {
+  const ta = document.getElementById('genome'), done = () => { const c = document.getElementById('copied'); c.hidden = false; setTimeout(() => { c.hidden = true; }, 1600); };
+  try { navigator.clipboard.writeText(ta.value).then(done, () => { ta.focus(); ta.select(); }); } catch (_) { ta.focus(); ta.select(); }
+});
+
+/* Animation */
+const clock = new THREE.Clock();
+function loop() {
+  const t = clock.getElapsedTime();
+  for (const c of current) {
+    const k = anim ? 1 : 0;
+    c.group.scale.y = 1 + 0.012 * Math.sin(t * 2.1) * k;
+    for (const w of c.anim.wings) { w.group.rotation.z = w.side * (anim ? 0.05 * Math.sin(t * 2.2) : 0); w.group.rotation.y = -w.side * (anim ? 0.035 * Math.sin(t * 2.2 + 0.6) : 0); }
+    if (c.anim.tail) c.anim.tail.rotation.y = anim ? 0.2 * Math.sin(t * 2.8) : 0;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+
+/* Start */
+const hash = (location.hash || '').slice(1);
+const fromHash = { retriever: 'retriever', drache: 'dragon', loewe: 'lion' }[hash];
+if (fromHash) cfg = makeCfg(fromHash);
+if (hash === 'vergleich') mode = 'gallery';
+for (const b of document.querySelectorAll('[data-mode]')) b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === view));
+renderSlots(); markRefs();
+requestBuild('final', true);
+loop();
+/* Abgleich mit den Vorlagen (Testhilfe): orthografisch, Maßstab in Pixel je Einheit, transparenter Grund */
+function snapOrtho(o) {
+  const w = o.w, h = o.h, cam = new THREE.OrthographicCamera(-o.cx / o.ppu, (w - o.cx) / o.ppu, o.gy / o.ppu, (o.gy - h) / o.ppu, 0.1, 100);
+  cam.position.set(0, 0, 40); cam.lookAt(0, 0, 0);
+  const prev = { size: renderer.getSize(new THREE.Vector2()), clear: renderer.getClearColor(new THREE.Color()), alpha: renderer.getClearAlpha(), pr: renderer.getPixelRatio() };
+  ground.visible = false;
+  const hidden = [];
+  for (const c of current) { c.root.rotation.y = YAW[o.view]; c.root.traverse((n) => { if (n.material && n.material.map === contactTex) { n.visible = false; hidden.push(n); } }); }
+  renderer.setPixelRatio(1); renderer.setSize(w, h, false); renderer.setClearColor(0xffffff, 0);
+  renderer.render(scene, cam);
+  const url = renderer.domElement.toDataURL('image/png');
+  ground.visible = true; for (const n of hidden) n.visible = true;
+  renderer.setPixelRatio(prev.pr); renderer.setClearColor(prev.clear, prev.alpha); resize();
+  for (const c of current) c.root.rotation.y = YAW[view];
+  return url;
+}
+window.__wesen = { snapOrtho, loadPreset, setView, setMode, get busy() { return building || !!pending; }, get cfg() { return cfg; }, set: (slot, src) => { cfg[slot] = src ? { src, p: clone(PRESETS[src][slot]) } : { src: null, p: null }; renderSlots(); requestBuild('final', true); }, harmonize: (v) => { cfg.harmonize = v; document.getElementById('t-harmonize').checked = v; requestBuild('final'); } };
+</script>

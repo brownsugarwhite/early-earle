@@ -1,5 +1,7 @@
 # early earle — Gamedesign-Dokument v0.1
 
+> **Stand 2026-10-04: Dokument des Prototyps 1 (abgeschlossen, Archiv-Branch `prototyp-1`).** Gilt als Erfahrungsschatz; Florians neuer Plan und Hauptprompt für die Produktion ersetzen oder überarbeiten es. Abschluss und Lehren: [`prototyp/README.md`](prototyp/README.md).
+>
 > **Status:** v0.1 (Phase 0), Stand 2026-09-29. Grundlage ist der freigegebene Masterplan v0.1; Belege und Zahlen stammen aus den vier Recherche-Reports in `docs/research/` (kondensiert in [`RESEARCH.md`](RESEARCH.md)). Stilregeln im Detail: [`STYLE.md`](STYLE.md). Engine-Vergleich: [`ADR/0001-engine.md`](ADR/0001-engine.md). Phasen, Prototypen, Werkzeuge: [`PRODUCTION.md`](PRODUCTION.md).
 >
 > **Für wen:** Florian (Art Direction, Entscheidungen), Nicole (Test, Content), KI-Agent (Umsetzung). Das Dokument ist bewusst mit Platz für Optimierung geschrieben.
