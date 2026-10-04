@@ -6,7 +6,7 @@
 
 ## Wo wir stehen
 
-- **Prototyp 1 ist abgeschlossen** und als Git-Tag `prototyp-1` eingefroren (Commit `0b0122c`, CI grün). Abschluss, Entscheidungen, Lehren und offene Punkte: [`prototyp/README.md`](prototyp/README.md).
+- **Prototyp 1 ist abgeschlossen** und als Archiv-Branch `prototyp-1` eingefroren (Commit `0b0122c`, CI grün). Abschluss, Entscheidungen, Lehren und offene Punkte: [`prototyp/README.md`](prototyp/README.md).
 - Die Dokumente sind auf „Prototyp abgeschlossen, Produktion beginnt“ umgestellt: `CLAUDE.md` (neu, Projektgedächtnis), `README.md`, `PRODUCTION.md`, `GDD.md`, `STYLE.md`, ADR-0001/0002 tragen Status-Hinweise.
 - Neu im Repo: Recherche KI-3D-Werkzeuge (`research/ki-3d-tools-2026-10.md`), unbestätigter Plan „Wesen-Baukasten v4“ (`prototyp/wesen-v4-plan-unbestaetigt.md`), Quelltext des prozeduralen Wesen-Baukastens mit Florians GPT-Vorlagen (`prototyp/wesen-baukasten/`), Vergleichsbilder (`progress/wesen-baukasten-v2-*.png`).
 

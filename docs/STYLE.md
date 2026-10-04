@@ -1,6 +1,6 @@
 # Stilbibel: Neo-Brutalismus trifft Eyvind Earle (v0.1)
 
-> **Stand 2026-10-04: Stilbibel des Prototyps 1 (abgeschlossen, Tag `prototyp-1`).** Der finale Look wird mit Florians neuem Plan festgelegt. Neu seit dem Prototyp: Für die Wesen trifft eine gemalte KI-Textur (Meshy-Test) den gewünschten Look deutlich besser als prozedurale Strähnen; siehe [`prototyp/README.md`](prototyp/README.md) und [`research/ki-3d-tools-2026-10.md`](research/ki-3d-tools-2026-10.md).
+> **Stand 2026-10-04: Stilbibel des Prototyps 1 (abgeschlossen, Archiv-Branch `prototyp-1`).** Der finale Look wird mit Florians neuem Plan festgelegt. Neu seit dem Prototyp: Für die Wesen trifft eine gemalte KI-Textur (Meshy-Test) den gewünschten Look deutlich besser als prozedurale Strähnen; siehe [`prototyp/README.md`](prototyp/README.md) und [`research/ki-3d-tools-2026-10.md`](research/ki-3d-tools-2026-10.md).
 >
 > **Status:** v0.3, Stand 2026-09-30 (Verläufe korrigiert nach Florians Rückmeldung: „Earle benutzt Cel-Shading zusammen mit den Verläufen“ — die harten Siebdruckstufen bleiben, große gleichfarbige Flächen verlaufen zusätzlich *innerhalb* ihrer Stufe). Quelle: Masterplan v0.1 (Stilanalyse, Rendering-Regeln, Paletten) und der Stil-Report `docs/research/style-eyvind-earle-realtime.md` (kondensiert in [`RESEARCH.md`](RESEARCH.md)). Referenzbilder: 45 PNGs in `ref/eyvind earle/` (lokal, nicht im Repo).
 >

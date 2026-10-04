@@ -2,7 +2,7 @@
 
 Produktionstitel. Ein levelbasiertes 2048/Merge-Spiel mit Jelly-Blob-Wesen, Guide-Dino REX und einer rotierbaren Planeten-Map im Stil **"Neo-Brutalismus trifft Eyvind Earle"**. Von illudiy.
 
-> **Stand 2026-10-04: Prototyp 1 abgeschlossen** (Git-Tag `prototyp-1`). Er hat bewiesen, dass die Spielidee trägt. Die eigentliche Produktion mit finalem Look beginnt mit Florians neuem Plan (Story, Charaktere, Map). Alles in diesem Repo ist bis dahin der Prototyp-Stand.
+> **Stand 2026-10-04: Prototyp 1 abgeschlossen** (Archiv-Branch `prototyp-1`). Er hat bewiesen, dass die Spielidee trägt. Die eigentliche Produktion mit finalem Look beginnt mit Florians neuem Plan (Story, Charaktere, Map). Alles in diesem Repo ist bis dahin der Prototyp-Stand.
 > Für Sessions: [`CLAUDE.md`](CLAUDE.md) (Projektgedächtnis), [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte), [`docs/UEBERGABE.md`](docs/UEBERGABE.md) (aktuelle Übergabe).
 
 - Plan und Gamedesign: `docs/` (GDD, STYLE, RESEARCH, ADR, PRODUCTION), Roh-Recherchen in `docs/research/`

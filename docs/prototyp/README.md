@@ -1,6 +1,6 @@
 # Prototyp 1 — Abschluss, Entscheidungen, Lehren
 
-> **Stand 2026-10-04.** Prototyp 1 lief vom 29.09. bis 04.10.2026. Eingefroren als Git-Tag **`prototyp-1`** auf Commit `0b0122c` (CI „web“ #87 grün: Typecheck, Unit-Tests, Lint, Build, E2E-Smoke). Dieses Dokument ist die Brücke in die Produktion: Was hat der Prototyp bewiesen, was wurde entschieden, was lief nicht gut, was ist offen.
+> **Stand 2026-10-04.** Prototyp 1 lief vom 29.09. bis 04.10.2026. Eingefroren als Archiv-Branch **`prototyp-1`** auf Commit `0b0122c` (ein Git-Tag ließ sich aus der Cloud nicht pushen, der Proxy lehnt Tags mit 403 ab; Florian kann lokal `git tag prototyp-1 0b0122c` setzen) (CI „web“ #87 grün: Typecheck, Unit-Tests, Lint, Build, E2E-Smoke). Dieses Dokument ist die Brücke in die Produktion: Was hat der Prototyp bewiesen, was wurde entschieden, was lief nicht gut, was ist offen.
 >
 > **Ab jetzt:** Die Produktion mit finalem Look beginnt mit Florians neuem Plan und Hauptprompt. Er arbeitet Story, Charaktere und Map genauer aus und trägt alles in Dokumenten und Screenshots zusammen. Bis dahin wird nichts auf Basis der alten Pläne gebaut.
 

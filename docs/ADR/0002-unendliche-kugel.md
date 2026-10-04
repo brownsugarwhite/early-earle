@@ -2,7 +2,7 @@
 
 **Status:** beschlossen am 2026-09-30 (Florian: „absolute Grundvoraussetzung“)
 
-> **Stand 2026-10-04:** umgesetzt im Prototyp 1 (Tag `prototyp-1`), ergänzt durch „Karte v5“ (15 Autorenwelten, 184 Level, angedeutete Zone 16; Nachtrag unten). Für die Produktion mit Florians neuer Map-Ausarbeitung abgleichen.
+> **Stand 2026-10-04:** umgesetzt im Prototyp 1 (Archiv-Branch `prototyp-1`), ergänzt durch „Karte v5“ (15 Autorenwelten, 184 Level, angedeutete Zone 16; Nachtrag unten). Für die Produktion mit Florians neuer Map-Ausarbeitung abgleichen.
 
 ## Kontext
 
