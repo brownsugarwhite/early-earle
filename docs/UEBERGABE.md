@@ -10,6 +10,12 @@
 - Die Dokumente sind auf „Prototyp abgeschlossen, Produktion beginnt“ umgestellt: `CLAUDE.md` (neu, Projektgedächtnis), `README.md`, `PRODUCTION.md`, `GDD.md`, `STYLE.md`, ADR-0001/0002 tragen Status-Hinweise.
 - Neu im Repo: Recherche KI-3D-Werkzeuge (`research/ki-3d-tools-2026-10.md`), unbestätigter Plan „Wesen-Baukasten v4“ (`prototyp/wesen-v4-plan-unbestaetigt.md`), Quelltext des prozeduralen Wesen-Baukastens mit Florians GPT-Vorlagen (`prototyp/wesen-baukasten/`), Vergleichsbilder (`progress/wesen-baukasten-v2-*.png`).
 
+## Dringend für Florian (vor dem Produktionsstart)
+
+1. **Lokale Commits auf dem Mac sichern:** Der Haupt-Checkout stand am 01.10. auf `main` mit HEAD `b116346` und **6 nicht gepushten Commits** plus ungesicherten Änderungen. GitHub kennt nur `0b0122c`. Auf dem Mac `git log origin/main..main` und `git status` prüfen, dann auf einen eigenen Branch pushen oder bewusst verwerfen (Details: `prototyp/README.md` §7.1).
+2. Pläne und Memory, die nur auf dem Mac liegen (`~/.claude/plans/hi-wir-haben-in-tender-yao.md` = Karte v5, `…/ich-habe-noch-einige-distributed-summit.md` = Iteration 4, Memory `handoff-karte-v5`, `handoff-loader-intro.md`), bei Bedarf nach `docs/prototyp/` kopieren.
+3. Wochenlimit: laut Sitzungsdaten zurückgesetzt am **06.10.2026, 10:00 MESZ**.
+
 ## Was Florian als Nächstes macht
 
 - Eigene Tests (KI-3D-Werkzeuge in der Cloud, Meshy/Tripo/Rodin), Informationen sammeln.
@@ -24,4 +30,8 @@
 
 ## Offen
 
-Siehe [`prototyp/README.md`](prototyp/README.md) §7 (offene Aufgaben aus den letzten Sessions, lokal liegende Arbeit, Regel- und Designfragen).
+Siehe [`prototyp/README.md`](prototyp/README.md) §7. Kurz:
+- ungelöst: Kartenboden fehlte nur in der nativen iOS-App (WebGL2/WebKit-Pfad vermutet; Lehre: App ≠ Safari, Fehleranzeige im Spiel einplanen);
+- nicht mehr ausgeführt: iPhone-Messung der Karte und R4.2–R4.7, Riesenbaum-Meshes zusammenlegen, Wasser-Shader-Zweig, Mobil-Hänger 1,2–1,4 s, Nachschärfen der Welten;
+- offene Entscheidungen aus Iteration 4 (Möwenschatten, Setzkasten quer, Map-Wesen-Größe, „Tippen“, Loader-Zahl, 3D-Held, Logo-Farben) und Tester-App (Apple-ID oder TestFlight);
+- Wesen: Plan v4 nie freigegeben, Werkzeugwahl offen.

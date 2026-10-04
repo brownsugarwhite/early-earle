@@ -19,7 +19,7 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 ## Arbeitsregeln (aus Prototyp 1 gelernt)
 
 1. **Look zuerst beweisen, dann bauen.** Vor größerem Code ein Vergleichsbild bauen (Vorlage und Render nebeneinander, gleiche Ansicht, gleicher Maßstab) und Florian zeigen. Nie Look-Gleichheit versprechen, ohne es getestet zu haben. Wenn ein fertiges Werkzeug (z. B. Meshy) den Look schneller trifft, das früh sagen. (Der prozedurale Wesen-Baukasten kostete einen Tag und blieb weit hinter einem Meshy-Test zurück, den Florian in Minuten gemacht hatte.)
-2. **Früh und oft committen und pushen.** Der Cloud-Container ist flüchtig, Sessions enden abrupt am Nutzungslimit. Nach jedem abgeschlossenen Teilschritt pushen; am Ende jedes Arbeitsblocks `docs/UEBERGABE.md` überschreiben (Stand, offen, nächster Schritt). Lokale Sessions auf Florians Mac: nichts ungepusht liegen lassen.
+2. **Früh und oft committen und pushen, Limits einplanen.** Das 5-Stunden-Limit teilen sich alle Sitzungen und Unteragenten (die nach der Limit-Meldung weiterlaufen); bei ≈ 90 % Übergabe schreiben und Agenten committen lassen. Der Cloud-Container ist flüchtig, Sessions enden abrupt am Nutzungslimit. Nach jedem abgeschlossenen Teilschritt pushen; am Ende jedes Arbeitsblocks `docs/UEBERGABE.md` überschreiben (Stand, offen, nächster Schritt). Lokale Sessions auf Florians Mac: nichts ungepusht liegen lassen.
 3. **Pläne sofort ins Repo.** Lange Pläne erst als Datei unter `docs/` committen, dann zur Freigabe vorlegen. (Der Plan „Wesen-Baukasten v4“ lag nur in `~/.claude/plans` und wäre mit der Session verloren gegangen.)
 4. **Florian testet live.** Den Dev-Server `game-dev` (`.claude/launch.json`, HTTPS 5173) startet Florian; Agenten starten ihn nicht ungefragt. Test-Fenster absprechen, sonst stören Änderungen seine Sitzung.
 5. **Parallele Baustellen** in eigenen Git-Arbeitsbäumen mit Zuständigkeit nach Pfaden; Integration durch die Leitung; danach gemeinsam prüfen.
@@ -30,19 +30,25 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 ## Cloud-Umgebung: Grenzen
 
 - Keine echte GPU (Chromium mit SwiftShader), kein Blender (das pip-Paket `bpy` 5.0.1 wäre installierbar, ungetestet), iPhone nicht erreichbar.
+- Git-Push geht auf Branches, **Tags lehnt der Proxy mit 403 ab** (Archiv deshalb als Branch, z. B. `prototyp-1`). Node 22 reicht für `pnpm install --frozen-lockfile`; Playwright im Repo erwartet eine andere Chromium-Version → `executablePath` auf `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; Screenshots mit DPR 1.
 - Netz über einen Proxy: CDNs wie `cdn.jsdelivr.net` und viele Websites (z. B. meshy.ai, tripo3d.ai, costbench.com) sind gesperrt. npm-Registry und pip gehen. Für Artefakte three.js lokal per npm installieren und im Playwright-Test die CDN-URLs auf die lokale Kopie umleiten.
 - Playwright: global unter `/opt/node-tools/node_modules/playwright`, Chromium unter `/opt/pw-browsers` (nicht `playwright install` ausführen).
 
 ## Bekannte technische Fallen (nicht wiederholen)
 
+- **iOS-App ≠ Safari:** Die App läuft unter `capacitor://localhost` (kein HTTPS) und bekommt vermutlich WebGL2 statt WebGPU. Fehler „nur in der App“ zuerst im WebGL2/WebKit-Pfad suchen (`?backend=webgl`, `?shadowcompat=manual`). In der App höchstens 60 fps. Auf dem Gerät gibt es keine Sicht auf GPU-/Shaderfehler → Fehleranzeige im Spiel einplanen, sonst Safari-Web-Inspektor mit Debug-Build. (Offener Fall: Kartenboden fehlte nur in der App, `docs/prototyp/README.md` §7.2.)
+- **WebKit-Schatten:** `sampler2DShadow` liefert immer 0 → manueller Tiefenvergleich mit `textureLoad` (three r186 erzeugt `textureLod` ohne `.x`; Fix `019cf25`). Ein kaputter Vergleich färbt den Boden in Tinte `#081b25` = Hintergrundfarbe, der Boden wirkt verschwunden.
 - **WebGPU braucht HTTPS**, sonst stiller WebGL2-Fallback. Der Perf-Badge zeigt das Backend; `?backend=webgl` erzwingt den Fallback. Der iOS-Simulator kann nur WebGL2; WebGPU nur auf dem Gerät.
 - **TSL-Funktions-Cache pro Builder** (`packages/render/src/common/tslFunctionCache.ts`). three.js baut TSL-Layout-Funktionen sonst einmal pro Backend und gibt sie an spätere Pipelines ohne deren Puffer weiter (WGSL „unresolved value NodeBuffer“): Plateau und Wesen waren unsichtbar.
 - **three r186 Schatten:** `ShadowNode` zeichnet höchstens einmal je `frameId` und Kamera; mehrere `render()` in einer Aufgabe zeichnen den Schatten nur im ersten. Benchmarks müssen `nodeFrame` je Bild weiterschalten.
 - **Draw Calls wachsen mit der Wesen-Vielfalt:** `CreatureMeshBodies.variantFor()` legt ein Mesh pro Formschlüssel an, `PartPool` ein InstancedMesh pro Modul. `BatchedMesh` zeichnet in three r186 (WebGPU) pro Instanz. Der `BlobParamBlock` liegt nahe der 16-KB-Uniform-Grenze. Die Produktions-Architektur muss Vielfalt tragen (ein Draw Call für alle Körper, Zustand als Datentextur).
+- **Draw Calls messen** per Hook auf `renderer.info` (nicht am Perf-Badge), erst nach dem Brett-Warmup, Median/Max über 10 Bilder. Große Objekte per Horizont-Formel `acos(R/(R+H))` kullen.
+- **Schatten:** Florian will echte, scharfe Schatten ohne Wackeln bei 60 fps; **keine Decal-/aufgelegten Schatten**, Sonne kameragebunden 10°/70°. Wackeln kommt vom Refit je Bild → eingerastete Karte, Slide statt Refit. Bandsplitter bei tiefer Sonne sind keine Risse.
 - **Karte:** `rebuildContent` beim Schwenken ist der größte Hauptthread-Posten; Schattenpässe verdoppeln die Draw Calls (Mac-Baseline `docs/progress/karte-perf-mac-baseline.md`, iPhone-Protokoll `karte-perf-iphone16.md`).
-- **E2E:** `E2E_PORT` für parallele Läufe; Fetch-Sperrports wie 4190 meiden; Wartezeiten an SwiftShader anpassen.
+- **E2E:** `E2E_PORT` für parallele Läufe; Fetch-Sperrports wie 4190 meiden; nur auf ruhiger Maschine (SwiftShader unter Last → Timeouts); während eines Laufs keine Dateien im Vite-Root ändern (Hot Reload); echte GPU `EE_GPU=1` ist Referenz. CI pro Push nur Typen, Unit-Tests, Lint, Build; E2E wöchentlich oder auf Knopfdruck.
+- **Werkzeuge:** JSON-Inhalte nie per `json.dumps` neu schreiben (formatiert die Datei um), gezielt Zeilen ersetzen. macOS: BSD-`sed` (kein `\b`, `-i ''`) → Python; Dateisystem unterscheidet keine Groß-/Kleinschreibung. Vorschau-Tool kann selbstsigniertes HTTPS nicht öffnen → Konfiguration `game-dev-http` (Port 5174).
 - **Schrift:** Caprasimo (OFL) mit `unicode-range`, ihre Mathe-Zeichen sind Platzhalter.
-- **iPhone-Deploy:** `IOS_TEAM_ID=R67BLW649H IOS_DEVICE="eyePhone (2)" pnpm --filter @ee/game ios:device` (Florians Mac); Details in `docs/IOS.md`.
+- **iPhone-Deploy:** `IOS_TEAM_ID=R67BLW649H IOS_DEVICE="eyePhone (2)" pnpm --filter @ee/game ios:device` (Florians Mac; iPhone entsperrt lassen, sonst nur Installation ohne Start); Details in `docs/IOS.md`. Ein gemeinsamer Deploy am Ende eines Arbeitsblocks, mit parallelen Sessions abgestimmt.
 
 ## Projekt-Landkarte
 
