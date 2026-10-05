@@ -71,3 +71,7 @@ Proportionen aller Zonen sind Parameter eines Höhenprofils. Die 13 Grundformen 
 - Die sieben Figuren aus Florians Skizze nachbauen, gleiche Ansicht, Skizze und Render nebeneinander.
 - Maul öffnen/schließen animiert, zwei, drei Maultypen und Aufsätze zum Umschalten.
 - Kriterien: Florian erkennt seine Figuren wieder; das Maul offen und zu wirkt wie ein Körper, keine sichtbaren Nähte; alle sieben aus einer Topologie.
+
+## Nachtrag 2026-10-05: Idee falsch verstanden
+
+Florian: „Nein, du hast es absolut nicht verstanden.“ Die Deutung oben (ein Parameter-Körper, Maul nur als Spalt, Augen kein eigenes Teil, weiche Übergänge, Aufsätze) widerspricht seinen vier Teilen. Neue Deutung, noch nicht bestätigt: ein einziger Grundblob, bei allen Wesen an denselben Linien (Striche in der Skizze) in vier Scheiben geteilt – Unterteil, Mund, Augen, Oberteil. Jedes Tier liefert eigene Scheiben (Dino-Oberteil, Hörner mit Augen, Riesenmaul, Unterteil mit Beinen); weil die Kanten gleich sind, passt jede Scheibe auf jede andere (Klappbuch-Prinzip). Wartet auf Florians Bestätigung.
