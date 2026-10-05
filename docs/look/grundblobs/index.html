@@ -115,7 +115,6 @@ input[type="range"] { width: min(320px, 60vw); accent-color: var(--accent); }
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const Q = new URLSearchParams(location.search);
@@ -126,18 +125,33 @@ const MATS = ['jelly', 'fest', 'fell'];
 const $ = (id) => document.getElementById(id);
 
 // ---------- Daten ----------
-const [data, gltf] = await Promise.all([
-  fetch('assets/grundblobs.json').then(r => r.json()),
-  new GLTFLoader().loadAsync('assets/grundblobs.glb'),
-]);
+const data = await fetch('assets/grundblobs.json').then(r => r.json());
 const vermessung = await fetch('assets/vermessung.json').then(r => r.json());
-const geo = {};
-for (const st of data.stufen) {
-  for (const lod of ['lod0', 'lod1']) {
-    const n = gltf.scene.getObjectByName(`s${String(st.stufe).padStart(2, '0')}_${lod}`);
-    geo[`${st.stufe}_${lod}`] = n.geometry;
+// Meshes: gzip + base64 (Positionen uint16 über die Box, Normalen int8, AO/Dicke/Krümmung uint8, Indizes uint16)
+async function ladeMeshes() {
+  const b64 = (await fetch('assets/grundblobs-mesh.txt').then(r => r.text())).trim();
+  const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const buf = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  const out = {};
+  for (const [key, e] of Object.entries(data.meshes)) {
+    const n = e.vertices;
+    const q = new Uint16Array(buf, e.pos, n * 3), nr = new Int8Array(buf, e.nor, n * 4);
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) {
+      pos[i * 3 + k] = e.min[k] + (q[i * 3 + k] / 65535) * (e.max[k] - e.min[k]);
+      nor[i * 3 + k] = nr[i * 4 + k] / 127;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(buf, e.col, n * 4), 4, true));
+    g.setIndex(new THREE.BufferAttribute(new Uint16Array(buf, e.idx, e.dreiecke * 3), 1));
+    g.computeBoundingSphere();
+    out[key] = g;
   }
+  return out;
 }
+const geo = await ladeMeshes();
 const lin = (c) => new THREE.Color().setRGB(c[0], c[1], c[2], THREE.SRGBColorSpace); // -> linear
 
 // ---------- Renderer ----------
@@ -499,7 +513,7 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
-// ---------- Blob ----------
+// ---------- Wesen (ein Blob) ----------
 function eyeUniforms(st) {
   const P = [new THREE.Vector3(), new THREE.Vector3()], T = [new THREE.Vector3(), new THREE.Vector3()];
   const B = [new THREE.Vector3(), new THREE.Vector3()], N = [new THREE.Vector3(), new THREE.Vector3()];
@@ -521,7 +535,7 @@ function shellGeometry(stufe, lod, count) {
   return furGeoCache[key];
 }
 
-class Blob {
+class Wesen {
   constructor(stufe, mat, { lod = 'lod0', scale = 1 } = {}) {
     this.st = data.stufen[stufe - 1];
     this.stufe = stufe; this.mat = mat; this.scale = scale;
@@ -696,7 +710,7 @@ function buildVergleich() {
   camera.position.set(0, 0, 10); camera.lookAt(0, 0, 0);
   blobs = [];
   for (const mat of MATS) for (const b of vermessung.reihen[mat]) {
-    const blob = new Blob(b.stufe, mat, { lod: 'lod0' });
+    const blob = new Wesen(b.stufe, mat, { lod: 'lod0' });
     blob.group.position.set((b.x0 + b.x1) / 2 / VORLAGE.px, -b.y1 / VORLAGE.px, 0);
     blob.ref = b;
     scene.add(blob.group); blobs.push(blob);
@@ -715,7 +729,7 @@ function addGround(color, size) {
 function buildBuehne() {
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(28, 1, 0.05, 50);
-  const b = new Blob(stageSel.stufe, stageSel.mat, { lod: 'lod0', scale: 1 / data.stufen[stageSel.stufe - 1].hoehe * 0.9 });
+  const b = new Wesen(stageSel.stufe, stageSel.mat, { lod: 'lod0', scale: 1 / data.stufen[stageSel.stufe - 1].hoehe * 0.9 });
   blobs = [b]; scene.add(b.group);
   camera.position.set(0.0, 0.75, 3.3);
   controls = new OrbitControls(camera, canvas);
@@ -741,7 +755,7 @@ function buildBrett() {
     const mat = MATS[Math.floor(Math.random() * 3)];
     const st = data.stufen[stufe - 1];
     const s = (0.42 + 0.48 * (stufe - 1) / 12) / Math.max(st.breite, st.hoehe * 0.9);
-    const b = new Blob(stufe, mat, { lod: 'lod1', scale: s });
+    const b = new Wesen(stufe, mat, { lod: 'lod1', scale: s });
     b.setShells(shellCount);
     b.group.position.set((x - 2.5) * cell, 0, (z - 2.5) * cell);
     scene.add(b.group); blobs.push(b);
