@@ -16,7 +16,7 @@
 
 1. Neuer Plan und Hauptprompt (Story, Charaktere, Map).
 2. Bei Bedarf: eingezeichnete Schnittlinien (`docs/progress/zum-markieren-*.png`), Referenzen für Licht/Material bei Fell und fest.
-3. Entscheidung zur neuen Idee **Zonen-Grundblob** (ein Körper in Zonen Unterteil/Maul/Gesicht/Kappe, Aufsätze an Sockeln): Steckplatz-System, Entscheidungen siehe [`look/zonenblob/SYSTEM.md`](look/zonenblob/SYSTEM.md).
+3. Neue Idee **Zonen-Grundblob** (ein Träger mit Steckplätzen Unterteil, Mund, Augen, Oberteil; geriggte Module, Hals mit eigenem Kopf): Florian erkundet sie erst selbst; Rat und offene Entscheidungen in [`look/zonenblob/SYSTEM.md`](look/zonenblob/SYSTEM.md).
 4. fps auf dem iPhone im Brett-Tab; Branch `brownsugarwhite-wesenstest-meshy` löschen; lokale Mac-Commits (`b116346`) sichern.
 
 ## Nächster Schritt
