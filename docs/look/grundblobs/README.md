@@ -37,3 +37,5 @@ Meshy-Quelldateien: Branch `meshy-test`, `assets/ref-florian/meshy/`.
 ## Nachtrag 2026-10-05: Urteil Mischwesen
 
 Florian: „Die Mischwesen sehen ganz ganz schlimm und schlecht aus.“ Ursachen: Teile aus ganzen, fertig posierten Meshy-Tieren passen in Maßstab, Pose und gebackener Schattierung nicht zusammen; Nähte stecken ungestaltet im Körper; Meshy-Textur neben eigenem Blob-Shader ergibt zwei Stile in einem Wesen; Platzierung ohne Art Direction. Der Zusammenbau zur Laufzeit aus ganzen Meshy-Tieren wird so nicht weiterverfolgt.
+
+Florian ergänzt: „Du verstehst auch den Look überhaupt nicht, und wie du die Meshes zerschnitten hast, ist stümperhaft.“ Die Schnitte waren gerade Ebenen und Ellipsoide über die Flächenmitten: Sie liefen quer durch Hals, Mähne und Kamm statt entlang natürlicher Körpergrenzen, die Ränder sind zackig, und das Ausdünnen erzeugte Splitter. Mit Retopologie und Gelenk-Kantenschleifen haben sie nichts zu tun. Vor dem nächsten Look-Versuch: Florian definiert den Look (Stilvorgaben mit Referenzen), Schnitte nur entlang anatomischer Grenzen und erst nach seiner Freigabe am Vergleichsbild.
