@@ -57,6 +57,28 @@ Das Brett zeigt bis zu 6×6 = 36 Wesen. Draw-Call-Budget ≤ 100 (STYLE §5.8).
 
 Gegenposition aus der vorherigen Session (unbestätigter Plan „Wesen-Baukasten v4“, [`../prototyp/wesen-v4-plan-unbestaetigt.md`](../prototyp/wesen-v4-plan-unbestaetigt.md)): KI-3D nur für **Teile**, **nie Farbe backen**, Farbe/Muster komplett im Shader, Detail aus einer Normal-Map-Bibliothek. Der Meshy-Test vom 04.10. spricht dafür, die gemalte Helligkeit aus der KI-Textur zu **behalten** und nur Farbe und Muster dynamisch zu machen. Die Entscheidung trifft Florian im neuen Plan.
 
+## Nachtrag 2026-10-05: Meshy-API und Meshy-MCP-Server
+
+**Was die API kann** (REST, asynchrone Tasks): Text-to-3D, Image-to-3D, **Multi-Image-to-3D** (Vorder-, Seiten-, Rückansicht), **Retexture** (bestehendes Mesh neu bemalen per Text- oder Bild-Stil), **Remesh** (Zielpolygonzahl, Quad- oder Dreiecks-Topologie), Auto-Rigging und Animation. Parameter u. a. `target_polycount`, `topology`, `pose_mode`, `texture_prompt`, `enable_pbr`, `texture_resolution` (bis 8K). **Rigging nur für Zweibeiner/Menschen** (Animation „biped“) — für unsere Tiere bleibt das eigene Skelett pro Bauplan. API-Zugang ist im Pro-Tarif enthalten (bis 10 parallele Tasks).
+
+**Credits pro Task** (laut Meshy-Hilfe): Image-/Multi-Image-to-3D 20 ohne, 30 mit Textur (2K/4K), 35 bei 8K · Retexture 10 (2K/4K) bzw. 15 (8K) · Remesh 5 · Rigging 5 · Animation 3. Pro-Tarif: 1.000 Credits/Monat.
+
+**Meshy-MCP-Server** (offiziell, npm `@meshy-ai/meshy-mcp-server`, Quelltext `github.com/meshy-dev/meshy-mcp-server`): macht die API als Werkzeuge für Claude nutzbar (Erzeugen, Status, Download, Retexture, Remesh, Rigging, Bildwerkzeuge). Liest den Schlüssel aus `MESHY_API_KEY`.
+
+**Was sich am Workflow verbessert (Vorschlag):**
+1. **Pipeline per Befehl statt Web-App:** Florian legt Ansichten unter `assets/ref-florian/wesen/<id>/` ab; ein Skript erzeugt per Multi-Image-to-3D mit festen Einstellungen, lädt GLB, normalisiert, zerlegt, erzeugt LODs, Manifest und einen Kontaktbogen neben der Vorlage. Reproduzierbar und versioniert.
+2. **Mehrere Kandidaten pro Wesen** (z. B. 3) automatisch erzeugen, Florian wählt im Kontaktbogen.
+3. **Retexture als größter Hebel:** dasselbe Modul-Mesh mit gemalten Varianten bemalen lassen (Fell, Schuppen, Chitin, Tigerstreifen, Flecken, Farbstimmungen). Das ersetzt das größte Stilrisiko — prozedurale Muster, die nicht pinselig genug wirken — durch Meshy-Look-Texturen. Im Spiel ist ein Texturtausch auf demselben Mesh kostenlos und dynamisch; Umfärben im Shader kommt für unbegrenzte Paletten obendrauf. **Testen:** ob Retexture die UVs bzw. die Topologie erhält, wie gut es auf zerlegten Teilen statt ganzen Wesen wirkt, und wie konsistent der Stil über viele Varianten bleibt.
+4. **Remesh für LODs** (5 Credits je Stufe) oder kostenlos selbst per Blender/gltf-transform.
+5. **Claude erzeugt direkt in der Session** über den MCP-Server („drei Varianten Drachenflügel“), verarbeitet und zeigt den Vergleich.
+6. **Nicht im fertigen Spiel:** Erzeugung dauert Minuten, kostet Credits, braucht Netz und schwankt im Ergebnis. Alles entsteht zur Produktionszeit; das Spiel kombiniert fertige Teile und Texturen.
+
+**Grobe Kostenschätzung (Annahmen, nicht gemessen):** 50 Grundwesen × 3 Kandidaten × 30 = 4.500 Credits; 150 Teile × 5 Haut-Varianten × 10 = 7.500 Credits; zusammen ≈ 12.000 Credits — deutlich mehr als ein Pro-Monat. Lieber erst den Beweis (drei Wesen plus Spinne) und die echten Verbrauchswerte messen.
+
+**Voraussetzungen in der Cloud-Umgebung:** `api.meshy.ai` ist derzeit vom Netzwerk-Profil gesperrt (getestet am 05.10.: Verbindung abgelehnt). Florian muss in den Umgebungs-Einstellungen unter Netzwerkzugriff „Custom“ wählen und `api.meshy.ai` (plus die Download-Domain der Modelldateien, zeigt sich beim ersten Lauf) zu den erlaubten Domains hinzufügen, und den API-Schlüssel als Umgebungsvariable `MESHY_API_KEY` hinterlegen (nie in den Chat). Wirksam ab einer neuen Session. Alternativ läuft die Pipeline auf Florians Mac.
+
+Quellen: [Meshy API](https://www.meshy.ai/api) · [Image to 3D API](https://docs.meshy.ai/en/api/image-to-3d) · [Multi-Image to 3D API](https://docs.meshy.ai/en/api/multi-image-to-3d) · [Retexture API](https://docs.meshy.ai/en/api/retexture) · [Remesh API](https://docs.meshy.ai/en/api/remesh) · [Changelog](https://docs.meshy.ai/en/api/changelog) · [Credits pro API-Task](https://help.meshy.ai/en/articles/16815622-how-many-credits-does-each-meshy-api-task-cost) · [Meshy MCP Server (Glama)](https://glama.ai/mcp/servers/meshy-dev/meshy-mcp-server) · [Meshy AI Integration](https://docs.meshy.ai/api/ai)
+
 ## Quellen
 
 - [Meshy Pricing (offiziell)](https://www.meshy.ai/pricing) · [Meshy Free Plan](https://help.meshy.ai/en/articles/15696428-what-is-included-on-the-free-plan) · [Meshy: Why Can't I Download My Model](https://help.meshy.ai/en/articles/10421033-why-can-t-i-download-my-model) · [Meshy Pricing 2026 – 3dcreatorhub](https://3dcreatorhub.com/meshy-ai-pricing) · [Meshy AI Rigging](https://www.meshy.ai/features/ai-auto-rigging)
