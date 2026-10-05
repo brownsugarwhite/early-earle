@@ -68,7 +68,8 @@ def sample(grid, pts):
 
 
 ergebnis = {'einheit': f'{PX_PRO_EINHEIT:.0f} px der Vorlage', 'stufen': []}
-szene = trimesh.Scene()
+CACHE = f"{OUT}/cache"
+os.makedirs(CACHE, exist_ok=True)
 fest = V['reihen']['fest']
 NUR = [int(x) for x in os.environ.get('STUFEN', '').split(',') if x]
 for b in fest:
@@ -139,7 +140,7 @@ for b in fest:
             rg = zr * W0 * f
             row = int(round(cyg - padw)); col = int(round(cxg - padw))
             tloc = tfull[min(row, tfull.shape[0] - 1), min(col, tfull.shape[1] - 1)]
-            czg = padw + (nz - 1) / 2.0 + zz * max(tloc, rg)
+            czg = padw + (nz - 1) / 2.0 + 0.85 * tloc * c + zz * 0.3 * rg
             sph = np.sqrt((gy_ - cyg) ** 2 + (gx_ - cxg) ** 2 + (gz_ - czg) ** 2) - rg
             sdf = smin(sdf, sph, 0.35 * rg)
         del gy_, gx_, gz_
@@ -211,9 +212,7 @@ for b in fest:
         thick /= width_max
         curv = np.clip(sample(lap, pv) * 0.6 + 0.5, 0, 1)
         col = np.stack([ao, np.clip(thick, 0, 1), curv, np.ones(len(pv))], 1)
-        mesh = trimesh.Trimesh(to_world(pv), pf, vertex_normals=nw, process=False)
-        mesh.visual = trimesh.visual.ColorVisuals(mesh, vertex_colors=(col * 255).astype(np.uint8))
-        szene.add_geometry(mesh, node_name=f"s{s:02d}_{name}", geom_name=f"s{s:02d}_{name}")
+        np.savez_compressed(f"{CACHE}/s{s:02d}_{name}.npz", v=to_world(pv).astype(np.float32), f=pf.astype(np.int32), n=nw.astype(np.float32), c=(col * 255).astype(np.uint8))
         info['lods'][name] = dict(dreiecke=int(len(pf)), vertices=int(len(pv)))
     # Augen
     eyes = AUGEN_FIX.get(s) or [(e['cx'], e['cy'], e['w'], e['h']) for e in b['augen']]
@@ -254,9 +253,20 @@ for b in fest:
     info['blasen'] = [[*map(lambda v: round(float(v), 5), to_world(c_[None])[0]), round(float(r_), 5)] for c_, r_ in zip(cand, rad)]
     info['farben'] = {mat: {k: V['reihen'][mat][s - 1][k] for k in ('farbe_mitte', 'farbe_oben', 'farbe_unten', 'farbe_schatten', 'farbe_licht')}
                       for mat in ('jelly', 'fest', 'fell')}
-    ergebnis['stufen'].append(info)
+    json.dump(info, open(f"{CACHE}/s{s:02d}.json", 'w'))
     print(s, info['lods'], 'Augen', len(eye_out), flush=True)
 
+# Zusammensetzen aus dem Zwischenspeicher
+szene = trimesh.Scene()
+for st in range(1, 14):
+    if not os.path.exists(f"{CACHE}/s{st:02d}.json"):
+        continue
+    ergebnis['stufen'].append(json.load(open(f"{CACHE}/s{st:02d}.json")))
+    for name in LOD:
+        z = np.load(f"{CACHE}/s{st:02d}_{name}.npz")
+        mesh = trimesh.Trimesh(z['v'], z['f'], vertex_normals=z['n'], process=False)
+        mesh.visual = trimesh.visual.ColorVisuals(mesh, vertex_colors=z['c'])
+        szene.add_geometry(mesh, node_name=f"s{st:02d}_{name}", geom_name=f"s{st:02d}_{name}")
 szene.export(f"{OUT}/grundblobs.glb")
 json.dump(ergebnis, open(f"{OUT}/grundblobs.json", 'w'), indent=1)
 print('fertig', os.path.getsize(f"{OUT}/grundblobs.glb") / 1e6, 'MB')

@@ -322,7 +322,7 @@ void main() {
   if (zB <= zF) zB = zF;
   float zS = -viewZ(texture2D(uSceneDepth, suv).r);
   float thickObj = max(min(zB, zS) - zF, 0.0) / uScale;
-  float thickN = thickObj / uW;
+  float thickN = thickObj / uW + 0.55 * (1.0 - smoothstep(0.0, 0.18 * uH, vRest.y));
   // Brechung
   vec3 Nv = normalize(vVN);
   vec2 off = Nv.xy * uRefr * clamp(thickN, 0.0, 0.7) * vec2(uRes.y / uRes.x, 1.0);
@@ -540,6 +540,7 @@ class Blob {
     this.F = F;
     if (mat === 'fest') {
       const m = new THREE.ShaderMaterial({ uniforms: { ...this.U, uLight: { value: F.oben.clone().multiplyScalar(1.05) }, uShadow: { value: F.unten.clone().multiplyScalar(0.9) }, uRim: { value: F.unten.clone().multiplyScalar(0.5) } }, vertexShader: COMMON + VERT, fragmentShader: COMMON + FRAG_FEST, vertexColors: true });
+      m.shadowSide = THREE.DoubleSide;
       const mesh = new THREE.Mesh(g0, m); mesh.layers.enable(L_RT); mesh.castShadow = true;
       this.group.add(mesh);
     } else if (mat === 'jelly') {
@@ -552,6 +553,7 @@ class Blob {
           uRim: { value: F.unten.clone().multiplyScalar(0.45) }, uLight: { value: F.licht }, uRefr: { value: 0.035 },
           uKernC: { value: new THREE.Vector3().fromArray(st.kern.mitte) }, uKernR: { value: new THREE.Vector3().fromArray(st.kern.radien) } },
         vertexShader: COMMON + VERT, fragmentShader: COMMON + FRAG_JELLY, vertexColors: true });
+      front.shadowSide = THREE.DoubleSide;
       const mf = new THREE.Mesh(g0, front); mf.renderOrder = 10; mf.castShadow = true;
       const back = new THREE.ShaderMaterial({ uniforms: this.U, vertexShader: COMMON + VERT, fragmentShader: COMMON + FRAG_BACK, side: THREE.BackSide, vertexColors: true });
       const mb = new THREE.Mesh(g0, back); mb.layers.set(L_BACK);
@@ -568,6 +570,7 @@ class Blob {
       const furU = { uShells: { value: shellCount }, uFurLen: { value: 0.034 + 0.030 * st.hoehe }, uClump: { value: 8.5 / Math.pow(st.hoehe, 0.6) }, uRoot: { value: F.unten.clone().multiplyScalar(0.78) }, uTip: { value: F.oben.clone().multiplyScalar(1.04) }, uRim: { value: F.unten.clone().multiplyScalar(0.5) }, uWind: { value: new THREE.Vector3() } };
       this.furU = furU;
       const baseM = new THREE.ShaderMaterial({ uniforms: { ...this.U, ...furU }, vertexShader: COMMON + VERT, fragmentShader: COMMON + FUR_COMMON + FRAG_FURBASE, vertexColors: true });
+      baseM.shadowSide = THREE.DoubleSide;
       const base = new THREE.Mesh(g0, baseM); base.layers.enable(L_RT); base.castShadow = true;
       const shellM = new THREE.ShaderMaterial({ uniforms: { ...this.U, ...furU }, vertexShader: COMMON + FUR_COMMON + VERT_FUR, fragmentShader: COMMON + FUR_COMMON + FRAG_FUR, vertexColors: true, side: THREE.DoubleSide });
       const shells = new THREE.InstancedMesh(shellGeometry(stufe, 'lod1', 24), shellM, shellCount);
@@ -684,6 +687,7 @@ sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.01;
+sun.layers.enableAll(); sun.target.layers.enableAll();   // Licht auch im Hintergrund-Pass der Jellys
 
 function buildVergleich() {
   scene = new THREE.Scene();
@@ -751,7 +755,7 @@ function buildBrett() {
     proxy.position.copy(m.position); proxy.layers.set(L_RT); tiles.add(proxy);
   }
   scene.add(tiles);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8070, 2.2));
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x8a8070, 2.2); hemi.layers.enableAll(); scene.add(hemi);
   sun.position.set(3.5, 9, 4); sun.target.position.set(0, 0, 0);
   const sc = sun.shadow.camera; sc.left = -4.2; sc.right = 4.2; sc.top = 4.2; sc.bottom = -4.2; sc.near = 1; sc.far = 25; sc.updateProjectionMatrix();
   scene.add(sun, sun.target);

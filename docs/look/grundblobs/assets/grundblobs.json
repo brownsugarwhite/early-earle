@@ -3574,12 +3574,12 @@
    "breite": 0.91,
    "lods": {
     "lod0": {
-     "dreiecke": 16000,
-     "vertices": 8023
+     "dreiecke": 15998,
+     "vertices": 8021
     },
     "lod1": {
-     "dreiecke": 4499,
-     "vertices": 2261
+     "dreiecke": 4500,
+     "vertices": 2262
     }
    },
    "augen": [
