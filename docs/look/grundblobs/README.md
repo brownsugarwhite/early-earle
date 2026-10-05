@@ -33,3 +33,7 @@ Meshy-Quelldateien: Branch `meshy-test`, `assets/ref-florian/meshy/`.
 - Mischwesen: starre Gelenke (Beine schwingen als Ganzes, noch kein Knie); Nähte stecken im Körper, kein Kragen; Retriever-Rumpf zeigt nach dem Ausdünnen Splitter in den Fellsträhnen; Drache ohne Flügel (fehlt im Meshy-Modell).
 - Leistung auf dem iPhone ungemessen (fps-Anzeige im Artefakt).
 - Port der Shader nach TSL/WebGPU für das Spiel steht aus.
+
+## Nachtrag 2026-10-05: Urteil Mischwesen
+
+Florian: „Die Mischwesen sehen ganz ganz schlimm und schlecht aus.“ Ursachen: Teile aus ganzen, fertig posierten Meshy-Tieren passen in Maßstab, Pose und gebackener Schattierung nicht zusammen; Nähte stecken ungestaltet im Körper; Meshy-Textur neben eigenem Blob-Shader ergibt zwei Stile in einem Wesen; Platzierung ohne Art Direction. Der Zusammenbau zur Laufzeit aus ganzen Meshy-Tieren wird so nicht weiterverfolgt.
