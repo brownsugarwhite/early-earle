@@ -7,6 +7,7 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
 - **Bis der neue Plan da ist:** keine Produktionsarbeit auf Basis der alten Pläne beginnen und den Prototyp-Code nicht eigenmächtig weiterbauen. Florian führt zwischendurch eigene Tests durch (u. a. KI-3D-Werkzeuge in der Cloud).
+- **2026-10-05: Look-Beweis Grundblobs + Mischwesen** (Branch `claude/grundblobs`, Artefakt https://claude.ai/artifact/JfvK1CAf11oqfJXAiLyf5p): 13 Grundformen aus Florians Vorlage in Jelly/fest/Fell, Meshy-Modelle in Module zerlegt. Stand, Werkzeuge, Lücken: [`docs/look/grundblobs/README.md`](docs/look/grundblobs/README.md). Florian: Die Grundform der Blobs soll auch die Tierthemen tragen.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte) und die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 
@@ -30,9 +31,12 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 ## Cloud-Umgebung: Grenzen
 
 - Keine echte GPU (Chromium mit SwiftShader), kein Blender (das pip-Paket `bpy` 5.0.1 wäre installierbar, ungetestet), iPhone nicht erreichbar.
-- Git-Push geht auf Branches, **Tags lehnt der Proxy mit 403 ab** (Archiv deshalb als Branch, z. B. `prototyp-1`). Node 22 reicht für `pnpm install --frozen-lockfile`; Playwright im Repo erwartet eine andere Chromium-Version → `executablePath` auf `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; Screenshots mit DPR 1.
+- Git-Push geht auf Branches, **Tags lehnt der Proxy mit 403 ab** (Archiv deshalb als Branch, z. B. `prototyp-1`); **Branches löschen geht aus der Cloud auch nicht** (Florian löscht auf GitHub). Node 22 reicht für `pnpm install --frozen-lockfile`; Playwright im Repo erwartet eine andere Chromium-Version → `executablePath` auf `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; Screenshots mit DPR 1.
 - Netz über einen Proxy: CDNs wie `cdn.jsdelivr.net` und viele Websites (z. B. meshy.ai, tripo3d.ai, costbench.com) sind gesperrt. npm-Registry und pip gehen. Für Artefakte three.js lokal per npm installieren und im Playwright-Test die CDN-URLs auf die lokale Kopie umleiten.
-- Playwright: global unter `/opt/node-tools/node_modules/playwright`, Chromium unter `/opt/pw-browsers` (nicht `playwright install` ausführen).
+- Playwright: global unter `/opt/node-tools/node_modules/playwright`, Chromium unter `/opt/pw-browsers` (nicht `playwright install` ausführen). CDN-Skripte im Test per `route.fulfill` aus der lokalen Kopie liefern (`route.continue` auf http geht nicht).
+- **Artefakte liefern kein `.glb` aus** (nur Web-Typen wie .json/.txt/.jpg/.png). Meshes deshalb gepackt als gzip+base64-`.txt` laden (`DecompressionStream`), siehe `docs/look/grundblobs/tools/packen.py`.
+- **pymeshlab** (texturtreues Ausdünnen) braucht `apt-get install libopengl0 libglu1-mesa`; es liest GLB mit Wedge-UVs, kann Texturen aber nicht schreiben (Textur direkt aus dem GLB lesen) und liefert UVs mit Ursprung unten links (`flipY = true`). Bedingungen in muparser kennen kein `!` (`(...) == 0`).
+- Meshy-GLBs mit 1,5 Mio. Dreiecken sprengen den Speicher bei `trimesh.split`: erst ausdünnen, dann schneiden; Nähte (UV) vor Komponenten- und Randberechnung verschweißen.
 
 ## Bekannte technische Fallen (nicht wiederholen)
 
@@ -48,6 +52,8 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 - **E2E:** `E2E_PORT` für parallele Läufe; Fetch-Sperrports wie 4190 meiden; nur auf ruhiger Maschine (SwiftShader unter Last → Timeouts); während eines Laufs keine Dateien im Vite-Root ändern (Hot Reload); echte GPU `EE_GPU=1` ist Referenz. CI pro Push nur Typen, Unit-Tests, Lint, Build; E2E wöchentlich oder auf Knopfdruck.
 - **Werkzeuge:** JSON-Inhalte nie per `json.dumps` neu schreiben (formatiert die Datei um), gezielt Zeilen ersetzen. macOS: BSD-`sed` (kein `\b`, `-i ''`) → Python; Dateisystem unterscheidet keine Groß-/Kleinschreibung. Vorschau-Tool kann selbstsigniertes HTTPS nicht öffnen → Konfiguration `game-dev-http` (Port 5174).
 - **Schrift:** Caprasimo (OFL) mit `unicode-range`, ihre Mathe-Zeichen sind Platzhalter.
+- **three.js-Lichter sind ebenengefiltert:** Wer mit `camera.layers` getrennte Pässe rendert (z. B. Hintergrund für Jelly-Brechung), muss den Lichtern `layers.enableAll()` geben, sonst ist der Pass schwarz. Eine eigene Klasse `Blob` verdeckt das globale `Blob` (TDZ-Fehler) – nicht so nennen.
+- **Grundform aus Zeichnung:** Silhouette an der Standlinie spiegeln und per Poisson aufblasen (Dicke ~ √Randabstand), glattes Abstandsfeld statt Voxel (sonst Treppen), weicher Betrag statt |z| (sonst Kante am Rand), nach Marching Cubes nur die größte Komponente behalten (sonst Splitter → Taubin zieht Spitzen). Details, die *vor* dem Körper gezeichnet sind (Füße Stufe 13), liegen nicht in der Silhouette und brauchen Zusatzformen.
 - **iPhone-Deploy:** `IOS_TEAM_ID=R67BLW649H IOS_DEVICE="eyePhone (2)" pnpm --filter @ee/game ios:device` (Florians Mac; iPhone entsperrt lassen, sonst nur Installation ohne Start); Details in `docs/IOS.md`. Ein gemeinsamer Deploy am Ende eines Arbeitsblocks, mit parallelen Sessions abgestimmt.
 
 ## Projekt-Landkarte
