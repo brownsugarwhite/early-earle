@@ -63,7 +63,7 @@ input[type="range"] { width: min(320px, 60vw); accent-color: var(--accent); }
       <button role="tab" id="tab-vergleich" aria-selected="true" data-mode="vergleich">Vergleich</button>
       <button role="tab" id="tab-buehne" aria-selected="false" data-mode="buehne">Bühne</button>
       <button role="tab" id="tab-brett" aria-selected="false" data-mode="brett">Brett</button>
-      <button role="tab" id="tab-misch" aria-selected="false" data-mode="misch">Mischwesen</button>
+      <button role="tab" id="tab-schnitt" aria-selected="false" data-mode="schnitt">Schnittlinien</button>
     </nav>
   </header>
 
@@ -106,18 +106,18 @@ input[type="range"] { width: min(320px, 60vw); accent-color: var(--accent); }
     <div class="group"><button class="btn" id="shuffle">Neu mischen</button><button class="btn" id="hopAll">Alle hüpfen</button></div>
     <p class="note">36 Blobs auf einem 6×6-Brett, gemischt aus allen Stufen und Materialien. Die Anzeige rechts unten zeigt Bildrate, Bildzeit und Draw Calls. Ziel auf dem iPhone: ≥ 58 fps, Draw Calls ≤ 100.</p>
   </div>
-  <div class="controls" id="ctl-misch" hidden>
-    <div class="group"><span class="lbl">Wesen</span>
-      <div class="chips" id="mischChips">
-        <button class="chip" data-w="zerlegt" aria-pressed="true">Zerlegt</button>
-        <button class="chip" data-w="giraffe-spinne" aria-pressed="false">Giraffe mit Spinnenbeinen</button>
-        <button class="chip" data-w="rex-retriever" aria-pressed="false">Rex-Retriever</button>
-        <button class="chip" data-w="spinnenblob" aria-pressed="false">Spinnenblob</button>
-        <button class="chip" data-w="giraffenblob" aria-pressed="false">Giraffenblob</button>
+  <div class="controls" id="ctl-schnitt" hidden>
+    <div class="group"><span class="lbl">Modell</span>
+      <div class="chips" id="schnittChips">
+        <button class="chip" data-m="giraffe" aria-pressed="true">Giraffe</button>
+        <button class="chip" data-m="spinne" aria-pressed="false">Spinne</button>
+        <button class="chip" data-m="rex" aria-pressed="false">Rex</button>
+        <button class="chip" data-m="goldie" aria-pressed="false">Retriever</button>
       </div>
     </div>
-    <div class="group"><div class="seg"><button id="tintBtn" aria-pressed="false">Farben angleichen</button><button id="walkBtn" aria-pressed="true">Bewegen</button></div></div>
-    <p class="note">Die Teile stammen aus deinen Meshy-Modellen: automatisch geschnitten, texturtreu ausgedünnt, Andockpunkte vermessen. Beine, Kiefer, Hals und Schwanz drehen sich um ihre Gelenkpunkte. „Farben angleichen“ legt die Palette des Rumpfs über die fremden Teile.</p>
+    <div class="group"><div class="seg"><button id="skelBtn" aria-pressed="false">Skelett zeigen</button><button id="xrayBtn" aria-pressed="true">Verdeckte Linien</button></div></div>
+    <p class="note" id="schnittHinweis" hidden></p>
+    <p class="note"><b>Stufe 1 zur Abnahme:</b> Hier wird noch nichts geschnitten. Die farbigen Ringe zeigen, wo das System die Teile trennen würde: am Übergang vom Rumpf zum Teil, in der schmalsten natürlichen Falte. Bitte prüfen: Liegen die Grenzen dort, wo du sie als Artist setzen würdest? Graue Ringe mit „unsicher“ hat das System nicht sicher gefunden. Bei „gesetzt“ habe ich den Ansatzpunkt vorgegeben, das System hat nur die Falte daneben gesucht.</p>
   </div>
 </div>
 
@@ -801,202 +801,119 @@ function setMode(m) {
   disposeScene();
   mode = m;
   for (const t of document.querySelectorAll('.tabs button')) t.setAttribute('aria-selected', String(t.dataset.mode === m));
-  for (const id of ['vergleich', 'buehne', 'brett', 'misch']) $('ctl-' + id).hidden = id !== m;
+  for (const id of ['vergleich', 'buehne', 'brett', 'schnitt']) $('ctl-' + id).hidden = id !== m;
+  if (m !== 'schnitt') { for (const l of labels) l.el.remove(); labels = []; }
   const cmp = m === 'vergleich';
   $('ref').hidden = !cmp; $('wipeLine').hidden = !cmp; $('tagL').hidden = !cmp; $('tagR').hidden = !cmp;
-  if (m === 'vergleich') buildVergleich(); else if (m === 'buehne') buildBuehne(); else if (m === 'misch') buildMisch(); else buildBrett();
+  if (m === 'vergleich') buildVergleich(); else if (m === 'buehne') buildBuehne(); else if (m === 'schnitt') buildSchnitt(); else buildBrett();
   scene.add(points);
   resize();
   applyWipe();
 }
 
-// ---------- Mischwesen: Module aus den Meshy-Modellen ----------
-let MOD = null, animFns = [], mischSel = 'zerlegt', mischTint = false, mischWalk = true;
+// ---------- Schnittlinien (Modulsystem Stufe 1) ----------
+let SL = null, animFns = [], schnittSel = 'giraffe', zeigSkelett = false, zeigVerdeckt = true, labels = [];
 const texLoader = new THREE.TextureLoader();
-async function ladeModule() {
-  const info = await fetch('assets/module.json').then(r => r.json());
-  const b64 = (await fetch('assets/module-mesh.txt').then(r => r.text())).trim();
+const slCache = {};
+async function ladeSchnittDaten() { if (!SL) SL = await fetch('assets/schnittlinien.json').then(r => r.json()); return SL; }
+async function ladeGanz(name) {
+  if (slCache[name]) return slCache[name];
+  const m = SL.modelle[name], e = m.anzeige;
+  const b64 = (await fetch(m.mesh).then(r => r.text())).trim();
   const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
   const buf = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
-  const geos = {};
-  for (const [key, e] of Object.entries(info.teile)) {
-    const n = e.vertices;
-    const q = new Uint16Array(buf, e.pos, n * 3), nr = new Int8Array(buf, e.nor, n * 4), uq = new Uint16Array(buf, e.uv, n * 2);
-    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2);
-    for (let i = 0; i < n; i++) {
-      for (let k = 0; k < 3; k++) { pos[i * 3 + k] = e.min[k] + (q[i * 3 + k] / 65535) * (e.max[k] - e.min[k]); nor[i * 3 + k] = nr[i * 4 + k] / 127; }
-      uv[i * 2] = uq[i * 2] / 65535; uv[i * 2 + 1] = uq[i * 2 + 1] / 65535;
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    g.setIndex(new THREE.BufferAttribute(e.idx32 ? new Uint32Array(buf, e.idx, e.dreiecke * 3) : new Uint16Array(buf, e.idx, e.dreiecke * 3), 1));
-    g.computeBoundingSphere();
-    geos[key] = g;
+  const n = e.vertices;
+  const q = new Uint16Array(buf, e.pos, n * 3), nr = new Int8Array(buf, e.nor, n * 4), uq = new Uint16Array(buf, e.uv, n * 2);
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) {
+    for (let k = 0; k < 3; k++) { pos[i * 3 + k] = e.min[k] + (q[i * 3 + k] / 65535) * (e.max[k] - e.min[k]); nor[i * 3 + k] = nr[i * 4 + k] / 127; }
+    uv[i * 2] = uq[i * 2] / 65535; uv[i * 2 + 1] = uq[i * 2 + 1] / 65535;
   }
-  const tex = {};
-  await Promise.all(Object.entries(info.modelle).map(async ([name, m]) => {
-    const t = await texLoader.loadAsync(m.textur);
-    t.colorSpace = THREE.SRGBColorSpace; t.flipY = true; t.anisotropy = 4;   // UVs aus pymeshlab: Ursprung unten links
-    tex[name] = t;
-  }));
-  MOD = { info, geos, tex };
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setIndex(new THREE.BufferAttribute(e.idx32 ? new Uint32Array(buf, e.idx, e.dreiecke * 3) : new Uint16Array(buf, e.idx, e.dreiecke * 3), 1));
+  g.computeBoundingSphere();
+  const t = await texLoader.loadAsync(m.textur);
+  t.colorSpace = THREE.SRGBColorSpace; t.flipY = true; t.anisotropy = 4;   // UVs aus pymeshlab: Ursprung unten links
+  return (slCache[name] = { g, t });
 }
-const modulBereit = ladeModule().catch(e => console.error('Module', e));
-
-const tintU = { uTint: { value: 0 }, uDark: { value: new THREE.Color() }, uLight: { value: new THREE.Color() } };
-function teil(key, { tint = false } = {}) {
-  const e = MOD.info.teile[key];
-  const mat = new THREE.MeshStandardMaterial({ map: MOD.tex[e.modell], roughness: 0.82, metalness: 0 });
-  if (tint) {
-    mat.onBeforeCompile = (sh) => {
-      Object.assign(sh.uniforms, tintU);
-      sh.fragmentShader = 'uniform float uTint; uniform vec3 uDark, uLight;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
-        vec4 texelColor = texture2D( map, vMapUv );
-        float lum = dot(texelColor.rgb, vec3(0.299, 0.587, 0.114));
-        vec3 tinted = mix(uDark, uLight, smoothstep(0.01, 0.55, lum));
-        diffuseColor *= vec4(mix(texelColor.rgb, tinted, uTint), texelColor.a);`);
-    };
-  }
-  const m = new THREE.Mesh(MOD.geos[key], mat);
-  m.castShadow = true; m.receiveShadow = true;
-  return m;
-}
-// Teil mit Gelenk: Gruppe am Andockpunkt, Mesh darin um -Wurzel versetzt
-function gelenk(key, wurzel, opts) {
-  const piv = new THREE.Group();
-  const m = teil(key, opts);
-  const w = new THREE.Vector3().fromArray(wurzel || MOD.info.teile[key].wurzel);
-  m.position.copy(w).negate();
-  piv.add(m);
-  piv.userData.wurzel = w;
-  return piv;
-}
-function setzeBeine(parent, ziel, k, phase0 = 0) {
-  // acht Spinnenbeine: Wurzel -> Zielpunkt, Maßstab k; Laufzyklus als Vierfuß-Wechsel
-  const keys = Object.keys(MOD.info.teile).filter(x => x.startsWith('spinne_beine_')).sort((a, b) => +a.split('_')[2] - +b.split('_')[2]);
-  keys.forEach((key, i) => {
-    const e = MOD.info.teile[key];
-    const piv = gelenk(key);
-    piv.position.copy(ziel(e, i));
-    piv.scale.setScalar(k);
-    parent.add(piv);
-    const links = e.wurzel[0] < 0 ? 1 : -1;
-    const ph = phase0 + (i % 2) * Math.PI + (i < 4 ? 0 : Math.PI);
-    animFns.push((t, ruhe) => {
-      const a = ruhe ? 0 : t * 5.0 + ph;
-      piv.rotation.y = 0.20 * Math.sin(a);
-      piv.rotation.z = links * 0.16 * Math.max(0, Math.cos(a));
-    });
-  });
-}
-function buildMisch() {
+const TEILFARBE = { hals: 0xe0218a, kopf: 0xff5fd2, schwanz: 0xf5b800, bein: 0x00b5e2, arm: 0xff7a1a, ohr: 0x29c46a };
+const farbeFuer = (teil) => TEILFARBE[teil.split('_')[0]] ?? 0xffffff;
+const TEILNAME = { hals: 'Halsansatz', kopf: 'Kopf', schwanz: 'Schwanzwurzel', bein: 'Bein', arm: 'Arm', ohr: 'Ohr' };
+function buildSchnitt() {
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(30, 1, 0.05, 60);
-  stageEl.style.aspectRatio = window.innerWidth < 640 ? '1 / 1.05' : '16 / 9';
+  stageEl.style.aspectRatio = window.innerWidth < 640 ? '1 / 1.1' : '16 / 9';
   clear.copy(lin([0.95, 0.94, 0.91]));
   blobs = []; animFns = [];
-  if (!MOD) { modulBereit.then(() => { if (mode === 'misch') setMode('misch'); }); return; }
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x9a8f80, 1.7); hemi.layers.enableAll(); scene.add(hemi);
+  for (const l of labels) l.el.remove();
+  labels = [];
+  const data = SL && slCache[schnittSel];
+  if (!data) { ladeSchnittDaten().then(() => ladeGanz(schnittSel)).then(() => { if (mode === 'schnitt') setMode('schnitt'); }); return; }
+  const M = SL.modelle[schnittSel];
+  $('schnittHinweis').hidden = !(M.hinweise && M.hinweise.length);
+  $('schnittHinweis').innerHTML = (M.hinweise || []).map(h => '<b>Hinweis:</b> ' + h).join('<br>');
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x9a8f80, 1.8); hemi.layers.enableAll(); scene.add(hemi);
   sun.position.set(2.5, 5, 3.2); sun.target.position.set(0, 0, 0);
-  const sc = sun.shadow.camera; sc.left = -3.2; sc.right = 3.2; sc.top = 3.2; sc.bottom = -3.2; sc.near = 0.5; sc.far = 16; sc.updateProjectionMatrix();
+  const sc = sun.shadow.camera; sc.left = -1.6; sc.right = 1.6; sc.top = 1.6; sc.bottom = -1.6; sc.near = 0.5; sc.far = 16; sc.updateProjectionMatrix();
   scene.add(sun, sun.target);
-  addGround(0, 20);
-  tintU.uTint.value = mischTint ? 1 : 0;
   const root = new THREE.Group(); scene.add(root);
-  let ziel = new THREE.Vector3(0, 0.6, 0), dist = 4.2;
-  const T = MOD.info.teile;
-  if (mischSel === 'zerlegt') {
-    const reihe = { spinne: -2.4, giraffe: -0.8, rex: 0.8, goldie: 2.4 };
-    for (const [key, e] of Object.entries(T)) {
-      const g = new THREE.Group();
-      const m = teil(key);
-      const mitte = new THREE.Vector3(0, 0, 0);
-      const w = new THREE.Vector3().fromArray(e.wurzel);
-      const dir = w.clone().sub(mitte).setY(w.y * 0.6); if (dir.length() < 1e-3) dir.set(0, 1, 0);
-      const spread = e.teil === 'rumpf' ? 0 : 0.22;
-      g.add(m);
-      g.position.set(reihe[e.modell], 0, 0).addScaledVector(dir.normalize(), spread);
-      g.position.y += 0.95 + 0.0;
-      g.scale.setScalar(0.72);
-      root.add(g);
+  const minY = M.anzeige.min[1];
+  root.position.y = -minY;
+  const mat = new THREE.MeshStandardMaterial({ map: data.t, roughness: 0.85, metalness: 0 });
+  const mesh = new THREE.Mesh(data.g, mat); mesh.castShadow = true; mesh.receiveShadow = true;
+  root.add(mesh);
+  addGround(0, 12);
+  for (const [teil, s] of Object.entries(M.schnitte)) {
+    const pts = s.punkte.map(p => new THREE.Vector3(...p));
+    const kurve = new THREE.CatmullRomCurve3(pts, true, 'centripetal');
+    const geo = new THREE.TubeGeometry(kurve, Math.max(60, pts.length * 2), 0.0075, 6, true);
+    const col = s.unsicher ? 0x8d949a : farbeFuer(teil);
+    const sicht = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col }));
+    sicht.renderOrder = 5; root.add(sicht);
+    if (zeigVerdeckt) {
+      const durch = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, depthTest: false }));
+      durch.renderOrder = 6; root.add(durch);
     }
-    ziel.set(0, 0.7, 0); dist = 6.4;
-  } else if (mischSel === 'giraffe-spinne') {
-    const body = new THREE.Group(); body.position.y = 0.95; root.add(body);
-    body.add(teil('giraffe_rumpf'));
-    const hals = gelenk('giraffe_kopfhals'); hals.position.copy(hals.userData.wurzel); body.add(hals);
-    const schw = gelenk('giraffe_schwanz'); schw.position.copy(schw.userData.wurzel); body.add(schw);
-    setzeBeine(body, (e) => new THREE.Vector3(Math.sign(e.wurzel[0]) * 0.15, -0.55, -0.27 + (e.wurzel[2] + 0.62) / 1.26 * 0.58), 0.56);
-    animFns.push((t, ruhe) => { const a = ruhe ? 0 : t; body.position.y = 0.95 + 0.012 * Math.sin(a * 10); hals.rotation.x = 0.06 * Math.sin(a * 1.6); schw.rotation.y = 0.35 * Math.sin(a * 3.1); });
-    ziel.set(0, 0.95, 0); dist = 4.4;
-  } else if (mischSel === 'rex-retriever') {
-    const body = new THREE.Group(); body.position.y = 0.6; root.add(body);
-    body.add(teil('goldie_rumpf'));
-    const so = T.goldie_rumpf.sockel.hals;
-    const rk = T.rex_oberkopf;
-    const k = (so.radius / Math.max(rk.randradius, 0.05)) * 0.82;
-    const kopf = new THREE.Group();
-    kopf.position.fromArray(so.mitte).add(new THREE.Vector3(0, 0.16, -0.12));
-    kopf.scale.setScalar(k);
-    body.add(kopf);
-    const ob = teil('rex_oberkopf'); ob.position.fromArray(rk.wurzel).negate(); kopf.add(ob);
-    const kiefer = gelenk('rex_unterkiefer'); kiefer.position.copy(kiefer.userData.wurzel).sub(new THREE.Vector3().fromArray(rk.wurzel)); kopf.add(kiefer);
-    animFns.push((t, ruhe) => { const a = ruhe ? 0 : t; kiefer.rotation.x = -0.18 + 0.18 * Math.sin(a * 2.4); kopf.rotation.x = 0.05 * Math.sin(a * 1.2); kopf.rotation.y = 0.12 * Math.sin(a * 0.7); body.position.y = 0.6 + 0.01 * Math.sin(a * 2.4); });
-    ziel.set(0, 0.62, 0.15); dist = 3.6;
-  } else if (mischSel === 'spinnenblob' || mischSel === 'giraffenblob') {
-    const spin = mischSel === 'spinnenblob';
-    const stufe = spin ? 11 : 8, mat = spin ? 'fell' : 'fest';
-    const st = data.stufen[stufe - 1];
-    const sk = 0.9 / st.hoehe;
-    const b = new Wesen(stufe, mat, { lod: 'lod0', scale: sk });
-    blobs.push(b);
-    const F = b.F; tintU.uDark.value.copy(F.unten).multiplyScalar(0.55); tintU.uLight.value.copy(F.oben).multiplyScalar(1.1);
-    const lift = spin ? 0.34 : 0;
-    b.group.position.y = lift;
-    root.add(b.group);
-    if (spin) {
-      const W = st.breite * sk;
-      setzeBeine(root, (e, i) => {
-        const a = Math.atan2(e.wurzel[0], e.wurzel[2]);
-        return new THREE.Vector3(Math.sin(a) * W * 0.36, lift + 0.08, Math.cos(a) * W * 0.30);
-      }, 0.5, 0);
-      animFns.push((t, ruhe) => { b.group.position.y = lift + (ruhe ? 0 : 0.012 * Math.sin(t * 10)); });
-      ziel.set(0, 0.7, 0); dist = 3.8;
-    } else {
-      b.U.uEyes.value = 0;
-      const hk = T.giraffe_kopfhals;
-      const hals = gelenk('giraffe_kopfhals', null, { tint: true });
-      hals.position.set(0, st.hoehe * sk * 0.86, 0.02);
-      hals.scale.setScalar(1.0);
-      root.add(hals);
-      animFns.push((t, ruhe) => { const a = ruhe ? 0 : t; hals.rotation.x = 0.08 * Math.sin(a * 1.5); hals.rotation.z = 0.06 * Math.sin(a * 0.9); hals.position.y = st.hoehe * sk * 0.86 + b.U.uDef.value.x * st.hoehe * sk * 0.9 + b.lift; });
-      ziel.set(0, 0.9, 0); dist = 4.2;
-    }
+    const el = document.createElement('span');
+    el.className = 'tag'; el.style.top = '0'; el.style.left = '0';
+    const [art, nr] = teil.split('_');
+    el.textContent = (TEILNAME[art] || art) + (nr ? ' ' + nr.toUpperCase() : '') + (s.unsicher ? ' · unsicher' : s.methode === 'gesetzt' ? ' · gesetzt' : '');
+    el.style.background = '#' + col.toString(16).padStart(6, '0');
+    el.style.color = '#081b25';
+    stageEl.appendChild(el);
+    labels.push({ el, p: new THREE.Vector3(...s.mitte), root });
   }
-  // Farben angleichen auch für Beine und Hals der Blob-Wesen
-  if (mischTint || mischSel === 'spinnenblob' || mischSel === 'giraffenblob') root.traverse(o => {
-    if (o.isMesh && o.material.isMeshStandardMaterial && !o.material.onBeforeCompile.toString().includes('uTint')) {
-      const key = Object.keys(MOD.geos).find(k => MOD.geos[k] === o.geometry);
-      if (key) { const n = teil(key, { tint: true }); o.material = n.material; }
-    }
-  });
-  if (mischSel === 'giraffe-spinne' || mischSel === 'rex-retriever') {
-    // Palette des Rumpfs: aus der Rumpftextur gemittelt (hell/dunkel)
-    const pal = mischSel === 'giraffe-spinne' ? [[0.93, 0.66, 0.33], [0.42, 0.22, 0.08]] : [[0.95, 0.75, 0.45], [0.45, 0.28, 0.12]];
-    tintU.uLight.value.copy(lin(pal[0])); tintU.uDark.value.copy(lin(pal[1]));
+  if (zeigSkelett) {
+    const arr = new Float32Array(M.skelett.flat(2));
+    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    const ls = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0xc2410c, depthTest: false, transparent: true, opacity: 0.8 }));
+    ls.renderOrder = 7; root.add(ls);
   }
-  camera.position.set(dist * 0.55, ziel.y + dist * 0.22, dist * 0.85);
+  const hoehe = M.anzeige.max[1] - M.anzeige.min[1];
+  const ziel = new THREE.Vector3(0, hoehe * 0.5, 0), dist = 2.2 + hoehe * 1.1;
+  camera.position.set(dist * 0.62, ziel.y + dist * 0.18, dist * 0.78);
   controls = new OrbitControls(camera, canvas);
-  controls.target.copy(ziel); controls.enableDamping = true; controls.minDistance = 1.2; controls.maxDistance = 12; controls.enablePan = false;
-  controls.autoRotate = spin; controls.autoRotateSpeed = 0.9;
+  controls.target.copy(ziel); controls.enableDamping = true; controls.minDistance = 0.8; controls.maxDistance = 9; controls.enablePan = false; controls.maxPolarAngle = Math.PI * 0.49;
+  controls.autoRotate = !STILL; controls.autoRotateSpeed = 0.8;
   controls.update();
 }
-for (const c of $('mischChips').children) c.onclick = () => { mischSel = c.dataset.w; for (const x of $('mischChips').children) x.setAttribute('aria-pressed', String(x === c)); setMode('misch'); };
-$('tintBtn').onclick = () => { mischTint = !mischTint; $('tintBtn').setAttribute('aria-pressed', String(mischTint)); tintU.uTint.value = mischTint ? 1 : 0; if (mode === 'misch') setMode('misch'); };
-$('walkBtn').onclick = () => { mischWalk = !mischWalk; $('walkBtn').setAttribute('aria-pressed', String(mischWalk)); };
-
+const _v = new THREE.Vector3();
+function updateLabels() {
+  if (mode !== 'schnitt' || !labels.length) return;
+  const r = stageEl.getBoundingClientRect();
+  for (const l of labels) {
+    _v.copy(l.p).applyMatrix4(l.root.matrixWorld).project(camera);
+    const x = (_v.x * 0.5 + 0.5) * r.width, y = (-_v.y * 0.5 + 0.5) * r.height;
+    l.el.style.transform = `translate(${Math.round(x + 10)}px, ${Math.round(y - 10)}px)`;
+    l.el.hidden = _v.z > 1;
+  }
+}
+for (const c of $('schnittChips').children) c.onclick = () => { schnittSel = c.dataset.m; for (const x of $('schnittChips').children) x.setAttribute('aria-pressed', String(x === c)); setMode('schnitt'); };
+$('skelBtn').onclick = () => { zeigSkelett = !zeigSkelett; $('skelBtn').setAttribute('aria-pressed', String(zeigSkelett)); setMode('schnitt'); };
+$('xrayBtn').onclick = () => { zeigVerdeckt = !zeigVerdeckt; $('xrayBtn').setAttribute('aria-pressed', String(zeigVerdeckt)); setMode('schnitt'); };
 
 // ---------- Größe ----------
 function resize() {
@@ -1083,7 +1000,7 @@ function frame() {
   scene.updateMatrixWorld();
   camera.updateMatrixWorld();
   for (const b of blobs) b.update(STILL ? 0 : dt, t);
-  for (const f of animFns) f(STILL ? 1.3 : t, !mischWalk);
+  for (const f of animFns) f(t);
   if (STILL) for (const b of blobs) { b.U.uDef.value.set(0, 0, 0, 0); b.U.uBlink.value = 1; }
   updateParts(dt);
   G.uOrtho.value = !!camera.isOrthographicCamera;
@@ -1104,6 +1021,7 @@ function frame() {
   // 3) Bildschirm
   camera.layers.set(0);
   renderer.setRenderTarget(null); renderer.clear(); renderer.render(scene, camera);
+  updateLabels();
   // Anzeige
   const now = performance.now(); fpsAcc.push(now - last); last = now; if (fpsAcc.length > 90) fpsAcc.shift();
   if (fpsAcc.length % 15 === 0 || STILL) {
@@ -1116,14 +1034,14 @@ function frame() {
 renderer.info.autoReset = true;
 
 const start = (location.hash || '').replace('#', '');
-const m0 = Q.get('modus') || (['vergleich', 'buehne', 'brett', 'misch'].includes(start) ? start : 'vergleich');
-if (Q.get('w')) mischSel = Q.get('w');
-if (Q.has('tint')) mischTint = true;
+const m0 = Q.get('modus') || (['vergleich', 'buehne', 'brett', 'schnitt'].includes(start) ? start : 'vergleich');
+if (Q.get('m')) schnittSel = Q.get('m');
+if (Q.has('skelett')) zeigSkelett = true;
 if (Q.get('mat')) stageSel.mat = Q.get('mat');
 if (Q.get('stufe')) stageSel.stufe = +Q.get('stufe');
 if (Q.get('wipe')) $('wipe').value = Q.get('wipe');
 syncStageUi();
-if (m0 === 'misch') { await modulBereit; for (const x of $('mischChips').children) x.setAttribute('aria-pressed', String(x.dataset.w === mischSel)); $('tintBtn').setAttribute('aria-pressed', String(mischTint)); }
+if (m0 === 'schnitt') { await ladeSchnittDaten(); await ladeGanz(schnittSel); for (const x of $('schnittChips').children) x.setAttribute('aria-pressed', String(x.dataset.m === schnittSel)); $('skelBtn').setAttribute('aria-pressed', String(zeigSkelett)); }
 setMode(m0);
 $('loading').hidden = true;
 requestAnimationFrame(frame);
