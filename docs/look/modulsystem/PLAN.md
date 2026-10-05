@@ -50,3 +50,9 @@ Fällt eine Abnahme durch, wird die Stufe wiederholt oder der Ansatz geändert, 
 ## Werkzeuge (Cloud)
 
 Python mit trimesh, scipy, pymeshlab (vorhanden); für Skelett, Geodäten und exaktes Schneiden zusätzlich libigl oder Blender als Python-Paket (`bpy`, Bisect mit Füllen, Shrinkwrap, automatische Gewichte). Welche von beiden, entscheidet ein kurzer Test in Stufe 1.
+
+## Nachtrag 2026-10-05: Abnahme Stufe 1 nicht bestanden
+
+Florian: „Die Schnitte passen leider gar nicht – meistens viel zu wenig geschnitten.“ Die Linien lagen am Ende des Übergangs (Teilseite), die Teile waren zu klein. Ein automatischer zweiter Versuch (Schnitt in der Mitte des Übergangs, Rumpfseite) schnitt durch den Rumpf (ein Ring um beide Vorderbeine der Giraffe, Spinnenringe quer durch den Körper) und wurde verworfen, nicht gezeigt.
+
+Nächster Schritt: Florian zeichnet auf sauberen Ansichten ein, wo er schneiden würde (`docs/progress/zum-markieren-*.png`). Seine Linien werden zuerst exakt als Ansatzpunkte übernommen; erst danach wird die Regel daraus abgeleitet (wie weit in den Rumpf, welche Muskelpartien zum Teil gehören), bevor wieder automatisch geschnitten wird.
