@@ -16,7 +16,8 @@
 
 1. Neuer Plan und Hauptprompt (Story, Charaktere, Map).
 2. Bei Bedarf: eingezeichnete Schnittlinien (`docs/progress/zum-markieren-*.png`), Referenzen für Licht/Material bei Fell und fest.
-3. fps auf dem iPhone im Brett-Tab; Branch `brownsugarwhite-wesenstest-meshy` löschen; lokale Mac-Commits (`b116346`) sichern.
+3. Entscheidung zur neuen Idee **Zonen-Grundblob** (ein Körper in Zonen Unterteil/Maul/Gesicht/Kappe, Aufsätze an Sockeln): Look-Test ja/nein, siehe [`look/zonenblob/IDEE.md`](look/zonenblob/IDEE.md).
+4. fps auf dem iPhone im Brett-Tab; Branch `brownsugarwhite-wesenstest-meshy` löschen; lokale Mac-Commits (`b116346`) sichern.
 
 ## Nächster Schritt
 
