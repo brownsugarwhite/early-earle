@@ -147,12 +147,13 @@ for b in fest:
     # Boden: Zeilenindex wächst nach unten; Bodenzeile im gepolsterten Gitter
     yg = padw + yb
     yy = np.arange(sdf.shape[0])[:, None, None].astype(float)
-    sdf_cut = smax(sdf, (yy - yg), 2.5)  # außerhalb, wenn unter dem Boden
+    sdf_cut = smax(sdf, (yy - yg - 0.37), 2.5)  # außerhalb, wenn unter dem Boden (halber Voxel versetzt: keine Nullstellen auf Gitterpunkten)
     verts, faces, _, _ = measure.marching_cubes(sdf_cut, 0.0)
     m_hi = trimesh.Trimesh(verts, faces, process=True)
     # nur den größten zusammenhängenden Körper behalten (Marching Cubes erzeugt winzige Splitter an der Bodenkante)
     m_hi = max(m_hi.split(only_watertight=False), key=lambda m: len(m.faces))
     if os.environ.get('DEBUG'): print('MC', m_hi.bounds.round(1).tolist(), len(m_hi.split(only_watertight=False)))
+    trimesh.repair.fill_holes(m_hi)
     trimesh.smoothing.filter_taubin(m_hi, lamb=0.5, nu=-0.53, iterations=25)
     verts, faces = np.asarray(m_hi.vertices), np.asarray(m_hi.faces)
     if os.environ.get('DEBUG'): print('Taubin', m_hi.bounds.round(1).tolist())
@@ -161,7 +162,11 @@ for b in fest:
     for name, target in LOD.items():
         red = max(0.0, 1 - target / len(faces))
         pv, pf = fast_simplification.simplify(verts.astype(np.float32), faces.astype(np.int32), red)
-        lods[name] = (pv.astype(np.float64), pf)
+        mm = trimesh.Trimesh(pv, pf, process=True)
+        trimesh.repair.fill_holes(mm)
+        if not mm.is_watertight:
+            print('  Warnung: Stufe', s, name, 'nicht geschlossen', flush=True)
+        lods[name] = (np.asarray(mm.vertices, np.float64), np.asarray(mm.faces))
     # Gradienten und Hilfsfelder für Attribute
     gy, gx, gz = np.gradient(sdf_cut)
     lap = ndi.laplace(sdf)
