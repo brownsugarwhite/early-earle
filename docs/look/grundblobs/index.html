@@ -51,6 +51,11 @@ h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 
 input[type="range"] { width: min(320px, 60vw); accent-color: var(--accent); }
 .note { color: var(--ink-soft); font-size: 14px; max-width: 72ch; }
 .note b { color: var(--ink); }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 14px; width: 100%; }
+.slot { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.slot label { flex: 0 0 auto; min-width: 92px; }
+.slot select { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 14px; padding: 5px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.slot.kind label { padding-left: 14px; }
 [hidden] { display: none !important; }
 @media (max-width: 640px) { .tabs { margin-left: 0; } }
 </style>
@@ -64,6 +69,7 @@ input[type="range"] { width: min(320px, 60vw); accent-color: var(--accent); }
       <button role="tab" id="tab-buehne" aria-selected="false" data-mode="buehne">Bühne</button>
       <button role="tab" id="tab-brett" aria-selected="false" data-mode="brett">Brett</button>
       <button role="tab" id="tab-schnitt" aria-selected="false" data-mode="schnitt">Schnittlinien</button>
+      <button role="tab" id="tab-editor" aria-selected="false" data-mode="editor">Editor</button>
     </nav>
   </header>
 
@@ -118,6 +124,24 @@ input[type="range"] { width: min(320px, 60vw); accent-color: var(--accent); }
     <div class="group"><div class="seg"><button id="skelBtn" aria-pressed="false">Skelett zeigen</button><button id="xrayBtn" aria-pressed="true">Verdeckte Linien</button></div></div>
     <p class="note" id="schnittHinweis" hidden></p>
     <p class="note"><b>Stufe 1 zur Abnahme:</b> Hier wird noch nichts geschnitten. Die farbigen Ringe zeigen, wo das System die Teile trennen würde: am Übergang vom Rumpf zum Teil, in der schmalsten natürlichen Falte. Bitte prüfen: Liegen die Grenzen dort, wo du sie als Artist setzen würdest? Graue Ringe mit „unsicher“ hat das System nicht sicher gefunden. Bei „gesetzt“ habe ich den Ansatzpunkt vorgegeben, das System hat nur die Falte daneben gesucht.</p>
+  </div>
+  <div class="controls" id="ctl-editor" hidden>
+    <div class="group"><span class="lbl">Rumpf</span>
+      <div class="chips" id="edRumpf">
+        <button class="chip" data-r="giraffe:rumpf" aria-pressed="true">Giraffe</button>
+        <button class="chip" data-r="spinne:rumpf" aria-pressed="false">Spinne</button>
+        <button class="chip" data-r="rex:rumpf" aria-pressed="false">Rex</button>
+        <button class="chip" data-r="goldie:rumpf" aria-pressed="false">Retriever</button>
+        <button class="chip" data-r="blob" aria-pressed="false">Grundblob</button>
+      </div>
+    </div>
+    <div class="group" id="edBlobOpt" hidden><label for="edStufe">Stufe</label><input type="range" id="edStufe" min="1" max="13" value="9" style="width:140px"><span id="edStufeWert" class="lbl">512</span>
+      <div class="seg" id="edMat"><button data-m="fest" aria-pressed="true">Fest</button><button data-m="jelly" aria-pressed="false">Jelly</button><button data-m="fell" aria-pressed="false">Fell</button></div>
+    </div>
+    <div class="group"><button class="btn" id="edZufall">Zufall</button><div class="seg"><button id="edOrig">Original</button><button id="edLeer">Alles leer</button><button id="edSockel" aria-pressed="true">Sockel zeigen</button></div></div>
+    <div id="edSlots" class="slots"></div>
+    <details class="note"><summary>Kombination als Daten</summary><pre id="edJson" style="white-space:pre-wrap;font-size:12px;margin:6px 0 0"></pre></details>
+    <p class="note"><b>System:</b> Jedes Element hat einen Typ (Kopf, Hals, Bein, Arm, Schwanz, Ohr) und einen Andockring. Jeder Rumpf und manche Elemente haben Sockel. Ein Element passt auf einen Sockel seines Typs (Bein und Arm untereinander, Kopf auch auf den Hals-Sockel). Andocken: Ring auf Sockel, Richtung auf Richtung, Größe nach Ringradius. Aussehen ist hier noch nicht das Ziel.</p>
   </div>
 </div>
 
@@ -801,11 +825,11 @@ function setMode(m) {
   disposeScene();
   mode = m;
   for (const t of document.querySelectorAll('.tabs button')) t.setAttribute('aria-selected', String(t.dataset.mode === m));
-  for (const id of ['vergleich', 'buehne', 'brett', 'schnitt']) $('ctl-' + id).hidden = id !== m;
+  for (const id of ['vergleich', 'buehne', 'brett', 'schnitt', 'editor']) $('ctl-' + id).hidden = id !== m;
   if (m !== 'schnitt') { for (const l of labels) l.el.remove(); labels = []; }
   const cmp = m === 'vergleich';
   $('ref').hidden = !cmp; $('wipeLine').hidden = !cmp; $('tagL').hidden = !cmp; $('tagR').hidden = !cmp;
-  if (m === 'vergleich') buildVergleich(); else if (m === 'buehne') buildBuehne(); else if (m === 'schnitt') buildSchnitt(); else buildBrett();
+  if (m === 'vergleich') buildVergleich(); else if (m === 'buehne') buildBuehne(); else if (m === 'schnitt') buildSchnitt(); else if (m === 'editor') buildEditor(); else buildBrett();
   scene.add(points);
   resize();
   applyWipe();
@@ -915,6 +939,204 @@ function updateLabels() {
 for (const c of $('schnittChips').children) c.onclick = () => { schnittSel = c.dataset.m; for (const x of $('schnittChips').children) x.setAttribute('aria-pressed', String(x === c)); setMode('schnitt'); };
 $('skelBtn').onclick = () => { zeigSkelett = !zeigSkelett; $('skelBtn').setAttribute('aria-pressed', String(zeigSkelett)); setMode('schnitt'); };
 $('xrayBtn').onclick = () => { zeigVerdeckt = !zeigVerdeckt; $('xrayBtn').setAttribute('aria-pressed', String(zeigVerdeckt)); setMode('schnitt'); };
+
+// ---------- Editor: Elemente an Sockel andocken (Modulsystem) ----------
+let EL = null, edRumpf = 'giraffe:rumpf', edWahl = {}, edZeigSockel = true, edBlobStufe = 9, edBlobMat = 'fest';
+const PASST = { hals: ['hals', 'kopf'], kopf: ['kopf'], bein: ['bein', 'arm'], arm: ['arm', 'bein'], schwanz: ['schwanz'], ohr: ['ohr'] };
+const TYPNAME = { hals: 'Hals', kopf: 'Kopf', bein: 'Bein', arm: 'Arm', schwanz: 'Schwanz', ohr: 'Ohr', rumpf: 'Rumpf' };
+const MODELLNAME = { giraffe: 'Giraffe', spinne: 'Spinne', rex: 'Rex', goldie: 'Retriever' };
+async function ladeElemente() {
+  if (EL) return EL;
+  const kat = await fetch('assets/elemente.json').then(r => r.json());
+  const b64 = (await fetch('assets/elemente-mesh.txt').then(r => r.text())).trim();
+  const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const buf = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  const geos = {};
+  for (const [key, e] of Object.entries(kat.elemente)) {
+    const n = e.vertices;
+    const q = new Uint16Array(buf, e.pos, n * 3), nr = new Int8Array(buf, e.nor, n * 4), uq = new Uint16Array(buf, e.uv, n * 2);
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      for (let k = 0; k < 3; k++) { pos[i * 3 + k] = e.min[k] + (q[i * 3 + k] / 65535) * (e.max[k] - e.min[k]); nor[i * 3 + k] = nr[i * 4 + k] / 127; }
+      uv[i * 2] = uq[i * 2] / 65535; uv[i * 2 + 1] = uq[i * 2 + 1] / 65535;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.setIndex(new THREE.BufferAttribute(e.idx32 ? new Uint32Array(buf, e.idx, e.dreiecke * 3) : new Uint16Array(buf, e.idx, e.dreiecke * 3), 1));
+    g.computeBoundingSphere();
+    geos[key] = g;
+  }
+  const mats = {};
+  await Promise.all(Object.entries(kat.modelle).map(async ([name, m]) => {
+    const t = await texLoader.loadAsync(m.textur);
+    t.colorSpace = THREE.SRGBColorSpace; t.flipY = true; t.anisotropy = 4;
+    mats[name] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
+  }));
+  EL = { kat, geos, mats };
+  return EL;
+}
+// Rahmen: Mitte, Richtung (vom Körper weg), Radius; Drehung so, dass Richtung auf Richtung liegt und "oben" erhalten bleibt
+const _up = new THREE.Vector3(0, 1, 0), _fw = new THREE.Vector3(0, 0, 1);
+function obenIn(n) { const r = Math.abs(n.dot(_up)) > 0.9 ? _fw : _up; return r.clone().addScaledVector(n, -r.dot(n)).normalize(); }
+function rahmenDrehung(nVon, nZu) {
+  const q1 = new THREE.Quaternion().setFromUnitVectors(nVon, nZu);
+  const u1 = obenIn(nVon).applyQuaternion(q1), u2 = obenIn(nZu);
+  const ang = Math.atan2(new THREE.Vector3().crossVectors(u1, u2).dot(nZu), u1.dot(u2));
+  return new THREE.Quaternion().setFromAxisAngle(nZu, ang).multiply(q1);
+}
+function elementMesh(key) {
+  const e = EL.kat.elemente[key];
+  const m = new THREE.Mesh(EL.geos[key], EL.mats[e.modell]);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+const SOCKELFARBE = { hals: 0xe0218a, kopf: 0xff5fd2, bein: 0x00b5e2, arm: 0xff7a1a, schwanz: 0xf5b800, ohr: 0x29c46a };
+function sockelRing(s) {
+  const t = new THREE.Mesh(new THREE.TorusGeometry(s.radius, Math.max(0.006, s.radius * 0.08), 8, 40),
+    new THREE.MeshBasicMaterial({ color: SOCKELFARBE[s.typ] ?? 0xffffff, transparent: true, opacity: 0.85, depthTest: false }));
+  t.position.fromArray(s.mitte);
+  t.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3().fromArray(s.normale).normalize());
+  t.renderOrder = 8;
+  return t;
+}
+// Element 'key' an Sockel 's' (in Koordinaten von 'eltern') andocken; rekursiv für die Sockel des Elements
+function dockeAn(eltern, s, key, pfad, slots, tiefe) {
+  const e = EL.kat.elemente[key];
+  const ring = e.ring;
+  const halter = new THREE.Group();
+  const ns = new THREE.Vector3().fromArray(s.normale).normalize();
+  const ne = new THREE.Vector3().fromArray(ring.normale).normalize();
+  const k = THREE.MathUtils.clamp(s.radius / ring.radius, 0.35, 3.0);
+  const eigen = key.endsWith(':' + s.name) && key.split(':')[0] === s.modell;   // Original am eigenen Platz: ohne Versenken
+  halter.quaternion.copy(rahmenDrehung(ne, ns));
+  halter.scale.setScalar(k);
+  halter.position.fromArray(s.mitte).addScaledVector(ns, eigen ? 0 : -0.22 * s.radius);
+  const inhalt = new THREE.Group();
+  inhalt.position.fromArray(ring.mitte).negate();
+  inhalt.add(elementMesh(key));
+  halter.add(inhalt);
+  eltern.add(halter);
+  sammleSockel(inhalt, e.sockel.map(x => ({ ...x, modell: e.modell })), pfad, slots, tiefe + 1);
+}
+function sammleSockel(gruppe, sockel, pfad, slots, tiefe) {
+  for (const s of sockel) {
+    const p = pfad ? pfad + '/' + s.name : s.name;
+    slots.push({ pfad: p, sockel: s, tiefe });
+    if (edZeigSockel) gruppe.add(sockelRing(s));
+    let wahl = edWahl[p];
+    if (wahl === undefined) wahl = edWahl[p] = (s.modell && EL.kat.elemente[s.modell + ':' + s.name]) ? s.modell + ':' + s.name : '';
+    if (wahl && EL.kat.elemente[wahl]) dockeAn(gruppe, s, wahl, p, slots, tiefe);
+  }
+}
+function blobSockel(b) {
+  // Sockel auf dem Grundblob: Strahlen aus der Körpermitte in feste Richtungen, Treffer auf der Oberfläche
+  const st = b.st, W = st.breite, H = st.hoehe;
+  const mesh = b.group.children[0];
+  const ray = new THREE.Raycaster();
+  const c = new THREE.Vector3(0, H * 0.5, 0);
+  const def = [
+    ['hals', 'hals', [0, 1, 0.12], 0.17], ['ohr_l', 'ohr', [0.75, 0.6, 0.05], 0.07], ['ohr_r', 'ohr', [-0.75, 0.6, 0.05], 0.07],
+    ['arm_l', 'arm', [1, 0.0, 0.25], 0.08], ['arm_r', 'arm', [-1, 0.0, 0.25], 0.08],
+    ['bein_vl', 'bein', [0.5, -0.8, 0.45], 0.11], ['bein_vr', 'bein', [-0.5, -0.8, 0.45], 0.11],
+    ['bein_hl', 'bein', [0.5, -0.8, -0.45], 0.11], ['bein_hr', 'bein', [-0.5, -0.8, -0.45], 0.11],
+    ['schwanz', 'schwanz', [0, -0.25, -1], 0.07],
+  ];
+  const out = [];
+  const g = mesh.geometry;
+  const probe = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+  probe.updateMatrixWorld();
+  for (const [name, typ, d, r] of def) {
+    const dir = new THREE.Vector3(...d).normalize();
+    ray.set(c.clone().addScaledVector(dir, Math.max(W, H) * 1.5), dir.clone().negate());
+    const hit = ray.intersectObject(probe)[0];
+    if (!hit) continue;
+    out.push({ name, typ, mitte: hit.point.toArray(), normale: dir.toArray(), radius: r * W });
+  }
+  return out;
+}
+function buildEditor() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(30, 1, 0.05, 60);
+  stageEl.style.aspectRatio = window.innerWidth < 640 ? '1 / 1.1' : '16 / 9';
+  clear.copy(lin([0.95, 0.94, 0.91]));
+  blobs = []; animFns = [];
+  if (!EL) { ladeElemente().then(() => { if (mode === 'editor') setMode('editor'); }); return; }
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x9a8f80, 1.8); hemi.layers.enableAll(); scene.add(hemi);
+  sun.position.set(2.5, 5, 3.2); sun.target.position.set(0, 0, 0);
+  const sc = sun.shadow.camera; sc.left = -2; sc.right = 2; sc.top = 2; sc.bottom = -2; sc.near = 0.5; sc.far = 16; sc.updateProjectionMatrix();
+  scene.add(sun, sun.target);
+  const root = new THREE.Group(); scene.add(root);
+  const slots = [];
+  $('edBlobOpt').hidden = edRumpf !== 'blob';
+  if (edRumpf === 'blob') {
+    const st = data.stufen[edBlobStufe - 1];
+    const b = new Wesen(edBlobStufe, edBlobMat, { lod: 'lod0', scale: 1 });
+    b.update(0, 0); blobs.push(b);
+    root.add(b.group);
+    sammleSockel(b.group, blobSockel(b), '', slots, 0);
+    if (edWahl.hals) b.U.uEyes.value = 0;   // ein angedockter Kopf bringt eigene Augen mit
+    root.scale.setScalar(0.9 / st.hoehe);
+  } else {
+    const e = EL.kat.elemente[edRumpf];
+    root.add(elementMesh(edRumpf));
+    sammleSockel(root, e.sockel.map(x => ({ ...x, modell: e.modell })), '', slots, 0);
+  }
+  // auf den Boden stellen und Kamera ausrichten
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root, true);
+  root.position.y -= box.min.y;
+  root.position.x -= (box.min.x + box.max.x) / 2; root.position.z -= (box.min.z + box.max.z) / 2;
+  const size = box.getSize(new THREE.Vector3());
+  addGround(0, 20);
+  const ziel = new THREE.Vector3(0, size.y * 0.5, 0), dist = 1.6 + Math.max(size.x, size.y, size.z) * 1.6;
+  camera.position.set(dist * 0.62, ziel.y + dist * 0.2, dist * 0.78);
+  controls = new OrbitControls(camera, canvas);
+  controls.target.copy(ziel); controls.enableDamping = true; controls.minDistance = 0.6; controls.maxDistance = 14; controls.enablePan = false; controls.maxPolarAngle = Math.PI * 0.49;
+  controls.autoRotate = !STILL; controls.autoRotateSpeed = 0.6;
+  controls.update();
+  zeigeSlots(slots);
+}
+function zeigeSlots(slots) {
+  const box = $('edSlots'); box.textContent = '';
+  for (const { pfad, sockel: s, tiefe } of slots) {
+    const row = document.createElement('div'); row.className = 'slot' + (tiefe ? ' kind' : '');
+    const id = 'slot-' + pfad.replace(/[^a-z0-9]/gi, '-');
+    const lab = document.createElement('label'); lab.htmlFor = id;
+    const [art, nr] = s.name.split('_');
+    lab.textContent = (tiefe ? '↳ ' : '') + (TYPNAME[art] || art) + (nr ? ' ' + nr.toUpperCase() : '');
+    lab.className = 'lbl';
+    const sel = document.createElement('select'); sel.id = id;
+    const leer = document.createElement('option'); leer.value = ''; leer.textContent = '— leer —'; sel.appendChild(leer);
+    const passend = Object.entries(EL.kat.elemente).filter(([k, e]) => e.typ !== 'rumpf' && (PASST[s.typ] || []).includes(e.typ));
+    for (const [k, e] of passend) {
+      const o = document.createElement('option'); o.value = k;
+      const [, teil] = k.split(':'); const [ta, tn] = teil.split('_');
+      o.textContent = `${MODELLNAME[e.modell]} · ${TYPNAME[ta] || ta}${tn ? ' ' + tn.toUpperCase() : ''}`;
+      sel.appendChild(o);
+    }
+    sel.value = edWahl[pfad] || '';
+    sel.onchange = () => { edWahl[pfad] = sel.value; for (const k of Object.keys(edWahl)) if (k.startsWith(pfad + '/')) delete edWahl[k]; setMode('editor'); };
+    row.append(lab, sel); box.appendChild(row);
+  }
+  $('edJson').textContent = JSON.stringify({ rumpf: edRumpf === 'blob' ? { grundblob: edBlobStufe, material: edBlobMat } : edRumpf, elemente: Object.fromEntries(Object.entries(edWahl).filter(([, v]) => v)) }, null, 1);
+}
+for (const c of $('edRumpf').children) c.onclick = () => { edRumpf = c.dataset.r; edWahl = {}; for (const x of $('edRumpf').children) x.setAttribute('aria-pressed', String(x === c)); setMode('editor'); };
+$('edStufe').oninput = () => { edBlobStufe = +$('edStufe').value; $('edStufeWert').textContent = 2 ** edBlobStufe; };
+$('edStufe').onchange = () => setMode('editor');
+for (const b of $('edMat').children) b.onclick = () => { edBlobMat = b.dataset.m; for (const x of $('edMat').children) x.setAttribute('aria-pressed', String(x === b)); setMode('editor'); };
+$('edZufall').onclick = () => {
+  const neu = {};
+  const zufall = (pfad, typ) => { const p = Object.entries(EL.kat.elemente).filter(([, e]) => (PASST[typ] || []).includes(e.typ)); return p.length && Math.random() < 0.85 ? p[Math.floor(Math.random() * p.length)][0] : ''; };
+  const rumpfSockel = edRumpf === 'blob' ? null : EL.kat.elemente[edRumpf].sockel;
+  if (rumpfSockel) for (const s of rumpfSockel) neu[s.name] = zufall(s.name, s.typ);
+  else for (const [n, t] of [['hals', 'hals'], ['ohr_l', 'ohr'], ['ohr_r', 'ohr'], ['bein_vl', 'bein'], ['bein_vr', 'bein'], ['bein_hl', 'bein'], ['bein_hr', 'bein'], ['schwanz', 'schwanz']]) neu[n] = zufall(n, t);
+  edWahl = neu; setMode('editor');
+};
+$('edOrig').onclick = () => { edWahl = {}; setMode('editor'); };
+$('edLeer').onclick = () => { const leer = {}; for (const k of Object.keys(edWahl)) if (!k.includes('/')) leer[k] = ''; edWahl = leer; setMode('editor'); };
+$('edSockel').onclick = () => { edZeigSockel = !edZeigSockel; $('edSockel').setAttribute('aria-pressed', String(edZeigSockel)); setMode('editor'); };
 
 // ---------- Größe ----------
 function resize() {
@@ -1035,13 +1257,16 @@ function frame() {
 renderer.info.autoReset = true;
 
 const start = (location.hash || '').replace('#', '');
-const m0 = Q.get('modus') || (['vergleich', 'buehne', 'brett', 'schnitt'].includes(start) ? start : 'vergleich');
+const m0 = Q.get('modus') || (['vergleich', 'buehne', 'brett', 'schnitt', 'editor'].includes(start) ? start : 'vergleich');
+if (Q.get('r')) edRumpf = Q.get('r');
+if (Q.get('wahl')) try { edWahl = JSON.parse(Q.get('wahl')); } catch (e) {}
 if (Q.get('m')) schnittSel = Q.get('m');
 if (Q.has('skelett')) zeigSkelett = true;
 if (Q.get('mat')) stageSel.mat = Q.get('mat');
 if (Q.get('stufe')) stageSel.stufe = +Q.get('stufe');
 if (Q.get('wipe')) $('wipe').value = Q.get('wipe');
 syncStageUi();
+if (m0 === 'editor') { await ladeElemente(); for (const x of $('edRumpf').children) x.setAttribute('aria-pressed', String(x.dataset.r === edRumpf)); }
 if (m0 === 'schnitt') { await ladeSchnittDaten(); await ladeGanz(schnittSel); for (const x of $('schnittChips').children) x.setAttribute('aria-pressed', String(x.dataset.m === schnittSel)); $('skelBtn').setAttribute('aria-pressed', String(zeigSkelett)); }
 setMode(m0);
 $('loading').hidden = true;

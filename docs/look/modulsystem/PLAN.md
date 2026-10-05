@@ -56,3 +56,7 @@ Python mit trimesh, scipy, pymeshlab (vorhanden); für Skelett, Geodäten und ex
 Florian: „Die Schnitte passen leider gar nicht – meistens viel zu wenig geschnitten.“ Die Linien lagen am Ende des Übergangs (Teilseite), die Teile waren zu klein. Ein automatischer zweiter Versuch (Schnitt in der Mitte des Übergangs, Rumpfseite) schnitt durch den Rumpf (ein Ring um beide Vorderbeine der Giraffe, Spinnenringe quer durch den Körper) und wurde verworfen, nicht gezeigt.
 
 Nächster Schritt: Florian zeichnet auf sauberen Ansichten ein, wo er schneiden würde (`docs/progress/zum-markieren-*.png`). Seine Linien werden zuerst exakt als Ansatzpunkte übernommen; erst danach wird die Regel daraus abgeleitet (wie weit in den Rumpf, welche Muskelpartien zum Teil gehören), bevor wieder automatisch geschnitten wird.
+
+## Nachtrag 2026-10-05: Test beendet
+
+Florian: „Erstelle mir den Editor mit deinen Linien. Ich weiß, es wird noch nicht gut aussehen. Ich brauche ein klares System für die Aufteilung und Elemente … ich will den Test jetzt beenden.“ Ergebnis: Elemente entlang der Stufe-1-Linien geschnitten und verschlossen, Editor mit Rumpf/Sockel/Element-System im Artefakt. Beschreibung des Systems: [`SYSTEM.md`](SYSTEM.md). Die Stufen 2–5 dieses Plans bleiben für die Produktion.
