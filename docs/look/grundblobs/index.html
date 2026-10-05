@@ -120,6 +120,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const Q = new URLSearchParams(location.search);
 const STILL = Q.has('still');                 // nur für Bildvergleiche: eine Aufnahme ohne Animation
+if (Q.has('gross')) document.querySelector('.wrap').style.maxWidth = 'none';
 const VORLAGE = { w: 2588, h: 1276, px: 300 };
 const MATS = ['jelly', 'fest', 'fell'];
 const $ = (id) => document.getElementById(id);
@@ -156,8 +157,8 @@ const rtBack = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, de
 const G = {
   uTime: { value: 0 },
   uKeyDir: { value: new THREE.Vector3(0.38, 0.82, 0.48).normalize() },
-  uBoxDir: { value: new THREE.Vector3(0.5, 0.62, 0.62).normalize() },
-  uBox2Dir: { value: new THREE.Vector3(-0.7, 0.35, 0.6).normalize() },
+  uBoxDir: { value: new THREE.Vector3(0.78, 0.62, -0.42).normalize() },
+  uBox2Dir: { value: new THREE.Vector3(-0.85, 0.5, -0.2).normalize() },
   uEnvTop: { value: new THREE.Color(1.0, 1.0, 1.0) },
   uEnvHor: { value: new THREE.Color(0.80, 0.84, 0.90) },
   uEnvGround: { value: new THREE.Color(0.45, 0.45, 0.48) },
@@ -208,12 +209,12 @@ float eyeMask(vec3 p, float aa, float grow) {
   for (int i = 0; i < 2; i++) {
     if (i >= uEyes) break;
     vec3 q = p - uEyeP[i];
-    if (dot(q, uEyeN[i]) < -0.6 * uEyeS[i].y) continue;
+    if (abs(dot(q, uEyeN[i])) > 0.5 * uEyeS[i].y * grow) continue;
     vec2 hs = 0.5 * uEyeS[i] * grow;
     float u = dot(q, uEyeT[i]) / hs.x;
     float v = dot(q, uEyeB[i]) / (hs.y * max(uBlink, 0.07));
     float d = pow(pow(abs(u), 2.4) + pow(abs(v), 2.4), 1.0 / 2.4) - 1.0;
-    float px = aa / hs.x;
+    float px = 0.75 * aa / hs.x;
     m = max(m, 1.0 - smoothstep(-px, px, d));
   }
   return m;
@@ -277,13 +278,15 @@ void main() {
   float ao = vC.r;
   col *= mix(0.58, 1.0, smoothstep(0.15, 0.95, ao));
   vec3 R = reflect(-V, N);
-  float box = softbox(R, uBoxDir, vec2(0.42, 0.26), 0.22);
+  float box = softbox(R, uBoxDir, vec2(0.18, 0.6), 0.25);
   float F = 0.04 + 0.96 * pow(1.0 - NdV, 5.0);
   vec3 H = normalize(uKeyDir + V);
   float sheen = pow(max(dot(N, H), 0.0), 16.0) * 0.10;
-  col += (box * 0.075 + sheen) * uLight + envCol(R) * F * 0.10;
-  float rim = smoothstep(0.80, 0.97, 1.0 - NdV);
-  col = mix(col, uRim, rim * 0.7);
+  float g1 = softbox(R, uBoxDir, vec2(0.08, 0.45), 0.05);
+  float g2 = softbox(R, uBox2Dir, vec2(0.05, 0.3), 0.04);
+  col += (box * 0.05 + sheen) * uLight + envCol(R) * F * 0.10 + vec3(g1 * 0.16 + g2 * 0.10);
+  float rim = smoothstep(0.82, 0.975, 1.0 - NdV);
+  col = mix(col, uRim, rim * 0.8);
   float e = eyeMask(vRest, length(fwidth(vRest)), 1.0);
   col = mix(col, uEyeCol, e);
   gl_FragColor = vec4(col, 1.0);
@@ -302,7 +305,7 @@ const FRAG_JELLY = /* glsl */`
 uniform sampler2D uSceneTex, uSceneDepth, uBackTex;
 uniform vec2 uRes;
 uniform float uNear, uFar;
-uniform vec3 uSigma, uCoreSigma, uScatter, uRim, uLight;
+uniform vec3 uSigma, uCoreSigma, uCoreTint, uScatter, uRim, uLight;
 uniform vec3 uKernC, uKernR;
 uniform mat4 uModelInv;
 uniform float uRefr;
@@ -329,8 +332,8 @@ void main() {
   vec3 bg = texture2D(uSceneTex, ruv).rgb;
   // Innenkern: Strahl durch ein Ellipsoid im (verformten) Objektraum
   float s = uDef.x;
-  vec3 kc = deformP(uKernC);
-  vec3 kr = uKernR * vec3(inversesqrt(max(1.0 + s, 0.25)), 1.0 + s, inversesqrt(max(1.0 + s, 0.25)));
+  vec3 kc = deformP(uKernC - vec3(0.0, 0.10 * uH, 0.0));
+  vec3 kr = uKernR * vec3(1.08, 0.82, 1.0) * vec3(inversesqrt(max(1.0 + s, 0.25)), 1.0 + s, inversesqrt(max(1.0 + s, 0.25)));
   vec3 rd = normalize((uModelInv * vec4(-V, 0.0)).xyz);
   vec3 oc = (vObj - kc) / kr;
   vec3 dd = rd / kr;
@@ -343,24 +346,37 @@ void main() {
     coreLen = max(min(t1, thickObj) - max(t0, 0.0), 0.0);
   }
   float coreN = coreLen / uW;
-  vec3 Tr = exp(-uSigma * thickN - uCoreSigma * coreN);
+  // Bodenschicht: flaches Ellipsoid unten (dunklere, gesammelte Masse wie in der Vorlage)
+  vec3 fc = deformP(vec3(uKernC.x, 0.0, 0.0));
+  vec3 fr = vec3(uW * 0.62, uH * 0.13, uW * 0.42) * vec3(inversesqrt(max(1.0 + s, 0.25)), 1.0 + s, inversesqrt(max(1.0 + s, 0.25)));
+  vec3 oc2 = (vObj - fc) / fr; vec3 dd2 = rd / fr;
+  float a2 = dot(dd2, dd2), b2 = dot(oc2, dd2), c2 = dot(oc2, oc2) - 1.0;
+  float disc2 = b2 * b2 - a2 * c2;
+  float floorLen = 0.0;
+  if (disc2 > 0.0) { float sq2 = sqrt(disc2); floorLen = max(min((-b2 + sq2) / a2, thickObj) - max((-b2 - sq2) / a2, 0.0), 0.0); }
+  float floorN = floorLen / uW;
+  vec3 Tr = exp(-uSigma * (thickN + 0.06) - uCoreSigma * (coreN + floorN));
+  // klare Kante an Kern und Bodenschicht (gemalte Innenform), satt statt grau
+  Tr *= mix(vec3(1.0), uCoreTint, 0.80 * smoothstep(0.004, 0.025, coreN));
+  Tr *= mix(vec3(1.0), uCoreTint, 0.70 * smoothstep(0.004, 0.025, floorN));
   float ndl = dot(N, uKeyDir);
   float lit = clamp(ndl * 0.5 + 0.5, 0.0, 1.0);
   vec3 col = bg * Tr + uScatter * (1.0 - Tr) * (0.6 + 0.6 * lit);
   // Boden-Kontakt etwas dunkler
   col *= mix(0.78, 1.0, smoothstep(0.1, 0.9, vC.r));
+  col *= mix(0.72, 1.0, smoothstep(0.0, 0.10 * uH, vRest.y));
   // Glanz: Umgebung, zwei Softboxen, harter Sonnenpunkt
   vec3 R = reflect(-V, N);
   float F = 0.03 + 0.97 * pow(1.0 - NdV, 5.0);
-  col = col * (1.0 - 0.5 * F) + envCol(R) * F * 0.5;
-  float box = softbox(R, uBoxDir, vec2(0.30, 0.13), 0.12);
-  float box2 = softbox(R, uBox2Dir, vec2(0.16, 0.08), 0.06);
+  col = col * (1.0 - 0.35 * F) + envCol(R) * F * 0.25;
+  float box = softbox(R, uBoxDir, vec2(0.09, 0.36), 0.05);
+  float box2 = softbox(R, uBox2Dir, vec2(0.06, 0.35), 0.04);
   vec3 H = normalize(uKeyDir + V);
-  float spec = pow(max(dot(N, H), 0.0), 260.0) * 1.6;
-  col += vec3(box * 0.95 + box2 * 0.35 + spec);
+  float dots = softbox(R, normalize(uBoxDir + vec3(-0.25, 0.25, 0.1)), vec2(0.035, 0.035), 0.02);
+  col += vec3(box * 0.95 + box2 * 0.30 + dots * 0.9);
   // dunkle Randlinie
-  float rim = smoothstep(0.86, 0.985, 1.0 - NdV);
-  col = mix(col, uRim, rim * 0.75);
+  float rim = smoothstep(0.84, 0.98, 1.0 - NdV);
+  col = mix(col, uRim, rim * 0.85);
   float e = eyeMask(vRest, length(fwidth(vRest)), 1.0);
   col = mix(col, uEyeCol, e);
   gl_FragColor = vec4(col, 1.0);
@@ -375,7 +391,7 @@ varying float vR;
 void main() {
   vec3 c = aBlase.xyz;
   c += 0.012 * uH * vec3(sin(uTime * 0.9 + aBlase.x * 40.0), sin(uTime * 0.7 + aBlase.y * 37.0), sin(uTime * 0.8 + aBlase.z * 31.0));
-  vec3 p = deformP(c) + position * aBlase.w;
+  vec3 p = deformP(c) + position * aBlase.w * 2.2;
   vN = normalize(normalMatrix * position);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
 }`;
@@ -384,7 +400,7 @@ uniform vec3 uLight;
 varying vec3 vN;
 void main() {
   float f = clamp(vN.z, 0.0, 1.0);
-  vec3 col = mix(uLight * 1.6, vec3(3.0), smoothstep(0.4, 1.0, f));
+  vec3 col = mix(uLight * 1.15, vec3(1.7), smoothstep(0.5, 1.0, f));
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
 }`;
@@ -418,7 +434,8 @@ void main() {
   vec3 n = normalize(normal);
   vec3 g = vec3(0.0, -1.0, 0.0);
   vec3 tang = g - n * dot(g, n);
-  vec3 off = n * uFurLen * h + (tang * 0.95 + uWind) * uFurLen * h * h;
+  float tl = length(tang);
+  vec3 off = n * uFurLen * h * (0.85 + 0.25 * (1.0 - tl)) + (tang * 1.25 * h + uWind * h * h) * uFurLen;
   vRest = position;
   vH = h;
   vec3 p = deformP(position + off);
@@ -439,30 +456,31 @@ varying float vH;
 varying vec4 vC;
 void main() {
   float aa = length(fwidth(vRest));
-  if (eyeMask(vRest, aa, 2.0) > 0.02) discard;
+  if (eyeMask(vRest, aa, 1.0 + 0.6 * vH) > 0.02) discard;
   vec3 id;
-  vec2 F = cellNoise(vRest * uClump, id);
+  vec2 F = cellNoise(vRest * vec3(1.0, 0.42, 1.0) * uClump, id);
   float rnd = hash13(id * 7.31);
-  float len = 0.55 + 0.45 * rnd;
+  float len = 0.35 + 0.65 * rnd;
   float h = vH / len;
   if (h > 1.0) discard;
   float edge = F.y - F.x;                       // Abstand zur Zellgrenze
-  float radius = (1.0 - h) * 0.55;              // Büschel laufen spitz zu
-  float fine = hash13(floor(vRest * uClump * 9.0)) - 0.5;
-  if (F.x > radius + fine * 0.12 * h) discard;
+  float radius = 1.1 * pow(1.0 - h, 1.1);     // breit an der Wurzel, spitz an der Spitze
+  float fine = hash13(floor(vRest * uClump * 6.0)) - 0.5;
+  if (F.x > radius + fine * 0.10 * h) discard;
   vec3 N = normalize(vWN);
   vec3 V = viewVec(vWP);
   float ndl = dot(N, uKeyDir);
   float wrap = clamp((ndl + 0.6) / 1.6, 0.0, 1.0);
   float t = smoothstep(0.2, 0.85, wrap);
-  vec3 base = mix(uRoot, uTip, clamp(0.25 + 0.75 * h * len, 0.0, 1.0));
-  base *= mix(0.80, 1.12, t) * (0.92 + 0.16 * rnd);
-  base *= mix(0.72, 1.0, smoothstep(0.0, 0.25, edge + h * 0.3));
+  vec3 base = mix(uRoot, uTip, clamp(0.55 + 0.45 * h * len, 0.0, 1.0));
+  base *= mix(0.70, 1.14, t) * (0.96 + 0.08 * rnd);
+  base *= mix(0.90, 1.0, smoothstep(0.0, 0.35, radius - F.x + 0.1 * h));
+  base *= mix(0.74, 1.06, smoothstep(0.0, 0.9, vRest.y / uH));
   base *= mix(0.6, 1.0, smoothstep(0.1, 0.9, vC.r));
   vec3 T = normalize(vComb);
   vec3 Hh = normalize(uKeyDir + V);
   float th = dot(T, Hh);
-  float kk = pow(sqrt(max(1.0 - th * th, 0.0)), 60.0) * 0.10 * h;
+  float kk = pow(sqrt(max(1.0 - th * th, 0.0)), 60.0) * 0.035 * h * smoothstep(0.3, 0.9, vRest.y / uH);
   vec3 col = base + kk;
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
@@ -474,7 +492,7 @@ void main() {
   vec3 N = normalize(vWN);
   float ndl = dot(N, uKeyDir);
   float t = smoothstep(0.2, 0.85, clamp((ndl + 0.6) / 1.6, 0.0, 1.0));
-  vec3 col = uRoot * mix(0.75, 1.0, t) * mix(0.55, 1.0, smoothstep(0.1, 0.9, vC.r));
+  vec3 col = mix(uRoot, uTip, 0.45) * mix(0.70, 1.1, t) * mix(0.6, 1.0, smoothstep(0.1, 0.9, vC.r)) * mix(0.74, 1.06, smoothstep(0.0, 0.9, vRest.y / uH));
   float e = eyeMask(vRest, length(fwidth(vRest)), 1.0);
   col = mix(col, uEyeCol, e);
   gl_FragColor = vec4(col, 1.0);
@@ -486,7 +504,7 @@ function eyeUniforms(st) {
   const P = [new THREE.Vector3(), new THREE.Vector3()], T = [new THREE.Vector3(), new THREE.Vector3()];
   const B = [new THREE.Vector3(), new THREE.Vector3()], N = [new THREE.Vector3(), new THREE.Vector3()];
   const S = [new THREE.Vector2(), new THREE.Vector2()];
-  st.augen.slice(0, 2).forEach((e, i) => { P[i].fromArray(e.p); T[i].fromArray(e.t); B[i].fromArray(e.b); N[i].fromArray(e.n); S[i].set(e.breite, e.hoehe); });
+  st.augen.slice(0, 2).forEach((e, i) => { P[i].fromArray(e.p); T[i].fromArray(e.t); B[i].fromArray(e.b); N[i].fromArray(e.n); S[i].set(e.breite * 1.35, e.hoehe * 1.12); });
   return { uEyeP: { value: P }, uEyeT: { value: T }, uEyeB: { value: B }, uEyeN: { value: N }, uEyeS: { value: S }, uEyes: { value: Math.min(2, st.augen.length) } };
 }
 function farben(st, mat) { const f = st.farben[mat]; return { oben: lin(f.farbe_oben), mitte: lin(f.farbe_mitte), unten: lin(f.farbe_unten), licht: lin(f.farbe_licht), schatten: lin(f.farbe_schatten) }; }
@@ -525,11 +543,12 @@ class Blob {
       const mesh = new THREE.Mesh(g0, m); mesh.layers.enable(L_RT); mesh.castShadow = true;
       this.group.add(mesh);
     } else if (mat === 'jelly') {
-      const target = F.mitte;
-      const sig = new THREE.Vector3(...[target.r, target.g, target.b].map(c => -Math.log(Math.max(c, 0.004)) / 0.55));
+      const target = F.oben;
+      const sig = new THREE.Vector3(...[target.r, target.g, target.b].map(c => -Math.log(Math.max(c, 0.004)) / 0.45));
+      const tint = new THREE.Vector3(...['r', 'g', 'b'].map(k => Math.min(1, Math.pow(F.unten[k] / Math.max(F.oben[k], 0.003), 1.15))));
       this.U.uModelInv = { value: new THREE.Matrix4() };
       const front = new THREE.ShaderMaterial({
-        uniforms: { ...this.U, uSigma: { value: sig }, uCoreSigma: { value: sig.clone().multiplyScalar(1.1) }, uScatter: { value: F.licht.clone().multiplyScalar(0.18) },
+        uniforms: { ...this.U, uSigma: { value: sig }, uCoreSigma: { value: sig.clone().multiplyScalar(0.5) }, uCoreTint: { value: tint }, uScatter: { value: F.licht.clone().multiplyScalar(0.10) },
           uRim: { value: F.unten.clone().multiplyScalar(0.45) }, uLight: { value: F.licht }, uRefr: { value: 0.035 },
           uKernC: { value: new THREE.Vector3().fromArray(st.kern.mitte) }, uKernR: { value: new THREE.Vector3().fromArray(st.kern.radien) } },
         vertexShader: COMMON + VERT, fragmentShader: COMMON + FRAG_JELLY, vertexColors: true });
@@ -537,7 +556,7 @@ class Blob {
       const back = new THREE.ShaderMaterial({ uniforms: this.U, vertexShader: COMMON + VERT, fragmentShader: COMMON + FRAG_BACK, side: THREE.BackSide, vertexColors: true });
       const mb = new THREE.Mesh(g0, back); mb.layers.set(L_BACK);
       // Bläschen
-      const bl = st.blasen;
+      const bl = st.blasen.slice(0, 6 + Math.round(st.stufe * 0.8));
       const bg = new THREE.InstancedBufferGeometry().copy(new THREE.IcosahedronGeometry(1, 1));
       bg.instanceCount = bl.length;
       bg.setAttribute('aBlase', new THREE.InstancedBufferAttribute(new Float32Array(bl.flat()), 4));
@@ -546,7 +565,7 @@ class Blob {
       this.group.add(mf, mb, mbl);
       this.front = front;
     } else {
-      const furU = { uShells: { value: shellCount }, uFurLen: { value: 0.030 }, uClump: { value: 22.0 }, uRoot: { value: F.unten.clone().multiplyScalar(0.62) }, uTip: { value: F.oben.clone().multiplyScalar(1.08) }, uRim: { value: F.unten.clone().multiplyScalar(0.5) }, uWind: { value: new THREE.Vector3() } };
+      const furU = { uShells: { value: shellCount }, uFurLen: { value: 0.034 + 0.030 * st.hoehe }, uClump: { value: 8.5 / Math.pow(st.hoehe, 0.6) }, uRoot: { value: F.unten.clone().multiplyScalar(0.78) }, uTip: { value: F.oben.clone().multiplyScalar(1.04) }, uRim: { value: F.unten.clone().multiplyScalar(0.5) }, uWind: { value: new THREE.Vector3() } };
       this.furU = furU;
       const baseM = new THREE.ShaderMaterial({ uniforms: { ...this.U, ...furU }, vertexShader: COMMON + VERT, fragmentShader: COMMON + FUR_COMMON + FRAG_FURBASE, vertexColors: true });
       const base = new THREE.Mesh(g0, baseM); base.layers.enable(L_RT); base.castShadow = true;
@@ -684,7 +703,7 @@ function buildVergleich() {
 
 let stageSel = { mat: 'jelly', stufe: 13 }, stageBg = 'hell', spin = true;
 function addGround(color, size) {
-  const gm = new THREE.ShadowMaterial({ opacity: 0.22, color: 0x0a2030 });
+  const gm = new THREE.ShadowMaterial({ opacity: 0.22, color: 0x0a2030, depthWrite: false });
   ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size), gm);
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; ground.layers.enable(L_RT);
   scene.add(ground);
@@ -727,7 +746,9 @@ function buildBrett() {
   const tiles = new THREE.Group();
   for (let i = 0; i < 36; i++) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.06, 0.94), new THREE.MeshLambertMaterial({ color: (i + Math.floor(i / 6)) % 2 ? 0xd9cdb4 : 0xe6dcc6 }));
-    m.position.set((i % 6 - 2.5), -0.03, (Math.floor(i / 6) - 2.5)); m.receiveShadow = true; m.layers.enable(L_RT); tiles.add(m);
+    m.position.set((i % 6 - 2.5), -0.03, (Math.floor(i / 6) - 2.5)); m.receiveShadow = true; tiles.add(m);
+    const proxy = new THREE.Mesh(m.geometry, new THREE.MeshLambertMaterial({ color: m.material.color, depthWrite: false }));
+    proxy.position.copy(m.position); proxy.layers.set(L_RT); tiles.add(proxy);
   }
   scene.add(tiles);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8070, 2.2));

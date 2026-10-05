@@ -29,6 +29,9 @@ PX_PRO_EINHEIT = 300.0
 LOD = {'lod0': 16000, 'lod1': 4500}
 # Augen aus der festen Reihe; Stufe 13 hat dort nur ein erkanntes Auge
 AUGEN_FIX = {13: [(0.419, 0.183, 0.040, 0.108), (0.672, 0.183, 0.040, 0.108)]}
+# Zusatzformen, die in der Vorlage vor dem Körper gezeichnet sind und nicht in der Silhouette liegen:
+# (x relativ zur Breite, y relativ zur Höhe von oben, z relativ zur halben Tiefe nach vorn, Radius relativ zur Breite)
+ZUSATZ = {13: [(0.115, 0.905, 0.62, 0.085), (0.885, 0.915, 0.55, 0.065)]}
 
 
 def poisson(mask):
@@ -67,13 +70,16 @@ def sample(grid, pts):
 ergebnis = {'einheit': f'{PX_PRO_EINHEIT:.0f} px der Vorlage', 'stufen': []}
 szene = trimesh.Scene()
 fest = V['reihen']['fest']
+NUR = [int(x) for x in os.environ.get('STUFEN', '').split(',') if x]
 for b in fest:
     s = b['stufe']
+    if NUR and s not in NUR:
+        continue
     m0 = np.asarray(Image.open(f"{VM}/maske-fest-{s:02d}.png")) > 127
     H0, W0 = m0.shape
     f = N / H0
     pad0 = 6
-    mf = ndi.gaussian_filter(np.pad(m0.astype(float), pad0), 1.4)
+    mf = ndi.gaussian_filter(np.pad(m0.astype(float), pad0), 1.0)
     mc = ndi.zoom(mf, f, order=3)          # kontinuierliche Maske in Voxel-Auflösung (kubisch: keine Knicke)
     mu = mc > 0.5
     rows_any = np.nonzero(mu.any(1))[0]
@@ -124,14 +130,31 @@ for b in fest:
     sdf = np.where(inside2, f_in, f_out)
     sdf = np.pad(sdf, ((0, 0), (0, 0), (padw, padw)), mode='linear_ramp', end_values=float(padw + zmax))
     sdf = ndi.gaussian_filter(sdf, 1.4)
+    # Zusatzformen weich anfügen
+    if s in ZUSATZ:
+        gy_, gx_, gz_ = np.meshgrid(np.arange(sdf.shape[0]), np.arange(sdf.shape[1]), np.arange(sdf.shape[2]), indexing='ij')
+        for (zx, zy, zz, zr) in ZUSATZ[s]:
+            cxg = padw + (pad0 + zx * W0) * f
+            cyg = padw + (pad0 + zy * H0) * f
+            rg = zr * W0 * f
+            row = int(round(cyg - padw)); col = int(round(cxg - padw))
+            tloc = tfull[min(row, tfull.shape[0] - 1), min(col, tfull.shape[1] - 1)]
+            czg = padw + (nz - 1) / 2.0 + zz * max(tloc, rg)
+            sph = np.sqrt((gy_ - cyg) ** 2 + (gx_ - cxg) ** 2 + (gz_ - czg) ** 2) - rg
+            sdf = smin(sdf, sph, 0.35 * rg)
+        del gy_, gx_, gz_
     # Boden: Zeilenindex wächst nach unten; Bodenzeile im gepolsterten Gitter
     yg = padw + yb
     yy = np.arange(sdf.shape[0])[:, None, None].astype(float)
     sdf_cut = smax(sdf, (yy - yg), 2.5)  # außerhalb, wenn unter dem Boden
     verts, faces, _, _ = measure.marching_cubes(sdf_cut, 0.0)
     m_hi = trimesh.Trimesh(verts, faces, process=True)
+    # nur den größten zusammenhängenden Körper behalten (Marching Cubes erzeugt winzige Splitter an der Bodenkante)
+    m_hi = max(m_hi.split(only_watertight=False), key=lambda m: len(m.faces))
+    if os.environ.get('DEBUG'): print('MC', m_hi.bounds.round(1).tolist(), len(m_hi.split(only_watertight=False)))
     trimesh.smoothing.filter_taubin(m_hi, lamb=0.5, nu=-0.53, iterations=25)
     verts, faces = np.asarray(m_hi.vertices), np.asarray(m_hi.faces)
+    if os.environ.get('DEBUG'): print('Taubin', m_hi.bounds.round(1).tolist())
     # Ausdünnen
     lods = {}
     for name, target in LOD.items():
@@ -153,10 +176,12 @@ for b in fest:
             ref = trimesh.Trimesh(pv, pf, process=False)
             n = np.asarray(ref.vertex_normals).copy()
         else:
-            # Normalen der groben Stufe von der feinen übernehmen (keine Facetten)
-            cp, dist, tri = trimesh.proximity.closest_point(ref, pv)
-            bary = trimesh.triangles.points_to_barycentric(ref.triangles[tri], cp)
-            n = (np.asarray(ref.vertex_normals)[ref.faces[tri]] * bary[:, :, None]).sum(1)
+            # Normalen der groben Stufe von der feinen übernehmen (keine Facetten): 6 Nachbarn, invers gewichtet
+            from scipy.spatial import cKDTree
+            dd, ii = cKDTree(np.asarray(ref.vertices)).query(pv, k=6)
+            ww = 1.0 / (dd + 1e-6)
+            n = (np.asarray(ref.vertex_normals)[ii] * ww[:, :, None]).sum(1)
+        n = np.nan_to_num(n)
         n /= np.linalg.norm(n, axis=1, keepdims=True) + 1e-9
         # nach außen ausrichten (gegen den Gradienten des Abstandsfelds prüfen)
         gref = np.stack([sample(gy, pv), sample(gx, pv), sample(gz, pv)], 1)
