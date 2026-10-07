@@ -5,7 +5,7 @@ import { CreatureMesh, STIL_STANDARD, type WesenStil } from '@ee/render';
 import type { SceneController, SceneContext } from '../../canvas/SceneController';
 import { useAppStore } from '../../state/store';
 import { createMeadow, type Meadow } from '../rex/meadow';
-import { ANSICHTEN, Turntable, type TurntableAnsicht } from './turntable';
+import { ANSICHTEN, Turntable, rahmenUm, type TurntableAnsicht } from './turntable';
 
 export type WesenBoden = 'wiese' | 'weiss';
 
@@ -76,6 +76,12 @@ export class WesenLabScene implements SceneController {
   /** Nächster feiner Bau passt die Kamera neu ein (neue Vorlage, neue Ansicht). */
   private fitNext: 'voll' | 'abstand' | null = 'voll';
   private openness = 0.3;
+  /** Standbild (Harness, Vergleichsbilder): kein Atmen, kein Blinzeln. */
+  private readonly standbild: boolean;
+
+  constructor(opts: { standbild?: boolean } = {}) {
+    this.standbild = opts.standbild ?? false;
+  }
 
   mount(ctx: SceneContext): void {
     this.ctx = ctx;
@@ -87,6 +93,7 @@ export class WesenLabScene implements SceneController {
     this.meadow.target.visible = false;
     this.creature = new CreatureMesh({ stil: this.stil });
     this.creature.openness = this.openness;
+    this.creature.breathe = !this.standbild;
     this.scene.add(this.creature.root);
     this.turntable.attach(ctx.canvas);
     const a = ANSICHTEN[this.ansicht];
@@ -251,19 +258,21 @@ export class WesenLabScene implements SceneController {
     const dx = b.max[0] - b.min[0];
     const dy = b.max[1] - b.min[1];
     const dz = b.max[2] - b.min[2];
-    let distance: number;
-    let target: [number, number, number];
+    let distance = 0;
+    let target: [number, number, number] = [0, 0, 0];
     if (name === 'brett') {
       const cell = Math.max(dx, dz) * 1.15;
       distance = (3.6 * cell) / 2 / Math.tan(half);
       target = [(b.min[0] + b.max[0]) / 2, b.min[1] + dy * 0.35, (b.min[2] + b.max[2]) / 2];
-    } else {
-      const radius = 0.5 * Math.hypot(dx, dy, dz);
-      const margin = name === 'boegen' ? 1.08 : 1.18;
-      distance = (radius * margin) / Math.sin(half);
-      target = [(b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2];
     }
-    if (mode === 'voll' && (force || name !== 'held' || !this.turntable.userOrbited)) this.turntable.setAnsicht(name, { distance, target }, seconds);
+    const winkelZurueck = mode === 'voll' && (force || name !== 'held' || !this.turntable.userOrbited);
+    if (name !== 'brett') {
+      // Enger Rahmen für genau die Blickrichtung, die die Kamera gleich hat (feste Ansicht oder die des Nutzers)
+      const yaw = winkelZurueck ? a.yaw : this.turntable.yaw;
+      const pitch = winkelZurueck ? a.pitch : this.turntable.pitch;
+      ({ distance, target } = rahmenUm(build.positions, yaw, pitch, a.fov, aspect, name === 'boegen' ? 0.84 : 0.78));
+    }
+    if (winkelZurueck) this.turntable.setAnsicht(name, { distance, target }, seconds);
     else this.turntable.animateTo({ distance, target, fov: a.fov }, seconds);
   }
 
@@ -277,7 +286,11 @@ export class WesenLabScene implements SceneController {
     this.camera.updateProjectionMatrix();
     this.turntable.step(dt);
     this.turntable.apply(this.camera);
-    this.creature?.update(Math.min(dt, 0.1));
+    if (this.creature) {
+      this.creature.update(Math.min(dt, 0.1));
+      // Standbild: das automatische Blinzeln nie zeigen (der Zeitgeber des Wesens läuft weiter)
+      if (this.standbild) this.creature.uniforms.blink.value = 0;
+    }
     this.meadow?.sun.requestUpdate();
     ctx.renderer.render(this.scene, this.camera);
   }

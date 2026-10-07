@@ -34,6 +34,56 @@ interface Anim {
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
+/**
+ * Enger Rahmen um Punkte (xyz hintereinander, z. B. die Vertices des Wesens) für eine feste Blickrichtung: die Punkte
+ * werden in die Kameraebene projiziert, das Ziel rückt in die Mitte ihres Umrisses, der Abstand reicht, damit alle in
+ * `fuellung` des Sichtfelds liegen (Perspektive berücksichtigt: nähere Punkte brauchen mehr Abstand).
+ */
+export function rahmenUm(punkte: ArrayLike<number>, yaw: number, pitch: number, fovDeg: number, aspect: number, fuellung = 0.82): { distance: number; target: [number, number, number] } {
+  const n = Math.floor(punkte.length / 3);
+  if (n === 0) return { distance: 3, target: [0, 0.5, 0] };
+  const cp = Math.cos(pitch);
+  const d = [Math.sin(yaw) * cp, Math.sin(pitch), Math.cos(yaw) * cp] as const; // vom Ziel zur Kamera
+  const rl = Math.hypot(d[2], d[0]) || 1;
+  const r = [d[2] / rl, 0, -d[0] / rl] as const; // rechts (oben × d)
+  const u = [d[1] * r[2] - d[2] * r[1], d[2] * r[0] - d[0] * r[2], d[0] * r[1] - d[1] * r[0]] as const; // oben (d × rechts)
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const px = punkte[i * 3]!, py = punkte[i * 3 + 1]!, pz = punkte[i * 3 + 2]!;
+    const x = px * r[0] + py * r[1] + pz * r[2];
+    const y = px * u[0] + py * u[1] + pz * u[2];
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const tanV = Math.tan((fovDeg * Math.PI) / 360) * fuellung;
+  const tanH = tanV * Math.max(0.05, aspect);
+  // Ziel = Mitte des Umrisses in der Kameraebene (Tiefe: Mittelwert der Punkte entlang der Blickachse)
+  let zSum = 0;
+  for (let i = 0; i < n; i++) zSum += punkte[i * 3]! * d[0] + punkte[i * 3 + 1]! * d[1] + punkte[i * 3 + 2]! * d[2];
+  const cz = zSum / n;
+  const target: [number, number, number] = [r[0] * cx + u[0] * cy + d[0] * cz, r[1] * cx + u[1] * cy + d[1] * cz, r[2] * cx + u[2] * cy + d[2] * cz];
+  let distance = 0;
+  for (let i = 0; i < n; i++) {
+    const px = punkte[i * 3]!, py = punkte[i * 3 + 1]!, pz = punkte[i * 3 + 2]!;
+    const x = px * r[0] + py * r[1] + pz * r[2] - cx;
+    const y = px * u[0] + py * u[1] + pz * u[2] - cy;
+    const z = px * d[0] + py * d[1] + pz * d[2] - cz;
+    distance = Math.max(distance, z + Math.abs(x) / tanH, z + Math.abs(y) / tanV);
+  }
+  return { distance: Math.max(distance, 0.3), target };
+}
+
+/** Wie `rahmenUm`, für die acht Ecken einer Box. */
+export function rahmen(box: { min: readonly number[]; max: readonly number[] }, yaw: number, pitch: number, fovDeg: number, aspect: number, fuellung = 0.82): { distance: number; target: [number, number, number] } {
+  const p: number[] = [];
+  for (let i = 0; i < 8; i++) for (let k = 0; k < 3; k++) p.push((i >> k) & 1 ? box.max[k]! : box.min[k]!);
+  return rahmenUm(p, yaw, pitch, fovDeg, aspect, fuellung);
+}
+
 /** Drehteller-Kamera für das Wesen-Lab: Ziehen dreht, Rad/Pinch zoomt (Nahbereich), optional Autodrehung, Fahrten zu festen Ansichten. */
 export class Turntable {
   yaw: number = ANSICHTEN.held.yaw;

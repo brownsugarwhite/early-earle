@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { WesenLabScene } from '../lab/wesen/WesenLabScene';
-import { sichereEntwurfJetzt, starteWesenLab, useWesenStore, type WesenAnsicht } from '../lab/wesen/wesenStore';
+import { sichereEntwurfJetzt, starteWesenLab, useWesenStore, vorschauOeffnung, type WesenAnsicht } from '../lab/wesen/wesenStore';
 import { DateiBereich, VorlagenWahl } from '../lab/wesen/DateiBereich';
 import { gebuendelterStil, gebuendelteVorlagen, ladeStilVorgabe } from '../lab/wesen/content';
 import { useVorlagenDateien } from '../lab/wesen/vorlagenDateien';
@@ -28,14 +28,14 @@ function useSzeneAmStore(controller: WesenLabScene): void {
     controller.setStil(s.stil);
     controller.setBoden(s.boden);
     controller.setSpin(s.spin);
-    controller.setOpenness(s.offen);
+    controller.setOpenness(vorschauOeffnung(s));
     controller.setAnsicht(KAMERA[s.ansicht]);
     return useWesenStore.subscribe((n, p) => {
       if (n.bauplan !== p.bauplan) controller.setBauplan(n.bauplan, { neu: n.basis !== p.basis || n.quelle !== p.quelle });
       if (n.stil !== p.stil) controller.setStil(n.stil);
       if (n.boden !== p.boden) controller.setBoden(n.boden);
       if (n.spin !== p.spin) controller.setSpin(n.spin);
-      if (n.offen !== p.offen) controller.setOpenness(n.offen);
+      if (vorschauOeffnung(n) !== vorschauOeffnung(p)) controller.setOpenness(vorschauOeffnung(n));
       if (n.ansicht !== p.ansicht) controller.setAnsicht(KAMERA[n.ansicht]);
     });
   }, [controller]);
@@ -147,7 +147,7 @@ export function LabWesen() {
     });
     return true;
   });
-  const controller = useMemo(() => new WesenLabScene(), []);
+  const controller = useMemo(() => new WesenLabScene({ standbild: search.get('standbild') === '1' }), []);
   const ansicht = useWesenStore((s) => s.ansicht);
   const boden = useWesenStore((s) => s.boden);
   useSzeneAmStore(controller);

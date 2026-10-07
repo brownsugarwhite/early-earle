@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseBauplan } from '@ee/creature';
-import { ENTWURF_KEY, HIST_LIMIT, STIL_KEY, _resetWesenStore, starteWesenLab, useWesenStore, vorlageBauplan } from './wesenStore';
+import { ENTWURF_KEY, HIST_LIMIT, STIL_KEY, _resetWesenStore, starteWesenLab, useWesenStore, vorlageBauplan, vorschauOeffnung } from './wesenStore';
 
 /** localStorage-Ersatz für Node. */
 function speicher(): Map<string, string> {
@@ -112,6 +112,19 @@ describe('Wesen-Store', () => {
     s().undo();
     expect(s().stil.schatten.h).not.toBe(20);
     expect(s().stil.rim).toBe(0.9);
+  });
+
+  it('Vorschau-Öffnung folgt der gebauten Öffnung, bis Maul auf/zu sie übernimmt; Laden stellt das zurück', () => {
+    expect(vorschauOeffnung(s())).toBe(s().bauplan.maul.oeffnung);
+    s().setzeBauplanWert('maul.oeffnung', 0.8);
+    expect(vorschauOeffnung(s())).toBe(0.8);
+    s().setOffen(0);
+    expect(vorschauOeffnung(s())).toBe(0);
+    s().ladeBauplan(vorlageBauplan('loch')!, { art: 'vorlage', id: 'loch' });
+    expect(vorschauOeffnung(s())).toBe(0.6);
+    s().setOffen(1);
+    s().offenWieGebaut();
+    expect(vorschauOeffnung(s())).toBe(0.6);
   });
 
   it('Referenzmodus: weißer Grund, Drehen aus; danach kommt der alte Boden zurück', () => {

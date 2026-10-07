@@ -65,6 +65,8 @@ export interface WesenState {
   spin: boolean;
   /** Kieferöffnung der Vorschau (Animationsziel, nicht Teil des Bauplans). */
   offen: number;
+  /** Vorschau folgt der gebauten Öffnung (`maul.oeffnung`), bis Maul auf/zu oder der Vorschau-Regler sie übernimmt. */
+  offenFolgt: boolean;
   meldung: Meldung | null;
 
   /** Bauplan-Wert über einen Pfad setzen (ungültige Werte verwirft das Schema). */
@@ -84,6 +86,8 @@ export interface WesenState {
   setBoden: (b: WesenBoden) => void;
   setSpin: (on: boolean) => void;
   setOffen: (o: number) => void;
+  /** Vorschau wieder „wie gebaut“ (folgt `maul.oeffnung`). */
+  offenWieGebaut: () => void;
   setStilVorgabe: (stil: WesenStil, quelle: StilQuelle) => void;
   /** Nach dem Sichern: Stand gilt als Datei (für Zurücksetzen und die Anzeige). */
   merkeDatei: (file: string, ort: 'Mac' | 'Lokal') => void;
@@ -186,6 +190,7 @@ export const useWesenStore = create<WesenState>((set, get) => {
     boden: 'wiese',
     spin: false,
     offen: 0.3,
+    offenFolgt: true,
     meldung: null,
 
     setzeBauplanWert: (key, value, opKey = key) => {
@@ -207,7 +212,7 @@ export const useWesenStore = create<WesenState>((set, get) => {
     ladeBauplan: (b, quelle) => {
       const s = get();
       const past = [...s.past, schnapp(s)].slice(-HIST_LIMIT);
-      set({ bauplan: b, basis: b, quelle, past, future: [], lastOpKey: null, lastOpAt: Date.now() });
+      set({ bauplan: b, basis: b, quelle, past, future: [], lastOpKey: null, lastOpAt: Date.now(), offenFolgt: true });
     },
 
     wuerfeln: (tab, rnd) => {
@@ -262,7 +267,8 @@ export const useWesenStore = create<WesenState>((set, get) => {
       }),
     setBoden: (boden) => set({ boden }),
     setSpin: (spin) => set({ spin }),
-    setOffen: (offen) => set({ offen }),
+    setOffen: (offen) => set({ offen, offenFolgt: false }),
+    offenWieGebaut: () => set({ offenFolgt: true }),
     setStilVorgabe: (stil, stilQuelle) => set({ stilVorgabe: stil, stilQuelle }),
     merkeDatei: (file, ort) => set((s) => ({ quelle: { art: 'datei', id: file, ort }, basis: s.bauplan })),
 
@@ -388,8 +394,13 @@ export function starteWesenLab(p: StartParameter): void {
   }
 }
 
+/** Öffnung, die die Vorschau zeigt: gebaute Öffnung oder das Ziel von Maul auf/zu bzw. Vorschau-Regler. */
+export function vorschauOeffnung(s: Pick<WesenState, 'offen' | 'offenFolgt' | 'bauplan'>): number {
+  return s.offenFolgt ? s.bauplan.maul.oeffnung : s.offen;
+}
+
 /** Nur für Tests: Store auf den Anfang. */
 export function _resetWesenStore(): void {
   gestartet = false;
-  useWesenStore.setState({ ...anfang(), stil: { ...STIL_STANDARD }, stilVorgabe: { ...STIL_STANDARD }, stilQuelle: 'Standard', schloss: {}, past: [], future: [], lastOpKey: null, lastOpAt: 0, geste: false, tab: 'maul', ansicht: 'held', boden: 'wiese', spin: false, offen: 0.3, meldung: null });
+  useWesenStore.setState({ ...anfang(), stil: { ...STIL_STANDARD }, stilVorgabe: { ...STIL_STANDARD }, stilQuelle: 'Standard', schloss: {}, past: [], future: [], lastOpKey: null, lastOpAt: 0, geste: false, tab: 'maul', ansicht: 'held', boden: 'wiese', spin: false, offen: 0.3, offenFolgt: true, meldung: null });
 }

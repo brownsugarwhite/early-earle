@@ -1,5 +1,5 @@
 import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useWesenStore } from './wesenStore';
+import { useWesenStore, vorschauOeffnung } from './wesenStore';
 import { TABS, formatWert, gruppenDesTabs, leseWert, tabGeaendert, wahlName, wertVon, type FarbRegler, type Regler, type ReglerGruppe, type TabId, type WahlRegler, type ZahlRegler, type ZufallRegler } from './regler';
 import { WesenIcon } from './icons';
 import type { WesenLabScene } from './WesenLabScene';
@@ -173,7 +173,8 @@ function Gruppe({ g, aktiv }: { g: ReglerGruppe; aktiv: boolean }) {
 
 /** Vorschau der Kieferöffnung (Animationsziel, nicht Teil des Bauplans: kein Verlauf, kein Würfel). */
 function VorschauOeffnung() {
-  const offen = useWesenStore((s) => s.offen);
+  const offen = useWesenStore(vorschauOeffnung);
+  const folgt = useWesenStore((s) => s.offenFolgt);
   const id = useId();
   return (
     <section className="wl-gruppe" aria-label="Vorschau">
@@ -185,8 +186,11 @@ function VorschauOeffnung() {
         </label>
         <div className="wl-regler-zeile">
           <input id={id} type="range" min={0} max={1} step={0.01} value={offen} onChange={(e) => st().setOffen(Number(e.target.value))} />
+          <button type="button" className="wl-btn wl-btn--klein" disabled={folgt} onClick={() => st().offenWieGebaut()} title="Vorschau folgt wieder der gebauten Öffnung" data-testid="wl-wie-gebaut">
+            wie gebaut
+          </button>
         </div>
-        <small className="wl-hinweis">nur die Ansicht: der Bauplan behält seine Öffnung</small>
+        <small className="wl-hinweis">{folgt ? 'zeigt die gebaute Öffnung (Kiefer → Öffnung)' : 'nur die Ansicht: der Bauplan behält seine Öffnung'}</small>
       </div>
     </section>
   );
