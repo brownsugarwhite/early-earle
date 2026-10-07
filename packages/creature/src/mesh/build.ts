@@ -62,7 +62,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const b = isBauplan(input) ? input : parseBauplan(input);
   const resolution = opts.resolution ?? 48;
-  const c: Construction = construct(b);
+  const c: Construction = construct(b, resolution);
   const ext = Math.max(c.bounds.max[0] - c.bounds.min[0], c.bounds.max[1] - c.bounds.min[1], c.bounds.max[2] - c.bounds.min[2]);
   const cell = ext / resolution;
   const sdf = (p: Readonly<Vec3>): number => evalScene(c.scene, p);

@@ -103,7 +103,9 @@ export interface MouthBuild {
   prims: Prim[];
 }
 
-export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodyScale: number): MouthBuild {
+export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodyScale: number, cellSize = 0): MouthBuild {
+  // Spalt unter ~1,3 Zellen würde nur aliasen: dort gilt das Maul als geschlossen (runde Mundwinkel statt Haarriss)
+  const minGap = cellSize * 1.3;
   const m = b.maul;
   const H = host.height;
   const hLip = clamp(m.hoehe, 0.02, 0.98) * H;
@@ -159,8 +161,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   const gapAt = (phi: number): number => {
     const u = clamp(Math.abs(phi) / theta, 0, 1);
     // Keil: läuft zu den Mundwinkeln hin aus; Oberlippe W-Form hebt die Mitte leicht an
-    // Keil: breit offen bis weit zu den Mundwinkeln, erst dort läuft der Spalt aus (Rex-Löffel)
-    const wedge = Math.pow(Math.max(0, 1 - Math.pow(u, 1.7)), 0.85);
+    // Keil: breit offen bis weit zu den Mundwinkeln, dort rund auslaufend (Rex-Löffel)
+    const wedge = Math.pow(Math.max(0, 1 - Math.pow(u, 2.2)), 0.75);
     const w = 1 + m.wForm * 0.25 * Math.cos(phi * (Math.PI / Math.max(theta, 0.3)) * 1.5);
     return gapFront * wedge * w;
   };
@@ -180,8 +182,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
     op: 'subtract',
     part: host.bone,
     region: REGION.rachen,
-    // harter Schnitt: die Maullinie ist eine Kante (weiche Massen, harte Schnitte)
-    k: 0.015 * bodyScale,
+    // enger Schnitt (≈ 1,7 Zellen): Kante bleibt lesbar, aliast aber nicht wie ein harter Schnitt
+    k: Math.max(0.015 * bodyScale, cellSize * 1.7),
     name: 'maulhoehle',
     bounds: { min: [center[0] - maxR, center[1] - maxR, center[2] - maxR], max: [center[0] + maxR, center[1] + maxR, center[2] + maxR] },
     eval: (p) => {
@@ -192,9 +194,14 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
       const rIn = rInAt(phiC);
       const rLip = lipRAt(phiC);
       const T = clamp01((r - rIn) / Math.max(1e-4, rLip - rIn));
-      const g = gapAt(phiC) * (0.15 + 0.85 * T);
+      const gRaw = gapAt(phiC);
+      const g = gRaw * (0.15 + 0.85 * T);
       const dArc = r * Math.max(0, aphi - theta);
-      const dWedge = Math.max(Math.abs(h - hl) - g, rIn - r, dArc);
+      // Spalt zu schmal (nur zu den Mundwinkeln hin): dort gilt das Maul als geschlossen; die Mitte bleibt immer offen
+      const uC = Math.abs(phiC) / theta;
+      const cornerW = smoothstep(0.45, 0.95, uC);
+      const closedCorner = Math.max(0, Math.min(minGap, gapFront * 0.35) - gRaw) * 4 * cornerW;
+      const dWedge = Math.max(Math.abs(h - hl) - g, rIn - r, dArc, closedCorner);
       // Loch: Röhre entlang der Blickrichtung ab dem Zentrum nach innen
       const v = sub(p, center);
       const zm = dot(v, frame.z);
@@ -234,7 +241,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   }
 
   // Lippenwülste entlang der Maullinie (oben und unten), zu den Mundwinkeln hin dünner
-  const lipRadius = Math.max(0.006, m.lippe * 0.07 * bodyScale);
+  const lipRadius = Math.max(0.006, m.lippe * 0.1 * bodyScale);
   if (m.lippe > 0.02 && m.form > 0.02) {
     for (const side of [1, -1] as const) {
       if (side < 0 && m.unterkiefer < 0.05) continue;
@@ -253,8 +260,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
           region: REGION.lippe,
           k: lipRadius * 1.4,
           name: side > 0 ? 'oberlippe' : 'unterlippe',
-          a: add(spA.p, scale(outA, lipRadius * 0.35 * taperA * m.form)),
-          b: add(spB.p, scale(outB, lipRadius * 0.35 * taperB * m.form)),
+          a: add(spA.p, scale(outA, lipRadius * 0.5 * taperA * m.form)),
+          b: add(spB.p, scale(outB, lipRadius * 0.5 * taperB * m.form)),
           ra: lipRadius * taperA * m.form,
           rb: lipRadius * taperB * m.form,
         };

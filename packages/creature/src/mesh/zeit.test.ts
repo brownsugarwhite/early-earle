@@ -17,7 +17,7 @@ describe('Bauzeit', () => {
     const zeilen: string[] = [];
     for (const [name, input] of FAELLE) {
       const b = parseBauplan(input);
-      for (const res of [30, 56]) {
+      for (const res of name === 'grundblob' ? [36, 56, 80] : [36, 56]) {
         const r = buildCreature(b, { resolution: res });
         zeilen.push(`${name.padEnd(10)} ${res}³  ${String(r.stats.vertexCount).padStart(6)} V  ${String(r.stats.triangleCount).padStart(6)} T  ${r.stats.ms.toFixed(0).padStart(5)} ms  nonManifold ${r.stats.nonManifold}`);
         expect(r.stats.ms).toBeLessThan(30000);

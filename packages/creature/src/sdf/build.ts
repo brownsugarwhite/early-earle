@@ -133,8 +133,10 @@ export function bodyRadii(b: Bauplan, R0: number, H: number, samples = 96): Floa
   return out;
 }
 
-export function construct(b: Bauplan): Construction {
+export function construct(b: Bauplan, resolution = 56): Construction {
   const H = b.koerper.hoehe;
+  // grobe Zellgröße der späteren Vermaschung (Hülle ≈ 2,6 · H), für Mindestspalt und Schnittrundung
+  const cellSize = (H * 2.6) / resolution;
   const R0 = 0.5 * H;
   const sx = b.koerper.breite;
   const sz = b.koerper.laenge;
@@ -275,7 +277,7 @@ export function construct(b: Bauplan): Construction {
   host.scene = { prims: prims.slice() };
 
   // --- Maul ----------------------------------------------------------------------------------------------------------
-  const mouthBuild = buildMouth(b, host, jawBone, H);
+  const mouthBuild = buildMouth(b, host, jawBone, H, cellSize);
   const mouth = mouthBuild.geometry;
   bones[jawBone]!.pos = mouth.jawHinge.point;
   {
