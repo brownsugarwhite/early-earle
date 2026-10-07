@@ -4,7 +4,7 @@ import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { WesenLabScene } from '../lab/wesen/WesenLabScene';
 import { sichereEntwurfJetzt, starteWesenLab, useWesenStore, vorschauOeffnung, type WesenAnsicht } from '../lab/wesen/wesenStore';
-import { DateiBereich, VorlagenWahl } from '../lab/wesen/DateiBereich';
+import { DateiBereich, VorlagenChips, VorlagenWahl } from '../lab/wesen/DateiBereich';
 import { gebuendelterStil, gebuendelteVorlagen, ladeStilVorgabe } from '../lab/wesen/content';
 import { useVorlagenDateien } from '../lab/wesen/vorlagenDateien';
 import { stilGleich } from '../lab/wesen/regler';
@@ -186,6 +186,7 @@ export function LabWesen() {
           <div className="wl-panel">
             <InfoZeile controller={controller} />
             <VorlagenWahl />
+            <VorlagenChips />
             <DateiBereich />
             <MeldungZeile />
             {ansicht === 'referenz' ? <ReferenzBereich onKamera={() => controller.setAnsicht('boegen')} /> : null}

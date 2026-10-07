@@ -104,6 +104,12 @@ test.describe('Desktop 1200×760', () => {
     expect(s1.triangles).not.toBe(s0.triangles);
     await expect(page.getByTestId('wesen-lab-info')).toContainText(`${s1.triangles} Dreiecke`);
     expect(s1.fehler).toBeNull();
+    // Schnellwahl-Chip lädt ebenso (und markiert sich)
+    await page.getByTestId('wesen-vorlage-loch').click();
+    await expect(page.getByTestId('wesen-vorlage-loch')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('wesen-vorlage')).toHaveValue('loch');
+    const s2 = await feinGebaut(page, s1.builds);
+    expect(s2.triangles).not.toBe(s1.triangles);
     expect(errors).toEqual([]);
   });
 

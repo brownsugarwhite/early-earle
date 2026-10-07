@@ -41,6 +41,11 @@
   box-shadow: -5px 2px 0 var(--ink-soft);
 }
 
+/* Schnellwahl der Lab-Vorlagen: eine Zeile, wischbar (auch am Desktop: das Panel bleibt kurz). */
+.wl-chipreihe { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x; padding: 2px 4px 6px 6px; margin: -2px -4px -4px -6px; }
+.wl-chipreihe::-webkit-scrollbar { display: none; }
+.wl-chipreihe .wl-chip { flex: none; white-space: nowrap; }
+
 /* ---------- Datei: Name, Sichern, Teilen ---------- */
 .wl-datei { display: flex; flex-direction: column; gap: 6px; }
 .wl-datei-zeile { display: flex; gap: 8px; align-items: stretch; }

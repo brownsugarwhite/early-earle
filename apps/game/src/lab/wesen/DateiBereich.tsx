@@ -87,6 +87,24 @@ export function VorlagenWahl() {
   );
 }
 
+/** Lab-Vorlagen als Schnellwahl: eine wischbare Chipreihe, ein Tipp lädt (Kennungen `wesen-vorlage-<id>`). */
+export function VorlagenChips() {
+  const quelle = useWesenStore((s) => s.quelle);
+  const { lab } = useEintraege();
+  return (
+    <div className="wl-chipreihe" role="group" aria-label="Lab-Vorlagen">
+      {lab.map((e) => {
+        const aktiv = quelle.art === 'vorlage' && quelle.id === e.wert;
+        return (
+          <button key={e.wert} type="button" className="wl-chip" data-active={aktiv} aria-pressed={aktiv} onClick={e.laden} data-testid={`wesen-vorlage-${e.wert}`}>
+            {e.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Name, Zieldatei, Sichern und Teilen. */
 export function DateiBereich() {
   const name = useWesenStore((s) => s.bauplan.name);
