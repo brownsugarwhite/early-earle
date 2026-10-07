@@ -98,6 +98,8 @@
 .wl-hinweis { font: 12px/1.3 var(--font-body); color: #3d4630; padding-right: 8px; }
 .wl-hinweis--zeile { flex: 1; min-width: 0; padding: 0 4px; }
 .wl-regler--vorschau { background: #cdbf8d; }
+/* Knöpfe in einer Reglerkachel heben sich als Papier ab (Khaki auf Khaki läse sich nicht). */
+.wl-regler .wl-btn { background: var(--paper); box-shadow: -3px 2px 0 var(--ink-soft); }
 
 /* Schieber: 44 px hohe Trefferfläche (der Rahmen setzt 34 px), eckiger Papiergriff mit hartem Schatten. */
 .lab-sheet .wl-regler input[type='range'] { height: 44px; }

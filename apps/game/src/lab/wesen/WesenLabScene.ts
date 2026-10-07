@@ -54,7 +54,6 @@ export class WesenLabScene implements SceneController {
   private stil: WesenStil = { ...STIL_STANDARD };
   private boden: WesenBoden = 'wiese';
   private ansicht: TurntableAnsicht = 'held';
-  private lowTimer: ReturnType<typeof setTimeout> | null = null;
   private highTimer: ReturnType<typeof setTimeout> | null = null;
   private lastBuild: CreatureBuild | null = null;
   private readonly builder = new BuildClient((msg) => {
@@ -130,14 +129,15 @@ export class WesenLabScene implements SceneController {
     if (prev && fk === this.formKey && !immediate) return;
     this.formKey = fk;
     if (opts.neu) this.fitNext = 'voll';
-    if (this.lowTimer) clearTimeout(this.lowTimer);
     if (this.highTimer) clearTimeout(this.highTimer);
     this.stats.pending = true;
     if (immediate || !prev) {
       this.rebuild(this.highRes);
       return;
     }
-    this.lowTimer = setTimeout(() => this.rebuild(this.lowRes), 30);
+    // Grob sofort: der Worker baut immer nur den neuesten Stand („neuester gewinnt“), ein Zug am Regler läuft also
+    // mit der Bauzeit mit (keine Entprellung, die beim Ziehen nie feuern würde). Fein erst nach kurzer Ruhe.
+    this.rebuild(this.lowRes);
     this.highTimer = setTimeout(() => this.rebuild(this.highRes), 480);
   }
 
@@ -229,9 +229,10 @@ export class WesenLabScene implements SceneController {
       this.fitNext = null;
       return;
     }
-    // Wächst oder schrumpft das Wesen deutlich, Abstand nachführen — außer der Nutzer hat selbst gezoomt
+    // Wächst oder schrumpft das Wesen deutlich, Abstand nachführen — außer der Nutzer hat selbst gezoomt oder vergleicht
+    // gerade mit einem Referenzbild (Bögen-Ansicht: die Kamera bleibt stehen, bis „Bögen-Ansicht“ sie neu einpasst)
     const ext = this.extent(build);
-    if (!coarse && !this.turntable.userZoomed && Math.abs(ext - this.fitExtent) > this.fitExtent * 0.15) this.frame('abstand', 0.35);
+    if (!coarse && this.ansicht !== 'boegen' && !this.turntable.userZoomed && Math.abs(ext - this.fitExtent) > this.fitExtent * 0.15) this.frame('abstand', 0.35);
   }
 
   private extent(build: CreatureBuild): number {
@@ -296,7 +297,6 @@ export class WesenLabScene implements SceneController {
   }
 
   dispose(): void {
-    if (this.lowTimer) clearTimeout(this.lowTimer);
     if (this.highTimer) clearTimeout(this.highTimer);
     this.turntable.detach();
     this.builder.dispose();
