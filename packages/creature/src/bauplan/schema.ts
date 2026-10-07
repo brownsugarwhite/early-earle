@@ -53,6 +53,8 @@ const koerper = z
     buckel: regler(K, 'koerper.buckel', 'Buckel', -1, 1, 0, 'Wölbung hinten oben'),
     neigung: regler(K, 'koerper.neigung', 'Neigung', -1, 1, 0, 'vornüber / zurück'),
     boden: regler(K, 'koerper.boden', 'Standfläche', 0, 1, 0.5, '0 spitz unten … 1 breit flach'),
+    /** Optional: dichtes Breitenprofil (≥ 8 Werte 0…1, unten → oben) statt der fünf Querschnitte, z. B. aus den Grundformen. */
+    profil: z.array(z.number().min(0).max(1.2)).min(8).max(96).optional(),
     querschnitte: z
       .tuple([z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6)])
       .default([0.72, 0.95, 1, 0.9, 0.62]),

@@ -108,7 +108,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   const H = host.height;
   const hLip = clamp(m.hoehe, 0.02, 0.98) * H;
   const theta = clamp(m.breite * (Math.PI / 2 + m.winkel * (Math.PI * 0.45)), 0.15, Math.PI * 0.95);
-  const n = 33;
+  const n = 65;
   const phis: number[] = [];
   const lipH: number[] = [];
   const lipR: number[] = [];
@@ -145,11 +145,14 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   const frame = { x: fx, y: fy, z: fz };
   const tiefe = clamp(m.tiefe, 0.2, 1);
 
+  // glatte Interpolation (Catmull-Rom): lineare Stücke ergäben Knicke, die Dual Contouring als Beulen zeigt
   const interp = (arr: number[], phi: number): number => {
     const t = clamp((phi + theta) / (2 * theta), 0, 1) * (n - 1);
     const i = Math.min(n - 2, Math.floor(t));
     const f = t - i;
-    return arr[i]! * (1 - f) + arr[i + 1]! * f;
+    const p0 = arr[Math.max(0, i - 1)]!, p1 = arr[i]!, p2 = arr[i + 1]!, p3 = arr[Math.min(n - 1, i + 2)]!;
+    const f2 = f * f, f3 = f2 * f;
+    return 0.5 * (2 * p1 + (-p0 + p2) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f2 + (-p0 + 3 * p1 - 3 * p2 + p3) * f3);
   };
   const lipHAt = (phi: number): number => interp(lipH, phi);
   const lipRAt = (phi: number): number => interp(lipR, phi);
@@ -177,7 +180,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
     op: 'subtract',
     part: host.bone,
     region: REGION.rachen,
-    k: 0.08 * bodyScale * (0.5 + m.lippe),
+    // harter Schnitt: die Maullinie ist eine Kante (weiche Massen, harte Schnitte)
+    k: 0.015 * bodyScale,
     name: 'maulhoehle',
     bounds: { min: [center[0] - maxR, center[1] - maxR, center[2] - maxR], max: [center[0] + maxR, center[1] + maxR, center[2] + maxR] },
     eval: (p) => {
@@ -212,7 +216,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
       op: 'subtract',
       part: host.bone,
       region: REGION.rachen,
-      k: 0.06 * bodyScale,
+      k: 0.02 * bodyScale,
       name: 'kinnschnitt',
       bounds: cavity.bounds,
       eval: (p) => {
@@ -234,8 +238,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   if (m.lippe > 0.02 && m.form > 0.02) {
     for (const side of [1, -1] as const) {
       if (side < 0 && m.unterkiefer < 0.05) continue;
-      for (let i = 0; i < n - 1; i += 2) {
-        const phiA = phis[i]!, phiB = phis[Math.min(n - 1, i + 2)]!;
+      for (let i = 0; i < n - 1; i += 4) {
+        const phiA = phis[i]!, phiB = phis[Math.min(n - 1, i + 4)]!;
         const taperA = 0.35 + 0.65 * (1 - Math.pow(Math.abs(phiA) / theta, 2));
         const taperB = 0.35 + 0.65 * (1 - Math.pow(Math.abs(phiB) / theta, 2));
         const spA = surfacePoint(host, lipHAt(phiA) + side * (gapAt(phiA) + lipRadius * 0.6), phiA, maxR);

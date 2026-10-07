@@ -1,6 +1,6 @@
 import type { Bauplan } from '../bauplan/schema';
 import { catmullRom, makePolyline, type Polyline } from '../math/curve';
-import { QUAT_ID, add, clamp, cross, frameFromTangent, normalize, quatFromFrame, scale, sub, type Quat, type Vec3 } from '../math/vec';
+import { QUAT_ID, add, clamp, cross, dot, frameFromTangent, normalize, quatFromFrame, scale, sub, type Quat, type Vec3 } from '../math/vec';
 import { buildMouth, surfacePoint, type MouthGeometry, type MouthHost } from '../mouth/mouth';
 import { REGION, evalScene, sceneBounds, type CapsulePrim, type EllipsoidPrim, type Prim, type RevolvePrim, type SdfScene } from './scene';
 
@@ -64,6 +64,25 @@ function capsule(a: Vec3, b: Vec3, ra: number, rb: number, part: number, k: numb
  */
 export function bodyRadii(b: Bauplan, R0: number, H: number, samples = 96): Float64Array {
   const k = b.koerper;
+  if (k.profil && k.profil.length >= 8) {
+    // Dichtes Breitenprofil (Grundformen der Vorlage): Catmull-Rom über die Stützstellen, unten flach, oben ausgerundet
+    const pr = k.profil;
+    const n = pr.length;
+    const out = new Float64Array(samples);
+    for (let i = 0; i < samples; i++) {
+      const t = (i / (samples - 1)) * (n - 1);
+      const j = Math.min(n - 2, Math.max(0, Math.floor(t)));
+      const f = t - j;
+      const p0 = pr[Math.max(0, j - 1)]!, p1 = pr[j]!, p2 = pr[j + 1]!, p3 = pr[Math.min(n - 1, j + 2)]!;
+      const f2 = f * f, f3 = f2 * f;
+      const w = 0.5 * (2 * p1 + (-p0 + p2) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f2 + (-p0 + 3 * p1 - 3 * p2 + p3) * f3);
+      out[i] = Math.max(0, w) * R0 * (1 + 0.25 * (k.bauch > 0 ? 0 : k.bauch) * Math.exp(-Math.pow((i / samples - 0.25) / 0.2, 2)));
+    }
+    // Würfeligkeit hebt den obersten Wert, sonst Scheitel → 0
+    out[samples - 1] = Math.max(out[samples - 1]!, out[samples - 2]! * 0.95 * k.kubik);
+    if (k.kubik < 0.02) out[samples - 1] = 0;
+    return out;
+  }
   const q = k.querschnitte.slice() as [number, number, number, number, number];
   if (k.bauch < 0) q[1] *= 1 + 0.3 * k.bauch;
   if (k.buckel < 0) q[3] *= 1 + 0.3 * k.buckel;
@@ -253,11 +272,6 @@ export function construct(b: Bauplan): Construction {
     const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: jawBone, k: 0.34 * hw, region: REGION.haut, name: 'unterkiefer', c, r: [hw * 0.9 * (0.65 + 0.35 * b.kopf.schnauzeDicke), hh * 0.36 * m.unterkiefer + 0.002, hw * (0.42 + 0.7 * b.kopf.schnauze) * (0.5 + 0.5 * m.unterkiefer) * jawForm], q: quatFromFrame(host.right, host.up, host.forward), kubik: m.kante };
     prims.push(e);
   }
-  if (maulAn && b.kopf.braue > 0.02) {
-    const c = add(add(C0, scale(fy, hh * 0.6)), scale(fz, hw * 0.05));
-    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: hostBone, k: 0.3 * hw, region: REGION.haut, name: 'braue', c, r: [hw * 1.05, hh * 0.14 * b.kopf.braue + 0.002, hw * 0.55], q: quatFromFrame(host.right, host.up, host.forward) };
-    prims.push(e);
-  }
   host.scene = { prims: prims.slice() };
 
   // --- Maul ----------------------------------------------------------------------------------------------------------
@@ -294,8 +308,17 @@ export function construct(b: Bauplan): Construction {
       ];
       const nrm = normalize(g);
       eyes.push({ pos: sp.p, normal: nrm, radius: rE, depth: a.tiefe });
-      if (a.tiefe > 0.02) {
-        const socket: EllipsoidPrim = { kind: 'ellipsoid', op: 'subtract', part: hostBone, k: 0.35 * rE, region: REGION.hoehle, name: 'augenhoehle', c: add(sp.p, scale(nrm, rE * (1 - a.tiefe) * 0.95)), r: [rE * 1.04, rE * 1.04, rE * 1.04] };
+      // Augenwulst (Braue): weiche Masse über dem Auge, die Höhle schneidet darunter hart → scharfe Überhangkante (Bild 11)
+      if (b.kopf.braue > 0.02) {
+        const upE = normalize(sub(host.up, scale(nrm, dot(host.up, nrm))));
+        const rightE = normalize(cross(upE, nrm));
+        const c = add(add(sp.p, scale(nrm, rE * 0.1)), scale(upE, rE * (0.85 + 0.3 * b.kopf.braue)));
+        const ridge: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: hostBone, k: 0.55 * rE, region: REGION.haut, name: 'augenwulst', c, r: [rE * (1.3 + 0.6 * b.kopf.braue), rE * (0.25 + 0.4 * b.kopf.braue), rE * 1.0], q: quatFromFrame(rightE, upE, nrm) };
+        prims.push(ridge);
+      }
+      if (a.tiefe > 0.02 || b.kopf.braue > 0.02) {
+        const depth = Math.max(a.tiefe, b.kopf.braue * 0.5);
+        const socket: EllipsoidPrim = { kind: 'ellipsoid', op: 'subtract', part: hostBone, k: 0.08 * rE, region: REGION.hoehle, name: 'augenhoehle', c: add(sp.p, scale(nrm, rE * (1 - depth) * 0.95)), r: [rE * 1.04, rE * 1.04, rE * 1.04] };
         prims.push(socket);
       }
     }

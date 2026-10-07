@@ -1,6 +1,6 @@
 import { Vector3, Vector4 } from 'three';
 import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
-import { Fn, abs, attribute, clamp, dot, float, floor, fract, hash, max, min, mix, normalView, normalize, positionGeometry, positionLocal, positionView, pow, sin, smoothstep, time, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
+import { Fn, abs, attribute, clamp, cross, dFdx, dFdy, dot, float, floor, fract, hash, max, min, mix, normalView, normalize, positionGeometry, positionLocal, positionView, pow, sin, smoothstep, time, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node, Vec4Node } from '../../common/tsl';
 import { STIL_STANDARD, farbRolle, type WesenStil } from './stil';
 import { createMusterUniforms, musterMasks, type MusterUniforms } from './muster';
@@ -25,6 +25,8 @@ export interface CreatureMaterialUniforms {
   korn: UniformNode<'float', number>;
   glimmer: UniformNode<'float', number>;
   bodenlicht: UniformNode<'float', number>;
+  /** Kanten: Anteil Facettennormale an scharfen Kanten (0 weich … 1 scharf). */
+  kanten: UniformNode<'float', number>;
   /** Körperhöhe (Korn- und Augenmaße). */
   bodyScale: UniformNode<'float', number>;
   /** Farbrollen als base/schatten/licht. */
@@ -97,6 +99,7 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     korn: uniform(stil.korn),
     glimmer: uniform(stil.glimmer),
     bodenlicht: uniform(stil.bodenlicht),
+    kanten: uniform(stil.kanten),
     bodyScale: uniform(bodyScale),
     grund: triple(colors.grund, stil),
     bauch: triple(colors.bauch, stil),
@@ -126,6 +129,7 @@ export function applyStil(u: CreatureMaterialUniforms, stil: WesenStil, colors: 
   u.korn.value = stil.korn;
   u.glimmer.value = stil.glimmer;
   u.bodenlicht.value = stil.bodenlicht;
+  u.kanten.value = stil.kanten;
   setTriple(u.grund, colors.grund, stil);
   setTriple(u.bauch, colors.bauch, stil);
   setTriple(u.muster, colors.muster, stil);
@@ -186,9 +190,13 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
   material.colorNode = Fn(() => {
     const spine = attribute('eeSpine', 'vec4') as Vec4Node;
     const region = attribute('eeRegion', 'vec4') as Vec4Node;
-    const ao = (attribute('eeExtra', 'vec2') as Vec2Node).x;
+    const extra = attribute('eeExtra', 'vec3') as Vec3Node;
+    const ao = extra.x;
+    const crease = extra.z;
     const rest = positionGeometry as unknown as Vec3Node;
-    const N = normalize(normalView as unknown as Vec3Node).toVar();
+    // An scharfen Kanten (Maullinie, Augenwulst, Standkante) die Facettennormale nehmen: die Kante bleibt im Licht sichtbar
+    const flatN = normalize(cross(dFdx(positionView as unknown as Vec3Node), dFdy(positionView as unknown as Vec3Node)));
+    const N = normalize(mix(normalize(normalView as unknown as Vec3Node), flatN, smoothstep(0.55, 0.9, crease).mul(u.kanten))).toVar();
     const V = normalize(positionView.negate() as unknown as Vec3Node).toVar();
     const L = u.lightDir;
     const ndl = dot(N, L);

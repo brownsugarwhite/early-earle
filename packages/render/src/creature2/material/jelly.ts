@@ -142,7 +142,7 @@ export function createJellyMaterial(u: CreatureMaterialUniforms, j: JellyUniform
     const V = normalize(positionView.negate() as unknown as Vec3Node).toVar();
     const NdV = clamp(dot(N, V), 0, 1).toVar();
     const H = u.bodyScale;
-    const thickAttr = (attribute('eeExtra', 'vec2') as Vec2Node).y;
+    const thickAttr = (attribute('eeExtra', 'vec3') as Vec3Node).y;
     // Dicke entlang des Blicks: gebackene Innenlänge, am Rand (flacher Blick) länger
     const thickObj = thickAttr.div(float(0.3).add(NdV.mul(0.7)));
     const thickN = thickObj.div(H).add(float(0.45).mul(float(1).sub(smoothstep(0, 0.18, rest.y.div(H))))).toVar();

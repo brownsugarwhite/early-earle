@@ -211,8 +211,8 @@ export function contourManifold(sdf: Sdf, opts: Omit<ContourOptions, 'shift'>, a
   return best!;
 }
 
-/** Behält nur die größte Zusammenhangskomponente (Splitter weg, bevor Taubin Spitzen zieht). */
-export function largestComponent(raw: RawContour): RawContour {
+/** Behält nur die größte Zusammenhangskomponente (Splitter weg); `extras` (je Vertex `size` Werte) werden mit umsortiert. */
+export function largestComponent<T extends RawContour>(raw: T, extras: Array<{ array: Float32Array; size: number }> = []): T {
   const n = raw.vertexCount;
   const parent = new Int32Array(n);
   for (let i = 0; i < n; i++) parent[i] = i;
@@ -248,10 +248,14 @@ export function largestComponent(raw: RawContour): RawContour {
   if (count.size <= 1) return raw;
   const remap = new Int32Array(n).fill(-1);
   const pos: number[] = [];
+  const extraOut = extras.map(() => [] as number[]);
   for (let i = 0; i < n; i++) {
     if (find(i) !== bestRoot) continue;
     remap[i] = pos.length / 3;
     pos.push(raw.positions[i * 3]!, raw.positions[i * 3 + 1]!, raw.positions[i * 3 + 2]!);
+    extras.forEach((e, k) => {
+      for (let c = 0; c < e.size; c++) extraOut[k]!.push(e.array[i * e.size + c]!);
+    });
   }
   const tris: number[] = [];
   for (let t = 0; t < idx.length; t += 3) {
@@ -259,7 +263,10 @@ export function largestComponent(raw: RawContour): RawContour {
     if (a < 0 || b < 0 || c < 0) continue;
     tris.push(a, b, c);
   }
-  return { positions: new Float32Array(pos), index: new Uint32Array(tris), vertexCount: pos.length / 3 };
+  extras.forEach((e, k) => {
+    e.array = new Float32Array(extraOut[k]!);
+  });
+  return { ...raw, positions: new Float32Array(pos), index: new Uint32Array(tris), vertexCount: pos.length / 3 };
 }
 
 /** Nachbarschaftslisten (CSR) aus dem Index. */

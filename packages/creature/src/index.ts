@@ -4,6 +4,7 @@ export * from './math/rng';
 export * from './math/curve';
 export * from './bauplan/schema';
 export * from './bauplan/hash';
+export * from './bauplan/grundformen';
 export * from './sdf/scene';
 export * from './sdf/build';
 export * from './mouth/mouth';
