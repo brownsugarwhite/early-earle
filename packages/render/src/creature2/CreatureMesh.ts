@@ -181,7 +181,7 @@ export class CreatureMesh {
         this.lowerTeeth = make(lower, jaw, new Vector3(-jp[0], -jp[1], -jp[2]));
       }
     }
-    if (build.mouth && b.zunge.groesse > 0.02) {
+    if (build.mouth && b.maul.sichtbar && b.zunge.groesse > 0.02) {
       const s = build.mouth.tongue.size;
       this.tongueGeo = new SphereGeometry(1, 16, 12);
       this.tongueGeo.scale(s * 0.9, s * 0.32, s * 1.25);

@@ -83,6 +83,8 @@ const kopf = z
 const M = 'Maul';
 const maul = z
   .object({
+    /** Ohne Maul: Jelly- und feste Grundblobs der ersten Stufen (Augen bleiben). */
+    sichtbar: z.boolean().default(true),
     hoehe: regler(M, 'maul.hoehe', 'Maulhöhe', 0, 1, 0.45, 'stufenlos von unten nach oben'),
     neigung: regler(M, 'maul.neigung', 'Maulneigung', -1, 1, 0, 'Winkel der Maullinie'),
     form: regler(M, 'maul.form', 'Maulform', 0, 1, 1, '0 rundes Loch … 1 Keil'),

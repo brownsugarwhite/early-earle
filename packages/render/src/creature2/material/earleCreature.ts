@@ -184,6 +184,12 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     // Höhlung: Falten liegen tiefer
     wrap.assign(clamp(wrap.sub(ao.mul(0.35)), 0, 1));
     const v = stepShade(wrap, u.stufen, u.federung, u.verlauf).toVar();
+    // Kernschatten: ein etwas tieferes Band knapp hinter dem Terminator (gemalte Rundung), Reflexlicht darunter leicht heller
+    const core = smoothstep(0.18, 0.3, wrap).mul(float(1).sub(smoothstep(0.3, 0.46, wrap))).mul(0.14);
+    v.assign(clamp(v.sub(core), 0, 1));
+    // Hell oben, dunkel unten (feste Blobs in den Bögen): Höhenverlauf unabhängig von der Normale
+    const heightT = smoothstep(0, 1, rest.y.div(u.bodyScale));
+    v.assign(clamp(v.add(heightT.sub(0.5).mul(0.22)), 0, 1));
 
     // Farbrolle Haut: Schatten → Grund → Licht; Bauchseite optional heller
     const shadeOf = (t: Vec3Triple): Vec3Node => mix(mix(t.schatten, t.base, smoothstep(0, 0.5, v)), t.licht, smoothstep(0.5, 1, v));
