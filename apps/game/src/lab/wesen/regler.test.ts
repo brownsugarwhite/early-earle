@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BAUPLAN_REGLER, defaultBauplan, parseBauplan, type Bauplan } from '@ee/creature';
 import { STIL_STANDARD } from '@ee/render';
-import { TABS, bereinigeBauplan, bereinigeStil, formatWert, gruppenDesTabs, leseWert, oklchZuHex, reglerDesTabs, reglerZu, setzeTabZurueck, setzeWert, tabGeaendert, ungenutzteKataloggruppen, wuerfleTab, zufallsPalette, type ZahlRegler } from './regler';
+import { TABS, bereinigeBauplan, bereinigeStil, formatWert, gruppenDesTabs, leseWert, oklchZuHex, profilZuQuerschnitten, reglerDesTabs, reglerZu, setzeTabZurueck, setzeWert, tabGeaendert, ungenutzteKataloggruppen, wuerfleTab, zufallsPalette, type ZahlRegler } from './regler';
 
 /** Deterministische Zufallsfolge für die Würfel-Tests. */
 function seeded(seed: number): () => number {
@@ -25,13 +25,13 @@ describe('Panel-Aufteilung', () => {
     for (const spec of BAUPLAN_REGLER.filter((r) => tabGruppen.has(r.gruppe))) expect(ids).toContain(spec.pfad);
   });
 
-  it('nur „Verhalten“ hat (noch) keinen Tab', () => {
-    expect(ungenutzteKataloggruppen()).toEqual(['Verhalten']);
+  it('Katalog-Gruppen ohne Tab werden gemeldet (heute „Verhalten“: im statischen Lab ohne Wirkung)', () => {
+    for (const g of ungenutzteKataloggruppen()) expect(TABS.some((t) => t.katalog === g)).toBe(false);
   });
 
   it('Gruppen sind stabil (gleiche Objekte), damit das Panel beim Ziehen nicht neu aufbaut', () => {
     expect(gruppenDesTabs('maul')).toBe(gruppenDesTabs('maul'));
-    expect(gruppenDesTabs('maul').map((g) => g.titel)).toEqual(['Lage', 'Form', 'Kiefer', 'Zähne', 'Zunge']);
+    expect(gruppenDesTabs('maul').map((g) => g.titel)).toEqual(['Maul', 'Lage', 'Form', 'Kiefer', 'Zähne', 'Zunge']);
   });
 
   it('Gruppen mit Bedingung: Beine nur mit Beinen, Schlange nur als Schlange', () => {
@@ -104,6 +104,29 @@ describe('Würfel', () => {
     expect(f.rachen).toBe(b.muster.farben.rachen);
     expect(f.zunge).toBe(b.muster.farben.zunge);
     expect(f.zahn).toBe(b.muster.farben.zahn);
+  });
+});
+
+describe('Felder, die das Schema (noch) nicht hat', () => {
+  it('bedingte Regler würfelt der Würfel nur, wenn es das Feld gibt; „Maul sichtbar“ nie', () => {
+    const b = defaultBauplan();
+    for (let seed = 1; seed < 10; seed++) {
+      const { bauplan, stil } = wuerfleTab('maul', b, STIL_STANDARD, {}, seeded(seed));
+      expect(leseWert(bauplan, 'maul.sichtbar')).toBe(leseWert(b, 'maul.sichtbar'));
+      expect(leseWert(stil, 'kanten')).toBe(leseWert(STIL_STANDARD, 'kanten'));
+    }
+    expect(reglerZu('maul.sichtbar')).toMatchObject({ art: 'schalter', bedingt: true, wuerfeln: false });
+  });
+
+  it('dichtes Profil → fünf Querschnitte (gleiche Einheit), danach ohne Profil', () => {
+    const b = defaultBauplan();
+    const mitProfil = { ...b, koerper: { ...b.koerper, profil: [0.6, 0.8, 1.0, 1.0, 0.9, 0.8, 0.6, 0.3, 0.1] } } as typeof b;
+    const n = profilZuQuerschnitten(mitProfil);
+    expect(leseWert(n, 'koerper.profil')).toBeUndefined();
+    expect(n.koerper.querschnitte).toHaveLength(5);
+    expect(n.koerper.querschnitte[2]).toBeCloseTo(0.9, 2); // Mitte: zwischen 1,0 und 0,9 → bei t = 4 genau 0,9
+    expect(n.koerper.querschnitte.every((q) => q >= 0.05 && q <= 1.6)).toBe(true);
+    expect(profilZuQuerschnitten(b)).toBe(b);
   });
 });
 

@@ -72,6 +72,8 @@ export interface WesenState {
   /** Bauplan-Wert über einen Pfad setzen (ungültige Werte verwirft das Schema). */
   setzeBauplanWert: (key: string, value: unknown, opKey?: string) => void;
   setzeStilWert: (key: string, value: unknown, opKey?: string) => void;
+  /** Ganzen Bauplan setzen (z. B. Profil in Querschnitte übernehmen): ein Verlaufsschritt. */
+  setzeBauplan: (b: Bauplan, opKey?: string) => void;
   /** Vorlage oder Datei laden: neuer Ausgangsstand, rückgängig machbar. */
   ladeBauplan: (b: Bauplan, quelle: WesenQuelle) => void;
   wuerfeln: (tab: TabId, rnd?: () => number) => void;
@@ -209,6 +211,11 @@ export const useWesenStore = create<WesenState>((set, get) => {
       const s = get();
       if (Object.is(leseWert(s.stil, key), value)) return;
       aendere({ bauplan: s.bauplan, stil: bereinigeStil(setzeWert(s.stil, key, value)) }, `s:${opKey}`);
+    },
+
+    setzeBauplan: (b, opKey) => {
+      const s = get();
+      aendere({ bauplan: b, stil: s.stil }, opKey === undefined ? undefined : `g:${opKey}`);
     },
 
     ladeBauplan: (b, quelle) => {

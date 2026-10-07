@@ -30,6 +30,11 @@ interface ReglerBasis {
   ziel: ReglerZiel;
   label: string;
   hinweis?: string;
+  /**
+   * Nur zeigen (und würfeln), wenn das Feld im aktuellen Schema existiert — für Felder, die die Pakete gerade erst
+   * bekommen (z. B. `maul.sichtbar`, Stil `kanten`): fehlt der Wert, bleibt der Regler unsichtbar.
+   */
+  bedingt?: boolean;
 }
 
 export interface ZahlRegler extends ReglerBasis {
@@ -58,7 +63,13 @@ export interface ZufallRegler extends ReglerBasis {
   art: 'zufall';
 }
 
-export type Regler = ZahlRegler | WahlRegler | FarbRegler | ZufallRegler;
+export interface SchalterRegler extends ReglerBasis {
+  art: 'schalter';
+  /** Darf der Würfel ihn umlegen? (Maul sichtbar: nein — das wäre eine andere Stufe, kein Würfelwurf.) */
+  wuerfeln: boolean;
+}
+
+export type Regler = ZahlRegler | WahlRegler | FarbRegler | ZufallRegler | SchalterRegler;
 
 export const TABS = [
   { id: 'koerper', label: 'Körper', katalog: 'Körper' },
@@ -177,11 +188,12 @@ function profil(i: number, label: string): ZahlRegler {
   return { id: key, key, ziel: 'bauplan', art: 'zahl', label, min: 0.05, max: 1.6, step: 0.01 };
 }
 
-function stil(key: string, label: string, min: number, max: number, step: number, opts: { hinweis?: string; einheit?: string; wuerfel?: readonly [number, number] } = {}): ZahlRegler {
+function stil(key: string, label: string, min: number, max: number, step: number, opts: { hinweis?: string; einheit?: string; wuerfel?: readonly [number, number]; bedingt?: boolean } = {}): ZahlRegler {
   return { id: `stil.${key}`, key, ziel: 'stil', art: 'zahl', label, min, max, step, ...opts };
 }
 
 const EXTRA: Regler[] = [
+  { id: 'maul.sichtbar', key: 'maul.sichtbar', ziel: 'bauplan', art: 'schalter', label: 'Maul sichtbar', hinweis: 'aus: Jelly und feste Grundblobs ohne Maul (Augen bleiben)', wuerfeln: false, bedingt: true },
   wahl('material', 'Material', MATERIALIEN),
   wahl('muster.typ', 'Muster', MUSTER_TYPEN),
   wahl('zaehne.stil', 'Zahnform', ZAHN_STILE),
@@ -216,6 +228,7 @@ const EXTRA: Regler[] = [
   stil('korn', 'Papierkorn', 0, 1, 0.01, { wuerfel: [0.2, 0.75] }),
   stil('glimmer', 'Glimmer', 0, 1, 0.01, { hinweis: 'Funken im Licht (feste Blobs)' }),
   stil('bodenlicht', 'Bodenkontakt', 0, 1, 0.01, { wuerfel: [0.2, 0.8] }),
+  stil('kanten', 'Kanten', 0, 1, 0.01, { hinweis: 'Facetten an scharfen Kanten (0 weich … 1 scharf)', bedingt: true }),
   stil('schatten.l', 'Schatten dunkler', -0.35, 0, 0.01, { hinweis: 'OKLab-Helligkeit (Look-Vertrag: −0,12 … −0,18)', wuerfel: [-0.2, -0.1] }),
   stil('schatten.c', 'Schatten satter', -0.05, 0.1, 0.005, { hinweis: 'Chroma-Zugabe, nie grau', wuerfel: [0, 0.04] }),
   stil('schatten.h', 'Schatten kühler', 0, 40, 1, { einheit: '°', hinweis: 'Farbtondrehung zum Kühlen (8–15°)', wuerfel: [6, 18] }),
@@ -244,6 +257,38 @@ interface GruppenPlan {
   /** Gruppe wirkt nur unter einer Bedingung (sonst eingeklappt mit Hinweis). */
   aktiv?: (b: Bauplan) => boolean;
   inaktiv?: string;
+  /** Knopf in der eingeklappten Gruppe, der die Bedingung herstellt (z. B. Profil in Querschnitte übernehmen). */
+  aktion?: GruppenAktion;
+}
+
+export interface GruppenAktion {
+  label: string;
+  wende: (b: Bauplan) => Bauplan;
+}
+
+const mitMaul = (b: Bauplan) => leseWert(b, 'maul.sichtbar') !== false;
+const OHNE_MAUL = 'wirkt mit sichtbarem Maul (Schalter oben)';
+
+/**
+ * Dichtes Breitenprofil (Grundformen) → die fünf Querschnitte (gleiche Einheit: Anteil von R0), an denselben Höhen
+ * abgetastet wie die Querschnitt-Stützpunkte; danach gilt das Profil nicht mehr. Ohne Profil unverändert.
+ */
+export function profilZuQuerschnitten(b: Bauplan): Bauplan {
+  const pr = leseWert(b, 'koerper.profil');
+  if (!Array.isArray(pr) || pr.length < 2 || !pr.every((x) => typeof x === 'number')) return b;
+  const n = pr.length;
+  const bei = (h: number) => {
+    const t = h * (n - 1);
+    const j = Math.min(n - 2, Math.max(0, Math.floor(t)));
+    const f = t - j;
+    return (pr[j] as number) * (1 - f) + (pr[j + 1] as number) * f;
+  };
+  const q = [0.06, 0.25, 0.5, 0.75, 0.9].map((h) => Math.round(clamp(bei(h), 0.05, 1.6) * 100) / 100);
+  try {
+    return parseBauplan(setzeWert(setzeWert(b, 'koerper.querschnitte', q), 'koerper.profil', undefined));
+  } catch {
+    return b;
+  }
 }
 
 const hatBeine = (b: Bauplan) => b.unterkoerper.typ !== 'keiner' && b.unterkoerper.typ !== 'schlange';
@@ -253,7 +298,13 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
     { titel: 'Maße', ids: ['koerper.hoehe', 'koerper.breite', 'koerper.laenge'] },
     { titel: 'Form', ids: ['koerper.kubik', 'koerper.boden', 'koerper.bauch', 'koerper.buckel'] },
     { titel: 'Haltung', ids: ['koerper.neigung'] },
-    { titel: 'Profil (unten → oben)', ids: ['koerper.querschnitte.0', 'koerper.querschnitte.1', 'koerper.querschnitte.2', 'koerper.querschnitte.3', 'koerper.querschnitte.4'] },
+    {
+      titel: 'Profil (unten → oben)',
+      ids: ['koerper.querschnitte.0', 'koerper.querschnitte.1', 'koerper.querschnitte.2', 'koerper.querschnitte.3', 'koerper.querschnitte.4'],
+      aktiv: (b) => leseWert(b, 'koerper.profil') === undefined,
+      inaktiv: 'Diese Form nutzt ein dichtes Profil (Grundform); die fünf Querschnitte wirken erst ohne Profil.',
+      aktion: { label: 'Profil in Querschnitte übernehmen', wende: profilZuQuerschnitten },
+    },
   ],
   halsKopf: [
     { titel: 'Hals', ids: ['hals.laenge', 'hals.dicke', 'hals.kruemmung', 'hals.ansatz'] },
@@ -261,11 +312,12 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
     { titel: 'Schnauze und Braue', ids: ['kopf.schnauze', 'kopf.schnauzeDicke', 'kopf.braue'] },
   ],
   maul: [
-    { titel: 'Lage', ids: ['maul.hoehe', 'maul.neigung'] },
-    { titel: 'Form', ids: ['maul.form', 'maul.winkel', 'maul.breite', 'maul.lippe', 'maul.wForm', 'maul.kante'] },
-    { titel: 'Kiefer', ids: ['maul.oberkiefer', 'maul.unterkiefer', 'maul.biss', 'maul.tiefe', 'maul.oeffnung'] },
-    { titel: 'Zähne', ids: ['zaehne.stil', 'zaehne.groesse', 'zaehne.streuung', 'zaehne.dichte', 'zaehne.eckzaehne', 'zaehne.hauer', 'seed'] },
-    { titel: 'Zunge', ids: ['zunge.groesse'] },
+    { titel: 'Maul', ids: ['maul.sichtbar'] },
+    { titel: 'Lage', ids: ['maul.hoehe', 'maul.neigung'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
+    { titel: 'Form', ids: ['maul.form', 'maul.winkel', 'maul.breite', 'maul.lippe', 'maul.wForm', 'maul.kante'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
+    { titel: 'Kiefer', ids: ['maul.oberkiefer', 'maul.unterkiefer', 'maul.biss', 'maul.tiefe', 'maul.oeffnung'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
+    { titel: 'Zähne', ids: ['zaehne.stil', 'zaehne.groesse', 'zaehne.streuung', 'zaehne.dichte', 'zaehne.eckzaehne', 'zaehne.hauer', 'seed'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
+    { titel: 'Zunge', ids: ['zunge.groesse'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
   ],
   augen: [
     { titel: 'Augen', ids: ['augen.anzahl', 'augen.typ'] },
@@ -299,7 +351,7 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
   licht: [
     { titel: 'Figurenlicht', ids: ['stil.lichtAzimut', 'stil.lichtHoehe'] },
     { titel: 'Wertstufen', ids: ['stil.stufen', 'stil.federung', 'stil.verlauf'] },
-    { titel: 'Oberfläche', ids: ['stil.rim', 'stil.korn', 'stil.glimmer', 'stil.bodenlicht'] },
+    { titel: 'Oberfläche', ids: ['stil.rim', 'stil.korn', 'stil.glimmer', 'stil.bodenlicht', 'stil.kanten'] },
     { titel: 'Schattenregel', ids: ['stil.schatten.l', 'stil.schatten.c', 'stil.schatten.h', 'stil.licht.l', 'stil.licht.c'] },
   ],
 };
@@ -310,6 +362,7 @@ export interface ReglerGruppe {
   /** Gruppe wirkt nur unter einer Bedingung; sonst zeigt das Panel sie eingeklappt mit `inaktiv`. */
   aktiv?: (b: Bauplan) => boolean;
   inaktiv?: string;
+  aktion?: GruppenAktion;
 }
 
 const gruppenCache = new Map<TabId, ReglerGruppe[]>();
@@ -324,7 +377,7 @@ export function gruppenDesTabs(tab: TabId): ReglerGruppe[] {
     const regler = g.ids.map((id) => reglerZu(id)).filter((r): r is Regler => r !== null);
     regler.forEach((r) => genutzt.add(r.id));
     if (regler.length === 0) continue;
-    out.push({ titel: g.titel, regler, ...(g.aktiv ? { aktiv: g.aktiv } : {}), ...(g.inaktiv ? { inaktiv: g.inaktiv } : {}) });
+    out.push({ titel: g.titel, regler, ...(g.aktiv ? { aktiv: g.aktiv } : {}), ...(g.inaktiv ? { inaktiv: g.inaktiv } : {}), ...(g.aktion ? { aktion: g.aktion } : {}) });
   }
   const katalog = TABS.find((t) => t.id === tab)!.katalog;
   if (katalog) {
@@ -370,6 +423,7 @@ export function formatWert(r: Regler, v: unknown): string {
   if (r.art === 'wahl') return wahlName(v as string | number);
   if (r.art === 'farbe') return String(v);
   if (r.art === 'zufall') return String(v);
+  if (r.art === 'schalter') return v ? 'an' : 'aus';
   const n = Number(v);
   if (!Number.isFinite(n)) return '–';
   const decimals = r.step >= 1 ? 0 : r.step >= 0.1 ? 1 : r.step >= 0.01 ? 2 : 3;
@@ -394,12 +448,17 @@ export function wuerfleTab(tab: TabId, b: Bauplan, s: WesenStil, schloss: Readon
   const palette = zufallsPalette(rnd);
   for (const r of reglerDesTabs(tab)) {
     if (schloss[r.id]) continue;
+    if (wertVon(r, nb, ns) === undefined) continue; // Feld gibt es (noch) nicht
     let v: unknown;
     if (r.art === 'zahl') {
       const [lo, hi] = r.wuerfel ?? [r.min, r.max];
       v = rasten(lo + (hi - lo) * rnd(), r);
     } else if (r.art === 'wahl') v = r.optionen[Math.floor(rnd() * r.optionen.length) % r.optionen.length];
     else if (r.art === 'zufall') v = 1 + Math.floor(rnd() * 9999);
+    else if (r.art === 'schalter') {
+      if (!r.wuerfeln) continue;
+      v = rnd() < 0.5;
+    }
     else if (r.wuerfeln && palette[r.rolle]) v = palette[r.rolle];
     else continue;
     ({ b: nb, s: ns } = setzeIn(r, nb, ns, v));
@@ -512,7 +571,7 @@ export function bereinigeBauplan(raw: unknown): Bauplan {
     if (r.ziel !== 'bauplan' || r.art === 'zahl') continue;
     const v = leseWert(obj, r.key);
     if (v === undefined) continue;
-    const ok = r.art === 'wahl' ? r.optionen.includes(v as string | number) : r.art === 'farbe' ? typeof v === 'string' && HEX.test(v) : Number.isInteger(v);
+    const ok = r.art === 'wahl' ? r.optionen.includes(v as string | number) : r.art === 'farbe' ? typeof v === 'string' && HEX.test(v) : r.art === 'schalter' ? typeof v === 'boolean' : Number.isInteger(v);
     if (!ok) obj = setzeWert(obj, r.key, undefined);
   }
   const q = leseWert(obj, 'koerper.querschnitte');

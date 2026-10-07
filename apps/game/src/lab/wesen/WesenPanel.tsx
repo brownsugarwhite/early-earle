@@ -1,6 +1,6 @@
 import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useWesenStore, vorschauOeffnung } from './wesenStore';
-import { TABS, formatWert, gruppenDesTabs, leseWert, tabGeaendert, wahlName, wertVon, type FarbRegler, type Regler, type ReglerGruppe, type TabId, type WahlRegler, type ZahlRegler, type ZufallRegler } from './regler';
+import { TABS, formatWert, gruppenDesTabs, leseWert, tabGeaendert, wahlName, wertVon, type FarbRegler, type Regler, type ReglerGruppe, type SchalterRegler, type TabId, type WahlRegler, type ZahlRegler, type ZufallRegler } from './regler';
 import { WesenIcon } from './icons';
 import type { WesenLabScene } from './WesenLabScene';
 import { StilVorgabeBereich } from './DateiBereich';
@@ -140,7 +140,28 @@ const ReglerZufall = memo(function ReglerZufall({ r }: { r: ZufallRegler }) {
   );
 });
 
+const ReglerSchalter = memo(function ReglerSchalter({ r }: { r: SchalterRegler }) {
+  const an = useWesenStore((s) => wertVon(r, s.bauplan, s.stil) === true);
+  return (
+    <div className="wl-regler wl-regler--wahl" data-testid={`wl-regler-${r.id}`}>
+      <div className="wl-regler-kopf">
+        <span className="wl-label">{r.label}</span>
+        {r.wuerfeln ? <SchlossKnopf r={r} /> : null}
+      </div>
+      <div className="wl-chips">
+        <button type="button" className="wl-chip" data-active={an} aria-pressed={an} onClick={() => setze(r, !an)} data-testid={`wl-schalter-${r.id}`}>
+          {an ? 'an' : 'aus'}
+        </button>
+      </div>
+      {r.hinweis ? <small className="wl-hinweis">{r.hinweis}</small> : null}
+    </div>
+  );
+});
+
+/** Regler, deren Feld das Schema (noch) nicht hat, bleiben unsichtbar. */
 function ReglerZeile({ r }: { r: Regler }) {
+  const fehlt = useWesenStore((s) => r.bedingt === true && wertVon(r, s.bauplan, s.stil) === undefined);
+  if (fehlt) return null;
   switch (r.art) {
     case 'zahl':
       return <ReglerZahl r={r} />;
@@ -150,11 +171,16 @@ function ReglerZeile({ r }: { r: Regler }) {
       return <ReglerFarbe r={r} />;
     case 'zufall':
       return <ReglerZufall r={r} />;
+    case 'schalter':
+      return <ReglerSchalter r={r} />;
   }
 }
 
 function Gruppe({ g, aktiv }: { g: ReglerGruppe; aktiv: boolean }) {
   const farben = g.regler.every((r) => r.art === 'farbe');
+  // Gruppe nur aus bedingten Reglern, deren Felder fehlen: gar nicht zeigen
+  const leer = useWesenStore((s) => g.regler.every((r) => r.bedingt === true && wertVon(r, s.bauplan, s.stil) === undefined));
+  if (leer) return null;
   return (
     <section className="wl-gruppe" data-aktiv={aktiv} aria-label={g.titel}>
       <h3 className="wl-gruppe-titel">{g.titel}</h3>
@@ -165,7 +191,16 @@ function Gruppe({ g, aktiv }: { g: ReglerGruppe; aktiv: boolean }) {
           ))}
         </div>
       ) : (
-        <p className="wl-inaktiv">{g.inaktiv ?? 'wirkt hier gerade nicht'}</p>
+        <>
+          <p className="wl-inaktiv">{g.inaktiv ?? 'wirkt hier gerade nicht'}</p>
+          {g.aktion ? (
+            <div className="wl-knopfreihe">
+              <button type="button" className="wl-btn" onClick={() => st().setzeBauplan(g.aktion!.wende(st().bauplan), g.aktion!.label)} data-testid="wl-gruppen-aktion">
+                {g.aktion.label}
+              </button>
+            </div>
+          ) : null}
+        </>
       )}
     </section>
   );

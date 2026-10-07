@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseBauplan } from '@ee/creature';
+import { defaultBauplan, parseBauplan } from '@ee/creature';
 import { ENTWURF_KEY, HIST_LIMIT, STIL_KEY, _resetWesenStore, starteWesenLab, useWesenStore, vorlageBauplan, vorschauOeffnung } from './wesenStore';
 
 /** localStorage-Ersatz für Node. */
@@ -25,6 +25,8 @@ describe('Wesen-Store', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-07T12:00:00Z'));
     _resetWesenStore();
+    // Ausgang unabhängig von der Reihenfolge der Vorlagen: der Standard-Bauplan des Schemas
+    useWesenStore.setState({ bauplan: defaultBauplan(), basis: defaultBauplan(), quelle: { art: 'neu', id: 'test' } });
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -37,10 +39,11 @@ describe('Wesen-Store', () => {
     s().setzeBauplanWert('maul.hoehe', 0.6);
     s().setzeBauplanWert('maul.hoehe', 0.7);
     expect(s().past).toHaveLength(1);
-    s().setzeBauplanWert('maul.form', 0.2);
+    const form = s().bauplan.maul.form;
+    s().setzeBauplanWert('maul.form', form > 0.5 ? 0.2 : 0.8);
     expect(s().past).toHaveLength(2);
     s().undo();
-    expect(s().bauplan.maul.form).toBe(1);
+    expect(s().bauplan.maul.form).toBe(form);
     expect(s().bauplan.maul.hoehe).toBe(0.7);
     s().undo();
     expect(s().bauplan.maul.hoehe).toBe(start);
@@ -72,10 +75,12 @@ describe('Wesen-Store', () => {
     expect(s().past).toHaveLength(HIST_LIMIT);
   });
 
-  it('ungültige Werte verwirft das Schema (kein Schritt)', () => {
+  it('ungültige Werte verwirft das Schema (kein Schritt), gleiche Werte auch', () => {
+    const h = s().bauplan.maul.hoehe;
     s().setzeBauplanWert('maul.hoehe', 5);
+    s().setzeBauplanWert('maul.hoehe', h);
     expect(s().past).toHaveLength(0);
-    expect(s().bauplan.maul.hoehe).toBe(0.45);
+    expect(s().bauplan.maul.hoehe).toBe(h);
   });
 
   it('Vorlage laden: neue Basis, rückgängig machbar; Zurücksetzen auf die Basis', () => {
@@ -89,7 +94,7 @@ describe('Wesen-Store', () => {
     s().undo(); // Zurücksetzen
     s().undo(); // Winkel
     s().undo(); // Laden
-    expect(s().quelle).toEqual({ art: 'vorlage', id: 'grundblob' });
+    expect(s().quelle).toEqual({ art: 'neu', id: 'test' });
     expect(s().bauplan.maul.hoehe).toBe(0.9);
   });
 
