@@ -11,6 +11,7 @@ import { LabShadow } from './routes/LabShadow';
 import { LabLandmarks } from './lab/landmarks/LabLandmarks';
 import { LabRex } from './routes/LabRex';
 import { LabAudio } from './routes/LabAudio';
+import { LabWesen } from './routes/LabWesen';
 import { EditorLevels } from './routes/EditorLevels';
 import { EditorCreatures } from './routes/EditorCreatures';
 import { EditorMap } from './routes/EditorMap';
@@ -35,6 +36,7 @@ export function App() {
       <Route path="/lab/landmarks" element={<LabLandmarks />} />
       <Route path="/lab/rex" element={<LabRex />} />
       <Route path="/lab/audio" element={<LabAudio />} />
+      <Route path="/lab/wesen" element={<LabWesen />} />
       <Route path="/editor/levels" element={<EditorLevels />} />
       <Route path="/editor/creatures" element={<EditorCreatures />} />
       <Route path="/editor/map" element={<EditorMap />} />

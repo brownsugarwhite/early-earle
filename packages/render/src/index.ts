@@ -7,3 +7,4 @@ export * from './materials/index';
 export * from './board/index';
 export * from './rex/index';
 export * from './creature/CreatureHerd';
+export * from './creature2/index';

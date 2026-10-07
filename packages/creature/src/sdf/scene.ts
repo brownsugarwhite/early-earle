@@ -1,4 +1,4 @@
-import { clamp, lerp, rotate, smax, smin, type Quat, type Vec3 } from '../math/vec';
+import { clamp, lerp, smax, smin, type Quat, type Vec3 } from '../math/vec';
 
 /**
  * Implizite Szene eines Wesens: eine Liste von Primitiven, die weich vereinigt (Körper, Hals, Kopf, Beine, Schwanz …)
@@ -108,11 +108,13 @@ export function sdRoundBoxLocal(x: number, y: number, z: number, b: Readonly<Vec
 export function sdEllipsoid(p: Readonly<Vec3>, prim: EllipsoidPrim): number {
   let x = p[0] - prim.c[0], y = p[1] - prim.c[1], z = p[2] - prim.c[2];
   if (prim.q) {
-    // in den lokalen Raum drehen (inverse Rotation)
-    const v = rotate([-prim.q[0], -prim.q[1], -prim.q[2], prim.q[3]], [x, y, z]);
-    x = v[0];
-    y = v[1];
-    z = v[2];
+    // in den lokalen Raum drehen (inverse Rotation, ohne Allokation)
+    const qx = -prim.q[0], qy = -prim.q[1], qz = -prim.q[2], qw = prim.q[3];
+    const tx = 2 * (qy * z - qz * y), ty = 2 * (qz * x - qx * z), tz = 2 * (qx * y - qy * x);
+    const nx = x + qw * tx + (qy * tz - qz * ty), ny = y + qw * ty + (qz * tx - qx * tz), nz = z + qw * tz + (qx * ty - qy * tx);
+    x = nx;
+    y = ny;
+    z = nz;
   }
   const d = sdEllipsoidLocal(x, y, z, prim.r);
   const kubik = prim.kubik ?? 0;
@@ -168,19 +170,72 @@ export function sdPrim(p: Readonly<Vec3>, prim: Prim): number {
   }
 }
 
-/** Gesamtabstand der Szene: weiche Vereinigung aller `union`-Primitive, dann weiche Subtraktion der `subtract`. */
+interface CompiledScene {
+  n: number;
+  bmin: Float64Array;
+  bmax: Float64Array;
+  k: Float64Array;
+  isUnion: Uint8Array;
+  unionIdx: Int32Array;
+  subIdx: Int32Array;
+}
+
+const compiledCache = new WeakMap<SdfScene, CompiledScene>();
+
+/** Hüllquader und Reihenfolgen einmal je Szene (Primitive gelten als unveränderlich). */
+export function compileScene(scene: SdfScene): CompiledScene {
+  let c = compiledCache.get(scene);
+  if (c && c.n === scene.prims.length) return c;
+  const n = scene.prims.length;
+  const bmin = new Float64Array(n * 3), bmax = new Float64Array(n * 3), k = new Float64Array(n), isUnion = new Uint8Array(n);
+  const u: number[] = [], s: number[] = [];
+  scene.prims.forEach((pr, i) => {
+    const b = primBounds(pr);
+    bmin[i * 3] = b.min[0];
+    bmin[i * 3 + 1] = b.min[1];
+    bmin[i * 3 + 2] = b.min[2];
+    bmax[i * 3] = b.max[0];
+    bmax[i * 3 + 1] = b.max[1];
+    bmax[i * 3 + 2] = b.max[2];
+    k[i] = pr.k;
+    isUnion[i] = pr.op === 'union' ? 1 : 0;
+    (pr.op === 'union' ? u : s).push(i);
+  });
+  c = { n, bmin, bmax, k, isUnion, unionIdx: Int32Array.from(u), subIdx: Int32Array.from(s) };
+  compiledCache.set(scene, c);
+  return c;
+}
+
+/** Untere Schranke des Abstands von p zum Hüllquader i (0 innerhalb). */
+function boundsDistanceAt(c: CompiledScene, i: number, p: Readonly<Vec3>): number {
+  const o = i * 3;
+  const dx = Math.max(c.bmin[o]! - p[0], 0, p[0] - c.bmax[o]!);
+  const dy = Math.max(c.bmin[o + 1]! - p[1], 0, p[1] - c.bmax[o + 1]!);
+  const dz = Math.max(c.bmin[o + 2]! - p[2], 0, p[2] - c.bmax[o + 2]!);
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+/**
+ * Gesamtabstand der Szene: weiche Vereinigung aller `union`-Primitive, dann weiche Subtraktion der `subtract`.
+ * Primitive, deren Hüllquader weiter als d + k entfernt liegt, können das Smooth-Min nicht mehr ändern und werden
+ * übersprungen (Lippenkapseln, Zehen …).
+ */
 export function evalScene(scene: SdfScene, p: Readonly<Vec3>): number {
-  let d = 1e9;
+  const c = compileScene(scene);
   const prims = scene.prims;
-  for (let i = 0; i < prims.length; i++) {
-    const pr = prims[i]!;
-    if (pr.op !== 'union') continue;
-    d = smin(d, sdPrim(p, pr), pr.k);
+  let d = 1e9;
+  const ui = c.unionIdx;
+  for (let q = 0; q < ui.length; q++) {
+    const i = ui[q]!;
+    if (d < 1e8 && boundsDistanceAt(c, i, p) >= d + c.k[i]!) continue;
+    d = smin(d, sdPrim(p, prims[i]!), c.k[i]!);
   }
-  for (let i = 0; i < prims.length; i++) {
-    const pr = prims[i]!;
-    if (pr.op !== 'subtract') continue;
-    d = smax(d, -sdPrim(p, pr), pr.k);
+  const si = c.subIdx;
+  for (let q = 0; q < si.length; q++) {
+    const i = si[q]!;
+    const bd = boundsDistanceAt(c, i, p);
+    if (bd > 0 && bd >= c.k[i]! + Math.abs(d) + 1e-3) continue;
+    d = smax(d, -sdPrim(p, prims[i]!), c.k[i]!);
   }
   return d;
 }
@@ -198,15 +253,17 @@ export interface SceneSample {
 }
 
 /** Wie `evalScene`, zusätzlich mit allen Einzelabständen (für Gewichte, Regionen, Teilzuordnung). */
-export function evalSceneDetailed(scene: SdfScene, p: Readonly<Vec3>, out?: SceneSample): SceneSample {
+export function evalSceneDetailed(scene: SdfScene, p: Readonly<Vec3>, out?: SceneSample, farCull = Infinity): SceneSample {
   const prims = scene.prims;
+  const c = compileScene(scene);
   const per = out?.per && out.per.length === prims.length ? out.per : new Float64Array(prims.length);
   let dU = 1e9;
   let dS = 1e9;
   let nearestSubtract = -1;
   for (let i = 0; i < prims.length; i++) {
     const pr = prims[i]!;
-    const di = sdPrim(p, pr);
+    const bd = boundsDistanceAt(c, i, p);
+    const di = bd > farCull ? bd : sdPrim(p, pr);
     per[i] = di;
     if (pr.op === 'union') dU = smin(dU, di, pr.k);
     else if (di < dS) {
@@ -229,17 +286,25 @@ export function evalSceneDetailed(scene: SdfScene, p: Readonly<Vec3>, out?: Scen
   return res;
 }
 
-/** Gradient per zentraler Differenz (Normale = normalize(grad)). */
+/** Gradient per Tetraeder-Differenz (vier Auswertungen; Normale = normalize(grad)). */
 export function sceneGradient(scene: SdfScene, p: Readonly<Vec3>, e: number, out: Vec3): Vec3 {
-  const px: Vec3 = [p[0] + e, p[1], p[2]];
-  const mx: Vec3 = [p[0] - e, p[1], p[2]];
-  const py: Vec3 = [p[0], p[1] + e, p[2]];
-  const my: Vec3 = [p[0], p[1] - e, p[2]];
-  const pz: Vec3 = [p[0], p[1], p[2] + e];
-  const mz: Vec3 = [p[0], p[1], p[2] - e];
-  out[0] = (evalScene(scene, px) - evalScene(scene, mx)) / (2 * e);
-  out[1] = (evalScene(scene, py) - evalScene(scene, my)) / (2 * e);
-  out[2] = (evalScene(scene, pz) - evalScene(scene, mz)) / (2 * e);
+  return tetraGradient((q) => evalScene(scene, q), p, e, out);
+}
+
+const _t0: Vec3 = [0, 0, 0];
+/** Tetraeder-Gradient einer beliebigen Abstandsfunktion (4 Auswertungen). */
+export function tetraGradient(f: (p: Readonly<Vec3>) => number, p: Readonly<Vec3>, e: number, out: Vec3): Vec3 {
+  _t0[0] = p[0] + e; _t0[1] = p[1] - e; _t0[2] = p[2] - e;
+  const a = f(_t0);
+  _t0[0] = p[0] - e; _t0[1] = p[1] - e; _t0[2] = p[2] + e;
+  const b = f(_t0);
+  _t0[0] = p[0] - e; _t0[1] = p[1] + e; _t0[2] = p[2] - e;
+  const c = f(_t0);
+  _t0[0] = p[0] + e; _t0[1] = p[1] + e; _t0[2] = p[2] + e;
+  const d = f(_t0);
+  out[0] = (a - b - c + d) / (4 * e);
+  out[1] = (-a - b + c + d) / (4 * e);
+  out[2] = (-a + b - c + d) / (4 * e);
   return out;
 }
 

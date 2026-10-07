@@ -204,8 +204,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   const prims: Prim[] = [cavity];
 
   // Kinnschnitt: ohne Unterkiefer liegt die Öffnung direkt am Hals/Körper darunter
-  if (m.unterkiefer < 0.999) {
-    const cut = 1 - m.unterkiefer;
+  if (m.unterkiefer < 0.6) {
+    const cut = clamp01((0.6 - m.unterkiefer) / 0.6);
     const chin: CustomPrim = {
       kind: 'custom',
       op: 'subtract',
@@ -233,8 +233,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   if (m.lippe > 0.02) {
     for (const side of [1, -1] as const) {
       if (side < 0 && m.unterkiefer < 0.05) continue;
-      for (let i = 0; i < n - 1; i++) {
-        const phiA = phis[i]!, phiB = phis[i + 1]!;
+      for (let i = 0; i < n - 1; i += 2) {
+        const phiA = phis[i]!, phiB = phis[Math.min(n - 1, i + 2)]!;
         const taperA = 0.35 + 0.65 * (1 - Math.pow(Math.abs(phiA) / theta, 2));
         const taperB = 0.35 + 0.65 * (1 - Math.pow(Math.abs(phiB) / theta, 2));
         const pa = surfacePoint(host, lipHAt(phiA) + side * gapAt(phiA) * 0.95, phiA, maxR).p;
@@ -253,6 +253,19 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
         };
         prims.push(prim);
       }
+    }
+  }
+
+  // Lochmaul: Lippenring um die Öffnung (Kugelfisch, Betta), mit (1 − form) gewichtet
+  if (m.form < 0.98 && m.lippe > 0.02) {
+    const ringR = rho0 * 1.25 + lipRadius * 0.6;
+    const ringRad = lipRadius * (1.2 + 0.8 * (1 - m.form)) * (1 - m.form) + 1e-3;
+    const segs = 14;
+    for (let i = 0; i < segs; i++) {
+      const a0 = (i / segs) * Math.PI * 2, a1 = ((i + 1) / segs) * Math.PI * 2;
+      const pa = add(add(center, scale(frame.x, Math.cos(a0) * ringR)), scale(frame.y, Math.sin(a0) * ringR));
+      const pb = add(add(center, scale(frame.x, Math.cos(a1) * ringR)), scale(frame.y, Math.sin(a1) * ringR));
+      prims.push({ kind: 'capsule', op: 'union', part: Math.sin(a0) < -0.2 && m.unterkiefer > 0.05 ? jawBone : host.bone, region: REGION.lippe, k: ringRad * 1.5, name: 'lippenring', a: add(pa, scale(frame.z, -ringRad * 0.2)), b: add(pb, scale(frame.z, -ringRad * 0.2)), ra: ringRad, rb: ringRad });
     }
   }
 

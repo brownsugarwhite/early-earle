@@ -1,4 +1,5 @@
 import type { Vec3 } from '../math/vec';
+import { tetraGradient } from '../sdf/scene';
 
 /**
  * Naive Surface Nets auf einem regelmäßigen Gitter: ein Vertex je Zelle mit Vorzeichenwechsel (Mittel der Kantenschnitte),
@@ -41,13 +42,70 @@ export function contour(sdf: Sdf, opts: ContourOptions): RawContour {
   const val = new Float32Array(nx * ny * nz);
   const at = (i: number, j: number, k: number): number => (k * ny + j) * nx + i;
   const p: Vec3 = [0, 0, 0];
-  for (let k = 0; k < nz; k++) {
-    p[2] = minZ + k * cell;
-    for (let j = 0; j < ny; j++) {
-      p[1] = minY + j * cell;
-      for (let i = 0; i < nx; i++) {
-        p[0] = minX + i * cell;
-        val[at(i, j, k)] = sdf(p);
+  // Narrow Band: grobe Blöcke von B Zellen; liegt die Fläche sicher nicht im Block (|d| an allen Ecken größer als die
+  // halbe Blockdiagonale plus eine Zelle, gleiches Vorzeichen), werden die feinen Werte trilinear interpoliert statt
+  // ausgewertet. Nur Zellen nahe der Fläche kosten echte SDF-Auswertungen.
+  const B = 4;
+  const cbx = Math.ceil((nx - 1) / B) + 1, cby = Math.ceil((ny - 1) / B) + 1, cbz = Math.ceil((nz - 1) / B) + 1;
+  const coarse = new Float32Array(cbx * cby * cbz);
+  const cat = (i: number, j: number, k: number): number => (k * cby + j) * cbx + i;
+  for (let k = 0; k < cbz; k++) {
+    p[2] = minZ + Math.min(k * B, nz - 1) * cell;
+    for (let j = 0; j < cby; j++) {
+      p[1] = minY + Math.min(j * B, ny - 1) * cell;
+      for (let i = 0; i < cbx; i++) {
+        p[0] = minX + Math.min(i * B, nx - 1) * cell;
+        coarse[cat(i, j, k)] = sdf(p);
+      }
+    }
+  }
+  const far = cell * (B * 0.87 + 1.0);
+  const c8 = new Float32Array(8);
+  for (let bk = 0; bk < cbz - 1; bk++) {
+    for (let bj = 0; bj < cby - 1; bj++) {
+      for (let bi = 0; bi < cbx - 1; bi++) {
+        let allFar = true;
+        let sign = 0;
+        for (let c = 0; c < 8; c++) {
+          const v = coarse[cat(bi + (c & 1), bj + ((c >> 1) & 1), bk + ((c >> 2) & 1))]!;
+          c8[c] = v;
+          const s = v < 0 ? -1 : 1;
+          if (sign === 0) sign = s;
+          if (s !== sign || Math.abs(v) <= far) allFar = false;
+        }
+        const i0 = bi * B, j0 = bj * B, k0 = bk * B;
+        const i1 = Math.min(i0 + B, nx - 1), j1 = Math.min(j0 + B, ny - 1), k1 = Math.min(k0 + B, nz - 1);
+        const spanI = Math.max(1, Math.min(B, nx - 1 - i0)), spanJ = Math.max(1, Math.min(B, ny - 1 - j0)), spanK = Math.max(1, Math.min(B, nz - 1 - k0));
+        for (let k = k0; k <= k1; k++) {
+          const fz = (k - k0) / spanK;
+          for (let j = j0; j <= j1; j++) {
+            const fy = (j - j0) / spanJ;
+            for (let i = i0; i <= i1; i++) {
+              const idx = at(i, j, k);
+              if (allFar) {
+                const fx = (i - i0) / spanI;
+                const x00 = c8[0]! + (c8[1]! - c8[0]!) * fx, x10 = c8[2]! + (c8[3]! - c8[2]!) * fx;
+                const x01 = c8[4]! + (c8[5]! - c8[4]!) * fx, x11 = c8[6]! + (c8[7]! - c8[6]!) * fx;
+                const y0 = x00 + (x10 - x00) * fy, y1 = x01 + (x11 - x01) * fy;
+                val[idx] = y0 + (y1 - y0) * fz;
+              } else if ((i - i0) % B === 0 && (j - j0) % B === 0 && (k - k0) % B === 0 && i < nx && j < ny && k < nz && (i === i0 || i === i1) && (j === j0 || j === j1) && (k === k0 || k === k1)) {
+                // Blockecke: Wert liegt schon vor
+                val[idx] = coarse[cat(bi + (i === i1 && i1 === i0 + B ? 1 : i === i0 ? 0 : 1), bj + (j === j1 && j1 === j0 + B ? 1 : j === j0 ? 0 : 1), bk + (k === k1 && k1 === k0 + B ? 1 : k === k0 ? 0 : 1))]!;
+                if (i === i1 && i1 !== i0 + B) {
+                  p[0] = minX + i * cell;
+                  p[1] = minY + j * cell;
+                  p[2] = minZ + k * cell;
+                  val[idx] = sdf(p);
+                }
+              } else {
+                p[0] = minX + i * cell;
+                p[1] = minY + j * cell;
+                p[2] = minZ + k * cell;
+                val[idx] = sdf(p);
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -128,10 +186,13 @@ export function nonManifoldEdges(index: ArrayLike<number>, vertexCount: number):
   return bad;
 }
 
-const GRID_SHIFTS = [0, 0.5, 0.25, 0.75, 0.125, 0.625];
+const GRID_SHIFTS = [0, 0.5];
 
-/** Probiert Gitterverschiebungen durch, bis die Kontur eine saubere 2-Mannigfaltigkeit ist (oder nimmt die beste). */
-export function contourManifold(sdf: Sdf, opts: Omit<ContourOptions, 'shift'>): RawContour {
+/**
+ * Probiert bis zu zwei Gitterverschiebungen, bis die Kontur (fast) eine saubere 2-Mannigfaltigkeit ist — wenige
+ * Pinch-Kanten sind erlaubt (jeder Versuch kostet einen Gitterlauf). `acceptBad`: so viele schlechte Kanten gelten als ok.
+ */
+export function contourManifold(sdf: Sdf, opts: Omit<ContourOptions, 'shift'>, acceptBad = 6): RawContour {
   let best: RawContour | null = null;
   let bestBad = Infinity;
   for (const shift of GRID_SHIFTS) {
@@ -141,7 +202,7 @@ export function contourManifold(sdf: Sdf, opts: Omit<ContourOptions, 'shift'>): 
       best = c;
       bestBad = bad;
     }
-    if (bad === 0) break;
+    if (bad <= acceptBad) break;
   }
   return best!;
 }
@@ -265,15 +326,12 @@ export function taubin(positions: Float32Array, adj: { offsets: Uint32Array; nei
 }
 
 /** Zieht jeden Vertex per Newton-Schritten auf die Nullfläche und schreibt Normalen aus dem Gradienten. */
-export function projectAndNormals(sdf: Sdf, positions: Float32Array, normals: Float32Array, eps: number, steps = 4): void {
+export function projectAndNormals(sdf: Sdf, positions: Float32Array, normals: Float32Array, eps: number, steps = 3): void {
   const n = positions.length / 3;
   const p: Vec3 = [0, 0, 0];
   const g: Vec3 = [0, 0, 0];
   const grad = (): void => {
-    const x = p[0], y = p[1], z = p[2];
-    g[0] = (sdf([x + eps, y, z]) - sdf([x - eps, y, z])) / (2 * eps);
-    g[1] = (sdf([x, y + eps, z]) - sdf([x, y - eps, z])) / (2 * eps);
-    g[2] = (sdf([x, y, z + eps]) - sdf([x, y, z - eps])) / (2 * eps);
+    tetraGradient(sdf, p, eps, g);
   };
   for (let v = 0; v < n; v++) {
     p[0] = positions[v * 3]!;

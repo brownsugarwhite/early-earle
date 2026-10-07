@@ -1,0 +1,19 @@
+.wesen-lab { position: absolute; inset: 0; }
+.wesen-info { margin: 0 0 10px; font-size: 12px; color: var(--ink-soft, #9fb1b8); line-height: 1.4; }
+.wesen-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.wesen-btn { min-height: 44px; padding: 0 12px; background: var(--panel, #12232d); color: var(--ink, #eef2f0); border: 0; border-radius: 0; font: inherit; font-size: 13px; box-shadow: 4px 2px 0 var(--ink-shadow, #081b25); cursor: pointer; }
+.wesen-btn[data-active='true'] { background: var(--teal, #22baa9); color: #081b25; }
+.wesen-btn--act { background: #e5aed4; color: #081b25; }
+.wesen-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.wesen-tabs .wesen-btn { min-height: 36px; padding: 0 10px; font-size: 12px; box-shadow: none; }
+.wesen-group { display: grid; gap: 8px; }
+.wesen-group .earle-ctl { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 12px; }
+.wesen-group .earle-ctl input[type='range'] { grid-column: 1 / -1; width: 100%; }
+.wesen-group .earle-ctl output { font-variant-numeric: tabular-nums; color: var(--ink-soft, #9fb1b8); }
+.wesen-colors { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 10px; }
+.wesen-colors label { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; min-height: 36px; }
+.wesen-colors input[type='color'] { width: 44px; height: 32px; border: 0; padding: 0; background: none; }
+.wesen-seg { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0 8px; font-size: 12px; }
+.wesen-seg > span { flex-basis: 100%; color: var(--ink-soft, #9fb1b8); }
+.wesen-seg .wesen-btn { min-height: 36px; padding: 0 10px; font-size: 12px; box-shadow: none; }
+.wesen-hint { font-size: 11px; color: var(--ink-soft, #9fb1b8); grid-column: 1 / -1; margin-top: -4px; }

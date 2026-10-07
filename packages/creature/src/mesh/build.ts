@@ -60,7 +60,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   const smoothIt = opts.smoothIterations ?? 5;
   if (smoothIt > 0) taubin(positions, adj, smoothIt);
   const normals = new Float32Array(positions.length);
-  projectAndNormals(sdf, positions, normals, cell * 0.25, smoothIt > 0 ? 5 : 4);
+  projectAndNormals(sdf, positions, normals, cell * 0.25, smoothIt > 0 ? 3 : 2);
   orientToNormals(positions, normals, index);
   const descriptors = computeDescriptors(c, positions, normals);
   const ws = opts.weightSmoothing ?? 2;

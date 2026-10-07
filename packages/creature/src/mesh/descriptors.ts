@@ -50,8 +50,8 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
   const order = unionIdx.slice();
   const p: Vec3 = [0, 0, 0];
   const nrm: Vec3 = [0, 0, 0];
-  const aoRadii = [0.04, 0.09, 0.18].map((r) => r * H);
-  const aoW = [0.5, 0.3, 0.2];
+  const aoRadii = [0.05, 0.16].map((r) => r * H);
+  const aoW = [0.6, 0.4];
   const mouth = c.mouth;
   const cavityK = mouth ? prims.find((pr) => pr.name === 'maulhoehle')?.k ?? 0.05 * H : 0.05 * H;
 
@@ -62,7 +62,7 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     nrm[0] = normals[v * 3]!;
     nrm[1] = normals[v * 3 + 1]!;
     nrm[2] = normals[v * 3 + 2]!;
-    evalSceneDetailed(scene, p, sample);
+    evalSceneDetailed(scene, p, sample, 0.35 * H);
     const per = sample.per;
 
     // --- Gewichte aus den Teilabständen ----------------------------------------------------------------------------

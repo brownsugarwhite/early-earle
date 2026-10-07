@@ -75,7 +75,7 @@ export function bodyProfile(b: Bauplan, R0: number, H: number): Array<[number, n
     [r[4]!, H * 0.92, 0],
     [r[4]! * 0.5, H * 0.995, 0],
   ];
-  const pts = catmullRom(ctrl, 4).map(([x, y]) => [Math.max(0, x), clamp(y, 0, H)] as [number, number]);
+  const pts = catmullRom(ctrl, 2).map(([x, y]) => [Math.max(0, x), clamp(y, 0, H)] as [number, number]);
   // Polygon: Achse unten → rechte Seite aufwärts → Scheitel → linke Seite abwärts (Spiegelung) → zurück zur Achse
   const right = pts;
   const left = pts
@@ -225,14 +225,15 @@ export function construct(b: Bauplan): Construction {
   const hh = host.height * 0.5;
   const gap0 = m.oeffnung * 0.32 * host.height * 0.5;
   const fz = host.forward, fy = host.up;
+  const jawForm = 0.35 + 0.65 * m.form;
   if (m.oberkiefer > 0.05) {
-    const c = add(add(C0, scale(fz, hw * (0.2 + 0.55 * b.kopf.schnauze))), scale(fy, gap0 + hh * 0.2 * m.oberkiefer));
-    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: hostBone, k: 0.3 * hw, region: REGION.haut, name: 'oberkiefer', c, r: [hw * 0.95 * (0.65 + 0.35 * b.kopf.schnauzeDicke), hh * 0.3 * m.oberkiefer + 0.002, hw * (0.5 + 0.8 * b.kopf.schnauze) * (0.5 + 0.5 * m.oberkiefer)], q: quatFromFrame(host.right, host.up, host.forward) };
+    const c = add(add(C0, scale(fz, hw * (0.02 + 0.6 * b.kopf.schnauze) * jawForm)), scale(fy, gap0 + hh * 0.22 * m.oberkiefer));
+    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: hostBone, k: 0.3 * hw, region: REGION.haut, name: 'oberkiefer', c, r: [hw * 0.95 * (0.65 + 0.35 * b.kopf.schnauzeDicke), hh * 0.3 * m.oberkiefer + 0.002, hw * (0.42 + 0.8 * b.kopf.schnauze) * (0.5 + 0.5 * m.oberkiefer) * jawForm], q: quatFromFrame(host.right, host.up, host.forward) };
     prims.push(e);
   }
   if (m.unterkiefer > 0.05) {
-    const c = sub(add(C0, scale(fz, hw * (0.15 + 0.5 * b.kopf.schnauze) + m.biss * hw * 0.25)), scale(fy, gap0 + hh * 0.17 * m.unterkiefer));
-    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: jawBone, k: 0.3 * hw, region: REGION.haut, name: 'unterkiefer', c, r: [hw * 0.88 * (0.65 + 0.35 * b.kopf.schnauzeDicke), hh * 0.26 * m.unterkiefer + 0.002, hw * (0.45 + 0.7 * b.kopf.schnauze) * (0.5 + 0.5 * m.unterkiefer)], q: quatFromFrame(host.right, host.up, host.forward), kubik: m.kante };
+    const c = sub(add(C0, scale(fz, (hw * (0.0 + 0.55 * b.kopf.schnauze) + m.biss * hw * 0.25) * jawForm)), scale(fy, gap0 + hh * 0.18 * m.unterkiefer));
+    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: jawBone, k: 0.3 * hw, region: REGION.haut, name: 'unterkiefer', c, r: [hw * 0.88 * (0.65 + 0.35 * b.kopf.schnauzeDicke), hh * 0.26 * m.unterkiefer + 0.002, hw * (0.4 + 0.7 * b.kopf.schnauze) * (0.5 + 0.5 * m.unterkiefer) * jawForm], q: quatFromFrame(host.right, host.up, host.forward), kubik: m.kante };
     prims.push(e);
   }
   if (b.kopf.braue > 0.02) {
@@ -258,7 +259,7 @@ export function construct(b: Bauplan): Construction {
   const eyes: EyeSpec[] = [];
   const a = b.augen;
   if (a.anzahl > 0) {
-    const phiE = clamp(mouth.theta * (0.4 + 0.45 * a.abstand), 0.2, 1.5);
+    const phiE = clamp(mouth.theta * (0.25 + 0.4 * a.abstand), 0.2, 1.4);
     const phis = a.anzahl === 1 ? [0] : a.anzahl === 2 ? [-phiE, phiE] : a.anzahl === 3 ? [-phiE * 1.15, 0, phiE * 1.15] : [-phiE * 1.35, -phiE * 0.55, phiE * 0.55, phiE * 1.35];
     const hostH = host.height;
     const hEye = clamp(mouth.hLip + mouth.gapFront * 1.3 + a.hoehe * (hostH - mouth.hLip - mouth.gapFront) * 0.85, 0.05 * hostH, 0.97 * hostH);

@@ -21,6 +21,7 @@ export const WERKSTATT_EDITORS: WerkstattEntry[] = [
 
 /** Labs: one prototype per route, each with its perf badge. New labs: add them here (and in App.tsx). */
 export const WERKSTATT_LABS: WerkstattEntry[] = [
+  { id: 'wesen-lab', name: 'Wesen-Lab', desc: 'Grundformen, Maul, Hals, Schlange — live', to: '/lab/wesen', glyph: 'creature', color: '#f08a4b', code: 'W1' },
   { id: 'earle-lab', name: 'Earle-Lab', desc: '15 Welten + eine angedeutete', to: '/lab/earle', glyph: 'earle', color: '#937cc2', code: 'P2c' },
   { id: 'baum-lab', name: 'Baum-Lab', desc: 'Riesenbaum: Stamm, Krone, Blüten, Pfad', to: '/lab/tree', glyph: 'tree', color: '#22baa9', code: 'P2d' },
   { id: 'schatten-lab', name: 'Schatten-Lab', desc: 'Harte Earle-Schatten im Vergleich', to: '/lab/shadow', glyph: 'shadow', color: '#b3bb6d', code: 'P2e' },
