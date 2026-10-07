@@ -1,6 +1,6 @@
 import type { Bauplan } from '../bauplan/schema';
 import { catmullRom, makePolyline, type Polyline } from '../math/curve';
-import { QUAT_ID, add, clamp, cross, dot, frameFromTangent, normalize, quatFromFrame, scale, sub, type Quat, type Vec3 } from '../math/vec';
+import { QUAT_ID, add, clamp, cross, dot, frameFromTangent, lerp, normalize, quatFromFrame, scale, sub, type Quat, type Vec3 } from '../math/vec';
 import { buildMouth, surfacePoint, type MouthGeometry, type MouthHost } from '../mouth/mouth';
 import { REGION, evalScene, makeLoft, sceneBounds, type EllipsoidPrim, type Prim, type SdfScene } from './scene';
 
@@ -135,7 +135,7 @@ export function bodyRadii(b: Bauplan, R0: number, H: number, samples = 96): Floa
 export function construct(b: Bauplan, resolution = 56): Construction {
   const H = b.koerper.hoehe;
   // grobe Zellgröße der späteren Vermaschung (Hülle ≈ 2,6 · H), für Mindestspalt und Schnittrundung
-  const cellSize = (H * 2.6) / resolution;
+  void resolution;
   const R0 = 0.5 * H;
   const sx = b.koerper.breite;
   const sz = b.koerper.laenge;
@@ -229,7 +229,16 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       }
     }
     const rBaseEff = rTop + (rN * 1.15 - rTop) * tN;
-    const radii = pts.map((_p, i) => rBaseEff + (rN * 0.58 - rBaseEff) * (i / (pts.length - 1)));
+    // Hals verjüngt sich nach oben und weitet sich im letzten Drittel wieder in den Hinterkopf (Tropfen Hals → Kopf,
+    // Bild 6): der Kopf sitzt nicht auf einem Stiel, die Rückenlinie des Halses läuft in den Schädel
+    const hrNeck = b.kopf.groesse * 0.33 * H;
+    const rTop = rN * 0.58;
+    const flare = Math.max(0, (hrNeck * 0.62) / Math.max(1e-6, rTop) - 1);
+    const radii = pts.map((_p, i) => {
+      const t = i / (pts.length - 1);
+      const sw = Math.pow(clamp((t - 0.55) / 0.45, 0, 1), 1.6);
+      return (rBaseEff + (rTop - rBaseEff) * t) * (1 + flare * sw);
+    });
     const pl = makePolyline(pts, radii, FWD);
     const neckGroup = groups.length;
     groups.push({ name: 'hals', kind: 'hals', polyline: pl, bones: [], dorsal: normalize([0, 0.3, -1]) });
@@ -292,7 +301,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     const schn = clamp(b.kopf.schnauze, 0, 1);
     const dick = clamp(b.kopf.schnauzeDicke, 0.3, 1.2);
     // Mittellinie des Kopfs: vom Hinterkopf nach vorn bis zur Schnauzenspitze, auf Höhe der Maullinie
-    const headBase = add(neckEnd, scale(upH, hr * 0.45));
+    // Hals trifft den Kopf im hinteren Drittel: Kopfbasis etwas nach vorn, damit der Hinterkopf den Hals fortsetzt
+    const headBase = add(add(neckEnd, scale(upH, hr * 0.4)), scale(forwardH, hr * 0.3));
     const Lback = hr * 0.85;
     const Lfront = hr * (1.05 + 0.9 * (b.kopf.laenge - 1) + 0.8 * schn);
     const headCenter = add(headBase, scale(forwardH, (Lfront - Lback) * 0.5));
@@ -319,7 +329,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         // Nase: runde Wölbung vorn oben auf der Schnauze (Giraffe, Bild 6), wächst mit der Schnauzenlänge
         const nase = 0.5 * schn * Math.exp(-Math.pow((u - 0.84) / 0.14, 2));
         const skull = hr * (0.55 + 0.5 * ok) * (1 - 0.62 * slope + nase) * (1 + 0.3 * braue * Math.exp(-Math.pow((u - 0.5) / 0.16, 2)));
-        const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.45 * Math.max(0, (u - 0.4) / 0.6) ** 1.3);
+        const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.3 * Math.max(0, (u - 0.5) / 0.5) ** 1.6);
         wx.push(width * endRound);
         wyT.push(skull * endRound);
         wyB.push(jaw * endRound);
@@ -373,8 +383,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   const maulAn = m0.sichtbar;
 
   // --- Maul ----------------------------------------------------------------------------------------------------------
-  const mouthBuild = buildMouth(b, host, jawBone, H, cellSize);
-  const mouth = mouthBuild.geometry;
+  const mouth = buildMouth(b, host, H);
   {
     const x = mouth.jawHinge.axis;
     const z = normalize(sub(mouth.frame.z, scale(x, mouth.frame.z[0] * x[0] + mouth.frame.z[1] * x[1] + mouth.frame.z[2] * x[2])));
@@ -384,17 +393,19 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       bones[bi]!.quat = quatFromFrame(x, y, z);
     }
   }
-  if (maulAn) prims.push(...mouthBuild.prims);
-  else mouth.teeth.length = 0;
 
   // --- Augen (Höhlen) ------------------------------------------------------------------------------------------------
   const eyes: EyeSpec[] = [];
   const a = b.augen;
   if (a.anzahl > 0) {
-    const phiE = clamp(mouth.theta * (0.25 + 0.4 * a.abstand), 0.2, 1.4);
-    const phis = a.anzahl === 1 ? [0] : a.anzahl === 2 ? [-phiE, phiE] : a.anzahl === 3 ? [-phiE * 1.15, 0, phiE * 1.15] : [-phiE * 1.35, -phiE * 0.55, phiE * 0.55, phiE * 1.35];
+    // Lage längs des Kopfs: 0 vorn an der Schnauze … 1 hinten am Schädel (Azimut um die Hochachse des Trägers);
+    // `abstand` spreizt die Augen um diese Lage, `hoehe` setzt sie über der Maullinie
+    const phiLage = lerp(0.15 * mouth.theta, Math.PI - 0.5, clamp(a.lage, 0, 1));
+    const spread = 0.12 + 0.35 * a.abstand;
+    const phis = a.anzahl === 1 ? [0] : a.anzahl === 2 ? [-phiLage, phiLage] : a.anzahl === 3 ? [-phiLage * (1 + spread), 0, phiLage * (1 + spread)] : [-phiLage * (1 + spread), -phiLage * (1 - spread), phiLage * (1 - spread), phiLage * (1 + spread)];
     const hostH = host.height;
-    const hEye = clamp(mouth.hLip + mouth.gapFront * 1.3 + a.hoehe * (hostH - mouth.hLip - mouth.gapFront) * 0.85, 0.05 * hostH, 0.97 * hostH);
+    const hLipAtEye = mouth.lipHAt(clamp(phiLage, -mouth.theta, mouth.theta));
+    const hEye = clamp(hLipAtEye + 0.08 * hostH + a.hoehe * (hostH - hLipAtEye) * 0.8, 0.05 * hostH, 0.97 * hostH);
     const rE = (0.045 + 0.085 * a.groesse) * hostH;
     const hostScene: SdfScene = { prims: prims.filter((p) => p.op === 'union') };
     const eyeHost: MouthHost = { ...host, scene: hostScene };

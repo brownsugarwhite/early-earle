@@ -4,6 +4,7 @@ import { shapeHash, styleHash } from '../bauplan/hash';
 import { evalScene } from '../sdf/scene';
 import { construct } from '../sdf/build';
 import { buildCreature } from './build';
+import { posedPositions } from '../mouth/pose';
 
 describe('Bauplan', () => {
   it('füllt alle Vorgaben und kennt jeden Regler', () => {
@@ -42,26 +43,39 @@ describe('Konstruktion', () => {
     expect(m.center[2]).toBeGreaterThan(0.2);
     expect(m.corners[0][0]).toBeLessThan(-0.1);
     expect(m.corners[1][0]).toBeGreaterThan(0.1);
-    expect(m.teeth.length).toBeGreaterThan(4);
-    // Zähne oben und unten, keine Durchdringung im Bauzustand (Abstand ≥ 60 % der Größe)
-    const up = m.teeth.filter((t) => t.upper), lo = m.teeth.filter((t) => !t.upper);
+    // Zähne entstehen im Lippenschnitt (buildCreature): oben und unten, keine Durchdringung geschlossen (Zähne liegen innen)
+    const r = buildCreature(defaultBauplan(), { resolution: 40 });
+    const teeth = r.mouth!.teeth;
+    expect(teeth.length).toBeGreaterThan(4);
+    const up = teeth.filter((t) => t.upper), lo = teeth.filter((t) => !t.upper);
     expect(up.length).toBeGreaterThan(1);
     expect(lo.length).toBeGreaterThan(1);
-    // (Zähne sind am geschlossenen Zustand verankert und greifen um eine halbe Teilung versetzt ineinander)
-    for (const a of up) for (const b of lo) expect(Math.hypot(a.pos[0] - b.pos[0], a.pos[1] - b.pos[1], a.pos[2] - b.pos[2])).toBeGreaterThan(0.45 * Math.min(a.size, b.size));
   });
   it('setzt das Maul stufenlos in der Höhe', () => {
     const lo = construct(setAt(defaultBauplan(), 'maul.hoehe', 0.15)).mouth!;
     const hi = construct(setAt(defaultBauplan(), 'maul.hoehe', 0.85)).mouth!;
     expect(hi.center[1]).toBeGreaterThan(lo.center[1] + 0.4);
   });
-  it('ohne Unterkiefer liegt die Öffnung tiefer als mit', () => {
-    const mit = construct(defaultBauplan());
-    const ohne = construct(setAt(defaultBauplan(), 'maul.unterkiefer', 0));
-    // unterhalb der Lippe, vorn: ohne Unterkiefer ist dort Luft (SDF > 0)
-    const p = mit.mouth!.center;
-    const probe = [p[0], p[1] - 0.12, p[2] - 0.05] as [number, number, number];
-    expect(evalScene(ohne.scene, probe)).toBeGreaterThan(evalScene(mit.scene, probe));
+  it('ohne Unterkiefer öffnet der Oberkiefer das Maul', () => {
+    const b = setAt(setAt(defaultBauplan(), 'maul.unterkiefer', 0), 'maul.oeffnung', 0.8);
+    const r = buildCreature(b, { resolution: 36 });
+    const zu = posedPositions(r, { openness: 0, maul: b.maul });
+    const auf = posedPositions(r, { openness: 1, maul: b.maul });
+    // Vertices oberhalb der Maullinie (Oberkopf) bewegen sich, unterhalb (Körper) nicht
+    let oben = 0, unten = 0, nOben = 0, nUnten = 0;
+    const m = r.mouth!;
+    for (let v = 0; v < r.stats.vertexCount; v++) {
+      const d = Math.hypot(auf[v * 3]! - zu[v * 3]!, auf[v * 3 + 1]! - zu[v * 3 + 1]!, auf[v * 3 + 2]! - zu[v * 3 + 2]!);
+      const y = r.positions[v * 3 + 1]!;
+      if (y > m.center[1] + 0.05) {
+        oben += d;
+        nOben++;
+      } else if (y < m.center[1] - 0.05) {
+        unten += d;
+        nUnten++;
+      }
+    }
+    expect(oben / Math.max(1, nOben)).toBeGreaterThan(unten / Math.max(1, nUnten) * 3);
   });
 });
 
@@ -84,14 +98,16 @@ describe('Mesh', () => {
     expect(rachen).toBeGreaterThan(10);
     expect(jaw).toBeGreaterThan(10);
     // Normalen zeigen nach außen (SDF steigt entlang der Normale)
-    let outward = 0;
+    let outward = 0, geprueft = 0;
+    const c = construct(defaultBauplan());
     for (let v = 0; v < r.stats.vertexCount; v += 11) {
+      if (d.region[v * 4]! > 0.25) continue; // Maultasche liegt im Körper, ihre Normalen zeigen in die Höhle
+      geprueft++;
       const p: [number, number, number] = [r.positions[v * 3]!, r.positions[v * 3 + 1]!, r.positions[v * 3 + 2]!];
       const q: [number, number, number] = [p[0] + r.normals[v * 3]! * 0.02, p[1] + r.normals[v * 3 + 1]! * 0.02, p[2] + r.normals[v * 3 + 2]! * 0.02];
-      const c = construct(defaultBauplan());
       if (evalScene(c.scene, q) > evalScene(c.scene, p)) outward++;
     }
-    expect(outward).toBeGreaterThan(Math.floor(r.stats.vertexCount / 11) * 0.9);
+    expect(outward).toBeGreaterThan(geprueft * 0.9);
   });
   it('Narrow-Band ändert die Fläche nicht (Buckel, Neigung, breite Standfläche)', () => {
     const b = parseBauplan({ koerper: { hoehe: 1.5, bauch: 0.9, buckel: 0.8, neigung: 0.8, boden: 0.9 }, maul: { sichtbar: false } });

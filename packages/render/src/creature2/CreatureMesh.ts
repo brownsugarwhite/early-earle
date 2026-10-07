@@ -54,6 +54,57 @@ function toothGeometry(stil: 'rund' | 'spitz'): BufferGeometry {
   return g;
 }
 
+/**
+ * Zunge (Bild 5/11/14): fleischiger Körper mit flacher Unterseite, Mittelrinne, runder Spitze; Länge entlang +z (zur
+ * Öffnung), Breite x, Dicke y. Hinten (z = 0) breit am Ansatz, vorn verjüngt und leicht nach oben gebogen.
+ */
+function tongueGeometry(laenge: number, breite: number, dicke: number): BufferGeometry {
+  const nu = 18, nv = 12;
+  const pos: number[] = [], idx: number[] = [], tooth: number[] = [];
+  for (let i = 0; i <= nu; i++) {
+    const u = i / nu; // 0 Ansatz … 1 Spitze
+    const halbBreite = (breite / 2) * Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, u - 0.55) / 0.45, 2.2))) * (0.85 + 0.15 * (1 - u));
+    const d = dicke * (1 - 0.45 * u);
+    const lift = laenge * 0.12 * u * u; // Spitze hebt sich
+    for (let j = 0; j <= nv; j++) {
+      const v = -1 + (2 * j) / nv;
+      const rinne = 1 - 0.35 * Math.exp(-Math.pow(v / 0.28, 2));
+      const y = d * Math.sqrt(Math.max(0, 1 - v * v)) * rinne + lift;
+      pos.push(v * halbBreite, y, u * laenge);
+      tooth.push(u);
+    }
+  }
+  const stride = nv + 1;
+  for (let i = 0; i < nu; i++)
+    for (let j = 0; j < nv; j++) {
+      const a = i * stride + j, b = a + 1, c = a + stride, d = c + 1;
+      idx.push(a, c, b, b, c, d);
+    }
+  // Unterseite flach: Spiegelzeile y = lift (dünne Platte), als eigene Fläche
+  const base = pos.length / 3;
+  for (let i = 0; i <= nu; i++) {
+    const u = i / nu;
+    const halbBreite = (breite / 2) * Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, u - 0.55) / 0.45, 2.2))) * (0.85 + 0.15 * (1 - u));
+    const lift = laenge * 0.12 * u * u;
+    for (let j = 0; j <= nv; j++) {
+      const v = -1 + (2 * j) / nv;
+      pos.push(v * halbBreite, lift - dicke * 0.08, u * laenge);
+      tooth.push(u);
+    }
+  }
+  for (let i = 0; i < nu; i++)
+    for (let j = 0; j < nv; j++) {
+      const a = base + i * stride + j, b = a + 1, c = a + stride, d = c + 1;
+      idx.push(a, b, c, b, d, c);
+    }
+  const g = new BufferGeometry();
+  g.setAttribute('position', new Float32BufferAttribute(pos, 3));
+  g.setAttribute('eeTooth', new Float32BufferAttribute(tooth, 1));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
 export class CreatureMesh {
   readonly root = new Group();
   readonly uniforms: CreatureMaterialUniforms;
@@ -71,12 +122,8 @@ export class CreatureMesh {
   bones: Bone[] = [];
   build: CreatureBuild | null = null;
   private jawAxis = new Vector3(1, 0, 0);
-  /** Hochachse des Trägers und Ruhelage des Oberkieferknochens (Hebe-Richtung beim Öffnen). */
+  /** Hochachse des Trägers. */
   private hostUp = new Vector3(0, 1, 0);
-  private upperRest = new Vector3();
-  /** Ruhelage und Größe der Zunge (zieht sich beim Schließen in den Unterkiefer zurück). */
-  private tongueRest = new Vector3();
-  private tongueSize = 0;
   private upperTeeth: InstancedMesh | null = null;
   private lowerTeeth: InstancedMesh | null = null;
   private tongue: Mesh | null = null;
@@ -148,12 +195,12 @@ export class CreatureMesh {
     g.setAttribute('skinIndex', new Uint16BufferAttribute(si, 4));
     g.setAttribute('skinWeight', new BufferAttribute(build.descriptors.skinWeight, 4));
     // Alle Deskriptoren in einem verschachtelten Puffer (WebGPU erlaubt höchstens 8 Vertex-Puffer):
-    // Spine (4) · Region (4) · Extra (AO, Dicke, Kante) · Verschluss (3) · Spitzmund (3) = 17 Floats je Vertex
+    // Spine (4) · Region (4) · Extra (AO, Dicke, Kante) · Spitzmund (3) = 14 Floats je Vertex
     const n = build.positions.length / 3;
-    const packed = new Float32Array(n * 17);
+    const packed = new Float32Array(n * 14);
     const d = build.descriptors;
     for (let v = 0; v < n; v++) {
-      const o = v * 17;
+      const o = v * 14;
       packed[o] = d.spine[v * 4]!;
       packed[o + 1] = d.spine[v * 4 + 1]!;
       packed[o + 2] = d.spine[v * 4 + 2]!;
@@ -165,19 +212,15 @@ export class CreatureMesh {
       packed[o + 8] = d.ao[v]!;
       packed[o + 9] = d.thick[v]!;
       packed[o + 10] = build.crease[v]!;
-      packed[o + 11] = build.closed[v * 3]!;
-      packed[o + 12] = build.closed[v * 3 + 1]!;
-      packed[o + 13] = build.closed[v * 3 + 2]!;
-      packed[o + 14] = build.pucker[v * 3]!;
-      packed[o + 15] = build.pucker[v * 3 + 1]!;
-      packed[o + 16] = build.pucker[v * 3 + 2]!;
+      packed[o + 11] = build.pucker[v * 3]!;
+      packed[o + 12] = build.pucker[v * 3 + 1]!;
+      packed[o + 13] = build.pucker[v * 3 + 2]!;
     }
-    const ib = new InterleavedBuffer(packed, 17);
+    const ib = new InterleavedBuffer(packed, 14);
     g.setAttribute('eeSpine', new InterleavedBufferAttribute(ib, 4, 0));
     g.setAttribute('eeRegion', new InterleavedBufferAttribute(ib, 4, 4));
     g.setAttribute('eeExtra', new InterleavedBufferAttribute(ib, 3, 8));
-    g.setAttribute('eeClosed', new InterleavedBufferAttribute(ib, 3, 11));
-    g.setAttribute('eePucker', new InterleavedBufferAttribute(ib, 3, 14));
+    g.setAttribute('eePucker', new InterleavedBufferAttribute(ib, 3, 11));
     g.setIndex(new BufferAttribute(build.index, 1));
     g.computeBoundingSphere();
     // --- Skelett: Knochen mit Identitätsdrehung, Position relativ zum Elternknochen ---------------------------------
@@ -206,9 +249,9 @@ export class CreatureMesh {
     if (build.mouth) {
       this.jawAxis.set(...build.mouth.hinge.axis).normalize();
       this.hostUp.set(...build.mouth.up).normalize();
-      const ub = this.bones[build.upperJawBone];
-      if (ub) this.upperRest.copy(ub.position);
     }
+    // Lippenband (Zahnfleisch) in Körpereinheiten: 0 ohne Lippe (Giraffe), sonst bis ≈ 10 % der Körperhöhe
+    this.uniforms.lippenBand.value = b.maul.sichtbar && b.maul.lippe > 0.02 ? (0.015 + 0.085 * Math.min(1, b.maul.lippe)) * build.bodyScale : 0;
     // --- Zähne und Zunge ------------------------------------------------------------------------------------------------
     const stilZ = b.zaehne.stil;
     if (build.mouth && stilZ !== 'keine' && build.mouth.teeth.length > 0) {
@@ -224,7 +267,7 @@ export class CreatureMesh {
         list.forEach((t, i) => {
           _p.set(...t.pos);
           _q.setFromUnitVectors(UP, new Vector3(...t.dir).normalize());
-          _s.set(t.size * 0.55, t.size, t.size * 0.55);
+          _s.set(t.size * 0.38, t.size, t.size * 0.38);
           _m.compose(_p, _q, _s);
           im.setMatrixAt(i, _m);
         });
@@ -244,19 +287,19 @@ export class CreatureMesh {
         this.lowerTeeth = make(lower, jaw, new Vector3(-jp[0], -jp[1], -jp[2]));
       }
     }
-    if (build.mouth && b.maul.sichtbar && b.zunge.groesse > 0.02) {
-      const s = build.mouth.tongue.size;
-      this.tongueGeo = new SphereGeometry(1, 16, 12);
-      this.tongueGeo.scale(s * 0.9, s * 0.32, s * 1.25);
+    if (build.mouth && b.maul.sichtbar && b.zunge.groesse > 0.02 && build.mouth.tongue.laenge > 0.001) {
+      const tg = build.mouth.tongue;
+      this.tongueGeo = tongueGeometry(tg.laenge, tg.breite, Math.max(0.004, tg.breite * 0.32));
       const tongue = new Mesh(this.tongueGeo, this.tongueMaterial);
       tongue.name = 'wesen-zunge';
       const jaw = this.bones[build.jawBone];
       const jp = build.bones[build.jawBone]!.pos;
-      tongue.position.set(build.mouth.tongue.pos[0] - jp[0], build.mouth.tongue.pos[1] - jp[1], build.mouth.tongue.pos[2] - jp[2]);
-      this.tongueRest.copy(tongue.position);
-      this.tongueSize = s;
-      _q.setFromUnitVectors(new Vector3(0, 0, 1), new Vector3(...build.mouth.tongue.dir).normalize());
-      tongue.quaternion.copy(_q);
+      tongue.position.set(tg.pos[0] - jp[0], tg.pos[1] - jp[1], tg.pos[2] - jp[2]);
+      // Rahmen: +z = Zungenrichtung (zur Öffnung), +y = oben
+      const zAx = new Vector3(...tg.dir).normalize();
+      const yAx = new Vector3(...tg.up).addScaledVector(zAx, -new Vector3(...tg.up).dot(zAx)).normalize();
+      const xAx = new Vector3().crossVectors(yAx, zAx).normalize();
+      tongue.quaternion.setFromRotationMatrix(new Matrix4().makeBasis(xAx, yAx, zAx));
       (jaw ?? this.root).add(tongue);
       this.tongue = tongue;
     }
@@ -297,9 +340,6 @@ export class CreatureMesh {
       const u4 = this.uniforms.eyeUp.array[i] as Vector4;
       u4.set(up.x, up.y, up.z, 1);
     });
-    // Naht: Lippenband und Kante erst ab spürbarer Lippendicke (Bild 6: Giraffe geschlossen ohne sichtbares Maul)
-    const lw = Math.max(0, Math.min(1, (b.maul.lippe - 0.05) / 0.3));
-    this.uniforms.lippeSichtbar.value = b.maul.sichtbar ? lw * lw * (3 - 2 * lw) : 0;
     this.setStyle(b, this.stil);
     this.applyPose();
   }
@@ -345,20 +385,8 @@ export class CreatureMesh {
       // eine Formel für Bau, Darstellung und Tests: Unterkiefer dreht, Oberkiefer hebt sich und neigt sich
       const pose = jawPose(jawRig(this.build, this.bauplan.maul), this.opennessNow);
       if (jaw) jaw.quaternion.setFromAxisAngle(this.jawAxis, pose.lowerAngle);
-      if (upperB) {
-        upperB.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle);
-        upperB.position.copy(this.upperRest).addScaledVector(this.hostUp, pose.upperLift);
-      }
-      this.uniforms.verschluss.value = pose.verschluss;
+      if (upperB) upperB.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle);
       this.uniforms.spitzmund.value = pose.spitzmund;
-      if (this.tongue) {
-        // Zunge: beim Schließen flacher und zurück in den Unterkiefer (sonst stößt sie durch dünne Oberkiefer)
-        const v = pose.verschluss;
-        this.tongue.scale.set(1 - 0.25 * v, 1 - 0.78 * v, 1 - 0.5 * v);
-        // tiefer in den Unterkiefer und zurück (Spitze darf weder vorn noch unten herausschauen)
-        const back = this.tongue.getWorldDirection(new Vector3());
-        this.tongue.position.copy(this.tongueRest).addScaledVector(this.hostUp, -this.tongueSize * 0.3 * v).addScaledVector(back, -this.tongueSize * 0.7 * v);
-      }
     }
     // Atmen: Körperknochen sanft skalieren (oben stärker)
     const bodyBones = this.build.groups.find((g) => g.kind === 'koerper')?.bones ?? [];

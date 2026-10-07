@@ -125,11 +125,12 @@ describe('Wesen-Store', () => {
     expect(vorschauOeffnung(s())).toBe(0.8);
     s().setOffen(0);
     expect(vorschauOeffnung(s())).toBe(0);
+    const lochOeffnung = vorlageBauplan('loch')!.maul.oeffnung;
     s().ladeBauplan(vorlageBauplan('loch')!, { art: 'vorlage', id: 'loch' });
-    expect(vorschauOeffnung(s())).toBe(0.6);
+    expect(vorschauOeffnung(s())).toBe(lochOeffnung);
     s().setOffen(1);
     s().offenWieGebaut();
-    expect(vorschauOeffnung(s())).toBe(0.6);
+    expect(vorschauOeffnung(s())).toBe(lochOeffnung);
   });
 
   it('Referenzmodus: weißer Grund, Drehen aus; danach kommt der alte Boden zurück', () => {
@@ -166,7 +167,7 @@ describe('Wesen-Store', () => {
     m.set(ENTWURF_KEY, JSON.stringify({ v: 1, bauplan: parseBauplan({ name: 'Entwurf' }), at: 1 }));
     starteWesenLab({ vorlage: 'giraffe', ansicht: 'referenz' });
     expect(s().quelle).toEqual({ art: 'vorlage', id: 'giraffe' });
-    expect(s().bauplan.hals.laenge).toBe(1.6);
+    expect(s().bauplan.hals.laenge).toBe(vorlageBauplan('giraffe')!.hals.laenge);
     expect(s().ansicht).toBe('referenz');
     expect(s().boden).toBe('weiss');
     s().undo();

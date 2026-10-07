@@ -132,9 +132,8 @@ export function createJellyMaterial(u: CreatureMaterialUniforms, j: JellyUniform
   material.transparent = true;
   material.depthWrite = true;
   material.positionNode = Fn(() => {
-    const closed = attribute('eeClosed', 'vec3') as Vec3Node;
     const pucker = attribute('eePucker', 'vec3') as Vec3Node;
-    return (positionLocal as unknown as Vec3Node).add(closed.mul(u.verschluss)).add(pucker.mul(u.spitzmund));
+    return (positionLocal as unknown as Vec3Node).add(pucker.mul(u.spitzmund));
   })();
   material.colorNode = Fn(() => {
     const rest = positionGeometry as unknown as Vec3Node;

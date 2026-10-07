@@ -127,18 +127,9 @@ export function primPart(prim: Prim, p: Readonly<Vec3>): number {
 
 function nearestStation(prim: LoftPrim, p: Readonly<Vec3>): number {
   const st = prim.stations;
-  const n = st.length;
   let bi = 0;
   let bd = Infinity;
-  for (let i = 0; i < n; i += 3) {
-    const q = st[i]!.p;
-    const d = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2;
-    if (d < bd) {
-      bd = d;
-      bi = i;
-    }
-  }
-  for (let i = Math.max(0, bi - 3); i <= Math.min(n - 1, bi + 3); i++) {
+  for (let i = 0; i < st.length; i++) {
     const q = st[i]!.p;
     const d = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2;
     if (d < bd) {
@@ -165,76 +156,50 @@ function sectionRadius(s: LoftStation, ca: number, cb: number): number {
  * beim Rotationskörper, aber für beliebige Mittellinien und Ei-Querschnitte. Kappen als gerundete Halbraum-Schnitte.
  */
 export function sdLoft(p: Readonly<Vec3>, prim: LoftPrim): number {
+  return prim.axis ? sdLoftAxis(p, prim) : sdLoftSegments(p, prim);
+}
+
+/** Gerundeter Halbraum-Schnitt (Kappe) mit Kantenrundung k. */
+function capCut(d: number, plane: number, k: number): number {
+  if (k <= 0) return Math.max(d, plane);
+  const h = Math.max(k - Math.abs(d - plane), 0) / k;
+  return Math.max(d, plane) + h * h * k * 0.25;
+}
+
+/**
+ * Achsenmodus: Station nach Höhe entlang der geraden Achse (binäre Suche), Querschnitte senkrecht zur Achse, der
+ * Mittenversatz verschiebt nur die Scheibe — stetig per Konstruktion (Rumpf, Kopf, Beine).
+ */
+function sdLoftAxis(p: Readonly<Vec3>, prim: LoftPrim): number {
   const st = prim.stations;
   const n = st.length;
-  let seg = 0;
-  let bestD = Infinity;
-  let bestF = 0;
-  if (prim.axis) {
-    // Achsenmodus: Station nach Höhe (Bogenlänge = Höhe entlang der Achse, monoton), binäre Suche
-    const ax = prim.axis;
-    const s = (p[0] - st[0]!.p[0]) * ax[0] + (p[1] - st[0]!.p[1]) * ax[1] + (p[2] - st[0]!.p[2]) * ax[2] + st[0]!.arc;
-    let lo = 0, hi = n - 2;
-    while (lo < hi) {
-      const mid = (lo + hi + 1) >> 1;
-      if (st[mid]!.arc <= s) lo = mid;
-      else hi = mid - 1;
-    }
-    seg = lo;
-    const a0 = st[seg]!.arc, a1 = st[seg + 1]!.arc;
-    bestF = a1 > a0 ? Math.max(0, Math.min(1, (s - a0) / (a1 - a0))) : 0;
-    bestD = 0;
-  } else
-  // 1. Nächster Punkt auf der **stetigen** Mittellinie: erschöpfende Segmentprojektion (ein Fenster um die nächste
-  //    Station übersah bei gekrümmten Linien das wahre Segment → Sprung im Feld → Risse im Netz)
-  for (let j = 0; j <= n - 2; j++) {
-    const a = st[j]!.p, b = st[j + 1]!.p;
-    const ex = b[0] - a[0], ey = b[1] - a[1], ez = b[2] - a[2];
-    const l2 = ex * ex + ey * ey + ez * ez || 1e-12;
-    const f = Math.max(0, Math.min(1, ((p[0] - a[0]) * ex + (p[1] - a[1]) * ey + (p[2] - a[2]) * ez) / l2));
-    const qx = a[0] + ex * f - p[0], qy = a[1] + ey * f - p[1], qz = a[2] + ez * f - p[2];
-    const d = qx * qx + qy * qy + qz * qz;
-    if (d < bestD) {
-      bestD = d;
-      seg = j;
-      bestF = f;
-    }
+  const ax = prim.axis!;
+  const s = (p[0] - st[0]!.p[0]) * ax[0] + (p[1] - st[0]!.p[1]) * ax[1] + (p[2] - st[0]!.p[2]) * ax[2] + st[0]!.arc;
+  let lo = 0, hi = n - 2;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (st[mid]!.arc <= s) lo = mid;
+    else hi = mid - 1;
   }
+  const seg = lo;
   const sA = st[seg]!, sB = st[seg + 1]!;
-  const f = bestF;
+  const a0 = sA.arc, a1 = sB.arc;
+  const f = a1 > a0 ? Math.max(0, Math.min(1, (s - a0) / (a1 - a0))) : 0;
   const cx = sA.p[0] + (sB.p[0] - sA.p[0]) * f, cy = sA.p[1] + (sB.p[1] - sA.p[1]) * f, cz = sA.p[2] + (sB.p[2] - sA.p[2]) * f;
-  let rx = sA.right[0] + (sB.right[0] - sA.right[0]) * f, ry = sA.right[1] + (sB.right[1] - sA.right[1]) * f, rz = sA.right[2] + (sB.right[2] - sA.right[2]) * f;
-  let ux = sA.up[0] + (sB.up[0] - sA.up[0]) * f, uy = sA.up[1] + (sB.up[1] - sA.up[1]) * f, uz = sA.up[2] + (sB.up[2] - sA.up[2]) * f;
-  const rl = Math.hypot(rx, ry, rz) || 1, ul = Math.hypot(ux, uy, uz) || 1;
-  rx /= rl;
-  ry /= rl;
-  rz /= rl;
-  ux /= ul;
-  uy /= ul;
-  uz /= ul;
+  // Rahmen sind im Achsenmodus für alle Stationen gleich
+  const rx = sA.right[0], ry = sA.right[1], rz = sA.right[2];
+  const ux = sA.up[0], uy = sA.up[1], uz = sA.up[2];
   const vx = p[0] - cx, vy = p[1] - cy, vz = p[2] - cz;
   const a = vx * rx + vy * ry + vz * rz;
   const b = vx * ux + vy * uy + vz * uz;
-  const sArc = sA.arc + (sB.arc - sA.arc) * f;
-  // vor dem Anfang / hinter dem Ende: Anteil entlang der Tangente für Kappen und Profilauslauf
   let over = 0;
-  if (prim.axis) {
-    const ax = prim.axis;
-    const s = (p[0] - st[0]!.p[0]) * ax[0] + (p[1] - st[0]!.p[1]) * ax[1] + (p[2] - st[0]!.p[2]) * ax[2] + st[0]!.arc;
-    if (s < st[0]!.arc) over = s - st[0]!.arc;
-    else if (s > st[n - 1]!.arc) over = s - st[n - 1]!.arc;
-  } else if (seg === 0 && f <= 0) over = vx * sA.tangent[0] + vy * sA.tangent[1] + vz * sA.tangent[2];
-  else if (seg === n - 2 && f >= 1) over = vx * sB.tangent[0] + vy * sB.tangent[1] + vz * sB.tangent[2];
-  const sEff = sArc + over;
+  if (s < st[0]!.arc) over = s - st[0]!.arc;
+  else if (s > st[n - 1]!.arc) over = s - st[n - 1]!.arc;
+  const sEff = s;
   const rho = Math.hypot(a, b);
   const ca = rho > 1e-9 ? a / rho : 1, cb = rho > 1e-9 ? b / rho : 0;
-  // 2. Exakter 2D-Abstand von (ρ, s) zur Profil-Polylinie in dieser Richtung. Das Fenster wächst mit dem radialen
-  //    Abstand zur Fläche: weit innen oder außen liegt der nächste Profilpunkt viele Stationen entfernt — ein festes
-  //    Fenster sprang beim Verschieben (Risse im Netz)
   const rAt = sectionRadius(sA, ca, cb) * (1 - f) + sectionRadius(sB, ca, cb) * f;
-  // Profilsuche vom nächsten Segment nach außen in beide Richtungen; Abbruch, sobald allein der Bogenabstand den
-  // besten Treffer übersteigt (der 2D-Abstand ist nie kleiner als |Δs|) — exakt und nahe der Fläche sehr billig
-  let best = Infinity;
+  // Profilsuche vom nächsten Segment nach außen; Abbruch, sobald allein der Bogenabstand den besten Treffer übersteigt
   const segDist = (j: number): number => {
     const ar = sectionRadius(st[j]!, ca, cb), as = st[j]!.arc;
     const br = sectionRadius(st[j + 1]!, ca, cb), bs = st[j + 1]!.arc;
@@ -244,7 +209,7 @@ export function sdLoft(p: Readonly<Vec3>, prim: LoftPrim): number {
     const dx = wx - ex * tt, dy = wy - ey * tt;
     return dx * dx + dy * dy;
   };
-  best = segDist(seg);
+  let best = segDist(seg);
   for (let j = seg - 1; j >= 0; j--) {
     const gap = sEff - st[j + 1]!.arc;
     if (gap > 0 && gap * gap >= best) break;
@@ -256,20 +221,79 @@ export function sdLoft(p: Readonly<Vec3>, prim: LoftPrim): number {
     best = Math.min(best, segDist(j));
   }
   let d = Math.sqrt(best);
-  // Vorzeichen nur über den Radius (wie beim Rotationskörper): hält das Feld am Deckel-/Standflächenrand stetig
+  // Vorzeichen nur über den Radius: hält das Feld am Deckel-/Standflächenrand stetig (die Kappen schließen die Enden)
   if (rho < rAt) d = -d;
-  // 3. Kappen: flache Schnitte mit gerundeter Kante (Standfläche, Deckel)
-  if (prim.capStart > 0) {
-    const bottom = st[0]!.arc - sEff;
-    const k = prim.capStart;
-    const h = Math.max(k - Math.abs(d - bottom), 0) / k;
-    d = Math.max(d, bottom) + h * h * k * 0.25;
+  void over;
+  if (prim.capStart > 0) d = capCut(d, st[0]!.arc - sEff, prim.capStart);
+  if (prim.capEnd > 0) d = capCut(d, sEff - st[n - 1]!.arc, prim.capEnd);
+  return d;
+}
+
+/**
+ * Segmentmodus für gebogene Mittellinien (Hals, Schwanz, Schlange): Der Raum wird durch **Gehrungsebenen** an den
+ * Stationen (Halbierende der Nachbartangenten) lückenlos in Segmentscheiben geteilt; in jeder Scheibe ist der
+ * Parameter f = s₀ / (s₀ + s₁) aus den Abständen zu beiden Ebenen, der Rahmen wird zwischen den Stationen gemischt.
+ * Der Abstand ist das Minimum über alle Segmente — keine Nächster-Punkt-Suche, also keine Sprünge an der Mittelachse
+ * der Kurve, und benachbarte Segmente teilen exakt denselben Querschnitt (keine Kerben, keine Beulen).
+ */
+function sdLoftSegments(p: Readonly<Vec3>, prim: LoftPrim): number {
+  const st = prim.stations;
+  const n = st.length;
+  if (n < 2) return Infinity;
+  let best = Infinity;
+  // innen, sobald irgendeine Segmentscheibe den Punkt enthält und er dort innerhalb des Querschnitts liegt — der nächste
+  // Flächenpunkt kann auf einem anderen Segment liegen (Verjüngung), das Vorzeichen darf davon nicht abhängen
+  let insideAny = false;
+  for (let j = 0; j <= n - 2; j++) {
+    const A = st[j]!, B = st[j + 1]!;
+    // Gehrungsebenen: Normale = Tangente der Station (schon gemittelt), Punkt = Station
+    const s0 = (p[0] - A.p[0]) * A.tangent[0] + (p[1] - A.p[1]) * A.tangent[1] + (p[2] - A.p[2]) * A.tangent[2];
+    const s1 = (B.p[0] - p[0]) * B.tangent[0] + (B.p[1] - p[1]) * B.tangent[1] + (B.p[2] - p[2]) * B.tangent[2];
+    const len = B.arc - A.arc;
+    // grobe Vorauswahl: weit außerhalb der Scheibe (mehr als der größte Radius + Scheibenlänge) kann nichts näher sein
+    const rMax = Math.max(A.wx, A.wyT, A.wyB, B.wx, B.wyT, B.wyB);
+    const slabOut = Math.max(-s0, -s1, 0);
+    if (slabOut > 0 && slabOut > rMax && (slabOut - rMax) * (slabOut - rMax) > best) continue;
+    let f: number;
+    const sum = s0 + s1;
+    if (j === 0 && s0 < 0) f = s0 / Math.max(len, 1e-9); // vor dem Anfang: linear weiter (negativ)
+    else if (j === n - 2 && s1 < 0) f = 1 - s1 / Math.max(len, 1e-9); // hinter dem Ende (> 1)
+    else if (sum > 1e-9) f = s0 / sum;
+    else {
+      // hinter dem Schnittpunkt der Gehrungsebenen (Innenseite einer scharfen Biegung): senkrechte Projektion als Rückfall,
+      // damit das Feld endlich und stetig bleibt
+      const dx = B.p[0] - A.p[0], dy = B.p[1] - A.p[1], dz = B.p[2] - A.p[2];
+      f = ((p[0] - A.p[0]) * dx + (p[1] - A.p[1]) * dy + (p[2] - A.p[2]) * dz) / Math.max(1e-12, dx * dx + dy * dy + dz * dz);
+    }
+    const fc = Math.max(0, Math.min(1, f));
+    const cx = A.p[0] + (B.p[0] - A.p[0]) * fc, cy = A.p[1] + (B.p[1] - A.p[1]) * fc, cz = A.p[2] + (B.p[2] - A.p[2]) * fc;
+    let rx = A.right[0] + (B.right[0] - A.right[0]) * fc, ry = A.right[1] + (B.right[1] - A.right[1]) * fc, rz = A.right[2] + (B.right[2] - A.right[2]) * fc;
+    let ux = A.up[0] + (B.up[0] - A.up[0]) * fc, uy = A.up[1] + (B.up[1] - A.up[1]) * fc, uz = A.up[2] + (B.up[2] - A.up[2]) * fc;
+    const rl = Math.hypot(rx, ry, rz) || 1, ul = Math.hypot(ux, uy, uz) || 1;
+    rx /= rl; ry /= rl; rz /= rl;
+    ux /= ul; uy /= ul; uz /= ul;
+    const vx = p[0] - cx, vy = p[1] - cy, vz = p[2] - cz;
+    const a = vx * rx + vy * ry + vz * rz;
+    const b = vx * ux + vy * uy + vz * uz;
+    const rho = Math.hypot(a, b);
+    const ca = rho > 1e-9 ? a / rho : 1, cb = rho > 1e-9 ? b / rho : 0;
+    const ar = sectionRadius(A, ca, cb), br = sectionRadius(B, ca, cb);
+    // 2D-Abstand von (ρ, f·len) zum Profilstück (ar, 0) – (br, len), vor/hinter den Enden zum Endpunkt
+    const sLoc = f * len;
+    const ex = br - ar, ey = len;
+    const wx = rho - ar, wy = sLoc;
+    const tt = Math.max(0, Math.min(1, (wx * ex + wy * ey) / (ex * ex + ey * ey || 1e-12)));
+    const dx = wx - ex * tt, dy = wy - ey * tt;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < best) best = d2;
+    if (!insideAny && f >= 0 && f <= 1 && rho < ar + (br - ar) * fc) insideAny = true;
   }
-  if (prim.capEnd > 0) {
-    const top = sEff - st[n - 1]!.arc;
-    const k = prim.capEnd;
-    const h = Math.max(k - Math.abs(d - top), 0) / k;
-    d = Math.max(d, top) + h * h * k * 0.25;
+  let d = insideAny ? -Math.sqrt(best) : Math.sqrt(best);
+  if (prim.capStart > 0 || prim.capEnd > 0) {
+    // Kappen über die Endebenen
+    const A = st[0]!, Z = st[n - 1]!;
+    if (prim.capStart > 0) d = capCut(d, -((p[0] - A.p[0]) * A.tangent[0] + (p[1] - A.p[1]) * A.tangent[1] + (p[2] - A.p[2]) * A.tangent[2]), prim.capStart);
+    if (prim.capEnd > 0) d = capCut(d, (p[0] - Z.p[0]) * Z.tangent[0] + (p[1] - Z.p[1]) * Z.tangent[1] + (p[2] - Z.p[2]) * Z.tangent[2], prim.capEnd);
   }
   return d;
 }

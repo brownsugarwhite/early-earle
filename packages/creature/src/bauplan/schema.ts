@@ -90,7 +90,8 @@ const maul = z
     /** Ohne Maul: Jelly- und feste Grundblobs der ersten Stufen (Augen bleiben). */
     sichtbar: z.boolean().default(true),
     hoehe: regler(M, 'maul.hoehe', 'Maulhöhe', 0, 1, 0.45, 'stufenlos von unten nach oben'),
-    neigung: regler(M, 'maul.neigung', 'Maulneigung', -1, 1, 0, 'Winkel der Maullinie'),
+    neigung: regler(M, 'maul.neigung', 'Maulneigung', -1, 1, 0, 'Maullinie steigt zu den Winkeln an (Rex) oder fällt ab'),
+    schwung: regler(M, 'maul.schwung', 'Maulschwung', 0, 1, 0.3, 'Linie senkt sich hinter der Schnauze und schwingt zum Winkel hoch (Dino, Schlange)'),
     form: regler(M, 'maul.form', 'Maulform', 0, 1, 1, '0 rundes Loch … 1 Keil'),
     winkel: regler(M, 'maul.winkel', 'Mundwinkel nach hinten', 0, 1, 0.5),
     rundung: regler(M, 'maul.rundung', 'Mundwinkel-Rundung', 0, 1, 0.35, '0 spitz zulaufend (Rex) … 1 rund wie beim Aal; Lochmaul ist immer rund'),
@@ -102,7 +103,7 @@ const maul = z
     kante: regler(M, 'maul.kante', 'Kieferkante', 0, 1, 0, 'weich … kantig (Raubkatze)'),
     wForm: regler(M, 'maul.wForm', 'W-Form', 0, 1, 0, 'Oberlippe Hund/Katze'),
     tiefe: regler(M, 'maul.tiefe', 'Rachentiefe', 0.2, 1, 0.5),
-    oeffnung: regler(M, 'maul.oeffnung', 'Öffnung', 0, 1, 0.3, 'Bauzustand; Animation öffnet/schließt'),
+    oeffnung: regler(M, 'maul.oeffnung', 'Öffnungsweite', 0, 1, 0.6, 'größte Öffnung vorn (Anteil der Kopfhöhe); das Mesh ist geschlossen gebaut'),
     oeffnungOben: regler(M, 'maul.oeffnungOben', 'Öffnung über Oberkiefer', 0, 1, 0.6, 'Anteil der Öffnung, den der Oberkiefer übernimmt (klappt samt Augen nach hinten)'),
   })
   .prefault({});
@@ -129,6 +130,7 @@ const augen = z
     groesse: regler(A, 'augen.groesse', 'Augengröße', 0, 1, 0.5),
     hoehe: regler(A, 'augen.hoehe', 'Augenhöhe', 0, 1, 0.3, 'über der Maullinie'),
     abstand: regler(A, 'augen.abstand', 'Augenabstand', 0, 1, 0.5),
+    lage: regler(A, 'augen.lage', 'Augenlage', 0, 1, 0.55, '0 vorn an der Schnauze … 1 hinten am Schädel'),
     tiefe: regler(A, 'augen.tiefe', 'Augentiefe', 0, 1, 0, '0 aufgesetzt … 1 eingesunken'),
     ring: regler(A, 'augen.ring', 'Augenring', 0, 1, 0.5),
   })

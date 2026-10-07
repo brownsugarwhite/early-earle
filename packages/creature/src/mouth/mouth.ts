@@ -1,15 +1,14 @@
 import type { Bauplan } from '../bauplan/schema';
-import { makeRng } from '../math/rng';
-import { add, clamp, clamp01, cross, dot, lerp, normalize, quatFromAxisAngle, rotate, scale, smoothstep, sub, type Vec3 } from '../math/vec';
-import { REGION, evalScene, type CustomPrim, type Prim, type SdfScene, type TubePrim } from '../sdf/scene';
-import { SHARE_CLOSE, UPPER_TILT, jawPose, jawTransforms, upperShare } from './pose';
-import { computeSeal } from './seal';
+import { add, clamp, clamp01, cross, dot, lerp, normalize, scale, smoothstep, sub, type Vec3 } from '../math/vec';
+import { evalScene, type SdfScene } from '../sdf/scene';
 
 /**
- * Das Maul: ein **Maulvolumen** zwischen zwei Lippenkurven, das vom Träger (Körper oder Kopf) abgezogen wird.
- * `form` blendet vom Lochmaul (Röhre entlang der Blickrichtung, Öffnung = radiale Weitung) zum Keilmaul (Spalt um die
- * Maullinie, der zu den Mundwinkeln hin auf 0 ausläuft; Öffnung = Kieferdrehung). `hoehe` setzt die Maullinie stufenlos
- * von unten nach oben am Träger, `neigung` kippt sie, `winkel` zieht die Mundwinkel um den Träger nach hinten.
+ * Das Maul als **Maullinie auf dem Träger** (Körper oder Kopf): eine Kurve um den Träger herum von Mundwinkel zu
+ * Mundwinkel, stufenlos in der Höhe (`hoehe`), gekippt (`neigung`), mit Winkeln nach hinten (`winkel`/`breite`).
+ * Entlang dieser Kurve wird die geschlossen vermaschte Haut **aufgeschnitten** (mesh/mundschnitt.ts) — das Maul ist
+ * geschlossen per Konstruktion perfekt und öffnet sich durch Drehung des Unterkiefers (und Heben des Oberkiefers) um
+ * das Gelenk am Hinterkopf. `form` blendet beim Öffnen von radialer Weitung (Lochmaul) zu Kieferdrehung (Keilmaul);
+ * `rundung` bestimmt, wie die Öffnung zu den Winkeln ausläuft (spitz … rund wie beim Aal).
  */
 
 /** Träger des Mauls in einem lokalen Rahmen: Achse von `origin` entlang `up`, Azimut φ um `up` ab `forward`. */
@@ -24,10 +23,7 @@ export interface MouthHost {
   halfWidth: number;
   /** Knochen des Trägers. */
   bone: number;
-  /**
-   * Kiefergelenk: Abstand hinter dem Ursprung entlang −forward (auf Höhe der Maullinie). Das Gelenk sitzt am Hinterkopf,
-   * nicht an den Mundwinkeln — sonst wäre der Hebel bei schmalen Mäulern winzig und das Gähnen (Bild 6) unmöglich.
-   */
+  /** Kiefergelenk: Abstand hinter dem Ursprung entlang −forward (auf Höhe der Mundwinkel). */
   jointBack: number;
   /** Szene nur mit den Trägerformen (zum Marschieren auf die Fläche). */
   scene: SdfScene;
@@ -60,24 +56,24 @@ export interface MouthGeometry {
   corners: [Vec3, Vec3];
   /** Maulrahmen am Zentrum: z vorn (Flächennormale), y oben, x rechts. */
   frame: { x: Vec3; y: Vec3; z: Vec3 };
-  /** Halbe Öffnungshöhe vorn im Bauzustand (lokal). */
-  gapFront: number;
-  /** Rachentiefe als Anteil des Radialabstands. */
+  /** Maximale Öffnungshöhe vorn (Körpereinheiten), aus `oeffnung`. */
+  gapeMax: number;
+  /** Rachentiefe als Anteil. */
   tiefe: number;
-  /** Öffnung des Bauzustands 0…1. */
-  oeffnung: number;
   jawHinge: { point: Vec3; axis: Vec3 };
-  teeth: Tooth[];
-  /** Zungenansatz (am Unterkiefer) und -richtung. */
-  tongue: { pos: Vec3; dir: Vec3; size: number };
   local(p: Readonly<Vec3>): { h: number; phi: number; r: number };
   lipHAt(phi: number): number;
   lipRAt(phi: number): number;
-  gapAt(phi: number): number;
-  /** 0…1: wie stark ein Punkt zum Unterkiefer gehört (für Gewichte). */
-  jawWeight(p: Readonly<Vec3>, bodyScale: number): number;
-  /** 0…1: wie stark ein Punkt zum Oberkiefer (Oberkopf, hebt sich beim Öffnen) gehört. */
-  upperWeight(p: Readonly<Vec3>, bodyScale: number): number;
+  /** Öffnungsprofil 0…1 je Azimut (1 vorn, 0 an den Winkeln): spitz (Rex) … rund (Aal). */
+  profilAt(phi: number): number;
+  /**
+   * 0…1: wie stark ein Punkt zum Unterkiefer gehört. `side` (−1 unten, +1 oben) kommt aus dem Lippenschnitt: die Haut ist
+   * dort getrennt, die Zugehörigkeit springt hart an der Maullinie (sonst zerfasert der Rand beim Öffnen); ohne `side`
+   * weich über die Linie.
+   */
+  jawWeight(p: Readonly<Vec3>, bodyScale: number, side?: number): number;
+  /** 0…1: wie stark ein Punkt zum Oberkiefer (Oberkopf, klappt beim Öffnen zurück) gehört. */
+  upperWeight(p: Readonly<Vec3>, bodyScale: number, side?: number): number;
   /** Auslauf der Kieferbewegung vom Mundwinkel (1) zum Gelenk (0) über die Vorn-Koordinate. */
   wToJoint(zLocal: number): number;
   /** Vorn-Koordinate der Mundwinkel (lokal). */
@@ -90,7 +86,6 @@ export function surfacePoint(host: MouthHost, h: number, phi: number, maxR: numb
   const dir = add(scale(host.forward, Math.cos(phi)), scale(host.right, Math.sin(phi)));
   let r = 0;
   let p: Vec3 = a;
-  // Sphere-Tracing nach außen, ab dem Inneren (d < 0): Schrittweite max(|d|, ε)
   for (let i = 0; i < 48; i++) {
     p = add(a, scale(dir, r));
     const d = evalScene(host.scene, p);
@@ -110,27 +105,17 @@ export function surfacePoint(host: MouthHost, h: number, phi: number, maxR: numb
   return { p, r };
 }
 
-export interface MouthBuild {
-  geometry: MouthGeometry;
-  /** Primitive: Lippenwülste (union), Höhle und Kinnschnitt (subtract), Schnauze (union). */
-  prims: Prim[];
-}
-
-export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodyScale: number, cellSize = 0): MouthBuild {
-  // Spalt unter ~1,3 Zellen würde nur aliasen: dort gilt das Maul als geschlossen (runde Mundwinkel statt Haarriss)
-  const minGap = cellSize * 1.3;
+export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): MouthGeometry {
   const m = b.maul;
   const H = host.height;
   const hLip = clamp(m.hoehe, 0.02, 0.98) * H;
-  const maxR = host.halfWidth * 3 + H;
-  // Öffnungshöhe vorn: Anteil der Trägerhöhe, mit Oberkiefer/Unterkiefer gewichtet
-  const gapFront = Math.max(0.004, m.oeffnung * 0.32 * H * (0.5 + 0.5 * Math.min(1, (m.oberkiefer + m.unterkiefer) * 0.5)));
-  // **Ein** Öffnungsprofil für alle Mäuler (Florian, Bild 16 Aal): `form` blendet die Weite vom runden Loch (so breit wie
-  // hoch) zum Keil bis zu den Mundwinkeln; `rundung` macht die Enden spitz (Rex) oder rund (Aal, Stadionform); das
-  // Lochmaul ist immer rund. Die Höhle ist für alle ein Schlitz um die Maullinie, der nach innen schmaler wird.
+  const maxR = host.halfWidth * 3 + bodyScale;
+  // Öffnungshöhe vorn bei voller Öffnung
+  const gapeMax = Math.max(0.004, clamp01(m.oeffnung) * 0.75 * H);
+  // Weite der Öffnung: Keil bis weit zu den Mundwinkeln; Loch so breit wie hoch
   const thetaKeil = clamp(m.breite * (Math.PI / 2 + m.winkel * (Math.PI * 0.45)), 0.15, Math.PI * 0.95);
   const rLipFront = Math.max(0.02, surfacePoint(host, hLip, 0, maxR).r);
-  const thetaRund = clamp((gapFront * 1.15) / rLipFront, 0.12, thetaKeil);
+  const thetaRund = clamp((gapeMax * 0.6) / rLipFront, 0.12, thetaKeil);
   const fForm = clamp01(m.form);
   const theta = lerp(thetaRund, thetaKeil, fForm);
   const rundung = lerp(1, clamp01(m.rundung), fForm);
@@ -144,8 +129,12 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   for (let i = 0; i < n; i++) {
     const t = i / (n - 1);
     const phi = -theta + 2 * theta * t;
-    const w = 1 - Math.cos(phi) === 0 ? 0 : (1 - Math.cos(phi)) / (1 - Math.cos(theta) || 1e-6);
-    const h = clamp(hLip + m.neigung * 0.22 * H * w, 0.01, H - 0.01);
+    // Maullinie wie gezeichnet (Bild 3/5): vorn an der Schnauze, hinter ihr leicht abgesenkt (`schwung`), zu den Winkeln
+    // ansteigend (`neigung`) — eine geschwungene Linie, keine Gerade
+    const u = Math.abs(phi) / theta;
+    const rise = m.neigung * 0.22 * H * u * u;
+    const dip = clamp01(m.schwung) * 0.12 * H * Math.pow(Math.sin(Math.PI * clamp01(u / 0.72)), 1.5) * (u < 0.72 ? 1 : 0);
+    const h = clamp(hLip + rise - dip, 0.01, H - 0.01);
     const sp = surfacePoint(host, h, phi, maxR);
     phis.push(phi);
     lipH.push(h);
@@ -155,7 +144,6 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   const mid = (n - 1) / 2;
   const center = lipLine[mid]!;
   const corners: [Vec3, Vec3] = [lipLine[0]!, lipLine[n - 1]!];
-  // Rahmen am Zentrum: z = Flächennormale (per Gradient), y ≈ host.up
   const e = 0.01 * bodyScale;
   const grad: Vec3 = [
     evalScene(host.scene, [center[0] + e, center[1], center[2]]) - evalScene(host.scene, [center[0] - e, center[1], center[2]]),
@@ -170,7 +158,6 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   const frame = { x: fx, y: fy, z: fz };
   const tiefe = clamp(m.tiefe, 0.2, 1);
 
-  // glatte Interpolation (Catmull-Rom): lineare Stücke ergäben Knicke, die Dual Contouring als Beulen zeigt
   const interp = (arr: number[], phi: number): number => {
     const t = clamp((phi + theta) / (2 * theta), 0, 1) * (n - 1);
     const i = Math.min(n - 2, Math.floor(t));
@@ -181,12 +168,11 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   };
   const lipHAt = (phi: number): number => interp(lipH, phi);
   const lipRAt = (phi: number): number => interp(lipR, phi);
-  const gapAt = (phi: number): number => {
+  const profilAt = (phi: number): number => {
     const u = clamp(Math.abs(phi) / theta, 0, 1);
-    // Profil (1 − u^a)^b: a = Plateau (lange volle Höhe), b = Ende (1 spitz … 0,5 halbkreisrund); W-Form hebt die Mitte
     const profil = Math.pow(Math.max(0, 1 - Math.pow(u, profA)), profB);
     const w = 1 + m.wForm * 0.25 * Math.cos(phi * (Math.PI / Math.max(theta, 0.3)) * 1.5);
-    return gapFront * profil * w;
+    return clamp01(profil * w);
   };
   const local = (p: Readonly<Vec3>): { h: number; phi: number; r: number } => {
     const v = sub(p, host.origin);
@@ -195,211 +181,21 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
     const vz = dot(v, host.forward);
     return { h, phi: Math.atan2(vx, vz), r: Math.hypot(vx, vz) };
   };
-  const rInAt = (phi: number): number => lipRAt(phi) * (1 - tiefe * 0.9);
-  /** Lochradius (für Lippenring und Spitzmund): die Öffnung ist etwa so breit wie hoch. */
-  const rho0 = gapFront * 1.05;
 
-  const cavity: CustomPrim = {
-    kind: 'custom',
-    op: 'subtract',
-    part: host.bone,
-    region: REGION.rachen,
-    // enger Schnitt (≈ 1,25 Zellen): scharfe Kante (Dual Contouring setzt die Kante, der Shader die Facette), kein Aliasen
-    k: Math.max(0.008 * bodyScale, cellSize * 1.25),
-    name: 'maulhoehle',
-    bounds: { min: [center[0] - maxR, center[1] - maxR, center[2] - maxR], max: [center[0] + maxR, center[1] + maxR, center[2] + maxR] },
-    eval: (p) => {
-      const { h, phi, r } = local(p);
-      const aphi = Math.abs(phi);
-      const phiC = clamp(phi, -theta, theta);
-      const hl = lipHAt(phiC);
-      const rIn = rInAt(phiC);
-      const rLip = lipRAt(phiC);
-      const T = clamp01((r - rIn) / Math.max(1e-4, rLip - rIn));
-      const gRaw = gapAt(phiC);
-      const g = gRaw * (0.15 + 0.85 * T);
-      const dArc = r * Math.max(0, aphi - theta);
-      // Spalt zu schmal (nur zu den Mundwinkeln hin): dort gilt das Maul als geschlossen; die Mitte bleibt immer offen
-      const uC = Math.abs(phiC) / theta;
-      const cornerW = smoothstep(0.45, 0.95, uC);
-      const closedCorner = Math.max(0, Math.min(minGap, gapFront * 0.35) - gRaw) * 4 * cornerW;
-      // nur im Kopfbereich schneiden: radial bis knapp vor die Lippen, in der Höhe innerhalb des Trägers — sonst liefe der
-      // Schlitz um die Maullinie quer durch Rumpf und Beine auf gleicher Höhe (Risse)
-      const dOut = r - (rLip + 0.3 * H);
-      const dHost = Math.max(h - H * 1.2, -h - 0.3 * H);
-      return Math.max(Math.abs(h - hl) - g, rIn - r, dArc, closedCorner, dOut, dHost);
-    },
-  };
-
-  const prims: Prim[] = [cavity];
-
-  // Kinnschnitt: ohne Unterkiefer liegt die Öffnung direkt am Hals/Körper darunter
-  if (m.unterkiefer < 0.6) {
-    const cut = clamp01((0.6 - m.unterkiefer) / 0.6);
-    const chin: CustomPrim = {
-      kind: 'custom',
-      op: 'subtract',
-      part: host.bone,
-      region: REGION.rachen,
-      k: 0.012 * bodyScale,
-      name: 'kinnschnitt',
-      bounds: cavity.bounds,
-      eval: (p) => {
-        const { h, phi, r } = local(p);
-        const phiC = clamp(phi, -theta, theta);
-        const hl = lipHAt(phiC) - gapAt(phiC);
-        const depthBelow = cut * (hl * 0.9);
-        const rIn = lipRAt(phiC) * (1 - tiefe * 0.6 * cut);
-        const dArc = r * Math.max(0, Math.abs(phi) - theta);
-        // Keil unterhalb der Lippe, nach unten bis depthBelow, nach innen bis rIn, radial bis knapp vor die Fläche
-        const dOut = r - (lipRAt(phiC) + 0.25 * H);
-        return Math.max(h - hl, hl - depthBelow - h, rIn - r, dArc, dOut) * Math.min(1, cut * 3);
-      },
-    };
-    if (cut > 0.02) prims.push(chin);
-  }
-
-  // Lippenwülste entlang der Maullinie (oben und unten) als je ein glatter Schlauch (keine Kapselkette → keine Nahtbeulen),
-  // zu den Mundwinkeln hin dünner und dort zusammenlaufend
-  const lipRadius = Math.max(0.006, m.lippe * 0.085 * bodyScale);
-  if (m.lippe > 0.02 && m.form > 0.02) {
-    for (const side of [1, -1] as const) {
-      if (side < 0 && m.unterkiefer < 0.05) continue;
-      const pts = new Float64Array(n * 3);
-      const rad = new Float64Array(n);
-      for (let i = 0; i < n; i++) {
-        const phi = phis[i]!;
-        const taper = 0.3 + 0.7 * (1 - Math.pow(Math.abs(phi) / theta, 2));
-        const g = gapAt(phi);
-        const sp = surfacePoint(host, lipHAt(phi) + side * (g + lipRadius * 0.6 * taper), phi, maxR);
-        const out = normalize(sub(sp.p, add(host.origin, scale(host.up, lipHAt(phi)))));
-        const r = lipRadius * taper * m.form * (side > 0 ? 0.85 : 1);
-        const q = add(sp.p, scale(out, r * (side > 0 ? 0.1 : 0.3)));
-        pts[i * 3] = q[0];
-        pts[i * 3 + 1] = q[1];
-        pts[i * 3 + 2] = q[2];
-        rad[i] = r;
-      }
-      const prim: TubePrim = { kind: 'tube', op: 'union', part: side > 0 ? host.bone : jawBone, region: REGION.lippe, k: lipRadius * 0.9, name: side > 0 ? 'oberlippe' : 'unterlippe', points: pts, radii: rad };
-      prims.push(prim);
-    }
-  }
-
-  // Lochmaul: Lippenring um die Öffnung (Kugelfisch, Betta) als geschlossener Schlauch, mit (1 − form) gewichtet
-  if (m.form < 0.98 && m.lippe > 0.02) {
-    // Ringdicke höchstens 45 % des Lochradius, sonst füllt der Wulst das Loch; Mitte knapp außerhalb der Lochkante
-    const ringRad = Math.min(lipRadius * 0.9, rho0 * 0.35) * (1 - m.form) + 1e-3;
-    const ringR = rho0 + ringRad * 0.7;
-    const segs = 48;
-    const pts = new Float64Array(segs * 3);
-    const rad = new Float64Array(segs).fill(ringRad);
-    for (let i = 0; i < segs; i++) {
-      const a0 = (i / segs) * Math.PI * 2;
-      const pa = add(add(add(center, scale(frame.x, Math.cos(a0) * ringR)), scale(frame.y, Math.sin(a0) * ringR)), scale(frame.z, -ringRad * 0.15));
-      pts[i * 3] = pa[0];
-      pts[i * 3 + 1] = pa[1];
-      pts[i * 3 + 2] = pa[2];
-    }
-    const ring: TubePrim = { kind: 'tube', op: 'union', part: host.bone, region: REGION.lippe, k: ringRad * 1.2, name: 'lippenring', points: pts, radii: rad, closed: true };
-    prims.push(ring);
-  }
-
-  // Scharnier (Sehne zwischen den Mundwinkeln) und geschlossene Pose beider Kiefer — dieselbe Formel wie Verschluss und
-  // Darstellung (pose.ts); damit lässt sich beim Bau prüfen, ob ein Zahn geschlossen im Gegenkiefer verschwindet
-  // Gelenk: hinter dem Träger auf Höhe der Mundwinkel, Achse quer (Bild 5/6: der Kiefer schwingt vom Hinterkopf aus)
+  // Gelenk hinter dem Träger auf Höhe der Mundwinkel, Achse quer (Bild 5/6: der Kiefer schwingt vom Hinterkopf aus)
   const hCorner = lipHAt(theta);
   const hingeMid: Vec3 = add(add(host.origin, scale(host.up, hCorner)), scale(host.forward, -host.jointBack));
   const hingeAxis: Vec3 = normalize(host.right);
-  /** Vorn-Koordinate der Mundwinkel (lokal); Gewichte laufen von dort zum Gelenk hin aus. */
   const zCorner = lipRAt(theta) * Math.cos(theta);
   const wToJoint = (zLocal: number): number => {
     const t = clamp((zLocal + host.jointBack) / Math.max(1e-4, zCorner + host.jointBack), 0, 1);
     return t * t * (3 - 2 * t);
   };
-  const Ljaw = Math.max(0.05, Math.hypot(center[0] - hingeMid[0], center[1] - hingeMid[1], center[2] - hingeMid[2]));
-  const closeAngle = Math.asin(Math.min(0.95, (2 * gapFront) / Ljaw));
-  const hasJaw = m.unterkiefer >= 0.05;
-  const rig = { closeAngle, maxOpenAngle: closeAngle, oeffnungBau: m.oeffnung, jawLength: Ljaw, share: upperShare(m), shareClose: hasJaw ? SHARE_CLOSE : 1, tilt: UPPER_TILT, form: m.form, puckerClose: 0 };
-  const closedPose = jawPose(rig, 0);
-  const closedTf = jawTransforms({ point: hingeMid, axis: hingeAxis }, host.up, closedPose);
-  const inversePose = jawPose(rig, 0);
-  inversePose.lowerAngle *= -1;
-  inversePose.upperAngle *= -1;
-  inversePose.upperLift *= -1;
-  const inverseTf = jawTransforms({ point: hingeMid, axis: hingeAxis }, host.up, inversePose);
-  const qLoInv = quatFromAxisAngle(hingeAxis, -closedPose.lowerAngle);
-  const qUpInv = quatFromAxisAngle(hingeAxis, -closedPose.upperAngle);
-  const cavityK = Math.max(0.015 * bodyScale, cellSize * 1.7);
-  const seal = computeSeal({ host, theta, lipHAt, gapAt, lower: closedTf.lower, upper: closedTf.upper, hasJaw, share: rig.shareClose, overlap: 0.5 * cavityK + 0.008 * bodyScale, bodyScale });
-  /** Liegt eine Zahnspitze (geschlossene Pose) sicher im Gegenkiefer? Probe in den Ruherahmen des Gegenkiefers zurückgedreht. */
-  const tipHidden = (tipClosed: Vec3, upper: boolean, size: number): boolean => {
-    const probe = upper ? inverseTf.lower(tipClosed) : inverseTf.upper(tipClosed);
-    return evalScene(host.scene, probe) < -0.2 * size;
-  };
 
-  // Zähne auf den Lippenkurven des geschlossenen Zustands, oben/unten um eine halbe Teilung versetzt
-  const teeth: Tooth[] = [];
-  const z = b.zaehne;
-  if (z.stil !== 'keine' && z.groesse > 0.01) {
-    const rng = makeRng((b.seed * 7919 + 13) >>> 0);
-    const arcLen = lipLine.reduce((acc, p, i) => (i === 0 ? 0 : acc + Math.hypot(p[0] - lipLine[i - 1]![0], p[1] - lipLine[i - 1]![1], p[2] - lipLine[i - 1]![2])), 0);
-    const baseSize = z.groesse * 0.19 * bodyScale;
-    const spacing = Math.max(baseSize * 1.1, (arcLen / (6 + 26 * z.dichte)));
-    const count = Math.max(2, Math.floor(arcLen / spacing));
-    const place = (upper: boolean, offset: number): void => {
-      if (!upper && m.unterkiefer < 0.05) return;
-      for (let i = 0; i < count; i++) {
-        const t = (i + 0.5 + offset) / count;
-        if (t <= 0.02 || t >= 0.98) continue;
-        const phi = -theta + 2 * theta * t;
-        const u = Math.abs(phi) / theta;
-        const canine = Math.exp(-Math.pow((u - 0.62) / 0.12, 2)) * z.eckzaehne;
-        const isHauer = !upper && z.hauer > 0.05 && Math.abs(u - 0.78) < 0.08 + 0.1 * z.hauer;
-        let size = baseSize * (0.7 + 0.6 * rng.next() * z.streuung + canine * 0.9) * (0.75 + 0.25 * (1 - u * u));
-        if (isHauer) size = baseSize * (1.6 + 1.4 * z.hauer);
-        const hl = lipHAt(phi);
-        const g = gapAt(phi);
-        // zu den Mundwinkeln hin wird der Spalt kleiner als ein Zahn: dort keine Zähne (sie stünden ineinander)
-        if (2 * g < 0.75 * size) continue;
-        // Zähne sind am **geschlossenen** Zustand verankert (Lippenkante nach Kieferbewegung und Naht-Ausgleich) und werden
-        // in die Ruhelage ihres Knochens zurückgedreht: geschlossen sitzen sie exakt auf der Naht, offen folgen sie dem Kiefer
-        const spOpen = surfacePoint(host, hl + (upper ? 1 : -1) * g * 0.92, phi, maxR).p;
-        const moved = upper ? closedTf.upper(spOpen) : hasJaw ? closedTf.lower(spOpen) : spOpen;
-        const sealShift = upper ? seal.upperAt(phi) : hasJaw ? seal.lowerAt(phi) : 0;
-        const baseClosed = add(moved, scale(host.up, sealShift));
-        const hBase = dot(sub(baseClosed, host.origin), host.up);
-        const inward = normalize(sub(add(host.origin, scale(host.up, hBase)), baseClosed));
-        const vertical = upper ? scale(host.up, -1) : host.up;
-        // innen (Aal, Bild 16): steht auf der Kante und zeigt schräg ins Maul, verschwindet geschlossen im Gegenkiefer;
-        // außen (Fangzähne, Bild 7/8): steht auf der Lippenaußenseite, fast senkrecht, legt sich geschlossen über die Gegenlippe
-        const aussen = isHauer ? 1 : z.aussen;
-        const tilt = isHauer ? -0.25 : lerp(0.9, -0.1, aussen);
-        const dirClosed = normalize(add(vertical, scale(inward, tilt)));
-        const inset = lerp(size * 0.45, -lipRadius * 0.5, aussen);
-        const posClosed = add(baseClosed, scale(inward, inset));
-        // innen: geschlossen muss die Spitze im Gegenkiefer liegen (Bild 7: ineinandergreifen, nie durchdringen) → sonst
-        // kürzen, zuletzt weglassen (ein Stummel, der aus der Gegenlippe ragt, ist schlimmer als kein Zahn)
-        if (aussen < 0.5 && hasJaw) {
-          let k = 0;
-          while (k < 6 && !tipHidden(add(posClosed, scale(dirClosed, size)), upper, size)) {
-            size *= 0.85;
-            k++;
-          }
-          if (k >= 6 && !tipHidden(add(posClosed, scale(dirClosed, size)), upper, size)) continue;
-        }
-        const pos = upper ? inverseTf.upper(posClosed) : hasJaw ? inverseTf.lower(posClosed) : posClosed;
-        const dir = upper ? rotate(qUpInv, dirClosed) : hasJaw ? rotate(qLoInv, dirClosed) : dirClosed;
-        teeth.push({ pos, dir, size, upper, hauer: isHauer });
-      }
-    };
-    place(true, 0);
-    place(false, 0.5);
-  }
-
-  const tongueBase = surfacePoint(host, hLip - gapFront * 0.6, 0, maxR);
-  const tongue = { pos: add(tongueBase.p, scale(normalize(sub(add(host.origin, scale(host.up, hLip)), tongueBase.p)), host.halfWidth * 0.45)), dir: frame.z, size: b.zunge.groesse * host.halfWidth * 0.6 };
-
-  const jawWeight = (p: Readonly<Vec3>, bs: number): number => {
+  // Unterkiefer als starrer Löffel: volle Zugehörigkeit bis zur Kiefertiefe (Unterkieferhöhe unter der Maullinie, beim
+  // Körperträger höchstens 45 % der Trägerhöhe), dann weich zum Hals/Körper auslaufend
+  const jawDepth = Math.min(hLip, 0.45 * H) * 1.05;
+  const jawWeight = (p: Readonly<Vec3>, bs: number, side?: number): number => {
     if (m.unterkiefer < 0.05) return 0;
     const { h, phi, r } = local(p);
     const aphi = Math.abs(phi);
@@ -407,59 +203,22 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
     const hl = lipHAt(phiC);
     const below = hl - h;
     const band = 0.09 * bs;
-    const wBelow = smoothstep(-0.2 * band, band, below) * smoothstep(0, 0.5 * band, below + 0.3 * band);
-    // vorn voll, zwischen Mundwinkel und Gelenk auslaufend (die Wange dehnt sich), hinter dem Gelenk nichts
+    const wBelow = side !== undefined && side !== 0 ? (side < 0 ? 1 : 0) : smoothstep(-0.2 * band, band, below) * smoothstep(0, 0.5 * band, below + 0.3 * band);
     const wPhi = aphi <= theta ? 1 : wToJoint(r * Math.cos(phi));
-    const rIn = lipRAt(phiC) * (1 - tiefe * 1.1);
-    const wR = smoothstep(rIn - 0.3 * bs, rIn + 0.05 * bs, r);
-    // tiefer unten (Kinn/Körper) klingt die Zugehörigkeit zum Kiefer wieder ab
-    const chinDepth = (0.35 + 0.65 * m.unterkiefer) * hl * 0.9;
-    const wDepth = 1 - smoothstep(chinDepth * 0.7, chinDepth * 1.3, below);
-    return clamp01(wBelow * wPhi * wR * wDepth);
+    const wDepth = 1 - smoothstep(jawDepth * 0.95, jawDepth * 1.6, below);
+    return clamp01(wBelow * wPhi * wDepth);
   };
-
-  // Oberkopf über der Maullinie: hebt sich beim Öffnen (Florian: „Oberkiefer klappt samt Augen nach hinten bzw. fährt
-  // nach oben und neigt sich etwas“); hinter den Mundwinkeln weich auslaufend, der Rücken bleibt immer stehen
-  const upperWeight = (p: Readonly<Vec3>, bs: number): number => {
+  const upperWeight = (p: Readonly<Vec3>, bs: number, side?: number): number => {
     const { h, phi, r } = local(p);
     const aphi = Math.abs(phi);
     const phiC = clamp(phi, -theta, theta);
     const hl = lipHAt(phiC);
     const above = h - hl;
     const band = 0.09 * bs;
-    const wAbove = smoothstep(-0.2 * band, band, above) * smoothstep(0, 0.5 * band, above + 0.3 * band);
-    // Oberkopf: vorn voll, zum Gelenk hin auslaufend (der Hinterkopf am Gelenk bleibt stehen)
+    const wAbove = side !== undefined && side !== 0 ? (side > 0 ? 1 : 0) : smoothstep(-0.2 * band, band, above) * smoothstep(0, 0.5 * band, above + 0.3 * band);
     const wPhi = aphi <= theta ? 1 : wToJoint(r * Math.cos(phi));
-    const rIn = lipRAt(phiC) * (1 - tiefe * 1.1);
-    const wR = smoothstep(rIn - 0.3 * bs, rIn + 0.05 * bs, r);
-    return clamp01(wAbove * wPhi * wR);
+    return clamp01(wAbove * wPhi);
   };
 
-  const geometry: MouthGeometry = {
-    host,
-    hLip,
-    theta,
-    lipLine,
-    lipH,
-    lipR,
-    phis,
-    center,
-    corners,
-    frame,
-    gapFront,
-    tiefe,
-    oeffnung: m.oeffnung,
-    jawHinge: { point: hingeMid, axis: hingeAxis },
-    teeth,
-    tongue,
-    local,
-    lipHAt,
-    lipRAt,
-    gapAt,
-    jawWeight,
-    upperWeight,
-    wToJoint,
-    zCorner,
-  };
-  return { geometry, prims };
+  return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, local, lipHAt, lipRAt, profilAt, jawWeight, upperWeight, wToJoint, zCorner };
 }

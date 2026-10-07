@@ -1,6 +1,6 @@
 import { Vector3, Vector4 } from 'three';
 import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
-import { Fn, abs, attribute, clamp, cross, dFdx, dFdy, dot, float, floor, fract, hash, max, min, mix, normalView, normalize, positionGeometry, positionLocal, positionView, pow, sin, smoothstep, time, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
+import { abs, attribute, clamp, cross, dFdx, dFdy, dot, float, floor, Fn, fract, hash, max, min, mix, normalize, normalView, positionGeometry, positionLocal, positionView, pow, sin, smoothstep, step, time, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { STIL_STANDARD, farbRolle, type WesenStil } from './stil';
 import { createMusterUniforms, musterMasks, type MusterUniforms } from './muster';
@@ -48,8 +48,8 @@ export interface CreatureMaterialUniforms {
   blink: UniformNode<'float', number>;
   /** Gewicht des Verschluss-Morphs (1 = Maul zu). */
   verschluss: UniformNode<'float', number>;
-  /** Sichtbarkeit von Lippenband und Maulkante (aus `maul.lippe`): 0 = Naht geschlossen unsichtbar (Giraffe). */
-  lippeSichtbar: UniformNode<'float', number>;
+  /** Breite des Lippenbands (Zahnfleisch) in Körpereinheiten, 0 = keins (Giraffe). */
+  lippenBand: UniformNode<'float', number>;
   /** Gewicht des Spitzmund-Morphs (1 = Lochmaul ganz weit). */
   spitzmund: UniformNode<'float', number>;
 }
@@ -118,7 +118,7 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     eyeCount: uniform(0),
     blink: uniform(0),
     verschluss: uniform(0),
-    lippeSichtbar: uniform(1),
+    lippenBand: uniform(0),
     spitzmund: uniform(0),
   };
 }
@@ -186,9 +186,8 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
   material.fog = false;
   // Verschluss-Morph: nach dem Skinning (positionLocal ist dann die gehäutete Position) die geschlossene Lage addieren
   material.positionNode = Fn(() => {
-    const closed = attribute('eeClosed', 'vec3') as Vec3Node;
     const pucker = attribute('eePucker', 'vec3') as Vec3Node;
-    return (positionLocal as unknown as Vec3Node).add(closed.mul(u.verschluss)).add(pucker.mul(u.spitzmund));
+    return (positionLocal as unknown as Vec3Node).add(pucker.mul(u.spitzmund));
   })();
   material.colorNode = Fn(() => {
     const spine = attribute('eeSpine', 'vec4') as Vec4Node;
@@ -201,7 +200,8 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const flatN = normalize(cross(dFdx(positionView as unknown as Vec3Node), dFdy(positionView as unknown as Vec3Node)));
     // nur dort, wo Schärfe gewollt ist (Maul, Lippen, Augenhöhlen) — Teilübergänge am Körper bleiben weich (Florian: „Linien
     // müssen ganz weich ineinander übergehen“)
-    const kantenZone = clamp(max(max(region.x, region.y.mul(u.lippeSichtbar)), region.w).mul(1.5), 0, 1);
+    // Maulkante und Tasche haben eigene Vertices (Lippenschnitt) — Facettennormalen nur noch an echten Feldkanten (Braue)
+    const kantenZone = clamp(region.w.mul(1.5), 0, 1);
     const N = normalize(mix(normalize(normalView as unknown as Vec3Node), flatN, smoothstep(0.55, 0.9, crease).mul(u.kanten).mul(kantenZone))).toVar();
     const V = normalize(positionView.negate() as unknown as Vec3Node).toVar();
     const L = u.lightDir;
@@ -229,7 +229,13 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     skin.assign(mix(skin, shadeOf(u.bauch), belly));
 
     // Musterebene: Masken in Wirbelsäulen-Koordinaten, Gesicht/Lippen/Rachen frei; Relief dunkelt die Stufe je Schuppe ab
-    const frei = float(1).sub(region.z.mul(0.9)).mul(float(1).sub(region.y)).mul(float(1).sub(region.x));
+    // Lippenband: Abstand zur Maulkante (Körpereinheiten, region.y) gegen die Bandbreite, pixelscharf über die Ableitung
+    const bandW = u.lippenBand;
+    const distK = region.y.mul(u.bodyScale);
+    const aa = abs(dFdx(distK)).add(abs(dFdy(distK))).add(0.0005);
+    const band = float(1).sub(smoothstep(bandW.sub(aa), bandW.add(aa), distK)).mul(step(0.001, bandW));
+    const innen = step(0.25, region.x);
+    const frei = float(1).sub(region.z.mul(0.9)).mul(float(1).sub(band)).mul(float(1).sub(innen));
     const mu = musterMasks(u.musterU, spine, rest, u.bodyScale, frei);
     const vRelief = clamp(v.sub(mu.relief.mul(0.12)), 0, 1);
     const shadeOfV = (t: Vec3Triple, vv: FloatNode): Vec3Node => mix(mix(t.schatten, t.base, smoothstep(0, 0.5, vv)), t.licht, smoothstep(0.5, 1, vv));
@@ -255,12 +261,14 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
 
     // Regionen: Lippe (Wulst), Rachen (dunkel nach innen), Augenhöhle (etwas tiefer)
     const lip = shadeOf(u.lippe);
-    skin.assign(mix(skin, lip, region.y.mul(0.85).mul(u.lippeSichtbar)));
-    const throatDepth = clamp(ao.mul(1.2), 0, 1);
-    const throat = mix(shadeOf(u.rachen), u.rachen.schatten.mul(0.55), throatDepth.mul(0.75));
-    // geschlossen ohne Lippen (Giraffe): die Naht zeigt Haut, nicht Rachen — sichtbar bleibt sie nur mit Lippendicke
-    const rachenSicht = max(u.lippeSichtbar, float(1).sub(u.verschluss));
-    skin.assign(mix(skin, throat, smoothstep(0.15, 0.6, region.x).mul(rachenSicht)));
+    skin.assign(mix(skin, lip, band.mul(float(1).sub(innen))));
+    // Tasche: flache, satte Rachenfarbe, nach hinten (Tiefe = region.x 0,5…1) dunkler — nie schwarz (Bild 5/11/14)
+    const tiefeT = clamp(region.x.sub(0.5).mul(2), 0, 1);
+    const throatCol = mix(shadeOf(u.rachen), u.rachen.schatten.mul(0.6), tiefeT.mul(0.7));
+    // Zahnfleisch (Bild 11): heller, rosiger Saum innen am Rand, aus dem die Zähne wachsen; weich in den Rachen
+    const gumCol = mix(shadeOf(u.lippe), shadeOf(u.rachen), 0.35);
+    const gum = float(1).sub(smoothstep(0.08, 0.2, tiefeT));
+    skin.assign(mix(skin, mix(throatCol, gumCol, gum), innen));
     skin.assign(skin.mul(float(1).sub(region.w.mul(0.12))));
 
     // Schlitzaugen: Pille auf der Fläche (Körperraum), Blinzeln staucht senkrecht

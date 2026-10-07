@@ -313,7 +313,7 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
   ],
   maul: [
     { titel: 'Maul', ids: ['maul.sichtbar'] },
-    { titel: 'Lage', ids: ['maul.hoehe', 'maul.neigung'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
+    { titel: 'Lage', ids: ['maul.hoehe', 'maul.neigung', 'maul.schwung'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
     { titel: 'Form', ids: ['maul.form', 'maul.rundung', 'maul.winkel', 'maul.breite', 'maul.lippe', 'maul.wForm', 'maul.kante'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
     { titel: 'Kiefer', ids: ['maul.oberkiefer', 'maul.unterkiefer', 'maul.biss', 'maul.tiefe', 'maul.oeffnung', 'maul.oeffnungOben'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
     { titel: 'Zähne', ids: ['zaehne.stil', 'zaehne.groesse', 'zaehne.streuung', 'zaehne.dichte', 'zaehne.eckzaehne', 'zaehne.hauer', 'zaehne.aussen', 'seed'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
@@ -321,7 +321,7 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
   ],
   augen: [
     { titel: 'Augen', ids: ['augen.anzahl', 'augen.typ'] },
-    { titel: 'Lage und Form', ids: ['augen.groesse', 'augen.hoehe', 'augen.abstand', 'augen.tiefe', 'augen.ring'], aktiv: (b) => b.augen.anzahl > 0, inaktiv: 'wirkt mit mindestens einem Auge' },
+    { titel: 'Lage und Form', ids: ['augen.groesse', 'augen.hoehe', 'augen.lage', 'augen.abstand', 'augen.tiefe', 'augen.ring'], aktiv: (b) => b.augen.anzahl > 0, inaktiv: 'wirkt mit mindestens einem Auge' },
   ],
   beine: [
     { titel: 'Unterkörper', ids: ['unterkoerper.typ'] },

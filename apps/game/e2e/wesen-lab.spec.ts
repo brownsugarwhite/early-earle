@@ -51,9 +51,21 @@ async function stats(page: Page): Promise<Stats> {
 
 /** Zahlen aus der Info-Zeile („9012 Vertices · 18020 Dreiecke · …“). */
 async function infoZahlen(page: Page): Promise<{ vertices: number; triangles: number; text: string }> {
-  const text = (await page.getByTestId('wesen-lab-info').textContent()) ?? '';
-  const m = /(\d+) Vertices · (\d+) Dreiecke/.exec(text);
-  return { vertices: m ? Number(m[1]) : 0, triangles: m ? Number(m[2]) : 0, text };
+  // die Info-Zeile aktualisiert sich kurz nach dem Bau — bis zu 5 s auf Zahlen warten
+  let text = '';
+  let m: RegExpExecArray | null = null;
+  await expect
+    .poll(
+      async () => {
+        text = (await page.getByTestId('wesen-lab-info').textContent()) ?? '';
+        m = /(\d+) Vertices · (\d+) Dreiecke/.exec(text);
+        return !!m;
+      },
+      { timeout: 5_000, intervals: [100, 250] },
+    )
+    .toBe(true);
+  const mm = m as RegExpExecArray | null;
+  return { vertices: mm ? Number(mm[1]) : 0, triangles: mm ? Number(mm[2]) : 0, text };
 }
 
 /** Wartet auf einen feinen Bau nach `seit` (Zähler der angewandten Bauten) und auf eine ruhige Info-Zeile. */

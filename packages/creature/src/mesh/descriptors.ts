@@ -1,5 +1,5 @@
 import { nearestOnPolyline } from '../math/curve';
-import { clamp, clamp01, dist, dot, smoothstep, sub, type Vec3 } from '../math/vec';
+import { clamp, clamp01, dist, dot, sub, type Vec3 } from '../math/vec';
 import { REGION, evalScene, evalSceneDetailed, type SceneSample, primPart } from '../sdf/scene';
 import type { Construction } from '../sdf/build';
 
@@ -26,7 +26,7 @@ export interface Descriptors {
   group: Uint8Array;
 }
 
-export function computeDescriptors(c: Construction, positions: Float32Array, normals: Float32Array): Descriptors {
+export function computeDescriptors(c: Construction, positions: Float32Array, normals: Float32Array, sides?: Float32Array): Descriptors {
   const n = positions.length / 3;
   const { scene, bones, groups } = c;
   const H = c.bodyScale;
@@ -39,11 +39,9 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
   const group = new Uint8Array(n);
   const prims = scene.prims;
   const unionIdx: number[] = [];
-  const lipIdx: number[] = [];
   const socketIdx: number[] = [];
   prims.forEach((p, i) => {
     if (p.op === 'union') unionIdx.push(i);
-    if (p.region === REGION.lippe) lipIdx.push(i);
     if (p.op === 'subtract' && p.region === REGION.hoehle) socketIdx.push(i);
   });
   const bodyGroup = groups.findIndex((g) => g.kind === 'koerper');
@@ -56,7 +54,6 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
   const aoRadii = [0.05, 0.16].map((r) => r * H);
   const aoW = [0.6, 0.4];
   const mouth = c.mouth;
-  const cavityK = mouth ? prims.find((pr) => pr.name === 'maulhoehle')?.k ?? 0.05 * H : 0.05 * H;
 
   for (let v = 0; v < n; v++) {
     p[0] = positions[v * 3]!;
@@ -103,20 +100,22 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     }
     // Kieferzonen: Anteil der Trägerknochen auf Unterkiefer (unter der Maullinie) und Oberkiefer (Oberkopf darüber)
     if (mouth && c.bauplan.maul.sichtbar) {
-      const hostGroup = bones[c.hostBone]!.group;
+      // Kieferzonen übernehmen den Anteil w des **gesamten** Gewichts (auch Rumpf-/Halsknochen, die bei großem Kopf bis in
+      // den Kiefer reichen): der Unterkiefer ist ein starrer Löffel, der Oberkopf klappt als Ganzes
       const transfer = (w: number, to: number): void => {
         if (w <= 0.001) return;
         let moved = 0;
         for (let bi = 0; bi < bones.length; bi++) {
-          if (bones[bi]!.group !== hostGroup) continue;
+          if (bi === to) continue;
           const take = boneWeights[bi]! * w;
           boneWeights[bi]! -= take;
           moved += take;
         }
         boneWeights[to]! += moved;
       };
-      transfer(mouth.jawWeight(p, H), c.jawBone);
-      transfer(mouth.upperWeight(p, H), c.upperJawBone);
+      const side = sides ? sides[v] : undefined;
+      transfer(mouth.jawWeight(p, H, side), c.jawBone);
+      transfer(mouth.upperWeight(p, H, side), c.upperJawBone);
     }
     // Top 4 normieren
     const top: number[] = [];
@@ -149,8 +148,11 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     spine[v * 4] = hit.s * g.polyline.total;
     spine[v * 4 + 1] = hit.angle;
     spine[v * 4 + 2] = 2 * Math.PI * Math.max(radius, hit.d);
-    // Bauch/Rücken immer relativ zum Körper (eine durchgehende Bauchlinie über Rumpf, Beine, Schwanz, Hals)
-    if (bodyGroup >= 0 && groups[bodyGroup]) {
+    // Bauch/Rücken: Rumpf, Beine und Schwanz relativ zur Rumpf-Mittellinie (eine durchgehende Bauchlinie); Hals und Kopf
+    // relativ zur eigenen Mittellinie (sonst zählt der ganze Hals als „Bauch“ vor dem Rumpfscheitel — heller Fleck am
+    // Halsansatz, keine Flecken auf Hals und Kopf, Bild 6)
+    const eigen = g.kind === 'hals' || g.kind === 'kopf';
+    if (!eigen && bodyGroup >= 0 && groups[bodyGroup]) {
       const bg = groups[bodyGroup]!;
       const bh = nearestOnPolyline(bg.polyline, p);
       const brel = sub(p, bh.point);
@@ -160,16 +162,9 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     owner = order[0]!;
 
     // --- Regionen -----------------------------------------------------------------------------------------------------
-    // Rachen: Fläche entstand aus der Subtraktion (innerhalb der Vereinigung)
-    // schmaler Saum: die Rachenfarbe endet dicht an der Schnittkante (Aal: scharfe, satt gefärbte Kante)
-    region[v * 4] = smoothstep(0, 0.35 * cavityK, -sample.dUnion);
-    let lip = 0;
-    for (const li of lipIdx) {
-      const pr = prims[li]!;
-      const r = pr.kind === 'capsule' ? Math.max(pr.ra, pr.rb) : 0.03 * H;
-      lip = Math.max(lip, clamp01(1 - per[li]! / (1.6 * r + 1e-6)));
-    }
-    region[v * 4 + 1] = lip;
+    // Rachen (x) und Lippenband-Abstand (y) setzt der Lippenschnitt (mesh/build.ts) — hier neutral
+    region[v * 4] = 0;
+    region[v * 4 + 1] = 10;
     let face = 0;
     if (mouth) {
       const dC = dist(p, mouth.center);

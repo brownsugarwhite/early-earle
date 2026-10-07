@@ -8,7 +8,7 @@ export * from './bauplan/grundformen';
 export * from './sdf/scene';
 export * from './sdf/build';
 export * from './mouth/mouth';
-export * from './mouth/closing';
+
 export * from './mouth/pose';
 export * from './mesh/surfaceNets';
 export * from './mesh/descriptors';

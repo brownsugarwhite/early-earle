@@ -22,7 +22,7 @@ describe('Bauzeit', () => {
         zeilen.push(`${name.padEnd(10)} ${res}³  ${String(r.stats.vertexCount).padStart(6)} V  ${String(r.stats.triangleCount).padStart(6)} T  ${r.stats.ms.toFixed(0).padStart(5)} ms  nonManifold ${r.stats.nonManifold}`);
         expect(r.stats.ms).toBeLessThan(30000);
         expect(r.stats.vertexCount, `${name} ${res}`).toBeGreaterThan(100);
-        expect(Number.isFinite(r.positions[0]!) && Number.isFinite(r.closed[0]!), `${name} ${res} endlich`).toBe(true);
+        expect(Number.isFinite(r.positions[0]!) && Number.isFinite(r.pucker[0]!), `${name} ${res} endlich`).toBe(true);
       }
     }
     console.log('\n' + zeilen.join('\n'));

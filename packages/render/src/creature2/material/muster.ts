@@ -142,7 +142,8 @@ export function musterMasks(u: MusterUniforms, spine: Vec4Node, rest: Vec3Node, 
     const fuge = c.y.sub(c.x);
     const w = mix(float(0.02), float(0.12), float(1).sub(u.dichte));
     const platte = smoothstep(w, w.add(soft.mul(0.3)), fuge);
-    const present = smoothstep(float(-0.95), float(-0.3), dorsal);
+    // Flecken bis fast zum Bauch (Bild 6: nur die Bauchmitte bleibt frei)
+    const present = smoothstep(float(-1.0), float(-0.75), dorsal);
     mask.assign(platte.mul(present));
     relief.assign(hash(c.z.mul(31)).sub(0.5).mul(0.5));
   });
