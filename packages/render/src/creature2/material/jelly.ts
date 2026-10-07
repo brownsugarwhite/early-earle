@@ -18,6 +18,10 @@ export interface JellyUniforms {
   coreSigma: UniformNode<'vec3', Vector3>;
   coreTint: UniformNode<'vec3', Vector3>;
   scatter: UniformNode<'vec3', Vector3>;
+  /** Eigenfarbe des Körpers (gestreutes Licht im Inneren). */
+  body: UniformNode<'vec3', Vector3>;
+  /** Deckkraft-Steilheit über die Dicke. */
+  opacity: UniformNode<'float', number>;
   rimColor: UniformNode<'vec3', Vector3>;
   /** Kern: Mitte (xyz) und Radien (xyz) relativ zur Körperhöhe. */
   coreCenter: UniformNode<'vec3', Vector3>;
@@ -39,6 +43,8 @@ export function createJellyUniforms(): JellyUniforms {
     coreSigma: uniform(new Vector3(1.2, 0.2, 0.3)),
     coreTint: uniform(new Vector3(0.2, 0.6, 0.6)),
     scatter: uniform(new Vector3(0.05, 0.1, 0.1)),
+    body: uniform(new Vector3(0.2, 0.7, 0.65)),
+    opacity: uniform(3.4),
     rimColor: uniform(new Vector3(0.02, 0.1, 0.1)),
     coreCenter: uniform(new Vector3(0, 0.42, 0.04)),
     coreRadius: uniform(new Vector3(0.36, 0.3, 0.34)),
@@ -62,6 +68,7 @@ export function applyJellyColors(j: JellyUniforms, grundHex: string, innenHex: s
   const [L, C, h] = hexToOklch(grundHex);
   const light = oklchToLinear(Math.min(0.98, L + 0.18), Math.max(0, C - 0.03), h);
   j.scatter.value.set(light[0] * 0.3, light[1] * 0.3, light[2] * 0.3);
+  j.body.value.set(g[0], g[1], g[2]);
   const dark = oklchToLinear(Math.max(0.05, L - 0.45), Math.max(0, C + 0.02), h + 8);
   j.rimColor.value.set(dark[0], dark[1], dark[2]);
 }
@@ -150,7 +157,11 @@ export function createJellyMaterial(u: CreatureMaterialUniforms, j: JellyUniform
     Tr.assign(Tr.mul(mix(vec3(1), j.coreTint, smoothstep(0.004, 0.025, coreN).mul(0.9))));
     Tr.assign(Tr.mul(mix(vec3(1), j.coreTint, smoothstep(0.004, 0.025, floorN).mul(0.7))));
     const lit = clamp(dot(N, u.lightDir).mul(0.5).add(0.5), 0, 1);
-    const col = bg.mul(Tr).add(j.scatter.mul(float(1).sub(Tr)).mul(lit.mul(0.6).add(0.6))).toVar();
+    // Eigenfarbe: je dicker, desto mehr Körperton (gestreut, von Kern und Bodenschicht getönt); dünner Rand zeigt den Hintergrund
+    const alpha = float(1).sub(exp(j.opacity.negate().mul(thickN.add(0.05))));
+    const coreMix = max(smoothstep(0.004, 0.025, coreN).mul(0.75), smoothstep(0.004, 0.025, floorN).mul(0.6));
+    const bodyCol = mix(j.body, j.body.mul(j.coreTint).mul(1.6), coreMix).mul(lit.mul(0.55).add(0.6));
+    const col = mix(bg.mul(Tr).add(j.scatter.mul(float(1).sub(Tr)).mul(lit.mul(0.6).add(0.6))), bodyCol, alpha.mul(0.82)).toVar();
     // Bodenkontakt dunkler
     col.assign(col.mul(mix(float(0.74), float(1), smoothstep(0, 0.1, rest.y.div(H)))));
     // Glanz: Umgebung, zwei Softboxen, harter Sonnenpunkt
