@@ -28,7 +28,7 @@ Prüfungen: `pnpm typecheck`, `pnpm lint`, Wesen-Tests 18/18, Game-Tests 256/256
 
 ## Was noch nicht stimmt (nach Florians Bildern)
 
-1. **Rex**: Gestalt stimmt jetzt (großer Kastenkopf, Keil, kompakter Rumpf, Beine, Schwanz als Schräge), aber der Rumpf ist noch ein Sack ohne Brust; Beine kaum sichtbar (Bild 12: dicke Säulen, Bauch darüber); Flügel/Stummelarme fehlen (eigene Elemente).
+1. **Rex**: Gestalt stimmt jetzt (großer Kastenkopf, Keil, kompakter Rumpf, zwei sichtbare Beinsäulen mit Füßen, Schwanz als Schräge); Rumpf noch ein Sack ohne klare Brust, Beine etwas dünn (Bild 12: dicke Säulen, breite Füße); Flügel/Stummelarme fehlen (eigene Elemente).
 2. **Tiger**: Kugelkopf mit flachem Gesicht, W-Lippe, Nase und Fängen außen auf Ei-Rumpf mit Pfoten stimmt in der Anlage; Rumpf noch zu flach/breit (Bild 9: Kopf sitzt tiefer im Ei), Wangen/Brustwulst (weißer Kragen) fehlen, Streifen zu schwach, Nasenspiegel noch ohne eigene Farbe.
 3. **Kopfprofile** weiter aus Bild 11/6/9 verfeinern (Braue, Schnauzenrücken, Wangen → evtl. `kopf.wangen`).
 4. **Shading** zu glatt/„CG“ (Bögen: Airbrush, kühle gesättigte Schatten, Korn); Bauch-/Rücken-Linie hart.
