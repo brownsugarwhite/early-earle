@@ -156,7 +156,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   const gapAt = (phi: number): number => {
     const u = clamp(Math.abs(phi) / theta, 0, 1);
     // Keil: läuft zu den Mundwinkeln hin aus; Oberlippe W-Form hebt die Mitte leicht an
-    const wedge = Math.pow(Math.max(0, 1 - u * u), 0.55);
+    // Keil: breit offen bis weit zu den Mundwinkeln, erst dort läuft der Spalt aus (Rex-Löffel)
+    const wedge = Math.pow(Math.max(0, 1 - Math.pow(u, 1.7)), 0.85);
     const w = 1 + m.wForm * 0.25 * Math.cos(phi * (Math.PI / Math.max(theta, 0.3)) * 1.5);
     return gapFront * wedge * w;
   };
@@ -169,7 +170,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   };
   const rInAt = (phi: number): number => lipRAt(phi) * (1 - tiefe * 0.9);
   const D = Math.max(0.05, tiefe * host.halfWidth * 1.6);
-  const rho0 = Math.max(0.004, m.oeffnung * host.halfWidth * m.breite * 0.9);
+  const rho0 = Math.max(0.004, host.halfWidth * m.breite * (0.18 + 0.5 * m.oeffnung));
 
   const cavity: CustomPrim = {
     kind: 'custom',
@@ -229,27 +230,29 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   }
 
   // Lippenwülste entlang der Maullinie (oben und unten), zu den Mundwinkeln hin dünner
-  const lipRadius = Math.max(0.006, m.lippe * 0.045 * bodyScale);
-  if (m.lippe > 0.02) {
+  const lipRadius = Math.max(0.006, m.lippe * 0.055 * bodyScale);
+  if (m.lippe > 0.02 && m.form > 0.02) {
     for (const side of [1, -1] as const) {
       if (side < 0 && m.unterkiefer < 0.05) continue;
       for (let i = 0; i < n - 1; i += 2) {
         const phiA = phis[i]!, phiB = phis[Math.min(n - 1, i + 2)]!;
         const taperA = 0.35 + 0.65 * (1 - Math.pow(Math.abs(phiA) / theta, 2));
         const taperB = 0.35 + 0.65 * (1 - Math.pow(Math.abs(phiB) / theta, 2));
-        const pa = surfacePoint(host, lipHAt(phiA) + side * gapAt(phiA) * 0.95, phiA, maxR).p;
-        const pb = surfacePoint(host, lipHAt(phiB) + side * gapAt(phiB) * 0.95, phiB, maxR).p;
+        const spA = surfacePoint(host, lipHAt(phiA) + side * (gapAt(phiA) + lipRadius * 0.6), phiA, maxR);
+        const spB = surfacePoint(host, lipHAt(phiB) + side * (gapAt(phiB) + lipRadius * 0.6), phiB, maxR);
+        const outA = normalize(sub(spA.p, add(host.origin, scale(host.up, lipHAt(phiA)))));
+        const outB = normalize(sub(spB.p, add(host.origin, scale(host.up, lipHAt(phiB)))));
         const prim: CapsulePrim = {
           kind: 'capsule',
           op: 'union',
           part: side > 0 ? host.bone : jawBone,
           region: REGION.lippe,
-          k: lipRadius * 1.2,
+          k: lipRadius * 1.4,
           name: side > 0 ? 'oberlippe' : 'unterlippe',
-          a: pa,
-          b: pb,
-          ra: lipRadius * taperA,
-          rb: lipRadius * taperB,
+          a: add(spA.p, scale(outA, lipRadius * 0.35 * taperA * m.form)),
+          b: add(spB.p, scale(outB, lipRadius * 0.35 * taperB * m.form)),
+          ra: lipRadius * taperA * m.form,
+          rb: lipRadius * taperB * m.form,
         };
         prims.push(prim);
       }
@@ -258,14 +261,14 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
 
   // Lochmaul: Lippenring um die Öffnung (Kugelfisch, Betta), mit (1 − form) gewichtet
   if (m.form < 0.98 && m.lippe > 0.02) {
-    const ringR = rho0 * 1.25 + lipRadius * 0.6;
-    const ringRad = lipRadius * (1.2 + 0.8 * (1 - m.form)) * (1 - m.form) + 1e-3;
+    const ringR = rho0 * 1.05 + lipRadius * 0.35;
+    const ringRad = lipRadius * (0.7 + 0.5 * (1 - m.form)) * (1 - m.form) + 1e-3;
     const segs = 14;
     for (let i = 0; i < segs; i++) {
       const a0 = (i / segs) * Math.PI * 2, a1 = ((i + 1) / segs) * Math.PI * 2;
       const pa = add(add(center, scale(frame.x, Math.cos(a0) * ringR)), scale(frame.y, Math.sin(a0) * ringR));
       const pb = add(add(center, scale(frame.x, Math.cos(a1) * ringR)), scale(frame.y, Math.sin(a1) * ringR));
-      prims.push({ kind: 'capsule', op: 'union', part: Math.sin(a0) < -0.2 && m.unterkiefer > 0.05 ? jawBone : host.bone, region: REGION.lippe, k: ringRad * 1.5, name: 'lippenring', a: add(pa, scale(frame.z, -ringRad * 0.2)), b: add(pb, scale(frame.z, -ringRad * 0.2)), ra: ringRad, rb: ringRad });
+      prims.push({ kind: 'capsule', op: 'union', part: Math.sin(a0) < -0.2 && m.unterkiefer > 0.05 ? jawBone : host.bone, region: REGION.lippe, k: ringRad * 1.5, name: 'lippenring', a: add(pa, scale(frame.z, ringRad * 0.35)), b: add(pb, scale(frame.z, ringRad * 0.35)), ra: ringRad, rb: ringRad });
     }
   }
 
@@ -275,7 +278,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   if (z.stil !== 'keine' && z.groesse > 0.01) {
     const rng = makeRng((b.seed * 7919 + 13) >>> 0);
     const arcLen = lipLine.reduce((acc, p, i) => (i === 0 ? 0 : acc + Math.hypot(p[0] - lipLine[i - 1]![0], p[1] - lipLine[i - 1]![1], p[2] - lipLine[i - 1]![2])), 0);
-    const baseSize = z.groesse * 0.11 * bodyScale;
+    const baseSize = z.groesse * 0.14 * bodyScale;
     const spacing = Math.max(baseSize * 1.1, (arcLen / (6 + 26 * z.dichte)));
     const count = Math.max(2, Math.floor(arcLen / spacing));
     const place = (upper: boolean, offset: number): void => {
@@ -291,12 +294,12 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
         if (isHauer) size = baseSize * (1.6 + 1.4 * z.hauer);
         const hl = lipHAt(phi);
         const g = gapAt(phi);
-        const sp = surfacePoint(host, hl + (upper ? 1 : -1) * g * 0.75, phi, maxR);
+        const sp = surfacePoint(host, hl + (upper ? 1 : -1) * g * 0.92, phi, maxR);
         const inward = normalize(sub(add(host.origin, scale(host.up, hl)), sp.p));
         const vertical = upper ? scale(host.up, -1) : host.up;
         const dir = normalize(add(scale(vertical, 1), scale(inward, 0.35 - (isHauer ? 0.6 : 0))));
         // Ansatz leicht in die Lippe versenkt
-        teeth.push({ pos: add(sp.p, scale(inward, size * 0.12)), dir, size, upper, hauer: isHauer });
+        teeth.push({ pos: add(sp.p, scale(inward, size * 0.3)), dir, size, upper, hauer: isHauer });
       }
     };
     place(true, 0);

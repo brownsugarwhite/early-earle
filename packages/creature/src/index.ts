@@ -7,6 +7,7 @@ export * from './bauplan/hash';
 export * from './sdf/scene';
 export * from './sdf/build';
 export * from './mouth/mouth';
+export * from './mouth/closing';
 export * from './mesh/surfaceNets';
 export * from './mesh/descriptors';
 export * from './mesh/build';

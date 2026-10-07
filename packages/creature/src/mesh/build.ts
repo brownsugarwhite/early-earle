@@ -5,6 +5,7 @@ import { construct, type Bone, type Construction, type EyeSpec, type PartGroup }
 import { evalScene } from '../sdf/scene';
 import type { Tooth } from '../mouth/mouth';
 import { computeDescriptors, smoothWeights, type Descriptors } from './descriptors';
+import { computeClosing } from '../mouth/closing';
 import { adjacency, contourManifold, largestComponent, nonManifoldEdges, orientToNormals, projectAndNormals, taubin } from './surfaceNets';
 
 export interface BuildOptions {
@@ -21,6 +22,10 @@ export interface CreatureBuild {
   normals: Float32Array;
   index: Uint32Array;
   descriptors: Descriptors;
+  /** Verschluss-Morph (xyz je Vertex, geschlossene Pose) und Kieferwinkel. */
+  closed: Float32Array;
+  closeAngle: number;
+  maxOpenAngle: number;
   bones: Bone[];
   groups: Array<Pick<PartGroup, 'name' | 'kind' | 'bones'>>;
   mouth: {
@@ -65,6 +70,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   const descriptors = computeDescriptors(c, positions, normals);
   const ws = opts.weightSmoothing ?? 2;
   if (ws > 0) smoothWeights(descriptors, adj, c.bones.length, ws);
+  const closing = computeClosing(c, positions, descriptors);
   const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const m = c.mouth;
   return {
@@ -72,6 +78,9 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     normals,
     index,
     descriptors,
+    closed: closing.closed,
+    closeAngle: closing.closeAngle,
+    maxOpenAngle: closing.maxOpenAngle,
     bones: c.bones,
     groups: c.groups.map((g) => ({ name: g.name, kind: g.kind, bones: g.bones })),
     mouth: m

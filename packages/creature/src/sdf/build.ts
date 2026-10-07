@@ -225,13 +225,13 @@ export function construct(b: Bauplan): Construction {
   const hh = host.height * 0.5;
   const gap0 = m.oeffnung * 0.32 * host.height * 0.5;
   const fz = host.forward, fy = host.up;
-  const jawForm = 0.35 + 0.65 * m.form;
-  if (m.oberkiefer > 0.05) {
+  const jawForm = m.form;
+  if (m.oberkiefer > 0.05 && jawForm > 0.04) {
     const c = add(add(C0, scale(fz, hw * (0.02 + 0.6 * b.kopf.schnauze) * jawForm)), scale(fy, gap0 + hh * 0.22 * m.oberkiefer));
     const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: hostBone, k: 0.3 * hw, region: REGION.haut, name: 'oberkiefer', c, r: [hw * 0.95 * (0.65 + 0.35 * b.kopf.schnauzeDicke), hh * 0.3 * m.oberkiefer + 0.002, hw * (0.42 + 0.8 * b.kopf.schnauze) * (0.5 + 0.5 * m.oberkiefer) * jawForm], q: quatFromFrame(host.right, host.up, host.forward) };
     prims.push(e);
   }
-  if (m.unterkiefer > 0.05) {
+  if (m.unterkiefer > 0.05 && jawForm > 0.04) {
     const c = sub(add(C0, scale(fz, (hw * (0.0 + 0.55 * b.kopf.schnauze) + m.biss * hw * 0.25) * jawForm)), scale(fy, gap0 + hh * 0.18 * m.unterkiefer));
     const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: jawBone, k: 0.3 * hw, region: REGION.haut, name: 'unterkiefer', c, r: [hw * 0.88 * (0.65 + 0.35 * b.kopf.schnauzeDicke), hh * 0.26 * m.unterkiefer + 0.002, hw * (0.4 + 0.7 * b.kopf.schnauze) * (0.5 + 0.5 * m.unterkiefer) * jawForm], q: quatFromFrame(host.right, host.up, host.forward), kubik: m.kante };
     prims.push(e);

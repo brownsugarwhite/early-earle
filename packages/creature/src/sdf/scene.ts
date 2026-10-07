@@ -93,9 +93,10 @@ export function sdRoundCone(p: Readonly<Vec3>, a: Readonly<Vec3>, b: Readonly<Ve
 
 /** Ellipsoid-Näherung (Quilez), im lokalen Raum. */
 export function sdEllipsoidLocal(x: number, y: number, z: number, r: Readonly<Vec3>): number {
-  const k0 = Math.hypot(x / r[0], y / r[1], z / r[2]);
-  const k1 = Math.hypot(x / (r[0] * r[0]), y / (r[1] * r[1]), z / (r[2] * r[2]));
-  return k1 > 1e-12 ? (k0 * (k0 - 1)) / k1 : -Math.min(r[0], r[1], r[2]);
+  const rx = Math.max(r[0], 1e-4), ry = Math.max(r[1], 1e-4), rz = Math.max(r[2], 1e-4);
+  const k0 = Math.hypot(x / rx, y / ry, z / rz);
+  const k1 = Math.hypot(x / (rx * rx), y / (ry * ry), z / (rz * rz));
+  return k1 > 1e-12 ? (k0 * (k0 - 1)) / k1 : -Math.min(rx, ry, rz);
 }
 
 /** Gerundeter Quader im lokalen Raum. */

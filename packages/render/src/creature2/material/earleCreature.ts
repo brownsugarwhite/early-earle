@@ -1,6 +1,6 @@
 import { Vector3, Vector4 } from 'three';
 import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
-import { Fn, abs, attribute, clamp, dot, float, floor, fract, hash, max, min, mix, normalView, normalize, positionGeometry, positionView, pow, sin, smoothstep, time, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
+import { Fn, abs, attribute, clamp, dot, float, floor, fract, hash, max, min, mix, normalView, normalize, positionGeometry, positionLocal, positionView, pow, sin, smoothstep, time, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { STIL_STANDARD, farbRolle, type WesenStil } from './stil';
 
@@ -40,6 +40,8 @@ export interface CreatureMaterialUniforms {
   eyeUp: ReturnType<typeof uniformArray>;
   eyeCount: UniformNode<'float', number>;
   blink: UniformNode<'float', number>;
+  /** Gewicht des Verschluss-Morphs (1 = Maul zu). */
+  verschluss: UniformNode<'float', number>;
 }
 
 export interface Vec3Triple {
@@ -99,6 +101,7 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     eyeUp,
     eyeCount: uniform(0),
     blink: uniform(0),
+    verschluss: uniform(0),
   };
 }
 
@@ -160,6 +163,11 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
   const material = new MeshBasicNodeMaterial();
   material.name = 'ee-wesen';
   material.fog = false;
+  // Verschluss-Morph: nach dem Skinning (positionLocal ist dann die gehäutete Position) die geschlossene Lage addieren
+  material.positionNode = Fn(() => {
+    const closed = attribute('eeClosed', 'vec3') as Vec3Node;
+    return (positionLocal as unknown as Vec3Node).add(closed.mul(u.verschluss));
+  })();
   material.colorNode = Fn(() => {
     const spine = attribute('eeSpine', 'vec4') as Vec4Node;
     const region = attribute('eeRegion', 'vec4') as Vec4Node;
@@ -170,7 +178,7 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const L = u.lightDir;
     const ndl = dot(N, L);
     // Wrap-Diffuse: weicher Terminator wie gemalt; Bodenkontakt dunkelt die Unterseite
-    const wrap = ndl.mul(0.5).add(0.5).toVar();
+    const wrap = clamp(ndl.mul(0.5).add(0.5).sub(0.12).div(0.76), 0, 1).toVar();
     const bottom = float(1).sub(smoothstep(0, 0.22, rest.y.div(u.bodyScale)));
     wrap.assign(wrap.sub(bottom.mul(u.bodenlicht).mul(0.22)));
     // Höhlung: Falten liegen tiefer

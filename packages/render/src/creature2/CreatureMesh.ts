@@ -54,6 +54,8 @@ export class CreatureMesh {
   build: CreatureBuild | null = null;
   private jawAxis = new Vector3(1, 0, 0);
   private jawBuildOpen = 0.3;
+  private closeAngle = 0.2;
+  private maxOpenAngle = 0.6;
   private upperTeeth: InstancedMesh | null = null;
   private lowerTeeth: InstancedMesh | null = null;
   private tongue: Mesh | null = null;
@@ -116,6 +118,7 @@ export class CreatureMesh {
     g.setAttribute('eeSpine', new BufferAttribute(build.descriptors.spine, 4));
     g.setAttribute('eeRegion', new BufferAttribute(build.descriptors.region, 4));
     g.setAttribute('eeAo', new BufferAttribute(build.descriptors.ao, 1));
+    g.setAttribute('eeClosed', new BufferAttribute(build.closed, 3));
     g.setIndex(new BufferAttribute(build.index, 1));
     g.computeBoundingSphere();
     // --- Skelett: Knochen mit Identitätsdrehung, Position relativ zum Elternknochen ---------------------------------
@@ -144,6 +147,8 @@ export class CreatureMesh {
     if (build.mouth) {
       this.jawAxis.set(...build.mouth.hinge.axis).normalize();
       this.jawBuildOpen = build.mouth.oeffnung;
+      this.closeAngle = build.closeAngle;
+      this.maxOpenAngle = build.maxOpenAngle;
     }
     // --- Zähne und Zunge ------------------------------------------------------------------------------------------------
     const stilZ = b.zaehne.stil;
@@ -242,9 +247,14 @@ export class CreatureMesh {
     if (!this.build || !this.mesh) return;
     const jaw = this.bones[this.build.jawBone];
     if (jaw && this.build.mouth) {
-      const maxAngle = 0.72;
-      const angle = (this.opennessNow - this.jawBuildOpen) * maxAngle;
+      // Bauzustand = Öffnung o_b: darunter schließt der Kiefer um closeAngle, darüber öffnet er bis maxOpenAngle
+      const o = this.opennessNow;
+      const ob = Math.max(1e-3, this.jawBuildOpen);
+      const angle = o < ob ? -(1 - o / ob) * this.closeAngle : ((o - ob) / Math.max(1e-3, 1 - ob)) * this.maxOpenAngle;
       jaw.quaternion.setFromAxisAngle(this.jawAxis, angle);
+      // Verschluss-Morph greift auf den letzten 60 % des Schließwegs
+      const t = 1 - Math.min(1, o / ob);
+      this.uniforms.verschluss.value = t * t * (3 - 2 * t);
     }
     // Atmen: Körperknochen sanft skalieren (oben stärker)
     const bodyBones = this.build.groups.find((g) => g.kind === 'koerper')?.bones ?? [];
