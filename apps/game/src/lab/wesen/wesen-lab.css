@@ -41,6 +41,20 @@
   box-shadow: -5px 2px 0 var(--ink-soft);
 }
 
+/* ---------- Datei: Name, Sichern, Teilen ---------- */
+.wl-datei { display: flex; flex-direction: column; gap: 6px; }
+.wl-datei-zeile { display: flex; gap: 8px; align-items: stretch; }
+.wl-feld { flex: 1 1 auto; min-width: 0; display: flex; }
+.wl-feld input {
+  flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border: 0; border-radius: 0; -webkit-appearance: none; appearance: none;
+  background: var(--paper); color: var(--ink); font: 700 16px/1.2 var(--font-body);
+  box-shadow: -5px 2px 0 var(--ink-soft);
+}
+.wl-feld input:focus-visible { outline: none; box-shadow: -5px 2px 0 var(--neon); }
+.wl-datei-ziel { font: 11.5px/1.3 ui-monospace, Menlo, monospace; color: #a7b7ba; overflow-wrap: anywhere; }
+.wl-frage { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 10px; background: #2b3f47; color: var(--paper); font: 700 13px/1.3 var(--font-body); box-shadow: -5px 2px 0 rgba(8, 18, 22, 0.8); }
+.wl-frage > span { flex: 1 1 100%; }
+
 /* ---------- Tabs ---------- */
 .wl-tabbereich { display: flex; flex-direction: column; gap: 10px; }
 .wl-anker { height: 0; }

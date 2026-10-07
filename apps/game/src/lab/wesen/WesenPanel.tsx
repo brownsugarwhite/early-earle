@@ -3,6 +3,7 @@ import { useWesenStore } from './wesenStore';
 import { TABS, formatWert, gruppenDesTabs, leseWert, tabGeaendert, wahlName, wertVon, type FarbRegler, type Regler, type ReglerGruppe, type TabId, type WahlRegler, type ZahlRegler, type ZufallRegler } from './regler';
 import { WesenIcon } from './icons';
 import type { WesenLabScene } from './WesenLabScene';
+import { StilVorgabeBereich } from './DateiBereich';
 
 /**
  * Reglerpanel des Grundformen-Labs: Tabs mit gruppierten Reglern (Label, Live-Wert, kleiner Hinweis), je Regler ein
@@ -235,6 +236,7 @@ export function TabInhalt() {
       {gruppen.map((g, i) => (
         <Gruppe key={`${tab}-${g.titel}`} g={g} aktiv={aktivMuster[i] !== '0'} />
       ))}
+      {tab === 'licht' ? <StilVorgabeBereich /> : null}
     </div>
   );
 }

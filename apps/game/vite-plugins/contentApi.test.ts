@@ -62,6 +62,19 @@ describe('contentApi (Dev-Endpunkt der Editoren)', () => {
     expect(zones.body.files).not.toContain('worlds');
   });
 
+  it('serves the Wesen-Werkstatt folders; an allowed folder that does not exist yet is an empty list', async () => {
+    const h = mount();
+    const ping = await call(h, 'GET', '/');
+    expect(ping.body.dirs).toEqual(expect.arrayContaining(['creatures', 'creatures/vorlagen']));
+    const vorlagen = await call(h, 'GET', '/creatures/vorlagen');
+    expect(vorlagen.status).toBe(200);
+    expect(Array.isArray(vorlagen.body.files)).toBe(true);
+    const creatures = await call(h, 'GET', '/creatures');
+    expect(creatures.status).toBe(200);
+    expect(creatures.body.files).not.toContain('README.md');
+    expect((await call(h, 'GET', '/creatures/vorlagen/..%2F..%2Fpackage.json')).status).toBe(400);
+  });
+
   it('refuses unknown directories, traversal and bad file names', async () => {
     const h = mount();
     expect((await call(h, 'GET', '/secrets')).status).toBe(400);

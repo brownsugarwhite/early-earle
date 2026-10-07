@@ -3,8 +3,11 @@ import { useSearchParams } from 'react-router';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { WesenLabScene } from '../lab/wesen/WesenLabScene';
-import { WESEN_VORLAGEN } from '../lab/wesen/presets';
-import { sichereEntwurfJetzt, starteWesenLab, useWesenStore, vorlageBauplan, type WesenAnsicht } from '../lab/wesen/wesenStore';
+import { sichereEntwurfJetzt, starteWesenLab, useWesenStore, type WesenAnsicht } from '../lab/wesen/wesenStore';
+import { DateiBereich, VorlagenWahl } from '../lab/wesen/DateiBereich';
+import { gebuendelterStil, gebuendelteVorlagen, ladeStilVorgabe } from '../lab/wesen/content';
+import { useVorlagenDateien } from '../lab/wesen/vorlagenDateien';
+import { stilGleich } from '../lab/wesen/regler';
 import { InfoZeile, MeldungZeile, RueckgaengigKnoepfe, TabInhalt, TabLeiste } from '../lab/wesen/WesenPanel';
 import { ReferenzBereich, ReferenzOverlay } from '../lab/wesen/ReferenzOverlay';
 import type { TurntableAnsicht } from '../lab/wesen/turntable';
@@ -54,43 +57,6 @@ function useTastenkuerzel(): void {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-}
-
-/** Vorlagen aus presets.ts: Auswahl plus Blättern (◀ ▶). */
-function VorlagenWahl() {
-  const quelle = useWesenStore((s) => s.quelle);
-  const wert = quelle.art === 'vorlage' ? quelle.id : '';
-  const lade = (id: string) => {
-    const b = vorlageBauplan(id);
-    if (b) st().ladeBauplan(b, { art: 'vorlage', id });
-  };
-  const idx = WESEN_VORLAGEN.findIndex((v) => v.id === wert);
-  const blaettern = (d: number) => {
-    const n = WESEN_VORLAGEN.length;
-    const next = WESEN_VORLAGEN[((idx < 0 ? (d > 0 ? -1 : 0) : idx) + d + n) % n]!;
-    lade(next.id);
-  };
-  return (
-    <div className="wl-vorlage">
-      <button type="button" className="wl-btn wl-btn--icon" onClick={() => blaettern(-1)} aria-label="Vorige Vorlage" data-testid="wl-vorlage-zurueck">
-        <WesenIcon name="links" />
-      </button>
-      <label className="wl-vorlage-wahl">
-        <span className="wl-sr">Vorlage</span>
-        <select value={wert} onChange={(e) => lade(e.target.value)} data-testid="wesen-vorlage">
-          {wert === '' ? <option value="">{quelle.art === 'datei' ? quelle.id : 'eigener Entwurf'}</option> : null}
-          {WESEN_VORLAGEN.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button type="button" className="wl-btn wl-btn--icon" onClick={() => blaettern(1)} aria-label="Nächste Vorlage" data-testid="wl-vorlage-weiter">
-        <WesenIcon name="rechts" />
-      </button>
-    </div>
-  );
 }
 
 /** Tabs bleiben beim Scrollen oben; ein Tabwechsel springt zurück an den Anfang der Regler. */
@@ -170,7 +136,15 @@ export function LabWesen() {
   const [search] = useSearchParams();
   // Vor dem ersten Bild: Entwurf/Stil aus dem Browser-Speicher, `?vorlage=` hat Vorrang.
   useState(() => {
-    starteWesenLab({ vorlage: search.get('vorlage'), ansicht: search.get('ansicht'), boden: search.get('boden'), spin: search.get('spin') });
+    const stil = gebuendelterStil();
+    starteWesenLab({
+      vorlage: search.get('vorlage'),
+      ansicht: search.get('ansicht'),
+      boden: search.get('boden'),
+      spin: search.get('spin'),
+      dateien: gebuendelteVorlagen(),
+      stilVorgabe: stil ? { stil, quelle: 'App' } : null,
+    });
     return true;
   });
   const controller = useMemo(() => new WesenLabScene(), []);
@@ -178,6 +152,18 @@ export function LabWesen() {
   const boden = useWesenStore((s) => s.boden);
   useSzeneAmStore(controller);
   useTastenkuerzel();
+
+  // Gespeicherte Vorlagen und Stil-Vorgabe vom Mac (sonst Bündel/lokal); ein unberührter Stil folgt der Vorgabe.
+  useEffect(() => {
+    void useVorlagenDateien.getState().laden();
+    void ladeStilVorgabe().then((v) => {
+      if (!v) return;
+      const s = st();
+      const unberuehrt = stilGleich(s.stil, s.stilVorgabe);
+      s.setStilVorgabe(v.stil, v.quelle);
+      if (unberuehrt && !stilGleich(s.stil, v.stil)) useWesenStore.setState({ stil: v.stil });
+    });
+  }, []);
 
   useEffect(() => {
     const flush = () => sichereEntwurfJetzt();
@@ -200,6 +186,7 @@ export function LabWesen() {
           <div className="wl-panel">
             <InfoZeile controller={controller} />
             <VorlagenWahl />
+            <DateiBereich />
             <MeldungZeile />
             {ansicht === 'referenz' ? <ReferenzBereich onKamera={() => controller.setAnsicht('boegen')} /> : null}
             <TabBereich />
