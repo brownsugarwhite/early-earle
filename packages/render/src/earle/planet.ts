@@ -50,7 +50,7 @@ import { MistBanks } from './mist/mistBanks';
 import { createScaleCarpet, type ScaleCarpet } from './ground/scaleCarpet';
 import { fogSeaLayer } from './ground/fogSea';
 import { meadowLayer } from './ground/meadow';
-import { firCarpetColors, firCarpetMask, firProjScale, viewQuarter } from './ground/firCarpet';
+import { firCarpetColors, firCarpetMask, firProjScale, layoutArgs, viewQuarter } from './ground/firCarpet';
 import { canopyCarpetColors, canopyCarpetMask } from './ground/canopyCarpet';
 import type { LandmarkInstance } from '@ee/world';
 
@@ -662,14 +662,26 @@ export class EarlePlanet {
     const firFw = max(fwidth(po.x), fwidth(po.z)).max(1e-5);
     const firDepth = positionView.z.negate().max(0.05);
     const glyphSun = this.carpet.sunDir as { value: Vector3 } & Vec3Node;
+    // Beide Bodenornamente als WGSL-Funktionen (Layout, Cache je Builder): ausgerollt sprengten sie den privaten
+    // Adressraum des Geländeshaders (WebKit/iPhone: höchstens 8192 Byte, sonst fällt die Pipeline des Bodens aus).
+    type MaskCall = (...args: unknown[]) => Vec3Node;
+    const layoutFn = Fn as unknown as (f: (a: unknown) => unknown) => { setLayout(l: object): MaskCall };
+    const firMaskFn = layoutFn((args) => {
+      const a = layoutArgs(args, ['po', 'nrm', 'fw', 'depth']) as unknown[];
+      const f = firCarpetMask({ po: a[0] as Vec3Node, normal: a[1] as Vec3Node, sunDir: glyphSun, fw: a[2] as FloatNode, depth: a[3] as FloatNode, projScale: this.firProj, quarter: this.firQuarter });
+      return vec2(f.mask, f.light);
+    }).setLayout({ name: 'eeFirCarpet', type: 'vec2', inputs: [{ name: 'po', type: 'vec3' }, { name: 'nrm', type: 'vec3' }, { name: 'fw', type: 'float' }, { name: 'depth', type: 'float' }] });
+    const canopyMaskFn = layoutFn((args) => {
+      const a = layoutArgs(args, ['po', 'fw', 'depth']) as unknown[];
+      const c = canopyCarpetMask({ po: a[0] as Vec3Node, sunDir: glyphSun, fw: a[1] as FloatNode, depth: a[2] as FloatNode, projScale: this.firProj, quarter: this.firQuarter });
+      return vec2(c.mask, c.tone);
+    }).setLayout({ name: 'eeCanopyCarpet', type: 'vec2', inputs: [{ name: 'po', type: 'vec3' }, { name: 'fw', type: 'float' }, { name: 'depth', type: 'float' }] });
     const firData = Fn(() => {
       const out = vec2(0, 0).toVar('glyphCarpet');
       If(isFirs, () => {
-        const f = firCarpetMask({ po, normal: normalGeometry as unknown as Vec3Node, sunDir: glyphSun, fw: firFw, depth: firDepth, projScale: this.firProj, quarter: this.firQuarter });
-        out.assign(vec2(f.mask, f.light));
+        out.assign(firMaskFn(po, normalGeometry, firFw, firDepth) as unknown as Parameters<typeof out.assign>[0]);
       }).ElseIf(isCanopy, () => {
-        const c = canopyCarpetMask({ po, sunDir: glyphSun, fw: firFw, depth: firDepth, projScale: this.firProj, quarter: this.firQuarter });
-        out.assign(vec2(c.mask, c.tone));
+        out.assign(canopyMaskFn(po, firFw, firDepth) as unknown as Parameters<typeof out.assign>[0]);
       });
       return out;
     })();

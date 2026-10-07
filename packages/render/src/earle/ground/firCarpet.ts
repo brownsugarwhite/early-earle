@@ -1,5 +1,5 @@
 import { Vector3 } from 'three/webgpu';
-import { abs, clamp, dot, float, floor, fract, log2, min, mix, normalize, round, select, sin, smoothstep, step, uniform, vec2 } from 'three/tsl';
+import { Fn, abs, clamp, dot, float, floor, fract, log2, min, mix, normalize, round, select, sin, smoothstep, step, uniform, vec2, vec3 } from 'three/tsl';
 import type { FloatNode, PaletteLookup, TSLUniform, Vec3Node } from '../tsl';
 
 /**
@@ -121,6 +121,28 @@ function firGlyph(px: FloatNode, pz: FloatNode, j: FloatNode, cw: number, rh: nu
   return { dot, light, inside };
 }
 
+/**
+ * Eine Tanne als WGSL-Funktion (Layout, Cache je Builder: `common/tslFunctionCache.ts`). Ausgerollt kostete jede Glyphe
+ * hunderte Variablen im privaten Adressraum des Geländeshaders; WebKit (iPhone, WebGPU) begrenzt ihn auf 8192 Byte, die
+ * Pipeline des Bodens fiel aus („private address space exceeds 8192 bytes“). Als Funktion liegen die Zwischenwerte im
+ * Funktionsraum, einmal je Aufruf. Rückgabe: (Punkt, Licht, innen).
+ */
+type GlyphCall = (...args: FloatNode[]) => { x: FloatNode; y: FloatNode; z: FloatNode };
+/** Argumente einer Layout-Funktion: three übergibt sie als Liste oder nach Namen (je nach Aufruf). */
+export function layoutArgs(a: unknown, names: readonly string[]): FloatNode[] {
+  return Array.isArray(a) ? (a as FloatNode[]) : names.map((n) => (a as Record<string, FloatNode>)[n]!);
+}
+const FIR_ARGS = ['px', 'pz', 'j', 'fw', 'sunX', 'slopeLit'] as const;
+const firGlyphFn = (Fn as unknown as (f: (a: unknown) => unknown) => { setLayout(l: object): GlyphCall })((args) => {
+  const a = layoutArgs(args, FIR_ARGS);
+  const g = firGlyph(a[0]!, a[1]!, a[2]!, FIR_CELL, FIR_ROW, a[3]!, a[4]!, a[5]!, 0);
+  return vec3(g.dot, g.light, g.inside);
+}).setLayout({
+  name: 'eeFirGlyph',
+  type: 'vec3',
+  inputs: FIR_ARGS.map((name) => ({ name, type: 'float' })),
+});
+
 /** Eine Oktave: die Tanne der eigenen Reihe und die der näheren Reihe davor (deren Spitze hereinragt). */
 function firOctave(px: FloatNode, pz: FloatNode, scale: FloatNode, fw: FloatNode, sunX: FloatNode, slopeLit: FloatNode): { dot: FloatNode; light: FloatNode } {
   // Oktave als Maßstab: Koordinaten verkleinern statt Zellen vergrößern (ganzzahlige Faktoren, periodisch in 700)
@@ -128,10 +150,10 @@ function firOctave(px: FloatNode, pz: FloatNode, scale: FloatNode, fw: FloatNode
   const qz = pz.div(scale);
   const fwq = fw.div(scale);
   const j0 = floor(qz.div(FIR_ROW));
-  const back = firGlyph(qx, qz, j0, FIR_CELL, FIR_ROW, fwq, sunX, slopeLit, 0);
-  const front = firGlyph(qx, qz, j0.add(1), FIR_CELL, FIR_ROW, fwq, sunX, slopeLit, 0);
-  const useFront = front.inside.greaterThan(0.5);
-  return { dot: select(useFront, front.dot, back.dot), light: select(useFront, front.light, back.light) };
+  const back = firGlyphFn(qx, qz, j0, fwq, sunX, slopeLit);
+  const front = firGlyphFn(qx, qz, j0.add(1), fwq, sunX, slopeLit);
+  const useFront = front.z.greaterThan(0.5);
+  return { dot: select(useFront, front.x, back.x), light: select(useFront, front.y, back.y) };
 }
 
 /** Uniform für den Projektionsmaßstab (der Besitzer setzt `camera.projectionMatrix.elements[5]` je Frame). */

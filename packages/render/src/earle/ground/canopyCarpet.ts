@@ -1,7 +1,7 @@
 import type { Vector3 } from 'three/webgpu';
-import { clamp, float, floor, fract, max, mix, select, sin, smoothstep, sqrt, step, vec2 } from 'three/tsl';
+import { Fn, clamp, float, floor, fract, max, mix, select, sin, smoothstep, sqrt, step, vec2, vec4 } from 'three/tsl';
 import type { FloatNode, PaletteLookup, TSLUniform, Vec3Node } from '../tsl';
-import { cellHash, octaves, quarterRotate } from './firCarpet';
+import { cellHash, layoutArgs, octaves, quarterRotate } from './firCarpet';
 
 /**
  * Kronendach als Bodenornament (Welt 02, Bild 02 = Ebene 49): von oben gesehen ist der Wald ein Teppich runder Kronen,
@@ -100,6 +100,27 @@ function crownGlyph(px: FloatNode, pz: FloatNode, j: FloatNode, neighbour: boole
   return { inside, cover, tone, cz };
 }
 
+/**
+ * Eine Krone als WGSL-Funktion (Layout; je Nachbarspalte eine), aus demselben Grund wie `eeFirGlyph` in firCarpet:
+ * ausgerollt sprengten die sechs Glyphen je Oktave den privaten Adressraum (8192 Byte) des Geländeshaders auf WebKit.
+ * Rückgabe: (innen, Deckung, Ton, z der Krone).
+ */
+type CrownCall = (...args: FloatNode[]) => { x: FloatNode; y: FloatNode; z: FloatNode; w: FloatNode };
+const CROWN_ARGS = ['px', 'pz', 'j', 'fw', 'sx', 'sy', 'sz'] as const;
+function crownGlyphFn(neighbour: boolean): CrownCall {
+  return (Fn as unknown as (f: (a: unknown) => unknown) => { setLayout(l: object): CrownCall })((args) => {
+    const a = layoutArgs(args, CROWN_ARGS);
+    const c = crownGlyph(a[0]!, a[1]!, a[2]!, neighbour, a[3]!, a[4]!, a[5]!, a[6]!, 0);
+    return vec4(c.inside, c.cover, c.tone, c.cz);
+  }).setLayout({
+    name: neighbour ? 'eeCrownGlyphNeighbour' : 'eeCrownGlyph',
+    type: 'vec4',
+    inputs: CROWN_ARGS.map((name) => ({ name, type: 'float' })),
+  });
+}
+const crownGlyphNeighbour = crownGlyphFn(true);
+const crownGlyphOwn = crownGlyphFn(false);
+
 /** Eine Oktave: von vorn nach hinten die erste Krone, die den Punkt enthält (drei Reihen, je zwei Spalten). */
 function crownOctave(px: FloatNode, pz: FloatNode, scale: FloatNode, fw: FloatNode, sx: FloatNode, sy: FloatNode, sz: FloatNode): { cover: FloatNode; tone: FloatNode } {
   const qx = px.div(scale);
@@ -111,11 +132,11 @@ function crownOctave(px: FloatNode, pz: FloatNode, scale: FloatNode, fw: FloatNo
   let tone: FloatNode = float(0);
   for (const dj of [-1, 0, 1]) {
     for (const neighbour of [true, false]) {
-      const c = crownGlyph(qx, qz, j0.add(dj), neighbour, fwq, sx, sy, sz, 0);
-      const take = c.inside.greaterThan(0.5).and(c.cz.greaterThan(cz));
-      cz = select(take, c.cz, cz);
-      cover = select(take, c.cover, cover);
-      tone = select(take, c.tone, tone);
+      const c = (neighbour ? crownGlyphNeighbour : crownGlyphOwn)(qx, qz, j0.add(dj), fwq, sx, sy, sz);
+      const take = c.x.greaterThan(0.5).and(c.w.greaterThan(cz));
+      cz = select(take, c.w, cz);
+      cover = select(take, c.y, cover);
+      tone = select(take, c.z, tone);
     }
   }
   return { cover, tone };
