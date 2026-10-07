@@ -232,12 +232,12 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     // Hals verjüngt sich nach oben und weitet sich im letzten Drittel wieder in den Hinterkopf (Tropfen Hals → Kopf,
     // Bild 6): der Kopf sitzt nicht auf einem Stiel, die Rückenlinie des Halses läuft in den Schädel
     const hrNeck = b.kopf.groesse * 0.33 * H;
-    const rTop = rN * 0.58;
-    const flare = Math.max(0, (hrNeck * 0.62) / Math.max(1e-6, rTop) - 1);
+    const rNeckTop = rN * 0.58;
+    const flare = Math.max(0, (hrNeck * 0.62) / Math.max(1e-6, rNeckTop) - 1);
     const radii = pts.map((_p, i) => {
       const t = i / (pts.length - 1);
       const sw = Math.pow(clamp((t - 0.55) / 0.45, 0, 1), 1.6);
-      return (rBaseEff + (rTop - rBaseEff) * t) * (1 + flare * sw);
+      return (rBaseEff + (rNeckTop - rBaseEff) * t) * (1 + flare * sw);
     });
     const pl = makePolyline(pts, radii, FWD);
     const neckGroup = groups.length;
