@@ -27,6 +27,7 @@ export interface CreatureBuild {
   /** Verschluss-Morph (xyz je Vertex, geschlossene Pose) und Kieferwinkel. */
   closed: Float32Array;
   pucker: Float32Array;
+  puckerClose: number;
   closeAngle: number;
   maxOpenAngle: number;
   bones: Bone[];
@@ -73,7 +74,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   const descriptors = computeDescriptors(c, positions, normals);
   const ws = opts.weightSmoothing ?? 2;
   if (ws > 0) smoothWeights(descriptors, adj, c.bones.length, ws);
-  const closing = b.maul.sichtbar ? computeClosing(c, positions, descriptors) : { closed: new Float32Array(positions.length), pucker: new Float32Array(positions.length), closeAngle: 0, maxOpenAngle: 0 };
+  const closing = b.maul.sichtbar ? computeClosing(c, positions, descriptors) : { closed: new Float32Array(positions.length), pucker: new Float32Array(positions.length), puckerClose: 0, closeAngle: 0, maxOpenAngle: 0 };
   const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const m = c.mouth;
   return {
@@ -83,6 +84,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     descriptors,
     closed: closing.closed,
     pucker: closing.pucker,
+    puckerClose: closing.puckerClose,
     closeAngle: closing.closeAngle,
     maxOpenAngle: closing.maxOpenAngle,
     bones: c.bones,

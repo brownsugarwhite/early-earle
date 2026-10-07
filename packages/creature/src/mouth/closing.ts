@@ -15,6 +15,8 @@ export interface ClosingResult {
   closed: Float32Array;
   /** Spitzmund: radiale Weitung des Lochmauls bei voller Öffnung (xyz je Vertex). */
   pucker: Float32Array;
+  /** Faktor, mit dem der Spitzmund-Morph negativ das Loch schließt (Bauradius → Minimalradius). */
+  puckerClose: number;
   /** Drehwinkel des Unterkiefers vom Bauzustand zur Schließung (rad, positiv = zu). */
   closeAngle: number;
   /** Maximaler Öffnungswinkel (rad) ab Bauzustand. */
@@ -26,7 +28,7 @@ export function computeClosing(c: Construction, positions: Float32Array, desc: D
   const closed = new Float32Array(n * 3);
   const pucker = new Float32Array(n * 3);
   const mouth = c.mouth;
-  if (!mouth) return { closed, pucker, closeAngle: 0, maxOpenAngle: 0.6 };
+  if (!mouth) return { closed, pucker, puckerClose: 0, closeAngle: 0, maxOpenAngle: 0.6 };
   const H = c.bodyScale;
   const hinge = mouth.jawHinge.point;
   const axis = normalize(mouth.jawHinge.axis);
@@ -135,5 +137,6 @@ export function computeClosing(c: Construction, positions: Float32Array, desc: D
       pucker[v * 3 + 2] = fx[2] * dx + fy[2] * dy;
     }
   }
-  return { closed, pucker, closeAngle, maxOpenAngle };
+  const puckerClose = rhoFull - rhoBuild > 1e-4 ? (rhoBuild - rhoBuild * 0.12) / (rhoFull - rhoBuild) : 0;
+  return { closed, pucker, puckerClose, closeAngle, maxOpenAngle };
 }

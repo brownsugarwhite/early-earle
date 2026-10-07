@@ -60,6 +60,7 @@ export class CreatureMesh {
   private jawBuildOpen = 0.3;
   private closeAngle = 0.2;
   private maxOpenAngle = 0.6;
+  private puckerClose = 0;
   private upperTeeth: InstancedMesh | null = null;
   private lowerTeeth: InstancedMesh | null = null;
   private tongue: Mesh | null = null;
@@ -185,6 +186,7 @@ export class CreatureMesh {
       this.jawBuildOpen = build.mouth.oeffnung;
       this.closeAngle = build.closeAngle;
       this.maxOpenAngle = build.maxOpenAngle;
+      this.puckerClose = build.puckerClose;
     }
     // --- Zähne und Zunge ------------------------------------------------------------------------------------------------
     const stilZ = b.zaehne.stil;
@@ -292,7 +294,8 @@ export class CreatureMesh {
       // Verschluss-Morph greift beim Schließen, Spitzmund-Morph beim Weiten des Lochmauls
       const t = 1 - Math.min(1, o / ob);
       this.uniforms.verschluss.value = t * t * (3 - 2 * t);
-      this.uniforms.spitzmund.value = Math.max(0, (o - ob) / Math.max(1e-3, 1 - ob));
+      // Lochmaul: beim Schließen zieht sich das Loch radial zusammen (negativer Spitzmund)
+      this.uniforms.spitzmund.value = o >= ob ? (o - ob) / Math.max(1e-3, 1 - ob) : -t * this.puckerClose * (1 - form);
     }
     // Atmen: Körperknochen sanft skalieren (oben stärker)
     const bodyBones = this.build.groups.find((g) => g.kind === 'koerper')?.bones ?? [];
