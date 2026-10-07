@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { parseBauplan, stableJson, type Bauplan } from '@ee/creature';
 import { STIL_STANDARD, type WesenStil } from '@ee/render';
 import { WESEN_VORLAGEN } from './presets';
-import { bereinigeBauplan, bereinigeStil, isTabId, setzeTabZurueck, setzeWert, wuerfleTab, type TabId } from './regler';
+import { bereinigeBauplan, bereinigeStil, isTabId, leseWert, setzeTabZurueck, setzeWert, wuerfleTab, type TabId } from './regler';
 
 /**
  * Zustand des Grundformen-Labs: Bauplan und Stil mit Verlauf (Rückgängig/Wiederholen, 60 Schritte; ein Zug am Regler
@@ -195,6 +195,7 @@ export const useWesenStore = create<WesenState>((set, get) => {
 
     setzeBauplanWert: (key, value, opKey = key) => {
       const s = get();
+      if (Object.is(leseWert(s.bauplan, key), value)) return; // gleicher Wert (z. B. aktiver Chip): kein Schritt
       let next: Bauplan;
       try {
         next = parseBauplan(setzeWert(s.bauplan, key, value));
@@ -206,6 +207,7 @@ export const useWesenStore = create<WesenState>((set, get) => {
 
     setzeStilWert: (key, value, opKey = key) => {
       const s = get();
+      if (Object.is(leseWert(s.stil, key), value)) return;
       aendere({ bauplan: s.bauplan, stil: bereinigeStil(setzeWert(s.stil, key, value)) }, `s:${opKey}`);
     },
 
