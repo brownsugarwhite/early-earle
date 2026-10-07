@@ -19,7 +19,7 @@ EE_SHOTS=1 EE_VORLAGEN=keil,loch EE_SHOTS_TAG=vorher E2E_PORT=4471 node apps/gam
 ```
 
 `scripts/e2e.mjs` startet den Dev-Server selbst auf `E2E_PORT` und beendet ihn danach. Nie die Ports 5173/5174 nehmen
-(Florians Dev-Server). Laufzeit: gut 20 s für alle neun Vorlagen (M3 Pro).
+(Florians Dev-Server). Laufzeit: etwa 30 s für alle zwölf Vorlagen bei 80³ (M3 Pro).
 
 ## Parameter (Umgebungsvariablen)
 
@@ -36,7 +36,7 @@ EE_SHOTS=1 EE_VORLAGEN=keil,loch EE_SHOTS_TAG=vorher E2E_PORT=4471 node apps/gam
 
 - `wesen-lab-<id>[-TAG].png` — eine Vorlage, 900 × 700, weißer Grund, Bögen-Kamera (Dreiviertel von rechts vorn, leicht
   von oben, lange Brennweite), Wesen eng eingepasst (84 % der Bildhöhe bzw. -breite).
-- `wesen-lab-kontaktbogen[-TAG].png` — alle Vorlagen im Raster (3 Spalten); Kopfzeile mit Tag, Commit-Hash (mit
+- `wesen-lab-kontaktbogen[-TAG].png` — alle Vorlagen im Raster (bis neun Vorlagen 3 Spalten, darüber 4); Kopfzeile mit Tag, Commit-Hash (mit
   „+ Änderungen“, wenn tracked Dateien in `apps`, `packages`, `content` geändert sind), Datum, Backend und Ansicht;
   unter jedem Bild Name, Id, Dreiecke, Zähne und Bauzeit der feinen Vermaschung.
 
