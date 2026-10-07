@@ -61,12 +61,12 @@ export class WesenLabScene implements SceneController {
     console.error('[wesen] Bau fehlgeschlagen:', msg);
   });
   private stats: WesenLabStats = { vertices: 0, triangles: 0, bones: 0, teeth: 0, buildMs: 0, resolution: 0, pending: false, fehler: null, builds: 0 };
-  /** Auflösungen: grob beim Ziehen (passt sich der Bauzeit an), fein in Ruhe. */
-  lowRes = 30;
-  highRes = 56;
+  /** Auflösungen (Leitung: Held 80³, Vorschau 36³): grob beim Ziehen (passt sich der Bauzeit an), fein in Ruhe. */
+  lowRes = 36;
+  highRes = 80;
   /** Grobe Auflösung höchstens / mindestens (Ziel: ≤ 90 ms je grobem Bau, damit das Wesen beim Ziehen mitläuft). */
-  private readonly lowMax = 30;
-  private readonly lowMin = 22;
+  private readonly lowMax = 36;
+  private readonly lowMin = 24;
   private formKey = '';
   private stilKey = '';
   private stilDirty = false;

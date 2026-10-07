@@ -1,7 +1,10 @@
-import { Bone, BufferAttribute, BufferGeometry, ConeGeometry, Float32BufferAttribute, Group, InstancedMesh, Matrix4, Mesh, Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Uint16BufferAttribute, Vector3, Vector4 } from 'three/webgpu';
+import { Bone, BufferAttribute, BufferGeometry, ConeGeometry, Float32BufferAttribute, Group, InstancedMesh, InterleavedBuffer, InterleavedBufferAttribute, Matrix4, Mesh, Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Uint16BufferAttribute, Vector3, Vector4 } from 'three/webgpu';
 import type { MeshBasicNodeMaterial } from 'three/webgpu';
 import type { Bauplan, CreatureBuild } from '@ee/creature';
 import { applyStil, createCreatureMaterial, createCreatureUniforms, createTongueMaterial, createToothMaterial, MAX_SLIT_EYES, type CreatureColors, type CreatureMaterialUniforms } from './material/earleCreature';
+import { applyMuster } from './material/muster';
+import { applyJellyColors, createJellyMaterial, createJellyUniforms, placeBubbles, type JellyUniforms } from './material/jelly';
+import { applyEyeType, createEyeMaterial, createEyeUniforms, type EyeUniforms } from './material/eye';
 import { STIL_STANDARD, type WesenStil } from './material/stil';
 
 /**
@@ -22,7 +25,7 @@ const _s = new Vector3();
 
 function colorsOf(b: Bauplan): CreatureColors {
   const f = b.muster.farben;
-  return { grund: f.grund, bauch: f.bauch, lippe: f.lippe, rachen: f.rachen, auge: f.auge };
+  return { grund: f.grund, bauch: f.bauch, muster: f.muster, akzent: f.akzent, lippe: f.lippe, rachen: f.rachen, auge: f.auge };
 }
 
 function toothGeometry(stil: 'rund' | 'spitz'): BufferGeometry {
@@ -46,6 +49,12 @@ export class CreatureMesh {
   readonly root = new Group();
   readonly uniforms: CreatureMaterialUniforms;
   readonly material: MeshBasicNodeMaterial;
+  readonly jellyMaterial: MeshBasicNodeMaterial;
+  readonly jelly: JellyUniforms;
+  readonly eye: EyeUniforms;
+  private eyeMaterial: MeshBasicNodeMaterial;
+  private eyeMeshes: Mesh[] = [];
+  private eyeGeo: BufferGeometry | null = null;
   private toothMaterial: MeshBasicNodeMaterial;
   private tongueMaterial: MeshBasicNodeMaterial;
   mesh: SkinnedMesh | null = null;
@@ -54,6 +63,9 @@ export class CreatureMesh {
   build: CreatureBuild | null = null;
   private jawAxis = new Vector3(1, 0, 0);
   private jawBuildOpen = 0.3;
+  private closeAngle = 0.2;
+  private maxOpenAngle = 0.6;
+  private puckerClose = 0;
   private upperTeeth: InstancedMesh | null = null;
   private lowerTeeth: InstancedMesh | null = null;
   private tongue: Mesh | null = null;
@@ -76,8 +88,12 @@ export class CreatureMesh {
   constructor(opts: CreatureMeshOptions = {}) {
     this.stil = opts.stil ?? STIL_STANDARD;
     this.castShadow = opts.castShadow ?? true;
-    this.uniforms = createCreatureUniforms({ grund: '#9c6cc7', bauch: '#d9c7ec', lippe: '#5a2f6b', rachen: '#6e2334', auge: '#101418' }, this.stil, 1);
+    this.uniforms = createCreatureUniforms({ grund: '#9c6cc7', bauch: '#d9c7ec', muster: '#3d2457', akzent: '#f08a4b', lippe: '#5a2f6b', rachen: '#6e2334', auge: '#101418' }, this.stil, 1);
     this.material = createCreatureMaterial(this.uniforms);
+    this.jelly = createJellyUniforms();
+    this.jellyMaterial = createJellyMaterial(this.uniforms, this.jelly);
+    this.eye = createEyeUniforms();
+    this.eyeMaterial = createEyeMaterial(this.uniforms, this.eye);
     this.toothMaterial = createToothMaterial(this.uniforms, '#f1e6c9');
     this.tongueMaterial = createTongueMaterial(this.uniforms, '#e07c92');
     this.root.name = 'wesen';
@@ -89,6 +105,11 @@ export class CreatureMesh {
     this.bauplan = b;
     applyStil(this.uniforms, stil, colorsOf(b));
     this.uniforms.bauchStaerke.value = b.muster.typ === 'bauchRuecken' ? 1 : 0;
+    applyMuster(this.uniforms.musterU, b.muster);
+    applyEyeType(this.eye, b.augen.typ, b.muster.farben.auge, b.muster.farben.pupille);
+    applyJellyColors(this.jelly, b.muster.farben.grund, b.muster.farben.muster, stil);
+    placeBubbles(this.jelly, this.build?.bodyScale ?? b.koerper.hoehe, b.material === 'jelly' ? 9 : 0, b.seed);
+    if (this.mesh) this.mesh.material = b.material === 'jelly' ? this.jellyMaterial : this.material;
     this.uniforms.bauchlinie.value = (b.muster.bauchlinie - 0.5) * 1.6;
     if (this.toothMaterial) this.toothMaterial.dispose();
     this.toothMaterial = createToothMaterial(this.uniforms, b.muster.farben.zahn);
@@ -113,9 +134,37 @@ export class CreatureMesh {
     for (let i = 0; i < si.length; i++) si[i] = build.descriptors.skinIndex[i]!;
     g.setAttribute('skinIndex', new Uint16BufferAttribute(si, 4));
     g.setAttribute('skinWeight', new BufferAttribute(build.descriptors.skinWeight, 4));
-    g.setAttribute('eeSpine', new BufferAttribute(build.descriptors.spine, 4));
-    g.setAttribute('eeRegion', new BufferAttribute(build.descriptors.region, 4));
-    g.setAttribute('eeAo', new BufferAttribute(build.descriptors.ao, 1));
+    // Alle Deskriptoren in einem verschachtelten Puffer (WebGPU erlaubt höchstens 8 Vertex-Puffer):
+    // Spine (4) · Region (4) · Extra (AO, Dicke, Kante) · Verschluss (3) · Spitzmund (3) = 17 Floats je Vertex
+    const n = build.positions.length / 3;
+    const packed = new Float32Array(n * 17);
+    const d = build.descriptors;
+    for (let v = 0; v < n; v++) {
+      const o = v * 17;
+      packed[o] = d.spine[v * 4]!;
+      packed[o + 1] = d.spine[v * 4 + 1]!;
+      packed[o + 2] = d.spine[v * 4 + 2]!;
+      packed[o + 3] = d.spine[v * 4 + 3]!;
+      packed[o + 4] = d.region[v * 4]!;
+      packed[o + 5] = d.region[v * 4 + 1]!;
+      packed[o + 6] = d.region[v * 4 + 2]!;
+      packed[o + 7] = d.region[v * 4 + 3]!;
+      packed[o + 8] = d.ao[v]!;
+      packed[o + 9] = d.thick[v]!;
+      packed[o + 10] = build.crease[v]!;
+      packed[o + 11] = build.closed[v * 3]!;
+      packed[o + 12] = build.closed[v * 3 + 1]!;
+      packed[o + 13] = build.closed[v * 3 + 2]!;
+      packed[o + 14] = build.pucker[v * 3]!;
+      packed[o + 15] = build.pucker[v * 3 + 1]!;
+      packed[o + 16] = build.pucker[v * 3 + 2]!;
+    }
+    const ib = new InterleavedBuffer(packed, 17);
+    g.setAttribute('eeSpine', new InterleavedBufferAttribute(ib, 4, 0));
+    g.setAttribute('eeRegion', new InterleavedBufferAttribute(ib, 4, 4));
+    g.setAttribute('eeExtra', new InterleavedBufferAttribute(ib, 3, 8));
+    g.setAttribute('eeClosed', new InterleavedBufferAttribute(ib, 3, 11));
+    g.setAttribute('eePucker', new InterleavedBufferAttribute(ib, 3, 14));
     g.setIndex(new BufferAttribute(build.index, 1));
     g.computeBoundingSphere();
     // --- Skelett: Knochen mit Identitätsdrehung, Position relativ zum Elternknochen ---------------------------------
@@ -130,7 +179,7 @@ export class CreatureMesh {
       bone.position.set(bb.pos[0] - parent[0]!, bb.pos[1] - parent[1]!, bb.pos[2] - parent[2]!);
       if (bb.parent >= 0) this.bones[bb.parent]!.add(bone);
     });
-    const mesh = new SkinnedMesh(g, this.material);
+    const mesh = new SkinnedMesh(g, b.material === 'jelly' ? this.jellyMaterial : this.material);
     mesh.name = 'wesen-koerper';
     mesh.frustumCulled = false;
     mesh.castShadow = this.castShadow;
@@ -144,6 +193,9 @@ export class CreatureMesh {
     if (build.mouth) {
       this.jawAxis.set(...build.mouth.hinge.axis).normalize();
       this.jawBuildOpen = build.mouth.oeffnung;
+      this.closeAngle = build.closeAngle;
+      this.maxOpenAngle = build.maxOpenAngle;
+      this.puckerClose = build.puckerClose;
     }
     // --- Zähne und Zunge ------------------------------------------------------------------------------------------------
     const stilZ = b.zaehne.stil;
@@ -176,7 +228,7 @@ export class CreatureMesh {
         this.lowerTeeth = make(lower, jaw, new Vector3(-jp[0], -jp[1], -jp[2]));
       }
     }
-    if (build.mouth && b.zunge.groesse > 0.02) {
+    if (build.mouth && b.maul.sichtbar && b.zunge.groesse > 0.02) {
       const s = build.mouth.tongue.size;
       this.tongueGeo = new SphereGeometry(1, 16, 12);
       this.tongueGeo.scale(s * 0.9, s * 0.32, s * 1.25);
@@ -190,9 +242,32 @@ export class CreatureMesh {
       (jaw ?? this.root).add(tongue);
       this.tongue = tongue;
     }
-    // --- Augen (Schlitze im Material) --------------------------------------------------------------------------------------
+    // --- Augen: Schlitze im Material oder Augäpfel als Kugeln in der Höhle ------------------------------------------------
     const eyes = build.eyes.slice(0, MAX_SLIT_EYES);
-    this.uniforms.eyeCount.value = eyes.length;
+    const slit = b.augen.typ === 'schlitz';
+    this.uniforms.eyeCount.value = slit ? eyes.length : 0;
+    if (!slit && eyes.length > 0) {
+      this.eyeGeo = new SphereGeometry(1, 28, 20);
+      const host = this.bones[build.hostBone] ?? this.root;
+      const hp = build.bones[build.hostBone]?.pos ?? [0, 0, 0];
+      for (const e of eyes) {
+        const n = new Vector3(...e.normal).normalize();
+        const r = e.radius;
+        // Zentrum: in der Höhle (Tiefe) bzw. aufgesetzt; Blickachse (+z) zeigt entlang der Flächennormale nach außen
+        // Tiefe je Typ: Drache/Schlange liegen tief unter dem Wulst (Bild 11), große Kulleraugen sitzen weiter außen (Bild 10)
+        const typDepth = b.augen.typ === 'drache' || b.augen.typ === 'schlange' ? 0.62 : b.augen.typ === 'schwarzweiss' ? 0.45 : 0.3;
+        const depth = Math.max(e.depth, (b.kopf.braue ?? 0) * 0.22, typDepth);
+        const center = new Vector3(...e.pos).addScaledVector(n, r * (1 - depth) * 0.95 - r * 0.15);
+        const m = new Mesh(this.eyeGeo, this.eyeMaterial);
+        m.name = 'wesen-auge';
+        m.scale.setScalar(r * 1.0);
+        m.position.set(center.x - hp[0]!, center.y - hp[1]!, center.z - hp[2]!);
+        m.quaternion.setFromUnitVectors(new Vector3(0, 0, 1), n);
+        m.castShadow = false;
+        host.add(m);
+        this.eyeMeshes.push(m);
+      }
+    }
     eyes.forEach((e, i) => {
       const n = new Vector3(...e.normal).normalize();
       const up = UP.clone().addScaledVector(n, -UP.dot(n)).normalize();
@@ -242,9 +317,17 @@ export class CreatureMesh {
     if (!this.build || !this.mesh) return;
     const jaw = this.bones[this.build.jawBone];
     if (jaw && this.build.mouth) {
-      const maxAngle = 0.72;
-      const angle = (this.opennessNow - this.jawBuildOpen) * maxAngle;
+      // Bauzustand = Öffnung o_b: darunter schließt der Kiefer um closeAngle, darüber öffnet er bis maxOpenAngle
+      const o = this.opennessNow;
+      const ob = Math.max(1e-3, this.jawBuildOpen);
+      const form = this.bauplan?.maul.form ?? 1;
+      const angle = (o < ob ? -(1 - o / ob) * this.closeAngle : ((o - ob) / Math.max(1e-3, 1 - ob)) * this.maxOpenAngle) * form;
       jaw.quaternion.setFromAxisAngle(this.jawAxis, angle);
+      // Verschluss-Morph greift beim Schließen, Spitzmund-Morph beim Weiten des Lochmauls
+      const t = 1 - Math.min(1, o / ob);
+      this.uniforms.verschluss.value = t * t * (3 - 2 * t);
+      // Lochmaul: beim Schließen zieht sich das Loch radial zusammen (negativer Spitzmund)
+      this.uniforms.spitzmund.value = o >= ob ? (o - ob) / Math.max(1e-3, 1 - ob) : -t * this.puckerClose * (1 - form);
     }
     // Atmen: Körperknochen sanft skalieren (oben stärker)
     const bodyBones = this.build.groups.find((g) => g.kind === 'koerper')?.bones ?? [];
@@ -266,6 +349,10 @@ export class CreatureMesh {
     this.upperTeeth?.removeFromParent();
     this.lowerTeeth?.removeFromParent();
     this.tongue?.removeFromParent();
+    for (const m of this.eyeMeshes) m.removeFromParent();
+    this.eyeMeshes = [];
+    this.eyeGeo?.dispose();
+    this.eyeGeo = null;
     this.toothGeo?.dispose();
     this.tongueGeo?.dispose();
     this.upperTeeth = this.lowerTeeth = null;
@@ -278,6 +365,8 @@ export class CreatureMesh {
   dispose(): void {
     this.clearMesh();
     this.material.dispose();
+    this.jellyMaterial.dispose();
+    this.eyeMaterial.dispose();
     this.toothMaterial.dispose();
     this.tongueMaterial.dispose();
     this.root.removeFromParent();

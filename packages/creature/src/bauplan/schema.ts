@@ -53,6 +53,8 @@ const koerper = z
     buckel: regler(K, 'koerper.buckel', 'Buckel', -1, 1, 0, 'Wölbung hinten oben'),
     neigung: regler(K, 'koerper.neigung', 'Neigung', -1, 1, 0, 'vornüber / zurück'),
     boden: regler(K, 'koerper.boden', 'Standfläche', 0, 1, 0.5, '0 spitz unten … 1 breit flach'),
+    /** Optional: dichtes Breitenprofil (≥ 8 Werte 0…1, unten → oben) statt der fünf Querschnitte, z. B. aus den Grundformen. */
+    profil: z.array(z.number().min(0).max(1.2)).min(8).max(96).optional(),
     querschnitte: z
       .tuple([z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6)])
       .default([0.72, 0.95, 1, 0.9, 0.62]),
@@ -83,6 +85,8 @@ const kopf = z
 const M = 'Maul';
 const maul = z
   .object({
+    /** Ohne Maul: Jelly- und feste Grundblobs der ersten Stufen (Augen bleiben). */
+    sichtbar: z.boolean().default(true),
     hoehe: regler(M, 'maul.hoehe', 'Maulhöhe', 0, 1, 0.45, 'stufenlos von unten nach oben'),
     neigung: regler(M, 'maul.neigung', 'Maulneigung', -1, 1, 0, 'Winkel der Maullinie'),
     form: regler(M, 'maul.form', 'Maulform', 0, 1, 1, '0 rundes Loch … 1 Keil'),
@@ -91,7 +95,7 @@ const maul = z
     oberkiefer: regler(M, 'maul.oberkiefer', 'Oberkiefer', 0, 1.5, 1),
     unterkiefer: regler(M, 'maul.unterkiefer', 'Unterkiefer', 0, 1.5, 0.8, '0 = kein Unterkiefer'),
     biss: regler(M, 'maul.biss', 'Biss', -1, 1, 0, '−1 Unterbiss … +1 Überbiss'),
-    lippe: regler(M, 'maul.lippe', 'Lippenwulst', 0, 1, 0.5),
+    lippe: regler(M, 'maul.lippe', 'Lippenwulst', 0, 1, 0.6),
     kante: regler(M, 'maul.kante', 'Kieferkante', 0, 1, 0, 'weich … kantig (Raubkatze)'),
     wForm: regler(M, 'maul.wForm', 'W-Form', 0, 1, 0, 'Oberlippe Hund/Katze'),
     tiefe: regler(M, 'maul.tiefe', 'Rachentiefe', 0.2, 1, 0.6),
@@ -102,9 +106,9 @@ const maul = z
 const zaehne = z
   .object({
     stil: z.enum(ZAHN_STILE).default('spitz'),
-    groesse: regler(M, 'zaehne.groesse', 'Zahngröße', 0, 1, 0.5),
+    groesse: regler(M, 'zaehne.groesse', 'Zahngröße', 0, 1, 0.6),
     streuung: regler(M, 'zaehne.streuung', 'Zahnstreuung', 0, 1, 0.4, 'mal groß, mal klein'),
-    dichte: regler(M, 'zaehne.dichte', 'Zahndichte', 0, 1, 0.6),
+    dichte: regler(M, 'zaehne.dichte', 'Zahndichte', 0, 1, 0.4),
     eckzaehne: regler(M, 'zaehne.eckzaehne', 'Eckzähne', 0, 1, 0.5),
     hauer: regler(M, 'zaehne.hauer', 'Hauer', 0, 1, 0, 'ragen über die Oberlippe'),
   })

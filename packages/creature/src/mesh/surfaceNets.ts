@@ -16,6 +16,8 @@ export interface ContourOptions {
   cell: number;
   /** Gitterverschiebung in Zellanteilen (gegen Pinch-Vertices). */
   shift?: number;
+  /** Narrow-Band-Auswertung (Standard an); aus = jede Zelle exakt (Vergleichstests). */
+  narrowBand?: boolean;
 }
 
 export interface RawContour {
@@ -45,7 +47,7 @@ export function contour(sdf: Sdf, opts: ContourOptions): RawContour {
   // Narrow Band: grobe Blöcke von B Zellen; liegt die Fläche sicher nicht im Block (|d| an allen Ecken größer als die
   // halbe Blockdiagonale plus eine Zelle, gleiches Vorzeichen), werden die feinen Werte trilinear interpoliert statt
   // ausgewertet. Nur Zellen nahe der Fläche kosten echte SDF-Auswertungen.
-  const B = 4;
+  const B = opts.narrowBand === false ? 1_000_000 : 4;
   const cbx = Math.ceil((nx - 1) / B) + 1, cby = Math.ceil((ny - 1) / B) + 1, cbz = Math.ceil((nz - 1) / B) + 1;
   const coarse = new Float32Array(cbx * cby * cbz);
   const cat = (i: number, j: number, k: number): number => (k * cby + j) * cbx + i;
@@ -59,7 +61,9 @@ export function contour(sdf: Sdf, opts: ContourOptions): RawContour {
       }
     }
   }
-  const far = cell * (B * 0.87 + 1.0);
+  // Sicherheitsrand: unsere Abstände sind Schranken, keine exakten Distanzen (Smooth-Min, Ellipsoid-Näherung,
+  // Superellipse, Scherung) — deshalb deutlich mehr als die halbe Blockdiagonale
+  const far = cell * (B * 0.87 * 1.7 + 2.0);
   const c8 = new Float32Array(8);
   for (let bk = 0; bk < cbz - 1; bk++) {
     for (let bj = 0; bj < cby - 1; bj++) {
@@ -207,8 +211,8 @@ export function contourManifold(sdf: Sdf, opts: Omit<ContourOptions, 'shift'>, a
   return best!;
 }
 
-/** Behält nur die größte Zusammenhangskomponente (Splitter weg, bevor Taubin Spitzen zieht). */
-export function largestComponent(raw: RawContour): RawContour {
+/** Behält nur die größte Zusammenhangskomponente (Splitter weg); `extras` (je Vertex `size` Werte) werden mit umsortiert. */
+export function largestComponent<T extends RawContour>(raw: T, extras: Array<{ array: Float32Array; size: number }> = []): T {
   const n = raw.vertexCount;
   const parent = new Int32Array(n);
   for (let i = 0; i < n; i++) parent[i] = i;
@@ -244,10 +248,14 @@ export function largestComponent(raw: RawContour): RawContour {
   if (count.size <= 1) return raw;
   const remap = new Int32Array(n).fill(-1);
   const pos: number[] = [];
+  const extraOut = extras.map(() => [] as number[]);
   for (let i = 0; i < n; i++) {
     if (find(i) !== bestRoot) continue;
     remap[i] = pos.length / 3;
     pos.push(raw.positions[i * 3]!, raw.positions[i * 3 + 1]!, raw.positions[i * 3 + 2]!);
+    extras.forEach((e, k) => {
+      for (let c = 0; c < e.size; c++) extraOut[k]!.push(e.array[i * e.size + c]!);
+    });
   }
   const tris: number[] = [];
   for (let t = 0; t < idx.length; t += 3) {
@@ -255,7 +263,10 @@ export function largestComponent(raw: RawContour): RawContour {
     if (a < 0 || b < 0 || c < 0) continue;
     tris.push(a, b, c);
   }
-  return { positions: new Float32Array(pos), index: new Uint32Array(tris), vertexCount: pos.length / 3 };
+  extras.forEach((e, k) => {
+    e.array = new Float32Array(extraOut[k]!);
+  });
+  return { ...raw, positions: new Float32Array(pos), index: new Uint32Array(tris), vertexCount: pos.length / 3 };
 }
 
 /** Nachbarschaftslisten (CSR) aus dem Index. */

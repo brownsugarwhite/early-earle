@@ -24,6 +24,8 @@ export interface WesenStil {
   glimmer: number;
   /** Bodenkontakt: Abdunklung unten (0 … 1). */
   bodenlicht: number;
+  /** Kanten: Facettennormalen an scharfen Kanten (0 … 1). */
+  kanten: number;
   /** Schattenregel: Helligkeitsabfall (OKLab L), Chroma-Zugabe, Farbtondrehung zum Kühlen (Grad). */
   schatten: { l: number; c: number; h: number };
   /** Lichtseite: Aufhellung (OKLab L). */
@@ -37,11 +39,12 @@ export const STIL_STANDARD: WesenStil = {
   federung: 0.45,
   verlauf: 0.6,
   rim: 0.35,
-  korn: 0.45,
+  korn: 0.25,
   glimmer: 0.5,
   bodenlicht: 0.5,
-  schatten: { l: -0.16, c: 0.02, h: 12 },
-  licht: { l: 0.1, c: -0.01 },
+  kanten: 1,
+  schatten: { l: -0.2, c: 0.025, h: 12 },
+  licht: { l: 0.11, c: -0.01 },
 };
 
 // --- OKLab -------------------------------------------------------------------------------------------------------

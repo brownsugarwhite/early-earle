@@ -39,13 +39,15 @@ export interface EllipsoidPrim extends PrimBase {
 }
 
 /**
- * Rotationskörper aus einem 2D-Profil (Polygon in der (q, y)-Ebene, q = Radialmaß ≥ 0, y = Höhe), anisotrop in x/z,
- * mit Superellipsen-Querschnitt (n = 2 rund … 8 würfelig), Scherung (Neigung) und Kantenrundung.
+ * Rotationskörper aus einer glatten Radiusfunktion r(y) (dichte Tabelle über die Höhe), anisotrop in x/z, mit
+ * Superellipsen-Querschnitt (n = 2 rund … 8 würfelig), Scherung (Neigung), flacher Standfläche unten und gerundeter Kante.
+ * Abstand ≈ (q − r(y)) · cos(Steigung) — exakt für gerade Profilstücke, glatt (C1) für die Kuppel.
  */
 export interface RevolvePrim extends PrimBase {
   kind: 'revolve';
-  /** Geschlossenes Profilpolygon, spiegelsymmetrisch um q = 0 (volle Breite), gegen den Uhrzeigersinn. */
-  profile: Array<[number, number]>;
+  /** Radius je Höhenstützstelle, radii[0] bei y = 0, radii[n−1] bei y = height (letzter Wert ≈ 0 = Scheitel). */
+  radii: Float64Array;
+  height: number;
   c: Vec3;
   sx: number;
   sz: number;
@@ -53,7 +55,10 @@ export interface RevolvePrim extends PrimBase {
   n: number;
   /** z-Versatz je Höheneinheit (vornüber > 0). */
   shear: number;
+  /** Rundung der Standkante. */
   round: number;
+  /** Rundung der Deckelkante (0 = Scheitel läuft über die Radiusfunktion aus). */
+  topRound?: number;
 }
 
 /** Freies Primitiv (z. B. Maulhöhle) mit eigener Abstandsfunktion und Hüllquader. */
@@ -93,9 +98,10 @@ export function sdRoundCone(p: Readonly<Vec3>, a: Readonly<Vec3>, b: Readonly<Ve
 
 /** Ellipsoid-Näherung (Quilez), im lokalen Raum. */
 export function sdEllipsoidLocal(x: number, y: number, z: number, r: Readonly<Vec3>): number {
-  const k0 = Math.hypot(x / r[0], y / r[1], z / r[2]);
-  const k1 = Math.hypot(x / (r[0] * r[0]), y / (r[1] * r[1]), z / (r[2] * r[2]));
-  return k1 > 1e-12 ? (k0 * (k0 - 1)) / k1 : -Math.min(r[0], r[1], r[2]);
+  const rx = Math.max(r[0], 1e-4), ry = Math.max(r[1], 1e-4), rz = Math.max(r[2], 1e-4);
+  const k0 = Math.hypot(x / rx, y / ry, z / rz);
+  const k1 = Math.hypot(x / (rx * rx), y / (ry * ry), z / (rz * rz));
+  return k1 > 1e-12 ? (k0 * (k0 - 1)) / k1 : -Math.min(rx, ry, rz);
 }
 
 /** Gerundeter Quader im lokalen Raum. */
@@ -143,6 +149,20 @@ export function sdPolygon2(poly: ReadonlyArray<readonly [number, number]>, px: n
   return s * Math.sqrt(d);
 }
 
+/** Radius und Steigung der Tabelle an Höhe y (Catmull-Rom zwischen den Stützstellen). */
+function radiusAt(prim: RevolvePrim, y: number): { r: number; dr: number } {
+  const n = prim.radii.length;
+  const t = (Math.max(0, Math.min(prim.height, y)) / prim.height) * (n - 1);
+  const i = Math.min(n - 2, Math.max(0, Math.floor(t)));
+  const f = t - i;
+  const r0 = prim.radii[Math.max(0, i - 1)]!, r1 = prim.radii[i]!, r2 = prim.radii[i + 1]!, r3 = prim.radii[Math.min(n - 1, i + 2)]!;
+  const f2 = f * f, f3 = f2 * f;
+  const r = 0.5 * (2 * r1 + (-r0 + r2) * f + (2 * r0 - 5 * r1 + 4 * r2 - r3) * f2 + (-r0 + 3 * r1 - 3 * r2 + r3) * f3);
+  const drdf = 0.5 * ((-r0 + r2) + 2 * (2 * r0 - 5 * r1 + 4 * r2 - r3) * f + 3 * (-r0 + 3 * r1 - 3 * r2 + r3) * f2);
+  const dr = (drdf * (n - 1)) / prim.height;
+  return { r, dr };
+}
+
 export function sdRevolve(p: Readonly<Vec3>, prim: RevolvePrim): number {
   const y = p[1] - prim.c[1];
   const x = p[0] - prim.c[0];
@@ -154,7 +174,41 @@ export function sdRevolve(p: Readonly<Vec3>, prim: RevolvePrim): number {
     const ax = Math.abs(x / prim.sx), az = Math.abs(z / prim.sz);
     q = Math.pow(Math.pow(ax, prim.n) + Math.pow(az, prim.n), 1 / prim.n) * sm;
   }
-  return sdPolygon2(prim.profile, q, y) - prim.round;
+  const H = prim.height;
+  // Exakter 2D-Abstand von (q, y) zur Profil-Polylinie in der Nähe der Höhe y (vier Segmente), Vorzeichen aus r(y).
+  // Die reine Steigungskorrektur versagte am Scheitel (Steigung → ∞ machte alle Abstände ≈ 0 → ausgefranste Kante).
+  const n = prim.radii.length;
+  const step = H / (n - 1);
+  const yc = Math.max(0, Math.min(H, y));
+  const i0 = Math.min(n - 2, Math.max(0, Math.floor(yc / step)));
+  let best = Infinity;
+  for (let i = Math.max(0, i0 - 3); i <= Math.min(n - 2, i0 + 2); i++) {
+    const ay = i * step, ar = prim.radii[i]!;
+    const by = (i + 1) * step, br = prim.radii[i + 1]!;
+    const ex = br - ar, ey = by - ay;
+    const wx = q - ar, wy = y - ay;
+    const tt = Math.max(0, Math.min(1, (wx * ex + wy * ey) / (ex * ex + ey * ey || 1e-12)));
+    const dx = wx - ex * tt, dy = wy - ey * tt;
+    best = Math.min(best, dx * dx + dy * dy);
+  }
+  const { r } = radiusAt(prim, yc);
+  let side = Math.sqrt(best);
+  // innen = innerhalb des (nach oben und unten verlängerten) Seitenprofils; Deckel und Standfläche schließen es unten
+  // über max() ab. Nur nach q zu entscheiden hält das Feld auf y = H und y = 0 stetig (sonst Spitzen am Deckelrand).
+  if (q < r) side = -side;
+  // Standfläche: Schnitt mit dem Halbraum y ≥ 0, Kante gerundet
+  const bottom = -y;
+  const k = prim.round;
+  const h = Math.max(k - Math.abs(side - bottom), 0) / (k || 1e-6);
+  let d = Math.max(side, bottom) + h * h * k * 0.25;
+  // Deckel: Schnitt mit y ≤ H (bei Würfeligkeit bleibt der Radius oben erhalten, die Kante wird gerundet)
+  const kt = prim.topRound ?? 0;
+  if (kt > 0) {
+    const top = y - H;
+    const ht = Math.max(kt - Math.abs(d - top), 0) / kt;
+    d = Math.max(d, top) + ht * ht * kt * 0.25;
+  }
+  return d - prim.round * 0.35;
 }
 
 export function sdPrim(p: Readonly<Vec3>, prim: Prim): number {
@@ -323,16 +377,12 @@ export function primBounds(prim: Prim): { min: Vec3; max: Vec3 } {
       return { min: [prim.c[0] - r, prim.c[1] - r, prim.c[2] - r], max: [prim.c[0] + r, prim.c[1] + r, prim.c[2] + r] };
     }
     case 'revolve': {
-      let qmax = 0, ymin = Infinity, ymax = -Infinity;
-      for (const [q, y] of prim.profile) {
-        qmax = Math.max(qmax, Math.abs(q));
-        ymin = Math.min(ymin, y);
-        ymax = Math.max(ymax, y);
-      }
+      let rmax = 0;
+      for (let i = 0; i < prim.radii.length; i++) rmax = Math.max(rmax, prim.radii[i]!);
       const sm = Math.sqrt(prim.sx * prim.sz);
-      const rx = (qmax / sm) * prim.sx + prim.round;
-      const rz = (qmax / sm) * prim.sz + prim.round + Math.abs(prim.shear) * Math.max(Math.abs(ymin), Math.abs(ymax));
-      return { min: [prim.c[0] - rx, prim.c[1] + ymin - prim.round, prim.c[2] - rz], max: [prim.c[0] + rx, prim.c[1] + ymax + prim.round, prim.c[2] + rz] };
+      const rx = (rmax / sm) * prim.sx + prim.round;
+      const rz = (rmax / sm) * prim.sz + prim.round + Math.abs(prim.shear) * prim.height;
+      return { min: [prim.c[0] - rx, prim.c[1] - prim.round, prim.c[2] - rz], max: [prim.c[0] + rx, prim.c[1] + prim.height + prim.round, prim.c[2] + rz] };
     }
     case 'custom':
       return prim.bounds;

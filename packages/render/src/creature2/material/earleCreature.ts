@@ -1,8 +1,9 @@
 import { Vector3, Vector4 } from 'three';
 import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
-import { Fn, abs, attribute, clamp, dot, float, floor, fract, hash, max, min, mix, normalView, normalize, positionGeometry, positionView, pow, sin, smoothstep, time, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
+import { Fn, abs, attribute, clamp, cross, dFdx, dFdy, dot, float, floor, fract, hash, max, min, mix, normalView, normalize, positionGeometry, positionLocal, positionView, pow, sin, smoothstep, time, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { STIL_STANDARD, farbRolle, type WesenStil } from './stil';
+import { createMusterUniforms, musterMasks, type MusterUniforms } from './muster';
 
 /**
  * Das Earle-Wesen-Material (erste Fassung, Look-Vertrag Regeln 1–5, 9, 10 teilweise, 12):
@@ -24,13 +25,18 @@ export interface CreatureMaterialUniforms {
   korn: UniformNode<'float', number>;
   glimmer: UniformNode<'float', number>;
   bodenlicht: UniformNode<'float', number>;
+  /** Kanten: Anteil Facettennormale an scharfen Kanten (0 weich … 1 scharf). */
+  kanten: UniformNode<'float', number>;
   /** Körperhöhe (Korn- und Augenmaße). */
   bodyScale: UniformNode<'float', number>;
   /** Farbrollen als base/schatten/licht. */
   grund: Vec3Triple;
   bauch: Vec3Triple;
+  muster: Vec3Triple;
+  akzent: Vec3Triple;
   lippe: Vec3Triple;
   rachen: Vec3Triple;
+  musterU: MusterUniforms;
   auge: UniformNode<'vec3', Vector3>;
   /** Bauch/Rücken-Grenze (−1…1 in der dorsalen Koordinate) und Weichheit. */
   bauchlinie: UniformNode<'float', number>;
@@ -40,6 +46,10 @@ export interface CreatureMaterialUniforms {
   eyeUp: ReturnType<typeof uniformArray>;
   eyeCount: UniformNode<'float', number>;
   blink: UniformNode<'float', number>;
+  /** Gewicht des Verschluss-Morphs (1 = Maul zu). */
+  verschluss: UniformNode<'float', number>;
+  /** Gewicht des Spitzmund-Morphs (1 = Lochmaul ganz weit). */
+  spitzmund: UniformNode<'float', number>;
 }
 
 export interface Vec3Triple {
@@ -70,6 +80,8 @@ export function lightDirFromStil(stil: WesenStil, out = new Vector3()): Vector3 
 export interface CreatureColors {
   grund: string;
   bauch: string;
+  muster: string;
+  akzent: string;
   lippe: string;
   rachen: string;
   auge: string;
@@ -87,9 +99,13 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     korn: uniform(stil.korn),
     glimmer: uniform(stil.glimmer),
     bodenlicht: uniform(stil.bodenlicht),
+    kanten: uniform(stil.kanten),
     bodyScale: uniform(bodyScale),
     grund: triple(colors.grund, stil),
     bauch: triple(colors.bauch, stil),
+    muster: triple(colors.muster, stil),
+    akzent: triple(colors.akzent, stil),
+    musterU: createMusterUniforms(),
     lippe: triple(colors.lippe, stil),
     rachen: triple(colors.rachen, stil),
     auge: uniform(new Vector3(...farbRolle(colors.auge, stil).base)),
@@ -99,6 +115,8 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     eyeUp,
     eyeCount: uniform(0),
     blink: uniform(0),
+    verschluss: uniform(0),
+    spitzmund: uniform(0),
   };
 }
 
@@ -111,15 +129,18 @@ export function applyStil(u: CreatureMaterialUniforms, stil: WesenStil, colors: 
   u.korn.value = stil.korn;
   u.glimmer.value = stil.glimmer;
   u.bodenlicht.value = stil.bodenlicht;
+  u.kanten.value = stil.kanten;
   setTriple(u.grund, colors.grund, stil);
   setTriple(u.bauch, colors.bauch, stil);
+  setTriple(u.muster, colors.muster, stil);
+  setTriple(u.akzent, colors.akzent, stil);
   setTriple(u.lippe, colors.lippe, stil);
   setTriple(u.rachen, colors.rachen, stil);
   u.auge.value.set(...farbRolle(colors.auge, stil).base);
 }
 
 /** Wertrauschen im Körperraum (dreilinear interpoliert, 0…1). */
-const valueNoise = Fn(([p]: [Vec3Node]) => {
+function valueNoise(p: Vec3Node): FloatNode {
   const i = floor(p);
   const f = fract(p);
   const u = f.mul(f).mul(float(3).sub(f.mul(2)));
@@ -131,14 +152,14 @@ const valueNoise = Fn(([p]: [Vec3Node]) => {
   const y0 = mix(x00, x10, u.y);
   const y1 = mix(x01, x11, u.y);
   return mix(y0, y1, u.z);
-});
+}
 
 /**
  * Wertstufen mit Verlauf innen: x (0…1) → Stufenwert (0…1). `stufen` Stufen, Kanten um `federung` weich,
  * innerhalb jeder Stufe ein Verlauf mit Anteil `verlauf` (Florians Regel: Verlauf nur in der Stufe, nie über die Kante
  * hinweg — hier ist die Kante selbst weich, wie in den gemalten Bögen).
  */
-const stepShade = Fn(([x, stufen, federung, verlauf]: [FloatNode, FloatNode, FloatNode, FloatNode]) => {
+function stepShade(x: FloatNode, stufen: FloatNode, federung: FloatNode, verlauf: FloatNode): FloatNode {
   const S1 = max(stufen.sub(1), 1);
   const g = clamp(x, 0, 0.9999).mul(S1);
   const i = floor(g);
@@ -154,34 +175,59 @@ const stepShade = Fn(([x, stufen, federung, verlauf]: [FloatNode, FloatNode, Flo
   const up = mix(level, nextLevel, wUp.mul(0.5));
   const down = mix(level, prevLevel, wDown.mul(0.5));
   return clamp(mix(up, down, wDown), 0, 1);
-});
+}
 
 export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNodeMaterial {
   const material = new MeshBasicNodeMaterial();
   material.name = 'ee-wesen';
   material.fog = false;
+  // Verschluss-Morph: nach dem Skinning (positionLocal ist dann die gehäutete Position) die geschlossene Lage addieren
+  material.positionNode = Fn(() => {
+    const closed = attribute('eeClosed', 'vec3') as Vec3Node;
+    const pucker = attribute('eePucker', 'vec3') as Vec3Node;
+    return (positionLocal as unknown as Vec3Node).add(closed.mul(u.verschluss)).add(pucker.mul(u.spitzmund));
+  })();
   material.colorNode = Fn(() => {
     const spine = attribute('eeSpine', 'vec4') as Vec4Node;
     const region = attribute('eeRegion', 'vec4') as Vec4Node;
-    const ao = attribute('eeAo', 'float') as FloatNode;
+    const extra = attribute('eeExtra', 'vec3') as Vec3Node;
+    const ao = extra.x;
+    const crease = extra.z;
     const rest = positionGeometry as unknown as Vec3Node;
-    const N = normalize(normalView as unknown as Vec3Node).toVar();
+    // An scharfen Kanten (Maullinie, Augenwulst, Standkante) die Facettennormale nehmen: die Kante bleibt im Licht sichtbar
+    const flatN = normalize(cross(dFdx(positionView as unknown as Vec3Node), dFdy(positionView as unknown as Vec3Node)));
+    const N = normalize(mix(normalize(normalView as unknown as Vec3Node), flatN, smoothstep(0.55, 0.9, crease).mul(u.kanten))).toVar();
     const V = normalize(positionView.negate() as unknown as Vec3Node).toVar();
     const L = u.lightDir;
     const ndl = dot(N, L);
     // Wrap-Diffuse: weicher Terminator wie gemalt; Bodenkontakt dunkelt die Unterseite
-    const wrap = ndl.mul(0.5).add(0.5).toVar();
+    const wrap = clamp(ndl.mul(0.5).add(0.5).sub(0.12).div(0.76), 0, 1).toVar();
     const bottom = float(1).sub(smoothstep(0, 0.22, rest.y.div(u.bodyScale)));
     wrap.assign(wrap.sub(bottom.mul(u.bodenlicht).mul(0.22)));
     // Höhlung: Falten liegen tiefer
     wrap.assign(clamp(wrap.sub(ao.mul(0.35)), 0, 1));
     const v = stepShade(wrap, u.stufen, u.federung, u.verlauf).toVar();
+    // Kernschatten: ein etwas tieferes Band knapp hinter dem Terminator (gemalte Rundung), Reflexlicht darunter leicht heller
+    const core = smoothstep(0.18, 0.3, wrap).mul(float(1).sub(smoothstep(0.3, 0.46, wrap))).mul(0.14);
+    v.assign(clamp(v.sub(core), 0, 1));
+    // Hell oben, dunkel unten (feste Blobs in den Bögen): Höhenverlauf unabhängig von der Normale
+    const heightT = smoothstep(0, 1, rest.y.div(u.bodyScale));
+    v.assign(clamp(v.add(heightT.sub(0.5).mul(0.22)), 0, 1));
 
     // Farbrolle Haut: Schatten → Grund → Licht; Bauchseite optional heller
     const shadeOf = (t: Vec3Triple): Vec3Node => mix(mix(t.schatten, t.base, smoothstep(0, 0.5, v)), t.licht, smoothstep(0.5, 1, v));
     const skin = shadeOf(u.grund).toVar();
     const belly = smoothstep(u.bauchlinie.add(0.25), u.bauchlinie.sub(0.25), spine.w).mul(u.bauchStaerke);
     skin.assign(mix(skin, shadeOf(u.bauch), belly));
+
+    // Musterebene: Masken in Wirbelsäulen-Koordinaten, Gesicht/Lippen/Rachen frei; Relief dunkelt die Stufe je Schuppe ab
+    const frei = float(1).sub(region.z.mul(0.9)).mul(float(1).sub(region.y)).mul(float(1).sub(region.x));
+    const mu = musterMasks(u.musterU, spine, rest, u.bodyScale, frei);
+    const vRelief = clamp(v.sub(mu.relief.mul(0.12)), 0, 1);
+    const shadeOfV = (t: Vec3Triple, vv: FloatNode): Vec3Node => mix(mix(t.schatten, t.base, smoothstep(0, 0.5, vv)), t.licht, smoothstep(0.5, 1, vv));
+    skin.assign(mix(skin, shadeOfV(u.grund, vRelief), abs(mu.relief).mul(0.9)));
+    skin.assign(mix(skin, shadeOfV(u.muster, vRelief), mu.mask));
+    skin.assign(mix(skin, shadeOfV(u.akzent, vRelief), mu.akzent));
 
     // Papierkorn im Körperraum (wandert nicht), nur in den Mitteltönen deutlich
     const grainP = rest.div(u.bodyScale).mul(38);
@@ -205,7 +251,7 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const throatDepth = clamp(ao.mul(1.6), 0, 1);
     const throat = mix(shadeOf(u.rachen), u.rachen.schatten.mul(0.45), throatDepth);
     skin.assign(mix(skin, throat, smoothstep(0.15, 0.6, region.x)));
-    skin.assign(skin.mul(float(1).sub(region.w.mul(0.25))));
+    skin.assign(skin.mul(float(1).sub(region.w.mul(0.12))));
 
     // Schlitzaugen: Pille auf der Fläche (Körperraum), Blinzeln staucht senkrecht
     const eyeMask = float(0).toVar();

@@ -14,12 +14,14 @@ export interface Descriptors {
   skinIndex: Float32Array;
   /** 4 Gewichte je Vertex (Summe 1). */
   skinWeight: Float32Array;
-  /** s, Winkel (−π…π), Umfang, Bauch/Rücken (−1…1) je Vertex. */
+  /** Bogenlänge (Körpereinheiten), Winkel (−π…π), Umfang, Bauch/Rücken (−1…1) je Vertex. */
   spine: Float32Array;
   /** Rachen, Lippe, Gesicht, Augenhöhle (0…1) je Vertex. */
   region: Float32Array;
   /** Höhlung 0 (frei) … 1 (tief in einer Falte). */
   ao: Float32Array;
+  /** Dicke des Körpers entlang der Normale nach innen (Körpereinheiten), für Jelly-Absorption. */
+  thick: Float32Array;
   /** Teilgruppe je Vertex. */
   group: Uint8Array;
 }
@@ -33,6 +35,7 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
   const spine = new Float32Array(n * 4);
   const region = new Float32Array(n * 4);
   const ao = new Float32Array(n);
+  const thick = new Float32Array(n);
   const group = new Uint8Array(n);
   const prims = scene.prims;
   const unionIdx: number[] = [];
@@ -142,7 +145,7 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     const hit = nearestOnPolyline(g.polyline, p);
     const rel = sub(p, hit.point);
     const radius = Math.max(hit.radius, 1e-3);
-    spine[v * 4] = hit.s;
+    spine[v * 4] = hit.s * g.polyline.total;
     spine[v * 4 + 1] = hit.angle;
     spine[v * 4 + 2] = 2 * Math.PI * Math.max(radius, hit.d);
     spine[v * 4 + 3] = clamp(dot(rel, g.dorsal) / Math.max(radius, hit.d, 1e-3), -1, 1);
@@ -162,7 +165,7 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     let face = 0;
     if (mouth) {
       const dC = dist(p, mouth.center);
-      face = clamp01(1.25 - dC / (1.5 * mouth.host.halfWidth));
+      face = clamp01(1.2 - dC / (0.75 * mouth.host.halfWidth));
     }
     for (const e of c.eyes) {
       face = Math.max(face, clamp01(1.3 - dist(p, e.pos) / (2.4 * e.radius)));
@@ -180,8 +183,23 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
       occ += clamp01((r - d) / r) * aoW[i]!;
     }
     ao[v] = clamp01(occ);
+
+    // --- Dicke: nach innen marschieren, bis die Fläche wieder erreicht ist -----------------------------------------
+    let travelled = 0;
+    const q: Vec3 = [p[0] - nrm[0] * 0.01 * H, p[1] - nrm[1] * 0.01 * H, p[2] - nrm[2] * 0.01 * H];
+    for (let it = 0; it < 24; it++) {
+      const dq = evalScene(scene, q);
+      if (dq >= 0) break;
+      const step = Math.max(-dq, 0.01 * H);
+      q[0] -= nrm[0] * step;
+      q[1] -= nrm[1] * step;
+      q[2] -= nrm[2] * step;
+      travelled += step;
+      if (travelled > 4 * H) break;
+    }
+    thick[v] = travelled + 0.01 * H;
   }
-  return { skinIndex, skinWeight, spine, region, ao, group };
+  return { skinIndex, skinWeight, spine, region, ao, thick, group };
 }
 
 /** Glättet Gewichte über die Nachbarschaft (gegen Scherung an Teilgrenzen). */
