@@ -1,4 +1,4 @@
-import { Bone, BufferAttribute, BufferGeometry, ConeGeometry, Float32BufferAttribute, Group, InstancedMesh, Matrix4, Mesh, Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Uint16BufferAttribute, Vector3, Vector4 } from 'three/webgpu';
+import { Bone, BufferAttribute, BufferGeometry, ConeGeometry, Float32BufferAttribute, Group, InstancedMesh, InterleavedBuffer, InterleavedBufferAttribute, Matrix4, Mesh, Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Uint16BufferAttribute, Vector3, Vector4 } from 'three/webgpu';
 import type { MeshBasicNodeMaterial } from 'three/webgpu';
 import type { Bauplan, CreatureBuild } from '@ee/creature';
 import { applyStil, createCreatureMaterial, createCreatureUniforms, createTongueMaterial, createToothMaterial, MAX_SLIT_EYES, type CreatureColors, type CreatureMaterialUniforms } from './material/earleCreature';
@@ -125,12 +125,36 @@ export class CreatureMesh {
     for (let i = 0; i < si.length; i++) si[i] = build.descriptors.skinIndex[i]!;
     g.setAttribute('skinIndex', new Uint16BufferAttribute(si, 4));
     g.setAttribute('skinWeight', new BufferAttribute(build.descriptors.skinWeight, 4));
-    g.setAttribute('eeSpine', new BufferAttribute(build.descriptors.spine, 4));
-    g.setAttribute('eeRegion', new BufferAttribute(build.descriptors.region, 4));
-    g.setAttribute('eeAo', new BufferAttribute(build.descriptors.ao, 1));
-    g.setAttribute('eeClosed', new BufferAttribute(build.closed, 3));
-    g.setAttribute('eePucker', new BufferAttribute(build.pucker, 3));
-    g.setAttribute('eeThick', new BufferAttribute(build.descriptors.thick, 1));
+    // Alle Deskriptoren in einem verschachtelten Puffer (WebGPU erlaubt höchstens 8 Vertex-Puffer):
+    // Spine (4) · Region (4) · Extra (AO, Dicke) · Verschluss (3) · Spitzmund (3) = 16 Floats je Vertex
+    const n = build.positions.length / 3;
+    const packed = new Float32Array(n * 16);
+    const d = build.descriptors;
+    for (let v = 0; v < n; v++) {
+      const o = v * 16;
+      packed[o] = d.spine[v * 4]!;
+      packed[o + 1] = d.spine[v * 4 + 1]!;
+      packed[o + 2] = d.spine[v * 4 + 2]!;
+      packed[o + 3] = d.spine[v * 4 + 3]!;
+      packed[o + 4] = d.region[v * 4]!;
+      packed[o + 5] = d.region[v * 4 + 1]!;
+      packed[o + 6] = d.region[v * 4 + 2]!;
+      packed[o + 7] = d.region[v * 4 + 3]!;
+      packed[o + 8] = d.ao[v]!;
+      packed[o + 9] = d.thick[v]!;
+      packed[o + 10] = build.closed[v * 3]!;
+      packed[o + 11] = build.closed[v * 3 + 1]!;
+      packed[o + 12] = build.closed[v * 3 + 2]!;
+      packed[o + 13] = build.pucker[v * 3]!;
+      packed[o + 14] = build.pucker[v * 3 + 1]!;
+      packed[o + 15] = build.pucker[v * 3 + 2]!;
+    }
+    const ib = new InterleavedBuffer(packed, 16);
+    g.setAttribute('eeSpine', new InterleavedBufferAttribute(ib, 4, 0));
+    g.setAttribute('eeRegion', new InterleavedBufferAttribute(ib, 4, 4));
+    g.setAttribute('eeExtra', new InterleavedBufferAttribute(ib, 2, 8));
+    g.setAttribute('eeClosed', new InterleavedBufferAttribute(ib, 3, 10));
+    g.setAttribute('eePucker', new InterleavedBufferAttribute(ib, 3, 13));
     g.setIndex(new BufferAttribute(build.index, 1));
     g.computeBoundingSphere();
     // --- Skelett: Knochen mit Identitätsdrehung, Position relativ zum Elternknochen ---------------------------------
