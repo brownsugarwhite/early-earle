@@ -147,7 +147,10 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const u = Math.abs(phi) / theta;
     const rise = m.neigung * 0.22 * Hk * u * u;
     const dip = clamp01(m.schwung) * 0.12 * Hk * Math.pow(Math.sin(Math.PI * clamp01(u / 0.72)), 1.5) * (u < 0.72 ? 1 : 0);
-    const h = clamp(hLip + rise - dip, 0.01, H - 0.01);
+    // W-Lippe (Katze, Hund — Bild 8/9): Mitte unter der Nase angehoben, beidseits hängende Lappen, dann zum Winkel
+    const wF = clamp01(m.wForm) * fForm;
+    const wLippe = wF * Hk * (0.07 * Math.exp(-Math.pow(u / 0.22, 2)) - 0.03 * Math.exp(-Math.pow((u - 0.42) / 0.18, 2)));
+    const h = clamp(hLip + rise - dip + wLippe, 0.01, H - 0.01);
     const sp = surfacePoint(host, h, phi, maxR);
     phis.push(phi);
     lipH.push(h);

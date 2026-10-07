@@ -453,6 +453,25 @@ export function construct(b: Bauplan, resolution = 56): Construction {
 
   // --- Maul ----------------------------------------------------------------------------------------------------------
   const mouth = buildMouth(b, host, H);
+  // Nasenspiegel (Katze, Hund — Bild 8/9): flacher Knubbel vorn oben auf der Schnauze über der Mitte der W-Lippe
+  if (maulAn && b.maul.wForm > 0.02) {
+    const wF = clamp(b.maul.wForm, 0, 1);
+    const Hk = host.headHeight ?? host.height;
+    const hN = clamp(mouth.hLip + (0.12 + 0.06 * wF) * Hk, 0.02 * host.height, 0.98 * host.height);
+    const nasenScene: SdfScene = { prims: prims.filter((p) => p.op === 'union') };
+    const sp = surfacePoint({ ...host, scene: nasenScene }, hN, 0, host.halfWidth * 3 + H);
+    const e = 0.01 * H;
+    const nrm = normalize([
+      evalScene(nasenScene, [sp.p[0] + e, sp.p[1], sp.p[2]]) - evalScene(nasenScene, [sp.p[0] - e, sp.p[1], sp.p[2]]),
+      evalScene(nasenScene, [sp.p[0], sp.p[1] + e, sp.p[2]]) - evalScene(nasenScene, [sp.p[0], sp.p[1] - e, sp.p[2]]),
+      evalScene(nasenScene, [sp.p[0], sp.p[1], sp.p[2] + e]) - evalScene(nasenScene, [sp.p[0], sp.p[1], sp.p[2] - e]),
+    ]);
+    const upN = normalize(sub(host.up, scale(nrm, dot(host.up, nrm))));
+    const rightN = normalize(cross(upN, nrm));
+    const rN = (0.03 + 0.045 * wF) * Hk;
+    const nase: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: hostBone, k: 0.5 * rN, region: REGION.haut, name: 'nase', c: add(sp.p, scale(nrm, -rN * 0.3)), r: [rN * 1.35, rN * 0.8, rN], q: quatFromFrame(rightN, upN, nrm) };
+    prims.push(nase);
+  }
   {
     const x = mouth.jawHinge.axis;
     const z = normalize(sub(mouth.frame.z, scale(x, mouth.frame.z[0] * x[0] + mouth.frame.z[1] * x[1] + mouth.frame.z[2] * x[2])));
