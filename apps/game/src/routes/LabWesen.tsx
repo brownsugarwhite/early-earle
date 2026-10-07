@@ -1,157 +1,186 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { AUGEN_TYPEN, BAUPLAN_REGLER, MATERIALIEN, MUSTER_TYPEN, SCHWANZ_TYPEN, UNTERKOERPER_TYPEN, ZAHN_STILE, getAt, parseBauplan, setAt, type Bauplan, type ReglerSpec } from '@ee/creature';
-import { STIL_STANDARD, type WesenStil } from '@ee/render';
 import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
-import { WesenLabScene, type WesenBoden, type WesenLabStats } from '../lab/wesen/WesenLabScene';
+import { WesenLabScene } from '../lab/wesen/WesenLabScene';
 import { WESEN_VORLAGEN } from '../lab/wesen/presets';
+import { sichereEntwurfJetzt, starteWesenLab, useWesenStore, vorlageBauplan } from '../lab/wesen/wesenStore';
+import { InfoZeile, MeldungZeile, RueckgaengigKnoepfe, TabInhalt, TabLeiste } from '../lab/wesen/WesenPanel';
+import { WesenIcon } from '../lab/wesen/icons';
 import '../lab/earle/earle-lab.css';
 import '../lab/wesen/wesen-lab.css';
 
-const GRUPPEN = ['Körper', 'Hals & Kopf', 'Maul', 'Augen', 'Beine', 'Schwanz', 'Muster & Farben', 'Licht & Stil'] as const;
-type Gruppe = (typeof GRUPPEN)[number];
+const st = () => useWesenStore.getState();
 
-const STIL_REGLER: Array<{ key: keyof WesenStil; label: string; min: number; max: number; step: number; hinweis?: string }> = [
-  { key: 'lichtAzimut', label: 'Licht seitlich', min: -90, max: 90, step: 1, hinweis: '+ rechts vom Betrachter' },
-  { key: 'lichtHoehe', label: 'Licht Höhe', min: -10, max: 80, step: 1 },
-  { key: 'stufen', label: 'Wertstufen', min: 2, max: 4, step: 1 },
-  { key: 'federung', label: 'Kantenfederung', min: 0, max: 1, step: 0.01, hinweis: '0 hart (Cel) … 1 gemalt weich' },
-  { key: 'verlauf', label: 'Verlauf in der Stufe', min: 0, max: 1, step: 0.01 },
-  { key: 'rim', label: 'Rim', min: 0, max: 1, step: 0.01 },
-  { key: 'korn', label: 'Papierkorn', min: 0, max: 1, step: 0.01 },
-  { key: 'glimmer', label: 'Glimmer', min: 0, max: 1, step: 0.01 },
-  { key: 'bodenlicht', label: 'Bodenkontakt', min: 0, max: 1, step: 0.01 },
-];
-
-function Range({ spec, value, onChange }: { spec: Pick<ReglerSpec, 'label' | 'min' | 'max' | 'step' | 'hinweis'>; value: number; onChange: (v: number) => void }) {
-  return (
-    <label className="earle-ctl">
-      <span>{spec.label}</span>
-      <output>{Number.isInteger(spec.step) ? value.toFixed(0) : value.toFixed(2)}</output>
-      <input type="range" min={spec.min} max={spec.max} step={spec.step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
-      {spec.hinweis ? <small className="wesen-hint">{spec.hinweis}</small> : null}
-    </label>
-  );
+/** Zieht die Szene am Store mit (ohne React-Render): Bauplan, Stil, Boden, Drehen, Öffnung. */
+function useSzeneAmStore(controller: WesenLabScene): void {
+  useEffect(() => {
+    const s = st();
+    controller.setBauplan(s.bauplan, { neu: true });
+    controller.setStil(s.stil);
+    controller.setBoden(s.boden);
+    controller.setSpin(s.spin);
+    controller.setOpenness(s.offen);
+    return useWesenStore.subscribe((n, p) => {
+      if (n.bauplan !== p.bauplan) controller.setBauplan(n.bauplan, { neu: n.basis !== p.basis || n.quelle !== p.quelle });
+      if (n.stil !== p.stil) controller.setStil(n.stil);
+      if (n.boden !== p.boden) controller.setBoden(n.boden);
+      if (n.spin !== p.spin) controller.setSpin(n.spin);
+      if (n.offen !== p.offen) controller.setOpenness(n.offen);
+    });
+  }, [controller]);
 }
 
-function Seg<T extends string | number>({ label, value, options, onChange }: { label: string; value: T; options: readonly T[]; onChange: (v: T) => void; }) {
+/** ⌘Z / Strg+Z rückgängig, ⇧⌘Z / Strg+Y wiederholen — nicht in Textfeldern (dort gilt das Rückgängig des Felds). */
+function useTastenkuerzel(): void {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && !['range', 'color', 'checkbox', 'button'].includes((t as HTMLInputElement).type)))) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) st().undo();
+      else if ((k === 'z' && e.shiftKey) || k === 'y') st().redo();
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+}
+
+/** Vorlagen aus presets.ts: Auswahl plus Blättern (◀ ▶). */
+function VorlagenWahl() {
+  const quelle = useWesenStore((s) => s.quelle);
+  const wert = quelle.art === 'vorlage' ? quelle.id : '';
+  const lade = (id: string) => {
+    const b = vorlageBauplan(id);
+    if (b) st().ladeBauplan(b, { art: 'vorlage', id });
+  };
+  const idx = WESEN_VORLAGEN.findIndex((v) => v.id === wert);
+  const blaettern = (d: number) => {
+    const n = WESEN_VORLAGEN.length;
+    const next = WESEN_VORLAGEN[((idx < 0 ? (d > 0 ? -1 : 0) : idx) + d + n) % n]!;
+    lade(next.id);
+  };
   return (
-    <div className="wesen-seg" role="group" aria-label={label}>
-      <span>{label}</span>
-      {options.map((o) => (
-        <button key={String(o)} type="button" className="wesen-btn" data-active={o === value} onClick={() => onChange(o)}>
-          {String(o)}
-        </button>
-      ))}
+    <div className="wl-vorlage">
+      <button type="button" className="wl-btn wl-btn--icon" onClick={() => blaettern(-1)} aria-label="Vorige Vorlage" data-testid="wl-vorlage-zurueck">
+        <WesenIcon name="links" />
+      </button>
+      <label className="wl-vorlage-wahl">
+        <span className="wl-sr">Vorlage</span>
+        <select value={wert} onChange={(e) => lade(e.target.value)} data-testid="wesen-vorlage">
+          {wert === '' ? <option value="">{quelle.art === 'datei' ? quelle.id : 'eigener Entwurf'}</option> : null}
+          {WESEN_VORLAGEN.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="button" className="wl-btn wl-btn--icon" onClick={() => blaettern(1)} aria-label="Nächste Vorlage" data-testid="wl-vorlage-weiter">
+        <WesenIcon name="rechts" />
+      </button>
     </div>
   );
 }
 
-const FARBEN: Array<{ key: string; label: string }> = [
-  { key: 'grund', label: 'Grund' },
-  { key: 'bauch', label: 'Bauch' },
-  { key: 'muster', label: 'Muster' },
-  { key: 'akzent', label: 'Akzent' },
-  { key: 'lippe', label: 'Lippe' },
-  { key: 'rachen', label: 'Rachen' },
-  { key: 'zunge', label: 'Zunge' },
-  { key: 'zahn', label: 'Zahn' },
-  { key: 'auge', label: 'Auge' },
-];
+/** Tabs bleiben beim Scrollen oben; ein Tabwechsel springt zurück an den Anfang der Regler. */
+function TabBereich() {
+  const tab = useWesenStore((s) => s.tab);
+  const anker = useRef<HTMLDivElement>(null);
+  const erst = useRef(true);
+  useEffect(() => {
+    if (erst.current) {
+      erst.current = false;
+      return;
+    }
+    const el = anker.current;
+    const box = el?.closest('.lab-sheet-body');
+    if (!el || !box) return;
+    // Lage des Ankers im scrollenden Kasten (offsetTop bezöge sich auf das ganze Sheet samt Kopfleiste)
+    const top = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+    if (box.scrollTop > top) box.scrollTop = top;
+    box.querySelector<HTMLElement>('.wl-tab[data-active="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [tab]);
+  return (
+    <div className="wl-tabbereich">
+      <div ref={anker} className="wl-anker" />
+      <div className="wl-tabs-sticky">
+        <TabLeiste />
+      </div>
+      <TabInhalt />
+    </div>
+  );
+}
+
+function SchnellAktionen({ controller }: { controller: WesenLabScene }) {
+  const spin = useWesenStore((s) => s.spin);
+  const boden = useWesenStore((s) => s.boden);
+  return (
+    <>
+      <RueckgaengigKnoepfe />
+      <button type="button" className="wl-btn wl-btn--akt" onClick={() => st().setOffen(1)} data-testid="wesen-maul-auf">
+        Maul auf
+      </button>
+      <button type="button" className="wl-btn wl-btn--akt" onClick={() => st().setOffen(0)} data-testid="wesen-maul-zu">
+        Maul zu
+      </button>
+      <button type="button" className="wl-btn wl-btn--akt" onClick={() => controller.play('blinzeln')} data-testid="wesen-blinzeln">
+        Blinzeln
+      </button>
+      <button type="button" className="wl-btn" data-active={spin} aria-pressed={spin} onClick={() => st().setSpin(!spin)} data-testid="wl-drehen">
+        <WesenIcon name="drehen" size={20} />
+        <span>Drehen</span>
+      </button>
+      <button type="button" className="wl-btn" data-active={boden === 'weiss'} aria-pressed={boden === 'weiss'} onClick={() => st().setBoden(boden === 'weiss' ? 'wiese' : 'weiss')} data-testid="wl-weiss">
+        Weißer Grund
+      </button>
+    </>
+  );
+}
 
 /**
- * Grundformen-Lab (Phase 1 der Wesen-Werkstatt): alle Regler des Bauplans live, Vorlagen für Grundformen und
- * Maultypen, Licht und Stil nach dem Look-Vertrag, Verben Maul auf/zu und Blinzeln.
+ * Grundformen-Lab (Phase 1 der Wesen-Werkstatt): alle Regler des Bauplans live in Tabs, Vorlagen, Licht und Stil nach
+ * dem Look-Vertrag, Würfel/Schloss/Zurücksetzen, Rückgängig/Wiederholen, Verben Maul auf/zu und Blinzeln.
+ * Adresse: `?vorlage=<id>&boden=weiss|wiese&ansicht=held|referenz|brett&spin=1` (plus `sheet`/`panel` des Rahmens).
  */
 export function LabWesen() {
   const [search] = useSearchParams();
-  const controller = useMemo(() => new WesenLabScene(), []);
-  const [bauplan, setBauplan] = useState<Bauplan>(() => {
-    const id = search.get('vorlage');
-    const v = WESEN_VORLAGEN.find((x) => x.id === id) ?? WESEN_VORLAGEN[0]!;
-    return parseBauplan(v.bauplan);
+  // Vor dem ersten Bild: Entwurf/Stil aus dem Browser-Speicher, `?vorlage=` hat Vorrang.
+  useState(() => {
+    starteWesenLab({ vorlage: search.get('vorlage'), ansicht: search.get('ansicht'), boden: search.get('boden'), spin: search.get('spin') });
+    return true;
   });
-  const [vorlage, setVorlage] = useState<string>(search.get('vorlage') ?? 'grundblob');
-  const [stil, setStil] = useState<WesenStil>({ ...STIL_STANDARD });
-  const [gruppe, setGruppe] = useState<Gruppe>('Maul');
-  const [boden, setBoden] = useState<WesenBoden>((search.get('boden') as WesenBoden) || 'wiese');
-  const [spin, setSpin] = useState(false);
-  const [stats, setStats] = useState<WesenLabStats | null>(null);
-  const [offen, setOffen] = useState(0.3);
+  const controller = useMemo(() => new WesenLabScene(), []);
+  useSzeneAmStore(controller);
+  useTastenkuerzel();
 
-  useEffect(() => controller.setBauplan(bauplan), [controller, bauplan]);
-  useEffect(() => controller.setStil(stil), [controller, stil]);
-  useEffect(() => controller.setBoden(boden), [controller, boden]);
-  useEffect(() => controller.setSpin(spin), [controller, spin]);
-  useEffect(() => controller.setOpenness(offen), [controller, offen]);
   useEffect(() => {
-    const id = window.setInterval(() => setStats(controller.getStats()), 300);
-    return () => window.clearInterval(id);
+    const flush = () => sichereEntwurfJetzt();
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', flush);
+    if (import.meta.env.DEV) (window as unknown as { __wesenLab?: unknown }).__wesenLab = { store: useWesenStore, controller };
+    return () => {
+      flush();
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', flush);
+    };
   }, [controller]);
-
-  const update = (pfad: string, value: unknown) => setBauplan((b) => parseBauplan(setAt(b, pfad, value)));
-  const regler = BAUPLAN_REGLER.filter((r) => r.gruppe === gruppe);
-
-  const info = stats
-    ? `${stats.vertices} Vertices · ${stats.triangles} Dreiecke · ${stats.bones} Knochen · ${stats.teeth} Zähne · ${stats.resolution}³ in ${stats.buildMs} ms${stats.pending ? ' · fein folgt …' : ''}`
-    : '…';
 
   return (
     <div className="wesen-lab" data-testid="wesen-lab">
       <LabFrame
         title="Wesen-Lab · Grundformen"
-        peek={
-          <>
-            <button type="button" className="wesen-btn wesen-btn--act" onClick={() => { setOffen(1); controller.play('maulAuf'); }} data-testid="wesen-maul-auf">Maul auf</button>
-            <button type="button" className="wesen-btn wesen-btn--act" onClick={() => { setOffen(0); controller.play('maulZu'); }} data-testid="wesen-maul-zu">Maul zu</button>
-            <button type="button" className="wesen-btn wesen-btn--act" onClick={() => controller.play('blinzeln')} data-testid="wesen-blinzeln">Blinzeln</button>
-            <button type="button" className="wesen-btn" data-active={spin} onClick={() => setSpin((s) => !s)}>Drehen</button>
-            <button type="button" className="wesen-btn" data-active={boden === 'weiss'} onClick={() => setBoden((b) => (b === 'weiss' ? 'wiese' : 'weiss'))}>Weißer Grund</button>
-          </>
-        }
+        peek={<SchnellAktionen controller={controller} />}
         controls={
-          <>
-            <p className="wesen-info" data-testid="wesen-lab-info">{info}</p>
-            <div className="wesen-row" role="group" aria-label="Vorlagen">
-              {WESEN_VORLAGEN.map((v) => (
-                <button key={v.id} type="button" className="wesen-btn" data-active={vorlage === v.id} onClick={() => { setVorlage(v.id); setBauplan(parseBauplan(v.bauplan)); }} data-testid={`wesen-vorlage-${v.id}`}>
-                  {v.name}
-                </button>
-              ))}
-            </div>
-            <div className="wesen-tabs" role="tablist">
-              {GRUPPEN.map((g) => (
-                <button key={g} type="button" role="tab" className="wesen-btn" data-active={gruppe === g} onClick={() => setGruppe(g)}>
-                  {g}
-                </button>
-              ))}
-            </div>
-            <div className="wesen-group">
-              {gruppe === 'Maul' ? <Range spec={{ label: 'Öffnung (Animation)', min: 0, max: 1, step: 0.01 }} value={offen} onChange={setOffen} /> : null}
-              {gruppe === 'Maul' ? <Seg label="Zähne" value={bauplan.zaehne.stil} options={ZAHN_STILE} onChange={(v) => update('zaehne.stil', v)} /> : null}
-              {gruppe === 'Augen' ? <Seg label="Anzahl" value={bauplan.augen.anzahl} options={[0, 1, 2, 3, 4] as const} onChange={(v) => update('augen.anzahl', v)} /> : null}
-              {gruppe === 'Augen' ? <Seg label="Typ" value={bauplan.augen.typ} options={AUGEN_TYPEN} onChange={(v) => update('augen.typ', v)} /> : null}
-              {gruppe === 'Beine' ? <Seg label="Unterkörper" value={bauplan.unterkoerper.typ} options={UNTERKOERPER_TYPEN} onChange={(v) => update('unterkoerper.typ', v)} /> : null}
-              {gruppe === 'Beine' ? <Seg label="Beine" value={bauplan.unterkoerper.beine.anzahl} options={[2, 4, 8] as const} onChange={(v) => update('unterkoerper.beine.anzahl', v)} /> : null}
-              {gruppe === 'Schwanz' ? <Seg label="Schwanz" value={bauplan.schwanz.typ} options={SCHWANZ_TYPEN} onChange={(v) => update('schwanz.typ', v)} /> : null}
-              {gruppe === 'Muster & Farben' ? <Seg label="Material" value={bauplan.material} options={MATERIALIEN} onChange={(v) => update('material', v)} /> : null}
-              {gruppe === 'Muster & Farben' ? <Seg label="Muster" value={bauplan.muster.typ} options={MUSTER_TYPEN} onChange={(v) => update('muster.typ', v)} /> : null}
-              {gruppe === 'Muster & Farben' ? (
-                <div className="wesen-colors">
-                  {FARBEN.map((f) => (
-                    <label key={f.key}>
-                      <span>{f.label}</span>
-                      <input type="color" value={String(getAt(bauplan, `muster.farben.${f.key}`))} onChange={(e) => update(`muster.farben.${f.key}`, e.target.value)} />
-                    </label>
-                  ))}
-                </div>
-              ) : null}
-              {gruppe === 'Licht & Stil'
-                ? STIL_REGLER.map((r) => <Range key={r.key} spec={r} value={stil[r.key] as number} onChange={(v) => setStil((s) => ({ ...s, [r.key]: v }))} />)
-                : regler.map((r) => <Range key={r.pfad} spec={r} value={Number(getAt(bauplan, r.pfad))} onChange={(v) => update(r.pfad, v)} />)}
-            </div>
-          </>
+          <div className="wl-panel">
+            <InfoZeile controller={controller} />
+            <VorlagenWahl />
+            <MeldungZeile />
+            <TabBereich />
+          </div>
         }
       >
         <CanvasHost controller={controller} />
