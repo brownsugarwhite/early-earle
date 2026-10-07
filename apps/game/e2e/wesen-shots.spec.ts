@@ -9,7 +9,10 @@ import { WESEN_VORLAGEN } from '../src/lab/wesen/presets.ts';
 // Kontaktbogen aller Vorlagen `docs/progress/wesen-lab-kontaktbogen[-TAG].png` (Kopfzeile: Commit, Backend, Datum).
 // Echte GPU wie die anderen Harnesses, nur auf Wunsch; Bedienung: docs/progress/wesen-lab-README.md.
 //
-//   EE_SHOTS=1 [EE_VORLAGEN=keil,loch] [EE_SHOTS_TAG=vorher] E2E_PORT=4471 node apps/game/scripts/e2e.mjs e2e/wesen-shots.spec.ts
+//   EE_SHOTS=1 [EE_VORLAGEN=keil,loch] [EE_SHOTS_TAG=vorher] [EE_MAUL=bau|zu|auf] E2E_PORT=4471 node apps/game/scripts/e2e.mjs e2e/wesen-shots.spec.ts
+//
+// EE_MAUL: Kieferstellung der Bilder — `bau` (Bauzustand, Standard), `zu` (Verschluss-Morph, Dateinamen mit „-zu“) oder
+// `auf` (volle Öffnung, „-auf“); gesetzt über den Lab-Controller, weil die Bedienflächen für die Bilder ausgeblendet sind.
 test.skip(!process.env.EE_SHOTS, 'nur mit EE_SHOTS=1');
 test.use({
   launchOptions: { args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] },
@@ -21,7 +24,9 @@ test.setTimeout(600_000);
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 const OUT = `${REPO}docs/progress/`;
 const TAG = (process.env.EE_SHOTS_TAG ?? '').trim().replace(/[^A-Za-z0-9_-]/g, '');
-const SUFFIX = TAG ? `-${TAG}` : '';
+/** Kieferstellung: `bau` = Bauzustand (leicht offen), `zu` = geschlossen (Verschluss-Morph), `auf` = volle Öffnung. */
+const MAUL = ['bau', 'zu', 'auf'].includes(process.env.EE_MAUL ?? '') ? (process.env.EE_MAUL as 'bau' | 'zu' | 'auf') : 'bau';
+const SUFFIX = `${MAUL === 'bau' ? '' : `-${MAUL}`}${TAG ? `-${TAG}` : ''}`;
 /** Ohne WebGPU-Adapter fällt die App auf WebGL2 zurück; solche Bilder sind mit GPU-Bildern nicht vergleichbar. */
 const ALLOW_WEBGL2 = !!process.env.EE_ALLOW_WEBGL2;
 /** Ansicht der Bilder: `referenz` (Bögen-Kamera, Standard), `held` (freie Ansicht) oder `brett` (Spielsicht). */
@@ -173,14 +178,21 @@ test(`Wesen-Lab: Vorlagen im ${ANSICHT === 'referenz' ? 'Referenzmodus' : ANSICH
   for (const v of auswahl()) {
     await page.goto(`/lab/wesen?vorlage=${v.id}&panel=zu&sheet=zu&boden=weiss&ansicht=${ANSICHT}&standbild=1`);
     backend = await requireBackend(page);
-    const s = await waitFertig(page);
+    let s = await waitFertig(page);
+    if (MAUL !== 'bau') {
+      // Kieferziel setzen und die Glättung (k = 1 − e^(−9·dt)) ausklingen lassen, dann wie oben warten
+      await page.evaluate((o) => (window as unknown as { __wesenLab: { controller: { setOpenness(o: number): void } } }).__wesenLab.controller.setOpenness(o), MAUL === 'zu' ? 0 : 1);
+      await page.waitForTimeout(1200);
+      s = await waitFertig(page);
+    }
     const png = await page.screenshot({ path: `${OUT}wesen-lab-${v.id}${SUFFIX}.png` });
     await testInfo.attach(`wesen-lab-${v.id}.png`, { body: png, contentType: 'image/png' });
     const zeile = `${s.triangles} Dreiecke · ${s.teeth} Zähne · ${s.resolution}³ in ${s.buildMs} ms`;
     felder.push({ titel: v.name, unter: `${v.id} · ${zeile}`, png });
     console.log(`${v.id.padEnd(16)} ${zeile}`);
   }
-  await writeKontaktbogen(page, `${OUT}wesen-lab-kontaktbogen${SUFFIX}.png`, 'Wesen-Lab · Vorlagen', `${TAG || 'ohne Tag'} · ${commit} · ${stamp} · ${backend} · Ansicht ${ANSICHT}`, felder);
+  const maulText = MAUL === 'zu' ? 'Maul zu' : MAUL === 'auf' ? 'Maul auf' : 'Bauzustand';
+  await writeKontaktbogen(page, `${OUT}wesen-lab-kontaktbogen${SUFFIX}.png`, `Wesen-Lab · Vorlagen · ${maulText}`, `${TAG || 'ohne Tag'} · ${commit} · ${stamp} · ${backend} · Ansicht ${ANSICHT}`, felder);
   // Fehler melden, ohne die Bilder zu verlieren (sie sind schon geschrieben)
   expect.soft(errors, 'GPU-/Seitenfehler').toEqual([]);
 });

@@ -42,6 +42,8 @@ export interface CreatureBuild {
     corners: [Vec3, Vec3];
     hinge: { point: Vec3; axis: Vec3 };
     frame: { x: Vec3; y: Vec3; z: Vec3 };
+    /** Hochachse des Trägers (Hebe-Richtung des Oberkiefers). */
+    up: Vec3;
     lipLine: Vec3[];
     teeth: Tooth[];
     tongue: { pos: Vec3; dir: Vec3; size: number };
@@ -51,7 +53,11 @@ export interface CreatureBuild {
   eyes: EyeSpec[];
   hostBone: number;
   jawBone: number;
+  upperJawBone: number;
+  /** gepolsterte SDF-Grenzen (Gitter). */
   bounds: { min: Vec3; max: Vec3 };
+  /** enge Grenzen der Mesh-Vertices (zum Einpassen der Kamera). */
+  meshBounds: { min: Vec3; max: Vec3 };
   bodyScale: number;
   shapeHash: number;
   stats: { vertexCount: number; triangleCount: number; cell: number; nonManifold: number; ms: number };
@@ -199,6 +205,13 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   const ws = opts.weightSmoothing ?? 2;
   if (ws > 0) smoothWeights(descriptors, adj, c.bones.length, ws);
   const closing = b.maul.sichtbar ? computeClosing(c, positions, descriptors) : { closed: new Float32Array(positions.length), pucker: new Float32Array(positions.length), puckerClose: 0, closeAngle: 0, maxOpenAngle: 0 };
+  const mb = { min: [Infinity, Infinity, Infinity] as Vec3, max: [-Infinity, -Infinity, -Infinity] as Vec3 };
+  for (let i = 0; i < positions.length; i += 3)
+    for (let k = 0; k < 3; k++) {
+      const v = positions[i + k]!;
+      if (v < mb.min[k]!) mb.min[k] = v;
+      if (v > mb.max[k]!) mb.max[k] = v;
+    }
   const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const m = c.mouth;
   return {
@@ -215,12 +228,14 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     bones: c.bones,
     groups: c.groups.map((g) => ({ name: g.name, kind: g.kind, bones: g.bones })),
     mouth: m
-      ? { center: m.center, corners: m.corners, hinge: m.jawHinge, frame: m.frame, lipLine: m.lipLine, teeth: m.teeth, tongue: m.tongue, gapFront: m.gapFront, oeffnung: m.oeffnung }
+      ? { center: m.center, corners: m.corners, hinge: m.jawHinge, frame: m.frame, up: m.host.up, lipLine: m.lipLine, teeth: m.teeth, tongue: m.tongue, gapFront: m.gapFront, oeffnung: m.oeffnung }
       : null,
     eyes: c.eyes,
     hostBone: c.hostBone,
     jawBone: c.jawBone,
+    upperJawBone: c.upperJawBone,
     bounds: c.bounds,
+    meshBounds: mb,
     bodyScale: c.bodyScale,
     shapeHash: shapeHash(b, resolution),
     stats: { vertexCount, triangleCount: index.length / 3, cell, nonManifold: nonManifoldEdges(index, vertexCount), ms: t1 - t0 },

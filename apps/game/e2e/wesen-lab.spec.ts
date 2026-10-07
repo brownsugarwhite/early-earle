@@ -118,7 +118,10 @@ test.describe('Desktop 1200×760', () => {
     await oeffne(page, 'vorlage=grundblob&panel=offen');
     const s0 = await feinGebaut(page);
     const regler = page.getByTestId('wl-regler-maul.hoehe');
-    await expect(regler.locator('output')).toHaveText('0.45');
+    // Startwert der Vorlage (nicht fest verdrahtet: Vorlagen dürfen sich ändern)
+    const start = (await regler.locator('output').textContent())?.trim() ?? '';
+    expect(start).toMatch(/^0\.\d\d$/);
+    expect(start).not.toBe('0.70');
     await expect(page.getByTestId('wl-undo')).toBeDisabled();
 
     await setzeRegler(page, 'maul.hoehe', 0.7);
@@ -127,7 +130,7 @@ test.describe('Desktop 1200×760', () => {
     expect(s1.triangles).not.toBe(s0.triangles);
 
     await page.getByTestId('wl-undo').click();
-    await expect(regler.locator('output')).toHaveText('0.45');
+    await expect(regler.locator('output')).toHaveText(start);
     const s2 = await feinGebaut(page, s1.builds);
     expect(s2.triangles).toBe(s0.triangles);
 

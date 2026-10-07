@@ -101,21 +101,22 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
         boneWeights[bodyBones[2]!]! += (wBody * wO) / s;
       }
     }
-    // Kieferzone: Anteil der Trägerknochen auf den Unterkiefer
-    if (mouth) {
-      const jw = mouth.jawWeight(p, H);
-      if (jw > 0.001) {
-        const hostGroup = bones[c.hostBone]!.group;
+    // Kieferzonen: Anteil der Trägerknochen auf Unterkiefer (unter der Maullinie) und Oberkiefer (Oberkopf darüber)
+    if (mouth && c.bauplan.maul.sichtbar) {
+      const hostGroup = bones[c.hostBone]!.group;
+      const transfer = (w: number, to: number): void => {
+        if (w <= 0.001) return;
         let moved = 0;
         for (let bi = 0; bi < bones.length; bi++) {
-          if (bi === c.jawBone) continue;
           if (bones[bi]!.group !== hostGroup) continue;
-          const take = boneWeights[bi]! * jw;
+          const take = boneWeights[bi]! * w;
           boneWeights[bi]! -= take;
           moved += take;
         }
-        boneWeights[c.jawBone]! += moved;
-      }
+        boneWeights[to]! += moved;
+      };
+      transfer(mouth.jawWeight(p, H), c.jawBone);
+      transfer(mouth.upperWeight(p, H), c.upperJawBone);
     }
     // Top 4 normieren
     const top: number[] = [];
@@ -160,7 +161,8 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
 
     // --- Regionen -----------------------------------------------------------------------------------------------------
     // Rachen: Fläche entstand aus der Subtraktion (innerhalb der Vereinigung)
-    region[v * 4] = smoothstep(0, 0.7 * cavityK, -sample.dUnion);
+    // schmaler Saum: die Rachenfarbe endet dicht an der Schnittkante (Aal: scharfe, satt gefärbte Kante)
+    region[v * 4] = smoothstep(0, 0.35 * cavityK, -sample.dUnion);
     let lip = 0;
     for (const li of lipIdx) {
       const pr = prims[li]!;

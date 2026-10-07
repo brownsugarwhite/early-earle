@@ -315,8 +315,8 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
     { titel: 'Maul', ids: ['maul.sichtbar'] },
     { titel: 'Lage', ids: ['maul.hoehe', 'maul.neigung'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
     { titel: 'Form', ids: ['maul.form', 'maul.winkel', 'maul.breite', 'maul.lippe', 'maul.wForm', 'maul.kante'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
-    { titel: 'Kiefer', ids: ['maul.oberkiefer', 'maul.unterkiefer', 'maul.biss', 'maul.tiefe', 'maul.oeffnung'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
-    { titel: 'Zähne', ids: ['zaehne.stil', 'zaehne.groesse', 'zaehne.streuung', 'zaehne.dichte', 'zaehne.eckzaehne', 'zaehne.hauer', 'seed'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
+    { titel: 'Kiefer', ids: ['maul.oberkiefer', 'maul.unterkiefer', 'maul.biss', 'maul.tiefe', 'maul.oeffnung', 'maul.oeffnungOben'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
+    { titel: 'Zähne', ids: ['zaehne.stil', 'zaehne.groesse', 'zaehne.streuung', 'zaehne.dichte', 'zaehne.eckzaehne', 'zaehne.hauer', 'zaehne.aussen', 'seed'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
     { titel: 'Zunge', ids: ['zunge.groesse'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
   ],
   augen: [

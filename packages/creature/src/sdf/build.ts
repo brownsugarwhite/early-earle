@@ -33,6 +33,8 @@ export interface EyeSpec {
   normal: Vec3;
   radius: number;
   depth: number;
+  /** Knochen, dem das Auge folgt (Oberkiefer, wenn es auf dem Oberkopf sitzt, sonst Träger). */
+  bone: number;
 }
 
 export interface Construction {
@@ -45,9 +47,10 @@ export interface Construction {
   /** Körperhöhe als Längenmaßstab. */
   bodyScale: number;
   bounds: { min: Vec3; max: Vec3 };
-  /** Index des Trägerknochens (Körpermitte oder Kopf) und des Unterkieferknochens. */
+  /** Index des Trägerknochens (Körpermitte oder Kopf), des Unterkiefer- und des Oberkieferknochens. */
   hostBone: number;
   jawBone: number;
+  upperJawBone: number;
 }
 
 const UP: Vec3 = [0, 1, 0];
@@ -251,7 +254,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   const jawGroup = groups.length;
   groups.push({ name: 'kiefer', kind: 'kiefer', polyline: makePolyline([host.origin, add(host.origin, scale(host.forward, host.halfWidth))], [host.halfWidth * 0.5, host.halfWidth * 0.5], UP), bones: [], dorsal: scale(host.up, -1) });
   const jawBone = bone('unterkiefer', hostBone, host.origin, QUAT_ID, jawGroup);
-  groups[jawGroup]!.bones.push(jawBone);
+  const upperJawBone = bone('oberkiefer', hostBone, host.origin, QUAT_ID, jawGroup);
+  groups[jawGroup]!.bones.push(jawBone, upperJawBone);
 
   host.scene = { prims: prims.slice() };
   const m = b.maul;
@@ -280,12 +284,14 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   // --- Maul ----------------------------------------------------------------------------------------------------------
   const mouthBuild = buildMouth(b, host, jawBone, H, cellSize);
   const mouth = mouthBuild.geometry;
-  bones[jawBone]!.pos = mouth.jawHinge.point;
   {
     const x = mouth.jawHinge.axis;
     const z = normalize(sub(mouth.frame.z, scale(x, mouth.frame.z[0] * x[0] + mouth.frame.z[1] * x[1] + mouth.frame.z[2] * x[2])));
     const y = cross(z, x);
-    bones[jawBone]!.quat = quatFromFrame(x, y, z);
+    for (const bi of [jawBone, upperJawBone]) {
+      bones[bi]!.pos = mouth.jawHinge.point;
+      bones[bi]!.quat = quatFromFrame(x, y, z);
+    }
   }
   if (maulAn) prims.push(...mouthBuild.prims);
   else mouth.teeth.length = 0;
@@ -310,7 +316,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         evalScene(hostScene, [sp.p[0], sp.p[1], sp.p[2] + e]) - evalScene(hostScene, [sp.p[0], sp.p[1], sp.p[2] - e]),
       ];
       const nrm = normalize(g);
-      eyes.push({ pos: sp.p, normal: nrm, radius: rE, depth: a.tiefe });
+      eyes.push({ pos: sp.p, normal: nrm, radius: rE, depth: a.tiefe, bone: maulAn && mouth.upperWeight(sp.p, H) > 0.5 ? upperJawBone : hostBone });
       // Augenwulst (Braue): weiche Masse über dem Auge, die Höhle schneidet darunter hart → scharfe Überhangkante (Bild 11)
       if (b.kopf.braue > 0.02) {
         const upE = normalize(sub(host.up, scale(nrm, dot(host.up, nrm))));
@@ -434,5 +440,5 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   }
 
   const scene: SdfScene = { prims };
-  return { bauplan: b, scene, bones, groups, mouth, eyes, bodyScale: H, bounds: sceneBounds(scene), hostBone, jawBone };
+  return { bauplan: b, scene, bones, groups, mouth, eyes, bodyScale: H, bounds: sceneBounds(scene), hostBone, jawBone, upperJawBone };
 }

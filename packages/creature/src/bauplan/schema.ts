@@ -95,11 +95,12 @@ const maul = z
     oberkiefer: regler(M, 'maul.oberkiefer', 'Oberkiefer', 0, 1.5, 1),
     unterkiefer: regler(M, 'maul.unterkiefer', 'Unterkiefer', 0, 1.5, 0.8, '0 = kein Unterkiefer'),
     biss: regler(M, 'maul.biss', 'Biss', -1, 1, 0, '−1 Unterbiss … +1 Überbiss'),
-    lippe: regler(M, 'maul.lippe', 'Lippenwulst', 0, 1, 0.6),
+    lippe: regler(M, 'maul.lippe', 'Lippenwulst', 0, 1, 0.4),
     kante: regler(M, 'maul.kante', 'Kieferkante', 0, 1, 0, 'weich … kantig (Raubkatze)'),
     wForm: regler(M, 'maul.wForm', 'W-Form', 0, 1, 0, 'Oberlippe Hund/Katze'),
-    tiefe: regler(M, 'maul.tiefe', 'Rachentiefe', 0.2, 1, 0.6),
+    tiefe: regler(M, 'maul.tiefe', 'Rachentiefe', 0.2, 1, 0.5),
     oeffnung: regler(M, 'maul.oeffnung', 'Öffnung', 0, 1, 0.3, 'Bauzustand; Animation öffnet/schließt'),
+    oeffnungOben: regler(M, 'maul.oeffnungOben', 'Öffnung über Oberkiefer', 0, 1, 0.6, 'Anteil der Öffnung, den der Oberkiefer übernimmt (klappt samt Augen nach hinten)'),
   })
   .prefault({});
 
@@ -111,6 +112,7 @@ const zaehne = z
     dichte: regler(M, 'zaehne.dichte', 'Zahndichte', 0, 1, 0.4),
     eckzaehne: regler(M, 'zaehne.eckzaehne', 'Eckzähne', 0, 1, 0.5),
     hauer: regler(M, 'zaehne.hauer', 'Hauer', 0, 1, 0, 'ragen über die Oberlippe'),
+    aussen: regler(M, 'zaehne.aussen', 'Zähne außen', 0, 1, 0, '0 verschwinden geschlossen im Gegenkiefer (Aal) … 1 Fangzähne liegen außen über der Gegenlippe'),
   })
   .prefault({});
 

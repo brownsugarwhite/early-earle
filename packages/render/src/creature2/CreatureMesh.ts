@@ -1,6 +1,6 @@
 import { Bone, BufferAttribute, BufferGeometry, ConeGeometry, Float32BufferAttribute, Group, InstancedMesh, InterleavedBuffer, InterleavedBufferAttribute, Matrix4, Mesh, Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Uint16BufferAttribute, Vector3, Vector4 } from 'three/webgpu';
 import type { MeshBasicNodeMaterial } from 'three/webgpu';
-import type { Bauplan, CreatureBuild } from '@ee/creature';
+import { jawPose, jawRig, type Bauplan, type CreatureBuild } from '@ee/creature';
 import { applyStil, createCreatureMaterial, createCreatureUniforms, createTongueMaterial, createToothMaterial, MAX_SLIT_EYES, type CreatureColors, type CreatureMaterialUniforms } from './material/earleCreature';
 import { applyMuster } from './material/muster';
 import { applyJellyColors, createJellyMaterial, createJellyUniforms, placeBubbles, type JellyUniforms } from './material/jelly';
@@ -62,10 +62,12 @@ export class CreatureMesh {
   bones: Bone[] = [];
   build: CreatureBuild | null = null;
   private jawAxis = new Vector3(1, 0, 0);
-  private jawBuildOpen = 0.3;
-  private closeAngle = 0.2;
-  private maxOpenAngle = 0.6;
-  private puckerClose = 0;
+  /** Hochachse des Trägers und Ruhelage des Oberkieferknochens (Hebe-Richtung beim Öffnen). */
+  private hostUp = new Vector3(0, 1, 0);
+  private upperRest = new Vector3();
+  /** Ruhelage und Größe der Zunge (zieht sich beim Schließen in den Unterkiefer zurück). */
+  private tongueRest = new Vector3();
+  private tongueSize = 0;
   private upperTeeth: InstancedMesh | null = null;
   private lowerTeeth: InstancedMesh | null = null;
   private tongue: Mesh | null = null;
@@ -83,6 +85,8 @@ export class CreatureMesh {
   private blinkPhase = -1;
   /** Atmen an/aus. */
   breathe = true;
+  /** Automatisches Blinzeln (aus für Standbilder). */
+  autoBlink = true;
   private elapsed = 0;
 
   constructor(opts: CreatureMeshOptions = {}) {
@@ -192,10 +196,9 @@ export class CreatureMesh {
     // --- Kiefer -----------------------------------------------------------------------------------------------------
     if (build.mouth) {
       this.jawAxis.set(...build.mouth.hinge.axis).normalize();
-      this.jawBuildOpen = build.mouth.oeffnung;
-      this.closeAngle = build.closeAngle;
-      this.maxOpenAngle = build.maxOpenAngle;
-      this.puckerClose = build.puckerClose;
+      this.hostUp.set(...build.mouth.up).normalize();
+      const ub = this.bones[build.upperJawBone];
+      if (ub) this.upperRest.copy(ub.position);
     }
     // --- Zähne und Zunge ------------------------------------------------------------------------------------------------
     const stilZ = b.zaehne.stil;
@@ -221,7 +224,11 @@ export class CreatureMesh {
         parent.add(im);
         return im;
       };
-      this.upperTeeth = make(upper, this.root, null);
+      const upperBone = this.bones[build.upperJawBone];
+      if (upperBone) {
+        const up0 = build.bones[build.upperJawBone]!.pos;
+        this.upperTeeth = make(upper, upperBone, new Vector3(-up0[0], -up0[1], -up0[2]));
+      } else this.upperTeeth = make(upper, this.root, null);
       const jaw = this.bones[build.jawBone];
       if (jaw) {
         const jp = build.bones[build.jawBone]!.pos;
@@ -237,6 +244,8 @@ export class CreatureMesh {
       const jaw = this.bones[build.jawBone];
       const jp = build.bones[build.jawBone]!.pos;
       tongue.position.set(build.mouth.tongue.pos[0] - jp[0], build.mouth.tongue.pos[1] - jp[1], build.mouth.tongue.pos[2] - jp[2]);
+      this.tongueRest.copy(tongue.position);
+      this.tongueSize = s;
       _q.setFromUnitVectors(new Vector3(0, 0, 1), new Vector3(...build.mouth.tongue.dir).normalize());
       tongue.quaternion.copy(_q);
       (jaw ?? this.root).add(tongue);
@@ -248,16 +257,19 @@ export class CreatureMesh {
     this.uniforms.eyeCount.value = slit ? eyes.length : 0;
     if (!slit && eyes.length > 0) {
       this.eyeGeo = new SphereGeometry(1, 28, 20);
-      const host = this.bones[build.hostBone] ?? this.root;
-      const hp = build.bones[build.hostBone]?.pos ?? [0, 0, 0];
       for (const e of eyes) {
+        // Auge folgt seinem Knochen (Oberkiefer hebt die Augen mit, Bild 5/14), sonst dem Träger
+        const host = this.bones[e.bone] ?? this.bones[build.hostBone] ?? this.root;
+        const hp = build.bones[e.bone]?.pos ?? build.bones[build.hostBone]?.pos ?? [0, 0, 0];
         const n = new Vector3(...e.normal).normalize();
         const r = e.radius;
         // Zentrum: in der Höhle (Tiefe) bzw. aufgesetzt; Blickachse (+z) zeigt entlang der Flächennormale nach außen
         // Tiefe je Typ: Drache/Schlange liegen tief unter dem Wulst (Bild 11), große Kulleraugen sitzen weiter außen (Bild 10)
         const typDepth = b.augen.typ === 'drache' || b.augen.typ === 'schlange' ? 0.62 : b.augen.typ === 'schwarzweiss' ? 0.45 : 0.3;
         const depth = Math.max(e.depth, (b.kopf.braue ?? 0) * 0.22, typDepth);
-        const center = new Vector3(...e.pos).addScaledVector(n, r * (1 - depth) * 0.95 - r * 0.15);
+        // aufgesetzt (Tiefe 0): Halbkugel ragt heraus (Bild 10); eingesunken (Rex, Bild 11): Mitte unter der Fläche,
+        // der Wulst hängt darüber — von der Seite ragt kein Ball mehr über die Silhouette
+        const center = new Vector3(...e.pos).addScaledVector(n, r * (0.5 - 1.2 * depth));
         const m = new Mesh(this.eyeGeo, this.eyeMaterial);
         m.name = 'wesen-auge';
         m.scale.setScalar(r * 1.0);
@@ -294,7 +306,7 @@ export class CreatureMesh {
     this.opennessNow += (this.openness - this.opennessNow) * k;
     // Blinzeln: Timer + Kurve (schnell zu, weicher auf)
     if (this.blinkPhase < 0) {
-      this.blinkTimer -= dt;
+      if (this.autoBlink) this.blinkTimer -= dt;
       if (this.blinkTimer <= 0) {
         this.blinkPhase = 0;
         this.blinkTimer = 2.4 + Math.random() * 4;
@@ -316,18 +328,23 @@ export class CreatureMesh {
   private applyPose(): void {
     if (!this.build || !this.mesh) return;
     const jaw = this.bones[this.build.jawBone];
-    if (jaw && this.build.mouth) {
-      // Bauzustand = Öffnung o_b: darunter schließt der Kiefer um closeAngle, darüber öffnet er bis maxOpenAngle
-      const o = this.opennessNow;
-      const ob = Math.max(1e-3, this.jawBuildOpen);
-      const form = this.bauplan?.maul.form ?? 1;
-      const angle = (o < ob ? -(1 - o / ob) * this.closeAngle : ((o - ob) / Math.max(1e-3, 1 - ob)) * this.maxOpenAngle) * form;
-      jaw.quaternion.setFromAxisAngle(this.jawAxis, angle);
-      // Verschluss-Morph greift beim Schließen, Spitzmund-Morph beim Weiten des Lochmauls
-      const t = 1 - Math.min(1, o / ob);
-      this.uniforms.verschluss.value = t * t * (3 - 2 * t);
-      // Lochmaul: beim Schließen zieht sich das Loch radial zusammen (negativer Spitzmund)
-      this.uniforms.spitzmund.value = o >= ob ? (o - ob) / Math.max(1e-3, 1 - ob) : -t * this.puckerClose * (1 - form);
+    const upperB = this.bones[this.build.upperJawBone];
+    if (this.build.mouth && this.bauplan) {
+      // eine Formel für Bau, Darstellung und Tests: Unterkiefer dreht, Oberkiefer hebt sich und neigt sich
+      const pose = jawPose(jawRig(this.build, this.bauplan.maul), this.opennessNow);
+      if (jaw) jaw.quaternion.setFromAxisAngle(this.jawAxis, pose.lowerAngle);
+      if (upperB) {
+        upperB.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle);
+        upperB.position.copy(this.upperRest).addScaledVector(this.hostUp, pose.upperLift);
+      }
+      this.uniforms.verschluss.value = pose.verschluss;
+      this.uniforms.spitzmund.value = pose.spitzmund;
+      if (this.tongue) {
+        // Zunge: beim Schließen flacher und zurück in den Unterkiefer (sonst stößt sie durch dünne Oberkiefer)
+        const v = pose.verschluss;
+        this.tongue.scale.set(1, 1 - 0.65 * v, 1 - 0.35 * v);
+        this.tongue.position.copy(this.tongueRest).addScaledVector(this.hostUp, -this.tongueSize * 0.45 * v);
+      }
     }
     // Atmen: Körperknochen sanft skalieren (oben stärker)
     const bodyBones = this.build.groups.find((g) => g.kind === 'koerper')?.bones ?? [];

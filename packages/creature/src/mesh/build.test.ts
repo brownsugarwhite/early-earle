@@ -47,7 +47,8 @@ describe('Konstruktion', () => {
     const up = m.teeth.filter((t) => t.upper), lo = m.teeth.filter((t) => !t.upper);
     expect(up.length).toBeGreaterThan(1);
     expect(lo.length).toBeGreaterThan(1);
-    for (const a of up) for (const b of lo) expect(Math.hypot(a.pos[0] - b.pos[0], a.pos[1] - b.pos[1], a.pos[2] - b.pos[2])).toBeGreaterThan(0.6 * Math.min(a.size, b.size));
+    // (Zähne sind am geschlossenen Zustand verankert und greifen um eine halbe Teilung versetzt ineinander)
+    for (const a of up) for (const b of lo) expect(Math.hypot(a.pos[0] - b.pos[0], a.pos[1] - b.pos[1], a.pos[2] - b.pos[2])).toBeGreaterThan(0.45 * Math.min(a.size, b.size));
   });
   it('setzt das Maul stufenlos in der Höhe', () => {
     const lo = construct(setAt(defaultBauplan(), 'maul.hoehe', 0.15)).mouth!;
