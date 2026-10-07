@@ -7,5 +7,6 @@ Alle Spielinhalte als JSON, versioniert im Repo, editierbar über die In-App-Edi
 - `klassik/formats.json` — Rasterformate des Klassik-Modus (freies 2048): Maske und Freischaltung nach Level N; Schema `KlassikFormatsSchema` in `@ee/core`
 - `genome/rules.json` — Stufen → Material/Assets/Paletten pro Zone; `genome/assets/*.glb` Blender-Module mit `SOCKET_<slot>`-Empties
 - `rex/lines.json` — REX-Sprüche und Auftritte pro Anlass
+- `creatures/vorlagen/<id>.json` — Wesen-Vorlagen der Wesen-Werkstatt (Bauplan), `creatures/stil.json` — Stil-Vorgabe aller Wesen; siehe `creatures/README.md`
 
 Jede Datei trägt `schemaVersion`. Validierung: `pnpm test` (zod).

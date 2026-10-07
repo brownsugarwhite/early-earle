@@ -7,7 +7,7 @@ import { formatJson } from '../../../tools/levels/format.ts';
 /**
  * Dev-Only-Endpunkt für die In-App-Editoren (Browser auf dem Mac, Safari auf dem iPhone, die iOS-App):
  *   GET  /__content                   → Ping { ok, app, host, dirs } (Verbindungstest der Werkstatt)
- *   GET  /__content/<dir>             → Liste der JSON-Dateien
+ *   GET  /__content/<dir>             → Liste der JSON-Dateien (erlaubter, noch fehlender Ordner: leere Liste)
  *   GET  /__content/<dir>/<file>.json → Datei
  *   PUT  /__content/<dir>/<file>.json → validieren, atomar schreiben (tmp + rename)
  *   DELETE /__content/<dir>/_<file>.json → nur Dateien mit Unterstrich-Präfix (Entwürfe, Testdateien)
@@ -25,7 +25,7 @@ export interface ContentApiOptions {
   allowedDirs?: string[];
 }
 
-const DEFAULT_DIRS = ['zones', 'zones/worlds', 'levels', 'genome', 'rex'];
+const DEFAULT_DIRS = ['zones', 'zones/worlds', 'levels', 'genome', 'rex', 'creatures', 'creatures/vorlagen'];
 
 /** Origins of the Capacitor shells (iOS: capacitor://localhost; Android: http(s)://localhost without a port). */
 export const APP_ORIGINS = ['capacitor://localhost', 'ionic://localhost', 'https://localhost', 'http://localhost'];
@@ -84,7 +84,12 @@ export function contentApi(opts: ContentApiOptions): Plugin {
           if (!target) return send(400, { error: 'ungültiger Pfad' });
 
           if (req.method === 'GET' && !file) {
-            const names = (await fs.readdir(target)).filter((n) => n.endsWith('.json')).sort();
+            // Ein erlaubter Ordner, den es noch nicht gibt (die erste Datei legt ihn an), ist einfach leer.
+            const all = await fs.readdir(target).catch((e: NodeJS.ErrnoException) => {
+              if (e.code === 'ENOENT') return [] as string[];
+              throw e;
+            });
+            const names = all.filter((n) => n.endsWith('.json')).sort();
             return send(200, { dir, files: names });
           }
           if (req.method === 'GET' && file) {
