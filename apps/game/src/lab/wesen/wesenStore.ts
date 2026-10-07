@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { parseBauplan, type Bauplan } from '@ee/creature';
+import { parseBauplan, stableJson, type Bauplan } from '@ee/creature';
 import { STIL_STANDARD, type WesenStil } from '@ee/render';
 import { WESEN_VORLAGEN } from './presets';
 import { bereinigeBauplan, bereinigeStil, isTabId, setzeTabZurueck, setzeWert, wuerfleTab, type TabId } from './regler';
@@ -99,6 +99,9 @@ interface Entwurf {
   quelle?: WesenQuelle;
   schloss?: Record<string, boolean>;
   tab?: string;
+  /** Ansicht und Boden (Referenzmodus bleibt nach dem Neuladen). */
+  ansicht?: string;
+  boden?: string;
   at: number;
 }
 
@@ -149,6 +152,8 @@ function anfang(): Pick<WesenState, 'bauplan' | 'basis' | 'quelle'> {
 
 let meldungSeq = 0;
 let meldungTimer: ReturnType<typeof setTimeout> | null = null;
+/** Boden vor dem Referenzmodus (der weißen Grund erzwingt); beim Verlassen kommt er zurück. */
+let bodenVorReferenz: WesenBoden | null = null;
 
 function schnapp(s: WesenState): Schnappschuss {
   return { bauplan: s.bauplan, stil: s.stil, basis: s.basis, quelle: s.quelle };
@@ -240,7 +245,21 @@ export const useWesenStore = create<WesenState>((set, get) => {
     },
 
     setTab: (tab) => set({ tab }),
-    setAnsicht: (ansicht) => set({ ansicht }),
+    setAnsicht: (ansicht) =>
+      set((s) => {
+        if (ansicht === s.ansicht) return {};
+        const patch: Partial<WesenState> = { ansicht };
+        if (ansicht === 'referenz') {
+          bodenVorReferenz = s.boden;
+          patch.boden = 'weiss';
+        } else if (s.ansicht === 'referenz') {
+          patch.boden = bodenVorReferenz ?? 'wiese';
+          bodenVorReferenz = null;
+        }
+        // Feste Ansichten stehen still (Vergleich mit dem Bogen, Spielsicht)
+        if (ansicht !== 'held') patch.spin = false;
+        return patch;
+      }),
     setBoden: (boden) => set({ boden }),
     setSpin: (spin) => set({ spin }),
     setOffen: (offen) => set({ offen }),
@@ -263,7 +282,7 @@ let stilTimer: ReturnType<typeof setTimeout> | null = null;
 function schreibeEntwurf(): void {
   entwurfTimer = null;
   const s = useWesenStore.getState();
-  const e: Entwurf = { v: 1, bauplan: s.bauplan, basis: s.basis, quelle: s.quelle, schloss: s.schloss, tab: s.tab, at: Date.now() };
+  const e: Entwurf = { v: 1, bauplan: s.bauplan, basis: s.basis, quelle: s.quelle, schloss: s.schloss, tab: s.tab, ansicht: s.ansicht, boden: s.boden, at: Date.now() };
   lsSet(ENTWURF_KEY, JSON.stringify(e));
 }
 
@@ -291,7 +310,7 @@ function autosaveEinschalten(): void {
   if (autosaveAn) return;
   autosaveAn = true;
   useWesenStore.subscribe((s, p) => {
-    if (s.bauplan !== p.bauplan || s.basis !== p.basis || s.quelle !== p.quelle || s.schloss !== p.schloss || s.tab !== p.tab) {
+    if (s.bauplan !== p.bauplan || s.basis !== p.basis || s.quelle !== p.quelle || s.schloss !== p.schloss || s.tab !== p.tab || s.ansicht !== p.ansicht || s.boden !== p.boden) {
       if (entwurfTimer) clearTimeout(entwurfTimer);
       entwurfTimer = setTimeout(schreibeEntwurf, 250);
     }
@@ -342,6 +361,8 @@ export function starteWesenLab(p: StartParameter): void {
       patch.quelle = istQuelle(e.quelle) ? e.quelle : { art: 'neu', id: 'entwurf' };
       if (e.schloss && typeof e.schloss === 'object') patch.schloss = Object.fromEntries(Object.entries(e.schloss).filter(([, v]) => v === true));
       if (isTabId(e.tab)) patch.tab = e.tab;
+      if (e.ansicht === 'held' || e.ansicht === 'referenz' || e.ansicht === 'brett') patch.ansicht = e.ansicht;
+      if (e.boden === 'wiese' || e.boden === 'weiss') patch.boden = e.boden;
     }
   }
   const ansicht = p.ansicht === 'referenz' || p.ansicht === 'brett' || p.ansicht === 'held' ? p.ansicht : null;
@@ -357,7 +378,9 @@ export function starteWesenLab(p: StartParameter): void {
     const datei = v ? null : (p.dateien ?? []).find((d) => d.file === `${p.vorlage}.json` || d.file === p.vorlage);
     const quelle: WesenQuelle | null = v ? { art: 'vorlage', id: p.vorlage } : datei ? { art: 'datei', id: datei.file, ort: datei.ort } : null;
     const b = v ?? datei?.bauplan ?? null;
-    if (b && quelle && !(s.quelle.art === quelle.art && s.quelle.id === quelle.id && s.bauplan === s.basis)) {
+    // Schon geladen und unverändert (z. B. Neuladen mit derselben Adresse): nichts tun
+    const unveraendert = s.quelle.art === quelle?.art && s.quelle.id === quelle.id && stableJson(s.bauplan) === stableJson(s.basis);
+    if (b && quelle && !unveraendert) {
       // Frischer Lauf (keine Vorgeschichte): ohne Verlaufsschritt; sonst bleibt der Entwurf per Rückgängig erreichbar.
       if (erstesMal && s.past.length === 0 && !leseJson(ENTWURF_KEY)) useWesenStore.setState({ bauplan: b, basis: b, quelle });
       else s.ladeBauplan(b, quelle);

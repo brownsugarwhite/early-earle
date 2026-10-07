@@ -114,6 +114,19 @@ describe('Wesen-Store', () => {
     expect(s().stil.rim).toBe(0.9);
   });
 
+  it('Referenzmodus: weißer Grund, Drehen aus; danach kommt der alte Boden zurück', () => {
+    s().setBoden('wiese');
+    s().setSpin(true);
+    s().setAnsicht('referenz');
+    expect(s().boden).toBe('weiss');
+    expect(s().spin).toBe(false);
+    s().setAnsicht('brett');
+    expect(s().boden).toBe('wiese');
+    s().setAnsicht('held');
+    expect(s().ansicht).toBe('held');
+    expect(s().past).toHaveLength(0); // Ansichten sind kein Verlaufsschritt
+  });
+
   it('Start: Entwurf und Stil aus dem Browser-Speicher, sichert nach 250 ms', () => {
     const m = speicher();
     const entwurf = parseBauplan({ name: 'Mein Rex', maul: { hoehe: 0.2 } });

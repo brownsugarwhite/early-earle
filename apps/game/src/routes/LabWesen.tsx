@@ -4,13 +4,18 @@ import { CanvasHost } from '../canvas/CanvasHost';
 import { LabFrame } from '../overlay/LabFrame';
 import { WesenLabScene } from '../lab/wesen/WesenLabScene';
 import { WESEN_VORLAGEN } from '../lab/wesen/presets';
-import { sichereEntwurfJetzt, starteWesenLab, useWesenStore, vorlageBauplan } from '../lab/wesen/wesenStore';
+import { sichereEntwurfJetzt, starteWesenLab, useWesenStore, vorlageBauplan, type WesenAnsicht } from '../lab/wesen/wesenStore';
 import { InfoZeile, MeldungZeile, RueckgaengigKnoepfe, TabInhalt, TabLeiste } from '../lab/wesen/WesenPanel';
+import { ReferenzBereich, ReferenzOverlay } from '../lab/wesen/ReferenzOverlay';
+import type { TurntableAnsicht } from '../lab/wesen/turntable';
 import { WesenIcon } from '../lab/wesen/icons';
 import '../lab/earle/earle-lab.css';
 import '../lab/wesen/wesen-lab.css';
 
 const st = () => useWesenStore.getState();
+
+/** Ansicht des Labs → feste Kamera des Drehtellers (Referenzmodus = Bögen-Kamera). */
+const KAMERA: Record<WesenAnsicht, TurntableAnsicht> = { held: 'held', referenz: 'boegen', brett: 'brett' };
 
 /** Zieht die Szene am Store mit (ohne React-Render): Bauplan, Stil, Boden, Drehen, Öffnung. */
 function useSzeneAmStore(controller: WesenLabScene): void {
@@ -21,12 +26,14 @@ function useSzeneAmStore(controller: WesenLabScene): void {
     controller.setBoden(s.boden);
     controller.setSpin(s.spin);
     controller.setOpenness(s.offen);
+    controller.setAnsicht(KAMERA[s.ansicht]);
     return useWesenStore.subscribe((n, p) => {
       if (n.bauplan !== p.bauplan) controller.setBauplan(n.bauplan, { neu: n.basis !== p.basis || n.quelle !== p.quelle });
       if (n.stil !== p.stil) controller.setStil(n.stil);
       if (n.boden !== p.boden) controller.setBoden(n.boden);
       if (n.spin !== p.spin) controller.setSpin(n.spin);
       if (n.offen !== p.offen) controller.setOpenness(n.offen);
+      if (n.ansicht !== p.ansicht) controller.setAnsicht(KAMERA[n.ansicht]);
     });
   }, [controller]);
 }
@@ -118,9 +125,22 @@ function TabBereich() {
 function SchnellAktionen({ controller }: { controller: WesenLabScene }) {
   const spin = useWesenStore((s) => s.spin);
   const boden = useWesenStore((s) => s.boden);
+  const ansicht = useWesenStore((s) => s.ansicht);
+  const umschalten = (a: WesenAnsicht) => st().setAnsicht(ansicht === a ? 'held' : a);
   return (
     <>
       <RueckgaengigKnoepfe />
+      <button type="button" className="wl-btn" data-active={ansicht === 'referenz'} aria-pressed={ansicht === 'referenz'} onClick={() => umschalten('referenz')} data-testid="wl-referenz" title="Weißer Grund, Bögen-Kamera, Referenzbild darüber">
+        <WesenIcon name="bild" size={20} />
+        <span>Referenz</span>
+      </button>
+      <button type="button" className="wl-btn" data-active={ansicht === 'brett'} aria-pressed={ansicht === 'brett'} onClick={() => umschalten('brett')} data-testid="wl-brett" title="Kamera wie auf dem Spielfeld (≈ 65° von oben), Wesen in Brettgröße">
+        <WesenIcon name="brett" size={20} />
+        <span>Brett</span>
+      </button>
+      <button type="button" className="wl-btn wl-btn--icon" onClick={() => controller.setAnsicht(KAMERA[ansicht])} aria-label="Kamera einpassen" title="Kamera zurück in die feste Ansicht" data-testid="wl-einpassen">
+        <WesenIcon name="kamera" size={20} />
+      </button>
       <button type="button" className="wl-btn wl-btn--akt" onClick={() => st().setOffen(1)} data-testid="wesen-maul-auf">
         Maul auf
       </button>
@@ -154,6 +174,8 @@ export function LabWesen() {
     return true;
   });
   const controller = useMemo(() => new WesenLabScene(), []);
+  const ansicht = useWesenStore((s) => s.ansicht);
+  const boden = useWesenStore((s) => s.boden);
   useSzeneAmStore(controller);
   useTastenkuerzel();
 
@@ -170,7 +192,7 @@ export function LabWesen() {
   }, [controller]);
 
   return (
-    <div className="wesen-lab" data-testid="wesen-lab">
+    <div className="wesen-lab" data-testid="wesen-lab" data-boden={boden} data-ansicht={ansicht}>
       <LabFrame
         title="Wesen-Lab · Grundformen"
         peek={<SchnellAktionen controller={controller} />}
@@ -179,11 +201,13 @@ export function LabWesen() {
             <InfoZeile controller={controller} />
             <VorlagenWahl />
             <MeldungZeile />
+            {ansicht === 'referenz' ? <ReferenzBereich onKamera={() => controller.setAnsicht('boegen')} /> : null}
             <TabBereich />
           </div>
         }
       >
         <CanvasHost controller={controller} />
+        <ReferenzOverlay />
       </LabFrame>
     </div>
   );
