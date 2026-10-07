@@ -61,6 +61,20 @@ export interface RevolvePrim extends PrimBase {
   topRound?: number;
 }
 
+/**
+ * Glatter Schlauch entlang einer dichten Polylinie (Lippen, später Hals/Schwanz): Abstand zum nächsten Segment minus dem
+ * dort interpolierten Radius — ein Primitiv statt einer Kapselkette, deshalb keine Nahtbeulen durch Smooth-Min.
+ */
+export interface TubePrim extends PrimBase {
+  kind: 'tube';
+  /** xyz je Punkt. */
+  points: Float64Array;
+  /** Radius je Punkt. */
+  radii: Float64Array;
+  /** Geschlossener Ring (letzter Punkt verbindet zum ersten). */
+  closed?: boolean;
+}
+
 /** Freies Primitiv (z. B. Maulhöhle) mit eigener Abstandsfunktion und Hüllquader. */
 export interface CustomPrim extends PrimBase {
   kind: 'custom';
@@ -68,7 +82,7 @@ export interface CustomPrim extends PrimBase {
   bounds: { min: Vec3; max: Vec3 };
 }
 
-export type Prim = CapsulePrim | EllipsoidPrim | RevolvePrim | CustomPrim;
+export type Prim = CapsulePrim | EllipsoidPrim | RevolvePrim | TubePrim | CustomPrim;
 
 export interface SdfScene {
   prims: Prim[];
@@ -211,8 +225,30 @@ export function sdRevolve(p: Readonly<Vec3>, prim: RevolvePrim): number {
   return d - prim.round * 0.35;
 }
 
+export function sdTube(p: Readonly<Vec3>, prim: TubePrim): number {
+  const pts = prim.points, rr = prim.radii;
+  const n = rr.length;
+  const segs = prim.closed ? n : n - 1;
+  let best = Infinity;
+  for (let i = 0; i < segs; i++) {
+    const j = (i + 1) % n;
+    const ax = pts[i * 3]!, ay = pts[i * 3 + 1]!, az = pts[i * 3 + 2]!;
+    const bx = pts[j * 3]!, by = pts[j * 3 + 1]!, bz = pts[j * 3 + 2]!;
+    const ex = bx - ax, ey = by - ay, ez = bz - az;
+    const wx = p[0] - ax, wy = p[1] - ay, wz = p[2] - az;
+    const l2 = ex * ex + ey * ey + ez * ez || 1e-12;
+    const tt = Math.max(0, Math.min(1, (wx * ex + wy * ey + wz * ez) / l2));
+    const dx = wx - ex * tt, dy = wy - ey * tt, dz = wz - ez * tt;
+    const d = Math.sqrt(dx * dx + dy * dy + dz * dz) - (rr[i]! + (rr[j]! - rr[i]!) * tt);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
 export function sdPrim(p: Readonly<Vec3>, prim: Prim): number {
   switch (prim.kind) {
+    case 'tube':
+      return sdTube(p, prim);
     case 'capsule':
       return sdRoundCone(p, prim.a, prim.b, prim.ra, prim.rb);
     case 'ellipsoid':
@@ -383,6 +419,18 @@ export function primBounds(prim: Prim): { min: Vec3; max: Vec3 } {
       const rx = (rmax / sm) * prim.sx + prim.round;
       const rz = (rmax / sm) * prim.sz + prim.round + Math.abs(prim.shear) * prim.height;
       return { min: [prim.c[0] - rx, prim.c[1] - prim.round, prim.c[2] - rz], max: [prim.c[0] + rx, prim.c[1] + prim.height + prim.round, prim.c[2] + rz] };
+    }
+    case 'tube': {
+      const min: Vec3 = [Infinity, Infinity, Infinity], max: Vec3 = [-Infinity, -Infinity, -Infinity];
+      let rmax = 0;
+      for (let i = 0; i < prim.radii.length; i++) {
+        rmax = Math.max(rmax, prim.radii[i]!);
+        for (let c = 0; c < 3; c++) {
+          min[c] = Math.min(min[c]!, prim.points[i * 3 + c]!);
+          max[c] = Math.max(max[c]!, prim.points[i * 3 + c]!);
+        }
+      }
+      return { min: [min[0] - rmax, min[1] - rmax, min[2] - rmax], max: [max[0] + rmax, max[1] + rmax, max[2] + rmax] };
     }
     case 'custom':
       return prim.bounds;

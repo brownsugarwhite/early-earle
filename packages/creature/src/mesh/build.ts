@@ -123,6 +123,63 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       }
     }
     orientToNormals(positions, normals, index);
+    // Lippen- und Augenzone: Gitterrauschen entlang der Wülste wegglätten (nur glatte Vertices, Kanten bleiben), danach
+    // zurück auf das Feld — glatt wie Edgeloops, die Maullinie bleibt scharf
+    const adjDc = adjacency(index, vertexCount);
+    const mask = new Uint8Array(vertexCount);
+    let masked = 0;
+    if (c.mouth) {
+      const lip = c.mouth.lipLine;
+      const R = c.mouth.gapFront * 2.2 + 0.14 * c.bodyScale;
+      const R2 = R * R;
+      for (let v = 0; v < vertexCount; v++) {
+        if (crease[v]! >= 0.55) continue;
+        const x = positions[v * 3]!, y = positions[v * 3 + 1]!, z = positions[v * 3 + 2]!;
+        let near = false;
+        for (let i = 0; i < lip.length && !near; i += 2) {
+          const q = lip[i]!;
+          const dx = x - q[0], dy = y - q[1], dz = z - q[2];
+          if (dx * dx + dy * dy + dz * dz < R2) near = true;
+        }
+        if (!near) {
+          for (const e of c.eyes) {
+            const dx = x - e.pos[0], dy = y - e.pos[1], dz = z - e.pos[2];
+            if (dx * dx + dy * dy + dz * dz < (2.6 * e.radius) * (2.6 * e.radius)) {
+              near = true;
+              break;
+            }
+          }
+        }
+        if (near) {
+          mask[v] = 1;
+          masked++;
+        }
+      }
+    }
+    if (masked > 0) {
+      smoothMasked(positions, adjDc, mask, 3, 0.5);
+      const idxs: number[] = [];
+      for (let v = 0; v < vertexCount; v++) if (mask[v]) idxs.push(v);
+      const sub = new Float32Array(idxs.length * 3);
+      for (let q = 0; q < idxs.length; q++) {
+        const v = idxs[q]!;
+        sub[q * 3] = positions[v * 3]!;
+        sub[q * 3 + 1] = positions[v * 3 + 1]!;
+        sub[q * 3 + 2] = positions[v * 3 + 2]!;
+      }
+      const subN = new Float32Array(sub.length);
+      projectAndNormals(sdf, sub, subN, cell * 0.25, 2);
+      for (let q = 0; q < idxs.length; q++) {
+        const v = idxs[q]!;
+        positions[v * 3] = sub[q * 3]!;
+        positions[v * 3 + 1] = sub[q * 3 + 1]!;
+        positions[v * 3 + 2] = sub[q * 3 + 2]!;
+        normals[v * 3] = subN[q * 3]!;
+        normals[v * 3 + 1] = subN[q * 3 + 1]!;
+        normals[v * 3 + 2] = subN[q * 3 + 2]!;
+      }
+      orientToNormals(positions, normals, index);
+    }
   } else {
     let raw = contourManifold(sdf, { min: c.bounds.min, max: c.bounds.max, cell, narrowBand: opts.narrowBand ?? true });
     raw = largestComponent(raw);
@@ -168,6 +225,32 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     shapeHash: shapeHash(b, resolution),
     stats: { vertexCount, triangleCount: index.length / 3, cell, nonManifold: nonManifoldEdges(index, vertexCount), ms: t1 - t0 },
   };
+}
+
+/** Laplace-Glättung nur für maskierte Vertices (Nachbarn aller Art zählen), `iterations` Durchläufe mit Stärke `lambda`. */
+function smoothMasked(positions: Float32Array, adj: { offsets: Uint32Array; neighbours: Uint32Array }, mask: Uint8Array, iterations: number, lambda: number): void {
+  const n = positions.length / 3;
+  const tmp = new Float32Array(positions.length);
+  for (let it = 0; it < iterations; it++) {
+    tmp.set(positions);
+    for (let v = 0; v < n; v++) {
+      if (!mask[v]) continue;
+      const s = adj.offsets[v]!, e = adj.offsets[v + 1]!;
+      if (e <= s) continue;
+      let ax = 0, ay = 0, az = 0;
+      for (let k = s; k < e; k++) {
+        const w = adj.neighbours[k]!;
+        ax += positions[w * 3]!;
+        ay += positions[w * 3 + 1]!;
+        az += positions[w * 3 + 2]!;
+      }
+      const inv = 1 / (e - s);
+      tmp[v * 3] = positions[v * 3]! + lambda * (ax * inv - positions[v * 3]!);
+      tmp[v * 3 + 1] = positions[v * 3 + 1]! + lambda * (ay * inv - positions[v * 3 + 1]!);
+      tmp[v * 3 + 2] = positions[v * 3 + 2]! + lambda * (az * inv - positions[v * 3 + 2]!);
+    }
+    positions.set(tmp);
+  }
 }
 
 function isBauplan(x: unknown): x is Bauplan {

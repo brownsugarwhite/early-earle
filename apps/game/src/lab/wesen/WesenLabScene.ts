@@ -41,7 +41,7 @@ export class WesenLabScene implements SceneController {
   private stats: WesenLabStats = { vertices: 0, triangles: 0, bones: 0, teeth: 0, buildMs: 0, resolution: 0, pending: false };
   /** Auflösungen: grob beim Ziehen, fein in Ruhe. */
   lowRes = 36;
-  highRes = 80;
+  highRes = 88;
   private fitExtent = 0;
 
   mount(ctx: SceneContext): void {

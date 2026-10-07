@@ -219,7 +219,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     for (let i = 0; i < nb; i++) {
       const i0 = Math.min(pts.length - 1, Math.round((i / nb) * (pts.length - 1)));
       const i1 = Math.min(pts.length - 1, Math.round(((i + 1) / nb) * (pts.length - 1)));
-      prims.push(capsule(pts[i0]!, pts[i1]!, radii[i0]!, radii[i1]!, boneIdx[i]!, 0.45 * rN + 0.03 * H, `hals${i}`));
+      // Glieder teilen ihre Endpunkte: nur die Naht weich machen (großes k ergäbe Perlenkette), der Ansatz am Körper bleibt weich
+      prims.push(capsule(pts[i0]!, pts[i1]!, radii[i0]!, radii[i1]!, boneIdx[i]!, i === 0 ? 0.45 * rN + 0.03 * H : 0.12 * rN, `hals${i}`));
     }
     const neckEnd = pts[pts.length - 1]!;
     const neckTan = pl.tangents[pts.length - 1]!;
@@ -358,7 +359,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const bFoot = bone(`bein${i}Fuss`, bKnee, ankle, QUAT_ID, g);
       groups[g]!.bones.push(bHip, bKnee, bFoot);
       prims.push(capsule(hip, knee, rHip, rKnee, bHip, 0.2 * H * (0.5 + L.schenkel) * thin + 0.02 * H, `bein${i}a`));
-      prims.push(capsule(knee, ankle, rKnee, rAnkle, bKnee, 0.1 * H * thin + 0.01 * H, `bein${i}b`));
+      prims.push(capsule(knee, ankle, rKnee, rAnkle, bKnee, 0.14 * rKnee + 0.004 * H, `bein${i}b`));
       const footPrim: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: bFoot, k: 0.08 * H, region: REGION.haut, name: `bein${i}fuss`, c: [foot[0], rFoot * 0.42, foot[2]], r: [rFoot * 1.2, rFoot * 0.48, rFoot * 1.4] };
       prims.push(footPrim);
     });
@@ -395,7 +396,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     for (let i = 0; i < nb; i++) {
       const i0 = Math.min(pts.length - 1, Math.round((i / nb) * (pts.length - 1)));
       const i1 = Math.min(pts.length - 1, Math.round(((i + 1) / nb) * (pts.length - 1)));
-      prims.push(capsule(pts[i0]!, pts[i1]!, radii[i0]!, radii[i1]!, idx[i]!, (i === 0 ? 0.28 : 0.12) * H, `schlange${i}`));
+      prims.push(capsule(pts[i0]!, pts[i1]!, radii[i0]!, radii[i1]!, idx[i]!, i === 0 ? 0.28 * H : 0.12 * radii[i0]!, `schlange${i}`));
     }
   } else if (b.schwanz.typ !== 'keiner') {
     const T = b.schwanz;
@@ -428,7 +429,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     for (let i = 0; i < nb; i++) {
       const i0 = Math.min(pts.length - 1, Math.round((i / nb) * (pts.length - 1)));
       const i1 = Math.min(pts.length - 1, Math.round(((i + 1) / nb) * (pts.length - 1)));
-      prims.push(capsule(pts[i0]!, pts[i1]!, radii[i0]!, radii[i1]!, idx[i]!, (T.typ === 'wirbelsaeule' ? 0.3 : 0.12) * H, `schwanz${i}`));
+      prims.push(capsule(pts[i0]!, pts[i1]!, radii[i0]!, radii[i1]!, idx[i]!, i === 0 ? (T.typ === 'wirbelsaeule' ? 0.3 : 0.12) * H : 0.12 * radii[i0]!, `schwanz${i}`));
     }
   }
 

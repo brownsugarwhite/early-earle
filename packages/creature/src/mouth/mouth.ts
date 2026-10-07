@@ -1,7 +1,7 @@
 import type { Bauplan } from '../bauplan/schema';
 import { makeRng } from '../math/rng';
 import { add, clamp, clamp01, cross, dot, lerp, normalize, scale, smoothstep, sub, type Vec3 } from '../math/vec';
-import { REGION, evalScene, type CapsulePrim, type CustomPrim, type Prim, type SdfScene } from '../sdf/scene';
+import { REGION, evalScene, type CustomPrim, type Prim, type SdfScene, type TubePrim } from '../sdf/scene';
 
 /**
  * Das Maul: ein **Maulvolumen** zwischen zwei Lippenkurven, das vom Träger (Körper oder Kopf) abgezogen wird.
@@ -240,47 +240,48 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
     if (cut > 0.02) prims.push(chin);
   }
 
-  // Lippenwülste entlang der Maullinie (oben und unten), zu den Mundwinkeln hin dünner
+  // Lippenwülste entlang der Maullinie (oben und unten) als je ein glatter Schlauch (keine Kapselkette → keine Nahtbeulen),
+  // zu den Mundwinkeln hin dünner und dort zusammenlaufend
   const lipRadius = Math.max(0.006, m.lippe * 0.1 * bodyScale);
   if (m.lippe > 0.02 && m.form > 0.02) {
     for (const side of [1, -1] as const) {
       if (side < 0 && m.unterkiefer < 0.05) continue;
-      for (let i = 0; i < n - 1; i += 4) {
-        const phiA = phis[i]!, phiB = phis[Math.min(n - 1, i + 4)]!;
-        const taperA = 0.35 + 0.65 * (1 - Math.pow(Math.abs(phiA) / theta, 2));
-        const taperB = 0.35 + 0.65 * (1 - Math.pow(Math.abs(phiB) / theta, 2));
-        const spA = surfacePoint(host, lipHAt(phiA) + side * (gapAt(phiA) + lipRadius * 0.6), phiA, maxR);
-        const spB = surfacePoint(host, lipHAt(phiB) + side * (gapAt(phiB) + lipRadius * 0.6), phiB, maxR);
-        const outA = normalize(sub(spA.p, add(host.origin, scale(host.up, lipHAt(phiA)))));
-        const outB = normalize(sub(spB.p, add(host.origin, scale(host.up, lipHAt(phiB)))));
-        const prim: CapsulePrim = {
-          kind: 'capsule',
-          op: 'union',
-          part: side > 0 ? host.bone : jawBone,
-          region: REGION.lippe,
-          k: lipRadius * 1.4,
-          name: side > 0 ? 'oberlippe' : 'unterlippe',
-          a: add(spA.p, scale(outA, lipRadius * 0.5 * taperA * m.form)),
-          b: add(spB.p, scale(outB, lipRadius * 0.5 * taperB * m.form)),
-          ra: lipRadius * taperA * m.form,
-          rb: lipRadius * taperB * m.form,
-        };
-        prims.push(prim);
+      const pts = new Float64Array(n * 3);
+      const rad = new Float64Array(n);
+      for (let i = 0; i < n; i++) {
+        const phi = phis[i]!;
+        const taper = 0.3 + 0.7 * (1 - Math.pow(Math.abs(phi) / theta, 2));
+        const g = gapAt(phi);
+        const sp = surfacePoint(host, lipHAt(phi) + side * (g + lipRadius * 0.6 * taper), phi, maxR);
+        const out = normalize(sub(sp.p, add(host.origin, scale(host.up, lipHAt(phi)))));
+        const r = lipRadius * taper * m.form;
+        const q = add(sp.p, scale(out, r * 0.5));
+        pts[i * 3] = q[0];
+        pts[i * 3 + 1] = q[1];
+        pts[i * 3 + 2] = q[2];
+        rad[i] = r;
       }
+      const prim: TubePrim = { kind: 'tube', op: 'union', part: side > 0 ? host.bone : jawBone, region: REGION.lippe, k: lipRadius * 0.9, name: side > 0 ? 'oberlippe' : 'unterlippe', points: pts, radii: rad };
+      prims.push(prim);
     }
   }
 
-  // Lochmaul: Lippenring um die Öffnung (Kugelfisch, Betta), mit (1 − form) gewichtet
+  // Lochmaul: Lippenring um die Öffnung (Kugelfisch, Betta) als geschlossener Schlauch, mit (1 − form) gewichtet
   if (m.form < 0.98 && m.lippe > 0.02) {
     const ringR = rho0 * 1.05 + lipRadius * 0.35;
     const ringRad = lipRadius * (0.7 + 0.5 * (1 - m.form)) * (1 - m.form) + 1e-3;
-    const segs = 14;
+    const segs = 48;
+    const pts = new Float64Array(segs * 3);
+    const rad = new Float64Array(segs).fill(ringRad);
     for (let i = 0; i < segs; i++) {
-      const a0 = (i / segs) * Math.PI * 2, a1 = ((i + 1) / segs) * Math.PI * 2;
-      const pa = add(add(center, scale(frame.x, Math.cos(a0) * ringR)), scale(frame.y, Math.sin(a0) * ringR));
-      const pb = add(add(center, scale(frame.x, Math.cos(a1) * ringR)), scale(frame.y, Math.sin(a1) * ringR));
-      prims.push({ kind: 'capsule', op: 'union', part: Math.sin(a0) < -0.2 && m.unterkiefer > 0.05 ? jawBone : host.bone, region: REGION.lippe, k: ringRad * 1.5, name: 'lippenring', a: add(pa, scale(frame.z, ringRad * 0.35)), b: add(pb, scale(frame.z, ringRad * 0.35)), ra: ringRad, rb: ringRad });
+      const a0 = (i / segs) * Math.PI * 2;
+      const pa = add(add(add(center, scale(frame.x, Math.cos(a0) * ringR)), scale(frame.y, Math.sin(a0) * ringR)), scale(frame.z, ringRad * 0.35));
+      pts[i * 3] = pa[0];
+      pts[i * 3 + 1] = pa[1];
+      pts[i * 3 + 2] = pa[2];
     }
+    const ring: TubePrim = { kind: 'tube', op: 'union', part: host.bone, region: REGION.lippe, k: ringRad * 1.2, name: 'lippenring', points: pts, radii: rad, closed: true };
+    prims.push(ring);
   }
 
   // Zähne auf den Lippenkurven des geschlossenen Zustands, oben/unten um eine halbe Teilung versetzt
