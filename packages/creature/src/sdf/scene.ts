@@ -193,8 +193,9 @@ export function sdRevolve(p: Readonly<Vec3>, prim: RevolvePrim): number {
   }
   const { r } = radiusAt(prim, yc);
   let side = Math.sqrt(best);
-  if (q < r && y <= H && y >= 0) side = -side;
-  // über dem Scheitel bzw. unter dem Boden ist der Polylinienabstand bereits korrekt (Segmente enden dort)
+  // innen = innerhalb des (nach oben und unten verlängerten) Seitenprofils; Deckel und Standfläche schließen es unten
+  // über max() ab. Nur nach q zu entscheiden hält das Feld auf y = H und y = 0 stetig (sonst Spitzen am Deckelrand).
+  if (q < r) side = -side;
   // Standfläche: Schnitt mit dem Halbraum y ≥ 0, Kante gerundet
   const bottom = -y;
   const k = prim.round;
