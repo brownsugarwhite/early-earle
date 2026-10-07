@@ -79,6 +79,8 @@ const kopf = z
     schnauze: regler(H, 'kopf.schnauze', 'Schnauze', 0, 1, 0, 'Länge der Schnauze'),
     schnauzeDicke: regler(H, 'kopf.schnauzeDicke', 'Schnauzendicke', 0.3, 1.2, 0.7),
     braue: regler(H, 'kopf.braue', 'Brauenwulst', 0, 1, 0),
+    ohren: regler(H, 'kopf.ohren', 'Ohren', 0, 1, 0, 'flache Lappen seitlich hinten'),
+    hoerner: regler(H, 'kopf.hoerner', 'Hörnchen', 0, 1, 0, 'zwei Stiele mit Knopf'),
   })
   .prefault({});
 

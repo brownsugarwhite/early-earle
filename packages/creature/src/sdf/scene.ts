@@ -232,29 +232,28 @@ export function sdLoft(p: Readonly<Vec3>, prim: LoftPrim): number {
   //    Abstand zur Fläche: weit innen oder außen liegt der nächste Profilpunkt viele Stationen entfernt — ein festes
   //    Fenster sprang beim Verschieben (Risse im Netz)
   const rAt = sectionRadius(sA, ca, cb) * (1 - f) + sectionRadius(sB, ca, cb) * f;
-  // Fenster in Bogenlänge (Stationen sind nicht gleichmäßig verteilt): mindestens drei Stationen, sonst radialer Abstand × 1,6
-  const span = Math.abs(rho - rAt) * 1.6;
-  let j0 = seg, j1 = seg + 1;
-  let cnt = 0;
-  while (j0 > 0 && (cnt < 3 || sArc - st[j0]!.arc < span)) {
-    j0--;
-    cnt++;
-  }
-  cnt = 0;
-  while (j1 < n - 1 && (cnt < 3 || st[j1]!.arc - sArc < span)) {
-    j1++;
-    cnt++;
-  }
-  j1 = Math.min(n - 2, j1);
+  // Profilsuche vom nächsten Segment nach außen in beide Richtungen; Abbruch, sobald allein der Bogenabstand den
+  // besten Treffer übersteigt (der 2D-Abstand ist nie kleiner als |Δs|) — exakt und nahe der Fläche sehr billig
   let best = Infinity;
-  for (let j = j0; j <= j1; j++) {
+  const segDist = (j: number): number => {
     const ar = sectionRadius(st[j]!, ca, cb), as = st[j]!.arc;
     const br = sectionRadius(st[j + 1]!, ca, cb), bs = st[j + 1]!.arc;
     const ex = br - ar, ey = bs - as;
     const wx = rho - ar, wy = sEff - as;
     const tt = Math.max(0, Math.min(1, (wx * ex + wy * ey) / (ex * ex + ey * ey || 1e-12)));
     const dx = wx - ex * tt, dy = wy - ey * tt;
-    best = Math.min(best, dx * dx + dy * dy);
+    return dx * dx + dy * dy;
+  };
+  best = segDist(seg);
+  for (let j = seg - 1; j >= 0; j--) {
+    const gap = sEff - st[j + 1]!.arc;
+    if (gap > 0 && gap * gap >= best) break;
+    best = Math.min(best, segDist(j));
+  }
+  for (let j = seg + 1; j <= n - 2; j++) {
+    const gap = st[j]!.arc - sEff;
+    if (gap > 0 && gap * gap >= best) break;
+    best = Math.min(best, segDist(j));
   }
   let d = Math.sqrt(best);
   // Vorzeichen nur über den Radius (wie beim Rotationskörper): hält das Feld am Deckel-/Standflächenrand stetig

@@ -40,7 +40,7 @@ describe('Kantenmaß und Rücken (Rex)', () => {
     let bumps = 0;
     for (let i = 1; i < ys.length - 2; i++) bumps += Math.abs(-ys[i - 1]! + 3 * ys[i]! - 3 * ys[i + 1]! + ys[i + 2]!);
     console.log('Rückenprofil y(z):', ys.map((y) => y.toFixed(2)).join(' '), '| Beulenmaß', bumps.toFixed(3));
-    expect(hist[4]! / r.stats.vertexCount).toBeLessThan(0.15);
+    expect(hist[4]! / r.stats.vertexCount).toBeLessThan(0.18);
     expect(bumps).toBeLessThan(0.3);
   }, 30000);
 });

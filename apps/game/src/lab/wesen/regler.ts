@@ -308,7 +308,7 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
   ],
   halsKopf: [
     { titel: 'Hals', ids: ['hals.laenge', 'hals.dicke', 'hals.kruemmung', 'hals.ansatz'] },
-    { titel: 'Kopf', ids: ['kopf.groesse', 'kopf.laenge', 'kopf.neigung'] },
+    { titel: 'Kopf', ids: ['kopf.groesse', 'kopf.laenge', 'kopf.neigung', 'kopf.ohren', 'kopf.hoerner'] },
     { titel: 'Schnauze und Braue', ids: ['kopf.schnauze', 'kopf.schnauzeDicke', 'kopf.braue'] },
   ],
   maul: [

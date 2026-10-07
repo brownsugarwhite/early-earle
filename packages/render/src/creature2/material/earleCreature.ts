@@ -48,6 +48,8 @@ export interface CreatureMaterialUniforms {
   blink: UniformNode<'float', number>;
   /** Gewicht des Verschluss-Morphs (1 = Maul zu). */
   verschluss: UniformNode<'float', number>;
+  /** Sichtbarkeit von Lippenband und Maulkante (aus `maul.lippe`): 0 = Naht geschlossen unsichtbar (Giraffe). */
+  lippeSichtbar: UniformNode<'float', number>;
   /** Gewicht des Spitzmund-Morphs (1 = Lochmaul ganz weit). */
   spitzmund: UniformNode<'float', number>;
 }
@@ -116,6 +118,7 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     eyeCount: uniform(0),
     blink: uniform(0),
     verschluss: uniform(0),
+    lippeSichtbar: uniform(1),
     spitzmund: uniform(0),
   };
 }
@@ -196,7 +199,10 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const rest = positionGeometry as unknown as Vec3Node;
     // An scharfen Kanten (Maullinie, Augenwulst, Standkante) die Facettennormale nehmen: die Kante bleibt im Licht sichtbar
     const flatN = normalize(cross(dFdx(positionView as unknown as Vec3Node), dFdy(positionView as unknown as Vec3Node)));
-    const N = normalize(mix(normalize(normalView as unknown as Vec3Node), flatN, smoothstep(0.55, 0.9, crease).mul(u.kanten))).toVar();
+    // nur dort, wo Schärfe gewollt ist (Maul, Lippen, Augenhöhlen) — Teilübergänge am Körper bleiben weich (Florian: „Linien
+    // müssen ganz weich ineinander übergehen“)
+    const kantenZone = clamp(max(max(region.x, region.y.mul(u.lippeSichtbar)), region.w).mul(1.5), 0, 1);
+    const N = normalize(mix(normalize(normalView as unknown as Vec3Node), flatN, smoothstep(0.55, 0.9, crease).mul(u.kanten).mul(kantenZone))).toVar();
     const V = normalize(positionView.negate() as unknown as Vec3Node).toVar();
     const L = u.lightDir;
     const ndl = dot(N, L);
@@ -249,7 +255,7 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
 
     // Regionen: Lippe (Wulst), Rachen (dunkel nach innen), Augenhöhle (etwas tiefer)
     const lip = shadeOf(u.lippe);
-    skin.assign(mix(skin, lip, region.y.mul(0.85)));
+    skin.assign(mix(skin, lip, region.y.mul(0.85).mul(u.lippeSichtbar)));
     const throatDepth = clamp(ao.mul(1.6), 0, 1);
     const throat = mix(shadeOf(u.rachen), u.rachen.schatten.mul(0.45), throatDepth);
     skin.assign(mix(skin, throat, smoothstep(0.15, 0.6, region.x)));

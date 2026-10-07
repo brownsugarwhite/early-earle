@@ -20,7 +20,8 @@ function sprünge(bauplan: Parameters<typeof parseBauplan>[0], linien: Array<[nu
     let prev = evalScene(c.scene, [x, -0.2, z]);
     for (let y = -0.2 + step; y < yMax; y += step) {
       const d = evalScene(c.scene, [x, y, z]);
-      if (Math.abs(d - prev) > 4 * step) {
+      // nur nahe der Fläche: tief innen oder weit außen tastet das Dual Contouring nichts ab
+      if (Math.abs(d - prev) > 4 * step && Math.min(Math.abs(d), Math.abs(prev)) < 0.1) {
         const per = c.scene.prims.map((p, i) => `${names[i]}:${(sdPrim([x, y, z], p) - sdPrim([x, y - step, z], p)).toFixed(3)}`).filter((s) => Math.abs(Number(s.split(':')[1])) > 2.5 * step);
         out.push(`x=${x} z=${z} y=${y.toFixed(3)} Δ=${(d - prev).toFixed(3)} [${per.join(' ')}]`);
       }

@@ -35,8 +35,17 @@ function toothGeometry(stil: 'rund' | 'spitz'): BufferGeometry {
     g.scale(1, 1.0, 1);
     g.translate(0, 0.5, 0);
   } else {
-    g = new ConeGeometry(0.5, 1, 12, 1, false);
+    g = new ConeGeometry(0.5, 1, 12, 6, false);
     g.translate(0, 0.5, 0);
+    // Fangzahn (Bild 5/11): leicht gebogen, zur Spitze hin nach hinten (−z) kippend, Ansatz etwas breiter als rund
+    const pos = g.getAttribute('position');
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      const bend = 0.22 * y * y;
+      pos.setXYZ(i, pos.getX(i) * (1 + 0.15 * (1 - y)), y, pos.getZ(i) * 0.85 - bend);
+    }
+    pos.needsUpdate = true;
+    g.computeVertexNormals();
   }
   const pos = g.getAttribute('position');
   const t = new Float32Array(pos.count);
@@ -288,6 +297,9 @@ export class CreatureMesh {
       const u4 = this.uniforms.eyeUp.array[i] as Vector4;
       u4.set(up.x, up.y, up.z, 1);
     });
+    // Naht: Lippenband und Kante erst ab spürbarer Lippendicke (Bild 6: Giraffe geschlossen ohne sichtbares Maul)
+    const lw = Math.max(0, Math.min(1, (b.maul.lippe - 0.05) / 0.3));
+    this.uniforms.lippeSichtbar.value = b.maul.sichtbar ? lw * lw * (3 - 2 * lw) : 0;
     this.setStyle(b, this.stil);
     this.applyPose();
   }
