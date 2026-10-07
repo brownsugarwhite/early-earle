@@ -25,6 +25,7 @@
     "@capacitor/share": "^8.0.2",
     "@capacitor/splash-screen": "^8.0.2",
     "@ee/core": "workspace:*",
+    "@ee/creature": "workspace:*",
     "@ee/genome": "workspace:*",
     "@ee/liquid-glass": "link:./plugins/liquid-glass",
     "@ee/physics": "workspace:*",

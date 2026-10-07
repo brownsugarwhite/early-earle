@@ -1,0 +1,12 @@
+export const CREATURE_VERSION = '0.0.1';
+export * from './math/vec';
+export * from './math/rng';
+export * from './math/curve';
+export * from './bauplan/schema';
+export * from './bauplan/hash';
+export * from './sdf/scene';
+export * from './sdf/build';
+export * from './mouth/mouth';
+export * from './mesh/surfaceNets';
+export * from './mesh/descriptors';
+export * from './mesh/build';
