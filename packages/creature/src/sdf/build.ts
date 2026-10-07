@@ -196,7 +196,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   }
   const bodyCapStart = 0.03 * H * (0.6 + 0.8 * (1 - b.koerper.boden));
   if (!hasNeck) {
-    prims.push(makeLoft({ points: bodyPts, upRef: FWD, wx: bodyWx, wyT: bodyWyT, wyB: bodyWyB, n: bodyN, parts: bodyParts, capStart: bodyCapStart, capEnd: kub > 0.02 ? 0.12 * H * kub : 0 }, { op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper' }));
+    prims.push(makeLoft({ points: bodyPts, upRef: FWD, wx: bodyWx, wyT: bodyWyT, wyB: bodyWyB, n: bodyN, parts: bodyParts, capStart: bodyCapStart, capEnd: kub > 0.02 ? 0.12 * H * kub : 0, axis: normalize([0, 1, shear]) }, { op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper' }));
   }
 
   // --- Hals und Kopf ------------------------------------------------------------------------------------------------
@@ -217,7 +217,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       ctrl.push([base[0], base[1] + neckLen * t, base[2] + f]);
     }
     const pts = catmullRom(ctrl, 3);
-    const radii = pts.map((_p, i) => rN * (1 - 0.28 * (i / (pts.length - 1))));
+    const radii = pts.map((_p, i) => rN * (1 - 0.42 * (i / (pts.length - 1))));
     const pl = makePolyline(pts, radii, FWD);
     const neckGroup = groups.length;
     groups.push({ name: 'hals', kind: 'hals', polyline: pl, bones: [], dorsal: normalize([0, 0.3, -1]) });
@@ -243,7 +243,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         const t = i / (nB - 1);
         const y = bodyPts[i]![1];
         if (y > hb - 1e-6) break;
-        const w = t <= 0.55 ? 0 : (() => { const u = (t - 0.55) / Math.max(1e-6, (hb - yb) / H - 0.55); const c = clamp(u, 0, 1); return c * c * (3 - 2 * c); })();
+        // Tropfen: ab 35 % Höhe stetig in den Hals verjüngen (Bild 6: keine Schulterstufe)
+        const w = t <= 0.35 ? 0 : (() => { const u = (t - 0.35) / Math.max(1e-6, (hb - yb) / H - 0.35); const c = clamp(u, 0, 1); return c * c * (3 - 2 * c); })();
         const c: Vec3 = [bodyPts[i]![0] + (base[0] - bodyPts[i]![0]) * w, y, bodyPts[i]![2] + (base[2] - bodyPts[i]![2]) * w];
         pts2.push(c);
         wx2.push(bodyWx[i]! + (rBase - bodyWx[i]!) * w);
@@ -262,7 +263,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         n2.push(2);
         parts2.push(boneIdx[Math.min(nb - 1, Math.floor(u * nb))]!);
       }
-      prims.push(makeLoft({ points: pts2, upRef: FWD, wx: wx2, wyT: wyT2, wyB: wyB2, n: n2, parts: parts2, capStart: bodyCapStart }, { op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper' }));
+      prims.push(makeLoft({ points: pts2, upRef: FWD, wx: wx2, wyT: wyT2, wyB: wyB2, n: n2, parts: parts2, capStart: bodyCapStart, axis: UP }, { op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper' }));
     }
     const neckEnd = pts[pts.length - 1]!;
     const neckTan = pl.tangents[pts.length - 1]!;
@@ -297,15 +298,18 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         const u = i / (nS - 1); // 0 Hinterkopf … 1 Schnauzenspitze
         pts.push(add(headBase, scale(forwardH, -Lback + (Lback + Lfront) * u)));
         const endRound = Math.sqrt(Math.max(0, 1 - Math.pow((u - 0.5) / 0.5, 6))); // runde Enden
-        const width = hr * (0.72 + 0.32 * Math.exp(-Math.pow((u - 0.38) / 0.3, 2))) * (1 - (1 - dick) * Math.max(0, u - 0.6) * 2);
-        const skull = hr * (0.55 + 0.5 * ok) * (1 - 0.45 * Math.max(0, (u - 0.45) / 0.55) ** 1.3) * (1 + 0.3 * braue * Math.exp(-Math.pow((u - 0.42) / 0.14, 2)));
-        const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.35 * Math.max(0, (u - 0.5) / 0.5) ** 1.5);
+        // Bild 5/11: Schädel hinten hoch mit flachem Scheitel, Braue als breiter Wulst über den Augen, Schnauze fällt nach
+        // vorn ab und bleibt breit (Haube); Unterkiefer als Löffel, zur Kinnspitze flacher
+        const width = hr * (0.74 + 0.3 * Math.exp(-Math.pow((u - 0.4) / 0.32, 2))) * (1 - (1 - dick) * Math.max(0, u - 0.55) * 1.6);
+        const skull = hr * (0.55 + 0.5 * ok) * (1 - 0.5 * Math.max(0, (u - 0.4) / 0.6) ** 1.4) * (1 + 0.28 * braue * Math.exp(-Math.pow((u - 0.4) / 0.18, 2)));
+        const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.4 * Math.max(0, (u - 0.45) / 0.55) ** 1.4);
         wx.push(width * endRound);
         wyT.push(skull * endRound);
         wyB.push(jaw * endRound);
-        nn.push(2 + 1.5 * clamp(m0.kante, 0, 1));
+        // flacherer Scheitel und Wangen über die Kieferkante (Raubkatze kantig), Rex leicht
+        nn.push(2.2 + 1.6 * clamp(m0.kante, 0, 1));
       }
-      const head = makeLoft({ points: pts, upRef: upH, wx, wyT, wyB, n: nn, parts: headBone }, { op: 'union', part: headBone, k: 0.35 * hr, region: REGION.haut, name: 'kopf' });
+      const head = makeLoft({ points: pts, upRef: upH, wx, wyT, wyB, n: nn, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: 0.35 * hr, region: REGION.haut, name: 'kopf' });
       prims.push(head);
     }
     hostBone = headBone;
@@ -412,9 +416,9 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       groups[g]!.bones.push(bHip, bKnee, bFoot);
       // Bein als ein Loft: Ansatz tief im Körper (breit, „geknetet“), Schenkel, Knie, Knöchel, Fußpolster als Saugnapf
       // mit flacher Standfläche; Zehen nach vorn (Querschnitt vorn länger)
-      const inner = add(hip, scale(normalize(sub(axisAt(hHip), hip)), rHip * 1.1));
-      const ctrl: Vec3[] = [inner, hip, knee, ankle, [foot[0], rFoot * 0.35, foot[2]], [foot[0], 0, foot[2]]];
-      const rr = [rHip * (1.35 + 0.4 * L.schenkel), rHip * (1 + 0.3 * L.schenkel), rKnee, rAnkle, rFoot * 1.1, rFoot * 1.25];
+      const hipTop: Vec3 = add(hip, [0, rHip * 0.9, 0]);
+      const ctrl: Vec3[] = [hipTop, hip, knee, ankle, [foot[0], rFoot * 0.35, foot[2]], [foot[0], 0, foot[2]]];
+      const rr = [rHip * (1.25 + 0.4 * L.schenkel), rHip * (1 + 0.3 * L.schenkel), rKnee, rAnkle, rFoot * 1.1, rFoot * 1.25];
       const pts = catmullRom(ctrl, 4);
       const nP = pts.length;
       const idxOf = (k: number): number => Math.min(nP - 1, Math.round((k / (ctrl.length - 1)) * (nP - 1)));
@@ -436,7 +440,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         wyB.push(r);
         parts.push(j < idxOf(2) ? bHip : j < idxOf(3) ? bKnee : bFoot);
       }
-      prims.push(makeLoft({ points: pts, upRef: FWD, wx, wyT, wyB, n: 2, parts, capEnd: rFoot * 0.35 }, { op: 'union', part: bHip, k: 0.16 * H * (0.5 + L.schenkel) * thin + 0.02 * H, region: REGION.haut, name: `bein${i}` }));
+      prims.push(makeLoft({ points: pts, upRef: FWD, wx, wyT, wyB, n: 2, parts, capEnd: rFoot * 0.35, axis: [0, -1, 0] }, { op: 'union', part: bHip, k: 0.16 * H * (0.5 + L.schenkel) * thin + 0.02 * H, region: REGION.haut, name: `bein${i}` }));
     });
   }
 

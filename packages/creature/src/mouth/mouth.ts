@@ -214,7 +214,11 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
       const uC = Math.abs(phiC) / theta;
       const cornerW = smoothstep(0.45, 0.95, uC);
       const closedCorner = Math.max(0, Math.min(minGap, gapFront * 0.35) - gRaw) * 4 * cornerW;
-      return Math.max(Math.abs(h - hl) - g, rIn - r, dArc, closedCorner);
+      // nur im Kopfbereich schneiden: radial bis knapp vor die Lippen, in der Höhe innerhalb des Trägers — sonst liefe der
+      // Schlitz um die Maullinie quer durch Rumpf und Beine auf gleicher Höhe (Risse)
+      const dOut = r - (rLip + 0.3 * H);
+      const dHost = Math.max(h - H * 1.2, -h - 0.3 * H);
+      return Math.max(Math.abs(h - hl) - g, rIn - r, dArc, closedCorner, dOut, dHost);
     },
   };
 
@@ -238,8 +242,9 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
         const depthBelow = cut * (hl * 0.9);
         const rIn = lipRAt(phiC) * (1 - tiefe * 0.6 * cut);
         const dArc = r * Math.max(0, Math.abs(phi) - theta);
-        // Keil unterhalb der Lippe, nach unten bis depthBelow, nach innen bis rIn
-        return Math.max(h - hl, hl - depthBelow - h, rIn - r, dArc) * Math.min(1, cut * 3);
+        // Keil unterhalb der Lippe, nach unten bis depthBelow, nach innen bis rIn, radial bis knapp vor die Fläche
+        const dOut = r - (lipRAt(phiC) + 0.25 * H);
+        return Math.max(h - hl, hl - depthBelow - h, rIn - r, dArc, dOut) * Math.min(1, cut * 3);
       },
     };
     if (cut > 0.02) prims.push(chin);
@@ -321,7 +326,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   if (z.stil !== 'keine' && z.groesse > 0.01) {
     const rng = makeRng((b.seed * 7919 + 13) >>> 0);
     const arcLen = lipLine.reduce((acc, p, i) => (i === 0 ? 0 : acc + Math.hypot(p[0] - lipLine[i - 1]![0], p[1] - lipLine[i - 1]![1], p[2] - lipLine[i - 1]![2])), 0);
-    const baseSize = z.groesse * 0.14 * bodyScale;
+    const baseSize = z.groesse * 0.19 * bodyScale;
     const spacing = Math.max(baseSize * 1.1, (arcLen / (6 + 26 * z.dichte)));
     const count = Math.max(2, Math.floor(arcLen / spacing));
     const place = (upper: boolean, offset: number): void => {

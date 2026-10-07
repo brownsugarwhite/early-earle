@@ -73,7 +73,7 @@ const hals = z
 
 const kopf = z
   .object({
-    groesse: regler(H, 'kopf.groesse', 'Kopfgröße', 0.2, 1.5, 0.7, 'relativ zur Körperhöhe'),
+    groesse: regler(H, 'kopf.groesse', 'Kopfgröße', 0.2, 2.2, 0.7, 'relativ zur Körperhöhe (Rex: Kopf fast so groß wie der Rumpf)'),
     laenge: regler(H, 'kopf.laenge', 'Kopflänge', 0.5, 2, 1, 'Streckung nach vorn'),
     neigung: regler(H, 'kopf.neigung', 'Kopfneigung', -1, 1, 0),
     schnauze: regler(H, 'kopf.schnauze', 'Schnauze', 0, 1, 0, 'Länge der Schnauze'),

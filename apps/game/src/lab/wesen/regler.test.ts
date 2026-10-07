@@ -192,3 +192,19 @@ describe('Anzeige und Farben', () => {
     expect(Object.values(p).every((h) => HEX.test(h))).toBe(true);
   });
 });
+
+describe('Vorlagen', () => {
+  it('alle Vorlagen entsprechen dem Schema (keine Werte außerhalb der Reglergrenzen)', async () => {
+    const { WESEN_VORLAGEN } = await import('./presets');
+    const { parseBauplan } = await import('@ee/creature');
+    const fehler: string[] = [];
+    for (const v of WESEN_VORLAGEN) {
+      try {
+        parseBauplan(v.bauplan);
+      } catch (e) {
+        fehler.push(`${v.id}: ${String((e as Error).message).slice(0, 300)}`);
+      }
+    }
+    expect(fehler).toEqual([]);
+  });
+});

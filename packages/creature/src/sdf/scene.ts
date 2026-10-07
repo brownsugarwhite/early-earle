@@ -108,6 +108,13 @@ export interface LoftPrim extends PrimBase {
   stations: LoftStation[];
   capStart: number;
   capEnd: number;
+  /**
+   * Gerade Bezugsachse (Einheitsvektor): die Station wird nach der Höhe entlang dieser Achse gewählt, die Querschnitte
+   * liegen senkrecht zur Achse, der Mittenversatz verschiebt nur die Scheibe. Stetig per Konstruktion — die Projektion
+   * auf eine gekrümmte Mittellinie springt dagegen überall dort, wo ein Punkt zwei Abschnitten gleich nah ist (im
+   * Rumpf, am Knie). Ohne Achse: Nächster-Punkt-Suche (Schwanz, Schlange — Biegeradius groß gegen die Dicke).
+   */
+  axis?: Vec3;
 }
 
 export type Prim = CapsulePrim | EllipsoidPrim | RevolvePrim | TubePrim | CustomPrim | LoftPrim;
@@ -160,11 +167,26 @@ function sectionRadius(s: LoftStation, ca: number, cb: number): number {
 export function sdLoft(p: Readonly<Vec3>, prim: LoftPrim): number {
   const st = prim.stations;
   const n = st.length;
-  // 1. Nächster Punkt auf der **stetigen** Mittellinie: erschöpfende Segmentprojektion (ein Fenster um die nächste
-  //    Station übersah bei gekrümmten Linien das wahre Segment → Sprung im Feld → Risse im Netz)
   let seg = 0;
   let bestD = Infinity;
   let bestF = 0;
+  if (prim.axis) {
+    // Achsenmodus: Station nach Höhe (Bogenlänge = Höhe entlang der Achse, monoton), binäre Suche
+    const ax = prim.axis;
+    const s = (p[0] - st[0]!.p[0]) * ax[0] + (p[1] - st[0]!.p[1]) * ax[1] + (p[2] - st[0]!.p[2]) * ax[2] + st[0]!.arc;
+    let lo = 0, hi = n - 2;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (st[mid]!.arc <= s) lo = mid;
+      else hi = mid - 1;
+    }
+    seg = lo;
+    const a0 = st[seg]!.arc, a1 = st[seg + 1]!.arc;
+    bestF = a1 > a0 ? Math.max(0, Math.min(1, (s - a0) / (a1 - a0))) : 0;
+    bestD = 0;
+  } else
+  // 1. Nächster Punkt auf der **stetigen** Mittellinie: erschöpfende Segmentprojektion (ein Fenster um die nächste
+  //    Station übersah bei gekrümmten Linien das wahre Segment → Sprung im Feld → Risse im Netz)
   for (let j = 0; j <= n - 2; j++) {
     const a = st[j]!.p, b = st[j + 1]!.p;
     const ex = b[0] - a[0], ey = b[1] - a[1], ez = b[2] - a[2];
@@ -196,14 +218,35 @@ export function sdLoft(p: Readonly<Vec3>, prim: LoftPrim): number {
   const sArc = sA.arc + (sB.arc - sA.arc) * f;
   // vor dem Anfang / hinter dem Ende: Anteil entlang der Tangente für Kappen und Profilauslauf
   let over = 0;
-  if (seg === 0 && f <= 0) over = vx * sA.tangent[0] + vy * sA.tangent[1] + vz * sA.tangent[2];
+  if (prim.axis) {
+    const ax = prim.axis;
+    const s = (p[0] - st[0]!.p[0]) * ax[0] + (p[1] - st[0]!.p[1]) * ax[1] + (p[2] - st[0]!.p[2]) * ax[2] + st[0]!.arc;
+    if (s < st[0]!.arc) over = s - st[0]!.arc;
+    else if (s > st[n - 1]!.arc) over = s - st[n - 1]!.arc;
+  } else if (seg === 0 && f <= 0) over = vx * sA.tangent[0] + vy * sA.tangent[1] + vz * sA.tangent[2];
   else if (seg === n - 2 && f >= 1) over = vx * sB.tangent[0] + vy * sB.tangent[1] + vz * sB.tangent[2];
   const sEff = sArc + over;
   const rho = Math.hypot(a, b);
   const ca = rho > 1e-9 ? a / rho : 1, cb = rho > 1e-9 ? b / rho : 0;
-  // 2. Exakter 2D-Abstand von (ρ, s) zur Profil-Polylinie in dieser Richtung
+  // 2. Exakter 2D-Abstand von (ρ, s) zur Profil-Polylinie in dieser Richtung. Das Fenster wächst mit dem radialen
+  //    Abstand zur Fläche: weit innen oder außen liegt der nächste Profilpunkt viele Stationen entfernt — ein festes
+  //    Fenster sprang beim Verschieben (Risse im Netz)
+  const rAt = sectionRadius(sA, ca, cb) * (1 - f) + sectionRadius(sB, ca, cb) * f;
+  // Fenster in Bogenlänge (Stationen sind nicht gleichmäßig verteilt): mindestens drei Stationen, sonst radialer Abstand × 1,6
+  const span = Math.abs(rho - rAt) * 1.6;
+  let j0 = seg, j1 = seg + 1;
+  let cnt = 0;
+  while (j0 > 0 && (cnt < 3 || sArc - st[j0]!.arc < span)) {
+    j0--;
+    cnt++;
+  }
+  cnt = 0;
+  while (j1 < n - 1 && (cnt < 3 || st[j1]!.arc - sArc < span)) {
+    j1++;
+    cnt++;
+  }
+  j1 = Math.min(n - 2, j1);
   let best = Infinity;
-  const j0 = Math.max(0, seg - 3), j1 = Math.min(n - 2, seg + 3);
   for (let j = j0; j <= j1; j++) {
     const ar = sectionRadius(st[j]!, ca, cb), as = st[j]!.arc;
     const br = sectionRadius(st[j + 1]!, ca, cb), bs = st[j + 1]!.arc;
@@ -213,7 +256,6 @@ export function sdLoft(p: Readonly<Vec3>, prim: LoftPrim): number {
     const dx = wx - ex * tt, dy = wy - ey * tt;
     best = Math.min(best, dx * dx + dy * dy);
   }
-  const rAt = sectionRadius(sA, ca, cb) * (1 - f) + sectionRadius(sB, ca, cb) * f;
   let d = Math.sqrt(best);
   // Vorzeichen nur über den Radius (wie beim Rotationskörper): hält das Feld am Deckel-/Standflächenrand stetig
   if (rho < rAt) d = -d;
@@ -245,6 +287,8 @@ export interface LoftSpec {
   parts: number[] | number;
   capStart?: number;
   capEnd?: number;
+  /** Gerade Bezugsachse (siehe `LoftPrim.axis`); die Punkte müssen entlang der Achse monoton sein. */
+  axis?: Readonly<Vec3>;
 }
 
 /** Loft aus dichten Stationswerten; Rahmen aus den Tangenten der Mittellinie und einer Bezugsrichtung. */
@@ -291,15 +335,42 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
     }
   };
   spec = { ...spec, points: spec.points.slice(), wx: spec.wx.slice(), wyT: spec.wyT.slice(), wyB: spec.wyB.slice(), n: typeof spec.n === 'number' ? spec.n : spec.n.slice(), parts: typeof spec.parts === 'number' ? spec.parts : spec.parts.slice() };
+  // (fast) doppelte Nachbarpunkte entfernen: Nullsegmente machen Tangente, Rahmen und Profil unstetig
+  {
+    let total = 0;
+    for (let i = 1; i < spec.points.length; i++) total += Math.hypot(spec.points[i]![0] - spec.points[i - 1]![0], spec.points[i]![1] - spec.points[i - 1]![1], spec.points[i]![2] - spec.points[i - 1]![2]);
+    const minSeg = (total / Math.max(1, spec.points.length - 1)) * 0.2;
+    for (let i = spec.points.length - 1; i >= 1; i--) {
+      const a = spec.points[i]!, b = spec.points[i - 1]!;
+      if (Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < minSeg) {
+        spec.points.splice(i, 1);
+        spec.wx.splice(i, 1);
+        spec.wyT.splice(i, 1);
+        spec.wyB.splice(i, 1);
+        if (typeof spec.n !== 'number') spec.n.splice(i, 1);
+        if (typeof spec.parts !== 'number') spec.parts.splice(i, 1);
+      }
+    }
+  }
   if (!(spec.capEnd && spec.capEnd > 0)) closeEnd(false);
   if (!(spec.capStart && spec.capStart > 0)) closeEnd(true);
   const pts = spec.points;
   const m = pts.length;
   const stations: LoftStation[] = [];
   let arc = 0;
+  let axis: Vec3 | null = null;
+  if (spec.axis) {
+    const al = Math.hypot(spec.axis[0], spec.axis[1], spec.axis[2]) || 1;
+    axis = [spec.axis[0] / al, spec.axis[1] / al, spec.axis[2] / al];
+  }
   for (let i = 0; i < m; i++) {
     const prev = pts[Math.max(0, i - 1)]!, next = pts[Math.min(m - 1, i + 1)]!;
     let tx = next[0] - prev[0], ty = next[1] - prev[1], tz = next[2] - prev[2];
+    if (axis) {
+      tx = axis[0];
+      ty = axis[1];
+      tz = axis[2];
+    }
     const tl = Math.hypot(tx, ty, tz) || 1;
     tx /= tl;
     ty /= tl;
@@ -319,7 +390,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
     uy /= ul;
     uz /= ul;
     const rx = uy * tz - uz * ty, ry = uz * tx - ux * tz, rz = ux * ty - uy * tx;
-    if (i > 0) arc += Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1], pts[i]![2] - pts[i - 1]![2]);
+    if (i > 0) arc += axis ? Math.max(1e-6, (pts[i]![0] - pts[i - 1]![0]) * axis[0] + (pts[i]![1] - pts[i - 1]![1]) * axis[1] + (pts[i]![2] - pts[i - 1]![2]) * axis[2]) : Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1], pts[i]![2] - pts[i - 1]![2]);
     stations.push({
       p: [pts[i]![0], pts[i]![1], pts[i]![2]],
       right: [rx, ry, rz],
@@ -335,6 +406,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
   }
   const prim: LoftPrim = { kind: 'loft', stations, capStart: spec.capStart ?? 0, capEnd: spec.capEnd ?? 0, part: base.part ?? stations[0]!.part, k: base.k, region: base.region, op: base.op };
   if (base.name !== undefined) prim.name = base.name;
+  if (axis) prim.axis = axis;
   return prim;
 }
 
@@ -573,7 +645,12 @@ export function evalScene(scene: SdfScene, p: Readonly<Vec3>): number {
   const ui = c.unionIdx;
   for (let q = 0; q < ui.length; q++) {
     const i = ui[q]!;
-    if (d < 1e8 && boundsDistanceAt(c, i, p) >= d + c.k[i]!) continue;
+    // nur außerhalb des Quaders culln: innen ist die Schranke 0 und sagt nichts über ein tiefer liegendes Primitiv
+    // (sonst wird bei negativem d ein weiter innen liegendes Teil übersprungen → Sprung im Feld, Risse im Netz)
+    if (d < 1e8) {
+      const bd = boundsDistanceAt(c, i, p);
+      if (bd > 0 && bd >= d + c.k[i]!) continue;
+    }
     d = smin(d, sdPrim(p, prims[i]!), c.k[i]!);
   }
   const si = c.subIdx;
