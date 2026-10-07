@@ -42,3 +42,8 @@ docs/progress/audio/*.wav
 apps/game/ios/build-device/
 apps/game/plugins/liquid-glass/.swiftpm/
 .claude/worktrees/
+
+# Office- und Illustrator-Sperr-/Temporärdateien
+~$*
+docs/~$*
+assets/src/~ai-*.tmp
