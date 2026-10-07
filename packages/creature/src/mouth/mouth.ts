@@ -230,7 +230,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   }
 
   // Lippenwülste entlang der Maullinie (oben und unten), zu den Mundwinkeln hin dünner
-  const lipRadius = Math.max(0.006, m.lippe * 0.055 * bodyScale);
+  const lipRadius = Math.max(0.006, m.lippe * 0.07 * bodyScale);
   if (m.lippe > 0.02 && m.form > 0.02) {
     for (const side of [1, -1] as const) {
       if (side < 0 && m.unterkiefer < 0.05) continue;
