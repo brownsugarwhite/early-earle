@@ -2,6 +2,7 @@ import type { BauplanInput } from '@ee/creature';
 
 /** Vorlagen für den Grundformen-Beweis: Grundformen und Maultypen, Tiere nur als Nebenprodukt. */
 export const WESEN_VORLAGEN: Array<{ id: string; name: string; bauplan: BauplanInput }> = [
+  { id: 'jelly', name: 'Jelly (pezenpez)', bauplan: { name: 'pezenpez', material: 'jelly', koerper: { hoehe: 1, breite: 1.05, laenge: 1, neigung: 0.15, boden: 0.7 }, maul: { sichtbar: false }, augen: { anzahl: 1, hoehe: 0.3, groesse: 0.7 }, muster: { farben: { grund: '#7ce6d5', muster: '#2f7f7a', auge: '#0f1c22' } } } },
   { id: 'fest', name: 'Fester Blob (ohne Maul)', bauplan: { name: 'Fester Blob', maul: { sichtbar: false }, augen: { hoehe: 0.45, abstand: 0.45, groesse: 0.55 }, muster: { farben: { grund: '#8a63c9', bauch: '#c9b2ea' } } } },
   { id: 'grundblob', name: 'Grundblob', bauplan: { name: 'Grundblob', maul: { oeffnung: 0.3 } } },
   { id: 'keil', name: 'Keilmaul (Rex)', bauplan: { name: 'Keilmaul', koerper: { laenge: 1.3, neigung: 0.4, buckel: 0.3 }, maul: { hoehe: 0.42, form: 1, winkel: 0.85, breite: 0.95, oberkiefer: 1.2, unterkiefer: 0.9, oeffnung: 0.35, tiefe: 0.8 }, zaehne: { groesse: 0.7, streuung: 0.6, eckzaehne: 0.8 }, augen: { hoehe: 0.35, abstand: 0.6, groesse: 0.4 }, unterkoerper: { typ: 'beine', beine: { anzahl: 2, dicke: 0.8, schenkel: 0.9, laenge: 0.5, fuss: 0.7 } }, schwanz: { typ: 'wirbelsaeule', laenge: 1.4, dicke: 0.7, hoch: 0.2, kruemmung: 0 }, muster: { typ: 'bauchRuecken', bauchlinie: 0.45, farben: { grund: '#5b4a6e', bauch: '#8c7aa6', lippe: '#3c2d4c', rachen: '#7a2838' } } } },

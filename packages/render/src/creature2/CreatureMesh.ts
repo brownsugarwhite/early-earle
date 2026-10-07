@@ -3,6 +3,7 @@ import type { MeshBasicNodeMaterial } from 'three/webgpu';
 import type { Bauplan, CreatureBuild } from '@ee/creature';
 import { applyStil, createCreatureMaterial, createCreatureUniforms, createTongueMaterial, createToothMaterial, MAX_SLIT_EYES, type CreatureColors, type CreatureMaterialUniforms } from './material/earleCreature';
 import { applyMuster } from './material/muster';
+import { applyJellyColors, createJellyMaterial, createJellyUniforms, placeBubbles, type JellyUniforms } from './material/jelly';
 import { STIL_STANDARD, type WesenStil } from './material/stil';
 
 /**
@@ -47,6 +48,8 @@ export class CreatureMesh {
   readonly root = new Group();
   readonly uniforms: CreatureMaterialUniforms;
   readonly material: MeshBasicNodeMaterial;
+  readonly jellyMaterial: MeshBasicNodeMaterial;
+  readonly jelly: JellyUniforms;
   private toothMaterial: MeshBasicNodeMaterial;
   private tongueMaterial: MeshBasicNodeMaterial;
   mesh: SkinnedMesh | null = null;
@@ -81,6 +84,8 @@ export class CreatureMesh {
     this.castShadow = opts.castShadow ?? true;
     this.uniforms = createCreatureUniforms({ grund: '#9c6cc7', bauch: '#d9c7ec', muster: '#3d2457', akzent: '#f08a4b', lippe: '#5a2f6b', rachen: '#6e2334', auge: '#101418' }, this.stil, 1);
     this.material = createCreatureMaterial(this.uniforms);
+    this.jelly = createJellyUniforms();
+    this.jellyMaterial = createJellyMaterial(this.uniforms, this.jelly);
     this.toothMaterial = createToothMaterial(this.uniforms, '#f1e6c9');
     this.tongueMaterial = createTongueMaterial(this.uniforms, '#e07c92');
     this.root.name = 'wesen';
@@ -93,6 +98,9 @@ export class CreatureMesh {
     applyStil(this.uniforms, stil, colorsOf(b));
     this.uniforms.bauchStaerke.value = b.muster.typ === 'bauchRuecken' ? 1 : 0;
     applyMuster(this.uniforms.musterU, b.muster);
+    applyJellyColors(this.jelly, b.muster.farben.grund, b.muster.farben.muster, stil);
+    placeBubbles(this.jelly, this.build?.bodyScale ?? b.koerper.hoehe, b.material === 'jelly' ? 9 : 0, b.seed);
+    if (this.mesh) this.mesh.material = b.material === 'jelly' ? this.jellyMaterial : this.material;
     this.uniforms.bauchlinie.value = (b.muster.bauchlinie - 0.5) * 1.6;
     if (this.toothMaterial) this.toothMaterial.dispose();
     this.toothMaterial = createToothMaterial(this.uniforms, b.muster.farben.zahn);
@@ -121,6 +129,7 @@ export class CreatureMesh {
     g.setAttribute('eeRegion', new BufferAttribute(build.descriptors.region, 4));
     g.setAttribute('eeAo', new BufferAttribute(build.descriptors.ao, 1));
     g.setAttribute('eeClosed', new BufferAttribute(build.closed, 3));
+    g.setAttribute('eeThick', new BufferAttribute(build.descriptors.thick, 1));
     g.setIndex(new BufferAttribute(build.index, 1));
     g.computeBoundingSphere();
     // --- Skelett: Knochen mit Identitätsdrehung, Position relativ zum Elternknochen ---------------------------------
@@ -135,7 +144,7 @@ export class CreatureMesh {
       bone.position.set(bb.pos[0] - parent[0]!, bb.pos[1] - parent[1]!, bb.pos[2] - parent[2]!);
       if (bb.parent >= 0) this.bones[bb.parent]!.add(bone);
     });
-    const mesh = new SkinnedMesh(g, this.material);
+    const mesh = new SkinnedMesh(g, b.material === 'jelly' ? this.jellyMaterial : this.material);
     mesh.name = 'wesen-koerper';
     mesh.frustumCulled = false;
     mesh.castShadow = this.castShadow;
@@ -290,6 +299,7 @@ export class CreatureMesh {
   dispose(): void {
     this.clearMesh();
     this.material.dispose();
+    this.jellyMaterial.dispose();
     this.toothMaterial.dispose();
     this.tongueMaterial.dispose();
     this.root.removeFromParent();
