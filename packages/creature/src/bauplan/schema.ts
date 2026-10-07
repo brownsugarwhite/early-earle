@@ -91,6 +91,7 @@ const maul = z
     neigung: regler(M, 'maul.neigung', 'Maulneigung', -1, 1, 0, 'Winkel der Maullinie'),
     form: regler(M, 'maul.form', 'Maulform', 0, 1, 1, '0 rundes Loch … 1 Keil'),
     winkel: regler(M, 'maul.winkel', 'Mundwinkel nach hinten', 0, 1, 0.5),
+    rundung: regler(M, 'maul.rundung', 'Mundwinkel-Rundung', 0, 1, 0.35, '0 spitz zulaufend (Rex) … 1 rund wie beim Aal; Lochmaul ist immer rund'),
     breite: regler(M, 'maul.breite', 'Maulbreite', 0.2, 1, 0.8),
     oberkiefer: regler(M, 'maul.oberkiefer', 'Oberkiefer', 0, 1.5, 1),
     unterkiefer: regler(M, 'maul.unterkiefer', 'Unterkiefer', 0, 1.5, 0.8, '0 = kein Unterkiefer'),

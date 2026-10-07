@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { WESEN_VORLAGEN } from '../src/lab/wesen/presets.ts';
 
@@ -130,19 +130,23 @@ interface Feld {
   titel: string;
   unter: string;
   png: Buffer;
+  /** Florians Referenz (docs/look/wesen-refs/<id>.png), falls vorhanden — daneben gestellt. */
+  ref?: Buffer;
 }
 
-async function writeKontaktbogen(page: Page, file: string, titel: string, unter: string, felder: Feld[]): Promise<void> {
+async function writeKontaktbogen(page: Page, file: string, titel: string, unter: string, felder: Feld[], bildBreite = 450): Promise<void> {
   const spalten = felder.length <= 4 ? felder.length : felder.length <= 9 ? 3 : 4;
+  const img = (b: Buffer) => `<img src="data:image/png;base64,${b.toString('base64')}">`;
   const figs = felder
-    .map((f) => `<figure><img src="data:image/png;base64,${f.png.toString('base64')}"><figcaption><b>${esc(f.titel)}</b> <span>${esc(f.unter)}</span></figcaption></figure>`)
+    .map((f) => `<figure${f.ref ? ' class="paar"' : ''}><div class="bilder">${img(f.png)}${f.ref ? img(f.ref) : ''}</div><figcaption><b>${esc(f.titel)}</b> <span>${esc(f.unter)}${f.ref ? ' · rechts: Referenz' : ''}</span></figcaption></figure>`)
     .join('');
   const html = `<!doctype html><meta charset="utf-8"><style>
     html,body{margin:0;background:#161619}
     #m{display:inline-block;padding:20px 22px 18px;background:#161619;color:#e8e6df;font:14px/1.35 -apple-system,'Helvetica Neue',sans-serif}
     h1{margin:0 0 14px;font-size:20px;font-weight:700} h1 span{font-weight:400;color:#a9a79f;font-size:14px;margin-left:10px}
-    .grid{display:grid;grid-template-columns:repeat(${spalten},450px);gap:16px 18px}
-    figure{margin:0} img{display:block;width:450px;height:350px;object-fit:contain;background:#fff}
+    .grid{display:grid;grid-template-columns:repeat(${spalten},auto);gap:16px 18px;align-items:start}
+    figure{margin:0} .bilder{display:flex;gap:6px} img{display:block;width:${bildBreite}px;height:${Math.round(bildBreite * 0.78)}px;object-fit:contain;background:#fff}
+    figure.paar{grid-column:span 2}
     figcaption{margin-top:6px} figcaption span{color:#a9a79f}
   </style><div id="m"><h1>${esc(titel)}<span>${esc(unter)}</span></h1><div class="grid">${figs}</div></div>`;
   const mp = await page.context().newPage();
@@ -188,7 +192,10 @@ test(`Wesen-Lab: Vorlagen im ${ANSICHT === 'referenz' ? 'Referenzmodus' : ANSICH
     const png = await page.screenshot({ path: `${OUT}wesen-lab-${v.id}${SUFFIX}.png` });
     await testInfo.attach(`wesen-lab-${v.id}.png`, { body: png, contentType: 'image/png' });
     const zeile = `${s.triangles} Dreiecke · ${s.teeth} Zähne · ${s.resolution}³ in ${s.buildMs} ms`;
-    felder.push({ titel: v.name, unter: `${v.id} · ${zeile}`, png });
+    const refPfad = `${REPO}docs/look/wesen-refs/crops/${v.id}.png`;
+    const ref = existsSync(refPfad) ? readFileSync(refPfad) : undefined;
+    felder.push(ref ? { titel: v.name, unter: `${v.id} · ${zeile}`, png, ref } : { titel: v.name, unter: `${v.id} · ${zeile}`, png });
+    if (ref) await writeKontaktbogen(page, `${OUT}wesen-vergleich-${v.id}${SUFFIX}.png`, `${v.name} · Render | Referenz`, `${commit} · ${stamp}`, [{ titel: v.name, unter: zeile, png, ref }], 900);
     console.log(`${v.id.padEnd(16)} ${zeile}`);
   }
   const maulText = MAUL === 'zu' ? 'Maul zu' : MAUL === 'auf' ? 'Maul auf' : 'Bauzustand';

@@ -113,15 +113,25 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   const m = b.maul;
   const H = host.height;
   const hLip = clamp(m.hoehe, 0.02, 0.98) * H;
-  const theta = clamp(m.breite * (Math.PI / 2 + m.winkel * (Math.PI * 0.45)), 0.15, Math.PI * 0.95);
+  const maxR = host.halfWidth * 3 + H;
+  // Öffnungshöhe vorn: Anteil der Trägerhöhe, mit Oberkiefer/Unterkiefer gewichtet
+  const gapFront = Math.max(0.004, m.oeffnung * 0.32 * H * (0.5 + 0.5 * Math.min(1, (m.oberkiefer + m.unterkiefer) * 0.5)));
+  // **Ein** Öffnungsprofil für alle Mäuler (Florian, Bild 16 Aal): `form` blendet die Weite vom runden Loch (so breit wie
+  // hoch) zum Keil bis zu den Mundwinkeln; `rundung` macht die Enden spitz (Rex) oder rund (Aal, Stadionform); das
+  // Lochmaul ist immer rund. Die Höhle ist für alle ein Schlitz um die Maullinie, der nach innen schmaler wird.
+  const thetaKeil = clamp(m.breite * (Math.PI / 2 + m.winkel * (Math.PI * 0.45)), 0.15, Math.PI * 0.95);
+  const rLipFront = Math.max(0.02, surfacePoint(host, hLip, 0, maxR).r);
+  const thetaRund = clamp((gapFront * 1.15) / rLipFront, 0.12, thetaKeil);
+  const fForm = clamp01(m.form);
+  const theta = lerp(thetaRund, thetaKeil, fForm);
+  const rundung = lerp(1, clamp01(m.rundung), fForm);
+  const profA = lerp(2, 5, rundung);
+  const profB = lerp(1, 0.5, rundung);
   const n = 65;
   const phis: number[] = [];
   const lipH: number[] = [];
   const lipR: number[] = [];
   const lipLine: Vec3[] = [];
-  const maxR = host.halfWidth * 3 + H;
-  // Öffnungshöhe vorn: Anteil der Trägerhöhe, mit Oberkiefer/Unterkiefer gewichtet
-  const gapFront = Math.max(0.004, m.oeffnung * 0.32 * H * (0.5 + 0.5 * Math.min(1, (m.oberkiefer + m.unterkiefer) * 0.5)));
   for (let i = 0; i < n; i++) {
     const t = i / (n - 1);
     const phi = -theta + 2 * theta * t;
@@ -164,11 +174,10 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
   const lipRAt = (phi: number): number => interp(lipR, phi);
   const gapAt = (phi: number): number => {
     const u = clamp(Math.abs(phi) / theta, 0, 1);
-    // Keil: läuft zu den Mundwinkeln hin aus; Oberlippe W-Form hebt die Mitte leicht an
-    // Keil: breit offen bis weit zu den Mundwinkeln, dort rund auslaufend (Rex-Löffel)
-    const wedge = Math.pow(Math.max(0, 1 - Math.pow(u, 2.2)), 0.75);
+    // Profil (1 − u^a)^b: a = Plateau (lange volle Höhe), b = Ende (1 spitz … 0,5 halbkreisrund); W-Form hebt die Mitte
+    const profil = Math.pow(Math.max(0, 1 - Math.pow(u, profA)), profB);
     const w = 1 + m.wForm * 0.25 * Math.cos(phi * (Math.PI / Math.max(theta, 0.3)) * 1.5);
-    return gapFront * wedge * w;
+    return gapFront * profil * w;
   };
   const local = (p: Readonly<Vec3>): { h: number; phi: number; r: number } => {
     const v = sub(p, host.origin);
@@ -178,16 +187,16 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
     return { h, phi: Math.atan2(vx, vz), r: Math.hypot(vx, vz) };
   };
   const rInAt = (phi: number): number => lipRAt(phi) * (1 - tiefe * 0.9);
-  const D = Math.max(0.05, tiefe * host.halfWidth * 1.6);
-  const rho0 = Math.max(0.004, host.halfWidth * m.breite * (0.18 + 0.5 * m.oeffnung));
+  /** Lochradius (für Lippenring und Spitzmund): die Öffnung ist etwa so breit wie hoch. */
+  const rho0 = gapFront * 1.05;
 
   const cavity: CustomPrim = {
     kind: 'custom',
     op: 'subtract',
     part: host.bone,
     region: REGION.rachen,
-    // enger Schnitt (≈ 1,7 Zellen): Kante bleibt lesbar, aliast aber nicht wie ein harter Schnitt
-    k: Math.max(0.015 * bodyScale, cellSize * 1.7),
+    // enger Schnitt (≈ 1,25 Zellen): scharfe Kante (Dual Contouring setzt die Kante, der Shader die Facette), kein Aliasen
+    k: Math.max(0.008 * bodyScale, cellSize * 1.25),
     name: 'maulhoehle',
     bounds: { min: [center[0] - maxR, center[1] - maxR, center[2] - maxR], max: [center[0] + maxR, center[1] + maxR, center[2] + maxR] },
     eval: (p) => {
@@ -205,15 +214,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
       const uC = Math.abs(phiC) / theta;
       const cornerW = smoothstep(0.45, 0.95, uC);
       const closedCorner = Math.max(0, Math.min(minGap, gapFront * 0.35) - gRaw) * 4 * cornerW;
-      const dWedge = Math.max(Math.abs(h - hl) - g, rIn - r, dArc, closedCorner);
-      // Loch: Röhre entlang der Blickrichtung ab dem Zentrum nach innen
-      const v = sub(p, center);
-      const zm = dot(v, frame.z);
-      const xm = dot(v, frame.x);
-      const ym = dot(v, frame.y);
-      const rho = rho0 * Math.sqrt(clamp01(1 + zm / D));
-      const dRound = Math.max(Math.hypot(xm, ym) - rho, -zm - D, zm - 0.3 * D);
-      return lerp(dRound, dWedge, m.form);
+      return Math.max(Math.abs(h - hl) - g, rIn - r, dArc, closedCorner);
     },
   };
 
@@ -227,7 +228,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
       op: 'subtract',
       part: host.bone,
       region: REGION.rachen,
-      k: 0.02 * bodyScale,
+      k: 0.012 * bodyScale,
       name: 'kinnschnitt',
       bounds: cavity.bounds,
       eval: (p) => {

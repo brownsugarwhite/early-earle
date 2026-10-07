@@ -1,7 +1,7 @@
 # Wesen-Referenzen (Florians 19 Bögen) — Katalog und Befund
 
 > Diese Bilder sind **die Spezifikation** der Wesen-Werkstatt. Jeder Vergleich (Form, Maul, Augen, Shading) wird gegen
-> diese Dateien gemacht — angeschaut, nicht erinnert. Harness: `docs/look/wesen-refs/<vorlagen-id>.png` wird im
+> diese Dateien gemacht — angeschaut, nicht erinnert. Harness: `docs/look/wesen-refs/crops/<vorlagen-id>.png` wird im
 > Kontaktbogen neben das Render gestellt (`wesen-vergleich-<id>.png`). Quelle: Florians Prompt vom 07.10. und seine 19 Bilder (`~/Desktop/2048/referenzen/`, in Reihenfolge). **Nur diese zählen** — keine anderen Dateien oder Bilder als Referenz.
 
 | Bild | Datei | Inhalt |

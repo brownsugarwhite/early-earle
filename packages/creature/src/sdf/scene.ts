@@ -82,7 +82,261 @@ export interface CustomPrim extends PrimBase {
   bounds: { min: Vec3; max: Vec3 };
 }
 
-export type Prim = CapsulePrim | EllipsoidPrim | RevolvePrim | TubePrim | CustomPrim;
+/**
+ * **Profil-Loft**: die gezeichnete Form. Eine dichte Mittellinie (Stationen) mit Rahmen (right, up, tangent); je Station
+ * ein **Ei-Querschnitt** aus vier Halbachsen (Breite `wx` symmetrisch, Höhe oben `wyT` und unten `wyB` getrennt) mit
+ * Superellipsen-Exponent `n`. So entstehen Körper (Rücken- und Bauchlinie getrennt), Kopf (Schädel oben, Kiefer unten),
+ * Hals, Beine (Hüfte breit, Fuß als Saugnapf), Schwanz — als **eine** glatte Fläche je Masse, ohne Nahtbeulen. Der
+ * Knochen je Station (`part`) steuert die Gewichte. Kappen: 0 = Profil läuft aus (Kuppel), > 0 = flache Schnittfläche
+ * mit dieser Kantenrundung (Standfläche, Deckel).
+ */
+export interface LoftStation {
+  p: Vec3;
+  right: Vec3;
+  up: Vec3;
+  tangent: Vec3;
+  wx: number;
+  wyT: number;
+  wyB: number;
+  n: number;
+  arc: number;
+  part: number;
+}
+
+export interface LoftPrim extends PrimBase {
+  kind: 'loft';
+  stations: LoftStation[];
+  capStart: number;
+  capEnd: number;
+}
+
+export type Prim = CapsulePrim | EllipsoidPrim | RevolvePrim | TubePrim | CustomPrim | LoftPrim;
+
+/** Knochen eines Primitivs an der Stelle p (Lofts: Knochen der nächsten Station). */
+export function primPart(prim: Prim, p: Readonly<Vec3>): number {
+  if (prim.kind !== 'loft') return prim.part;
+  return prim.stations[nearestStation(prim, p)]!.part;
+}
+
+function nearestStation(prim: LoftPrim, p: Readonly<Vec3>): number {
+  const st = prim.stations;
+  const n = st.length;
+  let bi = 0;
+  let bd = Infinity;
+  for (let i = 0; i < n; i += 3) {
+    const q = st[i]!.p;
+    const d = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2;
+    if (d < bd) {
+      bd = d;
+      bi = i;
+    }
+  }
+  for (let i = Math.max(0, bi - 3); i <= Math.min(n - 1, bi + 3); i++) {
+    const q = st[i]!.p;
+    const d = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2;
+    if (d < bd) {
+      bd = d;
+      bi = i;
+    }
+  }
+  return bi;
+}
+
+/** Radius des Ei-Querschnitts einer Station in Richtung (ca, cb) der Querschnittsebene. */
+function sectionRadius(s: LoftStation, ca: number, cb: number): number {
+  const wy = cb >= 0 ? s.wyT : s.wyB;
+  if (s.wx < 1e-6 || wy < 1e-6) return 0;
+  const n = s.n;
+  const ax = Math.abs(ca) / s.wx, ay = Math.abs(cb) / wy;
+  if (n <= 2.001) return 1 / Math.sqrt(ax * ax + ay * ay);
+  return Math.pow(Math.pow(ax, n) + Math.pow(ay, n), -1 / n);
+}
+
+/**
+ * Abstand zum Loft: Rahmen der nächsten Station, darin Radialabstand ρ und Richtung; dann der exakte 2D-Abstand von
+ * (ρ, s) zur Profil-Polylinie (Radius in dieser Richtung je Nachbarstation über der Bogenlänge) — dieselbe Konstruktion wie
+ * beim Rotationskörper, aber für beliebige Mittellinien und Ei-Querschnitte. Kappen als gerundete Halbraum-Schnitte.
+ */
+export function sdLoft(p: Readonly<Vec3>, prim: LoftPrim): number {
+  const st = prim.stations;
+  const n = st.length;
+  // 1. Nächster Punkt auf der **stetigen** Mittellinie: erschöpfende Segmentprojektion (ein Fenster um die nächste
+  //    Station übersah bei gekrümmten Linien das wahre Segment → Sprung im Feld → Risse im Netz)
+  let seg = 0;
+  let bestD = Infinity;
+  let bestF = 0;
+  for (let j = 0; j <= n - 2; j++) {
+    const a = st[j]!.p, b = st[j + 1]!.p;
+    const ex = b[0] - a[0], ey = b[1] - a[1], ez = b[2] - a[2];
+    const l2 = ex * ex + ey * ey + ez * ez || 1e-12;
+    const f = Math.max(0, Math.min(1, ((p[0] - a[0]) * ex + (p[1] - a[1]) * ey + (p[2] - a[2]) * ez) / l2));
+    const qx = a[0] + ex * f - p[0], qy = a[1] + ey * f - p[1], qz = a[2] + ez * f - p[2];
+    const d = qx * qx + qy * qy + qz * qz;
+    if (d < bestD) {
+      bestD = d;
+      seg = j;
+      bestF = f;
+    }
+  }
+  const sA = st[seg]!, sB = st[seg + 1]!;
+  const f = bestF;
+  const cx = sA.p[0] + (sB.p[0] - sA.p[0]) * f, cy = sA.p[1] + (sB.p[1] - sA.p[1]) * f, cz = sA.p[2] + (sB.p[2] - sA.p[2]) * f;
+  let rx = sA.right[0] + (sB.right[0] - sA.right[0]) * f, ry = sA.right[1] + (sB.right[1] - sA.right[1]) * f, rz = sA.right[2] + (sB.right[2] - sA.right[2]) * f;
+  let ux = sA.up[0] + (sB.up[0] - sA.up[0]) * f, uy = sA.up[1] + (sB.up[1] - sA.up[1]) * f, uz = sA.up[2] + (sB.up[2] - sA.up[2]) * f;
+  const rl = Math.hypot(rx, ry, rz) || 1, ul = Math.hypot(ux, uy, uz) || 1;
+  rx /= rl;
+  ry /= rl;
+  rz /= rl;
+  ux /= ul;
+  uy /= ul;
+  uz /= ul;
+  const vx = p[0] - cx, vy = p[1] - cy, vz = p[2] - cz;
+  const a = vx * rx + vy * ry + vz * rz;
+  const b = vx * ux + vy * uy + vz * uz;
+  const sArc = sA.arc + (sB.arc - sA.arc) * f;
+  // vor dem Anfang / hinter dem Ende: Anteil entlang der Tangente für Kappen und Profilauslauf
+  let over = 0;
+  if (seg === 0 && f <= 0) over = vx * sA.tangent[0] + vy * sA.tangent[1] + vz * sA.tangent[2];
+  else if (seg === n - 2 && f >= 1) over = vx * sB.tangent[0] + vy * sB.tangent[1] + vz * sB.tangent[2];
+  const sEff = sArc + over;
+  const rho = Math.hypot(a, b);
+  const ca = rho > 1e-9 ? a / rho : 1, cb = rho > 1e-9 ? b / rho : 0;
+  // 2. Exakter 2D-Abstand von (ρ, s) zur Profil-Polylinie in dieser Richtung
+  let best = Infinity;
+  const j0 = Math.max(0, seg - 3), j1 = Math.min(n - 2, seg + 3);
+  for (let j = j0; j <= j1; j++) {
+    const ar = sectionRadius(st[j]!, ca, cb), as = st[j]!.arc;
+    const br = sectionRadius(st[j + 1]!, ca, cb), bs = st[j + 1]!.arc;
+    const ex = br - ar, ey = bs - as;
+    const wx = rho - ar, wy = sEff - as;
+    const tt = Math.max(0, Math.min(1, (wx * ex + wy * ey) / (ex * ex + ey * ey || 1e-12)));
+    const dx = wx - ex * tt, dy = wy - ey * tt;
+    best = Math.min(best, dx * dx + dy * dy);
+  }
+  const rAt = sectionRadius(sA, ca, cb) * (1 - f) + sectionRadius(sB, ca, cb) * f;
+  let d = Math.sqrt(best);
+  // Vorzeichen nur über den Radius (wie beim Rotationskörper): hält das Feld am Deckel-/Standflächenrand stetig
+  if (rho < rAt) d = -d;
+  // 3. Kappen: flache Schnitte mit gerundeter Kante (Standfläche, Deckel)
+  if (prim.capStart > 0) {
+    const bottom = st[0]!.arc - sEff;
+    const k = prim.capStart;
+    const h = Math.max(k - Math.abs(d - bottom), 0) / k;
+    d = Math.max(d, bottom) + h * h * k * 0.25;
+  }
+  if (prim.capEnd > 0) {
+    const top = sEff - st[n - 1]!.arc;
+    const k = prim.capEnd;
+    const h = Math.max(k - Math.abs(d - top), 0) / k;
+    d = Math.max(d, top) + h * h * k * 0.25;
+  }
+  return d;
+}
+
+export interface LoftSpec {
+  /** Punkte der Mittellinie (dicht, z. B. aus Catmull-Rom). */
+  points: Vec3[];
+  /** Bezugsrichtung für „oben“ der Querschnitte (wird je Station orthogonalisiert). */
+  upRef: Readonly<Vec3>;
+  wx: number[];
+  wyT: number[];
+  wyB: number[];
+  n: number[] | number;
+  parts: number[] | number;
+  capStart?: number;
+  capEnd?: number;
+}
+
+/** Loft aus dichten Stationswerten; Rahmen aus den Tangenten der Mittellinie und einer Bezugsrichtung. */
+export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?: number }): LoftPrim {
+  // Enden ohne flache Kappe rund schließen: zusätzliche Stationen mit Viertelkreis-Profil (Hals-Ende, Beinansatz im
+  // Körper, Schwanzspitze) — sonst liefe die Fläche als Zylinder weiter
+  const closeEnd = (atStart: boolean): void => {
+    const i = atStart ? 0 : spec.points.length - 1;
+    const j = atStart ? 1 : spec.points.length - 2;
+    const r = Math.max(spec.wx[i] ?? 0, spec.wyT[i] ?? 0, spec.wyB[i] ?? 0);
+    if (r < 1e-4 || spec.points.length < 2) return;
+    const a = spec.points[i]!, b = spec.points[j]!;
+    let dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
+    const dl = Math.hypot(dx, dy, dz) || 1;
+    dx /= dl;
+    dy /= dl;
+    dz /= dl;
+    const steps = [0.38, 0.71, 0.92, 1.0];
+    const fac = [0.925, 0.7, 0.39, 0];
+    const extraP: Vec3[] = [], exW: number[] = [], exT: number[] = [], exB: number[] = [], exN: number[] = [], exPart: number[] = [];
+    for (let q = 0; q < steps.length; q++) {
+      const t = steps[q]! * r;
+      extraP.push([a[0] + dx * t, a[1] + dy * t, a[2] + dz * t]);
+      exW.push((spec.wx[i] ?? 0) * fac[q]!);
+      exT.push((spec.wyT[i] ?? 0) * fac[q]!);
+      exB.push((spec.wyB[i] ?? 0) * fac[q]!);
+      exN.push(typeof spec.n === 'number' ? spec.n : (spec.n[i] ?? 2));
+      exPart.push(typeof spec.parts === 'number' ? spec.parts : (spec.parts[i] ?? 0));
+    }
+    if (atStart) {
+      spec.points = [...extraP.reverse(), ...spec.points];
+      spec.wx = [...exW.reverse(), ...spec.wx];
+      spec.wyT = [...exT.reverse(), ...spec.wyT];
+      spec.wyB = [...exB.reverse(), ...spec.wyB];
+      if (typeof spec.n !== 'number') spec.n = [...exN.reverse(), ...spec.n];
+      if (typeof spec.parts !== 'number') spec.parts = [...exPart.reverse(), ...spec.parts];
+    } else {
+      spec.points = [...spec.points, ...extraP];
+      spec.wx = [...spec.wx, ...exW];
+      spec.wyT = [...spec.wyT, ...exT];
+      spec.wyB = [...spec.wyB, ...exB];
+      if (typeof spec.n !== 'number') spec.n = [...spec.n, ...exN];
+      if (typeof spec.parts !== 'number') spec.parts = [...spec.parts, ...exPart];
+    }
+  };
+  spec = { ...spec, points: spec.points.slice(), wx: spec.wx.slice(), wyT: spec.wyT.slice(), wyB: spec.wyB.slice(), n: typeof spec.n === 'number' ? spec.n : spec.n.slice(), parts: typeof spec.parts === 'number' ? spec.parts : spec.parts.slice() };
+  if (!(spec.capEnd && spec.capEnd > 0)) closeEnd(false);
+  if (!(spec.capStart && spec.capStart > 0)) closeEnd(true);
+  const pts = spec.points;
+  const m = pts.length;
+  const stations: LoftStation[] = [];
+  let arc = 0;
+  for (let i = 0; i < m; i++) {
+    const prev = pts[Math.max(0, i - 1)]!, next = pts[Math.min(m - 1, i + 1)]!;
+    let tx = next[0] - prev[0], ty = next[1] - prev[1], tz = next[2] - prev[2];
+    const tl = Math.hypot(tx, ty, tz) || 1;
+    tx /= tl;
+    ty /= tl;
+    tz /= tl;
+    // up orthogonal zur Tangente, right = up × tangent
+    const u = spec.upRef;
+    const du = u[0] * tx + u[1] * ty + u[2] * tz;
+    let ux = u[0] - tx * du, uy = u[1] - ty * du, uz = u[2] - tz * du;
+    let ul = Math.hypot(ux, uy, uz);
+    if (ul < 1e-5) {
+      ux = 1 - tx * tx;
+      uy = -tx * ty;
+      uz = -tx * tz;
+      ul = Math.hypot(ux, uy, uz) || 1;
+    }
+    ux /= ul;
+    uy /= ul;
+    uz /= ul;
+    const rx = uy * tz - uz * ty, ry = uz * tx - ux * tz, rz = ux * ty - uy * tx;
+    if (i > 0) arc += Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1], pts[i]![2] - pts[i - 1]![2]);
+    stations.push({
+      p: [pts[i]![0], pts[i]![1], pts[i]![2]],
+      right: [rx, ry, rz],
+      up: [ux, uy, uz],
+      tangent: [tx, ty, tz],
+      wx: Math.max(0, spec.wx[i] ?? 0),
+      wyT: Math.max(0, spec.wyT[i] ?? 0),
+      wyB: Math.max(0, spec.wyB[i] ?? 0),
+      n: typeof spec.n === 'number' ? spec.n : (spec.n[i] ?? 2),
+      arc,
+      part: typeof spec.parts === 'number' ? spec.parts : (spec.parts[i] ?? 0),
+    });
+  }
+  const prim: LoftPrim = { kind: 'loft', stations, capStart: spec.capStart ?? 0, capEnd: spec.capEnd ?? 0, part: base.part ?? stations[0]!.part, k: base.k, region: base.region, op: base.op };
+  if (base.name !== undefined) prim.name = base.name;
+  return prim;
+}
 
 export interface SdfScene {
   prims: Prim[];
@@ -255,6 +509,8 @@ export function sdPrim(p: Readonly<Vec3>, prim: Prim): number {
       return sdEllipsoid(p, prim);
     case 'revolve':
       return sdRevolve(p, prim);
+    case 'loft':
+      return sdLoft(p, prim);
     case 'custom':
       return prim.eval(p);
   }
@@ -431,6 +687,17 @@ export function primBounds(prim: Prim): { min: Vec3; max: Vec3 } {
         }
       }
       return { min: [min[0] - rmax, min[1] - rmax, min[2] - rmax], max: [max[0] + rmax, max[1] + rmax, max[2] + rmax] };
+    }
+    case 'loft': {
+      const min: Vec3 = [Infinity, Infinity, Infinity], max: Vec3 = [-Infinity, -Infinity, -Infinity];
+      for (const s of prim.stations) {
+        const r = Math.max(s.wx, s.wyT, s.wyB) + Math.max(prim.capStart, prim.capEnd);
+        for (let c = 0; c < 3; c++) {
+          min[c] = Math.min(min[c]!, s.p[c]! - r);
+          max[c] = Math.max(max[c]!, s.p[c]! + r);
+        }
+      }
+      return { min, max };
     }
     case 'custom':
       return prim.bounds;

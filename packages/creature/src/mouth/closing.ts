@@ -54,8 +54,8 @@ export function computeClosing(c: Construction, positions: Float32Array, desc: D
   const form = m.form;
   // Lochmaul: Radius im Bauzustand und bei voller Öffnung (wie in mouth.ts)
   const hw = host.halfWidth;
-  const rhoBuild = Math.max(0.004, hw * m.breite * (0.18 + 0.5 * m.oeffnung));
-  const rhoFull = Math.max(0.004, hw * m.breite * (0.18 + 0.5));
+  const rhoBuild = mouth.gapFront * 1.05;
+  const rhoFull = rhoBuild / Math.max(0.2, m.oeffnung);
   const puckerClose = rhoFull - rhoBuild > 1e-4 ? (rhoBuild - rhoBuild * 0.12) / (rhoFull - rhoBuild) : 0;
   const rig: JawRig = { closeAngle, maxOpenAngle, oeffnungBau: m.oeffnung, jawLength: Ljaw, share: upperShare(m), shareClose: hasJaw ? SHARE_CLOSE : 1, tilt: UPPER_TILT, form, puckerClose };
   const pose = jawPose(rig, 0);

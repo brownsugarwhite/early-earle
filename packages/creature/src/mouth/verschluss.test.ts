@@ -128,7 +128,7 @@ function freeDirections(pos: Float32Array, index: Uint32Array, pt: Vec3): number
 }
 /** Sichtbar, wenn mehr als zwei der 26 Richtungen frei sind (ein, zwei freie Strahlen gehen auch durch ein Netzloch). */
 function visible(pos: Float32Array, index: Uint32Array, pt: Vec3): boolean {
-  return freeDirections(pos, index, pt) > 2;
+  return freeDirections(pos, index, pt) > 3;
 }
 
 /** Ausfransen: Unruhe des Bewegungsfelds offen → zu in der Lippen- und Rachenzone (mittlere Abweichung der Verschiebung

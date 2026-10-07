@@ -2,7 +2,7 @@ import type { Bauplan } from '../bauplan/schema';
 import { catmullRom, makePolyline, type Polyline } from '../math/curve';
 import { QUAT_ID, add, clamp, cross, dot, frameFromTangent, normalize, quatFromFrame, scale, sub, type Quat, type Vec3 } from '../math/vec';
 import { buildMouth, surfacePoint, type MouthGeometry, type MouthHost } from '../mouth/mouth';
-import { REGION, evalScene, sceneBounds, type CapsulePrim, type EllipsoidPrim, type Prim, type RevolvePrim, type SdfScene } from './scene';
+import { REGION, evalScene, makeLoft, sceneBounds, type EllipsoidPrim, type Prim, type SdfScene } from './scene';
 
 /**
  * Bauplan → implizite Szene + prozedurales Skelett + Teilgruppen (Kurven für Wirbelsäulen-Koordinaten) + Maul + Augen.
@@ -56,10 +56,6 @@ export interface Construction {
 const UP: Vec3 = [0, 1, 0];
 const FWD: Vec3 = [0, 0, 1];
 const RIGHT: Vec3 = [1, 0, 0];
-
-function capsule(a: Vec3, b: Vec3, ra: number, rb: number, part: number, k: number, name: string, region = REGION.haut): CapsulePrim {
-  return { kind: 'capsule', op: 'union', part, k, region, name, a, b, ra, rb };
-}
 
 /**
  * Radiustabelle des Grundblobs (0 … H, 96 Stützstellen) aus den fünf Querschnitten: flache Standfläche (`boden` =
@@ -174,23 +170,41 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   const kMitte = bone('koerperMitte', kUnten, axisAt(yb + 0.45 * H), QUAT_ID, bodyGroup);
   const kOben = bone('koerperOben', kMitte, axisAt(yb + 0.85 * H), QUAT_ID, bodyGroup);
   groups[bodyGroup]!.bones.push(kUnten, kMitte, kOben);
-  const body: RevolvePrim = { kind: 'revolve', op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper', radii, height: H, c: [0, yb, 0], sx, sz, n: 2 + 6 * b.koerper.kubik, shear, round: 0.03 * H * (0.6 + 0.8 * (1 - b.koerper.boden)), topRound: b.koerper.kubik > 0.02 ? 0.12 * H * b.koerper.kubik : 0 };
-  prims.push(body);
-  if (b.koerper.bauch > 0) {
-    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: kUnten, k: 0.25 * H, region: REGION.haut, name: 'bauch', c: add(axisAt(yb + 0.28 * H), [0, 0, R0 * sz * 0.42 * b.koerper.bauch]), r: [R0 * sx * 0.78, 0.3 * H, R0 * sz * 0.58] };
-    prims.push(e);
+  // Körper als **Profil-Loft**: Breite aus dem Breitenprofil (Grundformen), Tiefe vorn (Bauchlinie) und hinten
+  // (Rückenlinie) getrennt — Bauch und Buckel verformen die Kurven statt Kugeln anzukleben (Bild 2/3: gezeichnete Silhouette).
+  // Mit Hals wird der Körper oben in den Hals geführt (ein Loft, Tropfenkörper ohne Schulterstufe wie bei der Giraffe).
+  const neckLen = b.hals.laenge * H;
+  const hasNeck = neckLen > 0.02 * H;
+  const bodyPts: Vec3[] = [];
+  const bodyWx: number[] = [], bodyWyT: number[] = [], bodyWyB: number[] = [], bodyN: number[] = [], bodyParts: number[] = [];
+  const kub = clamp(b.koerper.kubik, 0, 1);
+  {
+    const nS = radii.length;
+    for (let i = 0; i < nS; i++) {
+      const t = i / (nS - 1);
+      bodyPts.push(axisAt(yb + t * H));
+      const r = radii[i]!;
+      // Bauch: Wölbung vorn unten; Buckel: Wölbung hinten oben (negativ = abgeflacht)
+      const belly = b.koerper.bauch * 0.5 * Math.exp(-Math.pow((t - 0.3) / 0.24, 2));
+      const hump = b.koerper.buckel * 0.45 * Math.exp(-Math.pow((t - 0.66) / 0.24, 2));
+      bodyWx.push(r * sx);
+      bodyWyT.push(r * sz * Math.max(0.35, 1 + belly));
+      bodyWyB.push(r * sz * Math.max(0.35, 1 + hump));
+      bodyN.push(2 + 6 * kub);
+      bodyParts.push(t < 0.3 ? kUnten : t < 0.68 ? kMitte : kOben);
+    }
   }
-  if (b.koerper.buckel > 0) {
-    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: kOben, k: 0.34 * H, region: REGION.haut, name: 'buckel', c: add(axisAt(yb + 0.62 * H), [0, 0, -R0 * sz * 0.4 * b.koerper.buckel]), r: [R0 * sx * 0.7, 0.26 * H * (0.6 + 0.5 * b.koerper.buckel), R0 * sz * 0.5] };
-    prims.push(e);
+  const bodyCapStart = 0.03 * H * (0.6 + 0.8 * (1 - b.koerper.boden));
+  if (!hasNeck) {
+    prims.push(makeLoft({ points: bodyPts, upRef: FWD, wx: bodyWx, wyT: bodyWyT, wyB: bodyWyB, n: bodyN, parts: bodyParts, capStart: bodyCapStart, capEnd: kub > 0.02 ? 0.12 * H * kub : 0 }, { op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper' }));
   }
 
   // --- Hals und Kopf ------------------------------------------------------------------------------------------------
+  const m0 = b.maul;
   let hostBone = kMitte;
   let host: MouthHost | null = null;
   let headGroup = -1;
-  const neckLen = b.hals.laenge * H;
-  if (neckLen > 0.02 * H) {
+  if (hasNeck) {
     const ansatz = b.hals.ansatz;
     const hb = yb + H * (0.97 - 0.1 * Math.abs(ansatz - 0.5) * 2);
     const base: Vec3 = add(axisAt(hb), [0, 0, (ansatz - 0.5) * R0 * sz * 1.3]);
@@ -219,11 +233,36 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       boneIdx.push(parent);
     }
     groups[neckGroup]!.bones.push(...boneIdx);
-    for (let i = 0; i < nb; i++) {
-      const i0 = Math.min(pts.length - 1, Math.round((i / nb) * (pts.length - 1)));
-      const i1 = Math.min(pts.length - 1, Math.round(((i + 1) / nb) * (pts.length - 1)));
-      // Glieder teilen ihre Endpunkte: nur die Naht weich machen (großes k ergäbe Perlenkette), der Ansatz am Körper bleibt weich
-      prims.push(capsule(pts[i0]!, pts[i1]!, radii[i0]!, radii[i1]!, boneIdx[i]!, i === 0 ? 0.45 * rN + 0.03 * H : 0.12 * rN, `hals${i}`));
+    // Körper + Hals als **ein** Loft: die obersten Körperstationen führen Mitte und Radius zur Halsbasis (Tropfen ohne
+    // Schulterstufe, Bild 6), dann folgen die Halsstationen mit ihren Knochen; der Kopf schließt oben an
+    {
+      const rBase = radii[0]! * 1.15;
+      const pts2: Vec3[] = [], wx2: number[] = [], wyT2: number[] = [], wyB2: number[] = [], n2: number[] = [], parts2: number[] = [];
+      const nB = bodyPts.length;
+      for (let i = 0; i < nB; i++) {
+        const t = i / (nB - 1);
+        const y = bodyPts[i]![1];
+        if (y > hb - 1e-6) break;
+        const w = t <= 0.55 ? 0 : (() => { const u = (t - 0.55) / Math.max(1e-6, (hb - yb) / H - 0.55); const c = clamp(u, 0, 1); return c * c * (3 - 2 * c); })();
+        const c: Vec3 = [bodyPts[i]![0] + (base[0] - bodyPts[i]![0]) * w, y, bodyPts[i]![2] + (base[2] - bodyPts[i]![2]) * w];
+        pts2.push(c);
+        wx2.push(bodyWx[i]! + (rBase - bodyWx[i]!) * w);
+        wyT2.push(bodyWyT[i]! + (rBase - bodyWyT[i]!) * w);
+        wyB2.push(bodyWyB[i]! + (rBase - bodyWyB[i]!) * w);
+        n2.push(bodyN[i]! + (2 - bodyN[i]!) * w);
+        parts2.push(bodyParts[i]!);
+      }
+      for (let i = 0; i < pts.length; i++) {
+        const u = i / (pts.length - 1);
+        const r = i === 0 ? rBase : radii[i]!;
+        pts2.push(pts[i]!);
+        wx2.push(r);
+        wyT2.push(r);
+        wyB2.push(r);
+        n2.push(2);
+        parts2.push(boneIdx[Math.min(nb - 1, Math.floor(u * nb))]!);
+      }
+      prims.push(makeLoft({ points: pts2, upRef: FWD, wx: wx2, wyT: wyT2, wyB: wyB2, n: n2, parts: parts2, capStart: bodyCapStart }, { op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper' }));
     }
     const neckEnd = pts[pts.length - 1]!;
     const neckTan = pl.tangents[pts.length - 1]!;
@@ -234,16 +273,43 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     const rightH = normalize(cross(upH, forwardH));
     upH = normalize(cross(forwardH, rightH));
     const hr = b.kopf.groesse * 0.33 * H;
-    const headCenter = add(add(neckEnd, scale(upH, hr * 0.55)), scale(forwardH, hr * 0.25));
+    const ok = clamp(m0.oberkiefer, 0.05, 1.5);
+    const uk = clamp(m0.unterkiefer, 0, 1.5);
+    const schn = clamp(b.kopf.schnauze, 0, 1);
+    const dick = clamp(b.kopf.schnauzeDicke, 0.3, 1.2);
+    // Mittellinie des Kopfs: vom Hinterkopf nach vorn bis zur Schnauzenspitze, auf Höhe der Maullinie
+    const headBase = add(neckEnd, scale(upH, hr * 0.45));
+    const Lback = hr * 0.85;
+    const Lfront = hr * (0.95 + 0.9 * (b.kopf.laenge - 1) + 0.7 * schn);
+    const headCenter = add(headBase, scale(forwardH, (Lfront - Lback) * 0.5));
     headGroup = groups.length;
-    const headPl = makePolyline([sub(headCenter, scale(forwardH, hr)), add(headCenter, scale(forwardH, hr * b.kopf.laenge))], [hr, hr * 0.8], UP);
+    const headPl = makePolyline([sub(headBase, scale(forwardH, Lback)), add(headBase, scale(forwardH, Lfront))], [hr, hr * 0.8], UP);
     groups.push({ name: 'kopf', kind: 'kopf', polyline: headPl, bones: [], dorsal: upH });
     const headBone = bone('kopf', parent, neckEnd, quatFromFrame(rightH, upH, forwardH), headGroup);
     groups[headGroup]!.bones.push(headBone);
-    const headPrim: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: headBone, k: 0.45 * hr, region: REGION.haut, name: 'kopf', c: headCenter, r: [hr * 0.92, hr * 0.88, hr * 0.95 * b.kopf.laenge], q: quatFromFrame(rightH, upH, forwardH), kubik: b.koerper.kubik * 0.5 };
-    prims.push(headPrim);
+    {
+      // Profile (Bild 5/11): Schädel hinten hoch, Brauenwulst, Schnauze läuft nach vorn aus; Kiefer unten als Löffel
+      const nS = 40;
+      const pts: Vec3[] = [];
+      const wx: number[] = [], wyT: number[] = [], wyB: number[] = [], nn: number[] = [];
+      const braue = clamp(b.kopf.braue, 0, 1);
+      for (let i = 0; i < nS; i++) {
+        const u = i / (nS - 1); // 0 Hinterkopf … 1 Schnauzenspitze
+        pts.push(add(headBase, scale(forwardH, -Lback + (Lback + Lfront) * u)));
+        const endRound = Math.sqrt(Math.max(0, 1 - Math.pow((u - 0.5) / 0.5, 6))); // runde Enden
+        const width = hr * (0.72 + 0.32 * Math.exp(-Math.pow((u - 0.38) / 0.3, 2))) * (1 - (1 - dick) * Math.max(0, u - 0.6) * 2);
+        const skull = hr * (0.55 + 0.5 * ok) * (1 - 0.45 * Math.max(0, (u - 0.45) / 0.55) ** 1.3) * (1 + 0.3 * braue * Math.exp(-Math.pow((u - 0.42) / 0.14, 2)));
+        const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.35 * Math.max(0, (u - 0.5) / 0.5) ** 1.5);
+        wx.push(width * endRound);
+        wyT.push(skull * endRound);
+        wyB.push(jaw * endRound);
+        nn.push(2 + 1.5 * clamp(m0.kante, 0, 1));
+      }
+      const head = makeLoft({ points: pts, upRef: upH, wx, wyT, wyB, n: nn, parts: headBone }, { op: 'union', part: headBone, k: 0.35 * hr, region: REGION.haut, name: 'kopf' });
+      prims.push(head);
+    }
     hostBone = headBone;
-    host = { origin: sub(headCenter, scale(upH, hr * 0.9)), up: upH, forward: forwardH, right: rightH, height: hr * 1.8, halfWidth: hr * 0.92, bone: headBone, scene: { prims: [] } };
+    host = { origin: sub(headCenter, scale(upH, hr * (0.42 + 0.42 * uk))), up: upH, forward: forwardH, right: rightH, height: hr * (0.42 + 0.42 * uk + 0.55 + 0.5 * ok), halfWidth: hr * 0.95, bone: headBone, scene: { prims: [] } };
   } else {
     const up = normalize([0, 1, shear]);
     const fwd = normalize(sub(FWD, scale(up, FWD[0] * up[0] + FWD[1] * up[1] + FWD[2] * up[2])));
@@ -258,28 +324,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   groups[jawGroup]!.bones.push(jawBone, upperJawBone);
 
   host.scene = { prims: prims.slice() };
-  const m = b.maul;
-  const hLip0 = clamp(m.hoehe, 0.02, 0.98) * host.height;
-  const prov = surfacePoint(host, hLip0, 0, host.halfWidth * 3 + H);
-  const C0 = prov.p;
-  const hw = host.halfWidth * 0.85;
-  const hh = host.height * 0.5;
-  const gap0 = m.oeffnung * 0.32 * host.height * 0.5;
-  const fz = host.forward, fy = host.up;
-  const jawForm = m.form;
-  const maulAn = m.sichtbar;
-  if (maulAn && m.oberkiefer > 0.05 && jawForm > 0.04) {
-    const c = add(add(C0, scale(fz, hw * (-0.06 + 0.6 * b.kopf.schnauze) * jawForm)), scale(fy, gap0 + hh * 0.3 * m.oberkiefer));
-    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: hostBone, k: 0.42 * hw, region: REGION.haut, name: 'oberkiefer', c, r: [hw * 0.95 * (0.65 + 0.35 * b.kopf.schnauzeDicke), hh * 0.3 * m.oberkiefer + 0.002, hw * (0.42 + 0.8 * b.kopf.schnauze) * (0.5 + 0.5 * m.oberkiefer) * jawForm], q: quatFromFrame(host.right, host.up, host.forward) };
-    prims.push(e);
-  }
-  if (maulAn && m.unterkiefer > 0.05 && jawForm > 0.04) {
-    // Unterkiefer als runder Löffel (Bild 5): dicker, etwas tiefer, zur Kinnspitze hin schmaler
-    const c = sub(add(C0, scale(fz, (hw * (0.02 + 0.55 * b.kopf.schnauze) + m.biss * hw * 0.25) * jawForm)), scale(fy, gap0 + hh * 0.26 * m.unterkiefer));
-    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: jawBone, k: 0.34 * hw, region: REGION.haut, name: 'unterkiefer', c, r: [hw * 0.9 * (0.65 + 0.35 * b.kopf.schnauzeDicke), hh * 0.36 * m.unterkiefer + 0.002, hw * (0.42 + 0.7 * b.kopf.schnauze) * (0.5 + 0.5 * m.unterkiefer) * jawForm], q: quatFromFrame(host.right, host.up, host.forward), kubik: m.kante };
-    prims.push(e);
-  }
   host.scene = { prims: prims.slice() };
+  const maulAn = m0.sichtbar;
 
   // --- Maul ----------------------------------------------------------------------------------------------------------
   const mouthBuild = buildMouth(b, host, jawBone, H, cellSize);
@@ -364,10 +410,33 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const bKnee = bone(`bein${i}Knie`, bHip, knee, QUAT_ID, g);
       const bFoot = bone(`bein${i}Fuss`, bKnee, ankle, QUAT_ID, g);
       groups[g]!.bones.push(bHip, bKnee, bFoot);
-      prims.push(capsule(hip, knee, rHip, rKnee, bHip, 0.2 * H * (0.5 + L.schenkel) * thin + 0.02 * H, `bein${i}a`));
-      prims.push(capsule(knee, ankle, rKnee, rAnkle, bKnee, 0.14 * rKnee + 0.004 * H, `bein${i}b`));
-      const footPrim: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: bFoot, k: 0.08 * H, region: REGION.haut, name: `bein${i}fuss`, c: [foot[0], rFoot * 0.42, foot[2]], r: [rFoot * 1.2, rFoot * 0.48, rFoot * 1.4] };
-      prims.push(footPrim);
+      // Bein als ein Loft: Ansatz tief im Körper (breit, „geknetet“), Schenkel, Knie, Knöchel, Fußpolster als Saugnapf
+      // mit flacher Standfläche; Zehen nach vorn (Querschnitt vorn länger)
+      const inner = add(hip, scale(normalize(sub(axisAt(hHip), hip)), rHip * 1.1));
+      const ctrl: Vec3[] = [inner, hip, knee, ankle, [foot[0], rFoot * 0.35, foot[2]], [foot[0], 0, foot[2]]];
+      const rr = [rHip * (1.35 + 0.4 * L.schenkel), rHip * (1 + 0.3 * L.schenkel), rKnee, rAnkle, rFoot * 1.1, rFoot * 1.25];
+      const pts = catmullRom(ctrl, 4);
+      const nP = pts.length;
+      const idxOf = (k: number): number => Math.min(nP - 1, Math.round((k / (ctrl.length - 1)) * (nP - 1)));
+      const radAt = (j: number): number => {
+        // Catmull-Rom über die Kontrollradien, gleiche Parametrisierung wie die Punkte
+        const t = (j / (nP - 1)) * (ctrl.length - 1);
+        const k = Math.min(ctrl.length - 2, Math.floor(t));
+        const f = t - k;
+        const r0 = rr[Math.max(0, k - 1)]!, r1 = rr[k]!, r2 = rr[k + 1]!, r3 = rr[Math.min(ctrl.length - 1, k + 2)]!;
+        const f2 = f * f, f3 = f2 * f;
+        return Math.max(0.004, 0.5 * (2 * r1 + (-r0 + r2) * f + (2 * r0 - 5 * r1 + 4 * r2 - r3) * f2 + (-r0 + 3 * r1 - 3 * r2 + r3) * f3));
+      };
+      const wx: number[] = [], wyT: number[] = [], wyB: number[] = [], parts: number[] = [];
+      for (let j = 0; j < nP; j++) {
+        const r = radAt(j);
+        const footness = clamp((j - idxOf(3)) / Math.max(1, idxOf(5) - idxOf(3)), 0, 1);
+        wx.push(r * (1 + 0.15 * footness));
+        wyT.push(r * (1 + 0.5 * footness));
+        wyB.push(r);
+        parts.push(j < idxOf(2) ? bHip : j < idxOf(3) ? bKnee : bFoot);
+      }
+      prims.push(makeLoft({ points: pts, upRef: FWD, wx, wyT, wyB, n: 2, parts, capEnd: rFoot * 0.35 }, { op: 'union', part: bHip, k: 0.16 * H * (0.5 + L.schenkel) * thin + 0.02 * H, region: REGION.haut, name: `bein${i}` }));
     });
   }
 
@@ -399,10 +468,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       idx.push(parent);
     }
     groups[g]!.bones.push(...idx);
-    for (let i = 0; i < nb; i++) {
-      const i0 = Math.min(pts.length - 1, Math.round((i / nb) * (pts.length - 1)));
-      const i1 = Math.min(pts.length - 1, Math.round(((i + 1) / nb) * (pts.length - 1)));
-      prims.push(capsule(pts[i0]!, pts[i1]!, radii[i0]!, radii[i1]!, idx[i]!, i === 0 ? 0.28 * H : 0.12 * radii[i0]!, `schlange${i}`));
+    {
+      const parts = pts.map((_p, i) => idx[Math.min(nb - 1, Math.floor((i / pts.length) * nb))]!);
+      // Bauchseite flach (Schlange liegt auf), Rücken rund
+      prims.push(makeLoft({ points: pts, upRef: UP, wx: radii, wyT: radii, wyB: radii.map((r) => r * 0.85), n: 2.3, parts }, { op: 'union', part: idx[0]!, k: 0.22 * H, region: REGION.haut, name: 'schlange' }));
     }
   } else if (b.schwanz.typ !== 'keiner') {
     const T = b.schwanz;
@@ -432,10 +501,12 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       idx.push(parent);
     }
     groups[g]!.bones.push(...idx);
-    for (let i = 0; i < nb; i++) {
-      const i0 = Math.min(pts.length - 1, Math.round((i / nb) * (pts.length - 1)));
-      const i1 = Math.min(pts.length - 1, Math.round(((i + 1) / nb) * (pts.length - 1)));
-      prims.push(capsule(pts[i0]!, pts[i1]!, radii[i0]!, radii[i1]!, idx[i]!, i === 0 ? (T.typ === 'wirbelsaeule' ? 0.3 : 0.12) * H : 0.12 * radii[i0]!, `schwanz${i}`));
+    {
+      const parts = pts.map((_p, i) => idx[Math.min(nb - 1, Math.floor((i / pts.length) * nb))]!);
+      // Rex-Schwanz: Wirbelsäule läuft breit aus dem Körper (Bild 5/12), Anhang: dünn mit Quaste
+      const flare = pts.map((_p, i) => (T.typ === 'wirbelsaeule' ? 1 + 0.5 * Math.exp(-Math.pow((i / (pts.length - 1)) / 0.2, 2)) : 1));
+      const w = radii.map((r, i) => r * flare[i]!);
+      prims.push(makeLoft({ points: pts, upRef: UP, wx: w, wyT: w.map((r) => r * 1.05), wyB: w, n: 2, parts }, { op: 'union', part: idx[0]!, k: (T.typ === 'wirbelsaeule' ? 0.22 : 0.1) * H, region: REGION.haut, name: 'schwanz' }));
     }
   }
 

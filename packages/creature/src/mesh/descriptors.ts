@@ -1,6 +1,6 @@
 import { nearestOnPolyline } from '../math/curve';
 import { clamp, clamp01, dist, dot, smoothstep, sub, type Vec3 } from '../math/vec';
-import { REGION, evalScene, evalSceneDetailed, type SceneSample } from '../sdf/scene';
+import { REGION, evalScene, evalSceneDetailed, type SceneSample, primPart } from '../sdf/scene';
 import type { Construction } from '../sdf/build';
 
 /**
@@ -80,7 +80,7 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
       const u = Math.max(0, 1 - (per[i]! - dmin) / blend);
       const w = u * u;
       if (w <= 0) continue;
-      boneWeights[pr.part]! += w;
+      boneWeights[primPart(pr, p)]! += w;
     }
     // Körper: ein Primitiv, drei Knochen — nach Höhe verteilen
     if (bodyBones.length === 3) {
