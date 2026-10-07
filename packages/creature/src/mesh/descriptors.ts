@@ -148,7 +148,13 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     spine[v * 4] = hit.s * g.polyline.total;
     spine[v * 4 + 1] = hit.angle;
     spine[v * 4 + 2] = 2 * Math.PI * Math.max(radius, hit.d);
-    spine[v * 4 + 3] = clamp(dot(rel, g.dorsal) / Math.max(radius, hit.d, 1e-3), -1, 1);
+    // Bauch/Rücken immer relativ zum Körper (eine durchgehende Bauchlinie über Rumpf, Beine, Schwanz, Hals)
+    if (bodyGroup >= 0 && groups[bodyGroup]) {
+      const bg = groups[bodyGroup]!;
+      const bh = nearestOnPolyline(bg.polyline, p);
+      const brel = sub(p, bh.point);
+      spine[v * 4 + 3] = clamp(dot(brel, bg.dorsal) / Math.max(bh.radius, 1e-3), -1.2, 1.2) / 1.2;
+    } else spine[v * 4 + 3] = clamp(dot(rel, g.dorsal) / Math.max(radius, hit.d, 1e-3), -1, 1);
     void owner;
     owner = order[0]!;
 

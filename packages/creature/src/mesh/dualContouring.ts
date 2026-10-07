@@ -117,14 +117,15 @@ export function contourDual(sdf: Sdf, opts: ContourOptions & { gradientEps?: num
         q[0] = Math.min(cx1, Math.max(cx0, q[0]));
         q[1] = Math.min(cy1, Math.max(cy0, q[1]));
         q[2] = Math.min(cz1, Math.max(cz0, q[2]));
-        // Kantenmaß: 1 − kleinstes Skalarprodukt der Schnittnormalen untereinander (normiert auf 0…1 über 60°)
+        // Kantenmaß: kleinstes Skalarprodukt der Schnittnormalen; 0 bis 45° Normalenunterschied (glatte Krümmung in einer
+        // Zelle), 1 ab 90° (Maulschnitt, Wulstkante, Standkante)
         let minDot = 1;
         for (let a = 0; a < cnt; a++)
           for (let b = a + 1; b < cnt; b++) {
             const d = normalsTmp[a * 3]! * normalsTmp[b * 3]! + normalsTmp[a * 3 + 1]! * normalsTmp[b * 3 + 1]! + normalsTmp[a * 3 + 2]! * normalsTmp[b * 3 + 2]!;
             if (d < minDot) minDot = d;
           }
-        const cr = Math.min(1, Math.max(0, (1 - minDot) / 0.5));
+        const cr = Math.min(1, Math.max(0, (0.7071 - minDot) / 0.7071));
         const nl = Math.hypot(nAvgX, nAvgY, nAvgZ) || 1;
         cellVert[cellAt(i, j, k)] = pos.length / 3;
         pos.push(q[0], q[1], q[2]);

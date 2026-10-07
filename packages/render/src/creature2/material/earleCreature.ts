@@ -217,7 +217,9 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     // Farbrolle Haut: Schatten → Grund → Licht; Bauchseite optional heller
     const shadeOf = (t: Vec3Triple): Vec3Node => mix(mix(t.schatten, t.base, smoothstep(0, 0.5, v)), t.licht, smoothstep(0.5, 1, v));
     const skin = shadeOf(u.grund).toVar();
-    const belly = smoothstep(u.bauchlinie.add(0.25), u.bauchlinie.sub(0.25), spine.w).mul(u.bauchStaerke);
+    // Bauchlinie: weich-harte gemalte Grenze, leicht gewellt (kein Flecken-Jitter)
+    const bellyWave = valueNoise(rest.div(u.bodyScale).mul(3.2)).sub(0.5).mul(0.12);
+    const belly = smoothstep(u.bauchlinie.add(0.12), u.bauchlinie.sub(0.12), spine.w.add(bellyWave)).mul(u.bauchStaerke);
     skin.assign(mix(skin, shadeOf(u.bauch), belly));
 
     // Musterebene: Masken in Wirbelsäulen-Koordinaten, Gesicht/Lippen/Rachen frei; Relief dunkelt die Stufe je Schuppe ab
