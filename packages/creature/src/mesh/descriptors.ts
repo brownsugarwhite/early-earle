@@ -45,6 +45,7 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     if (p.op === 'subtract' && p.region === REGION.hoehle) socketIdx.push(i);
   });
   const bodyGroup = groups.findIndex((g) => g.kind === 'koerper');
+  const langerHals = c.bauplan.hals.laenge >= 0.35;
   const bodyBones = bodyGroup >= 0 ? groups[bodyGroup]!.bones : [];
   const boneWeights = new Float64Array(bones.length);
   const sample: SceneSample = { d: 0, dUnion: 0, dSubtract: 0, nearestSubtract: -1, per: new Float64Array(prims.length) };
@@ -148,16 +149,27 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     spine[v * 4] = hit.s * g.polyline.total;
     spine[v * 4 + 1] = hit.angle;
     spine[v * 4 + 2] = 2 * Math.PI * Math.max(radius, hit.d);
-    // Bauch/Rücken: Rumpf, Beine und Schwanz relativ zur Rumpf-Mittellinie (eine durchgehende Bauchlinie); Hals und Kopf
-    // relativ zur eigenen Mittellinie (sonst zählt der ganze Hals als „Bauch“ vor dem Rumpfscheitel — heller Fleck am
-    // Halsansatz, keine Flecken auf Hals und Kopf, Bild 6)
-    const eigen = g.kind === 'hals' || g.kind === 'kopf';
-    if (!eigen && bodyGroup >= 0 && groups[bodyGroup]) {
+    // Bauch/Rücken: Rumpf, Beine und Schwanz relativ zur Rumpf-Mittellinie (eine durchgehende Bauchlinie). Hals und Kopf
+    // eines **langen** Halses relativ zur eigenen Mittellinie (sonst zählt der ganze Hals als „Bauch“ vor dem Rumpfscheitel —
+    // heller Fleck am Halsansatz, keine Flecken auf Hals und Kopf, Bild 6), stetig gemischt nach dem Gewichtsanteil der
+    // Hals-/Kopfknochen (keine Kante am Gruppenwechsel)
+    const eigenD = clamp(dot(rel, g.dorsal) / Math.max(radius, hit.d, 1e-3), -1, 1);
+    let dorsalV = eigenD;
+    if (bodyGroup >= 0 && groups[bodyGroup]) {
       const bg = groups[bodyGroup]!;
       const bh = nearestOnPolyline(bg.polyline, p);
       const brel = sub(p, bh.point);
-      spine[v * 4 + 3] = clamp(dot(brel, bg.dorsal) / Math.max(bh.radius, 1e-3), -1.2, 1.2) / 1.2;
-    } else spine[v * 4 + 3] = clamp(dot(rel, g.dorsal) / Math.max(radius, hit.d, 1e-3), -1, 1);
+      const bodyD = clamp(dot(brel, bg.dorsal) / Math.max(bh.radius, 1e-3), -1.2, 1.2) / 1.2;
+      let wNeck = 0;
+      if (langerHals && (g.kind === 'hals' || g.kind === 'kopf')) {
+        for (let q = 0; q < 4; q++) {
+          const kind = groups[bones[skinIndex[v * 4 + q]!]!.group]!.kind;
+          if (kind === 'hals' || kind === 'kopf' || kind === 'kiefer') wNeck += skinWeight[v * 4 + q]!;
+        }
+      }
+      dorsalV = bodyD + (eigenD - bodyD) * clamp(wNeck, 0, 1);
+    }
+    spine[v * 4 + 3] = dorsalV;
     void owner;
     owner = order[0]!;
 
