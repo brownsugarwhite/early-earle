@@ -76,8 +76,11 @@ export function bodyRadii(b: Bauplan, R0: number, H: number, samples = 96): Floa
     [H * 0.25, r[1]!],
     [H * 0.5, r[2]!],
     [H * 0.75, r[3]!],
-    [H * 0.92, r[4]!],
-    [H * 0.985, r[4]! * 0.45],
+    [H * 0.9, r[4]!],
+    // elliptische Scheitelkappe (Steigung → ∞ am Scheitel, kein „Deckel“)
+    [H * 0.95, r[4]! * 0.86],
+    [H * 0.98, r[4]! * 0.6],
+    [H * 0.995, r[4]! * 0.3],
     [H, 0],
   ];
   const out = new Float64Array(samples);

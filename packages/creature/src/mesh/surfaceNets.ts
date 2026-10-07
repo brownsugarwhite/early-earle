@@ -59,7 +59,9 @@ export function contour(sdf: Sdf, opts: ContourOptions): RawContour {
       }
     }
   }
-  const far = cell * (B * 0.87 + 1.0);
+  // Sicherheitsrand: unsere Abstände sind Schranken, keine exakten Distanzen (Smooth-Min, Ellipsoid-Näherung,
+  // Superellipse, Scherung) — deshalb deutlich mehr als die halbe Blockdiagonale
+  const far = cell * (B * 0.87 * 1.7 + 2.0);
   const c8 = new Float32Array(8);
   for (let bk = 0; bk < cbz - 1; bk++) {
     for (let bj = 0; bj < cby - 1; bj++) {
