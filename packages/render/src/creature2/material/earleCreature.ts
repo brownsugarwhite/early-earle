@@ -256,9 +256,11 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     // Regionen: Lippe (Wulst), Rachen (dunkel nach innen), Augenhöhle (etwas tiefer)
     const lip = shadeOf(u.lippe);
     skin.assign(mix(skin, lip, region.y.mul(0.85).mul(u.lippeSichtbar)));
-    const throatDepth = clamp(ao.mul(1.6), 0, 1);
-    const throat = mix(shadeOf(u.rachen), u.rachen.schatten.mul(0.45), throatDepth);
-    skin.assign(mix(skin, throat, smoothstep(0.15, 0.6, region.x)));
+    const throatDepth = clamp(ao.mul(1.2), 0, 1);
+    const throat = mix(shadeOf(u.rachen), u.rachen.schatten.mul(0.55), throatDepth.mul(0.75));
+    // geschlossen ohne Lippen (Giraffe): die Naht zeigt Haut, nicht Rachen — sichtbar bleibt sie nur mit Lippendicke
+    const rachenSicht = max(u.lippeSichtbar, float(1).sub(u.verschluss));
+    skin.assign(mix(skin, throat, smoothstep(0.15, 0.6, region.x).mul(rachenSicht)));
     skin.assign(skin.mul(float(1).sub(region.w.mul(0.12))));
 
     // Schlitzaugen: Pille auf der Fläche (Körperraum), Blinzeln staucht senkrecht

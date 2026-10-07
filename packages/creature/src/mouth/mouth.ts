@@ -24,6 +24,11 @@ export interface MouthHost {
   halfWidth: number;
   /** Knochen des Trägers. */
   bone: number;
+  /**
+   * Kiefergelenk: Abstand hinter dem Ursprung entlang −forward (auf Höhe der Maullinie). Das Gelenk sitzt am Hinterkopf,
+   * nicht an den Mundwinkeln — sonst wäre der Hebel bei schmalen Mäulern winzig und das Gähnen (Bild 6) unmöglich.
+   */
+  jointBack: number;
   /** Szene nur mit den Trägerformen (zum Marschieren auf die Fläche). */
   scene: SdfScene;
 }
@@ -73,6 +78,10 @@ export interface MouthGeometry {
   jawWeight(p: Readonly<Vec3>, bodyScale: number): number;
   /** 0…1: wie stark ein Punkt zum Oberkiefer (Oberkopf, hebt sich beim Öffnen) gehört. */
   upperWeight(p: Readonly<Vec3>, bodyScale: number): number;
+  /** Auslauf der Kieferbewegung vom Mundwinkel (1) zum Gelenk (0) über die Vorn-Koordinate. */
+  wToJoint(zLocal: number): number;
+  /** Vorn-Koordinate der Mundwinkel (lokal). */
+  zCorner: number;
 }
 
 /** Marschiert von der Achse auf Höhe h in Richtung φ bis zur Fläche; liefert Punkt und Radialabstand. */
@@ -297,8 +306,16 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
 
   // Scharnier (Sehne zwischen den Mundwinkeln) und geschlossene Pose beider Kiefer — dieselbe Formel wie Verschluss und
   // Darstellung (pose.ts); damit lässt sich beim Bau prüfen, ob ein Zahn geschlossen im Gegenkiefer verschwindet
-  const hingeMid = scale(add(corners[0], corners[1]), 0.5);
-  const hingeAxis = normalize(sub(corners[1], corners[0]));
+  // Gelenk: hinter dem Träger auf Höhe der Mundwinkel, Achse quer (Bild 5/6: der Kiefer schwingt vom Hinterkopf aus)
+  const hCorner = lipHAt(theta);
+  const hingeMid: Vec3 = add(add(host.origin, scale(host.up, hCorner)), scale(host.forward, -host.jointBack));
+  const hingeAxis: Vec3 = normalize(host.right);
+  /** Vorn-Koordinate der Mundwinkel (lokal); Gewichte laufen von dort zum Gelenk hin aus. */
+  const zCorner = lipRAt(theta) * Math.cos(theta);
+  const wToJoint = (zLocal: number): number => {
+    const t = clamp((zLocal + host.jointBack) / Math.max(1e-4, zCorner + host.jointBack), 0, 1);
+    return t * t * (3 - 2 * t);
+  };
   const Ljaw = Math.max(0.05, Math.hypot(center[0] - hingeMid[0], center[1] - hingeMid[1], center[2] - hingeMid[2]));
   const closeAngle = Math.asin(Math.min(0.95, (2 * gapFront) / Ljaw));
   const hasJaw = m.unterkiefer >= 0.05;
@@ -391,7 +408,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
     const below = hl - h;
     const band = 0.09 * bs;
     const wBelow = smoothstep(-0.2 * band, band, below) * smoothstep(0, 0.5 * band, below + 0.3 * band);
-    const wPhi = 1 - smoothstep(theta - 0.05, theta + 0.35, aphi);
+    // vorn voll, zwischen Mundwinkel und Gelenk auslaufend (die Wange dehnt sich), hinter dem Gelenk nichts
+    const wPhi = aphi <= theta ? 1 : wToJoint(r * Math.cos(phi));
     const rIn = lipRAt(phiC) * (1 - tiefe * 1.1);
     const wR = smoothstep(rIn - 0.3 * bs, rIn + 0.05 * bs, r);
     // tiefer unten (Kinn/Körper) klingt die Zugehörigkeit zum Kiefer wieder ab
@@ -402,8 +420,6 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
 
   // Oberkopf über der Maullinie: hebt sich beim Öffnen (Florian: „Oberkiefer klappt samt Augen nach hinten bzw. fährt
   // nach oben und neigt sich etwas“); hinter den Mundwinkeln weich auslaufend, der Rücken bleibt immer stehen
-  const phiUp0 = Math.min(theta - 0.05, Math.PI - 0.7);
-  const phiUp1 = Math.min(theta + 0.6, Math.PI - 0.25);
   const upperWeight = (p: Readonly<Vec3>, bs: number): number => {
     const { h, phi, r } = local(p);
     const aphi = Math.abs(phi);
@@ -412,7 +428,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
     const above = h - hl;
     const band = 0.09 * bs;
     const wAbove = smoothstep(-0.2 * band, band, above) * smoothstep(0, 0.5 * band, above + 0.3 * band);
-    const wPhi = 1 - smoothstep(phiUp0, phiUp1, aphi);
+    // Oberkopf: vorn voll, zum Gelenk hin auslaufend (der Hinterkopf am Gelenk bleibt stehen)
+    const wPhi = aphi <= theta ? 1 : wToJoint(r * Math.cos(phi));
     const rIn = lipRAt(phiC) * (1 - tiefe * 1.1);
     const wR = smoothstep(rIn - 0.3 * bs, rIn + 0.05 * bs, r);
     return clamp01(wAbove * wPhi * wR);
@@ -441,6 +458,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, jawBone: number, bodySca
     gapAt,
     jawWeight,
     upperWeight,
+    wToJoint,
+    zCorner,
   };
   return { geometry, prims };
 }

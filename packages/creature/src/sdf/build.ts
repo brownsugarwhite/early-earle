@@ -317,7 +317,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         // Stirn flach bis zur Braue (u ≈ 0,5), dann gerader Abfall zur Schnauzenspitze auf ≈ 35 %; Braue als Wulst am Knick
         const slope = Math.max(0, (u - 0.5) / 0.5);
         // Nase: runde Wölbung vorn oben auf der Schnauze (Giraffe, Bild 6), wächst mit der Schnauzenlänge
-        const nase = 0.35 * schn * Math.exp(-Math.pow((u - 0.86) / 0.12, 2));
+        const nase = 0.5 * schn * Math.exp(-Math.pow((u - 0.84) / 0.14, 2));
         const skull = hr * (0.55 + 0.5 * ok) * (1 - 0.62 * slope + nase) * (1 + 0.3 * braue * Math.exp(-Math.pow((u - 0.5) / 0.16, 2)));
         const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.45 * Math.max(0, (u - 0.4) / 0.6) ** 1.3);
         wx.push(width * endRound);
@@ -353,11 +353,12 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       }
     }
     hostBone = headBone;
-    host = { origin: sub(headCenter, scale(upH, hr * (0.42 + 0.42 * uk))), up: upH, forward: forwardH, right: rightH, height: hr * (0.42 + 0.42 * uk + 0.55 + 0.5 * ok), halfWidth: hr * 0.95, bone: headBone, scene: { prims: [] } };
+    // Gelenk am Hinterkopf (70 % des hinteren Kopfteils hinter der Kopfbasis), bezogen auf den Ursprung (= Kopfmitte vorn/hinten)
+    host = { origin: sub(headCenter, scale(upH, hr * (0.42 + 0.42 * uk))), up: upH, forward: forwardH, right: rightH, height: hr * (0.42 + 0.42 * uk + 0.55 + 0.5 * ok), halfWidth: hr * 0.95, bone: headBone, jointBack: Lback * 0.7 + (Lfront - Lback) * 0.5, scene: { prims: [] } };
   } else {
     const up = normalize([0, 1, shear]);
     const fwd = normalize(sub(FWD, scale(up, FWD[0] * up[0] + FWD[1] * up[1] + FWD[2] * up[2])));
-    host = { origin: [0, yb, 0], up, forward: fwd, right: RIGHT, height: H, halfWidth: R0 * sx, bone: kMitte, scene: { prims: [] } };
+    host = { origin: [0, yb, 0], up, forward: fwd, right: RIGHT, height: H, halfWidth: R0 * sx, bone: kMitte, jointBack: R0 * sz * 0.55, scene: { prims: [] } };
   }
 
   // --- Kiefermassen, Schnauze, Braue am Träger -------------------------------------------------------------------------

@@ -354,8 +354,10 @@ export class CreatureMesh {
       if (this.tongue) {
         // Zunge: beim Schließen flacher und zurück in den Unterkiefer (sonst stößt sie durch dünne Oberkiefer)
         const v = pose.verschluss;
-        this.tongue.scale.set(1, 1 - 0.65 * v, 1 - 0.35 * v);
-        this.tongue.position.copy(this.tongueRest).addScaledVector(this.hostUp, -this.tongueSize * 0.45 * v);
+        this.tongue.scale.set(1 - 0.25 * v, 1 - 0.78 * v, 1 - 0.5 * v);
+        // tiefer in den Unterkiefer und zurück (Spitze darf weder vorn noch unten herausschauen)
+        const back = this.tongue.getWorldDirection(new Vector3());
+        this.tongue.position.copy(this.tongueRest).addScaledVector(this.hostUp, -this.tongueSize * 0.3 * v).addScaledVector(back, -this.tongueSize * 0.7 * v);
       }
     }
     // Atmen: Körperknochen sanft skalieren (oben stärker)

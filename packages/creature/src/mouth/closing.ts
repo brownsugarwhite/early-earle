@@ -47,7 +47,7 @@ export function computeClosing(c: Construction, positions: Float32Array, desc: D
   const Ljaw = Math.max(0.05, length(sub(mouth.center, hinge.point)));
   const gapTotal = 2 * mouth.gapFront;
   const closeAngle = Math.asin(Math.min(0.95, gapTotal / Ljaw));
-  const openTarget = 0.58 * host.height; // volle Öffnung vorn
+  const openTarget = 0.72 * host.height; // volle Öffnung vorn (Bild 6: Gähnen ≈ 60–70 % der Kopfhöhe)
   const maxOpenAngle = Math.max(closeAngle, Math.asin(Math.min(0.95, openTarget / Ljaw)) - closeAngle);
   const m = c.bauplan.maul;
   const hasJaw = m.unterkiefer >= 0.05;
@@ -81,10 +81,8 @@ export function computeClosing(c: Construction, positions: Float32Array, desc: D
   const seamAt = (phi: number): number => seal.seamAt(phi);
 
   // Azimutale Auslaufzonen wie bei den Gewichten (Unterkiefer eng, Oberkopf weit, Rücken bleibt)
-  const phiUp0 = Math.min(theta - 0.05, Math.PI - 0.7);
-  const phiUp1 = Math.min(theta + 0.6, Math.PI - 0.25);
-  const wSideLo = (aphi: number): number => 1 - smoothstep(theta, theta + 0.4, aphi);
-  const wSideUp = (aphi: number): number => 1 - smoothstep(phiUp0, phiUp1, aphi);
+  // seitlicher Auslauf: vor den Mundwinkeln voll, zwischen Winkel und Gelenk auslaufend (wie die Gewichte)
+  const wSide = (aphi: number, phi: number, r: number): number => (aphi <= theta ? 1 : mouth.wToJoint(r * Math.cos(phi)));
 
   const p: Vec3 = [0, 0, 0];
   const q: Vec3 = [0, 0, 0];
@@ -95,7 +93,7 @@ export function computeClosing(c: Construction, positions: Float32Array, desc: D
     p[2] = positions[v * 3 + 2]!;
     const { h, phi, r } = mouth.local(p);
     const aphi = Math.abs(phi);
-    if (aphi > phiUp1 + 0.05) continue;
+    if (r * Math.cos(phi) < -host.jointBack - 0.05 * H) continue;
     const phiC = clamp(phi, -theta, theta);
     const hl = mouth.lipHAt(phiC);
     const g = mouth.gapAt(phiC);
@@ -125,13 +123,13 @@ export function computeClosing(c: Construction, positions: Float32Array, desc: D
     if (wForm > 0) {
       if (lowerSide && hasJaw) {
         // 1. starre Drehung der Unterkieferzone, nach unten und zu den Seiten auslaufend
-        const wLow = (1 - smoothstep(jawDepth * 0.8, jawDepth * 1.5, below)) * wSideLo(aphi) * wForm;
+        const wLow = (1 - smoothstep(jawDepth * 0.8, jawDepth * 1.5, below)) * wSide(aphi, phi, r) * wForm;
         target[0] = q[0] + (lo[0] - q[0]) * wLow;
         target[1] = q[1] + (lo[1] - q[1]) * wLow;
         target[2] = q[2] + (lo[2] - q[2]) * wLow;
         // 2. Kante an die Naht: voll an der Unterlippenkante, über etwa eine Spalthöhe nach unten auslaufend
         const dRim = hl - g - h;
-        const wSeal = (1 - smoothstep(0, Math.max(g, 0.04 * H) * 1.5, dRim)) * wSideLo(aphi) * wForm;
+        const wSeal = (1 - smoothstep(0, Math.max(g, 0.04 * H) * 1.5, dRim)) * wSide(aphi, phi, r) * wForm;
         const d = seal.lowerAt(phiC) * wSeal;
         target[0] += up[0] * d;
         target[1] += up[1] * d;
@@ -140,13 +138,13 @@ export function computeClosing(c: Construction, positions: Float32Array, desc: D
         // 1. starre Bewegung des Oberkopfs (Heben + Neigen), zu den Seiten auslaufend, am Lippenband einsetzend
         const above = h - hl;
         const band = 0.09 * H;
-        const wHigh = smoothstep(-0.2 * band, band, above) * wSideUp(aphi) * wForm;
+        const wHigh = smoothstep(-0.2 * band, band, above) * wSide(aphi, phi, r) * wForm;
         target[0] = q[0] + (upP[0] - q[0]) * wHigh;
         target[1] = q[1] + (upP[1] - q[1]) * wHigh;
         target[2] = q[2] + (upP[2] - q[2]) * wHigh;
         // 2. Kante an die Naht
         const dRim = h - (hl + g);
-        const wSeal = (1 - smoothstep(0, Math.max(g, 0.04 * H) * 1.5, dRim)) * wSideUp(aphi) * wForm;
+        const wSeal = (1 - smoothstep(0, Math.max(g, 0.04 * H) * 1.5, dRim)) * wSide(aphi, phi, r) * wForm;
         const d = seal.upperAt(phiC) * wSeal;
         target[0] += up[0] * d;
         target[1] += up[1] * d;
