@@ -140,7 +140,7 @@ export function construct(b: Bauplan): Construction {
     axisPts.push(axisAt(yb + t * H));
     axisR.push(Math.max(radii[Math.min(radii.length - 1, Math.round(t * (radii.length - 1)))]!, R0 * 0.15) * sm);
   }
-  groups.push({ name: 'koerper', kind: 'koerper', polyline: makePolyline(axisPts, axisR, FWD), bones: [], dorsal: [0, 0, -1] });
+  groups.push({ name: 'koerper', kind: 'koerper', polyline: makePolyline(axisPts, axisR, FWD), bones: [], dorsal: normalize([0, 0.8, -0.6]) });
   const kUnten = bone('koerperUnten', root, axisAt(yb), QUAT_ID, bodyGroup);
   const kMitte = bone('koerperMitte', kUnten, axisAt(yb + 0.45 * H), QUAT_ID, bodyGroup);
   const kOben = bone('koerperOben', kMitte, axisAt(yb + 0.85 * H), QUAT_ID, bodyGroup);
@@ -177,7 +177,7 @@ export function construct(b: Bauplan): Construction {
     const radii = pts.map((_p, i) => rN * (1 - 0.28 * (i / (pts.length - 1))));
     const pl = makePolyline(pts, radii, FWD);
     const neckGroup = groups.length;
-    groups.push({ name: 'hals', kind: 'hals', polyline: pl, bones: [], dorsal: [0, 0, -1] });
+    groups.push({ name: 'hals', kind: 'hals', polyline: pl, bones: [], dorsal: normalize([0, 0.3, -1]) });
     const nb = clamp(Math.round(neckLen / (0.22 * H)), 2, 6);
     let parent = kOben;
     const boneIdx: number[] = [];
@@ -238,8 +238,8 @@ export function construct(b: Bauplan): Construction {
   const jawForm = m.form;
   const maulAn = m.sichtbar;
   if (maulAn && m.oberkiefer > 0.05 && jawForm > 0.04) {
-    const c = add(add(C0, scale(fz, hw * (0.02 + 0.6 * b.kopf.schnauze) * jawForm)), scale(fy, gap0 + hh * 0.22 * m.oberkiefer));
-    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: hostBone, k: 0.3 * hw, region: REGION.haut, name: 'oberkiefer', c, r: [hw * 0.95 * (0.65 + 0.35 * b.kopf.schnauzeDicke), hh * 0.3 * m.oberkiefer + 0.002, hw * (0.42 + 0.8 * b.kopf.schnauze) * (0.5 + 0.5 * m.oberkiefer) * jawForm], q: quatFromFrame(host.right, host.up, host.forward) };
+    const c = add(add(C0, scale(fz, hw * (-0.06 + 0.6 * b.kopf.schnauze) * jawForm)), scale(fy, gap0 + hh * 0.3 * m.oberkiefer));
+    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: hostBone, k: 0.42 * hw, region: REGION.haut, name: 'oberkiefer', c, r: [hw * 0.95 * (0.65 + 0.35 * b.kopf.schnauzeDicke), hh * 0.3 * m.oberkiefer + 0.002, hw * (0.42 + 0.8 * b.kopf.schnauze) * (0.5 + 0.5 * m.oberkiefer) * jawForm], q: quatFromFrame(host.right, host.up, host.forward) };
     prims.push(e);
   }
   if (maulAn && m.unterkiefer > 0.05 && jawForm > 0.04) {
@@ -319,7 +319,7 @@ export function construct(b: Bauplan): Construction {
       const ankle: Vec3 = [foot[0], rFoot * 0.55, foot[2] - 0.03 * H];
       const g = groups.length;
       const pl = makePolyline([hip, knee, ankle, foot], [rHip, rKnee, rAnkle, rFoot * 0.5], FWD);
-      groups.push({ name: `bein${i}`, kind: 'bein', polyline: pl, bones: [], dorsal: [0, 0, -1] });
+      groups.push({ name: `bein${i}`, kind: 'bein', polyline: pl, bones: [], dorsal: [0, 1, 0] });
       const bHip = bone(`bein${i}Huefte`, kUnten, hip, QUAT_ID, g);
       const bKnee = bone(`bein${i}Knie`, bHip, knee, QUAT_ID, g);
       const bFoot = bone(`bein${i}Fuss`, bKnee, ankle, QUAT_ID, g);

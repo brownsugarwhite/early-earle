@@ -3,6 +3,7 @@ import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
 import { Fn, abs, attribute, clamp, dot, float, floor, fract, hash, max, min, mix, normalView, normalize, positionGeometry, positionLocal, positionView, pow, sin, smoothstep, time, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { STIL_STANDARD, farbRolle, type WesenStil } from './stil';
+import { createMusterUniforms, musterMasks, type MusterUniforms } from './muster';
 
 /**
  * Das Earle-Wesen-Material (erste Fassung, Look-Vertrag Regeln 1–5, 9, 10 teilweise, 12):
@@ -29,8 +30,11 @@ export interface CreatureMaterialUniforms {
   /** Farbrollen als base/schatten/licht. */
   grund: Vec3Triple;
   bauch: Vec3Triple;
+  muster: Vec3Triple;
+  akzent: Vec3Triple;
   lippe: Vec3Triple;
   rachen: Vec3Triple;
+  musterU: MusterUniforms;
   auge: UniformNode<'vec3', Vector3>;
   /** Bauch/Rücken-Grenze (−1…1 in der dorsalen Koordinate) und Weichheit. */
   bauchlinie: UniformNode<'float', number>;
@@ -72,6 +76,8 @@ export function lightDirFromStil(stil: WesenStil, out = new Vector3()): Vector3 
 export interface CreatureColors {
   grund: string;
   bauch: string;
+  muster: string;
+  akzent: string;
   lippe: string;
   rachen: string;
   auge: string;
@@ -92,6 +98,9 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     bodyScale: uniform(bodyScale),
     grund: triple(colors.grund, stil),
     bauch: triple(colors.bauch, stil),
+    muster: triple(colors.muster, stil),
+    akzent: triple(colors.akzent, stil),
+    musterU: createMusterUniforms(),
     lippe: triple(colors.lippe, stil),
     rachen: triple(colors.rachen, stil),
     auge: uniform(new Vector3(...farbRolle(colors.auge, stil).base)),
@@ -116,6 +125,8 @@ export function applyStil(u: CreatureMaterialUniforms, stil: WesenStil, colors: 
   u.bodenlicht.value = stil.bodenlicht;
   setTriple(u.grund, colors.grund, stil);
   setTriple(u.bauch, colors.bauch, stil);
+  setTriple(u.muster, colors.muster, stil);
+  setTriple(u.akzent, colors.akzent, stil);
   setTriple(u.lippe, colors.lippe, stil);
   setTriple(u.rachen, colors.rachen, stil);
   u.auge.value.set(...farbRolle(colors.auge, stil).base);
@@ -196,6 +207,15 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const skin = shadeOf(u.grund).toVar();
     const belly = smoothstep(u.bauchlinie.add(0.25), u.bauchlinie.sub(0.25), spine.w).mul(u.bauchStaerke);
     skin.assign(mix(skin, shadeOf(u.bauch), belly));
+
+    // Musterebene: Masken in Wirbelsäulen-Koordinaten, Gesicht/Lippen/Rachen frei; Relief dunkelt die Stufe je Schuppe ab
+    const frei = float(1).sub(region.z.mul(0.9)).mul(float(1).sub(region.y)).mul(float(1).sub(region.x));
+    const mu = musterMasks(u.musterU, spine, rest, u.bodyScale, frei);
+    const vRelief = clamp(v.sub(mu.relief.mul(0.12)), 0, 1);
+    const shadeOfV = (t: Vec3Triple, vv: FloatNode): Vec3Node => mix(mix(t.schatten, t.base, smoothstep(0, 0.5, vv)), t.licht, smoothstep(0.5, 1, vv));
+    skin.assign(mix(skin, shadeOfV(u.grund, vRelief), abs(mu.relief).mul(0.9)));
+    skin.assign(mix(skin, shadeOfV(u.muster, vRelief), mu.mask));
+    skin.assign(mix(skin, shadeOfV(u.akzent, vRelief), mu.akzent));
 
     // Papierkorn im Körperraum (wandert nicht), nur in den Mitteltönen deutlich
     const grainP = rest.div(u.bodyScale).mul(38);

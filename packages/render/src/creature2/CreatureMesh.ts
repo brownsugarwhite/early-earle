@@ -2,6 +2,7 @@ import { Bone, BufferAttribute, BufferGeometry, ConeGeometry, Float32BufferAttri
 import type { MeshBasicNodeMaterial } from 'three/webgpu';
 import type { Bauplan, CreatureBuild } from '@ee/creature';
 import { applyStil, createCreatureMaterial, createCreatureUniforms, createTongueMaterial, createToothMaterial, MAX_SLIT_EYES, type CreatureColors, type CreatureMaterialUniforms } from './material/earleCreature';
+import { applyMuster } from './material/muster';
 import { STIL_STANDARD, type WesenStil } from './material/stil';
 
 /**
@@ -22,7 +23,7 @@ const _s = new Vector3();
 
 function colorsOf(b: Bauplan): CreatureColors {
   const f = b.muster.farben;
-  return { grund: f.grund, bauch: f.bauch, lippe: f.lippe, rachen: f.rachen, auge: f.auge };
+  return { grund: f.grund, bauch: f.bauch, muster: f.muster, akzent: f.akzent, lippe: f.lippe, rachen: f.rachen, auge: f.auge };
 }
 
 function toothGeometry(stil: 'rund' | 'spitz'): BufferGeometry {
@@ -78,7 +79,7 @@ export class CreatureMesh {
   constructor(opts: CreatureMeshOptions = {}) {
     this.stil = opts.stil ?? STIL_STANDARD;
     this.castShadow = opts.castShadow ?? true;
-    this.uniforms = createCreatureUniforms({ grund: '#9c6cc7', bauch: '#d9c7ec', lippe: '#5a2f6b', rachen: '#6e2334', auge: '#101418' }, this.stil, 1);
+    this.uniforms = createCreatureUniforms({ grund: '#9c6cc7', bauch: '#d9c7ec', muster: '#3d2457', akzent: '#f08a4b', lippe: '#5a2f6b', rachen: '#6e2334', auge: '#101418' }, this.stil, 1);
     this.material = createCreatureMaterial(this.uniforms);
     this.toothMaterial = createToothMaterial(this.uniforms, '#f1e6c9');
     this.tongueMaterial = createTongueMaterial(this.uniforms, '#e07c92');
@@ -91,6 +92,7 @@ export class CreatureMesh {
     this.bauplan = b;
     applyStil(this.uniforms, stil, colorsOf(b));
     this.uniforms.bauchStaerke.value = b.muster.typ === 'bauchRuecken' ? 1 : 0;
+    applyMuster(this.uniforms.musterU, b.muster);
     this.uniforms.bauchlinie.value = (b.muster.bauchlinie - 0.5) * 1.6;
     if (this.toothMaterial) this.toothMaterial.dispose();
     this.toothMaterial = createToothMaterial(this.uniforms, b.muster.farben.zahn);

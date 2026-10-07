@@ -14,7 +14,7 @@ export interface Descriptors {
   skinIndex: Float32Array;
   /** 4 Gewichte je Vertex (Summe 1). */
   skinWeight: Float32Array;
-  /** s, Winkel (−π…π), Umfang, Bauch/Rücken (−1…1) je Vertex. */
+  /** Bogenlänge (Körpereinheiten), Winkel (−π…π), Umfang, Bauch/Rücken (−1…1) je Vertex. */
   spine: Float32Array;
   /** Rachen, Lippe, Gesicht, Augenhöhle (0…1) je Vertex. */
   region: Float32Array;
@@ -142,7 +142,7 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     const hit = nearestOnPolyline(g.polyline, p);
     const rel = sub(p, hit.point);
     const radius = Math.max(hit.radius, 1e-3);
-    spine[v * 4] = hit.s;
+    spine[v * 4] = hit.s * g.polyline.total;
     spine[v * 4 + 1] = hit.angle;
     spine[v * 4 + 2] = 2 * Math.PI * Math.max(radius, hit.d);
     spine[v * 4 + 3] = clamp(dot(rel, g.dorsal) / Math.max(radius, hit.d, 1e-3), -1, 1);
@@ -162,7 +162,7 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     let face = 0;
     if (mouth) {
       const dC = dist(p, mouth.center);
-      face = clamp01(1.25 - dC / (1.5 * mouth.host.halfWidth));
+      face = clamp01(1.2 - dC / (0.75 * mouth.host.halfWidth));
     }
     for (const e of c.eyes) {
       face = Math.max(face, clamp01(1.3 - dist(p, e.pos) / (2.4 * e.radius)));
