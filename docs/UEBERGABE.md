@@ -2,7 +2,7 @@
 
 > Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**: Wo stehen wir, was ist offen, was ist der nächste Schritt. Historie in Git.
 
-**Stand:** 2026-10-07 spät, Sitzung „Wesen-Werkstatt“ (Florians Mac, Branch `main`). Plan: [`docs/plans/2026-10-07-wesen-werkstatt.md`](plans/2026-10-07-wesen-werkstatt.md) (freigegeben). Produktion Teil **Charaktere**; das alte Spiel bleibt unangetastet.
+**Stand:** 2026-10-07 Nacht, Sitzung „Wesen-Werkstatt“ (Florians Mac, Branch `main`). Plan: [`docs/plans/2026-10-07-wesen-werkstatt.md`](plans/2026-10-07-wesen-werkstatt.md) (freigegeben). Produktion Teil **Charaktere**; das alte Spiel bleibt unangetastet.
 
 ## Wo wir stehen
 
@@ -15,6 +15,8 @@
   - **Maul-Morphs:** Verschluss (`eeClosed`) und Spitzmund (`eePucker`, Lochmaul weitet sich radial; Kieferdrehung nach Maulform gewichtet). Alle Deskriptoren liegen in **einem** verschachtelten Vertex-Puffer (WebGPU erlaubt nur 8). GPU-E2E `apps/game/e2e/wesen-webgpu.spec.ts` (echte GPU: alle Pipelines kompilieren).
   - **Lab `/lab/wesen`:** Drehteller, Earle-Wiese oder weißer Grund, Worker-Vermaschung (grob 30³ beim Ziehen, fein 56³), Vorlagen (fester Blob, Grundblob, Keilmaul, Lochmaul, Maul oben/unten, ohne Unterkiefer, Giraffe, Schlange, Vierbeiner), Regler aus dem Katalog, Verben Maul auf/zu, Blinzeln.
 - **Läuft (Agent, Worktree, Branch des Agenten):** L1 Grundformen-Lab-UI (Tabs mit Würfel/Schloss/Reset, Undo, Autosave, **Referenzmodus mit Bild-Overlay**, Brett-Ansicht, Speichern nach `content/creatures/`, Screenshot-Harness `e2e/wesen-shots.spec.ts`, E2E). Danach Merge durch die Leitung.
+
+**Florians Feedback (07.10. abends) und Antwort darauf:** „Form und Qualität noch weit entfernt; glatte organische Kurven und Übergänge und scharfe Kanten/Linien auch beim Maul und den Augenwülsten; Mesh wirkt zerrissen und unscharf, vor allem am Maul; Vorlagen sind ausgewogener, schärfer, feiner.“ Umgesetzt: **Dual Contouring mit QEF** statt Surface Nets + Taubin (`mesh/dualContouring.ts`, Kantenmaß `crease` → Facettennormalen im Shader), „weiche Massen, enge Schnitte“ (Maulhöhle k ≈ 1,7 Zellen, Kinn, Augenhöhlen hart), **Augenwulst je Auge** mit hart geschnittener Höhle, Lippenkurve Catmull-Rom (65 Stützen), Mindestspalt zu den Mundwinkeln (kein Haarriss), runde Mundwinkel, dickere Lippenwülste, weniger und größere Zähne, **Held 80³** (≈ 0,9 s im Worker) / Vorschau 36³, **13 Grundformen aus Florians Vorlage** als dichte Profile (`bauplan/grundformen.ts`, geglättet; `koerper.profil`), Korn 0,25. Ergebnis: Maullinie glatt und scharf, Grundform 5 ausgewogen; Rex-Körper („Buckel“) und Augenhöhle ohne Augapfel noch unbefriedigend.
 
 ## Offen (nächste Schritte)
 

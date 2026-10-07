@@ -319,7 +319,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         prims.push(ridge);
       }
       if (a.tiefe > 0.02 || b.kopf.braue > 0.02) {
-        const depth = Math.max(a.tiefe, b.kopf.braue * 0.5);
+        // ohne Augapfel (K3) nur flach einsenken: der Wulst macht die Kante, die Höhle bleibt lesbar
+        const depth = Math.max(a.tiefe, b.kopf.braue * 0.22);
         const socket: EllipsoidPrim = { kind: 'ellipsoid', op: 'subtract', part: hostBone, k: 0.08 * rE, region: REGION.hoehle, name: 'augenhoehle', c: add(sp.p, scale(nrm, rE * (1 - depth) * 0.95)), r: [rE * 1.04, rE * 1.04, rE * 1.04] };
         prims.push(socket);
       }

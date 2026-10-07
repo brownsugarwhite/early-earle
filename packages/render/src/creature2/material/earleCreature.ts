@@ -251,7 +251,7 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const throatDepth = clamp(ao.mul(1.6), 0, 1);
     const throat = mix(shadeOf(u.rachen), u.rachen.schatten.mul(0.45), throatDepth);
     skin.assign(mix(skin, throat, smoothstep(0.15, 0.6, region.x)));
-    skin.assign(skin.mul(float(1).sub(region.w.mul(0.25))));
+    skin.assign(skin.mul(float(1).sub(region.w.mul(0.12))));
 
     // Schlitzaugen: Pille auf der Fläche (Körperraum), Blinzeln staucht senkrecht
     const eyeMask = float(0).toVar();
