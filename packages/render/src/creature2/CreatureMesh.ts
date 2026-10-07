@@ -4,6 +4,7 @@ import type { Bauplan, CreatureBuild } from '@ee/creature';
 import { applyStil, createCreatureMaterial, createCreatureUniforms, createTongueMaterial, createToothMaterial, MAX_SLIT_EYES, type CreatureColors, type CreatureMaterialUniforms } from './material/earleCreature';
 import { applyMuster } from './material/muster';
 import { applyJellyColors, createJellyMaterial, createJellyUniforms, placeBubbles, type JellyUniforms } from './material/jelly';
+import { applyEyeType, createEyeMaterial, createEyeUniforms, type EyeUniforms } from './material/eye';
 import { STIL_STANDARD, type WesenStil } from './material/stil';
 
 /**
@@ -50,6 +51,10 @@ export class CreatureMesh {
   readonly material: MeshBasicNodeMaterial;
   readonly jellyMaterial: MeshBasicNodeMaterial;
   readonly jelly: JellyUniforms;
+  readonly eye: EyeUniforms;
+  private eyeMaterial: MeshBasicNodeMaterial;
+  private eyeMeshes: Mesh[] = [];
+  private eyeGeo: BufferGeometry | null = null;
   private toothMaterial: MeshBasicNodeMaterial;
   private tongueMaterial: MeshBasicNodeMaterial;
   mesh: SkinnedMesh | null = null;
@@ -87,6 +92,8 @@ export class CreatureMesh {
     this.material = createCreatureMaterial(this.uniforms);
     this.jelly = createJellyUniforms();
     this.jellyMaterial = createJellyMaterial(this.uniforms, this.jelly);
+    this.eye = createEyeUniforms();
+    this.eyeMaterial = createEyeMaterial(this.uniforms, this.eye);
     this.toothMaterial = createToothMaterial(this.uniforms, '#f1e6c9');
     this.tongueMaterial = createTongueMaterial(this.uniforms, '#e07c92');
     this.root.name = 'wesen';
@@ -99,6 +106,7 @@ export class CreatureMesh {
     applyStil(this.uniforms, stil, colorsOf(b));
     this.uniforms.bauchStaerke.value = b.muster.typ === 'bauchRuecken' ? 1 : 0;
     applyMuster(this.uniforms.musterU, b.muster);
+    applyEyeType(this.eye, b.augen.typ, b.muster.farben.auge, b.muster.farben.pupille);
     applyJellyColors(this.jelly, b.muster.farben.grund, b.muster.farben.muster, stil);
     placeBubbles(this.jelly, this.build?.bodyScale ?? b.koerper.hoehe, b.material === 'jelly' ? 9 : 0, b.seed);
     if (this.mesh) this.mesh.material = b.material === 'jelly' ? this.jellyMaterial : this.material;
@@ -234,9 +242,32 @@ export class CreatureMesh {
       (jaw ?? this.root).add(tongue);
       this.tongue = tongue;
     }
-    // --- Augen (Schlitze im Material) --------------------------------------------------------------------------------------
+    // --- Augen: Schlitze im Material oder Augäpfel als Kugeln in der Höhle ------------------------------------------------
     const eyes = build.eyes.slice(0, MAX_SLIT_EYES);
-    this.uniforms.eyeCount.value = eyes.length;
+    const slit = b.augen.typ === 'schlitz';
+    this.uniforms.eyeCount.value = slit ? eyes.length : 0;
+    if (!slit && eyes.length > 0) {
+      this.eyeGeo = new SphereGeometry(1, 28, 20);
+      const host = this.bones[build.hostBone] ?? this.root;
+      const hp = build.bones[build.hostBone]?.pos ?? [0, 0, 0];
+      for (const e of eyes) {
+        const n = new Vector3(...e.normal).normalize();
+        const r = e.radius;
+        // Zentrum: in der Höhle (Tiefe) bzw. aufgesetzt; Blickachse (+z) zeigt entlang der Flächennormale nach außen
+        // Tiefe je Typ: Drache/Schlange liegen tief unter dem Wulst (Bild 11), große Kulleraugen sitzen weiter außen (Bild 10)
+        const typDepth = b.augen.typ === 'drache' || b.augen.typ === 'schlange' ? 0.62 : b.augen.typ === 'schwarzweiss' ? 0.45 : 0.3;
+        const depth = Math.max(e.depth, (b.kopf.braue ?? 0) * 0.22, typDepth);
+        const center = new Vector3(...e.pos).addScaledVector(n, r * (1 - depth) * 0.95 - r * 0.15);
+        const m = new Mesh(this.eyeGeo, this.eyeMaterial);
+        m.name = 'wesen-auge';
+        m.scale.setScalar(r * 1.0);
+        m.position.set(center.x - hp[0]!, center.y - hp[1]!, center.z - hp[2]!);
+        m.quaternion.setFromUnitVectors(new Vector3(0, 0, 1), n);
+        m.castShadow = false;
+        host.add(m);
+        this.eyeMeshes.push(m);
+      }
+    }
     eyes.forEach((e, i) => {
       const n = new Vector3(...e.normal).normalize();
       const up = UP.clone().addScaledVector(n, -UP.dot(n)).normalize();
@@ -318,6 +349,10 @@ export class CreatureMesh {
     this.upperTeeth?.removeFromParent();
     this.lowerTeeth?.removeFromParent();
     this.tongue?.removeFromParent();
+    for (const m of this.eyeMeshes) m.removeFromParent();
+    this.eyeMeshes = [];
+    this.eyeGeo?.dispose();
+    this.eyeGeo = null;
     this.toothGeo?.dispose();
     this.tongueGeo?.dispose();
     this.upperTeeth = this.lowerTeeth = null;
@@ -331,6 +366,7 @@ export class CreatureMesh {
     this.clearMesh();
     this.material.dispose();
     this.jellyMaterial.dispose();
+    this.eyeMaterial.dispose();
     this.toothMaterial.dispose();
     this.tongueMaterial.dispose();
     this.root.removeFromParent();

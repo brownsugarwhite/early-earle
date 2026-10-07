@@ -1,7 +1,7 @@
 import { Vector3, Vector4 } from 'three';
 import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
 import { Fn, abs, attribute, clamp, cross, dFdx, dFdy, dot, float, floor, fract, hash, max, min, mix, normalView, normalize, positionGeometry, positionLocal, positionView, pow, sin, smoothstep, time, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
-import type { FloatNode, Vec2Node, Vec3Node, Vec4Node } from '../../common/tsl';
+import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { STIL_STANDARD, farbRolle, type WesenStil } from './stil';
 import { createMusterUniforms, musterMasks, type MusterUniforms } from './muster';
 
