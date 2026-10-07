@@ -1,6 +1,6 @@
 import { Vector3, Vector4 } from 'three';
 import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
-import { Fn, abs, attribute, cameraPosition, clamp, cross, dot, exp, float, length, max, min, mix, modelWorldMatrixInverse, normalView, normalize, positionGeometry, positionView, positionWorld, pow, reflect, smoothstep, sqrt, uniform, uniformArray, vec2, vec3, vec4, viewportSharedTexture, viewportUV } from 'three/tsl';
+import { Fn, abs, attribute, cameraPosition, clamp, cross, dot, exp, float, length, max, min, mix, modelWorldMatrixInverse, normalView, normalize, positionGeometry, positionLocal, positionView, positionWorld, pow, reflect, smoothstep, sqrt, uniform, uniformArray, vec2, vec3, vec4, viewportSharedTexture, viewportUV } from 'three/tsl';
 import type { FloatNode, Vec2Node, Vec3Node, Vec4Node } from '../../common/tsl';
 import { MAX_SLIT_EYES, type CreatureMaterialUniforms } from './earleCreature';
 import { farbRolle, hexToOklch, oklchToLinear, STIL_STANDARD, type WesenStil } from './stil';
@@ -131,6 +131,11 @@ export function createJellyMaterial(u: CreatureMaterialUniforms, j: JellyUniform
   material.fog = false;
   material.transparent = true;
   material.depthWrite = true;
+  material.positionNode = Fn(() => {
+    const closed = attribute('eeClosed', 'vec3') as Vec3Node;
+    const pucker = attribute('eePucker', 'vec3') as Vec3Node;
+    return (positionLocal as unknown as Vec3Node).add(closed.mul(u.verschluss)).add(pucker.mul(u.spitzmund));
+  })();
   material.colorNode = Fn(() => {
     const rest = positionGeometry as unknown as Vec3Node;
     const N = normalize(normalView as unknown as Vec3Node).toVar();

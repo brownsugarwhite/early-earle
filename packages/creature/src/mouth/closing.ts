@@ -13,6 +13,8 @@ import type { Descriptors } from '../mesh/descriptors';
 export interface ClosingResult {
   /** Verschiebung je Vertex (xyz) im geschlossenen Zustand. */
   closed: Float32Array;
+  /** Spitzmund: radiale Weitung des Lochmauls bei voller Öffnung (xyz je Vertex). */
+  pucker: Float32Array;
   /** Drehwinkel des Unterkiefers vom Bauzustand zur Schließung (rad, positiv = zu). */
   closeAngle: number;
   /** Maximaler Öffnungswinkel (rad) ab Bauzustand. */
@@ -22,8 +24,9 @@ export interface ClosingResult {
 export function computeClosing(c: Construction, positions: Float32Array, desc: Descriptors): ClosingResult {
   const n = positions.length / 3;
   const closed = new Float32Array(n * 3);
+  const pucker = new Float32Array(n * 3);
   const mouth = c.mouth;
-  if (!mouth) return { closed, closeAngle: 0, maxOpenAngle: 0.6 };
+  if (!mouth) return { closed, pucker, closeAngle: 0, maxOpenAngle: 0.6 };
   const H = c.bodyScale;
   const hinge = mouth.jawHinge.point;
   const axis = normalize(mouth.jawHinge.axis);
@@ -34,6 +37,11 @@ export function computeClosing(c: Construction, positions: Float32Array, desc: D
   const openTarget = 0.62 * mouth.host.height; // volle Öffnung vorn
   const maxOpenAngle = Math.max(closeAngle, Math.asin(Math.min(0.95, openTarget / Ljaw)) - closeAngle);
   const hasJaw = c.bauplan.maul.unterkiefer >= 0.05;
+  const form = c.bauplan.maul.form;
+  // Lochmaul: Radius im Bauzustand und bei voller Öffnung (wie in mouth.ts)
+  const hw = mouth.host.halfWidth;
+  const rhoBuild = Math.max(0.004, hw * c.bauplan.maul.breite * (0.18 + 0.5 * c.bauplan.maul.oeffnung));
+  const rhoFull = Math.max(0.004, hw * c.bauplan.maul.breite * (0.18 + 0.5));
   // Träger ohne Höhle (nur Vereinigungen, ohne Lippen der Unterseite würde die Projektion springen → alle Vereinigungen)
   const hostScene: SdfScene = { prims: c.scene.prims.filter((p) => p.op === 'union') };
   const sdf = (p: Readonly<Vec3>): number => evalScene(hostScene, p);
@@ -70,6 +78,7 @@ export function computeClosing(c: Construction, positions: Float32Array, desc: D
     let wJaw = 0;
     for (let k = 0; k < 4; k++) if (desc.skinIndex[v * 4 + k] === jawBone) wJaw += desc.skinWeight[v * 4 + k]!;
     if (!hasJaw) wJaw = 0;
+    wJaw *= form; // Lochmaul schließt radial, nicht per Kieferdrehung
     rotateAboutHinge(p, q);
     q[0] = p[0] + (q[0] - p[0]) * wJaw;
     q[1] = p[1] + (q[1] - p[1]) * wJaw;
@@ -106,5 +115,25 @@ export function computeClosing(c: Construction, positions: Float32Array, desc: D
     closed[v * 3 + 1] = target[1] - q[1];
     closed[v * 3 + 2] = target[2] - q[2];
   }
-  return { closed, closeAngle, maxOpenAngle };
+  // Spitzmund: Vertices rund um das Loch wandern bei voller Öffnung radial nach außen (im Maulrahmen)
+  if (form < 0.98) {
+    const fx = mouth.frame.x, fy = mouth.frame.y, fz = mouth.frame.z;
+    const C = mouth.center;
+    for (let v = 0; v < n; v++) {
+      const px = positions[v * 3]! - C[0], py = positions[v * 3 + 1]! - C[1], pz = positions[v * 3 + 2]! - C[2];
+      const xm = px * fx[0] + py * fx[1] + pz * fx[2];
+      const ym = px * fy[0] + py * fy[1] + pz * fy[2];
+      const zm = px * fz[0] + py * fz[1] + pz * fz[2];
+      const rho = Math.hypot(xm, ym);
+      if (zm < -hw * 0.8 || rho > rhoBuild * 2.6 || rho < 1e-4) continue;
+      // nahe am Lochrand voll, nach außen auslaufend
+      const w = (1 - clamp01((rho - rhoBuild) / (rhoBuild * 1.6))) * (1 - form) * clamp01(1 + zm / (hw * 0.8));
+      const grow = (rhoFull - rhoBuild) * w;
+      const dx = (xm / rho) * grow, dy = (ym / rho) * grow;
+      pucker[v * 3] = fx[0] * dx + fy[0] * dy;
+      pucker[v * 3 + 1] = fx[1] * dx + fy[1] * dy;
+      pucker[v * 3 + 2] = fx[2] * dx + fy[2] * dy;
+    }
+  }
+  return { closed, pucker, closeAngle, maxOpenAngle };
 }

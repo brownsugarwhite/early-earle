@@ -46,6 +46,8 @@ export interface CreatureMaterialUniforms {
   blink: UniformNode<'float', number>;
   /** Gewicht des Verschluss-Morphs (1 = Maul zu). */
   verschluss: UniformNode<'float', number>;
+  /** Gewicht des Spitzmund-Morphs (1 = Lochmaul ganz weit). */
+  spitzmund: UniformNode<'float', number>;
 }
 
 export interface Vec3Triple {
@@ -111,6 +113,7 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     eyeCount: uniform(0),
     blink: uniform(0),
     verschluss: uniform(0),
+    spitzmund: uniform(0),
   };
 }
 
@@ -177,7 +180,8 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
   // Verschluss-Morph: nach dem Skinning (positionLocal ist dann die gehäutete Position) die geschlossene Lage addieren
   material.positionNode = Fn(() => {
     const closed = attribute('eeClosed', 'vec3') as Vec3Node;
-    return (positionLocal as unknown as Vec3Node).add(closed.mul(u.verschluss));
+    const pucker = attribute('eePucker', 'vec3') as Vec3Node;
+    return (positionLocal as unknown as Vec3Node).add(closed.mul(u.verschluss)).add(pucker.mul(u.spitzmund));
   })();
   material.colorNode = Fn(() => {
     const spine = attribute('eeSpine', 'vec4') as Vec4Node;

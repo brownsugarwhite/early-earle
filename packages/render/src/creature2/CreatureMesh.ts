@@ -129,6 +129,7 @@ export class CreatureMesh {
     g.setAttribute('eeRegion', new BufferAttribute(build.descriptors.region, 4));
     g.setAttribute('eeAo', new BufferAttribute(build.descriptors.ao, 1));
     g.setAttribute('eeClosed', new BufferAttribute(build.closed, 3));
+    g.setAttribute('eePucker', new BufferAttribute(build.pucker, 3));
     g.setAttribute('eeThick', new BufferAttribute(build.descriptors.thick, 1));
     g.setIndex(new BufferAttribute(build.index, 1));
     g.computeBoundingSphere();
@@ -261,11 +262,13 @@ export class CreatureMesh {
       // Bauzustand = Öffnung o_b: darunter schließt der Kiefer um closeAngle, darüber öffnet er bis maxOpenAngle
       const o = this.opennessNow;
       const ob = Math.max(1e-3, this.jawBuildOpen);
-      const angle = o < ob ? -(1 - o / ob) * this.closeAngle : ((o - ob) / Math.max(1e-3, 1 - ob)) * this.maxOpenAngle;
+      const form = this.bauplan?.maul.form ?? 1;
+      const angle = (o < ob ? -(1 - o / ob) * this.closeAngle : ((o - ob) / Math.max(1e-3, 1 - ob)) * this.maxOpenAngle) * form;
       jaw.quaternion.setFromAxisAngle(this.jawAxis, angle);
-      // Verschluss-Morph greift auf den letzten 60 % des Schließwegs
+      // Verschluss-Morph greift beim Schließen, Spitzmund-Morph beim Weiten des Lochmauls
       const t = 1 - Math.min(1, o / ob);
       this.uniforms.verschluss.value = t * t * (3 - 2 * t);
+      this.uniforms.spitzmund.value = Math.max(0, (o - ob) / Math.max(1e-3, 1 - ob));
     }
     // Atmen: Körperknochen sanft skalieren (oben stärker)
     const bodyBones = this.build.groups.find((g) => g.kind === 'koerper')?.bones ?? [];
