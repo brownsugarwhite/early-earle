@@ -58,41 +58,54 @@ function capsule(a: Vec3, b: Vec3, ra: number, rb: number, part: number, k: numb
   return { kind: 'capsule', op: 'union', part, k, region, name, a, b, ra, rb };
 }
 
-/** Profilpolygon des Grundblobs (volle Breite, gegen den Uhrzeigersinn) aus den fünf Querschnitten. */
-export function bodyProfile(b: Bauplan, R0: number, H: number): Array<[number, number]> {
+/**
+ * Radiustabelle des Grundblobs (0 … H, 96 Stützstellen) aus den fünf Querschnitten: flache Standfläche (`boden` =
+ * Anteil des Basisradius, der flach aufliegt), weiche Kuppel, Scheitel bei r → 0. Catmull-Rom durch die Stützpunkte.
+ */
+export function bodyRadii(b: Bauplan, R0: number, H: number, samples = 96): Float64Array {
   const k = b.koerper;
   const q = k.querschnitte.slice() as [number, number, number, number, number];
   if (k.bauch < 0) q[1] *= 1 + 0.3 * k.bauch;
   if (k.buckel < 0) q[3] *= 1 + 0.3 * k.buckel;
   const r = q.map((x) => x * R0);
   const boden = clamp(k.boden, 0, 1);
-  const ctrl: Vec3[] = [
-    [r[0]! * (0.55 + 0.4 * boden), 0, 0],
-    [r[0]!, H * 0.07 * (1.2 - boden), 0],
-    [r[1]!, H * 0.25, 0],
-    [r[2]!, H * 0.5, 0],
-    [r[3]!, H * 0.75, 0],
-    [r[4]!, H * 0.92, 0],
-    [r[4]! * 0.5, H * 0.995, 0],
+  // Stützpunkte (y, r): Standkante, dann die Querschnitte, dann der Scheitel
+  const ctrl: Array<[number, number]> = [
+    [0, r[0]! * (0.55 + 0.42 * boden)],
+    [H * 0.06 * (1.3 - boden), r[0]!],
+    [H * 0.25, r[1]!],
+    [H * 0.5, r[2]!],
+    [H * 0.75, r[3]!],
+    [H * 0.92, r[4]!],
+    [H * 0.985, r[4]! * 0.45],
+    [H, 0],
   ];
-  const pts = catmullRom(ctrl, 2).map(([x, y]) => [Math.max(0, x), clamp(y, 0, H)] as [number, number]);
-  // Polygon: Achse unten → rechte Seite aufwärts → Scheitel → linke Seite abwärts (Spiegelung) → zurück zur Achse
-  const right = pts;
-  const left = pts
-    .slice()
-    .reverse()
-    .map(([x, y]) => [-x, y] as [number, number]);
-  const poly: Array<[number, number]> = [[0, 0], ...right, [0, H], ...left];
-  // doppelte/entartete Punkte entfernen
-  const out: Array<[number, number]> = [];
-  for (const p of poly) {
-    const last = out[out.length - 1];
-    if (!last || Math.hypot(last[0] - p[0], last[1] - p[1]) > 1e-5) out.push(p);
+  const out = new Float64Array(samples);
+  const n = ctrl.length;
+  const P = (i: number): [number, number] => ctrl[Math.max(0, Math.min(n - 1, i))]!;
+  // Abtastung über y: je Abschnitt Catmull-Rom in beiden Koordinaten, dann auf gleichmäßiges y umsortieren
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+    const steps = 24;
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps, t2 = t * t, t3 = t2 * t;
+      const cy = 0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+      const cr = 0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+      pts.push([cy, Math.max(0, cr)]);
+    }
   }
-  if (out.length > 2) {
-    const a = out[0]!, z = out[out.length - 1]!;
-    if (Math.hypot(a[0] - z[0], a[1] - z[1]) < 1e-5) out.pop();
+  pts.push([H, 0]);
+  pts.sort((a, c) => a[0] - c[0]);
+  let j = 0;
+  for (let i = 0; i < samples; i++) {
+    const y = (i / (samples - 1)) * H;
+    while (j < pts.length - 2 && pts[j + 1]![0] < y) j++;
+    const a = pts[j]!, c = pts[j + 1]!;
+    const f = c[0] > a[0] ? clamp((y - a[0]) / (c[0] - a[0]), 0, 1) : 0;
+    out[i] = a[1] + (c[1] - a[1]) * f;
   }
+  out[samples - 1] = 0;
   return out;
 }
 
@@ -118,24 +131,21 @@ export function construct(b: Bauplan): Construction {
   // --- Körper: Rotationskörper aus dem Profil, drei Knochen entlang der Achse ----------------------------------
   const axisAt = (y: number): Vec3 => [0, y, shear * (y - yb)];
   const root = bone('root', -1, [0, 0, 0], QUAT_ID, 0);
-  const profile = bodyProfile(b, R0, H);
+  const radii = bodyRadii(b, R0, H);
   const bodyGroup = groups.length;
   const axisPts: Vec3[] = [];
   const axisR: number[] = [];
   for (let i = 0; i <= 8; i++) {
     const t = i / 8;
     axisPts.push(axisAt(yb + t * H));
-    // Profilradius auf Höhe t (lineare Suche im Profil, rechte Seite)
-    let r = 0;
-    for (const [q, y] of profile) if (q > 0 && Math.abs(y - t * H) < H * 0.08) r = Math.max(r, q);
-    axisR.push((r || R0 * 0.5) * sm);
+    axisR.push(Math.max(radii[Math.min(radii.length - 1, Math.round(t * (radii.length - 1)))]!, R0 * 0.15) * sm);
   }
   groups.push({ name: 'koerper', kind: 'koerper', polyline: makePolyline(axisPts, axisR, FWD), bones: [], dorsal: [0, 0, -1] });
   const kUnten = bone('koerperUnten', root, axisAt(yb), QUAT_ID, bodyGroup);
   const kMitte = bone('koerperMitte', kUnten, axisAt(yb + 0.45 * H), QUAT_ID, bodyGroup);
   const kOben = bone('koerperOben', kMitte, axisAt(yb + 0.85 * H), QUAT_ID, bodyGroup);
   groups[bodyGroup]!.bones.push(kUnten, kMitte, kOben);
-  const body: RevolvePrim = { kind: 'revolve', op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper', profile, c: [0, yb, 0], sx, sz, n: 2 + 6 * b.koerper.kubik, shear, round: 0.02 * H };
+  const body: RevolvePrim = { kind: 'revolve', op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper', radii, height: H, c: [0, yb, 0], sx, sz, n: 2 + 6 * b.koerper.kubik, shear, round: 0.03 * H * (0.6 + 0.8 * (1 - b.koerper.boden)) };
   prims.push(body);
   if (b.koerper.bauch > 0) {
     const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: kUnten, k: 0.25 * H, region: REGION.haut, name: 'bauch', c: add(axisAt(yb + 0.28 * H), [0, 0, R0 * sz * 0.42 * b.koerper.bauch]), r: [R0 * sx * 0.78, 0.3 * H, R0 * sz * 0.58] };
