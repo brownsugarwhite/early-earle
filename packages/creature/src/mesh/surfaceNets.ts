@@ -16,6 +16,8 @@ export interface ContourOptions {
   cell: number;
   /** Gitterverschiebung in Zellanteilen (gegen Pinch-Vertices). */
   shift?: number;
+  /** Narrow-Band-Auswertung (Standard an); aus = jede Zelle exakt (Vergleichstests). */
+  narrowBand?: boolean;
 }
 
 export interface RawContour {
@@ -45,7 +47,7 @@ export function contour(sdf: Sdf, opts: ContourOptions): RawContour {
   // Narrow Band: grobe Blöcke von B Zellen; liegt die Fläche sicher nicht im Block (|d| an allen Ecken größer als die
   // halbe Blockdiagonale plus eine Zelle, gleiches Vorzeichen), werden die feinen Werte trilinear interpoliert statt
   // ausgewertet. Nur Zellen nahe der Fläche kosten echte SDF-Auswertungen.
-  const B = 4;
+  const B = opts.narrowBand === false ? 1_000_000 : 4;
   const cbx = Math.ceil((nx - 1) / B) + 1, cby = Math.ceil((ny - 1) / B) + 1, cbz = Math.ceil((nz - 1) / B) + 1;
   const coarse = new Float32Array(cbx * cby * cbz);
   const cat = (i: number, j: number, k: number): number => (k * cby + j) * cbx + i;

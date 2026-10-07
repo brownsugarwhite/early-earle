@@ -92,6 +92,16 @@ describe('Mesh', () => {
     }
     expect(outward).toBeGreaterThan(Math.floor(r.stats.vertexCount / 11) * 0.9);
   });
+  it('Narrow-Band ändert die Fläche nicht (Buckel, Neigung, breite Standfläche)', () => {
+    const b = parseBauplan({ koerper: { hoehe: 1.5, bauch: 0.9, buckel: 0.8, neigung: 0.8, boden: 0.9 }, maul: { sichtbar: false } });
+    const band = buildCreature(b, { resolution: 36 });
+    const exakt = buildCreature(b, { resolution: 36, narrowBand: false });
+    expect(Math.abs(band.stats.vertexCount - exakt.stats.vertexCount)).toBeLessThan(exakt.stats.vertexCount * 0.03);
+    expect(band.stats.nonManifold).toBeLessThanOrEqual(6);
+    // Hüllquader der Vertices stimmen überein (keine Ausreißer durch falsch interpolierte Blöcke)
+    const bb = (p: Float32Array): number[] => { let my = -Infinity; for (let i = 1; i < p.length; i += 3) my = Math.max(my, p[i]!); return [my]; };
+    expect(Math.abs(bb(band.positions)[0]! - bb(exakt.positions)[0]!)).toBeLessThan(0.05);
+  });
   it('ist deterministisch', () => {
     const a = buildCreature(defaultBauplan(), { resolution: 20 });
     const b = buildCreature(defaultBauplan(), { resolution: 20 });

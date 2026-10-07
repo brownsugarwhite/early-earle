@@ -57,6 +57,8 @@ export interface RevolvePrim extends PrimBase {
   shear: number;
   /** Rundung der Standkante. */
   round: number;
+  /** Rundung der Deckelkante (0 = Scheitel läuft über die Radiusfunktion aus). */
+  topRound?: number;
 }
 
 /** Freies Primitiv (z. B. Maulhöhle) mit eigener Abstandsfunktion und Hüllquader. */
@@ -173,18 +175,38 @@ export function sdRevolve(p: Readonly<Vec3>, prim: RevolvePrim): number {
     q = Math.pow(Math.pow(ax, prim.n) + Math.pow(az, prim.n), 1 / prim.n) * sm;
   }
   const H = prim.height;
-  if (y >= H) {
-    // über dem Scheitel: Abstand zur Scheitelkappe
-    const { r } = radiusAt(prim, H);
-    return Math.hypot(Math.max(q - r, 0), y - H) - prim.round * 0.5;
+  // Exakter 2D-Abstand von (q, y) zur Profil-Polylinie in der Nähe der Höhe y (vier Segmente), Vorzeichen aus r(y).
+  // Die reine Steigungskorrektur versagte am Scheitel (Steigung → ∞ machte alle Abstände ≈ 0 → ausgefranste Kante).
+  const n = prim.radii.length;
+  const step = H / (n - 1);
+  const yc = Math.max(0, Math.min(H, y));
+  const i0 = Math.min(n - 2, Math.max(0, Math.floor(yc / step)));
+  let best = Infinity;
+  for (let i = Math.max(0, i0 - 3); i <= Math.min(n - 2, i0 + 2); i++) {
+    const ay = i * step, ar = prim.radii[i]!;
+    const by = (i + 1) * step, br = prim.radii[i + 1]!;
+    const ex = br - ar, ey = by - ay;
+    const wx = q - ar, wy = y - ay;
+    const tt = Math.max(0, Math.min(1, (wx * ex + wy * ey) / (ex * ex + ey * ey || 1e-12)));
+    const dx = wx - ex * tt, dy = wy - ey * tt;
+    best = Math.min(best, dx * dx + dy * dy);
   }
-  const { r, dr } = radiusAt(prim, Math.max(y, 0));
-  const side = (q - r) / Math.sqrt(1 + dr * dr);
+  const { r } = radiusAt(prim, yc);
+  let side = Math.sqrt(best);
+  if (q < r && y <= H && y >= 0) side = -side;
+  // über dem Scheitel bzw. unter dem Boden ist der Polylinienabstand bereits korrekt (Segmente enden dort)
   // Standfläche: Schnitt mit dem Halbraum y ≥ 0, Kante gerundet
   const bottom = -y;
   const k = prim.round;
   const h = Math.max(k - Math.abs(side - bottom), 0) / (k || 1e-6);
-  const d = Math.max(side, bottom) + h * h * k * 0.25;
+  let d = Math.max(side, bottom) + h * h * k * 0.25;
+  // Deckel: Schnitt mit y ≤ H (bei Würfeligkeit bleibt der Radius oben erhalten, die Kante wird gerundet)
+  const kt = prim.topRound ?? 0;
+  if (kt > 0) {
+    const top = y - H;
+    const ht = Math.max(kt - Math.abs(d - top), 0) / kt;
+    d = Math.max(d, top) + ht * ht * kt * 0.25;
+  }
   return d - prim.round * 0.35;
 }
 

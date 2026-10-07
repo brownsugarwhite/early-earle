@@ -15,6 +15,8 @@ export interface BuildOptions {
   smoothIterations?: number;
   /** Gewichte glätten (Iterationen). */
   weightSmoothing?: number;
+  /** Narrow-Band (Standard an). */
+  narrowBand?: boolean;
 }
 
 export interface CreatureBuild {
@@ -57,7 +59,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   const ext = Math.max(c.bounds.max[0] - c.bounds.min[0], c.bounds.max[1] - c.bounds.min[1], c.bounds.max[2] - c.bounds.min[2]);
   const cell = ext / resolution;
   const sdf = (p: Readonly<Vec3>): number => evalScene(c.scene, p);
-  let raw = contourManifold(sdf, { min: c.bounds.min, max: c.bounds.max, cell });
+  let raw = contourManifold(sdf, { min: c.bounds.min, max: c.bounds.max, cell, narrowBand: opts.narrowBand ?? true });
   raw = largestComponent(raw);
   const positions = raw.positions;
   const index = raw.index;

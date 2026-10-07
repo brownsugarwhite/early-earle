@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
 import type { UniformNode } from 'three/webgpu';
-import { Fn, If, abs, clamp, cos, dot, float, floor, fract, hash, length, max, min, mix, sin, smoothstep, uniform, vec2, vec3 } from 'three/tsl';
+import { If, abs, clamp, cos, dot, float, floor, fract, hash, length, max, min, mix, sin, smoothstep, uniform, vec2, vec3 } from 'three/tsl';
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { MUSTER_TYPEN } from '@ee/creature';
 
@@ -37,7 +37,7 @@ export function applyMuster(u: MusterUniforms, m: { typ: (typeof MUSTER_TYPEN)[n
 }
 
 /** Wertrauschen 3D (0…1). */
-const noise3 = Fn(([p]: [Vec3Node]) => {
+function noise3(p: Vec3Node): FloatNode {
   const i = floor(p);
   const f = fract(p);
   const w = f.mul(f).mul(float(3).sub(f.mul(2)));
@@ -45,10 +45,10 @@ const noise3 = Fn(([p]: [Vec3Node]) => {
   const x00 = mix(h(0, 0, 0), h(1, 0, 0), w.x), x10 = mix(h(0, 1, 0), h(1, 1, 0), w.x);
   const x01 = mix(h(0, 0, 1), h(1, 0, 1), w.x), x11 = mix(h(0, 1, 1), h(1, 1, 1), w.x);
   return mix(mix(x00, x10, w.y), mix(x01, x11, w.y), w.z);
-});
+}
 
 /** Zellrauschen 3D: F1, F2 und Zellkennung über die 27 Nachbarzellen (ein Hash je Zelle, drei Jitter daraus). */
-const cells3 = Fn(([p, seed]: [Vec3Node, FloatNode]) => {
+function cells3(p: Vec3Node, seed: FloatNode): Vec3Node {
   const i = floor(p);
   const f = fract(p);
   const f1 = float(9).toVar();
@@ -71,7 +71,7 @@ const cells3 = Fn(([p, seed]: [Vec3Node, FloatNode]) => {
         });
       }
   return vec3(f1, f2, id);
-});
+}
 
 export interface MusterOut {
   /** Musterfarbe-Anteil. */

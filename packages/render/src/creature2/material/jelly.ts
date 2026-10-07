@@ -95,7 +95,7 @@ export function placeBubbles(j: JellyUniforms, bodyScale: number, count: number,
 }
 
 /** Weiche Rechteck-Lichtquelle in Richtung k, gesehen über die Reflexionsrichtung d (Softbox). */
-const softbox = Fn(([d, k, size, rr]: [Vec3Node, Vec3Node, Vec2Node, FloatNode]) => {
+function softbox(d: Vec3Node, k: Vec3Node, size: Vec2Node, rr: FloatNode): FloatNode {
   const kx = normalize(cross(vec3(0, 1, 0), k));
   const ky = cross(k, kx);
   const cz = dot(d, k);
@@ -103,15 +103,15 @@ const softbox = Fn(([d, k, size, rr]: [Vec3Node, Vec3Node, Vec2Node, FloatNode])
   const q = abs(uv).sub(size);
   const sd = length(max(q, 0)).add(min(max(q.x, q.y), 0)).sub(rr);
   return float(1).sub(smoothstep(-0.02, 0.035, sd)).mul(smoothstep(0.05, 0.12, cz));
-});
+}
 
-const envCol = Fn(([d]: [Vec3Node]) => {
+function envCol(d: Vec3Node): Vec3Node {
   const sky = mix(vec3(0.8, 0.84, 0.9), vec3(1, 1, 1), smoothstep(0, 0.85, d.y));
   return mix(vec3(0.45, 0.45, 0.48), sky, smoothstep(-0.3, 0.06, d.y));
-});
+}
 
 /** Strahllänge innerhalb eines Ellipsoids (Mitte c, Radien r), begrenzt auf [0, maxLen]. */
-const raySegment = Fn(([ro, rd, c, r, maxLen]: [Vec3Node, Vec3Node, Vec3Node, Vec3Node, FloatNode]) => {
+function raySegment(ro: Vec3Node, rd: Vec3Node, c: Vec3Node, r: Vec3Node, maxLen: FloatNode): FloatNode {
   const oc = ro.sub(c).div(r);
   const dd = rd.div(r);
   const a = dot(dd, dd);
@@ -123,7 +123,7 @@ const raySegment = Fn(([ro, rd, c, r, maxLen]: [Vec3Node, Vec3Node, Vec3Node, Ve
   const t1 = b.negate().add(sq).div(a);
   const len = max(min(t1, maxLen).sub(max(t0, 0)), 0);
   return mix(float(0), len, smoothstep(0, 0.0001, disc));
-});
+}
 
 export function createJellyMaterial(u: CreatureMaterialUniforms, j: JellyUniforms): MeshBasicNodeMaterial {
   const material = new MeshBasicNodeMaterial();

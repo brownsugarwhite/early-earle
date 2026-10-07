@@ -133,7 +133,7 @@ export function applyStil(u: CreatureMaterialUniforms, stil: WesenStil, colors: 
 }
 
 /** Wertrauschen im Körperraum (dreilinear interpoliert, 0…1). */
-const valueNoise = Fn(([p]: [Vec3Node]) => {
+function valueNoise(p: Vec3Node): FloatNode {
   const i = floor(p);
   const f = fract(p);
   const u = f.mul(f).mul(float(3).sub(f.mul(2)));
@@ -145,14 +145,14 @@ const valueNoise = Fn(([p]: [Vec3Node]) => {
   const y0 = mix(x00, x10, u.y);
   const y1 = mix(x01, x11, u.y);
   return mix(y0, y1, u.z);
-});
+}
 
 /**
  * Wertstufen mit Verlauf innen: x (0…1) → Stufenwert (0…1). `stufen` Stufen, Kanten um `federung` weich,
  * innerhalb jeder Stufe ein Verlauf mit Anteil `verlauf` (Florians Regel: Verlauf nur in der Stufe, nie über die Kante
  * hinweg — hier ist die Kante selbst weich, wie in den gemalten Bögen).
  */
-const stepShade = Fn(([x, stufen, federung, verlauf]: [FloatNode, FloatNode, FloatNode, FloatNode]) => {
+function stepShade(x: FloatNode, stufen: FloatNode, federung: FloatNode, verlauf: FloatNode): FloatNode {
   const S1 = max(stufen.sub(1), 1);
   const g = clamp(x, 0, 0.9999).mul(S1);
   const i = floor(g);
@@ -168,7 +168,7 @@ const stepShade = Fn(([x, stufen, federung, verlauf]: [FloatNode, FloatNode, Flo
   const up = mix(level, nextLevel, wUp.mul(0.5));
   const down = mix(level, prevLevel, wDown.mul(0.5));
   return clamp(mix(up, down, wDown), 0, 1);
-});
+}
 
 export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNodeMaterial {
   const material = new MeshBasicNodeMaterial();

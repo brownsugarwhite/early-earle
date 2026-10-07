@@ -68,6 +68,8 @@ export function bodyRadii(b: Bauplan, R0: number, H: number, samples = 96): Floa
   if (k.bauch < 0) q[1] *= 1 + 0.3 * k.bauch;
   if (k.buckel < 0) q[3] *= 1 + 0.3 * k.buckel;
   const r = q.map((x) => x * R0);
+  // würfelig: der oberste Querschnitt wächst zum darunterliegenden (flacher, breiter Deckel)
+  r[4] = r[4]! + (r[3]! * 0.97 - r[4]!) * clamp(k.kubik, 0, 1);
   const boden = clamp(k.boden, 0, 1);
   // Stützpunkte (y, r): Standkante, dann die Querschnitte, dann der Scheitel
   const ctrl: Array<[number, number]> = [
@@ -77,11 +79,11 @@ export function bodyRadii(b: Bauplan, R0: number, H: number, samples = 96): Floa
     [H * 0.5, r[2]!],
     [H * 0.75, r[3]!],
     [H * 0.9, r[4]!],
-    // elliptische Scheitelkappe (Steigung → ∞ am Scheitel, kein „Deckel“)
-    [H * 0.95, r[4]! * 0.86],
-    [H * 0.98, r[4]! * 0.6],
-    [H * 0.995, r[4]! * 0.3],
-    [H, 0],
+    // Scheitel: rund → elliptische Kappe (Steigung → ∞), würfelig → Radius bleibt bis oben (flacher Deckel)
+    [H * 0.95, r[4]! * (0.86 + 0.12 * k.kubik)],
+    [H * 0.98, r[4]! * (0.6 + 0.37 * k.kubik)],
+    [H * 0.995, r[4]! * (0.3 + 0.66 * k.kubik)],
+    [H, r[4]! * 0.95 * k.kubik],
   ];
   const out = new Float64Array(samples);
   const n = ctrl.length;
@@ -108,7 +110,7 @@ export function bodyRadii(b: Bauplan, R0: number, H: number, samples = 96): Floa
     const f = c[0] > a[0] ? clamp((y - a[0]) / (c[0] - a[0]), 0, 1) : 0;
     out[i] = a[1] + (c[1] - a[1]) * f;
   }
-  out[samples - 1] = 0;
+  out[samples - 1] = r[4]! * 0.95 * k.kubik;
   return out;
 }
 
@@ -148,14 +150,14 @@ export function construct(b: Bauplan): Construction {
   const kMitte = bone('koerperMitte', kUnten, axisAt(yb + 0.45 * H), QUAT_ID, bodyGroup);
   const kOben = bone('koerperOben', kMitte, axisAt(yb + 0.85 * H), QUAT_ID, bodyGroup);
   groups[bodyGroup]!.bones.push(kUnten, kMitte, kOben);
-  const body: RevolvePrim = { kind: 'revolve', op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper', radii, height: H, c: [0, yb, 0], sx, sz, n: 2 + 6 * b.koerper.kubik, shear, round: 0.03 * H * (0.6 + 0.8 * (1 - b.koerper.boden)) };
+  const body: RevolvePrim = { kind: 'revolve', op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper', radii, height: H, c: [0, yb, 0], sx, sz, n: 2 + 6 * b.koerper.kubik, shear, round: 0.03 * H * (0.6 + 0.8 * (1 - b.koerper.boden)), topRound: b.koerper.kubik > 0.02 ? 0.12 * H * b.koerper.kubik : 0 };
   prims.push(body);
   if (b.koerper.bauch > 0) {
     const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: kUnten, k: 0.25 * H, region: REGION.haut, name: 'bauch', c: add(axisAt(yb + 0.28 * H), [0, 0, R0 * sz * 0.42 * b.koerper.bauch]), r: [R0 * sx * 0.78, 0.3 * H, R0 * sz * 0.58] };
     prims.push(e);
   }
   if (b.koerper.buckel > 0) {
-    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: kOben, k: 0.25 * H, region: REGION.haut, name: 'buckel', c: add(axisAt(yb + 0.7 * H), [0, 0.05 * H * b.koerper.buckel, -R0 * sz * 0.42 * b.koerper.buckel]), r: [R0 * sx * 0.72, 0.28 * H * (0.6 + 0.6 * b.koerper.buckel), R0 * sz * 0.52] };
+    const e: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: kOben, k: 0.34 * H, region: REGION.haut, name: 'buckel', c: add(axisAt(yb + 0.62 * H), [0, 0, -R0 * sz * 0.4 * b.koerper.buckel]), r: [R0 * sx * 0.7, 0.26 * H * (0.6 + 0.5 * b.koerper.buckel), R0 * sz * 0.5] };
     prims.push(e);
   }
 
