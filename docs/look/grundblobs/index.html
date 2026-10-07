@@ -1,0 +1,1274 @@
+<title>Grundblobs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: Werkbank – oben die Bühne (Canvas), darunter eine schmale Steuerleiste; alles auf einer Spalte, am Desktop breiter */
+:root {
+  --bg: #f3f1ec;
+  --panel: #ffffff;
+  --ink: #081b25;
+  --ink-soft: #4a5a63;
+  --line: #d9d5cc;
+  --accent: #c2410c;
+  --accent-ink: #ffffff;
+  --stage: #ffffff;
+  --font-display: "Caprasimo", "Cooper Black", Georgia, serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0b1820; --panel: #12232d; --ink: #eef2f0; --ink-soft: #9fb1b8; --line: #23394a; --accent: #f08a4b; --accent-ink: #081b25; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0b1820; --panel: #12232d; --ink: #eef2f0; --ink-soft: #9fb1b8; --line: #23394a; --accent: #f08a4b; --accent-ink: #081b25; color-scheme: dark; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1400px; margin: 0 auto; padding-inline: 16px; padding-block: 14px 28px; display: flex; flex-direction: column; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 4vw, 38px); line-height: 1; margin: 0; letter-spacing: .01em; }
+.sub { color: var(--ink-soft); font-size: 14px; }
+.tabs { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px; margin-left: auto; }
+.tabs button { font: inherit; font-weight: 700; font-size: 14px; border: 0; background: transparent; color: var(--ink); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.tabs button:focus-visible, .seg button:focus-visible, .chip:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stage { position: relative; width: 100%; background: var(--stage); border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); touch-action: none; }
+.stage canvas { display: block; width: 100%; height: 100%; }
+.stage .ref { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.stage .wipe { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); pointer-events: none; }
+.stage .tag { position: absolute; top: 8px; font: 700 12px/1 var(--font-body); letter-spacing: .06em; text-transform: uppercase; background: rgba(8,27,37,.78); color: #fff; padding: 5px 8px; border-radius: 6px; pointer-events: none; }
+.hud { position: absolute; right: 8px; bottom: 8px; font: 12px/1.3 ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; background: rgba(8,27,37,.78); color: #e8f0ee; padding: 6px 8px; border-radius: 6px; pointer-events: none; white-space: pre; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; color: #4a5a63; font-weight: 700; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.controls label, .controls .lbl { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--ink); padding: 6px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font: 700 13px/1 var(--font-body); font-variant-numeric: tabular-nums; border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 6px 8px; border-radius: 6px; cursor: pointer; min-width: 40px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn { font: 700 14px/1 var(--font-body); border: 0; background: var(--accent); color: var(--accent-ink); padding: 9px 14px; border-radius: 8px; cursor: pointer; }
+input[type="range"] { width: min(320px, 60vw); accent-color: var(--accent); }
+.note { color: var(--ink-soft); font-size: 14px; max-width: 72ch; }
+.note b { color: var(--ink); }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 14px; width: 100%; }
+.slot { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.slot label { flex: 0 0 auto; min-width: 92px; }
+.slot select { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 14px; padding: 5px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.slot.kind label { padding-left: 14px; }
+[hidden] { display: none !important; }
+@media (max-width: 640px) { .tabs { margin-left: 0; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Grundblobs</h1>
+    <span class="sub">13 Stufen von 2 bis 8192 · Jelly, fest, Fell · Echtzeit-3D</span>
+    <nav class="tabs" role="tablist" aria-label="Ansicht">
+      <button role="tab" id="tab-vergleich" aria-selected="true" data-mode="vergleich">Vergleich</button>
+      <button role="tab" id="tab-buehne" aria-selected="false" data-mode="buehne">Bühne</button>
+      <button role="tab" id="tab-brett" aria-selected="false" data-mode="brett">Brett</button>
+      <button role="tab" id="tab-schnitt" aria-selected="false" data-mode="schnitt">Schnittlinien</button>
+      <button role="tab" id="tab-editor" aria-selected="false" data-mode="editor">Editor</button>
+    </nav>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="gl"></canvas>
+    <img class="ref" id="ref" alt="Vorlage von Florian" src="refs/grundblobs-vorlage.png" hidden>
+    <div class="wipe" id="wipeLine" hidden></div>
+    <span class="tag" id="tagL" style="left:8px" hidden>Vorlage</span>
+    <span class="tag" id="tagR" style="right:8px" hidden>3D</span>
+    <div class="hud" id="hud"></div>
+    <div class="loading" id="loading">Lädt Formen …</div>
+  </div>
+
+  <div class="controls" id="ctl-vergleich">
+    <div class="group"><label for="wipe">Vorlage ↔ 3D</label><input type="range" id="wipe" min="0" max="100" value="50"></div>
+    <div class="group"><span class="lbl">Schnell</span>
+      <div class="seg"><button id="w0" aria-pressed="false">Nur 3D</button><button id="w50" aria-pressed="true">Hälfte</button><button id="w100" aria-pressed="false">Nur Vorlage</button></div>
+    </div>
+    <p class="note">Gleiche Ansicht, gleicher Maßstab wie die Vorlage. Regler ziehen: links die Zeichnung, rechts das Echtzeit-Modell. Tippe auf einen Blob, um ihn auf der Bühne anzusehen.</p>
+  </div>
+
+  <div class="controls" id="ctl-buehne" hidden>
+    <div class="group"><span class="lbl">Material</span>
+      <div class="seg" id="matSeg"><button data-mat="jelly" aria-pressed="true">Jelly</button><button data-mat="fest" aria-pressed="false">Fest</button><button data-mat="fell" aria-pressed="false">Fell</button></div>
+    </div>
+    <div class="group"><span class="lbl">Stufe</span><div class="chips" id="tierChips"></div></div>
+    <div class="group"><span class="lbl">Grund</span>
+      <div class="seg" id="bgSeg"><button data-bg="hell" aria-pressed="true">Hell</button><button data-bg="karte" aria-pressed="false">Karte</button></div>
+    </div>
+    <div class="group"><button class="btn" id="hop">Hüpfen</button>
+      <div class="seg"><button id="spin" aria-pressed="true">Drehen</button></div>
+    </div>
+    <p class="note">Ziehen dreht, zwei Finger zoomen. Tippen auf den Blob lässt ihn hüpfen.</p>
+  </div>
+
+  <div class="controls" id="ctl-brett" hidden>
+    <div class="group"><span class="lbl">Fell-Schalen</span>
+      <div class="seg" id="shellSeg"><button data-s="8" aria-pressed="false">8</button><button data-s="14" aria-pressed="true">14</button><button data-s="20" aria-pressed="false">20</button></div>
+    </div>
+    <div class="group"><button class="btn" id="shuffle">Neu mischen</button><button class="btn" id="hopAll">Alle hüpfen</button></div>
+    <p class="note">36 Blobs auf einem 6×6-Brett, gemischt aus allen Stufen und Materialien. Die Anzeige rechts unten zeigt Bildrate, Bildzeit und Draw Calls. Ziel auf dem iPhone: ≥ 58 fps, Draw Calls ≤ 100.</p>
+  </div>
+  <div class="controls" id="ctl-schnitt" hidden>
+    <div class="group"><span class="lbl">Modell</span>
+      <div class="chips" id="schnittChips">
+        <button class="chip" data-m="giraffe" aria-pressed="true">Giraffe</button>
+        <button class="chip" data-m="spinne" aria-pressed="false">Spinne</button>
+        <button class="chip" data-m="rex" aria-pressed="false">Rex</button>
+        <button class="chip" data-m="goldie" aria-pressed="false">Retriever</button>
+      </div>
+    </div>
+    <div class="group"><div class="seg"><button id="skelBtn" aria-pressed="false">Skelett zeigen</button><button id="xrayBtn" aria-pressed="true">Verdeckte Linien</button></div></div>
+    <p class="note" id="schnittHinweis" hidden></p>
+    <p class="note"><b>Stufe 1 zur Abnahme:</b> Hier wird noch nichts geschnitten. Die farbigen Ringe zeigen, wo das System die Teile trennen würde: am Übergang vom Rumpf zum Teil, in der schmalsten natürlichen Falte. Bitte prüfen: Liegen die Grenzen dort, wo du sie als Artist setzen würdest? Graue Ringe mit „unsicher“ hat das System nicht sicher gefunden. Bei „gesetzt“ habe ich den Ansatzpunkt vorgegeben, das System hat nur die Falte daneben gesucht.</p>
+  </div>
+  <div class="controls" id="ctl-editor" hidden>
+    <div class="group"><span class="lbl">Rumpf</span>
+      <div class="chips" id="edRumpf">
+        <button class="chip" data-r="giraffe:rumpf" aria-pressed="true">Giraffe</button>
+        <button class="chip" data-r="spinne:rumpf" aria-pressed="false">Spinne</button>
+        <button class="chip" data-r="rex:rumpf" aria-pressed="false">Rex</button>
+        <button class="chip" data-r="goldie:rumpf" aria-pressed="false">Retriever</button>
+        <button class="chip" data-r="blob" aria-pressed="false">Grundblob</button>
+      </div>
+    </div>
+    <div class="group" id="edBlobOpt" hidden><label for="edStufe">Stufe</label><input type="range" id="edStufe" min="1" max="13" value="9" style="width:140px"><span id="edStufeWert" class="lbl">512</span>
+      <div class="seg" id="edMat"><button data-m="fest" aria-pressed="true">Fest</button><button data-m="jelly" aria-pressed="false">Jelly</button><button data-m="fell" aria-pressed="false">Fell</button></div>
+    </div>
+    <div class="group"><button class="btn" id="edZufall">Zufall</button><div class="seg"><button id="edOrig">Original</button><button id="edLeer">Alles leer</button><button id="edSockel" aria-pressed="true">Sockel zeigen</button></div></div>
+    <div id="edSlots" class="slots"></div>
+    <details class="note"><summary>Kombination als Daten</summary><pre id="edJson" style="white-space:pre-wrap;font-size:12px;margin:6px 0 0"></pre></details>
+    <p class="note"><b>System:</b> Jedes Element hat einen Typ (Kopf, Hals, Bein, Arm, Schwanz, Ohr) und einen Andockring. Jeder Rumpf und manche Elemente haben Sockel. Ein Element passt auf einen Sockel seines Typs (Bein und Arm untereinander, Kopf auch auf den Hals-Sockel). Andocken: Ring auf Sockel, Richtung auf Richtung, Größe nach Ringradius. Aussehen ist hier noch nicht das Ziel.</p>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const Q = new URLSearchParams(location.search);
+const STILL = Q.has('still');                 // nur für Bildvergleiche: eine Aufnahme ohne Animation
+if (Q.has('gross')) document.querySelector('.wrap').style.maxWidth = 'none';
+const VORLAGE = { w: 2588, h: 1276, px: 300 };
+const MATS = ['jelly', 'fest', 'fell'];
+const $ = (id) => document.getElementById(id);
+
+// ---------- Daten ----------
+const data = await fetch('assets/grundblobs.json').then(r => r.json());
+const vermessung = await fetch('assets/vermessung.json').then(r => r.json());
+// Meshes: gzip + base64 (Positionen uint16 über die Box, Normalen int8, AO/Dicke/Krümmung uint8, Indizes uint16)
+async function ladeMeshes() {
+  const b64 = (await fetch('assets/grundblobs-mesh.txt').then(r => r.text())).trim();
+  const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const buf = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  const out = {};
+  for (const [key, e] of Object.entries(data.meshes)) {
+    const n = e.vertices;
+    const q = new Uint16Array(buf, e.pos, n * 3), nr = new Int8Array(buf, e.nor, n * 4);
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) {
+      pos[i * 3 + k] = e.min[k] + (q[i * 3 + k] / 65535) * (e.max[k] - e.min[k]);
+      nor[i * 3 + k] = nr[i * 4 + k] / 127;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(buf, e.col, n * 4), 4, true));
+    g.setIndex(new THREE.BufferAttribute(new Uint16Array(buf, e.idx, e.dreiecke * 3), 1));
+    g.computeBoundingSphere();
+    out[key] = g;
+  }
+  return out;
+}
+const geo = await ladeMeshes();
+const lin = (c) => new THREE.Color().setRGB(c[0], c[1], c[2], THREE.SRGBColorSpace); // -> linear
+
+// ---------- Renderer ----------
+const canvas = $('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: STILL });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NoToneMapping;
+renderer.setPixelRatio(STILL ? 1 : Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const L_RT = 1, L_BACK = 2;               // Ebenen: 0 = Bildschirm, 1 = Hintergrund für Jelly, 2 = Jelly-Rückseiten
+const rtScene = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthTexture: new THREE.DepthTexture(4, 4, THREE.UnsignedIntType) });
+const rtBack = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true });
+
+// ---------- gemeinsame Uniforms ----------
+const G = {
+  uTime: { value: 0 },
+  uKeyDir: { value: new THREE.Vector3(0.38, 0.82, 0.48).normalize() },
+  uBoxDir: { value: new THREE.Vector3(0.78, 0.62, -0.42).normalize() },
+  uBox2Dir: { value: new THREE.Vector3(-0.85, 0.5, -0.2).normalize() },
+  uEnvTop: { value: new THREE.Color(1.0, 1.0, 1.0) },
+  uEnvHor: { value: new THREE.Color(0.80, 0.84, 0.90) },
+  uEnvGround: { value: new THREE.Color(0.45, 0.45, 0.48) },
+  uSceneTex: { value: rtScene.texture },
+  uSceneDepth: { value: rtScene.depthTexture },
+  uBackTex: { value: rtBack.texture },
+  uRes: { value: new THREE.Vector2(4, 4) },
+  uNear: { value: 0.1 }, uFar: { value: 100 },
+  uOrtho: { value: false },
+  uViewDir: { value: new THREE.Vector3(0, 0, 1) },
+  uEyeCol: { value: lin([0.075, 0.085, 0.12]) },
+};
+
+const COMMON = /* glsl */`
+uniform float uTime;
+uniform vec3 uKeyDir, uBoxDir, uBox2Dir;
+uniform vec3 uEnvTop, uEnvHor, uEnvGround;
+uniform vec4 uDef;            // x Stauchung, y/z Neigung, w Hub
+uniform float uH, uW, uScale;
+uniform vec3 uEyeP[2], uEyeT[2], uEyeB[2], uEyeN[2];
+uniform vec2 uEyeS[2];
+uniform int uEyes;
+uniform float uBlink;
+uniform vec3 uEyeCol;
+uniform bool uOrtho;
+uniform vec3 uViewDir;
+
+vec3 deformP(vec3 p) {
+  float hy = clamp(p.y / uH, 0.0, 1.4);
+  float s = uDef.x;
+  vec3 q = p;
+  q.y *= 1.0 + s;
+  q.xz *= inversesqrt(max(1.0 + s, 0.25));
+  float bend = hy * hy;
+  q.x += uDef.y * bend * uH;
+  q.z += uDef.z * bend * uH;
+  q.y += uDef.w;
+  return q;
+}
+vec3 deformN(vec3 n) {
+  float s = uDef.x;
+  float k = sqrt(max(1.0 + s, 0.25));
+  return normalize(vec3(n.x * k, n.y / (1.0 + s), n.z * k));
+}
+// Augen: schwarze Pillen auf der Oberfläche, p im Ruhe-Objektraum
+float eyeMask(vec3 p, float aa, float grow) {
+  float m = 0.0;
+  for (int i = 0; i < 2; i++) {
+    if (i >= uEyes) break;
+    vec3 q = p - uEyeP[i];
+    if (abs(dot(q, uEyeN[i])) > 0.5 * uEyeS[i].y * grow) continue;
+    vec2 hs = 0.5 * uEyeS[i] * grow;
+    float u = dot(q, uEyeT[i]) / hs.x;
+    float v = dot(q, uEyeB[i]) / (hs.y * max(uBlink, 0.07));
+    float d = pow(pow(abs(u), 2.4) + pow(abs(v), 2.4), 1.0 / 2.4) - 1.0;
+    float px = 0.75 * aa / hs.x;
+    m = max(m, 1.0 - smoothstep(-px, px, d));
+  }
+  return m;
+}
+vec3 envCol(vec3 d) {
+  vec3 sky = mix(uEnvHor, uEnvTop, smoothstep(0.0, 0.85, d.y));
+  return mix(uEnvGround, sky, smoothstep(-0.3, 0.06, d.y));
+}
+float softbox(vec3 d, vec3 k, vec2 size, float rr) {
+  vec3 kx = normalize(cross(vec3(0.0, 1.0, 0.0), k));
+  vec3 ky = cross(k, kx);
+  float cz = dot(d, k);
+  if (cz <= 0.05) return 0.0;
+  vec2 uv = vec2(dot(d, kx), dot(d, ky)) / cz;
+  vec2 q = abs(uv) - size;
+  float sd = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - rr;
+  return 1.0 - smoothstep(-0.02, 0.035, sd);
+}
+vec3 viewVec(vec3 wp) { return uOrtho ? normalize(uViewDir) : normalize(cameraPosition - wp); }
+float hash13(vec3 p) { p = fract(p * 0.1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
+vec3 hash33(vec3 p) { p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.xxy + p.yxx) * p.zyx); }
+`;
+
+const VERT = /* glsl */`
+varying vec3 vRest, vObj, vWP, vWN, vVP, vVN;
+varying vec4 vC;
+void main() {
+  vRest = position;
+  vec3 p = deformP(position);
+  vObj = p;
+  vec3 n = deformN(normal);
+  vec4 wp = modelMatrix * vec4(p, 1.0);
+  vWP = wp.xyz;
+  vWN = normalize(mat3(modelMatrix) * n);
+  vec4 vp = viewMatrix * wp;
+  vVP = vp.xyz;
+  vVN = normalize(normalMatrix * n);
+#ifdef USE_COLOR_ALPHA
+  vC = color;
+#else
+  vC = vec4(1.0);
+#endif
+  gl_Position = projectionMatrix * vp;
+}`;
+
+// ---- fest: matt-satiniert, gemalte Zwei-Ton-Schattierung, dunkle Randlinie ----
+const FRAG_FEST = /* glsl */`
+uniform vec3 uLight, uShadow, uRim;
+varying vec3 vRest, vObj, vWP, vWN, vVP, vVN;
+varying vec4 vC;
+void main() {
+  vec3 N = normalize(vWN);
+  if (!gl_FrontFacing) N = -N;
+  vec3 V = viewVec(vWP);
+  float NdV = clamp(dot(N, V), 0.0, 1.0);
+  float ndl = dot(N, uKeyDir);
+  float wrap = clamp((ndl + 0.55) / 1.55, 0.0, 1.0);
+  float t = smoothstep(0.30, 0.78, wrap);
+  vec3 col = mix(uShadow, uLight, t);
+  col *= mix(0.86, 1.0, smoothstep(-0.7, 0.2, N.y));
+  float ao = vC.r;
+  col *= mix(0.58, 1.0, smoothstep(0.15, 0.95, ao));
+  vec3 R = reflect(-V, N);
+  float box = softbox(R, uBoxDir, vec2(0.18, 0.6), 0.25);
+  float F = 0.04 + 0.96 * pow(1.0 - NdV, 5.0);
+  vec3 H = normalize(uKeyDir + V);
+  float sheen = pow(max(dot(N, H), 0.0), 16.0) * 0.10;
+  float g1 = softbox(R, uBoxDir, vec2(0.08, 0.45), 0.05);
+  float g2 = softbox(R, uBox2Dir, vec2(0.05, 0.3), 0.04);
+  col += (box * 0.05 + sheen) * uLight + envCol(R) * F * 0.10 + vec3(g1 * 0.16 + g2 * 0.10);
+  float rim = smoothstep(0.82, 0.975, 1.0 - NdV);
+  col = mix(col, uRim, rim * 0.8);
+  float e = eyeMask(vRest, length(fwidth(vRest)), 1.0);
+  col = mix(col, uEyeCol, e);
+  gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
+}`;
+
+// ---- Jelly: Rückseiten-Tiefe ----
+const FRAG_BACK = /* glsl */`
+varying vec3 vRest, vObj, vWP, vWN, vVP, vVN;
+varying vec4 vC;
+void main() { gl_FragColor = vec4(-vVP.z, 0.0, 0.0, 1.0); }`;
+
+// ---- Jelly: Vorderseite mit Dicke, Absorption, Brechung, Innenkern ----
+const FRAG_JELLY = /* glsl */`
+#include <packing>
+uniform sampler2D uSceneTex, uSceneDepth, uBackTex;
+uniform vec2 uRes;
+uniform float uNear, uFar;
+uniform vec3 uSigma, uCoreSigma, uCoreTint, uScatter, uRim, uLight;
+uniform vec3 uKernC, uKernR;
+uniform mat4 uModelInv;
+uniform float uRefr;
+varying vec3 vRest, vObj, vWP, vWN, vVP, vVN;
+varying vec4 vC;
+float viewZ(float d) { return uOrtho ? orthographicDepthToViewZ(d, uNear, uFar) : perspectiveDepthToViewZ(d, uNear, uFar); }
+void main() {
+  vec2 suv = gl_FragCoord.xy / uRes;
+  vec3 N = normalize(vWN);
+  vec3 V = viewVec(vWP);
+  float NdV = clamp(dot(N, V), 0.0, 1.0);
+  float zF = -vVP.z;
+  float zB = texture2D(uBackTex, suv).r;
+  if (zB <= zF) zB = zF;
+  float zS = -viewZ(texture2D(uSceneDepth, suv).r);
+  float thickObj = max(min(zB, zS) - zF, 0.0) / uScale;
+  float thickN = thickObj / uW + 0.55 * (1.0 - smoothstep(0.0, 0.18 * uH, vRest.y));
+  // Brechung
+  vec3 Nv = normalize(vVN);
+  vec2 off = Nv.xy * uRefr * clamp(thickN, 0.0, 0.7) * vec2(uRes.y / uRes.x, 1.0);
+  vec2 ruv = clamp(suv - off, vec2(0.001), vec2(0.999));
+  float zS2 = -viewZ(texture2D(uSceneDepth, ruv).r);
+  if (zS2 < zF) ruv = suv;
+  vec3 bg = texture2D(uSceneTex, ruv).rgb;
+  // Innenkern: Strahl durch ein Ellipsoid im (verformten) Objektraum
+  float s = uDef.x;
+  vec3 kc = deformP(uKernC - vec3(0.0, 0.10 * uH, 0.0));
+  vec3 kr = uKernR * vec3(1.08, 0.82, 1.0) * vec3(inversesqrt(max(1.0 + s, 0.25)), 1.0 + s, inversesqrt(max(1.0 + s, 0.25)));
+  vec3 rd = normalize((uModelInv * vec4(-V, 0.0)).xyz);
+  vec3 oc = (vObj - kc) / kr;
+  vec3 dd = rd / kr;
+  float a = dot(dd, dd), b = dot(oc, dd), c = dot(oc, oc) - 1.0;
+  float disc = b * b - a * c;
+  float coreLen = 0.0;
+  if (disc > 0.0) {
+    float sq = sqrt(disc);
+    float t0 = (-b - sq) / a, t1 = (-b + sq) / a;
+    coreLen = max(min(t1, thickObj) - max(t0, 0.0), 0.0);
+  }
+  float coreN = coreLen / uW;
+  // Bodenschicht: flaches Ellipsoid unten (dunklere, gesammelte Masse wie in der Vorlage)
+  vec3 fc = deformP(vec3(uKernC.x, 0.0, 0.0));
+  vec3 fr = vec3(uW * 0.62, uH * 0.13, uW * 0.42) * vec3(inversesqrt(max(1.0 + s, 0.25)), 1.0 + s, inversesqrt(max(1.0 + s, 0.25)));
+  vec3 oc2 = (vObj - fc) / fr; vec3 dd2 = rd / fr;
+  float a2 = dot(dd2, dd2), b2 = dot(oc2, dd2), c2 = dot(oc2, oc2) - 1.0;
+  float disc2 = b2 * b2 - a2 * c2;
+  float floorLen = 0.0;
+  if (disc2 > 0.0) { float sq2 = sqrt(disc2); floorLen = max(min((-b2 + sq2) / a2, thickObj) - max((-b2 - sq2) / a2, 0.0), 0.0); }
+  float floorN = floorLen / uW;
+  vec3 Tr = exp(-uSigma * (thickN + 0.06) - uCoreSigma * (coreN + floorN));
+  // klare Kante an Kern und Bodenschicht (gemalte Innenform), satt statt grau
+  Tr *= mix(vec3(1.0), uCoreTint, 0.80 * smoothstep(0.004, 0.025, coreN));
+  Tr *= mix(vec3(1.0), uCoreTint, 0.70 * smoothstep(0.004, 0.025, floorN));
+  float ndl = dot(N, uKeyDir);
+  float lit = clamp(ndl * 0.5 + 0.5, 0.0, 1.0);
+  vec3 col = bg * Tr + uScatter * (1.0 - Tr) * (0.6 + 0.6 * lit);
+  // Boden-Kontakt etwas dunkler
+  col *= mix(0.78, 1.0, smoothstep(0.1, 0.9, vC.r));
+  col *= mix(0.72, 1.0, smoothstep(0.0, 0.10 * uH, vRest.y));
+  // Glanz: Umgebung, zwei Softboxen, harter Sonnenpunkt
+  vec3 R = reflect(-V, N);
+  float F = 0.03 + 0.97 * pow(1.0 - NdV, 5.0);
+  col = col * (1.0 - 0.35 * F) + envCol(R) * F * 0.25;
+  float box = softbox(R, uBoxDir, vec2(0.09, 0.36), 0.05);
+  float box2 = softbox(R, uBox2Dir, vec2(0.06, 0.35), 0.04);
+  vec3 H = normalize(uKeyDir + V);
+  float dots = softbox(R, normalize(uBoxDir + vec3(-0.25, 0.25, 0.1)), vec2(0.035, 0.035), 0.02);
+  col += vec3(box * 0.95 + box2 * 0.30 + dots * 0.9);
+  // dunkle Randlinie
+  float rim = smoothstep(0.84, 0.98, 1.0 - NdV);
+  col = mix(col, uRim, rim * 0.85);
+  float e = eyeMask(vRest, length(fwidth(vRest)), 1.0);
+  col = mix(col, uEyeCol, e);
+  gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
+}`;
+
+// ---- Jelly: Bläschen (nur im Hintergrund-Pass, werden mitgebrochen) ----
+const VERT_BLASE = /* glsl */`
+attribute vec4 aBlase;       // xyz Mitte, w Radius
+varying vec3 vN;
+varying float vR;
+void main() {
+  vec3 c = aBlase.xyz;
+  c += 0.012 * uH * vec3(sin(uTime * 0.9 + aBlase.x * 40.0), sin(uTime * 0.7 + aBlase.y * 37.0), sin(uTime * 0.8 + aBlase.z * 31.0));
+  vec3 p = deformP(c) + position * aBlase.w * 2.2;
+  vN = normalize(normalMatrix * position);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+}`;
+const FRAG_BLASE = /* glsl */`
+uniform vec3 uLight;
+varying vec3 vN;
+void main() {
+  float f = clamp(vN.z, 0.0, 1.0);
+  vec3 col = mix(uLight * 1.15, vec3(1.7), smoothstep(0.5, 1.0, f));
+  gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
+}`;
+
+// ---- Fell: Grundschicht und Schalen ----
+const FUR_COMMON = /* glsl */`
+uniform float uShells, uFurLen, uClump;
+uniform vec3 uRoot, uTip, uRim;
+uniform vec3 uWind;
+// 3D-Zellrauschen: Abstand zur nächsten Zelle (F1) und Zellnummer
+vec2 cellNoise(vec3 x, out vec3 id) {
+  vec3 p = floor(x), f = fract(x);
+  float d1 = 8.0, d2 = 8.0;
+  id = vec3(0.0);
+  for (int k = -1; k <= 1; k++) for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec3 b = vec3(float(i), float(j), float(k));
+    vec3 r = b + hash33(p + b) * 0.85 - f;
+    float d = dot(r, r);
+    if (d < d1) { d2 = d1; d1 = d; id = p + b; } else if (d < d2) { d2 = d; }
+  }
+  return vec2(sqrt(d1), sqrt(d2));
+}
+`;
+const VERT_FUR = /* glsl */`
+attribute float aShell;
+varying vec3 vRest, vWP, vWN, vComb;
+varying float vH;
+varying vec4 vC;
+void main() {
+  float h = (aShell + 1.0) / uShells;
+  vec3 n = normalize(normal);
+  vec3 g = vec3(0.0, -1.0, 0.0);
+  vec3 tang = g - n * dot(g, n);
+  float tl = length(tang);
+  vec3 off = n * uFurLen * h * (0.85 + 0.25 * (1.0 - tl)) + (tang * 1.25 * h + uWind * h * h) * uFurLen;
+  vRest = position;
+  vH = h;
+  vec3 p = deformP(position + off);
+  vec4 wp = modelMatrix * vec4(p, 1.0);
+  vWP = wp.xyz;
+  vWN = normalize(mat3(modelMatrix) * deformN(n));
+  vComb = normalize(mat3(modelMatrix) * (n + tang * 1.6 * h));
+#ifdef USE_COLOR_ALPHA
+  vC = color;
+#else
+  vC = vec4(1.0);
+#endif
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}`;
+const FRAG_FUR = /* glsl */`
+varying vec3 vRest, vWP, vWN, vComb;
+varying float vH;
+varying vec4 vC;
+void main() {
+  float aa = length(fwidth(vRest));
+  if (eyeMask(vRest, aa, 1.0 + 0.6 * vH) > 0.02) discard;
+  vec3 id;
+  vec2 F = cellNoise(vRest * vec3(1.0, 0.42, 1.0) * uClump, id);
+  float rnd = hash13(id * 7.31);
+  float len = 0.35 + 0.65 * rnd;
+  float h = vH / len;
+  if (h > 1.0) discard;
+  float edge = F.y - F.x;                       // Abstand zur Zellgrenze
+  float radius = 1.1 * pow(1.0 - h, 1.1);     // breit an der Wurzel, spitz an der Spitze
+  float fine = hash13(floor(vRest * uClump * 6.0)) - 0.5;
+  if (F.x > radius + fine * 0.10 * h) discard;
+  vec3 N = normalize(vWN);
+  vec3 V = viewVec(vWP);
+  float ndl = dot(N, uKeyDir);
+  float wrap = clamp((ndl + 0.6) / 1.6, 0.0, 1.0);
+  float t = smoothstep(0.2, 0.85, wrap);
+  vec3 base = mix(uRoot, uTip, clamp(0.55 + 0.45 * h * len, 0.0, 1.0));
+  base *= mix(0.70, 1.14, t) * (0.96 + 0.08 * rnd);
+  base *= mix(0.90, 1.0, smoothstep(0.0, 0.35, radius - F.x + 0.1 * h));
+  base *= mix(0.74, 1.06, smoothstep(0.0, 0.9, vRest.y / uH));
+  base *= mix(0.6, 1.0, smoothstep(0.1, 0.9, vC.r));
+  vec3 T = normalize(vComb);
+  vec3 Hh = normalize(uKeyDir + V);
+  float th = dot(T, Hh);
+  float kk = pow(sqrt(max(1.0 - th * th, 0.0)), 60.0) * 0.035 * h * smoothstep(0.3, 0.9, vRest.y / uH);
+  vec3 col = base + kk;
+  gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
+}`;
+const FRAG_FURBASE = /* glsl */`
+varying vec3 vRest, vObj, vWP, vWN, vVP, vVN;
+varying vec4 vC;
+void main() {
+  vec3 N = normalize(vWN);
+  float ndl = dot(N, uKeyDir);
+  float t = smoothstep(0.2, 0.85, clamp((ndl + 0.6) / 1.6, 0.0, 1.0));
+  vec3 col = mix(uRoot, uTip, 0.45) * mix(0.70, 1.1, t) * mix(0.6, 1.0, smoothstep(0.1, 0.9, vC.r)) * mix(0.74, 1.06, smoothstep(0.0, 0.9, vRest.y / uH));
+  float e = eyeMask(vRest, length(fwidth(vRest)), 1.0);
+  col = mix(col, uEyeCol, e);
+  gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
+}`;
+
+// ---------- Wesen (ein Blob) ----------
+function eyeUniforms(st) {
+  const P = [new THREE.Vector3(), new THREE.Vector3()], T = [new THREE.Vector3(), new THREE.Vector3()];
+  const B = [new THREE.Vector3(), new THREE.Vector3()], N = [new THREE.Vector3(), new THREE.Vector3()];
+  const S = [new THREE.Vector2(), new THREE.Vector2()];
+  st.augen.slice(0, 2).forEach((e, i) => { P[i].fromArray(e.p); T[i].fromArray(e.t); B[i].fromArray(e.b); N[i].fromArray(e.n); S[i].set(e.breite * 1.35, e.hoehe * 1.12); });
+  return { uEyeP: { value: P }, uEyeT: { value: T }, uEyeB: { value: B }, uEyeN: { value: N }, uEyeS: { value: S }, uEyes: { value: Math.min(2, st.augen.length) } };
+}
+function farben(st, mat) { const f = st.farben[mat]; return { oben: lin(f.farbe_oben), mitte: lin(f.farbe_mitte), unten: lin(f.farbe_unten), licht: lin(f.farbe_licht), schatten: lin(f.farbe_schatten) }; }
+
+let shellCount = 14;
+const furGeoCache = {};
+function shellGeometry(stufe, lod, count) {
+  const key = `${stufe}_${lod}_${count}`;
+  if (!furGeoCache[key]) {
+    const g = geo[`${stufe}_${lod}`].clone();
+    g.setAttribute('aShell', new THREE.InstancedBufferAttribute(Float32Array.from({ length: count }, (_, i) => i), 1));
+    furGeoCache[key] = g;
+  }
+  return furGeoCache[key];
+}
+
+class Wesen {
+  constructor(stufe, mat, { lod = 'lod0', scale = 1 } = {}) {
+    this.st = data.stufen[stufe - 1];
+    this.stufe = stufe; this.mat = mat; this.scale = scale;
+    this.group = new THREE.Group();
+    this.group.scale.setScalar(scale);
+    const st = this.st;
+    this.U = {
+      ...G,
+      uDef: { value: new THREE.Vector4() },
+      uH: { value: st.hoehe }, uW: { value: st.breite }, uScale: { value: scale },
+      uBlink: { value: 1 },
+      ...eyeUniforms(st),
+    };
+    const g0 = geo[`${stufe}_${lod}`];
+    const F = farben(st, mat);
+    this.F = F;
+    if (mat === 'fest') {
+      const m = new THREE.ShaderMaterial({ uniforms: { ...this.U, uLight: { value: F.oben.clone().multiplyScalar(1.05) }, uShadow: { value: F.unten.clone().multiplyScalar(0.9) }, uRim: { value: F.unten.clone().multiplyScalar(0.5) } }, vertexShader: COMMON + VERT, fragmentShader: COMMON + FRAG_FEST, vertexColors: true });
+      m.shadowSide = THREE.DoubleSide;
+      const mesh = new THREE.Mesh(g0, m); mesh.layers.enable(L_RT); mesh.castShadow = true;
+      this.group.add(mesh);
+    } else if (mat === 'jelly') {
+      const target = F.oben;
+      const sig = new THREE.Vector3(...[target.r, target.g, target.b].map(c => -Math.log(Math.max(c, 0.004)) / 0.45));
+      const tint = new THREE.Vector3(...['r', 'g', 'b'].map(k => Math.min(1, Math.pow(F.unten[k] / Math.max(F.oben[k], 0.003), 1.15))));
+      this.U.uModelInv = { value: new THREE.Matrix4() };
+      const front = new THREE.ShaderMaterial({
+        uniforms: { ...this.U, uSigma: { value: sig }, uCoreSigma: { value: sig.clone().multiplyScalar(0.5) }, uCoreTint: { value: tint }, uScatter: { value: F.licht.clone().multiplyScalar(0.10) },
+          uRim: { value: F.unten.clone().multiplyScalar(0.45) }, uLight: { value: F.licht }, uRefr: { value: 0.035 },
+          uKernC: { value: new THREE.Vector3().fromArray(st.kern.mitte) }, uKernR: { value: new THREE.Vector3().fromArray(st.kern.radien) } },
+        vertexShader: COMMON + VERT, fragmentShader: COMMON + FRAG_JELLY, vertexColors: true });
+      front.shadowSide = THREE.DoubleSide;
+      const mf = new THREE.Mesh(g0, front); mf.renderOrder = 10; mf.castShadow = true;
+      const back = new THREE.ShaderMaterial({ uniforms: this.U, vertexShader: COMMON + VERT, fragmentShader: COMMON + FRAG_BACK, side: THREE.BackSide, vertexColors: true });
+      const mb = new THREE.Mesh(g0, back); mb.layers.set(L_BACK);
+      // Bläschen
+      const bl = st.blasen.slice(0, 6 + Math.round(st.stufe * 0.8));
+      const bg = new THREE.InstancedBufferGeometry().copy(new THREE.IcosahedronGeometry(1, 1));
+      bg.instanceCount = bl.length;
+      bg.setAttribute('aBlase', new THREE.InstancedBufferAttribute(new Float32Array(bl.flat()), 4));
+      const bm = new THREE.ShaderMaterial({ uniforms: { ...this.U, uLight: { value: F.licht } }, vertexShader: COMMON + VERT_BLASE, fragmentShader: COMMON + FRAG_BLASE });
+      const mbl = new THREE.Mesh(bg, bm); mbl.layers.set(L_RT); mbl.frustumCulled = false;
+      this.group.add(mf, mb, mbl);
+      this.front = front;
+    } else {
+      const furU = { uShells: { value: shellCount }, uFurLen: { value: 0.034 + 0.030 * st.hoehe }, uClump: { value: 8.5 / Math.pow(st.hoehe, 0.6) }, uRoot: { value: F.unten.clone().multiplyScalar(0.78) }, uTip: { value: F.oben.clone().multiplyScalar(1.04) }, uRim: { value: F.unten.clone().multiplyScalar(0.5) }, uWind: { value: new THREE.Vector3() } };
+      this.furU = furU;
+      const baseM = new THREE.ShaderMaterial({ uniforms: { ...this.U, ...furU }, vertexShader: COMMON + VERT, fragmentShader: COMMON + FUR_COMMON + FRAG_FURBASE, vertexColors: true });
+      baseM.shadowSide = THREE.DoubleSide;
+      const base = new THREE.Mesh(g0, baseM); base.layers.enable(L_RT); base.castShadow = true;
+      const shellM = new THREE.ShaderMaterial({ uniforms: { ...this.U, ...furU }, vertexShader: COMMON + FUR_COMMON + VERT_FUR, fragmentShader: COMMON + FUR_COMMON + FRAG_FUR, vertexColors: true, side: THREE.DoubleSide });
+      const shells = new THREE.InstancedMesh(shellGeometry(stufe, 'lod1', 24), shellM, shellCount);
+      shells.frustumCulled = false;
+      this.shells = shells;
+      this.group.add(base, shells);
+    }
+    // Animation
+    this.phase = Math.random() * 10;
+    this.sq = 0; this.sqV = 0; this.lift = 0; this.liftV = 0; this.air = false; this.antic = 0;
+    this.blinkT = 1 + Math.random() * 4; this.blinkK = 0;
+    const p = { jelly: [0.035, 2.3, 26, 3.2, 0.020], fest: [0.012, 1.5, 60, 9.0, 0.006], fell: [0.018, 1.7, 40, 6.0, 0.012] }[mat];
+    [this.amp, this.freq, this.k, this.damp, this.swayAmp] = p;
+  }
+  setShells(n) { if (this.shells) { this.shells.count = n; this.furU.uShells.value = n; } }
+  hop() { if (!this.air && this.antic <= 0) this.antic = 0.13; }
+  update(dt, t) {
+    const U = this.U;
+    // Blinzeln
+    this.blinkT -= dt;
+    if (this.blinkT <= 0) { this.blinkK = 0.16; this.blinkT = 2.5 + Math.random() * 4.5; }
+    if (this.blinkK > 0) { this.blinkK -= dt; const x = 1 - Math.abs(this.blinkK / 0.08 - 1); U.uBlink.value = 1 - Math.max(0, Math.min(1, x)); } else U.uBlink.value = 1;
+    // Hüpfen: Ausholen, Flug, Landung
+    let target = this.amp * Math.sin(t * this.freq + this.phase);
+    if (this.antic > 0) {
+      this.antic -= dt; target = -0.22;
+      if (this.antic <= 0) { this.air = true; this.liftV = 1.25 * Math.sqrt(this.st.hoehe) * 2.2; }
+    }
+    if (this.air) {
+      target = 0.16;
+      this.liftV -= 9.8 * dt * 0.9;
+      this.lift += this.liftV * dt;
+      if (this.lift <= 0) { this.lift = 0; this.air = false; this.sqV -= 3.8 + this.liftV * -0.2; onLand(this); }
+    }
+    const acc = -this.k * (this.sq - target) - this.damp * this.sqV;
+    this.sqV += acc * dt; this.sq += this.sqV * dt;
+    const sway = this.swayAmp * Math.sin(t * 0.9 + this.phase * 1.7) + (this.mat === 'jelly' ? this.sqV * 0.01 : 0);
+    U.uDef.value.set(this.sq, sway, this.swayAmp * 0.6 * Math.sin(t * 0.73 + this.phase), this.lift / this.scale);
+    if (this.furU) this.furU.uWind.value.set(-sway * 6, -this.sqV * 0.25, 0);
+    if (this.front) this.U.uModelInv.value.copy(this.group.matrixWorld).invert();
+  }
+}
+
+// ---------- Partikel (Tropfen, Flusen, Staub) ----------
+const MAXP = 600;
+const pGeo = new THREE.BufferGeometry();
+const pPos = new Float32Array(MAXP * 3), pCol = new Float32Array(MAXP * 4), pSize = new Float32Array(MAXP), pKind = new Float32Array(MAXP);
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+pGeo.setAttribute('aCol', new THREE.BufferAttribute(pCol, 4));
+pGeo.setAttribute('aSize', new THREE.BufferAttribute(pSize, 1));
+pGeo.setAttribute('aKind', new THREE.BufferAttribute(pKind, 1));
+const pMat = new THREE.ShaderMaterial({
+  uniforms: { uPx: { value: 800 }, uOrtho: G.uOrtho },
+  vertexShader: `attribute vec4 aCol; attribute float aSize; attribute float aKind; uniform float uPx; uniform bool uOrtho; varying vec4 vCol; varying float vKind;
+    void main(){ vCol = aCol; vKind = aKind; vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv; gl_PointSize = uOrtho ? aSize * uPx : aSize * uPx / max(-mv.z, 0.01); }`,
+  fragmentShader: `varying vec4 vCol; varying float vKind;
+    void main(){ vec2 q = gl_PointCoord*2.0-1.0; float r = length(q); if (r > 1.0) discard;
+      vec3 c = vCol.rgb; float a = vCol.a;
+      if (vKind < 0.5) { float z = sqrt(1.0 - r*r); vec3 n = vec3(q.x, -q.y, z); float l = max(dot(n, normalize(vec3(0.4,0.6,0.7))),0.0); c = c*(0.55+0.6*l) + pow(max(dot(reflect(vec3(0,0,-1),n), normalize(vec3(0.4,0.6,0.7))),0.0),40.0); a *= smoothstep(1.0,0.85,r); }
+      else if (vKind < 1.5) { a *= (1.0 - smoothstep(0.2, 1.0, r)) * (0.6 + 0.4*fract(sin(dot(gl_PointCoord, vec2(12.9,78.2)))*43758.5)); }
+      else { a *= (1.0 - smoothstep(0.0, 1.0, r)) * 0.55; }
+      gl_FragColor = vec4(c, a);
+      #include <colorspace_fragment>
+    }`,
+  transparent: true, depthWrite: false,
+});
+const points = new THREE.Points(pGeo, pMat);
+points.frustumCulled = false;
+const parts = [];
+function emit(kind, pos, vel, col, size, life) {
+  if (parts.length >= MAXP) parts.shift();
+  parts.push({ kind, p: pos.clone(), v: vel.clone(), c: col, size, life, age: 0 });
+}
+function onLand(b) {
+  if (STILL) return;
+  const wp = new THREE.Vector3(); b.group.getWorldPosition(wp);
+  const s = b.scale, w = b.st.breite * s;
+  const n = b.mat === 'jelly' ? 14 : b.mat === 'fell' ? 18 : 12;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+    const p = wp.clone().addScaledVector(dir, w * 0.45); p.y += 0.01 * s;
+    if (b.mat === 'jelly') emit(0, p, dir.multiplyScalar(0.6 + Math.random()).setY(1.2 + Math.random() * 1.2).multiplyScalar(s * 1.2), b.F.mitte, (0.012 + Math.random() * 0.014) * s * 2, 0.9);
+    else if (b.mat === 'fell') emit(1, p.setY(p.y + Math.random() * b.st.hoehe * s * 0.6), dir.multiplyScalar(0.25 + Math.random() * 0.3).setY(0.25 + Math.random() * 0.3).multiplyScalar(s), b.F.oben, (0.012 + Math.random() * 0.012) * s * 2, 1.8);
+    else emit(2, p, dir.multiplyScalar(0.5 + Math.random() * 0.4).setY(0.12).multiplyScalar(s), new THREE.Color(0.78, 0.74, 0.68), (0.04 + Math.random() * 0.03) * s * 2, 0.8);
+  }
+}
+function updateParts(dt) {
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const q = parts[i]; q.age += dt;
+    if (q.age > q.life) { parts.splice(i, 1); continue; }
+    if (q.kind === 0) { q.v.y -= 6.5 * dt; if (q.p.y < 0) { q.p.y = 0; q.v.multiplyScalar(0.3); q.v.y = Math.abs(q.v.y) * 0.2; } }
+    else if (q.kind === 1) { q.v.y -= 0.35 * dt; q.v.x += Math.sin(q.age * 3 + i) * 0.1 * dt; q.v.multiplyScalar(1 - 1.2 * dt); }
+    else { q.v.multiplyScalar(1 - 3 * dt); q.size *= 1 + 0.9 * dt; }
+    q.p.addScaledVector(q.v, dt);
+  }
+  for (let i = 0; i < MAXP; i++) {
+    const q = parts[i];
+    if (!q) { pSize[i] = 0; continue; }
+    pPos.set([q.p.x, q.p.y, q.p.z], i * 3);
+    const fade = 1 - Math.pow(q.age / q.life, 2);
+    pCol.set([q.c.r, q.c.g, q.c.b, fade], i * 4);
+    pSize[i] = q.size; pKind[i] = q.kind;
+  }
+  pGeo.attributes.position.needsUpdate = pGeo.attributes.aCol.needsUpdate = pGeo.attributes.aSize.needsUpdate = pGeo.attributes.aKind.needsUpdate = true;
+}
+
+// ---------- Szenen ----------
+const stageEl = $('stage');
+let mode = 'vergleich';
+let scene, camera, controls, blobs = [], ground = null, clear = new THREE.Color(1, 1, 1);
+const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.01;
+sun.layers.enableAll(); sun.target.layers.enableAll();   // Licht auch im Hintergrund-Pass der Jellys
+
+function buildVergleich() {
+  scene = new THREE.Scene();
+  const W = VORLAGE.w / VORLAGE.px, H = VORLAGE.h / VORLAGE.px;
+  camera = new THREE.OrthographicCamera(0, W, 0, -H, -20, 20);
+  camera.position.set(0, 0, 10); camera.lookAt(0, 0, 0);
+  blobs = [];
+  for (const mat of MATS) for (const b of vermessung.reihen[mat]) {
+    const blob = new Wesen(b.stufe, mat, { lod: 'lod0' });
+    blob.group.position.set((b.x0 + b.x1) / 2 / VORLAGE.px, -b.y1 / VORLAGE.px, 0);
+    blob.ref = b;
+    scene.add(blob.group); blobs.push(blob);
+  }
+  clear.setRGB(1, 1, 1);
+  stageEl.style.aspectRatio = `${VORLAGE.w} / ${VORLAGE.h}`;
+}
+
+let stageSel = { mat: 'jelly', stufe: 13 }, stageBg = 'hell', spin = true;
+function addGround(color, size) {
+  const gm = new THREE.ShadowMaterial({ opacity: 0.22, color: 0x0a2030, depthWrite: false });
+  ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size), gm);
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; ground.layers.enable(L_RT);
+  scene.add(ground);
+}
+function buildBuehne() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(28, 1, 0.05, 50);
+  const b = new Wesen(stageSel.stufe, stageSel.mat, { lod: 'lod0', scale: 1 / data.stufen[stageSel.stufe - 1].hoehe * 0.9 });
+  blobs = [b]; scene.add(b.group);
+  camera.position.set(0.0, 0.75, 3.3);
+  controls = new OrbitControls(camera, canvas);
+  controls.target.set(0, 0.42, 0); controls.enableDamping = true; controls.minDistance = 1.2; controls.maxDistance = 7;
+  controls.autoRotate = spin; controls.autoRotateSpeed = 1.2; controls.enablePan = false; controls.maxPolarAngle = Math.PI * 0.49;
+  controls.update();
+  addGround(0, 12);
+  sun.position.set(2.2, 4.5, 2.6); sun.target.position.set(0, 0.3, 0);
+  const sc = sun.shadow.camera; sc.left = -1.5; sc.right = 1.5; sc.top = 1.5; sc.bottom = -1.5; sc.near = 0.5; sc.far = 12; sc.updateProjectionMatrix();
+  scene.add(sun, sun.target);
+  clear.copy(stageBg === 'hell' ? lin([0.96, 0.95, 0.92]) : lin([0.20, 0.27, 0.24]));
+  stageEl.style.aspectRatio = window.innerWidth < 640 ? '1 / 1.05' : '16 / 9';
+}
+function buildBrett() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(32, 1, 0.1, 80);
+  camera.position.set(0, 7.2, 6.4); camera.lookAt(0, 0, 0.25);
+  blobs = [];
+  const cell = 1.0;
+  for (let i = 0; i < 36; i++) {
+    const x = i % 6, z = Math.floor(i / 6);
+    const stufe = 1 + Math.floor(Math.pow(Math.random(), 1.6) * 13);
+    const mat = MATS[Math.floor(Math.random() * 3)];
+    const st = data.stufen[stufe - 1];
+    const s = (0.42 + 0.48 * (stufe - 1) / 12) / Math.max(st.breite, st.hoehe * 0.9);
+    const b = new Wesen(stufe, mat, { lod: 'lod1', scale: s });
+    b.setShells(shellCount);
+    b.group.position.set((x - 2.5) * cell, 0, (z - 2.5) * cell);
+    scene.add(b.group); blobs.push(b);
+  }
+  // Brett: helle Platte mit Zellen
+  const tiles = new THREE.Group();
+  for (let i = 0; i < 36; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.06, 0.94), new THREE.MeshLambertMaterial({ color: (i + Math.floor(i / 6)) % 2 ? 0xd9cdb4 : 0xe6dcc6 }));
+    m.position.set((i % 6 - 2.5), -0.03, (Math.floor(i / 6) - 2.5)); m.receiveShadow = true; tiles.add(m);
+    const proxy = new THREE.Mesh(m.geometry, new THREE.MeshLambertMaterial({ color: m.material.color, depthWrite: false }));
+    proxy.position.copy(m.position); proxy.layers.set(L_RT); tiles.add(proxy);
+  }
+  scene.add(tiles);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x8a8070, 2.2); hemi.layers.enableAll(); scene.add(hemi);
+  sun.position.set(3.5, 9, 4); sun.target.position.set(0, 0, 0);
+  const sc = sun.shadow.camera; sc.left = -4.2; sc.right = 4.2; sc.top = 4.2; sc.bottom = -4.2; sc.near = 1; sc.far = 25; sc.updateProjectionMatrix();
+  scene.add(sun, sun.target);
+  clear.copy(lin([0.33, 0.42, 0.36]));
+  stageEl.style.aspectRatio = window.innerWidth < 640 ? '3 / 4' : '16 / 10';
+}
+
+function disposeScene() {
+  if (controls) { controls.dispose(); controls = null; }
+  if (scene) scene.traverse(o => { if (o.material && o.material.dispose) o.material.dispose(); });
+  parts.length = 0;
+  animFns = [];
+}
+function setMode(m) {
+  disposeScene();
+  mode = m;
+  for (const t of document.querySelectorAll('.tabs button')) t.setAttribute('aria-selected', String(t.dataset.mode === m));
+  for (const id of ['vergleich', 'buehne', 'brett', 'schnitt', 'editor']) $('ctl-' + id).hidden = id !== m;
+  if (m !== 'schnitt') { for (const l of labels) l.el.remove(); labels = []; }
+  const cmp = m === 'vergleich';
+  $('ref').hidden = !cmp; $('wipeLine').hidden = !cmp; $('tagL').hidden = !cmp; $('tagR').hidden = !cmp;
+  if (m === 'vergleich') buildVergleich(); else if (m === 'buehne') buildBuehne(); else if (m === 'schnitt') buildSchnitt(); else if (m === 'editor') buildEditor(); else buildBrett();
+  scene.add(points);
+  resize();
+  applyWipe();
+}
+
+// ---------- Schnittlinien (Modulsystem Stufe 1) ----------
+let SL = null, animFns = [], schnittSel = 'giraffe', zeigSkelett = false, zeigVerdeckt = true, labels = [];
+const texLoader = new THREE.TextureLoader();
+const slCache = {};
+async function ladeSchnittDaten() { if (!SL) SL = await fetch('assets/schnittlinien.json').then(r => r.json()); return SL; }
+async function ladeGanz(name) {
+  if (slCache[name]) return slCache[name];
+  const m = SL.modelle[name], e = m.anzeige;
+  const b64 = (await fetch(m.mesh).then(r => r.text())).trim();
+  const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const buf = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  const n = e.vertices;
+  const q = new Uint16Array(buf, e.pos, n * 3), nr = new Int8Array(buf, e.nor, n * 4), uq = new Uint16Array(buf, e.uv, n * 2);
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) {
+    for (let k = 0; k < 3; k++) { pos[i * 3 + k] = e.min[k] + (q[i * 3 + k] / 65535) * (e.max[k] - e.min[k]); nor[i * 3 + k] = nr[i * 4 + k] / 127; }
+    uv[i * 2] = uq[i * 2] / 65535; uv[i * 2 + 1] = uq[i * 2 + 1] / 65535;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setIndex(new THREE.BufferAttribute(e.idx32 ? new Uint32Array(buf, e.idx, e.dreiecke * 3) : new Uint16Array(buf, e.idx, e.dreiecke * 3), 1));
+  g.computeBoundingSphere();
+  const t = await texLoader.loadAsync(m.textur);
+  t.colorSpace = THREE.SRGBColorSpace; t.flipY = true; t.anisotropy = 4;   // UVs aus pymeshlab: Ursprung unten links
+  return (slCache[name] = { g, t });
+}
+const TEILFARBE = { hals: 0xe0218a, kopf: 0xff5fd2, schwanz: 0xf5b800, bein: 0x00b5e2, arm: 0xff7a1a, ohr: 0x29c46a };
+const farbeFuer = (teil) => TEILFARBE[teil.split('_')[0]] ?? 0xffffff;
+const TEILNAME = { hals: 'Halsansatz', kopf: 'Kopf', schwanz: 'Schwanzwurzel', bein: 'Bein', arm: 'Arm', ohr: 'Ohr' };
+function buildSchnitt() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(30, 1, 0.05, 60);
+  stageEl.style.aspectRatio = window.innerWidth < 640 ? '1 / 1.1' : '16 / 9';
+  clear.copy(lin([0.95, 0.94, 0.91]));
+  blobs = []; animFns = [];
+  for (const l of labels) l.el.remove();
+  labels = [];
+  const data = SL && slCache[schnittSel];
+  if (!data) { ladeSchnittDaten().then(() => ladeGanz(schnittSel)).then(() => { if (mode === 'schnitt') setMode('schnitt'); }); return; }
+  const M = SL.modelle[schnittSel];
+  $('schnittHinweis').hidden = !(M.hinweise && M.hinweise.length);
+  $('schnittHinweis').innerHTML = (M.hinweise || []).map(h => '<b>Hinweis:</b> ' + h).join('<br>');
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x9a8f80, 1.8); hemi.layers.enableAll(); scene.add(hemi);
+  sun.position.set(2.5, 5, 3.2); sun.target.position.set(0, 0, 0);
+  const sc = sun.shadow.camera; sc.left = -1.6; sc.right = 1.6; sc.top = 1.6; sc.bottom = -1.6; sc.near = 0.5; sc.far = 16; sc.updateProjectionMatrix();
+  scene.add(sun, sun.target);
+  const root = new THREE.Group(); scene.add(root);
+  const minY = M.anzeige.min[1];
+  root.position.y = -minY;
+  const mat = new THREE.MeshStandardMaterial({ map: data.t, roughness: 0.85, metalness: 0 });
+  const mesh = new THREE.Mesh(data.g, mat); mesh.castShadow = true; mesh.receiveShadow = true;
+  root.add(mesh);
+  addGround(0, 12);
+  for (const [teil, s] of Object.entries(Q.has('ohne') ? {} : M.schnitte)) {
+    const pts = s.punkte.map(p => new THREE.Vector3(...p));
+    const kurve = new THREE.CatmullRomCurve3(pts, true, 'centripetal');
+    const geo = new THREE.TubeGeometry(kurve, Math.max(60, pts.length * 2), 0.0075, 6, true);
+    const col = s.unsicher ? 0x8d949a : farbeFuer(teil);
+    const sicht = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col }));
+    sicht.renderOrder = 5; root.add(sicht);
+    if (zeigVerdeckt) {
+      const durch = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, depthTest: false }));
+      durch.renderOrder = 6; root.add(durch);
+    }
+    const el = document.createElement('span');
+    el.className = 'tag'; el.style.top = '0'; el.style.left = '0';
+    const [art, nr] = teil.split('_');
+    el.textContent = (TEILNAME[art] || art) + (nr ? ' ' + nr.toUpperCase() : '') + (s.unsicher ? ' · unsicher' : s.methode === 'gesetzt' ? ' · gesetzt' : '');
+    el.style.background = '#' + col.toString(16).padStart(6, '0');
+    el.style.color = '#081b25';
+    stageEl.appendChild(el);
+    labels.push({ el, p: new THREE.Vector3(...s.mitte), root });
+  }
+  if (zeigSkelett) {
+    const arr = new Float32Array(M.skelett.flat(2));
+    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    const ls = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0xc2410c, depthTest: false, transparent: true, opacity: 0.8 }));
+    ls.renderOrder = 7; root.add(ls);
+  }
+  const hoehe = M.anzeige.max[1] - M.anzeige.min[1];
+  const ziel = new THREE.Vector3(0, hoehe * 0.5, 0), dist = 2.2 + hoehe * 1.1;
+  camera.position.set(dist * 0.62, ziel.y + dist * 0.18, dist * 0.78);
+  if (Q.has('seite')) camera.position.set(dist, ziel.y + dist * 0.08, 0.001);
+  controls = new OrbitControls(camera, canvas);
+  controls.target.copy(ziel); controls.enableDamping = true; controls.minDistance = 0.8; controls.maxDistance = 9; controls.enablePan = false; controls.maxPolarAngle = Math.PI * 0.49;
+  controls.autoRotate = !STILL; controls.autoRotateSpeed = 0.8;
+  controls.update();
+}
+const _v = new THREE.Vector3();
+function updateLabels() {
+  if (mode !== 'schnitt' || !labels.length) return;
+  const r = stageEl.getBoundingClientRect();
+  for (const l of labels) {
+    _v.copy(l.p).applyMatrix4(l.root.matrixWorld).project(camera);
+    const x = (_v.x * 0.5 + 0.5) * r.width, y = (-_v.y * 0.5 + 0.5) * r.height;
+    l.el.style.transform = `translate(${Math.round(x + 10)}px, ${Math.round(y - 10)}px)`;
+    l.el.hidden = _v.z > 1;
+  }
+}
+for (const c of $('schnittChips').children) c.onclick = () => { schnittSel = c.dataset.m; for (const x of $('schnittChips').children) x.setAttribute('aria-pressed', String(x === c)); setMode('schnitt'); };
+$('skelBtn').onclick = () => { zeigSkelett = !zeigSkelett; $('skelBtn').setAttribute('aria-pressed', String(zeigSkelett)); setMode('schnitt'); };
+$('xrayBtn').onclick = () => { zeigVerdeckt = !zeigVerdeckt; $('xrayBtn').setAttribute('aria-pressed', String(zeigVerdeckt)); setMode('schnitt'); };
+
+// ---------- Editor: Elemente an Sockel andocken (Modulsystem) ----------
+let EL = null, edRumpf = 'giraffe:rumpf', edWahl = {}, edZeigSockel = true, edBlobStufe = 9, edBlobMat = 'fest';
+const PASST = { hals: ['hals', 'kopf'], kopf: ['kopf'], bein: ['bein', 'arm'], arm: ['arm', 'bein'], schwanz: ['schwanz'], ohr: ['ohr'] };
+const TYPNAME = { hals: 'Hals', kopf: 'Kopf', bein: 'Bein', arm: 'Arm', schwanz: 'Schwanz', ohr: 'Ohr', rumpf: 'Rumpf' };
+const MODELLNAME = { giraffe: 'Giraffe', spinne: 'Spinne', rex: 'Rex', goldie: 'Retriever' };
+async function ladeElemente() {
+  if (EL) return EL;
+  const kat = await fetch('assets/elemente.json').then(r => r.json());
+  const b64 = (await fetch('assets/elemente-mesh.txt').then(r => r.text())).trim();
+  const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const buf = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  const geos = {};
+  for (const [key, e] of Object.entries(kat.elemente)) {
+    const n = e.vertices;
+    const q = new Uint16Array(buf, e.pos, n * 3), nr = new Int8Array(buf, e.nor, n * 4), uq = new Uint16Array(buf, e.uv, n * 2);
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      for (let k = 0; k < 3; k++) { pos[i * 3 + k] = e.min[k] + (q[i * 3 + k] / 65535) * (e.max[k] - e.min[k]); nor[i * 3 + k] = nr[i * 4 + k] / 127; }
+      uv[i * 2] = uq[i * 2] / 65535; uv[i * 2 + 1] = uq[i * 2 + 1] / 65535;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.setIndex(new THREE.BufferAttribute(e.idx32 ? new Uint32Array(buf, e.idx, e.dreiecke * 3) : new Uint16Array(buf, e.idx, e.dreiecke * 3), 1));
+    g.computeBoundingSphere();
+    geos[key] = g;
+  }
+  const mats = {};
+  await Promise.all(Object.entries(kat.modelle).map(async ([name, m]) => {
+    const t = await texLoader.loadAsync(m.textur);
+    t.colorSpace = THREE.SRGBColorSpace; t.flipY = true; t.anisotropy = 4;
+    mats[name] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
+  }));
+  EL = { kat, geos, mats };
+  return EL;
+}
+// Rahmen: Mitte, Richtung (vom Körper weg), Radius; Drehung so, dass Richtung auf Richtung liegt und "oben" erhalten bleibt
+const _up = new THREE.Vector3(0, 1, 0), _fw = new THREE.Vector3(0, 0, 1);
+function obenIn(n) { const r = Math.abs(n.dot(_up)) > 0.9 ? _fw : _up; return r.clone().addScaledVector(n, -r.dot(n)).normalize(); }
+function rahmenDrehung(nVon, nZu) {
+  const q1 = new THREE.Quaternion().setFromUnitVectors(nVon, nZu);
+  const u1 = obenIn(nVon).applyQuaternion(q1), u2 = obenIn(nZu);
+  const ang = Math.atan2(new THREE.Vector3().crossVectors(u1, u2).dot(nZu), u1.dot(u2));
+  return new THREE.Quaternion().setFromAxisAngle(nZu, ang).multiply(q1);
+}
+function elementMesh(key) {
+  const e = EL.kat.elemente[key];
+  const m = new THREE.Mesh(EL.geos[key], EL.mats[e.modell]);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+const SOCKELFARBE = { hals: 0xe0218a, kopf: 0xff5fd2, bein: 0x00b5e2, arm: 0xff7a1a, schwanz: 0xf5b800, ohr: 0x29c46a };
+function sockelRing(s) {
+  const t = new THREE.Mesh(new THREE.TorusGeometry(s.radius, Math.max(0.006, s.radius * 0.08), 8, 40),
+    new THREE.MeshBasicMaterial({ color: SOCKELFARBE[s.typ] ?? 0xffffff, transparent: true, opacity: 0.85, depthTest: false }));
+  t.position.fromArray(s.mitte);
+  t.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3().fromArray(s.normale).normalize());
+  t.renderOrder = 8;
+  return t;
+}
+// Element 'key' an Sockel 's' (in Koordinaten von 'eltern') andocken; rekursiv für die Sockel des Elements
+function dockeAn(eltern, s, key, pfad, slots, tiefe) {
+  const e = EL.kat.elemente[key];
+  const ring = e.ring;
+  const halter = new THREE.Group();
+  const ns = new THREE.Vector3().fromArray(s.normale).normalize();
+  const ne = new THREE.Vector3().fromArray(ring.normale).normalize();
+  const k = THREE.MathUtils.clamp(s.radius / ring.radius, 0.35, 3.0);
+  const eigen = key.endsWith(':' + s.name) && key.split(':')[0] === s.modell;   // Original am eigenen Platz: ohne Versenken
+  halter.quaternion.copy(rahmenDrehung(ne, ns));
+  halter.scale.setScalar(k);
+  halter.position.fromArray(s.mitte).addScaledVector(ns, eigen ? 0 : -0.22 * s.radius);
+  const inhalt = new THREE.Group();
+  inhalt.position.fromArray(ring.mitte).negate();
+  inhalt.add(elementMesh(key));
+  halter.add(inhalt);
+  eltern.add(halter);
+  sammleSockel(inhalt, e.sockel.map(x => ({ ...x, modell: e.modell })), pfad, slots, tiefe + 1);
+}
+function sammleSockel(gruppe, sockel, pfad, slots, tiefe) {
+  for (const s of sockel) {
+    const p = pfad ? pfad + '/' + s.name : s.name;
+    slots.push({ pfad: p, sockel: s, tiefe });
+    if (edZeigSockel) gruppe.add(sockelRing(s));
+    let wahl = edWahl[p];
+    if (wahl === undefined) wahl = edWahl[p] = (s.modell && EL.kat.elemente[s.modell + ':' + s.name]) ? s.modell + ':' + s.name : '';
+    if (wahl && EL.kat.elemente[wahl]) dockeAn(gruppe, s, wahl, p, slots, tiefe);
+  }
+}
+function blobSockel(b) {
+  // Sockel auf dem Grundblob: Strahlen aus der Körpermitte in feste Richtungen, Treffer auf der Oberfläche
+  const st = b.st, W = st.breite, H = st.hoehe;
+  const mesh = b.group.children[0];
+  const ray = new THREE.Raycaster();
+  const c = new THREE.Vector3(0, H * 0.5, 0);
+  const def = [
+    ['hals', 'hals', [0, 1, 0.12], 0.17], ['ohr_l', 'ohr', [0.75, 0.6, 0.05], 0.07], ['ohr_r', 'ohr', [-0.75, 0.6, 0.05], 0.07],
+    ['arm_l', 'arm', [1, 0.0, 0.25], 0.08], ['arm_r', 'arm', [-1, 0.0, 0.25], 0.08],
+    ['bein_vl', 'bein', [0.5, -0.8, 0.45], 0.11], ['bein_vr', 'bein', [-0.5, -0.8, 0.45], 0.11],
+    ['bein_hl', 'bein', [0.5, -0.8, -0.45], 0.11], ['bein_hr', 'bein', [-0.5, -0.8, -0.45], 0.11],
+    ['schwanz', 'schwanz', [0, -0.25, -1], 0.07],
+  ];
+  const out = [];
+  const g = mesh.geometry;
+  const probe = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+  probe.updateMatrixWorld();
+  for (const [name, typ, d, r] of def) {
+    const dir = new THREE.Vector3(...d).normalize();
+    ray.set(c.clone().addScaledVector(dir, Math.max(W, H) * 1.5), dir.clone().negate());
+    const hit = ray.intersectObject(probe)[0];
+    if (!hit) continue;
+    out.push({ name, typ, mitte: hit.point.toArray(), normale: dir.toArray(), radius: r * W });
+  }
+  return out;
+}
+function buildEditor() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(30, 1, 0.05, 60);
+  stageEl.style.aspectRatio = window.innerWidth < 640 ? '1 / 1.1' : '16 / 9';
+  clear.copy(lin([0.95, 0.94, 0.91]));
+  blobs = []; animFns = [];
+  if (!EL) { ladeElemente().then(() => { if (mode === 'editor') setMode('editor'); }); return; }
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x9a8f80, 1.8); hemi.layers.enableAll(); scene.add(hemi);
+  sun.position.set(2.5, 5, 3.2); sun.target.position.set(0, 0, 0);
+  const sc = sun.shadow.camera; sc.left = -2; sc.right = 2; sc.top = 2; sc.bottom = -2; sc.near = 0.5; sc.far = 16; sc.updateProjectionMatrix();
+  scene.add(sun, sun.target);
+  const root = new THREE.Group(); scene.add(root);
+  const slots = [];
+  $('edBlobOpt').hidden = edRumpf !== 'blob';
+  if (edRumpf === 'blob') {
+    const st = data.stufen[edBlobStufe - 1];
+    const b = new Wesen(edBlobStufe, edBlobMat, { lod: 'lod0', scale: 1 });
+    b.update(0, 0); blobs.push(b);
+    root.add(b.group);
+    sammleSockel(b.group, blobSockel(b), '', slots, 0);
+    if (edWahl.hals) b.U.uEyes.value = 0;   // ein angedockter Kopf bringt eigene Augen mit
+    root.scale.setScalar(0.9 / st.hoehe);
+  } else {
+    const e = EL.kat.elemente[edRumpf];
+    root.add(elementMesh(edRumpf));
+    sammleSockel(root, e.sockel.map(x => ({ ...x, modell: e.modell })), '', slots, 0);
+  }
+  // auf den Boden stellen und Kamera ausrichten
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root, true);
+  root.position.y -= box.min.y;
+  root.position.x -= (box.min.x + box.max.x) / 2; root.position.z -= (box.min.z + box.max.z) / 2;
+  const size = box.getSize(new THREE.Vector3());
+  addGround(0, 20);
+  const ziel = new THREE.Vector3(0, size.y * 0.5, 0), dist = 1.6 + Math.max(size.x, size.y, size.z) * 1.6;
+  camera.position.set(dist * 0.62, ziel.y + dist * 0.2, dist * 0.78);
+  controls = new OrbitControls(camera, canvas);
+  controls.target.copy(ziel); controls.enableDamping = true; controls.minDistance = 0.6; controls.maxDistance = 14; controls.enablePan = false; controls.maxPolarAngle = Math.PI * 0.49;
+  controls.autoRotate = !STILL; controls.autoRotateSpeed = 0.6;
+  controls.update();
+  zeigeSlots(slots);
+}
+function zeigeSlots(slots) {
+  const box = $('edSlots'); box.textContent = '';
+  for (const { pfad, sockel: s, tiefe } of slots) {
+    const row = document.createElement('div'); row.className = 'slot' + (tiefe ? ' kind' : '');
+    const id = 'slot-' + pfad.replace(/[^a-z0-9]/gi, '-');
+    const lab = document.createElement('label'); lab.htmlFor = id;
+    const [art, nr] = s.name.split('_');
+    lab.textContent = (tiefe ? '↳ ' : '') + (TYPNAME[art] || art) + (nr ? ' ' + nr.toUpperCase() : '');
+    lab.className = 'lbl';
+    const sel = document.createElement('select'); sel.id = id;
+    const leer = document.createElement('option'); leer.value = ''; leer.textContent = '— leer —'; sel.appendChild(leer);
+    const passend = Object.entries(EL.kat.elemente).filter(([k, e]) => e.typ !== 'rumpf' && (PASST[s.typ] || []).includes(e.typ));
+    for (const [k, e] of passend) {
+      const o = document.createElement('option'); o.value = k;
+      const [, teil] = k.split(':'); const [ta, tn] = teil.split('_');
+      o.textContent = `${MODELLNAME[e.modell]} · ${TYPNAME[ta] || ta}${tn ? ' ' + tn.toUpperCase() : ''}`;
+      sel.appendChild(o);
+    }
+    sel.value = edWahl[pfad] || '';
+    sel.onchange = () => { edWahl[pfad] = sel.value; for (const k of Object.keys(edWahl)) if (k.startsWith(pfad + '/')) delete edWahl[k]; setMode('editor'); };
+    row.append(lab, sel); box.appendChild(row);
+  }
+  $('edJson').textContent = JSON.stringify({ rumpf: edRumpf === 'blob' ? { grundblob: edBlobStufe, material: edBlobMat } : edRumpf, elemente: Object.fromEntries(Object.entries(edWahl).filter(([, v]) => v)) }, null, 1);
+}
+for (const c of $('edRumpf').children) c.onclick = () => { edRumpf = c.dataset.r; edWahl = {}; for (const x of $('edRumpf').children) x.setAttribute('aria-pressed', String(x === c)); setMode('editor'); };
+$('edStufe').oninput = () => { edBlobStufe = +$('edStufe').value; $('edStufeWert').textContent = 2 ** edBlobStufe; };
+$('edStufe').onchange = () => setMode('editor');
+for (const b of $('edMat').children) b.onclick = () => { edBlobMat = b.dataset.m; for (const x of $('edMat').children) x.setAttribute('aria-pressed', String(x === b)); setMode('editor'); };
+$('edZufall').onclick = () => {
+  const neu = {};
+  const zufall = (pfad, typ) => { const p = Object.entries(EL.kat.elemente).filter(([, e]) => (PASST[typ] || []).includes(e.typ)); return p.length && Math.random() < 0.85 ? p[Math.floor(Math.random() * p.length)][0] : ''; };
+  const rumpfSockel = edRumpf === 'blob' ? null : EL.kat.elemente[edRumpf].sockel;
+  if (rumpfSockel) for (const s of rumpfSockel) neu[s.name] = zufall(s.name, s.typ);
+  else for (const [n, t] of [['hals', 'hals'], ['ohr_l', 'ohr'], ['ohr_r', 'ohr'], ['bein_vl', 'bein'], ['bein_vr', 'bein'], ['bein_hl', 'bein'], ['bein_hr', 'bein'], ['schwanz', 'schwanz']]) neu[n] = zufall(n, t);
+  edWahl = neu; setMode('editor');
+};
+$('edOrig').onclick = () => { edWahl = {}; setMode('editor'); };
+$('edLeer').onclick = () => { const leer = {}; for (const k of Object.keys(edWahl)) if (!k.includes('/')) leer[k] = ''; edWahl = leer; setMode('editor'); };
+$('edSockel').onclick = () => { edZeigSockel = !edZeigSockel; $('edSockel').setAttribute('aria-pressed', String(edZeigSockel)); setMode('editor'); };
+
+// ---------- Größe ----------
+function resize() {
+  if (!camera) return;
+  const r = stageEl.getBoundingClientRect();
+  const w = Math.max(2, Math.round(r.width)), h = Math.max(2, Math.round(r.height));
+  renderer.setSize(w, h, false);
+  const pr = renderer.getPixelRatio();
+  const W = Math.round(w * pr), H = Math.round(h * pr);
+  rtScene.setSize(W, H); rtBack.setSize(W, H);
+  G.uRes.value.set(W, H);
+  if (camera.isPerspectiveCamera) { camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  pMat.uniforms.uPx.value = camera.isPerspectiveCamera ? H / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) : H / (camera.top - camera.bottom);
+}
+new ResizeObserver(() => resize()).observe(stageEl);
+
+// ---------- Vergleich: Wischregler ----------
+function applyWipe() {
+  const v = +$('wipe').value;
+  $('ref').style.clipPath = `inset(0 ${100 - v}% 0 0)`;
+  $('wipeLine').style.left = `calc(${v}% - 1px)`;
+  for (const [id, val] of [['w0', 0], ['w50', 50], ['w100', 100]]) $(id).setAttribute('aria-pressed', String(v === val));
+}
+$('wipe').addEventListener('input', applyWipe);
+$('w0').onclick = () => { $('wipe').value = 0; applyWipe(); };
+$('w50').onclick = () => { $('wipe').value = 50; applyWipe(); };
+$('w100').onclick = () => { $('wipe').value = 100; applyWipe(); };
+
+// ---------- Bedienung ----------
+for (const t of document.querySelectorAll('.tabs button')) t.onclick = () => { setMode(t.dataset.mode); try { history.replaceState(null, '', '#' + t.dataset.mode); } catch (e) {} };
+const chipBox = $('tierChips');
+for (const st of data.stufen) {
+  const c = document.createElement('button');
+  c.className = 'chip'; c.textContent = st.wert; c.dataset.stufe = st.stufe; c.id = 'stufe-' + st.stufe;
+  c.setAttribute('aria-pressed', String(st.stufe === stageSel.stufe));
+  c.onclick = () => { stageSel.stufe = st.stufe; syncStageUi(); setMode('buehne'); };
+  chipBox.appendChild(c);
+}
+function syncStageUi() {
+  for (const c of chipBox.children) c.setAttribute('aria-pressed', String(+c.dataset.stufe === stageSel.stufe));
+  for (const b of $('matSeg').children) b.setAttribute('aria-pressed', String(b.dataset.mat === stageSel.mat));
+  for (const b of $('bgSeg').children) b.setAttribute('aria-pressed', String(b.dataset.bg === stageBg));
+  $('spin').setAttribute('aria-pressed', String(spin));
+}
+for (const b of $('matSeg').children) b.onclick = () => { stageSel.mat = b.dataset.mat; syncStageUi(); setMode('buehne'); };
+for (const b of $('bgSeg').children) b.onclick = () => { stageBg = b.dataset.bg; syncStageUi(); setMode('buehne'); };
+$('spin').onclick = () => { spin = !spin; if (controls) controls.autoRotate = spin; syncStageUi(); };
+$('hop').onclick = () => blobs.forEach(b => b.hop());
+$('hopAll').onclick = () => blobs.forEach((b, i) => setTimeout(() => b.hop(), i * 25));
+$('shuffle').onclick = () => setMode('brett');
+for (const b of $('shellSeg').children) b.onclick = () => {
+  shellCount = +b.dataset.s;
+  for (const x of $('shellSeg').children) x.setAttribute('aria-pressed', String(x === b));
+  blobs.forEach(bl => bl.setShells(shellCount));
+};
+
+// Tippen: im Vergleich -> Bühne, sonst Hüpfen
+const ray = new THREE.Raycaster(); const ndc = new THREE.Vector2();
+let downAt = null;
+canvas.addEventListener('pointerdown', (e) => { downAt = [e.clientX, e.clientY]; });
+canvas.addEventListener('pointerup', (e) => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 8) return;
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  ray.layers.set(0);
+  const hits = ray.intersectObjects(blobs.map(b => b.group), true);
+  if (!hits.length) return;
+  const hb = blobs.find(b => { let o = hits[0].object; while (o) { if (o === b.group) return true; o = o.parent; } return false; });
+  if (!hb) return;
+  if (mode === 'vergleich') { stageSel = { mat: hb.mat, stufe: hb.stufe }; syncStageUi(); setMode('buehne'); try { history.replaceState(null, '', '#buehne'); } catch (e2) {} }
+  else hb.hop();
+});
+
+// ---------- Rendern ----------
+const clock = new THREE.Clock();
+let fpsAcc = [], last = performance.now();
+const hud = $('hud');
+function frame() {
+  const dt = Math.min(clock.getDelta(), 1 / 20);
+  const t = STILL ? 1.0 : clock.elapsedTime;
+  G.uTime.value = t;
+  if (controls) controls.update();
+  scene.updateMatrixWorld();
+  camera.updateMatrixWorld();
+  for (const b of blobs) b.update(STILL ? 0 : dt, t);
+  for (const f of animFns) f(t);
+  if (STILL) for (const b of blobs) { b.U.uDef.value.set(0, 0, 0, 0); b.U.uBlink.value = 1; }
+  updateParts(dt);
+  G.uOrtho.value = !!camera.isOrthographicCamera;
+  G.uNear.value = camera.near; G.uFar.value = camera.far;
+  G.uViewDir.value.set(0, 0, 1).applyQuaternion(camera.quaternion);
+  const hasJelly = blobs.some(b => b.mat === 'jelly');
+  renderer.setClearColor(clear, 1);
+  if (hasJelly) {
+    // 1) Hintergrund und Innenleben (Bläschen) für die Brechung
+    camera.layers.set(L_RT);
+    renderer.setRenderTarget(rtScene); renderer.clear(); renderer.render(scene, camera);
+    // 2) Rückseiten-Tiefe der Jelly-Körper
+    camera.layers.set(L_BACK);
+    renderer.setClearColor(0x000000, 0);
+    renderer.setRenderTarget(rtBack); renderer.clear(); renderer.render(scene, camera);
+    renderer.setClearColor(clear, 1);
+  }
+  // 3) Bildschirm
+  camera.layers.set(0);
+  renderer.setRenderTarget(null); renderer.clear(); renderer.render(scene, camera);
+  updateLabels();
+  // Anzeige
+  const now = performance.now(); fpsAcc.push(now - last); last = now; if (fpsAcc.length > 90) fpsAcc.shift();
+  if (fpsAcc.length % 15 === 0 || STILL) {
+    const s = [...fpsAcc].sort((a, b) => a - b); const mean = s.reduce((a, b) => a + b, 0) / s.length; const p99 = s[Math.floor(s.length * 0.99) - 1] || mean;
+    hud.textContent = `${(1000 / mean).toFixed(0)} fps · p99 ${p99.toFixed(1)} ms\n${renderer.info.render.calls} Draw Calls · ${(renderer.info.render.triangles / 1000).toFixed(0)}k Dreiecke`;
+  }
+  if (STILL) { document.title = 'done'; return; }
+  requestAnimationFrame(frame);
+}
+renderer.info.autoReset = true;
+
+const start = (location.hash || '').replace('#', '');
+const m0 = Q.get('modus') || (['vergleich', 'buehne', 'brett', 'schnitt', 'editor'].includes(start) ? start : 'vergleich');
+if (Q.get('r')) edRumpf = Q.get('r');
+if (Q.get('wahl')) try { edWahl = JSON.parse(Q.get('wahl')); } catch (e) {}
+if (Q.get('m')) schnittSel = Q.get('m');
+if (Q.has('skelett')) zeigSkelett = true;
+if (Q.get('mat')) stageSel.mat = Q.get('mat');
+if (Q.get('stufe')) stageSel.stufe = +Q.get('stufe');
+if (Q.get('wipe')) $('wipe').value = Q.get('wipe');
+syncStageUi();
+if (m0 === 'editor') { await ladeElemente(); for (const x of $('edRumpf').children) x.setAttribute('aria-pressed', String(x.dataset.r === edRumpf)); }
+if (m0 === 'schnitt') { await ladeSchnittDaten(); await ladeGanz(schnittSel); for (const x of $('schnittChips').children) x.setAttribute('aria-pressed', String(x.dataset.m === schnittSel)); $('skelBtn').setAttribute('aria-pressed', String(zeigSkelett)); }
+setMode(m0);
+$('loading').hidden = true;
+requestAnimationFrame(frame);
+</script>

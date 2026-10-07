@@ -1,5 +1,7 @@
 # ADR-0001: Engine- und Renderer-Stack — three.js + Capacitor vs. Godot 4.7
 
+> **Stand 2026-10-04 (Abschluss Prototyp 1):** Das Gate wurde nie formal abgeschlossen. Praktisch lief der ganze Prototyp auf three.js + Capacitor; auf dem iPhone 16 waren die Bildratenziele mit Jiggle-Mesh und Mobil-Preset erfüllt (Messung unten). Offen blieben 10-Minuten-Stabilität, Wärme, Speicher, WKWebView-Messung auf dem Gerät und der Godot-iOS-Export. Für die Produktion zu Beginn neu bewerten und entscheiden.
+
 **Status:** Vorgeschlagen (proposed) — **Gate ausstehend.** Entschieden wird nach den Messungen aus P1/P1-G, P2/P2-G und P6 (Phase 0), nicht vorher.
 **Datum:** 2026-09-29
 **Entscheider:** Florian (Art Direction, Produkt). Beteiligt: Nicole (Test), KI-Agent (Umsetzung, Messung, Protokoll).
