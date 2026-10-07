@@ -12,6 +12,8 @@ export const ANSICHTEN = {
   held: { yaw: 0.62, pitch: 0.24, fov: 32 },
   boegen: { yaw: 0.62, pitch: 0.26, fov: 22 },
   brett: { yaw: 0.28, pitch: 1.13, fov: 42 },
+  /** Reine Seitenansicht, fast auf Augenhöhe: Profil gegen die Bögen (Rückenlinie, Kopflänge, Kinn, Beine). */
+  seite: { yaw: Math.PI / 2, pitch: 0.1, fov: 22 },
 } as const;
 
 export type TurntableAnsicht = keyof typeof ANSICHTEN;

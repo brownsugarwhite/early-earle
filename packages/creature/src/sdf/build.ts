@@ -1,6 +1,6 @@
 import type { Bauplan } from '../bauplan/schema';
 import { catmullRom, makePolyline, type Polyline } from '../math/curve';
-import { QUAT_ID, add, clamp, cross, dot, frameFromTangent, lerp, normalize, quatFromFrame, scale, sub, type Quat, type Vec3 } from '../math/vec';
+import { QUAT_ID, add, clamp, cross, dot, frameFromTangent, lerp, normalize, quatFromFrame, scale, smoothstep, sub, type Quat, type Vec3 } from '../math/vec';
 import { buildMouth, surfacePoint, type MouthGeometry, type MouthHost } from '../mouth/mouth';
 import { REGION, evalScene, makeLoft, sceneBounds, type EllipsoidPrim, type Prim, type SdfScene } from './scene';
 
@@ -132,6 +132,59 @@ export function bodyRadii(b: Bauplan, R0: number, H: number, samples = 96): Floa
   return out;
 }
 
+/**
+ * Kopf im Rumpf (Bild 2, 5, 9, 12: Rex, Katze, Fisch): ohne Hals ist der Kopf das obere Vorderteil des Grundblobs — eine
+ * Masse, keine aufgesetzte Kugel (Grundblob mit Maullinie). Landmarken um die Maullinie formen das Dome-Profil:
+ * Schnauze (Oberkiefer) und Kinn (Unterkiefer) als Vorsprünge nach vorn, Kehle als Mulde unter dem Kinn (nur bei großem
+ * Kopf), Kopfband breiter/tiefer nach Kopfgröße, Ei-Querschnitte machen das Gesicht schmaler als die Schultern (dünne
+ * Schnauze), kantige Kiefer über den Exponenten. Mit Standardwerten bleibt der Dome unverändert. Alles stetig in der
+ * Höhe — die Maullinie wird später als Schnitt in diese Fläche gelegt. Liefert Kinn- und Lippenhöhe (Anteil von H) für
+ * Kiefertiefe und Kopfhöhe des Rigs. Katzen, Hunde, Rex mit eigenem Kopfvolumen: kurzer Hals (`hals.laenge` > 0).
+ */
+export function kopfImRumpf(b: Bauplan, R0: number, sz: number, shear: number, wx: number[], wyT: number[], wyB: number[], nn: number[], taper: number[]): { hLo: number; tL: number } {
+  const m = b.maul;
+  const k = b.kopf;
+  const n = wx.length;
+  const tL = clamp(m.hoehe, 0.02, 0.98) / Math.sqrt(1 + shear * shear);
+  const ok = clamp(m.oberkiefer, 0, 1.5);
+  const uk = clamp(m.unterkiefer, 0, 1.5);
+  const hUp = 0.12 + 0.2 * ok;
+  const hLo = uk < 0.05 ? 0 : 0.08 + 0.16 * uk;
+  if (!m.sichtbar) return { hLo, tL };
+  // Schnauzenvorsprung in Blob-Einheiten: Kopflänge streckt den ganzen Kopf, Schnauze nur den Vorsprung
+  const S = R0 * sz * (0.3 * (k.laenge - 1) + 0.5 * clamp(k.schnauze, 0, 1));
+  const biss = clamp(m.biss, -1, 1);
+  // Kinn: Überbiss setzt den Unterkiefer zurück (W-Lippe der Katze), Unterbiss schiebt ihn vor (Hauer)
+  const C = uk < 0.05 ? 0 : S * (1 - 0.35 * biss) - 0.08 * R0 * sz * biss;
+  const mass = clamp((k.groesse - 0.7) * 0.3, -0.15, 0.45);
+  const kante = clamp(m.kante, 0, 1);
+  // Kehle: je größer der Kopf, desto weiter hängt das Kinn über der Brust; ohne Unterkiefer liegt die Öffnung am Hals
+  const kehle = (uk < 0.05 ? 0.22 : 0.25 * Math.max(0, k.groesse - 0.7)) * R0 * sz;
+  // Gesicht schmaler als die Schultern: Ei-Querschnitte im Kopfband, Verjüngung aus einer dünnen Schnauze (< 0,7)
+  const verj = clamp((0.7 - clamp(k.schnauzeDicke, 0.3, 1.2)) * 1.2, 0, 0.5);
+  const rampLo = 0.1 * (1 - 0.6 * kante);
+  const tChin = tL - hLo;
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const band = smoothstep(tChin - 0.1, tChin + 0.02, t);
+    // Oberkiefer/Schnauze: voll an der Lippe, Plateau, dann zur Stirn auslaufend
+    const up = smoothstep(tL - 0.02, tL + 0.02, t) * (1 - smoothstep(tL + hUp * 0.75, tL + hUp * 1.25, t));
+    // Unterkiefer/Kinn: voll an der Lippe, Plateau, rundes (Rex) oder kantiges (Katze) Kinn
+    const lo = (1 - smoothstep(tL - 0.02, tL + 0.02, t)) * smoothstep(tChin - 0.5 * rampLo, tChin + 0.5 * rampLo, t);
+    const tKehle = tChin - 0.5 * rampLo - 0.07;
+    const dip = Math.exp(-Math.pow((t - tKehle) / 0.08, 2));
+    // an Standfläche und Scheitel läuft jeder Vorsprung aus (die Enden bleiben rund)
+    const ends = smoothstep(0, 0.1, t) * (1 - smoothstep(0.88, 1, t));
+    const front = (S * up + C * lo - kehle * dip) * ends;
+    wx[i] = wx[i]! * (1 + mass * band);
+    wyT[i] = Math.max(0.3 * wx[i]!, wyT[i]! * (1 + mass * band) + front);
+    wyB[i] = wyB[i]! * (1 + 0.4 * mass * band);
+    nn[i] = nn[i]! + 1.5 * kante * Math.min(1, up + lo);
+    taper[i] = verj * band;
+  }
+  return { hLo, tL };
+}
+
 export function construct(b: Bauplan, resolution = 56): Construction {
   const H = b.koerper.hoehe;
   // grobe Zellgröße der späteren Vermaschung (Hülle ≈ 2,6 · H), für Mindestspalt und Schnittrundung
@@ -140,7 +193,9 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   const sx = b.koerper.breite;
   const sz = b.koerper.laenge;
   const sm = Math.sqrt(sx * sz);
-  const shear = b.koerper.neigung * 0.35;
+  // Neigung: die waagerechten Scheiben wandern mit der Höhe nach vorn (Standfläche bleibt flach, Rücken wird zur
+  // geraden Schräge — Bild 2: der Rex ist ein vornüber geneigter Grundblob)
+  const shear = b.koerper.neigung * 0.5;
   const legs = b.unterkoerper.typ === 'beine' || b.unterkoerper.typ === 'vogel' || b.unterkoerper.typ === 'spinneDuenn' || b.unterkoerper.typ === 'spinneFlauschig';
   const legLen = legs ? b.unterkoerper.beine.laenge * 0.55 * H : 0;
   const yb = legLen;
@@ -176,7 +231,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   const neckLen = b.hals.laenge * H;
   const hasNeck = neckLen > 0.02 * H;
   const bodyPts: Vec3[] = [];
-  const bodyWx: number[] = [], bodyWyT: number[] = [], bodyWyB: number[] = [], bodyN: number[] = [], bodyParts: number[] = [];
+  const bodyWx: number[] = [], bodyWyT: number[] = [], bodyWyB: number[] = [], bodyN: number[] = [], bodyParts: number[] = [], bodyTaper: number[] = [];
   const kub = clamp(b.koerper.kubik, 0, 1);
   {
     const nS = radii.length;
@@ -192,11 +247,19 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       bodyWyB.push(r * sz * Math.max(0.35, 1 + hump));
       bodyN.push(2 + 6 * kub);
       bodyParts.push(t < 0.3 ? kUnten : t < 0.68 ? kMitte : kOben);
+      bodyTaper.push(0);
     }
   }
   const bodyCapStart = 0.03 * H * (0.6 + 0.8 * (1 - b.koerper.boden));
+  let kinnHoehe = 0;
+  let kopfHoehe = H;
   if (!hasNeck) {
-    prims.push(makeLoft({ points: bodyPts, upRef: FWD, wx: bodyWx, wyT: bodyWyT, wyB: bodyWyB, n: bodyN, parts: bodyParts, capStart: bodyCapStart, capEnd: kub > 0.02 ? 0.12 * H * kub : 0, axis: normalize([0, 1, shear]) }, { op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper' }));
+    // Kopf im Rumpf: Landmarken um die Maullinie formen das Profil (Schnauze, Kinn, Kehle, Kopfband) — ein Loft
+    const kr = kopfImRumpf(b, R0, sz, shear, bodyWx, bodyWyT, bodyWyB, bodyN, bodyTaper);
+    kinnHoehe = kr.hLo;
+    // Kopfhöhe Kinn … Scheitel (Maße für Öffnung, Linienschwung, Augen)
+    kopfHoehe = b.maul.sichtbar ? H * (1 - clamp(kr.tL - kr.hLo, 0, 0.9)) : H;
+    prims.push(makeLoft({ points: bodyPts, upRef: FWD, wx: bodyWx, wyT: bodyWyT, wyB: bodyWyB, n: bodyN, parts: bodyParts, taper: bodyTaper, capStart: bodyCapStart, capEnd: kub > 0.02 ? 0.12 * H * kub : 0, axis: UP }, { op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper' }));
   }
 
   // --- Hals und Kopf ------------------------------------------------------------------------------------------------
@@ -210,7 +273,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     // Ansatz und Halsdicke — stetig geblendet, damit Mittellinie und Profil keinen Absatz bekommen
     const tN = (() => { const u = clamp((b.hals.laenge - 0.08) / 0.5, 0, 1); return u * u * (3 - 2 * u); })();
     const hb = yb + H * (0.97 - 0.1 * Math.abs(ansatz - 0.5) * 2 * tN);
-    const base: Vec3 = add(axisAt(hb), [0, 0, (ansatz - 0.5) * R0 * sz * 1.3 * tN]);
+    // Halsansatz vorn/hinten gilt auch für kurze Hälse: Katze und Rex tragen den Kopf vorn über der Brust (Bild 5/9)
+    const base: Vec3 = add(axisAt(hb), [0, 0, (ansatz - 0.5) * R0 * sz * 1.3]);
     const rN = b.hals.dicke * R0 * 0.62 * sm;
     const kr = b.hals.kruemmung;
     const ctrl: Vec3[] = [];
@@ -302,7 +366,9 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     const dick = clamp(b.kopf.schnauzeDicke, 0.3, 1.2);
     // Mittellinie des Kopfs: vom Hinterkopf nach vorn bis zur Schnauzenspitze, auf Höhe der Maullinie
     // Hals trifft den Kopf im hinteren Drittel: Kopfbasis etwas nach vorn, damit der Hinterkopf den Hals fortsetzt
-    const headBase = add(add(neckEnd, scale(upH, hr * 0.4)), scale(forwardH, hr * 0.3));
+    // Kurzer Hals (Rex, Katze): der Kopf sitzt mit der Mitte knapp über den Schultern und ragt vorn über die Brust —
+    // die Rückenlinie läuft über die Schulter in den Hinterkopf (Bild 5/9), das Kinn hängt frei
+    const headBase = add(add(neckEnd, scale(upH, hr * (0.4 - 0.1 * (1 - tN)))), scale(forwardH, hr * (0.3 + 0.1 * (1 - tN))));
     const Lback = hr * 0.85;
     const Lfront = hr * (1.05 + 0.9 * (b.kopf.laenge - 1) + 0.8 * schn);
     const headCenter = add(headBase, scale(forwardH, (Lfront - Lback) * 0.5));
@@ -324,8 +390,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         // Bild 5/11: Schädel hinten hoch mit flachem Scheitel, Braue als breiter Wulst über den Augen, Schnauze fällt nach
         // vorn ab und bleibt breit (Haube); Unterkiefer als Löffel, zur Kinnspitze flacher
         const width = hr * (0.74 + 0.3 * Math.exp(-Math.pow((u - 0.4) / 0.32, 2))) * (1 - (1 - dick) * Math.max(0, u - 0.55) * 1.6);
-        // Stirn flach bis zur Braue (u ≈ 0,5), dann gerader Abfall zur Schnauzenspitze auf ≈ 35 %; Braue als Wulst am Knick
-        const slope = Math.max(0, (u - 0.5) / 0.5);
+        // Stirn flach bis zur Braue, dann Abfall zur Schnauzenspitze: lange Schnauze fällt ab u ≈ 0,5 gerade ab (Rex,
+        // Giraffe), ohne Schnauze bleibt der Schädel bis u ≈ 0,8 hoch und rundet kugelig ab (Katze, Bild 9)
+        const u0 = 0.5 + 0.3 * (1 - schn);
+        const slope = Math.pow(Math.max(0, (u - u0) / (1 - u0)), 1.3);
         // Nase: runde Wölbung vorn oben auf der Schnauze (Giraffe, Bild 6), wächst mit der Schnauzenlänge
         const nase = 0.5 * schn * Math.exp(-Math.pow((u - 0.84) / 0.14, 2));
         const skull = hr * (0.55 + 0.5 * ok) * (1 - 0.62 * slope + nase) * (1 + 0.3 * braue * Math.exp(-Math.pow((u - 0.5) / 0.16, 2)));
@@ -333,10 +401,11 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         wx.push(width * endRound);
         wyT.push(skull * endRound);
         wyB.push(jaw * endRound);
-        // flacherer Scheitel und Wangen über die Kieferkante (Raubkatze kantig), Rex leicht
-        nn.push(2.2 + 1.6 * clamp(m0.kante, 0, 1));
+        // Kieferkante: Schnauze und Kinn kantig (Raubkatze, Bild 9), der Schädel hinten bleibt rund
+        nn.push(2.1 + 1.6 * clamp(m0.kante, 0, 1) * smoothstep(0.45, 0.8, u));
       }
-      const head = makeLoft({ points: pts, upRef: upH, wx, wyT, wyB, n: nn, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: 0.5 * hr, region: REGION.haut, name: 'kopf' });
+      // weite Verschmelzung bei kurzem Hals: Schulter → Hinterkopf ohne Kerbe
+      const head = makeLoft({ points: pts, upRef: upH, wx, wyT, wyB, n: nn, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.5 + 0.7 * (1 - tN)), region: REGION.haut, name: 'kopf' });
       prims.push(head);
       // Ohren: flache Lappen seitlich hinten oben, nach außen-hinten geneigt (Giraffe, Dackel); Hörnchen: zwei kurze
       // Stiele mit Knopf oben hinten (Giraffe) — einfache Anbauten direkt am Kopf
@@ -366,9 +435,9 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     // Gelenk am Hinterkopf (70 % des hinteren Kopfteils hinter der Kopfbasis), bezogen auf den Ursprung (= Kopfmitte vorn/hinten)
     host = { origin: sub(headCenter, scale(upH, hr * (0.42 + 0.42 * uk))), up: upH, forward: forwardH, right: rightH, height: hr * (0.42 + 0.42 * uk + 0.55 + 0.5 * ok), halfWidth: hr * 0.95, bone: headBone, jointBack: Lback * 0.7 + (Lfront - Lback) * 0.5, scene: { prims: [] } };
   } else {
-    const up = normalize([0, 1, shear]);
-    const fwd = normalize(sub(FWD, scale(up, FWD[0] * up[0] + FWD[1] * up[1] + FWD[2] * up[2])));
-    host = { origin: [0, yb, 0], up, forward: fwd, right: RIGHT, height: H, halfWidth: R0 * sx, bone: kMitte, jointBack: R0 * sz * 0.55, scene: { prims: [] } };
+    // Körperträger: waagerechte Scheiben, Mittellinie folgt der Neigung; Kiefertiefe = Kinnband des Grundblobs (plus
+    // Kehlrand), damit Brust und Bauch nicht mitschwingen
+    host = { origin: [0, yb, 0], up: UP, forward: FWD, right: RIGHT, height: H, halfWidth: R0 * sx, bone: kMitte, jointBack: R0 * sz * 0.55, jawDepth: Math.max(0.06 * H, (kinnHoehe + 0.03) * H), headHeight: kopfHoehe, center: (h: number): Vec3 => axisAt(yb + h), scene: { prims: [] } };
   }
 
   // --- Kiefermassen, Schnauze, Braue am Träger -------------------------------------------------------------------------
@@ -406,7 +475,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     const hostH = host.height;
     const hLipAtEye = mouth.lipHAt(clamp(phiLage, -mouth.theta, mouth.theta));
     const hEye = clamp(hLipAtEye + 0.08 * hostH + a.hoehe * (hostH - hLipAtEye) * 0.8, 0.05 * hostH, 0.97 * hostH);
-    const rE = (0.045 + 0.085 * a.groesse) * hostH;
+    const rE = (0.045 + 0.085 * a.groesse) * (host.headHeight ?? hostH);
     const hostScene: SdfScene = { prims: prims.filter((p) => p.op === 'union') };
     const eyeHost: MouthHost = { ...host, scene: hostScene };
     for (const phi of phis) {
@@ -443,11 +512,13 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     const thin = b.unterkoerper.typ === 'vogel' || b.unterkoerper.typ === 'spinneDuenn' ? 0.35 : 1;
     const n = L.anzahl;
     const d2r = Math.PI / 180;
+    // Beinlage: vorn unter der Brust (sitzende Katze, Bild 9) … hinten unter dem Rumpf (Rex, Bild 12); Spreizung seitlich
+    const lage = clamp(L.lage, 0, 1);
     const azis: number[] =
       n === 2
-        ? [-(40 + 35 * L.spreiz) * d2r, (40 + 35 * L.spreiz) * d2r]
+        ? [-(30 + 120 * lage + 20 * L.spreiz) * d2r, (30 + 120 * lage + 20 * L.spreiz) * d2r]
         : n === 4
-          ? [-(45 + 20 * L.spreiz) * d2r, (45 + 20 * L.spreiz) * d2r, -(135 - 20 * L.spreiz) * d2r, (135 - 20 * L.spreiz) * d2r]
+          ? [-(45 + 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, (45 + 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, -Math.min(165, 135 - 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, Math.min(165, 135 - 20 * L.spreiz + 40 * (lage - 0.2)) * d2r]
           : [-35, 35, -70, 70, -110, 110, -145, 145].map((x) => x * d2r);
     const rHip = H * (0.06 + 0.1 * L.dicke + 0.1 * L.schenkel) * thin;
     const rKnee = H * (0.05 + 0.08 * L.dicke) * thin;
@@ -532,7 +603,9 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   } else if (b.schwanz.typ !== 'keiner') {
     const T = b.schwanz;
     const hT = yb + H * (0.3 + 0.25 * T.hoch);
-    const start: Vec3 = add(axisAt(hT), [0, 0, -R0 * sz * 0.72]);
+    // Ansatz knapp in der Rückenfläche auf dieser Höhe (folgt Neigung und Profil)
+    const iT = Math.min(bodyWyB.length - 1, Math.round(clamp((hT - yb) / H, 0, 1) * (bodyWyB.length - 1)));
+    const start: Vec3 = add(axisAt(hT), [0, 0, -bodyWyB[iT]! * 0.85]);
     const Lt = T.laenge * H * 0.9;
     const r0 = T.typ === 'wirbelsaeule' ? R0 * sm * 0.5 * (0.5 + T.dicke) : H * (0.04 + 0.08 * T.dicke);
     const rTip = T.typ === 'wirbelsaeule' ? 0.03 * H : r0 * 0.55;

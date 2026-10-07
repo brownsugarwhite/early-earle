@@ -25,6 +25,12 @@ export interface MouthHost {
   bone: number;
   /** Kiefergelenk: Abstand hinter dem Ursprung entlang −forward (auf Höhe der Mundwinkel). */
   jointBack: number;
+  /** Höhe des Unterkiefers unter der Maullinie (Körperträger: Kinnband des Grundblobs); ohne Angabe 45 % der Trägerhöhe. */
+  jawDepth?: number;
+  /** Kopfhöhe (Kinn bis Scheitel) für Öffnungsweite, Linienschwung und Augengröße; ohne Angabe die Trägerhöhe. */
+  headHeight?: number;
+  /** Mittellinie des Trägers: Scheibenmitte auf Höhe h (Körperträger mit Neigung); ohne Angabe `origin + up · h`. */
+  center?: (h: number) => Vec3;
   /** Szene nur mit den Trägerformen (zum Marschieren auf die Fläche). */
   scene: SdfScene;
 }
@@ -80,9 +86,14 @@ export interface MouthGeometry {
   zCorner: number;
 }
 
-/** Marschiert von der Achse auf Höhe h in Richtung φ bis zur Fläche; liefert Punkt und Radialabstand. */
+/** Scheibenmitte des Trägers auf Höhe h (Mittellinie oder gerade Achse). */
+export function hostCenter(host: MouthHost, h: number): Vec3 {
+  return host.center ? host.center(h) : add(host.origin, scale(host.up, h));
+}
+
+/** Marschiert von der Mittellinie auf Höhe h in Richtung φ bis zur Fläche; liefert Punkt und Radialabstand. */
 export function surfacePoint(host: MouthHost, h: number, phi: number, maxR: number): { p: Vec3; r: number } {
-  const a = add(host.origin, scale(host.up, h));
+  const a = hostCenter(host, h);
   const dir = add(scale(host.forward, Math.cos(phi)), scale(host.right, Math.sin(phi)));
   let r = 0;
   let p: Vec3 = a;
@@ -109,9 +120,11 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
   const m = b.maul;
   const H = host.height;
   const hLip = clamp(m.hoehe, 0.02, 0.98) * H;
+  // Kopfhöhe: beim Kopfträger die Trägerhöhe, beim Körperträger Kinn bis Scheitel — Öffnung und Schwung sind Kopfmaße
+  const Hk = host.headHeight ?? H;
   const maxR = host.halfWidth * 3 + bodyScale;
   // Öffnungshöhe vorn bei voller Öffnung
-  const gapeMax = Math.max(0.004, clamp01(m.oeffnung) * 0.75 * H);
+  const gapeMax = Math.max(0.004, clamp01(m.oeffnung) * 0.75 * Hk);
   // Weite der Öffnung: Keil bis weit zu den Mundwinkeln; Loch so breit wie hoch
   const thetaKeil = clamp(m.breite * (Math.PI / 2 + m.winkel * (Math.PI * 0.45)), 0.15, Math.PI * 0.95);
   const rLipFront = Math.max(0.02, surfacePoint(host, hLip, 0, maxR).r);
@@ -132,8 +145,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     // Maullinie wie gezeichnet (Bild 3/5): vorn an der Schnauze, hinter ihr leicht abgesenkt (`schwung`), zu den Winkeln
     // ansteigend (`neigung`) — eine geschwungene Linie, keine Gerade
     const u = Math.abs(phi) / theta;
-    const rise = m.neigung * 0.22 * H * u * u;
-    const dip = clamp01(m.schwung) * 0.12 * H * Math.pow(Math.sin(Math.PI * clamp01(u / 0.72)), 1.5) * (u < 0.72 ? 1 : 0);
+    const rise = m.neigung * 0.22 * Hk * u * u;
+    const dip = clamp01(m.schwung) * 0.12 * Hk * Math.pow(Math.sin(Math.PI * clamp01(u / 0.72)), 1.5) * (u < 0.72 ? 1 : 0);
     const h = clamp(hLip + rise - dip, 0.01, H - 0.01);
     const sp = surfacePoint(host, h, phi, maxR);
     phis.push(phi);
@@ -175,8 +188,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     return clamp01(profil * w);
   };
   const local = (p: Readonly<Vec3>): { h: number; phi: number; r: number } => {
-    const v = sub(p, host.origin);
-    const h = dot(v, host.up);
+    const h = dot(sub(p, host.origin), host.up);
+    const v = sub(p, hostCenter(host, h));
     const vx = dot(v, host.right);
     const vz = dot(v, host.forward);
     return { h, phi: Math.atan2(vx, vz), r: Math.hypot(vx, vz) };
@@ -184,7 +197,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
 
   // Gelenk hinter dem Träger auf Höhe der Mundwinkel, Achse quer (Bild 5/6: der Kiefer schwingt vom Hinterkopf aus)
   const hCorner = lipHAt(theta);
-  const hingeMid: Vec3 = add(add(host.origin, scale(host.up, hCorner)), scale(host.forward, -host.jointBack));
+  const hingeMid: Vec3 = add(hostCenter(host, hCorner), scale(host.forward, -host.jointBack));
   const hingeAxis: Vec3 = normalize(host.right);
   const zCorner = lipRAt(theta) * Math.cos(theta);
   const wToJoint = (zLocal: number): number => {
@@ -194,7 +207,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
 
   // Unterkiefer als starrer Löffel: volle Zugehörigkeit bis zur Kiefertiefe (Unterkieferhöhe unter der Maullinie, beim
   // Körperträger höchstens 45 % der Trägerhöhe), dann weich zum Hals/Körper auslaufend
-  const jawDepth = Math.min(hLip, 0.45 * H) * 1.05;
+  const jawDepth = host.jawDepth ?? Math.min(hLip, 0.45 * H) * 1.05;
   const jawWeight = (p: Readonly<Vec3>, bs: number, side?: number): number => {
     if (m.unterkiefer < 0.05) return 0;
     const { h, phi, r } = local(p);
@@ -205,7 +218,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const band = 0.09 * bs;
     const wBelow = side !== undefined && side !== 0 ? (side < 0 ? 1 : 0) : smoothstep(-0.2 * band, band, below) * smoothstep(0, 0.5 * band, below + 0.3 * band);
     const wPhi = aphi <= theta ? 1 : wToJoint(r * Math.cos(phi));
-    const wDepth = 1 - smoothstep(jawDepth * 0.95, jawDepth * 1.6, below);
+    const wDepth = 1 - smoothstep(jawDepth * 0.95, jawDepth * 1.3, below);
     return clamp01(wBelow * wPhi * wDepth);
   };
   const upperWeight = (p: Readonly<Vec3>, bs: number, side?: number): number => {

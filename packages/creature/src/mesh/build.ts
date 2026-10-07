@@ -7,7 +7,7 @@ import type { Tooth } from '../mouth/mouth';
 import { computeDescriptors, smoothWeights, type Descriptors } from './descriptors';
 import { cutMouth, faceNormalsFor } from './mundschnitt';
 import { makeRng } from '../math/rng';
-import { add, clamp, clamp01, normalize, scale, sub } from '../math/vec';
+import { add, clamp, clamp01, normalize, scale, smoothstep, sub } from '../math/vec';
 import { adjacency, contourManifold, largestComponent, nonManifoldEdges, orientToNormals, projectAndNormals, taubin } from './surfaceNets';
 import { contourDual } from './dualContouring';
 
@@ -22,6 +22,11 @@ export interface BuildOptions {
   narrowBand?: boolean;
   /** Extraktion: Dual Contouring (scharfe Kanten, Standard) oder Surface Nets. */
   extraction?: 'dual' | 'nets';
+  /**
+   * Feinere Teilung um Maul und Augen (Faktor je Achse, 1 = aus, Standard). Das rechtwinklige Gitter verfeinert ganze
+   * Achsenstreifen: bei Kopf ≈ Körperbreite kostet Faktor 1,8 etwa 2,5 × Vertices und Bauzeit — nur für Standbilder sinnvoll.
+   */
+  verfeinerung?: number;
 }
 
 export interface CreatureBuild {
@@ -82,9 +87,25 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   let vertexCount: number;
   if (extraction === 'dual') {
     // Dual Contouring: QEF-Vertices liegen auf den Tangentialebenen; Kanten bleiben scharf, Glättung entfällt.
-    let dc = contourDual(sdf, { min: c.bounds.min, max: c.bounds.max, cell, narrowBand: opts.narrowBand ?? true });
+    // Verfeinerung um Kopf und Maul: Quader um Maullinie und Augen (plus Öffnungsweite als Rand)
+    const faktor = opts.verfeinerung ?? 1;
+    let refine: { boxes: Array<{ min: Vec3; max: Vec3 }>; faktor: number } | undefined;
+    if (faktor > 1.001 && c.mouth && b.maul.sichtbar) {
+      const lo: Vec3 = [Infinity, Infinity, Infinity], hi: Vec3 = [-Infinity, -Infinity, -Infinity];
+      const take = (q: Readonly<Vec3>, r: number): void => {
+        for (let k = 0; k < 3; k++) {
+          lo[k] = Math.min(lo[k]!, q[k]! - r);
+          hi[k] = Math.max(hi[k]!, q[k]! + r);
+        }
+      };
+      for (const q of c.mouth.lipLine) take(q, c.mouth.gapeMax * 0.6 + 0.04 * c.bodyScale);
+      for (const e of c.eyes) take(e.pos, e.radius * 2.5);
+      refine = { boxes: [{ min: lo, max: hi }], faktor };
+    }
+    const refineOpt = refine ? { refine } : {};
+    let dc = contourDual(sdf, { min: c.bounds.min, max: c.bounds.max, cell, narrowBand: opts.narrowBand ?? true, ...refineOpt });
     if (nonManifoldEdges(dc.index, dc.vertexCount) > 6) {
-      const alt = contourDual(sdf, { min: c.bounds.min, max: c.bounds.max, cell, shift: 0.5, narrowBand: opts.narrowBand ?? true });
+      const alt = contourDual(sdf, { min: c.bounds.min, max: c.bounds.max, cell, shift: 0.5, narrowBand: opts.narrowBand ?? true, ...refineOpt });
       if (nonManifoldEdges(alt.index, alt.vertexCount) < nonManifoldEdges(dc.index, dc.vertexCount)) dc = alt;
     }
     const extras = [
@@ -313,22 +334,30 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       descriptors.region[v * 4 + 1] = kantenAbstand[v]! / H;
     }
   }
-  // Spitzmund-Feld (Lochmaul): radiale Weitung um das Maulzentrum in der Maulebene, nahe der Kante voll, auslaufend
+  // Spitzmund-Feld (Lochmaul): die beiden Lippenränder werden senkrecht zur Maullinie auseinandergedrückt (oben nach
+  // oben, unten nach unten) — voll in der Maulmitte, null an den Mundwinkeln; die Haut läuft mit dem Kantenabstand aus
+  // (Lippenring), die Tasche mit ihrer Tiefe (der Rachen bleibt). Skaliert mit `spitzmund` = halbe Öffnungshöhe. (Eine
+  // radiale Weitung vom Zentrum aus kann den Schlitz nicht öffnen: der Rand läuft durch das Zentrum.)
   const pucker = new Float32Array(positions.length);
-  if (m && b.maul.sichtbar && b.maul.form < 0.98) {
-    const rhoLoop = Math.max(0.02, 0.5 * Math.hypot(m.corners[1][0] - m.corners[0][0], m.corners[1][1] - m.corners[0][1], m.corners[1][2] - m.corners[0][2]));
-    const fz = m.frame.z, C = m.center;
+  if (m && b.maul.sichtbar && b.maul.form < 0.98 && seiten && kantenAbstand && tasche) {
+    const fy = m.frame.y;
+    // Lippenring: beim reinen Lochmaul weit (Kugelfisch), zum Keil hin schmal (Aal, Giraffe: nur die Lippen weichen)
+    const reach = Math.max(0.05 * H, m.gapeMax * (0.4 + 0.8 * (1 - clamp01(b.maul.form))));
     for (let v = 0; v < vertexCount; v++) {
-      const px = positions[v * 3]! - C[0], py = positions[v * 3 + 1]! - C[1], pz = positions[v * 3 + 2]! - C[2];
-      const zm = px * fz[0] + py * fz[1] + pz * fz[2];
-      let rx = px - fz[0] * zm, ry = py - fz[1] * zm, rz = pz - fz[2] * zm;
-      const rho = Math.hypot(rx, ry, rz);
-      if (rho < 1e-5 || zm < -rhoLoop * 1.5) continue;
-      rx /= rho; ry /= rho; rz /= rho;
-      const w = clamp01(1 - rho / (2.2 * rhoLoop)) * (tasche ? 1 - 0.7 * tasche[v]! : 1);
-      pucker[v * 3] = rx * w;
-      pucker[v * 3 + 1] = ry * w;
-      pucker[v * 3 + 2] = rz * w;
+      const p: Vec3 = [positions[v * 3]!, positions[v * 3 + 1]!, positions[v * 3 + 2]!];
+      const { h, phi } = m.local(p);
+      const u = Math.abs(phi) / m.theta;
+      if (u > 1.3) continue;
+      let s = seiten[v]!;
+      if (s === 0) s = h > m.lipHAt(clamp(phi, -m.theta, m.theta)) ? 1 : -1;
+      // Halbkreisprofil: rundes Loch statt Linse
+      const along = Math.sqrt(Math.max(0, 1 - u * u));
+      const skin = 1 - smoothstep(0, reach, kantenAbstand[v]!);
+      const w = along * skin * (1 - tasche[v]!);
+      if (w < 1e-4) continue;
+      pucker[v * 3] = fy[0] * s * w;
+      pucker[v * 3 + 1] = fy[1] * s * w;
+      pucker[v * 3 + 2] = fy[2] * s * w;
     }
   }
   // Öffnungswinkel aus Spalthöhe und Hebel (Gelenk → Maulzentrum)

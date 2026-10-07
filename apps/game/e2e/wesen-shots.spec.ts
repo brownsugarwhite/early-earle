@@ -9,7 +9,7 @@ import { WESEN_VORLAGEN } from '../src/lab/wesen/presets.ts';
 // Kontaktbogen aller Vorlagen `docs/progress/wesen-lab-kontaktbogen[-TAG].png` (Kopfzeile: Commit, Backend, Datum).
 // Echte GPU wie die anderen Harnesses, nur auf Wunsch; Bedienung: docs/progress/wesen-lab-README.md.
 //
-//   EE_SHOTS=1 [EE_VORLAGEN=keil,loch] [EE_SHOTS_TAG=vorher] [EE_MAUL=bau|zu|auf] E2E_PORT=4471 node apps/game/scripts/e2e.mjs e2e/wesen-shots.spec.ts
+//   EE_SHOTS=1 [EE_VORLAGEN=keil,loch] [EE_SHOTS_TAG=vorher] [EE_MAUL=bau|zu|auf] [EE_ANSICHT=referenz|seite|held|brett] E2E_PORT=4471 node apps/game/scripts/e2e.mjs e2e/wesen-shots.spec.ts
 //
 // EE_MAUL: Kieferstellung der Bilder — `bau` (Bauzustand, Standard), `zu` (Verschluss-Morph, Dateinamen mit „-zu“) oder
 // `auf` (volle Öffnung, „-auf“); gesetzt über den Lab-Controller, weil die Bedienflächen für die Bilder ausgeblendet sind.
@@ -26,11 +26,13 @@ const OUT = `${REPO}docs/progress/`;
 const TAG = (process.env.EE_SHOTS_TAG ?? '').trim().replace(/[^A-Za-z0-9_-]/g, '');
 /** Kieferstellung: `bau` = Bauzustand (leicht offen), `zu` = geschlossen (Verschluss-Morph), `auf` = volle Öffnung. */
 const MAUL = ['bau', 'zu', 'auf'].includes(process.env.EE_MAUL ?? '') ? (process.env.EE_MAUL as 'bau' | 'zu' | 'auf') : 'bau';
-const SUFFIX = `${MAUL === 'bau' ? '' : `-${MAUL}`}${TAG ? `-${TAG}` : ''}`;
+/** Ansicht der Bilder: `referenz` (Bögen-Kamera, Standard), `seite` (Profil), `held` (freie Ansicht) oder `brett` (Spielsicht). */
+const ANSICHT = ['held', 'brett', 'referenz', 'seite'].includes(process.env.EE_ANSICHT ?? '') ? process.env.EE_ANSICHT! : 'referenz';
+/** Dateinamen tragen die Ansicht, wenn sie nicht die Bögen-Kamera ist (`-seite`, `-held`, `-brett`). */
+const ANSICHT_SUFFIX = ANSICHT === 'referenz' ? '' : `-${ANSICHT}`;
+const SUFFIX = `${MAUL === 'bau' ? '' : `-${MAUL}`}${ANSICHT_SUFFIX}${TAG ? `-${TAG}` : ''}`;
 /** Ohne WebGPU-Adapter fällt die App auf WebGL2 zurück; solche Bilder sind mit GPU-Bildern nicht vergleichbar. */
 const ALLOW_WEBGL2 = !!process.env.EE_ALLOW_WEBGL2;
-/** Ansicht der Bilder: `referenz` (Bögen-Kamera, Standard), `held` (freie Ansicht) oder `brett` (Spielsicht). */
-const ANSICHT = ['held', 'brett', 'referenz'].includes(process.env.EE_ANSICHT ?? '') ? process.env.EE_ANSICHT! : 'referenz';
 const GPU_ERROR = /WGSL|ShaderModule|pipeline creation failed|Invalid RenderPipeline|unresolved value|Invalid (BindGroup|Buffer|Texture)/i;
 
 function auswahl(): typeof WESEN_VORLAGEN {

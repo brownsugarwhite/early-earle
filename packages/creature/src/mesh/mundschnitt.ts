@@ -1,4 +1,5 @@
 import { add, clamp, clamp01, normalize, scale, sub, type Vec3 } from '../math/vec';
+import { hostCenter } from '../mouth/mouth';
 import type { MouthGeometry } from '../mouth/mouth';
 
 /**
@@ -182,7 +183,7 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   // Randrahmen: Einwärtsrichtung zur Trägerachse, „oben“ orthogonalisiert, Tiefe elliptisch zu den Winkeln auslaufend
   const rand: MundSchnitt['rand'] = randListe.map((r) => {
     const { h } = mouth.local(r.pos);
-    const axisPt = add(host.origin, scale(host.up, h));
+    const axisPt = hostCenter(host, h);
     let w = sub(axisPt, r.pos);
     const wl = Math.hypot(w[0], w[1], w[2]) || 1;
     w = [w[0] / wl, w[1] / wl, w[2] / wl];

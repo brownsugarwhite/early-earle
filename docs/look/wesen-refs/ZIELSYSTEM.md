@@ -49,10 +49,7 @@ Bauch `#ddbc96`; Aal `#304d68` Rücken, `#9eb79f` Bauch, Rachen `#302633`.
 
 ## 3. Konstruktion, die das trifft
 
-1. **Master-Wirbelsäule** (`sdf/spine.ts`): Kontrollpunkte Schwanzspitze → Schwanzwurzel → Becken → Rumpfmitte →
-   Brust/Halsansatz → Hals → Kopfbasis → Schnauzenspitze. Je Station Ei-Querschnitt (Breite, Höhe oben, Höhe unten,
-   Rundung) aus Profilkurven je Teil. **Ein** Loft; Abstand = Minimum über die Segmente (jedes Segment mit eigenem
-   Rahmen) → stetig, keine Nähte, keine Perlenkette, Biegungen erlaubt.
+1. **Zwei Kopfarten, ein Grundblob** (Stand 08.10.): *Kopf im Rumpf* (`hals.laenge` = 0 — Grundblob, Fisch, Aal, Drache): der Kopf ist das obere Vorderteil des Domes, Landmarken um die Maullinie formen das Profil (`kopfImRumpf`: Schnauze, Kinn, Kehle, Kopfband, Ei-Verjüngung des Gesichts). *Eigener Kopf* (`hals.laenge` > 0 — Rex, Katze, Hund, Giraffe): Kopf-Loft mit Schädel-/Kieferprofil am Halsende; bei kurzem Hals sitzt er mit der Mitte knapp über den Schultern, vorn über der Brust (`hals.ansatz`), weit verschmolzen (Rückenlinie Schulter → Hinterkopf, Kinn hängt frei). Rumpf und Hals bleiben **ein** Loft (Tropfen), die Neigung verschiebt waagerechte Scheiben (Standfläche bleibt flach, Rücken wird zur Schräge, Bild 2). Der Rumpf darf klein sein (`koerper.hoehe` ab 0,3): Rex = Kopf 0,6 H auf Rumpf 0,42 H und Beinen 0,18 H.
 2. **Kopfprofil** aus Landmarken: Schädelhöhe, Brauenlage, Schnauzenabfall, Schnauzenlänge, Nasenknubbel, Kieferhöhe,
    Kinnrundung, Schnauzenbreite. Die Maullinie ist eine Kurve auf diesem Kopf (Höhe vorn, Höhe am Winkel, Winkellage).
 3. **Beine** als Säulen-Lofts (Hüfte im Rumpf, Fuß als flacher Saugnapf/Pfote), Vereinigung mit großem k (Kehlfalte-Logik:
@@ -60,7 +57,7 @@ Bauch `#ddbc96`; Aal `#304d68` Rücken, `#9eb79f` Bauch, Rachen `#302633`.
 4. **Maulschnitt hart** (k ≈ ½ Zelle am feinen Gitter), Kantenvertices exakt auf der Kante (QEF), **gespalten** mit zwei
    Normalen (Haut / Rachen); Regionen als **Abstandsfelder** (Abstand zur Maulkante, Lippenbandbreite, Augenring) → der
    Shader zieht pixelscharfe Grenzen unabhängig von der Netzdichte.
-5. **Feineres Gitter um Kopf und Maul** (rechtwinkliges Gitter mit variabler Teilung je Achse, Faktor ≈ 2,5).
+5. **Feineres Gitter um Kopf und Maul**: rechtwinkliges Gitter mit variabler Teilung je Achse ist gebaut (`contourDual`, Option `refine`, im Bau `verfeinerung`), aber **standardmäßig aus** — es verfeinert ganze Achsenstreifen; bei Kopf ≈ Körperbreite kostet Faktor 1,8 etwa 2,5 × Vertices und Bauzeit (Rex 88³: 1,6 s → 4,4 s) für kaum sichtbaren Gewinn, weil die Maulkanten ohnehin durch den Lippenschnitt scharf sind. Für Standbilder zuschaltbar.
 6. **Zähne** als gebogene Fangkegel mit Größenprofil entlang der Lippe (Eckzahn-Spitze, vorn mittel, hinten klein),
    Ansatz im Lippenband; **Zunge** als parametrischer Körper (Rinne, runde Spitze, flache Unterseite) auf dem Kieferboden.
 7. **Augen**: Lage längs des Kopfs (`augen.lage`: Schnauze ↔ Hinterkopf) und Höhe, bündig mit Ring oder unter der Braue.

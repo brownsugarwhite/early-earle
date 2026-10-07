@@ -16,7 +16,7 @@ export const HIST_LIMIT = 60;
 /** Gleiche Änderung (gleicher Regler) innerhalb dieser Zeit = ein Schritt, auch ohne gemeldeten Zug (Tastatur). */
 const COALESCE_MS = 1000;
 
-export type WesenAnsicht = 'held' | 'referenz' | 'brett';
+export type WesenAnsicht = 'held' | 'referenz' | 'brett' | 'seite';
 export type WesenBoden = 'wiese' | 'weiss';
 export type StilQuelle = 'Standard' | 'App' | 'Mac' | 'Lokal';
 
@@ -376,11 +376,11 @@ export function starteWesenLab(p: StartParameter): void {
       patch.quelle = istQuelle(e.quelle) ? e.quelle : { art: 'neu', id: 'entwurf' };
       if (e.schloss && typeof e.schloss === 'object') patch.schloss = Object.fromEntries(Object.entries(e.schloss).filter(([, v]) => v === true));
       if (isTabId(e.tab)) patch.tab = e.tab;
-      if (e.ansicht === 'held' || e.ansicht === 'referenz' || e.ansicht === 'brett') patch.ansicht = e.ansicht;
+      if (e.ansicht === 'held' || e.ansicht === 'referenz' || e.ansicht === 'brett' || e.ansicht === 'seite') patch.ansicht = e.ansicht;
       if (e.boden === 'wiese' || e.boden === 'weiss') patch.boden = e.boden;
     }
   }
-  const ansicht = p.ansicht === 'referenz' || p.ansicht === 'brett' || p.ansicht === 'held' ? p.ansicht : null;
+  const ansicht = p.ansicht === 'referenz' || p.ansicht === 'brett' || p.ansicht === 'held' || p.ansicht === 'seite' ? p.ansicht : null;
   if (ansicht) patch.ansicht = ansicht;
   if (p.boden === 'weiss' || p.boden === 'wiese') patch.boden = p.boden;
   else if (ansicht === 'referenz') patch.boden = 'weiss';

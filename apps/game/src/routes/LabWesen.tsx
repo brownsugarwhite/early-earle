@@ -18,7 +18,7 @@ import '../lab/wesen/wesen-lab.css';
 const st = () => useWesenStore.getState();
 
 /** Ansicht des Labs → feste Kamera des Drehtellers (Referenzmodus = Bögen-Kamera). */
-const KAMERA: Record<WesenAnsicht, TurntableAnsicht> = { held: 'held', referenz: 'boegen', brett: 'brett' };
+const KAMERA: Record<WesenAnsicht, TurntableAnsicht> = { held: 'held', referenz: 'boegen', brett: 'brett', seite: 'seite' };
 
 /** Zieht die Szene am Store mit (ohne React-Render): Bauplan, Stil, Boden, Drehen, Öffnung. */
 function useSzeneAmStore(controller: WesenLabScene): void {
@@ -104,6 +104,10 @@ function SchnellAktionen({ controller }: { controller: WesenLabScene }) {
         <WesenIcon name="brett" size={20} />
         <span>Brett</span>
       </button>
+      <button type="button" className="wl-btn" data-active={ansicht === 'seite'} aria-pressed={ansicht === 'seite'} onClick={() => umschalten('seite')} data-testid="wl-seite" title="Reine Seitenansicht auf Augenhöhe: Profil gegen die Bögen">
+        <WesenIcon name="brett" size={20} />
+        <span>Seite</span>
+      </button>
       <button type="button" className="wl-btn wl-btn--icon" onClick={() => controller.setAnsicht(KAMERA[ansicht])} aria-label="Kamera einpassen" title="Kamera zurück in die feste Ansicht" data-testid="wl-einpassen">
         <WesenIcon name="kamera" size={20} />
       </button>
@@ -130,7 +134,7 @@ function SchnellAktionen({ controller }: { controller: WesenLabScene }) {
 /**
  * Grundformen-Lab (Phase 1 der Wesen-Werkstatt): alle Regler des Bauplans live in Tabs, Vorlagen, Licht und Stil nach
  * dem Look-Vertrag, Würfel/Schloss/Zurücksetzen, Rückgängig/Wiederholen, Verben Maul auf/zu und Blinzeln.
- * Adresse: `?vorlage=<id>&boden=weiss|wiese&ansicht=held|referenz|brett&spin=1` (plus `sheet`/`panel` des Rahmens).
+ * Adresse: `?vorlage=<id>&boden=weiss|wiese&ansicht=held|referenz|brett|seite&spin=1` (plus `sheet`/`panel` des Rahmens).
  */
 export function LabWesen() {
   const [search] = useSearchParams();

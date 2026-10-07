@@ -44,15 +44,49 @@ function solveQef(A: Float64Array, b: Float64Array, mass: Vec3, lambda: number, 
  * Gitterlauf wie bei den Surface Nets (Narrow-Band), aber Vertexlage per QEF. `gradientEps` = Schrittweite für den
  * Gradienten an den Kantenschnitten (≈ 0,2 Zellen).
  */
-export function contourDual(sdf: Sdf, opts: ContourOptions & { gradientEps?: number; lambda?: number }): DcContour {
+/** Verfeinerungsbereich: innerhalb der Quader ist die Teilung um `faktor` feiner, außen läuft sie weich aus. */
+export interface Verfeinerung {
+  boxes: Array<{ min: Vec3; max: Vec3 }>;
+  faktor: number;
+}
+
+/**
+ * Achsenteilungen eines rechtwinkligen Gitters: Grundteilung `cell`, in den Verfeinerungsquadern `cell / faktor`, dazwischen
+ * ein weicher Übergang über drei Grundzellen. Jede Achse unabhängig — Zellen sind Quader, die Topologie bleibt die eines
+ * regulären Gitters (Dual Contouring unverändert), nur um Kopf und Maul wird feiner abgetastet.
+ */
+export function gridAxes(min: Readonly<Vec3>, max: Readonly<Vec3>, cell: number, shift: number, refine?: Verfeinerung): [Float64Array, Float64Array, Float64Array] {
+  const pad = cell * (2 + shift);
+  const axes: Float64Array[] = [];
+  for (let a = 0; a < 3; a++) {
+    const lo = min[a]! - pad, hi = max[a]! + pad;
+    const pts: number[] = [lo];
+    let x = lo;
+    const trans = cell * 3;
+    while (x < hi) {
+      let w = 0;
+      if (refine && refine.faktor > 1.001) {
+        for (const b of refine.boxes) {
+          const d = Math.max(b.min[a]! - x, 0, x - b.max[a]!);
+          const t = 1 - Math.min(1, d / trans);
+          w = Math.max(w, t * t * (3 - 2 * t));
+        }
+      }
+      const h = cell / (1 + ((refine?.faktor ?? 1) - 1) * w);
+      x += h;
+      pts.push(x);
+    }
+    axes.push(Float64Array.from(pts));
+  }
+  return [axes[0]!, axes[1]!, axes[2]!];
+}
+
+export function contourDual(sdf: Sdf, opts: ContourOptions & { gradientEps?: number; lambda?: number; refine?: Verfeinerung }): DcContour {
   const cell = opts.cell;
   const shift = opts.shift ?? 0;
-  const pad = cell * (2 + shift);
-  const minX = opts.min[0] - pad, minY = opts.min[1] - pad, minZ = opts.min[2] - pad;
-  const nx = Math.ceil((opts.max[0] + pad - minX) / cell) + 1;
-  const ny = Math.ceil((opts.max[1] + pad - minY) / cell) + 1;
-  const nz = Math.ceil((opts.max[2] + pad - minZ) / cell) + 1;
-  const val = sampleGrid(sdf, minX, minY, minZ, nx, ny, nz, cell, opts.narrowBand !== false);
+  const [xs, ys, zs] = gridAxes(opts.min, opts.max, cell, shift, opts.refine);
+  const nx = xs.length, ny = ys.length, nz = zs.length;
+  const val = sampleGrid(sdf, xs, ys, zs, cell, opts.narrowBand !== false);
   const at = (i: number, j: number, k: number): number => (k * ny + j) * nx + i;
   const cells = (nx - 1) * (ny - 1) * (nz - 1);
   const cellAt = (i: number, j: number, k: number): number => (k * (ny - 1) + j) * (nx - 1) + i;
@@ -61,7 +95,7 @@ export function contourDual(sdf: Sdf, opts: ContourOptions & { gradientEps?: num
   const nrm: number[] = [];
   const crease: number[] = [];
   const corner = new Float32Array(8);
-  const eps = opts.gradientEps ?? cell * 0.2;
+  const epsBase = opts.gradientEps ?? cell * 0.2;
   const lambda = (opts.lambda ?? 0.08) * 1; // relativ: Normalen sind Einheitsvektoren → A hat Einträge O(1)
   const A = new Float64Array(9);
   const bv = new Float64Array(3);
@@ -80,6 +114,8 @@ export function contourDual(sdf: Sdf, opts: ContourOptions & { gradientEps?: num
           if (v < 0) inside++;
         }
         if (inside === 0 || inside === 8) continue;
+        const dx = xs[i + 1]! - xs[i]!, dy = ys[j + 1]! - ys[j]!, dz = zs[k + 1]! - zs[k]!;
+        const eps = (epsBase / cell) * Math.min(dx, dy, dz);
         A.fill(0);
         bv.fill(0);
         mass[0] = mass[1] = mass[2] = 0;
@@ -92,9 +128,9 @@ export function contourDual(sdf: Sdf, opts: ContourOptions & { gradientEps?: num
           const t = va / (va - vb);
           const ax = a & 1, ay = (a >> 1) & 1, az = (a >> 2) & 1;
           const bx = b & 1, by = (b >> 1) & 1, bz = (b >> 2) & 1;
-          p[0] = minX + (i + ax + (bx - ax) * t) * cell;
-          p[1] = minY + (j + ay + (by - ay) * t) * cell;
-          p[2] = minZ + (k + az + (bz - az) * t) * cell;
+          p[0] = xs[i + ax]! + (xs[i + bx]! - xs[i + ax]!) * t;
+          p[1] = ys[j + ay]! + (ys[j + by]! - ys[j + ay]!) * t;
+          p[2] = zs[k + az]! + (zs[k + bz]! - zs[k + az]!) * t;
           tetraGradient(sdf, p, eps, g);
           const gl = Math.hypot(g[0], g[1], g[2]) || 1;
           const n0 = g[0] / gl, n1 = g[1] / gl, n2 = g[2] / gl;
@@ -111,9 +147,9 @@ export function contourDual(sdf: Sdf, opts: ContourOptions & { gradientEps?: num
         mass[0] /= cnt; mass[1] /= cnt; mass[2] /= cnt;
         solveQef(A, bv, mass, lambda * cnt, q);
         // in die (leicht vergrößerte) Zelle klemmen
-        const cx0 = minX + (i - 0.25) * cell, cx1 = minX + (i + 1.25) * cell;
-        const cy0 = minY + (j - 0.25) * cell, cy1 = minY + (j + 1.25) * cell;
-        const cz0 = minZ + (k - 0.25) * cell, cz1 = minZ + (k + 1.25) * cell;
+        const cx0 = xs[i]! - 0.25 * dx, cx1 = xs[i + 1]! + 0.25 * dx;
+        const cy0 = ys[j]! - 0.25 * dy, cy1 = ys[j + 1]! + 0.25 * dy;
+        const cz0 = zs[k]! - 0.25 * dz, cz1 = zs[k + 1]! + 0.25 * dz;
         q[0] = Math.min(cx1, Math.max(cx0, q[0]));
         q[1] = Math.min(cy1, Math.max(cy0, q[1]));
         q[2] = Math.min(cz1, Math.max(cz0, q[2]));
@@ -164,8 +200,9 @@ export function contourDual(sdf: Sdf, opts: ContourOptions & { gradientEps?: num
   return { positions: new Float32Array(pos), normals: new Float32Array(nrm), crease: new Float32Array(crease), index: new Uint32Array(tris), vertexCount: pos.length / 3 };
 }
 
-/** Gitterwerte mit Narrow-Band (identisch zu den Surface Nets). */
-function sampleGrid(sdf: Sdf, minX: number, minY: number, minZ: number, nx: number, ny: number, nz: number, cell: number, narrowBand: boolean): Float32Array {
+/** Gitterwerte mit Narrow-Band auf rechtwinkligem Gitter (Blöcke von B Zellen, weit entfernte Blöcke trilinear). */
+function sampleGrid(sdf: Sdf, xs: Float64Array, ys: Float64Array, zs: Float64Array, cell: number, narrowBand: boolean): Float32Array {
+  const nx = xs.length, ny = ys.length, nz = zs.length;
   const val = new Float32Array(nx * ny * nz);
   const at = (i: number, j: number, k: number): number => (k * ny + j) * nx + i;
   const p: Vec3 = [0, 0, 0];
@@ -174,20 +211,24 @@ function sampleGrid(sdf: Sdf, minX: number, minY: number, minZ: number, nx: numb
   const coarse = new Float32Array(cbx * cby * cbz);
   const cat = (i: number, j: number, k: number): number => (k * cby + j) * cbx + i;
   for (let k = 0; k < cbz; k++) {
-    p[2] = minZ + Math.min(k * B, nz - 1) * cell;
+    p[2] = zs[Math.min(k * B, nz - 1)]!;
     for (let j = 0; j < cby; j++) {
-      p[1] = minY + Math.min(j * B, ny - 1) * cell;
+      p[1] = ys[Math.min(j * B, ny - 1)]!;
       for (let i = 0; i < cbx; i++) {
-        p[0] = minX + Math.min(i * B, nx - 1) * cell;
+        p[0] = xs[Math.min(i * B, nx - 1)]!;
         coarse[cat(i, j, k)] = sdf(p);
       }
     }
   }
-  const far = cell * (B * 0.87 * 1.7 + 2.0);
   const c8 = new Float32Array(8);
   for (let bk = 0; bk < cbz - 1; bk++)
     for (let bj = 0; bj < cby - 1; bj++)
       for (let bi = 0; bi < cbx - 1; bi++) {
+        const i0 = bi * B, j0 = bj * B, k0 = bk * B;
+        const i1 = Math.min(i0 + B, nx - 1), j1 = Math.min(j0 + B, ny - 1), k1 = Math.min(k0 + B, nz - 1);
+        // Block-Ausdehnung in Weltmaßen: „weit“ = halbe Raumdiagonale · 1,7 (Smooth-Min ist nicht lipschitz-1) + 2 Grundzellen
+        const sx = xs[i1]! - xs[i0]!, sy = ys[j1]! - ys[j0]!, sz = zs[k1]! - zs[k0]!;
+        const far = 0.5 * Math.hypot(sx, sy, sz) * 1.7 + 2.0 * cell;
         let allFar = true;
         let sign = 0;
         for (let c = 0; c < 8; c++) {
@@ -197,25 +238,22 @@ function sampleGrid(sdf: Sdf, minX: number, minY: number, minZ: number, nx: numb
           if (sign === 0) sign = s;
           if (s !== sign || Math.abs(v) <= far) allFar = false;
         }
-        const i0 = bi * B, j0 = bj * B, k0 = bk * B;
-        const i1 = Math.min(i0 + B, nx - 1), j1 = Math.min(j0 + B, ny - 1), k1 = Math.min(k0 + B, nz - 1);
-        const spanI = Math.max(1, Math.min(B, nx - 1 - i0)), spanJ = Math.max(1, Math.min(B, ny - 1 - j0)), spanK = Math.max(1, Math.min(B, nz - 1 - k0));
         for (let k = k0; k <= k1; k++) {
-          const fz = (k - k0) / spanK;
+          const fz = sz > 0 ? (zs[k]! - zs[k0]!) / sz : 0;
           for (let j = j0; j <= j1; j++) {
-            const fy = (j - j0) / spanJ;
+            const fy = sy > 0 ? (ys[j]! - ys[j0]!) / sy : 0;
             for (let i = i0; i <= i1; i++) {
               const idx = at(i, j, k);
               if (allFar) {
-                const fx = (i - i0) / spanI;
+                const fx = sx > 0 ? (xs[i]! - xs[i0]!) / sx : 0;
                 const x00 = c8[0]! + (c8[1]! - c8[0]!) * fx, x10 = c8[2]! + (c8[3]! - c8[2]!) * fx;
                 const x01 = c8[4]! + (c8[5]! - c8[4]!) * fx, x11 = c8[6]! + (c8[7]! - c8[6]!) * fx;
                 const y0 = x00 + (x10 - x00) * fy, y1 = x01 + (x11 - x01) * fy;
                 val[idx] = y0 + (y1 - y0) * fz;
               } else {
-                p[0] = minX + i * cell;
-                p[1] = minY + j * cell;
-                p[2] = minZ + k * cell;
+                p[0] = xs[i]!;
+                p[1] = ys[j]!;
+                p[2] = zs[k]!;
                 val[idx] = sdf(p);
               }
             }

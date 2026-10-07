@@ -45,7 +45,7 @@ export const FORTBEWEGUNGEN = ['laufen', 'schlaengeln', 'schwimmen', 'fliegen'] 
 const K = 'Körper';
 const koerper = z
   .object({
-    hoehe: regler(K, 'koerper.hoehe', 'Höhe', 0.5, 2.5, 1),
+    hoehe: regler(K, 'koerper.hoehe', 'Höhe', 0.3, 2.5, 1, 'Rumpf ohne Kopf und Beine (Rex, Katze: klein unter dem großen Kopf)'),
     breite: regler(K, 'koerper.breite', 'Breite', 0.4, 2, 1),
     laenge: regler(K, 'koerper.laenge', 'Länge', 0.4, 2.5, 1, 'vorn–hinten'),
     kubik: regler(K, 'koerper.kubik', 'Würfelig', 0, 1, 0, '0 rund … 1 kantig'),
@@ -73,7 +73,7 @@ const hals = z
 
 const kopf = z
   .object({
-    groesse: regler(H, 'kopf.groesse', 'Kopfgröße', 0.2, 2.2, 0.7, 'relativ zur Körperhöhe (Rex: Kopf fast so groß wie der Rumpf)'),
+    groesse: regler(H, 'kopf.groesse', 'Kopfgröße', 0.2, 3, 0.7, 'relativ zur Körperhöhe (Rex, Katze: Kopf größer als der Rumpf)'),
     laenge: regler(H, 'kopf.laenge', 'Kopflänge', 0.5, 2, 1, 'Streckung nach vorn'),
     neigung: regler(H, 'kopf.neigung', 'Kopfneigung', -1, 1, 0),
     schnauze: regler(H, 'kopf.schnauze', 'Schnauze', 0, 1, 0, 'Länge der Schnauze'),
@@ -145,6 +145,7 @@ const beine = z
     laenge: regler(B, 'unterkoerper.beine.laenge', 'Beinlänge', 0, 1.5, 0.4),
     fuss: regler(B, 'unterkoerper.beine.fuss', 'Fußgröße', 0, 1, 0.5, 'Saugnapf am Boden'),
     spreiz: regler(B, 'unterkoerper.beine.spreiz', 'Spreizung', 0, 1, 0.5),
+    lage: regler(B, 'unterkoerper.beine.lage', 'Beinlage', 0, 1, 0.2, '0 vorn unter der Brust (sitzende Katze) … 1 hinten unter dem Rumpf (Rex)'),
   })
   .prefault({});
 

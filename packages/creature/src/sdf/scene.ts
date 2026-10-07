@@ -99,6 +99,8 @@ export interface LoftStation {
   wyT: number;
   wyB: number;
   n: number;
+  /** Ei-Verjüngung nach vorn (0 rund … 1 spitz): die Breite schrumpft zur Vorderseite — Gesicht schmaler als Schultern. */
+  taper: number;
   arc: number;
   part: number;
 }
@@ -140,12 +142,16 @@ function nearestStation(prim: LoftPrim, p: Readonly<Vec3>): number {
   return bi;
 }
 
-/** Radius des Ei-Querschnitts einer Station in Richtung (ca, cb) der Querschnittsebene. */
+/**
+ * Radius des Ei-Querschnitts einer Station in Richtung (ca, cb) der Querschnittsebene: Superellipse mit getrennten
+ * Halbachsen vorn/hinten; mit `taper` schrumpft die Breite zur Vorderseite (Ei: hinten rund und breit, vorn schmaler).
+ */
 function sectionRadius(s: LoftStation, ca: number, cb: number): number {
   const wy = cb >= 0 ? s.wyT : s.wyB;
-  if (s.wx < 1e-6 || wy < 1e-6) return 0;
+  const wx = cb > 0 && s.taper > 0 ? s.wx * (1 - s.taper * cb) : s.wx;
+  if (wx < 1e-6 || wy < 1e-6) return 0;
   const n = s.n;
-  const ax = Math.abs(ca) / s.wx, ay = Math.abs(cb) / wy;
+  const ax = Math.abs(ca) / wx, ay = Math.abs(cb) / wy;
   if (n <= 2.001) return 1 / Math.sqrt(ax * ax + ay * ay);
   return Math.pow(Math.pow(ax, n) + Math.pow(ay, n), -1 / n);
 }
@@ -308,6 +314,8 @@ export interface LoftSpec {
   wyB: number[];
   n: number[] | number;
   parts: number[] | number;
+  /** Ei-Verjüngung nach vorn je Station (0 rund … 1 spitz), siehe `LoftStation.taper`. */
+  taper?: number[] | number;
   capStart?: number;
   capEnd?: number;
   /** Gerade Bezugsachse (siehe `LoftPrim.axis`); die Punkte müssen entlang der Achse monoton sein. */
@@ -331,7 +339,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
     dz /= dl;
     const steps = [0.38, 0.71, 0.92, 1.0];
     const fac = [0.925, 0.7, 0.39, 0];
-    const extraP: Vec3[] = [], exW: number[] = [], exT: number[] = [], exB: number[] = [], exN: number[] = [], exPart: number[] = [];
+    const extraP: Vec3[] = [], exW: number[] = [], exT: number[] = [], exB: number[] = [], exN: number[] = [], exPart: number[] = [], exTaper: number[] = [];
     for (let q = 0; q < steps.length; q++) {
       const t = steps[q]! * r;
       extraP.push([a[0] + dx * t, a[1] + dy * t, a[2] + dz * t]);
@@ -340,6 +348,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       exB.push((spec.wyB[i] ?? 0) * fac[q]!);
       exN.push(typeof spec.n === 'number' ? spec.n : (spec.n[i] ?? 2));
       exPart.push(typeof spec.parts === 'number' ? spec.parts : (spec.parts[i] ?? 0));
+      exTaper.push(typeof spec.taper === 'number' ? spec.taper : (spec.taper?.[i] ?? 0));
     }
     if (atStart) {
       spec.points = [...extraP.reverse(), ...spec.points];
@@ -348,6 +357,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       spec.wyB = [...exB.reverse(), ...spec.wyB];
       if (typeof spec.n !== 'number') spec.n = [...exN.reverse(), ...spec.n];
       if (typeof spec.parts !== 'number') spec.parts = [...exPart.reverse(), ...spec.parts];
+      if (Array.isArray(spec.taper)) spec.taper = [...exTaper.reverse(), ...spec.taper];
     } else {
       spec.points = [...spec.points, ...extraP];
       spec.wx = [...spec.wx, ...exW];
@@ -355,9 +365,11 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       spec.wyB = [...spec.wyB, ...exB];
       if (typeof spec.n !== 'number') spec.n = [...spec.n, ...exN];
       if (typeof spec.parts !== 'number') spec.parts = [...spec.parts, ...exPart];
+      if (Array.isArray(spec.taper)) spec.taper = [...spec.taper, ...exTaper];
     }
   };
   spec = { ...spec, points: spec.points.slice(), wx: spec.wx.slice(), wyT: spec.wyT.slice(), wyB: spec.wyB.slice(), n: typeof spec.n === 'number' ? spec.n : spec.n.slice(), parts: typeof spec.parts === 'number' ? spec.parts : spec.parts.slice() };
+  if (Array.isArray(spec.taper)) spec.taper = spec.taper.slice();
   // (fast) doppelte Nachbarpunkte entfernen: Nullsegmente machen Tangente, Rahmen und Profil unstetig
   {
     let total = 0;
@@ -372,6 +384,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
         spec.wyB.splice(i, 1);
         if (typeof spec.n !== 'number') spec.n.splice(i, 1);
         if (typeof spec.parts !== 'number') spec.parts.splice(i, 1);
+        if (Array.isArray(spec.taper)) spec.taper.splice(i, 1);
       }
     }
   }
@@ -423,6 +436,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       wyT: Math.max(0, spec.wyT[i] ?? 0),
       wyB: Math.max(0, spec.wyB[i] ?? 0),
       n: typeof spec.n === 'number' ? spec.n : (spec.n[i] ?? 2),
+      taper: Math.max(0, Math.min(0.95, typeof spec.taper === 'number' ? spec.taper : (spec.taper?.[i] ?? 0))),
       arc,
       part: typeof spec.parts === 'number' ? spec.parts : (spec.parts[i] ?? 0),
     });
