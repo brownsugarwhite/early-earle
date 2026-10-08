@@ -316,6 +316,21 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
   return material;
 }
 
+/** Lider: Hautfarbe mit den Stufen des Körpers (Kappen aus Körpermaterial über dem Augapfel, Blinzeln in jeder Tiefe). */
+export function createLidMaterial(u: CreatureMaterialUniforms): MeshBasicNodeMaterial {
+  const material = new MeshBasicNodeMaterial();
+  material.name = 'ee-lid';
+  material.fog = false;
+  material.colorNode = Fn(() => {
+    const N = normalize(normalView as unknown as Vec3Node);
+    const wrap = dot(N, u.lightDir).mul(0.5).add(0.5);
+    const v = stepShade(wrap, u.stufen, u.federung, u.verlauf);
+    const col = mix(mix(u.grund.schatten, u.grund.base, smoothstep(0, 0.5, v)), u.grund.licht, smoothstep(0.5, 1, v));
+    return vec4(col.mul(0.97), 1);
+  })();
+  return material;
+}
+
 /** Flaches Material für Zähne (hell an der Spitze, warmer Schatten am Ansatz) — nutzt `eeTooth` (0 Ansatz … 1 Spitze). */
 export function createToothMaterial(u: CreatureMaterialUniforms, zahnHex: string): MeshBasicNodeMaterial {
   const f = farbRolle(zahnHex, STIL_STANDARD);

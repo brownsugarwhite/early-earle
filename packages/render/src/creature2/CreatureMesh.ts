@@ -1,7 +1,7 @@
 import { Bone, BufferAttribute, BufferGeometry, ConeGeometry, Float32BufferAttribute, Group, InstancedMesh, InterleavedBuffer, InterleavedBufferAttribute, Matrix4, Mesh, Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Uint16BufferAttribute, Vector3, Vector4 } from 'three/webgpu';
 import type { MeshBasicNodeMaterial } from 'three/webgpu';
 import { jawPose, jawRig, type Bauplan, type CreatureBuild } from '@ee/creature';
-import { applyStil, createCreatureMaterial, createCreatureUniforms, createTongueMaterial, createToothMaterial, MAX_SLIT_EYES, type CreatureColors, type CreatureMaterialUniforms } from './material/earleCreature';
+import { applyStil, createCreatureMaterial, createCreatureUniforms, createLidMaterial, createTongueMaterial, createToothMaterial, MAX_SLIT_EYES, type CreatureColors, type CreatureMaterialUniforms } from './material/earleCreature';
 import { applyMuster } from './material/muster';
 import { applyJellyColors, createJellyMaterial, createJellyUniforms, placeBubbles, type JellyUniforms } from './material/jelly';
 import { applyEyeType, createEyeMaterial, createEyeUniforms, type EyeUniforms } from './material/eye';
@@ -18,6 +18,9 @@ export interface CreatureMeshOptions {
 }
 
 const UP = new Vector3(0, 1, 0);
+/** Lidwinkel um die Querachse: Ruhe (Pol nach hinten, nur ein Saum deckt den Augapfel oben) … geschlossen (Pol nach vorn). */
+const LID_REST = -1.15;
+const LID_CLOSED = 1.2;
 const _q = new Quaternion();
 const _m = new Matrix4();
 const _p = new Vector3();
@@ -115,6 +118,10 @@ export class CreatureMesh {
   private eyeMaterial: MeshBasicNodeMaterial;
   private eyeMeshes: Mesh[] = [];
   private eyeGeo: BufferGeometry | null = null;
+  /** Oberlider: Halbkugel-Kappen aus Hautmaterial am Augapfel, drehen beim Blinzeln nach vorn-unten (Bild 10: Sichel). */
+  private lidMaterial: MeshBasicNodeMaterial;
+  private lidMeshes: Mesh[] = [];
+  private lidGeo: BufferGeometry | null = null;
   private toothMaterial: MeshBasicNodeMaterial;
   private tongueMaterial: MeshBasicNodeMaterial;
   mesh: SkinnedMesh | null = null;
@@ -137,6 +144,8 @@ export class CreatureMesh {
   private opennessNow = 0.3;
   /** Blinzeln 0 (offen) … 1 (zu). */
   blink = 0;
+  /** Hält die Lider in einer Stellung (0 offen … 1 zu) für Standbilder; `null` = Blinzel-Automatik. */
+  blinkHold: number | null = null;
   private blinkTimer = 2.5;
   private blinkPhase = -1;
   /** Atmen an/aus. */
@@ -154,6 +163,7 @@ export class CreatureMesh {
     this.jellyMaterial = createJellyMaterial(this.uniforms, this.jelly);
     this.eye = createEyeUniforms();
     this.eyeMaterial = createEyeMaterial(this.uniforms, this.eye);
+    this.lidMaterial = createLidMaterial(this.uniforms);
     this.toothMaterial = createToothMaterial(this.uniforms, '#f1e6c9');
     this.tongueMaterial = createTongueMaterial(this.uniforms, '#e07c92');
     this.root.name = 'wesen';
@@ -329,10 +339,23 @@ export class CreatureMesh {
         m.name = 'wesen-auge';
         m.scale.setScalar(r * 1.0);
         m.position.set(center.x - hp[0]!, center.y - hp[1]!, center.z - hp[2]!);
-        m.quaternion.setFromUnitVectors(new Vector3(0, 0, 1), n);
+        // Augenrahmen: +z Blick (Normale), +y oben (Welt-oben projiziert), +x quer — das Lid dreht um x
+        const yAx = UP.clone().addScaledVector(n, -UP.dot(n)).normalize();
+        const xAx = new Vector3().crossVectors(yAx, n).normalize();
+        m.quaternion.setFromRotationMatrix(new Matrix4().makeBasis(xAx, yAx, n));
         m.castShadow = false;
         host.add(m);
         this.eyeMeshes.push(m);
+        // Oberlid als Kind des Augapfels: Halbkugel-Kappe (Pol +y), in Ruhe nach hinten gekippt (nur ein Saum oben
+        // sichtbar), beim Blinzeln nach vorn über den Augapfel
+        if (!this.lidGeo) this.lidGeo = new SphereGeometry(1, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.5);
+        const lid = new Mesh(this.lidGeo, this.lidMaterial);
+        lid.name = 'wesen-lid';
+        lid.scale.setScalar(1.07);
+        lid.rotation.x = LID_REST;
+        lid.castShadow = false;
+        m.add(lid);
+        this.lidMeshes.push(lid);
       }
     }
     eyes.forEach((e, i) => {
@@ -360,7 +383,9 @@ export class CreatureMesh {
     const k = 1 - Math.exp(-dt * 9);
     this.opennessNow += (this.openness - this.opennessNow) * k;
     // Blinzeln: Timer + Kurve (schnell zu, weicher auf)
-    if (this.blinkPhase < 0) {
+    if (this.blinkHold !== null) {
+      this.blink = this.blinkHold;
+    } else if (this.blinkPhase < 0) {
       if (this.autoBlink) this.blinkTimer -= dt;
       if (this.blinkTimer <= 0) {
         this.blinkPhase = 0;
@@ -377,6 +402,7 @@ export class CreatureMesh {
       }
     }
     this.uniforms.blink.value = this.blink;
+    for (const lid of this.lidMeshes) lid.rotation.x = LID_REST + (LID_CLOSED - LID_REST) * this.blink;
     this.applyPose();
   }
 
@@ -413,8 +439,11 @@ export class CreatureMesh {
     this.tongue?.removeFromParent();
     for (const m of this.eyeMeshes) m.removeFromParent();
     this.eyeMeshes = [];
+    this.lidMeshes = [];
     this.eyeGeo?.dispose();
     this.eyeGeo = null;
+    this.lidGeo?.dispose();
+    this.lidGeo = null;
     this.toothGeo?.dispose();
     this.tongueGeo?.dispose();
     this.upperTeeth = this.lowerTeeth = null;
@@ -429,6 +458,7 @@ export class CreatureMesh {
     this.material.dispose();
     this.jellyMaterial.dispose();
     this.eyeMaterial.dispose();
+    this.lidMaterial.dispose();
     this.toothMaterial.dispose();
     this.tongueMaterial.dispose();
     this.root.removeFromParent();

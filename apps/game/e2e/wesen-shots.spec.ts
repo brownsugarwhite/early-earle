@@ -37,7 +37,11 @@ const ANSICHT_SUFFIX = ANSICHT === 'referenz' ? '' : `-${ANSICHT}`;
 const RES = Number(process.env.EE_RES ?? '');
 const RES_PARAM = Number.isFinite(RES) && RES >= 32 && RES <= 160 ? `&res=${Math.round(RES)}` : '';
 const RES_SUFFIX = RES_PARAM ? `-r${Math.round(RES)}` : '';
-const SUFFIX = `${MAUL === 'bau' ? '' : `-${MAUL}`}${ANSICHT_SUFFIX}${RES_SUFFIX}${TAG ? `-${TAG}` : ''}`;
+/** Lider (`EE_BLINK=0…1`): hält die Augen in dieser Stellung (1 = zu), Dateien `-zu-augen` bzw. `-augen<wert>`. */
+const BLINK = Number(process.env.EE_BLINK ?? '');
+const BLINK_HOLD = Number.isFinite(BLINK) && BLINK > 0 && BLINK <= 1 ? BLINK : null;
+const BLINK_SUFFIX = BLINK_HOLD === null ? '' : BLINK_HOLD >= 1 ? '-augenzu' : `-augen${Math.round(BLINK_HOLD * 100)}`;
+const SUFFIX = `${MAUL === 'bau' ? '' : `-${MAUL}`}${ANSICHT_SUFFIX}${RES_SUFFIX}${BLINK_SUFFIX}${TAG ? `-${TAG}` : ''}`;
 /** Ohne WebGPU-Adapter fällt die App auf WebGL2 zurück; solche Bilder sind mit GPU-Bildern nicht vergleichbar. */
 const ALLOW_WEBGL2 = !!process.env.EE_ALLOW_WEBGL2;
 const GPU_ERROR = /WGSL|ShaderModule|pipeline creation failed|Invalid RenderPipeline|unresolved value|Invalid (BindGroup|Buffer|Texture)/i;
@@ -246,6 +250,13 @@ test(`Wesen-Lab: Vorlagen im ${ANSICHT === 'referenz' ? 'Referenzmodus' : ANSICH
     await page.goto(`/lab/wesen?vorlage=${v.id}&panel=zu&sheet=zu&boden=weiss&ansicht=${ANSICHT}&standbild=1${RES_PARAM}`);
     backend = await requireBackend(page);
     let s = await waitFertig(page);
+    if (BLINK_HOLD !== null) {
+      await page.evaluate((v) => {
+        const c = (window as unknown as { __wesenLab: { controller: { creature: { blinkHold: number | null } | null } } }).__wesenLab.controller.creature;
+        if (c) c.blinkHold = v;
+      }, BLINK_HOLD);
+      await page.waitForTimeout(300);
+    }
     if (MAUL !== 'bau') {
       // Kieferziel setzen und die Glättung (k = 1 − e^(−9·dt)) ausklingen lassen, dann wie oben warten
       await page.evaluate((o) => (window as unknown as { __wesenLab: { controller: { setOpenness(o: number): void } } }).__wesenLab.controller.setOpenness(o), MAUL === 'zu' ? 0 : 1);
