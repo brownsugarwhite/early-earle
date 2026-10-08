@@ -123,6 +123,10 @@ export interface MouthGeometry {
   jawLever: number;
   /** Größter Drehwinkel des Unterkiefers, bei dem der Rand über dem Boden bleibt (rad). */
   lowerAngleMax: number;
+  /** Wie weit sich der Unterkiefer beim Auseinanderziehen senken darf (Körpereinheiten), bis er den Boden erreicht. */
+  lowerDropMax: number;
+  /** Weiche Seite nach Höhe (+1 über … −1 unter der Maullinie, Band um die Linie) für Haut hinter den Mundwinkeln. */
+  seiteFeld(p: Readonly<Vec3>): number;
 }
 
 /** Scheibenmitte des Trägers auf Höhe h (Mittellinie oder gerade Achse). */
@@ -349,7 +353,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const below = hl - h;
     void aphi;
     const band = Math.max(0.09 * bs, 0.12 * H);
-    // Seite aus dem Lippenschnitt (±1 Haut, dazwischen die Taschenwand) oder nach Höhe
+    // Seite aus dem Lippenschnitt (±1 Haut, dazwischen die Taschenwand, hinter den Mundwinkeln zur Höhe hin auslaufend)
+    // oder nach Höhe
     const wBelow = side !== undefined && Math.abs(side) > 1e-3 ? clamp01((1 - side) / 2) : smoothstep(-0.2 * band, band, below) * smoothstep(0, 0.5 * band, below + 0.3 * band);
     const z = r * Math.cos(phi);
     const fd = 1 - smoothstep(jawDepth * 0.95, jawDepth * 0.95 + fadeLen, below);
@@ -377,12 +382,22 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const { a, f } = upperParts(p, bs, side);
     return a * f;
   };
+  // Weiche Seite nach Höhe: dieselbe S-Kurve wie `jawParts` ohne Seite — die Haut hinter den Mundwinkeln bekommt sie
+  // als Seite (zur Winkelnähe hart), sonst riss die Wange beim Öffnen zwischen Ober- und Unterkieferseite auf
+  const seiteFeld = (p: Readonly<Vec3>): number => {
+    const { h, phi, r } = local(p);
+    const hl = lipRef(clamp(phi, -theta, theta), r);
+    const below = hl - h;
+    const band = Math.max(0.09 * H, 0.12 * H);
+    const w = smoothstep(-0.2 * band, band, below) * smoothstep(0, 0.5 * band, below + 0.3 * band);
+    return 1 - 2 * clamp01(w);
+  };
 
   // Schranke des Unterkiefers aus der Geometrie darunter (Florian: der Kiefer darf nicht durch den Körper fahren): Rand und
   // Kinnboden werden um das Gelenk gedreht, bis ein Punkt den Boden erreicht oder in den **starren** Teil des Körpers
   // (unter der Biegezone) eintaucht — bis dahin dreht der Unterkiefer, den Rest übernimmt der Oberkiefer
-  const lowerAngleMax = (() => {
-    if (m.unterkiefer < 0.05) return 0;
+  const { lowerAngleMax, lowerDropMax } = (() => {
+    if (m.unterkiefer < 0.05) return { lowerAngleMax: 0, lowerDropMax: 0 };
     // Abtastpunkte nur auf der Fläche und über der Standfläche (unterhalb des Trägers gibt es keine Haut mehr)
     const hMin = 0.05 * H;
     const aufFlaeche = (h: number, phi: number): Vec3 | null => {
@@ -411,6 +426,12 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
       }
     }
     const floor = 0.04 * bodyScale;
+    // Senken beim Auseinanderziehen (`maul.ziehen`): bis der tiefste Abtastpunkt den Boden erreicht; die Biegezone
+    // senkt sich nur anteilig; der Kopf hebt sich beim Öffnen mit (`lift`) und gibt entsprechend Raum
+    let drop = Infinity;
+    for (const sm of samples) drop = Math.min(drop, sm.p[1] - floor);
+    for (const sm of kette) drop = Math.min(drop, (sm.p[1] - floor * 0.5) / Math.max(0.05, sm.anteil));
+    const lowerDropMax = Math.max(0, (Number.isFinite(drop) ? drop : 0) + 0.8 * lift);
     // Drehsinn: positiver Winkel senkt die Front (wie im Rig); sonst spiegeln
     const probe = add(hingeMid, rotate(quatFromAxisAngle(hingeAxis, 0.1), sub(center, hingeMid)));
     const sign = dot(sub(probe, center), host.up) < 0 ? 1 : -1;
@@ -443,7 +464,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const chin = surfacePoint(host, hLip - jawDepth, 0, maxR).p;
     const lChin = Math.max(0.05, Math.hypot(chin[0] - hingeMid[0], chin[1] - hingeMid[1], chin[2] - hingeMid[2]));
     const thetaFold = 2 * Math.asin(clamp((1.1 * fadeLen) / lChin, 0, 1));
-    return Math.min(ok, thetaFold, Math.asin(0.95));
+    return { lowerAngleMax: Math.min(ok, thetaFold, Math.asin(0.95)), lowerDropMax };
   })();
-  return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, skullHinge: { point: skullMid, axis: hingeAxis }, upperLever, lift, kopfFrei: frei, local, lipHAt, lipHObenAt, lipHUntenAt, kieferStufeMax, lipRObenAt, lipRUntenAt, lipRAt, profilAt, jawWeight, upperWeight, jawParts, upperParts, jawDepth, fadeLen, wToJoint, zCorner, jawLever, lowerAngleMax };
+  return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, skullHinge: { point: skullMid, axis: hingeAxis }, upperLever, lift, kopfFrei: frei, local, lipHAt, lipHObenAt, lipHUntenAt, kieferStufeMax, lipRObenAt, lipRUntenAt, lipRAt, profilAt, jawWeight, upperWeight, jawParts, upperParts, seiteFeld, jawDepth, fadeLen, wToJoint, zCorner, jawLever, lowerAngleMax, lowerDropMax };
 }

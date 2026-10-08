@@ -296,32 +296,33 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     }
   }
   const bodyWxB: number[] = bodyWx.slice();
+  let bodyWxSektor: number[] | undefined;
+  let bodySektor: number | undefined;
   if (!hasNeck) {
     // Kopf im Rumpf: Landmarken um die Maullinie formen das Profil (Schnauze, Kinn, Kehle, Kopfband) — ein Loft; mit
     // Seitenprofil nur noch Ei-Verjüngung und Kieferkante (die Silhouette ist gezeichnet)
     const kr = kopfImRumpf(b, R0, sz, shear, bodyWx, bodyWyT, bodyWyB, bodyN, bodyTaper, !!sp);
     kinnHoehe = kr.hLo;
     // Kieferbreite: Unterkiefer (Kinnband) schmaler oder Oberkiefer (Kopfband) schmaler — Platz für Zähne außen
+    // — nur im Maulsektor (Mundwinkel plus Rand): als Stufe über den ganzen Umfang stand sie als Gürtel um den Körper
+    // (Florian: „eine Kante seitlich gerade am Oberkiefer entlang“, Drache)
     const kb = clamp(b.maul.kieferbreite, -1, 1);
     if (b.maul.sichtbar && Math.abs(kb) > 0.01) {
       const nS = bodyWx.length;
+      bodyWxSektor = bodyWx.slice();
+      // der Sektor endet schon vor den Mundwinkeln (dort treffen sich die Kiefer ohnehin), der Auslauf (0,7 rad in
+      // `sectionRadius`) zieht keine Rille mehr hinter den Winkel
+      bodySektor = Math.max(0.2, thetaKeilOf(b.maul) - 0.15);
       for (let i = 0; i < nS; i++) {
         const t = i / (nS - 1);
         const lo = (1 - smoothstep(kr.tL - 0.02, kr.tL + 0.02, t)) * smoothstep(kr.tL - kr.hLo - 0.08, kr.tL - kr.hLo + 0.02, t);
         const up = smoothstep(kr.tL - 0.02, kr.tL + 0.02, t) * (1 - smoothstep(kr.tL + 0.3, kr.tL + 0.45, t));
-        if (kb < 0) {
-          const f = 1 + 0.45 * kb * lo;
-          bodyWxB[i] = bodyWx[i]! * f;
-          bodyWx[i] = bodyWx[i]! * f;
-        } else {
-          bodyWx[i] = bodyWx[i]! * (1 - 0.45 * kb * up);
-          bodyWxB[i] = bodyWx[i]!;
-        }
+        bodyWxSektor[i] = bodyWx[i]! * (kb < 0 ? 1 + 0.45 * kb * lo : 1 - 0.45 * kb * up);
       }
     }
     // Kopfhöhe Kinn … Scheitel (Maße für Öffnung, Linienschwung, Augen)
     kopfHoehe = b.maul.sichtbar ? H * (1 - clamp(kr.tL - kr.hLo, 0, 0.9)) : H;
-    prims.push(makeLoft({ points: bodyPts, upRef: FWD, wx: bodyWx, wxB: bodyWxB, wyT: bodyWyT, wyB: bodyWyB, n: bodyN, parts: bodyParts, taper: bodyTaper, capStart: bodyCapStart, capEnd: kub > 0.02 ? 0.12 * H * kub : 0, axis: UP }, { op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper' }));
+    prims.push(makeLoft({ points: bodyPts, upRef: FWD, wx: bodyWx, wxB: bodyWxB, wyT: bodyWyT, wyB: bodyWyB, n: bodyN, parts: bodyParts, taper: bodyTaper, capStart: bodyCapStart, capEnd: kub > 0.02 ? 0.12 * H * kub : 0, axis: UP, ...(bodyWxSektor && bodySektor !== undefined ? { wxSektor: bodyWxSektor, sektor: bodySektor } : {}) }, { op: 'union', part: kMitte, k: 0.1 * H, region: REGION.haut, name: 'koerper' }));
   }
 
   // --- Hals und Kopf ------------------------------------------------------------------------------------------------
@@ -458,6 +459,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const pts: Vec3[] = [];
       const wx: number[] = [], wxB: number[] = [], wyT: number[] = [], wyB: number[] = [], wyL: number[] = [], nn: number[] = [], nB: number[] = [];
       const sgWArr: number[] = [];
+      const endRArr: number[] = [], endRBArr: number[] = [];
       const braue = clamp(b.kopf.braue, 0, 1);
       const kb = clamp(m0.kieferbreite, -1, 1);
       for (let i = 0; i < nS; i++) {
@@ -476,6 +478,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         const uB = u > 0.5 ? Math.min(1, u + 0.5 * (1 - rB)) : u;
         const endRound = runde(uT);
         const endRoundB = runde(uB);
+        endRArr.push(endRound);
+        endRBArr.push(endRoundB);
         // Bild 5/11: Schädel hinten hoch mit flachem Scheitel, Braue als breiter Wulst über den Augen, Schnauze fällt nach
         // vorn ab und bleibt breit (Haube); Unterkiefer als Löffel, zur Kinnspitze flacher
         // Wangen: breite Backen unter den Augen (Katze, Bild 9) — die Breite wächst im hinteren Kopfdrittel bis zur Schnauzenwurzel
@@ -485,8 +489,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         // Giraffe), ohne Schnauze bleibt der Schädel bis u ≈ 0,8 hoch und rundet kugelig ab (Katze, Bild 9)
         const u0 = 0.5 + 0.3 * (1 - schn);
         const slope = Math.pow(Math.max(0, (u - u0) / (1 - u0)), 1.3);
-        // Nase: runde Wölbung vorn oben auf der Schnauze (Giraffe, Bild 6), wächst mit der Schnauzenlänge
-        const nase = 0.5 * schn * Math.exp(-Math.pow((u - 0.84) / 0.14, 2));
+        // Nase: runde Wölbung vorn oben auf der Schnauze (Giraffe, Bild 6), wächst mit der Schnauzenlänge; `nasentropfen`
+        // macht daraus den großen Tropfen, der über das Maul hängt (Florian: „deutlich größer“)
+        const tropf = clamp(b.kopf.nasentropfen, 0, 2);
+        const nase = tropf * schn * Math.exp(-Math.pow((u - 0.84) / (0.14 + 0.06 * Math.max(0, tropf - 0.5)), 2));
         // Stirn: hohe runde Stirn hinten (Hund) oder flacher Schädel (Rex)
         const stirn = clamp(b.kopf.stirn, -1, 1);
         const skull = hr * (0.55 + 0.5 * ok) * (1 - 0.62 * slope + nase) * (1 + 0.3 * braue * Math.exp(-Math.pow((u - 0.5) / 0.16, 2))) * (1 + 0.28 * stirn * (1 - u) * (1 - u));
@@ -524,6 +530,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const cb0 = clamp(m0.hoehe, 0.02, 0.98) * hostH - hc;
       const split: number[] = [];
       const bandK = hr * 0.1;
+      // Band je Station: an den Lippen schmal (Wulst), hinter den Mundwinkeln breit (die Breitenstufe läuft als weicher
+      // Verlauf über die Wange aus statt als Kante bis zum Hals), und wo die kürzere Unterform endet, breiter (die
+      // Unterseite des überhängenden Oberkiefers rundet sich — Tropfennase der Giraffe statt Sohle)
+      const bandArr: number[] = [];
       const stufenProben: Array<[number, number]> = [];
       for (let i = 0; i < nS; i++) {
         const u = i / (nS - 1);
@@ -531,7 +541,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         const wy = cb0 >= 0 ? wyT[i]! : wyB[i]!;
         const ay = wy > 1e-6 ? Math.min(1, Math.abs(cb0) / wy) : 1;
         const x0 = 0.5 * (wx[i]! + wxB[i]!) * Math.pow(Math.max(0, 1 - Math.pow(ay, nn[i]!)), 1 / nn[i]!);
-        const uL = Math.min(1, Math.abs(Math.atan2(x0, zS)) / thetaK);
+        const uRaw = Math.abs(Math.atan2(x0, zS)) / thetaK;
+        const uL = Math.min(1, uRaw);
+        const kurz = 1 - endRBArr[i]! / Math.max(1e-6, endRArr[i]!);
+        bandArr.push(bandK * (1 + 2.5 * clamp(kurz, 0, 1)) + (0.45 * hr - bandK) * smoothstep(1.05, 1.6, uRaw));
         // Die Stufe zwischen den Kiefern liegt ganz auf der Seite des **größeren** Kiefers: der Schnitt (Maullinie) läuft
         // an der Innenkante der Stufe, am Fuß des kleineren Kiefers — der größere behält die Stufe als Plateau (Unterbiss,
         // Hauer wachsen darauf) bzw. Sohle (Überbiss, Fänge hängen außen). Vorzeichen aus dem Breitenunterschied, weich.
@@ -563,7 +576,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         const bB = 1.4 * bandK;
         return { oben: sg * bB + Math.abs(sg) * bB * fade, unten: sg * bB - Math.abs(sg) * bB * fade };
       };
-      const head = makeLoft({ points: pts, upRef: upH, wx, wxB, wyT, wyB, wyL, n: nn, nB, split, splitBand: bandK, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN) + 0.4 * sink), region: REGION.haut, name: 'kopf' });
+      const head = makeLoft({ points: pts, upRef: upH, wx, wxB, wyT, wyB, wyL, n: nn, nB, split, splitBand: bandArr, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN) + 0.4 * sink), region: REGION.haut, name: 'kopf' });
       prims.push(head);
       // Ohren: flache Lappen seitlich hinten oben, nach außen-hinten geneigt (Giraffe, Dackel); Hörnchen: zwei kurze
       // Stiele mit Knopf oben hinten (Giraffe) — einfache Anbauten direkt am Kopf

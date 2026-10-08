@@ -98,6 +98,7 @@ const kopf = z
     stirn: regler(H, 'kopf.stirn', 'Stirn', -1, 1, 0, '−1 flacher Schädel … +1 hohe runde Stirn (Hund, Bild 8)'),
     backen: regler(H, 'kopf.backen', 'Backen', 0, 1, 0, 'breite Unterkieferbacken hinter den Mundwinkeln — der Kopf wird unten breiter als oben (Raubkatze, Backenbart Bild 9)'),
     nasenband: regler(H, 'kopf.nasenband', 'Nasenband', 0, 1, 0, 'breites flaches Band von der Stirn zwischen den Augen hinab zur Nase (Raubkatze, Bild 9)'),
+    nasentropfen: regler(H, 'kopf.nasentropfen', 'Nasentropfen', 0, 2, 0.5, 'runde Nasenwölbung vorn oben auf der Schnauze, die über das Maul hängt (Giraffe, Bild 6): 0 keine … 2 großer Tropfen; wächst mit der Schnauzenlänge'),
     ohren: regler(H, 'kopf.ohren', 'Ohren', 0, 1, 0, 'flache Lappen seitlich hinten'),
     hoerner: regler(H, 'kopf.hoerner', 'Hörnchen', 0, 1, 0, 'zwei Stiele mit Knopf'),
   })
@@ -130,6 +131,8 @@ const maul = z
     tiefe: regler(M, 'maul.tiefe', 'Rachentiefe', 0.2, 1, 0.5),
     oeffnung: regler(M, 'maul.oeffnung', 'Öffnungsweite', 0, 1, 0.6, 'größte Öffnung vorn: 1 = 1,6 Kopfhöhen (ein anderes Tier mit einem Haps); über dem Drehwinkel senkt sich der Unterkiefer zusätzlich (Schlund wird länger)'),
     oeffnungOben: regler(M, 'maul.oeffnungOben', 'Öffnung über Oberkiefer', 0, 1, 0.6, 'Anteil der Öffnung, den der Oberkiefer übernimmt (klappt samt Augen nach hinten)'),
+    ziehen: regler(M, 'maul.ziehen', 'Öffnen durch Ziehen', 0, 1, 0, '0 die Kiefer kippen um ihre Gelenke … 1 die Kiefer werden auseinandergezogen (Oberkiefer fährt nach oben, Unterkiefer senkt sich) — bei tiefem Maul hebt sich so der ganze Körper statt nach hinten zu kippen'),
+    ziehenOben: regler(M, 'maul.ziehenOben', 'Ziehen über Oberkiefer', 0, 1, 0.5, 'beim Ziehen: Anteil, den der Oberkiefer nach oben fährt; der Unterkiefer senkt sich höchstens bis zum Boden, den Rest übernimmt oben'),
     kieferbreite: regler(M, 'maul.kieferbreite', 'Kieferbreite', -1, 1, 0, '−1 Unterkiefer schmaler … +1 Oberkiefer schmaler: Platz für Zähne, die am geschlossenen Maul vorbeischauen'),
     kehle: regler(M, 'maul.kehle', 'Kehlsack', 0, 1, 0, '0 Kiefer endet am Kinn … 1 der Unterkiefer reicht als dehnbarer Schlund bis zur Brust und wird beim Öffnen lang (Drache)'),
     bohne: regler(M, 'maul.bohne', 'Bohne', -1, 1, 0, 'Oberkiefer kippt beim Öffnen seitlich (−1 links … +1 rechts), Lochmaul öffnet einseitig weiter — Bohnenform wie Giraffe/Retriever'),

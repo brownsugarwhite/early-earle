@@ -30,6 +30,12 @@ export interface JawRig {
   kopfFrei: number;
   /** Seitliches Kippen des Oberkiefers beim Öffnen (−1 … 1, Bohne). */
   bohne: number;
+  /** Anteil der Öffnung durch Auseinanderziehen der Kiefer (0 nur Kippen … 1 nur Ziehen). */
+  ziehen: number;
+  /** Beim Ziehen: Anteil, den der Oberkiefer nach oben fährt (Rest senkt der Unterkiefer, höchstens bis zum Boden). */
+  ziehenOben: number;
+  /** Wie weit sich der Unterkiefer senken darf (Körpereinheiten). */
+  lowerDropMax: number;
   /** Rahmen des Trägers: oben und vorn (Körperraum). */
   up: Vec3;
   forward: Vec3;
@@ -46,6 +52,9 @@ export interface JawPose {
   upperRoll: number;
   /** Anheben des Kopfs (Körpereinheiten, entlang `up`): der Kopf hebt sich beim Aufreißen aus dem Rumpf. */
   lift: number;
+  /** Auseinanderziehen (Körpereinheiten, entlang `up`): Oberkiefer fährt nach oben, Unterkiefer senkt sich. */
+  upperRise: number;
+  lowerDrop: number;
 }
 
 /** Wirksamer Oberkiefer-Anteil: tief sitzendes Maul → 0 (oben ist der ganze Körper), hohes Maul → Deckel klappt. */
@@ -55,19 +64,28 @@ export function upperShare(maul: Pick<Bauplan['maul'], 'oeffnungOben' | 'unterki
   return maul.oeffnungOben * t * t * (3 - 2 * t);
 }
 
-export function jawRig(build: Pick<CreatureBuild, 'mouth' | 'maxOpenAngle'> & Partial<Pick<CreatureBuild, 'jawLever' | 'lowerAngleMax' | 'upperLever' | 'lift' | 'kopfFrei'>>, maul: Pick<Bauplan['maul'], 'form' | 'oeffnungOben' | 'unterkiefer' | 'hoehe' | 'bohne'>): JawRig {
+export type JawMaul = Pick<Bauplan['maul'], 'form' | 'oeffnungOben' | 'unterkiefer' | 'hoehe' | 'bohne'> & Partial<Pick<Bauplan['maul'], 'ziehen' | 'ziehenOben'>>;
+
+export function jawRig(build: Pick<CreatureBuild, 'mouth' | 'maxOpenAngle'> & Partial<Pick<CreatureBuild, 'jawLever' | 'lowerAngleMax' | 'upperLever' | 'lift' | 'kopfFrei' | 'lowerDropMax'>>, maul: JawMaul): JawRig {
   const up: Vec3 = build.mouth ? normalize(build.mouth.up) : [0, 1, 0];
   const axis: Vec3 = build.mouth ? normalize(build.mouth.hinge.axis) : [1, 0, 0];
   const forward = normalize(cross(axis, up));
   const lever = build.jawLever ?? 1;
-  return { maxOpenAngle: build.maxOpenAngle, share: upperShare(maul), form: maul.form, gapeMax: build.mouth?.gapeMax ?? 0, lever, lowerAngleMax: build.lowerAngleMax ?? Math.PI / 2, upperLever: build.upperLever ?? lever, lift: build.lift ?? 0, kopfFrei: build.kopfFrei ?? 0, bohne: clamp(maul.bohne ?? 0, -1, 1), up, forward };
+  return { maxOpenAngle: build.maxOpenAngle, share: upperShare(maul), form: maul.form, gapeMax: build.mouth?.gapeMax ?? 0, lever, lowerAngleMax: build.lowerAngleMax ?? Math.PI / 2, upperLever: build.upperLever ?? lever, lift: build.lift ?? 0, kopfFrei: build.kopfFrei ?? 0, bohne: clamp(maul.bohne ?? 0, -1, 1), ziehen: clamp01(maul.ziehen ?? 0), ziehenOben: clamp01(maul.ziehenOben ?? 0.5), lowerDropMax: Math.max(0, build.lowerDropMax ?? 0), up, forward };
 }
 
 export function jawPose(rig: JawRig, openness: number): JawPose {
   const o = clamp01(openness);
   // gewünschter Abstand der Ränder vorn (Keil-Anteil), aufgeteilt nach `share`; der Unterkiefer dreht bis zur
   // Bodenschranke bzw. 72°, den Rest übernimmt der Oberkiefer
-  const sep = o * rig.gapeMax * rig.form;
+  // Öffnungsart (Florian): Kippen (Drehung um die Gelenke) oder Auseinanderziehen — der Oberkiefer fährt nach oben
+  // statt nur nach hinten zu kippen (tiefes Maul: oben ist der ganze Körper), der Unterkiefer senkt sich bis zum Boden,
+  // den Rest übernimmt der Oberkiefer
+  const sepGes = o * rig.gapeMax * rig.form;
+  const zug = sepGes * clamp01(rig.ziehen);
+  const lowerDrop = Math.min(zug * (1 - clamp01(rig.ziehenOben)), rig.lowerDropMax);
+  const upperRise = zug - lowerDrop;
+  const sep = sepGes - zug;
   const s = clamp01(rig.share);
   const L = Math.max(1e-4, rig.lever);
   const lowerSep = sep * (1 - s);
@@ -81,7 +99,7 @@ export function jawPose(rig: JawRig, openness: number): JawPose {
   const upperRoll = rig.bohne * 0.88 * o * rig.form;
   // Anheben mit der Öffnung (weich einsetzend), damit Kinn und Hinterkopf nicht in den Rumpf fahren
   const lift = rig.lift * o * o * (3 - 2 * o);
-  return { lowerAngle, upperAngle, spitzmund, upperRoll, lift };
+  return { lowerAngle, upperAngle, spitzmund, upperRoll, lift, upperRise, lowerDrop };
 }
 
 /**
@@ -97,8 +115,8 @@ export function jawTransforms(hinge: { point: Vec3; axis: Vec3 }, pose: JawPose,
   const J = hinge.point;
   const hebung = (c: number): Vec3 => scale(up, pose.lift * c);
   const about = (q: ReturnType<typeof quatFromAxisAngle>, c: Readonly<Vec3>, versatz: Readonly<Vec3>) => (p: Readonly<Vec3>): Vec3 => add(add(c, rotate(q, sub(p, c))), versatz);
-  // Schädelkippung (mit Bohnen-Rollen) um das Schädelgelenk plus Anheben, Anteil c
-  const tilt = (c: number) => about(quatMul(quatFromAxisAngle(axis, pose.upperAngle * c), quatFromAxisAngle(forward, pose.upperRoll * c)), A, hebung(c));
+  // Schädelkippung (mit Bohnen-Rollen) um das Schädelgelenk plus Anheben und Hochfahren (Ziehen), Anteil c
+  const tilt = (c: number) => about(quatMul(quatFromAxisAngle(axis, pose.upperAngle * c), quatFromAxisAngle(forward, pose.upperRoll * c)), A, scale(up, (pose.lift + pose.upperRise) * c));
   // Unterkiefer: hängt am Schädel (sein Gelenk wandert mit der Kippung von J nach J'), behält aber seine **absolute**
   // Drehung θu um die Kieferachse — die Öffnung vorn bleibt die der beiden Winkel, der Hinterkopf steht still. Die
   // Kehlkette trägt ⅔ bzw. ⅓ von Gelenkversatz und Kieferdrehung (ihr übriger Kippanteil kommt über die Nackenkette)
@@ -106,7 +124,8 @@ export function jawTransforms(hinge: { point: Vec3; axis: Vec3 }, pose: JawPose,
   const lower = (c: number) => {
     const delta = sub(rotate(quatFromAxisAngle(axis, pose.upperAngle * c), JA), JA);
     const qL = quatFromAxisAngle(axis, pose.lowerAngle * c);
-    const hb = hebung(c);
+    // Anheben des Kopfs minus Senken beim Ziehen
+    const hb = add(hebung(c), scale(up, -pose.lowerDrop * c));
     return (p: Readonly<Vec3>): Vec3 => add(add(add(J, delta), rotate(qL, sub(p, J))), hb);
   };
   // Der Kopfknochen selbst (Hinterkopf, Augen, alles mit Restgewicht auf ihm) kippt beim freien Kopf mit — sonst stünde
@@ -117,7 +136,7 @@ export function jawTransforms(hinge: { point: Vec3; axis: Vec3 }, pose: JawPose,
 export interface PoseParams {
   /** Öffnung 0 (zu) … 1 (ganz auf). */
   openness: number;
-  maul: Pick<Bauplan['maul'], 'form' | 'oeffnungOben' | 'unterkiefer' | 'hoehe' | 'bohne'>;
+  maul: JawMaul;
 }
 
 /** Positionen aller Vertices in der Pose (Körperraum) — Skinning wie zur Laufzeit plus Spitzmund. */

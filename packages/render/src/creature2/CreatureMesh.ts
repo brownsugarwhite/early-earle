@@ -529,13 +529,13 @@ export class CreatureMesh {
       const compose = (q: Quaternion, pivot: Vector3, offset: Vector3): Matrix4 => new Matrix4().compose(pivot.clone().sub(pivot.clone().applyQuaternion(q)).add(offset), q, new Vector3(1, 1, 1));
       const tilt = (c: number): Matrix4 => {
         const q = new Quaternion().setFromAxisAngle(axis, pose.upperAngle * c).multiply(new Quaternion().setFromAxisAngle(fwd, pose.upperRoll * c));
-        return compose(q, A, up.clone().multiplyScalar(pose.lift * c));
+        return compose(q, A, up.clone().multiplyScalar((pose.lift + pose.upperRise) * c));
       };
       const lower = (c: number): Matrix4 => {
         const qU = new Quaternion().setFromAxisAngle(axis, pose.upperAngle * c);
         const JA = J.clone().sub(A);
         const delta = JA.clone().applyQuaternion(qU).sub(JA);
-        return compose(new Quaternion().setFromAxisAngle(axis, pose.lowerAngle * c), J, delta.add(up.clone().multiplyScalar(pose.lift * c)));
+        return compose(new Quaternion().setFromAxisAngle(axis, pose.lowerAngle * c), J, delta.add(up.clone().multiplyScalar((pose.lift - pose.lowerDrop) * c)));
       };
       const abs = new Map<number, Matrix4>();
       if (B.hostIstKopf) abs.set(B.hostBone, tilt(rig.kopfFrei));

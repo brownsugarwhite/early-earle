@@ -496,10 +496,20 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   const tasche = new Float32Array(vertexCount);
   for (let v = tascheStart; v < vertexCount; v++) tasche[v] = tascheTiefe[v] ?? 0;
   while (seite.length < vertexCount) seite.push(0);
-  // Seite der Hautvertices im Maulbereich aus der Maullinie (nur nahe der Lippe nötig, hier für alle)
+  // Seite der Hautvertices im Maulbereich aus der Maullinie: innerhalb der Mundwinkel hart (die Ränder trennen sich
+  // sauber), dahinter läuft sie über ≈ 0,55 rad in die weiche Seite nach Höhe aus — mit dem Kiefergelenk am Hinterkopf
+  // (freier Kopf) hat die Wange hinter den Winkeln Hebel, und die hart getrennten Seiten rissen dort beim Öffnen zu
+  // Splittern auf (Giraffe: „zerrissen“)
   for (let v = 0; v < n0; v++) {
     const e = feld(v, mouth.lipHAt, mouth.lipRAt);
-    seite[v] = e.g > -0.6 ? (e.f > 0 ? 1 : -1) : 0;
+    if (e.g <= -0.6) {
+      seite[v] = 0;
+      continue;
+    }
+    const hart = e.f > 0 ? 1 : -1;
+    const t = clamp01((e.g + 0.55) / 0.55);
+    const sH = t * t * (3 - 2 * t);
+    seite[v] = sH >= 0.999 ? hart : hart * sH + mouth.seiteFeld([pos[v * 3]!, pos[v * 3 + 1]!, pos[v * 3 + 2]!]) * (1 - sH);
   }
   // Kantenabstand: Abstand zum nächsten Randpunkt (beide Ränder) — für **alle** Vertices stetig berechnet: ein
   // Vorgabewert außerhalb der Maulzone sprang an deren Rand, und die ableitungsbasierte Kantenglättung des Lippenbands

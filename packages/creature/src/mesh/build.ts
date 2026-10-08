@@ -52,6 +52,8 @@ export interface CreatureBuild {
   /** Hebel Gelenk → Maulzentrum und größter Unterkieferwinkel über dem Boden (siehe `MouthGeometry`). */
   jawLever: number;
   lowerAngleMax: number;
+  /** Senken des Unterkiefers beim Auseinanderziehen bis zum Boden (Körpereinheiten). */
+  lowerDropMax: number;
   /** Hebel Schädelgelenk → Maulzentrum. */
   upperLever: number;
   /** Anheben des Kopfs bei voller Öffnung (Körpereinheiten). */
@@ -611,6 +613,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   const kopfFrei = m?.kopfFrei ?? 0;
   const hostIstKopf = c.groups[c.bones[c.hostBone]!.group]?.kind === 'kopf';
   const lowerAngleMax = m?.lowerAngleMax ?? Math.PI / 2;
+  const lowerDropMax = m?.lowerDropMax ?? 0;
   const mb = { min: [Infinity, Infinity, Infinity] as Vec3, max: [-Infinity, -Infinity, -Infinity] as Vec3 };
   for (let i = 0; i < positions.length; i += 3)
     for (let k = 0; k < 3; k++) {
@@ -634,6 +637,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     kopfFrei,
     hostIstKopf,
     lowerAngleMax,
+    lowerDropMax,
     maxOpenAngle,
     bones: c.bones,
     groups: c.groups.map((g) => ({ name: g.name, kind: g.kind, bones: g.bones })),

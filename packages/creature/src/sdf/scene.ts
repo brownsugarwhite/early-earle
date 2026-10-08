@@ -116,6 +116,11 @@ export interface LoftStation {
   band?: number;
   /** Untere Halbachse der Unterform (Überbiss: der Unterkiefer endet vorn früher als die Oberlippe); ohne Angabe `wyB`. */
   wyL?: number;
+  /** Halbbreite innerhalb des vorderen Sektors (Winkel ab „oben“ der Querschnittsebene, beim stehenden Rumpf die
+   *  Vorderseite) — Kieferbreiten gelten nur im Maulsektor, dahinter die Grundbreite `wx` (sonst Stufe als Gürtel). */
+  wxSektor?: number;
+  /** Halber Öffnungswinkel des Sektors (rad); der Wechsel läuft über 0,7 rad aus. */
+  sektor?: number;
   arc: number;
   part: number;
 }
@@ -171,7 +176,13 @@ function superRadius(wx: number, wy: number, n: number, ca: number, cb: number):
 function sectionRadius(s: LoftStation, ca: number, cb: number): number {
   // (ca, cb) ist die Einheitsrichtung in der Querschnittsebene (cb = Anteil „oben“), der Radius gilt in dieser Richtung
   const taperF = cb > 0 && s.taper > 0 ? 1 - s.taper * cb : 1;
-  const rU = superRadius(s.wx * taperF, cb >= 0 ? s.wyT : s.wyB, s.n, ca, cb);
+  let wx = s.wx;
+  if (s.wxSektor !== undefined && s.sektor !== undefined) {
+    const phi = Math.atan2(Math.abs(ca), cb);
+    const x = clamp((phi - s.sektor) / 0.7, 0, 1);
+    wx = s.wxSektor + (s.wx - s.wxSektor) * x * x * (3 - 2 * x);
+  }
+  const rU = superRadius(wx * taperF, cb >= 0 ? s.wyT : s.wyB, s.n, ca, cb);
   const lower = (s.wxB !== undefined && s.wxB !== s.wx) || s.nB !== undefined || (s.wyL !== undefined && s.wyL !== s.wyB);
   if (!lower) return rU;
   // Unterform (Unterkiefer): eigene Breite, Kante und Vorderkante. Wechsel an der Trennhöhe `split` (Längeneinheiten ab
@@ -354,10 +365,13 @@ export interface LoftSpec {
   wxB?: number[];
   /** Trennhöhe der Hälften je Station (siehe `LoftStation.split`); ohne Angabe die Stationsmitte. */
   split?: number[];
-  /** Halbe Höhe des weichen Wechsels (siehe `LoftStation.band`). */
-  splitBand?: number;
+  /** Halbe Höhe des weichen Wechsels (siehe `LoftStation.band`), eine Zahl oder je Station. */
+  splitBand?: number | number[];
   /** Untere Halbachse der Unterform je Station (siehe `LoftStation.wyL`). */
   wyL?: number[];
+  /** Halbbreite im vorderen Sektor je Station und halber Sektorwinkel (siehe `LoftStation.wxSektor`). */
+  wxSektor?: number[];
+  sektor?: number;
   capStart?: number;
   capEnd?: number;
   /** Gerade Bezugsachse (siehe `LoftPrim.axis`); die Punkte müssen entlang der Achse monoton sein. */
@@ -381,7 +395,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
     dz /= dl;
     const steps = [0.38, 0.71, 0.92, 1.0];
     const fac = [0.925, 0.7, 0.39, 0];
-    const extraP: Vec3[] = [], exW: number[] = [], exT: number[] = [], exB: number[] = [], exN: number[] = [], exPart: number[] = [], exTaper: number[] = [], exNB: number[] = [], exWxB: number[] = [], exSplit: number[] = [], exWyL: number[] = [];
+    const extraP: Vec3[] = [], exW: number[] = [], exT: number[] = [], exB: number[] = [], exN: number[] = [], exPart: number[] = [], exTaper: number[] = [], exNB: number[] = [], exWxB: number[] = [], exSplit: number[] = [], exWyL: number[] = [], exWxS: number[] = [], exBand: number[] = [];
     for (let q = 0; q < steps.length; q++) {
       const t = steps[q]! * r;
       extraP.push([a[0] + dx * t, a[1] + dy * t, a[2] + dz * t]);
@@ -395,6 +409,8 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       exWxB.push((spec.wxB?.[i] ?? spec.wx[i] ?? 0) * fac[q]!);
       exSplit.push((spec.split?.[i] ?? 0) * fac[q]!);
       exWyL.push((spec.wyL?.[i] ?? spec.wyB[i] ?? 0) * fac[q]!);
+      exWxS.push((spec.wxSektor?.[i] ?? spec.wx[i] ?? 0) * fac[q]!);
+      exBand.push(Array.isArray(spec.splitBand) ? (spec.splitBand[i] ?? 0) : (spec.splitBand ?? 0));
     }
     if (atStart) {
       spec.points = [...extraP.reverse(), ...spec.points];
@@ -408,6 +424,8 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       if (spec.wxB) spec.wxB = [...exWxB.reverse(), ...spec.wxB];
       if (spec.split) spec.split = [...exSplit.reverse(), ...spec.split];
       if (spec.wyL) spec.wyL = [...exWyL.reverse(), ...spec.wyL];
+      if (spec.wxSektor) spec.wxSektor = [...exWxS.reverse(), ...spec.wxSektor];
+      if (Array.isArray(spec.splitBand)) spec.splitBand = [...exBand.reverse(), ...spec.splitBand];
     } else {
       spec.points = [...spec.points, ...extraP];
       spec.wx = [...spec.wx, ...exW];
@@ -420,6 +438,8 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       if (spec.wxB) spec.wxB = [...spec.wxB, ...exWxB];
       if (spec.split) spec.split = [...spec.split, ...exSplit];
       if (spec.wyL) spec.wyL = [...spec.wyL, ...exWyL];
+      if (spec.wxSektor) spec.wxSektor = [...spec.wxSektor, ...exWxS];
+      if (Array.isArray(spec.splitBand)) spec.splitBand = [...spec.splitBand, ...exBand];
     }
   };
   spec = { ...spec, points: spec.points.slice(), wx: spec.wx.slice(), wyT: spec.wyT.slice(), wyB: spec.wyB.slice(), n: typeof spec.n === 'number' ? spec.n : spec.n.slice(), parts: typeof spec.parts === 'number' ? spec.parts : spec.parts.slice() };
@@ -428,6 +448,8 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
   if (spec.wxB) spec.wxB = spec.wxB.slice();
   if (spec.split) spec.split = spec.split.slice();
   if (spec.wyL) spec.wyL = spec.wyL.slice();
+  if (spec.wxSektor) spec.wxSektor = spec.wxSektor.slice();
+  if (Array.isArray(spec.splitBand)) spec.splitBand = spec.splitBand.slice();
   // (fast) doppelte Nachbarpunkte entfernen: Nullsegmente machen Tangente, Rahmen und Profil unstetig
   {
     let total = 0;
@@ -447,6 +469,8 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
         if (spec.wxB) spec.wxB.splice(i, 1);
         if (spec.split) spec.split.splice(i, 1);
         if (spec.wyL) spec.wyL.splice(i, 1);
+        if (spec.wxSektor) spec.wxSektor.splice(i, 1);
+        if (Array.isArray(spec.splitBand)) spec.splitBand.splice(i, 1);
       }
     }
   }
@@ -501,8 +525,9 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       taper: Math.max(0, Math.min(0.95, typeof spec.taper === 'number' ? spec.taper : (spec.taper?.[i] ?? 0))),
       ...(spec.nB !== undefined ? { nB: typeof spec.nB === 'number' ? spec.nB : (spec.nB[i] ?? (typeof spec.n === 'number' ? spec.n : (spec.n[i] ?? 2))) } : {}),
       ...(spec.wxB !== undefined ? { wxB: Math.max(0, spec.wxB[i] ?? spec.wx[i] ?? 0) } : {}),
-      ...(spec.split !== undefined ? { split: spec.split[i] ?? 0, band: Math.max(0, spec.splitBand ?? 0) } : {}),
+      ...(spec.split !== undefined ? { split: spec.split[i] ?? 0, band: Math.max(0, Array.isArray(spec.splitBand) ? (spec.splitBand[i] ?? 0) : (spec.splitBand ?? 0)) } : {}),
       ...(spec.wyL !== undefined ? { wyL: Math.max(0, spec.wyL[i] ?? spec.wyB[i] ?? 0) } : {}),
+      ...(spec.wxSektor !== undefined && spec.sektor !== undefined ? { wxSektor: Math.max(0, spec.wxSektor[i] ?? spec.wx[i] ?? 0), sektor: spec.sektor } : {}),
       arc,
       part: typeof spec.parts === 'number' ? spec.parts : (spec.parts[i] ?? 0),
     });
