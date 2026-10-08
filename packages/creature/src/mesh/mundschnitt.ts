@@ -41,6 +41,12 @@ export interface MundSchnitt {
   tascheStart: number;
   /** Glatte Normalen der Taschenvertices (xyz je Vertex, 0 außerhalb der Tasche) — aus dem Gitter statt aus den Facetten. */
   taschenNormalen: Float32Array;
+  /**
+   * Interpolierte Unterrand-Vertices (Zeile m der Tasche bei zwei Rändern) mit ihren beiden Elternpunkten auf dem echten
+   * Unterrand und dem Mischanteil f: Gewichte und Felder dieser Vertices müssen die Mischung der Eltern sein, sonst
+   * öffnet sich der (in Ruhe entartete) Reißverschluss in der Pose zu Splittern.
+   */
+  interpEltern: Array<{ v: number; a: number; b: number; f: number }>;
 }
 
 export interface SchnittOptionen {
@@ -263,28 +269,36 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   };
   const glattO = glatt(randO), glattU = glatt(randU);
   // Unterrand auf die Spalten des Oberrands: bei zwei Rändern neue Vertices (nach φ interpoliert), Enden = Spitzen
-  const interpU = (phi: number): Vec3 => {
-    if (randU.length === 1) return randU[0]!.pos;
+  const interpU = (phi: number): { pos: Vec3; a: number; b: number; f: number } => {
+    if (randU.length === 1) return { pos: randU[0]!.pos, a: randU[0]!.unten, b: randU[0]!.unten, f: 0 };
     let i = 0;
     while (i < randU.length - 2 && randU[i + 1]!.phi < phi) i++;
     const a = randU[i]!, b = randU[i + 1]!;
     const f = clamp((phi - a.phi) / Math.max(1e-9, b.phi - a.phi), 0, 1);
-    return add(a.pos, scale(sub(b.pos, a.pos), f));
+    return { pos: add(a.pos, scale(sub(b.pos, a.pos), f)), a: a.unten, b: b.unten, f };
   };
   const unten: number[] = [];
+  const interpEltern: MundSchnitt['interpEltern'] = [];
   for (let i = 0; i < nR; i++) {
     if (!zweiRaender) unten.push(randU[i]!.unten);
     else if (i === 0) unten.push(randU[0]!.unten);
     else if (i === nR - 1) unten.push(randU[randU.length - 1]!.unten);
-    else unten.push(addVertex(interpU(randO[i]!.phi), -1, -1));
+    else {
+      const e = interpU(randO[i]!.phi);
+      const v = addVertex(e.pos, -1, -1);
+      unten.push(v);
+      interpEltern.push({ v, a: e.a, b: e.b, f: e.f });
+    }
   }
   // Tasche: Gitter nR × (zeilen+1); Zeile 0 = Oberrand, Zeile m = (interpolierter) Unterrand
   const m = Math.max(4, opt.zeilen ?? 10);
   const tascheStart = pos.length / 3;
   const grid = new Int32Array(nR * (m + 1));
-  // ungewölbte Bahn (ohne Gaumen-/Bodenwölbung) und Wölbung je Gitterpunkt — Bezug für die Orientierung der Dreiecke
-  const gridQ = new Float64Array(nR * (m + 1) * 3);
-  const gridY = new Float64Array(nR * (m + 1));
+  // ideales (glattes) Gitter: Zeilen 0 und m aus den geglätteten Randkurven statt der gezackten Schnittvertices — daraus
+  // kommen die Normalen, nach denen die echten Dreiecke gewickelt werden; dazu je Spalte das Höhlenzentrum (Mitte
+  // zwischen den Rändern, halbe Tiefe), zu dem die Innenseite zeigen muss
+  const ideal = new Float64Array(nR * (m + 1) * 3);
+  const hoehlenZentrum = new Float64Array(nR * 3);
   const tascheTiefe: number[] = new Array(tascheStart).fill(0);
   for (let i = 0; i < nR; i++) {
     const rl = randO[i]!;
@@ -299,28 +313,27 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
     const lS: Vec3 = add(lAct, scale(sub(lG, lAct), wS));
     const r = rahmen({ phi: rl.phi, pos: uS });
     const pU: Vec3 = lS;
+    hoehlenZentrum[i * 3] = 0.5 * (uS[0] + lS[0]) + r.w[0] * r.d * 0.5;
+    hoehlenZentrum[i * 3 + 1] = 0.5 * (uS[1] + lS[1]) + r.w[1] * r.d * 0.5;
+    hoehlenZentrum[i * 3 + 2] = 0.5 * (uS[2] + lS[2]) + r.w[2] * r.d * 0.5;
     for (let k = 0; k <= m; k++) {
       const gi = i * (m + 1) + k;
+      // ideale Lage: Ränder glatt, Spitzen auf dem glatten Oberrand (Zeile m auf dem glatten Unterrand)
+      const idl: Vec3 = k === m ? lS : uS;
+      ideal[gi * 3] = idl[0];
+      ideal[gi * 3 + 1] = idl[1];
+      ideal[gi * 3 + 2] = idl[2];
       if (k === 0) {
         grid[gi] = rl.oben;
-        gridQ[gi * 3] = pos[rl.oben * 3]!;
-        gridQ[gi * 3 + 1] = pos[rl.oben * 3 + 1]!;
-        gridQ[gi * 3 + 2] = pos[rl.oben * 3 + 2]!;
         continue;
       }
       if (k === m) {
         grid[gi] = unten[i]!;
-        gridQ[gi * 3] = pos[unten[i]! * 3]!;
-        gridQ[gi * 3 + 1] = pos[unten[i]! * 3 + 1]!;
-        gridQ[gi * 3 + 2] = pos[unten[i]! * 3 + 2]!;
         continue;
       }
       // Spitze (Mundwinkel): die ganze Spalte ist derselbe Vertex — keine Nullkanten, das Netz bleibt geschlossen
       if (rl.oben === unten[i] || r.d < 1e-6) {
         grid[gi] = rl.oben;
-        gridQ[gi * 3] = pos[rl.oben * 3]!;
-        gridQ[gi * 3 + 1] = pos[rl.oben * 3 + 1]!;
-        gridQ[gi * 3 + 2] = pos[rl.oben * 3 + 2]!;
         continue;
       }
       const sK = k / m;
@@ -328,13 +341,19 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
       // Gaumen nach oben, Boden nach unten, jeweils begrenzt durch die Kieferhöhe und die lokale Tiefe
       const amp = Math.min(sK < 0.5 ? opt.wölbungOben : opt.wölbungUnten, 0.6 * r.d);
       const y = amp * Math.sin(2 * Math.PI * sK);
-      // Grundpunkt zwischen Ober- und Unterrand (bei zwei Rändern spannt die Tasche den Spalt auf)
+      // Grundpunkt zwischen Ober- und Unterrand (bei zwei Rändern spannt die Tasche den Spalt auf) — ideal auf den
+      // glatten Kurven; die echten Vertices der ersten drei Zeilen tragen das Voxel-Zickzack des Schnittrands
+      // ausklingend mit (⅔, ⅓, 0): sonst sind die Vierecke zwischen glatter Zeile und gezacktem Rand verdreht und ihre
+      // Splitter kippen bei flacher Sicht auf die Lippe weg (weiße Zacken entlang des Unterrands)
       const bx = r.p[0] + (pU[0] - r.p[0]) * sK, by = r.p[1] + (pU[1] - r.p[1]) * sK, bz = r.p[2] + (pU[2] - r.p[2]) * sK;
-      gridQ[gi * 3] = bx + r.w[0] * x;
-      gridQ[gi * 3 + 1] = by + r.w[1] * x;
-      gridQ[gi * 3 + 2] = bz + r.w[2] * x;
-      gridY[gi] = y;
-      const q: Vec3 = [bx + r.w[0] * x + r.u[0] * y, by + r.w[1] * x + r.u[1] * y, bz + r.w[2] * x + r.u[2] * y];
+      ideal[gi * 3] = bx + r.w[0] * x + r.u[0] * y;
+      ideal[gi * 3 + 1] = by + r.w[1] * x + r.u[1] * y;
+      ideal[gi * 3 + 2] = bz + r.w[2] * x + r.u[2] * y;
+      const zO = Math.max(0, 1 - k / 3), zU = Math.max(0, 1 - (m - k) / 3);
+      const ox = (uAct[0] - uS[0]) * zO * (1 - sK) + (lAct[0] - lS[0]) * zU * sK;
+      const oy = (uAct[1] - uS[1]) * zO * (1 - sK) + (lAct[1] - lS[1]) * zU * sK;
+      const oz = (uAct[2] - uS[2]) * zO * (1 - sK) + (lAct[2] - lS[2]) * zU * sK;
+      const q: Vec3 = [ideal[gi * 3]! + ox, ideal[gi * 3 + 1]! + oy, ideal[gi * 3 + 2]! + oz];
       // Seite als Verlauf (Rand oben +1 … Rand unten −1): die Rachenwand mischt Ober- und Unterkieferbewegung weich
       const sd = 1 - 2 * sK;
       const idx = addVertex(q, Math.abs(sd) < 0.05 ? (sd < 0 ? -0.05 : 0.05) : sd, 0);
@@ -342,118 +361,131 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
       tascheTiefe.push(Math.sin(Math.PI * sK));
     }
   }
-  // Orientierung: in den gewölbten Reihen (Gaumenbogen, Bodenmulde) zeigt die Innenseite zur ungewölbten Bahn — jedes
-  // Dreieck wird dagegen geprüft; an der Rückwand (Wölbung ≈ 0) und an den flachen Mundwinkeln gilt das Vorzeichen des
-  // Spaltenpaars, entschieden an der tiefsten Zeile gegen das Spaltenzentrum, flache Spalten erben es von der nächsten
-  // tiefen Spalte. (Ein Vorzeichen fürs ganze Gitter kippte bei weiten Keilmäulern, je Dreieck gegen ein Zentrum kippte
-  // an den flachen Winkeln, das Spaltenvorzeichen allein ließ den Gaumenbogen vorn weiß.)
-  const PG = (ii: number, kk: number): Vec3 => {
-    const q = grid[Math.max(0, Math.min(nR - 1, ii)) * (m + 1) + Math.max(0, Math.min(m, kk))]!;
-    return [pos[q * 3]!, pos[q * 3 + 1]!, pos[q * 3 + 2]!];
+  // Orientierung: jedes Gitterviereck bekommt eine **ideale Normale** aus dem glatten Gitter (Spaltenrichtung × Zeilen-
+  // richtung am Viereckmittel), mit Vorzeichen zum Höhlenzentrum der beiden Spalten. Die echten Dreiecke (mit den
+  // gezackten Schnittvertices der Ränder, extrem gestreckt: Spaltenabstand ≈ ¼ Zelle, Zeilenabstand bis zur halben
+  // Tiefe) werden dann so gewickelt, dass ihre Normale mit der idealen übereinstimmt. Je Dreieck geometrisch zu
+  // entscheiden (gegen die ungewölbte Bahn oder ein Zentrum) kippte an diesen Splittern die Hälfte: beide Dreiecke eines
+  // Vierecks fielen unter verschiedene Regeln, am Drachen zeigten Rand- und Bodenband weiße Streifen (Fächer am
+  // Mundwinkel, Fransen am Brustrand)
+  const PI = (ii: number, kk: number): Vec3 => {
+    const gi = Math.max(0, Math.min(nR - 1, ii)) * (m + 1) + Math.max(0, Math.min(m, kk));
+    return [ideal[gi * 3]!, ideal[gi * 3 + 1]!, ideal[gi * 3 + 2]!];
   };
-  const kd = Math.floor(m / 2);
-  const paarZeichen = new Int8Array(Math.max(0, nR - 1));
-  const paarTiefe = new Float64Array(Math.max(0, nR - 1));
-  let dMax = 0;
-  for (let i = 0; i < nR - 1; i++) {
-    const r0 = rand[i]!, r1 = rand[i + 1]!;
-    paarTiefe[i] = 0.5 * (r0.d + r1.d);
-    dMax = Math.max(dMax, paarTiefe[i]!);
-    const a = PG(i, kd), b = PG(i + 1, kd), c = PG(i + 1, kd + 1);
-    const e1 = sub(b, a), e2 = sub(c, a);
-    const n: Vec3 = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
-    const c0 = add(r0.p, scale(r0.w, r0.d * 0.5)), c1 = add(r1.p, scale(r1.w, r1.d * 0.5));
-    const centre: Vec3 = [(c0[0] + c1[0]) / 2, (c0[1] + c1[1]) / 2, (c0[2] + c1[2]) / 2];
-    const toC = sub(centre, a);
-    paarZeichen[i] = n[0] * toC[0] + n[1] * toC[1] + n[2] * toC[2] >= 0 ? 1 : -1;
+  const nPaar = Math.max(0, nR - 1);
+  const nStern = new Float64Array(nPaar * m * 3);
+  const nOk = new Uint8Array(nPaar * m);
+  for (let i = 0; i < nPaar; i++) {
+    for (let k = 0; k < m; k++) {
+      const p00 = PI(i, k), p10 = PI(i + 1, k), p11 = PI(i + 1, k + 1), p01 = PI(i, k + 1);
+      const ei: Vec3 = [p10[0] + p11[0] - p00[0] - p01[0], p10[1] + p11[1] - p00[1] - p01[1], p10[2] + p11[2] - p00[2] - p01[2]];
+      const ek: Vec3 = [p01[0] + p11[0] - p00[0] - p10[0], p01[1] + p11[1] - p00[1] - p10[1], p01[2] + p11[2] - p00[2] - p10[2]];
+      const nx = ei[1] * ek[2] - ei[2] * ek[1], ny = ei[2] * ek[0] - ei[0] * ek[2], nz = ei[0] * ek[1] - ei[1] * ek[0];
+      const nl = Math.hypot(nx, ny, nz);
+      const li = Math.hypot(ei[0], ei[1], ei[2]), lk = Math.hypot(ek[0], ek[1], ek[2]);
+      // entartet (Spitze, flache Winkelspalte): Richtung unbestimmt → von der nächsten gültigen Spalte erben
+      if (nl < 1e-3 * li * lk || nl < 1e-12) continue;
+      const cx = (p00[0] + p10[0] + p11[0] + p01[0]) / 4, cy = (p00[1] + p10[1] + p11[1] + p01[1]) / 4, cz = (p00[2] + p10[2] + p11[2] + p01[2]) / 4;
+      const zx = 0.5 * (hoehlenZentrum[i * 3]! + hoehlenZentrum[(i + 1) * 3]!) - cx;
+      const zy = 0.5 * (hoehlenZentrum[i * 3 + 1]! + hoehlenZentrum[(i + 1) * 3 + 1]!) - cy;
+      const zz = 0.5 * (hoehlenZentrum[i * 3 + 2]! + hoehlenZentrum[(i + 1) * 3 + 2]!) - cz;
+      const sg = nx * zx + ny * zy + nz * zz >= 0 ? 1 : -1;
+      const q = (i * m + k) * 3;
+      nStern[q] = (nx / nl) * sg;
+      nStern[q + 1] = (ny / nl) * sg;
+      nStern[q + 2] = (nz / nl) * sg;
+      nOk[i * m + k] = 1;
+    }
   }
-  for (let i = 0; i < nR - 1; i++) {
-    if (paarTiefe[i]! >= 0.2 * dMax) continue;
-    let best = -1, bd = Infinity;
-    for (let j = 0; j < nR - 1; j++) {
-      if (paarTiefe[j]! < 0.2 * dMax) continue;
-      const dist = Math.abs(j - i);
-      if (dist < bd) {
-        bd = dist;
-        best = j;
+  for (let i = 0; i < nPaar; i++) {
+    for (let k = 0; k < m; k++) {
+      if (nOk[i * m + k]) continue;
+      for (let dlt = 1; dlt < nPaar; dlt++) {
+        const j = nOk[(i - dlt) * m + k] && i - dlt >= 0 ? i - dlt : i + dlt < nPaar && nOk[(i + dlt) * m + k] ? i + dlt : -1;
+        if (j < 0) continue;
+        const q = (i * m + k) * 3, qj = (j * m + k) * 3;
+        nStern[q] = nStern[qj]!;
+        nStern[q + 1] = nStern[qj + 1]!;
+        nStern[q + 2] = nStern[qj + 2]!;
+        nOk[i * m + k] = 2;
+        break;
       }
     }
-    if (best >= 0) paarZeichen[i] = paarZeichen[best]!;
   }
-  const zeichenBei = (i: number): number => paarZeichen[Math.max(0, Math.min(nR - 2, i))] ?? 1;
-  const wSchwelle = 0.06 * dMax;
-  // Glatte Normalen des Taschengitters aus den Gitterrichtungen (Spalte × Zeile); Vorzeichen nach derselben Regel
+  const sternBei = (i: number, k: number): Vec3 | null => {
+    const ii = Math.max(0, Math.min(nPaar - 1, i)), kk = Math.max(0, Math.min(m - 1, k));
+    if (!nOk[ii * m + kk]) return null;
+    const q = (ii * m + kk) * 3;
+    return [nStern[q]!, nStern[q + 1]!, nStern[q + 2]!];
+  };
+  // Glatte Normalen des Taschengitters aus den idealen Gitterrichtungen, Vorzeichen zum Höhlenzentrum der Spalte
   const taschenNormalen = new Float32Array(pos.length);
   for (let i = 0; i < nR; i++) {
-    const zeichen = zeichenBei(i < nR - 1 ? i : i - 1);
     for (let k = 1; k < m; k++) {
       const gi = i * (m + 1) + k;
       const v = grid[gi]!;
       if (v < tascheStart) continue;
-      const di = sub(PG(i + 1, k), PG(i - 1, k)), dk = sub(PG(i, k + 1), PG(i, k - 1));
+      const di = sub(PI(i + 1, k), PI(i - 1, k)), dk = sub(PI(i, k + 1), PI(i, k - 1));
       let nx = di[1] * dk[2] - di[2] * dk[1], ny = di[2] * dk[0] - di[0] * dk[2], nz = di[0] * dk[1] - di[1] * dk[0];
       const nl = Math.hypot(nx, ny, nz);
-      if (nl < 1e-12) continue;
+      if (nl < 1e-12) {
+        // entartet: Normale des Nachbarvierecks
+        const n = sternBei(i < nPaar ? i : i - 1, k < m ? k : k - 1);
+        if (n) {
+          taschenNormalen[v * 3] = n[0];
+          taschenNormalen[v * 3 + 1] = n[1];
+          taschenNormalen[v * 3 + 2] = n[2];
+        }
+        continue;
+      }
       nx /= nl;
       ny /= nl;
       nz /= nl;
-      let sg = zeichen;
-      if (Math.abs(gridY[gi]!) > wSchwelle) {
-        const qx = gridQ[gi * 3]! - pos[v * 3]!, qy = gridQ[gi * 3 + 1]! - pos[v * 3 + 1]!, qz = gridQ[gi * 3 + 2]! - pos[v * 3 + 2]!;
-        sg = nx * qx + ny * qy + nz * qz >= 0 ? 1 : -1;
-      }
+      const zx = hoehlenZentrum[i * 3]! - pos[v * 3]!, zy = hoehlenZentrum[i * 3 + 1]! - pos[v * 3 + 1]!, zz = hoehlenZentrum[i * 3 + 2]! - pos[v * 3 + 2]!;
+      const sg = nx * zx + ny * zy + nz * zz >= 0 ? 1 : -1;
       taschenNormalen[v * 3] = nx * sg;
       taschenNormalen[v * 3 + 1] = ny * sg;
       taschenNormalen[v * 3 + 2] = nz * sg;
     }
   }
   const newTris = tris;
-  const triZu = (x: number, y: number, z: number, centre: Readonly<Vec3>): void => {
+  const windNormal = (x: number, y: number, z: number): Vec3 => {
+    const e1 = [pos[y * 3]! - pos[x * 3]!, pos[y * 3 + 1]! - pos[x * 3 + 1]!, pos[y * 3 + 2]! - pos[x * 3 + 2]!];
+    const e2 = [pos[z * 3]! - pos[x * 3]!, pos[z * 3 + 1]! - pos[x * 3 + 1]!, pos[z * 3 + 2]! - pos[x * 3 + 2]!];
+    return [e1[1]! * e2[2]! - e1[2]! * e2[1]!, e1[2]! * e2[0]! - e1[0]! * e2[2]!, e1[0]! * e2[1]! - e1[1]! * e2[0]!];
+  };
+  // Dreieck so wickeln, dass seine Normale mit der Bezugsnormalen übereinstimmt (ohne Bezug: Gitterreihenfolge)
+  const triRef = (x: number, y: number, z: number, ref: Vec3 | null): void => {
     if (x === y || y === z || x === z) return;
-    const px = pos[x * 3]!, py = pos[x * 3 + 1]!, pz = pos[x * 3 + 2]!;
-    const e1 = [pos[y * 3]! - px, pos[y * 3 + 1]! - py, pos[y * 3 + 2]! - pz];
-    const e2 = [pos[z * 3]! - px, pos[z * 3 + 1]! - py, pos[z * 3 + 2]! - pz];
-    const nx = e1[1]! * e2[2]! - e1[2]! * e2[1]!, ny = e1[2]! * e2[0]! - e1[0]! * e2[2]!, nz = e1[0]! * e2[1]! - e1[1]! * e2[0]!;
-    const cx = (px + pos[y * 3]! + pos[z * 3]!) / 3, cy = (py + pos[y * 3 + 1]! + pos[z * 3 + 1]!) / 3, cz = (pz + pos[y * 3 + 2]! + pos[z * 3 + 2]!) / 3;
-    const toC = [centre[0] - cx, centre[1] - cy, centre[2] - cz];
-    if (nx * toC[0]! + ny * toC[1]! + nz * toC[2]! >= 0) newTris.push(x, y, z);
+    if (!ref) {
+      newTris.push(x, y, z);
+      return;
+    }
+    const n = windNormal(x, y, z);
+    if (n[0] * ref[0] + n[1] * ref[1] + n[2] * ref[2] >= 0) newTris.push(x, y, z);
     else newTris.push(x, z, y);
   };
-  // Taschendreiecke: gewölbte Reihen gegen die ungewölbte Bahn orientiert, sonst Wicklung mit dem Spaltenvorzeichen
-  const triG = (x: number, y: number, z: number, zeichen: number): void => {
-    if (x === y || y === z || x === z) return;
-    if (zeichen > 0) newTris.push(x, y, z);
-    else newTris.push(x, z, y);
-  };
-  const dreieck = (ga: number, gb: number, gc: number, zeichen: number): void => {
-    const yM = (Math.abs(gridY[ga]!) + Math.abs(gridY[gb]!) + Math.abs(gridY[gc]!)) / 3;
-    if (yM > wSchwelle) {
-      const ref: Vec3 = [(gridQ[ga * 3]! + gridQ[gb * 3]! + gridQ[gc * 3]!) / 3, (gridQ[ga * 3 + 1]! + gridQ[gb * 3 + 1]! + gridQ[gc * 3 + 1]!) / 3, (gridQ[ga * 3 + 2]! + gridQ[gb * 3 + 2]! + gridQ[gc * 3 + 2]!) / 3];
-      triZu(grid[ga]!, grid[gb]!, grid[gc]!, ref);
-    } else triG(grid[ga]!, grid[gb]!, grid[gc]!, zeichen);
-  };
-  for (let i = 0; i < nR - 1; i++) {
-    const zeichen = zeichenBei(i);
+  for (let i = 0; i < nPaar; i++) {
     for (let k = 0; k < m; k++) {
       const a = i * (m + 1) + k, b = (i + 1) * (m + 1) + k, c = (i + 1) * (m + 1) + k + 1, d = i * (m + 1) + k + 1;
-      dreieck(a, b, c, zeichen);
-      dreieck(a, c, d, zeichen);
+      const ref = sternBei(i, k);
+      triRef(grid[a]!, grid[b]!, grid[c]!, ref);
+      triRef(grid[a]!, grid[c]!, grid[d]!, ref);
     }
   }
-  // Zwei Ränder: Reißverschluss zwischen der interpolierten Unterreihe (Zeile m) und den echten Unterrand-Vertices —
-  // in derselben Wicklung wie die Gitterzeile darüber (Spaltenvorzeichen); eine Orientierung gegen ein fernes Zentrum
-  // kippte hier Dreiecke (weiße Fransen am Brustrand des Drachen)
+  // Zwei Ränder: Reißverschluss zwischen der interpolierten Unterreihe (Zeile m) und den echten Unterrand-Vertices
   if (zweiRaender) {
+    // jedes Dreieck in der Wicklung des Bodenbands darüber (ideale Normale der letzten Gitterzeile)
     let i = 0, j = 0;
     while (i < nR - 1 || j < randU.length - 1) {
       const phiI = i < nR - 1 ? randO[i + 1]!.phi : Infinity;
       const phiJ = j < randU.length - 1 ? randU[j + 1]!.phi : Infinity;
-      const zeichen = zeichenBei(Math.min(i, nR - 2));
+      const ref = sternBei(i, m - 1);
       if (phiI <= phiJ) {
-        triG(unten[i]!, unten[i + 1]!, randU[j]!.unten, zeichen);
+        triRef(unten[i]!, unten[i + 1]!, randU[j]!.unten, ref);
         i++;
       } else {
-        triG(unten[i]!, randU[j + 1]!.unten, randU[j]!.unten, zeichen);
+        triRef(unten[i]!, randU[j + 1]!.unten, randU[j]!.unten, ref);
         j++;
       }
     }
@@ -499,6 +531,7 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
     randU: randUnt,
     tascheStart,
     taschenNormalen,
+    interpEltern,
   };
 }
 

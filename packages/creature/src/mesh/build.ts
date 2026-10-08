@@ -5,7 +5,7 @@ import { construct, type Bone, type Construction, type EyeSpec, type PartGroup }
 import { evalScene } from '../sdf/scene';
 import { lefzenTiefe, surfacePoint, type Tooth } from '../mouth/mouth';
 import { computeDescriptors, smoothWeights, type Descriptors } from './descriptors';
-import { cutMouth, faceNormalsFor } from './mundschnitt';
+import { cutMouth, faceNormalsFor, type MundSchnitt } from './mundschnitt';
 import { makeRng } from '../math/rng';
 import { add, clamp, clamp01, normalize, scale, smoothstep, sub } from '../math/vec';
 import { adjacency, contourManifold, largestComponent, nonManifoldEdges, orientToNormals, projectAndNormals, taubin } from './surfaceNets';
@@ -243,6 +243,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   let tasche: Float32Array | null = null;
   let kantenAbstand: Float32Array | null = null;
   let seiten: Float32Array | undefined;
+  let interpEltern: MundSchnitt['interpEltern'] = [];
   const m = c.mouth;
   if (m && b.maul.sichtbar) {
     // Tasche: so tief wie der Kopf bis zum Gelenk, Gaumen und Boden passen in Ober- bzw. Unterkiefer
@@ -298,6 +299,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     normals = normals1;
     tasche = ms.tasche;
     kantenAbstand = ms.kantenAbstand;
+    interpEltern = ms.interpEltern;
     seiten = ms.seite;
     randAnzahl = ms.randOben.length;
 
@@ -527,6 +529,35 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   const descriptors = computeDescriptors(c, positions, normals, seiten);
   const ws = opts.weightSmoothing ?? 2;
   if (ws > 0) smoothWeights(descriptors, adj, c.bones.length, ws);
+  // Interpolierte Unterrand-Vertices: Gewichte und Felder als Mischung ihrer Eltern auf dem echten Rand — die Felder
+  // (Kieferanteil, Glättung über die Tasche) weichen sonst um einige Prozent ab, und der in Ruhe entartete Reißverschluss
+  // öffnet sich in der Pose zu weißen Splittern am Unterrand (Drache)
+  if (interpEltern.length > 0) {
+    const acc = new Map<number, number>();
+    for (const e of interpEltern) {
+      acc.clear();
+      for (const [src, w] of [[e.a, 1 - e.f], [e.b, e.f]] as Array<[number, number]>) {
+        for (let q = 0; q < 4; q++) {
+          const bi = descriptors.skinIndex[src * 4 + q]!, bw = descriptors.skinWeight[src * 4 + q]! * w;
+          if (bw > 1e-9) acc.set(bi, (acc.get(bi) ?? 0) + bw);
+        }
+      }
+      const top = [...acc.entries()].sort((x, y) => y[1] - x[1]).slice(0, 4);
+      let sum = 0;
+      for (const [, w] of top) sum += w;
+      for (let q = 0; q < 4; q++) {
+        descriptors.skinIndex[e.v * 4 + q] = top[q]?.[0] ?? 0;
+        descriptors.skinWeight[e.v * 4 + q] = (top[q]?.[1] ?? 0) / (sum || 1);
+      }
+      for (let q = 0; q < 4; q++) {
+        // Winkel (Spalte 1) nicht über den Sprung bei ±π mischen
+        const va = descriptors.spine[e.a * 4 + q]!, vb = descriptors.spine[e.b * 4 + q]!;
+        descriptors.spine[e.v * 4 + q] = q === 1 && Math.abs(vb - va) > Math.PI ? va : va + (vb - va) * e.f;
+      }
+      descriptors.ao[e.v] = descriptors.ao[e.a]! + (descriptors.ao[e.b]! - descriptors.ao[e.a]!) * e.f;
+      descriptors.thick[e.v] = descriptors.thick[e.a]! + (descriptors.thick[e.b]! - descriptors.thick[e.a]!) * e.f;
+    }
+  }
   // Regionen aus dem Lippenschnitt: Rachen (0 Haut, 0,5…1 Tasche nach Tiefe), Kantenabstand in Körpereinheiten
   const seite = new Float32Array(vertexCount);
   if (tasche && kantenAbstand) {
@@ -570,6 +601,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       pucker[v * 3 + 2] = fy[2] * s * w;
     }
   }
+  for (const e of interpEltern) for (let k = 0; k < 3; k++) pucker[e.v * 3 + k] = pucker[e.a * 3 + k]! + (pucker[e.b * 3 + k]! - pucker[e.a * 3 + k]!) * e.f;
   // Öffnungswinkel aus Spalthöhe und Hebel (Gelenk → Maulzentrum)
   let maxOpenAngle = 0;
   if (m) maxOpenAngle = Math.asin(Math.min(0.95, m.gapeMax / m.jawLever));

@@ -692,7 +692,9 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const tiefMax = Math.max(0, hLipH - 0.08 * host.height);
       host.kieferStufe = (u: number): { oben: number; unten: number } => {
         const w = breit ? breit(u) : { oben: 0, unten: 0 };
-        const bohne = Math.pow(Math.max(0, 1 - u * u), 0.6);
+        // Bohne, die an den Mundwinkeln **sanft** ausläuft (ohne den Faktor stand der Unterrand bei u = 0,95 noch ein
+        // Viertel tief — ein steiler Keil am Winkel)
+        const bohne = Math.pow(Math.max(0, 1 - u * u), 0.6) * (1 - smoothstep(0.7, 1, u));
         return { oben: w.oben, unten: w.unten - spalt * tiefMax * bohne };
       };
     }
