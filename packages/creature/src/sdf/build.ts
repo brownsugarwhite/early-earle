@@ -1013,7 +1013,16 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     // würden das Feld verrauschen); dünner Anhang: der Trichter liegt **ganz im Rumpf** (vom Kern bis zur Haut auf die
     // Schwanzdicke), außen hat der Schwanz sofort seine Dicke — den weichen Ansatz macht die große Verschmelzung, kein
     // Kragen (Florian: „der Schwanz muss deutlich flüssiger in den Körper übergehen, Kanten und Knubbel“)
-    const rRoot = T.typ === 'wirbelsaeule' ? rBody * 0.8 : Math.min(rBody * 0.8, r0 * 2.5);
+    // Anhang: Verschmelzung ≈ 1,6 Schwanzdicken (mit 3 Dicken wuchs um die Wurzel ein Hügel von k/4 Höhe auf dem
+    // Rumpf — Florian: „deutliche Wulst an der Ansatzstelle“); den weichen Übergang macht stattdessen ein flacher
+    // Flare des Schwanzes selbst zur Wurzel hin (Katzenschwanz, Bild 9) — der Trichter innen bleibt mindestens k unter
+    // der Haut, damit die Vereinigung die Flanke nicht entlang seiner Bahn aufbläht
+    const kTail = T.typ === 'wirbelsaeule' ? 0.3 * H : clamp(1.6 * r0, 0.07 * H, 0.2 * H);
+    const iT = Math.min(bodyWx.length - 1, Math.max(0, Math.round(clamp((hT - yb) / H, 0, 1) * (bodyWx.length - 1))));
+    const rMinBody = Math.max(0.05 * H, Math.min(bodyWx[iT]!, bodyWyT[iT]!, bodyWyB[iT]!));
+    const rFlare = T.typ === 'wirbelsaeule' ? r0 : Math.min(r0 * 1.7, Math.max(r0, 0.5 * rMinBody));
+    // innen kaum weiter als der Flare: ein breiter Trichter dicht unter der Haut hob die Haut rund um die Wurzel als Hügel
+    const rRoot = T.typ === 'wirbelsaeule' ? rBody * 0.8 : clamp(rFlare * 1.15, rFlare, Math.max(rFlare, rMinBody - kTail - 0.03 * H));
     const ctrl: Vec3[] = T.typ === 'wirbelsaeule' ? [axisAt(hT), [0, hT, zBack + 0.35 * rBody], [0, hT, zBack]] : [[0, hT, zBack + Math.max(rRoot * 1.6, 0.35 * rBody)], [0, hT, zBack + rRoot * 0.6], [0, hT, zBack]];
     // Schwung: Bogen in der Mitte (positiv nach oben, negativ durchhängend) — zusammen mit Höhe und Krümmung ein
     // organischer S-Bogen statt einer starren Parabel
@@ -1027,18 +1036,19 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     for (let i = 1; i < pts.length; i++) arcs.push(arcs[i - 1]! + Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1], pts[i]![2] - pts[i - 1]![2]));
     let sExit = 0;
     for (let i = 0; i < pts.length; i++) if (pts[i]![2] <= zBack + 1e-6) { sExit = arcs[i]!; break; }
-    const Lans = T.typ === 'wirbelsaeule' ? 0.15 * Lt : 0;
+    // Anhang: Flare außen über gut ein Drittel der Länge (Wurzel 1,7 Dicken → Dicke), innen Trichter zur Wurzel
+    const Lans = T.typ === 'wirbelsaeule' ? 0.15 * Lt : Math.min(0.38 * Lt, 0.35 * H);
     const radii = pts.map((_p, i) => {
       const sA = arcs[i]! - sExit;
       if (sA <= 0) {
         if (T.typ === 'wirbelsaeule') return rRoot;
-        // Anhang: Trichter innen (Kern → Haut) von rRoot auf r0, an der Haut genau die Schwanzdicke
+        // Anhang: Trichter innen (Kern → Haut) von rRoot auf die Flare-Dicke an der Haut
         const fi = sExit > 1e-6 ? clamp(-sA / sExit, 0, 1) : 1;
         const e = fi * fi * (3 - 2 * fi);
-        return r0 + (rRoot - r0) * e;
+        return rFlare + (rRoot - rFlare) * e;
       }
       const f = Lans > 0 ? smoothstep(0, Lans, sA) : 1;
-      const rA = rRoot * (1 - f) + r0 * f;
+      const rA = (T.typ === 'wirbelsaeule' ? rRoot : rFlare) * (1 - f) + r0 * f;
       // Dickenverlauf als Bogen durch Ansatz, Mitte (leichte Taille) und Spitze — eine Keule schwillt erst am Ende an
       const g = clamp((sA - Lans) / Math.max(1e-6, Lt - Lans), 0, 1);
       const rMid = Math.min(rA, rTip) * 0.85;
@@ -1061,9 +1071,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       // Stationen im Rumpf (vor dem Austritt) gehören dem Rumpf: Gewichte und Musterkoordinaten springen nicht auf der Flanke
       const rumpfBone = T.typ === 'wirbelsaeule' ? kMitte : kUnten;
       const parts = pts.map((_p, i) => (arcs[i]! < sExit - 1e-6 ? rumpfBone : idx[Math.min(nb - 1, Math.floor(((arcs[i]! - sExit) / Math.max(1e-6, arcs[arcs.length - 1]! - sExit)) * nb))]!));
-      // Verschmelzung: Wirbelsäule breit; Anhang mit großem Radius (≈ 3 Schwanzdicken), damit die Haut tangential aus dem
-      // Rumpf in den Schwanz läuft statt einen Kragen zu bilden
-      const kTail = T.typ === 'wirbelsaeule' ? 0.3 * H : clamp(3 * r0, 0.16 * H, 0.3 * H);
+      // Verschmelzung: Wirbelsäule breit; Anhang klein (der Flare macht den Übergang, siehe oben)
       prims.push(makeLoft({ points: pts, upRef: UP, wx: radii, wyT: radii.map((r) => r * 1.05), wyB: radii, n: 2, parts }, { op: 'union', part: idx[0]!, k: kTail, region: REGION.haut, name: 'schwanz' }));
     }
   }
