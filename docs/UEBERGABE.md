@@ -63,15 +63,15 @@ Florian: W beim Goldie nicht hunde-/katzentypisch; Oberschenkel passen gar nicht
 - **Beine** (`sdf/build.ts`): dicke Säule aus dem Rumpf (Radius 0,1 H + 0,2 · Dicke + 0,15 · Schenkel; Rex ≈ Rumpfbreite), kaum verjüngt, am Boden **Saugnapf** (weitet sich über die letzten ≈ 20 % auf den Fußradius, flache Standfläche mit runder Kante, vorn etwas länger), weiche Verschmelzung (k ≈ 0,1–0,18 H). Keine Zehen.
 - **ω‑Lippe** (`mouth.ts`): schmale Spitze unter der Nase (Philtrum), Lefzen hängen dicht daneben tief (u ≈ 0,26), zum Winkel steigt die Linie (Lächeln). Nase sitzt über der Spitze.
 - **Zahnreihen** (`mesh/build.ts`): Abstand aus Dichte **und** Zahnbreite (große Zähne nehmen mehr Platz), Fänge mit Spitze bei u ≈ 0,2, nach hinten kleiner, Wechsel groß/klein (`streuung`), vorn leicht nach vorn geneigt, Biegung nach innen.
-- **Unterkiefer‑Spielraum**: Faltbudget 1,1 · Biegezone (die Ketten biegen statt zu stauchen); Rex `kehle` 0,6, Retriever 0,5 → der Unterkörper (Kehle → Brust) folgt dem Unterkiefer; Drache `oeffnungOben` 0,5 → Maul geht nach oben auf.
+- **Unterkiefer‑Spielraum**: Faltbudget 1,1 · Biegezone (die Ketten biegen statt zu stauchen); Rex `kehle` 0,6, Retriever 0,5 → der Unterkörper (Kehle → Brust) folgt dem Unterkiefer; Drache `oeffnungOben` 0,5 → Maul geht nach oben auf. Zahnlängen: außen liegende Fänge dürfen bis zum Dreifachen der Kiefertiefe hinausragen (Drache geschlossen, Bild 5 rechts).
 
 ## Was noch nicht stimmt (nach Florians Bildern)
 
-1. **Rex**: Maul reißt jetzt riesig auf (Unterkiefer 20°, Oberkiefer 72°, 35 Zähne); Rumpf noch ein Sack ohne Brust, die Schenkel sind von der Seite nicht als Keule lesbar (sie liegen in der Seitensilhouette des Rumpfs) — hier helfen Florians Blender‑Vorlagen; Flügel/Stummelarme später (eigene Elemente).
+1. **Rex**: dicke Stampfer mit Saugnapf‑Füßen stehen; der Rumpf ist noch ein Sack ohne Brust und der Schenkel von der Seite keine Keule — Florians Blender‑Vorlage abwarten; Flügel/Stummelarme später (eigene Elemente).
 2. **Tiger**: runder Schädel, kantige Schnauze mit W‑Lippe und Nase, Brauen über Schlitzaugen, dicke Schenkel seitlich — geschlossen jetzt eine grimmige Katze; von der Seite wirkt der Rumpf noch kastig (Buckel reduziert), Brustwulst (weißer Kragen), Nasenfarbe und kräftigere Streifen fehlen.
 3. **Kopfprofile** weiter aus Bild 11/6/9 verfeinern (Braue, Schnauzenrücken, Wangen → evtl. `kopf.wangen`).
 4. **Shading** zu glatt/„CG“ (Bögen: Airbrush, kühle gesättigte Schatten, Korn); Bauch-/Rücken-Linie hart.
-5. **Drache**: Maul riesig und nach vorn offen, Körper mit S‑Bogen; der untere Lippenring wirkt noch wie ein Topfrand (Kinnband flach, Unterkiefer dreht wegen Boden/Bauch nur 6°) — mit Florians Blender‑Vorlage nachziehen.
+5. **Drache**: geschlossen hängen die Hauer jetzt außen (Fänge bis zum Dreifachen der Kiefertiefe), offen ein riesiges Maul nach vorn/oben; die Maullinie wickelte sich wie ein Gürtel um den Körper (Breite/Winkel verkleinert, prüfen); der untere Lippenring bleibt flach (Kinnband), Unterkiefer dreht wegen Bauch/Boden kaum.
 6. **Augen**: Höhlenring und Oberlid da; Unterlid, Blickrichtung und Ausdrücke (Spirale, X) fehlen; Giraffen‑Augapfel noch halb aufgesetzt.
 7. **Silhouetten‑Überdeckung** gebaut; Werte liegen um 0,5–0,75 — die großen Abweichungen sind Masseverteilung (Rumpf zu schmal/hoch gegenüber den Bögen) und fehlende Elemente.
 8. Ohren, Hörner, Flügel, dünne Schwänze, Spinnenbeine, Rückenschuppen: **eigene Elemente** (Florian), nicht Teil der Masse.
