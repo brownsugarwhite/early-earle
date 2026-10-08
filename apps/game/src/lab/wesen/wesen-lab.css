@@ -183,3 +183,5 @@
 .wl-sp-punkt:hover { fill: var(--neon); }
 .wl-sp-text { font: 11px var(--font-body); fill: #7c9097; }
 .wl-sp-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; }
+.wl-maul-linie { fill: none; stroke: #5a2f6b; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.wl-maul-unten { fill: rgba(110, 35, 52, 0.25); stroke: #6e2334; stroke-width: 2; stroke-linejoin: round; }

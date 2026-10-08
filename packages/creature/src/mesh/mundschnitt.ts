@@ -59,12 +59,17 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
     p[0] = positions[v * 3]!;
     p[1] = positions[v * 3 + 1]!;
     p[2] = positions[v * 3 + 2]!;
-    const { h, phi } = mouth.local(p);
+    const { h, phi, r } = mouth.local(p);
     const phiC = clamp(phi, -theta, theta);
     let f = h - mouth.lipHAt(phiC);
     if (Math.abs(f) < EPS) f = EPS;
     F[v] = f;
-    G[v] = theta - Math.abs(phi);
+    // Maulbereich: innerhalb der Mundwinkel **und** nahe am Lippenradius — Schwanz, Beine oder Rumpf auf gleicher Höhe
+    // (versunkener Kopf, weit hinten liegende Winkel) liegen außerhalb des Fensters und bleiben ungeschnitten; das
+    // Fenster ist stetig, der Schlitz endet darin wie an einer Spitze
+    const lr = mouth.lipRAt(phiC);
+    const fenster = lr > 1e-6 ? Math.min((r - 0.6 * lr) / lr, (1.5 * lr - r) / lr) * 2 : 1;
+    G[v] = Math.min(theta - Math.abs(phi), fenster);
     PHI[v] = phi;
   }
   const pos: number[] = Array.from(positions);

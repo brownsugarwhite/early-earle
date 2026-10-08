@@ -79,7 +79,7 @@ const koerper = z
 const H = 'Hals & Kopf';
 const hals = z
   .object({
-    laenge: regler(H, 'hals.laenge', 'Halslänge', 0, 2, 0, '0 = Kopf im Rumpf (Grundblob mit Maullinie, Fisch, Aal); ab 0,05 eigener Kopf auf den Schultern (Rex, Katze), länger = Hals (Giraffe)'),
+    laenge: regler(H, 'hals.laenge', 'Halslänge', 0, 2, 0, '0 = Kopf im Rumpf (Grundblob mit Maullinie, Fisch, Aal); darüber eigener Kopf, der stufenlos aus dem Rumpf steigt (≈ 0,18 auf den Schultern: Rex, Katze, Hund), länger = Hals (Giraffe)'),
     dicke: regler(H, 'hals.dicke', 'Halsdicke', 0.15, 1.8, 0.55, 'Rex/Katze: breiter Hals trägt den großen Kopf'),
     kruemmung: regler(H, 'hals.kruemmung', 'Halsbogen', -1, 1, 0, 'S-Form vor / zurück'),
     ansatz: regler(H, 'hals.ansatz', 'Halsansatz', 0, 1, 0.7, '0 hinten … 1 vorn auf dem Körper'),
@@ -115,10 +115,11 @@ const maul = z
     breite: regler(M, 'maul.breite', 'Maulbreite', 0.2, 1, 0.8),
     oberkiefer: regler(M, 'maul.oberkiefer', 'Oberkiefer', 0, 1.5, 1),
     unterkiefer: regler(M, 'maul.unterkiefer', 'Unterkiefer', 0, 1.5, 0.8, '0 = kein Unterkiefer'),
-    biss: regler(M, 'maul.biss', 'Biss', -1, 1, 0, '−1 Unterbiss … +1 Überbiss'),
+    biss: regler(M, 'maul.biss', 'Biss', -1, 1, 0, '−1 Unterbiss … +1 Überbiss: die Oberlippe hängt vorn über den zurückgesetzten Unterkiefer'),
     lippe: regler(M, 'maul.lippe', 'Lippenwulst', 0, 1, 0.15, 'Breite des Lippenbands: 0 unsichtbar (Giraffe), 0,15 schmaler Saum (Aal), 0,6 breites helles Band (Rex, Bild 11)'),
     kante: regler(M, 'maul.kante', 'Kieferkante', 0, 1, 0, 'weich … kantig (Raubkatze)'),
-    wForm: regler(M, 'maul.wForm', 'W-Form', 0, 1, 0, 'Oberlippe Hund/Katze'),
+    wForm: regler(M, 'maul.wForm', 'W-Form', 0, 1, 0, 'ω der Oberlippe (Hund): Spitze unter der Nase, hängende Lefzen; Katzen 0'),
+    nase: regler(M, 'maul.nase', 'Nasenspiegel', 0, 1, 0, 'Nase über der Lippenmitte mit Scharte zur Lippe (Hund, Katze); 0 = keine'),
     tiefe: regler(M, 'maul.tiefe', 'Rachentiefe', 0.2, 1, 0.5),
     oeffnung: regler(M, 'maul.oeffnung', 'Öffnungsweite', 0, 1, 0.6, 'größte Öffnung vorn: 1 = 1,6 Kopfhöhen (ein anderes Tier mit einem Haps); über dem Drehwinkel senkt sich der Unterkiefer zusätzlich (Schlund wird länger)'),
     oeffnungOben: regler(M, 'maul.oeffnungOben', 'Öffnung über Oberkiefer', 0, 1, 0.6, 'Anteil der Öffnung, den der Oberkiefer übernimmt (klappt samt Augen nach hinten)'),

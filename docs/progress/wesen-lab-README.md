@@ -55,3 +55,5 @@ EE_SHOTS=1 EE_VORLAGEN=keil,loch EE_SHOTS_TAG=vorher E2E_PORT=4471 node apps/gam
 ## Silhouetten-Editor (08.10.)
 
 Tab **Körper** → „Silhouette zeichnen“: zwei Bézier-Kurven (vorn rechts, hinten links) über der Rumpfhöhe, Punkte waagerecht ziehen, Scheitel-Regler für die runde Kappe. Am besten in der Ansicht „Seite“ mit dem Referenzbild darüber. Harness-Werkzeuge: `scripts/wesen/seitenprofil.mjs` (Profil aus einer Vermessung), `EE_ANSICHT=seite`, `EE_REIHE`, `EE_STIL`, `EE_BLINK`, `EE_RES`.
+
+**Maul‑Editor** (Tab Maul): Griffe auf zwei Schemazeichnungen (Seite: Höhe, Winkel, Neigung, Schwung; Vorn: W‑Form, Breite, Öffnung). **Vorderansicht** im Silhouetten‑Editor: Breite über der Höhe.

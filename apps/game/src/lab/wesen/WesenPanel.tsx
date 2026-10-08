@@ -5,6 +5,7 @@ import { WesenIcon } from './icons';
 import type { WesenLabScene } from './WesenLabScene';
 import { StilVorgabeBereich } from './DateiBereich';
 import { SeitenprofilEditor } from './SeitenprofilEditor';
+import { MaulEditor } from './MaulEditor';
 
 /**
  * Reglerpanel des Grundformen-Labs: Tabs mit gruppierten Reglern (Label, Live-Wert, kleiner Hinweis), je Regler ein
@@ -273,6 +274,7 @@ export function TabInhalt() {
     <div className="wl-tabinhalt" role="tabpanel" aria-label={TABS.find((t) => t.id === tab)!.label} ref={body} data-testid={`wl-tabinhalt-${tab}`}>
       <TabKopf tab={tab} />
       {tab === 'maul' ? <VorschauOeffnung /> : null}
+      {tab === 'maul' ? <MaulEditor /> : null}
       {tab === 'koerper' ? <SeitenprofilEditor /> : null}
       {gruppen.map((g, i) => (
         <Gruppe key={`${tab}-${g.titel}`} g={g} aktiv={aktivMuster[i] !== '0'} />

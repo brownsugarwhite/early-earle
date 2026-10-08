@@ -327,8 +327,12 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     // Ansatz und Halsdicke — stetig geblendet, damit Mittellinie und Profil keinen Absatz bekommen
     const tN = (() => { const u = clamp((b.hals.laenge - 0.08) / 0.5, 0, 1); return u * u * (3 - 2 * u); })();
     const hb = yb + H * (0.97 - 0.1 * Math.abs(ansatz - 0.5) * 2 * tN);
+    // Stufenlos aus dem Rumpf (Florian): bei Halslänge → 0 sitzt der Kopf tief **im** Rumpf (Mitte ≈ halbe Höhe) und
+    // wandert mit wachsendem Hals nach oben — kein Sprung beim ersten Tick über 0
+    const sink = 1 - smoothstep(0, 0.35, b.hals.laenge);
+    const hbNeck = hb - sink * 0.42 * H;
     // Halsansatz vorn/hinten gilt auch für kurze Hälse: Katze und Rex tragen den Kopf vorn über der Brust (Bild 5/9)
-    const base: Vec3 = add(axisAt(hb), [0, 0, (ansatz - 0.5) * R0 * sz * 1.3]);
+    const base: Vec3 = add(axisAt(hbNeck), [0, 0, (ansatz - 0.5) * R0 * sz * 1.3]);
     const rN = b.hals.dicke * R0 * 0.62 * sm;
     const kr = b.hals.kruemmung;
     const ctrl: Vec3[] = [];
@@ -383,8 +387,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         const t = i / (nB - 1);
         const y = bodyPts[i]![1];
         if (y > hb - 1e-6) break;
-        // Tropfen: ab 35 % Höhe stetig in den Hals verjüngen (Bild 6: keine Schulterstufe)
-        const w = t <= 0.35 ? 0 : (() => { const u = (t - 0.35) / Math.max(1e-6, (hb - yb) / H - 0.35); const c = clamp(u, 0, 1); return c * c * (3 - 2 * c); })();
+        // Tropfen: ab 35 % Höhe stetig in den Hals verjüngen (Bild 6: keine Schulterstufe); versunkener Kopf: kein Tropfen
+        const w = (t <= 0.35 ? 0 : (() => { const u = (t - 0.35) / Math.max(1e-6, (hb - yb) / H - 0.35); const c = clamp(u, 0, 1); return c * c * (3 - 2 * c); })()) * (1 - sink);
         const c: Vec3 = [bodyPts[i]![0] + (base[0] - bodyPts[i]![0]) * w, y, bodyPts[i]![2] + (base[2] - bodyPts[i]![2]) * w];
         pts2.push(c);
         wx2.push(bodyWx[i]! + (rBase - bodyWx[i]!) * w);
@@ -396,6 +400,9 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       for (let i = 0; i < pts.length; i++) {
         const u = i / (pts.length - 1);
         const r = radii[i]!;
+        // Achsenmodus verlangt monotone Höhe: Halsstationen, die (versunkener Kopf) noch im Rumpf liegen, entfallen —
+        // der Rumpf schließt dann selbst, der Kopf verschmilzt von innen
+        if (pts[i]![1] <= pts2[pts2.length - 1]![1] + 1e-4) continue;
         pts2.push(pts[i]!);
         wx2.push(r);
         wyT2.push(r);
@@ -445,6 +452,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         // runde Enden; kantige Kiefer (Raubkatze) haben eine flachere Schnauzenfront
         const kanteK = clamp(m0.kante, 0, 1);
         const endRound = Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(u - 0.5) / 0.5, u > 0.5 ? 6 + 8 * kanteK : 6)));
+        // Überbiss: die untere Hälfte (Unterkiefer) endet vorn früher — die Oberlippe hängt über (Hund/Katze geschlossen)
+        const bissK = clamp(m0.biss, -1, 1);
+        const uB = u > 0.5 ? Math.min(1, u + 0.14 * Math.max(0, bissK)) : u;
+        const endRoundB = Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(uB - 0.5) / 0.5, u > 0.5 ? 6 + 8 * kanteK : 6)));
         // Bild 5/11: Schädel hinten hoch mit flachem Scheitel, Braue als breiter Wulst über den Augen, Schnauze fällt nach
         // vorn ab und bleibt breit (Haube); Unterkiefer als Löffel, zur Kinnspitze flacher
         // Wangen: breite Backen unter den Augen (Katze, Bild 9) — die Breite wächst im hinteren Kopfdrittel bis zur Schnauzenwurzel
@@ -462,9 +473,9 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         // Unterkiefer als Löffel; kantig: flaches Kinn, das bis zur Schnauzenfront durchläuft (Bild 9: eckiges Kinn)
         const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.3 * (1 - 0.85 * kanteK) * Math.max(0, (u - 0.5) / 0.5) ** 1.6);
         wx.push(width * endRound * (1 - 0.45 * Math.max(0, kb)));
-        wxB.push(width * endRound * (1 + 0.45 * Math.min(0, kb)));
+        wxB.push(width * endRoundB * (1 + 0.45 * Math.min(0, kb)));
         wyT.push(skull * endRound);
-        wyB.push(jaw * endRound);
+        wyB.push(jaw * endRoundB);
         // Kieferkante: Schnauze und Kinn kantig (Raubkatze, Bild 9), der Schädel hinten bleibt rund
         // Schädel (obere Hälfte) bleibt rund; Kiefer und Schnauze (untere Hälfte) werden zur Front hin kantig
         nn.push(2.1 + 0.6 * kanteK * smoothstep(0.6, 0.95, u));
@@ -472,7 +483,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       }
       // Verschmelzung klein genug, dass Kanten und Schnauze des Kopfs stehen bleiben (kantige Raubkatze); der Übergang
       // zur Schulter kommt aus der Überlappung von Kopf und Rumpf, nicht aus einem großen Rundungsradius
-      const head = makeLoft({ points: pts, upRef: upH, wx, wxB, wyT, wyB, n: nn, nB, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN)), region: REGION.haut, name: 'kopf' });
+      // versunkener Kopf verschmilzt weich mit dem Rumpf (eine Masse), freier Kopf behält seine Kanten
+      const head = makeLoft({ points: pts, upRef: upH, wx, wxB, wyT, wyB, n: nn, nB, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN) + 0.4 * sink), region: REGION.haut, name: 'kopf' });
       prims.push(head);
       // Ohren: flache Lappen seitlich hinten oben, nach außen-hinten geneigt (Giraffe, Dackel); Hörnchen: zwei kurze
       // Stiele mit Knopf oben hinten (Giraffe) — einfache Anbauten direkt am Kopf
@@ -526,11 +538,12 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   const mouth = buildMouth(b, host, H);
   let gesicht: Construction['gesicht'] = null;
   // Nasenspiegel (Katze, Hund — Bild 8/9): flacher Knubbel vorn oben auf der Schnauze über der Mitte der W-Lippe
-  if (maulAn && b.maul.wForm > 0.02) {
+  if (maulAn && b.maul.nase > 0.02) {
     const wF = clamp(b.maul.wForm, 0, 1);
+    const nF = clamp(b.maul.nase, 0, 1);
     const Hk = host.headHeight ?? host.height;
     // knapp über der Spitze der ω-Linie (dort ist die Linie um 0,15 · wF Kopfhöhen angehoben)
-    const rN0 = (0.035 + 0.06 * wF) * Hk;
+    const rN0 = (0.03 + 0.06 * nF) * Hk;
     const hN = clamp(mouth.hLip + (0.15 * wF + 0.05) * Hk + 1.0 * rN0, 0.02 * host.height, 0.98 * host.height);
     const nasenScene: SdfScene = { prims: prims.filter((p) => p.op === 'union') };
     const sp = surfacePoint({ ...host, scene: nasenScene }, hN, 0, host.halfWidth * 3 + H);
@@ -542,7 +555,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     ]);
     const upN = normalize(sub(host.up, scale(nrm, dot(host.up, nrm))));
     const rightN = normalize(cross(upN, nrm));
-    const rN = (0.035 + 0.06 * wF) * Hk;
+    const rN = (0.03 + 0.06 * nF) * Hk;
     const nase: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: hostBone, k: 0.5 * rN, region: REGION.haut, name: 'nase', c: add(sp.p, scale(nrm, -rN * 0.3)), r: [rN * 1.35, rN * 0.8, rN], q: quatFromFrame(rightN, upN, nrm) };
     prims.push(nase);
     // Scharte: von der Lippenspitze (Mitte der ω-Linie) hoch zur Nasenunterkante, Nase etwas vor der Fläche (Shader-Maske)

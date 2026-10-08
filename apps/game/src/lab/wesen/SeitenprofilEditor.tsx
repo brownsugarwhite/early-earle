@@ -31,6 +31,7 @@ function setzeProfil(p: Profil | undefined, opKey = 'seitenprofil'): void {
 export function SeitenprofilEditor() {
   const profil = useWesenStore((s) => leseWert(s.bauplan, 'koerper.seitenprofil') as Profil | undefined);
   const svg = useRef<SVGSVGElement>(null);
+  const svgVorn = useRef<SVGSVGElement>(null);
   const id = useId();
   if (!profil) {
     return (
@@ -45,6 +46,9 @@ export function SeitenprofilEditor() {
   }
   const vorn = profil.vorn.length === K ? profil.vorn : Array.from({ length: K }, (_, i) => bezier(profil.vorn, i / (K - 1)));
   const hinten = profil.hinten.length === K ? profil.hinten : Array.from({ length: K }, (_, i) => bezier(profil.hinten, i / (K - 1)));
+  // Vorderansicht: eigene Breitenkurve oder das Mittel aus vorn und hinten (Standard)
+  const breiteEigen = profil.breite && profil.breite.length === K ? profil.breite : null;
+  const breite = breiteEigen ?? Array.from({ length: K }, (_, i) => 0.5 * (vorn[i]! + hinten[i]!));
   const c0 = profil.scheitel ?? 0.75;
   // Umriss: vorn rechts, hinten links, Kappe oben
   const n = 48;
@@ -57,9 +61,18 @@ export function SeitenprofilEditor() {
     const t = i / n;
     pts.push(`${(AXIS - bezier(hinten, t) * SCALE * kappe(t, c0)).toFixed(1)},${yOf(t).toFixed(1)}`);
   }
-  const drag = (seite: 'vorn' | 'hinten', i: number) => (e: React.PointerEvent<SVGCircleElement>) => {
+  const vornPts: string[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    vornPts.push(`${(AXIS + bezier(breite, t) * SCALE * kappe(t, c0)).toFixed(1)},${yOf(t).toFixed(1)}`);
+  }
+  for (let i = n; i >= 0; i--) {
+    const t = i / n;
+    vornPts.push(`${(AXIS - bezier(breite, t) * SCALE * kappe(t, c0)).toFixed(1)},${yOf(t).toFixed(1)}`);
+  }
+  const drag = (seite: 'vorn' | 'hinten' | 'breite', i: number, elRef: React.RefObject<SVGSVGElement | null> = svg) => (e: React.PointerEvent<SVGCircleElement>) => {
     e.preventDefault();
-    const el = svg.current;
+    const el = elRef.current;
     if (!el) return;
     (e.target as Element).setPointerCapture(e.pointerId);
     st().beginGeste();
@@ -67,9 +80,11 @@ export function SeitenprofilEditor() {
       const m = el.getScreenCTM();
       if (!m) return;
       const x = (ev.clientX - m.e) / m.a;
-      const v = seite === 'vorn' ? (x - AXIS) / SCALE : (AXIS - x) / SCALE;
+      // Vorderansicht ist symmetrisch: Abstand zur Achse, egal auf welcher Seite gezogen wird
+      const v = seite === 'vorn' ? (x - AXIS) / SCALE : seite === 'hinten' ? (AXIS - x) / SCALE : Math.abs(x - AXIS) / SCALE;
       const cur = (leseWert(st().bauplan, 'koerper.seitenprofil') as Profil | undefined) ?? profil;
-      const arr = (cur[seite].length === K ? cur[seite] : seite === 'vorn' ? vorn : hinten).slice();
+      const basis = seite === 'breite' ? (cur.breite && cur.breite.length === K ? cur.breite : breite) : cur[seite].length === K ? cur[seite] : seite === 'vorn' ? vorn : hinten;
+      const arr = basis.slice();
       arr[i] = Math.min(2, Math.max(0.02, Math.round(v * 1000) / 1000));
       setzeProfil({ ...cur, [seite]: arr });
     };
@@ -102,6 +117,18 @@ export function SeitenprofilEditor() {
         <text x={W - 22} y={BOTTOM - 6} className="wl-sp-text" textAnchor="end">vorn</text>
         <text x={22} y={BOTTOM - 6} className="wl-sp-text">hinten</text>
       </svg>
+      <h3 className="wl-gruppe-titel">Vorderansicht (Breite)</h3>
+      <svg ref={svgVorn} viewBox={`0 0 ${W} ${H}`} className="wl-sp-svg" role="img" aria-label="Vorderansicht: Breite über der Höhe, symmetrisch">
+        <line x1={AXIS} y1={TOP - 6} x2={AXIS} y2={BOTTOM + 6} className="wl-sp-achse" />
+        <line x1={20} y1={BOTTOM} x2={W - 20} y2={BOTTOM} className="wl-sp-boden" />
+        <line x1={20} y1={yOf(c0)} x2={W - 20} y2={yOf(c0)} className="wl-sp-scheitel" />
+        <polygon points={vornPts.join(' ')} className="wl-sp-koerper" data-eigen={!!breiteEigen} />
+        <polyline points={breite.map((v, i) => `${AXIS + v * SCALE},${yOf(i / (K - 1))}`).join(' ')} className="wl-sp-polygon" />
+        {breite.map((v, i) => (
+          <circle key={`b${i}`} cx={AXIS + v * SCALE} cy={yOf(i / (K - 1))} r={7} className="wl-sp-punkt" onPointerDown={drag('breite', i, svgVorn)} data-testid={`wl-sp-breite-${i}`} />
+        ))}
+        <text x={W - 22} y={BOTTOM - 6} className="wl-sp-text" textAnchor="end">{breiteEigen ? 'eigene Breite' : 'Mittel aus vorn/hinten'}</text>
+      </svg>
       <div className="wl-regler">
         <label className="wl-regler-kopf" htmlFor={id}>
           <span className="wl-label">Scheitel (runder Kopf)</span>
@@ -115,11 +142,14 @@ export function SeitenprofilEditor() {
         <button type="button" className="wl-btn" onClick={() => setzeProfil({ ...profil, hinten: (profil.vorn.length === K ? profil.vorn : vorn).slice() }, 'seitenprofil-spiegeln')} title="Hinten wie vorn">
           Spiegeln
         </button>
+        <button type="button" className="wl-btn" disabled={!breiteEigen} onClick={() => { const { breite: _b, ...rest } = profil; void _b; setzeProfil(rest as Profil, 'breite-mittel'); }} title="Breite wieder aus vorn und hinten mitteln">
+          Breite = Mittel
+        </button>
         <button type="button" className="wl-btn" onClick={() => setzeProfil(undefined, 'seitenprofil-entfernen')} data-testid="wl-sp-entfernen" title="Zurück zu Bauch, Buckel und Querschnitten">
           Profil entfernen
         </button>
       </div>
-      <small className="wl-hinweis">Punkte waagerecht ziehen (Anteile der Rumpfhöhe). Die Breite folgt dem Mittel aus vorn und hinten, mal „Breite“.</small>
+      <small className="wl-hinweis">Punkte waagerecht ziehen (Anteile der Rumpfhöhe). Vorderansicht: erst ein Zug macht die Breite eigenständig, sonst folgt sie dem Mittel aus vorn und hinten (mal „Breite“).</small>
     </section>
   );
 }
