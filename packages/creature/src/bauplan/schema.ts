@@ -97,6 +97,7 @@ const kopf = z
     wangen: regler(H, 'kopf.wangen', 'Wangen', 0, 1, 0, 'breite Backen unter den Augen (Katze, Löwe — Bild 9)'),
     stirn: regler(H, 'kopf.stirn', 'Stirn', -1, 1, 0, '−1 flacher Schädel … +1 hohe runde Stirn (Hund, Bild 8)'),
     backen: regler(H, 'kopf.backen', 'Backen', 0, 1, 0, 'breite Unterkieferbacken hinter den Mundwinkeln — der Kopf wird unten breiter als oben (Raubkatze, Backenbart Bild 9)'),
+    nasenband: regler(H, 'kopf.nasenband', 'Nasenband', 0, 1, 0, 'breites flaches Band von der Stirn zwischen den Augen hinab zur Nase (Raubkatze, Bild 9)'),
     ohren: regler(H, 'kopf.ohren', 'Ohren', 0, 1, 0, 'flache Lappen seitlich hinten'),
     hoerner: regler(H, 'kopf.hoerner', 'Hörnchen', 0, 1, 0, 'zwei Stiele mit Knopf'),
   })
@@ -119,6 +120,7 @@ const maul = z
     biss: regler(M, 'maul.biss', 'Biss', -1, 1, 0, '−1 Unterbiss … +1 Überbiss: die Oberlippe hängt vorn über den zurückgesetzten Unterkiefer'),
     lippe: regler(M, 'maul.lippe', 'Lippenwulst', 0, 1, 0.15, 'Breite des Lippenbands: 0 unsichtbar (Giraffe), 0,15 schmaler Saum (Aal), 0,6 breites helles Band (Rex, Bild 11)'),
     kante: regler(M, 'maul.kante', 'Kieferkante', 0, 1, 0, 'weich … kantig (Raubkatze)'),
+    kasten: regler(M, 'maul.kasten', 'Kastenmaul', 0, 1, 0, 'Maul und Kinn als kastenförmiger Block vor dem runden Schädel, markantes Kinn (Raubkatze, Bild 9)'),
     wForm: regler(M, 'maul.wForm', 'W-Form', 0, 1, 0, 'ω der Oberlippe (Hund): Spitze unter der Nase, hängende Lefzen; Katzen 0'),
     nase: regler(M, 'maul.nase', 'Nasenspiegel', 0, 1, 0, 'Nase über der Lippenmitte mit Scharte zur Lippe (Hund, Katze); 0 = keine'),
     tiefe: regler(M, 'maul.tiefe', 'Rachentiefe', 0.2, 1, 0.5),

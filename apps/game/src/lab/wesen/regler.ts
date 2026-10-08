@@ -309,12 +309,12 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
   halsKopf: [
     { titel: 'Hals', ids: ['hals.laenge', 'hals.dicke', 'hals.kruemmung', 'hals.ansatz'] },
     { titel: 'Kopf', ids: ['kopf.groesse', 'kopf.laenge', 'kopf.neigung', 'kopf.ohren', 'kopf.hoerner'] },
-    { titel: 'Gesicht', ids: ['kopf.schnauze', 'kopf.schnauzeDicke', 'kopf.braue', 'kopf.wangen', 'kopf.backen', 'kopf.stirn'] },
+    { titel: 'Gesicht', ids: ['kopf.schnauze', 'kopf.schnauzeDicke', 'kopf.braue', 'kopf.wangen', 'kopf.backen', 'kopf.nasenband', 'kopf.stirn'] },
   ],
   maul: [
     { titel: 'Maul', ids: ['maul.sichtbar'] },
     { titel: 'Lage', ids: ['maul.hoehe', 'maul.neigung', 'maul.schwung'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
-    { titel: 'Form', ids: ['maul.form', 'maul.rundung', 'maul.winkel', 'maul.breite', 'maul.lippe', 'maul.wForm', 'maul.nase', 'maul.kante'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
+    { titel: 'Form', ids: ['maul.form', 'maul.rundung', 'maul.winkel', 'maul.breite', 'maul.lippe', 'maul.wForm', 'maul.nase', 'maul.kante', 'maul.kasten'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
     { titel: 'Kiefer', ids: ['maul.oberkiefer', 'maul.unterkiefer', 'maul.biss', 'maul.tiefe', 'maul.oeffnung', 'maul.oeffnungOben', 'maul.kehle', 'maul.bohne', 'maul.kieferbreite', 'maul.oberkieferBreite', 'maul.unterkieferBreite', 'maul.oberkieferLaenge', 'maul.unterkieferLaenge'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
     { titel: 'Zähne', ids: ['zaehne.stil', 'zaehne.groesse', 'zaehne.streuung', 'zaehne.dichte', 'zaehne.eckzaehne', 'zaehne.biegung', 'zaehne.hauer', 'zaehne.aussen', 'seed'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
     { titel: 'Zunge', ids: ['zunge.groesse'], aktiv: mitMaul, inaktiv: OHNE_MAUL },

@@ -2,7 +2,7 @@ import type { Bauplan } from '../bauplan/schema';
 import { catmullRom, makePolyline, type Polyline } from '../math/curve';
 import { QUAT_ID, add, clamp, cross, dot, frameFromTangent, lerp, normalize, quatFromFrame, scale, smoothstep, sub, type Quat, type Vec3 } from '../math/vec';
 import { buildMouth, lipHeight, surfacePoint, thetaKeilOf, type MouthGeometry, type MouthHost } from '../mouth/mouth';
-import { REGION, evalScene, makeLoft, sceneBounds, type EllipsoidPrim, type Prim, type SdfScene } from './scene';
+import { REGION, evalScene, makeLoft, sceneBounds, sdRoundBoxLocal, type CustomPrim, type EllipsoidPrim, type Prim, type SdfScene } from './scene';
 
 /**
  * Bauplan → implizite Szene + prozedurales Skelett + Teilgruppen (Kurven für Wirbelsäulen-Koordinaten) + Maul + Augen.
@@ -568,6 +568,41 @@ export function construct(b: Bauplan, resolution = 56): Construction {
           const ear: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: headBone, k: 0.2 * hr, region: REGION.haut, name: `ohr${side}`, c, r: [hr * 0.22 * ohren, hr * (0.2 + 0.5 * ohren), hr * 0.12], q: quatFromFrame(normalize(cross(dir, forwardH)), dir, normalize(cross(normalize(cross(dir, forwardH)), dir))) };
           prims.push(ear);
         }
+      }
+      // Raubkatzenkopf (Bild 9, Florian): runde Basis plus **klare Formen** — ein breites flaches Nasenband von der
+      // Stirn zwischen den Augen zur Nase und ein kastenförmiges Maul mit markantem Kinn vor dem Schädel. Beide als
+      // Rundboxen im Kopfrahmen, weich angeschlossen (Form bleibt lesbar, keine harte Naht)
+      const zFront = (Lfront + Lback) * 0.5;
+      const rundbox = (name: string, c: Vec3, halb: Vec3, rund: number, k: number): CustomPrim => {
+        const reach = halb[0] + halb[1] + halb[2] + rund;
+        return {
+          kind: 'custom',
+          op: 'union',
+          part: headBone,
+          k,
+          region: REGION.haut,
+          name,
+          eval: (p: Readonly<Vec3>): number => {
+            const dx = p[0] - c[0], dy = p[1] - c[1], dz = p[2] - c[2];
+            const x = dx * rightH[0] + dy * rightH[1] + dz * rightH[2];
+            const y = dx * upH[0] + dy * upH[1] + dz * upH[2];
+            const z = dx * forwardH[0] + dy * forwardH[1] + dz * forwardH[2];
+            return sdRoundBoxLocal(x, y, z, halb, rund);
+          },
+          bounds: { min: [c[0] - reach, c[1] - reach, c[2] - reach], max: [c[0] + reach, c[1] + reach, c[2] + reach] },
+        };
+      };
+      const nasenband = clamp(b.kopf.nasenband, 0, 1);
+      if (nasenband > 0.02) {
+        const halb: Vec3 = [hr * 0.24 * (0.6 + 0.4 * nasenband), hr * 0.36, hr * 0.16];
+        const c = add(add(headCenter, scale(forwardH, zFront * 0.95 + hr * (0.02 + 0.08 * nasenband) - halb[2])), scale(upH, hr * 0.14));
+        prims.push(rundbox('nasenband', c, halb, hr * 0.08, hr * 0.1));
+      }
+      const kasten = clamp(m0.kasten, 0, 1);
+      if (kasten > 0.02) {
+        const halb: Vec3 = [hr * 0.3 * (0.7 + 0.3 * kasten), hr * 0.34, hr * 0.2];
+        const c = add(add(headCenter, scale(forwardH, zFront * 0.9 + hr * (0.02 + 0.12 * kasten) - halb[2])), scale(upH, -hr * 0.3));
+        prims.push(rundbox('kastenmaul', c, halb, hr * 0.1, hr * 0.12));
       }
       const hoerner = clamp(b.kopf.hoerner, 0, 1);
       if (hoerner > 0.02) {
