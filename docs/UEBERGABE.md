@@ -180,6 +180,13 @@ Florian: bei tiefem Maul muss der Oberkiefer beim Öffnen **nach oben fahren** s
 7. **Silhouetten‑Überdeckung** gebaut; Werte liegen um 0,5–0,75 — die großen Abweichungen sind Masseverteilung (Rumpf zu schmal/hoch gegenüber den Bögen) und fehlende Elemente.
 8. Ohren, Hörner, Flügel, dünne Schwänze, Spinnenbeine, Rückenschuppen: **eigene Elemente** (Florian), nicht Teil der Masse.
 
+## Stand jetzt (09.10. mittags)
+
+- Alles auf `main` (c99f3ac), Arbeitsbaum sauber, alle Prüfungen grün (Typen, 24 Creature-Tests, 261 Game-Tests, Lint). Zuletzt: Block 10 (Kästen, Bohne, Maulspalt, glatte Höhle, Zähne beim Öffnen), Block 11 (Öffnungsart Ziehen/Kippen, weiche Wange hinter den Winkeln, Breitenstufe nur im Maulsektor, Nasentropfen) und die Schwanzansätze (Anhang mit Flare, Wirbelsäule als Fortsetzung des Rumpfs).
+- **Florian testet jetzt den Editor ausgiebig und sammelt Feedback** (sein Wochenlimit war am 09.10. erschöpft). Nächster Block = seine gesammelte Liste abarbeiten; bis dahin nichts eigenmächtig umbauen.
+- Vor dem Testen: `git pull`, dann den Dev-Server **neu starten** (HMR ließ das Lab nach größeren Merges in halbem Modulzustand, z. B. ohne Zähne).
+- Harness für Bilder: `EE_SHOTS=1 EE_VORLAGEN=<ids> [EE_MAUL=auf|zu] [EE_ANSICHT=seite] E2E_PORT=4471 node apps/game/scripts/e2e.mjs e2e/wesen-shots.spec.ts` (vom Repo-Wurzelverzeichnis, nicht während Florian seinen Server 5173 benutzt).
+
 ## Nächste Schritte
 
 0. Mit Florian: Silhouetten im Editor gegen seine Bilder ziehen (Seite + Overlay), dann Kopf/Maul darauf abstimmen; Blender‑Master als Mesh → Distanzfeld planen (K0‑Erweiterung), wenn die Kurven nicht reichen.
