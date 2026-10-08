@@ -40,6 +40,7 @@ Florian: „Zähne sitzen je nach Maul nicht gut, Zwischenstufen Loch ↔ Keil s
 - **Auflösung** per Adresse `&res=128` (Lab) bzw. `EE_RES=128` (Harness, Dateien `-r128`) für Qualitätsvergleiche. Der helle „Absatz“ am Giraffenhals ist keine Geometrie (Stationen stetig, bei 128³ gleich), sondern die harte Cel‑Stufe auf der Schulterrundung → Stil „Kantenfederung“/Airbrush‑Vorgabe.
 - **Lider** (Bild 10): Oberlid als Halbkugel‑Kappe aus Hautmaterial (`createLidMaterial`, Stufen des Körpers) am Augapfel, in Ruhe nach hinten gekippt (nur ein Saum), beim Blinzeln nach vorn über den Augapfel (Sichel). Standbilder: `creature.blinkHold` bzw. Harness `EE_BLINK=1` (Dateien `-augenzu`).
 - **Höhlenring** (Bild 10/11): dunkler, kühler Ring auf der Haut um jeden Augapfel aus dem Abstand zum Augenzentrum im Ruheraum (`ringCount`/`ringStaerke` aus `augen.ring`; nicht bei Schlitzaugen). Halslängen‑Regler erklärt den Moduswechsel (0 = Kopf im Rumpf, ab 0,05 eigener Kopf).
+- **Silhouetten‑Überdeckung** im Harness (`scripts/wesen/iou.mjs`, ZIELSYSTEM §3.8): je Vorlage mit Referenzausschnitt steht in Konsole und Bildunterschrift „Überdeckung x,xx (B/H Render | Referenz)“ — gleiche Höhe, mittig, 256²‑Raster. Grob (Blickwinkel, fehlende Elemente wie Flügel/Fell), aber als Verlaufszahl ehrlich. **Ausgangswerte 08.10.** (Bögen‑Kamera): Rex 0,52 · Kugelfisch 0,74 · Drache 0,60 · Giraffe 0,62 · Aal 0,55 · Retriever 0,54 · Tiger 0,58. Eine seitlichere Kamera (Gier 0,95) brachte die Seitenverhältnisse näher an die Bögen, die Überdeckung aber nicht höher — Bögen‑Kamera bleibt wie sie war.
 - **Retriever‑Vorlage** (Bild 8): eigener Kopf mit langer Schnauze, W‑Lippe und Nase, vier Pfoten, Bogenschwanz; Fell/Ohren später als Elemente.
 
 ## Was noch nicht stimmt (nach Florians Bildern)
@@ -50,7 +51,7 @@ Florian: „Zähne sitzen je nach Maul nicht gut, Zwischenstufen Loch ↔ Keil s
 4. **Shading** zu glatt/„CG“ (Bögen: Airbrush, kühle gesättigte Schatten, Korn); Bauch-/Rücken-Linie hart.
 5. **Rundmaul/Zwischenformen** geprüft (Reihen `maul.form`, `maul.hoehe`): Formen brauchbar; Lochmaul‑Zähne stehen wie bei einer Neunauge nach innen (Kugelfisch hat keine). Drache: geschlossener Zustand wirkt wie ein Zelt mit Fängen (Referenz ist nur offen).
 6. **Augen**: Höhlenring und Oberlid da; Unterlid, Blickrichtung und Ausdrücke (Spirale, X) fehlen; Giraffen‑Augapfel noch halb aufgesetzt.
-7. **Silhouetten-Überdeckung** (IoU) im Harness noch nicht gebaut (ZIELSYSTEM §3.8).
+7. **Silhouetten‑Überdeckung** gebaut; Werte liegen um 0,5–0,75 — die großen Abweichungen sind Masseverteilung (Rumpf zu schmal/hoch gegenüber den Bögen) und fehlende Elemente.
 8. Ohren, Hörner, Flügel, dünne Schwänze, Spinnenbeine, Rückenschuppen: **eigene Elemente** (Florian), nicht Teil der Masse.
 
 ## Nächste Schritte
@@ -58,7 +59,7 @@ Florian: „Zähne sitzen je nach Maul nicht gut, Zwischenstufen Loch ↔ Keil s
 1. Florians Blick auf Block 3 (Rex mit Beinen, Tiger mit Backen, Retriever, Drache, Aal) — Bilder in `docs/progress/wesen-vergleich-*`.
 2. Shading nach den Bögen (Airbrush‑Vorgabe: Kantenfederung, kühle satte Schatten, Korn) — betrifft jede Vorlage, mit Florian live.
 3. Augen bündig mit Ring, Lider/Blinzeln (K3); Eigene Elemente: Ohren, Hörner, Flügel, Flossen, Rückenkamm, Fell (K5/K6).
-4. Silhouetten‑IoU im Harness; Stufen‑Reihe (Größenreihe) im Lab.
+4. Stufen‑Reihe (Größenreihe) im Lab; Überdeckung je Vorlage als Verlaufszahl mitführen.
 
 ## Fallen / Hinweise
 
