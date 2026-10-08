@@ -1,15 +1,16 @@
 import { Vector3, Vector4 } from 'three';
 import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
-import { abs, attribute, clamp, cross, dFdx, dFdy, dot, float, floor, Fn, fract, hash, max, min, mix, normalize, normalView, positionGeometry, positionLocal, positionView, pow, sin, smoothstep, step, time, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
+import { abs, attribute, clamp, cross, dFdx, dFdy, dot, exp2, float, floor, Fn, fract, fwidth, length, log2, max, min, mix, normalGeometry, normalize, normalView, positionGeometry, positionLocal, positionView, pow, select, sin, smoothstep, sqrt, step, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { STIL_STANDARD, farbRolle, type WesenStil } from './stil';
-import { createMusterUniforms, musterMasks, type MusterUniforms } from './muster';
+import { createMusterUniforms, createZonenUniforms, hash3, musterMasks, ZONEN_ANZAHL, zonenMaske, type MusterUniforms, type ZonenUniforms } from './muster';
 
 /**
  * Das Earle-Wesen-Material (erste Fassung, Look-Vertrag Regeln 1–5, 9, 10 teilweise, 12):
  * Figurenlicht im Blickraum (rechts oben), Wertstufen mit gefederten Kanten und Verlauf in der Stufe, farbige Schatten
- * (OKLab-Regel aus `stil.ts`), Rim zur Lichtseite, Bodenkontakt, Papierkorn im Körperraum, Rachen/Lippen/Höhlen aus den
- * Deskriptoren, Höhlung (AO) als Verdunklung in Falten, Glimmer für feste Blobs, Schlitzaugen mit Blinzeln.
+ * (OKLab-Regel aus `stil.ts`), Rim zur Lichtseite, Bodenkontakt, getupftes Korn im Körperraum, Rachen/Lippen/Höhlen aus den
+ * Deskriptoren, Höhlung (AO) als Verdunklung in Falten, Glimmer (gemalte Funken und warmes Licht, Bild 18), Zonen
+ * (Farbflächen mit gemalter Grenze, Bild 17) unter dem Muster, Schlitzaugen mit Blinzeln.
  * Unbeleuchtetes Node-Material (keine Szenenlichter), Skinning übernimmt three für SkinnedMesh automatisch.
  */
 
@@ -65,6 +66,17 @@ export interface CreatureMaterialUniforms {
   lippenBand: UniformNode<'float', number>;
   /** Gewicht des Spitzmund-Morphs (1 = Lochmaul ganz weit). */
   spitzmund: UniformNode<'float', number>;
+  /** Zonen (Bild 17): Form je Zone und ihre Farbrollen. */
+  zonen: ZonenUniforms;
+  zonenFarbe: Vec3Triple[];
+  /** Glimmer des Wesens (Bauplan, 0…1) — wirkt mal dem Stil-Glimmer. */
+  glimmerWesen: UniformNode<'float', number>;
+  /** Farbe des Glimmerlichts (linear). */
+  glimmerFarbe: UniformNode<'vec3', Vector3>;
+  /** Uhr des Wesens (s) für Funkeln und Lavalampe; steht im Standbild. */
+  zeit: UniformNode<'float', number>;
+  /** Anteil der Teil-Koordinate (Beine/Schwanz) — 1, wenn das Mesh `eeTeil` trägt. */
+  teilAn: UniformNode<'float', number>;
 }
 
 export interface Vec3Triple {
@@ -101,7 +113,14 @@ export interface CreatureColors {
   rachen: string;
   auge: string;
   nase?: string;
+  /** Zonenfarben (bis zu drei). */
+  zonen?: string[];
+  /** Glimmerlicht. */
+  glimmer?: string;
 }
+
+const ZONE_STANDARD = '#f3e6c8';
+const GLIMMER_STANDARD = '#f7d6a0';
 
 export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil = STIL_STANDARD, bodyScale = 1): CreatureMaterialUniforms {
   const eyePos = uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(0, 0, 0, 0)), 'vec4');
@@ -143,6 +162,12 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     verschluss: uniform(0),
     lippenBand: uniform(0),
     spitzmund: uniform(0),
+    zonen: createZonenUniforms(),
+    zonenFarbe: Array.from({ length: ZONEN_ANZAHL }, (_, i) => triple(colors.zonen?.[i] ?? ZONE_STANDARD, stil)),
+    glimmerWesen: uniform(0.6),
+    glimmerFarbe: uniform(new Vector3(...farbRolle(colors.glimmer ?? GLIMMER_STANDARD, stil).base)),
+    zeit: uniform(0),
+    teilAn: uniform(0),
   };
 }
 
@@ -164,6 +189,8 @@ export function applyStil(u: CreatureMaterialUniforms, stil: WesenStil, colors: 
   setTriple(u.rachen, colors.rachen, stil);
   u.auge.value.set(...farbRolle(colors.auge, stil).base);
   u.nase.value.set(...farbRolle(colors.nase ?? '#2a2226', stil).base);
+  u.zonenFarbe.forEach((t, i) => setTriple(t, colors.zonen?.[i] ?? ZONE_STANDARD, stil));
+  u.glimmerFarbe.value.set(...farbRolle(colors.glimmer ?? GLIMMER_STANDARD, stil).base);
 }
 
 /** Wertrauschen im Körperraum (dreilinear interpoliert, 0…1). */
@@ -171,7 +198,7 @@ function valueNoise(p: Vec3Node): FloatNode {
   const i = floor(p);
   const f = fract(p);
   const u = f.mul(f).mul(float(3).sub(f.mul(2)));
-  const h = (ox: number, oy: number, oz: number): FloatNode => hash(i.add(vec3(ox, oy, oz)).dot(vec3(1, 57, 113)));
+  const h = (ox: number, oy: number, oz: number): FloatNode => hash3(i.add(vec3(ox, oy, oz)));
   const x00 = mix(h(0, 0, 0), h(1, 0, 0), u.x);
   const x10 = mix(h(0, 1, 0), h(1, 1, 0), u.x);
   const x01 = mix(h(0, 0, 1), h(1, 0, 1), u.x);
@@ -204,6 +231,26 @@ function stepShade(x: FloatNode, stufen: FloatNode, federung: FloatNode, verlauf
   return clamp(mix(up, down, wDown), 0, 1);
 }
 
+/**
+ * Ein Tupfer je Zelle (Körperraum): Mitte gestreut in der inneren Hälfte der Zelle, Radius ≤ ¼ Zelle — der Tupfer bleibt
+ * in seiner Zelle, eine Zelle reicht. Die Kante glättet über die Bildschirmgröße der Zelle (stetig, kein Sprung an der
+ * Zellgrenze) und um `weich` des Radius (gemalt statt gestanzt); Zellen kleiner als ≈ 3 Pixel blenden aus (Mittelwert
+ * statt Flimmern auf dem Brett). Liefert Maske und einen Zufallswert der Zelle.
+ */
+function tupfer(p: Vec3Node, seed: number, rMin: number, rMax: number, weich: number): { m: FloatNode; h: FloatNode } {
+  const cell = floor(p);
+  const f = fract(p);
+  const h = hash3(cell.add(vec3(seed * 17, seed * 31, seed * 7)));
+  const c = vec3(fract(h.mul(17.13)), fract(h.mul(97.71)), fract(h.mul(311.7))).mul(0.5).add(0.25);
+  const rad = mix(float(rMin), float(rMax), fract(h.mul(53.9)));
+  const dist = length(f.sub(c));
+  const px = abs(fwidth(p.x)).add(abs(fwidth(p.y))).add(abs(fwidth(p.z))).mul(0.6);
+  const kante = max(px, rad.mul(weich));
+  const m = float(1).sub(smoothstep(rad.sub(kante), rad.add(kante), dist));
+  const lod = float(1).sub(smoothstep(0.22, 0.45, px));
+  return { m: m.mul(lod), h };
+}
+
 export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNodeMaterial {
   const material = new MeshBasicNodeMaterial();
   material.name = 'ee-wesen';
@@ -217,11 +264,14 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const spine = attribute('eeSpine', 'vec4') as Vec4Node;
     const region = attribute('eeRegion', 'vec4') as Vec4Node;
     const extra = attribute('eeExtra', 'vec4') as Vec4Node;
+    // Teil-Koordinate (Beine −t, Schwanz +t) für Socken und Schwanzspitze; ohne Attribut 0
+    const teil = (attribute('eeTeil', 'float') as FloatNode).mul(u.teilAn).toVar();
     const ao = extra.x;
     const crease = extra.z;
     // Unterlippenseite (1 unten) als eigener Kanal — blendet an den Mundwinkeln weich, zeichnet nirgends eine Linie
     const unten = clamp(extra.w, 0, 1);
     const rest = positionGeometry as unknown as Vec3Node;
+    const H = u.bodyScale;
     // An scharfen Kanten (Maullinie, Augenwulst, Standkante) die Facettennormale nehmen: die Kante bleibt im Licht sichtbar
     const flatN = normalize(cross(dFdx(positionView as unknown as Vec3Node), dFdy(positionView as unknown as Vec3Node)));
     // nur dort, wo Schärfe gewollt ist (Maul, Lippen, Augenhöhlen) — Teilübergänge am Körper bleiben weich (Florian: „Linien
@@ -234,7 +284,7 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const ndl = dot(N, L);
     // Wrap-Diffuse: weicher Terminator wie gemalt; Bodenkontakt dunkelt die Unterseite
     const wrap = clamp(ndl.mul(0.5).add(0.5).sub(0.12).div(0.76), 0, 1).toVar();
-    const bottom = float(1).sub(smoothstep(0, 0.22, rest.y.div(u.bodyScale)));
+    const bottom = float(1).sub(smoothstep(0, 0.22, rest.y.div(H)));
     wrap.assign(wrap.sub(bottom.mul(u.bodenlicht).mul(0.22)));
     // Höhlung: Falten liegen tiefer
     wrap.assign(clamp(wrap.sub(ao.mul(0.35)), 0, 1));
@@ -243,50 +293,131 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const core = smoothstep(0.18, 0.3, wrap).mul(float(1).sub(smoothstep(0.3, 0.46, wrap))).mul(0.14);
     v.assign(clamp(v.sub(core), 0, 1));
     // Hell oben, dunkel unten (feste Blobs in den Bögen): Höhenverlauf unabhängig von der Normale
-    const heightT = smoothstep(0, 1, rest.y.div(u.bodyScale));
+    const heightT = smoothstep(0, 1, rest.y.div(H));
     v.assign(clamp(v.add(heightT.sub(0.5).mul(0.22)), 0, 1));
 
-    // Farbrolle Haut: Schatten → Grund → Licht; Bauchseite optional heller
-    const shadeOf = (t: Vec3Triple): Vec3Node => mix(mix(t.schatten, t.base, smoothstep(0, 0.5, v)), t.licht, smoothstep(0.5, 1, v));
-    const skin = shadeOf(u.grund).toVar();
+    // --- Grundfläche als Farbrolle (Schatten, Grund, Licht): Grund → Bauch → helle Schnauze → Zonen -----------------
+    // Alle Flächen werden erst gemischt und dann einmal schattiert: Schuppenrelief und Rim nehmen so die Farbe der Fläche,
+    // auf der sie liegen (heller Bauch bleibt hell, Zonenfarbe bleibt Zonenfarbe)
+    const tS = vec3(u.grund.schatten).toVar();
+    const tB = vec3(u.grund.base).toVar();
+    const tL = vec3(u.grund.licht).toVar();
+    const mischen = (t: Vec3Triple, w: FloatNode): void => {
+      tS.assign(mix(tS, t.schatten, w));
+      tB.assign(mix(tB, t.base, w));
+      tL.assign(mix(tL, t.licht, w));
+    };
     // Bauchlinie: weich-harte gemalte Grenze, leicht gewellt (kein Flecken-Jitter)
-    const bellyWave = valueNoise(rest.div(u.bodyScale).mul(3.2)).sub(0.5).mul(0.12);
+    const bellyWave = valueNoise(rest.div(H).mul(3.2)).sub(0.5).mul(0.12);
     const belly = smoothstep(u.bauchlinie.add(0.12), u.bauchlinie.sub(0.12), spine.w.add(bellyWave)).mul(u.bauchStaerke);
-    skin.assign(mix(skin, shadeOf(u.bauch), belly));
+    mischen(u.bauch, belly);
     // Helle Schnauze (Bild 9): Bauchfarbe um Maul und Augen über die Gesichtsmaske, weich auslaufend
-    skin.assign(mix(skin, shadeOf(u.bauch), smoothstep(0.15, 0.75, region.z).mul(u.gesichtHell)));
+    mischen(u.bauch, smoothstep(0.15, 0.75, region.z).mul(u.gesichtHell));
+    // Zonen (Bild 17): Farbflächen mit gemalter Grenze; jede Zone sagt, ob das Muster sie meidet, überläuft, in ihrem Ton
+    // weiterläuft oder nur in ihr liegt
+    // als Variable vor den Zonen: Werte, die mehrere `If`-Zweige nutzen, sonst nur im ersten berechnet (Falle in muster.ts)
+    const nRuhe = normalize(normalGeometry as unknown as Vec3Node).toVar();
+    const kontext = {
+      rest,
+      normal: nRuhe,
+      spine,
+      bodyScale: H,
+      teil,
+      eyePos: u.eyePos as unknown as { element(i: number): Vec4Node },
+      eyeUp: u.eyeUp as unknown as { element(i: number): Vec4Node },
+      eyeCount: max(u.eyeCount, u.ringCount).toVar(),
+      zittern: u.musterU.zittern,
+      seed: u.musterU.seed,
+    };
+    const erlaubt = float(1).toVar();
+    const nurAn = float(0).toVar();
+    const nurMaske = float(0).toVar();
+    const pS = vec3(u.muster.schatten).toVar();
+    const pB = vec3(u.muster.base).toVar();
+    const pL = vec3(u.muster.licht).toVar();
+    for (let i = 0; i < ZONEN_ANZAHL; i++) {
+      const m = zonenMaske(u.zonen, i, kontext).toVar();
+      const zt = u.zonenFarbe[i]!;
+      mischen(zt, m);
+      const modus = u.zonen.modus[i]!;
+      const da = select(u.zonen.form[i]!.x.greaterThan(0.5), float(1), float(0));
+      // frei: die Zone bleibt reine Farbe
+      erlaubt.assign(erlaubt.mul(float(1).sub(m.mul(select(modus.lessThan(0.5), float(1), float(0))))));
+      // nur / nurTon: Muster nur in dieser Zone (mehrere solche Zonen zählen zusammen)
+      const istNur = select(modus.greaterThan(2.5), float(1), float(0)).mul(da);
+      nurAn.assign(max(nurAn, istNur));
+      nurMaske.assign(max(nurMaske, m.mul(istNur)));
+      // ton / nurTon: das Muster liegt in der Zone eine Stufe dunkler als die Zonenfarbe (Bauchplatten, Schuppen im Band)
+      const istTon = select(abs(modus.sub(2)).lessThan(0.5).or(abs(modus.sub(4)).lessThan(0.5)), float(1), float(0)).mul(m);
+      pS.assign(mix(pS, zt.schatten.mul(0.72), istTon));
+      pB.assign(mix(pB, zt.schatten, istTon));
+      pL.assign(mix(pL, zt.base, istTon));
+    }
+    erlaubt.assign(erlaubt.mul(mix(float(1), nurMaske, nurAn)));
+    const shadeT = (s3: Vec3Node, b3: Vec3Node, l3: Vec3Node, vv: FloatNode): Vec3Node => mix(mix(s3, b3, smoothstep(0, 0.5, vv)), l3, smoothstep(0.5, 1, vv));
+    const shadeOf = (t: Vec3Triple): Vec3Node => shadeT(t.schatten, t.base, t.licht, v);
+    const skin = shadeT(tS, tB, tL, v).toVar();
 
     // Musterebene: Masken in Wirbelsäulen-Koordinaten, Gesicht/Lippen/Rachen frei; Relief dunkelt die Stufe je Schuppe ab
     // Lippenband: Abstand zur Maulkante (Körpereinheiten, region.y) gegen die Bandbreite, pixelscharf über die Ableitung
     const bandW = u.lippenBand;
-    const distK = region.y.mul(u.bodyScale);
+    const distK = region.y.mul(H);
     // Glättungsbreite aus der Ableitung, aber höchstens eine halbe Bandbreite: ein Sprung im Abstand darf nie als Linie leuchten
     const aa = min(abs(dFdx(distK)).add(abs(dFdy(distK))), bandW.mul(0.5)).add(0.0005);
     const band = float(1).sub(smoothstep(bandW.sub(aa), bandW.add(aa), distK)).mul(step(0.001, bandW)).mul(mix(float(1), u.lippenBandUnten, unten));
     const innen = step(0.25, region.x);
     const frei = float(1).sub(region.z.mul(0.9)).mul(float(1).sub(band)).mul(float(1).sub(innen));
-    const mu = musterMasks(u.musterU, spine, rest, u.bodyScale, frei);
+    const mu = musterMasks(u.musterU, spine, rest, H, frei.mul(erlaubt));
     const vRelief = clamp(v.sub(mu.relief.mul(0.12)), 0, 1);
-    const shadeOfV = (t: Vec3Triple, vv: FloatNode): Vec3Node => mix(mix(t.schatten, t.base, smoothstep(0, 0.5, vv)), t.licht, smoothstep(0.5, 1, vv));
-    skin.assign(mix(skin, shadeOfV(u.grund, vRelief), abs(mu.relief).mul(0.9)));
-    skin.assign(mix(skin, shadeOfV(u.muster, vRelief), mu.mask));
-    skin.assign(mix(skin, shadeOfV(u.akzent, vRelief), mu.akzent));
+    skin.assign(mix(skin, shadeT(tS, tB, tL, vRelief), abs(mu.relief).mul(0.9)));
+    skin.assign(mix(skin, shadeT(pS, pB, pL, vRelief), mu.mask));
+    skin.assign(mix(skin, shadeT(u.akzent.schatten, u.akzent.base, u.akzent.licht, vRelief), mu.akzent));
 
-    // Papierkorn im Körperraum (wandert nicht), nur in den Mitteltönen deutlich
-    const grainP = rest.div(u.bodyScale).mul(38);
-    const grain = valueNoise(grainP).sub(0.5).mul(0.7).add(valueNoise(grainP.mul(2.7)).sub(0.5).mul(0.3));
-    const grainAmp = u.korn.mul(0.05).mul(float(1).sub(abs(v.sub(0.5)).mul(0.8)));
-    skin.assign(skin.mul(float(1).add(grain.mul(grainAmp))));
-
-    // Rim zur Lichtseite (kein Umriss: nur dort, wo die Fläche zum Licht kippt)
+    // Rim zur Lichtseite (kein Umriss: nur dort, wo die Fläche zum Licht kippt), in der Lichtfarbe der Fläche darunter
     const fres = pow(float(1).sub(clamp(dot(N, V), 0, 1)), 3);
     const rimMask = fres.mul(smoothstep(-0.1, 0.5, dot(N, L))).mul(u.rim);
-    skin.assign(mix(skin, u.grund.licht.mul(1.08), rimMask));
+    skin.assign(mix(skin, tL.mul(1.08), rimMask));
 
-    // Glimmer: spärliche Funken im Lichtband, langsam wandernd
-    const sparkCell = floor(rest.div(u.bodyScale).mul(170).add(vec3(sin(time.mul(0.15)).mul(3), 0, 0)));
-    const spark = smoothstep(0.992, 0.998, hash(sparkCell.dot(vec3(1, 57, 113)))).mul(smoothstep(0.6, 0.85, wrap)).mul(u.glimmer);
-    skin.assign(skin.add(spark.mul(0.22)));
+    // --- Korn und Glimmer (Bild 18 oben; Look-Vertrag 5 und 12) -----------------------------------------------------
+    // Feste Grundblobs wirken wie mit Glimmer bestäubt: dichtes feines Korn im Körperraum (wandert nicht), das mit der
+    // Bildschirmgröße skaliert — zwei benachbarte Oktaven Wertrauschen, gemischt wie Mipmaps, sodass ein Korn nah wie fern
+    // ≈ 3 Pixel groß ist. In den Lichtern mehr helle, im Schatten mehr dunkle Körner (getupfter Verlauf). Mit Glimmer wird
+    // die Lichtseite warm bei fast gleicher Helligkeit (Lila → Rosa, Türkis → Gelbgrün), helle Körner warm, dunkle kühl,
+    // und wenige hellere Funken funkeln langsam (eigene Phase, 9–25 s) mit eigener kleiner Neigung: dreht sich das Wesen,
+    // wandern sie durchs Lichtband. Ohne Glimmer bleibt das neutrale Papierkorn (Stil „Korn“).
+    const gS = clamp(u.glimmer.mul(u.glimmerWesen).mul(2), 0, 1.5);
+    const lichtBand = smoothstep(0.45, 0.97, wrap);
+    const lumW = vec3(0.2126, 0.7152, 0.0722);
+    const lumHaut = dot(skin, lumW);
+    const warmCol = u.glimmerFarbe.mul(lumHaut.div(max(dot(u.glimmerFarbe, lumW), 1e-3))).mul(1.06);
+    skin.assign(mix(skin, warmCol, lichtBand.mul(gS).mul(0.38)));
+    // Gegenstück zum warmen Licht: die Schattenseite kühlt ins Blaue (Bild 18: Lila → Blauviolett, Türkis → Blautürkis)
+    const kuehl = vec3(0.32, 0.42, 0.9);
+    const kuehlCol = kuehl.mul(lumHaut.div(dot(kuehl, lumW)));
+    skin.assign(mix(skin, kuehlCol, float(1).sub(smoothstep(0.15, 0.6, wrap)).mul(gS).mul(0.22)));
+    const kP = rest.div(H);
+    const proPixel = max(length(fwidth(kP)).mul(0.7), 1e-5);
+    const stufeK = log2(max(float(1).div(proPixel.mul(3 * 60)), 1));
+    const s0 = floor(stufeK);
+    const sf = stufeK.sub(s0);
+    const f0 = exp2(s0).mul(60);
+    const n0 = valueNoise(kP.mul(f0).add(vec3(1.7, 9.2, 4.4))).sub(0.5);
+    const n1 = valueNoise(kP.mul(f0.mul(2)).add(vec3(5.3, 2.1, 8.8))).sub(0.5);
+    const kornLod = smoothstep(1.1, 1.9, float(1).div(proPixel.mul(f0)));
+    const kn = mix(n0, n1, sf).div(sqrt(sf.mul(sf).add(float(1).sub(sf).mul(float(1).sub(sf)))));
+    // Ton verschiebt das Gleichgewicht: im Licht mehr helle Körner, im Schatten mehr dunkle
+    const kornWert = clamp(kn.mul(3.2).add(v.sub(0.5).mul(0.9)), -1, 1).mul(kornLod);
+    const wolke = valueNoise(kP.mul(7)).sub(0.5);
+    skin.assign(skin.mul(float(1).add(kornWert.mul(u.korn.mul(0.16).add(gS.mul(0.085)))).add(wolke.mul(u.korn.mul(0.07)))));
+    skin.assign(mix(skin, warmCol.mul(1.12), max(kornWert, 0).mul(gS).mul(0.3).mul(lichtBand.mul(0.6).add(0.4))));
+    skin.assign(mix(skin, tS.mul(0.92), max(kornWert.negate(), 0).mul(gS).mul(0.2)));
+    const fl = tupfer(kP.mul(38), 7.1, 0.05, 0.11, 0.55);
+    const schwelle = float(0.55).add(fract(fl.h.mul(71.3)).mul(0.45));
+    const funkeln = sin(u.zeit.mul(mix(float(0.25), float(0.7), fract(fl.h.mul(13.7)))).add(fl.h.mul(40))).mul(0.5).add(0.5);
+    const kipp = vec3(fract(fl.h.mul(3.7)), fract(fl.h.mul(5.3)), fract(fl.h.mul(7.9))).sub(0.5).mul(0.9);
+    const glanz = pow(clamp(dot(normalize(N.add(kipp)), normalize(L.add(V))), 0, 1), 6);
+    const funke = smoothstep(schwelle, schwelle.add(0.08), lichtBand.mul(mix(float(0.6), float(1), funkeln)).add(glanz.mul(0.3).mul(lichtBand)));
+    skin.assign(mix(skin, mix(u.glimmerFarbe, vec3(1), 0.35).mul(1.08), fl.m.mul(funke).mul(clamp(gS, 0, 1)).mul(0.9)));
 
     // Regionen: Lippe (Wulst), Rachen (dunkel nach innen), Augenhöhle (etwas tiefer)
     const lip = shadeOf(u.lippe);

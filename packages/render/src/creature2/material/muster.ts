@@ -1,8 +1,8 @@
-import { Vector3 } from 'three';
+import { Vector3, Vector4 } from 'three';
 import type { UniformNode } from 'three/webgpu';
-import { If, abs, clamp, cos, dot, float, floor, fract, hash, length, max, min, mix, sin, smoothstep, uniform, vec2, vec3 } from 'three/tsl';
+import { If, abs, clamp, cos, dot, float, floor, fract, fwidth, hash, length, max, min, mix, select, sin, smoothstep, sqrt, uniform, vec2, vec3 } from 'three/tsl';
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
-import { MUSTER_TYPEN } from '@ee/creature';
+import { MUSTER_TYPEN, ZONEN_ARTEN, ZONEN_MUSTER } from '@ee/creature';
 
 /**
  * Musterebene (Look-Vertrag Regel 7/8): Muster rechnen in Wirbelsäulen-Koordinaten (Bogenlänge u, Umfangsbogen v,
@@ -36,12 +36,31 @@ export function applyMuster(u: MusterUniforms, m: { typ: (typeof MUSTER_TYPEN)[n
   u.seed.value = m.seed;
 }
 
+/**
+ * Hash für beliebige Zahlen: `hash` aus three/tsl wandelt den Startwert in eine vorzeichenlose Ganzzahl — negative Werte
+ * werden dabei 0, alle Zellen mit negativer Kennung bekämen denselben Zufall (gleichförmiges Gitter auf der Rückseite,
+ * an den Beinen). Der Versatz hält die Kennung positiv; bis ±10⁶ bleiben Ganzzahlen in float exakt.
+ */
+export function hashPos(x: FloatNode): FloatNode {
+  return hash(x.add(1048576));
+}
+
+/**
+ * Hash einer ganzzahligen 3D-Zelle, verkettet (z → y → x). Die frühere lineare Kennung x + 57y + 113z kollidiert entlang
+ * kurzer Gittervektoren (z. B. (−1, 2, −1)): bei feinem Korn wurden daraus Streifen und Webmuster.
+ */
+export function hash3(i: Vec3Node): FloatNode {
+  const a = hashPos(i.z);
+  const b = hashPos(i.y.add(floor(a.mul(65536))));
+  return hashPos(i.x.add(floor(b.mul(65536))));
+}
+
 /** Wertrauschen 3D (0…1). */
 function noise3(p: Vec3Node): FloatNode {
   const i = floor(p);
   const f = fract(p);
   const w = f.mul(f).mul(float(3).sub(f.mul(2)));
-  const h = (ox: number, oy: number, oz: number): FloatNode => hash(i.add(vec3(ox, oy, oz)).dot(vec3(1, 57, 113)));
+  const h = (ox: number, oy: number, oz: number): FloatNode => hash3(i.add(vec3(ox, oy, oz)));
   const x00 = mix(h(0, 0, 0), h(1, 0, 0), w.x), x10 = mix(h(0, 1, 0), h(1, 1, 0), w.x);
   const x01 = mix(h(0, 0, 1), h(1, 0, 1), w.x), x11 = mix(h(0, 1, 1), h(1, 1, 1), w.x);
   return mix(mix(x00, x10, w.y), mix(x01, x11, w.y), w.z);
@@ -58,7 +77,7 @@ function cells3(p: Vec3Node, seed: FloatNode): Vec3Node {
     for (let y = -1; y <= 1; y++)
       for (let z = -1; z <= 1; z++) {
         const o = vec3(x, y, z);
-        const h = hash(i.add(o).add(seed).dot(vec3(1, 57, 113)));
+        const h = hash3(i.add(o).add(floor(seed)));
         const jit = vec3(h, fract(h.mul(97.13)), fract(h.mul(311.7)));
         const c = o.add(jit).sub(f);
         const d = length(c);
@@ -91,21 +110,24 @@ export function musterMasks(u: MusterUniforms, spine: Vec4Node, rest: Vec3Node, 
   const akzent = float(0).toVar();
   const relief = float(0).toVar();
   const typ = u.typ;
-  const scale = float(1).div(bodyScale);
+  // Falle (TSL): ein Knoten, den mehrere `If`-Zweige benutzen, wird dort berechnet, wo er zuerst gebaut wird — im ersten
+  // Zweig. Läuft dieser Zweig nicht, bleibt der Wert in den anderen 0 (Schuppen, Platten, Punkte waren darum unsichtbar,
+  // nur Streifen als erster Zweig gingen). Gemeinsame Werte deshalb vor den Zweigen als Variable festhalten (`toVar`).
+  const scale = float(1).div(bodyScale).toVar();
   // gemalte Unruhe: Koordinaten mit niederfrequentem Rauschen verschieben
-  const jit = noise3(rest.mul(scale).mul(5.1).add(u.seed)).sub(0.5).mul(u.zittern).mul(0.12);
-  const uArc = spine.x.mul(scale).add(jit);
-  const vArc = spine.y.div(6.2831853).mul(spine.z).mul(scale).add(jit.mul(0.6));
-  const dorsal = spine.w;
+  const jit = noise3(rest.mul(scale).mul(5.1).add(u.seed)).sub(0.5).mul(u.zittern).mul(0.12).toVar();
+  const uArc = spine.x.mul(scale).add(jit).toVar();
+  const vArc = spine.y.div(6.2831853).mul(spine.z).mul(scale).add(jit.mul(0.6)).toVar();
+  const dorsal = spine.w.toVar();
   const size = mix(float(0.06), float(0.3), u.groesse); // Grundgröße in Körpereinheiten
-  const freq = float(1).div(size);
-  const soft = mix(float(0.06), float(0.3), u.spitze);
+  const freq = float(1).div(size).toVar();
+  const soft = mix(float(0.06), float(0.3), u.spitze).toVar();
 
   // 1 Streifen (Tiger): Ringe quer zur Wirbelsäule, am Rücken breit, zum Bauch in Spitzen auslaufend
   If(typ.equal(1), () => {
     const k = uArc.mul(freq).mul(mix(float(0.7), float(1.6), u.dichte)).add(u.drehung.mul(vArc).mul(2));
     const idx = floor(k);
-    const len = hash(idx.add(u.seed)).mul(0.6).add(0.6); // Stripe-Länge zufällig
+    const len = hashPos(idx.add(u.seed)).mul(0.6).add(0.6); // Stripe-Länge zufällig
     const taper = smoothstep(float(-1).add(len.oneMinus().mul(1.6)), float(0.9), dorsal);
     const w = mix(float(0.05), float(0.46), u.dichte).mul(taper);
     const d = abs(fract(k).sub(0.5));
@@ -147,25 +169,32 @@ export function musterMasks(u: MusterUniforms, spine: Vec4Node, rest: Vec3Node, 
     mask.assign(platte.mul(present));
     relief.assign(hash(c.z.mul(31)).sub(0.5).mul(0.5));
   });
-  // 4 Schuppen: Sechseckkacheln in (u, v), Umfang skaliert mit — Schuppen bleiben gleich groß
+  // 4 Schuppen (Bild 13/17): gerundete Sechsecke in (u, v) — der Umfang skaliert mit, die Schuppen bleiben gleich groß
+  // und verzerren nicht. Jede Schuppe ein dunklerer Fleck mit eigenem Ton, dazwischen helle Fugen in der Grundfarbe; zum
+  // Bauch hin werden die Schuppen kleiner und die Fugen breiter (Aal, Bild 13), oben ein Hauch Licht je Schuppe.
+  // (Die erste Fassung zeichnete die Fuge erst ab Abstand 0,44 — größer, als er im Gitter je wird: keine Schuppen sichtbar.)
   If(typ.equal(4), () => {
     const sc = freq.mul(mix(float(1.2), float(3), u.dichte));
-    const uv = vec2(uArc.mul(sc), vArc.mul(sc).mul(1.1547));
-    // Sechseckgitter: zwei versetzte Rechteckgitter, nächste Mitte
-    const a = uv;
-    const b = uv.add(vec2(0.5, 0.5));
-    const fa = fract(a).sub(0.5), fb = fract(b).sub(0.5);
-    const da = length(vec2(fa.x, fa.y.mul(1.2)));
-    const db = length(vec2(fb.x, fb.y.mul(1.2)));
-    const nearA = da.lessThan(db);
-    const d = min(da, db);
-    const cell = floor(mix(b, a, nearA.toFloat()));
-    const edge = smoothstep(float(0.44), float(0.5), d); // Schuppenrand
-    // Schuppe hängt nach unten: oben hell, unten dunkler (Relief), Rand als dünne dunkle Fuge
-    const localY = mix(fb.y, fa.y, nearA.toFloat());
-    relief.assign(localY.mul(1.6).sub(edge.mul(0.8)));
-    const tone = hash(cell.dot(vec2(1, 57)).add(u.seed)).sub(0.5).mul(0.5).add(0.5);
-    mask.assign(mix(tone.mul(0.6), float(1), edge).mul(smoothstep(float(-0.95), float(-0.4), dorsal)));
+    const p = vec2(uArc.mul(sc), vArc.mul(sc));
+    // Sechseckkachelung: zwei versetzte Rechteckgitter (Breite 1, Höhe √3), nächste Mitte gewinnt
+    const sx = 1, sy = 1.7320508;
+    const ca = floor(vec2(p.x.div(sx), p.y.div(sy))).add(0.5);
+    const cb = floor(vec2(p.x.sub(0.5).div(sx), p.y.sub(1).div(sy))).add(0.5);
+    const ha = p.sub(vec2(ca.x.mul(sx), ca.y.mul(sy)));
+    const hb = p.sub(vec2(cb.x.add(0.5).mul(sx), cb.y.add(0.5).mul(sy)));
+    const nimmA = dot(ha, ha).lessThan(dot(hb, hb));
+    const lokal = select(nimmA, ha, hb);
+    const zelle = select(nimmA, ca, cb.add(0.5));
+    const q = abs(lokal);
+    // Sechseckabstand (0 Mitte … 0,5 Kante), zum Kreis hin gerundet
+    const hexR = max(q.x.mul(0.5).add(q.y.mul(sy * 0.5)), q.x);
+    const dS = mix(hexR, length(lokal).mul(0.93), 0.45);
+    const radius = mix(float(0.24), float(0.43), smoothstep(-0.7, 0.35, dorsal));
+    const kanteS = max(fwidth(dS).mul(0.9), soft.mul(0.12));
+    const schuppe = float(1).sub(smoothstep(radius.sub(kanteS), radius.add(kanteS), dS));
+    const tone = hash3(vec3(zelle.x, zelle.y, u.seed.mul(7))).mul(0.35).add(0.65);
+    relief.assign(lokal.y.mul(-0.9).mul(schuppe));
+    mask.assign(schuppe.mul(tone).mul(smoothstep(float(-0.92), float(-0.5), dorsal)));
   });
   // 7 Flecken (Koi, Kuh, Salamander 9, Koi 10): große weiche Flächen aus Rauschen
   If(typ.equal(7).or(typ.equal(9)).or(typ.equal(10)), () => {
@@ -182,4 +211,177 @@ function step01(x: FloatNode, edge: FloatNode): FloatNode {
   return float(1).sub(smoothstep(edge.sub(0.02), edge.add(0.02), x));
 }
 
-export const _musterUnused = { dot, cos, sin, max, Vector3 };
+export const _musterUnused = { cos, sin, Vector3 };
+
+// --- Zonen ----------------------------------------------------------------------------------------------------------
+
+/**
+ * Zonen (Bild 17): benannte Farbflächen mit gemalter Grenze über Bauch/Rücken hinaus. Jede Zone rechnet einen
+ * Abstand zur Grenze in Körpereinheiten (negativ innen) aus Ruheposition, Ruhenormale, Wirbelsäulen-Koordinaten,
+ * Augen und Teil-Koordinate (Beine/Schwanz); die Grenze ist leicht gewellt (`zittern`) und weich-hart gefedert — nie
+ * eine Linie, immer eine Fläche (Konturen-Regel).
+ */
+export const ZONEN_ANZAHL = 3;
+export const ZONE_ART_INDEX: Record<(typeof ZONEN_ARTEN)[number], number> = Object.fromEntries(ZONEN_ARTEN.map((t, i) => [t, i])) as Record<(typeof ZONEN_ARTEN)[number], number>;
+export const ZONE_MUSTER_INDEX: Record<(typeof ZONEN_MUSTER)[number], number> = Object.fromEntries(ZONEN_MUSTER.map((t, i) => [t, i])) as Record<(typeof ZONEN_MUSTER)[number], number>;
+
+export interface ZonenUniforms {
+  /** Je Zone: Art (Index in `ZONEN_ARTEN`), Lage, Breite, Federung. */
+  form: Array<UniformNode<'vec4', Vector4>>;
+  /** Je Zone: Musterbezug (Index in `ZONEN_MUSTER`). */
+  modus: Array<UniformNode<'float', number>>;
+  /** Gesamthöhe des Wesens im Körperraum (Boden bis Scheitel), für Latz und Band. */
+  hoehe: UniformNode<'float', number>;
+}
+
+export interface ZoneDaten {
+  art: (typeof ZONEN_ARTEN)[number];
+  lage: number;
+  breite: number;
+  federung: number;
+  muster: (typeof ZONEN_MUSTER)[number];
+}
+
+export function createZonenUniforms(): ZonenUniforms {
+  return {
+    form: Array.from({ length: ZONEN_ANZAHL }, () => uniform(new Vector4(0, 0.5, 0.5, 0.3))),
+    modus: Array.from({ length: ZONEN_ANZAHL }, () => uniform(0)),
+    hoehe: uniform(1),
+  };
+}
+
+export function applyZonen(z: ZonenUniforms, zonen: readonly ZoneDaten[]): void {
+  for (let i = 0; i < ZONEN_ANZAHL; i++) {
+    const d = zonen[i];
+    if (!d) {
+      z.form[i]!.value.set(0, 0.5, 0.5, 0.3);
+      z.modus[i]!.value = 0;
+      continue;
+    }
+    z.form[i]!.value.set(ZONE_ART_INDEX[d.art] ?? 0, d.lage, d.breite, d.federung);
+    z.modus[i]!.value = ZONE_MUSTER_INDEX[d.muster] ?? 0;
+  }
+}
+
+export interface ZonenKontext {
+  /** Ruheposition (Körperraum). */
+  rest: Vec3Node;
+  /** Ruhenormale (Einheit, Körperraum). */
+  normal: Vec3Node;
+  /** Bogenlänge, Winkel, Umfang, Bauch/Rücken. */
+  spine: Vec4Node;
+  bodyScale: FloatNode;
+  /** Teil-Koordinate: Schwanz/Schlange +t (0 Wurzel … 1 Spitze), Beine −t (0 Hüfte … 1 Fuß), sonst 0. */
+  teil: FloatNode;
+  /** Augen: Mitte (xyz) + Größe (w) bzw. oben (xyz); Anzahl. */
+  eyePos: { element(i: number): Vec4Node };
+  eyeUp: { element(i: number): Vec4Node };
+  eyeCount: FloatNode;
+  zittern: FloatNode;
+  seed: FloatNode;
+}
+
+/** Glattes Minimum (quadratisch). */
+function smin(a: FloatNode, b: FloatNode, k: FloatNode): FloatNode {
+  const h = max(k.sub(abs(a.sub(b))), 0).div(max(k, 1e-5));
+  return min(a, b).sub(h.mul(h).mul(k).mul(0.25));
+}
+
+/**
+ * Maske der Zone `i` (0…1). Abstände in Körpereinheiten; die Kante federt um `federung` (0 → pixelscharf geglättet,
+ * 1 → ≈ 7 % der Körperhöhe) und wellt sich leicht mit `zittern`.
+ */
+export function zonenMaske(zu: ZonenUniforms, i: number, k: ZonenKontext): FloatNode {
+  const f = zu.form[i]!;
+  const art = f.x;
+  const lage = f.y;
+  const breite = f.z;
+  const federung = f.w;
+  const H = k.bodyScale;
+  // gemeinsame Werte vor den Zweigen festhalten (siehe Falle in `musterMasks`)
+  const Ht = max(zu.hoehe, H.mul(0.5)).toVar();
+  const P = k.rest;
+  const nR = k.normal;
+  const sp = k.spine;
+  // Ortsradius aus dem Umfang: seitliche Koordinate xn ≈ sin(Umfangswinkel) auf runden Querschnitten (0 Mitte … 1 Seite)
+  const r = max(sp.z.div(6.2831853), H.mul(0.03)).toVar();
+  const xn = abs(P.x).div(r).toVar();
+  const d = float(1e3).toVar();
+  // 1 Bauch: Bauch/Rücken-Koordinate unter der Linie, seitlich begrenzbar (Breite 1 = ganz herum)
+  If(art.equal(1), () => {
+    const L = lage.sub(0.5).mul(2.2);
+    const d1 = sp.w.sub(L).mul(r).mul(1.2);
+    const d2 = select(breite.greaterThan(0.98), H.negate(), xn.sub(mix(float(0.15), float(1.2), breite)).mul(r));
+    d.assign(max(d1, d2));
+  });
+  // 2 Latz/Kehle (Bild 17 Krokodile, Wale; Bild 9 Brust): vorn, vom Boden bis zur Lage, oben als runder Bogen
+  If(art.equal(2), () => {
+    const top = max(lage, 0.04).mul(Ht);
+    const hw = mix(float(0.12), float(1.0), breite);
+    const a = 0.45;
+    const uu = xn.div(hw);
+    const vt = max(P.y.div(top).sub(a).div(1 - a), 0);
+    const e = sqrt(uu.mul(uu).add(vt.mul(vt)));
+    // Abstand erster Ordnung: (e − 1) / |∇e| — die Kante ist oben und seitlich gleich weich
+    const gx = uu.div(hw.mul(r));
+    const gy = vt.div(top.mul(1 - a));
+    const grad = sqrt(gx.mul(gx).add(gy.mul(gy))).div(max(e, 1e-4));
+    const dA = e.sub(1).div(max(grad, 1e-4));
+    // nur die Vorderseite (Ruhenormale zeigt nach vorn oder seitlich)
+    const dF = float(-0.25).sub(nR.z).mul(r).mul(0.6);
+    d.assign(max(dA, dF));
+  });
+  // 3 Rückenstreifen: entlang der Rückenmitte, läuft nach unten in eine Pinselspitze aus
+  If(art.equal(3), () => {
+    const hw = mix(float(0.06), float(0.6), breite);
+    const yEnd = float(1).sub(lage).mul(Ht);
+    const taper = smoothstep(yEnd, yEnd.add(Ht.mul(0.22)), P.y);
+    const dS = xn.sub(hw.mul(taper)).mul(r);
+    const dB = float(0.05).sub(dot(nR, vec3(0, 0.8, -0.6))).mul(r).mul(0.6);
+    d.assign(max(dS, dB));
+  });
+  // 4 Band (Gürtel, Clownfisch): waagerecht um den Körper in der Höhe `lage`
+  If(art.equal(4), () => {
+    const c = lage.mul(Ht);
+    const hw = mix(float(0.015), float(0.26), breite).mul(Ht);
+    d.assign(abs(P.y.sub(c)).sub(hw));
+  });
+  // 5 Augenmaske (Orca-Fleck, Waschbär-Band, Brauenpunkte): Ovale um die Augen, verschmelzen bei großer Breite zum Band
+  If(art.equal(5), () => {
+    const dE = float(1e3).toVar();
+    for (let e = 0; e < 4; e++) {
+      const ep = k.eyePos.element(e);
+      const eu = k.eyeUp.element(e).xyz;
+      const aktiv = float(e).lessThan(k.eyeCount.sub(0.5)).and(ep.w.greaterThan(1e-5));
+      const re = max(ep.w.div(2.2), H.mul(0.01));
+      const cen = ep.xyz.add(eu.mul(lage.sub(0.5).mul(3.2).mul(re)));
+      const rh = re.mul(mix(float(1.15), float(3.8), breite));
+      const rv = re.mul(mix(float(0.95), float(2.3), breite));
+      const q = P.sub(cen);
+      const qy = dot(q, eu);
+      const qh = length(q.sub(eu.mul(qy)));
+      const e2 = sqrt(qh.div(rh).mul(qh.div(rh)).add(qy.div(rv).mul(qy.div(rv))));
+      const gh = qh.div(rh.mul(rh));
+      const gv = qy.div(rv.mul(rv));
+      const grad = sqrt(gh.mul(gh).add(gv.mul(gv))).div(max(e2, 1e-4));
+      const di = select(aktiv, e2.sub(1).div(max(grad, 1e-4)), float(1e3));
+      dE.assign(smin(dE, di, re.mul(0.9)));
+    }
+    d.assign(dE);
+  });
+  // 6 Socken: unterer Teil der Beine (Teil-Koordinate −t), Länge = Lage
+  If(art.equal(6), () => {
+    const t = k.teil.negate();
+    d.assign(select(t.greaterThan(0.01), float(1).sub(lage).sub(t).mul(H).mul(0.5), float(1e3)));
+  });
+  // 7 Schwanzspitze (auch Schlangenende): Teil-Koordinate +t, Länge = Lage
+  If(art.equal(7), () => {
+    const t = k.teil;
+    d.assign(select(t.greaterThan(0.01), float(1).sub(lage).sub(t).mul(H).mul(0.5), float(1e3)));
+  });
+  // gemalte Unruhe der Grenze (Körperraum, wandert nicht) und weich-harte Federung, pixelscharf geglättet
+  const welle = noise3(P.div(H).mul(3.7).add(k.seed.mul(1.7))).sub(0.5).mul(float(0.025).add(k.zittern.mul(0.06))).mul(H);
+  const dd = d.add(welle);
+  const soft = max(float(0.004).add(federung.mul(0.07)).mul(H), fwidth(dd).mul(0.75));
+  return float(1).sub(smoothstep(soft.negate(), soft, dd)).mul(select(art.greaterThan(0.5), float(1), float(0)));
+}

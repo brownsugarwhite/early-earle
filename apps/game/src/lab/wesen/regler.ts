@@ -6,6 +6,8 @@ import {
   SCHWANZ_TYPEN,
   UNTERKOERPER_TYPEN,
   ZAHN_STILE,
+  ZONEN_ARTEN,
+  ZONEN_MUSTER,
   defaultBauplan,
   parseBauplan,
   type Bauplan,
@@ -165,6 +167,20 @@ const NAMEN: Record<string, string> = {
   ringel: 'Ringel',
   salamander: 'Salamander',
   koi: 'Koi',
+  // Zonen (Art)
+  bauch: 'Bauch',
+  latz: 'Latz / Kehle',
+  ruecken: 'Rückenstreifen',
+  band: 'Band',
+  maske: 'Augenmaske',
+  socken: 'Socken',
+  spitze: 'Schwanzspitze',
+  // Zonen (Muster)
+  frei: 'ohne Muster',
+  ueber: 'Muster drüber',
+  ton: 'Muster im Zonenton',
+  nur: 'Muster nur hier',
+  nurTon: 'nur hier, im Zonenton',
 };
 
 /** Anzeigename eines Auswahlwerts (unbekannte Werte aus einem neueren Schema erscheinen roh). */
@@ -181,6 +197,16 @@ function wahl(key: string, label: string, optionen: readonly (string | number)[]
 function farbe(rolle: string, label: string, wuerfeln: boolean): FarbRegler {
   const key = `muster.farben.${rolle}`;
   return { id: key, key, ziel: 'bauplan', art: 'farbe', label, rolle, wuerfeln };
+}
+
+/** Zone: Art-Auswahl (in der Gruppe „Zonen“), Musterbezug und Farbe (in der Gruppe der Zone). */
+function zonenRegler(i: number): Regler[] {
+  const p = `muster.zone${i}`;
+  return [
+    wahl(`${p}.art`, `Zone ${i}`, ZONEN_ARTEN, 'Farbfläche mit gemalter Grenze: Bauch, Latz/Kehle, Rückenstreifen, Band, Augenmaske, Socken, Schwanzspitze'),
+    wahl(`${p}.muster`, 'Muster', ZONEN_MUSTER, 'ohne Muster (reine Farbe) · Muster drüber · im Zonenton (Schuppen, Bauchplatten) · nur hier'),
+    { id: `${p}.farbe`, key: `${p}.farbe`, ziel: 'bauplan', art: 'farbe', label: 'Farbe', rolle: `zone${i}`, wuerfeln: true },
+  ];
 }
 
 function profil(i: number, label: string): ZahlRegler {
@@ -219,6 +245,10 @@ const EXTRA: Regler[] = [
   farbe('zahn', 'Zahn', false),
   farbe('auge', 'Auge', false),
   farbe('pupille', 'Pupille', false),
+  farbe('glimmer', 'Glimmerlicht', true),
+  ...zonenRegler(1),
+  ...zonenRegler(2),
+  ...zonenRegler(3),
   stil('lichtAzimut', 'Licht seitlich', -90, 90, 1, { einheit: '°', hinweis: '+ rechts vom Betrachter (Bögen: rechts oben)', wuerfel: [20, 60] }),
   stil('lichtHoehe', 'Licht Höhe', -10, 80, 1, { einheit: '°', wuerfel: [22, 58] }),
   stil('stufen', 'Wertstufen', 2, 4, 1, { hinweis: 'Licht, Grund, Schatten = 3' }),
@@ -345,6 +375,14 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
   muster: [
     { titel: 'Material', ids: ['material'] },
     { titel: 'Muster', ids: ['muster.typ', 'muster.dichte', 'muster.groesse', 'muster.drehung', 'muster.spitze', 'muster.zittern', 'muster.bauchlinie', 'muster.gesichtHell', 'muster.seed'] },
+    { titel: 'Zonen', ids: ['muster.zone1.art', 'muster.zone2.art', 'muster.zone3.art'] },
+    ...[1, 2, 3].map((i) => ({
+      titel: `Zone ${i}`,
+      ids: [`muster.zone${i}.lage`, `muster.zone${i}.breite`, `muster.zone${i}.federung`, `muster.zone${i}.muster`, `muster.zone${i}.farbe`],
+      aktiv: (b: Bauplan) => leseWert(b, `muster.zone${i}.art`) !== 'keine' && leseWert(b, `muster.zone${i}.art`) !== undefined,
+      inaktiv: 'Art oben unter „Zonen“ wählen (Latz, Rückenstreifen, Band …)',
+    })),
+    { titel: 'Glimmer', ids: ['muster.glimmer', 'muster.farben.glimmer'] },
     { titel: 'Farben Körper', ids: ['muster.farben.grund', 'muster.farben.bauch', 'muster.farben.muster', 'muster.farben.akzent', 'muster.farben.lippe'] },
     { titel: 'Farben Maul und Augen', ids: ['muster.farben.rachen', 'muster.farben.zunge', 'muster.farben.zahn', 'muster.farben.auge', 'muster.farben.pupille'] },
   ],
@@ -542,6 +580,11 @@ export function zufallsPalette(rnd: Zufall = Math.random): Record<string, string
     muster: oklchZuHex(0.3 + rnd() * 0.1, 0.06 + rnd() * 0.05, komplementaer ? h + 180 : h + (rnd() - 0.5) * 50),
     akzent: oklchZuHex(0.66 + rnd() * 0.12, 0.13 + rnd() * 0.04, h + 120 + rnd() * 120),
     lippe: oklchZuHex(Math.max(0.2, L - 0.16 - rnd() * 0.06), C * 0.9, h + (rnd() - 0.5) * 16),
+    // Zonen: heller Latz/Bauch, dunkler Rücken/Maske, Akzentband; Glimmer warm
+    zone1: oklchZuHex(Math.min(0.94, L + 0.2 + rnd() * 0.06), C * 0.35, h + (rnd() - 0.5) * 30),
+    zone2: oklchZuHex(0.28 + rnd() * 0.1, 0.05 + rnd() * 0.05, h + (rnd() - 0.5) * 40),
+    zone3: oklchZuHex(0.7 + rnd() * 0.12, 0.12 + rnd() * 0.05, h + 150 + rnd() * 60),
+    glimmer: oklchZuHex(0.88 + rnd() * 0.06, 0.06 + rnd() * 0.04, 60 + rnd() * 40),
   };
 }
 

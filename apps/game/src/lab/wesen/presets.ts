@@ -17,3 +17,27 @@ export const WESEN_VORLAGEN: Array<{ id: string; name: string; bauplan: BauplanI
   { id: 'retriever', name: 'Retriever (Bild 8)', bauplan: { name: 'Retriever', koerper: { hoehe: 0.62, breite: 1.3, laenge: 1.35, neigung: 0.15, buckel: 0.1, bauch: 0.3, boden: 0.85, querschnitte: [0.92, 1.0, 0.95, 0.8, 0.6] }, hals: { laenge: 0.18, dicke: 1.8, kruemmung: 0.1, ansatz: 0.8 }, kopf: { groesse: 1.3, laenge: 1.2, neigung: 0.1, schnauze: 0.85, schnauzeDicke: 0.8, braue: 0.2, wangen: 0.35, stirn: 0.6, ohren: 1.0 }, maul: { hoehe: 0.3, neigung: 0.5, schwung: 0.1, form: 1, rundung: 0.6, winkel: 0.45, breite: 0.75, oberkiefer: 1.0, unterkiefer: 0.7, biss: 0.6, kante: 0.1, wForm: 1.0, nase: 0.9, lippe: 0.15, oeffnung: 1.0, tiefe: 0.8, oeffnungOben: 0.5, kehle: 0.5, bohne: 0.6 }, zaehne: { stil: 'spitz', groesse: 0.7, dichte: 0.3, streuung: 0.3, eckzaehne: 1.0, aussen: 0.4 }, zunge: { groesse: 1.0 }, augen: { typ: 'schlitz', hoehe: 0.5, lage: 0.5, abstand: 0.6, groesse: 0.3, tiefe: 0.2, ring: 0.3 }, unterkoerper: { typ: 'beine', beine: { anzahl: 4, dicke: 1.0, schenkel: 0.8, laenge: 0.5, fuss: 0.6, spreiz: 0.4, lage: 0.3, hoehe: 0.5 } }, schwanz: { typ: 'bogen', laenge: 0.8, dicke: 0.5, hoch: 0.8, kruemmung: 0.6 }, muster: { typ: 'bauchRuecken', bauchlinie: 0.35, farben: { grund: '#d9a05a', bauch: '#f0d2a0', lippe: '#e6bf9a', rachen: '#7a2838', zunge: '#e07c92', nase: '#1c1a1e' } } } },
   { id: 'vierbeiner', name: 'Tiger (Bild 9/14)', bauplan: { name: 'Tiger', koerper: { hoehe: 0.6, breite: 1.0, laenge: 1.0, neigung: 0, boden: 0.9, seitenprofil: { vorn: [1.026, 0.918, 0.935, 0.912, 0.705, 0.708, 1.344], hinten: [1.002, 1.046, 1.236, 1.258, 1.028, 1.044, 1.791], scheitel: 0.75 } }, hals: { laenge: 0.3, dicke: 1.6, kruemmung: 0, ansatz: 0.9 }, kopf: { groesse: 2.2, laenge: 0.8, neigung: 0.05, schnauze: 0, schnauzeDicke: 1.0, braue: 0.6, wangen: 1.0, backen: 0.5, nasenband: 0.8, stirn: 0.25, ohren: 0.3 }, maul: { hoehe: 0.3, neigung: -0.35, schwung: 0, form: 0.5, rundung: 1, winkel: 0.12, breite: 0.5, oberkiefer: 1.0, unterkiefer: 1.2, biss: 0.1, kante: 1.0, kasten: 0.85, wForm: 0, nase: 0.9, lippe: 0.06, oeffnung: 1.0, tiefe: 0.75, oeffnungOben: 0.5, bohne: 0.2 }, zaehne: { stil: 'spitz', groesse: 0.8, dichte: 0.35, streuung: 0.4, eckzaehne: 1.0, biegung: 0.5, aussen: 0.3 }, zunge: { groesse: 0.8 }, augen: { typ: 'schlange', hoehe: 0.6, lage: 0.12, abstand: 0.85, groesse: 0.18, tiefe: 0.15, ring: 0.4 }, unterkoerper: { typ: 'beine', beine: { anzahl: 2, dicke: 1.0, schenkel: 0.9, laenge: 0.3, fuss: 0.6, spreiz: 0.5, lage: 0.05, hoehe: 0.3 } }, schwanz: { typ: 'bogen', laenge: 0.6, dicke: 0.3, hoch: 0.9, kruemmung: 0.9 }, muster: { typ: 'streifen', dichte: 0.5, groesse: 0.5, spitze: 0.7, bauchlinie: 0.42, gesichtHell: 0.85, farben: { grund: '#c8743a', bauch: '#efd9b6', muster: '#3a2a22', lippe: '#d9b8a4', rachen: '#8a2f3a', zunge: '#e07c92', nase: '#d9788c' } } } },
 ];
+
+/**
+ * Muster-Ergänzungen der Vorlagen (Glimmer, Zonen, Farben nach Bild 18) — getrennt von den Formzeilen oben gehalten,
+ * damit Form- und Musterarbeit nicht dieselbe Zeile ändern; beim Laden des Moduls in den Bauplan der Vorlage gemischt.
+ */
+const MUSTER_ERGAENZUNG: Record<string, NonNullable<BauplanInput['muster']>> = {
+  // Bild 1: sattes Türkis, Innenformen dunkler
+  jelly: { farben: { grund: '#66cdbf', muster: '#2b6f69' } },
+  // Bild 18 oben: lila Blob (Schatten blauviolett, Licht rosa) und türkiser Blob (Licht gelbgrün)
+  fest: { glimmer: 1, farben: { grund: '#a08ccc', bauch: '#c9b2ea' } },
+  grundform10: { glimmer: 1, farben: { grund: '#6aa0a4', bauch: '#a6cfc9' } },
+  // Tiger (Bild 9): weißer Latz von der Brust bis unters Kinn, Streifen bleiben draußen
+  vierbeiner: { glimmer: 0.15, zone1: { art: 'latz', lage: 0.62, breite: 0.55, federung: 0.35, farbe: '#efd9b6', muster: 'frei' } },
+  // Aal und Schlange (Bild 13/16): heller Bauch ohne Schuppen, die Schuppen werden zum Bauch hin kleiner
+  aal: { glimmer: 0.2, zone1: { art: 'bauch', lage: 0.42, breite: 1, federung: 0.3, farbe: '#cfe6c9', muster: 'frei' } },
+  schlange: { glimmer: 0.2, zone1: { art: 'bauch', lage: 0.42, breite: 1, federung: 0.3, farbe: '#bfe3d6', muster: 'frei' } },
+};
+
+for (const v of WESEN_VORLAGEN) {
+  const e = MUSTER_ERGAENZUNG[v.id];
+  if (!e) continue;
+  const m = v.bauplan.muster ?? {};
+  v.bauplan.muster = { ...m, ...e, farben: { ...m.farben, ...e.farben } };
+}

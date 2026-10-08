@@ -1,9 +1,9 @@
 import { Bone, BufferAttribute, BufferGeometry, ConeGeometry, Euler, Float32BufferAttribute, Group, InstancedMesh, InterleavedBuffer, InterleavedBufferAttribute, Matrix4, Mesh, Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Uint16BufferAttribute, Vector3, Vector4 } from 'three/webgpu';
 import type { MeshBasicNodeMaterial } from 'three/webgpu';
-import { jawPose, jawRig, type Bauplan, type CreatureBuild, type Tooth } from '@ee/creature';
+import { jawPose, jawRig, type Bauplan, type CreatureBuild, type Tooth, type Vec3 } from '@ee/creature';
 import { applyStil, createCreatureMaterial, createCreatureUniforms, createLidMaterial, createTongueMaterial, createToothMaterial, MAX_SLIT_EYES, type CreatureColors, type CreatureMaterialUniforms } from './material/earleCreature';
-import { applyMuster } from './material/muster';
-import { applyJellyColors, createJellyMaterial, createJellyUniforms, placeBubbles, type JellyUniforms } from './material/jelly';
+import { applyMuster, applyZonen } from './material/muster';
+import { applyJellyColors, createJellyMaterial, createJellyUniforms, measureJellyFloor, placeBubbles, type JellyUniforms } from './material/jelly';
 import { applyEyeType, createEyeMaterial, createEyeUniforms, type EyeUniforms } from './material/eye';
 import { STIL_STANDARD, type WesenStil } from './material/stil';
 
@@ -27,7 +27,56 @@ const _s = new Vector3();
 
 function colorsOf(b: Bauplan): CreatureColors {
   const f = b.muster.farben;
-  return { grund: f.grund, bauch: f.bauch, muster: f.muster, akzent: f.akzent, lippe: f.lippe, rachen: f.rachen, auge: f.auge, nase: f.nase };
+  const m = b.muster;
+  return { grund: f.grund, bauch: f.bauch, muster: f.muster, akzent: f.akzent, lippe: f.lippe, rachen: f.rachen, auge: f.auge, nase: f.nase, zonen: [m.zone1.farbe, m.zone2.farbe, m.zone3.farbe], glimmer: f.glimmer };
+}
+
+/**
+ * Teil-Koordinate je Vertex für die Zonen „Socken“ und „Schwanzspitze“: Schwanz und Schlangenleib +t (0 Wurzel … 1 Spitze),
+ * Beine −t (0 Hüfte … 1 Sohle), alles andere 0. Aus der Teilgruppe des Vertex und der Knochenkette seiner Gruppe; über
+ * den letzten Knochen hinaus läuft die Bogenlänge weiter, damit t genau an der Spitze bzw. Sohle 1 erreicht.
+ */
+function teilKoordinate(build: CreatureBuild): Float32Array {
+  const n = build.positions.length / 3;
+  const out = new Float32Array(n);
+  const gruppe = build.descriptors.group;
+  if (!gruppe || gruppe.length < n) return out;
+  const ketten = build.groups.map((g) => {
+    if (g.kind !== 'schwanz' && g.kind !== 'schlange' && g.kind !== 'bein') return null;
+    const pts = g.bones.map((bi) => build.bones[bi]?.pos).filter((q): q is Vec3 => !!q);
+    if (pts.length < 2) return null;
+    const lens = [0];
+    for (let i = 1; i < pts.length; i++) lens.push(lens[i - 1]! + Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1], pts[i]![2] - pts[i - 1]![2]));
+    return { pts, lens, vorzeichen: g.kind === 'bein' ? -1 : 1, max: 1e-6 };
+  });
+  if (ketten.every((k) => k === null)) return out;
+  const bogen = new Float32Array(n);
+  for (let v = 0; v < n; v++) {
+    const k = ketten[gruppe[v]!];
+    if (!k) continue;
+    const px = build.positions[v * 3]!, py = build.positions[v * 3 + 1]!, pz = build.positions[v * 3 + 2]!;
+    let best = Infinity, arc = 0;
+    for (let i = 0; i + 1 < k.pts.length; i++) {
+      const a = k.pts[i]!, b = k.pts[i + 1]!;
+      const ex = b[0] - a[0], ey = b[1] - a[1], ez = b[2] - a[2];
+      const l2 = ex * ex + ey * ey + ez * ez || 1e-12;
+      let t = ((px - a[0]) * ex + (py - a[1]) * ey + (pz - a[2]) * ez) / l2;
+      t = Math.max(0, i + 2 === k.pts.length ? t : Math.min(1, t));
+      const qx = a[0] + ex * t - px, qy = a[1] + ey * t - py, qz = a[2] + ez * t - pz;
+      const dd = qx * qx + qy * qy + qz * qz;
+      if (dd < best) {
+        best = dd;
+        arc = k.lens[i]! + t * Math.sqrt(l2);
+      }
+    }
+    bogen[v] = arc;
+    if (arc > k.max) k.max = arc;
+  }
+  for (let v = 0; v < n; v++) {
+    const k = ketten[gruppe[v]!];
+    if (k) out[v] = k.vorzeichen * Math.min(1, bogen[v]! / k.max);
+  }
+  return out;
 }
 
 /** Instanzmatrix eines Zahns: Basis y = Zahnrichtung, −z = nach innen (Biegung zum Rachen), Lage plus Spitzmund-Versatz. */
@@ -204,6 +253,8 @@ export class CreatureMesh {
     applyStil(this.uniforms, stil, colorsOf(b));
     this.uniforms.bauchStaerke.value = b.muster.typ === 'bauchRuecken' ? 1 : 0;
     applyMuster(this.uniforms.musterU, b.muster);
+    applyZonen(this.uniforms.zonen, [b.muster.zone1, b.muster.zone2, b.muster.zone3]);
+    this.uniforms.glimmerWesen.value = b.muster.glimmer;
     applyEyeType(this.eye, b.augen.typ, b.muster.farben.auge, b.muster.farben.pupille);
     applyJellyColors(this.jelly, b.muster.farben.grund, b.muster.farben.muster, stil);
     placeBubbles(this.jelly, this.build?.bodyScale ?? b.koerper.hoehe, b.material === 'jelly' ? 9 : 0, b.seed);
@@ -234,12 +285,13 @@ export class CreatureMesh {
     g.setAttribute('skinIndex', new Uint16BufferAttribute(si, 4));
     g.setAttribute('skinWeight', new BufferAttribute(build.descriptors.skinWeight, 4));
     // Alle Deskriptoren in einem verschachtelten Puffer (WebGPU erlaubt höchstens 8 Vertex-Puffer):
-    // Spine (4) · Region (4) · Extra (AO, Dicke, Kante, Unterlippenseite) · Spitzmund (3) = 15 Floats je Vertex
+    // Spine (4) · Region (4) · Extra (AO, Dicke, Kante, Unterlippenseite) · Spitzmund (3) · Teil (1) = 16 Floats je Vertex
     const n = build.positions.length / 3;
-    const packed = new Float32Array(n * 15);
+    const packed = new Float32Array(n * 16);
     const d = build.descriptors;
+    const teil = teilKoordinate(build);
     for (let v = 0; v < n; v++) {
-      const o = v * 15;
+      const o = v * 16;
       packed[o] = d.spine[v * 4]!;
       packed[o + 1] = d.spine[v * 4 + 1]!;
       packed[o + 2] = d.spine[v * 4 + 2]!;
@@ -255,13 +307,18 @@ export class CreatureMesh {
       packed[o + 12] = build.pucker[v * 3]!;
       packed[o + 13] = build.pucker[v * 3 + 1]!;
       packed[o + 14] = build.pucker[v * 3 + 2]!;
+      packed[o + 15] = teil[v]!;
     }
-    const ib = new InterleavedBuffer(packed, 15);
+    const ib = new InterleavedBuffer(packed, 16);
     g.setAttribute('eeSpine', new InterleavedBufferAttribute(ib, 4, 0));
     g.setAttribute('eeRegion', new InterleavedBufferAttribute(ib, 4, 4));
     g.setAttribute('eeExtra', new InterleavedBufferAttribute(ib, 4, 8));
     g.setAttribute('eePucker', new InterleavedBufferAttribute(ib, 3, 12));
-    g.setIndex(new BufferAttribute(build.index, 1));
+    g.setAttribute('eeTeil', new InterleavedBufferAttribute(ib, 1, 15));
+    this.uniforms.teilAn.value = 1;
+    // Zonen messen in der Gesamthöhe des Wesens (Latz, Band); Jelly-Bodenlappen aus der Grundfläche
+    this.uniforms.zonen.hoehe.value = Math.max(build.meshBounds.max[1], 0.5 * build.bodyScale);
+    measureJellyFloor(this.jelly, build.positions, build.bodyScale);    g.setIndex(new BufferAttribute(build.index, 1));
     g.computeBoundingSphere();
     // --- Skelett: Knochen mit Identitätsdrehung, Position relativ zum Elternknochen ---------------------------------
     this.bones = build.bones.map((bb) => {
@@ -418,6 +475,8 @@ export class CreatureMesh {
 
   update(dt: number): void {
     this.elapsed += dt;
+    // Uhr der Shader (Funkeln, Lavalampe): steht im Standbild, damit Bilder gleich bleiben
+    if (this.breathe) this.uniforms.zeit.value += dt;
     // Kiefer zum Ziel
     const k = 1 - Math.exp(-dt * 9);
     this.opennessNow += (this.openness - this.opennessNow) * k;
