@@ -390,14 +390,18 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         const endRound = Math.sqrt(Math.max(0, 1 - Math.pow((u - 0.5) / 0.5, 6))); // runde Enden
         // Bild 5/11: Schädel hinten hoch mit flachem Scheitel, Braue als breiter Wulst über den Augen, Schnauze fällt nach
         // vorn ab und bleibt breit (Haube); Unterkiefer als Löffel, zur Kinnspitze flacher
-        const width = hr * (0.74 + 0.3 * Math.exp(-Math.pow((u - 0.4) / 0.32, 2))) * (1 - (1 - dick) * Math.max(0, u - 0.55) * 1.6);
+        // Wangen: breite Backen unter den Augen (Katze, Bild 9) — die Breite wächst im hinteren Kopfdrittel bis zur Schnauzenwurzel
+        const wangen = clamp(b.kopf.wangen, 0, 1);
+        const width = hr * (0.74 + 0.3 * Math.exp(-Math.pow((u - 0.4) / 0.32, 2))) * (1 - (1 - dick) * Math.max(0, u - 0.55) * 1.6) * (1 + 0.35 * wangen * Math.exp(-Math.pow((u - 0.38) / 0.26, 2)));
         // Stirn flach bis zur Braue, dann Abfall zur Schnauzenspitze: lange Schnauze fällt ab u ≈ 0,5 gerade ab (Rex,
         // Giraffe), ohne Schnauze bleibt der Schädel bis u ≈ 0,8 hoch und rundet kugelig ab (Katze, Bild 9)
         const u0 = 0.5 + 0.3 * (1 - schn);
         const slope = Math.pow(Math.max(0, (u - u0) / (1 - u0)), 1.3);
         // Nase: runde Wölbung vorn oben auf der Schnauze (Giraffe, Bild 6), wächst mit der Schnauzenlänge
         const nase = 0.5 * schn * Math.exp(-Math.pow((u - 0.84) / 0.14, 2));
-        const skull = hr * (0.55 + 0.5 * ok) * (1 - 0.62 * slope + nase) * (1 + 0.3 * braue * Math.exp(-Math.pow((u - 0.5) / 0.16, 2)));
+        // Stirn: hohe runde Stirn hinten (Hund) oder flacher Schädel (Rex)
+        const stirn = clamp(b.kopf.stirn, -1, 1);
+        const skull = hr * (0.55 + 0.5 * ok) * (1 - 0.62 * slope + nase) * (1 + 0.3 * braue * Math.exp(-Math.pow((u - 0.5) / 0.16, 2))) * (1 + 0.28 * stirn * (1 - u) * (1 - u));
         const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.3 * Math.max(0, (u - 0.5) / 0.5) ** 1.6);
         wx.push(width * endRound);
         wyT.push(skull * endRound);
