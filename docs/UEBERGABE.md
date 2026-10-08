@@ -56,6 +56,15 @@ Florian: zu viel außerhalb der Grundform (Tatzen/Details später, er modelliert
 
 - **Nachgezogen**: Bohne stärker (bis ≈ 50°, Lochmaul‑Seite 1:1), Kopf‑Loft mit eigenem Exponenten für die **untere Hälfte** (`LoftStation.nB`): Schädel rund, Kiefer/Schnauze kantig (Tiger zu liest sich jetzt als grimmige Katze); Rex kleiner auf längeren Beinen; Kamera rahmt die Pose. Werkzeug `scripts/wesen/ausschnitt.mjs` (Nahaufnahme aus Harness‑Bildern).
 
+## Block 5 (08.10. nachmittags): Stampfer, ω‑Lippe, organische Zahnreihen
+
+Florian: W beim Goldie nicht hunde-/katzentypisch; Oberschenkel passen gar nicht, Beine viel dicker, Form und Füße wie beim Rex (Bild 12) = **Saugnapfform**; Unterkiefer soll weiter runter können oder am Hals liegen (Drache: Maul geht nach oben auf; Rex/Goldie: beide Richtungen, der Unterkörper passt sich an); Drachen‑Hauer geschlossen prüfen; Zähne organischer wie in den Referenzen.
+
+- **Beine** (`sdf/build.ts`): dicke Säule aus dem Rumpf (Radius 0,1 H + 0,2 · Dicke + 0,15 · Schenkel; Rex ≈ Rumpfbreite), kaum verjüngt, am Boden **Saugnapf** (weitet sich über die letzten ≈ 20 % auf den Fußradius, flache Standfläche mit runder Kante, vorn etwas länger), weiche Verschmelzung (k ≈ 0,1–0,18 H). Keine Zehen.
+- **ω‑Lippe** (`mouth.ts`): schmale Spitze unter der Nase (Philtrum), Lefzen hängen dicht daneben tief (u ≈ 0,26), zum Winkel steigt die Linie (Lächeln). Nase sitzt über der Spitze.
+- **Zahnreihen** (`mesh/build.ts`): Abstand aus Dichte **und** Zahnbreite (große Zähne nehmen mehr Platz), Fänge mit Spitze bei u ≈ 0,2, nach hinten kleiner, Wechsel groß/klein (`streuung`), vorn leicht nach vorn geneigt, Biegung nach innen.
+- **Unterkiefer‑Spielraum**: Faltbudget 1,1 · Biegezone (die Ketten biegen statt zu stauchen); Rex `kehle` 0,6, Retriever 0,5 → der Unterkörper (Kehle → Brust) folgt dem Unterkiefer; Drache `oeffnungOben` 0,5 → Maul geht nach oben auf.
+
 ## Was noch nicht stimmt (nach Florians Bildern)
 
 1. **Rex**: Maul reißt jetzt riesig auf (Unterkiefer 20°, Oberkiefer 72°, 35 Zähne); Rumpf noch ein Sack ohne Brust, die Schenkel sind von der Seite nicht als Keule lesbar (sie liegen in der Seitensilhouette des Rumpfs) — hier helfen Florians Blender‑Vorlagen; Flügel/Stummelarme später (eigene Elemente).

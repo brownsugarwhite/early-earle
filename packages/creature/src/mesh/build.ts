@@ -277,10 +277,15 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       const arc: number[] = [0];
       for (let i = 1; i < rand.length; i++) arc.push(arc[i - 1]! + Math.hypot(rand[i]!.p[0] - rand[i - 1]!.p[0], rand[i]!.p[1] - rand[i - 1]!.p[1], rand[i]!.p[2] - rand[i - 1]!.p[2]));
       const total = arc[arc.length - 1]!;
-      const headH = m.host.height;
+      const headH = m.host.headHeight ?? m.host.height;
       const baseSize = z.groesse * 0.3 * headH;
-      const spacing = Math.max(baseSize * 0.45, total / (6 + 22 * z.dichte));
-      const count = Math.max(2, Math.floor(total / spacing));
+      // Grundabstand aus der Dichte; große Zähne nehmen mehr Platz (Abstand wächst mit der Zahnbreite), die Reihe läuft
+      // entlang der Bogenlänge; Größen: vorn die Fänge (Spitze bei u ≈ 0,2), nach hinten kleiner, dazwischen im Wechsel
+      // groß/klein (`streuung`) wie gezeichnet — Bild 5/11
+      const spacingBase = total / (5 + 15 * Math.min(1.5, z.dichte));
+      const band = (0.02 + 0.08 * clamp01(b.maul.lippe)) * H;
+      // Platz im Gegenkiefer: geschlossen muss der Zahn im Gegenkiefer verschwinden (Bild 7/9), außer `aussen` will Fänge außen
+      const jawDepth = m.host.jawDepth ?? Math.min(m.hLip, 0.45 * m.host.height) * 1.05;
       const at = (s: number): { p: Vec3; w: Vec3; u: Vec3; phi: number } => {
         let i = 0;
         while (i < arc.length - 2 && arc[i + 1]! < s) i++;
@@ -288,21 +293,20 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
         const a = rand[i]!, bb = rand[i + 1]!;
         return { p: add(a.p, scale(sub(bb.p, a.p), f)), w: normalize(add(a.w, scale(sub(bb.w, a.w), f))), u: normalize(add(a.u, scale(sub(bb.u, a.u), f))), phi: a.phi + (bb.phi - a.phi) * f };
       };
-      const band = (0.02 + 0.08 * clamp01(b.maul.lippe)) * H;
-      // Platz im Gegenkiefer: geschlossen muss der Zahn im Gegenkiefer verschwinden (Bild 7/9), außer `aussen` will Fänge außen
-      const jawDepth = m.host.jawDepth ?? Math.min(m.hLip, 0.45 * m.host.height) * 1.05;
       const place = (upper: boolean, offset: number): void => {
         // ohne Unterkiefer stehen untere Zähne nur als Hauer aus der Brustkante (Drache, Bild 5 rechts)
         if (!upper && b.maul.unterkiefer < 0.05 && z.hauer < 0.05) return;
-        for (let i = 0; i < count; i++) {
-          const t = (i + 0.5 + offset) / count;
-          if (t <= 0.03 || t >= 0.97) continue;
-          const r = at(t * total);
+        let sPos = spacingBase * (0.5 + offset);
+        let i = 0;
+        while (sPos < total - spacingBase * 0.3) {
+          const t = sPos / total;
+          const r = at(sPos);
           const u = clamp(Math.abs(r.phi) / m.theta, 0, 1);
-          // Profil: Eckzahn bei u ≈ 0,33, vorn mittel, hinten klein; Streuung groß/klein
-          const canine = Math.exp(-Math.pow((u - 0.33) / 0.11, 2)) * z.eckzaehne;
+          const canine = Math.exp(-Math.pow((u - 0.2) / 0.16, 2)) * z.eckzaehne;
           const isHauer = !upper && z.hauer > 0.05 && Math.abs(u - 0.7) < 0.08 + 0.1 * z.hauer;
-          let size = baseSize * (0.36 + 0.2 * (1 - u) + 0.95 * canine) * (1 + (rng.next() - 0.5) * 0.7 * z.streuung);
+          // Wechsel groß/klein plus leichte Zufallsstreuung
+          const alt = i % 2 === 0 ? 1 : 1 - 0.42 * clamp01(z.streuung);
+          let size = baseSize * (0.34 + 0.3 * (1 - u) + 1.0 * canine) * alt * (1 + (rng.next() - 0.5) * 0.3 * z.streuung);
           if (isHauer) size = baseSize * (1.3 + 1.2 * z.hauer);
           if (!upper) size *= 0.75;
           const aussen = isHauer ? 1 : z.aussen;
@@ -310,14 +314,19 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
           const phiC = clamp(r.phi, -m.theta, m.theta);
           const hl = m.lipHAt(phiC);
           const avail = upper ? Math.min(jawDepth, hl) : Math.max(0.02 * H, m.host.height - hl);
-          size = Math.min(size, avail * (0.8 + 0.6 * aussen));
-          // Ansatz: im Zahnfleisch deutlich innerhalb der Kante (geschlossen bleibt die Wurzel unter der Lippe); Richtung
-          // senkrecht zur Maullinie (unten/oben), leicht nach innen, `aussen` neigt nach außen (Fangzähne über der Gegenlippe)
+          // außen liegende Fänge (Drache, Bild 5 rechts) hängen über den Gegenkiefer hinaus — bis zum Dreifachen
+          size = Math.min(size, avail * (0.8 + 2.2 * aussen));
+          // Ansatz im Zahnfleisch innerhalb der Kante; Richtung senkrecht zur Maullinie, leicht nach innen, vorn ein
+          // wenig nach vorn geneigt (Fänge), `aussen` neigt nach außen (Fangzähne über der Gegenlippe)
           const inward = 0.18 - 0.35 * aussen;
           const vertical = upper ? scale(r.u, -1) : r.u;
-          const dir = normalize(add(vertical, scale(r.w, inward)));
+          const lean = 0.22 * (1 - u) * (upper ? 1 : 0.6);
+          const dir = normalize(add(add(vertical, scale(r.w, inward)), scale(m.frame.z, lean)));
           const pos = add(add(r.p, scale(r.w, band * 0.6 + size * 0.25)), scale(vertical, -size * 0.12));
           teeth.push({ pos, dir, size, upper, hauer: isHauer, inward: r.w });
+          if (t > 0.97) break;
+          sPos += Math.max(spacingBase, size * 0.62);
+          i++;
         }
       };
       place(true, 0);

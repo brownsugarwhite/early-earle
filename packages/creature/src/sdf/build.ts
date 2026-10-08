@@ -564,12 +564,18 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         : n === 4
           ? [-(45 + 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, (45 + 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, -Math.min(165, 135 - 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, Math.min(165, 135 - 20 * L.spreiz + 40 * (lage - 0.2)) * d2r]
           : [-35, 35, -70, 70, -110, 110, -145, 145].map((x) => x * d2r);
-    // Bild 8/9/12 (Florian): Beine organisch, dicke Schenkel kommen seitlich hoch am Rumpf heraus — fast aus Kopf/Hals —
-    // mit sauberem Übergang; Unterschenkel kurz, Fuß als flaches Polster (Tatzen/Zehen später als eigene Elemente)
-    const rThigh = H * (0.06 + 0.14 * L.dicke + 0.14 * L.schenkel) * thin;
-    const rKnee = H * (0.05 + 0.09 * L.dicke) * thin;
-    const rAnkle = H * (0.04 + 0.07 * L.dicke) * thin;
-    const rFoot = H * (0.06 + 0.12 * L.fuss) * (0.6 + 0.4 * L.dicke);
+    // Bild 12 (Florian: „richtig dicke Stampfer, Saugnapfform“): das Bein ist eine dicke Säule, die als Schenkel aus
+    // dem Rumpf wächst (weich verschmolzen), kaum dünner wird und am Boden in einen breiten flachen Saugnapf ausläuft —
+    // keine Zehen (Details später als Elemente)
+    // Dicke: nie so dick, dass Nachbarbeine zu einem Sockel verschmelzen (Abstand der Beinmitten begrenzt den Radius)
+    const legPos = azis.map((phi) => [Math.sin(phi) * R0 * sx * (0.72 + 0.35 * L.spreiz), Math.cos(phi) * R0 * sz * (0.72 + 0.2 * L.spreiz)] as const);
+    let minAbstand = Infinity;
+    for (let a = 0; a < legPos.length; a++) for (let c = a + 1; c < legPos.length; c++) minAbstand = Math.min(minAbstand, Math.hypot(legPos[a]![0] - legPos[c]![0], legPos[a]![1] - legPos[c]![1]));
+    const rThigh = Math.min(H * (0.1 + 0.2 * L.dicke + 0.15 * L.schenkel) * thin, 0.42 * minAbstand);
+    const rShin = rThigh * (0.8 - 0.1 * (1 - L.dicke));
+    const rAnkle = rThigh * 0.74;
+    // Saugnapf: nur wenig breiter als das Bein, flach aufstehend (Bild 12)
+    const rFoot = rThigh * (0.9 + 0.35 * L.fuss);
     const hoeheB = clamp(L.hoehe, 0, 1);
     // Halbmaß des Rumpfs auf Höhe y in Richtung φ (Ei-Querschnitt der Loft-Station)
     const rumpfRadiusBei = (y: number, phi: number): number => {
@@ -579,26 +585,28 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       return 1 / Math.max(1e-6, Math.sqrt(sx_ * sx_ + cy_ * cy_));
     };
     azis.forEach((phi, i) => {
-      // Hüfte: tief am Bauch … hoch an der Schulter; Mitte so weit innen, dass die Keule um die Hälfte ihres Radius vorsteht
+      // Hüfte: tief am Bauch … hoch an der Schulter; der Schenkel steht mit gut der Hälfte seines Radius über die Flanke
       const hHip = yb + H * (0.04 + 0.06 * L.laenge + 0.72 * hoeheB);
       const rB = rumpfRadiusBei(hHip, phi);
-      const hipDist = Math.max(0.2 * rB, rB - 0.25 * rThigh);
+      const hipDist = Math.max(0.2 * rB, rB - 0.45 * rThigh);
       const hip: Vec3 = add(axisAt(hHip), [Math.sin(phi) * hipDist, 0, Math.cos(phi) * hipDist]);
       const foot: Vec3 = [Math.sin(phi) * R0 * sx * (0.72 + 0.35 * L.spreiz), 0, Math.cos(phi) * R0 * sz * (0.72 + 0.2 * L.spreiz) + 0.04 * H];
-      // Knie: unter dem Rumpf, nach vorn gebeugt (Dino/Hund) — die Keule läuft schräg von der Schulter zum Knie
-      const knee: Vec3 = [foot[0] + Math.sin(phi) * 0.03 * H, rKnee + rFoot * 0.4 + 0.3 * (hHip - yb) + 0.2 * legLen, foot[2] + 0.12 * legLen + 0.05 * H];
-      const ankle: Vec3 = [foot[0], rFoot * 0.6, foot[2] - 0.03 * H];
+      // Knie leicht nach vorn gebeugt, Säule läuft gerade in den Fuß
+      const knee: Vec3 = [foot[0] + Math.sin(phi) * 0.02 * H, rFoot * 0.5 + 0.45 * (hHip - yb) + 0.1 * legLen, foot[2] + 0.08 * legLen + 0.04 * H];
+      const ankle: Vec3 = [foot[0], rFoot * 0.55 + 0.02 * H, foot[2] - 0.01 * H];
       const g = groups.length;
-      const pl = makePolyline([hip, knee, ankle, foot], [rThigh, rKnee, rAnkle, rFoot * 0.5], FWD);
+      const pl = makePolyline([hip, knee, ankle, foot], [rThigh, rShin, rAnkle, rFoot], FWD);
       groups.push({ name: `bein${i}`, kind: 'bein', polyline: pl, bones: [], dorsal: [0, 1, 0] });
       const bHip = bone(`bein${i}Huefte`, kUnten, hip, QUAT_ID, g);
       const bKnee = bone(`bein${i}Knie`, bHip, knee, QUAT_ID, g);
       const bFoot = bone(`bein${i}Fuss`, bKnee, ankle, QUAT_ID, g);
       groups[g]!.bones.push(bHip, bKnee, bFoot);
-      // Bein als ein Loft: Keule beginnt im Rumpf (verschmolzen), ist an der Hüfte am dicksten, Knie, Knöchel, Fußpolster
-      const hipTop: Vec3 = add(hip, [Math.sin(phi) * -0.25 * rThigh, rThigh * 1.1, Math.cos(phi) * -0.25 * rThigh]);
-      const ctrl: Vec3[] = [hipTop, hip, knee, ankle, [foot[0], rFoot * 0.35, foot[2]], [foot[0], 0, foot[2]]];
-      const rr = [rThigh * 0.85, rThigh, rKnee, rAnkle, rFoot * 1.1, rFoot * 1.2];
+      // Loft: Schenkel beginnt im Rumpf, Säule, Knöchel, dann der Saugnapf: weitet sich über die letzten 20 % der Höhe
+      // auf den Fußradius und steht flach auf (Kappe)
+      const hipTop: Vec3 = add(hip, [Math.sin(phi) * -0.3 * rThigh, rThigh * 1.0, Math.cos(phi) * -0.3 * rThigh]);
+      const flareH = rFoot * 0.6;
+      const ctrl: Vec3[] = [hipTop, hip, knee, ankle, [foot[0], flareH * 0.55, foot[2]], [foot[0], flareH * 0.2, foot[2]], [foot[0], 0, foot[2]]];
+      const rr = [rThigh * 0.9, rThigh, rShin, rAnkle, rAnkle * 1.05, rFoot * 0.95, rFoot];
       const pts = catmullRom(ctrl, 4);
       const nP = pts.length;
       const idxOf = (k: number): number => Math.min(nP - 1, Math.round((k / (ctrl.length - 1)) * (nP - 1)));
@@ -614,14 +622,15 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const wx: number[] = [], wyT: number[] = [], wyB: number[] = [], parts: number[] = [];
       for (let j = 0; j < nP; j++) {
         const r = radAt(j);
-        const footness = clamp((j - idxOf(3)) / Math.max(1, idxOf(5) - idxOf(3)), 0, 1);
-        wx.push(r * (1 + 0.2 * footness));
-        wyT.push(r * (1 + (0.5 + 0.4 * L.fuss) * footness));
-        wyB.push(r * (1 + 0.1 * footness));
+        const footness = clamp((j - idxOf(4)) / Math.max(1, idxOf(6) - idxOf(4)), 0, 1);
+        // Saugnapf: vorn etwas länger (Zehenrichtung), sonst rund
+        wx.push(r * (1 + 0.1 * footness));
+        wyT.push(r * (1 + 0.35 * footness));
+        wyB.push(r * (1 + 0.05 * footness));
         parts.push(j < idxOf(2) ? bHip : j < idxOf(3) ? bKnee : bFoot);
       }
-      // Übergang: weich genug für „aus dem Rumpf geknetet“, klein genug, dass die Keule eine Keule bleibt
-      prims.push(makeLoft({ points: pts, upRef: FWD, wx, wyT, wyB, n: 2, parts, capEnd: rFoot * 0.35, axis: [0, -1, 0] }, { op: 'union', part: bHip, k: (0.08 + 0.05 * Math.min(1, L.schenkel)) * H * thin + 0.01 * H, region: REGION.haut, name: `bein${i}` }));
+      // weiche Verschmelzung mit dem Rumpf (Schenkel wächst aus dem Körper), flache Standfläche mit runder Kante
+      prims.push(makeLoft({ points: pts, upRef: FWD, wx, wyT, wyB, n: 2, parts, capEnd: rFoot * 0.25, axis: [0, -1, 0] }, { op: 'union', part: bHip, k: (0.05 + 0.04 * Math.min(1, L.schenkel)) * H * thin + 0.01 * H, region: REGION.haut, name: `bein${i}` }));
     });
   }
 

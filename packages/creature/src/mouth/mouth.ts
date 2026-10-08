@@ -163,7 +163,9 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const dip = clamp01(m.schwung) * 0.12 * Hk * Math.pow(Math.sin(Math.PI * clamp01(u / 0.72)), 1.5) * (u < 0.72 ? 1 : 0);
     // W-Lippe (Katze, Hund — Bild 8/9): Mitte unter der Nase angehoben, beidseits hängende Lappen, dann zum Winkel
     const wF = clamp01(m.wForm) * fForm;
-    const wLippe = wF * Hk * (0.16 * Math.exp(-Math.pow(u / 0.17, 2)) - 0.06 * Math.exp(-Math.pow((u - 0.4) / 0.17, 2)));
+    // ω: schmale Spitze unter der Nase (Philtrum), dicht daneben hängen die Lefzen tief, zum Winkel steigt die Linie
+    // (Lächeln) — Bild 8 (Retriever) und Bild 9 (Tiger)
+    const wLippe = wF * Hk * (0.14 * Math.exp(-Math.pow(u / 0.11, 2)) - 0.09 * Math.exp(-Math.pow((u - 0.26) / 0.15, 2)) + 0.05 * smoothstep(0.45, 1, u));
     const h = clamp(hLip + rise - dip + wLippe, 0.01, H - 0.01);
     const sp = surfacePoint(host, h, phi, maxR);
     phis.push(phi);
@@ -329,7 +331,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     // schiebt sich der Kiefer durch die Haut darunter (Florian: „fährt durch das Mesh“); mehr Weg → Kehlsack (`maul.kehle`)
     const chin = surfacePoint(host, hLip - jawDepth, 0, maxR).p;
     const lChin = Math.max(0.05, Math.hypot(chin[0] - hingeMid[0], chin[1] - hingeMid[1], chin[2] - hingeMid[2]));
-    const thetaFold = 2 * Math.asin(clamp((0.6 * fadeLen) / lChin, 0, 1));
+    const thetaFold = 2 * Math.asin(clamp((1.1 * fadeLen) / lChin, 0, 1));
     return Math.min(ok, thetaFold, Math.asin(0.95));
   })();
   return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, local, lipHAt, lipRAt, profilAt, jawWeight, upperWeight, jawParts, upperParts, jawDepth, fadeLen, wToJoint, zCorner, jawLever, lowerAngleMax };
