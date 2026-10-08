@@ -11,6 +11,9 @@ import { WESEN_VORLAGEN } from '../src/lab/wesen/presets.ts';
 //
 //   EE_SHOTS=1 [EE_VORLAGEN=keil,loch] [EE_SHOTS_TAG=vorher] [EE_MAUL=bau|zu|auf] [EE_ANSICHT=referenz|seite|held|brett] E2E_PORT=4471 node apps/game/scripts/e2e.mjs e2e/wesen-shots.spec.ts
 //
+// Reihe (Zwischenstufen eines Reglers): EE_REIHE=<vorlage>:<pfad>=<wert>,<wert>,… rendert die Vorlage je Wert nebeneinander
+// nach `docs/progress/wesen-reihe-<vorlage>-<pfad>[-zu|-auf][-seite].png`, z. B. EE_REIHE=grundblob:maul.form=0,0.25,0.5,0.75,1
+//
 // EE_MAUL: Kieferstellung der Bilder — `bau` (Bauzustand, Standard), `zu` (Verschluss-Morph, Dateinamen mit „-zu“) oder
 // `auf` (volle Öffnung, „-auf“); gesetzt über den Lab-Controller, weil die Bedienflächen für die Bilder ausgeblendet sind.
 test.skip(!process.env.EE_SHOTS, 'nur mit EE_SHOTS=1');
@@ -44,6 +47,19 @@ function auswahl(): typeof WESEN_VORLAGEN {
   const unknown = want.filter((id) => !WESEN_VORLAGEN.some((v) => v.id === id));
   if (unknown.length > 0 && process.env.EE_SHOTS) throw new Error(`EE_VORLAGEN: unbekannt ${unknown.join(', ')} (vorhanden: ${WESEN_VORLAGEN.map((v) => v.id).join(', ')})`);
   return WESEN_VORLAGEN.filter((v) => want.includes(v.id));
+}
+
+/** Reihe: eine Vorlage, ein Regler, mehrere Werte (siehe Kopf). */
+function reihe(): { vorlage: (typeof WESEN_VORLAGEN)[number]; pfad: string; werte: number[] } | null {
+  const spec = (process.env.EE_REIHE ?? '').trim();
+  if (!spec) return null;
+  const m = /^([A-Za-z0-9_-]+):([A-Za-z0-9_.]+)=(.+)$/.exec(spec);
+  if (!m) throw new Error(`EE_REIHE: erwartet <vorlage>:<pfad>=<wert>,<wert>,… (bekommen: ${spec})`);
+  const vorlage = WESEN_VORLAGEN.find((v) => v.id === m[1]);
+  if (!vorlage) throw new Error(`EE_REIHE: unbekannte Vorlage ${m[1]} (vorhanden: ${WESEN_VORLAGEN.map((v) => v.id).join(', ')})`);
+  const werte = m[3]!.split(',').map((x) => Number(x.trim()));
+  if (werte.some((x) => !Number.isFinite(x))) throw new Error(`EE_REIHE: Werte müssen Zahlen sein (${m[3]})`);
+  return { vorlage, pfad: m[2]!, werte };
 }
 
 function commitLabel(): string {
@@ -136,8 +152,8 @@ interface Feld {
   ref?: Buffer;
 }
 
-async function writeKontaktbogen(page: Page, file: string, titel: string, unter: string, felder: Feld[], bildBreite = 450): Promise<void> {
-  const spalten = felder.length <= 4 ? felder.length : felder.length <= 9 ? 3 : 4;
+async function writeKontaktbogen(page: Page, file: string, titel: string, unter: string, felder: Feld[], bildBreite = 450, spaltenFest?: number): Promise<void> {
+  const spalten = spaltenFest ?? (felder.length <= 4 ? felder.length : felder.length <= 9 ? 3 : 4);
   const img = (b: Buffer) => `<img src="data:image/png;base64,${b.toString('base64')}">`;
   const figs = felder
     .map((f) => `<figure${f.ref ? ' class="paar"' : ''}><div class="bilder">${img(f.png)}${f.ref ? img(f.ref) : ''}</div><figcaption><b>${esc(f.titel)}</b> <span>${esc(f.unter)}${f.ref ? ' · rechts: Referenz' : ''}</span></figcaption></figure>`)
@@ -164,7 +180,48 @@ async function writeKontaktbogen(page: Page, file: string, titel: string, unter:
 
 // --- Test ----------------------------------------------------------------------------------------------------------
 
+test(`Wesen-Lab: Reihe eines Reglers`, async ({ page }) => {
+  const r = reihe();
+  test.skip(!r, 'nur mit EE_REIHE');
+  mkdirSync(OUT, { recursive: true });
+  const errors = collectErrors(page);
+  await hideChrome(page);
+  await page.addInitScript(() => {
+    try {
+      localStorage.clear();
+    } catch {
+      /* egal */
+    }
+  });
+  const commit = commitLabel();
+  const stamp = new Date().toISOString().slice(0, 10);
+  const felder: Feld[] = [];
+  await page.goto(`/lab/wesen?vorlage=${r!.vorlage.id}&panel=zu&sheet=zu&boden=weiss&ansicht=${ANSICHT}&standbild=1`);
+  await requireBackend(page);
+  await waitFertig(page);
+  for (const wert of r!.werte) {
+    await page.evaluate(
+      ([pfad, v]) => (window as unknown as { __wesenLab: { store: { getState(): { setzeBauplanWert(k: string, v: unknown): void } } } }).__wesenLab.store.getState().setzeBauplanWert(pfad as string, v),
+      [r!.pfad, wert] as const,
+    );
+    await page.waitForTimeout(700); // grober Bau, dann feiner (480 ms Verzögerung)
+    let s = await waitFertig(page);
+    if (MAUL !== 'bau') {
+      await page.evaluate((o) => (window as unknown as { __wesenLab: { controller: { setOpenness(o: number): void } } }).__wesenLab.controller.setOpenness(o), MAUL === 'zu' ? 0 : 1);
+      await page.waitForTimeout(1200);
+      s = await waitFertig(page);
+    }
+    const png = await page.screenshot();
+    felder.push({ titel: `${r!.pfad} = ${wert}`, unter: `${s.triangles} Dreiecke · ${s.teeth} Zähne`, png });
+    console.log(`${r!.vorlage.id} ${r!.pfad}=${wert}: ${s.triangles} Dreiecke · ${s.teeth} Zähne`);
+  }
+  const maulText = MAUL === 'zu' ? 'Maul zu' : MAUL === 'auf' ? 'Maul auf' : 'Bauzustand';
+  await writeKontaktbogen(page, `${OUT}wesen-reihe-${r!.vorlage.id}-${r!.pfad}${SUFFIX}.png`, `${r!.vorlage.name} · ${r!.pfad} · ${maulText}`, `${commit} · ${stamp} · Ansicht ${ANSICHT}`, felder, 420, Math.min(5, felder.length));
+  expect.soft(errors, 'GPU-/Seitenfehler').toEqual([]);
+});
+
 test(`Wesen-Lab: Vorlagen im ${ANSICHT === 'referenz' ? 'Referenzmodus' : ANSICHT} plus Kontaktbogen`, async ({ page }, testInfo) => {
+  test.skip(!!process.env.EE_REIHE, 'Reihe statt Vorlagen');
   mkdirSync(OUT, { recursive: true });
   const errors = collectErrors(page);
   await hideChrome(page);

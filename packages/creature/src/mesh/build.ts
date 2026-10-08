@@ -282,6 +282,8 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
         return { p: add(a.p, scale(sub(bb.p, a.p), f)), w: normalize(add(a.w, scale(sub(bb.w, a.w), f))), u: normalize(add(a.u, scale(sub(bb.u, a.u), f))), phi: a.phi + (bb.phi - a.phi) * f };
       };
       const band = (0.02 + 0.08 * clamp01(b.maul.lippe)) * H;
+      // Platz im Gegenkiefer: geschlossen muss der Zahn im Gegenkiefer verschwinden (Bild 7/9), außer `aussen` will Fänge außen
+      const jawDepth = m.host.jawDepth ?? Math.min(m.hLip, 0.45 * m.host.height) * 1.05;
       const place = (upper: boolean, offset: number): void => {
         if (!upper && b.maul.unterkiefer < 0.05) return;
         for (let i = 0; i < count; i++) {
@@ -295,13 +297,18 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
           let size = baseSize * (0.36 + 0.2 * (1 - u) + 0.95 * canine) * (1 + (rng.next() - 0.5) * 0.7 * z.streuung);
           if (isHauer) size = baseSize * (1.3 + 1.2 * z.hauer);
           if (!upper) size *= 0.75;
-          // Ansatz: auf dem Zahnfleisch knapp innerhalb der Kante; Richtung senkrecht zur Maullinie (unten/oben), leicht
-          // nach innen, `aussen` neigt nach außen (Fangzähne über der Gegenlippe)
           const aussen = isHauer ? 1 : z.aussen;
+          // Begrenzung: Oberzähne höchstens so lang wie der Unterkiefer tief, Unterzähne wie der Oberkopf über der Lippe hoch
+          const phiC = clamp(r.phi, -m.theta, m.theta);
+          const hl = m.lipHAt(phiC);
+          const avail = upper ? Math.min(jawDepth, hl) : Math.max(0.02 * H, m.host.height - hl);
+          size = Math.min(size, avail * (0.8 + 0.6 * aussen));
+          // Ansatz: im Zahnfleisch deutlich innerhalb der Kante (geschlossen bleibt die Wurzel unter der Lippe); Richtung
+          // senkrecht zur Maullinie (unten/oben), leicht nach innen, `aussen` neigt nach außen (Fangzähne über der Gegenlippe)
           const inward = 0.18 - 0.35 * aussen;
           const vertical = upper ? scale(r.u, -1) : r.u;
           const dir = normalize(add(vertical, scale(r.w, inward)));
-          const pos = add(add(r.p, scale(r.w, band * 0.5 + size * 0.12)), scale(vertical, -size * 0.1));
+          const pos = add(add(r.p, scale(r.w, band * 0.6 + size * 0.25)), scale(vertical, -size * 0.12));
           teeth.push({ pos, dir, size, upper, hauer: isHauer });
         }
       };

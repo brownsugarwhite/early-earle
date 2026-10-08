@@ -26,6 +26,16 @@ Florian: „Es geht um die Körperform … der Tiger sieht nicht zu 1 % aus wie 
 
 Prüfungen: `pnpm typecheck`, `pnpm lint`, Wesen-Tests 18/18, Game-Tests 256/256 (+1 Werkzeug übersprungen), GPU-Harness grün.
 
+## Block 3 (08.10. morgens, nach Florians erstem Blick): Übergänge, Zwischenstufen, Zähne, Beine
+
+Florian: „Zähne sitzen je nach Maul nicht gut, Zwischenstufen Loch ↔ Keil sehen nicht gut aus, das Mesh geht nicht glatt in Hals und Schwanz über, Beinform und -dicke, Gesichter, W‑Maul für Hunde.“
+
+- **Reihen-Harness** `EE_REIHE=<vorlage>:<pfad>=a,b,c` (eine Vorlage, ein Regler, Stufen nebeneinander; `docs/progress/wesen-reihe-*.png`) — damit Zwischenstufen sichtbar werden: `maul.form` 0…1 und `maul.hoehe` 0,15…0,9 am Grundblob.
+- **Übergänge**: Hals‑S‑Bogen beginnt mit senkrechter Tangente (kein Knick am Rumpf); **Schwanz und Schlange setzen im Rumpfkern an** (Wirbelsäule mit 0,8 · Rumpfradius, dünner Anhang mit kleinem Trichter) und verjüngen sich außerhalb — kein Rohr aus einer Wand; Wurzelstationen im Rumpf gehören dem **Rumpfknochen** (sonst springen Gewichte und Musterkoordinaten als Zickzack auf der Flanke — war der Tiger‑Rumpf).
+- **Zähne**: Länge auf den Gegenkiefer begrenzt (Oberzähne ≤ Unterkiefertiefe, Unterzähne ≤ Oberkopf; `aussen` darf darüber), Wurzel tiefer unter der Lippe (geschlossen keine weißen Punkte mehr). Lippenband‑Vorgabe schmaler (0,15) und hell (`#c9a6d6`), Linienschwung‑Vorgabe 0,12.
+- **Beine** (Bild 12): Keule außen an der tiefen Hüfte, kleine Verschmelzung (Mulde statt Fillet — die große Verschmelzung machte Rex zum Sack), längerer Fuß, **drei Zehen** als Kapseln. Rex steht auf zwei Säulen mit Pfoten.
+- **Retriever‑Vorlage** (Bild 8): eigener Kopf mit langer Schnauze, W‑Lippe und Nase, vier Pfoten, Bogenschwanz; Fell/Ohren später als Elemente.
+
 ## Was noch nicht stimmt (nach Florians Bildern)
 
 1. **Rex**: Gestalt stimmt jetzt (großer Kastenkopf, Keil, kompakter Rumpf, zwei sichtbare Beinsäulen mit Füßen, Schwanz als Schräge); Rumpf noch ein Sack ohne klare Brust, Beine etwas dünn (Bild 12: dicke Säulen, breite Füße); Flügel/Stummelarme fehlen (eigene Elemente).

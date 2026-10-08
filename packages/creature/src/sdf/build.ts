@@ -280,7 +280,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     const ctrl: Vec3[] = [];
     for (let i = 0; i <= 6; i++) {
       const t = i / 6;
-      const f = neckLen * (0.18 * t * t - kr * 0.35 * Math.sin(Math.PI * t));
+      // S-Bogen mit waagerechter Tangente am Ansatz (sin², kein Knick zur senkrechten Rumpfachse) und leichter Neigung nach vorn
+      const f = neckLen * (0.18 * t * t - kr * 0.35 * Math.pow(Math.sin(Math.PI * t), 2));
       ctrl.push([base[0], base[1] + neckLen * t, base[2] + f]);
     }
     const pts = catmullRom(ctrl, 3);
@@ -539,28 +540,31 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         : n === 4
           ? [-(45 + 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, (45 + 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, -Math.min(165, 135 - 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, Math.min(165, 135 - 20 * L.spreiz + 40 * (lage - 0.2)) * d2r]
           : [-35, 35, -70, 70, -110, 110, -145, 145].map((x) => x * d2r);
-    const rHip = H * (0.06 + 0.1 * L.dicke + 0.1 * L.schenkel) * thin;
-    const rKnee = H * (0.05 + 0.08 * L.dicke) * thin;
-    const rAnkle = H * (0.04 + 0.06 * L.dicke) * thin;
-    const rFoot = H * (0.06 + 0.11 * L.fuss) * (0.6 + 0.4 * L.dicke);
+    // Bild 12: Schenkel als Keule außen am Rumpf (nicht versteckt), kurzer Unterschenkel, breiter flacher Fuß mit Zehen
+    const rThigh = H * (0.06 + 0.12 * L.dicke + 0.12 * L.schenkel) * thin;
+    const rKnee = H * (0.05 + 0.09 * L.dicke) * thin;
+    const rAnkle = H * (0.04 + 0.07 * L.dicke) * thin;
+    const rFoot = H * (0.06 + 0.12 * L.fuss) * (0.6 + 0.4 * L.dicke);
     azis.forEach((phi, i) => {
-      const hHip = yb + H * (0.1 + 0.08 * L.laenge);
-      const hip: Vec3 = add(axisAt(hHip), [Math.sin(phi) * R0 * sx * 0.68, 0, Math.cos(phi) * R0 * sz * 0.68]);
+      const hHip = yb + H * (0.03 + 0.07 * L.laenge);
+      // Hüfte tief an der Rumpfflanke; die Keule ragt über die Flanke hinaus und hängt unter dem Bauch (Bild 12)
+      const flank = 0.88 + 0.1 * L.schenkel;
+      const hip: Vec3 = add(axisAt(hHip), [Math.sin(phi) * R0 * sx * flank, 0, Math.cos(phi) * R0 * sz * flank]);
       const foot: Vec3 = [Math.sin(phi) * R0 * sx * (0.72 + 0.35 * L.spreiz), 0, Math.cos(phi) * R0 * sz * (0.72 + 0.2 * L.spreiz) + 0.04 * H];
-      const knee: Vec3 = add(scale(add(hip, foot), 0.5), [Math.sin(phi) * 0.04 * H, 0, 0.1 * legLen + 0.03 * H]);
-      const ankle: Vec3 = [foot[0], rFoot * 0.55, foot[2] - 0.03 * H];
+      const knee: Vec3 = add(scale(add(hip, foot), 0.5), [Math.sin(phi) * 0.04 * H, 0, 0.1 * legLen + 0.04 * H]);
+      const ankle: Vec3 = [foot[0], rFoot * 0.6, foot[2] - 0.03 * H];
       const g = groups.length;
-      const pl = makePolyline([hip, knee, ankle, foot], [rHip, rKnee, rAnkle, rFoot * 0.5], FWD);
+      const pl = makePolyline([hip, knee, ankle, foot], [rThigh, rKnee, rAnkle, rFoot * 0.5], FWD);
       groups.push({ name: `bein${i}`, kind: 'bein', polyline: pl, bones: [], dorsal: [0, 1, 0] });
       const bHip = bone(`bein${i}Huefte`, kUnten, hip, QUAT_ID, g);
       const bKnee = bone(`bein${i}Knie`, bHip, knee, QUAT_ID, g);
       const bFoot = bone(`bein${i}Fuss`, bKnee, ankle, QUAT_ID, g);
       groups[g]!.bones.push(bHip, bKnee, bFoot);
-      // Bein als ein Loft: Ansatz tief im Körper (breit, „geknetet“), Schenkel, Knie, Knöchel, Fußpolster als Saugnapf
-      // mit flacher Standfläche; Zehen nach vorn (Querschnitt vorn länger)
-      const hipTop: Vec3 = add(hip, [0, rHip * 0.9, 0]);
+      // Bein als ein Loft: Keule beginnt im Rumpf (verschmolzen), ist an der Hüfte am dicksten, Knie, Knöchel, Fußpolster
+      // mit flacher Standfläche und nach vorn gestrecktem Querschnitt (Zehen)
+      const hipTop: Vec3 = add(hip, [Math.sin(phi) * -0.15 * R0 * sx, rThigh * 1.3, Math.cos(phi) * -0.15 * R0 * sz]);
       const ctrl: Vec3[] = [hipTop, hip, knee, ankle, [foot[0], rFoot * 0.35, foot[2]], [foot[0], 0, foot[2]]];
-      const rr = [rHip * (1.25 + 0.4 * L.schenkel), rHip * (1 + 0.3 * L.schenkel), rKnee, rAnkle, rFoot * 1.1, rFoot * 1.25];
+      const rr = [rThigh * 0.85, rThigh, rKnee, rAnkle, rFoot * 1.1, rFoot * 1.2];
       const pts = catmullRom(ctrl, 4);
       const nP = pts.length;
       const idxOf = (k: number): number => Math.min(nP - 1, Math.round((k / (ctrl.length - 1)) * (nP - 1)));
@@ -577,30 +581,65 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       for (let j = 0; j < nP; j++) {
         const r = radAt(j);
         const footness = clamp((j - idxOf(3)) / Math.max(1, idxOf(5) - idxOf(3)), 0, 1);
-        wx.push(r * (1 + 0.15 * footness));
-        wyT.push(r * (1 + 0.5 * footness));
-        wyB.push(r);
+        wx.push(r * (1 + 0.2 * footness));
+        wyT.push(r * (1 + (0.6 + 0.5 * L.fuss) * footness));
+        wyB.push(r * (1 + 0.1 * footness));
         parts.push(j < idxOf(2) ? bHip : j < idxOf(3) ? bKnee : bFoot);
       }
-      prims.push(makeLoft({ points: pts, upRef: FWD, wx, wyT, wyB, n: 2, parts, capEnd: rFoot * 0.35, axis: [0, -1, 0] }, { op: 'union', part: bHip, k: 0.16 * H * (0.5 + L.schenkel) * thin + 0.02 * H, region: REGION.haut, name: `bein${i}` }));
+      prims.push(makeLoft({ points: pts, upRef: FWD, wx, wyT, wyB, n: 2, parts, capEnd: rFoot * 0.35, axis: [0, -1, 0] }, { op: 'union', part: bHip, k: (0.05 + 0.04 * L.schenkel) * H * thin + 0.01 * H, region: REGION.haut, name: `bein${i}` }));
+      // Zehen: drei flache Kapseln vorn am Fußpolster, leicht gespreizt (Rex Bild 12, Pfoten Bild 9)
+      if (thin > 0.5 && L.fuss > 0.1) {
+        const toeLen = rFoot * (0.55 + 0.5 * L.fuss);
+        const toeR = rFoot * 0.26;
+        const front = rFoot * (1.2 + 0.5 * L.fuss);
+        for (const a of [-0.45, 0, 0.45]) {
+          const dir: Vec3 = normalize([Math.sin(a), 0, Math.cos(a)]);
+          const base: Vec3 = [foot[0] + dir[0] * front * 0.55, toeR * 0.95, foot[2] + dir[2] * front * 0.55];
+          const tip: Vec3 = [base[0] + dir[0] * toeLen, toeR * 0.9, base[2] + dir[2] * toeLen];
+          prims.push({ kind: 'capsule', op: 'union', part: bFoot, k: toeR * 0.9, region: REGION.haut, name: `zehe${i}`, a: base, b: tip, ra: toeR, rb: toeR * 0.8 });
+        }
+      }
     });
   }
 
   // --- Schwanz oder Schlange --------------------------------------------------------------------------------------------
+  // Schwanz und Schlange setzen **im Kern des Rumpfs** an, mit dessen Halbtiefe als erstem Querschnitt, und verjüngen sich
+  // erst außerhalb (Ansatztrichter): die Fläche verlässt den Rumpf tangential, kein Rohr aus einer Wand (Florian:
+  // „das Mesh geht nicht glatt in Hals und Schwanz über“).
+  const rumpfTiefeBei = (y: number): number => {
+    const i = Math.min(bodyWyB.length - 1, Math.max(0, Math.round(clamp((y - yb) / H, 0, 1) * (bodyWyB.length - 1))));
+    return bodyWyB[i]!;
+  };
   if (b.unterkoerper.typ === 'schlange') {
     const S = b.unterkoerper.schlange;
     const rS = S.dicke * R0 * sm * 0.7;
     const Ls = S.laenge * H * 1.4;
-    const z0 = -R0 * sz * 0.55;
-    const ctrl: Vec3[] = [];
+    // Ansatz: Mittelpunkt der Rumpfscheibe auf Schlangenhöhe, Radius wie der Rumpf dort (nach unten durch den Boden begrenzt)
+    const yS = yb + rS * 0.98;
+    const rRoot = Math.min(rumpfTiefeBei(yS) * 0.85, Math.max(rS, yS - yb));
+    const zBack = axisAt(yS)[2] - rumpfTiefeBei(yS);
+    const ctrl: Vec3[] = [axisAt(yS), [0, yS, zBack + 0.35 * rRoot], [0, yS, zBack]];
     const nC = 10;
-    for (let i = 0; i <= nC; i++) {
+    for (let i = 1; i <= nC; i++) {
       const t = i / nC;
       const r = rS * (1 - 0.92 * t) + 0.03 * H;
-      ctrl.push([S.einrollen * 0.5 * H * Math.sin(t * Math.PI * (1 + S.einrollen * 1.2)) * t, yb + r * 0.98 - yb * t, z0 - Ls * t]);
+      ctrl.push([S.einrollen * 0.5 * H * Math.sin(t * Math.PI * (1 + S.einrollen * 1.2)) * t, yb + r * 0.98, zBack - Ls * t]);
     }
     const pts = catmullRom(ctrl, 2);
-    const radii = pts.map((_p, i) => rS * (1 - 0.92 * (i / (pts.length - 1))) + 0.03 * H);
+    // Radius über die Bogenlänge ab dem Austritt: innen Rumpfradius, dann Trichter auf die Schlangendicke, dann Verjüngung
+    const arcs: number[] = [0];
+    for (let i = 1; i < pts.length; i++) arcs.push(arcs[i - 1]! + Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1], pts[i]![2] - pts[i - 1]![2]));
+    let sExit = 0;
+    for (let i = 0; i < pts.length; i++) if (pts[i]![2] <= zBack + 1e-6) { sExit = arcs[i]!; break; }
+    const Lans = Math.max(0.1 * H, 0.2 * Ls);
+    const radii = pts.map((_p, i) => {
+      const sA = arcs[i]! - sExit;
+      if (sA <= 0) return rRoot;
+      const f = smoothstep(0, Lans, sA);
+      const rA = rRoot * (1 - f) + rS * f;
+      const g = clamp((sA - Lans) / Math.max(1e-6, Ls - Lans), 0, 1);
+      return Math.max(0.03 * H, rA * (1 - 0.92 * g) + 0.03 * H * g);
+    });
     const pl = makePolyline(pts, radii, UP);
     const g = groups.length;
     groups.push({ name: 'schlange', kind: 'schlange', polyline: pl, bones: [], dorsal: UP });
@@ -615,27 +654,43 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     }
     groups[g]!.bones.push(...idx);
     {
-      const parts = pts.map((_p, i) => idx[Math.min(nb - 1, Math.floor((i / pts.length) * nb))]!);
-      // Bauchseite flach (Schlange liegt auf), Rücken rund
-      prims.push(makeLoft({ points: pts, upRef: UP, wx: radii, wyT: radii, wyB: radii.map((r) => r * 0.85), n: 2.3, parts }, { op: 'union', part: idx[0]!, k: 0.3 * H, region: REGION.haut, name: 'schlange' }));
+      // Stationen im Rumpf (vor dem Austritt) gehören dem Rumpf: Gewichte und Musterkoordinaten springen nicht auf der Flanke
+      const parts = pts.map((_p, i) => (arcs[i]! < sExit - 1e-6 ? kUnten : idx[Math.min(nb - 1, Math.floor(((arcs[i]! - sExit) / Math.max(1e-6, arcs[arcs.length - 1]! - sExit)) * nb))]!));
+      // Bauchseite flach (Schlange liegt auf), Rücken rund; Mittelpunkte sinken mit dem Radius, damit sie aufliegt
+      prims.push(makeLoft({ points: pts, upRef: UP, wx: radii, wyT: radii, wyB: radii.map((r) => r * 0.85), n: 2.3, parts }, { op: 'union', part: idx[0]!, k: 0.25 * H, region: REGION.haut, name: 'schlange' }));
     }
   } else if (b.schwanz.typ !== 'keiner') {
     const T = b.schwanz;
     const hT = yb + H * (0.3 + 0.25 * T.hoch);
-    // Ansatz knapp in der Rückenfläche auf dieser Höhe (folgt Neigung und Profil)
-    const iT = Math.min(bodyWyB.length - 1, Math.round(clamp((hT - yb) / H, 0, 1) * (bodyWyB.length - 1)));
-    const start: Vec3 = add(axisAt(hT), [0, 0, -bodyWyB[iT]! * 0.85]);
     const Lt = T.laenge * H * 0.9;
-    const r0 = T.typ === 'wirbelsaeule' ? R0 * sm * 0.5 * (0.5 + T.dicke) : H * (0.04 + 0.08 * T.dicke);
+    const rBody = rumpfTiefeBei(hT);
+    // Wirbelsäule: so dick wie der Rumpf dort (Dicke 1) … halb so dick; Anhang: dünn mit Ansatztrichter
+    const r0 = T.typ === 'wirbelsaeule' ? rBody * (0.5 + 0.5 * T.dicke) : H * (0.04 + 0.08 * T.dicke);
     const rTip = T.typ === 'wirbelsaeule' ? 0.03 * H : r0 * 0.55;
     const curl = T.typ === 'bogen' ? 0.8 + 0.4 * T.kruemmung : T.kruemmung;
-    const ctrl: Vec3[] = [];
-    for (let i = 0; i <= 6; i++) {
+    const zBack = axisAt(hT)[2] - rBody;
+    // Wurzel: Wirbelsäule beginnt im Kern (0,8 · Rumpfradius, deutlich unter der Haut — fast deckungsgleiche Flächen
+    // würden das Feld verrauschen); dünner Anhang nur mit kleinem Trichter knapp innerhalb der Rückenfläche
+    const rRoot = T.typ === 'wirbelsaeule' ? rBody * 0.8 : Math.min(rBody * 0.8, r0 * 2.5);
+    const ctrl: Vec3[] = T.typ === 'wirbelsaeule' ? [axisAt(hT), [0, hT, zBack + 0.35 * rBody], [0, hT, zBack]] : [[0, hT, zBack + rRoot * 1.2], [0, hT, zBack + rRoot * 0.5], [0, hT, zBack]];
+    for (let i = 1; i <= 6; i++) {
       const t = i / 6;
-      ctrl.push([0, start[1] + Lt * (T.hoch * 0.9 * t * t + curl * 0.5 * t * t * t) + (T.typ === 'wirbelsaeule' ? 0 : -Lt * 0.15 * t * (1 - Math.abs(T.hoch))), start[2] - Lt * t * (1 - 0.15 * Math.abs(T.hoch))]);
+      ctrl.push([0, hT + Lt * (T.hoch * 0.9 * t * t + curl * 0.5 * t * t * t) + (T.typ === 'wirbelsaeule' ? 0 : -Lt * 0.15 * t * (1 - Math.abs(T.hoch))), zBack - Lt * t * (1 - 0.15 * Math.abs(T.hoch))]);
     }
     const pts = catmullRom(ctrl, 2);
-    const radii = pts.map((_p, i) => r0 + (rTip - r0) * (i / (pts.length - 1)));
+    const arcs: number[] = [0];
+    for (let i = 1; i < pts.length; i++) arcs.push(arcs[i - 1]! + Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1], pts[i]![2] - pts[i - 1]![2]));
+    let sExit = 0;
+    for (let i = 0; i < pts.length; i++) if (pts[i]![2] <= zBack + 1e-6) { sExit = arcs[i]!; break; }
+    const Lans = T.typ === 'wirbelsaeule' ? 0.15 * Lt : Math.max(0.08 * H, 0.25 * Lt);
+    const radii = pts.map((_p, i) => {
+      const sA = arcs[i]! - sExit;
+      if (sA <= 0) return rRoot;
+      const f = smoothstep(0, Lans, sA);
+      const rA = rRoot * (1 - f) + r0 * f;
+      const g = clamp((sA - Lans) / Math.max(1e-6, Lt - Lans), 0, 1);
+      return Math.max(0.01 * H, rA + (rTip - rA) * g);
+    });
     const pl = makePolyline(pts, radii, UP);
     const g = groups.length;
     groups.push({ name: 'schwanz', kind: 'schwanz', polyline: pl, bones: [], dorsal: UP });
@@ -650,11 +705,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     }
     groups[g]!.bones.push(...idx);
     {
-      const parts = pts.map((_p, i) => idx[Math.min(nb - 1, Math.floor((i / pts.length) * nb))]!);
-      // Rex-Schwanz: Wirbelsäule läuft breit aus dem Körper (Bild 5/12), Anhang: dünn mit Quaste
-      const flare = pts.map((_p, i) => (T.typ === 'wirbelsaeule' ? 1 + 0.5 * Math.exp(-Math.pow((i / (pts.length - 1)) / 0.2, 2)) : 1));
-      const w = radii.map((r, i) => r * flare[i]!);
-      prims.push(makeLoft({ points: pts, upRef: UP, wx: w, wyT: w.map((r) => r * 1.05), wyB: w, n: 2, parts }, { op: 'union', part: idx[0]!, k: (T.typ === 'wirbelsaeule' ? 0.32 : 0.16) * H, region: REGION.haut, name: 'schwanz' }));
+      // Stationen im Rumpf (vor dem Austritt) gehören dem Rumpf: Gewichte und Musterkoordinaten springen nicht auf der Flanke
+      const rumpfBone = T.typ === 'wirbelsaeule' ? kMitte : kUnten;
+      const parts = pts.map((_p, i) => (arcs[i]! < sExit - 1e-6 ? rumpfBone : idx[Math.min(nb - 1, Math.floor(((arcs[i]! - sExit) / Math.max(1e-6, arcs[arcs.length - 1]! - sExit)) * nb))]!));
+      prims.push(makeLoft({ points: pts, upRef: UP, wx: radii, wyT: radii.map((r) => r * 1.05), wyB: radii, n: 2, parts }, { op: 'union', part: idx[0]!, k: (T.typ === 'wirbelsaeule' ? 0.3 : 0.18) * H, region: REGION.haut, name: 'schwanz' }));
     }
   }
 
