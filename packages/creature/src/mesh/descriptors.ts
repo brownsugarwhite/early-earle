@@ -118,6 +118,10 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
         let wSum = 0;
         for (const [, w] of parts) wSum += w;
         if (wSum <= 0.001) return;
+        if (wSum > 1) {
+          for (const part of parts) part[1] /= wSum;
+          wSum = 1;
+        }
         const targets = new Set(parts.map(([t]) => t));
         let moved = 0;
         for (let bi = 0; bi < bones.length; bi++) {
@@ -129,17 +133,26 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
         for (const [t, w] of parts) boneWeights[t]! += (moved * w) / wSum;
       };
       const side = sides ? sides[v] : undefined;
-      // Unterkiefer + Kehlkette: Tiefenanteil f auf Kiefer (Winkel θ), Kehle 0 (⅔ θ), Kehle 1 (⅓ θ) und Rumpf (0) verteilt —
-      // die Haut unter dem Kiefer biegt sich weich statt zu reißen oder durch den Rumpf zu fahren
+      // Ketten: ein Anteil f wird auf voll (1), Kette 0 (⅔) und Kette 1 (⅓) verteilt — die Haut biegt sich weich statt zu
+      // reißen oder durch den Rumpf zu fahren. Alle Teile eines Vertex werden in **einem** Zug aus den übrigen Knochen
+      // genommen (Rumpf, Hals), damit sich die Ketten nicht gegenseitig bestehlen
+      const parts: Array<[number, number]> = [];
       const kette = (a: number, f: number, voll: number, k0: number, k1: number): void => {
         if (a <= 0.001 || f <= 0.001) return;
-        const parts: Array<[number, number]> = f >= 2 / 3 ? [[voll, a * (3 * f - 2)], [k0, a * (3 - 3 * f)]] : f >= 1 / 3 ? [[k0, a * (3 * f - 1)], [k1, a * (2 - 3 * f)]] : [[k1, a * 3 * f]];
-        transferMulti(parts);
+        if (f >= 2 / 3) parts.push([voll, a * (3 * f - 2)], [k0, a * (3 - 3 * f)]);
+        else if (f >= 1 / 3) parts.push([k0, a * (3 * f - 1)], [k1, a * (2 - 3 * f)]);
+        else parts.push([k1, a * 3 * f]);
       };
+      // Unterseite: Kieferkette (Kieferdrehung f, trägt den vollen Versatz des mitwandernden Gelenks), der Rest der
+      // Unterseite kippt wie der Schädel über die Nackenkette (Kippanteil ft) — hinter den Mundwinkeln laufen so beide
+      // Seiten der Maullinie gleich
       const lo = mouth.jawParts(p, H, side);
       kette(lo.a, lo.f, c.jawBone, c.throatBones[0], c.throatBones[1]);
+      const T = Math.min(1, 3 * lo.f);
+      if (T < 0.999) kette(lo.a * (1 - T), clamp01((lo.ft - T) / (1 - T)), c.upperJawBone, c.napeBones[0], c.napeBones[1]);
       const up = mouth.upperParts(p, H, side);
       kette(up.a, up.f, c.upperJawBone, c.napeBones[0], c.napeBones[1]);
+      transferMulti(parts);
       void transfer;
     }
     // Top 4 normieren

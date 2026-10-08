@@ -327,7 +327,7 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
     { titel: 'Unterkörper', ids: ['unterkoerper.typ'] },
     {
       titel: 'Beine',
-      ids: ['unterkoerper.beine.anzahl', 'unterkoerper.beine.lage', 'unterkoerper.beine.hoehe', 'unterkoerper.beine.dicke', 'unterkoerper.beine.schenkel', 'unterkoerper.beine.laenge', 'unterkoerper.beine.fuss', 'unterkoerper.beine.spreiz'],
+      ids: ['unterkoerper.beine.anzahl', 'unterkoerper.beine.lage', 'unterkoerper.beine.hoehe', 'unterkoerper.beine.dicke', 'unterkoerper.beine.schenkel', 'unterkoerper.beine.laenge', 'unterkoerper.beine.fuss', 'unterkoerper.beine.spreiz', 'unterkoerper.beine.verschmelzen'],
       aktiv: hatBeine,
       inaktiv: 'wirkt mit Beinen (Unterkörper Beine, Vogel, Spinne)',
     },

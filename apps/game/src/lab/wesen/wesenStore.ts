@@ -63,6 +63,8 @@ export interface WesenState {
   ansicht: WesenAnsicht;
   boden: WesenBoden;
   spin: boolean;
+  /** Demo-Gang (Beine schwingen, Körper wippt) — Vorschau, nicht Teil des Bauplans. */
+  laufen: boolean;
   /** Kieferöffnung der Vorschau (Animationsziel, nicht Teil des Bauplans). */
   offen: number;
   /** Vorschau folgt der gebauten Öffnung (`maul.oeffnung`), bis Maul auf/zu oder der Vorschau-Regler sie übernimmt. */
@@ -87,6 +89,7 @@ export interface WesenState {
   setAnsicht: (a: WesenAnsicht) => void;
   setBoden: (b: WesenBoden) => void;
   setSpin: (on: boolean) => void;
+  setLaufen: (on: boolean) => void;
   setOffen: (o: number) => void;
   /** Vorschau wieder „wie gebaut“ (folgt `maul.oeffnung`). */
   offenWieGebaut: () => void;
@@ -191,6 +194,7 @@ export const useWesenStore = create<WesenState>((set, get) => {
     ansicht: 'held',
     boden: 'wiese',
     spin: false,
+    laufen: false,
     offen: 0.3,
     offenFolgt: true,
     meldung: null,
@@ -276,6 +280,7 @@ export const useWesenStore = create<WesenState>((set, get) => {
       }),
     setBoden: (boden) => set({ boden }),
     setSpin: (spin) => set({ spin }),
+    setLaufen: (laufen) => set({ laufen }),
     setOffen: (offen) => set({ offen, offenFolgt: false }),
     offenWieGebaut: () => set({ offenFolgt: true }),
     setStilVorgabe: (stil, stilQuelle) => set({ stilVorgabe: stil, stilQuelle }),
@@ -344,6 +349,8 @@ export interface StartParameter {
   ansicht?: string | null;
   boden?: string | null;
   spin?: string | null;
+  /** `?laufen=1`: Demo-Gang an. */
+  laufen?: string | null;
   /** Datei-Baupläne (Bündel/Mac), damit `?vorlage=` auch gespeicherte Vorlagen findet. */
   dateien?: ReadonlyArray<{ file: string; bauplan: Bauplan; ort: 'Mac' | 'App' | 'Lokal' }>;
   /** Stil-Vorgabe aus content/creatures/stil.json (Bündel), sonst Standard. */
@@ -385,6 +392,7 @@ export function starteWesenLab(p: StartParameter): void {
   if (p.boden === 'weiss' || p.boden === 'wiese') patch.boden = p.boden;
   else if (ansicht === 'referenz') patch.boden = 'weiss';
   if (p.spin === '1') patch.spin = true;
+  if (p.laufen === '1') patch.laufen = true;
   useWesenStore.setState(patch);
   autosaveEinschalten();
   if (p.vorlage) {
@@ -411,5 +419,5 @@ export function vorschauOeffnung(s: Pick<WesenState, 'offen' | 'offenFolgt' | 'b
 /** Nur für Tests: Store auf den Anfang. */
 export function _resetWesenStore(): void {
   gestartet = false;
-  useWesenStore.setState({ ...anfang(), stil: { ...STIL_STANDARD }, stilVorgabe: { ...STIL_STANDARD }, stilQuelle: 'Standard', schloss: {}, past: [], future: [], lastOpKey: null, lastOpAt: 0, geste: false, tab: 'maul', ansicht: 'held', boden: 'wiese', spin: false, offen: 0.3, offenFolgt: true, meldung: null });
+  useWesenStore.setState({ ...anfang(), stil: { ...STIL_STANDARD }, stilVorgabe: { ...STIL_STANDARD }, stilQuelle: 'Standard', schloss: {}, past: [], future: [], lastOpKey: null, lastOpAt: 0, geste: false, tab: 'maul', ansicht: 'held', boden: 'wiese', spin: false, laufen: false, offen: 0.3, offenFolgt: true, meldung: null });
 }

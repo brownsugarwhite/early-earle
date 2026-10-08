@@ -40,9 +40,14 @@ export interface CreatureBuild {
   gesicht: Construction['gesicht'];
   /** Spitzmund-Feld (xyz je Vertex, Einheit): radiale Weitung des Lochmauls, skaliert mit `spitzmund`. */
   pucker: Float32Array;
+  /** Unterlippenseite je Vertex (1 = Haut des Unterkiefers am Lippenschnitt, sonst 0) — eigener Kanal, damit kein
+   *  Vorzeichenwechsel im Kantenabstand quer über den Körper dünne Linien zeichnet. */
+  seite: Float32Array;
   /** Hebel Gelenk → Maulzentrum und größter Unterkieferwinkel über dem Boden (siehe `MouthGeometry`). */
   jawLever: number;
   lowerAngleMax: number;
+  /** Hebel Schädelgelenk → Maulzentrum. */
+  upperLever: number;
   /** Maximaler Öffnungswinkel (rad) der Kieferbewegung (Mesh ist geschlossen gebaut). */
   maxOpenAngle: number;
   bones: Bone[];
@@ -51,6 +56,8 @@ export interface CreatureBuild {
     center: Vec3;
     corners: [Vec3, Vec3];
     hinge: { point: Vec3; axis: Vec3 };
+    /** Schädelgelenk hinten (Oberkiefer und Nacken drehen darum). */
+    skullHinge: { point: Vec3; axis: Vec3 };
     frame: { x: Vec3; y: Vec3; z: Vec3 };
     /** Hochachse des Trägers. */
     up: Vec3;
@@ -354,11 +361,14 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   const ws = opts.weightSmoothing ?? 2;
   if (ws > 0) smoothWeights(descriptors, adj, c.bones.length, ws);
   // Regionen aus dem Lippenschnitt: Rachen (0 Haut, 0,5…1 Tasche nach Tiefe), Kantenabstand in Körpereinheiten
+  const seite = new Float32Array(vertexCount);
   if (tasche && kantenAbstand) {
     for (let v = 0; v < vertexCount; v++) {
       descriptors.region[v * 4] = tasche[v]! > 0 ? 0.5 + 0.5 * tasche[v]! : 0;
-      // Vorzeichen = Seite (oben +, unten −): der Shader kann Ober- und Unterlippe getrennt färben (ω nur oben)
-      descriptors.region[v * 4 + 1] = (kantenAbstand[v]! / H) * (seiten && seiten[v]! < 0 ? -1 : 1);
+      descriptors.region[v * 4 + 1] = kantenAbstand[v]! / H;
+      // Seite als eigener Kanal (unten 1): der Shader färbt Ober- und Unterlippe getrennt (ω nur oben). Ein Vorzeichen im
+      // Abstand wäre falsch — zwischen Nachbarn verschiedener Seite läuft der Wert durch null und zeichnet ein Band.
+      if (seiten && seiten[v]! < 0) seite[v] = 1;
     }
   }
   // Spitzmund-Feld (Lochmaul): die beiden Lippenränder werden senkrecht zur Maullinie auseinandergedrückt (oben nach
@@ -393,6 +403,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   let maxOpenAngle = 0;
   if (m) maxOpenAngle = Math.asin(Math.min(0.95, m.gapeMax / m.jawLever));
   const jawLever = m?.jawLever ?? 1;
+  const upperLever = m?.upperLever ?? jawLever;
   const lowerAngleMax = m?.lowerAngleMax ?? Math.PI / 2;
   const mb = { min: [Infinity, Infinity, Infinity] as Vec3, max: [-Infinity, -Infinity, -Infinity] as Vec3 };
   for (let i = 0; i < positions.length; i += 3)
@@ -409,14 +420,16 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     descriptors,
     crease,
     pucker,
+    seite,
     gesicht: c.gesicht,
     jawLever,
+    upperLever,
     lowerAngleMax,
     maxOpenAngle,
     bones: c.bones,
     groups: c.groups.map((g) => ({ name: g.name, kind: g.kind, bones: g.bones })),
     mouth: m
-      ? { center: m.center, corners: m.corners, hinge: m.jawHinge, frame: m.frame, up: m.host.up, lipLine: m.lipLine, teeth, tongue: tongue ?? { pos: m.center, dir: m.frame.z, up: m.host.up, size: 0, laenge: 0, breite: 0 }, gapeMax: m.gapeMax, randAnzahl }
+      ? { center: m.center, corners: m.corners, hinge: m.jawHinge, skullHinge: m.skullHinge, frame: m.frame, up: m.host.up, lipLine: m.lipLine, teeth, tongue: tongue ?? { pos: m.center, dir: m.frame.z, up: m.host.up, size: 0, laenge: 0, breite: 0 }, gapeMax: m.gapeMax, randAnzahl }
       : null,
     eyes: c.eyes,
     hostBone: c.hostBone,

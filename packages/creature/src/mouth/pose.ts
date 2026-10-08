@@ -22,6 +22,8 @@ export interface JawRig {
   /** Hebel Gelenk → Maulzentrum und größter Unterkieferwinkel über dem Boden. */
   lever: number;
   lowerAngleMax: number;
+  /** Hebel Schädelgelenk → Maulzentrum (Oberkiefer kippt um das Gelenk hinter dem Kopf). */
+  upperLever: number;
   /** Seitliches Kippen des Oberkiefers beim Öffnen (−1 … 1, Bohne). */
   bohne: number;
   /** Rahmen des Trägers: oben und vorn (Körperraum). */
@@ -47,11 +49,12 @@ export function upperShare(maul: Pick<Bauplan['maul'], 'oeffnungOben' | 'unterki
   return maul.oeffnungOben * t * t * (3 - 2 * t);
 }
 
-export function jawRig(build: Pick<CreatureBuild, 'mouth' | 'maxOpenAngle'> & Partial<Pick<CreatureBuild, 'jawLever' | 'lowerAngleMax'>>, maul: Pick<Bauplan['maul'], 'form' | 'oeffnungOben' | 'unterkiefer' | 'hoehe' | 'bohne'>): JawRig {
+export function jawRig(build: Pick<CreatureBuild, 'mouth' | 'maxOpenAngle'> & Partial<Pick<CreatureBuild, 'jawLever' | 'lowerAngleMax' | 'upperLever'>>, maul: Pick<Bauplan['maul'], 'form' | 'oeffnungOben' | 'unterkiefer' | 'hoehe' | 'bohne'>): JawRig {
   const up: Vec3 = build.mouth ? normalize(build.mouth.up) : [0, 1, 0];
   const axis: Vec3 = build.mouth ? normalize(build.mouth.hinge.axis) : [1, 0, 0];
   const forward = normalize(cross(axis, up));
-  return { maxOpenAngle: build.maxOpenAngle, share: upperShare(maul), form: maul.form, gapeMax: build.mouth?.gapeMax ?? 0, lever: build.jawLever ?? 1, lowerAngleMax: build.lowerAngleMax ?? Math.PI / 2, bohne: clamp(maul.bohne ?? 0, -1, 1), up, forward };
+  const lever = build.jawLever ?? 1;
+  return { maxOpenAngle: build.maxOpenAngle, share: upperShare(maul), form: maul.form, gapeMax: build.mouth?.gapeMax ?? 0, lever, lowerAngleMax: build.lowerAngleMax ?? Math.PI / 2, upperLever: build.upperLever ?? lever, bohne: clamp(maul.bohne ?? 0, -1, 1), up, forward };
 }
 
 export function jawPose(rig: JawRig, openness: number): JawPose {
@@ -64,6 +67,8 @@ export function jawPose(rig: JawRig, openness: number): JawPose {
   const lowerSep = sep * (1 - s);
   const lowerAngle = Math.min(rig.lowerAngleMax, Math.asin(clamp(lowerSep / L, 0, 0.95)));
   const upperSep = sep * s + Math.max(0, lowerSep - L * Math.sin(lowerAngle));
+  // Der Schädel kippt um das Schädelgelenk hinten, der Unterkiefer hängt an ihm: die Öffnung vorn hängt nur von beiden
+  // Winkeln und dem Kieferhebel ab (sep = 2 L sin((|θo| + θu)/2)), nicht vom Ort des Schädelgelenks
   const upperAngle = -Math.asin(clamp(upperSep / L, 0, 0.95));
   const spitzmund = o * (1 - rig.form) * rig.gapeMax * 0.5;
   // Bohne: der Oberkiefer rollt beim Öffnen seitlich (bis ≈ 50°)
@@ -71,20 +76,31 @@ export function jawPose(rig: JawRig, openness: number): JawPose {
   return { lowerAngle, upperAngle, spitzmund, upperRoll };
 }
 
-/** Starre Transformationen beider Kiefer für eine Pose (Körperraum). */
-export function jawTransforms(hinge: { point: Vec3; axis: Vec3 }, pose: JawPose, frame?: { up: Vec3; forward: Vec3 }): { lower: (p: Readonly<Vec3>) => Vec3; upper: (p: Readonly<Vec3>) => Vec3; throat: [(p: Readonly<Vec3>) => Vec3, (p: Readonly<Vec3>) => Vec3]; nape: [(p: Readonly<Vec3>) => Vec3, (p: Readonly<Vec3>) => Vec3] } {
+/**
+ * Starre Transformationen beider Kiefer für eine Pose (Körperraum). Der Schädel (Oberkiefer, Augen, Stirn) kippt um das
+ * Schädelgelenk hinten; der Unterkiefer hängt am Schädel: er kippt mit und dreht dann um sein (mitbewegtes) Kiefergelenk.
+ * Die Ketten tragen ⅔ und ⅓ beider Drehungen — Kehle und Nacken laufen so gemeinsam in Hals und Rumpf aus.
+ */
+export function jawTransforms(hinge: { point: Vec3; axis: Vec3 }, pose: JawPose, frame?: { up: Vec3; forward: Vec3 }, skull?: { point: Vec3; axis: Vec3 }): { lower: (p: Readonly<Vec3>) => Vec3; upper: (p: Readonly<Vec3>) => Vec3; throat: [(p: Readonly<Vec3>) => Vec3, (p: Readonly<Vec3>) => Vec3]; nape: [(p: Readonly<Vec3>) => Vec3, (p: Readonly<Vec3>) => Vec3] } {
   const axis = normalize(hinge.axis);
   const up: Vec3 = frame ? normalize(frame.up) : [0, 1, 0];
   const forward: Vec3 = frame ? normalize(frame.forward) : normalize(cross(axis, up));
-  const qLo = quatFromAxisAngle(axis, pose.lowerAngle);
-  const qUp = quatMul(quatFromAxisAngle(axis, pose.upperAngle), quatFromAxisAngle(forward, pose.upperRoll));
   void up;
-  const qK0 = quatFromAxisAngle(axis, pose.lowerAngle * (2 / 3));
-  const qK1 = quatFromAxisAngle(axis, pose.lowerAngle / 3);
-  const qN0 = quatMul(quatFromAxisAngle(axis, pose.upperAngle * (2 / 3)), quatFromAxisAngle(forward, pose.upperRoll * (2 / 3)));
-  const qN1 = quatMul(quatFromAxisAngle(axis, pose.upperAngle / 3), quatFromAxisAngle(forward, pose.upperRoll / 3));
-  const um = (q: ReturnType<typeof quatFromAxisAngle>) => (p: Readonly<Vec3>): Vec3 => add(hinge.point, rotate(q, sub(p, hinge.point)));
-  return { lower: um(qLo), upper: um(qUp), throat: [um(qK0), um(qK1)], nape: [um(qN0), um(qN1)] };
+  const A = skull?.point ?? hinge.point;
+  const J = hinge.point;
+  const about = (q: ReturnType<typeof quatFromAxisAngle>, c: Readonly<Vec3>) => (p: Readonly<Vec3>): Vec3 => add(c, rotate(q, sub(p, c)));
+  // Schädelkippung (mit Bohnen-Rollen) um das Schädelgelenk, Anteil c
+  const tilt = (c: number) => about(quatMul(quatFromAxisAngle(axis, pose.upperAngle * c), quatFromAxisAngle(forward, pose.upperRoll * c)), A);
+  // Unterkiefer: hängt am Schädel (sein Gelenk wandert mit der Kippung von J nach J'), behält aber seine **absolute**
+  // Drehung θu um die Kieferachse — die Öffnung vorn bleibt die der beiden Winkel, der Hinterkopf steht still. Die
+  // Kehlkette trägt ⅔ bzw. ⅓ von Gelenkversatz und Kieferdrehung (ihr übriger Kippanteil kommt über die Nackenkette)
+  const JA = sub(J, A);
+  const lower = (c: number) => {
+    const delta = sub(rotate(quatFromAxisAngle(axis, pose.upperAngle * c), JA), JA);
+    const qL = quatFromAxisAngle(axis, pose.lowerAngle * c);
+    return (p: Readonly<Vec3>): Vec3 => add(add(J, delta), rotate(qL, sub(p, J)));
+  };
+  return { lower: lower(1), upper: tilt(1), throat: [lower(2 / 3), lower(1 / 3)], nape: [tilt(2 / 3), tilt(1 / 3)] };
 }
 
 export interface PoseParams {
@@ -100,7 +116,7 @@ export function posedPositions(build: CreatureBuild, params: PoseParams): Float3
   const rig = jawRig(build, params.maul);
   const pose = jawPose(rig, params.openness);
   const m = build.mouth;
-  const tf = m ? jawTransforms(m.hinge, pose, rig) : null;
+  const tf = m ? jawTransforms(m.hinge, pose, rig, m.skullHinge) : null;
   const { skinIndex, skinWeight } = build.descriptors;
   for (let v = 0; v < n; v++) {
     const p: Vec3 = [build.positions[v * 3]!, build.positions[v * 3 + 1]!, build.positions[v * 3 + 2]!];
@@ -135,10 +151,10 @@ export function posedTeeth(build: CreatureBuild, params: PoseParams): Tooth[] {
   if (!m) return [];
   const rig = jawRig(build, params.maul);
   const pose = jawPose(rig, params.openness);
-  const tf = jawTransforms(m.hinge, pose, rig);
+  const tf = jawTransforms(m.hinge, pose, rig, m.skullHinge);
   const axis = normalize(m.hinge.axis);
-  const qLo = quatFromAxisAngle(axis, pose.lowerAngle);
   const qUp = quatMul(quatFromAxisAngle(axis, pose.upperAngle), quatFromAxisAngle(rig.forward, pose.upperRoll));
+  const qLo = quatFromAxisAngle(axis, pose.lowerAngle);
   return m.teeth.map((t) => (t.upper ? { ...t, pos: tf.upper(t.pos), dir: rotate(qUp, t.dir), ...(t.inward ? { inward: rotate(qUp, t.inward) } : {}) } : { ...t, pos: tf.lower(t.pos), dir: rotate(qLo, t.dir), ...(t.inward ? { inward: rotate(qLo, t.inward) } : {}) }));
 }
 

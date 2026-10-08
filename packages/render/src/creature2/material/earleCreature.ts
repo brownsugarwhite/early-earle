@@ -213,9 +213,11 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
   material.colorNode = Fn(() => {
     const spine = attribute('eeSpine', 'vec4') as Vec4Node;
     const region = attribute('eeRegion', 'vec4') as Vec4Node;
-    const extra = attribute('eeExtra', 'vec3') as Vec3Node;
+    const extra = attribute('eeExtra', 'vec4') as Vec4Node;
     const ao = extra.x;
     const crease = extra.z;
+    // Unterlippenseite (1 unten) als eigener Kanal — blendet an den Mundwinkeln weich, zeichnet nirgends eine Linie
+    const unten = clamp(extra.w, 0, 1);
     const rest = positionGeometry as unknown as Vec3Node;
     // An scharfen Kanten (Maullinie, Augenwulst, Standkante) die Facettennormale nehmen: die Kante bleibt im Licht sichtbar
     const flatN = normalize(cross(dFdx(positionView as unknown as Vec3Node), dFdy(positionView as unknown as Vec3Node)));
@@ -252,8 +254,7 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     // Musterebene: Masken in Wirbelsäulen-Koordinaten, Gesicht/Lippen/Rachen frei; Relief dunkelt die Stufe je Schuppe ab
     // Lippenband: Abstand zur Maulkante (Körpereinheiten, region.y) gegen die Bandbreite, pixelscharf über die Ableitung
     const bandW = u.lippenBand;
-    const distK = abs(region.y).mul(u.bodyScale);
-    const unten = step(region.y, 0);
+    const distK = region.y.mul(u.bodyScale);
     const aa = abs(dFdx(distK)).add(abs(dFdy(distK))).add(0.0005);
     const band = float(1).sub(smoothstep(bandW.sub(aa), bandW.add(aa), distK)).mul(step(0.001, bandW)).mul(mix(float(1), u.lippenBandUnten, unten));
     const innen = step(0.25, region.x);

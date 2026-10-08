@@ -1,7 +1,7 @@
 import type { Bauplan } from '../bauplan/schema';
 import { catmullRom, makePolyline, type Polyline } from '../math/curve';
 import { QUAT_ID, add, clamp, cross, dot, frameFromTangent, lerp, normalize, quatFromFrame, scale, smoothstep, sub, type Quat, type Vec3 } from '../math/vec';
-import { buildMouth, surfacePoint, type MouthGeometry, type MouthHost } from '../mouth/mouth';
+import { buildMouth, lipHeight, surfacePoint, thetaKeilOf, type MouthGeometry, type MouthHost } from '../mouth/mouth';
 import { REGION, evalScene, makeLoft, sceneBounds, type EllipsoidPrim, type Prim, type SdfScene } from './scene';
 
 /**
@@ -443,7 +443,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       // Profile (Bild 5/11): Schädel hinten hoch, Brauenwulst, Schnauze läuft nach vorn aus; Kiefer unten als Löffel
       const nS = 40;
       const pts: Vec3[] = [];
-      const wx: number[] = [], wxB: number[] = [], wyT: number[] = [], wyB: number[] = [], nn: number[] = [], nB: number[] = [];
+      const wx: number[] = [], wxB: number[] = [], wyT: number[] = [], wyB: number[] = [], wyL: number[] = [], nn: number[] = [], nB: number[] = [];
       const braue = clamp(b.kopf.braue, 0, 1);
       const kb = clamp(m0.kieferbreite, -1, 1);
       for (let i = 0; i < nS; i++) {
@@ -475,7 +475,9 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         wx.push(width * endRound * (1 - 0.45 * Math.max(0, kb)));
         wxB.push(width * endRoundB * (1 + 0.45 * Math.min(0, kb)));
         wyT.push(skull * endRound);
-        wyB.push(jaw * endRoundB);
+        // Oberform reicht unten bis zur Lippe mit der vollen Länge, die Unterform (Unterkiefer) endet vorn früher (Überbiss)
+        wyB.push(jaw * endRound);
+        wyL.push(jaw * endRoundB);
         // Kieferkante: Schnauze und Kinn kantig (Raubkatze, Bild 9), der Schädel hinten bleibt rund
         // Schädel (obere Hälfte) bleibt rund; Kiefer und Schnauze (untere Hälfte) werden zur Front hin kantig
         nn.push(2.1 + 0.6 * kanteK * smoothstep(0.6, 0.95, u));
@@ -484,7 +486,25 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       // Verschmelzung klein genug, dass Kanten und Schnauze des Kopfs stehen bleiben (kantige Raubkatze); der Übergang
       // zur Schulter kommt aus der Überlappung von Kopf und Rumpf, nicht aus einem großen Rundungsradius
       // versunkener Kopf verschmilzt weich mit dem Rumpf (eine Masse), freier Kopf behält seine Kanten
-      const head = makeLoft({ points: pts, upRef: upH, wx, wxB, wyT, wyB, n: nn, nB, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN) + 0.4 * sink), region: REGION.haut, name: 'kopf' });
+      // Trennhöhe Ober-/Unterkiefer je Station = Lippenlinie (Neigung, Schwung, ω): Breite, Kante und Überbiss wechseln genau
+      // an der Maullinie und nicht auf Kopfmitte (dort stand sonst ein zweiter Knick über dem W). Station → Winkel φ um die
+      // Kopfachse → u = |φ|/θ; hinter den Mundwinkeln läuft die Höhe der Winkel weiter. Der Wechsel ist eine weiche
+      // S-Kurve (Band ⅒ Kopfradius): die Oberlippe hängt als Wulst über den schmaleren Unterkiefer.
+      const hostH = hr * (0.42 + 0.42 * uk + 0.55 + 0.5 * ok);
+      const hc = hr * (0.42 + 0.42 * uk);
+      const thetaK = thetaKeilOf(m0);
+      const cb0 = clamp(m0.hoehe, 0.02, 0.98) * hostH - hc;
+      const split: number[] = [];
+      for (let i = 0; i < nS; i++) {
+        const u = i / (nS - 1);
+        const zS = (Lback + Lfront) * (u - 0.5);
+        const wy = cb0 >= 0 ? wyT[i]! : wyB[i]!;
+        const ay = wy > 1e-6 ? Math.min(1, Math.abs(cb0) / wy) : 1;
+        const x0 = 0.5 * (wx[i]! + wxB[i]!) * Math.pow(Math.max(0, 1 - Math.pow(ay, nn[i]!)), 1 / nn[i]!);
+        const uL = Math.min(1, Math.abs(Math.atan2(x0, zS)) / thetaK);
+        split.push(m0.sichtbar ? lipHeight(m0, hostH, hostH, uL) - hc : 0);
+      }
+      const head = makeLoft({ points: pts, upRef: upH, wx, wxB, wyT, wyB, wyL, n: nn, nB, split, splitBand: hr * 0.1, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN) + 0.4 * sink), region: REGION.haut, name: 'kopf' });
       prims.push(head);
       // Ohren: flache Lappen seitlich hinten oben, nach außen-hinten geneigt (Giraffe, Dackel); Hörnchen: zwei kurze
       // Stiele mit Knopf oben hinten (Giraffe) — einfache Anbauten direkt am Kopf
@@ -568,7 +588,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     const z = normalize(sub(mouth.frame.z, scale(x, mouth.frame.z[0] * x[0] + mouth.frame.z[1] * x[1] + mouth.frame.z[2] * x[2])));
     const y = cross(z, x);
     for (const bi of [jawBone, upperJawBone, kehle0, kehle1, nacken0, nacken1]) {
-      bones[bi]!.pos = mouth.jawHinge.point;
+      // Unterkiefer und Kehle drehen um das Kiefergelenk (Mundwinkel), Oberkiefer und Nacken um das Schädelgelenk hinten
+      bones[bi]!.pos = bi === upperJawBone || bi === nacken0 || bi === nacken1 ? mouth.skullHinge.point : mouth.jawHinge.point;
       bones[bi]!.quat = quatFromFrame(x, y, z);
     }
   }
@@ -689,7 +710,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         parts.push(j < idxOf(2) ? bHip : j < idxOf(3) ? bKnee : bFoot);
       }
       // weiche Verschmelzung mit dem Rumpf (Schenkel wächst aus dem Körper), flache Standfläche mit runder Kante
-      prims.push(makeLoft({ points: pts, upRef: FWD, wx, wyT, wyB, n: 2, parts, capEnd: rFoot * 0.25, axis: [0, -1, 0] }, { op: 'union', part: bHip, k: (0.09 + 0.05 * Math.min(1, L.schenkel)) * H * thin + 0.01 * H, region: REGION.haut, name: `bein${i}` }));
+      // Beine untereinander: getrennt (Florian: „die Beine verschmelzen noch“) oder, einstellbar, zu einem Sockel
+      // verschmolzen — mit dem Rumpf verschmilzt der Schenkel immer (Verschmelzgruppe)
+      const kThigh = (0.09 + 0.05 * Math.min(1, L.schenkel)) * H * thin + 0.01 * H;
+      prims.push(makeLoft({ points: pts, upRef: FWD, wx, wyT, wyB, n: 2, parts, capEnd: rFoot * 0.25, axis: [0, -1, 0] }, { op: 'union', part: bHip, k: kThigh, region: REGION.haut, name: `bein${i}`, blendGroup: 1, kIntra: lerp(0.012 * H, kThigh, clamp(L.verschmelzen, 0, 1)) }));
     });
   }
 

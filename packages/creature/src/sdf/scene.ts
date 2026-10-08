@@ -18,6 +18,10 @@ interface PrimBase {
   op: 'union' | 'subtract';
   /** Optionaler Name (Debug, Tests). */
   name?: string;
+  /** Verschmelzgruppe: Mitglieder derselben Gruppe (aufeinanderfolgend) werden erst untereinander mit `kIntra`
+   *  vereinigt, dann als Ganzes mit `k` in den Rest — Beine verschmelzen mit dem Rumpf, aber nicht miteinander. */
+  blendGroup?: number;
+  kIntra?: number;
 }
 
 /** Rundkegel: Kapsel mit zwei Radien. */
@@ -105,6 +109,13 @@ export interface LoftStation {
   nB?: number;
   /** Halbbreite der unteren Hälfte (Unterkiefer schmaler/breiter als der Oberkiefer); ohne Angabe wie `wx`. */
   wxB?: number;
+  /** Trennhöhe der beiden Hälften in der Querschnittsebene (cb-Einheiten, 0 = Stationsmitte): hier wechseln Breite
+   *  (`wxB`) und Exponent (`nB`) — am Kopf die Lippenlinie, damit kein zweiter Knick auf Kopfmitte entsteht. */
+  split?: number;
+  /** Halbe Höhe des weichen Wechsels um `split` (0 = harter Wechsel). */
+  band?: number;
+  /** Untere Halbachse der Unterform (Überbiss: der Unterkiefer endet vorn früher als die Oberlippe); ohne Angabe `wyB`. */
+  wyL?: number;
   arc: number;
   part: number;
 }
@@ -150,15 +161,31 @@ function nearestStation(prim: LoftPrim, p: Readonly<Vec3>): number {
  * Radius des Ei-Querschnitts einer Station in Richtung (ca, cb) der Querschnittsebene: Superellipse mit getrennten
  * Halbachsen vorn/hinten; mit `taper` schrumpft die Breite zur Vorderseite (Ei: hinten rund und breit, vorn schmaler).
  */
-function sectionRadius(s: LoftStation, ca: number, cb: number): number {
-  const wy = cb >= 0 ? s.wyT : s.wyB;
-  const wx0 = cb < 0 && s.wxB !== undefined ? s.wxB : s.wx;
-  const wx = cb > 0 && s.taper > 0 ? wx0 * (1 - s.taper * cb) : wx0;
+function superRadius(wx: number, wy: number, n: number, ca: number, cb: number): number {
   if (wx < 1e-6 || wy < 1e-6) return 0;
-  const n = cb < 0 && s.nB !== undefined ? s.nB : s.n;
   const ax = Math.abs(ca) / wx, ay = Math.abs(cb) / wy;
   if (n <= 2.001) return 1 / Math.sqrt(ax * ax + ay * ay);
   return Math.pow(Math.pow(ax, n) + Math.pow(ay, n), -1 / n);
+}
+
+function sectionRadius(s: LoftStation, ca: number, cb: number): number {
+  // (ca, cb) ist die Einheitsrichtung in der Querschnittsebene (cb = Anteil „oben“), der Radius gilt in dieser Richtung
+  const taperF = cb > 0 && s.taper > 0 ? 1 - s.taper * cb : 1;
+  const rU = superRadius(s.wx * taperF, cb >= 0 ? s.wyT : s.wyB, s.n, ca, cb);
+  const lower = (s.wxB !== undefined && s.wxB !== s.wx) || s.nB !== undefined || (s.wyL !== undefined && s.wyL !== s.wyB);
+  if (!lower) return rU;
+  // Unterform (Unterkiefer): eigene Breite, Kante und Vorderkante. Wechsel an der Trennhöhe `split` (Längeneinheiten ab
+  // Stationsmitte): die Höhe des Flächenpunkts in dieser Richtung ist ≈ cb · mittlerer Radius; weich über ±band
+  // (S-Kurve) — die Oberlippe hängt als Wulst über den schmaleren, kürzeren Unterkiefer
+  const rL = superRadius((s.wxB ?? s.wx) * taperF, cb >= 0 ? s.wyT : (s.wyL ?? s.wyB), s.nB ?? s.n, ca, cb);
+  const h = cb * 0.5 * (rU + rL);
+  const split = s.split ?? 0, band = s.band ?? 0;
+  let t: number;
+  if (band > 0) {
+    const x = clamp((h - split + band) / (2 * band), 0, 1);
+    t = x * x * (3 - 2 * x);
+  } else t = h >= split ? 1 : 0;
+  return rL + (rU - rL) * t;
 }
 
 /**
@@ -325,6 +352,12 @@ export interface LoftSpec {
   nB?: number[] | number;
   /** Halbbreite der unteren Hälfte je Station (siehe `LoftStation.wxB`). */
   wxB?: number[];
+  /** Trennhöhe der Hälften je Station (siehe `LoftStation.split`); ohne Angabe die Stationsmitte. */
+  split?: number[];
+  /** Halbe Höhe des weichen Wechsels (siehe `LoftStation.band`). */
+  splitBand?: number;
+  /** Untere Halbachse der Unterform je Station (siehe `LoftStation.wyL`). */
+  wyL?: number[];
   capStart?: number;
   capEnd?: number;
   /** Gerade Bezugsachse (siehe `LoftPrim.axis`); die Punkte müssen entlang der Achse monoton sein. */
@@ -348,7 +381,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
     dz /= dl;
     const steps = [0.38, 0.71, 0.92, 1.0];
     const fac = [0.925, 0.7, 0.39, 0];
-    const extraP: Vec3[] = [], exW: number[] = [], exT: number[] = [], exB: number[] = [], exN: number[] = [], exPart: number[] = [], exTaper: number[] = [], exNB: number[] = [], exWxB: number[] = [];
+    const extraP: Vec3[] = [], exW: number[] = [], exT: number[] = [], exB: number[] = [], exN: number[] = [], exPart: number[] = [], exTaper: number[] = [], exNB: number[] = [], exWxB: number[] = [], exSplit: number[] = [], exWyL: number[] = [];
     for (let q = 0; q < steps.length; q++) {
       const t = steps[q]! * r;
       extraP.push([a[0] + dx * t, a[1] + dy * t, a[2] + dz * t]);
@@ -360,6 +393,8 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       exTaper.push(typeof spec.taper === 'number' ? spec.taper : (spec.taper?.[i] ?? 0));
       exNB.push(typeof spec.nB === 'number' ? spec.nB : (spec.nB?.[i] ?? 2));
       exWxB.push((spec.wxB?.[i] ?? spec.wx[i] ?? 0) * fac[q]!);
+      exSplit.push((spec.split?.[i] ?? 0) * fac[q]!);
+      exWyL.push((spec.wyL?.[i] ?? spec.wyB[i] ?? 0) * fac[q]!);
     }
     if (atStart) {
       spec.points = [...extraP.reverse(), ...spec.points];
@@ -371,6 +406,8 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       if (Array.isArray(spec.taper)) spec.taper = [...exTaper.reverse(), ...spec.taper];
       if (Array.isArray(spec.nB)) spec.nB = [...exNB.reverse(), ...spec.nB];
       if (spec.wxB) spec.wxB = [...exWxB.reverse(), ...spec.wxB];
+      if (spec.split) spec.split = [...exSplit.reverse(), ...spec.split];
+      if (spec.wyL) spec.wyL = [...exWyL.reverse(), ...spec.wyL];
     } else {
       spec.points = [...spec.points, ...extraP];
       spec.wx = [...spec.wx, ...exW];
@@ -381,12 +418,16 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       if (Array.isArray(spec.taper)) spec.taper = [...spec.taper, ...exTaper];
       if (Array.isArray(spec.nB)) spec.nB = [...spec.nB, ...exNB];
       if (spec.wxB) spec.wxB = [...spec.wxB, ...exWxB];
+      if (spec.split) spec.split = [...spec.split, ...exSplit];
+      if (spec.wyL) spec.wyL = [...spec.wyL, ...exWyL];
     }
   };
   spec = { ...spec, points: spec.points.slice(), wx: spec.wx.slice(), wyT: spec.wyT.slice(), wyB: spec.wyB.slice(), n: typeof spec.n === 'number' ? spec.n : spec.n.slice(), parts: typeof spec.parts === 'number' ? spec.parts : spec.parts.slice() };
   if (Array.isArray(spec.taper)) spec.taper = spec.taper.slice();
   if (Array.isArray(spec.nB)) spec.nB = spec.nB.slice();
   if (spec.wxB) spec.wxB = spec.wxB.slice();
+  if (spec.split) spec.split = spec.split.slice();
+  if (spec.wyL) spec.wyL = spec.wyL.slice();
   // (fast) doppelte Nachbarpunkte entfernen: Nullsegmente machen Tangente, Rahmen und Profil unstetig
   {
     let total = 0;
@@ -404,6 +445,8 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
         if (Array.isArray(spec.taper)) spec.taper.splice(i, 1);
         if (Array.isArray(spec.nB)) spec.nB.splice(i, 1);
         if (spec.wxB) spec.wxB.splice(i, 1);
+        if (spec.split) spec.split.splice(i, 1);
+        if (spec.wyL) spec.wyL.splice(i, 1);
       }
     }
   }
@@ -458,12 +501,16 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       taper: Math.max(0, Math.min(0.95, typeof spec.taper === 'number' ? spec.taper : (spec.taper?.[i] ?? 0))),
       ...(spec.nB !== undefined ? { nB: typeof spec.nB === 'number' ? spec.nB : (spec.nB[i] ?? (typeof spec.n === 'number' ? spec.n : (spec.n[i] ?? 2))) } : {}),
       ...(spec.wxB !== undefined ? { wxB: Math.max(0, spec.wxB[i] ?? spec.wx[i] ?? 0) } : {}),
+      ...(spec.split !== undefined ? { split: spec.split[i] ?? 0, band: Math.max(0, spec.splitBand ?? 0) } : {}),
+      ...(spec.wyL !== undefined ? { wyL: Math.max(0, spec.wyL[i] ?? spec.wyB[i] ?? 0) } : {}),
       arc,
       part: typeof spec.parts === 'number' ? spec.parts : (spec.parts[i] ?? 0),
     });
   }
   const prim: LoftPrim = { kind: 'loft', stations, capStart: spec.capStart ?? 0, capEnd: spec.capEnd ?? 0, part: base.part ?? stations[0]!.part, k: base.k, region: base.region, op: base.op };
   if (base.name !== undefined) prim.name = base.name;
+  if (base.blendGroup !== undefined) prim.blendGroup = base.blendGroup;
+  if (base.kIntra !== undefined) prim.kIntra = base.kIntra;
   if (axis) prim.axis = axis;
   return prim;
 }
@@ -700,17 +747,40 @@ export function evalScene(scene: SdfScene, p: Readonly<Vec3>): number {
   const c = compileScene(scene);
   const prims = scene.prims;
   let d = 1e9;
+  // Verschmelzgruppe (Beine): Mitglieder erst untereinander mit `kIntra` vereinigen, dann die Gruppe mit `k` in den Rest
+  let gId = -1, dG = 1e9, kG = 0;
   const ui = c.unionIdx;
   for (let q = 0; q < ui.length; q++) {
     const i = ui[q]!;
+    const pr = prims[i]!;
+    const g = pr.blendGroup;
+    if (gId >= 0 && g !== gId) {
+      d = smin(d, dG, kG);
+      gId = -1;
+    }
+    if (g !== undefined) {
+      if (gId < 0) {
+        gId = g;
+        dG = 1e9;
+        kG = c.k[i]!;
+      }
+      const kI = pr.kIntra ?? 0;
+      if (dG < 1e8) {
+        const bd = boundsDistanceAt(c, i, p);
+        if (bd > 0 && bd >= dG + kI) continue;
+      }
+      dG = smin(dG, sdPrim(p, pr), kI);
+      continue;
+    }
     // nur außerhalb des Quaders culln: innen ist die Schranke 0 und sagt nichts über ein tiefer liegendes Primitiv
     // (sonst wird bei negativem d ein weiter innen liegendes Teil übersprungen → Sprung im Feld, Risse im Netz)
     if (d < 1e8) {
       const bd = boundsDistanceAt(c, i, p);
       if (bd > 0 && bd >= d + c.k[i]!) continue;
     }
-    d = smin(d, sdPrim(p, prims[i]!), c.k[i]!);
+    d = smin(d, sdPrim(p, pr), c.k[i]!);
   }
+  if (gId >= 0) d = smin(d, dG, kG);
   const si = c.subIdx;
   for (let q = 0; q < si.length; q++) {
     const i = si[q]!;
@@ -741,17 +811,32 @@ export function evalSceneDetailed(scene: SdfScene, p: Readonly<Vec3>, out?: Scen
   let dU = 1e9;
   let dS = 1e9;
   let nearestSubtract = -1;
+  let gId = -1, dG = 1e9, kG = 0;
   for (let i = 0; i < prims.length; i++) {
     const pr = prims[i]!;
     const bd = boundsDistanceAt(c, i, p);
     const di = bd > farCull ? bd : sdPrim(p, pr);
     per[i] = di;
-    if (pr.op === 'union') dU = smin(dU, di, pr.k);
-    else if (di < dS) {
+    if (pr.op === 'union') {
+      const g = pr.blendGroup;
+      if (gId >= 0 && g !== gId) {
+        dU = smin(dU, dG, kG);
+        gId = -1;
+      }
+      if (g !== undefined) {
+        if (gId < 0) {
+          gId = g;
+          dG = 1e9;
+          kG = pr.k;
+        }
+        dG = smin(dG, di, pr.kIntra ?? 0);
+      } else dU = smin(dU, di, pr.k);
+    } else if (di < dS) {
       dS = di;
       nearestSubtract = i;
     }
   }
+  if (gId >= 0) dU = smin(dU, dG, kG);
   let d = dU;
   for (let i = 0; i < prims.length; i++) {
     const pr = prims[i]!;
@@ -826,7 +911,7 @@ export function primBounds(prim: Prim): { min: Vec3; max: Vec3 } {
     case 'loft': {
       const min: Vec3 = [Infinity, Infinity, Infinity], max: Vec3 = [-Infinity, -Infinity, -Infinity];
       for (const s of prim.stations) {
-        const r = Math.max(s.wx, s.wyT, s.wyB) + Math.max(prim.capStart, prim.capEnd);
+        const r = Math.max(s.wx, s.wxB ?? 0, s.wyT, s.wyB, s.wyL ?? 0) + Math.max(prim.capStart, prim.capEnd);
         for (let c = 0; c < 3; c++) {
           min[c] = Math.min(min[c]!, s.p[c]! - r);
           max[c] = Math.max(max[c]!, s.p[c]! + r);

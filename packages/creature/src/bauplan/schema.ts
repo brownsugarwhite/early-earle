@@ -169,6 +169,7 @@ const beine = z
     fuss: regler(B, 'unterkoerper.beine.fuss', 'Fußgröße', 0, 1, 0.5, 'Saugnapf am Boden'),
     spreiz: regler(B, 'unterkoerper.beine.spreiz', 'Spreizung', 0, 1, 0.5),
     lage: regler(B, 'unterkoerper.beine.lage', 'Beinlage', 0, 1, 0.2, '0 vorn unter der Brust (sitzende Katze) … 1 hinten unter dem Rumpf (Rex)'),
+    verschmelzen: regler(B, 'unterkoerper.beine.verschmelzen', 'Verschmelzen', 0, 1, 0, 'Beine untereinander: 0 getrennt (jedes Bein für sich), 1 zu einem Sockel verschmolzen — mit dem Rumpf verschmelzen die Schenkel immer'),
   })
   .prefault({});
 

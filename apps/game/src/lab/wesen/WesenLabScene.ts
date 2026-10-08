@@ -75,6 +75,7 @@ export class WesenLabScene implements SceneController {
   /** Nächster feiner Bau passt die Kamera neu ein (neue Vorlage, neue Ansicht). */
   private fitNext: 'voll' | 'abstand' | null = 'voll';
   private openness = 0.3;
+  private laufen = false;
   /** Standbild (Harness, Vergleichsbilder): kein Atmen, kein Blinzeln. */
   private readonly standbild: boolean;
 
@@ -92,6 +93,7 @@ export class WesenLabScene implements SceneController {
     this.meadow.target.visible = false;
     this.creature = new CreatureMesh({ stil: this.stil });
     this.creature.openness = this.openness;
+    this.creature.laufen = this.laufen;
     this.creature.breathe = !this.standbild;
     this.scene.add(this.creature.root);
     this.turntable.attach(ctx.canvas);
@@ -171,10 +173,17 @@ export class WesenLabScene implements SceneController {
     else this.fitNext = 'voll';
   }
 
-  /** Verben: Maul auf/zu setzt das Öffnungsziel (wie `setOpenness`), Blinzeln spielt einmal. */
-  play(action: 'maulAuf' | 'maulZu' | 'blinzeln'): void {
+  /** Verben: Maul auf/zu setzt das Öffnungsziel (wie `setOpenness`), Blinzeln spielt einmal, Laufen schaltet den Demo-Gang um. */
+  play(action: 'maulAuf' | 'maulZu' | 'blinzeln' | 'laufen'): void {
     if (action === 'blinzeln') this.creature?.play('blinzeln');
+    else if (action === 'laufen') this.setLaufen(!this.laufen);
     else this.setOpenness(action === 'maulAuf' ? 1 : 0);
+  }
+
+  /** Demo-Gang an/aus (Beine schwingen, Körper wippt). */
+  setLaufen(on: boolean): void {
+    this.laufen = on;
+    if (this.creature) this.creature.laufen = on;
   }
 
   getStats(): WesenLabStats {

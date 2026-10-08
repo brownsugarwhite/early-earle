@@ -28,6 +28,7 @@ function useSzeneAmStore(controller: WesenLabScene): void {
     controller.setStil(s.stil);
     controller.setBoden(s.boden);
     controller.setSpin(s.spin);
+    controller.setLaufen(s.laufen);
     controller.setOpenness(vorschauOeffnung(s));
     controller.setAnsicht(KAMERA[s.ansicht]);
     return useWesenStore.subscribe((n, p) => {
@@ -35,6 +36,7 @@ function useSzeneAmStore(controller: WesenLabScene): void {
       if (n.stil !== p.stil) controller.setStil(n.stil);
       if (n.boden !== p.boden) controller.setBoden(n.boden);
       if (n.spin !== p.spin) controller.setSpin(n.spin);
+      if (n.laufen !== p.laufen) controller.setLaufen(n.laufen);
       if (vorschauOeffnung(n) !== vorschauOeffnung(p)) controller.setOpenness(vorschauOeffnung(n));
       if (n.ansicht !== p.ansicht) controller.setAnsicht(KAMERA[n.ansicht]);
     });
@@ -90,6 +92,7 @@ function TabBereich() {
 
 function SchnellAktionen({ controller }: { controller: WesenLabScene }) {
   const spin = useWesenStore((s) => s.spin);
+  const laufen = useWesenStore((s) => s.laufen);
   const boden = useWesenStore((s) => s.boden);
   const ansicht = useWesenStore((s) => s.ansicht);
   const umschalten = (a: WesenAnsicht) => st().setAnsicht(ansicht === a ? 'held' : a);
@@ -120,6 +123,9 @@ function SchnellAktionen({ controller }: { controller: WesenLabScene }) {
       <button type="button" className="wl-btn wl-btn--akt" onClick={() => controller.play('blinzeln')} data-testid="wesen-blinzeln">
         Blinzeln
       </button>
+      <button type="button" className="wl-btn wl-btn--akt" data-active={laufen} aria-pressed={laufen} onClick={() => st().setLaufen(!laufen)} data-testid="wesen-laufen" title="Demo-Gang: Beine schwingen, Körper wippt (Beinform in Bewegung prüfen)">
+        Laufen
+      </button>
       <button type="button" className="wl-btn" data-active={spin} aria-pressed={spin} onClick={() => st().setSpin(!spin)} data-testid="wl-drehen">
         <WesenIcon name="drehen" size={20} />
         <span>Drehen</span>
@@ -146,6 +152,7 @@ export function LabWesen() {
       ansicht: search.get('ansicht'),
       boden: search.get('boden'),
       spin: search.get('spin'),
+      laufen: search.get('laufen'),
       dateien: gebuendelteVorlagen(),
       stilVorgabe: stil ? { stil, quelle: 'App' } : null,
     });

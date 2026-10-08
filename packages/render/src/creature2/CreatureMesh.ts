@@ -129,6 +129,8 @@ export class CreatureMesh {
   bones: Bone[] = [];
   build: CreatureBuild | null = null;
   private jawAxis = new Vector3(1, 0, 0);
+  /** Ruhelage der Knochen relativ zum Elternknochen (für Ketten, die neben der Drehung auch versetzt werden). */
+  private restLocal: Vector3[] = [];
   /** Vorn-Achse des Maulträgers (Körperraum) für das seitliche Kippen des Oberkiefers (Bohne). */
   private hostForward = new Vector3(0, 0, 1);
   /** Hochachse des Trägers. */
@@ -144,6 +146,10 @@ export class CreatureMesh {
   /** Kieferöffnung 0…1 (Ziel) und aktueller Wert. */
   openness = 0.3;
   private opennessNow = 0.3;
+  /** Demo-Gang (Lab): Beine schwingen, Körper wippt — zum Prüfen der Beinform in Bewegung. */
+  laufen = false;
+  private laufPhase = 0;
+  private laufAmp = 0;
   /** Blinzeln 0 (offen) … 1 (zu). */
   blink = 0;
   /** Hält die Lider in einer Stellung (0 offen … 1 zu) für Standbilder; `null` = Blinzel-Automatik. */
@@ -207,12 +213,12 @@ export class CreatureMesh {
     g.setAttribute('skinIndex', new Uint16BufferAttribute(si, 4));
     g.setAttribute('skinWeight', new BufferAttribute(build.descriptors.skinWeight, 4));
     // Alle Deskriptoren in einem verschachtelten Puffer (WebGPU erlaubt höchstens 8 Vertex-Puffer):
-    // Spine (4) · Region (4) · Extra (AO, Dicke, Kante) · Spitzmund (3) = 14 Floats je Vertex
+    // Spine (4) · Region (4) · Extra (AO, Dicke, Kante, Unterlippenseite) · Spitzmund (3) = 15 Floats je Vertex
     const n = build.positions.length / 3;
-    const packed = new Float32Array(n * 14);
+    const packed = new Float32Array(n * 15);
     const d = build.descriptors;
     for (let v = 0; v < n; v++) {
-      const o = v * 14;
+      const o = v * 15;
       packed[o] = d.spine[v * 4]!;
       packed[o + 1] = d.spine[v * 4 + 1]!;
       packed[o + 2] = d.spine[v * 4 + 2]!;
@@ -224,15 +230,16 @@ export class CreatureMesh {
       packed[o + 8] = d.ao[v]!;
       packed[o + 9] = d.thick[v]!;
       packed[o + 10] = build.crease[v]!;
-      packed[o + 11] = build.pucker[v * 3]!;
-      packed[o + 12] = build.pucker[v * 3 + 1]!;
-      packed[o + 13] = build.pucker[v * 3 + 2]!;
+      packed[o + 11] = build.seite[v]!;
+      packed[o + 12] = build.pucker[v * 3]!;
+      packed[o + 13] = build.pucker[v * 3 + 1]!;
+      packed[o + 14] = build.pucker[v * 3 + 2]!;
     }
-    const ib = new InterleavedBuffer(packed, 14);
+    const ib = new InterleavedBuffer(packed, 15);
     g.setAttribute('eeSpine', new InterleavedBufferAttribute(ib, 4, 0));
     g.setAttribute('eeRegion', new InterleavedBufferAttribute(ib, 4, 4));
-    g.setAttribute('eeExtra', new InterleavedBufferAttribute(ib, 3, 8));
-    g.setAttribute('eePucker', new InterleavedBufferAttribute(ib, 3, 11));
+    g.setAttribute('eeExtra', new InterleavedBufferAttribute(ib, 4, 8));
+    g.setAttribute('eePucker', new InterleavedBufferAttribute(ib, 3, 12));
     g.setIndex(new BufferAttribute(build.index, 1));
     g.computeBoundingSphere();
     // --- Skelett: Knochen mit Identitätsdrehung, Position relativ zum Elternknochen ---------------------------------
@@ -241,10 +248,12 @@ export class CreatureMesh {
       bone.name = `wesen-${bb.name}`;
       return bone;
     });
+    this.restLocal = [];
     build.bones.forEach((bb, i) => {
       const bone = this.bones[i]!;
       const parent = bb.parent >= 0 ? build.bones[bb.parent]!.pos : [0, 0, 0];
       bone.position.set(bb.pos[0] - parent[0]!, bb.pos[1] - parent[1]!, bb.pos[2] - parent[2]!);
+      this.restLocal.push(bone.position.clone());
       if (bb.parent >= 0) this.bones[bb.parent]!.add(bone);
     });
     const mesh = new SkinnedMesh(g, b.material === 'jelly' ? this.jellyMaterial : this.material);
@@ -265,8 +274,8 @@ export class CreatureMesh {
     }
     // Lippenband (Zahnfleisch) in Körpereinheiten: 0 ohne Lippe (Giraffe), sonst bis ≈ 10 % der Körperhöhe
     this.uniforms.lippenBand.value = b.maul.sichtbar && b.maul.lippe > 0.02 ? (0.015 + 0.085 * Math.min(1, b.maul.lippe)) * build.bodyScale : 0;
-    // ω-Lippe: das Band gehört zur Oberlippe, unten nur ein Hauch (Bild 8/9)
-    this.uniforms.lippenBandUnten.value = b.maul.wForm > 0.02 ? 0.25 : 1;
+    // ω-Lippe: das Band gehört zur Oberlippe, unten nur ein Hauch (Bild 8/9; Florian: das W darf unten nicht sichtbar sein)
+    this.uniforms.lippenBandUnten.value = b.maul.wForm > 0.02 ? 0.1 : 1;
     const gesicht = build.gesicht;
     this.uniforms.gesichtAn.value = gesicht ? 1 : 0;
     if (gesicht) {
@@ -390,11 +399,12 @@ export class CreatureMesh {
     this.applyPose();
   }
 
-  /** Spielt ein Verb (einfach): Maul auf/zu, Blinzeln. */
-  play(action: 'maulAuf' | 'maulZu' | 'blinzeln'): void {
+  /** Spielt ein Verb (einfach): Maul auf/zu, Blinzeln, Laufen (an/aus). */
+  play(action: 'maulAuf' | 'maulZu' | 'blinzeln' | 'laufen'): void {
     if (action === 'maulAuf') this.openness = 1;
     else if (action === 'maulZu') this.openness = 0;
     else if (action === 'blinzeln') this.blinkPhase = 0;
+    else if (action === 'laufen') this.laufen = !this.laufen;
   }
 
   update(dt: number): void {
@@ -402,6 +412,10 @@ export class CreatureMesh {
     // Kiefer zum Ziel
     const k = 1 - Math.exp(-dt * 9);
     this.opennessNow += (this.openness - this.opennessNow) * k;
+    // Gang: Amplitude weich ein- und ausblenden, Phase läuft nur, solange Bewegung sichtbar ist (≈ 1,4 Schritte je Sekunde)
+    this.laufAmp += ((this.laufen ? 1 : 0) - this.laufAmp) * (1 - Math.exp(-dt * 6));
+    if (this.laufAmp > 0.001) this.laufPhase += dt * Math.PI * 2 * 1.4;
+    else this.laufPhase = 0;
     // Blinzeln: Timer + Kurve (schnell zu, weicher auf)
     if (this.blinkHold !== null) {
       this.blink = this.blinkHold;
@@ -433,10 +447,22 @@ export class CreatureMesh {
     if (this.build.mouth && this.bauplan) {
       // eine Formel für Bau, Darstellung und Tests: Unterkiefer dreht, Oberkiefer hebt sich und neigt sich
       const pose = jawPose(jawRig(this.build, this.bauplan.maul), this.opennessNow);
-      if (jaw) jaw.quaternion.setFromAxisAngle(this.jawAxis, pose.lowerAngle);
-      const k0 = this.bones[this.build.throatBones[0]], k1 = this.bones[this.build.throatBones[1]];
-      if (k0) k0.quaternion.setFromAxisAngle(this.jawAxis, pose.lowerAngle * (2 / 3));
-      if (k1) k1.quaternion.setFromAxisAngle(this.jawAxis, pose.lowerAngle / 3);
+      // Unterkiefer und Kehlkette hängen am kippenden Schädel: ihr Gelenk wandert mit der Kippung (Versatz), die
+      // Drehung um die Kieferachse bleibt absolut (dieselbe Formel wie `jawTransforms`)
+      const J = new Vector3(...this.build.mouth.hinge.point), A = new Vector3(...this.build.mouth.skullHinge.point);
+      const JA = J.sub(A);
+      const setLower = (bi: number, c: number): void => {
+        const bone = this.bones[bi];
+        const rest = this.restLocal[bi];
+        if (!bone || !rest) return;
+        const qU = new Quaternion().setFromAxisAngle(this.jawAxis, pose.upperAngle * c);
+        bone.quaternion.setFromAxisAngle(this.jawAxis, pose.lowerAngle * c);
+        bone.position.copy(rest).add(JA.clone().applyQuaternion(qU).sub(JA));
+      };
+      setLower(this.build.jawBone, 1);
+      setLower(this.build.throatBones[0], 2 / 3);
+      setLower(this.build.throatBones[1], 1 / 3);
+      void jaw;
       const n0 = this.bones[this.build.napeBones[0]], n1 = this.bones[this.build.napeBones[1]];
       if (n0) n0.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle * (2 / 3)).multiply(new Quaternion().setFromAxisAngle(this.hostForward, pose.upperRoll * (2 / 3)));
       if (n1) n1.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle / 3).multiply(new Quaternion().setFromAxisAngle(this.hostForward, pose.upperRoll / 3));
@@ -452,6 +478,32 @@ export class CreatureMesh {
       const s = 1 + breath * (0.4 + 0.3 * i);
       bone.scale.set(s, 1 + breath * 0.5, s);
     });
+    // Demo-Gang (Florian: Beine in Bewegung prüfen): Hüfte schwingt um die Querachse, Knie knickt im Schwung nach hinten,
+    // Fuß hält die Sohle flach, Körper wippt zweimal je Schritt. Zweibeiner gegenphasig, Vierbeiner diagonal (Trab),
+    // Achtbeiner wechselnd — reine Bewegung, kein Bodenkontaktmodell
+    const legGroups = this.build.groups.filter((g) => g.kind === 'bein');
+    if (legGroups.length > 0) {
+      const A = this.laufAmp;
+      const n = legGroups.length;
+      const X = new Vector3(1, 0, 0);
+      legGroups.forEach((g, i) => {
+        const offset = n === 2 ? (i % 2) * Math.PI : n === 4 ? (i === 0 || i === 3 ? 0 : Math.PI) : ((i + (i >> 1)) % 2) * Math.PI;
+        const ph = this.laufPhase + offset;
+        // Stand 0 … π: das Bein streicht nach hinten; Schwung π … 2π: nach vorn mit angewinkeltem Knie
+        const hip = -0.42 * A * Math.cos(ph);
+        const knee = 0.85 * A * Math.max(0, -Math.sin(ph));
+        const [bHip, bKnee, bFoot] = g.bones;
+        const hipB = bHip !== undefined ? this.bones[bHip] : undefined;
+        const kneeB = bKnee !== undefined ? this.bones[bKnee] : undefined;
+        const footB = bFoot !== undefined ? this.bones[bFoot] : undefined;
+        if (hipB) hipB.quaternion.setFromAxisAngle(X, hip);
+        if (kneeB) kneeB.quaternion.setFromAxisAngle(X, knee);
+        if (footB) footB.quaternion.setFromAxisAngle(X, -0.6 * knee - 0.5 * hip);
+      });
+      const bob = 0.02 * this.build.bodyScale * A * (0.5 - 0.5 * Math.cos(2 * this.laufPhase));
+      this.mesh.position.y = bob;
+      if (this.upperTeeth && this.upperTeeth.parent === this.root) this.upperTeeth.position.y = bob;
+    }
   }
 
   private clearMesh(): void {
