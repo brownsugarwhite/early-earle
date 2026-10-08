@@ -88,6 +88,9 @@ export interface MouthGeometry {
   lipHUntenAt(phi: number): number;
   /** Größter Abstand der beiden Ränder (0 = ein Rand, bündig). */
   kieferStufeMax: number;
+  /** Flächenradius entlang des Ober- bzw. Unterkieferrands (bei einem Rand = `lipRAt`). */
+  lipRObenAt(phi: number): number;
+  lipRUntenAt(phi: number): number;
   lipRAt(phi: number): number;
   /** Öffnungsprofil 0…1 je Azimut (1 vorn, 0 an den Winkeln): spitz (Rex) … rund (Aal). */
   profilAt(phi: number): number;
@@ -271,6 +274,15 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const st = stufeAt((-theta + (2 * theta * i) / 20));
     kieferStufeMax = Math.max(kieferStufeMax, st.oben - st.unten);
   }
+  // Radius der Fläche entlang beider Ränder (der untere Rand kann beim Maulspalt weit unten auf dem breiteren Rumpf liegen)
+  const randRadius = (hAt: (phi: number) => number): ((phi: number) => number) => {
+    if (kieferStufeMax <= 1e-4) return (phi: number): number => interp(lipR, phi);
+    const rr: number[] = [];
+    for (let i = 0; i < n; i++) rr.push(surfacePoint(host, hAt(phis[i]!), phis[i]!, maxR).r);
+    return (phi: number): number => interp(rr, phi);
+  };
+  const lipRObenAt = randRadius(lipHObenAt);
+  const lipRUntenAt = randRadius(lipHUntenAt);
   const lipRAt = (phi: number): number => interp(lipR, phi);
   const profilAt = (phi: number): number => {
     const u = clamp(Math.abs(phi) / theta, 0, 1);
@@ -433,5 +445,5 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const thetaFold = 2 * Math.asin(clamp((1.1 * fadeLen) / lChin, 0, 1));
     return Math.min(ok, thetaFold, Math.asin(0.95));
   })();
-  return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, skullHinge: { point: skullMid, axis: hingeAxis }, upperLever, lift, kopfFrei: frei, local, lipHAt, lipHObenAt, lipHUntenAt, kieferStufeMax, lipRAt, profilAt, jawWeight, upperWeight, jawParts, upperParts, jawDepth, fadeLen, wToJoint, zCorner, jawLever, lowerAngleMax };
+  return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, skullHinge: { point: skullMid, axis: hingeAxis }, upperLever, lift, kopfFrei: frei, local, lipHAt, lipHObenAt, lipHUntenAt, kieferStufeMax, lipRObenAt, lipRUntenAt, lipRAt, profilAt, jawWeight, upperWeight, jawParts, upperParts, jawDepth, fadeLen, wToJoint, zCorner, jawLever, lowerAngleMax };
 }

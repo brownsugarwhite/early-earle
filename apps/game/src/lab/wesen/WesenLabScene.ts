@@ -303,8 +303,11 @@ export class WesenLabScene implements SceneController {
     this.turntable.apply(this.camera);
     if (this.creature) {
       this.creature.update(Math.min(dt, 0.1));
-      // Standbild: das automatische Blinzeln nie zeigen (der Zeitgeber des Wesens läuft weiter)
-      if (this.standbild) this.creature.uniforms.blink.value = 0;
+      // Standbild: das automatische Blinzeln nie zeigen (der Zeitgeber des Wesens läuft weiter) — auch die Lider
+      if (this.standbild) {
+        this.creature.uniforms.blink.value = 0;
+        if (this.creature.blinkHold === null) this.creature.blinkHold = 0;
+      }
     }
     this.meadow?.sun.requestUpdate();
     ctx.renderer.render(this.scene, this.camera);

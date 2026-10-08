@@ -612,13 +612,22 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       // (Trapez), rund und organisch; die Nase sitzt vorn auf seiner Oberkante
       const kasten = clamp(m0.kasten, 0, 1);
       if (kasten > 0.02) {
-        const halb: Vec3 = [hr * 0.3 * (0.75 + 0.25 * kasten), hr * 0.52, hr * 0.26];
-        // Der Kasten wandert mit der Maulhöhe (Florian: das Maul ließ sich über den Kasten schieben): die Maullinie liegt
-        // bei 45 % seiner Höhe — Kinn darunter, Nase an der Oberkante
+        // Zwei Kästen an der Maullinie (Florian: Höhe und Dicke von Ober- und Unterkasten einstellbar): der Oberkasten von
+        // der Lippe bis zur Nasenkante (oben breiter), der Kinnkasten darunter (zum Kinn schmaler); beide überlappen an der
+        // Lippe und verschmelzen weich. Der Kasten wandert mit der Maulhöhe (das Maul ließ sich sonst darüber schieben)
         const yLip = clamp(m0.hoehe, 0.02, 0.98) * hostH - hc;
-        const c = add(add(headCenter, scale(forwardH, zFront * 0.85 + hr * (0.05 + 0.42 * kasten) - halb[2])), scale(upH, yLip + 0.1 * halb[1]));
-        prims.push(rundbox('kastenmaul', c, halb, hr * 0.16, hr * 0.13, { trapezY: -0.35 }));
-        kastenInfo = { c, halb, oben: upH, rechts: rightH, vorn: forwardH, hr };
+        const halbW = hr * 0.3 * (0.75 + 0.25 * kasten);
+        const zFace = zFront * 0.85 + hr * (0.05 + 0.42 * kasten);
+        const hO = hr * 0.57 * clamp(m0.kastenObenHoehe, 0.3, 2), dO = hr * 0.52 * clamp(m0.kastenObenTiefe, 0.3, 2);
+        const hU = hr * 0.47 * clamp(m0.kastenUntenHoehe, 0.3, 2), dU = hr * 0.52 * clamp(m0.kastenUntenTiefe, 0.3, 2);
+        const lap = 0.08 * hr;
+        const halbO: Vec3 = [halbW, (hO + lap) / 2, dO / 2];
+        const cO = add(add(headCenter, scale(forwardH, zFace - dO / 2)), scale(upH, yLip + (hO - lap) / 2));
+        const halbU: Vec3 = [halbW * 0.98, (hU + lap) / 2, dU / 2];
+        const cU = add(add(headCenter, scale(forwardH, zFace - (dO - dU) - dU / 2)), scale(upH, yLip - (hU - lap) / 2));
+        prims.push(rundbox('kastenOben', cO, halbO, hr * 0.14, hr * 0.12, { trapezY: -0.25 }));
+        prims.push(rundbox('kastenUnten', cU, halbU, hr * 0.14, hr * 0.12, { trapezY: -0.2 }));
+        kastenInfo = { c: cO, halb: halbO, oben: upH, rechts: rightH, vorn: forwardH, hr };
       }
       // Nasenband (Florian: „die Verbindung von Nase zur Stirn soll eine Linie sein“): eine schräge Rampe, deren Oberseite
       // **in einer Geraden** von der Stirn zwischen den Augen bis zur Oberkante des Kastens (Nase) läuft — an der Nase so
@@ -665,11 +674,28 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     }
     hostBone = headBone;
     // Gelenk am Hinterkopf (70 % des hinteren Kopfteils hinter der Kopfbasis), bezogen auf den Ursprung (= Kopfmitte vorn/hinten)
-    host = { origin: sub(headCenter, scale(upH, hr * (0.42 + 0.42 * uk))), up: upH, forward: forwardH, right: rightH, height: hr * (0.42 + 0.42 * uk + 0.55 + 0.5 * ok), halfWidth: hr * 0.95, bone: headBone, jointBack: Lback * 0.7 + (Lfront - Lback) * 0.5, scene: { prims: [] }, kopfFrei: smoothstep(0.1, 0.3, b.hals.laenge), ...(kieferStufeFn ? { kieferStufe: kieferStufeFn } : {}) };
+    host = { origin: sub(headCenter, scale(upH, hr * (0.42 + 0.42 * uk))), up: upH, forward: forwardH, right: rightH, height: hr * (0.42 + 0.42 * uk + 0.55 + 0.5 * ok), halfWidth: hr * 0.95, bone: headBone, jointBack: Lback * 0.7 + (Lfront - Lback) * 0.5, scene: { prims: [] }, kopfFrei: smoothstep(0.1, 0.3, b.hals.laenge) };
   } else {
     // Körperträger: waagerechte Scheiben, Mittellinie folgt der Neigung; Kiefertiefe = Kinnband des Grundblobs (plus
     // Kehlrand), damit Brust und Bauch nicht mitschwingen
     host = { origin: [0, yb, 0], up: UP, forward: FWD, right: RIGHT, height: H, halfWidth: R0 * sx, bone: kMitte, jointBack: R0 * sz * 0.55, jawDepth: Math.max(0.06 * H, (kinnHoehe + 0.03) * H), headHeight: kopfHoehe, center: (h: number): Vec3 => axisAt(yb + h), scene: { prims: [] } };
+  }
+
+  // Kieferstufe am Träger: Breitenunterschied der Kiefer (Kopf) plus **Maulspalt** (Florian: der Drache hat das Maul über
+  // den ganzen Hals, die längste Bohne von der Seite) — der untere Rand wandert bis knapp über den Trägerboden, als
+  // Bohne über u (voll in der Mitte, null an den Mundwinkeln); die Haut dazwischen wird zur Maultasche
+  {
+    const spalt = clamp(m0.spalt, 0, 1);
+    const breit = kieferStufeFn;
+    if (breit || spalt > 0.01) {
+      const hLipH = clamp(m0.hoehe, 0.02, 0.98) * host.height;
+      const tiefMax = Math.max(0, hLipH - 0.08 * host.height);
+      host.kieferStufe = (u: number): { oben: number; unten: number } => {
+        const w = breit ? breit(u) : { oben: 0, unten: 0 };
+        const bohne = Math.pow(Math.max(0, 1 - u * u), 0.6);
+        return { oben: w.oben, unten: w.unten - spalt * tiefMax * bohne };
+      };
+    }
   }
 
   // --- Kiefermassen, Schnauze, Braue am Träger -------------------------------------------------------------------------

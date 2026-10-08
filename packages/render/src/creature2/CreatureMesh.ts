@@ -79,8 +79,13 @@ export function teilKoordinate(build: CreatureBuild): Float32Array {
   return out;
 }
 
-/** Instanzmatrix eines Zahns: Basis y = Zahnrichtung, −z = nach innen (Biegung zum Rachen), Lage plus Spitzmund-Versatz. */
-function toothMatrix(t: Tooth, spitzmund: number, out: Matrix4): Matrix4 {
+/**
+ * Instanzmatrix eines Zahns: Basis y = Zahnrichtung, −z = nach innen (Biegung zum Rachen), Lage plus Spitzmund-Versatz.
+ * Der Versatz wirkt bei der Haut **nach** dem Skinning (ungedreht, Körperraum); der Zahn hängt am Kieferknochen, also
+ * wird der Versatz mit der inversen Knochendrehung in den Knochenraum gebracht — sonst wanderten die Zähne beim Öffnen um
+ * die gedrehte Versatzdifferenz ins Fleisch (Unterkiefer 45° → ein Viertel Kopfhöhe).
+ */
+function toothMatrix(t: Tooth, spitzmund: number, out: Matrix4, invRot?: Quaternion): Matrix4 {
   const yA = new Vector3(...t.dir).normalize();
   const inw = t.inward ? new Vector3(...t.inward) : new Vector3(0, 0, -1);
   const zA = inw.multiplyScalar(-1).addScaledVector(yA, -inw.clone().multiplyScalar(-1).dot(yA)).normalize();
@@ -91,7 +96,11 @@ function toothMatrix(t: Tooth, spitzmund: number, out: Matrix4): Matrix4 {
   _s.set(t.size * 0.38, t.size, t.size * 0.38);
   out.scale(_s);
   _p.set(...t.pos);
-  if (t.pucker && spitzmund !== 0) _p.addScaledVector(new Vector3(...t.pucker), spitzmund);
+  if (t.pucker && spitzmund !== 0) {
+    const off = new Vector3(...t.pucker).multiplyScalar(spitzmund);
+    if (invRot) off.applyQuaternion(invRot);
+    _p.add(off);
+  }
   out.setPosition(_p);
   return out;
 }
@@ -128,18 +137,23 @@ function toothGeometry(stil: 'rund' | 'spitz', biegung = 0.4): BufferGeometry {
  * Öffnung), Breite x, Dicke y. Hinten (z = 0) breit am Ansatz, vorn verjüngt und leicht nach oben gebogen.
  */
 function tongueGeometry(laenge: number, breite: number, dicke: number): BufferGeometry {
-  const nu = 18, nv = 12;
+  // Zunge als pralles Kissen (Florians Skizze): geschlossene Fläche, oben gewölbt mit flacher Rinne, unten flach, Spitze
+  // rund, hinten breit und dick — kein dünner Spatel
+  const nu = 22, nv = 20;
   const pos: number[] = [], idx: number[] = [], tooth: number[] = [];
+  const halbBreite = (u: number): number => (breite / 2) * (0.62 + 0.38 * Math.sqrt(Math.max(0, 1 - Math.pow((u - 0.45) / 0.55, 2)))) * (u > 0.8 ? Math.sqrt(Math.max(0, 1 - Math.pow((u - 0.8) / 0.2, 2))) * 0.9 + 0.1 : 1);
+  const hoehe = (u: number): number => dicke * (1.1 - 0.35 * u) * (u > 0.85 ? Math.sqrt(Math.max(0.05, 1 - Math.pow((u - 0.85) / 0.15, 2))) : 1);
   for (let i = 0; i <= nu; i++) {
     const u = i / nu; // 0 Ansatz … 1 Spitze
-    const halbBreite = (breite / 2) * Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, u - 0.55) / 0.45, 2.2))) * (0.85 + 0.15 * (1 - u));
-    const d = dicke * (1 - 0.45 * u);
-    const lift = laenge * 0.12 * u * u; // Spitze hebt sich
+    const hb = halbBreite(u), h = hoehe(u);
+    const lift = laenge * 0.1 * u * u;
     for (let j = 0; j <= nv; j++) {
-      const v = -1 + (2 * j) / nv;
-      const rinne = 1 - 0.35 * Math.exp(-Math.pow(v / 0.28, 2));
-      const y = d * Math.sqrt(Math.max(0, 1 - v * v)) * rinne + lift;
-      pos.push(v * halbBreite, y, u * laenge);
+      const a = (j / nv) * Math.PI * 2;
+      const cx = Math.cos(a), sy = Math.sin(a);
+      // obere Hälfte: Halbellipse mit Rinne; untere Hälfte: flach (20 % der Höhe)
+      const rinne = sy > 0 ? 1 - 0.22 * Math.exp(-Math.pow(cx / 0.32, 2)) : 1;
+      const y = sy > 0 ? h * sy * rinne : h * 0.2 * sy;
+      pos.push(cx * hb, y + lift, u * laenge);
       tooth.push(u);
     }
   }
@@ -147,23 +161,6 @@ function tongueGeometry(laenge: number, breite: number, dicke: number): BufferGe
   for (let i = 0; i < nu; i++)
     for (let j = 0; j < nv; j++) {
       const a = i * stride + j, b = a + 1, c = a + stride, d = c + 1;
-      idx.push(a, c, b, b, c, d);
-    }
-  // Unterseite flach: Spiegelzeile y = lift (dünne Platte), als eigene Fläche
-  const base = pos.length / 3;
-  for (let i = 0; i <= nu; i++) {
-    const u = i / nu;
-    const halbBreite = (breite / 2) * Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, u - 0.55) / 0.45, 2.2))) * (0.85 + 0.15 * (1 - u));
-    const lift = laenge * 0.12 * u * u;
-    for (let j = 0; j <= nv; j++) {
-      const v = -1 + (2 * j) / nv;
-      pos.push(v * halbBreite, lift - dicke * 0.08, u * laenge);
-      tooth.push(u);
-    }
-  }
-  for (let i = 0; i < nu; i++)
-    for (let j = 0; j < nv; j++) {
-      const a = base + i * stride + j, b = a + 1, c = a + stride, d = c + 1;
       idx.push(a, b, c, b, d, c);
     }
   const g = new BufferGeometry();
@@ -203,8 +200,11 @@ export class CreatureMesh {
   private hostUp = new Vector3(0, 1, 0);
   private upperTeeth: InstancedMesh | null = null;
   /** Zahnsätze mit Spitzmund-Versatz (Lochmaul): Instanzmatrizen folgen der Öffnung. */
-  private toothSets: Array<{ im: InstancedMesh; list: Tooth[] }> = [];
+  private toothSets: Array<{ im: InstancedMesh; list: Tooth[]; bone: number }> = [];
   private spitzmundTeeth = 0;
+  private toothRotKey = 0;
+  /** Absolute Drehung der Kieferknochen aus der letzten Pose (Körperraum), für den Zahnversatz. */
+  private absRot = new Map<number, Quaternion>();
   private lowerTeeth: InstancedMesh | null = null;
   private tongue: Mesh | null = null;
   private toothGeo: BufferGeometry | null = null;
@@ -371,7 +371,7 @@ export class CreatureMesh {
       this.toothGeo = toothGeometry(stilZ, b.zaehne.biegung);
       const upper = build.mouth.teeth.filter((t) => t.upper);
       const lower = build.mouth.teeth.filter((t) => !t.upper);
-      const make = (list: typeof upper, parent: Bone | Group, offset: Vector3 | null): InstancedMesh | null => {
+      const make = (list: typeof upper, parent: Bone | Group, offset: Vector3 | null, boneIndex = -1): InstancedMesh | null => {
         if (list.length === 0) return null;
         const im = new InstancedMesh(this.toothGeo!, this.toothMaterial, list.length);
         im.name = 'wesen-zaehne';
@@ -382,23 +382,23 @@ export class CreatureMesh {
         if (offset) im.position.copy(offset);
         parent.add(im);
         // Lochmaul: Zähne mit Spitzmund-Versatz werden je Bild mit der Öffnung nachgeführt
-        if (list.some((t) => t.pucker)) this.toothSets.push({ im, list });
+        if (list.some((t) => t.pucker)) this.toothSets.push({ im, list, bone: boneIndex });
         return im;
       };
       const upperBone = this.bones[build.upperJawBone];
       if (upperBone) {
         const up0 = build.bones[build.upperJawBone]!.pos;
-        this.upperTeeth = make(upper, upperBone, new Vector3(-up0[0], -up0[1], -up0[2]));
+        this.upperTeeth = make(upper, upperBone, new Vector3(-up0[0], -up0[1], -up0[2]), build.upperJawBone);
       } else this.upperTeeth = make(upper, this.root, null);
       const jaw = this.bones[build.jawBone];
       if (jaw) {
         const jp = build.bones[build.jawBone]!.pos;
-        this.lowerTeeth = make(lower, jaw, new Vector3(-jp[0], -jp[1], -jp[2]));
+        this.lowerTeeth = make(lower, jaw, new Vector3(-jp[0], -jp[1], -jp[2]), build.jawBone);
       }
     }
     if (build.mouth && b.maul.sichtbar && b.zunge.groesse > 0.02 && build.mouth.tongue.laenge > 0.001) {
       const tg = build.mouth.tongue;
-      this.tongueGeo = tongueGeometry(tg.laenge, tg.breite, Math.max(0.004, tg.breite * 0.32));
+      this.tongueGeo = tongueGeometry(tg.laenge, tg.breite, Math.max(0.004, tg.breite * 0.5));
       const tongue = new Mesh(this.tongueGeo, this.tongueMaterial);
       tongue.name = 'wesen-zunge';
       const jaw = this.bones[build.jawBone];
@@ -548,6 +548,8 @@ export class CreatureMesh {
       // Ruhe-Weltmatrix eines Knochens = Verschiebung um seine Lage, Welt = Abs · T(pos); Lokalmatrix = Welt(Eltern)⁻¹ ·
       // Welt(Knochen) → Lage = (Abs_E⁻¹ · Abs)(pos) − pos_E, Drehung aus derselben Matrix. Eltern ohne Bewegung: Abs = 1
       const ident = new Matrix4();
+      this.absRot.clear();
+      for (const [bi, M] of abs) this.absRot.set(bi, new Quaternion().setFromRotationMatrix(M));
       for (const [bi, M] of abs) {
         const bone = this.bones[bi];
         const bb = B.bones[bi];
@@ -559,10 +561,15 @@ export class CreatureMesh {
         bone.quaternion.setFromRotationMatrix(local);
       }
       this.uniforms.spitzmund.value = pose.spitzmund;
-      if (this.toothSets.length > 0 && Math.abs(pose.spitzmund - this.spitzmundTeeth) > 1e-5) {
+      // Spitzmund-Zähne folgen der Öffnung und der Kieferdrehung (Versatz in den Knochenraum gedreht) — jedes Bild,
+      // solange sich Öffnung oder Kieferwinkel ändern
+      const rotKey = pose.lowerAngle * 7 + pose.upperAngle * 13 + pose.upperRoll * 17;
+      if (this.toothSets.length > 0 && (Math.abs(pose.spitzmund - this.spitzmundTeeth) > 1e-5 || Math.abs(rotKey - this.toothRotKey) > 1e-5)) {
         this.spitzmundTeeth = pose.spitzmund;
+        this.toothRotKey = rotKey;
         for (const set of this.toothSets) {
-          set.list.forEach((t, i) => set.im.setMatrixAt(i, toothMatrix(t, pose.spitzmund, _m)));
+          const inv = set.bone >= 0 ? this.absRot.get(set.bone)?.clone().invert() : undefined;
+          set.list.forEach((t, i) => set.im.setMatrixAt(i, toothMatrix(t, pose.spitzmund, _m, inv)));
           set.im.instanceMatrix.needsUpdate = true;
         }
       }
@@ -648,6 +655,7 @@ export class CreatureMesh {
     this.upperTeeth = this.lowerTeeth = null;
     this.toothSets = [];
     this.spitzmundTeeth = 0;
+    this.toothRotKey = 0;
     this.tongue = null;
     this.toothGeo = this.tongueGeo = null;
     this.skeleton = null;

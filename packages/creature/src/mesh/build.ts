@@ -11,6 +11,12 @@ import { add, clamp, clamp01, normalize, scale, smoothstep, sub } from '../math/
 import { adjacency, contourManifold, largestComponent, nonManifoldEdges, orientToNormals, projectAndNormals, taubin } from './surfaceNets';
 import { contourDual } from './dualContouring';
 
+/** Bohnenprofil der Lochmaul-Öffnung über u = |φ|/θ (0 Mitte … 1 Mundwinkel): oben spitzer (Nase), unten voll und rund. */
+function bohneProfil(u: number, side: number): number {
+  const base = Math.max(0, 1 - u * u);
+  return side > 0 ? Math.pow(base, 0.72) : Math.pow(base, 0.42);
+}
+
 export interface BuildOptions {
   /** Zellen entlang der größten Ausdehnung (32 Brett, 48 Vorschau, 64 Held). */
   resolution?: number;
@@ -431,7 +437,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       const spitzmundMax = (1 - clamp01(b.maul.form)) * m.gapeMax * 0.5;
       const puckerRand = b.maul.form < 0.98 ? (phi: number, sSide: number): Vec3 => {
         const uu = Math.abs(phi) / m.theta;
-        const along = Math.sqrt(Math.max(0, 1 - uu * uu));
+        const along = bohneProfil(uu, sSide);
         const seitig = 1 + clamp(b.maul.bohne, -1, 1) * clamp(phi / m.theta, -1, 1);
         return scale(m.frame.y, sSide * along * Math.max(0.2, seitig));
       } : null;
@@ -505,8 +511,9 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     const mid = ms.randU[Math.floor(ms.randU.length / 2)]!;
     const tiefeMid = mid.d;
     // Zunge liegt hinten auf dem Taschenboden und reicht nach vorn bis knapp hinter die Zähne (Bild 5/14)
-    const laenge = clamp01(b.zunge.groesse) * tiefeMid * 0.78;
-    const breite = clamp01(b.zunge.groesse) * Math.min(0.6 * m.host.halfWidth, tiefeMid * 0.75);
+    // Zunge füllt den Unterkiefer (Florians Skizze): breit, lang, prall
+    const laenge = clamp01(b.zunge.groesse) * tiefeMid * 0.88;
+    const breite = clamp01(b.zunge.groesse) * Math.min(0.85 * m.host.halfWidth, tiefeMid * 1.0);
     tongue = {
       pos: add(add(mid.p, scale(mid.w, tiefeMid * 0.9)), scale(mid.u, -woelbung * 0.55)),
       dir: normalize(add(scale(mid.w, -1), scale(mid.u, 0.1))),
@@ -550,10 +557,10 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       if (u > 1.3) continue;
       let s = seiten[v]!;
       if (s === 0) s = h > m.lipHAt(clamp(phi, -m.theta, m.theta)) ? 1 : -1;
-      // Halbkreisprofil am Rand (rundes Loch statt Linse); weg vom Rand weicher (Exponent 0,5 → 1,5), sonst zieht die
-      // Wurzelkante bei u = 1 eine Falte über die Haut
+      // Bohnenprofil am Rand (Florian: offene Mäuler sollen immer diese schöne Bohnenform haben): Oberlippe spitzer,
+      // Unterlippe voll und rund; weg vom Rand weicher, sonst zieht die Wurzelkante bei u = 1 eine Falte über die Haut
       const skin = 1 - smoothstep(0, reach, kantenAbstand[v]!);
-      const along = Math.pow(Math.max(0, 1 - u * u), 0.5 + 1.0 * (1 - skin));
+      const along = Math.pow(Math.max(0, bohneProfil(u, s)), 1 + 1.0 * (1 - skin));
       // Bohne: eine Seite öffnet weiter (Giraffe, Retriever)
       const seitig = 1 + clamp(b.maul.bohne, -1, 1) * 1.0 * clamp(phi / m.theta, -1, 1);
       const w = along * skin * (1 - tasche[v]!) * Math.max(0.2, seitig);

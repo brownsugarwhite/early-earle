@@ -74,19 +74,19 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
     klasse.push(k);
     return pos.length / 3 - 1;
   };
-  /** Feld einer Randkurve am Vertex: f = h − h_Kurve(φ), Fenster g (Mundwinkel und Lippenradius), Winkel φ. */
-  const feld = (v: number, kurve: (phiC: number) => number): { f: number; g: number; phi: number } => {
+  /** Feld einer Randkurve am Vertex: f = h − h_Kurve(φ), Fenster g (Mundwinkel und Radius der Kurve), Winkel φ, r. */
+  const feld = (v: number, kurve: (phiC: number) => number, rKurve: (phiC: number) => number): { f: number; g: number; phi: number; r: number } => {
     const q: Vec3 = [pos[v * 3]!, pos[v * 3 + 1]!, pos[v * 3 + 2]!];
     const { h, phi, r } = mouth.local(q);
     const phiC = clamp(phi, -theta, theta);
     let f = h - kurve(phiC);
     if (Math.abs(f) < EPS) f = EPS;
-    // Maulbereich: innerhalb der Mundwinkel **und** nahe am Lippenradius — Schwanz, Beine oder Rumpf auf gleicher Höhe
+    // Maulbereich: innerhalb der Mundwinkel **und** nahe am Radius der Kurve — Schwanz, Beine oder Rumpf auf gleicher Höhe
     // (versunkener Kopf, weit hinten liegende Winkel) liegen außerhalb des Fensters und bleiben ungeschnitten; das
     // Fenster ist stetig, der Schlitz endet darin wie an einer Spitze
-    const lr = mouth.lipRAt(phiC);
+    const lr = rKurve(phiC);
     const fenster = lr > 1e-6 ? Math.min((r - 0.6 * lr) / lr, (1.5 * lr - r) / lr) * 2 : 1;
-    return { f, g: Math.min(theta - Math.abs(phi), fenster), phi };
+    return { f, g: Math.min(theta - Math.abs(phi), fenster), phi, r };
   };
   interface Rand { phi: number; oben: number; unten: number; pos: Vec3 }
   /**
@@ -94,11 +94,11 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
    * eingefügt wird (Kopie oben mit Seite/Klasse sO/kO, Kopie unten mit sU/kU); an den Mundwinkeln endet der Schlitz in
    * einem gemeinsamen Spitzenvertex. Liefert den Rand nach φ sortiert, Spitzen an den Enden.
    */
-  const schneide = (kurve: (phiC: number) => number, sO: number, sU: number, kO: number, kU: number): Rand[] => {
+  const schneide = (kurve: (phiC: number) => number, rKurve: (phiC: number) => number, sO: number, sU: number, kO: number, kU: number): Rand[] => {
     const n = pos.length / 3;
     const F = new Float32Array(n), G = new Float32Array(n), PHI = new Float32Array(n);
     for (let v = 0; v < n; v++) {
-      const e = feld(v, kurve);
+      const e = feld(v, kurve, rKurve);
       F[v] = e.f;
       G[v] = e.g;
       PHI[v] = e.phi;
@@ -198,15 +198,22 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   const zweiRaender = mouth.kieferStufeMax > 1e-4;
   let randO: Rand[], randU: Rand[];
   if (!zweiRaender) {
-    const r = schneide(mouth.lipHAt, 1, -1, 1, -1);
+    const r = schneide(mouth.lipHAt, mouth.lipRAt, 1, -1, 1, -1);
     randO = r;
     randU = r;
   } else {
-    randO = schneide(mouth.lipHObenAt, 1, 0, 1, 2);
-    randU = schneide(mouth.lipHUntenAt, 0, -1, 2, -1);
+    randO = schneide(mouth.lipHObenAt, mouth.lipRObenAt, 1, 0, 1, 2);
+    randU = schneide(mouth.lipHUntenAt, mouth.lipRUntenAt, 0, -1, 2, -1);
+    // Haut zwischen den Rändern entfernen: unter der oberen, über der unteren Kurve, innerhalb der Winkel und im
+    // Radiusfenster **beider** Kurven (beim Maulspalt bis zur Brust liegt der untere Rand auf einem breiteren Rumpf)
     for (let v = 0; v < n0; v++) {
-      const eo = feld(v, mouth.lipHObenAt), eu = feld(v, mouth.lipHUntenAt);
-      if (eo.f < 0 && eu.f > 0 && eo.g >= 0) klasse[v] = 2;
+      const eo = feld(v, mouth.lipHObenAt, mouth.lipRObenAt), eu = feld(v, mouth.lipHUntenAt, mouth.lipRUntenAt);
+      if (!(eo.f < 0 && eu.f > 0)) continue;
+      if (Math.abs(eo.phi) > theta) continue;
+      const phiC = clamp(eo.phi, -theta, theta);
+      const rO = mouth.lipRObenAt(phiC), rU = mouth.lipRUntenAt(phiC);
+      const rMin = Math.min(rO, rU), rMax = Math.max(rO, rU);
+      if (eo.r >= 0.6 * rMin && eo.r <= 1.5 * rMax) klasse[v] = 2;
     }
     const kept: number[] = [];
     for (let t = 0; t < tris.length; t += 3) {
@@ -219,11 +226,16 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   const nR = randO.length;
   // Randrahmen: Einwärtsrichtung zur Trägerachse, „oben“ orthogonalisiert, Tiefe elliptisch zu den Winkeln auslaufend
   const rahmen = (r: { phi: number; pos: Vec3 }): { p: Vec3; phi: number; w: Vec3; u: Vec3; d: number } => {
-    const { h } = mouth.local(r.pos);
+    const { h, phi } = mouth.local(r.pos);
     const axisPt = hostCenter(host, h);
-    let w = sub(axisPt, r.pos);
-    const wl = Math.hypot(w[0], w[1], w[2]) || 1;
-    w = [w[0] / wl, w[1] / wl, w[2] / wl];
+    let wA = sub(axisPt, r.pos);
+    const wl = Math.hypot(wA[0], wA[1], wA[2]) || 1;
+    wA = [wA[0] / wl, wA[1] / wl, wA[2] / wl];
+    // Richtung in den Rachen: vorn zur Achse (= nach hinten), seitlich und hinter der Achse zunehmend geradeaus nach
+    // hinten — Randpunkte hinter der Achse (weite Keilmäuler: Goldie, Rex) zeigten sonst nach **vorn**, die Spalten
+    // kreuzten die vorderen, das Gitter faltete sich und zeigte seine Rückseite (weiße Tasche)
+    const nachHinten = 1 - clamp(Math.cos(phi), -1, 1);
+    const w = normalize([wA[0] - host.forward[0] * nachHinten, wA[1] - host.forward[1] * nachHinten, wA[2] - host.forward[2] * nachHinten]);
     const uw = host.up[0] * w[0] + host.up[1] * w[1] + host.up[2] * w[2];
     const u = normalize([host.up[0] - w[0] * uw, host.up[1] - w[1] * uw, host.up[2] - w[2] * uw]);
     const t = clamp(r.phi / theta, -1, 1);
@@ -270,6 +282,9 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   const m = Math.max(4, opt.zeilen ?? 10);
   const tascheStart = pos.length / 3;
   const grid = new Int32Array(nR * (m + 1));
+  // ungewölbte Bahn (ohne Gaumen-/Bodenwölbung) und Wölbung je Gitterpunkt — Bezug für die Orientierung der Dreiecke
+  const gridQ = new Float64Array(nR * (m + 1) * 3);
+  const gridY = new Float64Array(nR * (m + 1));
   const tascheTiefe: number[] = new Array(tascheStart).fill(0);
   for (let i = 0; i < nR; i++) {
     const rl = randO[i]!;
@@ -285,17 +300,27 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
     const r = rahmen({ phi: rl.phi, pos: uS });
     const pU: Vec3 = lS;
     for (let k = 0; k <= m; k++) {
+      const gi = i * (m + 1) + k;
       if (k === 0) {
-        grid[i * (m + 1)] = rl.oben;
+        grid[gi] = rl.oben;
+        gridQ[gi * 3] = pos[rl.oben * 3]!;
+        gridQ[gi * 3 + 1] = pos[rl.oben * 3 + 1]!;
+        gridQ[gi * 3 + 2] = pos[rl.oben * 3 + 2]!;
         continue;
       }
       if (k === m) {
-        grid[i * (m + 1) + m] = unten[i]!;
+        grid[gi] = unten[i]!;
+        gridQ[gi * 3] = pos[unten[i]! * 3]!;
+        gridQ[gi * 3 + 1] = pos[unten[i]! * 3 + 1]!;
+        gridQ[gi * 3 + 2] = pos[unten[i]! * 3 + 2]!;
         continue;
       }
       // Spitze (Mundwinkel): die ganze Spalte ist derselbe Vertex — keine Nullkanten, das Netz bleibt geschlossen
       if (rl.oben === unten[i] || r.d < 1e-6) {
-        grid[i * (m + 1) + k] = rl.oben;
+        grid[gi] = rl.oben;
+        gridQ[gi * 3] = pos[rl.oben * 3]!;
+        gridQ[gi * 3 + 1] = pos[rl.oben * 3 + 1]!;
+        gridQ[gi * 3 + 2] = pos[rl.oben * 3 + 2]!;
         continue;
       }
       const sK = k / m;
@@ -305,6 +330,10 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
       const y = amp * Math.sin(2 * Math.PI * sK);
       // Grundpunkt zwischen Ober- und Unterrand (bei zwei Rändern spannt die Tasche den Spalt auf)
       const bx = r.p[0] + (pU[0] - r.p[0]) * sK, by = r.p[1] + (pU[1] - r.p[1]) * sK, bz = r.p[2] + (pU[2] - r.p[2]) * sK;
+      gridQ[gi * 3] = bx + r.w[0] * x;
+      gridQ[gi * 3 + 1] = by + r.w[1] * x;
+      gridQ[gi * 3 + 2] = bz + r.w[2] * x;
+      gridY[gi] = y;
       const q: Vec3 = [bx + r.w[0] * x + r.u[0] * y, by + r.w[1] * x + r.u[1] * y, bz + r.w[2] * x + r.u[2] * y];
       // Seite als Verlauf (Rand oben +1 … Rand unten −1): die Rachenwand mischt Ober- und Unterkieferbewegung weich
       const sd = 1 - 2 * sK;
@@ -313,39 +342,69 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
       tascheTiefe.push(Math.sin(Math.PI * sK));
     }
   }
-  // Ein gemeinsames Vorzeichen für das ganze Taschengitter (Spalte × Zeile zeigt in die Höhle oder heraus — am tiefsten
-  // Punkt in der Mitte entschieden): Wicklung und Normalen folgen ihm, statt je Dreieck gegen ein Zentrum zu raten (das
-  // kippte nahe den Mundwinkeln, wo die Tasche flach wird — weggeklappte Dreiecke, weiße Löcher)
+  // Orientierung: in den gewölbten Reihen (Gaumenbogen, Bodenmulde) zeigt die Innenseite zur ungewölbten Bahn — jedes
+  // Dreieck wird dagegen geprüft; an der Rückwand (Wölbung ≈ 0) und an den flachen Mundwinkeln gilt das Vorzeichen des
+  // Spaltenpaars, entschieden an der tiefsten Zeile gegen das Spaltenzentrum, flache Spalten erben es von der nächsten
+  // tiefen Spalte. (Ein Vorzeichen fürs ganze Gitter kippte bei weiten Keilmäulern, je Dreieck gegen ein Zentrum kippte
+  // an den flachen Winkeln, das Spaltenvorzeichen allein ließ den Gaumenbogen vorn weiß.)
   const PG = (ii: number, kk: number): Vec3 => {
     const q = grid[Math.max(0, Math.min(nR - 1, ii)) * (m + 1) + Math.max(0, Math.min(m, kk))]!;
     return [pos[q * 3]!, pos[q * 3 + 1]!, pos[q * 3 + 2]!];
   };
-  let gitterZeichen = 1;
-  {
-    const i0 = Math.floor(nR / 2), k0 = Math.floor(m / 2);
-    const di = sub(PG(i0 + 1, k0), PG(i0 - 1, k0)), dk = sub(PG(i0, k0 + 1), PG(i0, k0 - 1));
-    const n0: Vec3 = [di[1] * dk[2] - di[2] * dk[1], di[2] * dk[0] - di[0] * dk[2], di[0] * dk[1] - di[1] * dk[0]];
-    const r0 = rand[i0]!;
-    const c0 = add(r0.p, scale(r0.w, r0.d * 0.5));
-    const toC = sub(c0, PG(i0, k0));
-    gitterZeichen = n0[0] * toC[0] + n0[1] * toC[1] + n0[2] * toC[2] >= 0 ? 1 : -1;
+  const kd = Math.floor(m / 2);
+  const paarZeichen = new Int8Array(Math.max(0, nR - 1));
+  const paarTiefe = new Float64Array(Math.max(0, nR - 1));
+  let dMax = 0;
+  for (let i = 0; i < nR - 1; i++) {
+    const r0 = rand[i]!, r1 = rand[i + 1]!;
+    paarTiefe[i] = 0.5 * (r0.d + r1.d);
+    dMax = Math.max(dMax, paarTiefe[i]!);
+    const a = PG(i, kd), b = PG(i + 1, kd), c = PG(i + 1, kd + 1);
+    const e1 = sub(b, a), e2 = sub(c, a);
+    const n: Vec3 = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    const c0 = add(r0.p, scale(r0.w, r0.d * 0.5)), c1 = add(r1.p, scale(r1.w, r1.d * 0.5));
+    const centre: Vec3 = [(c0[0] + c1[0]) / 2, (c0[1] + c1[1]) / 2, (c0[2] + c1[2]) / 2];
+    const toC = sub(centre, a);
+    paarZeichen[i] = n[0] * toC[0] + n[1] * toC[1] + n[2] * toC[2] >= 0 ? 1 : -1;
   }
-  // Glatte Normalen des Taschengitters aus den Gitterrichtungen (Spalte × Zeile) mit dem gemeinsamen Vorzeichen
+  for (let i = 0; i < nR - 1; i++) {
+    if (paarTiefe[i]! >= 0.2 * dMax) continue;
+    let best = -1, bd = Infinity;
+    for (let j = 0; j < nR - 1; j++) {
+      if (paarTiefe[j]! < 0.2 * dMax) continue;
+      const dist = Math.abs(j - i);
+      if (dist < bd) {
+        bd = dist;
+        best = j;
+      }
+    }
+    if (best >= 0) paarZeichen[i] = paarZeichen[best]!;
+  }
+  const zeichenBei = (i: number): number => paarZeichen[Math.max(0, Math.min(nR - 2, i))] ?? 1;
+  const wSchwelle = 0.06 * dMax;
+  // Glatte Normalen des Taschengitters aus den Gitterrichtungen (Spalte × Zeile); Vorzeichen nach derselben Regel
   const taschenNormalen = new Float32Array(pos.length);
   for (let i = 0; i < nR; i++) {
+    const zeichen = zeichenBei(i < nR - 1 ? i : i - 1);
     for (let k = 1; k < m; k++) {
-      const v = grid[i * (m + 1) + k]!;
+      const gi = i * (m + 1) + k;
+      const v = grid[gi]!;
       if (v < tascheStart) continue;
       const di = sub(PG(i + 1, k), PG(i - 1, k)), dk = sub(PG(i, k + 1), PG(i, k - 1));
       let nx = di[1] * dk[2] - di[2] * dk[1], ny = di[2] * dk[0] - di[0] * dk[2], nz = di[0] * dk[1] - di[1] * dk[0];
       const nl = Math.hypot(nx, ny, nz);
       if (nl < 1e-12) continue;
-      nx = (nx / nl) * gitterZeichen;
-      ny = (ny / nl) * gitterZeichen;
-      nz = (nz / nl) * gitterZeichen;
-      taschenNormalen[v * 3] = nx;
-      taschenNormalen[v * 3 + 1] = ny;
-      taschenNormalen[v * 3 + 2] = nz;
+      nx /= nl;
+      ny /= nl;
+      nz /= nl;
+      let sg = zeichen;
+      if (Math.abs(gridY[gi]!) > wSchwelle) {
+        const qx = gridQ[gi * 3]! - pos[v * 3]!, qy = gridQ[gi * 3 + 1]! - pos[v * 3 + 1]!, qz = gridQ[gi * 3 + 2]! - pos[v * 3 + 2]!;
+        sg = nx * qx + ny * qy + nz * qz >= 0 ? 1 : -1;
+      }
+      taschenNormalen[v * 3] = nx * sg;
+      taschenNormalen[v * 3 + 1] = ny * sg;
+      taschenNormalen[v * 3 + 2] = nz * sg;
     }
   }
   const newTris = tris;
@@ -360,34 +419,41 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
     if (nx * toC[0]! + ny * toC[1]! + nz * toC[2]! >= 0) newTris.push(x, y, z);
     else newTris.push(x, z, y);
   };
-  // Taschendreiecke: Wicklung aus dem Gitter (a,b,c / a,c,d entspricht +Spalte × Zeile), mit dem gemeinsamen Vorzeichen
-  const triG = (x: number, y: number, z: number): void => {
+  // Taschendreiecke: gewölbte Reihen gegen die ungewölbte Bahn orientiert, sonst Wicklung mit dem Spaltenvorzeichen
+  const triG = (x: number, y: number, z: number, zeichen: number): void => {
     if (x === y || y === z || x === z) return;
-    if (gitterZeichen > 0) newTris.push(x, y, z);
+    if (zeichen > 0) newTris.push(x, y, z);
     else newTris.push(x, z, y);
   };
+  const dreieck = (ga: number, gb: number, gc: number, zeichen: number): void => {
+    const yM = (Math.abs(gridY[ga]!) + Math.abs(gridY[gb]!) + Math.abs(gridY[gc]!)) / 3;
+    if (yM > wSchwelle) {
+      const ref: Vec3 = [(gridQ[ga * 3]! + gridQ[gb * 3]! + gridQ[gc * 3]!) / 3, (gridQ[ga * 3 + 1]! + gridQ[gb * 3 + 1]! + gridQ[gc * 3 + 1]!) / 3, (gridQ[ga * 3 + 2]! + gridQ[gb * 3 + 2]! + gridQ[gc * 3 + 2]!) / 3];
+      triZu(grid[ga]!, grid[gb]!, grid[gc]!, ref);
+    } else triG(grid[ga]!, grid[gb]!, grid[gc]!, zeichen);
+  };
   for (let i = 0; i < nR - 1; i++) {
+    const zeichen = zeichenBei(i);
     for (let k = 0; k < m; k++) {
-      const a = grid[i * (m + 1) + k]!, b = grid[(i + 1) * (m + 1) + k]!, c = grid[(i + 1) * (m + 1) + k + 1]!, d = grid[i * (m + 1) + k + 1]!;
-      triG(a, b, c);
-      triG(a, c, d);
+      const a = i * (m + 1) + k, b = (i + 1) * (m + 1) + k, c = (i + 1) * (m + 1) + k + 1, d = i * (m + 1) + k + 1;
+      dreieck(a, b, c, zeichen);
+      dreieck(a, c, d, zeichen);
     }
   }
-  // Zwei Ränder: Reißverschluss zwischen der interpolierten Unterreihe und den echten Unterrand-Vertices
+  // Zwei Ränder: Reißverschluss zwischen der interpolierten Unterreihe (Zeile m) und den echten Unterrand-Vertices —
+  // in derselben Wicklung wie die Gitterzeile darüber (Spaltenvorzeichen); eine Orientierung gegen ein fernes Zentrum
+  // kippte hier Dreiecke (weiße Fransen am Brustrand des Drachen)
   if (zweiRaender) {
     let i = 0, j = 0;
-    const cen = (): Vec3 => {
-      const r = rand[Math.min(nR - 1, Math.max(0, i))]!;
-      return add(r.p, scale(r.w, r.d * 0.5));
-    };
     while (i < nR - 1 || j < randU.length - 1) {
       const phiI = i < nR - 1 ? randO[i + 1]!.phi : Infinity;
       const phiJ = j < randU.length - 1 ? randU[j + 1]!.phi : Infinity;
+      const zeichen = zeichenBei(Math.min(i, nR - 2));
       if (phiI <= phiJ) {
-        triZu(unten[i]!, unten[i + 1]!, randU[j]!.unten, cen());
+        triG(unten[i]!, unten[i + 1]!, randU[j]!.unten, zeichen);
         i++;
       } else {
-        triZu(unten[i]!, randU[j + 1]!.unten, randU[j]!.unten, cen());
+        triG(unten[i]!, randU[j + 1]!.unten, randU[j]!.unten, zeichen);
         j++;
       }
     }
@@ -400,7 +466,7 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   while (seite.length < vertexCount) seite.push(0);
   // Seite der Hautvertices im Maulbereich aus der Maullinie (nur nahe der Lippe nötig, hier für alle)
   for (let v = 0; v < n0; v++) {
-    const e = feld(v, mouth.lipHAt);
+    const e = feld(v, mouth.lipHAt, mouth.lipRAt);
     seite[v] = e.g > -0.6 ? (e.f > 0 ? 1 : -1) : 0;
   }
   // Kantenabstand: Abstand zum nächsten Randpunkt (beide Ränder) — für **alle** Vertices stetig berechnet: ein

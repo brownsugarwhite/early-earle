@@ -121,6 +121,10 @@ const maul = z
     lippe: regler(M, 'maul.lippe', 'Lippenwulst', 0, 1, 0.15, 'Breite des Lippenbands: 0 unsichtbar (Giraffe), 0,15 schmaler Saum (Aal), 0,6 breites helles Band (Rex, Bild 11)'),
     kante: regler(M, 'maul.kante', 'Kieferkante', 0, 1, 0, 'weich … kantig (Raubkatze)'),
     kasten: regler(M, 'maul.kasten', 'Kastenmaul', 0, 1, 0, 'Maul und Kinn als kastenförmiger Block vor dem runden Schädel, markantes Kinn (Raubkatze, Bild 9)'),
+    kastenObenHoehe: regler(M, 'maul.kastenObenHoehe', 'Oberkasten Höhe', 0.3, 2, 1, 'Höhe des Oberkieferkastens von der Maullinie bis zur Nasenkante'),
+    kastenObenTiefe: regler(M, 'maul.kastenObenTiefe', 'Oberkasten Dicke', 0.3, 2, 1, 'wie weit der Oberkieferkasten nach vorn ragt'),
+    kastenUntenHoehe: regler(M, 'maul.kastenUntenHoehe', 'Unterkasten Höhe', 0.3, 2, 1, 'Höhe des Kinnkastens unter der Maullinie'),
+    kastenUntenTiefe: regler(M, 'maul.kastenUntenTiefe', 'Unterkasten Dicke', 0.3, 2, 1, 'wie weit der Kinnkasten nach vorn ragt (kleiner als oben: Überbiss, größer: Unterbiss)'),
     wForm: regler(M, 'maul.wForm', 'W-Form', 0, 1, 0, 'ω der Oberlippe (Hund): Spitze unter der Nase, hängende Lefzen; Katzen 0'),
     nase: regler(M, 'maul.nase', 'Nasenspiegel', 0, 1, 0, 'Nase über der Lippenmitte mit Scharte zur Lippe (Hund, Katze); 0 = keine'),
     tiefe: regler(M, 'maul.tiefe', 'Rachentiefe', 0.2, 1, 0.5),
@@ -132,6 +136,7 @@ const maul = z
     /** Maullinie als Bézier-Kontrollwerte (Höhe über der Grundlinie in Kopfhöhen, u = 0 Schnauze … 1 Mundwinkel); gesetzt
      *  ersetzt sie Neigung und Schwung — im Maul-Editor über ziehbare Punkte. */
     linie: z.array(z.number().min(-0.8).max(0.8)).min(2).max(8).optional(),
+    spalt: regler(M, 'maul.spalt', 'Maulspalt', 0, 1, 0, 'Dauerhaft offener Spalt: der untere Maulrand wandert bis zur Brust — ein langes Bohnenmaul über den ganzen Hals (Drache, Bild 5 rechts); 0 = die Ränder liegen aufeinander'),
     oberkieferBreite: regler(M, 'maul.oberkieferBreite', 'Oberkiefer Breite', 0.4, 1.6, 1, 'Breite der oberen Maulseite; ist ein Kiefer größer, schließt das Maul nicht bündig — der größere Rand liegt außen (Hauer, Drache)'),
     unterkieferBreite: regler(M, 'maul.unterkieferBreite', 'Unterkiefer Breite', 0.4, 1.6, 1),
     oberkieferLaenge: regler(M, 'maul.oberkieferLaenge', 'Oberkiefer Länge', 0.4, 1.3, 1, 'Länge der oberen Maulseite nach vorn (Tropfennase über dem Maul: Oberkiefer länger)'),
