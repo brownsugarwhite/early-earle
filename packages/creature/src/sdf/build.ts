@@ -1017,7 +1017,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     // Rumpf — Florian: „deutliche Wulst an der Ansatzstelle“); den weichen Übergang macht stattdessen ein flacher
     // Flare des Schwanzes selbst zur Wurzel hin (Katzenschwanz, Bild 9) — der Trichter innen bleibt mindestens k unter
     // der Haut, damit die Vereinigung die Flanke nicht entlang seiner Bahn aufbläht
-    const kTail = T.typ === 'wirbelsaeule' ? 0.3 * H : clamp(1.6 * r0, 0.07 * H, 0.2 * H);
+    const kTail = T.typ === 'wirbelsaeule' ? 0.12 * H : clamp(1.6 * r0, 0.07 * H, 0.2 * H);
     const iT = Math.min(bodyWx.length - 1, Math.max(0, Math.round(clamp((hT - yb) / H, 0, 1) * (bodyWx.length - 1))));
     const rMinBody = Math.max(0.05 * H, Math.min(bodyWx[iT]!, bodyWyT[iT]!, bodyWyB[iT]!));
     const rFlare = T.typ === 'wirbelsaeule' ? r0 : Math.min(r0 * 1.7, Math.max(r0, 0.5 * rMinBody));
@@ -1054,6 +1054,72 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const rMid = Math.min(rA, rTip) * 0.85;
       return Math.max(0.01 * H, (1 - g) * (1 - g) * rA + 2 * g * (1 - g) * rMid + g * g * rTip);
     });
+    // Wirbelsäule (Rex, Bild 5/11): der Schwanz ist die Fortsetzung des Rumpfs, keine Walze, die hinten aus ihm ragt.
+    // Ein Zylinder von 0,8 Rumpfradius schnitt die gerundete Rumpfrückseite unter einem Winkel, und die Verschmelzung
+    // legte entlang der Schnittkurve einen Wulst über die Flanke (Florian). Jetzt folgt der Querschnitt der Wurzel
+    // **Scheibe für Scheibe dem Rumpf** (Halbbreite und Höhenspanne der Rumpfscheibe in dieser Tiefe, knapp innen), bis
+    // zur Übernahme bei 55 % der Rumpftiefe; dahinter läuft er mit der dort gemessenen **Steigung** weiter und geht
+    // weich in den eigenen Dickenverlauf über — der Austritt ist tangential, die Haut läuft ohne Knick in den Schwanz
+    let sektionen: { wx: number[]; wyT: number[]; wyB: number[] } | null = null;
+    if (T.typ === 'wirbelsaeule') {
+      const nSt = bodyWx.length;
+      const scheibe = (zSt: number): { lo: number; hi: number; w: number } | null => {
+        let lo = Infinity, hi = -Infinity, w = 0;
+        for (let i = 0; i < nSt; i++) {
+          const y = yb + (H * i) / Math.max(1, nSt - 1);
+          const zb = axisAt(y)[2] - zSt;
+          const dd = zb >= 0 ? bodyWyB[i]! : bodyWyT[i]!;
+          const a = Math.abs(zb);
+          if (dd <= 1e-6 || a >= dd) continue;
+          const n = bodyN[i] ?? 2;
+          const wi = bodyWx[i]! * Math.pow(Math.max(0, 1 - Math.pow(a / dd, n)), 1 / n);
+          lo = Math.min(lo, y);
+          hi = Math.max(hi, y);
+          w = Math.max(w, wi);
+        }
+        return hi > lo && w > 1e-6 ? { lo, hi, w } : null;
+      };
+      const axisZ = axisAt(hT)[2];
+      const zbE = 0.55 * rBody;
+      const zE = axisZ - zbE;
+      const sE = scheibe(zE) ?? { lo: hT - r0, hi: hT + r0, w: r0 };
+      const dz = 0.06 * rBody;
+      const sE2 = scheibe(zE + dz) ?? sE;
+      // Steigung je Halbachse (pro Längeneinheit nach hinten, negativ = schrumpft)
+      const slX = (sE.w - sE2.w) / dz, slT = (sE.hi - sE2.hi) / dz, slB = (sE2.lo - sE.lo) / dz;
+      const wxE = sE.w, wyTE = Math.max(0.02 * H, sE.hi - hT), wyBE = Math.max(0.02 * H, hT - sE.lo);
+      let iE = -1;
+      for (let i = 0; i < pts.length; i++) if (pts[i]![2] <= zE + 1e-9) { iE = i; break; }
+      const sTake = iE >= 0 ? arcs[iE]! : sExit;
+      const LtOut = Math.max(1e-6, arcs[arcs.length - 1]! - sTake);
+      const wx: number[] = [], wyT: number[] = [], wyB: number[] = [];
+      for (let i = 0; i < pts.length; i++) {
+        const zSt = pts[i]![2];
+        if (zSt > zE) {
+          // innen: Rumpfscheibe, knapp innerhalb der Haut (deckungsgleiche Flächen verrauschen das Feld), zur Übernahme hin 1
+          const zb = axisZ - zSt;
+          const sc = 0.9 + 0.1 * smoothstep(0, zbE, Math.max(0, zb));
+          const sl = scheibe(zSt) ?? sE;
+          wx.push(Math.max(0.02 * H, sc * sl.w));
+          wyT.push(Math.max(0.02 * H, sc * (sl.hi - hT)));
+          wyB.push(Math.max(0.02 * H, sc * (hT - sl.lo)));
+          continue;
+        }
+        const sA = arcs[i]! - sTake;
+        // eigener Dickenverlauf (rund): Dicke → Taille → Spitze über die Länge ab der Übernahme
+        const g = clamp(sA / LtOut, 0, 1);
+        const rMid = Math.min(r0, rTip) * 0.85;
+        const rReg = Math.max(0.01 * H, (1 - g) * (1 - g) * r0 + 2 * g * (1 - g) * rMid + g * g * rTip);
+        // Fortsetzung mit der Steigung der Rumpfscheibe, weich in den Verlauf übergehend (Ableitung bei 0 bleibt)
+        const f = smoothstep(0, 0.3 * Lt, sA);
+        const ext = (v0: number, sl: number): number => Math.max(0.25 * v0, v0 + sl * sA);
+        wx.push((1 - f) * ext(wxE, slX) + f * rReg);
+        wyT.push((1 - f) * ext(wyTE, slT) + f * rReg);
+        wyB.push((1 - f) * ext(wyBE, slB) + f * rReg);
+      }
+      sektionen = { wx, wyT, wyB };
+      for (let i = 0; i < pts.length; i++) radii[i] = 0.5 * (wx[i]! + 0.5 * (wyT[i]! + wyB[i]!));
+    }
     const pl = makePolyline(pts, radii, UP);
     const g = groups.length;
     groups.push({ name: 'schwanz', kind: 'schwanz', polyline: pl, bones: [], dorsal: UP });
@@ -1072,7 +1138,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const rumpfBone = T.typ === 'wirbelsaeule' ? kMitte : kUnten;
       const parts = pts.map((_p, i) => (arcs[i]! < sExit - 1e-6 ? rumpfBone : idx[Math.min(nb - 1, Math.floor(((arcs[i]! - sExit) / Math.max(1e-6, arcs[arcs.length - 1]! - sExit)) * nb))]!));
       // Verschmelzung: Wirbelsäule breit; Anhang klein (der Flare macht den Übergang, siehe oben)
-      prims.push(makeLoft({ points: pts, upRef: UP, wx: radii, wyT: radii.map((r) => r * 1.05), wyB: radii, n: 2, parts }, { op: 'union', part: idx[0]!, k: kTail, region: REGION.haut, name: 'schwanz' }));
+      prims.push(makeLoft(sektionen ? { points: pts, upRef: UP, wx: sektionen.wx, wyT: sektionen.wyT, wyB: sektionen.wyB, n: 2, parts } : { points: pts, upRef: UP, wx: radii, wyT: radii.map((r) => r * 1.05), wyB: radii, n: 2, parts }, { op: 'union', part: idx[0]!, k: kTail, region: REGION.haut, name: 'schwanz' }));
     }
   }
 
