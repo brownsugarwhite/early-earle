@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { WESEN_VORLAGEN } from '../src/lab/wesen/presets.ts';
+import { silhouetteIoU } from '../../../scripts/wesen/iou.mjs';
 
 // Screenshot-Harness des Grundformen-Labs (Wesen-Werkstatt L1): je Vorlage aus `presets.ts` ein Bild 900×700 im
 // Referenzmodus (weißer Grund, Bögen-Kamera, Standbild) nach `docs/progress/wesen-lab-<id>[-TAG].png`, dazu der
@@ -263,11 +264,15 @@ test(`Wesen-Lab: Vorlagen im ${ANSICHT === 'referenz' ? 'Referenzmodus' : ANSICH
       await page.waitForTimeout(1200);
       s = await waitFertig(page);
     }
-    const png = await page.screenshot({ path: `${OUT}wesen-lab-${v.id}${SUFFIX}.png` });
+    const shotPfad = `${OUT}wesen-lab-${v.id}${SUFFIX}.png`;
+    const png = await page.screenshot({ path: shotPfad });
     await testInfo.attach(`wesen-lab-${v.id}.png`, { body: png, contentType: 'image/png' });
-    const zeile = `${s.triangles} Dreiecke · ${s.teeth} Zähne · ${s.resolution}³ in ${s.buildMs} ms`;
     const refPfad = `${REPO}docs/look/wesen-refs/crops/${v.id}.png`;
     const ref = existsSync(refPfad) ? readFileSync(refPfad) : undefined;
+    // Silhouetten-Überdeckung gegen den Ausschnitt (gleiche Höhe, mittig) — grobes Maß für die Form, ZIELSYSTEM §3.8
+    const ueberdeckung = ref ? silhouetteIoU(shotPfad, refPfad) : null;
+    const iouText = ueberdeckung ? ` · Überdeckung ${ueberdeckung.iou.toFixed(2)} (B/H ${ueberdeckung.seitenverhaeltnisA.toFixed(2)} | Referenz ${ueberdeckung.seitenverhaeltnisB.toFixed(2)})` : '';
+    const zeile = `${s.triangles} Dreiecke · ${s.teeth} Zähne · ${s.resolution}³ in ${s.buildMs} ms${iouText}`;
     felder.push(ref ? { titel: v.name, unter: `${v.id} · ${zeile}`, png, ref } : { titel: v.name, unter: `${v.id} · ${zeile}`, png });
     if (ref) await writeKontaktbogen(page, `${OUT}wesen-vergleich-${v.id}${SUFFIX}.png`, `${v.name} · Render | Referenz`, `${commit} · ${stamp}`, [{ titel: v.name, unter: zeile, png, ref }], 900);
     console.log(`${v.id.padEnd(16)} ${zeile}`);
