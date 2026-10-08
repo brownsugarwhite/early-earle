@@ -220,7 +220,9 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
       const amp = Math.min(s < 0.5 ? opt.wölbungOben : opt.wölbungUnten, 0.6 * r.d);
       const y = amp * Math.sin(2 * Math.PI * s);
       const q: Vec3 = [r.p[0] + r.w[0] * x + r.u[0] * y, r.p[1] + r.w[1] * x + r.u[1] * y, r.p[2] + r.w[2] * x + r.u[2] * y];
-      const idx = addVertex(q, s < 0.5 ? 1 : -1);
+      // Seite als Verlauf (Rand oben +1 … Rand unten −1): die Rachenwand mischt Ober- und Unterkieferbewegung weich
+      const sd = 1 - 2 * s;
+      const idx = addVertex(q, Math.abs(sd) < 0.05 ? (sd < 0 ? -0.05 : 0.05) : sd);
       grid[i * (m + 1) + k] = idx;
       tascheTiefe.push(Math.sin(Math.PI * s));
     }

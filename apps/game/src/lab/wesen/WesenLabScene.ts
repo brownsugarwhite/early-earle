@@ -1,5 +1,5 @@
 import { Color, PerspectiveCamera, Scene } from 'three/webgpu';
-import { stableJson, type Bauplan, type CreatureBuild } from '@ee/creature';
+import { posedPositions, stableJson, type Bauplan, type CreatureBuild } from '@ee/creature';
 import { BuildClient } from './buildClient';
 import { CreatureMesh, STIL_STANDARD, type WesenStil } from '@ee/render';
 import type { SceneController, SceneContext } from '../../canvas/SceneController';
@@ -157,8 +157,11 @@ export class WesenLabScene implements SceneController {
   }
 
   setOpenness(o: number): void {
+    const vorher = this.openness;
     this.openness = o;
     if (this.creature) this.creature.openness = o;
+    // feste Ansichten rahmen die Pose ein (weit offenes Maul ragt sonst aus dem Bild)
+    if (this.lastBuild && this.ansicht !== 'held' && Math.abs(o - vorher) > 0.05) this.frame('abstand', 0.35);
   }
 
   /** Feste Ansicht anfahren (Rahmen ums aktuelle Wesen, Winkel zurück); ohne Wesen beim nächsten Bau. */
@@ -271,7 +274,9 @@ export class WesenLabScene implements SceneController {
       // Enger Rahmen für genau die Blickrichtung, die die Kamera gleich hat (feste Ansicht oder die des Nutzers)
       const yaw = winkelZurueck ? a.yaw : this.turntable.yaw;
       const pitch = winkelZurueck ? a.pitch : this.turntable.pitch;
-      ({ distance, target } = rahmenUm(build.positions, yaw, pitch, a.fov, aspect, name === 'boegen' ? 0.84 : 0.78));
+      // Rahmen um die **Pose** (offenes Maul): Positionen wie zur Laufzeit gehäutet
+      const punkte = this.openness > 0.05 && this.bauplan && build.mouth ? posedPositions(build, { openness: this.openness, maul: this.bauplan.maul }) : build.positions;
+      ({ distance, target } = rahmenUm(punkte, yaw, pitch, a.fov, aspect, name === 'boegen' ? 0.84 : 0.78));
     }
     if (winkelZurueck) this.turntable.setAnsicht(name, { distance, target }, seconds);
     else this.turntable.animateTo({ distance, target, fov: a.fov }, seconds);

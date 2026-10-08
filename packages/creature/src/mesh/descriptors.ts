@@ -114,9 +114,33 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
         }
         boneWeights[to]! += moved;
       };
+      const transferMulti = (parts: Array<[number, number]>): void => {
+        let wSum = 0;
+        for (const [, w] of parts) wSum += w;
+        if (wSum <= 0.001) return;
+        const targets = new Set(parts.map(([t]) => t));
+        let moved = 0;
+        for (let bi = 0; bi < bones.length; bi++) {
+          if (targets.has(bi)) continue;
+          const take = boneWeights[bi]! * wSum;
+          boneWeights[bi]! -= take;
+          moved += take;
+        }
+        for (const [t, w] of parts) boneWeights[t]! += (moved * w) / wSum;
+      };
       const side = sides ? sides[v] : undefined;
-      transfer(mouth.jawWeight(p, H, side), c.jawBone);
-      transfer(mouth.upperWeight(p, H, side), c.upperJawBone);
+      // Unterkiefer + Kehlkette: Tiefenanteil f auf Kiefer (Winkel θ), Kehle 0 (⅔ θ), Kehle 1 (⅓ θ) und Rumpf (0) verteilt —
+      // die Haut unter dem Kiefer biegt sich weich statt zu reißen oder durch den Rumpf zu fahren
+      const kette = (a: number, f: number, voll: number, k0: number, k1: number): void => {
+        if (a <= 0.001 || f <= 0.001) return;
+        const parts: Array<[number, number]> = f >= 2 / 3 ? [[voll, a * (3 * f - 2)], [k0, a * (3 - 3 * f)]] : f >= 1 / 3 ? [[k0, a * (3 * f - 1)], [k1, a * (2 - 3 * f)]] : [[k1, a * 3 * f]];
+        transferMulti(parts);
+      };
+      const lo = mouth.jawParts(p, H, side);
+      kette(lo.a, lo.f, c.jawBone, c.throatBones[0], c.throatBones[1]);
+      const up = mouth.upperParts(p, H, side);
+      kette(up.a, up.f, c.upperJawBone, c.napeBones[0], c.napeBones[1]);
+      void transfer;
     }
     // Top 4 normieren
     const top: number[] = [];

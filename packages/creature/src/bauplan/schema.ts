@@ -52,6 +52,7 @@ const koerper = z
     bauch: regler(K, 'koerper.bauch', 'Bauch', -1, 1, 0, 'Wölbung vorn unten'),
     buckel: regler(K, 'koerper.buckel', 'Buckel', -1, 1, 0, 'Wölbung hinten oben'),
     neigung: regler(K, 'koerper.neigung', 'Neigung', -1, 1, 0, 'vornüber / zurück'),
+    bogen: regler(K, 'koerper.bogen', 'Bogen', -1, 1, 0, 'S-Schwung des Rumpfs: −1 Mitte nach hinten gewölbt (Drache, Kobra) … +1 nach vorn'),
     boden: regler(K, 'koerper.boden', 'Standfläche', 0, 1, 0.5, '0 spitz unten … 1 breit flach'),
     /** Optional: dichtes Breitenprofil (≥ 8 Werte 0…1, unten → oben) statt der fünf Querschnitte, z. B. aus den Grundformen. */
     profil: z.array(z.number().min(0).max(1.2)).min(8).max(96).optional(),
@@ -105,8 +106,10 @@ const maul = z
     kante: regler(M, 'maul.kante', 'Kieferkante', 0, 1, 0, 'weich … kantig (Raubkatze)'),
     wForm: regler(M, 'maul.wForm', 'W-Form', 0, 1, 0, 'Oberlippe Hund/Katze'),
     tiefe: regler(M, 'maul.tiefe', 'Rachentiefe', 0.2, 1, 0.5),
-    oeffnung: regler(M, 'maul.oeffnung', 'Öffnungsweite', 0, 1, 0.6, 'größte Öffnung vorn (Anteil der Kopfhöhe); das Mesh ist geschlossen gebaut'),
+    oeffnung: regler(M, 'maul.oeffnung', 'Öffnungsweite', 0, 1, 0.6, 'größte Öffnung vorn: 1 = 1,6 Kopfhöhen (ein anderes Tier mit einem Haps); über dem Drehwinkel senkt sich der Unterkiefer zusätzlich (Schlund wird länger)'),
     oeffnungOben: regler(M, 'maul.oeffnungOben', 'Öffnung über Oberkiefer', 0, 1, 0.6, 'Anteil der Öffnung, den der Oberkiefer übernimmt (klappt samt Augen nach hinten)'),
+    kehle: regler(M, 'maul.kehle', 'Kehlsack', 0, 1, 0, '0 Kiefer endet am Kinn … 1 der Unterkiefer reicht als dehnbarer Schlund bis zur Brust und wird beim Öffnen lang (Drache)'),
+    bohne: regler(M, 'maul.bohne', 'Bohne', -1, 1, 0, 'Oberkiefer kippt beim Öffnen seitlich (−1 links … +1 rechts), Lochmaul öffnet einseitig weiter — Bohnenform wie Giraffe/Retriever'),
   })
   .prefault({});
 
@@ -115,9 +118,10 @@ const zaehne = z
     stil: z.enum(ZAHN_STILE).default('spitz'),
     groesse: regler(M, 'zaehne.groesse', 'Zahngröße', 0, 1, 0.6),
     streuung: regler(M, 'zaehne.streuung', 'Zahnstreuung', 0, 1, 0.4, 'mal groß, mal klein'),
-    dichte: regler(M, 'zaehne.dichte', 'Zahndichte', 0, 1, 0.4),
+    dichte: regler(M, 'zaehne.dichte', 'Zahndichte', 0, 1.5, 0.4, 'ab 1 stehen die Zähne dicht an dicht (Rex, Drache)'),
     eckzaehne: regler(M, 'zaehne.eckzaehne', 'Eckzähne', 0, 1, 0.5),
     hauer: regler(M, 'zaehne.hauer', 'Hauer', 0, 1, 0, 'ragen über die Oberlippe'),
+    biegung: regler(M, 'zaehne.biegung', 'Zahnbiegung', 0, 1, 0.4, 'Fänge krümmen sich zum Rachen hin (Drache, Rex)'),
     aussen: regler(M, 'zaehne.aussen', 'Zähne außen', 0, 1, 0, '0 verschwinden geschlossen im Gegenkiefer (Aal) … 1 Fangzähne liegen außen über der Gegenlippe'),
   })
   .prefault({});
@@ -129,7 +133,7 @@ const augen = z
   .object({
     anzahl: z.number().int().min(0).max(4).default(2),
     typ: z.enum(AUGEN_TYPEN).default('schlitz'),
-    groesse: regler(A, 'augen.groesse', 'Augengröße', 0, 1, 0.5),
+    groesse: regler(A, 'augen.groesse', 'Augengröße', 0, 1.6, 0.5, 'bis Glubschauge'),
     hoehe: regler(A, 'augen.hoehe', 'Augenhöhe', 0, 1, 0.3, 'über der Maullinie'),
     abstand: regler(A, 'augen.abstand', 'Augenabstand', 0, 1, 0.5),
     lage: regler(A, 'augen.lage', 'Augenlage', 0, 1, 0.55, '0 vorn an der Schnauze … 1 hinten am Schädel'),
@@ -142,8 +146,9 @@ const B = 'Beine';
 const beine = z
   .object({
     anzahl: z.union([z.literal(2), z.literal(4), z.literal(8)]).default(2),
-    dicke: regler(B, 'unterkoerper.beine.dicke', 'Beindicke', 0.1, 1, 0.5),
-    schenkel: regler(B, 'unterkoerper.beine.schenkel', 'Schenkel', 0, 1, 0.5, 'dick und stämmig'),
+    dicke: regler(B, 'unterkoerper.beine.dicke', 'Beindicke', 0.1, 1.5, 0.5),
+    schenkel: regler(B, 'unterkoerper.beine.schenkel', 'Schenkel', 0, 1.5, 0.5, 'dicke Keule seitlich am Rumpf'),
+    hoehe: regler(B, 'unterkoerper.beine.hoehe', 'Hüfthöhe', 0, 1, 0.25, '0 tief am Bauch … 1 hoch an der Schulter (Rex, Katze, Hund: Schenkel kommen fast aus dem Hals)'),
     laenge: regler(B, 'unterkoerper.beine.laenge', 'Beinlänge', 0, 1.5, 0.4),
     fuss: regler(B, 'unterkoerper.beine.fuss', 'Fußgröße', 0, 1, 0.5, 'Saugnapf am Boden'),
     spreiz: regler(B, 'unterkoerper.beine.spreiz', 'Spreizung', 0, 1, 0.5),
@@ -191,7 +196,7 @@ const farben = z
     lippe: hex.default('#c9a6d6'),
     rachen: hex.default('#6e2334'),
     zunge: hex.default('#e07c92'),
-    zahn: hex.default('#f1e6c9'),
+    zahn: hex.default('#e6d1a6'),
     auge: hex.default('#101418'),
     pupille: hex.default('#f7f2e8'),
   })

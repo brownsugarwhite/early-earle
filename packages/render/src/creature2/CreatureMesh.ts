@@ -21,7 +21,6 @@ const UP = new Vector3(0, 1, 0);
 /** Lidwinkel um die Querachse: Ruhe (Pol nach hinten, nur ein Saum deckt den Augapfel oben) … geschlossen (Pol nach vorn). */
 const LID_REST = -1.15;
 const LID_CLOSED = 1.2;
-const _q = new Quaternion();
 const _m = new Matrix4();
 const _p = new Vector3();
 const _s = new Vector3();
@@ -31,7 +30,7 @@ function colorsOf(b: Bauplan): CreatureColors {
   return { grund: f.grund, bauch: f.bauch, muster: f.muster, akzent: f.akzent, lippe: f.lippe, rachen: f.rachen, auge: f.auge };
 }
 
-function toothGeometry(stil: 'rund' | 'spitz'): BufferGeometry {
+function toothGeometry(stil: 'rund' | 'spitz', biegung = 0.4): BufferGeometry {
   let g: BufferGeometry;
   if (stil === 'rund') {
     g = new SphereGeometry(0.5, 12, 10);
@@ -44,7 +43,8 @@ function toothGeometry(stil: 'rund' | 'spitz'): BufferGeometry {
     const pos = g.getAttribute('position');
     for (let i = 0; i < pos.count; i++) {
       const y = pos.getY(i);
-      const bend = 0.22 * y * y;
+      // Biegung zum Rachen (lokal −z; die Instanz richtet −z nach innen), Bild 5/11: Fänge krümmen sich nach hinten
+      const bend = (0.06 + 0.55 * biegung) * y * y;
       pos.setXYZ(i, pos.getX(i) * (1 + 0.15 * (1 - y)), y, pos.getZ(i) * 0.85 - bend);
     }
     pos.needsUpdate = true;
@@ -129,6 +129,8 @@ export class CreatureMesh {
   bones: Bone[] = [];
   build: CreatureBuild | null = null;
   private jawAxis = new Vector3(1, 0, 0);
+  /** Vorn-Achse des Maulträgers (Körperraum) für das seitliche Kippen des Oberkiefers (Bohne). */
+  private hostForward = new Vector3(0, 0, 1);
   /** Hochachse des Trägers. */
   private hostUp = new Vector3(0, 1, 0);
   private upperTeeth: InstancedMesh | null = null;
@@ -259,13 +261,14 @@ export class CreatureMesh {
     if (build.mouth) {
       this.jawAxis.set(...build.mouth.hinge.axis).normalize();
       this.hostUp.set(...build.mouth.up).normalize();
+      this.hostForward.crossVectors(this.jawAxis, this.hostUp).normalize();
     }
     // Lippenband (Zahnfleisch) in Körpereinheiten: 0 ohne Lippe (Giraffe), sonst bis ≈ 10 % der Körperhöhe
     this.uniforms.lippenBand.value = b.maul.sichtbar && b.maul.lippe > 0.02 ? (0.015 + 0.085 * Math.min(1, b.maul.lippe)) * build.bodyScale : 0;
     // --- Zähne und Zunge ------------------------------------------------------------------------------------------------
     const stilZ = b.zaehne.stil;
     if (build.mouth && stilZ !== 'keine' && build.mouth.teeth.length > 0) {
-      this.toothGeo = toothGeometry(stilZ);
+      this.toothGeo = toothGeometry(stilZ, b.zaehne.biegung);
       const upper = build.mouth.teeth.filter((t) => t.upper);
       const lower = build.mouth.teeth.filter((t) => !t.upper);
       const make = (list: typeof upper, parent: Bone | Group, offset: Vector3 | null): InstancedMesh | null => {
@@ -276,9 +279,17 @@ export class CreatureMesh {
         im.castShadow = this.castShadow;
         list.forEach((t, i) => {
           _p.set(...t.pos);
-          _q.setFromUnitVectors(UP, new Vector3(...t.dir).normalize());
+          // Basis: y = Zahnrichtung, −z = nach innen (Biegung zum Rachen), x quer
+          const yA = new Vector3(...t.dir).normalize();
+          const inw = t.inward ? new Vector3(...t.inward) : new Vector3(0, 0, -1);
+          const zA = inw.multiplyScalar(-1).addScaledVector(yA, -inw.clone().multiplyScalar(-1).dot(yA)).normalize();
+          if (zA.lengthSq() < 1e-6) zA.set(0, 0, 1);
+          const xA = new Vector3().crossVectors(yA, zA).normalize();
+          zA.crossVectors(xA, yA).normalize();
+          _m.makeBasis(xA, yA, zA);
           _s.set(t.size * 0.38, t.size, t.size * 0.38);
-          _m.compose(_p, _q, _s);
+          _m.scale(_s);
+          _m.setPosition(_p);
           im.setMatrixAt(i, _m);
         });
         im.instanceMatrix.needsUpdate = true;
@@ -414,7 +425,13 @@ export class CreatureMesh {
       // eine Formel für Bau, Darstellung und Tests: Unterkiefer dreht, Oberkiefer hebt sich und neigt sich
       const pose = jawPose(jawRig(this.build, this.bauplan.maul), this.opennessNow);
       if (jaw) jaw.quaternion.setFromAxisAngle(this.jawAxis, pose.lowerAngle);
-      if (upperB) upperB.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle);
+      const k0 = this.bones[this.build.throatBones[0]], k1 = this.bones[this.build.throatBones[1]];
+      if (k0) k0.quaternion.setFromAxisAngle(this.jawAxis, pose.lowerAngle * (2 / 3));
+      if (k1) k1.quaternion.setFromAxisAngle(this.jawAxis, pose.lowerAngle / 3);
+      const n0 = this.bones[this.build.napeBones[0]], n1 = this.bones[this.build.napeBones[1]];
+      if (n0) n0.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle * (2 / 3)).multiply(new Quaternion().setFromAxisAngle(this.hostForward, pose.upperRoll * (2 / 3)));
+      if (n1) n1.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle / 3).multiply(new Quaternion().setFromAxisAngle(this.hostForward, pose.upperRoll / 3));
+      if (upperB) upperB.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle).multiply(new Quaternion().setFromAxisAngle(this.hostForward, pose.upperRoll));
       this.uniforms.spitzmund.value = pose.spitzmund;
     }
     // Atmen: Körperknochen sanft skalieren (oben stärker)

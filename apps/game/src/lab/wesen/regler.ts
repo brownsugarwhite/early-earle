@@ -297,7 +297,7 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
   koerper: [
     { titel: 'Maße', ids: ['koerper.hoehe', 'koerper.breite', 'koerper.laenge'] },
     { titel: 'Form', ids: ['koerper.kubik', 'koerper.boden', 'koerper.bauch', 'koerper.buckel'] },
-    { titel: 'Haltung', ids: ['koerper.neigung'] },
+    { titel: 'Haltung', ids: ['koerper.neigung', 'koerper.bogen'] },
     {
       titel: 'Profil (unten → oben)',
       ids: ['koerper.querschnitte.0', 'koerper.querschnitte.1', 'koerper.querschnitte.2', 'koerper.querschnitte.3', 'koerper.querschnitte.4'],
@@ -315,8 +315,8 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
     { titel: 'Maul', ids: ['maul.sichtbar'] },
     { titel: 'Lage', ids: ['maul.hoehe', 'maul.neigung', 'maul.schwung'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
     { titel: 'Form', ids: ['maul.form', 'maul.rundung', 'maul.winkel', 'maul.breite', 'maul.lippe', 'maul.wForm', 'maul.kante'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
-    { titel: 'Kiefer', ids: ['maul.oberkiefer', 'maul.unterkiefer', 'maul.biss', 'maul.tiefe', 'maul.oeffnung', 'maul.oeffnungOben'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
-    { titel: 'Zähne', ids: ['zaehne.stil', 'zaehne.groesse', 'zaehne.streuung', 'zaehne.dichte', 'zaehne.eckzaehne', 'zaehne.hauer', 'zaehne.aussen', 'seed'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
+    { titel: 'Kiefer', ids: ['maul.oberkiefer', 'maul.unterkiefer', 'maul.biss', 'maul.tiefe', 'maul.oeffnung', 'maul.oeffnungOben', 'maul.kehle', 'maul.bohne'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
+    { titel: 'Zähne', ids: ['zaehne.stil', 'zaehne.groesse', 'zaehne.streuung', 'zaehne.dichte', 'zaehne.eckzaehne', 'zaehne.biegung', 'zaehne.hauer', 'zaehne.aussen', 'seed'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
     { titel: 'Zunge', ids: ['zunge.groesse'], aktiv: mitMaul, inaktiv: OHNE_MAUL },
   ],
   augen: [
@@ -327,7 +327,7 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
     { titel: 'Unterkörper', ids: ['unterkoerper.typ'] },
     {
       titel: 'Beine',
-      ids: ['unterkoerper.beine.anzahl', 'unterkoerper.beine.lage', 'unterkoerper.beine.dicke', 'unterkoerper.beine.schenkel', 'unterkoerper.beine.laenge', 'unterkoerper.beine.fuss', 'unterkoerper.beine.spreiz'],
+      ids: ['unterkoerper.beine.anzahl', 'unterkoerper.beine.lage', 'unterkoerper.beine.hoehe', 'unterkoerper.beine.dicke', 'unterkoerper.beine.schenkel', 'unterkoerper.beine.laenge', 'unterkoerper.beine.fuss', 'unterkoerper.beine.spreiz'],
       aktiv: hatBeine,
       inaktiv: 'wirkt mit Beinen (Unterkörper Beine, Vogel, Spinne)',
     },

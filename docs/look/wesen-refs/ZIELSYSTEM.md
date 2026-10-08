@@ -54,6 +54,12 @@ Bauch `#ddbc96`; Aal `#304d68` Rücken, `#9eb79f` Bauch, Rachen `#302633`.
    Kinnrundung, Schnauzenbreite. Die Maullinie ist eine Kurve auf diesem Kopf (Höhe vorn, Höhe am Winkel, Winkellage).
 3. **Beine** als Säulen-Lofts (Hüfte im Rumpf, Fuß als flacher Saugnapf/Pfote), Vereinigung mit großem k (Kehlfalte-Logik:
    weiche Mulde, keine Naht). Arme, Flügel, Ohren, Hörner, Kamm = Anbauten (K5), als eigene kleine Lofts/Ellipsoide.
+4a. **Kiefer** (Stand 08.10. mittags): Gelenk auf der Linie der Mundwinkel; davor beide Kiefer starr, dahinter Ketten
+   (Kehle unter dem Kinn, Nacken hinter dem Oberkopf) mit ⅔/⅓ des Winkels — Dehnung bleibt unter ≈ 2 (Test
+   `mouth/kette.test.ts`). Öffnung = Randabstand vorn, 1 = 1,6 Kopfhöhen („ein anderes Tier mit einem Haps“); der
+   Unterkiefer dreht nur so weit, wie Boden, starrer Rumpf und Biegezone es zulassen (Abtastung + Faltbudget), den Rest
+   übernimmt der Oberkiefer; `maul.kehle` verlängert die Biegezone (langer Unterkiefer am Hals, Drache), `maul.bohne`
+   rollt den Oberkiefer seitlich (Bohne).
 4. **Maulschnitt hart** (k ≈ ½ Zelle am feinen Gitter), Kantenvertices exakt auf der Kante (QEF), **gespalten** mit zwei
    Normalen (Haut / Rachen); Regionen als **Abstandsfelder** (Abstand zur Maulkante, Lippenbandbreite, Augenring) → der
    Shader zieht pixelscharfe Grenzen unabhängig von der Netzdichte.

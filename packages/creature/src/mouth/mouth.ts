@@ -1,5 +1,5 @@
 import type { Bauplan } from '../bauplan/schema';
-import { add, clamp, clamp01, cross, dot, lerp, normalize, scale, smoothstep, sub, type Vec3 } from '../math/vec';
+import { add, clamp, clamp01, cross, dot, lerp, normalize, quatFromAxisAngle, rotate, scale, smoothstep, sub, type Vec3 } from '../math/vec';
 import { evalScene, type SdfScene } from '../sdf/scene';
 
 /**
@@ -45,6 +45,8 @@ export interface Tooth {
   upper: boolean;
   /** Hauer: ragt über die Oberlippe. */
   hauer: boolean;
+  /** Richtung in den Rachen (zur Trägerachse) am Ansatz — die Biegung des Zahns zeigt dorthin. */
+  inward?: Vec3;
 }
 
 export interface MouthGeometry {
@@ -80,10 +82,21 @@ export interface MouthGeometry {
   jawWeight(p: Readonly<Vec3>, bodyScale: number, side?: number): number;
   /** 0…1: wie stark ein Punkt zum Oberkiefer (Oberkopf, klappt beim Öffnen zurück) gehört. */
   upperWeight(p: Readonly<Vec3>, bodyScale: number, side?: number): number;
+  /** Unterkiefer in zwei Teilen: `a` = Zugehörigkeit (Seite), `f` = starrer Anteil (1 Kiefer … 0 Rumpf: Tiefe unter dem Kinn und Lage hinter den Mundwinkeln); die Kehlkette biegt dazwischen. */
+  jawParts(p: Readonly<Vec3>, bodyScale: number, side?: number): { a: number; f: number };
+  /** Oberkiefer in zwei Teilen: `a` = Zugehörigkeit (Seite), `f` = starrer Anteil (1 vor den Mundwinkeln … 0 weit dahinter); die Nackenkette biegt dazwischen. */
+  upperParts(p: Readonly<Vec3>, bodyScale: number, side?: number): { a: number; f: number };
+  /** Höhe des starren Unterkiefers unter der Maullinie und Länge der Biegezone darunter (Kehlsack). */
+  jawDepth: number;
+  fadeLen: number;
   /** Auslauf der Kieferbewegung vom Mundwinkel (1) zum Gelenk (0) über die Vorn-Koordinate. */
   wToJoint(zLocal: number): number;
   /** Vorn-Koordinate der Mundwinkel (lokal). */
   zCorner: number;
+  /** Hebel Gelenk → Maulzentrum (Körpereinheiten). */
+  jawLever: number;
+  /** Größter Drehwinkel des Unterkiefers, bei dem der Rand über dem Boden bleibt (rad). */
+  lowerAngleMax: number;
 }
 
 /** Scheibenmitte des Trägers auf Höhe h (Mittellinie oder gerade Achse). */
@@ -124,7 +137,8 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
   const Hk = host.headHeight ?? H;
   const maxR = host.halfWidth * 3 + bodyScale;
   // Öffnungshöhe vorn bei voller Öffnung
-  const gapeMax = Math.max(0.004, clamp01(m.oeffnung) * 0.75 * Hk);
+  // Florian: alle Tiere sollen das Maul so weit aufreißen, dass sie ein anderes mit einem Haps verschlingen — 1 = 1,6 Kopfhöhen
+  const gapeMax = Math.max(0.004, clamp01(m.oeffnung) * 1.6 * Hk);
   // Weite der Öffnung: Keil bis weit zu den Mundwinkeln; Loch so breit wie hoch
   const thetaKeil = clamp(m.breite * (Math.PI / 2 + m.winkel * (Math.PI * 0.45)), 0.15, Math.PI * 0.95);
   const rLipFront = Math.max(0.02, surfacePoint(host, hLip, 0, maxR).r);
@@ -149,7 +163,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const dip = clamp01(m.schwung) * 0.12 * Hk * Math.pow(Math.sin(Math.PI * clamp01(u / 0.72)), 1.5) * (u < 0.72 ? 1 : 0);
     // W-Lippe (Katze, Hund — Bild 8/9): Mitte unter der Nase angehoben, beidseits hängende Lappen, dann zum Winkel
     const wF = clamp01(m.wForm) * fForm;
-    const wLippe = wF * Hk * (0.07 * Math.exp(-Math.pow(u / 0.22, 2)) - 0.03 * Math.exp(-Math.pow((u - 0.42) / 0.18, 2)));
+    const wLippe = wF * Hk * (0.16 * Math.exp(-Math.pow(u / 0.17, 2)) - 0.06 * Math.exp(-Math.pow((u - 0.4) / 0.17, 2)));
     const h = clamp(hLip + rise - dip + wLippe, 0.01, H - 0.01);
     const sp = surfacePoint(host, h, phi, maxR);
     phis.push(phi);
@@ -198,43 +212,125 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     return { h, phi: Math.atan2(vx, vz), r: Math.hypot(vx, vz) };
   };
 
-  // Gelenk hinter dem Träger auf Höhe der Mundwinkel, Achse quer (Bild 5/6: der Kiefer schwingt vom Hinterkopf aus)
+  // Gelenk: die Linie der Mundwinkel (eine Spur dahinter), Achse quer — wie ein echtes Kiefergelenk. Davor sind Ober- und
+  // Unterkiefer starr, dahinter laufen beide über die Nacken- bzw. Kehlkette aus (weiche Biegung statt Riss): am Winkel
+  // selbst ist der Hebel null, deshalb reißt dort nichts, auch wenn die Seiten hart getrennt sind
   const hCorner = lipHAt(theta);
-  const hingeMid: Vec3 = add(hostCenter(host, hCorner), scale(host.forward, -host.jointBack));
-  const hingeAxis: Vec3 = normalize(host.right);
   const zCorner = lipRAt(theta) * Math.cos(theta);
-  const wToJoint = (zLocal: number): number => {
-    const t = clamp((zLocal + host.jointBack) / Math.max(1e-4, zCorner + host.jointBack), 0, 1);
-    return t * t * (3 - 2 * t);
-  };
+  const zHinge = zCorner - 0.03 * H;
+  const hingeMid: Vec3 = add(hostCenter(host, hCorner), scale(host.forward, zHinge));
+  const jawLever = Math.max(0.05, Math.hypot(center[0] - hingeMid[0], center[1] - hingeMid[1], center[2] - hingeMid[2]));
+  const hingeAxis: Vec3 = normalize(host.right);
+  const rampBack = Math.max(0.3 * H, host.jointBack);
+  const wToJoint = (zLocal: number): number => smoothstep(zHinge - rampBack, zHinge, zLocal);
 
   // Unterkiefer als starrer Löffel: volle Zugehörigkeit bis zur Kiefertiefe (Unterkieferhöhe unter der Maullinie, beim
   // Körperträger höchstens 45 % der Trägerhöhe), dann weich zum Hals/Körper auslaufend
   const jawDepth = host.jawDepth ?? Math.min(hLip, 0.45 * H) * 1.05;
-  const jawWeight = (p: Readonly<Vec3>, bs: number, side?: number): number => {
-    if (m.unterkiefer < 0.05) return 0;
+  // Biegezone unter dem starren Kiefer: kurz (Kinn → Hals) oder als Kehlsack bis zur Brust (`maul.kehle`, Drache: der
+  // Unterkiefer wird beim Öffnen lang); die Kehlkette (zwei Knochen mit ⅔ und ⅓ des Winkels) biegt sie weich
+  const kehle = clamp01(m.kehle ?? 0);
+  const fadeLen = 0.6 * jawDepth + kehle * Math.max(0.25 * H, hLip - jawDepth - 0.06 * H);
+  // Lippenhöhe als Bezug für Punkte nahe der Trägerachse (Azimut dort unbestimmt — Brust unter dem Kopf): zur Achse hin
+  // auf die Höhe der Maulmitte blenden, sonst springt der Tiefenanteil zwischen Nachbarn
+  const lipRef = (phiC: number, r: number): number => lerp(hLip, lipHAt(phiC), smoothstep(0, 0.35 * host.halfWidth, r));
+  const jawParts = (p: Readonly<Vec3>, bs: number, side?: number): { a: number; f: number } => {
+    if (m.unterkiefer < 0.05) return { a: 0, f: 0 };
     const { h, phi, r } = local(p);
     const aphi = Math.abs(phi);
     const phiC = clamp(phi, -theta, theta);
-    const hl = lipHAt(phiC);
+    const hl = lipRef(phiC, r);
     const below = hl - h;
-    const band = 0.09 * bs;
-    const wBelow = side !== undefined && side !== 0 ? (side < 0 ? 1 : 0) : smoothstep(-0.2 * band, band, below) * smoothstep(0, 0.5 * band, below + 0.3 * band);
-    const wPhi = aphi <= theta ? 1 : wToJoint(r * Math.cos(phi));
-    const wDepth = 1 - smoothstep(jawDepth * 0.95, jawDepth * 1.3, below);
-    return clamp01(wBelow * wPhi * wDepth);
+    void aphi;
+    const band = Math.max(0.09 * bs, 0.12 * H);
+    // Seite aus dem Lippenschnitt (±1 Haut, dazwischen die Taschenwand) oder nach Höhe
+    const wBelow = side !== undefined && Math.abs(side) > 1e-3 ? clamp01((1 - side) / 2) : smoothstep(-0.2 * band, band, below) * smoothstep(0, 0.5 * band, below + 0.3 * band);
+    const fz = wToJoint(r * Math.cos(phi));
+    const fd = 1 - smoothstep(jawDepth * 0.95, jawDepth * 0.95 + fadeLen, below);
+    return { a: clamp01(wBelow), f: fz * fd };
+  };
+  const jawWeight = (p: Readonly<Vec3>, bs: number, side?: number): number => {
+    const { a, f } = jawParts(p, bs, side);
+    return a * f;
+  };
+  const upperParts = (p: Readonly<Vec3>, bs: number, side?: number): { a: number; f: number } => {
+    const { h, phi, r } = local(p);
+    const phiC = clamp(phi, -theta, theta);
+    const hl = lipRef(phiC, r);
+    const above = h - hl;
+    const band = Math.max(0.09 * bs, 0.12 * H);
+    const wAbove = side !== undefined && Math.abs(side) > 1e-3 ? clamp01((1 + side) / 2) : smoothstep(-0.2 * band, band, above) * smoothstep(0, 0.5 * band, above + 0.3 * band);
+    return { a: clamp01(wAbove), f: wToJoint(r * Math.cos(phi)) };
   };
   const upperWeight = (p: Readonly<Vec3>, bs: number, side?: number): number => {
-    const { h, phi, r } = local(p);
-    const aphi = Math.abs(phi);
-    const phiC = clamp(phi, -theta, theta);
-    const hl = lipHAt(phiC);
-    const above = h - hl;
-    const band = 0.09 * bs;
-    const wAbove = side !== undefined && side !== 0 ? (side > 0 ? 1 : 0) : smoothstep(-0.2 * band, band, above) * smoothstep(0, 0.5 * band, above + 0.3 * band);
-    const wPhi = aphi <= theta ? 1 : wToJoint(r * Math.cos(phi));
-    return clamp01(wAbove * wPhi);
+    const { a, f } = upperParts(p, bs, side);
+    return a * f;
   };
 
-  return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, local, lipHAt, lipRAt, profilAt, jawWeight, upperWeight, wToJoint, zCorner };
+  // Schranke des Unterkiefers aus der Geometrie darunter (Florian: der Kiefer darf nicht durch den Körper fahren): Rand und
+  // Kinnboden werden um das Gelenk gedreht, bis ein Punkt den Boden erreicht oder in den **starren** Teil des Körpers
+  // (unter der Biegezone) eintaucht — bis dahin dreht der Unterkiefer, den Rest übernimmt der Oberkiefer
+  const lowerAngleMax = (() => {
+    if (m.unterkiefer < 0.05) return 0;
+    // Abtastpunkte nur auf der Fläche und über der Standfläche (unterhalb des Trägers gibt es keine Haut mehr)
+    const hMin = 0.05 * H;
+    const aufFlaeche = (h: number, phi: number): Vec3 | null => {
+      if (h < hMin) return null;
+      const sp = surfacePoint(host, h, phi, maxR);
+      return sp.r >= maxR - 1e-6 || sp.r <= 1e-6 ? null : sp.p;
+    };
+    const samples: Array<{ p: Vec3; hStatic: number }> = [];
+    for (let i = 0; i <= 6; i++) {
+      const phi = -theta + (2 * theta * i) / 6;
+      const hl = lipHAt(phi);
+      const hStatic = hl - jawDepth * 0.95 - fadeLen;
+      for (const h of [hl, hl - jawDepth]) {
+        const q = aufFlaeche(h, phi);
+        if (q) samples.push({ p: q, hStatic });
+      }
+    }
+    // Biegezone (Kehlkette): Punkte unter dem Kinn drehen nur anteilig — auch sie dürfen nicht in den Boden
+    const kette: Array<{ p: Vec3; anteil: number }> = [];
+    for (let i = 0; i <= 4; i++) {
+      const phi = -theta + (2 * theta * i) / 4;
+      const hl = lipHAt(phi);
+      for (let k = 1; k <= 3; k++) {
+        const q = aufFlaeche(hl - jawDepth - (fadeLen * k) / 4, phi);
+        if (q) kette.push({ p: q, anteil: 1 - k / 4 });
+      }
+    }
+    const floor = 0.04 * bodyScale;
+    // Drehsinn: positiver Winkel senkt die Front (wie im Rig); sonst spiegeln
+    const probe = add(hingeMid, rotate(quatFromAxisAngle(hingeAxis, 0.1), sub(center, hingeMid)));
+    const sign = dot(sub(probe, center), host.up) < 0 ? 1 : -1;
+    const step = (2 * Math.PI) / 180;
+    let ok = 0;
+    for (let k = 1; k <= 36; k++) {
+      const ang = k * step;
+      const q = quatFromAxisAngle(hingeAxis, sign * ang);
+      let frei = true;
+      for (const sm of kette) {
+        const pr = add(hingeMid, rotate(quatFromAxisAngle(hingeAxis, sign * ang * sm.anteil), sub(sm.p, hingeMid)));
+        if (pr[1] < floor * 0.5) { frei = false; break; }
+      }
+      if (!frei) break;
+      for (const sm of samples) {
+        const pr = add(hingeMid, rotate(q, sub(sm.p, hingeMid)));
+        if (pr[1] < floor) { frei = false; break; }
+        // starrer Teil: unter der Biegezone oder hinter dem Gelenk (ein Kinn, das nach hinten in den Rumpf schwenkt)
+        const hr = dot(sub(pr, host.origin), host.up);
+        const zr = dot(sub(pr, hostCenter(host, hr)), host.forward);
+        if ((hr < sm.hStatic + 0.02 * H || zr < zHinge - 0.02 * H) && evalScene(host.scene, pr) < -0.025 * bodyScale) { frei = false; break; }
+      }
+      if (!frei) break;
+      ok = ang;
+    }
+    // Faltbudget: die Biegezone unter dem Kinn kann höchstens ≈ 60 % ihrer Länge an Verschiebung aufnehmen, sonst
+    // schiebt sich der Kiefer durch die Haut darunter (Florian: „fährt durch das Mesh“); mehr Weg → Kehlsack (`maul.kehle`)
+    const chin = surfacePoint(host, hLip - jawDepth, 0, maxR).p;
+    const lChin = Math.max(0.05, Math.hypot(chin[0] - hingeMid[0], chin[1] - hingeMid[1], chin[2] - hingeMid[2]));
+    const thetaFold = 2 * Math.asin(clamp((0.6 * fadeLen) / lChin, 0, 1));
+    return Math.min(ok, thetaFold, Math.asin(0.95));
+  })();
+  return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, local, lipHAt, lipRAt, profilAt, jawWeight, upperWeight, jawParts, upperParts, jawDepth, fadeLen, wToJoint, zCorner, jawLever, lowerAngleMax };
 }

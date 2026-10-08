@@ -38,6 +38,9 @@ export interface CreatureBuild {
   crease: Float32Array;
   /** Spitzmund-Feld (xyz je Vertex, Einheit): radiale Weitung des Lochmauls, skaliert mit `spitzmund`. */
   pucker: Float32Array;
+  /** Hebel Gelenk → Maulzentrum und größter Unterkieferwinkel über dem Boden (siehe `MouthGeometry`). */
+  jawLever: number;
+  lowerAngleMax: number;
   /** Maximaler Öffnungswinkel (rad) der Kieferbewegung (Mesh ist geschlossen gebaut). */
   maxOpenAngle: number;
   bones: Bone[];
@@ -60,6 +63,10 @@ export interface CreatureBuild {
   eyes: EyeSpec[];
   hostBone: number;
   jawBone: number;
+  /** Kehlkette unter dem Unterkiefer (⅔ und ⅓ des Kieferwinkels). */
+  throatBones: [number, number];
+  /** Nackenkette hinter dem Oberkiefer (⅔ und ⅓ des Oberkieferwinkels). */
+  napeBones: [number, number];
   upperJawBone: number;
   /** gepolsterte SDF-Grenzen (Gitter). */
   bounds: { min: Vec3; max: Vec3 };
@@ -272,7 +279,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       const total = arc[arc.length - 1]!;
       const headH = m.host.height;
       const baseSize = z.groesse * 0.3 * headH;
-      const spacing = Math.max(baseSize * 0.9, total / (6 + 22 * z.dichte));
+      const spacing = Math.max(baseSize * 0.45, total / (6 + 22 * z.dichte));
       const count = Math.max(2, Math.floor(total / spacing));
       const at = (s: number): { p: Vec3; w: Vec3; u: Vec3; phi: number } => {
         let i = 0;
@@ -310,7 +317,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
           const vertical = upper ? scale(r.u, -1) : r.u;
           const dir = normalize(add(vertical, scale(r.w, inward)));
           const pos = add(add(r.p, scale(r.w, band * 0.6 + size * 0.25)), scale(vertical, -size * 0.12));
-          teeth.push({ pos, dir, size, upper, hauer: isHauer });
+          teeth.push({ pos, dir, size, upper, hauer: isHauer, inward: r.w });
         }
       };
       place(true, 0);
@@ -361,7 +368,9 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       // Halbkreisprofil: rundes Loch statt Linse
       const along = Math.sqrt(Math.max(0, 1 - u * u));
       const skin = 1 - smoothstep(0, reach, kantenAbstand[v]!);
-      const w = along * skin * (1 - tasche[v]!);
+      // Bohne: eine Seite öffnet weiter (Giraffe, Retriever)
+      const seitig = 1 + clamp(b.maul.bohne, -1, 1) * 0.6 * clamp(phi / m.theta, -1, 1);
+      const w = along * skin * (1 - tasche[v]!) * Math.max(0.2, seitig);
       if (w < 1e-4) continue;
       pucker[v * 3] = fy[0] * s * w;
       pucker[v * 3 + 1] = fy[1] * s * w;
@@ -370,10 +379,9 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   }
   // Öffnungswinkel aus Spalthöhe und Hebel (Gelenk → Maulzentrum)
   let maxOpenAngle = 0;
-  if (m) {
-    const Ljaw = Math.max(0.05, Math.hypot(m.center[0] - m.jawHinge.point[0], m.center[1] - m.jawHinge.point[1], m.center[2] - m.jawHinge.point[2]));
-    maxOpenAngle = Math.asin(Math.min(0.95, m.gapeMax / Ljaw));
-  }
+  if (m) maxOpenAngle = Math.asin(Math.min(0.95, m.gapeMax / m.jawLever));
+  const jawLever = m?.jawLever ?? 1;
+  const lowerAngleMax = m?.lowerAngleMax ?? Math.PI / 2;
   const mb = { min: [Infinity, Infinity, Infinity] as Vec3, max: [-Infinity, -Infinity, -Infinity] as Vec3 };
   for (let i = 0; i < positions.length; i += 3)
     for (let k = 0; k < 3; k++) {
@@ -389,6 +397,8 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     descriptors,
     crease,
     pucker,
+    jawLever,
+    lowerAngleMax,
     maxOpenAngle,
     bones: c.bones,
     groups: c.groups.map((g) => ({ name: g.name, kind: g.kind, bones: g.bones })),
@@ -398,6 +408,8 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     eyes: c.eyes,
     hostBone: c.hostBone,
     jawBone: c.jawBone,
+    throatBones: c.throatBones,
+    napeBones: c.napeBones,
     upperJawBone: c.upperJawBone,
     bounds: c.bounds,
     meshBounds: mb,

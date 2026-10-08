@@ -339,12 +339,15 @@ export function createToothMaterial(u: CreatureMaterialUniforms, zahnHex: string
   material.fog = false;
   const base = uniform(new Vector3(...f.base));
   const dark = uniform(new Vector3(...f.schatten));
+  const light = uniform(new Vector3(...f.licht));
   material.colorNode = Fn(() => {
     const t = attribute('eeTooth', 'float') as FloatNode;
     const N = normalize(normalView as unknown as Vec3Node);
     const wrap = dot(N, u.lightDir).mul(0.5).add(0.5);
     const v = stepShade(wrap, u.stufen, u.federung, u.verlauf);
-    const col = mix(dark, base, smoothstep(0.2, 0.8, v.mul(0.6).add(t.mul(0.5))));
+    // Bild 5/11: Beige am Ansatz, zur Spitze hin heller (fast weiß); Schattenseite warm-dunkel
+    const grad = mix(base, light, smoothstep(0.15, 0.95, t));
+    const col = mix(mix(dark, grad, 0.55), grad, smoothstep(0.1, 0.7, v));
     return vec4(col, 1);
   })();
   return material;

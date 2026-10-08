@@ -51,6 +51,10 @@ export interface Construction {
   hostBone: number;
   jawBone: number;
   upperJawBone: number;
+  /** Kehlkette unter dem Unterkiefer: zwei Knochen am Gelenk mit ⅔ und ⅓ des Kieferwinkels (weiche Biegung). */
+  throatBones: [number, number];
+  /** Nackenkette hinter dem Oberkiefer: zwei Knochen am Gelenk mit ⅔ und ⅓ des Oberkieferwinkels. */
+  napeBones: [number, number];
 }
 
 const UP: Vec3 = [0, 1, 0];
@@ -209,7 +213,12 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   };
 
   // --- Körper: Rotationskörper aus dem Profil, drei Knochen entlang der Achse ----------------------------------
-  const axisAt = (y: number): Vec3 => [0, y, shear * (y - yb)];
+  // Bogen: S-Schwung der Mittellinie (Mitte nach hinten/vorn), dazu die lineare Neigung
+  const bogen = clamp(b.koerper.bogen, -1, 1);
+  const axisAt = (y: number): Vec3 => {
+    const t = clamp((y - yb) / H, 0, 1);
+    return [0, y, shear * (y - yb) + bogen * 0.3 * H * Math.sin(Math.PI * t)];
+  };
   const root = bone('root', -1, [0, 0, 0], QUAT_ID, 0);
   const radii = bodyRadii(b, R0, H);
   const bodyGroup = groups.length;
@@ -387,7 +396,9 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       for (let i = 0; i < nS; i++) {
         const u = i / (nS - 1); // 0 Hinterkopf … 1 Schnauzenspitze
         pts.push(add(headBase, scale(forwardH, -Lback + (Lback + Lfront) * u)));
-        const endRound = Math.sqrt(Math.max(0, 1 - Math.pow((u - 0.5) / 0.5, 6))); // runde Enden
+        // runde Enden; kantige Kiefer (Raubkatze) haben eine flachere Schnauzenfront
+        const kanteK = clamp(m0.kante, 0, 1);
+        const endRound = Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(u - 0.5) / 0.5, u > 0.5 ? 6 + 8 * kanteK : 6)));
         // Bild 5/11: Schädel hinten hoch mit flachem Scheitel, Braue als breiter Wulst über den Augen, Schnauze fällt nach
         // vorn ab und bleibt breit (Haube); Unterkiefer als Löffel, zur Kinnspitze flacher
         // Wangen: breite Backen unter den Augen (Katze, Bild 9) — die Breite wächst im hinteren Kopfdrittel bis zur Schnauzenwurzel
@@ -402,15 +413,17 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         // Stirn: hohe runde Stirn hinten (Hund) oder flacher Schädel (Rex)
         const stirn = clamp(b.kopf.stirn, -1, 1);
         const skull = hr * (0.55 + 0.5 * ok) * (1 - 0.62 * slope + nase) * (1 + 0.3 * braue * Math.exp(-Math.pow((u - 0.5) / 0.16, 2))) * (1 + 0.28 * stirn * (1 - u) * (1 - u));
-        const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.3 * Math.max(0, (u - 0.5) / 0.5) ** 1.6);
+        // Unterkiefer als Löffel; kantig: flaches Kinn, das bis zur Schnauzenfront durchläuft (Bild 9: eckiges Kinn)
+        const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.3 * (1 - 0.85 * kanteK) * Math.max(0, (u - 0.5) / 0.5) ** 1.6);
         wx.push(width * endRound);
         wyT.push(skull * endRound);
         wyB.push(jaw * endRound);
         // Kieferkante: Schnauze und Kinn kantig (Raubkatze, Bild 9), der Schädel hinten bleibt rund
-        nn.push(2.1 + 1.6 * clamp(m0.kante, 0, 1) * smoothstep(0.45, 0.8, u));
+        nn.push(2.1 + 3.2 * kanteK * smoothstep(0.4, 0.75, u));
       }
-      // weite Verschmelzung bei kurzem Hals: Schulter → Hinterkopf ohne Kerbe
-      const head = makeLoft({ points: pts, upRef: upH, wx, wyT, wyB, n: nn, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.5 + 0.7 * (1 - tN)), region: REGION.haut, name: 'kopf' });
+      // Verschmelzung klein genug, dass Kanten und Schnauze des Kopfs stehen bleiben (kantige Raubkatze); der Übergang
+      // zur Schulter kommt aus der Überlappung von Kopf und Rumpf, nicht aus einem großen Rundungsradius
+      const head = makeLoft({ points: pts, upRef: upH, wx, wyT, wyB, n: nn, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN)), region: REGION.haut, name: 'kopf' });
       prims.push(head);
       // Ohren: flache Lappen seitlich hinten oben, nach außen-hinten geneigt (Giraffe, Dackel); Hörnchen: zwei kurze
       // Stiele mit Knopf oben hinten (Giraffe) — einfache Anbauten direkt am Kopf
@@ -450,7 +463,11 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   groups.push({ name: 'kiefer', kind: 'kiefer', polyline: makePolyline([host.origin, add(host.origin, scale(host.forward, host.halfWidth))], [host.halfWidth * 0.5, host.halfWidth * 0.5], UP), bones: [], dorsal: scale(host.up, -1) });
   const jawBone = bone('unterkiefer', hostBone, host.origin, QUAT_ID, jawGroup);
   const upperJawBone = bone('oberkiefer', hostBone, host.origin, QUAT_ID, jawGroup);
-  groups[jawGroup]!.bones.push(jawBone, upperJawBone);
+  const kehle0 = bone('kehle0', hostBone, host.origin, QUAT_ID, jawGroup);
+  const kehle1 = bone('kehle1', hostBone, host.origin, QUAT_ID, jawGroup);
+  const nacken0 = bone('nacken0', hostBone, host.origin, QUAT_ID, jawGroup);
+  const nacken1 = bone('nacken1', hostBone, host.origin, QUAT_ID, jawGroup);
+  groups[jawGroup]!.bones.push(jawBone, upperJawBone, kehle0, kehle1, nacken0, nacken1);
 
   host.scene = { prims: prims.slice() };
   host.scene = { prims: prims.slice() };
@@ -462,7 +479,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   if (maulAn && b.maul.wForm > 0.02) {
     const wF = clamp(b.maul.wForm, 0, 1);
     const Hk = host.headHeight ?? host.height;
-    const hN = clamp(mouth.hLip + (0.12 + 0.06 * wF) * Hk, 0.02 * host.height, 0.98 * host.height);
+    // über der Mitte der W-Lippe (dort ist die Linie um bis zu 0,16 Kopfhöhen angehoben)
+    const hN = clamp(mouth.hLip + (0.16 * wF + 0.08 + 0.04 * wF) * Hk, 0.02 * host.height, 0.98 * host.height);
     const nasenScene: SdfScene = { prims: prims.filter((p) => p.op === 'union') };
     const sp = surfacePoint({ ...host, scene: nasenScene }, hN, 0, host.halfWidth * 3 + H);
     const e = 0.01 * H;
@@ -473,7 +491,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     ]);
     const upN = normalize(sub(host.up, scale(nrm, dot(host.up, nrm))));
     const rightN = normalize(cross(upN, nrm));
-    const rN = (0.03 + 0.045 * wF) * Hk;
+    const rN = (0.035 + 0.06 * wF) * Hk;
     const nase: EllipsoidPrim = { kind: 'ellipsoid', op: 'union', part: hostBone, k: 0.5 * rN, region: REGION.haut, name: 'nase', c: add(sp.p, scale(nrm, -rN * 0.3)), r: [rN * 1.35, rN * 0.8, rN], q: quatFromFrame(rightN, upN, nrm) };
     prims.push(nase);
   }
@@ -481,7 +499,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     const x = mouth.jawHinge.axis;
     const z = normalize(sub(mouth.frame.z, scale(x, mouth.frame.z[0] * x[0] + mouth.frame.z[1] * x[1] + mouth.frame.z[2] * x[2])));
     const y = cross(z, x);
-    for (const bi of [jawBone, upperJawBone]) {
+    for (const bi of [jawBone, upperJawBone, kehle0, kehle1, nacken0, nacken1]) {
       bones[bi]!.pos = mouth.jawHinge.point;
       bones[bi]!.quat = quatFromFrame(x, y, z);
     }
@@ -544,18 +562,29 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         : n === 4
           ? [-(45 + 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, (45 + 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, -Math.min(165, 135 - 20 * L.spreiz + 40 * (lage - 0.2)) * d2r, Math.min(165, 135 - 20 * L.spreiz + 40 * (lage - 0.2)) * d2r]
           : [-35, 35, -70, 70, -110, 110, -145, 145].map((x) => x * d2r);
-    // Bild 12: Schenkel als Keule außen am Rumpf (nicht versteckt), kurzer Unterschenkel, breiter flacher Fuß mit Zehen
-    const rThigh = H * (0.06 + 0.12 * L.dicke + 0.12 * L.schenkel) * thin;
+    // Bild 8/9/12 (Florian): Beine organisch, dicke Schenkel kommen seitlich hoch am Rumpf heraus — fast aus Kopf/Hals —
+    // mit sauberem Übergang; Unterschenkel kurz, Fuß als flaches Polster (Tatzen/Zehen später als eigene Elemente)
+    const rThigh = H * (0.06 + 0.14 * L.dicke + 0.14 * L.schenkel) * thin;
     const rKnee = H * (0.05 + 0.09 * L.dicke) * thin;
     const rAnkle = H * (0.04 + 0.07 * L.dicke) * thin;
     const rFoot = H * (0.06 + 0.12 * L.fuss) * (0.6 + 0.4 * L.dicke);
+    const hoeheB = clamp(L.hoehe, 0, 1);
+    // Halbmaß des Rumpfs auf Höhe y in Richtung φ (Ei-Querschnitt der Loft-Station)
+    const rumpfRadiusBei = (y: number, phi: number): number => {
+      const i = Math.min(bodyWx.length - 1, Math.max(0, Math.round(clamp((y - yb) / H, 0, 1) * (bodyWx.length - 1))));
+      const wx = Math.max(1e-4, bodyWx[i]!), wy = Math.max(1e-4, Math.cos(phi) >= 0 ? bodyWyT[i]! : bodyWyB[i]!);
+      const sx_ = Math.sin(phi) / wx, cy_ = Math.cos(phi) / wy;
+      return 1 / Math.max(1e-6, Math.sqrt(sx_ * sx_ + cy_ * cy_));
+    };
     azis.forEach((phi, i) => {
-      const hHip = yb + H * (0.03 + 0.07 * L.laenge);
-      // Hüfte tief an der Rumpfflanke; die Keule ragt über die Flanke hinaus und hängt unter dem Bauch (Bild 12)
-      const flank = 0.88 + 0.1 * L.schenkel;
-      const hip: Vec3 = add(axisAt(hHip), [Math.sin(phi) * R0 * sx * flank, 0, Math.cos(phi) * R0 * sz * flank]);
+      // Hüfte: tief am Bauch … hoch an der Schulter; Mitte so weit innen, dass die Keule um die Hälfte ihres Radius vorsteht
+      const hHip = yb + H * (0.04 + 0.06 * L.laenge + 0.72 * hoeheB);
+      const rB = rumpfRadiusBei(hHip, phi);
+      const hipDist = Math.max(0.2 * rB, rB - 0.25 * rThigh);
+      const hip: Vec3 = add(axisAt(hHip), [Math.sin(phi) * hipDist, 0, Math.cos(phi) * hipDist]);
       const foot: Vec3 = [Math.sin(phi) * R0 * sx * (0.72 + 0.35 * L.spreiz), 0, Math.cos(phi) * R0 * sz * (0.72 + 0.2 * L.spreiz) + 0.04 * H];
-      const knee: Vec3 = add(scale(add(hip, foot), 0.5), [Math.sin(phi) * 0.04 * H, 0, 0.1 * legLen + 0.04 * H]);
+      // Knie: unter dem Rumpf, nach vorn gebeugt (Dino/Hund) — die Keule läuft schräg von der Schulter zum Knie
+      const knee: Vec3 = [foot[0] + Math.sin(phi) * 0.03 * H, rKnee + rFoot * 0.4 + 0.3 * (hHip - yb) + 0.2 * legLen, foot[2] + 0.12 * legLen + 0.05 * H];
       const ankle: Vec3 = [foot[0], rFoot * 0.6, foot[2] - 0.03 * H];
       const g = groups.length;
       const pl = makePolyline([hip, knee, ankle, foot], [rThigh, rKnee, rAnkle, rFoot * 0.5], FWD);
@@ -565,8 +594,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const bFoot = bone(`bein${i}Fuss`, bKnee, ankle, QUAT_ID, g);
       groups[g]!.bones.push(bHip, bKnee, bFoot);
       // Bein als ein Loft: Keule beginnt im Rumpf (verschmolzen), ist an der Hüfte am dicksten, Knie, Knöchel, Fußpolster
-      // mit flacher Standfläche und nach vorn gestrecktem Querschnitt (Zehen)
-      const hipTop: Vec3 = add(hip, [Math.sin(phi) * -0.15 * R0 * sx, rThigh * 1.3, Math.cos(phi) * -0.15 * R0 * sz]);
+      const hipTop: Vec3 = add(hip, [Math.sin(phi) * -0.25 * rThigh, rThigh * 1.1, Math.cos(phi) * -0.25 * rThigh]);
       const ctrl: Vec3[] = [hipTop, hip, knee, ankle, [foot[0], rFoot * 0.35, foot[2]], [foot[0], 0, foot[2]]];
       const rr = [rThigh * 0.85, rThigh, rKnee, rAnkle, rFoot * 1.1, rFoot * 1.2];
       const pts = catmullRom(ctrl, 4);
@@ -586,23 +614,12 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         const r = radAt(j);
         const footness = clamp((j - idxOf(3)) / Math.max(1, idxOf(5) - idxOf(3)), 0, 1);
         wx.push(r * (1 + 0.2 * footness));
-        wyT.push(r * (1 + (0.6 + 0.5 * L.fuss) * footness));
+        wyT.push(r * (1 + (0.5 + 0.4 * L.fuss) * footness));
         wyB.push(r * (1 + 0.1 * footness));
         parts.push(j < idxOf(2) ? bHip : j < idxOf(3) ? bKnee : bFoot);
       }
-      prims.push(makeLoft({ points: pts, upRef: FWD, wx, wyT, wyB, n: 2, parts, capEnd: rFoot * 0.35, axis: [0, -1, 0] }, { op: 'union', part: bHip, k: (0.05 + 0.04 * L.schenkel) * H * thin + 0.01 * H, region: REGION.haut, name: `bein${i}` }));
-      // Zehen: drei flache Kapseln vorn am Fußpolster, leicht gespreizt (Rex Bild 12, Pfoten Bild 9)
-      if (thin > 0.5 && L.fuss > 0.1) {
-        const toeLen = rFoot * (0.55 + 0.5 * L.fuss);
-        const toeR = rFoot * 0.26;
-        const front = rFoot * (1.2 + 0.5 * L.fuss);
-        for (const a of [-0.45, 0, 0.45]) {
-          const dir: Vec3 = normalize([Math.sin(a), 0, Math.cos(a)]);
-          const base: Vec3 = [foot[0] + dir[0] * front * 0.55, toeR * 0.95, foot[2] + dir[2] * front * 0.55];
-          const tip: Vec3 = [base[0] + dir[0] * toeLen, toeR * 0.9, base[2] + dir[2] * toeLen];
-          prims.push({ kind: 'capsule', op: 'union', part: bFoot, k: toeR * 0.9, region: REGION.haut, name: `zehe${i}`, a: base, b: tip, ra: toeR, rb: toeR * 0.8 });
-        }
-      }
+      // Übergang: weich genug für „aus dem Rumpf geknetet“, klein genug, dass die Keule eine Keule bleibt
+      prims.push(makeLoft({ points: pts, upRef: FWD, wx, wyT, wyB, n: 2, parts, capEnd: rFoot * 0.35, axis: [0, -1, 0] }, { op: 'union', part: bHip, k: (0.08 + 0.05 * Math.min(1, L.schenkel)) * H * thin + 0.01 * H, region: REGION.haut, name: `bein${i}` }));
     });
   }
 
@@ -731,5 +748,5 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   }
 
   const scene: SdfScene = { prims };
-  return { bauplan: b, scene, bones, groups, mouth, eyes, bodyScale: H, bounds: sceneBounds(scene), hostBone, jawBone, upperJawBone };
+  return { bauplan: b, scene, bones, groups, mouth, eyes, bodyScale: H, bounds: sceneBounds(scene), hostBone, jawBone, upperJawBone, throatBones: [kehle0, kehle1], napeBones: [nacken0, nacken1] };
 }
