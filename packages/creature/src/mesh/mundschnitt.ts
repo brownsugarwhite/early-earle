@@ -12,6 +12,12 @@ import type { MouthGeometry } from '../mouth/mouth';
  * Kante ist exakt die Kurve (kein Gitter-Treppen), beide Seiten haben eigene Normalen und Regionen — scharf und sauber
  * bei jeder Netzdichte. Öffnen = Unterkieferknochen dreht die untere Hautseite samt Taschenboden.
  */
+/**
+ * Ungleich große Kiefer (Kieferstufe): es gibt **zwei** Ränder — der Oberkieferrand liegt auf der Oberform, der
+ * Unterkieferrand auf der Unterform, die Haut der Stufe dazwischen entfällt und die Tasche spannt den Spalt auf. So
+ * schließt das Maul geschlossen nicht bündig (Hauer, Drache ohne Unterkiefer), zu den Mundwinkeln laufen beide Ränder
+ * zusammen.
+ */
 export interface MundSchnitt {
   positions: Float32Array;
   index: Uint32Array;
@@ -24,11 +30,13 @@ export interface MundSchnitt {
   kantenAbstand: Float32Array;
   /** Seite je Vertex: +1 oben (Oberkiefer/Gaumen), −1 unten (Unterkiefer/Boden), 0 außerhalb. */
   seite: Float32Array;
-  /** Randvertices oben und unten von −θ nach +θ (an den Enden die gemeinsamen Spitzen). */
+  /** Randvertices oben und unten von −θ nach +θ (an den Enden die Spitzen); bei zwei Rändern verschieden lang. */
   randOben: Uint32Array;
   randUnten: Uint32Array;
-  /** Randpunkte: Position, φ, Einwärtsrichtung (zur Trägerachse), orthogonalisiertes „oben“. */
+  /** Randpunkte des Oberkieferrands: Position, φ, Einwärtsrichtung (zur Trägerachse), orthogonalisiertes „oben“. */
   rand: Array<{ p: Vec3; phi: number; w: Vec3; u: Vec3; d: number }>;
+  /** Randpunkte des Unterkieferrands (bei bündigem Maul dieselben Punkte). */
+  randU: Array<{ p: Vec3; phi: number; w: Vec3; u: Vec3; d: number }>;
   /** Index des ersten Taschenvertex (alle Vertices ab hier liegen in der Tasche). */
   tascheStart: number;
 }
@@ -50,143 +58,165 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   const n0 = positions.length / 3;
   const host = mouth.host;
   const theta = mouth.theta;
-  // Felder je Vertex
-  const F = new Float32Array(n0);
-  const G = new Float32Array(n0);
-  const PHI = new Float32Array(n0);
-  const p: Vec3 = [0, 0, 0];
-  for (let v = 0; v < n0; v++) {
-    p[0] = positions[v * 3]!;
-    p[1] = positions[v * 3 + 1]!;
-    p[2] = positions[v * 3 + 2]!;
-    const { h, phi, r } = mouth.local(p);
+  const pos: number[] = Array.from(positions);
+  const quelle: number[] = [];
+  for (let v = 0; v < n0; v++) quelle.push(v);
+  const seite: number[] = new Array(n0).fill(0);
+  // Klasse je Vertex: 1 Oberkieferhaut, −1 Unterkieferhaut, 2 Stufe zwischen den Rändern (wird entfernt), 0 sonst
+  const klasse: number[] = new Array(n0).fill(0);
+  let tris: number[] = Array.from(index);
+  const addVertex = (q: Readonly<Vec3>, s: number, k: number): number => {
+    pos.push(q[0], q[1], q[2]);
+    quelle.push(-1);
+    seite.push(s);
+    klasse.push(k);
+    return pos.length / 3 - 1;
+  };
+  /** Feld einer Randkurve am Vertex: f = h − h_Kurve(φ), Fenster g (Mundwinkel und Lippenradius), Winkel φ. */
+  const feld = (v: number, kurve: (phiC: number) => number): { f: number; g: number; phi: number } => {
+    const q: Vec3 = [pos[v * 3]!, pos[v * 3 + 1]!, pos[v * 3 + 2]!];
+    const { h, phi, r } = mouth.local(q);
     const phiC = clamp(phi, -theta, theta);
-    let f = h - mouth.lipHAt(phiC);
+    let f = h - kurve(phiC);
     if (Math.abs(f) < EPS) f = EPS;
-    F[v] = f;
     // Maulbereich: innerhalb der Mundwinkel **und** nahe am Lippenradius — Schwanz, Beine oder Rumpf auf gleicher Höhe
     // (versunkener Kopf, weit hinten liegende Winkel) liegen außerhalb des Fensters und bleiben ungeschnitten; das
     // Fenster ist stetig, der Schlitz endet darin wie an einer Spitze
     const lr = mouth.lipRAt(phiC);
     const fenster = lr > 1e-6 ? Math.min((r - 0.6 * lr) / lr, (1.5 * lr - r) / lr) * 2 : 1;
-    G[v] = Math.min(theta - Math.abs(phi), fenster);
-    PHI[v] = phi;
-  }
-  const pos: number[] = Array.from(positions);
-  const quelle: number[] = [];
-  for (let v = 0; v < n0; v++) quelle.push(v);
-  const seite: number[] = new Array(n0).fill(0);
-  const newTris: number[] = [];
-  // Schnittpunkte je Kante (Schlüssel min*n0+max)
-  interface Kreuz { pos: Vec3; phi: number; g: number; oben: number; unten: number }
-  const kreuz = new Map<number, Kreuz>();
-  const kreuzung = (a: number, b: number): Kreuz | null => {
-    const key = a < b ? a * n0 + b : b * n0 + a;
-    const had = kreuz.get(key);
-    if (had) return had;
-    const fa = F[a]!, fb = F[b]!;
-    if (fa < 0 === fb < 0) return null;
-    if (Math.abs(PHI[a]! - PHI[b]!) > Math.PI) return null; // Kante über die Rückseite
-    const t = fa / (fa - fb);
-    const q: Vec3 = [
-      positions[a * 3]! + (positions[b * 3]! - positions[a * 3]!) * t,
-      positions[a * 3 + 1]! + (positions[b * 3 + 1]! - positions[a * 3 + 1]!) * t,
-      positions[a * 3 + 2]! + (positions[b * 3 + 2]! - positions[a * 3 + 2]!) * t,
-    ];
-    const g = G[a]! + (G[b]! - G[a]!) * t;
-    const phi = PHI[a]! + (PHI[b]! - PHI[a]!) * t;
-    const k: Kreuz = { pos: q, phi, g, oben: -1, unten: -1 };
-    kreuz.set(key, k);
-    return k;
+    return { f, g: Math.min(theta - Math.abs(phi), fenster), phi };
   };
-  const addVertex = (q: Vec3, s: number): number => {
-    pos.push(q[0], q[1], q[2]);
-    quelle.push(-1);
-    seite.push(s);
-    return pos.length / 3 - 1;
-  };
-  const kopieOben = (k: Kreuz): number => (k.oben >= 0 ? k.oben : (k.oben = addVertex(k.pos, 1)));
-  const kopieUnten = (k: Kreuz): number => (k.unten >= 0 ? k.unten : (k.unten = addVertex(k.pos, -1)));
-  // Spitzen (Mundwinkel): gemeinsamer Vertex je Seite des Schlitzes, gefunden im Spitzendreieck
-  const spitzen: Array<{ idx: number; phi: number; pos: Vec3 }> = [];
-
-  for (let t = 0; t < index.length; t += 3) {
-    const a = index[t]!, b = index[t + 1]!, c = index[t + 2]!;
-    const sa = F[a]! < 0, sb = F[b]! < 0, sc = F[c]! < 0;
-    if (sa === sb && sb === sc) {
-      newTris.push(a, b, c);
-      continue;
+  interface Rand { phi: number; oben: number; unten: number; pos: Vec3 }
+  /**
+   * Schneidet das aktuelle Netz entlang einer Randkurve: jede gekreuzte Kante bekommt einen Schnittpunkt, der zweimal
+   * eingefügt wird (Kopie oben mit Seite/Klasse sO/kO, Kopie unten mit sU/kU); an den Mundwinkeln endet der Schlitz in
+   * einem gemeinsamen Spitzenvertex. Liefert den Rand nach φ sortiert, Spitzen an den Enden.
+   */
+  const schneide = (kurve: (phiC: number) => number, sO: number, sU: number, kO: number, kU: number): Rand[] => {
+    const n = pos.length / 3;
+    const F = new Float32Array(n), G = new Float32Array(n), PHI = new Float32Array(n);
+    for (let v = 0; v < n; v++) {
+      const e = feld(v, kurve);
+      F[v] = e.f;
+      G[v] = e.g;
+      PHI[v] = e.phi;
     }
-    // Kanten mit Vorzeichenwechsel (genau zwei), welche davon im Maulbereich (g ≥ 0)?
-    const edges: Array<[number, number]> = [];
-    if (sa !== sb) edges.push([a, b]);
-    if (sb !== sc) edges.push([b, c]);
-    if (sc !== sa) edges.push([c, a]);
-    const kr = edges.map(([x, y]) => kreuzung(x, y));
-    const cut = kr.map((k) => !!k && k.g >= 0);
-    const nCut = cut.filter(Boolean).length;
-    if (nCut === 0 || !kr[0] || !kr[1]) {
-      newTris.push(a, b, c);
-      continue;
-    }
-    // der einzelne Vertex (anderes Vorzeichen als die beiden anderen)
-    const lone = sa !== sb && sa !== sc ? a : sb !== sa && sb !== sc ? b : c;
-    const others = lone === a ? [b, c] : lone === b ? [c, a] : [a, b]; // in Umlaufrichtung nach lone
-    const loneUp = F[lone]! > 0;
-    // Kreuzungen auf den Kanten lone–others[0] und others[1]–lone (in Umlaufrichtung): k1 auf (lone, o0), k2 auf (o1, lone)
-    const kAt = (x: number, y: number): Kreuz | null => {
-      for (let e = 0; e < edges.length; e++) {
-        const [ex, ey] = edges[e]!;
-        if ((ex === x && ey === y) || (ex === y && ey === x)) return kr[e]!;
-      }
-      return null;
+    const newTris: number[] = [];
+    interface Kreuz { pos: Vec3; phi: number; g: number; oben: number; unten: number }
+    const kreuz = new Map<number, Kreuz>();
+    const kreuzung = (a: number, b: number): Kreuz | null => {
+      const key = a < b ? a * n + b : b * n + a;
+      const had = kreuz.get(key);
+      if (had) return had;
+      const fa = F[a]!, fb = F[b]!;
+      if (fa < 0 === fb < 0) return null;
+      if (Math.abs(PHI[a]! - PHI[b]!) > Math.PI) return null; // Kante über die Rückseite
+      const t = fa / (fa - fb);
+      const q: Vec3 = [pos[a * 3]! + (pos[b * 3]! - pos[a * 3]!) * t, pos[a * 3 + 1]! + (pos[b * 3 + 1]! - pos[a * 3 + 1]!) * t, pos[a * 3 + 2]! + (pos[b * 3 + 2]! - pos[a * 3 + 2]!) * t];
+      const g = G[a]! + (G[b]! - G[a]!) * t;
+      const phi = PHI[a]! + (PHI[b]! - PHI[a]!) * t;
+      const k: Kreuz = { pos: q, phi, g, oben: -1, unten: -1 };
+      kreuz.set(key, k);
+      return k;
     };
-    const k1 = kAt(lone, others[0]!)!, k2 = kAt(others[1]!, lone)!;
-    const cut1 = k1.g >= 0, cut2 = k2.g >= 0;
-    if (cut1 && cut2) {
-      // beide Kanten geschnitten: lone-Seite = Dreieck (lone, k1, k2), andere Seite = Viereck (k1, o0, o1, k2)
-      const l1 = loneUp ? kopieOben(k1) : kopieUnten(k1), l2 = loneUp ? kopieOben(k2) : kopieUnten(k2);
-      const m1 = loneUp ? kopieUnten(k1) : kopieOben(k1), m2 = loneUp ? kopieUnten(k2) : kopieOben(k2);
-      newTris.push(lone, l1, l2);
-      newTris.push(m1, others[0]!, others[1]!, m1, others[1]!, m2);
-    } else {
-      // Spitzendreieck: der Schlitz kommt über die geschnittene Kante herein und endet im Dreieck bei g = 0
-      const kc = cut1 ? k1 : k2, ko = cut1 ? k2 : k1;
-      const s = kc.g / Math.max(1e-9, kc.g - ko.g);
-      const tp: Vec3 = [kc.pos[0] + (ko.pos[0] - kc.pos[0]) * s, kc.pos[1] + (ko.pos[1] - kc.pos[1]) * s, kc.pos[2] + (ko.pos[2] - kc.pos[2]) * s];
-      const tphi = kc.phi + (ko.phi - kc.phi) * s;
-      // dieselbe Spitze kann in einem Nachbardreieck schon entstanden sein (Schlitz endet genau auf einer Kante)
-      let tIdx = -1;
-      for (const sp of spitzen) if (Math.abs(sp.phi - tphi) < 0.02 && Math.hypot(sp.pos[0] - tp[0], sp.pos[1] - tp[1], sp.pos[2] - tp[2]) < 1e-3) tIdx = sp.idx;
-      if (tIdx < 0) {
-        tIdx = addVertex(tp, 0);
-        spitzen.push({ idx: tIdx, phi: tphi, pos: tp });
+    const kopieOben = (k: Kreuz): number => (k.oben >= 0 ? k.oben : (k.oben = addVertex(k.pos, sO, kO)));
+    const kopieUnten = (k: Kreuz): number => (k.unten >= 0 ? k.unten : (k.unten = addVertex(k.pos, sU, kU)));
+    const spitzen: Array<{ idx: number; phi: number; pos: Vec3 }> = [];
+    for (let t = 0; t < tris.length; t += 3) {
+      const a = tris[t]!, b = tris[t + 1]!, c = tris[t + 2]!;
+      const sa = F[a]! < 0, sb = F[b]! < 0, sc = F[c]! < 0;
+      if (sa === sb && sb === sc) {
+        newTris.push(a, b, c);
+        continue;
       }
-      const cUp = kopieOben(kc), cLo = kopieUnten(kc);
-      // Umlauf des Dreiecks mit eingesetztem Schlitz: Fächer um die Spitze
-      // Kante mit Schnitt: cut1 → zwischen lone und o0; cut2 → zwischen o1 und lone
-      if (cut1) {
-        const lc = loneUp ? cUp : cLo, oc = loneUp ? cLo : cUp;
-        // Polygon: lone → lc → T → oc → o0 → o1 → lone
-        newTris.push(tIdx, oc, others[0]!, tIdx, others[0]!, others[1]!, tIdx, others[1]!, lone, tIdx, lone, lc);
+      const edges: Array<[number, number]> = [];
+      if (sa !== sb) edges.push([a, b]);
+      if (sb !== sc) edges.push([b, c]);
+      if (sc !== sa) edges.push([c, a]);
+      const kr = edges.map(([x, y]) => kreuzung(x, y));
+      const cut = kr.map((k) => !!k && k.g >= 0);
+      const nCut = cut.filter(Boolean).length;
+      if (nCut === 0 || !kr[0] || !kr[1]) {
+        newTris.push(a, b, c);
+        continue;
+      }
+      const lone = sa !== sb && sa !== sc ? a : sb !== sa && sb !== sc ? b : c;
+      const others = lone === a ? [b, c] : lone === b ? [c, a] : [a, b];
+      const loneUp = F[lone]! > 0;
+      const kAt = (x: number, y: number): Kreuz | null => {
+        for (let e = 0; e < edges.length; e++) {
+          const [ex, ey] = edges[e]!;
+          if ((ex === x && ey === y) || (ex === y && ey === x)) return kr[e]!;
+        }
+        return null;
+      };
+      const k1 = kAt(lone, others[0]!)!, k2 = kAt(others[1]!, lone)!;
+      const cut1 = k1.g >= 0, cut2 = k2.g >= 0;
+      if (cut1 && cut2) {
+        const l1 = loneUp ? kopieOben(k1) : kopieUnten(k1), l2 = loneUp ? kopieOben(k2) : kopieUnten(k2);
+        const m1 = loneUp ? kopieUnten(k1) : kopieOben(k1), m2 = loneUp ? kopieUnten(k2) : kopieOben(k2);
+        newTris.push(lone, l1, l2);
+        newTris.push(m1, others[0]!, others[1]!, m1, others[1]!, m2);
       } else {
-        const lc = loneUp ? cUp : cLo, oc = loneUp ? cLo : cUp;
-        // Schnitt auf (o1, lone): Polygon: lone → o0 → o1 → oc → T → lc → lone
-        newTris.push(tIdx, lc, lone, tIdx, lone, others[0]!, tIdx, others[0]!, others[1]!, tIdx, others[1]!, oc);
+        // Spitzendreieck: der Schlitz kommt über die geschnittene Kante herein und endet im Dreieck bei g = 0
+        const kc = cut1 ? k1 : k2, ko = cut1 ? k2 : k1;
+        const sT = kc.g / Math.max(1e-9, kc.g - ko.g);
+        const tp: Vec3 = [kc.pos[0] + (ko.pos[0] - kc.pos[0]) * sT, kc.pos[1] + (ko.pos[1] - kc.pos[1]) * sT, kc.pos[2] + (ko.pos[2] - kc.pos[2]) * sT];
+        const tphi = kc.phi + (ko.phi - kc.phi) * sT;
+        let tIdx = -1;
+        for (const sp of spitzen) if (Math.abs(sp.phi - tphi) < 0.02 && Math.hypot(sp.pos[0] - tp[0], sp.pos[1] - tp[1], sp.pos[2] - tp[2]) < 1e-3) tIdx = sp.idx;
+        if (tIdx < 0) {
+          tIdx = addVertex(tp, 0, 0);
+          spitzen.push({ idx: tIdx, phi: tphi, pos: tp });
+        }
+        const cUp = kopieOben(kc), cLo = kopieUnten(kc);
+        if (cut1) {
+          const lc = loneUp ? cUp : cLo, oc = loneUp ? cLo : cUp;
+          newTris.push(tIdx, oc, others[0]!, tIdx, others[0]!, others[1]!, tIdx, others[1]!, lone, tIdx, lone, lc);
+        } else {
+          const lc = loneUp ? cUp : cLo, oc = loneUp ? cLo : cUp;
+          newTris.push(tIdx, lc, lone, tIdx, lone, others[0]!, tIdx, others[0]!, others[1]!, tIdx, others[1]!, oc);
+        }
       }
     }
+    tris = newTris;
+    const randListe: Rand[] = [];
+    for (const k of kreuz.values()) if (k.oben >= 0 && k.unten >= 0) randListe.push({ phi: k.phi, oben: k.oben, unten: k.unten, pos: k.pos });
+    randListe.sort((x, y) => x.phi - y.phi);
+    spitzen.sort((x, y) => x.phi - y.phi);
+    const tipL = spitzen.find((sp) => sp.phi < 0), tipR = spitzen.find((sp) => sp.phi > 0);
+    if (tipL) randListe.unshift({ phi: tipL.phi, oben: tipL.idx, unten: tipL.idx, pos: tipL.pos });
+    if (tipR) randListe.push({ phi: tipR.phi, oben: tipR.idx, unten: tipR.idx, pos: tipR.pos });
+    return randListe;
+  };
+
+  // Ein Rand (gleich große Kiefer, bündig) oder zwei Ränder (Kieferstufe): Oberkieferrand und Unterkieferrand; die
+  // Haut der Stufe dazwischen wird entfernt — geschlossen bleibt dort das Maul sichtbar offen (Florian: „darf dann nicht
+  // mehr bündig schließen“, Hauer wachsen in die freie Stelle; Drache, Bild 5 rechts)
+  const zweiRaender = mouth.kieferStufeMax > 1e-4;
+  let randO: Rand[], randU: Rand[];
+  if (!zweiRaender) {
+    const r = schneide(mouth.lipHAt, 1, -1, 1, -1);
+    randO = r;
+    randU = r;
+  } else {
+    randO = schneide(mouth.lipHObenAt, 1, 0, 1, 2);
+    randU = schneide(mouth.lipHUntenAt, 0, -1, 2, -1);
+    for (let v = 0; v < n0; v++) {
+      const eo = feld(v, mouth.lipHObenAt), eu = feld(v, mouth.lipHUntenAt);
+      if (eo.f < 0 && eu.f > 0 && eo.g >= 0) klasse[v] = 2;
+    }
+    const kept: number[] = [];
+    for (let t = 0; t < tris.length; t += 3) {
+      const a = tris[t]!, b = tris[t + 1]!, c = tris[t + 2]!;
+      if (klasse[a] === 2 && klasse[b] === 2 && klasse[c] === 2) continue;
+      kept.push(a, b, c);
+    }
+    tris = kept;
   }
-  // Rand sortiert nach φ, Spitzen an den Enden
-  const randListe: Array<{ phi: number; oben: number; unten: number; pos: Vec3 }> = [];
-  for (const k of kreuz.values()) if (k.oben >= 0 && k.unten >= 0) randListe.push({ phi: k.phi, oben: k.oben, unten: k.unten, pos: k.pos });
-  randListe.sort((x, y) => x.phi - y.phi);
-  spitzen.sort((x, y) => x.phi - y.phi);
-  const tipL = spitzen.find((s) => s.phi < 0), tipR = spitzen.find((s) => s.phi > 0);
-  if (tipL) randListe.unshift({ phi: tipL.phi, oben: tipL.idx, unten: tipL.idx, pos: tipL.pos });
-  if (tipR) randListe.push({ phi: tipR.phi, oben: tipR.idx, unten: tipR.idx, pos: tipR.pos });
-  const nR = randListe.length;
+  const nR = randO.length;
   // Randrahmen: Einwärtsrichtung zur Trägerachse, „oben“ orthogonalisiert, Tiefe elliptisch zu den Winkeln auslaufend
-  const rand: MundSchnitt['rand'] = randListe.map((r) => {
+  const rahmen = (r: { phi: number; pos: Vec3 }): { p: Vec3; phi: number; w: Vec3; u: Vec3; d: number } => {
     const { h } = mouth.local(r.pos);
     const axisPt = hostCenter(host, h);
     let w = sub(axisPt, r.pos);
@@ -197,41 +227,74 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
     const t = clamp(r.phi / theta, -1, 1);
     const d = opt.tiefe * Math.sqrt(Math.max(0, 1 - t * t));
     return { p: r.pos, phi: r.phi, w, u, d };
-  });
-  // Tasche: Gitter nR × (zeilen+1); Zeile 0 = Rand oben, Zeile m = Rand unten
+  };
+  const rand: MundSchnitt['rand'] = randO.map(rahmen);
+  const randUnt: MundSchnitt['rand'] = randU.map(rahmen);
+  // Unterrand auf die Spalten des Oberrands: bei zwei Rändern neue Vertices (nach φ interpoliert), Enden = Spitzen
+  const interpU = (phi: number): Vec3 => {
+    if (randU.length === 1) return randU[0]!.pos;
+    let i = 0;
+    while (i < randU.length - 2 && randU[i + 1]!.phi < phi) i++;
+    const a = randU[i]!, b = randU[i + 1]!;
+    const f = clamp((phi - a.phi) / Math.max(1e-9, b.phi - a.phi), 0, 1);
+    return add(a.pos, scale(sub(b.pos, a.pos), f));
+  };
+  const unten: number[] = [];
+  for (let i = 0; i < nR; i++) {
+    if (!zweiRaender) unten.push(randU[i]!.unten);
+    else if (i === 0) unten.push(randU[0]!.unten);
+    else if (i === nR - 1) unten.push(randU[randU.length - 1]!.unten);
+    else unten.push(addVertex(interpU(randO[i]!.phi), -1, -1));
+  }
+  // Tasche: Gitter nR × (zeilen+1); Zeile 0 = Oberrand, Zeile m = (interpolierter) Unterrand
   const m = Math.max(4, opt.zeilen ?? 10);
   const tascheStart = pos.length / 3;
   const grid = new Int32Array(nR * (m + 1));
   const tascheTiefe: number[] = new Array(tascheStart).fill(0);
   for (let i = 0; i < nR; i++) {
-    const r = rand[i]!, rl = randListe[i]!;
+    const r = rand[i]!, rl = randO[i]!;
+    const pU: Vec3 = [pos[unten[i]! * 3]!, pos[unten[i]! * 3 + 1]!, pos[unten[i]! * 3 + 2]!];
     for (let k = 0; k <= m; k++) {
       if (k === 0) {
         grid[i * (m + 1)] = rl.oben;
         continue;
       }
       if (k === m) {
-        grid[i * (m + 1) + m] = rl.unten;
+        grid[i * (m + 1) + m] = unten[i]!;
         continue;
       }
       // Spitze (Mundwinkel): die ganze Spalte ist derselbe Vertex — keine Nullkanten, das Netz bleibt geschlossen
-      if (rl.oben === rl.unten || r.d < 1e-6) {
+      if (rl.oben === unten[i] || r.d < 1e-6) {
         grid[i * (m + 1) + k] = rl.oben;
         continue;
       }
-      const s = k / m;
-      const x = r.d * Math.pow(Math.sin(Math.PI * s), 0.8);
+      const sK = k / m;
+      const x = r.d * Math.pow(Math.sin(Math.PI * sK), 0.8);
       // Gaumen nach oben, Boden nach unten, jeweils begrenzt durch die Kieferhöhe und die lokale Tiefe
-      const amp = Math.min(s < 0.5 ? opt.wölbungOben : opt.wölbungUnten, 0.6 * r.d);
-      const y = amp * Math.sin(2 * Math.PI * s);
-      const q: Vec3 = [r.p[0] + r.w[0] * x + r.u[0] * y, r.p[1] + r.w[1] * x + r.u[1] * y, r.p[2] + r.w[2] * x + r.u[2] * y];
+      const amp = Math.min(sK < 0.5 ? opt.wölbungOben : opt.wölbungUnten, 0.6 * r.d);
+      const y = amp * Math.sin(2 * Math.PI * sK);
+      // Grundpunkt zwischen Ober- und Unterrand (bei zwei Rändern spannt die Tasche den Spalt auf)
+      const bx = r.p[0] + (pU[0] - r.p[0]) * sK, by = r.p[1] + (pU[1] - r.p[1]) * sK, bz = r.p[2] + (pU[2] - r.p[2]) * sK;
+      const q: Vec3 = [bx + r.w[0] * x + r.u[0] * y, by + r.w[1] * x + r.u[1] * y, bz + r.w[2] * x + r.u[2] * y];
       // Seite als Verlauf (Rand oben +1 … Rand unten −1): die Rachenwand mischt Ober- und Unterkieferbewegung weich
-      const sd = 1 - 2 * s;
-      const idx = addVertex(q, Math.abs(sd) < 0.05 ? (sd < 0 ? -0.05 : 0.05) : sd);
+      const sd = 1 - 2 * sK;
+      const idx = addVertex(q, Math.abs(sd) < 0.05 ? (sd < 0 ? -0.05 : 0.05) : sd, 0);
       grid[i * (m + 1) + k] = idx;
-      tascheTiefe.push(Math.sin(Math.PI * s));
+      tascheTiefe.push(Math.sin(Math.PI * sK));
     }
   }
+  const newTris = tris;
+  const triZu = (x: number, y: number, z: number, centre: Readonly<Vec3>): void => {
+    if (x === y || y === z || x === z) return;
+    const px = pos[x * 3]!, py = pos[x * 3 + 1]!, pz = pos[x * 3 + 2]!;
+    const e1 = [pos[y * 3]! - px, pos[y * 3 + 1]! - py, pos[y * 3 + 2]! - pz];
+    const e2 = [pos[z * 3]! - px, pos[z * 3 + 1]! - py, pos[z * 3 + 2]! - pz];
+    const nx = e1[1]! * e2[2]! - e1[2]! * e2[1]!, ny = e1[2]! * e2[0]! - e1[0]! * e2[2]!, nz = e1[0]! * e2[1]! - e1[1]! * e2[0]!;
+    const cx = (px + pos[y * 3]! + pos[z * 3]!) / 3, cy = (py + pos[y * 3 + 1]! + pos[z * 3 + 1]!) / 3, cz = (pz + pos[y * 3 + 2]! + pos[z * 3 + 2]!) / 3;
+    const toC = [centre[0] - cx, centre[1] - cy, centre[2] - cz];
+    if (nx * toC[0]! + ny * toC[1]! + nz * toC[2]! >= 0) newTris.push(x, y, z);
+    else newTris.push(x, z, y);
+  };
   // Taschendreiecke, Normalen zur Höhle (zum Taschenzentrum der Spalte) orientiert
   for (let i = 0; i < nR - 1; i++) {
     const r0 = rand[i]!, r1 = rand[i + 1]!;
@@ -239,19 +302,27 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
     const centre: Vec3 = [(c0[0] + c1[0]) / 2, (c0[1] + c1[1]) / 2, (c0[2] + c1[2]) / 2];
     for (let k = 0; k < m; k++) {
       const a = grid[i * (m + 1) + k]!, b = grid[(i + 1) * (m + 1) + k]!, c = grid[(i + 1) * (m + 1) + k + 1]!, d = grid[i * (m + 1) + k + 1]!;
-      const tri = (x: number, y: number, z: number): void => {
-        if (x === y || y === z || x === z) return;
-        const px = pos[x * 3]!, py = pos[x * 3 + 1]!, pz = pos[x * 3 + 2]!;
-        const e1 = [pos[y * 3]! - px, pos[y * 3 + 1]! - py, pos[y * 3 + 2]! - pz];
-        const e2 = [pos[z * 3]! - px, pos[z * 3 + 1]! - py, pos[z * 3 + 2]! - pz];
-        const nx = e1[1]! * e2[2]! - e1[2]! * e2[1]!, ny = e1[2]! * e2[0]! - e1[0]! * e2[2]!, nz = e1[0]! * e2[1]! - e1[1]! * e2[0]!;
-        const cx = (px + pos[y * 3]! + pos[z * 3]!) / 3, cy = (py + pos[y * 3 + 1]! + pos[z * 3 + 1]!) / 3, cz = (pz + pos[y * 3 + 2]! + pos[z * 3 + 2]!) / 3;
-        const toC = [centre[0] - cx, centre[1] - cy, centre[2] - cz];
-        if (nx * toC[0]! + ny * toC[1]! + nz * toC[2]! >= 0) newTris.push(x, y, z);
-        else newTris.push(x, z, y);
-      };
-      tri(a, b, c);
-      tri(a, c, d);
+      triZu(a, b, c, centre);
+      triZu(a, c, d, centre);
+    }
+  }
+  // Zwei Ränder: Reißverschluss zwischen der interpolierten Unterreihe und den echten Unterrand-Vertices
+  if (zweiRaender) {
+    let i = 0, j = 0;
+    const cen = (): Vec3 => {
+      const r = rand[Math.min(nR - 1, Math.max(0, i))]!;
+      return add(r.p, scale(r.w, r.d * 0.5));
+    };
+    while (i < nR - 1 || j < randU.length - 1) {
+      const phiI = i < nR - 1 ? randO[i + 1]!.phi : Infinity;
+      const phiJ = j < randU.length - 1 ? randU[j + 1]!.phi : Infinity;
+      if (phiI <= phiJ) {
+        triZu(unten[i]!, unten[i + 1]!, randU[j]!.unten, cen());
+        i++;
+      } else {
+        triZu(unten[i]!, randU[j + 1]!.unten, randU[j]!.unten, cen());
+        j++;
+      }
     }
   }
   const vertexCount = pos.length / 3;
@@ -260,13 +331,16 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   const tasche = new Float32Array(vertexCount);
   for (let v = tascheStart; v < vertexCount; v++) tasche[v] = tascheTiefe[v] ?? 0;
   while (seite.length < vertexCount) seite.push(0);
-  // Seite der Hautvertices im Maulbereich aus F (nur nahe der Lippe nötig, hier für alle)
-  for (let v = 0; v < n0; v++) seite[v] = G[v]! > -0.6 ? (F[v]! > 0 ? 1 : -1) : 0;
-  // Kantenabstand: Abstand zum nächsten Randpunkt (für Haut und Tasche) — für **alle** Vertices stetig berechnet: ein
+  // Seite der Hautvertices im Maulbereich aus der Maullinie (nur nahe der Lippe nötig, hier für alle)
+  for (let v = 0; v < n0; v++) {
+    const e = feld(v, mouth.lipHAt);
+    seite[v] = e.g > -0.6 ? (e.f > 0 ? 1 : -1) : 0;
+  }
+  // Kantenabstand: Abstand zum nächsten Randpunkt (beide Ränder) — für **alle** Vertices stetig berechnet: ein
   // Vorgabewert außerhalb der Maulzone sprang an deren Rand, und die ableitungsbasierte Kantenglättung des Lippenbands
   // zeichnete den Sprung als haarfeine helle Linie über Hinterkopf und Schulter
   const kantenAbstand = new Float32Array(vertexCount).fill(1e3);
-  const rp = rand.map((r) => r.p);
+  const rp = rand.map((r) => r.p).concat(zweiRaender ? randUnt.map((r) => r.p) : []);
   for (let v = 0; v < vertexCount; v++) {
     const x = positionsOut[v * 3]!, y = positionsOut[v * 3 + 1]!, z = positionsOut[v * 3 + 2]!;
     let best = 1e9;
@@ -286,14 +360,14 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
     tasche,
     kantenAbstand,
     seite: Float32Array.from(seite),
-    randOben: Uint32Array.from(randListe.map((r) => r.oben)),
-    randUnten: Uint32Array.from(randListe.map((r) => r.unten)),
+    randOben: Uint32Array.from(randO.map((r) => r.oben)),
+    randUnten: Uint32Array.from(randU.map((r) => r.unten)),
     rand,
+    randU: randUnt,
     tascheStart,
   };
 }
 
-/** Flächennormalen (winkelgewichtet) für die angegebenen Vertices aus den Dreiecken, die sie enthalten. */
 export function faceNormalsFor(positions: Float32Array, index: Uint32Array, which: Set<number> | null, normals: Float32Array): void {
   const acc = new Float32Array(positions.length);
   for (let t = 0; t < index.length; t += 3) {
@@ -322,7 +396,8 @@ export function faceNormalsFor(positions: Float32Array, index: Uint32Array, whic
 /** Hilfswert 0…1 (für Tests): Anteil der Randpaare, die in Ruhe exakt zusammenfallen. */
 export function randGeschlossen(ms: MundSchnitt): number {
   let ok = 0;
-  for (let i = 0; i < ms.randOben.length; i++) {
+  const nPaar = Math.min(ms.randOben.length, ms.randUnten.length);
+  for (let i = 0; i < nPaar; i++) {
     const a = ms.randOben[i]!, b = ms.randUnten[i]!;
     const d = Math.hypot(ms.positions[a * 3]! - ms.positions[b * 3]!, ms.positions[a * 3 + 1]! - ms.positions[b * 3 + 1]!, ms.positions[a * 3 + 2]! - ms.positions[b * 3 + 2]!);
     if (d < 1e-6) ok++;

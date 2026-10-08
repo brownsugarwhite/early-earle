@@ -126,6 +126,13 @@ const maul = z
     kieferbreite: regler(M, 'maul.kieferbreite', 'Kieferbreite', -1, 1, 0, '−1 Unterkiefer schmaler … +1 Oberkiefer schmaler: Platz für Zähne, die am geschlossenen Maul vorbeischauen'),
     kehle: regler(M, 'maul.kehle', 'Kehlsack', 0, 1, 0, '0 Kiefer endet am Kinn … 1 der Unterkiefer reicht als dehnbarer Schlund bis zur Brust und wird beim Öffnen lang (Drache)'),
     bohne: regler(M, 'maul.bohne', 'Bohne', -1, 1, 0, 'Oberkiefer kippt beim Öffnen seitlich (−1 links … +1 rechts), Lochmaul öffnet einseitig weiter — Bohnenform wie Giraffe/Retriever'),
+    /** Maullinie als Bézier-Kontrollwerte (Höhe über der Grundlinie in Kopfhöhen, u = 0 Schnauze … 1 Mundwinkel); gesetzt
+     *  ersetzt sie Neigung und Schwung — im Maul-Editor über ziehbare Punkte. */
+    linie: z.array(z.number().min(-0.8).max(0.8)).min(2).max(8).optional(),
+    oberkieferBreite: regler(M, 'maul.oberkieferBreite', 'Oberkiefer Breite', 0.4, 1.6, 1, 'Breite der oberen Maulseite; ist ein Kiefer größer, schließt das Maul nicht bündig — der größere Rand liegt außen (Hauer, Drache)'),
+    unterkieferBreite: regler(M, 'maul.unterkieferBreite', 'Unterkiefer Breite', 0.4, 1.6, 1),
+    oberkieferLaenge: regler(M, 'maul.oberkieferLaenge', 'Oberkiefer Länge', 0.4, 1.3, 1, 'Länge der oberen Maulseite nach vorn (Tropfennase über dem Maul: Oberkiefer länger)'),
+    unterkieferLaenge: regler(M, 'maul.unterkieferLaenge', 'Unterkiefer Länge', 0.4, 1.3, 1),
   })
   .prefault({});
 

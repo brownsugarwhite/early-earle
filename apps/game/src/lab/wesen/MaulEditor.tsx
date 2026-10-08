@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { bezierWert, linieAusReglern } from '@ee/creature';
 import { useWesenStore } from './wesenStore';
 
 /**
@@ -49,14 +50,25 @@ export function MaulEditor() {
   const xCorner = cx + rx * (0.55 - 1.05 * winkel); // 0: vorn, 1: weit hinten
   const yCorner = yLip - m.neigung * 0.22 * 2 * ry;
   const schwung = clamp(m.schwung, -1, 1);
+  // Gezeichnete Linie: Bézier-Kontrollwerte (Kopfhöhen über der Grundlinie); ohne Linie die Regler-Form (Neigung, Schwung)
+  const linieAn = !!m.linie && m.linie.length >= 2;
+  const nP = 5;
+  const ctrl: number[] = linieAn ? m.linie!.slice() : Array.from({ length: nP }, (_v, i) => linieAusReglern(m, i / (nP - 1)));
+  const hoeheBei = (u: number): number => (linieAn ? bezierWert(ctrl, u) : linieAusReglern(m, u));
   const pts: string[] = [];
   for (let i = 0; i <= 24; i++) {
     const u = i / 24;
     const x = xFront + (xCorner - xFront) * u;
-    const dip = schwung * 0.12 * 2 * ry * Math.pow(Math.sin(Math.PI * clamp(u / 0.72, 0, 1)), 1.5) * (u < 0.72 ? 1 : 0);
-    const y = yLip + (yCorner - yLip) * u * u + dip;
+    const y = yLip - hoeheBei(u) * 2 * ry;
     pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
   }
+  // Punkte der gezeichneten Linie: senkrecht ziehen; der erste Zug übernimmt die Regler-Form als Startwerte
+  const zugPunkt = (i: number) =>
+    nutzeZug('maul.linie', (_dx, dy, s0) => {
+      const neu = ctrl.slice();
+      neu[i] = clamp((yLip - (s0.y + dy)) / (2 * ry), -0.8, 0.8);
+      return [['maul.linie', neu as unknown as number]];
+    });
   const uMid = 0.36;
   const xMid = xFront + (xCorner - xFront) * uMid;
   const yMid = yLip + (yCorner - yLip) * uMid * uMid + schwung * 0.12 * 2 * ry * Math.pow(Math.sin(Math.PI * uMid / 0.72), 1.5);
@@ -97,9 +109,15 @@ export function MaulEditor() {
         <polyline points={pts.join(' ')} className="wl-maul-linie" />
         {griff('hoehe', xFront, yLip, seite, zugHoehe, 'Maulhöhe (senkrecht ziehen)')}
         {griff('winkel', xCorner, yCorner, seite, zugWinkel, 'Mundwinkel: waagerecht = nach hinten, senkrecht = Neigung')}
-        {griff('schwung', xMid, yMid, seite, zugSchwung, 'Schwung der Linie (senkrecht ziehen)')}
+        {!linieAn && griff('schwung', xMid, yMid, seite, zugSchwung, 'Schwung der Linie (senkrecht ziehen)')}
+        {ctrl.map((c, i) => (i === 0 ? null : griff(`linie-${i}`, xFront + (xCorner - xFront) * (i / (ctrl.length - 1)), yLip - c * 2 * ry, seite, zugPunkt(i), `Linienpunkt ${i} (senkrecht ziehen): Form der Maullinie`)))}
         <text x={cx + rx - 4} y={cy - ry + 14} className="wl-sp-text" textAnchor="end">Schnauze →</text>
       </svg>
+      {linieAn && (
+        <button type="button" className="wl-btn wl-btn--klein" onClick={() => st().setzeBauplanWert('maul.linie', undefined as unknown as number, 'maul.linie')} data-testid="wl-maul-linie-weg">
+          Linie zurück auf Regler
+        </button>
+      )}
       <h3 className="wl-gruppe-titel">Maul zeichnen · Vorn</h3>
       <svg ref={vorn} viewBox={`0 0 ${W} ${H}`} className="wl-sp-svg" role="img" aria-label="Maul von vorn: Breite, W-Form, Öffnung">
         <polyline points={linie.join(' ')} className="wl-maul-linie" />

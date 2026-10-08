@@ -320,6 +320,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   const m0 = b.maul;
   let hostBone = kMitte;
   let host: MouthHost | null = null;
+  let kieferStufeFn: ((u: number) => { oben: number; unten: number }) | null = null;
   let headGroup = -1;
   if (hasNeck) {
     const ansatz = b.hals.ansatz;
@@ -432,7 +433,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     // die Rückenlinie läuft über die Schulter in den Hinterkopf (Bild 5/9), das Kinn hängt frei
     const headBase = add(add(neckEnd, scale(upH, hr * (0.4 - 0.1 * (1 - tN)))), scale(forwardH, hr * (0.3 + 0.1 * (1 - tN))));
     const Lback = hr * 0.85;
-    const Lfront = hr * (1.05 + 0.9 * (b.kopf.laenge - 1) + 0.8 * schn);
+    // Getrennte Maulseiten: der längere Kiefer bestimmt die Kopflänge vorn, der kürzere endet früher
+    const lT = clamp(m0.oberkieferLaenge, 0.4, 1.3), lB = clamp(m0.unterkieferLaenge, 0.4, 1.3);
+    const lMax = Math.max(lT, lB);
+    const Lfront = hr * (1.05 + 0.9 * (b.kopf.laenge - 1) + 0.8 * schn) * (0.6 + 0.4 * lMax);
     const headCenter = add(headBase, scale(forwardH, (Lfront - Lback) * 0.5));
     headGroup = groups.length;
     const headPl = makePolyline([sub(headBase, scale(forwardH, Lback)), add(headBase, scale(forwardH, Lfront))], [hr, hr * 0.8], UP);
@@ -444,6 +448,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const nS = 40;
       const pts: Vec3[] = [];
       const wx: number[] = [], wxB: number[] = [], wyT: number[] = [], wyB: number[] = [], wyL: number[] = [], nn: number[] = [], nB: number[] = [];
+      const sgWArr: number[] = [];
       const braue = clamp(b.kopf.braue, 0, 1);
       const kb = clamp(m0.kieferbreite, -1, 1);
       for (let i = 0; i < nS; i++) {
@@ -455,8 +460,11 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         // Unterbiss (biss < 0): die Oberform endet früher, der Unterkiefer steht vor (Bulldogge, Hauer)
         const bissK = clamp(m0.biss, -1, 1);
         const runde = (uu: number): number => Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(uu - 0.5) / 0.5, u > 0.5 ? 6 + 8 * kanteK : 6)));
-        const uT = u > 0.5 ? Math.min(1, u + 0.14 * Math.max(0, -bissK)) : u;
-        const uB = u > 0.5 ? Math.min(1, u + 0.14 * Math.max(0, bissK)) : u;
+        // Länge je Maulseite (Anteil der längeren) plus Biss: die kürzere Form endet früher (Ende bei u = 0,5 + 0,5 · r)
+        const rT = clamp(lT / lMax - 0.28 * Math.max(0, -bissK), 0.2, 1);
+        const rB = clamp(lB / lMax - 0.28 * Math.max(0, bissK), 0.2, 1);
+        const uT = u > 0.5 ? Math.min(1, u + 0.5 * (1 - rT)) : u;
+        const uB = u > 0.5 ? Math.min(1, u + 0.5 * (1 - rB)) : u;
         const endRound = runde(uT);
         const endRoundB = runde(uB);
         // Bild 5/11: Schädel hinten hoch mit flachem Scheitel, Braue als breiter Wulst über den Augen, Schnauze fällt nach
@@ -475,8 +483,13 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         const skull = hr * (0.55 + 0.5 * ok) * (1 - 0.62 * slope + nase) * (1 + 0.3 * braue * Math.exp(-Math.pow((u - 0.5) / 0.16, 2))) * (1 + 0.28 * stirn * (1 - u) * (1 - u));
         // Unterkiefer als Löffel; kantig: flaches Kinn, das bis zur Schnauzenfront durchläuft (Bild 9: eckiges Kinn)
         const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.3 * (1 - 0.85 * kanteK) * Math.max(0, (u - 0.5) / 0.5) ** 1.6);
-        wx.push(width * endRound * (1 - 0.45 * Math.max(0, kb)));
-        wxB.push(width * endRoundB * (1 + 0.45 * Math.min(0, kb)));
+        wx.push(width * endRound * (1 - 0.45 * Math.max(0, kb)) * clamp(m0.oberkieferBreite, 0.4, 1.6));
+        wxB.push(width * endRoundB * (1 + 0.45 * Math.min(0, kb)) * clamp(m0.unterkieferBreite, 0.4, 1.6));
+        // Breitenstufe für zwei Maulränder: nur aus den Breitenreglern (nicht aus der Verkürzung vorn), proportional zum
+        // Unterschied, wo beide Formen noch da sind
+        const wT0 = width * clamp(m0.oberkieferBreite, 0.4, 1.6) * (1 - 0.45 * Math.max(0, kb));
+        const wB0 = width * clamp(m0.unterkieferBreite, 0.4, 1.6) * (1 + 0.45 * Math.min(0, kb));
+        sgWArr.push(clamp((wT0 - wB0) / (0.2 * hr), -1, 1) * (Math.min(endRound, endRoundB) / Math.max(1e-6, Math.max(endRound, endRoundB))));
         wyT.push(skull * endRound);
         // Oberform reicht unten bis zur Lippe mit der vollen Länge, die Unterform (Unterkiefer) endet vorn früher (Überbiss)
         wyB.push(jaw * endRound);
@@ -499,6 +512,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const cb0 = clamp(m0.hoehe, 0.02, 0.98) * hostH - hc;
       const split: number[] = [];
       const bandK = hr * 0.1;
+      const stufenProben: Array<[number, number]> = [];
       for (let i = 0; i < nS; i++) {
         const u = i / (nS - 1);
         const zS = (Lback + Lfront) * (u - 0.5);
@@ -511,10 +525,32 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         // Hauer wachsen darauf) bzw. Sohle (Überbiss, Fänge hängen außen). Vorzeichen aus dem Breitenunterschied, weich.
         // Die Stufe beginnt erst 0,4 Band über bzw. unter der Linie: der Schnitt bleibt auf der steilen Fläche des
         // kleineren Kiefers (auf der fast waagerechten Stufe wäre die Höhe kaum verschieden — der Schnitt zerfranste)
+        // Stufe proportional zum Unterschied (voll ab einem Fünftel Kopfradius), damit kleine Unterschiede kleine Stufen geben
         const dW = wx[i]! - wxB[i]! + 0.5 * (wyB[i]! - wyL[i]!);
-        const sg = clamp(dW / (0.04 * hr), -1, 1);
+        const sg = clamp(dW / (0.2 * hr), -1, 1);
         split.push(m0.sichtbar ? lipHeight(m0, hostH, hostH, uL) - hc + sg * 1.4 * bandK : 0);
+        // Zwei Maulränder nur aus dem **Breiten**unterschied der Regler (Hauer, Drache) — nicht aus den Stationsbreiten,
+        // die vorn auch durch den kürzeren Kiefer kleiner werden: eine Längendifferenz ist die Nase, die über das Maul
+        // hängt, darunter schließt das Maul bündig (Giraffe, Goldie)
+        stufenProben.push([uL, sgWArr[i] ?? 0]);
       }
+      // Kieferstufe für den Lippenschnitt: zwei Ränder (größerer Kiefer außen, 2,8 Band auseinander), die zu den
+      // Mundwinkeln hin in der Stufenmitte zusammenlaufen — als Funktion von u = |φ|/θ aus den Stationsproben
+      stufenProben.sort((a, b) => a[0] - b[0]);
+      kieferStufeFn = (u: number): { oben: number; unten: number } => {
+        let sg = stufenProben[0]![1];
+        for (let i = 0; i + 1 < stufenProben.length; i++) {
+          const [u0, s0] = stufenProben[i]!, [u1, s1] = stufenProben[i + 1]!;
+          if (u >= u0 && u <= u1) {
+            sg = u1 - u0 > 1e-9 ? s0 + ((s1 - s0) * (u - u0)) / (u1 - u0) : s0;
+            break;
+          }
+          if (u > u1) sg = s1;
+        }
+        const fade = 1 - smoothstep(0.65, 1, u);
+        const bB = 1.4 * bandK;
+        return { oben: sg * bB + Math.abs(sg) * bB * fade, unten: sg * bB - Math.abs(sg) * bB * fade };
+      };
       const head = makeLoft({ points: pts, upRef: upH, wx, wxB, wyT, wyB, wyL, n: nn, nB, split, splitBand: bandK, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN) + 0.4 * sink), region: REGION.haut, name: 'kopf' });
       prims.push(head);
       // Ohren: flache Lappen seitlich hinten oben, nach außen-hinten geneigt (Giraffe, Dackel); Hörnchen: zwei kurze
@@ -543,7 +579,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     }
     hostBone = headBone;
     // Gelenk am Hinterkopf (70 % des hinteren Kopfteils hinter der Kopfbasis), bezogen auf den Ursprung (= Kopfmitte vorn/hinten)
-    host = { origin: sub(headCenter, scale(upH, hr * (0.42 + 0.42 * uk))), up: upH, forward: forwardH, right: rightH, height: hr * (0.42 + 0.42 * uk + 0.55 + 0.5 * ok), halfWidth: hr * 0.95, bone: headBone, jointBack: Lback * 0.7 + (Lfront - Lback) * 0.5, scene: { prims: [] } };
+    host = { origin: sub(headCenter, scale(upH, hr * (0.42 + 0.42 * uk))), up: upH, forward: forwardH, right: rightH, height: hr * (0.42 + 0.42 * uk + 0.55 + 0.5 * ok), halfWidth: hr * 0.95, bone: headBone, jointBack: Lback * 0.7 + (Lfront - Lback) * 0.5, scene: { prims: [] }, ...(kieferStufeFn ? { kieferStufe: kieferStufeFn } : {}) };
   } else {
     // Körperträger: waagerechte Scheiben, Mittellinie folgt der Neigung; Kiefertiefe = Kinnband des Grundblobs (plus
     // Kehlrand), damit Brust und Bauch nicht mitschwingen

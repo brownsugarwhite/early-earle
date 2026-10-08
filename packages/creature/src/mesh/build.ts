@@ -254,8 +254,11 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     }
     faceNormalsFor(ms.positions, ms.index, neu, normals1);
     // Randvertices der Haut: Normale der Haut (glatt), nicht der Tasche — die Tasche hat ihre eigenen Kopien
-    for (let i = 0; i < ms.randOben.length; i++) {
-      for (const rv of [ms.randOben[i]!, ms.randUnten[i]!]) {
+    const randVerts: number[] = [];
+    for (let i = 0; i < ms.randOben.length; i++) randVerts.push(ms.randOben[i]!);
+    for (let i = 0; i < ms.randUnten.length; i++) randVerts.push(ms.randUnten[i]!);
+    {
+      for (const rv of randVerts) {
         // Hautnormale aus dem Feldgradienten an der Randposition
         const q: Vec3 = [ms.positions[rv * 3]!, ms.positions[rv * 3 + 1]!, ms.positions[rv * 3 + 2]!];
         const e = cell * 0.25;
@@ -312,7 +315,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
         for (let i = 0; i <= nPhi; i++) {
           const u = uA + (uB - uA) * (i / nPhi);
           const phi = side * u * m.theta;
-          const hLine = m.lipHAt(phi);
+          const hLine = m.lipHObenAt(phi);
           const hTop = hLine + 0.06 * Hk;
           const hEdge = hLine - lefzenTiefe(b.maul, Hk, u);
           for (let k = 0; k <= nH; k++) {
@@ -321,8 +324,11 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
             const sp = surfacePoint(m.host, h, phi, maxR);
             const n = gradN(sp.p);
             nOuter.push(n);
-            const ease = t * t * (3 - 2 * t);
-            const offOut = 0.004 * H + (dicke - 0.004 * H) * ease;
+            // Ansatz ohne Kante: der Lappen liegt oben bündig auf der Haut (kein Versatz) und hebt sich erst im unteren
+            // Drittel ab (Florian: das W-Maul machte eine Kante unter der Schnauze)
+            const tt = clamp((t - 0.35) / 0.65, 0, 1);
+            const ease = tt * tt * (3 - 2 * tt);
+            const offOut = 0.0015 * H + (dicke - 0.0015 * H) * ease;
             posL.push(sp.p[0] + n[0] * offOut, sp.p[1] + n[1] * offOut, sp.p[2] + n[2] * offOut);
             nrmL.push(n[0], n[1], n[2]);
             kanteL.push((1 - t) * Math.max(0.01 * H, hTop - hEdge));
@@ -332,7 +338,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
           for (let k = 0; k <= nH; k++) {
             const o = O(i, k) - nAlt;
             const n = nOuter[i * col + k]!;
-            const offIn = 0.9 * dicke;
+            const offIn = 0.9 * dicke * (0.3 + 0.7 * (k / nH));
             posL.push(posL[o * 3]! - n[0] * offIn, posL[o * 3 + 1]! - n[1] * offIn, posL[o * 3 + 2]! - n[2] * offIn);
             nrmL.push(-n[0], -n[1], -n[2]);
             kanteL.push(kanteL[o]!);
@@ -397,18 +403,13 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
 
     // --- Zähne auf dem Rand: Größenprofil (Eckzahn-Spitze, vorn mittel, hinten klein), Ansatz im Zahnfleisch --------
     const z = b.zaehne;
-    if (z.stil !== 'keine' && z.groesse > 0.01 && ms.rand.length > 4) {
+    if (z.stil !== 'keine' && z.groesse > 0.01 && ms.rand.length > 4 && ms.randU.length > 4) {
       const rng = makeRng((b.seed * 7919 + 13) >>> 0);
-      const rand = ms.rand;
-      const arc: number[] = [0];
-      for (let i = 1; i < rand.length; i++) arc.push(arc[i - 1]! + Math.hypot(rand[i]!.p[0] - rand[i - 1]!.p[0], rand[i]!.p[1] - rand[i - 1]!.p[1], rand[i]!.p[2] - rand[i - 1]!.p[2]));
-      const total = arc[arc.length - 1]!;
       const headH = m.host.headHeight ?? m.host.height;
       const baseSize = z.groesse * 0.3 * headH;
       // Grundabstand aus der Dichte; große Zähne nehmen mehr Platz (Abstand wächst mit der Zahnbreite), die Reihe läuft
       // entlang der Bogenlänge; Größen: vorn die Fänge (Spitze bei u ≈ 0,2), nach hinten kleiner, dazwischen im Wechsel
       // groß/klein (`streuung`) wie gezeichnet — Bild 5/11
-      const spacingBase = total / (5 + 15 * Math.min(1.5, z.dichte));
       const band = (0.02 + 0.08 * clamp01(b.maul.lippe)) * H;
       // Platz im Gegenkiefer: geschlossen muss der Zahn im Gegenkiefer verschwinden (Bild 7/9), außer `aussen` will Fänge außen
       const jawDepth = m.host.jawDepth ?? Math.min(m.hLip, 0.45 * m.host.height) * 1.05;
@@ -420,28 +421,24 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
         const seitig = 1 + clamp(b.maul.bohne, -1, 1) * clamp(phi / m.theta, -1, 1);
         return scale(m.frame.y, sSide * along * Math.max(0.2, seitig));
       } : null;
-      // Stufenmaß je Winkel: Radius der Haut knapp unter der Maullinie minus Radius knapp darüber (> 0: Unterkiefer
-      // breiter = Plateau; < 0: Oberkiefer breiter = Sohle); gemessen am Feld, damit Breite und Länge beider Kiefer zählen
-      const maxRS = m.host.halfWidth * 3 + H;
-      const stufeBei = (phi: number): number => {
-        const phiC = clamp(phi, -m.theta, m.theta);
-        const hl = m.lipHAt(phiC);
-        const dh = 0.06 * (m.host.headHeight ?? m.host.height);
-        const rLo = surfacePoint(m.host, hl - dh, phiC, maxRS).r;
-        const rUp = surfacePoint(m.host, hl + dh, phiC, maxRS).r;
-        if (rLo >= maxRS - 1e-6 || rUp >= maxRS - 1e-6 || rLo <= 1e-6 || rUp <= 1e-6) return 0;
-        return rLo - rUp;
-      };
-      const at = (s: number): { p: Vec3; w: Vec3; u: Vec3; phi: number } => {
-        let i = 0;
-        while (i < arc.length - 2 && arc[i + 1]! < s) i++;
-        const f = clamp((s - arc[i]!) / Math.max(1e-9, arc[i + 1]! - arc[i]!), 0, 1);
-        const a = rand[i]!, bb = rand[i + 1]!;
-        return { p: add(a.p, scale(sub(bb.p, a.p), f)), w: normalize(add(a.w, scale(sub(bb.w, a.w), f))), u: normalize(add(a.u, scale(sub(bb.u, a.u), f))), phi: a.phi + (bb.phi - a.phi) * f };
-      };
+      // Zähne stehen auf ihrem eigenen Rand: oben auf dem Oberkieferrand, unten auf dem Unterkieferrand — bei ungleich
+      // großen Kiefern liegt der Rand des größeren außen (Fänge über dem Unterkiefer, Hauer neben dem Oberkiefer),
+      // nichts bohrt durch den Gegenkiefer
       const place = (upper: boolean, offset: number): void => {
         // ohne Unterkiefer stehen untere Zähne nur als Hauer aus der Brustkante (Drache, Bild 5 rechts)
         if (!upper && b.maul.unterkiefer < 0.05 && z.hauer < 0.05) return;
+        const rand = upper ? ms.rand : ms.randU;
+        const arc: number[] = [0];
+        for (let i = 1; i < rand.length; i++) arc.push(arc[i - 1]! + Math.hypot(rand[i]!.p[0] - rand[i - 1]!.p[0], rand[i]!.p[1] - rand[i - 1]!.p[1], rand[i]!.p[2] - rand[i - 1]!.p[2]));
+        const total = arc[arc.length - 1]!;
+        const spacingBase = total / (5 + 15 * Math.min(1.5, z.dichte));
+        const at = (s: number): { p: Vec3; w: Vec3; u: Vec3; phi: number } => {
+          let i = 0;
+          while (i < arc.length - 2 && arc[i + 1]! < s) i++;
+          const f = clamp((s - arc[i]!) / Math.max(1e-9, arc[i + 1]! - arc[i]!), 0, 1);
+          const a = rand[i]!, bb = rand[i + 1]!;
+          return { p: add(a.p, scale(sub(bb.p, a.p), f)), w: normalize(add(a.w, scale(sub(bb.w, a.w), f))), u: normalize(add(a.u, scale(sub(bb.u, a.u), f))), phi: a.phi + (bb.phi - a.phi) * f };
+        };
         let sPos = spacingBase * (0.5 + offset);
         let i = 0;
         while (sPos < total - spacingBase * 0.3) {
@@ -471,16 +468,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
           const vertical = upper ? scale(r.u, -1) : r.u;
           const lean = 0.22 * (1 - u) * (upper ? 1 : 0.6);
           const dirKeil = normalize(add(add(vertical, scale(r.w, inward)), scale(m.frame.z, lean)));
-          // Stufe zwischen den Kiefern (Breite/Länge verschieden): der größere Kiefer hat außen eine freie Fläche
-          // (Plateau unten beim Unterbiss, Sohle oben beim Überbiss) — dort stehen seine Zähne, außerhalb des kleineren
-          // Kiefers, statt am Rand in ihn hinein zu bohren (Florian: Hauer wachsen an der freien Stelle heraus)
-          // Nur Fänge/Hauer (vorderes Drittel) und mit `aussen` auch die übrigen Zähne wandern hinaus; Backenzähne am Rand
-          // zeigen in die Tasche des Gegenkiefers (nicht durch dessen Haut)
-          const stufe = stufeBei(r.phi);
-          const frei = upper ? Math.max(0, -stufe) : Math.max(0, stufe);
-          const hinaus = clamp01(Math.exp(-Math.pow((u - 0.2) / 0.11, 2)) + 0.6 * aussen * aussen + (isHauer ? 1 : 0));
-          const aussenWeg = frei > 0.004 * H ? frei * (0.55 + 0.35 * aussen) * hinaus : 0;
-          const pos = add(add(r.p, scale(r.w, band * 0.6 + size * 0.25 - aussenWeg)), scale(vertical, -size * 0.12));
+          const pos = add(add(r.p, scale(r.w, band * 0.6 + size * 0.25)), scale(vertical, -size * 0.12));
           // Lochmaul: der Rand weitet sich (Spitzmund) statt zu drehen — der Zahn rückt mit (Versatz wie die Haut am
           // Rand) und zeigt bei voller Öffnung zur Mitte des Lochs statt senkrecht (an den Seiten sonst tangential)
           const pk = puckerRand ? puckerRand(r.phi, upper ? 1 : -1) : null;
@@ -500,7 +488,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       place(false, 0.5);
     }
     // --- Zunge auf dem Taschenboden ------------------------------------------------------------------------------
-    const mid = ms.rand[Math.floor(ms.rand.length / 2)]!;
+    const mid = ms.randU[Math.floor(ms.randU.length / 2)]!;
     const tiefeMid = mid.d;
     // Zunge liegt hinten auf dem Taschenboden und reicht nach vorn bis knapp hinter die Zähne (Bild 5/14)
     const laenge = clamp01(b.zunge.groesse) * tiefeMid * 0.78;

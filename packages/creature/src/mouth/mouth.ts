@@ -31,6 +31,9 @@ export interface MouthHost {
   headHeight?: number;
   /** Mittellinie des Trägers: Scheibenmitte auf Höhe h (Körperträger mit Neigung); ohne Angabe `origin + up · h`. */
   center?: (h: number) => Vec3;
+  /** Kieferstufe (ungleich große Kiefer): Höhenversatz des Ober- und Unterkieferrands gegen die Maullinie bei
+   *  u = |φ|/θ — der größere Kiefer hat den äußeren Rand, die Ränder laufen zu den Winkeln zusammen; ohne Angabe 0. */
+  kieferStufe?: (u: number) => { oben: number; unten: number };
   /** Szene nur mit den Trägerformen (zum Marschieren auf die Fläche). */
   scene: SdfScene;
 }
@@ -77,6 +80,11 @@ export interface MouthGeometry {
   upperLever: number;
   local(p: Readonly<Vec3>): { h: number; phi: number; r: number };
   lipHAt(phi: number): number;
+  /** Höhe des Oberkiefer- bzw. Unterkieferrands bei φ (Maullinie plus Kieferstufe); gleich bei gleich großen Kiefern. */
+  lipHObenAt(phi: number): number;
+  lipHUntenAt(phi: number): number;
+  /** Größter Abstand der beiden Ränder (0 = ein Rand, bündig). */
+  kieferStufeMax: number;
   lipRAt(phi: number): number;
   /** Öffnungsprofil 0…1 je Azimut (1 vorn, 0 an den Winkeln): spitz (Rex) … rund (Aal). */
   profilAt(phi: number): number;
@@ -151,10 +159,27 @@ export function thetaKeilOf(m: Bauplan['maul']): number {
  */
 export function lipHeight(m: Bauplan['maul'], H: number, Hk: number, u: number): number {
   const hLip = clamp(m.hoehe, 0.02, 0.98) * H;
+  // Gezeichnete Linie (Maul-Editor): Bézier-Kontrollwerte über u ersetzen Neigung und Schwung — jede runde, geschwungene
+  // Form ist möglich (Florian: die Regler-Formen waren nicht rund genug)
+  if (m.linie && m.linie.length >= 2) return clamp(hLip + bezierWert(m.linie, clamp01(u)) * Hk, 0.01, H - 0.01);
   const rise = m.neigung * 0.22 * Hk * u * u;
   // Schwung mit Vorzeichen: positiv senkt die Linie hinter der Schnauze (Dino), negativ wölbt sie nach oben (Drache)
   const dip = clamp(m.schwung, -1, 1) * 0.12 * Hk * Math.pow(Math.sin(Math.PI * clamp01(u / 0.72)), 1.5) * (u < 0.72 ? 1 : 0);
   return clamp(hLip + rise - dip, 0.01, H - 0.01);
+}
+
+/** Bézier-Kurve (de Casteljau) über Kontrollwerte an t ∈ [0, 1]. */
+export function bezierWert(ctrl: readonly number[], t: number): number {
+  const w = ctrl.slice();
+  for (let r = w.length - 1; r > 0; r--) for (let i = 0; i < r; i++) w[i] = w[i]! * (1 - t) + w[i + 1]! * t;
+  return w[0] ?? 0;
+}
+
+/** Höhe der Regler-Linie (Neigung/Schwung) relativ zur Grundlinie in Kopfhöhen — zum Übernehmen in gezeichnete Punkte. */
+export function linieAusReglern(m: Pick<Bauplan['maul'], 'neigung' | 'schwung'>, u: number): number {
+  const rise = m.neigung * 0.22 * u * u;
+  const dip = clamp(m.schwung, -1, 1) * 0.12 * Math.pow(Math.sin(Math.PI * clamp01(u / 0.72)), 1.5) * (u < 0.72 ? 1 : 0);
+  return rise - dip;
 }
 
 /** Lefzen (W-Lippe, Hund — Bild 8): Tiefe, um die der Oberlippenlappen bei u = |φ|/θ unter die Maullinie hängt (≥ 0);
@@ -229,6 +254,16 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     return 0.5 * (2 * p1 + (-p0 + p2) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f2 + (-p0 + 3 * p1 - 3 * p2 + p3) * f3);
   };
   const lipHAt = (phi: number): number => interp(lipH, phi);
+  // Kieferstufe: ungleich große Kiefer haben zwei Ränder — der größere liegt außen (Sohle über bzw. Plateau unter der
+  // Linie), zu den Mundwinkeln laufen beide zusammen (Florian: das Maul schließt dann nicht mehr bündig; Hauer, Drache)
+  const stufeAt = (phi: number): { oben: number; unten: number } => (host.kieferStufe ? host.kieferStufe(clamp01(Math.abs(phi) / theta)) : { oben: 0, unten: 0 });
+  const lipHObenAt = (phi: number): number => clamp(lipHAt(phi) + stufeAt(phi).oben, 0.01, H - 0.01);
+  const lipHUntenAt = (phi: number): number => clamp(lipHAt(phi) + stufeAt(phi).unten, 0.01, H - 0.01);
+  let kieferStufeMax = 0;
+  for (let i = 0; i <= 20; i++) {
+    const st = stufeAt((-theta + (2 * theta * i) / 20));
+    kieferStufeMax = Math.max(kieferStufeMax, st.oben - st.unten);
+  }
   const lipRAt = (phi: number): number => interp(lipR, phi);
   const profilAt = (phi: number): number => {
     const u = clamp(Math.abs(phi) / theta, 0, 1);
@@ -374,5 +409,5 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const thetaFold = 2 * Math.asin(clamp((1.1 * fadeLen) / lChin, 0, 1));
     return Math.min(ok, thetaFold, Math.asin(0.95));
   })();
-  return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, skullHinge: { point: skullMid, axis: hingeAxis }, upperLever, local, lipHAt, lipRAt, profilAt, jawWeight, upperWeight, jawParts, upperParts, jawDepth, fadeLen, wToJoint, zCorner, jawLever, lowerAngleMax };
+  return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, skullHinge: { point: skullMid, axis: hingeAxis }, upperLever, local, lipHAt, lipHObenAt, lipHUntenAt, kieferStufeMax, lipRAt, profilAt, jawWeight, upperWeight, jawParts, upperParts, jawDepth, fadeLen, wToJoint, zCorner, jawLever, lowerAngleMax };
 }
