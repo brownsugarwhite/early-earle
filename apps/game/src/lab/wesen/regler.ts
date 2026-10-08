@@ -340,7 +340,7 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
   ],
   schwanz: [
     { titel: 'Schwanz', ids: ['schwanz.typ'] },
-    { titel: 'Form', ids: ['schwanz.laenge', 'schwanz.dicke', 'schwanz.hoch', 'schwanz.kruemmung'], aktiv: (b) => b.schwanz.typ !== 'keiner', inaktiv: 'wirkt mit einem Schwanz' },
+    { titel: 'Form', ids: ['schwanz.laenge', 'schwanz.dicke', 'schwanz.hoch', 'schwanz.kruemmung', 'schwanz.spitze', 'schwanz.schwung'], aktiv: (b) => b.schwanz.typ !== 'keiner', inaktiv: 'wirkt mit einem Schwanz' },
   ],
   muster: [
     { titel: 'Material', ids: ['material'] },

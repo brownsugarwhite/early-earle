@@ -39,6 +39,8 @@ export interface MundSchnitt {
   randU: Array<{ p: Vec3; phi: number; w: Vec3; u: Vec3; d: number }>;
   /** Index des ersten Taschenvertex (alle Vertices ab hier liegen in der Tasche). */
   tascheStart: number;
+  /** Glatte Normalen der Taschenvertices (xyz je Vertex, 0 außerhalb der Tasche) — aus dem Gitter statt aus den Facetten. */
+  taschenNormalen: Float32Array;
 }
 
 export interface SchnittOptionen {
@@ -230,6 +232,24 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   };
   const rand: MundSchnitt['rand'] = randO.map(rahmen);
   const randUnt: MundSchnitt['rand'] = randU.map(rahmen);
+  // Glatte Randkurven (Gauß-Kern über φ): die Schnittpunkte liegen unregelmäßig auf dem Gitter; würde jede Taschenspalte
+  // vom eigenen Randpunkt ausgehen, bekäme die Höhle Rippen und Fransen („Blume mit ausgefransten Blüten“). Die Ränder
+  // selbst bleiben exakt, die Tasche dahinter folgt der geglätteten Kurve — eine runde glatte Höhle mit scharfer Kante
+  const glatt = (liste: ReadonlyArray<{ phi: number; pos: Vec3 }>): ((phi: number) => Vec3) => {
+    const sig = Math.max(theta / 9, 0.04);
+    return (phi: number): Vec3 => {
+      let sx = 0, sy = 0, sz = 0, sw = 0;
+      for (const q of liste) {
+        const w = Math.exp(-Math.pow((q.phi - phi) / sig, 2));
+        sx += w * q.pos[0];
+        sy += w * q.pos[1];
+        sz += w * q.pos[2];
+        sw += w;
+      }
+      return sw > 1e-12 ? [sx / sw, sy / sw, sz / sw] : liste[0]!.pos;
+    };
+  };
+  const glattO = glatt(randO), glattU = glatt(randU);
   // Unterrand auf die Spalten des Oberrands: bei zwei Rändern neue Vertices (nach φ interpoliert), Enden = Spitzen
   const interpU = (phi: number): Vec3 => {
     if (randU.length === 1) return randU[0]!.pos;
@@ -252,8 +272,18 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   const grid = new Int32Array(nR * (m + 1));
   const tascheTiefe: number[] = new Array(tascheStart).fill(0);
   for (let i = 0; i < nR; i++) {
-    const r = rand[i]!, rl = randO[i]!;
-    const pU: Vec3 = [pos[unten[i]! * 3]!, pos[unten[i]! * 3 + 1]!, pos[unten[i]! * 3 + 2]!];
+    const rl = randO[i]!;
+    // Spalte aus der glatten Kurve (Rahmen daraus), die Randvertices selbst bleiben die echten Schnittpunkte; zu den
+    // Mundwinkeln hin läuft die Glättung aus (dort zöge sie die Basis seitlich vom Rand weg — verdrehte Vierecke, Löcher)
+    const tS = clamp((theta - Math.abs(rl.phi)) / (0.35 * theta), 0, 1);
+    const wS = tS * tS * (3 - 2 * tS);
+    const uAct: Vec3 = [pos[rl.oben * 3]!, pos[rl.oben * 3 + 1]!, pos[rl.oben * 3 + 2]!];
+    const lAct: Vec3 = [pos[unten[i]! * 3]!, pos[unten[i]! * 3 + 1]!, pos[unten[i]! * 3 + 2]!];
+    const uG = glattO(rl.phi), lG = glattU(rl.phi);
+    const uS: Vec3 = add(uAct, scale(sub(uG, uAct), wS));
+    const lS: Vec3 = add(lAct, scale(sub(lG, lAct), wS));
+    const r = rahmen({ phi: rl.phi, pos: uS });
+    const pU: Vec3 = lS;
     for (let k = 0; k <= m; k++) {
       if (k === 0) {
         grid[i * (m + 1)] = rl.oben;
@@ -283,6 +313,41 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
       tascheTiefe.push(Math.sin(Math.PI * sK));
     }
   }
+  // Ein gemeinsames Vorzeichen für das ganze Taschengitter (Spalte × Zeile zeigt in die Höhle oder heraus — am tiefsten
+  // Punkt in der Mitte entschieden): Wicklung und Normalen folgen ihm, statt je Dreieck gegen ein Zentrum zu raten (das
+  // kippte nahe den Mundwinkeln, wo die Tasche flach wird — weggeklappte Dreiecke, weiße Löcher)
+  const PG = (ii: number, kk: number): Vec3 => {
+    const q = grid[Math.max(0, Math.min(nR - 1, ii)) * (m + 1) + Math.max(0, Math.min(m, kk))]!;
+    return [pos[q * 3]!, pos[q * 3 + 1]!, pos[q * 3 + 2]!];
+  };
+  let gitterZeichen = 1;
+  {
+    const i0 = Math.floor(nR / 2), k0 = Math.floor(m / 2);
+    const di = sub(PG(i0 + 1, k0), PG(i0 - 1, k0)), dk = sub(PG(i0, k0 + 1), PG(i0, k0 - 1));
+    const n0: Vec3 = [di[1] * dk[2] - di[2] * dk[1], di[2] * dk[0] - di[0] * dk[2], di[0] * dk[1] - di[1] * dk[0]];
+    const r0 = rand[i0]!;
+    const c0 = add(r0.p, scale(r0.w, r0.d * 0.5));
+    const toC = sub(c0, PG(i0, k0));
+    gitterZeichen = n0[0] * toC[0] + n0[1] * toC[1] + n0[2] * toC[2] >= 0 ? 1 : -1;
+  }
+  // Glatte Normalen des Taschengitters aus den Gitterrichtungen (Spalte × Zeile) mit dem gemeinsamen Vorzeichen
+  const taschenNormalen = new Float32Array(pos.length);
+  for (let i = 0; i < nR; i++) {
+    for (let k = 1; k < m; k++) {
+      const v = grid[i * (m + 1) + k]!;
+      if (v < tascheStart) continue;
+      const di = sub(PG(i + 1, k), PG(i - 1, k)), dk = sub(PG(i, k + 1), PG(i, k - 1));
+      let nx = di[1] * dk[2] - di[2] * dk[1], ny = di[2] * dk[0] - di[0] * dk[2], nz = di[0] * dk[1] - di[1] * dk[0];
+      const nl = Math.hypot(nx, ny, nz);
+      if (nl < 1e-12) continue;
+      nx = (nx / nl) * gitterZeichen;
+      ny = (ny / nl) * gitterZeichen;
+      nz = (nz / nl) * gitterZeichen;
+      taschenNormalen[v * 3] = nx;
+      taschenNormalen[v * 3 + 1] = ny;
+      taschenNormalen[v * 3 + 2] = nz;
+    }
+  }
   const newTris = tris;
   const triZu = (x: number, y: number, z: number, centre: Readonly<Vec3>): void => {
     if (x === y || y === z || x === z) return;
@@ -295,15 +360,17 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
     if (nx * toC[0]! + ny * toC[1]! + nz * toC[2]! >= 0) newTris.push(x, y, z);
     else newTris.push(x, z, y);
   };
-  // Taschendreiecke, Normalen zur Höhle (zum Taschenzentrum der Spalte) orientiert
+  // Taschendreiecke: Wicklung aus dem Gitter (a,b,c / a,c,d entspricht +Spalte × Zeile), mit dem gemeinsamen Vorzeichen
+  const triG = (x: number, y: number, z: number): void => {
+    if (x === y || y === z || x === z) return;
+    if (gitterZeichen > 0) newTris.push(x, y, z);
+    else newTris.push(x, z, y);
+  };
   for (let i = 0; i < nR - 1; i++) {
-    const r0 = rand[i]!, r1 = rand[i + 1]!;
-    const c0 = add(r0.p, scale(r0.w, r0.d * 0.5)), c1 = add(r1.p, scale(r1.w, r1.d * 0.5));
-    const centre: Vec3 = [(c0[0] + c1[0]) / 2, (c0[1] + c1[1]) / 2, (c0[2] + c1[2]) / 2];
     for (let k = 0; k < m; k++) {
       const a = grid[i * (m + 1) + k]!, b = grid[(i + 1) * (m + 1) + k]!, c = grid[(i + 1) * (m + 1) + k + 1]!, d = grid[i * (m + 1) + k + 1]!;
-      triZu(a, b, c, centre);
-      triZu(a, c, d, centre);
+      triG(a, b, c);
+      triG(a, c, d);
     }
   }
   // Zwei Ränder: Reißverschluss zwischen der interpolierten Unterreihe und den echten Unterrand-Vertices
@@ -365,6 +432,7 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
     rand,
     randU: randUnt,
     tascheStart,
+    taschenNormalen,
   };
 }
 

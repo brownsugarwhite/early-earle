@@ -259,6 +259,14 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       } else neu.add(v);
     }
     faceNormalsFor(ms.positions, ms.index, neu, normals1);
+    // Tasche: glatte Gitternormalen statt Facetten (runde Höhle ohne Rippen)
+    for (let v = ms.tascheStart; v < n1; v++) {
+      const nx = ms.taschenNormalen[v * 3]!, ny = ms.taschenNormalen[v * 3 + 1]!, nz = ms.taschenNormalen[v * 3 + 2]!;
+      if (nx === 0 && ny === 0 && nz === 0) continue;
+      normals1[v * 3] = nx;
+      normals1[v * 3 + 1] = ny;
+      normals1[v * 3 + 2] = nz;
+    }
     // Randvertices der Haut: Normale der Haut (glatt), nicht der Tasche — die Tasche hat ihre eigenen Kopien
     const randVerts: number[] = [];
     for (let i = 0; i < ms.randOben.length; i++) randVerts.push(ms.randOben[i]!);

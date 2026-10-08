@@ -582,10 +582,12 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       // Stirn zwischen den Augen zur Nase und ein kastenförmiges Maul mit markantem Kinn vor dem Schädel. Beide als
       // Rundboxen im Kopfrahmen, weich angeschlossen (Form bleibt lesbar, keine harte Naht)
       const zFront = (Lfront + Lback) * 0.5;
-      // Rundbox im Kopfrahmen; `trapez` weitet die Breite nach unten (Nasenband: schmal an der Stirn, breit an der Nase),
-      // `kinn` verjüngt sie nach unten (Kastenmaul: zum Kinn etwas schmaler, organischer)
-      const rundbox = (name: string, c: Vec3, halb: Vec3, rund: number, k: number, trapez = 0): CustomPrim => {
-        const reach = halb[0] * (1 + Math.abs(trapez)) + halb[1] + halb[2] + rund;
+      // Rundbox in einem Rahmen (Vorgabe: Kopfrahmen); `trapezY` weitet die Breite nach unten (Kinn schmaler), `trapezZ`
+      // entlang der Länge (vorn breit, hinten schmal)
+      const rundbox = (name: string, c: Vec3, halb: Vec3, rund: number, k: number, opt: { trapezY?: number; trapezZ?: number; frame?: { right: Vec3; up: Vec3; forward: Vec3 } } = {}): CustomPrim => {
+        const fr = opt.frame ?? { right: rightH, up: upH, forward: forwardH };
+        const tY = opt.trapezY ?? 0, tZ = opt.trapezZ ?? 0;
+        const reach = halb[0] * (1 + Math.abs(tY) + Math.abs(tZ)) + halb[1] + halb[2] + rund;
         return {
           kind: 'custom',
           op: 'union',
@@ -595,31 +597,60 @@ export function construct(b: Bauplan, resolution = 56): Construction {
           name,
           eval: (p: Readonly<Vec3>): number => {
             const dx = p[0] - c[0], dy = p[1] - c[1], dz = p[2] - c[2];
-            const x = dx * rightH[0] + dy * rightH[1] + dz * rightH[2];
-            const y = dx * upH[0] + dy * upH[1] + dz * upH[2];
-            const z = dx * forwardH[0] + dy * forwardH[1] + dz * forwardH[2];
-            const t = clamp(-y / Math.max(1e-6, halb[1]), -1, 1);
-            const bx = halb[0] * (1 + trapez * t);
+            const x = dx * fr.right[0] + dy * fr.right[1] + dz * fr.right[2];
+            const y = dx * fr.up[0] + dy * fr.up[1] + dz * fr.up[2];
+            const z = dx * fr.forward[0] + dy * fr.forward[1] + dz * fr.forward[2];
+            const ty = clamp(-y / Math.max(1e-6, halb[1]), -1, 1);
+            const tz = clamp(z / Math.max(1e-6, halb[2]), -1, 1);
+            const bx = halb[0] * (1 + tY * ty + tZ * tz);
             return sdRoundBoxLocal(x, y, z, [bx, halb[1], halb[2]], rund);
           },
           bounds: { min: [c[0] - reach, c[1] - reach, c[2] - reach], max: [c[0] + reach, c[1] + reach, c[2] + reach] },
         };
       };
-      // Florians Skizze: Nasenband als flaches Trapez von der Stirn (schmal) zur Nase (breit); das Kastenmaul ragt weit
-      // vor den Schädel und reicht bis unter ihn (Kinn), rund und organisch, zum Kinn leicht schmaler
-      const nasenband = clamp(b.kopf.nasenband, 0, 1);
-      if (nasenband > 0.02) {
-        const halb: Vec3 = [hr * 0.17 * (0.6 + 0.4 * nasenband), hr * 0.3, hr * 0.14];
-        const c = add(add(headCenter, scale(forwardH, zFront * 0.93 + hr * (0.02 + 0.08 * nasenband) - halb[2])), scale(upH, hr * 0.22));
-        prims.push(rundbox('nasenband', c, halb, hr * 0.07, hr * 0.1, 0.55));
-      }
+      // Florians Skizze: das Kastenmaul ragt weit vor den Schädel und reicht bis unter ihn (Kinn), zur Nase hin breiter
+      // (Trapez), rund und organisch; die Nase sitzt vorn auf seiner Oberkante
       const kasten = clamp(m0.kasten, 0, 1);
       if (kasten > 0.02) {
-        // zur Nase hin breiter (Trapez −0,35: oben 1,35 ×, am Kinn 0,65 ×), nach unten lang bis unter den Schädel
         const halb: Vec3 = [hr * 0.3 * (0.75 + 0.25 * kasten), hr * 0.52, hr * 0.26];
-        const c = add(add(headCenter, scale(forwardH, zFront * 0.85 + hr * (0.05 + 0.42 * kasten) - halb[2])), scale(upH, -hr * 0.42));
-        prims.push(rundbox('kastenmaul', c, halb, hr * 0.16, hr * 0.13, -0.35));
+        // Der Kasten wandert mit der Maulhöhe (Florian: das Maul ließ sich über den Kasten schieben): die Maullinie liegt
+        // bei 45 % seiner Höhe — Kinn darunter, Nase an der Oberkante
+        const yLip = clamp(m0.hoehe, 0.02, 0.98) * hostH - hc;
+        const c = add(add(headCenter, scale(forwardH, zFront * 0.85 + hr * (0.05 + 0.42 * kasten) - halb[2])), scale(upH, yLip + 0.1 * halb[1]));
+        prims.push(rundbox('kastenmaul', c, halb, hr * 0.16, hr * 0.13, { trapezY: -0.35 }));
         kastenInfo = { c, halb, oben: upH, rechts: rightH, vorn: forwardH, hr };
+      }
+      // Nasenband (Florian: „die Verbindung von Nase zur Stirn soll eine Linie sein“): eine schräge Rampe, deren Oberseite
+      // **in einer Geraden** von der Stirn zwischen den Augen bis zur Oberkante des Kastens (Nase) läuft — an der Nase so
+      // breit wie der Kasten, zur Stirn schmaler; sie füllt die Stufe zwischen rundem Schädel und vorstehendem Kasten
+      const nasenband = clamp(b.kopf.nasenband, 0, 1);
+      if (nasenband > 0.02 && kastenInfo) {
+        const ki = kastenInfo;
+        // vorderer Anker: Oberkante des Kastens (dort sitzt die Nase); hinterer Anker: Schädelfläche auf Augenhöhe
+        const P0 = add(add(ki.c, scale(ki.oben, ki.halb[1] - 0.03 * hr)), scale(ki.vorn, ki.halb[2] - 0.01 * hr));
+        const yF = hr * (0.2 + 0.25 * nasenband);
+        const sceneSoFar: SdfScene = { prims: prims.filter((q) => q.op === 'union') };
+        const start = add(headCenter, scale(upH, yF));
+        let zS = 0;
+        for (let i = 0; i < 60; i++) {
+          const d = evalScene(sceneSoFar, add(start, scale(forwardH, zS)));
+          if (d > -1e-3) break;
+          zS += Math.max(0.004, -d);
+        }
+        const F = add(start, scale(forwardH, zS));
+        const e = normalize(sub(F, P0));
+        const len = Math.hypot(F[0] - P0[0], F[1] - P0[1], F[2] - P0[2]);
+        const nUp = normalize(sub(upH, scale(e, dot(upH, e))));
+        const wN = ki.halb[0] * 1.35, wF = wN * 0.5;
+        const halbH = hr * 0.22;
+        const halbZ = len / 2 + 0.03 * hr;
+        const cB = add(scale(add(F, P0), 0.5), scale(nUp, -halbH));
+        const w = (wN + wF) / 2, tz = (wF - wN) / (wF + wN);
+        prims.push(rundbox('nasenband', cB, [w, halbH, halbZ], hr * 0.05, hr * 0.08, { trapezZ: tz, frame: { right: rightH, up: nUp, forward: e } }));
+      } else if (nasenband > 0.02) {
+        const halb: Vec3 = [hr * 0.17 * (0.6 + 0.4 * nasenband), hr * 0.3, hr * 0.14];
+        const c = add(add(headCenter, scale(forwardH, zFront * 0.93 + hr * (0.02 + 0.08 * nasenband) - halb[2])), scale(upH, hr * 0.22));
+        prims.push(rundbox('nasenband', c, halb, hr * 0.07, hr * 0.1, { trapezY: 0.55 }));
       }
       const hoerner = clamp(b.kopf.hoerner, 0, 1);
       if (hoerner > 0.02) {
@@ -933,7 +964,8 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     const rBody = rumpfTiefeBei(hT);
     // Wirbelsäule: so dick wie der Rumpf dort (Dicke 1) … halb so dick; Anhang: dünn mit Ansatztrichter
     const r0 = T.typ === 'wirbelsaeule' ? rBody * (0.5 + 0.5 * T.dicke) : H * (0.04 + 0.08 * T.dicke);
-    const rTip = T.typ === 'wirbelsaeule' ? 0.03 * H : r0 * 0.55;
+    // Spitze: dünn auslaufend oder Keule (Florian: der Schwanz wird zum Ende hin etwas dicker, Bild 9)
+    const rTip = T.typ === 'wirbelsaeule' ? 0.03 * H : r0 * clamp(T.spitze, 0.2, 1.6);
     const curl = T.typ === 'bogen' ? 0.8 + 0.4 * T.kruemmung : T.kruemmung;
     const zBack = axisAt(hT)[2] - rBody;
     // Wurzel: Wirbelsäule beginnt im Kern (0,8 · Rumpfradius, deutlich unter der Haut — fast deckungsgleiche Flächen
@@ -942,9 +974,12 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     // Kragen (Florian: „der Schwanz muss deutlich flüssiger in den Körper übergehen, Kanten und Knubbel“)
     const rRoot = T.typ === 'wirbelsaeule' ? rBody * 0.8 : Math.min(rBody * 0.8, r0 * 2.5);
     const ctrl: Vec3[] = T.typ === 'wirbelsaeule' ? [axisAt(hT), [0, hT, zBack + 0.35 * rBody], [0, hT, zBack]] : [[0, hT, zBack + Math.max(rRoot * 1.6, 0.35 * rBody)], [0, hT, zBack + rRoot * 0.6], [0, hT, zBack]];
+    // Schwung: Bogen in der Mitte (positiv nach oben, negativ durchhängend) — zusammen mit Höhe und Krümmung ein
+    // organischer S-Bogen statt einer starren Parabel
+    const schwung = clamp(T.schwung, -1, 1);
     for (let i = 1; i <= 6; i++) {
       const t = i / 6;
-      ctrl.push([0, hT + Lt * (T.hoch * 0.9 * t * t + curl * 0.5 * t * t * t) + (T.typ === 'wirbelsaeule' ? 0 : -Lt * 0.15 * t * (1 - Math.abs(T.hoch))), zBack - Lt * t * (1 - 0.15 * Math.abs(T.hoch))]);
+      ctrl.push([0, hT + Lt * (T.hoch * 0.9 * t * t + curl * 0.5 * t * t * t + 0.4 * schwung * Math.sin(Math.PI * t)) + (T.typ === 'wirbelsaeule' ? 0 : -Lt * 0.15 * t * (1 - Math.abs(T.hoch))), zBack - Lt * t * (1 - 0.15 * Math.abs(T.hoch))]);
     }
     const pts = catmullRom(ctrl, 2);
     const arcs: number[] = [0];
@@ -963,10 +998,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       }
       const f = Lans > 0 ? smoothstep(0, Lans, sA) : 1;
       const rA = rRoot * (1 - f) + r0 * f;
-      // Verjüngung: anfangs langsam (dicker Ansatz, Bild 9/12), zur Spitze schneller
+      // Dickenverlauf als Bogen durch Ansatz, Mitte (leichte Taille) und Spitze — eine Keule schwillt erst am Ende an
       const g = clamp((sA - Lans) / Math.max(1e-6, Lt - Lans), 0, 1);
-      const ge = g * g * (2 - g);
-      return Math.max(0.01 * H, rA + (rTip - rA) * ge);
+      const rMid = Math.min(rA, rTip) * 0.85;
+      return Math.max(0.01 * H, (1 - g) * (1 - g) * rA + 2 * g * (1 - g) * rMid + g * g * rTip);
     });
     const pl = makePolyline(pts, radii, UP);
     const g = groups.length;

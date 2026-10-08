@@ -201,6 +201,8 @@ const schwanz = z
     dicke: regler(S, 'schwanz.dicke', 'Schwanzdicke', 0.1, 1, 0.5),
     hoch: regler(S, 'schwanz.hoch', 'Schwanz hoch', -1, 1, 0.3),
     kruemmung: regler(S, 'schwanz.kruemmung', 'Schwanzbogen', -1, 1, 0.3),
+    spitze: regler(S, 'schwanz.spitze', 'Spitze', 0.2, 1.6, 0.55, 'Dicke am Schwanzende relativ zum Ansatz: dünn auslaufend … Keule (Tiger, Bild 9)'),
+    schwung: regler(S, 'schwanz.schwung', 'Schwung', -1, 1, 0, 'Bogen in der Mitte: positiv wölbt sich der Schwanz nach oben, negativ hängt er erst durch'),
   })
   .prefault({});
 
