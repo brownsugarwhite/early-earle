@@ -28,7 +28,7 @@ EE_SHOTS=1 EE_VORLAGEN=keil,loch EE_SHOTS_TAG=vorher E2E_PORT=4471 node apps/gam
 | `EE_SHOTS=1` | Pflicht, sonst wird die Spec übersprungen | – |
 | `EE_VORLAGEN=keil,loch` | nur diese Vorlagen (Ids aus `presets.ts`); unbekannte Ids brechen ab | alle |
 | `EE_SHOTS_TAG=vorher` | Dateisuffix und Beschriftung; ohne Tag kein Suffix | leer |
-| `EE_ANSICHT=referenz\|held\|brett` | Kamera: Bögen-Ansicht (Referenzmodus), freie Ansicht oder Spielsicht ≈ 65° von oben | `referenz` |
+| `EE_ANSICHT=referenz\|held\|brett\|seite` | Kamera: Bögen-Ansicht (Referenzmodus), freie Ansicht, Spielsicht ≈ 65° von oben oder reine Seitenansicht | `referenz` |
 | `EE_DPR=2` | Geräte-Pixelverhältnis der Aufnahmen | `1` |
 | `EE_ALLOW_WEBGL2=1` | auch ohne WebGPU-Adapter aufnehmen (sonst Fehler: solche Bilder sind nicht vergleichbar) | aus |
 
@@ -57,3 +57,9 @@ EE_SHOTS=1 EE_VORLAGEN=keil,loch EE_SHOTS_TAG=vorher E2E_PORT=4471 node apps/gam
 Tab **Körper** → „Silhouette zeichnen“: zwei Bézier-Kurven (vorn rechts, hinten links) über der Rumpfhöhe, Punkte waagerecht ziehen, Scheitel-Regler für die runde Kappe. Am besten in der Ansicht „Seite“ mit dem Referenzbild darüber. Harness-Werkzeuge: `scripts/wesen/seitenprofil.mjs` (Profil aus einer Vermessung), `EE_ANSICHT=seite`, `EE_REIHE`, `EE_STIL`, `EE_BLINK`, `EE_RES`.
 
 **Maul‑Editor** (Tab Maul): Griffe auf zwei Schemazeichnungen (Seite: Höhe, Winkel, Neigung, Schwung; Vorn: W‑Form, Breite, Öffnung). **Vorderansicht** im Silhouetten‑Editor: Breite über der Höhe.
+
+## Verben und Beine (08.10. abends)
+
+- Knopf **Laufen** (Schnellaktionen, `?laufen=1`): Demo‑Gang — Hüfte schwingt, Knie knickt im Schwung, Körper wippt; Zweibeiner gegenphasig, Vierbeiner diagonal, Achtbeiner wechselnd. Kein Bodenkontakt (das Wesen läuft auf der Stelle), nur zum Prüfen der Beinform in Bewegung.
+- Regler **Verschmelzen** (Tab Beine, `unterkoerper.beine.verschmelzen`): 0 = Beine getrennt (Standard), 1 = Beine untereinander zu einem Sockel verschmolzen; mit dem Rumpf verschmelzen die Schenkel immer.
+- Maul auf: der ganze Schädel (Stirn, Augen, Oberkiefer) kippt um ein Gelenk hinter dem Kopf, der Unterkiefer hängt am Schädel; Nacken und Kehle laufen in Hals und Rumpf aus.

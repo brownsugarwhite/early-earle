@@ -86,6 +86,19 @@ Florian: W nur am Oberkiefer mit **Scharte** in der Mitte, zu weich; zu viele un
 
 **Befund dieses Blocks, ehrlich:** die gemessenen Silhouetten allein machen die Tiere noch nicht erkennbar — Bild 9 (Tiger) ist eine Dreiviertelansicht, Bild 5 (Rex) enthält Flügel/Füße, und der Dome kann einen überhängenden Kopf nur als Belt‑Form. Der Tiger liest sich mit eigenem Kugelkopf über dem Rumpfprofil besser (Überdeckung 0,70), der Rex mit eigenem Kopf. Die Form‑Lücke schließt am schnellsten **Florians Hand**: Silhouetten im Editor ziehen oder Blender‑Master (Mesh → Distanzfeld, noch zu bauen).
 
+## Block 7 (08.10. abends): Linien weg, Lippenlinie als Kieferwechsel, Schädel kippt, Beine getrennt, Laufdemo
+
+Florians Rückmeldungen dazwischen: (a) „Beim Öffnen schiebt sich die Schnauze oft in die Stirn/den Oberkopf — mehr Geometrie muss mit dem Maul mitbewegt werden und flüssiger hinten in den Körper übergehen.“ (b) „Die Beine verschmelzen noch; im Idealfall einstellbar, ob sie verschmelzen sollen. Demo‑Laufanimation zum Testen der Beine.“
+
+- **Dünne helle Linien über Rumpf und Beine** (Tiger, Rex, Goldie): das Vorzeichen der Lippenseite steckte im Kantenabstand (`region.y`); zwischen Nachbarn verschiedener Seite lief der Wert durch null und der Shader zeichnete dort das Lippenband als Zickzack. Jetzt eigener Kanal `seite` (`CreatureBuild.seite`, `eeExtra.w`, Puffer 15 Floats), Band = Abstand × Seitenfaktor → keine Linien mehr. Lippenband unten bei ω‑Mäulern 0,1 (W nur oben sichtbar).
+- **Zweiter Knick auf Kopfmitte**: Breite (`wxB`), Kante (`nB`) und Überbiss (`endRoundB`) der unteren Kopfhälfte wechselten an der **Stationsmitte** der Loft‑Querschnitte, nicht an der Maullinie — darum lag beim Tiger/Goldie eine gezackte Kante über dem W. Jetzt `LoftStation.split` (Trennhöhe je Station = Lippenlinie `lipHeight(u)` aus `mouth.ts`, mit Neigung, Schwung, ω) und `band` (weicher S‑Wechsel, ⅒ Kopfradius), Vorderkante der Unterform getrennt (`wyL`): die Oberlippe hängt als Wulst über den schmaleren, kürzeren Unterkiefer, der Schädel bleibt rund. Falle: der Loft übergibt die Querschnittsrichtung als **Einheitsvektor** (cb ∈ −1…1), die Trennhöhe ist in Längeneinheiten → Höhe des Flächenpunkts ≈ cb · mittlerer Radius (gemessen mit Profil‑Bisektion, erst dann stimmte es).
+- **Schädelgelenk** (`MouthGeometry.skullHinge`, `upperLever`): der Oberkiefer kippt nicht mehr um die Mundwinkel, sondern mit Stirn und Augen als ganzer Schädel um ein Gelenk hinter dem Kopf (0,55 der Rampe hinter dem Kiefergelenk, höchstens am Hinterkopf); dahinter läuft die Drehung über die Nackenkette (Zone `wSkull`, Ausblendung max(0,35 H, 0,8 Rampe)) in Hals und Rumpf aus. Der **Unterkiefer hängt am Schädel**: sein Gelenk wandert mit der Kippung (Versatz δ = (R_o − I)(J − A)), seine Drehung um die Kieferachse bleibt absolut → die Öffnung vorn ist weiterhin 2 L sin((|θo| + θu)/2), die Mundwinkel reißen nicht. Kehlkette trägt ⅔/⅓ von Versatz und Kieferdrehung; der übrige Kippanteil der Unterseite läuft über die Nackenkette (`jawParts` liefert `f` und `ft`, alle Kettenteile eines Vertex werden in einem Zug aus Rumpf/Hals genommen, Summe ≤ 1). Dehnungstest: Drache 1,8 · Grundblob 3,1 · Rex 2,5 (< 3,2). Erste Fassungen (Gelenk ganz hinten, Kehle mit vollem Versatz) rissen am Kehlende (bis 8,3) — Diagnose über die schlimmsten Kanten mit ihren Knochengewichten.
+- **Beine getrennt**: Verschmelzgruppe im Distanzfeld (`PrimBase.blendGroup`/`kIntra`, `evalScene` und `evalSceneDetailed` vereinigen Gruppenmitglieder erst untereinander, dann die Gruppe mit `k` in den Rest). Regler `unterkoerper.beine.verschmelzen` 0 (getrennt, Standard) … 1 (ein Sockel); mit dem Rumpf verschmelzen die Schenkel immer.
+- **Demo‑Gang** (Lab‑Knopf „Laufen“, `?laufen=1`, Store `laufen`): Hüfte schwingt um die Querachse, Knie knickt im Schwung, Fuß hält die Sohle, Körper wippt; Zweibeiner gegenphasig, Vierbeiner diagonal, Achtbeiner wechselnd (`CreatureMesh.laufen`, Amplitude blendet weich ein/aus). Kein Bodenkontaktmodell — nur zum Prüfen der Beinform in Bewegung.
+- Bilder: `wesen-vergleich-{retriever,vierbeiner,keil}-{zu,auf}.png` (DPR 2), Seitenansichten `wesen-lab-{retriever,vierbeiner}-zu-seite-seite.png`.
+
+**Befund, ehrlich:** Offen ist der ganze Kopf jetzt eine Masse (keine Schnauze mehr in der Stirn), aber bei Tiger/Rex trägt der Oberkiefer 72°, weil der Unterkiefer am Boden/Rumpf nur 6–16° bekommt — das Tier schaut dann senkrecht nach oben (Pez‑Look). Die Bögen zeigen eher 30–40° Schädel und 60–70° Unterkiefer; dafür müsste der Unterkiefer unter die Brust dürfen oder der Rumpf vorn Platz lassen (Rumpfprofil). Der Tiger hat hinter dem Kopf eine Rinne zwischen Hals‑Loft und Rumpfkuppel (im Seitenbild als Reißverschluss sichtbar) — nächster Punkt.
+
 ## Was noch nicht stimmt (nach Florians Bildern)
 
 1. **Rex**: dicke Stampfer mit Saugnapf‑Füßen stehen; der Rumpf ist noch ein Sack ohne Brust und der Schenkel von der Seite keine Keule — Florians Blender‑Vorlage abwarten; Flügel/Stummelarme später (eigene Elemente).
@@ -100,6 +113,7 @@ Florian: W nur am Oberkiefer mit **Scharte** in der Mitte, zu weich; zu viele un
 ## Nächste Schritte
 
 0. Mit Florian: Silhouetten im Editor gegen seine Bilder ziehen (Seite + Overlay), dann Kopf/Maul darauf abstimmen; Blender‑Master als Mesh → Distanzfeld planen (K0‑Erweiterung), wenn die Kurven nicht reichen.
+0a. Rinne Hals‑Loft/Rumpfkuppel beim Tiger (Seitenbild) schließen; Öffnungsverteilung (Schädel ≈ 30–40°, Unterkiefer mehr) prüfen: Unterkiefer‑Schranke mit angehobenem Gelenk neu abtasten oder Rumpf vorn freiräumen; Laufdemo mit echtem Bodenkontakt (Fuß bleibt stehen) erst im Teil Spielfeld.
 
 1. Florians Blick auf Block 3 (Rex mit Beinen, Tiger mit Backen, Retriever, Drache, Aal) — Bilder in `docs/progress/wesen-vergleich-*`.
 2. Shading nach den Bögen (Airbrush‑Vorgabe: Kantenfederung, kühle satte Schatten, Korn) — betrifft jede Vorlage, mit Florian live.
@@ -113,7 +127,8 @@ Florian: W nur am Oberkiefer mit **Scharte** in der Mitte, zu weich; zu viele un
 - Kopfarten: `hals.laenge` 0 → Kopf im Rumpf; > 0 → eigener Kopf (kurzer Hals ≈ 0,05 setzt ihn auf die Schultern). Mundwinkel (`maul.winkel`) und Augenlage (`augen.lage`) sind Winkel um den **Träger** — beim Körperträger die Körpermitte, beim Kopf die Kopfmitte; Vorlagen entsprechend verschieden.
 - Lofts: gerade Teile im Achsenmodus (Mittenversatz je Scheibe erlaubt), gebogene im Segmentmodus; `taper` = Ei-Verjüngung nach vorn; fast doppelte Nachbarpunkte werden verschmolzen, offene Enden ohne Kappe rund geschlossen.
 - Culling nur außerhalb des Hüllquaders (`bd > 0`), sonst Risse. Stetigkeitstest `sdf/stetig.test.ts`.
-- Kiefer-/Oberkiefergewichte: hart je Seite (`seite` aus dem Lippenschnitt), aus allen Knochen; Kiefertiefe aus `MouthHost.jawDepth`.
-- Deskriptor-Puffer: 14 Floats (Spine 4, Region 4, Extra 3, Pucker 3).
+- Kiefer-/Oberkiefergewichte: hart je Seite (`seite` aus dem Lippenschnitt), aus allen Knochen; Kiefertiefe aus `MouthHost.jawDepth`. Oberkiefer/Nacken drehen um `skullHinge`, Unterkiefer/Kehle um `jawHinge` plus Versatz des Gelenks (`pose.ts` und `CreatureMesh.applyPose` müssen dieselbe Formel haben).
+- Loft‑Querschnitt: `sectionRadius(s, ca, cb)` bekommt die **Einheitsrichtung**; Trennhöhen (`split`, `band`) sind Längen → über cb · Radius vergleichen.
+- Deskriptor-Puffer: 15 Floats (Spine 4, Region 4, Extra 4 = AO, Dicke, Kante, Unterlippenseite, Pucker 3).
 - Lab per Browser-Klicks ist unzuverlässig (Referenzen veralten); Bilder immer über den Harness, Formen schnell über `profil.test.ts`.
 - Vorschau der Leitung: `game-dev-http` (5174); Florians Server 5173 nicht anfassen.
