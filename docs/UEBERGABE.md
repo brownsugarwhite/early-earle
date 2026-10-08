@@ -35,6 +35,9 @@ Florian: „Zähne sitzen je nach Maul nicht gut, Zwischenstufen Loch ↔ Keil s
 - **Zähne**: Länge auf den Gegenkiefer begrenzt (Oberzähne ≤ Unterkiefertiefe, Unterzähne ≤ Oberkopf; `aussen` darf darüber), Wurzel tiefer unter der Lippe (geschlossen keine weißen Punkte mehr). Lippenband‑Vorgabe schmaler (0,15) und hell (`#c9a6d6`), Linienschwung‑Vorgabe 0,12.
 - **Beine** (Bild 12): Keule außen an der tiefen Hüfte, kleine Verschmelzung (Mulde statt Fillet — die große Verschmelzung machte Rex zum Sack), längerer Fuß, **drei Zehen** als Kapseln. Rex steht auf zwei Säulen mit Pfoten.
 - **Gesichtsregler** `kopf.wangen` (breite Backen unter den Augen, Katze) und `kopf.stirn` (hohe runde Stirn … flacher Schädel) im Kopf‑Loft; Lab‑Gruppe „Gesicht“.
+- **Drache ohne Unterkiefer** (Bild 5 rechts) als aufrechter Sack im Kopf‑im‑Rumpf‑Modus: Maullinie tief (0,36), kein Unterkiefer, das ganze Oberteil klappt am langen Hebel zurück (`oeffnungOben` 1), Riesenfänge außen, **Hauer aus der Brustkante** (untere Zähne auch ohne Unterkiefer, wenn `hauer` > 0).
+- **Schlangenkörper** (Bild 13) als dicker Bogen mit gleichmäßiger Krümmung: steigt hinter dem Kopf auf, wölbt sich nach hinten, die Spitze kommt dahinter herunter (`einrollen` = Gesamtdrehung bis ≈ 206°), seitlich ausgebaucht, nie unter den Boden; Wurzel so dick wie der Kopf (`dicke` 1 ≈ 0,8 · Kopfradius). Aal‑Vorlage danach.
+- **Auflösung** per Adresse `&res=128` (Lab) bzw. `EE_RES=128` (Harness, Dateien `-r128`) für Qualitätsvergleiche. Der helle „Absatz“ am Giraffenhals ist keine Geometrie (Stationen stetig, bei 128³ gleich), sondern die harte Cel‑Stufe auf der Schulterrundung → Stil „Kantenfederung“/Airbrush‑Vorgabe.
 - **Retriever‑Vorlage** (Bild 8): eigener Kopf mit langer Schnauze, W‑Lippe und Nase, vier Pfoten, Bogenschwanz; Fell/Ohren später als Elemente.
 
 ## Was noch nicht stimmt (nach Florians Bildern)
@@ -43,18 +46,17 @@ Florian: „Zähne sitzen je nach Maul nicht gut, Zwischenstufen Loch ↔ Keil s
 2. **Tiger**: Kugelkopf mit flachem Gesicht, W-Lippe, Nase und Fängen außen auf Ei-Rumpf mit Pfoten stimmt in der Anlage; Rumpf noch zu flach/breit (Bild 9: Kopf sitzt tiefer im Ei), Wangen/Brustwulst (weißer Kragen) fehlen, Streifen zu schwach, Nasenspiegel noch ohne eigene Farbe.
 3. **Kopfprofile** weiter aus Bild 11/6/9 verfeinern (Braue, Schnauzenrücken, Wangen → evtl. `kopf.wangen`).
 4. **Shading** zu glatt/„CG“ (Bögen: Airbrush, kühle gesättigte Schatten, Korn); Bauch-/Rücken-Linie hart.
-5. **Rundmaul/Zwischenformen** (Kugelfisch Bild 4, Aal) und **Drache ohne Unterkiefer** nach den Umbauten im Kontaktbogen prüfen (Kopf im Rumpf: Kehle bei `unterkiefer` 0 = Öffnung am Hals).
+5. **Rundmaul/Zwischenformen** geprüft (Reihen `maul.form`, `maul.hoehe`): Formen brauchbar; Lochmaul‑Zähne stehen wie bei einer Neunauge nach innen (Kugelfisch hat keine). Drache: geschlossener Zustand wirkt wie ein Zelt mit Fängen (Referenz ist nur offen).
 6. **Augen**: bündiger Augapfel mit Ring, Lider/Blinzeln (K3) fehlen.
 7. **Silhouetten-Überdeckung** (IoU) im Harness noch nicht gebaut (ZIELSYSTEM §3.8).
 8. Ohren, Hörner, Flügel, dünne Schwänze, Spinnenbeine, Rückenschuppen: **eigene Elemente** (Florian), nicht Teil der Masse.
 
 ## Nächste Schritte
 
-1. Mit Florian: Look-Abnahme Rex und Tiger (Bilder oben, Lab `?vorlage=keil&ansicht=seite`).
-2. Rex-Brust/Beine (Bild 12), Tiger-Wangen und W-Lippe, Kehlfalte unter dem Kinn.
-3. Kontaktbogen aller Vorlagen gegen die Bögen durchgehen (Grundblob, Loch, Aal, Drache), Fehler sofort beheben.
-4. Shading nach den Bögen (Airbrush), Augen bündig mit Ring, Lider.
-5. Silhouetten-IoU im Harness.
+1. Florians Blick auf Block 3 (Rex mit Beinen, Tiger mit Backen, Retriever, Drache, Aal) — Bilder in `docs/progress/wesen-vergleich-*`.
+2. Shading nach den Bögen (Airbrush‑Vorgabe: Kantenfederung, kühle satte Schatten, Korn) — betrifft jede Vorlage, mit Florian live.
+3. Augen bündig mit Ring, Lider/Blinzeln (K3); Eigene Elemente: Ohren, Hörner, Flügel, Flossen, Rückenkamm, Fell (K5/K6).
+4. Silhouetten‑IoU im Harness; Stufen‑Reihe (Größenreihe) im Lab.
 
 ## Fallen / Hinweise
 
