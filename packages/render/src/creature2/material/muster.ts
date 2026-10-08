@@ -362,13 +362,15 @@ export function zonenMaske(zu: ZonenUniforms, i: number, k: ZonenKontext): Float
     const dF = float(-0.25).sub(nR.z).mul(r).mul(0.6);
     d.assign(max(dA, dF));
   });
-  // 3 Rückenstreifen: entlang der Rückenmitte, läuft nach unten in eine Pinselspitze aus
+  // 3 Rückenstreifen: entlang der Rückenmitte, läuft an beiden Enden in eine Pinselspitze aus — unten (Lage = wie weit
+  // hinab) und vorn, wo die Fläche vom Rücken zur Stirn kippt
   If(art.equal(3), () => {
     const hw = mix(float(0.06), float(0.6), breite);
     const yEnd = float(1).sub(lage).mul(Ht);
-    const taper = smoothstep(yEnd, yEnd.add(Ht.mul(0.22)), P.y);
+    const nd = dot(nR, vec3(0, 0.8, -0.6));
+    const taper = smoothstep(yEnd, yEnd.add(Ht.mul(0.22)), P.y).mul(smoothstep(0.02, 0.5, nd));
     const dS = xn.sub(hw.mul(taper)).mul(r);
-    const dB = float(0.05).sub(dot(nR, vec3(0, 0.8, -0.6))).mul(r).mul(0.6);
+    const dB = float(0.02).sub(nd).mul(r).mul(0.6);
     d.assign(max(dS, dB));
   });
   // 4 Band (Gürtel, Clownfisch): waagerecht um den Körper in der Höhe `lage`

@@ -108,18 +108,18 @@ const FAELLE: Fall[] = [
   },
   {
     id: 'rueckenstreifen',
-    titel: 'Rex mit Rückenstreifen und heller Schwanzspitze',
+    titel: 'Rex mit rostrotem Rückenstreifen (Spitze nach unten) und heller Schwanzspitze',
     vorlage: 'keil',
     setze: [
       ['muster.glimmer', 0.1],
-      ['muster.zone1', ZONE('ruecken', 0.8, 0.35, 0.3, '#221b28')],
-      ['muster.zone2', ZONE('spitze', 0.3, 0.5, 0.3, '#d9cbe0')],
+      ['muster.zone1', ZONE('ruecken', 0.8, 0.45, 0.3, '#b25d3c')],
+      ['muster.zone2', ZONE('spitze', 0.35, 0.5, 0.3, '#d9cbe0')],
     ],
     maul: 'zu',
   },
   {
     id: 'aal',
-    titel: 'Aal (Bild 13): heller Bauch, Schuppen im Bauchton',
+    titel: 'Aal (Bild 13): heller Bauch ohne Schuppen, Schuppen zum Bauch kleiner',
     vorlage: 'aal',
     setze: [],
     maul: 'zu',
