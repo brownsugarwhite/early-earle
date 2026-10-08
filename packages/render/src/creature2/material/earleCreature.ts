@@ -48,6 +48,8 @@ export interface CreatureMaterialUniforms {
   lippenBandUnten: UniformNode<'float', number>;
   /** Bauch/Rücken-Grenze (−1…1 in der dorsalen Koordinate) und Weichheit. */
   bauchlinie: UniformNode<'float', number>;
+  /** Bauchfarbe um Maul und Augen (helle Schnauze der Raubkatzen). */
+  gesichtHell: UniformNode<'float', number>;
   bauchStaerke: UniformNode<'float', number>;
   /** Schlitzaugen: Position (xyz) + Größe (w) im Körperraum; Rahmen: oben (xyz) + Blinzeln (w). */
   eyePos: ReturnType<typeof uniformArray>;
@@ -130,6 +132,7 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     gesichtAn: uniform(0),
     lippenBandUnten: uniform(1),
     bauchlinie: uniform(-0.2),
+    gesichtHell: uniform(0),
     bauchStaerke: uniform(0),
     eyePos,
     eyeUp,
@@ -250,6 +253,8 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const bellyWave = valueNoise(rest.div(u.bodyScale).mul(3.2)).sub(0.5).mul(0.12);
     const belly = smoothstep(u.bauchlinie.add(0.12), u.bauchlinie.sub(0.12), spine.w.add(bellyWave)).mul(u.bauchStaerke);
     skin.assign(mix(skin, shadeOf(u.bauch), belly));
+    // Helle Schnauze (Bild 9): Bauchfarbe um Maul und Augen über die Gesichtsmaske, weich auslaufend
+    skin.assign(mix(skin, shadeOf(u.bauch), smoothstep(0.15, 0.75, region.z).mul(u.gesichtHell)));
 
     // Musterebene: Masken in Wirbelsäulen-Koordinaten, Gesicht/Lippen/Rachen frei; Relief dunkelt die Stufe je Schuppe ab
     // Lippenband: Abstand zur Maulkante (Körpereinheiten, region.y) gegen die Bandbreite, pixelscharf über die Ableitung

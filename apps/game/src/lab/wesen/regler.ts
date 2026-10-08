@@ -309,7 +309,7 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
   halsKopf: [
     { titel: 'Hals', ids: ['hals.laenge', 'hals.dicke', 'hals.kruemmung', 'hals.ansatz'] },
     { titel: 'Kopf', ids: ['kopf.groesse', 'kopf.laenge', 'kopf.neigung', 'kopf.ohren', 'kopf.hoerner'] },
-    { titel: 'Gesicht', ids: ['kopf.schnauze', 'kopf.schnauzeDicke', 'kopf.braue', 'kopf.wangen', 'kopf.stirn'] },
+    { titel: 'Gesicht', ids: ['kopf.schnauze', 'kopf.schnauzeDicke', 'kopf.braue', 'kopf.wangen', 'kopf.backen', 'kopf.stirn'] },
   ],
   maul: [
     { titel: 'Maul', ids: ['maul.sichtbar'] },
@@ -344,7 +344,7 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
   ],
   muster: [
     { titel: 'Material', ids: ['material'] },
-    { titel: 'Muster', ids: ['muster.typ', 'muster.dichte', 'muster.groesse', 'muster.drehung', 'muster.spitze', 'muster.zittern', 'muster.bauchlinie', 'muster.seed'] },
+    { titel: 'Muster', ids: ['muster.typ', 'muster.dichte', 'muster.groesse', 'muster.drehung', 'muster.spitze', 'muster.zittern', 'muster.bauchlinie', 'muster.gesichtHell', 'muster.seed'] },
     { titel: 'Farben Körper', ids: ['muster.farben.grund', 'muster.farben.bauch', 'muster.farben.muster', 'muster.farben.akzent', 'muster.farben.lippe'] },
     { titel: 'Farben Maul und Augen', ids: ['muster.farben.rachen', 'muster.farben.zunge', 'muster.farben.zahn', 'muster.farben.auge', 'muster.farben.pupille'] },
   ],

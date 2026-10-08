@@ -209,6 +209,7 @@ export class CreatureMesh {
     placeBubbles(this.jelly, this.build?.bodyScale ?? b.koerper.hoehe, b.material === 'jelly' ? 9 : 0, b.seed);
     if (this.mesh) this.mesh.material = b.material === 'jelly' ? this.jellyMaterial : this.material;
     this.uniforms.bauchlinie.value = (b.muster.bauchlinie - 0.5) * 1.6;
+    this.uniforms.gesichtHell.value = b.muster.gesichtHell;
     if (this.toothMaterial) this.toothMaterial.dispose();
     this.toothMaterial = createToothMaterial(this.uniforms, b.muster.farben.zahn);
     if (this.upperTeeth) this.upperTeeth.material = this.toothMaterial;

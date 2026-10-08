@@ -96,6 +96,7 @@ const kopf = z
     braue: regler(H, 'kopf.braue', 'Brauenwulst', 0, 1, 0),
     wangen: regler(H, 'kopf.wangen', 'Wangen', 0, 1, 0, 'breite Backen unter den Augen (Katze, Löwe — Bild 9)'),
     stirn: regler(H, 'kopf.stirn', 'Stirn', -1, 1, 0, '−1 flacher Schädel … +1 hohe runde Stirn (Hund, Bild 8)'),
+    backen: regler(H, 'kopf.backen', 'Backen', 0, 1, 0, 'breite Unterkieferbacken hinter den Mundwinkeln — der Kopf wird unten breiter als oben (Raubkatze, Backenbart Bild 9)'),
     ohren: regler(H, 'kopf.ohren', 'Ohren', 0, 1, 0, 'flache Lappen seitlich hinten'),
     hoerner: regler(H, 'kopf.hoerner', 'Hörnchen', 0, 1, 0, 'zwei Stiele mit Knopf'),
   })
@@ -237,6 +238,7 @@ const muster = z
     spitze: regler(F, 'muster.spitze', 'Pinselspitze', 0, 1, 0.6, 'Striche laufen in Spitzen aus'),
     zittern: regler(F, 'muster.zittern', 'Zittern', 0, 1, 0.3, 'gemalte Unruhe'),
     bauchlinie: regler(F, 'muster.bauchlinie', 'Bauchlinie', 0, 1, 0.5, 'Höhe der Bauch/Rücken-Grenze'),
+    gesichtHell: regler(F, 'muster.gesichtHell', 'Helle Schnauze', 0, 1, 0, 'Bauchfarbe um Maul und Augen: weiße Schnauze, Kinn und Backen der Raubkatzen (Bild 9)'),
     seed: z.number().int().default(1),
   })
   .prefault({});

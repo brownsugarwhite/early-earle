@@ -484,7 +484,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         // Unterkiefer als Löffel; kantig: flaches Kinn, das bis zur Schnauzenfront durchläuft (Bild 9: eckiges Kinn)
         const jaw = hr * (0.42 + 0.42 * uk) * (1 - 0.3 * (1 - 0.85 * kanteK) * Math.max(0, (u - 0.5) / 0.5) ** 1.6);
         wx.push(width * endRound * (1 - 0.45 * Math.max(0, kb)) * clamp(m0.oberkieferBreite, 0.4, 1.6));
-        wxB.push(width * endRoundB * (1 + 0.45 * Math.min(0, kb)) * clamp(m0.unterkieferBreite, 0.4, 1.6));
+        // Backen (Raubkatze, Bild 9): die Unterkieferhälfte wird hinter den Mundwinkeln breiter als der Schädel — der
+        // Kopf steht unten breiter als oben (Backenbart); vorn an der Schnauze läuft das aus
+        const backen = clamp(b.kopf.backen, 0, 1);
+        wxB.push(width * endRoundB * (1 + 0.45 * Math.min(0, kb)) * clamp(m0.unterkieferBreite, 0.4, 1.6) * (1 + 0.4 * backen * (1 - smoothstep(0.5, 0.85, u))));
         // Breitenstufe für zwei Maulränder: nur aus den Breitenreglern (nicht aus der Verkürzung vorn), proportional zum
         // Unterschied, wo beide Formen noch da sind
         const wT0 = width * clamp(m0.oberkieferBreite, 0.4, 1.6) * (1 - 0.45 * Math.max(0, kb));
