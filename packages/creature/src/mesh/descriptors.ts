@@ -45,6 +45,21 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     if (p.op === 'subtract' && p.region === REGION.hoehle) socketIdx.push(i);
   });
   const bodyGroup = groups.findIndex((g) => g.kind === 'koerper');
+  // Bogenlängen-Anschluss je Gruppe: an der Wurzel (erster Punkt der Mittellinie) gilt die Bogenlänge des Rumpfs dort;
+  // Teile, die gegen die Rumpfrichtung laufen (Beine nach unten), zählen rückwärts — Streifen laufen über die Hüfte weiter
+  const sOff = new Float64Array(groups.length);
+  const sSign = new Float64Array(groups.length).fill(1);
+  if (bodyGroup >= 0) {
+    const bpl = groups[bodyGroup]!.polyline;
+    groups.forEach((gr, idx) => {
+      if (idx === bodyGroup || gr.polyline.points.length === 0) return;
+      const root = gr.polyline.points[0]!;
+      const bh = nearestOnPolyline(bpl, root);
+      sOff[idx] = bh.s * bpl.total;
+      const t0 = gr.polyline.tangents[0]!;
+      sSign[idx] = dot(t0, bh.tangent) < -0.3 ? -1 : 1;
+    });
+  }
   const langerHals = c.bauplan.hals.laenge >= 0.35;
   const bodyBones = bodyGroup >= 0 ? groups[bodyGroup]!.bones : [];
   const boneWeights = new Float64Array(bones.length);
@@ -174,18 +189,43 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     }
     for (let q = 0; q < 4; q++) skinWeight[v * 4 + q] = skinWeight[v * 4 + q]! / sum;
 
-    // --- Wirbelsäulen-Koordinaten der Gruppe des stärksten Knochens ------------------------------------------------
+    // --- Wirbelsäulen-Koordinaten: über die Gruppen der vier Knochen **gewichtet gemischt** -------------------------
+    // Nur die Gruppe des stärksten Knochens zu nehmen sprang an jeder Gruppengrenze (Kopf/Rumpf, Bein/Rumpf): Bogenlänge
+    // und Winkel aus verschiedenen Mittellinien, in Dreiecken über der Grenze lief das Muster durch viele Perioden
+    // („Reißverschluss“ am Hinterkopf des Tigers). Jetzt: je Gruppe Bogenlänge an der Wurzel an den Rumpf angelegt
+    // (`sOff`, Richtung `sSign`), Winkel als Richtungsvektor, alles nach Gruppengewicht gemischt — stetig über die Grenze.
     const mainBone = skinIndex[v * 4]!;
     let gi = bones[mainBone]!.group;
     if (groups[gi]!.kind === 'kiefer') gi = bones[c.hostBone]!.group;
     const g = groups[gi]!;
     group[v] = gi;
-    const hit = nearestOnPolyline(g.polyline, p);
+    let hit = nearestOnPolyline(g.polyline, p);
+    let sMix = 0, cMix = 0, sinMix = 0, cosMix = 0, wMix = 0;
+    for (let q = 0; q < 4; q++) {
+      const w = skinWeight[v * 4 + q]!;
+      if (w <= 1e-4) continue;
+      let gq = bones[skinIndex[v * 4 + q]!]!.group;
+      if (groups[gq]!.kind === 'kiefer') gq = bones[c.hostBone]!.group;
+      const gg = groups[gq]!;
+      const h = gq === gi ? hit : nearestOnPolyline(gg.polyline, p);
+      if (gq === gi) hit = h;
+      sMix += w * (sOff[gq]! + sSign[gq]! * h.s * gg.polyline.total);
+      cMix += w * 2 * Math.PI * Math.max(Math.max(h.radius, 1e-3), h.d);
+      sinMix += w * Math.sin(h.angle);
+      cosMix += w * Math.cos(h.angle);
+      wMix += w;
+    }
     const rel = sub(p, hit.point);
     const radius = Math.max(hit.radius, 1e-3);
-    spine[v * 4] = hit.s * g.polyline.total;
-    spine[v * 4 + 1] = hit.angle;
-    spine[v * 4 + 2] = 2 * Math.PI * Math.max(radius, hit.d);
+    if (wMix > 1e-6) {
+      spine[v * 4] = sMix / wMix;
+      spine[v * 4 + 1] = Math.atan2(sinMix, cosMix);
+      spine[v * 4 + 2] = cMix / wMix;
+    } else {
+      spine[v * 4] = hit.s * g.polyline.total;
+      spine[v * 4 + 1] = hit.angle;
+      spine[v * 4 + 2] = 2 * Math.PI * Math.max(radius, hit.d);
+    }
     // Bauch/Rücken: Rumpf, Beine und Schwanz relativ zur Rumpf-Mittellinie (eine durchgehende Bauchlinie). Hals und Kopf
     // eines **langen** Halses relativ zur eigenen Mittellinie (sonst zählt der ganze Hals als „Bauch“ vor dem Rumpfscheitel —
     // heller Fleck am Halsansatz, keine Flecken auf Hals und Kopf, Bild 6), stetig gemischt nach dem Gewichtsanteil der
