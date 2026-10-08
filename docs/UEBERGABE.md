@@ -54,13 +54,15 @@ Florian: zu viel außerhalb der Grundform (Tatzen/Details später, er modelliert
 - **Zähne**: dichter (`zaehne.dichte` bis 1,5, Abstand ≥ 0,45 Zahngröße), **gebogen** (`zaehne.biegung`, Krümmung zum Rachen — die Instanz richtet ihre Biegeseite nach innen, `Tooth.inward`), **Verlauf Beige → hell** zur Spitze (Zahnmaterial, Vorgabe `#e6d1a6`).
 - **Beine** (Grundform): dicke Schenkel seitlich am Rumpf, Hüfthöhe `unterkoerper.beine.hoehe` (bis zur Schulter, „fast aus dem Hals“), kleine Verschmelzung; Schenkel bis 1,5, Dicke bis 1,5; keine Zehen mehr. `koerper.bogen` (S‑Schwung des Rumpfs, Drache). Kantige Katze: `maul.kante` flacht die Schnauzenfront ab, Kinn als Platte, Exponent nur an Schnauze und Kinn; Kopfverschmelzung klein (`k` 0,22–0,4 · Kopfradius), damit Gesichtsformen stehen bleiben. W‑Lippe stärker, Nase höher. Augengröße bis 1,6.
 
+- **Nachgezogen**: Bohne stärker (bis ≈ 50°, Lochmaul‑Seite 1:1), Kopf‑Loft mit eigenem Exponenten für die **untere Hälfte** (`LoftStation.nB`): Schädel rund, Kiefer/Schnauze kantig (Tiger zu liest sich jetzt als grimmige Katze); Rex kleiner auf längeren Beinen; Kamera rahmt die Pose. Werkzeug `scripts/wesen/ausschnitt.mjs` (Nahaufnahme aus Harness‑Bildern).
+
 ## Was noch nicht stimmt (nach Florians Bildern)
 
-1. **Rex**: Gestalt stimmt jetzt (großer Kastenkopf, Keil, kompakter Rumpf, zwei sichtbare Beinsäulen mit Füßen, Schwanz als Schräge); Rumpf noch ein Sack ohne klare Brust, Beine etwas dünn (Bild 12: dicke Säulen, breite Füße); Flügel/Stummelarme fehlen (eigene Elemente).
-2. **Tiger**: Kugelkopf mit flachem Gesicht, W-Lippe, Nase und Fängen außen auf Ei-Rumpf mit Pfoten stimmt in der Anlage; Rumpf noch zu flach/breit (Bild 9: Kopf sitzt tiefer im Ei), Wangen/Brustwulst (weißer Kragen) fehlen, Streifen zu schwach, Nasenspiegel noch ohne eigene Farbe.
+1. **Rex**: Maul reißt jetzt riesig auf (Unterkiefer 20°, Oberkiefer 72°, 35 Zähne); Rumpf noch ein Sack ohne Brust, die Schenkel sind von der Seite nicht als Keule lesbar (sie liegen in der Seitensilhouette des Rumpfs) — hier helfen Florians Blender‑Vorlagen; Flügel/Stummelarme später (eigene Elemente).
+2. **Tiger**: runder Schädel, kantige Schnauze mit W‑Lippe und Nase, Brauen über Schlitzaugen, dicke Schenkel seitlich — geschlossen jetzt eine grimmige Katze; von der Seite wirkt der Rumpf noch kastig (Buckel reduziert), Brustwulst (weißer Kragen), Nasenfarbe und kräftigere Streifen fehlen.
 3. **Kopfprofile** weiter aus Bild 11/6/9 verfeinern (Braue, Schnauzenrücken, Wangen → evtl. `kopf.wangen`).
 4. **Shading** zu glatt/„CG“ (Bögen: Airbrush, kühle gesättigte Schatten, Korn); Bauch-/Rücken-Linie hart.
-5. **Rundmaul/Zwischenformen** geprüft (Reihen `maul.form`, `maul.hoehe`): Formen brauchbar; Lochmaul‑Zähne stehen wie bei einer Neunauge nach innen (Kugelfisch hat keine). Drache: geschlossener Zustand wirkt wie ein Zelt mit Fängen (Referenz ist nur offen).
+5. **Drache**: Maul riesig und nach vorn offen, Körper mit S‑Bogen; der untere Lippenring wirkt noch wie ein Topfrand (Kinnband flach, Unterkiefer dreht wegen Boden/Bauch nur 6°) — mit Florians Blender‑Vorlage nachziehen.
 6. **Augen**: Höhlenring und Oberlid da; Unterlid, Blickrichtung und Ausdrücke (Spirale, X) fehlen; Giraffen‑Augapfel noch halb aufgesetzt.
 7. **Silhouetten‑Überdeckung** gebaut; Werte liegen um 0,5–0,75 — die großen Abweichungen sind Masseverteilung (Rumpf zu schmal/hoch gegenüber den Bögen) und fehlende Elemente.
 8. Ohren, Hörner, Flügel, dünne Schwänze, Spinnenbeine, Rückenschuppen: **eigene Elemente** (Florian), nicht Teil der Masse.
