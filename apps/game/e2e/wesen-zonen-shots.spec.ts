@@ -238,3 +238,104 @@ test('Wesen-Lab: Musterzonen', async ({ page }) => {
   }
   expect.soft(errors, 'GPU-/Seitenfehler').toEqual([]);
 });
+
+// Lavalampe: der dunklere Klumpen im Jelly zu fünf Zeitpunkten (Uhr des Wesens von Hand gesetzt, Standbild bleibt ruhig)
+test('Wesen-Lab: Jelly-Lavalampe über die Zeit', async ({ page }) => {
+  test.skip(!!process.env.EE_FAELLE, 'nur ohne Fallauswahl');
+  mkdirSync(OUT, { recursive: true });
+  const errors: string[] = [];
+  await vorbereiten(page, errors);
+  await page.goto('/lab/wesen?vorlage=jelly&panel=zu&sheet=zu&boden=weiss&ansicht=referenz&standbild=1');
+  await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu/, { timeout: 60_000 });
+  await waitFertig(page);
+  const zeiten = [0, 12, 24, 36, 48, 60];
+  const felder: Array<{ t: number; png: Buffer }> = [];
+  for (const t of zeiten) {
+    await page.evaluate((z) => {
+      const c = (window as unknown as { __wesenLab: { controller: { creature: { uniforms: { zeit: { value: number } } } | null } } }).__wesenLab.controller.creature;
+      if (c) c.uniforms.zeit.value = z;
+    }, t);
+    await page.waitForTimeout(250);
+    felder.push({ t, png: await page.screenshot() });
+  }
+  const img = (b: Buffer) => `<img src="data:image/png;base64,${b.toString('base64')}">`;
+  const html = `<!doctype html><meta charset="utf-8"><style>
+    html,body{margin:0;background:#161619} #m{display:inline-block;padding:18px;background:#161619;color:#e8e6df;font:13px -apple-system,sans-serif}
+    .r{display:grid;grid-template-columns:repeat(3,auto);gap:10px} img{display:block;width:420px;height:327px;object-fit:contain;background:#fff} h1{font-size:18px;margin:0 0 10px}
+  </style><div id="m"><h1>Jelly · Lavalampe (Uhr des Wesens in s) · ${esc(commitLabel())}</h1><div class="r">${felder.map((f) => `<figure style="margin:0">${img(f.png)}<figcaption>t = ${f.t} s</figcaption></figure>`).join('')}</div></div>`;
+  const mp = await page.context().newPage();
+  try {
+    await mp.setViewportSize({ width: 1500, height: 900 });
+    await mp.setContent(html);
+    await mp.evaluate(() => Promise.all([...document.images].map((i) => i.decode())));
+    await mp.locator('#m').screenshot({ path: `${OUT}wesen-jelly-lavalampe${SUFFIX}.png` });
+  } finally {
+    await mp.close();
+  }
+  expect.soft(errors, 'GPU-/Seitenfehler').toEqual([]);
+});
+
+// Reglerpanel: Tab „Muster & Farben“ mit den Zonen (Tiger mit Latz) — zeigt, wie die Regler aussehen
+test('Wesen-Lab: Panel Muster mit Zonen', async ({ page }) => {
+  test.skip(!!process.env.EE_FAELLE, 'nur ohne Fallauswahl');
+  mkdirSync(OUT, { recursive: true });
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  await page.addInitScript(() => {
+    try {
+      localStorage.clear();
+    } catch {
+      /* egal */
+    }
+  });
+  await page.goto('/lab/wesen?vorlage=vierbeiner&boden=weiss&ansicht=referenz&standbild=1');
+  await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu/, { timeout: 60_000 });
+  await waitFertig(page);
+  await page.evaluate(() => (window as unknown as { __wesenLab: { store: { setState(s: unknown): void } } }).__wesenLab.store.setState({ tab: 'muster' }));
+  await page.waitForTimeout(600);
+  // Panel bis zu den Zonen rollen (die Leiste rollt in sich), dann Leiste und Zone 1 aufnehmen
+  const zonen = page.locator('section[aria-label="Zonen"]');
+  await zonen.scrollIntoViewIfNeeded();
+  await page.evaluate(() => document.querySelector('section[aria-label="Zonen"]')?.scrollIntoView({ block: 'start' }));
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}wesen-lab-panel-muster${SUFFIX}.png` });
+});
+
+// Musterbibliothek: jeder Mustertyp auf demselben Blob (Bild 17), um alle Zweige zu sehen
+test('Wesen-Lab: Musterbibliothek', async ({ page }) => {
+  test.skip(!!process.env.EE_FAELLE, 'nur ohne Fallauswahl');
+  mkdirSync(OUT, { recursive: true });
+  const errors: string[] = [];
+  await vorbereiten(page, errors);
+  await page.goto('/lab/wesen?vorlage=fest&panel=zu&sheet=zu&boden=weiss&ansicht=referenz&standbild=1');
+  await expect(page.getByTestId('perf-badge')).toHaveAttribute('data-backend', /webgpu/, { timeout: 60_000 });
+  await waitFertig(page);
+  const setze = (k: string, v: unknown) => page.evaluate(([key, val]) => (window as unknown as { __wesenLab: { store: { getState(): { setzeBauplanWert(k: string, v: unknown): void } } } }).__wesenLab.store.getState().setzeBauplanWert(key as string, val), [k, v] as const);
+  await setze('muster.glimmer', 0.2);
+  await setze('muster.farben.grund', '#e2b45c');
+  await setze('muster.farben.bauch', '#f3e2bd');
+  await setze('muster.farben.muster', '#4a2f22');
+  await setze('muster.farben.akzent', '#c97a35');
+  const typen = ['streifen', 'rosetten', 'platten', 'schuppen', 'punkte', 'bauchRuecken', 'flecken', 'ringel', 'salamander', 'koi'];
+  const felder: Array<{ typ: string; png: Buffer }> = [];
+  for (const typ of typen) {
+    await setze('muster.typ', typ);
+    await page.waitForTimeout(400);
+    felder.push({ typ, png: await page.screenshot() });
+  }
+  const img = (b: Buffer) => `<img src="data:image/png;base64,${b.toString('base64')}">`;
+  const html = `<!doctype html><meta charset="utf-8"><style>
+    html,body{margin:0;background:#161619} #m{display:inline-block;padding:18px;background:#161619;color:#e8e6df;font:13px -apple-system,sans-serif}
+    .r{display:grid;grid-template-columns:repeat(5,auto);gap:10px} img{display:block;width:330px;height:257px;object-fit:contain;background:#fff} h1{font-size:18px;margin:0 0 10px}
+  </style><div id="m"><h1>Musterbibliothek auf dem festen Blob · ${esc(commitLabel())}</h1><div class="r">${felder.map((f) => `<figure style="margin:0">${img(f.png)}<figcaption>${f.typ}</figcaption></figure>`).join('')}</div></div>`;
+  const mp = await page.context().newPage();
+  try {
+    await mp.setViewportSize({ width: 1800, height: 900 });
+    await mp.setContent(html);
+    await mp.evaluate(() => Promise.all([...document.images].map((i) => i.decode())));
+    await mp.locator('#m').screenshot({ path: `${OUT}wesen-musterbibliothek${SUFFIX}.png` });
+  } finally {
+    await mp.close();
+  }
+  expect.soft(errors, 'GPU-/Seitenfehler').toEqual([]);
+});
+

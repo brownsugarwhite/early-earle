@@ -386,7 +386,7 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     // und wenige hellere Funken funkeln langsam (eigene Phase, 9–25 s) mit eigener kleiner Neigung: dreht sich das Wesen,
     // wandern sie durchs Lichtband. Ohne Glimmer bleibt das neutrale Papierkorn (Stil „Korn“).
     const gS = clamp(u.glimmer.mul(u.glimmerWesen).mul(2), 0, 1.5);
-    const lichtBand = smoothstep(0.45, 0.97, wrap);
+    const lichtBand = smoothstep(0.55, 0.98, wrap);
     const lumW = vec3(0.2126, 0.7152, 0.0722);
     const lumHaut = dot(skin, lumW);
     const warmCol = u.glimmerFarbe.mul(lumHaut.div(max(dot(u.glimmerFarbe, lumW), 1e-3))).mul(1.06);

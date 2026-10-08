@@ -1,6 +1,6 @@
 import { Vector3, Vector4 } from 'three';
 import type { UniformNode } from 'three/webgpu';
-import { If, abs, clamp, cos, dot, float, floor, fract, fwidth, hash, length, max, min, mix, select, sin, smoothstep, sqrt, uniform, vec2, vec3 } from 'three/tsl';
+import { If, abs, clamp, cos, dot, float, floor, fract, fwidth, hash, length, max, min, mix, select, sin, smoothstep, sqrt, step, uniform, vec2, vec3 } from 'three/tsl';
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { MUSTER_TYPEN, ZONEN_ARTEN, ZONEN_MUSTER } from '@ee/creature';
 
@@ -114,8 +114,11 @@ export function musterMasks(u: MusterUniforms, spine: Vec4Node, rest: Vec3Node, 
   // Zweig. Läuft dieser Zweig nicht, bleibt der Wert in den anderen 0 (Schuppen, Platten, Punkte waren darum unsichtbar,
   // nur Streifen als erster Zweig gingen). Gemeinsame Werte deshalb vor den Zweigen als Variable festhalten (`toVar`).
   const scale = float(1).div(bodyScale).toVar();
-  // gemalte Unruhe: Koordinaten mit niederfrequentem Rauschen verschieben
-  const jit = noise3(rest.mul(scale).mul(5.1).add(u.seed)).sub(0.5).mul(u.zittern).mul(0.12).toVar();
+  // gemalte Unruhe: Koordinaten mit niederfrequentem Rauschen verschieben (nur mit Muster — spart das Rauschen bei „uni“)
+  const jit = float(0).toVar();
+  If(typ.greaterThan(0.5), () => {
+    jit.assign(noise3(rest.mul(scale).mul(5.1).add(u.seed)).sub(0.5).mul(u.zittern).mul(0.12));
+  });
   const uArc = spine.x.mul(scale).add(jit).toVar();
   const vArc = spine.y.div(6.2831853).mul(spine.z).mul(scale).add(jit.mul(0.6)).toVar();
   const dorsal = spine.w.toVar();
@@ -123,47 +126,59 @@ export function musterMasks(u: MusterUniforms, spine: Vec4Node, rest: Vec3Node, 
   const freq = float(1).div(size).toVar();
   const soft = mix(float(0.06), float(0.3), u.spitze).toVar();
 
-  // 1 Streifen (Tiger): Ringe quer zur Wirbelsäule, am Rücken breit, zum Bauch in Spitzen auslaufend
+  // 1 Streifen (Tiger, Bild 9/17): gemalte Pinselstriche quer zur Wirbelsäule — an Rücken und Flanken breit, zum Bauch in
+  // Spitzen auslaufend (Länge je Strich zufällig), die Breite schwankt entlang des Strichs wie Pinseldruck; Kante
+  // weich-hart (kurz gefedert, pixelscharf geglättet)
   If(typ.equal(1), () => {
     const k = uArc.mul(freq).mul(mix(float(0.7), float(1.6), u.dichte)).add(u.drehung.mul(vArc).mul(2));
     const idx = floor(k);
-    const len = hashPos(idx.add(u.seed)).mul(0.6).add(0.6); // Stripe-Länge zufällig
-    const taper = smoothstep(float(-1).add(len.oneMinus().mul(1.6)), float(0.9), dorsal);
-    const w = mix(float(0.05), float(0.46), u.dichte).mul(taper);
+    const len = hashPos(idx.add(u.seed)).mul(0.6).add(0.6); // Strichlänge zufällig
+    const taper = smoothstep(float(-1).add(len.oneMinus().mul(1.6)), float(0.25), dorsal);
+    const druck = noise3(rest.mul(scale).mul(freq).mul(1.3).add(idx.mul(3.1))).mul(0.6).add(0.7);
+    const w = mix(float(0.05), float(0.46), u.dichte).mul(taper).mul(druck);
     const d = abs(fract(k).sub(0.5));
-    mask.assign(float(1).sub(smoothstep(w.sub(soft.mul(0.5)), w.add(soft.mul(0.5)), d)).mul(smoothstep(0.02, 0.2, w)));
+    const aaS = max(fwidth(k).mul(0.7), soft.mul(0.12));
+    mask.assign(float(1).sub(smoothstep(w.sub(aaS), w.add(aaS), d)).mul(smoothstep(0.015, 0.08, w)));
   });
-  // 8 Ringel: volle Ringe ohne Spitzen
+  // 8 Ringel (Clownfisch, Zuckerstange): volle Ringe ohne Spitzen, Kante weich-hart
   If(typ.equal(8), () => {
-    const k = uArc.mul(freq).mul(mix(float(0.7), float(1.6), u.dichte));
+    const k = uArc.mul(freq).mul(mix(float(0.7), float(1.6), u.dichte)).add(u.drehung.mul(vArc).mul(2));
     const d = abs(fract(k).sub(0.5));
     const w = mix(float(0.12), float(0.42), u.dichte);
-    mask.assign(float(1).sub(smoothstep(w.sub(soft.mul(0.4)), w.add(soft.mul(0.4)), d)));
+    const aaR = max(fwidth(k).mul(0.7), soft.mul(0.1));
+    mask.assign(float(1).sub(smoothstep(w.sub(aaR), w.add(aaR), d)));
   });
-  // 5 Punkte (Drachenfisch): weiche Punkte, auf dem Rücken dichter
+  // 5 Punkte (Walhai, Drachenfisch): runde Punkte überall außer der Bauchmitte (die hellen Bäuche machen Zonen)
   If(typ.equal(5), () => {
-    const c = cells3(rest.mul(scale).mul(freq).mul(0.9), u.seed);
+    const c = cells3(rest.mul(scale).mul(freq).mul(1.5), u.seed);
     const r = mix(float(0.18), float(0.4), u.dichte).mul(hash(c.z.mul(91)).mul(0.5).add(0.6));
     const d = c.x;
-    const present = smoothstep(float(-0.9), float(0.2), dorsal).mul(step01(hash(c.z.mul(17).add(u.seed)), float(1).sub(u.dichte.mul(0.6))));
-    mask.assign(float(1).sub(smoothstep(r.sub(soft.mul(0.3)), r.add(soft.mul(0.3)), d)).mul(present));
+    const present = smoothstep(float(-0.95), float(-0.5), dorsal).mul(step01(hash(c.z.mul(17).add(u.seed)), float(1).sub(u.dichte.mul(0.6))));
+    const aaP = max(fwidth(d).mul(0.8), soft.mul(0.06));
+    mask.assign(float(1).sub(smoothstep(r.sub(aaP), r.add(aaP), d)).mul(present));
   });
-  // 2 Rosetten (Leopard): Ring mit hellerem Kern, Lücken im Ring
+  // 2 Rosetten (Leopard, Bild 3/17): unterbrochene Ringe aus 3–5 Tupfern um eine etwas dunklere, wärmere Mitte (Akzent),
+  // dazwischen kleine volle Punkte
   If(typ.equal(2), () => {
-    const c = cells3(rest.mul(scale).mul(freq).mul(0.8), u.seed);
+    const c = cells3(rest.mul(scale).mul(freq).mul(1.4), u.seed);
     const d = c.x;
-    const ring = smoothstep(float(0.28), float(0.36), d).mul(float(1).sub(smoothstep(float(0.5), float(0.6), d)));
-    const gaps = step01(noise3(rest.mul(scale).mul(freq).mul(3.1).add(c.z.mul(10))), float(0.35));
-    const present = smoothstep(float(-0.8), float(0.1), dorsal);
-    mask.assign(ring.mul(gaps).mul(present));
-    akzent.assign(float(1).sub(smoothstep(float(0.2), float(0.3), d)).mul(present).mul(0.7));
+    const rr = hash(c.z.mul(91)).mul(0.12).add(0.27);
+    const bw = mix(float(0.07), float(0.13), u.dichte);
+    const aaR = max(fwidth(d).mul(0.8), 0.012);
+    const ring = smoothstep(rr.sub(bw).sub(aaR), rr.sub(bw).add(aaR), d).mul(float(1).sub(smoothstep(rr.add(bw).sub(aaR), rr.add(bw).add(aaR), d)));
+    const luecken = smoothstep(0.36, 0.44, noise3(rest.mul(scale).mul(freq).mul(3.4).add(c.z.mul(10))));
+    const istPunkt = step(hash(c.z.mul(53).add(u.seed)), 0.28);
+    const punkt = float(1).sub(smoothstep(float(0.15).sub(aaR), float(0.15).add(aaR), d));
+    const present = smoothstep(float(-0.95), float(-0.5), dorsal);
+    mask.assign(mix(ring.mul(luecken), punkt, istPunkt).mul(present));
+    akzent.assign(float(1).sub(smoothstep(rr.sub(bw).sub(0.06), rr.sub(bw), d)).mul(float(1).sub(istPunkt)).mul(present).mul(0.55));
   });
-  // 3 Platten (Giraffe): Zellen mit schmalen hellen Fugen
+  // 3 Platten (Giraffe, Bild 6): Zellen mit schmalen hellen Fugen, Kante weich-hart
   If(typ.equal(3), () => {
     const c = cells3(rest.mul(scale).mul(freq).mul(0.6), u.seed);
     const fuge = c.y.sub(c.x);
     const w = mix(float(0.02), float(0.12), float(1).sub(u.dichte));
-    const platte = smoothstep(w, w.add(soft.mul(0.3)), fuge);
+    const platte = smoothstep(w, w.add(max(fwidth(fuge).mul(1.2), soft.mul(0.1))), fuge);
     // Flecken bis fast zum Bauch (Bild 6: nur die Bauchmitte bleibt frei)
     const present = smoothstep(float(-1.0), float(-0.75), dorsal);
     mask.assign(platte.mul(present));
@@ -196,11 +211,27 @@ export function musterMasks(u: MusterUniforms, spine: Vec4Node, rest: Vec3Node, 
     relief.assign(lokal.y.mul(-0.9).mul(schuppe));
     mask.assign(schuppe.mul(tone).mul(smoothstep(float(-0.92), float(-0.5), dorsal)));
   });
-  // 7 Flecken (Koi, Kuh, Salamander 9, Koi 10): große weiche Flächen aus Rauschen
-  If(typ.equal(7).or(typ.equal(9)).or(typ.equal(10)), () => {
+  // 7 Flecken (Kuh, Dalmatiner): unregelmäßige Flächen aus Rauschen, Kante weich-hart (Bild 17)
+  If(typ.equal(7), () => {
     const n = noise3(rest.mul(scale).mul(freq).mul(0.35).add(u.seed)).mul(0.6).add(noise3(rest.mul(scale).mul(freq).mul(0.9).add(u.seed.mul(3))).mul(0.4));
     const thr = mix(float(0.62), float(0.42), u.dichte);
-    mask.assign(smoothstep(thr.sub(soft.mul(0.15)), thr.add(soft.mul(0.15)), n));
+    const aaF = max(fwidth(n).mul(0.8), soft.mul(0.03));
+    mask.assign(smoothstep(thr.sub(aaF), thr.add(aaF), n));
+  });
+  // 9 Salamander (Bild 17): längliche Flecken und Bänder, entlang der Körperhöhe gestreckt, klare Kante
+  If(typ.equal(9), () => {
+    const q = rest.mul(scale).mul(freq).mul(vec3(1.1, 0.4, 1.1));
+    const n = noise3(q.add(u.seed)).mul(0.65).add(noise3(q.mul(2.3).add(u.seed.mul(3))).mul(0.35));
+    const thr = mix(float(0.6), float(0.44), u.dichte);
+    const aaF = max(fwidth(n).mul(0.8), soft.mul(0.025));
+    mask.assign(smoothstep(thr.sub(aaF), thr.add(aaF), n));
+  });
+  // 10 Koi (Bild 17): wenige große Flächen mit klarer, leicht gewellter Kante
+  If(typ.equal(10), () => {
+    const n = noise3(rest.mul(scale).mul(freq).mul(0.3).add(u.seed)).mul(0.75).add(noise3(rest.mul(scale).mul(freq).mul(0.8).add(u.seed.mul(5))).mul(0.25));
+    const thr = mix(float(0.52), float(0.4), u.dichte);
+    const aaF = max(fwidth(n).mul(0.8), soft.mul(0.025));
+    mask.assign(smoothstep(thr.sub(aaF), thr.add(aaF), n));
   });
   const freiW = clamp(frei, 0, 1);
   return { mask: mask.mul(freiW), akzent: akzent.mul(freiW), relief: relief.mul(freiW) };
@@ -379,9 +410,14 @@ export function zonenMaske(zu: ZonenUniforms, i: number, k: ZonenKontext): Float
     const t = k.teil;
     d.assign(select(t.greaterThan(0.01), float(1).sub(lage).sub(t).mul(H).mul(0.5), float(1e3)));
   });
-  // gemalte Unruhe der Grenze (Körperraum, wandert nicht) und weich-harte Federung, pixelscharf geglättet
-  const welle = noise3(P.div(H).mul(3.7).add(k.seed.mul(1.7))).sub(0.5).mul(float(0.025).add(k.zittern.mul(0.06))).mul(H);
-  const dd = d.add(welle);
-  const soft = max(float(0.004).add(federung.mul(0.07)).mul(H), fwidth(dd).mul(0.75));
-  return float(1).sub(smoothstep(soft.negate(), soft, dd)).mul(select(art.greaterThan(0.5), float(1), float(0)));
+  // gemalte Unruhe der Grenze (Körperraum, wandert nicht) und weich-harte Federung, pixelscharf geglättet — nur für eine
+  // gewählte Zone (unbenutzte Zonen kosten kein Rauschen)
+  const m = float(0).toVar();
+  If(art.greaterThan(0.5), () => {
+    const welle = noise3(P.div(H).mul(3.7).add(k.seed.mul(1.7))).sub(0.5).mul(float(0.025).add(k.zittern.mul(0.06))).mul(H);
+    const dd = d.add(welle);
+    const soft = max(float(0.004).add(federung.mul(0.07)).mul(H), fwidth(dd).mul(0.75));
+    m.assign(float(1).sub(smoothstep(soft.negate(), soft, dd)));
+  });
+  return m;
 }

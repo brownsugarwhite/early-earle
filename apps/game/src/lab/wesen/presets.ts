@@ -27,12 +27,17 @@ const MUSTER_ERGAENZUNG: Record<string, NonNullable<BauplanInput['muster']>> = {
   jelly: { farben: { grund: '#66cdbf', muster: '#2b6f69' } },
   // Bild 18 oben: lila Blob (Schatten blauviolett, Licht rosa) und türkiser Blob (Licht gelbgrün)
   fest: { glimmer: 1, farben: { grund: '#a08ccc', bauch: '#c9b2ea' } },
-  grundform10: { glimmer: 1, farben: { grund: '#6aa0a4', bauch: '#a6cfc9' } },
+  grundform10: { glimmer: 1, farben: { grund: '#6aa0a4', bauch: '#a6cfc9', glimmer: '#ece27e' } },
   // Tiger (Bild 9): weißer Latz von der Brust bis unters Kinn, Streifen bleiben draußen
-  vierbeiner: { glimmer: 0.15, zone1: { art: 'latz', lage: 0.62, breite: 0.55, federung: 0.35, farbe: '#efd9b6', muster: 'frei' } },
+  vierbeiner: { glimmer: 0.1, zone1: { art: 'latz', lage: 0.62, breite: 0.55, federung: 0.35, farbe: '#efd9b6', muster: 'frei' } },
   // Aal und Schlange (Bild 13/16): heller Bauch ohne Schuppen, die Schuppen werden zum Bauch hin kleiner
-  aal: { glimmer: 0.2, zone1: { art: 'bauch', lage: 0.42, breite: 1, federung: 0.3, farbe: '#cfe6c9', muster: 'frei' } },
-  schlange: { glimmer: 0.2, zone1: { art: 'bauch', lage: 0.42, breite: 1, federung: 0.3, farbe: '#bfe3d6', muster: 'frei' } },
+  aal: { glimmer: 0.1, zone1: { art: 'bauch', lage: 0.42, breite: 1, federung: 0.3, farbe: '#cfe6c9', muster: 'frei' } },
+  schlange: { glimmer: 0.1, zone1: { art: 'bauch', lage: 0.42, breite: 1, federung: 0.3, farbe: '#bfe3d6', muster: 'frei' } },
+  // Tiere der Bögen (Bild 3/5/6/8) haben Korn, aber keinen Glimmer — der gehört den festen Grundblobs (Bild 18)
+  keil: { glimmer: 0.1 },
+  ohneUnterkiefer: { glimmer: 0.1 },
+  giraffe: { glimmer: 0.1 },
+  retriever: { glimmer: 0.1 },
 };
 
 for (const v of WESEN_VORLAGEN) {
