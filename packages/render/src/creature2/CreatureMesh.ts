@@ -1,6 +1,6 @@
 import { Bone, BufferAttribute, BufferGeometry, ConeGeometry, Euler, Float32BufferAttribute, Group, InstancedMesh, InterleavedBuffer, InterleavedBufferAttribute, Matrix4, Mesh, Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Uint16BufferAttribute, Vector3, Vector4 } from 'three/webgpu';
 import type { MeshBasicNodeMaterial } from 'three/webgpu';
-import { jawPose, jawRig, type Bauplan, type CreatureBuild } from '@ee/creature';
+import { jawPose, jawRig, type Bauplan, type CreatureBuild, type Tooth } from '@ee/creature';
 import { applyStil, createCreatureMaterial, createCreatureUniforms, createLidMaterial, createTongueMaterial, createToothMaterial, MAX_SLIT_EYES, type CreatureColors, type CreatureMaterialUniforms } from './material/earleCreature';
 import { applyMuster } from './material/muster';
 import { applyJellyColors, createJellyMaterial, createJellyUniforms, placeBubbles, type JellyUniforms } from './material/jelly';
@@ -28,6 +28,23 @@ const _s = new Vector3();
 function colorsOf(b: Bauplan): CreatureColors {
   const f = b.muster.farben;
   return { grund: f.grund, bauch: f.bauch, muster: f.muster, akzent: f.akzent, lippe: f.lippe, rachen: f.rachen, auge: f.auge, nase: f.nase };
+}
+
+/** Instanzmatrix eines Zahns: Basis y = Zahnrichtung, −z = nach innen (Biegung zum Rachen), Lage plus Spitzmund-Versatz. */
+function toothMatrix(t: Tooth, spitzmund: number, out: Matrix4): Matrix4 {
+  const yA = new Vector3(...t.dir).normalize();
+  const inw = t.inward ? new Vector3(...t.inward) : new Vector3(0, 0, -1);
+  const zA = inw.multiplyScalar(-1).addScaledVector(yA, -inw.clone().multiplyScalar(-1).dot(yA)).normalize();
+  if (zA.lengthSq() < 1e-6) zA.set(0, 0, 1);
+  const xA = new Vector3().crossVectors(yA, zA).normalize();
+  zA.crossVectors(xA, yA).normalize();
+  out.makeBasis(xA, yA, zA);
+  _s.set(t.size * 0.38, t.size, t.size * 0.38);
+  out.scale(_s);
+  _p.set(...t.pos);
+  if (t.pucker && spitzmund !== 0) _p.addScaledVector(new Vector3(...t.pucker), spitzmund);
+  out.setPosition(_p);
+  return out;
 }
 
 function toothGeometry(stil: 'rund' | 'spitz', biegung = 0.4): BufferGeometry {
@@ -136,6 +153,9 @@ export class CreatureMesh {
   /** Hochachse des Trägers. */
   private hostUp = new Vector3(0, 1, 0);
   private upperTeeth: InstancedMesh | null = null;
+  /** Zahnsätze mit Spitzmund-Versatz (Lochmaul): Instanzmatrizen folgen der Öffnung. */
+  private toothSets: Array<{ im: InstancedMesh; list: Tooth[] }> = [];
+  private spitzmundTeeth = 0;
   private lowerTeeth: InstancedMesh | null = null;
   private tongue: Mesh | null = null;
   private toothGeo: BufferGeometry | null = null;
@@ -295,24 +315,12 @@ export class CreatureMesh {
         im.name = 'wesen-zaehne';
         im.frustumCulled = false;
         im.castShadow = this.castShadow;
-        list.forEach((t, i) => {
-          _p.set(...t.pos);
-          // Basis: y = Zahnrichtung, −z = nach innen (Biegung zum Rachen), x quer
-          const yA = new Vector3(...t.dir).normalize();
-          const inw = t.inward ? new Vector3(...t.inward) : new Vector3(0, 0, -1);
-          const zA = inw.multiplyScalar(-1).addScaledVector(yA, -inw.clone().multiplyScalar(-1).dot(yA)).normalize();
-          if (zA.lengthSq() < 1e-6) zA.set(0, 0, 1);
-          const xA = new Vector3().crossVectors(yA, zA).normalize();
-          zA.crossVectors(xA, yA).normalize();
-          _m.makeBasis(xA, yA, zA);
-          _s.set(t.size * 0.38, t.size, t.size * 0.38);
-          _m.scale(_s);
-          _m.setPosition(_p);
-          im.setMatrixAt(i, _m);
-        });
+        list.forEach((t, i) => im.setMatrixAt(i, toothMatrix(t, 0, _m)));
         im.instanceMatrix.needsUpdate = true;
         if (offset) im.position.copy(offset);
         parent.add(im);
+        // Lochmaul: Zähne mit Spitzmund-Versatz werden je Bild mit der Öffnung nachgeführt
+        if (list.some((t) => t.pucker)) this.toothSets.push({ im, list });
         return im;
       };
       const upperBone = this.bones[build.upperJawBone];
@@ -468,6 +476,13 @@ export class CreatureMesh {
       if (n1) n1.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle / 3).multiply(new Quaternion().setFromAxisAngle(this.hostForward, pose.upperRoll / 3));
       if (upperB) upperB.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle).multiply(new Quaternion().setFromAxisAngle(this.hostForward, pose.upperRoll));
       this.uniforms.spitzmund.value = pose.spitzmund;
+      if (this.toothSets.length > 0 && Math.abs(pose.spitzmund - this.spitzmundTeeth) > 1e-5) {
+        this.spitzmundTeeth = pose.spitzmund;
+        for (const set of this.toothSets) {
+          set.list.forEach((t, i) => set.im.setMatrixAt(i, toothMatrix(t, pose.spitzmund, _m)));
+          set.im.instanceMatrix.needsUpdate = true;
+        }
+      }
     }
     // Atmen: Körperknochen sanft skalieren (oben stärker)
     const bodyBones = this.build.groups.find((g) => g.kind === 'koerper')?.bones ?? [];
@@ -504,18 +519,27 @@ export class CreatureMesh {
         if (kneeB) kneeB.quaternion.setFromAxisAngle(X, knee);
         if (footB) footB.quaternion.setFromAxisAngle(X, -0.6 * knee - 0.5 * hip);
       });
-      // Hüftschwung: Becken dreht die Seite des vorschwingenden (hinteren linken) Beins nach vorn und kippt leicht,
-      // die Schultern drehen halb dagegen; der Rumpf pendelt etwas seitlich über das Standbein
+      // Hüftschwung (Florian: „der Hintern wackelt hin und her wie bei Goldies“): das Becken dreht um eine senkrechte
+      // Achse **an der Brust** (Drehung plus Versatz, damit die Brust steht und das Hinterteil ausschlägt), kippt leicht
+      // zur Seite des vorschwingenden hinteren linken Beins; Mitte und Schultern drehen je zur Hälfte zurück — die
+      // Wirbelsäule knickt, Kopf und Brust bleiben ruhig, der Schwanz wedelt mit
       const links = n === 4 ? 2 : 0;
       const phL = this.laufPhase + offsetOf(links);
-      const yaw = (n >= 8 ? 0 : 0.11) * A * Math.cos(phL);
-      const roll = (n >= 8 ? 0 : 0.05) * A * Math.sin(phL);
+      const yaw = (n >= 8 ? 0 : 0.2) * A * Math.cos(phL);
+      const roll = (n >= 8 ? 0 : 0.06) * A * Math.sin(phL);
       const becken = this.bones[bodyBones[0] ?? -1];
+      const mitte = this.bones[bodyBones[1] ?? -1];
       const schulter = this.bones[bodyBones[2] ?? -1];
-      if (becken) becken.quaternion.setFromEuler(new Euler(0, yaw, roll));
-      if (schulter) schulter.quaternion.setFromEuler(new Euler(0, -0.5 * yaw, -0.4 * roll));
+      const restB = this.restLocal[bodyBones[0] ?? -1];
+      if (becken && restB) {
+        becken.quaternion.setFromEuler(new Euler(0, yaw, roll));
+        const Lf = 0.55 * this.build.bodyScale;
+        becken.position.set(restB.x - Lf * Math.sin(yaw), restB.y, restB.z + Lf * (1 - Math.cos(yaw)));
+      }
+      if (mitte) mitte.quaternion.setFromEuler(new Euler(0, -0.5 * yaw, -0.5 * roll));
+      if (schulter) schulter.quaternion.setFromEuler(new Euler(0, -0.5 * yaw, -0.5 * roll));
       const bob = 0.018 * this.build.bodyScale * A * (0.5 - 0.5 * Math.cos(2 * this.laufPhase));
-      this.mesh.position.set(0.012 * this.build.bodyScale * A * Math.sin(phL), bob, 0);
+      this.mesh.position.set(0.01 * this.build.bodyScale * A * Math.sin(phL), bob, 0);
       if (this.upperTeeth && this.upperTeeth.parent === this.root) this.upperTeeth.position.copy(this.mesh.position);
     }
   }
@@ -539,6 +563,8 @@ export class CreatureMesh {
     this.toothGeo?.dispose();
     this.tongueGeo?.dispose();
     this.upperTeeth = this.lowerTeeth = null;
+    this.toothSets = [];
+    this.spitzmundTeeth = 0;
     this.tongue = null;
     this.toothGeo = this.tongueGeo = null;
     this.skeleton = null;

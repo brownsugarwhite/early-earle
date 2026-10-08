@@ -451,11 +451,14 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         pts.push(add(headBase, scale(forwardH, -Lback + (Lback + Lfront) * u)));
         // runde Enden; kantige Kiefer (Raubkatze) haben eine flachere Schnauzenfront
         const kanteK = clamp(m0.kante, 0, 1);
-        const endRound = Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(u - 0.5) / 0.5, u > 0.5 ? 6 + 8 * kanteK : 6)));
-        // Überbiss: die untere Hälfte (Unterkiefer) endet vorn früher — die Oberlippe hängt über (Hund/Katze geschlossen)
+        // Überbiss (biss > 0): die Unterform (Unterkiefer) endet vorn früher — die Oberlippe hängt über (Hund/Katze);
+        // Unterbiss (biss < 0): die Oberform endet früher, der Unterkiefer steht vor (Bulldogge, Hauer)
         const bissK = clamp(m0.biss, -1, 1);
+        const runde = (uu: number): number => Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(uu - 0.5) / 0.5, u > 0.5 ? 6 + 8 * kanteK : 6)));
+        const uT = u > 0.5 ? Math.min(1, u + 0.14 * Math.max(0, -bissK)) : u;
         const uB = u > 0.5 ? Math.min(1, u + 0.14 * Math.max(0, bissK)) : u;
-        const endRoundB = Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(uB - 0.5) / 0.5, u > 0.5 ? 6 + 8 * kanteK : 6)));
+        const endRound = runde(uT);
+        const endRoundB = runde(uB);
         // Bild 5/11: Schädel hinten hoch mit flachem Scheitel, Braue als breiter Wulst über den Augen, Schnauze fällt nach
         // vorn ab und bleibt breit (Haube); Unterkiefer als Löffel, zur Kinnspitze flacher
         // Wangen: breite Backen unter den Augen (Katze, Bild 9) — die Breite wächst im hinteren Kopfdrittel bis zur Schnauzenwurzel
@@ -495,6 +498,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       const thetaK = thetaKeilOf(m0);
       const cb0 = clamp(m0.hoehe, 0.02, 0.98) * hostH - hc;
       const split: number[] = [];
+      const bandK = hr * 0.1;
       for (let i = 0; i < nS; i++) {
         const u = i / (nS - 1);
         const zS = (Lback + Lfront) * (u - 0.5);
@@ -502,9 +506,16 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         const ay = wy > 1e-6 ? Math.min(1, Math.abs(cb0) / wy) : 1;
         const x0 = 0.5 * (wx[i]! + wxB[i]!) * Math.pow(Math.max(0, 1 - Math.pow(ay, nn[i]!)), 1 / nn[i]!);
         const uL = Math.min(1, Math.abs(Math.atan2(x0, zS)) / thetaK);
-        split.push(m0.sichtbar ? lipHeight(m0, hostH, hostH, uL) - hc : 0);
+        // Die Stufe zwischen den Kiefern liegt ganz auf der Seite des **größeren** Kiefers: der Schnitt (Maullinie) läuft
+        // an der Innenkante der Stufe, am Fuß des kleineren Kiefers — der größere behält die Stufe als Plateau (Unterbiss,
+        // Hauer wachsen darauf) bzw. Sohle (Überbiss, Fänge hängen außen). Vorzeichen aus dem Breitenunterschied, weich.
+        // Die Stufe beginnt erst 0,4 Band über bzw. unter der Linie: der Schnitt bleibt auf der steilen Fläche des
+        // kleineren Kiefers (auf der fast waagerechten Stufe wäre die Höhe kaum verschieden — der Schnitt zerfranste)
+        const dW = wx[i]! - wxB[i]! + 0.5 * (wyB[i]! - wyL[i]!);
+        const sg = clamp(dW / (0.04 * hr), -1, 1);
+        split.push(m0.sichtbar ? lipHeight(m0, hostH, hostH, uL) - hc + sg * 1.4 * bandK : 0);
       }
-      const head = makeLoft({ points: pts, upRef: upH, wx, wxB, wyT, wyB, wyL, n: nn, nB, split, splitBand: hr * 0.1, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN) + 0.4 * sink), region: REGION.haut, name: 'kopf' });
+      const head = makeLoft({ points: pts, upRef: upH, wx, wxB, wyT, wyB, wyL, n: nn, nB, split, splitBand: bandK, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN) + 0.4 * sink), region: REGION.haut, name: 'kopf' });
       prims.push(head);
       // Ohren: flache Lappen seitlich hinten oben, nach außen-hinten geneigt (Giraffe, Dackel); Hörnchen: zwei kurze
       // Stiele mit Knopf oben hinten (Giraffe) — einfache Anbauten direkt am Kopf

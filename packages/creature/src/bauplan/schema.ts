@@ -108,7 +108,7 @@ const maul = z
     sichtbar: z.boolean().default(true),
     hoehe: regler(M, 'maul.hoehe', 'Maulhöhe', 0, 1, 0.45, 'stufenlos von unten nach oben'),
     neigung: regler(M, 'maul.neigung', 'Maulneigung', -1, 1, 0, 'Maullinie steigt zu den Winkeln an (Rex) oder fällt ab'),
-    schwung: regler(M, 'maul.schwung', 'Maulschwung', 0, 1, 0.12, 'Linie senkt sich hinter der Schnauze und schwingt zum Winkel hoch (Dino, Schlange)'),
+    schwung: regler(M, 'maul.schwung', 'Maulschwung', -1, 1, 0.12, 'Linie senkt sich hinter der Schnauze und schwingt zum Winkel hoch (Dino, Schlange); negativ: wölbt sich hinter der Schnauze nach oben (Drache, Bild 5 rechts)'),
     form: regler(M, 'maul.form', 'Maulform', 0, 1, 1, '0 rundes Loch … 1 Keil'),
     winkel: regler(M, 'maul.winkel', 'Mundwinkel nach hinten', 0, 1, 0.5),
     rundung: regler(M, 'maul.rundung', 'Mundwinkel-Rundung', 0, 1, 0.35, '0 spitz zulaufend (Rex) … 1 rund wie beim Aal; Lochmaul ist immer rund'),

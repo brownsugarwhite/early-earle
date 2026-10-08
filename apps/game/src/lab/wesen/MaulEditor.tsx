@@ -48,7 +48,7 @@ export function MaulEditor() {
   const winkel = clamp(m.winkel, 0, 1);
   const xCorner = cx + rx * (0.55 - 1.05 * winkel); // 0: vorn, 1: weit hinten
   const yCorner = yLip - m.neigung * 0.22 * 2 * ry;
-  const schwung = clamp(m.schwung, 0, 1);
+  const schwung = clamp(m.schwung, -1, 1);
   const pts: string[] = [];
   for (let i = 0; i <= 24; i++) {
     const u = i / 24;
@@ -65,7 +65,7 @@ export function MaulEditor() {
     ['maul.winkel', clamp((0.55 - (s0.x + dx - cx) / rx) / 1.05, 0, 1)],
     ['maul.neigung', clamp(-(s0.y + dy - yLip) / (0.22 * 2 * ry), -1, 1)],
   ]);
-  const zugSchwung = nutzeZug('maul.schwung', (_dx, dy, s0) => [['maul.schwung', clamp(schwung + dy / (0.12 * 2 * ry * 0.9), 0, 1) - 0 * s0.y]]);
+  const zugSchwung = nutzeZug('maul.schwung', (_dx, dy, s0) => [['maul.schwung', clamp(schwung + dy / (0.12 * 2 * ry * 0.9), -1, 1) - 0 * s0.y]]);
   // --- Vorn: Maullinie von Winkel zu Winkel, ω-Spitze, Öffnung ---
   const breite = clamp(m.breite, 0.2, 1);
   const halb = 40 + 95 * breite;

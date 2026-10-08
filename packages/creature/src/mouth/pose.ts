@@ -155,7 +155,9 @@ export function posedTeeth(build: CreatureBuild, params: PoseParams): Tooth[] {
   const axis = normalize(m.hinge.axis);
   const qUp = quatMul(quatFromAxisAngle(axis, pose.upperAngle), quatFromAxisAngle(rig.forward, pose.upperRoll));
   const qLo = quatFromAxisAngle(axis, pose.lowerAngle);
-  return m.teeth.map((t) => (t.upper ? { ...t, pos: tf.upper(t.pos), dir: rotate(qUp, t.dir), ...(t.inward ? { inward: rotate(qUp, t.inward) } : {}) } : { ...t, pos: tf.lower(t.pos), dir: rotate(qLo, t.dir), ...(t.inward ? { inward: rotate(qLo, t.inward) } : {}) }));
+  // Spitzmund: der Zahn rückt mit seinem Randpunkt (Lochmaul), vor der Kieferdrehung
+  const base = (t: Tooth): Vec3 => (t.pucker ? add(t.pos, scale(t.pucker, pose.spitzmund)) : t.pos);
+  return m.teeth.map((t) => (t.upper ? { ...t, pos: tf.upper(base(t)), dir: rotate(qUp, t.dir), ...(t.inward ? { inward: rotate(qUp, t.inward) } : {}) } : { ...t, pos: tf.lower(base(t)), dir: rotate(qLo, t.dir), ...(t.inward ? { inward: rotate(qLo, t.inward) } : {}) }));
 }
 
 /** Spitze eines Zahns. */

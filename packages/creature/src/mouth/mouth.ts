@@ -47,6 +47,8 @@ export interface Tooth {
   hauer: boolean;
   /** Richtung in den Rachen (zur Trägerachse) am Ansatz — die Biegung des Zahns zeigt dorthin. */
   inward?: Vec3;
+  /** Spitzmund-Versatz (Einheit · Gewicht) wie die Haut am Rand: der Zahn folgt der Öffnung des Lochmauls (× `spitzmund`). */
+  pucker?: Vec3;
 }
 
 export interface MouthGeometry {
@@ -142,18 +144,26 @@ export function thetaKeilOf(m: Bauplan['maul']): number {
 
 /**
  * Höhe der Maullinie über dem Trägerursprung bei u = |φ|/θ (0 vorn … 1 Mundwinkel): Grundhöhe, Anstieg zu den Winkeln
- * (`neigung`), Absenkung hinter der Schnauze (`schwung`) und die ω-Lippe (`wForm`, nur Keil) — Bild 3/5/8/9. Dieselbe
- * Funktion formt den Lippenschnitt und die Trennhöhe Ober-/Unterkiefer im Kopf-Loft (Breite, Kante, Überbiss).
+ * (`neigung`) und Absenkung bzw. Aufwölbung hinter der Schnauze (`schwung`, beide Richtungen) — Bild 3/5/8/9. Dieselbe
+ * Funktion formt den Lippenschnitt, die Zahnreihen und die Trennhöhe Ober-/Unterkiefer im Kopf-Loft. Die W-Lippe ist
+ * **nicht** Teil der Linie: sie sind zwei Lefzen, die als eigene Lappen des Oberkiefers über die Linie hängen
+ * (`lefzenTiefe`) — Zähne und Maulinnenraum bleiben glatt (Florian).
  */
 export function lipHeight(m: Bauplan['maul'], H: number, Hk: number, u: number): number {
   const hLip = clamp(m.hoehe, 0.02, 0.98) * H;
   const rise = m.neigung * 0.22 * Hk * u * u;
-  const dip = clamp01(m.schwung) * 0.12 * Hk * Math.pow(Math.sin(Math.PI * clamp01(u / 0.72)), 1.5) * (u < 0.72 ? 1 : 0);
+  // Schwung mit Vorzeichen: positiv senkt die Linie hinter der Schnauze (Dino), negativ wölbt sie nach oben (Drache)
+  const dip = clamp(m.schwung, -1, 1) * 0.12 * Hk * Math.pow(Math.sin(Math.PI * clamp01(u / 0.72)), 1.5) * (u < 0.72 ? 1 : 0);
+  return clamp(hLip + rise - dip, 0.01, H - 0.01);
+}
+
+/** Lefzen (W-Lippe, Hund — Bild 8): Tiefe, um die der Oberlippenlappen bei u = |φ|/θ unter die Maullinie hängt (≥ 0);
+ *  null am Philtrum (dort zeigt sich die Linie bis zur Nase) und am hinteren Drittel, Scheitel bei u ≈ 0,26. */
+export function lefzenTiefe(m: Bauplan['maul'], Hk: number, u: number): number {
   const wF = clamp01(m.wForm) * clamp01(m.form);
-  // ω: schmale Spitze unter der Nase (Philtrum), dicht daneben hängen die Lefzen tief, zum Winkel steigt die Linie
-  // (Lächeln) — Bild 8 (Retriever) und Bild 9 (Tiger)
-  const wLippe = wF * Hk * (0.15 * Math.exp(-Math.pow(u / 0.08, 2)) - 0.1 * Math.exp(-Math.pow((u - 0.24) / 0.14, 2)) + 0.05 * smoothstep(0.45, 1, u));
-  return clamp(hLip + rise - dip + wLippe, 0.01, H - 0.01);
+  if (wF < 0.02) return 0;
+  const t = clamp((u - 0.03) / (0.5 - 0.03), 0, 1);
+  return wF * Hk * 0.16 * Math.pow(Math.sin(Math.PI * t), 1.2);
 }
 
 export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): MouthGeometry {
