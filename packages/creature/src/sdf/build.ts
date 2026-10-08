@@ -616,18 +616,32 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   };
   if (b.unterkoerper.typ === 'schlange') {
     const S = b.unterkoerper.schlange;
-    const rS = S.dicke * R0 * sm * 0.7;
+    const rS = S.dicke * R0 * sm * 0.8;
     const Ls = S.laenge * H * 1.4;
     // Ansatz: Mittelpunkt der Rumpfscheibe auf Schlangenhöhe, Radius wie der Rumpf dort (nach unten durch den Boden begrenzt)
     const yS = yb + rS * 0.98;
     const rRoot = Math.min(rumpfTiefeBei(yS) * 0.85, Math.max(rS, yS - yb));
     const zBack = axisAt(yS)[2] - rumpfTiefeBei(yS);
     const ctrl: Vec3[] = [axisAt(yS), [0, yS, zBack + 0.35 * rRoot], [0, yS, zBack]];
-    const nC = 10;
+    // Einrollen (Bild 13): der Körper steigt hinter dem Kopf auf, wölbt sich nach hinten über und kommt dahinter wieder
+    // herunter — ein Bogen mit gleichmäßiger Krümmung (Gesamtdrehung bis ≈ 300°), seitlich ausgebaucht (räumlich, kein
+    // Selbstschnitt), nie unter den Boden
+    // Richtung α: 0 = nach hinten, +90° = nach oben; der Körper startet steil nach oben-hinten und dreht nach hinten
+    // und unten (Uhrzeigersinn von der Seite mit Kopf rechts): die Schwanzspitze kommt hinter dem Bogen herunter
+    const nC = 16;
+    const roll = clamp(S.einrollen, 0, 1);
+    const turn = roll * 3.6;
+    let x = 0, y = yS, z = zBack;
     for (let i = 1; i <= nC; i++) {
       const t = i / nC;
+      const alpha = 0.4 * roll + 1.0 * roll - turn * (t - 0.5 / nC);
+      const step = Ls / nC;
+      z -= Math.cos(alpha) * step;
+      y += Math.sin(alpha) * step;
+      x = roll * 0.3 * H * Math.sin(Math.PI * t);
       const r = rS * (1 - 0.92 * t) + 0.03 * H;
-      ctrl.push([S.einrollen * 0.5 * H * Math.sin(t * Math.PI * (1 + S.einrollen * 1.2)) * t, yb + r * 0.98, zBack - Ls * t]);
+      y = Math.max(y, yb + r * 0.98);
+      ctrl.push([x, y, z]);
     }
     const pts = catmullRom(ctrl, 2);
     // Radius über die Bogenlänge ab dem Austritt: innen Rumpfradius, dann Trichter auf die Schlangendicke, dann Verjüngung
