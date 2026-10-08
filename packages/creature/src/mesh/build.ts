@@ -36,6 +36,8 @@ export interface CreatureBuild {
   descriptors: Descriptors;
   /** Kantenmaß je Vertex (0 glatt … 1 scharfe Kante). */
   crease: Float32Array;
+  /** Gesichtslinien für den Shader (Nase, Scharte), Körperraum; null ohne W-Lippe. */
+  gesicht: Construction['gesicht'];
   /** Spitzmund-Feld (xyz je Vertex, Einheit): radiale Weitung des Lochmauls, skaliert mit `spitzmund`. */
   pucker: Float32Array;
   /** Hebel Gelenk → Maulzentrum und größter Unterkieferwinkel über dem Boden (siehe `MouthGeometry`). */
@@ -355,7 +357,8 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   if (tasche && kantenAbstand) {
     for (let v = 0; v < vertexCount; v++) {
       descriptors.region[v * 4] = tasche[v]! > 0 ? 0.5 + 0.5 * tasche[v]! : 0;
-      descriptors.region[v * 4 + 1] = kantenAbstand[v]! / H;
+      // Vorzeichen = Seite (oben +, unten −): der Shader kann Ober- und Unterlippe getrennt färben (ω nur oben)
+      descriptors.region[v * 4 + 1] = (kantenAbstand[v]! / H) * (seiten && seiten[v]! < 0 ? -1 : 1);
     }
   }
   // Spitzmund-Feld (Lochmaul): die beiden Lippenränder werden senkrecht zur Maullinie auseinandergedrückt (oben nach
@@ -406,6 +409,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     descriptors,
     crease,
     pucker,
+    gesicht: c.gesicht,
     jawLever,
     lowerAngleMax,
     maxOpenAngle,

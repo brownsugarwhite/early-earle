@@ -38,6 +38,14 @@ export interface CreatureMaterialUniforms {
   rachen: Vec3Triple;
   musterU: MusterUniforms;
   auge: UniformNode<'vec3', Vector3>;
+  nase: UniformNode<'vec3', Vector3>;
+  /** Gesicht: Nase (xyz Mitte, w Radius), Scharte als Strecke A → B (w: Linienbreite), `gesichtAn` 0/1. */
+  naseMitte: UniformNode<'vec4', Vector4>;
+  philtrumA: UniformNode<'vec4', Vector4>;
+  philtrumB: UniformNode<'vec3', Vector3>;
+  gesichtAn: UniformNode<'float', number>;
+  /** Band der Unterlippe relativ zur Oberlippe (1 gleich, 0 keine Unterlippe sichtbar — ω nur oben). */
+  lippenBandUnten: UniformNode<'float', number>;
   /** Bauch/Rücken-Grenze (−1…1 in der dorsalen Koordinate) und Weichheit. */
   bauchlinie: UniformNode<'float', number>;
   bauchStaerke: UniformNode<'float', number>;
@@ -90,6 +98,7 @@ export interface CreatureColors {
   lippe: string;
   rachen: string;
   auge: string;
+  nase?: string;
 }
 
 export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil = STIL_STANDARD, bodyScale = 1): CreatureMaterialUniforms {
@@ -114,6 +123,12 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     lippe: triple(colors.lippe, stil),
     rachen: triple(colors.rachen, stil),
     auge: uniform(new Vector3(...farbRolle(colors.auge, stil).base)),
+    nase: uniform(new Vector3(...farbRolle(colors.nase ?? '#2a2226', stil).base)),
+    naseMitte: uniform(new Vector4(0, 0, 0, 0)),
+    philtrumA: uniform(new Vector4(0, 0, 0, 0.01)),
+    philtrumB: uniform(new Vector3(0, 0, 0)),
+    gesichtAn: uniform(0),
+    lippenBandUnten: uniform(1),
     bauchlinie: uniform(-0.2),
     bauchStaerke: uniform(0),
     eyePos,
@@ -145,6 +160,7 @@ export function applyStil(u: CreatureMaterialUniforms, stil: WesenStil, colors: 
   setTriple(u.lippe, colors.lippe, stil);
   setTriple(u.rachen, colors.rachen, stil);
   u.auge.value.set(...farbRolle(colors.auge, stil).base);
+  u.nase.value.set(...farbRolle(colors.nase ?? '#2a2226', stil).base);
 }
 
 /** Wertrauschen im Körperraum (dreilinear interpoliert, 0…1). */
@@ -236,9 +252,10 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     // Musterebene: Masken in Wirbelsäulen-Koordinaten, Gesicht/Lippen/Rachen frei; Relief dunkelt die Stufe je Schuppe ab
     // Lippenband: Abstand zur Maulkante (Körpereinheiten, region.y) gegen die Bandbreite, pixelscharf über die Ableitung
     const bandW = u.lippenBand;
-    const distK = region.y.mul(u.bodyScale);
+    const distK = abs(region.y).mul(u.bodyScale);
+    const unten = step(region.y, 0);
     const aa = abs(dFdx(distK)).add(abs(dFdy(distK))).add(0.0005);
-    const band = float(1).sub(smoothstep(bandW.sub(aa), bandW.add(aa), distK)).mul(step(0.001, bandW));
+    const band = float(1).sub(smoothstep(bandW.sub(aa), bandW.add(aa), distK)).mul(step(0.001, bandW)).mul(mix(float(1), u.lippenBandUnten, unten));
     const innen = step(0.25, region.x);
     const frei = float(1).sub(region.z.mul(0.9)).mul(float(1).sub(band)).mul(float(1).sub(innen));
     const mu = musterMasks(u.musterU, spine, rest, u.bodyScale, frei);
@@ -294,6 +311,19 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
       const px = float(0.08);
       eyeMask.assign(max(eyeMask, float(1).sub(smoothstep(px.negate(), px, dist)).mul(active)));
     }
+    // Nasenspiegel und Scharte aus Abständen im Ruheraum (pixelscharf wie die Schlitzaugen): Nase als Scheibe in Nasenfarbe,
+    // die Scharte als Strich von der Lippenspitze zur Nase (Bild 8/9: W mit Verbindung zur Nase)
+    const nDist = rest.sub(u.naseMitte.xyz).length();
+    const nR = u.naseMitte.w;
+    const naseMask = float(1).sub(smoothstep(nR.mul(0.94), nR.mul(1.06), nDist)).mul(u.gesichtAn);
+    const pa = u.philtrumA.xyz, pb = u.philtrumB;
+    const abv = pb.sub(pa);
+    const tt = clamp(dot(rest.sub(pa), abv).div(max(dot(abv, abv), 1e-6)), 0, 1);
+    const lDist = rest.sub(pa.add(abv.mul(tt))).length();
+    const lw = u.philtrumA.w;
+    const linie = float(1).sub(smoothstep(lw, lw.mul(1.6), lDist)).mul(u.gesichtAn);
+    skin.assign(mix(skin, mix(skin, u.nase, 0.8), linie));
+    skin.assign(mix(skin, u.nase, naseMask));
     skin.assign(mix(skin, u.auge, eyeMask));
     // Höhlenring (Bild 10/11): dunkler, kühler Ring auf der Haut rund um den Augapfel, aus dem Abstand zum Augenzentrum
     // im Ruheraum — unabhängig von der Netzdichte, Kanten per Abstand weich

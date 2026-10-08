@@ -54,6 +54,12 @@ Bauch `#ddbc96`; Aal `#304d68` Rücken, `#9eb79f` Bauch, Rachen `#302633`.
    Kinnrundung, Schnauzenbreite. Die Maullinie ist eine Kurve auf diesem Kopf (Höhe vorn, Höhe am Winkel, Winkellage).
 3. **Beine** als Säulen-Lofts (Hüfte im Rumpf, Fuß als flacher Saugnapf/Pfote), Vereinigung mit großem k (Kehlfalte-Logik:
    weiche Mulde, keine Naht). Arme, Flügel, Ohren, Hörner, Kamm = Anbauten (K5), als eigene kleine Lofts/Ellipsoide.
+1b. **Silhouette direkt aus dem Bild** (Stand 08.10. nachmittags): `scripts/wesen/seitenprofil.mjs` liest die Vermessung
+   (Zeilenprofile links/rechts), schneidet Anhängsel ab, rechnet die Kreiskappe des Scheitels heraus und passt je eine
+   Bézier‑Kurve (Grad 7) für vorn und hinten an → `koerper.seitenprofil`. Der Rumpf‑Loft nimmt diese Kurven als
+   Tiefen je Höhe (× Kappe): die Form ist dann die gezeichnete, als glatte Earle‑Kurve. Für Kopf‑im‑Rumpf‑Wesen (Rex,
+   Tiger, Drache); Flügel/Hauer per Klammer ausblenden. Wo das Bild eine Dreiviertelansicht ist, stimmt das Profil nur
+   näherungsweise — Florians Blender‑Vorlagen sind dann die bessere Quelle.
 4a. **Kiefer** (Stand 08.10. mittags): Gelenk auf der Linie der Mundwinkel; davor beide Kiefer starr, dahinter Ketten
    (Kehle unter dem Kinn, Nacken hinter dem Oberkopf) mit ⅔/⅓ des Winkels — Dehnung bleibt unter ≈ 2 (Test
    `mouth/kette.test.ts`). Öffnung = Randabstand vorn, 1 = 1,6 Kopfhöhen („ein anderes Tier mit einem Haps“); der

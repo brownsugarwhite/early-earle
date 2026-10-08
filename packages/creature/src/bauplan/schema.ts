@@ -56,6 +56,20 @@ const koerper = z
     boden: regler(K, 'koerper.boden', 'Standfläche', 0, 1, 0.5, '0 spitz unten … 1 breit flach'),
     /** Optional: dichtes Breitenprofil (≥ 8 Werte 0…1, unten → oben) statt der fünf Querschnitte, z. B. aus den Grundformen. */
     profil: z.array(z.number().min(0).max(1.2)).min(8).max(96).optional(),
+    /**
+     * Optional: **Seitenprofil aus einer Referenz** (`scripts/wesen/seitenprofil.mjs`): Bézier-Kontrollwerte (Grad n−1) der
+     * Ausdehnung nach vorn und hinten je Höhe (unten → oben, Anteile der Höhe), optional Breite. Ersetzt Bauch/Buckel/
+     * Kopf-Landmarken — die Silhouette ist dann die gezeichnete, als glatte Kurve (Bild 9 Tiger, Bild 5 Rex/Drache).
+     */
+    seitenprofil: z
+      .object({
+        vorn: z.array(z.number().min(0).max(2)).min(4).max(16),
+        hinten: z.array(z.number().min(0).max(2)).min(4).max(16),
+        breite: z.array(z.number().min(0).max(2)).min(4).max(16).optional(),
+        /** Ab welchem Höhenanteil der Scheitel kreisförmig schließt (0,7 flacher Kopf … 0,95 spitz). */
+        scheitel: z.number().min(0.5).max(0.98).default(0.84),
+      })
+      .optional(),
     querschnitte: z
       .tuple([z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6), z.number().min(0.05).max(1.6)])
       .default([0.72, 0.95, 1, 0.9, 0.62]),
@@ -108,6 +122,7 @@ const maul = z
     tiefe: regler(M, 'maul.tiefe', 'Rachentiefe', 0.2, 1, 0.5),
     oeffnung: regler(M, 'maul.oeffnung', 'Öffnungsweite', 0, 1, 0.6, 'größte Öffnung vorn: 1 = 1,6 Kopfhöhen (ein anderes Tier mit einem Haps); über dem Drehwinkel senkt sich der Unterkiefer zusätzlich (Schlund wird länger)'),
     oeffnungOben: regler(M, 'maul.oeffnungOben', 'Öffnung über Oberkiefer', 0, 1, 0.6, 'Anteil der Öffnung, den der Oberkiefer übernimmt (klappt samt Augen nach hinten)'),
+    kieferbreite: regler(M, 'maul.kieferbreite', 'Kieferbreite', -1, 1, 0, '−1 Unterkiefer schmaler … +1 Oberkiefer schmaler: Platz für Zähne, die am geschlossenen Maul vorbeischauen'),
     kehle: regler(M, 'maul.kehle', 'Kehlsack', 0, 1, 0, '0 Kiefer endet am Kinn … 1 der Unterkiefer reicht als dehnbarer Schlund bis zur Brust und wird beim Öffnen lang (Drache)'),
     bohne: regler(M, 'maul.bohne', 'Bohne', -1, 1, 0, 'Oberkiefer kippt beim Öffnen seitlich (−1 links … +1 rechts), Lochmaul öffnet einseitig weiter — Bohnenform wie Giraffe/Retriever'),
   })
@@ -198,6 +213,7 @@ const farben = z
     zunge: hex.default('#e07c92'),
     zahn: hex.default('#e6d1a6'),
     auge: hex.default('#101418'),
+    nase: hex.default('#2a2226'),
     pupille: hex.default('#f7f2e8'),
   })
   .prefault({});

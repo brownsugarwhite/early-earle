@@ -27,7 +27,7 @@ const _s = new Vector3();
 
 function colorsOf(b: Bauplan): CreatureColors {
   const f = b.muster.farben;
-  return { grund: f.grund, bauch: f.bauch, muster: f.muster, akzent: f.akzent, lippe: f.lippe, rachen: f.rachen, auge: f.auge };
+  return { grund: f.grund, bauch: f.bauch, muster: f.muster, akzent: f.akzent, lippe: f.lippe, rachen: f.rachen, auge: f.auge, nase: f.nase };
 }
 
 function toothGeometry(stil: 'rund' | 'spitz', biegung = 0.4): BufferGeometry {
@@ -265,6 +265,15 @@ export class CreatureMesh {
     }
     // Lippenband (Zahnfleisch) in Körpereinheiten: 0 ohne Lippe (Giraffe), sonst bis ≈ 10 % der Körperhöhe
     this.uniforms.lippenBand.value = b.maul.sichtbar && b.maul.lippe > 0.02 ? (0.015 + 0.085 * Math.min(1, b.maul.lippe)) * build.bodyScale : 0;
+    // ω-Lippe: das Band gehört zur Oberlippe, unten nur ein Hauch (Bild 8/9)
+    this.uniforms.lippenBandUnten.value = b.maul.wForm > 0.02 ? 0.25 : 1;
+    const gesicht = build.gesicht;
+    this.uniforms.gesichtAn.value = gesicht ? 1 : 0;
+    if (gesicht) {
+      this.uniforms.naseMitte.value.set(gesicht.nase[0], gesicht.nase[1], gesicht.nase[2], gesicht.nasenRadius);
+      this.uniforms.philtrumA.value.set(gesicht.philtrum[0][0], gesicht.philtrum[0][1], gesicht.philtrum[0][2], 0.012 * build.bodyScale);
+      this.uniforms.philtrumB.value.set(gesicht.philtrum[1][0], gesicht.philtrum[1][1], gesicht.philtrum[1][2]);
+    }
     // --- Zähne und Zunge ------------------------------------------------------------------------------------------------
     const stilZ = b.zaehne.stil;
     if (build.mouth && stilZ !== 'keine' && build.mouth.teeth.length > 0) {

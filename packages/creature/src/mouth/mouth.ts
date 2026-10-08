@@ -165,7 +165,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const wF = clamp01(m.wForm) * fForm;
     // ω: schmale Spitze unter der Nase (Philtrum), dicht daneben hängen die Lefzen tief, zum Winkel steigt die Linie
     // (Lächeln) — Bild 8 (Retriever) und Bild 9 (Tiger)
-    const wLippe = wF * Hk * (0.14 * Math.exp(-Math.pow(u / 0.11, 2)) - 0.09 * Math.exp(-Math.pow((u - 0.26) / 0.15, 2)) + 0.05 * smoothstep(0.45, 1, u));
+    const wLippe = wF * Hk * (0.15 * Math.exp(-Math.pow(u / 0.08, 2)) - 0.1 * Math.exp(-Math.pow((u - 0.24) / 0.14, 2)) + 0.05 * smoothstep(0.45, 1, u));
     const h = clamp(hLip + rise - dip + wLippe, 0.01, H - 0.01);
     const sp = surfacePoint(host, h, phi, maxR);
     phis.push(phi);
