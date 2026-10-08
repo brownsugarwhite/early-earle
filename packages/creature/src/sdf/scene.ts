@@ -101,6 +101,8 @@ export interface LoftStation {
   n: number;
   /** Ei-Verjüngung nach vorn (0 rund … 1 spitz): die Breite schrumpft zur Vorderseite — Gesicht schmaler als Schultern. */
   taper: number;
+  /** Exponent der unteren Hälfte (Kiefer kantig, Schädel rund); ohne Angabe wie `n`. */
+  nB?: number;
   arc: number;
   part: number;
 }
@@ -150,7 +152,7 @@ function sectionRadius(s: LoftStation, ca: number, cb: number): number {
   const wy = cb >= 0 ? s.wyT : s.wyB;
   const wx = cb > 0 && s.taper > 0 ? s.wx * (1 - s.taper * cb) : s.wx;
   if (wx < 1e-6 || wy < 1e-6) return 0;
-  const n = s.n;
+  const n = cb < 0 && s.nB !== undefined ? s.nB : s.n;
   const ax = Math.abs(ca) / wx, ay = Math.abs(cb) / wy;
   if (n <= 2.001) return 1 / Math.sqrt(ax * ax + ay * ay);
   return Math.pow(Math.pow(ax, n) + Math.pow(ay, n), -1 / n);
@@ -316,6 +318,8 @@ export interface LoftSpec {
   parts: number[] | number;
   /** Ei-Verjüngung nach vorn je Station (0 rund … 1 spitz), siehe `LoftStation.taper`. */
   taper?: number[] | number;
+  /** Exponent der unteren Hälfte je Station (siehe `LoftStation.nB`). */
+  nB?: number[] | number;
   capStart?: number;
   capEnd?: number;
   /** Gerade Bezugsachse (siehe `LoftPrim.axis`); die Punkte müssen entlang der Achse monoton sein. */
@@ -339,7 +343,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
     dz /= dl;
     const steps = [0.38, 0.71, 0.92, 1.0];
     const fac = [0.925, 0.7, 0.39, 0];
-    const extraP: Vec3[] = [], exW: number[] = [], exT: number[] = [], exB: number[] = [], exN: number[] = [], exPart: number[] = [], exTaper: number[] = [];
+    const extraP: Vec3[] = [], exW: number[] = [], exT: number[] = [], exB: number[] = [], exN: number[] = [], exPart: number[] = [], exTaper: number[] = [], exNB: number[] = [];
     for (let q = 0; q < steps.length; q++) {
       const t = steps[q]! * r;
       extraP.push([a[0] + dx * t, a[1] + dy * t, a[2] + dz * t]);
@@ -349,6 +353,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       exN.push(typeof spec.n === 'number' ? spec.n : (spec.n[i] ?? 2));
       exPart.push(typeof spec.parts === 'number' ? spec.parts : (spec.parts[i] ?? 0));
       exTaper.push(typeof spec.taper === 'number' ? spec.taper : (spec.taper?.[i] ?? 0));
+      exNB.push(typeof spec.nB === 'number' ? spec.nB : (spec.nB?.[i] ?? 2));
     }
     if (atStart) {
       spec.points = [...extraP.reverse(), ...spec.points];
@@ -358,6 +363,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       if (typeof spec.n !== 'number') spec.n = [...exN.reverse(), ...spec.n];
       if (typeof spec.parts !== 'number') spec.parts = [...exPart.reverse(), ...spec.parts];
       if (Array.isArray(spec.taper)) spec.taper = [...exTaper.reverse(), ...spec.taper];
+      if (Array.isArray(spec.nB)) spec.nB = [...exNB.reverse(), ...spec.nB];
     } else {
       spec.points = [...spec.points, ...extraP];
       spec.wx = [...spec.wx, ...exW];
@@ -366,10 +372,12 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       if (typeof spec.n !== 'number') spec.n = [...spec.n, ...exN];
       if (typeof spec.parts !== 'number') spec.parts = [...spec.parts, ...exPart];
       if (Array.isArray(spec.taper)) spec.taper = [...spec.taper, ...exTaper];
+      if (Array.isArray(spec.nB)) spec.nB = [...spec.nB, ...exNB];
     }
   };
   spec = { ...spec, points: spec.points.slice(), wx: spec.wx.slice(), wyT: spec.wyT.slice(), wyB: spec.wyB.slice(), n: typeof spec.n === 'number' ? spec.n : spec.n.slice(), parts: typeof spec.parts === 'number' ? spec.parts : spec.parts.slice() };
   if (Array.isArray(spec.taper)) spec.taper = spec.taper.slice();
+  if (Array.isArray(spec.nB)) spec.nB = spec.nB.slice();
   // (fast) doppelte Nachbarpunkte entfernen: Nullsegmente machen Tangente, Rahmen und Profil unstetig
   {
     let total = 0;
@@ -385,6 +393,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
         if (typeof spec.n !== 'number') spec.n.splice(i, 1);
         if (typeof spec.parts !== 'number') spec.parts.splice(i, 1);
         if (Array.isArray(spec.taper)) spec.taper.splice(i, 1);
+        if (Array.isArray(spec.nB)) spec.nB.splice(i, 1);
       }
     }
   }
@@ -437,6 +446,7 @@ export function makeLoft(spec: LoftSpec, base: Omit<PrimBase, 'part'> & { part?:
       wyB: Math.max(0, spec.wyB[i] ?? 0),
       n: typeof spec.n === 'number' ? spec.n : (spec.n[i] ?? 2),
       taper: Math.max(0, Math.min(0.95, typeof spec.taper === 'number' ? spec.taper : (spec.taper?.[i] ?? 0))),
+      ...(spec.nB !== undefined ? { nB: typeof spec.nB === 'number' ? spec.nB : (spec.nB[i] ?? (typeof spec.n === 'number' ? spec.n : (spec.n[i] ?? 2))) } : {}),
       arc,
       part: typeof spec.parts === 'number' ? spec.parts : (spec.parts[i] ?? 0),
     });

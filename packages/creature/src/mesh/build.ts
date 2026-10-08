@@ -369,7 +369,7 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       const along = Math.sqrt(Math.max(0, 1 - u * u));
       const skin = 1 - smoothstep(0, reach, kantenAbstand[v]!);
       // Bohne: eine Seite öffnet weiter (Giraffe, Retriever)
-      const seitig = 1 + clamp(b.maul.bohne, -1, 1) * 0.6 * clamp(phi / m.theta, -1, 1);
+      const seitig = 1 + clamp(b.maul.bohne, -1, 1) * 1.0 * clamp(phi / m.theta, -1, 1);
       const w = along * skin * (1 - tasche[v]!) * Math.max(0.2, seitig);
       if (w < 1e-4) continue;
       pucker[v * 3] = fy[0] * s * w;

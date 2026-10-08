@@ -391,7 +391,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       // Profile (Bild 5/11): Schädel hinten hoch, Brauenwulst, Schnauze läuft nach vorn aus; Kiefer unten als Löffel
       const nS = 40;
       const pts: Vec3[] = [];
-      const wx: number[] = [], wyT: number[] = [], wyB: number[] = [], nn: number[] = [];
+      const wx: number[] = [], wyT: number[] = [], wyB: number[] = [], nn: number[] = [], nB: number[] = [];
       const braue = clamp(b.kopf.braue, 0, 1);
       for (let i = 0; i < nS; i++) {
         const u = i / (nS - 1); // 0 Hinterkopf … 1 Schnauzenspitze
@@ -419,11 +419,13 @@ export function construct(b: Bauplan, resolution = 56): Construction {
         wyT.push(skull * endRound);
         wyB.push(jaw * endRound);
         // Kieferkante: Schnauze und Kinn kantig (Raubkatze, Bild 9), der Schädel hinten bleibt rund
-        nn.push(2.1 + 3.2 * kanteK * smoothstep(0.4, 0.75, u));
+        // Schädel (obere Hälfte) bleibt rund; Kiefer und Schnauze (untere Hälfte) werden zur Front hin kantig
+        nn.push(2.1 + 0.6 * kanteK * smoothstep(0.6, 0.95, u));
+        nB.push(2.1 + 3.4 * kanteK * smoothstep(0.35, 0.7, u));
       }
       // Verschmelzung klein genug, dass Kanten und Schnauze des Kopfs stehen bleiben (kantige Raubkatze); der Übergang
       // zur Schulter kommt aus der Überlappung von Kopf und Rumpf, nicht aus einem großen Rundungsradius
-      const head = makeLoft({ points: pts, upRef: upH, wx, wyT, wyB, n: nn, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN)), region: REGION.haut, name: 'kopf' });
+      const head = makeLoft({ points: pts, upRef: upH, wx, wyT, wyB, n: nn, nB, parts: headBone, axis: forwardH }, { op: 'union', part: headBone, k: hr * (0.22 + 0.18 * (1 - tN)), region: REGION.haut, name: 'kopf' });
       prims.push(head);
       // Ohren: flache Lappen seitlich hinten oben, nach außen-hinten geneigt (Giraffe, Dackel); Hörnchen: zwei kurze
       // Stiele mit Knopf oben hinten (Giraffe) — einfache Anbauten direkt am Kopf

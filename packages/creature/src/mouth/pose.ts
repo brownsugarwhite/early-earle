@@ -66,8 +66,8 @@ export function jawPose(rig: JawRig, openness: number): JawPose {
   const upperSep = sep * s + Math.max(0, lowerSep - L * Math.sin(lowerAngle));
   const upperAngle = -Math.asin(clamp(upperSep / L, 0, 0.95));
   const spitzmund = o * (1 - rig.form) * rig.gapeMax * 0.5;
-  // Bohne: der Oberkiefer rollt beim Öffnen seitlich (bis ≈ 34°)
-  const upperRoll = rig.bohne * 0.6 * o * rig.form;
+  // Bohne: der Oberkiefer rollt beim Öffnen seitlich (bis ≈ 50°)
+  const upperRoll = rig.bohne * 0.88 * o * rig.form;
   return { lowerAngle, upperAngle, spitzmund, upperRoll };
 }
 
