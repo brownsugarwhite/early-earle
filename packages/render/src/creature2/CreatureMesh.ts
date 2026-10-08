@@ -36,7 +36,7 @@ function colorsOf(b: Bauplan): CreatureColors {
  * Beine −t (0 Hüfte … 1 Sohle), alles andere 0. Aus der Teilgruppe des Vertex und der Knochenkette seiner Gruppe; über
  * den letzten Knochen hinaus läuft die Bogenlänge weiter, damit t genau an der Spitze bzw. Sohle 1 erreicht.
  */
-function teilKoordinate(build: CreatureBuild): Float32Array {
+export function teilKoordinate(build: CreatureBuild): Float32Array {
   const n = build.positions.length / 3;
   const out = new Float32Array(n);
   const gruppe = build.descriptors.group;
