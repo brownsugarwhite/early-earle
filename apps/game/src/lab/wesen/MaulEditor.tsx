@@ -12,7 +12,7 @@ const W = 300, H = 220;
 const st = () => useWesenStore.getState();
 const clamp = (x: number, a: number, b: number): number => Math.min(b, Math.max(a, x));
 
-function nutzeZug(key: string, aufWert: (dx: number, dy: number, start: { x: number; y: number }) => Array<[string, number]>) {
+function nutzeZug(key: string, aufWert: (dx: number, dy: number, start: { x: number; y: number }) => Array<[string, unknown]>) {
   return (e: React.PointerEvent<SVGCircleElement>, svg: SVGSVGElement | null, start: { x: number; y: number }) => {
     e.preventDefault();
     if (!svg) return;
@@ -22,7 +22,8 @@ function nutzeZug(key: string, aufWert: (dx: number, dy: number, start: { x: num
       const m = svg.getScreenCTM();
       if (!m) return;
       const x = (ev.clientX - m.e) / m.a, y = (ev.clientY - m.f) / m.d;
-      for (const [k, v] of aufWert(x - start.x, y - start.y, start)) st().setzeBauplanWert(k, Math.round(v * 1000) / 1000, key);
+      // Zahlen gerundet, Listen (gezeichnete Linie) unverändert — `Math.round` auf ein Array ergab NaN, der Zug verpuffte
+      for (const [k, v] of aufWert(x - start.x, y - start.y, start)) st().setzeBauplanWert(k, typeof v === 'number' ? Math.round(v * 1000) / 1000 : Array.isArray(v) ? v.map((x) => Math.round(Number(x) * 1000) / 1000) : v, key);
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
@@ -67,16 +68,21 @@ export function MaulEditor() {
     nutzeZug('maul.linie', (_dx, dy, s0) => {
       const neu = ctrl.slice();
       neu[i] = clamp((yLip - (s0.y + dy)) / (2 * ry), -0.8, 0.8);
-      return [['maul.linie', neu as unknown as number]];
+      return [['maul.linie', neu]];
     });
   const uMid = 0.36;
   const xMid = xFront + (xCorner - xFront) * uMid;
   const yMid = yLip + (yCorner - yLip) * uMid * uMid + schwung * 0.12 * 2 * ry * Math.pow(Math.sin(Math.PI * uMid / 0.72), 1.5);
   const zugHoehe = nutzeZug('maul.hoehe', (_dx, dy, s0) => [['maul.hoehe', clamp((cy + ry - (s0.y + dy)) / (2 * ry), 0, 1)]]);
-  const zugWinkel = nutzeZug('maul.winkel', (dx, dy, s0) => [
-    ['maul.winkel', clamp((0.55 - (s0.x + dx - cx) / rx) / 1.05, 0, 1)],
-    ['maul.neigung', clamp(-(s0.y + dy - yLip) / (0.22 * 2 * ry), -1, 1)],
-  ]);
+  const zugWinkel = nutzeZug('maul.winkel', (dx, dy, s0) => {
+    const werte: Array<[string, unknown]> = [['maul.winkel', clamp((0.55 - (s0.x + dx - cx) / rx) / 1.05, 0, 1)]];
+    if (linieAn) {
+      const neu = ctrl.slice();
+      neu[neu.length - 1] = clamp((yLip - (s0.y + dy)) / (2 * ry), -0.8, 0.8);
+      werte.push(['maul.linie', neu]);
+    } else werte.push(['maul.neigung', clamp(-(s0.y + dy - yLip) / (0.22 * 2 * ry), -1, 1)]);
+    return werte;
+  });
   const zugSchwung = nutzeZug('maul.schwung', (_dx, dy, s0) => [['maul.schwung', clamp(schwung + dy / (0.12 * 2 * ry * 0.9), -1, 1) - 0 * s0.y]]);
   // --- Vorn: Maullinie von Winkel zu Winkel, ω-Spitze, Öffnung ---
   const breite = clamp(m.breite, 0.2, 1);
@@ -96,8 +102,8 @@ export function MaulEditor() {
   const zugSpitze = nutzeZug('maul.wForm', (_dx, dy, s0) => [['maul.wForm', clamp((yL - (s0.y + dy)) / (60 * 0.15), 0, 1)]]);
   const zugBreite = nutzeZug('maul.breite', (dx, _dy, s0) => [['maul.breite', clamp((Math.abs(s0.x + dx - cx) - 40) / 95, 0.2, 1)]]);
   const zugOeffnung = nutzeZug('maul.oeffnung', (_dx, dy, s0) => [['maul.oeffnung', clamp((s0.y + dy - yL - 10) / 70, 0, 1)]]);
-  const griff = (key: string, x: number, y: number, svg: React.RefObject<SVGSVGElement | null>, zug: ReturnType<typeof nutzeZug>, titel: string) => (
-    <circle key={key} cx={x} cy={y} r={8} className="wl-sp-punkt" onPointerDown={(e) => zug(e, svg.current, { x, y })} data-testid={`wl-maul-${key}`}>
+  const griff = (key: string, x: number, y: number, svg: React.RefObject<SVGSVGElement | null>, zug: ReturnType<typeof nutzeZug>, titel: string, r = 8) => (
+    <circle key={key} cx={x} cy={y} r={r} className="wl-sp-punkt" onPointerDown={(e) => zug(e, svg.current, { x, y })} data-testid={`wl-maul-${key}`}>
       <title>{titel}</title>
     </circle>
   );
@@ -110,7 +116,7 @@ export function MaulEditor() {
         {griff('hoehe', xFront, yLip, seite, zugHoehe, 'Maulhöhe (senkrecht ziehen)')}
         {griff('winkel', xCorner, yCorner, seite, zugWinkel, 'Mundwinkel: waagerecht = nach hinten, senkrecht = Neigung')}
         {!linieAn && griff('schwung', xMid, yMid, seite, zugSchwung, 'Schwung der Linie (senkrecht ziehen)')}
-        {ctrl.map((c, i) => (i === 0 ? null : griff(`linie-${i}`, xFront + (xCorner - xFront) * (i / (ctrl.length - 1)), yLip - c * 2 * ry, seite, zugPunkt(i), `Linienpunkt ${i} (senkrecht ziehen): Form der Maullinie`)))}
+        {ctrl.map((c, i) => (i === 0 || i === ctrl.length - 1 ? null : griff(`linie-${i}`, xFront + (xCorner - xFront) * (i / (ctrl.length - 1)), yLip - c * 2 * ry, seite, zugPunkt(i), `Linienpunkt ${i} (senkrecht ziehen): Form der Maullinie`, 5)))}
         <text x={cx + rx - 4} y={cy - ry + 14} className="wl-sp-text" textAnchor="end">Schnauze →</text>
       </svg>
       {linieAn && (

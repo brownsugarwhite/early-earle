@@ -31,6 +31,9 @@ export interface MouthHost {
   headHeight?: number;
   /** Mittellinie des Trägers: Scheibenmitte auf Höhe h (Körperträger mit Neigung); ohne Angabe `origin + up · h`. */
   center?: (h: number) => Vec3;
+  /** Freier Kopf (0 … 1, aus der Halslänge): 1 = der ganze Schädel kippt um die Kopfmitte, hebt sich und läuft über den
+   *  Hals aus; 0 = versunkener Kopf, Kippung um das Gelenk hinter dem Maul (ohne Angabe 0). */
+  kopfFrei?: number;
   /** Kieferstufe (ungleich große Kiefer): Höhenversatz des Ober- und Unterkieferrands gegen die Maullinie bei
    *  u = |φ|/θ — der größere Kiefer hat den äußeren Rand, die Ränder laufen zu den Winkeln zusammen; ohne Angabe 0. */
   kieferStufe?: (u: number) => { oben: number; unten: number };
@@ -99,9 +102,13 @@ export interface MouthGeometry {
   /** Unterkiefer in zwei Teilen: `a` = Zugehörigkeit (Seite), `f` = starrer Anteil (1 Kiefer … 0 Rumpf: Tiefe unter dem Kinn und Lage hinter den Mundwinkeln); die Kehlkette biegt dazwischen. */
   /** Unterseite: Anteil a, Kieferanteil f (starr bis zur Kiefertiefe, hinter dem Gelenk auslaufend) und Kippanteil ft
    *  (Schädelkippung, dieselbe Zone wie beim Oberkiefer). */
-  jawParts(p: Readonly<Vec3>, bodyScale: number, side?: number): { a: number; f: number; ft: number };
+  jawParts(p: Readonly<Vec3>, bodyScale: number, side?: number, fGruppe?: number): { a: number; f: number; ft: number };
+  /** Anheben des Kopfs beim Aufreißen (Körpereinheiten bei voller Öffnung): der Kopf hebt sich aus dem Rumpf. */
+  lift: number;
+  /** Anteil, mit dem der ganze Kopfknochen (Hinterkopf, Augen) die Schädelkippung mitmacht (0 … 1). */
+  kopfFrei: number;
   /** Oberkiefer in zwei Teilen: `a` = Zugehörigkeit (Seite), `f` = starrer Anteil (1 vor den Mundwinkeln … 0 weit dahinter); die Nackenkette biegt dazwischen. */
-  upperParts(p: Readonly<Vec3>, bodyScale: number, side?: number): { a: number; f: number };
+  upperParts(p: Readonly<Vec3>, bodyScale: number, side?: number, fGruppe?: number): { a: number; f: number };
   /** Höhe des starren Unterkiefers unter der Maullinie und Länge der Biegezone darunter (Kehlsack). */
   jawDepth: number;
   fadeLen: number;
@@ -284,7 +291,13 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
   // selbst ist der Hebel null, deshalb reißt dort nichts, auch wenn die Seiten hart getrennt sind
   const hCorner = lipHAt(theta);
   const zCorner = lipRAt(theta) * Math.cos(theta);
-  const zHinge = zCorner - 0.03 * H;
+  // Kiefergelenk: knapp hinter den Mundwinkeln — bei kurzem Maul (Katze: Winkel vorn) aber am **Hinterkopf**, wie das
+  // echte Kiefergelenk unter dem Ohr: langer Hebel, kleine Winkel für dieselbe Öffnung (sonst kippte der ganze Schädel
+  // wie ein Pez-Spender, weil Unter- und Oberkiefer bei winzigem Hebel sofort in die Sättigung laufen)
+  // Nur beim freien Kopf (Hals): ein versunkener Kopf (Rex auf den Schultern) hat sein Gelenk im Rumpf — dort bleibt es an
+  // den Mundwinkeln, sonst risse die Wange gegen den Rumpf
+  const zHingeVorn = zCorner - 0.03 * H;
+  const zHinge = lerp(zHingeVorn, Math.min(zHingeVorn, -0.4 * host.jointBack), clamp01(host.kopfFrei ?? 0));
   const hingeMid: Vec3 = add(hostCenter(host, hCorner), scale(host.forward, zHinge));
   const jawLever = Math.max(0.05, Math.hypot(center[0] - hingeMid[0], center[1] - hingeMid[1], center[2] - hingeMid[2]));
   const hingeAxis: Vec3 = normalize(host.right);
@@ -294,7 +307,13 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
   // ganzer Schädel um ein Gelenk hinter dem Kopf — nahe der Achse bleibt der Hinterkopf, davor hebt sich alles; dahinter
   // läuft die Drehung über die Nackenkette in Hals und Rumpf aus (weicher Übergang statt Knick in der Stirn)
   const zSkull = Math.max(zHinge - 0.55 * rampBack, -1.1 * Math.max(0.2 * H, host.jointBack));
-  const skullMid: Vec3 = add(hostCenter(host, hCorner), scale(host.forward, zSkull));
+  // Eigener Kopf: der ganze Schädel kippt um die **Kopfmitte** (Florian: der Hinterkopf muss mitanimieren, wenn der
+  // Oberkiefer nach hinten klappt) und hebt sich dabei aus dem Rumpf (`lift`); Körperträger: Gelenk hinter dem Maul
+  const frei = clamp01(host.kopfFrei ?? 0);
+  const skullHinten: Vec3 = add(hostCenter(host, hCorner), scale(host.forward, zSkull));
+  const skullMitte: Vec3 = hostCenter(host, 0.55 * H);
+  const skullMid: Vec3 = add(skullHinten, scale(sub(skullMitte, skullHinten), frei));
+  const lift = 0.14 * H * frei;
   const upperLever = Math.max(0.05, Math.hypot(center[0] - skullMid[0], center[1] - skullMid[1], center[2] - skullMid[2]));
   const fadeSkull = Math.max(0.35 * H, 0.8 * rampBack);
   const wSkull = (zLocal: number): number => smoothstep(zSkull - fadeSkull, zSkull + 0.2 * rampBack, zLocal);
@@ -309,7 +328,7 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
   // Lippenhöhe als Bezug für Punkte nahe der Trägerachse (Azimut dort unbestimmt — Brust unter dem Kopf): zur Achse hin
   // auf die Höhe der Maulmitte blenden, sonst springt der Tiefenanteil zwischen Nachbarn
   const lipRef = (phiC: number, r: number): number => lerp(hLip, lipHAt(phiC), smoothstep(0, 0.35 * host.halfWidth, r));
-  const jawParts = (p: Readonly<Vec3>, bs: number, side?: number): { a: number; f: number; ft: number } => {
+  const jawParts = (p: Readonly<Vec3>, bs: number, side?: number, fGruppe?: number): { a: number; f: number; ft: number } => {
     if (m.unterkiefer < 0.05) return { a: 0, f: 0, ft: 0 };
     const { h, phi, r } = local(p);
     const aphi = Math.abs(phi);
@@ -324,20 +343,23 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const fd = 1 - smoothstep(jawDepth * 0.95, jawDepth * 0.95 + fadeLen, below);
     // Kieferdrehung: starr vor dem Gelenk, dahinter auslaufend; Kippung: dieselbe Zone wie der Schädel (Nackenkette),
     // damit beide Seiten der Maullinie hinter den Mundwinkeln gleich laufen — sonst reißt die Haut dort
-    return { a: clamp01(wBelow), f: wToJoint(z) * fd, ft: wSkull(z) * fd };
+    // Kippanteil: mit eigenem Kopf aus der Knochengruppe (Kopf 1, Hals auslaufend, Rumpf 0), sonst nach Länge
+    const fz = fGruppe !== undefined ? lerp(wSkull(z), fGruppe, frei) : wSkull(z);
+    return { a: clamp01(wBelow), f: wToJoint(z) * fd, ft: fz * fd };
   };
   const jawWeight = (p: Readonly<Vec3>, bs: number, side?: number): number => {
     const { a, f } = jawParts(p, bs, side);
     return a * f;
   };
-  const upperParts = (p: Readonly<Vec3>, bs: number, side?: number): { a: number; f: number } => {
+  const upperParts = (p: Readonly<Vec3>, bs: number, side?: number, fGruppe?: number): { a: number; f: number } => {
     const { h, phi, r } = local(p);
     const phiC = clamp(phi, -theta, theta);
     const hl = lipRef(phiC, r);
     const above = h - hl;
     const band = Math.max(0.09 * bs, 0.12 * H);
     const wAbove = side !== undefined && Math.abs(side) > 1e-3 ? clamp01((1 + side) / 2) : smoothstep(-0.2 * band, band, above) * smoothstep(0, 0.5 * band, above + 0.3 * band);
-    return { a: clamp01(wAbove), f: wSkull(r * Math.cos(phi)) };
+    const fz = wSkull(r * Math.cos(phi));
+    return { a: clamp01(wAbove), f: fGruppe !== undefined ? lerp(fz, fGruppe, frei) : fz };
   };
   const upperWeight = (p: Readonly<Vec3>, bs: number, side?: number): number => {
     const { a, f } = upperParts(p, bs, side);
@@ -382,24 +404,26 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const sign = dot(sub(probe, center), host.up) < 0 ? 1 : -1;
     const step = (2 * Math.PI) / 180;
     let ok = 0;
+    // Beim Aufreißen hebt sich der Kopf (`lift`, voll bei voller Öffnung): die Abtastpunkte heben sich mit — der Unterkiefer
+    // darf entsprechend weiter öffnen, bevor er Boden oder Rumpf trifft
+    const hebung = (anteil: number): Vec3 => scale(host.up, lift * anteil);
     for (let k = 1; k <= 36; k++) {
       const ang = k * step;
       const q = quatFromAxisAngle(hingeAxis, sign * ang);
-      let frei = true;
+      let ok1 = true;
       for (const sm of kette) {
-        const pr = add(hingeMid, rotate(quatFromAxisAngle(hingeAxis, sign * ang * sm.anteil), sub(sm.p, hingeMid)));
-        if (pr[1] < floor * 0.5) { frei = false; break; }
+        const pr = add(add(hingeMid, rotate(quatFromAxisAngle(hingeAxis, sign * ang * sm.anteil), sub(sm.p, hingeMid))), hebung(sm.anteil));
+        if (pr[1] < floor * 0.5) { ok1 = false; break; }
       }
-      if (!frei) break;
-      for (const sm of samples) {
-        const pr = add(hingeMid, rotate(q, sub(sm.p, hingeMid)));
-        if (pr[1] < floor) { frei = false; break; }
+      if (ok1) for (const sm of samples) {
+        const pr = add(add(hingeMid, rotate(q, sub(sm.p, hingeMid))), hebung(1));
+        if (pr[1] < floor) { ok1 = false; break; }
         // starrer Teil: unter der Biegezone oder hinter dem Gelenk (ein Kinn, das nach hinten in den Rumpf schwenkt)
         const hr = dot(sub(pr, host.origin), host.up);
         const zr = dot(sub(pr, hostCenter(host, hr)), host.forward);
-        if ((hr < sm.hStatic + 0.02 * H || zr < zHinge - 0.02 * H) && evalScene(host.scene, pr) < -0.025 * bodyScale) { frei = false; break; }
+        if ((hr < sm.hStatic + 0.02 * H || zr < zHinge - 0.02 * H) && evalScene(host.scene, pr) < -0.025 * bodyScale) { ok1 = false; break; }
       }
-      if (!frei) break;
+      if (!ok1) break;
       ok = ang;
     }
     // Faltbudget: die Biegezone unter dem Kinn kann höchstens ≈ 60 % ihrer Länge an Verschiebung aufnehmen, sonst
@@ -409,5 +433,5 @@ export function buildMouth(b: Bauplan, host: MouthHost, bodyScale: number): Mout
     const thetaFold = 2 * Math.asin(clamp((1.1 * fadeLen) / lChin, 0, 1));
     return Math.min(ok, thetaFold, Math.asin(0.95));
   })();
-  return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, skullHinge: { point: skullMid, axis: hingeAxis }, upperLever, local, lipHAt, lipHObenAt, lipHUntenAt, kieferStufeMax, lipRAt, profilAt, jawWeight, upperWeight, jawParts, upperParts, jawDepth, fadeLen, wToJoint, zCorner, jawLever, lowerAngleMax };
+  return { host, hLip, theta, lipLine, lipH, lipR, phis, center, corners, frame, gapeMax, tiefe, jawHinge: { point: hingeMid, axis: hingeAxis }, skullHinge: { point: skullMid, axis: hingeAxis }, upperLever, lift, kopfFrei: frei, local, lipHAt, lipHObenAt, lipHUntenAt, kieferStufeMax, lipRAt, profilAt, jawWeight, upperWeight, jawParts, upperParts, jawDepth, fadeLen, wToJoint, zCorner, jawLever, lowerAngleMax };
 }

@@ -42,6 +42,9 @@ export interface CreatureMaterialUniforms {
   nase: UniformNode<'vec3', Vector3>;
   /** Gesicht: Nase (xyz Mitte, w Radius), Scharte als Strecke A → B (w: Linienbreite), `gesichtAn` 0/1. */
   naseMitte: UniformNode<'vec4', Vector4>;
+  /** Dreiecksnase: Oben-Richtung (xyz) und Höhe (w), Rechts-Richtung (xyz); Höhe 0 = runde Nase. */
+  naseOben: UniformNode<'vec4', Vector4>;
+  naseRechts: UniformNode<'vec4', Vector4>;
   philtrumA: UniformNode<'vec4', Vector4>;
   philtrumB: UniformNode<'vec3', Vector3>;
   gesichtAn: UniformNode<'float', number>;
@@ -146,6 +149,8 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     auge: uniform(new Vector3(...farbRolle(colors.auge, stil).base)),
     nase: uniform(new Vector3(...farbRolle(colors.nase ?? '#2a2226', stil).base)),
     naseMitte: uniform(new Vector4(0, 0, 0, 0)),
+    naseOben: uniform(new Vector4(0, 1, 0, 0)),
+    naseRechts: uniform(new Vector4(1, 0, 0, 0)),
     philtrumA: uniform(new Vector4(0, 0, 0, 0.01)),
     philtrumB: uniform(new Vector3(0, 0, 0)),
     gesichtAn: uniform(0),
@@ -453,7 +458,19 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     // die Scharte als Strich von der Lippenspitze zur Nase (Bild 8/9: W mit Verbindung zur Nase)
     const nDist = rest.sub(u.naseMitte.xyz).length();
     const nR = u.naseMitte.w;
-    const naseMask = float(1).sub(smoothstep(nR.mul(0.94), nR.mul(1.06), nDist)).mul(u.gesichtAn);
+    const naseRund = float(1).sub(smoothstep(nR.mul(0.94), nR.mul(1.06), nDist));
+    // Dreiecksnase (Kastenmaul): Oberkante an der Mitte, Spitze nach unten; Kanten pixelscharf über eine feste Federung
+    const dN = rest.sub(u.naseMitte.xyz);
+    const yv = dot(dN, u.naseOben.xyz);
+    const xv = dot(dN, u.naseRechts.xyz);
+    const hN = max(u.naseOben.w, 0.0001);
+    const eOben = yv.sub(u.bodyScale.mul(0.01));
+    const eUnten = yv.negate().sub(hN);
+    const eSeite = abs(xv).sub(nR.mul(clamp(float(1).add(yv.div(hN)), 0, 1)));
+    const aaN = u.bodyScale.mul(0.006);
+    const nah = step(nDist, nR.mul(2.2));
+    const naseDreieck = float(1).sub(smoothstep(aaN.negate(), aaN, max(eOben, max(eUnten, eSeite)))).mul(nah);
+    const naseMask = mix(naseRund, naseDreieck, step(0.0001, u.naseOben.w)).mul(u.gesichtAn);
     const pa = u.philtrumA.xyz, pb = u.philtrumB;
     const abv = pb.sub(pa);
     const tt = clamp(dot(rest.sub(pa), abv).div(max(dot(abv, abv), 1e-6)), 0, 1);

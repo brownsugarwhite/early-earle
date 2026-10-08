@@ -56,7 +56,15 @@ export interface Construction {
   /** Nackenkette hinter dem Oberkiefer: zwei Knochen am Gelenk mit ⅔ und ⅓ des Oberkieferwinkels. */
   napeBones: [number, number];
   /** Gesichtslinien für den Shader: Nase (Mitte, Radius) und Philtrum (Scharte von der Lippenspitze zur Nase), Körperraum. */
-  gesicht: { nase: Vec3; nasenRadius: number; philtrum: [Vec3, Vec3] } | null;
+  gesicht: {
+    nase: Vec3;
+    nasenRadius: number;
+    philtrum: [Vec3, Vec3];
+    /** Dreiecksnase (Kastenmaul): Oben- und Rechts-Richtung und Höhe des Dreiecks; ohne Angabe runde Nase. */
+    nasenOben?: Vec3;
+    nasenRechts?: Vec3;
+    nasenHoehe?: number;
+  } | null;
 }
 
 const UP: Vec3 = [0, 1, 0];
@@ -321,6 +329,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   let hostBone = kMitte;
   let host: MouthHost | null = null;
   let kieferStufeFn: ((u: number) => { oben: number; unten: number }) | null = null;
+  let kastenInfo: { c: Vec3; halb: Vec3; oben: Vec3; rechts: Vec3; vorn: Vec3; hr: number } | null = null;
   let headGroup = -1;
   if (hasNeck) {
     const ansatz = b.hals.ansatz;
@@ -573,8 +582,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       // Stirn zwischen den Augen zur Nase und ein kastenförmiges Maul mit markantem Kinn vor dem Schädel. Beide als
       // Rundboxen im Kopfrahmen, weich angeschlossen (Form bleibt lesbar, keine harte Naht)
       const zFront = (Lfront + Lback) * 0.5;
-      const rundbox = (name: string, c: Vec3, halb: Vec3, rund: number, k: number): CustomPrim => {
-        const reach = halb[0] + halb[1] + halb[2] + rund;
+      // Rundbox im Kopfrahmen; `trapez` weitet die Breite nach unten (Nasenband: schmal an der Stirn, breit an der Nase),
+      // `kinn` verjüngt sie nach unten (Kastenmaul: zum Kinn etwas schmaler, organischer)
+      const rundbox = (name: string, c: Vec3, halb: Vec3, rund: number, k: number, trapez = 0): CustomPrim => {
+        const reach = halb[0] * (1 + Math.abs(trapez)) + halb[1] + halb[2] + rund;
         return {
           kind: 'custom',
           op: 'union',
@@ -587,22 +598,28 @@ export function construct(b: Bauplan, resolution = 56): Construction {
             const x = dx * rightH[0] + dy * rightH[1] + dz * rightH[2];
             const y = dx * upH[0] + dy * upH[1] + dz * upH[2];
             const z = dx * forwardH[0] + dy * forwardH[1] + dz * forwardH[2];
-            return sdRoundBoxLocal(x, y, z, halb, rund);
+            const t = clamp(-y / Math.max(1e-6, halb[1]), -1, 1);
+            const bx = halb[0] * (1 + trapez * t);
+            return sdRoundBoxLocal(x, y, z, [bx, halb[1], halb[2]], rund);
           },
           bounds: { min: [c[0] - reach, c[1] - reach, c[2] - reach], max: [c[0] + reach, c[1] + reach, c[2] + reach] },
         };
       };
+      // Florians Skizze: Nasenband als flaches Trapez von der Stirn (schmal) zur Nase (breit); das Kastenmaul ragt weit
+      // vor den Schädel und reicht bis unter ihn (Kinn), rund und organisch, zum Kinn leicht schmaler
       const nasenband = clamp(b.kopf.nasenband, 0, 1);
       if (nasenband > 0.02) {
-        const halb: Vec3 = [hr * 0.24 * (0.6 + 0.4 * nasenband), hr * 0.36, hr * 0.16];
-        const c = add(add(headCenter, scale(forwardH, zFront * 0.95 + hr * (0.02 + 0.08 * nasenband) - halb[2])), scale(upH, hr * 0.14));
-        prims.push(rundbox('nasenband', c, halb, hr * 0.08, hr * 0.1));
+        const halb: Vec3 = [hr * 0.17 * (0.6 + 0.4 * nasenband), hr * 0.3, hr * 0.14];
+        const c = add(add(headCenter, scale(forwardH, zFront * 0.93 + hr * (0.02 + 0.08 * nasenband) - halb[2])), scale(upH, hr * 0.22));
+        prims.push(rundbox('nasenband', c, halb, hr * 0.07, hr * 0.1, 0.55));
       }
       const kasten = clamp(m0.kasten, 0, 1);
       if (kasten > 0.02) {
-        const halb: Vec3 = [hr * 0.3 * (0.7 + 0.3 * kasten), hr * 0.34, hr * 0.2];
-        const c = add(add(headCenter, scale(forwardH, zFront * 0.9 + hr * (0.02 + 0.12 * kasten) - halb[2])), scale(upH, -hr * 0.3));
-        prims.push(rundbox('kastenmaul', c, halb, hr * 0.1, hr * 0.12));
+        // zur Nase hin breiter (Trapez −0,35: oben 1,35 ×, am Kinn 0,65 ×), nach unten lang bis unter den Schädel
+        const halb: Vec3 = [hr * 0.3 * (0.75 + 0.25 * kasten), hr * 0.52, hr * 0.26];
+        const c = add(add(headCenter, scale(forwardH, zFront * 0.85 + hr * (0.05 + 0.42 * kasten) - halb[2])), scale(upH, -hr * 0.42));
+        prims.push(rundbox('kastenmaul', c, halb, hr * 0.16, hr * 0.13, -0.35));
+        kastenInfo = { c, halb, oben: upH, rechts: rightH, vorn: forwardH, hr };
       }
       const hoerner = clamp(b.kopf.hoerner, 0, 1);
       if (hoerner > 0.02) {
@@ -617,7 +634,7 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     }
     hostBone = headBone;
     // Gelenk am Hinterkopf (70 % des hinteren Kopfteils hinter der Kopfbasis), bezogen auf den Ursprung (= Kopfmitte vorn/hinten)
-    host = { origin: sub(headCenter, scale(upH, hr * (0.42 + 0.42 * uk))), up: upH, forward: forwardH, right: rightH, height: hr * (0.42 + 0.42 * uk + 0.55 + 0.5 * ok), halfWidth: hr * 0.95, bone: headBone, jointBack: Lback * 0.7 + (Lfront - Lback) * 0.5, scene: { prims: [] }, ...(kieferStufeFn ? { kieferStufe: kieferStufeFn } : {}) };
+    host = { origin: sub(headCenter, scale(upH, hr * (0.42 + 0.42 * uk))), up: upH, forward: forwardH, right: rightH, height: hr * (0.42 + 0.42 * uk + 0.55 + 0.5 * ok), halfWidth: hr * 0.95, bone: headBone, jointBack: Lback * 0.7 + (Lfront - Lback) * 0.5, scene: { prims: [] }, kopfFrei: smoothstep(0.1, 0.3, b.hals.laenge), ...(kieferStufeFn ? { kieferStufe: kieferStufeFn } : {}) };
   } else {
     // Körperträger: waagerechte Scheiben, Mittellinie folgt der Neigung; Kiefertiefe = Kinnband des Grundblobs (plus
     // Kehlrand), damit Brust und Bauch nicht mitschwingen
@@ -643,7 +660,43 @@ export function construct(b: Bauplan, resolution = 56): Construction {
   const mouth = buildMouth(b, host, H);
   let gesicht: Construction['gesicht'] = null;
   // Nasenspiegel (Katze, Hund — Bild 8/9): flacher Knubbel vorn oben auf der Schnauze über der Mitte der W-Lippe
-  if (maulAn && b.maul.nase > 0.02) {
+  if (maulAn && b.maul.nase > 0.02 && kastenInfo) {
+    // Nase am Kastenmaul (Florians Skizze): breites flaches Dreieck **direkt vorn auf der Oberkante des Kastens**, so breit
+    // wie der Kasten oben, Spitze nach unten ins Philtrum; als dünne Rundkeil-Form leicht vor der Fläche, die Farbe
+    // zeichnet der Shader als Dreiecksmaske
+    const ki = kastenInfo;
+    const nF = clamp(b.maul.nase, 0, 1);
+    const wN = ki.halb[0] * 1.35 * (0.8 + 0.2 * nF);
+    const hN = wN * 0.45;
+    const tN = 0.035 * ki.hr;
+    const cN = add(add(ki.c, scale(ki.oben, ki.halb[1] - 0.03 * ki.hr)), scale(ki.vorn, ki.halb[2] - 0.01 * ki.hr));
+    const nrmN = ki.vorn, upN = ki.oben, rightN = ki.rechts;
+    const nl = Math.hypot(hN, wN);
+    const keil: CustomPrim = {
+      kind: 'custom',
+      op: 'union',
+      part: hostBone,
+      k: 0.04 * ki.hr,
+      region: REGION.haut,
+      name: 'nase',
+      eval: (p: Readonly<Vec3>): number => {
+        const dx = p[0] - cN[0], dy = p[1] - cN[1], dz = p[2] - cN[2];
+        const x = dx * rightN[0] + dy * rightN[1] + dz * rightN[2];
+        const y = dx * upN[0] + dy * upN[1] + dz * upN[2];
+        const z = dx * nrmN[0] + dy * nrmN[1] + dz * nrmN[2];
+        const d1 = y;
+        const d2 = ((x + wN) * -hN + y * -wN) / nl;
+        const d3 = ((x - wN) * hN + y * -wN) / nl;
+        const d2d = Math.max(d1, d2, d3);
+        return Math.max(d2d, Math.abs(z) - tN) - 0.02 * ki.hr;
+      },
+      bounds: { min: [cN[0] - wN - hN, cN[1] - wN - hN, cN[2] - wN - hN], max: [cN[0] + wN + hN, cN[1] + wN + hN, cN[2] + wN + hN] },
+    };
+    prims.push(keil);
+    const spitze = mouth.center;
+    const apex = add(cN, scale(upN, -hN));
+    gesicht = { nase: add(cN, scale(nrmN, tN)), nasenRadius: wN, philtrum: [spitze, apex], nasenOben: upN, nasenRechts: rightN, nasenHoehe: hN };
+  } else if (maulAn && b.maul.nase > 0.02) {
     const wF = clamp(b.maul.wForm, 0, 1);
     const nF = clamp(b.maul.nase, 0, 1);
     const Hk = host.headHeight ?? host.height;
