@@ -216,6 +216,34 @@ const anbau = z.object({
 });
 
 const F = 'Muster & Farben';
+
+/**
+ * Zonen: benannte Farbflächen mit gemalter, weich-harter Grenze über Bauch/Rücken hinaus (Bild 17: Latz der Krokodile und
+ * Wale, Augenflecken des Orcas, Blesse, Bänder der Clownfische, Socken, Schwanzspitze). Jede Zone hat Art, Lage, Breite,
+ * Federung, Farbe und einen Musterbezug.
+ */
+export const ZONEN_ARTEN = ['keine', 'bauch', 'latz', 'ruecken', 'band', 'maske', 'socken', 'spitze'] as const;
+/**
+ * Wie das Hauptmuster mit einer Zone umgeht: `frei` (Zone ohne Muster, reine Farbe), `ueber` (Muster läuft drüber),
+ * `ton` (Muster läuft drüber, in der Zone aber im dunkleren Zonenton — Schuppen, Bauchplatten), `nur` (Muster nur in der
+ * Zone) und `nurTon` (nur in der Zone, im Zonenton).
+ */
+export const ZONEN_MUSTER = ['frei', 'ueber', 'ton', 'nur', 'nurTon'] as const;
+
+function zone(i: number) {
+  const p = `muster.zone${i}`;
+  return z
+    .object({
+      art: z.enum(ZONEN_ARTEN).default('keine'),
+      lage: regler(F, `${p}.lage`, 'Lage', 0, 1, 0.5, 'Bauch: Höhe der Linie · Latz: wie hoch hinauf · Rücken: wie weit hinab · Band: Höhe · Maske: unter (0) … über (1) den Augen · Socken, Spitze: Länge'),
+      breite: regler(F, `${p}.breite`, 'Breite', 0, 1, 0.5, 'Latz, Rücken, Band, Maske: Breite · Bauch: seitliche Grenze (1 = ganz herum)'),
+      federung: regler(F, `${p}.federung`, 'Federung', 0, 1, 0.3, 'Grenze: 0 hart gemalt … 1 weich verlaufend'),
+      farbe: hex.default('#f3e6c8'),
+      muster: z.enum(ZONEN_MUSTER).default('frei'),
+    })
+    .prefault({});
+}
+
 const farben = z
   .object({
     grund: hex.default('#9c6cc7'),
@@ -229,6 +257,8 @@ const farben = z
     auge: hex.default('#101418'),
     nase: hex.default('#2a2226'),
     pupille: hex.default('#f7f2e8'),
+    /** Glimmer: warmes Licht der Funken und der Lichtseite fester Blobs (Bild 18: Lila → Rosa, Türkis → Gelbgrün). */
+    glimmer: hex.default('#f7d6a0'),
   })
   .prefault({});
 
@@ -243,6 +273,10 @@ const muster = z
     zittern: regler(F, 'muster.zittern', 'Zittern', 0, 1, 0.3, 'gemalte Unruhe'),
     bauchlinie: regler(F, 'muster.bauchlinie', 'Bauchlinie', 0, 1, 0.5, 'Höhe der Bauch/Rücken-Grenze'),
     gesichtHell: regler(F, 'muster.gesichtHell', 'Helle Schnauze', 0, 1, 0, 'Bauchfarbe um Maul und Augen: weiße Schnauze, Kinn und Backen der Raubkatzen (Bild 9)'),
+    glimmer: regler(F, 'muster.glimmer', 'Glimmer', 0, 1, 0.6, 'gemalte Funken und warmes Licht auf der Lichtseite (feste Grundblobs, Bild 18); mal dem Stil-Glimmer'),
+    zone1: zone(1),
+    zone2: zone(2),
+    zone3: zone(3),
     seed: z.number().int().default(1),
   })
   .prefault({});
