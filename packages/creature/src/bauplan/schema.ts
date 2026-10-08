@@ -64,7 +64,7 @@ const koerper = z
 const H = 'Hals & Kopf';
 const hals = z
   .object({
-    laenge: regler(H, 'hals.laenge', 'Halslänge', 0, 2, 0, '0 = Maul direkt am Körper'),
+    laenge: regler(H, 'hals.laenge', 'Halslänge', 0, 2, 0, '0 = Kopf im Rumpf (Grundblob mit Maullinie, Fisch, Aal); ab 0,05 eigener Kopf auf den Schultern (Rex, Katze), länger = Hals (Giraffe)'),
     dicke: regler(H, 'hals.dicke', 'Halsdicke', 0.15, 1.8, 0.55, 'Rex/Katze: breiter Hals trägt den großen Kopf'),
     kruemmung: regler(H, 'hals.kruemmung', 'Halsbogen', -1, 1, 0, 'S-Form vor / zurück'),
     ansatz: regler(H, 'hals.ansatz', 'Halsansatz', 0, 1, 0.7, '0 hinten … 1 vorn auf dem Körper'),

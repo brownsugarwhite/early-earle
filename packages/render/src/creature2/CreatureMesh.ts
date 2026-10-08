@@ -307,6 +307,9 @@ export class CreatureMesh {
     const eyes = build.eyes.slice(0, MAX_SLIT_EYES);
     const slit = b.augen.typ === 'schlitz';
     this.uniforms.eyeCount.value = slit ? eyes.length : 0;
+    // Höhlenring um Augäpfel (nicht um Schlitze), Stärke aus `augen.ring`
+    this.uniforms.ringCount.value = slit ? 0 : eyes.length;
+    this.uniforms.ringStaerke.value = b.augen.ring;
     if (!slit && eyes.length > 0) {
       this.eyeGeo = new SphereGeometry(1, 28, 20);
       for (const e of eyes) {

@@ -45,6 +45,9 @@ export interface CreatureMaterialUniforms {
   eyePos: ReturnType<typeof uniformArray>;
   eyeUp: ReturnType<typeof uniformArray>;
   eyeCount: UniformNode<'float', number>;
+  /** Augenringe (dunkler Höhlenring auf der Haut um Augäpfel, Bild 10/11): Anzahl und Stärke. */
+  ringCount: UniformNode<'float', number>;
+  ringStaerke: UniformNode<'float', number>;
   blink: UniformNode<'float', number>;
   /** Gewicht des Verschluss-Morphs (1 = Maul zu). */
   verschluss: UniformNode<'float', number>;
@@ -116,6 +119,8 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     eyePos,
     eyeUp,
     eyeCount: uniform(0),
+    ringCount: uniform(0),
+    ringStaerke: uniform(0.5),
     blink: uniform(0),
     verschluss: uniform(0),
     lippenBand: uniform(0),
@@ -290,6 +295,20 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
       eyeMask.assign(max(eyeMask, float(1).sub(smoothstep(px.negate(), px, dist)).mul(active)));
     }
     skin.assign(mix(skin, u.auge, eyeMask));
+    // Höhlenring (Bild 10/11): dunkler, kühler Ring auf der Haut rund um den Augapfel, aus dem Abstand zum Augenzentrum
+    // im Ruheraum — unabhängig von der Netzdichte, Kanten per Abstand weich
+    const ringMask = float(0).toVar();
+    for (let i = 0; i < MAX_SLIT_EYES; i++) {
+      const ep = (u.eyePos as unknown as { element(i: number): Vec4Node }).element(i);
+      const active = smoothstep(float(i).sub(0.5), float(i).add(0.5), u.ringCount.sub(0.5)).mul(min(ep.w.mul(1000), 1));
+      const r = ep.w.div(2.2);
+      const dist = rest.sub(ep.xyz).length();
+      const innen2 = smoothstep(r.mul(0.9), r.mul(1.02), dist);
+      const aussen2 = float(1).sub(smoothstep(r.mul(1.25).add(r.mul(0.25).mul(u.ringStaerke)), r.mul(1.4).add(r.mul(0.3).mul(u.ringStaerke)), dist));
+      ringMask.assign(max(ringMask, innen2.mul(aussen2).mul(active)));
+    }
+    const ringCol = skin.mul(0.32).add(vec3(0.03, 0.02, 0.05));
+    skin.assign(mix(skin, ringCol, ringMask.mul(clamp(u.ringStaerke.mul(1.6), 0, 1))));
     return vec4(skin, 1);
   })();
   material.transparent = false;

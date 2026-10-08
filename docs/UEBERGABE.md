@@ -38,6 +38,7 @@ Florian: „Zähne sitzen je nach Maul nicht gut, Zwischenstufen Loch ↔ Keil s
 - **Drache ohne Unterkiefer** (Bild 5 rechts) als aufrechter Sack im Kopf‑im‑Rumpf‑Modus: Maullinie tief (0,36), kein Unterkiefer, das ganze Oberteil klappt am langen Hebel zurück (`oeffnungOben` 1), Riesenfänge außen, **Hauer aus der Brustkante** (untere Zähne auch ohne Unterkiefer, wenn `hauer` > 0).
 - **Schlangenkörper** (Bild 13) als dicker Bogen mit gleichmäßiger Krümmung: steigt hinter dem Kopf auf, wölbt sich nach hinten, die Spitze kommt dahinter herunter (`einrollen` = Gesamtdrehung bis ≈ 206°), seitlich ausgebaucht, nie unter den Boden; Wurzel so dick wie der Kopf (`dicke` 1 ≈ 0,8 · Kopfradius). Aal‑Vorlage danach.
 - **Auflösung** per Adresse `&res=128` (Lab) bzw. `EE_RES=128` (Harness, Dateien `-r128`) für Qualitätsvergleiche. Der helle „Absatz“ am Giraffenhals ist keine Geometrie (Stationen stetig, bei 128³ gleich), sondern die harte Cel‑Stufe auf der Schulterrundung → Stil „Kantenfederung“/Airbrush‑Vorgabe.
+- **Höhlenring** (Bild 10/11): dunkler, kühler Ring auf der Haut um jeden Augapfel aus dem Abstand zum Augenzentrum im Ruheraum (`ringCount`/`ringStaerke` aus `augen.ring`; nicht bei Schlitzaugen). Halslängen‑Regler erklärt den Moduswechsel (0 = Kopf im Rumpf, ab 0,05 eigener Kopf).
 - **Retriever‑Vorlage** (Bild 8): eigener Kopf mit langer Schnauze, W‑Lippe und Nase, vier Pfoten, Bogenschwanz; Fell/Ohren später als Elemente.
 
 ## Was noch nicht stimmt (nach Florians Bildern)
@@ -47,7 +48,7 @@ Florian: „Zähne sitzen je nach Maul nicht gut, Zwischenstufen Loch ↔ Keil s
 3. **Kopfprofile** weiter aus Bild 11/6/9 verfeinern (Braue, Schnauzenrücken, Wangen → evtl. `kopf.wangen`).
 4. **Shading** zu glatt/„CG“ (Bögen: Airbrush, kühle gesättigte Schatten, Korn); Bauch-/Rücken-Linie hart.
 5. **Rundmaul/Zwischenformen** geprüft (Reihen `maul.form`, `maul.hoehe`): Formen brauchbar; Lochmaul‑Zähne stehen wie bei einer Neunauge nach innen (Kugelfisch hat keine). Drache: geschlossener Zustand wirkt wie ein Zelt mit Fängen (Referenz ist nur offen).
-6. **Augen**: bündiger Augapfel mit Ring, Lider/Blinzeln (K3) fehlen.
+6. **Augen**: Höhlenring da; Lider/Blinzeln für Augäpfel (K3) fehlen, Giraffen‑Augapfel noch halb aufgesetzt.
 7. **Silhouetten-Überdeckung** (IoU) im Harness noch nicht gebaut (ZIELSYSTEM §3.8).
 8. Ohren, Hörner, Flügel, dünne Schwänze, Spinnenbeine, Rückenschuppen: **eigene Elemente** (Florian), nicht Teil der Masse.
 
