@@ -573,8 +573,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       // Stirn zwischen den Augen zur Nase und ein kastenförmiges Maul mit markantem Kinn vor dem Schädel. Beide als
       // Rundboxen im Kopfrahmen, weich angeschlossen (Form bleibt lesbar, keine harte Naht)
       const zFront = (Lfront + Lback) * 0.5;
-      const rundbox = (name: string, c: Vec3, halb: Vec3, rund: number, k: number): CustomPrim => {
-        const reach = halb[0] + halb[1] + halb[2] + rund;
+      // Rundbox im Kopfrahmen; `trapez` weitet die Breite nach unten (Nasenband: schmal an der Stirn, breit an der Nase),
+      // `kinn` verjüngt sie nach unten (Kastenmaul: zum Kinn etwas schmaler, organischer)
+      const rundbox = (name: string, c: Vec3, halb: Vec3, rund: number, k: number, trapez = 0): CustomPrim => {
+        const reach = halb[0] * (1 + Math.abs(trapez)) + halb[1] + halb[2] + rund;
         return {
           kind: 'custom',
           op: 'union',
@@ -587,22 +589,26 @@ export function construct(b: Bauplan, resolution = 56): Construction {
             const x = dx * rightH[0] + dy * rightH[1] + dz * rightH[2];
             const y = dx * upH[0] + dy * upH[1] + dz * upH[2];
             const z = dx * forwardH[0] + dy * forwardH[1] + dz * forwardH[2];
-            return sdRoundBoxLocal(x, y, z, halb, rund);
+            const t = clamp(-y / Math.max(1e-6, halb[1]), -1, 1);
+            const bx = halb[0] * (1 + trapez * t);
+            return sdRoundBoxLocal(x, y, z, [bx, halb[1], halb[2]], rund);
           },
           bounds: { min: [c[0] - reach, c[1] - reach, c[2] - reach], max: [c[0] + reach, c[1] + reach, c[2] + reach] },
         };
       };
+      // Florians Skizze: Nasenband als flaches Trapez von der Stirn (schmal) zur Nase (breit); das Kastenmaul ragt weit
+      // vor den Schädel und reicht bis unter ihn (Kinn), rund und organisch, zum Kinn leicht schmaler
       const nasenband = clamp(b.kopf.nasenband, 0, 1);
       if (nasenband > 0.02) {
-        const halb: Vec3 = [hr * 0.24 * (0.6 + 0.4 * nasenband), hr * 0.36, hr * 0.16];
-        const c = add(add(headCenter, scale(forwardH, zFront * 0.95 + hr * (0.02 + 0.08 * nasenband) - halb[2])), scale(upH, hr * 0.14));
-        prims.push(rundbox('nasenband', c, halb, hr * 0.08, hr * 0.1));
+        const halb: Vec3 = [hr * 0.17 * (0.6 + 0.4 * nasenband), hr * 0.3, hr * 0.14];
+        const c = add(add(headCenter, scale(forwardH, zFront * 0.93 + hr * (0.02 + 0.08 * nasenband) - halb[2])), scale(upH, hr * 0.22));
+        prims.push(rundbox('nasenband', c, halb, hr * 0.07, hr * 0.1, 0.55));
       }
       const kasten = clamp(m0.kasten, 0, 1);
       if (kasten > 0.02) {
-        const halb: Vec3 = [hr * 0.3 * (0.7 + 0.3 * kasten), hr * 0.34, hr * 0.2];
-        const c = add(add(headCenter, scale(forwardH, zFront * 0.9 + hr * (0.02 + 0.12 * kasten) - halb[2])), scale(upH, -hr * 0.3));
-        prims.push(rundbox('kastenmaul', c, halb, hr * 0.1, hr * 0.12));
+        const halb: Vec3 = [hr * 0.3 * (0.75 + 0.25 * kasten), hr * 0.44, hr * 0.26];
+        const c = add(add(headCenter, scale(forwardH, zFront * 0.85 + hr * (0.05 + 0.42 * kasten) - halb[2])), scale(upH, -hr * 0.36));
+        prims.push(rundbox('kastenmaul', c, halb, hr * 0.17, hr * 0.13, -0.12));
       }
       const hoerner = clamp(b.kopf.hoerner, 0, 1);
       if (hoerner > 0.02) {
