@@ -60,6 +60,6 @@ Tab **Körper** → „Silhouette zeichnen“: zwei Bézier-Kurven (vorn rechts,
 
 ## Verben und Beine (08.10. abends)
 
-- Knopf **Laufen** (Schnellaktionen, `?laufen=1`): Demo‑Gang — Hüfte schwingt, Knie knickt im Schwung, Körper wippt; Zweibeiner gegenphasig, Vierbeiner diagonal, Achtbeiner wechselnd. Kein Bodenkontakt (das Wesen läuft auf der Stelle), nur zum Prüfen der Beinform in Bewegung.
+- Knopf **Laufen** (Schnellaktionen, `?laufen=1`): Demo‑Gang — Hüfte schwingt verhalten (weniger bei hoher Hüfte), Knie knickt im Schwung, Becken dreht und kippt mit dem Schritt (Hüftschwung), Schultern halten dagegen, Körper wippt und pendelt; Zweibeiner gegenphasig, Vierbeiner diagonal, Achtbeiner wechselnd. Kein Bodenkontakt (das Wesen läuft auf der Stelle), nur zum Prüfen der Beinform in Bewegung.
 - Regler **Verschmelzen** (Tab Beine, `unterkoerper.beine.verschmelzen`): 0 = Beine getrennt (Standard), 1 = Beine untereinander zu einem Sockel verschmolzen; mit dem Rumpf verschmelzen die Schenkel immer.
 - Maul auf: der ganze Schädel (Stirn, Augen, Oberkiefer) kippt um ein Gelenk hinter dem Kopf, der Unterkiefer hängt am Schädel; Nacken und Kehle laufen in Hals und Rumpf aus.

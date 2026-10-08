@@ -219,7 +219,9 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     const radius = Math.max(hit.radius, 1e-3);
     if (wMix > 1e-6) {
       spine[v * 4] = sMix / wMix;
-      spine[v * 4 + 1] = Math.atan2(sinMix, cosMix);
+      // Winkel aus dem gemischten Richtungsvektor; löschen sich die Richtungen fast aus (gegenüberliegende Winkel
+      // zweier Gruppen), ist der Winkel unbestimmt → Winkel der Hauptgruppe (sonst flackert das Muster an dünnen Ansätzen)
+      spine[v * 4 + 1] = Math.hypot(sinMix, cosMix) > 0.35 * wMix ? Math.atan2(sinMix, cosMix) : hit.angle;
       spine[v * 4 + 2] = cMix / wMix;
     } else {
       spine[v * 4] = hit.s * g.polyline.total;
