@@ -1,4 +1,4 @@
-import { Bone, BufferAttribute, BufferGeometry, ConeGeometry, Float32BufferAttribute, Group, InstancedMesh, InterleavedBuffer, InterleavedBufferAttribute, Matrix4, Mesh, Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Uint16BufferAttribute, Vector3, Vector4 } from 'three/webgpu';
+import { Bone, BufferAttribute, BufferGeometry, ConeGeometry, Euler, Float32BufferAttribute, Group, InstancedMesh, InterleavedBuffer, InterleavedBufferAttribute, Matrix4, Mesh, Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Uint16BufferAttribute, Vector3, Vector4 } from 'three/webgpu';
 import type { MeshBasicNodeMaterial } from 'three/webgpu';
 import { jawPose, jawRig, type Bauplan, type CreatureBuild } from '@ee/creature';
 import { applyStil, createCreatureMaterial, createCreatureUniforms, createLidMaterial, createTongueMaterial, createToothMaterial, MAX_SLIT_EYES, type CreatureColors, type CreatureMaterialUniforms } from './material/earleCreature';
@@ -480,18 +480,22 @@ export class CreatureMesh {
     });
     // Demo-Gang (Florian: Beine in Bewegung prüfen): Hüfte schwingt um die Querachse, Knie knickt im Schwung nach hinten,
     // Fuß hält die Sohle flach, Körper wippt zweimal je Schritt. Zweibeiner gegenphasig, Vierbeiner diagonal (Trab),
-    // Achtbeiner wechselnd — reine Bewegung, kein Bodenkontaktmodell
+    // Achtbeiner wechselnd — reine Bewegung, kein Bodenkontaktmodell. Der Hüftschwung (Becken dreht und kippt mit dem
+    // Schritt, Schultern halten leicht dagegen) kommt über die Rumpfknochen; der Oberschenkel selbst schwingt verhalten
+    // (Florian: „bewegt sich zu heftig, unnatürlich, wenn die Hüfte sehr hoch sitzt“)
     const legGroups = this.build.groups.filter((g) => g.kind === 'bein');
     if (legGroups.length > 0) {
       const A = this.laufAmp;
       const n = legGroups.length;
       const X = new Vector3(1, 0, 0);
+      const hoehe = this.bauplan ? Math.min(1, Math.max(0, this.bauplan.unterkoerper.beine.hoehe)) : 0.3;
+      const ampHip = 0.26 * (1 - 0.4 * hoehe);
+      const offsetOf = (i: number): number => (n === 2 ? (i % 2) * Math.PI : n === 4 ? (i === 0 || i === 3 ? 0 : Math.PI) : ((i + (i >> 1)) % 2) * Math.PI);
       legGroups.forEach((g, i) => {
-        const offset = n === 2 ? (i % 2) * Math.PI : n === 4 ? (i === 0 || i === 3 ? 0 : Math.PI) : ((i + (i >> 1)) % 2) * Math.PI;
-        const ph = this.laufPhase + offset;
+        const ph = this.laufPhase + offsetOf(i);
         // Stand 0 … π: das Bein streicht nach hinten; Schwung π … 2π: nach vorn mit angewinkeltem Knie
-        const hip = -0.42 * A * Math.cos(ph);
-        const knee = 0.85 * A * Math.max(0, -Math.sin(ph));
+        const hip = -ampHip * A * Math.cos(ph);
+        const knee = 0.7 * A * Math.max(0, -Math.sin(ph));
         const [bHip, bKnee, bFoot] = g.bones;
         const hipB = bHip !== undefined ? this.bones[bHip] : undefined;
         const kneeB = bKnee !== undefined ? this.bones[bKnee] : undefined;
@@ -500,9 +504,19 @@ export class CreatureMesh {
         if (kneeB) kneeB.quaternion.setFromAxisAngle(X, knee);
         if (footB) footB.quaternion.setFromAxisAngle(X, -0.6 * knee - 0.5 * hip);
       });
-      const bob = 0.02 * this.build.bodyScale * A * (0.5 - 0.5 * Math.cos(2 * this.laufPhase));
-      this.mesh.position.y = bob;
-      if (this.upperTeeth && this.upperTeeth.parent === this.root) this.upperTeeth.position.y = bob;
+      // Hüftschwung: Becken dreht die Seite des vorschwingenden (hinteren linken) Beins nach vorn und kippt leicht,
+      // die Schultern drehen halb dagegen; der Rumpf pendelt etwas seitlich über das Standbein
+      const links = n === 4 ? 2 : 0;
+      const phL = this.laufPhase + offsetOf(links);
+      const yaw = (n >= 8 ? 0 : 0.11) * A * Math.cos(phL);
+      const roll = (n >= 8 ? 0 : 0.05) * A * Math.sin(phL);
+      const becken = this.bones[bodyBones[0] ?? -1];
+      const schulter = this.bones[bodyBones[2] ?? -1];
+      if (becken) becken.quaternion.setFromEuler(new Euler(0, yaw, roll));
+      if (schulter) schulter.quaternion.setFromEuler(new Euler(0, -0.5 * yaw, -0.4 * roll));
+      const bob = 0.018 * this.build.bodyScale * A * (0.5 - 0.5 * Math.cos(2 * this.laufPhase));
+      this.mesh.position.set(0.012 * this.build.bodyScale * A * Math.sin(phL), bob, 0);
+      if (this.upperTeeth && this.upperTeeth.parent === this.root) this.upperTeeth.position.copy(this.mesh.position);
     }
   }
 

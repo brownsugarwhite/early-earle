@@ -262,13 +262,13 @@ export function cutMouth(positions: Float32Array, index: Uint32Array, mouth: Mou
   while (seite.length < vertexCount) seite.push(0);
   // Seite der Hautvertices im Maulbereich aus F (nur nahe der Lippe nötig, hier für alle)
   for (let v = 0; v < n0; v++) seite[v] = G[v]! > -0.6 ? (F[v]! > 0 ? 1 : -1) : 0;
-  // Kantenabstand: Abstand zum nächsten Randpunkt (für Haut und Tasche)
+  // Kantenabstand: Abstand zum nächsten Randpunkt (für Haut und Tasche) — für **alle** Vertices stetig berechnet: ein
+  // Vorgabewert außerhalb der Maulzone sprang an deren Rand, und die ableitungsbasierte Kantenglättung des Lippenbands
+  // zeichnete den Sprung als haarfeine helle Linie über Hinterkopf und Schulter
   const kantenAbstand = new Float32Array(vertexCount).fill(1e3);
   const rp = rand.map((r) => r.p);
   for (let v = 0; v < vertexCount; v++) {
     const x = positionsOut[v * 3]!, y = positionsOut[v * 3 + 1]!, z = positionsOut[v * 3 + 2]!;
-    // grobe Vorauswahl: nur Vertices im Umkreis der Maulzone
-    if (v < n0 && G[v]! < -0.9) continue;
     let best = 1e9;
     for (let i = 0; i < rp.length; i++) {
       const q = rp[i]!;

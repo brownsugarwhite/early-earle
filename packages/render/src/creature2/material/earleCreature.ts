@@ -255,7 +255,8 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     // Lippenband: Abstand zur Maulkante (Körpereinheiten, region.y) gegen die Bandbreite, pixelscharf über die Ableitung
     const bandW = u.lippenBand;
     const distK = region.y.mul(u.bodyScale);
-    const aa = abs(dFdx(distK)).add(abs(dFdy(distK))).add(0.0005);
+    // Glättungsbreite aus der Ableitung, aber höchstens eine halbe Bandbreite: ein Sprung im Abstand darf nie als Linie leuchten
+    const aa = min(abs(dFdx(distK)).add(abs(dFdy(distK))), bandW.mul(0.5)).add(0.0005);
     const band = float(1).sub(smoothstep(bandW.sub(aa), bandW.add(aa), distK)).mul(step(0.001, bandW)).mul(mix(float(1), u.lippenBandUnten, unten));
     const innen = step(0.25, region.x);
     const frei = float(1).sub(region.z.mul(0.9)).mul(float(1).sub(band)).mul(float(1).sub(innen));

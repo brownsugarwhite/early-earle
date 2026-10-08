@@ -799,9 +799,11 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     const curl = T.typ === 'bogen' ? 0.8 + 0.4 * T.kruemmung : T.kruemmung;
     const zBack = axisAt(hT)[2] - rBody;
     // Wurzel: Wirbelsäule beginnt im Kern (0,8 · Rumpfradius, deutlich unter der Haut — fast deckungsgleiche Flächen
-    // würden das Feld verrauschen); dünner Anhang nur mit kleinem Trichter knapp innerhalb der Rückenfläche
+    // würden das Feld verrauschen); dünner Anhang: der Trichter liegt **ganz im Rumpf** (vom Kern bis zur Haut auf die
+    // Schwanzdicke), außen hat der Schwanz sofort seine Dicke — den weichen Ansatz macht die große Verschmelzung, kein
+    // Kragen (Florian: „der Schwanz muss deutlich flüssiger in den Körper übergehen, Kanten und Knubbel“)
     const rRoot = T.typ === 'wirbelsaeule' ? rBody * 0.8 : Math.min(rBody * 0.8, r0 * 2.5);
-    const ctrl: Vec3[] = T.typ === 'wirbelsaeule' ? [axisAt(hT), [0, hT, zBack + 0.35 * rBody], [0, hT, zBack]] : [[0, hT, zBack + rRoot * 1.2], [0, hT, zBack + rRoot * 0.5], [0, hT, zBack]];
+    const ctrl: Vec3[] = T.typ === 'wirbelsaeule' ? [axisAt(hT), [0, hT, zBack + 0.35 * rBody], [0, hT, zBack]] : [[0, hT, zBack + Math.max(rRoot * 1.6, 0.35 * rBody)], [0, hT, zBack + rRoot * 0.6], [0, hT, zBack]];
     for (let i = 1; i <= 6; i++) {
       const t = i / 6;
       ctrl.push([0, hT + Lt * (T.hoch * 0.9 * t * t + curl * 0.5 * t * t * t) + (T.typ === 'wirbelsaeule' ? 0 : -Lt * 0.15 * t * (1 - Math.abs(T.hoch))), zBack - Lt * t * (1 - 0.15 * Math.abs(T.hoch))]);
@@ -811,14 +813,22 @@ export function construct(b: Bauplan, resolution = 56): Construction {
     for (let i = 1; i < pts.length; i++) arcs.push(arcs[i - 1]! + Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1], pts[i]![2] - pts[i - 1]![2]));
     let sExit = 0;
     for (let i = 0; i < pts.length; i++) if (pts[i]![2] <= zBack + 1e-6) { sExit = arcs[i]!; break; }
-    const Lans = T.typ === 'wirbelsaeule' ? 0.15 * Lt : Math.max(0.08 * H, 0.25 * Lt);
+    const Lans = T.typ === 'wirbelsaeule' ? 0.15 * Lt : 0;
     const radii = pts.map((_p, i) => {
       const sA = arcs[i]! - sExit;
-      if (sA <= 0) return rRoot;
-      const f = smoothstep(0, Lans, sA);
+      if (sA <= 0) {
+        if (T.typ === 'wirbelsaeule') return rRoot;
+        // Anhang: Trichter innen (Kern → Haut) von rRoot auf r0, an der Haut genau die Schwanzdicke
+        const fi = sExit > 1e-6 ? clamp(-sA / sExit, 0, 1) : 1;
+        const e = fi * fi * (3 - 2 * fi);
+        return r0 + (rRoot - r0) * e;
+      }
+      const f = Lans > 0 ? smoothstep(0, Lans, sA) : 1;
       const rA = rRoot * (1 - f) + r0 * f;
+      // Verjüngung: anfangs langsam (dicker Ansatz, Bild 9/12), zur Spitze schneller
       const g = clamp((sA - Lans) / Math.max(1e-6, Lt - Lans), 0, 1);
-      return Math.max(0.01 * H, rA + (rTip - rA) * g);
+      const ge = g * g * (2 - g);
+      return Math.max(0.01 * H, rA + (rTip - rA) * ge);
     });
     const pl = makePolyline(pts, radii, UP);
     const g = groups.length;
@@ -837,7 +847,10 @@ export function construct(b: Bauplan, resolution = 56): Construction {
       // Stationen im Rumpf (vor dem Austritt) gehören dem Rumpf: Gewichte und Musterkoordinaten springen nicht auf der Flanke
       const rumpfBone = T.typ === 'wirbelsaeule' ? kMitte : kUnten;
       const parts = pts.map((_p, i) => (arcs[i]! < sExit - 1e-6 ? rumpfBone : idx[Math.min(nb - 1, Math.floor(((arcs[i]! - sExit) / Math.max(1e-6, arcs[arcs.length - 1]! - sExit)) * nb))]!));
-      prims.push(makeLoft({ points: pts, upRef: UP, wx: radii, wyT: radii.map((r) => r * 1.05), wyB: radii, n: 2, parts }, { op: 'union', part: idx[0]!, k: (T.typ === 'wirbelsaeule' ? 0.3 : 0.18) * H, region: REGION.haut, name: 'schwanz' }));
+      // Verschmelzung: Wirbelsäule breit; Anhang mit großem Radius (≈ 3 Schwanzdicken), damit die Haut tangential aus dem
+      // Rumpf in den Schwanz läuft statt einen Kragen zu bilden
+      const kTail = T.typ === 'wirbelsaeule' ? 0.3 * H : clamp(3 * r0, 0.16 * H, 0.3 * H);
+      prims.push(makeLoft({ points: pts, upRef: UP, wx: radii, wyT: radii.map((r) => r * 1.05), wyB: radii, n: 2, parts }, { op: 'union', part: idx[0]!, k: kTail, region: REGION.haut, name: 'schwanz' }));
     }
   }
 
