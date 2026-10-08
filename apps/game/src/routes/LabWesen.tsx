@@ -134,7 +134,7 @@ function SchnellAktionen({ controller }: { controller: WesenLabScene }) {
 /**
  * Grundformen-Lab (Phase 1 der Wesen-Werkstatt): alle Regler des Bauplans live in Tabs, Vorlagen, Licht und Stil nach
  * dem Look-Vertrag, Würfel/Schloss/Zurücksetzen, Rückgängig/Wiederholen, Verben Maul auf/zu und Blinzeln.
- * Adresse: `?vorlage=<id>&boden=weiss|wiese&ansicht=held|referenz|brett|seite&spin=1` (plus `sheet`/`panel` des Rahmens).
+ * Adresse: `?vorlage=<id>&boden=weiss|wiese&ansicht=held|referenz|brett|seite&spin=1&res=120` (plus `sheet`/`panel` des Rahmens).
  */
 export function LabWesen() {
   const [search] = useSearchParams();
@@ -151,7 +151,13 @@ export function LabWesen() {
     });
     return true;
   });
-  const controller = useMemo(() => new WesenLabScene({ standbild: search.get('standbild') === '1' }), []);
+  const controller = useMemo(() => {
+    const c = new WesenLabScene({ standbild: search.get('standbild') === '1' });
+    // `res`: feine Auflösung (32 … 160) für Qualitätsvergleiche im Harness, z. B. dünne Hälse
+    const res = Number(search.get('res'));
+    if (Number.isFinite(res) && res >= 32 && res <= 160) c.highRes = Math.round(res);
+    return c;
+  }, []);
   const ansicht = useWesenStore((s) => s.ansicht);
   const boden = useWesenStore((s) => s.boden);
   useSzeneAmStore(controller);

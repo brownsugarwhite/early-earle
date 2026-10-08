@@ -34,6 +34,7 @@ Florian: „Zähne sitzen je nach Maul nicht gut, Zwischenstufen Loch ↔ Keil s
 - **Übergänge**: Hals‑S‑Bogen beginnt mit senkrechter Tangente (kein Knick am Rumpf); **Schwanz und Schlange setzen im Rumpfkern an** (Wirbelsäule mit 0,8 · Rumpfradius, dünner Anhang mit kleinem Trichter) und verjüngen sich außerhalb — kein Rohr aus einer Wand; Wurzelstationen im Rumpf gehören dem **Rumpfknochen** (sonst springen Gewichte und Musterkoordinaten als Zickzack auf der Flanke — war der Tiger‑Rumpf).
 - **Zähne**: Länge auf den Gegenkiefer begrenzt (Oberzähne ≤ Unterkiefertiefe, Unterzähne ≤ Oberkopf; `aussen` darf darüber), Wurzel tiefer unter der Lippe (geschlossen keine weißen Punkte mehr). Lippenband‑Vorgabe schmaler (0,15) und hell (`#c9a6d6`), Linienschwung‑Vorgabe 0,12.
 - **Beine** (Bild 12): Keule außen an der tiefen Hüfte, kleine Verschmelzung (Mulde statt Fillet — die große Verschmelzung machte Rex zum Sack), längerer Fuß, **drei Zehen** als Kapseln. Rex steht auf zwei Säulen mit Pfoten.
+- **Gesichtsregler** `kopf.wangen` (breite Backen unter den Augen, Katze) und `kopf.stirn` (hohe runde Stirn … flacher Schädel) im Kopf‑Loft; Lab‑Gruppe „Gesicht“.
 - **Retriever‑Vorlage** (Bild 8): eigener Kopf mit langer Schnauze, W‑Lippe und Nase, vier Pfoten, Bogenschwanz; Fell/Ohren später als Elemente.
 
 ## Was noch nicht stimmt (nach Florians Bildern)

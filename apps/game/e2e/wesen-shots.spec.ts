@@ -33,7 +33,11 @@ const MAUL = ['bau', 'zu', 'auf'].includes(process.env.EE_MAUL ?? '') ? (process
 const ANSICHT = ['held', 'brett', 'referenz', 'seite'].includes(process.env.EE_ANSICHT ?? '') ? process.env.EE_ANSICHT! : 'referenz';
 /** Dateinamen tragen die Ansicht, wenn sie nicht die Bögen-Kamera ist (`-seite`, `-held`, `-brett`). */
 const ANSICHT_SUFFIX = ANSICHT === 'referenz' ? '' : `-${ANSICHT}`;
-const SUFFIX = `${MAUL === 'bau' ? '' : `-${MAUL}`}${ANSICHT_SUFFIX}${TAG ? `-${TAG}` : ''}`;
+/** Feine Auflösung des Labs (`EE_RES=120`), Standard 88; Dateinamen tragen `-r<res>` bei Abweichung. */
+const RES = Number(process.env.EE_RES ?? '');
+const RES_PARAM = Number.isFinite(RES) && RES >= 32 && RES <= 160 ? `&res=${Math.round(RES)}` : '';
+const RES_SUFFIX = RES_PARAM ? `-r${Math.round(RES)}` : '';
+const SUFFIX = `${MAUL === 'bau' ? '' : `-${MAUL}`}${ANSICHT_SUFFIX}${RES_SUFFIX}${TAG ? `-${TAG}` : ''}`;
 /** Ohne WebGPU-Adapter fällt die App auf WebGL2 zurück; solche Bilder sind mit GPU-Bildern nicht vergleichbar. */
 const ALLOW_WEBGL2 = !!process.env.EE_ALLOW_WEBGL2;
 const GPU_ERROR = /WGSL|ShaderModule|pipeline creation failed|Invalid RenderPipeline|unresolved value|Invalid (BindGroup|Buffer|Texture)/i;
@@ -196,7 +200,7 @@ test(`Wesen-Lab: Reihe eines Reglers`, async ({ page }) => {
   const commit = commitLabel();
   const stamp = new Date().toISOString().slice(0, 10);
   const felder: Feld[] = [];
-  await page.goto(`/lab/wesen?vorlage=${r!.vorlage.id}&panel=zu&sheet=zu&boden=weiss&ansicht=${ANSICHT}&standbild=1`);
+  await page.goto(`/lab/wesen?vorlage=${r!.vorlage.id}&panel=zu&sheet=zu&boden=weiss&ansicht=${ANSICHT}&standbild=1${RES_PARAM}`);
   await requireBackend(page);
   await waitFertig(page);
   for (const wert of r!.werte) {
@@ -239,7 +243,7 @@ test(`Wesen-Lab: Vorlagen im ${ANSICHT === 'referenz' ? 'Referenzmodus' : ANSICH
   const felder: Feld[] = [];
   let backend = 'unbekannt';
   for (const v of auswahl()) {
-    await page.goto(`/lab/wesen?vorlage=${v.id}&panel=zu&sheet=zu&boden=weiss&ansicht=${ANSICHT}&standbild=1`);
+    await page.goto(`/lab/wesen?vorlage=${v.id}&panel=zu&sheet=zu&boden=weiss&ansicht=${ANSICHT}&standbild=1${RES_PARAM}`);
     backend = await requireBackend(page);
     let s = await waitFertig(page);
     if (MAUL !== 'bau') {
