@@ -285,7 +285,8 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       // Platz im Gegenkiefer: geschlossen muss der Zahn im Gegenkiefer verschwinden (Bild 7/9), außer `aussen` will Fänge außen
       const jawDepth = m.host.jawDepth ?? Math.min(m.hLip, 0.45 * m.host.height) * 1.05;
       const place = (upper: boolean, offset: number): void => {
-        if (!upper && b.maul.unterkiefer < 0.05) return;
+        // ohne Unterkiefer stehen untere Zähne nur als Hauer aus der Brustkante (Drache, Bild 5 rechts)
+        if (!upper && b.maul.unterkiefer < 0.05 && z.hauer < 0.05) return;
         for (let i = 0; i < count; i++) {
           const t = (i + 0.5 + offset) / count;
           if (t <= 0.03 || t >= 0.97) continue;
