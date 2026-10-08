@@ -301,6 +301,10 @@ export class CreatureMesh {
     this.uniforms.gesichtAn.value = gesicht ? 1 : 0;
     if (gesicht) {
       this.uniforms.naseMitte.value.set(gesicht.nase[0], gesicht.nase[1], gesicht.nase[2], gesicht.nasenRadius);
+      if (gesicht.nasenOben && gesicht.nasenRechts && gesicht.nasenHoehe) {
+        this.uniforms.naseOben.value.set(gesicht.nasenOben[0], gesicht.nasenOben[1], gesicht.nasenOben[2], gesicht.nasenHoehe);
+        this.uniforms.naseRechts.value.set(gesicht.nasenRechts[0], gesicht.nasenRechts[1], gesicht.nasenRechts[2], 0);
+      } else this.uniforms.naseOben.value.set(0, 1, 0, 0);
       this.uniforms.philtrumA.value.set(gesicht.philtrum[0][0], gesicht.philtrum[0][1], gesicht.philtrum[0][2], 0.012 * build.bodyScale);
       this.uniforms.philtrumB.value.set(gesicht.philtrum[1][0], gesicht.philtrum[1][1], gesicht.philtrum[1][2]);
     }
@@ -451,31 +455,50 @@ export class CreatureMesh {
 
   private applyPose(): void {
     if (!this.build || !this.mesh) return;
-    const jaw = this.bones[this.build.jawBone];
-    const upperB = this.bones[this.build.upperJawBone];
     if (this.build.mouth && this.bauplan) {
-      // eine Formel für Bau, Darstellung und Tests: Unterkiefer dreht, Oberkiefer hebt sich und neigt sich
-      const pose = jawPose(jawRig(this.build, this.bauplan.maul), this.opennessNow);
-      // Unterkiefer und Kehlkette hängen am kippenden Schädel: ihr Gelenk wandert mit der Kippung (Versatz), die
-      // Drehung um die Kieferachse bleibt absolut (dieselbe Formel wie `jawTransforms`)
-      const J = new Vector3(...this.build.mouth.hinge.point), A = new Vector3(...this.build.mouth.skullHinge.point);
-      const JA = J.sub(A);
-      const setLower = (bi: number, c: number): void => {
-        const bone = this.bones[bi];
-        const rest = this.restLocal[bi];
-        if (!bone || !rest) return;
-        const qU = new Quaternion().setFromAxisAngle(this.jawAxis, pose.upperAngle * c);
-        bone.quaternion.setFromAxisAngle(this.jawAxis, pose.lowerAngle * c);
-        bone.position.copy(rest).add(JA.clone().applyQuaternion(qU).sub(JA));
+      // eine Formel für Bau, Darstellung und Tests (siehe `jawTransforms`): der Schädel kippt um das Schädelgelenk und
+      // hebt sich, der Unterkiefer dreht um sein mitwanderndes Gelenk. Hier als **absolute** Transformationen je Knochen;
+      // die Kinder werden relativ zum (ebenfalls bewegten) Kopfknochen gesetzt — so bewegt sich auch mit, was Restgewicht
+      // auf dem Kopf trägt (Hinterkopf, Augen, Mundwinkel)
+      const B = this.build;
+      const mo = this.build.mouth;
+      const rig = jawRig(B, this.bauplan.maul);
+      const pose = jawPose(rig, this.opennessNow);
+      const A = new Vector3(...mo.skullHinge.point), J = new Vector3(...mo.hinge.point);
+      const axis = this.jawAxis, fwd = this.hostForward, up = this.hostUp;
+      // p → pivot + q·(p − pivot) + offset
+      const compose = (q: Quaternion, pivot: Vector3, offset: Vector3): Matrix4 => new Matrix4().compose(pivot.clone().sub(pivot.clone().applyQuaternion(q)).add(offset), q, new Vector3(1, 1, 1));
+      const tilt = (c: number): Matrix4 => {
+        const q = new Quaternion().setFromAxisAngle(axis, pose.upperAngle * c).multiply(new Quaternion().setFromAxisAngle(fwd, pose.upperRoll * c));
+        return compose(q, A, up.clone().multiplyScalar(pose.lift * c));
       };
-      setLower(this.build.jawBone, 1);
-      setLower(this.build.throatBones[0], 2 / 3);
-      setLower(this.build.throatBones[1], 1 / 3);
-      void jaw;
-      const n0 = this.bones[this.build.napeBones[0]], n1 = this.bones[this.build.napeBones[1]];
-      if (n0) n0.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle * (2 / 3)).multiply(new Quaternion().setFromAxisAngle(this.hostForward, pose.upperRoll * (2 / 3)));
-      if (n1) n1.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle / 3).multiply(new Quaternion().setFromAxisAngle(this.hostForward, pose.upperRoll / 3));
-      if (upperB) upperB.quaternion.setFromAxisAngle(this.jawAxis, pose.upperAngle).multiply(new Quaternion().setFromAxisAngle(this.hostForward, pose.upperRoll));
+      const lower = (c: number): Matrix4 => {
+        const qU = new Quaternion().setFromAxisAngle(axis, pose.upperAngle * c);
+        const JA = J.clone().sub(A);
+        const delta = JA.clone().applyQuaternion(qU).sub(JA);
+        return compose(new Quaternion().setFromAxisAngle(axis, pose.lowerAngle * c), J, delta.add(up.clone().multiplyScalar(pose.lift * c)));
+      };
+      const abs = new Map<number, Matrix4>();
+      if (B.hostIstKopf) abs.set(B.hostBone, tilt(rig.kopfFrei));
+      abs.set(B.upperJawBone, tilt(1));
+      abs.set(B.napeBones[0], tilt(2 / 3));
+      abs.set(B.napeBones[1], tilt(1 / 3));
+      abs.set(B.jawBone, lower(1));
+      abs.set(B.throatBones[0], lower(2 / 3));
+      abs.set(B.throatBones[1], lower(1 / 3));
+      // Ruhe-Weltmatrix eines Knochens = Verschiebung um seine Lage, Welt = Abs · T(pos); Lokalmatrix = Welt(Eltern)⁻¹ ·
+      // Welt(Knochen) → Lage = (Abs_E⁻¹ · Abs)(pos) − pos_E, Drehung aus derselben Matrix. Eltern ohne Bewegung: Abs = 1
+      const ident = new Matrix4();
+      for (const [bi, M] of abs) {
+        const bone = this.bones[bi];
+        const bb = B.bones[bi];
+        if (!bone || !bb) continue;
+        const parentAbs = bb.parent >= 0 ? (abs.get(bb.parent) ?? ident) : ident;
+        const pp = bb.parent >= 0 ? B.bones[bb.parent]!.pos : [0, 0, 0];
+        const local = new Matrix4().copy(parentAbs).invert().multiply(M);
+        bone.position.copy(new Vector3(...bb.pos).applyMatrix4(local).sub(new Vector3(pp[0]!, pp[1]!, pp[2]!)));
+        bone.quaternion.setFromRotationMatrix(local);
+      }
       this.uniforms.spitzmund.value = pose.spitzmund;
       if (this.toothSets.length > 0 && Math.abs(pose.spitzmund - this.spitzmundTeeth) > 1e-5) {
         this.spitzmundTeeth = pose.spitzmund;

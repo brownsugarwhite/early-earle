@@ -61,6 +61,15 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
     });
   }
   const langerHals = c.bauplan.hals.laenge >= 0.35;
+  // Kippanteil je Knochen (eigener Kopf): Kopf/Kiefer 1, Hals von der Kopfseite (1) zum Rumpf (0), sonst 0
+  const hatKopf = groups.some((g) => g.kind === 'kopf');
+  const fKnochen = new Float64Array(bones.length);
+  if (hatKopf) {
+    groups.forEach((g) => {
+      if (g.kind === 'kopf' || g.kind === 'kiefer') for (const bi of g.bones) fKnochen[bi] = 1;
+      else if (g.kind === 'hals') g.bones.forEach((bi, i) => { fKnochen[bi] = (i + 1) / (g.bones.length + 1); });
+    });
+  }
   const bodyBones = bodyGroup >= 0 ? groups[bodyGroup]!.bones : [];
   const boneWeights = new Float64Array(bones.length);
   const sample: SceneSample = { d: 0, dUnion: 0, dSubtract: 0, nearestSubtract: -1, per: new Float64Array(prims.length) };
@@ -161,11 +170,25 @@ export function computeDescriptors(c: Construction, positions: Float32Array, nor
       // Unterseite: Kieferkette (Kieferdrehung f, trägt den vollen Versatz des mitwandernden Gelenks), der Rest der
       // Unterseite kippt wie der Schädel über die Nackenkette (Kippanteil ft) — hinter den Mundwinkeln laufen so beide
       // Seiten der Maullinie gleich
-      const lo = mouth.jawParts(p, H, side);
+      // Kippanteil aus den Knochengruppen (eigener Kopf): Kopf und Kiefer 1, Halsknochen entlang des Halses 1 → 0, Rumpf 0
+      // — der ganze Schädel samt Hinterkopf kippt mit, der Übergang läuft über den Hals aus (Florian: die Geometrie
+      // fuhr in die Stirn, der Hinterkopf stand still)
+      let fGruppe: number | undefined;
+      if (hatKopf) {
+        let fw = 0, ww = 0;
+        for (let bi = 0; bi < bones.length; bi++) {
+          const w = boneWeights[bi]!;
+          if (w <= 1e-6) continue;
+          fw += w * fKnochen[bi]!;
+          ww += w;
+        }
+        fGruppe = ww > 1e-9 ? clamp01(fw / ww) : 0;
+      }
+      const lo = mouth.jawParts(p, H, side, fGruppe);
       kette(lo.a, lo.f, c.jawBone, c.throatBones[0], c.throatBones[1]);
       const T = Math.min(1, 3 * lo.f);
       if (T < 0.999) kette(lo.a * (1 - T), clamp01((lo.ft - T) / (1 - T)), c.upperJawBone, c.napeBones[0], c.napeBones[1]);
-      const up = mouth.upperParts(p, H, side);
+      const up = mouth.upperParts(p, H, side, fGruppe);
       kette(up.a, up.f, c.upperJawBone, c.napeBones[0], c.napeBones[1]);
       transferMulti(parts);
       void transfer;

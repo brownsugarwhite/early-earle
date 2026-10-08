@@ -48,6 +48,12 @@ export interface CreatureBuild {
   lowerAngleMax: number;
   /** Hebel Schädelgelenk → Maulzentrum. */
   upperLever: number;
+  /** Anheben des Kopfs bei voller Öffnung (Körpereinheiten). */
+  lift: number;
+  /** Anteil der Schädelkippung am Kopfknochen (freier Kopf 1 … versunkener Kopf 0). */
+  kopfFrei: number;
+  /** Der Maulträger ist ein eigener Kopf (Kopfknochen kippt mit); sonst trägt der Rumpf das Maul. */
+  hostIstKopf: boolean;
   /** Maximaler Öffnungswinkel (rad) der Kieferbewegung (Mesh ist geschlossen gebaut). */
   maxOpenAngle: number;
   bones: Bone[];
@@ -524,8 +530,11 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   const pucker = new Float32Array(positions.length);
   if (m && b.maul.sichtbar && b.maul.form < 0.98 && seiten && kantenAbstand && tasche) {
     const fy = m.frame.y;
-    // Lippenring: beim reinen Lochmaul weit (Kugelfisch), zum Keil hin schmal (Aal, Giraffe: nur die Lippen weichen)
-    const reach = Math.max(0.05 * H, m.gapeMax * (0.4 + 0.8 * (1 - clamp01(b.maul.form))));
+    // Lippenring: beim reinen Lochmaul weit (Kugelfisch), zum Keil hin schmal (Aal, Giraffe: nur die Lippen weichen) —
+    // höchstens 0,45 Kopfhöhen: das Feld bleibt am Kopf (es lief sonst mit seiner Wurzelkante an den Mundwinkeln den
+    // ganzen Rumpf hinunter — Zacken auf der Flanke des Tigers)
+    const Hk = m.host.headHeight ?? m.host.height;
+    const reach = Math.min(0.45 * Hk, Math.max(0.05 * H, m.gapeMax * (0.4 + 0.8 * (1 - clamp01(b.maul.form)))));
     for (let v = 0; v < vertexCount; v++) {
       const p: Vec3 = [positions[v * 3]!, positions[v * 3 + 1]!, positions[v * 3 + 2]!];
       const { h, phi } = m.local(p);
@@ -533,9 +542,10 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
       if (u > 1.3) continue;
       let s = seiten[v]!;
       if (s === 0) s = h > m.lipHAt(clamp(phi, -m.theta, m.theta)) ? 1 : -1;
-      // Halbkreisprofil: rundes Loch statt Linse
-      const along = Math.sqrt(Math.max(0, 1 - u * u));
+      // Halbkreisprofil am Rand (rundes Loch statt Linse); weg vom Rand weicher (Exponent 0,5 → 1,5), sonst zieht die
+      // Wurzelkante bei u = 1 eine Falte über die Haut
       const skin = 1 - smoothstep(0, reach, kantenAbstand[v]!);
+      const along = Math.pow(Math.max(0, 1 - u * u), 0.5 + 1.0 * (1 - skin));
       // Bohne: eine Seite öffnet weiter (Giraffe, Retriever)
       const seitig = 1 + clamp(b.maul.bohne, -1, 1) * 1.0 * clamp(phi / m.theta, -1, 1);
       const w = along * skin * (1 - tasche[v]!) * Math.max(0.2, seitig);
@@ -550,6 +560,9 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
   if (m) maxOpenAngle = Math.asin(Math.min(0.95, m.gapeMax / m.jawLever));
   const jawLever = m?.jawLever ?? 1;
   const upperLever = m?.upperLever ?? jawLever;
+  const lift = m?.lift ?? 0;
+  const kopfFrei = m?.kopfFrei ?? 0;
+  const hostIstKopf = c.groups[c.bones[c.hostBone]!.group]?.kind === 'kopf';
   const lowerAngleMax = m?.lowerAngleMax ?? Math.PI / 2;
   const mb = { min: [Infinity, Infinity, Infinity] as Vec3, max: [-Infinity, -Infinity, -Infinity] as Vec3 };
   for (let i = 0; i < positions.length; i += 3)
@@ -570,6 +583,9 @@ export function buildCreature(input: Bauplan | unknown, opts: BuildOptions = {})
     gesicht: c.gesicht,
     jawLever,
     upperLever,
+    lift,
+    kopfFrei,
+    hostIstKopf,
     lowerAngleMax,
     maxOpenAngle,
     bones: c.bones,
