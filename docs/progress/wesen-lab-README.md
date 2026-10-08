@@ -50,3 +50,8 @@ EE_SHOTS=1 EE_VORLAGEN=keil,loch EE_SHOTS_TAG=vorher E2E_PORT=4471 node apps/gam
 - Aufgenommen wird erst, wenn die Info-Zeile (`[data-testid="wesen-lab-info"]`) kein „fein folgt“ mehr zeigt, die Szene
   keinen Bau mehr offen hat und die Kamera ihre feste Ansicht erreicht hat; danach noch 0,7 s für Kiefer und letzte Bilder.
 - GPU- und Seitenfehler lassen den Test am Ende rot werden (`expect.soft`), die Bilder sind dann trotzdem geschrieben.
+
+
+## Silhouetten-Editor (08.10.)
+
+Tab **Körper** → „Silhouette zeichnen“: zwei Bézier-Kurven (vorn rechts, hinten links) über der Rumpfhöhe, Punkte waagerecht ziehen, Scheitel-Regler für die runde Kappe. Am besten in der Ansicht „Seite“ mit dem Referenzbild darüber. Harness-Werkzeuge: `scripts/wesen/seitenprofil.mjs` (Profil aus einer Vermessung), `EE_ANSICHT=seite`, `EE_REIHE`, `EE_STIL`, `EE_BLINK`, `EE_RES`.

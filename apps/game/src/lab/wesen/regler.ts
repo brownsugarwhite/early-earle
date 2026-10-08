@@ -301,8 +301,8 @@ const PLAN: Record<TabId, GruppenPlan[]> = {
     {
       titel: 'Profil (unten → oben)',
       ids: ['koerper.querschnitte.0', 'koerper.querschnitte.1', 'koerper.querschnitte.2', 'koerper.querschnitte.3', 'koerper.querschnitte.4'],
-      aktiv: (b) => leseWert(b, 'koerper.profil') === undefined,
-      inaktiv: 'Diese Form nutzt ein dichtes Profil (Grundform); die fünf Querschnitte wirken erst ohne Profil.',
+      aktiv: (b) => leseWert(b, 'koerper.profil') === undefined && leseWert(b, 'koerper.seitenprofil') === undefined,
+      inaktiv: 'Diese Form nutzt ein Profil (Grundform oder gezeichnete Silhouette); die fünf Querschnitte wirken erst ohne Profil.',
       aktion: { label: 'Profil in Querschnitte übernehmen', wende: profilZuQuerschnitten },
     },
   ],

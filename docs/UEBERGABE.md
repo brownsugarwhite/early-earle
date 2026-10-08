@@ -74,6 +74,10 @@ Florian: W nur am Oberkiefer mit **Scharte** in der Mitte, zu weich; zu viele un
 - **Scharte und Nase**: `gesicht` am Bau (Nase, Philtrum‑Strecke Lippenspitze → Nasenunterkante) → **Uniforms** (`naseMitte`, `philtrumA/B`, `gesichtAn`) → Shader zeichnet Nase (`farben.nase`: Retriever schwarz, Tiger rosa) und Scharte **pixelscharf** aus Abständen im Ruheraum (wie die Schlitzaugen; eine Vertex‑Maske war ausgefressen). Lippenband nur oben: `region.y` trägt das Vorzeichen der Seite, `lippenBandUnten` 0,25 bei ω‑Mäulern. ω schmaler (Spitze 0,08, Lefzen tiefer), Nase eine Nasenbreite über der Spitze.
 - **Augen**: Augenwulst‑Beule entfernt (machte Ecken), Höhle nur für tief liegende Typen (Drache/Schlange) oder `augen.tiefe` > 0,3; gemalte Schlitzaugen liegen glatt auf der Haut.
 
+- **Silhouetten‑Editor im Lab** (Tab Körper, `SeitenprofilEditor.tsx`): die beiden Bézier‑Kurven (vorn, hinten) über der Höhe mit **ziehbaren Kontrollpunkten** (8 je Seite, waagerecht), Scheitel‑Regler (Kreiskappe), Spiegeln, Entfernen; „Silhouette zeichnen“ legt ein Profil an. Dafür gedacht: Ansicht „Seite“ + Referenzbild‑Overlay → Florian zieht die Earle‑Kurve selbst gegen sein Bild, in Minuten statt über Regler‑Runden. Jeder Zug ist ein Verlaufsschritt (Rückgängig), Vorlagen speichern das Profil mit.
+
+**Befund dieses Blocks, ehrlich:** die gemessenen Silhouetten allein machen die Tiere noch nicht erkennbar — Bild 9 (Tiger) ist eine Dreiviertelansicht, Bild 5 (Rex) enthält Flügel/Füße, und der Dome kann einen überhängenden Kopf nur als Belt‑Form. Der Tiger liest sich mit eigenem Kugelkopf über dem Rumpfprofil besser (Überdeckung 0,70), der Rex mit eigenem Kopf. Die Form‑Lücke schließt am schnellsten **Florians Hand**: Silhouetten im Editor ziehen oder Blender‑Master (Mesh → Distanzfeld, noch zu bauen).
+
 ## Was noch nicht stimmt (nach Florians Bildern)
 
 1. **Rex**: dicke Stampfer mit Saugnapf‑Füßen stehen; der Rumpf ist noch ein Sack ohne Brust und der Schenkel von der Seite keine Keule — Florians Blender‑Vorlage abwarten; Flügel/Stummelarme später (eigene Elemente).
@@ -86,6 +90,8 @@ Florian: W nur am Oberkiefer mit **Scharte** in der Mitte, zu weich; zu viele un
 8. Ohren, Hörner, Flügel, dünne Schwänze, Spinnenbeine, Rückenschuppen: **eigene Elemente** (Florian), nicht Teil der Masse.
 
 ## Nächste Schritte
+
+0. Mit Florian: Silhouetten im Editor gegen seine Bilder ziehen (Seite + Overlay), dann Kopf/Maul darauf abstimmen; Blender‑Master als Mesh → Distanzfeld planen (K0‑Erweiterung), wenn die Kurven nicht reichen.
 
 1. Florians Blick auf Block 3 (Rex mit Beinen, Tiger mit Backen, Retriever, Drache, Aal) — Bilder in `docs/progress/wesen-vergleich-*`.
 2. Shading nach den Bögen (Airbrush‑Vorgabe: Kantenfederung, kühle satte Schatten, Korn) — betrifft jede Vorlage, mit Florian live.

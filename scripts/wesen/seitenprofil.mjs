@@ -3,7 +3,7 @@
 // angenähert — glatte, schwingende Earle-Kurven statt der Zacken der Pixelmaske; Anhängsel (Ohren, Hörner: schmale
 // Zeilen ganz oben) werden vorher abgeschnitten, Flügel/Hauer per Klammer begrenzt.
 //   node scripts/wesen/seitenprofil.mjs <messung.json> [--vorn rechts|links] [--n 8] [--ab 0] [--bis 1]
-//     [--achse auto|<0…1>] [--klammer-vorn X] [--klammer-hinten X] [--min-breite 0.35] [--scheitel 0.6]
+//     [--achse auto|<0…1>] [--klammer-vorn X] [--klammer-hinten X] [--klammer-ab 0] [--min-breite 0.35] [--scheitel 0.6]
 // `--scheitel`: ab diesem Höhenanteil schließt der Rumpf mit einer Kreiskappe (runder Kopf); die Kappe wird vor der
 // Anpassung herausgerechnet, damit die glatte Kurve nicht die Rundung nachbilden muss (Bézier kann keine senkrechte Tangente).
 // Ausgabe: `seitenprofil: { vorn: [...], hinten: [...] }` für den Bauplan (Kontrollwerte, Anteile der Höhe).
@@ -16,6 +16,8 @@ const K = Number(opt('--n', '8'));
 const ab = Number(opt('--ab', '0')), bis = Number(opt('--bis', '1'));
 const achseOpt = opt('--achse', 'auto');
 const klVorn = Number(opt('--klammer-vorn', 'Infinity')), klHinten = Number(opt('--klammer-hinten', 'Infinity'));
+// Klammern wirken erst ab diesem Höhenanteil (Flügel oben: `--klammer-hinten 0.32 --klammer-ab 0.55`)
+const klAb = Number(opt('--klammer-ab', '0'));
 const minBreite = Number(opt('--min-breite', '0.35'));
 const scheitel = Number(opt('--scheitel', '0.6'));
 const kappe = (t) => (t <= scheitel ? 1 : Math.sqrt(Math.max(0, 1 - Math.pow((t - scheitel) / (1 - scheitel), 2))));
@@ -43,7 +45,8 @@ const samples = rows
     const back = vornSeite === 'rechts' ? achse - r.l : r.r - achse;
     const t = (r.v - vMin) / Hs;
     const k = kappe(t);
-    return { t, k, vorn: Math.min(klVorn, Math.max(0.01, front / Hs)) / Math.max(k, 1e-3), hinten: Math.min(klHinten, Math.max(0.01, back / Hs)) / Math.max(k, 1e-3) };
+    const kv = t >= klAb ? klVorn : Infinity, kh = t >= klAb ? klHinten : Infinity;
+    return { t, k, vorn: Math.min(kv, Math.max(0.01, front / Hs)) / Math.max(k, 1e-3), hinten: Math.min(kh, Math.max(0.01, back / Hs)) / Math.max(k, 1e-3) };
   })
   .filter((s) => s.k > 0.2);
 // Bernstein-Basis und kleinste Quadrate (K Koeffizienten), leichte Dämpfung gegen Schwingen

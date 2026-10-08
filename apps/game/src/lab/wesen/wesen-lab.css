@@ -171,3 +171,15 @@
   position: absolute; inset: 10px; display: grid; place-items: center;
   background: rgba(184, 255, 42, 0.28); color: var(--ink); font: 900 18px/1.2 var(--font-display);
 }
+
+/* Seitenprofil-Editor */
+.wl-sp-svg { width: 100%; height: auto; display: block; background: #f6f1e6; border-radius: 10px; touch-action: none; }
+.wl-sp-achse { stroke: #b9b0a0; stroke-width: 1; stroke-dasharray: 4 4; }
+.wl-sp-boden { stroke: #3d4630; stroke-width: 2; }
+.wl-sp-scheitel { stroke: #c96a80; stroke-width: 1; stroke-dasharray: 3 5; }
+.wl-sp-koerper { fill: rgba(156, 108, 199, 0.35); stroke: #5a2f6b; stroke-width: 2; stroke-linejoin: round; }
+.wl-sp-polygon { fill: none; stroke: rgba(61, 70, 48, 0.35); stroke-width: 1; }
+.wl-sp-punkt { fill: #fff; stroke: #3d4630; stroke-width: 2; cursor: ew-resize; }
+.wl-sp-punkt:hover { fill: var(--neon); }
+.wl-sp-text { font: 11px var(--font-body); fill: #7c9097; }
+.wl-sp-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; }
