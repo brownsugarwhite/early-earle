@@ -42,7 +42,19 @@ const RES_SUFFIX = RES_PARAM ? `-r${Math.round(RES)}` : '';
 const BLINK = Number(process.env.EE_BLINK ?? '');
 const BLINK_HOLD = Number.isFinite(BLINK) && BLINK > 0 && BLINK <= 1 ? BLINK : null;
 const BLINK_SUFFIX = BLINK_HOLD === null ? '' : BLINK_HOLD >= 1 ? '-augenzu' : `-augen${Math.round(BLINK_HOLD * 100)}`;
-const SUFFIX = `${MAUL === 'bau' ? '' : `-${MAUL}`}${ANSICHT_SUFFIX}${RES_SUFFIX}${BLINK_SUFFIX}${TAG ? `-${TAG}` : ''}`;
+/** Stil-Übersteuerung (`EE_STIL=federung=1,verlauf=1,korn=0.4`): Werte des Licht-&-Shader-Tabs für alle Bilder des Laufs; Dateien `-stil`. */
+const STIL: Array<[string, number]> = (process.env.EE_STIL ?? '')
+  .split(',')
+  .map((kv) => kv.trim())
+  .filter(Boolean)
+  .map((kv) => {
+    const [k, v] = kv.split('=');
+    const n = Number(v);
+    if (!k || !Number.isFinite(n)) throw new Error(`EE_STIL: erwartet schluessel=zahl,… (bekommen: ${kv})`);
+    return [k.trim(), n] as [string, number];
+  });
+const STIL_SUFFIX = STIL.length > 0 ? '-stil' : '';
+const SUFFIX = `${MAUL === 'bau' ? '' : `-${MAUL}`}${ANSICHT_SUFFIX}${RES_SUFFIX}${BLINK_SUFFIX}${STIL_SUFFIX}${TAG ? `-${TAG}` : ''}`;
 /** Ohne WebGPU-Adapter fällt die App auf WebGL2 zurück; solche Bilder sind mit GPU-Bildern nicht vergleichbar. */
 const ALLOW_WEBGL2 = !!process.env.EE_ALLOW_WEBGL2;
 const GPU_ERROR = /WGSL|ShaderModule|pipeline creation failed|Invalid RenderPipeline|unresolved value|Invalid (BindGroup|Buffer|Texture)/i;
@@ -251,6 +263,13 @@ test(`Wesen-Lab: Vorlagen im ${ANSICHT === 'referenz' ? 'Referenzmodus' : ANSICH
     await page.goto(`/lab/wesen?vorlage=${v.id}&panel=zu&sheet=zu&boden=weiss&ansicht=${ANSICHT}&standbild=1${RES_PARAM}`);
     backend = await requireBackend(page);
     let s = await waitFertig(page);
+    if (STIL.length > 0) {
+      await page.evaluate((paare) => {
+        const st = (window as unknown as { __wesenLab: { store: { getState(): { setzeStilWert(k: string, v: unknown): void } } } }).__wesenLab.store.getState();
+        for (const [k, v] of paare) st.setzeStilWert(k, v);
+      }, STIL);
+      await page.waitForTimeout(400);
+    }
     if (BLINK_HOLD !== null) {
       await page.evaluate((v) => {
         const c = (window as unknown as { __wesenLab: { controller: { creature: { blinkHold: number | null } | null } } }).__wesenLab.controller.creature;
