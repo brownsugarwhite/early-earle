@@ -39,6 +39,6 @@
     "directories": { "output": "release" },
     "files": ["dist/**", "dist-electron/**", "package.json"],
     "npmRebuild": false,
-    "mac": { "target": "dir", "category": "public.app-category.graphics-design", "identity": "-" }
+    "mac": { "target": "dir", "category": "public.app-category.graphics-design", "identity": "-", "hardenedRuntime": false }
   }
 }

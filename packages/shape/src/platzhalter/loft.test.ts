@@ -35,3 +35,17 @@ describe('Platzhalter-Loft', () => {
     expect(Number.isFinite(b.positionen.reduce((s, x) => s + x, 0))).toBe(true);
   });
 });
+
+describe('Platzhalter-Loft: herausgezogener Seitenpunkt', () => {
+  it('ergibt eine runde Spitze statt einer flachen Flosse', () => {
+    const d = neuesDokument();
+    d.profile.seite = bewegeKnoten(d.profile.seite, 3, { x: 0.7, y: 0.27 });
+    const n = loftNetz(d);
+    let breite = 0;
+    for (let v = 0; v < n.positionen.length / 3; v++) {
+      const x = n.positionen[v * 3]!;
+      if (x > 0.4 && x < 0.55) breite = Math.max(breite, Math.abs(n.positionen[v * 3 + 2]!));
+    }
+    expect(breite).toBeGreaterThan(0.02);
+  });
+});

@@ -73,6 +73,7 @@ export function setzeLayoutZiel(layout: Layout, sofort: boolean) {
   if (!laeuft) {
     laeuft = true;
     zuletzt = performance.now();
+    useRahmen.setState({ bewegt: true });
     requestAnimationFrame(schritt);
   }
 }

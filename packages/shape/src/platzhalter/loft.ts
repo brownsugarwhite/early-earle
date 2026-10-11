@@ -1,9 +1,11 @@
 // PLATZHALTER-KÖRPER für das 3D-Fenster des Editors, bis die echte Bauweise steht.
 //
-// Loft entlang vorn → hinten: Die Seite liefert je Station Unter- und Oberkante, das Top die Halbbreite,
-// die Front die normierte Querschnittsform. Drei Kreise ergeben eine Kugel; Ecken in einem Profil bleiben
-// als Knick sichtbar. Feste Auflösung (gleiche Vertexzahl für jede Form, Voraussetzung für Blendshapes).
-// Grenze: Überhänge und nicht monotone Seitenprofile werden nur angenähert.
+// Loft entlang vorn → hinten: Die Seite bestimmt Länge, Unter- und Oberkante je Station, das Top die
+// Breitenverteilung (auf die Länge der Seite gestreckt, damit ein herausgezogener Seitenpunkt eine runde
+// Spitze ergibt statt einer flachen Flosse), die Front die normierte Querschnittsform. Drei Kreise ergeben
+// eine Kugel; Ecken in einem Profil bleiben als Knick sichtbar. Feste Auflösung (gleiche Vertexzahl für
+// jede Form, Voraussetzung für Blendshapes). Grenze: Überhänge und nicht monotone Seitenprofile werden nur
+// angenähert.
 //
 // Weltkoordinaten (three.js): X = hinten (vorn ist −X), Y = oben, Z = Front-u (rechts in der Frontansicht).
 
@@ -97,6 +99,12 @@ export function loftNetz(dok: Dokument, stationen = LOFT_STATIONEN, halbring = L
     xMin = Math.min(xMin, p.x);
     xMax = Math.max(xMax, p.x);
   }
+  let tMin = Infinity;
+  let tMax = -Infinity;
+  for (const p of top) {
+    tMin = Math.min(tMin, p.x);
+    tMax = Math.max(tMax, p.x);
+  }
 
   const S = stationen;
   const pos = new Float32Array((S + 1) * ring * 3);
@@ -104,7 +112,8 @@ export function loftNetz(dok: Dokument, stationen = LOFT_STATIONEN, halbring = L
     const f = (1 - Math.cos((Math.PI * i) / S)) / 2;
     const x = xMin + (xMax - xMin) * f;
     const vs = schnitte(seite, x);
-    const ws = schnitte(top, x);
+    // gleiche relative Stelle im Top (Top auf die Länge der Seite gestreckt)
+    const ws = schnitte(top, tMin + (tMax - tMin) * f);
     let yLo = vs.length ? Math.min(...vs) : 0;
     let yHi = vs.length ? Math.max(...vs) : 0;
     if (i === 0 || i === S) yLo = yHi = (yLo + yHi) / 2;

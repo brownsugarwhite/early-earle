@@ -8,7 +8,10 @@ import { fileURLToPath } from 'node:url';
 import type { BibliothekEintrag, MenueBefehl, SpeicherAuftrag } from '../src/library/api';
 
 const hier = path.dirname(fileURLToPath(import.meta.url));
-const BIBLIOTHEK = path.join(app.getPath('documents'), 'early earle Editor', 'Bibliothek');
+// EDITOR_BIBLIOTHEK: anderer Ordner (Tests). EDITOR_SELBSTTEST=<datei.png>: Fenster laden, Bibliothek
+// prüfen, Bildschirmfoto schreiben, Ergebnis ausgeben und beenden (Rauchtest der Desktop-App).
+const BIBLIOTHEK = process.env.EDITOR_BIBLIOTHEK ?? path.join(app.getPath('documents'), 'early earle Editor', 'Bibliothek');
+const SELBSTTEST = process.env.EDITOR_SELBSTTEST;
 
 let fenster: BrowserWindow | null = null;
 
@@ -39,6 +42,9 @@ function erzeugeFenster() {
     void shell.openExternal(url);
     return { action: 'deny' };
   });
+  if (SELBSTTEST) {
+    fenster.webContents.once('did-finish-load', () => void selbsttest(SELBSTTEST));
+  }
   const devUrl = process.env.VITE_DEV_SERVER_URL;
   if (devUrl) void fenster.loadURL(devUrl);
   else void fenster.loadFile(path.join(hier, '../dist/index.html'));
@@ -94,6 +100,22 @@ function menue() {
     { role: 'windowMenu', label: 'Fenster' },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(vorlage));
+}
+
+async function selbsttest(datei: string) {
+  const f = fenster;
+  if (!f) return;
+  await new Promise((ok) => setTimeout(ok, 3000));
+  const ergebnis: unknown = await f.webContents.executeJavaScript(`(async () => {
+    const api = window.editorApi;
+    const gespeichert = await api.bibliothekSpeichern({ datei: null, name: 'Selbsttest', json: '{"name":"Selbsttest"}', vorschau: null });
+    const liste = await api.bibliothekListe();
+    return { backend: window.__editor && window.__editor.backend, vertices: window.__editor && window.__editor.vertices(), gespeichert, liste: liste.map((e) => e.datei) };
+  })()`);
+  const bild = await f.webContents.capturePage();
+  await fs.writeFile(datei, bild.toPNG());
+  console.log(`[selbsttest] ${JSON.stringify(ergebnis)}`);
+  app.quit();
 }
 
 // ---------- Bibliothek ----------

@@ -8,19 +8,46 @@ import { editorApi, useBibliothek } from './speicher';
 const FAECHER = ['Wesen', 'Augen', 'Flügel', 'Mäuler', 'Beine', 'Schwänze', 'Ohren', 'Muster'] as const;
 type Fach = (typeof FAECHER)[number];
 
-/** Earle-Ornament: geschichtete Hügelbänder mit feinen Baumstrichen (Linien nur als Ornament). */
+/**
+ * Earle-Ornament am Fuß der Library: geschichtete Hügelbänder in Flächenfarben, schlanke Pappeln,
+ * Sonnenscheibe mit feinen Ringen. Linien nur als Ornament (Konturen-Regel), keine Umrisse.
+ */
 function Ornament() {
-  const striche = Array.from({ length: 34 }, (_, i) => {
-    const x = 8 + i * 11.4 + (i % 3) * 2;
-    const h = 18 + ((i * 37) % 23);
-    return <line key={i} x1={x} y1={64 - h * 0.15} x2={x} y2={64 - h} />;
-  });
+  const pappeln = [
+    [34, 104, 46],
+    [52, 110, 34],
+    [71, 100, 58],
+    [92, 112, 30],
+    [248, 98, 52],
+    [266, 104, 38],
+    [352, 96, 62],
+    [372, 104, 44],
+  ].map(([x, fuss, h], i) => (
+    <g key={i}>
+      <path d={`M${x} ${fuss! - h!} C${x! + 7} ${fuss! - h! * 0.6} ${x! + 6} ${fuss! - 6} ${x} ${fuss} C${x! - 6} ${fuss! - 6} ${x! - 7} ${fuss! - h! * 0.6} ${x} ${fuss! - h!}Z`} fill="#8a1270" />
+      <line x1={x} y1={fuss! - h! + 6} x2={x} y2={fuss} className="linie" />
+    </g>
+  ));
+  const ringe = [14, 22, 30].map((r) => <circle key={r} cx={318} cy={64} r={r} fill="none" className="linie" />);
+  const schraffur = Array.from({ length: 9 }, (_, i) => (
+    <path key={i} d={`M0 ${150 + i * 6} C90 ${138 + i * 6} 170 ${158 + i * 6} 260 ${146 + i * 6} S360 ${140 + i * 6} 400 ${146 + i * 6}`} fill="none" className="linie zart" />
+  ));
   return (
-    <svg className="ornament" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M0 70 C60 40 120 52 180 60 S300 30 400 48 V120 H0Z" fill="#4a0a3f" />
-      <g className="baeume">{striche}</g>
-      <path d="M0 88 C80 70 150 92 230 80 S340 62 400 76 V120 H0Z" fill="#75005c" />
-      <path d="M0 104 C90 92 170 110 260 100 S360 92 400 98 V120 H0Z" fill="#9d1a7e" />
+    <svg className="ornament" viewBox="0 0 400 210" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+      <circle cx={318} cy={64} r={38} fill="#ff0095" opacity={0.85} />
+      {ringe}
+      <path d="M0 112 C60 86 120 96 180 104 S300 80 400 92 V210 H0Z" fill="#3c0a37" />
+      {pappeln}
+      <path d="M0 132 C80 114 150 136 230 124 S340 106 400 120 V210 H0Z" fill="#75005c" />
+      {schraffur}
+      <path d="M0 170 C90 158 170 176 260 166 S360 158 400 164 V210 H0Z" fill="#9d1a7e" />
+      <path d="M0 196 C100 188 200 200 300 192 S380 188 400 190 V210 H0Z" fill="url(#ornament-wiese)" />
+      <defs>
+        <linearGradient id="ornament-wiese" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stopColor="#b5bb72" />
+          <stop offset="1" stopColor="#d0ff47" />
+        </linearGradient>
+      </defs>
     </svg>
   );
 }
