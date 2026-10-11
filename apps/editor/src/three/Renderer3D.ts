@@ -129,6 +129,17 @@ export class Renderer3D {
     this.anfordern();
   }
 
+  /** Dreiecke ohne Index (Versuche, z. B. Subdivision mit getrennten Normalen an scharfen Kanten). */
+  setzeDreiecke(positionen: Float32Array, normalen: Float32Array) {
+    const g = this.geometrie;
+    g.setIndex(null);
+    g.setAttribute('position', new BufferAttribute(positionen, 3));
+    g.setAttribute('normal', new BufferAttribute(normalen, 3));
+    g.computeBoundingSphere();
+    this.vertexAnzahl = positionen.length / 3;
+    this.anfordern();
+  }
+
   setzeRect(r: Rect | null) {
     this.rect = r;
     this.anfordern();

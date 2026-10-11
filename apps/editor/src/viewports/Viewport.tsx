@@ -3,6 +3,7 @@ import { useRahmen } from '../layout/animation';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { VIEW_TEXTE, type ViewId } from '../types';
+import { versuchAktiv } from '../versuch/subdivision';
 import { Steuerung3D } from './Steuerung3D';
 import { View2D } from './View2D';
 
@@ -40,7 +41,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
         {id === 'creation' ? <Steuerung3D hoehe={r.h} /> : <View2D ansicht={id} w={r.w} h={r.h} />}
         {t.links && <div className="vp-label links">{t.links}</div>}
         {t.rechts && <div className="vp-label rechts">{t.rechts}</div>}
-        {id === 'creation' && <div className="vp-label links platzhalter">Platzhalter-Körper</div>}
+        {id === 'creation' && <div className="vp-label links platzhalter">{versuchAktiv()?.modus === 'subd' ? 'Versuch: Subdivision' : 'Platzhalter-Körper'}</div>}
         {id === 'creation' && modus !== 'editor' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>}
       </div>
       <div className="eckknoepfe">

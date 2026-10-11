@@ -1,10 +1,11 @@
-import { loftNetz } from '@ee/shape';
+import { type Dokument, loftNetz } from '@ee/shape';
 import { useEffect, useRef } from 'react';
 import { useRahmen } from '../layout/animation';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { Renderer3D } from './Renderer3D';
 import { szene } from './instanz';
+import { versuchAktiv, versuchNetz } from '../versuch/subdivision';
 
 declare global {
   interface Window {
@@ -27,13 +28,18 @@ export function Szene3D() {
       szene.aktuell = r;
       window.__editor = { backend: r.backend, vertices: () => r.vertexAnzahl };
       console.info(`[editor] 3D-Backend: ${r.backend}`);
-      const dok = useEditor.getState().dok;
-      r.setzeNetz(loftNetz(dok));
+      const versuch = versuchAktiv();
+      const bauen = (d: Dokument) => {
+        if (!versuch || versuch.modus === 'loft') return r.setzeNetz(loftNetz(d));
+        const n = versuchNetz(d, versuch.fall);
+        r.setzeDreiecke(n.positionen, n.normalen);
+      };
+      bauen(useEditor.getState().dok);
       r.setzeKamera(useUi.getState().kamera);
       r.setzeRect(useRahmen.getState().rects?.creation ?? null);
       abmelden.push(
         useEditor.subscribe((s, v) => {
-          if (s.dok.profile !== v.dok.profile || s.dok.skalierung !== v.dok.skalierung) r.setzeNetz(loftNetz(s.dok));
+          if (s.dok.profile !== v.dok.profile || s.dok.skalierung !== v.dok.skalierung) bauen(s.dok);
         }),
         useUi.subscribe((s, v) => {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);

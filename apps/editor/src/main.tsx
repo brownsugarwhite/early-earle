@@ -7,6 +7,11 @@ import { App } from './App';
 import { useEditor } from './state/editorStore';
 import { useUi } from './state/uiStore';
 import { useRahmen } from './layout/animation';
+import { versuchAktiv, versuchForm } from './versuch/subdivision';
+
+// Versuche (?versuch=subd&form=…): Testform laden
+const versuch = versuchAktiv();
+if (versuch) useEditor.setState({ dok: versuchForm(useEditor.getState().dok, versuch.form) });
 
 // Zugriff für E2E-Tests und die Konsole (kein Einfluss auf die Bedienung)
 Object.assign(window, {
