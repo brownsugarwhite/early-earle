@@ -55,6 +55,20 @@ Florian baut den Charaktereditor neu: Er zieht drei Profile (Seite, Front, Top),
 - Kein App-Icon (Standard-Electron-Icon).
 - Bibliotheksordner im Repo (`content/`) statt unter Dokumente: entscheiden, wenn das Spiel Wesen lädt.
 
+## Machbarkeit Tiger-Konzept (11.10. abends)
+
+Florians Konzept: Silhouetten plus Kantenlinien in jeder Ansicht, Maul zu und offen als Blendshape mit Kieferknochen. Ergebnis: [`docs/research/2026-10-11-silhouetten-kanten-machbarkeit.md`](research/2026-10-11-silhouetten-kanten-machbarkeit.md), als Seite: https://claude.ai/artifact/L2T2sGQUfnfxExAmorkoY9
+
+- **Machbar** mit vier Leitplanken:
+  - Linien sind 3D-Linien, gekoppelt über alle Ansichten.
+  - Eine Kante braucht einen Winkel aus einer Silhouette.
+  - Darunter liegt ein fester Grundkäfig mit Catmull-Clark und halbscharfen Kanten.
+  - Das Maul bekommt Kieferknochen plus Korrektur-Blendshape und eine Naht mit Reißverschluss.
+- **Versuche** (`packages/shape/src/versuch/`, im Editor `?versuch=subd&fall=…&form=…`, Bilder `docs/progress/editor/versuch-subdivision.png`):
+  - Ein angepasster Käfig trifft die Kugel auf unter 0,4 px; ungepasst ist sie 4–15 px zu klein.
+  - Ein Kasten mit verjüngten Kanten zeigt scharf vorn oben, rund nach hinten.
+- **Literatur:** Die Recherche stützt den Grundkäfig mit Creases (Gravity Sketch, Blender, OpenSubdiv). Es gibt keine JavaScript-Bibliothek mit Kanten, die eigene Umsetzung steht. Flächen aus Kurvennetzen können auslaufende Linien nicht.
+
 ## Nächster Schritt
 
 Florian testet die App und gibt Rückmeldung. Danach beginnt die große Sitzung zur Bauweise auf diesem Gerüst. Ihr Einstieg:
