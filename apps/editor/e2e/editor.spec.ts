@@ -189,6 +189,19 @@ test('3D: rechte Taste dreht, Rad zoomt', async ({ page }) => {
   expect(k1.distanz).toBeLessThan(k0.distanz);
   await expect(page.locator('.kontextmenue')).toHaveCount(0);
   await page.screenshot({ path: path.join(bilder, '3d-gedreht.png') });
+
+  // linke Taste dreht ebenfalls (Trackpad), seitliches Wischen dreht
+  const k2 = await page.evaluate(() => (window as unknown as Fenster).__stores.ui.getState().kamera);
+  await page.mouse.move(m.x, m.y);
+  await page.mouse.down();
+  await page.mouse.move(m.x - 90, m.y, { steps: 5 });
+  await page.mouse.up();
+  const k3 = await page.evaluate(() => (window as unknown as Fenster).__stores.ui.getState().kamera);
+  expect(k3.azimut).not.toBeCloseTo(k2.azimut, 3);
+  await page.mouse.wheel(40, 0);
+  const k4 = await page.evaluate(() => (window as unknown as Fenster).__stores.ui.getState().kamera);
+  expect(k4.azimut).not.toBeCloseTo(k3.azimut, 3);
+  expect(k4.distanz).toBeCloseTo(k3.distanz, 9);
 });
 
 test('Posen, Größe, Speichern und Library-Karte', async ({ page }) => {

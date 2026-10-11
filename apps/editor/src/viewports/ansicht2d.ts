@@ -40,3 +40,15 @@ export function radFaktor(e: { deltaY: number; deltaMode: number; ctrlKey: boole
   const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
   return Math.exp(-d * (e.ctrlKey ? 0.01 : 0.002));
 }
+
+/**
+ * Trackpad oder Mausrad? Chrome meldet beim Trackpad wheelDeltaY = −3 · deltaY, ein Mausrad rastet in
+ * festen Stufen; seitliches Wischen gibt es nur auf Trackpad/Magic Mouse. Pinch (ctrlKey) zählt als Zoom.
+ */
+export function istTrackpad(e: WheelEvent): boolean {
+  if (e.ctrlKey || e.deltaMode !== 0) return false;
+  if (e.deltaX !== 0) return true;
+  const w = (e as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY;
+  if (w) return Math.abs(w) === Math.abs(e.deltaY * 3);
+  return !Number.isInteger(e.deltaY);
+}

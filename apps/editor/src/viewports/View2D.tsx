@@ -28,7 +28,7 @@ import {
 import { useEffect, useRef } from 'react';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
-import { radFaktor, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
+import { istTrackpad, radFaktor, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 
 const PUNKT_R = 5; // Ø 10 px (Florian, 11.10.)
 const GRIFF = 6; // 6-px-Quadrate
@@ -51,7 +51,10 @@ export function View2D({ ansicht, w, h }: Props) {
       e.preventDefault();
       const r = el.getBoundingClientRect();
       const ui = useUi.getState();
-      ui.setzeAnsicht(ansicht, zoomUm(ui.ansichten[ansicht], r.width, r.height, { x: e.clientX - r.left, y: e.clientY - r.top }, radFaktor(e)));
+      const v = ui.ansichten[ansicht];
+      // Trackpad: zwei Finger verschieben (wie Illustrator), Pinch und Mausrad zoomen zum Cursor
+      if (istTrackpad(e)) ui.setzeAnsicht(ansicht, verschieben(v, r.width, r.height, -e.deltaX, -e.deltaY));
+      else ui.setzeAnsicht(ansicht, zoomUm(v, r.width, r.height, { x: e.clientX - r.left, y: e.clientY - r.top }, radFaktor(e)));
     };
     el.addEventListener('wheel', rad, { passive: false });
     return () => el.removeEventListener('wheel', rad);
