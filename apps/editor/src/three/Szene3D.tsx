@@ -30,7 +30,7 @@ export function Szene3D() {
       console.info(`[editor] 3D-Backend: ${r.backend}`);
       const versuch = versuchAktiv();
       const bauen = (d: Dokument) => {
-        if (!versuch || versuch.modus === 'loft') return r.setzeNetz(loftNetz(d));
+        if (!versuch || versuch.modus !== 'subd') return r.setzeNetz(loftNetz(d));
         const n = versuchNetz(d, versuch.fall);
         r.setzeDreiecke(n.positionen, n.normalen);
       };

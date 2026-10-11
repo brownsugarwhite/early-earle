@@ -29,6 +29,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { type Auswahl, gekoppeltBerechnen, setzeGekoppelt } from '../editing/gekoppelt';
 import { useEditor } from '../state/editorStore';
+import { useUeberlagerung } from '../versuch/ueberlagerung';
 import { useUi } from '../state/uiStore';
 import { istTrackpad, radFaktor, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 
@@ -45,6 +46,7 @@ export function View2D({ ansicht, w, h }: Props) {
   const gewaehlt = useUi((s) => s.auswahl[ansicht]);
   const [rahmen, setRahmen] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const werkzeug = useUi((s) => s.werkzeug);
+  const ueber = useUeberlagerung((s) => s[ansicht]);
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Rad: nicht-passiv, sonst zoomt die Seite beim Trackpad-Pinch mit
@@ -340,6 +342,11 @@ export function View2D({ ansicht, w, h }: Props) {
       </defs>
       <rect className="kachel" x={k0.x} y={k0.y} width={k1.x - k0.x} height={k1.y - k0.y} fill={seitlich ? `url(#${verlaufId})` : 'rgba(0,0,0,0.1)'} />
       {achse && profil.art === 'halb' && (profil.achse === 'senkrecht' ? <line className="achse" x1={achse.x} y1={0} x2={achse.x} y2={h} /> : <line className="achse" x1={0} y1={achse.y} x2={w} y2={achse.y} />)}
+      {ueber?.bild && (() => {
+        const a = bild({ x: ueber.bild.x0, y: ueber.bild.y0 });
+        const b = bild({ x: ueber.bild.x1, y: ueber.bild.y1 });
+        return <image href={ueber.bild.url} x={Math.min(a.x, b.x)} y={Math.min(a.y, b.y)} width={Math.abs(b.x - a.x)} height={Math.abs(b.y - a.y)} preserveAspectRatio="none" pointerEvents="none" />;
+      })()}
       {profil.art === 'halb' && <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="#ffffff" strokeWidth={KONTUR} strokeLinejoin="round" />}
       <path d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
       <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />
@@ -353,6 +360,22 @@ export function View2D({ ansicht, w, h }: Props) {
           </g>
         );
       })}
+      {ueber && ueber.punkte.length > 0 && (
+        <g className="maulpunkte" pointerEvents="none">
+          {ueber.punkte.slice(1).map((p, i) => {
+            const a = bild(ueber.punkte[i]!);
+            const b = bild(p);
+            const f = [ueber.punkte[i]!.farbe, p.farbe];
+            const farbe = f.includes('rot') ? '#e0306a' : f.includes('blau') ? '#1832e6' : '#19232b';
+            return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={farbe} strokeWidth={2} />;
+          })}
+          {ueber.punkte.map((p, i) => {
+            const q = bild(p);
+            const farbe = { tuerkis: '#5ad3c0', schwarz: '#000000', rot: '#e0306a', blau: '#1832e6' }[p.farbe];
+            return <circle key={i} cx={q.x} cy={q.y} r={PUNKT_R} fill={farbe} />;
+          })}
+        </g>
+      )}
       {rahmen && (
         <rect
           className="auswahlrahmen"

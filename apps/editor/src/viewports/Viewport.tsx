@@ -42,7 +42,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
         {t.links && <div className="vp-label links">{t.links}</div>}
         {t.rechts && <div className="vp-label rechts">{t.rechts}</div>}
         {id === 'creation' && <div className="vp-label links platzhalter">{versuchAktiv()?.modus === 'subd' ? 'Versuch: Subdivision' : 'Platzhalter-Körper'}</div>}
-        {id === 'creation' && modus !== 'editor' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>}
+        {id === 'creation' && modus !== 'editor' && versuchAktiv()?.modus !== 'tiger' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>}
       </div>
       <div className="eckknoepfe">
         {id !== 'creation' && (
