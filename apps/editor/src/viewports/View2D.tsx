@@ -8,8 +8,6 @@ import {
   type Profil,
   type Profile,
   type V2,
-  MAX_SEGMENT,
-  autoTeilen,
   bewegeGriff,
   bewegeKnoten,
   editierbarerGriff,
@@ -25,6 +23,7 @@ import {
   segmentAnzahl,
   segmente,
   spiegeln,
+  umwandeln,
 } from '@ee/shape';
 import { useEffect, useRef } from 'react';
 import { type Auswahl, gekoppeltBerechnen, setzeGekoppelt } from '../editing/gekoppelt';
@@ -43,6 +42,7 @@ export function View2D({ ansicht, w, h }: Props) {
   const skal = useEditor((s) => s.dok.skalierung);
   const view = useUi((s) => s.ansichten[ansicht]);
   const gewaehlt = useUi((s) => s.auswahl[ansicht]) ?? -1;
+  const werkzeug = useUi((s) => s.werkzeug);
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Rad: nicht-passiv, sonst zoomt die Seite beim Trackpad-Pinch mit
@@ -133,10 +133,29 @@ export function View2D({ ansicht, w, h }: Props) {
     const ziel = e.target as Element;
     const griffEl = ziel.closest('[data-griff]');
     const knotenEl = ziel.closest('[data-knoten]');
+    const kurveEl = ziel.closest('[data-kurve]');
+
+    // Zeichenstift, + und − (wie Illustrator); ⌘ hält vorübergehend die Direktauswahl
+    if (ui.werkzeug !== 'auswahl' && !e.metaKey) {
+      const i = knotenEl ? Number(knotenEl.getAttribute('data-knoten')) : -1;
+      if (knotenEl && ui.werkzeug === 'stift' && e.altKey) {
+        setzeGekoppelt(ansicht, umwandeln(aktuell(), i), i);
+      } else if (knotenEl && (ui.werkzeug === 'stift' || ui.werkzeug === 'minus')) {
+        if (kannLoeschen(aktuell(), i)) setzeGekoppelt(ansicht, loeschen(aktuell(), i), null);
+        else ui.zeigeHinweis('Achspunkte bleiben – sie halten die Spiegelung');
+      } else if (!knotenEl && kurveEl && (ui.werkzeug === 'stift' || ui.werkzeug === 'plus')) {
+        const t = naechsterAufProfil(aktuell(), lokal(e.clientX, e.clientY));
+        if (t) {
+          const r = einfuegen(aktuell(), t.segment, t.t);
+          setzeGekoppelt(ansicht, r.profil, r.index);
+        }
+      }
+      return;
+    }
 
     if (griffEl) {
       const [iStr, seite] = griffEl.getAttribute('data-griff')!.split(':') as [string, GriffSeite];
-      let index = Number(iStr);
+      const index = Number(iStr);
       const kn = aktuell().knoten[index]!;
       const versatz = minus(lokal(e.clientX, e.clientY), plus(kn.p, kn[seite]));
       let brechen = e.altKey;
@@ -148,9 +167,7 @@ export function View2D({ ansicht, w, h }: Props) {
         (ev) => {
           brechen ||= ev.altKey;
           const z = minus(lokal(ev.clientX, ev.clientY), versatz);
-          const r = autoTeilen(bewegeGriff(aktuell(), index, seite, z, brechen), MAX_SEGMENT, index);
-          index = r.folge;
-          uebernehmen(r.profil, index, basis, auswahlBasis);
+          uebernehmen(bewegeGriff(aktuell(), index, seite, z, brechen), index, basis, auswahlBasis);
         },
         () => useEditor.getState().endeGeste(),
       );
@@ -158,7 +175,7 @@ export function View2D({ ansicht, w, h }: Props) {
     }
 
     if (knotenEl) {
-      let index = Number(knotenEl.getAttribute('data-knoten'));
+      const index = Number(knotenEl.getAttribute('data-knoten'));
       const kn = aktuell().knoten[index]!;
       const versatz = minus(lokal(e.clientX, e.clientY), kn.p);
       ui.waehle(ansicht, index);
@@ -169,9 +186,7 @@ export function View2D({ ansicht, w, h }: Props) {
         e,
         (ev) => {
           const z = minus(lokal(ev.clientX, ev.clientY), versatz);
-          const r = autoTeilen(bewegeKnoten(aktuell(), index, z), MAX_SEGMENT, index);
-          index = r.folge;
-          uebernehmen(r.profil, index, basis, auswahlBasis);
+          uebernehmen(bewegeKnoten(aktuell(), index, z), index, basis, auswahlBasis);
         },
         () => useEditor.getState().endeGeste(),
       );
@@ -261,7 +276,7 @@ export function View2D({ ansicht, w, h }: Props) {
   }
 
   return (
-    <svg ref={svgRef} className="view2d" width={w} height={h} viewBox={`0 0 ${w} ${h}`} onPointerDown={unten} onContextMenu={kontext} onAuxClick={(e) => e.preventDefault()}>
+    <svg ref={svgRef} className={`view2d werkzeug-${werkzeug}`} width={w} height={h} viewBox={`0 0 ${w} ${h}`} onPointerDown={unten} onContextMenu={kontext} onAuxClick={(e) => e.preventDefault()}>
       <defs>
         <linearGradient id={verlaufId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#000" stopOpacity={0} />

@@ -215,7 +215,39 @@ button {
   pointer-events: none;
 }
 .view2d [data-kurve] {
-  cursor: copy;
+  cursor: pointer;
+}
+/* Werkzeuge wie in Illustrator: der Zeiger zeigt, was ein Klick tut */
+.view2d.werkzeug-stift,
+.view2d.werkzeug-stift .griff {
+  cursor: url('../assets/cursor-stift.svg') 2 2, crosshair;
+}
+.view2d.werkzeug-stift [data-kurve],
+.view2d.werkzeug-plus,
+.view2d.werkzeug-plus * {
+  cursor: url('../assets/cursor-plus.svg') 2 2, copy;
+}
+.view2d.werkzeug-stift .knoten,
+.view2d.werkzeug-minus,
+.view2d.werkzeug-minus * {
+  cursor: url('../assets/cursor-minus.svg') 2 2, not-allowed;
+}
+
+.werkzeug-hinweis {
+  position: fixed;
+  left: 50%;
+  bottom: 7px;
+  z-index: 25;
+  padding: 5px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: auftauchen 0.3s var(--feder);
+}
+.werkzeug-hinweis b {
+  color: var(--punkt);
+  font-weight: normal;
 }
 
 .steuerung3d {

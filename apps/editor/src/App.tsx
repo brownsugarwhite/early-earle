@@ -7,6 +7,7 @@ import { DialogFenster } from './ui/DialogFenster';
 import { Glasfilter } from './ui/Glasfilter';
 import { Hinweis } from './ui/Hinweis';
 import { KontextMenue } from './ui/KontextMenue';
+import { WerkzeugHinweis } from './ui/WerkzeugHinweis';
 import { ViewportGrund, ViewportOber } from './viewports/Viewport';
 
 export function App() {
@@ -31,6 +32,7 @@ export function App() {
       <KontextMenue />
       <DialogFenster />
       <Hinweis />
+      <WerkzeugHinweis />
     </>
   );
 }

@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { abstand, bogenlaenge, punktAuf, teilen } from './bezier';
+import { abstand, punktAuf, teilen } from './bezier';
 import { neuesDokument } from './dokument';
 import {
-  MAX_SEGMENT,
   START_RADIUS,
-  autoTeilen,
   bewegeGriff,
   bewegeKnoten,
   einfuegen,
@@ -14,6 +12,7 @@ import {
   naechsterAufProfil,
   pfadAbtasten,
   segmente,
+  umwandeln,
   vollerPfad,
 } from './profil';
 
@@ -43,10 +42,6 @@ describe('Startform', () => {
     for (const p of pfadAbtasten(vollerPfad(d.profile.seite), 16)) expect(Math.abs(abstand(p, { x: 0, y: r }) - r)).toBeLessThan(r * 1e-3);
     for (const p of pfadAbtasten(vollerPfad(d.profile.front), 16)) expect(Math.abs(abstand(p, { x: 0, y: r }) - r)).toBeLessThan(r * 1e-3);
     for (const p of pfadAbtasten(vollerPfad(d.profile.top), 16)) expect(Math.abs(abstand(p, { x: 0, y: 0 }) - r)).toBeLessThan(r * 1e-3);
-  });
-  it('teilt sich nicht von selbst', () => {
-    const d = neuesDokument();
-    for (const pr of Object.values(d.profile)) for (const s of segmente(pr)) expect(bogenlaenge(s)).toBeLessThan(MAX_SEGMENT);
   });
 });
 
@@ -114,13 +109,37 @@ describe('Bearbeiten', () => {
     expect(kannLoeschen(front, 3)).toBe(true);
   });
 
-  it('Auto-Teilung: lange Segmente werden geteilt, der gezogene Punkt wird verfolgt', () => {
+  it('Ziehen setzt keine Punkte von selbst (wie Illustrator)', () => {
     const seite = neuesDokument().profile.seite;
-    const weit = bewegeKnoten(seite, 3, { x: 0.8, y: 0.3 });
-    const { profil, folge } = autoTeilen(weit, MAX_SEGMENT, 3);
-    expect(profil.knoten.length).toBeGreaterThan(12);
-    expect(profil.knoten[folge]!.p).toEqual({ x: 0.8, y: 0.3 });
-    for (const s of segmente(profil)) expect(bogenlaenge(s)).toBeLessThanOrEqual(MAX_SEGMENT + 1e-9);
+    expect(bewegeKnoten(seite, 3, { x: 0.8, y: 0.3 }).knoten).toHaveLength(12);
+  });
+
+  it('Löschen passt die Nachbargriffe an: ein eingefügter Punkt verschwindet spurlos', () => {
+    const seite = neuesDokument().profile.seite;
+    const mit = einfuegen(seite, 2, 0.37).profil;
+    const ohne = loeschen(mit, 3);
+    expect(ohne.knoten).toHaveLength(12);
+    const a = pfadAbtasten(segmente(seite), 24);
+    const b = pfadAbtasten(segmente(ohne), 24);
+    for (let i = 0; i < a.length; i++) expect(abstand(a[i]!, b[i]!)).toBeLessThan(2e-4);
+  });
+
+  it('Löschen eines Punkts auf einer Beule zeichnet die Form nach statt zu springen', () => {
+    const seite = bewegeKnoten(neuesDokument().profile.seite, 2, { x: 0.32, y: 0.5 });
+    const ohne = loeschen(seite, 2);
+    // das neue Segment läuft zwischen den Nachbarn nach außen (kein gerader Strich)
+    const mitte = pfadAbtasten([segmente(ohne)[1]!], 8)[4]!;
+    expect(abstand(mitte, { x: 0, y: r })).toBeGreaterThan(r);
+  });
+
+  it('⌥-Klick wandelt um: glatt → Ecke ohne Griffe → glatt', () => {
+    const top = neuesDokument().profile.top;
+    const ecke = umwandeln(top, 2).knoten[2]!;
+    expect(ecke.art).toBe('ecke');
+    expect(ecke.ein).toEqual({ x: 0, y: 0 });
+    const wieder = umwandeln(umwandeln(top, 2), 2).knoten[2]!;
+    expect(wieder.art).toBe('glatt');
+    expect(Math.hypot(wieder.aus.x, wieder.aus.y)).toBeGreaterThan(0.01);
   });
 
   it('findet den nächsten Kurvenpunkt', () => {

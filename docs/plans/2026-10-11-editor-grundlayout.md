@@ -252,3 +252,9 @@ apps/editor/               @ee/editor
 - **Scissor-Ursprung** WebGPU vs. WebGL2: beide Backends testen, sonst Rückfall Canvas im Viewport.
 - **Überlappung beim Maximieren:** Weil alle Viewports denselben Verlauf zeigen, verschmelzen sie kurz. z-Reihenfolge und Timing am Bild prüfen.
 - **`background-attachment: fixed`** bricht bei Transforms. Animationen deshalb über left/top/width/height, nicht über Transforms.
+
+## Nachträge (11.10. nachmittags, nach Florians erstem Test)
+
+- **Ein Objekt, drei Ansichten:** Geteilte Ausdehnungen sind gekoppelt (Seite↔Front Höhe, Seite↔Top Länge, Front↔Top Breite). Die andere Ansicht folgt live mit proportionalem Abfall.
+- **3D drehen** auch mit linker Taste und Trackpad.
+- **Automatische Punkte verworfen:** Punkte setzt Florian von Hand wie in Illustrator (Zeichenstift P, + / −, Rechtsklickmenü).

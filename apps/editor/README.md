@@ -40,13 +40,16 @@ Fehlt nach `pnpm install` das Electron-Binary (`Electron failed to install corre
 | Punkt wählen / ziehen | Klick / Ziehen; jede Ansicht hat ihren eigenen gewählten Punkt |
 | Griff ziehen | bleibt eine Linie durch den Punkt (Längen frei) |
 | Ecke | ⌥ beim Griff-Ziehen |
-| Punkt einfügen, löschen, glätten | Rechtsklick auf Punkt; „Punkt hier einfügen“ per Rechtsklick auf die Kurve |
+| Zeichenstift | P: Klick auf die Kurve setzt einen Punkt, Klick auf einen Punkt löscht ihn, ⌥-Klick wandelt um (glatt ↔ Ecke); ⌘ hält die Direktauswahl |
+| Ankerpunkt hinzufügen / löschen | + / − (wie Illustrator) |
+| Direktauswahl | A oder V, Esc |
+| Punkt einfügen, löschen, glätten | auch per Rechtsklick auf Punkt bzw. „Punkt hier einfügen“ auf der Kurve |
 | Punkt löschen | Entf/⌫ (gewählter Punkt im Viewport unter der Maus) |
 | Rückgängig / Wiederholen | ⌘Z / ⇧⌘Z (ein Zug = ein Schritt) |
 | Speichern / Neues Wesen / Library | ⌘S / ⌘N / ⌘L |
 
 - **Ein Objekt, drei Ansichten:** Je zwei Ansichten teilen eine Achse: Seite und Front die Höhe, Seite und Top die Länge, Front und Top die Breite. Ändert ein Zug die Ausdehnung auf einer geteilten Achse, folgt die andere Ansicht live. Ihr äußerster Punkt geht genau mit, die übrigen abgestuft (wie proportionales Bearbeiten in Blender, quadratischer Abfall). Ein Zug ist ein Rückgängig-Schritt für alle drei Ansichten. Geladene Wesen werden beim Öffnen stimmig gemacht.
-- **Automatische Punkte:** Wird beim Ziehen ein Segment länger als 0,2 Kachel, entsteht in der Mitte formtreu ein neuer Punkt. Bestehende Punkte wandern nicht.
+- **Punkte wie in Illustrator:** Es entstehen keine Punkte von selbst; Punkte setzt und löscht man von Hand. Beim Löschen behalten die Nachbarn ihre Griffrichtungen, ihre Grifflängen passen sich der alten Form an.
 - **Spiegelung:** Front und Top sind nur auf einer Hälfte editierbar (rechts bzw. oben). Achspunkte bleiben auf der Achse; ein glatter Achspunkt hat seinen Griff quer zur Achse.
 - **Größe:** Der Regler in der Menüleiste skaliert das ganze Wesen relativ zur festen Kachel (25–300 %). Doppelklick setzt 100 %.
 - **Posen:** „Neue Pose“ legt Ruhen, Laufen oder Inklusion als Tab an. Rechtsklick auf einen Tab entfernt die Pose. Das Bearbeiten der Posen kommt mit der Bauweise; bis dahin zeigen alle Tabs die Grundform.

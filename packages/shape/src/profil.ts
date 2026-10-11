@@ -6,7 +6,7 @@
 // - Front: u = rechts (Achse u = 0, editierbar u ≥ 0), v = oben, v = 0 ist der Boden.
 // - Top:   u = hinten (vorn links), v = Bildschirm oben (Achse v = 0, editierbar v ≥ 0).
 
-import { type Kubik, type V2, abstand, bogenlaenge, laengeV, mal, minus, naechsterAufKubik, normiert, plus, teilen } from './bezier';
+import { type Kubik, type V2, ableitung, abstand, abtasten, laengeV, mal, minus, naechsterAufKubik, normiert, plus, punktAuf, punktprodukt, teilen } from './bezier';
 
 export type KnotenArt = 'glatt' | 'ecke';
 
@@ -20,8 +20,6 @@ export type Profil = { art: 'geschlossen'; knoten: Knoten[] } | { art: 'halb'; a
 
 export type GriffSeite = 'ein' | 'aus';
 
-/** Größte Segmentlänge, bevor beim Ziehen automatisch formtreu geteilt wird (Kachel-Einheiten). */
-export const MAX_SEGMENT = 0.2;
 export const MIN_KNOTEN_GESCHLOSSEN = 4;
 export const MIN_KNOTEN_HALB = 3;
 
@@ -242,35 +240,91 @@ export function kannLoeschen(pr: Profil, i: number): boolean {
   return pr.knoten.length > min && i >= 0 && i < pr.knoten.length;
 }
 
+/**
+ * Löscht einen Punkt wie Illustrator: Die beiden Nachbarn behalten ihre Griffrichtungen, die Grifflängen
+ * werden so angepasst, dass das neue Segment die alte Form möglichst gut nachzeichnet (kleinste Quadrate
+ * mit Nachparametrisierung). Ein formtreu eingefügter Punkt lässt sich so spurlos wieder löschen.
+ */
 export function loeschen(pr: Profil, i: number): Profil {
   if (!kannLoeschen(pr, i)) return pr;
+  const n = pr.knoten.length;
+  const ia = (i - 1 + n) % n;
+  const ib = (i + 1) % n;
+  const a = pr.knoten[ia]!;
+  const m = pr.knoten[i]!;
+  const b = pr.knoten[ib]!;
+  const proben = [...abtasten(segment(pr, ia), 16), ...abtasten(segment(pr, i), 16).slice(1)];
+  const dA = laengeV(a.aus) > 1e-9 ? normiert(a.aus) : normiert(minus(m.p, a.p));
+  const dB = laengeV(b.ein) > 1e-9 ? normiert(b.ein) : normiert(minus(m.p, b.p));
+  const [alpha, beta] = griffeAnpassen(a.p, b.p, dA, dB, proben);
   const knoten = pr.knoten.slice();
+  knoten[ia] = { ...a, aus: mal(dA, alpha) };
+  knoten[ib] = { ...b, ein: mal(dB, beta) };
   knoten.splice(i, 1);
   return achsenRegeln({ ...pr, knoten });
 }
 
-/**
- * Teilt alle Segmente, die länger als `max` sind, formtreu in der Mitte. `folge` ist der Index eines
- * Knotens, dessen neue Position zurückgegeben wird (z. B. der gerade gezogene Punkt).
- */
-export function autoTeilen(pr: Profil, max = MAX_SEGMENT, folge = -1): { profil: Profil; folge: number } {
-  let profil = pr;
-  let f = folge;
-  for (let runde = 0; runde < 64; runde++) {
-    const m = segmentAnzahl(profil);
-    let geteilt = false;
-    for (let s = 0; s < m; s++) {
-      if (bogenlaenge(segment(profil, s)) > max) {
-        const r = einfuegen(profil, s, 0.5);
-        profil = r.profil;
-        if (f >= r.index) f += 1;
-        geteilt = true;
-        break;
-      }
+/** Grifflängen α, β für ein Segment p0 → p3 mit festen Richtungen, das die Proben bestmöglich trifft. */
+function griffeAnpassen(p0: V2, p3: V2, dA: V2, dB: V2, proben: V2[]): [number, number] {
+  // Startparameter nach Sehnenlänge
+  const t: number[] = [0];
+  for (let j = 1; j < proben.length; j++) t.push(t[j - 1]! + abstand(proben[j]!, proben[j - 1]!));
+  const L = t[t.length - 1] || 1;
+  for (let j = 0; j < t.length; j++) t[j] = t[j]! / L;
+  const notfall: [number, number] = [abstand(p0, p3) / 3, abstand(p0, p3) / 3];
+  let ergebnis = notfall;
+  for (let runde = 0; runde < 6; runde++) {
+    let a11 = 0;
+    let a12 = 0;
+    let a22 = 0;
+    let r1 = 0;
+    let r2 = 0;
+    proben.forEach((p, j) => {
+      const u = t[j]!;
+      const s = 1 - u;
+      const b0 = s * s * s + 3 * s * s * u;
+      const b3 = 3 * s * u * u + u * u * u;
+      const b1 = 3 * s * s * u;
+      const b2 = 3 * s * u * u;
+      const c = { x: p.x - b0 * p0.x - b3 * p3.x, y: p.y - b0 * p0.y - b3 * p3.y };
+      const A1 = mal(dA, b1);
+      const A2 = mal(dB, b2);
+      a11 += punktprodukt(A1, A1);
+      a12 += punktprodukt(A1, A2);
+      a22 += punktprodukt(A2, A2);
+      r1 += punktprodukt(A1, c);
+      r2 += punktprodukt(A2, c);
+    });
+    const det = a11 * a22 - a12 * a12;
+    if (Math.abs(det) < 1e-14) break;
+    const alpha = (r1 * a22 - r2 * a12) / det;
+    const beta = (a11 * r2 - a12 * r1) / det;
+    if (!(alpha > 1e-6 && beta > 1e-6)) break;
+    ergebnis = [alpha, beta];
+    // Nachparametrisierung: jede Probe auf den nächsten Kurvenparameter ziehen
+    const kurve: Kubik = [p0, plus(p0, mal(dA, alpha)), plus(p3, mal(dB, beta)), p3];
+    for (let j = 1; j < proben.length - 1; j++) {
+      const u = t[j]!;
+      const q = minus(punktAuf(kurve, u), proben[j]!);
+      const d1 = ableitung(kurve, u);
+      const d1b = ableitung(kurve, Math.min(1, u + 1e-4));
+      const d2 = mal(minus(d1b, d1), 1e4);
+      const fp = punktprodukt(d1, d1) + punktprodukt(q, d2);
+      if (Math.abs(fp) > 1e-12) t[j] = Math.min(1, Math.max(0, u - punktprodukt(q, d1) / fp));
     }
-    if (!geteilt) break;
   }
-  return { profil, folge: f };
+  return ergebnis;
+}
+
+/**
+ * ⌥-Klick mit dem Zeichenstift (Ankerpunkt umwandeln wie Illustrator): glatter Punkt → Ecke mit
+ * eingezogenen Griffen, Ecke → glatter Punkt.
+ */
+export function umwandeln(pr: Profil, i: number): Profil {
+  const kn = pr.knoten[i];
+  if (!kn) return pr;
+  if (kn.art === 'ecke') return glaetten(pr, i);
+  return ersetze(pr, i, { ...kn, art: 'ecke', ein: { x: 0, y: 0 }, aus: { x: 0, y: 0 } });
 }
 
 export type KurvenTreffer = { segment: number; t: number; punkt: V2; abstand: number };

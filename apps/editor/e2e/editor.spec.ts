@@ -97,7 +97,7 @@ test('Mausrad zoomt zum Cursor, mittlere Taste verschiebt', async ({ page }) => 
   expect(nachPan.y - nachZoom.y).toBeCloseTo(30, 0);
 });
 
-test('Punkt ziehen: automatisch neue Punkte, 3D gleiche Vertexzahl, Rückgängig', async ({ page }) => {
+test('Punkt ziehen wie Illustrator: keine Punkte von selbst, 3D gleiche Vertexzahl, Rückgängig', async ({ page }) => {
   await bereit(page);
   const v0 = await page.evaluate(() => (window as unknown as Fenster).__editor!.vertices());
   const p = await knotenPos(page, 'seite', 3);
@@ -106,7 +106,8 @@ test('Punkt ziehen: automatisch neue Punkte, 3D gleiche Vertexzahl, Rückgängig
   await page.mouse.move(p.x + 180, p.y + 20, { steps: 12 });
   await page.mouse.up();
   const d = await dok(page);
-  expect(d.profile.seite!.knoten.length).toBeGreaterThan(12);
+  expect(d.profile.seite!.knoten).toHaveLength(12);
+  expect(d.profile.seite!.knoten[3]!.p.x).toBeGreaterThan(0.5);
   expect(await page.evaluate(() => (window as unknown as Fenster).__editor!.vertices())).toBe(v0);
   await page.screenshot({ path: path.join(bilder, 'punkt-gezogen.png') });
   await page.keyboard.press('ControlOrMeta+z');
@@ -203,6 +204,46 @@ test('Ein Objekt: Ziehen in einer Ansicht bewegt die anderen live mit', async ({
   await page.keyboard.press('ControlOrMeta+z');
   expect(await abw()).toBeLessThan(1e-3);
   expect((await ext()).topBreite).toBeLessThan(0.3);
+});
+
+test('Zeichenstift (P), + und −: Punkte von Hand setzen und löschen wie in Illustrator', async ({ page }) => {
+  await bereit(page);
+  const oben = await knotenPos(page, 'seite', 0);
+  const unten = await knotenPos(page, 'seite', 6);
+  const mitte = { x: oben.x, y: (oben.y + unten.y) / 2 };
+  const R = (unten.y - oben.y) / 2;
+  const aufKurve = (grad: number) => ({ x: mitte.x + R * Math.cos((grad * Math.PI) / 180), y: mitte.y - R * Math.sin((grad * Math.PI) / 180) });
+  const anzahl = async () => (await dok(page)).profile.seite!.knoten.length;
+
+  await page.mouse.move(mitte.x, mitte.y);
+  await page.keyboard.press('p');
+  await expect(page.locator('.werkzeug-hinweis')).toContainText('Zeichenstift');
+  const p75 = aufKurve(75);
+  await page.mouse.click(p75.x, p75.y);
+  expect(await anzahl()).toBe(13);
+  await page.screenshot({ path: path.join(bilder, 'zeichenstift.png') });
+  // Klick auf einen Punkt löscht ihn
+  const k = await knotenPos(page, 'seite', 1);
+  await page.mouse.click(k.x, k.y);
+  expect(await anzahl()).toBe(12);
+  // ⌥-Klick wandelt um
+  const k2 = await knotenPos(page, 'seite', 3);
+  await page.keyboard.down('Alt');
+  await page.mouse.click(k2.x, k2.y);
+  await page.keyboard.up('Alt');
+  expect((await dok(page)).profile.seite!.knoten[3]!.art).toBe('ecke');
+  // − löscht, + fügt ein
+  await page.keyboard.press('-');
+  const k3 = await knotenPos(page, 'seite', 4);
+  await page.mouse.click(k3.x, k3.y);
+  expect(await anzahl()).toBe(11);
+  await page.keyboard.press('+');
+  const p200 = aufKurve(200);
+  await page.mouse.click(p200.x, p200.y);
+  expect(await anzahl()).toBe(12);
+  // Esc zurück zur Direktauswahl
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.werkzeug-hinweis')).toHaveCount(0);
 });
 
 test('Auswahl je Viewport, Entf löscht den Punkt unter der Maus', async ({ page }) => {

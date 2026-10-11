@@ -37,6 +37,7 @@ export function useTastatur() {
       if (e.key === 'Escape') {
         if (ui.menue) ui.oeffneMenue(null);
         else if (ui.dialog) ui.oeffneDialog(null);
+        else if (ui.werkzeug !== 'auswahl') ui.setzeWerkzeug('auswahl');
         else ui.auswahlLeeren();
         return;
       }
@@ -58,6 +59,14 @@ export function useTastatur() {
       } else if (cmd && k === 'l') {
         e.preventDefault();
         ui.libraryUmschalten();
+      } else if (!cmd && !e.altKey && (k === 'a' || k === 'v')) {
+        ui.setzeWerkzeug('auswahl');
+      } else if (!cmd && !e.altKey && k === 'p') {
+        ui.setzeWerkzeug('stift');
+      } else if (!cmd && !e.altKey && (e.key === '+' || e.key === '=')) {
+        ui.setzeWerkzeug('plus');
+      } else if (!cmd && !e.altKey && (e.key === '-' || e.key === '–')) {
+        ui.setzeWerkzeug('minus');
       } else if (e.key === 'Home') {
         e.preventDefault();
         ansichtUnterMausZuruecksetzen();
@@ -92,6 +101,14 @@ export function useMenueBruecke() {
           return maximiereUnterMaus();
         case 'ansicht-zuruecksetzen':
           return ansichtUnterMausZuruecksetzen();
+        case 'werkzeug-auswahl':
+          return ui.setzeWerkzeug('auswahl');
+        case 'werkzeug-stift':
+          return ui.setzeWerkzeug('stift');
+        case 'werkzeug-plus':
+          return ui.setzeWerkzeug('plus');
+        case 'werkzeug-minus':
+          return ui.setzeWerkzeug('minus');
       }
     });
   }, []);

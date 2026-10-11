@@ -7,6 +7,9 @@ import type { ViewId } from '../types';
 export type Ansicht2D = { zoom: number; cu: number; cv: number };
 export type Kamera = { azimut: number; elevation: number; distanz: number; ziel: [number, number, number] };
 
+/** Werkzeuge wie in Illustrator: Direktauswahl (A), Zeichenstift (P), Ankerpunkt hinzufügen (+) / löschen (−). */
+export type Werkzeug = 'auswahl' | 'stift' | 'plus' | 'minus';
+
 export type MenueEintrag = { label: string; aktion: () => void; aus?: boolean } | 'trenner';
 export type KontextMenue = { x: number; y: number; eintraege: MenueEintrag[] };
 
@@ -29,6 +32,7 @@ type UiState = {
   /** liegt während Layout-Bewegungen oben */
   oben: ViewId | null;
   hover: ViewId | null;
+  werkzeug: Werkzeug;
   /** gewählter Punkt je 2D-Viewport (wie in der Vorlage: jede Ansicht zeigt ihre Griffe) */
   auswahl: Record<Ansicht, number | null>;
   /** zuletzt bearbeitete Ansicht (für Entf, wenn die Maus nicht über einem 2D-Viewport ist) */
@@ -42,6 +46,7 @@ type UiState = {
   maximieren(id: ViewId): void;
   libraryUmschalten(offen?: boolean): void;
   setzeHover(id: ViewId | null): void;
+  setzeWerkzeug(w: Werkzeug): void;
   waehle(ansicht: Ansicht, index: number | null): void;
   setzeAuswahl(a: Record<Ansicht, number | null>, aktiv: Ansicht): void;
   auswahlLeeren(): void;
@@ -58,6 +63,7 @@ export const useUi = create<UiState>((set, get) => ({
   library: false,
   oben: null,
   hover: null,
+  werkzeug: 'auswahl',
   auswahl: { seite: null, front: null, top: null },
   aktiv: null,
   ansichten: { ...START_2D },
@@ -75,6 +81,9 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeHover(id) {
     set({ hover: id });
+  },
+  setzeWerkzeug(w) {
+    set({ werkzeug: w });
   },
   waehle(ansicht, index) {
     set({ auswahl: { ...get().auswahl, [ansicht]: index }, aktiv: ansicht });

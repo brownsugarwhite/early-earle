@@ -18,7 +18,18 @@ export type SpeicherAuftrag = {
   vorschau: string | null;
 };
 
-export type MenueBefehl = 'neu' | 'speichern' | 'rueckgaengig' | 'wiederholen' | 'library' | 'maximieren' | 'ansicht-zuruecksetzen';
+export type MenueBefehl =
+  | 'neu'
+  | 'speichern'
+  | 'rueckgaengig'
+  | 'wiederholen'
+  | 'library'
+  | 'maximieren'
+  | 'ansicht-zuruecksetzen'
+  | 'werkzeug-auswahl'
+  | 'werkzeug-stift'
+  | 'werkzeug-plus'
+  | 'werkzeug-minus';
 
 export interface EditorApi {
   bibliothekListe(): Promise<BibliothekEintrag[]>;
