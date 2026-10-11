@@ -33,8 +33,8 @@ type UiState = {
   oben: ViewId | null;
   hover: ViewId | null;
   werkzeug: Werkzeug;
-  /** gewählter Punkt je 2D-Viewport (wie in der Vorlage: jede Ansicht zeigt ihre Griffe) */
-  auswahl: Record<Ansicht, number | null>;
+  /** gewählte Punkte je 2D-Viewport (wie in der Vorlage: jede Ansicht zeigt ihre Griffe) */
+  auswahl: Record<Ansicht, number[]>;
   /** zuletzt bearbeitete Ansicht (für Entf, wenn die Maus nicht über einem 2D-Viewport ist) */
   aktiv: Ansicht | null;
   ansichten: Record<Ansicht, Ansicht2D>;
@@ -47,8 +47,8 @@ type UiState = {
   libraryUmschalten(offen?: boolean): void;
   setzeHover(id: ViewId | null): void;
   setzeWerkzeug(w: Werkzeug): void;
-  waehle(ansicht: Ansicht, index: number | null): void;
-  setzeAuswahl(a: Record<Ansicht, number | null>, aktiv: Ansicht): void;
+  waehle(ansicht: Ansicht, indizes: number[]): void;
+  setzeAuswahl(a: Record<Ansicht, number[]>, aktiv: Ansicht): void;
   auswahlLeeren(): void;
   setzeAnsicht(a: Ansicht, v: Ansicht2D): void;
   setzeKamera(k: Kamera): void;
@@ -64,7 +64,7 @@ export const useUi = create<UiState>((set, get) => ({
   oben: null,
   hover: null,
   werkzeug: 'auswahl',
-  auswahl: { seite: null, front: null, top: null },
+  auswahl: { seite: [], front: [], top: [] },
   aktiv: null,
   ansichten: { ...START_2D },
   kamera: START_KAMERA,
@@ -85,14 +85,14 @@ export const useUi = create<UiState>((set, get) => ({
   setzeWerkzeug(w) {
     set({ werkzeug: w });
   },
-  waehle(ansicht, index) {
-    set({ auswahl: { ...get().auswahl, [ansicht]: index }, aktiv: ansicht });
+  waehle(ansicht, indizes) {
+    set({ auswahl: { ...get().auswahl, [ansicht]: indizes }, aktiv: ansicht });
   },
   setzeAuswahl(a, aktiv) {
     set({ auswahl: a, aktiv });
   },
   auswahlLeeren() {
-    set({ auswahl: { seite: null, front: null, top: null } });
+    set({ auswahl: { seite: [], front: [], top: [] } });
   },
   setzeAnsicht(a, v) {
     set({ ansichten: { ...get().ansichten, [a]: v } });

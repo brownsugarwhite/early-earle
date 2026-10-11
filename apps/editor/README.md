@@ -37,14 +37,16 @@ Fehlt nach `pnpm install` das Electron-Binary (`Electron failed to install corre
 | Trackpad 2D | zwei Finger verschieben, Pinch zoomt |
 | Ansicht zurücksetzen | Pos1 (Viewport unter der Maus) oder Rechtsklick auf freie Fläche |
 | Maximieren | pinker Knopf oder ⌃Leertaste (wie Blender) |
-| Punkt wählen / ziehen | Klick / Ziehen; jede Ansicht hat ihren eigenen gewählten Punkt |
+| Punkt wählen / ziehen | Klick / Ziehen; ⇧-Klick wählt dazu oder ab; gewählte Punkte ziehen gemeinsam; jede Ansicht hat ihre eigene Auswahl |
+| Auswahlrechteck | auf freier Fläche ziehen (⇧ schaltet die Punkte im Rechteck um), Klick ins Leere hebt die Auswahl auf |
+| Punkte verschieben per Tastatur | Pfeiltasten (1 Schritt = 0,002 Kachel ≈ 1 px in der Grundansicht), ⇧ + Pfeil = zehnfach; jeder Schritt ein Rückgängig |
 | Griff ziehen | bleibt eine Linie durch den Punkt (Längen frei) |
 | Ecke | ⌥ beim Griff-Ziehen |
 | Zeichenstift | P: Klick auf die Kurve setzt einen Punkt, Klick auf einen Punkt löscht ihn, ⌥-Klick wandelt um (glatt ↔ Ecke); ⌘ hält die Direktauswahl |
 | Ankerpunkt hinzufügen / löschen | + / − (wie Illustrator) |
 | Direktauswahl | A oder V, Esc |
 | Punkt einfügen, löschen, glätten | auch per Rechtsklick auf Punkt bzw. „Punkt hier einfügen“ auf der Kurve |
-| Punkt löschen | Entf/⌫ (gewählter Punkt im Viewport unter der Maus) |
+| Punkte löschen | Entf/⌫ (gewählte Punkte im Viewport unter der Maus) |
 | Rückgängig / Wiederholen | ⌘Z / ⇧⌘Z (ein Zug = ein Schritt) |
 | Speichern / Neues Wesen / Library | ⌘S / ⌘N / ⌘L |
 
@@ -54,7 +56,7 @@ Fehlt nach `pnpm install` das Electron-Binary (`Electron failed to install corre
 - **Größe:** Der Regler in der Menüleiste skaliert das ganze Wesen relativ zur festen Kachel (25–300 %). Doppelklick setzt 100 %.
 - **Posen:** „Neue Pose“ legt Ruhen, Laufen oder Inklusion als Tab an. Rechtsklick auf einen Tab entfernt die Pose. Das Bearbeiten der Posen kommt mit der Bauweise; bis dahin zeigen alle Tabs die Grundform.
 - **Bibliothek:** „Speichern“ schreibt `<name>.json` plus Vorschau-PNG nach `~/Documents/early earle Editor/Bibliothek/`. Im Web-Modus speichert der Editor nur im localStorage (zum Prüfen).
-- **Neues Wesen:** Jedes neue Wesen startet als Kugel aus drei Kreisen (Größe 100 %).
+- **Neues Wesen:** Jedes neue Wesen startet als Kugel aus drei Kreisen mit 4 Punkten (Seite) bzw. 3 (Front, Top: zwei Achspunkte und die Flanke), Größe 100 %.
 
 ## Aufbau
 

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ansichtUnterMausZuruecksetzen, gewaehltenPunktLoeschen, maximiereUnterMaus, neuesWesen, speichern } from './aktionen';
+import { ansichtUnterMausZuruecksetzen, gewaehltePunkteLoeschen, gewaehltePunkteVerschieben, maximiereUnterMaus, neuesWesen, speichern } from './aktionen';
 import { setzeLayoutZiel } from './layout/animation';
 import { berechneLayout } from './layout/layout';
 import { editorApi } from './library/speicher';
@@ -25,6 +25,8 @@ export function useLayoutSteuerung() {
     };
   }, []);
 }
+
+const PFEILE: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
 
 const istEingabe = (t: EventTarget | null) => t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
 
@@ -72,7 +74,12 @@ export function useTastatur() {
         ansichtUnterMausZuruecksetzen();
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        gewaehltenPunktLoeschen();
+        gewaehltePunkteLoeschen();
+      } else if (!cmd && e.key.startsWith('Arrow')) {
+        // Pfeiltasten verschieben die gewählten Punkte wie in Illustrator, ⇧ = zehnfach
+        e.preventDefault();
+        const r = PFEILE[e.key];
+        if (r) gewaehltePunkteVerschieben(r[0]!, r[1]!, e.shiftKey);
       }
     };
     window.addEventListener('keydown', taste);

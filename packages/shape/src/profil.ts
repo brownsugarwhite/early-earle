@@ -20,8 +20,8 @@ export type Profil = { art: 'geschlossen'; knoten: Knoten[] } | { art: 'halb'; a
 
 export type GriffSeite = 'ein' | 'aus';
 
-export const MIN_KNOTEN_GESCHLOSSEN = 4;
-export const MIN_KNOTEN_HALB = 3;
+export const MIN_KNOTEN_GESCHLOSSEN = 2;
+export const MIN_KNOTEN_HALB = 2;
 
 /** Startkugel: Durchmesser 0,53 Kachel, steht auf dem Boden (Florians Vorlage). */
 export const START_RADIUS = 0.265;
@@ -112,8 +112,8 @@ function kreisKnoten(mitte: V2, r: number, winkel: number, h: number): Knoten {
   return k(p, mal(vor, -h), mal(vor, h));
 }
 
-/** Geschlossener Kreis, oben beginnend, im Uhrzeigersinn. */
-export function startKreis(mitte: V2, r: number, n = 12): Profil {
+/** Geschlossener Kreis, oben beginnend, im Uhrzeigersinn (Start: 4 Punkte wie in Illustrator). */
+export function startKreis(mitte: V2, r: number, n = 4): Profil {
   const h = griffFuerBogen(r, (2 * Math.PI) / n);
   const knoten: Knoten[] = [];
   for (let i = 0; i < n; i++) knoten.push(kreisKnoten(mitte, r, Math.PI / 2 - (i * 2 * Math.PI) / n, h));
@@ -121,7 +121,7 @@ export function startKreis(mitte: V2, r: number, n = 12): Profil {
 }
 
 /** Halbkreis auf der editierbaren Seite der Achse, `segs` Segmente (segs + 1 Knoten). */
-export function startHalbkreis(mitte: V2, r: number, achse: Achse, segs = 6): Profil {
+export function startHalbkreis(mitte: V2, r: number, achse: Achse, segs = 2): Profil {
   const h = griffFuerBogen(r, Math.PI / segs);
   const start = achse === 'senkrecht' ? Math.PI / 2 : Math.PI;
   const knoten: Knoten[] = [];
@@ -173,6 +173,12 @@ export function bewegeKnoten(pr: Profil, i: number, ziel: V2): Profil {
   const kn = pr.knoten[i];
   if (!kn) return pr;
   return ersetze(pr, i, { ...kn, p: ziel });
+}
+
+/** Verschiebt mehrere Punkte um denselben Versatz (Achsregeln gelten je Punkt). */
+export function verschiebeKnoten(pr: Profil, indizes: readonly number[], versatz: V2): Profil {
+  const knoten = pr.knoten.map((kn, i) => (indizes.includes(i) ? { ...kn, p: plus(kn.p, versatz) } : kn));
+  return achsenRegeln({ ...pr, knoten });
 }
 
 /**
@@ -313,6 +319,13 @@ function griffeAnpassen(p0: V2, p3: V2, dA: V2, dB: V2, proben: V2[]): [number, 
       if (Math.abs(fp) > 1e-12) t[j] = Math.min(1, Math.max(0, u - punktprodukt(q, d1) / fp));
     }
   }
+  return ergebnis;
+}
+
+/** Löscht mehrere Punkte (von hinten nach vorn, nicht löschbare bleiben). */
+export function loeschenMehrere(pr: Profil, indizes: readonly number[]): Profil {
+  let ergebnis = pr;
+  for (const i of [...indizes].sort((a, b) => b - a)) if (kannLoeschen(ergebnis, i)) ergebnis = loeschen(ergebnis, i);
   return ergebnis;
 }
 

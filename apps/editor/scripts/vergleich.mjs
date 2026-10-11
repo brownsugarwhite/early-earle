@@ -25,9 +25,9 @@ await page.evaluate(() => document.fonts.ready);
 // wie in der Vorlage: in jeder 2D-Ansicht ist der obere bzw. vordere Achspunkt gewählt (Griffe sichtbar)
 await page.evaluate(() => {
   const ui = window.__stores.ui.getState();
-  ui.waehle('seite', 0);
-  ui.waehle('front', 0);
-  ui.waehle('top', 0);
+  ui.waehle('seite', [0]);
+  ui.waehle('front', [0]);
+  ui.waehle('top', [0]);
 });
 await page.waitForTimeout(600);
 const backend = await page.evaluate(() => window.__editor.backend);

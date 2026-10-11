@@ -22,7 +22,7 @@ describe('Kopplung der Ansichten', () => {
 
   it('Front: Flanke rausziehen macht das Top breiter, die Seite bleibt', () => {
     const p = neuesDokument().profile;
-    const front = bewegeKnoten(p.front, 3, { x: 0.4, y: r });
+    const front = bewegeKnoten(p.front, 1, { x: 0.4, y: r });
     const g = abgleichen({ ...p, front }, 'front');
     expect(ausdehnung(g.top, 'y')[1]).toBeCloseTo(ausdehnung(front, 'x')[1], 5);
     expect(g.seite).toEqual(p.seite);
@@ -51,10 +51,10 @@ describe('Kopplung der Ansichten', () => {
 
   it('Schrumpfen bleibt monoton und stimmig', () => {
     const p = neuesDokument().profile;
-    const front = bewegeKnoten(bewegeKnoten(p.front, 0, { x: 0, y: 0.3 }), 3, { x: 0.12, y: 0.2 });
+    const front = bewegeKnoten(bewegeKnoten(p.front, 0, { x: 0, y: 0.3 }), 1, { x: 0.12, y: 0.2 });
     const g = abgleichen({ ...p, front }, 'front');
     expect(abweichung(g)).toBeLessThan(1e-3);
-    // Höhe der Seite = Höhe der Front (deren höchster Punkt ist jetzt ein Nachbar des Achspunkts)
+    // Höhe der Seite = Höhe der Front
     const hoehe = ausdehnung(front, 'y')[1];
     expect(hoehe).toBeLessThan(2 * r - 0.01);
     expect(Math.max(...g.seite.knoten.map((k) => k.p.y))).toBeLessThanOrEqual(hoehe + 1e-6);
@@ -67,7 +67,7 @@ describe('Kopplung der Ansichten', () => {
 
   it('angleichen macht ein widersprüchliches Dokument stimmig', () => {
     const p = neuesDokument().profile;
-    const widerspruch = { ...p, top: bewegeKnoten(p.top, 3, { x: 0, y: 0.5 }), front: bewegeKnoten(p.front, 0, { x: 0, y: 0.8 }) };
+    const widerspruch = { ...p, top: bewegeKnoten(p.top, 1, { x: 0, y: 0.5 }), front: bewegeKnoten(p.front, 0, { x: 0, y: 0.8 }) };
     expect(abweichung(widerspruch)).toBeGreaterThan(0.1);
     expect(abweichung(angleichen(widerspruch))).toBeLessThan(1e-3);
   });

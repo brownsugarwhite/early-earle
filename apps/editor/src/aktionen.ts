@@ -1,6 +1,6 @@
 // Befehle der Menüleiste und Tastenkürzel (an einer Stelle, damit Menü, Knöpfe und Kürzel gleich handeln).
 
-import { angleichen, dokumentLesen, kannLoeschen, loeschen } from '@ee/shape';
+import { angleichen, dokumentLesen, loeschenMehrere, verschiebeKnoten } from '@ee/shape';
 import { setzeGekoppelt } from './editing/gekoppelt';
 import { bibliothekLaden, bibliothekSpeichern, useBibliothek } from './library/speicher';
 import { useEditor } from './state/editorStore';
@@ -76,15 +76,38 @@ export function ladeAusBibliothek(datei: string) {
   });
 }
 
-export function gewaehltenPunktLoeschen() {
+/** Ansicht für Tastenbefehle: der 2D-Viewport unter der Maus, sonst der zuletzt bearbeitete. */
+function tastenAnsicht() {
   const ui = useUi.getState();
-  const ansicht = ui.hover && ui.hover !== 'creation' ? ui.hover : ui.aktiv;
+  if (ui.hover && ui.hover !== 'creation' && ui.auswahl[ui.hover].length) return ui.hover;
+  return ui.aktiv;
+}
+
+export function gewaehltePunkteLoeschen() {
+  const ansicht = tastenAnsicht();
   if (!ansicht) return;
-  const index = ui.auswahl[ansicht];
-  if (index === null) return;
+  const sel = useUi.getState().auswahl[ansicht];
+  if (!sel.length) return;
   const pr = useEditor.getState().dok.profile[ansicht];
-  if (!kannLoeschen(pr, index)) return;
-  setzeGekoppelt(ansicht, loeschen(pr, index), null);
+  const neu = loeschenMehrere(pr, sel);
+  if (neu === pr) {
+    useUi.getState().zeigeHinweis('Achspunkte bleiben – sie halten die Spiegelung');
+    return;
+  }
+  setzeGekoppelt(ansicht, neu, []);
+}
+
+/** Tastaturschritt wie Illustrator (1 pt ≈ 1/500 Kachel ≈ 1 px in der Grundansicht), mit ⇧ das Zehnfache. */
+export const TASTEN_SCHRITT = 0.002;
+
+export function gewaehltePunkteVerschieben(rx: number, ry: number, gross: boolean) {
+  const ansicht = tastenAnsicht();
+  if (!ansicht) return;
+  const sel = useUi.getState().auswahl[ansicht];
+  if (!sel.length) return;
+  const { dok } = useEditor.getState();
+  const s = ((gross ? 10 : 1) * TASTEN_SCHRITT) / dok.skalierung;
+  setzeGekoppelt(ansicht, verschiebeKnoten(dok.profile[ansicht], sel, { x: rx * s, y: ry * s }), sel);
 }
 
 export function maximiereUnterMaus() {

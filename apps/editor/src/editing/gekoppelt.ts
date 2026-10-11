@@ -6,7 +6,7 @@ import { abgleichen } from '@ee/shape';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 
-export type Auswahl = Record<Ansicht, number | null>;
+export type Auswahl = Record<Ansicht, number[]>;
 
 export function gekoppeltBerechnen(ansicht: Ansicht, neu: Profil, basis: Profile, auswahlBasis: Auswahl): { profile: Profile; auswahl: Auswahl } {
   // Punkte setzt Florian von Hand (wie Illustrator); die Kopplung verschiebt nur, sie fügt nichts ein
@@ -14,8 +14,8 @@ export function gekoppeltBerechnen(ansicht: Ansicht, neu: Profil, basis: Profile
 }
 
 /** Einzelaktion (Kontextmenü, Entf): sofort gekoppelt setzen, ein Undo-Schritt. */
-export function setzeGekoppelt(ansicht: Ansicht, neu: Profil, index: number | null) {
+export function setzeGekoppelt(ansicht: Ansicht, neu: Profil, indizes: number[]) {
   const { profile, auswahl } = gekoppeltBerechnen(ansicht, neu, useEditor.getState().dok.profile, useUi.getState().auswahl);
   useEditor.getState().setzeProfile(profile);
-  useUi.getState().setzeAuswahl({ ...auswahl, [ansicht]: index }, ansicht);
+  useUi.getState().setzeAuswahl({ ...auswahl, [ansicht]: indizes }, ansicht);
 }

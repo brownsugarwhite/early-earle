@@ -9,7 +9,6 @@ import {
   type Profile,
   type V2,
   bewegeGriff,
-  bewegeKnoten,
   editierbarerGriff,
   einfuegen,
   gespiegelteSegmente,
@@ -17,6 +16,7 @@ import {
   istAchsKnoten,
   kannLoeschen,
   loeschen,
+  loeschenMehrere,
   minus,
   naechsterAufProfil,
   plus,
@@ -24,8 +24,9 @@ import {
   segmente,
   spiegeln,
   umwandeln,
+  verschiebeKnoten,
 } from '@ee/shape';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { type Auswahl, gekoppeltBerechnen, setzeGekoppelt } from '../editing/gekoppelt';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -41,7 +42,8 @@ export function View2D({ ansicht, w, h }: Props) {
   const profil = useEditor((s) => s.dok.profile[ansicht]);
   const skal = useEditor((s) => s.dok.skalierung);
   const view = useUi((s) => s.ansichten[ansicht]);
-  const gewaehlt = useUi((s) => s.auswahl[ansicht]) ?? -1;
+  const gewaehlt = useUi((s) => s.auswahl[ansicht]);
+  const [rahmen, setRahmen] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const werkzeug = useUi((s) => s.werkzeug);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -94,23 +96,39 @@ export function View2D({ ansicht, w, h }: Props) {
   };
   const aktuell = (): Profil => useEditor.getState().dok.profile[ansicht];
   /** Zug übernehmen: die anderen Ansichten folgen, gerechnet vom Stand am Gestenbeginn. */
-  const uebernehmen = (neu: Profil, index: number, basis: Profile, auswahlBasis: Auswahl) => {
+  const uebernehmen = (neu: Profil, indizes: number[], basis: Profile, auswahlBasis: Auswahl) => {
     const g = gekoppeltBerechnen(ansicht, neu, basis, auswahlBasis);
     useEditor.getState().setzeProfile(g.profile);
-    useUi.getState().setzeAuswahl({ ...g.auswahl, [ansicht]: index }, ansicht);
+    useUi.getState().setzeAuswahl({ ...g.auswahl, [ansicht]: indizes }, ansicht);
   };
 
-  const ziehen = (e: React.PointerEvent, bewegen: (ev: PointerEvent) => void, ende?: () => void) => {
+  const ziehen = (e: React.PointerEvent, bewegen: (ev: PointerEvent) => void, ende?: (ev: PointerEvent) => void) => {
     svgRef.current?.setPointerCapture(e.pointerId);
-    const los = () => {
+    const los = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', bewegen);
       window.removeEventListener('pointerup', los);
       window.removeEventListener('pointercancel', los);
-      ende?.();
+      ende?.(ev);
     };
     window.addEventListener('pointermove', bewegen);
     window.addEventListener('pointerup', los);
     window.addEventListener('pointercancel', los);
+  };
+
+  /** Knotenpositionen im SVG (für das Auswahlrechteck). */
+  const knotenImRechteck = (r: { x0: number; y0: number; x1: number; y1: number }): number[] => {
+    const v = useUi.getState().ansichten[ansicht];
+    const s = useEditor.getState().dok.skalierung;
+    const xa = Math.min(r.x0, r.x1);
+    const xb = Math.max(r.x0, r.x1);
+    const ya = Math.min(r.y0, r.y1);
+    const yb = Math.max(r.y0, r.y1);
+    const drin: number[] = [];
+    aktuell().knoten.forEach((k, i) => {
+      const q = zuBild(v, w, h, { x: k.p.x * s, y: k.p.y * s });
+      if (q.x >= xa && q.x <= xb && q.y >= ya && q.y <= yb) drin.push(i);
+    });
+    return drin;
   };
 
   const unten = (e: React.PointerEvent) => {
@@ -139,15 +157,15 @@ export function View2D({ ansicht, w, h }: Props) {
     if (ui.werkzeug !== 'auswahl' && !e.metaKey) {
       const i = knotenEl ? Number(knotenEl.getAttribute('data-knoten')) : -1;
       if (knotenEl && ui.werkzeug === 'stift' && e.altKey) {
-        setzeGekoppelt(ansicht, umwandeln(aktuell(), i), i);
+        setzeGekoppelt(ansicht, umwandeln(aktuell(), i), [i]);
       } else if (knotenEl && (ui.werkzeug === 'stift' || ui.werkzeug === 'minus')) {
-        if (kannLoeschen(aktuell(), i)) setzeGekoppelt(ansicht, loeschen(aktuell(), i), null);
+        if (kannLoeschen(aktuell(), i)) setzeGekoppelt(ansicht, loeschen(aktuell(), i), []);
         else ui.zeigeHinweis('Achspunkte bleiben – sie halten die Spiegelung');
       } else if (!knotenEl && kurveEl && (ui.werkzeug === 'stift' || ui.werkzeug === 'plus')) {
         const t = naechsterAufProfil(aktuell(), lokal(e.clientX, e.clientY));
         if (t) {
           const r = einfuegen(aktuell(), t.segment, t.t);
-          setzeGekoppelt(ansicht, r.profil, r.index);
+          setzeGekoppelt(ansicht, r.profil, [r.index]);
         }
       }
       return;
@@ -167,7 +185,7 @@ export function View2D({ ansicht, w, h }: Props) {
         (ev) => {
           brechen ||= ev.altKey;
           const z = minus(lokal(ev.clientX, ev.clientY), versatz);
-          uebernehmen(bewegeGriff(aktuell(), index, seite, z, brechen), index, basis, auswahlBasis);
+          uebernehmen(bewegeGriff(aktuell(), index, seite, z, brechen), auswahlBasis[ansicht], basis, auswahlBasis);
         },
         () => useEditor.getState().endeGeste(),
       );
@@ -175,25 +193,54 @@ export function View2D({ ansicht, w, h }: Props) {
     }
 
     if (knotenEl) {
-      const index = Number(knotenEl.getAttribute('data-knoten'));
-      const kn = aktuell().knoten[index]!;
-      const versatz = minus(lokal(e.clientX, e.clientY), kn.p);
-      ui.waehle(ansicht, index);
+      // Klick wählt, ⇧-Klick schaltet um; gewählte Punkte ziehen gemeinsam (wie Illustrator)
+      const i = Number(knotenEl.getAttribute('data-knoten'));
+      const bisher = ui.auswahl[ansicht];
+      let sel: number[];
+      if (e.shiftKey) sel = bisher.includes(i) ? bisher.filter((x) => x !== i) : [...bisher, i];
+      else sel = bisher.includes(i) ? bisher : [i];
+      ui.waehle(ansicht, sel);
+      if (!sel.includes(i)) return;
+      const start = lokal(e.clientX, e.clientY);
       const basis = editor.dok.profile;
       const auswahlBasis = useUi.getState().auswahl;
       editor.beginGeste();
       ziehen(
         e,
         (ev) => {
-          const z = minus(lokal(ev.clientX, ev.clientY), versatz);
-          uebernehmen(bewegeKnoten(aktuell(), index, z), index, basis, auswahlBasis);
+          const d = minus(lokal(ev.clientX, ev.clientY), start);
+          uebernehmen(verschiebeKnoten(basis[ansicht], sel, d), sel, basis, auswahlBasis);
         },
         () => useEditor.getState().endeGeste(),
       );
       return;
     }
 
-    ui.waehle(ansicht, null);
+    // freie Fläche (oder Kurve): Auswahlrechteck aufziehen; ⇧ schaltet Punkte um, Klick ohne Ziehen hebt auf
+    const svg = svgRef.current!.getBoundingClientRect();
+    const x0 = e.clientX - svg.left;
+    const y0 = e.clientY - svg.top;
+    const anfang = ui.auswahl[ansicht];
+    const umschalten = e.shiftKey;
+    const neueAuswahl = (r: { x0: number; y0: number; x1: number; y1: number }) => {
+      const drin = knotenImRechteck(r);
+      return umschalten ? [...anfang.filter((x) => !drin.includes(x)), ...drin.filter((x) => !anfang.includes(x))] : drin;
+    };
+    let gezogen = false;
+    ziehen(
+      e,
+      (ev) => {
+        const r = { x0, y0, x1: ev.clientX - svg.left, y1: ev.clientY - svg.top };
+        if (!gezogen && Math.abs(r.x1 - x0) + Math.abs(r.y1 - y0) < 3) return;
+        gezogen = true;
+        setRahmen(r);
+        useUi.getState().waehle(ansicht, neueAuswahl(r));
+      },
+      () => {
+        setRahmen(null);
+        if (!gezogen && !umschalten) useUi.getState().waehle(ansicht, []);
+      },
+    );
   };
 
   const kontext = (e: React.MouseEvent) => {
@@ -202,12 +249,15 @@ export function View2D({ ansicht, w, h }: Props) {
     const ziel = e.target as Element;
     const knotenEl = ziel.closest('[data-knoten]');
     const kurveEl = ziel.closest('[data-kurve]');
-    const setze = (p: Profil, index: number | null) => setzeGekoppelt(ansicht, p, index);
+    const setze = (p: Profil, indizes: number[]) => setzeGekoppelt(ansicht, p, indizes);
     if (knotenEl) {
       const i = Number(knotenEl.getAttribute('data-knoten'));
       const pr = aktuell();
-      ui.waehle(ansicht, i);
+      const sel = ui.auswahl[ansicht].includes(i) ? ui.auswahl[ansicht] : [i];
+      ui.waehle(ansicht, sel);
       const s = i < segmentAnzahl(pr) ? i : i - 1;
+      const loeschbar = sel.filter((x) => kannLoeschen(pr, x));
+      const ecken = sel.filter((x) => pr.knoten[x]?.art === 'ecke');
       ui.oeffneMenue({
         x: e.clientX,
         y: e.clientY,
@@ -216,11 +266,15 @@ export function View2D({ ansicht, w, h }: Props) {
             label: 'Punkt einfügen',
             aktion: () => {
               const r = einfuegen(aktuell(), s, 0.5);
-              setze(r.profil, r.index);
+              setze(r.profil, [r.index]);
             },
           },
-          { label: 'Punkt löschen', aus: !kannLoeschen(pr, i), aktion: () => setze(loeschen(aktuell(), i), null) },
-          { label: 'Punkt glätten', aus: pr.knoten[i]!.art !== 'ecke', aktion: () => setze(glaetten(aktuell(), i), i) },
+          { label: sel.length > 1 ? `${sel.length} Punkte löschen` : 'Punkt löschen', aus: loeschbar.length === 0, aktion: () => setze(loeschenMehrere(aktuell(), sel), []) },
+          {
+            label: ecken.length > 1 ? `${ecken.length} Punkte glätten` : 'Punkt glätten',
+            aus: ecken.length === 0,
+            aktion: () => setze(ecken.reduce((p, x) => glaetten(p, x), aktuell()), sel),
+          },
         ],
       });
       return;
@@ -237,7 +291,7 @@ export function View2D({ ansicht, w, h }: Props) {
               const t = naechsterAufProfil(aktuell(), p);
               if (!t) return;
               const r = einfuegen(aktuell(), t.segment, t.t);
-              setze(r.profil, r.index);
+              setze(r.profil, [r.index]);
             },
           },
         ],
@@ -247,25 +301,26 @@ export function View2D({ ansicht, w, h }: Props) {
     ui.oeffneMenue({ x: e.clientX, y: e.clientY, eintraege: [{ label: 'Ansicht zurücksetzen', aktion: () => useUi.getState().ansichtZuruecksetzen(ansicht) }] });
   };
 
-  // ---------- Griffe des gewählten Punkts ----------
+  // ---------- Griffe der gewählten Punkte ----------
   const griffe: React.ReactNode[] = [];
-  const kn = gewaehlt >= 0 ? profil.knoten[gewaehlt] : undefined;
-  if (kn) {
+  for (const gi of gewaehlt) {
+    const kn = profil.knoten[gi];
+    if (!kn) continue;
     const p = bild(kn.p);
-    const erlaubt = editierbarerGriff(profil, gewaehlt);
+    const erlaubt = editierbarerGriff(profil, gi);
     const zeige = (seite: GriffSeite, editierbar: boolean, rel: V2) => {
       if (Math.hypot(rel.x, rel.y) < 1e-6) return;
       const q = bild(plus(kn.p, rel));
       const farbe = editierbar ? 'var(--punkt)' : '#ffffff';
       griffe.push(
-        <g key={`${seite}-${editierbar}`} className={editierbar ? 'griff' : 'griff spiegel'} {...(editierbar ? { 'data-griff': `${gewaehlt}:${seite}` } : {})}>
+        <g key={`${gi}-${seite}-${editierbar}`} className={editierbar ? 'griff' : 'griff spiegel'} {...(editierbar ? { 'data-griff': `${gi}:${seite}` } : {})}>
           <line x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke={farbe} strokeWidth={1} />
           {editierbar && <rect x={q.x - 8} y={q.y - 8} width={16} height={16} fill="transparent" />}
           <rect x={q.x - GRIFF / 2} y={q.y - GRIFF / 2} width={GRIFF} height={GRIFF} fill={farbe} />
         </g>,
       );
     };
-    if (profil.art === 'halb' && istAchsKnoten(profil, gewaehlt)) {
+    if (profil.art === 'halb' && istAchsKnoten(profil, gi)) {
       const seite = erlaubt === 'ein' ? 'ein' : 'aus';
       zeige(seite, true, kn[seite]);
       zeige(seite === 'ein' ? 'aus' : 'ein', false, spiegeln(kn[seite], profil.achse));
@@ -292,12 +347,21 @@ export function View2D({ ansicht, w, h }: Props) {
       {profil.knoten.map((k, i) => {
         const q = bild(k.p);
         return (
-          <g key={i} data-knoten={i} className={i === gewaehlt ? 'knoten gewaehlt' : 'knoten'}>
+          <g key={i} data-knoten={i} className={gewaehlt.includes(i) ? 'knoten gewaehlt' : 'knoten'}>
             <circle cx={q.x} cy={q.y} r={10} fill="transparent" />
             <circle className="knoten-punkt" cx={q.x} cy={q.y} r={PUNKT_R} fill="var(--punkt)" />
           </g>
         );
       })}
+      {rahmen && (
+        <rect
+          className="auswahlrahmen"
+          x={Math.min(rahmen.x0, rahmen.x1)}
+          y={Math.min(rahmen.y0, rahmen.y1)}
+          width={Math.abs(rahmen.x1 - rahmen.x0)}
+          height={Math.abs(rahmen.y1 - rahmen.y0)}
+        />
+      )}
     </svg>
   );
 }

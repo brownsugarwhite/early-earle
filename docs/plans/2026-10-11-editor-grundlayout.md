@@ -258,3 +258,4 @@ apps/editor/               @ee/editor
 - **Ein Objekt, drei Ansichten:** Geteilte Ausdehnungen sind gekoppelt (Seite↔Front Höhe, Seite↔Top Länge, Front↔Top Breite). Die andere Ansicht folgt live mit proportionalem Abfall.
 - **3D drehen** auch mit linker Taste und Trackpad.
 - **Automatische Punkte verworfen:** Punkte setzt Florian von Hand wie in Illustrator (Zeichenstift P, + / −, Rechtsklickmenü).
+- **Startkreis mit 4 Punkten** statt 12; Auswahlrechteck, ⇧-Klick und Pfeiltasten wie in Illustrator.

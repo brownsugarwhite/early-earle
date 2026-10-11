@@ -8,7 +8,7 @@ const V2 = z.object({ x: z.number(), y: z.number() });
 const Knoten = z.object({ p: V2, ein: V2, aus: V2, art: z.enum(['glatt', 'ecke']) });
 
 export const ProfilSchema = z.discriminatedUnion('art', [
-  z.object({ art: z.literal('geschlossen'), knoten: z.array(Knoten).min(3) }),
+  z.object({ art: z.literal('geschlossen'), knoten: z.array(Knoten).min(2) }),
   z.object({ art: z.literal('halb'), achse: z.enum(['senkrecht', 'waagerecht']), knoten: z.array(Knoten).min(2) }),
 ]);
 
@@ -40,7 +40,7 @@ export type Dokument = {
 export type Ansicht = keyof Dokument['profile'];
 export const ANSICHTEN: readonly Ansicht[] = ['seite', 'front', 'top'];
 
-/** Jedes neue Wesen startet als Kugel aus drei Kreisen, Größe 100 % (Florian, 11.10.2026). */
+/** Jedes neue Wesen startet als Kugel aus drei Kreisen mit 4 Punkten (Seite) bzw. 3 (Front, Top), Größe 100 % (Florian, 11.10.2026). */
 export function neuesDokument(name = 'Neues Wesen'): Dokument {
   const r = START_RADIUS;
   return {
@@ -48,9 +48,9 @@ export function neuesDokument(name = 'Neues Wesen'): Dokument {
     version: 0,
     name,
     profile: {
-      seite: startKreis({ x: 0, y: r }, r, 12),
-      front: startHalbkreis({ x: 0, y: r }, r, 'senkrecht', 6),
-      top: startHalbkreis({ x: 0, y: 0 }, r, 'waagerecht', 6),
+      seite: startKreis({ x: 0, y: r }, r, 4),
+      front: startHalbkreis({ x: 0, y: r }, r, 'senkrecht', 2),
+      top: startHalbkreis({ x: 0, y: 0 }, r, 'waagerecht', 2),
     },
     skalierung: 1,
     posen: [],

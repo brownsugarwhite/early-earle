@@ -211,6 +211,14 @@ button {
 .view2d .griff {
   cursor: crosshair;
 }
+/* Auswahlrechteck (Funktionsrahmen wie in Illustrator, kein Gestaltungselement) */
+.view2d .auswahlrahmen {
+  fill: rgba(0, 255, 225, 0.12);
+  stroke: rgba(25, 35, 43, 0.7);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
 .view2d .griff.spiegel {
   pointer-events: none;
 }

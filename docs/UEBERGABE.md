@@ -21,6 +21,8 @@ Florian baut den Charaktereditor neu: Er zieht drei Profile (Seite, Front, Top),
   - Rechtsklick fügt Punkte ein, löscht oder glättet sie
   - Punkte von Hand wie in Illustrator (Zeichenstift P, + / −, ⌥-Klick wandelt um); keine automatischen Punkte (von Florian verworfen); Löschen passt die Nachbargriffe an
   - Spiegelhälfte weiß, Achspunkte auf der Achse
+  - Startkreis mit 4 Punkten (Seite) bzw. 3 (Front, Top)
+  - Auswahlrechteck und ⇧-Klick wie Illustrator, gewählte Punkte ziehen gemeinsam, Pfeiltasten verschieben (⇧ zehnfach)
   - Auswahl je Viewport, ⌘Z/⇧⌘Z
 - **Ein Objekt, drei Ansichten** (Florians Nachtrag): Geteilte Ausdehnungen sind gekoppelt. Ziehen in einer Ansicht bewegt die anderen live mit, mit proportionalem Abfall wie in Blender; ein Rückgängig-Schritt.
 - **3D drehen** auch mit linker Taste, ⌃-Klick und Trackpad (zwei Finger); Pinch zoomt.
@@ -37,8 +39,8 @@ Florian baut den Charaktereditor neu: Er zieht drei Profile (Seite, Front, Top),
   - Größenregler als Pille
 
 **Prüfungen:**
-- Typen, Lint und Unit-Tests: `packages/shape` 24, `apps/editor` 6
-- E2E 11/11 auf echter GPU
+- Typen, Lint und Unit-Tests: `packages/shape` 25, `apps/editor` 6
+- E2E 12/12 auf echter GPU
 - WebGL2-Rückfall geprüft
 - Electron im Dev- und Produktionsmodus sowie die gepackte `.app` per Rauchtest (WebGPU, Speichern auf Platte)
 

@@ -9,10 +9,12 @@ import {
   glaetten,
   kannLoeschen,
   loeschen,
+  loeschenMehrere,
   naechsterAufProfil,
   pfadAbtasten,
   segmente,
   umwandeln,
+  verschiebeKnoten,
   vollerPfad,
 } from './profil';
 
@@ -32,11 +34,11 @@ describe('Bézier', () => {
 });
 
 describe('Startform', () => {
-  it('ist eine Kugel aus drei Kreisen (12 bzw. 7 Punkte)', () => {
+  it('ist eine Kugel aus drei Kreisen (4 bzw. 3 Punkte, wie Illustrator)', () => {
     const d = neuesDokument();
-    expect(d.profile.seite.knoten).toHaveLength(12);
-    expect(d.profile.front.knoten).toHaveLength(7);
-    expect(d.profile.top.knoten).toHaveLength(7);
+    expect(d.profile.seite.knoten).toHaveLength(4);
+    expect(d.profile.front.knoten).toHaveLength(3);
+    expect(d.profile.top.knoten).toHaveLength(3);
     expect(d.skalierung).toBe(1);
     // alle Kurvenpunkte liegen auf dem Kreis (Bézier-Näherung < 0,1 %)
     for (const p of pfadAbtasten(vollerPfad(d.profile.seite), 16)) expect(Math.abs(abstand(p, { x: 0, y: r }) - r)).toBeLessThan(r * 1e-3);
@@ -50,11 +52,11 @@ describe('Bearbeiten', () => {
     const front = neuesDokument().profile.front;
     const a = bewegeKnoten(front, 0, { x: 0.2, y: 0.7 });
     expect(a.knoten[0]!.p).toEqual({ x: 0, y: 0.7 });
-    const b = bewegeKnoten(front, 3, { x: -0.3, y: 0.2 });
-    expect(b.knoten[3]!.p.x).toBe(0);
+    const b = bewegeKnoten(front, 1, { x: -0.3, y: 0.2 });
+    expect(b.knoten[1]!.p.x).toBe(0);
     const top = neuesDokument().profile.top;
-    const c = bewegeKnoten(top, 6, { x: 0.4, y: 0.3 });
-    expect(c.knoten[6]!.p).toEqual({ x: 0.4, y: 0 });
+    const c = bewegeKnoten(top, 2, { x: 0.4, y: 0.3 });
+    expect(c.knoten[2]!.p).toEqual({ x: 0.4, y: 0 });
   });
 
   it('glatter Griff zieht den Gegengriff als Linie mit, ⌥ macht eine Ecke', () => {
@@ -85,61 +87,70 @@ describe('Bearbeiten', () => {
 
   it('Glätten macht die Griffe wieder zur Linie', () => {
     const seite = neuesDokument().profile.seite;
-    const kn = seite.knoten[4]!;
-    const ecke = bewegeGriff(seite, 4, 'ein', { x: kn.p.x, y: kn.p.y + 0.1 }, true);
-    const g = glaetten(ecke, 4).knoten[4]!;
+    const kn = seite.knoten[1]!;
+    const ecke = bewegeGriff(seite, 1, 'ein', { x: kn.p.x - 0.1, y: kn.p.y + 0.1 }, true);
+    const g = glaetten(ecke, 1).knoten[1]!;
     expect(g.art).toBe('glatt');
     expect(g.ein.x * g.aus.y - g.ein.y * g.aus.x).toBeCloseTo(0, 10);
   });
 
   it('Einfügen ist formtreu, Löschen hat Grenzen', () => {
     const seite = neuesDokument().profile.seite;
-    const vorher = pfadAbtasten(segmente(seite), 32);
     const { profil, index } = einfuegen(seite, 3, 0.4);
     expect(index).toBe(4);
-    expect(profil.knoten).toHaveLength(13);
-    for (const p of pfadAbtasten(segmente(profil), 32)) {
-      const best = Math.min(...vorher.map((q) => abstand(p, q)));
-      expect(best).toBeLessThan(0.004);
-    }
-    expect(loeschen(profil, 4).knoten).toHaveLength(12);
+    expect(profil.knoten).toHaveLength(5);
+    // jeder Punkt der neuen Kurve liegt auf der alten
+    for (const p of pfadAbtasten(segmente(profil), 32)) expect(naechsterAufProfil(seite, p)!.abstand).toBeLessThan(1e-6);
+    expect(loeschen(profil, 4).knoten).toHaveLength(4);
     const front = neuesDokument().profile.front;
     expect(kannLoeschen(front, 0)).toBe(false);
-    expect(kannLoeschen(front, 6)).toBe(false);
-    expect(kannLoeschen(front, 3)).toBe(true);
+    expect(kannLoeschen(front, 2)).toBe(false);
+    expect(kannLoeschen(front, 1)).toBe(true);
   });
 
   it('Ziehen setzt keine Punkte von selbst (wie Illustrator)', () => {
     const seite = neuesDokument().profile.seite;
-    expect(bewegeKnoten(seite, 3, { x: 0.8, y: 0.3 }).knoten).toHaveLength(12);
+    expect(bewegeKnoten(seite, 1, { x: 0.8, y: 0.3 }).knoten).toHaveLength(4);
   });
 
   it('Löschen passt die Nachbargriffe an: ein eingefügter Punkt verschwindet spurlos', () => {
     const seite = neuesDokument().profile.seite;
     const mit = einfuegen(seite, 2, 0.37).profil;
     const ohne = loeschen(mit, 3);
-    expect(ohne.knoten).toHaveLength(12);
-    const a = pfadAbtasten(segmente(seite), 24);
-    const b = pfadAbtasten(segmente(ohne), 24);
-    for (let i = 0; i < a.length; i++) expect(abstand(a[i]!, b[i]!)).toBeLessThan(2e-4);
+    expect(ohne.knoten).toHaveLength(4);
+    for (const p of pfadAbtasten(segmente(ohne), 24)) expect(naechsterAufProfil(seite, p)!.abstand).toBeLessThan(1e-4);
   });
 
   it('Löschen eines Punkts auf einer Beule zeichnet die Form nach statt zu springen', () => {
-    const seite = bewegeKnoten(neuesDokument().profile.seite, 2, { x: 0.32, y: 0.5 });
-    const ohne = loeschen(seite, 2);
-    // das neue Segment läuft zwischen den Nachbarn nach außen (kein gerader Strich)
-    const mitte = pfadAbtasten([segmente(ohne)[1]!], 8)[4]!;
-    expect(abstand(mitte, { x: 0, y: r })).toBeGreaterThan(r);
+    const seite = bewegeKnoten(neuesDokument().profile.seite, 1, { x: 0.45, y: r });
+    const ohne = loeschen(seite, 1);
+    // das neue Segment oben → unten wölbt sich weiter nach hinten aus als der alte Kreis (kein gerader Strich)
+    const mitte = pfadAbtasten([segmente(ohne)[0]!], 8)[4]!;
+    expect(mitte.x).toBeGreaterThan(r);
   });
 
   it('⌥-Klick wandelt um: glatt → Ecke ohne Griffe → glatt', () => {
     const top = neuesDokument().profile.top;
-    const ecke = umwandeln(top, 2).knoten[2]!;
+    const ecke = umwandeln(top, 1).knoten[1]!;
     expect(ecke.art).toBe('ecke');
     expect(ecke.ein).toEqual({ x: 0, y: 0 });
-    const wieder = umwandeln(umwandeln(top, 2), 2).knoten[2]!;
+    const wieder = umwandeln(umwandeln(top, 1), 1).knoten[1]!;
     expect(wieder.art).toBe('glatt');
     expect(Math.hypot(wieder.aus.x, wieder.aus.y)).toBeGreaterThan(0.01);
+  });
+
+  it('mehrere Punkte verschieben und löschen', () => {
+    const seite = neuesDokument().profile.seite;
+    const v = verschiebeKnoten(seite, [1, 3], { x: 0.05, y: 0.02 });
+    expect(v.knoten[1]!.p.x).toBeCloseTo(r + 0.05, 12);
+    expect(v.knoten[3]!.p.x).toBeCloseTo(-r + 0.05, 12);
+    expect(v.knoten[0]!.p).toEqual(seite.knoten[0]!.p);
+    expect(loeschenMehrere(seite, [1, 3]).knoten).toHaveLength(2);
+    const front = neuesDokument().profile.front;
+    // Achspunkte sind nicht löschbar, sie bleiben stehen
+    expect(loeschenMehrere(front, [0, 1, 2]).knoten).toHaveLength(2);
+    // Achspunkte bleiben beim Verschieben auf der Achse
+    expect(verschiebeKnoten(front, [0, 1], { x: 0.1, y: 0.1 }).knoten[0]!.p.x).toBe(0);
   });
 
   it('findet den nächsten Kurvenpunkt', () => {

@@ -42,8 +42,8 @@ test('Grundlayout: vier Viewports wie die Vorlage, 3D läuft', async ({ page }) 
   expect(r.seite).toEqual({ x: 40, y: 84, w: 804, h: 498.5 });
   expect(r.creation!.x + r.creation!.w).toBe(1688);
   const d = await dok(page);
-  expect(d.profile.seite!.knoten).toHaveLength(12);
-  expect(d.profile.front!.knoten).toHaveLength(7);
+  expect(d.profile.seite!.knoten).toHaveLength(4);
+  expect(d.profile.front!.knoten).toHaveLength(3);
   console.log('Backend:', await page.evaluate(() => (window as unknown as Fenster).__editor!.backend));
 });
 
@@ -83,16 +83,16 @@ test('Library gleitet herein, Viewports werden schmaler', async ({ page }) => {
 
 test('Mausrad zoomt zum Cursor, mittlere Taste verschiebt', async ({ page }) => {
   await bereit(page);
-  const vorher = await knotenPos(page, 'seite', 3);
+  const vorher = await knotenPos(page, 'seite', 1);
   const mitte = { x: 40 + 402, y: 84 + 249 };
   await page.mouse.move(mitte.x, mitte.y);
   await page.mouse.wheel(0, -300);
-  const nachZoom = await knotenPos(page, 'seite', 3);
+  const nachZoom = await knotenPos(page, 'seite', 1);
   expect(Math.abs(nachZoom.x - mitte.x)).toBeGreaterThan(Math.abs(vorher.x - mitte.x) * 1.5);
   await page.mouse.down({ button: 'middle' });
   await page.mouse.move(mitte.x + 60, mitte.y + 30, { steps: 5 });
   await page.mouse.up({ button: 'middle' });
-  const nachPan = await knotenPos(page, 'seite', 3);
+  const nachPan = await knotenPos(page, 'seite', 1);
   expect(nachPan.x - nachZoom.x).toBeCloseTo(60, 0);
   expect(nachPan.y - nachZoom.y).toBeCloseTo(30, 0);
 });
@@ -100,18 +100,18 @@ test('Mausrad zoomt zum Cursor, mittlere Taste verschiebt', async ({ page }) => 
 test('Punkt ziehen wie Illustrator: keine Punkte von selbst, 3D gleiche Vertexzahl, Rückgängig', async ({ page }) => {
   await bereit(page);
   const v0 = await page.evaluate(() => (window as unknown as Fenster).__editor!.vertices());
-  const p = await knotenPos(page, 'seite', 3);
+  const p = await knotenPos(page, 'seite', 1);
   await page.mouse.move(p.x, p.y);
   await page.mouse.down();
   await page.mouse.move(p.x + 180, p.y + 20, { steps: 12 });
   await page.mouse.up();
   const d = await dok(page);
-  expect(d.profile.seite!.knoten).toHaveLength(12);
-  expect(d.profile.seite!.knoten[3]!.p.x).toBeGreaterThan(0.5);
+  expect(d.profile.seite!.knoten).toHaveLength(4);
+  expect(d.profile.seite!.knoten[1]!.p.x).toBeGreaterThan(0.5);
   expect(await page.evaluate(() => (window as unknown as Fenster).__editor!.vertices())).toBe(v0);
   await page.screenshot({ path: path.join(bilder, 'punkt-gezogen.png') });
   await page.keyboard.press('ControlOrMeta+z');
-  expect((await dok(page)).profile.seite!.knoten).toHaveLength(12);
+  expect((await dok(page)).profile.seite!.knoten).toHaveLength(4);
 });
 
 test('⌥ am Griff macht eine Ecke, Kontextmenü glättet, fügt ein und löscht', async ({ page }) => {
@@ -188,7 +188,7 @@ test('Ein Objekt: Ziehen in einer Ansicht bewegt die anderen live mit', async ({
   await page.mouse.move(b.x - 90, b.y, { steps: 8 });
   await page.mouse.up();
   // Front: Flanke raus → Top wird breiter
-  const c = await knotenPos(page, 'front', 3);
+  const c = await knotenPos(page, 'front', 1);
   await page.mouse.move(c.x, c.y);
   await page.mouse.down();
   await page.mouse.move(c.x + 60, c.y, { steps: 8 });
@@ -209,7 +209,7 @@ test('Ein Objekt: Ziehen in einer Ansicht bewegt die anderen live mit', async ({
 test('Zeichenstift (P), + und −: Punkte von Hand setzen und löschen wie in Illustrator', async ({ page }) => {
   await bereit(page);
   const oben = await knotenPos(page, 'seite', 0);
-  const unten = await knotenPos(page, 'seite', 6);
+  const unten = await knotenPos(page, 'seite', 2);
   const mitte = { x: oben.x, y: (oben.y + unten.y) / 2 };
   const R = (unten.y - oben.y) / 2;
   const aufKurve = (grad: number) => ({ x: mitte.x + R * Math.cos((grad * Math.PI) / 180), y: mitte.y - R * Math.sin((grad * Math.PI) / 180) });
@@ -218,47 +218,96 @@ test('Zeichenstift (P), + und −: Punkte von Hand setzen und löschen wie in Il
   await page.mouse.move(mitte.x, mitte.y);
   await page.keyboard.press('p');
   await expect(page.locator('.werkzeug-hinweis')).toContainText('Zeichenstift');
-  const p75 = aufKurve(75);
-  await page.mouse.click(p75.x, p75.y);
-  expect(await anzahl()).toBe(13);
+  const p45 = aufKurve(45);
+  await page.mouse.click(p45.x, p45.y);
+  expect(await anzahl()).toBe(5);
   await page.screenshot({ path: path.join(bilder, 'zeichenstift.png') });
-  // Klick auf einen Punkt löscht ihn
-  const k = await knotenPos(page, 'seite', 1);
-  await page.mouse.click(k.x, k.y);
-  expect(await anzahl()).toBe(12);
-  // ⌥-Klick wandelt um
-  const k2 = await knotenPos(page, 'seite', 3);
-  await page.keyboard.down('Alt');
-  await page.mouse.click(k2.x, k2.y);
-  await page.keyboard.up('Alt');
-  expect((await dok(page)).profile.seite!.knoten[3]!.art).toBe('ecke');
-  // − löscht, + fügt ein
-  await page.keyboard.press('-');
-  const k3 = await knotenPos(page, 'seite', 4);
-  await page.mouse.click(k3.x, k3.y);
-  expect(await anzahl()).toBe(11);
+  // Klick auf den neuen Punkt löscht ihn wieder (Kreis bleibt Kreis)
+  const neu = await knotenPos(page, 'seite', 1);
+  await page.mouse.click(neu.x, neu.y);
+  expect(await anzahl()).toBe(4);
+  // + fügt ein, − löscht
   await page.keyboard.press('+');
   const p200 = aufKurve(200);
   await page.mouse.click(p200.x, p200.y);
-  expect(await anzahl()).toBe(12);
+  expect(await anzahl()).toBe(5);
+  await page.keyboard.press('-');
+  const k3 = await knotenPos(page, 'seite', 3);
+  await page.mouse.click(k3.x, k3.y);
+  expect(await anzahl()).toBe(4);
+  // ⌥-Klick mit dem Zeichenstift wandelt um
+  await page.keyboard.press('p');
+  const links = await knotenPos(page, 'seite', 3);
+  await page.keyboard.down('Alt');
+  await page.mouse.click(links.x, links.y);
+  await page.keyboard.up('Alt');
+  expect((await dok(page)).profile.seite!.knoten[3]!.art).toBe('ecke');
   // Esc zurück zur Direktauswahl
   await page.keyboard.press('Escape');
   await expect(page.locator('.werkzeug-hinweis')).toHaveCount(0);
 });
 
+test('Auswahlrechteck, ⇧-Klick, gemeinsam ziehen und Pfeiltasten wie Illustrator', async ({ page }) => {
+  await bereit(page);
+  const oben = await knotenPos(page, 'seite', 0);
+  const rechts = await knotenPos(page, 'seite', 1);
+  // Rechteck um die Punkte oben und rechts
+  await page.mouse.move(rechts.x + 30, oben.y - 30);
+  await page.mouse.down();
+  await page.mouse.move(oben.x - 20, rechts.y + 20, { steps: 6 });
+  await expect(page.locator('.vp-ober[data-view="seite"] .auswahlrahmen')).toHaveCount(1);
+  await page.mouse.up();
+  const sel = () => page.evaluate(() => (window as unknown as { __stores: { ui: { getState(): { auswahl: { seite: number[] } } } } }).__stores.ui.getState().auswahl.seite);
+  expect((await sel()).sort()).toEqual([0, 1]);
+  await expect(page.locator('.vp-ober[data-view="seite"] .auswahlrahmen')).toHaveCount(0);
+  // ⇧-Klick nimmt den unteren dazu und wieder weg
+  const u = await knotenPos(page, 'seite', 2);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(u.x, u.y);
+  expect((await sel()).sort()).toEqual([0, 1, 2]);
+  await page.mouse.click(u.x, u.y);
+  await page.keyboard.up('Shift');
+  expect((await sel()).sort()).toEqual([0, 1]);
+  // gemeinsam ziehen
+  const v0 = (await dok(page)).profile.seite!.knoten.map((k) => k.p);
+  await page.mouse.move(rechts.x, rechts.y);
+  await page.mouse.down();
+  await page.mouse.move(rechts.x + 46, rechts.y, { steps: 5 });
+  await page.mouse.up();
+  let v1 = (await dok(page)).profile.seite!.knoten.map((k) => k.p);
+  expect(v1[0]!.x - v0[0]!.x).toBeCloseTo(v1[1]!.x - v0[1]!.x, 9);
+  expect(v1[0]!.x - v0[0]!.x).toBeGreaterThan(0.05);
+  expect(v1[2]).toEqual(v0[2]);
+  await page.screenshot({ path: path.join(bilder, 'auswahlrechteck.png') });
+  // Pfeiltasten: 1 Schritt = 0,002 Kachel, ⇧ = 0,02
+  await page.mouse.move(rechts.x + 120, rechts.y + 120);
+  const vorher = (await dok(page)).profile.seite!.knoten[1]!.p;
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Shift+ArrowLeft');
+  v1 = (await dok(page)).profile.seite!.knoten.map((k) => k.p);
+  expect(v1[1]!.y - vorher.y).toBeCloseTo(0.002, 9);
+  expect(v1[1]!.x - vorher.x).toBeCloseTo(-0.02, 9);
+  // ein Rückgängig nimmt genau einen Tastenschritt zurück
+  await page.keyboard.press('ControlOrMeta+z');
+  expect((await dok(page)).profile.seite!.knoten[1]!.p.x).toBeCloseTo(vorher.x, 9);
+  // Entf löscht beide gewählten Punkte
+  await page.keyboard.press('Delete');
+  expect((await dok(page)).profile.seite!.knoten).toHaveLength(2);
+});
+
 test('Auswahl je Viewport, Entf löscht den Punkt unter der Maus', async ({ page }) => {
   await bereit(page);
-  const a = await knotenPos(page, 'seite', 2);
+  const a = await knotenPos(page, 'seite', 1);
   await page.mouse.click(a.x, a.y);
-  const b = await knotenPos(page, 'front', 2);
+  const b = await knotenPos(page, 'front', 1);
   await page.mouse.click(b.x, b.y);
   await expect(page.locator('.vp-ober[data-view="seite"] .griff')).toHaveCount(2);
   await expect(page.locator('.vp-ober[data-view="front"] .griff')).toHaveCount(2);
   await page.mouse.move(a.x + 40, a.y + 40);
   await page.keyboard.press('Delete');
   const d = await dok(page);
-  expect(d.profile.seite!.knoten).toHaveLength(11);
-  expect(d.profile.front!.knoten).toHaveLength(7);
+  expect(d.profile.seite!.knoten).toHaveLength(3);
+  expect(d.profile.front!.knoten).toHaveLength(3);
 });
 
 test('3D: rechte Taste dreht, Rad zoomt', async ({ page }) => {
@@ -318,5 +367,5 @@ test('Posen, Größe, Speichern und Library-Karte', async ({ page }) => {
   await page.getByRole('button', { name: 'Neues Wesen' }).click();
   const d = await dok(page);
   expect(d.skalierung).toBe(1);
-  expect(d.profile.seite!.knoten).toHaveLength(12);
+  expect(d.profile.seite!.knoten).toHaveLength(4);
 });
