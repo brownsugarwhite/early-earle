@@ -37,7 +37,7 @@ export function useTastatur() {
       if (e.key === 'Escape') {
         if (ui.menue) ui.oeffneMenue(null);
         else if (ui.dialog) ui.oeffneDialog(null);
-        else ui.waehle(null);
+        else ui.auswahlLeeren();
         return;
       }
       if (istEingabe(e.target) || ui.dialog) return;

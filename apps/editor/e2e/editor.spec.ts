@@ -10,7 +10,7 @@ type Fenster = Window & {
   __editor?: { backend: string; vertices: () => number };
   __stores: {
     editor: { getState(): { dok: { profile: Record<string, { knoten: { art: string; p: { x: number; y: number } }[] }>; skalierung: number; posen: string[] }; modus: string; datei: string | null } };
-    ui: { getState(): { kamera: { azimut: number; distanz: number }; ansichten: Record<string, { zoom: number; cu: number; cv: number }>; auswahl: unknown } };
+    ui: { getState(): { kamera: { azimut: number; distanz: number; ziel: number[] }; ansichten: Record<string, { zoom: number; cu: number; cv: number }>; auswahl: unknown } };
     rahmen: { getState(): { rects: Record<string, Rect> | null; bewegt: boolean } };
   };
 };
@@ -156,6 +156,21 @@ test('⌥ am Griff macht eine Ecke, Kontextmenü glättet, fügt ein und löscht
   expect((await dok(page)).profile.seite!.knoten).toHaveLength(n);
 });
 
+test('Auswahl je Viewport, Entf löscht den Punkt unter der Maus', async ({ page }) => {
+  await bereit(page);
+  const a = await knotenPos(page, 'seite', 2);
+  await page.mouse.click(a.x, a.y);
+  const b = await knotenPos(page, 'front', 2);
+  await page.mouse.click(b.x, b.y);
+  await expect(page.locator('.vp-ober[data-view="seite"] .griff')).toHaveCount(2);
+  await expect(page.locator('.vp-ober[data-view="front"] .griff')).toHaveCount(2);
+  await page.mouse.move(a.x + 40, a.y + 40);
+  await page.keyboard.press('Delete');
+  const d = await dok(page);
+  expect(d.profile.seite!.knoten).toHaveLength(11);
+  expect(d.profile.front!.knoten).toHaveLength(7);
+});
+
 test('3D: rechte Taste dreht, Rad zoomt', async ({ page }) => {
   await bereit(page);
   const k0 = await page.evaluate(() => (window as unknown as Fenster).__stores.ui.getState().kamera);
@@ -165,7 +180,11 @@ test('3D: rechte Taste dreht, Rad zoomt', async ({ page }) => {
   await page.mouse.move(m.x + 120, m.y + 40, { steps: 6 });
   await page.mouse.up({ button: 'right' });
   await page.mouse.wheel(0, -200);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.move(m.x + 160, m.y + 40, { steps: 5 });
+  await page.mouse.up({ button: 'middle' });
   const k1 = await page.evaluate(() => (window as unknown as Fenster).__stores.ui.getState().kamera);
+  expect(k1.ziel[0]).not.toBeCloseTo(k0.ziel[0]!, 3);
   expect(k1.azimut).not.toBeCloseTo(k0.azimut, 3);
   expect(k1.distanz).toBeLessThan(k0.distanz);
   await expect(page.locator('.kontextmenue')).toHaveCount(0);

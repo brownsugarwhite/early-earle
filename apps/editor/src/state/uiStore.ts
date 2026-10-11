@@ -29,7 +29,10 @@ type UiState = {
   /** liegt während Layout-Bewegungen oben */
   oben: ViewId | null;
   hover: ViewId | null;
-  auswahl: { ansicht: Ansicht; index: number } | null;
+  /** gewählter Punkt je 2D-Viewport (wie in der Vorlage: jede Ansicht zeigt ihre Griffe) */
+  auswahl: Record<Ansicht, number | null>;
+  /** zuletzt bearbeitete Ansicht (für Entf, wenn die Maus nicht über einem 2D-Viewport ist) */
+  aktiv: Ansicht | null;
   ansichten: Record<Ansicht, Ansicht2D>;
   kamera: Kamera;
   menue: KontextMenue | null;
@@ -39,7 +42,8 @@ type UiState = {
   maximieren(id: ViewId): void;
   libraryUmschalten(offen?: boolean): void;
   setzeHover(id: ViewId | null): void;
-  waehle(a: { ansicht: Ansicht; index: number } | null): void;
+  waehle(ansicht: Ansicht, index: number | null): void;
+  auswahlLeeren(): void;
   setzeAnsicht(a: Ansicht, v: Ansicht2D): void;
   setzeKamera(k: Kamera): void;
   ansichtZuruecksetzen(id: ViewId): void;
@@ -53,7 +57,8 @@ export const useUi = create<UiState>((set, get) => ({
   library: false,
   oben: null,
   hover: null,
-  auswahl: null,
+  auswahl: { seite: null, front: null, top: null },
+  aktiv: null,
   ansichten: { ...START_2D },
   kamera: START_KAMERA,
   menue: null,
@@ -70,8 +75,11 @@ export const useUi = create<UiState>((set, get) => ({
   setzeHover(id) {
     set({ hover: id });
   },
-  waehle(a) {
-    set({ auswahl: a });
+  waehle(ansicht, index) {
+    set({ auswahl: { ...get().auswahl, [ansicht]: index }, aktiv: ansicht });
+  },
+  auswahlLeeren() {
+    set({ auswahl: { seite: null, front: null, top: null } });
   },
   setzeAnsicht(a, v) {
     set({ ansichten: { ...get().ansichten, [a]: v } });

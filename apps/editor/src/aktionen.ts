@@ -24,7 +24,7 @@ function nachRueckfrage(titel: string, weiter: () => void) {
 export function neuesWesen() {
   nachRueckfrage('Neues Wesen anlegen?', () => {
     useEditor.getState().neu();
-    useUi.getState().waehle(null);
+    useUi.getState().auswahlLeeren();
   });
 }
 
@@ -65,7 +65,7 @@ export function ladeAusBibliothek(datei: string) {
       try {
         const dok = dokumentLesen(JSON.parse(await bibliothekLaden(datei)));
         useEditor.getState().laden(dok, datei);
-        useUi.getState().waehle(null);
+        useUi.getState().auswahlLeeren();
       } catch (e) {
         useUi.getState().zeigeHinweis(`Laden fehlgeschlagen: ${(e as Error).message}`);
       }
@@ -74,12 +74,15 @@ export function ladeAusBibliothek(datei: string) {
 }
 
 export function gewaehltenPunktLoeschen() {
-  const a = useUi.getState().auswahl;
-  if (!a) return;
-  const pr = useEditor.getState().dok.profile[a.ansicht];
-  if (!kannLoeschen(pr, a.index)) return;
-  useEditor.getState().setzeProfil(a.ansicht, loeschen(pr, a.index));
-  useUi.getState().waehle(null);
+  const ui = useUi.getState();
+  const ansicht = ui.hover && ui.hover !== 'creation' ? ui.hover : ui.aktiv;
+  if (!ansicht) return;
+  const index = ui.auswahl[ansicht];
+  if (index === null) return;
+  const pr = useEditor.getState().dok.profile[ansicht];
+  if (!kannLoeschen(pr, index)) return;
+  useEditor.getState().setzeProfil(ansicht, loeschen(pr, index));
+  ui.waehle(ansicht, null);
 }
 
 export function maximiereUnterMaus() {

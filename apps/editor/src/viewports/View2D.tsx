@@ -40,9 +40,8 @@ export function View2D({ ansicht, w, h }: Props) {
   const profil = useEditor((s) => s.dok.profile[ansicht]);
   const skal = useEditor((s) => s.dok.skalierung);
   const view = useUi((s) => s.ansichten[ansicht]);
-  const auswahl = useUi((s) => s.auswahl);
+  const gewaehlt = useUi((s) => s.auswahl[ansicht]) ?? -1;
   const svgRef = useRef<SVGSVGElement>(null);
-  const gewaehlt = auswahl?.ansicht === ansicht ? auswahl.index : -1;
 
   // Rad: nicht-passiv, sonst zoomt die Seite beim Trackpad-Pinch mit
   useEffect(() => {
@@ -139,7 +138,7 @@ export function View2D({ ansicht, w, h }: Props) {
           const r = autoTeilen(bewegeGriff(aktuell(), index, seite, z, brechen), MAX_SEGMENT, index);
           index = r.folge;
           useEditor.getState().setzeProfil(ansicht, r.profil);
-          useUi.getState().waehle({ ansicht, index });
+          useUi.getState().waehle(ansicht, index);
         },
         () => useEditor.getState().endeGeste(),
       );
@@ -150,7 +149,7 @@ export function View2D({ ansicht, w, h }: Props) {
       let index = Number(knotenEl.getAttribute('data-knoten'));
       const kn = aktuell().knoten[index]!;
       const versatz = minus(lokal(e.clientX, e.clientY), kn.p);
-      ui.waehle({ ansicht, index });
+      ui.waehle(ansicht, index);
       editor.beginGeste();
       ziehen(
         e,
@@ -159,14 +158,14 @@ export function View2D({ ansicht, w, h }: Props) {
           const r = autoTeilen(bewegeKnoten(aktuell(), index, z), MAX_SEGMENT, index);
           index = r.folge;
           useEditor.getState().setzeProfil(ansicht, r.profil);
-          useUi.getState().waehle({ ansicht, index });
+          useUi.getState().waehle(ansicht, index);
         },
         () => useEditor.getState().endeGeste(),
       );
       return;
     }
 
-    ui.waehle(null);
+    ui.waehle(ansicht, null);
   };
 
   const kontext = (e: React.MouseEvent) => {
@@ -178,12 +177,12 @@ export function View2D({ ansicht, w, h }: Props) {
     const kurveEl = ziel.closest('[data-kurve]');
     const setze = (p: Profil, index: number | null) => {
       editor.setzeProfil(ansicht, p);
-      ui.waehle(index === null ? null : { ansicht, index });
+      ui.waehle(ansicht, index);
     };
     if (knotenEl) {
       const i = Number(knotenEl.getAttribute('data-knoten'));
       const pr = aktuell();
-      ui.waehle({ ansicht, index: i });
+      ui.waehle(ansicht, i);
       const s = i < segmentAnzahl(pr) ? i : i - 1;
       ui.oeffneMenue({
         x: e.clientX,
