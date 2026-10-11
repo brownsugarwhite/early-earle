@@ -1,0 +1,536 @@
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--grund);
+  color: var(--weiss);
+  font-family: var(--schrift);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* ---------- Menüleiste ---------- */
+.menueleiste {
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  top: 21px;
+  height: 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 30;
+}
+
+.gruppe {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.pille {
+  height: 26px;
+  padding: 0 23px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--pille);
+  color: var(--weiss);
+  font-size: 13px;
+  line-height: 26px;
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  transition:
+    background-color 0.15s,
+    transform 0.35s var(--feder);
+}
+.pille:hover {
+  background: var(--pille-hover);
+  transform: translateY(-1px) scale(1.04);
+}
+.pille:active {
+  transform: scale(0.97);
+}
+.pille.aktiv {
+  background: var(--pille-aktiv);
+}
+.pille .dreieck {
+  transition: transform 0.3s var(--feder);
+}
+.pille.offen .dreieck {
+  transform: rotate(180deg);
+}
+
+/* Größenregler */
+.regler {
+  gap: 12px;
+  padding: 0 16px 0 18px;
+  cursor: ew-resize;
+}
+.regler:hover {
+  transform: none;
+}
+.regler-bahn {
+  position: relative;
+  width: 110px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.regler-fuellung {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+  background: rgba(255, 0, 149, 0.75);
+}
+.regler-knopf {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  background: var(--pille-aktiv);
+  box-shadow: 2px 2px 0 rgba(8, 12, 16, 0.45);
+  transition: transform 0.3s var(--feder);
+}
+.regler:hover .regler-knopf {
+  transform: scale(1.18);
+}
+.regler-wert {
+  min-width: 44px;
+  text-align: right;
+}
+
+/* Posen-Aufklappmenü */
+.dropdown {
+  position: relative;
+}
+.aufklapp {
+  position: absolute;
+  top: 34px;
+  left: 0;
+  min-width: 170px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  transform-origin: top left;
+  pointer-events: none;
+  transition:
+    opacity 0.18s,
+    transform 0.35s var(--feder);
+  z-index: 40;
+}
+.aufklapp.offen {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* ---------- Viewports ---------- */
+.buehne {
+  position: absolute;
+  inset: 0;
+}
+
+/* Ein Verlauf für alle Viewports: fest am Fenster, die Viewports sind Fenster hinein. */
+.vp-grund {
+  position: absolute;
+  background-image: linear-gradient(to top right, var(--verlauf-a), var(--verlauf-b));
+  background-attachment: fixed;
+  background-position: 40px 84px;
+  background-size: calc(100vw - 80px) calc(100vh - 124px);
+  background-repeat: no-repeat;
+  background-color: var(--verlauf-a);
+}
+
+.szene3d {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.vp-ober {
+  position: absolute;
+}
+
+.vp-titel {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 4px;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--weiss);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.vp-inhalt {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.view2d {
+  position: absolute;
+  inset: 0;
+  display: block;
+  cursor: default;
+}
+.view2d .achse {
+  stroke: rgba(25, 35, 43, 0.55);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+.view2d .knoten {
+  cursor: move;
+}
+.view2d .knoten-punkt {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.25s var(--feder);
+}
+.view2d .knoten:hover .knoten-punkt {
+  transform: scale(1.3);
+}
+.view2d .griff {
+  cursor: crosshair;
+}
+.view2d .griff.spiegel {
+  pointer-events: none;
+}
+.view2d [data-kurve] {
+  cursor: copy;
+}
+
+.steuerung3d {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+}
+.steuerung3d:active {
+  cursor: grabbing;
+}
+
+.vp-label {
+  position: absolute;
+  bottom: 11px;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--tinte);
+  pointer-events: none;
+}
+.vp-label.links {
+  left: 10px;
+}
+.vp-label.rechts {
+  right: 10px;
+}
+.vp-label.platzhalter {
+  opacity: 0.45;
+  font-size: 13px;
+}
+
+.pose-hinweis {
+  position: absolute;
+  left: 50%;
+  top: 16px;
+  transform: translateX(-50%);
+  padding: 7px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.eckknoepfe {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+.eckknopf {
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.35s var(--feder);
+}
+.eckknopf:hover {
+  transform: scale(1.22);
+}
+.eckknopf:active {
+  transform: scale(0.9);
+}
+.eckknopf.braun {
+  background: var(--knopf-braun);
+  cursor: default;
+}
+.eckknopf.blau {
+  background: var(--knopf-blau);
+  cursor: default;
+}
+.eckknopf.pink {
+  background: var(--knopf-pink);
+}
+
+/* ---------- Liquid Glass (ohne Kontur: Glanz, Brechung, harter Versatzschatten) ---------- */
+.glas {
+  border-radius: 22px;
+  background:
+    radial-gradient(120% 80% at 15% 0%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 60%),
+    rgba(25, 35, 43, 0.42);
+  backdrop-filter: url(#glas-fluessig) saturate(1.6) brightness(1.04);
+  box-shadow:
+    inset 0 2px 8px rgba(255, 255, 255, 0.28),
+    inset 0 -6px 14px rgba(255, 0, 149, 0.1),
+    var(--glas-schatten);
+  color: var(--weiss);
+}
+
+.eintrag {
+  display: block;
+  width: 100%;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--weiss);
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.12s,
+    transform 0.3s var(--feder);
+}
+.eintrag:hover:not(.aus) {
+  background: var(--pille-aktiv);
+  transform: translateX(2px);
+}
+.eintrag.aus {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.kontextmenue {
+  position: fixed;
+  z-index: 60;
+  min-width: 190px;
+  padding: 8px;
+  animation: auftauchen 0.28s var(--feder);
+}
+.kontextmenue .trenner {
+  height: 1px;
+  margin: 4px 8px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+@keyframes auftauchen {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(-4px);
+  }
+}
+
+/* ---------- Library ---------- */
+.library {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+}
+.library.offen {
+  pointer-events: auto;
+}
+.library-glas {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 26px;
+}
+.faecher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 16px 16px 10px;
+}
+.chip {
+  height: 24px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(117, 0, 92, 0.85);
+  color: var(--weiss);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    transform 0.3s var(--feder);
+}
+.chip:hover {
+  transform: scale(1.06);
+}
+.chip.aktiv {
+  background: var(--pille-aktiv);
+}
+.karten {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+  gap: 14px;
+  padding: 8px 16px 130px;
+}
+.karte {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--weiss);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.35s var(--feder);
+}
+.karte:hover {
+  transform: translateY(-3px) rotate(-1deg);
+}
+.karte-bild {
+  aspect-ratio: 1;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(to top right, var(--verlauf-a), var(--verlauf-b));
+  box-shadow: 6px 7px 0 rgba(8, 12, 16, 0.45);
+}
+.karte.aktiv .karte-bild {
+  box-shadow: 6px 7px 0 var(--pille-aktiv);
+}
+.karte-bild img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.karte-name {
+  margin: 9px 2px 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.leer {
+  grid-column: 1 / -1;
+  padding: 18px 6px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.8);
+}
+.ordner {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  z-index: 2;
+  height: 24px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(25, 35, 43, 0.6);
+  color: var(--weiss);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ornament {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 120px;
+  pointer-events: none;
+}
+.ornament .baeume line {
+  stroke: #ff7ad1;
+  stroke-width: 0.8;
+  opacity: 0.55;
+}
+
+/* ---------- Dialog und Hinweis ---------- */
+.dialog-grund {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 14, 18, 0.25);
+}
+.dialog {
+  width: 380px;
+  padding: 22px 22px 18px;
+  animation: auftauchen 0.32s var(--feder);
+}
+.dialog-titel {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+.dialog-text {
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 14px;
+}
+.dialog-eingabe {
+  width: 100%;
+  box-sizing: border-box;
+  height: 34px;
+  margin: 4px 0 16px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--tinte);
+  font: 16px var(--schrift);
+  outline: none;
+  user-select: text;
+}
+.dialog-knoepfe {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.hinweis {
+  position: fixed;
+  left: 50%;
+  bottom: 56px;
+  z-index: 80;
+  padding: 9px 20px;
+  font-size: 14px;
+  opacity: 0;
+  transform: translate(-50%, 12px);
+  pointer-events: none;
+  transition:
+    opacity 0.2s,
+    transform 0.4s var(--feder);
+}
+.hinweis.sichtbar {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}

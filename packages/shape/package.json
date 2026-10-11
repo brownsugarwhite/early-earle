@@ -1,0 +1,24 @@
+{
+  "name": "@ee/shape",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Wesen-Editor: Bézier-Profile (Seite, Front, Top), Dokumentformat und Platzhalter-Körper (engine-frei, DOM-frei)",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.0",
+    "vitest": "^5.0.2"
+  }
+}

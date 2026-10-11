@@ -17,6 +17,10 @@ on:
 permissions:
   contents: read
 
+# Der Wesen-Editor (apps/editor) braucht das Electron-Binary nur auf dem Mac, nicht in CI.
+env:
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+
 concurrency:
   group: web-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
