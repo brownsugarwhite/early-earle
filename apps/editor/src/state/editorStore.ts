@@ -19,6 +19,7 @@ type EditorState = {
   beginGeste(): void;
   endeGeste(): void;
   setzeProfil(ansicht: Ansicht, profil: Profil): void;
+  setzeProfile(profile: Dokument['profile']): void;
   setzeSkalierung(s: number): void;
   setzeName(name: string): void;
   rueckgaengig(): void;
@@ -63,6 +64,9 @@ export const useEditor = create<EditorState>((set, get) => {
     },
     setzeProfil(ansicht, profil) {
       aendern((d) => ({ ...d, profile: { ...d.profile, [ansicht]: profil } }));
+    },
+    setzeProfile(profile) {
+      aendern((d) => (d.profile === profile ? d : { ...d, profile }));
     },
     setzeSkalierung(s) {
       const v = Math.min(SKALIERUNG_MAX, Math.max(SKALIERUNG_MIN, s));

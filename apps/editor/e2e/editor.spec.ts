@@ -156,6 +156,55 @@ test('⌥ am Griff macht eine Ecke, Kontextmenü glättet, fügt ein und löscht
   expect((await dok(page)).profile.seite!.knoten).toHaveLength(n);
 });
 
+test('Ein Objekt: Ziehen in einer Ansicht bewegt die anderen live mit', async ({ page }) => {
+  await bereit(page);
+  const ext = async () =>
+    page.evaluate(() => {
+      const p = (window as unknown as Fenster).__stores.editor.getState().dok.profile;
+      const xs = (a: string) => p[a]!.knoten.map((k) => k.p.x);
+      const ys = (a: string) => p[a]!.knoten.map((k) => k.p.y);
+      return {
+        seiteYmax: Math.max(...ys('seite')),
+        frontYmax: Math.max(...ys('front')),
+        seiteXmin: Math.min(...xs('seite')),
+        topXmin: Math.min(...xs('top')),
+        frontBreite: Math.max(...xs('front')),
+        topBreite: Math.max(...ys('top')),
+      };
+    });
+  // Front: oberen Achspunkt hochziehen → Seite wird gleich hoch
+  const a = await knotenPos(page, 'front', 0);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(a.x, a.y - 70, { steps: 8 });
+  let e = await ext();
+  expect(e.seiteYmax).toBeCloseTo(e.frontYmax, 3);
+  await page.mouse.up();
+  // Top: vordere Spitze nach vorn → Schnauze der Seite wandert mit
+  const b = await knotenPos(page, 'top', 0);
+  await page.mouse.move(b.x, b.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x - 90, b.y, { steps: 8 });
+  await page.mouse.up();
+  // Front: Flanke raus → Top wird breiter
+  const c = await knotenPos(page, 'front', 3);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x + 60, c.y, { steps: 8 });
+  await page.mouse.up();
+  e = await ext();
+  expect(e.seiteXmin).toBeLessThan(-0.35);
+  expect(e.topBreite).toBeGreaterThan(0.3);
+  // geteilte Ausdehnungen der Kurven (nicht nur der Knoten) stimmen überein
+  const abw = () => page.evaluate(() => (window as unknown as { __pruefen: { abweichung(): number } }).__pruefen.abweichung());
+  expect(await abw()).toBeLessThan(1e-3);
+  await page.screenshot({ path: path.join(bilder, 'kopplung.png') });
+  // ein Zug = ein Rückgängig-Schritt für alle drei Ansichten
+  await page.keyboard.press('ControlOrMeta+z');
+  expect(await abw()).toBeLessThan(1e-3);
+  expect((await ext()).topBreite).toBeLessThan(0.3);
+});
+
 test('Auswahl je Viewport, Entf löscht den Punkt unter der Maus', async ({ page }) => {
   await bereit(page);
   const a = await knotenPos(page, 'seite', 2);

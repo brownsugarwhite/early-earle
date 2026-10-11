@@ -6,6 +6,7 @@ import {
   type GriffSeite,
   type Kubik,
   type Profil,
+  type Profile,
   type V2,
   MAX_SEGMENT,
   autoTeilen,
@@ -26,6 +27,7 @@ import {
   spiegeln,
 } from '@ee/shape';
 import { useEffect, useRef } from 'react';
+import { type Auswahl, gekoppeltBerechnen, setzeGekoppelt } from '../editing/gekoppelt';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { istTrackpad, radFaktor, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
@@ -91,6 +93,12 @@ export function View2D({ ansicht, w, h }: Props) {
     return { x: p.x / s, y: p.y / s };
   };
   const aktuell = (): Profil => useEditor.getState().dok.profile[ansicht];
+  /** Zug übernehmen: die anderen Ansichten folgen, gerechnet vom Stand am Gestenbeginn. */
+  const uebernehmen = (neu: Profil, index: number, basis: Profile, auswahlBasis: Auswahl) => {
+    const g = gekoppeltBerechnen(ansicht, neu, basis, auswahlBasis);
+    useEditor.getState().setzeProfile(g.profile);
+    useUi.getState().setzeAuswahl({ ...g.auswahl, [ansicht]: index }, ansicht);
+  };
 
   const ziehen = (e: React.PointerEvent, bewegen: (ev: PointerEvent) => void, ende?: () => void) => {
     svgRef.current?.setPointerCapture(e.pointerId);
@@ -132,6 +140,8 @@ export function View2D({ ansicht, w, h }: Props) {
       const kn = aktuell().knoten[index]!;
       const versatz = minus(lokal(e.clientX, e.clientY), plus(kn.p, kn[seite]));
       let brechen = e.altKey;
+      const basis = editor.dok.profile;
+      const auswahlBasis = ui.auswahl;
       editor.beginGeste();
       ziehen(
         e,
@@ -140,8 +150,7 @@ export function View2D({ ansicht, w, h }: Props) {
           const z = minus(lokal(ev.clientX, ev.clientY), versatz);
           const r = autoTeilen(bewegeGriff(aktuell(), index, seite, z, brechen), MAX_SEGMENT, index);
           index = r.folge;
-          useEditor.getState().setzeProfil(ansicht, r.profil);
-          useUi.getState().waehle(ansicht, index);
+          uebernehmen(r.profil, index, basis, auswahlBasis);
         },
         () => useEditor.getState().endeGeste(),
       );
@@ -153,6 +162,8 @@ export function View2D({ ansicht, w, h }: Props) {
       const kn = aktuell().knoten[index]!;
       const versatz = minus(lokal(e.clientX, e.clientY), kn.p);
       ui.waehle(ansicht, index);
+      const basis = editor.dok.profile;
+      const auswahlBasis = useUi.getState().auswahl;
       editor.beginGeste();
       ziehen(
         e,
@@ -160,8 +171,7 @@ export function View2D({ ansicht, w, h }: Props) {
           const z = minus(lokal(ev.clientX, ev.clientY), versatz);
           const r = autoTeilen(bewegeKnoten(aktuell(), index, z), MAX_SEGMENT, index);
           index = r.folge;
-          useEditor.getState().setzeProfil(ansicht, r.profil);
-          useUi.getState().waehle(ansicht, index);
+          uebernehmen(r.profil, index, basis, auswahlBasis);
         },
         () => useEditor.getState().endeGeste(),
       );
@@ -174,14 +184,10 @@ export function View2D({ ansicht, w, h }: Props) {
   const kontext = (e: React.MouseEvent) => {
     e.preventDefault();
     const ui = useUi.getState();
-    const editor = useEditor.getState();
     const ziel = e.target as Element;
     const knotenEl = ziel.closest('[data-knoten]');
     const kurveEl = ziel.closest('[data-kurve]');
-    const setze = (p: Profil, index: number | null) => {
-      editor.setzeProfil(ansicht, p);
-      ui.waehle(ansicht, index);
-    };
+    const setze = (p: Profil, index: number | null) => setzeGekoppelt(ansicht, p, index);
     if (knotenEl) {
       const i = Number(knotenEl.getAttribute('data-knoten'));
       const pr = aktuell();

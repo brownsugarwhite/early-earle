@@ -1,6 +1,7 @@
 // Befehle der Menüleiste und Tastenkürzel (an einer Stelle, damit Menü, Knöpfe und Kürzel gleich handeln).
 
-import { dokumentLesen, kannLoeschen, loeschen } from '@ee/shape';
+import { angleichen, dokumentLesen, kannLoeschen, loeschen } from '@ee/shape';
+import { setzeGekoppelt } from './editing/gekoppelt';
 import { bibliothekLaden, bibliothekSpeichern, useBibliothek } from './library/speicher';
 import { useEditor } from './state/editorStore';
 import { useUi } from './state/uiStore';
@@ -63,7 +64,9 @@ export function ladeAusBibliothek(datei: string) {
   nachRueckfrage('Anderes Wesen laden?', () => {
     void (async () => {
       try {
-        const dok = dokumentLesen(JSON.parse(await bibliothekLaden(datei)));
+        const gelesen = dokumentLesen(JSON.parse(await bibliothekLaden(datei)));
+        // ältere Speicherstände stimmig machen (ein Objekt, drei Ansichten)
+        const dok = { ...gelesen, profile: angleichen(gelesen.profile) };
         useEditor.getState().laden(dok, datei);
         useUi.getState().auswahlLeeren();
       } catch (e) {
@@ -81,8 +84,7 @@ export function gewaehltenPunktLoeschen() {
   if (index === null) return;
   const pr = useEditor.getState().dok.profile[ansicht];
   if (!kannLoeschen(pr, index)) return;
-  useEditor.getState().setzeProfil(ansicht, loeschen(pr, index));
-  ui.waehle(ansicht, null);
+  setzeGekoppelt(ansicht, loeschen(pr, index), null);
 }
 
 export function maximiereUnterMaus() {

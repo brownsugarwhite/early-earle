@@ -43,6 +43,7 @@ type UiState = {
   libraryUmschalten(offen?: boolean): void;
   setzeHover(id: ViewId | null): void;
   waehle(ansicht: Ansicht, index: number | null): void;
+  setzeAuswahl(a: Record<Ansicht, number | null>, aktiv: Ansicht): void;
   auswahlLeeren(): void;
   setzeAnsicht(a: Ansicht, v: Ansicht2D): void;
   setzeKamera(k: Kamera): void;
@@ -77,6 +78,9 @@ export const useUi = create<UiState>((set, get) => ({
   },
   waehle(ansicht, index) {
     set({ auswahl: { ...get().auswahl, [ansicht]: index }, aktiv: ansicht });
+  },
+  setzeAuswahl(a, aktiv) {
+    set({ auswahl: a, aktiv });
   },
   auswahlLeeren() {
     set({ auswahl: { seite: null, front: null, top: null } });

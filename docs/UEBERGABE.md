@@ -22,6 +22,8 @@ Florian baut den Charaktereditor neu: Er zieht drei Profile (Seite, Front, Top),
   - automatisch neue Punkte (formtreu) bei Segmenten über 0,2 Kachel
   - Spiegelhälfte weiß, Achspunkte auf der Achse
   - Auswahl je Viewport, ⌘Z/⇧⌘Z
+- **Ein Objekt, drei Ansichten** (Florians Nachtrag): Geteilte Ausdehnungen sind gekoppelt. Ziehen in einer Ansicht bewegt die anderen live mit, mit proportionalem Abfall wie in Blender; ein Rückgängig-Schritt.
+- **3D drehen** auch mit linker Taste, ⌃-Klick und Trackpad (zwei Finger); Pinch zoomt.
 - **3D:** Matcap im Blender-Solid-Look, an die Kugel der Vorlage angepasst; Kachel; harter Schatten mit eigener Sonne. Der Körper ist der **Platzhalter-Loft** und live aus den drei Profilen gebaut. Drei Kreise ergeben eine Kugel, ein herausgezogener Seitenpunkt eine runde Spitze. Die Vertexzahl ist fest.
 - **Menü:**
   - Editor/Fressen-Tabs, „Neue Pose ▼“ (Ruhen, Laufen, Inklusion; Rechtsklick entfernt)
@@ -35,8 +37,8 @@ Florian baut den Charaktereditor neu: Er zieht drei Profile (Seite, Front, Top),
   - Größenregler als Pille
 
 **Prüfungen:**
-- Typen, Lint und Unit-Tests: `packages/shape` 15, `apps/editor` 6
-- E2E 9/9 auf echter GPU
+- Typen, Lint und Unit-Tests: `packages/shape` 22, `apps/editor` 6
+- E2E 10/10 auf echter GPU
 - WebGL2-Rückfall geprüft
 - Electron im Dev- und Produktionsmodus sowie die gepackte `.app` per Rauchtest (WebGPU, Speichern auf Platte)
 

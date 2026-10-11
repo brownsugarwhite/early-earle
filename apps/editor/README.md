@@ -32,7 +32,9 @@ Fehlt nach `pnpm install` das Electron-Binary (`Electron failed to install corre
 |---|---|
 | Zoomen | Mausrad (2D zum Cursor hin, 3D zum Drehpunkt) |
 | Verschieben | mittlere Maustaste ziehen (alle Viewports) |
-| Drehen | rechte Maustaste ziehen (nur 3D) |
+| Drehen (3D) | linke oder rechte Maustaste ziehen, ⌃-Klick ziehen, Trackpad: zwei Finger wischen |
+| Verschieben (3D) | mittlere Taste oder ⇧ + Ziehen, Trackpad: ⇧ + zwei Finger |
+| Trackpad 2D | zwei Finger verschieben, Pinch zoomt |
 | Ansicht zurücksetzen | Pos1 (Viewport unter der Maus) oder Rechtsklick auf freie Fläche |
 | Maximieren | pinker Knopf oder ⌃Leertaste (wie Blender) |
 | Punkt wählen / ziehen | Klick / Ziehen; jede Ansicht hat ihren eigenen gewählten Punkt |
@@ -43,6 +45,7 @@ Fehlt nach `pnpm install` das Electron-Binary (`Electron failed to install corre
 | Rückgängig / Wiederholen | ⌘Z / ⇧⌘Z (ein Zug = ein Schritt) |
 | Speichern / Neues Wesen / Library | ⌘S / ⌘N / ⌘L |
 
+- **Ein Objekt, drei Ansichten:** Je zwei Ansichten teilen eine Achse: Seite und Front die Höhe, Seite und Top die Länge, Front und Top die Breite. Ändert ein Zug die Ausdehnung auf einer geteilten Achse, folgt die andere Ansicht live. Ihr äußerster Punkt geht genau mit, die übrigen abgestuft (wie proportionales Bearbeiten in Blender, quadratischer Abfall). Ein Zug ist ein Rückgängig-Schritt für alle drei Ansichten. Geladene Wesen werden beim Öffnen stimmig gemacht.
 - **Automatische Punkte:** Wird beim Ziehen ein Segment länger als 0,2 Kachel, entsteht in der Mitte formtreu ein neuer Punkt. Bestehende Punkte wandern nicht.
 - **Spiegelung:** Front und Top sind nur auf einer Hälfte editierbar (rechts bzw. oben). Achspunkte bleiben auf der Achse; ein glatter Achspunkt hat seinen Griff quer zur Achse.
 - **Größe:** Der Regler in der Menüleiste skaliert das ganze Wesen relativ zur festen Kachel (25–300 %). Doppelklick setzt 100 %.
@@ -57,7 +60,8 @@ Fehlt nach `pnpm install` das Electron-Binary (`Electron failed to install corre
 - `src/viewports/` 2D als SVG in Bildpunkten (Griffe bleiben gleich groß) und die 3D-Eingabe.
 - `src/three/` ein Vollfenster-Canvas mit Scissor auf das Creation-Rechteck. Er rendert nur bei Änderung, Matcap, harter Schatten.
 - `src/state/` Dokument mit Rückgängig (zustand) und Oberflächen-Zustand.
-- `packages/shape` (DOM-frei): Bézier-Mathematik, Profile, Dokumentformat v0, Platzhalter-Loft.
+- `packages/shape` (DOM-frei): Bézier-Mathematik, Profile, Kopplung der Ansichten (`kopplung.ts`), Dokumentformat v0, Platzhalter-Loft.
+- `src/editing/gekoppelt.ts` wendet die Kopplung beim Ziehen an, immer vom Stand am Gestenbeginn aus.
 
 ## Prüfen
 

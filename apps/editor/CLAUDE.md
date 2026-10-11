@@ -12,6 +12,8 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 - **Jedes neue Wesen startet als Kugel** aus drei Kreisen (Größe 100 %).
 - Maximierter Viewport bleibt auf seiner Seite; Speichern und Library funktionieren echt.
 - Die **echte Bauweise** (Profile → Körper, Augen, Flügel, Posen/Blendshapes) folgt in einer großen Sitzung ab 12.10. Bis dahin ist der 3D-Körper der **Platzhalter-Loft** in `packages/shape/src/platzhalter/loft.ts`: Die Seite bestimmt Länge und Höhe, das Top die Breitenverteilung (auf die Länge der Seite gestreckt), die Front den Querschnitt. Feste Vertexzahl.
+- **Nachtrag 11.10. nachmittags — ein Objekt:** „Es soll ja alles ein und dasselbe Objekt sein. Wenn ich im Frontview etwas verschiebe, muss das auch in den anderen Shapes passieren, live.“ Umsetzung: Die geteilten Ausdehnungen sind gekoppelt (Seite ↔ Front y, Seite ↔ Top x, Front ↔ Top z, gemessen an der Kurve, nicht nur an den Knoten). Die andere Ansicht folgt mit proportionalem Abfall (Exponent 2), gerechnet vom Gestenbeginn. Code: `packages/shape/src/kopplung.ts`, `src/editing/gekoppelt.ts`. Direkte Züge bleiben Illustrator-artig (nur der gezogene Punkt bewegt sich).
+- **Nachtrag 11.10. — 3D drehen:** „3D-View lässt sich noch nicht drehen“ (vermutlich Trackpad). Jetzt dreht die linke oder rechte Taste, ebenso ⌃-Klick und Zwei-Finger-Wischen. ⇧ verschiebt, Pinch und Mausrad zoomen. Trackpad-Erkennung: `istTrackpad` (Chrome: wheelDeltaY = −3 · deltaY).
 - Automatische Punkte: nur formtreues Teilen zu langer Segmente (0,2 Kachel), nie Punkte wandern lassen. Für Posen gilt später: gemeinsame Punktstruktur, Einfügen formtreu in allen Posen, Netz mit fester Auflösung.
 
 ## Arbeitsweise
