@@ -33,6 +33,8 @@ const ZahnSchema = ZahnWerteSchema.extend({ u: z.number(), aussen: z.boolean(), 
 const ZahnreiheSchema = z.object({ anzahl: z.number().int().min(0).max(31), zaehne: z.array(ZahnSchema) });
 /** Ansicht, aus der eine Linie gezeichnet wurde (bestimmt, welche Fläche sie trifft, wenn sich die Form ändert). */
 const BlickSchema = z.enum(['seite', 'front', 'hinten', 'top', 'unten']);
+/** Spant: Querschnitt an der Stelle f (Anteil der Länge), halbes Profil normiert auf den Kasten aus Seite und Top. */
+const SpantSchema = z.object({ f: z.number().min(0).max(1), profil: ProfilSchema });
 const KanteSchema = z.object({ knoten: z.array(Knoten3Schema).min(2), haerte: z.array(z.number().min(0).max(1)), blick: BlickSchema, tiefe: z.number().optional() });
 
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */
@@ -52,6 +54,8 @@ export const DokumentSchema = z.object({
   maul: z.object({ zu: LippenSchema, auf: LippenSchema.optional() }).optional(),
   zaehne: z.object({ oben: ZahnreiheSchema, unten: ZahnreiheSchema }).optional(),
   kanten: z.array(KanteSchema).optional(),
+  spanten: z.array(SpantSchema).optional(),
+  hauptspant: z.number().min(0).max(1).optional(),
 });
 
 export type V3T = [number, number, number];
@@ -73,6 +77,11 @@ export type Blick = 'seite' | 'front' | 'hinten' | 'top' | 'unten';
  * Kantenlinie auf der Fläche (gespiegelt an z = 0 wie die Maullinien): 3D-Bézier, Härte je Knoten, entlang der Linie
  * verlaufend (0 = mögliche Kante, Übergang ganz glatt, gestrichelt 1 px; 1 = scharf, schwarz 3 px).
  */
+/**
+ * Spant (Versuch 12.10. nachmittags): Querschnitt an der Stelle f (Anteil der Länge der Seite), halbes Profil mit der
+ * Punktstruktur der Front, normiert auf den Kasten an dieser Stelle (Breite 0…1 ab der Achse, Höhe 0…1).
+ */
+export type Spant = { f: number; profil: Profil };
 export type Kante = {
   knoten: Knoten3[];
   haerte: number[];
@@ -94,6 +103,9 @@ export type Dokument = {
   maul?: Maul;
   zaehne?: Zaehne;
   kanten?: Kante[];
+  spanten?: Spant[];
+  /** Stelle des Hauptspants (Front); fehlt = dickste Stelle */
+  hauptspant?: number;
 };
 
 export type Ansicht = keyof Dokument['profile'];
