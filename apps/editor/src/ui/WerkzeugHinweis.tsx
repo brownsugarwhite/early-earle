@@ -4,7 +4,7 @@ const TEXTE = {
   stift: ['Zeichenstift', 'Klick auf die Kurve setzt einen Punkt, Klick auf einen Punkt löscht ihn, ⌥-Klick wandelt um. Klick auf freie Fläche beginnt eine Kante, Enter beendet'],
   plus: ['Ankerpunkt hinzufügen', 'Klick auf die Kurve setzt einen Punkt'],
   minus: ['Ankerpunkt löschen', 'Klick auf einen Punkt löscht ihn'],
-  breite: ['Breitenwerkzeug', 'An einer Kante ziehen: breiter = härter, schmaler = weicher (schwarz 3 px = scharf, gestrichelt = glatt)'],
+  breite: ['Breitenwerkzeug', 'Kante oder Ecke greifen und ziehen: Der Abstand ist die Härte (Kreis), nah = glatt, außen = scharf'],
 } as const;
 
 /** Zeigt in der unteren Lücke, welches Werkzeug aktiv ist (in der Direktauswahl unsichtbar). */

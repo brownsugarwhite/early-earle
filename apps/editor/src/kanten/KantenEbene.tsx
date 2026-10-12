@@ -99,6 +99,8 @@ export function KantenZeichnung({ ansicht, bild, aktiv }: { ansicht: Ansicht; bi
   const blick = useUi((s) => blickVon(ansicht, s.blick));
   const auswahl = useUi((s) => s.kantenAuswahl);
   const zeichnen = useUi((s) => s.kanteZeichnen);
+  // beim Breitenwerkzeug zeigt der Kreis die Zahl
+  const breite = useUi((s) => s.breitenAnzeige?.ansicht === ansicht);
   const kanten = dok.kanten ?? [];
   if (!kanten.length && !zeichnen) return null;
   const zug = (pts: V2[]) => pts.map((q, i) => `${i ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join('');
@@ -145,7 +147,7 @@ export function KantenZeichnung({ ansicht, bild, aktiv }: { ansicht: Ansicht; bi
                 const sel = gewaehlt.includes(i);
                 // Härte als Zahl: an einzeln gewählten Punkten; ganze Linie gewählt: einmal in der Mitte
                 const ganz = gewaehlt.length === k.knoten.length && k.knoten.length > 2;
-                const zeigeWert = sel && (!ganz || i === Math.floor((k.knoten.length - 1) / 2));
+                const zeigeWert = sel && !breite && (!ganz || i === Math.floor((k.knoten.length - 1) / 2));
                 if (!vis) return <circle key={i} cx={q.x} cy={q.y} r={3} fill="var(--punkt)" opacity={0.3} pointerEvents="none" />;
                 return (
                   <g key={i} data-kantenknoten={`${ki}:${i}`} className={sel ? 'knoten gewaehlt' : 'knoten'}>
@@ -271,12 +273,13 @@ export function kantenZeiger(e: React.PointerEvent, ctx: KantenKontext): boolean
   const griffEl = ziel.closest('[data-kantengriff]');
   const linieEl = ziel.closest('[data-kantenlinie]');
 
-  // Breitenwerkzeug: an der Linie ziehen, weg von der Linie = härter
+  // Breitenwerkzeug: Punkt greifen und ziehen; der Abstand zum Punkt ist die Härte (Kreis zeigt sie), wie ein Band,
+  // das man aufzieht. Zwischen Knoten entsteht ein neuer Knoten.
   if (ui.werkzeug === 'breite') {
     const ki = knotenEl ? Number(knotenEl.getAttribute('data-kantenknoten')!.split(':')[0]) : linieEl ? Number(linieEl.getAttribute('data-kantenlinie')) : -1;
     const k = kanten()[ki];
     if (!k) {
-      if (!profilZiel) ui.zeigeHinweis('Breitenwerkzeug: an einer Kante ziehen');
+      if (!profilZiel) ui.zeigeHinweis('Breitenwerkzeug: an einer Kante oder Ecke ziehen');
       return !profilZiel;
     }
     const t = naechsterInAnsicht(k, ctx.ansicht, q);
@@ -290,24 +293,14 @@ export function kantenZeiger(e: React.PointerEvent, ctx: KantenKontext): boolean
       linie = { ...k, knoten: r.linie.knoten, haerte };
       index = r.index;
     }
-    const h0 = linie.haerte[index] ?? 0;
-    const qk = ctx.bild(inAnsicht2(linie.knoten[index]!.p, ctx.ansicht));
-    // Abstand zur Linie in Bildpunkten des Viewports (Ereignis hängt am SVG)
-    const rahmen = (e.currentTarget as Element).getBoundingClientRect();
-    const d0 = Math.hypot(e.clientX - rahmen.left - qk.x, e.clientY - rahmen.top - qk.y);
     ed.beginGeste();
     setzeKante(ki, linie);
     ui.setzeKantenAuswahl({ kante: ki, indizes: [index] });
-    ctx.ziehen(
-      e,
-      (ev) => {
-        const d = Math.hypot(ev.clientX - rahmen.left - qk.x, ev.clientY - rahmen.top - qk.y);
-        const h = Math.min(1, Math.max(0, h0 + (d - d0) / BREITE_PX));
-        const jetzt = kanten()[ki];
-        if (jetzt) setzeKante(ki, { ...jetzt, haerte: jetzt.haerte.map((x, i) => (i === index ? h : x)) });
-      },
-      () => useEditor.getState().endeGeste(),
-    );
+    const mitte = inAnsicht2(linie.knoten[index]!.p, ctx.ansicht);
+    breiteZiehen(e, ctx, mitte, linie.haerte[index] ?? 0, (h) => {
+      const jetzt = kanten()[ki];
+      if (jetzt) setzeKante(ki, { ...jetzt, haerte: jetzt.haerte.map((x, i) => (i === index ? h : x)) });
+    });
     return true;
   }
 
@@ -407,6 +400,51 @@ export function kantenZeiger(e: React.PointerEvent, ctx: KantenKontext): boolean
 
   if (ui.kantenAuswahl) ui.setzeKantenAuswahl(null);
   return false;
+}
+
+/**
+ * Breitenwerkzeug ziehen (Kanten und Ecken): Nach den ersten Bildpunkten gilt der Abstand vom Punkt als Härte
+ * (0 am Punkt, 100 % bei BREITE_PX); ein Kreis um den Punkt zeigt sie. Ohne Bewegung bleibt die Härte.
+ */
+export function breiteZiehen(e: React.PointerEvent, ctx: KantenKontext, mitte: V2, h0: number, setzen: (h: number) => void) {
+  const ui = useUi.getState();
+  const rahmen = (e.currentTarget as Element).getBoundingClientRect();
+  const qm = ctx.bild(mitte);
+  const start = { x: e.clientX, y: e.clientY };
+  let bewegt = false;
+  ui.setzeBreitenAnzeige({ ansicht: ctx.ansicht, mitte, h: h0 });
+  ctx.ziehen(
+    e,
+    (ev) => {
+      if (!bewegt && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 3) return;
+      bewegt = true;
+      const d = Math.hypot(ev.clientX - rahmen.left - qm.x, ev.clientY - rahmen.top - qm.y);
+      const h = Math.min(1, Math.max(0, d / BREITE_PX));
+      setzen(h);
+      useUi.getState().setzeBreitenAnzeige({ ansicht: ctx.ansicht, mitte, h });
+    },
+    () => {
+      useUi.getState().setzeBreitenAnzeige(null);
+      useEditor.getState().endeGeste();
+    },
+  );
+}
+
+/** Kreis des Breitenwerkzeugs: Radius = Härte (bis BREITE_PX), mit Prozentzahl. */
+export function BreitenKreis({ ansicht, bild }: { ansicht: Ansicht; bild: (p: V2) => V2 }) {
+  const b = useUi((s) => s.breitenAnzeige);
+  if (!b || b.ansicht !== ansicht) return null;
+  const q = bild(b.mitte);
+  const r = Math.max(2, b.h * BREITE_PX);
+  return (
+    <g className="breiten-kreis" pointerEvents="none">
+      <circle cx={q.x} cy={q.y} r={BREITE_PX} fill="none" stroke="#19232b" strokeOpacity={0.25} strokeDasharray="2 3" />
+      <circle cx={q.x} cy={q.y} r={r} fill="rgba(25,35,43,0.10)" stroke={dunkel(b.h)} strokeWidth={strichBreite(b.h)} strokeDasharray={b.h < GLATT ? '4 3' : undefined} />
+      <text className="kanten-wert" x={q.x + BREITE_PX + 4} y={q.y + 4}>
+        {prozent(b.h)}
+      </text>
+    </g>
+  );
 }
 
 /** Enter beendet eine neue Kante, Esc bricht ab (weniger als zwei Punkte) oder beendet sie. */

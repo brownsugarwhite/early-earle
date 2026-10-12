@@ -37,7 +37,7 @@ import { RigZeichnung } from '../maul/RigZeichnung';
 import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
 import { useMaulInfo } from '../maul/maulKoerper';
 import { offenerUmriss } from '../maul/offenerUmriss';
-import { KantenZeichnung, kantenZeiger } from '../kanten/KantenEbene';
+import { BreitenKreis, KantenZeichnung, breiteZiehen, kantenZeiger } from '../kanten/KantenEbene';
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { versetzt3 } from '@ee/shape/versuch';
 
@@ -187,6 +187,23 @@ export function View2D({ ansicht, w, h }: Props) {
     const kurveEl = ziel.closest('[data-kurve]');
 
     // Zeichenstift, + und − (wie Illustrator); ⌘ hält vorübergehend die Direktauswahl
+    // Breitenwerkzeug an einer Ecke der Silhouette: Härte der Ecke (die Ecke ist im 3D eine Kante)
+    if (ui.werkzeug === 'breite') {
+      const i = knotenEl ? Number(knotenEl.getAttribute('data-knoten')) : -1;
+      const kn = aktuell().knoten[i];
+      if (!kn) return;
+      if (kn.art !== 'ecke') {
+        ui.zeigeHinweis('Härte haben Ecken: ⌥-Klick mit dem Zeichenstift macht aus dem Punkt eine Ecke');
+        return;
+      }
+      ui.waehle(ansicht, [i]);
+      editor.beginGeste();
+      breiteZiehen(e, { ansicht, lokal, ziehen, bild }, kn.p, kn.haerte ?? 1, (h) => {
+        const pr = aktuell();
+        useEditor.getState().setzeProfil(ansicht, { ...pr, knoten: pr.knoten.map((k, j) => (j === i ? { ...k, haerte: h } : k)) });
+      });
+      return;
+    }
     if (ui.werkzeug !== 'auswahl' && !e.metaKey) {
       const i = knotenEl ? Number(knotenEl.getAttribute('data-knoten')) : -1;
       if (knotenEl && ui.werkzeug === 'stift' && e.altKey) {
@@ -455,6 +472,7 @@ export function View2D({ ansicht, w, h }: Props) {
       {(hatMaul || ebene === 'maul') && <MaulZeichnung ansicht={ansicht} bild={bild} aktiv={ebene === 'maul'} />}
       {ebene === 'rig' && <RigZeichnung ansicht={ansicht} bild={bild} />}
       {ebene === 'zaehne' && <ZahnZeichnung ansicht={ansicht} bild={bild} />}
+      <BreitenKreis ansicht={ansicht} bild={bild} />
       {rahmen && (
         <rect
           className="auswahlrahmen"

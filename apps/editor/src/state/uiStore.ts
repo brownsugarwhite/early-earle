@@ -16,6 +16,8 @@ export type Werkzeug = 'auswahl' | 'stift' | 'plus' | 'minus' | 'breite';
 export type KantenAuswahl = { kante: number; indizes: number[] };
 /** Zeichenstift auf freier Fläche: neue Kantenlinie, bis Enter/Esc/Doppelklick. */
 export type KanteZeichnen = { blick: Blick; ansicht: Ansicht; knoten: V3T[] };
+/** Breitenwerkzeug beim Ziehen: Kreis um den Punkt, Radius = Härte (Weltpunkt in der Ansicht). */
+export type BreitenAnzeige = { ansicht: Ansicht; mitte: { x: number; y: number }; h: number };
 
 export type MenueEintrag = { label: string; aktion: () => void; aus?: boolean } | 'trenner';
 export type KontextMenue = { x: number; y: number; eintraege: MenueEintrag[] };
@@ -58,6 +60,7 @@ type UiState = {
   blick: Blicke;
   kantenAuswahl: KantenAuswahl | null;
   kanteZeichnen: KanteZeichnen | null;
+  breitenAnzeige: BreitenAnzeige | null;
   /** liegt während Layout-Bewegungen oben */
   oben: ViewId | null;
   hover: ViewId | null;
@@ -82,6 +85,7 @@ type UiState = {
   setzeBlick<A extends keyof Blicke>(ansicht: A, b: Blicke[A]): void;
   setzeKantenAuswahl(a: KantenAuswahl | null): void;
   setzeKanteZeichnen(z: KanteZeichnen | null): void;
+  setzeBreitenAnzeige(b: BreitenAnzeige | null): void;
   setzeHover(id: ViewId | null): void;
   setzeWerkzeug(w: Werkzeug): void;
   waehle(ansicht: Ansicht, indizes: number[]): void;
@@ -106,6 +110,7 @@ export const useUi = create<UiState>((set, get) => ({
   blick: { front: 'front', top: 'top' },
   kantenAuswahl: null,
   kanteZeichnen: null,
+  breitenAnzeige: null,
   oben: null,
   hover: null,
   werkzeug: 'auswahl',
@@ -149,6 +154,9 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeKanteZeichnen(z) {
     set({ kanteZeichnen: z });
+  },
+  setzeBreitenAnzeige(b) {
+    set({ breitenAnzeige: b });
   },
   setzeHover(id) {
     set({ hover: id });
