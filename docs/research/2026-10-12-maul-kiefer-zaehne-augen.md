@@ -149,6 +149,29 @@ Werkzeug: `apps/editor/scripts/nachziehen/` (Python, nur Standardbibliothek). Pr
 ### 3.4 Zähne
 _(wird mit dem Zahn-Versuch ergänzt)_
 
+### 3.5 Augen (gemalt, `apps/editor/src/versuch/maulVersuch.ts`)
+
+Florians Augenumrisse aus der Seitenansicht werden auf die geschlossene Haut projiziert, gespiegelt und beim Öffnen mit dem Oberkiefer bewegt. Bilder: `docs/progress/editor/augen-*.png`.
+
+- **Arten wie in seinen Bögen:**
+  - Rex: Mandel mit oranger Iris, Pupille und Lidstrich.
+  - Robbe: Knopf mit Glanzpunkt.
+  - Langhals: Schlitz.
+- **Bau:**
+  - Die Fläche des Umrisses wird in Ringen (100/75/50/25 %) auf die Haut gelegt, damit sie der Wölbung folgt. Ein flacher Fächer versank in der Haut.
+  - Abstand über der Haut: 0,002–0,0035 Kachel, je Ebene etwas mehr (Iris, Pupille, Lid).
+- **Fallen:**
+  - Florians Umrisse laufen mal links-, mal rechtsherum. Bei einseitigem Material verschwanden Knopf und Iris, weil sie von hinten gesehen wurden. Abhilfe: den Umlaufsinn nach der Hautnormalen ausrichten.
+  - Linien wie das Lid sind keine Flächen. Als Fläche zur Mitte hin gefüllt ergab die gebogene Lidlinie eine dunkle Sichel. Abhilfe: als Strich mit Versatz entlang der Bildnormalen, zu den Enden verjüngt.
+- **Grenzen:**
+  - **Seitliche Projektion:** Auf Flächen, die sich wegdrehen, wird das Auge gestreckt (Langhals).
+  - **Starr am Oberkiefer:**
+    - Funktioniert, solange das Auge auf dem starren Schädel sitzt (Rex offen).
+    - Liegt es nahe der Grenze zum Hals, sinkt es beim Öffnen teilweise ein (Langhals offen).
+- **Empfehlung für den Augen-Tab:**
+  - Das Auge wird **an der Fläche verankert** (Käfigfläche plus u/v), mit eigenem Tangentenrahmen. So folgt es der Haut in jedem Zustand.
+  - Gemalt wird es im Körpershader als Abstandsfeld (Schlitz, Knopf, Mandel, Ausdruck), siehe B3. Die Dreiecke hier sind nur der Beweis, dass Lage und Bewegung stimmen.
+
 ## 4. Offene Probleme und Abhilfe (für die große Sitzung)
 
 1. **Durchdringungen** (Tabelle oben). Gefunden über die Rückverfolgung auf Käfigflächen:
