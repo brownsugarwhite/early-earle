@@ -54,6 +54,9 @@ export type Sprosse = {
   flanke: number;
   /** woher die Breite kommt */
   quelle: 'top' | 'front' | 'ersatz';
+  /** Lage entlang der Wirbelsäule (Bogenlänge ab der Schnauze) und Fußpunkt der Wirbelsäule auf der Sprosse */
+  s?: number;
+  o?: V2;
   /**
    * Querschnitt-Vorlage der rechten Hälfte (oben → unten, Breite 0 … 1, Höhe 1 … 0), wenn das Wesen ganz liegt: die
    * gezeichnete Front samt Spanten wie im bisherigen Loft. Fehlt sie, ist der Querschnitt oval mit der Flanke in `flanke`.
@@ -64,6 +67,9 @@ export type Sprosse = {
 export type WirbelKaefig = {
   netz: Netz;
   ziel: V3[];
+  /** Länge der Wirbelsäule und ihre Spitzen (Pole: Schnauze, Schwanz) */
+  laenge?: number;
+  spitzen?: { vorn: V2; hinten: V2 };
   /** Wirbelsäule in der Seitenansicht (Mitte der Sprossen, geglättet) */
   wirbel: V2[];
   sprossen: Sprosse[];
@@ -403,7 +409,11 @@ export function wirbelKaefig(dokRoh: Dokument, opt: WirbelOptionen = WIRBEL_STAN
     const d = { x: oben.x - unten.x, y: oben.y - unten.y };
     // Winkel der Sprosse zur Senkrechten: 0° = senkrecht (Teil liegt), 90° = waagerecht (Teil steht)
     const phi = (Math.atan2(Math.abs(d.x), Math.abs(d.y)) * 180) / Math.PI;
-    return { oben, unten, liegend: 1 - glatt01(35, 55, phi) };
+    // Rahmen für den gestreckten Raum (Maul auf der Wirbelsäule): Fußpunkt der Wirbelsäule auf der Sprosse
+    const dl = Math.hypot(d.x, d.y) || 1;
+    const k = ((p.x - unten.x) * d.x + (p.y - unten.y) * d.y) / (dl * dl);
+    const fuss = { x: unten.x + d.x * k, y: unten.y + d.y * k };
+    return { oben, unten, liegend: 1 - glatt01(35, 55, phi), s: c, o: fuss };
   });
   if (ersatzSprossen) hinweise.push(`${ersatzSprossen} Sprossen ohne Treffer (Wirbelsäule außerhalb des Umrisses?)`);
   const liegend = geglaettet(
@@ -474,7 +484,7 @@ export function wirbelKaefig(dokRoh: Dokument, opt: WirbelOptionen = WIRBEL_STAN
       breite = wf;
       quelle = 'front';
     }
-    return { oben: s.oben, unten: s.unten, liegend: liegend[i]!, breite: Math.max(breite, 0.08 * h), flanke, quelle };
+    return { oben: s.oben, unten: s.unten, liegend: liegend[i]!, breite: Math.max(breite, 0.08 * h), flanke, quelle, s: s.s, o: s.o };
   });
   if (ersatz) hinweise.push(`${ersatz} Ringe ohne Breite in Top und Front (Ersatz: halbe Höhe)`);
   const bG = geglaettet(
@@ -538,7 +548,7 @@ export function wirbelKaefig(dokRoh: Dokument, opt: WirbelOptionen = WIRBEL_STAN
 
   const wirbel = achse.filter((_, i) => i % 4 === 0 || i === M - 1);
   const k = kaefigAusSprossen(sprossen, ruecken[0]!, ruecken[ruecken.length - 1]!, opt);
-  return { ...k, wirbel, sprossen, hinweise };
+  return { ...k, wirbel, sprossen, hinweise, laenge: C, spitzen: { vorn: ruecken[0]!, hinten: ruecken[ruecken.length - 1]! } };
 }
 
 /**

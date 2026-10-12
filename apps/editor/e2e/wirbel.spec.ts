@@ -120,3 +120,47 @@ test('Wirbelsäule selbst zeichnen: Punkte setzen, ziehen, löschen, Vorschlag �
   await page.keyboard.press('ControlOrMeta+z');
   expect(await wirbel()).toBeUndefined();
 });
+
+// Florian 12.10. nachts: „Kannst du es kombinieren, dass es auch mit dem Maul funktioniert?“
+test('Maul auf der Wirbelsäule: Langhals mit Maul an der Schnauze, zu und offen', async ({ page }) => {
+  const fehler: string[] = [];
+  page.on('console', (m) => m.type() === 'error' && fehler.push(m.text()));
+  page.on('pageerror', (e) => fehler.push(e.message));
+  await bereit(page);
+  await page.click('[data-view="creation"] [data-bauweise="wirbel"]');
+  await page.evaluate(async () => {
+    const v = (await (await fetch('/versuch/langhals/langhals.json')).json()) as { profile: Record<string, unknown> };
+    const st = (window as unknown as Fenster).__stores.editor.getState();
+    st.laden({ ...st.dok, name: 'Langhals', profile: { seite: v.profile.seite, front: v.profile.front, top: v.profile.top } }, null);
+  });
+  await page.waitForTimeout(800);
+  // Welt → Bildschirm aus den Knoten der Seite (gleicher Maßstab in x und y)
+  type K = { p: { x: number; y: number } };
+  const welt = await page.evaluate(() => ((window as unknown as Fenster).__stores.editor.getState().dok.profile as { seite: { knoten: K[] } }).seite.knoten.map((k) => k.p));
+  const bild = await page.locator('.vp-ober[data-view="seite"] .knoten-punkt').evaluateAll((els) => els.map((el) => { const b = el.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; }));
+  const i0 = welt.reduce((a, p, i) => (p.x < welt[a]!.x ? i : a), 0);
+  const i1 = welt.reduce((a, p, i) => (p.x > welt[a]!.x ? i : a), 0);
+  const s = (bild[i1]!.x - bild[i0]!.x) / (welt[i1]!.x - welt[i0]!.x);
+  const zuBild = (w: { x: number; y: number }) => ({ x: bild[i0]!.x + (w.x - welt[i0]!.x) * s, y: bild[i0]!.y - (w.y - welt[i0]!.y) * s });
+  const spitze = welt[i0]!;
+
+  // Maul vorn an der Schnauze: Start auf der Kontur, zwei Punkte unter dem Kopf, Enter
+  await page.click('[data-view="seite"] [data-tab="maul"]');
+  for (const w of [{ x: spitze.x - 0.01, y: spitze.y - 0.004 }, { x: spitze.x + 0.05, y: spitze.y - 0.012 }, { x: spitze.x + 0.1, y: spitze.y - 0.01 }]) {
+    const q = zuBild(w);
+    await page.mouse.click(q.x, q.y);
+  }
+  await page.keyboard.press('Enter');
+  await page.locator('.leiste').getByRole('button', { name: 'getrennt' }).click();
+  await page.waitForTimeout(1500);
+  await expect(page.locator('.vp-ober[data-view="creation"] .vp-label.platzhalter')).toHaveText('Versuch: Wirbelsäule');
+  expect(await vertices(page)).toBeGreaterThan(0);
+  await page.screenshot({ path: path.join(bilder, 'wirbel-maul-zu.png') });
+
+  // offen: Fressen
+  await page.locator('.menueleiste').getByRole('button', { name: 'Fressen', exact: true }).click();
+  await page.waitForTimeout(1800);
+  expect(await vertices(page)).toBeGreaterThan(0);
+  await page.screenshot({ path: path.join(bilder, 'wirbel-maul-auf.png') });
+  expect(fehler).toEqual([]);
+});

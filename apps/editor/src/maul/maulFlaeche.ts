@@ -2,14 +2,18 @@
 // von der Fläche bekommen (wie Blenders „Face Project“). Neu gebaut nur, wenn sich die Profile ändern.
 
 import { type Ansicht, type Dokument, type V2, type V3T, pfadAbtasten, vollerPfad } from '@ee/shape';
-import { MAUL_STANDARD, type Strahlraster, flaecheS0, naechsterFlaechenpunkt, rasterAlle, treffer } from '@ee/shape/versuch';
+import { MAUL_STANDARD, type Strahlraster, flaecheS0, naechsterFlaechenpunkt, rasterAlle, treffer, unterteilenMehrfach, wirbelKaefig } from '@ee/shape/versuch';
+import { useUi } from '../state/uiStore';
 
-let zwischenspeicher: { profile: Dokument['profile']; spanten: Dokument['spanten']; haupt: number | undefined; raster: Record<Ansicht, Strahlraster> } | null = null;
+let zwischenspeicher: { profile: Dokument['profile']; spanten: Dokument['spanten']; haupt: number | undefined; wirbel: Dokument['wirbelsaeule'] | boolean; raster: Record<Ansicht, Strahlraster> } | null = null;
 
 /** Strahlraster der Fläche S0 (gemerkt je Profile und Spanten). */
 export function strahlen(dok: Dokument): Record<Ansicht, Strahlraster> {
-  if (zwischenspeicher?.profile !== dok.profile || zwischenspeicher.spanten !== dok.spanten || zwischenspeicher.haupt !== dok.hauptspant) {
-    zwischenspeicher = { profile: dok.profile, spanten: dok.spanten, haupt: dok.hauptspant, raster: rasterAlle(flaecheS0(dok, MAUL_STANDARD)) };
+  // Bauweise Wirbelsäule (Versuch 12.10. nachts): Linien rasten auf dem Wirbelsäulen-Körper ein (Hals hoch, Kopf drauf)
+  const wirbel = useUi.getState().bauweise === 'wirbel' ? (dok.wirbelsaeule ?? true) : false;
+  if (zwischenspeicher?.profile !== dok.profile || zwischenspeicher.spanten !== dok.spanten || zwischenspeicher.haupt !== dok.hauptspant || zwischenspeicher.wirbel !== wirbel) {
+    const flaeche = wirbel ? unterteilenMehrfach(wirbelKaefig(dok).netz, 2) : flaecheS0(dok, MAUL_STANDARD);
+    zwischenspeicher = { profile: dok.profile, spanten: dok.spanten, haupt: dok.hauptspant, wirbel, raster: rasterAlle(flaeche) };
   }
   return zwischenspeicher.raster;
 }

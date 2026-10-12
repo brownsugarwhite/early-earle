@@ -1,11 +1,13 @@
 // VERSUCH (12.10.2026 abends): Wirbelsäule am nachgezogenen Wesen.
 // ?versuch=wirbel&wesen=langhals|robbe|rex|tiger|kugel&kaefig=1&azimut=-60
 // Pose: &biegen=<Grad>&bei=<Anteil von der Schnauze>&weich=<Anteil> biegt die Wirbelsäule (Kopfseite dreht sich).
+// Maul (12.10. nachts): &maul=1&zustand=zu|auf|0.5 baut Florians Maul auf der Wirbelsäule (gestreckter Raum).
 // 2D: Wirbelsäule (dunkelrot), Sprossen (orange = liegend, Breite aus dem Top; blau = stehend, Breite aus der Front),
 // Umriss des 3D-Körpers gestrichelt zum Vergleich mit der Zeichnung. 3D: Körper weiß, auf Wunsch das Käfiggitter.
 
 import { type Ansicht, neuesDokument } from '@ee/shape';
-import { type Netz, type V3, type Vorlage, kaefigAusSprossen, selbstDurchdringungen, umrissAusNetz, unterteilenMehrfach, vorlageDokument, wirbelBiegen, wirbelKaefig, zuDreiecken } from '@ee/shape/versuch';
+import { type Netz, type V3, type Vorlage, bereichUnterteilen, kaefigAusSprossen, kieferRig, maulAnpassen, maulKaefigAufWirbel, maulZwischen, reissverschluss, selbstDurchdringungen, umrissAusNetz, unterteilen, unterteilenMehrfach, vorlageDokument, vorlageMaul, wirbelBiegen, wirbelKaefig, zuDreiecken } from '@ee/shape/versuch';
+import { flaechenBereiche } from './maulVersuch';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import type { Renderer3D } from '../three/Renderer3D';
@@ -26,11 +28,13 @@ const proj = (p: V3, a: Ansicht) => (a === 'seite' ? { x: p[0], y: p[1] } : a ==
 
 export async function wirbelVersuch(versuch: Versuch, renderer: () => Renderer3D | null) {
   let dok = neuesDokument('Kugel');
+  let vorlage: Vorlage | null = null;
   if (versuch.wesen !== 'kugel') {
     const basis = `${import.meta.env.BASE_URL}versuch/${versuch.wesen}/`;
-    const vorlage = (await (await fetch(`${basis}${versuch.wesen}.json`)).json()) as Vorlage;
+    vorlage = (await (await fetch(`${basis}${versuch.wesen}.json`)).json()) as Vorlage;
     dok = vorlageDokument(vorlage, 'zu', versuch.wesen);
   }
+  if (vorlage && new URLSearchParams(location.search).get('maul') === '1') return wirbelMaulVersuch(versuch, vorlage, dok, renderer);
   useEditor.getState().laden(dok, null);
 
   const t0 = performance.now();
@@ -95,4 +99,51 @@ export async function wirbelVersuch(versuch: Versuch, renderer: () => Renderer3D
     });
     r.setzeLinien(punkte);
   } else r.setzeLinien(null);
+}
+
+const MAUL_FARBEN3: Record<string, [number, number, number]> = { haut: [1, 1, 1], lippe: [0.96, 0.74, 0.64], tasche: [0.55, 0.12, 0.18] };
+
+/** Florians Maul auf der Wirbelsäule (gestreckter Raum), Zustand zu, auf oder dazwischen. */
+async function wirbelMaulVersuch(versuch: Versuch, vorlage: Vorlage, dok: ReturnType<typeof vorlageDokument>, renderer: () => Renderer3D | null) {
+  useEditor.getState().laden(dok, null);
+  const t0 = performance.now();
+  const { eingabe } = vorlageMaul(vorlage);
+  const mk = maulKaefigAufWirbel(dok, eingabe);
+  const zu = maulAnpassen(mk, 'zu', 8, 3);
+  const auf = mk.zielAuf ? maulAnpassen(mk, 'auf', 8, 3) : zu;
+  const alpha = versuch.zustand === 'zu' ? 0 : versuch.zustand === 'auf' ? 1 : Number(versuch.zustand);
+  const kaefig = alpha <= 0 ? zu : alpha >= 1 ? auf : reissverschluss(mk, maulZwischen(mk, zu, auf, alpha, 'knochen', kieferRig(mk, zu, auf)), alpha);
+  console.info(`[wirbel] Maul auf der Wirbelsäule: ${mk.netz.punkte.length} Punkte, ${(performance.now() - t0).toFixed(0)} ms`, mk.hinweise);
+  let n = kaefig;
+  let bereich = flaechenBereiche(mk, alpha);
+  for (let st = 0; st < 3; st++) {
+    bereich = bereichUnterteilen(n, bereich);
+    n = unterteilen(n);
+  }
+  const ueber: ReturnType<typeof useUeberlagerung.getState> = {};
+  for (const a of ['seite', 'front', 'top'] as const) {
+    const um = umrissAusNetz(unterteilenMehrfach(kaefig, 2), a, 400)[0];
+    ueber[a] = { punkte: [], linien: um ? [{ punkte: um, farbe: '#7a1f3d', breite: 1.5, zu: true, strich: '6 4' }] : [] };
+  }
+  useUeberlagerung.setState(ueber);
+  if (versuch.nah) {
+    const p = n.punkte;
+    const lo = [0, 1, 2].map((k) => Math.min(...p.map((q) => q[k]!)));
+    const hi = [0, 1, 2].map((k) => Math.max(...p.map((q) => q[k]!)));
+    const ziel: [number, number, number] = [(lo[0]! + hi[0]!) / 2, (lo[1]! + hi[1]!) / 2, 0];
+    const groesse = Math.max(hi[0]! - lo[0]!, hi[1]! - lo[1]!, hi[2]! - lo[2]!);
+    useUi.setState({ kamera: { azimut: (versuch.azimut * Math.PI) / 180, elevation: (12 * Math.PI) / 180, distanz: 2.6 * groesse + 0.3, ziel } });
+  }
+  const r = renderer();
+  if (!r) return;
+  const d = zuDreiecken(n, 40);
+  const farben = new Float32Array(d.positionen.length);
+  let o = 0;
+  n.flaechen.forEach((f, fi) => {
+    const c = MAUL_FARBEN3[bereich[fi]!] ?? MAUL_FARBEN3.haut!;
+    for (let k = 0; k < 3 * (f.length - 2); k++) farben.set(c, (o + k) * 3);
+    o += 3 * (f.length - 2);
+  });
+  r.setzeDreiecke(d.positionen, d.normalen, farben);
+  r.setzeLinien(null);
 }

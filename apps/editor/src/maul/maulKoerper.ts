@@ -13,6 +13,7 @@ import {
   maulAnpassen,
   maulEingabeAus,
   maulKaefig,
+  maulKaefigAufWirbel,
   maulZwischen,
   reissverschluss,
   unterteilen,
@@ -39,7 +40,19 @@ export type MaulInfo = {
 
 export const useMaulInfo = create<{ info: MaulInfo | null }>(() => ({ info: null }));
 
-export type MaulBau = { profile: Dokument['profile']; maul: NonNullable<Dokument['maul']>; spanten: Dokument['spanten']; pose: Profil | null; mk: MaulKaefig; zu: Netz; auf: Netz; rig: KieferRig };
+export type MaulBau = {
+  profile: Dokument['profile'];
+  maul: NonNullable<Dokument['maul']>;
+  spanten: Dokument['spanten'];
+  pose: Profil | null;
+  /** Versuch 12.10. nachts: auf der Wirbelsäule gebaut (gestreckter Raum) */
+  wirbel: boolean;
+  wirbelsaeule: Dokument['wirbelsaeule'];
+  mk: MaulKaefig;
+  zu: Netz;
+  auf: Netz;
+  rig: KieferRig;
+};
 
 /** Gespeicherte Seitenform der Fressen-Pose (gleiche Punktstruktur), sonst null (Versuch 12.10. nachts). */
 function poseSeiteVon(dok: Dokument): Profil | null {
@@ -49,22 +62,23 @@ function poseSeiteVon(dok: Dokument): Profil | null {
 
 let letzter: MaulBau | null = null;
 
-export function maulBauen(dok: Dokument): MaulBau | null {
+export function maulBauen(dok: Dokument, wirbel = false): MaulBau | null {
   if (!dok.maul) {
     letzter = null;
     useMaulInfo.setState({ info: null });
     return null;
   }
   const pose = poseSeiteVon(dok);
-  if (letzter && letzter.profile === dok.profile && letzter.maul === dok.maul && letzter.spanten === dok.spanten && letzter.pose === pose) return letzter;
+  if (letzter && letzter.profile === dok.profile && letzter.maul === dok.maul && letzter.spanten === dok.spanten && letzter.pose === pose && letzter.wirbel === wirbel && (!wirbel || letzter.wirbelsaeule === dok.wirbelsaeule)) return letzter;
   const t0 = performance.now();
   // Fressen mit eigener Seitenform: Die offene Haut legt sich an sie (ARAP), wie bei Florians nachgezogenen Bögen
   const eingabe = { ...maulEingabeAus(dok.maul), ...(pose ? { dokAuf: { ...dok, profile: { ...dok.profile, seite: pose } } } : {}) };
-  const mk = maulKaefig(dok, eingabe, MAUL_STANDARD);
+  // Wirbelsäule: derselbe Maul-Käfig im gestreckten Raum entlang der Wirbelsäule (Hals hoch, Kopf drauf)
+  const mk = wirbel ? maulKaefigAufWirbel(dok, eingabe, MAUL_STANDARD) : maulKaefig(dok, eingabe, MAUL_STANDARD);
   const zu = maulAnpassen(mk, 'zu', 8, 3);
   const auf = maulAnpassen(mk, 'auf', 8, 3);
   const rig = kieferRig(mk, zu, auf);
-  letzter = { profile: dok.profile, maul: dok.maul, spanten: dok.spanten, pose, mk, zu, auf, rig };
+  letzter = { profile: dok.profile, maul: dok.maul, spanten: dok.spanten, pose, wirbel, wirbelsaeule: dok.wirbelsaeule, mk, zu, auf, rig };
   const grad = (w: number) => (w * 180) / Math.PI;
   const mitte = (mk.tasche.length - 1) / 2;
   const p = (i: number) => [...zu.punkte[i]!] as [number, number, number];

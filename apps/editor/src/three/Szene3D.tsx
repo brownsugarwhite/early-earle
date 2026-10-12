@@ -66,8 +66,23 @@ export function Szene3D() {
         // sich die offene Haut im Maul-Bau an sie
         const pose = dRoh.posenProfile?.fressen?.seite;
         const d: Dokument = useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
+        if (!versuch && useUi.getState().bauweise === 'wirbel' && d.maul) {
+          // Versuch 12.10. nachts: Maul auf der Wirbelsäule (Maul-Käfig im gestreckten Raum)
+          const b = maulBauen(d, true);
+          if (b) {
+            const rot = new Set(d.zaehne ? zahnMeldungen(b.mk, b.zu, d.zaehne).flatMap((m) => m.listenIndizes) : []);
+            const t = maulDreiecke(b, useUi.getState().oeffnung, 3, zahnListe(d.zaehne).map((q) => q.zahn), rot);
+            const s = d.skalierung;
+            if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
+            r.setzeLinien(null);
+            r.setzeDreiecke(t.positionen, t.normalen, t.farben);
+            // Wirbelsäule und Sprossen in der Seite bleiben sichtbar
+            wirbelBauen(d, true, useUi.getState().wirbelBiegung);
+            return;
+          }
+        }
         if (!versuch && useUi.getState().bauweise === 'wirbel') {
-          // Versuch 12.10. abends: Wirbelsäule zum Vergleichen (Tab am 3D-Fenster); Maul und Kanten fehlen hier noch
+          // Versuch 12.10. abends: Wirbelsäule zum Vergleichen (Tab am 3D-Fenster); Kanten-Härte fehlt hier noch
           const t = zuDreiecken(unterteilenMehrfach(wirbelBauen(d, schnell, useUi.getState().wirbelBiegung), schnell ? 2 : 3), 40);
           const s = d.skalierung;
           if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
@@ -120,7 +135,7 @@ export function Szene3D() {
             s.modus !== v.modus;
           const wirbel = useUi.getState().bauweise === 'wirbel';
           // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen
-          if (s.dok.maul && s.gesteStart && !wirbel) return;
+          if (s.dok.maul && s.gesteStart) return;
           // Kanten-Käfig und Wirbelsäule: während einer Geste schnell (weniger Anpass-Durchgänge), beim Loslassen genau
           if (geaendert) bauen(s.dok, !!s.gesteStart && (wirbel || mitKanten(s.dok)));
           else if (v.gesteStart && !s.gesteStart && (wirbel || s.dok.maul || mitKanten(s.dok))) bauen(s.dok);

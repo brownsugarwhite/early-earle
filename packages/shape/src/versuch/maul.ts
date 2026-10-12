@@ -18,13 +18,16 @@ import type { Dokument } from '../dokument';
 import { pfadAbtasten, vollerPfad } from '../profil';
 import { type Netz, type V3, kante, unterteilenMehrfach } from './catmullClark';
 import { type Gelenk, type Oeffnungsart, type Starr, anwenden, arap, gelenkAus, gelenkBewegung, nachbarn, oeffnungsart, posieren, restfehler, starreAnpassung } from './kiefer';
-import { TIGER_STANDARD, type TigerOptionen, kappenRandJ, ringKontext } from './tigerKaefig';
+import { type RingKontext, TIGER_STANDARD, type TigerOptionen, kappenRandJ, ringKontext } from './tigerKaefig';
 import { abstand3, drehe, lerp3, mal3, minus3, mittel3, normiert3, plus3, punkt3, spiegelZ, zugLaenge, zugPunkt } from './v3';
 
 /** Lippenlinien der rechten Hälfte, je vom Start auf der Mittelebene (z = 0) zum Mundwinkel (Florians Punkte). */
 export type Lippen3 = { oben: V3[]; unten?: V3[] };
-/** `dokAuf`: Profile des offenen Zustands (Fressen); die offene Haut legt sich an deren Seitensilhouette. */
-export type MaulEingabe = { zu: Lippen3; auf?: { oben: V3[]; unten: V3[] }; dokAuf?: Dokument };
+/**
+ * `dokAuf`: Profile des offenen Zustands (Fressen); die offene Haut legt sich an deren Seitensilhouette. `umrissAuf`:
+ * dieser Umriss schon als Punktzug (z. B. im gestreckten Raum der Wirbelsäule), hat Vorrang.
+ */
+export type MaulEingabe = { zu: Lippen3; auf?: { oben: V3[]; unten: V3[] }; dokAuf?: Dokument; umrissAuf?: V2[] };
 
 export type MaulOptionen = TigerOptionen & {
   /** Ringe von Ring 1 bis zum Mundwinkel */
@@ -163,13 +166,17 @@ function imRing(ring: readonly V3[], y: number, z: number): boolean {
   return innen;
 }
 
-export function maulKaefig(dok: Dokument, eingabe: MaulEingabe, opt: MaulOptionen = MAUL_STANDARD): MaulKaefig {
+/**
+ * `rkFrei`: Querschnitte von außen (Versuch 12.10. nachts: Wirbelsäule im gestreckten Raum, x = Länge entlang der
+ * Wirbelsäule). Ohne Angabe der Loft entlang x aus den Profilen.
+ */
+export function maulKaefig(dok: Dokument, eingabe: MaulEingabe, opt: MaulOptionen = MAUL_STANDARD, rkFrei?: RingKontext): MaulKaefig {
   const R = opt.ring;
   const N = opt.ringe;
   const K = opt.nahtRinge;
   if (R !== 16) throw new Error('Maul-Käfig: Ring mit 16 Punkten erwartet (Kappe 4×4)');
   const F = 96; // feine Querschnitte
-  const rk = ringKontext(dok, opt);
+  const rk = rkFrei ?? ringKontext(dok, opt);
   const { xMin, xMax } = rk;
   const fVon = (x: number) => Math.min(1, Math.max(0, (x - xMin) / (xMax - xMin)));
   const hinweise: string[] = [];
@@ -708,7 +715,7 @@ export function maulKaefig(dok: Dokument, eingabe: MaulEingabe, opt: MaulOptione
     const nbAlle = nachbarn(netzTopo);
     const istTasche = (i: number) => bereiche[i] === 'tasche';
     const nb = nbAlle.map((ns, i) => (istTasche(i) ? [] : ns.filter((j) => !istTasche(j))));
-    const umriss = eingabe.dokAuf ? pfadAbtasten(vollerPfad(eingabe.dokAuf.profile.seite), 24) : null;
+    const umriss = eingabe.umrissAuf ?? (eingabe.dokAuf ? pfadAbtasten(vollerPfad(eingabe.dokAuf.profile.seite), 24) : null);
     const lippen2d: V2[] = [...(aufOben ?? []), ...(aufUnten ?? [])].map((p) => ({ x: p[0], y: p[1] }));
     const naechster = (x: number, y: number): V2 => {
       let best = Infinity;

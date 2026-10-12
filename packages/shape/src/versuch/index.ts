@@ -14,3 +14,4 @@ export * from './umriss3d';
 export * from './kanten';
 export * from './wirbelsaeule';
 export * from './maulUmriss';
+export * from './wirbelMaul';

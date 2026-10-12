@@ -13,7 +13,11 @@ function Tab({ modus }: { modus: Modus }) {
   return (
     <button
       className={aktiv ? 'pille aktiv' : 'pille'}
-      onClick={() => useEditor.getState().setzeModus(modus)}
+      onClick={() => {
+        useEditor.getState().setzeModus(modus);
+        // Editor-Tab = Maul zu, Fressen-Tab = Maul auf (12.10. nachts: sonst zeigt das 3D die bearbeitete Pose-Form nicht)
+        if (modus === 'editor' || modus === 'fressen') useUi.getState().setzeOeffnung(modus === 'fressen' ? 1 : 0);
+      }}
       onContextMenu={(e) => {
         e.preventDefault();
         if (!entfernbar) return;

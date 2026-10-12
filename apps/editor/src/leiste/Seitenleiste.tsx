@@ -398,8 +398,9 @@ function WirbelBereich() {
         </button>
       </div>
       <p className="hilfe">
-        Biegen ist nur eine Vorschau (Pose), es wird nicht gespeichert. Stelle = ab der Schnauze gemessen. Noch nicht in dieser Bauweise: Maul, Kanten-Härte, Kastenschnauze.
-        {hatMaul && ' Das Maul fehlt hier deshalb im 3D.'}
+        Biegen ist nur eine Vorschau (Pose), es wird nicht gespeichert; mit Maul zeigt das 3D den Körper ungebogen. Stelle = ab der Schnauze gemessen. Das Maul läuft
+        hier auf der Wirbelsäule mit (Versuch). Noch nicht in dieser Bauweise: Kanten-Härte, Kastenschnauze.
+        {hatMaul && ' Beginnt das Maul weit hinter der Schnauzenspitze, wird die Spitze davor noch zu spitz.'}
       </p>
     </section>
   );
