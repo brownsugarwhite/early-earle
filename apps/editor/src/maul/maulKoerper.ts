@@ -6,6 +6,7 @@ import {
   type KieferRig,
   type MaulKaefig,
   type Netz,
+  type Zahn,
   MAUL_STANDARD,
   bereichUnterteilen,
   kieferRig,
@@ -19,6 +20,7 @@ import {
 } from '@ee/shape/versuch';
 import { create } from 'zustand';
 import { flaechenBereiche } from '../versuch/maulVersuch';
+import { anhaengen, zahnDreiecke } from './zahnKoerper';
 
 export type MaulInfo = {
   /** Gelenkpunkte (Schraubachse ∥ z) und Knochenenden für die Rig-Anzeige: Kinn bzw. Schnauze */
@@ -76,10 +78,19 @@ export function maulBauen(dok: Dokument): MaulBau | null {
   return letzter;
 }
 
-const FARBE: Record<string, [number, number, number]> = { haut: [1, 1, 1], lippe: [0.96, 0.74, 0.64], tasche: [0.55, 0.12, 0.18] };
+/** Zuletzt gebautes Maul, falls es noch zum Dokument passt (baut nie selbst; für die 2D-Ebenen). */
+export function maulZuletzt(dok: Dokument): MaulBau | null {
+  return letzter && dok.maul && letzter.profile === dok.profile && letzter.maul === dok.maul ? letzter : null;
+}
 
-/** Dreiecke mit Bereichsfarben bei Öffnung α (Knochen + Korrektur, Reißverschluss). */
-export function maulDreiecke(b: MaulBau, alpha: number, stufen = 3): { positionen: Float32Array; normalen: Float32Array; farben: Float32Array; kaefig: Netz } {
+const FARBE: Record<string, [number, number, number]> = { haut: [1, 1, 1], lippe: [0.96, 0.74, 0.64], tasche: [0.55, 0.12, 0.18] };
+/** Dreiecke mit Bereichsfarben bei Öffnung α (Knochen + Korrektur, Reißverschluss), auf Wunsch mit Zähnen. */
+export function maulDreiecke(
+  b: MaulBau,
+  alpha: number,
+  stufen = 3,
+  zaehne: readonly Zahn[] = [],
+): { positionen: Float32Array; normalen: Float32Array; farben: Float32Array; kaefig: Netz } {
   const a = Math.min(1, Math.max(0, alpha));
   const zwischen = a <= 0 ? b.zu : a >= 1 ? b.auf : reissverschluss(b.mk, maulZwischen(b.mk, b.zu, b.auf, a, 'knochen', b.rig), a);
   let n = zwischen;
@@ -96,5 +107,7 @@ export function maulDreiecke(b: MaulBau, alpha: number, stufen = 3): { positione
     for (let k = 0; k < 3 * (f.length - 2); k++) farben.set(c, (o + k) * 3);
     o += 3 * (f.length - 2);
   });
-  return { ...d, farben, kaefig: zwischen };
+  if (!zaehne.length) return { ...d, farben, kaefig: zwischen };
+  const z = zahnDreiecke(b.mk, zwischen, zaehne, a, stufen);
+  return { positionen: anhaengen(d.positionen, z.positionen), normalen: anhaengen(d.normalen, z.normalen), farben: anhaengen(farben, z.farben), kaefig: zwischen };
 }

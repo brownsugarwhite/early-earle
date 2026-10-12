@@ -12,7 +12,7 @@ type Linie = { knoten: { p: V3 }[] };
 type Fenster = Window & {
   __editor?: { backend: string; vertices: () => number };
   __stores: {
-    editor: { getState(): { dok: { maul?: { zu: { oben: Linie; unten?: Linie }; auf?: { oben: Linie; unten?: Linie } }; zaehne?: { oben: { anzahl: number; zaehne: unknown[] } } }; modus: string; gesteStart: unknown } };
+    editor: { getState(): { dok: { maul?: { zu: { oben: Linie; unten?: Linie }; auf?: { oben: Linie; unten?: Linie } }; zaehne?: { oben: { anzahl: number; zaehne: { u: number; laenge: number }[] } } }; modus: string; gesteStart: unknown } };
     ui: { getState(): { ebene: string; oeffnung: number } };
   };
 };
@@ -118,16 +118,41 @@ test('Maul-Tab: Linie ab der Kontur zeichnen, Kiefer getrennt, offen, Öffnung, 
   await expect(page.locator('.vp-ober[data-view="seite"] .rig circle').first()).toBeVisible();
   await page.screenshot({ path: path.join(bilder, 'rig-tab.png') });
 
-  // brauner Punkt = Zähne: Anzahl je Kiefer
+  // brauner Punkt = Zähne (geschlossen): Anzahl je Kiefer, Umrisse in Seite und Front
+  await page.locator('.menueleiste').getByRole('button', { name: 'Editor', exact: true }).click();
   await page.click('[data-view="front"] [data-tab="zaehne"]');
-  await page.locator('.leiste').getByRole('button', { name: 'mehr Zähne oben' }).click();
-  await page.locator('.leiste').getByRole('button', { name: 'mehr Zähne oben' }).click();
-  await page.locator('.leiste').getByRole('button', { name: 'mehr Zähne oben' }).click();
+  for (let i = 0; i < 3; i++) await page.locator('.leiste').getByRole('button', { name: 'mehr Zähne oben' }).click();
   d = await dok(page);
   expect(d.zaehne?.oben.anzahl).toBe(3);
   expect(d.zaehne?.oben.zaehne).toHaveLength(2);
+  // Front: Mittelzahn und Paar; Seite: Mittelzahn und rechter Zahn (der linke liegt dahinter)
+  await expect(page.locator('.vp-ober[data-view="front"] [data-zahn]')).toHaveCount(3);
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-zahn]')).toHaveCount(2);
+  await warteAufBau(page);
+  const vZaehne = await page.evaluate(() => (window as unknown as Fenster).__editor!.vertices());
 
-  // Rückgängig nimmt Schritte zurück, Maul bleibt erhalten
+  // Klick wählt den rechten Zahn (Untermenü), Ziehen nach hinten verschiebt ihn längs des Zahnfleischs
+  const u0 = d.zaehne!.oben.zaehne[1]!.u;
+  const zb = (await page.locator('.vp-ober[data-view="seite"] [data-zahn="oben:1"]').boundingBox())!;
+  await page.mouse.move(zb.x + zb.width / 2, zb.y + zb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(zb.x + zb.width / 2 + 30, zb.y + zb.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.locator('.leiste .unterbereich')).toBeVisible();
+  d = await dok(page);
+  expect(d.zaehne!.oben.zaehne[1]!.u).toBeGreaterThan(u0 + 0.02);
+  // Regler Länge im Untermenü
+  await page.locator('.leiste .unterbereich .regler input[type="range"]').first().fill('0.08');
+  expect((await dok(page)).zaehne!.oben.zaehne[1]!.laenge).toBeCloseTo(0.08, 5);
+  await warteAufBau(page);
+  expect(await page.evaluate(() => (window as unknown as Fenster).__editor!.vertices())).toBe(vZaehne);
+  await page.screenshot({ path: path.join(bilder, 'zahn-tab.png') });
+
+  // Rückgängig nimmt Schritte zurück (Länge, Verschieben, Anzahl), Maul bleibt erhalten
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.keyboard.press('ControlOrMeta+z');
+  expect((await dok(page)).zaehne!.oben.zaehne[1]!.u).toBeCloseTo(u0, 6);
   await page.keyboard.press('ControlOrMeta+z');
   expect((await dok(page)).zaehne?.oben.anzahl).toBe(2);
+  expect((await dok(page)).maul).toBeTruthy();
 });

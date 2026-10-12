@@ -9,6 +9,8 @@ import {
   type Starr,
   type V3,
   type Vorlage,
+  type Zahn,
+  ZAHN_STANDARD,
   anwenden,
   drehe,
   gelenkBewegung,
@@ -31,10 +33,12 @@ import {
   unterteilen,
   vorlageDokument,
   vorlageMaul,
+  zahnreihe,
   zuDreiecken,
 } from '@ee/shape/versuch';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
+import { anhaengen, zahnDreiecke } from '../maul/zahnKoerper';
 import type { Renderer3D } from '../three/Renderer3D';
 import type { Versuch } from './subdivision';
 import { type UeberLinie, type UeberPunkt, useUeberlagerung } from './ueberlagerung';
@@ -172,6 +176,11 @@ function augenDreiecke(augen: AugeVorlage[], flaeche: Netz, bewegung: Starr | nu
   return { pos, nrm, col };
 }
 
+/** Zähne der Versuchswesen nach Florians Bögen (Rex, Bogen 06: 14 Oberzähne außen über der Unterlippe). */
+const VERSUCH_ZAEHNE: Record<string, () => Zahn[]> = {
+  rex: () => zahnreihe(14, 'oben', { ...ZAHN_STANDARD, laenge: 0.05, breite: 0.02, tiefe: 0.014, schaerfe: 0.8, biegung: 0.1, aussen: true }),
+};
+
 export function maulBauen(v: Vorlage): MaulErgebnis {
   const dokZu = vorlageDokument(v, 'zu');
   const { eingabe } = vorlageMaul(v);
@@ -254,22 +263,29 @@ export async function maulVersuch(versuch: Versuch, renderer: () => Renderer3D |
     for (let k = 0; k < 3 * (f.length - 2); k++) farben.set(c, (o + k) * 3);
     o += 3 * (f.length - 2);
   });
+  let pos = d.positionen;
+  let nrm = d.normalen;
+  let col = farben;
+  const dazu = (t: { positionen: Float32Array; normalen: Float32Array; farben: Float32Array }) => {
+    pos = anhaengen(pos, t.positionen);
+    nrm = anhaengen(nrm, t.normalen);
+    col = anhaengen(col, t.farben);
+  };
+  // Zähne am Zahnfleisch der aktuellen Lage (folgen Knochen, Korrektur und Reißverschluss)
+  const zaehne = versuch.zaehne ? (VERSUCH_ZAEHNE[versuch.wesen]?.() ?? []) : [];
+  if (zaehne.length) {
+    const t1 = performance.now();
+    dazu(zahnDreiecke(mk, kaefig, zaehne, alpha, 3));
+    console.info(`[maul] ${zaehne.length} Zähne in ${(performance.now() - t1).toFixed(0)} ms`);
+  }
   // Augen aus der Zeichnung (geschlossene Seitenansicht), beim Öffnen mit dem Schädel bewegt
   const augenVorlage = (vorlage as Vorlage & { augen?: Record<string, AugeVorlage[]> }).augen?.seite ?? [];
   if (augenVorlage.length) {
     const bewegung = auf && alpha > 0 ? gelenkBewegung(kieferRig(mk, zu, auf).gelenkOben, alpha) : null;
     const au = augenDreiecke(augenVorlage, unterteilenMehrfach(zu, 3), bewegung);
-    const pos = new Float32Array(d.positionen.length + au.pos.length);
-    pos.set(d.positionen);
-    pos.set(au.pos, d.positionen.length);
-    const nrm = new Float32Array(pos.length);
-    nrm.set(d.normalen);
-    nrm.set(au.nrm, d.normalen.length);
-    const col = new Float32Array(pos.length);
-    col.set(farben);
-    col.set(au.col, farben.length);
-    r.setzeDreiecke(pos, nrm, col);
-  } else r.setzeDreiecke(d.positionen, d.normalen, farben);
+    dazu({ positionen: new Float32Array(au.pos), normalen: new Float32Array(au.nrm), farben: new Float32Array(au.col) });
+  }
+  r.setzeDreiecke(pos, nrm, col);
   if (versuch.kaefig) {
     const k = kanten(kaefig);
     const punkte = new Float32Array(k.length * 6);

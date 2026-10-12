@@ -28,7 +28,10 @@ export function useLayoutSteuerung() {
 
 const PFEILE: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
 
-const istEingabe = (t: EventTarget | null) => t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
+/** Regler und Haken behalten nach dem Klick den Fokus: ⌘-Kürzel (⌘Z) wirken dort trotzdem, Pfeiltasten bleiben beim Regler. */
+const KEIN_TEXT = new Set(['range', 'checkbox', 'radio', 'button']);
+const istRegler = (t: EventTarget | null) => t instanceof HTMLInputElement && KEIN_TEXT.has(t.type);
+const istEingabe = (t: EventTarget | null) => (t instanceof HTMLInputElement && !KEIN_TEXT.has(t.type)) || t instanceof HTMLTextAreaElement;
 
 /** Tastenkürzel (wirken auf den Viewport unter der Maus, wie in Blender). */
 export function useTastatur() {
@@ -44,6 +47,7 @@ export function useTastatur() {
         return;
       }
       if (istEingabe(e.target) || ui.dialog) return;
+      if (istRegler(e.target) && !cmd) return;
       const k = e.key.toLowerCase();
       if (e.ctrlKey && e.code === 'Space') {
         e.preventDefault();

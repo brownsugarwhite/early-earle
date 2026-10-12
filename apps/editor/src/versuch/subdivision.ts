@@ -17,6 +17,8 @@ export type Versuch = {
   /** 3D-Kamera nah am Maul; Azimut in Grad */
   nah: boolean;
   azimut: number;
+  /** Maul-Versuch: Zähne der Versuchswesen zeigen (Standard an, `&zaehne=0` aus) */
+  zaehne: boolean;
 };
 
 export function versuchAktiv(): Versuch | null {
@@ -34,6 +36,7 @@ export function versuchAktiv(): Versuch | null {
     verfahren: q.get('verfahren') ?? 'knochen',
     nah: q.get('nah') === '1',
     azimut: Number(q.get('azimut') ?? -60),
+    zaehne: q.get('zaehne') !== '0',
   };
 }
 
