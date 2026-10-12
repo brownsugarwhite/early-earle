@@ -398,7 +398,58 @@ Aufgebaut wie ein Illustrator-Pinsel:
 
 ## 9. Was den Editor einzigartig machen kann
 
-*(folgt aus der Recherche 12.10. spätnachts)*
+> Recherche 12.10. spätnachts (47 Quellen in Abschnitt 14), dazu Ideen aus den Versuchen. Ergänzt [`docs/research/ki-3d-tools-2026-10.md`](../research/ki-3d-tools-2026-10.md).
+
+### 9.1 Leitsatz
+
+**Ein festes Vorlagen-Netz je Bauplan ist die eine Wahrheit.** Profile, Spanten, Kanten, Wirbelsäule, Pinsel, KI und Mischen sind Werkzeuge, die dieses Netz bewegen.
+- So arbeiten die Systeme, die animieren und variieren müssen. MetaHuman passt beliebige Netze an sein Template an [39], Roblox richtet Körper automatisch ein [40], Unreal Mutable fügt Teile zur Laufzeit zusammen [41], SMAL nutzt ein Netz für viele Vierbeiner [42].
+- SDF-Werkzeuge (Dreams, Womp, Substance Modeler) dienen dem freien Formen, kaum der Animation [31, 33, 34].
+- Die Brücke zwischen beiden ist der **Wrap**: Ein Vorlagen-Netz wird, gesteuert durch Landmarken, auf ein Ziel gezogen [44–47].
+
+### 9.2 Ideen
+
+| Idee | Was es ist | Aufwand / Risiko | Vorbild |
+|---|---|---|---|
+| **1. Gestrakte Ansichten** | Ein Löser zieht das Netz, bis alle Ansichten stimmen. Die Abweichung steht live daneben (Ziel < 2 px). Widersprüche zwischen den Ansichten werden angezeigt statt gemittelt. | groß / mittel | in keinem untersuchten Editor; Schiffbau-Linienriss |
+| **2. Bogen und SVG importieren** | Florians Bogen (PNG) oder Illustrator-Pfade (SVG) in den Editor ziehen. Daraus werden Profile, Maullinien und Ansätze. Das Nachziehen-Werkzeug (0,26–0,48 px) gibt es schon. | mittel / klein | Illustrator Turntable macht das Umgekehrte [8] |
+| **3. Qualität sichtbar** | Der Bogen liegt halbtransparent hinter jeder Ansicht; Abweichung und Überdeckung als Zahl; Krümmungskamm an den Kurven | klein / klein | Plasticity [35] |
+| **4. Pinsel wie Illustrator in 3D** | Klingen für Büschel, Kämme, Federn, Flossen (Abschnitt 8) | mittel / mittel | Illustrator, Maya Paint Effects |
+| **5. Glieder per Strich** | Linie zeichnen, ⇧W setzt die Radien; daraus werden Gelenkkette und Röhre (Abschnitt 7) | mittel / klein–mittel | Stroke3D [2], RigMesh |
+| **6. Weichheit am Ansatz** | Ein Regler je Übergang wie Womps „Goop“. Über Teile wischen verschmilzt sie, wie das Formerstellungswerkzeug in Illustrator. | mittel / mittel | Womp [33] |
+| **7. Posen als Zeichnungen** | Fressen, Brüllen, Schlafen werden gezeichnet; Knochen und Korrektur entstehen daraus | mittel / mittel | Maul-Versuch: Gelenk < 0,1° |
+| **8. Mischen am Körper** | Einflusskreis mit drei Wesen, Regionen im 3D ziehen, Mutationsregler, Remix-Galerie. Über Baupläne hinweg docken Module an Andockringe, der Übergang wird neu gelöst statt genäht. | mittel / niedrig–mittel | MetaHuman Blend [38], Compos3D [17] |
+| **9. Baupläne plus Wrap-Brücke** | Fremde Netze (Meshy, Tripo, Sculpt) werden auf die Vorlage gewrappt. Rig, Maul, Detailstufen und Mischbarkeit kommen aus der Vorlage, Feindetail als Normal-Map. | mittel / mittel | MetaHuman Conform [39], BWrap [45] |
+| **10. Immer im Earle-Look und lebendig** | Shader beim Modellieren an; Atmen, Blinzeln, Gehen im Editor; das Wesen auf dem Spielbrett ansehen | klein / klein | Dreams Style-Modus [32] |
+| **11. Knopf „Details vorschlagen“** | KI-Rundreise: Netz in den Ansichten rendern → Mehransichten-KI → Wrap zurück → Umrisse wieder auf die Zeichnung festziehen. Nur als Vorschlag zum Annehmen oder Verwerfen. | mittel–groß / hoch | Pixal3D [7]; erst nach einem Test |
+
+### 9.3 KI: Hilfe, nicht Kern
+
+- **Kern nein.** Der Kern muss exakt, wiederholbar, offline und lizenzsicher sein (Umrisse, Topologie, Maul, Rig, Mischen). Das leistet KI 2026 nicht:
+  - Sie folgt Linien nicht maßhaltig.
+  - Verformungsschleifen an Maul und Schulter entstehen nicht verlässlich [15].
+  - Viele Verfahren brauchen NVIDIA.
+  - Lizenzen schränken ein: Hunyuan gilt nicht in der EU [12], MeshAnything ist nichtkommerziell [18].
+- **Hilfe ja:**
+  - ganze Meshy-Tiere als Wrap-Ziel für Volumen und Details (sie treffen den Look)
+  - Kandidaten für die Remix-Galerie
+  - Landmarken [47]
+  - Texturen und Muster
+- **Sackgasse nur beim Zusammennähen von KI-Teilen.** Das bestätigt Florians Test vom 05.10. Die Forschung erzeugt deshalb das Ganze neu oder bearbeitet örtlich [16, 17].
+- **Stand der Dienste:**
+  - Tripo riggt seit Februar 2026 auch Vier-, Sechs- und Achtbeiner, Vogel, Schlange und Fisch [23]; Meshy nur Mensch und Vierbeiner [24].
+  - Pixal3D trifft die Ansichten pixelgenau, ist aber Forschung (Cloud, CUDA) [7].
+  - TRELLIS.2 läuft auch auf Apple Silicon (24 GB, 3–5 min) [28].
+  - Illustrator „Turntable“ macht aus einer Vektorzeichnung bis zu 74 Ansichten [8].
+- **Erster Test ohne Code** (Florian, Blender 5.1): BWrap [45], ein ganzer Meshy-Retriever auf ein Vierbeiner-Grundnetz.
+  - Kriterium: Umriss höchstens 3 px vom Meshy-Modell, das Maul öffnet ohne Risse, Florians Urteil zum Look.
+  - Offen: ob BWrap unter macOS läuft.
+
+### 9.4 Was nirgends gelöst ist (unsere Chance)
+
+- **Ein Editor, der Zeichnungen in drei Ansichten maßhaltig in ein animierbares Wesen übersetzt** (gestrakt, Abweichung sichtbar), gibt es nicht. Am nächsten kommen Forschung zu Strichen [2, 3] und Pixal3D [7].
+- **Ein System, das Baupläne mischt** (Spinne plus Giraffe), fand die Recherche nicht. Überall gilt: nicht nähen, sondern neu lösen.
+- **Stilisierte, gemalte Klingen** statt Haare mit iPhone-Budget: In Spielen ist das kaum dokumentiert (Abschnitt 8).
 
 ## 10. Fahrplan für die große Sitzung
 
@@ -428,8 +479,8 @@ Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je
 | E6 | **Fressen und eigene Posen** auf dem ganzen Netz, alle Ansichten bearbeitbar, gespeichert als Abweichung | ja |
 | E7 | **Spanten-Überblendung** linear (neuer Spant ändert nichts) oder kubisch (glatter) | nach Florians Test |
 | E8 | **Glieder:** Variante aus Abschnitt 7 | siehe Abschnitt 7 |
-| E9 | **Körperweite Strukturen:** ein Grundelement „Klinge“ mit Pinseln wie Illustrator (Abschnitt 8) | siehe Abschnitt 8 |
-| E10 | **KI:** Rolle im Editor (Abschnitt 9) | siehe Abschnitt 9 |
+| E9 | **Körperweite Strukturen:** ein Grundelement „Klinge“ mit Pinseln wie Illustrator (Abschnitt 8). Vorher bestätigen: Die meisten Büschel sind gemalt, gebaut wird nur, was den Umriss bricht (8.1) | ja, zuerst Look-Test an Retriever und Stacheldrache (8.6) |
+| E10 | **KI:** Hilfe, nicht Kern: Wrap-Ziel für Volumen und Details, Remix-Kandidaten, Texturen; erster Test mit BWrap in Blender (Abschnitt 9.3) | Hilfe, nicht Kern |
 | E11 | **Look im Editor ab Phase 1** (Earle-Material statt weißem Matcap) | ja |
 | E12 | **Prüfwesen und Reihenfolge** (Abschnitt 12) | Rex → Langhals → Tiger-Kopf → Retriever → Stacheldrache |
 
@@ -492,7 +543,7 @@ Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je
 
 ## 14. Quellen der Recherchen vom 12.10. spätnachts
 
-Ältere Quellen stehen in den verlinkten Dokumenten (Abschnitt 13).
+Die Nummern gelten je Abschnitt. Ältere Quellen stehen in den verlinkten Dokumenten (Abschnitt 13).
 
 ### Zu Abschnitt 8 (Klingen)
 
@@ -524,3 +575,60 @@ Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je
 26. Kao, Otto: Flap Flap Away – Animation Cycle Multiplexing (DreamWorks, SIGGRAPH 2019). https://research.dreamworks.com/wp-content/uploads/2019/10/talk_multiplexing_stage2.pdf
 
 Hinweise der Recherche: Hummingbird, Quill, Hoppers, Flap Flap Away und Guilty Gear Xrd wurden im Volltext gelesen. Für ZBrush und Nomad gibt es nur Drittquellen. Zu den Fell-Techniken von It Takes Two, Spyro, Sackboy, Kena, Ori, Pokémon, Fortnite und Overwatch fanden sich keine Studioquellen.
+
+### Zu Abschnitt 9 (Einzigartig, KI)
+
+1. SketchDream (2024) – https://arxiv.org/abs/2405.06461
+2. Stroke3D (ICLR 2026) – https://arxiv.org/abs/2602.09713
+3. HandMade (2026) – https://arxiv.org/abs/2606.27738
+4. Meshy: Sketch to 3D – https://www.meshy.ai/3d-tools/sketch-to-3d-converter
+5. Tripo: Multiview to Model – https://developers.tripo3d.com/en/docs/generation-multiview-to-model/standard.md
+6. Rodin Gen-2 (Runware) – https://runware.ai/docs/models/hyper3d-rodin-gen-2
+7. Pixal3D – https://arxiv.org/abs/2605.10922 · https://huggingface.co/TencentARC/Pixal3D
+8. Illustrator Turntable (9to5Mac) – https://9to5mac.com/2026/03/30/adobe-illustrator-now-lets-you-rotate-2d-vectors-in-3d-space/
+9. Adobe-Community: Turntable-Beta – https://community.adobe.com/questions-656/turntable-is-now-available-in-illustrator-beta-1498806
+10. ART-DECO – https://arxiv.org/abs/2505.20431
+11. Hunyuan3D-Omni – https://arxiv.org/abs/2509.21245
+12. Hunyuan3D-2-Lizenz – https://huggingface.co/tencent/Hunyuan3D-2/blob/main/LICENSE
+13. PartCrafter – https://github.com/wgsxm/PartCrafter
+14. HoloPart – https://github.com/VAST-AI-Research/HoloPart
+15. KI-3D-Zeitleiste 2025–2026 (Cinevva, Herstellerleitfaden) – https://app.cinevva.com/guides/ai-3d-model-generation-timeline-2026
+16. VoxHammer – https://arxiv.org/abs/2508.19247
+17. Compos3D – https://arxiv.org/abs/2607.12193
+18. MeshAnything V2 – https://github.com/buaacyw/MeshAnythingV2
+19. QuadGPT – https://arxiv.org/abs/2509.21420
+20. UniRig/SkinTokens – https://github.com/VAST-AI-Research/UniRig
+21. Anymate – https://arxiv.org/abs/2505.06227
+22. Rigel3D – https://arxiv.org/abs/2605.13129
+23. Tripo: Auto Rigging – https://developers.tripo3d.com/en/docs/animations-rig.md
+24. Meshy: Rigging – https://docs.meshy.ai/en/webapp/guides/3d-model/rigging
+25. StyleSculptor – https://arxiv.org/abs/2509.13301
+26. Geometry in Style – https://arxiv.org/abs/2503.23241
+27. MeshUp – https://arxiv.org/abs/2408.14899
+28. trellis-mac – https://github.com/shivampkumar/trellis-mac
+29. Runware: TRELLIS.2 – https://runware.ai/models/microsoft-trellis-2
+30. fal: Tripo H3.1 Multiview – https://fal.ai/models/tripo3d/h3.1/multiview-to-3d/llms.txt
+31. Evans: Dreams-Renderer (2015) – https://advances.realtimerendering.com/s2015/AlexEvans_SIGGRAPH-2015-sml.pdf
+32. Dreams: Style Mode – https://docs.indreams.me/en/create/resources/edit-mode-guide/style/tools
+33. Womp: Goop – https://www.womp.com/blogs/the-ultimate-guide-to-goop-liquid-3d-modeling-thats-changing-everything
+34. Substance 3D Modeler 1.18 – https://www.cgchannel.com/2025/01/adobe-releases-substance-3d-modeler-1-18
+35. Plasticity 2025.2 – https://digitalproduction.com/2025/07/09/plastic-software-upgrades-plasticity-to-2025-2-with-hdris-physical-materials-new-surfacing-tools/
+36. Shapr3D (Develop3D) – https://develop3d.com/reviews/review-shapr3d-ipad-parasoild-modelling/
+37. Nomad Sculpt – https://apps.apple.com/us/app/-/id1519508653
+38. MetaHuman: Blend Tool – https://dev.epicgames.com/documentation/metahuman/metahuman-creator-blend-tool-in-unreal-engine
+39. MetaHuman: From Mesh – https://dev.epicgames.com/documentation/metahuman/from-mesh
+40. Roblox: Avatar Setup – https://create.roblox.com/docs/avatar-setup/auto-setup
+41. Unreal: Mutable – https://dev.epicgames.com/documentation/unreal-engine/mutable-overview-in-unreal-engine
+42. AWOL (ECCV 2024) – https://arxiv.org/abs/2404.03042
+43. Blender 5.0 – https://www.cgchannel.com/2025/11/blender-5-0-is-out-check-out-its-5-key-features
+44. Faceform Wrap 2025.9 – https://www.cgchannel.com/?p=170708
+45. BWrap – https://superhivemarket.com/products/bwrap/docs
+46. Kopf mit Industrie-Topologie (2026) – https://arxiv.org/abs/2605.04524
+47. Diff3F – https://arxiv.org/abs/2311.17024
+
+Hinweise der Recherche:
+- [15] ist ein Herstellerleitfaden. Fünf Angaben stützen sich vor allem auf ihn: Meshys Mehransichten-Ausbau, die Lizenz von PartPacker, Hunyuan3D-Part in der EU, Rodin Gen-2 Edit und fehlende Verformungsschleifen.
+- Ob Pixal3D orthografische Kameras kann, ist ungeklärt.
+- Ob BWrap unter macOS läuft, ist nicht bestätigt.
+- Compos3D, HandMade und Rigel3D sind Vorabdrucke.
+
