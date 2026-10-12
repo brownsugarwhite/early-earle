@@ -3,6 +3,7 @@
 
 import { type Ansicht, type Dokument, type Kante, type Maul, type PoseName, type Profil, SKALIERUNG_MAX, SKALIERUNG_MIN, type Zaehne, neuesDokument } from '@ee/shape';
 import { maulAnKontur } from '@ee/shape/versuch';
+import { kantenAnFlaeche } from '../kanten/kantenFlaeche';
 import { create } from 'zustand';
 
 export type Modus = 'editor' | 'fressen' | PoseName;
@@ -40,11 +41,18 @@ type EditorState = {
 
 const MAX_VERLAUF = 200;
 
-/** Was an der Form hängt, folgt ihr (Florian 12.10.: ein Objekt): Der Maulanfang bleibt auf der Seitenkontur. */
-function mitFormVerbunden(alt: Dokument, neu: Dokument): Dokument {
-  if (!neu.maul || alt.profile.seite === neu.profile.seite) return neu;
-  const maul = maulAnKontur(neu.maul, alt.profile.seite, neu.profile.seite);
-  return maul === neu.maul ? neu : { ...neu, maul };
+/**
+ * Was an der Form hängt, folgt ihr (Florian 12.10.: ein Objekt): Der Maulanfang bleibt auf der Seitenkontur, die
+ * Kantenlinien legen sich neu auf die Fläche (≈ 0,1–0,2 s, deshalb bei Gesten erst beim Loslassen).
+ */
+function mitFormVerbunden(alt: Dokument, neu: Dokument, kantenAuch: boolean): Dokument {
+  let d = neu;
+  if (d.maul && alt.profile.seite !== d.profile.seite) {
+    const maul = maulAnKontur(d.maul, alt.profile.seite, d.profile.seite);
+    if (maul !== d.maul) d = { ...d, maul };
+  }
+  if (kantenAuch && alt.profile !== d.profile) d = kantenAnFlaeche(d);
+  return d;
 }
 
 export const useEditor = create<EditorState>((set, get) => {
@@ -70,16 +78,18 @@ export const useEditor = create<EditorState>((set, get) => {
       if (!get().gesteStart) set({ gesteStart: get().dok });
     },
     endeGeste() {
-      const { gesteStart, dok, verlauf } = get();
+      const { gesteStart, verlauf } = get();
       if (!gesteStart) return;
-      if (gesteStart !== dok) set({ gesteStart: null, verlauf: [...verlauf, gesteStart].slice(-MAX_VERLAUF), zukunft: [] });
+      // nach einer Formgeste: Kanten auf die neue Fläche legen (gehört zum selben Undo-Schritt)
+      const dok = gesteStart.profile !== get().dok.profile ? kantenAnFlaeche(get().dok) : get().dok;
+      if (gesteStart !== dok) set({ dok, gesteStart: null, verlauf: [...verlauf, gesteStart].slice(-MAX_VERLAUF), zukunft: [] });
       else set({ gesteStart: null });
     },
     setzeProfil(ansicht, profil) {
-      aendern((d) => mitFormVerbunden(d, { ...d, profile: { ...d.profile, [ansicht]: profil } }));
+      aendern((d) => mitFormVerbunden(d, { ...d, profile: { ...d.profile, [ansicht]: profil } }, !get().gesteStart));
     },
     setzeProfile(profile) {
-      aendern((d) => (d.profile === profile ? d : mitFormVerbunden(d, { ...d, profile })));
+      aendern((d) => (d.profile === profile ? d : mitFormVerbunden(d, { ...d, profile }, !get().gesteStart)));
     },
     setzeSkalierung(s) {
       const v = Math.min(SKALIERUNG_MAX, Math.max(SKALIERUNG_MIN, s));

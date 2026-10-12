@@ -43,6 +43,7 @@ function Regler({ label, wert, min, max, schritt, anzeige, onChange, onStart, on
 
 function WesenBereich() {
   const dok = useEditor((s) => s.dok);
+  const modus = useEditor((s) => s.modus);
   const [name, setName] = useState(dok.name);
   useEffect(() => setName(dok.name), [dok.name]);
   const uebernehmen = () => name.trim() && name !== dok.name && useEditor.getState().setzeName(name.trim());
@@ -61,6 +62,12 @@ function WesenBereich() {
         <b>{['Fressen', ...dok.posen.map((p) => p[0]!.toUpperCase() + p.slice(1))].join(' · ')}</b>
       </div>
       <p className="hilfe">Oben rechts in jeder Ansicht: braun Zähne, blau Maul, orange Rig, weiß Augen (folgt), pink vergrößern.</p>
+      {modus === 'fressen' && dok.maul && (
+        <p className="hilfe" data-fressen-hinweis="">
+          Fressen: Der Körper folgt dem Kiefer. Die Ansichten zeigen den geöffneten Umriss aus dem 3D, die Grundform blass dahinter. Form und Kanten bearbeitest du im Tab
+          Editor, das Maul im blauen Maul-Tab.
+        </p>
+      )}
     </section>
   );
 }

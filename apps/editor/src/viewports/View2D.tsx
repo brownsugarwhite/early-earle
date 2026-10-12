@@ -2,6 +2,7 @@
 // Griffe und Linien haben bei jedem Zoom dieselbe Größe (gezeichnet in Bildpunkten).
 
 import {
+  vollerPfad,
   type Ansicht,
   type GriffSeite,
   type Kubik,
@@ -34,6 +35,8 @@ import { blickVon, useUi } from '../state/uiStore';
 import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen } from '../maul/MaulEbene';
 import { RigZeichnung } from '../maul/RigZeichnung';
 import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
+import { useMaulInfo } from '../maul/maulKoerper';
+import { offenerUmriss } from '../maul/offenerUmriss';
 import { KantenZeichnung, kantenZeiger } from '../kanten/KantenEbene';
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { versetzt3 } from '@ee/shape/versuch';
@@ -57,7 +60,13 @@ export function View2D({ ansicht, w, h }: Props) {
   const hatMaul = useEditor((s) => !!s.dok.maul);
   const ueber = useUeberlagerung((s) => s[ansicht]);
   /** Profile nur im Form-Tab bearbeitbar; in den anderen Tabs sind sie Kontext. */
-  const formAktiv = ebene === 'form';
+  // Fressen mit Maul: Der Körper folgt dem Kiefer (Florian 12.10.: „Kiefer wirklich mit dem Shape verbunden“). Die
+  // Ansichten zeigen den geöffneten Umriss aus dem 3D; die Grundform wird im Tab Editor bearbeitet.
+  const modus = useEditor((s) => s.modus);
+  useMaulInfo((s) => s.info);
+  const offenerKoerper = modus === 'fressen' && hatMaul;
+  const offen = offenerKoerper ? offenerUmriss(useEditor.getState().dok, ansicht) : null;
+  const formAktiv = ebene === 'form' && !offenerKoerper;
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Rad: nicht-passiv, sonst zoomt die Seite beim Trackpad-Pinch mit
@@ -389,8 +398,20 @@ export function View2D({ ansicht, w, h }: Props) {
         const b = bild({ x: ueber.bild.x1, y: ueber.bild.y1 });
         return <image href={ueber.bild.url} x={Math.min(a.x, b.x)} y={Math.min(a.y, b.y)} width={Math.abs(b.x - a.x)} height={Math.abs(b.y - a.y)} preserveAspectRatio="none" pointerEvents="none" />;
       })()}
-      {profil.art === 'halb' && <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="#ffffff" strokeWidth={KONTUR} strokeLinejoin="round" />}
-      <path d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
+      {offen ? (
+        <g className="offener-umriss" data-offener-umriss={offen.length}>
+          {/* geschlossene Grundform blass dahinter, davor der Umriss des geöffneten Körpers */}
+          <path d={pfad(vollerPfad(profil), true)} fill="none" stroke="#ffffff" strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" />
+          {offen.map((z, i) => (
+            <path key={i} d={z.map((p, k) => { const q = bild(p); return `${k ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`; }).join('') + 'Z'} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" />
+          ))}
+        </g>
+      ) : (
+        <>
+          {profil.art === 'halb' && <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="#ffffff" strokeWidth={KONTUR} strokeLinejoin="round" />}
+          <path d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
+        </>
+      )}
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
       <KantenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       {formAktiv && griffe}
