@@ -26,7 +26,7 @@ import {
 import type { Kamera } from '../state/uiStore';
 import type { Rect } from '../types';
 import { kameraPosition } from './kamera';
-import { blenderMatcap } from './matcap';
+import { blenderMatcap, zebraMatcap } from './matcap';
 
 export const FOV = 30;
 
@@ -48,6 +48,7 @@ export class Renderer3D {
   private kameraZustand: Kamera | null = null;
   private angefordert = false;
   private bereit = false;
+  private readonly matcaps = { normal: blenderMatcap(), zebra: zebraMatcap() };
   vertexAnzahl = 0;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -57,7 +58,7 @@ export class Renderer3D {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFShadowMap;
 
-    const material = new MeshMatcapNodeMaterial({ matcap: blenderMatcap() });
+    const material = new MeshMatcapNodeMaterial({ matcap: this.matcaps.normal });
     // Vorderseiten in die Schattenkarte: mit den Rückseiten (Standard) bliebe um den Bodenkontakt ein heller Fleck
     material.shadowSide = FrontSide;
     this.koerper = new Mesh(this.geometrie, material);
@@ -152,6 +153,16 @@ export class Renderer3D {
     nrm.needsUpdate = true;
     g.computeBoundingSphere();
     this.anfordern();
+  }
+
+  /** Zebrastreifen statt Matcap: zum Prüfen von Kanten (springen = Knick, fließen = glatt). */
+  setzeZebra(an: boolean) {
+    const material = this.koerper.material as MeshMatcapNodeMaterial;
+    const ziel = an ? this.matcaps.zebra : this.matcaps.normal;
+    if (material.matcap === ziel) return;
+    material.matcap = ziel;
+    material.needsUpdate = true;
+    this.nachUebersetzen();
   }
 
   /** Dreiecke ohne Index (Versuche, z. B. Subdivision mit getrennten Normalen an scharfen Kanten), optional mit Farbe je Ecke. */

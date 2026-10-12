@@ -74,6 +74,7 @@ export function Szene3D() {
         }),
         useUi.subscribe((s, v) => {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
+          if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
           if (s.oeffnung !== v.oeffnung && useEditor.getState().dok.maul) bauen(useEditor.getState().dok);
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),

@@ -373,6 +373,10 @@ button {
 .eckknopf.pink {
   background: var(--knopf-pink);
 }
+/* Zebrastreifen im 3D (Prüfwerkzeug für Kanten) */
+.eckknopf.zebra {
+  background: repeating-linear-gradient(0deg, #19232b 0 3px, #ffffff 3px 6px);
+}
 
 /* ---------- Liquid Glass (ohne Kontur: Glanz, Brechung, harter Versatzschatten) ---------- */
 .glas {

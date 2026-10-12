@@ -64,6 +64,8 @@ type UiState = {
   kanteZeichnen: KanteZeichnen | null;
   breitenAnzeige: BreitenAnzeige | null;
   kantenSicht: KantenSicht;
+  /** 3D mit Zebrastreifen (Prüfen der Kanten) */
+  zebra: boolean;
   /** liegt während Layout-Bewegungen oben */
   oben: ViewId | null;
   hover: ViewId | null;
@@ -90,6 +92,7 @@ type UiState = {
   setzeKanteZeichnen(z: KanteZeichnen | null): void;
   setzeBreitenAnzeige(b: BreitenAnzeige | null): void;
   setzeKantenSicht(k: KantenSicht): void;
+  setzeZebra(an: boolean): void;
   setzeHover(id: ViewId | null): void;
   setzeWerkzeug(w: Werkzeug): void;
   waehle(ansicht: Ansicht, indizes: number[]): void;
@@ -116,6 +119,7 @@ export const useUi = create<UiState>((set, get) => ({
   kanteZeichnen: null,
   breitenAnzeige: null,
   kantenSicht: 'zeigen',
+  zebra: false,
   oben: null,
   hover: null,
   werkzeug: 'auswahl',
@@ -162,6 +166,9 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeBreitenAnzeige(b) {
     set({ breitenAnzeige: b });
+  },
+  setzeZebra(an) {
+    set({ zebra: an });
   },
   setzeKantenSicht(k) {
     set({ kantenSicht: k, kantenAuswahl: k === 'zeigen' ? get().kantenAuswahl : null });

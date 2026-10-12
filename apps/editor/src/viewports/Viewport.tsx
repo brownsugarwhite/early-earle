@@ -31,6 +31,12 @@ function TabKnopf({ ebene, farbe, titel }: { ebene: Ebene; farbe: string; titel:
 
 const POSE_TEXT: Record<string, string> = { fressen: 'Fressen', ruhen: 'Ruhen', laufen: 'Laufen', inklusion: 'Inklusion' };
 
+/** Zebrastreifen im 3D an/aus (Prüfen der Kanten: Streifen springen an einem Knick, fließen über glatte Flächen). */
+function ZebraKnopf() {
+  const an = useUi((s) => s.zebra);
+  return <button className={`eckknopf zebra${an ? ' aktiv' : ''}`} data-zebra="" title={an ? 'Zebrastreifen aus' : 'Zebrastreifen: Kanten prüfen'} tabIndex={-1} onClick={() => useUi.getState().setzeZebra(!an)} />;
+}
+
 /** Titel als Tab (Florian 12.10.): Front ↔ Back, Top ↔ Bottom; Seite und 3D bleiben ein Titel. */
 function Titel({ id }: { id: ViewId }) {
   const blick = useUi((s) => (id === 'front' || id === 'top' ? s.blick[id] : null));
@@ -92,6 +98,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
             <TabKnopf ebene="augen" farbe="weiss" titel="Augen (folgt)" />
           </>
         )}
+        {id === 'creation' && <ZebraKnopf />}
         <TabKnopf ebene="rig" farbe="orange" titel="Rig" />
         <button className="eckknopf pink" data-maximieren={id} title={maximiert ? 'Zurück ins Raster (⌃Leertaste)' : 'Vergrößern (⌃Leertaste)'} tabIndex={-1} onClick={() => useUi.getState().maximieren(id)} />
       </div>

@@ -42,3 +42,32 @@ export function blenderMatcap(groesse = 256): DataTexture {
   t.needsUpdate = true;
   return t;
 }
+
+/**
+ * Zebra-Matcap (Prüfwerkzeug aus der Recherche 12.10.): waagerechte Streifen über der Blicknormalen. Auf dem Körper
+ * zeigen sie, wie Flächen ineinander übergehen: Streifen springen an einem Knick, knicken an einer weichen Kante und
+ * fließen über glatte Flächen (wie die Zebra-Kontrolle im Autodesign).
+ */
+export function zebraMatcap(groesse = 256, streifen = 9): DataTexture {
+  const daten = new Uint8Array(groesse * groesse * 4);
+  for (let y = 0; y < groesse; y++) {
+    for (let x = 0; x < groesse; x++) {
+      const ny = ((y + 0.5) / groesse) * 2 - 1;
+      // weiche Streifenkante (Kantenglättung), etwas Grundhelligkeit nach der Blender-Matcap
+      const s = Math.sin(Math.PI * streifen * ny);
+      const t = Math.min(1, Math.max(0, 0.5 + 2.5 * s));
+      const g = 28 + t * 214;
+      const o = (y * groesse + x) * 4;
+      daten[o] = Math.round(g);
+      daten[o + 1] = Math.round(g);
+      daten[o + 2] = Math.round(Math.min(255, g + 4));
+      daten[o + 3] = 255;
+    }
+  }
+  const t = new DataTexture(daten, groesse, groesse, RGBAFormat);
+  t.colorSpace = SRGBColorSpace;
+  t.magFilter = LinearFilter;
+  t.minFilter = LinearFilter;
+  t.needsUpdate = true;
+  return t;
+}
