@@ -166,6 +166,12 @@ _(wird mit dem Zahn-Versuch ergänzt)_
 
 ## 5. Datenmodell und Bauweise (Empfehlung für Fable)
 
+**Shapes → Loft → Käfig** (Florians Frage 12.10.: „Sind wir ganz weg von den Lofts?“ Nein.)
+- **Shapes → Loft:** Aus den drei Profilen werden Querschnitts-Ringe: Höhe aus der Seite, Breite aus dem Top, Form aus der Front (`ringKontext` in `tigerKaefig.ts`, dieselbe Rechnung wie der Platzhalter-Loft). Der Loft legt fest, *welche Form* das Wesen hat.
+- **Loft → Käfig:** Die Käfig-Ringe liegen genau auf den Loft-Ringen, wie Edgeloops. Der Käfig mit Catmull-Clark ist das Netz, das über den Loft gespannt wird (in Blender: Loft plus Subsurf).
+- **Warum der Käfig dazukommt:** Er liefert, was der reine Loft (96 × 96 Punkte) nicht kann: scharfe und verjüngte Kanten, den Maulschnitt mit Tasche und eine feste Topologie für Blendshapes, Rig und Varianten.
+- **Lange Hälse:** Die Wirbelsäulen-Röhre ist ebenfalls ein Loft, entlang einer gebogenen Wirbelsäule statt entlang x.
+
 Bereits im Dokument (optional, Version 0): `maul` und `zaehne`, siehe `packages/shape/src/dokument.ts`.
 
 ```ts
