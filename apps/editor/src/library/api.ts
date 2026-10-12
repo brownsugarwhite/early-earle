@@ -29,7 +29,8 @@ export type MenueBefehl =
   | 'werkzeug-auswahl'
   | 'werkzeug-stift'
   | 'werkzeug-plus'
-  | 'werkzeug-minus';
+  | 'werkzeug-minus'
+  | 'werkzeug-breite';
 
 export interface EditorApi {
   bibliothekListe(): Promise<BibliothekEintrag[]>;

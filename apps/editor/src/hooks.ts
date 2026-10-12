@@ -124,6 +124,8 @@ export function useMenueBruecke() {
           return ui.setzeWerkzeug('plus');
         case 'werkzeug-minus':
           return ui.setzeWerkzeug('minus');
+        case 'werkzeug-breite':
+          return ui.setzeWerkzeug('breite');
       }
     });
   }, []);

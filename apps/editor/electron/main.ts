@@ -82,6 +82,7 @@ function menue() {
         eintrag('Zeichenstift', 'werkzeug-stift', 'P'),
         eintrag('Ankerpunkt hinzufügen', 'werkzeug-plus', 'Plus'),
         eintrag('Ankerpunkt löschen', 'werkzeug-minus', '-'),
+        eintrag('Breitenwerkzeug (Kantenhärte)', 'werkzeug-breite', 'Shift+W'),
         { type: 'separator' },
         { role: 'cut', label: 'Ausschneiden' },
         { role: 'copy', label: 'Kopieren' },

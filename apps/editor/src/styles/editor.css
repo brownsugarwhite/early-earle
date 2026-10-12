@@ -537,8 +537,12 @@ button {
   stroke-width: 3px;
   pointer-events: none;
 }
-.view2d.werkzeug-breite {
+.view2d.werkzeug-breite,
+.view2d.werkzeug-breite * {
   cursor: ew-resize;
+}
+.view2d.werkzeug-stift [data-kantenlinie] {
+  cursor: url('../assets/cursor-plus.svg') 2 2, copy;
 }
 
 /* Zahn-Prüfung (Versuch 12.10.): stört geschlossen, Vorschläge als Knöpfe */
