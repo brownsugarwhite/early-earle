@@ -1,7 +1,7 @@
 // Seitenleiste rechts, immer offen (Florian 12.10.): oben das Menü des aktiven Tabs (Wesen, Maul, Zähne, Rig, Augen),
 // darunter die Library. Gestaltung (Glas, Ornament) ist mein Entwurf.
 
-import type { ZahnEintrag, Zahnreihe, ZahnWerte } from '@ee/shape';
+import { type Profil, type ZahnEintrag, type Zahnreihe, type ZahnWerte, gespiegelteSegmente, hauptspantProfil, hauptspantStelle, segmente } from '@ee/shape';
 import { versetzt3 } from '@ee/shape/versuch';
 import { useEffect, useState } from 'react';
 import { ladeAusBibliothek } from '../aktionen';
@@ -10,6 +10,7 @@ import { editorApi, useBibliothek } from '../library/speicher';
 import { aktuelleLippen, setzeLippen } from '../maul/MaulEbene';
 import { TIEFE_MAX, dunkel, haerteSetzen, kanteAuslaufen, kantenKnotenLoeschen, strichBreite, strichMuster, tiefeSetzen, useGewaehlteKante } from '../kanten/KantenEbene';
 import { useZahnMeldungen } from '../maul/ZahnEbene';
+import { spantName, spantWaehlen, SPANT_HINTEN, SPANT_VORN } from '../spanten/SpantEbene';
 import { aenderungAnwenden, befundText } from '../maul/zahnKoerper';
 import { useMaulInfo } from '../maul/maulKoerper';
 import { useEditor } from '../state/editorStore';
@@ -223,6 +224,97 @@ function KantenBereich() {
       </div>
       <KantenListe />
       {inhalt}
+    </section>
+  );
+}
+
+/** Kleine Formvorschau eines normierten Querschnitts (rechte Hälfte und Spiegelbild). */
+function SpantMini({ profil, farbe }: { profil: Profil; farbe: string }) {
+  const pfad = (segs: ReturnType<typeof segmente>, sp: number) => {
+    const f = (p: { x: number; y: number }) => `${(20 + sp * p.x * 16).toFixed(1)} ${(21 - p.y * 18).toFixed(1)}`;
+    return segs.length ? `M${f(segs[0]![0])}` + segs.map((s) => `C${f(s[1])} ${f(s[2])} ${f(s[3])}`).join('') : '';
+  };
+  return (
+    <svg width="40" height="24" viewBox="0 0 40 24" aria-hidden="true">
+      <path d={pfad(segmente(profil), 1)} fill="none" stroke={farbe} strokeWidth={1.6} />
+      <path d={pfad(gespiegelteSegmente(profil), 1)} fill="none" stroke={farbe} strokeWidth={1.2} strokeOpacity={0.45} />
+    </svg>
+  );
+}
+
+/**
+ * Spanten (Versuch 12.10. nachmittags): Querschnitte an gewählten Stellen. Liste mit Formvorschau, Lage, auf
+ * Hauptspant zurücksetzen, löschen. Bearbeitet wird in Front (vordere) bzw. Back (hintere).
+ */
+function SpantBereich() {
+  const dok = useEditor((s) => s.dok);
+  const auswahl = useUi((s) => s.spantAuswahl);
+  const spanten = dok.spanten ?? [];
+  const fH = hauptspantStelle(dok);
+  const i = auswahl?.spant ?? -1;
+  const sel = spanten[i];
+  const geste = { onStart: () => useEditor.getState().beginGeste(), onEnde: () => useEditor.getState().endeGeste() };
+  const setze = (neu: (typeof spanten)[number]) => {
+    const liste = spanten.slice();
+    liste[i] = neu;
+    useEditor.getState().setzeSpanten(liste);
+  };
+  return (
+    <section className="leiste-bereich spant-bereich">
+      <div className="feld">
+        <span>Spanten</span>
+        <b data-spantanzahl={spanten.length}>
+          {spanten.length === 1 ? '1 Spant' : `${spanten.length} Spanten`} · H {Math.round(fH * 100)} %
+        </b>
+      </div>
+      {spanten.length > 0 && (
+        <ul className="kanten-liste">
+          {spanten.map((sp, k) => {
+            const vorn = sp.f <= fH + 1e-9;
+            return (
+              <li key={k}>
+                <button className={k === i ? 'kanten-eintrag aktiv' : 'kanten-eintrag'} data-spanteintrag={k} onClick={() => spantWaehlen(k)}>
+                  <SpantMini profil={sp.profil} farbe={vorn ? SPANT_VORN : SPANT_HINTEN} />
+                  <span>
+                    {spantName(k)} · {vorn ? 'vorn (Front)' : 'hinten (Back)'}
+                  </span>
+                  <b>{Math.round(sp.f * 100)} %</b>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {sel ? (
+        <div className="unterbereich" data-spantmenue="">
+          <Regler label="Lage" wert={sel.f} min={0.02} max={0.98} schritt={0.005} anzeige={`${Math.round(sel.f * 100)} %`} onChange={(f) => setze({ ...sel, f })} {...geste} />
+          <div className="umschalter">
+            <button className="chip" onClick={() => setze({ ...sel, profil: hauptspantProfil(dok) })} title="Querschnitt wie die Front">
+              wie Hauptspant
+            </button>
+            <button
+              className="chip"
+              onClick={() => {
+                useEditor.getState().setzeSpanten(spanten.filter((_, k) => k !== i));
+                useUi.getState().setzeSpantAuswahl(null);
+              }}
+            >
+              Spant löschen
+            </button>
+          </div>
+          <p className="hilfe">
+            Bearbeiten in {sel.f <= fH + 1e-9 ? 'Front' : 'Back'}: Punkte und Griffe ziehen, ⌥-Klick mit dem Zeichenstift macht eine Ecke (sie läuft als Kante längs). P, + und −
+            wirken in allen Spanten und der Front (gleiche Punktstruktur).
+          </p>
+        </div>
+      ) : (
+        <p className="hilfe">S drücken und in Seite oder Top klicken: Spant an dieser Stelle (die Form ändert sich erst beim Bearbeiten). Front zeigt die vorderen, Back die hinteren Spanten.</p>
+      )}
+      {dok.hauptspant !== undefined && (
+        <button className="chip" onClick={() => useEditor.getState().setzeHauptspant(null)} title="Hauptspant wieder an der dicksten Stelle">
+          Hauptspant automatisch
+        </button>
+      )}
     </section>
   );
 }
@@ -483,6 +575,7 @@ export function Seitenleiste() {
             <>
               <WesenBereich />
               <KantenBereich />
+              <SpantBereich />
             </>
           )}
           {ebene === 'maul' && <MaulBereich />}

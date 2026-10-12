@@ -4,10 +4,13 @@
 import { type Ansicht, type Dokument, type V2, type V3T, pfadAbtasten, vollerPfad } from '@ee/shape';
 import { MAUL_STANDARD, type Strahlraster, flaecheS0, naechsterFlaechenpunkt, rasterAlle, treffer } from '@ee/shape/versuch';
 
-let zwischenspeicher: { profile: Dokument['profile']; raster: Record<Ansicht, Strahlraster> } | null = null;
+let zwischenspeicher: { profile: Dokument['profile']; spanten: Dokument['spanten']; haupt: number | undefined; raster: Record<Ansicht, Strahlraster> } | null = null;
 
+/** Strahlraster der Fläche S0 (gemerkt je Profile und Spanten). */
 export function strahlen(dok: Dokument): Record<Ansicht, Strahlraster> {
-  if (zwischenspeicher?.profile !== dok.profile) zwischenspeicher = { profile: dok.profile, raster: rasterAlle(flaecheS0(dok, MAUL_STANDARD)) };
+  if (zwischenspeicher?.profile !== dok.profile || zwischenspeicher.spanten !== dok.spanten || zwischenspeicher.haupt !== dok.hauptspant) {
+    zwischenspeicher = { profile: dok.profile, spanten: dok.spanten, haupt: dok.hauptspant, raster: rasterAlle(flaecheS0(dok, MAUL_STANDARD)) };
+  }
   return zwischenspeicher.raster;
 }
 

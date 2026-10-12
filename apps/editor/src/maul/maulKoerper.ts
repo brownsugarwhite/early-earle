@@ -39,7 +39,7 @@ export type MaulInfo = {
 
 export const useMaulInfo = create<{ info: MaulInfo | null }>(() => ({ info: null }));
 
-export type MaulBau = { profile: Dokument['profile']; maul: NonNullable<Dokument['maul']>; mk: MaulKaefig; zu: Netz; auf: Netz; rig: KieferRig };
+export type MaulBau = { profile: Dokument['profile']; maul: NonNullable<Dokument['maul']>; spanten: Dokument['spanten']; mk: MaulKaefig; zu: Netz; auf: Netz; rig: KieferRig };
 
 let letzter: MaulBau | null = null;
 
@@ -49,13 +49,13 @@ export function maulBauen(dok: Dokument): MaulBau | null {
     useMaulInfo.setState({ info: null });
     return null;
   }
-  if (letzter && letzter.profile === dok.profile && letzter.maul === dok.maul) return letzter;
+  if (letzter && letzter.profile === dok.profile && letzter.maul === dok.maul && letzter.spanten === dok.spanten) return letzter;
   const t0 = performance.now();
   const mk = maulKaefig(dok, maulEingabeAus(dok.maul), MAUL_STANDARD);
   const zu = maulAnpassen(mk, 'zu', 8, 3);
   const auf = maulAnpassen(mk, 'auf', 8, 3);
   const rig = kieferRig(mk, zu, auf);
-  letzter = { profile: dok.profile, maul: dok.maul, mk, zu, auf, rig };
+  letzter = { profile: dok.profile, maul: dok.maul, spanten: dok.spanten, mk, zu, auf, rig };
   const grad = (w: number) => (w * 180) / Math.PI;
   const mitte = (mk.tasche.length - 1) / 2;
   const p = (i: number) => [...zu.punkte[i]!] as [number, number, number];
@@ -80,7 +80,7 @@ export function maulBauen(dok: Dokument): MaulBau | null {
 
 /** Zuletzt gebautes Maul, falls es noch zum Dokument passt (baut nie selbst; für die 2D-Ebenen). */
 export function maulZuletzt(dok: Dokument): MaulBau | null {
-  return letzter && dok.maul && letzter.profile === dok.profile && letzter.maul === dok.maul ? letzter : null;
+  return letzter && dok.maul && letzter.profile === dok.profile && letzter.maul === dok.maul && letzter.spanten === dok.spanten ? letzter : null;
 }
 
 const FARBE: Record<string, [number, number, number]> = { haut: [1, 1, 1], lippe: [0.96, 0.74, 0.64], tasche: [0.55, 0.12, 0.18] };

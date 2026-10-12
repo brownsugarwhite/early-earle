@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { ansichtUnterMausZuruecksetzen, gewaehltePunkteLoeschen, gewaehltePunkteVerschieben, maximiereUnterMaus, neuesWesen, speichern } from './aktionen';
 import { kantenKnotenLoeschen } from './kanten/KantenEbene';
+import { spantLoeschen } from './spanten/SpantEbene';
 import { setzeLayoutZiel } from './layout/animation';
 import { berechneLayout } from './layout/layout';
 import { editorApi } from './library/speicher';
@@ -70,6 +71,9 @@ export function useTastatur() {
         ui.setzeWerkzeug('auswahl');
       } else if (!cmd && !e.altKey && k === 'p') {
         ui.setzeWerkzeug('stift');
+      } else if (!cmd && !e.altKey && !e.shiftKey && k === 's') {
+        // Spant-Werkzeug: Klick in Seite oder Top setzt einen Querschnitt
+        ui.setzeWerkzeug('spant');
       } else if (!cmd && !e.altKey && e.shiftKey && k === 'w') {
         // Breitenwerkzeug wie in Illustrator (⇧W): breiter = härtere Kante
         ui.setzeWerkzeug('breite');
@@ -82,7 +86,7 @@ export function useTastatur() {
         ansichtUnterMausZuruecksetzen();
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        if (!kantenKnotenLoeschen()) gewaehltePunkteLoeschen();
+        if (!spantLoeschen() && !kantenKnotenLoeschen()) gewaehltePunkteLoeschen();
       } else if (!cmd && e.key.startsWith('Arrow')) {
         // Pfeiltasten verschieben die gewählten Punkte wie in Illustrator, ⇧ = zehnfach
         e.preventDefault();

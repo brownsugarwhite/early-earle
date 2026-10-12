@@ -5,6 +5,7 @@ const TEXTE = {
   plus: ['Ankerpunkt hinzufügen', 'Klick auf die Kurve setzt einen Punkt'],
   minus: ['Ankerpunkt löschen', 'Klick auf einen Punkt löscht ihn'],
   breite: ['Breitenwerkzeug', 'Kante oder Ecke greifen und ziehen: Der Abstand ist die Härte (Kreis), nah = glatt, außen = scharf'],
+  spant: ['Spant', 'Klick in der Seite oder im Top setzt einen Querschnitt an dieser Stelle; bearbeitet wird er in Front (vorn) bzw. Back (hinten)'],
 } as const;
 
 /** Zeigt in der unteren Lücke, welches Werkzeug aktiv ist (in der Direktauswahl unsichtbar). */

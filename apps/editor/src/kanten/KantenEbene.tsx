@@ -116,10 +116,12 @@ function StrichBild({ s }: { s: Strich[] }) {
 /** Kante aus einer Ecke einer Silhouette (abgeleitet, nicht einzeln bearbeitbar): 3D-Punkte der rechten Hälfte. */
 export type EckKante = { quelle: { ansicht: Ansicht; knoten: number }; punkte: readonly V3T[]; haerte: readonly number[] };
 
-let eckZuletzt: { profile: Dokument['profile']; kanten: EckKante[] } | null = null;
-/** Ecken-Kanten des Dokuments (Geometrie-Versuch `eckKanten`, ≈ 1 ms), gemerkt je Profile. */
+let eckZuletzt: { profile: Dokument['profile']; spanten: Dokument['spanten']; haupt: number | undefined; kanten: EckKante[] } | null = null;
+/** Ecken-Kanten des Dokuments (Geometrie-Versuch `eckKanten`, ≈ 1 ms), gemerkt je Profile und Spanten. */
 export function eckKantenVon(dok: Dokument): EckKante[] {
-  if (eckZuletzt?.profile !== dok.profile) eckZuletzt = { profile: dok.profile, kanten: eckKanten(dok) };
+  if (eckZuletzt?.profile !== dok.profile || eckZuletzt.spanten !== dok.spanten || eckZuletzt.haupt !== dok.hauptspant) {
+    eckZuletzt = { profile: dok.profile, spanten: dok.spanten, haupt: dok.hauptspant, kanten: eckKanten(dok) };
+  }
   return eckZuletzt.kanten;
 }
 

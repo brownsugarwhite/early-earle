@@ -11,11 +11,13 @@ export type Kamera = { azimut: number; elevation: number; distanz: number; ziel:
  * Werkzeuge wie in Illustrator: Direktauswahl (A), Zeichenstift (P), Ankerpunkt hinzufügen (+) / löschen (−),
  * Breitenwerkzeug (⇧W): Ziehen an einer Kantenlinie macht sie breiter = härter (Versuch 12.10. mittags).
  */
-export type Werkzeug = 'auswahl' | 'stift' | 'plus' | 'minus' | 'breite';
+export type Werkzeug = 'auswahl' | 'stift' | 'plus' | 'minus' | 'breite' | 'spant';
 /** Gewählte Knoten einer Kantenlinie (alle Knoten = ganze Linie). */
 export type KantenAuswahl = { kante: number; indizes: number[] };
 /** Zeichenstift auf freier Fläche: neue Kantenlinie, bis Enter/Esc/Doppelklick. */
 export type KanteZeichnen = { blick: Blick; ansicht: Ansicht; knoten: V3T[] };
+/** Gewählter Spant und seine gewählten Punkte. */
+export type SpantAuswahl = { spant: number; knoten: number[] };
 /** Ebenenschalter der Kanten (Recherche 12.10.): zeigen, blass (nicht greifbar) oder aus. */
 export type KantenSicht = 'zeigen' | 'blass' | 'aus';
 /** Breitenwerkzeug beim Ziehen: Kreis um den Punkt, Radius = Härte (Weltpunkt in der Ansicht). */
@@ -64,6 +66,8 @@ type UiState = {
   kanteZeichnen: KanteZeichnen | null;
   breitenAnzeige: BreitenAnzeige | null;
   kantenSicht: KantenSicht;
+  /** gewählter Spant (Index in dok.spanten) und seine gewählten Punkte; bearbeitet in Front bzw. Back */
+  spantAuswahl: SpantAuswahl | null;
   /** 3D mit Zebrastreifen (Prüfen der Kanten) */
   zebra: boolean;
   /** liegt während Layout-Bewegungen oben */
@@ -93,6 +97,7 @@ type UiState = {
   setzeBreitenAnzeige(b: BreitenAnzeige | null): void;
   setzeKantenSicht(k: KantenSicht): void;
   setzeZebra(an: boolean): void;
+  setzeSpantAuswahl(a: SpantAuswahl | null): void;
   setzeHover(id: ViewId | null): void;
   setzeWerkzeug(w: Werkzeug): void;
   waehle(ansicht: Ansicht, indizes: number[]): void;
@@ -120,6 +125,7 @@ export const useUi = create<UiState>((set, get) => ({
   breitenAnzeige: null,
   kantenSicht: 'zeigen',
   zebra: false,
+  spantAuswahl: null,
   oben: null,
   hover: null,
   werkzeug: 'auswahl',
@@ -170,6 +176,9 @@ export const useUi = create<UiState>((set, get) => ({
   setzeZebra(an) {
     set({ zebra: an });
   },
+  setzeSpantAuswahl(a) {
+    set({ spantAuswahl: a });
+  },
   setzeKantenSicht(k) {
     set({ kantenSicht: k, kantenAuswahl: k === 'zeigen' ? get().kantenAuswahl : null });
   },
@@ -186,7 +195,7 @@ export const useUi = create<UiState>((set, get) => ({
     set({ auswahl: a, aktiv });
   },
   auswahlLeeren() {
-    set({ auswahl: { seite: [], front: [], top: [] }, kantenAuswahl: null });
+    set({ auswahl: { seite: [], front: [], top: [] }, kantenAuswahl: null, spantAuswahl: null });
   },
   setzeAnsicht(a, v) {
     set({ ansichten: { ...get().ansichten, [a]: v } });

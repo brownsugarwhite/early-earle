@@ -38,6 +38,7 @@ import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
 import { useMaulInfo } from '../maul/maulKoerper';
 import { offenerUmriss } from '../maul/offenerUmriss';
 import { BreitenKreis, EckKantenZeichnung, KantenZeichnung, breiteZiehen, kantenZeiger } from '../kanten/KantenEbene';
+import { SpantLinien, SpantQuerschnitte, spantZeiger } from '../spanten/SpantEbene';
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { versetzt3 } from '@ee/shape/versuch';
 
@@ -179,6 +180,8 @@ export function View2D({ ansicht, w, h }: Props) {
       return;
     }
     if (ui.ebene !== 'form') return;
+    // Spanten (Versuch 12.10. nachmittags): Werkzeug S, Spantlinien ziehen, gewählten Spant bearbeiten
+    if (spantZeiger(e, { ansicht, lokal, ziehen })) return;
     // Kanten (Versuch 12.10. mittags): Zeichenstift auf freier Fläche, Kantenknoten, Breitenwerkzeug
     if (kantenZeiger(e, { ansicht, lokal, ziehen, bild })) return;
     const ziel = e.target as Element;
@@ -432,6 +435,8 @@ export function View2D({ ansicht, w, h }: Props) {
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
       <EckKantenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <KantenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} />
+      <SpantQuerschnitte ansicht={ansicht} bild={bild} aktiv={formAktiv} />
+      <SpantLinien ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       {formAktiv && griffe}
       {formAktiv && profil.knoten.map((k, i) => {
         const q = bild(k.p);

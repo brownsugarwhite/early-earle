@@ -91,7 +91,13 @@ export function Szene3D() {
       abmelden.push(
         useEditor.subscribe((s, v) => {
           const geaendert =
-            s.dok.profile !== v.dok.profile || s.dok.skalierung !== v.dok.skalierung || s.dok.maul !== v.dok.maul || s.dok.zaehne !== v.dok.zaehne || s.dok.kanten !== v.dok.kanten;
+            s.dok.profile !== v.dok.profile ||
+            s.dok.skalierung !== v.dok.skalierung ||
+            s.dok.maul !== v.dok.maul ||
+            s.dok.zaehne !== v.dok.zaehne ||
+            s.dok.kanten !== v.dok.kanten ||
+            s.dok.spanten !== v.dok.spanten ||
+            s.dok.hauptspant !== v.dok.hauptspant;
           // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen
           if (s.dok.maul && s.gesteStart) return;
           // Kanten-Käfig: während einer Geste schnell (weniger Anpass-Durchgänge), beim Loslassen genau

@@ -13,7 +13,8 @@ export const useKantenInfo = create<{ info: KantenInfo | null }>(() => ({ info: 
 
 /** Braucht der Körper den Kanten-Käfig (Kantenlinien oder sichtbare Ecken in einem Profil)? */
 export function mitKanten(dok: Dokument): boolean {
-  if (dok.kanten?.length) return true;
+  // Spanten (Versuch 12.10. nachmittags) bauen ebenfalls über den Käfig: Er glättet die Übergänge zwischen den Spanten
+  if (dok.kanten?.length || dok.spanten?.length) return true;
   return eckenSpeicher(dok).length > 0;
 }
 
@@ -75,17 +76,33 @@ export function mitTiefe(kk: KantenKaefig, dok: Dokument, iterationen: number): 
   return { ...kk, roh, ziel, netz: anZielAnpassen(roh, ziel, iterationen, kk.stufen) };
 }
 
-type Bau = { profile: Dokument['profile']; kanten: Dokument['kanten']; schnell: boolean; kk: KantenKaefig; flaeche: ReturnType<typeof kantenFlaeche> };
+type Bau = {
+  profile: Dokument['profile'];
+  kanten: Dokument['kanten'];
+  spanten: Dokument['spanten'];
+  hauptspant: number | undefined;
+  schnell: boolean;
+  kk: KantenKaefig;
+  flaeche: ReturnType<typeof kantenFlaeche>;
+};
 let letzter: Bau | null = null;
 
 /** Kanten-Käfig bauen (gemerkt je Profile und Kanten); `schnell` während einer Geste (weniger Anpass-Durchgänge). */
 export function kantenBauen(dok: Dokument, schnell = false): Bau {
-  if (letzter && letzter.profile === dok.profile && letzter.kanten === dok.kanten && (!letzter.schnell || schnell)) return letzter;
+  if (
+    letzter &&
+    letzter.profile === dok.profile &&
+    letzter.kanten === dok.kanten &&
+    letzter.spanten === dok.spanten &&
+    letzter.hauptspant === dok.hauptspant &&
+    (!letzter.schnell || schnell)
+  )
+    return letzter;
   const t0 = performance.now();
   const iterationen = schnell ? 3 : 8;
   const kk = mitTiefe(kantenKaefig(dok, { iterationen }), dok, iterationen);
   const flaeche = kantenFlaeche(kk);
-  letzter = { profile: dok.profile, kanten: dok.kanten, schnell, kk, flaeche };
+  letzter = { profile: dok.profile, kanten: dok.kanten, spanten: dok.spanten, hauptspant: dok.hauptspant, schnell, kk, flaeche };
   useKantenInfo.setState({
     info: { millisekunden: performance.now() - t0, hinweise: kk.hinweise, linien: dok.kanten?.length ?? 0, ecken: eckenSpeicher(dok).length, ringe: kk.ringe },
   });

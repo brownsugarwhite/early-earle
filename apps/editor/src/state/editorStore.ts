@@ -1,7 +1,20 @@
 // Dokument-Zustand mit Rückgängig/Wiederholen. Ein Zieh-Vorgang ist ein Schritt (Geste wie in der
 // alten Werkstatt: beginGeste … endeGeste), Einzelaktionen sind je ein Schritt.
 
-import { type Ansicht, type Dokument, type Kante, type Maul, type PoseName, type Profil, SKALIERUNG_MAX, SKALIERUNG_MIN, type Zaehne, neuesDokument } from '@ee/shape';
+import {
+  type Ansicht,
+  type Dokument,
+  type Kante,
+  type Maul,
+  type PoseName,
+  type Profil,
+  SKALIERUNG_MAX,
+  SKALIERUNG_MIN,
+  type Spant,
+  type Zaehne,
+  neuesDokument,
+  spantenAngleichen,
+} from '@ee/shape';
 import { maulAnKontur } from '@ee/shape/versuch';
 import { kantenAnFlaeche } from '../kanten/kantenFlaeche';
 import { create } from 'zustand';
@@ -29,6 +42,11 @@ type EditorState = {
   setzeZaehne(zaehne: Zaehne | null): void;
   /** Versuch 12.10. mittags: Kantenlinien; `null` oder leer entfernt sie */
   setzeKanten(kanten: Kante[] | null): void;
+  /** Versuch 12.10. nachmittags: Spanten (Querschnitte); `null` oder leer entfernt sie */
+  setzeSpanten(spanten: Spant[] | null): void;
+  setzeHauptspant(f: number | null): void;
+  /** ganzes Dokument ersetzen (z. B. Punkt in allen Querschnitten einfügen) */
+  setzeDokument(dok: Dokument): void;
   rueckgaengig(): void;
   wiederholen(): void;
   neu(): void;
@@ -47,6 +65,10 @@ const MAX_VERLAUF = 200;
  */
 function mitFormVerbunden(alt: Dokument, neu: Dokument, kantenAuch: boolean): Dokument {
   let d = neu;
+  // Spanten haben die Punktstruktur der Front: Punkt in der Front eingefügt oder gelöscht → in jedem Spant ebenso
+  if (d.spanten?.length && alt.profile.front !== d.profile.front && alt.profile.front.knoten.length !== d.profile.front.knoten.length) {
+    d = { ...d, spanten: spantenAngleichen(alt.profile.front, d.profile.front, d.spanten) };
+  }
   if (d.maul && alt.profile.seite !== d.profile.seite) {
     const maul = maulAnKontur(d.maul, alt.profile.seite, d.profile.seite);
     if (maul !== d.maul) d = { ...d, maul };
@@ -81,7 +103,9 @@ export const useEditor = create<EditorState>((set, get) => {
       const { gesteStart, verlauf } = get();
       if (!gesteStart) return;
       // nach einer Formgeste: Kanten auf die neue Fläche legen (gehört zum selben Undo-Schritt)
-      const dok = gesteStart.profile !== get().dok.profile ? kantenAnFlaeche(get().dok) : get().dok;
+      const jetzt = get().dok;
+      const formNeu = gesteStart.profile !== jetzt.profile || gesteStart.spanten !== jetzt.spanten || gesteStart.hauptspant !== jetzt.hauptspant;
+      const dok = formNeu ? kantenAnFlaeche(jetzt) : jetzt;
       if (gesteStart !== dok) set({ dok, gesteStart: null, verlauf: [...verlauf, gesteStart].slice(-MAX_VERLAUF), zukunft: [] });
       else set({ gesteStart: null });
     },
@@ -113,6 +137,26 @@ export const useEditor = create<EditorState>((set, get) => {
         delete rest.zaehne;
         return zaehne ? { ...rest, zaehne } : rest;
       });
+    },
+    setzeSpanten(spanten) {
+      aendern((d) => {
+        if (d.spanten === spanten) return d;
+        const rest = { ...d };
+        delete rest.spanten;
+        const neu = spanten?.length ? { ...rest, spanten } : rest;
+        // Kanten liegen auf der Fläche: ohne Geste gleich neu auflegen, sonst beim Loslassen
+        return get().gesteStart ? neu : kantenAnFlaeche(neu);
+      });
+    },
+    setzeHauptspant(f) {
+      aendern((d) => {
+        const rest = { ...d };
+        delete rest.hauptspant;
+        return f === null ? rest : { ...rest, hauptspant: Math.min(0.98, Math.max(0.02, f)) };
+      });
+    },
+    setzeDokument(dok) {
+      aendern((d) => (d === dok ? d : dok));
     },
     setzeKanten(kanten) {
       aendern((d) => {
