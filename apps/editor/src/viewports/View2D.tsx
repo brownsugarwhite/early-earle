@@ -32,6 +32,7 @@ import { useEditor } from '../state/editorStore';
 import { useUeberlagerung } from '../versuch/ueberlagerung';
 import { useUi } from '../state/uiStore';
 import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen } from '../maul/MaulEbene';
+import { RigZeichnung } from '../maul/RigZeichnung';
 import { istTrackpad, radFaktor, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { versetzt3 } from '@ee/shape/versuch';
 
@@ -420,6 +421,7 @@ export function View2D({ ansicht, w, h }: Props) {
         </g>
       )}
       {(hatMaul || ebene === 'maul') && <MaulZeichnung ansicht={ansicht} bild={bild} aktiv={ebene === 'maul'} />}
+      {ebene === 'rig' && <RigZeichnung ansicht={ansicht} bild={bild} />}
       {rahmen && (
         <rect
           className="auswahlrahmen"

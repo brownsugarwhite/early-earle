@@ -113,6 +113,11 @@ test('Maul-Tab: Linie ab der Kontur zeichnen, Kiefer getrennt, offen, Öffnung, 
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(bilder, 'maul-tab-offen.png') });
 
+  // oranger Punkt = Rig: vorgeschlagene Kiefergelenke
+  await page.click('[data-view="creation"] [data-tab="rig"]');
+  await expect(page.locator('.vp-ober[data-view="seite"] .rig circle').first()).toBeVisible();
+  await page.screenshot({ path: path.join(bilder, 'rig-tab.png') });
+
   // brauner Punkt = Zähne: Anzahl je Kiefer
   await page.click('[data-view="front"] [data-tab="zaehne"]');
   await page.locator('.leiste').getByRole('button', { name: 'mehr Zähne oben' }).click();

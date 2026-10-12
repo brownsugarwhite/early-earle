@@ -21,6 +21,11 @@ import { create } from 'zustand';
 import { flaechenBereiche } from '../versuch/maulVersuch';
 
 export type MaulInfo = {
+  /** Gelenkpunkte (Schraubachse ∥ z) und Knochenenden für die Rig-Anzeige: Kinn bzw. Schnauze */
+  gelenkOben: [number, number, number];
+  gelenkUnten: [number, number, number];
+  kinn: [number, number, number];
+  schnauze: [number, number, number];
   art: string;
   winkelOben: number;
   winkelUnten: number;
@@ -50,8 +55,15 @@ export function maulBauen(dok: Dokument): MaulBau | null {
   const rig = kieferRig(mk, zu, auf);
   letzter = { profile: dok.profile, maul: dok.maul, mk, zu, auf, rig };
   const grad = (w: number) => (w * 180) / Math.PI;
+  const mitte = (mk.tasche.length - 1) / 2;
+  const p = (i: number) => [...zu.punkte[i]!] as [number, number, number];
   useMaulInfo.setState({
     info: {
+      // bei kaum Drehung liegt die Schraubachse beliebig weit weg: dann am Mundwinkel zeigen
+      gelenkOben: rig.gelenkOben.w > 0.05 ? [rig.gelenkOben.c[0], rig.gelenkOben.c[1], 0] : [zu.punkte[mk.ecken[1]]![0], zu.punkte[mk.ecken[1]]![1], 0],
+      gelenkUnten: rig.gelenkUnten.w > 0.05 ? [rig.gelenkUnten.c[0], rig.gelenkUnten.c[1], 0] : [zu.punkte[mk.ecken[1]]![0], zu.punkte[mk.ecken[1]]![1], 0],
+      kinn: p(mk.tasche[mitte]![6]!),
+      schnauze: p(mk.tasche[mitte]![0]!),
       art: rig.art,
       winkelOben: grad(rig.gelenkOben.w),
       winkelUnten: grad(rig.gelenkUnten.w),
