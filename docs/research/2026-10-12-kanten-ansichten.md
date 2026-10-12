@@ -223,6 +223,34 @@ So ist es zu lesen:
   - Back zeigt die hinteren Spanten und die Linien auf Rücken, Schwanz und Hinterbeinen.
   - Alternative für später: eine eigene Spantenriss-Ansicht, links hinten und rechts vorn wie im Schiffbau.
 
+### Fragen danach (12.10. abends)
+
+**Braucht es einen oberen und einen unteren Spant?** Nein, einer reicht.
+- Ein Spant ist immer der ganze Querschnitt: von oben über die Flanke bis unten, links gespiegelt.
+- Waagerechte Schnitte (Wasserlinien in Top/Bottom) braucht es als Eingabe auch nicht. Die Silhouetten geben die Längsrichtung vor, die Spanten die Querrichtung. Eine zweite Schnittschar wäre schon festgelegt und könnte der ersten nur widersprechen. Als Anzeige zum Prüfen der Glätte wären sie möglich, wie im Linienriss des Schiffbaus.
+- Was eine Spantschar nicht kann:
+  - Überhänge (Hals nach oben, eingerollter Schwanz): Dafür braucht es die Wirbelsäule.
+  - Abzweigungen (Beine, Hörner, Ohren): Das werden eigene Teile.
+  - Kleine Beulen (Wange, Braue) gehen, sind aber umständlich: Ein Spant läuft ganz herum, also einen Spant davor und einen dahinter setzen (sie ändern die Form nicht) und den mittleren formen. Bequemer wäre später ein örtliches Werkzeug.
+
+**Hat das 3D schon mit dem späteren Wesen zu tun?** Die Form ja, das Aussehen noch nicht.
+- Das Dokument speichert nur, was gezeichnet ist (Silhouetten, Spanten, Kanten, Maul, Zähne). Das 3D wird daraus jedes Mal neu gebaut, und das Spiel baut später aus derselben Datei.
+- Die Bauweise bleibt (Shapes → Loft → Käfig), die Form im 3D folgt den Silhouetten auf 0,2–0,3 px.
+- Vorläufig sind:
+  - das Netz darunter: feste Ringe, für Hälse kommt die Wirbelsäule, Maul und Kanten werden zusammengeführt
+  - das Aussehen: Weiß mit Matcap dient nur zum Beurteilen der Form; das Earle-Material kommt später
+  - Rig und Animation
+
+**Kopplung der Ansichten umgestellt** (Florian: Zieht er bei der Kugel den oberen Front-Punkt hoch, erwartet er, dass in der Seite nur der oberste Punkt wandert, nicht auch die Seitenpunkte):
+- **Bisher (11.10.):** Die andere Ansicht wurde mit quadratischem Abfall gestreckt. Oben ging sie voll mit, auf halber Höhe ¼, unten gar nicht. Das hob die Seitenpunkte an, und Front und Seite lagen danach nicht mehr auf gleicher Höhe.
+- **Neu:**
+  - Nur der entsprechende Punkt wandert, samt seinen Griffen. Der oberste Punkt der Front und der oberste der Seite sind derselbe Punkt des Körpers.
+  - Punkte bis 5 % der Ausdehnung darunter gehen anteilig mit, damit ein flacher Rücken flach bleibt.
+  - Beim Schrumpfen wird alles, was über dem Ziel liegt, darauf gedrückt.
+  - Das gilt für alle drei geteilten Achsen (Höhe, Länge, Breite).
+- **Beim Laden** widersprüchlicher Dokumente bleibt die verteilte Korrektur, sonst gäbe es Beulen an einzelnen Punkten.
+- **Code und Prüfung:** `packages/shape/src/kopplung.ts` (`KOPPEL_BAND`), Tests in `kopplung.test.ts`. Bild `docs/progress/editor/kopplung-punkt.png` (Ausgang, bisher, neu), erzeugt mit `apps/editor/scripts/kopplung-bild.mjs`.
+
 ## 5. Recherche (Hintergrund-Recherche 12.10. mittags, mit Quellen)
 
 **Kurzantworten der Recherche:**

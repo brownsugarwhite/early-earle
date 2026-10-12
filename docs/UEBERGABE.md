@@ -47,6 +47,11 @@ Dazu:
 - **Datenmodell:** `dok.spanten?: { f, profil }[]`, `dok.hauptspant?: number`.
 - **Tests:** `spanten.test.ts` (8), `kanten.test.ts` (Spant-Ecke), E2E `spanten.spec.ts`. Alle 16 E2E grün.
 - **Bilder:** `docs/progress/editor/spanten-schnauze-{editor,3d,zebra}.png`, `spanten-tab.png`.
+- **Kopplung der Ansichten umgestellt** (Florian, abends):
+  - Beim Bearbeiten wandert in den anderen Ansichten nur der entsprechende Punkt mit seinen Griffen. Punkte bis 5 % darunter gehen anteilig mit, alles andere bleibt.
+  - Beim Laden bleibt die verteilte Korrektur.
+  - Code `kopplung.ts` (`KOPPEL_BAND`), Bild `kopplung-punkt.png`.
+- Antworten auf „oberer/unterer Spant?“ und „hat das 3D mit dem Wesen zu tun?“ im Nachtrag des Ergebnis-Dokuments.
 
 **Nachmittag (Florians Rückmeldung 12.10. mittags):**
 - **Kiefer verbunden:**
