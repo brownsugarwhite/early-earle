@@ -11,7 +11,14 @@ import { type Kubik, type V2, ableitung, abstand, abtasten, laengeV, mal, minus,
 export type KnotenArt = 'glatt' | 'ecke';
 
 /** Ein Kurvenpunkt; `ein`/`aus` sind die Bézier-Griffe relativ zu `p`. */
-export type Knoten = { p: V2; ein: V2; aus: V2; art: KnotenArt };
+export type Knoten = {
+  p: V2;
+  ein: V2;
+  aus: V2;
+  art: KnotenArt;
+  /** Härte einer Ecke als Kante im 3D (0 = rund … 1 = scharf, Standard 1); nur bei art 'ecke' (Versuch 12.10.) */
+  haerte?: number;
+};
 
 /** senkrecht: Spiegelung an u = 0 (Front); waagerecht: Spiegelung an v = 0 (Top). */
 export type Achse = 'senkrecht' | 'waagerecht';

@@ -2,12 +2,14 @@
 // Die Posen tragen in Version 0 nur ihren Namen; das Bearbeiten der Posen folgt mit der Bauweise.
 // Nachtrag 12.10. (Versuch, optional): Maul als 3D-Lippenlinien (zu und auf) und Zahnreihen. Jede Ansicht bearbeitet
 // zwei Koordinaten eines Knotens (Seite x/y, Front z/y, Top x/z); Knoten 0 liegt auf der Mittelebene (z = 0).
+// Nachtrag 12.10. mittags (Versuch, optional): Kantenlinien auf der Fläche mit Härte je Knoten (0 = mögliche Kante,
+// ganz glatt; 1 = scharf) und Härte der Eckpunkte in den Profilen (Ecke einer Silhouette = Kante im 3D).
 
 import { z } from 'zod';
 import { type Profil, START_RADIUS, startHalbkreis, startKreis } from './profil';
 
 const V2 = z.object({ x: z.number(), y: z.number() });
-const Knoten = z.object({ p: V2, ein: V2, aus: V2, art: z.enum(['glatt', 'ecke']) });
+const Knoten = z.object({ p: V2, ein: V2, aus: V2, art: z.enum(['glatt', 'ecke']), haerte: z.number().min(0).max(1).optional() });
 
 export const ProfilSchema = z.discriminatedUnion('art', [
   z.object({ art: z.literal('geschlossen'), knoten: z.array(Knoten).min(2) }),
@@ -29,6 +31,9 @@ const ZahnWerteSchema = z.object({
 });
 const ZahnSchema = ZahnWerteSchema.extend({ u: z.number(), aussen: z.boolean(), auf: ZahnWerteSchema.extend({ u: z.number() }).partial().optional() });
 const ZahnreiheSchema = z.object({ anzahl: z.number().int().min(0).max(31), zaehne: z.array(ZahnSchema) });
+/** Ansicht, aus der eine Linie gezeichnet wurde (bestimmt, welche Fläche sie trifft, wenn sich die Form ändert). */
+const BlickSchema = z.enum(['seite', 'front', 'hinten', 'top', 'unten']);
+const KanteSchema = z.object({ knoten: z.array(Knoten3Schema).min(2), haerte: z.array(z.number().min(0).max(1)), blick: BlickSchema });
 
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */
 export const POSEN = ['ruhen', 'laufen', 'inklusion'] as const;
@@ -46,6 +51,7 @@ export const DokumentSchema = z.object({
   posen: z.array(z.enum(POSEN)),
   maul: z.object({ zu: LippenSchema, auf: LippenSchema.optional() }).optional(),
   zaehne: z.object({ oben: ZahnreiheSchema, unten: ZahnreiheSchema }).optional(),
+  kanten: z.array(KanteSchema).optional(),
 });
 
 export type V3T = [number, number, number];
@@ -61,6 +67,13 @@ export type ZahnEintrag = ZahnWerte & { u: number; aussen: boolean; auf?: Partia
 /** `anzahl` gilt für den ganzen Kiefer (beide Hälften); `zaehne` = rechte Hälfte, bei ungerader Zahl zuerst der Mittelzahn. */
 export type Zahnreihe = { anzahl: number; zaehne: ZahnEintrag[] };
 export type Zaehne = { oben: Zahnreihe; unten: Zahnreihe };
+/** Blickrichtung einer Ansicht: Front/Back und Top/Bottom zeigen dieselbe Silhouette, aber verschiedene Flächen. */
+export type Blick = 'seite' | 'front' | 'hinten' | 'top' | 'unten';
+/**
+ * Kantenlinie auf der Fläche (gespiegelt an z = 0 wie die Maullinien): 3D-Bézier, Härte je Knoten, entlang der Linie
+ * verlaufend (0 = mögliche Kante, Übergang ganz glatt, gestrichelt 1 px; 1 = scharf, schwarz 3 px).
+ */
+export type Kante = { knoten: Knoten3[]; haerte: number[]; blick: Blick };
 
 export type Dokument = {
   format: 'ee-wesen';
@@ -71,6 +84,7 @@ export type Dokument = {
   posen: PoseName[];
   maul?: Maul;
   zaehne?: Zaehne;
+  kanten?: Kante[];
 };
 
 export type Ansicht = keyof Dokument['profile'];
