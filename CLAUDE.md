@@ -23,7 +23,8 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - Back/Bottom als Tab.
   - Im Fressen-Tab folgt der Körper dem Kiefer.
   - 3D-Kanten im Käfig mit Zebrastreifen.
-  - Ergebnis [`docs/research/2026-10-12-kanten-ansichten.md`](docs/research/2026-10-12-kanten-ansichten.md). Spanten sind skizziert, nicht gebaut.
+  - Ergebnis [`docs/research/2026-10-12-kanten-ansichten.md`](docs/research/2026-10-12-kanten-ansichten.md).
+  - Spätnachmittags: **Spanten gebaut** (Querschnitte an gewählten Stellen, Front = vorn, Back = hinten, Werkzeug S). Regel: **Eine Kante ist eine Ecke in einem Shape**, der Winkel kommt aus der Form, die Härte ist die Rundung (Spant-Ecke 43° gegen 13° bei einer freien Linie).
   - Ergebnis [`docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`](docs/research/2026-10-12-maul-kiefer-zaehne-augen.md), Seite https://claude.ai/artifact/WG3YJPn4SuL5acnY9yR9s1, Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte) und die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).

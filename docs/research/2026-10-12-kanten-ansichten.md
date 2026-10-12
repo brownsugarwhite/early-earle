@@ -21,6 +21,10 @@
    - Die Silhouette ist dieselbe. Neu ist, welche Fläche man trifft: Linien auf Rücken, Schwanz oder Bauch zeichnet man dort, Linien der anderen Seite erscheinen blass.
 5. **3D:** Kanten und Ecken werden im Käfig zu Kanten mit Schärfe nach der Härte; die Tiefe macht Grate und Rinnen. Befund: Härte macht schärfer, nicht tiefer (Abschnitt 3).
 6. **Antworten auf deine Fragen** stehen in Abschnitt 1, die Recherche in Abschnitt 5.
+7. **Nachtrag nachmittags: Spanten gebaut, Kanten schlüssig gemacht** (Abschnitt „Nachtrag“ vor der Recherche):
+   - Eine Kante ist eine Ecke in einem Shape. Der Winkel kommt aus der Form, die Härte bestimmt nur, wie rund er ist.
+   - Spanten: Werkzeug S, den Querschnitt in Front (vorn) bzw. Back (hinten) bearbeiten. Eine Ecke im Spant wird eine Längskante.
+   - Gemessen: Eine Spant-Ecke mit 100 % knickt im 3D um 43°, eine freie Linie mit 100 % nur um 13°.
 
 ## 1. Deine Fragen
 
@@ -41,6 +45,7 @@ Die drei Ergänzungen, damit es wirklich alles wird:
    - Heute gilt ein Front-Querschnitt für den ganzen Körper. Ein kastiger Kopf auf einem runden Bauch geht damit nicht.
    - Im Schiffbau löst das der Spantenriss. Er zeigt die vorderen Spanten auf der einen Seite und die hinteren auf der anderen, genau wie dein Front ↔ Back.
    - Vorschlag: In der Seite eine senkrechte Spantlinie setzen; ihr Querschnitt erscheint in Front (vordere Hälfte) bzw. Back (hintere Hälfte) und lässt sich dort wie ein Profil ziehen. Der Loft läuft dann durch alle Spanten.
+   - **Nachtrag 12.10. nachmittags: gebaut**, siehe Abschnitt „Nachtrag“.
 2. **Formlinien mit eigener Tiefe.** Eine Linie, die in zwei Ansichten gezogen wird, hat eine echte 3D-Lage. Die Fläche wird durch sie hindurch gelegt (FiberMesh: glatte oder scharfe Kurven als Bedingung). Damit gehen Mulden, Wülste und Rillen.
 3. **Wirbelsäule** für Überhänge (Langhals, eingerollter Schwanz), siehe die Recherche vom Vormittag.
 
@@ -135,11 +140,88 @@ Sobald es Kantenlinien oder sichtbare Ecken in einem Profil gibt, baut das 3D st
 
 ## 4. Offene Punkte
 
-- **Spanten** (Querschnitte an gewählten Stellen) sind noch nicht gebaut, nur skizziert: Spantlinien in der Seite, vordere Querschnitte in der Front, hintere in der Back-Ansicht, der Loft läuft durch alle.
+- ~~**Spanten** (Querschnitte an gewählten Stellen) sind noch nicht gebaut, nur skizziert.~~ **Nachtrag 12.10. nachmittags:** gebaut, siehe Abschnitt „Nachtrag“.
 - Kanten zusammen mit dem Maul-Käfig; schräge Linien und Linien im Gesicht (siehe Abschnitt 3).
 
 - Am Übergang Schädel/Oberkiefer knickt der offene Umriss leicht. Das ist die Grenze der Kiefergewichte im 3D; die Abhilfe gehört zur Mundwinkel-Zone und Kehlkette der großen Sitzung.
 - Eigene Pose-Profile (Fressen mit selbst gezogenem Umriss) fehlen. Heute folgt der Körper dem Kiefer automatisch.
+
+## Nachtrag (12.10. nachmittags): Spanten, und sind Kanten und Härte schlüssig?
+
+> Florian: „Ja, mach das mit den Spanten mal, das ist interessant. Das mit den Kanten und Härten scheint mir noch nicht ganz schlüssig. Ist das schon die optimale Lösung?“
+> Plan: [`docs/plans/2026-10-12-spanten.md`](../plans/2026-10-12-spanten.md).
+
+### Was an Kanten und Härte nicht schlüssig war
+
+- Eine Kante hat **zwei** Größen: den **Winkel** (wie stark die Fläche abknickt) und die **Härte** (wie rund der Knick ist).
+- An einer freien Linie stellte man nur die Härte ein. Auf einer runden Fläche gibt es keinen Winkel, den sie schärfen könnte: Eine freie Linie mit 100 % knickt nur um 13° (Abschnitt 3). Dein Eindruck stimmt also.
+
+### Die schlüssige Regel: Eine Kante ist eine Ecke in einem Shape
+
+- **Ecke in Seite oder Top** → Kante quer um den Körper (gab es schon).
+- **Ecke in einem Spant** → Kante längs durch die Spanten, wie die Knicklinie im Schiffbau (neu).
+- Den Winkel zeichnest du mit der Form. Die Härte (Regler, ⇧W) ist nur noch die Rundung der Ecke. Die anderen Ansichten zeigen die Kante von selbst als Linie, Breite und Grau wie bisher.
+- **Freie Kantenlinien** bleiben für Sonderfälle (Falte, Grat quer über eine Fläche). Vorschlag: Sie bekommen statt der Tiefe einen **Knickwinkel**, dann haben auch sie beide Größen. Noch nicht gebaut.
+
+**Gemessen** (Test „Spant-Ecke“ in `kanten.test.ts`: kastige Schnauze auf dem Ei, Spant bei 15 %, Mittel über die Ringe am Spant):
+
+| | Knick an der Kante | Knick über 8 Feinkanten (Formwinkel) |
+|---|---|---|
+| freie Wangenlinie, Härte 0 | 2,9° | 22,6° |
+| freie Wangenlinie, Härte 100 % | 13,3° | 20,3° |
+| Spant-Ecke, Härte 0 | 10,2° | 54,9° |
+| Spant-Ecke, Härte 100 % | **43,1°** | 48,9° |
+
+So ist es zu lesen:
+- Die Spant-Ecke bringt einen echten Winkel von rund 50° mit.
+- Mit Härte 100 % sammelt er sich in der Kante (43°), mit Härte 0 verteilt er sich als Rundung. So soll Härte wirken.
+- Hinter dem Spant läuft die Härte bis zum Hauptspant auf 0 aus (je Ring 1,00 → 0,78 → 0,38 → 0). Die Kante verschwindet im runden Bauch.
+
+### Spanten im Editor
+
+- **Setzen:**
+  - S drücken, in Seite oder Top an die gewünschte Stelle klicken.
+  - Die Spantlinien heißen S1 … Sn (vorn dunkelgrün, hinten koralle). Der Hauptspant H (gestrichelt) ist die Front an der dicksten Stelle.
+  - Ein neuer Spant ändert die Form nicht, er übernimmt die Überblendung an seiner Stelle.
+- **Verschieben:** Spantlinie oder H in Seite oder Top ziehen.
+- **Bearbeiten:**
+  - Ein Klick auf die Spantlinie wählt den Spant. Vordere Spanten erscheinen in der Front, hintere in Back (wie im Spantenriss). Der Tab schaltet beim Wählen mit.
+  - Punkte und Griffe ziehen wie im Profil.
+  - ⌥-Klick mit dem Zeichenstift macht eine Ecke. Sie läuft als Kante längs und erscheint in Seite und Top.
+- **Punkte:** P, + und − fügen in allen Spanten und in der Front zugleich ein bzw. löschen (gleiche Punktstruktur).
+- **Seitenleiste:** Liste mit Formvorschau, Lage in %, „wie Hauptspant“ (zurücksetzen), „Spant löschen“. Entf löscht den gewählten Spant, ⌘Z holt ihn zurück.
+- **Bilder** in `docs/progress/editor/`:
+  - `spanten-schnauze-editor.png` (Editor)
+  - `spanten-schnauze-3d.png`
+  - `spanten-schnauze-zebra.png` (die Streifen knicken an der Schnauzenkante und laufen nach hinten rund aus)
+  - `spanten-tab.png` (aus dem E2E-Test)
+
+### Wie es rechnet (`packages/shape/src/spanten.ts`)
+
+- **Normiert:** Ein Spant ist ein halbes Profil, normiert auf den Kasten aus Seite (Höhe) und Top (Breite) an seiner Stelle. Ändert sich eine Silhouette, wächst er mit.
+- **Überblendung:** Spanten und Front haben dieselbe Punktstruktur. Zwischen zwei Spanten wird Punkt für Punkt **linear** überblendet (wie „Angleichen“ in Illustrator). Vor dem ersten und hinter dem letzten gilt der äußere.
+- **Warum linear:** Nur so lässt ein neuer Spant die Form exakt unverändert (geprüft auf 10⁻⁹). Eine weiche S-Kurve hatte die Form beim Einfügen verändert.
+- **Durchgehende Kanten:** Jeder Knoten liegt in jeder Station auf derselben Stützstelle des Querschnitts. Deshalb wird eine Spant-Ecke eine durchgehende Längskante, und ihre Härte überblendet mit.
+- **Wer den Querschnitt holt:** Loft (Platzhalter), Ringe des Käfigs und Kanten-Käfig holen ihn je Station (`vorlageBei`). Ohne Spanten bleibt alles wie vorher (Test).
+- **3D:** Mit Spanten baut das 3D den Kanten-Käfig (Anzeige „Versuch: Kanten im Käfig“).
+- **Tests:**
+  - `spanten.test.ts` (8 Tests)
+  - `kanten.test.ts` (Spant-Ecke)
+  - E2E `spanten.spec.ts`: setzen, in der Front ziehen, Ecke → Kante in der Seite, Punkt in allen, verschieben, löschen, ⌘Z
+
+### Grenzen und nächste Schritte
+
+- **Linear überblendet:**
+  - An jedem Spant knickt der Längsverlauf leicht. Der Käfig glättet das; bei weit auseinanderliegenden, sehr verschiedenen Spanten kann es sichtbar werden.
+  - Kubisch wäre es glatter, dann verändert ein neuer Spant die Form ein wenig. Entscheidung nach deinem Test.
+- **Längskante nur Anzeige:**
+  - Die Längskante aus einem Spant ist in Seite und Top nur zu sehen. Ihre Lage ändert man im Spant (Ecke verschieben).
+  - Vorschlag: in der Seite direkt ziehbar machen (das ändert den Spant-Punkt).
+- **Bis zur Spitze gleich:** Vor dem ersten Spant bleibt der Querschnitt bis zur Spitze gleich. Eine Schnauze, die vorn wieder rund wird, braucht einen zweiten Spant davor.
+- **Mit Maul:** Der Maul-Käfig folgt der Spant-Form, zeigt aber noch keine Kanten (wie bei den Kantenlinien).
+- **Back-Ansicht bleibt nötig** (deine Frage, ob sie damit überflüssig wird):
+  - Back zeigt die hinteren Spanten und die Linien auf Rücken, Schwanz und Hinterbeinen.
+  - Alternative für später: eine eigene Spantenriss-Ansicht, links hinten und rechts vorn wie im Schiffbau.
 
 ## 5. Recherche (Hintergrund-Recherche 12.10. mittags, mit Quellen)
 

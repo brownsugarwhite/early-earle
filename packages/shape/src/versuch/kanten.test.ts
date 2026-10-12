@@ -8,7 +8,8 @@ import tiger from '../../../../apps/editor/public/versuch/tiger/tiger.json';
 import type { V2 } from '../bezier';
 import { type Dokument, type Kante, dokumentLesen, neuesDokument } from '../dokument';
 import { querschnitt } from '../platzhalter/loft';
-import { START_RADIUS, achsenRegeln, bewegeKnoten, pfadAbtasten, vollerPfad } from '../profil';
+import { START_RADIUS, achsenRegeln, bewegeKnoten, pfadAbtasten, umwandeln, vollerPfad } from '../profil';
+import { spantEinfuegen } from '../spanten';
 import { type Netz, type V3, kante, unterteilenMehrfach } from './catmullClark';
 import {
   type KantenKaefig,
@@ -648,6 +649,44 @@ describe('Kanten-Käfig', () => {
       expect(orientiertGeschlossen(kk.netz).ok).toBe(true);
       expect(sd.paare).toBe(0);
     }
+  });
+
+  it('Spant-Ecke: der Winkel kommt aus der Form, die Härte rundet ihn (Vergleich mit der Wangenlinie)', () => {
+    // kastiger Spant vorn (f 0,15): mittlerer Front-Knoten nach außen oben, als Ecke mit Härte h
+    const spantDok = (h: number): Dokument => {
+      const d = ei();
+      const s = spantEinfuegen(d, 0.15).spanten[0]!;
+      const k = s.profil.knoten[1]!;
+      const pr = umwandeln(bewegeKnoten(s.profil, 1, { x: k.p.x + 0.05, y: k.p.y + 0.2 }), 1);
+      return { ...d, spanten: [{ ...s, profil: { ...pr, knoten: pr.knoten.map((x, i) => (i === 1 ? { ...x, haerte: h } : x)) } }] };
+    };
+    const fein = 2 ** KANTEN_STANDARD.stufen;
+    const jeRing = (xs: number[]) => {
+      const out: number[] = [];
+      for (let i = 0; i + fein <= xs.length; i += fein) out.push(xs.slice(i, i + fein).reduce((a, b) => a + b, 0) / fein);
+      return out;
+    };
+    const zeilen: string[] = [];
+    const vorn: Record<number, { kante: number; breit: number }> = {};
+    for (const h of [0, 1]) {
+      const kk = kantenKaefig(spantDok(h));
+      const w = kk.wege.findIndex((x) => x.quelle.art === 'ecke' && x.quelle.ansicht === 'front' && x.quelle.knoten === 1);
+      expect(w).toBeGreaterThanOrEqual(0);
+      const k = kette(kk, w);
+      const anKante = jeRing(knickAnKante(k.netz, k.idx));
+      const breit = jeRing(knickEntlang(k.netz, k.idx, 4));
+      // vorn: Ringabstände 2–4 (Spant bei f 0,15, Härte dort noch voll); der erste klingt als freies Ende aus
+      const mittelVorn = (xs: number[]) => xs.slice(1, 4).reduce((a, b) => a + b, 0) / 3;
+      vorn[h] = { kante: mittelVorn(anKante), breit: mittelVorn(breit) };
+      zeilen.push(
+        `Härte ${h}: Härte je Ring ${kk.wege[w]!.haerte.map((x) => x.toFixed(2)).join(' ')}; an der Kante ${anKante.map((x) => `${x.toFixed(1)}°`).join(' ')}; über 8 Feinkanten ${breit.map((x) => `${x.toFixed(1)}°`).join(' ')}`,
+      );
+    }
+    console.log(
+      `Spant-Ecke (kastige Schnauze): ${zeilen.join(' | ')} | vorn im Mittel: Härte 0 → ${vorn[0]!.kante.toFixed(1)}° an der Kante / ${vorn[0]!.breit.toFixed(1)}° über 8 Feinkanten, Härte 1 → ${vorn[1]!.kante.toFixed(1)}° / ${vorn[1]!.breit.toFixed(1)}°`,
+    );
+    // Härte 1 sammelt den Formwinkel in der Kante
+    expect(vorn[1]!.kante).toBeGreaterThan(vorn[0]!.kante + 5);
   });
 
   it('Tiger: Ecken als Kanten (Kappenrand, Wangen) – Messung', () => {

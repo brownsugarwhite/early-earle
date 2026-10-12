@@ -38,6 +38,11 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - **Back/Bottom** als Tab am Viewport-Titel, echt gespiegelt (`spiegeln2`).
   - **3D:** Mit Kanten oder Ecken baut das 3D den Kanten-Käfig, dazu Zebrastreifen.
 
+- **Nachtrag 12.10. spätnachmittags — Spanten, schlüssige Kanten** (Plan `docs/plans/2026-10-12-spanten.md`, Ergebnis im Nachtrag von `docs/research/2026-10-12-kanten-ansichten.md`):
+  - Florian: „Das mit den Kanten und Härten scheint mir noch nicht ganz schlüssig.“ Antwort und Regel: **Eine Kante ist eine Ecke in einem Shape** (Silhouette = quer, Spant = längs). Der Winkel kommt aus der Form, die Härte ist die Rundung. Freie Linien bleiben Sonderfall; Vorschlag: Knickwinkel statt Tiefe.
+  - **Spanten** (`packages/shape/src/spanten.ts`, `src/spanten/SpantEbene.tsx`): Werkzeug S in Seite/Top, Spantlinien S1 … Sn und H ziehbar, Front = vordere, Back = hintere Spanten, Bearbeiten wie ein Profil, Seitenleiste `SpantBereich`.
+  - Back bleibt (hintere Spanten, Linien auf Rücken und Schwanz); ein Spantenriss als eigene Ansicht wäre die Alternative.
+
 ## Arbeitsweise
 
 - **Look-Beweis:** `node apps/editor/scripts/vergleich.mjs` (Web-Modus muss laufen) → `docs/progress/editor/vergleich-grundlayout.png` (Vorlage | Render). Render und Differenz liegen unter `apps/editor/test-results/vergleich/`.
@@ -60,6 +65,11 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 - **Zustand-Selektoren nie mit `?? []` oder `{...}`:** Ein neues Objekt je Aufruf gilt als neuer Stand, React rendert endlos („Maximum update depth exceeded“, Kantenliste 12.10.). Rohwert wählen, Standard außerhalb setzen.
 - **Regler behalten den Fokus:** Der Tastaturfilter darf nur Texteingaben ausnehmen. Sonst wirkt ⌘Z nach dem Ziehen eines Reglers nicht (Fehler 12.10.). Pfeiltasten bleiben beim Regler.
 - **Gemalte Flächen auf der Haut** (Augen-Versuch): Den Umlaufsinn nach der Hautnormalen ausrichten (das Material ist einseitig, Florians Umrisse laufen mal so, mal so). Linien wie das Lid als Strich bauen, nicht als Fläche zur Mitte.
+
+- **Spanten linear überblenden:** Eine S-Kurve (smoothstep) zwischen den Spanten veränderte die Form beim Einfügen eines Spants. Nur linear ist ein neuer Spant exakt formneutral.
+- **Gleiche Punktstruktur in Spanten und Front:** Einfügen/Löschen nur über `spantenPunktEinfuegen`/`spantenPunktLoeschen`; Front-Änderungen gleicht `spantenAngleichen` in `mitFormVerbunden` an. Die Stützstellen (`anteile`) kommen aus der rohen Front, sonst wandern Knoten zwischen den Stationen und Spant-Ecken werden keine durchgehende Kante.
+- **Cache-Schlüssel mit `spanten` und `hauptspant`:** `kantenBauen`, `strahlen` (Maulfläche) und der Maul-Körper merken sich ihren Bau. Fehlen die Felder im Schlüssel, folgen 3D und Kantenlinien den Spanten nicht.
+- **E2E-Klicks auf abgeleitete Eckkanten** treffen am Linienanfang den Profilknoten. Auf einen Punkt bei 30 % der Pfadlänge klicken (`getPointAtLength`).
 
 - **macOS unterscheidet keine Groß-/Kleinschreibung:** `View2D.tsx` neben `view2d.ts` bricht tsc (TS1149). Deshalb heißt die Mathe-Datei `ansicht2d.ts`.
 - **CSS-Reihenfolge:** `.glas` darf kein `position` setzen. Es überschrieb `position: absolute/fixed` von Aufklappmenü und Kontextmenü, die Menüleiste verrutschte.

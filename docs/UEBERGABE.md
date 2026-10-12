@@ -2,11 +2,12 @@
 
 > Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**: Wo stehen wir, was ist offen, was ist der nächste Schritt. Historie in Git.
 
-**Stand:** 2026-10-12 nachmittags. Sitzung „Maul, Zähne, Rig“ und danach „Kanten, Ansichten, verbundene Kiefer“ auf Florians Mac, Vorbereitung der großen Fable-Sitzung ab 13.10.
+**Stand:** 2026-10-12 spätnachmittags. Sitzungen „Maul, Zähne, Rig“, „Kanten, Ansichten, verbundene Kiefer“ und „Spanten“ auf Florians Mac, Vorbereitung der großen Fable-Sitzung ab 13.10.
 - Branch `claude/editor-grundlayout`, gepusht. Merge nach `main` erst nach Florians Abnahme.
 - Plan: [`docs/plans/2026-10-12-maul-zaehne-rig.md`](plans/2026-10-12-maul-zaehne-rig.md)
 - **Ergebnis-Dokument:** [`docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`](research/2026-10-12-maul-kiefer-zaehne-augen.md), als Seite: https://claude.ai/artifact/WG3YJPn4SuL5acnY9yR9s1
 - **Nachmittag – Kanten und Ansichten:** Plan [`docs/plans/2026-10-12-kanten-ansichten.md`](plans/2026-10-12-kanten-ansichten.md), Ergebnis [`docs/research/2026-10-12-kanten-ansichten.md`](research/2026-10-12-kanten-ansichten.md) (Antworten auf Florians Fragen, Recherche mit 52 Quellen)
+- **Spätnachmittag – Spanten:** Plan [`docs/plans/2026-10-12-spanten.md`](plans/2026-10-12-spanten.md), Ergebnis im Abschnitt „Nachtrag“ von [`docs/research/2026-10-12-kanten-ansichten.md`](research/2026-10-12-kanten-ansichten.md)
 - Gedächtnis des Editors: [`apps/editor/CLAUDE.md`](../apps/editor/CLAUDE.md)
 
 Vorher: Grundlayout, Navigation und Kurven (11.10.) siehe `git show 902965d:docs/UEBERGABE.md`, alte Wesen-Werkstatt `git show 6029362:docs/UEBERGABE.md`.
@@ -31,6 +32,21 @@ Dazu:
 - Lange Hälse brauchen einen Loft entlang einer gebogenen Wirbelsäule.
 
 ## Was steht
+
+**Spätnachmittag** (Florian: „Mach das mit den Spanten mal“ und „Kanten und Härten scheinen mir noch nicht ganz schlüssig“):
+- **Regel:** Eine Kante ist eine Ecke in einem Shape. Ecke in Seite/Top = Kante quer, Ecke in einem Spant = Kante längs. Der Winkel kommt aus der Form, die Härte ist die Rundung.
+  - Gemessen: Spant-Ecke mit 100 % knickt um 43°, eine freie Linie mit 100 % um 13° (`kanten.test.ts`, Test „Spant-Ecke“).
+- **Spanten** (`packages/shape/src/spanten.ts`, Editor `src/spanten/SpantEbene.tsx`):
+  - Werkzeug S setzt einen Querschnitt in Seite oder Top. Spantlinien S1 … Sn und Hauptspant H lassen sich ziehen.
+  - Front zeigt die vorderen, Back die hinteren Spanten. Der gewählte wird wie ein Profil bearbeitet; ⌥ macht eine Ecke, die als Längskante in Seite und Top erscheint.
+  - P, + und − wirken in allen Spanten und der Front (gleiche Punktstruktur). Seitenleiste mit Formvorschau, Lage, „wie Hauptspant“, löschen.
+- **Rechnung:**
+  - Normiert auf den Kasten aus Seite und Top, Hauptspant = Front an der dicksten Stelle.
+  - Lineare Überblendung Punkt für Punkt; ein neuer Spant ändert die Form nicht.
+  - Loft, Ringe und Kanten-Käfig holen den Querschnitt je Station (`vorlageBei`); ohne Spanten bleibt alles wie vorher.
+- **Datenmodell:** `dok.spanten?: { f, profil }[]`, `dok.hauptspant?: number`.
+- **Tests:** `spanten.test.ts` (8), `kanten.test.ts` (Spant-Ecke), E2E `spanten.spec.ts`. Alle 16 E2E grün.
+- **Bilder:** `docs/progress/editor/spanten-schnauze-{editor,3d,zebra}.png`, `spanten-tab.png`.
 
 **Nachmittag (Florians Rückmeldung 12.10. mittags):**
 - **Kiefer verbunden:**
@@ -118,7 +134,11 @@ Außerdem:
 - Kein Schließen-Schutz, kein App-Icon (wie 11.10.).
 
 **Offen aus dem Nachmittag** (siehe `docs/research/2026-10-12-kanten-ansichten.md`, Abschnitte 1, 4, 5):
-- **Spanten** (Querschnitte an gewählten Stellen, Front = vordere, Back = hintere Hälfte): skizziert, nicht gebaut. Florian fragte 12.10. nachmittags, wie sie aussähen; Entscheidung über den Bau steht aus.
+- ~~Spanten~~ gebaut (spätnachmittags). Offen daraus:
+  - Freie Kantenlinien bekommen einen Knickwinkel statt der Tiefe (dann haben sie Winkel und Härte wie Ecken).
+  - Die Längskante eines Spants in der Seite direkt ziehbar machen (ändert den Spant-Punkt).
+  - Überblendung linear oder kubisch (glatter, dafür ändert ein neuer Spant die Form leicht): nach Florians Test entscheiden.
+  - Spantenriss als eigene Ansicht (links hinten, rechts vorn) wäre eine Alternative; Back bleibt vorerst.
 - Kanten zusammen mit dem Maul-Käfig; Netz entlang beliebiger Linien (Quad-Netz aus einem Kurvennetz) statt fester Ringe.
 - Härte als Radius relativ zur Körpergröße speichern; die Kantenschärfe hängt an der Käfigdichte.
 - Knick oben an der Schnauze im offenen Umriss (Grenze der Kiefergewichte).
@@ -126,7 +146,7 @@ Außerdem:
 
 ## Nächster Schritt
 
-Florian probiert den Maul-Tab aus und entscheidet die Reihenfolge der großen Sitzung (Vorschlag oben).
+Florian probiert Spanten, Kanten und den Maul-Tab aus und entscheidet die Reihenfolge der großen Sitzung (Vorschlag oben). Zu entscheiden: Knickwinkel für freie Linien, Überblendung linear oder kubisch.
 
 Einstieg für Fable:
 - `docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`, Abschnitte 4–6
