@@ -43,6 +43,17 @@ Dazu:
   - Pose „Biegen“ als Gelenkkette mit gleicher Topologie (`wirbelBiegen`, `kaefigAusSprossen`).
   - Bilder `docs/progress/editor/wirbel-*.png`.
 - **Grenzen:** Querschnitt im Versuch nur zwei Viertelellipsen (Front bei Robbe/Rex bis 16 px daneben), Kastenschnauze wird rund (braucht Kappe), Innenseite starker Biegungen staucht, kleine Durchdringungen an den Polen.
+- **Zum Vergleichen eingebaut** (Florian: „so einbauen, dass ich es vergleichen kann“):
+  - Tab „creation · wirbelsäule“ am 3D-Fenster.
+  - Wirbelsäule und Sprossen in der Seite, 3D-Umriss gestrichelt in allen Ansichten.
+  - Seitenleiste mit Regler „Biegen“ und „Stelle“ (nur Vorschau).
+  - Liegende Wesen haben die Front samt Spanten als Querschnitt.
+  - Code `apps/editor/src/wirbel/`, E2E `wirbel.spec.ts`.
+- **Maul an der Umrisslinie** (Florian: „Maulspalt wie bei der Fressen-Pose, nur so sauber Über- oder Unterbiss“):
+  - Die Maulanfänge sind Knoten des Seitenumrisses. Ziehen bewegt den Knoten, und der Umriss geht mit (Unterbiss, Überbiss).
+  - Geschlossen mit getrennten Kiefern zeigt der Umriss den Spalt.
+  - Code `packages/shape/src/versuch/maulUmriss.ts`, `MaulEbene.tsx`; E2E in `maul.spec.ts`.
+- **Recherche** (31 Quellen) steht in Abschnitt 8 des Plans.
 
 **Spätnachmittag** (Florian: „Mach das mit den Spanten mal“ und „Kanten und Härten scheinen mir noch nicht ganz schlüssig“):
 - **Regel:** Eine Kante ist eine Ecke in einem Shape. Ecke in Seite/Top = Kante quer, Ecke in einem Spant = Kante längs. Der Winkel kommt aus der Form, die Härte ist die Rundung.

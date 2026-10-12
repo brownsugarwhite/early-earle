@@ -1,4 +1,5 @@
 import { type Dokument, loftNetz } from '@ee/shape';
+import { unterteilenMehrfach, zuDreiecken } from '@ee/shape/versuch';
 import { useEffect, useRef } from 'react';
 import { useRahmen } from '../layout/animation';
 import { useEditor } from '../state/editorStore';
@@ -12,6 +13,7 @@ import { wirbelVersuch } from '../versuch/wirbelVersuch';
 import { maulBauen, maulDreiecke } from '../maul/maulKoerper';
 import { zahnListe, zahnMeldungen } from '../maul/zahnKoerper';
 import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten/kantenKoerper';
+import { useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 
 declare global {
   interface Window {
@@ -60,6 +62,15 @@ export function Szene3D() {
         r.setzeLinien(seg, farben);
       };
       const bauen = (d: Dokument, schnell = false) => {
+        if (!versuch && useUi.getState().bauweise === 'wirbel') {
+          // Versuch 12.10. abends: Wirbelsäule zum Vergleichen (Tab am 3D-Fenster); Maul und Kanten fehlen hier noch
+          const t = zuDreiecken(unterteilenMehrfach(wirbelBauen(d, schnell, useUi.getState().wirbelBiegung), schnell ? 2 : 3), 40);
+          const s = d.skalierung;
+          if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
+          r.setzeLinien(null);
+          r.setzeDreiecke(t.positionen, t.normalen);
+          return;
+        }
         if (!d.maul && !versuch && mitKanten(d)) {
           // Versuch 12.10.: Kanten im Käfig (Linien und Ecken der Silhouetten), Shapes → Loft → Käfig
           const t = kantenDreiecke(kantenBauen(d, schnell));
@@ -100,19 +111,24 @@ export function Szene3D() {
             s.dok.kanten !== v.dok.kanten ||
             s.dok.spanten !== v.dok.spanten ||
             s.dok.hauptspant !== v.dok.hauptspant;
+          const wirbel = useUi.getState().bauweise === 'wirbel';
           // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen
-          if (s.dok.maul && s.gesteStart) return;
-          // Kanten-Käfig: während einer Geste schnell (weniger Anpass-Durchgänge), beim Loslassen genau
-          if (geaendert) bauen(s.dok, !!s.gesteStart && mitKanten(s.dok));
-          else if (v.gesteStart && !s.gesteStart && (s.dok.maul || mitKanten(s.dok))) bauen(s.dok);
+          if (s.dok.maul && s.gesteStart && !wirbel) return;
+          // Kanten-Käfig und Wirbelsäule: während einer Geste schnell (weniger Anpass-Durchgänge), beim Loslassen genau
+          if (geaendert) bauen(s.dok, !!s.gesteStart && (wirbel || mitKanten(s.dok)));
+          else if (v.gesteStart && !s.gesteStart && (wirbel || s.dok.maul || mitKanten(s.dok))) bauen(s.dok);
         }),
         useUi.subscribe((s, v) => {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
           if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
           if (s.oeffnung !== v.oeffnung && useEditor.getState().dok.maul) bauen(useEditor.getState().dok);
+          if (s.bauweise !== v.bauweise) bauen(useEditor.getState().dok);
+          if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
           if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
+        // Biege-Regler losgelassen: genau bauen
+        useWirbelAnzeige.subscribe((s, v) => v.zieht && !s.zieht && useUi.getState().bauweise === 'wirbel' && bauen(useEditor.getState().dok)),
       );
       const groesse = () => r.groesseAnpassen();
       window.addEventListener('resize', groesse);

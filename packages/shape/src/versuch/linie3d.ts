@@ -256,6 +256,14 @@ export function maulAnKontur<M extends { zu: { oben: Linie3; unten?: Linie3 }; a
   const zugNeu = pfadAbtasten(vollerPfad(neu), 32);
   const versatz = (l: Linie3): V3T | null => {
     const p = l.knoten[0]!.p;
+    // Maulanfang auf einem Umrissknoten (Florian 12.10. abends: gemeinsamer Punkt): genau mit dem Knoten gehen
+    if (alt.knoten.length === neu.knoten.length) {
+      const i = alt.knoten.findIndex((k) => Math.hypot(k.p.x - p[0], k.p.y - p[1]) <= 0.5 / 461);
+      if (i >= 0) {
+        const d: V3T = [neu.knoten[i]!.p.x - p[0], neu.knoten[i]!.p.y - p[1], 0];
+        return Math.hypot(d[0], d[1]) < 1e-12 ? null : d;
+      }
+    }
     const vorher = naechsterAufZug(zugAlt, { x: p[0], y: p[1] });
     if (vorher.d > toleranz) return null;
     const jetzt = naechsterAufZug(zugNeu, { x: p[0], y: p[1] }).p;

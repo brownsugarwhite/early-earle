@@ -164,3 +164,59 @@ test('Maul-Tab: Linie ab der Kontur zeichnen, Kiefer getrennt, offen, Öffnung, 
   expect((await dok(page)).zaehne?.oben.anzahl).toBe(2);
   expect((await dok(page)).maul).toBeTruthy();
 });
+
+// Florian 12.10. abends: „Das Maul muss an der Umrisslinie direkt sitzen und ein Maulspalt muss entstehen, so wie bei
+// der Fressen-Pose. Nur so kann ich sauber einen Über- oder Unterbiss erstellen.“
+test('Maul an der Umrisslinie: Anfänge sind Umrissknoten, Spalt im Umriss, Unterbiss durch Ziehen', async ({ page }) => {
+  await bereit(page);
+  const seite = await abbildung(page, 'seite');
+  type Seite = { profile: { seite: { knoten: { p: { x: number; y: number } }[] }; top: { knoten: { p: { x: number; y: number } }[] } } };
+  const profile = () => page.evaluate(() => (window as unknown as { __stores: { editor: { getState(): { dok: Seite } } } }).__stores.editor.getState().dok.profile);
+  const n0 = (await profile()).seite.knoten.length;
+
+  await page.click('[data-view="seite"] [data-tab="maul"]');
+  for (const w of [{ x: -R - 0.015, y: R * 0.8 }, { x: -R * 0.75, y: R * 0.7 }, { x: -R * 0.4, y: R * 0.66 }]) {
+    const s = seite(w);
+    await page.mouse.click(s.x, s.y);
+  }
+  await page.keyboard.press('Enter');
+  // Anfang der Maullinie = neuer Knoten des Seitenumrisses
+  let d = await dok(page);
+  let pr = await profile();
+  expect(pr.seite.knoten).toHaveLength(n0 + 1);
+  const o0 = d.maul!.zu.oben.knoten[0]!.p;
+  expect(pr.seite.knoten.some((k) => Math.hypot(k.p.x - o0[0], k.p.y - o0[1]) < 1e-9)).toBe(true);
+
+  // getrennt: zweiter Knoten auf der Kinnseite, der Umriss zeigt den Spalt
+  await page.locator('.leiste').getByRole('button', { name: 'getrennt' }).click();
+  d = await dok(page);
+  pr = await profile();
+  expect(pr.seite.knoten).toHaveLength(n0 + 2);
+  const u0 = d.maul!.zu.unten!.knoten[0]!.p;
+  expect(u0[1]).toBeLessThan(o0[1]);
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-maulspalt]')).toHaveCount(1);
+
+  // Unterbiss: blauen Anfang nach vorn ziehen – der Umrissknoten geht mit, der Anfang bleibt auf ihm
+  const vorTop = Math.min(...pr.top.knoten.map((k) => k.p.x));
+  const b = (await page.locator('.vp-ober[data-view="seite"] [data-maulknoten="unten:0"] .maul-punkt').boundingBox())!;
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2 - 40, b.y + b.height / 2, { steps: 8 });
+  await page.mouse.up();
+  d = await dok(page);
+  pr = await profile();
+  const u1 = d.maul!.zu.unten!.knoten[0]!.p;
+  expect(u1[0]).toBeLessThan(u0[0] - 0.05);
+  expect(pr.seite.knoten.some((k) => Math.hypot(k.p.x - u1[0], k.p.y - u1[1]) < 1e-9)).toBe(true);
+  // Oberlippe bleibt, das Top folgt der neuen Länge (nur die Spitze)
+  expect(d.maul!.zu.oben.knoten[0]!.p).toEqual(o0);
+  expect(Math.min(...pr.top.knoten.map((k) => k.p.x))).toBeLessThan(vorTop - 0.05);
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-maulspalt]')).toHaveCount(1);
+  await warteAufBau(page);
+  await page.screenshot({ path: path.join(bilder, 'maul-unterbiss.png') });
+
+  // ein Zug = ein Rückgängig-Schritt
+  await page.keyboard.press('ControlOrMeta+z');
+  d = await dok(page);
+  expect(d.maul!.zu.unten!.knoten[0]!.p[0]).toBeCloseTo(u0[0], 9);
+});

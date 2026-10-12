@@ -60,6 +60,15 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - Antwort: Nein, noch nicht. Vorschlag: ein Bauweg (Wirbelsäulen-Käfig), die Ansichten als echte Umrisse mit örtlichen Änderungen, Maul im selben Netz, Fressen als Pose.
   - Versuch: `?versuch=wirbel&wesen=langhals|robbe|rex|tiger|kugel` (`src/versuch/wirbelVersuch.ts`); `&biegen=<Grad>&bei=<Anteil>&weich=<Anteil>` biegt die Wirbelsäule, `&pruefen=1` zeigt Durchdringungen.
 
+- **Nachtrag 12.10. abends — Vergleich und Maul an der Umrisslinie:**
+  - **Bauweise zum Vergleichen:** Tab „creation · wirbelsäule“ am 3D-Fenster (`ui.bauweise`, `ui.wirbelBiegung`), Code in `src/wirbel/`.
+    - Gebaut wird schnell während Gesten und beim Ziehen der Biege-Regler (`useWirbelAnzeige.zieht`), genau beim Loslassen.
+    - Maul und Kanten-Härte fehlen in dieser Bauweise noch.
+  - **Maulanfänge = Knoten des Seitenumrisses:**
+    - `setzeLippenImUmriss` beim Zeichnen und bei „getrennt“.
+    - Ziehen am Anfang (Seite: x/y, Front: Höhe) bewegt den Umrissknoten über `gekoppeltBerechnen`; der Anfang folgt über `maulAnKontur`.
+    - Mit getrennten Kiefern zeigt der Seitenumriss den Spalt (`umrissMitSpalt`, `[data-maulspalt]`).
+
 ## Arbeitsweise
 
 - **Look-Beweis:** `node apps/editor/scripts/vergleich.mjs` (Web-Modus muss laufen) → `docs/progress/editor/vergleich-grundlayout.png` (Vorlage | Render). Render und Differenz liegen unter `apps/editor/test-results/vergleich/`.
@@ -91,6 +100,9 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 - **Wirbelsäule aus der Leiter:** Die kürzeste Leiter zwischen Rücken- und Bauchlinie dreht sich an den Spitzen im Fächer um einen Punkt; winzige Ringe falten sich dort. Ringe deshalb senkrecht zur geglätteten Wirbelsäule (gerade Enden) und mit Abstand zu den Spitzen, Pole an den Spitzen.
 - **Vor dem Wirbelsäulen-Bau `angleichen`:** Ragt das Top vor die Schnauzenspitze der Seite, entstehen flache Flossen. An den Spitzen außerdem die Breite mit gleichem Seitenverhältnis auslaufen lassen.
 - **Laufzeit-Schranken in Tests großzügig wählen:** Die Testdateien laufen parallel; der Kanten-Käfig braucht allein 100–130 ms, unter Last gut 250 ms.
+
+- **Maulanfang folgt dem Umrissknoten nur bei gleicher Knotenzahl.** `maulAnKontur` erkennt den Knoten an der Lage (0,5 px). Ändert sich die Knotenzahl (Punkt eingefügt oder gelöscht), fällt er auf die Projektion auf die Kontur zurück; beim nächsten Ziehen am Anfang wird der Knoten neu eingebaut.
+- **Spaltanzeige braucht benachbarte Knoten:** Liegen zwischen Ober- und Unterlippen-Anfang weitere Umrissknoten, zeigt `umrissMitSpalt` nichts (Anzeige wie bisher).
 
 - **macOS unterscheidet keine Groß-/Kleinschreibung:** `View2D.tsx` neben `view2d.ts` bricht tsc (TS1149). Deshalb heißt die Mathe-Datei `ansicht2d.ts`.
 - **CSS-Reihenfolge:** `.glas` darf kein `position` setzen. Es überschrieb `position: absolute/fixed` von Aufklappmenü und Kontextmenü, die Menüleiste verrutschte.

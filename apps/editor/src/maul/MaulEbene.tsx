@@ -4,7 +4,9 @@
 // Editor-Tab = Maul zu, Fressen-Tab = Maul auf. Jeder Knoten ist ein 3D-Punkt; die Ansicht bearbeitet zwei Koordinaten.
 
 import type { Ansicht, Dokument, Lippen, Linie3, V2, V3T } from '@ee/shape';
-import { abtasten3, ausAnsicht2, einfuegen3, griffZiehen3, inAnsicht2, knotenVerschieben3, linieDurch, loeschen3, mundwinkelVerbinden, naechsterInAnsicht, offenVorschlag } from '@ee/shape/versuch';
+import { bewegeKnoten } from '@ee/shape';
+import { abtasten3, ausAnsicht2, einfuegen3, griffZiehen3, inAnsicht2, knotenBei, knotenVerschieben3, linieDurch, loeschen3, maulAnfaengeEinbauen, mundwinkelVerbinden, naechsterInAnsicht, offenVorschlag } from '@ee/shape/versuch';
+import { gekoppeltBerechnen } from '../editing/gekoppelt';
 import { useEffect } from 'react';
 import { type Modus, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -38,6 +40,18 @@ export function setzeLippen(zustand: Zustand, lippen: Lippen) {
   const verbunden = mundwinkelVerbinden(lippen, vorher);
   if (zustand === 'zu') ed.setzeMaul({ ...(maul ?? {}), zu: verbunden });
   else if (maul) ed.setzeMaul({ ...maul, auf: verbunden });
+}
+
+/**
+ * Geschlossene Lippen setzen und ihre Anfänge in den Seitenumriss einbauen (Florian 12.10. abends: „Das Maul muss an
+ * der Umrisslinie direkt sitzen“): Die Anfänge werden Knoten des Umrisses, ein Undo-Schritt für beides.
+ */
+export function setzeLippenImUmriss(lippen: Lippen) {
+  const ed = useEditor.getState();
+  const maul = ed.dok.maul;
+  const verbunden = mundwinkelVerbinden(lippen, maul?.zu);
+  const r = maulAnfaengeEinbauen(ed.dok.profile.seite, verbunden);
+  ed.setzeDokument({ ...ed.dok, profile: { ...ed.dok.profile, seite: r.seite }, maul: { ...(maul ?? {}), zu: r.zu } });
 }
 
 function farbe(zustand: Zustand, lippen: Lippen, name: LinienName): string {
@@ -140,7 +154,7 @@ export function maulZeichnenBeenden(abbrechen = false) {
   if (!pts) return;
   ui.setzeMaulZeichnen(null);
   if (abbrechen || pts.length < 2) return;
-  setzeLippen('zu', { oben: linieDurch(pts) });
+  setzeLippenImUmriss({ oben: linieDurch(pts) });
   ui.setzeWerkzeug('auswahl');
   ui.setzeMaulAuswahl({ linie: 'oben', indizes: [pts.length - 1] });
 }
@@ -226,6 +240,31 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
     ui.setzeMaulAuswahl({ linie: n, indizes: sel });
     if (!sel.includes(i)) return true;
     const start = q;
+    // Maulanfang im geschlossenen Zustand (Seite oder Front): Er ist ein Knoten des Seitenumrisses. Ziehen bewegt diesen
+    // Knoten, der Umriss geht mit (Unterbiss, Überbiss), der Anfang folgt ihm genau (Florian 12.10. abends).
+    if (zustand === 'zu' && sel.length === 1 && i === 0 && ctx.ansicht !== 'top') {
+      if (knotenBei(ed.dok.profile.seite, { x: linieVon(n).knoten[0]!.p[0], y: linieVon(n).knoten[0]!.p[1] }) === null) setzeLippenImUmriss(lippen);
+      const dok0 = useEditor.getState().dok;
+      const l0 = n === 'oben' ? dok0.maul!.zu.oben : dok0.maul!.zu.unten ?? dok0.maul!.zu.oben;
+      const k = knotenBei(dok0.profile.seite, { x: l0.knoten[0]!.p[0], y: l0.knoten[0]!.p[1] });
+      if (k !== null) {
+        const basisProfile = dok0.profile;
+        const p0 = basisProfile.seite.knoten[k]!.p;
+        ed.beginGeste();
+        ctx.ziehen(
+          e,
+          (ev) => {
+            const p = ctx.lokal(ev.clientX, ev.clientY);
+            // Seite: x und y; Front: nur die Höhe (der Anfang liegt auf der Achse)
+            const ziel = ctx.ansicht === 'seite' ? { x: p0.x + p.x - start.x, y: p0.y + p.y - start.y } : { x: p0.x, y: p0.y + p.y - start.y };
+            const neu = bewegeKnoten(basisProfile.seite, k, ziel);
+            useEditor.getState().setzeProfile(gekoppeltBerechnen('seite', neu, basisProfile, useUi.getState().auswahl).profile);
+          },
+          () => useEditor.getState().endeGeste(),
+        );
+        return true;
+      }
+    }
     const basis = linieVon(n);
     ed.beginGeste();
     if (vorschlag) setzeLippen(zustand, lippen);

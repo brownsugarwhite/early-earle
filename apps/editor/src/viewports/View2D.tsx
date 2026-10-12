@@ -32,15 +32,16 @@ import { type Auswahl, gekoppeltBerechnen, setzeGekoppelt } from '../editing/gek
 import { useEditor } from '../state/editorStore';
 import { useUeberlagerung } from '../versuch/ueberlagerung';
 import { blickVon, useUi } from '../state/uiStore';
-import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen } from '../maul/MaulEbene';
+import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen, setzeLippenImUmriss } from '../maul/MaulEbene';
 import { RigZeichnung } from '../maul/RigZeichnung';
 import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
 import { useMaulInfo } from '../maul/maulKoerper';
 import { offenerUmriss } from '../maul/offenerUmriss';
 import { BreitenKreis, EckKantenZeichnung, KantenZeichnung, breiteZiehen, kantenZeiger } from '../kanten/KantenEbene';
 import { SpantLinien, SpantQuerschnitte, spantZeiger } from '../spanten/SpantEbene';
+import { WirbelZeichnung } from '../wirbel/WirbelEbene';
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
-import { versetzt3 } from '@ee/shape/versuch';
+import { abtasten3, umrissMitSpalt, versetzt3 } from '@ee/shape/versuch';
 
 const PUNKT_R = 5; // Ø 10 px (Florian, 11.10.)
 const GRIFF = 6; // 6-px-Quadrate
@@ -67,6 +68,10 @@ export function View2D({ ansicht, w, h }: Props) {
   useMaulInfo((s) => s.info);
   const offenerKoerper = modus === 'fressen' && hatMaul;
   const offen = offenerKoerper ? offenerUmriss(useEditor.getState().dok, ansicht) : null;
+  // Geschlossen mit getrennten Kiefern: Der Seitenumriss zeigt den Maulspalt (Florian 12.10. abends: „wie bei der
+  // Fressen-Pose“). Die Maulanfänge sind Umrissknoten; zwischen ihnen läuft der Umriss an den Lippen entlang.
+  const maulZu = useEditor((s) => (ansicht === 'seite' && !offenerKoerper ? s.dok.maul?.zu : undefined));
+  const spalt = maulZu?.unten ? umrissMitSpalt(profil, maulZu) : null;
   const formAktiv = ebene === 'form' && !offenerKoerper;
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -307,7 +312,7 @@ export function View2D({ ansicht, w, h }: Props) {
         eintraege.push(
           lippen.unten
             ? { label: 'Kiefer gleich (eine Linie)', aktion: () => setzeLippen('zu', { oben: lippen.oben }) }
-            : { label: 'Kiefer getrennt (Ober- und Unterkiefer)', aktion: () => setzeLippen('zu', { oben: lippen.oben, unten: versetzt3(lippen.oben, -0.012) }) },
+            : { label: 'Kiefer getrennt (Ober- und Unterkiefer)', aktion: () => setzeLippenImUmriss({ oben: lippen.oben, unten: versetzt3(lippen.oben, -0.012) }) },
         );
       }
       if (lippen) eintraege.push({ label: 'Maul löschen', aktion: () => useEditor.getState().setzeMaul(null) });
@@ -429,10 +434,28 @@ export function View2D({ ansicht, w, h }: Props) {
       ) : (
         <>
           {profil.art === 'halb' && <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="#ffffff" strokeWidth={KONTUR} strokeLinejoin="round" />}
-          <path d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
+          {spalt && maulZu?.unten ? (
+            <g data-maulspalt="">
+              <path d={pfad(spalt.segmente, false)} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
+              {[maulZu.oben, maulZu.unten].map((l, i) => (
+                <path
+                  key={i}
+                  d={abtasten3(l, 16).map((p, k) => { const q = bild({ x: p[0], y: p[1] }); return `${k ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`; }).join('')}
+                  fill="none"
+                  stroke="#000000"
+                  strokeWidth={KONTUR}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              ))}
+            </g>
+          ) : (
+            <path d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
+          )}
         </>
       )}
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
+      <WirbelZeichnung ansicht={ansicht} bild={bild} />
       <EckKantenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <KantenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <SpantQuerschnitte ansicht={ansicht} bild={bild} aktiv={formAktiv} />

@@ -70,6 +70,10 @@ type UiState = {
   spantAuswahl: SpantAuswahl | null;
   /** 3D mit Zebrastreifen (Prüfen der Kanten) */
   zebra: boolean;
+  /** Versuch 12.10. abends: Bauweise des 3D zum Vergleichen (Tab am 3D-Fenster) */
+  bauweise: Bauweise;
+  /** Wirbelsäule testweise biegen (Pose-Vorschau, nicht im Dokument): Winkel in Grad, Stelle 0 … 1 ab der Schnauze */
+  wirbelBiegung: { winkel: number; bei: number };
   /** liegt während Layout-Bewegungen oben */
   oben: ViewId | null;
   hover: ViewId | null;
@@ -97,6 +101,8 @@ type UiState = {
   setzeBreitenAnzeige(b: BreitenAnzeige | null): void;
   setzeKantenSicht(k: KantenSicht): void;
   setzeZebra(an: boolean): void;
+  setzeBauweise(b: Bauweise): void;
+  setzeWirbelBiegung(b: { winkel: number; bei: number }): void;
   setzeSpantAuswahl(a: SpantAuswahl | null): void;
   setzeHover(id: ViewId | null): void;
   setzeWerkzeug(w: Werkzeug): void;
@@ -110,6 +116,9 @@ type UiState = {
   oeffneDialog(d: Dialog | null): void;
   zeigeHinweis(text: string): void;
 };
+
+/** bisher = Platzhalter-Loft bzw. Kanten-/Maul-Käfig; wirbel = Versuch Wirbelsäule (Ringe senkrecht zur Wirbelsäule) */
+export type Bauweise = 'bisher' | 'wirbel';
 
 export const useUi = create<UiState>((set, get) => ({
   maximiert: null,
@@ -125,6 +134,8 @@ export const useUi = create<UiState>((set, get) => ({
   breitenAnzeige: null,
   kantenSicht: 'zeigen',
   zebra: false,
+  bauweise: 'bisher',
+  wirbelBiegung: { winkel: 0, bei: 0.5 },
   spantAuswahl: null,
   oben: null,
   hover: null,
@@ -172,6 +183,12 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeBreitenAnzeige(b) {
     set({ breitenAnzeige: b });
+  },
+  setzeBauweise(b) {
+    set({ bauweise: b });
+  },
+  setzeWirbelBiegung(b) {
+    set({ wirbelBiegung: b });
   },
   setzeZebra(an) {
     set({ zebra: an });

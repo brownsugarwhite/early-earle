@@ -17,6 +17,7 @@
 import type { V2 } from '../bezier';
 import type { Dokument } from '../dokument';
 import { angleichen } from '../kopplung';
+import { vorlageBei } from '../spanten';
 import { pfadAbtasten, vollerPfad } from '../profil';
 import type { Netz, V3 } from './catmullClark';
 import { anZielAnpassen } from './tigerKaefig';
@@ -52,6 +53,11 @@ export type Sprosse = {
   flanke: number;
   /** woher die Breite kommt */
   quelle: 'top' | 'front' | 'ersatz';
+  /**
+   * Querschnitt-Vorlage der rechten Hälfte (oben → unten, Breite 0 … 1, Höhe 1 … 0), wenn das Wesen ganz liegt: die
+   * gezeichnete Front samt Spanten wie im bisherigen Loft. Fehlt sie, ist der Querschnitt oval mit der Flanke in `flanke`.
+   */
+  vorlage?: V2[];
 };
 
 export type WirbelKaefig = {
@@ -404,6 +410,40 @@ export function wirbelKaefig(dokRoh: Dokument, opt: WirbelOptionen = WIRBEL_STAN
     if (i > ih) sprossen[i]!.breite = Math.min(sprossen[i]!.breite, rh * h);
   }
 
+  // Liegt das ganze Wesen (kein stehender Ring), gilt die gezeichnete Front samt Spanten als Querschnitt wie im
+  // bisherigen Loft (Stelle f nach der Lage des Rings in x). Mit stehenden Teilen ist die Front ein Umriss aus Rumpf,
+  // Hals und Kopf und taugt nicht als Querschnitt; dann bleiben die Ringe oval.
+  if (!sprossen.some((s) => s.liegend < 0.5)) {
+    let xMin = Infinity;
+    let xMax = -Infinity;
+    for (const q of ruecken) {
+      xMin = Math.min(xMin, q.x);
+      xMax = Math.max(xMax, q.x);
+    }
+    sprossen.forEach((s, i) => {
+      const mx = (s.oben.x + s.unten.x) / 2;
+      const f = Math.min(1, Math.max(0, (mx - xMin) / (xMax - xMin || 1)));
+      const q = vorlageBei(dok, f, opt.ring / 2).q;
+      let jMax = 0;
+      q.forEach((p, j) => {
+        if (p.x > q[jMax]!.x) jMax = j;
+      });
+      const flanke = q[jMax]!.y;
+      const fl = lerp2(s.unten, s.oben, flanke);
+      const wt = halbeBreite(top, 'x', fl.x);
+      const wf = halbeBreite(front, 'y', fl.y);
+      const h = abstand(s.oben, s.unten);
+      const w = Math.min(wt ?? Infinity, wf ?? Infinity);
+      sprossen[i] = { ...s, vorlage: q, flanke, breite: Number.isFinite(w) ? Math.max(w, 0.08 * h) : s.breite };
+    });
+    // Spitzen wie oben: gleiches Seitenverhältnis
+    for (let i = 0; i < N; i++) {
+      const h = abstand(sprossen[i]!.oben, sprossen[i]!.unten);
+      if (i < iv) sprossen[i]!.breite = Math.min(sprossen[i]!.breite, (sprossen[iv]!.breite / Math.max(1e-9, abstand(sprossen[iv]!.oben, sprossen[iv]!.unten))) * h);
+      if (i > ih) sprossen[i]!.breite = Math.min(sprossen[i]!.breite, (sprossen[ih]!.breite / Math.max(1e-9, abstand(sprossen[ih]!.oben, sprossen[ih]!.unten))) * h);
+    }
+  }
+
   const wirbel = achse.filter((_, i) => i % 4 === 0 || i === M - 1);
   const k = kaefigAusSprossen(sprossen, ruecken[0]!, ruecken[ruecken.length - 1]!, opt);
   return { ...k, wirbel, sprossen, hinweise };
@@ -422,11 +462,22 @@ export function kaefigAusSprossen(sprossen: readonly Sprosse[], spitzeV: V2, spi
   const ringPunkt = (i: number, j: number) => (i - 1) * R + (((j % R) + R) % R);
   const ziel: V3[] = [];
   for (const s of sprossen) {
+    // Vorlage aus der Front: Breite auf die breiteste Stelle normiert (dort sitzt die Flanke)
+    const v = s.vorlage && s.vorlage.length === R / 2 + 1 ? s.vorlage : null;
+    const vMax = v ? Math.max(...v.map((q) => q.x)) || 1 : 1;
     for (let j = 0; j < R; j++) {
-      const th = (2 * Math.PI * j) / R;
-      const co = potenz(Math.cos(th));
-      const zn = potenz(Math.sin(th));
-      const yn = co >= 0 ? s.flanke + (1 - s.flanke) * co : s.flanke + s.flanke * co;
+      let yn: number;
+      let zn: number;
+      if (v) {
+        const q = v[j <= R / 2 ? j : R - j]!;
+        yn = q.y;
+        zn = (j <= R / 2 ? 1 : -1) * (q.x / vMax);
+      } else {
+        const th = (2 * Math.PI * j) / R;
+        const co = potenz(Math.cos(th));
+        zn = potenz(Math.sin(th));
+        yn = co >= 0 ? s.flanke + (1 - s.flanke) * co : s.flanke + s.flanke * co;
+      }
       const p = lerp2(s.unten, s.oben, yn);
       ziel.push([p.x, p.y, zn * s.breite]);
     }

@@ -119,3 +119,107 @@ Code: `packages/shape/src/versuch/wirbelsaeule.ts` (Tests `wirbelsaeule.test.ts`
 2. **Ziehen an der Wirbelsäule = biegen** (Umriss geht mit), mit ⌥ nur die Linie verlegen? Empfehlung: ja.
 3. **Front = echter Umriss plus Spantenriss** statt Querschnitt für alles? Empfehlung: ja.
 4. **Fressen = Pose mit freiem Bearbeiten aller Linien?** Empfehlung: ja.
+
+## Nachtrag (12.10. abends): zum Vergleichen eingebaut
+
+Florian: „Kannst du das schon so einbauen, dass ich es vergleichen kann?“
+
+**Tab am 3D-Fenster:** „creation · wirbelsäule“, wie „front · back“.
+- „creation“ ist die bisherige Bauweise: Platzhalter-Loft, Kanten- oder Maul-Käfig.
+- „wirbelsäule“ baut aus denselben Profilen den Wirbelsäulen-Körper, live beim Zeichnen. Während einer Geste geht es schnell, beim Loslassen genau.
+
+**Anzeige:**
+- In der Seite: die Wirbelsäule (dunkelrot) und die Sprossen. Orange heißt Breite aus dem Top, blau heißt Breite aus der Front.
+- In allen Ansichten: der Umriss des 3D-Körpers gestrichelt.
+
+**Seitenleiste (Bereich „Wirbelsäule“):**
+- Ringzahl, Zahl der stehenden Ringe, Quelle des Querschnitts
+- Regler „Biegen“ (−60° … 60°) und „Stelle“ (ab der Schnauze), Knopf „gerade“
+- Biegen ist nur eine Vorschau und wird nicht gespeichert.
+
+**Querschnitt:**
+- Liegt das ganze Wesen, gilt deine Front samt Spanten als Querschnitt wie bisher (Kugel: Front 0,4 px).
+- Mit stehenden Teilen bleibt er oval, weil die Front dann ein Umriss aus Rumpf, Hals und Kopf ist.
+
+**Noch nicht in dieser Bauweise:** Maul, Kanten-Härte, Kastenschnauze. Die 3D-Kamera bleibt, wie sie ist; hohe Köpfe zeigt das Mausrad (herauszoomen).
+
+**Code und Test:** `apps/editor/src/wirbel/` (`wirbelKoerper.ts`, `WirbelEbene.tsx`), E2E `apps/editor/e2e/wirbel.spec.ts`, Bild `docs/progress/editor/wirbel-vergleich-tab.png`.
+
+## Nachtrag (12.10. abends): Maul an der Umrisslinie, Maulspalt, Über- und Unterbiss
+
+Florian: „Das Maul muss an der Umrisslinie direkt sitzen und ein Maulspalt muss entstehen, so wie bei der Fressen-Pose! Nur so kann ich sauber einen Über- oder Unterbiss erstellen.“
+
+- **Maulanfänge sind Knoten des Seitenumrisses** (gemeinsame Punkte, formtreu eingefügt):
+  - Beim Zeichnen der Maullinie wird ihr Anfang ein Umrissknoten.
+  - Bei „getrennt“ wird der Anfang der Unterlinie ein zweiter Knoten auf der Kinnseite.
+- **Ziehen am Maulanfang bewegt den Umrissknoten**, der Umriss geht mit:
+  - Unterkiefer-Anfang nach vorn: Das Kinn kommt mit, das ist ein Unterbiss.
+  - Oberkiefer-Anfang nach vorn: Die Schnauze kommt mit, das ist ein Überbiss.
+  - Umgekehrt folgt der Anfang dem Knoten genau, wenn man ihn im Form-Tab zieht.
+  - Ein Zug ist ein Rückgängig-Schritt. Die anderen Ansichten folgen über die Kopplung (nur die Spitze).
+- **Maulspalt:** Geschlossen mit getrennten Kiefern läuft der Seitenumriss vom Oberlippen-Anfang die Oberlippe entlang zum Mundwinkel und die Unterlippe zurück, wie im Fressen-Tab.
+- **Code und Test:** `packages/shape/src/versuch/maulUmriss.ts` (`maulAnfaengeEinbauen`, `umrissMitSpalt`, Tests), `maulAnKontur` folgt Knoten, Editor `src/maul/MaulEbene.tsx` (`setzeLippenImUmriss`), E2E in `maul.spec.ts`, Bild `docs/progress/editor/maul-unterbiss.png`.
+
+## 8. Was andere machen (Recherche 12.10. abends, mit Quellen)
+
+**Befunde:**
+- **Wirbelsäule:**
+  - Spore formt den Rumpf um eine Kette von Wirbeln; die Haut ist eine implizite Fläche, robust, aber ohne örtliche Kontrolle [1, 2].
+  - Blenders Skin-Modifier und ZSpheres machen aus Skelett und Radien ein Vierecksnetz entlang des Skeletts [4, 5].
+  - Teddy, RigMesh und 3-Sweep schlagen die Achse aus dem Umriss vor (Chordalachse, geglättet) und stellen die Querschnitte auf Sehnen zwischen den beiden Umrissseiten [6, 7, 8].
+  - Eine Röhre schneidet sich nicht, solange ihr Radius kleiner ist als der Krümmungsradius der Achse (r < 1/κ) [9]. Sehnen zwischen zwei Umrisslinien kreuzen sich nicht.
+- **Linien statt Ansichten:**
+  - Im Linienriss des Schiffbaus kommen Sheer, Deckskante, Knick und Kiel zuerst in Seiten- und Wasserlinienriss; jeder Spant läuft durch die festen Punkte dieser Linien. „Gestrakt“ heißt: Alle Ansichten stimmen in allen Messpunkten überein [16, 17, 18].
+  - Rhino Crv2View macht aus zwei Ansichten eine Raumkurve [12]. Sweep2 legt die Profilenden auf zwei Schienen [13].
+  - Gordon-Flächen verlangen, dass Profile und Führungskurven sich in gemeinsamen Punkten schneiden [15]; Alias-Kurvennetze ebenso [14].
+- **Kanten:**
+  - Ein Crease schärft nur einen Knick, den der Käfig schon hat [22–25]. Das passt zur Messung: Spant-Ecke 43°, freie Linie 13°.
+  - In Rhino gilt: „Hat die Eingangskurve einen Knick, hat die Fläche eine Falte.“ [26]
+  - FiberMesh-Kurven sind Griffe, die man aus der Fläche zieht [27].
+- **Posen:**
+  - Pose Space Deformation, Blender (Korrekturformen) und Maya PSD modellieren die Form in der Pose und speichern die Differenz im lokalen Rahmen [28–30].
+  - Lippen werden geschlossen modelliert, die Innenlippe läuft bis zum Rachen [31].
+
+**Was heißt das für uns:**
+1. **Wirbelsäule aus der Seite vorschlagen**, danach als Griffkurve führen. So macht es der Versuch.
+2. **Ringe als Sehnen zwischen Rücken- und Bauchlinie**, Zuordnung monoton. Der Versuch stellt sie senkrecht zur Wirbelsäule und hält die Zuordnung monoton, das ist gleichwertig, solange r < 1/κ gilt. An engen Biegungen gewinnen die Sehnen.
+3. **Breite aus der Ansicht mit der besten Sicht:** Hals aus der Front, Rumpf aus dem Top.
+4. **Gemeinsame Punkte statt Skalieren:** Spant und Längslinie treffen sich in einem Punkt; die Front zeigt Spanten (Spantenriss) statt eines Querschnitts für alles.
+5. **Kante = Ecke in Umriss, Spant oder Linie, Härte = Rundung.** Eine freie Linie braucht einen Griff, der sie aus der Fläche zieht (Knickwinkel).
+6. **Maul geschlossen im selben Netz, offen als Korrektur**, die im Fressen-Tab auf dem ganzen Netz bearbeitet wird.
+7. **Implizite Haut (Spore) nur als Rückfall:** Ihr fehlen örtliche Kontrolle und Kanten.
+
+Lücken laut Recherche: Eine eigene „Linie größter Breite“ ist im Linienriss nicht belegt. Spores Mausrad für Masse ist nur durch einen Pressebericht belegt. Einen Fächer an engen Biegungen nennt keine Quelle.
+
+**Quellen:**
+1. Hecker: My Liner Notes for Spore – https://www.chrishecker.com/My_Liner_Notes_for_Spore
+2. Hecker et al. 2008: Real-time Motion Retargeting (Spore) – https://chrishecker.com/Real-time_Motion_Retargeting_to_Highly_Varied_User-Created_Morphologies
+3. Yan 2008: Spore Creature Creator (Gaming Nexus) – https://www.gamingnexus.com/Article/1862/Spore-Creature-Creator
+4. Blender-Handbuch: Skin Modifier – https://docs.blender.org/manual/en/latest/modeling/modifiers/generate/skin.html
+5. Maxon: ZSpheres – https://help.maxon.net/zbr/en-us/Content/html/user-guide/3d-modeling/modeling-basics/creating-meshes/zspheres/zspheres.html
+6. Chen et al. 2013: 3-Sweep – https://cg.cs.tsinghua.edu.cn/papers/SIGASIA-2013-3sweep.pdf
+7. Igarashi et al. 1999: Teddy – https://www-ui.is.s.u-tokyo.ac.jp/~takeo/papers/siggraph99.pdf
+8. Borosán et al. 2012: RigMesh – https://cragl.cs.gmu.edu/rigmesh/
+9. Patrikalakis, Maekawa, Cho: Shape Interrogation, §11.6.2 – https://web.mit.edu/hyperbook/Patrikalakis-Maekawa-Cho/node237.html
+10. Wang et al. 2008: Rotation Minimizing Frames – https://doi.org/10.1145/1330511.1330513
+11. Rhino 8: Sweep1 – https://docs.mcneel.com/rhino/8/help/en-us/commands/sweep1.htm
+12. Rhino 8: Crv2View – https://docs.mcneel.com/rhino/8/help/en-us/commands/crv2view.htm
+13. Rhino 8: Sweep2 – https://docs.mcneel.com/rhino/8/help/en-us/commands/sweep2.htm
+14. Alias 2015: Understand curve networks – https://help.autodesk.com/cloudhelp/2015/ENU/Alias-Modeling/files/Understand_curve_networks.htm
+15. Siggel et al. 2019: TiGL (Gordon-Flächen) – https://arxiv.org/abs/1810.10795
+16. Riley, Turner 1995: FAO Fisheries Technical Paper 354, Lofting – https://www.fao.org/4/V9468E/v9468e05.htm
+17. Moore 1928 (Auszug): Traditional Model Yacht Design – https://usvmyg.org/?p=9536
+18. NZQA Unit Standard 23241: Loft a boat hull – https://www.nzqa.govt.nz/nqfdocs/units/pdf/23241.pdf
+19. Volkswagen: Know your lines – Arteon – https://www.volkswagen.com.my/brand-and-experience/volksphere/spotlight/know-your-lines-the-volkswagen-arteon
+20. Bae et al. 2008: ILoveSketch – https://sketch.kaist.ac.kr/pdf/publications/2008_uist_ilovesketch.pdf
+21. Rhino 8: NetworkSrf – https://docs.mcneel.com/rhino/8/help/en-us/commands/networksrf.htm
+22. Blender-Handbuch: Subdivision Surface Modifier – https://docs.blender.org/manual/en/latest/modeling/modifiers/generate/subdivision_surface.html
+23. Pixar: US-Patent 6,222,553 – https://patents.google.com/patent/US6222553
+24. OpenSubdiv: Semi-Sharp Creases – https://github.com/PixarAnimationStudios/OpenSubdiv/blob/release/documentation/subdivision_surfaces.rst
+25. Raitt, Minter 2000: Digital Sculpture Techniques – https://web.archive.org/web/20170516170023/http://www.theminters.com/misc/articles/derived-surfaces/derived-surfaces.pdf
+26. Rhino 8: Crease splitting enabled – https://docs.mcneel.com/rhino/8/help/en-us/popup_moreinformation/creasesplttingenabled.htm
+27. Nealen et al. 2007: FiberMesh – https://www-ui.is.s.u-tokyo.ac.jp/~takeo/papers/fibermesh.pdf
+28. Lewis et al. 2000: Pose Space Deformation – https://www.scribblethink.org/Work/PSD/PSD.pdf
+29. Blender-Handbuch: Drivers, Workflow & Examples – https://docs.blender.org/manual/en/latest/animation/drivers/workflow_examples.html
+30. Maya: Create pose space deformations – https://help.autodesk.com/cloudhelp/ENU/MayaCRE-CharacterAnimation/files/GUID-00699C13-8CA1-450C-937D-57C7B3DFD8C6.htm
+31. Softimage 2014 (Face Robot): Modeling the Mouth Area – https://download.autodesk.com/global/docs/softimage2014/en_us/files/face_modeling_ModelingtheMouthArea.htm

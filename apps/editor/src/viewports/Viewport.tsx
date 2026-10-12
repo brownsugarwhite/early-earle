@@ -41,6 +41,24 @@ function ZebraKnopf() {
 /** Titel als Tab (Florian 12.10.): Front ↔ Back, Top ↔ Bottom; Seite und 3D bleiben ein Titel. */
 function Titel({ id }: { id: ViewId }) {
   const blick = useUi((s) => (id === 'front' || id === 'top' ? s.blick[id] : null));
+  const bauweise = useUi((s) => s.bauweise);
+  if (id === 'creation') {
+    // Versuch 12.10. abends: Bauweise zum Vergleichen umschalten (wie „front · back“)
+    return (
+      <div className="vp-titel blick-tabs" role="tablist">
+        {(
+          [
+            ['bisher', VIEW_TEXTE.creation.titel],
+            ['wirbel', 'wirbelsäule'],
+          ] as const
+        ).map(([wert, text]) => (
+          <button key={wert} role="tab" aria-selected={bauweise === wert} className={bauweise === wert ? 'aktiv' : ''} data-bauweise={wert} tabIndex={-1} onClick={() => useUi.getState().setzeBauweise(wert)}>
+            {text}
+          </button>
+        ))}
+      </div>
+    );
+  }
   if (id !== 'front' && id !== 'top') return <div className="vp-titel">{VIEW_TEXTE[id].titel}</div>;
   const [a, b] = BLICK_TEXTE[id];
   const werte = id === 'front' ? (['front', 'hinten'] as const) : (['top', 'unten'] as const);
@@ -76,6 +94,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
   const hatMaul = useEditor((s) => !!s.dok.maul);
   const zurueck = useUi((s) => id === 'front' && s.blick.front === 'hinten');
   const kantenKoerper = useEditor((s) => id === 'creation' && mitKanten(s.dok));
+  const bauweise = useUi((s) => s.bauweise);
   if (!r) return null;
   const t = VIEW_TEXTE[id];
   const ui = useUi.getState();
@@ -91,7 +110,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
         {rechts && <div className="vp-label rechts">{rechts}</div>}
         {id === 'creation' && (
           <div className="vp-label links platzhalter">
-            {versuchAktiv()?.modus === 'wirbel'
+            {versuchAktiv()?.modus === 'wirbel' || (bauweise === 'wirbel' && !versuchAktiv())
               ? 'Versuch: Wirbelsäule'
               : versuchAktiv()?.modus === 'maul' || hatMaul
               ? 'Versuch: Maul im Netz'

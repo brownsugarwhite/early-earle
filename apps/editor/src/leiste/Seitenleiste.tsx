@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { ladeAusBibliothek } from '../aktionen';
 import { useRahmen } from '../layout/animation';
 import { editorApi, useBibliothek } from '../library/speicher';
-import { aktuelleLippen, setzeLippen } from '../maul/MaulEbene';
+import { aktuelleLippen, setzeLippen, setzeLippenImUmriss } from '../maul/MaulEbene';
 import { TIEFE_MAX, dunkel, haerteSetzen, kanteAuslaufen, kantenKnotenLoeschen, strichBreite, strichMuster, tiefeSetzen, useGewaehlteKante } from '../kanten/KantenEbene';
 import { useZahnMeldungen } from '../maul/ZahnEbene';
 import { spantName, spantWaehlen, SPANT_HINTEN, SPANT_VORN } from '../spanten/SpantEbene';
@@ -16,6 +16,8 @@ import { useMaulInfo } from '../maul/maulKoerper';
 import { useEditor } from '../state/editorStore';
 import { type Ebene, useUi } from '../state/uiStore';
 import { Ornament } from './Ornament';
+import { WIRBEL_FARBEN } from '../wirbel/WirbelEbene';
+import { useWirbelAnzeige } from '../wirbel/wirbelKoerper';
 
 const FAECHER = ['Wesen', 'Augen', 'Flügel', 'Mäuler', 'Beine', 'Schwänze', 'Ohren', 'Muster'] as const;
 type Fach = (typeof FAECHER)[number];
@@ -319,6 +321,38 @@ function SpantBereich() {
   );
 }
 
+/** Versuch 12.10. abends: Bauweise Wirbelsäule zum Vergleichen (Tab „wirbelsäule“ am 3D-Fenster). */
+function WirbelBereich() {
+  const info = useWirbelAnzeige((s) => s.info);
+  const biegung = useUi((s) => s.wirbelBiegung);
+  const hatMaul = useEditor((s) => !!s.dok.maul);
+  const zieht = { onStart: () => useWirbelAnzeige.setState({ zieht: true }), onEnde: () => useWirbelAnzeige.setState({ zieht: false }) };
+  return (
+    <section className="leiste-bereich wirbel-bereich" data-wirbelbereich="">
+      <div className="feld">
+        <span>Wirbelsäule</span>
+        <b data-wirbelringe={info?.ringe ?? 0}>{info ? `${info.ringe} Ringe · ${info.stehend} stehend` : '…'}</b>
+      </div>
+      <p className="hilfe">
+        Versuch zum Vergleichen: gleiche Profile, anderer Körper. Die Ringe stehen senkrecht auf der <b style={{ color: WIRBEL_FARBEN.wirbel }}>Wirbelsäule</b>. Sprossen in der Seite:{' '}
+        <b style={{ color: WIRBEL_FARBEN.liegend }}>orange</b> = Breite aus dem Top, <b style={{ color: WIRBEL_FARBEN.stehend }}>blau</b> = aus der Front. Gestrichelt: Umriss des 3D-Körpers.
+        {info && (info.vorlage === 'front' ? ' Querschnitt: deine Front (das Wesen liegt).' : ' Querschnitt: oval (mit stehenden Teilen ist die Front kein Querschnitt).')}
+      </p>
+      <Regler label="Biegen" wert={biegung.winkel} min={-60} max={60} schritt={1} anzeige={`${biegung.winkel}°`} onChange={(winkel) => useUi.getState().setzeWirbelBiegung({ ...biegung, winkel })} {...zieht} />
+      <Regler label="Stelle" wert={biegung.bei} min={0.1} max={0.9} schritt={0.01} anzeige={`${Math.round(biegung.bei * 100)} %`} onChange={(bei) => useUi.getState().setzeWirbelBiegung({ ...biegung, bei })} {...zieht} />
+      <div className="umschalter">
+        <button className="chip" onClick={() => useUi.getState().setzeWirbelBiegung({ winkel: 0, bei: biegung.bei })} disabled={!biegung.winkel}>
+          gerade
+        </button>
+      </div>
+      <p className="hilfe">
+        Biegen ist nur eine Vorschau (Pose), es wird nicht gespeichert. Stelle = ab der Schnauze gemessen. Noch nicht in dieser Bauweise: Maul, Kanten-Härte, Kastenschnauze.
+        {hatMaul && ' Das Maul fehlt hier deshalb im 3D.'}
+      </p>
+    </section>
+  );
+}
+
 function OeffnungsRegler() {
   const oeffnung = useUi((s) => s.oeffnung);
   return <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />;
@@ -351,7 +385,7 @@ function MaulBereich() {
           <button className={!lippen.unten ? 'chip aktiv' : 'chip'} onClick={() => setzeLippen('zu', { oben: lippen.oben })}>
             Kiefer gleich
           </button>
-          <button className={lippen.unten ? 'chip aktiv' : 'chip'} onClick={() => !lippen.unten && setzeLippen('zu', { oben: lippen.oben, unten: versetzt3(lippen.oben, -0.012) })}>
+          <button className={lippen.unten ? 'chip aktiv' : 'chip'} onClick={() => !lippen.unten && setzeLippenImUmriss({ oben: lippen.oben, unten: versetzt3(lippen.oben, -0.012) })}>
             getrennt
           </button>
         </div>
@@ -565,12 +599,14 @@ function LibraryBereich() {
 export function Seitenleiste() {
   const r = useRahmen((s) => s.rects?.leiste ?? null);
   const ebene = useUi((s) => s.ebene);
+  const bauweise = useUi((s) => s.bauweise);
   if (!r) return null;
   return (
     <aside className="leiste" data-ebene={ebene} style={{ left: r.x, top: r.y, width: r.w, height: r.h }}>
       <div className="vp-titel">{TITEL[ebene]}</div>
       <div className="leiste-glas glas">
         <div className="leiste-inhalt">
+          {bauweise === 'wirbel' && <WirbelBereich />}
           {ebene === 'form' && (
             <>
               <WesenBereich />
