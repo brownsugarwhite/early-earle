@@ -206,7 +206,12 @@ export function formStationen(dok: Dokument, N: number, xMin: number, xMax: numb
   const glatt2 = dichte.map((_, k) => {
     let sum = 0;
     let n = 0;
-    for (let d = -4; d <= 4; d++) if (dichte[k + d] !== undefined) (sum += dichte[k + d]!), n++;
+    for (let d = -4; d <= 4; d++) {
+      const w = dichte[k + d];
+      if (w === undefined) continue;
+      sum += w;
+      n++;
+    }
     return sum / n;
   });
   const kum = [0];
