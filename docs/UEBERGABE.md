@@ -69,6 +69,22 @@ Florians Konzept: Silhouetten plus Kantenlinien in jeder Ansicht, Maul zu und of
   - Ein Kasten mit verjüngten Kanten zeigt scharf vorn oben, rund nach hinten.
 - **Literatur:** Die Recherche stützt den Grundkäfig mit Creases (Gravity Sketch, Blender, OpenSubdiv). Es gibt keine JavaScript-Bibliothek mit Kanten, die eigene Umsetzung steht. Flächen aus Kurvennetzen können auslaufende Linien nicht.
 
+## Tiger-Käfig Schritt für Schritt (12.10.)
+
+Florian fragte, wie aus Silhouetten und Kanten genau das Netz entsteht, und ob Edgeloops und Polyverteilung an seine Formen angepasst werden können. Antwort als Seite: https://claude.ai/artifact/VqxsA1sx2EMnZUFiqPDpqd
+
+- Versuch `packages/shape/src/versuch/tigerKaefig.ts`:
+  - Ringe aus Seite, Top und Front, vorn ein Kasten-Querschnitt
+  - Stirnfläche als 4×4-Gitter, hinten ein Pol
+  - Kanten verjüngt
+  - Anpassung per inverser Unterteilung
+  - `formStationen` setzt Ringe auf Eckpunkte und verteilt sie nach Krümmung
+- Im Editor: `?versuch=tigerkaefig&schritt=1…7`. Bilder `docs/progress/editor/tiger-schritt-*.png`, Skript `apps/editor/scripts/tiger-schritte.mjs`.
+- **Behoben** im Renderer:
+  - Die Fläche bleibt unsichtbar, bis sie Geometrie hat. Sonst übersetzt WebGPU den Shader ohne Positionen („Vertex attribute position not found“) und behält diesen Stand.
+  - Neue Geometrie wird neu angelegt, statt Attribute auszutauschen.
+  - Nach dem Übersetzen (`compileAsync`) wird noch einmal gezeichnet.
+
 ## Nächster Schritt
 
 Florian testet die App und gibt Rückmeldung. Danach beginnt die große Sitzung zur Bauweise auf diesem Gerüst. Ihr Einstieg:

@@ -10,6 +10,8 @@ import {
   BufferGeometry,
   Color,
   DirectionalLight,
+  LineBasicNodeMaterial,
+  LineSegments,
   FrontSide,
   Mesh,
   MeshBasicNodeMaterial,
@@ -40,8 +42,9 @@ export class Renderer3D {
   private readonly szene = new Scene();
   private readonly kamera = new PerspectiveCamera(FOV, 1, 0.02, 100);
   private readonly koerper: Mesh;
-  private readonly geometrie = new BufferGeometry();
+  private geometrie = new BufferGeometry();
   private rect: Rect | null = null;
+  private linien: LineSegments | null = null;
   private kameraZustand: Kamera | null = null;
   private angefordert = false;
   private bereit = false;
@@ -58,6 +61,8 @@ export class Renderer3D {
     // Vorderseiten in die Schattenkarte: mit den Rückseiten (Standard) bliebe um den Bodenkontakt ein heller Fleck
     material.shadowSide = FrontSide;
     this.koerper = new Mesh(this.geometrie, material);
+    // erst sichtbar, wenn es Geometrie gibt: sonst übersetzt WebGPU den Shader ohne Positionen und behält ihn
+    this.koerper.visible = false;
     this.koerper.castShadow = true;
     this.koerper.frustumCulled = false;
     this.szene.add(this.koerper);
@@ -96,7 +101,7 @@ export class Renderer3D {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.bereit = true;
-    this.anfordern();
+    this.nachUebersetzen();
   }
 
   get backend(): 'WebGPU' | 'WebGL2' {
@@ -110,34 +115,60 @@ export class Renderer3D {
     this.anfordern();
   }
 
+  /** Neue Geometrie statt Umbau der alten (Attributwechsel lässt sonst alte Shader-Stände stehen). */
+  private neueGeometrie(positionen: Float32Array, normalen: Float32Array, indizes: Uint32Array | null) {
+    const g = new BufferGeometry();
+    g.setAttribute('position', new BufferAttribute(positionen, 3));
+    g.setAttribute('normal', new BufferAttribute(normalen, 3));
+    if (indizes) g.setIndex(new BufferAttribute(indizes, 1));
+    g.computeBoundingSphere();
+    const alt = this.geometrie;
+    this.geometrie = g;
+    this.koerper.geometry = g;
+    this.koerper.visible = true;
+    alt.dispose();
+    this.vertexAnzahl = positionen.length / 3;
+    this.nachUebersetzen();
+  }
+
   setzeNetz(n: LoftNetz) {
     const g = this.geometrie;
     const pos = g.getAttribute('position') as BufferAttribute | undefined;
-    if (pos && pos.array.length === n.positionen.length) {
-      (pos.array as Float32Array).set(n.positionen);
-      pos.needsUpdate = true;
-      const nrm = g.getAttribute('normal') as BufferAttribute;
-      (nrm.array as Float32Array).set(n.normalen);
-      nrm.needsUpdate = true;
-    } else {
-      g.setAttribute('position', new BufferAttribute(n.positionen.slice(), 3));
-      g.setAttribute('normal', new BufferAttribute(n.normalen.slice(), 3));
-      g.setIndex(new BufferAttribute(n.indizes.slice(), 1));
+    if (!pos || pos.array.length !== n.positionen.length || !g.getIndex()) {
+      this.neueGeometrie(n.positionen.slice(), n.normalen.slice(), n.indizes.slice());
+      return;
     }
+    (pos.array as Float32Array).set(n.positionen);
+    pos.needsUpdate = true;
+    const nrm = g.getAttribute('normal') as BufferAttribute;
+    (nrm.array as Float32Array).set(n.normalen);
+    nrm.needsUpdate = true;
     g.computeBoundingSphere();
-    this.vertexAnzahl = n.positionen.length / 3;
     this.anfordern();
   }
 
   /** Dreiecke ohne Index (Versuche, z. B. Subdivision mit getrennten Normalen an scharfen Kanten). */
   setzeDreiecke(positionen: Float32Array, normalen: Float32Array) {
-    const g = this.geometrie;
-    g.setIndex(null);
-    g.setAttribute('position', new BufferAttribute(positionen, 3));
-    g.setAttribute('normal', new BufferAttribute(normalen, 3));
-    g.computeBoundingSphere();
-    this.vertexAnzahl = positionen.length / 3;
-    this.anfordern();
+    this.neueGeometrie(positionen, normalen, null);
+  }
+
+  /** Liniensegmente (Paare von Punkten) mit Farbe je Punkt, z. B. das Käfiggitter (Versuche). */
+  setzeLinien(punkte: Float32Array | null, farben?: Float32Array) {
+    if (this.linien) {
+      this.szene.remove(this.linien);
+      this.linien.geometry.dispose();
+      this.linien = null;
+    }
+    if (punkte && punkte.length) {
+      const g = new BufferGeometry();
+      g.setAttribute('position', new BufferAttribute(punkte, 3));
+      if (farben) g.setAttribute('color', new BufferAttribute(farben, 3));
+      // wie Blenders Käfig-Anzeige: immer sichtbar über der Fläche, leicht durchscheinend
+      this.linien = new LineSegments(g, new LineBasicNodeMaterial({ vertexColors: !!farben, color: farben ? 0xffffff : 0x19232b, depthTest: false, transparent: true, opacity: 0.7 }));
+      this.linien.renderOrder = 3;
+      this.szene.add(this.linien);
+    }
+    this.nachUebersetzen();
   }
 
   setzeRect(r: Rect | null) {
@@ -148,6 +179,19 @@ export class Renderer3D {
   setzeKamera(k: Kamera) {
     this.kameraZustand = k;
     this.anfordern();
+  }
+
+  /**
+   * Nach neuer Geometrie oder neuem Material: WebGPU übersetzt Pipelines im Hintergrund, ein Bild davor
+   * zeichnet das Objekt noch nicht. Darum nach dem Übersetzen noch einmal zeichnen.
+   */
+  private nachUebersetzen() {
+    this.anfordern();
+    if (!this.bereit) return;
+    void this.renderer
+      .compileAsync(this.szene, this.kamera)
+      .then(() => this.anfordern())
+      .catch(() => this.anfordern());
   }
 
   anfordern() {

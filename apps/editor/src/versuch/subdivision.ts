@@ -4,11 +4,11 @@
 import { type Dokument, angleichen, bewegeKnoten } from '@ee/shape';
 import { kaefigAnpassen, kaefigAusProfilen, kastenKaefig, laengsKante, ringKante, unterteilenMehrfach, zuDreiecken } from '@ee/shape/versuch';
 
-export function versuchAktiv(): { modus: 'subd' | 'loft' | 'tiger'; fall: string; form: string; zustand: string } | null {
+export function versuchAktiv(): { modus: 'subd' | 'loft' | 'tiger' | 'tigerkaefig'; fall: string; form: string; zustand: string; schritt: number } | null {
   const q = new URLSearchParams(location.search);
   const v = q.get('versuch');
-  if (v !== 'subd' && v !== 'loft' && v !== 'tiger') return null;
-  return { modus: v, fall: q.get('fall') ?? 'glatt', form: q.get('form') ?? 'kugel', zustand: q.get('zustand') ?? 'zu' };
+  if (v !== 'subd' && v !== 'loft' && v !== 'tiger' && v !== 'tigerkaefig') return null;
+  return { modus: v, fall: q.get('fall') ?? 'glatt', form: q.get('form') ?? 'kugel', zustand: q.get('zustand') ?? 'zu', schritt: Number(q.get('schritt') ?? 5) };
 }
 
 /** Testformen für Vergleichsbilder (`&form=ei`). */

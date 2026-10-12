@@ -7,7 +7,8 @@ import { useEditor } from '../state/editorStore';
 
 export type UeberPunkt = { farbe: 'tuerkis' | 'schwarz' | 'rot' | 'blau'; x: number; y: number };
 export type UeberBild = { url: string; x0: number; y0: number; x1: number; y1: number };
-export type Ueberlagerung = { bild?: UeberBild; punkte: UeberPunkt[] };
+export type UeberLinie = { punkte: { x: number; y: number }[]; farbe: string; breite: number; zu?: boolean; strich?: string };
+export type Ueberlagerung = { bild?: UeberBild; punkte: UeberPunkt[]; linien?: UeberLinie[] };
 
 export const useUeberlagerung = create<Partial<Record<Ansicht, Ueberlagerung>>>(() => ({}));
 
@@ -17,7 +18,7 @@ type TigerDaten = {
   bilder: Record<string, { datei: string; x0: number; y0: number; x1: number; y1: number }>;
 };
 
-export async function tigerLaden(zustand: string) {
+export async function tigerLaden(zustand: string): Promise<void> {
   const basis = `${import.meta.env.BASE_URL}versuch/tiger/`;
   const daten = (await (await fetch(`${basis}tiger.json`)).json()) as TigerDaten;
   const auf = zustand === 'auf';

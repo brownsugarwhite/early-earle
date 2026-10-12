@@ -360,6 +360,18 @@ export function View2D({ ansicht, w, h }: Props) {
           </g>
         );
       })}
+      {ueber?.linien?.map((l, i) => (
+        <path
+          key={`l${i}`}
+          d={l.punkte.map((p, k) => { const q = bild(p); return `${k ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`; }).join('') + (l.zu ? 'Z' : '')}
+          fill="none"
+          stroke={l.farbe}
+          strokeWidth={l.breite}
+          strokeDasharray={l.strich}
+          strokeLinejoin="round"
+          pointerEvents="none"
+        />
+      ))}
       {ueber && ueber.punkte.length > 0 && (
         <g className="maulpunkte" pointerEvents="none">
           {ueber.punkte.slice(1).map((p, i) => {

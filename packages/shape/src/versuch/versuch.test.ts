@@ -49,3 +49,17 @@ describe('Versuch Catmull-Clark mit Kantenschärfe', () => {
     expect(f.mittel * PX).toBeLessThan(2);
   });
 });
+
+describe('Versuch Tiger-Käfig', () => {
+  it('ist ein geschlossenes Netz und trifft angepasst seine Zielpunkte', async () => {
+    const { tigerKaefig, anZielAnpassen, geschlossen } = await import('./tigerKaefig');
+    const tk = tigerKaefig(neuesDokument());
+    expect(geschlossen(tk.netz)).toBe(true);
+    const fit = anZielAnpassen(tk.netz, tk.ziel, 8, 3);
+    // gleiche Stufe wie bei der Anpassung (Stufe 3 nähert die Grenzfläche)
+    const grenze = unterteilenMehrfach(fit, 3).punkte;
+    let max = 0;
+    tk.ziel.forEach((z, i) => (max = Math.max(max, Math.hypot(grenze[i]![0] - z[0], grenze[i]![1] - z[1], grenze[i]![2] - z[2]))));
+    expect(max * PX).toBeLessThan(1);
+  });
+});

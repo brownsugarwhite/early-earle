@@ -25,7 +25,7 @@ export const LOFT_STATIONEN = 96;
 export const LOFT_HALBRING = 48;
 
 /** Alle v-Werte, an denen der geschlossene Polygonzug die Senkrechte u = x schneidet. */
-function schnitte(poly: readonly V2[], x: number): number[] {
+export function schnitte(poly: readonly V2[], x: number): number[] {
   const out: number[] = [];
   for (let i = 0; i < poly.length; i++) {
     const a = poly[i]!;
@@ -39,7 +39,7 @@ function schnitte(poly: readonly V2[], x: number): number[] {
 }
 
 /** Querschnitt aus der Front-Hälfte: genau `n` + 1 Punkte, Knoten (Ecken) liegen exakt auf Stützstellen. */
-function querschnitt(dok: Dokument, n: number): V2[] {
+export function querschnitt(dok: Dokument, n: number): V2[] {
   const segs = segmente(dok.profile.front);
   const pts: V2[] = [];
   if (segs.length > n) {
