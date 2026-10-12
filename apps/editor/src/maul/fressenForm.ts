@@ -6,7 +6,7 @@
 // ersten Bearbeiten wird sie gespeichert. Die offenen Maulanfänge sind Knoten dieser Form (gemeinsame Punkte).
 
 import { type Ansicht, type Dokument, type Lippen, type Linie3, type Profil, type V2, type V3T, bewegeKnoten, einfuegen, loeschen, naechsterAufProfil, segment } from '@ee/shape';
-import { type Netz, bereichUnterteilen, knotenBei, mundwinkelVerbinden, offenVorschlag, unterteilen } from '@ee/shape/versuch';
+import { type Netz, bereichUnterteilen, kinnRichtung, knotenBei, maulAnfangIndizes, maulRichtung, mundwinkelVerbinden, offenVorschlag, poseMitAnfaengen, unterteilen } from '@ee/shape/versuch';
 import { type Modus, useEditor } from '../state/editorStore';
 import { flaechenBereiche } from '../versuch/maulVersuch';
 import { maulZuletzt } from './maulKoerper';
@@ -72,7 +72,14 @@ function punktAufSegment(s: readonly [V2, V2, V2, V2], t: number): V2 {
 function ableiten(dok: Dokument): Ableitung | null {
   const seite = dok.profile.seite;
   const b = maulZuletzt(dok);
-  if (!b || !dok.maul) return null;
+  if (!dok.maul) return null;
+  if (!b) {
+    // 3D baut gerade neu (z. B. während die Lippen gezogen werden): letzte Form behalten, Anfänge auf die Lippen
+    if (!ableitung || ableitung.seite !== seite) return null;
+    const auf = offeneLippen(dok);
+    const ind = indizesFuer(dok, ableitung.einschub);
+    return auf ? { ...ableitung, ergebnis: poseMitAnfaengen(ableitung.ergebnis, ind, auf) } : ableitung;
+  }
   if (ableitung && ableitung.seite === seite && ableitung.bau === b && ableitung.maul === dok.maul) return ableitung;
   const h = hautPaar(b.zu, b.auf, b.mk);
   const abbilden = (q: V2): V2 => {
@@ -92,47 +99,97 @@ function ableiten(dok: Dokument): Ableitung | null {
     return { x: a[0] + (q.x - z[0]), y: a[1] + (q.y - z[1]) };
   };
   const n = seite.knoten.length;
-  const knoten = seite.knoten.map((k, i) => {
-    const p = abbilden(k.p);
-    // örtliche Drehung und Streckung aus zwei Nachbarpunkten auf der Kurve
-    const pv = punktAufSegment(segment(seite, (i - 1 + n) % n), 0.85);
-    const pn = punktAufSegment(segment(seite, i), 0.15);
-    const qv = abbilden(pv);
-    const qn = abbilden(pn);
-    const t0 = { x: pn.x - pv.x, y: pn.y - pv.y };
-    const t1 = { x: qn.x - qv.x, y: qn.y - qv.y };
+  /** Griff mit der örtlichen Drehung und Streckung der Abbildung zwischen zwei Kurvenpunkten */
+  const drehung = (pa: V2, pb: V2) => {
+    const qa = abbilden(pa);
+    const qb = abbilden(pb);
+    const t0 = { x: pb.x - pa.x, y: pb.y - pa.y };
+    const t1 = { x: qb.x - qa.x, y: qb.y - qa.y };
     const l0 = Math.hypot(t0.x, t0.y) || 1;
     const l1 = Math.hypot(t1.x, t1.y) || 1;
     const w = Math.atan2(t1.y, t1.x) - Math.atan2(t0.y, t0.x);
     const sk = Math.min(3, Math.max(0.33, l1 / l0));
-    const dreh = (v: V2): V2 => ({ x: (v.x * Math.cos(w) - v.y * Math.sin(w)) * sk, y: (v.x * Math.sin(w) + v.y * Math.cos(w)) * sk });
+    return (v: V2): V2 => ({ x: (v.x * Math.cos(w) - v.y * Math.sin(w)) * sk, y: (v.x * Math.sin(w) + v.y * Math.cos(w)) * sk });
+  };
+  const zu = dok.maul.zu;
+  const ind = maulAnfangIndizes(seite, zu);
+  const knoten = seite.knoten.map((k, i) => {
+    const p = abbilden(k.p);
+    const vor = segment(seite, (i - 1 + n) % n);
+    const nach = segment(seite, i);
+    if (i === ind.oben || i === ind.unten) {
+      // Maulanfang: jeder Griff dreht mit seiner Seite (Ober- bzw. Unterkiefer), nicht über den Spalt hinweg
+      // (12.10. nachts: sonst zeigte der Kinngriff bei Kiefer gleich nach unten, die Form hatte eine Delle unterm Kinn)
+      // (Abstand zum Anfang selbst: dort liegen Ober- und Unterlippe aufeinander, der nächste Hautpunkt wäre zufällig)
+      return { ...k, p, ein: drehung(punktAufSegment(vor, 0.55), punktAufSegment(vor, 0.85))(k.ein), aus: drehung(punktAufSegment(nach, 0.15), punktAufSegment(nach, 0.45))(k.aus) };
+    }
+    // örtliche Drehung und Streckung aus zwei Nachbarpunkten auf der Kurve
+    const dreh = drehung(punktAufSegment(vor, 0.85), punktAufSegment(nach, 0.15));
     return { ...k, p, ein: dreh(k.ein), aus: dreh(k.aus) };
   });
-  // Maulanfänge exakt auf die offenen Lippen
+  // Kiefer getrennt: das Stück zwischen den Anfängen (Spalt) wird gerade, offen spannt es sich über das Maul
+  if (ind.oben !== null && ind.unten !== null) {
+    const null2 = { x: 0, y: 0 };
+    if (ind.unten === (ind.oben + 1) % n) {
+      knoten[ind.oben] = { ...knoten[ind.oben]!, aus: null2 };
+      knoten[ind.unten] = { ...knoten[ind.unten]!, ein: null2 };
+    } else if (ind.oben === (ind.unten + 1) % n) {
+      knoten[ind.unten] = { ...knoten[ind.unten]!, aus: null2 };
+      knoten[ind.oben] = { ...knoten[ind.oben]!, ein: null2 };
+    }
+  }
+  // Maulanfänge exakt auf die offenen Lippen (Knotennummern wie im Umriss)
   const auf = offeneLippen(dok);
-  const zu = dok.maul.zu;
-  const anfang = (l: Linie3) => knotenBei(seite, { x: l.knoten[0]!.p[0], y: l.knoten[0]!.p[1] });
-  const iO = anfang(zu.oben);
-  if (iO !== null && auf) knoten[iO] = { ...knoten[iO]!, p: { x: auf.oben.knoten[0]!.p[0], y: auf.oben.knoten[0]!.p[1] } };
-  const iU = zu.unten ? anfang(zu.unten) : null;
-  if (iU !== null && auf?.unten) knoten[iU] = { ...knoten[iU]!, p: { x: auf.unten.knoten[0]!.p[0], y: auf.unten.knoten[0]!.p[1] } };
+  const start = (l: Linie3): V2 => ({ x: l.knoten[0]!.p[0], y: l.knoten[0]!.p[1] });
+  if (ind.oben !== null && auf) knoten[ind.oben] = { ...knoten[ind.oben]!, p: start(auf.oben) };
+  if (ind.unten !== null && auf?.unten) knoten[ind.unten] = { ...knoten[ind.unten]!, p: start(auf.unten) };
   let ergebnis: Profil = { ...seite, knoten };
   let einschub: Einschub | null = null;
-  if (!zu.unten && iO !== null && auf?.unten) {
-    // Kiefer gleich: zweiter Anfang auf der Kinnseite (der tiefere Nachbar), an derselben Stelle eingefügt
-    const naechster = seite.knoten[(iO + 1) % n]!.p.y;
-    const vorheriger = seite.knoten[(iO - 1 + n) % n]!.p.y;
-    einschub = naechster <= vorheriger ? { segment: iO, t: 0 } : { segment: (iO - 1 + n) % n, t: 1 };
+  if (!zu.unten && ind.oben !== null && ind.unten === null && auf?.unten) {
+    // Kiefer gleich: zweiter Anfang auf der Kinnseite (über den Winkel zur Maulrichtung), an derselben Stelle eingefügt
+    einschub = kinnRichtung(seite, ind.oben, maulRichtung(zu.oben)) === 1 ? { segment: ind.oben, t: 0 } : { segment: (ind.oben - 1 + n) % n, t: 1 };
     const r = einfuegen(ergebnis, einschub.segment, einschub.t);
-    ergebnis = bewegeKnoten(r.profil, r.index, { x: auf.unten.knoten[0]!.p[0], y: auf.unten.knoten[0]!.p[1] });
+    ergebnis = bewegeKnoten(r.profil, r.index, start(auf.unten));
   }
   ableitung = { seite, bau: b, maul: dok.maul, ergebnis, einschub };
   return ableitung;
 }
 
-/** Seitenform der Pose: gespeichert oder abgeleitet (ohne Maul: der geschlossene Umriss). */
+/** Knotennummern der Maulanfänge in der Pose-Form (gleich denen im Umriss; bei Kiefer gleich mit dem Einschub). */
+function indizesFuer(dok: Dokument, einschub: Einschub | null): { oben: number | null; unten: number | null } {
+  if (!dok.maul) return { oben: null, unten: null };
+  const ind = maulAnfangIndizes(dok.profile.seite, dok.maul.zu);
+  if (!einschub || ind.oben === null || ind.unten !== null) return ind;
+  // Einschub bei s + 1: davor liegende Knoten behalten ihre Nummer
+  const neu = einschub.segment + 1;
+  return { oben: ind.oben < neu ? ind.oben : ind.oben + 1, unten: neu };
+}
+
+/** Knotennummern der Maulanfänge in der aktuellen Pose-Form (für den Spalt im Umriss). */
+export function poseSpaltIndizes(dok: Dokument): { oben: number; unten: number } | null {
+  const gespeichert = poseSeiteGespeichert(dok);
+  const ind = indizesFuer(dok, gespeichert ? null : (ableiten(dok)?.einschub ?? null));
+  return ind.oben !== null && ind.unten !== null ? { oben: ind.oben, unten: ind.unten } : null;
+}
+
+const korrigiert = new WeakMap<Profil, { maul: Dokument['maul']; ergebnis: Profil }>();
+
+/**
+ * Seitenform der Pose: gespeichert (Maulanfänge immer auf den offenen Lippen) oder abgeleitet (ohne Maul: der
+ * geschlossene Umriss).
+ */
 export function poseSeite(dok: Dokument): Profil {
-  return poseSeiteGespeichert(dok) ?? ableiten(dok)?.ergebnis ?? dok.profile.seite;
+  const g = poseSeiteGespeichert(dok);
+  if (g) {
+    const auf = offeneLippen(dok);
+    if (!auf) return g;
+    const m = korrigiert.get(g);
+    if (m && m.maul === dok.maul) return m.ergebnis;
+    const ergebnis = poseMitAnfaengen(g, indizesFuer(dok, null), auf);
+    korrigiert.set(g, { maul: dok.maul, ergebnis });
+    return ergebnis;
+  }
+  return ableiten(dok)?.ergebnis ?? dok.profile.seite;
 }
 
 /** Offene Maulanfänge folgen den Knoten der Pose-Form (gemeinsame Punkte). */

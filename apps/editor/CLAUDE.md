@@ -76,6 +76,11 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
     - Alle Profil-Bearbeitungen gehen über `src/editing/aktiv.ts` (`aktivesProfil`, `setzeAktiv`, `uebernehmenAktiv`). Im Fressen-Tab landet die Seite auf der Pose-Form, ohne Kopplung an Front und Top.
   - **Maul auf der Wirbelsäule:** `maulBauen(dok, true)` baut `maulKaefigAufWirbel`. `strahlen()` (Maulfläche) nimmt in dieser Bauweise den Wirbelsäulen-Körper.
 
+- **Nachtrag 12.10. spätnachts — Maulloch und verbundene Kiefer** (Florian: „Das Maul macht kein Loch in den Shape mehr, bei Fressen sind die Kiefer nicht mal mehr mit dem Shape verbunden“; Nachtrag im Plan `docs/plans/2026-10-12-wirbelsaeule-maul-fressen.md`):
+  - Maulanfänge sind feste Umrissknoten, gefunden über Knotennummern (`maulAnfangIndizes`); die Pose-Form hat dieselben Nummern, die offenen Anfänge rasten darauf (`poseMitAnfaengen`).
+  - Die Kinnseite bestimmt der Winkel zur Maulrichtung (`kinnRichtung`): gegen den Uhrzeigersinn Oberkiefer, im Uhrzeigersinn Kinn (Schnauze links).
+  - `maulImUmrissSichern` (Laden, `setzeMaul`) baut fehlende Anfänge ein und tauscht vertauschte.
+
 ## Arbeitsweise
 
 - **Look-Beweis:** `node apps/editor/scripts/vergleich.mjs` (Web-Modus muss laufen) → `docs/progress/editor/vergleich-grundlayout.png` (Vorlage | Render). Render und Differenz liegen unter `apps/editor/test-results/vergleich/`.
@@ -109,7 +114,9 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 - **Laufzeit-Schranken in Tests großzügig wählen:** Die Testdateien laufen parallel; der Kanten-Käfig braucht allein 100–130 ms, unter Last gut 250 ms.
 
 - **Maulanfang folgt dem Umrissknoten nur bei gleicher Knotenzahl.** `maulAnKontur` erkennt den Knoten an der Lage (0,5 px). Ändert sich die Knotenzahl (Punkt eingefügt oder gelöscht), fällt er auf die Projektion auf die Kontur zurück; beim nächsten Ziehen am Anfang wird der Knoten neu eingebaut.
-- **Spaltanzeige braucht benachbarte Knoten:** Liegen zwischen Ober- und Unterlippen-Anfang weitere Umrissknoten, zeigt `umrissMitSpalt` nichts (Anzeige wie bisher).
+- **Spalt = kürzester Weg zwischen den Anfängen** (`umrissMitSpalt` mit Knotennummern). Nie über die Lage allein suchen: In der Pose-Form und bei deckungsgleichen Anfängen (Kiefer gleich mit gespeicherter Pose) trifft `knotenBei` sonst den falschen oder gar keinen Knoten, der Umriss läuft durchs Maul.
+- **Kinnseite nie über die Höhe der Nachbarn:** An der Kopfunterseite liegen beide gleich hoch; offen hing dann die Schnauze am Kinn (12.10. spätnachts). `kinnRichtung` bzw. `paarOrdnen` benutzen.
+- **Griffe an Maulanfängen je Seite abbilden** (`ableiten` in `fressenForm.ts`): Ein Drehwinkel, der über den Spalt hinweg gemessen wird, dreht den Kinngriff nach unten (Delle unterm Kinn).
 
 - **Pose-Form ableiten braucht den Maul-Bau:** `poseSeite` bildet Knoten über das 3D ab (`maulZuletzt`). Solange das Maul nicht gebaut ist, gilt der geschlossene Umriss. Der Selektor in `View2D` gibt gemerkte Objekte zurück (`ableitung`), sonst rendert React endlos.
 - **Kiefer gleich in der Pose:** Offen trennen sich die Lippen, deshalb bekommt die Pose-Form einen zweiten Maulanfang. Beim ersten Speichern kommt derselbe Knoten an derselben Stelle (t = 0 bzw. 1) in den geschlossenen Umriss.

@@ -2,7 +2,7 @@
 
 > Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**: Wo stehen wir, was ist offen, was ist der nächste Schritt. Historie in Git.
 
-**Stand:** 2026-10-12 abends. Sitzungen „Maul, Zähne, Rig“, „Kanten, Ansichten, verbundene Kiefer“, „Spanten“ und „Wirbelsäule“ auf Florians Mac, Vorbereitung der großen Fable-Sitzung ab 13.10.
+**Stand:** 2026-10-12 spätnachts. Sitzungen „Maul, Zähne, Rig“, „Kanten, Ansichten, verbundene Kiefer“, „Spanten“ und „Wirbelsäule“ auf Florians Mac, Vorbereitung der großen Fable-Sitzung ab 13.10.
 - Branch `claude/editor-grundlayout`, gepusht. Merge nach `main` erst nach Florians Abnahme.
 - Plan: [`docs/plans/2026-10-12-maul-zaehne-rig.md`](plans/2026-10-12-maul-zaehne-rig.md)
 - **Ergebnis-Dokument:** [`docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`](research/2026-10-12-maul-kiefer-zaehne-augen.md), als Seite: https://claude.ai/artifact/WG3YJPn4SuL5acnY9yR9s1
@@ -63,9 +63,14 @@ Dazu:
   - Fressen-Tab = Öffnung 100 %, Editor-Tab = 0 %.
 - **Maul auf der Wirbelsäule:** Der Maul-Käfig läuft im gestreckten Raum (`wirbelMaul.ts`), mit Zähnen, zu und offen.
 - **Grenzen:**
-  - Beginnt das Maul weit hinter der Schnauzenspitze, wird die Spitze zu spitz; es braucht Schnauzenringe im Maul-Käfig.
+  - Beginnt das Maul weit hinter der Schnauzenspitze, trägt die Kappe die ganze Schnauze, die Stirn wird im 3D flacher (≈ 10 px); es braucht Schnauzenringe im Maul-Käfig.
   - Biegen mit Maul fehlt noch.
   - Mit stehenden Teilen sind die Querschnitte oval.
+
+**Spätnachts** (Florian: „Das Maul macht kein Loch in den Shape mehr, bei Fressen sind die Kiefer nicht mal mehr mit dem Shape verbunden“; Nachtrag im Plan [`docs/plans/2026-10-12-wirbelsaeule-maul-fressen.md`](plans/2026-10-12-wirbelsaeule-maul-fressen.md)):
+- **Ursachen:** Der Spalt suchte die Maulanfänge nur über ihre Lage. Die Kinnseite kam aus der Höhe der Nachbarknoten und war an der Kopfunterseite zufällig die Schnauze. Bei Kiefer gleich war der Kinngriff über den Spalt hinweg gedreht.
+- **Jetzt:** Maulanfänge über Knotennummern (Umriss und Pose-Form), Kinnseite über den Winkel zur Maulrichtung, Reparatur beim Laden (fehlende oder vertauschte Anfänge), Griffe je Kieferseite, gestrichelter 3D-Umriss nur aus der Haut.
+- **Tests:** `maulUmriss.test.ts` (9), E2E „Kiefer bleiben verbunden“ und „Maul an der Kopfunterseite“; Bilder `fressen-verbunden.png`, `fressen-unterseite.png`.
 
 **Spätnachmittag** (Florian: „Mach das mit den Spanten mal“ und „Kanten und Härten scheinen mir noch nicht ganz schlüssig“):
 - **Regel:** Eine Kante ist eine Ecke in einem Shape. Ecke in Seite/Top = Kante quer, Ecke in einem Spant = Kante längs. Der Winkel kommt aus der Form, die Härte ist die Rundung.

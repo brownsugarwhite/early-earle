@@ -3,7 +3,8 @@
 // entlang x. Gemerkt je Profile, Spanten, Hauptspant und Biegung; während einer Geste schnell (weniger Anpassung).
 
 import type { Ansicht, Dokument, V2 } from '@ee/shape';
-import { type Netz, type Sprosse, WIRBEL_STANDARD, kaefigAusSprossen, umrissAusNetz, unterteilenMehrfach, wirbelBiegen, wirbelKaefig } from '@ee/shape/versuch';
+import { type MaulKaefig, type Netz, type Sprosse, WIRBEL_STANDARD, bereichUnterteilen, kaefigAusSprossen, umrissAusNetz, unterteilen, unterteilenMehrfach, wirbelBiegen, wirbelKaefig } from '@ee/shape/versuch';
+import { flaechenBereiche } from '../versuch/maulVersuch';
 import { create } from 'zustand';
 
 export type WirbelInfo = {
@@ -75,4 +76,24 @@ export function wirbelBauen(dok: Dokument, schnell: boolean, biegung: { winkel: 
     umrisse: umrisse ?? s.umrisse,
   }));
   return netz;
+}
+
+/**
+ * Umriss des 3D-Körpers mit Maul (nur Haut, ohne Tasche) für die gestrichelte Linie: So zeigt sie den Maulspalt wie der
+ * Fressen-Umriss (Florian 12.10. nachts: „Das Maul macht kein Loch in den Shape mehr“).
+ */
+export function maulUmrisseSetzen(mk: MaulKaefig, kaefig: Netz, alpha: number) {
+  let n = kaefig;
+  let bereich = flaechenBereiche(mk, alpha);
+  for (let s = 0; s < 2; s++) {
+    bereich = bereichUnterteilen(n, bereich);
+    n = unterteilen(n);
+  }
+  const haut: Netz = { ...n, flaechen: n.flaechen.filter((_, i) => bereich[i] !== 'tasche') };
+  const umrisse: Partial<Record<Ansicht, V2[]>> = {};
+  for (const a of ['seite', 'front', 'top'] as const) {
+    const u = umrissAusNetz(haut, a, 300)[0];
+    if (u) umrisse[a] = u;
+  }
+  useWirbelAnzeige.setState({ umrisse });
 }

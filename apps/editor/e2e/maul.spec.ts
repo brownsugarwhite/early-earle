@@ -277,3 +277,127 @@ test('Fressen: Seitenform der Pose bearbeiten, geschlossener Umriss bleibt, offe
   d = await dokument();
   expect(d.posenProfile?.fressen?.seite).toBeUndefined();
 });
+
+// Florian 12.10. nachts: „Das Maul macht auch kein Loch in den Shape mehr, bei Fressen sind die Kiefer nichtmal mehr mit
+// dem Shape verbunden.“ Älteres Maul (Anfänge nicht auf Umrisspunkten), Bauweise Wirbelsäule, Fressen, Lippen ziehen.
+test('Fressen: Kiefer bleiben mit der Form verbunden, Umriss zeigt den Spalt (auch bei älteren Mäulern)', async ({ page }) => {
+  await bereit(page);
+  type K3 = { p: [number, number, number]; ein: [number, number, number]; aus: [number, number, number]; art: 'glatt' };
+  type P = { knoten: { p: { x: number; y: number } }[] };
+  type D = { profile: { seite: P }; maul?: { zu: { oben: { knoten: K3[] }; unten?: { knoten: K3[] } }; auf?: { oben: { knoten: K3[] }; unten?: { knoten: K3[] } } }; posenProfile?: { fressen?: { seite?: P } } };
+  const dokument = () => page.evaluate(() => (window as unknown as { __stores: { editor: { getState(): { dok: D } } } }).__stores.editor.getState().dok);
+  // Langhals mit einem Maul, dessen Anfänge knapp neben dem Umriss liegen (wie vor dem Umbau gezeichnet)
+  await page.evaluate(async () => {
+    const v = (await (await fetch('/versuch/langhals/langhals.json')).json()) as { profile: Record<string, { knoten: { p: { x: number; y: number } }[] }> };
+    const seite = v.profile.seite!;
+    const spitze = seite.knoten.reduce((a, k) => (k.p.x < a.p.x ? k : a)).p;
+    const k = (x: number, y: number, z: number) => ({ p: [x, y, z], ein: [0, 0, 0], aus: [0, 0, 0], art: 'glatt' });
+    const oben = { knoten: [k(spitze.x + 0.004, spitze.y - 0.003, 0), k(spitze.x + 0.05, spitze.y - 0.008, 0.03), k(spitze.x + 0.1, spitze.y - 0.004, 0.045)] };
+    const unten = { knoten: [k(spitze.x + 0.006, spitze.y - 0.012, 0), k(spitze.x + 0.05, spitze.y - 0.016, 0.03), k(spitze.x + 0.1, spitze.y - 0.004, 0.045)] };
+    const st = (window as unknown as { __stores: { editor: { getState(): { dok: Record<string, unknown>; laden(d: unknown, f: null): void } } } }).__stores.editor.getState();
+    st.laden({ ...st.dok, name: 'Langhals', profile: { seite, front: v.profile.front, top: v.profile.top }, maul: { zu: { oben, unten } } }, null);
+  });
+  // beim Laden repariert: beide Anfänge sind Knoten des Umrisses
+  let d = await dokument();
+  const istKnoten = (pr: P, p: [number, number, number]) => pr.knoten.some((q) => Math.hypot(q.p.x - p[0], q.p.y - p[1]) < 1e-9);
+  expect(istKnoten(d.profile.seite, d.maul!.zu.oben.knoten[0]!.p)).toBe(true);
+  expect(istKnoten(d.profile.seite, d.maul!.zu.unten!.knoten[0]!.p)).toBe(true);
+
+  await page.click('[data-view="creation"] [data-bauweise="wirbel"]');
+  await warteAufBau(page);
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-maulspalt]')).toHaveCount(1);
+  // Fressen: Umriss mit offenem Maul
+  await page.locator('.menueleiste').getByRole('button', { name: 'Fressen', exact: true }).click();
+  await warteAufBau(page);
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-maulspalt]')).toHaveCount(1);
+
+  // offene Unterlippe: Anfang nach unten ziehen – die Pose-Form geht mit, der Spalt bleibt
+  await page.click('[data-view="seite"] [data-tab="maul"]');
+  const b = (await page.locator('.vp-ober[data-view="seite"] [data-maulknoten="unten:0"] .maul-punkt').boundingBox())!;
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2 + 10, b.y + b.height / 2 + 40, { steps: 6 });
+  await page.mouse.up();
+  await warteAufBau(page);
+  d = await dokument();
+  const pose = d.posenProfile?.fressen?.seite;
+  expect(pose).toBeDefined();
+  expect(istKnoten(pose!, d.maul!.auf!.unten!.knoten[0]!.p)).toBe(true);
+  expect(istKnoten(pose!, d.maul!.auf!.oben.knoten[0]!.p)).toBe(true);
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-maulspalt]')).toHaveCount(1);
+  // mittleren Punkt der offenen Unterlippe ziehen: Anfänge bleiben verbunden
+  const m = (await page.locator('.vp-ober[data-view="seite"] [data-maulknoten="unten:1"] .maul-punkt').boundingBox())!;
+  await page.mouse.move(m.x + m.width / 2, m.y + m.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(m.x + m.width / 2, m.y + m.height / 2 + 25, { steps: 6 });
+  await page.mouse.up();
+  await warteAufBau(page);
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-maulspalt]')).toHaveCount(1);
+  // gestrichelter 3D-Umriss kommt vom Körper mit Maul
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-wirbelumriss]')).toHaveCount(1);
+  await page.screenshot({ path: path.join(bilder, 'fressen-verbunden.png') });
+});
+
+// 12.10. nachts: Beginnt das Maul an der Unterseite des Kopfes (beide Umriss-Nachbarn gleich hoch), lag der zweite
+// Maulanfang auf der Schnauzenseite – offen hing die Schnauze am Kinn. Jetzt zählt der Winkel zur Maulrichtung.
+test('Fressen: Maul an der Kopfunterseite (Kiefer gleich) – Schnauze bleibt oben, Kinn ohne Delle', async ({ page }) => {
+  await bereit(page);
+  type Kn = { p: { x: number; y: number }; ein: { x: number; y: number }; aus: { x: number; y: number } };
+  await page.evaluate(async () => {
+    const v = (await (await fetch('/versuch/langhals/langhals.json')).json()) as { profile: Record<string, unknown> };
+    const st = (window as unknown as { __stores: { editor: { getState(): { dok: Record<string, unknown>; laden(d: unknown, f: null): void } } } }).__stores.editor.getState();
+    st.laden({ ...st.dok, name: 'Langhals', profile: { seite: v.profile.seite, front: v.profile.front, top: v.profile.top } }, null);
+  });
+  await page.click('[data-view="creation"] [data-bauweise="wirbel"]');
+  await warteAufBau(page);
+  // Welt → Bildschirm aus den Umrissknoten der Seite
+  const paare = await page.evaluate(() => {
+    const kn = (window as unknown as { __stores: { editor: { getState(): { dok: { profile: { seite: { knoten: Kn[] } } } } } } }).__stores.editor.getState().dok.profile.seite.knoten;
+    return Array.from(document.querySelectorAll('.vp-ober[data-view="seite"] .knoten-punkt')).map((e, i) => {
+      const b = e.getBoundingClientRect();
+      return { w: kn[i]!.p, s: { x: b.x + b.width / 2, y: b.y + b.height / 2 } };
+    });
+  });
+  const a = paare[0]!;
+  const b = paare.reduce((m, q) => (Math.hypot(q.w.x - a.w.x, q.w.y - a.w.y) > Math.hypot(m.w.x - a.w.x, m.w.y - a.w.y) ? q : m));
+  const bild = (x: number, y: number) => ({ x: a.s.x + ((x - a.w.x) * (b.s.x - a.s.x)) / (b.w.x - a.w.x), y: a.s.y + ((y - a.w.y) * (b.s.y - a.s.y)) / (b.w.y - a.w.y) });
+  const spitze = paare.reduce((m, q) => (q.w.x < m.w.x ? q : m)).w;
+  // Maul ab der Kopfunterseite, gut hinter der Schnauzenspitze, nach hinten oben
+  await page.click('[data-view="seite"] [data-tab="maul"]');
+  for (const q of [bild(spitze.x + 0.06, spitze.y - 0.06), bild(spitze.x + 0.12, spitze.y - 0.01), bild(spitze.x + 0.19, spitze.y + 0.01)]) await page.mouse.click(q.x, q.y);
+  await page.keyboard.press('Enter');
+  await warteAufBau(page);
+  await page.locator('.menueleiste').getByRole('button', { name: 'Fressen', exact: true }).click();
+  await warteAufBau(page);
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-maulspalt]')).toHaveCount(1);
+  const modul = '/src/maul/fressenForm.ts';
+  const r = await page.evaluate(async (m) => {
+    const ff = (await import(/* @vite-ignore */ m)) as { poseSeite(d: unknown): { knoten: Kn[] }; poseSpaltIndizes(d: unknown): { oben: number; unten: number } | null };
+    const d = (window as unknown as { __stores: { editor: { getState(): { dok: unknown } } } }).__stores.editor.getState().dok;
+    return { pose: ff.poseSeite(d).knoten, ind: ff.poseSpaltIndizes(d) };
+  }, modul);
+  expect(r.ind).not.toBeNull();
+  const n = r.pose.length;
+  const { oben, unten } = r.ind!;
+  const kinnSeite = (unten - oben + n) % n === 1 ? 1 : -1;
+  const aussenOben = r.pose[(oben - kinnSeite + n) % n]!;
+  const aussenUnten = r.pose[(unten + kinnSeite + n) % n]!;
+  const o = r.pose[oben]!.p;
+  const u = r.pose[unten]!.p;
+  // Oberkiefer-Anfang hängt an der Schnauze (vorn), das Kinn am Unterkiefer (hinten), das Kinn liegt tiefer
+  expect(aussenOben.p.x).toBeLessThan(o.x);
+  expect(aussenUnten.p.x).toBeGreaterThan(u.x);
+  expect(u.y).toBeLessThan(o.y - 0.02);
+  // keine Delle unterm Kinn: das Stück vom Kinn zum Unterkiefer bleibt über dem Kinn (abzüglich 1 %)
+  const [k0, k3] = kinnSeite === 1 ? [r.pose[unten]!, aussenUnten] : [aussenUnten, r.pose[unten]!];
+  const c1 = { x: k0.p.x + k0.aus.x, y: k0.p.y + k0.aus.y };
+  const c2 = { x: k3.p.x + k3.ein.x, y: k3.p.y + k3.ein.y };
+  let tiefst = Infinity;
+  for (let i = 0; i <= 40; i++) {
+    const t = i / 40;
+    const s = 1 - t;
+    tiefst = Math.min(tiefst, s * s * s * k0.p.y + 3 * s * s * t * c1.y + 3 * s * t * t * c2.y + t * t * t * k3.p.y);
+  }
+  expect(tiefst).toBeGreaterThan(u.y - 0.01);
+  await page.screenshot({ path: path.join(bilder, 'fressen-unterseite.png') });
+});

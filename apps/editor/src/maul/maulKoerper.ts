@@ -11,10 +11,14 @@ import {
   bereichUnterteilen,
   kieferRig,
   maulAnpassen,
+  maulAnfangIndizes,
   maulEingabeAus,
   maulKaefig,
   maulKaefigAufWirbel,
   maulZwischen,
+  mundwinkelVerbinden,
+  offenVorschlag,
+  poseMitAnfaengen,
   reissverschluss,
   unterteilen,
   zuDreiecken,
@@ -54,10 +58,20 @@ export type MaulBau = {
   rig: KieferRig;
 };
 
-/** Gespeicherte Seitenform der Fressen-Pose (gleiche Punktstruktur), sonst null (Versuch 12.10. nachts). */
+const poseKorrigiert = new WeakMap<Profil, { maul: Dokument['maul']; ergebnis: Profil }>();
+/**
+ * Gespeicherte Seitenform der Fressen-Pose (gleiche Punktstruktur), die Maulanfänge auf den offenen Lippen (gemeinsame
+ * Punkte über die Knotennummern); sonst null (Versuch 12.10. nachts).
+ */
 function poseSeiteVon(dok: Dokument): Profil | null {
   const p = dok.posenProfile?.fressen?.seite;
-  return p && p.knoten.length === dok.profile.seite.knoten.length ? p : null;
+  if (!p || p.knoten.length !== dok.profile.seite.knoten.length) return null;
+  if (!dok.maul) return p;
+  const m = poseKorrigiert.get(p);
+  if (m && m.maul === dok.maul) return m.ergebnis;
+  const ergebnis = poseMitAnfaengen(p, maulAnfangIndizes(dok.profile.seite, dok.maul.zu), mundwinkelVerbinden(dok.maul.auf ?? offenVorschlag(dok.maul.zu)));
+  poseKorrigiert.set(p, { maul: dok.maul, ergebnis });
+  return ergebnis;
 }
 
 let letzter: MaulBau | null = null;

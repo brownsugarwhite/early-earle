@@ -13,7 +13,7 @@ import { wirbelVersuch } from '../versuch/wirbelVersuch';
 import { maulBauen, maulDreiecke } from '../maul/maulKoerper';
 import { zahnListe, zahnMeldungen } from '../maul/zahnKoerper';
 import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten/kantenKoerper';
-import { useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
+import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 
 declare global {
   interface Window {
@@ -76,8 +76,9 @@ export function Szene3D() {
             if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
             r.setzeLinien(null);
             r.setzeDreiecke(t.positionen, t.normalen, t.farben);
-            // Wirbelsäule und Sprossen in der Seite bleiben sichtbar
+            // Wirbelsäule und Sprossen in der Seite bleiben sichtbar; gestrichelt der Umriss mit Maul (nur Haut)
             wirbelBauen(d, true, useUi.getState().wirbelBiegung);
+            if (!schnell) maulUmrisseSetzen(b.mk, t.kaefig, useUi.getState().oeffnung);
             return;
           }
         }

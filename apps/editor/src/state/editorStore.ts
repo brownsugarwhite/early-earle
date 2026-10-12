@@ -16,7 +16,7 @@ import {
   neuesDokument,
   spantenAngleichen,
 } from '@ee/shape';
-import { maulAnKontur } from '@ee/shape/versuch';
+import { maulAnKontur, maulImUmrissSichern } from '@ee/shape/versuch';
 import { kantenAnFlaeche } from '../kanten/kantenFlaeche';
 import { create } from 'zustand';
 
@@ -130,7 +130,8 @@ export const useEditor = create<EditorState>((set, get) => {
         if (d.maul === maul) return d;
         const rest = { ...d };
         delete rest.maul;
-        return maul ? { ...rest, maul } : rest;
+        // Maulanfänge sind Knoten des Umrisses (12.10. nachts): fehlen sie (ältere Mäuler), werden sie eingebaut
+        return maul ? maulImUmrissSichern({ ...rest, maul }) : rest;
       });
     },
     setzeZaehne(zaehne) {
@@ -194,7 +195,7 @@ export const useEditor = create<EditorState>((set, get) => {
       set({ dok: neuesDokument(), datei: null, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
     },
     laden(dok, datei) {
-      set({ dok, datei, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
+      set({ dok: maulImUmrissSichern(dok), datei, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
     },
     gespeichert(datei) {
       set({ datei, geaendert: false });

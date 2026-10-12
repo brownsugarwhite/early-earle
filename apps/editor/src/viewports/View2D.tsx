@@ -4,6 +4,7 @@
 import {
   vollerPfad,
   type Ansicht,
+  type Dokument,
   type GriffSeite,
   type Kubik,
   type Profil,
@@ -29,7 +30,7 @@ import {
 } from '@ee/shape';
 import { useEffect, useRef, useState } from 'react';
 import { aktiveProfile, aktivesProfil, setzeAktiv, uebernehmenAktiv } from '../editing/aktiv';
-import { istPose, poseSeite, poseSeiteSetzen } from '../maul/fressenForm';
+import { istPose, poseSeite, poseSeiteSetzen, poseSpaltIndizes } from '../maul/fressenForm';
 import { useEditor } from '../state/editorStore';
 import { useUeberlagerung } from '../versuch/ueberlagerung';
 import { blickVon, useUi } from '../state/uiStore';
@@ -42,13 +43,19 @@ import { BreitenKreis, EckKantenZeichnung, KantenZeichnung, breiteZiehen, kanten
 import { SpantLinien, SpantQuerschnitte, spantZeiger } from '../spanten/SpantEbene';
 import { WirbelPunkte, WirbelZeichnung, wirbelBearbeitbar, wirbelZeiger } from '../wirbel/WirbelEbene';
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
-import { abtasten3, umrissMitSpalt, versetzt3 } from '@ee/shape/versuch';
+import { abtasten3, maulAnfangIndizes, umrissMitSpalt, versetzt3 } from '@ee/shape/versuch';
 
 const PUNKT_R = 5; // Ø 10 px (Florian, 11.10.)
 const GRIFF = 6; // 6-px-Quadrate
 const KONTUR = 3;
 
 type Props = { ansicht: Ansicht; w: number; h: number };
+
+/** Knotennummern der geschlossenen Maulanfänge (beide gefunden), sonst null. */
+function spaltIndizesZu(seite: Profil, zu: NonNullable<Dokument['maul']>['zu']): { oben: number; unten: number } | null {
+  const i = maulAnfangIndizes(seite, zu);
+  return i.oben !== null && i.unten !== null ? { oben: i.oben, unten: i.unten } : null;
+}
 
 export function View2D({ ansicht, w, h }: Props) {
   // im Fressen-Tab bearbeitet die Seite die Pose-Form (gespeichert oder dem Kiefer folgend)
@@ -75,7 +82,8 @@ export function View2D({ ansicht, w, h }: Props) {
   // Fressen-Pose“). Die Maulanfänge sind Umrissknoten; zwischen ihnen läuft der Umriss an den Lippen entlang.
   const maulDok = useEditor((s) => s.dok.maul);
   const maulZu = ansicht === 'seite' && maulDok ? (offenerKoerper ? aktuelleLippen(useEditor.getState().dok, 'fressen').lippen ?? undefined : maulDok.zu) : undefined;
-  const spalt = maulZu?.unten ? umrissMitSpalt(profil, maulZu) : null;
+  // Spalt über die Knotennummern der Maulanfänge (geschlossen aus dem Umriss, die Pose-Form hat dieselben)
+  const spalt = maulZu?.unten ? umrissMitSpalt(profil, maulZu, offenerKoerper ? poseSpaltIndizes(useEditor.getState().dok) : maulDok ? spaltIndizesZu(profil, maulDok.zu) : null) : null;
   const formAktiv = ebene === 'form' && (!offenerKoerper || ansicht === 'seite');
   const svgRef = useRef<SVGSVGElement>(null);
 

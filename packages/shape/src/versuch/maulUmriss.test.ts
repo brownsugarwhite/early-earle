@@ -1,9 +1,9 @@
 // Maul an der Umrisslinie (Florian 12.10. abends): Maulanfänge sind Umrissknoten, der Umriss zeigt den Spalt.
 import { describe, expect, it } from 'vitest';
-import { type Linie3, neuesDokument } from '../dokument';
-import { bewegeKnoten, pfadAbtasten, segmente } from '../profil';
+import { type Dokument, type Linie3, neuesDokument } from '../dokument';
+import { type Profil, bewegeKnoten, pfadAbtasten, segmente } from '../profil';
 import { linieDurch, maulAnKontur, versetzt3 } from './linie3d';
-import { knotenBei, maulAnfaengeEinbauen, umrissMitSpalt } from './maulUmriss';
+import { knotenBei, maulAnfaengeEinbauen, maulAnfangIndizes, maulImUmrissSichern, umrissMitSpalt } from './maulUmriss';
 
 const d = neuesDokument();
 // Maul der Kugel: Start vorn auf der Kontur (Knoten 3 = vorderster Punkt, etwas tiefer), Mundwinkel innen
@@ -65,4 +65,52 @@ describe('Maul an der Umrisslinie', () => {
     expect(gefolgt.zu.oben.knoten[0]!.p).toEqual(r.zu.oben.knoten[0]!.p);
     expect(umrissMitSpalt(seiteNeu, gefolgt.zu)).not.toBeNull();
   });
+
+  // 12.10. nachts: An der Unterseite des Kopfes liegen beide Nachbarn gleich hoch. Die Kinnseite kam aus der Höhe der
+  // Nachbarn und war dort zufällig die Schnauzenseite – offen hing die Schnauze am Kinn. Jetzt zählt der Winkel zur
+  // Maulrichtung: gegen den Uhrzeigersinn die Oberkieferseite (Schnauze links), im Uhrzeigersinn das Kinn.
+  const spiegelX = (pr: Profil): Profil => ({ ...pr, knoten: pr.knoten.map((k) => ({ ...k, p: { x: -k.p.x, y: k.p.y }, ein: { x: -k.ein.x, y: k.ein.y }, aus: { x: -k.aus.x, y: k.aus.y } })) });
+  for (const gespiegelt of [false, true]) {
+    const sx = gespiegelt ? -1 : 1;
+    const seite = gespiegelt ? spiegelX(d.profile.seite) : d.profile.seite;
+    const tief = seite.knoten.reduce((a, k) => (k.p.y < a.p.y ? k : a)).p;
+    // Maul ab dem tiefsten Punkt nach hinten oben (Schnauze vorn = −x, gespiegelt +x)
+    const ober = linieDurch([
+      [tief.x, tief.y, 0],
+      [tief.x + sx * 0.08, tief.y + 0.05, 0.06],
+      [tief.x + sx * 0.16, tief.y + 0.1, 0.1],
+    ]);
+    const getrennt = () => maulAnfaengeEinbauen(seite, { oben: ober, unten: versetzt3(ober, -0.012) });
+
+    it(`Maul an der Unterseite${gespiegelt ? ' (gespiegelt)' : ''}: Unterlinien-Anfang auf der Kinnseite, nicht an der Schnauze`, () => {
+      const r = getrennt();
+      const o = r.seite.knoten[r.oben]!.p;
+      const u = r.seite.knoten[r.unten!]!.p;
+      expect(sx * (u.x - o.x)).toBeGreaterThan(0);
+      expect(maulAnfangIndizes(r.seite, r.zu)).toEqual({ oben: r.oben, unten: r.unten });
+      expect(umrissMitSpalt(r.seite, r.zu)).not.toBeNull();
+    });
+
+    it(`vertauschte Anfänge tauschen beim Sichern ihre Knoten${gespiegelt ? ' (gespiegelt)' : ''}`, () => {
+      const r = getrennt();
+      const o = r.seite.knoten[r.oben]!.p;
+      const u = r.seite.knoten[r.unten!]!.p;
+      const mit = (l: Linie3, p: { x: number; y: number }): Linie3 => ({ knoten: l.knoten.map((k, i) => (i === 0 ? { ...k, p: [p.x, p.y, 0] } : k)) });
+      const falsch: Dokument = { ...d, profile: { ...d.profile, seite: r.seite }, maul: { zu: { oben: mit(r.zu.oben, u), unten: mit(r.zu.unten!, o) } } };
+      expect(maulAnfangIndizes(r.seite, falsch.maul!.zu)).toEqual({ oben: r.unten, unten: r.oben });
+      const g = maulImUmrissSichern(falsch);
+      expect(g.profile.seite.knoten.length).toBe(r.seite.knoten.length);
+      expect(maulAnfangIndizes(g.profile.seite, g.maul!.zu)).toEqual({ oben: r.oben, unten: r.unten });
+      // stimmt alles, bleibt das Dokument unverändert
+      expect(maulImUmrissSichern(g)).toBe(g);
+    });
+
+    it(`Kiefer gleich mit zwei deckungsgleichen Anfängen: Reihenfolge aus dem Umriss, nicht aus der Nummer${gespiegelt ? ' (gespiegelt)' : ''}`, () => {
+      const r = getrennt();
+      const o = r.seite.knoten[r.oben]!.p;
+      const paar = bewegeKnoten(r.seite, r.unten!, o);
+      const gleich = { oben: r.zu.oben };
+      expect(maulAnfangIndizes(paar, gleich)).toEqual({ oben: r.oben, unten: r.unten });
+    });
+  }
 });

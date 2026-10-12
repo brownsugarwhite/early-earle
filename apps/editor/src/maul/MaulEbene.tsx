@@ -5,9 +5,9 @@
 
 import type { Ansicht, Dokument, Lippen, Linie3, V2, V3T } from '@ee/shape';
 import { bewegeKnoten } from '@ee/shape';
-import { abtasten3, ausAnsicht2, einfuegen3, griffZiehen3, inAnsicht2, knotenBei, knotenVerschieben3, linieDurch, loeschen3, maulAnfaengeEinbauen, mundwinkelVerbinden, naechsterInAnsicht, offenVorschlag } from '@ee/shape/versuch';
+import { abtasten3, ausAnsicht2, einfuegen3, griffZiehen3, inAnsicht2, knotenBei, knotenVerschieben3, linieDurch, loeschen3, maulAnfaengeEinbauen, maulAnfangIndizes, mundwinkelVerbinden, naechsterInAnsicht, offenVorschlag } from '@ee/shape/versuch';
 import { gekoppeltBerechnen } from '../editing/gekoppelt';
-import { poseSeite, poseSeiteSetzen } from './fressenForm';
+import { poseSeite, poseSeiteSetzen, poseSpaltIndizes } from './fressenForm';
 import { useEffect } from 'react';
 import { type Modus, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -246,8 +246,10 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
     if (zustand === 'zu' && sel.length === 1 && i === 0 && ctx.ansicht !== 'top') {
       if (knotenBei(ed.dok.profile.seite, { x: linieVon(n).knoten[0]!.p[0], y: linieVon(n).knoten[0]!.p[1] }) === null) setzeLippenImUmriss(lippen);
       const dok0 = useEditor.getState().dok;
-      const l0 = n === 'oben' ? dok0.maul!.zu.oben : dok0.maul!.zu.unten ?? dok0.maul!.zu.oben;
-      const k = knotenBei(dok0.profile.seite, { x: l0.knoten[0]!.p[0], y: l0.knoten[0]!.p[1] });
+      const ind = maulAnfangIndizes(dok0.profile.seite, dok0.maul!.zu);
+      const k = n === 'oben' || !dok0.maul!.zu.unten ? ind.oben : ind.unten;
+      // Kiefer gleich mit gespeicherter Pose: zwei deckungsgleiche Anfänge, sie wandern zusammen
+      const paar = !dok0.maul!.zu.unten ? ind.unten : null;
       if (k !== null) {
         const basisProfile = dok0.profile;
         const p0 = basisProfile.seite.knoten[k]!.p;
@@ -258,7 +260,8 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
             const p = ctx.lokal(ev.clientX, ev.clientY);
             // Seite: x und y; Front: nur die Höhe (der Anfang liegt auf der Achse)
             const ziel = ctx.ansicht === 'seite' ? { x: p0.x + p.x - start.x, y: p0.y + p.y - start.y } : { x: p0.x, y: p0.y + p.y - start.y };
-            const neu = bewegeKnoten(basisProfile.seite, k, ziel);
+            const eins = bewegeKnoten(basisProfile.seite, k, ziel);
+            const neu = paar !== null ? bewegeKnoten(eins, paar, ziel) : eins;
             useEditor.getState().setzeProfile(gekoppeltBerechnen('seite', neu, basisProfile, useUi.getState().auswahl).profile);
           },
           () => useEditor.getState().endeGeste(),
@@ -270,7 +273,8 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
     if (zustand === 'auf' && sel.length === 1 && i === 0 && ctx.ansicht === 'seite') {
       const pose0 = poseSeite(ed.dok);
       const s0 = linieVon(n).knoten[0]!.p;
-      const k = knotenBei(pose0, { x: s0[0], y: s0[1] });
+      const ind = poseSpaltIndizes(ed.dok);
+      const k = ind ? (n === 'oben' ? ind.oben : ind.unten) : knotenBei(pose0, { x: s0[0], y: s0[1] });
       if (k !== null) {
         const p0 = pose0.knoten[k]!.p;
         ed.beginGeste();

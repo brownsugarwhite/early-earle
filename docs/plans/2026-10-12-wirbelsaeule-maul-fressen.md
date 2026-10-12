@@ -82,3 +82,24 @@ Der gestreckte Raum ist exakt (hin und zurück unter 0,1 px).
 - Front und Top folgen im Fressen-Tab dem Kiefer (Anzeige). Eigene Posen außer Fressen sind noch nicht bearbeitbar.
 - Kanten-Härte fehlt in der Wirbelsäulen-Bauweise.
 
+
+## Nachtrag (12.10. spätnachts): Maulloch und verbundene Kiefer
+
+Florian (mit zwei Bildern der Seite im Fressen-Tab): „Das Maul macht auch kein Loch in den Shape mehr, bei Fressen sind die Kiefer nicht mal mehr mit dem Shape verbunden.“ Im Bild lief der Umriss vom Oberlippen- zum Unterlippen-Anfang quer durchs Maul, der gestrichelte 3D-Umriss lag weit neben der Form.
+
+**Ursachen:**
+1. **Spalt nur über die Lage:** `umrissMitSpalt` suchte die Maulanfänge über ihre Lage (0,5 px). In der Pose-Form und bei Mäulern von vor dem Umbau lagen sie nicht genau auf Knoten. Dann gab es keinen Spalt, und der Umriss lief durchs Maul.
+2. **Reihenfolge der Anfänge:** Die Kinnseite kam aus der Höhe der beiden Nachbarknoten. An der Unterseite des Kopfes liegen beide gleich hoch, die Wahl war zufällig. Offen hing dann die Schnauze am Kinn und der Unterkiefer an der Oberlippe.
+3. **Kiefer gleich:** Der zweite Anfang (Kinn) bekam einen Griff, der über den Spalt hinweg gedreht war. Unter dem Kinn entstand eine Delle.
+4. Der gestrichelte 3D-Umriss in der Bauweise Wirbelsäule umfasste die Maultasche.
+
+**Jetzt:**
+- **Maulanfänge über Knotennummern** (`maulAnfangIndizes`): Die Pose-Form hat dieselben Nummern, die offenen Anfänge rasten immer genau auf ihre Knoten (`poseMitAnfaengen`). Der Spalt ist der kürzeste Weg zwischen den beiden Anfängen.
+- **Kinnseite über den Winkel zur Maulrichtung** (`kinnRichtung`, `paarOrdnen`): Von der Maulrichtung (Anfang → Mundwinkel) aus liegt gegen den Uhrzeigersinn die Oberkieferseite (Schnauze links), im Uhrzeigersinn das Kinn. Das gilt für getrennte Kiefer, für den zweiten Anfang bei Kiefer gleich und für deckungsgleiche Paare, an jeder Stelle des Umrisses.
+- **Reparatur beim Laden und bei jeder Maul-Änderung** (`maulImUmrissSichern`): Fehlende Anfänge werden eingebaut. Liegen zwei nahe Anfänge vertauscht, tauschen sie ihre Knoten. Eine gespeicherte Pose-Form bekommt eingefügte Knoten mit.
+- **Pose-Form ableiten:** Die Griffe an den Maulanfängen drehen je Seite mit (Ober- bzw. Unterkiefer), das Spaltstück wird gerade.
+- **Kiefer gleich mit gespeicherter Pose:** Beide deckungsgleichen Anfänge wandern beim Ziehen zusammen.
+- **Gestrichelter 3D-Umriss** nur aus der Haut (`maulUmrisseSetzen`).
+- **Tests:** `maulUmriss.test.ts` (Kopfunterseite, gespiegelt, vertauscht, deckungsgleich; mit der alten Regel schlagen 6 von 9 fehl), E2E „Kiefer bleiben verbunden“ und „Maul an der Kopfunterseite“. Bilder `docs/progress/editor/fressen-verbunden.png`, `fressen-unterseite.png`, Überlagerung `fressen-umrisse.png` (Form im Fressen-Tab, geschlossen, 3D).
+
+**Grenze bleibt: Maulanfang hinter der Schnauzenspitze.** Die Kappe vor Ring 1 trägt dann die ganze Schnauze. Im 3D wird die Stirn flacher, der gestrichelte Umriss weicht dort geschlossen um etwa 10 px ab (Langhals, Standardzoom; Maul an der Spitze: 4 px). Abhilfe sind Schnauzenringe vor dem Maulanfang; das ändert die Topologie des Maul-Käfigs und gehört in die große Sitzung. Bis dahin das Maul vorn an der Schnauze beginnen lassen.
