@@ -29,6 +29,15 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
     - Das Dokument speichert die rechte Hälfte, die Tiefe ist ¾ der Breite.
   - Ergebnis: `docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`.
 
+- **Nachtrag 12.10. nachmittags — Kanten, Ansichten, verbundene Kiefer** (Plan `docs/plans/2026-10-12-kanten-ansichten.md`, Ergebnis `docs/research/2026-10-12-kanten-ansichten.md`):
+  - **Kiefer verbunden:** gemeinsamer Mundwinkel, der Maulanfang klebt an der Kontur, und im Fressen-Tab zeigt jede Ansicht den Umriss des geöffneten 3D-Körpers (`src/maul/offenerUmriss.ts`).
+  - **Kanten im Form-Tab, kein eigener Tab** (`src/kanten/`):
+    - Der Zeichenstift auf freier Fläche setzt eine Kantenlinie. Härte je Knoten: gestrichelt 1 px = glatt bis schwarz 3 px = scharf.
+    - Breitenwerkzeug ⇧W, Tiefe (+ Grat, − Rinne), Kantenliste und Ebenenschalter.
+    - Ecken der Silhouetten sind Kanten.
+  - **Back/Bottom** als Tab am Viewport-Titel, echt gespiegelt (`spiegeln2`).
+  - **3D:** Mit Kanten oder Ecken baut das 3D den Kanten-Käfig, dazu Zebrastreifen.
+
 ## Arbeitsweise
 
 - **Look-Beweis:** `node apps/editor/scripts/vergleich.mjs` (Web-Modus muss laufen) → `docs/progress/editor/vergleich-grundlayout.png` (Vorlage | Render). Render und Differenz liegen unter `apps/editor/test-results/vergleich/`.
@@ -45,6 +54,9 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 - **Catmull-Clark hier ohne Randregel:** Das Maul bleibt eine geschlossene Fläche (Naht plus Tasche), offene Ränder würden falsch geglättet.
 - **2D-Ebenen bauen das Maul nie selbst:** `maulZuletzt(dok)` liefert nur den gemerkten Bau. Sonst baute jede Ansicht während einer Geste neu (≈ 0,4 s). Neu zeichnen über `useMaulInfo`.
 - **Zahn-Prüfung dauert 75–185 ms:** Sie läuft nur ohne Geste (`gesteStart`), während einer Geste gilt `zahnMeldungenZuletzt()`.
+- **Harte Kanten schattieren:** `zuDreiecken` mit 40° glättet einen 13°-Knick weg. Für den Kanten-Käfig gelten 10°.
+- **Kanten-Käfig während Gesten mit 3 Anpass-Durchgängen** (≈ 60 ms), beim Loslassen mit 8. `eckKanten` (≈ 1 ms) ist gemerkt je `dok.profile`, `strahlen` (S0, ≈ 0,1–0,2 s) ebenso: Kanten erst beim Loslassen neu auf die Fläche legen (`endeGeste`).
+- **Back/Bottom spiegeln über `spiegeln2` in `bild`, `lokal` und im Auswahlrechteck.** Ein Rechteck mit gespiegelten Ecken braucht `Math.min`/`Math.abs`, sonst wird die Breite negativ.
 - **Zustand-Selektoren nie mit `?? []` oder `{...}`:** Ein neues Objekt je Aufruf gilt als neuer Stand, React rendert endlos („Maximum update depth exceeded“, Kantenliste 12.10.). Rohwert wählen, Standard außerhalb setzen.
 - **Regler behalten den Fokus:** Der Tastaturfilter darf nur Texteingaben ausnehmen. Sonst wirkt ⌘Z nach dem Ziehen eines Reglers nicht (Fehler 12.10.). Pfeiltasten bleiben beim Regler.
 - **Gemalte Flächen auf der Haut** (Augen-Versuch): Den Umlaufsinn nach der Hautnormalen ausrichten (das Material ist einseitig, Florians Umrisse laufen mal so, mal so). Linien wie das Lid als Strich bauen, nicht als Fläche zur Mitte.

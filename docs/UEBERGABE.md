@@ -42,11 +42,15 @@ Dazu:
   - Härte je Knoten. Darstellung gestrichelt (zoomfest, längere Striche mit wachsender Härte) bis schwarz 3 px.
   - Einstellen über Regler, Stufen, „weich auslaufen“ und das Breitenwerkzeug ⇧W (Kreis = Härte).
   - Kantenliste und Ebenenschalter (zeigen, blass, aus).
-- **Ecken der Silhouetten:** Härte je Eckpunkt (Regler, ⇧W). Die Anzeige in den anderen Ansichten ist vorbereitet (`EckKantenZeichnung`), es fehlt noch die Geometrie aus `kanten.ts`.
+- **Ecken der Silhouetten:** Härte je Eckpunkt (Regler, ⇧W). Sie erscheinen als Kanten in den anderen Ansichten (`eckKanten`), ein Klick wählt die Ecke.
 - **Back und Bottom:** Tab am Viewport-Titel, echte Spiegelung, verdeckte Linien blass.
 - **Datenmodell:** `dok.kanten?: Kante[]`, Profil-Knoten `haerte?` (Rundreise getestet).
 - **Tests:** E2E `kanten.spec.ts` (neu), `maul.spec.ts`; Unit `linie3d.test.ts`, `umriss3d.test.ts`, `kantenFlaeche.test.ts`.
-- **3D-Kanten:** Ein Geometrie-Versuch (`packages/shape/src/versuch/kanten.ts`, Käfig mit Kantenschärfe aus Linien und Ecken) läuft als Hintergrund-Agent in einem eigenen Arbeitsbaum. Sein Branch muss noch zusammengeführt und ins 3D eingebunden werden.
+- **3D-Kanten** (`packages/shape/src/versuch/kanten.ts`, Editor `src/kanten/kantenKoerper.ts`):
+  - Mit Kanten oder Ecken baut das 3D einen Käfig aus den Profilen mit Kantenschärfe nach der Härte. Die Tiefe (+ Grat, − Rinne) verschiebt die Ziele.
+  - Die gewählte Kante erscheint türkis im 3D, dazu gibt es Zebrastreifen.
+  - Befund: Härte macht schärfer, nicht tiefer. Tief wird eine Kante über eine Ecke der Silhouette oder die Tiefe.
+  - Grenzen: schräge Linien, Linien im Gesicht, noch nicht zusammen mit dem Maul-Käfig.
 
 **Vormittag:**
 
@@ -114,7 +118,8 @@ Außerdem:
 - Kein Schließen-Schutz, kein App-Icon (wie 11.10.).
 
 **Offen aus dem Nachmittag** (siehe `docs/research/2026-10-12-kanten-ansichten.md`, Abschnitte 1, 4, 5):
-- Spanten (Querschnitte an gewählten Stellen, Front = vordere, Back = hintere Hälfte) und Kanten mit Tiefe (+ Grat, − Rinne): damit wird „alles in Shapes“ möglich.
+- **Spanten** (Querschnitte an gewählten Stellen, Front = vordere, Back = hintere Hälfte): skizziert, nicht gebaut. Florian fragte 12.10. nachmittags, wie sie aussähen; Entscheidung über den Bau steht aus.
+- Kanten zusammen mit dem Maul-Käfig; Netz entlang beliebiger Linien (Quad-Netz aus einem Kurvennetz) statt fester Ringe.
 - Härte als Radius relativ zur Körpergröße speichern; die Kantenschärfe hängt an der Käfigdichte.
 - Knick oben an der Schnauze im offenen Umriss (Grenze der Kiefergewichte).
 - Eigene Pose-Profile für Fressen (heute folgt der Körper automatisch).

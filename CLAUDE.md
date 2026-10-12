@@ -17,6 +17,13 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - Bauweise bleibt **Shapes → Loft → Käfig**.
   - Dazu Zähne am Zahnfleisch (im 3D, in Seite/Front wählbar und verschiebbar, Prüfung im geschlossenen Maul mit Vorschlägen) und gemalte Augen auf der Haut.
   - Offen: Durchdringungen, Wirbelsäule für Hälse, Zahnrahmen je Öffnungsart, Augen-Tab.
+- **2026-10-12 nachmittags: Kanten, Back/Bottom, verbundene Kiefer** (Florians Rückmeldung):
+  - Kanten im Form-Tab: Linien mit Härte (gestrichelt 1 px = glatt bis schwarz 3 px = scharf), Breitenwerkzeug ⇧W und Tiefe.
+  - Ecken der Silhouetten werden Kanten in den anderen Ansichten.
+  - Back/Bottom als Tab.
+  - Im Fressen-Tab folgt der Körper dem Kiefer.
+  - 3D-Kanten im Käfig mit Zebrastreifen.
+  - Ergebnis [`docs/research/2026-10-12-kanten-ansichten.md`](docs/research/2026-10-12-kanten-ansichten.md). Spanten sind skizziert, nicht gebaut.
   - Ergebnis [`docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`](docs/research/2026-10-12-maul-kiefer-zaehne-augen.md), Seite https://claude.ai/artifact/WG3YJPn4SuL5acnY9yR9s1, Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte) und die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
