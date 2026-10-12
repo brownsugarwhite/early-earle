@@ -178,7 +178,7 @@ function augenDreiecke(augen: AugeVorlage[], flaeche: Netz, bewegung: Starr | nu
 
 /** Zähne der Versuchswesen nach Florians Bögen (Rex, Bogen 06: 14 Oberzähne außen über der Unterlippe). */
 const VERSUCH_ZAEHNE: Record<string, () => Zahn[]> = {
-  rex: () => zahnreihe(14, 'oben', { ...ZAHN_STANDARD, laenge: 0.05, breite: 0.02, tiefe: 0.014, schaerfe: 0.8, biegung: 0.1, aussen: true }),
+  rex: () => zahnreihe(14, 'oben', { ...ZAHN_STANDARD, laenge: 0.06, breite: 0.03, tiefe: 0.016, schaerfe: 0.35, biegung: 0.05, aussen: true }, 0.8),
 };
 
 export function maulBauen(v: Vorlage): MaulErgebnis {
