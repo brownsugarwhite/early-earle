@@ -19,7 +19,8 @@
 4. **Back und Bottom** als Tab am Viewport-Titel („front · back“, „top · bottom“).
    - Echte Rückansichten: Back ist waagerecht gespiegelt (links/rechts getauscht), Bottom senkrecht.
    - Die Silhouette ist dieselbe. Neu ist, welche Fläche man trifft: Linien auf Rücken, Schwanz oder Bauch zeichnet man dort, Linien der anderen Seite erscheinen blass.
-5. **Antworten auf deine Fragen** stehen in Abschnitt 1, die Recherche in Abschnitt 5.
+5. **3D:** Kanten und Ecken werden im Käfig zu Kanten mit Schärfe nach der Härte; die Tiefe macht Grate und Rinnen. Befund: Härte macht schärfer, nicht tiefer (Abschnitt 3).
+6. **Antworten auf deine Fragen** stehen in Abschnitt 1, die Recherche in Abschnitt 5.
 
 ## 1. Deine Fragen
 
@@ -84,13 +85,58 @@ Web-Modus `pnpm --filter @ee/editor dev:web` (Port 5180) oder `pnpm editor`.
   - `docs/progress/editor/kanten-tab.png` (Kante mit Verlauf)
   - `kanten-back.png` (Kante auf der Rückseite)
   - `maul-tab-offen.png` (geöffneter Umriss)
-- **Tests:** E2E `apps/editor/e2e/kanten.spec.ts` und `maul.spec.ts`; Unit-Tests `linie3d.test.ts` (Mundwinkel, Kontur) und `umriss3d.test.ts`.
+- **Tiefe:** Regler „+ Grat / − Rinne“ je Kante; in den Ansichten heller bzw. dunkler Hof (Licht und Schatten).
+- **Kantenliste und Ebenenschalter** (zeigen, blass, aus) in der Seitenleiste; die Strichelung ist zoomfest und geht mit wachsender Härte in die Volllinie über.
+- **Zebrastreifen** im 3D (gestreifter Punkt oben rechts).
+- **Tests:** E2E `apps/editor/e2e/kanten.spec.ts` (2 Tests) und `maul.spec.ts`; Unit-Tests `linie3d.test.ts` (Mundwinkel, Kontur), `umriss3d.test.ts`, `kantenFlaeche.test.ts`, `kanten.test.ts`.
 
-## 3. 3D: wie die Kanten entstehen
+## 3. 3D: wie die Kanten entstehen (`packages/shape/src/versuch/kanten.ts`, im Editor `src/kanten/kantenKoerper.ts`)
 
-_(folgt mit dem Geometrie-Versuch `packages/shape/src/versuch/kanten.ts`)_
+Sobald es Kantenlinien oder sichtbare Ecken in einem Profil gibt, baut das 3D statt des Platzhalter-Lofts einen **Catmull-Clark-Käfig aus den Profilen** (Shapes → Loft → Käfig). Die Anzeige unten links heißt dann „Versuch: Kanten im Käfig“.
+
+**So wird aus einer Linie eine Kante:**
+- **Längslinien** (überwiegend vorn → hinten, z. B. Wange): Ringpunkte werden genau auf die Linie geschoben. Die Kante läuft entlang einer Längsschleife des Käfigs.
+- **Querlinien** (z. B. ein Band um den Hals): Ein Ring wird auf die Linie gelegt und darf kippen. Freie Nachbarringe neigen sich mit, der Käfig faltet nie.
+- **Ecken der Silhouetten:**
+  - Front-Ecke: Längskante über die ganze Länge, zu den Polen auslaufend. Ein spitzer First oben in der Front wird so ein Grat entlang des Rückens.
+  - Ecke in Seite oder Top: Kante quer um den Körper, auf der Seite, zu der die Ecke zeigt.
+  - In den anderen Ansichten erscheinen sie als Linie. Ein Klick darauf wählt die Ecke.
+- **Härte → Kantenschärfe:** 0 … 3 Unterteilungsstufen, entlang der Linie verlaufend. Freie Enden laufen auf dem letzten Ringabstand aus, sonst entsteht eine Kerbe.
+- **Tiefe:** Die Ziele des Käfigs entlang der Linie wandern entlang der Normalen nach außen (Grat) oder innen (Rinne), dann wird neu angepasst. Mit Härte 0 entsteht ein weicher Wulst bzw. eine weiche Mulde, mit 100 % ein scharfer Grat bzw. eine scharfe Rinne (`docs/progress/editor/kanten-tiefe.png`).
+
+**Messwerte** (Ei, 18 Ringe × 16; Tests `kanten.test.ts`, 14 grün):
+
+| Messung | Ergebnis |
+|---|---|
+| Bau + Anpassen / 3 Stufen | 96–123 ms / 10–14 ms; im Editor während Gesten schnell (3 Durchgänge) |
+| Netz | immer geschlossen, einheitlich orientiert, keine Durchdringungen |
+| Front-Ecke (Schulter), Höhe | 0,02 px |
+| Wangenkante (Längslinie) | 0,84 px neben der gezeichneten Linie |
+| Band (Querlinie, Ring 9,2 px gekippt) | 0,05 px |
+| Härte 0 gegen Fläche ohne Linie | 0,46 px (Wange), 0,11 px (Band): bleibt glatt |
+| Knick an der Kante bei Härte 0 / ⅓ / ⅔ / 1 | 2,9° / 4,2° / 7,3° / 13,3° |
+| Seitenumriss | 0,16–0,33 px |
+| Kinn (Ecke in der Seite) in der Front | 0,00 px neben der Kinnhöhe |
+
+**Wichtigster Befund: Härte macht eine Kante schärfer, aber nicht tiefer.**
+- Das Anpassen hält die Loft-Punkte fest, Härte 1 sammelt nur die vorhandene Rundung in der Kante.
+- Über acht feine Flächen gemessen knickt die Fläche bei Härte 0 um 22,6°, bei Härte 1 um 20,3°.
+- Eine **tiefe** Kante entsteht deshalb auf zwei Wegen: als **Ecke in einer Silhouette** (die Form selbst knickt) oder mit **Tiefe** an der Linie (Grat bzw. Rinne). Das ist die Antwort auf die Frage, ob Linien allein reichen.
+
+**Zebrastreifen** (Punkt oben rechts im 3D): Die Streifen knicken am First und an der Wange und fließen über die glatten Flächen (`kanten-3d-zebra.png`). Für harte Kanten schattiert das 3D mit kleinem Glättungswinkel (10°), sonst verschwände ein 13°-Knick in der Schattierung.
+
+**Grenzen** (alle geschlossen, ohne Falten, mit Hinweis):
+- Schräge Linien (45°) liegen bis 3,3 px neben der Linie, die Fläche wird schon bei Härte 0 um 2,3 px wellig. Steile Linien (70°) bis 12 px.
+- Linien im Gesicht, in der Front gezeichnet: 2,6 px, Beulen bis 1,3 px. Um die vordere Kappe laufen die Ringe konzentrisch, beliebige Linien schräg dazu.
+- Linien über die Kappe werden am Kappenrand gekürzt. Zwei Querlinien auf demselben Ring: Die zweite bekommt keine Kante.
+- Kreuzungen funktionieren (0,4–0,5 px).
+- **Noch nicht gebaut:** Kanten zusammen mit dem Maul-Käfig. Mit Maul zeigt das 3D die Kanten noch nicht.
+- Für beliebige Linien braucht es später ein Netz, das sich nach den Linien richtet (Quad-Netz entlang eines Kurvennetzes, Recherche [40, 41]) statt fester Ringe.
 
 ## 4. Offene Punkte
+
+- **Spanten** (Querschnitte an gewählten Stellen) sind noch nicht gebaut, nur skizziert: Spantlinien in der Seite, vordere Querschnitte in der Front, hintere in der Back-Ansicht, der Loft läuft durch alle.
+- Kanten zusammen mit dem Maul-Käfig; schräge Linien und Linien im Gesicht (siehe Abschnitt 3).
 
 - Am Übergang Schädel/Oberkiefer knickt der offene Umriss leicht. Das ist die Grenze der Kiefergewichte im 3D; die Abhilfe gehört zur Mundwinkel-Zone und Kehlkette der großen Sitzung.
 - Eigene Pose-Profile (Fressen mit selbst gezogenem Umriss) fehlen. Heute folgt der Körper dem Kiefer automatisch.
