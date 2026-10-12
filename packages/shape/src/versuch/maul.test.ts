@@ -66,3 +66,38 @@ describe('Versuch Maul im Netz (Tiger)', () => {
 });
 
 void MAUL_STANDARD;
+
+describe('Versuch Kiefer = Knochen + Korrektur (Tiger)', () => {
+  it('Zwischenstufen: Knochen halten die Kieferlänge, die reine Blendshape schrumpft', async () => {
+    const { maulZwischen, kieferRig } = await import('./maul');
+    const dokZu = vorlageDokument(tiger, 'zu');
+    const { eingabe } = vorlageMaul(tiger);
+    const mk = maulKaefig(dokZu, eingabe);
+    const zu = maulAnpassen(mk, 'zu');
+    const auf = maulAnpassen(mk, 'auf');
+    const rig = kieferRig(mk, zu, auf);
+    const grad = (w: number) => ((w * 180) / Math.PI).toFixed(1);
+    console.log('Gelenk oben: Winkel', grad(rig.gelenkOben.w), '° Achse', rig.gelenkOben.u.map((x) => x.toFixed(2)).join(','), 'Rest', rig.restOben.toFixed(2));
+    console.log('Gelenk unten: Winkel', grad(rig.gelenkUnten.w), '° Achse', rig.gelenkUnten.u.map((x) => x.toFixed(2)).join(','), 'Rest', rig.restUnten.toFixed(2), '→', rig.art);
+    // Kinn = Unterrand in der Mitte; Abstand zur Achse des Unterkiefers
+    const kinn = mk.nahtUnten[(mk.nahtUnten.length - 1) / 2]!;
+    const zurAchse = (p: V3) => {
+      const g = rig.gelenkUnten;
+      const d: V3 = [p[0] - g.c[0], p[1] - g.c[1], p[2] - g.c[2]];
+      const t = d[0] * g.u[0] + d[1] * g.u[1] + d[2] * g.u[2];
+      return Math.hypot(d[0] - t * g.u[0], d[1] - t * g.u[1], d[2] - t * g.u[2]);
+    };
+    const r0 = zurAchse(zu.punkte[kinn]!);
+    for (const a of [0.25, 0.5, 0.75, 1]) {
+      const lin = maulZwischen(mk, zu, auf, a, 'linear');
+      const kno = maulZwischen(mk, zu, auf, a, 'knochen', rig);
+      const dl = zurAchse(lin.punkte[kinn]!) / r0;
+      const dk = zurAchse(kno.punkte[kinn]!) / r0;
+      const fb0 = kno.flaechen.map((f) => (f.some((i) => mk.bereiche[i] === 'tasche') ? 'tasche' : 'haut'));
+      const sdL = selbstDurchdringungen(unterteilen(unterteilen(lin)), 1e-4, bereichUnterteilen(unterteilen(lin), bereichUnterteilen(lin, fb0)));
+      const sdK = selbstDurchdringungen(unterteilen(unterteilen(kno)), 1e-4, bereichUnterteilen(unterteilen(kno), bereichUnterteilen(kno, fb0)));
+      console.log(`α=${a}: Kinn/Gelenk linear ${(dl * 100).toFixed(1)} %, Knochen ${(dk * 100).toFixed(1)} %; Durchdringungen linear ${sdL.paare}, Knochen ${sdK.paare}`);
+      if (a === 1) expect(Math.max(...kno.punkte.map((p, i) => Math.hypot(p[0] - auf.punkte[i]![0], p[1] - auf.punkte[i]![1], p[2] - auf.punkte[i]![2])))).toBeLessThan(1e-9);
+    }
+  });
+});

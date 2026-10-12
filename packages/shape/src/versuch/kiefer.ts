@@ -80,6 +80,12 @@ export function starreAnpassung(a: readonly V3[], b: readonly V3[], w?: readonly
     const B = minus3(b[i]!, cb);
     for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) S[r]![c]! += gew(i) * A[r]! * B[c]!;
   });
+  const R = drehungAusKovarianz(S);
+  return { R, t: minus3(cb, drehe(R, ca)) };
+}
+
+/** Beste Drehung zu einer Kovarianzmatrix S = Σ a·bᵀ (Horn, größter Eigenvektor der 4×4-Matrix). */
+export function drehungAusKovarianz(S: number[][]): M3 {
   const [[xx, xy, xz], [yx, yy, yz], [zx, zy, zz]] = S as [[number, number, number], [number, number, number], [number, number, number]];
   const N = [
     [xx + yy + zz, yz - zy, zx - xz, xy - yx],
@@ -91,12 +97,11 @@ export function starreAnpassung(a: readonly V3[], b: readonly V3[], w?: readonly
   let best = 0;
   for (let i = 1; i < 4; i++) if (werte[i]! > werte[best]!) best = i;
   const [q0, q1, q2, q3] = vektoren[best] as [number, number, number, number];
-  const R: M3 = [
+  return [
     [q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3, 2 * (q1 * q2 - q0 * q3), 2 * (q1 * q3 + q0 * q2)],
     [2 * (q2 * q1 + q0 * q3), q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3, 2 * (q2 * q3 - q0 * q1)],
     [2 * (q3 * q1 - q0 * q2), 2 * (q3 * q2 + q0 * q1), q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3],
   ];
-  return { R, t: minus3(cb, drehe(R, ca)) };
 }
 
 export const anwenden = (s: Starr, p: V3): V3 => plus3(drehe(s.R, p), s.t);
@@ -190,4 +195,52 @@ export function harmonisch(nb: readonly number[][], fest: readonly (V3 | null)[]
     });
   }
   return d;
+}
+
+/**
+ * Möglichst starre Verformung (ARAP, Sorkine & Alexa 2007) auf dem Käfiggraphen: Punkte in `fest` gehen exakt an
+ * ihr Ziel, alle anderen folgen so, dass jede Nachbarschaft sich nur dreht, nicht schert. Gleichgewichtete Kanten,
+ * globaler Schritt per Gauß-Seidel. `start` = Anfangslage (z. B. die Knochenpose).
+ */
+export function arap(ruhe: readonly V3[], nb: readonly number[][], fest: readonly (V3 | null)[], start: readonly V3[], iterationen = 12, gs = 60): V3[] {
+  const n = ruhe.length;
+  const p: V3[] = start.map((q, i) => (fest[i] ? [...fest[i]!] as V3 : [...q] as V3));
+  const R: M3[] = new Array(n);
+  for (let it = 0; it < iterationen; it++) {
+    // lokal: beste Drehung je Punkt aus seinen Kanten
+    for (let i = 0; i < n; i++) {
+      const S = [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+      ];
+      for (const j of nb[i]!) {
+        const e = minus3(ruhe[i]!, ruhe[j]!);
+        const f = minus3(p[i]!, p[j]!);
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) S[r]![c]! += e[r]! * f[c]!;
+      }
+      R[i] = drehungAusKovarianz(S);
+    }
+    // global: Lage aus den gedrehten Ruhekanten (Gauß-Seidel)
+    const b: V3[] = new Array(n);
+    for (let i = 0; i < n; i++) {
+      let bi: V3 = [0, 0, 0];
+      for (const j of nb[i]!) {
+        const e = minus3(ruhe[i]!, ruhe[j]!);
+        bi = plus3(bi, mal3(plus3(drehe(R[i]!, e), drehe(R[j]!, e)), 0.5));
+      }
+      b[i] = bi;
+    }
+    for (let k = 0; k < gs; k++) {
+      for (let i = 0; i < n; i++) {
+        if (fest[i]) continue;
+        const ns = nb[i]!;
+        if (!ns.length) continue;
+        let s: V3 = [...b[i]!] as V3;
+        for (const j of ns) s = plus3(s, p[j]!);
+        p[i] = mal3(s, 1 / ns.length);
+      }
+    }
+  }
+  return p;
 }

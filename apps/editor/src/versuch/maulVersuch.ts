@@ -10,9 +10,11 @@ import {
   type Vorlage,
   bereichUnterteilen,
   ketteUnterteilen,
-  lerp3,
   maulAnpassen,
   maulKaefig,
+  maulZwischen,
+  reissverschluss,
+  spaltenAnteil,
   unterteilen,
   vorlageDokument,
   vorlageMaul,
@@ -42,12 +44,22 @@ function kanten(netz: Netz): [number, number][] {
 
 const proj = (p: V3, a: Ansicht) => (a === 'seite' ? { x: p[0], y: p[1] } : a === 'front' ? { x: p[2], y: p[1] } : { x: p[0], y: p[2] });
 
-/** Bereich je Käfigfläche: Tasche, Lippenband (Haut an der Naht) oder Haut. */
-export function flaechenBereiche(mk: MaulKaefig): string[] {
-  const naht = new Set([...mk.nahtOben, ...mk.nahtUnten, ...mk.ecken]);
+/**
+ * Bereich je Käfigfläche: Tasche, Lippenband (Haut an der offenen Naht) oder Haut. Der zugezogene Teil des
+ * Reißverschlusses (hinter σ) ist Haut.
+ */
+export function flaechenBereiche(mk: MaulKaefig, alpha: number): string[] {
+  const sigma = mk.sichtbar + (1 - mk.sichtbar) * alpha;
+  const naht = new Map<number, number>();
+  mk.tasche.forEach((r, c) => {
+    naht.set(r[0]!, spaltenAnteil(mk, c));
+    naht.set(r[6]!, spaltenAnteil(mk, c));
+  });
+  for (const e of mk.ecken) naht.set(e, 1);
   return mk.netz.flaechen.map((f) => {
     if (f.some((i) => mk.bereiche[i] === 'tasche')) return 'tasche';
-    if (f.some((i) => naht.has(i))) return 'lippe';
+    const anteile = f.map((i) => naht.get(i)).filter((a): a is number => a !== undefined);
+    if (anteile.length && Math.min(...anteile) <= sigma + 0.02) return 'lippe';
     return 'haut';
   });
 }
@@ -74,12 +86,13 @@ export async function maulVersuch(versuch: Versuch, renderer: () => Renderer3D |
 
   const t0 = performance.now();
   const { mk, zu, auf } = maulBauen(vorlage);
-  const kaefig: Netz = alpha <= 0 || !auf ? zu : alpha >= 1 ? auf : { ...zu, punkte: zu.punkte.map((p, i) => lerp3(p, auf.punkte[i]!, alpha)) };
+  const zwischen = alpha <= 0 || !auf ? zu : alpha >= 1 ? auf : maulZwischen(mk, zu, auf, alpha, versuch.verfahren === 'linear' ? 'linear' : 'knochen');
+  const kaefig: Netz = alpha > 0 && alpha < 1 ? reissverschluss(mk, zwischen, alpha) : zwischen;
   console.info(`[maul] ${versuch.wesen}: Käfig ${mk.netz.punkte.length} Punkte, gebaut in ${(performance.now() - t0).toFixed(0)} ms`, mk.hinweise);
 
   // Grenzfläche (Stufe 3) mit Bereichen und Lippenrändern
   let n = kaefig;
-  let bereich = flaechenBereiche(mk);
+  let bereich = flaechenBereiche(mk, alpha);
   let rimO = [mk.ecken[0], ...mk.nahtOben, mk.ecken[1]];
   let rimU = [mk.ecken[0], ...mk.nahtUnten, mk.ecken[1]];
   for (let s = 0; s < 3; s++) {

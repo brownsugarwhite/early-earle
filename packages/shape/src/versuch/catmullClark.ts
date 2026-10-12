@@ -11,6 +11,8 @@ export type Netz = {
   flaechen: number[][];
   /** Kantenschärfe je Kante, Schlüssel `a,b` mit a < b */
   schaerfe: Map<string, number>;
+  /** Punktschärfe (wie Blenders Vertex Crease): ≥ 1 = Punkt bleibt als Spitze stehen, je Stufe −1 */
+  eckSchaerfe?: Map<number, number>;
 };
 
 export const kante = (a: number, b: number) => (a < b ? `${a},${b}` : `${b},${a}`);
@@ -75,7 +77,8 @@ export function unterteilen(netz: Netz): Netz {
     const R = mal(ek.reduce<V3>((acc, e) => plus(acc, mal(plus(punkte[e.a]!, punkte[e.b]!), 0.5)), [0, 0, 0]), 1 / Math.max(1, n));
     const glatt = mal(plus(plus(Q, mal(R, 2)), mal(P, n - 3)), 1 / n);
     const scharf = ek.filter((e) => s(kante(e.a, e.b)) > 0);
-    if (scharf.length < 2) return glatt;
+    const es0 = netz.eckSchaerfe?.get(i) ?? 0;
+    if (scharf.length < 2) return es0 <= 0 ? glatt : es0 >= 1 ? P : lerp(glatt, P, es0);
     const vs = scharf.reduce((acc, e) => acc + s(kante(e.a, e.b)), 0) / scharf.length;
     let hart: V3;
     if (scharf.length === 2) {
@@ -85,7 +88,9 @@ export function unterteilen(netz: Netz): Netz {
     } else {
       hart = P;
     }
-    return vs >= 1 ? hart : lerp(glatt, hart, vs);
+    const ergebnis = vs >= 1 ? hart : lerp(glatt, hart, vs);
+    const es = netz.eckSchaerfe?.get(i) ?? 0;
+    return es <= 0 ? ergebnis : es >= 1 ? P : lerp(ergebnis, P, es);
   });
 
   // neue Flächen: je Ecke ein Viereck
@@ -115,7 +120,9 @@ export function unterteilen(netz: Netz): Netz {
     if (sb > 0) neueSchaerfe.set(kante(mitte, e.b), sb);
   }
 
-  return { punkte: [...vp, ...ep, ...fp], flaechen: neueFlaechen, schaerfe: neueSchaerfe };
+  const neueEcken = new Map<number, number>();
+  for (const [i, es] of netz.eckSchaerfe ?? []) if (es - 1 > 0) neueEcken.set(i, es - 1);
+  return { punkte: [...vp, ...ep, ...fp], flaechen: neueFlaechen, schaerfe: neueSchaerfe, ...(neueEcken.size ? { eckSchaerfe: neueEcken } : {}) };
 }
 
 export function unterteilenMehrfach(netz: Netz, stufen: number): Netz {

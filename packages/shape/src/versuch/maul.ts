@@ -17,7 +17,7 @@ import type { V2 } from '../bezier';
 import type { Dokument } from '../dokument';
 import { pfadAbtasten, vollerPfad } from '../profil';
 import { type Netz, type V3, kante, unterteilenMehrfach } from './catmullClark';
-import { type Starr, anwenden, harmonisch, nachbarn, posieren, starreAnpassung } from './kiefer';
+import { type Gelenk, type Oeffnungsart, type Starr, anwenden, arap, gelenkAus, gelenkBewegung, nachbarn, oeffnungsart, posieren, restfehler, starreAnpassung } from './kiefer';
 import { TIGER_STANDARD, type TigerOptionen, kappenRandJ, ringKontext } from './tigerKaefig';
 import { abstand3, drehe, lerp3, mal3, minus3, mittel3, normiert3, plus3, punkt3, spiegelZ, zugLaenge, zugPunkt } from './v3';
 
@@ -35,6 +35,8 @@ export type MaulOptionen = TigerOptionen & {
   lippenSchaerfe: number;
   /** Tiefe der Tasche als Anteil des Abstands Maulmitte → Gelenk */
   taschenTiefe: number;
+  /** Punktschärfe der Mundwinkel (0 = rund wie eine Bohne, ≥ 1 = Spitze) */
+  winkelSchaerfe: number;
 };
 
 export const MAUL_STANDARD: MaulOptionen = {
@@ -47,6 +49,7 @@ export const MAUL_STANDARD: MaulOptionen = {
   lippenband: 0.012,
   lippenSchaerfe: 3,
   taschenTiefe: 0.8,
+  winkelSchaerfe: 1,
 };
 
 export type Bereich = 'haut' | 'naht' | 'lippenband' | 'tasche';
@@ -277,8 +280,28 @@ export function maulKaefig(dok: Dokument, eingabe: MaulEingabe, opt: MaulOptione
     }
   }
   sStirn = Math.min(0.6 * nahtLaenge, Math.max(0.1 * nahtLaenge, sStirn));
+  // hinter der Stirn: Ringe gleichmäßig in x (nicht nach Bogenlänge), damit sie bei steiler Naht nicht zusammenrücken
   const nahtAnteile = [0, sStirn / 2, sStirn];
-  for (let k = 1; k <= K - 1; k++) nahtAnteile.push(sStirn + ((nahtLaenge - sStirn) * k) / (K - 1));
+  {
+    const bogen = [0];
+    for (let i = 1; i < naht.length; i++) bogen.push(bogen[i - 1]! + abstand3(naht[i - 1]!, naht[i]!));
+    const sBei = (x: number) => {
+      for (let i = 1; i < naht.length; i++) {
+        const a = naht[i - 1]!;
+        const b = naht[i]!;
+        if (bogen[i]! < sStirn) continue;
+        if ((a[0] - x) * (b[0] - x) <= 0 && Math.abs(b[0] - a[0]) > 1e-12) return bogen[i - 1]! + ((x - a[0]) / (b[0] - a[0])) * (bogen[i]! - bogen[i - 1]!);
+      }
+      return Number.NaN;
+    };
+    const x0 = zugPunkt(naht, sStirn / nahtLaenge)[0];
+    const x1 = naht[naht.length - 1]![0];
+    for (let k = 1; k <= K - 1; k++) {
+      const s = k === K - 1 ? nahtLaenge : sBei(x0 + ((x1 - x0) * k) / (K - 1));
+      const vorher = nahtAnteile[nahtAnteile.length - 1]!;
+      nahtAnteile.push(Number.isFinite(s) && s > vorher ? s : vorher + (nahtLaenge - vorher) / (K - k + 1));
+    }
+  }
   const anteile = nahtAnteile.map((s) => s / nahtLaenge);
   const v: V3[] = anteile.map((a) => zugPunkt(naht, a));
   v[0] = [v[0]![0], v[0]![1], 0];
@@ -349,7 +372,7 @@ export function maulKaefig(dok: Dokument, eingabe: MaulEingabe, opt: MaulOptione
       // hinter dem Mundwinkel weich zurück zur Standardverteilung
       const w = glattStufe(0, 3, i - K);
       sNaht = h.laenge * (fracK + (0.5 - fracK) * w);
-      lb *= 1 - w;
+      lb = lb * (1 - w) + (h.laenge / (R / 2)) * w;
     }
     lb = Math.min(lb, sNaht / 3, (h.laenge - sNaht) / 3);
     const sj: number[] = new Array(R / 2 + 1);
@@ -589,32 +612,6 @@ export function maulKaefig(dok: Dokument, eingabe: MaulEingabe, opt: MaulOptione
   const throatAuf: V3 = [eckeAuf[0] + 0.35 * maulLaenge, eckeAuf[1], 0];
   const tiefe0 = opt.taschenTiefe * Math.max(0.02, abstand3(mitteMaul, throatAuf));
   const halbBreite = Math.max(...offenO.spalten.map((p) => Math.abs(p[2])), 1e-3);
-  const taschenAuf: V3[][] = [];
-  for (let c = 0; c < C; c++) {
-    const O = offenO.spalten[c]!;
-    const U = offenU.spalten[c]!;
-    const t = (c - (C - 1) / 2) / ((C - 1) / 2); // −1 … 1
-    const M = mittel3([O, U]);
-    const T: V3 = [throatAuf[0], throatAuf[1], t * 0.35 * halbBreite];
-    const e1 = normiert3(minus3(T, M));
-    const offen = minus3(O, U);
-    let e2 = minus3(offen, mal3(e1, punkt3(offen, e1)));
-    e2 = abstand3(e2, [0, 0, 0]) > 1e-9 ? normiert3(e2) : [0, 1, 0];
-    const d = tiefe0 * Math.sqrt(Math.max(0.05, 1 - 0.9 * t * t));
-    const hO = 0.3 * abstand3(O, U) + 0.15 * d;
-    const hU = 0.3 * abstand3(O, U) + 0.15 * d;
-    const lip = Math.min(opt.lippenband * 1.5, 0.3 * d);
-    taschenAuf.push([
-      O,
-      plus3(O, mal3(e1, lip)),
-      plus3(plus3(M, mal3(e1, d * 0.55)), mal3(e2, hO)),
-      plus3(M, mal3(e1, d)),
-      plus3(plus3(M, mal3(e1, d * 0.55)), mal3(e2, -hU)),
-      plus3(U, mal3(e1, lip)),
-      U,
-    ]);
-  }
-
   // Taschenpunkte für „zu“: eine flache Linse von der Naht zum Rachen (Gaumen leicht nach oben, Boden nach unten).
   // Versuch 12.10.: Die offene Tasche über die Kiefer zurückzurechnen, ließ die Spalten beim Tiger (Kopf kippt weit)
   // einander kreuzen. Die Linse wird deshalb direkt gebaut; den Übergang trägt die Korrektur-Blendshape.
@@ -642,10 +639,7 @@ export function maulKaefig(dok: Dokument, eingabe: MaulEingabe, opt: MaulOptione
       plus3(plus3(M, mal3(e1, d * 0.5)), mal3(e2, -h)),
       plus3(plus3(U, mal3(e1, lip)), mal3(e2, -0.3 * h)),
     ];
-    for (let k = 1; k <= 5; k++) {
-      zielZu[r[k]!] = reihen[k - 1]!;
-      if (zielAuf) zielAuf[r[k]!] = taschenAuf[c]![k]!;
-    }
+    for (let k = 1; k <= 5; k++) zielZu[r[k]!] = reihen[k - 1]!;
   }
   void drehe;
   // Pole: knapp hinter dem Mundwinkel, Richtung Rachen
@@ -676,73 +670,98 @@ export function maulKaefig(dok: Dokument, eingabe: MaulEingabe, opt: MaulOptione
     }
   }
 
-  // --- offener Zustand: Haut mit den Kiefern bewegt, Naht exakt auf den Linien, Rest harmonisch nachgezogen ---
+  // --- offener Zustand: Haut mit den Kiefern vorgestellt, Naht exakt auf den Linien, Rest möglichst starr (ARAP) ---
   if (zielAuf) {
     const posiert = posieren(zielZu, [
       { s: kieferJetzt.oben, w: gO },
       { s: kieferJetzt.unten, w: gU },
     ]);
-    const fest: (V3 | null)[] = new Array(nP).fill(null);
-    for (let c = 0; c < C; c++) {
-      const r = tasche[c]!;
-      fest[r[0]!] = minus3(offenO.spalten[c]!, posiert[r[0]!]!);
-      fest[r[6]!] = minus3(offenU.spalten[c]!, posiert[r[6]!]!);
-    }
-    fest[ecken[1]] = minus3(eckeAuf, posiert[ecken[1]]!);
-    fest[ecken[0]] = minus3(spiegelZ(eckeAuf), posiert[ecken[0]]!);
-    // weit weg vom Maul bleibt alles, wie die Knochen es stellen
-    for (let i = K + 4; i <= N; i++) for (let j = 0; j < R; j++) fest[ringPunkt(i, j)] = [0, 0, 0];
-    fest[pol] = [0, 0, 0];
     const netzTopo: Netz = { punkte: zielZu, flaechen, schaerfe };
-    const nb = nachbarn(netzTopo);
-    const korrektur = harmonisch(nb, fest, 300);
-    for (let p = 0; p < nP; p++) zielAuf[p] = plus3(posiert[p]!, korrektur[p]!);
-
-    // Seitensilhouette des offenen Zustands: Punkte der Mittellinie (z = 0) auf Florians offenen Umriss legen,
-    // den Rest harmonisch mitnehmen. Umrissstellen an den Lippen gehören zur Naht, nicht zur Haut.
-    if (eingabe.dokAuf) {
-      const umriss = pfadAbtasten(vollerPfad(eingabe.dokAuf.profile.seite), 24);
-      const lippen2d: V2[] = [...(aufOben ?? []), ...(aufUnten ?? [])].map((p) => ({ x: p[0], y: p[1] }));
-      const naechster = (x: number, y: number): V2 => {
-        let best = Infinity;
-        let bp: V2 = { x, y };
-        for (let i = 0; i < umriss.length; i++) {
-          const a = umriss[i]!;
-          const b = umriss[(i + 1) % umriss.length]!;
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
-          const l2 = dx * dx + dy * dy;
-          const t = l2 > 1e-18 ? Math.min(1, Math.max(0, ((x - a.x) * dx + (y - a.y) * dy) / l2)) : 0;
-          const q = { x: a.x + dx * t, y: a.y + dy * t };
-          const d = Math.hypot(q.x - x, q.y - y);
-          if (d < best) {
-            best = d;
-            bp = q;
-          }
+    // Haut möglichst starr verformen (ARAP): Lippenränder exakt auf Florians offenen Linien, die Mittellinie (z = 0)
+    // auf seinem offenen Seitenumriss; die Tasche bleibt aus dem Graphen (sie würde die Lippen zusammenhalten).
+    const nbAlle = nachbarn(netzTopo);
+    const istTasche = (i: number) => bereiche[i] === 'tasche';
+    const nb = nbAlle.map((ns, i) => (istTasche(i) ? [] : ns.filter((j) => !istTasche(j))));
+    const umriss = eingabe.dokAuf ? pfadAbtasten(vollerPfad(eingabe.dokAuf.profile.seite), 24) : null;
+    const lippen2d: V2[] = [...(aufOben ?? []), ...(aufUnten ?? [])].map((p) => ({ x: p[0], y: p[1] }));
+    const naechster = (x: number, y: number): V2 => {
+      let best = Infinity;
+      let bp: V2 = { x, y };
+      for (let i = 0; umriss && i < umriss.length; i++) {
+        const a = umriss[i]!;
+        const b = umriss[(i + 1) % umriss.length]!;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const l2 = dx * dx + dy * dy;
+        const t = l2 > 1e-18 ? Math.min(1, Math.max(0, ((x - a.x) * dx + (y - a.y) * dy) / l2)) : 0;
+        const q = { x: a.x + dx * t, y: a.y + dy * t };
+        const d = Math.hypot(q.x - x, q.y - y);
+        if (d < best) {
+          best = d;
+          bp = q;
         }
-        return bp;
-      };
-      const mittellinie: number[] = [pol];
-      for (let i = 1; i <= N; i++) mittellinie.push(ringPunkt(i, 0), ringPunkt(i, R / 2));
-      for (let b = 1; b < n4; b++) if (b !== mb) mittellinie.push(gitter[b]![mb]!);
-      const naheLippe = maulLaenge * 0.12;
-      for (let durchgang = 0; durchgang < 2; durchgang++) {
-        const fest2: (V3 | null)[] = new Array(nP).fill(null);
-        for (let c = 0; c < C; c++) {
-          fest2[tasche[c]![0]!] = [0, 0, 0];
-          fest2[tasche[c]![6]!] = [0, 0, 0];
-        }
-        fest2[ecken[0]] = [0, 0, 0];
-        fest2[ecken[1]] = [0, 0, 0];
+      }
+      return bp;
+    };
+    const mittellinie: number[] = [pol];
+    for (let i = 1; i <= N; i++) mittellinie.push(ringPunkt(i, 0), ringPunkt(i, R / 2));
+    for (let b = 1; b < n4; b++) if (b !== mb) mittellinie.push(gitter[b]![mb]!);
+    const naheLippe = maulLaenge * 0.12;
+    let lage: V3[] = posiert.map((p) => [...p] as V3);
+    for (let durchgang = 0; durchgang < 4; durchgang++) {
+      const fest: (V3 | null)[] = new Array(nP).fill(null);
+      for (let c = 0; c < C; c++) {
+        fest[tasche[c]![0]!] = offenO.spalten[c]!;
+        fest[tasche[c]![6]!] = offenU.spalten[c]!;
+      }
+      fest[ecken[1]] = eckeAuf;
+      fest[ecken[0]] = spiegelZ(eckeAuf);
+      if (durchgang === 0 || !umriss) {
+        // zuerst: weit weg vom Maul bleibt alles, wie die Knochen es stellen
+        for (let i = K + 4; i <= N; i++) for (let j = 0; j < R; j++) fest[ringPunkt(i, j)] = posiert[ringPunkt(i, j)]!;
+      } else {
         for (const p of mittellinie) {
-          const z = zielAuf[p]!;
+          const z = lage[p]!;
           const q = naechster(z[0], z[1]);
           if (lippen2d.some((l) => Math.hypot(l.x - q.x, l.y - q.y) < naheLippe)) continue;
-          fest2[p] = [q.x - z[0], q.y - z[1], 0];
+          fest[p] = [q.x, q.y, 0];
         }
-        const k2 = harmonisch(nb, fest2, 300);
-        for (let p = 0; p < nP; p++) zielAuf[p] = plus3(zielAuf[p]!, k2[p]!);
       }
+      lage = arap(zielZu, nb, fest, lage, 10, 50);
+    }
+    for (let p = 0; p < nP; p++) zielAuf[p] = lage[p]!;
+
+    // offene Tasche: erste Reihen entlang der Haut-Innennormale an den Lippen, dann zum Rachen (Bohne)
+    const hautNormale = (v: number): V3 => {
+      let n: V3 = [0, 0, 0];
+      for (const f of flaechen) {
+        if (!f.includes(v) || f.some((i) => bereiche[i] === 'tasche')) continue;
+        for (let k = 0; k < f.length; k++) {
+          const a = zielAuf[f[k]!]!;
+          const b = zielAuf[f[(k + 1) % f.length]!]!;
+          n = plus3(n, [(a[1] - b[1]) * (a[2] + b[2]), (a[2] - b[2]) * (a[0] + b[0]), (a[0] - b[0]) * (a[1] + b[1])]);
+        }
+      }
+      return normiert3(n);
+    };
+    const taschenAuf: V3[][] = [];
+    for (let c = 0; c < C; c++) {
+      const O = offenO.spalten[c]!;
+      const U = offenU.spalten[c]!;
+      const t = (c - (C - 1) / 2) / ((C - 1) / 2); // −1 … 1
+      const M = mittel3([O, U]);
+      const T: V3 = [throatAuf[0], throatAuf[1], t * 0.35 * halbBreite];
+      const e1 = normiert3(minus3(T, M));
+      const offen = minus3(O, U);
+      let e2 = minus3(offen, mal3(e1, punkt3(offen, e1)));
+      e2 = abstand3(e2, [0, 0, 0]) > 1e-9 ? normiert3(e2) : [0, 1, 0];
+      const d = tiefe0 * Math.sqrt(Math.max(0.05, 1 - 0.9 * t * t));
+      const h = 0.15 * abstand3(O, U);
+      const lip = Math.min(opt.lippenband * 1.5, 0.3 * d);
+      const o1 = plus3(O, mal3(hautNormale(tasche[c]![0]!), -lip));
+      const u1 = plus3(U, mal3(hautNormale(tasche[c]![6]!), -lip));
+      const tief = plus3(M, mal3(e1, d));
+      taschenAuf.push([O, o1, plus3(lerp3(o1, tief, 0.5), mal3(e2, h)), tief, plus3(lerp3(u1, tief, 0.5), mal3(e2, -h)), u1, U]);
     }
     for (let c = 0; c < C; c++) {
       const r = tasche[c]!;
@@ -755,8 +774,10 @@ export function maulKaefig(dok: Dokument, eingabe: MaulEingabe, opt: MaulOptione
     });
   }
 
+  // Mundwinkel als Spitze (Punktschärfe), damit er exakt sitzt und die Anpassung dort nicht überschwingt
+  const eckSchaerfe = new Map<number, number>(opt.winkelSchaerfe > 0 ? ecken.map((e) => [e, opt.winkelSchaerfe] as [number, number]) : []);
   return {
-    netz: { punkte: zielZu.map((p) => [...p] as V3), flaechen, schaerfe },
+    netz: { punkte: zielZu.map((p) => [...p] as V3), flaechen, schaerfe, ...(eckSchaerfe.size ? { eckSchaerfe } : {}) },
     zielZu,
     zielAuf,
     bereiche,
@@ -812,4 +833,142 @@ export function daempfungAus(mk: MaulKaefig): number[] {
 export function maulAnpassen(mk: MaulKaefig, zustand: 'zu' | 'auf', iterationen = 10, stufen = 3): Netz {
   const ziel = zustand === 'zu' ? mk.zielZu : mk.zielAuf ?? mk.zielZu;
   return anZielAnpassenGewichtet({ ...mk.netz, punkte: ziel.map((p) => [...p] as V3) }, ziel, daempfungAus(mk), iterationen, stufen);
+}
+
+// --- Kiefer = Knochen + Korrektur (Zwischenstufen) ---
+
+type Quat = [number, number, number, number];
+
+function quatAus(R: Starr['R']): Quat {
+  const t = R[0][0] + R[1][1] + R[2][2];
+  let q: Quat;
+  if (t > 0) {
+    const s = Math.sqrt(t + 1) * 2;
+    q = [0.25 * s, (R[2][1] - R[1][2]) / s, (R[0][2] - R[2][0]) / s, (R[1][0] - R[0][1]) / s];
+  } else if (R[0][0] > R[1][1] && R[0][0] > R[2][2]) {
+    const s = Math.sqrt(1 + R[0][0] - R[1][1] - R[2][2]) * 2;
+    q = [(R[2][1] - R[1][2]) / s, 0.25 * s, (R[0][1] + R[1][0]) / s, (R[0][2] + R[2][0]) / s];
+  } else if (R[1][1] > R[2][2]) {
+    const s = Math.sqrt(1 + R[1][1] - R[0][0] - R[2][2]) * 2;
+    q = [(R[0][2] - R[2][0]) / s, (R[0][1] + R[1][0]) / s, 0.25 * s, (R[1][2] + R[2][1]) / s];
+  } else {
+    const s = Math.sqrt(1 + R[2][2] - R[0][0] - R[1][1]) * 2;
+    q = [(R[1][0] - R[0][1]) / s, (R[0][2] + R[2][0]) / s, (R[1][2] + R[2][1]) / s, 0.25 * s];
+  }
+  return q;
+}
+
+function matAus([w, x, y, z]: Quat): Starr['R'] {
+  return [
+    [1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y)],
+    [2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x)],
+    [2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)],
+  ];
+}
+
+/** Gewichtete Mittelung von Drehungen (normiertes Quaternion-Mittel; Rest = keine Drehung). */
+function drehMittel(teile: readonly { R: Starr['R']; w: number }[]): Starr['R'] {
+  let q: Quat = [0, 0, 0, 0];
+  let summe = 0;
+  for (const t of teile) {
+    let p = quatAus(t.R);
+    if (p[0] < 0) p = [-p[0], -p[1], -p[2], -p[3]];
+    q = [q[0] + p[0] * t.w, q[1] + p[1] * t.w, q[2] + p[2] * t.w, q[3] + p[3] * t.w];
+    summe += t.w;
+  }
+  q = [q[0] + Math.max(0, 1 - summe), q[1], q[2], q[3]];
+  const l = Math.hypot(...q) || 1;
+  return matAus([q[0] / l, q[1] / l, q[2] / l, q[3] / l]);
+}
+
+const transponiert = (R: Starr['R']): Starr['R'] => [
+  [R[0][0], R[1][0], R[2][0]],
+  [R[0][1], R[1][1], R[2][1]],
+  [R[0][2], R[1][2], R[2][2]],
+];
+
+export type KieferRig = {
+  gelenkOben: Gelenk;
+  gelenkUnten: Gelenk;
+  /** relativer Restfehler der starren Anpassung je Kiefer (0 = rein starr) */
+  restOben: number;
+  restUnten: number;
+  art: Oeffnungsart;
+  /** Korrektur je Käfigpunkt im Knochenrahmen */
+  korrektur: V3[];
+};
+
+/** Knochen aus den angepassten Käfigen „zu“ und „auf“ (Kernbereiche der Kiefer), Korrektur als Rest. */
+export function kieferRig(mk: MaulKaefig, zu: Netz, auf: Netz): KieferRig {
+  const kern = (g: number[], h: number[]) => g.map((w, i) => (w > 0.99 && h[i]! < 0.01 ? i : -1)).filter((i) => i >= 0);
+  const kO = kern(mk.gewichtOben, mk.gewichtUnten);
+  const kU = kern(mk.gewichtUnten, mk.gewichtOben);
+  const sO = starreAnpassung(kO.map((i) => zu.punkte[i]!), kO.map((i) => auf.punkte[i]!));
+  const sU = starreAnpassung(kU.map((i) => zu.punkte[i]!), kU.map((i) => auf.punkte[i]!));
+  const ecke = zu.punkte[mk.ecken[1]]!;
+  const nahe: V3 = [ecke[0], ecke[1], 0];
+  const gelenkOben = gelenkAus(sO, nahe);
+  const gelenkUnten = gelenkAus(sU, nahe);
+  const restOben = restfehler(kO.map((i) => zu.punkte[i]!), kO.map((i) => auf.punkte[i]!), sO);
+  const restUnten = restfehler(kU.map((i) => zu.punkte[i]!), kU.map((i) => auf.punkte[i]!), sU);
+  const art = oeffnungsart(Math.max(restOben, restUnten));
+  const voll = knochenPose(mk, zu, gelenkOben, gelenkUnten, 1);
+  const korrektur = zu.punkte.map((_, i) => {
+    const R = drehMittel([
+      { R: gelenkBewegung(gelenkOben, 1).R, w: mk.gewichtOben[i]! },
+      { R: gelenkBewegung(gelenkUnten, 1).R, w: mk.gewichtUnten[i]! },
+    ]);
+    return drehe(transponiert(R), minus3(auf.punkte[i]!, voll[i]!));
+  });
+  return { gelenkOben, gelenkUnten, restOben, restUnten, art, korrektur };
+}
+
+function knochenPose(mk: MaulKaefig, zu: Netz, gO: Gelenk, gU: Gelenk, alpha: number): V3[] {
+  return posieren(zu.punkte, [
+    { s: gelenkBewegung(gO, alpha), w: mk.gewichtOben },
+    { s: gelenkBewegung(gU, alpha), w: mk.gewichtUnten },
+  ]);
+}
+
+/** Zwischenstufe α ∈ [0, 1]: „linear“ = reine Blendshape, „knochen“ = Kieferdrehung plus Korrektur. */
+export function maulZwischen(mk: MaulKaefig, zu: Netz, auf: Netz, alpha: number, verfahren: 'linear' | 'knochen', rig?: KieferRig): Netz {
+  if (verfahren === 'linear') return { ...zu, punkte: zu.punkte.map((p, i) => lerp3(p, auf.punkte[i]!, alpha)) };
+  const k = rig ?? kieferRig(mk, zu, auf);
+  const pose = knochenPose(mk, zu, k.gelenkOben, k.gelenkUnten, alpha);
+  const punkte = pose.map((p, i) => {
+    const R = drehMittel([
+      { R: gelenkBewegung(k.gelenkOben, alpha).R, w: mk.gewichtOben[i]! },
+      { R: gelenkBewegung(k.gelenkUnten, alpha).R, w: mk.gewichtUnten[i]! },
+    ]);
+    return plus3(p, mal3(drehe(R, k.korrektur[i]!), alpha));
+  });
+  return { ...zu, punkte };
+}
+
+/** Bogenanteil (0 Mitte … 1 Mundwinkel) je Nahtspalte. */
+export function spaltenAnteil(mk: MaulKaefig, c: number): number {
+  const K = mk.nahtAnteile.length - 2;
+  return mk.nahtAnteile[Math.abs(c - K)]!;
+}
+
+/**
+ * Reißverschluss: Bis zum Anteil σ(α) = σ_sichtbar + (1 − σ_sichtbar)·α ist die Naht offen, dahinter liegen
+ * Ober- und Unterlippe (samt erster Taschenreihen) aufeinander, mit weichem Fenster.
+ */
+export function reissverschluss(mk: MaulKaefig, netz: Netz, alpha: number, fenster = 0.08): Netz {
+  const sigma = mk.sichtbar + (1 - mk.sichtbar) * Math.min(1, Math.max(0, alpha));
+  const punkte = netz.punkte.map((p) => [...p] as V3);
+  mk.tasche.forEach((reihe, c) => {
+    const w = glattStufe(sigma - fenster, sigma + fenster, spaltenAnteil(mk, c));
+    if (w <= 0) return;
+    const O = reihe[0]!;
+    const U = reihe[6]!;
+    const mitte = lerp3(punkte[O]!, punkte[U]!, 0.5);
+    punkte[O] = lerp3(punkte[O]!, mitte, w);
+    punkte[U] = lerp3(punkte[U]!, mitte, w);
+    const m1 = lerp3(punkte[reihe[1]!]!, punkte[reihe[5]!]!, 0.5);
+    punkte[reihe[1]!] = lerp3(punkte[reihe[1]!]!, m1, w);
+    punkte[reihe[5]!] = lerp3(punkte[reihe[5]!]!, m1, w);
+  });
+  return { ...netz, punkte };
 }
