@@ -17,6 +17,13 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 - **Nachtrag 11.10. — 3D drehen:** „3D-View lässt sich noch nicht drehen“ (vermutlich Trackpad). Jetzt dreht die linke oder rechte Taste, ebenso ⌃-Klick und Zwei-Finger-Wischen. ⇧ verschiebt, Pinch und Mausrad zoomen. Trackpad-Erkennung: `istTrackpad` (Chrome: wheelDeltaY = −3 · deltaY).
 - ~~Automatische Punkte~~ — **verworfen 11.10. nachmittags:** „Das mit den Punkten, die sich von selbst setzen, gefällt mir nicht. Mach es genau wie in Illustrator. Ich setze neue Punkte dann von Hand … auch wie bei Illustrator.“ Jetzt: Zeichenstift P (Klick auf Kurve = Punkt, auf Punkt = löschen, ⌥ = umwandeln), + / −, A/V/Esc = Direktauswahl, Rechtsklickmenü bleibt. Löschen passt die Nachbargriffe an (kleinste Quadrate mit Nachparametrisierung, `loeschen` in `packages/shape/src/profil.ts`). Die Kopplung fügt nie Punkte ein. Für Posen gilt später: gemeinsame Punktstruktur, Einfügen formtreu in allen Posen, Netz mit fester Auflösung.
 
+- **Nachtrag 12.10. — Maul, Zähne, Rig (Versuch, Plan `docs/plans/2026-10-12-maul-zaehne-rig.md`):**
+  - **Seitenleiste rechts immer offen:** Tab-Menü oben, Library unten (⌘L klappt auf und zu). `berechneLayout` rechnet sie fest ein (360 px), Rect-Schlüssel `leiste`.
+  - **Eckpunkte sind Tabs:** braun Zähne, blau Maul, weiß Augen (folgt), orange Rig, pink maximieren. Zustand `ebene` in `uiStore`; Profile sind nur im Tab Form bearbeitbar.
+  - **Maullinien sind 3D-Linien:** Jeder Knoten ist ein 3D-Punkt, jede Ansicht bearbeitet zwei Koordinaten, und neue Punkte holen die Tiefe von der Fläche (Strahlraster). Gespeichert in `dok.maul` (zu/auf), Zähne in `dok.zaehne`.
+  - **Bauweise:** Florian fragte, ob wir weg von den Lofts sind. Nein: **Shapes → Loft → Käfig**. Der Loft gibt die Form, der Catmull-Clark-Käfig ist das Netz darüber.
+  - Ergebnis: `docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`.
+
 ## Arbeitsweise
 
 - **Look-Beweis:** `node apps/editor/scripts/vergleich.mjs` (Web-Modus muss laufen) → `docs/progress/editor/vergleich-grundlayout.png` (Vorlage | Render). Render und Differenz liegen unter `apps/editor/test-results/vergleich/`.
@@ -26,6 +33,11 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 - Test-Zugriff: `window.__stores` (editor, ui, rahmen) und `window.__editor` (backend, vertices).
 
 ## Fallen (nicht wiederholen)
+
+- **Vorschau-Fenster (Browser-Pane) hat keine Canvas-Größe**, solange es verdeckt ist: WebGPU meldet „swapchain texture of size 0“, das 3D bleibt leer. 3D deshalb per Playwright prüfen (`scripts/maul-bilder.mjs`, E2E mit `EE_GPU=1`).
+- **zod verwirft unbekannte Felder** beim Laden: Neue Dokumentfelder zuerst ins `DokumentSchema`, dann der Rundreise-Test.
+- **Maul-Körper baut ≈ 0,4 s:** nicht während einer Geste neu bauen, sondern beim Loslassen (`gesteStart`); der Regler „Öffnung“ rechnet nur die Zwischenstufe.
+- **Catmull-Clark hier ohne Randregel:** Das Maul bleibt eine geschlossene Fläche (Naht plus Tasche), offene Ränder würden falsch geglättet.
 
 - **macOS unterscheidet keine Groß-/Kleinschreibung:** `View2D.tsx` neben `view2d.ts` bricht tsc (TS1149). Deshalb heißt die Mathe-Datei `ansicht2d.ts`.
 - **CSS-Reihenfolge:** `.glas` darf kein `position` setzen. Es überschrieb `position: absolute/fixed` von Aufklappmenü und Kontextmenü, die Menüleiste verrutschte.

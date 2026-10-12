@@ -2,92 +2,90 @@
 
 > Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**: Wo stehen wir, was ist offen, was ist der nächste Schritt. Historie in Git.
 
-**Stand:** 2026-10-11 mittags, Sitzung „Wesen-Editor: Grundlayout“ (Florians Mac). Branch `claude/editor-grundlayout`, gepusht; Merge nach `main` nach Florians Abnahme. Plan: [`docs/plans/2026-10-11-editor-grundlayout.md`](plans/2026-10-11-editor-grundlayout.md). Gedächtnis des Editors: [`apps/editor/CLAUDE.md`](../apps/editor/CLAUDE.md), Bedienung: [`apps/editor/README.md`](../apps/editor/README.md).
+**Stand:** 2026-10-12 vormittags. Sitzung „Maul, Zähne, Rig: Recherche und Versuche“ auf Florians Mac, Vorbereitung der großen Fable-Sitzung ab 13.10.
+- Branch `claude/editor-grundlayout`, gepusht. Merge nach `main` erst nach Florians Abnahme.
+- Plan: [`docs/plans/2026-10-12-maul-zaehne-rig.md`](plans/2026-10-12-maul-zaehne-rig.md)
+- **Ergebnis-Dokument:** [`docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`](research/2026-10-12-maul-kiefer-zaehne-augen.md), als Seite: https://claude.ai/artifact/WG3YJPn4SuL5acnY9yR9s1
+- Gedächtnis des Editors: [`apps/editor/CLAUDE.md`](../apps/editor/CLAUDE.md)
 
-Vorheriger Stand (Wesen-Werkstatt in `/lab/wesen`, Blöcke 1–11, 09.10.): `git show 6029362:docs/UEBERGABE.md`. Die Werkstatt bleibt unangetastet, bis Florian entscheidet, was der neue Editor von ihr übernimmt.
+Vorher: Grundlayout, Navigation und Kurven (11.10.) siehe `git show 902965d:docs/UEBERGABE.md`, alte Wesen-Werkstatt `git show 6029362:docs/UEBERGABE.md`.
+
+## Florians Auftrag (12.10.)
+
+Ablauf:
+1. Körper aus Silhouetten und Kanten.
+2. Maul-Tab (blau): Linie ab Achse bzw. Kontur bis zum Mundwinkel.
+3. Kiefer gleich oder getrennt schon geschlossen (Überbiss, Unterbiss, Lippenbreite).
+4. Offener Zustand. Das Maul wird automatisch ins Netz geschnitten, die Tasche morpht.
+5. Zahn-Tab (braun): Anzahl je Kiefer, Zahnmenü (Rundheit, Schärfe, Neigung); Riesenzähne offen größer.
+
+Dazu:
+- Rig-Tab in allen Viewports, Augen evtl. als eigener Tab (Schlitzauge bleibt).
+- **Seitenleiste rechts immer offen.**
+- Danach Beine, Flügel, Schuppen, Muster, Shading. Die Wesen sollen dynamisch bleiben, Varianten erzeugt der Assistent selbst.
+
+**Florians Frage zu den Lofts (12.10.):** Wir bleiben bei **Shapes → Loft → Käfig**.
+- Der Loft (Querschnitte aus den drei Profilen) legt die Form fest.
+- Der Catmull-Clark-Käfig ist das Netz darüber: Kanten, Maulschnitt, feste Topologie.
+- Lange Hälse brauchen einen Loft entlang einer gebogenen Wirbelsäule.
 
 ## Was steht
 
-Florian baut den Charaktereditor neu: Er zieht drei Profile (Seite, Front, Top), und daraus entsteht live das Wesen. Diese Sitzung lieferte die Oberfläche als **eigenständige Desktop-App** (`apps/editor`, Electron 44 + Vite 8 + React + three r186 WebGPU) und das DOM-freie Formatpaket `packages/shape`.
+**Bedien-Versuch im Editor** (E2E `apps/editor/e2e/maul.spec.ts` plus die 12 bisherigen, alle grün mit WebGPU):
+- **Seitenleiste immer offen:** Tab-Menü oben, Library unten (aufklappbar, ⌘L). Die Viewports sind 604 px breit, das maximierte Quadrat 988 px.
+- **Tab-Punkte:** braun Zähne, blau Maul, weiß Augen (Platzhalter), orange Rig (auch im 3D), pink vergrößern. Zustand `ebene` in `uiStore`.
+- **Maul-Tab:**
+  - Zeichenstift: Der Start rastet auf Achse bzw. Kontur ein, Punkte holen ihre Tiefe von der Fläche (`src/maul/maulFlaeche.ts`), Enter beendet.
+  - Bearbeiten über 3D-Knoten, je Ansicht zwei Koordinaten (`packages/shape/src/versuch/linie3d.ts`).
+  - Kiefer gleich/getrennt, Tab Fressen = offen (Vorschlag aus „zu“).
+  - Regler „Öffnung“; das 3D baut beim Loslassen (`src/maul/maulKoerper.ts`).
+- **Zahn-Tab:** Anzahl je Kiefer, symmetrisch gesetzt; Regler je Zahn (im Tab Fressen für offen). Die Zähne sind im Dokument, aber **noch nicht im 3D**. Der Zahn-Versuch `zaehne.ts` wurde parallel gebaut.
+- **Rig-Tab:** Anzeige der geschätzten Gelenke und Knochen (`src/maul/RigZeichnung.tsx`).
+- **Dokument:** `maul` (3D-Lippenlinien zu/auf) und `zaehne` (Zahnreihen mit Werten für offen), optional in Version 0 (`packages/shape/src/dokument.ts`), Rundreise getestet.
 
-- **Layout** exakt nach Florians Figma-Vorlage: Menüleiste, vier Viewports mit gemeinsamem Verlauf `#B5BB72` → `#D0FF47`, Kachelquadrat, Spiegelachse, Eckknöpfe, Richtungslabels, Irish Grover. Vergleichsbild: [`docs/progress/editor/vergleich-grundlayout.png`](progress/editor/vergleich-grundlayout.png).
-- **Navigation wie Blender:** Rad zoomt (2D zum Cursor), mittlere Taste verschiebt, rechte Taste dreht im 3D; Pos1 setzt zurück, ⌃Leertaste maximiert.
-- **Animationen** mit Federn:
-  - Der pinke Knopf macht den Viewport quadratisch auf volle Höhe, er bleibt auf seiner Seite.
-  - Die Library gleitet von rechts herein, die Viewports werden schmaler.
-- **Kurven:**
-  - Kontur 3 px, Punkte Ø 10 px, Griffe als 6-px-Quadrate
-  - ⌥ am Griff macht eine Ecke
-  - Rechtsklick fügt Punkte ein, löscht oder glättet sie
-  - Punkte von Hand wie in Illustrator (Zeichenstift P, + / −, ⌥-Klick wandelt um); keine automatischen Punkte (von Florian verworfen); Löschen passt die Nachbargriffe an
-  - Spiegelhälfte weiß, Achspunkte auf der Achse
-  - Startkreis mit 4 Punkten (Seite) bzw. 3 (Front, Top)
-  - Auswahlrechteck und ⇧-Klick wie Illustrator, gewählte Punkte ziehen gemeinsam, Pfeiltasten verschieben (⇧ zehnfach)
-  - Auswahl je Viewport, ⌘Z/⇧⌘Z
-- **Ein Objekt, drei Ansichten** (Florians Nachtrag): Geteilte Ausdehnungen sind gekoppelt. Ziehen in einer Ansicht bewegt die anderen live mit, mit proportionalem Abfall wie in Blender; ein Rückgängig-Schritt.
-- **3D drehen** auch mit linker Taste, ⌃-Klick und Trackpad (zwei Finger); Pinch zoomt.
-- **3D:** Matcap im Blender-Solid-Look, an die Kugel der Vorlage angepasst; Kachel; harter Schatten mit eigener Sonne. Der Körper ist der **Platzhalter-Loft** und live aus den drei Profilen gebaut. Drei Kreise ergeben eine Kugel, ein herausgezogener Seitenpunkt eine runde Spitze. Die Vertexzahl ist fest.
-- **Menü:**
-  - Editor/Fressen-Tabs, „Neue Pose ▼“ (Ruhen, Laufen, Inklusion; Rechtsklick entfernt)
-  - Größenregler 25–300 %
-  - „Neues Wesen“ startet immer als Kugel, mit Rückfrage bei Änderungen
-  - „Speichern“ schreibt JSON plus Vorschau-PNG nach `~/Documents/early earle Editor/Bibliothek/`
-  - Die Library zeigt die gespeicherten Wesen als Karten, ein Klick lädt sie.
-- **Eigene Entwürfe zur Abnahme** (nicht in der Vorlage):
-  - Liquid Glass für Library, Menüs, Dialoge und Hinweise
-  - Earle-Ornament am Fuß der Library
-  - Größenregler als Pille
+**Technik-Versuche** (`packages/shape/src/versuch/`, Tests grün):
 
-**Prüfungen:**
-- Typen, Lint und Unit-Tests: `packages/shape` 25, `apps/editor` 6
-- E2E 12/12 auf echter GPU
-- WebGL2-Rückfall geprüft
-- Electron im Dev- und Produktionsmodus sowie die gepackte `.app` per Rauchtest (WebGPU, Speichern auf Platte)
+| Datei | Inhalt |
+|---|---|
+| `maul.ts` | Maul-Käfig mit fester Topologie (378 Punkte). Naht mit oberer/unterer Kopie und Reißverschluss bis zum offenen Mundwinkel; Ringe auf die Linie verteilt, mit Lippenband. Tasche: geschlossen eine Linse, offen eine Bohne. Getrennte Unterlippe, verdeckt nach innen. Offene Haut per ARAP an Lippen und offener Seitensilhouette. `maulZwischen` mit Knochen + Korrektur, `reissverschluss` |
+| `kiefer.ts` | Starre Anpassung (Horn), Schraubachse, Öffnungsart, LBS, ARAP; synthetisch exakt (`kiefer.test.ts`) |
+| `flaechenlinie.ts` | Linie auf der Fläche (Strahlraster auf S0), Ziehen in jeder Ansicht, Konsistenzmaß |
+| `pruefen.ts` | Selbstdurchdringung (mit Bereichen), Orientierung, Randketten durch Unterteilungen |
+| `vorlagen.ts`, `vorlagen/*.json` | Tiger, Rex, Robbe, Langhals als Testvorlagen |
 
-## Offen
+- **Nachgezogen:** Rex, Robbe und Langhals aus Florians Bögen (`apps/editor/scripts/nachziehen/`, Daten unter `apps/editor/public/versuch/<wesen>/`, Prüfbögen `docs/progress/editor/nachziehen-*.png`).
+- **Ansehen:** `?versuch=maul&wesen=tiger|rex|robbe|langhals&zustand=zu|0.5|auf&kaefig=1&nah=1`. Bilder macht `node apps/editor/scripts/maul-bilder.mjs <wesen> [ordner] [zustände] [azimut]`.
 
-- **Florians Abnahme**: Vergleichsbild, Bedienung im echten Fenster (`pnpm editor`), seine Entwürfe (Glas, Ornament, Regler).
-- Die **echte Bauweise** (große Sitzung nächste Woche): Profile → Körper ersetzt den Platzhalter-Loft. Danach Module aus der Library (Augen, Flügel …) und Posen/Blendshapes; das Format `ee-wesen` v0 wächst mit.
-- **Posen** sind nur Tabs; Bearbeiten folgt.
-- Braune und blaue Eckknöpfe sind ohne Funktion.
-- Kein Schließen-Schutz für ungespeicherte Änderungen beim Beenden der App.
-- Trackpad: Zwei-Finger-Wischen zoomt (wie das Mausrad); Blender-artiges Drehen per Trackpad ist nicht eingebaut.
-- Kein App-Icon (Standard-Electron-Icon).
-- Bibliotheksordner im Repo (`content/`) statt unter Dokumente: entscheiden, wenn das Spiel Wesen lädt.
+**Wichtigste Messwerte:**
+- Lippenkante 1,5–2,8 px genau.
+- Gelenkschätzung synthetisch < 0,1°.
+- Rex: Unterkiefer 52°, Restanteil 25 % (gemischt). Robbe: Ziehen. Tiger: Unterkiefer gedehnt (+61 %). Langhals: Kopf kippt 36°.
+- Florians Ansichten widersprechen sich: offen bis 20 px, Rex Breite Front/Top 7–9 %.
 
-## Machbarkeit Tiger-Konzept (11.10. abends)
+## Offen (Reihenfolge für die große Sitzung)
 
-Florians Konzept: Silhouetten plus Kantenlinien in jeder Ansicht, Maul zu und offen als Blendshape mit Kieferknochen. Ergebnis: [`docs/research/2026-10-11-silhouetten-kanten-machbarkeit.md`](research/2026-10-11-silhouetten-kanten-machbarkeit.md), als Seite: https://claude.ai/artifact/L2T2sGQUfnfxExAmorkoY9
+1. **Wirbelsäulen-Röhre:** Der Langhals zerfällt mit Ringen entlang x. Dazu Pose-Profile mit gleicher Punktstruktur; der Bedien-Versuch nutzt für zu und offen dieselben Profile.
+2. **Durchdringungen beseitigen.** Geschlossen sind es 130 (Tiger) bis 1100 Dreieckspaare, offen 300 bis 2100. Ursachen (Rückverfolgung auf Käfigflächen):
+   - Ein einzelner Mundwinkelpunkt → Mundwinkel-Zone mit Halbwinkel-Knochen.
+   - Die Anpassung schwingt über → Ausgleich mit Laplace-Regularisierung, Grenzmasken.
+   - Tasche gegen Lippen → Tasche als Versatz der Kiefer-Innenflächen plus Schieben per Abstandsfeld; beim Überbiss eine S-Spalte.
+   - Der Unterkiefer schwenkt in Kehle oder Boden → Kehlkette und Bodengrenze.
+3. **Zähne im 3D:** `zaehne.ts` ins Netz (starr am Kiefer, Gewichte vom Zahnfleisch), dazu die Kollisionsprüfung je Zustand.
+4. **Rig-Tab bearbeitbar:** Gelenk ziehen, die Linien folgen dem Knochen (Korrektur relativ zum Kiefer).
+5. **Augen-Tab:** zuerst gemalt (SDF im Körpershader: Schlitz, Knopf, Ausdruck), dann Kugel und Mandel mit Lidöffnung im Netz.
+6. **Spiel-Laufzeit:** Skinning, höchstens 3 Morph-Ziele, Reißverschluss als Attribut je Punkt. Danach Beine (Rig-Vorlagen und Gangtabelle nach Spore) und der Variantengenerator.
 
-- **Machbar** mit vier Leitplanken:
-  - Linien sind 3D-Linien, gekoppelt über alle Ansichten.
-  - Eine Kante braucht einen Winkel aus einer Silhouette.
-  - Darunter liegt ein fester Grundkäfig mit Catmull-Clark und halbscharfen Kanten.
-  - Das Maul bekommt Kieferknochen plus Korrektur-Blendshape und eine Naht mit Reißverschluss.
-- **Versuche** (`packages/shape/src/versuch/`, im Editor `?versuch=subd&fall=…&form=…`, Bilder `docs/progress/editor/versuch-subdivision.png`):
-  - Ein angepasster Käfig trifft die Kugel auf unter 0,4 px; ungepasst ist sie 4–15 px zu klein.
-  - Ein Kasten mit verjüngten Kanten zeigt scharf vorn oben, rund nach hinten.
-- **Literatur:** Die Recherche stützt den Grundkäfig mit Creases (Gravity Sketch, Blender, OpenSubdiv). Es gibt keine JavaScript-Bibliothek mit Kanten, die eigene Umsetzung steht. Flächen aus Kurvennetzen können auslaufende Linien nicht.
-
-## Tiger-Käfig Schritt für Schritt (12.10.)
-
-Florian fragte, wie aus Silhouetten und Kanten genau das Netz entsteht, und ob Edgeloops und Polyverteilung an seine Formen angepasst werden können. Antwort als Seite: https://claude.ai/artifact/VqxsA1sx2EMnZUFiqPDpqd
-
-- Versuch `packages/shape/src/versuch/tigerKaefig.ts`:
-  - Ringe aus Seite, Top und Front, vorn ein Kasten-Querschnitt
-  - Stirnfläche als 4×4-Gitter, hinten ein Pol
-  - Kanten verjüngt
-  - Anpassung per inverser Unterteilung
-  - `formStationen` setzt Ringe auf Eckpunkte und verteilt sie nach Krümmung
-- Im Editor: `?versuch=tigerkaefig&schritt=1…7`. Bilder `docs/progress/editor/tiger-schritt-*.png`, Skript `apps/editor/scripts/tiger-schritte.mjs`.
-- **Behoben** im Renderer:
-  - Die Fläche bleibt unsichtbar, bis sie Geometrie hat. Sonst übersetzt WebGPU den Shader ohne Positionen („Vertex attribute position not found“) und behält diesen Stand.
-  - Neue Geometrie wird neu angelegt, statt Attribute auszutauschen.
-  - Nach dem Übersetzen (`compileAsync`) wird noch einmal gezeichnet.
+Außerdem:
+- **Florians Abnahme** steht aus:
+  - Bedienung (Seitenleiste, Tab-Punkte, Farben für Rig und Augen sind vorläufig)
+  - Grundlayout, Glas, Ornament (Entwürfe von mir)
+- Kein Schließen-Schutz, kein App-Icon (wie 11.10.).
 
 ## Nächster Schritt
 
-Florian testet die App und gibt Rückmeldung. Danach beginnt die große Sitzung zur Bauweise auf diesem Gerüst. Ihr Einstieg:
-- `packages/shape` (Profile, Format)
-- `apps/editor/src/three/Renderer3D.ts` (`setzeNetz`)
-- `packages/shape/src/platzhalter/loft.ts` (wird ersetzt)
+Florian probiert den Maul-Tab aus und entscheidet die Reihenfolge der großen Sitzung (Vorschlag oben).
+
+Einstieg für Fable:
+- `docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`, Abschnitte 4–6
+- `packages/shape/src/versuch/maul.ts`
+- `apps/editor/src/maul/`
