@@ -22,6 +22,11 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - **Eckpunkte sind Tabs:** braun Zähne, blau Maul, weiß Augen (folgt), orange Rig, pink maximieren. Zustand `ebene` in `uiStore`; Profile sind nur im Tab Form bearbeitbar.
   - **Maullinien sind 3D-Linien:** Jeder Knoten ist ein 3D-Punkt, jede Ansicht bearbeitet zwei Koordinaten, und neue Punkte holen die Tiefe von der Fläche (Strahlraster). Gespeichert in `dok.maul` (zu/auf), Zähne in `dok.zaehne`.
   - **Bauweise:** Florian fragte, ob wir weg von den Lofts sind. Nein: **Shapes → Loft → Käfig**. Der Loft gibt die Form, der Catmull-Clark-Käfig ist das Netz darüber.
+  - **Zahn-Tab:**
+    - Die Zähne hängen am Zahnfleisch des Maul-Käfigs (`packages/shape/src/versuch/zaehne.ts`, Editor `src/maul/zahnKoerper.ts`).
+    - Seite und Front zeigen Umrisse (`src/maul/ZahnEbene.tsx`). Klick wählt, Ziehen verschiebt längs des Zahnfleischs.
+    - Zähne, die geschlossen stören, sind rot; die Vorschläge stehen in der Leiste.
+    - Das Dokument speichert die rechte Hälfte, die Tiefe ist ¾ der Breite.
   - Ergebnis: `docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`.
 
 ## Arbeitsweise
@@ -38,6 +43,10 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 - **zod verwirft unbekannte Felder** beim Laden: Neue Dokumentfelder zuerst ins `DokumentSchema`, dann der Rundreise-Test.
 - **Maul-Körper baut ≈ 0,4 s:** nicht während einer Geste neu bauen, sondern beim Loslassen (`gesteStart`); der Regler „Öffnung“ rechnet nur die Zwischenstufe.
 - **Catmull-Clark hier ohne Randregel:** Das Maul bleibt eine geschlossene Fläche (Naht plus Tasche), offene Ränder würden falsch geglättet.
+- **2D-Ebenen bauen das Maul nie selbst:** `maulZuletzt(dok)` liefert nur den gemerkten Bau. Sonst baute jede Ansicht während einer Geste neu (≈ 0,4 s). Neu zeichnen über `useMaulInfo`.
+- **Zahn-Prüfung dauert 75–185 ms:** Sie läuft nur ohne Geste (`gesteStart`), während einer Geste gilt `zahnMeldungenZuletzt()`.
+- **Regler behalten den Fokus:** Der Tastaturfilter darf nur Texteingaben ausnehmen. Sonst wirkt ⌘Z nach dem Ziehen eines Reglers nicht (Fehler 12.10.). Pfeiltasten bleiben beim Regler.
+- **Gemalte Flächen auf der Haut** (Augen-Versuch): Den Umlaufsinn nach der Hautnormalen ausrichten (das Material ist einseitig, Florians Umrisse laufen mal so, mal so). Linien wie das Lid als Strich bauen, nicht als Fläche zur Mitte.
 
 - **macOS unterscheidet keine Groß-/Kleinschreibung:** `View2D.tsx` neben `view2d.ts` bricht tsc (TS1149). Deshalb heißt die Mathe-Datei `ansicht2d.ts`.
 - **CSS-Reihenfolge:** `.glas` darf kein `position` setzen. Es überschrieb `position: absolute/fixed` von Aufklappmenü und Kontextmenü, die Menüleiste verrutschte.

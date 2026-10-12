@@ -2,7 +2,7 @@
 
 > Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**: Wo stehen wir, was ist offen, was ist der nächste Schritt. Historie in Git.
 
-**Stand:** 2026-10-12 vormittags. Sitzung „Maul, Zähne, Rig: Recherche und Versuche“ auf Florians Mac, Vorbereitung der großen Fable-Sitzung ab 13.10.
+**Stand:** 2026-10-12 mittags. Sitzung „Maul, Zähne, Rig: Recherche und Versuche“ auf Florians Mac, Vorbereitung der großen Fable-Sitzung ab 13.10.
 - Branch `claude/editor-grundlayout`, gepusht. Merge nach `main` erst nach Florians Abnahme.
 - Plan: [`docs/plans/2026-10-12-maul-zaehne-rig.md`](plans/2026-10-12-maul-zaehne-rig.md)
 - **Ergebnis-Dokument:** [`docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`](research/2026-10-12-maul-kiefer-zaehne-augen.md), als Seite: https://claude.ai/artifact/WG3YJPn4SuL5acnY9yR9s1
@@ -39,7 +39,12 @@ Dazu:
   - Bearbeiten über 3D-Knoten, je Ansicht zwei Koordinaten (`packages/shape/src/versuch/linie3d.ts`).
   - Kiefer gleich/getrennt, Tab Fressen = offen (Vorschlag aus „zu“).
   - Regler „Öffnung“; das 3D baut beim Loslassen (`src/maul/maulKoerper.ts`).
-- **Zahn-Tab:** Anzahl je Kiefer, symmetrisch gesetzt; Regler je Zahn (im Tab Fressen für offen). Die Zähne sind im Dokument, aber **noch nicht im 3D**. Der Zahn-Versuch `zaehne.ts` wurde parallel gebaut.
+- **Zahn-Tab:**
+  - Anzahl je Kiefer, symmetrisch gesetzt; Regler je Zahn (im Tab Fressen für offen).
+  - Die Zähne erscheinen **im 3D** am Zahnfleisch und folgen Öffnung, Knochen und Korrektur.
+  - Seite und Front zeigen sie als Umrisse (`src/maul/ZahnEbene.tsx`): Klick wählt, Ziehen verschiebt längs des Zahnfleischs, der Spiegelpartner folgt.
+  - Zähne, die geschlossen stören, sind rot (2D und 3D). Befund und Vorschläge stehen in der Leiste, ein Klick übernimmt.
+- **⌘Z nach Reglern** wirkt jetzt. Vorher schluckte der fokussierte Regler das Kürzel.
 - **Rig-Tab:** Anzeige der geschätzten Gelenke und Knochen (`src/maul/RigZeichnung.tsx`).
 - **Dokument:** `maul` (3D-Lippenlinien zu/auf) und `zaehne` (Zahnreihen mit Werten für offen), optional in Version 0 (`packages/shape/src/dokument.ts`), Rundreise getestet.
 
@@ -52,9 +57,12 @@ Dazu:
 | `flaechenlinie.ts` | Linie auf der Fläche (Strahlraster auf S0), Ziehen in jeder Ansicht, Konsistenzmaß |
 | `pruefen.ts` | Selbstdurchdringung (mit Bereichen), Orientierung, Randketten durch Unterteilungen |
 | `vorlagen.ts`, `vorlagen/*.json` | Tiger, Rex, Robbe, Langhals als Testvorlagen |
+| `zaehne.ts` | Zähne am Zahnfleisch (feste Stelle u, Rahmen zum Gegenkiefer, Form, „außen“, Werte für offen), Netze, Prüfung im geschlossenen Maul mit Vorschlägen; 12 Tests |
 
 - **Nachgezogen:** Rex, Robbe und Langhals aus Florians Bögen (`apps/editor/scripts/nachziehen/`, Daten unter `apps/editor/public/versuch/<wesen>/`, Prüfbögen `docs/progress/editor/nachziehen-*.png`).
-- **Ansehen:** `?versuch=maul&wesen=tiger|rex|robbe|langhals&zustand=zu|0.5|auf&kaefig=1&nah=1`. Bilder macht `node apps/editor/scripts/maul-bilder.mjs <wesen> [ordner] [zustände] [azimut]`.
+- **Augen-Versuch:** Florians Augenumrisse sind auf die Haut gemalt (Rex Mandel, Robbe Knopf, Langhals Schlitz) und fahren mit dem Schädel mit (`docs/progress/editor/augen-*.png`).
+- **Rex mit Zähnen:** 14 Oberzähne außen nach Bogen 06 (`zaehne-rex-*.png`, `vergleich-zaehne-rex.png`). Die Prüfung meldet 4: Überlappung an der Schnauzenspitze, 0,7 px im Unterkiefer, 0,9 px zu wenig Luft.
+- **Ansehen:** `?versuch=maul&wesen=tiger|rex|robbe|langhals&zustand=zu|0.5|auf&kaefig=1&nah=1` (`&zaehne=0` ohne Zähne). Bilder macht `node apps/editor/scripts/maul-bilder.mjs <wesen> [ordner] [zustände] [azimut]`.
 
 **Wichtigste Messwerte:**
 - Lippenkante 1,5–2,8 px genau.
@@ -70,9 +78,14 @@ Dazu:
    - Die Anpassung schwingt über → Ausgleich mit Laplace-Regularisierung, Grenzmasken.
    - Tasche gegen Lippen → Tasche als Versatz der Kiefer-Innenflächen plus Schieben per Abstandsfeld; beim Überbiss eine S-Spalte.
    - Der Unterkiefer schwenkt in Kehle oder Boden → Kehlkette und Bodengrenze.
-3. **Zähne im 3D:** `zaehne.ts` ins Netz (starr am Kiefer, Gewichte vom Zahnfleisch), dazu die Kollisionsprüfung je Zustand.
+3. **Zähne:** Der Versuch steht. Zu entscheiden bzw. zu bauen:
+   - Rahmen je Öffnungsart (Kippen am Knochen, Ziehen an den Lippen).
+   - Option „senkrecht in der Seite“: Im Rex-Bogen stehen die Zähne senkrecht, im Versuch kippen sie nach hinten.
+   - Berührung erlauben, Prüfung auch offen und bei Zwischenstufen.
 4. **Rig-Tab bearbeitbar:** Gelenk ziehen, die Linien folgen dem Knochen (Korrektur relativ zum Kiefer).
-5. **Augen-Tab:** zuerst gemalt (SDF im Körpershader: Schlitz, Knopf, Ausdruck), dann Kugel und Mandel mit Lidöffnung im Netz.
+5. **Augen-Tab:**
+   - An der Fläche verankert (Käfigfläche plus Lage) statt starr am Kiefer. Beim Langhals sinkt das starre Auge offen ein.
+   - Gemalt als Abstandsfeld im Körpershader (Schlitz, Knopf, Mandel, Ausdruck), danach Kugel und Mandel mit Lidöffnung im Netz.
 6. **Spiel-Laufzeit:** Skinning, höchstens 3 Morph-Ziele, Reißverschluss als Attribut je Punkt. Danach Beine (Rig-Vorlagen und Gangtabelle nach Spore) und der Variantengenerator.
 
 Außerdem:

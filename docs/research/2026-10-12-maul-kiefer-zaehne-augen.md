@@ -14,16 +14,19 @@
    - Maullinie ab Achse bzw. Kontur zeichnen. Neue Punkte rasten auf der Fläche ein, Enter beendet.
    - Kiefer gleich oder getrennt, offener Zustand im Tab Fressen.
    - Regler „Öffnung“, Zahnanzahl je Kiefer mit Zahnmenü. Die Rig-Anzeige zeigt das vorgeschlagene Gelenk.
+   - Zähne im 3D und als Umrisse in Seite und Front: Klick wählt, Ziehen verschiebt längs des Zahnfleischs. Zähne, die geschlossen stören, werden rot, mit Vorschlägen per Klick.
 3. **Maul im Netz funktioniert im Prinzip** (Tiger, Rex, Robbe, Langhals):
    - Die Topologie ist fest: 378 Käfigpunkte für jedes Wesen und jeden Zustand.
    - Die Lippenkante liegt auf Florians Linien, Abweichung 1,5–2,8 px.
    - Ein Reißverschluss trägt den wandernden Mundwinkel, die Tasche ist geschlossen flach und offen eine Bohne.
    - Zwischenstufen kommen aus Knochen plus Korrektur.
    - **Offen ist die Sauberkeit:** An Mundwinkeln, Lippenkanten und in der Tasche durchdringen sich noch Flächen. Ursachen und Abhilfe stehen in Abschnitt 4.
+   - **Zähne** hängen am Zahnfleisch und folgen jedem Zustand, die Wurzel liegt exakt auf dem Zahnfleisch. Rex: 14 Oberzähne außen nach Bogen 06 (Abschnitt 3.4).
+   - **Augen** sind gemalt auf der Haut (Schlitz, Knopf, Mandel) und fahren mit dem Schädel mit (Abschnitt 3.5).
 4. **Drei Denkfehler, die das System auffangen muss:**
    - Lange Hälse brauchen eine Wirbelsäule statt Ringen entlang x (Langhals-Versuch).
    - Gezeichnete Ansichten widersprechen sich: offen bis 20 px, beim Rex Breite Front/Top 7–9 %. Deshalb muss die Kopplung die gemeinsame Koordinate führen.
-   - Riesige Zähne passen geschlossen nicht. Florians Lösung (offen größer) ist richtig, braucht aber eine Kollisionsprüfung.
+   - Riesige Zähne passen geschlossen nicht. Florians Lösung (offen größer) ist richtig und braucht eine Kollisionsprüfung. Die Prüfung ist gebaut und schlägt Lösungen vor (Abschnitt 3.4).
 5. **Dynamik und Varianten** gehen, wenn das Dokument nur Absicht speichert und alles daraus neu gebaut wird.
    - Feste Grundtopologie, Anker auf der Fläche bzw. der Wirbelsäule und benannte Zustände wie `maul.auf` und `auge.zu`, wie bei Spore.
    - Varianten entstehen durch Mischen, Teile-Tausch und Mutation, mit Florians Auswahl als Stilmaß (B4).
@@ -38,8 +41,8 @@
 | Offener Zustand mit eigenen Linien und Silhouetten | **richtig**; der Mundwinkel wandert beim Öffnen (Tiger 58 px), deshalb **Reißverschluss**: Die Naht hat die offene Länge und ist geschlossen teils zu | Tiger-Bilder: geschlossen nur der vordere Teil sichtbar, bei 35 % öffnet vorn zuerst |
 | Maul automatisch ins Netz | **machbar** mit fester Topologie; Lippenkante 1,5–2,8 px genau | Abschnitt 3 |
 | Maultasche geschlossen so, dass sie optimal morpht | **machbar**: geschlossen flache Linse, offen Bohne; gleiche Punkte | Abschnitt 3 |
-| Zähne immer richtig | **machbar**, wenn jeder Zahn am Zahnfleisch hängt (folgt Knochen und Korrektur) | Zahn-Versuch (Abschnitt 3.4) |
-| Riesenzähne offen größer | **richtig** (bewährter Trickfilm-Kniff); geschlossen braucht es eine Kollisionsprüfung | Recherche B1 (OmniFaceRig schiebt per SDF), Zahn-Versuch |
+| Zähne immer richtig | **gebaut**: Jeder Zahn hängt an einer festen Stelle des Zahnfleischs und folgt jedem Zustand | Zahn-Versuch: Wurzel exakt auf dem Zahnfleisch zu, 50 %, offen (Abschnitt 3.4) |
+| Riesenzähne offen größer | **richtig** (bewährter Trickfilm-Kniff); geschlossen braucht es eine Kollisionsprüfung | Prüfung gebaut: Tiger mit 6 langen Zähnen 5,7–11,1 px im Unterkiefer, jeder Vorschlag (außen, kürzen, offen größer) macht sie frei |
 | Rig-Tab: Knochen zu/auf bearbeiten | **richtig**, aber Linien und Knochen dürfen sich nicht widersprechen: Knochen = Bewegung, Linien = Feinform relativ zum Kiefer | Gelenkschätzung exakt (synthetisch 0,1°), Rex: Unterkiefer 52°, Oberkiefer 16° |
 | Augen als eigener Tab | **ja**: ein Auge ist ein kleines Maul (Lidlinien, Winkel, Blinzeln = zu, Augapfel innen); Schlitzauge bleibt gemalt | Recherche B3 |
 
@@ -89,8 +92,11 @@ Web-Modus (`pnpm --filter @ee/editor dev:web`, Port 5180) oder als App (`pnpm ed
 - **3D:** Körper mit Maul, Rachen (maroon), Lippenband (cremerosa), Regler „Öffnung“ 0–100 % (Knochen plus Korrektur, mit Reißverschluss). Gebaut wird beim Loslassen (≈ 0,4 s).
 - **Zähne (braun):**
   - Anzahl je Kiefer (−/+); die Zähne werden symmetrisch gesetzt, bei ungerader Zahl steht einer auf der Achse.
-  - Ein gewählter Zahn hat Regler für Länge, Breite, Rundheit, Schärfe, Neigung, Biegung, Spreizung und „außen“.
+  - Die Zähne erscheinen im 3D und als Umrisse in Seite und Front.
+  - Ein Klick wählt einen Zahn. Ziehen verschiebt ihn längs des Zahnfleischs; der Spiegelpartner folgt.
+  - Der gewählte Zahn hat Regler für Länge, Breite, Rundheit, Schärfe, Neigung, Biegung, Spreizung und „außen“.
   - Im Tab Fressen gelten die Regler für den offenen Zustand.
+  - Zähne, die geschlossen stören, sind rot. In der Seitenleiste stehen Befund und Vorschläge, ein Klick übernimmt.
 - **Rig (orange):** vorgeschlagene Kiefergelenke und Knochen in Seite und Front, dazu Winkel und Restanteil in der Leiste. Verschieben folgt mit der Bauweise.
 - **Prüfung:** E2E `apps/editor/e2e/maul.spec.ts` plus die 12 bisherigen Tests, alle grün mit WebGPU.
 
@@ -146,8 +152,72 @@ Werkzeug: `apps/editor/scripts/nachziehen/` (Python, nur Standardbibliothek). Pr
 - **Tempo:** S0 bauen 85–135 ms, Raster 6–23 ms, ein Strahl 1,1–1,4 µs, eine Linie mit 100 Proben 0,14–0,35 ms.
 - **Grenze des Ein-Ansicht-Modells:** In der Heimatansicht verdeckte Punkte (Wange hinter der Schnauze in der Front) lassen sich so nicht speichern. Deshalb speichert der Editor echte 3D-Punkte.
 
-### 3.4 Zähne
-_(wird mit dem Zahn-Versuch ergänzt)_
+### 3.4 Zähne (`packages/shape/src/versuch/zaehne.ts`, im Editor `apps/editor/src/maul/zahnKoerper.ts` und `ZahnEbene.tsx`)
+
+**Bauweise:**
+- **Zahnfleisch:** die Mitte zwischen Lippenrand und innerer Lippe auf der Grenzfläche des Käfigs, in jeder Lage (zu, offen, jede Zwischenstufe).
+- **Lage u:** von 0 (Mitte) bis 1 (Mundwinkel). u ist eine feste Stelle des Käfigs, nicht die Bogenlänge. Der Zahn rutscht deshalb nicht, wenn sich die Lippe beim Öffnen dehnt.
+- **Rahmen:** t längs des Zahnfleischs, d zum Zahnfleisch des Gegenkiefers, i nach innen. Links ist das Spiegelbild von rechts.
+- **Form:** ein gebogener Kegel, die Wurzel steckt mit 15 % der Länge im Zahnfleisch.
+  - Rundheit: 0 = Klinge, 1 = rund, bis 2 = kastig (Querschnitt als Superellipse).
+  - Schärfe: 0 = Kuppe, ⅓ = gerader Kegel, 1 = Nadel.
+  - Biegung: Kreisbogen bis 90°.
+  - Spreizung: seitliche Kippung längs des Zahnfleischs.
+- **„außen“** (Rex-Fänge, Hauer): Der Zahn setzt am Lippenrand an, halbe Tiefe plus 1,5 px nach außen versetzt, und hängt über der Gegenlippe.
+- **Werte für offen** (`auf`) werden mit der Öffnung stufenlos überblendet: zu + (auf − zu)·α. Das ist Florians „Riesenzähne offen größer“.
+
+**Messwerte** (12 Tests am Tiger):
+- **Reihen** mit 1–9 Zähnen je Kiefer sind spiegelgleich (< 10⁻⁹). Bei ungerader Zahl steht ein Zahn auf der Achse. Die untere Reihe steht standardmäßig in den Lücken der oberen.
+- **Wurzel und Starrheit:** Die Wurzel liegt in jedem Zustand (zu, 50 %, offen) exakt auf dem Zahnfleisch, auch mit Werten für offen. Der Zahn bleibt starr (Abstände ändern sich ≤ 7·10⁻⁸).
+- **Netze** sind geschlossen und nach außen gerichtet.
+- **Tempo:**
+  - 18 Zahnnetze: 1 ms
+  - Zahnfleisch: 0,04 ms
+  - Unterteilung: 16 ms
+  - Ketten: 28 ms, einmal je Topologie
+  - Prüfung: 75 ms ohne Befund, 185 ms mit Vorschlagsuche
+
+**Prüfung im geschlossenen Maul** (`zahnPruefen`):
+- **Befunde:**
+  - Zahn im Gegenkiefer, mit Tiefe
+  - Zahn sticht hinter dem sichtbaren Mundwinkel aus der Haut
+  - außen-Zahn mit weniger als 1 px Luft
+  - Zähne überlappen sich
+- **Vorschläge** werden nie still angewandt: außen stellen, kürzen, „geschlossen klein, offen groß“, neigen, schmaler, nach vorn.
+- **Tiger:**
+  - Sechs lange Oberzähne (18,4 px) stoßen 5,7–11,1 px in den Unterkiefer.
+  - Jeder der drei Vorschläge macht alle frei: außen, kürzen, offen größer.
+- **Rex** (14 Oberzähne außen, nach Bogen 06): 4 melden sich.
+  - Die vordersten überlappen sich an der Schnauzenspitze (2,7 und 6,8 px).
+  - Einer stößt 0,7 px in den Unterkiefer.
+  - Einem fehlen außen 0,9 px Luft.
+
+**Im Editor (Zahn-Tab):**
+- Die Zähne erscheinen im 3D und folgen Öffnung, Knochen und Korrektur.
+- Seite und Front zeigen ihre Umrisse.
+  - Ein Klick wählt einen Zahn, Ziehen verschiebt ihn längs des Zahnfleischs.
+  - Der Spiegelpartner folgt, der Mittelzahn bleibt auf der Achse.
+- Störende Zähne werden rot, in 2D und 3D. Befund und Vorschläge stehen in der Seitenleiste, ein Klick übernimmt einen Vorschlag.
+- Die Prüfung läuft beim Loslassen. Während einer Geste gilt der letzte Stand, damit die Regler flüssig bleiben.
+- **Behoben:** Nach dem Ziehen eines Reglers behielt dieser den Fokus, und ⌘Z wirkte nicht. Jetzt wirken ⌘-Kürzel auch dort.
+- **Bilder:**
+  - `zaehne-rex-zu/0.5/auf.png`
+  - `zahn-tab.png` (Editor mit rotem Zahn und Vorschlag)
+  - `vergleich-zaehne-rex.png` (Florians Bogen | Versuch)
+
+**Befunde und Entscheidungen für Florian:**
+1. **Zähne folgen den Lippen, nicht dem Kieferknochen.**
+   - Der Rahmen kommt aus der Fläche (Richtung Gegenkiefer). Gegen den Knochen gerechnet drehen sich die Zähne des Tigers zwischen zu und offen zusätzlich, oben um 2–131°, unten um 53–79°. Grund: Der Tiger öffnet durch Ziehen, die Korrektur überwiegt.
+   - Dadurch stehen sie offen quer über der Öffnung, wie in deinen offenen Bögen. Starr mit dem Knochen zeigten sie beim Tiger aus der Öffnung heraus.
+   - Vorschlag: je Öffnungsart. Kippen (Rex) folgt dem Knochen, Ziehen (Robbe, Tiger) den Lippen.
+2. **Senkrecht oder schräg.**
+   - Im Rex-Bogen stehen die Zähne senkrecht. Im Versuch kippen sie nach hinten, weil die Lippe dort schräg zum Gegenkiefer läuft (Vergleichsbild).
+   - Abhilfe: Option „senkrecht in der Seitenansicht“ oder eine Grundneigung je Wesen.
+3. **Dichte Reihen melden Überlappung.** Florians Rex-Zähne berühren sich. Die Prüfung meldet das als Überlappung. Berührung sollte deshalb ein eigener, erlaubter Fall werden.
+4. **Prüfhinweis zur Taschenlinse geprüft.**
+   - Der Zahn-Versuch vermutete die Durchdringungen im geschlossenen Maul in der Öffnungsrichtung der Linse („oben“ statt senkrecht zur Naht).
+   - Umgestellt wurde es schlechter: Tiger 130 → 190, Robbe 1112 → 1200. Die Änderung ist zurückgenommen, die Ursachen stehen in Abschnitt 4.
+   - Seine Annahme, getrennte Kiefer fehlten im geschlossenen Käfig, trifft nicht zu: `maulKaefig` setzt die getrennte Unterlippe auch geschlossen, verdeckt nach innen. Er hatte nur am Tiger geprüft, der geschlossen eine Linie hat.
 
 ### 3.5 Augen (gemalt, `apps/editor/src/versuch/maulVersuch.ts`)
 
@@ -222,7 +292,11 @@ Dazu empfohlen (B2, B4):
 2. **Maul sauber:**
    - Mundwinkel-Zone, Tasche aus Kiefer-Innenflächen mit Abstandsfeld-Schieben, geregelte Anpassung (Ziel: 0 Durchdringungen zu, auf und bei 25/50/75 %).
    - Kehlkette und Bodengrenze.
-3. **Zähne im selben Netz**, starr am Kiefer, Kollisionsprüfung je Zustand.
+3. **Zähne:** Der Versuch steht (am Zahnfleisch, Prüfung mit Vorschlägen). Für die Bauweise fehlen:
+   - Rahmen je Öffnungsart (Kippen am Knochen, Ziehen an den Lippen) und eine Option „senkrecht“.
+   - Berührung als erlaubter Fall.
+   - Prüfung auch offen und bei Zwischenstufen.
+   - Zähne im selben Netz bzw. Draw Call fürs Spiel.
 4. **Rig-Tab bearbeitbar:** Gelenk verschieben, Halbwinkel-Knochen; die Linien folgen dem Knochen.
 5. **Augen-Tab:** zuerst gemalt (SDF), dann Kugel und Mandel mit Lidöffnung.
 6. **Spiel-Laufzeit:** Skinning, 3 Morph-Ziele, Reißverschluss-Attribut. Danach Beine (Rig-Vorlagen und Gangtabelle) und der Variantengenerator.
