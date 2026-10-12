@@ -8,10 +8,23 @@ import { type Kiefer, type V3, type Zahnfleisch, inAnsicht2, zahnGitter } from '
 import { type Modus, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { maulZuletzt, useMaulInfo } from './maulKoerper';
-import { fleischVon, zahnListe } from './zahnKoerper';
+import { fleischVon, zahnListe, zahnMeldungen, zahnMeldungenZuletzt } from './zahnKoerper';
 
 const ZAHN = '#f4ecd8';
 const RAND = '#a67f2c';
+/** stört geschlossen (Prüfung des Zahn-Versuchs) */
+const ROT = '#f0403a';
+const ROT_FLAECHE = '#ffd6d2';
+
+/** Befunde der Prüfung im geschlossenen Maul; während einer Geste der letzte Stand (die Prüfung dauert 75–185 ms). */
+export function useZahnMeldungen() {
+  const dok = useEditor((s) => s.dok);
+  const geste = useEditor((s) => s.gesteStart);
+  useMaulInfo((s) => s.info);
+  const b = maulZuletzt(dok);
+  if (!b || !dok.zaehne) return [];
+  return geste ? zahnMeldungenZuletzt() : zahnMeldungen(b.mk, b.zu, dok.zaehne);
+}
 
 /** Lage der Zähne im aktuellen Tab: Käfig, Öffnung und Zahnfleisch beider Kiefer. */
 function zahnLage(dok: Dokument, modus: Modus) {
@@ -47,6 +60,7 @@ export function ZahnZeichnung({ ansicht, bild }: { ansicht: Ansicht; bild: (p: V
   const modus = useEditor((s) => s.modus);
   const auswahl = useUi((s) => s.zahnAuswahl);
   useMaulInfo((s) => s.info); // nach jedem Bau des Mauls neu zeichnen
+  const meldungen = useZahnMeldungen();
   if (ansicht === 'top' || !dok.zaehne) return null;
   const lage = zahnLage(dok, modus);
   if (!lage) return null;
@@ -62,14 +76,16 @@ export function ZahnZeichnung({ ansicht, bild }: { ansicht: Ansicht; bild: (p: V
         const d = h.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join('') + 'Z';
         const gewaehlt = auswahl?.kiefer === q.kiefer && auswahl.index === q.index;
         const spiegel = q.zahn.seite < 0;
+        const stoert = meldungen.some((m) => m.kiefer === q.kiefer && m.index === q.index);
         return (
           <path
             key={k}
             data-zahn={`${q.kiefer}:${q.index}`}
+            {...(stoert ? { 'data-stoert': '' } : {})}
             d={d}
-            fill={ZAHN}
+            fill={stoert ? ROT_FLAECHE : ZAHN}
             fillOpacity={spiegel ? 0.55 : 1}
-            stroke={gewaehlt ? 'var(--punkt)' : RAND}
+            stroke={gewaehlt ? 'var(--punkt)' : stoert ? ROT : RAND}
             strokeWidth={gewaehlt ? 3 : 1.5}
             strokeLinejoin="round"
           />

@@ -141,14 +141,22 @@ test('Maul-Tab: Linie ab der Kontur zeichnen, Kiefer getrennt, offen, Öffnung, 
   await expect(page.locator('.leiste .unterbereich')).toBeVisible();
   d = await dok(page);
   expect(d.zaehne!.oben.zaehne[1]!.u).toBeGreaterThan(u0 + 0.02);
-  // Regler Länge im Untermenü
+  // Regler Länge im Untermenü: ein langer Zahn stößt geschlossen in den Unterkiefer und wird rot, mit Vorschlägen
   await page.locator('.leiste .unterbereich .regler input[type="range"]').first().fill('0.08');
   expect((await dok(page)).zaehne!.oben.zaehne[1]!.laenge).toBeCloseTo(0.08, 5);
   await warteAufBau(page);
   expect(await page.evaluate(() => (window as unknown as Fenster).__editor!.vertices())).toBe(vZaehne);
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-zahn="oben:1"][data-stoert]')).toHaveCount(1);
+  await expect(page.locator('.leiste .befund .vorschlag').first()).toBeVisible();
   await page.screenshot({ path: path.join(bilder, 'zahn-tab.png') });
+  // ersten Vorschlag übernehmen: danach stört der Zahn nicht mehr
+  await page.locator('.leiste .befund .vorschlag').first().click();
+  await warteAufBau(page);
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-zahn="oben:1"][data-stoert]')).toHaveCount(0);
 
-  // Rückgängig nimmt Schritte zurück (Länge, Verschieben, Anzahl), Maul bleibt erhalten
+  // Rückgängig nimmt Schritte zurück (Vorschlag, Länge, Verschieben, Anzahl), Maul bleibt erhalten
+  await page.keyboard.press('ControlOrMeta+z');
+  expect((await dok(page)).zaehne!.oben.zaehne[1]!.laenge).toBeCloseTo(0.08, 5);
   await page.keyboard.press('ControlOrMeta+z');
   await page.keyboard.press('ControlOrMeta+z');
   expect((await dok(page)).zaehne!.oben.zaehne[1]!.u).toBeCloseTo(u0, 6);

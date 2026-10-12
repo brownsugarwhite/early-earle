@@ -9,7 +9,7 @@ import { versuchAktiv, versuchNetz } from '../versuch/subdivision';
 import { tigerSchritt } from '../versuch/tigerSchritte';
 import { maulVersuch } from '../versuch/maulVersuch';
 import { maulBauen, maulDreiecke } from '../maul/maulKoerper';
-import { zaehneAusDok } from '../maul/zahnKoerper';
+import { zahnListe, zahnMeldungen } from '../maul/zahnKoerper';
 
 declare global {
   interface Window {
@@ -49,7 +49,9 @@ export function Szene3D() {
           // Versuch 12.10.: Körper mit Maul (Käfig, Naht, Tasche), Öffnung aus der Seitenleiste
           const b = maulBauen(d);
           if (b) {
-            const t = maulDreiecke(b, useUi.getState().oeffnung, 3, zaehneAusDok(d.zaehne));
+            // Zähne, die geschlossen stören, rot (Prüfung des Zahn-Versuchs, gemerkt je Käfig und Zahnreihen)
+            const rot = new Set(d.zaehne ? zahnMeldungen(b.mk, b.zu, d.zaehne).flatMap((m) => m.listenIndizes) : []);
+            const t = maulDreiecke(b, useUi.getState().oeffnung, 3, zahnListe(d.zaehne).map((q) => q.zahn), rot);
             const s = d.skalierung;
             if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
             r.setzeDreiecke(t.positionen, t.normalen, t.farben);

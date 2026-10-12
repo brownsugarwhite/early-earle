@@ -493,6 +493,25 @@ button {
   line-height: 1.45;
   opacity: 0.82;
 }
+/* Zahn-Prüfung (Versuch 12.10.): stört geschlossen, Vorschläge als Knöpfe */
+.hilfe.warnung {
+  color: #ff8a80;
+  opacity: 1;
+}
+.befund {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.chip.vorschlag {
+  height: auto;
+  min-height: 24px;
+  padding: 4px 12px;
+  text-align: left;
+  line-height: 1.3;
+  white-space: normal;
+}
 .leiste-library {
   display: flex;
   flex-direction: column;

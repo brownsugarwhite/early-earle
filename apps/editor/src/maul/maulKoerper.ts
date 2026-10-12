@@ -90,6 +90,7 @@ export function maulDreiecke(
   alpha: number,
   stufen = 3,
   zaehne: readonly Zahn[] = [],
+  rot: ReadonlySet<number> = new Set(),
 ): { positionen: Float32Array; normalen: Float32Array; farben: Float32Array; kaefig: Netz } {
   const a = Math.min(1, Math.max(0, alpha));
   const zwischen = a <= 0 ? b.zu : a >= 1 ? b.auf : reissverschluss(b.mk, maulZwischen(b.mk, b.zu, b.auf, a, 'knochen', b.rig), a);
@@ -108,6 +109,6 @@ export function maulDreiecke(
     o += 3 * (f.length - 2);
   });
   if (!zaehne.length) return { ...d, farben, kaefig: zwischen };
-  const z = zahnDreiecke(b.mk, zwischen, zaehne, a, stufen);
+  const z = zahnDreiecke(b.mk, zwischen, zaehne, a, stufen, rot);
   return { positionen: anhaengen(d.positionen, z.positionen), normalen: anhaengen(d.normalen, z.normalen), farben: anhaengen(farben, z.farben), kaefig: zwischen };
 }

@@ -8,6 +8,8 @@ import { ladeAusBibliothek } from '../aktionen';
 import { useRahmen } from '../layout/animation';
 import { editorApi, useBibliothek } from '../library/speicher';
 import { aktuelleLippen, setzeLippen } from '../maul/MaulEbene';
+import { useZahnMeldungen } from '../maul/ZahnEbene';
+import { aenderungAnwenden, befundText } from '../maul/zahnKoerper';
 import { useMaulInfo } from '../maul/maulKoerper';
 import { useEditor } from '../state/editorStore';
 import { type Ebene, useUi } from '../state/uiStore';
@@ -151,6 +153,15 @@ function ZahnBereich() {
     useUi.getState().setzeZahnAuswahl(null);
   };
   const zahn = auswahl ? zaehne[auswahl.kiefer].zaehne[auswahl.index] : undefined;
+  const meldungen = useZahnMeldungen();
+  const meldung = auswahl ? meldungen.find((m) => m.kiefer === auswahl.kiefer && m.index === auswahl.index) : undefined;
+  const vorschlagNehmen = (a: Parameters<typeof aenderungAnwenden>[1]) => {
+    if (!auswahl || !zahn) return;
+    const reihe = zaehne[auswahl.kiefer];
+    const liste = reihe.zaehne.slice();
+    liste[auswahl.index] = aenderungAnwenden(zahn, a);
+    useEditor.getState().setzeZaehne({ ...zaehne, [auswahl.kiefer]: { ...reihe, zaehne: liste } });
+  };
   const wert = (k: keyof ZahnWerte): number => (zahn ? (offen ? zahn.auf?.[k] ?? zahn[k] : zahn[k]) : 0);
   const setze = (k: keyof ZahnWerte | 'aussen', v: number | boolean) => {
     if (!auswahl || !zahn) return;
@@ -176,6 +187,11 @@ function ZahnBereich() {
         </div>
       ))}
       <OeffnungsRegler />
+      {meldungen.length > 0 && (
+        <p className="hilfe warnung" data-zahnmeldungen={meldungen.length}>
+          {meldungen.length === 1 ? '1 Zahn stört' : `${meldungen.length} Zähne stören`} im geschlossenen Maul (rot). Zahn anklicken für Vorschläge.
+        </p>
+      )}
       {zahn ? (
         <div className="unterbereich">
           <div className="feld">
@@ -197,6 +213,16 @@ function ZahnBereich() {
             <input type="checkbox" checked={zahn.aussen} onChange={(e) => setze('aussen', e.target.checked)} />
             <b>steht über der Lippe (Hauer)</b>
           </label>
+          {meldung && (
+            <div className="befund">
+              <p className="hilfe warnung">Geschlossen: {befundText(meldung.befund)}.</p>
+              {(meldung.befund.vorschlaege ?? []).map((v, i) => (
+                <button key={i} className="chip vorschlag" onClick={() => vorschlagNehmen(v.aenderung)}>
+                  {v.text}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <p className="hilfe">Zahn in Seite oder Front anklicken: Untermenü mit Rundheit, Schärfe, Neigung. Im Tab Fressen gelten die Werte für das offene Maul (z. B. größer).</p>
