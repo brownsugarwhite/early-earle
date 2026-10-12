@@ -29,9 +29,10 @@
      - ein Maul-Körper, der ein eigener Käfig ist
      - der Look (Bohne, Lippenband, Rachen, Zunge)
 5. **Beine, Arme, Flügel, Schwänze und körperweite Strukturen gibt es im neuen Editor noch gar nicht.** Gemeint sind Büschel, Mähnen, Kämme, Stacheln, Federn und Flossen. Florians Bögen zeigen dafür eine klare Richtung:
-   - Beine sind Säulen aus dem Rumpf, dünne Glieder eigene Teile.
-   - Fell, Mähnen, Kämme, Federn und Flossen sind wenige **große, geformte Klingen**, keine Haare.
+   - **Beine** (Abschnitt 7): Dicke Glieder werden aus dem Rumpf-Käfig ausgestülpt, nahtlos und mit fester Topologie. Dünne Glieder (Stelzbeine, Spinnenbeine, Flügelfinger) werden gesteckt. Schwänze und Hälse sind Teil der Wirbelsäule.
+   - **Fell, Mähnen, Kämme, Federn und Flossen** (Abschnitt 8) sind wenige große, geformte Klingen, keine Haare. Meist sind sie nur gemalt; gebaut wird nur, was den Umriss bricht. Ein Grundelement „Klinge“ mit Pinseln wie in Illustrator trägt alles.
    - Kleine Muster gehören in den Shader.
+   - **KI** (Abschnitt 9) ist Hilfe, nicht Kern.
 6. **Die große Sitzung muss zuerst eine Frage beantworten: Was ist die eine Wahrheit, aus der jedes Wesen entsteht?** Vorschlag (Abschnitt 6):
    - Alle Eingaben sind **Linien mit gemeinsamen Punkten** (Umrisse, Wirbelsäule, Spanten, Kanten, Maul, Augen, Ansatzlinien).
    - Daraus entsteht **ein Subdivision-Netz je Bauplan** mit fester Topologie.
@@ -304,7 +305,78 @@ Das Budget aus der Recherche steht: höchstens 3 Morph-Ziele, ein Draw Call je W
 
 ## 7. Beine, Arme, Flügel, Schwänze
 
-*(folgt aus der Recherche 12.10. spätnachts)*
+> Recherche 12.10. spätnachts, 35 Quellen in Abschnitt 14. Sie schärft den Schluss vom 12.10. („Glieder zuerst als überlappende Röhren“): Überlappen nur noch bei dünnen Gliedern. Dicke Glieder werden aus dem Käfig ausgestülpt, nahtlos und ohne Neuvernetzen.
+
+### 7.1 Was Florian schon gesagt hat
+
+- „Goldie und Rex haben richtig dicke Stampfer“ in **Saugnapfform**: eine Säule, die am Boden breit und flach ausläuft (08.10.).
+- „Dicke Schenkel seitlich, fast direkt aus Kopf und Hals“ (08.10.).
+- „Die Beine verschmelzen noch; im Idealfall einstellbar.“ Dazu eine Laufdemo mit echtem Hüftschwung (08.10.).
+- Vogel- und Spinnenbeine sind eigene Teile (07.10.).
+- Bögen: Rex mit Säulen, großem Fuß und Stummelarmen; Retriever mit vier Säulen und Zehenwülsten; Löwe mit untergeschlagenen Pfoten; Flamingo, Pfau, Ara mit Stelzbeinen; Spinnen mit acht Knickbeinen (`bild12`, `bild15`).
+
+### 7.2 Was die Recherche zeigt
+
+- **Ausstülpen aus dem Käfig** ist Quad-Praxis:
+  - Man schneidet Quadflächen auf und zieht sie als Röhre heraus. Das erzeugt genau vier Punkte mit Valenz 5 [1].
+  - Valenz-5-Punkte gehören in Kehlen (Achsel, Leiste), nicht auf Kuppen. Dort macht Catmull-Clark leichte Sättel [2, 3].
+  - Halbscharfe Kanten sind billiger als Stützschleifen [2]; der Editor hat sie schon (`catmullClark.ts`).
+- **Skelett → Quad-Netz** gibt es als Verfahren: Blender Skin-Modifier auf Basis von B-Mesh [4, 5], SQM [7], Polar-Annular Mesh [8], Box je Verzweigung [1], Scaffolding [9]. An Verzweigungen entstehen aber hochvalente Punkte. Die Topologie kann beim Umbiegen kippen. **Fest wird sie, wenn die Verzweigung je Bauplan einmal festgelegt ist und nur die Geometrie wechselt.**
+- **Implizit verschmelzen** (Spore, Dreams, Convolution Surfaces, glattes Minimum) gibt nahtlose Übergänge [12–16]. Ohne Gruppen verschmelzen aber Glieder zu Schwimmhäuten, und dicke Rümpfe scheren [12].
+  - Zurück auf eine feste Vorlage geht es offline (Non-Rigid ICP, Wrap) [18, 19].
+  - Mit bekannter Zuordnung genügt eine Projektion, sogar in Echtzeit (Implicit Skinning [21]).
+  - SMAL zeigt, dass **eine** Vorlage Formen von der Katze bis zum Nilpferd trägt [22].
+- **Bedienung:**
+  - Spore: Teil auf den Körper ziehen, die Gelenke sind Griffe, Fuß oder Hand am Ende macht das Glied zum Bein oder Arm [24, 26].
+  - Monster Mash: Eine offene Linie, die über einem Teil endet, wird zum vernähten Teil, „symmetrisch“ verdoppelt es [27].
+  - Nomad „Tube“: Linie mit Radius je Punkt [28].
+- **Rig:**
+  - Lineares Skinning knickt und verliert Volumen; Dual Quaternions beheben das, beulen aber [29, 30].
+  - Winkelgesteuerte Hilfsknochen bleiben mit dem einfachen Skinning verträglich [33].
+  - IK mit FABRIK und Gelenkgrenzen [34]; Fußsperren am Ballen oder Knöchel [35].
+
+### 7.3 Vorschlag
+
+**Grundsatz:**
+- Der **Bauplan** (Blob, Zweibeiner, Vierbeiner, Vogel, Spinne, Schlange, Fisch) legt die **Andockflächen** auf der Rumpfröhre fest, zum Beispiel Ringe i…i+2 × Ringpunkte 5–7 und 9–11 bei 16 Punkten (8 = Bauchlinie). Dazu kommen Ring- und Gelenkzahl je Glied.
+- Die **Lage** bleibt frei: Ringe gleiten entlang der Wirbelsäule und Ringpunkte auf dem Querschnitt, bis die Andockfläche unter dem gezeichneten Glied liegt.
+- **Schwänze und Hälse sind keine Abzweigung**, sondern Ringe der Wirbelsäulen-Röhre.
+- Alle Glieder liegen im selben Skinned Mesh; es entsteht kein zusätzlicher Draw Call. Mischen geht innerhalb eines Bauplans.
+
+| Variante | für | so geht es | Prüfkriterium |
+|---|---|---|---|
+| **A: Ausstülpen** | Säulenbeine, Pfoten, Stummelarme, Flügelarm, dicke Spinnenbeine | Aus einer 2×2-Fläche wird ein Ring mit 8 Punkten, danach 4–6 Ringe. Die Sohle ist eine 2×2-Kappe; Sohlenrand und Zehenstriche sind Kanten. Für Zehenwülste wächst der Ring vorn von 8 auf 12 Punkte. Wie weich die Schulter wird, steuern die Größe der Andockfläche und der Abstand des ersten Beinrings. | Rex, Elefant, Retriever in Nahansicht mit Zebra: Die Streifen laufen ohne Knick über Schulter und Hüfte. Der Umriss weicht außerhalb der Ansatzzone ≤ 1 % der Körperlänge ab. Beim Beinschwung ±35° gibt es keine Durchdringung. |
+| **B: Abstandsfeld, Vorlage aufziehen** (nur als Vergleich, falls A in den Kehlen zu hart wirkt) | wie A | Rumpf als Feld glatt mit Glied-Kapseln vereinigen, nur Rumpf mit Glied (`packages/creature/src/sdf/scene.ts` hat dafür smin mit Gruppen). Dann das Netz aus A unterteilen, die Punkte auf die Fläche ziehen und tangential entspannen. | wie A, dazu keine umgeklappten Flächen und ≤ 30 ms je Änderung. Florian sieht A und B nebeneinander. |
+| **C: Gesteckte Sweeps** | Stelzbeine, Spinnenbeine, Flügelfinger | Röhre mit 6–8 Punkten, Querschnitt aus einem Spant, Gelenkkugeln. Das erste Segment steckt eine Gelenklänge tief im Rumpf; jedes Segment ist starr gewichtet. | Flamingo und dünne Spinne in Spielzoom und Nahansicht: Der Ansatz liest sich als „Bein kommt aus dem Körper“ (Florians Urteil). In Extremposen entsteht keine Lücke. |
+
+Vor- und Nachteile:
+- **A:** nahtlos, gleiche Bauweise wie Rumpf und Maul; die Zeichnung ist das Ergebnis, Gewichte kommen direkt aus den Ringen. Dafür ist die Andockstelle topologisch fest, schräge Ansätze verziehen die Rumpfringe, und für Zehen gibt es wenige Punkte.
+- **B:** robust bei engen und schrägen Ansätzen, ein Wert k für die Weichheit. Dafür gibt es eine zweite Formbeschreibung, der Umriss weicht in der Ansatzzone ab, Kanten brauchen Schutz, die Rechenzeit ist unbekannt.
+- **C:** einfach, beliebig viele Glieder, ideal für IK. Die Schnittlinie ist sichtbar; für Säulenbeine falsch.
+
+**Zuordnung:**
+- **A:** Rex (Beine und Stummelarme), Retriever, Löwe, Tiger, Elefant; Drache (Beine und Flügelarm); dicke Spinne mit acht kleinen A (1×2-Flächen) und Fell-Klingen
+- **C:** Vögel (Beine), dünne Spinne, Flügelfinger
+- **Flügel:** Arm als A, Finger als C, die Haut als Segel zwischen den Fingern (Abschnitt 8.4) [25]
+- **Verschmelzen** (Florian 08.10.): Beine standardmäßig getrennt; „ein Sockel“ als Bauplan-Variante, bei der die Andockflächen benachbarter Beine verbunden sind.
+
+**Bedienung:**
+- **Seite:** Der Beinumriss ist eine offene Linie vom Rumpfumriss zum Fuß und zurück, wie bei Monster Mash. Daraus entstehen Beinlinie und Breite. Wo die Linie den Rumpf verlässt, liegt die Andockfläche. Ecken der Beinlinie sind Gelenke („eine Kante ist eine Ecke“).
+- **Front:** Spreizung und Breite, „beidseitig“ als Standard.
+- **Top:** Fußabdruck mit Zehenstrichen als Kanten; bei Flügeln Fingerlinien und Hautrand.
+- **C-Glieder:** eine Linie mit Radius je Punkt (⇧W).
+
+**Rig:**
+- Die Knochen kommen aus der Beinlinie, die Beugeebene aus der Zeichnung (IK-Pol).
+- Gewichte aus dem Ringindex statt aus Heat: Übergang über ±1 Ring an Gelenken, Ansatzringe zwischen Rumpf und Oberschenkel. Die Ansatzgewichte bleiben örtlich, sonst schert der Rumpf wie bei Spore [12].
+- Laufzeit: einfaches Skinning plus winkelgesteuerte Hilfsknochen an Knie und Hüfte in der Knochen-Datentextur [33]. Korrektur-Shapes nur für Einzelwesen.
+- IK:
+  - Säulenbeine analytisch, der Fuß gesperrt und am Boden ausgerichtet [35]
+  - Vögel mit drei Segmenten und Drehpunkt am Ballen
+  - Spinnen mit FABRIK und Scharniergrenzen [34]
+- Prüfkriterium: Das Knie behält bei 60° Beugung ≥ 90 % der Querschnittsfläche.
+
+**Nächster Schritt:** Vergleichsbild neben Florians Bögen: Rex-Bein in A und B, Flamingo in C (Phase 1 bzw. 4).
 
 ## 8. Körperweite Strukturen: Büschel, Mähnen, Kämme, Stacheln, Federn, Flossen
 
@@ -478,7 +550,7 @@ Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je
 | E5 | **Bearbeiten im 3D** (Punkte und Linien direkt anfassen) und ein **örtliches Werkzeug** („weich ziehen“ mit Radius wie Blenders proportionales Bearbeiten, O) | ja |
 | E6 | **Fressen und eigene Posen** auf dem ganzen Netz, alle Ansichten bearbeitbar, gespeichert als Abweichung | ja |
 | E7 | **Spanten-Überblendung** linear (neuer Spant ändert nichts) oder kubisch (glatter) | nach Florians Test |
-| E8 | **Glieder:** Variante aus Abschnitt 7 | siehe Abschnitt 7 |
+| E8 | **Glieder:** dicke Glieder aus dem Käfig ausstülpen (A), dünne stecken (C); B nur als Vergleich, falls die Kehlen zu hart wirken; Schwänze und Hälse als Teil der Wirbelsäule (Abschnitt 7) | ja |
 | E9 | **Körperweite Strukturen:** ein Grundelement „Klinge“ mit Pinseln wie Illustrator (Abschnitt 8). Vorher bestätigen: Die meisten Büschel sind gemalt, gebaut wird nur, was den Umriss bricht (8.1) | ja, zuerst Look-Test an Retriever und Stacheldrache (8.6) |
 | E10 | **KI:** Hilfe, nicht Kern: Wrap-Ziel für Volumen und Details, Remix-Kandidaten, Texturen; erster Test mit BWrap in Blender (Abschnitt 9.3) | Hilfe, nicht Kern |
 | E11 | **Look im Editor ab Phase 1** (Earle-Material statt weißem Matcap) | ja |
@@ -544,6 +616,46 @@ Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je
 ## 14. Quellen der Recherchen vom 12.10. spätnachts
 
 Die Nummern gelten je Abschnitt. Ältere Quellen stehen in den verlinkten Dokumenten (Abschnitt 13).
+
+### Zu Abschnitt 7 (Glieder)
+
+1. Usai et al. 2015: Quad Layout Guided by Curve-Skeleton – https://vcg.isti.cnr.it/Publications/2015/ULPTS15/skel_to_quad.pdf
+2. OpenSubdiv: Modeling Tips – https://github.com/PixarAnimationStudios/OpenSubdiv/blob/release/documentation/mod_notes.rst
+3. Karčiauskas, Peters, Reif 2004: Shape Characterization of Subdivision Surfaces – https://www.cise.ufl.edu/research/SurfLab/papers/03part2.pdf
+4. Blender-Handbuch: Skin Modifier – https://docs.blender.org/manual/en/2.83/modeling/modifiers/generate/skin.html
+5. Ji, Liu, Wang 2010: B-Mesh – https://diglib.eg.org/handle/10.2312/CGF.v29i7pp2169-2177
+6. Maxon: ZBrush Adaptive Skin – https://help.maxon.net/zbr/en-us/Content/html/reference-guide/tool/zsphere/adaptive-skin/adaptive-skin.html
+7. Bærentzen et al. 2012: SQM – https://people.compute.dtu.dk/janba/Research_in_Graphics/SQM.html
+8. Bærentzen, Abdrashitov, Singh 2014: Polar-Annular Mesh – https://people.compute.dtu.dk/janba/pam
+9. Panotopoulou et al. 2018: Scaffolding a Skeleton – https://www.cs.dartmouth.edu/~athina/papers/scaf_skeleton.pdf
+10. Thiery, Guy, Boubekeur 2013: Sphere-Meshes – https://www.telecom-paristech.fr/~boubek/papers/SphereMeshes/SphereMeshes.pdf
+11. Li et al. 2015: Q-MAT – https://www.utd.edu/~xxg061000/Q-MAT.pdf
+12. Hecker: My Liner Notes for Spore – https://www.chrishecker.com/My_Liner_Notes_for_Spore
+13. Bloomenthal, Shoemake 1991: Convolution Surfaces – https://history.siggraph.org/?p=120593
+14. Quilez: Smooth Minimum – https://iquilezles.org/articles/smin
+15. Wyvill, Guy, Galin 1999: BlobTree – https://perso.liris.cnrs.fr/eric.galin/Articles/1999-blobtree-model.pdf
+16. Evans 2015: Learning from Failure (Dreams) – https://advances.realtimerendering.com/s2015/AlexEvans_SIGGRAPH-2015-sml.pdf
+17. Blender-Handbuch: Shrinkwrap – https://docs.blender.org/manual/en/latest/modeling/modifiers/deform/shrinkwrap.html
+18. Amberg, Romdhani, Vetter 2007: Optimal Step Nonrigid ICP – https://shapemodelling.cs.unibas.ch/gravis-literature/publications/2007/CVPR07_Amberg.pdf
+19. CG Channel 2019: Wrap 3.4 – https://www.cgchannel.com/?p=104968
+20. Kraevoy, Sheffer 2004: Cross-Parameterization and Compatible Remeshing – https://cs.ubc.ca/~vlady/cross/cross.htm
+21. Vaillant et al. 2013: Implicit Skinning – https://hal.archives-ouvertes.fr/hal-00819270
+22. Zuffi et al. 2017: 3D Menagerie (SMAL) – https://arxiv.org/abs/1611.07700
+23. DeRose, Kass, Truong 1998: Subdivision Surfaces in Character Animation – https://courses.cs.washington.edu/courses/cse557/09au/lectures/extras/p85-derose.pdf
+24. SporeWiki: Hand – https://spore.fandom.com/wiki/Hand
+25. Ihuello: Nimbus, Flügel-Rig – https://www.therookies.co/projects/83494
+26. Gaming Nexus: Spore Creature Creator – https://www.gamingnexus.com/Article/1862/Spore-Creature-Creator
+27. Dvorožňák et al. 2020: Monster Mash – https://dcgi.fel.cvut.cz/~sykorad/monster_mash.html
+28. Nomad Sculpt: Werkzeuge – https://nomadsculpt.com/manual/tools.html
+29. Kavan et al. 2008: Dual-Quaternion-Skinning – https://users.cs.utah.edu/~ladislav/dq/
+30. Le, Hodgins 2016: Optimized Centers of Rotation – https://la.disneyresearch.com/publication/skinning-with-optimized-cors/
+31. three.js: SkinningNode – https://threejs.org/docs/pages/SkinningNode.html; Forum: DQS in TSL – https://discourse.threejs.org/t/having-a-hard-time-figuring-out-tsl-for-webgpu-support-dqs-implementation/84845
+32. Lewis, Cordner, Fong 2000: Pose Space Deformation – https://www.scribblethink.org/Work/PSD/PSD.pdf
+33. Mukai, Kuriyama 2016: Helper Bone Controllers – https://history.siggraph.org/?p=102759
+34. Aristidou, Lasenby 2011: FABRIK – https://www.andreasaristidou.com/FABRIK
+35. Epic: EFootPlacementLockType – https://dev.epicgames.com/documentation/unreal-engine/API/Plugins/AnimationWarpingRuntime/EFootPlacementLockType
+
+Hinweise der Recherche: [1], [3], [22] und [27] wurden im Volltext geprüft, die übrigen nach Abstract, Doku oder Projektseite. Die Spore-Bedienung stammt aus dem Fan-Wiki und einem Spielbericht. Zahlen ohne Messung (Rechenzeit in B, Wirkung der Valenz-5-Punkte) sind Schätzungen.
 
 ### Zu Abschnitt 8 (Klingen)
 
