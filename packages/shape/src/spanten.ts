@@ -250,8 +250,8 @@ export function vorlageBei(dok: Dokument, f: number, n: number): SpantVorlage & 
     const H = vMax - vMin || 1;
     v = { q: roh.q.map((p) => ({ x: uMax > 1e-9 ? p.x / uMax : 0, y: (p.y - vMin) / H })), knoten: roh.knoten, haerte: dok.profile.front.knoten.map(eckHaerte) };
   } else {
-    const haupt = hauptspantProfil(dok);
-    const anteile = anteileVon(haupt, n);
+    // Stützstellen je Segment wie die Front selbst (gleiche Knoten-Stützstellen wie ohne Spanten und wie im Käfig)
+    const anteile = anteileVon(dok.profile.front, n);
     const pr = spantProfilBei(dok, f);
     const s = spantAbtasten(pr, n, anteile);
     v = { ...s, haerte: pr.knoten.map(eckHaerte) };

@@ -8,7 +8,8 @@
 
 import type { V2 } from '../bezier';
 import type { Dokument } from '../dokument';
-import { querschnitt, schnitte } from '../platzhalter/loft';
+import { schnitte } from '../platzhalter/loft';
+import { vorlageBei } from '../spanten';
 import { pfadAbtasten, vollerPfad } from '../profil';
 import { type Netz, type V3, kante, unterteilenMehrfach } from './catmullClark';
 
@@ -43,8 +44,9 @@ function superellipse(R: number, p: number): QPunkt[] {
   return out;
 }
 
-function frontVorlage(dok: Dokument, R: number): QPunkt[] {
-  const q = querschnitt(dok, R / 2);
+function frontVorlage(dok: Dokument, R: number, f = 0.5): QPunkt[] {
+  // Querschnitt an der Stelle f (mit Spanten überblendet, ohne Spanten die Front)
+  const q = vorlageBei(dok, f, R / 2).q;
   const out: QPunkt[] = [];
   for (let j = 0; j < R; j++) {
     const p = j <= R / 2 ? q[j]! : q[R - j]!;
@@ -91,6 +93,8 @@ export function ringKontext(dok: Dokument, opt: TigerOptionen): RingKontext {
       v = { kasten: superellipse(R, opt.kastenExponent), front: frontVorlage(dok, R) };
       vorlagen.set(R, v);
     }
+    // mit Spanten: Querschnitt je Station
+    if (dok.spanten?.length) v = { kasten: v.kasten, front: frontVorlage(dok, R, f) };
     const x = xMin + (xMax - xMin) * f;
     const vs = schnitte(seite, x);
     const ws = schnitte(top, tMin + (tMax - tMin) * f);

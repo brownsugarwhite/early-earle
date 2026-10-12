@@ -23,6 +23,7 @@ import { type Kubik, type V2, bogenlaenge, laengeV, normiert, punktAuf } from '.
 import { ANSICHTEN, type Ansicht, type Blick, type Dokument, type Kante } from '../dokument';
 import { schnitte } from '../platzhalter/loft';
 import { type Profil, istAchsKnoten, pfadAbtasten, segmente, spiegeln, vollerPfad } from '../profil';
+import { vorlageBei } from '../spanten';
 import { type Netz, type V3, kante, unterteilen } from './catmullClark';
 import { abtasten3 } from './linie3d';
 import { ketteUnterteilen } from './pruefen';
@@ -90,7 +91,15 @@ export type ProfilEcke = {
   aussen: V2;
   /** Achsknoten eines Halbprofils (Knick zwischen Hälfte und Spiegelbild) */
   achse: boolean;
+  /**
+   * Front mit Spanten: Härte an der Stelle f (Ecke im Spant überblendet; glatter Punkt = 0). Fehlt = überall `haerte`.
+   * Ecken, die nur in Spanten stehen, kommen so ebenfalls als Längskante.
+   */
+  haerteBei?: (f: number) => number;
 };
+
+/** Härte einer Ecke an der Stelle f (mit Spanten verlaufend). */
+const haerteAn = (e: ProfilEcke, f: number) => (e.haerteBei ? e.haerteBei(f) : e.haerte);
 
 function richtungEnde(seg: Kubik): V2 {
   const [p0, p1, p2, p3] = seg;
@@ -165,6 +174,35 @@ export function profilEcken(dok: Dokument, minKnick = KANTEN_STANDARD.minKnick):
       const haerte = Math.min(1, Math.max(0, kn.art === 'ecke' ? kn.haerte ?? 1 : 1));
       out.push({ ansicht, knoten: k, p: { x: kn.p.x, y: kn.p.y }, knick, haerte, aussen, achse: istAchsKnoten(pr, k) });
     });
+  }
+  // Spanten (Versuch 12.10.): Ecken eines Spants laufen längs durch die Spanten; ihre Härte überblendet von Spant zu
+  // Spant (glatter Punkt = 0). Die Front zählt als Hauptspant.
+  if (dok.spanten?.length) {
+    const front = dok.profile.front;
+    const haerteBei = (k: number) => (f: number) => vorlageBei(dok, f, 8).haerte[k] ?? 0;
+    for (const e of out) if (e.ansicht === 'front') e.haerteBei = haerteBei(e.knoten);
+    for (let k = 0; k < front.knoten.length; k++) {
+      if (out.some((e) => e.ansicht === 'front' && e.knoten === k)) continue;
+      // sichtbare Ecke in einem Spant (Knick in seinem normierten Profil)?
+      let best: { sp: Profil; knick: number } | null = null;
+      for (const sp of dok.spanten) {
+        if (sp.profil.knoten.length !== front.knoten.length || sp.profil.knoten[k]?.art !== 'ecke') continue;
+        const t = knotenTangenten(sp.profil, k);
+        if (laengeV(t.rein) < 0.5 || laengeV(t.raus) < 0.5) continue;
+        const knick = (Math.acos(Math.min(1, Math.max(-1, t.rein.x * t.raus.x + t.rein.y * t.raus.y))) * 180) / Math.PI;
+        if (knick > minKnick && (!best || knick > best.knick)) best = { sp: sp.profil, knick };
+      }
+      if (!best) continue;
+      const t = knotenTangenten(best.sp, k);
+      const ccw = gegenUhr(best.sp);
+      const aussenVon = (v: V2): V2 => (ccw ? { x: v.y, y: -v.x } : { x: -v.y, y: v.x });
+      const a1 = aussenVon(t.rein);
+      const a2 = aussenVon(t.raus);
+      let aussen = normiert({ x: a1.x + a2.x, y: a1.y + a2.y });
+      if (laengeV(aussen) < 0.5) aussen = a1;
+      const kn = front.knoten[k]!;
+      out.push({ ansicht: 'front', knoten: k, p: { x: kn.p.x, y: kn.p.y }, knick: best.knick, haerte: 1, aussen, achse: istAchsKnoten(front, k), haerteBei: haerteBei(k) });
+    }
   }
   return out;
 }
@@ -267,6 +305,8 @@ export function loftAus(dok: Dokument, halb = KANTEN_STANDARD.fein / 2): Loft {
   const vorlage = frontVorlage(dok, halb);
   const q = vorlage.q;
   const lauf: 1 | -1 = q[0]!.y >= q[halb]!.y ? 1 : -1;
+  // Spanten (Versuch 12.10.): Querschnitt je Station, gleiche Stützstellen je Knoten wie die Front
+  const qBei = (f: number): V2[] => (dok.spanten?.length ? vorlageBei(dok, f, halb).q : q);
   const mass = (f0: number) => {
     let f = Math.min(1, Math.max(0, f0));
     let vs: number[] = [];
@@ -282,16 +322,17 @@ export function loftAus(dok: Dokument, halb = KANTEN_STANDARD.fein / 2): Loft {
     const w = ws.length ? Math.max(...ws.map(Math.abs)) : 0;
     return { x: xMin + (xMax - xMin) * f, yLo, yHi, w };
   };
-  const vorlageBei = (u: number): V2 => {
+  const vorlageAn = (f: number, u: number): V2 => {
+    const qf = qBei(f);
     const i = Math.min(halb - 1, Math.max(0, Math.floor(u)));
     const t = Math.min(1, Math.max(0, u - i));
-    const a = q[i]!;
-    const b = q[i + 1]!;
+    const a = qf[i]!;
+    const b = qf[i + 1]!;
     return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
   };
   const punkt = (f: number, u: number): V3 => {
     const m = mass(f);
-    const v = vorlageBei(u);
+    const v = vorlageAn(f, u);
     return [m.x, m.yLo + v.y * (m.yHi - m.yLo), v.x * m.w];
   };
   const ringe = new Map<number, HalbRing>();
@@ -299,7 +340,7 @@ export function loftAus(dok: Dokument, halb = KANTEN_STANDARD.fein / 2): Loft {
     let h = ringe.get(f);
     if (h) return h;
     const m = mass(f);
-    const pts: V3[] = q.map((v) => [m.x, m.yLo + v.y * (m.yHi - m.yLo), v.x * m.w]);
+    const pts: V3[] = qBei(f).map((v) => [m.x, m.yLo + v.y * (m.yHi - m.yLo), v.x * m.w]);
     const s = [0];
     for (let i = 1; i < pts.length; i++) s.push(s[i - 1]! + Math.hypot(pts[i]![1] - pts[i - 1]![1], pts[i]![2] - pts[i - 1]![2]));
     h = { f, x: m.x, pts, s, L: s[s.length - 1]! };
@@ -311,7 +352,7 @@ export function loftAus(dok: Dokument, halb = KANTEN_STANDARD.fein / 2): Loft {
     const m = mass(f);
     const H = m.yHi - m.yLo;
     if (!(H > 1e-12) || !(m.w > 1e-12)) return false;
-    return imPolygon(q, Math.abs(z) / m.w, (y - m.yLo) / H);
+    return imPolygon(qBei(f), Math.abs(z) / m.w, (y - m.yLo) / H);
   };
   return { xMin, xMax, tMin, tMax, halb, vorlage, lauf, mass, punkt, ring, fVon, innen };
 }
@@ -558,7 +599,7 @@ function eckKantenAus(loft: Loft, ecken: readonly ProfilEcke[]): EckKante[] {
         quelle: { ansicht: e.ansicht, knoten: e.knoten },
         art: 'laengs',
         punkte: fs.map((f) => loft.punkt(f, u)),
-        haerte: gs.map((g) => e.haerte * glatt(0, AUSLAUF, g / (gMax || 1))),
+        haerte: gs.map((g, k) => haerteAn(e, fs[k]!) * glatt(0, AUSLAUF, g / (gMax || 1))),
       });
       continue;
     }
@@ -1223,7 +1264,7 @@ export function kantenKaefig(dok: Dokument, opt: Partial<KantenOptionen> = {}): 
   let gMax = 0;
   for (let k = 0; k <= 64; k++) gMax = Math.max(gMax, groesse(loft, k / 64));
   for (const fs of frontSpur) {
-    const h = (i: number) => fs.ecke.haerte * glatt(0, AUSLAUF, groesse(loft, st[i - 1]!) / (gMax || 1));
+    const h = (i: number) => haerteAn(fs.ecke, st[i - 1]!) * glatt(0, AUSLAUF, groesse(loft, st[i - 1]!) / (gMax || 1));
     laengsWeg({ art: 'ecke', ansicht: 'front', knoten: fs.ecke.knoten }, fs.j, 1, N, h, false);
   }
   // Ecken aus Seite und Top: Ringkante mit Verlauf nach der Ringnormale

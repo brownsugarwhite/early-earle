@@ -12,6 +12,7 @@
 import { type V2, bogenlaenge, punktAuf } from '../bezier';
 import type { Dokument } from '../dokument';
 import { pfadAbtasten, segmente, vollerPfad } from '../profil';
+import { vorlageBei } from '../spanten';
 
 export type LoftNetz = {
   positionen: Float32Array;
@@ -89,7 +90,8 @@ export function querschnitt(dok: Dokument, n: number): V2[] {
 export function loftNetz(dok: Dokument, stationen = LOFT_STATIONEN, halbring = LOFT_HALBRING): LoftNetz {
   const seite = pfadAbtasten(vollerPfad(dok.profile.seite), 24);
   const top = pfadAbtasten(vollerPfad(dok.profile.top), 24);
-  const q = querschnitt(dok, halbring);
+  // Querschnitt je Station: ohne Spanten überall die Front, mit Spanten überblendet (Versuch 12.10.)
+  const qBei = (f: number) => vorlageBei(dok, f, halbring).q;
   const ring = 2 * halbring;
   const s = dok.skalierung;
 
@@ -118,6 +120,7 @@ export function loftNetz(dok: Dokument, stationen = LOFT_STATIONEN, halbring = L
     let yHi = vs.length ? Math.max(...vs) : 0;
     if (i === 0 || i === S) yLo = yHi = (yLo + yHi) / 2;
     const w = ws.length ? Math.max(...ws.map(Math.abs)) : 0;
+    const q = qBei(f);
     for (let j = 0; j < ring; j++) {
       // j = 0 … halbring: Front-Hälfte von oben nach unten (Z ≥ 0), dann gespiegelt zurück nach oben
       const qi = j <= halbring ? j : ring - j;

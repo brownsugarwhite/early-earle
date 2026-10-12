@@ -16,6 +16,8 @@ import {
   vorlageBei,
   weltNachSpant,
 } from './spanten';
+import { eckKanten, kantenKaefig } from './versuch/kanten';
+import { geschlossen } from './versuch/tigerKaefig';
 
 const dok = neuesDokument();
 const maxAbstand = (a: { x: number; y: number }[], b: { x: number; y: number }[]) => Math.max(...a.map((p, i) => Math.hypot(p.x - b[i]!.x, p.y - b[i]!.y)));
@@ -116,5 +118,25 @@ describe('Spanten', () => {
     expect(angeglichen[0]!.profil.knoten.length).toBe(neu.knoten.length);
     const zurueck = spantenAngleichen(neu, front, angeglichen);
     expect(zurueck[0]!.profil.knoten.length).toBe(front.knoten.length);
+  });
+
+  it('Ecke in einem Spant wird Längskante, ihre Härte läuft bis zum Hauptspant aus', () => {
+    const s = spantEinfuegen(dok, 0.15);
+    const d: Dokument = { ...dok, spanten: [{ ...s.spanten[0]!, profil: kastig(s.spanten[0]!.profil) }] };
+    const eck = eckKanten(d).filter((e) => e.quelle.ansicht === 'front' && e.quelle.knoten === 1);
+    expect(eck).toHaveLength(1);
+    const e = eck[0]!;
+    // Härte vorn (am Spant) hoch, am Hauptspant und dahinter 0
+    const hVorn = Math.max(...e.haerte.slice(0, Math.floor(e.haerte.length * 0.2)));
+    const hHinten = Math.max(...e.haerte.slice(Math.floor(e.haerte.length * 0.6)));
+    expect(hVorn).toBeGreaterThan(0.5);
+    expect(hHinten).toBeLessThan(0.01);
+    // im Käfig: Weg dieser Ecke mit verlaufender Härte, Netz geschlossen
+    const kk = kantenKaefig(d);
+    expect(geschlossen(kk.netz)).toBe(true);
+    const w = kk.wege.find((x) => x.quelle.art === 'ecke' && x.quelle.ansicht === 'front' && x.quelle.knoten === 1);
+    expect(w).toBeDefined();
+    expect(Math.max(...w!.haerte)).toBeGreaterThan(0.5);
+    expect(Math.min(...w!.haerte)).toBeLessThan(0.01);
   });
 });
