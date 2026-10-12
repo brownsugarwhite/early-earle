@@ -4,6 +4,7 @@
 
 import type { V2 } from '../bezier';
 import type { Ansicht, Knoten3, Linie3, V3T } from '../dokument';
+import { type Profil, pfadAbtasten, vollerPfad } from '../profil';
 
 /** Weltkoordinaten (Index) je Ansicht: [waagerecht, senkrecht]. */
 export const ANSICHT_ACHSEN: Record<Ansicht, [0 | 1 | 2, 0 | 1 | 2]> = { seite: [0, 1], front: [2, 1], top: [0, 2] };
@@ -167,15 +168,35 @@ export function gedreht3(l: Linie3, cx: number, cy: number, winkel: number): Lin
   return { knoten: l.knoten.map((k) => ({ ...k, p: dreh(k.p), ein: drehV(k.ein), aus: drehV(k.aus) })) };
 }
 
-/** Vorschlag für den offenen Zustand: Oberlippe bleibt, Unterlippe dreht 30° um ein Gelenk knapp hinter dem Mundwinkel. */
+/**
+ * Vorschlag für den offenen Zustand: Oberlippe bleibt, Unterlippe dreht 30° um den Mundwinkel. Der Mundwinkel bleibt
+ * dabei ein gemeinsamer Punkt beider Kiefer (Florian 12.10.: „Die Kiefer müssen am schwarzen Punkt immer zusammenhängen“).
+ */
 export function offenVorschlag(zu: { oben: Linie3; unten?: Linie3 }, winkelGrad = 30): { oben: Linie3; unten: Linie3 } {
   const unten = zu.unten ?? zu.oben;
-  const ecke = unten.knoten[unten.knoten.length - 1]!.p;
-  const start = unten.knoten[0]!.p;
-  const laenge = Math.hypot(ecke[0] - start[0], ecke[1] - start[1]);
+  const ecke = zu.oben.knoten[zu.oben.knoten.length - 1]!.p;
   // vorn ist −x: Kinn nach unten = Drehung im Uhrzeigersinn in der Seitenansicht (positiver Winkel bei x-Achse nach hinten)
-  const gedreht = gedreht3(unten, ecke[0] + 0.15 * laenge, ecke[1], (winkelGrad * Math.PI) / 180);
-  return { oben: zu.oben, unten: gedreht };
+  const gedreht = gedreht3(unten, ecke[0], ecke[1], (winkelGrad * Math.PI) / 180);
+  return mundwinkelVerbinden({ oben: zu.oben, unten: gedreht }) as { oben: Linie3; unten: Linie3 };
+}
+
+const gleich3 = (a: V3T, b: V3T) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+
+/**
+ * Ober- und Unterlinie teilen den Mundwinkel (letzter Knoten): Lage gemeinsam, Griffe je Linie. Hat sich gegenüber
+ * `vorher` nur der Mundwinkel der Unterlinie bewegt, folgt die Oberlinie; sonst gilt der Mundwinkel der Oberlinie.
+ */
+export function mundwinkelVerbinden<L extends { oben: Linie3; unten?: Linie3 }>(l: L, vorher?: { oben: Linie3; unten?: Linie3 } | null): L {
+  if (!l.unten) return l;
+  const o = l.oben.knoten.length - 1;
+  const u = l.unten.knoten.length - 1;
+  const po = l.oben.knoten[o]!.p;
+  const pu = l.unten.knoten[u]!.p;
+  if (gleich3(po, pu)) return l;
+  const vo = vorher?.oben.knoten[vorher.oben.knoten.length - 1]?.p;
+  const untenGezogen = !!vorher?.unten && !!vo && gleich3(vo, po);
+  if (untenGezogen) return { ...l, oben: { knoten: l.oben.knoten.map((k, i) => (i === o ? { ...k, p: [...pu] as V3T } : k)) } };
+  return { ...l, unten: { knoten: l.unten.knoten.map((k, i) => (i === u ? { ...k, p: [...po] as V3T } : k)) } };
 }
 
 /** Eingabe für den Maul-Käfig aus den 3D-Linien eines Dokuments. */
@@ -183,9 +204,65 @@ export function maulEingabeAus(maul: { zu: { oben: Linie3; unten?: Linie3 }; auf
   zu: { oben: V3T[]; unten?: V3T[] };
   auf: { oben: V3T[]; unten: V3T[] };
 } {
-  const auf = maul.auf ?? offenVorschlag(maul.zu);
+  const zu = mundwinkelVerbinden(maul.zu);
+  const auf = mundwinkelVerbinden(maul.auf ?? offenVorschlag(zu));
   return {
-    zu: maul.zu.unten ? { oben: abtasten3(maul.zu.oben, 6), unten: abtasten3(maul.zu.unten, 6) } : { oben: abtasten3(maul.zu.oben, 6) },
+    zu: zu.unten ? { oben: abtasten3(zu.oben, 6), unten: abtasten3(zu.unten, 6) } : { oben: abtasten3(zu.oben, 6) },
     auf: { oben: abtasten3(auf.oben, 6), unten: abtasten3(auf.unten ?? auf.oben, 6) },
   };
+}
+
+/** Nächster Punkt eines geschlossenen Polygonzugs (Seitenkontur) zu q. */
+function naechsterAufZug(zug: readonly V2[], q: V2): { p: V2; d: number } {
+  let best = { p: zug[0] ?? q, d: Infinity };
+  for (let i = 0; i < zug.length; i++) {
+    const a = zug[i]!;
+    const b = zug[(i + 1) % zug.length]!;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const l2 = dx * dx + dy * dy;
+    const t = l2 > 1e-18 ? Math.min(1, Math.max(0, ((q.x - a.x) * dx + (q.y - a.y) * dy) / l2)) : 0;
+    const p = { x: a.x + dx * t, y: a.y + dy * t };
+    const d = Math.hypot(p.x - q.x, p.y - q.y);
+    if (d < best.d) best = { p, d };
+  }
+  return best;
+}
+
+/**
+ * Maul an der Form festhalten (Florian 12.10.: Kiefer und Shape sind ein Objekt): Liegt der Start einer geschlossenen
+ * Lippenlinie auf der alten Seitenkontur (≤ `toleranz`), wandert er mit der Kontur; der offene Start derselben Linie
+ * bekommt dieselbe Verschiebung. Verdeckte Starts im Inneren (Überbiss) bleiben.
+ */
+export function maulAnKontur<M extends { zu: { oben: Linie3; unten?: Linie3 }; auf?: { oben: Linie3; unten?: Linie3 } }>(
+  maul: M,
+  alt: Profil,
+  neu: Profil,
+  toleranz = 3 / 461,
+): M {
+  if (alt === neu) return maul;
+  const zugAlt = pfadAbtasten(vollerPfad(alt), 32);
+  const zugNeu = pfadAbtasten(vollerPfad(neu), 32);
+  const versatz = (l: Linie3): V3T | null => {
+    const p = l.knoten[0]!.p;
+    const vorher = naechsterAufZug(zugAlt, { x: p[0], y: p[1] });
+    if (vorher.d > toleranz) return null;
+    const jetzt = naechsterAufZug(zugNeu, { x: p[0], y: p[1] }).p;
+    const d: V3T = [jetzt.x - p[0], jetzt.y - p[1], 0];
+    return Math.hypot(d[0], d[1]) < 1e-12 ? null : d;
+  };
+  const schieben = (l: Linie3, d: V3T): Linie3 => ({ knoten: l.knoten.map((k, i) => (i === 0 ? { ...k, p: [k.p[0] + d[0], k.p[1] + d[1], 0] as V3T } : k)) });
+  const dOben = versatz(maul.zu.oben);
+  const dUnten = maul.zu.unten ? versatz(maul.zu.unten) : null;
+  if (!dOben && !dUnten) return maul;
+  const zu = { ...maul.zu, oben: dOben ? schieben(maul.zu.oben, dOben) : maul.zu.oben };
+  if (maul.zu.unten) zu.unten = dUnten ? schieben(maul.zu.unten, dUnten) : maul.zu.unten;
+  const out = { ...maul, zu };
+  if (maul.auf) {
+    const auf = { ...maul.auf, oben: dOben ? schieben(maul.auf.oben, dOben) : maul.auf.oben };
+    const dU = maul.zu.unten ? dUnten : dOben;
+    if (maul.auf.unten) auf.unten = dU ? schieben(maul.auf.unten, dU) : maul.auf.unten;
+    out.auf = auf;
+  }
+  return out;
 }

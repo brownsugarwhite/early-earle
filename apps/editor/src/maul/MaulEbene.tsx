@@ -4,7 +4,7 @@
 // Editor-Tab = Maul zu, Fressen-Tab = Maul auf. Jeder Knoten ist ein 3D-Punkt; die Ansicht bearbeitet zwei Koordinaten.
 
 import type { Ansicht, Dokument, Lippen, Linie3, V2, V3T } from '@ee/shape';
-import { abtasten3, ausAnsicht2, einfuegen3, griffZiehen3, inAnsicht2, knotenVerschieben3, linieDurch, loeschen3, naechsterInAnsicht, offenVorschlag } from '@ee/shape/versuch';
+import { abtasten3, ausAnsicht2, einfuegen3, griffZiehen3, inAnsicht2, knotenVerschieben3, linieDurch, loeschen3, mundwinkelVerbinden, naechsterInAnsicht, offenVorschlag } from '@ee/shape/versuch';
 import { useEffect } from 'react';
 import { type Modus, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -25,16 +25,19 @@ export function zustandVon(modus: Modus): Zustand {
 export function aktuelleLippen(dok: Dokument, modus: Modus): { lippen: Lippen | null; zustand: Zustand; vorschlag: boolean } {
   const zustand = zustandVon(modus);
   if (!dok.maul) return { lippen: null, zustand, vorschlag: false };
-  if (zustand === 'zu') return { lippen: dok.maul.zu, zustand, vorschlag: false };
-  if (dok.maul.auf) return { lippen: dok.maul.auf, zustand, vorschlag: false };
+  if (zustand === 'zu') return { lippen: mundwinkelVerbinden(dok.maul.zu), zustand, vorschlag: false };
+  if (dok.maul.auf) return { lippen: mundwinkelVerbinden(dok.maul.auf), zustand, vorschlag: false };
   return { lippen: offenVorschlag(dok.maul.zu), zustand, vorschlag: true };
 }
 
+/** Lippen setzen; der Mundwinkel bleibt ein gemeinsamer Punkt beider Kiefer (Florian 12.10.). */
 export function setzeLippen(zustand: Zustand, lippen: Lippen) {
   const ed = useEditor.getState();
   const maul = ed.dok.maul;
-  if (zustand === 'zu') ed.setzeMaul({ ...(maul ?? {}), zu: lippen });
-  else if (maul) ed.setzeMaul({ ...maul, auf: lippen });
+  const vorher = zustand === 'zu' ? maul?.zu : (maul?.auf ?? null);
+  const verbunden = mundwinkelVerbinden(lippen, vorher);
+  if (zustand === 'zu') ed.setzeMaul({ ...(maul ?? {}), zu: verbunden });
+  else if (maul) ed.setzeMaul({ ...maul, auf: verbunden });
 }
 
 function farbe(zustand: Zustand, lippen: Lippen, name: LinienName): string {
@@ -99,6 +102,8 @@ export function MaulZeichnung({ ansicht, bild, aktiv }: { ansicht: Ansicht; bild
               {l.knoten.map((k, i) => {
                 const q = bild(inAnsicht2(k.p, ansicht));
                 const ecke = i === l.knoten.length - 1;
+                // gemeinsamer Mundwinkel: nur einmal zeichnen (gehört der Oberlinie)
+                if (ecke && name === 'unten' && !gewaehlt.includes(i)) return null;
                 return (
                   <g key={i} data-maulknoten={`${name}:${i}`} className={gewaehlt.includes(i) ? 'knoten gewaehlt' : 'knoten'}>
                     <circle cx={q.x} cy={q.y} r={10} fill="transparent" />

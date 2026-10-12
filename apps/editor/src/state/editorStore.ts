@@ -2,6 +2,7 @@
 // alten Werkstatt: beginGeste … endeGeste), Einzelaktionen sind je ein Schritt.
 
 import { type Ansicht, type Dokument, type Maul, type PoseName, type Profil, SKALIERUNG_MAX, SKALIERUNG_MIN, type Zaehne, neuesDokument } from '@ee/shape';
+import { maulAnKontur } from '@ee/shape/versuch';
 import { create } from 'zustand';
 
 export type Modus = 'editor' | 'fressen' | PoseName;
@@ -37,6 +38,13 @@ type EditorState = {
 
 const MAX_VERLAUF = 200;
 
+/** Was an der Form hängt, folgt ihr (Florian 12.10.: ein Objekt): Der Maulanfang bleibt auf der Seitenkontur. */
+function mitFormVerbunden(alt: Dokument, neu: Dokument): Dokument {
+  if (!neu.maul || alt.profile.seite === neu.profile.seite) return neu;
+  const maul = maulAnKontur(neu.maul, alt.profile.seite, neu.profile.seite);
+  return maul === neu.maul ? neu : { ...neu, maul };
+}
+
 export const useEditor = create<EditorState>((set, get) => {
   /** Änderung am Dokument; außerhalb einer Geste wird sie sofort ein Undo-Schritt. */
   const aendern = (f: (d: Dokument) => Dokument) => {
@@ -66,10 +74,10 @@ export const useEditor = create<EditorState>((set, get) => {
       else set({ gesteStart: null });
     },
     setzeProfil(ansicht, profil) {
-      aendern((d) => ({ ...d, profile: { ...d.profile, [ansicht]: profil } }));
+      aendern((d) => mitFormVerbunden(d, { ...d, profile: { ...d.profile, [ansicht]: profil } }));
     },
     setzeProfile(profile) {
-      aendern((d) => (d.profile === profile ? d : { ...d, profile }));
+      aendern((d) => (d.profile === profile ? d : mitFormVerbunden(d, { ...d, profile })));
     },
     setzeSkalierung(s) {
       const v = Math.min(SKALIERUNG_MAX, Math.max(SKALIERUNG_MIN, s));
