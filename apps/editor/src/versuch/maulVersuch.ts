@@ -6,8 +6,21 @@ import type { Ansicht } from '@ee/shape';
 import {
   type MaulKaefig,
   type Netz,
+  type Starr,
   type V3,
   type Vorlage,
+  anwenden,
+  drehe,
+  gelenkBewegung,
+  kieferRig,
+  kreuz3,
+  minus3,
+  naechsterFlaechenpunkt,
+  plus3,
+  punkt3,
+  rasterAlle,
+  treffer,
+  unterteilenMehrfach,
   bereichUnterteilen,
   ketteUnterteilen,
   maulAnpassen,
@@ -65,6 +78,99 @@ export function flaechenBereiche(mk: MaulKaefig, alpha: number): string[] {
 }
 
 export type MaulErgebnis = { mk: MaulKaefig; zu: Netz; auf: Netz | null };
+
+type P2 = { x: number; y: number };
+type AugeVorlage = { art: 'schlitz' | 'knopf' | 'mandel'; punkte: P2[]; lid?: P2[]; glanz?: P2[] };
+
+/**
+ * Augen-Versuch (12.10.): Florians Augenumriss aus der Seitenansicht auf die geschlossene Fläche projiziert („gemalt“),
+ * gespiegelt, beim Öffnen mit dem Schädel (Oberkieferknochen) bewegt. Arten wie in seinen Bögen: Schlitz, Knopf mit
+ * Glanz, Mandel mit Lidlinie.
+ */
+function augenDreiecke(augen: AugeVorlage[], flaeche: Netz, bewegung: Starr | null): { pos: number[]; nrm: number[]; col: number[] } {
+  const raster = rasterAlle(flaeche).seite;
+  const pos: number[] = [];
+  const nrm: number[] = [];
+  const col: number[] = [];
+  const auf = (q: P2, abstand: number): { p: V3; n: V3 } | null => {
+    const h = treffer(raster, q)[0] ?? naechsterFlaechenpunkt(raster, q);
+    if (!h) return null;
+    const p: V3 = [h.p[0] + h.n[0] * abstand, h.p[1] + h.n[1] * abstand, h.p[2] + h.n[2] * abstand];
+    return bewegung ? { p: anwenden(bewegung, p), n: drehe(bewegung.R, h.n) } : { p, n: h.n };
+  };
+  type Ecke = { p: V3; n: V3 };
+  const dreieck = (a: Ecke, b: Ecke, c: Ecke, farbe: readonly number[]) => {
+    // Umlaufsinn nach der Hautnormalen (Florians Umrisse laufen mal links-, mal rechtsherum; Material ist einseitig)
+    const g = kreuz3(minus3(b.p, a.p), minus3(c.p, a.p));
+    if (punkt3(g, plus3(plus3(a.n, b.n), c.n)) < 0) [b, c] = [c, b];
+    for (const spiegel of [1, -1]) {
+      const ecken = spiegel === 1 ? [a, b, c] : [a, c, b];
+      for (const e of ecken) {
+        pos.push(e.p[0], e.p[1], e.p[2] * spiegel);
+        nrm.push(e.n[0], e.n[1], e.n[2] * spiegel);
+        col.push(...farbe);
+      }
+    }
+  };
+  // Fläche des Umrisses in Ringen (100 %, 75 %, 50 %, 25 %) auf die Haut projiziert, damit sie der Wölbung folgt
+  const faecher = (umriss: P2[], farbe: readonly number[], abstand: number) => {
+    const m = { x: umriss.reduce((a, q) => a + q.x, 0) / umriss.length, y: umriss.reduce((a, q) => a + q.y, 0) / umriss.length };
+    const ringe = [1, 0.75, 0.5, 0.25].map((f) => umriss.map((q) => auf({ x: m.x + (q.x - m.x) * f, y: m.y + (q.y - m.y) * f }, abstand)));
+    const mitte = auf(m, abstand);
+    if (!mitte || ringe.some((r) => r.some((x) => !x))) return;
+    const n = umriss.length;
+    for (let r = 0; r < ringe.length - 1; r++) {
+      for (let i = 0; i < n; i++) {
+        const a = ringe[r]![i]!;
+        const b = ringe[r]![(i + 1) % n]!;
+        const c = ringe[r + 1]![(i + 1) % n]!;
+        const d = ringe[r + 1]![i]!;
+        dreieck(d, a, b, farbe);
+        dreieck(d, b, c, farbe);
+      }
+    }
+    const innen = ringe[ringe.length - 1]!;
+    for (let i = 0; i < n; i++) dreieck(mitte, innen[i]!, innen[(i + 1) % n]!, farbe);
+  };
+  // Linie als Strich (Lid): Versatz entlang der Bildnormalen, zu den Enden verjüngt
+  const strich = (linie: P2[], breite: number, farbe: readonly number[], abstand: number) => {
+    const n = linie.length;
+    const seiten = linie.map((q, i) => {
+      const v = linie[Math.max(0, i - 1)]!;
+      const h = linie[Math.min(n - 1, i + 1)]!;
+      const l = Math.hypot(h.x - v.x, h.y - v.y) || 1;
+      const w = breite * (0.35 + 0.65 * Math.sin((Math.PI * i) / (n - 1)));
+      const nx = -(h.y - v.y) / l;
+      const ny = (h.x - v.x) / l;
+      return [auf({ x: q.x + nx * w, y: q.y + ny * w }, abstand), auf({ x: q.x - nx * w, y: q.y - ny * w }, abstand)] as const;
+    });
+    if (seiten.some(([o, u]) => !o || !u)) return;
+    for (let i = 0; i < n - 1; i++) {
+      const [a, d] = seiten[i]!;
+      const [b, c] = seiten[i + 1]!;
+      dreieck(a!, b!, c!, farbe);
+      dreieck(a!, c!, d!, farbe);
+    }
+  };
+  const verkleinert = (umriss: P2[], f: number): P2[] => {
+    const m = { x: umriss.reduce((a, q) => a + q.x, 0) / umriss.length, y: umriss.reduce((a, q) => a + q.y, 0) / umriss.length };
+    return umriss.map((q) => ({ x: m.x + (q.x - m.x) * f, y: m.y + (q.y - m.y) * f }));
+  };
+  for (const a of augen) {
+    if (a.art === 'schlitz') faecher(a.punkte, [0.07, 0.1, 0.12], 0.002);
+    else if (a.art === 'knopf') {
+      faecher(a.punkte, [0.05, 0.05, 0.07], 0.002);
+      if (a.glanz?.length) faecher(a.glanz, [1, 1, 1], 0.003);
+    } else {
+      faecher(a.punkte, [0.95, 0.5, 0.14], 0.002);
+      faecher(verkleinert(a.punkte, 0.42), [0.08, 0.05, 0.04], 0.003);
+      if (a.lid && a.lid.length > 1) {
+        strich(a.lid, 0.0022, [0.1, 0.07, 0.1], 0.0035);
+      }
+    }
+  }
+  return { pos, nrm, col };
+}
 
 export function maulBauen(v: Vorlage): MaulErgebnis {
   const dokZu = vorlageDokument(v, 'zu');
@@ -148,7 +254,22 @@ export async function maulVersuch(versuch: Versuch, renderer: () => Renderer3D |
     for (let k = 0; k < 3 * (f.length - 2); k++) farben.set(c, (o + k) * 3);
     o += 3 * (f.length - 2);
   });
-  r.setzeDreiecke(d.positionen, d.normalen, farben);
+  // Augen aus der Zeichnung (geschlossene Seitenansicht), beim Öffnen mit dem Schädel bewegt
+  const augenVorlage = (vorlage as Vorlage & { augen?: Record<string, AugeVorlage[]> }).augen?.seite ?? [];
+  if (augenVorlage.length) {
+    const bewegung = auf && alpha > 0 ? gelenkBewegung(kieferRig(mk, zu, auf).gelenkOben, alpha) : null;
+    const au = augenDreiecke(augenVorlage, unterteilenMehrfach(zu, 3), bewegung);
+    const pos = new Float32Array(d.positionen.length + au.pos.length);
+    pos.set(d.positionen);
+    pos.set(au.pos, d.positionen.length);
+    const nrm = new Float32Array(pos.length);
+    nrm.set(d.normalen);
+    nrm.set(au.nrm, d.normalen.length);
+    const col = new Float32Array(pos.length);
+    col.set(farben);
+    col.set(au.col, farben.length);
+    r.setzeDreiecke(pos, nrm, col);
+  } else r.setzeDreiecke(d.positionen, d.normalen, farben);
   if (versuch.kaefig) {
     const k = kanten(kaefig);
     const punkte = new Float32Array(k.length * 6);
