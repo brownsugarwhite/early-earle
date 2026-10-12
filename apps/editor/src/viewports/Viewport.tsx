@@ -91,7 +91,9 @@ export function ViewportOber({ id }: { id: ViewId }) {
         {rechts && <div className="vp-label rechts">{rechts}</div>}
         {id === 'creation' && (
           <div className="vp-label links platzhalter">
-            {versuchAktiv()?.modus === 'maul' || hatMaul
+            {versuchAktiv()?.modus === 'wirbel'
+              ? 'Versuch: Wirbelsäule'
+              : versuchAktiv()?.modus === 'maul' || hatMaul
               ? 'Versuch: Maul im Netz'
               : versuchAktiv()?.modus === 'subd' || versuchAktiv()?.modus === 'tigerkaefig'
                 ? 'Versuch: Subdivision'

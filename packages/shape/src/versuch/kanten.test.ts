@@ -495,7 +495,8 @@ describe('Kanten-Käfig', () => {
       );
       expect(geschlossen(kk.netz)).toBe(true);
       expect(o.ok).toBe(true);
-      expect(t2 - t0).toBeLessThan(300);
+      // grobe Schranke: Die Tests laufen parallel, unter Last dauert der Bau bis gut 250 ms (allein 100–130 ms)
+      expect(t2 - t0).toBeLessThan(600);
     }
   });
 

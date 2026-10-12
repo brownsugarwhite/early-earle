@@ -5,7 +5,7 @@ import { type Dokument, angleichen, bewegeKnoten } from '@ee/shape';
 import { kaefigAnpassen, kaefigAusProfilen, kastenKaefig, laengsKante, ringKante, unterteilenMehrfach, zuDreiecken } from '@ee/shape/versuch';
 
 export type Versuch = {
-  modus: 'subd' | 'loft' | 'tiger' | 'tigerkaefig' | 'maul';
+  modus: 'subd' | 'loft' | 'tiger' | 'tigerkaefig' | 'maul' | 'wirbel';
   fall: string;
   form: string;
   zustand: string;
@@ -24,7 +24,7 @@ export type Versuch = {
 export function versuchAktiv(): Versuch | null {
   const q = new URLSearchParams(location.search);
   const v = q.get('versuch');
-  if (v !== 'subd' && v !== 'loft' && v !== 'tiger' && v !== 'tigerkaefig' && v !== 'maul') return null;
+  if (v !== 'subd' && v !== 'loft' && v !== 'tiger' && v !== 'tigerkaefig' && v !== 'maul' && v !== 'wirbel') return null;
   return {
     modus: v,
     fall: q.get('fall') ?? 'glatt',

@@ -8,6 +8,7 @@ import { szene } from './instanz';
 import { versuchAktiv, versuchNetz } from '../versuch/subdivision';
 import { tigerSchritt } from '../versuch/tigerSchritte';
 import { maulVersuch } from '../versuch/maulVersuch';
+import { wirbelVersuch } from '../versuch/wirbelVersuch';
 import { maulBauen, maulDreiecke } from '../maul/maulKoerper';
 import { zahnListe, zahnMeldungen } from '../maul/zahnKoerper';
 import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten/kantenKoerper';
@@ -34,7 +35,7 @@ export function Szene3D() {
       window.__editor = { backend: r.backend, vertices: () => r.vertexAnzahl };
       console.info(`[editor] 3D-Backend: ${r.backend}`);
       const versuch = versuchAktiv();
-      if (versuch?.modus === 'tigerkaefig' || versuch?.modus === 'maul') {
+      if (versuch?.modus === 'tigerkaefig' || versuch?.modus === 'maul' || versuch?.modus === 'wirbel') {
         r.setzeKamera(useUi.getState().kamera);
         r.setzeRect(useRahmen.getState().rects?.creation ?? null);
         abmelden.push(
@@ -42,6 +43,7 @@ export function Szene3D() {
           useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
         );
         if (versuch.modus === 'maul') void maulVersuch(versuch, () => r);
+        else if (versuch.modus === 'wirbel') void wirbelVersuch(versuch, () => r);
         else void tigerSchritt(versuch.schritt, () => r);
         return;
       }

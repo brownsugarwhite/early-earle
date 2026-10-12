@@ -12,3 +12,4 @@ export * from './linie3d';
 export * from './zaehne';
 export * from './umriss3d';
 export * from './kanten';
+export * from './wirbelsaeule';
