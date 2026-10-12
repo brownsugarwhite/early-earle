@@ -10,6 +10,7 @@ import { tigerSchritt } from '../versuch/tigerSchritte';
 import { maulVersuch } from '../versuch/maulVersuch';
 import { maulBauen, maulDreiecke } from '../maul/maulKoerper';
 import { zahnListe, zahnMeldungen } from '../maul/zahnKoerper';
+import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten/kantenKoerper';
 
 declare global {
   interface Window {
@@ -44,7 +45,29 @@ export function Szene3D() {
         else void tigerSchritt(versuch.schritt, () => r);
         return;
       }
-      const bauen = (d: Dokument) => {
+      /** Gewählte Kantenlinie im 3D nachzeichnen (türkis, immer sichtbar). */
+      const verlauf = () => {
+        const d = useEditor.getState().dok;
+        const a = useUi.getState().kantenAuswahl;
+        if (!a || d.maul || !mitKanten(d) || versuch) return r.setzeLinien(null);
+        const seg = kantenVerlauf(kantenBauen(d), a.kante);
+        if (!seg) return r.setzeLinien(null);
+        if (d.skalierung !== 1) for (let i = 0; i < seg.length; i++) seg[i]! *= d.skalierung;
+        const farben = new Float32Array(seg.length);
+        for (let i = 0; i < farben.length; i += 3) farben.set([0, 1, 0.88], i);
+        r.setzeLinien(seg, farben);
+      };
+      const bauen = (d: Dokument, schnell = false) => {
+        if (!d.maul && !versuch && mitKanten(d)) {
+          // Versuch 12.10.: Kanten im Käfig (Linien und Ecken der Silhouetten), Shapes → Loft → Käfig
+          const t = kantenDreiecke(kantenBauen(d, schnell));
+          const s = d.skalierung;
+          if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
+          r.setzeDreiecke(t.positionen, t.normalen);
+          verlauf();
+          return;
+        }
+        r.setzeLinien(null);
         if (d.maul) {
           // Versuch 12.10.: Körper mit Maul (Käfig, Naht, Tasche), Öffnung aus der Seitenleiste
           const b = maulBauen(d);
@@ -67,15 +90,19 @@ export function Szene3D() {
       r.setzeRect(useRahmen.getState().rects?.creation ?? null);
       abmelden.push(
         useEditor.subscribe((s, v) => {
-          const geaendert = s.dok.profile !== v.dok.profile || s.dok.skalierung !== v.dok.skalierung || s.dok.maul !== v.dok.maul || s.dok.zaehne !== v.dok.zaehne;
+          const geaendert =
+            s.dok.profile !== v.dok.profile || s.dok.skalierung !== v.dok.skalierung || s.dok.maul !== v.dok.maul || s.dok.zaehne !== v.dok.zaehne || s.dok.kanten !== v.dok.kanten;
           // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen
           if (s.dok.maul && s.gesteStart) return;
-          if (geaendert || (v.gesteStart && !s.gesteStart && s.dok.maul)) bauen(s.dok);
+          // Kanten-Käfig: während einer Geste schnell (weniger Anpass-Durchgänge), beim Loslassen genau
+          if (geaendert) bauen(s.dok, !!s.gesteStart && mitKanten(s.dok));
+          else if (v.gesteStart && !s.gesteStart && (s.dok.maul || mitKanten(s.dok))) bauen(s.dok);
         }),
         useUi.subscribe((s, v) => {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
           if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
           if (s.oeffnung !== v.oeffnung && useEditor.getState().dok.maul) bauen(useEditor.getState().dok);
+          if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
       );

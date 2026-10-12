@@ -4,6 +4,7 @@ import { useEditor } from '../state/editorStore';
 import { type Ebene, useUi } from '../state/uiStore';
 import { BLICK_TEXTE, VIEW_TEXTE, type ViewId } from '../types';
 import { versuchAktiv } from '../versuch/subdivision';
+import { mitKanten } from '../kanten/kantenKoerper';
 import { Steuerung3D } from './Steuerung3D';
 import { View2D } from './View2D';
 
@@ -74,6 +75,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
   const modus = useEditor((s) => s.modus);
   const hatMaul = useEditor((s) => !!s.dok.maul);
   const zurueck = useUi((s) => id === 'front' && s.blick.front === 'hinten');
+  const kantenKoerper = useEditor((s) => id === 'creation' && mitKanten(s.dok));
   if (!r) return null;
   const t = VIEW_TEXTE[id];
   const ui = useUi.getState();
@@ -87,7 +89,17 @@ export function ViewportOber({ id }: { id: ViewId }) {
         {id === 'creation' ? <Steuerung3D hoehe={r.h} /> : <View2D ansicht={id} w={r.w} h={r.h} />}
         {links && <div className="vp-label links">{links}</div>}
         {rechts && <div className="vp-label rechts">{rechts}</div>}
-        {id === 'creation' && <div className="vp-label links platzhalter">{versuchAktiv()?.modus === 'maul' || hatMaul ? 'Versuch: Maul im Netz' : versuchAktiv()?.modus === 'subd' || versuchAktiv()?.modus === 'tigerkaefig' ? 'Versuch: Subdivision' : 'Platzhalter-Körper'}</div>}
+        {id === 'creation' && (
+          <div className="vp-label links platzhalter">
+            {versuchAktiv()?.modus === 'maul' || hatMaul
+              ? 'Versuch: Maul im Netz'
+              : versuchAktiv()?.modus === 'subd' || versuchAktiv()?.modus === 'tigerkaefig'
+                ? 'Versuch: Subdivision'
+                : kantenKoerper
+                  ? 'Versuch: Kanten im Käfig'
+                  : 'Platzhalter-Körper'}
+          </div>
+        )}
         {id === 'creation' && modus !== 'editor' && !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>}
       </div>
       <div className="eckknoepfe">

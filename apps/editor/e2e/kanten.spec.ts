@@ -143,3 +143,36 @@ test('Kanten: zeichnen, Härte, Breitenwerkzeug, auf der Fläche ziehen, lösche
   await page.keyboard.press('ControlOrMeta+z');
   expect((await kanten(page))[0]!.knoten).toHaveLength(5);
 });
+
+test('Ecke in der Front wird Kante in Seite und Top; das 3D baut den Kanten-Käfig', async ({ page }) => {
+  await bereit(page);
+  const v0 = await page.evaluate(() => (window as unknown as Fenster).__editor!.vertices());
+  await expect(page.locator('.vp-ober[data-view="creation"] .vp-label.platzhalter')).toHaveText('Platzhalter-Körper');
+  // oberen Achsknoten der Front mit ⌥-Klick (Zeichenstift) zur Ecke machen: spitzer First
+  const kb = (await page.locator('.vp-ober[data-view="front"] [data-knoten="0"] circle').first().boundingBox())!;
+  await page.keyboard.press('p');
+  await page.keyboard.down('Alt');
+  await page.mouse.click(kb.x + kb.width / 2, kb.y + kb.height / 2);
+  await page.keyboard.up('Alt');
+  await page.keyboard.press('a');
+  // als Kante in Seite und Top, nicht in der Front selbst
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-eckkante]')).toHaveCount(1);
+  await expect(page.locator('.vp-ober[data-view="top"] [data-eckkante]')).toHaveCount(1);
+  await expect(page.locator('.vp-ober[data-view="front"] [data-eckkante]')).toHaveCount(0);
+  await expect(page.locator('.vp-ober[data-view="creation"] .vp-label.platzhalter')).toHaveText('Versuch: Kanten im Käfig');
+  await page.waitForFunction((v) => (window as unknown as Fenster).__editor!.vertices() !== v, v0);
+  // Klick auf die Ecken-Kante in der Seite wählt die Ecke in der Front; Härte über die Seitenleiste
+  // freie Stelle der Kante (bei 30 % ihrer Länge; oben in der Mitte liegt der Profilpunkt der Seite)
+  const q = await page.locator('.vp-ober[data-view="seite"] [data-eckkante] path[stroke="transparent"]').first().evaluate((el) => {
+    const p = el as SVGPathElement;
+    const pt = p.getPointAtLength(p.getTotalLength() * 0.3);
+    const m = p.getScreenCTM()!;
+    return { x: pt.x * m.a + pt.y * m.c + m.e, y: pt.x * m.b + pt.y * m.d + m.f };
+  });
+  await page.mouse.click(q.x, q.y);
+  await expect(page.locator('.leiste [data-eckmenue]')).toBeVisible();
+  await page.locator('.leiste [data-eckmenue] .regler input[type="range"]').first().fill('0.3');
+  const h = await page.evaluate(() => (window as unknown as { __stores: { editor: { getState(): { dok: { profile: { front: { knoten: { haerte?: number }[] } } } } } } }).__stores.editor.getState().dok.profile.front.knoten[0]!.haerte);
+  expect(h).toBeCloseTo(0.3, 5);
+  await page.screenshot({ path: path.join(bilder, 'kanten-ecke.png') });
+});

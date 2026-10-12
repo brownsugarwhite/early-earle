@@ -6,7 +6,7 @@
 // - Die rechte Seite (z ≥ 0) ist dunkel, die gespiegelte weiß (wie bei den Profilen); verdeckte Teile blass.
 
 import type { Ansicht, Blick, Dokument, Kante, V2, V3T } from '@ee/shape';
-import { ausAnsicht2, einfuegen3, glatteLinie, griffZiehen3, inAnsicht2, naechsterInAnsicht } from '@ee/shape/versuch';
+import { ausAnsicht2, eckKanten, einfuegen3, glatteLinie, griffZiehen3, inAnsicht2, naechsterInAnsicht } from '@ee/shape/versuch';
 import { useEffect } from 'react';
 import { useEditor } from '../state/editorStore';
 import { blickVon, useUi } from '../state/uiStore';
@@ -116,13 +116,21 @@ function StrichBild({ s }: { s: Strich[] }) {
 /** Kante aus einer Ecke einer Silhouette (abgeleitet, nicht einzeln bearbeitbar): 3D-Punkte der rechten Hälfte. */
 export type EckKante = { quelle: { ansicht: Ansicht; knoten: number }; punkte: readonly V3T[]; haerte: readonly number[] };
 
+let eckZuletzt: { profile: Dokument['profile']; kanten: EckKante[] } | null = null;
+/** Ecken-Kanten des Dokuments (Geometrie-Versuch `eckKanten`, ≈ 1 ms), gemerkt je Profile. */
+export function eckKantenVon(dok: Dokument): EckKante[] {
+  if (eckZuletzt?.profile !== dok.profile) eckZuletzt = { profile: dok.profile, kanten: eckKanten(dok) };
+  return eckZuletzt.kanten;
+}
+
 /**
  * Ecken der Silhouetten als Kanten in den anderen Ansichten (Florian 12.10.: „Wenn ich mit den Handles der Silhouetten
  * eine Ecke bilde, sollte diese als Kante in den anderen Ansichten erkennbar sein“). Ein Klick wählt die Ecke in ihrer
  * Ansicht.
  */
-export function EckKantenZeichnung({ ansicht, bild, aktiv: aktivTab, kanten }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean; kanten: readonly EckKante[] }) {
+export function EckKantenZeichnung({ ansicht, bild, aktiv: aktivTab }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean }) {
   const dok = useEditor((s) => s.dok);
+  const kanten = eckKantenVon(dok);
   const blick = useUi((s) => blickVon(ansicht, s.blick));
   const sicht = useUi((s) => s.kantenSicht);
   const aktiv = aktivTab && sicht === 'zeigen';

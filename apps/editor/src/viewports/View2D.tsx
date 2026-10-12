@@ -37,7 +37,7 @@ import { RigZeichnung } from '../maul/RigZeichnung';
 import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
 import { useMaulInfo } from '../maul/maulKoerper';
 import { offenerUmriss } from '../maul/offenerUmriss';
-import { BreitenKreis, KantenZeichnung, breiteZiehen, kantenZeiger } from '../kanten/KantenEbene';
+import { BreitenKreis, EckKantenZeichnung, KantenZeichnung, breiteZiehen, kantenZeiger } from '../kanten/KantenEbene';
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { versetzt3 } from '@ee/shape/versuch';
 
@@ -430,6 +430,7 @@ export function View2D({ ansicht, w, h }: Props) {
         </>
       )}
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
+      <EckKantenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <KantenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       {formAktiv && griffe}
       {formAktiv && profil.knoten.map((k, i) => {
