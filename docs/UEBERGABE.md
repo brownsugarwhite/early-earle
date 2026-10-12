@@ -2,10 +2,11 @@
 
 > Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**: Wo stehen wir, was ist offen, was ist der nächste Schritt. Historie in Git.
 
-**Stand:** 2026-10-12 mittags. Sitzung „Maul, Zähne, Rig: Recherche und Versuche“ auf Florians Mac, Vorbereitung der großen Fable-Sitzung ab 13.10.
+**Stand:** 2026-10-12 nachmittags. Sitzung „Maul, Zähne, Rig“ und danach „Kanten, Ansichten, verbundene Kiefer“ auf Florians Mac, Vorbereitung der großen Fable-Sitzung ab 13.10.
 - Branch `claude/editor-grundlayout`, gepusht. Merge nach `main` erst nach Florians Abnahme.
 - Plan: [`docs/plans/2026-10-12-maul-zaehne-rig.md`](plans/2026-10-12-maul-zaehne-rig.md)
 - **Ergebnis-Dokument:** [`docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`](research/2026-10-12-maul-kiefer-zaehne-augen.md), als Seite: https://claude.ai/artifact/WG3YJPn4SuL5acnY9yR9s1
+- **Nachmittag – Kanten und Ansichten:** Plan [`docs/plans/2026-10-12-kanten-ansichten.md`](plans/2026-10-12-kanten-ansichten.md), Ergebnis [`docs/research/2026-10-12-kanten-ansichten.md`](research/2026-10-12-kanten-ansichten.md) (Antworten auf Florians Fragen, Recherche mit 52 Quellen)
 - Gedächtnis des Editors: [`apps/editor/CLAUDE.md`](../apps/editor/CLAUDE.md)
 
 Vorher: Grundlayout, Navigation und Kurven (11.10.) siehe `git show 902965d:docs/UEBERGABE.md`, alte Wesen-Werkstatt `git show 6029362:docs/UEBERGABE.md`.
@@ -30,6 +31,24 @@ Dazu:
 - Lange Hälse brauchen einen Loft entlang einer gebogenen Wirbelsäule.
 
 ## Was steht
+
+**Nachmittag (Florians Rückmeldung 12.10. mittags):**
+- **Kiefer verbunden:**
+  - Gemeinsamer Mundwinkel für Ober- und Unterlinie (`mundwinkelVerbinden`), der offene Vorschlag dreht um den Mundwinkel.
+  - Der Maulanfang klebt an der Seitenkontur (`maulAnKontur`).
+  - Im Fressen-Tab zeigt jede Ansicht den Umriss des geöffneten 3D-Körpers (nur Haut, Kerbe an den Lippen; `umrissAusNetz`, `src/maul/offenerUmriss.ts`).
+- **Kantenlinien im Form-Tab** (`src/kanten/`):
+  - Zeichenstift auf freier Fläche; Knoten liegen auf der Fläche (Blickrichtung je Ansicht, stetig beim Ziehen) und folgen Formänderungen.
+  - Härte je Knoten. Darstellung gestrichelt (zoomfest, längere Striche mit wachsender Härte) bis schwarz 3 px.
+  - Einstellen über Regler, Stufen, „weich auslaufen“ und das Breitenwerkzeug ⇧W (Kreis = Härte).
+  - Kantenliste und Ebenenschalter (zeigen, blass, aus).
+- **Ecken der Silhouetten:** Härte je Eckpunkt (Regler, ⇧W). Die Anzeige in den anderen Ansichten ist vorbereitet (`EckKantenZeichnung`), es fehlt noch die Geometrie aus `kanten.ts`.
+- **Back und Bottom:** Tab am Viewport-Titel, echte Spiegelung, verdeckte Linien blass.
+- **Datenmodell:** `dok.kanten?: Kante[]`, Profil-Knoten `haerte?` (Rundreise getestet).
+- **Tests:** E2E `kanten.spec.ts` (neu), `maul.spec.ts`; Unit `linie3d.test.ts`, `umriss3d.test.ts`, `kantenFlaeche.test.ts`.
+- **3D-Kanten:** Ein Geometrie-Versuch (`packages/shape/src/versuch/kanten.ts`, Käfig mit Kantenschärfe aus Linien und Ecken) läuft als Hintergrund-Agent in einem eigenen Arbeitsbaum. Sein Branch muss noch zusammengeführt und ins 3D eingebunden werden.
+
+**Vormittag:**
 
 **Bedien-Versuch im Editor** (E2E `apps/editor/e2e/maul.spec.ts` plus die 12 bisherigen, alle grün mit WebGPU):
 - **Seitenleiste immer offen:** Tab-Menü oben, Library unten (aufklappbar, ⌘L). Die Viewports sind 604 px breit, das maximierte Quadrat 988 px.
@@ -93,6 +112,12 @@ Außerdem:
   - Bedienung (Seitenleiste, Tab-Punkte, Farben für Rig und Augen sind vorläufig)
   - Grundlayout, Glas, Ornament (Entwürfe von mir)
 - Kein Schließen-Schutz, kein App-Icon (wie 11.10.).
+
+**Offen aus dem Nachmittag** (siehe `docs/research/2026-10-12-kanten-ansichten.md`, Abschnitte 1, 4, 5):
+- Spanten (Querschnitte an gewählten Stellen, Front = vordere, Back = hintere Hälfte) und Kanten mit Tiefe (+ Grat, − Rinne): damit wird „alles in Shapes“ möglich.
+- Härte als Radius relativ zur Körpergröße speichern; die Kantenschärfe hängt an der Käfigdichte.
+- Knick oben an der Schnauze im offenen Umriss (Grenze der Kiefergewichte).
+- Eigene Pose-Profile für Fressen (heute folgt der Körper automatisch).
 
 ## Nächster Schritt
 
