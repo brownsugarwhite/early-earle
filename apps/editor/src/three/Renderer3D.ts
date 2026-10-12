@@ -116,11 +116,18 @@ export class Renderer3D {
   }
 
   /** Neue Geometrie statt Umbau der alten (Attributwechsel lässt sonst alte Shader-Stände stehen). */
-  private neueGeometrie(positionen: Float32Array, normalen: Float32Array, indizes: Uint32Array | null) {
+  private neueGeometrie(positionen: Float32Array, normalen: Float32Array, indizes: Uint32Array | null, farben: Float32Array | null = null) {
     const g = new BufferGeometry();
     g.setAttribute('position', new BufferAttribute(positionen, 3));
     g.setAttribute('normal', new BufferAttribute(normalen, 3));
     if (indizes) g.setIndex(new BufferAttribute(indizes, 1));
+    // Bereichsfarben (Versuche: Haut, Lippenband, Rachen, Zähne) werden mit der Matcap multipliziert
+    if (farben) g.setAttribute('color', new BufferAttribute(farben, 3));
+    const material = this.koerper.material as MeshMatcapNodeMaterial;
+    if (material.vertexColors !== !!farben) {
+      material.vertexColors = !!farben;
+      material.needsUpdate = true;
+    }
     g.computeBoundingSphere();
     const alt = this.geometrie;
     this.geometrie = g;
@@ -147,9 +154,9 @@ export class Renderer3D {
     this.anfordern();
   }
 
-  /** Dreiecke ohne Index (Versuche, z. B. Subdivision mit getrennten Normalen an scharfen Kanten). */
-  setzeDreiecke(positionen: Float32Array, normalen: Float32Array) {
-    this.neueGeometrie(positionen, normalen, null);
+  /** Dreiecke ohne Index (Versuche, z. B. Subdivision mit getrennten Normalen an scharfen Kanten), optional mit Farbe je Ecke. */
+  setzeDreiecke(positionen: Float32Array, normalen: Float32Array, farben: Float32Array | null = null) {
+    this.neueGeometrie(positionen, normalen, null, farben);
   }
 
   /** Liniensegmente (Paare von Punkten) mit Farbe je Punkt, z. B. das Käfiggitter (Versuche). */

@@ -4,11 +4,37 @@
 import { type Dokument, angleichen, bewegeKnoten } from '@ee/shape';
 import { kaefigAnpassen, kaefigAusProfilen, kastenKaefig, laengsKante, ringKante, unterteilenMehrfach, zuDreiecken } from '@ee/shape/versuch';
 
-export function versuchAktiv(): { modus: 'subd' | 'loft' | 'tiger' | 'tigerkaefig'; fall: string; form: string; zustand: string; schritt: number } | null {
+export type Versuch = {
+  modus: 'subd' | 'loft' | 'tiger' | 'tigerkaefig' | 'maul';
+  fall: string;
+  form: string;
+  zustand: string;
+  schritt: number;
+  /** Maul-Versuch: Wesen (tiger, rex, robbe, langhals), Käfig zeigen, Verfahren der Zwischenstufen */
+  wesen: string;
+  kaefig: boolean;
+  verfahren: string;
+  /** 3D-Kamera nah am Maul; Azimut in Grad */
+  nah: boolean;
+  azimut: number;
+};
+
+export function versuchAktiv(): Versuch | null {
   const q = new URLSearchParams(location.search);
   const v = q.get('versuch');
-  if (v !== 'subd' && v !== 'loft' && v !== 'tiger' && v !== 'tigerkaefig') return null;
-  return { modus: v, fall: q.get('fall') ?? 'glatt', form: q.get('form') ?? 'kugel', zustand: q.get('zustand') ?? 'zu', schritt: Number(q.get('schritt') ?? 5) };
+  if (v !== 'subd' && v !== 'loft' && v !== 'tiger' && v !== 'tigerkaefig' && v !== 'maul') return null;
+  return {
+    modus: v,
+    fall: q.get('fall') ?? 'glatt',
+    form: q.get('form') ?? 'kugel',
+    zustand: q.get('zustand') ?? 'zu',
+    schritt: Number(q.get('schritt') ?? 5),
+    wesen: q.get('wesen') ?? 'tiger',
+    kaefig: q.get('kaefig') === '1',
+    verfahren: q.get('verfahren') ?? 'knochen',
+    nah: q.get('nah') === '1',
+    azimut: Number(q.get('azimut') ?? -60),
+  };
 }
 
 /** Testformen für Vergleichsbilder (`&form=ei`). */

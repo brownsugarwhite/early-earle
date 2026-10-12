@@ -66,15 +66,62 @@ export type TigerKaefig = {
   ringPunkt: (i: number, j: number) => number;
 };
 
-export function tigerKaefig(dok: Dokument, opt: TigerOptionen = TIGER_STANDARD): TigerKaefig {
-  const { ringe: N, ring: R } = opt;
+/** Querschnitte des Körpers je Station (Anteil f der Länge), wie die Zielringe des Käfigs. */
+export type RingKontext = {
+  xMin: number;
+  xMax: number;
+  tMin: number;
+  tMax: number;
+  /** Seitenprofil, dicht abgetastet (für Schnitte und Pole) */
+  seite: V2[];
+  /** R Punkte des Querschnitts bei f: j = 0 oben (z = 0), R/4 rechts (+z), R/2 unten, 3R/4 links */
+  ring: (f: number, R: number) => V3[];
+};
+
+export function ringKontext(dok: Dokument, opt: TigerOptionen): RingKontext {
   const seite = pfadAbtasten(vollerPfad(dok.profile.seite), 24);
   const top = pfadAbtasten(vollerPfad(dok.profile.top), 24);
   const ausdehnung = (pts: V2[]) => [Math.min(...pts.map((p) => p.x)), Math.max(...pts.map((p) => p.x))] as const;
   const [xMin, xMax] = ausdehnung(seite);
   const [tMin, tMax] = ausdehnung(top);
-  const kasten = superellipse(R, opt.kastenExponent);
-  const front = frontVorlage(dok, R);
+  const vorlagen = new Map<number, { kasten: QPunkt[]; front: QPunkt[] }>();
+  const ring = (f: number, R: number): V3[] => {
+    let v = vorlagen.get(R);
+    if (!v) {
+      v = { kasten: superellipse(R, opt.kastenExponent), front: frontVorlage(dok, R) };
+      vorlagen.set(R, v);
+    }
+    const x = xMin + (xMax - xMin) * f;
+    const vs = schnitte(seite, x);
+    const ws = schnitte(top, tMin + (tMax - tMin) * f);
+    const yLo = Math.min(...vs);
+    const yHi = Math.max(...vs);
+    const w = ws.length ? Math.max(...ws.map(Math.abs)) : 0;
+    const t = glatt(opt.kastenBis, opt.kastenBis + opt.uebergang, f);
+    const out: V3[] = [];
+    for (let j = 0; j < R; j++) {
+      const zn = v.kasten[j]!.zn * (1 - t) + v.front[j]!.zn * t;
+      const yn = v.kasten[j]!.yn * (1 - t) + v.front[j]!.yn * t;
+      out.push([x, yLo + yn * (yHi - yLo), zn * w]);
+    }
+    return out;
+  };
+  return { xMin, xMax, tMin, tMax, seite, ring };
+}
+
+/** Rand der 4×4-Kappe auf Ring 1: (a, b) im Gitter → Ringposition j. */
+export function kappenRandJ(R: number, a: number, b: number): number {
+  const n = R / 4;
+  if (b === 0) return -n / 2 + a; // oben, links → rechts
+  if (a === n) return n / 2 + b; // rechts, oben → unten
+  if (b === n) return (3 * n) / 2 + (n - a); // unten, rechts → links
+  return (5 * n) / 2 + (n - b); // links, unten → oben
+}
+
+export function tigerKaefig(dok: Dokument, opt: TigerOptionen = TIGER_STANDARD): TigerKaefig {
+  const { ringe: N, ring: R } = opt;
+  const k = ringKontext(dok, opt);
+  const { xMin, xMax, tMin, tMax, seite } = k;
 
   // Stationen: dicht an beiden Enden; die erste fast ganz vorn (dort sitzt die Kappe)
   let stationen: number[] = [];
@@ -84,20 +131,7 @@ export function tigerKaefig(dok: Dokument, opt: TigerOptionen = TIGER_STANDARD):
 
   const ringPunkt = (i: number, j: number) => (i - 1) * R + (((j % R) + R) % R);
   const ziel: V3[] = [];
-  stationen.forEach((f) => {
-    const x = xMin + (xMax - xMin) * f;
-    const vs = schnitte(seite, x);
-    const ws = schnitte(top, tMin + (tMax - tMin) * f);
-    const yLo = Math.min(...vs);
-    const yHi = Math.max(...vs);
-    const w = ws.length ? Math.max(...ws.map(Math.abs)) : 0;
-    const t = glatt(opt.kastenBis, opt.kastenBis + opt.uebergang, f);
-    for (let j = 0; j < R; j++) {
-      const zn = kasten[j]!.zn * (1 - t) + front[j]!.zn * t;
-      const yn = kasten[j]!.yn * (1 - t) + front[j]!.yn * t;
-      ziel.push([x, yLo + yn * (yHi - yLo), zn * w]);
-    }
-  });
+  for (const f of stationen) ziel.push(...k.ring(f, R));
   // hinterer Pol
   const xEnde = xMax;
   const vEnde = schnitte(seite, xMax - (xMax - xMin) * 1e-4);
@@ -108,12 +142,7 @@ export function tigerKaefig(dok: Dokument, opt: TigerOptionen = TIGER_STANDARD):
   // Kappe vorn (Stirnfläche des Schnauzenkastens) als 4×4-Vierecksgitter wie in Blender modelliert:
   // Rand = erster Ring (je Seite R/4 Kanten), innen eine Coons-Fläche aus den Randpunkten.
   const n = R / 4;
-  const rand = (a: number, b: number): number => {
-    if (b === 0) return ringPunkt(1, -n / 2 + a); // oben, links → rechts
-    if (a === n) return ringPunkt(1, n / 2 + b); // rechts, oben → unten
-    if (b === n) return ringPunkt(1, (3 * n) / 2 + (n - a)); // unten, rechts → links
-    return ringPunkt(1, (5 * n) / 2 + (n - b)); // links, unten → oben
-  };
+  const rand = (a: number, b: number): number => ringPunkt(1, kappenRandJ(R, a, b));
   const gitter: number[][] = [];
   for (let b = 0; b <= n; b++) {
     const zeile: number[] = [];

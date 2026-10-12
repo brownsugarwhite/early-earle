@@ -7,6 +7,7 @@ import { Renderer3D } from './Renderer3D';
 import { szene } from './instanz';
 import { versuchAktiv, versuchNetz } from '../versuch/subdivision';
 import { tigerSchritt } from '../versuch/tigerSchritte';
+import { maulVersuch } from '../versuch/maulVersuch';
 
 declare global {
   interface Window {
@@ -30,14 +31,15 @@ export function Szene3D() {
       window.__editor = { backend: r.backend, vertices: () => r.vertexAnzahl };
       console.info(`[editor] 3D-Backend: ${r.backend}`);
       const versuch = versuchAktiv();
-      if (versuch?.modus === 'tigerkaefig') {
+      if (versuch?.modus === 'tigerkaefig' || versuch?.modus === 'maul') {
         r.setzeKamera(useUi.getState().kamera);
         r.setzeRect(useRahmen.getState().rects?.creation ?? null);
         abmelden.push(
           useUi.subscribe((s, v) => s.kamera !== v.kamera && r.setzeKamera(s.kamera)),
           useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
         );
-        void tigerSchritt(versuch.schritt, () => r);
+        if (versuch.modus === 'maul') void maulVersuch(versuch, () => r);
+        else void tigerSchritt(versuch.schritt, () => r);
         return;
       }
       const bauen = (d: Dokument) => {

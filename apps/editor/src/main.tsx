@@ -13,7 +13,7 @@ import { tigerLaden } from './versuch/ueberlagerung';
 // Versuche (?versuch=subd&form=…): Testform laden
 const versuch = versuchAktiv();
 if (versuch?.modus === 'tiger') void tigerLaden(versuch.zustand);
-else if (versuch) useEditor.setState({ dok: versuchForm(useEditor.getState().dok, versuch.form) });
+else if (versuch && versuch.modus !== 'maul') useEditor.setState({ dok: versuchForm(useEditor.getState().dok, versuch.form) });
 
 // Zugriff für E2E-Tests und die Konsole (kein Einfluss auf die Bedienung)
 Object.assign(window, {
