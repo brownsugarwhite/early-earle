@@ -316,16 +316,90 @@ Das Budget aus der Recherche steht: höchstens 3 Morph-Ziele, ein Draw Call je W
 
 ## 10. Fahrplan für die große Sitzung
 
-*(folgt)*
+Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je nach Zeit 6, 4 und 5. Am Ende jeder Phase schaut Florian auf ein Vergleichsbild neben seinem Bogen. Parallele Arbeit läuft in eigenen Arbeitsbäumen mit Zuständigkeit nach Pfaden (Arbeitsregel 5), zum Beispiel Kern, Bedienung, Look.
+
+| Phase | Ziel | Inhalt | Abnahme |
+|---|---|---|---|
+| **0 Gemeinsamer Start** (30–45 min) | Richtung festlegen | Florian liest Kurzfassung und Abschnitt 4, entscheidet Abschnitt 11, legt Prüfwesen und Reihenfolge fest, zeigt ggf. neue Bögen (z. B. Retriever-Büschel, Rückenschuppen) | Entscheidungen im Plan festgehalten und committet |
+| **1 Entscheidungstest Kern** (2–3 h) | Beweisen, dass Weg A trägt, bevor breit gebaut wird | Käfig mit Kappe und Schnauzenringen; Maul als Schnitt in den Kopfringen (an der Schnauze und unter dem Kopf); Spanten an Rücken-, Bauch- und Breitenlinie; ein Säulenbein am Rex; einfaches Earle-Material statt Matcap | Rex-Kopf und Langhals ≤ 2 px, 0 Durchdringungen geschlossen, Florians Urteil am Bild; sonst Weg B prüfen |
+| **2 Kern breit: ein Bauweg** | Ein Netz für alles | Platzhalter-Loft, Kanten-, Tiger- und Maul-Käfig fallen weg. Wirbelsäule als Standard; Linien-Netz mit gemeinsamen Punkten; Kanten mit Knickwinkel; Rundheit je Abschnitt; örtliches Werkzeug; Bearbeiten im 3D; Bau im Worker | 5 Prüfwesen ≤ 2 px; Vorschau ≤ 16 ms je Zugschritt; Florian baut den Tiger-Kopf selbst |
+| **3 Maul im Kern, sauber** | Das Maul wie in den Bögen | Mundwinkel-Zone, Tasche als Versatz der Kiefer-Innenflächen, Kehlkette, Bodengrenze; Zahnrahmen je Öffnungsart, Zunge; Fressen als Pose auf dem ganzen Netz (alle Ansichten); weitere Posen gleich | 0 Durchdringungen bei 0/25/50/75/100 %; Bohne; Rex, Robbe, Langhals, Drache ohne Unterkiefer |
+| **4 Glieder** | Beine, Arme, Flügel, Schwänze | nach Abschnitt 7 | Rex, Retriever, Flamingo, Spinne neben den Bögen |
+| **5 Klingen** | Büschel, Mähnen, Kämme, Stacheln, Federn, Flossen | nach Abschnitt 8 | Retriever, Löwe, Stacheldrache neben den Bögen |
+| **6 Look** | Earle-Look im Editor | Material, Muster und Zonen aus `packages/render/src/creature2`, gemalte Augen, Lippenband, Rachen, Zunge, Glimmer | Vergleichsbild je Prüfwesen, Florians „ja“ |
+| **7 Spiel** | Vom Editor aufs Brett | Knochenkette und Skinning, 3 Morph-Ziele, Reißverschluss-Attribut, Export, Atmen/Blinzeln/Fressen/Gehen, iPhone-Messung | 36 Wesen ≥ 58 fps, ≤ 100 Draw Calls |
+| **8 Varianten** | Viele Wesen aus wenigen | Mischen gleicher Baupläne, Teiletausch, Mutation, Assistent erzeugt Varianten im Look | Raster aus 12 Varianten, Florian wählt aus |
 
 ## 11. Entscheidungen für Florian
 
-*(folgt)*
+| Nr. | Frage | Empfehlung |
+|---|---|---|
+| E1 | **Kern:** Weg A (Linien-Netz → Käfig je Bauplan), erst nach dem Entscheidungstest breit bauen? | ja |
+| E2 | **Wirbelsäulen-Netz als einzige Bauweise;** Ziehen an der Wirbelsäule biegt (mit ⌥ nur die Linie verlegen) | ja (aus `docs/plans/2026-10-12-wirbelsaeule-ein-netz.md`, Abschnitt 7) |
+| E3 | **Front nur als Umriss;** Querschnitte nur aus Spanten, die an Rücken-, Bauch- und Breitenlinie hängen, jede Hälfte für sich; dazu eine Spantenriss-Ansicht statt Back und Bottom | ja |
+| E4 | **Kantenlinien mit Knickwinkel** statt Tiefe; Rundheit (rund ↔ kastig) je Abschnitt als Regler auf der Wirbelsäule | ja |
+| E5 | **Bearbeiten im 3D** (Punkte und Linien direkt anfassen) und ein **örtliches Werkzeug** („weich ziehen“ mit Radius wie Blenders proportionales Bearbeiten, O) | ja |
+| E6 | **Fressen und eigene Posen** auf dem ganzen Netz, alle Ansichten bearbeitbar, gespeichert als Abweichung | ja |
+| E7 | **Spanten-Überblendung** linear (neuer Spant ändert nichts) oder kubisch (glatter) | nach Florians Test |
+| E8 | **Glieder:** Variante aus Abschnitt 7 | siehe Abschnitt 7 |
+| E9 | **Körperweite Strukturen:** ein Grundelement „Klinge“ mit Pinseln wie Illustrator (Abschnitt 8) | siehe Abschnitt 8 |
+| E10 | **KI:** Rolle im Editor (Abschnitt 9) | siehe Abschnitt 9 |
+| E11 | **Look im Editor ab Phase 1** (Earle-Material statt weißem Matcap) | ja |
+| E12 | **Prüfwesen und Reihenfolge** (Abschnitt 12) | Rex → Langhals → Tiger-Kopf → Retriever → Stacheldrache |
 
 ## 12. Prüfwesen und Abnahmekriterien
 
-*(folgt)*
+| Wesen | prüft vor allem | Vorlage |
+|---|---|---|
+| Kugel | Grundlage, Kopplung, Tempo | Start jedes Wesens |
+| Rex | Maul mit Überbiss, viele Außenzähne, Haps, Säulenbeine mit flachem Fuß, Stummelarme, Rückenfinne | `bild05`, `bild11`, `bild12`, `bild14`, `editor/06` |
+| Langhals | stehender Hals, Kopf drauf, Maul unter dem Kopf bzw. den Hals hinab | `editor/04` |
+| Tiger (Kopf) | Kastenschnauze, Kanten mit Winkel, Streifen | `bild09`, `editor/03` |
+| Robbe | Riesenmaul bis zum Boden, Tasche bis 3× | `editor/04` |
+| Retriever | Flammenbüschel, W-Lippe, vier Säulenbeine mit Zehenwülsten | `bild08`, `bild12` |
+| Löwe | Mähne aus Zacken, untergeschlagene Pfoten | `bild09`, `bild12` |
+| Stacheldrache | Kamm aus Klingen, Fledermausflügel, Maul am Hals ohne Unterkiefer | `bild05`, `bild19` |
+| Flamingo | S-Hals, Stelzbeine mit drei Zehen, Hakenschnabel | `bild06`, `bild15` |
+| Spinne | acht Knickbeine, Büschel | `bild15` |
+| Aal | eingerollter Schlangenkörper, gezackte Flossen, Sechseckschuppen im Shader | `bild13` |
+
+**Gemeinsame Kriterien:**
+- Umrisse ≤ 2 px in Seite, Front und Top gegen die Zeichnung; Überdeckung mit dem Bogen ≥ 0,85.
+- 0 Durchdringungen geschlossen, offen und bei 25/50/75 %.
+- Vorschau ≤ 16 ms je Zugschritt, genauer Bau ≤ 200 ms.
+- Im Spiel: 36 Wesen ≥ 58 fps, ≤ 100 Draw Calls.
+- Florians „ja“ am Vergleichsbild (Bogen und Render nebeneinander, gleiche Ansicht, gleicher Maßstab).
 
 ## 13. Landkarte: Wissen, Code, Werkzeuge
 
-*(folgt)*
+**Lesen, in dieser Reihenfolge:**
+1. dieses Dokument
+2. [`docs/UEBERGABE.md`](../UEBERGABE.md)
+3. [`apps/editor/CLAUDE.md`](../../apps/editor/CLAUDE.md): Entscheidungen und Fallen
+4. [`docs/plans/2026-10-12-wirbelsaeule-ein-netz.md`](2026-10-12-wirbelsaeule-ein-netz.md): Vorschlag ein Netz, Recherche mit 31 Quellen
+5. [`docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`](../research/2026-10-12-maul-kiefer-zaehne-augen.md): Maul, Zähne, Rig, Augen; Abschnitte 3–6, Recherchen B1–B4
+6. [`docs/research/2026-10-12-kanten-ansichten.md`](../research/2026-10-12-kanten-ansichten.md): Kanten, Spanten, Kopplung; Recherche mit 52 Quellen
+7. [`docs/plans/2026-10-12-wirbelsaeule-maul-fressen.md`](2026-10-12-wirbelsaeule-maul-fressen.md): Wirbelsäule zeichnen, Pose-Form, Maul auf der Wirbelsäule, Maulloch
+8. [`docs/research/2026-10-11-silhouetten-kanten-machbarkeit.md`](../research/2026-10-11-silhouetten-kanten-machbarkeit.md): Subdivision-Käfig, Kieferrechnung, SVG-Import
+9. [`docs/look/wesen-refs/README.md`](../look/wesen-refs/README.md) und [`ZIELSYSTEM.md`](../look/wesen-refs/ZIELSYSTEM.md): die 19 Bögen, gemessene Ziele
+10. [`docs/look/editor/README.md`](../look/editor/README.md): Editor-Bögen 01–06
+11. Werkstatt-Wissen: `git show 6029362:docs/UEBERGABE.md` (Blöcke 1–11, Florians 17 Rückmeldungen im Gedächtnis), [`docs/look/grundblobs/README.md`](../look/grundblobs/README.md), [`docs/look/modulsystem/SYSTEM.md`](../look/modulsystem/SYSTEM.md), [`docs/research/ki-3d-tools-2026-10.md`](../research/ki-3d-tools-2026-10.md)
+
+**Code:**
+
+| Bereich | Pfad | Status |
+|---|---|---|
+| Editor-Gerüst | `apps/editor/src/{viewports,layout,library,state,editing,menu,ui,leiste}`, `three/Renderer3D.ts` | behalten |
+| Kurven, Dokument, Kopplung | `packages/shape/src/{bezier,profil,dokument,kopplung}.ts` | behalten, erweitern |
+| Spanten | `packages/shape/src/spanten.ts`, `apps/editor/src/spanten/` | Wissen behalten; Normierung ersetzen (E3) |
+| Versuche | `packages/shape/src/versuch/`: `wirbelsaeule`, `wirbelMaul`, `maul`, `maulUmriss`, `kiefer`, `zaehne`, `kanten`, `linie3d`, `flaechenlinie`, `umriss3d`, `catmullClark`, `kaefig`, `tigerKaefig`, `pruefen` | Wissen und Tests behalten, im Kern neu bauen |
+| Editor-Ebenen der Versuche | `apps/editor/src/{maul,wirbel,kanten,versuch}` | Bedienung behalten, Bau neu |
+| Look aus der Werkstatt | `packages/render/src/creature2` (Material, Muster, Zonen) | übernehmen (Phase 1/6) |
+| Werkstatt-Körper | `packages/creature` (SDF, Mund, Kiefer, Rig, Bauplan) | nur Wissen |
+| Werkzeuge | `apps/editor/scripts/` (`nachziehen/`, `vergleich.mjs`, `maul-bilder.mjs`, `wirbel-bilder.mjs`, `kopplung-bild.mjs`), `apps/editor/e2e/` | behalten |
+
+**Befehle:**
+- Editor: `pnpm editor` (Electron), Web-Modus `editor-web` auf Port 5180
+- Prüfen: `pnpm typecheck`, `pnpm test`, `pnpm lint`
+- E2E mit echter GPU: `E2E_PORT=5191 EE_GPU=1 pnpm --filter @ee/editor e2e`
+- Bilder: `node apps/editor/scripts/maul-bilder.mjs <wesen>`, `node apps/editor/scripts/wirbel-bilder.mjs`

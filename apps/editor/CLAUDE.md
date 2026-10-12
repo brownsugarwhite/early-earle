@@ -81,6 +81,12 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - Die Kinnseite bestimmt der Winkel zur Maulrichtung (`kinnRichtung`): gegen den Uhrzeigersinn Oberkiefer, im Uhrzeigersinn Kinn (Schnauze links).
   - `maulImUmrissSichern` (Laden, `setzeMaul`) baut fehlende Anfänge ein und tauscht vertauschte.
 
+- **Nachtrag 12.10. spätnachts — Bilanz, Ende der Versuchsphase:**
+  - Florian: „Alles bis jetzt waren nur Tests und Recherche!“ Mäuler und das echte 3D-Wesen passen noch nicht.
+  - Shapes, Spanten, Kanten und Wirbelsäule müssen viel besser zusammenspielen und leichter zu bedienen sein.
+  - Beine und körperweite Strukturen (Rückenschuppen, Fellsträhnen wie beim Retriever) sind ungeklärt.
+  - Einstieg für die große Sitzung: `docs/plans/2026-10-13-grosse-sitzung-wesen-editor.md`. Behalten wird das Gerüst (Kurven, Navigation, Layout, Library, Dokument); die Bauwege in `packages/shape/src/versuch/` sind Wissen, kein fertiger Code.
+
 ## Arbeitsweise
 
 - **Look-Beweis:** `node apps/editor/scripts/vergleich.mjs` (Web-Modus muss laufen) → `docs/progress/editor/vergleich-grundlayout.png` (Vorlage | Render). Render und Differenz liegen unter `apps/editor/test-results/vergleich/`.
