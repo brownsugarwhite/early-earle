@@ -5,6 +5,9 @@ import { type Netz, unterteilenMehrfach } from './catmullClark';
 import { kaefigAusProfilen } from './kaefig';
 import { umrissAusNetz } from './umriss3d';
 
+declare const console: { log: (...a: unknown[]) => void };
+declare const performance: { now: () => number };
+
 describe('Versuch Umriss aus dem Netz', () => {
   it('Startkugel: Umriss in Seite, Front und Top ist ein Kreis um die Kugelmitte', () => {
     const netz = unterteilenMehrfach(kaefigAusProfilen(neuesDokument(), 9, 12), 3);
