@@ -69,6 +69,13 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
     - Ziehen am Anfang (Seite: x/y, Front: Höhe) bewegt den Umrissknoten über `gekoppeltBerechnen`; der Anfang folgt über `maulAnKontur`.
     - Mit getrennten Kiefern zeigt der Seitenumriss den Spalt (`umrissMitSpalt`, `[data-maulspalt]`).
 
+- **Nachtrag 12.10. nachts — Wirbelsäule zeichnen, Maul auf der Wirbelsäule, Form im Fressen-Tab** (Plan `docs/plans/2026-10-12-wirbelsaeule-maul-fressen.md`):
+  - **Wirbelsäule:** `dok.wirbelsaeule` (Linie3, z = 0). Bearbeiten in `src/wirbel/WirbelEbene.tsx`, glatte Linie durch die Punkte (`linieDurch`). Zeiger-Reihenfolge in der Seite: Wirbelsäule vor Spanten, Kanten und Profil.
+  - **Pose-Form:**
+    - `dok.posenProfile.fressen.seite`, gleiche Punktstruktur, sonst gilt sie nicht (`poseSeiteGespeichert`).
+    - Alle Profil-Bearbeitungen gehen über `src/editing/aktiv.ts` (`aktivesProfil`, `setzeAktiv`, `uebernehmenAktiv`). Im Fressen-Tab landet die Seite auf der Pose-Form, ohne Kopplung an Front und Top.
+  - **Maul auf der Wirbelsäule:** `maulBauen(dok, true)` baut `maulKaefigAufWirbel`. `strahlen()` (Maulfläche) nimmt in dieser Bauweise den Wirbelsäulen-Körper.
+
 ## Arbeitsweise
 
 - **Look-Beweis:** `node apps/editor/scripts/vergleich.mjs` (Web-Modus muss laufen) → `docs/progress/editor/vergleich-grundlayout.png` (Vorlage | Render). Render und Differenz liegen unter `apps/editor/test-results/vergleich/`.
@@ -103,6 +110,11 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 
 - **Maulanfang folgt dem Umrissknoten nur bei gleicher Knotenzahl.** `maulAnKontur` erkennt den Knoten an der Lage (0,5 px). Ändert sich die Knotenzahl (Punkt eingefügt oder gelöscht), fällt er auf die Projektion auf die Kontur zurück; beim nächsten Ziehen am Anfang wird der Knoten neu eingebaut.
 - **Spaltanzeige braucht benachbarte Knoten:** Liegen zwischen Ober- und Unterlippen-Anfang weitere Umrissknoten, zeigt `umrissMitSpalt` nichts (Anzeige wie bisher).
+
+- **Pose-Form ableiten braucht den Maul-Bau:** `poseSeite` bildet Knoten über das 3D ab (`maulZuletzt`). Solange das Maul nicht gebaut ist, gilt der geschlossene Umriss. Der Selektor in `View2D` gibt gemerkte Objekte zurück (`ableitung`), sonst rendert React endlos.
+- **Kiefer gleich in der Pose:** Offen trennen sich die Lippen, deshalb bekommt die Pose-Form einen zweiten Maulanfang. Beim ersten Speichern kommt derselbe Knoten an derselben Stelle (t = 0 bzw. 1) in den geschlossenen Umriss.
+- **Gestreckter Raum:** Rahmen aus den Sprossen (Fußpunkt der Wirbelsäule, Richtung der Sprosse); vor der ersten und hinter der letzten Station parallele Sprossen zur Spitze. Der Maul-Käfig darf dort nur `rk.ring`, `rk.seite`, `xMin` und `xMax` sehen.
+- **Maul-Käfig erwartet den Maulanfang vorn** (Kappenmitte): Beginnt das Maul weit dahinter, füllt die Kappe den ganzen Kopf davor.
 
 - **macOS unterscheidet keine Groß-/Kleinschreibung:** `View2D.tsx` neben `view2d.ts` bricht tsc (TS1149). Deshalb heißt die Mathe-Datei `ansicht2d.ts`.
 - **CSS-Reihenfolge:** `.glas` darf kein `position` setzen. Es überschrieb `position: absolute/fixed` von Aufklappmenü und Kontextmenü, die Menüleiste verrutschte.

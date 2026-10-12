@@ -55,6 +55,18 @@ Dazu:
   - Code `packages/shape/src/versuch/maulUmriss.ts`, `MaulEbene.tsx`; E2E in `maul.spec.ts`.
 - **Recherche** (31 Quellen) steht in Abschnitt 8 des Plans.
 
+**Nachts** (Florian: Wirbelsäule selbst zeichnen, Maul mit Wirbelsäule, Form im Fressen-Tab; Plan und Ergebnis [`docs/plans/2026-10-12-wirbelsaeule-maul-fressen.md`](plans/2026-10-12-wirbelsaeule-maul-fressen.md)):
+- **Wirbelsäule selbst zeichnen** (`dok.wirbelsaeule`): Seitenleiste „selbst zeichnen“, „Vorschlag übernehmen“, „automatisch“. Punkte ziehen verlegt die Ringe, der Umriss bleibt.
+- **Form im Fressen-Tab** (`dok.posenProfile.fressen.seite`):
+  - Die Seite bearbeitet die Pose-Form mit gleicher Punktstruktur, die offenen Maulanfänge sind ihre Punkte.
+  - Im 3D legt sich die offene Haut an die Pose-Form.
+  - Fressen-Tab = Öffnung 100 %, Editor-Tab = 0 %.
+- **Maul auf der Wirbelsäule:** Der Maul-Käfig läuft im gestreckten Raum (`wirbelMaul.ts`), mit Zähnen, zu und offen.
+- **Grenzen:**
+  - Beginnt das Maul weit hinter der Schnauzenspitze, wird die Spitze zu spitz; es braucht Schnauzenringe im Maul-Käfig.
+  - Biegen mit Maul fehlt noch.
+  - Mit stehenden Teilen sind die Querschnitte oval.
+
 **Spätnachmittag** (Florian: „Mach das mit den Spanten mal“ und „Kanten und Härten scheinen mir noch nicht ganz schlüssig“):
 - **Regel:** Eine Kante ist eine Ecke in einem Shape. Ecke in Seite/Top = Kante quer, Ecke in einem Spant = Kante längs. Der Winkel kommt aus der Form, die Härte ist die Rundung.
   - Gemessen: Spant-Ecke mit 100 % knickt um 43°, eine freie Linie mit 100 % um 13° (`kanten.test.ts`, Test „Spant-Ecke“).
