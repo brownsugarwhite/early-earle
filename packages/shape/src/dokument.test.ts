@@ -20,7 +20,7 @@ describe('Dokument', () => {
   it('behält Kantenlinien und die Härte von Eckpunkten (Versuch 12.10. mittags) beim Laden', () => {
     const d = neuesDokument('Rex');
     const k = (p: [number, number, number]) => ({ p, ein: [0, 0, 0] as [number, number, number], aus: [0, 0, 0] as [number, number, number], art: 'glatt' as const });
-    d.kanten = [{ knoten: [k([-0.2, 0.4, 0.05]), k([0.1, 0.45, 0.05]), k([0.2, 0.4, 0.04])], haerte: [0, 0.7, 0.2], blick: 'hinten' }];
+    d.kanten = [{ knoten: [k([-0.2, 0.4, 0.05]), k([0.1, 0.45, 0.05]), k([0.2, 0.4, 0.04])], haerte: [0, 0.7, 0.2], blick: 'hinten', tiefe: -0.012 }];
     d.profile.seite.knoten[1] = { ...d.profile.seite.knoten[1]!, art: 'ecke', haerte: 0.4 };
     const json = JSON.parse(JSON.stringify(d));
     expect(dokumentLesen(json)).toEqual(json);

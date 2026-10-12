@@ -8,7 +8,7 @@ import { ladeAusBibliothek } from '../aktionen';
 import { useRahmen } from '../layout/animation';
 import { editorApi, useBibliothek } from '../library/speicher';
 import { aktuelleLippen, setzeLippen } from '../maul/MaulEbene';
-import { dunkel, haerteSetzen, kanteAuslaufen, kantenKnotenLoeschen, strichBreite, strichMuster, useGewaehlteKante } from '../kanten/KantenEbene';
+import { TIEFE_MAX, dunkel, haerteSetzen, kanteAuslaufen, kantenKnotenLoeschen, strichBreite, strichMuster, tiefeSetzen, useGewaehlteKante } from '../kanten/KantenEbene';
 import { useZahnMeldungen } from '../maul/ZahnEbene';
 import { aenderungAnwenden, befundText } from '../maul/zahnKoerper';
 import { useMaulInfo } from '../maul/maulKoerper';
@@ -166,6 +166,17 @@ function KantenBereich() {
             </button>
           ))}
         </div>
+        <Regler
+          label="Tiefe"
+          wert={gew.k.tiefe ?? 0}
+          min={-TIEFE_MAX}
+          max={TIEFE_MAX}
+          schritt={0.0005}
+          anzeige={`${(gew.k.tiefe ?? 0) > 0 ? '+' : ''}${Math.round((gew.k.tiefe ?? 0) * 461)} px`}
+          onChange={tiefeSetzen}
+          {...geste}
+        />
+        <p className="hilfe">Tiefe: + Grat (heller Hof), − Rinne (dunkler Hof). Mit Härte 0 weich, mit 100 % scharf.</p>
         <div className="umschalter">
           <button className="chip" onClick={kanteAuslaufen} title="Enden glatt, Mitte hart: die Kante läuft in die runde Form aus">
             weich auslaufen

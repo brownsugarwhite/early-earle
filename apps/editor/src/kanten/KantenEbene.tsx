@@ -161,6 +161,52 @@ export function EckKantenZeichnung({ ansicht, bild, aktiv: aktivTab, kanten }: {
   );
 }
 
+/** Größte Tiefe im Regler (Kachel), ±14 px in der Grundansicht. */
+export const TIEFE_MAX = 0.03;
+
+/**
+ * Tiefe einer Kante als Licht und Schatten: Ein Grat (+) fängt Licht (heller Hof), eine Rinne (−) liegt im Schatten
+ * (dunkler Hof). Stärke nach dem Betrag.
+ */
+function TiefenHof({ k, ansicht, bild }: { k: Kante; ansicht: Ansicht; bild: (p: V2) => V2 }) {
+  const t = k.tiefe ?? 0;
+  const a = Math.min(1, Math.abs(t) / TIEFE_MAX);
+  const kopien = ansicht === 'seite' ? [false] : [false, true];
+  return (
+    <>
+      {kopien.map((sp) => (
+        <path
+          key={String(sp)}
+          d={proben(k)
+            .map(({ p }, i) => {
+              const q = bild(inAnsicht2(sp ? spiegel(p) : p, ansicht));
+              return `${i ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+            })
+            .join('')}
+          fill="none"
+          stroke={t > 0 ? '#ffffff' : '#19232b'}
+          strokeOpacity={0.25 + 0.4 * a}
+          strokeWidth={4 + 6 * a}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+    </>
+  );
+}
+
+/** Tiefe der gewählten Kante setzen (0 = auf der Fläche). */
+export function tiefeSetzen(t: number) {
+  const a = useUi.getState().kantenAuswahl;
+  const k = a ? kanten()[a.kante] : undefined;
+  if (!a || !k) return;
+  const v = Math.max(-TIEFE_MAX, Math.min(TIEFE_MAX, t));
+  const neu: Kante = { ...k };
+  if (Math.abs(v) < 1e-5) delete neu.tiefe;
+  else neu.tiefe = v;
+  setzeKante(a.kante, neu);
+}
+
 /** Kantenlinien einer Ansicht; im Form-Tab mit Knoten, Griffen und Trefferflächen. */
 export function KantenZeichnung({ ansicht, bild, aktiv: aktivTab }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean }) {
   const dok = useEditor((s) => s.dok);
@@ -179,6 +225,7 @@ export function KantenZeichnung({ ansicht, bild, aktiv: aktivTab }: { ansicht: A
     <g className={aktiv ? 'kanten aktiv' : 'kanten'} pointerEvents={aktiv ? 'auto' : 'none'} opacity={sicht === 'blass' ? 0.35 : 1}>
       {kanten.map((k, ki) => (
         <g key={ki} data-kante={ki} pointerEvents="none">
+          {k.tiefe ? <TiefenHof k={k} ansicht={ansicht} bild={bild} /> : null}
           {ansicht !== 'seite' && <StrichBild s={striche(dok, k, ansicht, blick, bild, true)} />}
           <StrichBild s={striche(dok, k, ansicht, blick, bild, false)} />
         </g>

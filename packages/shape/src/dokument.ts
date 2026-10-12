@@ -33,7 +33,7 @@ const ZahnSchema = ZahnWerteSchema.extend({ u: z.number(), aussen: z.boolean(), 
 const ZahnreiheSchema = z.object({ anzahl: z.number().int().min(0).max(31), zaehne: z.array(ZahnSchema) });
 /** Ansicht, aus der eine Linie gezeichnet wurde (bestimmt, welche Fläche sie trifft, wenn sich die Form ändert). */
 const BlickSchema = z.enum(['seite', 'front', 'hinten', 'top', 'unten']);
-const KanteSchema = z.object({ knoten: z.array(Knoten3Schema).min(2), haerte: z.array(z.number().min(0).max(1)), blick: BlickSchema });
+const KanteSchema = z.object({ knoten: z.array(Knoten3Schema).min(2), haerte: z.array(z.number().min(0).max(1)), blick: BlickSchema, tiefe: z.number().optional() });
 
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */
 export const POSEN = ['ruhen', 'laufen', 'inklusion'] as const;
@@ -73,7 +73,16 @@ export type Blick = 'seite' | 'front' | 'hinten' | 'top' | 'unten';
  * Kantenlinie auf der Fläche (gespiegelt an z = 0 wie die Maullinien): 3D-Bézier, Härte je Knoten, entlang der Linie
  * verlaufend (0 = mögliche Kante, Übergang ganz glatt, gestrichelt 1 px; 1 = scharf, schwarz 3 px).
  */
-export type Kante = { knoten: Knoten3[]; haerte: number[]; blick: Blick };
+export type Kante = {
+  knoten: Knoten3[];
+  haerte: number[];
+  blick: Blick;
+  /**
+   * Tiefe (Versuch, Recherche 12.10.): Versatz der Fläche an der Linie, + = Grat nach außen, − = Rinne nach innen
+   * (Kachel). Mit Härte 0 eine weiche Mulde bzw. ein weicher Wulst, mit 100 % ein scharfer Grat bzw. eine scharfe Rinne.
+   */
+  tiefe?: number;
+};
 
 export type Dokument = {
   format: 'ee-wesen';
