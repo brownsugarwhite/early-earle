@@ -43,8 +43,9 @@ const proben = (k: Kante) => {
 
 type Strich = { a: V2; b: V2; h: number; sichtbar: boolean; rechts: boolean };
 
-function striche(dok: Dokument, k: Kante, ansicht: Ansicht, blick: Blick, bild: (p: V2) => V2, gespiegelt: boolean): Strich[] {
-  const ps = proben(k).map(({ p, h }) => {
+function striche(dok: Dokument, k: Kante | readonly { p: V3T; h: number }[], ansicht: Ansicht, blick: Blick, bild: (p: V2) => V2, gespiegelt: boolean): Strich[] {
+  const roh = 'knoten' in k ? proben(k) : k;
+  const ps = roh.map(({ p, h }) => {
     const pp = gespiegelt ? spiegel(p) : p;
     return { q: bild(inAnsicht2(pp, ansicht)), h, vis: sichtbar(dok, blick, pp), z: pp[2] };
   });
@@ -91,6 +92,52 @@ function StrichBild({ s }: { s: Strich[] }) {
   }
   lauffertig();
   return <>{teile}</>;
+}
+
+/** Kante aus einer Ecke einer Silhouette (abgeleitet, nicht einzeln bearbeitbar): 3D-Punkte der rechten Hälfte. */
+export type EckKante = { quelle: { ansicht: Ansicht; knoten: number }; punkte: readonly V3T[]; haerte: readonly number[] };
+
+/**
+ * Ecken der Silhouetten als Kanten in den anderen Ansichten (Florian 12.10.: „Wenn ich mit den Handles der Silhouetten
+ * eine Ecke bilde, sollte diese als Kante in den anderen Ansichten erkennbar sein“). Ein Klick wählt die Ecke in ihrer
+ * Ansicht.
+ */
+export function EckKantenZeichnung({ ansicht, bild, aktiv, kanten }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean; kanten: readonly EckKante[] }) {
+  const dok = useEditor((s) => s.dok);
+  const blick = useUi((s) => blickVon(ansicht, s.blick));
+  const eigene = kanten.map((e, i) => ({ e, i })).filter(({ e }) => e.quelle.ansicht !== ansicht);
+  if (!eigene.length) return null;
+  return (
+    <g className="eckkanten">
+      {eigene.map(({ e, i }) => {
+        const pr = e.punkte.map((p, j) => ({ p: [...p] as V3T, h: e.haerte[j] ?? 1 }));
+        return (
+          <g key={i} data-eckkante={i}>
+            <g pointerEvents="none">
+              {ansicht !== 'seite' && <StrichBild s={striche(dok, pr, ansicht, blick, bild, true)} />}
+              <StrichBild s={striche(dok, pr, ansicht, blick, bild, false)} />
+            </g>
+            {aktiv && (
+              <path
+                d={pr.map(({ p }, j) => { const q = bild(inAnsicht2(p, ansicht)); return `${j ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`; }).join('')}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={12}
+                onPointerDown={(ev) => {
+                  // Ecke in ihrer Ansicht wählen (Härte dort über Regler oder ⇧W)
+                  ev.stopPropagation();
+                  useUi.getState().waehle(e.quelle.ansicht, [e.quelle.knoten]);
+                  useUi.getState().zeigeHinweis('Kante aus einer Ecke: Härte über die Seitenleiste oder ⇧W an der Ecke');
+                }}
+              >
+                <title>Kante aus einer Ecke der Ansicht „{e.quelle.ansicht}“</title>
+              </path>
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
 }
 
 /** Kantenlinien einer Ansicht; im Form-Tab mit Knoten, Griffen und Trefferflächen. */
