@@ -49,6 +49,17 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - `angleichen` (Laden, nachgezogene Bögen) verteilt weiter mit quadratischem Abfall (Art `verteilt`), sonst entstünden Beulen.
   - Bild `docs/progress/editor/kopplung-punkt.png`, Skript `scripts/kopplung-bild.mjs`.
 
+- **Nachtrag 12.10. abends — Wirbelsäule und ein Netz** (Plan `docs/plans/2026-10-12-wirbelsaeule-ein-netz.md`, Einstieg für die große Sitzung):
+  - Florians Punkte:
+    - Hals nach oben mit Kopf darauf muss gehen.
+    - Eine Ansicht formt unerwartet die andere, auch bei Spanten.
+    - Schöne Formen und Kanten sind schwer.
+    - Im Fressen-Tab muss das ganze Netz bearbeitbar sein.
+    - Das Maul muss geschlossen mit dem Netz verbunden sein.
+    - Sind die Techniken optimal kombiniert?
+  - Antwort: Nein, noch nicht. Vorschlag: ein Bauweg (Wirbelsäulen-Käfig), die Ansichten als echte Umrisse mit örtlichen Änderungen, Maul im selben Netz, Fressen als Pose.
+  - Versuch: `?versuch=wirbel&wesen=langhals|robbe|rex|tiger|kugel` (`src/versuch/wirbelVersuch.ts`); `&biegen=<Grad>&bei=<Anteil>&weich=<Anteil>` biegt die Wirbelsäule, `&pruefen=1` zeigt Durchdringungen.
+
 ## Arbeitsweise
 
 - **Look-Beweis:** `node apps/editor/scripts/vergleich.mjs` (Web-Modus muss laufen) → `docs/progress/editor/vergleich-grundlayout.png` (Vorlage | Render). Render und Differenz liegen unter `apps/editor/test-results/vergleich/`.
@@ -76,6 +87,10 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 - **Gleiche Punktstruktur in Spanten und Front:** Einfügen/Löschen nur über `spantenPunktEinfuegen`/`spantenPunktLoeschen`; Front-Änderungen gleicht `spantenAngleichen` in `mitFormVerbunden` an. Die Stützstellen (`anteile`) kommen aus der rohen Front, sonst wandern Knoten zwischen den Stationen und Spant-Ecken werden keine durchgehende Kante.
 - **Cache-Schlüssel mit `spanten` und `hauptspant`:** `kantenBauen`, `strahlen` (Maulfläche) und der Maul-Körper merken sich ihren Bau. Fehlen die Felder im Schlüssel, folgen 3D und Kantenlinien den Spanten nicht.
 - **E2E-Klicks auf abgeleitete Eckkanten** treffen am Linienanfang den Profilknoten. Auf einen Punkt bei 30 % der Pfadlänge klicken (`getPointAtLength`).
+
+- **Wirbelsäule aus der Leiter:** Die kürzeste Leiter zwischen Rücken- und Bauchlinie dreht sich an den Spitzen im Fächer um einen Punkt; winzige Ringe falten sich dort. Ringe deshalb senkrecht zur geglätteten Wirbelsäule (gerade Enden) und mit Abstand zu den Spitzen, Pole an den Spitzen.
+- **Vor dem Wirbelsäulen-Bau `angleichen`:** Ragt das Top vor die Schnauzenspitze der Seite, entstehen flache Flossen. An den Spitzen außerdem die Breite mit gleichem Seitenverhältnis auslaufen lassen.
+- **Laufzeit-Schranken in Tests großzügig wählen:** Die Testdateien laufen parallel; der Kanten-Käfig braucht allein 100–130 ms, unter Last gut 250 ms.
 
 - **macOS unterscheidet keine Groß-/Kleinschreibung:** `View2D.tsx` neben `view2d.ts` bricht tsc (TS1149). Deshalb heißt die Mathe-Datei `ansicht2d.ts`.
 - **CSS-Reihenfolge:** `.glas` darf kein `position` setzen. Es überschrieb `position: absolute/fixed` von Aufklappmenü und Kontextmenü, die Menüleiste verrutschte.

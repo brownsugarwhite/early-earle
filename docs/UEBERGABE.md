@@ -2,12 +2,13 @@
 
 > Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**: Wo stehen wir, was ist offen, was ist der nächste Schritt. Historie in Git.
 
-**Stand:** 2026-10-12 spätnachmittags. Sitzungen „Maul, Zähne, Rig“, „Kanten, Ansichten, verbundene Kiefer“ und „Spanten“ auf Florians Mac, Vorbereitung der großen Fable-Sitzung ab 13.10.
+**Stand:** 2026-10-12 abends. Sitzungen „Maul, Zähne, Rig“, „Kanten, Ansichten, verbundene Kiefer“, „Spanten“ und „Wirbelsäule“ auf Florians Mac, Vorbereitung der großen Fable-Sitzung ab 13.10.
 - Branch `claude/editor-grundlayout`, gepusht. Merge nach `main` erst nach Florians Abnahme.
 - Plan: [`docs/plans/2026-10-12-maul-zaehne-rig.md`](plans/2026-10-12-maul-zaehne-rig.md)
 - **Ergebnis-Dokument:** [`docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`](research/2026-10-12-maul-kiefer-zaehne-augen.md), als Seite: https://claude.ai/artifact/WG3YJPn4SuL5acnY9yR9s1
 - **Nachmittag – Kanten und Ansichten:** Plan [`docs/plans/2026-10-12-kanten-ansichten.md`](plans/2026-10-12-kanten-ansichten.md), Ergebnis [`docs/research/2026-10-12-kanten-ansichten.md`](research/2026-10-12-kanten-ansichten.md) (Antworten auf Florians Fragen, Recherche mit 52 Quellen)
 - **Spätnachmittag – Spanten:** Plan [`docs/plans/2026-10-12-spanten.md`](plans/2026-10-12-spanten.md), Ergebnis im Abschnitt „Nachtrag“ von [`docs/research/2026-10-12-kanten-ansichten.md`](research/2026-10-12-kanten-ansichten.md)
+- **Abends – Wirbelsäule und ein Netz für alles (Vorschlag mit Versuch):** [`docs/plans/2026-10-12-wirbelsaeule-ein-netz.md`](plans/2026-10-12-wirbelsaeule-ein-netz.md) – **Einstieg für die große Sitzung**, vier Entscheidungen für Florian in Abschnitt 7
 - Gedächtnis des Editors: [`apps/editor/CLAUDE.md`](../apps/editor/CLAUDE.md)
 
 Vorher: Grundlayout, Navigation und Kurven (11.10.) siehe `git show 902965d:docs/UEBERGABE.md`, alte Wesen-Werkstatt `git show 6029362:docs/UEBERGABE.md`.
@@ -32,6 +33,16 @@ Dazu:
 - Lange Hälse brauchen einen Loft entlang einer gebogenen Wirbelsäule.
 
 ## Was steht
+
+**Abends** (Florian: Hals nach oben mit Kopf darauf muss gehen; eine Ansicht formt unerwartet die andere, auch bei Spanten; schöne Formen und Kanten sind schwer; Fressen muss das ganze Netz bearbeiten können; Maul geschlossen verbunden; „sind die Techniken optimal kombiniert?“):
+- **Antwort:** Nein, noch nicht. Es gibt vier Bauwege (Platzhalter-Loft, Kanten-, Maul-, Tiger-Käfig), und die Front ist zugleich Umriss, Querschnitt für alles und Hauptspant. Der Vorschlag ist ein Netz auf einer Wirbelsäule (Plan oben).
+- **Versuch Wirbelsäule** (`packages/shape/src/versuch/wirbelsaeule.ts`, Editor `?versuch=wirbel&wesen=langhals|robbe|rex|tiger|kugel`, Bilder `apps/editor/scripts/wirbel-bilder.mjs`):
+  - Seitenumriss → Rücken- und Bauchlinie → Wirbelsäule (Mitte der kürzesten Leiter, geglättet, gerade Enden) → Ringe senkrecht dazu.
+  - Breite je Ring aus Top (liegend) oder Front (stehend), Flanke liegender Teile aus der Front, Pole an den Spitzen.
+  - Langhals: Hals hoch, Kopf drauf; Umriss Seite 5 px, Front 5 px, Top 14 px (max).
+  - Pose „Biegen“ als Gelenkkette mit gleicher Topologie (`wirbelBiegen`, `kaefigAusSprossen`).
+  - Bilder `docs/progress/editor/wirbel-*.png`.
+- **Grenzen:** Querschnitt im Versuch nur zwei Viertelellipsen (Front bei Robbe/Rex bis 16 px daneben), Kastenschnauze wird rund (braucht Kappe), Innenseite starker Biegungen staucht, kleine Durchdringungen an den Polen.
 
 **Spätnachmittag** (Florian: „Mach das mit den Spanten mal“ und „Kanten und Härten scheinen mir noch nicht ganz schlüssig“):
 - **Regel:** Eine Kante ist eine Ecke in einem Shape. Ecke in Seite/Top = Kante quer, Ecke in einem Spant = Kante längs. Der Winkel kommt aus der Form, die Härte ist die Rundung.
@@ -116,7 +127,7 @@ Dazu:
 
 ## Offen (Reihenfolge für die große Sitzung)
 
-1. **Wirbelsäulen-Röhre:** Der Langhals zerfällt mit Ringen entlang x. Dazu Pose-Profile mit gleicher Punktstruktur; der Bedien-Versuch nutzt für zu und offen dieselben Profile.
+1. **Wirbelsäulen-Netz als einziger Bauweg** (Versuch steht, Plan `docs/plans/2026-10-12-wirbelsaeule-ein-netz.md`, Reihenfolge dort in Abschnitt 6). Dazu Posen mit gleicher Punktstruktur, Fressen frei bearbeitbar.
 2. **Durchdringungen beseitigen.** Geschlossen sind es 130 (Tiger) bis 1100 Dreieckspaare, offen 300 bis 2100. Ursachen (Rückverfolgung auf Käfigflächen):
    - Ein einzelner Mundwinkelpunkt → Mundwinkel-Zone mit Halbwinkel-Knochen.
    - Die Anpassung schwingt über → Ausgleich mit Laplace-Regularisierung, Grenzmasken.
@@ -151,7 +162,7 @@ Außerdem:
 
 ## Nächster Schritt
 
-Florian probiert Spanten, Kanten und den Maul-Tab aus und entscheidet die Reihenfolge der großen Sitzung (Vorschlag oben). Zu entscheiden: Knickwinkel für freie Linien, Überblendung linear oder kubisch.
+Florian entscheidet die vier Punkte in Abschnitt 7 des Plans `docs/plans/2026-10-12-wirbelsaeule-ein-netz.md` (Wirbelsäulen-Netz als einzige Bauweise, Biegen beim Ziehen, Front als echter Umriss plus Spantenriss, Fressen als frei bearbeitbare Pose). Danach baut die große Sitzung nach Abschnitt 6. Außerdem offen: Knickwinkel für freie Linien, Überblendung linear oder kubisch.
 
 Einstieg für Fable:
 - `docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`, Abschnitte 4–6
