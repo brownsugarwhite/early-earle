@@ -1,6 +1,6 @@
 # Wesen-Editor: Bilanz der Versuche und Vorbereitung der großen Sitzung
 
-> Stand 12.10.2026 spätnachts. **Einstieg für die große Sitzung ab 13.10.**
+> Stand 12.10.2026 spätnachts. **Einstieg für die große Sitzung ab 13.10.** Als Seite zum Lesen: https://claude.ai/artifact/FkS5WTabmUmeKUgSDiGTuw
 >
 > Florian (12.10. spätnachts): „OK, wir haben viel Cooles gemacht. Das ist nicht schlecht. Schreibe alle Erkenntnisse nochmal zusammen. … Es soll der perfekte und innovativste Character-Editor aller Zeiten werden! Also alles bis jetzt waren nur Tests und Recherche! … Das mit den Mäulern und dem echten 3D-Wesen passt bis jetzt noch nicht. Wir haben noch nicht die perfekte Lösung für die Erstellung der vielen verschiedenen Kreaturen. Aber ich hoffe, wir können sie dann zusammen finden. Schreibe vor allem nochmal deutlich auf, was noch nicht funktioniert! Die Kombination aus Spanten, Kanten, Shapes und Wirbelsäule muss viel besser zusammenspielen und viel besser zu bedienen sein, um auch komplexe Wesen und Formen erstellen zu können! Auch wie wir Beine und Strukturen über den ganzen Körper, wie große Rückenschuppen oder Fellsträhnen wie beim Golden Retriever, perfekt umsetzen, ist mir noch nicht klar. Halte alles fest.“
 >

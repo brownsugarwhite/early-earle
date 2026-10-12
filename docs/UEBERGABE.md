@@ -4,7 +4,7 @@
 
 **Stand:** 2026-10-12 spätnachts. Die Versuchsphase am Wesen-Editor (11.–12.10.) ist abgeschlossen. Florian: „Alles bis jetzt waren nur Tests und Recherche!“
 
-**Einstieg für die große Sitzung ab 13.10.:** [`docs/plans/2026-10-13-grosse-sitzung-wesen-editor.md`](plans/2026-10-13-grosse-sitzung-wesen-editor.md), als Seite: SEITE_FOLGT. Das Dokument enthält:
+**Einstieg für die große Sitzung ab 13.10.:** [`docs/plans/2026-10-13-grosse-sitzung-wesen-editor.md`](plans/2026-10-13-grosse-sitzung-wesen-editor.md), als Seite: https://claude.ai/artifact/FkS5WTabmUmeKUgSDiGTuw. Das Dokument enthält:
 - Bilanz der Versuche seit dem 04.10.
 - was gut funktioniert und was nicht (deutlich)
 - Schwerpunkte und die Kernfrage „Wie entsteht ein Wesen?“
