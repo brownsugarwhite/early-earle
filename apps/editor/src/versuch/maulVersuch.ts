@@ -33,6 +33,7 @@ import {
   unterteilen,
   vorlageDokument,
   vorlageMaul,
+  zahnPruefen,
   zahnreihe,
   zuDreiecken,
 } from '@ee/shape/versuch';
@@ -275,8 +276,12 @@ export async function maulVersuch(versuch: Versuch, renderer: () => Renderer3D |
   const zaehne = versuch.zaehne ? (VERSUCH_ZAEHNE[versuch.wesen]?.() ?? []) : [];
   if (zaehne.length) {
     const t1 = performance.now();
-    dazu(zahnDreiecke(mk, kaefig, zaehne, alpha, 3));
-    console.info(`[maul] ${zaehne.length} Zähne in ${(performance.now() - t1).toFixed(0)} ms`);
+    // Prüfung im geschlossenen Maul: störende Zähne rot
+    const befunde = zahnPruefen(mk, zu, zaehne).filter((b) => b.art !== 'ok');
+    const t2 = performance.now();
+    dazu(zahnDreiecke(mk, kaefig, zaehne, alpha, 3, new Set(befunde.map((b) => b.zahn))));
+    const arten = [...new Set(befunde.map((b) => `${b.art} ${(b.tiefe * 461).toFixed(1)} px`))].join(', ');
+    console.info(`[maul] ${zaehne.length} Zähne in ${(performance.now() - t2).toFixed(0)} ms, Prüfung ${(t2 - t1).toFixed(0)} ms: ${befunde.length ? `${new Set(befunde.map((b) => b.zahn)).size} stören (${arten})` : 'keiner stört'}`);
   }
   // Augen aus der Zeichnung (geschlossene Seitenansicht), beim Öffnen mit dem Schädel bewegt
   const augenVorlage = (vorlage as Vorlage & { augen?: Record<string, AugeVorlage[]> }).augen?.seite ?? [];
