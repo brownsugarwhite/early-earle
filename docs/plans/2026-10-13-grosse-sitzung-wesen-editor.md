@@ -308,7 +308,93 @@ Das Budget aus der Recherche steht: höchstens 3 Morph-Ziele, ein Draw Call je W
 
 ## 8. Körperweite Strukturen: Büschel, Mähnen, Kämme, Stacheln, Federn, Flossen
 
-*(folgt aus der Recherche 12.10. spätnachts)*
+> Recherche 12.10. spätnachts, 26 Quellen in Abschnitt 14.
+
+### 8.1 Befund aus Florians Bögen (bitte bestätigen)
+
+- **Die meisten Büschel sind gemalt.** Brust, Körper und Mähne des Retrievers, das Gefieder der Vögel und die Bänder an Körper und Flügeln der Stacheldrachen sind **flammenförmige Farbfelder auf der Fläche** (`crops/retriever.png`, `crops/stacheldrachen.png`, `bild15`).
+- **Gebaut** sind sie nur dort, wo sie den Umriss brechen:
+  - Ohren, Kopfbüschel, Schwanz und Beinfahnen des Retrievers
+  - Kämme und Kopfkränze der Drachen, die Rex-Finne
+  - Hauben, Flossen, Flügel
+- Große Klingen statt Haare. Kleine Muster (Streifen, Flecken, Rosetten, Sechseckschuppen) gehören in den Shader.
+
+### 8.2 Was Film und Spiel machen
+
+- **Eine Form, viele Platzierungen.**
+  - DreamWorks „Hummingbird“ verteilt Federn nach gemalter Dichte, je Feder mit Richtung, Größe und Abheben. Das reicht für bis zu 25.000 Federn und auch für Drachenschuppen [1].
+  - Animal Logic „Quill“ stellt 500–1000 Federn von Hand ein und interpoliert den Rest [3].
+  - Houdini baut Federvorlagen aus gezeichneten Kurven [18].
+- **Keine Durchdringung schon durch die Konstruktion.**
+  - Bei der „Lamination“ wächst jede Feder in einer eigenen, leicht versetzten Fläche. Das ergibt die Dachziegel-Reihenfolge ohne Sortieren [2].
+  - Pixar begrenzt das Federvolumen zusätzlich mit einer Silhouettenfläche über der Haut [4].
+- **Stil schlägt Strähnen.**
+  - Bei „Storks“ kam der Flaum aus Shadern, instanzierte Federn wären zu realistisch geworden [6].
+  - „The Wild Robot“ schattiert Fell und Federn wie eine durchgehende Fläche [7].
+  - Federn mit UV im Hautraum lassen Körpermuster über sie laufen [4].
+- **Echtzeit:**
+  - Shells (Hüllen-Fell) tragen nur kurzes Fell [11].
+  - Auf dem iPhone schadet die GPU nur das vorderste deckende Fragment. Alpha-Test und Transparenz kosten diesen Vorteil, deckende Geometrie ist am billigsten [12].
+  - Bewegung bleibt billig: nur die Ansätze simulieren, jede Klinge dreht um ihren Ansatz [1], gebogen im Vertex-Shader [22].
+- **Bedienung:**
+  - Illustrator kennt den Streupinsel (Kopien entlang des Pfads), den Kunstpinsel (eine Form über die Pfadlänge gestreckt) und den Musterpinsel (Kacheln mit Anfang, Ecken, Ende) [14].
+  - In 3D gibt es Vorbilder: Maya Paint Effects legt eine Kurve auf die Fläche [15], ZBrush-Kurven rasten auf der Fläche ein [16], XGen streut mit Dichtemaske [20].
+
+### 8.3 Vorschlag: ein Grundelement, die Klinge
+
+Aufgebaut wie ein Illustrator-Pinsel:
+
+| Teil | Inhalt |
+|---|---|
+| **Form** | geschlossener 2D-Bézier-Umriss in einem eigenen Zeichenfeld; Dicke mit dem Breitenwerkzeug ⇧W, Querschnitt (flach, Linse, rund), Biegung, Drall |
+| **Ansatzlinie** | 3D-Linie auf dem Körper; ihre Punkte rasten in (s, θ) der Wirbelsäule ein, wie die Maullinien |
+| **Pinselart** | Kunst (eine Klinge über die ganze Linie), Streu (viele Klingen), Muster (Reihe mit Anfangs- und Endklinge), Fläche (Poisson-Verteilung mit Dichtemaske) |
+| **Kurven entlang der Linie** | Größe, Abstand, **Abheben** (0 = nur gemalt, > 0 = gebaut), Neigung und Kämmrichtung, Farbstufe. Zufall mit festem Startwert, Reihen mit halbem Versatz, Spiegeln automatisch |
+| **Hülle (optional)** | Florian zeichnet in Seite, Front oder Top den Zielumriss einer Mähne oder eines Kamms; die Klingenlängen passen sich an (wie Pixars Silhouettenfläche [4]) |
+
+### 8.4 Wohin was gehört
+
+- **Shader (gemalte Klingen):**
+  - Jede Klinge malt ihren Fußabdruck in eine Feldtextur im Körperraum (s, θ). Der Worker backt sie.
+  - Die Textur enthält das Abstandsfeld der obersten Klinge für scharfe Kanten [25], die Lage zwischen Ansatz und Spitze für den Verlauf dunkel → hell, die Strichrichtung für den Fellstrich und die Farbstufe.
+  - Die gemalten Felder folgen Pose und Maul ohne Zusatzarbeit.
+  - Muster (Streifen, Flecken, Rosetten, Sechseckschuppen), Federfahnen und Flossenstrahlen bleiben prozedural im Shader (Musterbibliothek der Werkstatt).
+- **Netz (gebaute Klingen, Abheben > 0):**
+  - Deckende Geometrie mit 6–8 Abschnitten und 2–4 Punkten quer.
+  - Mit dem Körper zu **einem** Skinned Mesh mit demselben Material verschmolzen. Das kostet keinen zusätzlichen Draw Call.
+  - Gewichte von der Haut darunter. Stark abstehende Klingen hängen starr an ihrem Ansatz, Klingen am Unterkiefer folgen dem Kiefer.
+  - Reihen bekommen ihre Höhe nach der Lamination [2]. In Posen erhält jeder Klingenpunkt die Verschiebung der Haut darunter (wie Shell Maps [24]).
+- **Normalen:** eine Mischung aus Körper- und Eigennormale, deren Eigenanteil zur Spitze wächst. So laufen die Cel-Stufen über die Büschel hinweg [8, 10].
+- **Bewegung im Vertex-Shader:** Gewicht t² (am Ansatz 0), Zufallsphase je Klinge, Nachschwingen aus einer kleinen Federsimulation je Wesen [1], Drehung nur nach außen.
+- **Detailstufen:** Die Klingen liegen nach Größe sortiert. Aus der Ferne werden nur die ersten gezeichnet, der gemalte Fußabdruck bleibt.
+- **Nicht verwenden:** Alpha-Karten, Shells, transparente Klingen [11, 12].
+- **Segel (Flügel):**
+  - Eine Klinge, deren Vorderkante an Fingerknochen hängt. Zwischen zwei Fingerketten liegt ein Hautfeld, die Hinterkante ist ein gezeichneter Bogen.
+  - Die Gewichte werden zwischen den Fingern nach Winkel gemischt. Der Durchhang im Vertex-Shader wächst, wenn die Finger zusammengehen.
+  - Flattern über Phase und Stärke [26].
+  - Vogelflügel nutzen dasselbe Segel unsichtbar, die Schwungfedern sitzen als Klingen an der Hinterkante [3].
+
+### 8.5 Je Vorlage
+
+| Vorlage | so entsteht sie |
+|---|---|
+| **Retriever** | Streupinsel „Flamme“ in Reihen auf Brust, Beinen und Schwanz; Abheben 0 auf der Fläche, steigend zum Umriss; Ohren als Kunstpinsel mit einer großen Flamme |
+| **Löwe** | Ringlinie um das Gesicht mit 2–3 Reihen „Zacke“; innen gemalt, die äußere Reihe steht oben und hinten ab |
+| **Stacheldrache** | Musterpinsel „Klinge“ (gebogen, Linsenquerschnitt) auf der Rückenlinie, Fächer am Kopf; vorn groß, zum Schwanz klein; Bänder gemalt |
+| **Rex-Finne** | Kunstpinsel „Dreieck“ auf der Rückenlinie von der Schulter bis zur Hüfte, dünn; geht beim Biegen mit |
+| **Vogel** | Federreihen als Dachziegel, meist gemalt; Schwungfedern am Segel gebaut; Kakaduhaube als Streupinsel mit 5–7 abstehenden Klingen; Pfauenrad als Musterpinsel, die Augen aus dem Shader |
+| **Fisch, Aal** | Flossen als Kunstpinsel mit gezacktem Umriss, Strahlen gemalt; Sechseckschuppen nur im Shader |
+| **Drache** | Flügel als Segel, Flammenbänder gemalt; Kopfkranz als Musterpinsel |
+
+### 8.6 Prüfkriterien
+
+1. **Look zuerst:** Vergleichsbild gegen `crops/retriever.png` und `crops/stacheldrachen.png`, gleiche Ansicht und gleicher Maßstab. Die Bedienung wird erst nach Florians Freigabe ausgebaut.
+2. Eine Klinge, senkrecht betrachtet, deckt sich mit ihrer 2D-Zeichnung (≤ 1 px bei 512 px).
+3. Florian baut Löwenmähne und Drachenkamm in je höchstens 10 Minuten. Eine Formänderung erscheint in allen Platzierungen in < 100 ms.
+4. Gemalte Felder sind bei 4-fachem Zoom scharf und flimmern in Brettgröße nicht.
+5. Kein Klingenpunkt liegt unter der Haut: in Ruhe, beim Fressen (100 %), mit Hals ±30° und in einer Laufpose (automatisch prüfbar).
+6. iPhone 16 mit 36 Wesen: ≥ 58 fps, gleich viele Draw Calls wie ohne Klingen, Klingen ≤ 25 % der Körperdreiecke. Die Zahlen sind ein Vorschlag, nicht gemessen.
+7. Ein Flügel lässt sich falten und spreizen, ohne dass die Haut die Finger kreuzt.
 
 ## 9. Was den Editor einzigartig machen kann
 
@@ -403,3 +489,38 @@ Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je
 - Prüfen: `pnpm typecheck`, `pnpm test`, `pnpm lint`
 - E2E mit echter GPU: `E2E_PORT=5191 EE_GPU=1 pnpm --filter @ee/editor e2e`
 - Bilder: `node apps/editor/scripts/maul-bilder.mjs <wesen>`, `node apps/editor/scripts/wirbel-bilder.mjs`
+
+## 14. Quellen der Recherchen vom 12.10. spätnachts
+
+Ältere Quellen stehen in den verlinkten Dokumenten (Abschnitt 13).
+
+### Zu Abschnitt 8 (Klingen)
+
+1. Augello, Tonnesen, Somasundaram: Hummingbird – DreamWorks Feather System (SIGGRAPH 2019). https://research.dreamworks.com/wp-content/uploads/2019/10/talk_hummingbird_abstract.pdf
+2. Weber, Gornowicz: Collision-free Construction of Animated Feathers (ACM TOG 2009); Patent US8982157. https://patents.google.com/patent/US8982157
+3. Heckenberg u. a.: Quill – Birds of a Feather Tool (Animal Logic, SIGGRAPH 2011). https://animallogic.com/wp-content/uploads/2023/06/Quill-Birds-of-a-Feather-Tool.pdf
+4. Poh u. a.: Crafting Feathers for the Bird Kingdom in Hoppers (Pixar, SIGGRAPH 2026). https://research.pixar.com/docs/2026.SiggraphTalks.PCB.pdf
+5. Computer Graphics World: Stepping Out (Rio, 2011). https://www.cgw.com/Publications/CGW/2011/Volume-34-Issue-4-April-2011-/Stepping-Out.aspx
+6. Post Magazine: Animation – Storks (2016). https://postmagazine.com/Publications/Post-Magazine/2016/October-1-2016/Animation-i-Storks-i-.aspx
+7. Connors, Van Opstal, McCann: Painterly Fur and Feathers of The Wild Robot (SIGGRAPH 2025). https://history.siggraph.org/?p=227378
+8. 80.lv: The Story Behind Stuart Little's Fur. https://80.lv/articles/the-story-behind-stuart-little-s-fur
+9. Motomura: GuiltyGearXrd's Art Style (GDC 2015). https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf
+10. Blender Anime Foliage Pipeline (Normalen von der Hüllform). https://trungduyng.substack.com/p/tutorial-blender-anime-foliage-pipeline
+11. Lengyel u. a.: Real-Time Fur over Arbitrary Surfaces (2001). https://hhoppe.com/proj/fur/
+12. Apple WWDC20: Harness Apple GPUs with Metal. https://developer.apple.com/videos/play/wwdc2020/10602/
+13. three.js r186, Renderer.js. https://github.com/mrdoob/three.js/blob/r186/src/renderers/common/Renderer.js
+14. Adobe Illustrator: About brushes. https://helpx.adobe.com/illustrator/desktop/paint-and-fill/apply-and-edit-strokes/about-brushes.html
+15. Autodesk Maya: Paint on objects. https://download.autodesk.com/global/docs/maya2014/en_us/files/GUID-B5146071-05E2-4819-BBFA-F533E9AE6CF6.htm
+16. Novedge: ZBrush IMM workflow and curve placement. https://novedge.com/blogs/design-news/zbrush-tip-imm-workflow-for-distortion-free-inserts-and-fast-curve-placement
+17. Nomad Sculpt 1.83, Änderungsliste. https://www.apkmirror.com/apk/hexanomad/nomad-sculpt/nomad-sculpt-1-83-release/
+18. SideFX: Houdini 20 Feathers. https://www.sidefx.com/docs/houdini/news/20/feathers.html
+19. Blender 3.5 Release Notes (Hair Nodes). https://www.blender.org/features/releases/3-5/
+20. Autodesk: XGen Generator Attributes. https://help.autodesk.com/cloudhelp/2017/ENU/Maya/files/GUID-DF8E4397-ABC6-43AD-946B-27BD270425B1.htm
+21. Autodesk: XGen Archive Attributes. https://help.autodesk.com/cloudhelp/2017/ENU/Maya/files/GUID-7523BBF8-D1CD-4BBB-A4B7-0517EB78AA04.htm
+22. Sousa: Vegetation Procedural Animation and Shading in Crysis (GPU Gems 3, Kap. 16). https://developer.nvidia.com/gpugems/gpugems3/part-iii-rendering/chapter-16-vegetation-procedural-animation-and-shading-crysis
+23. Epic Games: Groom Interpolation in Unreal Engine. https://dev.epicgames.com/documentation/unreal-engine/groom-interpolation-in-unreal-engine
+24. Porumbescu u. a.: Shell Maps (SIGGRAPH 2005). https://history.siggraph.org/?p=113892
+25. Green (Valve): Improved Alpha-Tested Magnification for Vector Textures (2007). https://cdn.akamai.steamstatic.com/apps/valve/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf
+26. Kao, Otto: Flap Flap Away – Animation Cycle Multiplexing (DreamWorks, SIGGRAPH 2019). https://research.dreamworks.com/wp-content/uploads/2019/10/talk_multiplexing_stage2.pdf
+
+Hinweise der Recherche: Hummingbird, Quill, Hoppers, Flap Flap Away und Guilty Gear Xrd wurden im Volltext gelesen. Für ZBrush und Nomad gibt es nur Drittquellen. Zu den Fell-Techniken von It Takes Two, Spyro, Sackboy, Kena, Ori, Pokémon, Fortnite und Overwatch fanden sich keine Studioquellen.
