@@ -73,6 +73,13 @@ test('Kanten: zeichnen, Härte, Breitenwerkzeug, auf der Fläche ziehen, lösche
   }
   await expect(page.locator('.leiste [data-kantenanzahl="1"]')).toBeVisible();
   await expect(page.locator('.leiste [data-kantenmenue]')).toBeVisible();
+  // Kantenliste mit einem Eintrag; Ebenenschalter blass sperrt die Kanten, zeigen gibt sie frei
+  await expect(page.locator('.leiste [data-kanteneintrag]')).toHaveCount(1);
+  await page.click('.leiste [data-kantensicht="blass"]');
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-kantenknoten]')).toHaveCount(0);
+  await page.click('.leiste [data-kantensicht="zeigen"]');
+  await page.click('.leiste [data-kanteneintrag="0"]');
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-kantenknoten]')).toHaveCount(4);
   // die Kante erscheint auch in Front und Top
   await expect(page.locator('.vp-ober[data-view="front"] [data-kante="0"] *').first()).toBeAttached();
 

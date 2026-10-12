@@ -8,7 +8,7 @@ import { ladeAusBibliothek } from '../aktionen';
 import { useRahmen } from '../layout/animation';
 import { editorApi, useBibliothek } from '../library/speicher';
 import { aktuelleLippen, setzeLippen } from '../maul/MaulEbene';
-import { GLATT, dunkel, haerteSetzen, kanteAuslaufen, kantenKnotenLoeschen, strichBreite, useGewaehlteKante } from '../kanten/KantenEbene';
+import { dunkel, haerteSetzen, kanteAuslaufen, kantenKnotenLoeschen, strichBreite, strichMuster, useGewaehlteKante } from '../kanten/KantenEbene';
 import { useZahnMeldungen } from '../maul/ZahnEbene';
 import { aenderungAnwenden, befundText } from '../maul/zahnKoerper';
 import { useMaulInfo } from '../maul/maulKoerper';
@@ -77,12 +77,44 @@ function KantenVorschau({ h }: { h: number }) {
   return (
     <svg className="kanten-vorschau" width="100%" height="14" viewBox="0 0 120 14" preserveAspectRatio="none" aria-hidden="true">
       <rect width="120" height="14" rx="7" fill="#c9df62" />
-      {h < GLATT ? (
-        <line x1="10" y1="7" x2="110" y2="7" stroke={dunkel(0)} strokeWidth={1} strokeDasharray="4 3" />
-      ) : (
-        <line x1="10" y1="7" x2="110" y2="7" stroke={dunkel(h)} strokeWidth={strichBreite(h)} strokeLinecap="round" />
-      )}
+      <line x1="10" y1="7" x2="110" y2="7" stroke={dunkel(h)} strokeWidth={strichBreite(h)} strokeDasharray={strichMuster(h)} strokeLinecap={strichMuster(h) ? 'butt' : 'round'} />
     </svg>
+  );
+}
+
+const BLICK_NAMEN: Record<string, string> = { seite: 'Seite', front: 'Front', hinten: 'Back', top: 'Top', unten: 'Bottom' };
+
+/** Kantenliste (Recherche 12.10.: Überblick wie Mayas Satz-Fenster): Vorschau, Ansicht, höchste Härte; Klick wählt. */
+function KantenListe() {
+  // Selektor ohne `?? []`: ein neues leeres Array je Aufruf wäre jedes Mal ein anderer Stand (Endlosschleife)
+  const kanten = useEditor((s) => s.dok.kanten);
+  const gewaehlt = useUi((s) => s.kantenAuswahl?.kante ?? -1);
+  if (!kanten?.length) return null;
+  return (
+    <ul className="kanten-liste">
+      {kanten.map((k, i) => {
+        const h = Math.max(...k.haerte, 0);
+        return (
+          <li key={i}>
+            <button
+              className={i === gewaehlt ? 'kanten-eintrag aktiv' : 'kanten-eintrag'}
+              data-kanteneintrag={i}
+              onClick={() => {
+                const ui = useUi.getState();
+                ui.auswahlLeeren();
+                ui.setzeKantenAuswahl({ kante: i, indizes: k.knoten.map((_, j) => j) });
+              }}
+            >
+              <KantenVorschau h={h} />
+              <span>
+                {i + 1} · {BLICK_NAMEN[k.blick] ?? k.blick}
+              </span>
+              <b>{Math.round(h * 100)} %</b>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -103,6 +135,7 @@ function KantenBereich() {
   const auswahl = useUi((s) => s.auswahl);
   const aktiv = useUi((s) => s.aktiv);
   const zeichnen = useUi((s) => s.kanteZeichnen);
+  const sicht = useUi((s) => s.kantenSicht);
   const profil = aktiv ? dok.profile[aktiv] : null;
   const ecken = aktiv && profil ? auswahl[aktiv].filter((i) => profil.knoten[i]?.art === 'ecke') : [];
   const geste = { onStart: () => useEditor.getState().beginGeste(), onEnde: () => useEditor.getState().endeGeste() };
@@ -170,6 +203,14 @@ function KantenBereich() {
         <span>Kanten</span>
         <b data-kantenanzahl={anzahl}>{anzahl === 1 ? '1 Linie' : `${anzahl} Linien`}</b>
       </div>
+      <div className="umschalter stufen" role="radiogroup" aria-label="Kanten zeigen">
+        {(['zeigen', 'blass', 'aus'] as const).map((k) => (
+          <button key={k} className={sicht === k ? 'chip aktiv' : 'chip'} data-kantensicht={k} onClick={() => useUi.getState().setzeKantenSicht(k)}>
+            {k}
+          </button>
+        ))}
+      </div>
+      <KantenListe />
       {inhalt}
     </section>
   );

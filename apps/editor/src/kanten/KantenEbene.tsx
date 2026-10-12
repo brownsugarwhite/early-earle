@@ -58,37 +58,56 @@ function striche(dok: Dokument, k: Kante | readonly { p: V3T; h: number }[], ans
   return out;
 }
 
-/** Striche zeichnen: glatte Läufe gestrichelt als ein Pfad (durchgehendes Muster), harte Stücke mit Breite und Grauwert. */
+/**
+ * Strichmuster nach Härte (Recherche 12.10.: Muster in Bildschirm-Pixeln, zoomfest; „längere Striche = sicherer“):
+ * 0 % gestrichelt 6/3, mit wachsender Härte längere Striche und kürzere Lücken, ab 25 % durchgezogen.
+ */
+export function strichMuster(h: number): string | undefined {
+  if (h < GLATT) return '6 3';
+  if (h < 0.12) return '10 2.5';
+  if (h < 0.25) return '18 1.5';
+  return undefined;
+}
+
+/**
+ * Striche zeichnen: Läufe mit gleichem Muster, gleicher Sichtbarkeit und Seite als ein Pfad (durchgehendes Muster),
+ * je Abschnitt Breite (1 → 3 px) und Grauwert nach der Härte.
+ */
 function StrichBild({ s }: { s: Strich[] }) {
   const teile: React.ReactNode[] = [];
   let lauf: Strich[] = [];
   const lauffertig = () => {
     if (!lauf.length) return;
     const f = lauf[0]!;
-    const d = `M${f.a.x.toFixed(1)} ${f.a.y.toFixed(1)}` + lauf.map((x) => `L${x.b.x.toFixed(1)} ${x.b.y.toFixed(1)}`).join('');
-    teile.push(<path key={`g${teile.length}`} d={d} fill="none" stroke={f.rechts ? dunkel(0) : weiss(0)} strokeWidth={1} strokeDasharray="4 3" opacity={f.sichtbar ? 1 : 0.25} />);
+    const muster = strichMuster(f.h);
+    if (muster) {
+      // gestrichelt: ein Pfad, Breite und Grau aus der mittleren Härte des Laufs
+      const h = lauf.reduce((a, x) => a + x.h, 0) / lauf.length;
+      const d = `M${f.a.x.toFixed(1)} ${f.a.y.toFixed(1)}` + lauf.map((x) => `L${x.b.x.toFixed(1)} ${x.b.y.toFixed(1)}`).join('');
+      teile.push(<path key={`g${teile.length}`} d={d} fill="none" stroke={f.rechts ? dunkel(h) : weiss(h)} strokeWidth={strichBreite(h)} strokeDasharray={muster} opacity={f.sichtbar ? 1 : 0.25} />);
+    } else {
+      for (const x of lauf) {
+        teile.push(
+          <line
+            key={`h${teile.length}`}
+            x1={x.a.x}
+            y1={x.a.y}
+            x2={x.b.x}
+            y2={x.b.y}
+            stroke={x.rechts ? dunkel(x.h) : weiss(x.h)}
+            strokeWidth={strichBreite(x.h)}
+            strokeLinecap="round"
+            opacity={x.sichtbar ? 1 : 0.25}
+          />,
+        );
+      }
+    }
     lauf = [];
   };
   for (const x of s) {
-    if (x.h < GLATT) {
-      if (lauf.length && (lauf[0]!.sichtbar !== x.sichtbar || lauf[0]!.rechts !== x.rechts)) lauffertig();
-      lauf.push(x);
-      continue;
-    }
-    lauffertig();
-    teile.push(
-      <line
-        key={`h${teile.length}`}
-        x1={x.a.x}
-        y1={x.a.y}
-        x2={x.b.x}
-        y2={x.b.y}
-        stroke={x.rechts ? dunkel(x.h) : weiss(x.h)}
-        strokeWidth={strichBreite(x.h)}
-        strokeLinecap="round"
-        opacity={x.sichtbar ? 1 : 0.25}
-      />,
-    );
+    const f = lauf[0];
+    if (f && (strichMuster(f.h) !== strichMuster(x.h) || f.sichtbar !== x.sichtbar || f.rechts !== x.rechts)) lauffertig();
+    lauf.push(x);
   }
   lauffertig();
   return <>{teile}</>;
@@ -102,13 +121,15 @@ export type EckKante = { quelle: { ansicht: Ansicht; knoten: number }; punkte: r
  * eine Ecke bilde, sollte diese als Kante in den anderen Ansichten erkennbar sein“). Ein Klick wählt die Ecke in ihrer
  * Ansicht.
  */
-export function EckKantenZeichnung({ ansicht, bild, aktiv, kanten }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean; kanten: readonly EckKante[] }) {
+export function EckKantenZeichnung({ ansicht, bild, aktiv: aktivTab, kanten }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean; kanten: readonly EckKante[] }) {
   const dok = useEditor((s) => s.dok);
   const blick = useUi((s) => blickVon(ansicht, s.blick));
+  const sicht = useUi((s) => s.kantenSicht);
+  const aktiv = aktivTab && sicht === 'zeigen';
   const eigene = kanten.map((e, i) => ({ e, i })).filter(({ e }) => e.quelle.ansicht !== ansicht);
-  if (!eigene.length) return null;
+  if (!eigene.length || sicht === 'aus') return null;
   return (
-    <g className="eckkanten">
+    <g className="eckkanten" opacity={sicht === 'blass' ? 0.35 : 1}>
       {eigene.map(({ e, i }) => {
         const pr = e.punkte.map((p, j) => ({ p: [...p] as V3T, h: e.haerte[j] ?? 1 }));
         return (
@@ -141,18 +162,21 @@ export function EckKantenZeichnung({ ansicht, bild, aktiv, kanten }: { ansicht: 
 }
 
 /** Kantenlinien einer Ansicht; im Form-Tab mit Knoten, Griffen und Trefferflächen. */
-export function KantenZeichnung({ ansicht, bild, aktiv }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean }) {
+export function KantenZeichnung({ ansicht, bild, aktiv: aktivTab }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean }) {
   const dok = useEditor((s) => s.dok);
+  // Ebenenschalter: blass = nur zur Orientierung (nicht greifbar), aus = verborgen (außer beim Zeichnen)
+  const sicht = useUi((s) => s.kantenSicht);
+  const aktiv = aktivTab && sicht === 'zeigen';
   const blick = useUi((s) => blickVon(ansicht, s.blick));
   const auswahl = useUi((s) => s.kantenAuswahl);
   const zeichnen = useUi((s) => s.kanteZeichnen);
   // beim Breitenwerkzeug zeigt der Kreis die Zahl
   const breite = useUi((s) => s.breitenAnzeige?.ansicht === ansicht);
-  const kanten = dok.kanten ?? [];
+  const kanten = sicht === 'aus' ? [] : (dok.kanten ?? []);
   if (!kanten.length && !zeichnen) return null;
   const zug = (pts: V2[]) => pts.map((q, i) => `${i ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join('');
   return (
-    <g className={aktiv ? 'kanten aktiv' : 'kanten'} pointerEvents={aktiv ? 'auto' : 'none'}>
+    <g className={aktiv ? 'kanten aktiv' : 'kanten'} pointerEvents={aktiv ? 'auto' : 'none'} opacity={sicht === 'blass' ? 0.35 : 1}>
       {kanten.map((k, ki) => (
         <g key={ki} data-kante={ki} pointerEvents="none">
           {ansicht !== 'seite' && <StrichBild s={striche(dok, k, ansicht, blick, bild, true)} />}
@@ -213,7 +237,7 @@ export function KantenZeichnung({ ansicht, bild, aktiv }: { ansicht: Ansicht; bi
         })}
       {zeichnen && zeichnen.ansicht === ansicht && zeichnen.blick === blick && zeichnen.knoten.length > 0 && (
         <g className="kante-zeichnen" pointerEvents="none">
-          <path d={zug(zeichnen.knoten.map((p) => bild(inAnsicht2(p, ansicht))))} fill="none" stroke={dunkel(0)} strokeWidth={1} strokeDasharray="4 3" />
+          <path d={zug(zeichnen.knoten.map((p) => bild(inAnsicht2(p, ansicht))))} fill="none" stroke={dunkel(0)} strokeWidth={1} strokeDasharray="6 3" />
           {zeichnen.knoten.map((p, i) => {
             const q = bild(inAnsicht2(p, ansicht));
             return <circle key={i} cx={q.x} cy={q.y} r={PUNKT_R} fill="var(--punkt)" />;
@@ -300,6 +324,11 @@ export function kantenZeiger(e: React.PointerEvent, ctx: KantenKontext): boolean
   const q = ctx.lokal(e.clientX, e.clientY);
   const ziel = e.target as Element;
   const profilZiel = !!ziel.closest('[data-knoten],[data-griff],[data-kurve]');
+  // Ebenenschalter: blass oder aus = Kanten gesperrt
+  if (ui.kantenSicht !== 'zeigen' && !ui.kanteZeichnen) {
+    if (ui.werkzeug === 'stift' && !profilZiel) ui.zeigeHinweis('Kanten sind gesperrt (Seitenleiste: Kanten zeigen)');
+    return ui.werkzeug === 'stift' && !profilZiel;
+  }
 
   // laufender Zeichenstift: jeder Klick ein Punkt auf der Fläche, Doppelklick beendet
   if (ui.kanteZeichnen) {
@@ -486,7 +515,7 @@ export function BreitenKreis({ ansicht, bild }: { ansicht: Ansicht; bild: (p: V2
   return (
     <g className="breiten-kreis" pointerEvents="none">
       <circle cx={q.x} cy={q.y} r={BREITE_PX} fill="none" stroke="#19232b" strokeOpacity={0.25} strokeDasharray="2 3" />
-      <circle cx={q.x} cy={q.y} r={r} fill="rgba(25,35,43,0.10)" stroke={dunkel(b.h)} strokeWidth={strichBreite(b.h)} strokeDasharray={b.h < GLATT ? '4 3' : undefined} />
+      <circle cx={q.x} cy={q.y} r={r} fill="rgba(25,35,43,0.10)" stroke={dunkel(b.h)} strokeWidth={strichBreite(b.h)} strokeDasharray={strichMuster(b.h)} />
       <text className="kanten-wert" x={q.x + BREITE_PX + 4} y={q.y + 4}>
         {prozent(b.h)}
       </text>
