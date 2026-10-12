@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { ansichtUnterMausZuruecksetzen, gewaehltePunkteLoeschen, gewaehltePunkteVerschieben, maximiereUnterMaus, neuesWesen, speichern } from './aktionen';
+import { kantenKnotenLoeschen } from './kanten/KantenEbene';
 import { setzeLayoutZiel } from './layout/animation';
 import { berechneLayout } from './layout/layout';
 import { editorApi } from './library/speicher';
@@ -69,6 +70,9 @@ export function useTastatur() {
         ui.setzeWerkzeug('auswahl');
       } else if (!cmd && !e.altKey && k === 'p') {
         ui.setzeWerkzeug('stift');
+      } else if (!cmd && !e.altKey && e.shiftKey && k === 'w') {
+        // Breitenwerkzeug wie in Illustrator (⇧W): breiter = härtere Kante
+        ui.setzeWerkzeug('breite');
       } else if (!cmd && !e.altKey && (e.key === '+' || e.key === '=')) {
         ui.setzeWerkzeug('plus');
       } else if (!cmd && !e.altKey && (e.key === '-' || e.key === '–')) {
@@ -78,7 +82,7 @@ export function useTastatur() {
         ansichtUnterMausZuruecksetzen();
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        gewaehltePunkteLoeschen();
+        if (!kantenKnotenLoeschen()) gewaehltePunkteLoeschen();
       } else if (!cmd && e.key.startsWith('Arrow')) {
         // Pfeiltasten verschieben die gewählten Punkte wie in Illustrator, ⇧ = zehnfach
         e.preventDefault();

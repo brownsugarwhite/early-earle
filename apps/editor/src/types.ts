@@ -12,3 +12,6 @@ export const VIEW_TEXTE: Record<ViewId, { titel: string; links?: string; rechts?
   top: { titel: 'top', links: 'front', rechts: 'back' },
   creation: { titel: 'creation' },
 };
+
+/** Back und Bottom (Florian 12.10.): Back ist waagerecht gespiegelt (links/rechts tauschen), Bottom senkrecht. */
+export const BLICK_TEXTE = { front: ['front', 'back'], top: ['top', 'bottom'] } as const;

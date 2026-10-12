@@ -180,6 +180,32 @@ button {
   pointer-events: none;
 }
 
+/* Titel als Tab (Florian 12.10.): front · back, top · bottom */
+.vp-titel.blick-tabs {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+.blick-tabs button {
+  padding: 0 0 3px;
+  border: 0;
+  background: none;
+  color: var(--weiss);
+  font: inherit;
+  line-height: 1;
+  opacity: 0.45;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.blick-tabs button:hover {
+  opacity: 0.8;
+}
+.blick-tabs button.aktiv {
+  opacity: 1;
+  cursor: default;
+  box-shadow: inset 0 -2px 0 var(--pille-aktiv);
+}
+
 .vp-inhalt {
   position: absolute;
   inset: 0;
@@ -493,6 +519,28 @@ button {
   line-height: 1.45;
   opacity: 0.82;
 }
+/* Kanten (Versuch 12.10. mittags) */
+.kanten-vorschau {
+  display: block;
+  border-radius: 7px;
+}
+.umschalter.stufen .chip {
+  flex: 1;
+  padding: 0 6px;
+}
+.kanten-wert {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #19232b;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+.view2d.werkzeug-breite {
+  cursor: ew-resize;
+}
+
 /* Zahn-Prüfung (Versuch 12.10.): stört geschlossen, Vorschläge als Knöpfe */
 .hilfe.warnung {
   color: #ff8a80;

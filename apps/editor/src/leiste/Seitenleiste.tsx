@@ -8,6 +8,7 @@ import { ladeAusBibliothek } from '../aktionen';
 import { useRahmen } from '../layout/animation';
 import { editorApi, useBibliothek } from '../library/speicher';
 import { aktuelleLippen, setzeLippen } from '../maul/MaulEbene';
+import { GLATT, dunkel, haerteSetzen, kanteAuslaufen, kantenKnotenLoeschen, strichBreite, useGewaehlteKante } from '../kanten/KantenEbene';
 import { useZahnMeldungen } from '../maul/ZahnEbene';
 import { aenderungAnwenden, befundText } from '../maul/zahnKoerper';
 import { useMaulInfo } from '../maul/maulKoerper';
@@ -60,6 +61,109 @@ function WesenBereich() {
         <b>{['Fressen', ...dok.posen.map((p) => p[0]!.toUpperCase() + p.slice(1))].join(' · ')}</b>
       </div>
       <p className="hilfe">Oben rechts in jeder Ansicht: braun Zähne, blau Maul, orange Rig, weiß Augen (folgt), pink vergrößern.</p>
+    </section>
+  );
+}
+
+/** Vorschau eines Kantenstrichs wie in den Ansichten: gestrichelt 1 px = glatt, bis schwarz 3 px = scharf. */
+function KantenVorschau({ h }: { h: number }) {
+  return (
+    <svg className="kanten-vorschau" width="100%" height="14" viewBox="0 0 120 14" preserveAspectRatio="none" aria-hidden="true">
+      <rect width="120" height="14" rx="7" fill="#c9df62" />
+      {h < GLATT ? (
+        <line x1="10" y1="7" x2="110" y2="7" stroke={dunkel(0)} strokeWidth={1} strokeDasharray="4 3" />
+      ) : (
+        <line x1="10" y1="7" x2="110" y2="7" stroke={dunkel(h)} strokeWidth={strichBreite(h)} strokeLinecap="round" />
+      )}
+    </svg>
+  );
+}
+
+const HAERTE_STUFEN = [
+  { text: 'glatt', h: 0 },
+  { text: 'weich', h: 0.33 },
+  { text: 'fest', h: 0.66 },
+  { text: 'scharf', h: 1 },
+] as const;
+
+/**
+ * Kanten im Form-Tab (Versuch 12.10. mittags): Härte der gewählten Kantenknoten bzw. der gewählten Ecken einer
+ * Silhouette. Ohne Auswahl eine kurze Anleitung.
+ */
+function KantenBereich() {
+  const dok = useEditor((s) => s.dok);
+  const gew = useGewaehlteKante();
+  const auswahl = useUi((s) => s.auswahl);
+  const aktiv = useUi((s) => s.aktiv);
+  const zeichnen = useUi((s) => s.kanteZeichnen);
+  const profil = aktiv ? dok.profile[aktiv] : null;
+  const ecken = aktiv && profil ? auswahl[aktiv].filter((i) => profil.knoten[i]?.art === 'ecke') : [];
+  const geste = { onStart: () => useEditor.getState().beginGeste(), onEnde: () => useEditor.getState().endeGeste() };
+  const anzahl = dok.kanten?.length ?? 0;
+  const mittel = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+  const eckHaerte = (v: number) => {
+    if (!aktiv || !profil) return;
+    useEditor.getState().setzeProfil(aktiv, { ...profil, knoten: profil.knoten.map((k, i) => (ecken.includes(i) ? { ...k, haerte: v } : k)) });
+  };
+  let inhalt: React.ReactNode;
+  if (zeichnen) {
+    inhalt = <p className="hilfe">Neue Kante: weitere Punkte setzen. Enter oder Doppelklick beendet, Esc bricht ab.</p>;
+  } else if (gew) {
+    const h = mittel(gew.a.indizes.map((i) => gew.k.haerte[i] ?? 0));
+    const ganz = gew.a.indizes.length === gew.k.knoten.length;
+    inhalt = (
+      <div className="unterbereich" data-kantenmenue="">
+        <div className="feld">
+          <span>Kante</span>
+          <b>{ganz ? 'ganze Linie' : gew.a.indizes.length === 1 ? '1 Punkt' : `${gew.a.indizes.length} Punkte`}</b>
+        </div>
+        <Regler label="Härte" wert={h} min={0} max={1} schritt={0.01} anzeige={`${Math.round(h * 100)} %`} onChange={haerteSetzen} {...geste} />
+        <KantenVorschau h={h} />
+        <div className="umschalter stufen">
+          {HAERTE_STUFEN.map((st) => (
+            <button key={st.text} className={Math.abs(h - st.h) < 0.005 ? 'chip aktiv' : 'chip'} onClick={() => haerteSetzen(st.h)}>
+              {st.text}
+            </button>
+          ))}
+        </div>
+        <div className="umschalter">
+          <button className="chip" onClick={kanteAuslaufen} title="Enden glatt, Mitte hart: die Kante läuft in die runde Form aus">
+            weich auslaufen
+          </button>
+          <button className="chip" onClick={() => kantenKnotenLoeschen()}>
+            {ganz ? 'Kante löschen' : 'Punkte löschen'}
+          </button>
+        </div>
+      </div>
+    );
+  } else if (ecken.length && profil) {
+    const h = mittel(ecken.map((i) => profil.knoten[i]?.haerte ?? 1));
+    inhalt = (
+      <div className="unterbereich" data-eckmenue="">
+        <div className="feld">
+          <span>Ecke</span>
+          <b>{ecken.length === 1 ? '1 Eckpunkt' : `${ecken.length} Eckpunkte`}</b>
+        </div>
+        <Regler label="Härte" wert={h} min={0} max={1} schritt={0.01} anzeige={`${Math.round(h * 100)} %`} onChange={eckHaerte} {...geste} />
+        <KantenVorschau h={h} />
+        <p className="hilfe">Eine Ecke der Silhouette ist im 3D eine Kante und erscheint in den anderen Ansichten.</p>
+      </div>
+    );
+  } else {
+    inhalt = (
+      <p className="hilfe">
+        Zeichenstift (P) auf freier Fläche setzt eine Kante, Enter beendet. Gestrichelt = glatt, breiter und dunkler = härter, schwarz 3 px = scharf. ⇧W: an der Linie ziehen.
+        Ecken der Silhouetten sind ebenfalls Kanten.
+      </p>
+    );
+  }
+  return (
+    <section className="leiste-bereich kanten-bereich">
+      <div className="feld">
+        <span>Kanten</span>
+        <b data-kantenanzahl={anzahl}>{anzahl === 1 ? '1 Linie' : `${anzahl} Linien`}</b>
+      </div>
+      {inhalt}
     </section>
   );
 }
@@ -316,7 +420,12 @@ export function Seitenleiste() {
       <div className="vp-titel">{TITEL[ebene]}</div>
       <div className="leiste-glas glas">
         <div className="leiste-inhalt">
-          {ebene === 'form' && <WesenBereich />}
+          {ebene === 'form' && (
+            <>
+              <WesenBereich />
+              <KantenBereich />
+            </>
+          )}
           {ebene === 'maul' && <MaulBereich />}
           {ebene === 'zaehne' && <ZahnBereich />}
           {ebene === 'rig' && <RigBereich />}

@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { useRahmen } from '../layout/animation';
 import { useEditor } from '../state/editorStore';
 import { type Ebene, useUi } from '../state/uiStore';
-import { VIEW_TEXTE, type ViewId } from '../types';
+import { BLICK_TEXTE, VIEW_TEXTE, type ViewId } from '../types';
 import { versuchAktiv } from '../versuch/subdivision';
 import { Steuerung3D } from './Steuerung3D';
 import { View2D } from './View2D';
@@ -31,6 +31,35 @@ function TabKnopf({ ebene, farbe, titel }: { ebene: Ebene; farbe: string; titel:
 
 const POSE_TEXT: Record<string, string> = { fressen: 'Fressen', ruhen: 'Ruhen', laufen: 'Laufen', inklusion: 'Inklusion' };
 
+/** Titel als Tab (Florian 12.10.): Front ↔ Back, Top ↔ Bottom; Seite und 3D bleiben ein Titel. */
+function Titel({ id }: { id: ViewId }) {
+  const blick = useUi((s) => (id === 'front' || id === 'top' ? s.blick[id] : null));
+  if (id !== 'front' && id !== 'top') return <div className="vp-titel">{VIEW_TEXTE[id].titel}</div>;
+  const [a, b] = BLICK_TEXTE[id];
+  const werte = id === 'front' ? (['front', 'hinten'] as const) : (['top', 'unten'] as const);
+  return (
+    <div className="vp-titel blick-tabs" role="tablist">
+      {[a, b].map((text, i) => {
+        const wert = werte[i]!;
+        const aktiv = blick === wert;
+        return (
+          <button
+            key={text}
+            role="tab"
+            aria-selected={aktiv}
+            className={aktiv ? 'aktiv' : ''}
+            data-blick={wert}
+            tabIndex={-1}
+            onClick={() => (id === 'front' ? useUi.getState().setzeBlick('front', wert as 'front' | 'hinten') : useUi.getState().setzeBlick('top', wert as 'top' | 'unten'))}
+          >
+            {text}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Ebene 2: Titel, Richtungslabels, Eckknöpfe, Kurven bzw. 3D-Steuerung (liegt über dem Canvas). */
 export function ViewportOber({ id }: { id: ViewId }) {
   const r = useRect(id);
@@ -38,16 +67,20 @@ export function ViewportOber({ id }: { id: ViewId }) {
   const maximiert = useUi((s) => s.maximiert === id);
   const modus = useEditor((s) => s.modus);
   const hatMaul = useEditor((s) => !!s.dok.maul);
+  const zurueck = useUi((s) => id === 'front' && s.blick.front === 'hinten');
   if (!r) return null;
   const t = VIEW_TEXTE[id];
   const ui = useUi.getState();
+  // Back: links und rechts tauschen (waagerecht gespiegelt)
+  const links = zurueck ? t.rechts : t.links;
+  const rechts = zurueck ? t.links : t.rechts;
   return (
     <div className="vp-ober" data-view={id} style={{ ...lage(r, oben), zIndex: oben ? 11 : 10 }} onPointerEnter={() => ui.setzeHover(id)} onPointerLeave={() => useUi.getState().hover === id && ui.setzeHover(null)}>
-      <div className="vp-titel">{t.titel}</div>
+      <Titel id={id} />
       <div className="vp-inhalt">
         {id === 'creation' ? <Steuerung3D hoehe={r.h} /> : <View2D ansicht={id} w={r.w} h={r.h} />}
-        {t.links && <div className="vp-label links">{t.links}</div>}
-        {t.rechts && <div className="vp-label rechts">{t.rechts}</div>}
+        {links && <div className="vp-label links">{links}</div>}
+        {rechts && <div className="vp-label rechts">{rechts}</div>}
         {id === 'creation' && <div className="vp-label links platzhalter">{versuchAktiv()?.modus === 'maul' || hatMaul ? 'Versuch: Maul im Netz' : versuchAktiv()?.modus === 'subd' || versuchAktiv()?.modus === 'tigerkaefig' ? 'Versuch: Subdivision' : 'Platzhalter-Körper'}</div>}
         {id === 'creation' && modus !== 'editor' && !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>}
       </div>

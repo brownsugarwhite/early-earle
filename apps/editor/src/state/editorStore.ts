@@ -1,7 +1,7 @@
 // Dokument-Zustand mit Rückgängig/Wiederholen. Ein Zieh-Vorgang ist ein Schritt (Geste wie in der
 // alten Werkstatt: beginGeste … endeGeste), Einzelaktionen sind je ein Schritt.
 
-import { type Ansicht, type Dokument, type Maul, type PoseName, type Profil, SKALIERUNG_MAX, SKALIERUNG_MIN, type Zaehne, neuesDokument } from '@ee/shape';
+import { type Ansicht, type Dokument, type Kante, type Maul, type PoseName, type Profil, SKALIERUNG_MAX, SKALIERUNG_MIN, type Zaehne, neuesDokument } from '@ee/shape';
 import { maulAnKontur } from '@ee/shape/versuch';
 import { create } from 'zustand';
 
@@ -26,6 +26,8 @@ type EditorState = {
   /** Versuch 12.10.: Maul (3D-Lippenlinien) und Zähne; `null` entfernt */
   setzeMaul(maul: Maul | null): void;
   setzeZaehne(zaehne: Zaehne | null): void;
+  /** Versuch 12.10. mittags: Kantenlinien; `null` oder leer entfernt sie */
+  setzeKanten(kanten: Kante[] | null): void;
   rueckgaengig(): void;
   wiederholen(): void;
   neu(): void;
@@ -100,6 +102,14 @@ export const useEditor = create<EditorState>((set, get) => {
         const rest = { ...d };
         delete rest.zaehne;
         return zaehne ? { ...rest, zaehne } : rest;
+      });
+    },
+    setzeKanten(kanten) {
+      aendern((d) => {
+        if (d.kanten === kanten) return d;
+        const rest = { ...d };
+        delete rest.kanten;
+        return kanten?.length ? { ...rest, kanten } : rest;
       });
     },
     rueckgaengig() {

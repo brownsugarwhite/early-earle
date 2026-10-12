@@ -1,0 +1,437 @@
+// Kanten (Versuch 12.10. mittags, Florian): Linien überall in den 2D-Ansichten, im Form-Tab mit denselben Werkzeugen
+// wie die Silhouetten (Zeichenstift auf freier Fläche beginnt eine Kante).
+// - 1 px gestrichelt = mögliche Kante, Übergang ganz glatt; je härter, desto breiter und dunkler; schwarz 3 px = scharf.
+// - Die Härte verläuft entlang der Linie; das Breitenwerkzeug ⇧W ändert sie direkt an der Linie (wie in Illustrator).
+// - Knoten liegen auf der Fläche und bleiben beim Ziehen darauf, in jeder Ansicht.
+// - Die rechte Seite (z ≥ 0) ist dunkel, die gespiegelte weiß (wie bei den Profilen); verdeckte Teile blass.
+
+import type { Ansicht, Blick, Dokument, Kante, V2, V3T } from '@ee/shape';
+import { ausAnsicht2, einfuegen3, glatteLinie, griffZiehen3, inAnsicht2, naechsterInAnsicht } from '@ee/shape/versuch';
+import { useEffect } from 'react';
+import { useEditor } from '../state/editorStore';
+import { blickVon, useUi } from '../state/uiStore';
+import { haerteBei, kantenProben, kantenPunkt, kantenPunktStetig, sichtbar } from './kantenFlaeche';
+
+const PUNKT_R = 5;
+const GRIFF = 6;
+/** unter dieser Härte gilt die Kante als glatt: gestrichelt 1 px */
+export const GLATT = 0.03;
+/** Breitenwerkzeug: so viele Bildpunkte Abstand zur Linie entsprechen 100 % Härte */
+const BREITE_PX = 28;
+
+export const strichBreite = (h: number) => 1 + 2 * h;
+/** Grau → Schwarz (rechte Seite) */
+export const dunkel = (h: number) => {
+  const v = Math.round(112 * (1 - h));
+  return `rgb(${v},${v + 8},${v + 14})`;
+};
+const weiss = (h: number) => `rgba(255,255,255,${(0.5 + 0.5 * h).toFixed(2)})`;
+
+const spiegel = (p: V3T): V3T => [p[0], p[1], -p[2]];
+const prozent = (h: number) => `${Math.round(h * 100)} %`;
+
+/** Proben gemerkt je Linie (Objektidentität). */
+const probenSpeicher = new WeakMap<Kante, ReturnType<typeof kantenProben>>();
+const proben = (k: Kante) => {
+  let p = probenSpeicher.get(k);
+  if (!p) {
+    p = kantenProben(k);
+    probenSpeicher.set(k, p);
+  }
+  return p;
+};
+
+type Strich = { a: V2; b: V2; h: number; sichtbar: boolean; rechts: boolean };
+
+function striche(dok: Dokument, k: Kante, ansicht: Ansicht, blick: Blick, bild: (p: V2) => V2, gespiegelt: boolean): Strich[] {
+  const ps = proben(k).map(({ p, h }) => {
+    const pp = gespiegelt ? spiegel(p) : p;
+    return { q: bild(inAnsicht2(pp, ansicht)), h, vis: sichtbar(dok, blick, pp), z: pp[2] };
+  });
+  const out: Strich[] = [];
+  for (let i = 0; i + 1 < ps.length; i++) {
+    const a = ps[i]!;
+    const b = ps[i + 1]!;
+    out.push({ a: a.q, b: b.q, h: (a.h + b.h) / 2, sichtbar: a.vis && b.vis, rechts: a.z + b.z >= -2e-4 });
+  }
+  return out;
+}
+
+/** Striche zeichnen: glatte Läufe gestrichelt als ein Pfad (durchgehendes Muster), harte Stücke mit Breite und Grauwert. */
+function StrichBild({ s }: { s: Strich[] }) {
+  const teile: React.ReactNode[] = [];
+  let lauf: Strich[] = [];
+  const lauffertig = () => {
+    if (!lauf.length) return;
+    const f = lauf[0]!;
+    const d = `M${f.a.x.toFixed(1)} ${f.a.y.toFixed(1)}` + lauf.map((x) => `L${x.b.x.toFixed(1)} ${x.b.y.toFixed(1)}`).join('');
+    teile.push(<path key={`g${teile.length}`} d={d} fill="none" stroke={f.rechts ? dunkel(0) : weiss(0)} strokeWidth={1} strokeDasharray="4 3" opacity={f.sichtbar ? 1 : 0.25} />);
+    lauf = [];
+  };
+  for (const x of s) {
+    if (x.h < GLATT) {
+      if (lauf.length && (lauf[0]!.sichtbar !== x.sichtbar || lauf[0]!.rechts !== x.rechts)) lauffertig();
+      lauf.push(x);
+      continue;
+    }
+    lauffertig();
+    teile.push(
+      <line
+        key={`h${teile.length}`}
+        x1={x.a.x}
+        y1={x.a.y}
+        x2={x.b.x}
+        y2={x.b.y}
+        stroke={x.rechts ? dunkel(x.h) : weiss(x.h)}
+        strokeWidth={strichBreite(x.h)}
+        strokeLinecap="round"
+        opacity={x.sichtbar ? 1 : 0.25}
+      />,
+    );
+  }
+  lauffertig();
+  return <>{teile}</>;
+}
+
+/** Kantenlinien einer Ansicht; im Form-Tab mit Knoten, Griffen und Trefferflächen. */
+export function KantenZeichnung({ ansicht, bild, aktiv }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean }) {
+  const dok = useEditor((s) => s.dok);
+  const blick = useUi((s) => blickVon(ansicht, s.blick));
+  const auswahl = useUi((s) => s.kantenAuswahl);
+  const zeichnen = useUi((s) => s.kanteZeichnen);
+  const kanten = dok.kanten ?? [];
+  if (!kanten.length && !zeichnen) return null;
+  const zug = (pts: V2[]) => pts.map((q, i) => `${i ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join('');
+  return (
+    <g className={aktiv ? 'kanten aktiv' : 'kanten'} pointerEvents={aktiv ? 'auto' : 'none'}>
+      {kanten.map((k, ki) => (
+        <g key={ki} data-kante={ki} pointerEvents="none">
+          {ansicht !== 'seite' && <StrichBild s={striche(dok, k, ansicht, blick, bild, true)} />}
+          <StrichBild s={striche(dok, k, ansicht, blick, bild, false)} />
+        </g>
+      ))}
+      {aktiv &&
+        kanten.map((k, ki) => {
+          const pts = proben(k);
+          const sichtbarAnteil = pts.filter(({ p }) => sichtbar(dok, blick, p)).length / pts.length;
+          if (sichtbarAnteil < 0.5) return null;
+          return <path key={`t${ki}`} data-kantenlinie={ki} d={zug(pts.map(({ p }) => bild(inAnsicht2(p, ansicht))))} fill="none" stroke="transparent" strokeWidth={12} />;
+        })}
+      {aktiv &&
+        kanten.map((k, ki) => {
+          const gewaehlt = auswahl?.kante === ki ? auswahl.indizes : [];
+          return (
+            <g key={`k${ki}`}>
+              {gewaehlt.map((i) => {
+                const kn = k.knoten[i];
+                if (!kn) return null;
+                const p = bild(inAnsicht2(kn.p, ansicht));
+                return (['ein', 'aus'] as const).map((seite) => {
+                  const rel = kn[seite];
+                  if (Math.hypot(...rel) < 1e-6) return null;
+                  const q = bild(inAnsicht2([kn.p[0] + rel[0], kn.p[1] + rel[1], kn.p[2] + rel[2]], ansicht));
+                  return (
+                    <g key={`${i}-${seite}`} data-kantengriff={`${ki}:${i}:${seite}`} className="griff">
+                      <line x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke="var(--punkt)" strokeWidth={1} />
+                      <rect x={q.x - 8} y={q.y - 8} width={16} height={16} fill="transparent" />
+                      <rect x={q.x - GRIFF / 2} y={q.y - GRIFF / 2} width={GRIFF} height={GRIFF} fill="var(--punkt)" />
+                    </g>
+                  );
+                });
+              })}
+              {k.knoten.map((kn, i) => {
+                const q = bild(inAnsicht2(kn.p, ansicht));
+                const vis = sichtbar(dok, blick, kn.p);
+                const sel = gewaehlt.includes(i);
+                // Härte als Zahl: an einzeln gewählten Punkten; ganze Linie gewählt: einmal in der Mitte
+                const ganz = gewaehlt.length === k.knoten.length && k.knoten.length > 2;
+                const zeigeWert = sel && (!ganz || i === Math.floor((k.knoten.length - 1) / 2));
+                if (!vis) return <circle key={i} cx={q.x} cy={q.y} r={3} fill="var(--punkt)" opacity={0.3} pointerEvents="none" />;
+                return (
+                  <g key={i} data-kantenknoten={`${ki}:${i}`} className={sel ? 'knoten gewaehlt' : 'knoten'}>
+                    <circle cx={q.x} cy={q.y} r={10} fill="transparent" />
+                    <circle className="kanten-punkt" cx={q.x} cy={q.y} r={PUNKT_R} fill="var(--punkt)" stroke={sel ? '#ffffff' : 'none'} strokeWidth={2} />
+                    {zeigeWert && (
+                      <text className="kanten-wert" x={q.x + 9} y={q.y - 9}>
+                        {prozent(k.haerte[i] ?? 0)}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
+            </g>
+          );
+        })}
+      {zeichnen && zeichnen.ansicht === ansicht && zeichnen.blick === blick && zeichnen.knoten.length > 0 && (
+        <g className="kante-zeichnen" pointerEvents="none">
+          <path d={zug(zeichnen.knoten.map((p) => bild(inAnsicht2(p, ansicht))))} fill="none" stroke={dunkel(0)} strokeWidth={1} strokeDasharray="4 3" />
+          {zeichnen.knoten.map((p, i) => {
+            const q = bild(inAnsicht2(p, ansicht));
+            return <circle key={i} cx={q.x} cy={q.y} r={PUNKT_R} fill="var(--punkt)" />;
+          })}
+        </g>
+      )}
+    </g>
+  );
+}
+
+// ---------- Bedienung ----------
+
+export type KantenKontext = {
+  ansicht: Ansicht;
+  lokal: (clientX: number, clientY: number) => V2;
+  ziehen: (e: React.PointerEvent, bewegen: (ev: PointerEvent) => void, ende?: (ev: PointerEvent) => void) => void;
+  /** Bildpunkt aus Weltpunkt (für Abstände in px beim Breitenwerkzeug) */
+  bild: (p: V2) => V2;
+};
+
+const kanten = () => useEditor.getState().dok.kanten ?? [];
+function setzeKante(i: number, k: Kante) {
+  const liste = kanten().slice();
+  liste[i] = k;
+  useEditor.getState().setzeKanten(liste);
+}
+
+/** Neue Linie abschließen (mindestens zwei Punkte): glatt durch die Punkte, Härte 0 = mögliche Kante. */
+export function kanteZeichnenBeenden(abbrechen = false) {
+  const ui = useUi.getState();
+  const z = ui.kanteZeichnen;
+  if (!z) return;
+  ui.setzeKanteZeichnen(null);
+  if (abbrechen || z.knoten.length < 2) return;
+  const k: Kante = { ...glatteLinie(z.knoten), haerte: z.knoten.map(() => 0), blick: z.blick };
+  const liste = [...kanten(), k];
+  useEditor.getState().setzeKanten(liste);
+  ui.setzeKantenAuswahl({ kante: liste.length - 1, indizes: k.knoten.map((_, i) => i) });
+}
+
+/** Gewählte Knoten löschen; bleibt weniger als zwei, verschwindet die Linie. true = es gab eine Auswahl. */
+export function kantenKnotenLoeschen(): boolean {
+  const ui = useUi.getState();
+  const a = ui.kantenAuswahl;
+  if (!a) return false;
+  const liste = kanten().slice();
+  const k = liste[a.kante];
+  if (!k) return false;
+  const bleiben = k.knoten.map((_, i) => i).filter((i) => !a.indizes.includes(i));
+  if (bleiben.length < 2) liste.splice(a.kante, 1);
+  else liste[a.kante] = { ...k, knoten: bleiben.map((i) => k.knoten[i]!), haerte: bleiben.map((i) => k.haerte[i] ?? 0) };
+  useEditor.getState().setzeKanten(liste);
+  ui.setzeKantenAuswahl(null);
+  return true;
+}
+
+/** Härte der gewählten Knoten setzen (ganze Linie gewählt = alle Knoten). */
+export function haerteSetzen(h: number) {
+  const a = useUi.getState().kantenAuswahl;
+  const k = a ? kanten()[a.kante] : undefined;
+  if (!a || !k) return;
+  const v = Math.min(1, Math.max(0, h));
+  setzeKante(a.kante, { ...k, haerte: k.haerte.map((x, i) => (a.indizes.includes(i) ? v : x)) });
+}
+
+/** Kante weich auslaufen lassen: Enden 0, innen die bisherige höchste Härte. */
+export function kanteAuslaufen() {
+  const a = useUi.getState().kantenAuswahl;
+  const k = a ? kanten()[a.kante] : undefined;
+  if (!a || !k) return;
+  const n = k.knoten.length;
+  const h = Math.max(...k.haerte, 0.6);
+  setzeKante(a.kante, { ...k, haerte: k.knoten.map((_, i) => (i === 0 || i === n - 1 ? 0 : h)) });
+}
+
+/**
+ * Zeiger im Form-Tab für die Kanten; true = verarbeitet (sonst übernimmt die Profil-Bedienung).
+ * Reihenfolge wie in Illustrator: laufender Zeichenstift, Breitenwerkzeug, Stift/+/− an Kanten, Direktauswahl.
+ */
+export function kantenZeiger(e: React.PointerEvent, ctx: KantenKontext): boolean {
+  const ui = useUi.getState();
+  const ed = useEditor.getState();
+  const blick = blickVon(ctx.ansicht, ui.blick);
+  const q = ctx.lokal(e.clientX, e.clientY);
+  const ziel = e.target as Element;
+  const profilZiel = !!ziel.closest('[data-knoten],[data-griff],[data-kurve]');
+
+  // laufender Zeichenstift: jeder Klick ein Punkt auf der Fläche, Doppelklick beendet
+  if (ui.kanteZeichnen) {
+    if (ui.kanteZeichnen.ansicht !== ctx.ansicht || ui.kanteZeichnen.blick !== blick) {
+      ui.zeigeHinweis('Die Kante in derselben Ansicht beenden (Enter)');
+      return true;
+    }
+    if (e.detail >= 2) {
+      kanteZeichnenBeenden();
+      return true;
+    }
+    const p = kantenPunkt(ed.dok, blick, q);
+    if (p) ui.setzeKanteZeichnen({ ...ui.kanteZeichnen, knoten: [...ui.kanteZeichnen.knoten, p] });
+    return true;
+  }
+
+  const knotenEl = ziel.closest('[data-kantenknoten]');
+  const griffEl = ziel.closest('[data-kantengriff]');
+  const linieEl = ziel.closest('[data-kantenlinie]');
+
+  // Breitenwerkzeug: an der Linie ziehen, weg von der Linie = härter
+  if (ui.werkzeug === 'breite') {
+    const ki = knotenEl ? Number(knotenEl.getAttribute('data-kantenknoten')!.split(':')[0]) : linieEl ? Number(linieEl.getAttribute('data-kantenlinie')) : -1;
+    const k = kanten()[ki];
+    if (!k) {
+      if (!profilZiel) ui.zeigeHinweis('Breitenwerkzeug: an einer Kante ziehen');
+      return !profilZiel;
+    }
+    const t = naechsterInAnsicht(k, ctx.ansicht, q);
+    if (!t) return true;
+    let linie = k;
+    let index = t.t < 0.12 ? t.segment : t.t > 0.88 ? t.segment + 1 : -1;
+    if (index < 0) {
+      const r = einfuegen3(k, t.segment, t.t);
+      const haerte = k.haerte.slice();
+      haerte.splice(r.index, 0, haerteBei(k, t.segment, t.t));
+      linie = { ...k, knoten: r.linie.knoten, haerte };
+      index = r.index;
+    }
+    const h0 = linie.haerte[index] ?? 0;
+    const qk = ctx.bild(inAnsicht2(linie.knoten[index]!.p, ctx.ansicht));
+    // Abstand zur Linie in Bildpunkten des Viewports (Ereignis hängt am SVG)
+    const rahmen = (e.currentTarget as Element).getBoundingClientRect();
+    const d0 = Math.hypot(e.clientX - rahmen.left - qk.x, e.clientY - rahmen.top - qk.y);
+    ed.beginGeste();
+    setzeKante(ki, linie);
+    ui.setzeKantenAuswahl({ kante: ki, indizes: [index] });
+    ctx.ziehen(
+      e,
+      (ev) => {
+        const d = Math.hypot(ev.clientX - rahmen.left - qk.x, ev.clientY - rahmen.top - qk.y);
+        const h = Math.min(1, Math.max(0, h0 + (d - d0) / BREITE_PX));
+        const jetzt = kanten()[ki];
+        if (jetzt) setzeKante(ki, { ...jetzt, haerte: jetzt.haerte.map((x, i) => (i === index ? h : x)) });
+      },
+      () => useEditor.getState().endeGeste(),
+    );
+    return true;
+  }
+
+  // Zeichenstift, + und − an Kanten; Stift auf freier Fläche beginnt eine neue Kante
+  if (ui.werkzeug !== 'auswahl' && !e.metaKey) {
+    if (knotenEl && (ui.werkzeug === 'stift' || ui.werkzeug === 'minus')) {
+      const [ki, i] = knotenEl.getAttribute('data-kantenknoten')!.split(':').map(Number) as [number, number];
+      ui.setzeKantenAuswahl({ kante: ki, indizes: [i] });
+      kantenKnotenLoeschen();
+      return true;
+    }
+    if (!knotenEl && linieEl && (ui.werkzeug === 'stift' || ui.werkzeug === 'plus')) {
+      const ki = Number(linieEl.getAttribute('data-kantenlinie'));
+      const k = kanten()[ki];
+      const t = k ? naechsterInAnsicht(k, ctx.ansicht, q) : null;
+      if (k && t) {
+        const r = einfuegen3(k, t.segment, t.t);
+        const haerte = k.haerte.slice();
+        haerte.splice(r.index, 0, haerteBei(k, t.segment, t.t));
+        setzeKante(ki, { ...k, knoten: r.linie.knoten, haerte });
+        ui.setzeKantenAuswahl({ kante: ki, indizes: [r.index] });
+      }
+      return true;
+    }
+    if (ui.werkzeug === 'stift' && !profilZiel && !knotenEl && !linieEl) {
+      const p = kantenPunkt(ed.dok, blick, q);
+      if (p) {
+        ui.auswahlLeeren();
+        ui.setzeKanteZeichnen({ ansicht: ctx.ansicht, blick, knoten: [p] });
+      }
+      return true;
+    }
+    return false;
+  }
+
+  if (profilZiel) {
+    if (ui.kantenAuswahl) ui.setzeKantenAuswahl(null);
+    return false;
+  }
+
+  if (griffEl) {
+    const [kiS, iS, seite] = griffEl.getAttribute('data-kantengriff')!.split(':') as [string, string, 'ein' | 'aus'];
+    const ki = Number(kiS);
+    const i = Number(iS);
+    let brechen = e.altKey;
+    ed.beginGeste();
+    ctx.ziehen(
+      e,
+      (ev) => {
+        brechen ||= ev.altKey;
+        const k = kanten()[ki];
+        if (k) setzeKante(ki, { ...k, knoten: griffZiehen3(k, i, seite, ctx.ansicht, ctx.lokal(ev.clientX, ev.clientY), brechen).knoten });
+      },
+      () => useEditor.getState().endeGeste(),
+    );
+    return true;
+  }
+
+  if (knotenEl || linieEl) {
+    // Knoten: Klick wählt (⇧ schaltet um); Linie: Klick wählt die ganze Linie. Ziehen bewegt die Auswahl auf der Fläche.
+    let ki: number;
+    let sel: number[];
+    if (knotenEl) {
+      const [kk, i] = knotenEl.getAttribute('data-kantenknoten')!.split(':').map(Number) as [number, number];
+      ki = kk;
+      const bisher = ui.kantenAuswahl?.kante === ki ? ui.kantenAuswahl.indizes : [];
+      sel = e.shiftKey ? (bisher.includes(i) ? bisher.filter((x) => x !== i) : [...bisher, i]) : bisher.includes(i) ? bisher : [i];
+    } else {
+      ki = Number(linieEl!.getAttribute('data-kantenlinie'));
+      sel = (kanten()[ki]?.knoten ?? []).map((_, i) => i);
+    }
+    ui.auswahlLeeren();
+    ui.setzeKantenAuswahl(sel.length ? { kante: ki, indizes: sel } : null);
+    const basis = kanten()[ki];
+    if (!basis || !sel.length) return true;
+    const start = q;
+    ed.beginGeste();
+    ctx.ziehen(
+      e,
+      (ev) => {
+        const p = ctx.lokal(ev.clientX, ev.clientY);
+        const d = { x: p.x - start.x, y: p.y - start.y };
+        const dok = useEditor.getState().dok;
+        const knoten = basis.knoten.map((kn, i) => {
+          if (!sel.includes(i)) return kn;
+          const z2 = inAnsicht2(kn.p, ctx.ansicht);
+          const ziel2 = { x: z2.x + d.x, y: z2.y + d.y };
+          const neu = kantenPunktStetig(dok, ctx.ansicht, ziel2, kn.p) ?? ausAnsicht2(kn.p, ctx.ansicht, ziel2);
+          return { ...kn, p: neu };
+        });
+        setzeKante(ki, { ...basis, knoten });
+      },
+      () => useEditor.getState().endeGeste(),
+    );
+    return true;
+  }
+
+  if (ui.kantenAuswahl) ui.setzeKantenAuswahl(null);
+  return false;
+}
+
+/** Enter beendet eine neue Kante, Esc bricht ab (weniger als zwei Punkte) oder beendet sie. */
+export function useKantenTasten() {
+  useEffect(() => {
+    const taste = (e: KeyboardEvent) => {
+      const ui = useUi.getState();
+      if (!ui.kanteZeichnen) return;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        kanteZeichnenBeenden();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        kanteZeichnenBeenden((ui.kanteZeichnen?.knoten.length ?? 0) < 2);
+      }
+    };
+    window.addEventListener('keydown', taste, true);
+    return () => window.removeEventListener('keydown', taste, true);
+  }, []);
+}
+
+/** Gewählte Kante mit Auswahl (Seitenleiste). */
+export function useGewaehlteKante() {
+  const a = useUi((s) => s.kantenAuswahl);
+  const k = useEditor((s) => (a ? s.dok.kanten?.[a.kante] : undefined));
+  return a && k ? { a, k } : null;
+}

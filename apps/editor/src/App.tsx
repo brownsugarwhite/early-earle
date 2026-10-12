@@ -1,5 +1,6 @@
 import { useLayoutSteuerung, useMenueBruecke, useTastatur, useTitel } from './hooks';
 import { Seitenleiste } from './leiste/Seitenleiste';
+import { useKantenTasten } from './kanten/KantenEbene';
 import { useMaulTasten } from './maul/MaulEbene';
 import { MenuBar } from './menu/MenuBar';
 import { Szene3D } from './three/Szene3D';
@@ -17,6 +18,7 @@ export function App() {
   useMenueBruecke();
   useTitel();
   useMaulTasten();
+  useKantenTasten();
   return (
     <>
       <Glasfilter />

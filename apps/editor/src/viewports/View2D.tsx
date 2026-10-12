@@ -30,11 +30,12 @@ import { useEffect, useRef, useState } from 'react';
 import { type Auswahl, gekoppeltBerechnen, setzeGekoppelt } from '../editing/gekoppelt';
 import { useEditor } from '../state/editorStore';
 import { useUeberlagerung } from '../versuch/ueberlagerung';
-import { useUi } from '../state/uiStore';
+import { blickVon, useUi } from '../state/uiStore';
 import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen } from '../maul/MaulEbene';
 import { RigZeichnung } from '../maul/RigZeichnung';
 import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
-import { istTrackpad, radFaktor, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
+import { KantenZeichnung, kantenZeiger } from '../kanten/KantenEbene';
+import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { versetzt3 } from '@ee/shape/versuch';
 
 const PUNKT_R = 5; // Ø 10 px (Florian, 11.10.)
@@ -51,6 +52,8 @@ export function View2D({ ansicht, w, h }: Props) {
   const [rahmen, setRahmen] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const werkzeug = useUi((s) => s.werkzeug);
   const ebene = useUi((s) => s.ebene);
+  // Back ist waagerecht, Bottom senkrecht gespiegelt (Florian 12.10.); die Silhouette ist dieselbe, die Fläche die abgewandte
+  const blick = useUi((s) => blickVon(ansicht, s.blick));
   const hatMaul = useEditor((s) => !!s.dok.maul);
   const ueber = useUeberlagerung((s) => s[ansicht]);
   /** Profile nur im Form-Tab bearbeitbar; in den anderen Tabs sind sie Kontext. */
@@ -76,7 +79,7 @@ export function View2D({ ansicht, w, h }: Props) {
 
   if (w < 2 || h < 2) return null;
 
-  const bild = (p: V2) => zuBild(view, w, h, { x: p.x * skal, y: p.y * skal });
+  const bild = (p: V2) => zuBild(view, w, h, spiegeln2(blick, { x: p.x * skal, y: p.y * skal }));
   const pfad = (segs: readonly Kubik[], zu: boolean) => {
     if (!segs.length) return '';
     const f = (p: V2) => {
@@ -101,7 +104,7 @@ export function View2D({ ansicht, w, h }: Props) {
     const r = el.getBoundingClientRect();
     const v = useUi.getState().ansichten[ansicht];
     const s = useEditor.getState().dok.skalierung;
-    const p = zuWelt(v, r.width, r.height, { x: clientX - r.left, y: clientY - r.top });
+    const p = spiegeln2(blickVon(ansicht, useUi.getState().blick), zuWelt(v, r.width, r.height, { x: clientX - r.left, y: clientY - r.top }));
     return { x: p.x / s, y: p.y / s };
   };
   const aktuell = (): Profil => useEditor.getState().dok.profile[ansicht];
@@ -135,7 +138,7 @@ export function View2D({ ansicht, w, h }: Props) {
     const yb = Math.max(r.y0, r.y1);
     const drin: number[] = [];
     aktuell().knoten.forEach((k, i) => {
-      const q = zuBild(v, w, h, { x: k.p.x * s, y: k.p.y * s });
+      const q = zuBild(v, w, h, spiegeln2(blick, { x: k.p.x * s, y: k.p.y * s }));
       if (q.x >= xa && q.x <= xb && q.y >= ya && q.y <= yb) drin.push(i);
     });
     return drin;
@@ -167,6 +170,8 @@ export function View2D({ ansicht, w, h }: Props) {
       return;
     }
     if (ui.ebene !== 'form') return;
+    // Kanten (Versuch 12.10. mittags): Zeichenstift auf freier Fläche, Kantenknoten, Breitenwerkzeug
+    if (kantenZeiger(e, { ansicht, lokal, ziehen, bild })) return;
     const ziel = e.target as Element;
     const griffEl = ziel.closest('[data-griff]');
     const knotenEl = ziel.closest('[data-knoten]');
@@ -377,7 +382,7 @@ export function View2D({ ansicht, w, h }: Props) {
           <stop offset="1" stopColor="#000" stopOpacity={0.1} />
         </linearGradient>
       </defs>
-      <rect className="kachel" x={k0.x} y={k0.y} width={k1.x - k0.x} height={k1.y - k0.y} fill={seitlich ? `url(#${verlaufId})` : 'rgba(0,0,0,0.1)'} />
+      <rect className="kachel" x={Math.min(k0.x, k1.x)} y={Math.min(k0.y, k1.y)} width={Math.abs(k1.x - k0.x)} height={Math.abs(k1.y - k0.y)} fill={seitlich ? `url(#${verlaufId})` : 'rgba(0,0,0,0.1)'} />
       {achse && profil.art === 'halb' && (profil.achse === 'senkrecht' ? <line className="achse" x1={achse.x} y1={0} x2={achse.x} y2={h} /> : <line className="achse" x1={0} y1={achse.y} x2={w} y2={achse.y} />)}
       {ueber?.bild && (() => {
         const a = bild({ x: ueber.bild.x0, y: ueber.bild.y0 });
@@ -387,6 +392,7 @@ export function View2D({ ansicht, w, h }: Props) {
       {profil.art === 'halb' && <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="#ffffff" strokeWidth={KONTUR} strokeLinejoin="round" />}
       <path d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
+      <KantenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       {formAktiv && griffe}
       {formAktiv && profil.knoten.map((k, i) => {
         const q = bild(k.p);

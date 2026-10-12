@@ -1,10 +1,17 @@
 // Ansichtstransformation der 2D-Viewports: Weltkoordinaten (Kachel-Einheiten, v nach oben) ↔ Bildpunkte.
 // Der Maßstab hängt an der Viewportgröße: Maximieren vergrößert den Inhalt mit.
 
-import type { V2 } from '@ee/shape';
+import type { Blick, V2 } from '@ee/shape';
 import type { Ansicht2D } from '../state/uiStore';
 
 export const KACHEL_ANTEIL = 0.925;
+
+/** Back spiegelt waagerecht (z → −z), Bottom senkrecht (Bild-y = z → −z); die Spiegelung ist ihr eigenes Inverses. */
+export function spiegeln2(blick: Blick, p: V2): V2 {
+  if (blick === 'hinten') return { x: -p.x, y: p.y };
+  if (blick === 'unten') return { x: p.x, y: -p.y };
+  return p;
+}
 const ZOOM_MIN = 0.08;
 const ZOOM_MAX = 60;
 

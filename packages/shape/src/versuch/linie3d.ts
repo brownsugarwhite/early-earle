@@ -69,6 +69,17 @@ export function linieDurch(pts: readonly V3T[]): Linie3 {
   return { knoten };
 }
 
+/** Glatte Linie durch Punkte ohne Bindung an die Mittelebene (Kantenlinien, Versuch 12.10. mittags). */
+export function glatteLinie(pts: readonly V3T[]): Linie3 {
+  const n = pts.length;
+  return {
+    knoten: pts.map((p, i) => {
+      const tang = mal(minus(pts[Math.min(n - 1, i + 1)]!, pts[Math.max(0, i - 1)]!), 1 / 6);
+      return { p: [...p] as V3T, ein: i === 0 ? [0, 0, 0] : mal(tang, -1), aus: i === n - 1 ? [0, 0, 0] : tang, art: 'glatt' };
+    }),
+  };
+}
+
 /** Knoten in einer Ansicht verschieben (zwei Koordinaten); Startknoten bleibt auf z = 0. */
 export function knotenZiehen3(l: Linie3, i: number, a: Ansicht, q: V2): Linie3 {
   const knoten = l.knoten.map((k, j) => {

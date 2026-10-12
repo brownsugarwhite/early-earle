@@ -1,20 +1,33 @@
 // Oberflächen-Zustand: Layout, Auswahl, Ansichten (2D-Zoom/Pan, 3D-Kamera), Menüs, Dialoge.
 
-import type { Ansicht } from '@ee/shape';
+import type { Ansicht, Blick, V3T } from '@ee/shape';
 import { create } from 'zustand';
 import type { ViewId } from '../types';
 
 export type Ansicht2D = { zoom: number; cu: number; cv: number };
 export type Kamera = { azimut: number; elevation: number; distanz: number; ziel: [number, number, number] };
 
-/** Werkzeuge wie in Illustrator: Direktauswahl (A), Zeichenstift (P), Ankerpunkt hinzufügen (+) / löschen (−). */
-export type Werkzeug = 'auswahl' | 'stift' | 'plus' | 'minus';
+/**
+ * Werkzeuge wie in Illustrator: Direktauswahl (A), Zeichenstift (P), Ankerpunkt hinzufügen (+) / löschen (−),
+ * Breitenwerkzeug (⇧W): Ziehen an einer Kantenlinie macht sie breiter = härter (Versuch 12.10. mittags).
+ */
+export type Werkzeug = 'auswahl' | 'stift' | 'plus' | 'minus' | 'breite';
+/** Gewählte Knoten einer Kantenlinie (alle Knoten = ganze Linie). */
+export type KantenAuswahl = { kante: number; indizes: number[] };
+/** Zeichenstift auf freier Fläche: neue Kantenlinie, bis Enter/Esc/Doppelklick. */
+export type KanteZeichnen = { blick: Blick; ansicht: Ansicht; knoten: V3T[] };
 
 export type MenueEintrag = { label: string; aktion: () => void; aus?: boolean } | 'trenner';
 export type KontextMenue = { x: number; y: number; eintraege: MenueEintrag[] };
 
 /** Tabs über die Eckpunkte der Viewports (Florian 12.10.): Form, Maul (blau), Zähne (braun), Rig, Augen (folgt). */
 export type Ebene = 'form' | 'maul' | 'zaehne' | 'rig' | 'augen';
+/**
+ * Blickrichtung der Viewports Front und Top (Florian 12.10.): Back und Bottom zeigen dieselbe Silhouette gespiegelt,
+ * aber die abgewandte Fläche (Linien auf Rücken, Schwanz, Bauch).
+ */
+export type Blicke = { front: 'front' | 'hinten'; top: 'top' | 'unten' };
+export const blickVon = (ansicht: Ansicht, b: Blicke): Blick => (ansicht === 'seite' ? 'seite' : b[ansicht]);
 /** Gewählte Knoten einer Lippenlinie (oben = rot bzw. türkis, unten = blau). */
 export type MaulAuswahl = { linie: 'oben' | 'unten'; indizes: number[] };
 
@@ -42,6 +55,9 @@ type UiState = {
   /** Zeichenstift des Maul-Tabs: Knoten der neuen Linie, bis Enter/Esc */
   maulZeichnen: [number, number, number][] | null;
   zahnAuswahl: { kiefer: 'oben' | 'unten'; index: number } | null;
+  blick: Blicke;
+  kantenAuswahl: KantenAuswahl | null;
+  kanteZeichnen: KanteZeichnen | null;
   /** liegt während Layout-Bewegungen oben */
   oben: ViewId | null;
   hover: ViewId | null;
@@ -63,6 +79,9 @@ type UiState = {
   setzeMaulAuswahl(a: MaulAuswahl | null): void;
   setzeMaulZeichnen(k: [number, number, number][] | null): void;
   setzeZahnAuswahl(z: { kiefer: 'oben' | 'unten'; index: number } | null): void;
+  setzeBlick<A extends keyof Blicke>(ansicht: A, b: Blicke[A]): void;
+  setzeKantenAuswahl(a: KantenAuswahl | null): void;
+  setzeKanteZeichnen(z: KanteZeichnen | null): void;
   setzeHover(id: ViewId | null): void;
   setzeWerkzeug(w: Werkzeug): void;
   waehle(ansicht: Ansicht, indizes: number[]): void;
@@ -84,6 +103,9 @@ export const useUi = create<UiState>((set, get) => ({
   maulAuswahl: null,
   maulZeichnen: null,
   zahnAuswahl: null,
+  blick: { front: 'front', top: 'top' },
+  kantenAuswahl: null,
+  kanteZeichnen: null,
   oben: null,
   hover: null,
   werkzeug: 'auswahl',
@@ -105,7 +127,7 @@ export const useUi = create<UiState>((set, get) => ({
   setzeEbene(e) {
     // zweiter Klick auf denselben Punkt führt zurück zur Form
     const neu = get().ebene === e ? 'form' : e;
-    set({ ebene: neu, maulAuswahl: null, maulZeichnen: null, zahnAuswahl: null, werkzeug: 'auswahl' });
+    set({ ebene: neu, maulAuswahl: null, maulZeichnen: null, zahnAuswahl: null, kantenAuswahl: null, kanteZeichnen: null, werkzeug: 'auswahl' });
   },
   setzeOeffnung(a) {
     set({ oeffnung: Math.min(1, Math.max(0, a)) });
@@ -118,6 +140,15 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeZahnAuswahl(z) {
     set({ zahnAuswahl: z });
+  },
+  setzeBlick(ansicht, b) {
+    set({ blick: { ...get().blick, [ansicht]: b } });
+  },
+  setzeKantenAuswahl(a) {
+    set({ kantenAuswahl: a });
+  },
+  setzeKanteZeichnen(z) {
+    set({ kanteZeichnen: z });
   },
   setzeHover(id) {
     set({ hover: id });
@@ -132,7 +163,7 @@ export const useUi = create<UiState>((set, get) => ({
     set({ auswahl: a, aktiv });
   },
   auswahlLeeren() {
-    set({ auswahl: { seite: [], front: [], top: [] } });
+    set({ auswahl: { seite: [], front: [], top: [] }, kantenAuswahl: null });
   },
   setzeAnsicht(a, v) {
     set({ ansichten: { ...get().ansichten, [a]: v } });
