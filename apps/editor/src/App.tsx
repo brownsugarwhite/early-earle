@@ -1,3 +1,4 @@
+import { useWirbelTasten } from './wirbel/WirbelEbene';
 import { useLayoutSteuerung, useMenueBruecke, useTastatur, useTitel } from './hooks';
 import { Seitenleiste } from './leiste/Seitenleiste';
 import { useKantenTasten } from './kanten/KantenEbene';
@@ -18,6 +19,7 @@ export function App() {
   useMenueBruecke();
   useTitel();
   useMaulTasten();
+  useWirbelTasten();
   useKantenTasten();
   return (
     <>

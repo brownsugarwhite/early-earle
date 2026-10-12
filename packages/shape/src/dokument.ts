@@ -56,6 +56,8 @@ export const DokumentSchema = z.object({
   kanten: z.array(KanteSchema).optional(),
   spanten: z.array(SpantSchema).optional(),
   hauptspant: z.number().min(0).max(1).optional(),
+  wirbelsaeule: Linie3Schema.optional(),
+  posenProfile: z.record(z.string(), z.object({ seite: ProfilSchema.optional() })).optional(),
 });
 
 export type V3T = [number, number, number];
@@ -106,6 +108,16 @@ export type Dokument = {
   spanten?: Spant[];
   /** Stelle des Hauptspants (Front); fehlt = dickste Stelle */
   hauptspant?: number;
+  /**
+   * Versuch 12.10. nachts: selbst gezeichnete Wirbelsäule (Seite, z = 0) für die Bauweise „Wirbelsäule“; fehlt = aus dem
+   * Umriss vorgeschlagen.
+   */
+  wirbelsaeule?: Linie3;
+  /**
+   * Versuch 12.10. nachts: Seitenform je Pose (Schlüssel „fressen“ bzw. Posenname), gleiche Punktstruktur wie
+   * `profile.seite`. Fehlt sie, folgt die Pose dem Kiefer.
+   */
+  posenProfile?: Record<string, { seite?: Profil }>;
 };
 
 export type Ansicht = keyof Dokument['profile'];

@@ -12,7 +12,8 @@ import { selbstDurchdringungen } from './pruefen';
 import { geschlossen } from './tigerKaefig';
 import { umrissAusNetz } from './umriss3d';
 import { type Vorlage, vorlageDokument } from './vorlagen';
-import { kaefigAusSprossen, wirbelBiegen, wirbelKaefig } from './wirbelsaeule';
+import { linieDurch } from './linie3d';
+import { eigeneWirbelsaeule, kaefigAusSprossen, wirbelBiegen, wirbelKaefig } from './wirbelsaeule';
 
 declare const console: { log: (...a: unknown[]) => void };
 declare const performance: { now: () => number };
@@ -92,6 +93,27 @@ describe('Wirbelsäule (Versuch)', () => {
       const nach = Math.hypot(m(b.sprossen, i).x - m(b.sprossen, i + 1).x, m(b.sprossen, i).y - m(b.sprossen, i + 1).y);
       expect(Math.abs(nach - vor)).toBeLessThan(1e-9);
     }
+  });
+
+  it('Selbst gezeichnete Wirbelsäule: bis zum Umriss verlängert, Ringe senkrecht dazu, Netz geschlossen', () => {
+    const d = neuesDokument();
+    // schräge Wirbelsäule durch die Kugel (vorn unten → hinten oben)
+    const schraeg = { ...d, wirbelsaeule: linieDurch([[-0.15, 0.2, 0], [0, 0.27, 0], [0.15, 0.34, 0]]) };
+    const e = eigeneWirbelsaeule(schraeg)!;
+    expect(e).not.toBeNull();
+    // Enden liegen auf dem Umriss (Abstand zur Kugelmitte = Radius)
+    for (const q of [e.vorn, e.hinten]) expect(Math.abs(Math.hypot(q.x, q.y - 0.265) - 0.265) * PX).toBeLessThan(1.5);
+    const wk = wirbelKaefig(schraeg);
+    expect(geschlossen(wk.netz)).toBe(true);
+    // die Wirbelsäule folgt der Zeichnung (steigt nach hinten)
+    expect(wk.wirbel[wk.wirbel.length - 1]!.y).toBeGreaterThan(wk.wirbel[0]!.y + 0.1);
+    // Seitenumriss bleibt getroffen
+    const soll = pfadAbtasten(vollerPfad(d.profile.seite), 32);
+    const ist = umrissAusNetz(unterteilenMehrfach(wk.netz, 3), 'seite', 400)[0]!;
+    expect(abweichung(ist, soll).max).toBeLessThan(4);
+    // Wirbelsäule außerhalb des Umrisses: Vorschlag und Hinweis
+    const draussen = wirbelKaefig({ ...d, wirbelsaeule: linieDurch([[1, 1, 0], [1.2, 1.1, 0]]) });
+    expect(draussen.hinweise.join(' ')).toContain('nicht im Umriss');
   });
 
   it('Florians Wesen: Hals hoch, Kopf drauf – Umrisse, Durchdringungen, Laufzeit (Messung)', () => {

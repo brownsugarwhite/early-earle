@@ -110,7 +110,8 @@ export function Szene3D() {
             s.dok.zaehne !== v.dok.zaehne ||
             s.dok.kanten !== v.dok.kanten ||
             s.dok.spanten !== v.dok.spanten ||
-            s.dok.hauptspant !== v.dok.hauptspant;
+            s.dok.hauptspant !== v.dok.hauptspant ||
+            s.dok.wirbelsaeule !== v.dok.wirbelsaeule;
           const wirbel = useUi.getState().bauweise === 'wirbel';
           // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen
           if (s.dok.maul && s.gesteStart && !wirbel) return;

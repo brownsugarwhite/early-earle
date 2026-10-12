@@ -25,6 +25,14 @@ describe('Dokument', () => {
     const json = JSON.parse(JSON.stringify(d));
     expect(dokumentLesen(json)).toEqual(json);
   });
+  it('behält Wirbelsäule und Posen-Seitenform (Versuch 12.10. nachts) beim Laden', () => {
+    const d = neuesDokument('Langhals');
+    const k = (p: [number, number, number]) => ({ p, ein: [0, 0, 0] as [number, number, number], aus: [0, 0, 0] as [number, number, number], art: 'glatt' as const });
+    d.wirbelsaeule = { knoten: [k([-0.25, 0.3, 0]), k([0, 0.27, 0]), k([0.25, 0.25, 0])] };
+    d.posenProfile = { fressen: { seite: d.profile.seite } };
+    const json = JSON.parse(JSON.stringify(d));
+    expect(dokumentLesen(json)).toEqual(json);
+  });
   it('lehnt fremde Formate ab', () => {
     expect(() => dokumentLesen({ format: 'x' })).toThrow();
   });

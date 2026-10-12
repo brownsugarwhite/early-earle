@@ -16,7 +16,7 @@ import { useMaulInfo } from '../maul/maulKoerper';
 import { useEditor } from '../state/editorStore';
 import { type Ebene, useUi } from '../state/uiStore';
 import { Ornament } from './Ornament';
-import { WIRBEL_FARBEN } from '../wirbel/WirbelEbene';
+import { WIRBEL_FARBEN, wirbelVorschlagUebernehmen } from '../wirbel/WirbelEbene';
 import { useWirbelAnzeige } from '../wirbel/wirbelKoerper';
 
 const FAECHER = ['Wesen', 'Augen', 'Flügel', 'Mäuler', 'Beine', 'Schwänze', 'Ohren', 'Muster'] as const;
@@ -326,6 +326,8 @@ function WirbelBereich() {
   const info = useWirbelAnzeige((s) => s.info);
   const biegung = useUi((s) => s.wirbelBiegung);
   const hatMaul = useEditor((s) => !!s.dok.maul);
+  const eigen = useEditor((s) => !!s.dok.wirbelsaeule);
+  const zeichnen = useUi((s) => !!s.wirbelZeichnen);
   const zieht = { onStart: () => useWirbelAnzeige.setState({ zieht: true }), onEnde: () => useWirbelAnzeige.setState({ zieht: false }) };
   return (
     <section className="leiste-bereich wirbel-bereich" data-wirbelbereich="">
@@ -338,6 +340,29 @@ function WirbelBereich() {
         <b style={{ color: WIRBEL_FARBEN.liegend }}>orange</b> = Breite aus dem Top, <b style={{ color: WIRBEL_FARBEN.stehend }}>blau</b> = aus der Front. Gestrichelt: Umriss des 3D-Körpers.
         {info && (info.vorlage === 'front' ? ' Querschnitt: deine Front (das Wesen liegt).' : ' Querschnitt: oval (mit stehenden Teilen ist die Front kein Querschnitt).')}
       </p>
+      <div className="feld">
+        <span>Verlauf</span>
+        <b data-wirbelquelle={eigen ? 'gezeichnet' : 'umriss'}>{zeichnen ? 'zeichnen …' : eigen ? 'selbst gezeichnet' : 'aus dem Umriss'}</b>
+      </div>
+      <div className="umschalter">
+        <button
+          className={zeichnen ? 'chip aktiv' : 'chip'}
+          onClick={() => {
+            useUi.getState().setzeEbene('form');
+            useUi.getState().setzeWirbelZeichnen([]);
+            useUi.getState().zeigeHinweis('Wirbelsäule: in der Seite von der Schnauze zum Schwanz klicken, Enter beendet, Esc bricht ab');
+          }}
+        >
+          selbst zeichnen
+        </button>
+        <button className="chip" onClick={wirbelVorschlagUebernehmen} disabled={eigen}>
+          Vorschlag übernehmen
+        </button>
+        <button className="chip" onClick={() => useEditor.getState().setzeWirbelsaeule(null)} disabled={!eigen}>
+          automatisch
+        </button>
+      </div>
+      {eigen && <p className="hilfe">Punkte in der Seite ziehen verlegt die Ringe, der Umriss bleibt. Zeichenstift: auf der Linie Punkt einfügen, auf einem Punkt löschen.</p>}
       <Regler label="Biegen" wert={biegung.winkel} min={-60} max={60} schritt={1} anzeige={`${biegung.winkel}°`} onChange={(winkel) => useUi.getState().setzeWirbelBiegung({ ...biegung, winkel })} {...zieht} />
       <Regler label="Stelle" wert={biegung.bei} min={0.1} max={0.9} schritt={0.01} anzeige={`${Math.round(biegung.bei * 100)} %`} onChange={(bei) => useUi.getState().setzeWirbelBiegung({ ...biegung, bei })} {...zieht} />
       <div className="umschalter">

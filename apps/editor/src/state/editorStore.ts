@@ -5,6 +5,7 @@ import {
   type Ansicht,
   type Dokument,
   type Kante,
+  type Linie3,
   type Maul,
   type PoseName,
   type Profil,
@@ -45,6 +46,8 @@ type EditorState = {
   /** Versuch 12.10. nachmittags: Spanten (Querschnitte); `null` oder leer entfernt sie */
   setzeSpanten(spanten: Spant[] | null): void;
   setzeHauptspant(f: number | null): void;
+  /** Versuch 12.10. nachts: selbst gezeichnete Wirbelsäule; `null` = wieder aus dem Umriss vorgeschlagen */
+  setzeWirbelsaeule(l: Linie3 | null): void;
   /** ganzes Dokument ersetzen (z. B. Punkt in allen Querschnitten einfügen) */
   setzeDokument(dok: Dokument): void;
   rueckgaengig(): void;
@@ -153,6 +156,14 @@ export const useEditor = create<EditorState>((set, get) => {
         const rest = { ...d };
         delete rest.hauptspant;
         return f === null ? rest : { ...rest, hauptspant: Math.min(0.98, Math.max(0.02, f)) };
+      });
+    },
+    setzeWirbelsaeule(l) {
+      aendern((d) => {
+        if (d.wirbelsaeule === l) return d;
+        const rest = { ...d };
+        delete rest.wirbelsaeule;
+        return l ? { ...rest, wirbelsaeule: l } : rest;
       });
     },
     setzeDokument(dok) {

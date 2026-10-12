@@ -74,6 +74,8 @@ type UiState = {
   bauweise: Bauweise;
   /** Wirbelsäule testweise biegen (Pose-Vorschau, nicht im Dokument): Winkel in Grad, Stelle 0 … 1 ab der Schnauze */
   wirbelBiegung: { winkel: number; bei: number };
+  /** Wirbelsäule selbst zeichnen: gesetzte Punkte (Seite), bis Enter/Esc */
+  wirbelZeichnen: { x: number; y: number }[] | null;
   /** liegt während Layout-Bewegungen oben */
   oben: ViewId | null;
   hover: ViewId | null;
@@ -103,6 +105,7 @@ type UiState = {
   setzeZebra(an: boolean): void;
   setzeBauweise(b: Bauweise): void;
   setzeWirbelBiegung(b: { winkel: number; bei: number }): void;
+  setzeWirbelZeichnen(p: { x: number; y: number }[] | null): void;
   setzeSpantAuswahl(a: SpantAuswahl | null): void;
   setzeHover(id: ViewId | null): void;
   setzeWerkzeug(w: Werkzeug): void;
@@ -136,6 +139,7 @@ export const useUi = create<UiState>((set, get) => ({
   zebra: false,
   bauweise: 'bisher',
   wirbelBiegung: { winkel: 0, bei: 0.5 },
+  wirbelZeichnen: null,
   spantAuswahl: null,
   oben: null,
   hover: null,
@@ -189,6 +193,9 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeWirbelBiegung(b) {
     set({ wirbelBiegung: b });
+  },
+  setzeWirbelZeichnen(p) {
+    set({ wirbelZeichnen: p });
   },
   setzeZebra(an) {
     set({ zebra: an });

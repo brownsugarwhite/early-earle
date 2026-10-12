@@ -26,6 +26,7 @@ export const useWirbelAnzeige = create<Anzeige>(() => ({ info: null, sprossen: n
 
 type Bau = {
   profile: Dokument['profile'];
+  wirbelsaeule: Dokument['wirbelsaeule'];
   spanten: Dokument['spanten'];
   hauptspant: number | undefined;
   winkel: number;
@@ -37,7 +38,7 @@ let letzter: Bau | null = null;
 
 export function wirbelBauen(dok: Dokument, schnell: boolean, biegung: { winkel: number; bei: number }): Netz {
   const l = letzter;
-  if (l && l.profile === dok.profile && l.spanten === dok.spanten && l.hauptspant === dok.hauptspant && l.winkel === biegung.winkel && l.bei === biegung.bei && (!l.schnell || schnell)) return l.netz;
+  if (l && l.profile === dok.profile && l.wirbelsaeule === dok.wirbelsaeule && l.spanten === dok.spanten && l.hauptspant === dok.hauptspant && l.winkel === biegung.winkel && l.bei === biegung.bei && (!l.schnell || schnell)) return l.netz;
   const t0 = performance.now();
   const opt = schnell ? { ...WIRBEL_STANDARD, iterationen: 3, stufen: 2 } : WIRBEL_STANDARD;
   const ruhe = wirbelKaefig(dok, opt);
@@ -50,7 +51,7 @@ export function wirbelBauen(dok: Dokument, schnell: boolean, biegung: { winkel: 
     sprossen = b.sprossen;
     wirbel = b.wirbel;
   }
-  letzter = { profile: dok.profile, spanten: dok.spanten, hauptspant: dok.hauptspant, winkel: biegung.winkel, bei: biegung.bei, schnell, netz };
+  letzter = { profile: dok.profile, wirbelsaeule: dok.wirbelsaeule, spanten: dok.spanten, hauptspant: dok.hauptspant, winkel: biegung.winkel, bei: biegung.bei, schnell, netz };
   // Umriss des 3D-Körpers für die Ansichten (gestrichelt), nur beim genauen Bau (≈ 50 ms)
   let umrisse: Anzeige['umrisse'] = null;
   if (!schnell) {

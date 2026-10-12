@@ -20,6 +20,7 @@ import { angleichen } from '../kopplung';
 import { vorlageBei } from '../spanten';
 import { pfadAbtasten, vollerPfad } from '../profil';
 import type { Netz, V3 } from './catmullClark';
+import { abtasten3 } from './linie3d';
 import { anZielAnpassen } from './tigerKaefig';
 
 export type WirbelOptionen = {
@@ -135,18 +136,32 @@ function geglaettet(werte: readonly number[], halb: number): number[] {
 
 export type Leiter = { ruecken: V2[]; bauch: V2[]; paare: { a: number; b: number }[] };
 
-/** Seitenumriss → Rücken- und Bauchlinie (beide von der Schnauzen- zur Schwanzspitze) und die kürzeste Leiter. */
-export function leiter(dok: Dokument, opt: WirbelOptionen = WIRBEL_STANDARD): Leiter {
+/** Seitenumriss gleichmäßig abgetastet (geschlossen, ohne doppelten Endpunkt). */
+function umrissSeite(dok: Dokument): V2[] {
   let roh = pfadAbtasten(vollerPfad(dok.profile.seite), 40);
   if (abstand(roh[0]!, roh[roh.length - 1]!) < 1e-9) roh = roh.slice(0, -1);
-  const um = nachBogen([...roh, roh[0]!], 1200).slice(0, -1);
-  // Spitzen: vorn = kleinstes x, hinten = größtes x
+  return nachBogen([...roh, roh[0]!], 1200).slice(0, -1);
+}
+
+/**
+ * Rücken- und Bauchlinie: der Umriss, an den beiden Spitzen geteilt (beide Linien von vorn nach hinten). Spitzen ohne
+ * Vorgabe: vorn kleinstes x, hinten größtes x; mit gezeichneter Wirbelsäule: wo sie den Umriss trifft.
+ */
+function ketten(dok: Dokument, opt: WirbelOptionen, spitzen?: { vorn: V2; hinten: V2 }): { ruecken: V2[]; bauch: V2[] } {
+  const um = umrissSeite(dok);
   let iv = 0;
   let ih = 0;
-  um.forEach((p, i) => {
-    if (p.x < um[iv]!.x) iv = i;
-    if (p.x > um[ih]!.x) ih = i;
-  });
+  if (spitzen) {
+    um.forEach((p, i) => {
+      if (abstand(p, spitzen.vorn) < abstand(um[iv]!, spitzen.vorn)) iv = i;
+      if (abstand(p, spitzen.hinten) < abstand(um[ih]!, spitzen.hinten)) ih = i;
+    });
+  } else {
+    um.forEach((p, i) => {
+      if (p.x < um[iv]!.x) iv = i;
+      if (p.x > um[ih]!.x) ih = i;
+    });
+  }
   const kette = (schritt: 1 | -1) => {
     const out: V2[] = [];
     for (let i = iv; ; i = (i + schritt + um.length) % um.length) {
@@ -159,9 +174,65 @@ export function leiter(dok: Dokument, opt: WirbelOptionen = WIRBEL_STANDARD): Le
   const b = kette(-1);
   const mittelY = (z: V2[]) => z.reduce((s, p) => s + p.y, 0) / z.length;
   const [obenRoh, untenRoh] = mittelY(a) >= mittelY(b) ? [a, b] : [b, a];
+  return { ruecken: nachBogen(obenRoh, opt.proben), bauch: nachBogen(untenRoh, opt.proben) };
+}
+
+/** Liegt q im geschlossenen Polygon? */
+function innen(poly: readonly V2[], q: V2): boolean {
+  let drin = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i]!;
+    const b = poly[j]!;
+    if (a.y > q.y !== b.y > q.y && q.x < ((b.x - a.x) * (q.y - a.y)) / (b.y - a.y || 1e-12) + a.x) drin = !drin;
+  }
+  return drin;
+}
+
+/** Strahl p + t·d gegen einen Zug (offen) bzw. ein Polygon (geschlossen): kleinstes t > 0 und Anteil entlang des Zugs. */
+function strahlTreffer(p: V2, d: V2, zug: readonly V2[], geschlossen = false): { t: number; a: number } | null {
+  let best: { t: number; a: number } | null = null;
+  const n = geschlossen ? zug.length : zug.length - 1;
+  for (let k = 0; k < n; k++) {
+    const a = zug[k]!;
+    const b = zug[(k + 1) % zug.length]!;
+    const e = { x: b.x - a.x, y: b.y - a.y };
+    const nenner = d.x * e.y - d.y * e.x;
+    if (Math.abs(nenner) < 1e-14) continue;
+    const w = { x: a.x - p.x, y: a.y - p.y };
+    const t = (w.x * e.y - w.y * e.x) / nenner;
+    const u = (w.x * d.y - w.y * d.x) / nenner;
+    if (u < -1e-9 || u > 1 + 1e-9 || t <= 1e-9) continue;
+    if (!best || t < best.t) best = { t, a: (k + Math.min(1, Math.max(0, u))) / (zug.length - 1) };
+  }
+  return best;
+}
+
+/**
+ * Selbst gezeichnete Wirbelsäule (Florian 12.10. nachts): der Teil im Umriss, an beiden Enden gerade bis zum Umriss
+ * verlängert (dort sitzen die Pole). Vorn ist das Ende mit dem kleineren x. null, wenn zu wenig im Umriss liegt.
+ */
+export function eigeneWirbelsaeule(dok: Dokument): { punkte: V2[]; vorn: V2; hinten: V2 } | null {
+  if (!dok.wirbelsaeule || dok.wirbelsaeule.knoten.length < 2) return null;
+  const um = umrissSeite(dok);
+  let pts = abtasten3(dok.wirbelsaeule, 16).map((q) => ({ x: q[0], y: q[1] }));
+  if (pts[0]!.x > pts[pts.length - 1]!.x) pts = pts.reverse();
+  const drin = pts.filter((q) => innen(um, q));
+  if (drin.length < 2) return null;
+  const ende = (a: V2, b: V2): V2 => {
+    const l = abstand(a, b) || 1;
+    const d = { x: (a.x - b.x) / l, y: (a.y - b.y) / l };
+    const t = strahlTreffer(a, d, um, true);
+    return t ? { x: a.x + d.x * t.t, y: a.y + d.y * t.t } : a;
+  };
+  const vorn = ende(drin[0]!, drin[Math.min(2, drin.length - 1)]!);
+  const hinten = ende(drin[drin.length - 1]!, drin[Math.max(0, drin.length - 3)]!);
+  return { punkte: [vorn, ...drin, hinten], vorn, hinten };
+}
+
+/** Seitenumriss → Rücken- und Bauchlinie (beide von der Schnauzen- zur Schwanzspitze) und die kürzeste Leiter. */
+export function leiter(dok: Dokument, opt: WirbelOptionen = WIRBEL_STANDARD): Leiter {
+  const { ruecken, bauch } = ketten(dok, opt);
   const P = opt.proben;
-  const ruecken = nachBogen(obenRoh, P);
-  const bauch = nachBogen(untenRoh, P);
 
   // Kürzeste Leiter (Zeitverzerrung): Summe der Sprossenlängen, Schritte (1,0), (0,1), (1,1)
   const D = new Float64Array(P * P).fill(Infinity);
@@ -204,20 +275,15 @@ export function leiter(dok: Dokument, opt: WirbelOptionen = WIRBEL_STANDARD): Le
   return { ruecken, bauch, paare };
 }
 
-// ---------- 4.–6. Ringe und Käfig ----------
-
-export function wirbelKaefig(dokRoh: Dokument, opt: WirbelOptionen = WIRBEL_STANDARD): WirbelKaefig {
-  const hinweise: string[] = [];
-  // Ausdehnungen der Ansichten stimmig machen (wie der Editor beim Laden), sonst ragt z. B. das Top vor die Schnauze
-  const dok: Dokument = { ...dokRoh, profile: angleichen(dokRoh.profile) };
-  const { ruecken, bauch, paare } = leiter(dok, opt);
-  const N = opt.ringe;
-
-  // Wirbelsäule: Mitten der Leiter, gleichmäßig abgetastet und geglättet. An beiden Enden ein gerades Stück zur Spitze,
-  // damit die Ringe dort wie Breitenkreise um den Pol liegen (die Leiter allein dreht sich an den Spitzen im Fächer).
+/**
+ * Wirbelsäule aus der Leiter: Mitten der Sprossen, gleichmäßig abgetastet und geglättet. An beiden Enden ein gerades
+ * Stück zur Spitze, damit die Ringe dort wie Breitenkreise um den Pol liegen (die Leiter dreht sich an den Spitzen im
+ * Fächer).
+ */
+function achseAusLeiter(l: Leiter, opt: WirbelOptionen, M: number): { achse: V2[]; C: number; dickeBei: (c: number) => number } {
+  const { ruecken, bauch, paare } = l;
   const mitteRoh = paare.map((p) => lerp2(beiAnteil(ruecken, p.a), beiAnteil(bauch, p.b), 0.5));
   const dickeRoh = paare.map((p) => abstand(beiAnteil(ruecken, p.a), beiAnteil(bauch, p.b)));
-  const M = 400;
   const achseRoh = nachBogen([ruecken[0]!, ...mitteRoh, ruecken[ruecken.length - 1]!], M);
   const sigma = Math.max(1, Math.round(opt.achsGlaettung * M));
   const kern = Array.from({ length: 2 * 3 * sigma + 1 }, (_, k) => Math.exp(-(((k - 3 * sigma) / sigma) ** 2) / 2));
@@ -251,25 +317,51 @@ export function wirbelKaefig(dokRoh: Dokument, opt: WirbelOptionen = WIRBEL_STAN
   const gv = Math.max(1, Math.round((geradeV / C) * (M - 1)));
   const gh = M - 1 - Math.max(1, Math.round((geradeH / C) * (M - 1)));
   achse = achse.map((p, i) => (i < gv ? lerp2(achse[0]!, achse[gv]!, i / gv) : i > gh ? lerp2(achse[gh]!, achse[M - 1]!, (i - gh) / (M - 1 - gh)) : p));
+  return { achse, C, dickeBei };
+}
+
+// ---------- 4.–6. Ringe und Käfig ----------
+
+export function wirbelKaefig(dokRoh: Dokument, opt: WirbelOptionen = WIRBEL_STANDARD): WirbelKaefig {
+  const hinweise: string[] = [];
+  // Ausdehnungen der Ansichten stimmig machen (wie der Editor beim Laden), sonst ragt z. B. das Top vor die Schnauze
+  const dok: Dokument = { ...dokRoh, profile: angleichen(dokRoh.profile) };
+  const N = opt.ringe;
+  const M = 400;
+  const laenge = (z: V2[]) => z.reduce((s, p, i) => (i ? s + abstand(z[i - 1]!, p) : 0), 0);
+  const eigene = eigeneWirbelsaeule(dok);
+  if (dok.wirbelsaeule && !eigene) hinweise.push('Gezeichnete Wirbelsäule liegt nicht im Umriss: Vorschlag aus dem Umriss');
+  let ruecken: V2[];
+  let bauch: V2[];
+  let achse: V2[];
+  let C: number;
+  let dickeBei: (c: number) => number;
+  if (eigene) {
+    // gezeichnete Wirbelsäule: Umriss an ihren Enden geteilt, Dicke je Stelle aus den Strahlen senkrecht zur Linie
+    ({ ruecken, bauch } = ketten(dok, opt, { vorn: eigene.vorn, hinten: eigene.hinten }));
+    achse = nachBogen(eigene.punkte, M);
+    C = laenge(achse);
+    const um = umrissSeite(dok);
+    const a0 = achse;
+    dickeBei = (c: number) => {
+      const p = beiAnteil(a0, c / C);
+      const v = beiAnteil(a0, Math.max(0, c - 0.02 * C) / C);
+      const n = beiAnteil(a0, Math.min(C, c + 0.02 * C) / C);
+      const tl = Math.hypot(n.x - v.x, n.y - v.y) || 1;
+      const nrm = { x: -(n.y - v.y) / tl, y: (n.x - v.x) / tl };
+      const o = strahlTreffer(p, nrm, um, true);
+      const u = strahlTreffer(p, { x: -nrm.x, y: -nrm.y }, um, true);
+      return (o?.t ?? 0) + (u?.t ?? 0);
+    };
+  } else {
+    const l = leiter(dok, opt);
+    ({ ruecken, bauch } = l);
+    ({ achse, C, dickeBei } = achseAusLeiter(l, opt, M));
+  }
   const achseBei = (c: number) => beiAnteil(achse, c / C);
 
-  // Strahl p + t·d gegen einen Zug: kleinstes t > 0 und Anteil entlang des Zugs
-  const treffer = (p: V2, d: V2, zug: readonly V2[]): { t: number; a: number } | null => {
-    let best: { t: number; a: number } | null = null;
-    for (let k = 0; k + 1 < zug.length; k++) {
-      const a = zug[k]!;
-      const b = zug[k + 1]!;
-      const e = { x: b.x - a.x, y: b.y - a.y };
-      const nenner = d.x * e.y - d.y * e.x;
-      if (Math.abs(nenner) < 1e-14) continue;
-      const w = { x: a.x - p.x, y: a.y - p.y };
-      const t = (w.x * e.y - w.y * e.x) / nenner;
-      const u = (w.x * d.y - w.y * d.x) / nenner;
-      if (u < -1e-9 || u > 1 + 1e-9 || t <= 1e-9) continue;
-      if (!best || t < best.t) best = { t, a: (k + Math.min(1, Math.max(0, u))) / (zug.length - 1) };
-    }
-    return best;
-  };
+
+  const treffer = (p: V2, d: V2, zug: readonly V2[]) => strahlTreffer(p, d, zug);
 
   // Stationen: dicht an beiden Enden, mit Abstand zu den Spitzen (dort sitzen die Pole)
   const stationen: number[] = [];
