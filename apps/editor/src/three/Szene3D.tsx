@@ -8,6 +8,7 @@ import { szene } from './instanz';
 import { versuchAktiv, versuchNetz } from '../versuch/subdivision';
 import { tigerSchritt } from '../versuch/tigerSchritte';
 import { maulVersuch } from '../versuch/maulVersuch';
+import { maulBauen, maulDreiecke } from '../maul/maulKoerper';
 
 declare global {
   interface Window {
@@ -43,6 +44,17 @@ export function Szene3D() {
         return;
       }
       const bauen = (d: Dokument) => {
+        if (d.maul) {
+          // Versuch 12.10.: Körper mit Maul (Käfig, Naht, Tasche), Öffnung aus der Seitenleiste
+          const b = maulBauen(d);
+          if (b) {
+            const t = maulDreiecke(b, useUi.getState().oeffnung, 3);
+            const s = d.skalierung;
+            if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
+            r.setzeDreiecke(t.positionen, t.normalen, t.farben);
+            return;
+          }
+        }
         if (!versuch || versuch.modus !== 'subd') return r.setzeNetz(loftNetz(d));
         const n = versuchNetz(d, versuch.fall);
         r.setzeDreiecke(n.positionen, n.normalen);
@@ -52,10 +64,14 @@ export function Szene3D() {
       r.setzeRect(useRahmen.getState().rects?.creation ?? null);
       abmelden.push(
         useEditor.subscribe((s, v) => {
-          if (s.dok.profile !== v.dok.profile || s.dok.skalierung !== v.dok.skalierung) bauen(s.dok);
+          const geaendert = s.dok.profile !== v.dok.profile || s.dok.skalierung !== v.dok.skalierung || s.dok.maul !== v.dok.maul;
+          // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen
+          if (s.dok.maul && s.gesteStart) return;
+          if (geaendert || (v.gesteStart && !s.gesteStart && s.dok.maul)) bauen(s.dok);
         }),
         useUi.subscribe((s, v) => {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
+          if (s.oeffnung !== v.oeffnung && useEditor.getState().dok.maul) bauen(useEditor.getState().dok);
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
       );

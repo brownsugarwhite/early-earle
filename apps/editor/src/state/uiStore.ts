@@ -13,6 +13,11 @@ export type Werkzeug = 'auswahl' | 'stift' | 'plus' | 'minus';
 export type MenueEintrag = { label: string; aktion: () => void; aus?: boolean } | 'trenner';
 export type KontextMenue = { x: number; y: number; eintraege: MenueEintrag[] };
 
+/** Tabs über die Eckpunkte der Viewports (Florian 12.10.): Form, Maul (blau), Zähne (braun), Rig, Augen (folgt). */
+export type Ebene = 'form' | 'maul' | 'zaehne' | 'rig' | 'augen';
+/** Gewählte Knoten einer Lippenlinie (oben = rot bzw. türkis, unten = blau). */
+export type MaulAuswahl = { linie: 'oben' | 'unten'; indizes: number[] };
+
 export type DialogKnopf = { label: string; primaer?: boolean; aktion: (wert: string) => void };
 export type Dialog = { titel: string; text?: string; eingabe?: string; knoepfe: DialogKnopf[] };
 
@@ -28,7 +33,15 @@ export const START_KAMERA: Kamera = { azimut: -Math.PI / 4, elevation: (15 * Mat
 
 type UiState = {
   maximiert: ViewId | null;
+  /** Library-Bereich in der (immer offenen) Seitenleiste aufgeklappt */
   library: boolean;
+  ebene: Ebene;
+  /** Vorschau der Maulöffnung 0 … 1 im 3D (Seitenleiste) */
+  oeffnung: number;
+  maulAuswahl: MaulAuswahl | null;
+  /** Zeichenstift des Maul-Tabs: Knoten der neuen Linie, bis Enter/Esc */
+  maulZeichnen: [number, number, number][] | null;
+  zahnAuswahl: { kiefer: 'oben' | 'unten'; index: number } | null;
   /** liegt während Layout-Bewegungen oben */
   oben: ViewId | null;
   hover: ViewId | null;
@@ -45,6 +58,11 @@ type UiState = {
 
   maximieren(id: ViewId): void;
   libraryUmschalten(offen?: boolean): void;
+  setzeEbene(e: Ebene): void;
+  setzeOeffnung(a: number): void;
+  setzeMaulAuswahl(a: MaulAuswahl | null): void;
+  setzeMaulZeichnen(k: [number, number, number][] | null): void;
+  setzeZahnAuswahl(z: { kiefer: 'oben' | 'unten'; index: number } | null): void;
   setzeHover(id: ViewId | null): void;
   setzeWerkzeug(w: Werkzeug): void;
   waehle(ansicht: Ansicht, indizes: number[]): void;
@@ -60,7 +78,12 @@ type UiState = {
 
 export const useUi = create<UiState>((set, get) => ({
   maximiert: null,
-  library: false,
+  library: true,
+  ebene: 'form',
+  oeffnung: 0,
+  maulAuswahl: null,
+  maulZeichnen: null,
+  zahnAuswahl: null,
   oben: null,
   hover: null,
   werkzeug: 'auswahl',
@@ -78,6 +101,23 @@ export const useUi = create<UiState>((set, get) => ({
   },
   libraryUmschalten(offen) {
     set({ library: offen ?? !get().library });
+  },
+  setzeEbene(e) {
+    // zweiter Klick auf denselben Punkt führt zurück zur Form
+    const neu = get().ebene === e ? 'form' : e;
+    set({ ebene: neu, maulAuswahl: null, maulZeichnen: null, zahnAuswahl: null, werkzeug: 'auswahl' });
+  },
+  setzeOeffnung(a) {
+    set({ oeffnung: Math.min(1, Math.max(0, a)) });
+  },
+  setzeMaulAuswahl(a) {
+    set({ maulAuswahl: a });
+  },
+  setzeMaulZeichnen(k) {
+    set({ maulZeichnen: k });
+  },
+  setzeZahnAuswahl(z) {
+    set({ zahnAuswahl: z });
   },
   setzeHover(id) {
     set({ hover: id });

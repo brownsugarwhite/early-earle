@@ -1,7 +1,7 @@
 // Dokument-Zustand mit Rückgängig/Wiederholen. Ein Zieh-Vorgang ist ein Schritt (Geste wie in der
 // alten Werkstatt: beginGeste … endeGeste), Einzelaktionen sind je ein Schritt.
 
-import { type Ansicht, type Dokument, type PoseName, type Profil, SKALIERUNG_MAX, SKALIERUNG_MIN, neuesDokument } from '@ee/shape';
+import { type Ansicht, type Dokument, type Maul, type PoseName, type Profil, SKALIERUNG_MAX, SKALIERUNG_MIN, type Zaehne, neuesDokument } from '@ee/shape';
 import { create } from 'zustand';
 
 export type Modus = 'editor' | 'fressen' | PoseName;
@@ -22,6 +22,9 @@ type EditorState = {
   setzeProfile(profile: Dokument['profile']): void;
   setzeSkalierung(s: number): void;
   setzeName(name: string): void;
+  /** Versuch 12.10.: Maul (3D-Lippenlinien) und Zähne; `null` entfernt */
+  setzeMaul(maul: Maul | null): void;
+  setzeZaehne(zaehne: Zaehne | null): void;
   rueckgaengig(): void;
   wiederholen(): void;
   neu(): void;
@@ -74,6 +77,22 @@ export const useEditor = create<EditorState>((set, get) => {
     },
     setzeName(name) {
       aendern((d) => (d.name === name ? d : { ...d, name }));
+    },
+    setzeMaul(maul) {
+      aendern((d) => {
+        if (d.maul === maul) return d;
+        const rest = { ...d };
+        delete rest.maul;
+        return maul ? { ...rest, maul } : rest;
+      });
+    },
+    setzeZaehne(zaehne) {
+      aendern((d) => {
+        if (d.zaehne === zaehne) return d;
+        const rest = { ...d };
+        delete rest.zaehne;
+        return zaehne ? { ...rest, zaehne } : rest;
+      });
     },
     rueckgaengig() {
       const { verlauf, zukunft, dok } = get();

@@ -8,3 +8,4 @@ export * from './pruefen';
 export * from './maul';
 export * from './vorlagen';
 export * from './flaechenlinie';
+export * from './linie3d';

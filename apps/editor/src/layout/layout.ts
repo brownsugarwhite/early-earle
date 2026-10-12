@@ -1,5 +1,6 @@
-// Reine Layout-Funktion: Fenstergröße + Zustand → Rechtecke der vier Viewports und der Library.
+// Reine Layout-Funktion: Fenstergröße + Zustand → Rechtecke der vier Viewports und der Seitenleiste.
 // Maße aus Florians Vorlage (1728×1161 CSS-px): Rand und Lücken 40 px, Viewports ab y = 84.
+// Nachtrag 12.10.: Die Seitenleiste rechts (Wesen-Einstellungen, Tab-Menüs, Library) ist immer offen (Florian).
 
 import { type Rect, VIEWS, type ViewId } from '../types';
 
@@ -7,23 +8,21 @@ export const RAND = 40;
 export const LUECKE = 40;
 export const OBEN = 84;
 export const UNTEN = 40;
-export const LIBRARY_BREITE = 400;
+export const SEITENLEISTE = 360;
 const SPALTE_MIN = 220;
 
-export type LayoutEingabe = { breite: number; hoehe: number; maximiert: ViewId | null; library: boolean };
-export type Layout = { views: Record<ViewId, Rect>; library: Rect };
+export type LayoutEingabe = { breite: number; hoehe: number; maximiert: ViewId | null };
+export type Layout = { views: Record<ViewId, Rect>; leiste: Rect };
 
 /** Linke Spalte im 2×2-Raster; dort bleibt ein maximierter Viewport (Florian, 11.10.). */
 export const LINKS: ReadonlySet<ViewId> = new Set(['seite', 'top']);
 
-export function berechneLayout({ breite, hoehe, maximiert, library }: LayoutEingabe): Layout {
+export function berechneLayout({ breite, hoehe, maximiert }: LayoutEingabe): Layout {
   const x0 = RAND;
-  const x1 = breite - RAND - (library ? LIBRARY_BREITE + LUECKE : 0);
+  const x1 = breite - RAND - SEITENLEISTE - LUECKE;
   const y0 = OBEN;
   const y1 = hoehe - UNTEN;
-  const libRect: Rect = library
-    ? { x: breite - RAND - LIBRARY_BREITE, y: y0, w: LIBRARY_BREITE, h: y1 - y0 }
-    : { x: breite + LUECKE, y: y0, w: LIBRARY_BREITE, h: y1 - y0 };
+  const leiste: Rect = { x: breite - RAND - SEITENLEISTE, y: y0, w: SEITENLEISTE, h: y1 - y0 };
 
   const views = {} as Record<ViewId, Rect>;
   if (!maximiert) {
@@ -34,7 +33,7 @@ export function berechneLayout({ breite, hoehe, maximiert, library }: LayoutEing
       const zeile = Math.floor(i / 2);
       views[id] = { x: x0 + spalte * (cw + LUECKE), y: y0 + zeile * (ch + LUECKE), w: cw, h: ch };
     });
-    return { views, library: libRect };
+    return { views, leiste };
   }
 
   const H = y1 - y0;
@@ -49,5 +48,5 @@ export function berechneLayout({ breite, hoehe, maximiert, library }: LayoutEing
   klein.forEach((id, i) => {
     views[id] = { x: spalteX, y: y0 + i * (kh + LUECKE), w: spaltenBreite, h: kh };
   });
-  return { views, library: libRect };
+  return { views, leiste };
 }

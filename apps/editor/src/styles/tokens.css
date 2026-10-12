@@ -12,6 +12,9 @@
   --knopf-braun: #a67f2c;
   --knopf-blau: #0090ff;
   --knopf-pink: #ff00ff;
+  /* Entwurf 12.10.: Rig orange, Augen weiß (vorläufig, Florian entscheidet) */
+  --knopf-orange: #ff7a00;
+  --knopf-weiss: #ffffff;
   --schrift: 'Irish Grover', ui-rounded, system-ui, sans-serif;
   --feder: cubic-bezier(0.34, 1.45, 0.64, 1);
   --glas-schatten: 10px 12px 0 rgba(8, 12, 16, 0.42);

@@ -1,18 +1,17 @@
 // Federanimation der Layout-Rechtecke (rAF, außerhalb von React). Viewports kritisch gedämpft
-// (kein Überschwingen, sonst entstehen kurz Lücken/Überlappungen), die Library leicht federnd.
+// (kein Überschwingen, sonst entstehen kurz Lücken/Überlappungen). Die Seitenleiste steht fest.
 
 import { create } from 'zustand';
 import type { Rect, ViewId } from '../types';
 import type { Layout } from './layout';
 
-type Schluessel = ViewId | 'library';
+type Schluessel = ViewId | 'leiste';
 type Zustand = Record<Schluessel, Rect>;
 
 export const useRahmen = create<{ rects: Zustand | null; bewegt: boolean }>(() => ({ rects: null, bewegt: false }));
 
 const STEIFHEIT = 230;
-const DAEMPFUNG_VIEW = 1.0;
-const DAEMPFUNG_LIBRARY = 0.82;
+const DAEMPFUNG = 1.0;
 
 type Feder = { pos: number[]; vel: number[]; ziel: number[] };
 
@@ -35,9 +34,8 @@ function schritt(jetzt: number) {
   const dt = Math.min(1 / 30, Math.max(1 / 240, (jetzt - zuletzt) / 1000));
   zuletzt = jetzt;
   let ruhig = true;
-  federn.forEach((f, k) => {
-    const zeta = k === 'library' ? DAEMPFUNG_LIBRARY : DAEMPFUNG_VIEW;
-    const c = 2 * zeta * Math.sqrt(STEIFHEIT);
+  federn.forEach((f) => {
+    const c = 2 * DAEMPFUNG * Math.sqrt(STEIFHEIT);
     for (let i = 0; i < 4; i++) {
       const a = -STEIFHEIT * (f.pos[i]! - f.ziel[i]!) - c * f.vel[i]!;
       f.vel[i] = f.vel[i]! + a * dt;
@@ -60,7 +58,7 @@ function schritt(jetzt: number) {
 
 /** Neues Ziel-Layout; `sofort` springt ohne Animation (z. B. bei Fenstergröße). */
 export function setzeLayoutZiel(layout: Layout, sofort: boolean) {
-  const ziele: [Schluessel, Rect][] = [...(Object.entries(layout.views) as [ViewId, Rect][]), ['library', layout.library]];
+  const ziele: [Schluessel, Rect][] = [...(Object.entries(layout.views) as [ViewId, Rect][]), ['leiste', layout.leiste]];
   for (const [k, r] of ziele) {
     const f = federn.get(k);
     if (!f || sofort) federn.set(k, { pos: alsArray(r), vel: [0, 0, 0, 0], ziel: alsArray(r) });

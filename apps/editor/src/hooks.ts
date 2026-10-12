@@ -6,18 +6,18 @@ import { editorApi } from './library/speicher';
 import { useEditor } from './state/editorStore';
 import { useUi } from './state/uiStore';
 
-/** Fenstergröße + Maximieren + Library → Ziel-Layout (animiert, bei Fenstergröße sofort). */
+/** Fenstergröße + Maximieren → Ziel-Layout (animiert, bei Fenstergröße sofort). */
 export function useLayoutSteuerung() {
   useEffect(() => {
     const ziel = (sofort: boolean) => {
-      const { maximiert, library } = useUi.getState();
-      setzeLayoutZiel(berechneLayout({ breite: window.innerWidth, hoehe: window.innerHeight, maximiert, library }), sofort);
+      const { maximiert } = useUi.getState();
+      setzeLayoutZiel(berechneLayout({ breite: window.innerWidth, hoehe: window.innerHeight, maximiert }), sofort);
     };
     ziel(true);
     const groesse = () => ziel(true);
     window.addEventListener('resize', groesse);
     const ab = useUi.subscribe((s, v) => {
-      if (s.maximiert !== v.maximiert || s.library !== v.library) ziel(false);
+      if (s.maximiert !== v.maximiert) ziel(false);
     });
     return () => {
       window.removeEventListener('resize', groesse);

@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { useRahmen } from '../layout/animation';
 import { useEditor } from '../state/editorStore';
-import { useUi } from '../state/uiStore';
+import { type Ebene, useUi } from '../state/uiStore';
 import { VIEW_TEXTE, type ViewId } from '../types';
 import { versuchAktiv } from '../versuch/subdivision';
 import { Steuerung3D } from './Steuerung3D';
@@ -23,6 +23,12 @@ export function ViewportGrund({ id }: { id: ViewId }) {
   return <div className="vp-grund" data-view={id} style={lage(r, oben)} />;
 }
 
+/** Eckpunkt als Tab (Florian 12.10.): Klick schaltet die Ebene in allen Viewports um, zweiter Klick zurück zur Form. */
+function TabKnopf({ ebene, farbe, titel }: { ebene: Ebene; farbe: string; titel: string }) {
+  const aktiv = useUi((s) => s.ebene === ebene);
+  return <button className={`eckknopf ${farbe}${aktiv ? ' aktiv' : ''}`} data-tab={ebene} title={aktiv ? `${titel} (zurück zur Form)` : titel} tabIndex={-1} onClick={() => useUi.getState().setzeEbene(ebene)} />;
+}
+
 const POSE_TEXT: Record<string, string> = { fressen: 'Fressen', ruhen: 'Ruhen', laufen: 'Laufen', inklusion: 'Inklusion' };
 
 /** Ebene 2: Titel, Richtungslabels, Eckknöpfe, Kurven bzw. 3D-Steuerung (liegt über dem Canvas). */
@@ -31,6 +37,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
   const oben = useUi((s) => s.oben === id);
   const maximiert = useUi((s) => s.maximiert === id);
   const modus = useEditor((s) => s.modus);
+  const hatMaul = useEditor((s) => !!s.dok.maul);
   if (!r) return null;
   const t = VIEW_TEXTE[id];
   const ui = useUi.getState();
@@ -41,16 +48,18 @@ export function ViewportOber({ id }: { id: ViewId }) {
         {id === 'creation' ? <Steuerung3D hoehe={r.h} /> : <View2D ansicht={id} w={r.w} h={r.h} />}
         {t.links && <div className="vp-label links">{t.links}</div>}
         {t.rechts && <div className="vp-label rechts">{t.rechts}</div>}
-        {id === 'creation' && <div className="vp-label links platzhalter">{versuchAktiv()?.modus === 'maul' ? 'Versuch: Maul im Netz' : versuchAktiv()?.modus === 'subd' || versuchAktiv()?.modus === 'tigerkaefig' ? 'Versuch: Subdivision' : 'Platzhalter-Körper'}</div>}
-        {id === 'creation' && modus !== 'editor' && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>}
+        {id === 'creation' && <div className="vp-label links platzhalter">{versuchAktiv()?.modus === 'maul' || hatMaul ? 'Versuch: Maul im Netz' : versuchAktiv()?.modus === 'subd' || versuchAktiv()?.modus === 'tigerkaefig' ? 'Versuch: Subdivision' : 'Platzhalter-Körper'}</div>}
+        {id === 'creation' && modus !== 'editor' && !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>}
       </div>
       <div className="eckknoepfe">
         {id !== 'creation' && (
           <>
-            <button className="eckknopf braun" title="noch frei" tabIndex={-1} />
-            <button className="eckknopf blau" title="noch frei" tabIndex={-1} />
+            <TabKnopf ebene="zaehne" farbe="braun" titel="Zähne" />
+            <TabKnopf ebene="maul" farbe="blau" titel="Maul" />
+            <TabKnopf ebene="augen" farbe="weiss" titel="Augen (folgt)" />
           </>
         )}
+        <TabKnopf ebene="rig" farbe="orange" titel="Rig" />
         <button className="eckknopf pink" data-maximieren={id} title={maximiert ? 'Zurück ins Raster (⌃Leertaste)' : 'Vergrößern (⌃Leertaste)'} tabIndex={-1} onClick={() => useUi.getState().maximieren(id)} />
       </div>
     </div>

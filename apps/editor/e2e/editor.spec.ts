@@ -39,52 +39,56 @@ test.beforeEach(async ({ page }) => {
 test('Grundlayout: vier Viewports wie die Vorlage, 3D läuft', async ({ page }) => {
   await bereit(page);
   const r = await rects(page);
-  expect(r.seite).toEqual({ x: 40, y: 84, w: 804, h: 498.5 });
-  expect(r.creation!.x + r.creation!.w).toBe(1688);
+  // feste Seitenleiste rechts (Florian 12.10.): 2×2-Raster bis 1288, Leiste 1328…1688
+  expect(r.seite).toEqual({ x: 40, y: 84, w: 604, h: 498.5 });
+  expect(r.creation!.x + r.creation!.w).toBe(1288);
+  expect(r.leiste).toEqual({ x: 1328, y: 84, w: 360, h: 1037 });
   const d = await dok(page);
   expect(d.profile.seite!.knoten).toHaveLength(4);
   expect(d.profile.front!.knoten).toHaveLength(3);
   console.log('Backend:', await page.evaluate(() => (window as unknown as Fenster).__editor!.backend));
 });
 
-test('Pinker Knopf maximiert quadratisch auf voller Höhe und kehrt zurück', async ({ page }) => {
+test('Pinker Knopf maximiert quadratisch (so groß wie neben der Leiste möglich) und kehrt zurück', async ({ page }) => {
   await bereit(page);
   await page.click('[data-maximieren="top"]');
   await page.waitForTimeout(140);
   await page.screenshot({ path: path.join(bilder, 'maximieren-mitten.png') });
   await ruhig(page);
   let r = await rects(page);
-  expect(r.top).toEqual({ x: 40, y: 84, w: 1037, h: 1037 });
-  expect(r.seite!.x).toBe(40 + 1037 + 40);
+  expect(r.top).toEqual({ x: 40, y: 108.5, w: 988, h: 988 });
+  expect(r.seite!.x).toBe(40 + 988 + 40);
   expect(r.creation!.y + r.creation!.h).toBeCloseTo(1121, 5);
   await page.screenshot({ path: path.join(bilder, 'maximiert-top.png') });
   // rechte Spalte bleibt rechts
   await page.click('[data-maximieren="creation"]');
   await ruhig(page);
   r = await rects(page);
-  expect(r.creation!.x + r.creation!.w).toBe(1688);
+  expect(r.creation!.x + r.creation!.w).toBe(1288);
   expect(r.creation!.w).toBe(r.creation!.h);
   await page.click('[data-maximieren="creation"]');
   await ruhig(page);
   r = await rects(page);
-  expect(r.seite).toEqual({ x: 40, y: 84, w: 804, h: 498.5 });
+  expect(r.seite).toEqual({ x: 40, y: 84, w: 604, h: 498.5 });
 });
 
-test('Library gleitet herein, Viewports werden schmaler', async ({ page }) => {
+test('Seitenleiste immer offen, Library klappt auf und zu', async ({ page }) => {
   await bereit(page);
-  await page.getByRole('button', { name: 'Library' }).click();
-  await ruhig(page);
-  const r = await rects(page);
-  expect(r.library!.x + r.library!.w).toBe(1688);
-  expect(r.creation!.x + r.creation!.w).toBe(1688 - 400 - 40);
-  await expect(page.locator('.library.offen')).toBeVisible();
-  await page.screenshot({ path: path.join(bilder, 'library-offen.png') });
+  await expect(page.locator('.leiste')).toBeVisible();
+  await expect(page.locator('.leiste-library.offen')).toBeVisible();
+  const vorher = await rects(page);
+  await page.locator('.menueleiste').getByRole('button', { name: 'Library', exact: true }).click();
+  await expect(page.locator('.leiste-library.offen')).toHaveCount(0);
+  expect(await rects(page)).toEqual(vorher);
+  await page.keyboard.press('ControlOrMeta+l');
+  await expect(page.locator('.leiste-library.offen')).toBeVisible();
+  await page.screenshot({ path: path.join(bilder, 'seitenleiste.png') });
 });
 
 test('Mausrad zoomt zum Cursor, mittlere Taste verschiebt', async ({ page }) => {
   await bereit(page);
   const vorher = await knotenPos(page, 'seite', 1);
-  const mitte = { x: 40 + 402, y: 84 + 249 };
+  const mitte = { x: 40 + 302, y: 84 + 249 };
   await page.mouse.move(mitte.x, mitte.y);
   await page.mouse.wheel(0, -300);
   const nachZoom = await knotenPos(page, 'seite', 1);
@@ -313,7 +317,7 @@ test('Auswahl je Viewport, Entf löscht den Punkt unter der Maus', async ({ page
 test('3D: rechte Taste dreht, Rad zoomt', async ({ page }) => {
   await bereit(page);
   const k0 = await page.evaluate(() => (window as unknown as Fenster).__stores.ui.getState().kamera);
-  const m = { x: 884 + 402, y: 622 + 249 };
+  const m = { x: 684 + 302, y: 622 + 249 };
   await page.mouse.move(m.x, m.y);
   await page.mouse.down({ button: 'right' });
   await page.mouse.move(m.x + 120, m.y + 40, { steps: 6 });
@@ -358,7 +362,7 @@ test('Posen, Größe, Speichern und Library-Karte', async ({ page }) => {
   await page.locator('.dialog-eingabe').fill('Testblob');
   await page.keyboard.press('Enter');
   await expect(page.locator('.hinweis.sichtbar')).toContainText('Testblob');
-  await page.getByRole('button', { name: 'Library' }).click();
+  // Library ist in der Seitenleiste schon offen
   await expect(page.locator('.karte', { hasText: 'Testblob' })).toBeVisible();
   await expect(page.locator('.karte img')).toHaveCount(1);
   await ruhig(page);

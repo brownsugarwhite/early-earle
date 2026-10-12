@@ -1,5 +1,6 @@
 import { useLayoutSteuerung, useMenueBruecke, useTastatur, useTitel } from './hooks';
-import { LibraryPanel } from './library/LibraryPanel';
+import { Seitenleiste } from './leiste/Seitenleiste';
+import { useMaulTasten } from './maul/MaulEbene';
 import { MenuBar } from './menu/MenuBar';
 import { Szene3D } from './three/Szene3D';
 import { VIEWS } from './types';
@@ -15,6 +16,7 @@ export function App() {
   useTastatur();
   useMenueBruecke();
   useTitel();
+  useMaulTasten();
   return (
     <>
       <Glasfilter />
@@ -27,7 +29,7 @@ export function App() {
         {VIEWS.map((id) => (
           <ViewportOber key={id} id={id} />
         ))}
-        <LibraryPanel />
+        <Seitenleiste />
       </main>
       <KontextMenue />
       <DialogFenster />

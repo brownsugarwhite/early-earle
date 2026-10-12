@@ -31,7 +31,9 @@ import { type Auswahl, gekoppeltBerechnen, setzeGekoppelt } from '../editing/gek
 import { useEditor } from '../state/editorStore';
 import { useUeberlagerung } from '../versuch/ueberlagerung';
 import { useUi } from '../state/uiStore';
+import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen } from '../maul/MaulEbene';
 import { istTrackpad, radFaktor, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
+import { versetzt3 } from '@ee/shape/versuch';
 
 const PUNKT_R = 5; // Ø 10 px (Florian, 11.10.)
 const GRIFF = 6; // 6-px-Quadrate
@@ -46,7 +48,11 @@ export function View2D({ ansicht, w, h }: Props) {
   const gewaehlt = useUi((s) => s.auswahl[ansicht]);
   const [rahmen, setRahmen] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const werkzeug = useUi((s) => s.werkzeug);
+  const ebene = useUi((s) => s.ebene);
+  const hatMaul = useEditor((s) => !!s.dok.maul);
   const ueber = useUeberlagerung((s) => s[ansicht]);
+  /** Profile nur im Form-Tab bearbeitbar; in den anderen Tabs sind sie Kontext. */
+  const formAktiv = ebene === 'form';
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Rad: nicht-passiv, sonst zoomt die Seite beim Trackpad-Pinch mit
@@ -150,6 +156,11 @@ export function View2D({ ansicht, w, h }: Props) {
       return;
     }
     if (e.button !== 0) return;
+    if (ui.ebene === 'maul') {
+      maulZeiger(e, { ansicht, lokal, ziehen });
+      return;
+    }
+    if (ui.ebene !== 'form') return;
     const ziel = e.target as Element;
     const griffEl = ziel.closest('[data-griff]');
     const knotenEl = ziel.closest('[data-knoten]');
@@ -248,6 +259,26 @@ export function View2D({ ansicht, w, h }: Props) {
   const kontext = (e: React.MouseEvent) => {
     e.preventDefault();
     const ui = useUi.getState();
+    if (ui.ebene === 'maul') {
+      const ed = useEditor.getState();
+      const { lippen, zustand } = aktuelleLippen(ed.dok, ed.modus);
+      const eintraege: { label: string; aktion: () => void; aus?: boolean }[] = [];
+      if (lippen && zustand === 'zu') {
+        eintraege.push(
+          lippen.unten
+            ? { label: 'Kiefer gleich (eine Linie)', aktion: () => setzeLippen('zu', { oben: lippen.oben }) }
+            : { label: 'Kiefer getrennt (Ober- und Unterkiefer)', aktion: () => setzeLippen('zu', { oben: lippen.oben, unten: versetzt3(lippen.oben, -0.012) }) },
+        );
+      }
+      if (lippen) eintraege.push({ label: 'Maul löschen', aktion: () => useEditor.getState().setzeMaul(null) });
+      eintraege.push({ label: 'Ansicht zurücksetzen', aktion: () => useUi.getState().ansichtZuruecksetzen(ansicht) });
+      ui.oeffneMenue({ x: e.clientX, y: e.clientY, eintraege });
+      return;
+    }
+    if (ui.ebene !== 'form') {
+      ui.oeffneMenue({ x: e.clientX, y: e.clientY, eintraege: [{ label: 'Ansicht zurücksetzen', aktion: () => useUi.getState().ansichtZuruecksetzen(ansicht) }] });
+      return;
+    }
     const ziel = e.target as Element;
     const knotenEl = ziel.closest('[data-knoten]');
     const kurveEl = ziel.closest('[data-kurve]');
@@ -333,7 +364,7 @@ export function View2D({ ansicht, w, h }: Props) {
   }
 
   return (
-    <svg ref={svgRef} className={`view2d werkzeug-${werkzeug}`} width={w} height={h} viewBox={`0 0 ${w} ${h}`} onPointerDown={unten} onContextMenu={kontext} onAuxClick={(e) => e.preventDefault()}>
+    <svg ref={svgRef} className={`view2d werkzeug-${werkzeug} ebene-${ebene}`} width={w} height={h} viewBox={`0 0 ${w} ${h}`} onPointerDown={unten} onContextMenu={kontext} onAuxClick={(e) => e.preventDefault()}>
       <defs>
         <linearGradient id={verlaufId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#000" stopOpacity={0} />
@@ -349,9 +380,9 @@ export function View2D({ ansicht, w, h }: Props) {
       })()}
       {profil.art === 'halb' && <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="#ffffff" strokeWidth={KONTUR} strokeLinejoin="round" />}
       <path d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
-      <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />
-      {griffe}
-      {profil.knoten.map((k, i) => {
+      {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
+      {formAktiv && griffe}
+      {formAktiv && profil.knoten.map((k, i) => {
         const q = bild(k.p);
         return (
           <g key={i} data-knoten={i} className={gewaehlt.includes(i) ? 'knoten gewaehlt' : 'knoten'}>
@@ -388,6 +419,7 @@ export function View2D({ ansicht, w, h }: Props) {
           })}
         </g>
       )}
+      {(hatMaul || ebene === 'maul') && <MaulZeichnung ansicht={ansicht} bild={bild} aktiv={ebene === 'maul'} />}
       {rahmen && (
         <rect
           className="auswahlrahmen"
