@@ -1,14 +1,56 @@
-# Wesen-Editor: Bilanz der Versuche und Vorbereitung der großen Sitzung
+# Wesen-Editor: aus allen Tests zur besten Bauweise (Bilanz und Vorbereitung der großen Sitzung)
 
 > Stand 12.10.2026 spätnachts. **Einstieg für die große Sitzung ab 13.10.** Als Seite zum Lesen: https://claude.ai/artifact/FkS5WTabmUmeKUgSDiGTuw
 >
 > Florian (12.10. spätnachts): „OK, wir haben viel Cooles gemacht. Das ist nicht schlecht. Schreibe alle Erkenntnisse nochmal zusammen. … Es soll der perfekte und innovativste Character-Editor aller Zeiten werden! Also alles bis jetzt waren nur Tests und Recherche! … Das mit den Mäulern und dem echten 3D-Wesen passt bis jetzt noch nicht. Wir haben noch nicht die perfekte Lösung für die Erstellung der vielen verschiedenen Kreaturen. Aber ich hoffe, wir können sie dann zusammen finden. Schreibe vor allem nochmal deutlich auf, was noch nicht funktioniert! Die Kombination aus Spanten, Kanten, Shapes und Wirbelsäule muss viel besser zusammenspielen und viel besser zu bedienen sein, um auch komplexe Wesen und Formen erstellen zu können! Auch wie wir Beine und Strukturen über den ganzen Körper, wie große Rückenschuppen oder Fellsträhnen wie beim Golden Retriever, perfekt umsetzen, ist mir noch nicht klar. Halte alles fest.“
 >
-> Alles bis hierher war **Versuch**. Der Code beweist Machbarkeit und zeigt Grenzen; die endgültige Bauweise entsteht in der großen Sitzung, gemeinsam mit Florian.
+> Florian (12.10. spätnachts, nach der ersten Fassung): „Bitte Entscheidungen nicht als feste Regel formulieren. Es waren alles nur Tests. Wenn [die große Sitzung] einen besseren Weg findet, auch für die Bedienelemente und die UI, soll es diese umsetzen. Meine Entscheidungen sind meist aus dem Bauch heraus getroffen und nicht vollends ausgetestet. Es wird noch nicht deutlich genug, dass wirklich etwas Neues und Einzigartiges aus all unseren Tests entstehen soll. Die optimale Bauweise für unsere Wesen. Viel besser und schneller, als sie z. B. in Blender zu bauen.“
+>
+> **Auftrag der großen Sitzung:** Aus allen Tests etwas Neues und Einzigartiges entwickeln, die **optimale Bauweise für unsere Wesen**, viel besser und schneller, als sie in Blender zu bauen (Abschnitt 0). Alles bis hierher war **Test**. Das gilt auch für Florians Entscheidungen zu Bauweise, Bedienung und UI: Sie sind meist aus dem Bauch heraus getroffen und nicht ausgetestet. **Findet die große Sitzung einen besseren Weg, setzt sie ihn um.** Maßstab sind der Look der Bögen, das Ziel in Abschnitt 0 und Florians Urteil am Ergebnis.
 
-## Kurzfassung
+## 0. Was entstehen soll: die beste Bauweise für unsere Wesen
 
-1. **Das Bedienprinzip stimmt.** Formen als Kurven ziehen wie in Illustrator, drei Ansichten, ein 3D, das live folgt: Das war Florians „bahnbrechende“ Idee, und sie funktioniert. Kurven, Navigation, Library und Speichern sind gebaut, 23 E2E-Tests laufen grün. Das bleibt der Kern.
+**Kein besseres Blender, sondern eine eigene Bauweise, die es so noch nicht gibt.**
+- Florian zeichnet, und das Wesen entsteht: im Earle-Look, mit Maul, Zähnen, Beinen, Fell und Stacheln, animierbar und spielfertig.
+- Was in Blender Handarbeit ist, erledigt die Bauweise selbst: Topologie, Kantenschleifen, Maultasche, Rig, Gewichte, Korrektur-Shapes, UVs, Haare.
+
+| Schritt | In Blender heute (Handarbeit) | In unserem Editor (Ziel) |
+|---|---|---|
+| Grundform | Box-Modeling oder Sculpting, danach Retopologie | drei Umrisse zeichnen oder den Bogen importieren; das 3D steht sofort und deckt sich mit der Zeichnung |
+| Form ändern | Punkte schieben, proportional bearbeiten, Topologie flicken | an der Zeichnung oder direkt im 3D ziehen; nur die Stelle ändert sich, das Netz bleibt sauber |
+| Kanten | Stützschleifen und Creases von Hand | Ecke zeichnen, Härte einstellen |
+| Maul | Lippenschleifen, Maultasche, Kieferknochen, Gewichte, Korrektur-Shape-Keys | Maullinie zeichnen und offen ziehen; Tasche, Knochen und Korrektur entstehen selbst |
+| Zähne | einzeln modellieren und setzen | Anzahl und Form wählen; sie sitzen am Zahnfleisch, Kollisionen werden gemeldet |
+| Beine | extrudieren, Kantenschleifen, Gewichte, IK aufsetzen | Beinumriss zeichnen; Andocken, Knochen und IK entstehen selbst |
+| Fell, Kämme, Stacheln, Federn | Partikel, Geometry Nodes, Haarsysteme, Grooming | eine Klinge zeichnen und mit einem Pinsel auf eine Linie am Körper setzen |
+| Look | Shader-Netzwerk, UVs, Texturen malen | Earle-Look ist immer an; Muster und Zonen per Regler |
+| Posen, Animation | Rig bauen, Posen setzen | Pose zeichnen; Atmen, Blinzeln, Fressen und Gehen sind eingebaut |
+| Varianten | kopieren und neu modellieren | mischen, mutieren, remixen in Sekunden |
+| Ins Spiel | exportieren, prüfen, Budget von Hand | gleiche Datei; Draw Calls und Dreiecke bleiben im Budget |
+
+**Was daran neu und einzigartig ist** (aus allen Tests zusammengeführt):
+1. **Die Zeichnung ist das Modell.** Drei Ansichten mit gemeinsamen Punkten wie im Linienriss des Schiffbaus. Die Abweichung ist jederzeit messbar. Einen Editor, der Zeichnungen maßhaltig in ein animierbares Wesen übersetzt, fand die Recherche nicht (Abschnitt 9).
+2. **Alles Technische entsteht selbst:** Topologie, Rig, Maultasche, Gewichte, Detailstufen. Das Dokument speichert nur Absicht, alles andere wird daraus gebaut.
+3. **Ein Baukasten aus wenigen Grundelementen:** Linie, Bauplan, Glied, Klinge, Muster. Damit soll jedes Wesen der Bögen entstehen, vom Jellyblob bis zur Giraffenspinne.
+4. **Immer im Endlook und lebendig:** Was man baut, sieht aus wie im Spiel und bewegt sich.
+5. **Varianten statt Einzelstücke:** mischen und mutieren, innerhalb von Bauplänen und über sie hinweg.
+
+**Maß dafür** (Vorschlag, mit Florian festlegen):
+- Ein neues Wesen im Earle-Look mit Maul, Zähnen, Beinen und Kamm entsteht in **unter 30 Minuten** und ist spielfertig. In Blender ist das ein Vielfaches an Handarbeit (Schätzung, nicht gemessen).
+- Jede Formänderung ist in **unter 16 ms** sichtbar.
+- Florian muss nie an Topologie, Gewichte oder UVs denken.
+- Florian sagt am Ergebnis: „So will ich Wesen bauen.“
+
+**Freiheit der großen Sitzung:**
+- Alle bisherigen Festlegungen sind Ergebnisse von Tests oder Bauchentscheidungen und nicht ausgetestet. Das gilt auch für Florians eigene, darunter:
+  - Bedienung wie Illustrator und Blender
+  - Figma-Layout, Tab-Punkte und Farben, Seitenleiste
+  - Kanten- und Spantenregeln, Wirbelsäule
+- Alles in diesem Dokument ist Bilanz und Vorschlag. Findet die Sitzung einen besseren Weg für die Bauweise, die Bedienelemente oder die UI, setzt sie ihn um und zeigt ihn Florian am Ergebnis.
+
+## Kurzfassung der Tests
+
+1. **Das Bedienprinzip hat sich im Test bewährt.** Formen als Kurven ziehen wie in Illustrator, drei Ansichten, ein 3D, das live folgt: Das war Florians „bahnbrechende“ Idee, und sie funktioniert. Kurven, Navigation, Library und Speichern sind gebaut, 23 E2E-Tests laufen grün. Ein guter Ausgangspunkt, kein Gesetz.
 2. **Das 3D-Wesen ist noch nicht gut genug.**
    - Es entsteht auf fünf verschiedenen Bauwegen, die sich nicht kombinieren lassen.
    - Es weicht bis 16 px (ohne Maul) bzw. 24 px (mit Maul) von den Zeichnungen ab.
@@ -33,12 +75,12 @@
    - **Fell, Mähnen, Kämme, Federn und Flossen** (Abschnitt 8) sind wenige große, geformte Klingen, keine Haare. Meist sind sie nur gemalt; gebaut wird nur, was den Umriss bricht. Ein Grundelement „Klinge“ mit Pinseln wie in Illustrator trägt alles.
    - Kleine Muster gehören in den Shader.
    - **KI** (Abschnitt 9) ist Hilfe, nicht Kern.
-6. **Die große Sitzung muss zuerst eine Frage beantworten: Was ist die eine Wahrheit, aus der jedes Wesen entsteht?** Vorschlag (Abschnitt 6):
+6. **Die große Sitzung muss zuerst eine Frage beantworten: Was ist die eine Wahrheit, aus der jedes Wesen entsteht?** Ausgangsvorschlag aus den Tests (Abschnitt 6), ein besserer Weg ist willkommen:
    - Alle Eingaben sind **Linien mit gemeinsamen Punkten** (Umrisse, Wirbelsäule, Spanten, Kanten, Maul, Augen, Ansatzlinien).
    - Daraus entsteht **ein Subdivision-Netz je Bauplan** mit fester Topologie.
    - Teile (Glieder) und Klingen hängen daran.
 
-   Abschnitt 10 enthält den Fahrplan, Abschnitt 11 die Entscheidungen.
+   Abschnitt 10 enthält einen Vorschlag für den Ablauf, Abschnitt 11 die offenen Fragen.
 
 ## 1. Das Ziel
 
@@ -60,7 +102,10 @@
 | Elefanten, Stacheldrachen | Körper aus Flammenklingen, Rüssel, Stoßzähne, Stachelkränze | `bild19` |
 | Varianten | „Giraffenspinne mit Rüssel, Drachenflügeln und Hauern“ | Florian 12.10. |
 
-### 1.2 Look-Regeln (aus `docs/look/wesen-refs/ZIELSYSTEM.md` und Florians Rückmeldungen)
+### 1.2 Look-Ziel (aus `docs/look/wesen-refs/ZIELSYSTEM.md` und Florians Rückmeldungen)
+
+Das Ziel ist der Look der Bögen. Wie er entsteht, ist offen.
+
 
 - **Eine durchgehende Masse:** Die Silhouette läuft Schnauze → Schädel → Rücken → Schwanz ohne Naht. Die Körper sitzen wie Säcke auf dem Boden. Beine sind kurze Säulen aus dem Unterrumpf, am Boden breit und flach („Saugnapfform“, 08.10.). Der Kopf dominiert (45–55 % der Höhe).
 - **Glatte, organische Kurven und scharfe Kanten**, etwa am Maul, am Brauenwulst oder am Kasten der Raubkatzen (07.10.).
@@ -69,22 +114,23 @@
   - Offen ist es immer eine Bohne, so weit auf, dass es „ein anderes Tier mit einem Haps“ schluckt.
   - Der Unterkiefer fährt nie durch den Körper.
   - Lippenband hell, Rachen Maroon, große Zunge, gebogene cremefarbene Zähne.
-- **Augen:** klein und bündig mit dunklem Ring. Das Schlitzauge bleibt.
+- **Augen:** klein und bündig mit dunklem Ring. Das kleine Schlitzauge gefiel Florian (12.10.).
 - **Fell, Mähnen, Kämme:** wenige große Formen („Fell als große Büschel“, 07.10.). Ohren, Hörner, Flügel, dünne Schwänze, Spinnenbeine und Rückenschuppen sind „eigene Elemente, nicht Teil der Masse“ (08.10.).
 - **Shading:** Airbrush-Verläufe in harten Farbfeldern, Licht rechts oben, kühle satte Schatten, feines Korn, keine Konturen.
 
-### 1.3 Bedien-Regeln (Florian)
+### 1.3 Was Florian bisher wichtig war (Bauchentscheidungen, nicht ausgetestet)
 
-- „Wie Illustrator“ und „wie Blender“ heißt genau deren Verhalten und Kürzel, keine eigenen Automatiken. Jede Mausbedienung braucht einen Trackpad-Weg.
+Diese Punkte sind in den Tests aus dem Bauch heraus entstanden. Findet die große Sitzung einen besseren Weg, auch für Bedienelemente und UI, setzt sie ihn um.
+- Bisher bedient wie Illustrator und Blender, mit deren Kürzeln und ohne eigene Automatiken. Mit dem Trackpad muss alles gehen.
 - **Alles ist ein Objekt:** Was man in einer Ansicht ändert, ändert sich live in allen. Bewegen soll sich aber nur die Stelle, die man anfasst.
-- Jede Pose (Fressen, eigene Posen) ist voll bearbeitbar.
-- Desktop-App, Layout nach Figma, Seitenleiste immer offen.
+- Jede Pose (Fressen, eigene Posen) soll voll bearbeitbar sein.
+- Desktop-App; Layout nach Florians Figma-Entwurf, Seitenleiste immer offen (Entwurf).
 
 ### 1.4 Technischer Rahmen
 
 - **iPhone:** ≥ 58 fps, 36 Wesen gleichzeitig, ≤ 100 Draw Calls.
-- **Topologie:** fest je Bauplan, damit Posen, Blendshapes, Rig und Varianten funktionieren.
-- **Dokument:** speichert nur Absicht. Netz, Knochen und Gewichte werden immer neu gebaut.
+- **Topologie:** in den Tests fest je Bauplan, damit Posen, Blendshapes, Rig und Varianten funktionieren. Ein anderer Weg muss dasselbe leisten.
+- **Dokument:** speichert in den Tests nur Absicht; Netz, Knochen und Gewichte werden immer neu gebaut. Das hat sich bewährt.
 
 ## 2. Was wir seit dem 04.10. ausprobiert haben
 
@@ -99,25 +145,25 @@
 | 11.10. | Machbarkeit Tiger-Konzept: Subdivision-Käfig aus Profilen | Kugel auf 0,17–0,37 px | – |
 | 12.10. | Maul, Zähne, Rig; Kanten, Back/Bottom; Spanten; Kopplung am Punkt; Wirbelsäule; Maul an der Umrisslinie; Wirbelsäule zeichnen; Pose-Form; Maul auf der Wirbelsäule; Maulloch | Abschnitte 3 und 4 | „Ich bin nicht sicher, ob die Techniken schon optimal kombiniert sind.“ |
 
-## 3. Was gut funktioniert (behalten)
+## 3. Was sich in den Tests bewährt hat (Ausgangspunkte, kein Muss)
 
-| Baustein | Beleg | Wie weiter |
+| Baustein | Beleg | Einschätzung |
 |---|---|---|
-| **Kurven wie Illustrator:** Zeichenstift, Direktauswahl, Griffe, ⌥-Ecke, Auswahlrechteck, Pfeiltasten, + und − | Florians Urteil; E2E `editor.spec.ts` | Produktionsgerüst, behalten |
-| **Navigation wie Blender** mit Trackpad-Wegen; Layout nach Figma; Seitenleiste immer offen; Tab-Punkte an den Ansichten | E2E, Vergleichsbild Figma | behalten; Farben für Rig und Augen sind vorläufig |
-| **Dokument speichert nur Absicht** (zod-Schema, Rundreise-Tests, Library) | `packages/shape/src/dokument.ts` | behalten; Felder für Teile, Klingen und Posen kommen dazu |
-| **Kopplung am entsprechenden Punkt:** nur der äußerste Punkt wandert, nichts skaliert | `kopplung.ts`, Bild `kopplung-punkt.png` | behalten, gilt künftig für alle Linien |
+| **Kurven wie Illustrator:** Zeichenstift, Direktauswahl, Griffe, ⌥-Ecke, Auswahlrechteck, Pfeiltasten, + und − | Florians Urteil; E2E `editor.spec.ts` | bewährt; darf durch Besseres ersetzt werden |
+| **Navigation wie Blender** mit Trackpad-Wegen; Layout nach Figma; Seitenleiste immer offen; Tab-Punkte an den Ansichten | E2E, Vergleichsbild Figma | Entwurf; darf neu gedacht werden |
+| **Dokument speichert nur Absicht** (zod-Schema, Rundreise-Tests, Library) | `packages/shape/src/dokument.ts` | bewährt; erweitern um Teile, Klingen, Posen |
+| **Kopplung am entsprechenden Punkt:** nur der äußerste Punkt wandert, nichts skaliert | `kopplung.ts`, Bild `kopplung-punkt.png` | bewährt; Kandidat für alle Linien |
 | **Gemeinsame Punkte:** Maulanfänge sind Umrissknoten, Pose-Form mit gleicher Punktstruktur, Kinnseite über den Winkel | `maulUmriss.ts`, E2E „Kiefer bleiben verbunden“ | Grundprinzip für alle Linien (Abschnitt 6) |
 | **Wirbelsäule:** aus dem Umriss vorgeschlagen oder selbst gezeichnet; Ringe senkrecht; Hals hoch, Kopf drauf; Biegen als Pose mit gleicher Topologie | Langhals Seite 5,4 px; gestreckter Raum hin und zurück < 0,1 px | Kern der Bauweise |
-| **Maul im Netz mit fester Topologie** (378 Käfigpunkte): Reißverschluss für den wandernden Mundwinkel, Tasche geschlossen als Linse und offen als Bohne | Lippenkante 1,5 px (zu) bzw. 2,6–2,8 px (auf) | Wissen behalten, im Kern neu bauen |
-| **Kiefer = Knochen + Korrektur:** Gelenk aus „zu“ und „auf“ geschätzt, Öffnungsart (Kippen/Ziehen) erkennbar | synthetisch < 0,1°; Rex 52° Unterkiefer, Robbe „Ziehen“ | behalten |
-| **Zähne am Zahnfleisch:** symmetrisch, offen größer, Prüfung im geschlossenen Maul mit Vorschlägen | `zaehne.ts`, 12 Tests; Rex mit 14 Außenzähnen | behalten, Rahmen je Öffnungsart fehlt |
-| **Regel „Eine Kante ist eine Ecke in einem Shape“:** Umriss-Ecke = Kante quer, Spant-Ecke = Kante längs, Härte = Rundung | Spant-Ecke knickt 43°, freie Linie nur 13° | Grundregel behalten |
-| **Spanten formneutral:** linear überblendet, ein neuer Spant ändert nichts | Test auf 10⁻⁹ | Wissen behalten; die Normierung muss weg (Abschnitt 4.3) |
-| **Nachziehen von Florians Bögen** (Profile und Maulpunkte aus Bildern) | Profile im Mittel 0,26–0,48 px | Werkzeug behalten, als Import in den Editor (Abschnitt 9) |
-| **Prüfwerkzeuge:** Vergleichsbilder, Überlagerung (Umriss, Pose-Form, 3D gestrichelt), Zebra, Durchdringungstest, E2E mit echter GPU, Messung in Pixeln | `scripts/`, `e2e/`, `docs/progress/editor/` | behalten, Abnahmekriterien darauf bauen |
-| **Aus der Wesen-Werkstatt:** Muster als Shader (Sechseckschuppen, Streifen, Rosetten, Flecken), Zonen (Bauch, Latz, Rückenstreifen, Augenmaske, Socken), Glimmer und Korn, Jelly-Lavalampe | `packages/render/src/creature2` | für den Look im Editor übernehmen |
-| **Aus der Wesen-Werkstatt:** Kiefer-Wissen (Schädelkippung, Kehlkette ⅔/⅓, Bodengrenze, Bohne), Beine verschmelzbar, Laufdemo | `packages/creature`, Übergabe vom 09.10. (`git show 6029362:docs/UEBERGABE.md`) | als Wissen übernehmen |
+| **Maul im Netz mit fester Topologie** (378 Käfigpunkte): Reißverschluss für den wandernden Mundwinkel, Tasche geschlossen als Linse und offen als Bohne | Lippenkante 1,5 px (zu) bzw. 2,6–2,8 px (auf) | Wissen; im Kern neu bauen |
+| **Kiefer = Knochen + Korrektur:** Gelenk aus „zu“ und „auf“ geschätzt, Öffnungsart (Kippen/Ziehen) erkennbar | synthetisch < 0,1°; Rex 52° Unterkiefer, Robbe „Ziehen“ | bewährt |
+| **Zähne am Zahnfleisch:** symmetrisch, offen größer, Prüfung im geschlossenen Maul mit Vorschlägen | `zaehne.ts`, 12 Tests; Rex mit 14 Außenzähnen | bewährt; Rahmen je Öffnungsart fehlt |
+| **Faustregel „Eine Kante ist eine Ecke in einem Shape“:** Umriss-Ecke = Kante quer, Spant-Ecke = Kante längs, Härte = Rundung | Spant-Ecke knickt 43°, freie Linie nur 13° | bewährte Faustregel |
+| **Spanten formneutral:** linear überblendet, ein neuer Spant ändert nichts | Test auf 10⁻⁹ | Wissen; die Normierung hat gestört (Abschnitt 4.3) |
+| **Nachziehen von Florians Bögen** (Profile und Maulpunkte aus Bildern) | Profile im Mittel 0,26–0,48 px | Werkzeug; Kandidat für einen Import (Abschnitt 9) |
+| **Prüfwerkzeuge:** Vergleichsbilder, Überlagerung (Umriss, Pose-Form, 3D gestrichelt), Zebra, Durchdringungstest, E2E mit echter GPU, Messung in Pixeln | `scripts/`, `e2e/`, `docs/progress/editor/` | bewährt; Maßstäbe darauf bauen |
+| **Aus der Wesen-Werkstatt:** Muster als Shader (Sechseckschuppen, Streifen, Rosetten, Flecken), Zonen (Bauch, Latz, Rückenstreifen, Augenmaske, Socken), Glimmer und Korn, Jelly-Lavalampe | `packages/render/src/creature2` | Kandidat für den Look im Editor |
+| **Aus der Wesen-Werkstatt:** Kiefer-Wissen (Schädelkippung, Kehlkette ⅔/⅓, Bodengrenze, Bohne), Beine verschmelzbar, Laufdemo | `packages/creature`, Übergabe vom 09.10. (`git show 6029362:docs/UEBERGABE.md`) | Wissen |
 
 ## 4. Was noch nicht funktioniert (deutlich)
 
@@ -263,7 +309,10 @@ Das Budget aus der Recherche steht: höchstens 3 Morph-Ziele, ein Draw Call je W
 | **Tempo** | schnell (Käfig klein) | langsam (Feld + Vernetzen 1,6–4,4 s) | Minuten, Cloud |
 | **Risiko** | Abzweigungen, Mundraum | Kanten, Exaktheit, Look „zerrissen“ | Stil, Lizenz, Kosten, Kontrolle |
 
-### 6.2 Vorschlag: A als Kern, mit drei Ergänzungen
+### 6.2 Ausgangsvorschlag aus den Tests: A als Kern, mit drei Ergänzungen
+
+Das ist der Stand der Tests, keine Festlegung. Findet die Sitzung einen besseren Weg, gilt der.
+
 
 **Kern: ein Linien-Netz.** Jede Eingabe ist eine 3D-Linie aus Punkten, die mehreren Linien gehören können. Das ist das Prinzip des Linienrisses im Schiffbau („gestrakt“ heißt: alle Ansichten stimmen in allen Messpunkten überein).
 
@@ -280,7 +329,7 @@ Das Budget aus der Recherche steht: höchstens 3 Morph-Ziele, ein Draw Call je W
 
 - Alle Linien bedient man gleich: Zeichenstift, Direktauswahl, Griffe, ⇧W für Härte bzw. Breite, Pfeiltasten.
 - Ziehen bewegt einen Punkt in allen Linien, zu denen er gehört, und sonst nichts.
-- Die Front ist nur noch Umriss. Querschnitte kommen aus Spanten, die an Rücken-, Bauch- und Breitenlinie hängen, statt auf einen Kasten normiert zu sein. Jede Hälfte wirkt für sich.
+- Vorschlag: Die Front ist nur noch Umriss. Querschnitte kommen aus Spanten, die an Rücken-, Bauch- und Breitenlinie hängen, statt auf einen Kasten normiert zu sein. Jede Hälfte wirkt für sich.
 
 **Netz: ein Käfig je Bauplan, nach den Linien ausgerichtet.**
 - Rumpf, Hals, Kopf und Schwanz bilden eine Röhre entlang der Wirbelsäule.
@@ -301,11 +350,11 @@ Das Budget aus der Recherche steht: höchstens 3 Morph-Ziele, ein Draw Call je W
 - Dazu ein Säulenbein am Rex (Abschnitt 7).
 - Messen: px, Durchdringungen, Bauzeit.
 - Florian sieht das Ergebnis im Earle-Material.
-- Erst dann wird der Kern breit gebaut.
+- Erst dann wird der Kern breit gebaut. Trägt A nicht, kommt Weg B oder ein ganz neuer Weg.
 
 ## 7. Beine, Arme, Flügel, Schwänze
 
-> Recherche 12.10. spätnachts, 35 Quellen in Abschnitt 14. Sie schärft den Schluss vom 12.10. („Glieder zuerst als überlappende Röhren“): Überlappen nur noch bei dünnen Gliedern. Dicke Glieder werden aus dem Käfig ausgestülpt, nahtlos und ohne Neuvernetzen.
+> Recherche 12.10. spätnachts, 35 Quellen in Abschnitt 14. Vorschlag aus Recherche und Tests, kein Muss. Sie schärft den Schluss vom 12.10. („Glieder zuerst als überlappende Röhren“): Überlappen nur noch bei dünnen Gliedern. Dicke Glieder werden aus dem Käfig ausgestülpt, nahtlos und ohne Neuvernetzen.
 
 ### 7.1 Was Florian schon gesagt hat
 
@@ -337,7 +386,7 @@ Das Budget aus der Recherche steht: höchstens 3 Morph-Ziele, ein Draw Call je W
 
 ### 7.3 Vorschlag
 
-**Grundsatz:**
+**Grundidee:**
 - Der **Bauplan** (Blob, Zweibeiner, Vierbeiner, Vogel, Spinne, Schlange, Fisch) legt die **Andockflächen** auf der Rumpfröhre fest, zum Beispiel Ringe i…i+2 × Ringpunkte 5–7 und 9–11 bei 16 Punkten (8 = Bauchlinie). Dazu kommen Ring- und Gelenkzahl je Glied.
 - Die **Lage** bleibt frei: Ringe gleiten entlang der Wirbelsäule und Ringpunkte auf dem Querschnitt, bis die Andockfläche unter dem gezeichneten Glied liegt.
 - **Schwänze und Hälse sind keine Abzweigung**, sondern Ringe der Wirbelsäulen-Röhre.
@@ -380,7 +429,7 @@ Vor- und Nachteile:
 
 ## 8. Körperweite Strukturen: Büschel, Mähnen, Kämme, Stacheln, Federn, Flossen
 
-> Recherche 12.10. spätnachts, 26 Quellen in Abschnitt 14.
+> Recherche 12.10. spätnachts, 26 Quellen in Abschnitt 14. Vorschlag aus Recherche und Tests, kein Muss.
 
 ### 8.1 Befund aus Florians Bögen (bitte bestätigen)
 
@@ -472,7 +521,7 @@ Aufgebaut wie ein Illustrator-Pinsel:
 
 > Recherche 12.10. spätnachts (47 Quellen in Abschnitt 14), dazu Ideen aus den Versuchen. Ergänzt [`docs/research/ki-3d-tools-2026-10.md`](../research/ki-3d-tools-2026-10.md).
 
-### 9.1 Leitsatz
+### 9.1 Leitgedanke aus der Recherche
 
 **Ein festes Vorlagen-Netz je Bauplan ist die eine Wahrheit.** Profile, Spanten, Kanten, Wirbelsäule, Pinsel, KI und Mischen sind Werkzeuge, die dieses Netz bewegen.
 - So arbeiten die Systeme, die animieren und variieren müssen. MetaHuman passt beliebige Netze an sein Template an [39], Roblox richtet Körper automatisch ein [40], Unreal Mutable fügt Teile zur Laufzeit zusammen [41], SMAL nutzt ein Netz für viele Vierbeiner [42].
@@ -495,7 +544,7 @@ Aufgebaut wie ein Illustrator-Pinsel:
 | **10. Immer im Earle-Look und lebendig** | Shader beim Modellieren an; Atmen, Blinzeln, Gehen im Editor; das Wesen auf dem Spielbrett ansehen | klein / klein | Dreams Style-Modus [32] |
 | **11. Knopf „Details vorschlagen“** | KI-Rundreise: Netz in den Ansichten rendern → Mehransichten-KI → Wrap zurück → Umrisse wieder auf die Zeichnung festziehen. Nur als Vorschlag zum Annehmen oder Verwerfen. | mittel–groß / hoch | Pixal3D [7]; erst nach einem Test |
 
-### 9.3 KI: Hilfe, nicht Kern
+### 9.3 KI: Hilfe, nicht Kern (Einschätzung der Recherche)
 
 - **Kern nein.** Der Kern muss exakt, wiederholbar, offline und lizenzsicher sein (Umrisse, Topologie, Maul, Rig, Mischen). Das leistet KI 2026 nicht:
   - Sie folgt Linien nicht maßhaltig.
@@ -523,15 +572,15 @@ Aufgebaut wie ein Illustrator-Pinsel:
 - **Ein System, das Baupläne mischt** (Spinne plus Giraffe), fand die Recherche nicht. Überall gilt: nicht nähen, sondern neu lösen.
 - **Stilisierte, gemalte Klingen** statt Haare mit iPhone-Budget: In Spielen ist das kaum dokumentiert (Abschnitt 8).
 
-## 10. Fahrplan für die große Sitzung
+## 10. Vorschlag für den Ablauf der großen Sitzung
 
-Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je nach Zeit 6, 4 und 5. Am Ende jeder Phase schaut Florian auf ein Vergleichsbild neben seinem Bogen. Parallele Arbeit läuft in eigenen Arbeitsbäumen mit Zuständigkeit nach Pfaden (Arbeitsregel 5), zum Beispiel Kern, Bedienung, Look.
+Ein Vorschlag; die Sitzung passt ihn an. Sie kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je nach Zeit 6, 4 und 5. Am Ende jeder Phase schaut Florian auf ein Vergleichsbild neben seinem Bogen. Parallele Arbeit läuft in eigenen Arbeitsbäumen mit Zuständigkeit nach Pfaden (Arbeitsregel 5), zum Beispiel Kern, Bedienung, Look.
 
 | Phase | Ziel | Inhalt | Abnahme |
 |---|---|---|---|
-| **0 Gemeinsamer Start** (30–45 min) | Richtung festlegen | Florian liest Kurzfassung und Abschnitt 4, entscheidet Abschnitt 11, legt Prüfwesen und Reihenfolge fest, zeigt ggf. neue Bögen (z. B. Retriever-Büschel, Rückenschuppen) | Entscheidungen im Plan festgehalten und committet |
-| **1 Entscheidungstest Kern** (2–3 h) | Beweisen, dass Weg A trägt, bevor breit gebaut wird | Käfig mit Kappe und Schnauzenringen; Maul als Schnitt in den Kopfringen (an der Schnauze und unter dem Kopf); Spanten an Rücken-, Bauch- und Breitenlinie; ein Säulenbein am Rex; einfaches Earle-Material statt Matcap | Rex-Kopf und Langhals ≤ 2 px, 0 Durchdringungen geschlossen, Florians Urteil am Bild; sonst Weg B prüfen |
-| **2 Kern breit: ein Bauweg** | Ein Netz für alles | Platzhalter-Loft, Kanten-, Tiger- und Maul-Käfig fallen weg. Wirbelsäule als Standard; Linien-Netz mit gemeinsamen Punkten; Kanten mit Knickwinkel; Rundheit je Abschnitt; örtliches Werkzeug; Bearbeiten im 3D; Bau im Worker | 5 Prüfwesen ≤ 2 px; Vorschau ≤ 16 ms je Zugschritt; Florian baut den Tiger-Kopf selbst |
+| **0 Gemeinsamer Start** (30–45 min) | Richtung finden | Florian liest Abschnitt 0, die Kurzfassung und Abschnitt 4. Gemeinsam: offene Fragen (Abschnitt 11) besprechen, das Maß „besser und schneller als Blender“ festlegen, Prüfwesen wählen, ggf. neue Bögen zeigen (z. B. Retriever-Büschel, Rückenschuppen) | Ergebnis im Plan festgehalten und committet |
+| **1 Entscheidungstest Kern** (2–3 h) | Prüfen, ob Weg A trägt oder ein besserer Weg, bevor breit gebaut wird | Käfig mit Kappe und Schnauzenringen; Maul als Schnitt in den Kopfringen (an der Schnauze und unter dem Kopf); Spanten an Rücken-, Bauch- und Breitenlinie; ein Säulenbein am Rex; einfaches Earle-Material statt Matcap | Rex-Kopf und Langhals ≤ 2 px, 0 Durchdringungen geschlossen, Florians Urteil am Bild; sonst Weg B oder einen neuen Weg prüfen |
+| **2 Kern breit: ein Bauweg** | Ein Netz für alles | Platzhalter-Loft, Kanten-, Tiger- und Maul-Käfig fallen weg. Wirbelsäule als Standard; Linien-Netz mit gemeinsamen Punkten; Kanten mit Knickwinkel; Rundheit je Abschnitt; örtliches Werkzeug; Bearbeiten im 3D; Bau im Worker; Bedienelemente und UI überprüfen und neu denken, wo es besser geht | 5 Prüfwesen ≤ 2 px; Vorschau ≤ 16 ms je Zugschritt; Florian baut den Tiger-Kopf selbst |
 | **3 Maul im Kern, sauber** | Das Maul wie in den Bögen | Mundwinkel-Zone, Tasche als Versatz der Kiefer-Innenflächen, Kehlkette, Bodengrenze; Zahnrahmen je Öffnungsart, Zunge; Fressen als Pose auf dem ganzen Netz (alle Ansichten); weitere Posen gleich | 0 Durchdringungen bei 0/25/50/75/100 %; Bohne; Rex, Robbe, Langhals, Drache ohne Unterkiefer |
 | **4 Glieder** | Beine, Arme, Flügel, Schwänze | nach Abschnitt 7 | Rex, Retriever, Flamingo, Spinne neben den Bögen |
 | **5 Klingen** | Büschel, Mähnen, Kämme, Stacheln, Federn, Flossen | nach Abschnitt 8 | Retriever, Löwe, Stacheldrache neben den Bögen |
@@ -539,24 +588,27 @@ Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je
 | **7 Spiel** | Vom Editor aufs Brett | Knochenkette und Skinning, 3 Morph-Ziele, Reißverschluss-Attribut, Export, Atmen/Blinzeln/Fressen/Gehen, iPhone-Messung | 36 Wesen ≥ 58 fps, ≤ 100 Draw Calls |
 | **8 Varianten** | Viele Wesen aus wenigen | Mischen gleicher Baupläne, Teiletausch, Mutation, Assistent erzeugt Varianten im Look | Raster aus 12 Varianten, Florian wählt aus |
 
-## 11. Entscheidungen für Florian
+## 11. Offene Fragen für die große Sitzung (keine festen Regeln)
 
-| Nr. | Frage | Empfehlung |
+Die Tests legen Antworten nahe, entschieden ist nichts. Florians bisherige Entscheidungen sind Bauchentscheidungen. Findet die Sitzung einen besseren Weg, gilt der.
+
+| Nr. | Frage | Was die Tests nahelegen |
 |---|---|---|
-| E1 | **Kern:** Weg A (Linien-Netz → Käfig je Bauplan), erst nach dem Entscheidungstest breit bauen? | ja |
-| E2 | **Wirbelsäulen-Netz als einzige Bauweise;** Ziehen an der Wirbelsäule biegt (mit ⌥ nur die Linie verlegen) | ja (aus `docs/plans/2026-10-12-wirbelsaeule-ein-netz.md`, Abschnitt 7) |
-| E3 | **Front nur als Umriss;** Querschnitte nur aus Spanten, die an Rücken-, Bauch- und Breitenlinie hängen, jede Hälfte für sich; dazu eine Spantenriss-Ansicht statt Back und Bottom | ja |
-| E4 | **Kantenlinien mit Knickwinkel** statt Tiefe; Rundheit (rund ↔ kastig) je Abschnitt als Regler auf der Wirbelsäule | ja |
-| E5 | **Bearbeiten im 3D** (Punkte und Linien direkt anfassen) und ein **örtliches Werkzeug** („weich ziehen“ mit Radius wie Blenders proportionales Bearbeiten, O) | ja |
-| E6 | **Fressen und eigene Posen** auf dem ganzen Netz, alle Ansichten bearbeitbar, gespeichert als Abweichung | ja |
-| E7 | **Spanten-Überblendung** linear (neuer Spant ändert nichts) oder kubisch (glatter) | nach Florians Test |
-| E8 | **Glieder:** dicke Glieder aus dem Käfig ausstülpen (A), dünne stecken (C); B nur als Vergleich, falls die Kehlen zu hart wirken; Schwänze und Hälse als Teil der Wirbelsäule (Abschnitt 7) | ja |
-| E9 | **Körperweite Strukturen:** ein Grundelement „Klinge“ mit Pinseln wie Illustrator (Abschnitt 8). Vorher bestätigen: Die meisten Büschel sind gemalt, gebaut wird nur, was den Umriss bricht (8.1) | ja, zuerst Look-Test an Retriever und Stacheldrache (8.6) |
-| E10 | **KI:** Hilfe, nicht Kern: Wrap-Ziel für Volumen und Details, Remix-Kandidaten, Texturen; erster Test mit BWrap in Blender (Abschnitt 9.3) | Hilfe, nicht Kern |
-| E11 | **Look im Editor ab Phase 1** (Earle-Material statt weißem Matcap) | ja |
-| E12 | **Prüfwesen und Reihenfolge** (Abschnitt 12) | Rex → Langhals → Tiger-Kopf → Retriever → Stacheldrache |
+| F1 | **Wie entsteht ein Wesen?** (Kern, Abschnitt 6) | Weg A (Linien → Netz je Bauplan) war am formtreuesten; zuerst ein Entscheidungstest. Ein ganz anderer Weg ist willkommen, wenn er besser und schneller ist |
+| F2 | **Ist die Wirbelsäule der richtige Rücken für alle Wesen, und wie bedient man sie?** | Den Langhals gab es nur so; ob Ziehen biegt und ⌥ nur die Linie verlegt, ist offen |
+| F3 | **Welche Rolle hat die Front?** Umriss, Querschnitt oder beides; Spanten an Linien oder anders; Back/Bottom oder ein Spantenriss | Die Doppelrolle der Front und die normierten Spanten haben verwirrt |
+| F4 | **Wie entstehen schöne Kanten?** | „Ecke in einem Shape“ trug. Knickwinkel für freie Linien und Rundheit je Abschnitt sind Vorschläge |
+| F5 | **Wie viel bearbeitet man direkt im 3D, wie viel in den Ansichten? Welche örtlichen Werkzeuge?** | Im 3D fehlte es am meisten; „weich ziehen“ mit Radius ist ein Vorschlag |
+| F6 | **Wie werden Posen bearbeitet** (Fressen und eigene)? | Die Pose-Form mit gleicher Punktstruktur trug; alle Ansichten und Linien fehlen |
+| F7 | **Spanten linear oder kubisch überblenden?** | offen, nach Test |
+| F8 | **Wie entstehen Glieder?** | dicke ausstülpen, dünne stecken (Abschnitt 7) |
+| F9 | **Wie entstehen Büschel, Kämme, Federn?** | Klinge mit Pinseln, meist gemalt (Abschnitt 8); Florian bestätigt, ob die meisten Büschel gemalt sind |
+| F10 | **Welche Rolle hat KI?** | Hilfe, nicht Kern (Abschnitt 9) |
+| F11 | **Ab wann der Earle-Look im Editor?** | so früh wie möglich, sonst lässt sich der Look nicht beurteilen |
+| F12 | **Wie sehen Bedienung und UI aus?** | Das heutige Layout (Figma-Entwurf, Tab-Punkte, Seitenleiste, Werkzeuge wie Illustrator) ist ein Test und darf neu gedacht werden |
+| F13 | **Welche Prüfwesen in welcher Reihenfolge?** | Vorschlag: Rex → Langhals → Tiger-Kopf → Retriever → Stacheldrache |
 
-## 12. Prüfwesen und Abnahmekriterien
+## 12. Prüfwesen und Maßstäbe (Vorschlag)
 
 | Wesen | prüft vor allem | Vorlage |
 |---|---|---|
@@ -572,7 +624,8 @@ Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je
 | Spinne | acht Knickbeine, Büschel | `bild15` |
 | Aal | eingerollter Schlangenkörper, gezackte Flossen, Sechseckschuppen im Shader | `bild13` |
 
-**Gemeinsame Kriterien:**
+**Gemeinsame Maßstäbe:**
+- Ein neues Wesen mit Maul, Zähnen, Beinen und Kamm in unter 30 Minuten, spielfertig (Abschnitt 0).
 - Umrisse ≤ 2 px in Seite, Front und Top gegen die Zeichnung; Überdeckung mit dem Bogen ≥ 0,85.
 - 0 Durchdringungen geschlossen, offen und bei 25/50/75 %.
 - Vorschau ≤ 16 ms je Zugschritt, genauer Bau ≤ 200 ms.
@@ -584,7 +637,7 @@ Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je
 **Lesen, in dieser Reihenfolge:**
 1. dieses Dokument
 2. [`docs/UEBERGABE.md`](../UEBERGABE.md)
-3. [`apps/editor/CLAUDE.md`](../../apps/editor/CLAUDE.md): Entscheidungen und Fallen
+3. [`apps/editor/CLAUDE.md`](../../apps/editor/CLAUDE.md): Stand der Tests und Fallen
 4. [`docs/plans/2026-10-12-wirbelsaeule-ein-netz.md`](2026-10-12-wirbelsaeule-ein-netz.md): Vorschlag ein Netz, Recherche mit 31 Quellen
 5. [`docs/research/2026-10-12-maul-kiefer-zaehne-augen.md`](../research/2026-10-12-maul-kiefer-zaehne-augen.md): Maul, Zähne, Rig, Augen; Abschnitte 3–6, Recherchen B1–B4
 6. [`docs/research/2026-10-12-kanten-ansichten.md`](../research/2026-10-12-kanten-ansichten.md): Kanten, Spanten, Kopplung; Recherche mit 52 Quellen
@@ -598,14 +651,14 @@ Die Sitzung kann nicht alles schaffen. **Kern sind die Phasen 0–3.** Danach je
 
 | Bereich | Pfad | Status |
 |---|---|---|
-| Editor-Gerüst | `apps/editor/src/{viewports,layout,library,state,editing,menu,ui,leiste}`, `three/Renderer3D.ts` | behalten |
-| Kurven, Dokument, Kopplung | `packages/shape/src/{bezier,profil,dokument,kopplung}.ts` | behalten, erweitern |
-| Spanten | `packages/shape/src/spanten.ts`, `apps/editor/src/spanten/` | Wissen behalten; Normierung ersetzen (E3) |
-| Versuche | `packages/shape/src/versuch/`: `wirbelsaeule`, `wirbelMaul`, `maul`, `maulUmriss`, `kiefer`, `zaehne`, `kanten`, `linie3d`, `flaechenlinie`, `umriss3d`, `catmullClark`, `kaefig`, `tigerKaefig`, `pruefen` | Wissen und Tests behalten, im Kern neu bauen |
-| Editor-Ebenen der Versuche | `apps/editor/src/{maul,wirbel,kanten,versuch}` | Bedienung behalten, Bau neu |
-| Look aus der Werkstatt | `packages/render/src/creature2` (Material, Muster, Zonen) | übernehmen (Phase 1/6) |
+| Editor-Gerüst | `apps/editor/src/{viewports,layout,library,state,editing,menu,ui,leiste}`, `three/Renderer3D.ts` | bewährt, darf umgebaut werden |
+| Kurven, Dokument, Kopplung | `packages/shape/src/{bezier,profil,dokument,kopplung}.ts` | bewährt, erweitern |
+| Spanten | `packages/shape/src/spanten.ts`, `apps/editor/src/spanten/` | Wissen; die Normierung hat gestört (F3) |
+| Versuche | `packages/shape/src/versuch/`: `wirbelsaeule`, `wirbelMaul`, `maul`, `maulUmriss`, `kiefer`, `zaehne`, `kanten`, `linie3d`, `flaechenlinie`, `umriss3d`, `catmullClark`, `kaefig`, `tigerKaefig`, `pruefen` | Wissen und Tests; im Kern neu bauen |
+| Editor-Ebenen der Versuche | `apps/editor/src/{maul,wirbel,kanten,versuch}` | Bedienung als Ausgangspunkt, Bau neu |
+| Look aus der Werkstatt | `packages/render/src/creature2` (Material, Muster, Zonen) | Kandidat für den Look (Phase 1/6) |
 | Werkstatt-Körper | `packages/creature` (SDF, Mund, Kiefer, Rig, Bauplan) | nur Wissen |
-| Werkzeuge | `apps/editor/scripts/` (`nachziehen/`, `vergleich.mjs`, `maul-bilder.mjs`, `wirbel-bilder.mjs`, `kopplung-bild.mjs`), `apps/editor/e2e/` | behalten |
+| Werkzeuge | `apps/editor/scripts/` (`nachziehen/`, `vergleich.mjs`, `maul-bilder.mjs`, `wirbel-bilder.mjs`, `kopplung-bild.mjs`), `apps/editor/e2e/` | bewährt |
 
 **Befehle:**
 - Editor: `pnpm editor` (Electron), Web-Modus `editor-web` auf Port 5180

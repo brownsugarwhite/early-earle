@@ -2,7 +2,12 @@
 
 Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Root-`CLAUDE.md`). Kurz halten, Nachträge mit Datum.
 
-## Auftrag und Entscheidungen (Florian, 11.10.2026)
+> **Wichtig (Florian, 12.10. spätnachts):** Alle Festlegungen in dieser Datei stammen aus Tests und sind meist Bauchentscheidungen, nicht ausgetestet. Das gilt auch für Layout, Bedienelemente und UI.
+> - Ziel der großen Sitzung ist etwas Neues und Einzigartiges: die optimale Bauweise für unsere Wesen, viel besser und schneller, als sie in Blender zu bauen.
+> - Findet die Sitzung einen besseren Weg, setzt sie ihn um. Einstieg: `docs/plans/2026-10-13-grosse-sitzung-wesen-editor.md`.
+> - Die Fallen weiter unten bleiben gültiges technisches Wissen.
+
+## Auftrag und bisherige Entscheidungen (Florian, 11.10.2026; Tests, kein Gesetz)
 
 - Der Charaktereditor wird ein **kompletter Shape-/3D-Editor** und ein großer, eigenständiger Teil des Projekts: Florian zieht drei Profile (Seite, Front, Top) wie in Illustrator, daraus entsteht live das Wesen. Ziel: der Look seiner 19 Referenzbögen und von Eyvind Earle; „der beste Charaktereditor auf dem Markt“.
 - **Desktop-App (Electron), eigenes App-Verzeichnis im Monorepo**, kein eigenes Repo (das Spiel lädt später dasselbe Format; geteilte Technik). Nicht für Mobilgeräte.
