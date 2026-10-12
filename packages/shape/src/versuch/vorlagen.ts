@@ -13,11 +13,24 @@ export type Vorlage = {
   profile: Record<string, Profil>;
   punkte?: Record<string, VorlagePunkt[]>;
   linien?: Record<string, VorlageLinie[]>;
+  /** Nachzieh-Daten; `registrierung.boden_versatz_kachel`: offen steht der Körper so viel höher (Kinn unter dem Boden) */
+  meta?: { ansichten?: Record<string, { registrierung?: { boden_versatz_kachel?: number } }> };
 };
+
+/** Versatz des offenen Zustands, damit der Körper offen und zu deckungsgleich steht (Rex: Kinn reicht unter den Boden). */
+function offenVersatz(v: Vorlage): number {
+  return v.meta?.ansichten?.seite_auf?.registrierung?.boden_versatz_kachel ?? 0;
+}
+
+function profilVerschoben(p: Profil, dy: number): Profil {
+  if (!dy) return p;
+  return { ...p, knoten: p.knoten.map((k) => ({ ...k, p: { x: k.p.x, y: k.p.y - dy } })) } as Profil;
+}
 
 export function vorlageDokument(v: Vorlage, zustand: 'zu' | 'auf', name = 'Vorlage'): Dokument {
   const d = neuesDokument(name);
-  const p = (k: string) => v.profile[k] ?? v.profile[k.replace('_auf', '')]!;
+  const dy = offenVersatz(v);
+  const p = (k: string) => (k.endsWith('_auf') && v.profile[k] ? profilVerschoben(v.profile[k]!, dy) : v.profile[k] ?? v.profile[k.replace('_auf', '')]!);
   const auf = zustand === 'auf';
   return { ...d, profile: { seite: p(auf ? 'seite_auf' : 'seite'), front: p(auf ? 'front_auf' : 'front'), top: p('top') } };
 }
@@ -27,8 +40,9 @@ type Zug = { x: number; y: number }[];
 /** Linien einer Ansicht: Start (Achse/Kontur) → Mundwinkel, je Farbe. */
 function linienVon(v: Vorlage, ansicht: string): Partial<Record<'tuerkis' | 'rot' | 'blau', Zug>> {
   const out: Partial<Record<'tuerkis' | 'rot' | 'blau', Zug>> = {};
+  const dy = ansicht.endsWith('_auf') ? offenVersatz(v) : 0;
   if (v.linien?.[ansicht]) {
-    for (const l of v.linien[ansicht]!) out[l.farbe] = l.punkte;
+    for (const l of v.linien[ansicht]!) out[l.farbe] = l.punkte.map((p) => ({ x: p.x, y: p.y - dy }));
     return out;
   }
   const pts = v.punkte?.[ansicht] ?? [];

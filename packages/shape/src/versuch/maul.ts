@@ -470,6 +470,27 @@ export function maulKaefig(dok: Dokument, eingabe: MaulEingabe, opt: MaulOptione
     ziel.push([...ziel[o]!] as V3);
     return ziel.length - 1;
   });
+  // Kiefer getrennt (Florian: Überbiss, Unterbiss, Lippenbreite): die Unterlippe liegt geschlossen auf ihrer eigenen
+  // Linie. Liegt sie über der Oberlippe (Überbiss), ist sie verdeckt und muss nach innen, sonst durchdringen sich die
+  // Kiefer. Hinter dem sichtbaren Mundwinkel bleibt der Reißverschluss zu (beide Ränder gleich).
+  if (eingabe.zu.unten) {
+    const unten = glatterZug(eingabe.zu.unten, 16);
+    unten[0] = [unten[0]![0], unten[0]![1], 0];
+    spalten.forEach((o, c) => {
+      const k = Math.abs(c - (spalten.length - 1) / 2);
+      const a = anteile[k]!;
+      if (a > sichtbar - 1e-9) return;
+      const oben = ziel[o]!;
+      let p = zugPunkt(unten, a / sichtbar);
+      if (c < (spalten.length - 1) / 2) p = spiegelZ(p);
+      if (p[1] > oben[1]) {
+        // verdeckt hinter der Oberlippe: schmaler und etwas nach hinten
+        const ein = Math.min(1, (p[1] - oben[1]) / opt.lippenband + 0.5);
+        p = [p[0] + opt.lippenband * 0.6 * ein, p[1], p[2] * (1 - 0.12 * ein)];
+      }
+      ziel[nahtUnten[c]!] = p;
+    });
+  }
   const zuUnten = new Map(spalten.map((o, c) => [o, nahtUnten[c]!]));
   flaechen.forEach((f, fi) => {
     if (!unten[fi]) return;
@@ -630,7 +651,12 @@ export function maulKaefig(dok: Dokument, eingabe: MaulEingabe, opt: MaulOptione
     let e2: V3 = abstand3(O, U) > 1e-6 ? minus3(offen, mal3(e1, punkt3(offen, e1))) : minus3([0, 1, 0], mal3(e1, e1[1]));
     e2 = normiert3(e2);
     const d = 0.9 * abstand3(T, M) * Math.sqrt(Math.max(0.05, 1 - 0.9 * t * t));
-    const h = 0.12 * d + 0.5 * abstand3(O, U);
+    // Gaumen und Boden höchstens bis 40 % der Kopfdicke über bzw. unter der Naht (sonst stößt er oben durch)
+    const ring = feinRing(fVon(M[0] + 0.5 * d * e1[0]));
+    const yTop = Math.max(...ring.map((q) => q[1]));
+    const yBot = Math.min(...ring.map((q) => q[1]));
+    const platz = Math.max(0.002, Math.min(yTop - M[1], M[1] - yBot) * 0.4);
+    const h = Math.min(0.12 * d + 0.5 * abstand3(O, U), platz);
     const lip = Math.min(opt.lippenband * 1.5, 0.3 * d);
     const reihen: V3[] = [
       plus3(plus3(O, mal3(e1, lip)), mal3(e2, 0.3 * h)),
@@ -911,7 +937,8 @@ export function kieferRig(mk: MaulKaefig, zu: Netz, auf: Netz): KieferRig {
   const gelenkUnten = gelenkAus(sU, nahe);
   const restOben = restfehler(kO.map((i) => zu.punkte[i]!), kO.map((i) => auf.punkte[i]!), sO);
   const restUnten = restfehler(kU.map((i) => zu.punkte[i]!), kU.map((i) => auf.punkte[i]!), sU);
-  const art = oeffnungsart(Math.max(restOben, restUnten));
+  // Öffnungsart nach dem Kiefer, der sich am meisten dreht (der andere ist oft der ganze Kopf samt Körper)
+  const art = oeffnungsart(gelenkUnten.w >= gelenkOben.w ? restUnten : restOben);
   const voll = knochenPose(mk, zu, gelenkOben, gelenkUnten, 1);
   const korrektur = zu.punkte.map((_, i) => {
     const R = drehMittel([
