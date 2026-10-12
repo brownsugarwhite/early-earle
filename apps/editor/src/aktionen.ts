@@ -1,7 +1,7 @@
 // Befehle der Menüleiste und Tastenkürzel (an einer Stelle, damit Menü, Knöpfe und Kürzel gleich handeln).
 
+import { aktivesProfil, setzeAktiv } from './editing/aktiv';
 import { angleichen, dokumentLesen, loeschenMehrere, verschiebeKnoten } from '@ee/shape';
-import { setzeGekoppelt } from './editing/gekoppelt';
 import { bibliothekLaden, bibliothekSpeichern, useBibliothek } from './library/speicher';
 import { useEditor } from './state/editorStore';
 import { useUi } from './state/uiStore';
@@ -88,13 +88,13 @@ export function gewaehltePunkteLoeschen() {
   if (!ansicht) return;
   const sel = useUi.getState().auswahl[ansicht];
   if (!sel.length) return;
-  const pr = useEditor.getState().dok.profile[ansicht];
+  const pr = aktivesProfil(ansicht);
   const neu = loeschenMehrere(pr, sel);
   if (neu === pr) {
     useUi.getState().zeigeHinweis('Achspunkte bleiben – sie halten die Spiegelung');
     return;
   }
-  setzeGekoppelt(ansicht, neu, []);
+  setzeAktiv(ansicht, neu, []);
 }
 
 /** Tastaturschritt wie Illustrator (1 pt ≈ 1/500 Kachel ≈ 1 px in der Grundansicht), mit ⇧ das Zehnfache. */
@@ -107,7 +107,7 @@ export function gewaehltePunkteVerschieben(rx: number, ry: number, gross: boolea
   if (!sel.length) return;
   const { dok } = useEditor.getState();
   const s = ((gross ? 10 : 1) * TASTEN_SCHRITT) / dok.skalierung;
-  setzeGekoppelt(ansicht, verschiebeKnoten(dok.profile[ansicht], sel, { x: rx * s, y: ry * s }), sel);
+  setzeAktiv(ansicht, verschiebeKnoten(aktivesProfil(ansicht), sel, { x: rx * s, y: ry * s }), sel);
 }
 
 export function maximiereUnterMaus() {

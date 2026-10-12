@@ -28,7 +28,8 @@ import {
   verschiebeKnoten,
 } from '@ee/shape';
 import { useEffect, useRef, useState } from 'react';
-import { type Auswahl, gekoppeltBerechnen, setzeGekoppelt } from '../editing/gekoppelt';
+import { aktiveProfile, aktivesProfil, setzeAktiv, uebernehmenAktiv } from '../editing/aktiv';
+import { istPose, poseSeite, poseSeiteSetzen } from '../maul/fressenForm';
 import { useEditor } from '../state/editorStore';
 import { useUeberlagerung } from '../versuch/ueberlagerung';
 import { blickVon, useUi } from '../state/uiStore';
@@ -50,7 +51,8 @@ const KONTUR = 3;
 type Props = { ansicht: Ansicht; w: number; h: number };
 
 export function View2D({ ansicht, w, h }: Props) {
-  const profil = useEditor((s) => s.dok.profile[ansicht]);
+  // im Fressen-Tab bearbeitet die Seite die Pose-Form (gespeichert oder dem Kiefer folgend)
+  const profil = useEditor((s) => (istPose(s.modus, ansicht) ? poseSeite(s.dok) : s.dok.profile[ansicht]));
   const skal = useEditor((s) => s.dok.skalierung);
   const view = useUi((s) => s.ansichten[ansicht]);
   const gewaehlt = useUi((s) => s.auswahl[ansicht]);
@@ -67,12 +69,14 @@ export function View2D({ ansicht, w, h }: Props) {
   const modus = useEditor((s) => s.modus);
   useMaulInfo((s) => s.info);
   const offenerKoerper = modus === 'fressen' && hatMaul;
-  const offen = offenerKoerper ? offenerUmriss(useEditor.getState().dok, ansicht) : null;
+  // Front und Top zeigen im Fressen-Tab den Umriss des geöffneten Körpers; die Seite ist die bearbeitbare Pose-Form
+  const offen = offenerKoerper && ansicht !== 'seite' ? offenerUmriss(useEditor.getState().dok, ansicht) : null;
   // Geschlossen mit getrennten Kiefern: Der Seitenumriss zeigt den Maulspalt (Florian 12.10. abends: „wie bei der
   // Fressen-Pose“). Die Maulanfänge sind Umrissknoten; zwischen ihnen läuft der Umriss an den Lippen entlang.
-  const maulZu = useEditor((s) => (ansicht === 'seite' && !offenerKoerper ? s.dok.maul?.zu : undefined));
+  const maulDok = useEditor((s) => s.dok.maul);
+  const maulZu = ansicht === 'seite' && maulDok ? (offenerKoerper ? aktuelleLippen(useEditor.getState().dok, 'fressen').lippen ?? undefined : maulDok.zu) : undefined;
   const spalt = maulZu?.unten ? umrissMitSpalt(profil, maulZu) : null;
-  const formAktiv = ebene === 'form' && !offenerKoerper;
+  const formAktiv = ebene === 'form' && (!offenerKoerper || ansicht === 'seite');
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Rad: nicht-passiv, sonst zoomt die Seite beim Trackpad-Pinch mit
@@ -122,13 +126,9 @@ export function View2D({ ansicht, w, h }: Props) {
     const p = spiegeln2(blickVon(ansicht, useUi.getState().blick), zuWelt(v, r.width, r.height, { x: clientX - r.left, y: clientY - r.top }));
     return { x: p.x / s, y: p.y / s };
   };
-  const aktuell = (): Profil => useEditor.getState().dok.profile[ansicht];
-  /** Zug übernehmen: die anderen Ansichten folgen, gerechnet vom Stand am Gestenbeginn. */
-  const uebernehmen = (neu: Profil, indizes: number[], basis: Profile, auswahlBasis: Auswahl) => {
-    const g = gekoppeltBerechnen(ansicht, neu, basis, auswahlBasis);
-    useEditor.getState().setzeProfile(g.profile);
-    useUi.getState().setzeAuswahl({ ...g.auswahl, [ansicht]: indizes }, ansicht);
-  };
+  const aktuell = (): Profil => aktivesProfil(ansicht);
+  /** Zug übernehmen: die anderen Ansichten folgen, gerechnet vom Stand am Gestenbeginn (in der Pose nur die Seite). */
+  const uebernehmen = (neu: Profil, indizes: number[], basis: Profile, auswahlBasis: Record<Ansicht, number[]>) => uebernehmenAktiv(ansicht, neu, indizes, basis, auswahlBasis);
 
   const ziehen = (e: React.PointerEvent, bewegen: (ev: PointerEvent) => void, ende?: (ev: PointerEvent) => void) => {
     svgRef.current?.setPointerCapture(e.pointerId);
@@ -210,22 +210,24 @@ export function View2D({ ansicht, w, h }: Props) {
       editor.beginGeste();
       breiteZiehen(e, { ansicht, lokal, ziehen, bild }, kn.p, kn.haerte ?? 1, (h) => {
         const pr = aktuell();
-        useEditor.getState().setzeProfil(ansicht, { ...pr, knoten: pr.knoten.map((k, j) => (j === i ? { ...k, haerte: h } : k)) });
+        const neu = { ...pr, knoten: pr.knoten.map((k, j) => (j === i ? { ...k, haerte: h } : k)) };
+        if (istPose(useEditor.getState().modus, ansicht)) poseSeiteSetzen(neu);
+        else useEditor.getState().setzeProfil(ansicht, neu);
       });
       return;
     }
     if (ui.werkzeug !== 'auswahl' && !e.metaKey) {
       const i = knotenEl ? Number(knotenEl.getAttribute('data-knoten')) : -1;
       if (knotenEl && ui.werkzeug === 'stift' && e.altKey) {
-        setzeGekoppelt(ansicht, umwandeln(aktuell(), i), [i]);
+        setzeAktiv(ansicht, umwandeln(aktuell(), i), [i]);
       } else if (knotenEl && (ui.werkzeug === 'stift' || ui.werkzeug === 'minus')) {
-        if (kannLoeschen(aktuell(), i)) setzeGekoppelt(ansicht, loeschen(aktuell(), i), []);
+        if (kannLoeschen(aktuell(), i)) setzeAktiv(ansicht, loeschen(aktuell(), i), []);
         else ui.zeigeHinweis('Achspunkte bleiben – sie halten die Spiegelung');
       } else if (!knotenEl && kurveEl && (ui.werkzeug === 'stift' || ui.werkzeug === 'plus')) {
         const t = naechsterAufProfil(aktuell(), lokal(e.clientX, e.clientY));
         if (t) {
           const r = einfuegen(aktuell(), t.segment, t.t);
-          setzeGekoppelt(ansicht, r.profil, [r.index]);
+          setzeAktiv(ansicht, r.profil, [r.index]);
         }
       }
       return;
@@ -237,7 +239,7 @@ export function View2D({ ansicht, w, h }: Props) {
       const kn = aktuell().knoten[index]!;
       const versatz = minus(lokal(e.clientX, e.clientY), plus(kn.p, kn[seite]));
       let brechen = e.altKey;
-      const basis = editor.dok.profile;
+      const basis = aktiveProfile();
       const auswahlBasis = ui.auswahl;
       editor.beginGeste();
       ziehen(
@@ -262,7 +264,7 @@ export function View2D({ ansicht, w, h }: Props) {
       ui.waehle(ansicht, sel);
       if (!sel.includes(i)) return;
       const start = lokal(e.clientX, e.clientY);
-      const basis = editor.dok.profile;
+      const basis = aktiveProfile();
       const auswahlBasis = useUi.getState().auswahl;
       editor.beginGeste();
       ziehen(
@@ -329,7 +331,7 @@ export function View2D({ ansicht, w, h }: Props) {
     const ziel = e.target as Element;
     const knotenEl = ziel.closest('[data-knoten]');
     const kurveEl = ziel.closest('[data-kurve]');
-    const setze = (p: Profil, indizes: number[]) => setzeGekoppelt(ansicht, p, indizes);
+    const setze = (p: Profil, indizes: number[]) => setzeAktiv(ansicht, p, indizes);
     if (knotenEl) {
       const i = Number(knotenEl.getAttribute('data-knoten'));
       const pr = aktuell();

@@ -13,6 +13,7 @@ import { useZahnMeldungen } from '../maul/ZahnEbene';
 import { spantName, spantWaehlen, SPANT_HINTEN, SPANT_VORN } from '../spanten/SpantEbene';
 import { aenderungAnwenden, befundText } from '../maul/zahnKoerper';
 import { useMaulInfo } from '../maul/maulKoerper';
+import { istPose, poseSeite, poseSeiteSetzen, poseSeiteVerwerfen } from '../maul/fressenForm';
 import { useEditor } from '../state/editorStore';
 import { type Ebene, useUi } from '../state/uiStore';
 import { Ornament } from './Ornament';
@@ -67,8 +68,8 @@ function WesenBereich() {
       <p className="hilfe">Oben rechts in jeder Ansicht: braun Zähne, blau Maul, orange Rig, weiß Augen (folgt), pink vergrößern.</p>
       {modus === 'fressen' && dok.maul && (
         <p className="hilfe" data-fressen-hinweis="">
-          Fressen: Der Körper folgt dem Kiefer. Die Ansichten zeigen den geöffneten Umriss aus dem 3D, die Grundform blass dahinter. Form und Kanten bearbeitest du im Tab
-          Editor, das Maul im blauen Maul-Tab.
+          Fressen: Die Seite ist die Form der Pose (bearbeitbar, siehe oben). Front und Top zeigen den geöffneten Umriss aus dem 3D, die Grundform blass dahinter. Kanten
+          bearbeitest du im Tab Editor, das Maul im blauen Maul-Tab.
         </p>
       )}
     </section>
@@ -139,14 +140,17 @@ function KantenBereich() {
   const aktiv = useUi((s) => s.aktiv);
   const zeichnen = useUi((s) => s.kanteZeichnen);
   const sicht = useUi((s) => s.kantenSicht);
-  const profil = aktiv ? dok.profile[aktiv] : null;
+  const modus = useEditor((s) => s.modus);
+  const profil = aktiv ? (istPose(modus, aktiv) ? poseSeite(dok) : dok.profile[aktiv]) : null;
   const ecken = aktiv && profil ? auswahl[aktiv].filter((i) => profil.knoten[i]?.art === 'ecke') : [];
   const geste = { onStart: () => useEditor.getState().beginGeste(), onEnde: () => useEditor.getState().endeGeste() };
   const anzahl = dok.kanten?.length ?? 0;
   const mittel = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
   const eckHaerte = (v: number) => {
     if (!aktiv || !profil) return;
-    useEditor.getState().setzeProfil(aktiv, { ...profil, knoten: profil.knoten.map((k, i) => (ecken.includes(i) ? { ...k, haerte: v } : k)) });
+    const neu = { ...profil, knoten: profil.knoten.map((k, i) => (ecken.includes(i) ? { ...k, haerte: v } : k)) };
+    if (istPose(useEditor.getState().modus, aktiv)) poseSeiteSetzen(neu);
+    else useEditor.getState().setzeProfil(aktiv, neu);
   };
   let inhalt: React.ReactNode;
   if (zeichnen) {
@@ -315,6 +319,29 @@ function SpantBereich() {
       {dok.hauptspant !== undefined && (
         <button className="chip" onClick={() => useEditor.getState().setzeHauptspant(null)} title="Hauptspant wieder an der dicksten Stelle">
           Hauptspant automatisch
+        </button>
+      )}
+    </section>
+  );
+}
+
+/** Versuch 12.10. nachts: Seitenform der Fressen-Pose (gespeichert oder dem Kiefer folgend). */
+function PoseBereich() {
+  const eigen = useEditor((s) => !!s.dok.posenProfile?.fressen?.seite);
+  const hatMaul = useEditor((s) => !!s.dok.maul);
+  return (
+    <section className="leiste-bereich pose-bereich" data-posebereich="">
+      <div className="feld">
+        <span>Pose Fressen</span>
+        <b data-poseform={eigen ? 'eigen' : 'folgt'}>{eigen ? 'eigene Seitenform' : hatMaul ? 'folgt dem Kiefer' : 'wie der Umriss'}</b>
+      </div>
+      <p className="hilfe">
+        Die Seite ist hier die Form der Pose: Punkte und Griffe ziehen wie im Editor-Tab. Punkte einfügen oder löschen wirkt im geschlossenen Umriss genauso (gleiche Punktstruktur).
+        {hatMaul && ' Die Maulanfänge sind Punkte dieser Form; die offene Haut legt sich im 3D an sie. Front und Top folgen dem Kiefer.'}
+      </p>
+      {eigen && (
+        <button className="chip" onClick={poseSeiteVerwerfen} title="Eigene Seitenform verwerfen">
+          wieder dem Kiefer folgen
         </button>
       )}
     </section>
@@ -625,6 +652,7 @@ export function Seitenleiste() {
   const r = useRahmen((s) => s.rects?.leiste ?? null);
   const ebene = useUi((s) => s.ebene);
   const bauweise = useUi((s) => s.bauweise);
+  const modus = useEditor((s) => s.modus);
   if (!r) return null;
   return (
     <aside className="leiste" data-ebene={ebene} style={{ left: r.x, top: r.y, width: r.w, height: r.h }}>
@@ -632,6 +660,7 @@ export function Seitenleiste() {
       <div className="leiste-glas glas">
         <div className="leiste-inhalt">
           {bauweise === 'wirbel' && <WirbelBereich />}
+          {ebene === 'form' && modus === 'fressen' && <PoseBereich />}
           {ebene === 'form' && (
             <>
               <WesenBereich />

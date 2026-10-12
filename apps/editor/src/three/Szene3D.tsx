@@ -61,7 +61,11 @@ export function Szene3D() {
         for (let i = 0; i < farben.length; i += 3) farben.set([0, 1, 0.88], i);
         r.setzeLinien(seg, farben);
       };
-      const bauen = (d: Dokument, schnell = false) => {
+      const bauen = (dRoh: Dokument, schnell = false) => {
+        // Fressen-Tab mit eigener Seitenform (Versuch 12.10. nachts): Körper ohne Maul aus der Pose-Form; mit Maul legt
+        // sich die offene Haut im Maul-Bau an sie
+        const pose = dRoh.posenProfile?.fressen?.seite;
+        const d: Dokument = useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
         if (!versuch && useUi.getState().bauweise === 'wirbel') {
           // Versuch 12.10. abends: Wirbelsäule zum Vergleichen (Tab am 3D-Fenster); Maul und Kanten fehlen hier noch
           const t = zuDreiecken(unterteilenMehrfach(wirbelBauen(d, schnell, useUi.getState().wirbelBiegung), schnell ? 2 : 3), 40);
@@ -111,7 +115,9 @@ export function Szene3D() {
             s.dok.kanten !== v.dok.kanten ||
             s.dok.spanten !== v.dok.spanten ||
             s.dok.hauptspant !== v.dok.hauptspant ||
-            s.dok.wirbelsaeule !== v.dok.wirbelsaeule;
+            s.dok.wirbelsaeule !== v.dok.wirbelsaeule ||
+            s.dok.posenProfile !== v.dok.posenProfile ||
+            s.modus !== v.modus;
           const wirbel = useUi.getState().bauweise === 'wirbel';
           // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen
           if (s.dok.maul && s.gesteStart && !wirbel) return;

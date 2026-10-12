@@ -7,6 +7,7 @@ import type { Ansicht, Dokument, Lippen, Linie3, V2, V3T } from '@ee/shape';
 import { bewegeKnoten } from '@ee/shape';
 import { abtasten3, ausAnsicht2, einfuegen3, griffZiehen3, inAnsicht2, knotenBei, knotenVerschieben3, linieDurch, loeschen3, maulAnfaengeEinbauen, mundwinkelVerbinden, naechsterInAnsicht, offenVorschlag } from '@ee/shape/versuch';
 import { gekoppeltBerechnen } from '../editing/gekoppelt';
+import { poseSeite, poseSeiteSetzen } from './fressenForm';
 import { useEffect } from 'react';
 import { type Modus, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -259,6 +260,25 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
             const ziel = ctx.ansicht === 'seite' ? { x: p0.x + p.x - start.x, y: p0.y + p.y - start.y } : { x: p0.x, y: p0.y + p.y - start.y };
             const neu = bewegeKnoten(basisProfile.seite, k, ziel);
             useEditor.getState().setzeProfile(gekoppeltBerechnen('seite', neu, basisProfile, useUi.getState().auswahl).profile);
+          },
+          () => useEditor.getState().endeGeste(),
+        );
+        return true;
+      }
+    }
+    // offener Maulanfang (Fressen, Seite): Punkt der Pose-Form, Ziehen bewegt ihn, der Anfang folgt (gemeinsamer Punkt)
+    if (zustand === 'auf' && sel.length === 1 && i === 0 && ctx.ansicht === 'seite') {
+      const pose0 = poseSeite(ed.dok);
+      const s0 = linieVon(n).knoten[0]!.p;
+      const k = knotenBei(pose0, { x: s0[0], y: s0[1] });
+      if (k !== null) {
+        const p0 = pose0.knoten[k]!.p;
+        ed.beginGeste();
+        ctx.ziehen(
+          e,
+          (ev) => {
+            const p = ctx.lokal(ev.clientX, ev.clientY);
+            poseSeiteSetzen(bewegeKnoten(pose0, k, { x: p0.x + p.x - start.x, y: p0.y + p.y - start.y }));
           },
           () => useEditor.getState().endeGeste(),
         );

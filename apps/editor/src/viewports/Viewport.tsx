@@ -121,7 +121,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
                   : 'Platzhalter-Körper'}
           </div>
         )}
-        {id === 'creation' && modus !== 'editor' && !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>}
+        {id === 'creation' && modus !== 'editor' && modus !== 'fressen' && !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>}
       </div>
       <div className="eckknoepfe">
         {id !== 'creation' && (

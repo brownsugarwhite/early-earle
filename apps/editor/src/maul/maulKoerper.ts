@@ -1,7 +1,7 @@
 // Maul-Tab (Versuch 12.10.): 3D-Körper mit Maul aus dem Dokument. Käfig, Anpassung (zu/auf) und Kiefer-Rig werden nur
 // neu gebaut, wenn sich Profile oder Lippen ändern (≈ 0,3–0,5 s); die Öffnung (Regler) rechnet nur die Zwischenstufe.
 
-import type { Dokument } from '@ee/shape';
+import type { Dokument, Profil } from '@ee/shape';
 import {
   type KieferRig,
   type MaulKaefig,
@@ -39,7 +39,13 @@ export type MaulInfo = {
 
 export const useMaulInfo = create<{ info: MaulInfo | null }>(() => ({ info: null }));
 
-export type MaulBau = { profile: Dokument['profile']; maul: NonNullable<Dokument['maul']>; spanten: Dokument['spanten']; mk: MaulKaefig; zu: Netz; auf: Netz; rig: KieferRig };
+export type MaulBau = { profile: Dokument['profile']; maul: NonNullable<Dokument['maul']>; spanten: Dokument['spanten']; pose: Profil | null; mk: MaulKaefig; zu: Netz; auf: Netz; rig: KieferRig };
+
+/** Gespeicherte Seitenform der Fressen-Pose (gleiche Punktstruktur), sonst null (Versuch 12.10. nachts). */
+function poseSeiteVon(dok: Dokument): Profil | null {
+  const p = dok.posenProfile?.fressen?.seite;
+  return p && p.knoten.length === dok.profile.seite.knoten.length ? p : null;
+}
 
 let letzter: MaulBau | null = null;
 
@@ -49,13 +55,16 @@ export function maulBauen(dok: Dokument): MaulBau | null {
     useMaulInfo.setState({ info: null });
     return null;
   }
-  if (letzter && letzter.profile === dok.profile && letzter.maul === dok.maul && letzter.spanten === dok.spanten) return letzter;
+  const pose = poseSeiteVon(dok);
+  if (letzter && letzter.profile === dok.profile && letzter.maul === dok.maul && letzter.spanten === dok.spanten && letzter.pose === pose) return letzter;
   const t0 = performance.now();
-  const mk = maulKaefig(dok, maulEingabeAus(dok.maul), MAUL_STANDARD);
+  // Fressen mit eigener Seitenform: Die offene Haut legt sich an sie (ARAP), wie bei Florians nachgezogenen Bögen
+  const eingabe = { ...maulEingabeAus(dok.maul), ...(pose ? { dokAuf: { ...dok, profile: { ...dok.profile, seite: pose } } } : {}) };
+  const mk = maulKaefig(dok, eingabe, MAUL_STANDARD);
   const zu = maulAnpassen(mk, 'zu', 8, 3);
   const auf = maulAnpassen(mk, 'auf', 8, 3);
   const rig = kieferRig(mk, zu, auf);
-  letzter = { profile: dok.profile, maul: dok.maul, spanten: dok.spanten, mk, zu, auf, rig };
+  letzter = { profile: dok.profile, maul: dok.maul, spanten: dok.spanten, pose, mk, zu, auf, rig };
   const grad = (w: number) => (w * 180) / Math.PI;
   const mitte = (mk.tasche.length - 1) / 2;
   const p = (i: number) => [...zu.punkte[i]!] as [number, number, number];
@@ -80,7 +89,7 @@ export function maulBauen(dok: Dokument): MaulBau | null {
 
 /** Zuletzt gebautes Maul, falls es noch zum Dokument passt (baut nie selbst; für die 2D-Ebenen). */
 export function maulZuletzt(dok: Dokument): MaulBau | null {
-  return letzter && dok.maul && letzter.profile === dok.profile && letzter.maul === dok.maul && letzter.spanten === dok.spanten ? letzter : null;
+  return letzter && dok.maul && letzter.profile === dok.profile && letzter.maul === dok.maul && letzter.spanten === dok.spanten && letzter.pose === poseSeiteVon(dok) ? letzter : null;
 }
 
 const FARBE: Record<string, [number, number, number]> = { haut: [1, 1, 1], lippe: [0.96, 0.74, 0.64], tasche: [0.55, 0.12, 0.18] };

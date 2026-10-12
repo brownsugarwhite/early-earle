@@ -220,3 +220,60 @@ test('Maul an der Umrisslinie: Anfänge sind Umrissknoten, Spalt im Umriss, Unte
   d = await dok(page);
   expect(d.maul!.zu.unten!.knoten[0]!.p[0]).toBeCloseTo(u0[0], 9);
 });
+
+// Florian 12.10. nachts: „In der Fressenpose muss ich auch den Shape bearbeiten können!“
+test('Fressen: Seitenform der Pose bearbeiten, geschlossener Umriss bleibt, offenes Maul im Umriss', async ({ page }) => {
+  await bereit(page);
+  const seite = await abbildung(page, 'seite');
+  type P = { knoten: { p: { x: number; y: number } }[] };
+  type D = { profile: { seite: P }; posenProfile?: { fressen?: { seite?: P } } };
+  const dokument = () => page.evaluate(() => (window as unknown as { __stores: { editor: { getState(): { dok: D } } } }).__stores.editor.getState().dok);
+
+  await page.click('[data-view="seite"] [data-tab="maul"]');
+  for (const w of [{ x: -R - 0.015, y: R * 0.8 }, { x: -R * 0.75, y: R * 0.7 }, { x: -R * 0.4, y: R * 0.66 }]) {
+    const s = seite(w);
+    await page.mouse.click(s.x, s.y);
+  }
+  await page.keyboard.press('Enter');
+  await page.locator('.leiste').getByRole('button', { name: 'getrennt' }).click();
+  await warteAufBau(page);
+  const zuVorher = (await dokument()).profile.seite;
+
+  // Fressen, zurück zur Form: die Seite zeigt die Pose-Form mit offenem Maul im Umriss
+  await page.locator('.menueleiste').getByRole('button', { name: 'Fressen', exact: true }).click();
+  await page.click('[data-view="seite"] [data-tab="maul"]');
+  await warteAufBau(page);
+  await expect(page.locator('.leiste [data-posebereich]')).toBeVisible();
+  await expect(page.locator('.leiste [data-poseform="folgt"]')).toBeVisible();
+  await expect(page.locator('.vp-ober[data-view="seite"] .knoten-punkt')).toHaveCount(zuVorher.knoten.length);
+  await expect(page.locator('.vp-ober[data-view="seite"] [data-maulspalt]')).toHaveCount(1);
+
+  // tiefsten Punkt (Kinn/Bauch) nach unten ziehen: nur die Pose-Form ändert sich
+  const punkte = await page.locator('.vp-ober[data-view="seite"] .knoten-punkt').evaluateAll((els) =>
+    els.map((el) => {
+      const b = el.getBoundingClientRect();
+      return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    }),
+  );
+  const tief = punkte.reduce((a, q) => (q.y > a.y ? q : a));
+  await page.mouse.move(tief.x, tief.y);
+  await page.mouse.down();
+  await page.mouse.move(tief.x, tief.y + 30, { steps: 6 });
+  await page.mouse.up();
+  let d = await dokument();
+  expect(d.posenProfile?.fressen?.seite?.knoten).toHaveLength(d.profile.seite.knoten.length);
+  const yMin = (p: P) => Math.min(...p.knoten.map((k) => k.p.y));
+  expect(yMin(d.posenProfile!.fressen!.seite!)).toBeLessThan(yMin(zuVorher) - 0.03);
+  expect(yMin(d.profile.seite)).toBeCloseTo(yMin(zuVorher), 9);
+  await expect(page.locator('.leiste [data-poseform="eigen"]')).toBeVisible();
+  await warteAufBau(page);
+  await page.screenshot({ path: path.join(bilder, 'fressen-form.png') });
+
+  // Editor-Tab: geschlossener Umriss unverändert; Rückgängig verwirft die Pose-Form wieder
+  await page.locator('.menueleiste').getByRole('button', { name: 'Editor', exact: true }).click();
+  d = await dokument();
+  expect(yMin(d.profile.seite)).toBeCloseTo(yMin(zuVorher), 9);
+  await page.keyboard.press('ControlOrMeta+z');
+  d = await dokument();
+  expect(d.posenProfile?.fressen?.seite).toBeUndefined();
+});
