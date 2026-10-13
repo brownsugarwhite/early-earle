@@ -15,7 +15,7 @@ const html = `<html><body style="margin:0;background:#f4f1e4;font:13px Helvetica
   .map(([p, t]) => `<figure style="margin:0"><figcaption style="margin-bottom:6px">${t}</figcaption><img src="${uri(p)}" style="height:460px;display:block"></figure>`)
   .join('')}</div></body></html>`;
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1800, height: 560 }, deviceScaleFactor: 1 });
+const page = await browser.newPage({ viewport: { width: 640 * kacheln.length + 64, height: 560 }, deviceScaleFactor: 1 });
 await page.setContent(html);
 const box = await page.locator('div').first().boundingBox();
 await page.screenshot({ path: aus, clip: { x: 0, y: 0, width: Math.ceil(box.width), height: Math.ceil(box.height) } });

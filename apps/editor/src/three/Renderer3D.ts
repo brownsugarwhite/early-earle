@@ -4,7 +4,7 @@
 // Look: Matcap (Licht an der Ansicht, wie Blender-Solid), Kachel als 10-%-Fläche, harter Schatten von
 // einem eigenen Sonnenlicht (wirkt nur auf den Schatten, die Matcap ignoriert Licht).
 
-import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, installTslFunctionCacheFix, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms } from '@ee/render';
+import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, createToothMaterial, installTslFunctionCacheFix, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms } from '@ee/render';
 import type { LoftNetz } from '@ee/shape';
 import {
   BufferAttribute,
@@ -28,7 +28,7 @@ import {
   Vector4,
   WebGPURenderer,
 } from 'three/webgpu';
-import { type Auge, PALETTEN, type Palette } from './wesenLook';
+import { type Auge, type Gesicht, PALETTEN, type Palette } from './wesenLook';
 import type { Kamera } from '../state/uiStore';
 import type { Rect } from '../types';
 import { kameraPosition } from './kamera';
@@ -61,6 +61,8 @@ export class Renderer3D {
   /** Beweis 5: Feuer-/Gas-Wesen (Körper und Klingen) mit eigenem Material */
   private readonly feuer: Mesh;
   private readonly feuerUniforms: FeuerUniforms;
+  /** Beweis 4: Zähne mit Verlauf Ansatz → Spitze (Attribut `eeTooth`) */
+  private readonly zaehne: Mesh;
   private readonly wesenUniforms: CreatureMaterialUniforms;
   private palette: Palette = PALETTEN.tiger!;
   private lebenTimer: number | null = null;
@@ -87,7 +89,7 @@ export class Renderer3D {
     this.szene.add(this.koerper);
 
     this.wesenUniforms = createCreatureUniforms(this.palette.farben, STIL_STANDARD, 1);
-    const wesenMaterial = createCreatureMaterial(this.wesenUniforms);
+    const wesenMaterial = createCreatureMaterial(this.wesenUniforms, { ruheAttribut: true });
     wesenMaterial.shadowSide = FrontSide;
     this.wesen = new Mesh(new BufferGeometry(), wesenMaterial);
     this.wesen.visible = false;
@@ -103,6 +105,13 @@ export class Renderer3D {
     this.feuer.castShadow = true;
     this.feuer.frustumCulled = false;
     this.szene.add(this.feuer);
+    const zahnMaterial = createToothMaterial(this.wesenUniforms, '#f3e6c8');
+    zahnMaterial.shadowSide = FrontSide;
+    this.zaehne = new Mesh(new BufferGeometry(), zahnMaterial);
+    this.zaehne.visible = false;
+    this.zaehne.castShadow = true;
+    this.zaehne.frustumCulled = false;
+    this.szene.add(this.zaehne);
 
     const kachel = new Mesh(new PlaneGeometry(1, 1), new MeshBasicNodeMaterial({ color: 0x000000, transparent: true, opacity: 0.1, depthWrite: false }));
     kachel.rotation.x = -Math.PI / 2;
@@ -240,10 +249,12 @@ export class Renderer3D {
    * Beweis 4: Earle-Wesen aus Dreiecken (ohne Index) mit 16 Deskriptor-Floats je Ecke (eeSpine, eeRegion, eeExtra,
    * eePucker, eeTeil, Reihenfolge wie `CreatureMesh`), Körperhöhe und gemalten Schlitzaugen.
    */
-  setzeWesen(positionen: Float32Array, normalen: Float32Array, deskriptoren: Float32Array, hoehe: number, augen: Auge[], lippenBand = 0) {
+  setzeWesen(positionen: Float32Array, normalen: Float32Array, deskriptoren: Float32Array, hoehe: number, augen: Auge[], lippenBand = 0, ruhe: Float32Array | null = null, gesicht: Gesicht | null = null) {
     const g = new BufferGeometry();
     g.setAttribute('position', new BufferAttribute(positionen, 3));
     g.setAttribute('normal', new BufferAttribute(normalen, 3));
+    // Ruhelage je Ecke: Muster, Zonen, Augen und Korn rechnen darin und bleiben bei Posen stehen
+    g.setAttribute('eeRest', new BufferAttribute(ruhe && ruhe.length === positionen.length ? ruhe : positionen, 3));
     const ib = new InterleavedBuffer(deskriptoren, 16);
     g.setAttribute('eeSpine', new InterleavedBufferAttribute(ib, 4, 0));
     g.setAttribute('eeRegion', new InterleavedBufferAttribute(ib, 4, 4));
@@ -255,7 +266,18 @@ export class Renderer3D {
     u.bodyScale.value = Math.max(1e-3, hoehe);
     u.zonen.hoehe.value = Math.max(1e-3, hoehe);
     u.lippenBand.value = lippenBand;
+    if (gesicht) {
+      u.naseMitte.value.set(gesicht.nase[0], gesicht.nase[1], gesicht.nase[2], gesicht.radius);
+      u.naseOben.value.set(gesicht.oben[0], gesicht.oben[1], gesicht.oben[2], gesicht.hoehe);
+      u.naseRechts.value.set(gesicht.rechts[0], gesicht.rechts[1], gesicht.rechts[2], 0);
+      u.philtrumA.value.set(gesicht.philtrumA[0], gesicht.philtrumA[1], gesicht.philtrumA[2], gesicht.breite);
+      u.philtrumB.value.set(gesicht.philtrumB[0], gesicht.philtrumB[1], gesicht.philtrumB[2]);
+      u.gesichtAn.value = 1;
+    } else u.gesichtAn.value = 0;
     u.eyeCount.value = Math.min(4, augen.length);
+    // Lidring um die gemalten Augen (Tiger): der Höhlenring des Materials auf denselben Augenlagen
+    u.ringCount.value = this.palette.augenRing ? Math.min(4, augen.length) : 0;
+    u.ringStaerke.value = this.palette.augenRing ?? 0.5;
     augen.slice(0, 4).forEach((a, i) => {
       const n = new Vector3(...a.normale).normalize();
       const up = new Vector3(0, 1, 0).addScaledVector(n, -n.y).normalize();
@@ -301,6 +323,25 @@ export class Renderer3D {
     this.nachUebersetzen();
   }
 
+  /** Zähne (Dreiecke) mit Höhenanteil je Ecke; null blendet sie aus. */
+  setzeZaehne(positionen: Float32Array | null, normalen: Float32Array | null, anteil: Float32Array | null) {
+    if (!positionen || !normalen || !anteil) {
+      this.zaehne.visible = false;
+      this.anfordern();
+      return;
+    }
+    const g = new BufferGeometry();
+    g.setAttribute('position', new BufferAttribute(positionen, 3));
+    g.setAttribute('normal', new BufferAttribute(normalen, 3));
+    g.setAttribute('eeTooth', new BufferAttribute(anteil, 1));
+    g.computeBoundingSphere();
+    const alt = this.zaehne.geometry;
+    this.zaehne.geometry = g;
+    this.zaehne.visible = true;
+    alt.dispose();
+    this.anfordern();
+  }
+
   /** Lagen und Normalen des sichtbaren Wesens an Ort und Stelle ersetzen (Wehen der Klingen je Bild); gleiche Länge vorausgesetzt. */
   aktualisiereNetz(positionen: Float32Array, normalen: Float32Array) {
     const mesh = this.feuer.visible ? this.feuer : this.wesen.visible ? this.wesen : this.koerper;
@@ -325,6 +366,7 @@ export class Renderer3D {
     u.bauchlinie.value = p.bauchlinie;
     u.bauchStaerke.value = p.bauchStaerke;
     u.glimmerWesen.value = p.glimmer;
+    u.gesichtHell.value = p.gesichtHell ?? 0;
     u.teilAn.value = 0;
     this.anfordern();
   }

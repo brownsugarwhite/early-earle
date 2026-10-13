@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const hier = path.dirname(fileURLToPath(import.meta.url));
-const wesenListe = (process.argv[2] ?? 'kugel,rex,langhals,ueberhang,tiger').split(',');
+const wesenListe = process.argv[2] === '-' ? [] : (process.argv[2] ?? 'kugel,rex,langhals,ueberhang,tiger').split(','); // „-“ = nur die Varianten (MAUL, BEINE, STIL, TIGER)
 const aus = path.resolve(process.argv[3] ?? path.resolve(hier, '../../../docs/progress/editor'));
 const url = process.env.EDITOR_URL ?? 'http://localhost:5180';
 const browser = await chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });
@@ -85,6 +85,25 @@ if (process.env.STIL) {
     console.log(`${stil}: ${r.w}×${r.h}`);
   }
   fs.rmSync(path.join(aus, 'video-roh'), { recursive: true, force: true });
+}
+// Beweis 4: Tiger (Kastenschnauze, Gesicht, Wangen, Ohren) im Earle-Look: Kopf zu, zu mit Käfig, auf (Muster bleiben stehen),
+// ganzer Körper; Kamera wie der Bogen (Dreiviertel von vorn, Körper nach rechts hinten)
+if (process.env.TIGER) {
+  const kopf = 'kamera=-62,8,0.8,-0.27,0.4,0';
+  const faelle = [
+    ['kopf', `oeffnung=0&${kopf}`],
+    ['kopf-kaefig', `oeffnung=0&kaefig=1&${kopf}`],
+    ['kopf-auf', `oeffnung=1&${kopf}`],
+    ['ganz', 'oeffnung=0&kamera=-62,10,2.1,-0.05,0.3,0'],
+  ];
+  for (const [name, q] of faelle) {
+    await page.goto(`${url}/?versuch=kern&wesen=tiger&bauweise=kern&look=earle&palette=tiger&maul=vorn&${q}`);
+    await page.waitForFunction(() => window.__editor && window.__editor.vertices() > 0, null, { timeout: 60_000 });
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(1800);
+    const r = await page.evaluate(() => window.__stores.rahmen.getState().rects.creation);
+    await page.screenshot({ path: path.join(aus, `kern-tiger-${name}.png`), clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
+  }
 }
 console.log(`geschrieben: ${aus}/kern-*.png`);
 await browser.close();

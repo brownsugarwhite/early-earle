@@ -88,8 +88,15 @@ export function Szene3D() {
           if (t.stil === 'feuer' || t.stil === 'gas') r.setzeFeuer(t.positionen, t.normalen, t.hoehe * s, [t.mitte[0] * s, t.mitte[1] * s, t.mitte[2] * s], t.stil, augen);
           else if (t.deskriptoren) {
             r.setzePalette(PALETTEN[useKernAnzeige.getState().palette] ?? PALETTEN.tiger!);
-            r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, augen, t.lippenBand * s);
+            const sk = (p: [number, number, number]): [number, number, number] => [p[0] * s, p[1] * s, p[2] * s];
+            const gesicht = t.gesicht ? { ...t.gesicht, nase: sk(t.gesicht.nase), philtrumA: sk(t.gesicht.philtrumA), philtrumB: sk(t.gesicht.philtrumB), radius: t.gesicht.radius * s, hoehe: t.gesicht.hoehe * s, breite: t.gesicht.breite * s } : null;
+            if (t.ruhe && s !== 1) for (let i = 0; i < t.ruhe.length; i++) t.ruhe[i]! *= s;
+            r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, augen, t.lippenBand * s, t.ruhe, gesicht);
           } else r.setzeDreiecke(t.positionen, t.normalen);
+          if (t.zaehne) {
+            if (s !== 1) for (let i = 0; i < t.zaehne.positionen.length; i++) t.zaehne.positionen[i]! *= s;
+            r.setzeZaehne(t.zaehne.positionen, t.zaehne.normalen, t.zaehne.anteil);
+          } else r.setzeZaehne(null, null, null);
           // Beweis 5: Klingen wehen (Käfig-Pose je Bild, ≈ 14 Bilder je Sekunde)
           if (klingenUhr !== null) window.clearInterval(klingenUhr);
           klingenUhr = null;

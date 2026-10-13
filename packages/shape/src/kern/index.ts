@@ -12,3 +12,4 @@ export * from './breite';
 export * from './maul';
 export * from './teil';
 export * from './klinge';
+export * from './kasten';

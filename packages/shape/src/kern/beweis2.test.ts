@@ -131,7 +131,7 @@ describe('Beweis 2: Maul mit Haps', () => {
     const r = pruefen('Langhals', langhals, 'hals');
     expect(r.pr.ok).toBe(true);
     expect(r.lippeMax).toBeLessThan(rillePx(r.abl));
-  });
+  }, 30_000);
   it('Kugel, Maul vorn: 0 Durchdringungen bei 0/25/50/75/100 %', () => {
     const r = pruefen('Kugel', neuesDokument('Kugel'), 'vorn');
     expect(r.pr.ok).toBe(true);

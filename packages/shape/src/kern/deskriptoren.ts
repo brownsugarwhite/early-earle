@@ -11,8 +11,15 @@ import type { BeinErgebnis } from './teil';
 
 export const DESKRIPTOR_FLOATS = 16;
 
+/**
+ * Gesichtsmaske (region.z) auf dem Käfig, in Ringen gezählt: Kappe und Ringe bis `voll` ganz, bis `aus` auslaufend;
+ * ab Ring 1 bleibt die Oberseite frei (cos θ ≥ `oben` → 0, weich über 0,4), damit Nasenrücken und Stirn ihr Muster behalten.
+ * Das Material macht die Maske hell (Bauchfarbe, `gesichtHell`) und hält das Muster von ihr fern.
+ */
+export type GesichtMaske = { voll: number; aus: number; oben: number };
+
 /** 16 Floats je feinem Punkt (Reihenfolge wie `CreatureMesh`). */
-export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis): Float32Array {
+export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis, gesicht?: GesichtMaske): Float32Array {
   const v = abl.vorlage;
   const { R, N, c } = v;
   const n = abl.kaefig.n;
@@ -50,6 +57,11 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis): Floa
   const kC = new Float64Array(n);
   const kSi = new Float64Array(n);
   const kU = new Float64Array(n);
+  const kGesicht = new Float64Array(n);
+  const glatt = (a: number, b: number, x: number) => {
+    const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
   for (let i = 0; i < R; i++) {
     for (let j = 0; j < N; j++) {
       const p = v.ringPunkt(i, j);
@@ -58,6 +70,11 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis): Floa
       kC[p] = Math.cos(th);
       kSi[p] = Math.sin(th);
       kU[p] = umfang[i]!;
+      if (gesicht) {
+        const laengs = i <= gesicht.voll ? 1 : Math.max(0, 1 - (i - gesicht.voll) / Math.max(1, gesicht.aus - gesicht.voll));
+        const frei = i === 0 ? 1 : glatt(gesicht.oben, gesicht.oben - 0.4, Math.cos(th));
+        kGesicht[p] = laengs * frei;
+      }
     }
   }
   for (const seite of ['vorn', 'hinten'] as const) {
@@ -75,6 +92,7 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis): Floa
         kC[p] = Math.cos(th);
         kSi[p] = Math.sin(th);
         kU[p] = U1 * Math.max(0.05, r);
+        if (gesicht && seite === 'vorn') kGesicht[p] = 1;
       }
     }
   }
@@ -91,6 +109,7 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis): Floa
       kC[i] = kC[q]!;
       kSi[i] = kSi[q]!;
       kU[i] = kU[q]!;
+      kGesicht[i] = kGesicht[q]!;
     }
   }
   const kTeil = new Float64Array(n);
@@ -114,6 +133,7 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis): Floa
   const fC = anwenden1(g, kC);
   const fSi = anwenden1(g, kSi);
   const fU = anwenden1(g, kU);
+  const fGesicht = gesicht ? anwenden1(g, kGesicht) : null;
   const m = g.zeilen;
   const out = new Float32Array(m * DESKRIPTOR_FLOATS);
   for (let i = 0; i < m; i++) {
@@ -125,7 +145,7 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis): Floa
     out[o + 3] = Math.cos(th);
     out[o + 4] = fRachen ? fRachen[i]! : 0; // Rachen (0,5 Lippe … 1 Rachenwand)
     out[o + 5] = fAbstand ? fAbstand[i]! : 10; // Abstand zur Maulkante (Anteil der Höhe); weit weg ohne Maul
-    out[o + 6] = 0; // Gesichtsmaske
+    out[o + 6] = fGesicht ? fGesicht[i]! : 0; // Gesichtsmaske (helle Schnauze ohne Muster)
     out[o + 7] = fKante ? fKante[i]! : 0; // Höhle/Kante
     out[o + 8] = 0; // AO
     out[o + 9] = 0; // Dicke

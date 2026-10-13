@@ -17,6 +17,7 @@ import { type Kaefig, alleFlaechen, kaefigAusFlaechen, kanteZwischen, pruefeKaef
 import { type Roehre, roehre } from '../kaefig/roehre';
 import { luLoesen, luZerlegen } from '../loeser/lu';
 import { anwenden3 } from '../subdivision/matrix';
+import type { KlingenLage } from './klinge';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import {
   ABLEIT_STANDARD,
@@ -1049,4 +1050,47 @@ export function maulPose(abl: MaulErgebnis, oeffnung: number): { xyz: Float64Arr
   }
   const fein = anwenden3(abl.unterteilung.grenze, xyz);
   return { xyz, fein };
+}
+
+// ---------- Zähne ----------
+
+/**
+ * Zahnlagen am Zahnfleisch (Taschenreihe 1) des posierten Käfigs: obere Zähne hängen von der oberen Reihe zur unteren,
+ * untere stehen von der unteren zur oberen (Richtung = Verbindung der beiden Reihen, so folgen sie den Kiefern und zeigen
+ * offen in die Bohne). Rechts und links, obere und untere versetzt; vorn groß, hinten kleiner, Spitzen leicht nach hinten.
+ */
+export function zahnLagen(abl: MaulErgebnis, xyz: Float64Array, hoehe: number, opt: { oben: number; unten: number; laenge: number; breite: number } = { oben: 6, unten: 5, laenge: 0.075, breite: 0.45 }): KlingenLage[] {
+  const m = abl.maul;
+  const n = m.lage.m;
+  const P = (i: number): [number, number, number] => [xyz[3 * i]!, xyz[3 * i + 1]!, xyz[3 * i + 2]!];
+  const lagen: KlingenLage[] = [];
+  const kette = (links: boolean, obenReihe: boolean) => (links ? (obenReihe ? m.tasche.obenLinks[0]! : m.tasche.untenLinks[0]!) : obenReihe ? m.tasche.oben[0]! : m.tasche.unten[0]!);
+  for (const links of [false, true]) {
+    for (const obenZahn of [true, false]) {
+      const anzahl = obenZahn ? opt.oben : opt.unten;
+      for (let z = 0; z < anzahl; z++) {
+        // Spalten 1 … n − 2 gleichmäßig, obere und untere versetzt
+        const t = Math.round(1 + ((n - 3) * (z + (obenZahn ? 0.25 : 0.75))) / anzahl);
+        if (t < 1 || t > n - 2) continue;
+        const fuss = P(kette(links, obenZahn)[t]!);
+        const gegen = P(kette(links, !obenZahn)[t]!);
+        let achse: [number, number, number] = [gegen[0] - fuss[0], gegen[1] - fuss[1], gegen[2] - fuss[2]];
+        let l = Math.hypot(...achse);
+        if (l < 1e-6) {
+          achse = obenZahn ? [0, -1, 0] : [0, 1, 0];
+          l = 1;
+        }
+        achse = [achse[0] / l, achse[1] / l, achse[2] / l];
+        const pfad = links ? m.pfadLinks : m.pfad;
+        const a = P(pfad[Math.max(0, t - 1)]!);
+        const b = P(pfad[Math.min(n, t + 1)]!);
+        const tang: [number, number, number] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        // Breite quer zur Lippe (Zahn flach nach außen), Biegung längs der Lippe nach hinten
+        const quer: [number, number, number] = [achse[1] * tang[2] - achse[2] * tang[1], achse[2] * tang[0] - achse[0] * tang[2], achse[0] * tang[1] - achse[1] * tang[0]];
+        const groesse = opt.laenge * hoehe * (1 - 0.45 * (t / n));
+        lagen.push({ fuss, achse, quer, laenge: groesse, breite: opt.breite * groesse, phase: 0, basis: t });
+      }
+    }
+  }
+  return lagen;
 }

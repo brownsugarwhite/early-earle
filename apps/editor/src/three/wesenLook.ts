@@ -15,20 +15,27 @@ export type Palette = {
   bauchlinie: number;
   bauchStaerke: number;
   glimmer: number;
+  /** Helle Schnauze über die Gesichtsmaske der Deskriptoren (0 = aus) */
+  gesichtHell?: number;
+  /** Dunkler Lidring um die gemalten Augen (Stärke, 0 = aus) */
+  augenRing?: number;
 };
 
 export const PALETTEN: Record<string, Palette> = {
   tiger: {
     name: 'Tiger',
-    farben: { grund: '#b56939', bauch: '#ddbc96', muster: '#392c24', akzent: '#f0d9b0', lippe: '#bf8e6c', rachen: '#6e2334', auge: '#101418', zonen: ['#e8d2ad', '#8f4a24', '#f3e6c8'], glimmer: '#f7d6a0' },
-    muster: { typ: 'streifen', dichte: 0.55, groesse: 0.42, drehung: 0, spitze: 0.7, zittern: 0.3, seed: 3 },
+    farben: { grund: '#b56939', bauch: '#ddbc96', muster: '#392c24', akzent: '#f0d9b0', lippe: '#3a2a26', rachen: '#6e2334', auge: '#e8b23a', zonen: ['#e8d2ad', '#8f4a24', '#f3e6c8'], glimmer: '#f7d6a0' },
+    muster: { typ: 'streifen', dichte: 0.7, groesse: 0.3, drehung: 0, spitze: 0.85, zittern: 0.3, seed: 3 },
     zonen: [
       { art: 'bauch', lage: 0.42, breite: 0.85, federung: 0.04, muster: 'frei' },
       { art: 'ruecken', lage: 0.55, breite: 0.45, federung: 0.9, muster: 'ueber' },
+      { art: 'latz', lage: 0.5, breite: 0.55, federung: 0.08, muster: 'frei' },
     ],
     bauchlinie: -0.15,
     bauchStaerke: 0.6,
     glimmer: 0.3,
+    gesichtHell: 1,
+    augenRing: 0.6,
   },
   rex: {
     name: 'Rex',
@@ -63,3 +70,6 @@ export const PALETTEN: Record<string, Palette> = {
 };
 
 export type Auge = { pos: [number, number, number]; normale: [number, number, number]; groesse: number };
+
+/** Gesicht fürs Earle-Material (Beweis 4): Dreiecksnase (Mitte, Oben, Rechts, Radius, Höhe) und Scharte A → B mit Breite; alles Welt/Ruhelage. */
+export type Gesicht = { nase: [number, number, number]; oben: [number, number, number]; rechts: [number, number, number]; radius: number; hoehe: number; philtrumA: [number, number, number]; philtrumB: [number, number, number]; breite: number };

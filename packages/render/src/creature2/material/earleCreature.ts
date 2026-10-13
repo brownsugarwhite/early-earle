@@ -256,7 +256,12 @@ function tupfer(p: Vec3Node, seed: number, rMin: number, rMax: number, weich: nu
   return { m: m.mul(lod), h };
 }
 
-export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNodeMaterial {
+export interface CreatureMaterialOptionen {
+  /** Ruhelage aus dem Attribut `eeRest` statt `positionGeometry` (CPU-posierte Netze im Editor: Muster, Zonen, Augen und Korn bleiben bei Posen stehen). */
+  ruheAttribut?: boolean;
+}
+
+export function createCreatureMaterial(u: CreatureMaterialUniforms, optionen: CreatureMaterialOptionen = {}): MeshBasicNodeMaterial {
   const material = new MeshBasicNodeMaterial();
   material.name = 'ee-wesen';
   material.fog = false;
@@ -275,7 +280,7 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const crease = extra.z;
     // Unterlippenseite (1 unten) als eigener Kanal — blendet an den Mundwinkeln weich, zeichnet nirgends eine Linie
     const unten = clamp(extra.w, 0, 1);
-    const rest = positionGeometry as unknown as Vec3Node;
+    const rest = (optionen.ruheAttribut ? (attribute('eeRest', 'vec3') as Vec3Node) : (positionGeometry as unknown as Vec3Node)).toVar();
     const H = u.bodyScale;
     // An scharfen Kanten (Maullinie, Augenwulst, Standkante) die Facettennormale nehmen: die Kante bleibt im Licht sichtbar
     const flatN = normalize(cross(dFdx(positionView as unknown as Vec3Node), dFdy(positionView as unknown as Vec3Node)));
