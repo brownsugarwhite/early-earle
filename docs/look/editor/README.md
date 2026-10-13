@@ -15,3 +15,8 @@ Florians Ablauf dazu (12.10.): Körper → Maul-Tab (blau) → Kiefer gleich/get
 Zusatzvorgaben aus dem Chat: Kurvenkontur 3 px, Punkte rund mit Ø 10 px, Bézier-Griffe als 6-px-Quadrate, Farben wie im Screenshot. Jedes neue Wesen startet als Kugel aus drei Kreisen.
 
 Plan: [`docs/plans/2026-10-11-editor-grundlayout.md`](../../plans/2026-10-11-editor-grundlayout.md)
+- `07-ueberhang-spant-3d.webp` (13.10.): Seite mit Schnauzen-Überhang (Umriss läuft oben nach vorn und unten wieder zurück), Spant S1 und Hauptspant H; Front mit Spant S1; Top als Pfeil mit Haken hinten; 3D „Kanten im Käfig“ blockt die Einbuchtung zu (flache Front statt Schnauze über Bauch).
+- `08-spant-acht.webp` (13.10.): Spant S1 in der Front als Acht geformt (die Hälfte kreuzt die Achse). Florian: Die beiden Teile sollen clippen und zwei Formen oben und unten werden, der überlappende Teil in der Mitte soll weg (Bauch, Schnauze oder sogar ein Loch).
+- `09-top-haken-3d.webp` (13.10.): Top mit Haken an der Rückseite (Umriss läuft wieder nach innen); 3D von oben füllt die Einbuchtung auf.
+
+Florians Fragen dazu (13.10. morgens): Spanten sollen die wahre Form zeigen (hier zwei Ringe für Schnauze und Bauch). Spanten dynamischer: Jeder Punkt einer Kantenlinie ist ein Punkt im Spant, in der Front knicken ergibt eine echte Kante. Überhänge ohne Wirbelsäule, Einbuchtungen im Top nicht ausblocken. „Eventuell ist das Mesh auch falsch aufgebaut? Gibt es bessere Lösungen? Vielleicht direkt in Lofts?“
