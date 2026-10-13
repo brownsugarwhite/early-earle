@@ -117,7 +117,7 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 ## Arbeitsweise
 
 - **Look-Beweis:** `node apps/editor/scripts/vergleich.mjs` (Web-Modus muss laufen) → `docs/progress/editor/vergleich-grundlayout.png` (Vorlage | Render). Render und Differenz liegen unter `apps/editor/test-results/vergleich/`.
-- **E2E:** `E2E_PORT=5191 EE_GPU=1 pnpm --filter @ee/editor e2e` (echte GPU, eigener Port). Die Tests schreiben Bilder nach `docs/progress/editor/`.
+- **E2E:** `E2E_PORT=5191 EE_GPU=1 pnpm --filter @ee/editor e2e` (echte GPU, eigener Port). Die Tests schreiben Bilder nach `docs/progress/editor/`. Der Phase-1-Ablauf steht in `e2e/kern-ablauf.spec.ts` (`-- kern-ablauf`, 4 Tests ≈ 60 s; Haken `window.__editor.{wesen,treffen,reifenPixel,griffe}`); die Versuchs-Specs (maul, kanten, spanten, wirbel, rund, schnitte) setzen die Loft-Bauweise voraus und brauchen `?versuche=1` für die Tabs.
 - **Ports:** 5180 Web-Modus (`editor-web` in `.claude/launch.json`), 5181 Electron-Dev, 5190+ E2E.
 - **Desktop-Rauchtest:** `EDITOR_SELBSTTEST=<png> EDITOR_BIBLIOTHEK=<ordner>`. Nie in Florians echte Bibliothek schreiben (`~/Documents/early earle Editor/Bibliothek`).
 - Test-Zugriff: `window.__stores` (editor, ui, rahmen) und `window.__editor` (backend, vertices).

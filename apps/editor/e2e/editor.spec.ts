@@ -39,10 +39,10 @@ test.beforeEach(async ({ page }) => {
 test('Grundlayout: vier Viewports wie die Vorlage, 3D läuft', async ({ page }) => {
   await bereit(page);
   const r = await rects(page);
-  // feste Seitenleiste rechts (Florian 12.10.): 2×2-Raster bis 1288, Leiste 1328…1688
-  expect(r.seite).toEqual({ x: 40, y: 84, w: 604, h: 498.5 });
-  expect(r.creation!.x + r.creation!.w).toBe(1288);
-  expect(r.leiste).toEqual({ x: 1328, y: 84, w: 360, h: 1037 });
+  // Stamm links (Plan 9.3, 16 + 56 + 24), Tafel rechts 300 px, unten 60 px für das Dock: 2×2-Raster 96 … 1348, Tafel 1388 … 1688
+  expect(r.seite).toEqual({ x: 96, y: 84, w: 606, h: 488.5 });
+  expect(r.creation!.x + r.creation!.w).toBe(1348);
+  expect(r.leiste).toEqual({ x: 1388, y: 84, w: 300, h: 1017 });
   const d = await dok(page);
   expect(d.profile.seite!.knoten).toHaveLength(4);
   expect(d.profile.front!.knoten).toHaveLength(3);
