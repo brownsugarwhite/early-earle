@@ -174,8 +174,11 @@ export function pruefwesenBauplan(name: string): Ausstattung {
   if (name === 'tiger') {
     return {
       kasten: { fVorn: 0.02, fHinten: 0.15, fRund: 0.25, haerte: 0.85 },
-      maulLinie: { fv: [{ f: 0.02, v: 0.28 }, { f: 0.1, v: 0.26 }, { f: 0.17, v: 0.33 }], unterSpitze: 0 },
-      maulOptionen: { winkelUnten: 30, winkelOben: 26, band: 1 },
+      // Mercedesstern (Florian 15.10.): die Maularme laufen von der Plattenmitte schräg nach außen-unten, der Mundwinkel
+      // sitzt gleich hinter der Frontplatte (Ring 2 bei 6 % der Länge; weiter vorn trägt die heutige Topologie nicht,
+      // siehe Kritik-Register). Flachere Rille, zwei Taschenreihen und flachere Tasche halten das kurze Maul sauber.
+      maulLinie: { fv: [{ f: 0, v: 0.5 }, { f: 0.032, v: 0.28 }, { f: 0.06, v: 0.25 }], unterSpitze: 0 },
+      maulOptionen: { winkelUnten: 30, winkelOben: 26, band: 1, rille: 0.006, reihen: 2, tiefe: 0.5 },
       augen: { ring: 4, j: 3, groesse: 0.1 },
       gesicht: true,
       wangen: true,

@@ -1146,9 +1146,13 @@ export function zahnLagen(abl: MaulErgebnis, xyz: Float64Array, hoehe: number, o
   const P = (i: number): [number, number, number] => [xyz[3 * i]!, xyz[3 * i + 1]!, xyz[3 * i + 2]!];
   const lagen: KlingenLage[] = [];
   const kette = (links: boolean, obenReihe: boolean) => (links ? (obenReihe ? m.tasche.obenLinks[0]! : m.tasche.untenLinks[0]!) : obenReihe ? m.tasche.oben[0]! : m.tasche.unten[0]!);
+  // Kurze Mäuler (Mercedesstern des Tigers, 15.10.): Zahnlänge höchstens ein Drittel der Maullänge, Zahl höchstens ein
+  // Zahn je Pfadpunkt, sonst stapeln sich die Zähne und ragen geschlossen aus der flachen Tasche
+  const laengeMax = Math.min(opt.laenge * hoehe, 0.35 * m.laenge);
+  const anzahlMax = Math.max(1, n - 2);
   for (const links of [false, true]) {
     for (const obenZahn of [true, false]) {
-      const anzahl = obenZahn ? opt.oben : opt.unten;
+      const anzahl = Math.min(anzahlMax, obenZahn ? opt.oben : opt.unten);
       for (let z = 0; z < anzahl; z++) {
         // Spalten 1 … n − 2 gleichmäßig, obere und untere versetzt
         const t = Math.round(1 + ((n - 3) * (z + (obenZahn ? 0.25 : 0.75))) / anzahl);
@@ -1168,7 +1172,7 @@ export function zahnLagen(abl: MaulErgebnis, xyz: Float64Array, hoehe: number, o
         const tang: [number, number, number] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
         // Breite quer zur Lippe (Zahn flach nach außen), Biegung längs der Lippe nach hinten
         const quer: [number, number, number] = [achse[1] * tang[2] - achse[2] * tang[1], achse[2] * tang[0] - achse[0] * tang[2], achse[0] * tang[1] - achse[1] * tang[0]];
-        const groesse = opt.laenge * hoehe * (1 - 0.45 * (t / n));
+        const groesse = laengeMax * (1 - 0.45 * (t / n));
         lagen.push({ fuss, achse, quer, laenge: groesse, breite: opt.breite * groesse, phase: 0, basis: t });
       }
     }

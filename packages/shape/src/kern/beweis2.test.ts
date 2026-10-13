@@ -137,7 +137,16 @@ describe('Beweis 2: Maul mit Haps', () => {
     expect(r.pr.ok).toBe(true);
     expect(r.lippeMax).toBeLessThan(rillePx(r.abl));
   }, 30_000);
-  it('Tiger, Kastenschnauze (Lippe durch die Spitze, Kiefer 30°, Band 1): 0 Durchdringungen bei 0/25/50/75/100 %', () => {
+  it('Tiger, Mercedesstern (Florian 15.10.: Arme von der Plattenmitte, Winkel bei 6 % gleich hinter der Frontplatte, Rille 0,6 %): 0 Durchdringungen bei 0/25/50/75/100 %', () => {
+    const roh = vorlageDokument(tigerJson as unknown as Vorlage, 'zu', 'tiger');
+    const dok = { ...roh, spanten: kastenSpanten(roh.profile.front, 0.02, 0.15, 0.25, 0.85) };
+    const r = pruefenLinie('Tiger Stern', dok, { fv: [{ f: 0, v: 0.5 }, { f: 0.032, v: 0.28 }, { f: 0.06, v: 0.25 }], unterSpitze: 0 }, 'vorn', 2, { winkelUnten: 30, winkelOben: 26, band: 1, rille: 0.006, reihen: 2, tiefe: 0.5 });
+    expect(r.pr.ok).toBe(true);
+    for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
+    // der Winkelring liegt gleich hinter der Frontplatte (Ring 2), nicht an den Seiten
+    expect(r.abl.maul.lage.k).toBe(2);
+  });
+  it('Tiger, Kastenschnauze, Seitenlippe bis 17 % (Stand Beweis 2): 0 Durchdringungen bei 0/25/50/75/100 %', () => {
     const roh = vorlageDokument(tigerJson as unknown as Vorlage, 'zu', 'tiger');
     const dok = { ...roh, spanten: kastenSpanten(roh.profile.front, 0.02, 0.15, 0.25, 0.85) };
     const r = pruefenLinie('Tiger', dok, { fv: [{ f: 0.02, v: 0.28 }, { f: 0.1, v: 0.26 }, { f: 0.17, v: 0.33 }], unterSpitze: 0 }, 'vorn', 2, { winkelUnten: 30, winkelOben: 26, band: 1 });
