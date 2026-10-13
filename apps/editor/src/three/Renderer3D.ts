@@ -376,6 +376,13 @@ export class Renderer3D {
     this.anfordern();
   }
 
+  /** Gemaltes Fell (Beweis 5): Stärke des Büschelfelds im Earle-Material (0 = aus) und Büschelgröße (Anteil der Höhe). */
+  setzeFell(staerke: number, groesse = 0.06) {
+    this.wesenUniforms.fellStaerke.value = staerke;
+    this.wesenUniforms.fellGroesse.value = groesse;
+    this.anfordern();
+  }
+
   /** Palette (Farben, Muster, Zonen) des Earle-Wesens. */
   setzePalette(p: Palette) {
     this.palette = p;

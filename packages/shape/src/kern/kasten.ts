@@ -60,3 +60,29 @@ export function halsVerbreitern(dok: Dokument, faktor: number, yVon: number, yBi
   const front = { ...dok.profile.front, knoten: dok.profile.front.knoten.map((k) => (im(k) ? { ...k, p: { x: k.p.x * faktor, y: k.p.y }, ein: { x: k.ein.x * faktor, y: k.ein.y }, aus: { x: k.aus.x * faktor, y: k.aus.y } } : k)) } as Profil;
   return { ...dok, profile: { ...dok.profile, front } };
 }
+
+/**
+ * Zwiebel (Beweis 5, Bogen Feuer): aus der Startkugel ein Flammenkörper — unten rund, oben eine weiche Spitze. Der oberste
+ * Knoten von Seite und Front wandert um `spitze` · r nach oben (Griffe kurz und senkrecht), die Seitenknoten um `taille` · r
+ * nach unten (breiteste Stelle unter der Mitte); die Top-Silhouette bleibt ein Kreis.
+ */
+export function zwiebel(dok: Dokument, spitze = 0.55, taille = 0.12): Dokument {
+  const form = (prof: Profil): Profil => {
+    const ys = prof.knoten.map((k) => k.p.y);
+    const yMax = Math.max(...ys);
+    const yMin = Math.min(...ys);
+    const r = (yMax - yMin) / 2;
+    const knoten = prof.knoten.map((k) => {
+      if (Math.abs(k.p.y - yMax) < 1e-9) {
+        // Spitze: hoch, Griffe senkrecht und kurz
+        const l = Math.max(Math.hypot(k.ein.x, k.ein.y), Math.hypot(k.aus.x, k.aus.y)) * 0.6;
+        return { ...k, p: { x: k.p.x, y: k.p.y + spitze * r }, ein: { x: k.ein.x === 0 && k.ein.y === 0 ? 0 : -Math.sign(k.ein.x || 1) * 0.001, y: -l * 0.4 }, aus: { x: k.aus.x === 0 && k.aus.y === 0 ? 0 : Math.sign(k.aus.x || 1) * 0.001, y: -l * 0.4 } };
+      }
+      if (Math.abs(k.p.y - yMin) < 1e-9) return k;
+      // Seitenknoten: breiteste Stelle etwas tiefer, Griff nach oben länger (zieht die Flanke zur Spitze)
+      return { ...k, p: { x: k.p.x, y: k.p.y - taille * r }, ein: { x: k.ein.x, y: k.ein.y > 0 ? k.ein.y * 1.5 : k.ein.y }, aus: { x: k.aus.x, y: k.aus.y > 0 ? k.aus.y * 1.5 : k.aus.y } };
+    });
+    return { ...prof, knoten } as Profil;
+  };
+  return { ...dok, profile: { ...dok.profile, seite: form(dok.profile.seite), front: form(dok.profile.front) } };
+}

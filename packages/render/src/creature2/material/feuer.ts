@@ -1,6 +1,6 @@
 import { Color, Vector3, Vector4 } from 'three';
 import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
-import { Fn, abs, clamp, dot, float, floor, fract, hash, max, min, mix, modelViewMatrix, mx_fractal_noise_float, mx_noise_float, normalize, positionGeometry, positionView, pow, smoothstep, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
+import { Fn, abs, atan, clamp, dot, float, floor, fract, hash, max, min, mix, modelViewMatrix, mx_fractal_noise_float, mx_noise_float, normalize, positionGeometry, positionView, pow, sin, smoothstep, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { MAX_SLIT_EYES } from './earleCreature';
 
@@ -28,6 +28,10 @@ export interface FeuerUniforms {
   kernWert: UniformNode<'float', number>;
   hoehenAbfall: UniformNode<'float', number>;
   seitenAbfall: UniformNode<'float', number>;
+  /** Welle: seitliche Verschiebung der Bandgrenzen durch senkrecht gestrecktes Rauschen (Anteil der Höhe), geschichtete Flammenzungen */
+  welle: UniformNode<'float', number>;
+  /** Wirbel: Spiralarme um die Achse (Stärke), für Gas */
+  wirbel: UniformNode<'float', number>;
   kernHoehe: UniformNode<'float', number>;
   /** Augen wie im Earle-Material */
   eyePos: ReturnType<typeof uniformArray<Vector4>>;
@@ -58,6 +62,8 @@ export function createFeuerUniforms(): FeuerUniforms {
     kernWert: uniform(2.9),
     hoehenAbfall: uniform(2.2),
     seitenAbfall: uniform(3.2),
+    welle: uniform(0.25),
+    wirbel: uniform(0),
     kernHoehe: uniform(0.4),
     eyePos: uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(0, 0, 0, 0))),
     eyeUp: uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(0, 1, 0, 1))),
@@ -80,6 +86,8 @@ export function applyFeuerArt(u: FeuerUniforms, art: FeuerArt): void {
   u.kernWert.value = art === 'feuer' ? 2.9 : 2.5;
   u.hoehenAbfall.value = art === 'feuer' ? 2.2 : 1.2;
   u.seitenAbfall.value = art === 'feuer' ? 3.2 : 1.8;
+  u.welle.value = art === 'feuer' ? 0.28 : 0.12;
+  u.wirbel.value = art === 'feuer' ? 0 : 0.45;
   u.kernHoehe.value = art === 'feuer' ? 0.4 : 0.45;
   u.augeFarbe.value.set(0.05, 0.03, 0.06);
 }
@@ -100,9 +108,21 @@ export function createFeuerMaterial(u: FeuerUniforms): MeshBasicNodeMaterial {
     const grob = mx_fractal_noise_float(q.mul(vec3(2.2, 0.8, 2.2)).add(vec3(0, u.zeit.mul(u.fluss).negate(), 0)), 2, 2.0, 0.5, 1.0);
     const fein = mx_noise_float(q.mul(vec3(5, 2.5, 5)).add(vec3(u.zeit.mul(u.fluss).mul(0.3), u.zeit.mul(u.fluss).mul(-1.6), 0)));
     const noise = grob.mul(0.75).add(fein.mul(0.25));
+    // Welle (Bogen Feuer: geschichtete, wellige Flammenzungen): die Bandgrenzen werden seitlich von einem senkrecht
+    // gestreckten, nach oben strömenden Rauschen verschoben; nach oben hin stärker, am Fuß ruhig. Die Bänder werden
+    // nach oben schmaler (Seitenabfall wächst mit der Höhe): verschachtelte Flammen statt Schalen.
+    const wq = q.mul(vec3(1.6, 3.2, 1.6)).add(vec3(0, u.zeit.mul(u.fluss).mul(-1.3), 0.7));
+    const welle = mx_noise_float(wq).mul(u.welle).mul(float(0.35).add(h.mul(0.9)));
+    const xW = abs(xView.add(welle));
+    // Wirbel (Bogen Nebel): Spiralarme um die Achse, langsam drehend
+    const r2 = q.xz.length();
+    const phi = atan(q.z, q.x).add(r2.mul(3.5)).sub(u.zeit.mul(0.25));
+    const wirbel = sin(phi.mul(2).add(q.y.mul(3))).mul(u.wirbel).mul(smoothstep(0.05, 0.35, r2));
     // Bandwert: im Kern (Achse, Kernhöhe) hoch, mit Höhenabstand und seitlichem Abstand fallend, vom Rauschen gewellt;
     // über dem Scheitel (Zungen) läuft er zu den Spitzen hin aus
-    const v = u.kernWert.sub(xView.mul(u.seitenAbfall)).sub(abs(h.sub(u.kernHoehe)).mul(u.hoehenAbfall)).add(noise.mul(u.rauschen)).toVar();
+    const seite = xW.mul(u.seitenAbfall).mul(float(0.7).add(h.mul(0.6)));
+    const hoehe = max(h.sub(u.kernHoehe), 0).mul(u.hoehenAbfall).mul(0.8).add(max(u.kernHoehe.sub(h), 0).mul(u.hoehenAbfall));
+    const v = u.kernWert.sub(seite).sub(hoehe).add(noise.mul(u.rauschen).mul(0.6)).add(wirbel).toVar();
     const vb = clamp(v, 0.001, 3.999).toVar();
     const b = floor(vb);
     const f = fract(vb);

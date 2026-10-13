@@ -77,6 +77,9 @@ export interface CreatureMaterialUniforms {
   atlasAn: UniformNode<'float', number>;
   atlasAbstand: TextureNode;
   atlasWeich: TextureNode;
+  /** Gemaltes Fell (Plan 8.4): Büschelfeld in Wirbelsäulen-Koordinaten, dunkler Ansatz → helle Spitze je Büschel; Stärke 0 = aus, Büschelgröße als Anteil der Höhe */
+  fellStaerke: UniformNode<'float', number>;
+  fellGroesse: UniformNode<'float', number>;
   /** Glimmer des Wesens (Bauplan, 0…1) — wirkt mal dem Stil-Glimmer. */
   glimmerWesen: UniformNode<'float', number>;
   /** Farbe des Glimmerlichts (linear). */
@@ -177,6 +180,8 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     atlasAn: uniform(0),
     atlasAbstand: texture(leereAtlasTextur()),
     atlasWeich: texture(leereAtlasTextur()),
+    fellStaerke: uniform(0),
+    fellGroesse: uniform(0.06),
     glimmerWesen: uniform(0.6),
     glimmerFarbe: uniform(new Vector3(...farbRolle(colors.glimmer ?? GLIMMER_STANDARD, stil).base)),
     zeit: uniform(0),
@@ -355,6 +360,25 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms, optionen: Cr
     // Hell oben, dunkel unten (feste Blobs in den Bögen): Höhenverlauf unabhängig von der Normale
     const heightT = smoothstep(0, 1, rest.y.div(H));
     v.assign(clamp(v.add(heightT.sub(0.5).mul(0.22)), 0, 1));
+    // Gemaltes Fell (Bogen Fell-Reihe, Plan 8.4): versetzte Reihen flammenförmiger Büschel in Wirbelsäulen-Koordinaten
+    // (s längs, θ·Umfang quer), je Büschel dunkler Ansatz und helle Spitze, Rand weich; wirkt auf den Schattenwert, nicht
+    // auf die Farbe, bleibt in Ruhelage stehen und kostet keine Geometrie (Spiel-Budget).
+    const fellZelle = max(u.fellGroesse.mul(H), 0.001);
+    const fs = spine.x.div(fellZelle);
+    const fq = spine.y.mul(spine.z).div(fellZelle).div(6.2832);
+    const reihe = floor(fs);
+    const versetzt = fq.add(fract(reihe.mul(0.5)));
+    const zelleX = floor(versetzt);
+    const lx = fract(versetzt).sub(0.5);
+    const ly = fract(fs);
+    const jitA = hash3(vec3(zelleX, reihe, 7)).toVar();
+    const jitB = hash3(vec3(zelleX, reihe, 13)).toVar();
+    const lxj = lx.add(jitA.sub(0.5).mul(0.3));
+    // Büschelform: unten breit, oben spitz (Flamme), Spitze bei ly ≈ 1
+    const breite = float(0.5).mul(float(1).sub(smoothstep(0.55, 1.05, ly))).add(0.08);
+    const fellInnen = float(1).sub(smoothstep(breite.mul(0.6), breite, abs(lxj)));
+    const fellWert = fellInnen.mul(ly.sub(0.35)).mul(1.1).add(jitB.sub(0.5).mul(0.18));
+    v.assign(clamp(v.add(fellWert.mul(u.fellStaerke)), 0, 1));
 
     // --- Grundfläche als Farbrolle (Schatten, Grund, Licht): Grund → Bauch → helle Schnauze → Zonen -----------------
     // Alle Flächen werden erst gemischt und dann einmal schattiert: Schuppenrelief und Rim nehmen so die Farbe der Fläche,

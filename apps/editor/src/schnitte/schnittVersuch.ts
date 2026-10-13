@@ -5,7 +5,7 @@
 // nachgezogen als Dokument; die anderen sind die nachgezogenen Versuchswesen vom 12.10.
 
 import { type Dokument, dokumentLesen, neuesDokument } from '@ee/shape';
-import { halsVerbreitern } from '@ee/shape/kern';
+import { halsVerbreitern, zwiebel } from '@ee/shape/kern';
 import { type Vorlage, vorlageDokument } from '@ee/shape/versuch';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -18,7 +18,8 @@ export async function schnittVersuchLaden(): Promise<void> {
   // Drache (Beweis 2, Lage „hals“): der Langhals mit doppelt so dickem Hals (Giraffenhals ≈ 2 % der Höhe ist zu dünn für zwei Taschen)
   const datei = wesen === 'drache' ? 'langhals' : wesen;
   let dok: Dokument = neuesDokument('Kugel');
-  if (wesen !== 'kugel') {
+  if (wesen === 'zwiebel') dok = zwiebel(neuesDokument('zwiebel'));
+  else if (wesen !== 'kugel') {
     const json = (await (await fetch(`${import.meta.env.BASE_URL}versuch/${datei}/${datei}.json`)).json()) as { format?: string };
     dok = json.format === 'ee-wesen' ? dokumentLesen(json) : vorlageDokument(json as Vorlage, 'zu', wesen);
     if (wesen === 'drache') dok = halsVerbreitern(dok, 2, 0.3, 0.585);

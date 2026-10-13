@@ -35,3 +35,18 @@ Tempo: Klingen je Bild neu gelöst (7 Zungen 1,2 ms, 420 Büschel ≈ 5 ms), Dre
 ## Urteil
 
 Alle drei Stile stehen als Standbild und Schleife auf der Kugel; die Bauweise (Klingen als geteilte Käfige, Bändermaterial, Wehen als Pose) trägt. Das Urteil nach Plan liegt bei Florian („so geht es weiter“ für mindestens zwei von drei); meine Einschätzung: Feuer ja, Gas und Fell je eine zweite Runde mit der Liste oben. Damit sind alle fünf Beweise der Phase 0 gebaut: 1 bestanden, 2 für drei von vier Lagen, 3 bestanden, 4 zur Hälfte (Material live, Tiger-Kopf und Zonen-Atlas fehlen), 5 wartet auf Florians Blick.
+
+## Nachtrag 14.10. nachts: zweite Runde nach Florians Urteil
+
+Florian (14.10.): „Die Bilder sind ganz gut, aber wie du sagst treffen sie es noch nicht wirklich.“ Umgesetzt wurde die Liste aus „Was stimmt und was nicht“, die Bögen (`docs/look/wesen-refs/crops/feuer-reihe.png`, `nebel-reihe.png`, `muster-fell-reihe.png`) lagen beim Urteil offen:
+
+1. **Flammenkörper** statt Kugel (`zwiebel` in `kern/kasten.ts`, Editor `?wesen=zwiebel`): Startkugel mit weicher Spitze oben (oberster Knoten um 0,55 r hoch, Griffe kurz und senkrecht) und breitester Stelle unter der Mitte — die Zwiebel des Bogens.
+2. **Geschichtete, wellige Bänder** (`feuer.ts`, Uniform `welle`): Die Bandgrenzen werden seitlich von einem senkrecht gestreckten, nach oben strömenden Rauschen verschoben (zur Spitze hin stärker), und der Seitenabfall wächst mit der Höhe — die Bänder sind jetzt verschachtelte Flammen statt Schalen; drei Bänder im Körper, die Zungen tragen das äußere. Feuer: `welle` 0,28, Gas 0,12.
+3. **Weniger, größere Zungen**: Hauptzunge und zwei Kranzzungen (statt sieben), vier Flämmchen (statt sechs).
+4. **Gas-Wirbel** (`wirbel`): Spiralarme um die Achse (Winkel + 3,5 · Radius, langsam drehend) im Bandwert — der eigene Wirbel im Körper des Bogens.
+5. **Schwaden als Locken**: Klingenform mit `kringel` (die Achse dreht sich längs der Linie mit t², numerisch aufsummiert) — zwei Fahnen mit 2,4 rad Drehung statt Sinus-Bogen; **Bläschen als Kugeln** (Profil `kugel`, Dicke 1, 6 Ringe, Stufe 2) statt Tropfen.
+6. **Fell**: 680 kleinere Büschel (5,8 % statt 10 % der Höhe) mit Flammenprofil und dünner Linse, Normalen zu 65 % zur Hautnormale am Fuß gemischt (das Licht läuft über den Pelz statt über jeden Zapfen), dazu das **gemalte Büschelfeld** im Earle-Material (`fellStaerke`, `fellGroesse`; Plan 8.4): versetzte Reihen flammenförmiger Büschel in Wirbelsäulen-Koordinaten, dunkler Ansatz → helle Spitze, weicher Rand, kostet keine Geometrie und ist die Spiel-Variante.
+
+Bilder: `kern-stil-zwiebel-feuer.png`, `kern-stil-zwiebel-gas.png`, `kern-stil-kugel-fell.png` (je `-2.png` nach 3 s und `.webm`).
+
+**Einschätzung gegen die Bögen:** Feuer trifft Aufbau und Bänder jetzt deutlich (Zwiebel, verschachtelte wellige Flammen, Hauptzunge, Flämmchen; offen: Innenbänder in den Zungen selbst, Farbstufe genau nach Stufe 7). Gas hat Körperform, weiche Wirbel und Kugelbläschen; die Locken sind sichtbar, aber noch nicht die elegant geschwungenen Fahnen des Bogens (Form der Locke als Kurve zeichnen, Phase 4). Fell ist dichter und weicher, bleibt aber am weitesten vom Bogen entfernt: der Bogen hat Wolle aus hunderten weichen Strichen; der Weg dahin ist das gemalte Büschelfeld als Hauptträger (Abstandsfelder im Zonen-Atlas) und gebaute Büschel nur am Umriss. Urteil nach Plan bei Florian.

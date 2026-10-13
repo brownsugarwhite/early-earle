@@ -67,21 +67,23 @@ if (process.env.BEINE) {
 if (process.env.STIL) {
   for (const stil of (process.env.STIL === '1' ? 'feuer,gas,fell' : process.env.STIL).split(',')) {
     const q = stil === 'fell' ? '&look=earle&palette=tiger' : '';
+    // Runde 2: Feuer und Gas auf der Zwiebel (Flammenkörper), Fell auf der Kugel
+    const w = stil === 'fell' ? 'kugel' : 'zwiebel';
     const ctx = await browser.newContext({ viewport: { width: 1728, height: 1161 }, deviceScaleFactor: 1, recordVideo: { dir: path.join(aus, 'video-roh'), size: { width: 1728, height: 1161 } } });
     const p2 = await ctx.newPage();
-    await p2.goto(`${url}/?versuch=kern&wesen=kugel&bauweise=kern&stil=${stil}${q}`);
+    await p2.goto(`${url}/?versuch=kern&wesen=${w}&bauweise=kern&stil=${stil}${q}&kamera=-45,12,2.7,0,0.36,0`);
     await p2.waitForFunction(() => window.__editor && window.__editor.vertices() > 0, null, { timeout: 60_000 });
     await p2.evaluate(() => document.fonts.ready);
     await p2.waitForTimeout(1500);
     const r = await p2.evaluate(() => window.__stores.rahmen.getState().rects.creation);
-    await p2.screenshot({ path: path.join(aus, `kern-stil-kugel-${stil}.png`), clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
+    await p2.screenshot({ path: path.join(aus, `kern-stil-${w}-${stil}.png`), clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
     await p2.waitForTimeout(3200);
-    await p2.screenshot({ path: path.join(aus, `kern-stil-kugel-${stil}-2.png`), clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
+    await p2.screenshot({ path: path.join(aus, `kern-stil-${w}-${stil}-2.png`), clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
     const video = p2.video();
     await ctx.close();
     if (video) {
       const roh = await video.path();
-      fs.renameSync(roh, path.join(aus, `kern-stil-kugel-${stil}.webm`));
+      fs.renameSync(roh, path.join(aus, `kern-stil-${w}-${stil}.webm`));
     }
     console.log(`${stil}: ${r.w}×${r.h}`);
   }

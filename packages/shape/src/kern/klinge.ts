@@ -14,7 +14,7 @@ import { type GrenzLoeser, grenzLoeser, kaefigDurchZiele } from '../loeser/grenz
 import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3 } from '../subdivision/matrix';
 
-export type KlingenProfil = 'flamme' | 'zacke' | 'tropfen' | 'schwade';
+export type KlingenProfil = 'flamme' | 'zacke' | 'tropfen' | 'schwade' | 'kugel';
 
 export type KlingenForm = {
   /** Ringe der Röhre (ohne Kappen) */
@@ -28,6 +28,8 @@ export type KlingenForm = {
   biegung: number;
   /** Unterteilungsstufen des feinen Netzes */
   stufen: number;
+  /** Kringel: Gesamtdrehung der Achse (rad) über die Länge, mit t² wachsend (Gas-Schwaden als Locken); 0 = gerade */
+  kringel?: number;
 };
 
 export const KLINGE_FLAMME: KlingenForm = { ringe: 6, profil: 'flamme', dicke: 0.35, einsenken: 0.18, biegung: 0.25, stufen: 2 };
@@ -47,6 +49,9 @@ export function profilBreite(profil: KlingenProfil, t: number): number {
       return 1 - s;
     case 'tropfen':
       return Math.pow(Math.max(0, Math.sin(Math.PI * (0.05 + 0.95 * s))), 1.3);
+    case 'kugel':
+      // Bläschen: rund (mit Dicke 1 eine Kugel), Spitze nur rechnerisch
+      return Math.sqrt(Math.max(0, 1 - Math.pow(2 * s - 1, 2)));
     default:
       return Math.pow(Math.max(0, Math.sin(Math.PI * (0.25 + 0.75 * s))), 0.45);
   }
@@ -89,17 +94,38 @@ export function klingenZiele(kv: KlingenVorlage, lage: KlingenLage, wehen = 0): 
     ziele[3 * idx + 1] = p[1];
     ziele[3 * idx + 2] = p[2];
   };
-  // Mittellinie: Fuß − einsenken·L … Spitze, mit S-Biegung in Dickenrichtung und Wehen (Drehung um die Querachse, t²)
+  // Mittellinie: Fuß − einsenken·L … Spitze, mit S-Biegung in Dickenrichtung und Wehen (Drehung um die Querachse, t²).
+  // Mit Kringel dreht sich die Achse längs der Linie (Drehwinkel kringel·t², numerisch aufsummiert): Locke statt Bogen.
+  const kringel = form.kringel ?? 0;
   const mitte = (t: number): V3 => {
     const h = (-form.einsenken + (1 + form.einsenken) * t) * L;
     const bieg = form.biegung * L * Math.sin(Math.PI * t) * t;
     const w = wehen * t * t;
-    const cw = Math.cos(w);
-    const sw = Math.sin(w);
-    // Achse um die Querrichtung drehen: Komponenten (achse, dick) → (achse·cw + dick·sw, −achse·sw + dick·cw)
-    const ax: V3 = [achse[0] * cw + dick[0] * sw, achse[1] * cw + dick[1] * sw, achse[2] * cw + dick[2] * sw];
-    const dk: V3 = [dick[0] * cw - achse[0] * sw, dick[1] * cw - achse[1] * sw, dick[2] * cw - achse[2] * sw];
-    return [lage.fuss[0] + ax[0] * h + dk[0] * bieg, lage.fuss[1] + ax[1] * h + dk[1] * bieg, lage.fuss[2] + ax[2] * h + dk[2] * bieg];
+    if (kringel === 0) {
+      const cw = Math.cos(w);
+      const sw = Math.sin(w);
+      // Achse um die Querrichtung drehen: Komponenten (achse, dick) → (achse·cw + dick·sw, −achse·sw + dick·cw)
+      const ax: V3 = [achse[0] * cw + dick[0] * sw, achse[1] * cw + dick[1] * sw, achse[2] * cw + dick[2] * sw];
+      const dk: V3 = [dick[0] * cw - achse[0] * sw, dick[1] * cw - achse[1] * sw, dick[2] * cw - achse[2] * sw];
+      return [lage.fuss[0] + ax[0] * h + dk[0] * bieg, lage.fuss[1] + ax[1] * h + dk[1] * bieg, lage.fuss[2] + ax[2] * h + dk[2] * bieg];
+    }
+    // Locke: Richtung bei Anteil u ist die Achse um (w + kringel·u²) gedreht; Lage = Integral über u (20 Schritte)
+    const schritte = 20;
+    const p: V3 = [lage.fuss[0] - achse[0] * form.einsenken * L, lage.fuss[1] - achse[1] * form.einsenken * L, lage.fuss[2] - achse[2] * form.einsenken * L];
+    const uEnde = Math.max(0, -form.einsenken + (1 + form.einsenken) * t) / (1 + form.einsenken);
+    const dl = ((1 + form.einsenken) * L) / schritte;
+    for (let i = 0; i < schritte; i++) {
+      const u = (i + 0.5) / schritte;
+      if (u > uEnde) break;
+      const a = w * u * u + kringel * u * u;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      p[0] += (achse[0] * ca + dick[0] * sa) * dl;
+      p[1] += (achse[1] * ca + dick[1] * sa) * dl;
+      p[2] += (achse[2] * ca + dick[2] * sa) * dl;
+    }
+    void h;
+    return [p[0] + dick[0] * bieg, p[1] + dick[1] * bieg, p[2] + dick[2] * bieg];
   };
   for (let r = 0; r < R; r++) {
     const t = r / (R - 1);
@@ -194,11 +220,15 @@ export function gekaemmt(normale: V3, kamm: number): V3 {
  * Flammenzungen am Scheitel: eine große Hauptzunge oben, `anzahl` kleinere im Kranz bei Polwinkel `polGrad`;
  * Längen als Anteil der Körperhöhe H.
  */
-export function zungenAmScheitel(haut: Haut, H: number, anzahl: number, polGrad: number, saat: number): KlingenLage[] {
+export type ZungenMass = { hauptLaenge: number; hauptBreite: number; kranzLaenge: number; kranzBreite: number };
+export const ZUNGEN_FEUER: ZungenMass = { hauptLaenge: 0.5, hauptBreite: 0.5, kranzLaenge: 0.3, kranzBreite: 0.22 };
+export const ZUNGEN_GAS: ZungenMass = { hauptLaenge: 0.6, hauptBreite: 0.17, kranzLaenge: 0.45, kranzBreite: 0.13 };
+
+export function zungenAmScheitel(haut: Haut, H: number, anzahl: number, polGrad: number, saat: number, mass: ZungenMass = ZUNGEN_FEUER): KlingenLage[] {
   const zf = zufall(saat);
   const lagen: KlingenLage[] = [];
   const oben = hautPunkt(haut, [0, 1, 0]);
-  lagen.push({ fuss: oben.p, achse: gekaemmt(oben.n, 0.6), quer: [1, 0, 0], laenge: 0.62 * H, breite: 0.42 * H, phase: zf() * Math.PI * 2, basis: oben.i });
+  lagen.push({ fuss: oben.p, achse: gekaemmt(oben.n, 0.6), quer: [1, 0, 0], laenge: mass.hauptLaenge * H, breite: mass.hauptBreite * H, phase: zf() * Math.PI * 2, basis: oben.i });
   if (anzahl === 0) return lagen;
   const pol = (polGrad * Math.PI) / 180;
   for (let i = 0; i < anzahl; i++) {
@@ -206,7 +236,7 @@ export function zungenAmScheitel(haut: Haut, H: number, anzahl: number, polGrad:
     const r: V3 = [Math.sin(pol) * Math.cos(az), Math.cos(pol), Math.sin(pol) * Math.sin(az)];
     const hp = hautPunkt(haut, r);
     const quer = norm(kreuz([0, 1, 0], hp.n));
-    lagen.push({ fuss: hp.p, achse: gekaemmt(hp.n, 0.55), quer, laenge: (0.28 + 0.2 * zf()) * H, breite: (0.2 + 0.1 * zf()) * H, phase: zf() * Math.PI * 2, basis: hp.i });
+    lagen.push({ fuss: hp.p, achse: gekaemmt(hp.n, 0.55), quer, laenge: mass.kranzLaenge * (0.85 + 0.3 * zf()) * H, breite: mass.kranzBreite * (0.85 + 0.3 * zf()) * H, phase: zf() * Math.PI * 2, basis: hp.i });
   }
   return lagen;
 }

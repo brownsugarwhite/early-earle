@@ -4,7 +4,7 @@
 // der Kurve (px bei 461 px je Kachel) und Zeiten.
 
 import type { Dokument, V2 } from '@ee/shape';
-import { DESKRIPTOR_FLOATS, KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Ableitung, type BeinErgebnis, type GesichtMaske, type Haut, type KlingenLage, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern, type KlingenVorlage, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableiten, ableitenMitBeinen, ableitenMitMaul, alleFlaechen, beinPose, bueschelAufHaut, deskriptoren, flaemmchen, gekaemmt, hautAus, hautPunkt, kastenSpanten, klingenBauen, klingenNetz, klingenVorlage, maulLinieVorlage, maulOptionenVorlage, maulPose, seiteZiehen, umrissBei, umrissDicht, zahnLagen, zungenAmScheitel } from '@ee/shape/kern';
+import { DESKRIPTOR_FLOATS, KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Ableitung, type BeinErgebnis, type GesichtMaske, type Haut, type KlingenLage, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern, type KlingenVorlage, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableiten, ableitenMitBeinen, ableitenMitMaul, alleFlaechen, beinPose, bueschelAufHaut, deskriptoren, flaemmchen, gekaemmt, hautAus, hautPunkt, kastenSpanten, klingenBauen, klingenNetz, klingenVorlage, maulLinieVorlage, maulOptionenVorlage, maulPose, seiteZiehen, umrissBei, umrissDicht, ZUNGEN_FEUER, ZUNGEN_GAS, zahnLagen, zungenAmScheitel } from '@ee/shape/kern';
 import { useUi } from '../state/uiStore';
 import { zuDreiecken, type V3 } from '@ee/shape/versuch';
 import { create } from 'zustand';
@@ -313,7 +313,7 @@ function klingenDreiecke(st: KlingenStand, zeit: number): { positionen: Float32A
   if (st.zusatzVorlage) {
     // abgelöste Flämmchen/Bläschen: steigen in 3 s auf und schrumpfen
     const umlauf = (zeit / 3) % 1;
-    const lagen = flaemmchen(st.haut, st.hoehe, st.stil === 'gas' ? 7 : 6, st.saat + 5, umlauf);
+    const lagen = flaemmchen(st.haut, st.hoehe, st.stil === 'gas' ? 6 : 4, st.saat + 5, umlauf);
     const fz = klingenBauen(st.zusatzVorlage, lagen, (l) => 0.2 * Math.sin(3 * zeit + l.phase));
     const nz = alleFlaechen(klingenNetz(st.zusatzVorlage));
     for (const k of fz) {
@@ -331,6 +331,23 @@ function klingenDreiecke(st: KlingenStand, zeit: number): { positionen: Float32A
   for (const t of teile) {
     positionen.set(t.positionen, o);
     normalen.set(t.normalen, o);
+    if (st.stil === 'fell' && t.basis !== undefined) {
+      // weiches Fell: Normalen der Büschel zu 65 % zur Hautnormale am Fuß (Licht läuft über den Pelz statt über jeden Zapfen)
+      const b = Math.min(st.haut.normalen.length / 3 - 1, t.basis);
+      const nx = st.haut.normalen[3 * b]!;
+      const ny = st.haut.normalen[3 * b + 1]!;
+      const nz = st.haut.normalen[3 * b + 2]!;
+      for (let e = 0; e < t.normalen.length / 3; e++) {
+        const i = o + 3 * e;
+        const mx = normalen[i]! * 0.35 + nx * 0.65;
+        const my = normalen[i + 1]! * 0.35 + ny * 0.65;
+        const mz = normalen[i + 2]! * 0.35 + nz * 0.65;
+        const l = Math.hypot(mx, my, mz) || 1;
+        normalen[i] = mx / l;
+        normalen[i + 1] = my / l;
+        normalen[i + 2] = mz / l;
+      }
+    }
     if (desk && st.koerper.feinDesk) {
       const b = Math.min(st.koerper.feinDesk.length / DESKRIPTOR_FLOATS - 1, t.basis ?? 0);
       const zeile = st.koerper.feinDesk.subarray(b * DESKRIPTOR_FLOATS, (b + 1) * DESKRIPTOR_FLOATS);
@@ -650,10 +667,12 @@ export function kernBauen(dokRoh: Dokument, schnell: boolean): KernNetz {
   if (stil !== 'fest') {
     const haut = hautAus(fein);
     const saat = 7;
-    const form = stil === 'feuer' ? KLINGE_FLAMME : stil === 'gas' ? KLINGE_SCHWADE : { ...KLINGE_BUESCHEL, profil: 'tropfen' as const, dicke: 0.5 };
+    // Runde 2 (14.10. nachts, Florians Liste): Feuer mit drei großen Zungen statt sieben; Gas-Schwaden als Locken
+    // (Kringel) und Bläschen als Kugeln; Fell kleiner, weicher (Flammenprofil, dünn), dazu das gemalte Büschelfeld im Material
+    const form = stil === 'feuer' ? KLINGE_FLAMME : stil === 'gas' ? { ...KLINGE_SCHWADE, biegung: 0.1, kringel: 3.4 } : { ...KLINGE_BUESCHEL, profil: 'flamme' as const, dicke: 0.3, biegung: 0.25 };
     const vorlage = klingenVorlage(form);
-    const lagen = stil === 'feuer' ? zungenAmScheitel(haut, hoehe, 6, 28, saat) : stil === 'gas' ? zungenAmScheitel(haut, hoehe, 2, 30, saat) : bueschelAufHaut(haut, hoehe, 420, 0.1, -0.35, saat);
-    const zusatzVorlage = stil === 'fell' ? null : klingenVorlage(stil === 'gas' ? { ...KLINGE_SCHWADE, profil: 'tropfen', ringe: 4, stufen: 1 } : { ...KLINGE_FLAMME, ringe: 4, stufen: 1 });
+    const lagen = stil === 'feuer' ? zungenAmScheitel(haut, hoehe, 2, 24, saat, ZUNGEN_FEUER) : stil === 'gas' ? zungenAmScheitel(haut, hoehe, 2, 34, saat, ZUNGEN_GAS) : bueschelAufHaut(haut, hoehe, 680, 0.058, -0.25, saat);
+    const zusatzVorlage = stil === 'fell' ? null : klingenVorlage(stil === 'gas' ? { ...KLINGE_SCHWADE, profil: 'kugel', dicke: 1, biegung: 0, ringe: 6, stufen: 2 } : { ...KLINGE_FLAMME, ringe: 4, stufen: 1 });
     const feinDesk = desk && stil === 'fell' ? deskriptoren(abl, aus.gesichtMaske) : null;
     klingenStand = { stil, vorlage, lagen, zusatzVorlage, haut, hoehe, saat, koerper: { positionen: t.positionen, normalen: t.normalen, desk, feinDesk }, hebung: 0 };
     const k = klingenDreiecke(klingenStand, 0);
