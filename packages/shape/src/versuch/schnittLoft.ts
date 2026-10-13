@@ -787,9 +787,9 @@ const KANTEN_MASKE = (() => {
   return t;
 })();
 
-type RohNetz = { punkte: Float64Array; anzahl: number; vierecke: Uint32Array; vAnzahl: number };
+export type RohNetz = { punkte: Float64Array; anzahl: number; vierecke: Uint32Array; vAnzahl: number };
 
-function surfaceNets(D: Float32Array, NX: number, NY: number, NZ: number, x0: number, y0: number, z0: number, h: number): RohNetz {
+export function surfaceNets(D: Float32Array, NX: number, NY: number, NZ: number, x0: number, y0: number, z0: number, h: number): RohNetz {
   const R = [NY * NZ, NZ, 1];
   const zelle = new Int32Array(NX * NY * NZ);
   let punkte = new Float64Array(3 * 4096);
@@ -870,7 +870,7 @@ function surfaceNets(D: Float32Array, NX: number, NY: number, NZ: number, x0: nu
 }
 
 /** Taubin-Glättung (λ|μ, Umbrella-Operator über die Viereckskanten): glättet ohne zu schrumpfen. */
-function taubin(netz: RohNetz, durchgaenge: number, lambda = 0.5, mu = -0.53): void {
+export function taubin(netz: RohNetz, durchgaenge: number, lambda = 0.5, mu = -0.53): void {
   const { punkte, anzahl, vierecke, vAnzahl } = netz;
   if (!durchgaenge || !anzahl) return;
   const grad = new Int32Array(anzahl + 1);
@@ -920,7 +920,7 @@ function taubin(netz: RohNetz, durchgaenge: number, lambda = 0.5, mu = -0.53): v
   }
 }
 
-function netzAusgeben(netz: RohNetz): { positionen: Float32Array; normalen: Float32Array; indizes: Uint32Array } {
+export function netzAusgeben(netz: RohNetz): { positionen: Float32Array; normalen: Float32Array; indizes: Uint32Array } {
   const { punkte, anzahl, vierecke, vAnzahl } = netz;
   const positionen = new Float32Array(3 * anzahl);
   for (let i = 0; i < 3 * anzahl; i++) positionen[i] = punkte[i]!;

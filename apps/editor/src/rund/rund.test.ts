@@ -72,7 +72,7 @@ describe('Versuch rund gegen creation, Wirbelsäule und Schnitt-Loft', () => {
         let zeitText = b.ms.toFixed(0);
         if (name === 'rund') {
           rund[wesen] = u;
-          const [, msGrob] = zeit(() => rundKoerper(dok, { abstand: RUND_GROB }));
+          const [, msGrob] = zeit(() => rundKoerper(dok, { abstand: RUND_GROB, vereinigen: false }));
           zeitText = `${b.ms.toFixed(0)} (grob ${msGrob.toFixed(0)})`;
         }
         zeilen.push(`| ${wesen} | ${name} | ${fmt(u.seite)} | ${fmt(u.front)} | ${fmt(u.top)} | ${zeitText} | ${b.dreiecke} |`);

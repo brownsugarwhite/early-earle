@@ -18,3 +18,4 @@ export * from './wirbelMaul';
 export * from './schnittLoft';
 export * from './dreiecke2d';
 export * from './aufblasen';
+export * from './seitenteile';

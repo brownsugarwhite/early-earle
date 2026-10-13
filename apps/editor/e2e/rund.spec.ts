@@ -148,3 +148,21 @@ test('Bilder: creation, wirbelsäule, Schnitt-Loft und rund (seitlich, schräg, 
     );
   }
 });
+
+test('Bild: Haken im Top als Seitenteile (Florians Überhang)', async ({ page, browser }) => {
+  test.setTimeout(240_000);
+  await laden(page, 'wesen=ueberhang&bauweise=bisher');
+  const felder: { text: string; bilder: Buffer[] }[] = [
+    { text: 'von oben', bilder: [] },
+    { text: 'schräg hinten', bilder: [] },
+  ];
+  for (const [wert] of [BAUWEISEN[0], BAUWEISEN[2], BAUWEISEN[3]]) {
+    await bauweise(page, wert);
+    if (wert === 'rund') await expect(page.locator('.leiste [data-rundseitenteile]')).toHaveAttribute('data-rundseitenteile', '1');
+    await kamera(page, 0, 89, 2.0, 0);
+    felder[0]!.bilder.push(await bild3d(page));
+    await kamera(page, 145, 32, 1.7, 0.2);
+    felder[1]!.bilder.push(await bild3d(page));
+  }
+  await raster(browser, 'rund-haken.png', 'Haken im Top: creation füllt die Kerbe, der Schnitt-Loft macht Platten, rund baut die Widerhaken als eigene Teile (Kerbe bleibt Luft)', ['creation', 'Schnitt-Loft', 'rund'], felder);
+});

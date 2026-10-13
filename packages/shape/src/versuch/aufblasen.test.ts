@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { type Dokument, dokumentLesen, neuesDokument } from '../dokument';
 import { naechsterAufProfil, pfadAbtasten, segmente } from '../profil';
 import { RUND_GROB, rundKoerper } from './aufblasen';
+import { topWelt, topZerlegen } from './seitenteile';
 import { Triangulierung } from './dreiecke2d';
 import { schnittLoft } from './schnittLoft';
 import { type Vorlage, vorlageDokument } from './vorlagen';
@@ -159,7 +160,7 @@ describe('Versuch rund (aufblasen)', () => {
 
   it('die Seite stimmt genau: Randpunkte auf dem Umriss, z = 0 am Rand', () => {
     for (const dok of [ente(), langhals()]) {
-      const k = rundKoerper(dok);
+      const k = rundKoerper(dok, { seitenteile: false });
       const f = k.flaeche;
       let max = 0;
       for (const v of f.umriss) {
@@ -227,7 +228,8 @@ describe('Versuch rund (aufblasen)', () => {
 
   it('Überhang ohne Wirbelsäule: Schnauze und Bauch bleiben getrennt, beide rund', () => {
     const dok = ente();
-    const k = rundKoerper(dok);
+    // ohne Seitenteile (mit ihnen wird das Netz über Abstandsfelder vereinigt, dann liegen keine Punkte genau auf z = 0)
+    const k = rundKoerper(dok, { seitenteile: false });
     // senkrechter Schnitt bei x = −0,22 (Schnauze oben, Bauch unten, dazwischen Luft)
     const x0 = -0.22;
     const ys: number[] = [];
@@ -248,6 +250,57 @@ describe('Versuch rund (aufblasen)', () => {
     expect(hoehen[2]! - hoehen[1]!).toBeGreaterThan(0.1);
   });
 
+  it('Haken im Top als Seitenteile: Kerbe bleibt Luft, Widerhaken ist Körper, ein geschlossenes Netz', () => {
+    // Zerlegung: nur Florians Überhang hat einen Rücklauf im Top (zwei Widerhaken, je Spiegelseite einer)
+    expect(topZerlegen(topWelt(neuesDokument())).teile.length).toBe(0);
+    expect(topZerlegen(topWelt(langhals())).teile.length).toBe(0);
+    const dok = ente();
+    const z = topZerlegen(topWelt(dok));
+    expect(z.teile.length).toBe(1);
+    const k = rundKoerper(dok);
+    expect(k.info.seitenteile).toBe(1);
+    const netz = pruefeNetz(k.positionen, k.indizes);
+    console.log(`Überhang mit Seitenteil: ${k.info.dreiecke} Dreiecke, ${k.info.millisekunden.toFixed(0)} ms, nicht mannigfaltige Kanten ${netz.falsch}, Euler ${netz.euler}`);
+    // ein Stück (Kugel-Topologie); Surface Nets lässt an sehr steilen Stellen einzelne doppelt belegte Kanten stehen
+    expect(netz.euler).toBe(2);
+    expect(netz.falsch).toBeLessThan(10);
+    expect(netz.volumen).toBeGreaterThan(0);
+    // Punkt im Widerhaken (Top: x ≈ 0,03, z ≈ 0,22) auf seiner Höhe (Mitte der Front dort ≈ 0,19) ist innen,
+    // Punkt in der Kerbe (x ≈ 0,04, z ≈ 0,15) ist außen; ohne Seitenteile ist der Haken nicht da
+    const innen = (p: [number, number, number]) => {
+      let n = 0;
+      const pos = k.positionen;
+      const idx = k.indizes;
+      for (let t = 0; t < idx.length; t += 3) {
+        // Strahl entlang +y
+        const a = 3 * idx[t]!;
+        const b = 3 * idx[t + 1]!;
+        const c = 3 * idx[t + 2]!;
+        const ax = pos[a]! - p[0];
+        const az = pos[a + 2]! - p[2];
+        const bx = pos[b]! - p[0];
+        const bz = pos[b + 2]! - p[2];
+        const cx = pos[c]! - p[0];
+        const cz = pos[c + 2]! - p[2];
+        const d1 = ax * bz - az * bx;
+        const d2 = bx * cz - bz * cx;
+        const d3 = cx * az - cz * ax;
+        if (!((d1 > 0 && d2 > 0 && d3 > 0) || (d1 < 0 && d2 < 0 && d3 < 0))) continue;
+        const yt = (d2 * pos[a + 1]! + d3 * pos[b + 1]! + d1 * pos[c + 1]!) / (d1 + d2 + d3);
+        if (yt > p[1]) n++;
+      }
+      return n % 2 === 1;
+    };
+    const haken = topZerlegen(topWelt(dok)).teile[0]!;
+    const hx = haken.umriss.reduce((q, p) => q + p.x, 0) / haken.umriss.length;
+    const hz = haken.umriss.reduce((q, p) => q + p.y, 0) / haken.umriss.length;
+    expect(innen([hx, 0.19, hz])).toBe(true);
+    expect(innen([hx, 0.19, -hz])).toBe(true);
+    expect(innen([0.04, 0.19, 0.15])).toBe(false);
+    const ohne = rundKoerper(dok, { seitenteile: false });
+    expect(ohne.info.seitenteile).toBe(0);
+  });
+
   it('Laufzeit fein und grob (Prüfwesen)', () => {
     for (const [name, dok] of [
       ['Kugel', neuesDokument()],
@@ -256,10 +309,11 @@ describe('Versuch rund (aufblasen)', () => {
     ] as const) {
       rundKoerper(dok);
       const fein = rundKoerper(dok);
-      const grob = rundKoerper(dok, { abstand: RUND_GROB });
+      const grob = rundKoerper(dok, { abstand: RUND_GROB, vereinigen: false });
       console.log(`${name}: fein ${fein.info.millisekunden.toFixed(0)} ms (${fein.info.dreiecke} Dreiecke), grob ${grob.info.millisekunden.toFixed(0)} ms (${grob.info.dreiecke} Dreiecke)`);
       // großzügig: Testdateien laufen parallel
-      expect(fein.info.millisekunden).toBeLessThan(400);
+      // mit Seitenteil (Überhang) wird fein über Abstandsfelder vereinigt (≈ 0,4 s); grob nur zusammengelegt
+      expect(fein.info.millisekunden).toBeLessThan(name === 'Überhang' ? 1500 : 400);
       expect(grob.info.millisekunden).toBeLessThan(120);
     }
   });

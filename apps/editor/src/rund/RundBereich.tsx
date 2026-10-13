@@ -43,9 +43,18 @@ export function RundBereich() {
               </b>
             </div>
           )}
+          {info && info.seitenteile > 0 && (
+            <div className="feld">
+              <span>Seitenteile</span>
+              <b data-rundseitenteile={info.seitenteile}>{info.seitenteile === 1 ? '1 Haken (je Seite)' : `${info.seitenteile} Haken (je Seite)`}</b>
+            </div>
+          )}
           <p className="hilfe">
-            Noch nicht in dieser Bauweise: Haken im Top (folgen als Seitenteile), Spanten, Kanten, Maul{hatMaul ? ' (hier ausgeblendet)' : ''}. Flache Ober- und
-            Unterseiten der Front werden rund.
+            Haken im Top (Luft zwischen Körper und Widerhaken) werden von selbst eigene Teile: rund aufgeblasen aus dem Top, Dicke aus Seite und Front, am Ansatz
+            weich mit dem Körper verbunden. Beim Ziehen liegen sie nur an, beim Loslassen wachsen sie an.
+          </p>
+          <p className="hilfe">
+            Noch nicht in dieser Bauweise: Spanten, Kanten, Maul{hatMaul ? ' (hier ausgeblendet)' : ''}. Flache Ober- und Unterseiten der Front werden rund.
           </p>
         </>
       )}

@@ -1,6 +1,7 @@
 // Versuch 13.10. nachmittags: Bauweise „rund“ (Tab am 3D-Fenster). Der Seitenumriss wird rund aufgeblasen, Top und Front
-// geben die Breite (packages/shape/src/versuch/aufblasen.ts). Während Gesten grob, beim Loslassen fein; gemerkt je
-// Profile und Feinheit. Nach dem feinen Bau zeigen alle Ansichten den Umriss des 3D-Körpers gestrichelt.
+// geben die Breite (packages/shape/src/versuch/aufblasen.ts); Haken im Top werden Seitenteile (seitenteile.ts). Während
+// Gesten grob, beim Loslassen fein; gemerkt je Profile und Feinheit. Nach dem feinen Bau zeigen alle Ansichten den Umriss
+// des 3D-Körpers gestrichelt.
 
 import type { Ansicht, Dokument, V2 } from '@ee/shape';
 import { RUND_GROB, RUND_STANDARD, type RundKoerper, rundKoerper, umrissAusNetz } from '@ee/shape/versuch';
@@ -15,6 +16,8 @@ export type RundAnzeigeInfo = {
   /** größte Abweichung der Breite von Top und Front (px bei 461 px je Kachel) */
   restTop: number;
   restFront: number;
+  /** Haken im Top als Seitenteile */
+  seitenteile: number;
 };
 
 type Anzeige = {
@@ -33,11 +36,12 @@ const PX = 461;
 export function rundBauen(dok: Dokument, schnell: boolean): RundKoerper {
   const l = letzter;
   if (l && l.profile === dok.profile && (l.grob === schnell || (schnell && !l.grob))) return l.koerper;
-  const koerper = rundKoerper(dok, { abstand: schnell ? RUND_GROB : RUND_STANDARD.abstand });
+  // grob während Gesten: Seitenteile nur angelegt, beim Loslassen weich mit dem Körper vereinigt
+  const koerper = rundKoerper(dok, { abstand: schnell ? RUND_GROB : RUND_STANDARD.abstand, vereinigen: !schnell });
   letzter = { profile: dok.profile, grob: schnell, koerper };
   const i = koerper.info;
   useRundAnzeige.setState((s) => ({
-    info: { millisekunden: i.millisekunden, dreiecke: i.dreiecke, punkte: i.punkte, grob: schnell, restTop: i.restTop * PX, restFront: i.restFront * PX },
+    info: { millisekunden: i.millisekunden, dreiecke: i.dreiecke, punkte: i.punkte, grob: schnell, restTop: i.restTop * PX, restFront: i.restFront * PX, seitenteile: i.seitenteile },
     stand: s.stand + 1,
   }));
   if (!schnell) {

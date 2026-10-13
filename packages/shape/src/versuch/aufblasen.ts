@@ -34,6 +34,7 @@ import { ableitung, bogenlaenge, punktAuf } from '../bezier';
 import type { Dokument } from '../dokument';
 import { pfadAbtasten, segmente, vollerPfad } from '../profil';
 import { type Dreiecke2D, Triangulierung } from './dreiecke2d';
+import { type Netz3, type Seitenteil, topWelt, topZerlegen, vereinigeNetze } from './seitenteile';
 
 export type RundOptionen = {
   /** Punktabstand im Inneren und am Rand (Kachel) */
@@ -51,9 +52,15 @@ export type RundOptionen = {
   glatt: number;
   /** Glättung von A und B nach der Anpassung (gegen Zacken an Stufen) */
   glattEnde: number;
+  /** Haken im Top als Seitenteile (Meilenstein 1b); false = Top-Umriss nur als innere Kante */
+  seitenteile: boolean;
+  /** Rundung des Übergangs zwischen Körper und Seitenteil (Kachel) */
+  uebergang: number;
+  /** Seitenteile weich mit dem Körper vereinigen (sonst nur zusammengelegt, für Gesten) */
+  vereinigen: boolean;
 };
 
-export const RUND_STANDARD: RundOptionen = { abstand: 0.01, kMax: 4, weich: 6, durchgaenge: 40, glatt: 1, glattEnde: 6 };
+export const RUND_STANDARD: RundOptionen = { abstand: 0.01, kMax: 4, weich: 6, durchgaenge: 40, glatt: 1, glattEnde: 6, seitenteile: true, uebergang: 0.02, vereinigen: true };
 /** Punktabstand während Gesten */
 export const RUND_GROB = 0.022;
 
@@ -76,6 +83,8 @@ export type RundInfo = {
   /** mittlere Abweichung der Breite (Kachel) */
   mittelTop: number;
   mittelFront: number;
+  /** Seitenteile aus Haken im Top; mit Seitenteilen wird das Netz über Abstandsfelder vereinigt */
+  seitenteile: number;
 };
 
 /** 2D-Netz der Seite mit den Feldern des Aufblasens (für Spanten, Kanten und Anzeigen). */
@@ -168,7 +177,11 @@ function umrissAbtasten(dok: Dokument, s: number): Umriss {
     flaeche += a.x * b.y - b.x * a.y;
   }
   if (flaeche < 0) P.reverse();
-  // Normale nach innen: aus den Nachbarsehnen (an Ecken die Winkelhalbierende)
+  return { p: P, n: innenNormalen(P) };
+}
+
+/** Normalen nach innen (Polygon gegen den Uhrzeigersinn): aus den Nachbarsehnen, an Ecken die Winkelhalbierende. */
+function innenNormalen(P: readonly V2[]): V2[] {
   const N: V2[] = [];
   const m = P.length;
   for (let i = 0; i < m; i++) {
@@ -198,7 +211,33 @@ function umrissAbtasten(dok: Dokument, s: number): Umriss {
     }
     N.push({ x: nx, y: ny });
   }
-  return { p: P, n: N };
+  return N;
+}
+
+/** Polygon gegen den Uhrzeigersinn ausrichten und seine Kanten mit Abstand ≈ s nachabtasten (Ecken bleiben). */
+export function polygonAbtasten(poly: readonly V2[], s: number): V2[] {
+  let flaeche = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i]!;
+    const b = poly[(i + 1) % poly.length]!;
+    flaeche += a.x * b.y - b.x * a.y;
+  }
+  const P = flaeche < 0 ? [...poly].reverse() : [...poly];
+  const out: V2[] = [];
+  for (let i = 0; i < P.length; i++) {
+    const a = P[i]!;
+    const b = P[(i + 1) % P.length]!;
+    const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / s));
+    for (let k = 0; k < n; k++) out.push({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n });
+  }
+  const P2: V2[] = [];
+  for (const q of out) {
+    const l = P2[P2.length - 1];
+    if (l && Math.hypot(l.x - q.x, l.y - q.y) < 1e-7) continue;
+    P2.push(q);
+  }
+  while (P2.length > 1 && Math.hypot(P2[0]!.x - P2[P2.length - 1]!.x, P2[0]!.y - P2[P2.length - 1]!.y) < 1e-7) P2.pop();
+  return P2;
 }
 
 // ---------- Abfragen am Umriss: innen/außen, Abstand ----------
@@ -334,10 +373,16 @@ class Streuung {
 
 // ---------- 2D-Netz der Seite ----------
 
+export type FlaechenNetz = { netz: Dreiecke2D; rand: Uint8Array; umriss: Int32Array; fehlend: number; suche: UmrissSuche };
+
 /** Netz der Seite: Randpunkte auf dem Umriss, zwei dünne Reihen am Rand, Dreiecksgitter innen. */
-export function seitenNetz(dok: Dokument, s: number): { netz: Dreiecke2D; rand: Uint8Array; umriss: Int32Array; fehlend: number; suche: UmrissSuche } {
-  const um = umrissAbtasten(dok, s);
-  const P = um.p;
+export function seitenNetz(dok: Dokument, s: number): FlaechenNetz {
+  return flaechenNetz(umrissAbtasten(dok, s).p, s);
+}
+
+/** Netz eines Polygons (gegen den Uhrzeigersinn, Rand schon abgetastet): Rand exakt, zwei dünne Reihen, Gitter innen. */
+export function flaechenNetz(P: readonly V2[], s: number): FlaechenNetz {
+  const um = { p: P, n: innenNormalen(P) };
   const m = P.length;
   let xMin = Infinity;
   let xMax = -Infinity;
@@ -781,6 +826,199 @@ function breiteAnpassen(netz: Dreiecke2D, u: Float64Array, h: Float64Array, T: F
   return { z, k: kv, T, Tz, F, Fz, A, B, restTop, restFront, mittelTop: mTop, mittelFront: mFront };
 }
 
+// ---------- Geschlossene Fläche aus einem Höhenfeld ----------
+
+/** Höhenfeld über einem 2D-Netz (a, b): w = c ± k·√u, Rand (u = 0) gemeinsam. */
+export type Blatt = { netz: Dreiecke2D; rand: Uint8Array; u: Float64Array; k: Float64Array; c?: Float64Array };
+
+/**
+ * Geschlossenes Netz aus einem Höhenfeld. Abbildung der Achsen: 'z' = (a, b, w) → (x, y, z) (Körper über der Seite);
+ * 'y' = (a, b, w) → (x, w, b) und 'y-' = (x, w, −b) (Seitenteil über dem Top und sein Spiegelbild). Normalen aus dem
+ * Gradienten: ∇(k·√u) = k ∇u / (2√u) + √u ∇k; am Rand waagerecht nach außen, ohne Knick zwischen den Blättern.
+ */
+export function blattNetz(bl: Blatt, abbildung: 'z' | 'y' | 'y-'): { positionen: Float32Array; normalen: Float32Array; indizes: Uint32Array } {
+  const { netz, rand, u, k } = bl;
+  const { x, y, dreiecke } = netz;
+  const n = x.length;
+  const c = bl.c ?? new Float64Array(n);
+  const gu = new Float64Array(2 * n);
+  const gk = new Float64Array(2 * n);
+  const gc = new Float64Array(2 * n);
+  const gw = new Float64Array(n);
+  for (let t = 0; t < dreiecke.length; t += 3) {
+    const a = dreiecke[t]!;
+    const b = dreiecke[t + 1]!;
+    const d = dreiecke[t + 2]!;
+    const x1 = x[b]! - x[a]!;
+    const y1 = y[b]! - y[a]!;
+    const x2 = x[d]! - x[a]!;
+    const y2 = y[d]! - y[a]!;
+    const det = x1 * y2 - x2 * y1;
+    if (Math.abs(det) < 1e-20) continue;
+    const w = Math.abs(det) / 2;
+    for (const [f, g] of [
+      [u, gu],
+      [k, gk],
+      [c, gc],
+    ] as const) {
+      const f1 = f[b]! - f[a]!;
+      const f2 = f[d]! - f[a]!;
+      const fx = (f1 * y2 - f2 * y1) / det;
+      const fy = (x1 * f2 - x2 * f1) / det;
+      for (const v of [a, b, d]) {
+        g[2 * v] = g[2 * v]! + w * fx;
+        g[2 * v + 1] = g[2 * v + 1]! + w * fy;
+      }
+    }
+    gw[a] = gw[a]! + w;
+    gw[b] = gw[b]! + w;
+    gw[d] = gw[d]! + w;
+  }
+  // je Punkt: Höhe und Normale beider Blätter (lokal a, b, w)
+  const hoch = new Float64Array(n);
+  const tief = new Float64Array(n);
+  const nOben = new Float64Array(3 * n);
+  const nUnten = new Float64Array(3 * n);
+  for (let v = 0; v < n; v++) {
+    const w = gw[v]! || 1;
+    const ux = gu[2 * v]! / w;
+    const uy = gu[2 * v + 1]! / w;
+    const hv = rand[v] ? 0 : Math.sqrt(Math.max(0, u[v]!));
+    const kk = k[v]!;
+    hoch[v] = c[v]! + kk * hv;
+    tief[v] = c[v]! - kk * hv;
+    if (rand[v] || hv < 1e-9) {
+      const l = Math.hypot(ux, uy) || 1;
+      nOben[3 * v] = nUnten[3 * v] = -ux / l;
+      nOben[3 * v + 1] = nUnten[3 * v + 1] = -uy / l;
+      nOben[3 * v + 2] = nUnten[3 * v + 2] = 0;
+      continue;
+    }
+    // ∇(k h) = k ∇u / (2h) + h ∇k
+    const khx = (kk * ux) / (2 * hv) + hv * (gk[2 * v]! / w);
+    const khy = (kk * uy) / (2 * hv) + hv * (gk[2 * v + 1]! / w);
+    const cx = gc[2 * v]! / w;
+    const cy = gc[2 * v + 1]! / w;
+    let ox = -(cx + khx);
+    let oy = -(cy + khy);
+    let l = Math.hypot(ox, oy, 1);
+    nOben[3 * v] = ox / l;
+    nOben[3 * v + 1] = oy / l;
+    nOben[3 * v + 2] = 1 / l;
+    ox = cx - khx;
+    oy = cy - khy;
+    l = Math.hypot(ox, oy, 1);
+    nUnten[3 * v] = ox / l;
+    nUnten[3 * v + 1] = oy / l;
+    nUnten[3 * v + 2] = -1 / l;
+  }
+  // Punkte: oberes Blatt alle, unteres Blatt nur innen (Rand gemeinsam)
+  const unten = new Int32Array(n).fill(-1);
+  let m = n;
+  for (let v = 0; v < n; v++) if (!rand[v]) unten[v] = m++;
+  const positionen = new Float32Array(3 * m);
+  const normalen = new Float32Array(3 * m);
+  const setze = (i: number, a: number, b: number, w: number, na: number, nb: number, nw: number) => {
+    if (abbildung === 'z') {
+      positionen.set([a, b, w], 3 * i);
+      normalen.set([na, nb, nw], 3 * i);
+    } else if (abbildung === 'y') {
+      positionen.set([a, w, b], 3 * i);
+      normalen.set([na, nw, nb], 3 * i);
+    } else {
+      positionen.set([a, w, -b], 3 * i);
+      normalen.set([na, nw, -nb], 3 * i);
+    }
+  };
+  for (let v = 0; v < n; v++) {
+    setze(v, x[v]!, y[v]!, hoch[v]!, nOben[3 * v]!, nOben[3 * v + 1]!, nOben[3 * v + 2]!);
+    const q = unten[v]!;
+    if (q >= 0) setze(q, x[v]!, y[v]!, tief[v]!, nUnten[3 * v]!, nUnten[3 * v + 1]!, nUnten[3 * v + 2]!);
+  }
+  const nd = dreiecke.length / 3;
+  const indizes = new Uint32Array(6 * nd);
+  // Umlaufsinn: gegen den Uhrzeigersinn in (a, b) gibt +w; 'y' spiegelt (zwei Achsen getauscht) und dreht ihn um
+  const spiegel = abbildung === 'y';
+  for (let t = 0; t < nd; t++) {
+    const a = dreiecke[3 * t]!;
+    const b = dreiecke[3 * t + 1]!;
+    const d = dreiecke[3 * t + 2]!;
+    const ua = unten[a]! < 0 ? a : unten[a]!;
+    const ub = unten[b]! < 0 ? b : unten[b]!;
+    const ud = unten[d]! < 0 ? d : unten[d]!;
+    if (!spiegel) {
+      indizes.set([a, b, d], 3 * t);
+      indizes.set([ua, ud, ub], 3 * (nd + t));
+    } else {
+      indizes.set([a, d, b], 3 * t);
+      indizes.set([ua, ub, ud], 3 * (nd + t));
+    }
+  }
+  return { positionen, normalen, indizes };
+}
+
+// ---------- Seitenteile (Haken im Top) ----------
+
+/**
+ * Netz eines Seitenteils (beide Spiegelseiten): rund aufgeblasen aus seinem Top-Bereich, über die Brücke in den Körper
+ * verlängert. Die Dicke in y ist der Bereich, den Seite (bei x) und Front (bei |z|) zulassen, mit der Wurzel-Rundung bis
+ * zum Rand; die Mitte liegt in der Mitte dieses Bereichs.
+ */
+function seitenteilNetz(
+  teil: Seitenteil,
+  s: number,
+  frontBereich: (z: number) => [number, number] | null,
+  seitenBereich: (x: number) => [number, number] | null,
+): Netz3 {
+  const b = teil.bruecke;
+  const laenge = b.z1 - b.z0;
+  const tief = Math.max(2 * s, 0.6 * laenge);
+  const xs = b.x + b.richtung * tief;
+  const anfang = teil.umriss[0]!;
+  const ende = teil.umriss[teil.umriss.length - 1]!;
+  const poly = [...teil.umriss, { x: xs, y: ende.y }, { x: xs, y: anfang.y }];
+  const sw = Math.max(0.002, Math.min(s, laenge / 10));
+  const fn = flaechenNetz(polygonAbtasten(poly, sw), sw);
+  const { K, last } = steifigkeit(fn.netz);
+  const { u } = loesen(K, last, fn.rand);
+  let uMax = 0;
+  for (const q of u) uMax = Math.max(uMax, q);
+  const n = fn.netz.x.length;
+  const k = new Float64Array(n);
+  const c = new Float64Array(n);
+  for (let v = 0; v < n; v++) {
+    const xx = fn.netz.x[v]!;
+    const zz = fn.netz.y[v]!;
+    const sb = seitenBereich(xx);
+    const fb = frontBereich(zz);
+    let lo = sb ? sb[0] : 0;
+    let hi = sb ? sb[1] : 0;
+    if (fb) {
+      lo = Math.max(lo, fb[0]);
+      hi = Math.min(hi, fb[1]);
+    }
+    if (!(hi > lo)) {
+      lo = hi = sb ? (sb[0] + sb[1]) / 2 : 0;
+    }
+    c[v] = (lo + hi) / 2;
+    k[v] = uMax > 0 ? (hi - lo) / 2 / Math.sqrt(uMax) : 0;
+  }
+  const bl = { netz: fn.netz, rand: fn.rand, u, k, c };
+  const a = blattNetz(bl, 'y');
+  const m = blattNetz(bl, 'y-');
+  const na = a.positionen.length / 3;
+  const positionen = new Float32Array(a.positionen.length + m.positionen.length);
+  positionen.set(a.positionen);
+  positionen.set(m.positionen, a.positionen.length);
+  const normalen = new Float32Array(positionen.length);
+  normalen.set(a.normalen);
+  normalen.set(m.normalen, a.normalen.length);
+  const indizes = new Uint32Array(a.indizes.length + m.indizes.length);
+  indizes.set(a.indizes);
+  for (let i = 0; i < m.indizes.length; i++) indizes[a.indizes.length + i] = m.indizes[i]! + na;
+  return { positionen, normalen, indizes };
+}
+
 // ---------- Bau ----------
 
 /** Körper der Bauweise „rund“ aus den drei Profilen. */
@@ -815,103 +1053,106 @@ export function rundKoerper(dok: Dokument, optionen: Partial<RundOptionen> = {})
   }
   const NX = Math.max(16, Math.round((xMax - xMin) / (0.5 * s)) + 1);
   const NY = Math.max(16, Math.round((yMax - yMin) / (0.5 * s)) + 1);
-  const T = halbbreiteInnen(pfadAbtasten(segmente(dok.profile.top), 48), (p) => p.x, (p) => p.y, xMin, xMax, NX);
+  // Top: Haken (Rückläufe des Umrisses) werden Seitenteile, der Körper nimmt die innere Kante
+  const zerlegung = opt.seitenteile ? topZerlegen(topWelt(dok, 48)) : { haupt: topWelt(dok, 48), teile: [] as Seitenteil[] };
+  const T = halbbreiteInnen(zerlegung.haupt, (p) => p.x, (p) => p.y, xMin, xMax, NX);
   const F = halbbreiteInnen(pfadAbtasten(segmente(dok.profile.front), 48), (p) => p.y, (p) => p.x, yMin, yMax, NY);
   const br = breiteAnpassen(netz, u, h, T, F, xMin, xMax, yMin, yMax, opt);
   const { z, k: kv, Tz, Fz, A, B, restTop, restFront, mittelTop, mittelFront } = br;
   const t3 = jetzt();
 
-  // Normalen aus dem Gradienten von z = k·√u (je Punkt flächengewichtet aus den Dreiecken)
-  const gux = new Float64Array(n);
-  const guy = new Float64Array(n);
-  const gkx = new Float64Array(n);
-  const gky = new Float64Array(n);
-  const gw = new Float64Array(n);
-  for (let t = 0; t < dreiecke.length; t += 3) {
-    const a = dreiecke[t]!;
-    const b = dreiecke[t + 1]!;
-    const c = dreiecke[t + 2]!;
-    const x1 = x[b]! - x[a]!;
-    const y1 = y[b]! - y[a]!;
-    const x2 = x[c]! - x[a]!;
-    const y2 = y[c]! - y[a]!;
-    const det = x1 * y2 - x2 * y1;
-    if (Math.abs(det) < 1e-20) continue;
-    const grad = (f: Float64Array): [number, number] => {
-      const f1 = f[b]! - f[a]!;
-      const f2 = f[c]! - f[a]!;
-      return [(f1 * y2 - f2 * y1) / det, (x1 * f2 - x2 * f1) / det];
-    };
-    const [ux, uy] = grad(u);
-    const [kx, ky] = grad(kv);
-    const w = Math.abs(det) / 2;
-    for (const v of [a, b, c]) {
-      gux[v] = gux[v]! + w * ux;
-      guy[v] = guy[v]! + w * uy;
-      gkx[v] = gkx[v]! + w * kx;
-      gky[v] = gky[v]! + w * ky;
-      gw[v] = gw[v]! + w;
-    }
-  }
-  const nrm = new Float64Array(3 * n);
-  for (let v = 0; v < n; v++) {
-    const w = gw[v]! || 1;
-    const ux = gux[v]! / w;
-    const uy = guy[v]! / w;
-    if (sn.rand[v]) {
-      // waagerecht nach außen (gegen den Gradienten von u)
-      const l = Math.hypot(ux, uy) || 1;
-      nrm[3 * v] = -ux / l;
-      nrm[3 * v + 1] = -uy / l;
-      nrm[3 * v + 2] = 0;
-      continue;
-    }
-    const hv = Math.max(h[v]!, 1e-9);
-    const k = kv[v]!;
-    // ∇z = k ∇h + h ∇k, ∇h = ∇u / (2h)
-    const zx = (k * ux) / (2 * hv) + hv * (gkx[v]! / w);
-    const zy = (k * uy) / (2 * hv) + hv * (gky[v]! / w);
-    const l = Math.hypot(zx, zy, 1);
-    nrm[3 * v] = -zx / l;
-    nrm[3 * v + 1] = -zy / l;
-    nrm[3 * v + 2] = 1 / l;
-  }
-
-  // Vorder- und Rückseite
-  const hinten = new Int32Array(n).fill(-1);
-  let m = n;
-  for (let v = 0; v < n; v++) if (!sn.rand[v]) hinten[v] = m++;
-  const positionen = new Float32Array(3 * m);
-  const normalen = new Float32Array(3 * m);
-  for (let v = 0; v < n; v++) {
-    positionen[3 * v] = x[v]!;
-    positionen[3 * v + 1] = y[v]!;
-    positionen[3 * v + 2] = z[v]!;
-    normalen[3 * v] = nrm[3 * v]!;
-    normalen[3 * v + 1] = nrm[3 * v + 1]!;
-    normalen[3 * v + 2] = nrm[3 * v + 2]!;
-    const w = hinten[v]!;
-    if (w < 0) continue;
-    positionen[3 * w] = x[v]!;
-    positionen[3 * w + 1] = y[v]!;
-    positionen[3 * w + 2] = -z[v]!;
-    normalen[3 * w] = nrm[3 * v]!;
-    normalen[3 * w + 1] = nrm[3 * v + 1]!;
-    normalen[3 * w + 2] = -nrm[3 * v + 2]!;
-  }
+  // Vorder- und Rückseite (z = ±k·√u), Rand gemeinsam
+  const blatt = blattNetz({ netz, rand: sn.rand, u, k: kv }, 'z');
+  let positionen: Float32Array = blatt.positionen;
+  let normalen: Float32Array = blatt.normalen;
+  let indizes: Uint32Array = blatt.indizes;
+  let m = positionen.length / 3;
   const nd = dreiecke.length / 3;
-  const indizes = new Uint32Array(6 * nd);
-  for (let t = 0; t < nd; t++) {
-    const a = dreiecke[3 * t]!;
-    const b = dreiecke[3 * t + 1]!;
-    const c = dreiecke[3 * t + 2]!;
-    indizes[3 * t] = a;
-    indizes[3 * t + 1] = b;
-    indizes[3 * t + 2] = c;
-    const o = 3 * (nd + t);
-    indizes[o] = hinten[a]! < 0 ? a : hinten[a]!;
-    indizes[o + 1] = hinten[c]! < 0 ? c : hinten[c]!;
-    indizes[o + 2] = hinten[b]! < 0 ? b : hinten[b]!;
+
+  // Seitenteile (Haken im Top): Körper und Teile als Abstandsfelder weich vereinigt, ein gemeinsames Netz
+  if (zerlegung.teile.length) {
+    const frontPts = pfadAbtasten(segmente(dok.profile.front), 48);
+    let fy0 = Infinity;
+    let fy1 = -Infinity;
+    for (const q of frontPts) {
+      fy0 = Math.min(fy0, q.y);
+      fy1 = Math.max(fy1, q.y);
+    }
+    const aufSeite = (yf: number) => yMin + ((yf - fy0) / (fy1 - fy0 || 1)) * (yMax - yMin);
+    const frontBereich = (zz: number): [number, number] | null => {
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let i = 0; i + 1 < frontPts.length; i++) {
+        const a = frontPts[i]!;
+        const b = frontPts[i + 1]!;
+        if (Math.abs(a.x) <= zz !== Math.abs(b.x) <= zz) {
+          const yy = a.y + ((zz - Math.abs(a.x)) / (Math.abs(b.x) - Math.abs(a.x))) * (b.y - a.y);
+          lo = Math.min(lo, yy);
+          hi = Math.max(hi, yy);
+        }
+      }
+      return lo < hi ? [aufSeite(lo), aufSeite(hi)] : null;
+    };
+    const umrissWelt = Array.from(sn.umriss, (v) => ({ x: x[v]!, y: y[v]! }));
+    const seitenBereich = (xx: number): [number, number] | null => {
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let i = 0; i < umrissWelt.length; i++) {
+        const a = umrissWelt[i]!;
+        const b = umrissWelt[(i + 1) % umrissWelt.length]!;
+        if (a.x <= xx !== b.x <= xx) {
+          const yy = a.y + ((xx - a.x) / (b.x - a.x)) * (b.y - a.y);
+          lo = Math.min(lo, yy);
+          hi = Math.max(hi, yy);
+        }
+      }
+      return lo < hi ? [lo, hi] : null;
+    };
+    const teilNetze = zerlegung.teile.map((t) => seitenteilNetz(t, s, frontBereich, seitenBereich));
+    if (!opt.vereinigen) {
+      // während Gesten: Körper und Teile nur zusammengelegt (ohne weichen Übergang), schnell
+      const alle = [{ positionen, normalen, indizes }, ...teilNetze];
+      const nP = alle.reduce((q, a) => q + a.positionen.length, 0);
+      const nI = alle.reduce((q, a) => q + a.indizes.length, 0);
+      const P2 = new Float32Array(nP);
+      const N2 = new Float32Array(nP);
+      const I2 = new Uint32Array(nI);
+      let oP = 0;
+      let oI = 0;
+      for (const a of alle) {
+        P2.set(a.positionen, oP);
+        N2.set(a.normalen, oP);
+        for (let i = 0; i < a.indizes.length; i++) I2[oI + i] = a.indizes[i]! + oP / 3;
+        oP += a.positionen.length;
+        oI += a.indizes.length;
+      }
+      positionen = P2;
+      normalen = N2;
+      indizes = I2;
+      m = positionen.length / 3;
+    } else {
+      // Dreiecke nahe am Ansatz (Brücke) brauchen das breite Band für den weichen Übergang, alle anderen nur ein schmales
+      const nahe = zerlegung.teile.map((t) => {
+        const ext = Math.max(2 * s, 0.6 * (t.bruecke.z1 - t.bruecke.z0));
+        const lo = Math.min(t.bruecke.x, t.bruecke.x + t.bruecke.richtung * ext) - opt.uebergang - 2 * s;
+        const hi = Math.max(t.bruecke.x, t.bruecke.x + t.bruecke.richtung * ext) + opt.uebergang + 2 * s;
+        return { lo, hi, z0: t.bruecke.z0 - opt.uebergang - 2 * s, z1: t.bruecke.z1 + opt.uebergang + 2 * s };
+      });
+      const koerper: Netz3 = { positionen, normalen, indizes };
+      const alle = [koerper, ...teilNetze];
+      const nah = (i: number, t: number) => {
+        const P = alle[i]!.positionen;
+        const a = 3 * alle[i]!.indizes[3 * t]!;
+        const xx = P[a]!;
+        const zz = Math.abs(P[a + 2]!);
+        return nahe.some((q) => xx > q.lo && xx < q.hi && zz > q.z0 && zz < q.z1);
+      };
+      const v = vereinigeNetze(alle, nah, { h: Math.max(0.0055, 0.55 * s), uebergang: opt.uebergang });
+      positionen = v.positionen;
+      normalen = v.normalen;
+      indizes = v.indizes;
+      m = positionen.length / 3;
+    }
   }
   const t4 = jetzt();
   return {
@@ -929,13 +1170,14 @@ export function rundKoerper(dok: Dokument, optionen: Partial<RundOptionen> = {})
       dreiecke2d: nd,
       randpunkte: sn.umriss.length,
       punkte: m,
-      dreiecke: 2 * nd,
+      dreiecke: indizes.length / 3,
       cgSchritte: lsg.schritte,
       fehlendeKanten: sn.fehlend,
       restTop,
       restFront,
       mittelTop,
       mittelFront,
+      seitenteile: zerlegung.teile.length,
     },
   };
 }
