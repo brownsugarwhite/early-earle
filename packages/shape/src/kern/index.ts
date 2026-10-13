@@ -11,3 +11,4 @@ export * from './deskriptoren';
 export * from './breite';
 export * from './maul';
 export * from './teil';
+export * from './klinge';

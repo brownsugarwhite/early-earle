@@ -35,7 +35,7 @@ export const KLINGE_BUESCHEL: KlingenForm = { ringe: 4, profil: 'flamme', dicke:
 export const KLINGE_SCHWADE: KlingenForm = { ringe: 6, profil: 'schwade', dicke: 0.5, einsenken: 0.2, biegung: 0.5, stufen: 2 };
 
 /** Lage einer Klinge: Fußpunkt auf der Haut, Achse (Länge 1), Querrichtung (Breite, Länge 1), Länge und Breite (Welt), Phase. */
-export type KlingenLage = { fuss: V3; achse: V3; quer: V3; laenge: number; breite: number; phase: number };
+export type KlingenLage = { fuss: V3; achse: V3; quer: V3; laenge: number; breite: number; phase: number; /** feiner Hautpunkt am Fuß (Deskriptoren) */ basis?: number };
 
 /** Breite (0 … 1) bei Höhenanteil t je Profil; die Spitze ist immer 0. */
 export function profilBreite(profil: KlingenProfil, t: number): number {
@@ -157,7 +157,7 @@ export function hautAus(fein: Float64Array): Haut {
 }
 
 /** Hautpunkt in Richtung `richtung` vom Mittelpunkt (größtes Skalarprodukt). */
-export function hautPunkt(haut: Haut, richtung: V3): { p: V3; n: V3 } {
+export function hautPunkt(haut: Haut, richtung: V3): { p: V3; n: V3; i: number } {
   const r = norm(richtung);
   let best = -Infinity;
   let bi = 0;
@@ -169,7 +169,7 @@ export function hautPunkt(haut: Haut, richtung: V3): { p: V3; n: V3 } {
       bi = i;
     }
   }
-  return { p: [haut.punkte[3 * bi]!, haut.punkte[3 * bi + 1]!, haut.punkte[3 * bi + 2]!], n: [haut.normalen[3 * bi]!, haut.normalen[3 * bi + 1]!, haut.normalen[3 * bi + 2]!] };
+  return { p: [haut.punkte[3 * bi]!, haut.punkte[3 * bi + 1]!, haut.punkte[3 * bi + 2]!], n: [haut.normalen[3 * bi]!, haut.normalen[3 * bi + 1]!, haut.normalen[3 * bi + 2]!], i: bi };
 }
 
 /** Einfacher Zufall mit Saat (mulberry32). */
@@ -184,9 +184,10 @@ export function zufall(saat: number): () => number {
   };
 }
 
-/** Achse einer Klinge: Normale, nach oben gekämmt (`kamm` 0 = Normale, 1 = senkrecht nach oben). */
+/** Achse einer Klinge: Normale, gekämmt (`kamm` 0 = Normale, +1 = senkrecht nach oben, −1 = senkrecht nach unten). */
 export function gekaemmt(normale: V3, kamm: number): V3 {
-  return norm([normale[0] * (1 - kamm), normale[1] * (1 - kamm) + kamm, normale[2] * (1 - kamm)]);
+  const k = Math.abs(kamm);
+  return norm([normale[0] * (1 - k), normale[1] * (1 - k) + kamm, normale[2] * (1 - k)]);
 }
 
 /**
@@ -197,14 +198,15 @@ export function zungenAmScheitel(haut: Haut, H: number, anzahl: number, polGrad:
   const zf = zufall(saat);
   const lagen: KlingenLage[] = [];
   const oben = hautPunkt(haut, [0, 1, 0]);
-  lagen.push({ fuss: oben.p, achse: gekaemmt(oben.n, 0.6), quer: [1, 0, 0], laenge: 0.62 * H, breite: 0.42 * H, phase: zf() * Math.PI * 2 });
+  lagen.push({ fuss: oben.p, achse: gekaemmt(oben.n, 0.6), quer: [1, 0, 0], laenge: 0.62 * H, breite: 0.42 * H, phase: zf() * Math.PI * 2, basis: oben.i });
+  if (anzahl === 0) return lagen;
   const pol = (polGrad * Math.PI) / 180;
   for (let i = 0; i < anzahl; i++) {
     const az = (2 * Math.PI * i) / anzahl + 0.3;
     const r: V3 = [Math.sin(pol) * Math.cos(az), Math.cos(pol), Math.sin(pol) * Math.sin(az)];
     const hp = hautPunkt(haut, r);
     const quer = norm(kreuz([0, 1, 0], hp.n));
-    lagen.push({ fuss: hp.p, achse: gekaemmt(hp.n, 0.55), quer, laenge: (0.28 + 0.2 * zf()) * H, breite: (0.2 + 0.1 * zf()) * H, phase: zf() * Math.PI * 2 });
+    lagen.push({ fuss: hp.p, achse: gekaemmt(hp.n, 0.55), quer, laenge: (0.28 + 0.2 * zf()) * H, breite: (0.2 + 0.1 * zf()) * H, phase: zf() * Math.PI * 2, basis: hp.i });
   }
   return lagen;
 }
@@ -220,10 +222,11 @@ export function bueschelAufHaut(haut: Haut, H: number, anzahl: number, groesse: 
     const phi = gold * i;
     const r: V3 = [Math.cos(phi) * rad, y, Math.sin(phi) * rad];
     const hp = hautPunkt(haut, r);
-    const a = gekaemmt(hp.n, kamm * (0.5 + 0.5 * Math.abs(hp.n[1])));
+    // am Scheitel folgt das Büschel der Normale, an den Flanken wird es gekämmt (nach oben oder, negativ, hängend)
+    const a = gekaemmt(hp.n, kamm * (1 - Math.max(0, hp.n[1]) * 0.8));
     const quer = norm(kreuz(a, [Math.sin(phi * 3.1), 0.2, Math.cos(phi * 3.1)]));
     const g = groesse * (0.75 + 0.5 * zf());
-    lagen.push({ fuss: hp.p, achse: a, quer, laenge: g * H, breite: 0.55 * g * H, phase: zf() * Math.PI * 2 });
+    lagen.push({ fuss: hp.p, achse: a, quer, laenge: g * H, breite: 0.9 * g * H, phase: zf() * Math.PI * 2, basis: hp.i });
   }
   return lagen;
 }
@@ -240,7 +243,7 @@ export function flaemmchen(haut: Haut, H: number, anzahl: number, saat: number, 
     const t = (umlauf + zf()) % 1;
     const hoch = (0.12 + 0.5 * t) * H;
     const gr = (1 - t) * (0.1 + 0.08 * zf()) * H;
-    lagen.push({ fuss: [hp.p[0] + hp.n[0] * hoch, hp.p[1] + hp.n[1] * hoch, hp.p[2] + hp.n[2] * hoch], achse: [0, 1, 0], quer: [1, 0, 0], laenge: Math.max(1e-4, gr), breite: 0.7 * gr, phase: zf() * 6 });
+    lagen.push({ fuss: [hp.p[0] + hp.n[0] * hoch, hp.p[1] + hp.n[1] * hoch, hp.p[2] + hp.n[2] * hoch], achse: [0, 1, 0], quer: [1, 0, 0], laenge: Math.max(1e-4, gr), breite: 0.7 * gr, phase: zf() * 6, basis: hp.i });
   }
   return lagen;
 }

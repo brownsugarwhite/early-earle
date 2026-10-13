@@ -4,7 +4,7 @@
 // Look: Matcap (Licht an der Ansicht, wie Blender-Solid), Kachel als 10-%-Fläche, harter Schatten von
 // einem eigenen Sonnenlicht (wirkt nur auf den Schatten, die Matcap ignoriert Licht).
 
-import { STIL_STANDARD, applyMuster, applyStil, applyZonen, createCreatureMaterial, createCreatureUniforms, installTslFunctionCacheFix, type CreatureMaterialUniforms } from '@ee/render';
+import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, installTslFunctionCacheFix, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms } from '@ee/render';
 import type { LoftNetz } from '@ee/shape';
 import {
   BufferAttribute,
@@ -58,6 +58,9 @@ export class Renderer3D {
   vertexAnzahl = 0;
   /** Beweis 4: Earle-Wesen (eigenes Netz mit Deskriptoren, Material aus `packages/render`) */
   private readonly wesen: Mesh;
+  /** Beweis 5: Feuer-/Gas-Wesen (Körper und Klingen) mit eigenem Material */
+  private readonly feuer: Mesh;
+  private readonly feuerUniforms: FeuerUniforms;
   private readonly wesenUniforms: CreatureMaterialUniforms;
   private palette: Palette = PALETTEN.tiger!;
   private lebenTimer: number | null = null;
@@ -92,6 +95,14 @@ export class Renderer3D {
     this.wesen.frustumCulled = false;
     this.szene.add(this.wesen);
     this.setzePalette(this.palette);
+    this.feuerUniforms = createFeuerUniforms();
+    const feuerMaterial = createFeuerMaterial(this.feuerUniforms);
+    feuerMaterial.shadowSide = FrontSide;
+    this.feuer = new Mesh(new BufferGeometry(), feuerMaterial);
+    this.feuer.visible = false;
+    this.feuer.castShadow = true;
+    this.feuer.frustumCulled = false;
+    this.szene.add(this.feuer);
 
     const kachel = new Mesh(new PlaneGeometry(1, 1), new MeshBasicNodeMaterial({ color: 0x000000, transparent: true, opacity: 0.1, depthWrite: false }));
     kachel.rotation.x = -Math.PI / 2;
@@ -160,6 +171,7 @@ export class Renderer3D {
     this.koerper.geometry = g;
     this.koerper.visible = true;
     this.wesen.visible = false;
+    this.feuer.visible = false;
     this.leben(false);
     alt.dispose();
     this.vertexAnzahl = positionen.length / 3;
@@ -254,10 +266,53 @@ export class Renderer3D {
     this.wesen.geometry = g;
     this.wesen.visible = true;
     this.koerper.visible = false;
+    this.feuer.visible = false;
     alt.dispose();
     this.vertexAnzahl = positionen.length / 3;
     this.leben(true);
     this.nachUebersetzen();
+  }
+
+  /** Beweis 5: Feuer- oder Gas-Wesen (Körper und Klingen als Dreiecke) mit Bändermaterial, Körpermitte und Schlitzaugen. */
+  setzeFeuer(positionen: Float32Array, normalen: Float32Array, hoehe: number, mitte: [number, number, number], art: FeuerArt, augen: Auge[]) {
+    const g = new BufferGeometry();
+    g.setAttribute('position', new BufferAttribute(positionen, 3));
+    g.setAttribute('normal', new BufferAttribute(normalen, 3));
+    g.computeBoundingSphere();
+    const u = this.feuerUniforms;
+    u.bodyScale.value = Math.max(1e-3, hoehe);
+    u.mitte.value.set(mitte[0], mitte[1], mitte[2]);
+    applyFeuerArt(u, art);
+    u.eyeCount.value = Math.min(4, augen.length);
+    augen.slice(0, 4).forEach((a, i) => {
+      const n = new Vector3(...a.normale).normalize();
+      const up = new Vector3(0, 1, 0).addScaledVector(n, -n.y).normalize();
+      (u.eyePos.array[i] as Vector4).set(a.pos[0] + n.x * 0.002, a.pos[1] + n.y * 0.002, a.pos[2] + n.z * 0.002, a.groesse);
+      (u.eyeUp.array[i] as Vector4).set(up.x, up.y, up.z, 1);
+    });
+    const alt = this.feuer.geometry;
+    this.feuer.geometry = g;
+    this.feuer.visible = true;
+    this.wesen.visible = false;
+    this.koerper.visible = false;
+    alt.dispose();
+    this.vertexAnzahl = positionen.length / 3;
+    this.leben(true);
+    this.nachUebersetzen();
+  }
+
+  /** Lagen und Normalen des sichtbaren Wesens an Ort und Stelle ersetzen (Wehen der Klingen je Bild); gleiche Länge vorausgesetzt. */
+  aktualisiereNetz(positionen: Float32Array, normalen: Float32Array) {
+    const mesh = this.feuer.visible ? this.feuer : this.wesen.visible ? this.wesen : this.koerper;
+    const g = mesh.geometry;
+    const pa = g.getAttribute('position') as BufferAttribute | undefined;
+    const na = g.getAttribute('normal') as BufferAttribute | undefined;
+    if (!pa || !na || pa.array.length !== positionen.length) return;
+    (pa.array as Float32Array).set(positionen);
+    (na.array as Float32Array).set(normalen);
+    pa.needsUpdate = true;
+    na.needsUpdate = true;
+    this.anfordern();
   }
 
   /** Palette (Farben, Muster, Zonen) des Earle-Wesens. */
@@ -290,6 +345,7 @@ export class Renderer3D {
       this.zeit += dt;
       const u = this.wesenUniforms;
       u.zeit.value = this.zeit;
+      this.feuerUniforms.zeit.value = this.zeit;
       if (this.blinkPhase < 0) {
         this.blinkTimer -= dt;
         if (this.blinkTimer <= 0) {
@@ -312,6 +368,7 @@ export class Renderer3D {
     if (wert === null) return;
     this.leben(false);
     this.wesenUniforms.blink.value = wert;
+    this.feuerUniforms.blink.value = wert;
     this.anfordern();
   }
 

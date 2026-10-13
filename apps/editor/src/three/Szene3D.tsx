@@ -16,7 +16,7 @@ import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten
 import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
-import { kernBauen, useKernAnzeige } from '../kern/kernBau';
+import { kernAnimieren, kernBauen, useKernAnzeige } from '../kern/kernBau';
 import { PALETTEN } from './wesenLook';
 
 declare global {
@@ -66,6 +66,10 @@ export function Szene3D() {
         for (let i = 0; i < farben.length; i += 3) farben.set([0, 1, 0.88], i);
         r.setzeLinien(seg, farben);
       };
+      let klingenUhr: number | null = null;
+      abmelden.push(() => {
+        if (klingenUhr !== null) window.clearInterval(klingenUhr);
+      });
       const bauen = (dRoh: Dokument, schnell = false) => {
         // Fressen-Tab mit eigener Seitenform (Versuch 12.10. nachts): Körper ohne Maul aus der Pose-Form; mit Maul legt
         // sich die offene Haut im Maul-Bau an sie
@@ -80,10 +84,22 @@ export function Szene3D() {
             if (s !== 1) for (let i = 0; i < t.kaefigLinien.length; i++) t.kaefigLinien[i]! *= s;
             r.setzeLinien(t.kaefigLinien, t.kaefigFarben ?? undefined);
           } else r.setzeLinien(null);
-          if (t.deskriptoren) {
+          const augen = t.augen.map((a) => ({ ...a, pos: [a.pos[0] * s, a.pos[1] * s, a.pos[2] * s] as [number, number, number], groesse: a.groesse * s }));
+          if (t.stil === 'feuer' || t.stil === 'gas') r.setzeFeuer(t.positionen, t.normalen, t.hoehe * s, [t.mitte[0] * s, t.mitte[1] * s, t.mitte[2] * s], t.stil, augen);
+          else if (t.deskriptoren) {
             r.setzePalette(PALETTEN[useKernAnzeige.getState().palette] ?? PALETTEN.tiger!);
-            r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, t.augen.map((a) => ({ ...a, pos: [a.pos[0] * s, a.pos[1] * s, a.pos[2] * s] as [number, number, number], groesse: a.groesse * s })), t.lippenBand * s);
+            r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, augen, t.lippenBand * s);
           } else r.setzeDreiecke(t.positionen, t.normalen);
+          // Beweis 5: Klingen wehen (Käfig-Pose je Bild, ≈ 14 Bilder je Sekunde)
+          if (klingenUhr !== null) window.clearInterval(klingenUhr);
+          klingenUhr = null;
+          if (t.stil !== 'fest') {
+            const start = performance.now();
+            klingenUhr = window.setInterval(() => {
+              const a = kernAnimieren((performance.now() - start) / 1000);
+              if (a) r.aktualisiereNetz(a.positionen, a.normalen);
+            }, 70);
+          }
           return;
         }
         if (!versuch && useUi.getState().bauweise === 'rund') {
@@ -209,7 +225,7 @@ export function Szene3D() {
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
         // Beweis 4: Look oder Palette gewechselt → Kern neu bauen
-        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
+        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung || s.stil !== v.stil) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
         // Biege-Regler losgelassen: genau bauen
         useWirbelAnzeige.subscribe((s, v) => v.zieht && !s.zieht && useUi.getState().bauweise === 'wirbel' && bauen(useEditor.getState().dok)),
       );

@@ -24,6 +24,11 @@ export interface FeuerUniforms {
   rauschen: UniformNode<'float', number>;
   weich: UniformNode<'float', number>;
   korn: UniformNode<'float', number>;
+  /** Bandverteilung: Wert im Kern (bei Kernhöhe, auf der Achse), Abfall je Höhenabstand und je seitlichem Abstand (in Körperhöhen), Kernhöhe (0 Fuß … 1 Scheitel) */
+  kernWert: UniformNode<'float', number>;
+  hoehenAbfall: UniformNode<'float', number>;
+  seitenAbfall: UniformNode<'float', number>;
+  kernHoehe: UniformNode<'float', number>;
   /** Augen wie im Earle-Material */
   eyePos: ReturnType<typeof uniformArray<Vector4>>;
   eyeUp: ReturnType<typeof uniformArray<Vector4>>;
@@ -37,7 +42,7 @@ export type FeuerArt = 'feuer' | 'gas';
 /** Paletten je Art für Stufe 7 des Bogens (außen → innen), sRGB-Hex. */
 export const FEUER_PALETTEN: Record<FeuerArt, [string, string, string, string]> = {
   feuer: ['#d8432c', '#f0812c', '#f7bd3a', '#fde9a0'],
-  gas: ['#3f8f88', '#58b995', '#a6dd62', '#e3f59c'],
+  gas: ['#3d9c93', '#86cf78', '#c9e86a', '#eef7b0'],
 };
 
 export function createFeuerUniforms(): FeuerUniforms {
@@ -50,6 +55,10 @@ export function createFeuerUniforms(): FeuerUniforms {
     rauschen: uniform(0.4),
     weich: uniform(0.0),
     korn: uniform(0.05),
+    kernWert: uniform(2.9),
+    hoehenAbfall: uniform(2.2),
+    seitenAbfall: uniform(3.2),
+    kernHoehe: uniform(0.4),
     eyePos: uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(0, 0, 0, 0))),
     eyeUp: uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(0, 1, 0, 1))),
     eyeCount: uniform(0),
@@ -65,8 +74,13 @@ export function applyFeuerArt(u: FeuerUniforms, art: FeuerArt): void {
     (u.palette.array[i] as Vector3).set(c.r, c.g, c.b);
   });
   u.fluss.value = art === 'feuer' ? 0.45 : 0.12;
-  u.rauschen.value = art === 'feuer' ? 0.42 : 0.5;
+  u.rauschen.value = art === 'feuer' ? 0.42 : 0.55;
   u.weich.value = art === 'feuer' ? 0.04 : 0.45;
+  // Feuer: heller Kern in der unteren Körpermitte, Orange als Körper, Rot an Rändern und Spitzen; Gas: flacher, mehr vom Rauschen
+  u.kernWert.value = art === 'feuer' ? 2.9 : 2.5;
+  u.hoehenAbfall.value = art === 'feuer' ? 2.2 : 1.2;
+  u.seitenAbfall.value = art === 'feuer' ? 3.2 : 1.8;
+  u.kernHoehe.value = art === 'feuer' ? 0.4 : 0.45;
   u.augeFarbe.value.set(0.05, 0.03, 0.06);
 }
 
@@ -86,8 +100,9 @@ export function createFeuerMaterial(u: FeuerUniforms): MeshBasicNodeMaterial {
     const grob = mx_fractal_noise_float(q.mul(vec3(2.2, 0.8, 2.2)).add(vec3(0, u.zeit.mul(u.fluss).negate(), 0)), 2, 2.0, 0.5, 1.0);
     const fein = mx_noise_float(q.mul(vec3(5, 2.5, 5)).add(vec3(u.zeit.mul(u.fluss).mul(0.3), u.zeit.mul(u.fluss).mul(-1.6), 0)));
     const noise = grob.mul(0.75).add(fein.mul(0.25));
-    // Bandwert: innen (Kern) hoch, zur Seite und nach oben fallend, vom Rauschen gewellt
-    const v = float(1.08).sub(xView.mul(0.95)).sub(h.mul(0.5)).add(noise.mul(u.rauschen)).toVar();
+    // Bandwert: im Kern (Achse, Kernhöhe) hoch, mit Höhenabstand und seitlichem Abstand fallend, vom Rauschen gewellt;
+    // über dem Scheitel (Zungen) läuft er zu den Spitzen hin aus
+    const v = u.kernWert.sub(xView.mul(u.seitenAbfall)).sub(abs(h.sub(u.kernHoehe)).mul(u.hoehenAbfall)).add(noise.mul(u.rauschen)).toVar();
     const vb = clamp(v, 0.001, 3.999).toVar();
     const b = floor(vb);
     const f = fract(vb);

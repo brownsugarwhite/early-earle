@@ -4,7 +4,7 @@
 // der Kurve (px bei 461 px je Kachel) und Zeiten.
 
 import type { Dokument, V2 } from '@ee/shape';
-import { DESKRIPTOR_FLOATS, type Ableitung, type BeinErgebnis, type MaulErgebnis, ableiten, ableitenMitBeinen, ableitenMitMaul, alleFlaechen, beinPose, deskriptoren, maulLinieVorlage, maulOptionenVorlage, maulPose, seiteZiehen, umrissBei, umrissDicht } from '@ee/shape/kern';
+import { DESKRIPTOR_FLOATS, KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Ableitung, type BeinErgebnis, type Haut, type KlingenLage, type KlingenVorlage, type MaulErgebnis, ableiten, ableitenMitBeinen, ableitenMitMaul, alleFlaechen, beinPose, bueschelAufHaut, deskriptoren, flaemmchen, hautAus, klingenBauen, klingenNetz, klingenVorlage, maulLinieVorlage, maulOptionenVorlage, maulPose, seiteZiehen, umrissBei, umrissDicht, zungenAmScheitel } from '@ee/shape/kern';
 import { useUi } from '../state/uiStore';
 import { zuDreiecken, type V3 } from '@ee/shape/versuch';
 import { create } from 'zustand';
@@ -12,6 +12,7 @@ import { type Auge, type Look, PALETTEN } from '../three/wesenLook';
 
 export type MaulArt = 'aus' | 'vorn' | 'unten' | 'hals';
 export type BeinArt = 'aus' | 'verschmolzen' | 'angesteckt';
+export type StilArt = 'fest' | 'feuer' | 'gas' | 'fell';
 
 export type KernInfo = {
   kaefigPunkte: number;
@@ -31,6 +32,7 @@ const startLook: Look = q.get('look') === 'earle' ? 'earle' : 'matcap';
 const startPalette = q.get('palette') && PALETTEN[q.get('palette')!] ? q.get('palette')! : 'tiger';
 const startMaul: MaulArt = (['vorn', 'unten', 'hals'] as const).find((a) => a === q.get('maul')) ?? 'aus';
 const startBeine: BeinArt = (['verschmolzen', 'angesteckt'] as const).find((a) => a === q.get('beine')) ?? 'aus';
+const startStil: StilArt = (['feuer', 'gas', 'fell'] as const).find((a) => a === q.get('stil')) ?? 'fest';
 if (q.get('oeffnung')) useUi.getState().setzeOeffnung(Number(q.get('oeffnung')));
 if (q.get('zebra') === '1') useUi.getState().setzeZebra(true);
 
@@ -45,6 +47,9 @@ export const useKernAnzeige = create<{
   /** Beweis 3: zwei Säulenbeine (Ring 15, Winkel 6, gespiegelt), Schwung in Grad */
   beine: BeinArt;
   schwung: number;
+  /** Beweis 5: Stil fest · feuer · gas · fell (Klingen als Käfige, Feuer/Gas-Material) */
+  stil: StilArt;
+  setzeStil: (s: StilArt) => void;
   setzeLook: (l: Look) => void;
   setzePalette: (p: string) => void;
   setzeMaul: (m: MaulArt) => void;
@@ -59,6 +64,8 @@ export const useKernAnzeige = create<{
   kaefig: q.get('kaefig') === '1',
   beine: startBeine,
   schwung: q.get('schwung') ? Number(q.get('schwung')) : 0,
+  stil: startStil,
+  setzeStil: (stil) => set({ stil }),
   setzeLook: (look) => set({ look }),
   setzePalette: (palette) => set({ palette }),
   setzeMaul: (maul) => set({ maul }),
@@ -114,7 +121,106 @@ export type KernNetz = {
   /** Lippenband-Breite (Welt) bei Maul, sonst 0 */
   lippenBand: number;
   kaefigFarben: Float32Array | null;
+  /** Beweis 5: Stil des Netzes und Körpermitte (Feuer/Gas-Material) */
+  stil: StilArt;
+  mitte: [number, number, number];
 };
+
+/** Klingenstand für die Animation (Wehen als Käfig-Pose je Bild) */
+type KlingenStand = {
+  stil: StilArt;
+  vorlage: KlingenVorlage;
+  lagen: KlingenLage[];
+  zusatzVorlage: KlingenVorlage | null;
+  haut: Haut;
+  hoehe: number;
+  saat: number;
+  /** Körper-Dreiecke (statisch) und Deskriptoren je Ecke */
+  koerper: { positionen: Float32Array; normalen: Float32Array; desk: Float32Array | null; feinDesk: Float32Array | null };
+  hebung: number;
+};
+let klingenStand: KlingenStand | null = null;
+
+/** Klingen (und Flämmchen) für Zeit t bauen: Dreiecke aller Klingen hintereinander, dazu Deskriptoren je Ecke (Fell). */
+function klingenDreiecke(st: KlingenStand, zeit: number): { positionen: Float32Array; normalen: Float32Array; desk: Float32Array | null } {
+  const amp = st.stil === 'feuer' ? 0.32 : st.stil === 'gas' ? 0.22 : 0.07;
+  const om = st.stil === 'feuer' ? 2.6 : st.stil === 'gas' ? 1.1 : 1.6;
+  const klingen = klingenBauen(st.vorlage, st.lagen, (l) => amp * Math.sin(om * zeit + l.phase) + 0.3 * amp * Math.sin(1.9 * om * zeit + 2 * l.phase));
+  const netz = klingenNetz(st.vorlage);
+  const fl = alleFlaechen(netz);
+  const teile: { positionen: Float32Array; normalen: Float32Array; basis: number | undefined; lage: KlingenLage }[] = [];
+  for (const k of klingen) {
+    const pts: V3[] = [];
+    for (let i = 0; i < k.fein.length / 3; i++) pts.push([k.fein[3 * i]!, k.fein[3 * i + 1]!, k.fein[3 * i + 2]!]);
+    const t = zuDreiecken({ punkte: pts, flaechen: fl, schaerfe: new Map() }, 60);
+    teile.push({ ...t, basis: k.lage.basis, lage: k.lage });
+  }
+  if (st.zusatzVorlage) {
+    // abgelöste Flämmchen/Bläschen: steigen in 3 s auf und schrumpfen
+    const umlauf = (zeit / 3) % 1;
+    const lagen = flaemmchen(st.haut, st.hoehe, st.stil === 'gas' ? 7 : 6, st.saat + 5, umlauf);
+    const fz = klingenBauen(st.zusatzVorlage, lagen, (l) => 0.2 * Math.sin(3 * zeit + l.phase));
+    const nz = alleFlaechen(klingenNetz(st.zusatzVorlage));
+    for (const k of fz) {
+      const pts: V3[] = [];
+      for (let i = 0; i < k.fein.length / 3; i++) pts.push([k.fein[3 * i]!, k.fein[3 * i + 1]!, k.fein[3 * i + 2]!]);
+      const t = zuDreiecken({ punkte: pts, flaechen: nz, schaerfe: new Map() }, 60);
+      teile.push({ ...t, basis: k.lage.basis, lage: k.lage });
+    }
+  }
+  const n = teile.reduce((a, b) => a + b.positionen.length, 0);
+  const positionen = new Float32Array(n);
+  const normalen = new Float32Array(n);
+  const desk = st.koerper.feinDesk ? new Float32Array((n / 3) * DESKRIPTOR_FLOATS) : null;
+  let o = 0;
+  for (const t of teile) {
+    positionen.set(t.positionen, o);
+    normalen.set(t.normalen, o);
+    if (desk && st.koerper.feinDesk) {
+      const b = Math.min(st.koerper.feinDesk.length / DESKRIPTOR_FLOATS - 1, t.basis ?? 0);
+      const zeile = st.koerper.feinDesk.subarray(b * DESKRIPTOR_FLOATS, (b + 1) * DESKRIPTOR_FLOATS);
+      // Ansatz dunkel, Spitze hell (Plan 7: Verlauf je Büschel) über den AO-Kanal (eeExtra.x), Höhe längs der Klingenachse
+      const l = t.lage;
+      for (let e = 0; e < t.positionen.length / 3; e++) {
+        const o2 = (o / 3 + e) * DESKRIPTOR_FLOATS;
+        desk.set(zeile, o2);
+        const dx = t.positionen[3 * e]! - l.fuss[0];
+        const dy = t.positionen[3 * e + 1]! - l.fuss[1];
+        const dz = t.positionen[3 * e + 2]! - l.fuss[2];
+        const th = Math.min(1, Math.max(0, (dx * l.achse[0] + dy * l.achse[1] + dz * l.achse[2]) / Math.max(1e-6, l.laenge)));
+        desk[o2 + 8] = 0.7 * (1 - th) * (1 - th);
+      }
+    }
+    o += t.positionen.length;
+  }
+  return { positionen, normalen, desk };
+}
+
+/** Körper und Klingen zusammenfügen (Hebung auf die Füße bleibt erhalten). */
+function zusammen(st: KlingenStand, k: { positionen: Float32Array; normalen: Float32Array; desk: Float32Array | null }): { positionen: Float32Array; normalen: Float32Array; desk: Float32Array | null } {
+  const positionen = new Float32Array(st.koerper.positionen.length + k.positionen.length);
+  const normalen = new Float32Array(positionen.length);
+  positionen.set(st.koerper.positionen);
+  positionen.set(k.positionen, st.koerper.positionen.length);
+  normalen.set(st.koerper.normalen);
+  normalen.set(k.normalen, st.koerper.normalen.length);
+  if (st.hebung) for (let i = st.koerper.positionen.length + 1; i < positionen.length; i += 3) positionen[i]! += st.hebung;
+  let desk: Float32Array | null = null;
+  if (st.koerper.desk && k.desk) {
+    desk = new Float32Array(st.koerper.desk.length + k.desk.length);
+    desk.set(st.koerper.desk);
+    desk.set(k.desk, st.koerper.desk.length);
+  }
+  return { positionen, normalen, desk };
+}
+
+/** Animation (Beweis 5): Klingen für die Zeit t neu posieren; null ohne Klingen. */
+export function kernAnimieren(zeit: number): { positionen: Float32Array; normalen: Float32Array } | null {
+  if (!klingenStand) return null;
+  const k = klingenDreiecke(klingenStand, zeit);
+  const z = zusammen(klingenStand, k);
+  return { positionen: z.positionen, normalen: z.normalen };
+}
 
 /** Käfigkanten (Lagen `xyz`) als Segmente; Lippen und Tasche in Farbe. */
 function kaefigSegmente(abl: Ableitung, xyz: Float64Array): { punkte: Float32Array; farben: Float32Array } {
@@ -285,12 +391,35 @@ export function kernBauen(dok: Dokument, schnell: boolean): KernNetz {
     for (let e = 0; e < gesteckteEcken; e++) alle.set(huefte, desk.length + e * DESKRIPTOR_FLOATS);
     desk = alle;
   }
-  const augen = earle ? augenAm(abl, hoehe) : [];
+  const augen = earle || useKernAnzeige.getState().stil === 'feuer' || useKernAnzeige.getState().stil === 'gas' ? augenAm(abl, hoehe) : [];
   const ab = nahtAbweichung(abl, dok);
   useKernAnzeige.setState({
     info: { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0 },
   });
   const linien = useKernAnzeige.getState().kaefig ? kaefigSegmente(abl, xyz) : null;
   const lippenBand = maul !== 'aus' && beine === 'aus' ? 0.03 * hoehe : 0;
-  return { positionen: t.positionen, normalen: t.normalen, deskriptoren: desk, hoehe, augen, kaefigLinien: linien ? new Float32Array([...linien.punkte]) : null, lippenBand, kaefigFarben: linien?.farben ?? null };
+  // Körpermitte (Schwerpunkt der feinen Lagen) fürs Feuer/Gas-Material
+  const mitte: [number, number, number] = [0, 0, 0];
+  for (const p of punkte) for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! + p[d]! / punkte.length;
+  // Beweis 5: Klingen (Zungen, Schwaden, Büschel) als Käfige am Körper; Animation über `kernAnimieren`
+  const stil = useKernAnzeige.getState().stil;
+  klingenStand = null;
+  let positionen = t.positionen;
+  let normalen = t.normalen;
+  if (stil !== 'fest') {
+    const haut = hautAus(fein);
+    const saat = 7;
+    const form = stil === 'feuer' ? KLINGE_FLAMME : stil === 'gas' ? KLINGE_SCHWADE : { ...KLINGE_BUESCHEL, profil: 'tropfen' as const, dicke: 0.5 };
+    const vorlage = klingenVorlage(form);
+    const lagen = stil === 'feuer' ? zungenAmScheitel(haut, hoehe, 6, 28, saat) : stil === 'gas' ? zungenAmScheitel(haut, hoehe, 2, 30, saat) : bueschelAufHaut(haut, hoehe, 420, 0.1, -0.35, saat);
+    const zusatzVorlage = stil === 'fell' ? null : klingenVorlage(stil === 'gas' ? { ...KLINGE_SCHWADE, profil: 'tropfen', ringe: 4, stufen: 1 } : { ...KLINGE_FLAMME, ringe: 4, stufen: 1 });
+    const feinDesk = desk && stil === 'fell' ? deskriptoren(abl) : null;
+    klingenStand = { stil, vorlage, lagen, zusatzVorlage, haut, hoehe, saat, koerper: { positionen: t.positionen, normalen: t.normalen, desk, feinDesk }, hebung: 0 };
+    const k = klingenDreiecke(klingenStand, 0);
+    const z = zusammen(klingenStand, k);
+    positionen = z.positionen;
+    normalen = z.normalen;
+    desk = z.desk;
+  }
+  return { positionen, normalen, deskriptoren: stil === 'feuer' || stil === 'gas' ? null : desk, hoehe, augen, kaefigLinien: linien ? new Float32Array([...linien.punkte]) : null, lippenBand, kaefigFarben: linien?.farben ?? null, stil, mitte };
 }
