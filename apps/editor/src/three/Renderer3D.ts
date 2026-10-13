@@ -29,6 +29,9 @@ import {
   WebGPURenderer,
   DataTexture,
   OrthographicCamera,
+  Raycaster,
+  SphereGeometry,
+  Vector2,
 } from 'three/webgpu';
 import { type AtlasDaten, type Auge, type Gesicht, PALETTEN, type Palette } from './wesenLook';
 import type { Ansicht2D, Kamera } from '../state/uiStore';
@@ -61,6 +64,9 @@ export class Renderer3D {
   private blaetter: Partial<Record<Ansicht, Blatt>> = {};
   private readonly ortho = new OrthographicCamera(-1, 1, 1, -1, 0.01, 60);
   private boden: Mesh | null = null;
+  /** Picking (M2): Strahl, Trefferpunkt als kleine Marke (Lichtpunkt der Ranken, Plan 9.6) */
+  private readonly strahl = new Raycaster();
+  private readonly marke = new Mesh(new SphereGeometry(1, 16, 12), new MeshBasicNodeMaterial({ color: 0xff2e9a }));
   private linien: LineSegments | null = null;
   private kameraZustand: Kamera | null = null;
   private angefordert = false;
@@ -139,6 +145,9 @@ export class Renderer3D {
     boden.renderOrder = 2;
     this.szene.add(boden);
     this.boden = boden;
+    this.marke.visible = false;
+    this.marke.renderOrder = 3;
+    this.szene.add(this.marke);
 
     const sonne = new DirectionalLight(0xffffff, 1);
     sonne.position.set(SONNE[0] * 5, SONNE[1] * 5, SONNE[2] * 5);
@@ -454,6 +463,46 @@ export class Renderer3D {
 
   setzeRect(r: Rect | null) {
     this.rect = r;
+    this.anfordern();
+  }
+
+  /**
+   * Picking (M2): Strahl aus einem Feld (Pixel innerhalb des Feldrechtecks) auf den Körper; Bühne perspektivisch,
+   * Blätter orthografisch. Liefert Dreieck (Index im Netz des Körpers) und Trefferpunkt (Welt) oder null.
+   */
+  treffen(feld: 'creation' | Ansicht, px: number, py: number): { dreieck: number; punkt: [number, number, number] } | null {
+    let cam: PerspectiveCamera | OrthographicCamera;
+    let r: Rect;
+    if (feld === 'creation') {
+      if (!this.rect || !this.kameraZustand) return null;
+      r = this.rect;
+      this.kameraStellen(r.w / r.h);
+      cam = this.kamera;
+    } else {
+      const b = this.blaetter[feld];
+      if (!b) return null;
+      r = b.rect;
+      this.blattKamera(feld, b);
+      cam = this.ortho;
+    }
+    cam.updateMatrixWorld();
+    const ndc = new Vector2((px / r.w) * 2 - 1, -((py / r.h) * 2 - 1));
+    this.strahl.setFromCamera(ndc, cam);
+    const ziel = [this.wesen, this.koerper, this.feuer].find((m) => m.visible && (m.geometry.getAttribute('position')?.count ?? 0) > 0);
+    if (!ziel) return null;
+    const t = this.strahl.intersectObject(ziel, false)[0];
+    if (!t || t.faceIndex === undefined || t.faceIndex === null) return null;
+    return { dreieck: t.faceIndex, punkt: [t.point.x, t.point.y, t.point.z] };
+  }
+
+  /** Marke am Trefferpunkt (Welt) zeigen oder ausblenden; Größe als Anteil der Körperhöhe. */
+  setzeMarke(punkt: [number, number, number] | null, hoehe = 1) {
+    this.marke.visible = punkt !== null;
+    if (punkt) {
+      this.marke.position.set(punkt[0], punkt[1], punkt[2]);
+      const g = Math.max(0.003, 0.012 * hoehe);
+      this.marke.scale.set(g, g, g);
+    }
     this.anfordern();
   }
 

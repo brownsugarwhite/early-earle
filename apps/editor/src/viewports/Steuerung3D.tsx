@@ -1,8 +1,22 @@
 import { useEffect, useRef } from 'react';
+import { aktuellesNetz } from '../kern/kernBau';
+import { trefferDeuten, useTreffer } from '../kern/treffer';
 import { useUi } from '../state/uiStore';
 import { drehen, verschieben3d, zoomen } from '../three/kamera';
 import { FOV } from '../three/Renderer3D';
+import { szene } from '../three/instanz';
 import { istTrackpad, radFaktor } from './ansicht2d';
+
+/** Treffer unter dem Zeiger auf der Bühne (M2): Strahl → Dreieck → Käfigfläche; Marke am Trefferpunkt. */
+export function treffenAuf(feld: 'creation', px: number, py: number): void {
+  const r = szene.aktuell;
+  const n = aktuellesNetz();
+  if (!r || !n || useUi.getState().bauweise !== 'kern') return;
+  const h = r.treffen(feld, px, py);
+  const t = h ? trefferDeuten(n.netz, h.dreieck, h.punkt, n.skalierung) : null;
+  r.setzeMarke(t ? t.punkt : null, n.netz.hoehe * n.skalierung);
+  useTreffer.setState({ treffer: t, feld: t ? feld : null });
+}
 
 /**
  * Eingabefläche des 3D-Viewports, wie Blender und trackpadtauglich:
@@ -69,5 +83,16 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     window.addEventListener('pointercancel', loslassen);
   };
 
-  return <div ref={ref} className="steuerung3d" onPointerDown={unten} onContextMenu={(e) => e.preventDefault()} onAuxClick={(e) => e.preventDefault()} />;
+  // Hover (M2): Treffer unter dem Zeiger, nur ohne gedrückte Taste (beim Drehen bleibt die Marke stehen)
+  const schweben = (e: React.PointerEvent) => {
+    if (e.buttons !== 0) return;
+    const r = ref.current?.getBoundingClientRect();
+    if (!r) return;
+    treffenAuf('creation', e.clientX - r.left, e.clientY - r.top);
+  };
+  const verlassen = () => {
+    szene.aktuell?.setzeMarke(null);
+    useTreffer.setState({ treffer: null, feld: null });
+  };
+  return <div ref={ref} className="steuerung3d" onPointerDown={unten} onPointerMove={schweben} onPointerLeave={verlassen} onContextMenu={(e) => e.preventDefault()} onAuxClick={(e) => e.preventDefault()} />;
 }

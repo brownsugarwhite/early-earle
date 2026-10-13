@@ -16,12 +16,13 @@ import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten
 import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
-import { kernAnimieren, kernBauen, useKernAnzeige } from '../kern/kernBau';
+import { aktuellesNetz, kernAnimieren, kernBauen, useKernAnzeige } from '../kern/kernBau';
+import { trefferDeuten } from '../kern/treffer';
 import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown };
   }
 }
 
@@ -38,7 +39,16 @@ export function Szene3D() {
     void r.init().then(() => {
       if (aus) return;
       szene.aktuell = r;
-      window.__editor = { backend: r.backend, vertices: () => r.vertexAnzahl };
+      window.__editor = {
+        backend: r.backend,
+        vertices: () => r.vertexAnzahl,
+        // M2: Treffer in Feldpixeln (E2E): Käfigfläche, (u, v), Käfigpunkt
+        treffen: (px: number, py: number) => {
+          const n = aktuellesNetz();
+          const h = r.treffen('creation', px, py);
+          return h && n ? trefferDeuten(n.netz, h.dreieck, h.punkt, n.skalierung) : null;
+        },
+      };
       console.info(`[editor] 3D-Backend: ${r.backend}`);
       const versuch = versuchAktiv();
       if (versuch?.modus === 'tigerkaefig' || versuch?.modus === 'maul' || versuch?.modus === 'wirbel') {

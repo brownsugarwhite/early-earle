@@ -89,10 +89,17 @@ function derClient(): WesenClient {
   return client;
 }
 
+let letztesNetz: { netz: KernNetz; skalierung: number } | null = null;
+/** Das zuletzt gebaute Netz (für Treffer und Griffe im Hauptthread), mit dem Maßstab des Dokuments. */
+export function aktuellesNetz(): { netz: KernNetz; skalierung: number } | null {
+  return letztesNetz;
+}
+
 /** Feines Netz der Bauweise „kern“ im Worker bauen; während Gesten nur Zug, sonst Ableitung. Der neueste Auftrag gewinnt. */
 export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) => void): void {
   derClient().bauen(dok, bauplanAus(dok), schnell, (netz) => {
     useKernAnzeige.setState({ info: netz.info });
+    letztesNetz = { netz, skalierung: dok.skalierung };
     cb(netz);
   });
 }

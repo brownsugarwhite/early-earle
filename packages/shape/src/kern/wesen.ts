@@ -57,6 +57,17 @@ export type Bauplan = Ausstattung & {
   kaefigLinien: boolean;
   /** Zonen-Atlas an (Standard) oder prozedurale Zonen */
   atlas?: boolean;
+  /** Trefferdaten fürs Picking (M2): Dreieck → feine Fläche → Käfigfläche und (u, v), Käfigpunkte; Standard an */
+  treffer?: boolean;
+};
+
+/** Trefferdaten (M2): je Körperdreieck die feine Fläche (−1 für angesetzte Teile), je feiner Fläche Käfigfläche und Ecken-(u, v), der posierte Käfig. */
+export type TrefferDaten = {
+  dreieckFlaeche: Int32Array;
+  flaecheVon: Int32Array;
+  eckenUV: Float32Array;
+  eckenZahl: Uint8Array;
+  kaefig: { n: number; xyz: Float32Array; fStart: Uint32Array; fVerts: Uint32Array };
 };
 
 export const BAUPLAN_STANDARD: Bauplan = { maul: 'aus', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false };
@@ -94,6 +105,7 @@ export type WesenNetz = {
   gesicht: Gesicht | null;
   zaehne: { positionen: Float32Array; normalen: Float32Array; anteil: Float32Array } | null;
   atlas: AtlasDaten | null;
+  treffer: TrefferDaten | null;
   info: WesenInfo;
 };
 
@@ -580,10 +592,14 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     for (let e = 0; e < gesteckteEcken; e++) alle.set(huefte, desk.length + e * DESKRIPTOR_FLOATS);
     desk = alle;
   }
+  // Kachelung (Beweis 4 / M2): je feiner Fläche Käfigfläche und (u, v) — für Atlas und Treffer
+  const trefferAn = plan.treffer ?? true;
+  const atlasAn = earle && (plan.atlas ?? true) && !!plan.zonen && plan.zonen.length > 0 && gesteckteEcken === 0;
+  const kach: AtlasKachelung | null = trefferAn || atlasAn ? kachelung(abl) : null;
   // Zonen-Atlas (Beweis 4, Plan 8.2): Kacheln je Käfigfläche, Zonen als Vektorformen in der Ruhelage gerastert
   let atlas: AtlasDaten | null = null;
   let punktAtl: Float32Array | null = null;
-  if (earle && (plan.atlas ?? true) && plan.zonen && plan.zonen.length > 0 && gesteckteEcken === 0) {
+  if (kach && atlasAn) {
     const rf = abl.fein;
     const g = { xMin: Infinity, xMax: -Infinity, yMin: Infinity, yMax: -Infinity, zMax: 0 };
     for (let i = 0; i < rf.length / 3; i++) {
@@ -593,8 +609,8 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
       g.yMax = Math.max(g.yMax, rf[3 * i + 1]!);
       g.zMax = Math.max(g.zMax, Math.abs(rf[3 * i + 2]!));
     }
-    const k: AtlasKachelung = kachelung(abl);
-    const r = zonenRastern(k, flaechen, rf, zonenWelt(plan.zonen, g));
+    const k = kach;
+    const r = zonenRastern(k, flaechen, rf, zonenWelt(plan.zonen!, g));
     atlas = { ecken: atlasEcken(k), abstand: r.abstand, weich: r.weich, breite: k.breite, hoehe: k.hoehe };
     punktAtl = punktAtlas(k, flaechen, rf.length / 3);
   }
@@ -669,6 +685,17 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     normalen = z.normalen;
     desk = z.desk;
   }
+  // Treffer (M2): je Dreieck des fertigen Netzes die feine Fläche (Körper = Fächer je Fläche in Reihenfolge; angesetzte
+  // Beine, Wangen, Ohren, Klingen = −1), dazu Kachelung und posierter Käfig
+  let treffer: TrefferDaten | null = null;
+  if (kach && trefferAn) {
+    const dreieckFlaeche = new Int32Array(positionen.length / 9).fill(-1);
+    let d = 0;
+    for (let f = 0; f < flaechen.length; f++) for (let i = 1; i < flaechen[f]!.length - 1; i++) dreieckFlaeche[d++] = f;
+    const kf = abl.kaefig;
+    treffer = { dreieckFlaeche, flaecheVon: kach.flaecheVon, eckenUV: kach.eckenUV, eckenZahl: kach.eckenZahl, kaefig: { n: kf.n, xyz: Float32Array.from(xyz), fStart: Uint32Array.from(kf.fStart), fVerts: Uint32Array.from(kf.fVerts) } };
+    if (hebung) for (let i = 1; i < treffer.kaefig.xyz.length; i += 3) treffer.kaefig.xyz[i]! += hebung;
+  }
   const netz: WesenNetz = {
     positionen,
     normalen,
@@ -684,6 +711,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     gesicht,
     zaehne,
     atlas: stil === 'fest' ? atlas : null,
+    treffer,
     info,
   };
   return { netz, stand: { dok, schluessel, abl, maul, beine, klingen } };
@@ -692,7 +720,8 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */
 export function netzPuffer(netz: WesenNetz): ArrayBuffer[] {
   const out: ArrayBuffer[] = [netz.positionen.buffer as ArrayBuffer, netz.normalen.buffer as ArrayBuffer];
-  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich]) {
+  const tr = netz.treffer;
+  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich, tr?.dreieckFlaeche, tr?.flaecheVon, tr?.eckenUV, tr?.eckenZahl, tr?.kaefig.xyz, tr?.kaefig.fStart, tr?.kaefig.fVerts]) {
     if (a && !out.includes(a.buffer as ArrayBuffer)) out.push(a.buffer as ArrayBuffer);
   }
   return out;

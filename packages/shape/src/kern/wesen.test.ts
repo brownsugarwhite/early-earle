@@ -33,6 +33,15 @@ describe('Phase 1 M1: wesenBauen', () => {
     // übertragbare Puffer: alle verschieden
     const puffer = netzPuffer(netz);
     expect(new Set(puffer).size).toBe(puffer.length);
+    // Treffer (M2): jedes Körperdreieck kennt seine feine Fläche, jede feine Fläche ihre Käfigfläche
+    const tr = netz.treffer!;
+    expect(tr.dreieckFlaeche.length).toBe(ecken / 3);
+    let koerper = 0;
+    for (const f of tr.dreieckFlaeche) if (f >= 0) koerper++;
+    expect(koerper).toBeGreaterThan(0);
+    expect(koerper).toBeLessThan(tr.dreieckFlaeche.length); // Wangen und Ohren sind angesetzt (−1)
+    for (const f of tr.flaecheVon) expect(f).toBeLessThan(tr.kaefig.fStart.length - 1);
+    expect(tr.kaefig.xyz.length).toBe(3 * tr.kaefig.n);
     console.log(`Tiger: ${ecken} Ecken, Atlas ${netz.atlas!.breite} × ${netz.atlas!.hoehe}, Umbau ${netz.info.ableitung.toFixed(0)} ms, Pose ${z.netz.info.zug.toFixed(1)} ms`);
   });
 
