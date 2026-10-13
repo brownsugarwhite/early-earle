@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { aktuellesNetz } from '../kern/kernBau';
+import { reifenNeu, reifenUnter, reifenZeiger, useReifen } from '../kern/reifen';
 import { trefferDeuten, useTreffer } from '../kern/treffer';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -76,6 +77,11 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     const knopf = e.button;
     const verschiebe = knopf === 1 || e.shiftKey;
     const menueMoeglich = knopf === 2 || (knopf === 0 && e.ctrlKey);
+    // M3: Reifen auf der Bühne — Perle oder Band unter dem Zeiger fassen (Stufe Körper, Bauweise kern)
+    if (knopf === 0 && !e.ctrlKey && !e.shiftKey && !e.altKey && ref.current && useUi.getState().ebene === 'form' && useUi.getState().bauweise === 'kern' && useUi.getState().werkzeug === 'auswahl') {
+      const rr = ref.current.getBoundingClientRect();
+      if (reifenZeiger(e, e.clientX - rr.left, e.clientY - rr.top, ref.current)) return;
+    }
     let lx = e.clientX;
     let ly = e.clientY;
     let weg = 0;
@@ -93,6 +99,12 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
       window.removeEventListener('pointermove', bewegen);
       window.removeEventListener('pointerup', loslassen);
       window.removeEventListener('pointercancel', loslassen);
+      // Werkzeug S (M3): Klick ohne Bewegung auf den Körper setzt einen Reifen an der Stelle
+      if (knopf === 0 && !e.ctrlKey && weg < 4 && useUi.getState().werkzeug === 'spant' && useUi.getState().bauweise === 'kern') {
+        const rr = ref.current?.getBoundingClientRect();
+        if (rr && reifenNeu(ev.clientX - rr.left, ev.clientY - rr.top)) useUi.getState().setzeWerkzeug('auswahl');
+        return;
+      }
       // Stufe „Augen“ (M3): Klick ohne Bewegung setzt das Auge an den Trefferpunkt
       if (knopf === 0 && !e.ctrlKey && weg < 4 && useUi.getState().ebene === 'augen') {
         const rr = ref.current?.getBoundingClientRect();
@@ -118,10 +130,18 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     const r = ref.current?.getBoundingClientRect();
     if (!r) return;
     treffenAuf('creation', e.clientX - r.left, e.clientY - r.top);
+    // M3: Perle oder Band unter dem Zeiger (nur Stufe Körper)
+    const ui = useUi.getState();
+    const h = ui.ebene === 'form' && ui.bauweise === 'kern' ? reifenUnter(e.clientX - r.left, e.clientY - r.top) : null;
+    const alt = useReifen.getState().hover;
+    if ((h?.reifen ?? -1) !== (alt?.reifen ?? -1) || (h?.knoten ?? -2) !== (alt?.knoten ?? -2)) useReifen.setState({ hover: h });
+    if (ref.current) ref.current.style.cursor = h ? (h.knoten === null ? 'ew-resize' : 'pointer') : '';
   };
   const verlassen = () => {
     szene.aktuell?.setzeMarke(null);
     useTreffer.setState({ treffer: null, feld: null });
+    if (useReifen.getState().hover) useReifen.setState({ hover: null });
+    if (ref.current) ref.current.style.cursor = '';
   };
   return <div ref={ref} className="steuerung3d" onPointerDown={unten} onPointerMove={schweben} onPointerLeave={verlassen} onContextMenu={(e) => e.preventDefault()} onAuxClick={(e) => e.preventDefault()} />;
 }

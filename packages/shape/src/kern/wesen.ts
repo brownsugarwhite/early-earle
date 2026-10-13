@@ -14,6 +14,8 @@ import { type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
 import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern } from './atlas';
 import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
+import { ringSegmente } from './reifen';
+import { vorlageBei } from '../spanten';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { type MaulErgebnis, ableitenMitMaul, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
@@ -87,6 +89,19 @@ export type WesenInfo = {
   schnell: boolean;
 };
 
+/** Reifen (M3): Ringe der gezeichneten Spanten auf dem Körper, mit Perlen an den Spant-Knoten. */
+export type ReifenDaten = {
+  /** je Reifen: Index in `dok.spanten` und Käfigring */
+  liste: { spant: number; ring: number }[];
+  /** posierte Lagen aller R·N Ringpunkte (feine Punktpunkte, 3 je Punkt; Index i·N + j) */
+  ringLagen: Float32Array;
+  /** Verlauf der Reifen auf der Fläche als Liniensegmente (Paare, 3 Floats je Punkt); Start je Reifen in `verlaufStart` (Float-Index, Länge liste + 1) */
+  verlauf: Float32Array;
+  verlaufStart: Uint32Array;
+  /** je Reifen die Ringpunkte j (0 oben … N/2 unten) der Spant-Knoten in Knotenreihenfolge */
+  knoten: number[][];
+};
+
 export type WesenNetz = {
   positionen: Float32Array;
   normalen: Float32Array;
@@ -108,6 +123,7 @@ export type WesenNetz = {
   zaehne: { positionen: Float32Array; normalen: Float32Array; anteil: Float32Array } | null;
   atlas: AtlasDaten | null;
   treffer: TrefferDaten | null;
+  reifen: ReifenDaten | null;
   info: WesenInfo;
 };
 
@@ -485,7 +501,8 @@ function zonenWelt(vorlagen: readonly ZonenVorlage[], g: { xMin: number; xMax: n
  */
 export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: WesenStand | null, schnell = false): { netz: WesenNetz; stand: WesenStand } {
   const plan: Bauplan = { ...BAUPLAN_STANDARD, ...planRoh };
-  const dok: Dokument = plan.kasten ? { ...dokRoh, spanten: kastenSpanten(dokRoh.profile.front, plan.kasten.fVorn, plan.kasten.fHinten, plan.kasten.fRund, plan.kasten.haerte) } : dokRoh;
+  // Kasten des Prüfwesens (Tiger) nur, solange das Dokument keine eigenen Spanten hat: gezeichnete Spanten gewinnen (M3)
+  const dok: Dokument = plan.kasten && !dokRoh.spanten?.length ? { ...dokRoh, spanten: kastenSpanten(dokRoh.profile.front, plan.kasten.fVorn, plan.kasten.fHinten, plan.kasten.fRund, plan.kasten.haerte) } : dokRoh;
   const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, k: dokRoh.skalierung, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: plan.maulOptionen ?? null, ba: plan.beinAnsaetze ?? null });
   const gleich = stand !== null && stand.schluessel === schluessel;
   const letzte = stand && gleich ? stand : null;
@@ -698,6 +715,27 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     treffer = { dreieckFlaeche, flaecheVon: kach.flaecheVon, eckenUV: kach.eckenUV, eckenZahl: kach.eckenZahl, kaefig: { n: kf.n, xyz: Float32Array.from(xyz), fStart: Uint32Array.from(kf.fStart), fVerts: Uint32Array.from(kf.fVerts) }, vorlage: { R: abl.vorlage.R, N: abl.vorlage.N } };
     if (hebung) for (let i = 1; i < treffer.kaefig.xyz.length; i += 3) treffer.kaefig.xyz[i]! += hebung;
   }
+  // Reifen (M3): Ringe der gezeichneten Spanten — posierte Lagen aller Ringpunkte, Verlauf je Reifen auf der Fläche
+  // (Segmente je Käfigkante über alle Stufen; Maulschlitz und Beinfelder lassen Lücken), Ringpunkte der Spant-Knoten
+  let reifen: ReifenDaten | null = null;
+  if (dokRoh.spanten?.length && abl.reifen.length) {
+    const { R, N } = abl.vorlage;
+    const ringLagen = new Float32Array(3 * R * N);
+    for (let p = 0; p < R * N; p++) {
+      ringLagen[3 * p] = fein[3 * p]!;
+      ringLagen[3 * p + 1] = fein[3 * p + 1]! + hebung;
+      ringLagen[3 * p + 2] = fein[3 * p + 2]!;
+    }
+    const segs: number[] = [];
+    const starts: number[] = [0];
+    const knoten: number[][] = [];
+    for (const r of abl.reifen) {
+      for (const i of ringSegmente(abl.unterteilung, abl.kaefig, r.ring, N)) segs.push(fein[3 * i]!, fein[3 * i + 1]! + hebung, fein[3 * i + 2]!);
+      starts.push(segs.length);
+      knoten.push([...vorlageBei(dok, dokRoh.spanten[r.spant]!.f, N / 2).knoten]);
+    }
+    reifen = { liste: abl.reifen.map((r) => ({ spant: r.spant, ring: r.ring })), ringLagen, verlauf: Float32Array.from(segs), verlaufStart: Uint32Array.from(starts), knoten };
+  }
   const netz: WesenNetz = {
     positionen,
     normalen,
@@ -714,6 +752,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     zaehne,
     atlas: stil === 'fest' ? atlas : null,
     treffer,
+    reifen,
     info,
   };
   return { netz, stand: { dok, schluessel, abl, maul, beine, klingen } };
@@ -723,7 +762,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
 export function netzPuffer(netz: WesenNetz): ArrayBuffer[] {
   const out: ArrayBuffer[] = [netz.positionen.buffer as ArrayBuffer, netz.normalen.buffer as ArrayBuffer];
   const tr = netz.treffer;
-  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich, tr?.dreieckFlaeche, tr?.flaecheVon, tr?.eckenUV, tr?.eckenZahl, tr?.kaefig.xyz, tr?.kaefig.fStart, tr?.kaefig.fVerts]) {
+  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich, tr?.dreieckFlaeche, tr?.flaecheVon, tr?.eckenUV, tr?.eckenZahl, tr?.kaefig.xyz, tr?.kaefig.fStart, tr?.kaefig.fVerts, netz.reifen?.ringLagen, netz.reifen?.verlauf, netz.reifen?.verlaufStart]) {
     if (a && !out.includes(a.buffer as ArrayBuffer)) out.push(a.buffer as ArrayBuffer);
   }
   return out;

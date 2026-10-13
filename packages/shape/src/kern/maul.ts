@@ -34,6 +34,7 @@ import {
   stationenWaehlen,
   zieleBerechnen,
   zugBei,
+  spineAnteile,
 } from './ableiten';
 import { silhouettenBreite } from './breite';
 
@@ -143,26 +144,6 @@ const jetzt = () => (uhr ? uhr.now() : Date.now());
 
 // ---------- Lage ----------
 
-/** Wirbelsäulen-Anteil f (0 … 1) je Station: Umkehrung von `stationenAusLeiter` über die Rückenanteile der Leiter. */
-export function spineAnteile(l: Leiter, st: readonly { a: number; b: number }[]): number[] {
-  const mitten = l.paare.map((pr) => {
-    const o = zugBei(l.ruecken, pr.a);
-    const u = zugBei(l.bauch, pr.b);
-    return { x: (o.x + u.x) / 2, y: (o.y + u.y) / 2 };
-  });
-  const cum = [0];
-  for (let k = 1; k < mitten.length; k++) cum.push(cum[k - 1]! + Math.hypot(mitten[k]!.x - mitten[k - 1]!.x, mitten[k]!.y - mitten[k - 1]!.y));
-  const L = cum[cum.length - 1]! || 1;
-  return st.map((s) => {
-    const a = s.a;
-    let k = 0;
-    while (k + 2 < l.paare.length && l.paare[k + 1]!.a < a) k++;
-    const a0 = l.paare[k]!.a;
-    const a1 = l.paare[k + 1]!.a;
-    const t = a1 > a0 ? Math.min(1, Math.max(0, (a - a0) / (a1 - a0))) : 0;
-    return (cum[k]! + (cum[k + 1]! - cum[k]!) * t) / L;
-  });
-}
 
 /** Höhe v der Maullinie beim Anteil f (linear zwischen den Stützen, außen festgehalten). */
 function lippenHoehe(linie: MaulLinie, f: number): number {

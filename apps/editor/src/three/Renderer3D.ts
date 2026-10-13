@@ -68,6 +68,11 @@ export class Renderer3D {
   private readonly strahl = new Raycaster();
   private readonly marke = new Mesh(new SphereGeometry(1, 16, 12), new MeshBasicNodeMaterial({ color: 0xff2e9a }));
   private linien: LineSegments | null = null;
+  /** Reifen (M3): Ringe der Spanten auf dem Körper (Segmente mit Farbe je Punkt) und Perlen an den Spant-Knoten */
+  private reifen: LineSegments | null = null;
+  private readonly perlen: Mesh[] = [];
+  private readonly perlenGeometrie = new SphereGeometry(1, 12, 8);
+  private readonly perlenMaterial = [new MeshBasicNodeMaterial({ color: 0x00ffe1, depthTest: false }), new MeshBasicNodeMaterial({ color: 0xf4f1e4, depthTest: false }), new MeshBasicNodeMaterial({ color: 0xff2e9a, depthTest: false })];
   private kameraZustand: Kamera | null = null;
   private angefordert = false;
   private bereit = false;
@@ -470,7 +475,8 @@ export class Renderer3D {
    * Picking (M2): Strahl aus einem Feld (Pixel innerhalb des Feldrechtecks) auf den Körper; Bühne perspektivisch,
    * Blätter orthografisch. Liefert Dreieck (Index im Netz des Körpers) und Trefferpunkt (Welt) oder null.
    */
-  treffen(feld: 'creation' | Ansicht, px: number, py: number): { dreieck: number; punkt: [number, number, number] } | null {
+  /** Kamera und Rechteck eines Felds (Bühne perspektivisch, Blätter orthografisch), Matrizen aktuell; null ohne Feld. */
+  private feldKamera(feld: 'creation' | Ansicht): { cam: PerspectiveCamera | OrthographicCamera; r: Rect } | null {
     let cam: PerspectiveCamera | OrthographicCamera;
     let r: Rect;
     if (feld === 'creation') {
@@ -486,6 +492,46 @@ export class Renderer3D {
       cam = this.ortho;
     }
     cam.updateMatrixWorld();
+    return { cam, r };
+  }
+
+  /** Strahl aus Feldpixeln (Welt): Ursprung und Richtung; null ohne Feld. */
+  strahlFuer(feld: 'creation' | Ansicht, px: number, py: number): { o: [number, number, number]; d: [number, number, number] } | null {
+    const k = this.feldKamera(feld);
+    if (!k) return null;
+    this.strahl.setFromCamera(new Vector2((px / k.r.w) * 2 - 1, -((py / k.r.h) * 2 - 1)), k.cam);
+    const o = this.strahl.ray.origin;
+    const d = this.strahl.ray.direction;
+    return { o: [o.x, o.y, o.z], d: [d.x, d.y, d.z] };
+  }
+
+  /** Blickrichtung der Kamera eines Felds (Welt, Einheitsvektor). */
+  blickrichtung(feld: 'creation' | Ansicht): [number, number, number] | null {
+    const k = this.feldKamera(feld);
+    if (!k) return null;
+    const v = k.cam.getWorldDirection(new Vector3());
+    return [v.x, v.y, v.z];
+  }
+
+  /** Weltpunkte → Feldpixel: je Punkt (px, py, vorn), vorn = 1 vor der Kamera, 0 dahinter. */
+  projizierenViele(feld: 'creation' | Ansicht, xyz: Float32Array): Float32Array {
+    const out = new Float32Array(xyz.length);
+    const k = this.feldKamera(feld);
+    if (!k) return out;
+    const v = new Vector3();
+    for (let i = 0; i + 2 < xyz.length; i += 3) {
+      v.set(xyz[i]!, xyz[i + 1]!, xyz[i + 2]!).project(k.cam);
+      out[i] = ((v.x + 1) / 2) * k.r.w;
+      out[i + 1] = ((1 - v.y) / 2) * k.r.h;
+      out[i + 2] = v.z > -1 && v.z < 1 ? 1 : 0;
+    }
+    return out;
+  }
+
+  treffen(feld: 'creation' | Ansicht, px: number, py: number): { dreieck: number; punkt: [number, number, number] } | null {
+    const k = this.feldKamera(feld);
+    if (!k) return null;
+    const { cam, r } = k;
     const ndc = new Vector2((px / r.w) * 2 - 1, -((py / r.h) * 2 - 1));
     this.strahl.setFromCamera(ndc, cam);
     const ziel = [this.wesen, this.koerper, this.feuer].find((m) => m.visible && (m.geometry.getAttribute('position')?.count ?? 0) > 0);
@@ -493,6 +539,48 @@ export class Renderer3D {
     const t = this.strahl.intersectObject(ziel, false)[0];
     if (!t || t.faceIndex === undefined || t.faceIndex === null) return null;
     return { dreieck: t.faceIndex, punkt: [t.point.x, t.point.y, t.point.z] };
+  }
+
+  /** Reifen (M3): Liniensegmente (Welt) mit Farbe je Punkt, immer sichtbar über der Fläche; null blendet aus. */
+  setzeReifen(punkte: Float32Array | null, farben: Float32Array | null) {
+    if (this.reifen) {
+      this.szene.remove(this.reifen);
+      this.reifen.geometry.dispose();
+      this.reifen = null;
+    }
+    if (punkte && farben && punkte.length) {
+      const g = new BufferGeometry();
+      g.setAttribute('position', new BufferAttribute(punkte, 3));
+      g.setAttribute('color', new BufferAttribute(farben, 3));
+      this.reifen = new LineSegments(g, new LineBasicNodeMaterial({ vertexColors: true, depthTest: false, transparent: true, opacity: 0.95 }));
+      this.reifen.renderOrder = 4;
+      this.szene.add(this.reifen);
+    }
+    this.anfordern();
+  }
+
+  /** Perlen (Welt) mit Zustand je Perle (0 ruhig, 1 gewählt, 2 unter dem Zeiger); Größe als Anteil der Körperhöhe. */
+  setzePerlen(lagen: Float32Array | null, zustand: Uint8Array | null, hoehe = 1) {
+    const n = lagen ? lagen.length / 3 : 0;
+    while (this.perlen.length < n) {
+      const m = new Mesh(this.perlenGeometrie, this.perlenMaterial[0]!);
+      m.renderOrder = 5;
+      m.visible = false;
+      this.szene.add(m);
+      this.perlen.push(m);
+    }
+    const g = Math.max(0.002, 0.009 * hoehe);
+    this.perlen.forEach((m, i) => {
+      if (i < n && lagen) {
+        m.position.set(lagen[3 * i]!, lagen[3 * i + 1]!, lagen[3 * i + 2]!);
+        const z = zustand?.[i] ?? 0;
+        const s = z === 0 ? g : g * 1.35;
+        m.scale.set(s, s, s);
+        m.material = this.perlenMaterial[z] ?? this.perlenMaterial[0]!;
+        m.visible = true;
+      } else m.visible = false;
+    });
+    this.anfordern();
   }
 
   /** Marke am Trefferpunkt (Welt) zeigen oder ausblenden; Größe als Anteil der Körperhöhe. */

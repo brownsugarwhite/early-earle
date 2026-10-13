@@ -21,7 +21,7 @@ import { type Roehre, roehre } from '../kaefig/roehre';
 import { type AusgleichsLoeser, type Bedingung, type GrenzLoeser, ausgleichsLoeser, grenzLoeser, kaefigAusgleich, kaefigDurchZiele } from '../loeser/grenzflaeche';
 import { punktAuf } from '../bezier';
 import { pfadAbtasten, segmente, vollerPfad } from '../profil';
-import { stelleVon, vorlageBei } from '../spanten';
+import { spantKasten, stelleVon, vorlageBei } from '../spanten';
 import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3 } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
@@ -56,7 +56,10 @@ export type Station = { a: number; b: number };
 
 export type Ecke = { ring: number; seite: 'oben' | 'unten' | 'beide' };
 
-export type Stationen = { ringe: Station[]; kappen: { vorn: Station[]; hinten: Station[] }; ecken: Ecke[]; spitzen: { vorn: boolean; hinten: boolean } };
+/** Reifen (M3): Käfigring, der auf die Station eines gezeichneten Spants gerastet ist (Index in `dok.spanten`). */
+export type Reifen = { spant: number; ring: number };
+
+export type Stationen = { ringe: Station[]; kappen: { vorn: Station[]; hinten: Station[] }; ecken: Ecke[]; reifen: Reifen[]; spitzen: { vorn: boolean; hinten: boolean } };
 
 export type Ableitung = {
   opt: AbleitOptionen;
@@ -66,6 +69,8 @@ export type Ableitung = {
   stationen: Station[];
   kappenStationen: { vorn: Station[]; hinten: Station[] };
   ecken: Ecke[];
+  /** Reifen (M3): Ringe auf den Stationen der gezeichneten Spanten */
+  reifen: Reifen[];
   spitzen: { vorn: boolean; hinten: boolean };
   /** Zielpunkte (3 je Käfigpunkt), Höhe je Käfigpunkt auf seiner Sprosse (1 oben … 0 unten), Käfig, feines Netz */
   ziele: Float64Array;
@@ -424,10 +429,43 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument)
     anteile[best] = e.f;
     ecken.push({ ring: best, seite: e.oben ? 'oben' : 'unten' });
   }
+  // Reifen (M3): je gezeichnetem Spant rastet der nächste freie Ring auf seine Station (Sprosse, deren Mitte auf dem x
+  // des Spants liegt; Ecken haben Vorrang, Ring 0 und R−1 bleiben); so ist ein Spant genau ein Ring mit Perlen.
+  const reifen: Reifen[] = [];
+  if (dok?.spanten?.length) {
+    const sk = dok.skalierung;
+    dok.spanten.forEach((sp, index) => {
+      const xs = spantKasten(dok, sp.f).x * sk;
+      let k = 0;
+      let dBest = Infinity;
+      l.paare.forEach((pr, i) => {
+        const o = zugBei(l.ruecken, pr.a);
+        const u = zugBei(l.bauch, pr.b);
+        const d = Math.abs((o.x + u.x) / 2 - xs);
+        if (d < dBest) {
+          dBest = d;
+          k = i;
+        }
+      });
+      const f = spineAnteile(l, [l.paare[k]!])[0]!;
+      let best = -1;
+      for (let i = 1; i < R - 1; i++) {
+        if (ecken.some((e) => e.ring === i) || reifen.some((r) => r.ring === i)) continue;
+        if (best < 0 || Math.abs(anteile[i]! - f) < Math.abs(anteile[best]! - f)) best = i;
+      }
+      if (best < 0) return;
+      anteile[best] = f;
+      reifen.push({ spant: index, ring: best });
+    });
+  }
   const werte = ecken.map((e) => anteile[e.ring]!);
+  const reifenWerte = reifen.map((r) => anteile[r.ring]!);
   anteile.sort((a, b) => a - b);
   ecken.forEach((e, k) => {
     e.ring = anteile.indexOf(werte[k]!);
+  });
+  reifen.forEach((r, k) => {
+    r.ring = anteile.indexOf(reifenWerte[k]!);
   });
   const vorn: number[] = [];
   const hinten: number[] = [];
@@ -436,7 +474,28 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument)
     hinten.push(1 - (kappeHinten * r) / (c / 2));
   }
   const alle = stationenAusLeiter(l, [...anteile, ...vorn, ...hinten]);
-  return { ringe: alle.slice(0, R), kappen: { vorn: alle.slice(R, R + vorn.length), hinten: alle.slice(R + vorn.length) }, ecken, spitzen };
+  return { ringe: alle.slice(0, R), kappen: { vorn: alle.slice(R, R + vorn.length), hinten: alle.slice(R + vorn.length) }, ecken, reifen, spitzen };
+}
+
+/** Wirbelsäulen-Anteil f (0 … 1) je Station: Umkehrung von `stationenAusLeiter` über die Rückenanteile der Leiter. */
+export function spineAnteile(l: Leiter, st: readonly { a: number; b: number }[]): number[] {
+  const mitten = l.paare.map((pr) => {
+    const o = zugBei(l.ruecken, pr.a);
+    const u = zugBei(l.bauch, pr.b);
+    return { x: (o.x + u.x) / 2, y: (o.y + u.y) / 2 };
+  });
+  const cum = [0];
+  for (let k = 1; k < mitten.length; k++) cum.push(cum[k - 1]! + Math.hypot(mitten[k]!.x - mitten[k - 1]!.x, mitten[k]!.y - mitten[k - 1]!.y));
+  const L = cum[cum.length - 1]! || 1;
+  return st.map((s) => {
+    const a = s.a;
+    let k = 0;
+    while (k + 2 < l.paare.length && l.paare[k + 1]!.a < a) k++;
+    const a0 = l.paare[k]!.a;
+    const a1 = l.paare[k + 1]!.a;
+    const t = a1 > a0 ? Math.min(1, Math.max(0, (a - a0) / (a1 - a0))) : 0;
+    return (cum[k]! + (cum[k + 1]! - cum[k]!) * t) / L;
+  });
 }
 
 // ---------- Ziele ----------
@@ -1053,6 +1112,7 @@ export function fertigstellen(e: Rohbau): Ableitung {
     stationen: st.ringe,
     kappenStationen: st.kappen,
     ecken: st.ecken,
+    reifen: st.reifen,
     spitzen: st.spitzen,
     ziele,
     hoehe,
@@ -1079,7 +1139,7 @@ export function ziehen(abl: Ableitung, dokNeu: Dokument): Zug {
   const l = kernLeiter(dokNeu);
   const t1 = jetzt();
   const v = abl.vorlage;
-  const st: Stationen = { ringe: abl.stationen, kappen: abl.kappenStationen, ecken: abl.ecken, spitzen: abl.spitzen };
+  const st: Stationen = { ringe: abl.stationen, kappen: abl.kappenStationen, ecken: abl.ecken, reifen: abl.reifen, spitzen: abl.spitzen };
   const breiten = silhouettenBreite(dokNeu);
   const { ziele, hoehe } = zieleBerechnen(v, l, st, breiten, dokNeu, abl.opt);
   const t2 = jetzt();

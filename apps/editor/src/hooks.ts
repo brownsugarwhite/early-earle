@@ -7,6 +7,7 @@ import { setzeLayoutZiel } from './layout/animation';
 import { berechneLayout } from './layout/layout';
 import { editorApi } from './library/speicher';
 import { useEditor } from './state/editorStore';
+import { reifenNeuAmZeiger } from './kern/reifen';
 import { useUi } from './state/uiStore';
 
 /** Fenstergröße + Maximieren → Ziel-Layout (animiert, bei Fenstergröße sofort). */
@@ -68,6 +69,10 @@ export function useTastatur() {
       } else if (cmd && k === 'l') {
         e.preventDefault();
         ui.libraryUmschalten();
+      } else if (e.ctrlKey && !e.metaKey && !e.altKey && k === 'r') {
+        // M3: neuer Reifen am Zeiger auf der Bühne (Blender ⌃R)
+        e.preventDefault();
+        if (!reifenNeuAmZeiger()) ui.zeigeHinweis('⌃R: Zeiger auf den Körper in der Bühne halten');
       } else if (!cmd && !e.altKey && (k === 'a' || k === 'v')) {
         ui.setzeWerkzeug('auswahl');
       } else if (!cmd && !e.altKey && k === 'p') {

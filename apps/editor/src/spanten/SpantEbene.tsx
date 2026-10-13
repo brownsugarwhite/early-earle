@@ -212,7 +212,7 @@ export function spantWaehlen(i: number | null, knoten: number[] = []) {
 }
 
 /** Spanten nach f sortieren (nach dem Verschieben); die Auswahl wandert mit. */
-function sortieren(gewaehlt: number) {
+export function sortieren(gewaehlt: number) {
   const liste = spanten();
   const sp = liste[gewaehlt];
   const sortiert = liste.slice().sort((a, b) => a.f - b.f);

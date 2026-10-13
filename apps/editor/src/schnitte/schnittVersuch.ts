@@ -5,7 +5,7 @@
 // nachgezogen als Dokument; die anderen sind die nachgezogenen Versuchswesen vom 12.10.
 
 import { type Dokument, dokumentLesen, neuesDokument } from '@ee/shape';
-import { halsVerbreitern, zwiebel } from '@ee/shape/kern';
+import { halsVerbreitern, zwiebel, kastenSpanten } from '@ee/shape/kern';
 import { type Vorlage, vorlageDokument } from '@ee/shape/versuch';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -23,6 +23,9 @@ export async function schnittVersuchLaden(): Promise<void> {
     const json = (await (await fetch(`${import.meta.env.BASE_URL}versuch/${datei}/${datei}.json`)).json()) as { format?: string };
     dok = json.format === 'ee-wesen' ? dokumentLesen(json) : vorlageDokument(json as Vorlage, 'zu', wesen);
     if (wesen === 'drache') dok = halsVerbreitern(dok, 2, 0.3, 0.585);
+    // Tiger (Beweis 4): die Kastenschnauze als echte Spanten im Dokument (M3: Reifen auf dem Körper, von Florian ziehbar);
+    // der Bauplan-Kasten gilt nur ohne eigene Spanten
+    if (wesen === 'tiger' && !dok.spanten?.length) dok = { ...dok, spanten: kastenSpanten(dok.profile.front, 0.02, 0.15, 0.25, 0.85) };
   }
   if (q.get('spanten') === '0') {
     dok = { ...dok };

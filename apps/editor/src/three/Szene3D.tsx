@@ -17,12 +17,13 @@ import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirb
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
 import { aktuellesNetz, kernAnimieren, kernBauen, useKernAnzeige } from '../kern/kernBau';
+import { perlenVon, reifenAnzeigen, reifenFaerben, useReifen } from '../kern/reifen';
 import { trefferDeuten } from '../kern/treffer';
 import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown };
   }
 }
 
@@ -53,7 +54,26 @@ export function Szene3D() {
           const n = aktuellesNetz();
           if (!n) return null;
           const w = n.netz;
-          return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung };
+          return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung, reifen: w.reifen ? { liste: w.reifen.liste, knoten: w.reifen.knoten } : null };
+        },
+        // M3: Perlen und Bänder der Reifen in Feldpixeln der Bühne (E2E)
+        reifenPixel: () => {
+          const n = aktuellesNetz();
+          const rf = n?.netz.reifen;
+          if (!n || !rf) return null;
+          const perlen = perlenVon(n.netz, n.skalierung);
+          const lagen = new Float32Array(perlen.length * 3);
+          perlen.forEach((p, i) => lagen.set(p.pos, 3 * i));
+          const pp = r.projizierenViele('creation', lagen);
+          const verlauf = new Float32Array(rf.verlauf.length);
+          for (let i = 0; i < verlauf.length; i++) verlauf[i] = rf.verlauf[i]! * n.skalierung;
+          const vp = r.projizierenViele('creation', verlauf);
+          const baender = rf.liste.map((_, i) => {
+            const aus: [number, number][] = [];
+            for (let k = rf.verlaufStart[i]! / 3; k < rf.verlaufStart[i + 1]! / 3; k += 16) if (vp[3 * k + 2]! > 0) aus.push([vp[3 * k]!, vp[3 * k + 1]!]);
+            return aus;
+          });
+          return { perlen: perlen.map((p, i) => ({ reifen: p.reifen, spant: p.spant, knoten: p.knoten, j: p.j, px: pp[3 * i], py: pp[3 * i + 1], vorn: pp[3 * i + 2] })), baender };
         },
       };
       console.info(`[editor] 3D-Backend: ${r.backend}`);
@@ -117,6 +137,8 @@ export function Szene3D() {
             if (s !== 1) for (let i = 0; i < t.zaehne.positionen.length; i++) t.zaehne.positionen[i]! *= s;
             r.setzeZaehne(t.zaehne.positionen, t.zaehne.normalen, t.zaehne.anteil);
           } else r.setzeZaehne(null, null, null);
+          // M3: Reifen (Spanten als Ringe mit Perlen) auf dem Körper
+          reifenAnzeigen(r, t, s);
           // Beweis 5: Klingen wehen (Käfig-Pose je Bild, ≈ 14 Bilder je Sekunde)
           if (klingenUhr !== null) window.clearInterval(klingenUhr);
           klingenUhr = null;
@@ -268,8 +290,11 @@ export function Szene3D() {
           if ((s.schnittRegel !== v.schnittRegel || s.schnittUeberblenden !== v.schnittUeberblenden) && s.bauweise === 'schnitte') bauen(useEditor.getState().dok);
           if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
           if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
+          if (s.spantAuswahl !== v.spantAuswahl || s.ebene !== v.ebene) reifenFaerben(r);
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
+        // M3: Perle oder Band unter dem Zeiger → Farben der Reifen
+        useReifen.subscribe(() => reifenFaerben(r)),
         // Beweis 4: Look oder Palette gewechselt → Kern neu bauen
         useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung || s.stil !== v.stil) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
         // Biege-Regler losgelassen: genau bauen
