@@ -7,7 +7,8 @@ import { type Rect, VIEWS, type ViewId } from '../types';
 export const RAND = 40;
 export const LUECKE = 40;
 export const OBEN = 84;
-export const UNTEN = 40;
+/** unten bleibt Platz für das Dock (Plan 9.4, schwebt mittig) */
+export const UNTEN = 60;
 export const SEITENLEISTE = 360;
 /** Stamm (Plan 9.3): Spalte mit den neun Stufen-Knospen links der Blätter */
 export const STAMM = 56;

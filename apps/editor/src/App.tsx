@@ -2,6 +2,7 @@ import { useWirbelTasten } from './wirbel/WirbelEbene';
 import { useLayoutSteuerung, useMenueBruecke, useTastatur, useTitel } from './hooks';
 import { Seitenleiste } from './leiste/Seitenleiste';
 import { Stamm } from './stamm/Stamm';
+import { Dock } from './dock/Dock';
 import { useKantenTasten } from './kanten/KantenEbene';
 import { useMaulTasten } from './maul/MaulEbene';
 import { MenuBar } from './menu/MenuBar';
@@ -11,7 +12,6 @@ import { DialogFenster } from './ui/DialogFenster';
 import { Glasfilter } from './ui/Glasfilter';
 import { Hinweis } from './ui/Hinweis';
 import { KontextMenue } from './ui/KontextMenue';
-import { WerkzeugHinweis } from './ui/WerkzeugHinweis';
 import { ViewportGrund, ViewportOber } from './viewports/Viewport';
 
 export function App() {
@@ -36,11 +36,11 @@ export function App() {
         ))}
         <Seitenleiste />
         <Stamm />
+        <Dock />
       </main>
       <KontextMenue />
       <DialogFenster />
       <Hinweis />
-      <WerkzeugHinweis />
     </>
   );
 }

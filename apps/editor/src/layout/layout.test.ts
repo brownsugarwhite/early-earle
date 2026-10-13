@@ -12,9 +12,10 @@ describe('Layout', () => {
   it('2×2-Raster wie die Vorlage, links der Stamm, rechts die feste Seitenleiste', () => {
     const { views, leiste, stamm } = berechneLayout({ breite: B, hoehe: H, maximiert: null });
     const w = (X1 - X0 - LUECKE) / 2;
-    expect(views.seite).toEqual({ x: X0, y: 84, w, h: 498.5 });
+    const h = (H - UNTEN - OBEN - LUECKE) / 2;
+    expect(views.seite).toEqual({ x: X0, y: 84, w, h });
     expect(views.front.x).toBe(X0 + w + LUECKE);
-    expect(views.top.y).toBe(84 + 498.5 + 40);
+    expect(views.top.y).toBe(84 + h + 40);
     expect(views.creation.x + views.creation.w).toBe(X1);
     expect(views.creation.y + views.creation.h).toBe(H - UNTEN);
     expect(leiste).toEqual({ x: B - RAND - SEITENLEISTE, y: OBEN, w: SEITENLEISTE, h: H - OBEN - UNTEN });

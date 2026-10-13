@@ -1,6 +1,6 @@
 import { useUi } from '../state/uiStore';
 
-const TEXTE = {
+export const TEXTE = {
   stift: ['Zeichenstift', 'Klick auf die Kurve setzt einen Punkt, Klick auf einen Punkt löscht ihn, ⌥-Klick wandelt um. Klick auf freie Fläche beginnt eine Kante, Enter beendet'],
   plus: ['Ankerpunkt hinzufügen', 'Klick auf die Kurve setzt einen Punkt'],
   minus: ['Ankerpunkt löschen', 'Klick auf einen Punkt löscht ihn'],

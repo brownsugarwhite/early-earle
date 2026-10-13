@@ -1,4 +1,6 @@
 import { useKernAnzeige } from '../kern/kernBau';
+import { type MaulOptionen, MAUL_STANDARD, maulOptionenVorlage, pruefwesenBauplan } from '@ee/shape/kern';
+import { naechsteStufe, stufe } from '../stamm/stufen';
 import { PALETTEN } from '../three/wesenLook';
 // Seitenleiste rechts, immer offen (Florian 12.10.): oben das Menü des aktiven Tabs (Wesen, Maul, Zähne, Rig, Augen),
 // darunter die Library. Gestaltung (Glas, Ornament) ist mein Entwurf.
@@ -69,7 +71,7 @@ function WesenBereich() {
         <span>Posen</span>
         <b>{['Fressen', ...dok.posen.map((p) => p[0]!.toUpperCase() + p.slice(1))].join(' · ')}</b>
       </div>
-      <p className="hilfe">Oben rechts in jeder Ansicht: braun Zähne, blau Maul, orange Rig, weiß Augen (folgt), pink vergrößern.</p>
+      <p className="hilfe">Die Stufen (Körper, Maul, Zähne, Augen …) wählst du links im Stamm, ⌘1 bis ⌘9. Werkzeuge der Stufe liegen unten im Dock.</p>
       {modus === 'fressen' && dok.maul && (
         <p className="hilfe" data-fressen-hinweis="">
           Fressen: Die Seite ist die Form der Pose (bearbeitbar, siehe oben). Front und Top zeigen den geöffneten Umriss aus dem 3D, die Grundform blass dahinter. Kanten
@@ -729,31 +731,90 @@ export function Seitenleiste() {
   const bauweise = useUi((s) => s.bauweise);
   const modus = useEditor((s) => s.modus);
   if (!r) return null;
+  const st = stufe(ebene);
+  const kern = bauweise === 'kern';
   return (
     <aside className="leiste" data-ebene={ebene} style={{ left: r.x, top: r.y, width: r.w, height: r.h }}>
-      <div className="vp-titel">{TITEL[ebene]}</div>
+      <div className="vp-titel" style={kern ? { color: st.farbe } : undefined}>
+        {kern ? st.name.toLowerCase() : TITEL[ebene]}
+      </div>
       <div className="leiste-glas glas">
         <div className="leiste-inhalt">
-          {bauweise === 'wirbel' && <WirbelBereich />}
-          {bauweise === 'kern' && <KernBereich />}
-          {(bauweise === 'rund' || bauweise === 'schnitte') && <RundBereich />}
-          {bauweise === 'schnitte' && <SchnittBereich />}
-          {ebene === 'form' && modus === 'fressen' && <PoseBereich />}
-          {ebene === 'form' && (
+          {!kern && (
             <>
-              <WesenBereich />
-              <KantenBereich />
-              {bauweise !== 'rund' && <SpantBereich />}
+              {bauweise === 'wirbel' && <WirbelBereich />}
+              {(bauweise === 'rund' || bauweise === 'schnitte') && <RundBereich />}
+              {bauweise === 'schnitte' && <SchnittBereich />}
+              {ebene === 'form' && modus === 'fressen' && <PoseBereich />}
+              {ebene === 'form' && (
+                <>
+                  <WesenBereich />
+                  <KantenBereich />
+                  {bauweise !== 'rund' && <SpantBereich />}
+                </>
+              )}
+              {ebene === 'maul' && <MaulBereich />}
+              {ebene === 'zaehne' && <ZahnBereich />}
+              {ebene === 'posen' && <RigBereich />}
             </>
           )}
-          {ebene === 'maul' && <MaulBereich />}
-          {ebene === 'zaehne' && <ZahnBereich />}
-          {ebene === 'posen' && <RigBereich />}
-          {ebene === 'augen' && (
-            <section className="leiste-bereich">
-              <p className="hilfe">Augen folgen: Schlitz (gemalt, bleibt), Knopf, Kugel, Mandel mit Lid, Ausdruck (Sichel, Spirale, X). Vorschlag im Bericht.</p>
+          {/* Tafel (Plan 9.5): je Stufe höchstens sechs Felder; Bauweise „kern“ */}
+          {kern && ebene === 'form' && (
+            <>
+              {modus === 'fressen' && <PoseBereich />}
+              <WesenBereich />
+              <section className="leiste-bereich" data-bereich="koerper">
+                <PinselFeld />
+                <DarstellungFeld />
+              </section>
+              <KantenBereich />
+              <SpantBereich />
+            </>
+          )}
+          {kern && ebene === 'maul' && (
+            <section className="leiste-bereich" data-bereich="maul">
+              <KernMaulFeld />
             </section>
           )}
+          {kern && ebene === 'zaehne' && (
+            <section className="leiste-bereich" data-bereich="zaehne">
+              <p className="hilfe">Die Zähne wachsen heute von selbst am Zahnfleisch des Mauls (Verlauf hell zur Spitze). Anzahl je Kiefer, einzeln setzen, Form (Krümmung, Rundheit, Größe, Länge, Breite, Drehung), Farbe mit Verlauf und die Prüfung im geschlossenen Maul kommen in Phase 2.</p>
+            </section>
+          )}
+          {kern && ebene === 'augen' && (
+            <section className="leiste-bereich" data-bereich="augen">
+              <AugenFeld />
+            </section>
+          )}
+          {kern && ebene === 'teile' && (
+            <section className="leiste-bereich" data-bereich="teile">
+              <TeileFeld />
+            </section>
+          )}
+          {kern && ebene === 'fell' && (
+            <section className="leiste-bereich" data-bereich="fell">
+              <FellFeld />
+            </section>
+          )}
+          {kern && ebene === 'haut' && (
+            <section className="leiste-bereich" data-bereich="haut">
+              <HautFeld />
+            </section>
+          )}
+          {kern && ebene === 'posen' && (
+            <>
+              <section className="leiste-bereich" data-bereich="posen">
+                <p className="hilfe">Fressen ist heute der Kieferknopf am Mundwinkel (ziehen öffnet, Doppelklick rastet) und der Regler in der Stufe Maul. Posen als Käfig-Deltas, Atmen, Blinzeln und Gehen kommen in Phase 2 und 5.</p>
+              </section>
+              <RigBereich />
+            </>
+          )}
+          {kern && ebene === 'spiel' && (
+            <section className="leiste-bereich" data-bereich="spiel">
+              <SpielFeld />
+            </section>
+          )}
+          {kern && <TafelFuss />}
           <LibraryBereich />
         </div>
         <Ornament />
@@ -762,86 +823,194 @@ export function Seitenleiste() {
   );
 }
 
-/** Wesen-Editor 2, Beweis 1 (13.10.): Kern-Anzeige (Naht-Abweichung, Zeiten). */
-function KernBereich() {
-  const info = useKernAnzeige((s) => s.info);
-  const look = useKernAnzeige((s) => s.look);
-  const palette = useKernAnzeige((s) => s.palette);
-  const maul = useKernAnzeige((s) => s.maul);
+/** Chips einer Auswahl (Tafel): ein Wert aktiv. */
+function Chips<T extends string>({ werte, aktiv, text, attribut, onWahl }: { werte: readonly T[]; aktiv: T; text?: (w: T) => string; attribut: string; onWahl: (w: T) => void }) {
+  return (
+    <div className="umschalter stufen" role="radiogroup">
+      {werte.map((w) => (
+        <button key={w} className={aktiv === w ? 'chip aktiv' : 'chip'} {...{ [`data-${attribut}`]: w }} onClick={() => onWahl(w)}>
+          {text ? text(w) : w}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const geste = () => ({ onStart: () => useEditor.getState().beginGeste(), onEnde: () => useEditor.getState().endeGeste() });
+
+/** Tafel „Körper“: Pinsel-Radius (G ziehen, I aufblasen, ⇧ glätten, [ ] Radius). */
+function PinselFeld() {
+  const radius = useUi((s) => s.pinselRadius);
+  return (
+    <>
+      <Regler label="Pinsel" wert={radius} min={0.03} max={1} schritt={0.01} anzeige={`${Math.round(radius * 100)} % der Höhe`} onChange={(v) => useUi.getState().setzePinselRadius(v)} />
+      <p className="hilfe">Auf der Bühne: G zieht den Käfig weich (gespiegelt), I bläst auf, ⇧ dabei glättet, [ und ] ändern den Radius. ⌃R setzt einen Reifen am Zeiger.</p>
+    </>
+  );
+}
+
+/** Tafel „Körper“: Darstellung (Käfig, Zebra, Prüfansicht Matcap). */
+function DarstellungFeld() {
   const kaefig = useKernAnzeige((s) => s.kaefig);
+  const look = useKernAnzeige((s) => s.look);
+  const zebra = useUi((s) => s.zebra);
+  return (
+    <>
+      <div className="feld">
+        <span>Darstellung</span>
+        <b>{look === 'earle' ? 'Earle-Look' : 'Matcap'}</b>
+      </div>
+      <div className="umschalter stufen" role="group" aria-label="Darstellung">
+        <button className={kaefig ? 'chip aktiv' : 'chip'} data-kaefig={String(kaefig)} onClick={() => useKernAnzeige.getState().setzeKaefig(!kaefig)}>
+          Käfig
+        </button>
+        <button className={zebra ? 'chip aktiv' : 'chip'} data-zebra-chip="" onClick={() => useUi.getState().setzeZebra(!zebra)}>
+          Zebra
+        </button>
+        <button className={look === 'matcap' ? 'chip aktiv' : 'chip'} data-look={look} onClick={() => useKernAnzeige.getState().setzeLook(look === 'matcap' ? 'earle' : 'matcap')}>
+          Matcap
+        </button>
+      </div>
+    </>
+  );
+}
+
+/** Tafel „Maul“ (Kern): Maullinie, Öffnung, Öffnungsart, Kieferwinkel, Rille — Optionen in der Ausstattung des Dokuments. */
+function KernMaulFeld() {
+  const dok = useEditor((s) => s.dok);
+  const chip = useKernAnzeige((s) => s.maul);
+  const oeffnung = useUi((s) => s.oeffnung);
+  const zeichnen = useUi((s) => s.maulZeichnen);
+  const hatLinie = !!dok.maul || !!dok.ausstattung?.maulLinie;
+  const lage = chip === 'aus' && hatLinie ? 'vorn' : chip;
+  const mo: MaulOptionen = { ...MAUL_STANDARD, ...(lage !== 'aus' ? maulOptionenVorlage(lage) : {}), ...(pruefwesenBauplan(dok.name).maulOptionen ?? {}), ...(dok.ausstattung?.maulOptionen ?? {}) };
+  const setze = (patch: Partial<MaulOptionen>) => {
+    const s = useEditor.getState();
+    const aus = s.dok.ausstattung ?? {};
+    s.setzeDokument({ ...s.dok, ausstattung: { ...aus, maulOptionen: { ...(aus.maulOptionen ?? {}), ...patch } } });
+  };
+  if (!hatLinie && chip === 'aus')
+    return (
+      <>
+        <p className="hilfe">
+          {zeichnen
+            ? `${zeichnen.length} Punkt${zeichnen.length === 1 ? '' : 'e'} gesetzt. Weitere Punkte bis zum Mundwinkel klicken, Enter beendet, Esc bricht ab.`
+            : 'Maullinie zeichnen: in der Seite an der Außenkontur beginnen (Schnauzenspitze), dann Punkte bis zum Mundwinkel. Enter beendet. Der Kern schneidet das Maul, baut Lippen, Tasche und Zähne.'}
+        </p>
+        <div className="feld">
+          <span>Vorlage</span>
+          <b>{chip}</b>
+        </div>
+        <Chips werte={['aus', 'vorn', 'unten', 'hals'] as const} aktiv={chip} attribut="maul" onWahl={(m) => useKernAnzeige.getState().setzeMaul(m)} />
+      </>
+    );
+  return (
+    <>
+      <div className="feld">
+        <span>Maul</span>
+        <b>{dok.maul ? 'gezeichnet' : dok.ausstattung?.maulLinie ? 'aus der Ausstattung' : `Vorlage ${chip}`}</b>
+      </div>
+      <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />
+      <div className="feld">
+        <span>Öffnungsart</span>
+        <b>{mo.oeffnungsart === 'ziehen' ? 'Ziehen (Vorhang)' : 'Kippen (Knochen)'}</b>
+      </div>
+      <Chips werte={['kippen', 'ziehen'] as const} aktiv={mo.oeffnungsart} attribut="oeffnungsart" onWahl={(a) => setze({ oeffnungsart: a })} />
+      <Regler label="Unterkiefer" wert={mo.winkelUnten} min={5} max={75} schritt={1} anzeige={`${Math.round(mo.winkelUnten)}°`} onChange={(v) => setze({ winkelUnten: v })} {...geste()} />
+      <Regler label="Schädel" wert={mo.winkelOben} min={0} max={45} schritt={1} anzeige={`${Math.round(mo.winkelOben)}°`} onChange={(v) => setze({ winkelOben: v })} {...geste()} />
+      <Regler label="Rille" wert={mo.rille} min={0} max={0.03} schritt={0.001} anzeige={`${(mo.rille * 100).toFixed(1)} % der Höhe`} onChange={(v) => setze({ rille: v })} {...geste()} />
+      <p className="hilfe">Kieferknopf: die blaue Bohne am Mundwinkel auf der Bühne — ziehen öffnet, Doppelklick rastet. Kiefer getrennt (Überbiss, Unterbiss), Zunge und Rachenlinie als Griff kommen in Phase 2.</p>
+      {dok.maul && (
+        <button className="chip" onClick={() => useEditor.getState().setzeMaul(null)}>
+          Maullinie löschen
+        </button>
+      )}
+    </>
+  );
+}
+
+/** Tafel „Augen“: Lage (Ring, Winkel) und Größe; Setzen per Klick, Größe am Rand. */
+function AugenFeld() {
+  const dok = useEditor((s) => s.dok);
+  const augen = dok.ausstattung?.augen ?? pruefwesenBauplan(dok.name).augen ?? { ring: 2, j: 2, groesse: 0.11 };
+  const setze = (patch: Partial<typeof augen>) => {
+    const s = useEditor.getState();
+    const aus = s.dok.ausstattung ?? {};
+    s.setzeDokument({ ...s.dok, ausstattung: { ...aus, augen: { ...augen, ...patch } } });
+  };
+  return (
+    <>
+      <div className="feld">
+        <span>Lage</span>
+        <b>
+          Ring {augen.ring} · Winkel {augen.j}
+        </b>
+      </div>
+      <Regler label="Größe" wert={augen.groesse} min={0.02} max={0.4} schritt={0.005} anzeige={`${Math.round(augen.groesse * 100)} % der Höhe`} onChange={(v) => setze({ groesse: v })} {...geste()} />
+      <p className="hilfe">Klick auf den Körper in der Bühne setzt das Auge (gespiegelt); am Augenrand ziehen ändert die Größe. Augenarten (Schlitz, Knopf, Kugel, Glubschauge) und Zustände (Blinzeln, Sichel, X, Spirale) kommen in Phase 2.</p>
+    </>
+  );
+}
+
+/** Tafel „Teile“: Beine (Beweis 3) mit Schwung; Teile aus der Bibliothek folgen in Phase 3. */
+function TeileFeld() {
   const beine = useKernAnzeige((s) => s.beine);
   const schwung = useKernAnzeige((s) => s.schwung);
-  const stil = useKernAnzeige((s) => s.stil);
-  const oeffnung = useUi((s) => s.oeffnung);
   return (
-    <section className="bereich" data-bereich="kern">
-      <h3>Kern (Beweis 1 bis 5)</h3>
+    <>
       <div className="feld">
-        <span>Maul (Beweis 2)</span>
-        <b>{maul === 'aus' ? 'aus' : maul}</b>
-      </div>
-      <div className="umschalter stufen" role="radiogroup" aria-label="Maul">
-        {(['aus', 'vorn', 'unten', 'hals'] as const).map((m) => (
-          <button key={m} className={maul === m ? 'chip aktiv' : 'chip'} data-maul={m} onClick={() => useKernAnzeige.getState().setzeMaul(m)}>
-            {m}
-          </button>
-        ))}
-      </div>
-      {maul !== 'aus' && <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />}
-      <div className="feld">
-        <span>Beine (Beweis 3)</span>
+        <span>Beine</span>
         <b>{beine}</b>
       </div>
-      <div className="umschalter stufen" role="radiogroup" aria-label="Beine">
-        {(['aus', 'verschmolzen', 'angesteckt'] as const).map((b) => (
-          <button key={b} className={beine === b ? 'chip aktiv' : 'chip'} data-beine={b} onClick={() => useKernAnzeige.getState().setzeBeine(b)}>
-            {b}
-          </button>
-        ))}
-      </div>
+      <Chips werte={['aus', 'verschmolzen', 'angesteckt'] as const} aktiv={beine} attribut="beine" onWahl={(b) => useKernAnzeige.getState().setzeBeine(b)} />
       {beine !== 'aus' && <Regler label="Schwung" wert={schwung} min={-45} max={45} schritt={1} anzeige={`${Math.round(schwung)}°`} onChange={(v) => useKernAnzeige.getState().setzeSchwung(v)} />}
+      <p className="hilfe">Zwei Säulenbeine als Ausstülpung des Käfigs (verschmolzen) oder als eigene Röhre (angesteckt). Beine 2/4/6/8, Arme, Flügel, Flossen, Schwänze, Hörner und Fühler aus der Bibliothek mit Andockstellen kommen in Phase 3.</p>
+    </>
+  );
+}
+
+/** Tafel „Fell & Klingen“: Fell als Stil (Beweis 5); Pinsel für Büschel, Mähnen, Kämme folgen in Phase 4. */
+function FellFeld() {
+  const stil = useKernAnzeige((s) => s.stil);
+  return (
+    <>
       <div className="feld">
-        <span>Stil (Beweis 5)</span>
+        <span>Fell</span>
+        <b>{stil === 'fell' ? 'an' : 'aus'}</b>
+      </div>
+      <Chips werte={['aus', 'an'] as const} aktiv={stil === 'fell' ? 'an' : 'aus'} attribut="fell" onWahl={(w) => useKernAnzeige.getState().setzeStil(w === 'an' ? 'fell' : 'fest')} />
+      <p className="hilfe">Fell-Blob: gebaute Büschel am Umriss, gemaltes Büschelfeld auf der Haut. Ansatzlinien, Pinselarten (Kunst, Streu, Muster, Fläche), Klingenformen und Flügelhaut kommen in Phase 4.</p>
+    </>
+  );
+}
+
+/** Tafel „Haut“: Palette, Stil (fest, Feuer, Gas); Zonen zeichnen und Muster je Zone folgen in Phase 4. */
+function HautFeld() {
+  const palette = useKernAnzeige((s) => s.palette);
+  const stil = useKernAnzeige((s) => s.stil);
+  const paletten = Object.keys(PALETTEN);
+  return (
+    <>
+      <div className="feld">
+        <span>Palette</span>
+        <b>{PALETTEN[palette]?.name ?? palette}</b>
+      </div>
+      <Chips werte={paletten} aktiv={palette} text={(k) => PALETTEN[k]?.name ?? k} attribut="palette" onWahl={(k) => useKernAnzeige.getState().setzePalette(k)} />
+      <div className="feld">
+        <span>Stil</span>
         <b>{stil}</b>
       </div>
-      <div className="umschalter stufen" role="radiogroup" aria-label="Stil">
-        {(['fest', 'feuer', 'gas', 'fell'] as const).map((st) => (
-          <button key={st} className={stil === st ? 'chip aktiv' : 'chip'} data-stil={st} onClick={() => useKernAnzeige.getState().setzeStil(st)}>
-            {st}
-          </button>
-        ))}
-      </div>
-      <div className="umschalter stufen" role="radiogroup" aria-label="Käfig">
-        {([false, true] as const).map((k) => (
-          <button key={String(k)} className={kaefig === k ? 'chip aktiv' : 'chip'} data-kaefig={String(k)} onClick={() => useKernAnzeige.getState().setzeKaefig(k)}>
-            {k ? 'Käfig zeigen' : 'Käfig aus'}
-          </button>
-        ))}
-      </div>
-      <div className="feld">
-        <span>Look</span>
-        <b>{look === 'earle' ? 'Earle-Material (Beweis 4)' : 'Matcap'}</b>
-      </div>
-      <div className="umschalter stufen" role="radiogroup" aria-label="Look">
-        {(['matcap', 'earle'] as const).map((l) => (
-          <button key={l} className={look === l ? 'chip aktiv' : 'chip'} data-look={l} onClick={() => useKernAnzeige.getState().setzeLook(l)}>
-            {l === 'matcap' ? 'Matcap' : 'Earle'}
-          </button>
-        ))}
-      </div>
-      {look === 'earle' && (
-        <div className="umschalter stufen" role="radiogroup" aria-label="Palette">
-          {Object.entries(PALETTEN).map(([k, p]) => (
-            <button key={k} className={palette === k ? 'chip aktiv' : 'chip'} data-palette={k} onClick={() => useKernAnzeige.getState().setzePalette(k)}>
-              {p.name}
-            </button>
-          ))}
-        </div>
-      )}
-      <p className="hinweis">
-        Ein Subdivision-Käfig ist die Wahrheit. Der Seitenumriss wird einmal abgeleitet (Leiter, Poisson-Dicke, Röhre 24 × 16 mit Kappen), dann so gelöst, dass die
-        Grenzfläche der Stufe 3 durch die Kurve geht. Ziehen am Seitenumriss bewegt nur Ziele; Löser und Matrix liefern das Netz. Ecken des Umrisses werden Falten.
-      </p>
+      <Chips werte={['fest', 'feuer', 'gas'] as const} aktiv={stil === 'fell' ? 'fest' : stil} attribut="stil" onWahl={(w) => useKernAnzeige.getState().setzeStil(w)} />
+      <p className="hilfe">Earle-Material mit drei Wertzonen, Korn und Zonen-Atlas (Bauch hart, Rücken weich). Zonen als Vektorformen selbst zeichnen, Muster je Zone und Jelly kommen in Phase 4.</p>
+    </>
+  );
+}
+
+/** Tafel „Spiel“: Kennzahlen des Kerns; Brettvorschau und Budget kommen in Phase 5. */
+function SpielFeld() {
+  const info = useKernAnzeige((s) => s.info);
+  return (
+    <>
       {info && (
         <dl className="werte">
           <dt>Käfig</dt>
@@ -853,9 +1022,25 @@ function KernBereich() {
           <dt>Falten</dt>
           <dd>{info.ecken}</dd>
           <dt>Zeit</dt>
-          <dd>{info.schnell ? `Zug ${info.zug.toFixed(1)} ms` : `Ableitung ${info.ableitung.toFixed(0)} ms`}</dd>
+          <dd>{info.schnell ? `Zug ${info.zug.toFixed(1)} ms` : `Umbau ${info.ableitung.toFixed(0)} ms`}</dd>
         </dl>
       )}
+      <p className="hilfe">Ziele: Vorschau ≤ 16 ms je Zugschritt, Umbau ≤ 100 ms; auf dem Brett ≤ 8 000 Dreiecke je Wesen, 36 Wesen ≥ 58 fps auf dem iPhone. Brettvorschau, Budget-Waage und Export kommen in Phase 5.</p>
+    </>
+  );
+}
+
+/** Tafelfuß (Plan 9.5): „Weiter → nächste Stufe“. */
+function TafelFuss() {
+  const ebene = useUi((s) => s.ebene);
+  const weiter = naechsteStufe(ebene);
+  if (!weiter) return null;
+  return (
+    <section className="leiste-bereich tafel-fuss">
+      <button className="chip" data-weiter={weiter.id} style={{ background: weiter.farbe, color: 'var(--tinte)' }} onClick={() => useUi.getState().setzeEbene(weiter.id)}>
+        Weiter → {weiter.name}
+      </button>
     </section>
   );
 }
+
