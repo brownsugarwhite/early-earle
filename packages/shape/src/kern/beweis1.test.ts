@@ -100,14 +100,15 @@ describe('Beweis 1: Kern-Tempo und Treue', () => {
     const dok = vorlageDokument(rexRoh as unknown as Vorlage, 'zu', 'rex');
     messen('Rex 36 Ringe', dok, { ringe: 36 });
     const r = messen('Rex', dok);
-    // Ziel (Plan 11.1): 0,5 px. Stand 13.10.: 0,70 px, Rest an der Schwanzspitze (Eckpunkt der Kappe).
-    expect(r.hin.max * PX).toBeLessThan(1.0);
-    expect(r.zurueck.max * PX).toBeLessThan(1.0);
+    // Ziel (Plan 11.1): 0,5 px. Stand 13.10. nachts: 0,33 px (kleine Kappe an Spitzen-Ecken, Ringe nach Krümmung).
+    expect(r.hin.max * PX).toBeLessThan(0.5);
+    expect(r.zurueck.max * PX).toBeLessThan(0.5);
   });
 
   it('Langhals (Hals steht): Naht ≤ 2 px', () => {
     const r = messen('Langhals', vorlageDokument(langhalsRoh as unknown as Vorlage, 'zu', 'langhals'));
-    expect(r.hin.max * PX).toBeLessThan(2);
+    // Stand 13.10. nachts: 0,97 px (Ringe nach Krümmung); Ziel ≤ 2 px
+    expect(r.hin.max * PX).toBeLessThan(1.2);
   });
 
   it('Überhang-Ente (Florian 13.10.): Naht ≤ 2 px ohne Sonderregel', () => {
@@ -137,8 +138,14 @@ describe('Beweis 1: Kern-Tempo und Treue', () => {
     const her = abstandZuZug(profilZug(dokNeu), naht);
     console.log(`Zugschritt Rex (${ringe} Ringe): Kurve→Naht max ${(her.max * PX).toFixed(2)} px bei (${her.ort.x.toFixed(3)}, ${her.ort.y.toFixed(3)}) nahe ${naechsterKnoten(dokNeu, her.ort)}; größte Naht→Kurve bei ${naechsterKnoten(dokNeu, hin.ort)};  Leiter ${r.zugZeit.leiter.toFixed(1)} ms, Ziele ${r.zugZeit.ziele.toFixed(1)} ms, Löser ${r.zugZeit.loeser.toFixed(2)} ms, Matrix ${r.zugZeit.matrix.toFixed(2)} ms (bestes Löser+Matrix ${best.toFixed(2)} ms); Naht→neue Kurve max ${(hin.max * PX).toFixed(2)} px`);
     expect(best).toBeLessThan(16);
-    // Ziel: Naht auf der neuen Kurve. Stand 13.10.: 1,8 px (24 Ringe) bzw. 1,0 px (36 Ringe) an einem 23-px-Sprung
-    // eines einzelnen Knotens; die Genauigkeit hängt an der Ringdichte (Verdichtung = Reifen einfügen, Plan 4.2).
-    expect(hin.max * PX).toBeLessThan(ringe >= 36 ? 1.3 : 2.2);
+    // Während der Geste: Naht ≈ 1,6–2 px neben der neuen Kurve an einem 23-px-Sprung eines einzelnen Knotens (die
+    // Ringdichte stammt von vor dem Sprung). Beim Loslassen wird neu abgeleitet (Ringe nach Krümmung): dann ≤ 0,5 px.
+    expect(hin.max * PX).toBeLessThan(2.2);
+    const neu = ableiten(dokNeu, { ringe });
+    const nahtNeu: V2[] = Array.from(neu.naht.fein, (i) => ({ x: neu.fein[3 * i]!, y: neu.fein[3 * i + 1]! }));
+    const hinNeu = abstandZuZug(nahtNeu, profilZug(dokNeu));
+    console.log(`  nach dem Loslassen (Ableitung ${neu.zeiten.gesamt.toFixed(0)} ms): Naht→Kurve max ${(hinNeu.max * PX).toFixed(2)} px`);
+    // Stand 13.10. nachts: 0,75 px (24 Ringe), 0,37 px (36 Ringe); die scharfe Beule verlangt die Verdichtung
+    expect(hinNeu.max * PX).toBeLessThan(ringe >= 36 ? 0.6 : 1.0);
   });
 });

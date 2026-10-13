@@ -31,9 +31,15 @@ export type AbleitOptionen = {
   nahtGewicht: number;
   /** Kantenschärfe der Ringe an Ecken des Seitenumrisses („eine Kante ist eine Ecke in einem Shape“); 0 = keine Falten */
   eckenSchaerfe: number;
+  /** Kappenanteil, wenn die Spitze selbst eine Ecke ist (kleine Kappe, Ringe tragen die Krümmung) */
+  kappeSpitze: number;
+  /** Naht in der Kappe zur Spitze hin falten (Kiel), wenn die Spitze eine Ecke ist */
+  spitzenFalte: boolean;
+  /** Ringe nach Krümmung verdichten: Dichte 1 + kruemmung · κ · L (0 = gleichmäßig) */
+  kruemmung: number;
 };
 
-export const ABLEIT_STANDARD: AbleitOptionen = { ringe: 24, ring: 16, stufen: 3, kappe: 0.05, abstand: 0.012, nahtGewicht: 16, eckenSchaerfe: 1e6 };
+export const ABLEIT_STANDARD: AbleitOptionen = { ringe: 24, ring: 16, stufen: 3, kappe: 0.05, abstand: 0.012, nahtGewicht: 16, eckenSchaerfe: 1e6, kappeSpitze: 0.025, spitzenFalte: false, kruemmung: 2 };
 
 /** Station einer Sprosse: Anteile a (Rücken) und b (Bauch) entlang der Linien. */
 export type Station = { a: number; b: number };
@@ -322,6 +328,66 @@ function spineAnteilFuer(l: Leiter, t: number, oben: boolean): number {
   return t;
 }
 
+/** Krümmung (1/Länge) eines gleichmäßig abgetasteten Zugs an Anteil t (zweite Differenz). */
+function zugKruemmung(zug: readonly V2[], t: number): number {
+  const n = zug.length - 1;
+  const i = Math.min(n - 1, Math.max(1, Math.round(t * n)));
+  const a = zug[i - 1]!;
+  const b = zug[i]!;
+  const c = zug[i + 1]!;
+  const h = (Math.hypot(b.x - a.x, b.y - a.y) + Math.hypot(c.x - b.x, c.y - b.y)) / 2 || 1e-9;
+  return Math.hypot(a.x - 2 * b.x + c.x, a.y - 2 * b.y + c.y) / (h * h);
+}
+
+/**
+ * R Ringanteile zwischen f0 und f1: gleichmäßig nach Wirbelsäulenlänge, verdichtet dort, wo Rücken oder Bauch stark
+ * gekrümmt sind (Dichte 1 + λ·κ·L, geglättet). Erster und letzter Ring liegen genau bei f0 und f1.
+ */
+function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: number): number[] {
+  if (lambda <= 0 || R < 3) {
+    const out: number[] = [];
+    for (let i = 0; i < R; i++) out.push(f0 + ((f1 - f0) * i) / (R - 1));
+    return out;
+  }
+  const M = 400;
+  const st = stationenAusLeiter(l, Array.from({ length: M + 1 }, (_, k) => f0 + ((f1 - f0) * k) / M));
+  // Länge der Wirbelsäule (grob: Sprossenmitten)
+  let L = 0;
+  for (let k = 1; k <= M; k++) {
+    const o0 = zugBei(l.ruecken, st[k - 1]!.a);
+    const u0 = zugBei(l.bauch, st[k - 1]!.b);
+    const o1 = zugBei(l.ruecken, st[k]!.a);
+    const u1 = zugBei(l.bauch, st[k]!.b);
+    L += Math.hypot((o1.x + u1.x - o0.x - u0.x) / 2, (o1.y + u1.y - o0.y - u0.y) / 2);
+  }
+  const roh = st.map((q) => 1 + lambda * L * Math.min(40 / L, zugKruemmung(l.ruecken, q.a) + zugKruemmung(l.bauch, q.b)));
+  // glätten (Fenster ±8)
+  const dichte = roh.map((_, k) => {
+    let su = 0;
+    let nn = 0;
+    for (let j = Math.max(0, k - 8); j <= Math.min(M, k + 8); j++) {
+      su += roh[j]!;
+      nn++;
+    }
+    return su / nn;
+  });
+  const cum = [0];
+  for (let k = 1; k <= M; k++) cum.push(cum[k - 1]! + (dichte[k - 1]! + dichte[k]!) / 2);
+  const gesamt = cum[M]!;
+  const out: number[] = [];
+  for (let i = 0; i < R; i++) {
+    const ziel = (gesamt * i) / (R - 1);
+    let k = 0;
+    while (k < M - 1 && cum[k + 1]! < ziel) k++;
+    const d = cum[k + 1]! - cum[k]!;
+    const t = d > 1e-15 ? (ziel - cum[k]!) / d : 0;
+    out.push(f0 + ((f1 - f0) * (k + t)) / M);
+  }
+  out[0] = f0;
+  out[R - 1] = f1;
+  return out;
+}
+
 export type Stationen = { ringe: Station[]; kappen: { vorn: Station[]; hinten: Station[] }; ecken: Ecke[]; spitzen: { vorn: boolean; hinten: boolean } };
 
 export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument): Stationen {
@@ -342,7 +408,7 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument)
       const oben = o.d <= u.d;
       const t = oben ? o.t : u.t;
       const f = spineAnteilFuer(l, t, oben);
-      // Ecke an der Spitze selbst: Spitze wird Eckpunkt (Punktschärfe); sonst Ring auf die Ecke, Kappe ggf. verkleinern
+      // Ecke an der Spitze selbst: Spitze wird Eckpunkt (Punktschärfe), Kappe klein; sonst Ring auf die Ecke, Kappe ggf. verkleinern
       if (f < 0.4 * kappe) spitzen.vorn = true;
       else if (f > 1 - 0.4 * kappe) spitzen.hinten = true;
       else {
@@ -352,8 +418,9 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument)
       }
     }
   }
-  const anteile: number[] = [];
-  for (let i = 0; i < R; i++) anteile.push(kappeVorn + ((1 - kappeVorn - kappeHinten) * i) / (R - 1));
+  if (spitzen.vorn) kappeVorn = Math.min(kappeVorn, opt.kappeSpitze);
+  if (spitzen.hinten) kappeHinten = Math.min(kappeHinten, opt.kappeSpitze);
+  const anteile = ringAnteile(l, R, kappeVorn, 1 - kappeHinten, opt.kruemmung);
   const ecken: Ecke[] = [];
   for (const e of eckenRoh) {
     let best = 0;
@@ -415,6 +482,19 @@ export function ableiten(dok: Dokument, optionen: Partial<AbleitOptionen> = {}):
   }
   if (st.spitzen.vorn) vorlage.kaefig.vSchaerfe[vorlage.naht.spitzeVorn] = opt.eckenSchaerfe;
   if (st.spitzen.hinten) vorlage.kaefig.vSchaerfe[vorlage.naht.spitzeHinten] = opt.eckenSchaerfe;
+  if (opt.spitzenFalte) {
+    // Kiel: die Nahtkanten in der Kappe zur Spitze hin falten
+    const c = vorlage.c;
+    for (const [seite, an] of [['vorn', st.spitzen.vorn], ['hinten', st.spitzen.hinten]] as const) {
+      if (!an) continue;
+      const zug = seite === 'vorn' ? vorlage.naht.ruecken.slice(0, c / 2 + 1) : vorlage.naht.ruecken.slice(-(c / 2 + 1));
+      const zugB = seite === 'vorn' ? vorlage.naht.bauch.slice(0, c / 2 + 1) : vorlage.naht.bauch.slice(-(c / 2 + 1));
+      for (const z of [zug, zugB]) for (let i = 0; i + 1 < z.length; i++) {
+        const e = kanteZwischen(vorlage.kaefig, z[i]!, z[i + 1]!);
+        if (e >= 0) vorlage.kaefig.eSchaerfe[e] = opt.eckenSchaerfe;
+      }
+    }
+  }
   const u = unterteilung(vorlage.kaefig, opt.stufen);
   const t3 = jetzt();
   const loeser = grenzLoeser(u.grenze, vorlage.kaefig.n);
