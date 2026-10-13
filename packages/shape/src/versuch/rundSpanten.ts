@@ -19,7 +19,7 @@
 
 import type { V2 } from '../bezier';
 import { punktAuf } from '../bezier';
-import type { Profil } from '../profil';
+import type { Knoten, Profil } from '../profil';
 import { segmente } from '../profil';
 import { mischeProfile } from '../spanten';
 
@@ -30,6 +30,16 @@ export type RundSpant = {
   richtung: V2;
   /** Halbprofil (Achse senkrecht): Knoten von oben (v = 1) über die rechte Seite nach unten (v = 0) */
   profil: Profil;
+  /**
+   * Profil beim Anlegen (der Querschnitt, den der Körper dort hatte). Gewirkt wird das Verhältnis Profil / Basis: Ein
+   * unveränderter Spant ändert die Form also genau nicht, auch wo die Bézier-Näherung des Querschnitts ungenau ist.
+   */
+  basis?: Profil;
+  /**
+   * Meilenstein 3: Spant an einem Knoten einer Kantenlinie (dok.kanten[index].knoten[knoten]). Der Spant liegt dort
+   * (p = Kantenpunkt in der Seite), und Knoten 3 seines Profils (Mitte von sieben) ist der Kantenpunkt in genau dieser Lage auf der Strecke.
+   */
+  kante?: { index: number; knoten: number };
 };
 
 export type Strecke = { a: V2; b: V2; laenge: number; d: V2; n: V2 };
@@ -275,10 +285,13 @@ type SpantDaten = {
   zMax: number;
   profil: Profil;
   tabelle: Float64Array;
+  /** Querschnitt beim Anlegen (Basis), sonst der runde */
+  basis: Float64Array;
+  basisProfil: Profil | undefined;
 };
 
 /** Ein Paar benachbarter Spanten desselben Teils und gemischte Tabellen über s (für die Überblendung Punkt für Punkt). */
-type Paar = { i: number; j: number; gemischt: Float64Array[] };
+type Paar = { i: number; j: number; gemischt: Float64Array[]; gemischtBasis: Float64Array[] };
 
 const STUFEN = 32;
 
@@ -307,7 +320,7 @@ export function spantWirkung(spanten: readonly RundSpant[], umriss: readonly V2[
     }
     if (zMax <= 1e-9) return null;
     for (let k = 0; k <= n; k++) rund[k] = rund[k]! / zMax;
-    return { s, rund, zMax, profil: sp.profil, tabelle: uTabelle(sp.profil, n) };
+    return { s, rund, zMax, profil: sp.profil, tabelle: uTabelle(sp.profil, n), basis: sp.basis && sp.basis.knoten.length === sp.profil.knoten.length ? uTabelle(sp.basis, n) : rund, basisProfil: sp.basis };
   });
   // Nachbarn: Verbindung der Mitten liegt innen, kein anderer Spant dazwischen, gleiche Punktstruktur
   const mitte = (s: Strecke) => ({ x: (s.a.x + s.b.x) / 2, y: (s.a.y + s.b.y) / 2 });
@@ -347,8 +360,17 @@ export function spantWirkung(spanten: readonly RundSpant[], umriss: readonly V2[
       // Abstand der Mitten nicht größer als das Vierfache der längeren Strecke (sonst eigene Teile)
       if (Math.hypot(mj.x - mi.x, mj.y - mi.y) > 4 * Math.max(di.s.laenge, dj.s.laenge)) continue;
       const gemischt: Float64Array[] = [];
-      for (let k = 0; k <= STUFEN; k++) gemischt.push(uTabelle(mischeProfile(di.profil, dj.profil, k / STUFEN), 64));
-      paare.push({ i, j, gemischt });
+      const gemischtBasis: Float64Array[] = [];
+      for (let k = 0; k <= STUFEN; k++) {
+        gemischt.push(uTabelle(mischeProfile(di.profil, dj.profil, k / STUFEN), 64));
+        // Basis: beide mit Basis → gemischt; sonst die runden Querschnitte linear
+        if (di.basisProfil && dj.basisProfil && di.basisProfil.knoten.length === dj.basisProfil.knoten.length) gemischtBasis.push(uTabelle(mischeProfile(di.basisProfil, dj.basisProfil, k / STUFEN), 64));
+        else {
+          const t = k / STUFEN;
+          gemischtBasis.push(di.basis.map((x, q) => (1 - t) * x + t * dj.basis[q]!));
+        }
+      }
+      paare.push({ i, j, gemischt, gemischtBasis });
     }
   }
 
@@ -379,39 +401,8 @@ export function spantWirkung(spanten: readonly RundSpant[], umriss: readonly V2[
     return Number.isFinite(s) && Number.isFinite(v) ? { s, v } : null;
   };
 
-  /**
-   * Lage v auf dem Querschnitt aus der runden Höhe: Auf der Seite (vor oder hinter der dicksten Stelle), auf der der Punkt
-   * liegt, ist die runde Dicke monoton; die Stelle mit derselben runden Höhe ist seine Lage. So landet der Umriss
-   * (runde Höhe 0) genau auf v = 0 bzw. 1 und der neue Querschnitt schließt dort, und auf der Spantstrecke ist v genau
-   * die Lage auf der Strecke.
-   */
-  const lageAusHoehe = (rund: (v: number) => number, vMax: number, r: number, vGerade: number): number => {
-    if (r >= 1) return vMax;
-    const unten = vGerade <= vMax;
-    let lo = unten ? 0 : vMax;
-    let hi = unten ? vMax : 1;
-    for (let it = 0; it < 24; it++) {
-      const m = (lo + hi) / 2;
-      const w = rund(m);
-      // unten steigt die runde Dicke mit v, oben fällt sie
-      if (unten ? w < r : w > r) lo = m;
-      else hi = m;
-    }
-    return (lo + hi) / 2;
-  };
-  const argMax = (t: (v: number) => number) => {
-    let best = 0.5;
-    let bw = -1;
-    for (let k = 1; k < 64; k++) {
-      const w = t(k / 64);
-      if (w > bw) {
-        bw = w;
-        best = k / 64;
-      }
-    }
-    return best;
-  };
-  const vMaxSpant = daten.map((d) => (d ? argMax((v) => tabWert(d.rund, v)) : 0.5));
+  const GRENZE = 6;
+  const verhaeltnis = (u: number, r: number) => (r < 1e-6 ? (u < 1e-6 ? 1 : GRENZE) : Math.min(GRENZE, u / r));
 
   /** neue halbe Dicke an p aus der runden (zRund); unverändert, wo kein Spant wirkt */
   const neueDicke = (p: V2, zRund: number): number => {
@@ -420,17 +411,18 @@ export function spantWirkung(spanten: readonly RundSpant[], umriss: readonly V2[
       const di = daten[pr.i]!;
       const dj = daten[pr.j]!;
       const sv = viereck(di.s, dj.s, p);
-      if (!sv || sv.s < 0 || sv.s > 1 || sv.v < -0.25 || sv.v > 1.25) continue;
+      if (!sv || sv.s < 0 || sv.s > 1 || sv.v < -0.1 || sv.v > 1.1) continue;
       const s = sv.s;
-      const zM = (1 - s) * di.zMax + s * dj.zMax;
-      const rund = (v: number) => (1 - s) * tabWert(di.rund, v) + s * tabWert(dj.rund, v);
-      const vM = (1 - s) * vMaxSpant[pr.i]! + s * vMaxSpant[pr.j]!;
-      const v = lageAusHoehe(rund, vM, Math.max(0, zRund / zM), sv.v);
+      // Lage auf dem Querschnitt: die Lage im Viereck der beiden Strecken. Am Umriss ist zRund = 0, dort bleibt z = 0
+      // gleich, wo v genau liegt; das Verhältnis Profil / Basis ist an den Enden beschränkt (gleiche Endstücke)
+      const v = Math.min(1, Math.max(0, sv.v));
       const g = s * STUFEN;
       const k = Math.min(STUFEN - 1, Math.floor(g));
       const f = g - k;
       const u = (1 - f) * tabWert(pr.gemischt[k]!, v) + f * tabWert(pr.gemischt[k + 1]!, v);
-      return zM * u;
+      const u0 = (1 - f) * tabWert(pr.gemischtBasis[k]!, v) + f * tabWert(pr.gemischtBasis[k + 1]!, v);
+      // Verhältnis Spant / Basis an der gefundenen Stelle (genau 1, solange der Spant unverändert ist)
+      return zRund * verhaeltnis(u, u0);
     }
     // sonst: einzelne Spanten, Wirkung klingt über eine Spantlänge aus
     let summeW = 0;
@@ -440,15 +432,16 @@ export function spantWirkung(spanten: readonly RundSpant[], umriss: readonly V2[
       const wx = p.x - d.s.a.x;
       const wy = p.y - d.s.a.y;
       const vG = (wx * d.s.d.x + wy * d.s.d.y) / d.s.laenge;
-      if (vG < -0.25 || vG > 1.25) return;
+      if (vG < -0.1 || vG > 1.1) return;
       const abst = Math.abs(wx * d.s.n.x + wy * d.s.n.y);
-      const reichweite = 0.75 * d.s.laenge;
+      const reichweite = Math.min(0.08, Math.max(0.02, 0.5 * d.s.laenge));
       if (abst >= reichweite) return;
       const x = 1 - abst / reichweite;
       const w = x * x * (3 - 2 * x);
       // Querschnitt des Spants auf die runde Höhe hier übertragen (Breite des runden Körpers an dieser Stelle)
-      const v = lageAusHoehe((q) => tabWert(d.rund, q), vMaxSpant[i]!, Math.max(0, zRund / d.zMax), vG);
-      summe += w * d.zMax * tabWert(d.tabelle, v);
+      const v = Math.min(1, Math.max(0, vG));
+      void i;
+      summe += w * zRund * verhaeltnis(tabWert(d.tabelle, v), tabWert(d.basis, v));
       summeW += w;
     });
     if (summeW <= 0) return zRund;
@@ -477,5 +470,180 @@ export function rundSpantNeu(umriss: readonly V2[], dicke: DickeBei, p: V2, rich
   if (m <= 1e-9) return null;
   for (let k = 0; k <= n; k++) u[k] = u[k]! / m;
   const mitte = { x: (s.a.x + s.b.x) / 2, y: (s.a.y + s.b.y) / 2 };
-  return { p: mitte, richtung: s.d, profil: profilAusTabelle(u, knoten) };
+  const profil = profilAusTabelle(u, knoten);
+  return { p: mitte, richtung: s.d, profil, basis: profil };
+}
+
+// ---------- Meilenstein 3: Spanten an den Punkten einer Kantenlinie ----------
+
+/**
+ * Halbprofil mit drei Knoten: oben (v = 1), der Kantenpunkt bei vK auf dem jetzigen Querschnitt, unten (v = 0). Griffe
+ * nach kleinsten Quadraten am Querschnitt (die Form ändert sich nicht, solange der Punkt nicht geknickt wird).
+ */
+export function profilMitKantenpunkt(u: Float64Array, vK: number): Profil {
+  // zwei Bögen (oben: v von 1 bis vK, unten: vK bis 0), je drei Segmente; Knoten nach Bogenlänge, Griffe angepasst
+  const oben = bogenProfil(u, 1, vK, KANTENPUNKT);
+  const unten = bogenProfil(u, vK, 0, KANTENPUNKT);
+  const knoten = [...oben.slice(0, -1), { ...oben[oben.length - 1]!, aus: unten[0]!.aus }, ...unten.slice(1)];
+  knoten[0] = { ...knoten[0]!, p: { x: 0, y: 1 }, ein: { ...knoten[0]!.aus } };
+  const l = knoten.length - 1;
+  knoten[l] = { ...knoten[l]!, p: { x: 0, y: 0 }, aus: { ...knoten[l]!.ein } };
+  return { art: 'halb', achse: 'senkrecht', knoten };
+}
+
+/** Kantenpunkt eines Kanten-Spants (Index im Profil: Mitte von sieben Knoten). */
+export const KANTENPUNKT = 3;
+
+/** Knoten eines Bogens des Querschnitts u(v) von v0 nach v1 mit `segs` Segmenten (Laufrichtung v0 → v1). */
+function bogenProfil(u: Float64Array, v0: number, v1: number, segs: number): Knoten[] {
+  const roh: V2[] = [];
+  for (let q = 0; q <= 96; q++) {
+    const v = v0 + ((v1 - v0) * q) / 96;
+    roh.push({ x: tabWert(u, v), y: v });
+  }
+  const bogen = [0];
+  for (let q = 1; q < roh.length; q++) bogen.push(bogen[q - 1]! + Math.hypot(roh[q]!.x - roh[q - 1]!.x, roh[q]!.y - roh[q - 1]!.y));
+  const L = bogen[bogen.length - 1]! || 1;
+  const bei = (sb: number): V2 => {
+    let i = 0;
+    while (i < roh.length - 2 && bogen[i + 1]! < sb) i++;
+    const f = bogen[i + 1]! > bogen[i]! ? (sb - bogen[i]!) / (bogen[i + 1]! - bogen[i]!) : 0;
+    return { x: roh[i]!.x + f * (roh[i + 1]!.x - roh[i]!.x), y: roh[i]!.y + f * (roh[i + 1]!.y - roh[i]!.y) };
+  };
+  const tangente = (sb: number): V2 => {
+    const a = bei(Math.max(0, sb - 0.01 * L));
+    const b = bei(Math.min(L, sb + 0.01 * L));
+    const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    return { x: (b.x - a.x) / l, y: (b.y - a.y) / l };
+  };
+  const pts: V2[] = [];
+  const tan: V2[] = [];
+  for (let k = 0; k <= segs; k++) {
+    const sb = (k / segs) * L;
+    pts.push(bei(sb));
+    // an der Achse (u = 0) waagerecht nach außen
+    const t = tangente(sb);
+    tan.push(pts[k]!.x < 1e-6 ? { x: k === 0 ? 1 : -1, y: 0 } : t);
+  }
+  const kn: Knoten[] = pts.map((p, k) => ({ p, ein: { x: -tan[k]!.x * 0.05, y: -tan[k]!.y * 0.05 }, aus: { x: tan[k]!.x * 0.05, y: tan[k]!.y * 0.05 }, art: 'glatt' }));
+  for (let k = 0; k < segs; k++) {
+    const s0 = (k / segs) * L;
+    const s1 = ((k + 1) / segs) * L;
+    const p0 = pts[k]!;
+    const p3 = pts[k + 1]!;
+    const dA = tan[k]!;
+    const dB = { x: -tan[k + 1]!.x, y: -tan[k + 1]!.y };
+    let a11 = 0;
+    let a12 = 0;
+    let a22 = 0;
+    let r1 = 0;
+    let r2 = 0;
+    for (let q = 1; q < 24; q++) {
+      const t = q / 24;
+      const pp = bei(s0 + t * (s1 - s0));
+      const w = 1 - t;
+      const b0 = w * w * w + 3 * w * w * t;
+      const b3 = 3 * w * t * t + t * t * t;
+      const b1 = 3 * w * w * t;
+      const b2 = 3 * w * t * t;
+      const cx = pp.x - b0 * p0.x - b3 * p3.x;
+      const cy = pp.y - b0 * p0.y - b3 * p3.y;
+      a11 += b1 * b1;
+      a12 += b1 * b2 * (dA.x * dB.x + dA.y * dB.y);
+      a22 += b2 * b2;
+      r1 += b1 * (dA.x * cx + dA.y * cy);
+      r2 += b2 * (dB.x * cx + dB.y * cy);
+    }
+    const det = a11 * a22 - a12 * a12;
+    const fallback = Math.hypot(p3.x - p0.x, p3.y - p0.y) / 3;
+    let alpha = fallback;
+    let beta = fallback;
+    if (Math.abs(det) > 1e-14) {
+      const al = (r1 * a22 - r2 * a12) / det;
+      const be = (a11 * r2 - a12 * r1) / det;
+      if (al > 1e-4 && be > 1e-4) {
+        alpha = al;
+        beta = be;
+      }
+    }
+    kn[k] = { ...kn[k]!, aus: { x: dA.x * alpha, y: dA.y * alpha } };
+    kn[k + 1] = { ...kn[k + 1]!, ein: { x: dB.x * beta, y: dB.y * beta } };
+  }
+  return kn;
+}
+
+/**
+ * Spant an einem Punkt einer Kantenlinie, Knoten 1 = Kantenpunkt. Richtung: quer zur Kantenlinie in der Seite (eine
+ * Kante läuft längs am Körper, ihre Spanten stehen also quer zur Achse; auf einem runden Kopf wäre die kürzeste Sehne
+ * je Punkt eine andere und die Spanten fächerten auf). Ohne Richtung: kürzeste Sehne.
+ * `dicke` = jetzige halbe Dicke, `dickeRund` = runde (Breite 1).
+ */
+export function rundSpantAnKante(umriss: readonly V2[], dicke: DickeBei, dickeRund: DickeBei, p: V2, richtung: V2 | null, kante: { index: number; knoten: number }): RundSpant | null {
+  const s = richtung ? spantStrecke(umriss, p, richtung) : kuerzesteSehne(umriss, p);
+  if (!s) return null;
+  const n = 64;
+  const u = new Float64Array(n + 1);
+  let m = 0;
+  for (let k = 1; k < n; k++) {
+    const v = k / n;
+    const q = { x: s.a.x + v * (s.b.x - s.a.x), y: s.a.y + v * (s.b.y - s.a.y) };
+    u[k] = dicke(q);
+    m = Math.max(m, dickeRund(q));
+  }
+  if (m <= 1e-9) return null;
+  for (let k = 0; k <= n; k++) u[k] = u[k]! / m;
+  const vK = Math.min(0.97, Math.max(0.03, ((p.x - s.a.x) * s.d.x + (p.y - s.a.y) * s.d.y) / s.laenge));
+  const profil = profilMitKantenpunkt(u, vK);
+  return { p, richtung: s.d, profil, basis: profil, kante };
+}
+
+/**
+ * Spanten an Kantenlinien auflösen: Sie liegen am Kantenpunkt (Seite), und Knoten 1 ihres Profils steht genau dort auf
+ * der Strecke (Lage v aus dem Punkt; seine Breite u bleibt, wie Florian sie eingestellt hat). Spanten ohne gültige
+ * Kante fallen weg.
+ */
+export function spantenAufloesen(spanten: readonly RundSpant[], kanten: readonly { knoten: readonly { p: readonly [number, number, number] }[] }[] | undefined, umriss: readonly V2[]): RundSpant[] {
+  const out: RundSpant[] = [];
+  for (const sp of spanten) {
+    if (!sp.kante) {
+      out.push(sp);
+      continue;
+    }
+    const kn = kanten?.[sp.kante.index]?.knoten[sp.kante.knoten];
+    if (!kn) {
+      // Kante weg: Spant bleibt, wo er war (die Nummern der übrigen bleiben gleich)
+      out.push(sp);
+      continue;
+    }
+    const p = { x: kn.p[0], y: kn.p[1] };
+    const s = spantStrecke(umriss, p, sp.richtung);
+    if (!s || sp.profil.knoten.length !== 2 * KANTENPUNKT + 1) {
+      out.push({ ...sp, p });
+      continue;
+    }
+    const vK = Math.min(0.97, Math.max(0.03, ((p.x - s.a.x) * s.d.x + (p.y - s.a.y) * s.d.y) / s.laenge));
+    const j = Math.min(sp.profil.knoten.length - 2, KANTENPUNKT);
+    const setze = (pr: Profil): Profil => {
+      const knoten = pr.knoten.slice();
+      knoten[j] = { ...knoten[j]!, p: { x: knoten[j]!.p.x, y: vK } };
+      return { ...pr, knoten };
+    };
+    out.push({ ...sp, p, profil: setze(sp.profil), ...(sp.basis ? { basis: setze(sp.basis) } : {}) });
+  }
+  return out;
+}
+
+/**
+ * Richtung der Spanten einer Kantenlinie (Seite): quer zur Linie als Ganzes (erster zu letztem Punkt), für alle Punkte
+ * gleich. So laufen die Spanten parallel und überkreuzen sich nicht; je Punkt quer zur örtlichen Richtung fächerten sie
+ * auf einem runden Kopf auf, und die Überblendung dazwischen würde unruhig.
+ */
+export function querZurLinie(punkte: readonly V2[]): V2[] {
+  const a = punkte[0]!;
+  const b = punkte[punkte.length - 1]!;
+  const tx = b.x - a.x;
+  const ty = b.y - a.y;
+  const l = Math.hypot(tx, ty) || 1;
+  const d = richtungNormal({ x: -ty / l, y: tx / l });
+  return punkte.map(() => d);
 }

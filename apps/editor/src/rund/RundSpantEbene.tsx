@@ -29,7 +29,7 @@ import {
   verschiebeKnoten,
   vollerPfad,
 } from '@ee/shape';
-import { type RundSpant, type Strecke, rundKoerper, rundSpantNeu, spantStrecke, spantenAusLinie } from '@ee/shape/versuch';
+import { KANTENPUNKT, type RundSpant, type Strecke, querZurLinie, rundKoerper, rundSpantAnKante, rundSpantNeu, spantStrecke, spantenAusLinie } from '@ee/shape/versuch';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { rundZuletzt, useRundAnzeige } from './rundBau';
@@ -169,10 +169,12 @@ export function RundSpantSchnitt({ ansicht, bild }: { ansicht: Ansicht; bild: (p
         pr.knoten.map((kn, j) => {
           const q = welt(kn.p);
           const sel = auswahl.knoten.includes(j);
+          const kantenpunkt = !!sp.kante && j === KANTENPUNKT;
           return (
-            <g key={j} data-rundknoten={j} className={sel ? 'knoten gewaehlt' : 'knoten'}>
+            <g key={j} data-rundknoten={j} data-kantenpunkt={kantenpunkt ? '' : undefined} className={sel ? 'knoten gewaehlt' : 'knoten'}>
               <circle cx={q.x} cy={q.y} r={10} fill="transparent" />
-              <circle cx={q.x} cy={q.y} r={PUNKT_R} fill={RUND_SPANT} stroke={sel ? '#ffffff' : 'none'} strokeWidth={2} />
+              {kantenpunkt && <circle cx={q.x} cy={q.y} r={PUNKT_R + 4} fill="none" stroke="#00ffe1" strokeWidth={2} />}
+              <circle cx={q.x} cy={q.y} r={PUNKT_R} fill={kantenpunkt ? '#00ffe1' : RUND_SPANT} stroke={sel ? '#ffffff' : 'none'} strokeWidth={2} />
             </g>
           );
         })}
@@ -343,7 +345,15 @@ export function rundSpantZeiger(e: React.PointerEvent, ctx: Kontext): boolean {
       (ev) => {
         const pn = ab.norm(ctx.lokal(ev.clientX, ev.clientY));
         const jetzt = liste()[sel.spant];
-        if (jetzt) setze(sel.spant, { ...jetzt, profil: verschiebeKnoten(basis, auswahl, { x: pn.x - pNorm.x, y: pn.y - pNorm.y }) });
+        if (!jetzt) return;
+        let profil = verschiebeKnoten(basis, auswahl, { x: pn.x - pNorm.x, y: pn.y - pNorm.y });
+        // Kantenpunkt: Höhe und Lage kommen von der Kantenlinie, nur die Breite (seitliche Lage) ist frei
+        if (jetzt.kante && profil.knoten[KANTENPUNKT]) {
+          const knoten = profil.knoten.slice();
+          knoten[KANTENPUNKT] = { ...knoten[KANTENPUNKT]!, p: { x: knoten[KANTENPUNKT]!.p.x, y: basis.knoten[KANTENPUNKT]!.p.y } };
+          profil = { ...profil, knoten };
+        }
+        setze(sel.spant, { ...jetzt, profil });
       },
       () => useEditor.getState().endeGeste(),
     );
@@ -376,4 +386,29 @@ export function rundSpantLoeschen(): boolean {
   ed.setzeRundSpanten(liste().filter((_, k) => k !== sel.spant));
   ui.setzeRundSpantAuswahl(null);
   return true;
+}
+
+/**
+ * Meilenstein 3: an jedem Punkt der Kantenlinie `index` ein Spant (quer zur Linie, parallel), Kantenpunkt = Knoten 3 in
+ * genau der Lage des Punkts. Vorhandene Spanten dieser Kante werden ersetzt. Rückgabe: Zahl der neuen Spanten.
+ */
+export function spantenAnKante(index: number): number {
+  const ed = useEditor.getState();
+  const dok = ed.dok;
+  const k = dok.kanten?.[index];
+  if (!k) return 0;
+  const rest = (dok.rundSpanten ?? []).filter((sp) => sp.kante?.index !== index);
+  const bau = rundKoerper({ ...dok, rundSpanten: rest });
+  const umriss = seitenUmriss(dok);
+  const pts = k.knoten.map((q) => ({ x: q.p[0], y: q.p[1] }));
+  const ri = querZurLinie(pts);
+  const neu: RundSpant[] = [];
+  pts.forEach((p, i) => {
+    const sp = rundSpantAnKante(umriss, bau.dickeBei, bau.dickeRundBei, p, ri[i]!, { index, knoten: i });
+    if (sp) neu.push(sp);
+  });
+  if (!neu.length) return 0;
+  ed.setzeRundSpanten([...rest, ...neu]);
+  useUi.getState().setzeRundSpantAuswahl({ spant: rest.length, knoten: [KANTENPUNKT] });
+  return neu.length;
 }

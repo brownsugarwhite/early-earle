@@ -175,8 +175,11 @@ export class Renderer3D {
     this.neueGeometrie(positionen, normalen, null, farben);
   }
 
-  /** Liniensegmente (Paare von Punkten) mit Farbe je Punkt, z. B. das Käfiggitter (Versuche). */
-  setzeLinien(punkte: Float32Array | null, farben?: Float32Array) {
+  /**
+   * Liniensegmente (Paare von Punkten) mit Farbe je Punkt, z. B. das Käfiggitter (Versuche). `verdeckt`: Linien hinter
+   * der Fläche ausblenden (Kantenlinien auf dem Körper), sonst immer sichtbar wie Blenders Käfig.
+   */
+  setzeLinien(punkte: Float32Array | null, farben?: Float32Array, verdeckt = false) {
     if (this.linien) {
       this.szene.remove(this.linien);
       this.linien.geometry.dispose();
@@ -187,7 +190,7 @@ export class Renderer3D {
       g.setAttribute('position', new BufferAttribute(punkte, 3));
       if (farben) g.setAttribute('color', new BufferAttribute(farben, 3));
       // wie Blenders Käfig-Anzeige: immer sichtbar über der Fläche, leicht durchscheinend
-      this.linien = new LineSegments(g, new LineBasicNodeMaterial({ vertexColors: !!farben, color: farben ? 0xffffff : 0x19232b, depthTest: false, transparent: true, opacity: 0.7 }));
+      this.linien = new LineSegments(g, new LineBasicNodeMaterial({ vertexColors: !!farben, color: farben ? 0xffffff : 0x19232b, depthTest: verdeckt, transparent: true, opacity: verdeckt ? 1 : 0.7 }));
       this.linien.renderOrder = 3;
       this.szene.add(this.linien);
     }

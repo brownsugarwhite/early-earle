@@ -37,7 +37,7 @@ const BlickSchema = z.enum(['seite', 'front', 'hinten', 'top', 'unten']);
 const SpantSchema = z.object({ f: z.number().min(0).max(1), profil: ProfilSchema });
 const KanteSchema = z.object({ knoten: z.array(Knoten3Schema).min(2), haerte: z.array(z.number().min(0).max(1)), blick: BlickSchema, tiefe: z.number().optional() });
 /** Spant der Bauweise „rund“ (Versuch 13.10. nachmittags): Strecke quer über ein Teil der Seite (Punkt und Richtung), Halbprofil. */
-const RundSpantSchema = z.object({ p: V2, richtung: V2, profil: ProfilSchema });
+const RundSpantSchema = z.object({ p: V2, richtung: V2, profil: ProfilSchema, basis: ProfilSchema.optional(), kante: z.object({ index: z.number().int().min(0), knoten: z.number().int().min(0) }).optional() });
 
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */
 export const POSEN = ['ruhen', 'laufen', 'inklusion'] as const;
@@ -125,7 +125,15 @@ export type Dokument = {
    * Versuch 13.10. nachmittags: Spanten der Bauweise „rund“, je eine Strecke quer über ein Teil der Seite (Punkt und
    * Richtung; die Enden liegen auf dem Umriss) mit Halbprofil (u = Breite, 1 = runder Körper; v = Lage auf der Strecke).
    */
-  rundSpanten?: { p: { x: number; y: number }; richtung: { x: number; y: number }; profil: Profil }[];
+  rundSpanten?: {
+    p: { x: number; y: number };
+    richtung: { x: number; y: number };
+    profil: Profil;
+    /** Profil beim Anlegen (gewirkt wird das Verhältnis Profil / Basis; fehlt sie, der runde Querschnitt) */
+    basis?: Profil;
+    /** Versuch 13.10. abends: Spant an einem Knoten einer Kantenlinie; Knoten 3 des Profils (Mitte von sieben) ist der Kantenpunkt */
+    kante?: { index: number; knoten: number };
+  }[];
 };
 
 export type Ansicht = keyof Dokument['profile'];

@@ -15,7 +15,7 @@ type Fenster = Window & {
   __stores: {
     editor: {
       getState(): {
-        dok: { profile: { seite: { knoten: { p: V2 }[] } }; rundSpanten?: { p: V2; richtung: V2; profil: { knoten: { p: V2; ein: V2; aus: V2; art: string }[] } }[] };
+        dok: { profile: { seite: { knoten: { p: V2 }[] } }; rundSpanten?: { p: V2; richtung: V2; profil: { knoten: { p: V2; ein: V2; aus: V2; art: string }[] }; kante?: { index: number } }[] };
         setzeRundSpanten(l: unknown[]): void;
       };
     };
@@ -174,5 +174,69 @@ test('Spanten rund: Hals-Spant quer setzen, in der Front bearbeiten, zwei Spante
   await expect(page.locator('.vp-ober[data-view="seite"] [data-rundspant]')).toHaveCount(2);
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(bilder, 'rund-spanten-ueberhang-editor.png') });
+  expect(fehler).toEqual([]);
+});
+
+test('Kante rund: Punkte in der Seite, Spanten an jedem Punkt, Kantenpunkt knicken, Kante im 3D', async ({ page, browser }) => {
+  test.setTimeout(180_000);
+  const fehler: string[] = [];
+  page.on('console', (m) => m.type() === 'error' && fehler.push(m.text()));
+  page.on('pageerror', (e) => fehler.push(e.message));
+  await laden(page, 'tiger');
+  await kamera(page, -55, 14, 1.35, 0.3);
+  const vorher = await bild3d(page);
+  const seite = await seiteAbbildung(page);
+
+  // Zeichenstift: vier Punkte auf der Wange, Enter beendet → an jedem Punkt ein Spant
+  await page.keyboard.press('p');
+  for (const w of [
+    { x: -0.27, y: 0.32 },
+    { x: -0.21, y: 0.35 },
+    { x: -0.15, y: 0.35 },
+    { x: -0.09, y: 0.33 },
+  ]) {
+    const q = seite(w);
+    await page.mouse.click(q.x, q.y);
+  }
+  await page.keyboard.press('Enter');
+  let d = await dok(page);
+  expect(d.rundSpanten).toHaveLength(4);
+  // warten, bis der Hinweis verschwunden ist, er liegt sonst über dem 3D
+  await expect(page.locator('.hinweis.sichtbar')).toHaveCount(0, { timeout: 6000 });
+  await page.waitForTimeout(500);
+  const neutral = await bild3d(page);
+
+  // jeden Spant wählen, den Kantenpunkt mit ⌥ und Zeichenstift zur Ecke machen und etwas nach außen ziehen
+  for (let i = 0; i < 4; i++) {
+    await page.click(`.leiste [data-rundspanteintrag="${i}"]`);
+    const punkt = page.locator('.vp-ober[data-view="front"] [data-kantenpunkt] circle').first();
+    await expect(punkt).toHaveCount(1);
+    const b = (await punkt.boundingBox())!;
+    await page.keyboard.press('p');
+    await page.keyboard.down('Alt');
+    await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+    await page.keyboard.up('Alt');
+    await page.keyboard.press('a');
+    const b2 = (await punkt.boundingBox())!;
+    await page.mouse.move(b2.x + b2.width / 2, b2.y + b2.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b2.x + b2.width / 2 + 26, b2.y + b2.height / 2 - 6, { steps: 4 });
+    await page.mouse.up();
+  }
+  d = await dok(page);
+  for (const sp of d.rundSpanten!) expect(sp.profil.knoten[3]!.art).toBe('ecke');
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: path.join(bilder, 'rund-kante-editor.png') });
+  const geknickt = await bild3d(page);
+  await page.evaluate(() => (window as unknown as Fenster).__stores.ui.getState().setzeZebra(true));
+  await page.waitForTimeout(500);
+  const zebra = await bild3d(page);
+  await page.evaluate(() => (window as unknown as Fenster).__stores.ui.getState().setzeZebra(false));
+  await raster(browser, 'rund-kante.png', 'Wangenkante: vier Punkte in der Seite, an jedem ein Spant; der Kantenpunkt im Spant geknickt (⌥) und nach außen gezogen', [
+    { bild: vorher, text: 'ohne Kante' },
+    { bild: neutral, text: 'Kante gezeichnet (Spanten neutral)' },
+    { bild: geknickt, text: 'Kantenpunkte geknickt' },
+    { bild: zebra, text: 'geknickt, Zebra' },
+  ]);
   expect(fehler).toEqual([]);
 });

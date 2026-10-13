@@ -39,6 +39,12 @@ describe('Dokument', () => {
     const json = JSON.parse(JSON.stringify(d));
     expect(dokumentLesen(json)).toEqual(json);
   });
+  it('behält Basis und Kantenbezug der Spanten an einer Kante (Meilenstein 3) beim Laden', () => {
+    const d = neuesDokument('Wange');
+    d.rundSpanten = [{ p: { x: -0.2, y: 0.35 }, richtung: { x: 0, y: 1 }, profil: d.profile.front, basis: d.profile.front, kante: { index: 0, knoten: 2 } }];
+    const json = JSON.parse(JSON.stringify(d));
+    expect(dokumentLesen(json)).toEqual(json);
+  });
   it('lehnt fremde Formate ab', () => {
     expect(() => dokumentLesen({ format: 'x' })).toThrow();
   });

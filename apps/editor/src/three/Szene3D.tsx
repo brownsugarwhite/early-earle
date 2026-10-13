@@ -1,5 +1,5 @@
 import { type Dokument, loftNetz } from '@ee/shape';
-import { unterteilenMehrfach, zuDreiecken } from '@ee/shape/versuch';
+import { abtasten3, unterteilenMehrfach, zuDreiecken } from '@ee/shape/versuch';
 import { useEffect, useRef } from 'react';
 import { useRahmen } from '../layout/animation';
 import { useEditor } from '../state/editorStore';
@@ -72,8 +72,26 @@ export function Szene3D() {
           // Versuch 13.10. nachmittags: Seite rund aufgeblasen, Breite aus Top und Front; Maul und Kanten fehlen hier noch
           const rk = rundBauen(d, schnell);
           const k = d.skalierung;
-          r.setzeLinien(null);
           r.setzeFlaeche(k !== 1 ? rk.positionen.map((v) => v * k) : rk.positionen, rk.normalen, rk.indizes);
+          // Kantenlinien auf der runden Fläche (beide Seiten), türkis; leicht über der Fläche, verdeckte Teile ausgeblendet
+          const seg: number[] = [];
+          for (const kante of d.kanten ?? []) {
+            const pts = abtasten3(kante, 16);
+            for (const seite of [1, -1]) {
+              for (let i = 0; i + 1 < pts.length; i++) {
+                const a = pts[i]!;
+                const b = pts[i + 1]!;
+                const za = rk.dickeBei({ x: a[0], y: a[1] }) + 0.002;
+                const zb = rk.dickeBei({ x: b[0], y: b[1] }) + 0.002;
+                seg.push(a[0] * k, a[1] * k, seite * za * k, b[0] * k, b[1] * k, seite * zb * k);
+              }
+            }
+          }
+          if (seg.length) {
+            const farben = new Float32Array(seg.length);
+            for (let i = 0; i < farben.length; i += 3) farben.set([0, 1, 0.88], i);
+            r.setzeLinien(Float32Array.from(seg), farben, true);
+          } else r.setzeLinien(null);
           return;
         }
         if (!versuch && useUi.getState().bauweise === 'schnitte') {

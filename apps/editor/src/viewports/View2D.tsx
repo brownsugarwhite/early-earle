@@ -480,7 +480,6 @@ export function View2D({ ansicht, w, h }: Props) {
       <SpantQuerschnitte ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <SpantLinien ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <RundSpantLinien ansicht={ansicht} bild={bild} />
-      <RundSpantSchnitt ansicht={ansicht} bild={bild} />
       {formAktiv && griffe}
       <WirbelPunkte ansicht={ansicht} bild={bild} />
       {formAktiv && profil.knoten.map((k, i) => {
@@ -524,6 +523,8 @@ export function View2D({ ansicht, w, h }: Props) {
       {ebene === 'rig' && <RigZeichnung ansicht={ansicht} bild={bild} />}
       {ebene === 'zaehne' && <ZahnZeichnung ansicht={ansicht} bild={bild} />}
       <BreitenKreis ansicht={ansicht} bild={bild} />
+      {/* gewählter Spant der Bauweise „rund“ als Schnitt: über allem, damit seine Punkte greifbar bleiben */}
+      <RundSpantSchnitt ansicht={ansicht} bild={bild} />
       {rahmen && (
         <rect
           className="auswahlrahmen"

@@ -1,11 +1,12 @@
 // Versuch 13.10. nachmittags, Meilenstein 2: Spanten der Bauweise „rund“ (quer über ein Teil, bearbeitbar).
 import { describe, expect, it } from 'vitest';
-import { type Dokument, dokumentLesen } from '../dokument';
+import { type Dokument, type Kante, dokumentLesen } from '../dokument';
 import type { Profil } from '../profil';
 import { rundKoerper } from './aufblasen';
-import { kuerzesteSehne, profilZug, rundSpantNeu, spantenAusLinie, uBei, uTabelle } from './rundSpanten';
+import { KANTENPUNKT, kuerzesteSehne, profilZug, querZurLinie, rundSpantAnKante, rundSpantNeu, spantStrecke, spantenAufloesen, spantenAusLinie, uBei, uTabelle } from './rundSpanten';
 import { type Vorlage, vorlageDokument } from './vorlagen';
 import langhalsRoh from './vorlagen/langhals.json';
+import tigerRoh from './vorlagen/tiger.json';
 import ueberhangRoh from './vorlagen/ueberhang.json';
 
 declare const console: { log: (...a: unknown[]) => void };
@@ -102,5 +103,66 @@ describe('Spanten der Bauweise rund', () => {
     const zug = profilZug(acht);
     for (const q of zug) expect(q.x).toBeGreaterThanOrEqual(0);
     expect(uBei(zug, 0.5)).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('Kantenlinie → Spanten an ihren Punkten (Meilenstein 3)', () => {
+  const tiger = () => vorlageDokument(tigerRoh as unknown as Vorlage, 'zu', 'tiger');
+  const kn = (x: number, y: number) => ({ p: [x, y, 0.1] as [number, number, number], ein: [0, 0, 0] as [number, number, number], aus: [0, 0, 0] as [number, number, number], art: 'glatt' as const });
+  const kante: Kante = { knoten: [kn(-0.27, 0.32), kn(-0.21, 0.35), kn(-0.15, 0.35), kn(-0.09, 0.33)], haerte: [0, 0, 0, 0], blick: 'seite' };
+  /** Knick am Kantenpunkt: Ecke ohne Griffe (⌥ wie im Editor), etwas nach außen */
+  const knicken = (pr: Profil, raus: number): Profil => ({ ...pr, knoten: pr.knoten.map((k, i) => (i === KANTENPUNKT ? { ...k, p: { x: k.p.x + raus, y: k.p.y }, art: 'ecke' as const, ein: { x: 0, y: 0 }, aus: { x: 0, y: 0 } } : k)) });
+  /** Knick quer zur Kante an einem Punkt der Seite: Winkel zwischen den Steigungen von z oberhalb und unterhalb (Grad) */
+  const knickWinkel = (dicke: (p: { x: number; y: number }) => number, p: { x: number; y: number }, d: { x: number; y: number }) => {
+    const e = 0.012;
+    const z = (t: number) => dicke({ x: p.x + t * d.x, y: p.y + t * d.y });
+    const oben = Math.atan2(z(2 * e) - z(e), e);
+    const unten = Math.atan2(z(-e) - z(-2 * e), e);
+    return Math.abs(oben - unten) * (180 / Math.PI);
+  };
+
+  it('an jedem Punkt ein Spant, parallel quer zur Linie, der Kantenpunkt liegt genau darin; ohne Knick ändert sich nichts', () => {
+    const dok: Dokument = { ...tiger(), kanten: [kante] };
+    const k0 = rundKoerper(dok);
+    const pts = kante.knoten.map((q) => ({ x: q.p[0], y: q.p[1] }));
+    const ri = querZurLinie(pts);
+    const sp = pts.map((p, i) => rundSpantAnKante(k0.umrissWelt, k0.dickeBei, k0.dickeRundBei, p, ri[i]!, { index: 0, knoten: i })!);
+    expect(sp.every((s) => s && s.profil.knoten.length === 2 * KANTENPUNKT + 1)).toBe(true);
+    const k1 = rundKoerper({ ...dok, rundSpanten: sp });
+    // Kantenpunkt: auf der Strecke genau an der Stelle des Punkts (Lage v)
+    sp.forEach((s, i) => {
+      const st = k1.spanten[i]!;
+      const v = ((pts[i]!.x - st.a.x) * st.d.x + (pts[i]!.y - st.a.y) * st.d.y) / st.laenge;
+      expect(Math.abs(s.profil.knoten[KANTENPUNKT]!.p.y - v)).toBeLessThan(1e-6);
+    });
+    let max = 0;
+    for (let v = 0; v < k1.flaeche.x.length; v++) {
+      const q = { x: k1.flaeche.x[v]!, y: k1.flaeche.y[v]! };
+      max = Math.max(max, Math.abs(k1.dickeBei(q) - k0.dickeBei(q)));
+    }
+    console.log(`Kante neutral: größte Änderung ${(max * PX).toFixed(2)} px`);
+    expect(max * PX).toBeLessThan(1);
+    // geknickt: zwischen den Spanten (Mitte der Kante) läuft die Kante weiter
+    const geknickt = rundKoerper({ ...dok, rundSpanten: sp.map((s) => ({ ...s, profil: knicken(s.profil, 0.06) })) });
+    const mitte = { x: -0.18, y: 0.35 };
+    const vorher = knickWinkel(k1.dickeBei, mitte, sp[1]!.richtung);
+    const nachher = knickWinkel(geknickt.dickeBei, mitte, sp[1]!.richtung);
+    console.log(`Knick quer zur Kante zwischen zwei Spanten: vorher ${vorher.toFixed(1)}°, geknickt ${nachher.toFixed(1)}°`);
+    expect(nachher).toBeGreaterThan(vorher + 10);
+  });
+
+  it('Spanten folgen der Kantenlinie, wenn ihr Punkt wandert', () => {
+    const dok: Dokument = { ...tiger(), kanten: [kante] };
+    const k0 = rundKoerper(dok);
+    const pts = kante.knoten.map((q) => ({ x: q.p[0], y: q.p[1] }));
+    const ri = querZurLinie(pts);
+    const sp = pts.map((p, i) => rundSpantAnKante(k0.umrissWelt, k0.dickeBei, k0.dickeRundBei, p, ri[i]!, { index: 0, knoten: i })!);
+    const verschoben: Kante = { ...kante, knoten: kante.knoten.map((k, i) => (i === 1 ? { ...k, p: [k.p[0] + 0.02, k.p[1] - 0.03, k.p[2]] as [number, number, number] } : k)) };
+    const auf = spantenAufloesen(sp, [verschoben], k0.umrissWelt);
+    expect(auf[1]!.p.x).toBeCloseTo(-0.19, 6);
+    expect(auf[1]!.p.y).toBeCloseTo(0.32, 6);
+    const st = spantStrecke(k0.umrissWelt, auf[1]!.p, auf[1]!.richtung)!;
+    const v = ((auf[1]!.p.x - st.a.x) * st.d.x + (auf[1]!.p.y - st.a.y) * st.d.y) / st.laenge;
+    expect(Math.abs(auf[1]!.profil.knoten[KANTENPUNKT]!.p.y - v)).toBeLessThan(1e-6);
   });
 });

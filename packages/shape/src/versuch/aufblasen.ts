@@ -35,7 +35,8 @@ import type { Dokument } from '../dokument';
 import { pfadAbtasten, segmente, vollerPfad } from '../profil';
 import { type Dreiecke2D, Triangulierung } from './dreiecke2d';
 import { type Netz3, type Seitenteil, topWelt, topZerlegen, vereinigeNetze } from './seitenteile';
-import { type Strecke, spantWirkung } from './rundSpanten';
+import { type Strecke, spantWirkung, spantenAufloesen } from './rundSpanten';
+import { abtasten3 } from './linie3d';
 
 export type RundOptionen = {
   /** Punktabstand im Inneren und am Rand (Kachel) */
@@ -387,12 +388,15 @@ class Streuung {
 export type FlaechenNetz = { netz: Dreiecke2D; rand: Uint8Array; umriss: Int32Array; fehlend: number; suche: UmrissSuche };
 
 /** Netz der Seite: Randpunkte auf dem Umriss, zwei dünne Reihen am Rand, Dreiecksgitter innen. */
-export function seitenNetz(dok: Dokument, s: number): FlaechenNetz {
-  return flaechenNetz(umrissAbtasten(dok, s).p, s);
+export function seitenNetz(dok: Dokument, s: number, linien: readonly (readonly V2[])[] = []): FlaechenNetz {
+  return flaechenNetz(umrissAbtasten(dok, s).p, s, linien);
 }
 
-/** Netz eines Polygons (gegen den Uhrzeigersinn, Rand schon abgetastet): Rand exakt, zwei dünne Reihen, Gitter innen. */
-export function flaechenNetz(P: readonly V2[], s: number): FlaechenNetz {
+/**
+ * Netz eines Polygons (gegen den Uhrzeigersinn, Rand schon abgetastet): Rand exakt, zwei dünne Reihen, Gitter innen.
+ * `linien`: Züge im Inneren (Kantenlinien), deren Punkte und Strecken das Netz genau enthält (Falten folgen ihnen).
+ */
+export function flaechenNetz(P: readonly V2[], s: number, linien: readonly (readonly V2[])[] = []): FlaechenNetz {
   const um = { p: P, n: innenNormalen(P) };
   const m = P.length;
   let xMin = Infinity;
@@ -406,6 +410,33 @@ export function flaechenNetz(P: readonly V2[], s: number): FlaechenNetz {
     yMax = Math.max(yMax, q.y);
   }
   const suche = new UmrissSuche(P, 2 * s, xMin, yMin, xMax, yMax);
+  // Kantenlinien: Punkte im Abstand ≈ s, nur im Inneren und nicht zu nah am Rand
+  const linienPunkte: V2[][] = linien.map((l) => {
+    const out: V2[] = [];
+    for (let i = 0; i + 1 < l.length; i++) {
+      const a = l[i]!;
+      const b = l[i + 1]!;
+      const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / s));
+      for (let k = 0; k < n; k++) out.push({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n });
+    }
+    if (l.length) out.push(l[l.length - 1]!);
+    return out.filter((q, i) => (i === 0 || Math.hypot(q.x - out[i - 1]!.x, q.y - out[i - 1]!.y) > 0.2 * s) && suche.innen(q.x, q.y) && suche.abstand(q.x, q.y, 0.6 * s) >= 0.5 * s);
+  });
+  const naheLinie = (x: number, y: number, r: number) => {
+    for (const l of linienPunkte) {
+      for (let i = 0; i + 1 < l.length; i++) {
+        const a = l[i]!;
+        const b = l[i + 1]!;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const l2 = dx * dx + dy * dy;
+        const t = l2 > 1e-18 ? Math.min(1, Math.max(0, ((x - a.x) * dx + (y - a.y) * dy) / l2)) : 0;
+        if (Math.hypot(a.x + t * dx - x, a.y + t * dy - y) < r) return true;
+      }
+      if (l.length === 1 && Math.hypot(l[0]!.x - x, l[0]!.y - y) < r) return true;
+    }
+    return false;
+  };
   // Innenpunkte: Reihe 1 (Sehnenmitten, Tiefe d1), Reihe 2 (an den Randpunkten, Tiefe d2), Gitter ab Tiefe g
   const d1 = 0.12 * s;
   const d2 = 0.45 * s;
@@ -423,14 +454,14 @@ export function flaechenNetz(P: readonly V2[], s: number): FlaechenNetz {
     ny /= l;
     const x = (a.x + b.x) / 2 + d1 * nx;
     const y = (a.y + b.y) / 2 + d1 * ny;
-    if (suche.abstand(x, y, d1) >= 0.6 * d1 && suche.innen(x, y) && innen.frei(x, y, 0.08 * s)) innen.dazu(x, y);
+    if (suche.abstand(x, y, d1) >= 0.6 * d1 && suche.innen(x, y) && innen.frei(x, y, 0.08 * s) && !naheLinie(x, y, 0.3 * s)) innen.dazu(x, y);
   }
   for (let i = 0; i < m; i++) {
     const a = P[i]!;
     const n = um.n[i]!;
     const x = a.x + d2 * n.x;
     const y = a.y + d2 * n.y;
-    if (suche.abstand(x, y, d2) >= 0.6 * d2 && suche.innen(x, y) && innen.frei(x, y, 0.25 * s)) innen.dazu(x, y);
+    if (suche.abstand(x, y, d2) >= 0.6 * d2 && suche.innen(x, y) && innen.frei(x, y, 0.25 * s) && !naheLinie(x, y, 0.4 * s)) innen.dazu(x, y);
   }
   // Dreiecksgitter (Zeilen im Schlangenlauf, damit das Einfügen kurze Wege hat)
   const dy = (s * Math.sqrt(3)) / 2;
@@ -443,6 +474,7 @@ export function flaechenNetz(P: readonly V2[], s: number): FlaechenNetz {
     for (let x = xMin + versatz + s * 0.25; x <= xMax; x += s) {
       if (!suche.innen(x, y)) continue;
       if (suche.abstand(x, y, g) < g) continue;
+      if (linienPunkte.length && naheLinie(x, y, 0.45 * s)) continue;
       reihe.push({ x, y });
     }
     if (j % 2) reihe.reverse();
@@ -454,10 +486,18 @@ export function flaechenNetz(P: readonly V2[], s: number): FlaechenNetz {
   for (let i = 0; i < m; i++) umriss[i] = tri.einfuegen(P[i]!.x, P[i]!.y);
   for (let i = 0; i < innen.x.length; i++) tri.einfuegen(innen.x[i]!, innen.y[i]!);
   for (const q of gitter) tri.einfuegen(q.x, q.y);
+  const linienIndex = linienPunkte.map((l) => l.map((q) => tri.einfuegen(q.x, q.y)));
   for (let i = 0; i < m; i++) {
     const a = umriss[i]!;
     const b = umriss[(i + 1) % m]!;
     if (a >= 0 && b >= 0 && a !== b) tri.erzwingen(a, b);
+  }
+  for (const l of linienIndex) {
+    for (let i = 0; i + 1 < l.length; i++) {
+      const a = l[i]!;
+      const b = l[i + 1]!;
+      if (a >= 0 && b >= 0 && a !== b) tri.erzwingen(a, b);
+    }
   }
   const roh = tri.ergebnis((x, y) => suche.innen(x, y));
   // nur benutzte Punkte behalten
@@ -1086,7 +1126,10 @@ export function rundKoerper(dok: Dokument, optionen: Partial<RundOptionen> = {})
   const opt = { ...RUND_STANDARD, ...optionen };
   const t0 = jetzt();
   const s = opt.abstand;
-  const sn = seitenNetz(dok, s);
+  // Kantenlinien mit Spanten (Meilenstein 3): ihr Zug in der Seite wird Teil des Netzes, die Falte folgt ihm genau
+  const kantenMitSpanten = new Set((dok.rundSpanten ?? []).filter((q) => q.kante).map((q) => q.kante!.index));
+  const linien = [...kantenMitSpanten].map((i) => dok.kanten?.[i]).filter((k): k is NonNullable<typeof k> => !!k).map((k) => abtasten3(k, 24).map((q) => ({ x: q[0], y: q[1] })));
+  const sn = seitenNetz(dok, s, linien);
   const netz = sn.netz;
   const { x, y, dreiecke } = netz;
   const n = x.length;
@@ -1129,7 +1172,8 @@ export function rundKoerper(dok: Dokument, optionen: Partial<RundOptionen> = {})
   const zRund = z;
   if (dok.rundSpanten?.length) {
     const dicke = flaechenWert(netz, z);
-    const w = spantWirkung(dok.rundSpanten, umrissWelt, dicke, (q) => sn.suche.innen(q.x, q.y));
+    const spanten = spantenAufloesen(dok.rundSpanten, dok.kanten, umrissWelt);
+    const w = spantWirkung(spanten, umrissWelt, dicke, (q) => sn.suche.innen(q.x, q.y));
     spantStrecken = w.strecken;
     spantZMax = w.zMax;
     const kNeu = new Float64Array(n);

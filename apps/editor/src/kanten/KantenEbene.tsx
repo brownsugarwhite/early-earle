@@ -10,6 +10,7 @@ import { ausAnsicht2, eckKanten, einfuegen3, glatteLinie, griffZiehen3, inAnsich
 import { useEffect } from 'react';
 import { useEditor } from '../state/editorStore';
 import { blickVon, useUi } from '../state/uiStore';
+import { spantenAnKante } from '../rund/RundSpantEbene';
 import { haerteBei, kantenProben, kantenPunkt, kantenPunktStetig, sichtbar } from './kantenFlaeche';
 
 const PUNKT_R = 5;
@@ -333,6 +334,11 @@ export function kanteZeichnenBeenden(abbrechen = false) {
   const liste = [...kanten(), k];
   useEditor.getState().setzeKanten(liste);
   ui.setzeKantenAuswahl({ kante: liste.length - 1, indizes: k.knoten.map((_, i) => i) });
+  // Bauweise „rund“ (Versuch 13.10. abends): an jedem Punkt der neuen Kante ein Spant, der Kantenpunkt liegt darin
+  if (ui.bauweise === 'rund' && z.blick === 'seite') {
+    const n = spantenAnKante(liste.length - 1);
+    if (n) ui.zeigeHinweis(`${n} Spanten an der Kante: in der Front den Kantenpunkt mit ⌥ knicken, die Griffe geben die Rundung`);
+  }
 }
 
 /** Gewählte Knoten löschen; bleibt weniger als zwei, verschwindet die Linie. true = es gab eine Auswahl. */
