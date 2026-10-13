@@ -7,16 +7,18 @@
 import { anwenden1 } from '../subdivision/matrix';
 import type { Ableitung } from './ableiten';
 import type { MaulErgebnis } from './maul';
+import type { BeinErgebnis } from './teil';
 
 export const DESKRIPTOR_FLOATS = 16;
 
 /** 16 Floats je feinem Punkt (Reihenfolge wie `CreatureMesh`). */
-export function deskriptoren(abl: Ableitung | MaulErgebnis): Float32Array {
+export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis): Float32Array {
   const v = abl.vorlage;
   const { R, N, c } = v;
   const n = abl.kaefig.n;
   const z = abl.ziele;
   const maul = (abl as Partial<MaulErgebnis>).maul ?? null;
+  const beine = (abl as Partial<BeinErgebnis>).teilQuelle ? (abl as BeinErgebnis) : null;
   // Ringmitten und Umfänge aus den Zielen
   const mitte: [number, number, number][] = [];
   const umfang: number[] = [];
@@ -81,14 +83,19 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis): Float32Array {
   const kAbstand = new Float64Array(n).fill(10);
   const kKante = new Float64Array(n);
   const kUnten = new Float64Array(n);
-  if (maul) {
+  const quelle = maul ? maul.quelle : beine ? beine.teilQuelle : null;
+  if (quelle) {
     for (let i = v.kaefig.n; i < n; i++) {
-      const q = maul.quelle[i]!;
+      const q = quelle[i]!;
       kS[i] = kS[q]!;
       kC[i] = kC[q]!;
       kSi[i] = kSi[q]!;
       kU[i] = kU[q]!;
     }
+  }
+  const kTeil = new Float64Array(n);
+  if (beine) for (let i = 0; i < n; i++) kTeil[i] = beine.teilWert[i]!;
+  if (maul) {
     for (let i = 0; i < n; i++) {
       const a = maul.art[i]!;
       kRachen[i] = a === 3 || a === 4 || a === 5 || (a === 6 && maul.tiefe[i]! > 0) ? 0.5 + 0.5 * maul.tiefe[i]! : 0;
@@ -102,6 +109,7 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis): Float32Array {
   const fAbstand = maul ? anwenden1(g, kAbstand) : null;
   const fKante = maul ? anwenden1(g, kKante) : null;
   const fUnten = maul ? anwenden1(g, kUnten) : null;
+  const fTeil = beine ? anwenden1(g, kTeil) : null;
   const fS = anwenden1(g, kS);
   const fC = anwenden1(g, kC);
   const fSi = anwenden1(g, kSi);
@@ -126,7 +134,7 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis): Float32Array {
     out[o + 12] = 0;
     out[o + 13] = 0;
     out[o + 14] = 0;
-    out[o + 15] = 0; // Teil
+    out[o + 15] = fTeil ? fTeil[i]! : 0; // Teil
   }
   return out;
 }

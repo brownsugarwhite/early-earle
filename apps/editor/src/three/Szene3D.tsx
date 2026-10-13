@@ -43,6 +43,7 @@ export function Szene3D() {
       const versuch = versuchAktiv();
       if (versuch?.modus === 'tigerkaefig' || versuch?.modus === 'maul' || versuch?.modus === 'wirbel') {
         r.setzeKamera(useUi.getState().kamera);
+        r.setzeZebra(useUi.getState().zebra);
         r.setzeRect(useRahmen.getState().rects?.creation ?? null);
         abmelden.push(
           useUi.subscribe((s, v) => s.kamera !== v.kamera && r.setzeKamera(s.kamera)),
@@ -173,6 +174,7 @@ export function Szene3D() {
       };
       bauen(useEditor.getState().dok);
       r.setzeKamera(useUi.getState().kamera);
+      r.setzeZebra(useUi.getState().zebra);
       r.setzeRect(useRahmen.getState().rects?.creation ?? null);
       abmelden.push(
         useEditor.subscribe((s, v) => {
@@ -207,7 +209,7 @@ export function Szene3D() {
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
         // Beweis 4: Look oder Palette gewechselt → Kern neu bauen
-        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
+        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
         // Biege-Regler losgelassen: genau bauen
         useWirbelAnzeige.subscribe((s, v) => v.zieht && !s.zieht && useUi.getState().bauweise === 'wirbel' && bauen(useEditor.getState().dok)),
       );

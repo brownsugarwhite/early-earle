@@ -769,10 +769,12 @@ function KernBereich() {
   const palette = useKernAnzeige((s) => s.palette);
   const maul = useKernAnzeige((s) => s.maul);
   const kaefig = useKernAnzeige((s) => s.kaefig);
+  const beine = useKernAnzeige((s) => s.beine);
+  const schwung = useKernAnzeige((s) => s.schwung);
   const oeffnung = useUi((s) => s.oeffnung);
   return (
     <section className="bereich" data-bereich="kern">
-      <h3>Kern (Beweis 1, 2 und 4)</h3>
+      <h3>Kern (Beweis 1 bis 4)</h3>
       <div className="feld">
         <span>Maul (Beweis 2)</span>
         <b>{maul === 'aus' ? 'aus' : maul}</b>
@@ -785,6 +787,18 @@ function KernBereich() {
         ))}
       </div>
       {maul !== 'aus' && <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />}
+      <div className="feld">
+        <span>Beine (Beweis 3)</span>
+        <b>{beine}</b>
+      </div>
+      <div className="umschalter stufen" role="radiogroup" aria-label="Beine">
+        {(['aus', 'verschmolzen', 'angesteckt'] as const).map((b) => (
+          <button key={b} className={beine === b ? 'chip aktiv' : 'chip'} data-beine={b} onClick={() => useKernAnzeige.getState().setzeBeine(b)}>
+            {b}
+          </button>
+        ))}
+      </div>
+      {beine !== 'aus' && <Regler label="Schwung" wert={schwung} min={-45} max={45} schritt={1} anzeige={`${Math.round(schwung)}°`} onChange={(v) => useKernAnzeige.getState().setzeSchwung(v)} />}
       <div className="umschalter stufen" role="radiogroup" aria-label="Käfig">
         {([false, true] as const).map((k) => (
           <button key={String(k)} className={kaefig === k ? 'chip aktiv' : 'chip'} data-kaefig={String(k)} onClick={() => useKernAnzeige.getState().setzeKaefig(k)}>

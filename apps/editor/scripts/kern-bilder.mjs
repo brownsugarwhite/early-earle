@@ -42,5 +42,24 @@ if (process.env.MAUL) {
     }
   }
 }
+// Beweis 3: Beine verschmolzen/angesteckt, Schwung −35/0/35, Zebra (Matcap) und Earle
+if (process.env.BEINE) {
+  for (const wesen of (process.env.BEINE === '1' ? 'rex,kugel' : process.env.BEINE).split(',')) {
+    for (const art of ['verschmolzen', 'angesteckt']) {
+      for (const schwung of [-35, 0, 35]) {
+        for (const look of ['zebra', 'earle']) {
+          const palette = wesen === 'rex' ? 'rex' : 'blob';
+          const q = look === 'zebra' ? '&zebra=1' : `&look=earle&palette=${palette}`;
+          await page.goto(`${url}/?versuch=kern&wesen=${wesen}&bauweise=kern&beine=${art}&schwung=${schwung}${q}`);
+          await page.waitForFunction(() => window.__editor && window.__editor.vertices() > 0, null, { timeout: 60_000 });
+          await page.evaluate(() => document.fonts.ready);
+          await page.waitForTimeout(1800);
+          const r = await page.evaluate(() => window.__stores.rahmen.getState().rects.creation);
+          await page.screenshot({ path: path.join(aus, `kern-beine-${wesen}-${art}-${schwung}-${look}.png`), clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
+        }
+      }
+    }
+  }
+}
 console.log(`geschrieben: ${aus}/kern-*.png`);
 await browser.close();

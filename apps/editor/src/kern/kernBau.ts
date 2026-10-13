@@ -4,13 +4,14 @@
 // der Kurve (px bei 461 px je Kachel) und Zeiten.
 
 import type { Dokument, V2 } from '@ee/shape';
-import { DESKRIPTOR_FLOATS, type Ableitung, type MaulErgebnis, ableiten, ableitenMitMaul, alleFlaechen, deskriptoren, maulLinieVorlage, maulOptionenVorlage, maulPose, seiteZiehen, umrissBei, umrissDicht } from '@ee/shape/kern';
+import { DESKRIPTOR_FLOATS, type Ableitung, type BeinErgebnis, type MaulErgebnis, ableiten, ableitenMitBeinen, ableitenMitMaul, alleFlaechen, beinPose, deskriptoren, maulLinieVorlage, maulOptionenVorlage, maulPose, seiteZiehen, umrissBei, umrissDicht } from '@ee/shape/kern';
 import { useUi } from '../state/uiStore';
 import { zuDreiecken, type V3 } from '@ee/shape/versuch';
 import { create } from 'zustand';
 import { type Auge, type Look, PALETTEN } from '../three/wesenLook';
 
 export type MaulArt = 'aus' | 'vorn' | 'unten' | 'hals';
+export type BeinArt = 'aus' | 'verschmolzen' | 'angesteckt';
 
 export type KernInfo = {
   kaefigPunkte: number;
@@ -29,7 +30,9 @@ const q = new URLSearchParams(location.search);
 const startLook: Look = q.get('look') === 'earle' ? 'earle' : 'matcap';
 const startPalette = q.get('palette') && PALETTEN[q.get('palette')!] ? q.get('palette')! : 'tiger';
 const startMaul: MaulArt = (['vorn', 'unten', 'hals'] as const).find((a) => a === q.get('maul')) ?? 'aus';
+const startBeine: BeinArt = (['verschmolzen', 'angesteckt'] as const).find((a) => a === q.get('beine')) ?? 'aus';
 if (q.get('oeffnung')) useUi.getState().setzeOeffnung(Number(q.get('oeffnung')));
+if (q.get('zebra') === '1') useUi.getState().setzeZebra(true);
 
 export const useKernAnzeige = create<{
   info: KernInfo | null;
@@ -39,24 +42,33 @@ export const useKernAnzeige = create<{
   maul: MaulArt;
   /** Käfig als Linien zeigen (Röntgen) */
   kaefig: boolean;
+  /** Beweis 3: zwei Säulenbeine (Ring 15, Winkel 6, gespiegelt), Schwung in Grad */
+  beine: BeinArt;
+  schwung: number;
   setzeLook: (l: Look) => void;
   setzePalette: (p: string) => void;
   setzeMaul: (m: MaulArt) => void;
   setzeKaefig: (an: boolean) => void;
+  setzeBeine: (b: BeinArt) => void;
+  setzeSchwung: (grad: number) => void;
 }>((set) => ({
   info: null,
   look: startLook,
   palette: startPalette,
   maul: startMaul,
   kaefig: q.get('kaefig') === '1',
+  beine: startBeine,
+  schwung: q.get('schwung') ? Number(q.get('schwung')) : 0,
   setzeLook: (look) => set({ look }),
   setzePalette: (palette) => set({ palette }),
   setzeMaul: (maul) => set({ maul }),
   setzeKaefig: (kaefig) => set({ kaefig }),
+  setzeBeine: (beine) => set({ beine }),
+  setzeSchwung: (schwung) => set({ schwung: Math.max(-60, Math.min(60, schwung)) }),
 }));
 
 const PX = 461;
-let letzte: { dok: Dokument; abl: Ableitung; maul: MaulArt } | null = null;
+let letzte: { dok: Dokument; abl: Ableitung; maul: MaulArt; beine: BeinArt } | null = null;
 
 function gleicheTopologie(a: Dokument, b: Dokument): boolean {
   return a.profile.seite.knoten.length === b.profile.seite.knoten.length && a.profile.front === b.profile.front && a.profile.top === b.profile.top && a.skalierung === b.skalierung;
@@ -176,9 +188,25 @@ export function kernBauen(dok: Dokument, schnell: boolean): KernNetz {
   let zug = 0;
   let ableitung = 0;
   const maul = useKernAnzeige.getState().maul;
+  const beine = useKernAnzeige.getState().beine;
   let fein: Float64Array;
   let xyz: Float64Array;
-  if (maul !== 'aus') {
+  /** angesteckte Beine: feine Netze (Dreiecke werden angehängt) */
+  let gesteckt: { fein: Float64Array; abl: BeinErgebnis } | null = null;
+  if (beine !== 'aus') {
+    // Beweis 3: zwei Säulenbeine am Bauch; Umbau nur bei neuem Dokument oder anderer Art, der Schwung ist eine Pose
+    if (letzte && letzte.beine === beine && letzte.maul === 'aus' && letzte.dok === dok) abl = letzte.abl;
+    else {
+      abl = ableitenMitBeinen(dok, [{ ring: 15, j: 6 }], beine);
+      ableitung = abl.zeiten.gesamt;
+    }
+    const t0 = performance.now();
+    const pose = beinPose(abl as BeinErgebnis, useKernAnzeige.getState().schwung);
+    zug = performance.now() - t0;
+    fein = pose.fein;
+    xyz = pose.xyz;
+    if ((abl as BeinErgebnis).gesteckt.length) gesteckt = { fein: pose.gesteckt.length ? Float64Array.from(pose.gesteckt.flatMap((f) => Array.from(f))) : new Float64Array(0), abl: abl as BeinErgebnis };
+  } else if (maul !== 'aus') {
     // Beweis 2: Maul im Käfig; Umbau nur bei neuem Dokument oder anderer Lage, die Pose (Öffnung) läuft auf dem Käfig
     if (letzte && letzte.maul === maul && letzte.dok === dok) abl = letzte.abl;
     else {
@@ -202,23 +230,67 @@ export function kernBauen(dok: Dokument, schnell: boolean): KernNetz {
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
   }
-  letzte = { dok, abl, maul };
+  letzte = { dok, abl, maul: beine !== 'aus' ? 'aus' : maul, beine };
   const letzteStufe = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
   const punkte: V3[] = [];
   const f = fein;
   for (let i = 0; i < f.length / 3; i++) punkte.push([f[3 * i]!, f[3 * i + 1]!, f[3 * i + 2]!]);
   const flaechen = alleFlaechen(letzteStufe);
-  const t = zuDreiecken({ punkte, flaechen, schaerfe: new Map() }, 40);
+  const t0 = zuDreiecken({ punkte, flaechen, schaerfe: new Map() }, 40);
+  // angesteckte Beine: eigene feine Netze anhängen (Deskriptoren der Hüfte)
+  let t = t0;
+  let gesteckteEcken = 0;
+  if (gesteckt) {
+    const teile: { positionen: Float32Array; normalen: Float32Array }[] = [t0];
+    let off = 0;
+    for (const g of gesteckt.abl.gesteckt) {
+      const nF = g.fein.length / 3;
+      const pts: V3[] = [];
+      for (let i = 0; i < nF; i++) pts.push([gesteckt.fein[off + 3 * i]!, gesteckt.fein[off + 3 * i + 1]!, gesteckt.fein[off + 3 * i + 2]!]);
+      off += 3 * nF;
+      const fl = alleFlaechen(g.unterteilung.stufen[g.unterteilung.stufen.length - 1]!.kaefig);
+      const tg = zuDreiecken({ punkte: pts, flaechen: fl, schaerfe: new Map() }, 40);
+      gesteckteEcken += tg.positionen.length / 3;
+      teile.push(tg);
+    }
+    const nPos = teile.reduce((a, b) => a + b.positionen.length, 0);
+    const positionen = new Float32Array(nPos);
+    const normalen = new Float32Array(nPos);
+    let o = 0;
+    for (const x of teile) {
+      positionen.set(x.positionen, o);
+      normalen.set(x.normalen, o);
+      o += x.positionen.length;
+    }
+    t = { positionen, normalen };
+  }
   let hoehe = 0;
   for (const p of punkte) hoehe = Math.max(hoehe, p[1]);
+  // mit Beinen steht der Körper auf den Füßen: alles so heben, dass der tiefste Punkt auf dem Boden liegt
+  if (beine !== 'aus') {
+    let yMin = Infinity;
+    for (let i = 1; i < t.positionen.length; i += 3) yMin = Math.min(yMin, t.positionen[i]!);
+    if (yMin < 0) {
+      for (let i = 1; i < t.positionen.length; i += 3) t.positionen[i]! -= yMin;
+      hoehe -= yMin;
+    }
+  }
   const earle = useKernAnzeige.getState().look === 'earle';
-  const desk = earle ? jeEcke(deskriptoren(abl), flaechen) : null;
+  let desk = earle ? jeEcke(deskriptoren(abl), flaechen) : null;
+  if (desk && gesteckteEcken > 0) {
+    // angesteckte Beine bekommen die Deskriptoren des Hüftpunkts (Farbe des Körpers an der Hüfte)
+    const alle = new Float32Array(desk.length + gesteckteEcken * DESKRIPTOR_FLOATS);
+    alle.set(desk);
+    const huefte = deskriptoren(abl).subarray(abl.vorlage.ringPunkt(15, 6) * DESKRIPTOR_FLOATS, (abl.vorlage.ringPunkt(15, 6) + 1) * DESKRIPTOR_FLOATS);
+    for (let e = 0; e < gesteckteEcken; e++) alle.set(huefte, desk.length + e * DESKRIPTOR_FLOATS);
+    desk = alle;
+  }
   const augen = earle ? augenAm(abl, hoehe) : [];
   const ab = nahtAbweichung(abl, dok);
   useKernAnzeige.setState({
     info: { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0 },
   });
   const linien = useKernAnzeige.getState().kaefig ? kaefigSegmente(abl, xyz) : null;
-  const lippenBand = maul !== 'aus' ? 0.03 * hoehe : 0;
+  const lippenBand = maul !== 'aus' && beine === 'aus' ? 0.03 * hoehe : 0;
   return { positionen: t.positionen, normalen: t.normalen, deskriptoren: desk, hoehe, augen, kaefigLinien: linien ? new Float32Array([...linien.punkte]) : null, lippenBand, kaefigFarben: linien?.farben ?? null };
 }

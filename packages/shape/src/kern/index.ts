@@ -10,3 +10,4 @@ export * from './ableiten';
 export * from './deskriptoren';
 export * from './breite';
 export * from './maul';
+export * from './teil';
