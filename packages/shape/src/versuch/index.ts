@@ -15,3 +15,4 @@ export * from './kanten';
 export * from './wirbelsaeule';
 export * from './maulUmriss';
 export * from './wirbelMaul';
+export * from './schnittLoft';
