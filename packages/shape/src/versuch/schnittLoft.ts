@@ -1169,8 +1169,15 @@ export function schnittLoft(dok: Dokument, optionen: Partial<SchnittOptionen> = 
       maxTeile = Math.max(maxTeile, tl);
     }
   }
-  // 2. Rundung entlang x glätten (Übergänge, wo Teile zusammenwachsen oder sich trennen)
-  const Kg = opt.weich > 0 ? entlangXGlaetten(K, NX, NY * NZH, opt.weich) : K;
+  // 2. Rundung entlang x glätten (Übergänge, wo Teile zusammenwachsen oder sich trennen). Die geglättete Rundung darf nur
+  //    mehr wegschneiden, nie weniger: Sonst ragte der Körper leicht über die Hülle, und die exakten Grenzen erzeugten
+  //    Knicke (Falten auf der Kugel). An einem Sprung entsteht so ein Übergang auf der Seite mit weniger Rundung.
+  let Kg: Float32Array = K;
+  if (opt.weich > 0) {
+    const Ks = entlangXGlaetten(K, NX, NY * NZH, opt.weich);
+    for (let q = 0; q < K.length; q++) Ks[q] = Math.max(K[q]!, Ks[q]!);
+    Kg = Ks;
+  }
   // 3. Hülle + Rundung, begrenzt durch die exakten 2D-Abstände zu Seite und Top, gespiegelt ins volle Raster
   for (let i = 0; i < NX; i++) {
     const o = i * NY * NZH;
