@@ -382,6 +382,27 @@ Florian: „Ist der Weg mit der Kombination aus Shapes und Kanten besser als z. 
 - **Dagegen spricht:** Eine Fläche aus Kurven, die beim Ziehen in Echtzeit nachgibt, ist anspruchsvoll. Der Aufwand liegt im Kern.
 - Kandidat für F1 (Abschnitt 11).
 
+### 6.5 Nachtrag 13.10.: Florians Workflow-Vorschlag (Blender als Vorbild)
+
+Florian: „Die Grundform habe ich meistens sehr schnell erstellt, wenn ich eine voreingestellte Form mit Subsurface- und Mirror-Modifier habe. Mit Edge Loops und Edge Crease kann ich die Grundform mit allen Kanten recht schnell erzeugen. Beim Maul und den Posen und dem Rig, Zähne, Beine und Anhängsel wie große Rückenschuppen, Haarsträhnen und Beine hätte ich dann voreingestellte Formen, die ich genau bearbeiten kann. Wäre das dann ein Workflow?“
+
+- **Einschätzung: ja, der stärkste Kandidat bisher.**
+  - So entstehen stilisierte Wesen in der Praxis.
+  - Er löst das Ableitungsproblem: Der Unterteilungs-Käfig ist die Wahrheit.
+  - Er passt genau zu unserer Technik: Catmull-Clark mit Falten, feste Topologie, Spiegelung.
+- **Schneller als Blender wird es durch:**
+  - Vorlagen je Bauplan mit gutem Kantenfluss
+  - Florians Bogen hinter jeder Ansicht und den Umriss des Körpers als ziehbare Kurve
+  - **Bausteine mit Automatik**: Maul (Lippenschleifen, Tasche, Kiefer, Zähne am Zahnfleisch), Augen, Beine (ausgestülpt, mit Rig), Klingen (Rückenschuppen, Haarsträhnen, Flossen, Federn), Rig und Posen (bearbeitbar wie Shape Keys), Earle-Look, Export ins Spiel
+  - Varianten durch Mischen gleicher Topologie
+- **Zwei Wege dorthin:**
+  - **A:** Grundform in Blender, Import des Käfigs (Falten, Spiegelung) in den Editor; der Editor liefert die Bausteine. Schnell testbar.
+  - **B:** Unterteilungs-Werkzeuge im Editor selbst (Extrude, Loop Cut, Crease, Spiegelung, weich ziehen).
+  - Vorschlag: A zuerst als Test der Bausteine, B schrittweise.
+- **Zu klären:**
+  - Bausteine brauchen Andockstellen am Käfig, zum Beispiel markierte Kantenschleifen für das Maul und Flächen für die Beine. Die Vorlagen bringen sie mit.
+  - Was aus den Versuchen bleibt: Kurven als Griffe, Nachzeichnen der Bögen, Maul-, Zahn- und Rig-Wissen, Klingen.
+
 ## 7. Beine, Arme, Flügel, Schwänze
 
 > Recherche 12.10. spätnachts, 35 Quellen in Abschnitt 14. Vorschlag aus Recherche und Tests, kein Muss. Sie schärft den Schluss vom 12.10. („Glieder zuerst als überlappende Röhren“): Überlappen nur noch bei dünnen Gliedern. Dicke Glieder werden aus dem Käfig ausgestülpt, nahtlos und ohne Neuvernetzen.
