@@ -3,7 +3,7 @@
 // in der Tafel; Breite, Versatz und Deckkraft dort; ⌥B blendet den Bogen aus und ein.
 
 import type { Ansicht } from '@ee/shape';
-import { type Pauspapier as PauspapierDaten, useUi } from '../state/uiStore';
+import { useUi } from '../state/uiStore';
 import { spiegeln2, zuBild } from './ansicht2d';
 
 /** Bild aus einer Datei als Pauspapier auf das Blatt legen (Seitenverhältnis aus dem Bild). */

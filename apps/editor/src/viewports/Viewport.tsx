@@ -1,13 +1,16 @@
 import type { CSSProperties } from 'react';
 import { useRahmen } from '../layout/animation';
 import { useEditor } from '../state/editorStore';
-import { type Ebene, useUi } from '../state/uiStore';
+import { useUi } from '../state/uiStore';
 import { BLICK_TEXTE, VIEW_TEXTE, type ViewId } from '../types';
 import { versuchAktiv } from '../versuch/subdivision';
 import { mitKanten } from '../kanten/kantenKoerper';
 import { Pauspapier, pauspapierAusDatei } from './Pauspapier';
 import { Steuerung3D } from './Steuerung3D';
 import { View2D } from './View2D';
+
+/** Versuchs-Tabs am 3D-Fenster (creation · wirbelsäule · rund · kern) nur mit `?versuche=1` oder in einem Versuch */
+const VERSUCHE_ZEIGEN = new URLSearchParams(location.search).get('versuche') === '1' || new URLSearchParams(location.search).has('versuch');
 
 function useRect(id: ViewId) {
   return useRahmen((s) => s.rects?.[id] ?? null);
@@ -39,7 +42,9 @@ function Titel({ id }: { id: ViewId }) {
   const blick = useUi((s) => (id === 'front' || id === 'top' ? s.blick[id] : null));
   const bauweise = useUi((s) => s.bauweise);
   if (id === 'creation') {
-    // Versuch 12.10. abends: Bauweise zum Vergleichen umschalten (wie „front · back“)
+    // Versuch 12.10. abends: Bauweise zum Vergleichen umschalten (wie „front · back“); seit M3 ist der Kern Standard,
+    // die Versuchs-Tabs erscheinen nur noch mit `?versuche=1` (M4 räumt sie auf)
+    if (!VERSUCHE_ZEIGEN) return <div className="vp-titel">bühne</div>;
     return (
       <div className="vp-titel blick-tabs" role="tablist">
         {(
@@ -126,7 +131,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
         {id === 'creation' && (
           <div className="vp-label links platzhalter">
             {bauweise === 'kern' && !versuchAktiv()
-              ? 'Wesen-Editor 2: Kern (Beweis 1)'
+              ? ''
               : bauweise === 'rund' && !versuchAktiv()
               ? 'Versuch: rund'
               : bauweise === 'schnitte' && !versuchAktiv()

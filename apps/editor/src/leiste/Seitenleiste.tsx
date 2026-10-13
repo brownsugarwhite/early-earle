@@ -2,6 +2,7 @@ import { useKernAnzeige } from '../kern/kernBau';
 import { type MaulOptionen, MAUL_STANDARD, maulOptionenVorlage, pruefwesenBauplan } from '@ee/shape/kern';
 import { naechsteStufe, stufe } from '../stamm/stufen';
 import { pauspapierAusDatei } from '../viewports/Pauspapier';
+import { nachzeichnenSeite } from '../nachziehen/nachzeichnen';
 import { PALETTEN } from '../three/wesenLook';
 // Seitenleiste rechts, immer offen (Florian 12.10.): oben das Menü des aktiven Tabs (Wesen, Maul, Zähne, Rig, Augen),
 // darunter die Library. Gestaltung (Glas, Ornament) ist mein Entwurf.
@@ -875,6 +876,19 @@ function BogenFeld() {
             weg
           </button>
         )}
+        {p && p.blatt === 'seite' && (
+          <button
+            className="chip"
+            data-bogen-nachzeichnen=""
+            onClick={() => {
+              void nachzeichnenSeite(p)
+                .then((e) => useUi.getState().zeigeHinweis(`Seitenumriss aus dem Bogen: ${e.knoten} Knoten (Fehler ≤ ${e.fehlerPx.toFixed(1)} px, Figur ${e.hoehePx} px hoch)`))
+                .catch((err: Error) => useUi.getState().zeigeHinweis(err.message));
+            }}
+          >
+            Nachzeichnen (Seite)
+          </button>
+        )}
       </div>
       {p && (
         <>
@@ -885,7 +899,7 @@ function BogenFeld() {
           <Regler label="Versatz y" wert={p.mitte.y} min={-1.5} max={1.5} schritt={0.005} anzeige={p.mitte.y.toFixed(3)} onChange={(v) => useUi.getState().pauspapierAendern({ mitte: { x: p.mitte.x, y: v } })} />
         </>
       )}
-      <p className="hilfe">Ein PNG auf ein Blatt ziehen oder hier wählen: der Bogen liegt zu 40 % hinter den Kurven und zoomt mit. ⌥B blendet ihn aus und ein. Nachzeichnen (Umriss aus dem Bogen) ist heute noch das Skript `scripts/nachziehen/`.</p>
+      <p className="hilfe">Ein PNG auf ein Blatt ziehen oder hier wählen: der Bogen liegt zu 40 % hinter den Kurven und zoomt mit. ⌥B blendet ihn aus und ein. „Nachzeichnen (Seite)“ macht aus der größten dunklen Figur des Bogens den Seitenumriss (Schneider-Anpassung) und stellt ihn auf den Boden; Front und Top folgen.</p>
     </>
   );
 }
