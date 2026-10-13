@@ -20,6 +20,11 @@ Zum Branch:
 - Branch `claude/editor-grundlayout`, gepusht. Merge nach `main` erst nach Florians Abnahme.
 - Nicht von uns: `assets/fonts/Hippie Movement.otf` (unverfolgt, nicht committen).
 
+**13.10. morgens – echte Schnitte** (Florians Ideen über Nacht):
+- Versuch „Schnitt-Loft“ als dritter 3D-Tab „schnitte“ (`?versuch=schnitte&wesen=ueberhang`).
+- Analyse, Recherche (40 Quellen) und Messwerte: [`docs/research/2026-10-13-schnitte-ueberhaenge.md`](research/2026-10-13-schnitte-ueberhaenge.md).
+- Kurz: kein Denkfehler; das Ein-Ring-Netz ist die Grenze. Richtung: „Das Feld entscheidet, der Loft baut“. Kantenregler werden gezeichnet statt geregelt.
+
 ## Stand je Bereich
 
 | Bereich | Stand |

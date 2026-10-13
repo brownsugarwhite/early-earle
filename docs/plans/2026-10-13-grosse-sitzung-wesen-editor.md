@@ -352,6 +352,19 @@ Das ist der Stand der Tests, keine Festlegung. Findet die Sitzung einen besseren
 - Florian sieht das Ergebnis im Earle-Material.
 - Erst dann wird der Kern breit gebaut. Trägt A nicht, kommt Weg B oder ein ganz neuer Weg.
 
+### 6.3 Nachtrag 13.10. morgens: echte Schnitte (Florians Ideen über Nacht)
+
+Florian fragte nach Spanten, die den echten Schnitt zeigen (zwei Ringe für Schnauze und Bauch), nach einer Acht, die in zwei Formen clippt, nach Kanten durch Knicken von Spant-Punkten und nach Überhängen ohne Wirbelsäule (`docs/look/editor/07–09`).
+- **Antwort:** Das ist kein Denkfehler. Das Ein-Ring-Netz kann es nicht: je Stelle nur äußerste Ober- und Unterkante und größte Breite.
+- **Versuch „Schnitt-Loft“:** Tab „schnitte“ am 3D-Fenster.
+  - Florians Überhang: Seite 55 → 8 px. Langhals ohne Wirbelsäule: 37 → 7 px.
+  - Der Haken im Top bleibt offen, die Acht wird zwei Teile (mit der Hälften-Regel; Gerade-Ungerade lässt die Mitte stehen).
+  - Grenzen: Kanten werden rund, am Schnauzenansatz bleibt eine Naht, Teile bekommen die volle Breite aus dem Top.
+- **Richtung aus Recherche und Versuch:** „Das Feld entscheidet, der Loft baut“.
+  - Ein Abstandsfeld bestimmt je Stelle die Teile, jedes Teil wird geloftet, an Gabelungen sitzt ein Hosenstück.
+  - Kanten werden Falten mit gezeichneter Rundung; eigene Kantenregler entfallen.
+- Ein Kandidat für F1 und F3/F4 (Abschnitt 11). Details: [`docs/research/2026-10-13-schnitte-ueberhaenge.md`](../research/2026-10-13-schnitte-ueberhaenge.md).
+
 ## 7. Beine, Arme, Flügel, Schwänze
 
 > Recherche 12.10. spätnachts, 35 Quellen in Abschnitt 14. Vorschlag aus Recherche und Tests, kein Muss. Sie schärft den Schluss vom 12.10. („Glieder zuerst als überlappende Röhren“): Überlappen nur noch bei dünnen Gliedern. Dicke Glieder werden aus dem Käfig ausgestülpt, nahtlos und ohne Neuvernetzen.

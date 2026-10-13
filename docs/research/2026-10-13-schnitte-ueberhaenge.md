@@ -5,7 +5,7 @@
 
 ## Kurzantwort
 
-1. **Kein Denkfehler.** Alle fünf Wünsche sind geometrisch stimmig. Ein Schnitt durch deinen Körper bei S1 besteht wirklich aus zwei Teilen. Eine Acht mit Gerade-Ungerade-Füllung ergibt wirklich zwei Formen. Ein Knick in einem Schnitt ergibt wirklich eine Kante. Überhänge und Haken sind echte Formen.
+1. **Kein Denkfehler.** Alle fünf Wünsche sind geometrisch stimmig. Ein Schnitt durch deinen Körper bei S1 besteht wirklich aus zwei Teilen. Eine Acht ergibt wirklich zwei Formen; dafür braucht es allerdings die Hälften-Regel, nicht Gerade-Ungerade (Abschnitt 4). Ein Knick in einem Schnitt ergibt wirklich eine Kante. Überhänge und Haken sind echte Formen.
 2. **Das Netz ist für diese Formen falsch aufgebaut.**
    - Der Körper ist eine Röhre mit **einem Ring je Stelle**. Jeder Ring nimmt aus der Seite nur die äußerste Ober- und Unterkante und aus dem Top nur die größte Breite.
    - Den Querschnitt holt jeder Ring aus der Front bzw. den Spanten, auf ihren Kasten normiert und Punkt für Punkt überblendet.
@@ -29,7 +29,7 @@
 |---|---|---|
 | **Spanten zeigen die echte Form** (zwei Ringe für Schnauze und Bauch) | ja | Jeder Ring braucht seine Ober- und Unterkante auf dem Seitenumriss (gemeinsame Punkte). Die Front bleibt ein Umriss; der echte Schnitt erscheint beim Spant, z. B. gestrichelt, sobald man ihn wählt. |
 | **Dynamische Spanten für Kanten** (jeder Punkt der Kantenlinie ist ein Punkt im Spant, in der Front knicken) | ja | Das ist die Regel „Eine Kante ist eine Ecke in einem Shape“, wobei der Shape der Schnitt an der Stelle des Punktes ist. Läuft die Kantenlinie schräg, hat jeder Punkt seinen eigenen Schnitt; dazwischen läuft der Knick entlang der Linie weiter (Kantenlinie als Schiene, Schnitte als Profile). |
-| **Acht clippt zu zwei Formen, Überlappung fällt weg, Loch möglich** | ja | Das ist Illustrators **Gerade-Ungerade-Füllung**: Was doppelt bedeckt ist, fällt weg. Eine Acht in **einem** Spant wirkt bis zu den Nachbarspanten; dazwischen entsteht eine Gabelung von einem zu zwei Teilen. Ein Loch nur in einem Spant wird ein unsichtbarer Hohlraum. Ein Durchgang braucht das Loch über mehrere Spanten bis an eine Oberfläche. |
+| **Acht clippt zu zwei Formen, Überlappung fällt weg, Loch möglich** | ja, mit der richtigen Regel | Korrektur nach dem Versuch (Abschnitt 4): Nicht Gerade-Ungerade, sondern die **Hälften-Regel** liefert das (jede Hälfte gilt nur auf ihrer Seite der Achse). Eine Acht in **einem** Spant wirkt bis zu den Nachbarspanten; dazwischen entsteht eine Gabelung von einem zu zwei Teilen. Ein Loch nur in einem Spant wird ein unsichtbarer Hohlraum. Ein Durchgang braucht das Loch über mehrere Spanten bis an eine Oberfläche. |
 | **Überhang in der Seite ohne Wirbelsäule** | ja, für Schnauze über Bauch | Ein Schnitt mit mehreren Teilen löst das ohne Wirbelsäule. Bei stehenden Teilen (Langhals) schneidet ein Schnitt quer zur Länge den Hals der Länge nach; seine runde Form steckt dann in Front und Top. Die Wirbelsäule bleibt nützlich für Posen und Spanten quer zum Hals. |
 | **Top-Haken nicht ausblocken** | ja | Bisher zählt nur die größte Breite. Mit echten Schnitten bleibt die Kerbe. |
 
@@ -65,9 +65,68 @@ Florian: „Hältst du das für die bessere Lösung? Und brauche ich die Kantenr
   - Tiefe (Grat/Rinne), Knickwinkel und die Härte-Stufen fallen als eigene Bedienelemente weg.
   - Ein Zahlenfeld für den Radius der gewählten Ecke in der Seitenleiste reicht, wie Illustrators Eckenradius im Steuerungsbedienfeld.
 
-## 4. Versuch „Schnitt-Loft“
+## 4. Versuch „Schnitt-Loft“ (gebaut 13.10.)
 
-*(folgt: Bau, Messwerte, Bilder)*
+**Code:** `packages/shape/src/versuch/schnittLoft.ts` (Tests `schnittLoft.test.ts`), im Editor `apps/editor/src/schnitte/`, dritter Tab „schnitte“ am 3D-Fenster.
+- Aufruf: `?versuch=schnitte&wesen=ueberhang|kugel|rex|tiger|robbe|langhals`, optional `&bauweise=bisher`, `&regel=gerade-ungerade`, `&ueberblenden=punkte`, `&spanten=0`.
+- Florians Ente liegt als Prüfwesen in `apps/editor/public/versuch/ueberhang/ueberhang.json`, mit Overlay auf seine Kurven gelegt.
+
+**So rechnet er:**
+1. Je Scheibe entsteht die sichtbare Hülle aus allen Intervallen von Seite und Top und aus der Front.
+2. Je Teil wird die Vorlage (Front bzw. Spant) in den Hüllkasten gerundet.
+3. Daraus entstehen Abstandsfeld, Surface Nets und Taubin-Glättung. Im Editor rechnet er während Gesten im 56er Raster, beim Loslassen im 112er.
+4. `schnittBei(f)` liefert den echten Schnitt; er erscheint in der Front gestrichelt beim gewählten Spant.
+
+**Messwerte** (px bei 461 px je Kachel, Mittel/Max, bisher → schnitte):
+
+| Wesen | Seite | Front | Top | Teile max | Bau bisher / schnitte |
+|---|---|---|---|---|---|
+| Kugel | 0,1/0,3 → 0,7/2,6 | 0,1/0,3 → 0,1/0,4 | 0,1/0,3 → 0,7/2,6 | 1 | 7 / 164 ms |
+| **Florians Überhang** | 3,8/**55** → 1,3/**8,3** | 7,4/26 → 4,7/14 | 2,7/26 → 2,9/29 | 3 | 194 / 78 ms |
+| Rex | 0,7/3,6 → 0,9/5,8 | 5,5/11 → 4,5/9,3 | 0,4/3,0 → 0,7/4,8 | 1 | 165 / 48 ms |
+| Tiger | 0,8/6,0 → 1,3/4,2 | 1,0/2,3 → 0,8/1,8 | 0,4/1,5 → 1,2/4,2 | 1 | 169 / 122 ms |
+| Robbe | 1,0/10,5 → 0,8/4,0 | 1,3/2,9 → 1,4/3,1 | 1,6/11 → 0,9/9,1 | 1 | 135 / 100 ms |
+| **Langhals** (ohne Wirbelsäule) | 7,3/**37** → 1,6/**6,6** | 7,6/20 → 2,4/11 | 1,3/3,8 → 1,8/4,8 | 2 | 158 / 50 ms |
+
+- Bauzeit warm: 13–40 ms im 56er Raster, 64–116 ms im 112er (Kugel 165 ms).
+- Kugel: Radiusfehler im Mittel 0,2 px, maximal 2,3 px. Die reine Hülle (Steinmetz-Körper) läge 26 px daneben.
+- Teile:
+  - Ente bei S1: 2 Teile, auch ohne Acht.
+  - Haken: 3 Teile (Körper und zwei Flossen). Die Kerbe bleibt offen; bisher war sie gefüllt.
+- Kanten (gezeichnet ≈ 94°):
+  - An den Spanten: 41° im Schnitt, 30–38° im Netz.
+  - Halbwegs zwischen zwei Spanten: Bei Felder-Überblendung 3°, die Ecke verschwindet. Bei Punkt-Überblendung 51° im Schnitt, 23° im Netz.
+
+**Bilder** (`docs/progress/editor/`):
+- `schnitte-ueberhang-vergleich.png` (bisher gegen schnitte: seitlich, von oben, schräg)
+- `schnitte-ueberhang-editor.png` (echter Schnitt bei S1 mit zwei Teilen)
+- `schnitte-acht.png`, `schnitte-haken.png`, `schnitte-kugel.png`, `schnitte-rex.png`, `schnitte-langhals.png`
+
+**Was der Versuch zu Florians Ideen zeigt:**
+1. **Zwei Ringe:** bestätigt. Bei S1 ergibt schon die Seite zwei Teile.
+2. **Acht clippen:** Eine Korrektur gegenüber Abschnitt 2.
+   - Gerade-Ungerade wie in Illustrator entfernt die Mitte der **gespiegelten** Acht nicht: Sie ist nur einmal umschlossen, nur gegenläufig. Gemessen: Die Acht auf der Kugel ergibt mit Gerade-Ungerade 1 Teil, die Mitte bleibt gefüllt.
+   - Florians Erwartung erfüllt die **Hälften-Regel**: Jede Hälfte gilt nur auf ihrer Seite der Achse, was hinüberläuft, schneidet weg. Damit ergibt die Acht 2 Teile.
+   - Ein Loch geht: Die Acht auf der Kugel ergibt einen Durchgang, den man im Seitenumriss sieht.
+   - Ein Spant wirkt bis zum Nachbarspant; vor S1 wird die obere Linse zur Schnauze.
+   - Beide Regeln sind in der Seitenleiste umschaltbar.
+3. **Kanten über Spant-Punkte:** stimmig, braucht aber gemeinsame Punkte zwischen den Spanten. Mit Felder-Überblendung verschwindet die Ecke, mit Punkt-Überblendung läuft sie als Kante weiter. Scharf wird sie erst als Kantenlinie im Netz (Falte); im Feld wird sie rund.
+4. **Überhang ohne Wirbelsäule:** ja. Ente und Langhals sind deutlich genauer (Seite 55 → 8 px bzw. 37 → 7 px).
+5. **Top-Haken:** ja, die Kerbe bleibt offen.
+
+**Grenzen (deutlich):**
+- **Kanten werden rund** (Raster und Glättung); die Kastenschnauze des Tigers ist weich.
+- **Jedes Teil bekommt die volle Breite aus dem Top.** Bei mehreren Teilen sagen die Ansichten nicht, welches Teil wie breit ist. Deshalb beginnt der Bauch der Ente vorn mit einer flachen Wand. Abhilfe: eigene Spanten je Teil.
+- **Widerspruch in der Zeichnung:** Die Glocke in der Front ist oben schmaler, als das Top die Schnauze zeigt. Die Schnauze wird deshalb schmaler (Top bis 29 px). Der Editor sollte solche Widersprüche zeigen; der gestrichelte 3D-Umriss tut das schon.
+- **Die Kerbe des Hakens geht durch die ganze Höhe**, die Flossen werden senkrechte Platten.
+- **Am Schnauzenansatz bleibt eine sichtbare Naht.** Die Rundung je Teil ist nur geglättet, nicht stetig.
+- **Fehlt:** Maul, Kanten-Härte, Biegen. Die Punktzahl wechselt mit jeder Änderung; für Posen und Spiel braucht es ein Netz mit fester Punktzahl darüber.
+
+**Fazit:** Der Versuch bestätigt die Richtung „Das Feld entscheidet, der Loft baut“ (Abschnitt 5). Für den Loft je Teil gilt:
+- Zwischen Spanten werden Punkte überblendet (Kanten bleiben).
+- Die Teilung folgt der Hälften-Regel.
+- Darüber kommt ein Netz mit fester Punktzahl und Falten für die Härte.
+- Die Rundung im Hüllkasten wird durch eine stetige ersetzt.
 
 ## 5. Recherche (13.10. morgens, 40 Quellen)
 

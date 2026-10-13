@@ -92,6 +92,12 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - Beine und körperweite Strukturen (Rückenschuppen, Fellsträhnen wie beim Retriever) sind ungeklärt.
   - Einstieg für die große Sitzung: `docs/plans/2026-10-13-grosse-sitzung-wesen-editor.md`. Behalten wird das Gerüst (Kurven, Navigation, Layout, Library, Dokument); die Bauwege in `packages/shape/src/versuch/` sind Wissen, kein fertiger Code.
 
+- **Nachtrag 13.10. morgens — Schnitt-Loft (Versuch):**
+  - Dritter 3D-Tab „schnitte“ (`apps/editor/src/schnitte/`, Kern `packages/shape/src/versuch/schnittLoft.ts`).
+  - Je Stelle wird der echte Schnitt aus allen Intervallen von Seite und Top berechnet. Teile, Löcher und Kerben bleiben erhalten.
+  - Seitenleiste: Regel „Hälften“ oder „gerade-ungerade“, Überblendung „Felder“ oder „Punkte“. Die Front zeigt den echten Schnitt des gewählten Spants gestrichelt.
+  - Grenzen und Messwerte: `docs/research/2026-10-13-schnitte-ueberhaenge.md`.
+
 ## Arbeitsweise
 
 - **Look-Beweis:** `node apps/editor/scripts/vergleich.mjs` (Web-Modus muss laufen) → `docs/progress/editor/vergleich-grundlayout.png` (Vorlage | Render). Render und Differenz liegen unter `apps/editor/test-results/vergleich/`.
