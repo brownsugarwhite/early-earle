@@ -15,6 +15,7 @@ import { zahnListe, zahnMeldungen } from '../maul/zahnKoerper';
 import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten/kantenKoerper';
 import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 import { schnittBauen } from '../schnitte/schnittKoerper';
+import { rundBauen } from '../rund/rundBau';
 
 declare global {
   interface Window {
@@ -67,6 +68,14 @@ export function Szene3D() {
         // sich die offene Haut im Maul-Bau an sie
         const pose = dRoh.posenProfile?.fressen?.seite;
         const d: Dokument = useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
+        if (!versuch && useUi.getState().bauweise === 'rund') {
+          // Versuch 13.10. nachmittags: Seite rund aufgeblasen, Breite aus Top und Front; Maul und Kanten fehlen hier noch
+          const rk = rundBauen(d, schnell);
+          const k = d.skalierung;
+          r.setzeLinien(null);
+          r.setzeFlaeche(k !== 1 ? rk.positionen.map((v) => v * k) : rk.positionen, rk.normalen, rk.indizes);
+          return;
+        }
         if (!versuch && useUi.getState().bauweise === 'schnitte') {
           // Versuch 13.10.: echte Schnitte (Schnauze über Bauch, Acht, Haken im Top); Maul und Kanten-Härte fehlen hier noch
           const sl = schnittBauen(d, schnell, useUi.getState().schnittRegel, useUi.getState().schnittUeberblenden);
@@ -144,7 +153,7 @@ export function Szene3D() {
             s.dok.posenProfile !== v.dok.posenProfile ||
             s.modus !== v.modus;
           const wirbel = useUi.getState().bauweise === 'wirbel';
-          const schnitte = useUi.getState().bauweise === 'schnitte';
+          const schnitte = useUi.getState().bauweise === 'schnitte' || useUi.getState().bauweise === 'rund';
           // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen (Schnitte ohne Maul)
           if (s.dok.maul && s.gesteStart && !schnitte) return;
           // Kanten-Käfig, Wirbelsäule und Schnitte: während einer Geste schnell (gröber), beim Loslassen genau

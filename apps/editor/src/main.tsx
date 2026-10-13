@@ -15,7 +15,7 @@ import { schnittVersuchLaden } from './schnitte/schnittVersuch';
 const versuch = versuchAktiv();
 if (versuch?.modus === 'tiger') void tigerLaden(versuch.zustand);
 else if (versuch && versuch.modus !== 'maul') useEditor.setState({ dok: versuchForm(useEditor.getState().dok, versuch.form) });
-// Versuch 13.10.: Prüfwesen der Bauweise „Schnitte“ (?versuch=schnitte&wesen=ueberhang|kugel|rex|…)
+// Versuch 13.10.: Prüfwesen der Bauweisen „Schnitte“ und „rund“ (?versuch=schnitte|rund&wesen=ueberhang|kugel|rex|…)
 void schnittVersuchLaden();
 
 // Zugriff für E2E-Tests und die Konsole (kein Einfluss auf die Bedienung)

@@ -1,6 +1,6 @@
-// Versuch 13.10.: Prüfwesen für die Bauweise „Schnitte“ laden.
-//   ?versuch=schnitte&wesen=ueberhang|kugel|rex|tiger|robbe|langhals
-//   &bauweise=bisher (zum Vergleichen), &regel=gerade-ungerade, &ueberblenden=punkte, &spanten=0 (Spanten weglassen)
+// Versuch 13.10.: Prüfwesen für die Bauweisen „Schnitte“ und „rund“ laden.
+//   ?versuch=schnitte|rund&wesen=ueberhang|kugel|rex|tiger|robbe|langhals
+//   &bauweise=bisher|wirbel|schnitte|rund (zum Vergleichen), &regel=gerade-ungerade, &ueberblenden=punkte, &spanten=0 (Spanten weglassen)
 // „ueberhang“ ist Florians Bogen vom 13.10. (Ente mit Schnauze über dem Bauch, Glocke, Top mit Haken, S1 als Acht),
 // nachgezogen als Dokument; die anderen sind die nachgezogenen Versuchswesen vom 12.10.
 
@@ -11,7 +11,8 @@ import { useUi } from '../state/uiStore';
 
 export async function schnittVersuchLaden(): Promise<void> {
   const q = new URLSearchParams(location.search);
-  if (q.get('versuch') !== 'schnitte') return;
+  const versuch = q.get('versuch');
+  if (versuch !== 'schnitte' && versuch !== 'rund') return;
   const wesen = q.get('wesen') ?? 'ueberhang';
   let dok: Dokument = neuesDokument('Kugel');
   if (wesen !== 'kugel') {
@@ -25,5 +26,6 @@ export async function schnittVersuchLaden(): Promise<void> {
   useEditor.getState().laden(dok, null);
   if (q.get('regel') === 'gerade-ungerade') useUi.getState().setzeSchnittRegel('gerade-ungerade');
   if (q.get('ueberblenden') === 'punkte') useUi.getState().setzeSchnittUeberblenden('punkte');
-  useUi.getState().setzeBauweise(q.get('bauweise') === 'bisher' ? 'bisher' : 'schnitte');
+  const b = q.get('bauweise');
+  useUi.getState().setzeBauweise(b === 'bisher' || b === 'wirbel' || b === 'schnitte' || b === 'rund' ? b : versuch);
 }

@@ -29,7 +29,9 @@ async function laden(page: Page, query: string) {
 
 /** Bauweise wählen und warten, bis das 3D neu gebaut ist (Zahl der Punkte ändert sich bzw. bleibt stehen). */
 async function bauweise(page: Page, wert: 'bisher' | 'schnitte') {
-  await page.click(`[data-view="creation"] [data-bauweise="${wert}"]`);
+  // seit 13.10. nachmittags: dritter Tab „rund“, der Schnitt-Loft ist dort ein Umschalter in der Seitenleiste
+  await page.click(`[data-view="creation"] [data-bauweise="${wert === 'schnitte' ? 'rund' : wert}"]`);
+  if (wert === 'schnitte') await page.click('.leiste [data-bauweisewahl="schnitte"]');
   await expect(label(page)).toHaveText(wert === 'schnitte' ? 'Versuch: Schnitte' : /Versuch: Kanten im Käfig|Platzhalter-Körper/);
   await page.waitForTimeout(900);
 }

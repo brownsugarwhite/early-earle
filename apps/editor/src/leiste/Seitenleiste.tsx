@@ -20,6 +20,7 @@ import { Ornament } from './Ornament';
 import { WIRBEL_FARBEN, wirbelVorschlagUebernehmen } from '../wirbel/WirbelEbene';
 import { useWirbelAnzeige } from '../wirbel/wirbelKoerper';
 import { schnittEcht, useSchnittAnzeige } from '../schnitte/schnittKoerper';
+import { RundBereich } from '../rund/RundBereich';
 
 const FAECHER = ['Wesen', 'Augen', 'Flügel', 'Mäuler', 'Beine', 'Schwänze', 'Ohren', 'Muster'] as const;
 type Fach = (typeof FAECHER)[number];
@@ -732,6 +733,7 @@ export function Seitenleiste() {
       <div className="leiste-glas glas">
         <div className="leiste-inhalt">
           {bauweise === 'wirbel' && <WirbelBereich />}
+          {(bauweise === 'rund' || bauweise === 'schnitte') && <RundBereich />}
           {bauweise === 'schnitte' && <SchnittBereich />}
           {ebene === 'form' && modus === 'fressen' && <PoseBereich />}
           {ebene === 'form' && (

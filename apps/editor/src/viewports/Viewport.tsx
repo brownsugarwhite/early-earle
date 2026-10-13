@@ -50,13 +50,17 @@ function Titel({ id }: { id: ViewId }) {
           [
             ['bisher', VIEW_TEXTE.creation.titel],
             ['wirbel', 'wirbelsäule'],
-            ['schnitte', 'schnitte'],
+            ['rund', 'rund'],
           ] as const
-        ).map(([wert, text]) => (
-          <button key={wert} role="tab" aria-selected={bauweise === wert} className={bauweise === wert ? 'aktiv' : ''} data-bauweise={wert} tabIndex={-1} onClick={() => useUi.getState().setzeBauweise(wert)}>
-            {text}
-          </button>
-        ))}
+        ).map(([wert, text]) => {
+          // Versuch 13.10. nachmittags: Der dritte Tab ist „rund“; der Schnitt-Loft vom Vormittag ist dort ein Umschalter in der Leiste
+          const aktiv = bauweise === wert || (wert === 'rund' && bauweise === 'schnitte');
+          return (
+            <button key={wert} role="tab" aria-selected={aktiv} className={aktiv ? 'aktiv' : ''} data-bauweise={wert} tabIndex={-1} onClick={() => useUi.getState().setzeBauweise(wert)}>
+              {text}
+            </button>
+          );
+        })}
       </div>
     );
   }
@@ -111,7 +115,9 @@ export function ViewportOber({ id }: { id: ViewId }) {
         {rechts && <div className="vp-label rechts">{rechts}</div>}
         {id === 'creation' && (
           <div className="vp-label links platzhalter">
-            {bauweise === 'schnitte' && !versuchAktiv()
+            {bauweise === 'rund' && !versuchAktiv()
+              ? 'Versuch: rund'
+              : bauweise === 'schnitte' && !versuchAktiv()
               ? 'Versuch: Schnitte'
               : versuchAktiv()?.modus === 'wirbel' || (bauweise === 'wirbel' && !versuchAktiv())
               ? 'Versuch: Wirbelsäule'
