@@ -24,5 +24,23 @@ for (const wesen of wesenListe) {
     if (bauweise === 'kern') console.log(`${wesen}: ${text}`);
   }
 }
+// Beweis 2: Maul vorn/unten/hals, zu und auf, Earle-Look und Käfig (Röntgen), nur wenn MAUL gesetzt ist
+if (process.env.MAUL) {
+  const faelle = process.env.MAUL === '1' ? [['rex', 'vorn'], ['rex', 'unten'], ['langhals', 'hals'], ['kugel', 'vorn']] : process.env.MAUL.split(',').map((f) => f.split(':'));
+  for (const [wesen, art] of faelle) {
+    for (const [zustand, oeffnung] of [['zu', 0], ['halb', 0.5], ['auf', 1]]) {
+      for (const kaefig of [0, 1]) {
+        const palette = wesen === 'rex' ? 'rex' : wesen === 'kugel' ? 'blob' : wesen === 'langhals' ? 'giraffe' : 'tiger';
+        await page.goto(`${url}/?versuch=kern&wesen=${wesen}&bauweise=kern&look=earle&palette=${palette}&maul=${art}&oeffnung=${oeffnung}&kaefig=${kaefig}`);
+        await page.waitForFunction(() => window.__editor && window.__editor.vertices() > 0, null, { timeout: 60_000 });
+        await page.evaluate(() => document.fonts.ready);
+        await page.waitForTimeout(1800);
+        const r = await page.evaluate(() => window.__stores.rahmen.getState().rects.creation);
+        await page.screenshot({ path: path.join(aus, `kern-maul-${wesen}-${art}-${zustand}${kaefig ? '-kaefig' : ''}.png`), clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
+        if (!kaefig) console.log(`${wesen} ${art} ${zustand}: ${await page.evaluate(() => document.querySelector('[data-bereich="kern"] dl')?.textContent ?? '')}`);
+      }
+    }
+  }
+}
 console.log(`geschrieben: ${aus}/kern-*.png`);
 await browser.close();

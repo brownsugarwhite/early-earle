@@ -767,9 +767,31 @@ function KernBereich() {
   const info = useKernAnzeige((s) => s.info);
   const look = useKernAnzeige((s) => s.look);
   const palette = useKernAnzeige((s) => s.palette);
+  const maul = useKernAnzeige((s) => s.maul);
+  const kaefig = useKernAnzeige((s) => s.kaefig);
+  const oeffnung = useUi((s) => s.oeffnung);
   return (
     <section className="bereich" data-bereich="kern">
-      <h3>Kern (Beweis 1 und 4)</h3>
+      <h3>Kern (Beweis 1, 2 und 4)</h3>
+      <div className="feld">
+        <span>Maul (Beweis 2)</span>
+        <b>{maul === 'aus' ? 'aus' : maul}</b>
+      </div>
+      <div className="umschalter stufen" role="radiogroup" aria-label="Maul">
+        {(['aus', 'vorn', 'unten', 'hals'] as const).map((m) => (
+          <button key={m} className={maul === m ? 'chip aktiv' : 'chip'} data-maul={m} onClick={() => useKernAnzeige.getState().setzeMaul(m)}>
+            {m}
+          </button>
+        ))}
+      </div>
+      {maul !== 'aus' && <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />}
+      <div className="umschalter stufen" role="radiogroup" aria-label="Käfig">
+        {([false, true] as const).map((k) => (
+          <button key={String(k)} className={kaefig === k ? 'chip aktiv' : 'chip'} data-kaefig={String(k)} onClick={() => useKernAnzeige.getState().setzeKaefig(k)}>
+            {k ? 'Käfig zeigen' : 'Käfig aus'}
+          </button>
+        ))}
+      </div>
       <div className="feld">
         <span>Look</span>
         <b>{look === 'earle' ? 'Earle-Material (Beweis 4)' : 'Matcap'}</b>

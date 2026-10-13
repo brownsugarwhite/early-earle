@@ -6,15 +6,17 @@
 
 import { anwenden1 } from '../subdivision/matrix';
 import type { Ableitung } from './ableiten';
+import type { MaulErgebnis } from './maul';
 
 export const DESKRIPTOR_FLOATS = 16;
 
 /** 16 Floats je feinem Punkt (Reihenfolge wie `CreatureMesh`). */
-export function deskriptoren(abl: Ableitung): Float32Array {
+export function deskriptoren(abl: Ableitung | MaulErgebnis): Float32Array {
   const v = abl.vorlage;
   const { R, N, c } = v;
-  const n = v.kaefig.n;
+  const n = abl.kaefig.n;
   const z = abl.ziele;
+  const maul = (abl as Partial<MaulErgebnis>).maul ?? null;
   // Ringmitten und Umfänge aus den Zielen
   const mitte: [number, number, number][] = [];
   const umfang: number[] = [];
@@ -74,7 +76,32 @@ export function deskriptoren(abl: Ableitung): Float32Array {
       }
     }
   }
+  // Maul: neue Punkte (untere Lippenkopien, Tasche, Rachen) erben die Wirbelsäulen-Werte ihrer Herkunft; Regionen am Käfig
+  const kRachen = new Float64Array(n);
+  const kAbstand = new Float64Array(n).fill(10);
+  const kKante = new Float64Array(n);
+  const kUnten = new Float64Array(n);
+  if (maul) {
+    for (let i = v.kaefig.n; i < n; i++) {
+      const q = maul.quelle[i]!;
+      kS[i] = kS[q]!;
+      kC[i] = kC[q]!;
+      kSi[i] = kSi[q]!;
+      kU[i] = kU[q]!;
+    }
+    for (let i = 0; i < n; i++) {
+      const a = maul.art[i]!;
+      kRachen[i] = a === 3 || a === 4 || a === 5 || (a === 6 && maul.tiefe[i]! > 0) ? 0.5 + 0.5 * maul.tiefe[i]! : 0;
+      kAbstand[i] = a === 0 ? maul.lippenAbstand[i]! / maul.hoehe : 0;
+      kKante[i] = a === 1 || a === 2 ? 1 : 0;
+      kUnten[i] = maul.untenSeite[i]!;
+    }
+  }
   const g = abl.unterteilung.grenze;
+  const fRachen = maul ? anwenden1(g, kRachen) : null;
+  const fAbstand = maul ? anwenden1(g, kAbstand) : null;
+  const fKante = maul ? anwenden1(g, kKante) : null;
+  const fUnten = maul ? anwenden1(g, kUnten) : null;
   const fS = anwenden1(g, kS);
   const fC = anwenden1(g, kC);
   const fSi = anwenden1(g, kSi);
@@ -88,14 +115,14 @@ export function deskriptoren(abl: Ableitung): Float32Array {
     out[o + 1] = th;
     out[o + 2] = Math.max(1e-4, fU[i]!);
     out[o + 3] = Math.cos(th);
-    out[o + 4] = 0; // Rachen
-    out[o + 5] = 10; // Abstand zur Maulkante: weit weg (kein Maul)
+    out[o + 4] = fRachen ? fRachen[i]! : 0; // Rachen (0,5 Lippe … 1 Rachenwand)
+    out[o + 5] = fAbstand ? fAbstand[i]! : 10; // Abstand zur Maulkante (Anteil der Höhe); weit weg ohne Maul
     out[o + 6] = 0; // Gesichtsmaske
-    out[o + 7] = 0; // Höhle/Kante
+    out[o + 7] = fKante ? fKante[i]! : 0; // Höhle/Kante
     out[o + 8] = 0; // AO
     out[o + 9] = 0; // Dicke
-    out[o + 10] = 0; // Kante
-    out[o + 11] = 0; // Unterlippenseite
+    out[o + 10] = fKante ? fKante[i]! : 0; // Kante (Facettennormale an der Lippe)
+    out[o + 11] = fUnten ? fUnten[i]! : 0; // Unterlippenseite
     out[o + 12] = 0;
     out[o + 13] = 0;
     out[o + 14] = 0;

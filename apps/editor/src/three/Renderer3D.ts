@@ -228,7 +228,7 @@ export class Renderer3D {
    * Beweis 4: Earle-Wesen aus Dreiecken (ohne Index) mit 16 Deskriptor-Floats je Ecke (eeSpine, eeRegion, eeExtra,
    * eePucker, eeTeil, Reihenfolge wie `CreatureMesh`), Körperhöhe und gemalten Schlitzaugen.
    */
-  setzeWesen(positionen: Float32Array, normalen: Float32Array, deskriptoren: Float32Array, hoehe: number, augen: Auge[]) {
+  setzeWesen(positionen: Float32Array, normalen: Float32Array, deskriptoren: Float32Array, hoehe: number, augen: Auge[], lippenBand = 0) {
     const g = new BufferGeometry();
     g.setAttribute('position', new BufferAttribute(positionen, 3));
     g.setAttribute('normal', new BufferAttribute(normalen, 3));
@@ -242,6 +242,7 @@ export class Renderer3D {
     const u = this.wesenUniforms;
     u.bodyScale.value = Math.max(1e-3, hoehe);
     u.zonen.hoehe.value = Math.max(1e-3, hoehe);
+    u.lippenBand.value = lippenBand;
     u.eyeCount.value = Math.min(4, augen.length);
     augen.slice(0, 4).forEach((a, i) => {
       const n = new Vector3(...a.normale).normalize();

@@ -2,11 +2,11 @@
 
 > Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**: Wo stehen wir, was ist offen, was ist der nächste Schritt. Historie in Git.
 
-**Stand:** 2026-10-13 nachts, nach Florians „Fixe die Punkte aus offen und ehrlich und dann weiter“ (er ist unterwegs). Der **Plan „Wesen-Editor 2“** ist freigegeben: [`docs/plans/2026-10-13-wesen-editor-2.md`](plans/2026-10-13-wesen-editor-2.md). **Beweis 1 (Kern-Tempo und Treue) ist bestanden**, die offenen Punkte sind nachgearbeitet: [`docs/research/2026-10-13-beweis1-kern.md`](research/2026-10-13-beweis1-kern.md) (Nachtrag am Ende). Editor-Tab „kern“ (`?versuch=kern&wesen=kugel|rex|langhals|ueberhang`, `&look=earle&palette=…`), Bilder `docs/progress/editor/kern-*.png`.
+**Stand:** 2026-10-13 nachts, nach Florians „Fixe die Punkte aus offen und ehrlich und dann weiter“ (er ist unterwegs). Der **Plan „Wesen-Editor 2“** ist freigegeben: [`docs/plans/2026-10-13-wesen-editor-2.md`](plans/2026-10-13-wesen-editor-2.md). **Beweis 1 (Kern) bestanden** ([`docs/research/2026-10-13-beweis1-kern.md`](research/2026-10-13-beweis1-kern.md), Nachtrag am Ende). **Beweis 2 (Maul mit Haps) gebaut und zur Hälfte bestanden:** [`docs/research/2026-10-13-beweis2-maul.md`](research/2026-10-13-beweis2-maul.md). Editor-Tab „kern“ (`?versuch=kern&wesen=kugel|rex|langhals|ueberhang|tiger`, `&look=earle&palette=…`, `&maul=vorn|unten|hals&oeffnung=0…1&kaefig=1`), Bilder `docs/progress/editor/kern-*.png` und `kern-maul-*.png`.
 
-**Zahlen (Seite, px bei 461 px je Kachel):** Kugel 0,28 · Rex 0,33 (Ziel ≤ 0,5 ✓, Spitzen-Kappe) · Langhals 0,97 (Ringe nach Krümmung) · Ente 1,21 · Kasten-Kugel: Front 0,7 px und Längsfalten mit 93° Knick aus den Front-Ecken · Zugschritt ≈ 3 ms · Ableitung ≈ 90–140 ms. Breite nach der Projektionsregel (Top bei x, Front bei jeder Höhe, Poisson entfällt), Querschnitte aus Front-Lappen bzw. Spanten. **Beweis 4 begonnen:** Earle-Material live auf dem Kern-Netz (Paletten, Zonen, Schlitzaugen mit Blinzeln); Tiger-Kopf-Vergleich steht aus.
+**Beweis 2 in Zahlen:** Maul als Kantenpfad im selben Käfig (Schleife einrasten je Ring, Schlitz, Tasche mit Vorhang, nur Vierecke plus zwei Dreiecke, Käfig geschlossen), Kiefer als Käfig-Pose (≈ 3 ms), Umbau 140 ms (≤ 200 ✓), Lippe ≤ 1,3 px, Bohne mit hellem Lippenband und maroon Rachen (`kern-maul-rex-vorn-auf.png`). Kugel: 0 Durchdringungen bei 0/25/50/75/100 % ✓. Rex vorn: offen nur 10 Paare am scharfen Apex, geschlossen 120 (Blätter kreuzen sich hinter der dünnen Schnauze). Rex unten 368, Langhals bis zum Hals 2538: nicht erfüllt (Rachenlinie am Hinterkopf, Kehlkette fehlen). Rückfall aus Plan 13 nicht nötig; die Fehler sind örtlich.
 
-**Ehrlich offen:** Widersprüche zwischen Front und Top entscheidet der Kern still für die kleinere Breite (Rex Front 11 px, Langhals Top 16 px daneben; die Vorlagen sind so gezeichnet) und zeigt es nicht an (Saum/Δ nach Plan 9.8, Reifen). Überhang-Ente als Form nur mit Teilen. Hals-Übergang (liegender Rumpf gegen stehenden Hals) ohne Überblendung. Reifen nur über das Dokumentfeld `spanten`, kein Griff im 3D. Kein Worker, dichte LU.
+**Ehrlich offen:** Beweis 1: Front/Top-Widersprüche entscheidet der Kern still für die kleinere Breite (Rex Front 11 px, Langhals Top 16 px), Ente als Form nur mit Teilen, Hals-Übergang ohne Überblendung, Reifen kein 3D-Griff, kein Worker, dichte LU. Beweis 2: Apex-Regel (Lippe unter der Spitze), Loop-Cut neben der Lippe, Rachenlinie als Griff, Kehl-/Nackenkette, Zähne, Zunge, Kiefer getrennt, Zug am Seitenumriss mit Maul (heute Umbau).
 
 **Kern des Plans (Kurzfassung in Abschnitt 0 des Plans):**
 - Ein **Subdivision-Käfig** (Spiegelung, halbscharfe Falten) ist die einzige Wahrheit je Wesen. Florians Kurven (Seitenumriss, Spanten als Reifen, Kantenlinien, Wirbelsäule, Maullinie) sind **Griffe** auf diesem Körper; einmal ableiten, dann nur noch bearbeiten.
@@ -17,7 +17,7 @@
 
 **Nächster Schritt: Phase 0 fortsetzen** (Plan 11.1):
 1. ~~Kern-Tempo und Treue~~ bestanden. Rest: Überhang als Teil (→ 3), Reifen als Griffe, Hals-Übergang, Worker, dünn besetzte Zerlegung.
-2. **Maul mit Haps** (vorn, unten, Hals; Längsschleife einrasten, Schlitz, Tasche, Kiefer, 0 Durchdringungen, Bohne, Umbau ≤ 200 ms; Vergleich `rex_mouth_detail`). **Jetzt dran.**
+2. ~~Maul mit Haps~~ zur Hälfte: Kugel ✓, Rex vorn offen ✓ (Apex), geschlossen/unten/Hals ✗. **Florians Blick auf den Rex-Haps und die Rille, dann Apex-Regel, Loop-Cut neben der Lippe, Rachenlinie als Griff, Zähne.**
 3. Teil nahtlos (Rex-Säulenbein verschmolzen und angesteckt, ±35°).
 4. ~~Look live~~ Material läuft; fehlt: Zonen-Atlas, Zahnverlauf, Vergleichsbild Tiger-Kopf (Kastenschnauze über Spanten).
 5. Feuer, Gas, Fell-Blob (Stufe 7 des Bogens, Standbild und 3-s-Schleife).
@@ -31,7 +31,7 @@ Scheitert 1 oder 2, wird nicht breit gebaut (Rückfälle in Plan 13).
 | **Plan** | freigegeben; Bestandsaufnahmen (Code, Look, Recherchen, Spiel-Pipeline) und UI-Entwurf sind eingearbeitet |
 | **Editor-Gerüst** | bleibt: Layout mit Federn, `ansicht2d`, Blender-Navigation, `Renderer3D` (jetzt mit Earle-Material und `@ee/render`), Electron, Bibliothek, Undo, Tastatur, E2E-Muster |
 | **Bauwege** (`packages/shape/src/versuch/`, Editor-Tabs creation/wirbelsäule/schnitte/rund) | Versuche, Wissen; werden nach dem Entscheidungstest entfernt. Vorher herauslösen: Poisson/CDT (`aufblasen.ts`, `dreiecke2d.ts`), `vereinigeNetze`, Surface Nets/Taubin/Felzenszwalb (`schnittLoft.ts`), `strahlRaster`, Kiefer-Mathe (`kiefer.ts`), Zahnmodell (`zaehne.ts`), Prüfstand (`umriss3d.ts`, `pruefen.ts`, Vorlagen) |
-| **Kern (neu)** | `packages/shape/src/{kaefig,subdivision,loeser,kern}/` (`@ee/shape/kern`): Halbkanten-Käfig, Catmull-Clark als Matrix mit Falten (Orakel-gleich), Grenzflächen-Maske, LU-Löser mit Ausgleich, Röhre mit Kappen, Ableitung aus Seitenumriss + Silhouettenbreiten + Querschnitten (Front-Lappen/Spanten, Längsfalten), Griff Seitenumriss, Deskriptoren fürs Material; Tests `beweis1`, `varianten`, `diagnose`, `querschnitt` |
+| **Kern (neu)** | `packages/shape/src/{kaefig,subdivision,loeser,kern}/` (`@ee/shape/kern`): Halbkanten-Käfig, Catmull-Clark als Matrix mit Falten (Orakel-gleich), Grenzflächen-Maske, LU-Löser mit Ausgleich und Laplace-Glättung, Röhre mit Kappen, Ableitung aus Seitenumriss + Silhouettenbreiten + Querschnitten (Front-Lappen/Spanten, Längsfalten, Umparametrisierung je Schleife), Griff Seitenumriss, **Maul** (`kern/maul.ts`: Pfad, Schlitz, Tasche, Vorhang, Kiefer-Pose), Deskriptoren fürs Material; Tests `beweis1`, `beweis2`, `varianten`, `diagnose`, `querschnitt`, `maul.diag` |
 | **Look** | `creature2` im Editor-Tab „kern“ eingebunden (`apps/editor/src/three/wesenLook.ts`, `Renderer3D.setzeWesen`); fehlen Zonen-Atlas, Feuer, Gas, Fell-Klingen, Augen-Zustände X/Sichel/Spirale |
 | **Spiel** | Brett zeichnet Prototyp-Körper; kein Editor-Wesen, keine Morph-Ziele; Weg in Plan 10 |
 
@@ -41,4 +41,4 @@ Zum Branch: `claude/editor-grundlayout`, gepusht. Nicht von uns: `assets/fonts/H
 
 - `pnpm typecheck`, `pnpm test`, `pnpm lint` (Kern allein: `npx vitest run src/kern --reporter=verbose --silent=false` in `packages/shape`)
 - E2E mit echter GPU: `E2E_PORT=5191 EE_GPU=1 pnpm --filter @ee/editor e2e`
-- Editor: `pnpm editor`, Web-Modus `editor-web` (Port 5180); Bilder: Web-Modus auf 5192 starten, `EDITOR_URL=http://localhost:5192 node apps/editor/scripts/kern-bilder.mjs`
+- Editor: `pnpm editor`, Web-Modus `editor-web` (Port 5180); Bilder: Web-Modus auf 5192 starten, `MAUL=1 EDITOR_URL=http://localhost:5192 node apps/editor/scripts/kern-bilder.mjs` (ohne `MAUL` nur die Körper)

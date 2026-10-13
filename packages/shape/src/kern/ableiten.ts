@@ -45,9 +45,11 @@ export type AbleitOptionen = {
   kruemmung: number;
   /** Querschnitt-Form aus Front und Spanten (sonst die runde Form des Poisson-Körpers) */
   querschnitt: boolean;
+  /** Laplace-Glattheit der Käfiglagen im Ausgleich (0 = aus); dämpft Wellen neben scharfen Falten */
+  glaettung: number;
 };
 
-export const ABLEIT_STANDARD: AbleitOptionen = { ringe: 24, ring: 16, stufen: 3, kappe: 0.05, nahtGewicht: 16, eckenSchaerfe: 1e6, kappeSpitze: 0.025, spitzenFalte: false, kruemmung: 2, querschnitt: true };
+export const ABLEIT_STANDARD: AbleitOptionen = { ringe: 24, ring: 16, stufen: 3, kappe: 0.05, nahtGewicht: 16, eckenSchaerfe: 1e6, kappeSpitze: 0.025, spitzenFalte: false, kruemmung: 2, querschnitt: true, glaettung: 0 };
 
 /** Station einer Sprosse: Anteile a (Rücken) und b (Bauch) entlang der Linien. */
 export type Station = { a: number; b: number };
@@ -94,7 +96,7 @@ export function zugBei(zug: readonly V2[], t: number): V2 {
 }
 
 /** Sprossen der Leiter nach Bogenlänge der Wirbelsäule (Mitten) → Stationen bei Anteil f. */
-function stationenAusLeiter(l: Leiter, anteile: readonly number[]): Station[] {
+export function stationenAusLeiter(l: Leiter, anteile: readonly number[]): Station[] {
   const mitten = l.paare.map((p) => {
     const o = zugBei(l.ruecken, p.a);
     const u = zugBei(l.bauch, p.b);
@@ -505,16 +507,7 @@ function lappenQuerschnitt(dok: Dokument, yLoRoh: number, yHiRoh: number, N: num
     for (let i = grenzen[g]!; i < grenzen[g + 1]!; i++) L += Math.hypot(drin[i + 1]!.p.x - drin[i]!.p.x, drin[i + 1]!.p.y - drin[i]!.p.y);
     laengen.push(L);
   }
-  const summe = laengen.reduce((a, b) => a + b, 0) || 1;
-  const anteile = laengen.map((L) => Math.max(1, Math.round((h * L) / summe)));
-  let diff = anteile.reduce((a, b) => a + b, 0) - h;
-  while (diff !== 0) {
-    let wahl = 0;
-    for (let g = 1; g < anteile.length; g++) if (diff > 0 ? anteile[g]! > anteile[wahl]! : anteile[g]! < anteile[wahl]!) wahl = g;
-    if (diff > 0 && anteile[wahl]! <= 1) break;
-    anteile[wahl]! += diff > 0 ? -1 : 1;
-    diff += diff > 0 ? -1 : 1;
-  }
+  const anteile = anteileVerteilen(laengen, h);
   const v: number[] = [];
   const w: number[] = [];
   const haerte: number[] = [];
@@ -560,8 +553,146 @@ function lappenQuerschnitt(dok: Dokument, yLoRoh: number, yHiRoh: number, N: num
   return { v, w, haerte, knoten };
 }
 
+
+/** Verteilt h Intervalle auf Teilstücke nach Länge, mindestens eines je Teilstück (solange h reicht). */
+export function anteileVerteilen(laengen: readonly number[], h: number): number[] {
+  const summe = laengen.reduce((a, b) => a + b, 0) || 1;
+  const anteile = laengen.map((L) => Math.max(1, Math.round((h * L) / summe)));
+  let diff = anteile.reduce((a, b) => a + b, 0) - h;
+  while (diff !== 0) {
+    let wahl = 0;
+    for (let g = 1; g < anteile.length; g++) if (diff > 0 ? anteile[g]! > anteile[wahl]! : anteile[g]! < anteile[wahl]!) wahl = g;
+    if (diff > 0 && anteile[wahl]! <= 1) break;
+    anteile[wahl]! += diff > 0 ? -1 : 1;
+    diff += diff > 0 ? -1 : 1;
+  }
+  return anteile;
+}
+
+type Stuetze = { v: number; w: number; haerte: number; lippe: boolean };
+
+/**
+ * Querschnitt-Vorlage neu abtasten mit hOut Intervallen; Ecken bleiben auf Stützstellen. Mit `lippe` liegt die
+ * Stützstelle `lippe.index` genau auf der Höhe `lippe.v` (erster Schnitt der Vorlage von oben), die übrigen verteilen
+ * sich nach Bogenlänge ober- und unterhalb („Schleife einrasten“, Plan 4.2).
+ */
+export function umparametrisieren(q: Querschnitt, hOut: number, lippe?: { index: number; v: number }): Querschnitt {
+  const haerteVon = new Map<number, number>();
+  q.knoten.forEach((j, kn) => haerteVon.set(j, q.haerte[kn] ?? 1));
+  const pts: Stuetze[] = q.v.map((v, i) => ({ v, w: q.w[i]!, haerte: haerteVon.get(i) ?? 0, lippe: false }));
+  let pivot = -1;
+  if (lippe) {
+    const vMax = pts[0]!.v;
+    const vMin = pts[pts.length - 1]!.v;
+    const vL = Math.min(vMax - 0.02 * (vMax - vMin), Math.max(vMin + 0.02 * (vMax - vMin), lippe.v));
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i]!;
+      const b = pts[i + 1]!;
+      if (a.v >= vL && vL >= b.v && a.v > b.v) {
+        const t = (a.v - vL) / (a.v - b.v);
+        if (t < 1e-6) {
+          a.lippe = true;
+          pivot = i;
+        } else if (t > 1 - 1e-6) {
+          b.lippe = true;
+          pivot = i + 1;
+        } else {
+          pts.splice(i + 1, 0, { v: vL, w: a.w + (b.w - a.w) * t, haerte: 0, lippe: true });
+          pivot = i + 1;
+        }
+        break;
+      }
+    }
+    if (pivot < 0) {
+      pivot = Math.round(pts.length / 2);
+      pts[pivot]!.lippe = true;
+    }
+  }
+  const laengeBis = (i0: number, i1: number) => {
+    let L = 0;
+    for (let i = i0; i < i1; i++) L += Math.hypot(pts[i + 1]!.w - pts[i]!.w, pts[i + 1]!.v - pts[i]!.v);
+    return L;
+  };
+  // Teilstücke zwischen Ecken (und der Lippe); je Gruppe (über/unter der Lippe) feste Intervallzahl
+  const gruppen: { start: number; ende: number; h: number }[] = pivot >= 0 ? [{ start: 0, ende: pivot, h: lippe!.index }, { start: pivot, ende: pts.length - 1, h: hOut - lippe!.index }] : [{ start: 0, ende: pts.length - 1, h: hOut }];
+  const v: number[] = [];
+  const w: number[] = [];
+  const haerte: number[] = [];
+  const knoten: number[] = [];
+  const push = (p: { v: number; w: number }) => {
+    v.push(p.v);
+    w.push(p.w);
+  };
+  push(pts[0]!);
+  for (const g of gruppen) {
+    if (g.ende <= g.start) continue;
+    let grenzen = [g.start];
+    for (let i = g.start + 1; i < g.ende; i++) if (pts[i]!.haerte > 0) grenzen.push(i);
+    grenzen.push(g.ende);
+    // zu viele Ecken für die Intervalle: die kürzesten Teilstücke verschmelzen (Ecke fällt weg)
+    while (grenzen.length - 1 > Math.max(1, g.h)) {
+      let kurz = 1;
+      let kurzL = Infinity;
+      for (let t = 1; t + 1 < grenzen.length; t++) {
+        const L = laengeBis(grenzen[t - 1]!, grenzen[t]!) + laengeBis(grenzen[t]!, grenzen[t + 1]!);
+        if (L < kurzL) {
+          kurzL = L;
+          kurz = t;
+        }
+      }
+      grenzen = grenzen.filter((_, t) => t !== kurz);
+    }
+    const laengen: number[] = [];
+    for (let t = 0; t + 1 < grenzen.length; t++) laengen.push(laengeBis(grenzen[t]!, grenzen[t + 1]!));
+    const anteile = anteileVerteilen(laengen, Math.max(1, g.h));
+    for (let t = 0; t + 1 < grenzen.length; t++) {
+      const i0 = grenzen[t]!;
+      const i1 = grenzen[t + 1]!;
+      const m = anteile[t]!;
+      const cum = [0];
+      for (let i = i0; i < i1; i++) cum.push(cum[cum.length - 1]! + Math.hypot(pts[i + 1]!.w - pts[i]!.w, pts[i + 1]!.v - pts[i]!.v));
+      const L = cum[cum.length - 1]! || 1;
+      for (let s = 1; s <= m; s++) {
+        const ziel = (L * s) / m;
+        let i = 0;
+        while (i < cum.length - 2 && cum[i + 1]! < ziel) i++;
+        const d = cum[i + 1]! - cum[i]!;
+        const f = d > 1e-15 ? (ziel - cum[i]!) / d : 0;
+        const a = pts[i0 + i]!;
+        const b = pts[i0 + i + 1]!;
+        push({ v: a.v + (b.v - a.v) * f, w: a.w + (b.w - a.w) * f });
+      }
+      if (t + 1 < grenzen.length - 1 && pts[i1]!.haerte > 0) {
+        knoten.push(v.length - 1);
+        haerte.push(pts[i1]!.haerte);
+      }
+    }
+    // Gruppengrenze = Lippe: keine Ecke
+  }
+  // Sicherung der Länge (Rundung): auf hOut + 1 Stützstellen bringen
+  while (v.length > hOut + 1) {
+    v.splice(v.length - 2, 1);
+    w.splice(w.length - 2, 1);
+  }
+  while (v.length < hOut + 1) {
+    v.splice(v.length - 1, 0, v[v.length - 2]!);
+    w.splice(w.length - 1, 0, w[w.length - 2]!);
+  }
+  return { v, w, haerte, knoten };
+}
+
+/**
+ * Quadratring r der Kappe (1 … c/2 − 1): Umlauf der rechten Hälfte von oben (Naht) über die Ecke rechts zur Naht unten,
+ * Index m = 0 … 4r → Gitterstelle (a, b). Für r = c/2 entspricht m dem Ringindex j von Ring 0.
+ */
+export function quadratRing(c: number, r: number, m: number): [number, number] {
+  if (m <= r) return [c / 2 + m, c / 2 + r];
+  if (m <= 3 * r) return [c / 2 + r, c / 2 + 2 * r - m];
+  return [c / 2 + 4 * r - m, c / 2 - r];
+}
+
 /** Sprosse (Rückenpunkt o, Bauchpunkt u) einer Station. */
-type Sprosse = { o: V2; u: V2 };
+export type Sprosse = { o: V2; u: V2 };
 
 /**
  * Querschnitte je Ring und Kappenpunkt-Stufe aus den Sprossen: Ringe werden in Abschnitte gruppiert, liegend (Sprosse
@@ -595,7 +726,7 @@ export function querschnitteFuer(sprossen: readonly Sprosse[], dok: Dokument | n
   return out;
 }
 
-function sprossenVon(l: Leiter, st: readonly Station[]): Sprosse[] {
+export function sprossenVon(l: Leiter, st: readonly Station[]): Sprosse[] {
   return st.map((s) => ({ o: zugBei(l.ruecken, s.a), u: zugBei(l.bauch, s.b) }));
 }
 
@@ -604,7 +735,10 @@ function sprossenVon(l: Leiter, st: readonly Station[]): Sprosse[] {
  * der Höhe v auf seiner Sprosse und seitlich bei w · Maßstab; Maßstab = größter, der ins Top (bei x) und in die Front
  * (bei jeder Höhe) passt. Liefert auch die Höhe je Käfigpunkt (für Züge).
  */
-export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen): { ziele: Float64Array; hoehe: Float64Array } {
+/** Lage eines Maulschlitzes für die Umparametrisierung: Kappenzeile bL, Längsschleife jL, Winkelring k, Lippenhöhe je Ring und je Quadratring der vorderen Kappe (NaN = ohne). */
+export type SchlitzLage = { bL: number; jL: number; k: number; vRing: Float64Array; vKappe: Float64Array };
+
+export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array } {
   const { R, N, c } = v;
   const ziele = new Float64Array(3 * v.kaefig.n);
   const hoehe = new Float64Array(v.kaefig.n);
@@ -620,7 +754,7 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
   const masstab = (sp: Sprosse, q: Querschnitt) => {
     let W = breiten.top((sp.o.x + sp.u.x) / 2);
     if (!(W > 0)) W = breiten.topMax;
-    for (let j = 1; j < N / 2; j++) {
+    for (let j = 1; j + 1 < q.v.length; j++) {
       const wj = q.w[j]!;
       if (wj < 0.25) continue;
       const y = sp.u.y + (sp.o.y - sp.u.y) * q.v[j]!;
@@ -639,7 +773,8 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
   };
   for (let i = 0; i < R; i++) {
     const sp = ringSprossen[i]!;
-    const q = ringQ[i]!;
+    let q = ringQ[i]!;
+    if (schlitz && i <= schlitz.k && Number.isFinite(schlitz.vRing[i]!)) q = umparametrisieren(q, N / 2, { index: schlitz.jL, v: schlitz.vRing[i]! });
     const W = masstab(sp, q);
     for (let j = 0; j <= N / 2; j++) {
       const [x, y, z, hv] = punkt(sp, q, W, j);
@@ -651,25 +786,32 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     const stK = st.kappen[seite];
     const spitze = seite === 'vorn' ? l.ruecken[0]! : l.ruecken[l.ruecken.length - 1]!;
     const sprossen = sprossenVon(l, stK);
-    // Kappenpunkte nehmen den Querschnitt des angrenzenden Rings
-    const q = ringQ[seite === 'vorn' ? 0 : R - 1]!;
-    for (let a = 1; a < c; a++) {
-      for (let b = 1; b < c; b++) {
-        const p = v.kappe(seite, a, b);
-        const u = a - c / 2;
-        const w = b - c / 2;
-        const r = Math.max(Math.abs(u), Math.abs(w));
-        if (r === 0) {
-          setze(p, spitze.x, spitze.y, 0, 0.5);
-          continue;
+    // Kappenpunkte: je Quadratring r (um die Spitze) der Querschnitt des angrenzenden Rings, auf 4r Intervalle
+    // abgetastet; mit Schlitz liegt der Lippenpunkt der Kappenzeile bL auf seiner Höhe
+    const q0 = ringQ[seite === 'vorn' ? 0 : R - 1]!;
+    setze(v.kappe(seite, c / 2, c / 2), spitze.x, spitze.y, 0, 0.5);
+    for (let r = 1; r < c / 2; r++) {
+      let lippe: { index: number; v: number } | undefined;
+      if (seite === 'vorn' && schlitz && Number.isFinite(schlitz.vKappe[r]!)) {
+        let mL = -1;
+        for (let m = 0; m <= 4 * r; m++) {
+          const [, b] = quadratRing(c, r, m);
+          if (b === schlitz.bL) {
+            mL = mL < 0 ? m : mL;
+            if (mL === 0) mL = m; // Lippe läuft von der Naht oben weg: letzter Lippenpunkt ist der Drehpunkt
+          }
         }
-        if (u < 0) continue;
-        const th = Math.atan2(u, w);
-        const j = Math.min(N / 2, Math.max(0, Math.round((th / Math.PI) * (N / 2))));
-        const sp = sprossen[r - 1]!;
-        const [x, y, z, hv] = punkt(sp, q, masstab(sp, q), j);
-        setze(p, x, y, u === 0 ? 0 : z, hv);
-        if (u > 0) setze(v.kappe(seite, c - a, b), x, y, -z, hv);
+        if (mL > 0 && mL < 4 * r) lippe = { index: mL, v: schlitz.vKappe[r]! };
+      }
+      const q = umparametrisieren(q0, 4 * r, lippe);
+      const sp = sprossen[r - 1]!;
+      const W = masstab(sp, q);
+      for (let m = 0; m <= 4 * r; m++) {
+        const [a, b] = quadratRing(c, r, m);
+        const [x, y, z, hv] = punkt(sp, q, W, m);
+        const naht = m === 0 || m === 4 * r;
+        setze(v.kappe(seite, a, b), x, y, naht ? 0 : z, hv);
+        if (!naht) setze(v.kappe(seite, c - a, b), x, y, -z, hv);
       }
     }
   }
@@ -677,7 +819,7 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
 }
 
 /** Ziele je Bedingung: erst alle Käfigziele, dann die Nahtpunkte auf dem Umriss (z = 0). */
-function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V2[]; anteil: Float64Array }, nahtFein: Uint32Array, anteil: Float64Array): Float64Array {
+export function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V2[]; anteil: Float64Array }, nahtFein: Uint32Array, anteil: Float64Array): Float64Array {
   const out = new Float64Array(3 * (n + nahtFein.length));
   out.set(ziele.subarray(0, 3 * n));
   for (let k = 0; k < nahtFein.length; k++) {
@@ -690,7 +832,7 @@ function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V2[]; an
 }
 
 /** Falten des Käfigs aus Ecken: Ringfalten (Seitenumriss), Spitzen, Längsfalten (Ecken im Querschnitt). */
-function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument, breiten: Breiten, opt: AbleitOptionen): void {
+export function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument, breiten: Breiten, opt: AbleitOptionen): void {
   const { R, N, c } = v;
   const k = v.kaefig;
   for (const e of st.ecken) {
@@ -742,33 +884,76 @@ export function ableiten(dok: Dokument, optionen: Partial<AbleitOptionen> = {}):
   const vorlage = roehre(opt.ringe, opt.ring);
   const st = stationenWaehlen(l, opt, dok);
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
-  const u = unterteilung(vorlage.kaefig, opt.stufen);
-  const t3 = jetzt();
-  const loeser = grenzLoeser(u.grenze, vorlage.kaefig.n);
-  const t4 = jetzt();
   const { ziele, hoehe } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
+  return fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 } });
+}
+
+export type Rohbau = {
+  opt: AbleitOptionen;
+  vorlage: Roehre;
+  /** Käfig (Topologie mit Falten); bei einem Maul größer als die Vorlage */
+  kaefig: Kaefig;
+  ziele: Float64Array;
+  hoehe: Float64Array;
+  l: Leiter;
+  st: Stationen;
+  breiten: Breiten;
+  dok: Dokument;
+  /** 1 = Hautpunkt des Käfigs (Naht-Ausgleich); ohne Angabe alle */
+  haut?: Uint8Array;
+  /** Gewicht je Käfigziel im Ausgleich (Standard 1; z. B. Lippen so stark wie die Naht) */
+  zielGewicht?: Float64Array;
+  /** Startpunkt des Nahtrundgangs (Standard: Spitze vorn); mit Maul ein Hautpunkt neben der Lippe */
+  nahtStart?: number;
+  zeiten: { t0: number; t1: number; t2: number };
+};
+
+/**
+ * Rohbau fertigstellen: Unterteilung (Matrix), Löser je Topologie, Käfig durch die Ziele, dann der Ausgleich der feinen
+ * Nahtpunkte (z = 0, aus Hautpunkten) auf den gezeichneten Seitenumriss.
+ */
+export function fertigstellen(e: Rohbau): Ableitung {
+  const { opt, vorlage, kaefig: k, ziele, hoehe, l, st, breiten, dok } = e;
+  const u = unterteilung(k, opt.stufen);
+  const t3 = jetzt();
+  const loeser = grenzLoeser(u.grenze, k.n);
+  const t4 = jetzt();
   let xyz = kaefigDurchZiele(loeser, ziele);
   let fein = anwenden3(u.grenze, xyz);
-  // Ausgleich: feine Nahtpunkte (z = 0) sollen auf der gezeichneten Kurve liegen, die Käfigziele bleiben Bedingungen
   const nF = fein.length / 3;
+  // Hautanteil je feinem Punkt aus der Matrix (fein ← Käfig)
   const feinIdx: number[] = [];
-  for (let i = 0; i < nF; i++) if (Math.abs(fein[3 * i + 2]!) < 1e-7) feinIdx.push(i);
+  const M = u.matrix;
+  for (let i = 0; i < nF; i++) {
+    if (Math.abs(fein[3 * i + 2]!) >= 1e-7) continue;
+    if (e.haut) {
+      let hautGewicht = 0;
+      let gesamt = 0;
+      for (let p = M.start[i]!; p < M.start[i + 1]!; p++) {
+        gesamt += M.wert[p]!;
+        if (e.haut[M.index[p]!]) hautGewicht += M.wert[p]!;
+      }
+      if (hautGewicht < 0.5 * gesamt) continue;
+    }
+    feinIdx.push(i);
+  }
   const umriss = umrissDicht(dok);
   const letzte = u.stufen[u.stufen.length - 1]!.kaefig;
-  const geordnet = nahtOrdnen(letzte, feinIdx, vorlage.naht.spitzeVorn);
+  const geordnet = nahtOrdnen(letzte, feinIdx, e.nahtStart ?? vorlage.naht.spitzeVorn);
   const nahtFein = Uint32Array.from(geordnet);
-  const anteil = nahtAnteile(geordnet, vorlage.kaefig.n, ziele, umriss);
+  const anteil = nahtAnteile(geordnet, k.n, ziele, umriss);
   let nahtLoeser: AusgleichsLoeser | null = null;
   if (opt.nahtGewicht > 0) {
     const bedingungen: Bedingung[] = [];
-    for (let i = 0; i < vorlage.kaefig.n; i++) bedingungen.push({ zeile: i, gewicht: 1 });
-    for (let k = 0; k < nahtFein.length; k++) bedingungen.push({ zeile: nahtFein[k]!, gewicht: opt.nahtGewicht });
-    nahtLoeser = ausgleichsLoeser(u.grenze, vorlage.kaefig.n, bedingungen);
-    xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(vorlage.kaefig.n, ziele, umriss, nahtFein, anteil));
+    for (let i = 0; i < k.n; i++) bedingungen.push({ zeile: i, gewicht: e.zielGewicht ? e.zielGewicht[i]! : 1 });
+    for (let q = 0; q < nahtFein.length; q++) bedingungen.push({ zeile: nahtFein[q]!, gewicht: opt.nahtGewicht });
+    nahtLoeser = ausgleichsLoeser(u.grenze, k.n, bedingungen, opt.glaettung > 0 ? { kaefig: k, gewicht: opt.glaettung } : undefined);
+    xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil));
     fein = anwenden3(u.grenze, xyz);
   }
-  const kaefig = { ...vorlage.kaefig, xyz };
+  const kaefig = { ...k, xyz };
   const t5 = jetzt();
+  const { t0, t1, t2 } = e.zeiten;
   return {
     opt,
     vorlage,
@@ -798,6 +983,7 @@ export type Zug = Ableitung & { zugZeit: { leiter: number; ziele: number; loeser
  * Löser und Matrix.
  */
 export function ziehen(abl: Ableitung, dokNeu: Dokument): Zug {
+  if (abl.kaefig.n !== abl.vorlage.kaefig.n) throw new Error('ziehen: Käfig mit Maul – bitte neu ableiten');
   const t0 = jetzt();
   const l = leiter(dokNeu, WIRBEL_STANDARD);
   const t1 = jetzt();

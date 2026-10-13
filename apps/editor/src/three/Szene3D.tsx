@@ -75,10 +75,13 @@ export function Szene3D() {
           const t = kernBauen(d, schnell);
           const s = d.skalierung;
           if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
-          r.setzeLinien(null);
+          if (t.kaefigLinien) {
+            if (s !== 1) for (let i = 0; i < t.kaefigLinien.length; i++) t.kaefigLinien[i]! *= s;
+            r.setzeLinien(t.kaefigLinien, t.kaefigFarben ?? undefined);
+          } else r.setzeLinien(null);
           if (t.deskriptoren) {
             r.setzePalette(PALETTEN[useKernAnzeige.getState().palette] ?? PALETTEN.tiger!);
-            r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, t.augen.map((a) => ({ ...a, pos: [a.pos[0] * s, a.pos[1] * s, a.pos[2] * s] as [number, number, number], groesse: a.groesse * s })));
+            r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, t.augen.map((a) => ({ ...a, pos: [a.pos[0] * s, a.pos[1] * s, a.pos[2] * s] as [number, number, number], groesse: a.groesse * s })), t.lippenBand * s);
           } else r.setzeDreiecke(t.positionen, t.normalen);
           return;
         }
@@ -196,7 +199,7 @@ export function Szene3D() {
         useUi.subscribe((s, v) => {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
           if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
-          if (s.oeffnung !== v.oeffnung && useEditor.getState().dok.maul) bauen(useEditor.getState().dok);
+          if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || (s.bauweise === 'kern' && useKernAnzeige.getState().maul !== 'aus'))) bauen(useEditor.getState().dok);
           if (s.bauweise !== v.bauweise) bauen(useEditor.getState().dok);
           if ((s.schnittRegel !== v.schnittRegel || s.schnittUeberblenden !== v.schnittUeberblenden) && s.bauweise === 'schnitte') bauen(useEditor.getState().dok);
           if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
@@ -204,7 +207,7 @@ export function Szene3D() {
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
         // Beweis 4: Look oder Palette gewechselt → Kern neu bauen
-        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
+        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
         // Biege-Regler losgelassen: genau bauen
         useWirbelAnzeige.subscribe((s, v) => v.zieht && !s.zieht && useUi.getState().bauweise === 'wirbel' && bauen(useEditor.getState().dok)),
       );

@@ -44,9 +44,40 @@ export type AusgleichsLoeser = {
   zeilen: { index: Uint32Array; wert: Float64Array }[];
 };
 
-/** Normalgleichungen Σ w·aᵀa über alle Bedingungen, einmal zerlegt. */
-export function ausgleichsLoeser(grenze: DuennMatrix, n: number, bedingungen: readonly Bedingung[]): AusgleichsLoeser {
+/** Laplace-Glattheit der Käfiglagen: je Punkt x_i − Mittel der Nachbarn (Faltenpunkte nur längs der Falte, Eckpunkte frei). */
+export type Glaettung = { kaefig: Kaefig; gewicht: number };
+
+/**
+ * Normalgleichungen Σ w·aᵀa über alle Bedingungen, einmal zerlegt. Mit `glaettung` kommt je Käfigpunkt die Bedingung
+ * „Punkt = Mittel seiner Nachbarn“ (Ziel 0) hinzu: Sie dämpft den Wellenschlag reiner Interpolation, vor allem neben
+ * scharfen Falten (einseitige Stützen), und wirkt wie Halstead/Kass/DeRoses Fairness-Term.
+ */
+export function ausgleichsLoeser(grenze: DuennMatrix, n: number, bedingungen: readonly Bedingung[], glaettung?: Glaettung): AusgleichsLoeser {
   const N = new Float64Array(n * n);
+  if (glaettung && glaettung.gewicht > 0) {
+    const k = glaettung.kaefig;
+    for (let i = 0; i < Math.min(n, k.n); i++) {
+      if (k.vSchaerfe[i]! > 0) continue;
+      const alle: number[] = [];
+      const scharf: number[] = [];
+      for (let q = k.vKStart[i]!; q < k.vKStart[i + 1]!; q++) {
+        const e = k.vKanten[q]!;
+        const o = k.eA[e] === i ? k.eB[e]! : k.eA[e]!;
+        if (o >= n) continue;
+        alle.push(o);
+        if (k.eSchaerfe[e]! > 0) scharf.push(o);
+      }
+      const nb = scharf.length >= 2 ? scharf : alle;
+      if (nb.length < 2) continue;
+      const idx = [i, ...nb];
+      const w = [1, ...nb.map(() => -1 / nb.length)];
+      for (let a = 0; a < idx.length; a++) {
+        const ra = idx[a]! * n;
+        const ga = glaettung.gewicht * w[a]!;
+        for (let b = 0; b < idx.length; b++) N[ra + idx[b]!]! += ga * w[b]!;
+      }
+    }
+  }
   const zeilen: { index: Uint32Array; wert: Float64Array }[] = [];
   for (const b of bedingungen) {
     const i = b.zeile;
