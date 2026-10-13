@@ -7,6 +7,8 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 > - Findet die Sitzung einen besseren Weg, setzt sie ihn um. Einstieg: `docs/plans/2026-10-13-grosse-sitzung-wesen-editor.md`.
 > - Die Fallen weiter unten bleiben gültiges technisches Wissen.
 
+> **Nachtrag 13.10. abends:** Der Plan „Wesen-Editor 2“ ist freigegeben (`docs/plans/2026-10-13-wesen-editor-2.md`). Alle Bauwege unten (creation, Kanten-/Maul-/Tiger-/Wirbelsäulen-Käfig, Schnitt-Loft, rund) sind Versuche und werden nach Phase 0 durch den Käfig-Kern ersetzt; das Gerüst (Layout, Navigation, Renderer3D, Electron, Bibliothek, Undo, E2E-Muster) bleibt. Neue Bedienung nach Plan Abschnitt 9.
+
 ## Auftrag und bisherige Entscheidungen (Florian, 11.10.2026; Tests, kein Gesetz)
 
 - Der Charaktereditor wird ein **kompletter Shape-/3D-Editor** und ein großer, eigenständiger Teil des Projekts: Florian zieht drei Profile (Seite, Front, Top) wie in Illustrator, daraus entsteht live das Wesen. Ziel: der Look seiner 19 Referenzbögen und von Eyvind Earle; „der beste Charaktereditor auf dem Markt“.
