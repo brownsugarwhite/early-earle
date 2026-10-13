@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
+import { pruefwesenBauplan } from '@ee/shape/kern';
 import { aktuellesNetz } from '../kern/kernBau';
+import { augeZeiger, augenRandUnter, kieferUnter, kieferZeiger } from '../kern/griffe';
 import { reifenNeu, reifenUnter, reifenZeiger, useReifen } from '../kern/reifen';
 import { trefferDeuten, useTreffer } from '../kern/treffer';
 import { useEditor } from '../state/editorStore';
@@ -27,7 +29,8 @@ export function augeSetzen(px: number, py: number): boolean {
   if (j > N / 2) j = N - j;
   const ed = useEditor.getState();
   const alt = ed.dok.ausstattung ?? {};
-  ed.setzeDokument({ ...ed.dok, ausstattung: { ...alt, augen: { ring, j: Math.max(1, Math.min(N / 2 - 1, j)), groesse: alt.augen?.groesse ?? 0.1 } } });
+  const groesse = alt.augen?.groesse ?? pruefwesenBauplan(ed.dok.name).augen?.groesse ?? 0.11;
+  ed.setzeDokument({ ...ed.dok, ausstattung: { ...alt, augen: { ring, j: Math.max(1, Math.min(N / 2 - 1, j)), groesse } } });
   return true;
 }
 
@@ -77,10 +80,16 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     const knopf = e.button;
     const verschiebe = knopf === 1 || e.shiftKey;
     const menueMoeglich = knopf === 2 || (knopf === 0 && e.ctrlKey);
-    // M3: Reifen auf der Bühne — Perle oder Band unter dem Zeiger fassen (Stufe Körper, Bauweise kern)
-    if (knopf === 0 && !e.ctrlKey && !e.shiftKey && !e.altKey && ref.current && useUi.getState().ebene === 'form' && useUi.getState().bauweise === 'kern' && useUi.getState().werkzeug === 'auswahl') {
+    // M3: Griffe auf der Bühne (Bauweise kern): Kieferknopf, Augenrand (Stufe Augen), Reifen (Stufe Körper: Perle,
+    // Band, ⌥ = Ecke)
+    if (knopf === 0 && !e.ctrlKey && !e.shiftKey && ref.current && useUi.getState().bauweise === 'kern' && useUi.getState().werkzeug === 'auswahl') {
       const rr = ref.current.getBoundingClientRect();
-      if (reifenZeiger(e, e.clientX - rr.left, e.clientY - rr.top, ref.current)) return;
+      const px = e.clientX - rr.left;
+      const py = e.clientY - rr.top;
+      const ebene = useUi.getState().ebene;
+      if (kieferZeiger(e, px, py, ref.current)) return;
+      if (ebene === 'augen' && augeZeiger(e, px, py, ref.current)) return;
+      if (ebene === 'form' && reifenZeiger(e, px, py, ref.current)) return;
     }
     let lx = e.clientX;
     let ly = e.clientY;
@@ -135,7 +144,11 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     const h = ui.ebene === 'form' && ui.bauweise === 'kern' ? reifenUnter(e.clientX - r.left, e.clientY - r.top) : null;
     const alt = useReifen.getState().hover;
     if ((h?.reifen ?? -1) !== (alt?.reifen ?? -1) || (h?.knoten ?? -2) !== (alt?.knoten ?? -2)) useReifen.setState({ hover: h });
-    if (ref.current) ref.current.style.cursor = h ? (h.knoten === null ? 'ew-resize' : 'pointer') : '';
+    const px = e.clientX - r.left;
+    const py = e.clientY - r.top;
+    const kiefer = ui.bauweise === 'kern' && kieferUnter(px, py);
+    const auge = ui.bauweise === 'kern' && ui.ebene === 'augen' && augenRandUnter(px, py);
+    if (ref.current) ref.current.style.cursor = kiefer ? 'ns-resize' : auge ? 'nwse-resize' : h ? (h.knoten === null ? 'ew-resize' : 'pointer') : '';
   };
   const verlassen = () => {
     szene.aktuell?.setzeMarke(null);

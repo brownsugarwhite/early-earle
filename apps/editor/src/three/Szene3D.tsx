@@ -17,13 +17,14 @@ import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirb
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
 import { aktuellesNetz, kernAnimieren, kernBauen, useKernAnzeige } from '../kern/kernBau';
+import { augenPixel, griffeAnzeigen, kieferPixel } from '../kern/griffe';
 import { perlenVon, reifenAnzeigen, reifenFaerben, useReifen } from '../kern/reifen';
 import { trefferDeuten } from '../kern/treffer';
 import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown };
   }
 }
 
@@ -56,6 +57,8 @@ export function Szene3D() {
           const w = n.netz;
           return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung, reifen: w.reifen ? { liste: w.reifen.liste, knoten: w.reifen.knoten } : null };
         },
+        // M3: Kieferknopf und Augen in Feldpixeln der Bühne (E2E)
+        griffe: () => ({ kiefer: kieferPixel(), augen: augenPixel() }),
         // M3: Perlen und Bänder der Reifen in Feldpixeln der Bühne (E2E)
         reifenPixel: () => {
           const n = aktuellesNetz();
@@ -137,8 +140,9 @@ export function Szene3D() {
             if (s !== 1) for (let i = 0; i < t.zaehne.positionen.length; i++) t.zaehne.positionen[i]! *= s;
             r.setzeZaehne(t.zaehne.positionen, t.zaehne.normalen, t.zaehne.anteil);
           } else r.setzeZaehne(null, null, null);
-          // M3: Reifen (Spanten als Ringe mit Perlen) auf dem Körper
+          // M3: Reifen (Spanten als Ringe mit Perlen) und Kieferknopf auf dem Körper
           reifenAnzeigen(r, t, s);
+          griffeAnzeigen(r);
           // Beweis 5: Klingen wehen (Käfig-Pose je Bild, ≈ 14 Bilder je Sekunde)
           if (klingenUhr !== null) window.clearInterval(klingenUhr);
           klingenUhr = null;
@@ -291,6 +295,7 @@ export function Szene3D() {
           if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
           if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
           if (s.spantAuswahl !== v.spantAuswahl || s.ebene !== v.ebene) reifenFaerben(r);
+          if (s.ebene !== v.ebene) griffeAnzeigen(r);
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
         // M3: Perle oder Band unter dem Zeiger → Farben der Reifen

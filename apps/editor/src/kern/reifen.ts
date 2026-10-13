@@ -4,7 +4,7 @@
 // `dok.spanten` — dieselben Daten, die Front/Back als Kurve zeigen. Perle ziehen = Querschnitt formen (in der Ringebene),
 // Band ziehen = Reifen entlang der Achse schieben, ⌃R oder Werkzeug S auf dem Körper = neuer Reifen an der Stelle.
 
-import { spantEinfuegen, spantKasten, stelleVon, verschiebeKnoten, weltNachSpant } from '@ee/shape';
+import { spantEinfuegen, spantKasten, stelleVon, umwandeln, verschiebeKnoten, weltNachSpant } from '@ee/shape';
 import type { WesenNetz } from '@ee/shape/kern';
 import { create } from 'zustand';
 import { sortieren, spantWaehlen } from '../spanten/SpantEbene';
@@ -212,8 +212,17 @@ export function reifenZeiger(e: React.PointerEvent, px: number, py: number, el: 
   if (!sp) return false;
   const sk = n.skalierung;
   const rr = el.getBoundingClientRect();
-  const { mitte, normale } = ringEbene(n.netz, sk, h.reifen);
   const spanten = () => useEditor.getState().dok.spanten ?? [];
+  // ⌥-Klick auf eine Perle: Ecke ↔ glatt (wie der Stift mit ⌥ in Front/Back), ein Undo-Schritt
+  if (e.altKey) {
+    if (h.knoten === null) return false;
+    const liste = spanten().slice();
+    liste[reifen.spant] = { ...sp, profil: umwandeln(sp.profil, h.knoten) };
+    ed.setzeSpanten(liste);
+    spantWaehlen(reifen.spant, [h.knoten]);
+    return true;
+  }
+  const { mitte, normale } = ringEbene(n.netz, sk, h.reifen);
   if (h.knoten !== null) {
     const knoten = h.knoten;
     spantWaehlen(reifen.spant, [knoten]);

@@ -124,6 +124,8 @@ export type WesenNetz = {
   atlas: AtlasDaten | null;
   treffer: TrefferDaten | null;
   reifen: ReifenDaten | null;
+  /** Kieferknopf (M3): rechter Mundwinkel (posiert) und Maullänge (Welt) bei Maul, sonst null */
+  maul: { winkel: V3; laenge: number } | null;
   info: WesenInfo;
 };
 
@@ -736,6 +738,12 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     }
     reifen = { liste: abl.reifen.map((r) => ({ spant: r.spant, ring: r.ring })), ringLagen, verlauf: Float32Array.from(segs), verlaufStart: Uint32Array.from(starts), knoten };
   }
+  let maulGriff: WesenNetz['maul'] = null;
+  if (maul !== 'aus') {
+    const m = (abl as MaulErgebnis).maul;
+    const p = m.pfad[m.pfad.length - 1]!;
+    maulGriff = { winkel: [fein[3 * p]!, fein[3 * p + 1]! + hebung, fein[3 * p + 2]!], laenge: m.laenge };
+  }
   const netz: WesenNetz = {
     positionen,
     normalen,
@@ -753,6 +761,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     atlas: stil === 'fest' ? atlas : null,
     treffer,
     reifen,
+    maul: maulGriff,
     info,
   };
   return { netz, stand: { dok, schluessel, abl, maul, beine, klingen } };

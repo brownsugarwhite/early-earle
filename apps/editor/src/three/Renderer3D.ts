@@ -72,6 +72,8 @@ export class Renderer3D {
   private reifen: LineSegments | null = null;
   private readonly perlen: Mesh[] = [];
   private readonly perlenGeometrie = new SphereGeometry(1, 12, 8);
+  /** Kieferknopf (M3): Bohne am Mundwinkel, blau wie die Unterlippe (Plan 9.7) */
+  private readonly kiefer = new Mesh(new SphereGeometry(1, 16, 12), new MeshBasicNodeMaterial({ color: 0x2e8bff, depthTest: false }));
   private readonly perlenMaterial = [new MeshBasicNodeMaterial({ color: 0x00ffe1, depthTest: false }), new MeshBasicNodeMaterial({ color: 0xf4f1e4, depthTest: false }), new MeshBasicNodeMaterial({ color: 0xff2e9a, depthTest: false })];
   private kameraZustand: Kamera | null = null;
   private angefordert = false;
@@ -153,6 +155,9 @@ export class Renderer3D {
     this.marke.visible = false;
     this.marke.renderOrder = 3;
     this.szene.add(this.marke);
+    this.kiefer.visible = false;
+    this.kiefer.renderOrder = 5;
+    this.szene.add(this.kiefer);
 
     const sonne = new DirectionalLight(0xffffff, 1);
     sonne.position.set(SONNE[0] * 5, SONNE[1] * 5, SONNE[2] * 5);
@@ -580,6 +585,17 @@ export class Renderer3D {
         m.visible = true;
       } else m.visible = false;
     });
+    this.anfordern();
+  }
+
+  /** Kieferknopf (Welt) am Mundwinkel zeigen oder ausblenden; Bohne, Größe als Anteil der Körperhöhe. */
+  setzeKiefer(punkt: [number, number, number] | null, hoehe = 1) {
+    this.kiefer.visible = punkt !== null;
+    if (punkt) {
+      this.kiefer.position.set(punkt[0], punkt[1], punkt[2]);
+      const g = Math.max(0.004, 0.02 * hoehe);
+      this.kiefer.scale.set(g, g * 0.7, g * 0.8);
+    }
     this.anfordern();
   }
 
