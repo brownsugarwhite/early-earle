@@ -22,6 +22,7 @@ import { type AusgleichsLoeser, type Bedingung, type GrenzLoeser, ausgleichsLoes
 import { punktAuf } from '../bezier';
 import { pfadAbtasten, segmente, vollerPfad } from '../profil';
 import { spantKasten, stelleVon, vorlageBei } from '../spanten';
+import { kanteAbtasten, kantenFalten } from './kanten';
 import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3 } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
@@ -1006,9 +1007,21 @@ export function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument,
       }
     }
   }
+  const sprossen = sprossenVon(l, st.ringe);
+  const qs = querschnitteFuer(sprossen, dok, breiten, N, opt);
+  // Freie Kantenlinien (M3 Punkt 2): gezeichnete Linie mit Härte je Knoten → Falte auf der nächsten Kantenschleife
+  if (dok.kanten?.length && opt.eckenSchaerfe > 0) {
+    kantenFalten(
+      v,
+      sprossen,
+      qs,
+      breiten,
+      dok.kanten.map((ka) => kanteAbtasten(ka, dok.skalierung)),
+      opt.eckenSchaerfe,
+    );
+  }
   // Längsfalten: Ecke im Querschnitt (Front-Lappen oder Spant, Härte je Knoten) → Kante Ring i → i+1 am Ringpunkt der Ecke
   if (!opt.querschnitt) return;
-  const qs = querschnitteFuer(sprossenVon(l, st.ringe), dok, breiten, N, opt);
   for (let i = 0; i + 1 < R; i++) {
     const q = qs[i]!;
     q.haerte.forEach((h, kn) => {
