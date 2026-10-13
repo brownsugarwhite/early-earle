@@ -1,3 +1,4 @@
+import { useKernAnzeige } from '../kern/kernBau';
 // Seitenleiste rechts, immer offen (Florian 12.10.): oben das Menü des aktiven Tabs (Wesen, Maul, Zähne, Rig, Augen),
 // darunter die Library. Gestaltung (Glas, Ornament) ist mein Entwurf.
 
@@ -733,6 +734,7 @@ export function Seitenleiste() {
       <div className="leiste-glas glas">
         <div className="leiste-inhalt">
           {bauweise === 'wirbel' && <WirbelBereich />}
+          {bauweise === 'kern' && <KernBereich />}
           {(bauweise === 'rund' || bauweise === 'schnitte') && <RundBereich />}
           {bauweise === 'schnitte' && <SchnittBereich />}
           {ebene === 'form' && modus === 'fressen' && <PoseBereich />}
@@ -756,5 +758,33 @@ export function Seitenleiste() {
         <Ornament />
       </div>
     </aside>
+  );
+}
+
+/** Wesen-Editor 2, Beweis 1 (13.10.): Kern-Anzeige (Naht-Abweichung, Zeiten). */
+function KernBereich() {
+  const info = useKernAnzeige((s) => s.info);
+  return (
+    <section className="bereich" data-bereich="kern">
+      <h3>Kern (Beweis 1)</h3>
+      <p className="hinweis">
+        Ein Subdivision-Käfig ist die Wahrheit. Der Seitenumriss wird einmal abgeleitet (Leiter, Poisson-Dicke, Röhre 24 × 16 mit Kappen), dann so gelöst, dass die
+        Grenzfläche der Stufe 3 durch die Kurve geht. Ziehen am Seitenumriss bewegt nur Ziele; Löser und Matrix liefern das Netz. Ecken des Umrisses werden Falten.
+      </p>
+      {info && (
+        <dl className="werte">
+          <dt>Käfig</dt>
+          <dd>{info.kaefigPunkte} Punkte, fein {info.feinPunkte}</dd>
+          <dt>Naht → Kurve</dt>
+          <dd>
+            max {info.nahtMax.toFixed(2)} px, Ø {info.nahtMittel.toFixed(2)} px
+          </dd>
+          <dt>Falten</dt>
+          <dd>{info.ecken}</dd>
+          <dt>Zeit</dt>
+          <dd>{info.schnell ? `Zug ${info.zug.toFixed(1)} ms` : `Ableitung ${info.ableitung.toFixed(0)} ms`}</dd>
+        </dl>
+      )}
+    </section>
   );
 }

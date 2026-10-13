@@ -94,6 +94,7 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - Beine und körperweite Strukturen (Rückenschuppen, Fellsträhnen wie beim Retriever) sind ungeklärt.
   - Einstieg für die große Sitzung: `docs/plans/2026-10-13-grosse-sitzung-wesen-editor.md`. Behalten wird das Gerüst (Kurven, Navigation, Layout, Library, Dokument); die Bauwege in `packages/shape/src/versuch/` sind Wissen, kein fertiger Code.
 
+- **Nachtrag 13.10. nachts — Wesen-Editor 2, Beweis 1, Tab „kern“** (`src/kern/kernBau.ts`, Kern in `packages/shape/src/{kaefig,subdivision,loeser,kern}`, Einstieg `@ee/shape/kern`): Käfig als Wahrheit, Seitenumriss als Griff, Ergebnis in `docs/research/2026-10-13-beweis1-kern.md`. Aufruf `?versuch=kern&wesen=kugel|rex|langhals|ueberhang`, Bilder `node scripts/kern-bilder.mjs` (Web-Modus, `EDITOR_URL`). Während Gesten `seiteZiehen` (≈ 3 ms), beim Loslassen `ableiten` (≈ 100–190 ms).
 - **Nachtrag 13.10. morgens — Schnitt-Loft (Versuch):**
   - Dritter 3D-Tab „schnitte“ (`apps/editor/src/schnitte/`, Kern `packages/shape/src/versuch/schnittLoft.ts`).
   - Je Stelle wird der echte Schnitt aus allen Intervallen von Seite und Top berechnet. Teile, Löcher und Kerben bleiben erhalten.
@@ -109,6 +110,10 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 - Test-Zugriff: `window.__stores` (editor, ui, rahmen) und `window.__editor` (backend, vertices).
 
 ## Fallen (nicht wiederholen)
+
+- **Kern:** Die Poisson-Dicke (`dickeRundBei`) ist schon die halbe Breite an dieser Stelle; nie noch mit sin θ multiplizieren (ergab Linsen statt Körper). Die Naht muss bitgenau bei z = 0 liegen (rechte Hälfte rechnen, linke spiegeln), sonst findet `nahtOrdnen` keine Naht. Die Nahtanteile monoton entlang der Schleife vergeben, nicht per Projektion (Bündelung → Lücken im Ausgleich).
+- **vitest 5 zeigt `console.log` bestandener Tests nur mit `--reporter=verbose`** (bei Fehlern immer). Messwerte so lesen: `npx vitest run <datei> --reporter=verbose`.
+- **macOS hat kein `timeout`-Kommando**; lange Läufe über das Werkzeug-Timeout begrenzen. `pnpm -r test` lässt Pakete parallel laufen; die Laufzeit-Tests der Versuche (`kanten`, `flaechenlinie`, `wesen`) reißen dann ihre Schranken (967 ms > 600 ms), einzeln laufen sie durch.
 
 - **Vorschau-Fenster (Browser-Pane) hat keine Canvas-Größe**, solange es verdeckt ist: WebGPU meldet „swapchain texture of size 0“, das 3D bleibt leer. 3D deshalb per Playwright prüfen (`scripts/maul-bilder.mjs`, E2E mit `EE_GPU=1`).
 - **zod verwirft unbekannte Felder** beim Laden: Neue Dokumentfelder zuerst ins `DokumentSchema`, dann der Rundreise-Test.

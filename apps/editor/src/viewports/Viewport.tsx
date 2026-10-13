@@ -51,6 +51,7 @@ function Titel({ id }: { id: ViewId }) {
             ['bisher', VIEW_TEXTE.creation.titel],
             ['wirbel', 'wirbelsäule'],
             ['rund', 'rund'],
+            ['kern', 'kern'],
           ] as const
         ).map(([wert, text]) => {
           // Versuch 13.10. nachmittags: Der dritte Tab ist „rund“; der Schnitt-Loft vom Vormittag ist dort ein Umschalter in der Leiste
@@ -115,7 +116,9 @@ export function ViewportOber({ id }: { id: ViewId }) {
         {rechts && <div className="vp-label rechts">{rechts}</div>}
         {id === 'creation' && (
           <div className="vp-label links platzhalter">
-            {bauweise === 'rund' && !versuchAktiv()
+            {bauweise === 'kern' && !versuchAktiv()
+              ? 'Wesen-Editor 2: Kern (Beweis 1)'
+              : bauweise === 'rund' && !versuchAktiv()
               ? 'Versuch: rund'
               : bauweise === 'schnitte' && !versuchAktiv()
               ? 'Versuch: Schnitte'

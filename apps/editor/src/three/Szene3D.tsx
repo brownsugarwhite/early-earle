@@ -16,6 +16,7 @@ import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten
 import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
+import { kernBauen } from '../kern/kernBau';
 
 declare global {
   interface Window {
@@ -68,6 +69,15 @@ export function Szene3D() {
         // sich die offene Haut im Maul-Bau an sie
         const pose = dRoh.posenProfile?.fressen?.seite;
         const d: Dokument = useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
+        if (!versuch && useUi.getState().bauweise === 'kern') {
+          // Wesen-Editor 2, Beweis 1: Käfig als Wahrheit, Seitenumriss als Griff (packages/shape/src/kern)
+          const t = kernBauen(d, schnell);
+          const s = d.skalierung;
+          if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
+          r.setzeLinien(null);
+          r.setzeDreiecke(t.positionen, t.normalen);
+          return;
+        }
         if (!versuch && useUi.getState().bauweise === 'rund') {
           // Versuch 13.10. nachmittags: Seite rund aufgeblasen, Breite aus Top und Front; Maul und Kanten fehlen hier noch
           const rk = rundBauen(d, schnell);
@@ -172,7 +182,7 @@ export function Szene3D() {
             s.dok.rundSpanten !== v.dok.rundSpanten ||
             s.modus !== v.modus;
           const wirbel = useUi.getState().bauweise === 'wirbel';
-          const schnitte = useUi.getState().bauweise === 'schnitte' || useUi.getState().bauweise === 'rund';
+          const schnitte = useUi.getState().bauweise === 'schnitte' || useUi.getState().bauweise === 'rund' || useUi.getState().bauweise === 'kern';
           // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen (Schnitte ohne Maul)
           if (s.dok.maul && s.gesteStart && !schnitte) return;
           // Kanten-Käfig, Wirbelsäule und Schnitte: während einer Geste schnell (gröber), beim Loslassen genau

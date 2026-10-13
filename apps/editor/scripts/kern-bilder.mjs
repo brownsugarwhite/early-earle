@@ -1,0 +1,27 @@
+// Wesen-Editor 2, Beweis 1: Bilder der Bauweise „kern“ je Prüfwesen (ganzer Editor mit Seitenleiste, 3D-Ausschnitt).
+//   EDITOR_URL=http://localhost:5192 node scripts/kern-bilder.mjs [wesen,wesen,…] [ausgabeordner]   (Web-Modus muss laufen)
+import { chromium } from '@playwright/test';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const hier = path.dirname(fileURLToPath(import.meta.url));
+const wesenListe = (process.argv[2] ?? 'kugel,rex,langhals,ueberhang').split(',');
+const aus = path.resolve(process.argv[3] ?? path.resolve(hier, '../../../docs/progress/editor'));
+const url = process.env.EDITOR_URL ?? 'http://localhost:5180';
+const browser = await chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });
+const page = await browser.newPage({ viewport: { width: 1728, height: 1161 }, deviceScaleFactor: 1 });
+for (const wesen of wesenListe) {
+  for (const bauweise of ['kern', 'rund']) {
+    await page.goto(`${url}/?versuch=kern&wesen=${wesen}&bauweise=${bauweise}`);
+    await page.waitForFunction(() => window.__editor && window.__editor.vertices() > 0, null, { timeout: 60_000 });
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(1800);
+    const r = await page.evaluate(() => window.__stores.rahmen.getState().rects.creation);
+    if (bauweise === 'kern') await page.screenshot({ path: path.join(aus, `kern-${wesen}.png`) });
+    await page.screenshot({ path: path.join(aus, `kern-${wesen}-3d-${bauweise}.png`), clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
+    const text = await page.evaluate(() => document.querySelector('[data-bereich="kern"] dl')?.textContent ?? '');
+    if (bauweise === 'kern') console.log(`${wesen}: ${text}`);
+  }
+}
+console.log(`geschrieben: ${aus}/kern-*.png`);
+await browser.close();

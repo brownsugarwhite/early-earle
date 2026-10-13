@@ -135,7 +135,7 @@ type UiState = {
  * schnitte = Versuch 13.10. Schnitt-Loft (je Stelle ein echter Schnitt mit beliebig vielen Teilen);
  * rund = Versuch 13.10. nachmittags: Seite rund aufgeblasen, Breite aus Top und Front (Tab „rund“, Schnitt-Loft als Umschalter)
  */
-export type Bauweise = 'bisher' | 'wirbel' | 'schnitte' | 'rund';
+export type Bauweise = 'bisher' | 'wirbel' | 'schnitte' | 'rund' | 'kern';
 
 export const useUi = create<UiState>((set, get) => ({
   maximiert: null,
