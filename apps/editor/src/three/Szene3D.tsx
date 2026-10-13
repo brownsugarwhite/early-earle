@@ -69,7 +69,7 @@ export function Szene3D() {
         const d: Dokument = useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
         if (!versuch && useUi.getState().bauweise === 'schnitte') {
           // Versuch 13.10.: echte Schnitte (Schnauze über Bauch, Acht, Haken im Top); Maul und Kanten-Härte fehlen hier noch
-          const sl = schnittBauen(d, schnell, useUi.getState().schnittRegel);
+          const sl = schnittBauen(d, schnell, useUi.getState().schnittRegel, useUi.getState().schnittUeberblenden);
           const k = d.skalierung;
           r.setzeLinien(null);
           r.setzeFlaeche(k !== 1 ? sl.positionen.map((v) => v * k) : sl.positionen, sl.normalen, sl.indizes);
@@ -156,7 +156,7 @@ export function Szene3D() {
           if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
           if (s.oeffnung !== v.oeffnung && useEditor.getState().dok.maul) bauen(useEditor.getState().dok);
           if (s.bauweise !== v.bauweise) bauen(useEditor.getState().dok);
-          if (s.schnittRegel !== v.schnittRegel && s.bauweise === 'schnitte') bauen(useEditor.getState().dok);
+          if ((s.schnittRegel !== v.schnittRegel || s.schnittUeberblenden !== v.schnittUeberblenden) && s.bauweise === 'schnitte') bauen(useEditor.getState().dok);
           if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
           if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
         }),

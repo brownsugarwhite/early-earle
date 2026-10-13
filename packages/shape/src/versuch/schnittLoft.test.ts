@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { V2 } from '../bezier';
 import { type Dokument, dokumentLesen, neuesDokument } from '../dokument';
 import { loftNetz } from '../platzhalter/loft';
+import type { Profil } from '../profil';
+import { hauptspantProfil } from '../spanten';
 import { schnittLoft } from './schnittLoft';
 import ueberhangRoh from './vorlagen/ueberhang.json';
 
@@ -49,6 +51,70 @@ function innenImNetz(pos: Float32Array, idx: Uint32Array, p: [number, number, nu
     if (zt > p[2]) z++;
   }
   return z % 2 === 1;
+}
+
+/** Netz mit der Ebene x = x0 schneiden: Strecken (z, y) des Schnitts, zu Zügen verbunden. */
+function netzSchnitt(pos: Float32Array, idx: Uint32Array, x0: number): V2[][] {
+  const strecken: [V2, V2][] = [];
+  for (let t = 0; t < idx.length; t += 3) {
+    const pk: V2[] = [];
+    for (let e = 0; e < 3; e++) {
+      const a = 3 * idx[t + e]!;
+      const b = 3 * idx[t + ((e + 1) % 3)]!;
+      const xa = pos[a]! - x0;
+      const xb = pos[b]! - x0;
+      if (xa < 0 === xb < 0) continue;
+      const u = xa / (xa - xb);
+      pk.push({ x: pos[a + 2]! + u * (pos[b + 2]! - pos[a + 2]!), y: pos[a + 1]! + u * (pos[b + 1]! - pos[a + 1]!) });
+    }
+    if (pk.length === 2) strecken.push([pk[0]!, pk[1]!]);
+  }
+  // längsten Zug aus den Strecken bilden (Enden über die Lage verbinden)
+  const key = (p: V2) => `${p.x.toFixed(5)},${p.y.toFixed(5)}`;
+  const nb = new Map<string, V2[]>();
+  for (const [a, b] of strecken) {
+    (nb.get(key(a)) ?? nb.set(key(a), []).get(key(a))!).push(b);
+    (nb.get(key(b)) ?? nb.set(key(b), []).get(key(b))!).push(a);
+  }
+  const besucht = new Set<string>();
+  const zuege: V2[][] = [];
+  for (const [a] of strecken) {
+    if (besucht.has(key(a))) continue;
+    const zug: V2[] = [];
+    let p: V2 | undefined = a;
+    while (p && !besucht.has(key(p))) {
+      besucht.add(key(p));
+      zug.push(p);
+      p = (nb.get(key(p)) ?? []).find((q) => !besucht.has(key(q)));
+    }
+    zuege.push(zug);
+  }
+  return zuege.sort((a, b) => b.length - a.length);
+}
+
+/** schärfste Richtungsänderung entlang eines geschlossenen Zugs über ±r (Grad), nur für |z| ≥ 0,05 und y im Bereich. */
+function eckWinkel(z: V2[], r: number, yBereich: [number, number] = [-Infinity, Infinity]): { winkel: number; y: number } {
+  const n = z.length;
+  const bogen = [0];
+  for (let i = 1; i <= n; i++) bogen.push(bogen[i - 1]! + Math.hypot(z[i % n]!.x - z[i - 1]!.x, z[i % n]!.y - z[i - 1]!.y));
+  const L = bogen[n]!;
+  const bei = (s0: number) => {
+    const s1 = ((s0 % L) + L) % L;
+    let i = 0;
+    while (i < n - 1 && bogen[i + 1]! < s1) i++;
+    return z[i]!;
+  };
+  let best = { winkel: 0, y: 0 };
+  for (let i = 0; i < n; i++) {
+    if (Math.abs(z[i]!.x) < 0.05 || z[i]!.y < yBereich[0] || z[i]!.y > yBereich[1]) continue;
+    const a = bei(bogen[i]! - r);
+    const b = bei(bogen[i]! + r);
+    const p = z[i]!;
+    let d = Math.abs(Math.atan2(b.y - p.y, b.x - p.x) - Math.atan2(p.y - a.y, p.x - a.x));
+    if (d > Math.PI) d = 2 * Math.PI - d;
+    if ((d * 180) / Math.PI > best.winkel) best = { winkel: (d * 180) / Math.PI, y: p.y };
+  }
+  return best;
 }
 
 /** Kanten mit genau zwei Dreiecken in Gegenrichtung (geschlossen und gleich orientiert), Volumen. */
@@ -172,6 +238,37 @@ describe('Versuch Schnitt-Loft', () => {
     // der Platzhalter-Loft blockt die Kerbe zu
     const loft = loftNetz(d);
     expect(innenImNetz(loft.positionen, loft.indizes, [0.03, 0.25, 0.155])).toBe(true);
+  });
+
+  it('Kanten über Spant-Punkte: Punkt-Überblendung lässt die Ecke wandern, Felder blenden sie aus und ein', () => {
+    // Kugel mit zwei Spanten, deren mittlerer Punkt eine Ecke ist: S1 (30 %) hoch, S2 (70 %) tief
+    const kugel = neuesDokument();
+    const mitEcke = (v: number): Profil => {
+      const h = hauptspantProfil(kugel);
+      const knoten = h.knoten.map((k, i) => (i === 1 ? { ...k, p: { x: 1, y: v }, ein: { x: 0, y: 0 }, aus: { x: 0, y: 0 }, art: 'ecke' as const } : k));
+      return { ...h, knoten };
+    };
+    const dok: Dokument = { ...kugel, spanten: [{ f: 0.3, profil: mitEcke(0.78) }, { f: 0.7, profil: mitEcke(0.22) }], hauptspant: 0.97 };
+    /** schärfste Ecke im echten Schnitt (Raster) bzw. im fertigen Netz (nach Surface Nets und Taubin) */
+    // nur zwischen den Höhen der beiden Ecken suchen (Pole des Schnitts auslassen)
+    const band: [number, number] = [0.1, 0.42];
+    const ecke = (s: ReturnType<typeof schnittLoft>, f: number) => eckWinkel(s.schnittBei(f).umrisse[0]!, 2.5 * s.info.h, band);
+    const ecke3d = (s: ReturnType<typeof schnittLoft>, f: number) => eckWinkel(netzSchnitt(s.positionen, s.indizes, s.xMin + f * (s.xMax - s.xMin))[0]!, 2.5 * s.info.h, band);
+    const feld = schnittLoft(dok, { ueberblenden: 'feld' });
+    const punkte = schnittLoft(dok, { ueberblenden: 'punkte' });
+    const zeilen: string[] = [];
+    for (const f of [0.3, 0.4, 0.5, 0.6, 0.7]) {
+      const a = ecke(feld, f);
+      const b = ecke(punkte, f);
+      const c = ecke3d(feld, f);
+      const d = ecke3d(punkte, f);
+      zeilen.push(
+        `f ${f}: Felder ${a.winkel.toFixed(0)}° bei y ${a.y.toFixed(3)} (Netz ${c.winkel.toFixed(0)}°) | Punkte ${b.winkel.toFixed(0)}° bei y ${b.y.toFixed(3)} (Netz ${d.winkel.toFixed(0)}°)`,
+      );
+    }
+    // gezeichnet: Ecke mit ≈ 94° Richtungsänderung
+    console.log(`Ecke zwischen zwei Spanten (schärfste Richtungsänderung über ±2,5 Rasterpunkte; Schnitt im Raster, in Klammern im fertigen Netz):\n${zeilen.join('\n')}\nBauzeit Felder ${feld.info.millisekunden.toFixed(0)} ms, Punkte ${punkte.info.millisekunden.toFixed(0)} ms`);
+    expect(ecke(punkte, 0.5).winkel).toBeGreaterThan(ecke(feld, 0.5).winkel + 10);
   });
 
   it('Laufzeit je Auflösung', () => {

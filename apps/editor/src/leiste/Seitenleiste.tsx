@@ -412,6 +412,7 @@ function SchnittBereich() {
   const info = useSchnittAnzeige((s) => s.info);
   useSchnittAnzeige((s) => s.stand);
   const regel = useUi((s) => s.schnittRegel);
+  const ueberblenden = useUi((s) => s.schnittUeberblenden);
   const auswahl = useUi((s) => s.spantAuswahl);
   const spanten = useEditor((s) => s.dok.spanten);
   const hatMaul = useEditor((s) => !!s.dok.maul);
@@ -442,6 +443,21 @@ function SchnittBereich() {
       <p className="hilfe">
         Hälften: Jede Hälfte gilt nur auf ihrer Seite der Achse; was hinüberläuft, schneidet weg (die Acht wird zwei Teile). Gerade-ungerade wie in Illustrator: Die Mitte der
         Acht bleibt stehen.
+      </p>
+      <div className="feld">
+        <span>Zwischen Spanten</span>
+      </div>
+      <div className="umschalter">
+        <button className={ueberblenden === 'feld' ? 'chip aktiv' : 'chip'} data-schnittueberblenden="feld" onClick={() => useUi.getState().setzeSchnittUeberblenden('feld')}>
+          Felder
+        </button>
+        <button className={ueberblenden === 'punkte' ? 'chip aktiv' : 'chip'} data-schnittueberblenden="punkte" onClick={() => useUi.getState().setzeSchnittUeberblenden('punkte')}>
+          Punkte
+        </button>
+      </div>
+      <p className="hilfe">
+        Felder: Teile und Löcher gehen stetig auf und zu, eine Ecke blendet aber aus und wieder ein. Punkte: Jeder Spant-Punkt wandert zum nächsten Spant, eine Ecke läuft als
+        Kante längs (etwas langsamer).
       </p>
       {sp && auswahl && echt ? (
         <div className="feld">

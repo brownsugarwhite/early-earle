@@ -27,18 +27,28 @@ type Bau = {
   spanten: Dokument['spanten'];
   hauptspant: number | undefined;
   regel: SchnittRegel;
+  ueberblenden: 'feld' | 'punkte';
   aufloesung: number;
   loft: SchnittLoft;
 };
 let letzter: Bau | null = null;
 const schnitte = new Map<number, SchnittUmriss>();
 
-export function schnittBauen(dok: Dokument, schnell: boolean, regel: SchnittRegel): SchnittLoft {
+export function schnittBauen(dok: Dokument, schnell: boolean, regel: SchnittRegel, ueberblenden: 'feld' | 'punkte' = 'feld'): SchnittLoft {
   const aufloesung = schnell ? SCHNITT_GROB : SCHNITT_GENAU;
   const l = letzter;
-  if (l && l.profile === dok.profile && l.spanten === dok.spanten && l.hauptspant === dok.hauptspant && l.regel === regel && (l.aufloesung === aufloesung || (schnell && l.aufloesung > aufloesung))) return l.loft;
-  const loft = schnittLoft(dok, { aufloesung, regel });
-  letzter = { profile: dok.profile, spanten: dok.spanten, hauptspant: dok.hauptspant, regel, aufloesung, loft };
+  if (
+    l &&
+    l.profile === dok.profile &&
+    l.spanten === dok.spanten &&
+    l.hauptspant === dok.hauptspant &&
+    l.regel === regel &&
+    l.ueberblenden === ueberblenden &&
+    (l.aufloesung === aufloesung || (schnell && l.aufloesung > aufloesung))
+  )
+    return l.loft;
+  const loft = schnittLoft(dok, { aufloesung, regel, ueberblenden });
+  letzter = { profile: dok.profile, spanten: dok.spanten, hauptspant: dok.hauptspant, regel, ueberblenden, aufloesung, loft };
   schnitte.clear();
   const i = loft.info;
   useSchnittAnzeige.setState((s) => ({

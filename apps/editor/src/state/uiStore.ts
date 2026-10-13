@@ -75,6 +75,8 @@ type UiState = {
   bauweise: Bauweise;
   /** Versuch 13.10.: Flächenregel der Schnitte für Front und Spanten (Hälften oder gerade-ungerade) */
   schnittRegel: SchnittRegel;
+  /** Versuch 13.10.: Überblendung zwischen Spanten (Abstandsfelder oder Punkt für Punkt) */
+  schnittUeberblenden: 'feld' | 'punkte';
   /** Wirbelsäule testweise biegen (Pose-Vorschau, nicht im Dokument): Winkel in Grad, Stelle 0 … 1 ab der Schnauze */
   wirbelBiegung: { winkel: number; bei: number };
   /** Wirbelsäule selbst zeichnen: gesetzte Punkte (Seite), bis Enter/Esc */
@@ -108,6 +110,7 @@ type UiState = {
   setzeZebra(an: boolean): void;
   setzeBauweise(b: Bauweise): void;
   setzeSchnittRegel(r: SchnittRegel): void;
+  setzeSchnittUeberblenden(u: 'feld' | 'punkte'): void;
   setzeWirbelBiegung(b: { winkel: number; bei: number }): void;
   setzeWirbelZeichnen(p: { x: number; y: number }[] | null): void;
   setzeSpantAuswahl(a: SpantAuswahl | null): void;
@@ -146,6 +149,7 @@ export const useUi = create<UiState>((set, get) => ({
   zebra: false,
   bauweise: 'bisher',
   schnittRegel: 'halb',
+  schnittUeberblenden: 'feld',
   wirbelBiegung: { winkel: 0, bei: 0.5 },
   wirbelZeichnen: null,
   spantAuswahl: null,
@@ -201,6 +205,9 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeSchnittRegel(r) {
     set({ schnittRegel: r });
+  },
+  setzeSchnittUeberblenden(u) {
+    set({ schnittUeberblenden: u });
   },
   setzeWirbelBiegung(b) {
     set({ wirbelBiegung: b });

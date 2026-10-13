@@ -31,7 +31,8 @@
 import type { V2 } from '../bezier';
 import type { Dokument } from '../dokument';
 import { pfadAbtasten, segmente, vollerPfad } from '../profil';
-import { hauptspantProfil, spantStuetzen } from '../spanten';
+import type { Profil } from '../profil';
+import { hauptspantProfil, mischeProfile, spantStuetzen } from '../spanten';
 
 export type SchnittRegel = 'halb' | 'gerade-ungerade';
 
@@ -49,9 +50,15 @@ export type SchnittOptionen = {
    * Rundung von der sichtbaren Hülle wegschneidet; die Hülle selbst und die Umrisse bleiben exakt.
    */
   weich: number;
+  /**
+   * Überblendung zwischen Spanten: 'feld' = Abstandsfelder (Teile und Löcher gehen stetig auf und zu, Ecken blenden aus und
+   * ein); 'punkte' = Punkt für Punkt wie bisher, dann die Fläche mit der Flächenregel (Ecken wandern als Kante längs; Teile
+   * entstehen, wo die Kurve die Achse kreuzt). 'punkte' rechnet je Scheibe eine Vorlage (langsamer).
+   */
+  ueberblenden: 'feld' | 'punkte';
 };
 
-export const SCHNITT_STANDARD: SchnittOptionen = { aufloesung: 112, glaetten: 8, regel: 'halb', runden: true, weich: 2 };
+export const SCHNITT_STANDARD: SchnittOptionen = { aufloesung: 112, glaetten: 8, regel: 'halb', runden: true, weich: 2, ueberblenden: 'feld' };
 
 /** Echter Schnitt an einer Stelle: Umrisslinien in (z, y), Teile und Löcher. */
 export type SchnittUmriss = { umrisse: V2[][]; teile: number; loecher: number };
@@ -410,7 +417,7 @@ type Kontext = {
   seite2: Float32Array;
   top2: Float32Array;
   /** Stützen der Überblendung (Hauptspant = Front, Spanten) mit dem Kasten an ihrer Stelle */
-  stuetzen: { f: number; vorlage: Vorlage; kasten: Kasten3 }[];
+  stuetzen: { f: number; vorlage: Vorlage; kasten: Kasten3; profil: Profil }[];
 };
 
 /** Kasten einer Stelle wie bei den Spanten: Höhe aus der Seite (äußerste Schnittpunkte), halbe Breite aus dem Top. */
@@ -484,11 +491,10 @@ function kontextBauen(dok: Dokument, opt: SchnittOptionen): Kontext {
   const y0 = (yMin + yMax) / 2 - ((NY - 1) * h) / 2;
   const front = haelftenFeld(frontHalb, opt.regel, NZH, NY, h, y0, h);
   const stapel = new Int32Array(VNU * VNV);
-  const stuetzen = spantStuetzen(dok).map((s) => ({
-    f: s.f,
-    vorlage: vorlageAus(s.index < 0 ? hauptspantProfil(dok) : s.profil, opt.regel, stapel),
-    kasten: kastenAn(seite, topHalb, xMin, xMax, tMin, tMax, s.f, opt.regel),
-  }));
+  const stuetzen = spantStuetzen(dok).map((s) => {
+    const profil = s.index < 0 ? hauptspantProfil(dok) : s.profil;
+    return { f: s.f, profil, vorlage: vorlageAus(profil, opt.regel, stapel), kasten: kastenAn(seite, topHalb, xMin, xMax, tMin, tMax, s.f, opt.regel) };
+  });
   const seite2 = geschlossenesFeld(
     seite.map((p) => ({ x: p.y, y: p.x })),
     NY,
@@ -574,9 +580,15 @@ function vorlageAnStelle(k: Kontext, f: number, p: Puffer): { vorlage: Vorlage; 
   const t = b.f - a.f > 1e-9 ? (f - a.f) / (b.f - a.f) : 0;
   if (t < 1e-6) return a;
   if (t > 1 - 1e-6) return b;
-  const fa = a.vorlage.feld;
-  const fb = b.vorlage.feld;
-  for (let q = 0; q < fa.length; q++) p.vFeld[q] = (1 - t) * fa[q]! + t * fb[q]!;
+  if (k.opt.ueberblenden === 'punkte') {
+    // Punkt für Punkt überblenden (gleiche Punktstruktur), dann die Fläche bilden: Ecken wandern als Kante längs
+    const halb = pfadAbtasten(segmente(mischeProfile(a.profil, b.profil, t)), 16);
+    p.vFeld.set(haelftenFeld(halb, k.opt.regel, VNU, VNV, VH, VV0, VH));
+  } else {
+    const fa = a.vorlage.feld;
+    const fb = b.vorlage.feld;
+    for (let q = 0; q < fa.length; q++) p.vFeld[q] = (1 - t) * fa[q]! + t * fb[q]!;
+  }
   const teile = teileFinden(p.vFeld, VNU, VNV, VH, VV0, VH, p.vLab, p.vStapel);
   const mix = (x: number, y: number) => x + (y - x) * t;
   return {

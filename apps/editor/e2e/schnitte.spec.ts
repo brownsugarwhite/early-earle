@@ -86,6 +86,11 @@ test('Bauweise Schnitte: Tab, Umriss, echter Schnitt bei S1, Regel, zurück', as
   await page.locator('.leiste [data-schnittregel="gerade-ungerade"]').click();
   await expect.poll(() => vertices(page)).not.toBe(v);
   await page.locator('.leiste [data-schnittregel="halb"]').click();
+  // Überblendung zwischen Spanten: Punkt für Punkt baut einen anderen Körper
+  const v2 = await vertices(page);
+  await page.locator('.leiste [data-schnittueberblenden="punkte"]').click();
+  await expect.poll(() => vertices(page)).not.toBe(v2);
+  await page.locator('.leiste [data-schnittueberblenden="feld"]').click();
 
   // Ziehen an einem Punkt der Seite: grob während der Geste, genau beim Loslassen
   const info = page.locator('.leiste [data-schnittinfo]');

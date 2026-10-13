@@ -1,6 +1,6 @@
 // Versuch 13.10.: Prüfwesen für die Bauweise „Schnitte“ laden.
 //   ?versuch=schnitte&wesen=ueberhang|kugel|rex|tiger|robbe|langhals
-//   &bauweise=bisher (zum Vergleichen), &regel=gerade-ungerade, &spanten=0 (Spanten weglassen)
+//   &bauweise=bisher (zum Vergleichen), &regel=gerade-ungerade, &ueberblenden=punkte, &spanten=0 (Spanten weglassen)
 // „ueberhang“ ist Florians Bogen vom 13.10. (Ente mit Schnauze über dem Bauch, Glocke, Top mit Haken, S1 als Acht),
 // nachgezogen als Dokument; die anderen sind die nachgezogenen Versuchswesen vom 12.10.
 
@@ -24,5 +24,6 @@ export async function schnittVersuchLaden(): Promise<void> {
   }
   useEditor.getState().laden(dok, null);
   if (q.get('regel') === 'gerade-ungerade') useUi.getState().setzeSchnittRegel('gerade-ungerade');
+  if (q.get('ueberblenden') === 'punkte') useUi.getState().setzeSchnittUeberblenden('punkte');
   useUi.getState().setzeBauweise(q.get('bauweise') === 'bisher' ? 'bisher' : 'schnitte');
 }
