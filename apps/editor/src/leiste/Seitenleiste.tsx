@@ -1,4 +1,5 @@
 import { useKernAnzeige } from '../kern/kernBau';
+import { PALETTEN } from '../three/wesenLook';
 // Seitenleiste rechts, immer offen (Florian 12.10.): oben das Menü des aktiven Tabs (Wesen, Maul, Zähne, Rig, Augen),
 // darunter die Library. Gestaltung (Glas, Ornament) ist mein Entwurf.
 
@@ -764,9 +765,31 @@ export function Seitenleiste() {
 /** Wesen-Editor 2, Beweis 1 (13.10.): Kern-Anzeige (Naht-Abweichung, Zeiten). */
 function KernBereich() {
   const info = useKernAnzeige((s) => s.info);
+  const look = useKernAnzeige((s) => s.look);
+  const palette = useKernAnzeige((s) => s.palette);
   return (
     <section className="bereich" data-bereich="kern">
-      <h3>Kern (Beweis 1)</h3>
+      <h3>Kern (Beweis 1 und 4)</h3>
+      <div className="feld">
+        <span>Look</span>
+        <b>{look === 'earle' ? 'Earle-Material (Beweis 4)' : 'Matcap'}</b>
+      </div>
+      <div className="umschalter stufen" role="radiogroup" aria-label="Look">
+        {(['matcap', 'earle'] as const).map((l) => (
+          <button key={l} className={look === l ? 'chip aktiv' : 'chip'} data-look={l} onClick={() => useKernAnzeige.getState().setzeLook(l)}>
+            {l === 'matcap' ? 'Matcap' : 'Earle'}
+          </button>
+        ))}
+      </div>
+      {look === 'earle' && (
+        <div className="umschalter stufen" role="radiogroup" aria-label="Palette">
+          {Object.entries(PALETTEN).map(([k, p]) => (
+            <button key={k} className={palette === k ? 'chip aktiv' : 'chip'} data-palette={k} onClick={() => useKernAnzeige.getState().setzePalette(k)}>
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
       <p className="hinweis">
         Ein Subdivision-Käfig ist die Wahrheit. Der Seitenumriss wird einmal abgeleitet (Leiter, Poisson-Dicke, Röhre 24 × 16 mit Kappen), dann so gelöst, dass die
         Grenzfläche der Stufe 3 durch die Kurve geht. Ziehen am Seitenumriss bewegt nur Ziele; Löser und Matrix liefern das Netz. Ecken des Umrisses werden Falten.

@@ -16,7 +16,8 @@ import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten
 import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
-import { kernBauen } from '../kern/kernBau';
+import { kernBauen, useKernAnzeige } from '../kern/kernBau';
+import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
@@ -75,7 +76,10 @@ export function Szene3D() {
           const s = d.skalierung;
           if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
           r.setzeLinien(null);
-          r.setzeDreiecke(t.positionen, t.normalen);
+          if (t.deskriptoren) {
+            r.setzePalette(PALETTEN[useKernAnzeige.getState().palette] ?? PALETTEN.tiger!);
+            r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, t.augen.map((a) => ({ ...a, pos: [a.pos[0] * s, a.pos[1] * s, a.pos[2] * s] as [number, number, number], groesse: a.groesse * s })));
+          } else r.setzeDreiecke(t.positionen, t.normalen);
           return;
         }
         if (!versuch && useUi.getState().bauweise === 'rund') {
@@ -199,6 +203,8 @@ export function Szene3D() {
           if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
+        // Beweis 4: Look oder Palette gewechselt → Kern neu bauen
+        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
         // Biege-Regler losgelassen: genau bauen
         useWirbelAnzeige.subscribe((s, v) => v.zieht && !s.zieht && useUi.getState().bauweise === 'wirbel' && bauen(useEditor.getState().dok)),
       );

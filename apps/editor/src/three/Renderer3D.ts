@@ -4,12 +4,15 @@
 // Look: Matcap (Licht an der Ansicht, wie Blender-Solid), Kachel als 10-%-Fläche, harter Schatten von
 // einem eigenen Sonnenlicht (wirkt nur auf den Schatten, die Matcap ignoriert Licht).
 
+import { STIL_STANDARD, applyMuster, applyStil, applyZonen, createCreatureMaterial, createCreatureUniforms, installTslFunctionCacheFix, type CreatureMaterialUniforms } from '@ee/render';
 import type { LoftNetz } from '@ee/shape';
 import {
   BufferAttribute,
   BufferGeometry,
   Color,
   DirectionalLight,
+  InterleavedBuffer,
+  InterleavedBufferAttribute,
   LineBasicNodeMaterial,
   LineSegments,
   FrontSide,
@@ -21,8 +24,11 @@ import {
   PlaneGeometry,
   Scene,
   ShadowNodeMaterial,
+  Vector3,
+  Vector4,
   WebGPURenderer,
 } from 'three/webgpu';
+import { type Auge, PALETTEN, type Palette } from './wesenLook';
 import type { Kamera } from '../state/uiStore';
 import type { Rect } from '../types';
 import { kameraPosition } from './kamera';
@@ -50,8 +56,17 @@ export class Renderer3D {
   private bereit = false;
   private readonly matcaps = { normal: blenderMatcap(), zebra: zebraMatcap() };
   vertexAnzahl = 0;
+  /** Beweis 4: Earle-Wesen (eigenes Netz mit Deskriptoren, Material aus `packages/render`) */
+  private readonly wesen: Mesh;
+  private readonly wesenUniforms: CreatureMaterialUniforms;
+  private palette: Palette = PALETTEN.tiger!;
+  private lebenTimer: number | null = null;
+  private blinkPhase = -1;
+  private blinkTimer = 2.2;
+  private zeit = 0;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
+    installTslFunctionCacheFix();
     const webgl = new URLSearchParams(location.search).get('backend') === 'webgl';
     this.renderer = new WebGPURenderer({ canvas, antialias: true, alpha: true, forceWebGL: webgl });
     this.renderer.setClearColor(0x000000, 0);
@@ -67,6 +82,16 @@ export class Renderer3D {
     this.koerper.castShadow = true;
     this.koerper.frustumCulled = false;
     this.szene.add(this.koerper);
+
+    this.wesenUniforms = createCreatureUniforms(this.palette.farben, STIL_STANDARD, 1);
+    const wesenMaterial = createCreatureMaterial(this.wesenUniforms);
+    wesenMaterial.shadowSide = FrontSide;
+    this.wesen = new Mesh(new BufferGeometry(), wesenMaterial);
+    this.wesen.visible = false;
+    this.wesen.castShadow = true;
+    this.wesen.frustumCulled = false;
+    this.szene.add(this.wesen);
+    this.setzePalette(this.palette);
 
     const kachel = new Mesh(new PlaneGeometry(1, 1), new MeshBasicNodeMaterial({ color: 0x000000, transparent: true, opacity: 0.1, depthWrite: false }));
     kachel.rotation.x = -Math.PI / 2;
@@ -134,6 +159,8 @@ export class Renderer3D {
     this.geometrie = g;
     this.koerper.geometry = g;
     this.koerper.visible = true;
+    this.wesen.visible = false;
+    this.leben(false);
     alt.dispose();
     this.vertexAnzahl = positionen.length / 3;
     this.nachUebersetzen();
@@ -195,6 +222,96 @@ export class Renderer3D {
       this.szene.add(this.linien);
     }
     this.nachUebersetzen();
+  }
+
+  /**
+   * Beweis 4: Earle-Wesen aus Dreiecken (ohne Index) mit 16 Deskriptor-Floats je Ecke (eeSpine, eeRegion, eeExtra,
+   * eePucker, eeTeil, Reihenfolge wie `CreatureMesh`), Körperhöhe und gemalten Schlitzaugen.
+   */
+  setzeWesen(positionen: Float32Array, normalen: Float32Array, deskriptoren: Float32Array, hoehe: number, augen: Auge[]) {
+    const g = new BufferGeometry();
+    g.setAttribute('position', new BufferAttribute(positionen, 3));
+    g.setAttribute('normal', new BufferAttribute(normalen, 3));
+    const ib = new InterleavedBuffer(deskriptoren, 16);
+    g.setAttribute('eeSpine', new InterleavedBufferAttribute(ib, 4, 0));
+    g.setAttribute('eeRegion', new InterleavedBufferAttribute(ib, 4, 4));
+    g.setAttribute('eeExtra', new InterleavedBufferAttribute(ib, 4, 8));
+    g.setAttribute('eePucker', new InterleavedBufferAttribute(ib, 3, 12));
+    g.setAttribute('eeTeil', new InterleavedBufferAttribute(ib, 1, 15));
+    g.computeBoundingSphere();
+    const u = this.wesenUniforms;
+    u.bodyScale.value = Math.max(1e-3, hoehe);
+    u.zonen.hoehe.value = Math.max(1e-3, hoehe);
+    u.eyeCount.value = Math.min(4, augen.length);
+    augen.slice(0, 4).forEach((a, i) => {
+      const n = new Vector3(...a.normale).normalize();
+      const up = new Vector3(0, 1, 0).addScaledVector(n, -n.y).normalize();
+      (u.eyePos.array[i] as Vector4).set(a.pos[0] + n.x * 0.002, a.pos[1] + n.y * 0.002, a.pos[2] + n.z * 0.002, a.groesse);
+      (u.eyeUp.array[i] as Vector4).set(up.x, up.y, up.z, 1);
+    });
+    const alt = this.wesen.geometry;
+    this.wesen.geometry = g;
+    this.wesen.visible = true;
+    this.koerper.visible = false;
+    alt.dispose();
+    this.vertexAnzahl = positionen.length / 3;
+    this.leben(true);
+    this.nachUebersetzen();
+  }
+
+  /** Palette (Farben, Muster, Zonen) des Earle-Wesens. */
+  setzePalette(p: Palette) {
+    this.palette = p;
+    const u = this.wesenUniforms;
+    applyStil(u, STIL_STANDARD, p.farben);
+    applyMuster(u.musterU, p.muster);
+    applyZonen(u.zonen, p.zonen);
+    u.bauchlinie.value = p.bauchlinie;
+    u.bauchStaerke.value = p.bauchStaerke;
+    u.glimmerWesen.value = p.glimmer;
+    u.teilAn.value = 0;
+    this.anfordern();
+  }
+
+  /** Atmen der Zeit (Funken) und Blinzeln, solange das Earle-Wesen sichtbar ist (20 Bilder je Sekunde). */
+  private leben(an: boolean) {
+    if (!an) {
+      if (this.lebenTimer !== null) window.clearInterval(this.lebenTimer);
+      this.lebenTimer = null;
+      return;
+    }
+    if (this.lebenTimer !== null) return;
+    let letzte = performance.now();
+    this.lebenTimer = window.setInterval(() => {
+      const t = performance.now();
+      const dt = Math.min(0.1, (t - letzte) / 1000);
+      letzte = t;
+      this.zeit += dt;
+      const u = this.wesenUniforms;
+      u.zeit.value = this.zeit;
+      if (this.blinkPhase < 0) {
+        this.blinkTimer -= dt;
+        if (this.blinkTimer <= 0) {
+          this.blinkPhase = 0;
+          this.blinkTimer = 2.4 + Math.random() * 4;
+        }
+        u.blink.value = 0;
+      } else {
+        this.blinkPhase += dt;
+        const x = this.blinkPhase / 0.17;
+        u.blink.value = x < 0.4 ? Math.pow(x / 0.4, 0.6) : Math.max(0, 1 - Math.pow((x - 0.4) / 0.6, 1.4));
+        if (x >= 1) this.blinkPhase = -1;
+      }
+      this.anfordern();
+    }, 50);
+  }
+
+  /** Blinzeln festhalten (Standbilder): 0 offen … 1 zu, null = Automatik. */
+  blinkHalten(wert: number | null) {
+    if (wert === null) return;
+    this.leben(false);
+    this.wesenUniforms.blink.value = wert;
+    this.anfordern();
   }
 
   setzeRect(r: Rect | null) {

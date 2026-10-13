@@ -11,8 +11,9 @@ const url = process.env.EDITOR_URL ?? 'http://localhost:5180';
 const browser = await chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });
 const page = await browser.newPage({ viewport: { width: 1728, height: 1161 }, deviceScaleFactor: 1 });
 for (const wesen of wesenListe) {
-  for (const bauweise of ['kern', 'rund']) {
-    await page.goto(`${url}/?versuch=kern&wesen=${wesen}&bauweise=${bauweise}`);
+  for (const bauweise of ['kern', 'rund', 'earle']) {
+    const look = bauweise === 'earle' ? `&look=earle&palette=${wesen === 'rex' ? 'rex' : wesen === 'kugel' ? 'blob' : wesen === 'langhals' ? 'giraffe' : 'tiger'}` : '';
+    await page.goto(`${url}/?versuch=kern&wesen=${wesen}&bauweise=${bauweise === 'earle' ? 'kern' : bauweise}${look}`);
     await page.waitForFunction(() => window.__editor && window.__editor.vertices() > 0, null, { timeout: 60_000 });
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(1800);

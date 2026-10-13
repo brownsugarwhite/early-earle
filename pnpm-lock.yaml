@@ -187,6 +187,9 @@ importers:
 
   apps/editor:
     devDependencies:
+      '@ee/render':
+        specifier: workspace:*
+        version: link:../../packages/render
       '@ee/shape':
         specifier: workspace:*
         version: link:../../packages/shape

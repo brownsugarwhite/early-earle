@@ -15,6 +15,7 @@
     "e2e": "playwright test"
   },
   "devDependencies": {
+    "@ee/render": "workspace:*",
     "@ee/shape": "workspace:*",
     "@fontsource/irish-grover": "5.2.7",
     "@playwright/test": "^1.63.0",

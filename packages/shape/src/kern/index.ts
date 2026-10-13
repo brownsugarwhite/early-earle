@@ -7,3 +7,4 @@ export * from '../subdivision/catmullClark';
 export * from '../loeser/lu';
 export * from '../loeser/grenzflaeche';
 export * from './ableiten';
+export * from './deskriptoren';
