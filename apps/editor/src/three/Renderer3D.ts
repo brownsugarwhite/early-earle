@@ -28,9 +28,15 @@ import {
   Vector4,
   WebGPURenderer,
   DataTexture,
+  OrthographicCamera,
 } from 'three/webgpu';
 import { type AtlasDaten, type Auge, type Gesicht, PALETTEN, type Palette } from './wesenLook';
-import type { Kamera } from '../state/uiStore';
+import type { Ansicht2D, Kamera } from '../state/uiStore';
+import type { Ansicht, Blick } from '@ee/shape';
+import { massstab } from '../viewports/ansicht2d';
+
+/** Blatt (Seite, Front, Top): Rechteck, 2D-Ansicht (Zoom, Mitte) und Blickrichtung — die Bühne rendert den Körper dahinter. */
+export type Blatt = { rect: Rect; ansicht: Ansicht2D; blick: Blick };
 import type { Rect } from '../types';
 import { kameraPosition } from './kamera';
 import { blenderMatcap, zebraMatcap } from './matcap';
@@ -51,6 +57,10 @@ export class Renderer3D {
   private readonly koerper: Mesh;
   private geometrie = new BufferGeometry();
   private rect: Rect | null = null;
+  /** Blätter (M2): dieselbe Szene mit orthografischen Kameras in Seite, Front, Top */
+  private blaetter: Partial<Record<Ansicht, Blatt>> = {};
+  private readonly ortho = new OrthographicCamera(-1, 1, 1, -1, 0.01, 60);
+  private boden: Mesh | null = null;
   private linien: LineSegments | null = null;
   private kameraZustand: Kamera | null = null;
   private angefordert = false;
@@ -128,6 +138,7 @@ export class Renderer3D {
     boden.receiveShadow = true;
     boden.renderOrder = 2;
     this.szene.add(boden);
+    this.boden = boden;
 
     const sonne = new DirectionalLight(0xffffff, 1);
     sonne.position.set(SONNE[0] * 5, SONNE[1] * 5, SONNE[2] * 5);
@@ -446,6 +457,46 @@ export class Renderer3D {
     this.anfordern();
   }
 
+  /** Blätter (M2): Rechtecke, 2D-Ansichten und Blicke von Seite, Front, Top; fehlt ein Blatt, wird es nicht gezeichnet. */
+  setzeBlaetter(b: Partial<Record<Ansicht, Blatt>>) {
+    this.blaetter = b;
+    this.anfordern();
+  }
+
+  /**
+   * Orthografische Kamera eines Blatts, deckungsgleich mit `zuBild` der 2D-Ansicht: Maßstab s px je Welteinheit, Mitte
+   * (cu, cv) in Blattkoordinaten. Seite: x rechts, y oben. Front: Bild-x = +z (Back: −z). Top: von oben, Bild-y = −z
+   * (Bottom: von unten, Bild-y = +z), siehe `spiegeln2`.
+   */
+  private blattKamera(ansicht: Ansicht, b: Blatt) {
+    const { w, h } = b.rect;
+    const s = massstab(b.ansicht, w, h);
+    const hw = w / (2 * s);
+    const hh = h / (2 * s);
+    const cam = this.ortho;
+    cam.left = -hw;
+    cam.right = hw;
+    cam.top = hh;
+    cam.bottom = -hh;
+    const { cu, cv } = b.ansicht;
+    if (ansicht === 'seite') {
+      cam.position.set(cu, cv, 20);
+      cam.up.set(0, 1, 0);
+      cam.lookAt(cu, cv, 0);
+    } else if (ansicht === 'front') {
+      const hinten = b.blick === 'hinten';
+      cam.position.set(hinten ? 20 : -20, cv, hinten ? -cu : cu);
+      cam.up.set(0, 1, 0);
+      cam.lookAt(0, cv, hinten ? -cu : cu);
+    } else {
+      const unten = b.blick === 'unten';
+      cam.position.set(cu, unten ? -20 : 20, unten ? cv : -cv);
+      cam.up.set(0, 0, unten ? 1 : -1);
+      cam.lookAt(cu, 0, unten ? cv : -cv);
+    }
+    cam.updateProjectionMatrix();
+  }
+
   setzeKamera(k: Kamera) {
     this.kameraZustand = k;
     this.anfordern();
@@ -496,6 +547,17 @@ export class Renderer3D {
     rd.setScissorTest(true);
     this.kameraStellen(r.w / r.h);
     rd.render(this.szene, this.kamera);
+    // Blätter (M2): dieselbe Szene orthografisch in Seite, Front, Top; von unten ohne Bodenplatte
+    for (const ansicht of ['seite', 'front', 'top'] as const) {
+      const b = this.blaetter[ansicht];
+      if (!b || b.rect.w < 2 || b.rect.h < 2) continue;
+      this.blattKamera(ansicht, b);
+      rd.setViewport(b.rect.x, b.rect.y, b.rect.w, b.rect.h);
+      rd.setScissor(b.rect.x, b.rect.y, b.rect.w, b.rect.h);
+      if (this.boden) this.boden.visible = !(ansicht === 'top' && b.blick === 'unten');
+      rd.render(this.szene, this.ortho);
+    }
+    if (this.boden) this.boden.visible = true;
     return true;
   }
 

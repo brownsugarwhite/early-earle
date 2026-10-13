@@ -6,10 +6,14 @@ import type { Ansicht2D } from '../state/uiStore';
 
 export const KACHEL_ANTEIL = 0.925;
 
-/** Back spiegelt waagerecht (z → −z), Bottom senkrecht (Bild-y = z → −z); die Spiegelung ist ihr eigenes Inverses. */
+/**
+ * Back spiegelt waagerecht (Bild-x = −z). Top spiegelt senkrecht (Bild-y = −z): Von oben gesehen, Schnauze links, zeigt
+ * +z nach unten; die editierbare Hälfte des Top-Profils (+z) liegt deshalb unter der Achse. Bottom (von unten) zeigt
+ * +z nach oben. So decken sich die Blätter mit den orthografischen Kameras der Bühne (M2). Die Spiegelung ist ihr eigenes Inverses.
+ */
 export function spiegeln2(blick: Blick, p: V2): V2 {
   if (blick === 'hinten') return { x: -p.x, y: p.y };
-  if (blick === 'unten') return { x: p.x, y: -p.y };
+  if (blick === 'top') return { x: p.x, y: -p.y };
   return p;
 }
 const ZOOM_MIN = 0.08;

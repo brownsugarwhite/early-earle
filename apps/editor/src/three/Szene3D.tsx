@@ -204,6 +204,22 @@ export function Szene3D() {
       r.setzeKamera(useUi.getState().kamera);
       r.setzeZebra(useUi.getState().zebra);
       r.setzeRect(useRahmen.getState().rects?.creation ?? null);
+      // Blätter (M2): Seite, Front, Top zeigen denselben Körper orthografisch hinter den Kurven (nur Bauweise „kern“)
+      const blaetter = () => {
+        const rects = useRahmen.getState().rects;
+        const ui = useUi.getState();
+        if (!rects || ui.bauweise !== 'kern') return r.setzeBlaetter({});
+        r.setzeBlaetter({
+          seite: { rect: rects.seite, ansicht: ui.ansichten.seite, blick: 'seite' },
+          front: { rect: rects.front, ansicht: ui.ansichten.front, blick: ui.blick.front },
+          top: { rect: rects.top, ansicht: ui.ansichten.top, blick: ui.blick.top },
+        });
+      };
+      blaetter();
+      abmelden.push(
+        useRahmen.subscribe(blaetter),
+        useUi.subscribe((s, v) => (s.ansichten !== v.ansichten || s.blick !== v.blick || s.bauweise !== v.bauweise) && blaetter()),
+      );
       abmelden.push(
         useEditor.subscribe((s, v) => {
           const geaendert =
