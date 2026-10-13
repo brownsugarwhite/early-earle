@@ -1,9 +1,32 @@
 // Nachzeichnen: Silhouette und Schneider-Anpassung an einer gezeichneten Figur (Kreis auf einem Kasten, dunkel auf hell)
 import { describe, expect, it } from 'vitest';
-import { profilGeschlossen } from './fit';
+import { profilGeschlossen, profilHalb } from './fit';
+import { halbUmriss } from './umriss';
 import { silhouette } from './umriss-test-helfer';
 
 describe('Nachzeichnen', () => {
+  it('Halbprofil (Front) aus einer Ellipse: Achse in der Mitte, Hälfte von oben nach unten, Achsknoten glatt mit Griff quer', () => {
+    const w = 300;
+    const h = 300;
+    const rgba = new Uint8ClampedArray(w * h * 4).fill(255);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (((x - 150) / 80) ** 2 + ((y - 150) / 120) ** 2 <= 1) {
+      const i = 4 * (y * w + x);
+      rgba[i] = rgba[i + 1] = rgba[i + 2] = 10;
+    }
+    const sil = silhouette(rgba, w, h);
+    const { halb, achse } = halbUmriss(sil.punkte, true);
+    expect(Math.abs(achse - 150)).toBeLessThan(2);
+    expect(halb.length).toBeGreaterThan(100);
+    expect(halb[0]![0]).toBeLessThan(2); // beginnt auf der Achse
+    expect(halb[halb.length - 1]![0]).toBeLessThan(2); // endet auf der Achse
+    expect(Math.max(...halb.map((q) => q[0]))).toBeGreaterThan(75); // rechte Hälfte reicht bis zum Rand
+    const kn = profilHalb(halb, 2, true);
+    expect(kn.length).toBeGreaterThanOrEqual(3);
+    expect(kn.length).toBeLessThanOrEqual(8);
+    expect(kn[0]!.art).toBe('glatt');
+    expect(kn[kn.length - 1]!.art).toBe('glatt');
+  });
+
   it('Kreis mit Kasten: Umriss gefunden, Kurve mit wenigen Knoten und Fehler ≤ 1,6 px, Ecken am Kasten', () => {
     const w = 400;
     const h = 300;

@@ -5,7 +5,8 @@
 import { type Profil, achsenRegeln, angleichen } from '@ee/shape';
 import { useEditor } from '../state/editorStore';
 import { type Pauspapier, useUi } from '../state/uiStore';
-import { knotenNachWelt, profilGeschlossen } from './fit';
+import { knotenNachWelt, profilGeschlossen, profilHalb } from './fit';
+import { halbUmriss } from './umriss';
 import { silhouette } from './umriss-test-helfer';
 
 export type NachzeichnenErgebnis = { knoten: number; flaechePx: number; fehlerPx: number; hoehePx: number };
@@ -25,6 +26,42 @@ async function pixel(url: string): Promise<{ rgba: Uint8ClampedArray; w: number;
   if (!ctx) throw new Error('Kein 2D-Kontext');
   ctx.drawImage(bild, 0, 0, w, h);
   return { rgba: ctx.getImageData(0, 0, w, h).data, w, h, skala };
+}
+
+/**
+ * Umriss aus dem Pauspapier ins Dokument übernehmen: Seite als geschlossenes Profil (Boden = tiefster Punkt), Front und
+ * Top als Halbprofil (Achse = Mitte der Figur; Front steht auch auf dem Boden). Front und Top bzw. Seite werden danach
+ * angeglichen.
+ */
+export async function nachzeichnenBlatt(p: Pauspapier): Promise<NachzeichnenErgebnis> {
+  if (p.blatt === 'seite') return nachzeichnenSeite(p);
+  const { rgba, w, h } = await pixel(p.url);
+  const sil = silhouette(rgba, w, h);
+  if (sil.punkte.length < 12) throw new Error('Keine Figur im Bogen gefunden (dunkle Linien oder Flächen auf hellem Grund nötig)');
+  const err = Math.max(2, sil.hoehePx / 100);
+  const senkrecht = p.blatt === 'front';
+  const { halb, achse } = halbUmriss(sil.punkte, senkrecht);
+  if (halb.length < 6) throw new Error('Figur zu klein für ein Halbprofil');
+  const kn = profilHalb(halb, err, senkrecht);
+  const welt = p.breite / w;
+  // Front: waagerecht = z (Achse 0), senkrecht = y aus dem Pauspapier; Top: waagerecht = x aus dem Pauspapier, senkrecht = z (Achse 0)
+  const abb = (q: [number, number]): { x: number; y: number } =>
+    senkrecht ? { x: q[0] * welt, y: p.mitte.y - (h * welt) / 2 + q[1] * welt } : { x: p.mitte.x - p.breite / 2 + (q[0] - 0) * welt, y: q[1] * welt };
+  let knoten = knotenNachWelt(kn, abb, welt);
+  if (senkrecht) {
+    let yMin = Infinity;
+    for (const k of knoten) yMin = Math.min(yMin, k.p.y, k.p.y + k.ein.y, k.p.y + k.aus.y);
+    if (Number.isFinite(yMin) && Math.abs(yMin) > 1e-9) {
+      knoten = knoten.map((k) => ({ ...k, p: { x: k.p.x, y: k.p.y - yMin } }));
+      useUi.getState().pauspapierAendern({ mitte: { x: p.mitte.x, y: p.mitte.y - yMin } });
+    }
+  }
+  void achse;
+  const ed = useEditor.getState();
+  const sk = ed.dok.skalierung;
+  const profil: Profil = achsenRegeln({ art: 'halb', achse: senkrecht ? 'senkrecht' : 'waagerecht', knoten: knoten.map((k) => ({ ...k, p: { x: k.p.x / sk, y: k.p.y / sk }, ein: { x: k.ein.x / sk, y: k.ein.y / sk }, aus: { x: k.aus.x / sk, y: k.aus.y / sk } })) });
+  ed.setzeProfile(angleichen({ ...ed.dok.profile, [p.blatt]: profil }));
+  return { knoten: profil.knoten.length, flaechePx: sil.flaeche, fehlerPx: err, hoehePx: sil.hoehePx };
 }
 
 /** Seitenumriss aus dem Pauspapier (Blatt Seite) ins Dokument übernehmen; Boden = tiefster Punkt. */

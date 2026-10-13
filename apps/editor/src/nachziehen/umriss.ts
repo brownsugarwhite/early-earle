@@ -178,3 +178,36 @@ export function umrissPunkte(umriss: readonly [number, number][], h: number, abs
   if (flaeche > 0) pts.reverse();
   return pts;
 }
+
+/**
+ * Hälfte eines geschlossenen Umrisses (Uhrzeigersinn, y nach oben) für ein Halbprofil: senkrechte Achse → rechte Hälfte
+ * vom obersten zum untersten Punkt; waagerechte Achse → obere Hälfte vom linken zum rechten Punkt. Die Achse ist die
+ * Mitte des Umrisses; die Hälfte wird darauf verschoben (editierbare Hälfte ≥ 0).
+ */
+export function halbUmriss(pts: readonly [number, number][], senkrecht: boolean): { halb: [number, number][]; achse: number } {
+  const n = pts.length;
+  if (n < 4) return { halb: [], achse: 0 };
+  const k = senkrecht ? 1 : 0; // Koordinate, die den Anfang/das Ende bestimmt (y bei senkrecht, x bei waagerecht)
+  let start = 0;
+  let ende = 0;
+  for (let i = 1; i < n; i++) {
+    if (senkrecht ? pts[i]![k]! > pts[start]![k]! : pts[i]![k]! < pts[start]![k]!) start = i;
+    if (senkrecht ? pts[i]![k]! < pts[ende]![k]! : pts[i]![k]! > pts[ende]![k]!) ende = i;
+  }
+  const a = senkrecht ? 0 : 1; // Achskoordinate
+  let min = Infinity;
+  let max = -Infinity;
+  for (const q of pts) {
+    min = Math.min(min, q[a]!);
+    max = Math.max(max, q[a]!);
+  }
+  const achse = (min + max) / 2;
+  const halb: [number, number][] = [];
+  for (let i = start; ; i = (i + 1) % n) {
+    const q = pts[i]!;
+    halb.push(senkrecht ? [Math.max(0, q[0] - achse), q[1]] : [q[0], Math.max(0, q[1] - achse)]);
+    if (i === ende) break;
+    if (halb.length > n) break;
+  }
+  return { halb, achse };
+}

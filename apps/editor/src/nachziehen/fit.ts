@@ -206,6 +206,38 @@ export function profilGeschlossen(pts: readonly P[], errPx: number): Kn[] {
   return alle;
 }
 
+/**
+ * Halbprofil aus einer offenen Probe von Achse zu Achse (Pixel, editierbare Hälfte ≥ 0 auf der Achsnormalen; senkrecht →
+ * Achse x = 0 (Front), sonst y = 0 (Top)). Glatte Achsknoten bekommen den Griff quer zur Achse; weicht die Kurve dort um
+ * mehr als `grenzGrad` ab, wird der Achsknoten eine Ecke. Die Achsregeln selbst (`achsenRegeln`) wendet der Aufrufer an.
+ */
+export function profilHalb(pts: readonly P[], errPx: number, senkrecht: boolean, grenzGrad = 30): Kn[] {
+  const err = errPx * errPx;
+  const quer: P = senkrecht ? [1, 0] : [0, 1];
+  const ek = ecken(pts, false).filter((i) => i > 4 && i < pts.length - 5);
+  const grenzen = [0, ...ek, pts.length - 1];
+  const tStart = tangenteStart(pts, 4);
+  const tEnde = tangenteEnde(pts, 4);
+  const startEcke = winkelGrad(tStart, quer) > grenzGrad;
+  const endeEcke = winkelGrad(tEnde, quer) > grenzGrad;
+  const alle: Kn[] = [];
+  for (let j = 0; j + 1 < grenzen.length; j++) {
+    const seg = pts.slice(grenzen[j]!, grenzen[j + 1]! + 1);
+    const t1 = j === 0 ? (startEcke ? tStart : quer) : tangenteStart(seg);
+    const t2 = j === grenzen.length - 2 ? (endeEcke ? tEnde : quer) : tangenteEnde(seg);
+    const kurven = fitkubik(seg, t1, t2, err);
+    const kn = zuKnoten(kurven, j > 0, j < grenzen.length - 2);
+    if (alle.length) {
+      alle[alle.length - 1]!.aus = kn[0]!.aus;
+      alle[alle.length - 1]!.art = 'ecke';
+      alle.push(...kn.slice(1));
+    } else alle.push(...kn);
+  }
+  alle[0]!.art = startEcke ? 'ecke' : 'glatt';
+  alle[alle.length - 1]!.art = endeEcke ? 'ecke' : 'glatt';
+  return alle;
+}
+
 /** Knoten (Pixel, y nach oben) → Editor-Knoten in Welt über eine lineare Abbildung. */
 export function knotenNachWelt(kn: readonly Kn[], abb: (p: P) => V2, massstab: number): Knoten[] {
   return kn.map((k) => ({ p: abb(k.p), ein: { x: k.ein[0] * massstab, y: k.ein[1] * massstab }, aus: { x: k.aus[0] * massstab, y: k.aus[1] * massstab }, art: k.art }));
