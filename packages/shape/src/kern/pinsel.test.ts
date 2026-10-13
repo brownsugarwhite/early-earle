@@ -1,7 +1,11 @@
 // Phase 1 / M3: Pinsel — Deltas auf Käfigpunkten, gespiegelt angewendet, ohne Umbau; Spiegelpartner, Gewichte.
 import { describe, expect, it } from 'vitest';
 import { neuesDokument } from '../dokument';
+import { type Vorlage, vorlageDokument } from '../versuch';
+import tigerJson from '../versuch/vorlagen/tiger.json';
 import { ableiten } from './ableiten';
+import type { MaulErgebnis } from './maul';
+import { kastenSpanten } from './kasten';
 import { abfall, deltasAnwenden, kaefigNachbarn, kaefigNormalen, pinselGewichte, spiegelIndex } from './pinsel';
 import { wesenBauen } from './wesen';
 
@@ -56,6 +60,37 @@ describe('M3 Pinsel', () => {
     // andere Deltas: wieder ohne Umbau
     const mit2 = wesenBauen({ ...kugel, kaefig: { deltas: [{ punkt: 10 * N + 4, d: [0, 0.1, 0] }] } }, { earle: false }, mit.stand);
     expect(mit2.netz.info.ableitung).toBe(0);
+  });
+
+  it('Fressen-Pose (Plan 5.2): Deltas auf Maulpunkten wandern mit der Öffnung — zu unverändert, offen verschoben, halb zur Hälfte', () => {
+    const roh = vorlageDokument(tigerJson as unknown as Vorlage, 'zu', 'tiger');
+    const tiger = { ...roh, spanten: kastenSpanten(roh.profile.front, 0.02, 0.15, 0.25, 0.85) };
+    const plan = { earle: false, maul: 'vorn' as const, maulLinie: { fv: [{ f: 0, v: 0.5 }, { f: 0.032, v: 0.28 }, { f: 0.06, v: 0.25 }], unterSpitze: 0 }, maulOptionen: { winkelUnten: 30, winkelOben: 26, band: 1, rille: 0.006, reihen: 2, tiefe: 0.5 } };
+    const zu = wesenBauen(tiger, { ...plan, oeffnung: 0 }, null);
+    const auf = wesenBauen(tiger, { ...plan, oeffnung: 1 }, zu.stand);
+    const halb = wesenBauen(tiger, { ...plan, oeffnung: 0.5 }, auf.stand);
+    // Mundwinkel = Ende des Lippenpfads (Käfigpunkt jenseits der Vorlage? nein: Ringpunkt), Pose-Delta 5 % nach hinten, nach außen
+    const m = (auf.stand.abl as MaulErgebnis).maul;
+    const winkelPunkt = m.pfad[m.pfad.length - 1]!;
+    const dok = { ...tiger, kaefig: { deltas: [], posen: { fressen: [{ punkt: winkelPunkt, d: [0.05, -0.01, 0.02] as [number, number, number] }] } } };
+    const zuP = wesenBauen(dok, { ...plan, oeffnung: 0 }, halb.stand);
+    const aufP = wesenBauen(dok, { ...plan, oeffnung: 1 }, zuP.stand);
+    const halbP = wesenBauen(dok, { ...plan, oeffnung: 0.5 }, aufP.stand);
+    expect(zuP.netz.info.ableitung).toBe(0);
+    let diffZu = 0;
+    for (let i = 0; i < zu.netz.positionen.length; i++) diffZu = Math.max(diffZu, Math.abs(zu.netz.positionen[i]! - zuP.netz.positionen[i]!));
+    expect(diffZu).toBeLessThan(1e-9);
+    // die Grenzlage folgt dem Käfigpunkt zu etwa zwei Dritteln (Maske mit den Nachbarn)
+    const dx = aufP.netz.maul!.winkel[0] - auf.netz.maul!.winkel[0];
+    const dz = aufP.netz.maul!.winkel[2] - auf.netz.maul!.winkel[2];
+    expect(dx).toBeGreaterThan(0.02);
+    expect(dx).toBeLessThan(0.05);
+    expect(dz).toBeGreaterThan(0.005);
+    const dxHalb = halbP.netz.maul!.winkel[0] - halb.netz.maul!.winkel[0];
+    expect(dxHalb / dx).toBeGreaterThan(0.4);
+    expect(dxHalb / dx).toBeLessThan(0.6);
+    // posierter Käfig trägt den vollen Versatz (Pinsel sehen die Pose)
+    expect(aufP.netz.treffer!.kaefig.xyz[3 * winkelPunkt]! - auf.netz.treffer!.kaefig.xyz[3 * winkelPunkt]!).toBeCloseTo(0.05, 5);
   });
 
   it('Gewichte, Normalen, Nachbarn: Mitte wiegt 1, Spiegelgewicht am Spiegelbild, Normalen zeigen nach außen, Ringpunkte haben 4 Nachbarn', () => {

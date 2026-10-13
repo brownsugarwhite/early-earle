@@ -148,7 +148,8 @@ const DokumentFelder = {
 export const DokumentSchemaV0 = z.object({ ...DokumentFelder, version: z.literal(0) });
 /** Käfig-Delta (M3, Pinsel): Versatz eines Käfigpunkts der Vorlage (rechte Hälfte oder Naht), Profil-Einheiten. */
 const KaefigDeltaSchema = z.object({ punkt: z.number().int().min(0), d: V3 });
-const KaefigSchema = z.object({ deltas: z.array(KaefigDeltaSchema) });
+/** Käfig-Deltas der Grundform und je Pose (M3: „fressen“ = offenes Maul, mit der Öffnung überblendet; Plan 5.2). */
+const KaefigSchema = z.object({ deltas: z.array(KaefigDeltaSchema), posen: z.record(z.string(), z.array(KaefigDeltaSchema)).optional() });
 /** Version 1: mit Ausstattung und (M3) Käfig-Deltas der Pinsel. */
 export const DokumentSchema = z.object({ ...DokumentFelder, version: z.literal(1), ausstattung: AusstattungSchema.optional(), kaefig: KaefigSchema.optional() });
 
@@ -201,7 +202,7 @@ export type Dokument = {
    * M3 (Pinsel): Versätze von Käfigpunkten der Vorlage (Index < Punktzahl der Röhre; rechte Hälfte oder Naht, die linke
    * Hälfte spiegelt der Kern), Profil-Einheiten, auf den abgeleiteten Käfig addiert. Fehlt = unberührt.
    */
-  kaefig?: { deltas: KaefigDelta[] };
+  kaefig?: { deltas: KaefigDelta[]; posen?: Record<string, KaefigDelta[]> };
   maul?: Maul;
   zaehne?: Zaehne;
   kanten?: Kante[];

@@ -47,7 +47,7 @@ describe('Dokument', () => {
   });
   it('Version 1: Käfig-Deltas der Pinsel (M3) überstehen die Rundreise', () => {
     const d = neuesDokument('Kugel');
-    d.kaefig = { deltas: [{ punkt: 37, d: [0.01, -0.02, 0] }, { punkt: 120, d: [0, 0.03, 0.005] }] };
+    d.kaefig = { deltas: [{ punkt: 37, d: [0.01, -0.02, 0] }, { punkt: 120, d: [0, 0.03, 0.005] }], posen: { fressen: [{ punkt: 410, d: [0.05, 0, 0.02] }] } };
     const wieder = dokumentLesen(JSON.parse(JSON.stringify(d)));
     expect(wieder.kaefig).toEqual(d.kaefig);
   });

@@ -15,7 +15,8 @@ import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas,
 import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
 import { ringSegmente } from './reifen';
-import { deltasAnwenden } from './pinsel';
+import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
+import { anwenden3 } from '../subdivision/matrix';
 import { vorlageBei } from '../spanten';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { type MaulErgebnis, ableitenMitMaul, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
@@ -550,9 +551,18 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     abl = mitDeltas(abl);
     const t0 = jetzt();
     const pose = maulPose(abl as MaulErgebnis, plan.oeffnung);
-    zug = jetzt() - t0;
     fein = pose.fein;
     xyz = pose.xyz;
+    // Fressen-Pose (Plan 5.2, M3): Käfig-Deltas derselben Maultopologie, mit der Öffnung überblendet, auf alle Punkte
+    // (auch Maulpunkte) nach der Knochenpose — so wird aus einem kleinen geschlossenen Maul ein großes rundes offenes
+    const posenDeltas = dokRoh.kaefig?.posen?.fressen ?? [];
+    if (posenDeltas.length && plan.oeffnung > 0) {
+      const xyz2 = new Float64Array(pose.xyz);
+      deltasAddieren(xyz2, spiegelIndex(abl.kaefig.xyz, abl.kaefig.n), posenDeltas, plan.oeffnung);
+      xyz = xyz2;
+      fein = anwenden3(abl.unterteilung.grenze, xyz2);
+    }
+    zug = jetzt() - t0;
   } else if (schnell && stand && stand.maul === 'aus' && stand.beine === 'aus' && gleicheTopologie(stand.dok, dok)) {
     const r = seiteZiehen(stand.abl, dok);
     ablRein = r;

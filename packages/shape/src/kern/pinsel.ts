@@ -33,24 +33,33 @@ export function spiegelIndex(xyz: ArrayLike<number>, n0: number, eps = 1e-6): In
  * Deltas auf den abgeleiteten Käfig addieren: je Delta der Punkt selbst und sein Spiegelpartner (z negiert); auf der
  * Naht wird z zu 0 gezwungen. Liefert eine Kopie der Ableitung mit neuen Käfiglagen und neu ausgewertetem feinen Netz.
  */
-export function deltasAnwenden<T extends Ableitung>(abl: T, deltas: readonly KaefigDelta[]): T {
-  if (!deltas.length) return abl;
-  const n0 = abl.vorlage.kaefig.n;
-  const xyz = new Float64Array(abl.kaefig.xyz);
-  const spiegel = spiegelIndex(abl.kaefig.xyz, Math.min(n0, abl.kaefig.n));
+/** Deltas (× Faktor) auf Lagen addieren: Punkt und Spiegelpartner (z negiert), Nahtpunkte ohne z. */
+export function deltasAddieren(xyz: Float64Array, spiegel: Int32Array, deltas: readonly KaefigDelta[], faktor = 1): void {
   for (const { punkt: p, d } of deltas) {
     if (p < 0 || p >= spiegel.length) continue;
     const q = spiegel[p]!;
     const naht = q === p;
-    xyz[3 * p] = xyz[3 * p]! + d[0];
-    xyz[3 * p + 1] = xyz[3 * p + 1]! + d[1];
-    if (!naht) xyz[3 * p + 2] = xyz[3 * p + 2]! + d[2];
+    xyz[3 * p] = xyz[3 * p]! + faktor * d[0];
+    xyz[3 * p + 1] = xyz[3 * p + 1]! + faktor * d[1];
+    if (!naht) xyz[3 * p + 2] = xyz[3 * p + 2]! + faktor * d[2];
     if (q >= 0 && !naht) {
-      xyz[3 * q] = xyz[3 * q]! + d[0];
-      xyz[3 * q + 1] = xyz[3 * q + 1]! + d[1];
-      xyz[3 * q + 2] = xyz[3 * q + 2]! - d[2];
+      xyz[3 * q] = xyz[3 * q]! + faktor * d[0];
+      xyz[3 * q + 1] = xyz[3 * q + 1]! + faktor * d[1];
+      xyz[3 * q + 2] = xyz[3 * q + 2]! - faktor * d[2];
     }
   }
+}
+
+/**
+ * Deltas der Grundform auf die Vorlagenpunkte (p < n0) des abgeleiteten Käfigs addieren (gespiegelt, Naht bei z = 0);
+ * Kopie der Ableitung mit neuen Käfiglagen und neu ausgewertetem feinen Netz. Mit `alle` auch Maul-/Beinpunkte
+ * (Posen: gelten nur für die aktuelle Maultopologie).
+ */
+export function deltasAnwenden<T extends Ableitung>(abl: T, deltas: readonly KaefigDelta[], alle = false): T {
+  if (!deltas.length) return abl;
+  const n0 = alle ? abl.kaefig.n : Math.min(abl.vorlage.kaefig.n, abl.kaefig.n);
+  const xyz = new Float64Array(abl.kaefig.xyz);
+  deltasAddieren(xyz, spiegelIndex(abl.kaefig.xyz, n0), deltas);
   return { ...abl, kaefig: mitLagen(abl.kaefig, xyz), fein: anwenden3(abl.unterteilung.grenze, xyz) };
 }
 

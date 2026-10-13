@@ -804,7 +804,7 @@ export function Seitenleiste() {
           {kern && ebene === 'posen' && (
             <>
               <section className="leiste-bereich" data-bereich="posen">
-                <p className="hilfe">Fressen ist heute der Kieferknopf am Mundwinkel (ziehen öffnet, Doppelklick rastet) und der Regler in der Stufe Maul. Posen als Käfig-Deltas, Atmen, Blinzeln und Gehen kommen in Phase 2 und 5.</p>
+                <p className="hilfe">Fressen (Kopfzeile): Öffnung 100 %, und die Pinsel der Stufe Körper (G ziehen, I aufblasen, ⇧ glätten) formen die offene Pose statt der Grundform — Käfig-Deltas derselben Maultopologie, mit der Öffnung überblendet. So wird aus einem kleinen geschlossenen Maul ein großes rundes offenes. Atmen, Blinzeln und Gehen kommen in Phase 2 und 5.</p>
               </section>
               <RigBereich />
             </>
