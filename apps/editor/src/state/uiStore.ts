@@ -1,6 +1,7 @@
 // Oberflächen-Zustand: Layout, Auswahl, Ansichten (2D-Zoom/Pan, 3D-Kamera), Menüs, Dialoge.
 
 import type { Ansicht, Blick, V3T } from '@ee/shape';
+import type { SchnittRegel } from '@ee/shape/versuch';
 import { create } from 'zustand';
 import type { ViewId } from '../types';
 
@@ -72,6 +73,8 @@ type UiState = {
   zebra: boolean;
   /** Versuch 12.10. abends: Bauweise des 3D zum Vergleichen (Tab am 3D-Fenster) */
   bauweise: Bauweise;
+  /** Versuch 13.10.: Flächenregel der Schnitte für Front und Spanten (Hälften oder gerade-ungerade) */
+  schnittRegel: SchnittRegel;
   /** Wirbelsäule testweise biegen (Pose-Vorschau, nicht im Dokument): Winkel in Grad, Stelle 0 … 1 ab der Schnauze */
   wirbelBiegung: { winkel: number; bei: number };
   /** Wirbelsäule selbst zeichnen: gesetzte Punkte (Seite), bis Enter/Esc */
@@ -104,6 +107,7 @@ type UiState = {
   setzeKantenSicht(k: KantenSicht): void;
   setzeZebra(an: boolean): void;
   setzeBauweise(b: Bauweise): void;
+  setzeSchnittRegel(r: SchnittRegel): void;
   setzeWirbelBiegung(b: { winkel: number; bei: number }): void;
   setzeWirbelZeichnen(p: { x: number; y: number }[] | null): void;
   setzeSpantAuswahl(a: SpantAuswahl | null): void;
@@ -120,8 +124,11 @@ type UiState = {
   zeigeHinweis(text: string): void;
 };
 
-/** bisher = Platzhalter-Loft bzw. Kanten-/Maul-Käfig; wirbel = Versuch Wirbelsäule (Ringe senkrecht zur Wirbelsäule) */
-export type Bauweise = 'bisher' | 'wirbel';
+/**
+ * bisher = Platzhalter-Loft bzw. Kanten-/Maul-Käfig; wirbel = Versuch Wirbelsäule (Ringe senkrecht zur Wirbelsäule);
+ * schnitte = Versuch 13.10. Schnitt-Loft (je Stelle ein echter Schnitt mit beliebig vielen Teilen)
+ */
+export type Bauweise = 'bisher' | 'wirbel' | 'schnitte';
 
 export const useUi = create<UiState>((set, get) => ({
   maximiert: null,
@@ -138,6 +145,7 @@ export const useUi = create<UiState>((set, get) => ({
   kantenSicht: 'zeigen',
   zebra: false,
   bauweise: 'bisher',
+  schnittRegel: 'halb',
   wirbelBiegung: { winkel: 0, bei: 0.5 },
   wirbelZeichnen: null,
   spantAuswahl: null,
@@ -190,6 +198,9 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeBauweise(b) {
     set({ bauweise: b });
+  },
+  setzeSchnittRegel(r) {
+    set({ schnittRegel: r });
   },
   setzeWirbelBiegung(b) {
     set({ wirbelBiegung: b });

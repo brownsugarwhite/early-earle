@@ -50,6 +50,7 @@ function Titel({ id }: { id: ViewId }) {
           [
             ['bisher', VIEW_TEXTE.creation.titel],
             ['wirbel', 'wirbelsäule'],
+            ['schnitte', 'schnitte'],
           ] as const
         ).map(([wert, text]) => (
           <button key={wert} role="tab" aria-selected={bauweise === wert} className={bauweise === wert ? 'aktiv' : ''} data-bauweise={wert} tabIndex={-1} onClick={() => useUi.getState().setzeBauweise(wert)}>
@@ -110,7 +111,9 @@ export function ViewportOber({ id }: { id: ViewId }) {
         {rechts && <div className="vp-label rechts">{rechts}</div>}
         {id === 'creation' && (
           <div className="vp-label links platzhalter">
-            {versuchAktiv()?.modus === 'wirbel' || (bauweise === 'wirbel' && !versuchAktiv())
+            {bauweise === 'schnitte' && !versuchAktiv()
+              ? 'Versuch: Schnitte'
+              : versuchAktiv()?.modus === 'wirbel' || (bauweise === 'wirbel' && !versuchAktiv())
               ? 'Versuch: Wirbelsäule'
               : versuchAktiv()?.modus === 'maul' || hatMaul
               ? 'Versuch: Maul im Netz'

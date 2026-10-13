@@ -165,6 +165,11 @@ export class Renderer3D {
     this.nachUebersetzen();
   }
 
+  /** Indiziertes Netz mit eigener Punktzahl (Versuch Schnitte): immer neue Geometrie, auch bei gleicher Länge. */
+  setzeFlaeche(positionen: Float32Array, normalen: Float32Array, indizes: Uint32Array) {
+    this.neueGeometrie(positionen, normalen, indizes);
+  }
+
   /** Dreiecke ohne Index (Versuche, z. B. Subdivision mit getrennten Normalen an scharfen Kanten), optional mit Farbe je Ecke. */
   setzeDreiecke(positionen: Float32Array, normalen: Float32Array, farben: Float32Array | null = null) {
     this.neueGeometrie(positionen, normalen, null, farben);

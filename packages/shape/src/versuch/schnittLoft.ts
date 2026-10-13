@@ -43,9 +43,15 @@ export type SchnittOptionen = {
   regel: SchnittRegel;
   /** false = nur die sichtbare Hülle (Schnitt der drei Umriss-Prismen, kantig); zum Vergleichen */
   runden: boolean;
+  /**
+   * Glättung der Rundung entlang x (Gauß, σ in Rasterpunkten; 0 = aus). Wo Teile zusammenwachsen oder sich trennen (Kehle,
+   * Halsvorderkante, Haken), springt die Rundung je Teil von einer Scheibe zur nächsten. Geglättet wird nur, was die
+   * Rundung von der sichtbaren Hülle wegschneidet; die Hülle selbst und die Umrisse bleiben exakt.
+   */
+  weich: number;
 };
 
-export const SCHNITT_STANDARD: SchnittOptionen = { aufloesung: 112, glaetten: 8, regel: 'halb', runden: true };
+export const SCHNITT_STANDARD: SchnittOptionen = { aufloesung: 112, glaetten: 8, regel: 'halb', runden: true, weich: 2 };
 
 /** Echter Schnitt an einer Stelle: Umrisslinien in (z, y), Teile und Löcher. */
 export type SchnittUmriss = { umrisse: V2[][]; teile: number; loecher: number };
@@ -216,6 +222,29 @@ function haelftenFeld(halb: readonly V2[], regel: SchnittRegel, spalten: number,
   return feld;
 }
 
+/** Abstandsfeld eines geschlossenen Zugs (gerade-ungerade) auf einem Raster: Spalte a: u = u0 + a·du, Zeile b: v = v0 + b·dv. */
+function geschlossenesFeld(zug: readonly V2[], spalten: number, zeilen: number, u0: number, du: number, v0: number, dv: number): Float32Array {
+  const feld = new Float32Array(spalten * zeilen);
+  const seg = segmentFeld([...zug, zug[0]!], false);
+  const kreuz: number[] = [];
+  for (let b = 0; b < zeilen; b++) {
+    const v = v0 + b * dv;
+    kreuzungenWaagerecht(zug, v, true, kreuz);
+    let k = kreuz.length - 1;
+    let ueber = 0;
+    for (let a = spalten - 1; a >= 0; a--) {
+      const u = u0 + a * du;
+      while (k >= 0 && kreuz[k]! > u) {
+        ueber++;
+        k--;
+      }
+      const d = abstandZuSegmenten(seg, u, v);
+      feld[b * spalten + a] = ueber % 2 === 1 ? -d : d;
+    }
+  }
+  return feld;
+}
+
 /**
  * Zusammenhangskomponenten (4er-Nachbarschaft) von feld < 0 auf einem Halbraster, mit Hüllkasten auf Bruchteile einer
  * Zelle genau (Nulldurchgang zu den Nachbarn). `ordnung` bekommt die Zellen je Teil hintereinander, `start` die Anfänge.
@@ -373,8 +402,33 @@ type Kontext = {
   NZH: number;
   /** Abstand zur Front je Zelle des Halbrasters (Zeile y, Spalte z) */
   front: Float32Array;
-  stuetzen: { f: number; vorlage: Vorlage }[];
+  /**
+   * Abstand zur Seite in der (x, y)-Ebene (Zeile x, Spalte y) und zum Top in der (x, z)-Ebene (Zeile x, Spalte z ≥ 0,
+   * auf die Länge der Seite gestreckt). Beides sind untere Schranken des 3D-Abstands; sie legen Flächen fest, die quer zu
+   * x stehen (Spitzen, Halsvorderseite, Stufen), wo das gestapelte Scheibenfeld ungenau ist.
+   */
+  seite2: Float32Array;
+  top2: Float32Array;
+  /** Stützen der Überblendung (Hauptspant = Front, Spanten) mit dem Kasten an ihrer Stelle */
+  stuetzen: { f: number; vorlage: Vorlage; kasten: Kasten3 }[];
 };
+
+/** Kasten einer Stelle wie bei den Spanten: Höhe aus der Seite (äußerste Schnittpunkte), halbe Breite aus dem Top. */
+type Kasten3 = { yLo: number; yHi: number; w: number };
+
+function kastenAn(seite: V2[], topHalb: V2[], xMin: number, xMax: number, tMin: number, tMax: number, f: number, regel: SchnittRegel): Kasten3 {
+  const ff = Math.min(1 - 1e-6, Math.max(1e-6, f));
+  const kreuz: number[] = [];
+  const rand: number[] = [];
+  kreuzungenSenkrecht(seite, xMin + ff * (xMax - xMin), true, kreuz);
+  const yLo = kreuz.length ? kreuz[0]! : 0;
+  const yHi = kreuz.length ? kreuz[kreuz.length - 1]! : 0;
+  kreuzungenSenkrecht(topHalb, tMin + ff * (tMax - tMin), false, kreuz);
+  randwerte(kreuz, regel, rand);
+  let w = 0;
+  for (const r of rand) w = Math.max(w, Math.abs(r));
+  return { yLo, yHi, w };
+}
 
 const vorlagenSpeicher = new WeakMap<object, Map<SchnittRegel, Vorlage>>();
 
@@ -430,8 +484,23 @@ function kontextBauen(dok: Dokument, opt: SchnittOptionen): Kontext {
   const y0 = (yMin + yMax) / 2 - ((NY - 1) * h) / 2;
   const front = haelftenFeld(frontHalb, opt.regel, NZH, NY, h, y0, h);
   const stapel = new Int32Array(VNU * VNV);
-  const stuetzen = spantStuetzen(dok).map((s) => ({ f: s.f, vorlage: vorlageAus(s.index < 0 ? hauptspantProfil(dok) : s.profil, opt.regel, stapel) }));
-  return { opt, seite, topHalb, xMin, xMax, tMin, tMax, h, x0, y0, NX, NY, NZH, front, stuetzen };
+  const stuetzen = spantStuetzen(dok).map((s) => ({
+    f: s.f,
+    vorlage: vorlageAus(s.index < 0 ? hauptspantProfil(dok) : s.profil, opt.regel, stapel),
+    kasten: kastenAn(seite, topHalb, xMin, xMax, tMin, tMax, s.f, opt.regel),
+  }));
+  const seite2 = geschlossenesFeld(
+    seite.map((p) => ({ x: p.y, y: p.x })),
+    NY,
+    NX,
+    y0,
+    h,
+    x0,
+    h,
+  );
+  const topWelt = topHalb.map((p) => ({ x: Math.abs(p.y) < 1e-12 ? 0 : p.y, y: xMin + ((p.x - tMin) / (tMax - tMin || 1)) * (xMax - xMin) }));
+  const top2 = haelftenFeld(topWelt, opt.regel, NZH, NX, h, x0, h);
+  return { opt, seite, topHalb, xMin, xMax, tMin, tMax, h, x0, y0, NX, NY, NZH, front, seite2, top2, stuetzen };
 }
 
 // ---------- Eine Scheibe ----------
@@ -488,27 +557,39 @@ function pufferAnlegen(k: Kontext): Puffer {
   };
 }
 
-/** Vorlage an der Stelle f: Stütze oder lineare Überblendung der Abstandsfelder der Nachbarn. */
-function vorlageAnStelle(k: Kontext, f: number, p: Puffer): Vorlage {
+/**
+ * Vorlage an der Stelle f: Stütze oder lineare Überblendung der Abstandsfelder der Nachbarn. Dazu der Kasten, in dem
+ * die Vorlage gezeichnet ist (Kasten der Stütze, zwischen Stützen überblendet): Daran werden Teile der Vorlage den
+ * Teilen des Körpers zugeordnet. Vor dem ersten Spant liegt die Acht also dort, wo sie bei S1 gezeichnet ist.
+ */
+function vorlageAnStelle(k: Kontext, f: number, p: Puffer): { vorlage: Vorlage; kasten: Kasten3 } {
   const st = k.stuetzen;
-  if (st.length === 1 || f <= st[0]!.f) return st[0]!.vorlage;
+  if (st.length === 1 || f <= st[0]!.f) return st[0]!;
   const letzte = st[st.length - 1]!;
-  if (f >= letzte.f) return letzte.vorlage;
+  if (f >= letzte.f) return letzte;
   let i = 0;
   while (i + 1 < st.length && st[i + 1]!.f < f) i++;
   const a = st[i]!;
   const b = st[i + 1]!;
   const t = b.f - a.f > 1e-9 ? (f - a.f) / (b.f - a.f) : 0;
-  if (t < 1e-6) return a.vorlage;
-  if (t > 1 - 1e-6) return b.vorlage;
+  if (t < 1e-6) return a;
+  if (t > 1 - 1e-6) return b;
   const fa = a.vorlage.feld;
   const fb = b.vorlage.feld;
   for (let q = 0; q < fa.length; q++) p.vFeld[q] = (1 - t) * fa[q]! + t * fb[q]!;
   const teile = teileFinden(p.vFeld, VNU, VNV, VH, VV0, VH, p.vLab, p.vStapel);
-  return { feld: p.vFeld, lab: p.vLab, teile };
+  const mix = (x: number, y: number) => x + (y - x) * t;
+  return {
+    vorlage: { feld: p.vFeld, lab: p.vLab, teile },
+    kasten: { yLo: mix(a.kasten.yLo, b.kasten.yLo), yHi: mix(a.kasten.yHi, b.kasten.yHi), w: mix(a.kasten.w, b.kasten.w) },
+  };
 }
 
-function scheibeBerechnen(k: Kontext, x: number, p: Puffer): Scheibe {
+/**
+ * Schnitt bei x. Mit Scheibennummer `iRaster` gelten für Seite und Top die 2D-Abstände (stetig in x, auch wo Teile
+ * zusammenwachsen); sonst die 1D-Abstände in der Scheibe (gleiche Nullstellen, für Schnitte an beliebiger Stelle).
+ */
+function scheibeBerechnen(k: Kontext, x: number, p: Puffer, iRaster = -1): Scheibe {
   const { NY, NZH, h, y0 } = k;
   const n = NY * NZH;
   const erg = p.ergebnis;
@@ -517,22 +598,24 @@ function scheibeBerechnen(k: Kontext, x: number, p: Puffer): Scheibe {
   kreuzungenSenkrecht(k.seite, x, true, p.kreuz);
   const seitenRand = p.kreuz.slice();
   if (seitenRand.length < 2 || f < 0 || f > 1) {
-    for (let i = 0; i < n; i++) {
-      erg.feld[i] = GROSS;
-      erg.innen[i] = 0;
+    // leere Scheibe: außen; im Raster die echten 2D-Abstände (bessere Spitzen)
+    for (let j = 0; j < NY; j++) {
+      for (let c = 0; c < NZH; c++) {
+        const i = j * NZH + c;
+        const d = iRaster >= 0 ? Math.max(k.seite2[iRaster * NY + j]!, k.top2[iRaster * NZH + c]!, k.front[i]!, 1e-6) : GROSS;
+        p.dH[i] = d;
+        erg.feld[i] = d;
+        erg.innen[i] = 0;
+      }
     }
     return erg;
   }
-  for (let j = 0; j < NY; j++) p.dSeite[j] = abstand1D(seitenRand, y0 + j * h);
+  for (let j = 0; j < NY; j++) p.dSeite[j] = iRaster >= 0 ? k.seite2[iRaster * NY + j]! : abstand1D(seitenRand, y0 + j * h);
   // Top: Intervalle in |z| an der gestreckten Stelle
   const t = k.tMin + f * (k.tMax - k.tMin);
   kreuzungenSenkrecht(k.topHalb, t, false, p.kreuz);
   randwerte(p.kreuz, k.opt.regel, p.rand);
-  for (let c = 0; c < NZH; c++) p.dTop[c] = abstand1D(p.rand, c * h);
-  let wKasten = 0;
-  for (const r of p.rand) wKasten = Math.max(wKasten, Math.abs(r));
-  const yLo = seitenRand[0]!;
-  const yHi = seitenRand[seitenRand.length - 1]!;
+  for (let c = 0; c < NZH; c++) p.dTop[c] = iRaster >= 0 ? k.top2[iRaster * NZH + c]! : abstand1D(p.rand, c * h);
 
   // sichtbare Hülle
   const dH = p.dH;
@@ -549,7 +632,8 @@ function scheibeBerechnen(k: Kontext, x: number, p: Puffer): Scheibe {
   } else {
     // Teile der Hülle (Zeile = y, Spalte = z): Kasten je Teil
     const teile = teileFinden(dH, NZH, NY, h, y0, h, p.lab, p.ordnung, p.start);
-    const vorlage = vorlageAnStelle(k, f, p);
+    const { vorlage, kasten } = vorlageAnStelle(k, f, p);
+    const { yLo, yHi, w: wKasten } = kasten;
     for (let i = 0; i < n; i++) dR[i] = GROSS;
     const w = p.wert;
     const zaehler = new Map<number, number>();
@@ -1027,6 +1111,30 @@ export function teileUndLoecher(innen: (j: number, k: number) => boolean, NY: nu
 
 // ---------- Bau ----------
 
+/** Gauß entlang der ersten Achse (Scheiben), Ränder geklemmt. */
+function entlangXGlaetten(H: Float32Array, NX: number, n: number, sigma: number): Float32Array {
+  const r = Math.max(1, Math.ceil(2.5 * sigma));
+  const w: number[] = [];
+  let summe = 0;
+  for (let d = -r; d <= r; d++) {
+    const g = Math.exp((-d * d) / (2 * sigma * sigma));
+    w.push(g);
+    summe += g;
+  }
+  for (let d = 0; d < w.length; d++) w[d] = w[d]! / summe;
+  const out = new Float32Array(H.length);
+  for (let i = 0; i < NX; i++) {
+    const o = i * n;
+    for (let d = -r; d <= r; d++) {
+      const ii = Math.min(NX - 1, Math.max(0, i + d));
+      const g = w[d + r]!;
+      const oo = ii * n;
+      for (let q = 0; q < n; q++) out[o + q] = out[o + q]! + g * H[oo + q]!;
+    }
+  }
+  return out;
+}
+
 const uhr = (globalThis as { performance?: { now(): number } }).performance;
 const jetzt = () => (uhr ? uhr.now() : Date.now());
 
@@ -1044,22 +1152,36 @@ export function schnittLoft(dok: Dokument, optionen: Partial<SchnittOptionen> = 
   let maxTeile = 0;
   // schmales Band: Werte über ±6 Rasterpunkte zählen nicht mehr für die Lage der Fläche (Spitzen, leere Scheiben)
   const band = 6 * h;
+  const klemme = (v: number) => (v > band ? band : v < -band ? -band : v);
+  // 1. je Scheibe: sichtbare Hülle (B) und was die Rundung davon wegschneidet (K = gerundet − Hülle ≥ 0), Halbraster
+  const B = new Float32Array(NX * NY * NZH);
+  const K = new Float32Array(NX * NY * NZH);
   for (let i = 0; i < NX; i++) {
-    const x = k.x0 + i * h;
-    const s = scheibeBerechnen(k, x, p);
-    const o = i * NY * NZ;
-    for (let j = 0; j < NY; j++) {
-      const oj = o + j * NZ;
-      for (let q = 0; q < NZH; q++) {
-        const roh = s.feld[j * NZH + q]!;
-        const w = roh > band ? band : roh < -band ? -band : roh;
-        D[oj + c + q] = w;
-        D[oj + c - q] = w;
-      }
+    const s = scheibeBerechnen(k, k.x0 + i * h, p, i);
+    const o = i * NY * NZH;
+    for (let q = 0; q < NY * NZH; q++) {
+      const huelle = klemme(p.dH[q]!);
+      B[o + q] = huelle;
+      K[o + q] = Math.max(0, klemme(s.feld[q]!) - huelle);
     }
     if (i % 4 === 0) {
       const tl = teileUndLoecher((j, q) => s.innen[j * NZH + Math.abs(q - c)] === 1, NY, NZ).teile;
       maxTeile = Math.max(maxTeile, tl);
+    }
+  }
+  // 2. Rundung entlang x glätten (Übergänge, wo Teile zusammenwachsen oder sich trennen)
+  const Kg = opt.weich > 0 ? entlangXGlaetten(K, NX, NY * NZH, opt.weich) : K;
+  // 3. Hülle + Rundung, begrenzt durch die exakten 2D-Abstände zu Seite und Top, gespiegelt ins volle Raster
+  for (let i = 0; i < NX; i++) {
+    const o = i * NY * NZH;
+    const oD = i * NY * NZ;
+    for (let j = 0; j < NY; j++) {
+      const sj = k.seite2[i * NY + j]!;
+      for (let q = 0; q < NZH; q++) {
+        const w = klemme(Math.max(B[o + j * NZH + q]! + Kg[o + j * NZH + q]!, sj, k.top2[i * NZH + q]!));
+        D[oD + j * NZ + c + q] = w;
+        D[oD + j * NZ + c - q] = w;
+      }
     }
   }
   const t2 = jetzt();

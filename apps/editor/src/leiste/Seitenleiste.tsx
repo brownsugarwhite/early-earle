@@ -19,6 +19,7 @@ import { type Ebene, useUi } from '../state/uiStore';
 import { Ornament } from './Ornament';
 import { WIRBEL_FARBEN, wirbelVorschlagUebernehmen } from '../wirbel/WirbelEbene';
 import { useWirbelAnzeige } from '../wirbel/wirbelKoerper';
+import { schnittEcht, useSchnittAnzeige } from '../schnitte/schnittKoerper';
 
 const FAECHER = ['Wesen', 'Augen', 'Flügel', 'Mäuler', 'Beine', 'Schwänze', 'Ohren', 'Muster'] as const;
 type Fach = (typeof FAECHER)[number];
@@ -406,6 +407,60 @@ function WirbelBereich() {
   );
 }
 
+/** Versuch 13.10.: Bauweise „Schnitte“ (echte Schnitte mit mehreren Teilen), Regel für Achten und Kreuzungen. */
+function SchnittBereich() {
+  const info = useSchnittAnzeige((s) => s.info);
+  useSchnittAnzeige((s) => s.stand);
+  const regel = useUi((s) => s.schnittRegel);
+  const auswahl = useUi((s) => s.spantAuswahl);
+  const spanten = useEditor((s) => s.dok.spanten);
+  const hatMaul = useEditor((s) => !!s.dok.maul);
+  const sp = auswahl ? spanten?.[auswahl.spant] : undefined;
+  const echt = sp ? schnittEcht(sp.f) : null;
+  const zahl = (n: number) => n.toLocaleString('de-DE');
+  return (
+    <section className="leiste-bereich schnitt-bereich" data-schnittbereich="">
+      <div className="feld">
+        <span>Schnitte</span>
+        <b data-schnittinfo={info?.dreiecke ?? 0}>{info ? `${info.aufloesung}er Raster · ${Math.round(info.millisekunden)} ms · ${zahl(info.dreiecke)} Dreiecke` : '…'}</b>
+      </div>
+      <p className="hilfe">
+        Versuch zum Vergleichen: gleiche Profile und Spanten, anderer Körper. Jede Stelle bekommt ihren echten Schnitt, auch aus mehreren Teilen (Schnauze über Bauch,
+        Haken im Top). Jeder Teil wird mit der Front bzw. dem Spant gerundet. Gestrichelt: Umriss des 3D-Körpers.
+      </p>
+      <div className="feld">
+        <span>Acht, Kreuzung</span>
+      </div>
+      <div className="umschalter">
+        <button className={regel === 'halb' ? 'chip aktiv' : 'chip'} data-schnittregel="halb" onClick={() => useUi.getState().setzeSchnittRegel('halb')}>
+          Hälften
+        </button>
+        <button className={regel === 'gerade-ungerade' ? 'chip aktiv' : 'chip'} data-schnittregel="gerade-ungerade" onClick={() => useUi.getState().setzeSchnittRegel('gerade-ungerade')}>
+          gerade-ungerade
+        </button>
+      </div>
+      <p className="hilfe">
+        Hälften: Jede Hälfte gilt nur auf ihrer Seite der Achse; was hinüberläuft, schneidet weg (die Acht wird zwei Teile). Gerade-ungerade wie in Illustrator: Die Mitte der
+        Acht bleibt stehen.
+      </p>
+      {sp && auswahl && echt ? (
+        <div className="feld">
+          <span>{spantName(auswahl.spant)} echt</span>
+          <b data-spantteile={echt.teile}>
+            {echt.teile === 1 ? '1 Teil' : `${echt.teile} Teile`}
+            {echt.loecher ? ` · ${echt.loecher === 1 ? '1 Loch' : `${echt.loecher} Löcher`}` : ''}
+          </b>
+        </div>
+      ) : (
+        <p className="hilfe">Einen Spant wählen: Die Front zeigt dann seinen echten Schnitt gestrichelt.</p>
+      )}
+      <p className="hilfe">
+        Noch nicht in dieser Bauweise: Maul{hatMaul ? ' (hier ausgeblendet)' : ''}, Kanten-Härte, Biegen. Scharfe Ecken werden leicht rund (Raster und Glättung).
+      </p>
+    </section>
+  );
+}
+
 function OeffnungsRegler() {
   const oeffnung = useUi((s) => s.oeffnung);
   return <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />;
@@ -661,6 +716,7 @@ export function Seitenleiste() {
       <div className="leiste-glas glas">
         <div className="leiste-inhalt">
           {bauweise === 'wirbel' && <WirbelBereich />}
+          {bauweise === 'schnitte' && <SchnittBereich />}
           {ebene === 'form' && modus === 'fressen' && <PoseBereich />}
           {ebene === 'form' && (
             <>

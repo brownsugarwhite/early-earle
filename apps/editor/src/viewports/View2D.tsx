@@ -42,6 +42,7 @@ import { offenerUmriss } from '../maul/offenerUmriss';
 import { BreitenKreis, EckKantenZeichnung, KantenZeichnung, breiteZiehen, kantenZeiger } from '../kanten/KantenEbene';
 import { SpantLinien, SpantQuerschnitte, spantZeiger } from '../spanten/SpantEbene';
 import { WirbelPunkte, WirbelZeichnung, wirbelBearbeitbar, wirbelZeiger } from '../wirbel/WirbelEbene';
+import { SchnittZeichnung } from '../schnitte/SchnittEbene';
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { abtasten3, maulAnfangIndizes, umrissMitSpalt, versetzt3 } from '@ee/shape/versuch';
 
@@ -468,6 +469,7 @@ export function View2D({ ansicht, w, h }: Props) {
       )}
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
       <WirbelZeichnung ansicht={ansicht} bild={bild} />
+      <SchnittZeichnung ansicht={ansicht} bild={bild} />
       <EckKantenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <KantenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <SpantQuerschnitte ansicht={ansicht} bild={bild} aktiv={formAktiv} />

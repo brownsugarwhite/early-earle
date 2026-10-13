@@ -14,6 +14,7 @@ import { maulBauen, maulDreiecke } from '../maul/maulKoerper';
 import { zahnListe, zahnMeldungen } from '../maul/zahnKoerper';
 import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten/kantenKoerper';
 import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
+import { schnittBauen } from '../schnitte/schnittKoerper';
 
 declare global {
   interface Window {
@@ -53,7 +54,7 @@ export function Szene3D() {
       const verlauf = () => {
         const d = useEditor.getState().dok;
         const a = useUi.getState().kantenAuswahl;
-        if (!a || d.maul || !mitKanten(d) || versuch) return r.setzeLinien(null);
+        if (!a || d.maul || !mitKanten(d) || versuch || useUi.getState().bauweise !== 'bisher') return r.setzeLinien(null);
         const seg = kantenVerlauf(kantenBauen(d), a.kante);
         if (!seg) return r.setzeLinien(null);
         if (d.skalierung !== 1) for (let i = 0; i < seg.length; i++) seg[i]! *= d.skalierung;
@@ -66,6 +67,14 @@ export function Szene3D() {
         // sich die offene Haut im Maul-Bau an sie
         const pose = dRoh.posenProfile?.fressen?.seite;
         const d: Dokument = useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
+        if (!versuch && useUi.getState().bauweise === 'schnitte') {
+          // Versuch 13.10.: echte Schnitte (Schnauze über Bauch, Acht, Haken im Top); Maul und Kanten-Härte fehlen hier noch
+          const sl = schnittBauen(d, schnell, useUi.getState().schnittRegel);
+          const k = d.skalierung;
+          r.setzeLinien(null);
+          r.setzeFlaeche(k !== 1 ? sl.positionen.map((v) => v * k) : sl.positionen, sl.normalen, sl.indizes);
+          return;
+        }
         if (!versuch && useUi.getState().bauweise === 'wirbel' && d.maul) {
           // Versuch 12.10. nachts: Maul auf der Wirbelsäule (Maul-Käfig im gestreckten Raum)
           const b = maulBauen(d, true);
@@ -135,17 +144,19 @@ export function Szene3D() {
             s.dok.posenProfile !== v.dok.posenProfile ||
             s.modus !== v.modus;
           const wirbel = useUi.getState().bauweise === 'wirbel';
-          // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen
-          if (s.dok.maul && s.gesteStart) return;
-          // Kanten-Käfig und Wirbelsäule: während einer Geste schnell (weniger Anpass-Durchgänge), beim Loslassen genau
-          if (geaendert) bauen(s.dok, !!s.gesteStart && (wirbel || mitKanten(s.dok)));
-          else if (v.gesteStart && !s.gesteStart && (wirbel || s.dok.maul || mitKanten(s.dok))) bauen(s.dok);
+          const schnitte = useUi.getState().bauweise === 'schnitte';
+          // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen (Schnitte ohne Maul)
+          if (s.dok.maul && s.gesteStart && !schnitte) return;
+          // Kanten-Käfig, Wirbelsäule und Schnitte: während einer Geste schnell (gröber), beim Loslassen genau
+          if (geaendert) bauen(s.dok, !!s.gesteStart && (wirbel || schnitte || mitKanten(s.dok)));
+          else if (v.gesteStart && !s.gesteStart && (wirbel || schnitte || s.dok.maul || mitKanten(s.dok))) bauen(s.dok);
         }),
         useUi.subscribe((s, v) => {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
           if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
           if (s.oeffnung !== v.oeffnung && useEditor.getState().dok.maul) bauen(useEditor.getState().dok);
           if (s.bauweise !== v.bauweise) bauen(useEditor.getState().dok);
+          if (s.schnittRegel !== v.schnittRegel && s.bauweise === 'schnitte') bauen(useEditor.getState().dok);
           if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
           if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
         }),
