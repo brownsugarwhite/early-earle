@@ -403,6 +403,16 @@ Florian: „Die Grundform habe ich meistens sehr schnell erstellt, wenn ich eine
   - Bausteine brauchen Andockstellen am Käfig, zum Beispiel markierte Kantenschleifen für das Maul und Flächen für die Beine. Die Vorlagen bringen sie mit.
   - Was aus den Versuchen bleibt: Kurven als Griffe, Nachzeichnen der Bögen, Maul-, Zahn- und Rig-Wissen, Klingen.
 
+**Nachfrage Florian (13.10.):** „Die Andockstellen kann ich dann für jedes Wesen selbst setzen? Und die optimale Topologie des Wesens sollte immer automatisch generiert werden. Geht das?“
+- **Andockstellen: ja.**
+  - Er setzt sie je Wesen direkt auf dem Körper: Maullinie zeichnen, Ansatz von Bein, Schwanz und Ohr anklicken, Ansatzlinien für Klingen zeichnen.
+  - Sie werden auf der Fläche gespeichert, nicht an Punktnummern. So überstehen sie Formänderungen und ein neu erzeugtes Netz.
+- **Topologie automatisch: ja, nach dem Vorbild „ZRemesher mit Führungslinien“.**
+  - Das Netz wird aus der Form und Florians Linien erzeugt. Kantenschleifen folgen den Falten, die Maullinie bekommt Lippenschleifen und Tasche, Andockstellen bekommen Ringe, Gelenke Schleifen zum Biegen.
+  - Florian formt, der Editor baut das Netz.
+  - Damit Mischen geht, muss die Erzeugung gleichartig sein: gleicher Bauplan plus gleiche Andockstellen ergibt dieselbe Struktur.
+  - Grenze: „Immer optimal“ für Verformung ist schwer. Mit den Linien als Führung wird es verlässlich. Erzeugt wird beim Loslassen; die Zeit ist ungemessen.
+
 ## 7. Beine, Arme, Flügel, Schwänze
 
 > Recherche 12.10. spätnachts, 35 Quellen in Abschnitt 14. Vorschlag aus Recherche und Tests, kein Muss. Sie schärft den Schluss vom 12.10. („Glieder zuerst als überlappende Röhren“): Überlappen nur noch bei dünnen Gliedern. Dicke Glieder werden aus dem Käfig ausgestülpt, nahtlos und ohne Neuvernetzen.
