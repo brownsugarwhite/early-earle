@@ -2,16 +2,17 @@ import { describe, it } from 'vitest';
 import { type Dokument } from '../dokument';
 import { type Vorlage, vorlageDokument } from '../versuch';
 import rexJson from '../versuch/vorlagen/rex.json';
+import langhalsJson from '../versuch/vorlagen/langhals.json';
 import { alleFlaechen } from '../kaefig/halbkanten';
 import { selbstDurchdringungen } from '../versuch/pruefen';
 import type { V3 } from '../versuch/catmullClark';
-import { ableitenMitMaul, maulLinieVorlage, maulPose } from './maul';
+import { ableitenMitMaul, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
 
 declare const console: { log: (...a: unknown[]) => void };
 const ARTEN = ['haut', 'lippeO', 'lippeU', 'tascheO', 'tascheU', 'rachen', 'winkel'];
 
 function diag(name: string, dok: Dokument, art: 'vorn' | 'unten' | 'hals', oeffnung: number) {
-  const abl = ableitenMitMaul(dok, maulLinieVorlage(dok, art), { stufen: 2 });
+  const abl = ableitenMitMaul(dok, maulLinieVorlage(dok, art), { stufen: 2 }, maulOptionenVorlage(art));
   const m = abl.maul;
   const M = abl.unterteilung.matrix;
   const { fein } = maulPose(abl, oeffnung);
@@ -89,6 +90,7 @@ describe('Maul-Diagnose', () => {
   it('druckt', () => {
     const rex = vorlageDokument(rexJson as unknown as Vorlage, 'zu', 'rex');
     diag('Rex', rex, 'vorn', 0);
-    diag('Rex', rex, 'vorn', 0.5);
+    const langhals = vorlageDokument(langhalsJson as unknown as Vorlage, 'zu', 'langhals');
+    diag('Langhals', langhals, 'hals', 0);
   });
 });

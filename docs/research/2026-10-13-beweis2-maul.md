@@ -40,3 +40,23 @@ Bohne: ja (Bild `kern-maul-rex-vorn-auf.png`: Lippenband hell, Rachen maroon, Ob
 ## Urteil
 
 Beweis 2 ist **zur Hälfte bestanden**: Mechanik, Topologie, Tempo, Bohne und Look stimmen; die Kugel erfüllt alle Kriterien, der Rex offen bis auf den Apex. Nicht erfüllt sind 0 Durchdringungen geschlossen am Rex, „unten“ und „Hals“. Das spricht nicht gegen die Bauweise (die Fehler sind örtlich: dünne Spitze, Blattabstand, Rachenlinie am Hals), der Rückfall aus Plan 13 (Maul-Topologie als Vorlage je Maulart) ist nicht nötig. Entscheidung für Florian: den Haps am Rex ansehen (`kern-maul-rex-vorn-auf.png` gegen `rex_mouth_detail`) und ob die Rille als Maullinie gefällt; dann Apex-Regel, Loop-Cut neben der Lippe und Rachenlinie als Griff.
+
+## Nachtrag 13.10. spätnachts: Lippe unter der Spitze, Linsenrichtung geglättet
+
+Florian zum Rex-Haps (`kern-maul-rex-vorn-auf.png`): „scheint für mich erstmal zu passen.“ Danach zwei Änderungen:
+
+1. **Lippenanfang unter der Spitze** (`MaulLinie.unterSpitze`, Vorlagen vorn/unten = 1): Der Pfad beginnt an der Bauchnaht des ersten Quadratrings der Kappe statt in der Schnauzenspitze; der Oberkiefer steht vor (Überbiss wie beim Rex-Bogen), und in der scharfen Spitze muss keine Tasche sitzen. Die Lippe läuft an dieser Station zur Naht hinab (Kinnschnitt), die Linse dort nimmt die Dicke der ersten Kreuzungsspalte.
+2. **Linsenrichtung** („oben“) entlang der Lippe geglättet (±2 Spalten) und gegen die Taschenrichtung orthogonalisiert. An der Kinnnaht zeigte „oben“ in die Tasche hinein und trennte die Blätter nicht; am Übergang Kopf → Hals drehte es in einer Spalte um 90°.
+
+| Fall | Lippe → Linie | Durchdringungen 0 / 25 / 50 / 75 / 100 % | Spalt vorn bei 100 % |
+|---|---|---|---|
+| Kugel, vorn | 1,3 px (Rille) | **0 / 0 / 0 / 0 / 0** | 122 % |
+| Rex, vorn | 0,3 px | **0 / 0 / 0 / 0 / 0** | 135 % |
+| Rex, unten | 0,8 px | **0 / 0 / 0 / 0 / 0** | 145 % |
+| Langhals, Hals (zieht) | 4,0 px | 2424 / 1976 / … | – |
+
+Umbau Rex (Stufe 3) 135–155 ms. Die Tests `beweis2.test.ts` verlangen jetzt 0 Durchdringungen für Kugel, Rex vorn und Rex unten.
+
+**Hals (Drache) bleibt offen:** Die Taschenreihen benachbarter Spalten am Halsansatz (Ringe 12–15) zielen auf fast denselben Rachenpunkt (Wirbelsäule bei Station Lippe + 0,7 · Rest) und laufen aufeinander zu; die Vierecke zwischen den Spalten werden Splitter und verdrillen sich (Diagnose: Elternflächen `F487/F505`, obere gegen untere Reihe derselben Spalten). Weg: die Rachenlinie als eigener Griff mit eigener Teilung (Plan 5.1, Kieferlinie), die Reihen der Halsspalten laufen waagerecht zur Halsachse, nicht zum Halsansatz.
+
+**Urteil neu:** Beweis 2 ist für **drei der vier Lagen bestanden** (vorn, unten, Kugel); Tempo, Bohne, Look, Lippe auf der Linie und Mannigfaltigkeit überall. Offen: Hals, Zähne, Zunge, Kiefer getrennt, Zug am Seitenumriss mit Maul. Vergleichsbild [`vergleich-maul-rex.png`](../progress/editor/vergleich-maul-rex.png) (`node apps/editor/scripts/maul-vergleich.mjs`).

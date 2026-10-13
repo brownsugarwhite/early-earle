@@ -39,7 +39,15 @@ import { silhouettenBreite } from './breite';
  * (0 Bauch … 1 Rücken), aufsteigend in f, letzter Punkt = Mundwinkel. So liegt die Lippe immer auf der Fläche, auch wo
  * die Sprossen fächern (Hinterkopf, Halsansatz). Eine gezeichnete 2D-Linie wird mit `maulLinieAusPunkten` übersetzt.
  */
-export type MaulLinie = { fv: { f: number; v: number }[] };
+export type MaulLinie = {
+  fv: { f: number; v: number }[];
+  /**
+   * Lippenanfang unter der Spitze: 0 = in der Schnauzenspitze; r ≥ 1 = an der Bauchnaht des r-ten Quadratrings der
+   * Kappe (der Oberkiefer steht vor, Überbiss wie beim Rex; in einer scharfen Spitze ist kein Platz für eine Tasche).
+   * Höchstens c/2 − 1 (c = N/4).
+   */
+  unterSpitze?: number;
+};
 
 export type MaulOptionen = {
   /** Inset-Reihen der Tasche (Lippe → Rachen) */
@@ -215,7 +223,8 @@ export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[]): MaulL
 export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie): MaulLage {
   const { R, c } = v;
   if (linie.fv.length < 2) throw new Error('Maullinie braucht mindestens zwei Stützen');
-  const bL = c / 2;
+  const rS = Math.min(c / 2 - 1, Math.max(0, Math.round(linie.unterSpitze ?? 0)));
+  const bL = c / 2 - rS;
   const jL = (3 * c) / 2 - bL;
   const ende = linie.fv[linie.fv.length - 1]!;
   const fRinge = spineAnteile(l, st.ringe);
@@ -517,8 +526,44 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     const y = P(pfad[t]!)[1];
     return Math.max(1e-6, Math.min(y - yMinR, yMaxR - y));
   };
-  const linseBei = (t: number): number => Math.min(opt.linse * H, 0.2 * dickeBei(t));
-  const normale = obenBei;
+  // Spalten vor der ersten Kreuzung (Lippe läuft an der Kinnnaht hinab) nehmen die Dicke der Kreuzungsspalte
+  const tAb = c / 2 - bL;
+  const linseBei = (t: number): number => Math.min(opt.linse * H, 0.2 * dickeBei(Math.max(t, tAb)));
+  // Linsenrichtung je Spalte: „oben“ entlang der Lippe geglättet (±2 Spalten; am Übergang Kopf → Hals dreht es sonst
+  // in einer Spalte um 90°, die Blätter verdrillen sich) und gegen die Taschenrichtung orthogonalisiert (an der Kinnnaht
+  // zeigt „oben“ sonst in die Tasche hinein und trennt die Blätter nicht); an der Naht in der Spiegelebene.
+  const obenRoh: [number, number, number][] = [];
+  for (let t = 0; t <= m; t++) obenRoh.push(obenBei(t));
+  const normalen: [number, number, number][] = [];
+  for (let t = 0; t <= m; t++) {
+    const acc: [number, number, number] = [0, 0, 0];
+    for (let d = -2; d <= 2; d++) {
+      const q = Math.min(m, Math.max(0, t + d));
+      const w = 3 - Math.abs(d);
+      for (let i = 0; i < 3; i++) acc[i] = acc[i]! + w * obenRoh[q]![i]!;
+    }
+    const p = P(pfad[t]!);
+    const T = Tvon(t);
+    const e: [number, number, number] = [T[0] - p[0], T[1] - p[1], T[2] - p[2]];
+    const el = Math.hypot(...e) || 1;
+    for (let i = 0; i < 3; i++) e[i] = e[i]! / el;
+    const dot = acc[0] * e[0] + acc[1] * e[1] + acc[2] * e[2];
+    let n: [number, number, number] = [acc[0] - dot * e[0], acc[1] - dot * e[1], acc[2] - dot * e[2]];
+    let l = Math.hypot(...n);
+    if (l < 1e-6) {
+      // parallel: Kreuzprodukt aus Lippentangente und Taschenrichtung, nach „oben“ orientiert
+      const a = P(pfad[Math.max(0, t - 1)]!);
+      const b = P(pfad[Math.min(m, t + 1)]!);
+      const tg: [number, number, number] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+      n = [tg[1] * e[2] - tg[2] * e[1], tg[2] * e[0] - tg[0] * e[2], tg[0] * e[1] - tg[1] * e[0]];
+      if (n[0] * acc[0] + n[1] * acc[1] + n[2] * acc[2] < 0) n = [-n[0], -n[1], -n[2]];
+      l = Math.hypot(...n) || 1;
+    }
+    if (t === 0) n[2] = 0;
+    l = Math.hypot(...n) || 1;
+    normalen.push([n[0] / l, n[1] / l, n[2] / l]);
+  }
+  const normale = (t: number): [number, number, number] => normalen[t]!;
   const art = new Uint8Array(n);
   const tiefe = new Float64Array(n);
   const untenSeite = new Float64Array(n);
@@ -934,10 +979,10 @@ export function maulLinieAus(stuetzen: readonly { f: number; v: number }[]): Mau
   return { fv: stuetzen.map((s) => ({ f: s.f, v: s.v })) };
 }
 
-/** Vorgefertigte Maullinien je Lage: vorn (Rex), unten (tief am Kinn), hals (bis zum Halsansatz). */
+/** Vorgefertigte Maullinien je Lage: vorn (Rex, unter der Spitze), unten (tief am Kinn), hals (bis zum Halsansatz). */
 export function maulLinieVorlage(_dok: Dokument, art: 'vorn' | 'unten' | 'hals'): MaulLinie {
-  if (art === 'vorn') return maulLinieAus([{ f: 0.02, v: 0.45 }, { f: 0.2, v: 0.42 }, { f: 0.34, v: 0.45 }]);
-  if (art === 'unten') return maulLinieAus([{ f: 0.02, v: 0.3 }, { f: 0.16, v: 0.14 }, { f: 0.28, v: 0.22 }]);
+  if (art === 'vorn') return { ...maulLinieAus([{ f: 0.02, v: 0.45 }, { f: 0.2, v: 0.42 }, { f: 0.34, v: 0.45 }]), unterSpitze: 1 };
+  if (art === 'unten') return { ...maulLinieAus([{ f: 0.02, v: 0.3 }, { f: 0.16, v: 0.14 }, { f: 0.28, v: 0.22 }]), unterSpitze: 1 };
   return maulLinieAus([{ f: 0.02, v: 0.42 }, { f: 0.2, v: 0.38 }, { f: 0.4, v: 0.25 }, { f: 0.6, v: 0.28 }]);
 }
 

@@ -47,7 +47,9 @@ function pruefen(name: string, dok: Dokument, art: 'vorn' | 'unten' | 'hals', st
   // Lippe auf der Linie: Grenzlage der Pfadpunkte gegen den gezeichneten Polygonzug (Seitenansicht)
   let lippeMax = 0;
   let lippeT = -1;
+  const tAb = Math.round(linie.unterSpitze ?? 0); // unter der Spitze läuft die Lippe erst zur Naht hinab
   for (const [tt, idx] of m.pfad.entries()) {
+    if (tt < tAb) continue;
     const p = { x: abl.fein[3 * idx]!, y: abl.fein[3 * idx + 1]! };
     let best = Infinity;
     for (let s = 0; s + 1 < L.length; s++) {
@@ -101,15 +103,15 @@ const rex = vorlageDokument(rexJson as unknown as Vorlage, 'zu', 'rex');
 const langhals = vorlageDokument(langhalsJson as unknown as Vorlage, 'zu', 'langhals');
 
 describe('Beweis 2: Maul mit Haps', () => {
-  // Stand 13.10. nachts: Kriterium des Plans ist 0 Durchdringungen bei 0/25/50/75/100 %. Erreicht: Kugel an allen Öffnungen; Rex vorn offen bis auf ≤ 12 Paare am Apex (die Schnauzenspitze der Vorlage ist
-  // eine scharfe Ecke, dort ist kein Platz für eine Tasche). Geschlossen bleiben Kreuzungen der Blätter an der dünnen
-  // Schnauze; „unten“ und „hals“ sind Messungen (offen, siehe docs/research/2026-10-13-beweis2-maul.md).
+  // Stand 13.10. spätnachts: Kriterium des Plans ist 0 Durchdringungen bei 0/25/50/75/100 %. Erreicht: Kugel, Rex vorn
+  // und Rex unten an allen Öffnungen (Lippe unter der Spitze, Linsenrichtung geglättet). „hals“ (Drache) ist eine Messung:
+  // die Taschenreihen verdrillen sich am Halsansatz, offen (siehe docs/research/2026-10-13-beweis2-maul.md).
   const rillePx = (abl: MaulErgebnis) => abl.maul.opt.rille * abl.maul.hoehe * PX + 1;
-  it('Rex, Maul vorn: Käfig sauber, Lippe auf der Linie, offen ≤ 12 Durchdringungen (Apex), Bohne', () => {
+  it('Rex, Maul vorn: Käfig sauber, Lippe auf der Linie, 0 Durchdringungen bei 0/25/50/75/100 %, Bohne', () => {
     const r = pruefen('Rex', rex, 'vorn');
     expect(r.pr.ok).toBe(true);
     expect(r.lippeMax).toBeLessThan(rillePx(r.abl));
-    for (const e of r.ergebnisse.slice(1)) expect(e.paare, `Öffnung ${e.oeffnung}`).toBeLessThanOrEqual(12);
+    for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
     expect(r.ergebnisse[4]!.spalt / r.laenge).toBeGreaterThan(0.4);
   });
   it('Rex, Maul vorn auf Stufe 3: Umbau ≤ 200 ms (unter Testlast 350)', () => {
@@ -119,10 +121,11 @@ describe('Beweis 2: Maul mit Haps', () => {
     console.log(`Rex (vorn) Stufe 3: bester Umbau ${best.toFixed(0)} ms`);
     expect(best).toBeLessThan(350);
   });
-  it('Rex, Maul unten (tief am Kinn): Käfig sauber, Lippe auf der Linie (Durchdringungen gemessen, offen)', () => {
+  it('Rex, Maul unten (tief am Kinn): Käfig sauber, Lippe auf der Linie, 0 Durchdringungen', () => {
     const r = pruefen('Rex', rex, 'unten');
     expect(r.pr.ok).toBe(true);
     expect(r.lippeMax).toBeLessThan(rillePx(r.abl));
+    for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
   });
   it('Langhals, Maul bis zum Halsansatz (Drache, zieht): Käfig sauber, Lippe auf der Linie (Durchdringungen gemessen, offen)', () => {
     const r = pruefen('Langhals', langhals, 'hals');
