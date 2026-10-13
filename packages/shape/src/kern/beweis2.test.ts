@@ -9,7 +9,9 @@ import langhalsJson from '../versuch/vorlagen/langhals.json';
 import { selbstDurchdringungen } from '../versuch/pruefen';
 import type { V3 } from '../versuch/catmullClark';
 import { alleFlaechen, pruefeKaefig } from '../kaefig/halbkanten';
-import { type MaulErgebnis, type MaulOptionen, ableitenMitMaul, maulLiniePunkte, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
+import { type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, maulLiniePunkte, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
+import { halsVerbreitern, kastenSpanten } from './kasten';
+import tigerJson from '../versuch/vorlagen/tiger.json';
 
 declare const console: { log: (...a: unknown[]) => void };
 declare const performance: { now(): number };
@@ -39,7 +41,10 @@ function regionen(abl: MaulErgebnis, flaechen: number[][]): string[] {
 }
 
 function pruefen(name: string, dok: Dokument, art: 'vorn' | 'unten' | 'hals', stufen = 2, maulOpt: Partial<MaulOptionen> = {}) {
-  const linie = maulLinieVorlage(dok, art);
+  return pruefenLinie(name, dok, maulLinieVorlage(dok, art), art, stufen, maulOpt);
+}
+
+function pruefenLinie(name: string, dok: Dokument, linie: MaulLinie, art: 'vorn' | 'unten' | 'hals', stufen = 2, maulOpt: Partial<MaulOptionen> = {}) {
   const abl = ableitenMitMaul(dok, linie, { stufen }, { ...maulOptionenVorlage(art), ...maulOpt });
   const L = maulLiniePunkte(dok, linie);
   const pr = pruefeKaefig(abl.kaefig);
@@ -132,6 +137,19 @@ describe('Beweis 2: Maul mit Haps', () => {
     expect(r.pr.ok).toBe(true);
     expect(r.lippeMax).toBeLessThan(rillePx(r.abl));
   }, 30_000);
+  it('Tiger, Kastenschnauze (Lippe durch die Spitze, Kiefer 30°, Band 1): 0 Durchdringungen bei 0/25/50/75/100 %', () => {
+    const roh = vorlageDokument(tigerJson as unknown as Vorlage, 'zu', 'tiger');
+    const dok = { ...roh, spanten: kastenSpanten(roh.profile.front, 0.02, 0.15, 0.25, 0.85) };
+    const r = pruefenLinie('Tiger', dok, { fv: [{ f: 0.02, v: 0.28 }, { f: 0.1, v: 0.26 }, { f: 0.17, v: 0.33 }], unterSpitze: 0 }, 'vorn', 2, { winkelUnten: 30, winkelOben: 26, band: 1 });
+    expect(r.pr.ok).toBe(true);
+    for (const e of r.ergebnisse) expect(e.paare).toBe(0);
+  });
+  it('Drache (Langhals, Hals ×2), Maul bis zum Halsansatz: 0 Durchdringungen bei 0/25/50/75/100 %', () => {
+    const dok = halsVerbreitern(vorlageDokument(langhalsJson as unknown as Vorlage, 'zu', 'drache'), 2, 0.3, 0.585);
+    const r = pruefen('Drache', dok, 'hals');
+    expect(r.pr.ok).toBe(true);
+    for (const e of r.ergebnisse) expect(e.paare).toBe(0);
+  });
   it('Kugel, Maul vorn: 0 Durchdringungen bei 0/25/50/75/100 %', () => {
     const r = pruefen('Kugel', neuesDokument('Kugel'), 'vorn');
     expect(r.pr.ok).toBe(true);

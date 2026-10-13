@@ -15,8 +15,7 @@ import { type Roehre, roehre } from '../kaefig/roehre';
 import { grenzLoeser, kaefigDurchZiele } from '../loeser/grenzflaeche';
 import { unterteilung } from '../subdivision/catmullClark';
 import { anwenden3 } from '../subdivision/matrix';
-import { WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
-import { ABLEIT_STANDARD, type AbleitOptionen, type Ableitung, faltenSetzen, fertigstellen, stationenWaehlen, zieleBerechnen } from './ableiten';
+import { ABLEIT_STANDARD, type AbleitOptionen, type Ableitung, faltenSetzen, fertigstellen, kernLeiter, stationenWaehlen, zieleBerechnen } from './ableiten';
 import { silhouettenBreite } from './breite';
 
 export type BeinOptionen = {
@@ -283,7 +282,7 @@ export function ableitenMitBeinen(dok: Dokument, ansaetze: readonly BeinAnsatz[]
   const opt = { ...ABLEIT_STANDARD, ...optionen };
   const bopt = { ...BEIN_STANDARD, ...beinOptionen };
   const t0 = jetzt();
-  const l = leiter(dok, WIRBEL_STANDARD);
+  const l = kernLeiter(dok);
   const t1 = jetzt();
   const breiten = silhouettenBreite(dok);
   const t2 = jetzt();

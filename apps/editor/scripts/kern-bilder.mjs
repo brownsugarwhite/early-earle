@@ -31,8 +31,9 @@ if (process.env.MAUL) {
   for (const [wesen, art] of faelle) {
     for (const [zustand, oeffnung] of [['zu', 0], ['halb', 0.5], ['auf', 1]]) {
       for (const kaefig of [0, 1]) {
-        const palette = wesen === 'rex' ? 'rex' : wesen === 'kugel' ? 'blob' : wesen === 'langhals' ? 'giraffe' : 'tiger';
-        await page.goto(`${url}/?versuch=kern&wesen=${wesen}&bauweise=kern&look=earle&palette=${palette}&maul=${art}&oeffnung=${oeffnung}&kaefig=${kaefig}`);
+        const palette = wesen === 'rex' || wesen === 'drache' ? 'rex' : wesen === 'kugel' ? 'blob' : wesen === 'langhals' ? 'giraffe' : 'tiger';
+        const kamera = wesen === 'tiger' ? '&kamera=-62,8,0.8,-0.27,0.4,0' : wesen === 'drache' || wesen === 'langhals' ? '&kamera=-62,6,1.6,-0.05,0.45,0' : '';
+        await page.goto(`${url}/?versuch=kern&wesen=${wesen}&bauweise=kern&look=earle&palette=${palette}&maul=${art}&oeffnung=${oeffnung}&kaefig=${kaefig}${kamera}`);
         await page.waitForFunction(() => window.__editor && window.__editor.vertices() > 0, null, { timeout: 60_000 });
         await page.evaluate(() => document.fonts.ready);
         await page.waitForTimeout(1800);

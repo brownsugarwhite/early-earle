@@ -1,9 +1,10 @@
-// Wesen-Editor 2, Beweis 4 (14.10.2026): Spanten für eine Kastenschnauze. Spanten brauchen die Knotenstruktur der Front
-// (gleiche Knotenzahl, Reihenfolge oben → unten); hier entstehen Kasten- und Rundprofile mit n Knoten in normierten
-// Koordinaten (Breite 0 … 1 ab der Achse, Höhe 0 … 1). Ecken des Kastens sind Knoten mit Härte → Längsfalten.
+// Wesen-Editor 2, Beweis 4 (14.10.2026): Form-Hilfen für Prüfwesen. Spanten für eine Kastenschnauze: Spanten brauchen die
+// Knotenstruktur der Front (gleiche Knotenzahl, Reihenfolge oben → unten); hier entstehen Kasten- und Rundprofile mit n
+// Knoten in normierten Koordinaten (Breite 0 … 1 ab der Achse, Höhe 0 … 1). Ecken des Kastens sind Knoten mit Härte →
+// Längsfalten. Dazu der Drachenhals (Beweis 2): die Front-Silhouette in einem Höhenband verbreitern.
 
 import type { Knoten, Profil } from '../profil';
-import type { Spant } from '../dokument';
+import type { Dokument, Spant } from '../dokument';
 
 const o = { x: 0, y: 0 };
 
@@ -46,4 +47,16 @@ export function kastenSpanten(front: Profil, fVorn: number, fHinten: number, fRu
     { f: fHinten, profil: kasten },
     { f: fRund, profil: rundProfil(n, front) },
   ];
+}
+
+/**
+ * Drachenhals (Beweis 2, Lage „hals“): Die Front-Silhouette wird im Höhenband `yVon … yBis` (Welt) um `faktor` verbreitert
+ * (Knoten samt Griffen). Der Langhals-Bogen hat einen Giraffenhals (halbe Breite ≈ 2 % der Höhe); ein Maul, das den Hals
+ * hinabläuft, braucht Platz für zwei Taschen. Die Top-Silhouette gibt am Hals ohnehin die Kopfbreite vor.
+ */
+export function halsVerbreitern(dok: Dokument, faktor: number, yVon: number, yBis: number): Dokument {
+  const sk = dok.skalierung;
+  const im = (k: Knoten) => k.p.y * sk > yVon && k.p.y * sk < yBis;
+  const front = { ...dok.profile.front, knoten: dok.profile.front.knoten.map((k) => (im(k) ? { ...k, p: { x: k.p.x * faktor, y: k.p.y }, ein: { x: k.ein.x * faktor, y: k.ein.y }, aus: { x: k.aus.x * faktor, y: k.aus.y } } : k)) } as Profil;
+  return { ...dok, profile: { ...dok.profile, front } };
 }

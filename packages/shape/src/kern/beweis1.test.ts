@@ -11,6 +11,8 @@ import { umrissAusNetz } from '../versuch/umriss3d';
 import langhalsRoh from '../versuch/vorlagen/langhals.json';
 import rexRoh from '../versuch/vorlagen/rex.json';
 import ueberhangRoh from '../versuch/vorlagen/ueberhang.json';
+import tigerRoh from '../versuch/vorlagen/tiger.json';
+import { selbstDurchdringungen } from '../versuch/pruefen';
 import { type Vorlage, vorlageDokument } from '../versuch/vorlagen';
 import { ableiten, seiteZiehen } from './ableiten';
 
@@ -121,7 +123,7 @@ describe('Beweis 1: Kern-Tempo und Treue', () => {
   it('Langhals (Hals steht): Naht ≤ 2 px', () => {
     const r = messen('Langhals', vorlageDokument(langhalsRoh as unknown as Vorlage, 'zu', 'langhals'));
     // Stand 13.10. nachts: 0,97 px (Ringe nach Krümmung); Ziel ≤ 2 px
-    expect(r.hin.max * PX).toBeLessThan(1.2);
+    expect(r.hin.max * PX).toBeLessThan(1.5) // Plan: ≤ 2 px; mit entfächerter Leiter 1,36 px (vorher 0,97, dafür Schwanz ohne Durchdringungen);
   });
 
   it('Überhang-Ente (Florian 13.10.): Naht ≤ 2 px ohne Sonderregel', () => {
@@ -211,5 +213,20 @@ describe('Beweis 1: Kern-Tempo und Treue', () => {
     console.log(`  nach dem Loslassen (Ableitung ${neu.zeiten.gesamt.toFixed(0)} ms): Naht→Kurve max ${(hinNeu.max * PX).toFixed(2)} px`);
     // Stand 13.10. nachts: 0,75 px (24 Ringe), 0,37 px (36 Ringe); die scharfe Beule verlangt die Verdichtung
     expect(hinNeu.max * PX).toBeLessThan(ringe >= 36 ? 0.6 : 1.0);
+  });
+
+  it('Sauberkeit (Plan 3.2): alle Prüfwesen ohne Maul 0 Durchdringungen (Stufe 2)', () => {
+    const zeilen: string[] = [];
+    for (const [name, json] of [['kugel', null], ['rex', rexRoh], ['langhals', langhalsRoh], ['ueberhang', ueberhangRoh], ['tiger', tigerRoh]] as const) {
+      const dok = json ? vorlageDokument(json as unknown as Vorlage, 'zu', name) : neuesDokument('kugel');
+      const abl = ableiten(dok, { stufen: 2 });
+      const flaechen = alleFlaechen(abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig);
+      const punkte: V3[] = [];
+      for (let i = 0; i < abl.fein.length / 3; i++) punkte.push([abl.fein[3 * i]!, abl.fein[3 * i + 1]!, abl.fein[3 * i + 2]!]);
+      const d = selbstDurchdringungen({ punkte, flaechen, schaerfe: new Map<string, number>() }, 1e-4);
+      zeilen.push(`${name}: ${d.paare}`);
+      expect(d.paare, name).toBe(0);
+    }
+    console.log(`Sauberkeit ohne Maul: ${zeilen.join(', ')} (Langhals vor der entfächerten Leiter: 94 am Schwanz)`);
   });
 });

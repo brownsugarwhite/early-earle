@@ -4,7 +4,7 @@
 // der Kurve (px bei 461 px je Kachel) und Zeiten.
 
 import type { Dokument, V2 } from '@ee/shape';
-import { DESKRIPTOR_FLOATS, KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Ableitung, type BeinErgebnis, type GesichtMaske, type Haut, type KlingenLage, type KlingenVorlage, type MaulErgebnis, type MaulLinie, ableiten, ableitenMitBeinen, ableitenMitMaul, alleFlaechen, beinPose, bueschelAufHaut, deskriptoren, flaemmchen, gekaemmt, hautAus, hautPunkt, kastenSpanten, klingenBauen, klingenNetz, klingenVorlage, maulLinieVorlage, maulOptionenVorlage, maulPose, seiteZiehen, umrissBei, umrissDicht, zahnLagen, zungenAmScheitel } from '@ee/shape/kern';
+import { DESKRIPTOR_FLOATS, KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Ableitung, type BeinErgebnis, type GesichtMaske, type Haut, type KlingenLage, type KlingenVorlage, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableiten, ableitenMitBeinen, ableitenMitMaul, alleFlaechen, beinPose, bueschelAufHaut, deskriptoren, flaemmchen, gekaemmt, hautAus, hautPunkt, kastenSpanten, klingenBauen, klingenNetz, klingenVorlage, maulLinieVorlage, maulOptionenVorlage, maulPose, seiteZiehen, umrissBei, umrissDicht, zahnLagen, zungenAmScheitel } from '@ee/shape/kern';
 import { useUi } from '../state/uiStore';
 import { zuDreiecken, type V3 } from '@ee/shape/versuch';
 import { create } from 'zustand';
@@ -148,20 +148,23 @@ type Ausstattung = {
   gesichtMaske: GesichtMaske | undefined;
   /** Lippenband als Anteil der Höhe (Tiger: dünne dunkle Lippenlinie) */
   lippenBand: number;
+  /** Maul-Optionen des Wesens (Tiger: der Kopf sitzt auf dem Rumpf; bei 58° stößt der Unterkiefer an die Brust und die Flanke faltet → 30°, Band 1 Ring, der Schädel kippt dafür mehr) */
+  maulOptionen: Partial<MaulOptionen>;
 };
 function ausstattung(dok: Dokument): Ausstattung {
   if (dok.name === 'tiger') {
     return {
       dok: { ...dok, spanten: kastenSpanten(dok.profile.front, 0.02, 0.15, 0.25, 0.85) },
-      maul: () => ({ fv: [{ f: 0.02, v: 0.28 }, { f: 0.1, v: 0.26 }, { f: 0.17, v: 0.33 }], unterSpitze: 1 }),
+      maul: () => ({ fv: [{ f: 0.02, v: 0.28 }, { f: 0.1, v: 0.26 }, { f: 0.17, v: 0.33 }], unterSpitze: 0 }),
       augen: { ring: 4, j: 3, groesse: 0.1 },
       gesicht: true,
       wangen: true,
       gesichtMaske: { voll: 2, aus: 6, oben: 0.75 },
       lippenBand: 0.009,
+      maulOptionen: { winkelUnten: 30, winkelOben: 26, band: 1 },
     };
   }
-  return { dok, maul: (art) => maulLinieVorlage(dok, art === 'aus' ? 'vorn' : art), augen: { ring: 2, j: Math.max(1, Math.round(16 / 8)), groesse: 0.11 }, gesicht: false, wangen: false, gesichtMaske: undefined, lippenBand: 0.03 };
+  return { dok, maul: (art) => maulLinieVorlage(dok, art === 'aus' ? 'vorn' : art), augen: { ring: 2, j: Math.max(1, Math.round(16 / 8)), groesse: 0.11 }, gesicht: false, wangen: false, gesichtMaske: undefined, lippenBand: 0.03, maulOptionen: {} };
 }
 
 let zahnVorlage: KlingenVorlage | null = null;
@@ -433,7 +436,7 @@ export function kernBauen(dokRoh: Dokument, schnell: boolean): KernNetz {
     // Beweis 2: Maul im Käfig; Umbau nur bei neuem Dokument oder anderer Lage, die Pose (Öffnung) läuft auf dem Käfig
     if (letzte && letzte.maul === maul && letzte.dok === dok) abl = letzte.abl;
     else {
-      abl = ableitenMitMaul(dok, aus.maul(maul), {}, maulOptionenVorlage(maul));
+      abl = ableitenMitMaul(dok, aus.maul(maul), {}, { ...maulOptionenVorlage(maul), ...aus.maulOptionen });
       ableitung = abl.zeiten.gesamt;
     }
     const t0 = performance.now();

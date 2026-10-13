@@ -95,6 +95,46 @@ export function zugBei(zug: readonly V2[], t: number): V2 {
   return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f };
 }
 
+/**
+ * Leiter des Kerns: die kürzeste Leiter (`versuch/wirbelsaeule`), an den Enden entfächert. Ist eine Linie am Ende
+ * aufgebraucht, während die andere noch läuft (Langhals: die Rückenlinie endet an der tief liegenden Schwanzspitze, die
+ * Bauchlinie rundet darunter noch 5 % weiter), teilen sich alle Sprossen dort einen Endpunkt; Ringe und Kappe fielen auf
+ * die Spitze zusammen (94 Durchdringungen). Solche Läufe gleicher Anteile am Anfang und Ende werden linear verteilt,
+ * monoton bleibt die Leiter; Treppen in der Mitte hat die Leiter schon geglättet.
+ */
+export function kernLeiter(dok: Dokument): Leiter {
+  return leiterEntfaechern(leiter(dok, WIRBEL_STANDARD));
+}
+
+export function leiterEntfaechern(l: Leiter): Leiter {
+  const p = l.paare.map((x) => ({ a: x.a, b: x.b }));
+  const n = p.length;
+  if (n < 3) return l;
+  const SCHWELLE = 0.5;
+  for (const [stockt, andere] of [
+    ['a', 'b'],
+    ['b', 'a'],
+  ] as const) {
+    // Ende: solange die stockende Linie weniger als 30 % des Rests der anderen vor sich hat (ab dort bis zum Schluss)
+    let i0 = n - 1;
+    while (i0 - 1 > 0 && 1 - p[i0 - 1]![stockt] < SCHWELLE * (1 - p[i0 - 1]![andere])) i0--;
+    if (i0 < n - 1) {
+      const s0 = p[i0 - 1]![stockt];
+      const o0 = p[i0 - 1]![andere];
+      for (let k = i0; k < n; k++) p[k]![stockt] = o0 < 1 ? s0 + ((1 - s0) * (p[k]![andere] - o0)) / (1 - o0) : 1;
+    }
+    // Anfang: spiegelbildlich (die stockende Linie hat weniger als 30 % des Wegs der anderen hinter sich)
+    let j0 = 0;
+    while (j0 + 1 < n - 1 && p[j0 + 1]![stockt] < SCHWELLE * p[j0 + 1]![andere]) j0++;
+    if (j0 > 0) {
+      const s1 = p[j0 + 1]![stockt];
+      const o1 = p[j0 + 1]![andere];
+      for (let k = 0; k <= j0; k++) p[k]![stockt] = o1 > 0 ? (s1 * p[k]![andere]) / o1 : 0;
+    }
+  }
+  return { ...l, paare: p };
+}
+
 /** Sprossen der Leiter nach Bogenlänge der Wirbelsäule (Mitten) → Stationen bei Anteil f. */
 export function stationenAusLeiter(l: Leiter, anteile: readonly number[]): Station[] {
   const mitten = l.paare.map((p) => {
@@ -814,8 +854,59 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
         if (!naht) setze(v.kappe(seite, c - a, b), x, y, -z, hv);
       }
     }
+    if (seite === 'vorn') kastenKappe(v, ziele, hoehe, spitze, schlitz, setze);
   }
   return { ziele, hoehe };
+}
+
+/**
+ * Kastenfront (Tiger, Bild 9): Liegt Ring 0 praktisch in der Frontebene (Vorschub gegenüber der Spitze < 6 % seiner Höhe),
+ * fächern die Sprossen dort und die Kappe wäre ein winziges Feld an der Spitze; Lippe, Nase und Tasche hätten keinen Platz.
+ * Dann wird die Kappe ein ebenes Gitter in Ring 0: Quadratring r ist Ring 0, um r/(c/2) zum Frontpunkt C hin verkleinert.
+ * C liegt auf der Frontlinie in der Höhe der Lippe von Ring 0 (mit Schlitz; die Lippe geht dann als Mittelzeile durch die
+ * Spitze, `unterSpitze` 0) oder in der Ringmitte. Spitzige Schnauzen (Rex, Kugel) bleiben unberührt.
+ */
+function kastenKappe(v: Roehre, ziele: Float64Array, hoehe: Float64Array, spitze: V2, schlitz: SchlitzLage | undefined, setze: (p: number, x: number, y: number, z: number, hv: number) => void): void {
+  const { N, c } = v;
+  let cx = 0;
+  let yMin = Infinity;
+  let yMax = -Infinity;
+  for (let j = 0; j < N; j++) {
+    const q = v.ringPunkt(0, j);
+    cx += ziele[3 * q]! / N;
+    yMin = Math.min(yMin, ziele[3 * q + 1]!);
+    yMax = Math.max(yMax, ziele[3 * q + 1]!);
+  }
+  const H0 = yMax - yMin;
+  if (!(Math.abs(cx - spitze.x) < 0.06 * H0)) return;
+  const jLippe = schlitz && Number.isFinite(schlitz.vRing[0]!) ? schlitz.jL : -1;
+  const cPunkt = jLippe >= 0 ? v.ringPunkt(0, jLippe) : -1;
+  const Cy = cPunkt >= 0 ? ziele[3 * cPunkt + 1]! : (yMin + yMax) / 2;
+  const Chv = cPunkt >= 0 ? hoehe[cPunkt]! : 0.5;
+  // Ring 0 an gebrochener Stelle jf (rechte Hälfte 0 … N/2), linear zwischen den Ringpunkten
+  const rand = (jf: number): [number, number, number, number] => {
+    const j0 = Math.min(N / 2 - 1, Math.floor(jf));
+    const f = jf - j0;
+    const p0 = v.ringPunkt(0, j0);
+    const p1 = v.ringPunkt(0, j0 + 1);
+    const mixv = (a: number, b: number) => a + (b - a) * f;
+    return [mixv(ziele[3 * p0]!, ziele[3 * p1]!), mixv(ziele[3 * p0 + 1]!, ziele[3 * p1 + 1]!), mixv(ziele[3 * p0 + 2]!, ziele[3 * p1 + 2]!), mixv(hoehe[p0]!, hoehe[p1]!)];
+  };
+  setze(v.kappe('vorn', c / 2, c / 2), spitze.x, Cy, 0, Chv);
+  for (let r = 1; r < c / 2; r++) {
+    const s = r / (c / 2);
+    for (let m = 0; m <= 4 * r; m++) {
+      const [a, b] = quadratRing(c, r, m);
+      const [x, y, z, hv] = rand((m * c) / (2 * r));
+      const px = spitze.x + s * (x - spitze.x);
+      const py = Cy + s * (y - Cy);
+      const pz = s * z;
+      const phv = Chv + s * (hv - Chv);
+      const naht = m === 0 || m === 4 * r;
+      setze(v.kappe('vorn', a, b), px, py, naht ? 0 : pz, phv);
+      if (!naht) setze(v.kappe('vorn', c - a, b), px, py, -pz, phv);
+    }
+  }
 }
 
 /** Ziele je Bedingung: erst alle Käfigziele, dann die Nahtpunkte auf dem Umriss (z = 0). */
@@ -877,7 +968,7 @@ export function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument,
 export function ableiten(dok: Dokument, optionen: Partial<AbleitOptionen> = {}): Ableitung {
   const opt = { ...ABLEIT_STANDARD, ...optionen };
   const t0 = jetzt();
-  const l = leiter(dok, WIRBEL_STANDARD);
+  const l = kernLeiter(dok);
   const t1 = jetzt();
   const breiten = silhouettenBreite(dok);
   const t2 = jetzt();
@@ -985,7 +1076,7 @@ export type Zug = Ableitung & { zugZeit: { leiter: number; ziele: number; loeser
 export function ziehen(abl: Ableitung, dokNeu: Dokument): Zug {
   if (abl.kaefig.n !== abl.vorlage.kaefig.n) throw new Error('ziehen: Käfig mit Maul – bitte neu ableiten');
   const t0 = jetzt();
-  const l = leiter(dokNeu, WIRBEL_STANDARD);
+  const l = kernLeiter(dokNeu);
   const t1 = jetzt();
   const v = abl.vorlage;
   const st: Stationen = { ringe: abl.stationen, kappen: abl.kappenStationen, ecken: abl.ecken, spitzen: abl.spitzen };

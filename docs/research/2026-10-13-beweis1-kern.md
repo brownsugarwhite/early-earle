@@ -81,3 +81,7 @@ Zugschritt am Seitenumriss (Rex, Knoten um 23 px gehoben): Löser + Matrix 2,8 m
 - **Beweis 2 (Maul)**, **Beweis 3 (Teil)**, **Beweis 5 (Feuer/Gas/Fell)**, Vergleichsbild Tiger-Kopf für Beweis 4.
 
 **Urteil:** Beweis 1 ist **bestanden** (Kugel 0,28, Rex 0,33, Langhals 0,97, Ente 1,21 px in der Seite; Zugschritt ≈ 3 ms; Kasten mit Falten aus der Front). Die Ente bleibt als Form ein Fall für Teile. Weiter mit Beweis 2 (Maul mit Haps).
+
+## Nachtrag 14.10. abends: Sauberkeit und entfächerte Leiter
+
+Plan 3.2 verlangt 0 Durchdringungen in Ruhe. Gemessen (Stufe 2, neuer Test in `beweis1.test.ts`): Kugel, Rex, Überhang-Ente, Tiger 0; **Langhals 94** am Schwanz: Die kürzeste Leiter hatte die Rückenlinie an der tief liegenden Schwanzspitze aufgebraucht, während die Bauchlinie darunter noch 6 % rundete; alle Sprossen teilten sich den Spitzenpunkt, Ring 23 und die hintere Kappe fielen auf ihn. `kernLeiter` entfächert solche Läufe jetzt an beiden Enden (eine Linie mit weniger als der Hälfte des Rests der anderen wird linear mitgeführt). Ergebnis: alle fünf 0; Naht Langhals 1,36 px (vorher 0,97; Plan ≤ 2), Ente 0,54 (vorher 1,21), Kugel/Rex unverändert. Dazu `kastenKappe`: an einer senkrechten Kastenfront wird die Kappe ein ebenes Gitter in Ring 0 (Beweis-2-Nachtrag, Punkt 1).

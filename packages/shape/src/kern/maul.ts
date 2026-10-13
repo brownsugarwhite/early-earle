@@ -18,7 +18,7 @@ import { type Roehre, roehre } from '../kaefig/roehre';
 import { luLoesen, luZerlegen } from '../loeser/lu';
 import { anwenden3 } from '../subdivision/matrix';
 import type { KlingenLage } from './klinge';
-import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
+import type { Leiter } from '../versuch/wirbelsaeule';
 import {
   ABLEIT_STANDARD,
   type AbleitOptionen,
@@ -27,6 +27,7 @@ import {
   type Stationen,
   faltenSetzen,
   fertigstellen,
+  kernLeiter,
   quadratRing,
   stationenAusLeiter,
   stationenWaehlen,
@@ -130,6 +131,8 @@ export type MaulAbleitung = {
   beutelRing: Int16Array;
   /** Plattenkante je Ring (3 Werte): Lippenpunkt um die Plattendicke nach unten */
   plattenKante: Float64Array;
+  /** Rachenlinie: Bogenlänge bis zum Knick, bis zum Winkelring, Eingang; Rachenziel je Pfadpunkt (3 Werte) */
+  rachen: { sKnick: number; sK: number; sEingang: number; ziele: Float64Array };
 };
 
 export type MaulErgebnis = Ableitung & { maul: MaulAbleitung };
@@ -182,7 +185,7 @@ function punktBei(l: Leiter, f: number, v: number): V2 {
 
 /** Maullinie dicht als Welt-Polygonzug (Seitenansicht), z. B. zum Zeichnen und Messen. */
 export function maulLiniePunkte(dok: Dokument, linie: MaulLinie, n = 64): V2[] {
-  const l = leiter(dok, WIRBEL_STANDARD);
+  const l = kernLeiter(dok);
   const f0 = 0;
   const f1 = linie.fv[linie.fv.length - 1]!.f;
   const out: V2[] = [];
@@ -195,7 +198,7 @@ export function maulLiniePunkte(dok: Dokument, linie: MaulLinie, n = 64): V2[] {
 
 /** Gezeichnete 2D-Linie (Welt) → Wirbelsäulen-Koordinaten: je Punkt die nächste Sprosse der Leiter und die Höhe darauf. */
 export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[]): MaulLinie {
-  const l = leiter(dok, WIRBEL_STANDARD);
+  const l = kernLeiter(dok);
   const fv: { f: number; v: number }[] = [];
   for (const p of punkte) {
     let best = { k: 0, d: Infinity, v: 0.5 };
@@ -272,6 +275,11 @@ function randAB(c: number, j: number): [number, number] {
 }
 
 const lerp3 = (a: [number, number, number], b: [number, number, number], t: number): [number, number, number] => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const richtung = (a: [number, number, number], b: [number, number, number]): [number, number, number] => {
+  const d: [number, number, number] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const l = Math.hypot(...d) || 1;
+  return [d[0] / l, d[1] / l, d[2] / l];
+};
 
 /**
  * Käfig mit Maul aus der Vorlage: Schlitz entlang des Pfads, Tasche, Rachengitter; Ziele für alle Punkte (geschlossen).
@@ -458,11 +466,21 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     const l = Math.hypot(...r3) || 1;
     return [r3[0] / l, r3[1] / l, t === 0 ? 0 : r3[2] / l];
   };
-  // Rille: beide Ketten nach innen (Hautnormale), zum Winkel auslaufend; obere und untere Kette bleiben gleich
+  // Rille: beide Ketten nach innen (Hautnormale), zum Winkel auslaufend; obere und untere Kette bleiben gleich.
+  // Höchstens 40 % des Wegs zur Ringmitte: In einem dünnen Hals (Lippe dicht an der Spiegelebene) schöbe die Rille die
+  // Lippe sonst durch die Mitte auf die andere Seite.
+  const mitteAbstand = (t: number): number => {
+    const g = gitterLage(v, pfad[t]!);
+    const ring = g.art === 'ring' ? g.i : 0;
+    const p = P(pfad[t]!);
+    const c3: [number, number, number] = [0, 0, 0];
+    for (let j = 0; j < N; j++) for (let d = 0; d < 3; d++) c3[d] = c3[d]! + zieleV[3 * v.ringPunkt(ring, j) + d]! / N;
+    return Math.hypot(c3[0] - p[0], c3[1] - p[1], c3[2] - p[2]);
+  };
   for (let t = 0; t < m; t++) {
     const p = P(pfad[t]!);
     const r3 = innenRichtung(t);
-    const e = opt.rille * H * (1 - (t / m) * (t / m));
+    const e = Math.min(opt.rille * H * (1 - (t / m) * (t / m)), 0.4 * mitteAbstand(t));
     const q: [number, number, number] = [p[0] + r3[0] * e, p[1] + r3[1] * e, t === 0 ? 0 : p[2] + r3[2] * e];
     setze(pfad[t]!, q);
     setze(unten[t]!, q);
@@ -490,46 +508,132 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
   };
   const mitten: [number, number, number][] = [];
   for (let i = 0; i <= k; i++) mitten.push(ringMitte(i));
-  const stationVon = (t: number): number => {
-    const g = gitterLage(v, pfad[t]!);
-    return g.art === 'ring' ? g.i : 0;
+  // Rachenlinie (Plan 5.1, automatisch; Phase 2 macht sie zum Griff): die Wirbelsäule (Ringmitten 0 … k) ab dem
+  // Racheneingang. Der Eingang liegt bei `rachenTiefe` des Wegs bis zum ersten Knick der Wirbelsäule (> 50° gegen die
+  // Kopfachse) oder bis zum Winkelring. Das Rachenziel je Lippenpunkt ist sein Lotfußpunkt auf dieser Linie, nie vor dem
+  // Eingang: Schnauzenlippen laufen nach hinten zum Eingang (tiefe Bohne, Rex), Lippen an der Seite laufen waagerecht
+  // nach innen. Läuft das Maul um den Hinterkopf in den Hals (Drache), liegen die Lippen dort als Stapel übereinander;
+  // mit einem Ziel weiter unten deckten sich die Spalten und die Blätter kreuzten sich — mit dem Lot bleiben sie waagerecht.
+  const sBogen: number[] = [0];
+  for (let i = 0; i < k; i++) sBogen.push(sBogen[i]! + Math.hypot(mitten[i + 1]![0] - mitten[i]![0], mitten[i + 1]![1] - mitten[i]![1], mitten[i + 1]![2] - mitten[i]![2]));
+  const sK = sBogen[k]!;
+  // Halsansatz: erster Knick (> 50° gegen die Kopfachse über die ersten drei Ringe; an einer Kastenfront fächern die
+  // Sprossen), hinter dem der Querschnitt kleiner wird (≤ 70 % des größten davor). Ein Knick in einen dickeren Rumpf
+  // (Tiger: Kopf auf der Kugel) ist kein Hals, der Rachen darf dort tief liegen.
+  const ringBreite = (i: number): number => {
+    let w = 0;
+    for (let j = 0; j < N; j++) w = Math.max(w, Math.abs(zieleV[3 * v.ringPunkt(i, j) + 2]!));
+    return w;
   };
+  const ringGroesse = (i: number): number => Math.hypot(zieleV[3 * v.ringPunkt(i, 0)]! - zieleV[3 * v.ringPunkt(i, N / 2)]!, zieleV[3 * v.ringPunkt(i, 0) + 1]! - zieleV[3 * v.ringPunkt(i, N / 2) + 1]!);
+  let sKnick = sK;
+  if (k >= 4) {
+    const d0 = richtung(mitten[0]!, mitten[3]!);
+    let groessteVor = 0;
+    for (let i = 0; i <= 3; i++) groessteVor = Math.max(groessteVor, ringGroesse(i));
+    for (let i = 3; i < k; i++) {
+      groessteVor = Math.max(groessteVor, ringGroesse(i));
+      const d = richtung(mitten[i]!, mitten[i + 1]!);
+      if (d[0] * d0[0] + d[1] * d0[1] + d[2] * d0[2] < Math.cos((50 * Math.PI) / 180)) {
+        const danach = (ringGroesse(Math.min(k, i + 1)) + ringGroesse(Math.min(k, i + 2))) / 2;
+        if (danach <= 0.7 * groessteVor) {
+          sKnick = sBogen[i]!;
+          break;
+        }
+      }
+    }
+  }
+  const sEingang = opt.rachenTiefe * sKnick;
+  const rachenZiele = new Float64Array(3 * (m + 1));
   const Tvon = (t: number): [number, number, number] => {
-    const i0 = stationVon(t);
-    const ic = Math.min(k, i0 + opt.rachenTiefe * (k - i0));
-    const a = Math.floor(ic);
-    const b = Math.min(k, a + 1);
-    const f = ic - a;
-    const c3 = lerp3(mitten[a]!, mitten[b]!, f);
-    return [c3[0], c3[1], (M[2] * opt.rachenInnen * t) / m];
-  };
-  // lokale Dicke je Pfadpunkt: Abstand der Lippe zur Haut darüber und darunter (Ring bzw. Quadratring), Linse höchstens ein Drittel davon
-  const dickeBei = (t: number): number => {
-    const g = gitterLage(v, pfad[t]!);
-    let yMinR = Infinity;
-    let yMaxR = -Infinity;
-    if (g.art === 'ring') {
-      for (let j = 0; j < N; j++) {
-        const y = zieleV[3 * v.ringPunkt(g.i, j) + 1]!;
-        yMinR = Math.min(yMinR, y);
-        yMaxR = Math.max(yMaxR, y);
+    const p = P(pfad[t]!);
+    let bestS = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < k; i++) {
+      const a = mitten[i]!;
+      const b = mitten[i + 1]!;
+      const ab: [number, number, number] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+      const l2 = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2] || 1e-18;
+      const u = Math.min(1, Math.max(0, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1] + (p[2] - a[2]) * ab[2]) / l2));
+      const q = lerp3(a, b, u);
+      const d = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
+      if (d < bestD) {
+        bestD = d;
+        bestS = sBogen[i]! + u * Math.sqrt(l2);
       }
-    } else if (g.art === 'vorn') {
-      const r = Math.max(Math.abs(g.a - c / 2), Math.abs(g.b - c / 2));
-      if (r === 0) return dickeBei(1);
-      for (let q = 0; q <= 4 * r; q++) {
-        const [a, b] = quadratRing(c, r, q);
-        const y = zieleV[3 * v.kappe('vorn', a, b) + 1]!;
-        yMinR = Math.min(yMinR, y);
-        yMaxR = Math.max(yMaxR, y);
+    }
+    const sT = Math.min(sK, Math.max(sEingang, bestS));
+    let c3: [number, number, number] = mitten[k]!;
+    let ringT = k;
+    for (let i = 0; i < k; i++) {
+      if (sT <= sBogen[i + 1]!) {
+        const len = sBogen[i + 1]! - sBogen[i]!;
+        c3 = lerp3(mitten[i]!, mitten[i + 1]!, len > 0 ? (sT - sBogen[i]!) / len : 0);
+        ringT = i + 1;
+        break;
       }
-    } else return 0.05 * H;
-    const y = P(pfad[t]!)[1];
-    return Math.max(1e-6, Math.min(y - yMinR, yMaxR - y));
+    }
+    // seitlich höchstens 80 % der Ringbreite am Ziel (dünner Hals: die Tasche bleibt in ihrer Hälfte; wie `innenHalten`)
+    const T: [number, number, number] = [c3[0], c3[1], Math.min((M[2] * opt.rachenInnen * t) / m, 0.8 * ringBreite(ringT))];
+    rachenZiele.set(T, 3 * t);
+    return T;
   };
-  // Spalten vor der ersten Kreuzung (Lippe läuft an der Kinnnaht hinab) nehmen die Dicke der Kreuzungsspalte
-  const tAb = c / 2 - bL;
-  const linseBei = (t: number): number => Math.min(opt.linse * H, 0.2 * dickeBei(Math.max(t, tAb)));
+  // Stationen (Quadratringe der Kappe, Ringe): Mitte, Sprossenrichtung, Höhe und rechtes Halbprofil (Höhe a längs der
+  // Sprosse → Breite z). Dienen der Linsendicke und dem Halten der Taschenpunkte im Körper.
+  type Stn = { cx: number; cy: number; dx: number; dy: number; H: number; profil: { a: number; z: number }[] };
+  const stationAus = (punkte: number[]): Stn => {
+    let cx = 0;
+    let cy = 0;
+    for (const q of punkte) {
+      cx += zieleV[3 * q]! / punkte.length;
+      cy += zieleV[3 * q + 1]! / punkte.length;
+    }
+    const o = punkte[0]!;
+    const u = punkte[punkte.length - 1]!;
+    let dx = zieleV[3 * o]! - zieleV[3 * u]!;
+    let dy = zieleV[3 * o + 1]! - zieleV[3 * u + 1]!;
+    const H = Math.hypot(dx, dy) || 1e-9;
+    dx /= H;
+    dy /= H;
+    const profil = punkte.map((q) => ({ a: (zieleV[3 * q]! - cx) * dx + (zieleV[3 * q + 1]! - cy) * dy, z: Math.abs(zieleV[3 * q + 2]!) }));
+    return { cx, cy, dx, dy, H, profil };
+  };
+  const stationen: Stn[] = [];
+  for (let r = 1; r < c / 2; r++) {
+    const pts: number[] = [];
+    for (let q = 0; q <= 4 * r; q++) {
+      const [a, b] = quadratRing(c, r, q);
+      pts.push(v.kappe('vorn', a, b));
+    }
+    stationen.push(stationAus(pts));
+  }
+  for (let i = 0; i < v.R; i++) {
+    const pts: number[] = [];
+    for (let j = 0; j <= N / 2; j++) pts.push(v.ringPunkt(i, j));
+    stationen.push(stationAus(pts));
+  }
+  const stationBei = (p: readonly [number, number, number]): Stn => {
+    let best = stationen[0]!;
+    let bestD = Infinity;
+    for (const st of stationen) {
+      const d = Math.hypot(p[0] - st.cx, p[1] - st.cy);
+      if (d < bestD) {
+        bestD = d;
+        best = st;
+      }
+    }
+    return best;
+  };
+  // lokale Dicke an einem Taschenpunkt: Abstand zur Haut über und unter ihm längs der Sprosse seiner nächsten Station.
+  // Gemessen am Taschenpunkt selbst, nicht an der Lippe: Bei einer Kastenfront ist die Kappe nur ein kleines Feld an der
+  // Lippe (Sprossen fächern an der senkrechten Front), die Tasche liegt aber in den vollen Ringen dahinter; mit der
+  // Kappendicke wäre die Linse null und Ober- und Unterblatt fielen aufeinander.
+  const dickeAn = (p: readonly [number, number, number]): number => {
+    const st = stationBei(p);
+    const a = (p[0] - st.cx) * st.dx + (p[1] - st.cy) * st.dy;
+    return Math.max(1e-6, Math.min(0.5 * st.H - a, 0.5 * st.H + a));
+  };
+  const linseAn = (p: readonly [number, number, number]): number => Math.min(opt.linse * H, 0.2 * dickeAn(p));
   // Linsenrichtung je Spalte: „oben“ entlang der Lippe geglättet (±2 Spalten; am Übergang Kopf → Hals dreht es sonst
   // in einer Spalte um 90°, die Blätter verdrillen sich) und gegen die Taschenrichtung orthogonalisiert (an der Kinnnaht
   // zeigt „oben“ sonst in die Tasche hinein und trennt die Blätter nicht); an der Naht in der Spiegelebene.
@@ -591,7 +695,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
       const basisO = lerp3(p, T, s);
       const basisU = lerp3(pu, T, s);
       const nrm = normale(t);
-      const linse = linseBei(t) * (0.4 + (0.6 * r) / K);
+      const linse = linseAn(lerp3(p, T, s)) * (0.4 + (0.6 * r) / K);
       const o: [number, number, number] = [basisO[0] + nrm[0] * linse, basisO[1] + nrm[1] * linse, t === 0 ? 0 : basisO[2] + nrm[2] * linse];
       const u: [number, number, number] = [basisU[0] - nrm[0] * linse, basisU[1] - nrm[1] * linse, t === 0 ? 0 : basisU[2] - nrm[2] * linse];
       setze(tasche.oben[r - 1]![t]!, o);
@@ -632,53 +736,12 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
   }
 
   // ----- Taschenpunkte im Körper halten -----
-  // Stationen (Spitze, Quadratringe der Kappe, Ringe): Mitte, Sprossenrichtung, halbe Höhe und das rechte Halbprofil
-  // (Höhe a längs der Sprosse → Breite z). Ein Taschenpunkt bleibt in der mittleren Höhe (±(0,5 − Rand) · H) und
-  // innerhalb von 80 % der Breite seiner nächsten Station; die Klammer ist monoton, Ober- und Unterblatt kreuzen sich nicht.
-  type Stn = { cx: number; cy: number; dx: number; dy: number; H: number; profil: { a: number; z: number }[] };
-  const stationAus = (punkte: number[]): Stn => {
-    let cx = 0;
-    let cy = 0;
-    for (const q of punkte) {
-      cx += zieleV[3 * q]! / punkte.length;
-      cy += zieleV[3 * q + 1]! / punkte.length;
-    }
-    const o = punkte[0]!;
-    const u = punkte[punkte.length - 1]!;
-    let dx = zieleV[3 * o]! - zieleV[3 * u]!;
-    let dy = zieleV[3 * o + 1]! - zieleV[3 * u + 1]!;
-    const H = Math.hypot(dx, dy) || 1e-9;
-    dx /= H;
-    dy /= H;
-    const profil = punkte.map((q) => ({ a: (zieleV[3 * q]! - cx) * dx + (zieleV[3 * q + 1]! - cy) * dy, z: Math.abs(zieleV[3 * q + 2]!) }));
-    return { cx, cy, dx, dy, H, profil };
-  };
-  const stationen: Stn[] = [];
-  for (let r = 1; r < c / 2; r++) {
-    const pts: number[] = [];
-    for (let q = 0; q <= 4 * r; q++) {
-      const [a, b] = quadratRing(c, r, q);
-      pts.push(v.kappe('vorn', a, b));
-    }
-    stationen.push(stationAus(pts));
-  }
-  for (let i = 0; i < v.R; i++) {
-    const pts: number[] = [];
-    for (let j = 0; j <= N / 2; j++) pts.push(v.ringPunkt(i, j));
-    stationen.push(stationAus(pts));
-  }
+  // Ein Taschenpunkt bleibt in der mittleren Höhe (±(0,5 − Rand) · H) und innerhalb von 80 % der Breite seiner nächsten
+  // Station; die Klammer ist monoton, Ober- und Unterblatt kreuzen sich nicht.
   const RAND = 0.3;
   const innenHalten = (idx: number) => {
     const p = P(idx);
-    let best = stationen[0]!;
-    let bestD = Infinity;
-    for (const st of stationen) {
-      const d = Math.hypot(p[0] - st.cx, p[1] - st.cy);
-      if (d < bestD) {
-        bestD = d;
-        best = st;
-      }
-    }
+    const best = stationBei(p);
     let a = (p[0] - best.cx) * best.dx + (p[1] - best.cy) * best.dy;
     const grenze = (0.5 - RAND) * best.H;
     a = Math.min(grenze, Math.max(-grenze, a));
@@ -733,6 +796,17 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     ]) {
       const ke = kanteZwischen(kaefig, a!, b!);
       if (ke >= 0) kaefig.eSchaerfe[ke] = opt.lippenSchaerfe;
+    }
+  }
+  // Hautfalten enden an der Lippe: Eine Ringfalte (Umriss-Ecke), die den Schlitz kreuzt, läge sonst nur auf einer Kopie
+  // (oben die obere Ringhälfte, unten die untere) und machte die eine Kopie zur Ecke, die andere zum Faltenpunkt — die
+  // Grenzlagen der beiden Ketten klafften (Tiger: Kastenfront, Ringfalten der Nasen- und Kinnecke). Beide Kopien sehen so
+  // dieselben zwei Lippenfalten.
+  for (const idx of [...pfad, ...pfadLinks.slice(1), ...unten, ...untenLinks.slice(1)]) {
+    for (let q = kaefig.vKStart[idx]!; q < kaefig.vKStart[idx + 1]!; q++) {
+      const e = kaefig.vKanten[q]!;
+      const o = kaefig.eA[e] === idx ? kaefig.eB[e]! : kaefig.eA[e]!;
+      if (art[o] === 0) kaefig.eSchaerfe[e] = 0;
     }
   }
   // Lippenabstand je Käfigpunkt (Welt): nächster Pfadpunkt beider Seiten
@@ -867,6 +941,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     beutelGewicht,
     beutelRing,
     plattenKante,
+    rachen: { sKnick, sK, sEingang, ziele: rachenZiele },
   };
   return { kaefig, ziele, hoehe, info };
 }
@@ -878,7 +953,7 @@ export function ableitenMitMaul(dok: Dokument, linie: MaulLinie, optionen: Parti
   const opt = { ...ABLEIT_STANDARD, glaettung: 0.15, ...optionen };
   const mopt = { ...MAUL_STANDARD, ...maulOptionen };
   const t0 = jetzt();
-  const l = leiter(dok, WIRBEL_STANDARD);
+  const l = kernLeiter(dok);
   const t1 = jetzt();
   const breiten = silhouettenBreite(dok);
   const t2 = jetzt();
