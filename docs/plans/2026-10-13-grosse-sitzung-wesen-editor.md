@@ -365,6 +365,23 @@ Florian fragte nach Spanten, die den echten Schnitt zeigen (zwei Ringe für Schn
   - Kanten werden Falten mit gezeichneter Rundung; eigene Kantenregler entfallen.
 - Ein Kandidat für F1 und F3/F4 (Abschnitt 11). Details: [`docs/research/2026-10-13-schnitte-ueberhaenge.md`](../research/2026-10-13-schnitte-ueberhaenge.md).
 
+### 6.4 Nachtrag 13.10.: Shapes und Kanten oder ein echter 3D-Editor? (ehrliche Einschätzung)
+
+Florian: „Ist der Weg mit der Kombination aus Shapes und Kanten besser als z. B. einen echten, auf meine Bedürfnisse der Charaktere angepassten 3D-Editor, mit Anleihen bei Blender, zu bauen?“
+
+- **Grenze der Ableitung:** Den Körper jedes Mal aus den drei Ansichten abzuleiten, stößt an eine Decke. Alles, was kein Umriss zeigt (Mulden, Wangen, Brauen, Kanten mitten in der Fläche, verdeckte Teile), braucht eine Sonderregel. Jeder Versuch (Loft, Käfig, Wirbelsäule, Schnitte) hat einige Fälle gelöst und andere verschlechtert.
+- **Kein Blender-Nachbau:** Er wäre teuer, und Blender gibt es schon. Schneller als Blender wird man durch Automatik (Maul, Zähne, Glieder, Klingen, Rig, Look, Export), nicht durch mehr Modellierwerkzeuge.
+- **Vorschlag, ein Hybrid:**
+  - **Ein echter 3D-Körper ist die einzige Wahrheit.**
+  - Florians Kurven sind **Griffe auf diesem Körper**: Umrisse, Spanten, Kantenlinien.
+  - Zieht er eine Kurve in einer Ansicht oder im 3D, ändert sich der Körper dort; nichts wird neu abgeleitet.
+  - Start: drei Umrisse zeichnen oder den Bogen importieren, daraus wird ein runder Körper aufgeblasen (der laufende Versuch). Danach wird nur noch bearbeitet.
+  - Von Blender kommen die direkte Bearbeitung im 3D (weich ziehen mit Radius, Falten, Symmetrie, Teile ausstülpen) und die Navigation. Die Topologie bleibt verborgen.
+  - Vorbild ist FiberMesh (Nealen u. a. 2007, Nachfolger von Teddy): Kurven auf der Fläche sind Griffe, scharf oder glatt.
+- **Dafür spricht:** Florians Stärke (Kurven, Nachzeichnen der Bögen) bleibt, und Widersprüche zwischen Ansichten verschwinden, weil alle Ansichten Projektionen desselben Körpers sind. Alles, was Umrisse nicht zeigen, wird direkt formbar.
+- **Dagegen spricht:** Eine Fläche aus Kurven, die beim Ziehen in Echtzeit nachgibt, ist anspruchsvoll. Der Aufwand liegt im Kern.
+- Kandidat für F1 (Abschnitt 11).
+
 ## 7. Beine, Arme, Flügel, Schwänze
 
 > Recherche 12.10. spätnachts, 35 Quellen in Abschnitt 14. Vorschlag aus Recherche und Tests, kein Muss. Sie schärft den Schluss vom 12.10. („Glieder zuerst als überlappende Röhren“): Überlappen nur noch bei dünnen Gliedern. Dicke Glieder werden aus dem Käfig ausgestülpt, nahtlos und ohne Neuvernetzen.
