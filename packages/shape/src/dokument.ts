@@ -36,6 +36,8 @@ const BlickSchema = z.enum(['seite', 'front', 'hinten', 'top', 'unten']);
 /** Spant: Querschnitt an der Stelle f (Anteil der Länge), halbes Profil normiert auf den Kasten aus Seite und Top. */
 const SpantSchema = z.object({ f: z.number().min(0).max(1), profil: ProfilSchema });
 const KanteSchema = z.object({ knoten: z.array(Knoten3Schema).min(2), haerte: z.array(z.number().min(0).max(1)), blick: BlickSchema, tiefe: z.number().optional() });
+/** Spant der Bauweise „rund“ (Versuch 13.10. nachmittags): Strecke quer über ein Teil der Seite (Punkt und Richtung), Halbprofil. */
+const RundSpantSchema = z.object({ p: V2, richtung: V2, profil: ProfilSchema });
 
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */
 export const POSEN = ['ruhen', 'laufen', 'inklusion'] as const;
@@ -58,6 +60,7 @@ export const DokumentSchema = z.object({
   hauptspant: z.number().min(0).max(1).optional(),
   wirbelsaeule: Linie3Schema.optional(),
   posenProfile: z.record(z.string(), z.object({ seite: ProfilSchema.optional() })).optional(),
+  rundSpanten: z.array(RundSpantSchema).optional(),
 });
 
 export type V3T = [number, number, number];
@@ -118,6 +121,11 @@ export type Dokument = {
    * `profile.seite`. Fehlt sie, folgt die Pose dem Kiefer.
    */
   posenProfile?: Record<string, { seite?: Profil }>;
+  /**
+   * Versuch 13.10. nachmittags: Spanten der Bauweise „rund“, je eine Strecke quer über ein Teil der Seite (Punkt und
+   * Richtung; die Enden liegen auf dem Umriss) mit Halbprofil (u = Breite, 1 = runder Körper; v = Lage auf der Strecke).
+   */
+  rundSpanten?: { p: { x: number; y: number }; richtung: { x: number; y: number }; profil: Profil }[];
 };
 
 export type Ansicht = keyof Dokument['profile'];

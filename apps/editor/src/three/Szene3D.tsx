@@ -151,6 +151,7 @@ export function Szene3D() {
             s.dok.hauptspant !== v.dok.hauptspant ||
             s.dok.wirbelsaeule !== v.dok.wirbelsaeule ||
             s.dok.posenProfile !== v.dok.posenProfile ||
+            s.dok.rundSpanten !== v.dok.rundSpanten ||
             s.modus !== v.modus;
           const wirbel = useUi.getState().bauweise === 'wirbel';
           const schnitte = useUi.getState().bauweise === 'schnitte' || useUi.getState().bauweise === 'rund';

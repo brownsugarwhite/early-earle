@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { ansichtUnterMausZuruecksetzen, gewaehltePunkteLoeschen, gewaehltePunkteVerschieben, maximiereUnterMaus, neuesWesen, speichern } from './aktionen';
 import { kantenKnotenLoeschen } from './kanten/KantenEbene';
 import { spantLoeschen } from './spanten/SpantEbene';
+import { rundSpantLoeschen } from './rund/RundSpantEbene';
 import { setzeLayoutZiel } from './layout/animation';
 import { berechneLayout } from './layout/layout';
 import { editorApi } from './library/speicher';
@@ -86,7 +87,7 @@ export function useTastatur() {
         ansichtUnterMausZuruecksetzen();
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        if (!spantLoeschen() && !kantenKnotenLoeschen()) gewaehltePunkteLoeschen();
+        if (!rundSpantLoeschen() && !spantLoeschen() && !kantenKnotenLoeschen()) gewaehltePunkteLoeschen();
       } else if (!cmd && e.key.startsWith('Arrow')) {
         // Pfeiltasten verschieben die gewählten Punkte wie in Illustrator, ⇧ = zehnfach
         e.preventDefault();

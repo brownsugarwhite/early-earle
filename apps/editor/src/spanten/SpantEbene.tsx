@@ -59,7 +59,9 @@ export function SpantLinien({ ansicht, bild, aktiv }: { ansicht: Ansicht; bild: 
   const dok = useEditor((s) => s.dok);
   const auswahl = useUi((s) => s.spantAuswahl);
   const werkzeug = useUi((s) => s.werkzeug);
-  if (ansicht === 'front' || (!dok.spanten?.length && werkzeug !== 'spant')) return null;
+  const rund = useUi((s) => s.bauweise === 'rund');
+  // Bauweise „rund“ hat eigene Spanten (quer über ein Teil, rund/RundSpantEbene.tsx)
+  if (rund || ansicht === 'front' || (!dok.spanten?.length && werkzeug !== 'spant')) return null;
   const fH = hauptspantStelle(dok);
   const strich = (f: number) => {
     const [a, b] = linie(dok, ansicht, f);
@@ -118,7 +120,8 @@ export function SpantQuerschnitte({ ansicht, bild, aktiv }: { ansicht: Ansicht; 
   const dok = useEditor((s) => s.dok);
   const blick = useUi((s) => s.blick.front);
   const auswahl = useUi((s) => s.spantAuswahl);
-  if (ansicht !== 'front' || !dok.spanten?.length) return null;
+  const rund = useUi((s) => s.bauweise === 'rund');
+  if (rund || ansicht !== 'front' || !dok.spanten?.length) return null;
   return (
     <g className="spant-querschnitte" pointerEvents={aktiv ? 'auto' : 'none'}>
       {dok.spanten.map((sp, i) => {
@@ -224,6 +227,7 @@ function sortieren(gewaehlt: number) {
  */
 export function spantZeiger(e: React.PointerEvent, ctx: SpantKontext): boolean {
   const ui = useUi.getState();
+  if (ui.bauweise === 'rund') return false;
   const ed = useEditor.getState();
   const ziel = e.target as Element;
   const q = ctx.lokal(e.clientX, e.clientY);

@@ -69,6 +69,8 @@ type UiState = {
   kantenSicht: KantenSicht;
   /** gewählter Spant (Index in dok.spanten) und seine gewählten Punkte; bearbeitet in Front bzw. Back */
   spantAuswahl: SpantAuswahl | null;
+  /** Versuch 13.10. nachmittags: gewählter Spant der Bauweise „rund“ (Index in dok.rundSpanten) und seine Punkte */
+  rundSpantAuswahl: SpantAuswahl | null;
   /** 3D mit Zebrastreifen (Prüfen der Kanten) */
   zebra: boolean;
   /** Versuch 12.10. abends: Bauweise des 3D zum Vergleichen (Tab am 3D-Fenster) */
@@ -114,6 +116,7 @@ type UiState = {
   setzeWirbelBiegung(b: { winkel: number; bei: number }): void;
   setzeWirbelZeichnen(p: { x: number; y: number }[] | null): void;
   setzeSpantAuswahl(a: SpantAuswahl | null): void;
+  setzeRundSpantAuswahl(a: SpantAuswahl | null): void;
   setzeHover(id: ViewId | null): void;
   setzeWerkzeug(w: Werkzeug): void;
   waehle(ansicht: Ansicht, indizes: number[]): void;
@@ -154,6 +157,7 @@ export const useUi = create<UiState>((set, get) => ({
   wirbelBiegung: { winkel: 0, bei: 0.5 },
   wirbelZeichnen: null,
   spantAuswahl: null,
+  rundSpantAuswahl: null,
   oben: null,
   hover: null,
   werkzeug: 'auswahl',
@@ -221,6 +225,9 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeSpantAuswahl(a) {
     set({ spantAuswahl: a });
+  },
+  setzeRundSpantAuswahl(a) {
+    set({ rundSpantAuswahl: a });
   },
   setzeKantenSicht(k) {
     set({ kantenSicht: k, kantenAuswahl: k === 'zeigen' ? get().kantenAuswahl : null });

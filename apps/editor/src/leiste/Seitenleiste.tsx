@@ -740,7 +740,7 @@ export function Seitenleiste() {
             <>
               <WesenBereich />
               <KantenBereich />
-              <SpantBereich />
+              {bauweise !== 'rund' && <SpantBereich />}
             </>
           )}
           {ebene === 'maul' && <MaulBereich />}

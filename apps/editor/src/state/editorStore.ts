@@ -48,6 +48,8 @@ type EditorState = {
   setzeHauptspant(f: number | null): void;
   /** Versuch 12.10. nachts: selbst gezeichnete Wirbelsäule; `null` = wieder aus dem Umriss vorgeschlagen */
   setzeWirbelsaeule(l: Linie3 | null): void;
+  /** Versuch 13.10. nachmittags: Spanten der Bauweise „rund“ (quer über ein Teil); `null` oder leer entfernt sie */
+  setzeRundSpanten(spanten: NonNullable<Dokument['rundSpanten']> | null): void;
   /** ganzes Dokument ersetzen (z. B. Punkt in allen Querschnitten einfügen) */
   setzeDokument(dok: Dokument): void;
   rueckgaengig(): void;
@@ -165,6 +167,14 @@ export const useEditor = create<EditorState>((set, get) => {
         const rest = { ...d };
         delete rest.wirbelsaeule;
         return l ? { ...rest, wirbelsaeule: l } : rest;
+      });
+    },
+    setzeRundSpanten(spanten) {
+      aendern((d) => {
+        if (d.rundSpanten === spanten) return d;
+        const rest = { ...d };
+        delete rest.rundSpanten;
+        return spanten?.length ? { ...rest, rundSpanten: spanten } : rest;
       });
     },
     setzeDokument(dok) {

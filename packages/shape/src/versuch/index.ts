@@ -19,3 +19,4 @@ export * from './schnittLoft';
 export * from './dreiecke2d';
 export * from './aufblasen';
 export * from './seitenteile';
+export * from './rundSpanten';

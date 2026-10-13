@@ -33,6 +33,12 @@ describe('Dokument', () => {
     const json = JSON.parse(JSON.stringify(d));
     expect(dokumentLesen(json)).toEqual(json);
   });
+  it('behält die Spanten der Bauweise „rund“ (Versuch 13.10. nachmittags) beim Laden', () => {
+    const d = neuesDokument('Langhals');
+    d.rundSpanten = [{ p: { x: 0.02, y: 0.4 }, richtung: { x: 1, y: 0 }, profil: d.profile.front }];
+    const json = JSON.parse(JSON.stringify(d));
+    expect(dokumentLesen(json)).toEqual(json);
+  });
   it('lehnt fremde Formate ab', () => {
     expect(() => dokumentLesen({ format: 'x' })).toThrow();
   });

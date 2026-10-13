@@ -44,6 +44,7 @@ import { SpantLinien, SpantQuerschnitte, spantZeiger } from '../spanten/SpantEbe
 import { WirbelPunkte, WirbelZeichnung, wirbelBearbeitbar, wirbelZeiger } from '../wirbel/WirbelEbene';
 import { SchnittZeichnung } from '../schnitte/SchnittEbene';
 import { RundZeichnung } from '../rund/RundEbene';
+import { RundSpantLinien, RundSpantSchnitt, rundSpantZeiger } from '../rund/RundSpantEbene';
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { abtasten3, maulAnfangIndizes, umrissMitSpalt, versetzt3 } from '@ee/shape/versuch';
 
@@ -197,6 +198,8 @@ export function View2D({ ansicht, w, h }: Props) {
     if (ui.ebene !== 'form') return;
     // Wirbelsäule (Versuch 12.10. nachts): selbst zeichnen, Punkte ziehen, einfügen, löschen
     if (wirbelBearbeitbar(ansicht) && wirbelZeiger(e, { lokal, ziehen })) return;
+    // Spanten der Bauweise „rund“ (Versuch 13.10. nachmittags): quer über ein Teil, in der Front bearbeiten
+    if (rundSpantZeiger(e, { ansicht, lokal, ziehen })) return;
     // Spanten (Versuch 12.10. nachmittags): Werkzeug S, Spantlinien ziehen, gewählten Spant bearbeiten
     if (spantZeiger(e, { ansicht, lokal, ziehen })) return;
     // Kanten (Versuch 12.10. mittags): Zeichenstift auf freier Fläche, Kantenknoten, Breitenwerkzeug
@@ -476,6 +479,8 @@ export function View2D({ ansicht, w, h }: Props) {
       <KantenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <SpantQuerschnitte ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <SpantLinien ansicht={ansicht} bild={bild} aktiv={formAktiv} />
+      <RundSpantLinien ansicht={ansicht} bild={bild} />
+      <RundSpantSchnitt ansicht={ansicht} bild={bild} />
       {formAktiv && griffe}
       <WirbelPunkte ansicht={ansicht} bild={bild} />
       {formAktiv && profil.knoten.map((k, i) => {

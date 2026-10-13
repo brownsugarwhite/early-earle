@@ -35,6 +35,7 @@ import type { Dokument } from '../dokument';
 import { pfadAbtasten, segmente, vollerPfad } from '../profil';
 import { type Dreiecke2D, Triangulierung } from './dreiecke2d';
 import { type Netz3, type Seitenteil, topWelt, topZerlegen, vereinigeNetze } from './seitenteile';
+import { type Strecke, spantWirkung } from './rundSpanten';
 
 export type RundOptionen = {
   /** Punktabstand im Inneren und am Rand (Kachel) */
@@ -106,6 +107,16 @@ export type RundKoerper = {
   xMin: number;
   xMax: number;
   flaeche: RundFlaeche;
+  /** Strecken der Spanten (null = Spant liegt nicht im Körper) */
+  spanten: (Strecke | null)[];
+  /** Breite des runden Körpers an der dicksten Stelle jedes Spants (Normierung des Spant-Profils, u = 1) */
+  spantZMax: number[];
+  /** halbe Dicke z an einem Punkt der Seite (0 außerhalb), mit Spanten */
+  dickeBei: (p: V2) => number;
+  /** halbe Dicke des runden Körpers ohne Spanten */
+  dickeRundBei: (p: V2) => number;
+  /** Seitenumriss (Polygon gegen den Uhrzeigersinn) */
+  umrissWelt: V2[];
   /** Breiten je Fach: Vorgabe (Top bzw. Front) und erreicht, dazu die Faktoren A(x), B(y) */
   breiten: { x0: number; x1: number; y0: number; y1: number; T: Float64Array; Tz: Float64Array; F: Float64Array; Fz: Float64Array; A: Float64Array; B: Float64Array };
   info: RundInfo;
@@ -1019,6 +1030,55 @@ function seitenteilNetz(
   return { positionen, normalen, indizes };
 }
 
+// ---------- Werte im 2D-Netz abfragen ----------
+
+/** Wert eines Felds je Punkt an beliebiger Stelle der Fläche (Dreieck suchen über ein Fächerraster, linear); außen 0. */
+export function flaechenWert(netz: Dreiecke2D, werte: Float64Array): (p: V2) => number {
+  const { x, y, dreiecke } = netz;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (let i = 0; i < x.length; i++) {
+    x0 = Math.min(x0, x[i]!);
+    x1 = Math.max(x1, x[i]!);
+    y0 = Math.min(y0, y[i]!);
+    y1 = Math.max(y1, y[i]!);
+  }
+  const N = Math.max(4, Math.round(Math.sqrt(dreiecke.length / 3 / 2)));
+  const zx = (x1 - x0) / N || 1;
+  const zy = (y1 - y0) / N || 1;
+  const fach: number[][] = Array.from({ length: N * N }, () => []);
+  for (let t = 0; t < dreiecke.length; t += 3) {
+    const a = dreiecke[t]!;
+    const b = dreiecke[t + 1]!;
+    const c = dreiecke[t + 2]!;
+    const i0 = Math.max(0, Math.floor((Math.min(x[a]!, x[b]!, x[c]!) - x0) / zx));
+    const i1 = Math.min(N - 1, Math.floor((Math.max(x[a]!, x[b]!, x[c]!) - x0) / zx));
+    const j0 = Math.max(0, Math.floor((Math.min(y[a]!, y[b]!, y[c]!) - y0) / zy));
+    const j1 = Math.min(N - 1, Math.floor((Math.max(y[a]!, y[b]!, y[c]!) - y0) / zy));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) fach[j * N + i]!.push(t);
+  }
+  return (p: V2) => {
+    const i = Math.floor((p.x - x0) / zx);
+    const j = Math.floor((p.y - y0) / zy);
+    if (i < 0 || j < 0 || i >= N || j >= N) return 0;
+    for (const t of fach[j * N + i]!) {
+      const a = dreiecke[t]!;
+      const b = dreiecke[t + 1]!;
+      const c = dreiecke[t + 2]!;
+      const det = (y[b]! - y[c]!) * (x[a]! - x[c]!) + (x[c]! - x[b]!) * (y[a]! - y[c]!);
+      if (Math.abs(det) < 1e-20) continue;
+      const w0 = ((y[b]! - y[c]!) * (p.x - x[c]!) + (x[c]! - x[b]!) * (p.y - y[c]!)) / det;
+      const w1 = ((y[c]! - y[a]!) * (p.x - x[c]!) + (x[a]! - x[c]!) * (p.y - y[c]!)) / det;
+      const w2 = 1 - w0 - w1;
+      if (w0 < -1e-9 || w1 < -1e-9 || w2 < -1e-9) continue;
+      return w0 * werte[a]! + w1 * werte[b]! + w2 * werte[c]!;
+    }
+    return 0;
+  };
+}
+
 // ---------- Bau ----------
 
 /** Körper der Bauweise „rund“ aus den drei Profilen. */
@@ -1058,7 +1118,33 @@ export function rundKoerper(dok: Dokument, optionen: Partial<RundOptionen> = {})
   const T = halbbreiteInnen(zerlegung.haupt, (p) => p.x, (p) => p.y, xMin, xMax, NX);
   const F = halbbreiteInnen(pfadAbtasten(segmente(dok.profile.front), 48), (p) => p.y, (p) => p.x, yMin, yMax, NY);
   const br = breiteAnpassen(netz, u, h, T, F, xMin, xMax, yMin, yMax, opt);
-  const { z, k: kv, Tz, Fz, A, B, restTop, restFront, mittelTop, mittelFront } = br;
+  const { Tz, Fz, A, B, restTop, restFront, mittelTop, mittelFront } = br;
+  let z = br.z;
+  let kv = br.k;
+  const umrissWelt = Array.from(sn.umriss, (v) => ({ x: x[v]!, y: y[v]! }));
+
+  // Spanten (Meilenstein 2): quer über ein Teil, ersetzen dort den runden Querschnitt (Faktor auf die runde Dicke)
+  let spantStrecken: (Strecke | null)[] = [];
+  let spantZMax: number[] = [];
+  const zRund = z;
+  if (dok.rundSpanten?.length) {
+    const dicke = flaechenWert(netz, z);
+    const w = spantWirkung(dok.rundSpanten, umrissWelt, dicke, (q) => sn.suche.innen(q.x, q.y));
+    spantStrecken = w.strecken;
+    spantZMax = w.zMax;
+    const kNeu = new Float64Array(n);
+    const zNeu = new Float64Array(n);
+    for (let v = 0; v < n; v++) {
+      if (sn.rand[v] || h[v]! <= 1e-12) {
+        kNeu[v] = kv[v]!;
+        continue;
+      }
+      zNeu[v] = Math.max(0, w.dicke({ x: x[v]!, y: y[v]! }, z[v]!));
+      kNeu[v] = zNeu[v]! / h[v]!;
+    }
+    kv = kNeu;
+    z = zNeu;
+  }
   const t3 = jetzt();
 
   // Vorder- und Rückseite (z = ±k·√u), Rand gemeinsam
@@ -1093,7 +1179,6 @@ export function rundKoerper(dok: Dokument, optionen: Partial<RundOptionen> = {})
       }
       return lo < hi ? [aufSeite(lo), aufSeite(hi)] : null;
     };
-    const umrissWelt = Array.from(sn.umriss, (v) => ({ x: x[v]!, y: y[v]! }));
     const seitenBereich = (xx: number): [number, number] | null => {
       let lo = Infinity;
       let hi = -Infinity;
@@ -1162,6 +1247,11 @@ export function rundKoerper(dok: Dokument, optionen: Partial<RundOptionen> = {})
     xMin,
     xMax,
     flaeche: { ...netz, rand: sn.rand, u, z, umriss: sn.umriss },
+    spanten: spantStrecken,
+    spantZMax,
+    dickeBei: flaechenWert(netz, z),
+    dickeRundBei: flaechenWert(netz, zRund),
+    umrissWelt,
     breiten: { x0: xMin, x1: xMax, y0: yMin, y1: yMax, T, Tz, F, Fz, A, B },
     info: {
       millisekunden: t4 - t0,

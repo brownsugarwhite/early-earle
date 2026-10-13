@@ -3,11 +3,15 @@
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { useRundAnzeige } from './rundBau';
+import { RUND_SPANT, rundSpantLoeschen, rundSpantName } from './RundSpantEbene';
 
 export function RundBereich() {
   const bauweise = useUi((s) => s.bauweise);
   const info = useRundAnzeige((s) => s.info);
   const hatMaul = useEditor((s) => !!s.dok.maul);
+  const spanten = useEditor((s) => s.dok.rundSpanten);
+  const spantAuswahl = useUi((s) => s.rundSpantAuswahl);
+  const werkzeug = useUi((s) => s.werkzeug);
   const zahl = (n: number) => n.toLocaleString('de-DE');
   return (
     <section className="leiste-bereich rund-bereich" data-rundbereich="">
@@ -53,9 +57,39 @@ export function RundBereich() {
             Haken im Top (Luft zwischen Körper und Widerhaken) werden von selbst eigene Teile: rund aufgeblasen aus dem Top, Dicke aus Seite und Front, am Ansatz
             weich mit dem Körper verbunden. Beim Ziehen liegen sie nur an, beim Loslassen wachsen sie an.
           </p>
+          <div className="feld">
+            <span>Spanten</span>
+            <b data-rundspanten={spanten?.length ?? 0} style={{ color: RUND_SPANT }}>
+              {spanten?.length ? `${spanten.length} quer zum Körper` : 'keine'}
+            </b>
+          </div>
+          {!!spanten?.length && (
+            <div className="umschalter">
+              {spanten.map((_, i) => (
+                <button
+                  key={i}
+                  className={spantAuswahl?.spant === i ? 'chip aktiv' : 'chip'}
+                  data-rundspanteintrag={i}
+                  onClick={() => useUi.getState().setzeRundSpantAuswahl(spantAuswahl?.spant === i ? null : { spant: i, knoten: [] })}
+                >
+                  {rundSpantName(i)}
+                </button>
+              ))}
+              {spantAuswahl && (
+                <button className="chip" data-rundspantloeschen="" onClick={() => rundSpantLoeschen()}>
+                  löschen
+                </button>
+              )}
+            </div>
+          )}
           <p className="hilfe">
-            Noch nicht in dieser Bauweise: Spanten, Kanten, Maul{hatMaul ? ' (hier ausgeblendet)' : ''}. Flache Ober- und Unterseiten der Front werden rund.
+            {werkzeug === 'spant'
+              ? 'Spant setzen: in der Seite in ein Teil klicken (quer zum Körper, beim senkrechten Hals waagerecht) oder eine Linie ziehen (über mehrere Teile: je Teil ein Spant).'
+              : 'Spant: S drücken, dann in der Seite klicken oder eine Linie ziehen.'}{' '}
+            Der gewählte Spant erscheint in der Front an seiner Höhe: Punkte und Griffe ziehen, ⌥ macht eine Ecke, Zeichenstift, + und − fügen Punkte in allen Spanten
+            ein. Breite 1 ist der runde Körper. Punkte bleiben auf ihrer Hälfte. Zwischen zwei Spanten desselben Teils wird Punkt für Punkt überblendet.
           </p>
+          <p className="hilfe">Noch nicht in dieser Bauweise: Kanten, Maul{hatMaul ? ' (hier ausgeblendet)' : ''}. Flache Ober- und Unterseiten der Front werden rund (oder mit einem Spant flach).</p>
         </>
       )}
       {bauweise === 'schnitte' && <p className="hilfe">Schnitt-Loft vom Vormittag (13.10.) zum Vergleichen: echte Schnitte je Stelle, gerundet im Hüllkasten.</p>}

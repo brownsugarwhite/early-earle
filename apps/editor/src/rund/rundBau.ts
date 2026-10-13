@@ -28,17 +28,17 @@ type Anzeige = {
 };
 export const useRundAnzeige = create<Anzeige>(() => ({ info: null, umrisse: null, stand: 0 }));
 
-type Bau = { profile: Dokument['profile']; grob: boolean; koerper: RundKoerper };
+type Bau = { profile: Dokument['profile']; spanten: Dokument['rundSpanten']; grob: boolean; koerper: RundKoerper };
 let letzter: Bau | null = null;
 
 const PX = 461;
 
 export function rundBauen(dok: Dokument, schnell: boolean): RundKoerper {
   const l = letzter;
-  if (l && l.profile === dok.profile && (l.grob === schnell || (schnell && !l.grob))) return l.koerper;
+  if (l && l.profile === dok.profile && l.spanten === dok.rundSpanten && (l.grob === schnell || (schnell && !l.grob))) return l.koerper;
   // grob während Gesten: Seitenteile nur angelegt, beim Loslassen weich mit dem Körper vereinigt
   const koerper = rundKoerper(dok, { abstand: schnell ? RUND_GROB : RUND_STANDARD.abstand, vereinigen: !schnell });
-  letzter = { profile: dok.profile, grob: schnell, koerper };
+  letzter = { profile: dok.profile, spanten: dok.rundSpanten, grob: schnell, koerper };
   const i = koerper.info;
   useRundAnzeige.setState((s) => ({
     info: { millisekunden: i.millisekunden, dreiecke: i.dreiecke, punkte: i.punkte, grob: schnell, restTop: i.restTop * PX, restFront: i.restFront * PX, seitenteile: i.seitenteile },
