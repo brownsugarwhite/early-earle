@@ -140,7 +140,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
           <>
             <TabKnopf ebene="zaehne" farbe="braun" titel="Zähne" />
             <TabKnopf ebene="maul" farbe="blau" titel="Maul" />
-            <TabKnopf ebene="augen" farbe="weiss" titel="Augen (folgt)" />
+            <TabKnopf ebene="augen" farbe="weiss" titel="Augen: Klick auf den Körper in der Bühne setzt das Auge (Kern)" />
           </>
         )}
         {id === 'creation' && <ZebraKnopf />}

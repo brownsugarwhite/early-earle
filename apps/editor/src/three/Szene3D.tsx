@@ -22,7 +22,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown };
   }
 }
 
@@ -47,6 +47,13 @@ export function Szene3D() {
           const n = aktuellesNetz();
           const h = r.treffen('creation', px, py);
           return h && n ? trefferDeuten(n.netz, h.dreieck, h.punkt, n.skalierung) : null;
+        },
+        // M3: Kennzahlen des zuletzt gebauten Netzes (E2E): Vorlage, Augen, Maul, Eckenzahl
+        wesen: () => {
+          const n = aktuellesNetz();
+          if (!n) return null;
+          const w = n.netz;
+          return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung };
         },
       };
       console.info(`[editor] 3D-Backend: ${r.backend}`);
@@ -243,6 +250,7 @@ export function Szene3D() {
             s.dok.wirbelsaeule !== v.dok.wirbelsaeule ||
             s.dok.posenProfile !== v.dok.posenProfile ||
             s.dok.rundSpanten !== v.dok.rundSpanten ||
+            s.dok.ausstattung !== v.dok.ausstattung ||
             s.modus !== v.modus;
           const wirbel = useUi.getState().bauweise === 'wirbel';
           const schnitte = useUi.getState().bauweise === 'schnitte' || useUi.getState().bauweise === 'rund' || useUi.getState().bauweise === 'kern';

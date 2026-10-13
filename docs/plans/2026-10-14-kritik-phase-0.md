@@ -22,7 +22,7 @@
 - [ ] **Reifen kein 3D-Griff**, Spanten nur als Dokumentfeld; keine Front-Griffe; nur der Seitenumriss ist Griff, kein Pinsel im 3D. (Beweis 1)
 - [ ] **Hals-Übergang ohne Überblendung** (Langhals: Kopf → Hals), Ringe nach Krümmung lassen gerade Hälse dünn besetzt (3 Ringe auf 0,23 Hals); **Loop-Cut/Verdichtung** fehlt. (Beweis 1/2)
 - [ ] **Ente als Form nur mit Teilen** (Überhang-Schnabel ist kein Umriss-Fall). (Beweis 1)
-- [ ] **Maullinie, Augen, Spanten, Kanten sind im Editor noch Code (Ausstattung je Prüfwesen)**, nicht gezeichnet. Florian muss den Tiger-Kopf selbst bauen können (Abnahme Phase 1). (Beweis 2/4)
+- [ ] **Maullinie, Augen, Spanten, Kanten sind im Editor noch Code (Ausstattung je Prüfwesen)**, nicht gezeichnet. Florian muss den Tiger-Kopf selbst bauen können (Abnahme Phase 1). (Beweis 2/4) — *14.10. abends, M3 Teil 1:* Maullinie gezeichnet (Maul-Tab) und Augen per Klick (Stufe „Augen“) landen in der Ausstattung des Dokuments und bauen den Kern; Spanten (Reifen) und Kanten noch Code.
 - [ ] **Alte Bauwege und Versuche** (`packages/shape/src/versuch/`, sechs Bauwege in `Szene3D.tsx`, `?versuch=`-Routing) sind noch da; Kerne vorher herauslösen (Plan 10).
 - [ ] **Dokument v0** ohne Käfig; v1 mit Migration fehlt.
 

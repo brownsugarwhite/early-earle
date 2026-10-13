@@ -3,7 +3,8 @@
 // „neuester Auftrag gewinnt“); hier entsteht aus Dokument und Anzeige-Zustand nur der Bauplan.
 
 import type { Dokument } from '@ee/shape';
-import { type BeinArt, type Bauplan, type MaulArt, type StilArt, type WesenInfo, type WesenNetz, pruefwesenBauplan } from '@ee/shape/kern';
+import { type BeinArt, type Bauplan, type MaulArt, type StilArt, type WesenInfo, type WesenNetz, maulLinieAusPunkten, pruefwesenBauplan } from '@ee/shape/kern';
+import { abtasten3 } from '@ee/shape/versuch';
 import { create } from 'zustand';
 import { useUi } from '../state/uiStore';
 import { type Look, PALETTEN } from '../three/wesenLook';
@@ -67,12 +68,31 @@ export const useKernAnzeige = create<{
   setzeSchwung: (schwung) => set({ schwung: Math.max(-60, Math.min(60, schwung)) }),
 }));
 
-/** Bauplan: Ausstattung des Dokuments (Version 1; fehlt sie, die Prüfwesen-Anteile nach Namen) plus Anzeige-Zustand. */
+/**
+ * Bauplan: Prüfwesen-Anteile nach Namen, darüber die Ausstattung des Dokuments (Version 1), darüber der Anzeige-Zustand.
+ * Eine im Maul-Tab gezeichnete Lippenlinie (`dok.maul.zu.oben`, Florians Ablauf vom 12.10.: ab Kontur oder Achse zum
+ * Mundwinkel) wird die Maullinie des Kerns (M3); fehlt eine Lage, gilt „vorn“ (Kippen).
+ */
 export function bauplanAus(dok: Dokument): Partial<Bauplan> {
   const s = useKernAnzeige.getState();
+  const aus = { ...pruefwesenBauplan(dok.name), ...(dok.ausstattung ?? {}) };
+  let maulLinie = aus.maulLinie;
+  let maul: MaulArt = s.maul;
+  const gezeichnet = dok.maul?.zu.oben;
+  if (!dok.ausstattung?.maulLinie && gezeichnet && gezeichnet.knoten.length >= 2) {
+    try {
+      const sk = dok.skalierung;
+      const punkte = abtasten3(gezeichnet, 24).map((p) => ({ x: p[0] * sk, y: p[1] * sk }));
+      maulLinie = { ...maulLinieAusPunkten(dok, punkte), unterSpitze: 1 };
+      if (maul === 'aus') maul = 'vorn';
+    } catch (e) {
+      console.warn('[kern] Maullinie aus Zeichnung nicht übersetzbar:', e);
+    }
+  }
   return {
-    ...(dok.ausstattung ?? pruefwesenBauplan(dok.name)),
-    maul: s.maul,
+    ...aus,
+    ...(maulLinie ? { maulLinie } : {}),
+    maul,
     oeffnung: useUi.getState().oeffnung,
     beine: s.beine,
     schwung: s.schwung,

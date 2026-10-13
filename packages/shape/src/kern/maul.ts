@@ -29,6 +29,7 @@ import {
   fertigstellen,
   kernLeiter,
   quadratRing,
+  sprossenVon,
   stationenAusLeiter,
   stationenWaehlen,
   zieleBerechnen,
@@ -196,9 +197,26 @@ export function maulLiniePunkte(dok: Dokument, linie: MaulLinie, n = 64): V2[] {
   return out;
 }
 
-/** Gezeichnete 2D-Linie (Welt) → Wirbelsäulen-Koordinaten: je Punkt die nächste Sprosse der Leiter und die Höhe darauf. */
+/** Lippenhöhe mindestens/höchstens auf der Sprosse (M3): die Lippe läuft nie auf der Naht (Unterkiefer ohne Dicke). */
+export const LIPPE_V_MIN = 0.1;
+export const LIPPE_V_MAX = 0.9;
+/** Sprossen kürzer als dieser Anteil der längsten Sprosse gehören zur Spitze: dort ist die Höhe Rauschen. */
+const SPITZEN_ANTEIL = 0.15;
+
+/**
+ * Gezeichnete 2D-Linie (Welt) → Wirbelsäulen-Koordinaten: je Punkt die nächste Sprosse der Leiter und die Höhe darauf.
+ * Robust gegen Florians Zeichnung (M3): Punkte in der Spitzenregion (Sprosse < 15 % der längsten) fallen am Anfang weg,
+ * weil die Lippe ohnehin an der Kappe beginnt; die Höhe wird auf [0,1 … 0,9] begrenzt, damit eine Linie auf oder außerhalb
+ * der Kontur keine Lippe auf der Naht ergibt (Ober- und Unterlippe lägen aufeinander: Durchdringungen geschlossen).
+ */
 export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[]): MaulLinie {
   const l = kernLeiter(dok);
+  const laengen = l.paare.map((pr) => {
+    const o = zugBei(l.ruecken, pr.a);
+    const u = zugBei(l.bauch, pr.b);
+    return Math.hypot(o.x - u.x, o.y - u.y);
+  });
+  const lMax = Math.max(...laengen);
   const fv: { f: number; v: number }[] = [];
   for (const p of punkte) {
     let best = { k: 0, d: Infinity, v: 0.5 };
@@ -212,8 +230,10 @@ export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[]): MaulL
       const d = Math.hypot(u.x + dx * v - p.x, u.y + dy * v - p.y);
       if (d < best.d) best = { k, d, v };
     });
+    if (fv.length === 0 && laengen[best.k]! < SPITZEN_ANTEIL * lMax) continue;
     const f = spineAnteile(l, [l.paare[best.k]!])[0]!;
-    if (fv.length === 0 || f > fv[fv.length - 1]!.f) fv.push({ f, v: best.v });
+    const v = Math.min(LIPPE_V_MAX, Math.max(LIPPE_V_MIN, best.v));
+    if (fv.length === 0 || f > fv[fv.length - 1]!.f) fv.push({ f, v });
   }
   if (fv.length < 2) throw new Error('Maullinie: zu kurz');
   return { fv };
@@ -227,7 +247,12 @@ export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[]): MaulL
 export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie): MaulLage {
   const { R, c } = v;
   if (linie.fv.length < 2) throw new Error('Maullinie braucht mindestens zwei Stützen');
-  const rS = Math.min(c / 2 - 1, Math.max(0, Math.round(linie.unterSpitze ?? 0)));
+  // Kastenfront: Ring 0 liegt praktisch in der Frontebene (Vorschub der Sprosse gegenüber der Spitze < 6 % ihrer Höhe);
+  // dann geht die Lippe durch die Spitze (`kastenKappe` legt die Kappe als ebenes Gitter um die Lippenhöhe), ein Anfang
+  // unter der Spitze träfe sonst eine Kappenzeile, die nicht auf Lippenhöhe liegt.
+  const sp0 = sprossenVon(l, [st.ringe[0]!])[0]!;
+  const flach = Math.abs((sp0.o.x + sp0.u.x) / 2 - l.ruecken[0]!.x) < 0.06 * Math.hypot(sp0.o.x - sp0.u.x, sp0.o.y - sp0.u.y);
+  const rS = flach ? 0 : Math.min(c / 2 - 1, Math.max(0, Math.round(linie.unterSpitze ?? 0)));
   const bL = c / 2 - rS;
   const jL = (3 * c) / 2 - bL;
   const ende = linie.fv[linie.fv.length - 1]!;

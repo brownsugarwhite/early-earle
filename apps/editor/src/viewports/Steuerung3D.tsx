@@ -1,11 +1,34 @@
 import { useEffect, useRef } from 'react';
 import { aktuellesNetz } from '../kern/kernBau';
 import { trefferDeuten, useTreffer } from '../kern/treffer';
+import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { drehen, verschieben3d, zoomen } from '../three/kamera';
 import { FOV } from '../three/Renderer3D';
 import { szene } from '../three/instanz';
 import { istTrackpad, radFaktor } from './ansicht2d';
+
+/**
+ * Auge setzen (M3, Stufe „Augen“): Klick auf den Körper → nächster Käfigpunkt → Vorlagen-Ringpunkt (Ring, Winkel, rechts
+ * gespiegelt) in die Ausstattung des Dokuments; Größe bleibt (Standard 10 % der Höhe). Kappen- und Maulpunkte zählen nicht.
+ */
+export function augeSetzen(px: number, py: number): boolean {
+  const r = szene.aktuell;
+  const n = aktuellesNetz();
+  if (!r || !n || useUi.getState().bauweise !== 'kern') return false;
+  const h = r.treffen('creation', px, py);
+  const t = h ? trefferDeuten(n.netz, h.dreieck, h.punkt, n.skalierung) : null;
+  const tr = n.netz.treffer;
+  if (!t || !tr || t.kaefigPunkt < 0 || t.kaefigPunkt >= tr.vorlage.R * tr.vorlage.N) return false;
+  const { N } = tr.vorlage;
+  const ring = Math.floor(t.kaefigPunkt / N);
+  let j = t.kaefigPunkt % N;
+  if (j > N / 2) j = N - j;
+  const ed = useEditor.getState();
+  const alt = ed.dok.ausstattung ?? {};
+  ed.setzeDokument({ ...ed.dok, ausstattung: { ...alt, augen: { ring, j: Math.max(1, Math.min(N / 2 - 1, j)), groesse: alt.augen?.groesse ?? 0.1 } } });
+  return true;
+}
 
 /** Treffer unter dem Zeiger auf der Bühne (M2): Strahl → Dreieck → Käfigfläche; Marke am Trefferpunkt. */
 export function treffenAuf(feld: 'creation', px: number, py: number): void {
@@ -70,6 +93,12 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
       window.removeEventListener('pointermove', bewegen);
       window.removeEventListener('pointerup', loslassen);
       window.removeEventListener('pointercancel', loslassen);
+      // Stufe „Augen“ (M3): Klick ohne Bewegung setzt das Auge an den Trefferpunkt
+      if (knopf === 0 && !e.ctrlKey && weg < 4 && useUi.getState().ebene === 'augen') {
+        const rr = ref.current?.getBoundingClientRect();
+        if (rr) augeSetzen(ev.clientX - rr.left, ev.clientY - rr.top);
+        return;
+      }
       if (menueMoeglich && weg < 4) {
         useUi.getState().oeffneMenue({
           x: ev.clientX,

@@ -9,7 +9,7 @@ import langhalsJson from '../versuch/vorlagen/langhals.json';
 import { selbstDurchdringungen } from '../versuch/pruefen';
 import type { V3 } from '../versuch/catmullClark';
 import { alleFlaechen, pruefeKaefig } from '../kaefig/halbkanten';
-import { type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, maulLiniePunkte, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
+import { type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, maulLinieAusPunkten, maulLiniePunkte, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
 import { halsVerbreitern, kastenSpanten } from './kasten';
 import tigerJson from '../versuch/vorlagen/tiger.json';
 
@@ -149,6 +149,33 @@ describe('Beweis 2: Maul mit Haps', () => {
     const r = pruefen('Drache', dok, 'hals');
     expect(r.pr.ok).toBe(true);
     for (const e of r.ergebnisse) expect(e.paare).toBe(0);
+  });
+  // M3: gezeichnete Maullinie (Maul-Tab) → `maulLinieAusPunkten`; gerade Segmente, 24 Proben je Segment, Profil-Einheiten × Maßstab
+  const gezeichnet = (zug: { x: number; y: number }[]): MaulLinie => {
+    const punkte: { x: number; y: number }[] = [];
+    for (let s = 0; s + 1 < zug.length; s++) {
+      for (let i = s === 0 ? 0 : 1; i <= 24; i++) punkte.push({ x: zug[s]!.x + ((zug[s + 1]!.x - zug[s]!.x) * i) / 24, y: zug[s]!.y + ((zug[s + 1]!.y - zug[s]!.y) * i) / 24 });
+    }
+    const sk = rex.skalierung;
+    const linie: MaulLinie = { ...maulLinieAusPunkten(rex, punkte.map((p) => ({ x: p.x * sk, y: p.y * sk }))), unterSpitze: 1 };
+    expect(linie.fv.length).toBeGreaterThanOrEqual(2);
+    for (let i = 1; i < linie.fv.length; i++) expect(linie.fv[i]!.f).toBeGreaterThan(linie.fv[i - 1]!.f);
+    for (const q of linie.fv) {
+      expect(q.v).toBeGreaterThanOrEqual(0.1);
+      expect(q.v).toBeLessThanOrEqual(0.9);
+    }
+    return linie;
+  };
+  it('Rex, gezeichnete Maullinie (M3: Schnauzenspitze → Mundwinkel im Körper): Käfig sauber, 0 Durchdringungen bei 0/25/50/75/100 %', () => {
+    const r = pruefenLinie('Rex gezeichnet', rex, gezeichnet([{ x: -0.375, y: 0.286 }, { x: -0.3, y: 0.262 }, { x: -0.2, y: 0.245 }]), 'vorn');
+    expect(r.pr.ok).toBe(true);
+    for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
+    expect(r.ergebnisse[4]!.spalt / r.laenge).toBeGreaterThan(0.4);
+  });
+  it('Rex, schlampig gezeichnete Maullinie (unter der Kontur entlang): Höhe wird begrenzt, 0 Durchdringungen bei 0/25/50/75/100 %', () => {
+    const r = pruefenLinie('Rex schlampig', rex, gezeichnet([{ x: -0.372, y: 0.262 }, { x: -0.3, y: 0.235 }, { x: -0.2, y: 0.215 }]), 'vorn');
+    expect(r.pr.ok).toBe(true);
+    for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
   });
   it('Kugel, Maul vorn: 0 Durchdringungen bei 0/25/50/75/100 %', () => {
     const r = pruefen('Kugel', neuesDokument('Kugel'), 'vorn');

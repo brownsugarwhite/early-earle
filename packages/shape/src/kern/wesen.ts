@@ -68,6 +68,8 @@ export type TrefferDaten = {
   eckenUV: Float32Array;
   eckenZahl: Uint8Array;
   kaefig: { n: number; xyz: Float32Array; fStart: Uint32Array; fVerts: Uint32Array };
+  /** Vorlage (Röhre): Ringpunkt i·N + j für Indizes < R·N, danach Kappen und Maul-/Beinpunkte */
+  vorlage: { R: number; N: number };
 };
 
 export const BAUPLAN_STANDARD: Bauplan = { maul: 'aus', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false };
@@ -693,7 +695,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     let d = 0;
     for (let f = 0; f < flaechen.length; f++) for (let i = 1; i < flaechen[f]!.length - 1; i++) dreieckFlaeche[d++] = f;
     const kf = abl.kaefig;
-    treffer = { dreieckFlaeche, flaecheVon: kach.flaecheVon, eckenUV: kach.eckenUV, eckenZahl: kach.eckenZahl, kaefig: { n: kf.n, xyz: Float32Array.from(xyz), fStart: Uint32Array.from(kf.fStart), fVerts: Uint32Array.from(kf.fVerts) } };
+    treffer = { dreieckFlaeche, flaecheVon: kach.flaecheVon, eckenUV: kach.eckenUV, eckenZahl: kach.eckenZahl, kaefig: { n: kf.n, xyz: Float32Array.from(xyz), fStart: Uint32Array.from(kf.fStart), fVerts: Uint32Array.from(kf.fVerts) }, vorlage: { R: abl.vorlage.R, N: abl.vorlage.N } };
     if (hebung) for (let i = 1; i < treffer.kaefig.xyz.length; i += 3) treffer.kaefig.xyz[i]! += hebung;
   }
   const netz: WesenNetz = {
