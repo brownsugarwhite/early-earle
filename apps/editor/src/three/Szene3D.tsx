@@ -91,7 +91,7 @@ export function Szene3D() {
             const sk = (p: [number, number, number]): [number, number, number] => [p[0] * s, p[1] * s, p[2] * s];
             const gesicht = t.gesicht ? { ...t.gesicht, nase: sk(t.gesicht.nase), philtrumA: sk(t.gesicht.philtrumA), philtrumB: sk(t.gesicht.philtrumB), radius: t.gesicht.radius * s, hoehe: t.gesicht.hoehe * s, breite: t.gesicht.breite * s } : null;
             if (t.ruhe && s !== 1) for (let i = 0; i < t.ruhe.length; i++) t.ruhe[i]! *= s;
-            r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, augen, t.lippenBand * s, t.ruhe, gesicht);
+            r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, augen, t.lippenBand * s, t.ruhe, gesicht, t.atlas);
           } else r.setzeDreiecke(t.positionen, t.normalen);
           if (t.zaehne) {
             if (s !== 1) for (let i = 0; i < t.zaehne.positionen.length; i++) t.zaehne.positionen[i]! *= s;

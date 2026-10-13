@@ -37,3 +37,14 @@ Kriterium des Plans: `createCreatureMaterial` auf dem neuen Netz mit Deskriptore
 2. Augen im Mesh (Plan 5.4) und Kinn als Kasten-Unterkiefer, dann der Tiger ein zweites Mal gegen Bild 9.
 3. Tiger-Maul: Lippenschleife durch Ring 0 (Kastenfront), Ziel 0 Durchdringungen wie beim Rex.
 4. Zonen-Atlas (Phase 4), Stirnzeichnung als Vektorformen statt Streifenmuster.
+
+## Nachtrag 14.10. spätabends: Zonen-Atlas gebaut, Beweis 4 ganz
+
+Das Kriterium verlangte den **Zonen-Atlas** (Plan 8.2); er fehlte in der ersten Fassung. Jetzt gebaut:
+
+- **Kachelung** (`packages/shape/src/kern/atlas.ts`, `kachelung`): jede Käfigfläche eine Kachel von (2^L + 1)² Texeln. Die Unterteilung erzeugt je Ecke ein Kind [Eckpunkt, Kantenpunkt, Flächenpunkt, Kantenpunkt] am Stück; so bekommt jede feine Fläche ihre Käfigfläche und jede Ecke ihr (u, v), und die feinen Punkte liegen genau auf dem Kachelgitter. Tiger (Stufe 3): 541 Kacheln à 9², 216 × 216 Texel.
+- **Zonen als Vektorformen** (`ZonenForm`): geschlossenes Polygon in einer Ansicht (Seite, Top, Front) mit **Weichheit je Punkt**. `zonenRastern` wertet je feinem Punkt in der Ruhelage den signierten Abstand (+ innen) und die örtliche Weichheit aus und schreibt sie in die Kacheln (Abstand RGB, Weichheit RGB als zweites Feld); gemeinsame Punkte benachbarter Kacheln bekommen denselben Wert → nahtlos (Test `atlas.test.ts`).
+- **Material** (`earleCreature.ts`): Attribut `eeAtlas` (Kachelkoordinate je Ecke), zwei Half-Float-Texturen (in WebGPU filterbar), Maske je Zone = smoothstep(−w, w, Abstand) mit w = max(Weichheit, Ableitung) → harte Kanten pixelscharf, weiche nach der gezeichneten Weichheit; `atlasAn` schaltet die prozeduralen Zonen ab (`&atlas=0` zum Vergleich). Angesetzte Klingen (Wangen, Ohren) lesen die Kachel ihres Fußpunkts.
+- **Tiger-Zonen** (`tigerZonen` in `kernBau.ts`, Seitenansicht): Bauchfeld **hart** mit welliger Kante bei 40 % der Höhe, Rückenfeld **weich** (0,12 H) ab 62 %, Latz an der Brust **oben hart, unten weich** (hart → weich entlang einer Form). Bilder `kern-tiger-ganz.png` (Atlas), `kern-tiger-ganz-prozedural.png` (Vergleich), `kern-tiger-seite.png`, `kern-tiger-ganz-auf.png` (Haps: der Atlas hängt an der Fläche und folgt der Pose von selbst).
+
+Damit sind alle Punkte des Kriteriums gebaut: Material auf dem Kern-Netz, Zonen-Atlas mit hartem Bauch- und weichem Rückenfeld, Tiger-Streifen, gemaltes Auge mit Blinzeln, Zahnverlauf, Vergleichsbild, Muster ohne Schwimmen. Nicht gebaut (Phase 4): Zeichnen der Formen im Editor (heute Code), Muster je Zone aus dem Atlas, Ptex-Export fürs Spiel; die Kacheln bleiben bei (2^L + 1)² Texeln, feinere Formen brauchen Kacheln mit mehr Texeln als Netzpunkten (Rasterung auf der Grenzfläche statt an den Punkten).

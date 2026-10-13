@@ -4,7 +4,7 @@
 // Look: Matcap (Licht an der Ansicht, wie Blender-Solid), Kachel als 10-%-Fläche, harter Schatten von
 // einem eigenen Sonnenlicht (wirkt nur auf den Schatten, die Matcap ignoriert Licht).
 
-import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, createToothMaterial, installTslFunctionCacheFix, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms } from '@ee/render';
+import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, atlasTextur, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, createToothMaterial, installTslFunctionCacheFix, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms } from '@ee/render';
 import type { LoftNetz } from '@ee/shape';
 import {
   BufferAttribute,
@@ -27,8 +27,9 @@ import {
   Vector3,
   Vector4,
   WebGPURenderer,
+  DataTexture,
 } from 'three/webgpu';
-import { type Auge, type Gesicht, PALETTEN, type Palette } from './wesenLook';
+import { type AtlasDaten, type Auge, type Gesicht, PALETTEN, type Palette } from './wesenLook';
 import type { Kamera } from '../state/uiStore';
 import type { Rect } from '../types';
 import { kameraPosition } from './kamera';
@@ -65,6 +66,8 @@ export class Renderer3D {
   private readonly zaehne: Mesh;
   private readonly wesenUniforms: CreatureMaterialUniforms;
   private palette: Palette = PALETTEN.tiger!;
+  /** Zonen-Atlas-Texturen des aktuellen Wesens (zum Freigeben) */
+  private atlasTexturen: DataTexture[] = [];
   private lebenTimer: number | null = null;
   private blinkPhase = -1;
   private blinkTimer = 2.2;
@@ -249,12 +252,29 @@ export class Renderer3D {
    * Beweis 4: Earle-Wesen aus Dreiecken (ohne Index) mit 16 Deskriptor-Floats je Ecke (eeSpine, eeRegion, eeExtra,
    * eePucker, eeTeil, Reihenfolge wie `CreatureMesh`), Körperhöhe und gemalten Schlitzaugen.
    */
-  setzeWesen(positionen: Float32Array, normalen: Float32Array, deskriptoren: Float32Array, hoehe: number, augen: Auge[], lippenBand = 0, ruhe: Float32Array | null = null, gesicht: Gesicht | null = null) {
+  setzeWesen(positionen: Float32Array, normalen: Float32Array, deskriptoren: Float32Array, hoehe: number, augen: Auge[], lippenBand = 0, ruhe: Float32Array | null = null, gesicht: Gesicht | null = null, atlas: AtlasDaten | null = null) {
     const g = new BufferGeometry();
     g.setAttribute('position', new BufferAttribute(positionen, 3));
     g.setAttribute('normal', new BufferAttribute(normalen, 3));
     // Ruhelage je Ecke: Muster, Zonen, Augen und Korn rechnen darin und bleiben bei Posen stehen
     g.setAttribute('eeRest', new BufferAttribute(ruhe && ruhe.length === positionen.length ? ruhe : positionen, 3));
+    // Zonen-Atlas (Beweis 4): Kachelkoordinaten je Ecke; ohne Atlas Nullen (der Shader liest dann den Platzhalter nicht)
+    const ecken = positionen.length / 3;
+    const atlasEcken = atlas && atlas.ecken.length === 2 * ecken ? atlas.ecken : new Float32Array(2 * ecken);
+    g.setAttribute('eeAtlas', new BufferAttribute(atlasEcken, 2));
+    {
+      const u2 = this.wesenUniforms;
+      for (const alt of this.atlasTexturen) alt.dispose();
+      this.atlasTexturen = [];
+      if (atlas && atlas.ecken.length === 2 * ecken) {
+        const ta = atlasTextur(atlas.abstand, atlas.breite, atlas.hoehe);
+        const tw = atlasTextur(atlas.weich, atlas.breite, atlas.hoehe);
+        u2.atlasAbstand.value = ta;
+        u2.atlasWeich.value = tw;
+        u2.atlasAn.value = 1;
+        this.atlasTexturen = [ta, tw];
+      } else u2.atlasAn.value = 0;
+    }
     const ib = new InterleavedBuffer(deskriptoren, 16);
     g.setAttribute('eeSpine', new InterleavedBufferAttribute(ib, 4, 0));
     g.setAttribute('eeRegion', new InterleavedBufferAttribute(ib, 4, 4));

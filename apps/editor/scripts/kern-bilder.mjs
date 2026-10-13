@@ -96,6 +96,9 @@ if (process.env.TIGER) {
     ['kopf-kaefig', `oeffnung=0&kaefig=1&${kopf}`],
     ['kopf-auf', `oeffnung=1&${kopf}`],
     ['ganz', 'oeffnung=0&kamera=-62,10,2.1,-0.05,0.3,0'],
+    ['ganz-auf', 'oeffnung=1&kamera=-62,10,2.1,-0.05,0.3,0'],
+    ['ganz-prozedural', 'oeffnung=0&atlas=0&kamera=-62,10,2.1,-0.05,0.3,0'],
+    ['seite', 'oeffnung=0&kamera=-90,4,2.1,-0.05,0.3,0'],
   ];
   for (const [name, q] of faelle) {
     await page.goto(`${url}/?versuch=kern&wesen=tiger&bauweise=kern&look=earle&palette=tiger&maul=vorn&${q}`);

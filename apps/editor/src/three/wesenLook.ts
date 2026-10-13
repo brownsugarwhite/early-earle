@@ -24,7 +24,7 @@ export type Palette = {
 export const PALETTEN: Record<string, Palette> = {
   tiger: {
     name: 'Tiger',
-    farben: { grund: '#b56939', bauch: '#ddbc96', muster: '#392c24', akzent: '#f0d9b0', lippe: '#3a2a26', rachen: '#6e2334', auge: '#e8b23a', zonen: ['#e8d2ad', '#8f4a24', '#f3e6c8'], glimmer: '#f7d6a0' },
+    farben: { grund: '#b56939', bauch: '#ddbc96', muster: '#392c24', akzent: '#f0d9b0', lippe: '#3a2a26', rachen: '#6e2334', auge: '#e8b23a', zonen: ['#e8d2ad', '#8f4a24', '#fbf5e8'], glimmer: '#f7d6a0' },
     muster: { typ: 'streifen', dichte: 0.7, groesse: 0.3, drehung: 0, spitze: 0.85, zittern: 0.3, seed: 3 },
     zonen: [
       { art: 'bauch', lage: 0.42, breite: 0.85, federung: 0.04, muster: 'frei' },
@@ -70,6 +70,9 @@ export const PALETTEN: Record<string, Palette> = {
 };
 
 export type Auge = { pos: [number, number, number]; normale: [number, number, number]; groesse: number };
+
+/** Zonen-Atlas (Beweis 4, Plan 8.2): Kachelkoordinaten je Dreiecksecke, Abstand- und Weichheitsfeld (RGBA je Texel). */
+export type AtlasDaten = { ecken: Float32Array; abstand: Float32Array; weich: Float32Array; breite: number; hoehe: number };
 
 /** Gesicht fürs Earle-Material (Beweis 4): Dreiecksnase (Mitte, Oben, Rechts, Radius, Höhe) und Scharte A → B mit Breite; alles Welt/Ruhelage. */
 export type Gesicht = { nase: [number, number, number]; oben: [number, number, number]; rechts: [number, number, number]; radius: number; hoehe: number; philtrumA: [number, number, number]; philtrumB: [number, number, number]; breite: number };

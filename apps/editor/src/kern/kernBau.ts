@@ -4,11 +4,11 @@
 // der Kurve (px bei 461 px je Kachel) und Zeiten.
 
 import type { Dokument, V2 } from '@ee/shape';
-import { DESKRIPTOR_FLOATS, KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Ableitung, type BeinErgebnis, type GesichtMaske, type Haut, type KlingenLage, type KlingenVorlage, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableiten, ableitenMitBeinen, ableitenMitMaul, alleFlaechen, beinPose, bueschelAufHaut, deskriptoren, flaemmchen, gekaemmt, hautAus, hautPunkt, kastenSpanten, klingenBauen, klingenNetz, klingenVorlage, maulLinieVorlage, maulOptionenVorlage, maulPose, seiteZiehen, umrissBei, umrissDicht, zahnLagen, zungenAmScheitel } from '@ee/shape/kern';
+import { DESKRIPTOR_FLOATS, KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Ableitung, type BeinErgebnis, type GesichtMaske, type Haut, type KlingenLage, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern, type KlingenVorlage, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableiten, ableitenMitBeinen, ableitenMitMaul, alleFlaechen, beinPose, bueschelAufHaut, deskriptoren, flaemmchen, gekaemmt, hautAus, hautPunkt, kastenSpanten, klingenBauen, klingenNetz, klingenVorlage, maulLinieVorlage, maulOptionenVorlage, maulPose, seiteZiehen, umrissBei, umrissDicht, zahnLagen, zungenAmScheitel } from '@ee/shape/kern';
 import { useUi } from '../state/uiStore';
 import { zuDreiecken, type V3 } from '@ee/shape/versuch';
 import { create } from 'zustand';
-import { type Auge, type Gesicht, type Look, PALETTEN } from '../three/wesenLook';
+import { type AtlasDaten, type Auge, type Gesicht, type Look, PALETTEN } from '../three/wesenLook';
 
 export type MaulArt = 'aus' | 'vorn' | 'unten' | 'hals';
 export type BeinArt = 'aus' | 'verschmolzen' | 'angesteckt';
@@ -35,6 +35,8 @@ const startBeine: BeinArt = (['verschmolzen', 'angesteckt'] as const).find((a) =
 const startStil: StilArt = (['feuer', 'gas', 'fell'] as const).find((a) => a === q.get('stil')) ?? 'fest';
 if (q.get('oeffnung')) useUi.getState().setzeOeffnung(Number(q.get('oeffnung')));
 if (q.get('zebra') === '1') useUi.getState().setzeZebra(true);
+/** Zonen-Atlas (Beweis 4) an, `&atlas=0` zeigt die prozeduralen Zonen */
+const atlasAn = q.get('atlas') !== '0';
 // Kamera für Bilder: `kamera=azimut°,elevation°,distanz[,zielX,zielY,zielZ]`
 if (q.get('kamera')) {
   const [az, el, dist, zx, zy, zz] = q.get('kamera')!.split(',').map(Number);
@@ -129,10 +131,11 @@ export type KernNetz = {
   /** Beweis 5: Stil des Netzes und Körpermitte (Feuer/Gas-Material) */
   stil: StilArt;
   mitte: [number, number, number];
-  /** Beweis 4: Ruhelage je Ecke (bei Posen), Gesicht (Nase, Scharte), Zähne */
+  /** Beweis 4: Ruhelage je Ecke (bei Posen), Gesicht (Nase, Scharte), Zähne, Zonen-Atlas */
   ruhe: Float32Array | null;
   gesicht: Gesicht | null;
   zaehne: { positionen: Float32Array; normalen: Float32Array; anteil: Float32Array } | null;
+  atlas: AtlasDaten | null;
 };
 
 /** Ausstattung je Prüfwesen (Beweis 4): Kastenschnauze, Maullinie, Augen, Gesicht, Wangen und Ohren beim Tiger. */
@@ -150,7 +153,35 @@ type Ausstattung = {
   lippenBand: number;
   /** Maul-Optionen des Wesens (Tiger: der Kopf sitzt auf dem Rumpf; bei 58° stößt der Unterkiefer an die Brust und die Flanke faltet → 30°, Band 1 Ring, der Schädel kippt dafür mehr) */
   maulOptionen: Partial<MaulOptionen>;
+  /** Zonen als Vektorformen auf dem Körper (Beweis 4, Plan 8.2), aus den Ruhe-Grenzen des Körpers */
+  zonen?: (g: { xMin: number; xMax: number; yMin: number; yMax: number }) => ZonenForm[];
 };
+
+/** Tiger (Bild 9): Bauchfeld hart mit welliger Kante, Rückenfeld weich auslaufend, Latz an der Brust oben hart, unten weich. */
+function tigerZonen(g: { xMin: number; xMax: number; yMin: number; yMax: number }): ZonenForm[] {
+  const H = g.yMax - g.yMin;
+  const W = g.xMax - g.xMin;
+  const x0 = g.xMin - 0.2 * W;
+  const x1 = g.xMax + 0.2 * W;
+  const welle: { x: number; y: number; weich: number }[] = [];
+  for (let i = 0; i <= 8; i++) {
+    const t = i / 8;
+    welle.push({ x: x1 + (x0 - x1) * t, y: g.yMin + (0.4 + 0.03 * Math.sin(t * Math.PI * 5)) * H, weich: 0.002 });
+  }
+  const bauch: ZonenForm = { ansicht: 'seite', punkte: [{ x: x0, y: g.yMin - 0.2 * H, weich: 0.002 }, { x: x1, y: g.yMin - 0.2 * H, weich: 0.002 }, ...welle] };
+  const ruecken: ZonenForm = { ansicht: 'seite', punkte: [{ x: x0, y: g.yMin + 0.62 * H, weich: 0.12 * H }, { x: x1, y: g.yMin + 0.62 * H, weich: 0.12 * H }, { x: x1, y: g.yMax + 0.2 * H, weich: 0.12 * H }, { x: x0, y: g.yMax + 0.2 * H, weich: 0.12 * H }] };
+  const latz: ZonenForm = {
+    ansicht: 'seite',
+    punkte: [
+      { x: g.xMin - 0.05 * W, y: g.yMin + 0.5 * H, weich: 0.003 },
+      { x: g.xMin + 0.34 * W, y: g.yMin + 0.5 * H, weich: 0.003 },
+      { x: g.xMin + 0.44 * W, y: g.yMin + 0.26 * H, weich: 0.05 * H },
+      { x: g.xMin + 0.3 * W, y: g.yMin - 0.05 * H, weich: 0.09 * H },
+      { x: g.xMin - 0.05 * W, y: g.yMin - 0.05 * H, weich: 0.09 * H },
+    ],
+  };
+  return [bauch, ruecken, latz];
+}
 function ausstattung(dok: Dokument): Ausstattung {
   if (dok.name === 'tiger') {
     return {
@@ -162,6 +193,7 @@ function ausstattung(dok: Dokument): Ausstattung {
       gesichtMaske: { voll: 2, aus: 6, oben: 0.75 },
       lippenBand: 0.009,
       maulOptionen: { winkelUnten: 30, winkelOben: 26, band: 1 },
+      zonen: tigerZonen,
     };
   }
   return { dok, maul: (art) => maulLinieVorlage(dok, art === 'aus' ? 'vorn' : art), augen: { ring: 2, j: Math.max(1, Math.round(16 / 8)), groesse: 0.11 }, gesicht: false, wangen: false, gesichtMaske: undefined, lippenBand: 0.03, maulOptionen: {} };
@@ -172,7 +204,7 @@ let zackenVorlage: KlingenVorlage | null = null;
 let ohrVorlage: KlingenVorlage | null = null;
 
 /** Klingen (ohne Wehen) als Dreiecke mit Deskriptoren je Ecke aus dem Fußpunkt und einem Höhenanteil je Ecke. */
-function klingenStatisch(kv: KlingenVorlage, lagen: readonly KlingenLage[], feinDesk: Float32Array | null): { positionen: Float32Array; normalen: Float32Array; desk: Float32Array | null; anteil: Float32Array } {
+function klingenStatisch(kv: KlingenVorlage, lagen: readonly KlingenLage[], feinDesk: Float32Array | null, punktAtl: Float32Array | null = null): { positionen: Float32Array; normalen: Float32Array; desk: Float32Array | null; anteil: Float32Array; atlas: Float32Array | null } {
   const klingen = klingenBauen(kv, lagen);
   const fl = alleFlaechen(klingenNetz(kv));
   const teile: { positionen: Float32Array; normalen: Float32Array; lage: KlingenLage }[] = [];
@@ -186,11 +218,16 @@ function klingenStatisch(kv: KlingenVorlage, lagen: readonly KlingenLage[], fein
   const normalen = new Float32Array(n);
   const anteil = new Float32Array(n / 3);
   const desk = feinDesk ? new Float32Array((n / 3) * DESKRIPTOR_FLOATS) : null;
+  const atlas = punktAtl ? new Float32Array((n / 3) * 2) : null;
   let o = 0;
   for (const t of teile) {
     positionen.set(t.positionen, o);
     normalen.set(t.normalen, o);
     const l = t.lage;
+    if (atlas && punktAtl) {
+      const b = Math.min(punktAtl.length / 2 - 1, l.basis ?? 0);
+      for (let e = 0; e < t.positionen.length / 3; e++) atlas.set(punktAtl.subarray(2 * b, 2 * b + 2), (o / 3 + e) * 2);
+    }
     for (let e = 0; e < t.positionen.length / 3; e++) {
       const dx = t.positionen[3 * e]! - l.fuss[0];
       const dy = t.positionen[3 * e + 1]! - l.fuss[1];
@@ -206,7 +243,7 @@ function klingenStatisch(kv: KlingenVorlage, lagen: readonly KlingenLage[], fein
     }
     o += t.positionen.length;
   }
-  return { positionen, normalen, desk, anteil };
+  return { positionen, normalen, desk, anteil, atlas };
 }
 
 /** Wangenbüschel (Kranz um die untere Gesichtshälfte) als Zacken; Schnauze zeigt nach −x. */
@@ -513,6 +550,23 @@ export function kernBauen(dokRoh: Dokument, schnell: boolean): KernNetz {
     for (let e = 0; e < gesteckteEcken; e++) alle.set(huefte, desk.length + e * DESKRIPTOR_FLOATS);
     desk = alle;
   }
+  // Zonen-Atlas (Beweis 4, Plan 8.2): Kacheln je Käfigfläche, Zonen als Vektorformen in der Ruhelage gerastert
+  let atlas: AtlasDaten | null = null;
+  let punktAtl: Float32Array | null = null;
+  if (earle && atlasAn && aus.zonen && gesteckteEcken === 0) {
+    const rf = abl.fein;
+    const g = { xMin: Infinity, xMax: -Infinity, yMin: Infinity, yMax: -Infinity };
+    for (let i = 0; i < rf.length / 3; i++) {
+      g.xMin = Math.min(g.xMin, rf[3 * i]!);
+      g.xMax = Math.max(g.xMax, rf[3 * i]!);
+      g.yMin = Math.min(g.yMin, rf[3 * i + 1]!);
+      g.yMax = Math.max(g.yMax, rf[3 * i + 1]!);
+    }
+    const k = kachelung(abl);
+    const r = zonenRastern(k, flaechen, rf, aus.zonen(g));
+    atlas = { ecken: atlasEcken(k), abstand: r.abstand, weich: r.weich, breite: k.breite, hoehe: k.hoehe };
+    punktAtl = punktAtlas(k, flaechen, rf.length / 3);
+  }
   const augen = earle || useKernAnzeige.getState().stil === 'feuer' || useKernAnzeige.getState().stil === 'gas' ? augenAm(abl, hoehe, aus.augen) : [];
   const ab = nahtAbweichung(abl, dok);
   useKernAnzeige.setState({
@@ -564,9 +618,10 @@ export function kernBauen(dokRoh: Dokument, schnell: boolean): KernNetz {
     ohrVorlage ??= klingenVorlage({ ringe: 4, profil: 'tropfen', dicke: 0.55, einsenken: 0.4, biegung: 0.05, stufen: 1 });
     const haut = hautAus(fein);
     const fd = deskriptoren(abl, aus.gesichtMaske);
-    const w1 = klingenStatisch(zackenVorlage, wangen(haut, hoehe), fd);
-    const w2 = klingenStatisch(ohrVorlage, ohren(haut, hoehe), fd);
-    const w = { positionen: verketten(w1.positionen, w2.positionen), normalen: verketten(w1.normalen, w2.normalen), desk: w1.desk && w2.desk ? verketten(w1.desk, w2.desk) : null };
+    const w1 = klingenStatisch(zackenVorlage, wangen(haut, hoehe), fd, punktAtl);
+    const w2 = klingenStatisch(ohrVorlage, ohren(haut, hoehe), fd, punktAtl);
+    const w = { positionen: verketten(w1.positionen, w2.positionen), normalen: verketten(w1.normalen, w2.normalen), desk: w1.desk && w2.desk ? verketten(w1.desk, w2.desk) : null, atlas: w1.atlas && w2.atlas ? verketten(w1.atlas, w2.atlas) : null };
+    if (atlas && w.atlas) atlas = { ...atlas, ecken: verketten(atlas.ecken, w.atlas) };
     const p2 = new Float32Array(t.positionen.length + w.positionen.length);
     const n2 = new Float32Array(p2.length);
     p2.set(t.positionen);
@@ -607,5 +662,5 @@ export function kernBauen(dokRoh: Dokument, schnell: boolean): KernNetz {
     normalen = z.normalen;
     desk = z.desk;
   }
-  return { positionen, normalen, deskriptoren: stil === 'feuer' || stil === 'gas' ? null : desk, hoehe, augen, kaefigLinien: linien ? new Float32Array([...linien.punkte]) : null, lippenBand, kaefigFarben: linien?.farben ?? null, stil, mitte, ruhe: ruhe && ruhe.length === positionen.length ? ruhe : null, gesicht, zaehne };
+  return { positionen, normalen, deskriptoren: stil === 'feuer' || stil === 'gas' ? null : desk, hoehe, augen, kaefigLinien: linien ? new Float32Array([...linien.punkte]) : null, lippenBand, kaefigFarben: linien?.farben ?? null, stil, mitte, ruhe: ruhe && ruhe.length === positionen.length ? ruhe : null, gesicht, zaehne, atlas: stil === 'fest' ? atlas : null };
 }

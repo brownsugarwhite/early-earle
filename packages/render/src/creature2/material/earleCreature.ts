@@ -1,6 +1,6 @@
-import { Vector3, Vector4 } from 'three';
-import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
-import { abs, attribute, clamp, cross, dFdx, dFdy, dot, exp2, float, floor, Fn, fract, fwidth, length, log2, max, min, mix, normalGeometry, normalize, normalView, positionGeometry, positionLocal, positionView, pow, select, sin, smoothstep, sqrt, step, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
+import { DataTexture, HalfFloatType, LinearFilter, RGBAFormat, Vector3, Vector4 } from 'three';
+import { MeshBasicNodeMaterial, type TextureNode, type UniformNode } from 'three/webgpu';
+import { abs, attribute, clamp, cross, dFdx, dFdy, dot, exp2, float, floor, Fn, fract, fwidth, length, log2, max, min, mix, normalGeometry, normalize, normalView, positionGeometry, positionLocal, positionView, pow, select, sin, smoothstep, sqrt, step, texture, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { STIL_STANDARD, farbRolle, type WesenStil } from './stil';
 import { createMusterUniforms, createZonenUniforms, hash3, musterMasks, ZONEN_ANZAHL, zonenMaske, type MusterUniforms, type ZonenUniforms } from './muster';
@@ -72,6 +72,11 @@ export interface CreatureMaterialUniforms {
   /** Zonen (Bild 17): Form je Zone und ihre Farbrollen. */
   zonen: ZonenUniforms;
   zonenFarbe: Vec3Triple[];
+  /** Zonen-Atlas (Plan 8.2): signierter Abstand je Zone (RGB, Welt, + innen) und Weichheit je Zone (RGB, Welt) je Texel,
+   * gelesen über das Attribut `eeAtlas` (Kachelkoordinaten je Ecke); `atlasAn` 0/1 schaltet die prozeduralen Zonen ab. */
+  atlasAn: UniformNode<'float', number>;
+  atlasAbstand: TextureNode;
+  atlasWeich: TextureNode;
   /** Glimmer des Wesens (Bauplan, 0…1) — wirkt mal dem Stil-Glimmer. */
   glimmerWesen: UniformNode<'float', number>;
   /** Farbe des Glimmerlichts (linear). */
@@ -169,11 +174,56 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     spitzmund: uniform(0),
     zonen: createZonenUniforms(),
     zonenFarbe: Array.from({ length: ZONEN_ANZAHL }, (_, i) => triple(colors.zonen?.[i] ?? ZONE_STANDARD, stil)),
+    atlasAn: uniform(0),
+    atlasAbstand: texture(leereAtlasTextur()),
+    atlasWeich: texture(leereAtlasTextur()),
     glimmerWesen: uniform(0.6),
     glimmerFarbe: uniform(new Vector3(...farbRolle(colors.glimmer ?? GLIMMER_STANDARD, stil).base)),
     zeit: uniform(0),
     teilAn: uniform(0),
   };
+}
+
+/** 1 × 1-Platzhalter für den Zonen-Atlas (außerhalb aller Zonen). */
+function leereAtlasTextur(): DataTexture {
+  return atlasTextur(new Float32Array([-1, -1, -1, 1]), 1, 1);
+}
+
+/** Atlas-Textur aus Float-Daten (RGBA je Texel): Half-Float (in WebGPU filterbar), linear zwischen den Texelmitten, keine Mipmaps. */
+export function atlasTextur(daten: Float32Array, breite: number, hoehe: number): DataTexture {
+  const halb = new Uint16Array(daten.length);
+  for (let i = 0; i < daten.length; i++) halb[i] = halbFloat(daten[i]!);
+  const t = new DataTexture(halb, breite, hoehe, RGBAFormat, HalfFloatType);
+  t.magFilter = LinearFilter;
+  t.minFilter = LinearFilter;
+  t.generateMipmaps = false;
+  t.needsUpdate = true;
+  return t;
+}
+
+const halbPuffer = new ArrayBuffer(4);
+const halbFloat32 = new Float32Array(halbPuffer);
+const halbUint32 = new Uint32Array(halbPuffer);
+/** IEEE-754 Half-Float (wie three `DataUtils.toHalfFloat`, ohne Abhängigkeit). */
+function halbFloat(x: number): number {
+  halbFloat32[0] = Math.min(65504, Math.max(-65504, x));
+  const f = halbUint32[0]!;
+  const vorzeichen = (f >> 16) & 0x8000;
+  let exp = ((f >> 23) & 0xff) - 127 + 15;
+  let mant = f & 0x7fffff;
+  if (exp <= 0) {
+    if (exp < -10) return vorzeichen;
+    mant = (mant | 0x800000) >> (1 - exp);
+    return vorzeichen | ((mant + 0x1000) >> 13);
+  }
+  if (exp >= 31) return vorzeichen | 0x7c00;
+  mant = mant + 0x1000;
+  if (mant & 0x800000) {
+    mant = 0;
+    exp++;
+    if (exp >= 31) return vorzeichen | 0x7c00;
+  }
+  return vorzeichen | (exp << 10) | (mant >> 13);
 }
 
 export function applyStil(u: CreatureMaterialUniforms, stil: WesenStil, colors: CreatureColors): void {
@@ -345,8 +395,18 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms, optionen: Cr
     const pS = vec3(u.muster.schatten).toVar();
     const pB = vec3(u.muster.base).toVar();
     const pL = vec3(u.muster.licht).toVar();
+    // Zonen-Atlas (Plan 8.2): signierter Abstand und Weichheit je Zone aus den Kacheln; harte Kanten pixelscharf über
+    // die Ableitung, weiche über die gerasterte Weichheit (hart → weich entlang einer Form)
+    const atlasUV = attribute('eeAtlas', 'vec2');
+    const aAbstand = (u.atlasAbstand.sample(atlasUV) as unknown as Vec4Node).toVar();
+    const aWeich = (u.atlasWeich.sample(atlasUV) as unknown as Vec4Node).toVar();
+    const atlasAn = u.atlasAn.greaterThan(0.5);
     for (let i = 0; i < ZONEN_ANZAHL; i++) {
-      const m = zonenMaske(u.zonen, i, kontext).toVar();
+      const sdf = (i === 0 ? aAbstand.x : i === 1 ? aAbstand.y : aAbstand.z) as FloatNode;
+      const wZ = (i === 0 ? aWeich.x : i === 1 ? aWeich.y : aWeich.z) as FloatNode;
+      const w = max(wZ, fwidth(sdf));
+      const mAtlas = smoothstep(w.negate(), w, sdf);
+      const m = select(atlasAn, mAtlas, zonenMaske(u.zonen, i, kontext)).toVar();
       const zt = u.zonenFarbe[i]!;
       mischen(zt, m);
       const modus = u.zonen.modus[i]!;
