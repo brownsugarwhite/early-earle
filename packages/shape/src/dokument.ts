@@ -1,4 +1,7 @@
-// Dokumentformat des Wesen-Editors (Version 0). Ein Wesen = drei Profile + Größe + Posenliste.
+// Dokumentformat des Wesen-Editors. Version 1 (Phase 1 / M1, 14.10.2026): drei Profile (Griffe), Größe, Posenliste und
+// die **Ausstattung** (Absicht für den Bau: Maul, Beine, Stil, Kasten, Augen, Gesicht, Zonen; nur Daten, der Worker baut
+// daraus deterministisch). Version 0 (ohne Ausstattung) wird beim Lesen migriert. Der Käfig selbst kommt ins Dokument,
+// sobald Pinsel ihn verändern (M3). Ein Wesen = drei Profile + Größe + Posenliste.
 // Die Posen tragen in Version 0 nur ihren Namen; das Bearbeiten der Posen folgt mit der Bauweise.
 // Nachtrag 12.10. (Versuch, optional): Maul als 3D-Lippenlinien (zu und auf) und Zahnreihen. Jede Ansicht bearbeitet
 // zwei Koordinaten eines Knotens (Seite x/y, Front z/y, Top x/z); Knoten 0 liegt auf der Mittelebene (z = 0).
@@ -39,6 +42,86 @@ const KanteSchema = z.object({ knoten: z.array(Knoten3Schema).min(2), haerte: z.
 /** Spant der Bauweise „rund“ (Versuch 13.10. nachmittags): Strecke quer über ein Teil der Seite (Punkt und Richtung), Halbprofil. */
 const RundSpantSchema = z.object({ p: V2, richtung: V2, profil: ProfilSchema, basis: ProfilSchema.optional(), kante: z.object({ index: z.number().int().min(0), knoten: z.number().int().min(0) }).optional() });
 
+/** Maullinie in Wirbelsäulen-Koordinaten (Anteil f der Länge, Höhe v auf der Sprosse), Lippenanfang unter der Spitze. */
+const MaulLinieSchema = z.object({ fv: z.array(z.object({ f: z.number(), v: z.number() })).min(2), unterSpitze: z.number().optional() });
+const MaulOptionenSchema = z
+  .object({
+    reihen: z.number(),
+    tiefe: z.number(),
+    linse: z.number(),
+    rachenTiefe: z.number(),
+    rachenInnen: z.number(),
+    schaedelHinter: z.number(),
+    lippenSchaerfe: z.number(),
+    band: z.number(),
+    bandOben: z.number(),
+    nackenGanz: z.boolean(),
+    winkelUnten: z.number(),
+    winkelOben: z.number(),
+    oeffnungsart: z.enum(['kippen', 'ziehen']),
+    zugWeite: z.number(),
+    rille: z.number(),
+    platte: z.number(),
+    beutel: z.number(),
+  })
+  .partial();
+/** Zone als Vektorform, relativ zu den Ruhe-Grenzen des Körpers (x, y 0 … 1), Weichheit je Punkt als Anteil der Höhe. */
+const ZonenVorlageSchema = z.object({ ansicht: z.enum(['seite', 'top', 'front']), punkte: z.array(z.object({ x: z.number(), y: z.number(), weich: z.number().min(0) })).min(3) });
+/**
+ * Ausstattung (Version 1): die Absicht, aus der der Worker das Netz baut. Alles optional; was fehlt, gilt als „aus“ bzw. Standard.
+ */
+export const AusstattungSchema = z.object({
+  maul: z.enum(['aus', 'vorn', 'unten', 'hals']).optional(),
+  maulLinie: MaulLinieSchema.optional(),
+  maulOptionen: MaulOptionenSchema.optional(),
+  beine: z.enum(['aus', 'verschmolzen', 'angesteckt']).optional(),
+  beinAnsaetze: z.array(z.object({ ring: z.number().int().min(0), j: z.number().int().min(0) })).optional(),
+  stil: z.enum(['fest', 'feuer', 'gas', 'fell']).optional(),
+  kasten: z.object({ fVorn: z.number(), fHinten: z.number(), fRund: z.number(), haerte: z.number() }).optional(),
+  augen: z.object({ ring: z.number().int().min(0), j: z.number().int().min(0), groesse: z.number().min(0) }).optional(),
+  gesicht: z.boolean().optional(),
+  wangen: z.boolean().optional(),
+  gesichtMaske: z.object({ voll: z.number(), aus: z.number(), oben: z.number() }).optional(),
+  lippenBand: z.number().min(0).optional(),
+  zonen: z.array(ZonenVorlageSchema).optional(),
+});
+/** Ausstattung als Typ mit exakten Optionalen (zod-Inferenz erlaubt `undefined`, das passt nicht zu `exactOptionalPropertyTypes`). */
+export type ZonenVorlage = { ansicht: 'seite' | 'top' | 'front'; punkte: { x: number; y: number; weich: number }[] };
+export type MaulOptionenWerte = {
+  reihen: number;
+  tiefe: number;
+  linse: number;
+  rachenTiefe: number;
+  rachenInnen: number;
+  schaedelHinter: number;
+  lippenSchaerfe: number;
+  band: number;
+  bandOben: number;
+  nackenGanz: boolean;
+  winkelUnten: number;
+  winkelOben: number;
+  oeffnungsart: 'kippen' | 'ziehen';
+  zugWeite: number;
+  rille: number;
+  platte: number;
+  beutel: number;
+};
+export type Ausstattung = {
+  maul?: 'aus' | 'vorn' | 'unten' | 'hals';
+  maulLinie?: { fv: { f: number; v: number }[]; unterSpitze?: number };
+  maulOptionen?: Partial<MaulOptionenWerte>;
+  beine?: 'aus' | 'verschmolzen' | 'angesteckt';
+  beinAnsaetze?: { ring: number; j: number }[];
+  stil?: 'fest' | 'feuer' | 'gas' | 'fell';
+  kasten?: { fVorn: number; fHinten: number; fRund: number; haerte: number };
+  augen?: { ring: number; j: number; groesse: number };
+  gesicht?: boolean;
+  wangen?: boolean;
+  gesichtMaske?: { voll: number; aus: number; oben: number };
+  lippenBand?: number;
+  zonen?: ZonenVorlage[];
+};
+
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */
 export const POSEN = ['ruhen', 'laufen', 'inklusion'] as const;
 export type PoseName = (typeof POSEN)[number];
@@ -46,9 +129,8 @@ export type PoseName = (typeof POSEN)[number];
 export const SKALIERUNG_MIN = 0.25;
 export const SKALIERUNG_MAX = 3;
 
-export const DokumentSchema = z.object({
+const DokumentFelder = {
   format: z.literal('ee-wesen'),
-  version: z.literal(0),
   name: z.string().min(1),
   profile: z.object({ seite: ProfilSchema, front: ProfilSchema, top: ProfilSchema }),
   skalierung: z.number().min(SKALIERUNG_MIN).max(SKALIERUNG_MAX),
@@ -61,7 +143,11 @@ export const DokumentSchema = z.object({
   wirbelsaeule: Linie3Schema.optional(),
   posenProfile: z.record(z.string(), z.object({ seite: ProfilSchema.optional() })).optional(),
   rundSpanten: z.array(RundSpantSchema).optional(),
-});
+};
+/** Version 0 (bis 14.10.2026): ohne Ausstattung. */
+export const DokumentSchemaV0 = z.object({ ...DokumentFelder, version: z.literal(0) });
+/** Version 1: mit Ausstattung. */
+export const DokumentSchema = z.object({ ...DokumentFelder, version: z.literal(1), ausstattung: AusstattungSchema.optional() });
 
 export type V3T = [number, number, number];
 export type Knoten3 = { p: V3T; ein: V3T; aus: V3T; art: 'glatt' | 'ecke' };
@@ -100,11 +186,13 @@ export type Kante = {
 
 export type Dokument = {
   format: 'ee-wesen';
-  version: 0;
+  version: 1;
   name: string;
   profile: { seite: Profil; front: Profil; top: Profil };
   skalierung: number;
   posen: PoseName[];
+  /** Version 1: Absicht für den Bau (Maul, Beine, Stil, Kasten, Augen, Gesicht, Zonen); fehlt = Standardkörper */
+  ausstattung?: Ausstattung;
   maul?: Maul;
   zaehne?: Zaehne;
   kanten?: Kante[];
@@ -144,7 +232,7 @@ export function neuesDokument(name = 'Neues Wesen'): Dokument {
   const r = START_RADIUS;
   return {
     format: 'ee-wesen',
-    version: 0,
+    version: 1,
     name,
     profile: {
       seite: startKreis({ x: 0, y: r }, r, 4),
@@ -156,6 +244,12 @@ export function neuesDokument(name = 'Neues Wesen'): Dokument {
   };
 }
 
+/** Lesen mit Migration: Version 0 wird zu Version 1 (ohne Ausstattung; die Prüfwesen-Anteile ergänzt der Editor über den Namen). */
 export function dokumentLesen(json: unknown): Dokument {
+  const v = (json as { version?: unknown } | null)?.version;
+  if (v === 0) {
+    const alt = DokumentSchemaV0.parse(json);
+    return { ...alt, version: 1 } as Dokument;
+  }
   return DokumentSchema.parse(json) as Dokument;
 }

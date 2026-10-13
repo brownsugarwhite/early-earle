@@ -14,3 +14,4 @@ export * from './teil';
 export * from './klinge';
 export * from './kasten';
 export * from './atlas';
+export * from './wesen';

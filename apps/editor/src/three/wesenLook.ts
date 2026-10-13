@@ -69,10 +69,5 @@ export const PALETTEN: Record<string, Palette> = {
   },
 };
 
-export type Auge = { pos: [number, number, number]; normale: [number, number, number]; groesse: number };
+export type { Auge, Gesicht, AtlasDaten } from '@ee/shape/kern';
 
-/** Zonen-Atlas (Beweis 4, Plan 8.2): Kachelkoordinaten je Dreiecksecke, Abstand- und Weichheitsfeld (RGBA je Texel). */
-export type AtlasDaten = { ecken: Float32Array; abstand: Float32Array; weich: Float32Array; breite: number; hoehe: number };
-
-/** Gesicht fürs Earle-Material (Beweis 4): Dreiecksnase (Mitte, Oben, Rechts, Radius, Höhe) und Scharte A → B mit Breite; alles Welt/Ruhelage. */
-export type Gesicht = { nase: [number, number, number]; oben: [number, number, number]; rechts: [number, number, number]; radius: number; hoehe: number; philtrumA: [number, number, number]; philtrumB: [number, number, number]; breite: number };

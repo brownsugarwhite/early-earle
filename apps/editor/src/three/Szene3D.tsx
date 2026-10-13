@@ -76,8 +76,10 @@ export function Szene3D() {
         const pose = dRoh.posenProfile?.fressen?.seite;
         const d: Dokument = useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
         if (!versuch && useUi.getState().bauweise === 'kern') {
-          // Wesen-Editor 2, Beweis 1: Käfig als Wahrheit, Seitenumriss als Griff (packages/shape/src/kern)
-          const t = kernBauen(d, schnell);
+          // Wesen-Editor 2: Käfig als Wahrheit, Seitenumriss als Griff; der Bau läuft im Worker (Phase 1 / M1), das
+          // Ergebnis kommt zurück, der neueste Auftrag gewinnt
+          kernBauen(d, schnell, (t) => {
+          if (aus) return;
           const s = d.skalierung;
           if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
           if (t.kaefigLinien) {
@@ -104,10 +106,12 @@ export function Szene3D() {
           if (t.stil !== 'fest') {
             const start = performance.now();
             klingenUhr = window.setInterval(() => {
-              const a = kernAnimieren((performance.now() - start) / 1000);
-              if (a) r.aktualisiereNetz(a.positionen, a.normalen);
+              kernAnimieren((performance.now() - start) / 1000, (a) => {
+                if (a && !aus) r.aktualisiereNetz(a.positionen, a.normalen);
+              });
             }, 70);
           }
+          });
           return;
         }
         if (!versuch && useUi.getState().bauweise === 'rund') {

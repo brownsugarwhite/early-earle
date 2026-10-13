@@ -48,4 +48,18 @@ describe('Dokument', () => {
   it('lehnt fremde Formate ab', () => {
     expect(() => dokumentLesen({ format: 'x' })).toThrow();
   });
+
+  it('Version 1: Ausstattung übersteht die Rundreise, Version 0 wird beim Lesen migriert', () => {
+    const d = neuesDokument('Tiger');
+    d.ausstattung = { maul: 'vorn', maulLinie: { fv: [{ f: 0.02, v: 0.28 }, { f: 0.17, v: 0.33 }], unterSpitze: 0 }, maulOptionen: { winkelUnten: 30 }, kasten: { fVorn: 0.02, fHinten: 0.15, fRund: 0.25, haerte: 0.85 }, augen: { ring: 4, j: 3, groesse: 0.1 }, gesicht: true, zonen: [{ ansicht: 'seite', punkte: [{ x: 0, y: 0, weich: 0 }, { x: 1, y: 0, weich: 0 }, { x: 1, y: 0.4, weich: 0.01 }] }] };
+    const wieder = dokumentLesen(JSON.parse(JSON.stringify(d)));
+    expect(wieder.version).toBe(1);
+    expect(wieder.ausstattung).toEqual(d.ausstattung);
+    const alt = { ...JSON.parse(JSON.stringify(neuesDokument('Alt'))), version: 0 };
+    delete alt.ausstattung;
+    const migriert = dokumentLesen(alt);
+    expect(migriert.version).toBe(1);
+    expect(migriert.ausstattung).toBeUndefined();
+    expect(migriert.profile.seite.knoten.length).toBe(4);
+  });
 });

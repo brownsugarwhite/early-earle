@@ -1,0 +1,699 @@
+// Wesen-Editor 2, Phase 1 / M1 (14.10.2026): der Wesen-Bau als DOM-freie Funktion.
+//
+// Was in Phase 0 im Editor (`apps/editor/src/kern/kernBau.ts`) zusammengewachsen war, liegt hier als reine Rechnung:
+// ein Dokument (Profile, Spanten) und ein **Bauplan** (nur Daten: Maul, Beine, Stil, Augen, Gesicht, Zonen …) ergeben ein
+// **Wesen-Netz** (Dreiecke mit Normalen, Deskriptoren und Atlas-Koordinaten je Ecke, Ruhelage, Augen, Gesicht, Zähne,
+// Käfiglinien). Dieselbe Funktion läuft im Worker des Editors (Plan 4.4 „Worker ab Tag 1“) und später im Spiel-Export.
+// Der `WesenStand` hält die Ableitung und den Klingenstand zwischen zwei Bauten (Pose statt Umbau, Wehen je Bild).
+
+import type { V2 } from '../bezier';
+import type { Ausstattung, Dokument, ZonenVorlage } from '../dokument';
+import { alleFlaechen } from '../kaefig/halbkanten';
+import { type V3, zuDreiecken } from '../versuch/catmullClark';
+import { type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
+import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern } from './atlas';
+import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
+import { kastenSpanten } from './kasten';
+import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
+import { type MaulErgebnis, ableitenMitMaul, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
+import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
+
+export type StilArt = 'fest' | 'feuer' | 'gas' | 'fell';
+export type MaulArt = 'aus' | 'vorn' | 'unten' | 'hals';
+export type BeinArt = 'aus' | 'verschmolzen' | 'angesteckt';
+
+/** Gemaltes Auge: Lage und Normale auf der Haut, Größe (Welt). */
+export type Auge = { pos: V3; normale: V3; groesse: number };
+
+/** Gesicht fürs Earle-Material: Dreiecksnase (Mitte, Oben, Rechts, Radius, Höhe) und Scharte A → B mit Breite; Welt/Ruhelage. */
+export type Gesicht = { nase: V3; oben: V3; rechts: V3; radius: number; hoehe: number; philtrumA: V3; philtrumB: V3; breite: number };
+
+/** Zonen-Atlas: Kachelkoordinaten je Dreiecksecke, Abstand- und Weichheitsfeld (RGBA je Texel). */
+export type AtlasDaten = { ecken: Float32Array; abstand: Float32Array; weich: Float32Array; breite: number; hoehe: number };
+
+/**
+ * Zone als Vektorform, **relativ zu den Ruhe-Grenzen** des Körpers: x 0 = vorderste Stelle … 1 = hinterste (Seite/Top),
+ * y 0 = Boden … 1 = Scheitel, Weichheit als Anteil der Höhe (Typ in `dokument.ts`). So bleibt der Bauplan reine Daten.
+ */
+export type { ZonenVorlage } from '../dokument';
+
+/**
+ * Bauplan: alles, was das Netz außer dem Dokument bestimmt — die **Ausstattung** des Dokuments (Version 1: Maul, Beine,
+ * Stil, Kasten, Augen, Gesicht, Zonen; Absicht) plus **Anzeige** (Öffnung, Schwung, Look, Käfiglinien, Atlas an). Nur Daten
+ * (Structured Clone), damit der Worker ihn bekommt.
+ */
+export type Bauplan = Ausstattung & {
+  /** Maul-Lage (Ausstattung oder Chip), Öffnung 0 … 1 (Pose) */
+  maul: MaulArt;
+  oeffnung: number;
+  /** Beine (Ausstattung oder Chip), Schwung in Grad (Pose) */
+  beine: BeinArt;
+  schwung: number;
+  /** Stil (Ausstattung oder Chip) */
+  stil: StilArt;
+  /** Earle-Look: Deskriptoren, Augen, Atlas, Gesicht, Wangen; ohne Look nur Dreiecke */
+  earle: boolean;
+  /** Käfigkanten als Liniensegmente (Röntgen) */
+  kaefigLinien: boolean;
+  /** Zonen-Atlas an (Standard) oder prozedurale Zonen */
+  atlas?: boolean;
+};
+
+export const BAUPLAN_STANDARD: Bauplan = { maul: 'aus', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false };
+
+export type WesenInfo = {
+  kaefigPunkte: number;
+  feinPunkte: number;
+  /** Naht → Kurve, max und Mittel (px bei 461 px je Kachel) */
+  nahtMax: number;
+  nahtMittel: number;
+  /** Zeiten (ms) */
+  ableitung: number;
+  zug: number;
+  ecken: number;
+  schnell: boolean;
+};
+
+export type WesenNetz = {
+  positionen: Float32Array;
+  normalen: Float32Array;
+  /** 16 Deskriptor-Floats je Ecke (nur mit Earle-Look) */
+  deskriptoren: Float32Array | null;
+  hoehe: number;
+  augen: Auge[];
+  /** Käfigkanten als Liniensegmente (Röntgen), sonst null */
+  kaefigLinien: Float32Array | null;
+  kaefigFarben: Float32Array | null;
+  /** Lippenband-Breite (Welt) bei Maul, sonst 0 */
+  lippenBand: number;
+  stil: StilArt;
+  /** Körpermitte (Schwerpunkt) fürs Feuer/Gas-Material */
+  mitte: V3;
+  /** Ruhelage je Ecke (unposiert) bei Posen, sonst null */
+  ruhe: Float32Array | null;
+  gesicht: Gesicht | null;
+  zaehne: { positionen: Float32Array; normalen: Float32Array; anteil: Float32Array } | null;
+  atlas: AtlasDaten | null;
+  info: WesenInfo;
+};
+
+/** Zwischenstand für den nächsten Bau: Ableitung (Pose statt Umbau) und Klingenstand (Wehen je Bild). */
+export type WesenStand = {
+  dok: Dokument;
+  /** Wert-Schlüssel von Profilen, Spanten, Maßstab und Bauplan-Form (Worker-Nachrichten sind Kopien, Identität trägt nicht) */
+  schluessel: string;
+  abl: Ableitung;
+  maul: MaulArt;
+  beine: BeinArt;
+  klingen: KlingenStand | null;
+};
+
+const PX = 461;
+const uhr = (globalThis as { performance?: { now(): number } }).performance;
+const jetzt = () => (uhr ? uhr.now() : Date.now());
+
+// ---------- Prüfwesen ----------
+
+/** Tiger (Bild 9): Bauchfeld hart mit welliger Kante, Rückenfeld weich auslaufend, Latz an der Brust oben hart, unten weich. */
+export function tigerZonen(): ZonenVorlage[] {
+  const welle: { x: number; y: number; weich: number }[] = [];
+  for (let i = 0; i <= 8; i++) {
+    const t = i / 8;
+    welle.push({ x: 1.2 + (-0.2 - 1.2) * t, y: 0.4 + 0.03 * Math.sin(t * Math.PI * 5), weich: 0.004 });
+  }
+  const bauch: ZonenVorlage = { ansicht: 'seite', punkte: [{ x: -0.2, y: -0.2, weich: 0.004 }, { x: 1.2, y: -0.2, weich: 0.004 }, ...welle] };
+  const ruecken: ZonenVorlage = { ansicht: 'seite', punkte: [{ x: -0.2, y: 0.62, weich: 0.12 }, { x: 1.2, y: 0.62, weich: 0.12 }, { x: 1.2, y: 1.2, weich: 0.12 }, { x: -0.2, y: 1.2, weich: 0.12 }] };
+  const latz: ZonenVorlage = {
+    ansicht: 'seite',
+    punkte: [
+      { x: -0.05, y: 0.5, weich: 0.005 },
+      { x: 0.34, y: 0.5, weich: 0.005 },
+      { x: 0.44, y: 0.26, weich: 0.05 },
+      { x: 0.3, y: -0.05, weich: 0.09 },
+      { x: -0.05, y: -0.05, weich: 0.09 },
+    ],
+  };
+  return [bauch, ruecken, latz];
+}
+
+/** Ausstattung je Prüfwesen (Phase 0): der Tiger bekommt Kastenschnauze, Maullinie, Gesicht, Wangen, Zonen; für Dokumente ohne Ausstattung. */
+export function pruefwesenBauplan(name: string): Ausstattung {
+  if (name === 'tiger') {
+    return {
+      kasten: { fVorn: 0.02, fHinten: 0.15, fRund: 0.25, haerte: 0.85 },
+      maulLinie: { fv: [{ f: 0.02, v: 0.28 }, { f: 0.1, v: 0.26 }, { f: 0.17, v: 0.33 }], unterSpitze: 0 },
+      maulOptionen: { winkelUnten: 30, winkelOben: 26, band: 1 },
+      augen: { ring: 4, j: 3, groesse: 0.1 },
+      gesicht: true,
+      wangen: true,
+      gesichtMaske: { voll: 2, aus: 6, oben: 0.75 },
+      lippenBand: 0.009,
+      zonen: tigerZonen(),
+    };
+  }
+  return {};
+}
+
+// ---------- Helfer ----------
+
+function gleicheTopologie(a: Dokument, b: Dokument): boolean {
+  return a.profile.seite.knoten.length === b.profile.seite.knoten.length && a.profile.front === b.profile.front && a.profile.top === b.profile.top && a.skalierung === b.skalierung;
+}
+
+function nahtAbweichung(abl: Ableitung, dok: Dokument): { max: number; mittel: number } {
+  const u = umrissDicht(dok);
+  let max = 0;
+  let summe = 0;
+  const n = abl.naht.fein.length;
+  for (let k = 0; k < n; k++) {
+    const i = abl.naht.fein[k]!;
+    const p: V2 = { x: abl.fein[3 * i]!, y: abl.fein[3 * i + 1]! };
+    let best = Infinity;
+    const m = u.pts.length;
+    for (let s = 0; s < m; s++) {
+      const a = u.pts[s]!;
+      const b = u.pts[(s + 1) % m]!;
+      const abx = b.x - a.x;
+      const aby = b.y - a.y;
+      const l2 = abx * abx + aby * aby;
+      const f = l2 > 1e-18 ? Math.min(1, Math.max(0, ((p.x - a.x) * abx + (p.y - a.y) * aby) / l2)) : 0;
+      const d = Math.hypot(a.x + abx * f - p.x, a.y + aby * f - p.y);
+      if (d < best) best = d;
+    }
+    max = Math.max(max, best);
+    summe += best;
+  }
+  return { max: max * PX, mittel: n ? (summe / n) * PX : 0 };
+}
+
+const verketten = (a: Float32Array, b: Float32Array): Float32Array => {
+  const c = new Float32Array(a.length + b.length);
+  c.set(a);
+  c.set(b, a.length);
+  return c;
+};
+
+/** Deskriptoren je feinem Punkt → je Dreiecksecke in der Reihenfolge von `zuDreiecken` (Fächer je Fläche). */
+function jeEcke(d: Float32Array, flaechen: number[][]): Float32Array {
+  let ecken = 0;
+  for (const f of flaechen) ecken += 3 * Math.max(0, f.length - 2);
+  const out = new Float32Array(ecken * DESKRIPTOR_FLOATS);
+  let o = 0;
+  for (const f of flaechen) {
+    for (let i = 1; i < f.length - 1; i++) {
+      for (const v of [f[0]!, f[i]!, f[i + 1]!]) {
+        out.set(d.subarray(v * DESKRIPTOR_FLOATS, (v + 1) * DESKRIPTOR_FLOATS), o);
+        o += DESKRIPTOR_FLOATS;
+      }
+    }
+  }
+  return out;
+}
+
+/** Käfigkanten (Lagen `xyz`) als Segmente; Lippen und Tasche in Farbe. */
+function kaefigSegmente(abl: Ableitung, xyz: Float64Array): { punkte: Float32Array; farben: Float32Array } {
+  const k = abl.kaefig;
+  const punkte = new Float32Array(6 * k.nE);
+  const farben = new Float32Array(6 * k.nE);
+  const art = (abl as Partial<MaulErgebnis>).maul?.art ?? null;
+  for (let e = 0; e < k.nE; e++) {
+    const a = k.eA[e]!;
+    const b = k.eB[e]!;
+    punkte.set([xyz[3 * a]!, xyz[3 * a + 1]!, xyz[3 * a + 2]!, xyz[3 * b]!, xyz[3 * b + 1]!, xyz[3 * b + 2]!], 6 * e);
+    const aa = art ? art[a]! : 0;
+    const ab = art ? art[b]! : 0;
+    const farbe = k.eSchaerfe[e]! > 0 ? [0.1, 0.1, 0.1] : aa >= 3 || ab >= 3 ? [0.75, 0.2, 0.3] : aa > 0 && ab > 0 ? [0.95, 0.4, 0.1] : [0.5, 0.52, 0.55];
+    farben.set([...farbe, ...farbe], 6 * e);
+  }
+  return { punkte, farben };
+}
+
+/** Ein gemaltes Schlitzauge rechts am Kopf am Vorlagen-Ringpunkt, gespiegelt links; Größe als Anteil der Höhe. */
+function augenAm(abl: Ableitung, hoehe: number, wahl: { ring: number; j: number; groesse: number }): Auge[] {
+  const v = abl.vorlage;
+  const i = Math.min(wahl.ring, v.R - 1);
+  const j = Math.max(1, Math.min(v.N / 2 - 1, wahl.j));
+  const p = v.ringPunkt(i, j);
+  const f = abl.fein;
+  let mx = 0;
+  let my = 0;
+  let mz = 0;
+  for (let k = 0; k < v.N; k++) {
+    const r = v.ringPunkt(i, k);
+    mx += f[3 * r]!;
+    my += f[3 * r + 1]!;
+    mz += f[3 * r + 2]!;
+  }
+  mx /= v.N;
+  my /= v.N;
+  mz /= v.N;
+  const pos: V3 = [f[3 * p]!, f[3 * p + 1]!, f[3 * p + 2]!];
+  const n: V3 = [pos[0] - mx, pos[1] - my, pos[2] - mz];
+  const l = Math.hypot(...n) || 1;
+  const normale: V3 = [n[0] / l, n[1] / l, n[2] / l];
+  const groesse = wahl.groesse * hoehe;
+  return [
+    { pos, normale, groesse },
+    { pos: [pos[0], pos[1], -pos[2]], normale: [normale[0], normale[1], -normale[2]], groesse },
+  ];
+}
+
+// ---------- Klingen ----------
+
+const vorlagen = new Map<string, KlingenVorlage>();
+/** Klingenvorlagen werden je Form einmal gebaut (Matrix und Löser). */
+function vorlageFuer(form: Parameters<typeof klingenVorlage>[0]): KlingenVorlage {
+  const key = JSON.stringify(form);
+  let v = vorlagen.get(key);
+  if (!v) {
+    v = klingenVorlage(form);
+    vorlagen.set(key, v);
+  }
+  return v;
+}
+
+/** Klingen (ohne Wehen) als Dreiecke mit Deskriptoren und Atlas-Koordinaten je Ecke aus dem Fußpunkt, Höhenanteil je Ecke. */
+function klingenStatisch(kv: KlingenVorlage, lagen: readonly KlingenLage[], feinDesk: Float32Array | null, punktAtl: Float32Array | null = null): { positionen: Float32Array; normalen: Float32Array; desk: Float32Array | null; anteil: Float32Array; atlas: Float32Array | null } {
+  const klingen = klingenBauen(kv, lagen);
+  const fl = alleFlaechen(klingenNetz(kv));
+  const teile: { positionen: Float32Array; normalen: Float32Array; lage: KlingenLage }[] = [];
+  for (const k of klingen) {
+    const pts: V3[] = [];
+    for (let i = 0; i < k.fein.length / 3; i++) pts.push([k.fein[3 * i]!, k.fein[3 * i + 1]!, k.fein[3 * i + 2]!]);
+    teile.push({ ...zuDreiecken({ punkte: pts, flaechen: fl, schaerfe: new Map() }, 60), lage: k.lage });
+  }
+  const n = teile.reduce((a, b) => a + b.positionen.length, 0);
+  const positionen = new Float32Array(n);
+  const normalen = new Float32Array(n);
+  const anteil = new Float32Array(n / 3);
+  const desk = feinDesk ? new Float32Array((n / 3) * DESKRIPTOR_FLOATS) : null;
+  const atlas = punktAtl ? new Float32Array((n / 3) * 2) : null;
+  let o = 0;
+  for (const t of teile) {
+    positionen.set(t.positionen, o);
+    normalen.set(t.normalen, o);
+    const l = t.lage;
+    if (atlas && punktAtl) {
+      const b = Math.min(punktAtl.length / 2 - 1, l.basis ?? 0);
+      for (let e = 0; e < t.positionen.length / 3; e++) atlas.set(punktAtl.subarray(2 * b, 2 * b + 2), (o / 3 + e) * 2);
+    }
+    for (let e = 0; e < t.positionen.length / 3; e++) {
+      const dx = t.positionen[3 * e]! - l.fuss[0];
+      const dy = t.positionen[3 * e + 1]! - l.fuss[1];
+      const dz = t.positionen[3 * e + 2]! - l.fuss[2];
+      const th = Math.min(1, Math.max(0, (dx * l.achse[0] + dy * l.achse[1] + dz * l.achse[2]) / Math.max(1e-6, l.laenge)));
+      anteil[o / 3 + e] = th;
+      if (desk && feinDesk) {
+        const b = Math.min(feinDesk.length / DESKRIPTOR_FLOATS - 1, l.basis ?? 0);
+        const o2 = (o / 3 + e) * DESKRIPTOR_FLOATS;
+        desk.set(feinDesk.subarray(b * DESKRIPTOR_FLOATS, (b + 1) * DESKRIPTOR_FLOATS), o2);
+        desk[o2 + 8] = 0.6 * (1 - th) * (1 - th);
+      }
+    }
+    o += t.positionen.length;
+  }
+  return { positionen, normalen, desk, anteil, atlas };
+}
+
+/** Wangenbüschel (Kranz um die untere Gesichtshälfte) als Zacken; Schnauze zeigt nach −x. */
+function wangen(haut: Haut, hoehe: number): KlingenLage[] {
+  const lagen: KlingenLage[] = [];
+  const pol = (56 * Math.PI) / 180;
+  for (let i = 0; i < 14; i++) {
+    const phi = ((95 + (170 * i) / 13) * Math.PI) / 180;
+    const r: V3 = [-Math.cos(pol), Math.sin(pol) * Math.cos(phi), Math.sin(pol) * Math.sin(phi)];
+    const hp = hautPunkt(haut, r);
+    const achse = gekaemmt([hp.n[0] * 0.5 + 0.5, hp.n[1] * 0.5 - 0.15, hp.n[2] * 0.5], 0);
+    const quer: V3 = [0, 1, 0];
+    const g = 0.11 * hoehe;
+    lagen.push({ fuss: hp.p, achse, quer, laenge: g, breite: 0.5 * g, phase: 0, basis: hp.i });
+  }
+  return lagen;
+}
+
+/** Ohren: zwei runde Tropfen oben seitlich am Kopf, leicht nach außen gekämmt. */
+function ohren(haut: Haut, hoehe: number): KlingenLage[] {
+  const lagen: KlingenLage[] = [];
+  for (const seite of [1, -1]) {
+    const r: V3 = [-0.2, 0.8, 0.6 * seite];
+    const hp = hautPunkt(haut, r);
+    const g = 0.12 * hoehe;
+    lagen.push({ fuss: hp.p, achse: gekaemmt(hp.n, 0.5), quer: [1, 0, 0], laenge: g, breite: 1.1 * g, phase: 0, basis: hp.i });
+  }
+  return lagen;
+}
+
+/** Klingenstand für die Animation (Wehen als Käfig-Pose je Bild). */
+export type KlingenStand = {
+  stil: StilArt;
+  vorlage: KlingenVorlage;
+  lagen: KlingenLage[];
+  zusatzVorlage: KlingenVorlage | null;
+  haut: Haut;
+  hoehe: number;
+  saat: number;
+  /** Körper-Dreiecke (statisch) und Deskriptoren je Ecke */
+  koerper: { positionen: Float32Array; normalen: Float32Array; desk: Float32Array | null; feinDesk: Float32Array | null };
+  hebung: number;
+};
+
+/** Klingen (und Flämmchen) für Zeit t: Dreiecke aller Klingen hintereinander, Deskriptoren je Ecke (Fell). */
+function klingenDreiecke(st: KlingenStand, zeit: number): { positionen: Float32Array; normalen: Float32Array; desk: Float32Array | null } {
+  const amp = st.stil === 'feuer' ? 0.32 : st.stil === 'gas' ? 0.22 : 0.07;
+  const om = st.stil === 'feuer' ? 2.6 : st.stil === 'gas' ? 1.1 : 1.6;
+  const klingen = klingenBauen(st.vorlage, st.lagen, (l) => amp * Math.sin(om * zeit + l.phase) + 0.3 * amp * Math.sin(1.9 * om * zeit + 2 * l.phase));
+  const fl = alleFlaechen(klingenNetz(st.vorlage));
+  const teile: { positionen: Float32Array; normalen: Float32Array; basis: number | undefined; lage: KlingenLage }[] = [];
+  for (const k of klingen) {
+    const pts: V3[] = [];
+    for (let i = 0; i < k.fein.length / 3; i++) pts.push([k.fein[3 * i]!, k.fein[3 * i + 1]!, k.fein[3 * i + 2]!]);
+    const t = zuDreiecken({ punkte: pts, flaechen: fl, schaerfe: new Map() }, 60);
+    teile.push({ ...t, basis: k.lage.basis, lage: k.lage });
+  }
+  if (st.zusatzVorlage) {
+    // abgelöste Flämmchen/Bläschen: steigen in 3 s auf und schrumpfen
+    const umlauf = (zeit / 3) % 1;
+    const lagen = flaemmchen(st.haut, st.hoehe, st.stil === 'gas' ? 6 : 4, st.saat + 5, umlauf);
+    const fz = klingenBauen(st.zusatzVorlage, lagen, (l) => 0.2 * Math.sin(3 * zeit + l.phase));
+    const nz = alleFlaechen(klingenNetz(st.zusatzVorlage));
+    for (const k of fz) {
+      const pts: V3[] = [];
+      for (let i = 0; i < k.fein.length / 3; i++) pts.push([k.fein[3 * i]!, k.fein[3 * i + 1]!, k.fein[3 * i + 2]!]);
+      const t = zuDreiecken({ punkte: pts, flaechen: nz, schaerfe: new Map() }, 60);
+      teile.push({ ...t, basis: k.lage.basis, lage: k.lage });
+    }
+  }
+  const n = teile.reduce((a, b) => a + b.positionen.length, 0);
+  const positionen = new Float32Array(n);
+  const normalen = new Float32Array(n);
+  const desk = st.koerper.feinDesk ? new Float32Array((n / 3) * DESKRIPTOR_FLOATS) : null;
+  let o = 0;
+  for (const t of teile) {
+    positionen.set(t.positionen, o);
+    normalen.set(t.normalen, o);
+    if (st.stil === 'fell' && t.basis !== undefined) {
+      // weiches Fell: Normalen der Büschel zu 65 % zur Hautnormale am Fuß (Licht läuft über den Pelz statt über jeden Zapfen)
+      const b = Math.min(st.haut.normalen.length / 3 - 1, t.basis);
+      const nx = st.haut.normalen[3 * b]!;
+      const ny = st.haut.normalen[3 * b + 1]!;
+      const nz = st.haut.normalen[3 * b + 2]!;
+      for (let e = 0; e < t.normalen.length / 3; e++) {
+        const i = o + 3 * e;
+        const mx = normalen[i]! * 0.35 + nx * 0.65;
+        const my = normalen[i + 1]! * 0.35 + ny * 0.65;
+        const mz = normalen[i + 2]! * 0.35 + nz * 0.65;
+        const l = Math.hypot(mx, my, mz) || 1;
+        normalen[i] = mx / l;
+        normalen[i + 1] = my / l;
+        normalen[i + 2] = mz / l;
+      }
+    }
+    if (desk && st.koerper.feinDesk) {
+      const b = Math.min(st.koerper.feinDesk.length / DESKRIPTOR_FLOATS - 1, t.basis ?? 0);
+      const zeile = st.koerper.feinDesk.subarray(b * DESKRIPTOR_FLOATS, (b + 1) * DESKRIPTOR_FLOATS);
+      const l = t.lage;
+      for (let e = 0; e < t.positionen.length / 3; e++) {
+        const o2 = (o / 3 + e) * DESKRIPTOR_FLOATS;
+        desk.set(zeile, o2);
+        const dx = t.positionen[3 * e]! - l.fuss[0];
+        const dy = t.positionen[3 * e + 1]! - l.fuss[1];
+        const dz = t.positionen[3 * e + 2]! - l.fuss[2];
+        const th = Math.min(1, Math.max(0, (dx * l.achse[0] + dy * l.achse[1] + dz * l.achse[2]) / Math.max(1e-6, l.laenge)));
+        desk[o2 + 8] = 0.7 * (1 - th) * (1 - th);
+      }
+    }
+    o += t.positionen.length;
+  }
+  return { positionen, normalen, desk };
+}
+
+/** Körper und Klingen zusammenfügen (Hebung auf die Füße bleibt erhalten). */
+function zusammen(st: KlingenStand, k: { positionen: Float32Array; normalen: Float32Array; desk: Float32Array | null }): { positionen: Float32Array; normalen: Float32Array; desk: Float32Array | null } {
+  const positionen = new Float32Array(st.koerper.positionen.length + k.positionen.length);
+  const normalen = new Float32Array(positionen.length);
+  positionen.set(st.koerper.positionen);
+  positionen.set(k.positionen, st.koerper.positionen.length);
+  normalen.set(st.koerper.normalen);
+  normalen.set(k.normalen, st.koerper.normalen.length);
+  if (st.hebung) for (let i = st.koerper.positionen.length + 1; i < positionen.length; i += 3) positionen[i]! += st.hebung;
+  let desk: Float32Array | null = null;
+  if (st.koerper.desk && k.desk) {
+    desk = new Float32Array(st.koerper.desk.length + k.desk.length);
+    desk.set(st.koerper.desk);
+    desk.set(k.desk, st.koerper.desk.length);
+  }
+  return { positionen, normalen, desk };
+}
+
+/** Animation (Beweis 5): Klingen für die Zeit t neu posieren; null ohne Klingen. */
+export function wesenAnimieren(stand: WesenStand | null, zeit: number): { positionen: Float32Array; normalen: Float32Array } | null {
+  if (!stand?.klingen) return null;
+  const k = klingenDreiecke(stand.klingen, zeit);
+  const z = zusammen(stand.klingen, k);
+  return { positionen: z.positionen, normalen: z.normalen };
+}
+
+// ---------- Bau ----------
+
+/** Zonen-Vorlage (relativ) → Welt-Form aus den Ruhe-Grenzen. */
+function zonenWelt(vorlagen: readonly ZonenVorlage[], g: { xMin: number; xMax: number; yMin: number; yMax: number; zMax: number }): ZonenForm[] {
+  const H = Math.max(1e-6, g.yMax - g.yMin);
+  const W = Math.max(1e-6, g.xMax - g.xMin);
+  return vorlagen.map((z) => ({
+    ansicht: z.ansicht,
+    punkte: z.punkte.map((p) => (z.ansicht === 'seite' ? { x: g.xMin + p.x * W, y: g.yMin + p.y * H, weich: p.weich * H } : z.ansicht === 'top' ? { x: g.xMin + p.x * W, y: (p.y - 0.5) * 2 * g.zMax, weich: p.weich * H } : { x: (p.x - 0.5) * 2 * g.zMax, y: g.yMin + p.y * H, weich: p.weich * H })),
+  }));
+}
+
+/**
+ * Wesen bauen: Dokument + Bauplan → Netz. `stand` ist der letzte Stand (gleiches Dokument und gleiche Maul-/Beinwahl →
+ * nur Pose, kein Umbau; `schnell` während Gesten → Zug am Seitenumriss statt Ableitung).
+ */
+export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: WesenStand | null, schnell = false): { netz: WesenNetz; stand: WesenStand } {
+  const plan: Bauplan = { ...BAUPLAN_STANDARD, ...planRoh };
+  const dok: Dokument = plan.kasten ? { ...dokRoh, spanten: kastenSpanten(dokRoh.profile.front, plan.kasten.fVorn, plan.kasten.fHinten, plan.kasten.fRund, plan.kasten.haerte) } : dokRoh;
+  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, k: dokRoh.skalierung, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: plan.maulOptionen ?? null, ba: plan.beinAnsaetze ?? null });
+  const gleich = stand !== null && stand.schluessel === schluessel;
+  const letzte = stand && gleich ? stand : null;
+  let abl: Ableitung;
+  let zug = 0;
+  let ableitung = 0;
+  const maul = plan.beine !== 'aus' ? 'aus' : plan.maul;
+  const beine = plan.beine;
+  let fein: Float64Array;
+  let xyz: Float64Array;
+  let gesteckt: { fein: Float64Array; abl: BeinErgebnis } | null = null;
+  if (beine !== 'aus') {
+    if (letzte && letzte.beine === beine && letzte.maul === 'aus') abl = letzte.abl;
+    else {
+      abl = ableitenMitBeinen(dok, plan.beinAnsaetze ?? [{ ring: 15, j: 6 }], beine);
+      ableitung = abl.zeiten.gesamt;
+    }
+    const t0 = jetzt();
+    const pose = beinPose(abl as BeinErgebnis, plan.schwung);
+    zug = jetzt() - t0;
+    fein = pose.fein;
+    xyz = pose.xyz;
+    if ((abl as BeinErgebnis).gesteckt.length) gesteckt = { fein: pose.gesteckt.length ? Float64Array.from(pose.gesteckt.flatMap((f) => Array.from(f))) : new Float64Array(0), abl: abl as BeinErgebnis };
+  } else if (maul !== 'aus') {
+    if (letzte && letzte.maul === maul && letzte.beine === 'aus') abl = letzte.abl;
+    else {
+      const linie = plan.maulLinie ?? maulLinieVorlage(dok, maul);
+      abl = ableitenMitMaul(dok, linie, {}, { ...maulOptionenVorlage(maul), ...(plan.maulOptionen ?? {}) });
+      ableitung = abl.zeiten.gesamt;
+    }
+    const t0 = jetzt();
+    const pose = maulPose(abl as MaulErgebnis, plan.oeffnung);
+    zug = jetzt() - t0;
+    fein = pose.fein;
+    xyz = pose.xyz;
+  } else if (schnell && stand && stand.maul === 'aus' && stand.beine === 'aus' && gleicheTopologie(stand.dok, dok)) {
+    const r = seiteZiehen(stand.abl, dok);
+    abl = r;
+    zug = r.zugZeit.leiter + r.zugZeit.ziele + r.zugZeit.loeser + r.zugZeit.matrix;
+    fein = abl.fein;
+    xyz = abl.kaefig.xyz;
+  } else if (letzte && letzte.maul === 'aus' && letzte.beine === 'aus') {
+    abl = letzte.abl;
+    fein = abl.fein;
+    xyz = abl.kaefig.xyz;
+  } else {
+    abl = ableiten(dok);
+    ableitung = abl.zeiten.gesamt;
+    fein = abl.fein;
+    xyz = abl.kaefig.xyz;
+  }
+  const letzteStufe = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
+  const punkte: V3[] = [];
+  for (let i = 0; i < fein.length / 3; i++) punkte.push([fein[3 * i]!, fein[3 * i + 1]!, fein[3 * i + 2]!]);
+  const flaechen = alleFlaechen(letzteStufe);
+  const t0 = zuDreiecken({ punkte, flaechen, schaerfe: new Map() }, 40);
+  // angesteckte Beine: eigene feine Netze anhängen (Deskriptoren der Hüfte)
+  let t = t0;
+  let gesteckteEcken = 0;
+  if (gesteckt) {
+    const teile: { positionen: Float32Array; normalen: Float32Array }[] = [t0];
+    let off = 0;
+    for (const g of gesteckt.abl.gesteckt) {
+      const nF = g.fein.length / 3;
+      const pts: V3[] = [];
+      for (let i = 0; i < nF; i++) pts.push([gesteckt.fein[off + 3 * i]!, gesteckt.fein[off + 3 * i + 1]!, gesteckt.fein[off + 3 * i + 2]!]);
+      off += 3 * nF;
+      const fl = alleFlaechen(g.unterteilung.stufen[g.unterteilung.stufen.length - 1]!.kaefig);
+      const tg = zuDreiecken({ punkte: pts, flaechen: fl, schaerfe: new Map() }, 40);
+      gesteckteEcken += tg.positionen.length / 3;
+      teile.push(tg);
+    }
+    const nPos = teile.reduce((a, b) => a + b.positionen.length, 0);
+    const positionen = new Float32Array(nPos);
+    const normalen = new Float32Array(nPos);
+    let o = 0;
+    for (const x of teile) {
+      positionen.set(x.positionen, o);
+      normalen.set(x.normalen, o);
+      o += x.positionen.length;
+    }
+    t = { positionen, normalen };
+  }
+  let hoehe = 0;
+  for (const p of punkte) hoehe = Math.max(hoehe, p[1]);
+  // mit Beinen steht der Körper auf den Füßen: alles so heben, dass der tiefste Punkt auf dem Boden liegt
+  let hebung = 0;
+  if (beine !== 'aus') {
+    let yMin = Infinity;
+    for (let i = 1; i < t.positionen.length; i += 3) yMin = Math.min(yMin, t.positionen[i]!);
+    if (yMin < 0) {
+      for (let i = 1; i < t.positionen.length; i += 3) t.positionen[i]! -= yMin;
+      hoehe -= yMin;
+      hebung = -yMin;
+    }
+  }
+  const earle = plan.earle;
+  const feinDeskAlle = earle ? deskriptoren(abl, plan.gesichtMaske) : null;
+  let desk = feinDeskAlle ? jeEcke(feinDeskAlle, flaechen) : null;
+  if (desk && feinDeskAlle && gesteckteEcken > 0) {
+    const alle = new Float32Array(desk.length + gesteckteEcken * DESKRIPTOR_FLOATS);
+    alle.set(desk);
+    const a0 = plan.beinAnsaetze?.[0] ?? { ring: 15, j: 6 };
+    const hp = abl.vorlage.ringPunkt(a0.ring, a0.j);
+    const huefte = feinDeskAlle.subarray(hp * DESKRIPTOR_FLOATS, (hp + 1) * DESKRIPTOR_FLOATS);
+    for (let e = 0; e < gesteckteEcken; e++) alle.set(huefte, desk.length + e * DESKRIPTOR_FLOATS);
+    desk = alle;
+  }
+  // Zonen-Atlas (Beweis 4, Plan 8.2): Kacheln je Käfigfläche, Zonen als Vektorformen in der Ruhelage gerastert
+  let atlas: AtlasDaten | null = null;
+  let punktAtl: Float32Array | null = null;
+  if (earle && (plan.atlas ?? true) && plan.zonen && plan.zonen.length > 0 && gesteckteEcken === 0) {
+    const rf = abl.fein;
+    const g = { xMin: Infinity, xMax: -Infinity, yMin: Infinity, yMax: -Infinity, zMax: 0 };
+    for (let i = 0; i < rf.length / 3; i++) {
+      g.xMin = Math.min(g.xMin, rf[3 * i]!);
+      g.xMax = Math.max(g.xMax, rf[3 * i]!);
+      g.yMin = Math.min(g.yMin, rf[3 * i + 1]!);
+      g.yMax = Math.max(g.yMax, rf[3 * i + 1]!);
+      g.zMax = Math.max(g.zMax, Math.abs(rf[3 * i + 2]!));
+    }
+    const k: AtlasKachelung = kachelung(abl);
+    const r = zonenRastern(k, flaechen, rf, zonenWelt(plan.zonen, g));
+    atlas = { ecken: atlasEcken(k), abstand: r.abstand, weich: r.weich, breite: k.breite, hoehe: k.hoehe };
+    punktAtl = punktAtlas(k, flaechen, rf.length / 3);
+  }
+  const augen = earle || plan.stil === 'feuer' || plan.stil === 'gas' ? augenAm(abl, hoehe, plan.augen ?? { ring: 2, j: 2, groesse: 0.11 }) : [];
+  const ab = nahtAbweichung(abl, dok);
+  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0 };
+  const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
+  const lippenBand = maul !== 'aus' && beine === 'aus' ? (plan.lippenBand ?? 0.03) * hoehe : 0;
+  const mitte: V3 = [0, 0, 0];
+  for (const p of punkte) for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! + p[d]! / punkte.length;
+  // Ruhelage je Ecke (unposiert) bei Posen, damit Muster und Zonen nicht schwimmen
+  let ruhe: Float32Array | null = null;
+  if (maul !== 'aus' || beine !== 'aus') {
+    const ruhePunkte: V3[] = [];
+    for (let i = 0; i < abl.fein.length / 3; i++) ruhePunkte.push([abl.fein[3 * i]!, abl.fein[3 * i + 1]!, abl.fein[3 * i + 2]!]);
+    ruhe = zuDreiecken({ punkte: ruhePunkte, flaechen, schaerfe: new Map() }, 40).positionen;
+    if (hebung) for (let i = 1; i < ruhe.length; i += 3) ruhe[i]! += hebung;
+    if (ruhe.length !== t.positionen.length) ruhe = null;
+  }
+  // Zähne am Zahnfleisch des posierten Käfigs
+  let zaehne: WesenNetz['zaehne'] = null;
+  if (maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul) {
+    const zahnVorlage = vorlageFuer({ ringe: 4, profil: 'zacke', dicke: 0.6, einsenken: 0.3, biegung: 0.12, stufen: 1 });
+    const z = klingenStatisch(zahnVorlage, zahnLagen(abl as MaulErgebnis, xyz, hoehe), null);
+    zaehne = { positionen: z.positionen, normalen: z.normalen, anteil: z.anteil };
+  }
+  // Gesicht: Dreiecksnase oben an der Schnauzenfront, Scharte hinab zur Lippe, alles in der Ruhelage
+  let gesicht: Gesicht | null = null;
+  if (plan.gesicht) {
+    const rf = abl.fein;
+    const sp = abl.vorlage.naht.spitzeVorn;
+    const sx = rf[3 * sp]!;
+    let oben: V3 = [sx, rf[3 * sp + 1]!, 0];
+    for (let i = 0; i < rf.length / 3; i++) {
+      if (Math.abs(rf[3 * i + 2]!) < 0.02 * hoehe && rf[3 * i]! < sx + 0.03 * hoehe && rf[3 * i + 1]! > oben[1]) oben = [rf[3 * i]!, rf[3 * i + 1]!, 0];
+    }
+    const lippe = (abl as Partial<MaulErgebnis>).maul ? (abl as MaulErgebnis).maul.pfad[0]! : -1;
+    const unten: V3 = lippe >= 0 ? [rf[3 * lippe]!, rf[3 * lippe + 1]!, rf[3 * lippe + 2]!] : [oben[0], oben[1] - 0.2 * hoehe, 0];
+    const nH = 0.045 * hoehe;
+    const nm: V3 = [oben[0] - 0.004, oben[1] - 0.055 * hoehe + hebung, 0];
+    gesicht = { nase: nm, oben: [0, 1, 0], rechts: [0, 0, 1], radius: 0.046 * hoehe, hoehe: nH, philtrumA: [nm[0], nm[1] - nH, 0], philtrumB: [unten[0] - 0.004, unten[1] + hebung, unten[2]], breite: 0.004 * hoehe };
+  }
+  // Wangenzacken und Ohren als statische Klingen, Deskriptoren und Atlas vom Fußpunkt
+  if (plan.wangen && earle) {
+    const zackenVorlage = vorlageFuer({ ringe: 4, profil: 'zacke', dicke: 0.4, einsenken: 0.3, biegung: 0.1, stufen: 1 });
+    const ohrVorlage = vorlageFuer({ ringe: 4, profil: 'tropfen', dicke: 0.55, einsenken: 0.4, biegung: 0.05, stufen: 1 });
+    const haut = hautAus(fein);
+    const w1 = klingenStatisch(zackenVorlage, wangen(haut, hoehe), feinDeskAlle, punktAtl);
+    const w2 = klingenStatisch(ohrVorlage, ohren(haut, hoehe), feinDeskAlle, punktAtl);
+    const w = { positionen: verketten(w1.positionen, w2.positionen), normalen: verketten(w1.normalen, w2.normalen), desk: w1.desk && w2.desk ? verketten(w1.desk, w2.desk) : null, atlas: w1.atlas && w2.atlas ? verketten(w1.atlas, w2.atlas) : null };
+    if (atlas && w.atlas) atlas = { ...atlas, ecken: verketten(atlas.ecken, w.atlas) };
+    t = { positionen: verketten(t.positionen, w.positionen), normalen: verketten(t.normalen, w.normalen) };
+    if (desk && w.desk) desk = verketten(desk, w.desk);
+    if (ruhe) ruhe = verketten(ruhe, w.positionen);
+  }
+  // Stile: Klingen (Zungen, Schwaden, Büschel) als Käfige am Körper; Animation über `wesenAnimieren`
+  const stil = plan.stil;
+  let klingen: KlingenStand | null = null;
+  let positionen = t.positionen;
+  let normalen = t.normalen;
+  if (stil !== 'fest') {
+    const haut = hautAus(fein);
+    const saat = 7;
+    const form = stil === 'feuer' ? KLINGE_FLAMME : stil === 'gas' ? { ...KLINGE_SCHWADE, biegung: 0.1, kringel: 3.4 } : { ...KLINGE_BUESCHEL, profil: 'flamme' as const, dicke: 0.3, biegung: 0.25 };
+    const vorlage = vorlageFuer(form);
+    const lagen = stil === 'feuer' ? zungenAmScheitel(haut, hoehe, 2, 24, saat, ZUNGEN_FEUER) : stil === 'gas' ? zungenAmScheitel(haut, hoehe, 2, 34, saat, ZUNGEN_GAS) : bueschelAufHaut(haut, hoehe, 680, 0.058, -0.25, saat);
+    const zusatzVorlage = stil === 'fell' ? null : vorlageFuer(stil === 'gas' ? { ...KLINGE_SCHWADE, profil: 'kugel', dicke: 1, biegung: 0, ringe: 6, stufen: 2 } : { ...KLINGE_FLAMME, ringe: 4, stufen: 1 });
+    klingen = { stil, vorlage, lagen, zusatzVorlage, haut, hoehe, saat, koerper: { positionen: t.positionen, normalen: t.normalen, desk, feinDesk: desk && stil === 'fell' ? feinDeskAlle : null }, hebung: 0 };
+    const k = klingenDreiecke(klingen, 0);
+    const z = zusammen(klingen, k);
+    positionen = z.positionen;
+    normalen = z.normalen;
+    desk = z.desk;
+  }
+  const netz: WesenNetz = {
+    positionen,
+    normalen,
+    deskriptoren: stil === 'feuer' || stil === 'gas' ? null : desk,
+    hoehe,
+    augen,
+    kaefigLinien: linien ? linien.punkte : null,
+    kaefigFarben: linien ? linien.farben : null,
+    lippenBand,
+    stil,
+    mitte,
+    ruhe: ruhe && ruhe.length === positionen.length ? ruhe : null,
+    gesicht,
+    zaehne,
+    atlas: stil === 'fest' ? atlas : null,
+    info,
+  };
+  return { netz, stand: { dok, schluessel, abl, maul, beine, klingen } };
+}
+
+/** Puffer eines Netzes (zum Übertragen aus dem Worker). */
+export function netzPuffer(netz: WesenNetz): ArrayBuffer[] {
+  const out: ArrayBuffer[] = [netz.positionen.buffer as ArrayBuffer, netz.normalen.buffer as ArrayBuffer];
+  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich]) {
+    if (a && !out.includes(a.buffer as ArrayBuffer)) out.push(a.buffer as ArrayBuffer);
+  }
+  return out;
+}
