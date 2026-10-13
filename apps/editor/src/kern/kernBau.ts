@@ -15,8 +15,9 @@ export type KernInfo = WesenInfo;
 export type KernNetz = WesenNetz;
 
 const q = new URLSearchParams(location.search);
-const startLook: Look = q.get('look') === 'earle' ? 'earle' : 'matcap';
-const startPalette = q.get('palette') && PALETTEN[q.get('palette')!] ? q.get('palette')! : 'tiger';
+// Earle-Look von der ersten Sekunde an (Plan 9.1); `?look=matcap` zeigt die Prüfansicht, `?palette=` wählt die Farben
+const startLook: Look = q.get('look') === 'matcap' ? 'matcap' : 'earle';
+const startPalette = q.get('palette') && PALETTEN[q.get('palette')!] ? q.get('palette')! : 'blob';
 const startMaul: MaulArt = (['vorn', 'unten', 'hals'] as const).find((a) => a === q.get('maul')) ?? 'aus';
 const startBeine: BeinArt = (['verschmolzen', 'angesteckt'] as const).find((a) => a === q.get('beine')) ?? 'aus';
 const startStil: StilArt = (['feuer', 'gas', 'fell'] as const).find((a) => a === q.get('stil')) ?? 'fest';

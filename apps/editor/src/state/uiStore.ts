@@ -154,7 +154,8 @@ export const useUi = create<UiState>((set, get) => ({
   breitenAnzeige: null,
   kantenSicht: 'zeigen',
   zebra: false,
-  bauweise: 'bisher',
+  // Phase 1 / M3 (14.10. nachts): der Käfig-Kern ist die Bauweise des Editors; die Versuche bleiben als Tabs zum Vergleichen
+  bauweise: 'kern',
   schnittRegel: 'halb',
   schnittUeberblenden: 'feld',
   wirbelBiegung: { winkel: 0, bei: 0.5 },
