@@ -55,9 +55,20 @@ function naechsterKnoten(dok: Dokument, p: V2): string {
   return best;
 }
 
-function profilZug(dok: Dokument): V2[] {
+function profilZug(dok: Dokument, ansicht: 'seite' | 'front' | 'top' = 'seite'): V2[] {
   const s = dok.skalierung;
-  return pfadAbtasten(vollerPfad(dok.profile.seite), 160).map((p) => ({ x: p.x * s, y: p.y * s }));
+  return pfadAbtasten(vollerPfad(dok.profile[ansicht]), 160).map((p) => ({ x: p.x * s, y: p.y * s }));
+}
+
+/** Umriss der Projektion des feinen Netzes gegen das Profil der Ansicht (px, beide Richtungen). */
+function ansichtMessen(abl: ReturnType<typeof ableiten>, dok: Dokument, ansicht: 'front' | 'top'): { hin: number; her: number } {
+  const fein = abl.fein;
+  const punkte: V3[] = [];
+  for (let i = 0; i < fein.length / 3; i++) punkte.push([fein[3 * i]!, fein[3 * i + 1]!, fein[3 * i + 2]!]);
+  const letzte = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
+  const umriss = umrissAusNetz({ punkte, flaechen: alleFlaechen(letzte), schaerfe: new Map() }, ansicht, 900)[0] ?? [];
+  const kurve = profilZug(dok, ansicht);
+  return { hin: abstandZuZug(umriss, kurve).max * PX, her: abstandZuZug(kurve, umriss).max * PX };
 }
 
 function messen(name: string, dok: Dokument, optionen: Parameters<typeof ableiten>[1] = {}) {
@@ -77,15 +88,17 @@ function messen(name: string, dok: Dokument, optionen: Parameters<typeof ableite
   const letzte = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
   const umriss = umrissAusNetz({ punkte, flaechen: alleFlaechen(letzte), schaerfe: new Map() }, 'seite', 1200);
   const silhouette = abstandZuZug(umriss[0] ?? [], kurve);
+  const front = ansichtMessen(abl, dok, 'front');
+  const top = ansichtMessen(abl, dok, 'top');
   const z = abl.zeiten;
   console.log(
     `${name}: Käfig ${abl.kaefig.n} Punkte, fein ${nF} Punkte, ${nichtNull(abl.unterteilung.grenze)} Gewichte, Naht ${naht.length} Punkte, Ecken ${JSON.stringify(abl.ecken)} Spitzen ${JSON.stringify(abl.spitzen ?? null)}; ` +
       `Naht→Kurve max ${(hin.max * PX).toFixed(2)} px (Ø ${(hin.mittel * PX).toFixed(2)}), Kurve→Naht max ${(zurueck.max * PX).toFixed(2)} px; ` +
-      `Umriss→Kurve max ${(silhouette.max * PX).toFixed(2)} px (Ø ${(silhouette.mittel * PX).toFixed(2)}, ${umriss.length} Züge); ` +
+      `Umriss→Kurve max ${(silhouette.max * PX).toFixed(2)} px (Ø ${(silhouette.mittel * PX).toFixed(2)}, ${umriss.length} Züge); Front ${front.hin.toFixed(1)}/${front.her.toFixed(1)} px, Top ${top.hin.toFixed(1)}/${top.her.toFixed(1)} px; ` +
       `größte Abweichung bei (${hin.ort.x.toFixed(3)}, ${hin.ort.y.toFixed(3)}) nahe ${naechsterKnoten(dok, hin.ort)}; Kurve→Naht bei (${zurueck.ort.x.toFixed(3)}, ${zurueck.ort.y.toFixed(3)}) nahe ${naechsterKnoten(dok, zurueck.ort)}; ` +
-      `Zeiten ms: Leiter ${z.leiter.toFixed(0)}, Dicke ${z.dicke.toFixed(0)}, Matrix ${z.matrix.toFixed(0)}, Löser ${z.loeser.toFixed(0)}, Ziele+Lösen+Netz ${z.ziele.toFixed(0)}, gesamt ${z.gesamt.toFixed(0)}`,
+      `Zeiten ms: Leiter ${z.leiter.toFixed(0)}, Breiten ${z.breiten.toFixed(0)}, Matrix ${z.matrix.toFixed(0)}, Löser ${z.loeser.toFixed(0)}, Ziele+Lösen+Netz ${z.ziele.toFixed(0)}, gesamt ${z.gesamt.toFixed(0)}`,
   );
-  return { abl, hin, zurueck, silhouette, nahtPunkte: naht.length };
+  return { abl, hin, zurueck, silhouette, front, top, nahtPunkte: naht.length };
 }
 
 describe('Beweis 1: Kern-Tempo und Treue', () => {
@@ -114,6 +127,57 @@ describe('Beweis 1: Kern-Tempo und Treue', () => {
   it('Überhang-Ente (Florian 13.10.): Naht ≤ 2 px ohne Sonderregel', () => {
     const r = messen('Überhang', dokumentLesen(ueberhangRoh));
     expect(r.hin.max * PX).toBeLessThan(2);
+  });
+
+  it('Kasten in der Front: flache Seiten bleiben flach, Ecken werden Längsfalten', () => {
+    const dok = neuesDokument('Kasten');
+    const r = 0.265;
+    // Front als Kasten (rechte Hälfte, Achse senkrecht): oben Achse → Ecke oben rechts → Ecke unten rechts → unten Achse
+    const o = { x: 0, y: 0 };
+    const kasten: Dokument['profile']['front'] = {
+      art: 'halb',
+      achse: 'senkrecht',
+      knoten: [
+        { p: { x: 0, y: 2 * r }, ein: o, aus: o, art: 'glatt' },
+        { p: { x: 0.8 * r, y: 2 * r }, ein: o, aus: o, art: 'ecke', haerte: 1 },
+        { p: { x: 0.8 * r, y: 0 }, ein: o, aus: o, art: 'ecke', haerte: 1 },
+        { p: { x: 0, y: 0 }, ein: o, aus: o, art: 'glatt' },
+      ],
+    };
+    const d: Dokument = { ...dok, profile: { ...dok.profile, front: kasten } };
+    const res = messen('Kasten-Kugel', d);
+    // Front-Umriss folgt dem Kasten (flache Seiten); Längsfalte: Flächennormalen um die Ecken-Längskante knicken ≈ 90°
+    expect(res.front.hin).toBeLessThan(2.5);
+    const abl = res.abl;
+    const v = abl.vorlage;
+    const letzte = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
+    const f = abl.fein;
+    // Käfigpunkt der oberen rechten Ecke (Ring in der Mitte, j = Stützstelle der Ecke) hat auf Stufe 3 denselben Index
+    let maxWinkel = 0;
+    for (let i = 4; i < v.R - 4; i++) {
+      for (let j = 1; j < v.N / 2; j++) {
+        const p = v.ringPunkt(i, j);
+        const normalen: [number, number, number][] = [];
+        for (let k = letzte.vFStart[p]!; k < letzte.vFStart[p + 1]!; k++) {
+          const fl = letzte.vFlaechen[k]!;
+          const h0 = letzte.fStart[fl]!;
+          const a = letzte.fVerts[h0]!;
+          const b = letzte.fVerts[h0 + 1]!;
+          const c = letzte.fVerts[h0 + 2]!;
+          const ux = f[3 * b]! - f[3 * a]!, uy = f[3 * b + 1]! - f[3 * a + 1]!, uz = f[3 * b + 2]! - f[3 * a + 2]!;
+          const wx = f[3 * c]! - f[3 * a]!, wy = f[3 * c + 1]! - f[3 * a + 1]!, wz = f[3 * c + 2]! - f[3 * a + 2]!;
+          const n: [number, number, number] = [uy * wz - uz * wy, uz * wx - ux * wz, ux * wy - uy * wx];
+          const l = Math.hypot(...n) || 1;
+          normalen.push([n[0] / l, n[1] / l, n[2] / l]);
+        }
+        for (let x = 0; x < normalen.length; x++) for (let y = x + 1; y < normalen.length; y++) {
+          const d = normalen[x]![0] * normalen[y]![0] + normalen[x]![1] * normalen[y]![1] + normalen[x]![2] * normalen[y]![2];
+          maxWinkel = Math.max(maxWinkel, (Math.acos(Math.min(1, Math.max(-1, d))) * 180) / Math.PI);
+        }
+      }
+    }
+    console.log(`Kasten-Kugel: größter Knick zwischen Flächen an Ringpunkten ${maxWinkel.toFixed(1)}° (Ziel ≈ 90°, rund wären < 15°)`);
+    expect(maxWinkel).toBeGreaterThan(60);
   });
 
   for (const ringe of [24, 36]) it(`Zugschritt am Seitenumriss (${ringe} Ringe): Löser + Matrix ≤ 16 ms, Naht folgt der neuen Kurve`, () => {

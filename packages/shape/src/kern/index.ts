@@ -8,3 +8,4 @@ export * from '../loeser/lu';
 export * from '../loeser/grenzflaeche';
 export * from './ableiten';
 export * from './deskriptoren';
+export * from './breite';
