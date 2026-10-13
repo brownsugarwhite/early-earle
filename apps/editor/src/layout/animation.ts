@@ -5,7 +5,7 @@ import { create } from 'zustand';
 import type { Rect, ViewId } from '../types';
 import type { Layout } from './layout';
 
-type Schluessel = ViewId | 'leiste';
+type Schluessel = ViewId | 'leiste' | 'stamm';
 type Zustand = Record<Schluessel, Rect>;
 
 export const useRahmen = create<{ rects: Zustand | null; bewegt: boolean }>(() => ({ rects: null, bewegt: false }));
@@ -58,7 +58,7 @@ function schritt(jetzt: number) {
 
 /** Neues Ziel-Layout; `sofort` springt ohne Animation (z. B. bei Fenstergröße). */
 export function setzeLayoutZiel(layout: Layout, sofort: boolean) {
-  const ziele: [Schluessel, Rect][] = [...(Object.entries(layout.views) as [ViewId, Rect][]), ['leiste', layout.leiste]];
+  const ziele: [Schluessel, Rect][] = [...(Object.entries(layout.views) as [ViewId, Rect][]), ['leiste', layout.leiste], ['stamm', layout.stamm]];
   for (const [k, r] of ziele) {
     const f = federn.get(k);
     if (!f || sofort) federn.set(k, { pos: alsArray(r), vel: [0, 0, 0, 0], ziel: alsArray(r) });

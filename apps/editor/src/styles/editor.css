@@ -805,3 +805,78 @@ button {
   opacity: 1;
   transform: translate(-50%, 0);
 }
+
+/* ---------- Stamm (Plan 9.3): Wurzel = Initiale, neun Knospen ---------- */
+.stamm {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  box-sizing: border-box;
+}
+.stamm .initiale {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  font-size: 27px;
+  line-height: 1;
+  color: var(--tinte);
+  box-shadow: var(--glas-schatten-klein);
+  user-select: none;
+}
+.stamm .stamm-linie {
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.knospe {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 3px solid var(--stufe);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    transform 0.35s var(--feder),
+    border-radius 0.45s var(--feder),
+    box-shadow 0.25s ease;
+}
+.knospe.voll {
+  background: var(--stufe);
+  border-radius: 50% 50% 50% 14%;
+}
+.knospe.aktiv {
+  box-shadow:
+    0 0 0 3px var(--grund),
+    0 0 0 6px var(--stufe);
+}
+.knospe:hover {
+  transform: scale(1.14);
+}
+.knospe-label {
+  position: absolute;
+  left: 48px;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-size: 14px;
+  padding: 4px 11px;
+  border-radius: 11px;
+  background: rgba(8, 12, 16, 0.78);
+  color: var(--weiss);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.knospe:hover .knospe-label,
+.knospe.aktiv .knospe-label {
+  opacity: 1;
+}

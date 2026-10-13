@@ -520,7 +520,7 @@ export function View2D({ ansicht, w, h }: Props) {
         </g>
       )}
       {(hatMaul || ebene === 'maul') && <MaulZeichnung ansicht={ansicht} bild={bild} aktiv={ebene === 'maul'} />}
-      {ebene === 'rig' && <RigZeichnung ansicht={ansicht} bild={bild} />}
+      {ebene === 'posen' && <RigZeichnung ansicht={ansicht} bild={bild} />}
       {ebene === 'zaehne' && <ZahnZeichnung ansicht={ansicht} bild={bild} />}
       <BreitenKreis ansicht={ansicht} bild={bild} />
       {/* gewählter Spant der Bauweise „rund“ als Schnitt: über allem, damit seine Punkte greifbar bleiben */}

@@ -28,7 +28,8 @@ export type MenueEintrag = { label: string; aktion: () => void; aus?: boolean } 
 export type KontextMenue = { x: number; y: number; eintraege: MenueEintrag[] };
 
 /** Tabs über die Eckpunkte der Viewports (Florian 12.10.): Form, Maul (blau), Zähne (braun), Rig, Augen (folgt). */
-export type Ebene = 'form' | 'maul' | 'zaehne' | 'rig' | 'augen';
+/** Stufen des Stamms (Plan 9.3): Körper, Maul, Zähne, Augen, Teile, Fell & Klingen, Haut, Posen & Leben, Spiel. */
+export type Ebene = 'form' | 'maul' | 'zaehne' | 'augen' | 'teile' | 'fell' | 'haut' | 'posen' | 'spiel';
 /**
  * Blickrichtung der Viewports Front und Top (Florian 12.10.): Back und Bottom zeigen dieselbe Silhouette gespiegelt,
  * aber die abgewandte Fläche (Linien auf Rücken, Schwanz, Bauch).
@@ -186,7 +187,8 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeEbene(e) {
     // zweiter Klick auf denselben Punkt führt zurück zur Form
-    const neu = get().ebene === e ? 'form' : e;
+    // Stamm (Plan 9.3): Springen frei, ein Klick auf die aktive Knospe bleibt dort
+    const neu = e;
     set({ ebene: neu, maulAuswahl: null, maulZeichnen: null, zahnAuswahl: null, kantenAuswahl: null, kanteZeichnen: null, werkzeug: 'auswahl' });
   },
   setzeOeffnung(a) {

@@ -27,7 +27,7 @@ import { RundBereich } from '../rund/RundBereich';
 const FAECHER = ['Wesen', 'Augen', 'Flügel', 'Mäuler', 'Beine', 'Schwänze', 'Ohren', 'Muster'] as const;
 type Fach = (typeof FAECHER)[number];
 
-const TITEL: Record<Ebene, string> = { form: 'wesen', maul: 'maul', zaehne: 'zähne', rig: 'rig', augen: 'augen' };
+const TITEL: Record<Ebene, string> = { form: 'wesen', maul: 'maul', zaehne: 'zähne', augen: 'augen', teile: 'teile', fell: 'fell & klingen', haut: 'haut', posen: 'posen & leben', spiel: 'spiel' };
 
 function Regler({ label, wert, min, max, schritt, anzeige, onChange, onStart, onEnde }: {
   label: string;
@@ -748,7 +748,7 @@ export function Seitenleiste() {
           )}
           {ebene === 'maul' && <MaulBereich />}
           {ebene === 'zaehne' && <ZahnBereich />}
-          {ebene === 'rig' && <RigBereich />}
+          {ebene === 'posen' && <RigBereich />}
           {ebene === 'augen' && (
             <section className="leiste-bereich">
               <p className="hilfe">Augen folgen: Schlitz (gemalt, bleibt), Knopf, Kugel, Mandel mit Lid, Ausdruck (Sichel, Spirale, X). Vorschlag im Bericht.</p>

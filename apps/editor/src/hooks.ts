@@ -8,6 +8,7 @@ import { berechneLayout } from './layout/layout';
 import { editorApi } from './library/speicher';
 import { useEditor } from './state/editorStore';
 import { reifenNeuAmZeiger } from './kern/reifen';
+import { STUFEN } from './stamm/stufen';
 import { useUi } from './state/uiStore';
 
 /** Fenstergröße + Maximieren → Ziel-Layout (animiert, bei Fenstergröße sofort). */
@@ -53,6 +54,15 @@ export function useTastatur() {
       if (istEingabe(e.target) || ui.dialog) return;
       if (istRegler(e.target) && !cmd) return;
       const k = e.key.toLowerCase();
+      // Stamm (Plan 9.3): ⌘1 … ⌘9 springen zur Stufe
+      if (cmd && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '9') {
+        const st = STUFEN[Number(e.key) - 1];
+        if (st) {
+          e.preventDefault();
+          ui.setzeEbene(st.id);
+        }
+        return;
+      }
       if (e.ctrlKey && e.code === 'Space') {
         e.preventDefault();
         maximiereUnterMaus();

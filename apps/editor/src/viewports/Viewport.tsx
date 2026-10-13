@@ -25,11 +25,6 @@ export function ViewportGrund({ id }: { id: ViewId }) {
 }
 
 /** Eckpunkt als Tab (Florian 12.10.): Klick schaltet die Ebene in allen Viewports um, zweiter Klick zurück zur Form. */
-function TabKnopf({ ebene, farbe, titel }: { ebene: Ebene; farbe: string; titel: string }) {
-  const aktiv = useUi((s) => s.ebene === ebene);
-  return <button className={`eckknopf ${farbe}${aktiv ? ' aktiv' : ''}`} data-tab={ebene} title={aktiv ? `${titel} (zurück zur Form)` : titel} tabIndex={-1} onClick={() => useUi.getState().setzeEbene(ebene)} />;
-}
-
 const POSE_TEXT: Record<string, string> = { fressen: 'Fressen', ruhen: 'Ruhen', laufen: 'Laufen', inklusion: 'Inklusion' };
 
 /** Zebrastreifen im 3D an/aus (Prüfen der Kanten: Streifen springen an einem Knick, fließen über glatte Flächen). */
@@ -135,16 +130,9 @@ export function ViewportOber({ id }: { id: ViewId }) {
         )}
         {id === 'creation' && modus !== 'editor' && modus !== 'fressen' && !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>}
       </div>
+      {/* Plan 9.3: die Stufe wählt der Stamm; am Viewport bleiben Zebra (Prüfansicht) und Vergrößern */}
       <div className="eckknoepfe">
-        {id !== 'creation' && (
-          <>
-            <TabKnopf ebene="zaehne" farbe="braun" titel="Zähne" />
-            <TabKnopf ebene="maul" farbe="blau" titel="Maul" />
-            <TabKnopf ebene="augen" farbe="weiss" titel="Augen: Klick auf den Körper in der Bühne setzt das Auge (Kern)" />
-          </>
-        )}
         {id === 'creation' && <ZebraKnopf />}
-        <TabKnopf ebene="rig" farbe="orange" titel="Rig" />
         <button className="eckknopf pink" data-maximieren={id} title={maximiert ? 'Zurück ins Raster (⌃Leertaste)' : 'Vergrößern (⌃Leertaste)'} tabIndex={-1} onClick={() => useUi.getState().maximieren(id)} />
       </div>
     </div>

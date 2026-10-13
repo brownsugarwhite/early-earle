@@ -1,6 +1,7 @@
 import { useWirbelTasten } from './wirbel/WirbelEbene';
 import { useLayoutSteuerung, useMenueBruecke, useTastatur, useTitel } from './hooks';
 import { Seitenleiste } from './leiste/Seitenleiste';
+import { Stamm } from './stamm/Stamm';
 import { useKantenTasten } from './kanten/KantenEbene';
 import { useMaulTasten } from './maul/MaulEbene';
 import { MenuBar } from './menu/MenuBar';
@@ -34,6 +35,7 @@ export function App() {
           <ViewportOber key={id} id={id} />
         ))}
         <Seitenleiste />
+        <Stamm />
       </main>
       <KontextMenue />
       <DialogFenster />
