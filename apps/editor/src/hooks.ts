@@ -31,6 +31,17 @@ export function useLayoutSteuerung() {
   }, []);
 }
 
+/** Grund der Bühne (Plan 9.7) als Attribut am Dokument: CSS-Variablen für Verlauf und Kurvenfarben. */
+export function useGrund() {
+  useEffect(() => {
+    const anwenden = (g: string) => {
+      document.documentElement.dataset.grund = g;
+    };
+    anwenden(useUi.getState().grund);
+    return useUi.subscribe((s, v) => s.grund !== v.grund && anwenden(s.grund));
+  }, []);
+}
+
 const PFEILE: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
 
 /** Regler und Haken behalten nach dem Klick den Fokus: ⌘-Kürzel (⌘Z) wirken dort trotzdem, Pfeiltasten bleiben beim Regler. */
@@ -54,6 +65,12 @@ export function useTastatur() {
       if (istEingabe(e.target) || ui.dialog) return;
       if (istRegler(e.target) && !cmd) return;
       const k = e.key.toLowerCase();
+      // Layout (Plan 9.2): Tab wechselt zwischen „Riss“ (vier Felder) und „Bühne“ (große Bühne)
+      if (e.key === 'Tab' && !cmd && !e.altKey) {
+        e.preventDefault();
+        ui.maximieren('creation');
+        return;
+      }
       // Stamm (Plan 9.3): ⌘1 … ⌘9 springen zur Stufe
       if (cmd && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '9') {
         const st = STUFEN[Number(e.key) - 1];

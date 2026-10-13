@@ -854,6 +854,7 @@ function DarstellungFeld() {
   const kaefig = useKernAnzeige((s) => s.kaefig);
   const look = useKernAnzeige((s) => s.look);
   const zebra = useUi((s) => s.zebra);
+  const grund = useUi((s) => s.grund);
   return (
     <>
       <div className="feld">
@@ -871,6 +872,12 @@ function DarstellungFeld() {
           Matcap
         </button>
       </div>
+      <div className="feld">
+        <span>Grund</span>
+        <b>{grund === 'papier' ? 'Papier' : grund === 'nacht' ? 'Nacht' : 'Grün (Vorlage)'}</b>
+      </div>
+      <Chips werte={['papier', 'nacht', 'gruen'] as const} aktiv={grund} text={(g) => (g === 'papier' ? 'Papier' : g === 'nacht' ? 'Nacht' : 'Grün')} attribut="grund" onWahl={(g) => useUi.getState().setzeGrund(g)} />
+      <p className="hilfe">Tab wechselt zwischen Riss (vier Felder) und Bühne (große Bühne, Blätter als Spalte); je Stufe gemerkt.</p>
     </>
   );
 }

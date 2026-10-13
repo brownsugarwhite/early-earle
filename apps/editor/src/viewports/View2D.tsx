@@ -443,23 +443,23 @@ export function View2D({ ansicht, w, h }: Props) {
       {offen ? (
         <g className="offener-umriss" data-offener-umriss={offen.length}>
           {/* geschlossene Grundform blass dahinter, davor der Umriss des geöffneten Körpers */}
-          <path d={pfad(vollerPfad(profil), true)} fill="none" stroke="#ffffff" strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" />
+          <path d={pfad(vollerPfad(profil), true)} fill="none" stroke="var(--kurve-spiegel)" strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" />
           {offen.map((z, i) => (
-            <path key={i} d={z.map((p, k) => { const q = bild(p); return `${k ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`; }).join('') + 'Z'} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" />
+            <path key={i} d={z.map((p, k) => { const q = bild(p); return `${k ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`; }).join('') + 'Z'} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinejoin="round" />
           ))}
         </g>
       ) : (
         <>
-          {profil.art === 'halb' && <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="#ffffff" strokeWidth={KONTUR} strokeLinejoin="round" />}
+          {profil.art === 'halb' && <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="var(--kurve-spiegel)" strokeWidth={KONTUR} strokeLinejoin="round" />}
           {spalt && maulZu?.unten ? (
             <g data-maulspalt="">
-              <path d={pfad(spalt.segmente, false)} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
+              <path d={pfad(spalt.segmente, false)} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
               {[maulZu.oben, maulZu.unten].map((l, i) => (
                 <path
                   key={i}
                   d={abtasten3(l, 16).map((p, k) => { const q = bild({ x: p[0], y: p[1] }); return `${k ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`; }).join('')}
                   fill="none"
-                  stroke="#000000"
+                  stroke="var(--kurve)"
                   strokeWidth={KONTUR}
                   strokeLinejoin="round"
                   strokeLinecap="round"
@@ -467,7 +467,7 @@ export function View2D({ ansicht, w, h }: Props) {
               ))}
             </g>
           ) : (
-            <path d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="#000000" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
+            <path d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
           )}
         </>
       )}

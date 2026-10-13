@@ -1,5 +1,5 @@
 import { useWirbelTasten } from './wirbel/WirbelEbene';
-import { useLayoutSteuerung, useMenueBruecke, useTastatur, useTitel } from './hooks';
+import { useGrund, useLayoutSteuerung, useMenueBruecke, useTastatur, useTitel } from './hooks';
 import { Seitenleiste } from './leiste/Seitenleiste';
 import { Stamm } from './stamm/Stamm';
 import { Dock } from './dock/Dock';
@@ -16,6 +16,7 @@ import { ViewportGrund, ViewportOber } from './viewports/Viewport';
 
 export function App() {
   useLayoutSteuerung();
+  useGrund();
   useTastatur();
   useMenueBruecke();
   useTitel();

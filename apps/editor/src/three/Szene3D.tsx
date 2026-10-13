@@ -28,6 +28,13 @@ declare global {
   }
 }
 
+/** Bodenschatten je Grund (Plan 9.7): Papier warm-dunkel, Nacht schwarz und kräftiger, Grün wie Florians Vorlage. */
+function grundAnwenden(r: Renderer3D, grund: string) {
+  if (grund === 'nacht') r.setzeGrund(0x000000, 0.42);
+  else if (grund === 'gruen') r.setzeGrund(0x314206, 0.25);
+  else r.setzeGrund(0x4a4238, 0.22);
+}
+
 /** Vollfenster-Canvas zwischen Viewport-Grund und Viewport-Oberfläche (pointer-events: none). */
 export function Szene3D() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -247,6 +254,7 @@ export function Szene3D() {
       r.setzeKamera(useUi.getState().kamera);
       r.setzeZebra(useUi.getState().zebra);
       r.setzeRect(useRahmen.getState().rects?.creation ?? null);
+      grundAnwenden(r, useUi.getState().grund);
       // Blätter (M2): Seite, Front, Top zeigen denselben Körper orthografisch hinter den Kurven (nur Bauweise „kern“)
       const blaetter = () => {
         const rects = useRahmen.getState().rects;
@@ -296,6 +304,7 @@ export function Szene3D() {
           if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
           if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
           if (s.spantAuswahl !== v.spantAuswahl || s.ebene !== v.ebene) reifenFaerben(r);
+          if (s.grund !== v.grund) grundAnwenden(r, s.grund);
           if (s.ebene !== v.ebene) griffeAnzeigen(r);
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),

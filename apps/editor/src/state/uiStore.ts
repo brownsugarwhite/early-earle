@@ -30,6 +30,9 @@ export type KontextMenue = { x: number; y: number; eintraege: MenueEintrag[] };
 /** Tabs über die Eckpunkte der Viewports (Florian 12.10.): Form, Maul (blau), Zähne (braun), Rig, Augen (folgt). */
 /** Stufen des Stamms (Plan 9.3): Körper, Maul, Zähne, Augen, Teile, Fell & Klingen, Haut, Posen & Leben, Spiel. */
 export type Ebene = 'form' | 'maul' | 'zaehne' | 'augen' | 'teile' | 'fell' | 'haut' | 'posen' | 'spiel';
+export type Grund = 'papier' | 'nacht' | 'gruen';
+/** Standard-Layout je Stufe (Plan 9.2): Körper = Riss, alle anderen = Bühne. */
+export const LAYOUT_STANDARD = (e: Ebene): ViewId | null => (e === 'form' ? null : 'creation');
 /**
  * Blickrichtung der Viewports Front und Top (Florian 12.10.): Back und Bottom zeigen dieselbe Silhouette gespiegelt,
  * aber die abgewandte Fläche (Linien auf Rücken, Schwanz, Bauch).
@@ -54,6 +57,11 @@ export const START_KAMERA: Kamera = { azimut: -Math.PI / 4, elevation: (15 * Mat
 
 type UiState = {
   maximiert: ViewId | null;
+  /** Layout je Stufe gemerkt (Plan 9.2): null = „Riss“ (vier Felder), 'creation' = „Bühne“ (große Bühne, Blätter als Spalte) */
+  layoutJeStufe: Partial<Record<Ebene, ViewId | null>>;
+  /** Grund der Bühne und Blätter (Plan 9.7): Papier (Standard), Nacht, Grün (Florians Vorlage) */
+  grund: Grund;
+  setzeGrund(g: Grund): void;
   /** Library-Bereich in der (immer offenen) Seitenleiste aufgeklappt */
   library: boolean;
   ebene: Ebene;
@@ -143,6 +151,11 @@ export type Bauweise = 'bisher' | 'wirbel' | 'schnitte' | 'rund' | 'kern';
 
 export const useUi = create<UiState>((set, get) => ({
   maximiert: null,
+  layoutJeStufe: {},
+  grund: 'papier',
+  setzeGrund(g) {
+    set({ grund: g });
+  },
   library: true,
   ebene: 'form',
   oeffnung: 0,
@@ -180,7 +193,8 @@ export const useUi = create<UiState>((set, get) => ({
 
   maximieren(id) {
     const m = get().maximiert;
-    set({ maximiert: m === id ? null : id, oben: id });
+    const neu = m === id ? null : id;
+    set({ maximiert: neu, oben: id, layoutJeStufe: { ...get().layoutJeStufe, [get().ebene]: neu } });
   },
   libraryUmschalten(offen) {
     set({ library: offen ?? !get().library });
@@ -189,7 +203,10 @@ export const useUi = create<UiState>((set, get) => ({
     // zweiter Klick auf denselben Punkt führt zurück zur Form
     // Stamm (Plan 9.3): Springen frei, ein Klick auf die aktive Knospe bleibt dort
     const neu = e;
-    set({ ebene: neu, maulAuswahl: null, maulZeichnen: null, zahnAuswahl: null, kantenAuswahl: null, kanteZeichnen: null, werkzeug: 'auswahl' });
+    // Layout der Stufe (Plan 9.2): gemerkte Wahl, sonst Standard (Körper = Riss, sonst Bühne)
+    const gemerkt = get().layoutJeStufe[neu];
+    const maximiert = gemerkt !== undefined ? gemerkt : LAYOUT_STANDARD(neu);
+    set({ ebene: neu, maximiert, maulAuswahl: null, maulZeichnen: null, zahnAuswahl: null, kantenAuswahl: null, kanteZeichnen: null, werkzeug: 'auswahl' });
   },
   setzeOeffnung(a) {
     set({ oeffnung: Math.min(1, Math.max(0, a)) });

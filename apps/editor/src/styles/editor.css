@@ -945,3 +945,30 @@ button {
   text-align: center;
   opacity: 0.92;
 }
+
+/* ---------- Grund (Plan 9.7): Papier (Standard), Nacht, Grün (Florians Vorlage) ---------- */
+:root,
+:root[data-grund='gruen'] {
+  --kurve: #000000;
+  --kurve-spiegel: #ffffff;
+}
+:root[data-grund='papier'] {
+  --verlauf-a: #cfcabd;
+  --verlauf-b: #e3dfd3;
+  --kurve: #19232b;
+  --kurve-spiegel: #ffffff;
+}
+:root[data-grund='nacht'] {
+  --verlauf-a: #1a2228;
+  --verlauf-b: #262f37;
+  --kurve: #f4f1e4;
+  --kurve-spiegel: #7a8893;
+}
+:root[data-grund='nacht'] .vp-label,
+:root[data-grund='nacht'] .view2d .achse {
+  color: var(--kurve);
+  stroke: var(--kurve);
+}
+.leiste-bereich {
+  padding: 16px 14px 8px;
+}

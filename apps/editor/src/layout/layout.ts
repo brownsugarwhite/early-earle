@@ -9,7 +9,8 @@ export const LUECKE = 40;
 export const OBEN = 84;
 /** unten bleibt Platz für das Dock (Plan 9.4, schwebt mittig) */
 export const UNTEN = 60;
-export const SEITENLEISTE = 360;
+/** Tafel (Plan 9.2: 280; mit den heutigen Reglern 300) */
+export const SEITENLEISTE = 300;
 /** Stamm (Plan 9.3): Spalte mit den neun Stufen-Knospen links der Blätter */
 export const STAMM = 56;
 export const STAMM_RAND = 16;

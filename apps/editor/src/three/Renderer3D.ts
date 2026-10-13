@@ -591,6 +591,15 @@ export class Renderer3D {
     this.anfordern();
   }
 
+  /** Grund (Plan 9.7): Farbe und Stärke des Bodenschattens (Papier warm-dunkel, Nacht schwarz, Grün wie die Vorlage). */
+  setzeGrund(schatten: number, staerke: number) {
+    const m = this.boden?.material as (ShadowNodeMaterial & { color: Color; opacity: number }) | undefined;
+    if (!m) return;
+    m.color.set(schatten);
+    m.opacity = staerke;
+    this.anfordern();
+  }
+
   /** Radiusring des Pinsels (Welt): Kreis um `mitte` in der Ebene senkrecht zu `normale`; null blendet aus. */
   setzeRadiusRing(mitte: [number, number, number] | null, normale: [number, number, number] = [0, 1, 0], radius = 0.1) {
     if (this.radiusRing) {
