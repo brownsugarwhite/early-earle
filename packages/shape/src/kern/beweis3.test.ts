@@ -52,11 +52,11 @@ describe('Beweis 3: Teil nahtlos', () => {
     console.log(`Rex Beine Stufe 3: bester Umbau ${best.toFixed(0)} ms`);
     expect(best).toBeLessThan(350);
   });
-  it('Kugel, zwei Beine verschmolzen am runden Bauch: Käfig sauber (Schulter faltet noch, Messung)', () => {
-    // Stand 14.10.: Das 2×2-Feld liegt an der Kugel auf einer 45°-Flanke; der erste Beinring legt sich innen über den
-    // Feldrand (bein/bein ≈ 230). Weg: Feld am Boden (Verdichtung der Ringe) oder Schulterring entlang der Hautnormale.
+  it('Kugel, zwei Beine verschmolzen am runden Bauch (45°-Flanke): Käfig sauber, keine Durchdringung bei −35/0/+35°', () => {
+    // 14.10. spätabends: gleichmäßige Ringwinkel statt Bündelwinkel des Feldrands, Feldrand wandert die Achse hinab (Nachtrag Beweis 3)
     const r = pruefen('Kugel', neuesDokument('Kugel'), [{ ring: 12, j: 6 }]);
     expect(r.pr.ok).toBe(true);
+    for (const e of r.ergebnisse) expect(e.paare).toBe(0);
   });
   it('Rex, Beine angesteckt: eigene Röhren, Käfig sauber, Pose dreht starr', () => {
     const abl = ableitenMitBeinen(rex, [{ ring: 15, j: 6 }], 'angesteckt', { stufen: 2 });

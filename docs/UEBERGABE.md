@@ -6,7 +6,7 @@
 
 **Beweis 2 in Zahlen:** Maul als Kantenpfad im selben Käfig (Schleife einrasten je Ring, Schlitz, Tasche mit Vorhang, nur Vierecke plus zwei Dreiecke, Käfig geschlossen), Kiefer als Käfig-Pose (≈ 3 ms), Umbau 141 ms (≤ 200 ✓), Lippe ≤ 1,3 px, Bohne mit Lippenband und maroon Rachen. **Kugel, Rex vorn, Rex unten, Tiger (Kasten), Drache (Hals): 0 Durchdringungen bei 0/25/50/75/100 %** ✓. Rückfall aus Plan 13 nicht nötig.
 
-**Ehrlich offen:** Beweis 1: Front/Top-Widersprüche entscheidet der Kern still für die kleinere Breite (Rex Front 11 px, Langhals Top 16 px), Ente als Form nur mit Teilen, Hals-Übergang ohne Überblendung, Reifen kein 3D-Griff, kein Worker, dichte LU. Beweis 2: Griffe für Rachen- und Kieferlinie (Phase 2), Kehl-/Nackenkette, Zunge, Kiefer getrennt/Überbiss, Zug am Seitenumriss mit Maul (heute Umbau ≈ 150 ms), sehr dünne Hälse (Loop-Cut). Beweis 3: Kugel (runder Bauch). Beweis 4: Zonen-Atlas, Augen im Mesh, Kinn. Beweis 5: zweite Runde.
+**Ehrlich offen:** Beweis 1: Front/Top-Widersprüche entscheidet der Kern still für die kleinere Breite (Rex Front 11 px, Langhals Top 16 px), Ente als Form nur mit Teilen, Hals-Übergang ohne Überblendung, Reifen kein 3D-Griff, kein Worker, dichte LU. Beweis 2: Griffe für Rachen- und Kieferlinie (Phase 2), Kehl-/Nackenkette, Zunge, Kiefer getrennt/Überbiss, Zug am Seitenumriss mit Maul (heute Umbau ≈ 150 ms), sehr dünne Hälse (Loop-Cut). Beweis 4: Zonen-Atlas, Augen im Mesh, Kinn. Beweis 5: zweite Runde.
 
 **Kern des Plans (Kurzfassung in Abschnitt 0 des Plans):**
 - Ein **Subdivision-Käfig** (Spiegelung, halbscharfe Falten) ist die einzige Wahrheit je Wesen. Florians Kurven (Seitenumriss, Spanten als Reifen, Kantenlinien, Wirbelsäule, Maullinie) sind **Griffe** auf diesem Körper; einmal ableiten, dann nur noch bearbeiten.
@@ -18,8 +18,7 @@
 **Nächster Schritt: Phase 0 fortsetzen** (Plan 11.1):
 1. ~~Kern-Tempo und Treue~~ bestanden. Rest: Überhang als Teil (→ 3), Reifen als Griffe, Hals-Übergang, Worker, dünn besetzte Zerlegung.
 2. ~~Maul mit Haps~~ bestanden: vorn, unten, Kugel, Kastenschnauze (Tiger), Hals (Drache) je 0 Durchdringungen. Phase 2: Rachen-/Kieferlinie als Griffe, Kiefer getrennt/Überbiss, Zunge, Bodengrenze, Loop-Cut für sehr dünne Hälse.
-3. ~~Teil nahtlos~~ Rex ✓ (Ausstülpung); Kugel offen. Florian (14.10.): Kiefer getrennt/Überbiss ist ihm wichtig („Unterkiefer läuft in den Oberkiefer rein“), bleibt Phase 2.
-3. Teil nahtlos (Rex-Säulenbein verschmolzen und angesteckt, ±35°).
+3. ~~Teil nahtlos~~ bestanden für Rex und Kugel (Ausstülpung; gleichmäßige Ringwinkel, Feldrand wandert die Achse hinab; Nachtrag in [`docs/research/2026-10-14-beweis3-teil.md`](research/2026-10-14-beweis3-teil.md)). Phase 3: Teil-Bibliothek, Knochenkette, IK.
 4. ~~Look live~~ vollendet (Tiger-Kopf mit Kastenschnauze, Zahnverlauf, Muster ohne Schwimmen); Urteil offen. Nicht gebaut: Zonen-Atlas (Phase 4), Augen im Mesh (Phase 2).
 5. ~~Feuer, Gas, Fell-Blob~~ gebaut ([`docs/research/2026-10-14-beweis5-feuer-gas-fell.md`](research/2026-10-14-beweis5-feuer-gas-fell.md)): Klingen als geteilte Käfige, Feuer/Gas-Bändermaterial, Wehen als Pose; Standbilder und 3-s-Schleifen `docs/progress/editor/kern-stil-kugel-<stil>.png|.webm`. **Florians Urteil steht aus** (Einschätzung: Feuer ja, Gas und Fell zweite Runde).
 

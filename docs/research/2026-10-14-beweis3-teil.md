@@ -31,3 +31,14 @@ Kriterium des Plans: Rex-Säulenbein aus einem Teil, verschmolzen (Inset + Bridg
 ## Urteil
 
 Beweis 3 ist für das Rex-Säulenbein **bestanden**: Käfig geschlossen, 0 Durchdringungen bei −35/0/+35°, Umbau 116 ms, Zebra ohne Knick, angesteckt als Alternative. Offen: Beine an runden Bäuchen (Kugel), Teil als Bibliotheks-Dokument mit Ansatzring, Knochenkette mit Knie und Fuß, weitere Teile (Flügel, Flossen, Schwanz, Hörner). Nächster Schritt nach Plan 11.1: Beweis 5 (Feuer, Gas, Fell-Blob); vorbereitet sind die Klinge (`kern/klinge.ts`) und das Feuer/Gas-Material (`creature2/material/feuer.ts`).
+
+## Nachtrag 14.10. spätabends: Beine am runden Bauch sauber, Beweis 3 ganz bestanden
+
+Die Kugel (Ansatz Ring 12, Winkel 6, 45°-Flanke) hatte 212–230 Durchdringungen im Bein selbst. Zwei Ursachen, beide in `beineAnsetzen` (`kern/teil.ts`):
+
+1. **Bündelwinkel.** Die Ringpunkte der Säule standen an den Winkeln der acht Feldrandpunkte um die Achse. Bei dichten Ringen und weiten Winkeln (Kugel: Feld 0,05 breit, 0,17 hoch) liegen diese Winkel in zwei Bündeln (dreimal 75–105°, dreimal 255–285°, dazu 0° und 180°); jeder Säulenring hatte drei fast gleiche Punkte innen und außen, Splitterflächen, und die Grenzfläche schnitt sich auf der Mittelebene des Beins (x der Hüfte; Ringe 4–5). Jetzt stehen die Säulenpunkte **gleichmäßig alle 45°**, um den Feldrand herum bestmöglich gedreht (kreismittlerer Versatz), Umlaufsinn des Rands erhalten.
+2. **Gekippter Feldrand.** Der Rand liegt auf der Kugel 45° gegen die Beinachse (halb Lot, halb Normale) gekippt; der erste Säulenring senkrecht zur Achse lag bergab höher als der Rand, die Innenwand faltete. Jetzt **wandert der Feldrand als Ganzes die Achse hinab** und blendet über die Schulterringe in den Kreis (`verschoben → kreis`, Anteil r/schulter).
+
+Dazu die Option `lot` (Anteil des Lots an der Achse, Standard 0,5). Messung Stufe 2: **Kugel 0 / 0 / 0 bei −35/0/+35°**, Rex unverändert 0 / 0 / 0, Umbau 112 ms. Der Test `beweis3.test.ts` verlangt jetzt für beide 0. Bilder `kern-beine-kugel-verschmolzen-{-35,0,35}-{zebra,earle}.png`.
+
+**Urteil neu:** Beweis 3 ist **ganz bestanden** (Rex und Kugel). Offen (Phase 3): Teil als Bibliotheks-Dokument mit Ansatzring, Knochenkette mit Knie und Fuß, IK, 3 × 3-Felder, Flügel/Flossen/Schwanz, Rex auf die Füße gehoben (im Editor bereits).

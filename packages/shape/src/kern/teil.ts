@@ -29,9 +29,11 @@ export type BeinOptionen = {
   laenge: number;
   /** Ringe, über die der Schwung von 0 (Hüfte) auf 1 wächst */
   schwungRinge: number;
+  /** Anteil des Lots an der Beinachse (Rest: Hautnormale an der Hüfte) */
+  lot: number;
 };
 
-export const BEIN_STANDARD: BeinOptionen = { ringe: 6, radius: 0.1, schulter: 2, fuss: 1.15, laenge: 0.3, schwungRinge: 2 };
+export const BEIN_STANDARD: BeinOptionen = { ringe: 6, radius: 0.1, schulter: 2, fuss: 1.15, laenge: 0.3, schwungRinge: 2, lot: 0.5 };
 
 /** Ansatz eines Beins: Vorlagen-Ringpunkt (Ring i, Winkel j der rechten Hälfte) als Hüfte; gespiegelt entsteht das linke Bein. */
 export type BeinAnsatz = { ring: number; j: number };
@@ -135,7 +137,7 @@ export function beineAnsetzen(v: Roehre, kaefigV: Kaefig, zieleV: Float64Array, 
     for (let jj = 0; jj < N; jj++) for (let d3 = 0; d3 < 3; d3++) mitteRing[d3] = mitteRing[d3]! + zieleV[3 * v.ringPunkt(a.ring, jj) + d3]! / N;
     const nrm: V3 = [huefte[0] - mitteRing[0], huefte[1] - mitteRing[1], huefte[2] - mitteRing[2]];
     const nl = Math.hypot(...nrm) || 1;
-    const ax: V3 = [0.5 * (nrm[0] / nl), 0.5 * (nrm[1] / nl) - 0.5, 0.5 * (nrm[2] / nl)];
+    const ax: V3 = [(1 - opt.lot) * (nrm[0] / nl), (1 - opt.lot) * (nrm[1] / nl) - opt.lot, (1 - opt.lot) * (nrm[2] / nl)];
     const al = Math.hypot(...ax) || 1;
     const achse: V3 = [ax[0] / al, ax[1] / al, ax[2] / al];
     const L = opt.laenge > 0 ? opt.laenge * H : Math.max(0.05 * H, huefte[1]);
@@ -144,11 +146,25 @@ export function beineAnsetzen(v: Roehre, kaefigV: Kaefig, zieleV: Float64Array, 
     const u1l = Math.hypot(...u1r) || 1;
     const u1: V3 = [u1r[0] / u1l, u1r[1] / u1l, u1r[2] / u1l];
     const u2: V3 = [achse[1] * u1[2] - achse[2] * u1[1], achse[2] * u1[0] - achse[0] * u1[2], achse[0] * u1[1] - achse[1] * u1[0]];
-    const winkel = rand.map((idx) => {
+    const winkelRand = rand.map((idx) => {
       const q = P(idx);
       const d3: V3 = [q[0] - huefte[0], q[1] - huefte[1], q[2] - huefte[2]];
       return Math.atan2(d3[0] * u2[0] + d3[1] * u2[1] + d3[2] * u2[2], d3[0] * u1[0] + d3[1] * u1[1] + d3[2] * u1[2]);
     });
+    // Ringwinkel gleichmäßig (45° je Punkt), um den Feldrand herum bestmöglich gedreht (kreismittlerer Versatz): Die
+    // Randwinkel selbst sind bei dichten Ringen und weiten Winkeln (Kugel: Feld 0,05 breit, 0,17 hoch) auf zwei Bündel
+    // zusammengedrängt; eine Säule mit solchen Bündelwinkeln hat Splitterflächen und schneidet sich selbst (172 Paare).
+    // Der Umlaufsinn des Rands (steigend oder fallend) bleibt erhalten, die Schulter blendet vom Rand in den Kreis.
+    let sx = 0;
+    let sy = 0;
+    const umlauf = Math.sign(((winkelRand[1]! - winkelRand[0]! + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) || 1;
+    for (let q = 0; q < 8; q++) {
+      const d = winkelRand[q]! - (umlauf * q * Math.PI) / 4;
+      sx += Math.cos(d);
+      sy += Math.sin(d);
+    }
+    const versatz = Math.atan2(sy, sx);
+    const winkel = rand.map((_, q) => versatz + (umlauf * q * Math.PI) / 4);
     const rho0 = opt.radius * H;
     // Halbmesser des Feldrands (Mittel der Abstände zur Achse), Schulter wächst darauf zur Säule
     let rhoRand = 0;
@@ -168,7 +184,13 @@ export function beineAnsetzen(v: Roehre, kaefigV: Kaefig, zieleV: Float64Array, 
         const th = winkel[q]!;
         const cx = Math.cos(th);
         const sx = Math.sin(th);
-        zielListe.push({ idx, p: [huefte[0] + achse[0] * L * t + rho * (cx * u1[0] + sx * u2[0]), huefte[1] + achse[1] * L * t + rho * (cx * u1[1] + sx * u2[1]), huefte[2] + achse[2] * L * t + rho * (cx * u1[2] + sx * u2[2])] });
+        // Schulter: Der Feldrand wandert als Ganzes die Achse hinab und blendet über `schulter` Ringe in den runden
+        // Querschnitt über. An einem runden Bauch (Kugel: Feld auf der 45°-Flanke) ist der Rand gegen die Achse gekippt;
+        // ein sofort senkrechter Ring 1 läge bergab höher als der Rand, die Innenwand faltete (230 Durchdringungen).
+        const kreis: V3 = [huefte[0] + achse[0] * L * t + rho * (cx * u1[0] + sx * u2[0]), huefte[1] + achse[1] * L * t + rho * (cx * u1[1] + sx * u2[1]), huefte[2] + achse[2] * L * t + rho * (cx * u1[2] + sx * u2[2])];
+        const randPunkt = P(rand[q]!);
+        const verschoben: V3 = [randPunkt[0] + achse[0] * L * t, randPunkt[1] + achse[1] * L * t, randPunkt[2] + achse[2] * L * t];
+        zielListe.push({ idx, p: [verschoben[0] + (kreis[0] - verschoben[0]) * sch, verschoben[1] + (kreis[1] - verschoben[1]) * sch, verschoben[2] + (kreis[2] - verschoben[2]) * sch] });
         quelle[idx] = mitte;
         gewicht[idx] = Math.min(1, r / Math.max(1, opt.schwungRinge));
         nummer[idx] = nr;
