@@ -96,6 +96,12 @@ export function useTastatur() {
       } else if (cmd && k === 'l') {
         e.preventDefault();
         ui.libraryUmschalten();
+      } else if (e.altKey && !cmd && e.code === 'KeyB') {
+        // Pauspapier (Plan 9.8): ⌥B blendet den Bogen aus und ein
+        e.preventDefault();
+        const pp = ui.pauspapier;
+        if (pp) ui.pauspapierAendern({ sichtbar: !pp.sichtbar });
+        else ui.zeigeHinweis('Kein Bogen: PNG auf ein Blatt ziehen oder in der Tafel „Bogen hinlegen“');
       } else if (e.ctrlKey && !e.metaKey && !e.altKey && k === 'r') {
         // M3: neuer Reifen am Zeiger auf der Bühne (Blender ⌃R)
         e.preventDefault();

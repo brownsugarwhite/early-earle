@@ -1,13 +1,14 @@
 import { useKernAnzeige } from '../kern/kernBau';
 import { type MaulOptionen, MAUL_STANDARD, maulOptionenVorlage, pruefwesenBauplan } from '@ee/shape/kern';
 import { naechsteStufe, stufe } from '../stamm/stufen';
+import { pauspapierAusDatei } from '../viewports/Pauspapier';
 import { PALETTEN } from '../three/wesenLook';
 // Seitenleiste rechts, immer offen (Florian 12.10.): oben das Menü des aktiven Tabs (Wesen, Maul, Zähne, Rig, Augen),
 // darunter die Library. Gestaltung (Glas, Ornament) ist mein Entwurf.
 
 import { type Profil, type ZahnEintrag, type Zahnreihe, type ZahnWerte, gespiegelteSegmente, hauptspantProfil, hauptspantStelle, segmente } from '@ee/shape';
 import { versetzt3 } from '@ee/shape/versuch';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ladeAusBibliothek } from '../aktionen';
 import { useRahmen } from '../layout/animation';
 import { editorApi, useBibliothek } from '../library/speicher';
@@ -764,6 +765,7 @@ export function Seitenleiste() {
               {modus === 'fressen' && <PoseBereich />}
               <WesenBereich />
               <section className="leiste-bereich" data-bereich="koerper">
+                <BogenFeld />
                 <PinselFeld />
                 <DarstellungFeld />
               </section>
@@ -845,6 +847,45 @@ function PinselFeld() {
     <>
       <Regler label="Pinsel" wert={radius} min={0.03} max={1} schritt={0.01} anzeige={`${Math.round(radius * 100)} % der Höhe`} onChange={(v) => useUi.getState().setzePinselRadius(v)} />
       <p className="hilfe">Auf der Bühne: G zieht den Käfig weich (gespiegelt), I bläst auf, ⇧ dabei glättet, [ und ] ändern den Radius. ⌃R setzt einen Reifen am Zeiger.</p>
+    </>
+  );
+}
+
+/** Tafel „Körper“: Bogen hinlegen (Pauspapier, Plan 9.8): Datei, Blatt, Deckkraft, Breite, Versatz. */
+function BogenFeld() {
+  const p = useUi((s) => s.pauspapier);
+  const datei = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <div className="feld">
+        <span>Bogen</span>
+        <b>{p ? `${p.name} · ${p.blatt}` : 'keiner'}</b>
+      </div>
+      <input ref={datei} type="file" accept="image/png,image/jpeg,image/webp" data-bogen-datei="" style={{ display: 'none' }} onChange={(e) => {
+        const f = e.target.files?.[0];
+        if (f) pauspapierAusDatei(f, p?.blatt ?? 'seite');
+        e.target.value = '';
+      }} />
+      <div className="umschalter stufen" role="group" aria-label="Bogen">
+        <button className="chip" data-bogen-waehlen="" onClick={() => datei.current?.click()}>
+          {p ? 'anderer Bogen …' : 'Bogen hinlegen …'}
+        </button>
+        {p && (
+          <button className="chip" data-bogen-weg="" onClick={() => useUi.getState().setzePauspapier(null)}>
+            weg
+          </button>
+        )}
+      </div>
+      {p && (
+        <>
+          <Chips werte={['seite', 'front', 'top'] as const} aktiv={p.blatt} attribut="bogen-blatt" onWahl={(b) => useUi.getState().pauspapierAendern({ blatt: b, mitte: { x: 0, y: b === 'top' ? 0 : 0.42 } })} />
+          <Regler label="Deckkraft" wert={p.deckkraft} min={0} max={1} schritt={0.01} anzeige={`${Math.round(p.deckkraft * 100)} %`} onChange={(v) => useUi.getState().pauspapierAendern({ deckkraft: v })} />
+          <Regler label="Breite" wert={p.breite} min={0.2} max={3} schritt={0.01} anzeige={`${p.breite.toFixed(2)} Kacheln`} onChange={(v) => useUi.getState().pauspapierAendern({ breite: v })} />
+          <Regler label="Versatz x" wert={p.mitte.x} min={-1.5} max={1.5} schritt={0.005} anzeige={p.mitte.x.toFixed(3)} onChange={(v) => useUi.getState().pauspapierAendern({ mitte: { x: v, y: p.mitte.y } })} />
+          <Regler label="Versatz y" wert={p.mitte.y} min={-1.5} max={1.5} schritt={0.005} anzeige={p.mitte.y.toFixed(3)} onChange={(v) => useUi.getState().pauspapierAendern({ mitte: { x: p.mitte.x, y: v } })} />
+        </>
+      )}
+      <p className="hilfe">Ein PNG auf ein Blatt ziehen oder hier wählen: der Bogen liegt zu 40 % hinter den Kurven und zoomt mit. ⌥B blendet ihn aus und ein. Nachzeichnen (Umriss aus dem Bogen) ist heute noch das Skript `scripts/nachziehen/`.</p>
     </>
   );
 }

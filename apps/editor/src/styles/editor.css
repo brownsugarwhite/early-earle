@@ -972,3 +972,12 @@ button {
 .leiste-bereich {
   padding: 16px 14px 8px;
 }
+
+/* ---------- Pauspapier (Plan 9.8): Bogen hinter dem Blatt ---------- */
+.pauspapier {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  transform-origin: center;
+  image-rendering: auto;
+}

@@ -5,6 +5,7 @@ import { type Ebene, useUi } from '../state/uiStore';
 import { BLICK_TEXTE, VIEW_TEXTE, type ViewId } from '../types';
 import { versuchAktiv } from '../versuch/subdivision';
 import { mitKanten } from '../kanten/kantenKoerper';
+import { Pauspapier, pauspapierAusDatei } from './Pauspapier';
 import { Steuerung3D } from './Steuerung3D';
 import { View2D } from './View2D';
 
@@ -105,7 +106,20 @@ export function ViewportOber({ id }: { id: ViewId }) {
   return (
     <div className="vp-ober" data-view={id} style={{ ...lage(r, oben), zIndex: oben ? 11 : 10 }} onPointerEnter={() => ui.setzeHover(id)} onPointerLeave={() => useUi.getState().hover === id && ui.setzeHover(null)}>
       <Titel id={id} />
-      <div className="vp-inhalt">
+      <div
+        className="vp-inhalt"
+        onDragOver={(e) => {
+          if (id !== 'creation' && e.dataTransfer.types.includes('Files')) e.preventDefault();
+        }}
+        onDrop={(e) => {
+          if (id === 'creation') return;
+          const datei = Array.from(e.dataTransfer.files).find((f) => f.type.startsWith('image/'));
+          if (!datei) return;
+          e.preventDefault();
+          pauspapierAusDatei(datei, id);
+        }}
+      >
+        {id !== 'creation' && <Pauspapier ansicht={id} w={r.w} h={r.h} />}
         {id === 'creation' ? <Steuerung3D hoehe={r.h} /> : <View2D ansicht={id} w={r.w} h={r.h} />}
         {links && <div className="vp-label links">{links}</div>}
         {rechts && <div className="vp-label rechts">{rechts}</div>}

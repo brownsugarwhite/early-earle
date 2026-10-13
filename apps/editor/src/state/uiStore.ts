@@ -31,6 +31,8 @@ export type KontextMenue = { x: number; y: number; eintraege: MenueEintrag[] };
 /** Stufen des Stamms (Plan 9.3): Körper, Maul, Zähne, Augen, Teile, Fell & Klingen, Haut, Posen & Leben, Spiel. */
 export type Ebene = 'form' | 'maul' | 'zaehne' | 'augen' | 'teile' | 'fell' | 'haut' | 'posen' | 'spiel';
 export type Grund = 'papier' | 'nacht' | 'gruen';
+/** Pauspapier (Plan 9.8, M4.1): ein Bogen (PNG) hinter einem Blatt — Lage und Breite in Welt-Einheiten, Deckkraft 0 … 1. */
+export type Pauspapier = { blatt: Ansicht; url: string; name: string; deckkraft: number; mitte: { x: number; y: number }; breite: number; seitenverhaeltnis: number; sichtbar: boolean };
 /** Standard-Layout je Stufe (Plan 9.2): Körper = Riss, alle anderen = Bühne. */
 export const LAYOUT_STANDARD = (e: Ebene): ViewId | null => (e === 'form' ? null : 'creation');
 /**
@@ -62,6 +64,9 @@ type UiState = {
   /** Grund der Bühne und Blätter (Plan 9.7): Papier (Standard), Nacht, Grün (Florians Vorlage) */
   grund: Grund;
   setzeGrund(g: Grund): void;
+  pauspapier: Pauspapier | null;
+  setzePauspapier(p: Pauspapier | null): void;
+  pauspapierAendern(patch: Partial<Pauspapier>): void;
   /** Library-Bereich in der (immer offenen) Seitenleiste aufgeklappt */
   library: boolean;
   ebene: Ebene;
@@ -155,6 +160,16 @@ export const useUi = create<UiState>((set, get) => ({
   grund: 'papier',
   setzeGrund(g) {
     set({ grund: g });
+  },
+  pauspapier: null,
+  setzePauspapier(p) {
+    const alt = get().pauspapier;
+    if (alt && alt.url !== p?.url && alt.url.startsWith('blob:')) URL.revokeObjectURL(alt.url);
+    set({ pauspapier: p });
+  },
+  pauspapierAendern(patch) {
+    const alt = get().pauspapier;
+    if (alt) set({ pauspapier: { ...alt, ...patch } });
   },
   library: true,
   ebene: 'form',
