@@ -276,6 +276,7 @@ export function Szene3D() {
             s.dok.wirbelsaeule !== v.dok.wirbelsaeule ||
             s.dok.posenProfile !== v.dok.posenProfile ||
             s.dok.rundSpanten !== v.dok.rundSpanten ||
+            s.dok.kaefig !== v.dok.kaefig ||
             s.dok.ausstattung !== v.dok.ausstattung ||
             s.modus !== v.modus;
           const wirbel = useUi.getState().bauweise === 'wirbel';

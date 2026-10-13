@@ -14,6 +14,7 @@ import {
   InterleavedBuffer,
   InterleavedBufferAttribute,
   LineBasicNodeMaterial,
+  Line,
   LineSegments,
   FrontSide,
   Mesh,
@@ -72,6 +73,8 @@ export class Renderer3D {
   private reifen: LineSegments | null = null;
   private readonly perlen: Mesh[] = [];
   private readonly perlenGeometrie = new SphereGeometry(1, 12, 8);
+  /** Pinsel (M3): Radiusring in der Tangentialebene am Zeiger */
+  private radiusRing: Line | null = null;
   /** Kieferknopf (M3): Bohne am Mundwinkel, blau wie die Unterlippe (Plan 9.7) */
   private readonly kiefer = new Mesh(new SphereGeometry(1, 16, 12), new MeshBasicNodeMaterial({ color: 0x2e8bff, depthTest: false }));
   private readonly perlenMaterial = [new MeshBasicNodeMaterial({ color: 0x00ffe1, depthTest: false }), new MeshBasicNodeMaterial({ color: 0xf4f1e4, depthTest: false }), new MeshBasicNodeMaterial({ color: 0xff2e9a, depthTest: false })];
@@ -585,6 +588,36 @@ export class Renderer3D {
         m.visible = true;
       } else m.visible = false;
     });
+    this.anfordern();
+  }
+
+  /** Radiusring des Pinsels (Welt): Kreis um `mitte` in der Ebene senkrecht zu `normale`; null blendet aus. */
+  setzeRadiusRing(mitte: [number, number, number] | null, normale: [number, number, number] = [0, 1, 0], radius = 0.1) {
+    if (this.radiusRing) {
+      this.szene.remove(this.radiusRing);
+      this.radiusRing.geometry.dispose();
+      this.radiusRing = null;
+    }
+    if (mitte) {
+      const n = new Vector3(normale[0], normale[1], normale[2]).normalize();
+      const a = Math.abs(n.y) < 0.9 ? new Vector3(0, 1, 0) : new Vector3(1, 0, 0);
+      const u = new Vector3().crossVectors(n, a).normalize();
+      const v = new Vector3().crossVectors(n, u).normalize();
+      // geschlossene Linie mit Schlusspunkt (der WebGPU-Renderer zeichnet nur Line und LineSegments)
+      const K = 48;
+      const pts = new Float32Array(3 * (K + 1));
+      for (let k = 0; k <= K; k++) {
+        const w = (2 * Math.PI * k) / K;
+        pts[3 * k] = mitte[0] + radius * (u.x * Math.cos(w) + v.x * Math.sin(w));
+        pts[3 * k + 1] = mitte[1] + radius * (u.y * Math.cos(w) + v.y * Math.sin(w));
+        pts[3 * k + 2] = mitte[2] + radius * (u.z * Math.cos(w) + v.z * Math.sin(w));
+      }
+      const g = new BufferGeometry();
+      g.setAttribute('position', new BufferAttribute(pts, 3));
+      this.radiusRing = new Line(g, new LineBasicNodeMaterial({ color: 0xf4f1e4, depthTest: false, transparent: true, opacity: 0.9 }));
+      this.radiusRing.renderOrder = 5;
+      this.szene.add(this.radiusRing);
+    }
     this.anfordern();
   }
 

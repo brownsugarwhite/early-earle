@@ -6,6 +6,8 @@ const TEXTE = {
   minus: ['Ankerpunkt löschen', 'Klick auf einen Punkt löscht ihn'],
   breite: ['Breitenwerkzeug', 'Kante oder Ecke greifen und ziehen: Der Abstand ist die Härte (Kreis), nah = glatt, außen = scharf'],
   spant: ['Spant', 'Klick in der Seite oder im Top setzt einen Querschnitt an dieser Stelle; bearbeitet wird er in Front (vorn) bzw. Back (hinten)'],
+  ziehen: ['Pinsel: Ziehen (G)', 'Auf dem Körper der Bühne ziehen verformt den Käfig weich und gespiegelt; ⇧ dabei glättet; [ und ] ändern den Radius'],
+  aufblasen: ['Pinsel: Aufblasen (I)', 'Auf dem Körper ziehen (rechts/oben = nach außen, links/unten = nach innen) bläst den Käfig entlang der Normalen auf; ⇧ glättet; [ ] Radius'],
 } as const;
 
 /** Zeigt in der unteren Lücke, welches Werkzeug aktiv ist (in der Direktauswahl unsichtbar). */

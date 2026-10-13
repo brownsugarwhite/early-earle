@@ -80,6 +80,13 @@ export function useTastatur() {
       } else if (!cmd && !e.altKey && !e.shiftKey && k === 's') {
         // Spant-Werkzeug: Klick in Seite oder Top setzt einen Querschnitt
         ui.setzeWerkzeug('spant');
+      } else if (!cmd && !e.altKey && !e.shiftKey && k === 'g') {
+        // Pinsel (M3, Blender auf der Bühne): G ziehen, I aufblasen, ⇧ beim Ziehen glättet, [ ] Radius
+        ui.setzeWerkzeug('ziehen');
+      } else if (!cmd && !e.altKey && !e.shiftKey && k === 'i') {
+        ui.setzeWerkzeug('aufblasen');
+      } else if (!cmd && !e.altKey && (e.key === '[' || e.key === ']')) {
+        ui.setzePinselRadius(ui.pinselRadius * (e.key === '[' ? 0.8 : 1.25));
       } else if (!cmd && !e.altKey && e.shiftKey && k === 'w') {
         // Breitenwerkzeug wie in Illustrator (⇧W): breiter = härtere Kante
         ui.setzeWerkzeug('breite');

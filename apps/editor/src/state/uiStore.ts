@@ -12,7 +12,7 @@ export type Kamera = { azimut: number; elevation: number; distanz: number; ziel:
  * Werkzeuge wie in Illustrator: Direktauswahl (A), Zeichenstift (P), Ankerpunkt hinzufügen (+) / löschen (−),
  * Breitenwerkzeug (⇧W): Ziehen an einer Kantenlinie macht sie breiter = härter (Versuch 12.10. mittags).
  */
-export type Werkzeug = 'auswahl' | 'stift' | 'plus' | 'minus' | 'breite' | 'spant';
+export type Werkzeug = 'auswahl' | 'stift' | 'plus' | 'minus' | 'breite' | 'spant' | 'ziehen' | 'aufblasen';
 /** Gewählte Knoten einer Kantenlinie (alle Knoten = ganze Linie). */
 export type KantenAuswahl = { kante: number; indizes: number[] };
 /** Zeichenstift auf freier Fläche: neue Kantenlinie, bis Enter/Esc/Doppelklick. */
@@ -87,6 +87,9 @@ type UiState = {
   oben: ViewId | null;
   hover: ViewId | null;
   werkzeug: Werkzeug;
+  /** Pinsel (M3): Radius als Anteil der Körperhöhe (F bzw. [ ]) */
+  pinselRadius: number;
+  setzePinselRadius(r: number): void;
   /** gewählte Punkte je 2D-Viewport (wie in der Vorlage: jede Ansicht zeigt ihre Griffe) */
   auswahl: Record<Ansicht, number[]>;
   /** zuletzt bearbeitete Ansicht (für Entf, wenn die Maus nicht über einem 2D-Viewport ist) */
@@ -161,6 +164,10 @@ export const useUi = create<UiState>((set, get) => ({
   oben: null,
   hover: null,
   werkzeug: 'auswahl',
+  pinselRadius: 0.25,
+  setzePinselRadius(r) {
+    set({ pinselRadius: Math.min(1, Math.max(0.03, r)) });
+  },
   auswahl: { seite: [], front: [], top: [] },
   aktiv: null,
   ansichten: { ...START_2D },

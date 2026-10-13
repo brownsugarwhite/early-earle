@@ -15,6 +15,7 @@ import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas,
 import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
 import { ringSegmente } from './reifen';
+import { deltasAnwenden } from './pinsel';
 import { vorlageBei } from '../spanten';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { type MaulErgebnis, ableitenMitMaul, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
@@ -70,8 +71,8 @@ export type TrefferDaten = {
   eckenUV: Float32Array;
   eckenZahl: Uint8Array;
   kaefig: { n: number; xyz: Float32Array; fStart: Uint32Array; fVerts: Uint32Array };
-  /** Vorlage (Röhre): Ringpunkt i·N + j für Indizes < R·N, danach Kappen und Maul-/Beinpunkte */
-  vorlage: { R: number; N: number };
+  /** Vorlage (Röhre): Ringpunkt i·N + j für Indizes < R·N, Kappen bis n, danach Maul-/Beinpunkte */
+  vorlage: { R: number; N: number; n: number };
 };
 
 export const BAUPLAN_STANDARD: Bauplan = { maul: 'aus', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false };
@@ -513,6 +514,11 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   let ableitung = 0;
   const maul = plan.beine !== 'aus' ? 'aus' : plan.maul;
   const beine = plan.beine;
+  // Pinsel (M3): Käfig-Deltas des Dokuments kommen nach der Ableitung auf den Käfig (gespiegelt); der Stand behält die
+  // Ableitung ohne Deltas (`ablRein`), damit ein Pinselstrich keinen Umbau auslöst
+  const deltas = dokRoh.kaefig?.deltas ?? [];
+  const mitDeltas = <T extends Ableitung>(a: T): T => (deltas.length ? deltasAnwenden(a, deltas) : a);
+  let ablRein: Ableitung | null = null;
   let fein: Float64Array;
   let xyz: Float64Array;
   let gesteckt: { fein: Float64Array; abl: BeinErgebnis } | null = null;
@@ -522,6 +528,8 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
       abl = ableitenMitBeinen(dok, plan.beinAnsaetze ?? [{ ring: 15, j: 6 }], beine);
       ableitung = abl.zeiten.gesamt;
     }
+    ablRein = abl;
+    abl = mitDeltas(abl);
     const t0 = jetzt();
     const pose = beinPose(abl as BeinErgebnis, plan.schwung);
     zug = jetzt() - t0;
@@ -535,6 +543,8 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
       abl = ableitenMitMaul(dok, linie, {}, { ...maulOptionenVorlage(maul), ...(plan.maulOptionen ?? {}) });
       ableitung = abl.zeiten.gesamt;
     }
+    ablRein = abl;
+    abl = mitDeltas(abl);
     const t0 = jetzt();
     const pose = maulPose(abl as MaulErgebnis, plan.oeffnung);
     zug = jetzt() - t0;
@@ -542,17 +552,20 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     xyz = pose.xyz;
   } else if (schnell && stand && stand.maul === 'aus' && stand.beine === 'aus' && gleicheTopologie(stand.dok, dok)) {
     const r = seiteZiehen(stand.abl, dok);
-    abl = r;
+    ablRein = r;
+    abl = mitDeltas(r);
     zug = r.zugZeit.leiter + r.zugZeit.ziele + r.zugZeit.loeser + r.zugZeit.matrix;
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
   } else if (letzte && letzte.maul === 'aus' && letzte.beine === 'aus') {
-    abl = letzte.abl;
+    ablRein = letzte.abl;
+    abl = mitDeltas(ablRein);
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
   } else {
-    abl = ableiten(dok);
-    ableitung = abl.zeiten.gesamt;
+    ablRein = ableiten(dok);
+    ableitung = ablRein.zeiten.gesamt;
+    abl = mitDeltas(ablRein);
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
   }
@@ -714,7 +727,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     let d = 0;
     for (let f = 0; f < flaechen.length; f++) for (let i = 1; i < flaechen[f]!.length - 1; i++) dreieckFlaeche[d++] = f;
     const kf = abl.kaefig;
-    treffer = { dreieckFlaeche, flaecheVon: kach.flaecheVon, eckenUV: kach.eckenUV, eckenZahl: kach.eckenZahl, kaefig: { n: kf.n, xyz: Float32Array.from(xyz), fStart: Uint32Array.from(kf.fStart), fVerts: Uint32Array.from(kf.fVerts) }, vorlage: { R: abl.vorlage.R, N: abl.vorlage.N } };
+    treffer = { dreieckFlaeche, flaecheVon: kach.flaecheVon, eckenUV: kach.eckenUV, eckenZahl: kach.eckenZahl, kaefig: { n: kf.n, xyz: Float32Array.from(xyz), fStart: Uint32Array.from(kf.fStart), fVerts: Uint32Array.from(kf.fVerts) }, vorlage: { R: abl.vorlage.R, N: abl.vorlage.N, n: abl.vorlage.kaefig.n } };
     if (hebung) for (let i = 1; i < treffer.kaefig.xyz.length; i += 3) treffer.kaefig.xyz[i]! += hebung;
   }
   // Reifen (M3): Ringe der gezeichneten Spanten — posierte Lagen aller Ringpunkte, Verlauf je Reifen auf der Fläche
@@ -764,7 +777,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     maul: maulGriff,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl, maul, beine, klingen } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

@@ -45,6 +45,13 @@ describe('Dokument', () => {
     const json = JSON.parse(JSON.stringify(d));
     expect(dokumentLesen(json)).toEqual(json);
   });
+  it('Version 1: Käfig-Deltas der Pinsel (M3) überstehen die Rundreise', () => {
+    const d = neuesDokument('Kugel');
+    d.kaefig = { deltas: [{ punkt: 37, d: [0.01, -0.02, 0] }, { punkt: 120, d: [0, 0.03, 0.005] }] };
+    const wieder = dokumentLesen(JSON.parse(JSON.stringify(d)));
+    expect(wieder.kaefig).toEqual(d.kaefig);
+  });
+
   it('lehnt fremde Formate ab', () => {
     expect(() => dokumentLesen({ format: 'x' })).toThrow();
   });

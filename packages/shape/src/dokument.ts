@@ -146,13 +146,17 @@ const DokumentFelder = {
 };
 /** Version 0 (bis 14.10.2026): ohne Ausstattung. */
 export const DokumentSchemaV0 = z.object({ ...DokumentFelder, version: z.literal(0) });
-/** Version 1: mit Ausstattung. */
-export const DokumentSchema = z.object({ ...DokumentFelder, version: z.literal(1), ausstattung: AusstattungSchema.optional() });
+/** Käfig-Delta (M3, Pinsel): Versatz eines Käfigpunkts der Vorlage (rechte Hälfte oder Naht), Profil-Einheiten. */
+const KaefigDeltaSchema = z.object({ punkt: z.number().int().min(0), d: V3 });
+const KaefigSchema = z.object({ deltas: z.array(KaefigDeltaSchema) });
+/** Version 1: mit Ausstattung und (M3) Käfig-Deltas der Pinsel. */
+export const DokumentSchema = z.object({ ...DokumentFelder, version: z.literal(1), ausstattung: AusstattungSchema.optional(), kaefig: KaefigSchema.optional() });
 
 export type V3T = [number, number, number];
 export type Knoten3 = { p: V3T; ein: V3T; aus: V3T; art: 'glatt' | 'ecke' };
 /** Offene 3D-Bézier-Linie (Griffe relativ zum Knoten), Knoten 0 auf der Mittelebene, letzter Knoten = Mundwinkel. */
 export type Linie3 = { knoten: Knoten3[] };
+export type KaefigDelta = { punkt: number; d: [number, number, number] };
 /** Lippen der rechten Hälfte; `unten` fehlt = Kiefer gleich (Florians türkise Linie). */
 export type Lippen = { oben: Linie3; unten?: Linie3 };
 export type Maul = { zu: Lippen; auf?: Lippen };
@@ -193,6 +197,11 @@ export type Dokument = {
   posen: PoseName[];
   /** Version 1: Absicht für den Bau (Maul, Beine, Stil, Kasten, Augen, Gesicht, Zonen); fehlt = Standardkörper */
   ausstattung?: Ausstattung;
+  /**
+   * M3 (Pinsel): Versätze von Käfigpunkten der Vorlage (Index < Punktzahl der Röhre; rechte Hälfte oder Naht, die linke
+   * Hälfte spiegelt der Kern), Profil-Einheiten, auf den abgeleiteten Käfig addiert. Fehlt = unberührt.
+   */
+  kaefig?: { deltas: KaefigDelta[] };
   maul?: Maul;
   zaehne?: Zaehne;
   kanten?: Kante[];

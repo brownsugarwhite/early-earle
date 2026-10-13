@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { pruefwesenBauplan } from '@ee/shape/kern';
 import { aktuellesNetz } from '../kern/kernBau';
 import { augeZeiger, augenRandUnter, kieferUnter, kieferZeiger } from '../kern/griffe';
+import { pinselRing, pinselZeiger } from '../kern/pinsel';
 import { reifenNeu, reifenUnter, reifenZeiger, useReifen } from '../kern/reifen';
 import { trefferDeuten, useTreffer } from '../kern/treffer';
 import { useEditor } from '../state/editorStore';
@@ -82,6 +83,11 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     const menueMoeglich = knopf === 2 || (knopf === 0 && e.ctrlKey);
     // M3: Griffe auf der Bühne (Bauweise kern): Kieferknopf, Augenrand (Stufe Augen), Reifen (Stufe Körper: Perle,
     // Band, ⌥ = Ecke)
+    // Pinsel (M3): G ziehen, I aufblasen, ⇧ dabei glättet — auf dem Körper, Stufe Körper
+    if (knopf === 0 && !e.ctrlKey && ref.current && useUi.getState().bauweise === 'kern' && useUi.getState().ebene === 'form' && (useUi.getState().werkzeug === 'ziehen' || useUi.getState().werkzeug === 'aufblasen')) {
+      const rr = ref.current.getBoundingClientRect();
+      if (pinselZeiger(e, e.clientX - rr.left, e.clientY - rr.top, ref.current)) return;
+    }
     if (knopf === 0 && !e.ctrlKey && !e.shiftKey && ref.current && useUi.getState().bauweise === 'kern' && useUi.getState().werkzeug === 'auswahl') {
       const rr = ref.current.getBoundingClientRect();
       const px = e.clientX - rr.left;
@@ -146,6 +152,7 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     if ((h?.reifen ?? -1) !== (alt?.reifen ?? -1) || (h?.knoten ?? -2) !== (alt?.knoten ?? -2)) useReifen.setState({ hover: h });
     const px = e.clientX - r.left;
     const py = e.clientY - r.top;
+    pinselRing(px, py);
     const kiefer = ui.bauweise === 'kern' && kieferUnter(px, py);
     const auge = ui.bauweise === 'kern' && ui.ebene === 'augen' && augenRandUnter(px, py);
     if (ref.current) ref.current.style.cursor = kiefer ? 'ns-resize' : auge ? 'nwse-resize' : h ? (h.knoten === null ? 'ew-resize' : 'pointer') : '';
@@ -154,6 +161,7 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     szene.aktuell?.setzeMarke(null);
     useTreffer.setState({ treffer: null, feld: null });
     if (useReifen.getState().hover) useReifen.setState({ hover: null });
+    szene.aktuell?.setzeRadiusRing(null);
     if (ref.current) ref.current.style.cursor = '';
   };
   return <div ref={ref} className="steuerung3d" onPointerDown={unten} onPointerMove={schweben} onPointerLeave={verlassen} onContextMenu={(e) => e.preventDefault()} onAuxClick={(e) => e.preventDefault()} />;
