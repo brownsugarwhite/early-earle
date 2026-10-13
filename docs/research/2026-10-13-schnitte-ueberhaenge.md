@@ -244,3 +244,40 @@ Florian: „Hältst du das für die bessere Lösung? Und brauche ich die Kantenr
 Hinweise der Recherche:
 - Im Volltext gelesen wurden [3], [14], [15], [18], [21], [22] und [30], die übrigen nach Abstract, Doku oder Sekundärquelle; alle DOIs sind über Crossref geprüft.
 - Eigene Schlüsse sind die Projektionsregel in Punkt 1, „Acht = Sattel“, die Grenze bei steilen Gliedern und der Bauweise-Vorschlag.
+
+## 6. Versuch „rund“ (13.10. nachmittags, nach Florians Urteil zum Schnitt-Loft)
+
+Florian zum Schnitt-Loft: „zerrissen und ganz kantig … ich hätte einen ganz runden, tropfenförmigen Shape erwartet“. Dazu: Spanten je Teil getrennt bearbeitbar, keine Acht über die Achse, Kantenlinie setzt Spanten, Spant quer zum Hals.
+
+**Bauweise:**
+- Die Seite wird per Poisson aufgeblasen (Höhe √u, ein Kreis ergibt genau eine Halbkugel). Die Breite z = k·h wird an Top und Front angepasst.
+- Das Netz ist ein Höhenfeld über der Seite: exakter Rand, weicher Saum.
+- Code: `packages/shape/src/versuch/aufblasen.ts`, `dreiecke2d.ts`, `seitenteile.ts`, `rundSpanten.ts`.
+- Im Editor: Tab „rund“, Aufruf `?versuch=rund&wesen=langhals|ueberhang|rex|tiger|robbe|kugel`.
+
+| Wesen | Seite Ø/max px | Front Ø/max | Top Ø/max | Bau ms (grob) |
+|---|---|---|---|---|
+| Kugel | 0,1/0,3 | 0,1/0,6 | 0,1/0,5 | 34 (6) |
+| Langhals | 0,1/0,5 | 1,4/6,0 | 1,7/10,4 | 19 (5) |
+| Ente (Überhang) | 0,2/0,9 | 1,8/10,4 | 3,9/36,8 | 358 (20) |
+| Rex | 0,1/1,0 | 4,2/13,5 | 0,4/3,1 | 23 (5) |
+| Tiger | 0,1/0,9 | 1,2/5,0 | 1,8/10,0 | 51 (9) |
+| Robbe | 0,1/0,6 | 3,5/19,1 | 2,1/11,5 | 41 (8) |
+
+**Was gebaut ist:**
+- **Runde Grundform:** Langhals als runde Tropfenform; der Hals ist eine runde Röhre, die Frontbreite trifft er auf 1,5 px. Die Seite ist überall genau (max 1 px; creation bis 55, Wirbelsäule bis 16,5, Schnitt-Loft bis 8,3).
+- **Haken im Top:** Sie werden automatisch Seitenteile. Die Kerbe bleibt offen, Körper und Widerhaken sind ohne Naht verbunden.
+- **Spanten je Teil:** quer zur örtlichen Achse, als Halbprofil (eine Acht ist unmöglich), am Hals waagerecht.
+  - Eine Linie über zwei Teile ergibt zwei Spanten.
+  - Bearbeitet wird in der Front, zwischen Nachbarn wird Punkt für Punkt überblendet. Ein neuer Spant ändert die Form um 0,00 px.
+- **Kantenlinie setzt Spanten:** An jedem Punkt entsteht ein Spant, der Kantenpunkt liegt dort exakt. ⌥ macht eine Ecke, die Griffe geben die Rundung. Die Kante läuft zwischen den Spanten weiter und ist im 3D sichtbar.
+
+**Grenzen:**
+- Flache Ober- und Unterseiten der Front werden rund (Robbe Front bis 19 px, Rex 13,5 px); flach geht nur über einen Spant.
+- Widersprüche zwischen den Ansichten bleiben (Ente: Schnauze im Top gegen Glocke in der Front, Top bis 37 px).
+- Die Verbindung der Seitenteile kostet 0,35 s und entsteht nur beim Loslassen.
+- Grate wirken weich (glatte Normalen).
+- Ein Spant merkt sich seinen Kantenpunkt über die Nummer; Einfügen oder Löschen in der Kante kann ihn verschieben.
+- Das Maul fehlt in dieser Bauweise noch.
+
+Bilder: `docs/progress/editor/rund-{langhals,ueberhang,rex,tiger,robbe,kugel,haken,spanten,kante}.png`, `rund-spant-hals-editor.png`, `rund-spanten-ueberhang-editor.png`, `rund-kante-editor.png`.
