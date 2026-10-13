@@ -19,7 +19,8 @@ import type { Dokument } from '../dokument';
 import { type Kaefig, kanteZwischen } from '../kaefig/halbkanten';
 import { type Roehre, roehre } from '../kaefig/roehre';
 import { type AusgleichsLoeser, type Bedingung, type GrenzLoeser, ausgleichsLoeser, grenzLoeser, kaefigAusgleich, kaefigDurchZiele } from '../loeser/grenzflaeche';
-import { pfadAbtasten, vollerPfad } from '../profil';
+import { punktAuf } from '../bezier';
+import { pfadAbtasten, segmente, vollerPfad } from '../profil';
 import { stelleVon, vorlageBei } from '../spanten';
 import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3 } from '../subdivision/matrix';
@@ -401,24 +402,29 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument)
 /** Winkel θ eines Ringpunkts (0 = oben, π/2 = rechts, π = unten). */
 const theta = (j: number, N: number) => (2 * Math.PI * j) / N;
 
+/** Schnittgrenzen eines liegenden Abschnitts rasten auf die Enden der Front ein, wenn sie näher als dieser Anteil der Abschnittshöhe liegen. */
+const LAPPEN_RASTEN = 0.03;
+
 /** Querschnitt-Form: Höhe v (1 oben … 0 unten) und Breite w (0 … 1) je Ringpunkt j = 0 … N/2 (rechte Hälfte). */
 export type Querschnitt = { v: number[]; w: number[]; haerte: number[]; knoten: number[] };
 
-/** Querschnitt an der Station (x der Sprossenmitte): aus Front und Spanten, oder rund. */
-export function querschnittBei(dok: Dokument | null, x: number, N: number, rund: boolean): Querschnitt {
+/** Runder Querschnitt (Kreis). */
+function kreisQuerschnitt(N: number): Querschnitt {
   const h = N / 2;
-  if (rund || !dok) {
-    const v: number[] = [];
-    const w: number[] = [];
-    for (let j = 0; j <= h; j++) {
-      const th = theta(j, N);
-      v.push((1 + Math.cos(th)) / 2);
-      w.push(Math.abs(Math.sin(th)) < 1e-9 ? 0 : 1);
-    }
-    return { v, w, haerte: [], knoten: [] };
+  const v: number[] = [];
+  const w: number[] = [];
+  for (let j = 0; j <= h; j++) {
+    const th = theta(j, N);
+    v.push((1 + Math.cos(th)) / 2);
+    w.push(Math.abs(Math.sin(th)) < 1e-9 ? 0 : Math.abs(Math.sin(th)));
   }
+  return { v, w, haerte: [], knoten: [] };
+}
+
+/** Querschnitt aus Front und Spanten (`vorlageBei`) an der Stelle x; nur mit gezeichneten Spanten sinnvoll. */
+function spantQuerschnitt(dok: Dokument, x: number, N: number): Querschnitt {
+  const h = N / 2;
   const q = vorlageBei(dok, stelleVon(dok, x / dok.skalierung), h);
-  // q: h + 1 Punkte von oben (Achse) nach unten (Achse), x = Breite 0 … 1, y = Höhe 0 … 1
   const v = q.q.map((p) => Math.min(1, Math.max(0, p.y)));
   const w = q.q.map((p) => Math.max(0, p.x));
   v[0] = 1;
@@ -429,9 +435,174 @@ export function querschnittBei(dok: Dokument | null, x: number, N: number, rund:
 }
 
 /**
- * Zielpunkte aller Käfigpunkte aus Leiter, Stationen, Dicke und Querschnitt-Form. Ein Ringpunkt liegt bei der Höhe v
- * auf seiner Sprosse und seitlich bei w · (größte halbe Dicke entlang der Sprosse). Breite = Poisson (Top/Front-Anpassung
- * aus „rund“), Form = Front/Spanten. Liefert auch die Höhe je Käfigpunkt (für Züge).
+ * Querschnitt eines liegenden Abschnitts aus seinem Lappen der Front-Silhouette (Höhen yLo … yHi): die rechte Hälfte
+ * der Front-Kurve, auf den Höhenbereich beschnitten, nach Bogenlänge abgetastet (Ecken genau auf Stützstellen), Breite
+ * normiert auf die größte Breite des Lappens. Ecken der Front im Bereich werden Längsfalten.
+ */
+function lappenQuerschnitt(dok: Dokument, yLoRoh: number, yHiRoh: number, N: number): Querschnitt {
+  const h = N / 2;
+  const sk = dok.skalierung;
+  const front = dok.profile.front;
+  let yLo = yLoRoh;
+  let yHi = yHiRoh;
+  // rechte Hälfte der Front als Zug von oben nach unten, mit Markierung der Ecken (Knotenindex)
+  const segs = segmente(front);
+  const zug: { p: V2; ecke: number }[] = [];
+  segs.forEach((seg, si) => {
+    const m = 48;
+    for (let k = si === 0 ? 0 : 1; k <= m; k++) {
+      const q = punktAuf(seg, k / m);
+      const knotenIdx = k === 0 ? si : k === m ? si + 1 : -1;
+      const kn = knotenIdx >= 0 ? front.knoten[knotenIdx] : undefined;
+      zug.push({ p: { x: Math.abs(q.x) * sk, y: q.y * sk }, ecke: kn && kn.art === 'ecke' && Math.abs(kn.p.x) > 1e-9 ? knotenIdx : -1 });
+    }
+  });
+  if (zug.length > 1 && zug[0]!.p.y < zug[zug.length - 1]!.p.y) zug.reverse();
+  // Grenzen auf die Enden der Front einrasten, wenn sie fast zusammenfallen: Front und Seite sind getrennt gezeichnet,
+  // die Sprosse endet z. B. bei 0,5297 und die Deckkante liegt bei 0,53. Ohne Einrasten fiele eine flache Deckkante
+  // samt ihren Ecken dem Zuschneiden zum Opfer (Kasten → Schräge, keine Falten).
+  let fMin = Infinity;
+  let fMax = -Infinity;
+  for (const q of zug) {
+    fMin = Math.min(fMin, q.p.y);
+    fMax = Math.max(fMax, q.p.y);
+  }
+  const rasten = LAPPEN_RASTEN * Math.max(1e-9, yHi - yLo);
+  if (fMax > yHi && fMax - yHi <= rasten) yHi = fMax;
+  if (fMin < yLo && yLo - fMin <= rasten) yLo = fMin;
+  // auf den Höhenbereich beschneiden (Zwischenpunkte an den Grenzen)
+  const drin: { p: V2; ecke: number }[] = [];
+  for (let i = 0; i < zug.length; i++) {
+    const a = zug[i]!;
+    const innen = a.p.y <= yHi + 1e-9 && a.p.y >= yLo - 1e-9;
+    if (i > 0) {
+      const b = zug[i - 1]!;
+      for (const grenze of [yHi, yLo]) {
+        if ((b.p.y > grenze) !== (a.p.y > grenze) && Math.abs(a.p.y - b.p.y) > 1e-12) {
+          const t = (grenze - b.p.y) / (a.p.y - b.p.y);
+          drin.push({ p: { x: b.p.x + (a.p.x - b.p.x) * t, y: grenze }, ecke: -1 });
+        }
+      }
+    }
+    if (innen) drin.push(a);
+  }
+  if (drin.length < 2) return kreisQuerschnitt(N);
+  // Beginnt oder endet der Lappen abseits der Achse (abgeschnitten, z. B. Rumpf unter dem Hals), führt eine flache
+  // Kante zur Naht; sonst würde der Nahtpunkt eine Schräge zur ersten Stützstelle ziehen.
+  let xMax = 0;
+  for (const q of drin) xMax = Math.max(xMax, q.p.x);
+  if (drin[0]!.p.x > 1e-3 * xMax) drin.unshift({ p: { x: 0, y: drin[0]!.p.y }, ecke: -1 });
+  if (drin[drin.length - 1]!.p.x > 1e-3 * xMax) drin.push({ p: { x: 0, y: drin[drin.length - 1]!.p.y }, ecke: -1 });
+  // Teilstücke zwischen Ecken, Stützstellen je Teilstück nach Bogenlänge (mindestens eine)
+  const grenzen = [0];
+  drin.forEach((q, i) => {
+    if (q.ecke >= 0 && i > 0 && i < drin.length - 1) grenzen.push(i);
+  });
+  grenzen.push(drin.length - 1);
+  const laengen: number[] = [];
+  for (let g = 0; g + 1 < grenzen.length; g++) {
+    let L = 0;
+    for (let i = grenzen[g]!; i < grenzen[g + 1]!; i++) L += Math.hypot(drin[i + 1]!.p.x - drin[i]!.p.x, drin[i + 1]!.p.y - drin[i]!.p.y);
+    laengen.push(L);
+  }
+  const summe = laengen.reduce((a, b) => a + b, 0) || 1;
+  const anteile = laengen.map((L) => Math.max(1, Math.round((h * L) / summe)));
+  let diff = anteile.reduce((a, b) => a + b, 0) - h;
+  while (diff !== 0) {
+    let wahl = 0;
+    for (let g = 1; g < anteile.length; g++) if (diff > 0 ? anteile[g]! > anteile[wahl]! : anteile[g]! < anteile[wahl]!) wahl = g;
+    if (diff > 0 && anteile[wahl]! <= 1) break;
+    anteile[wahl]! += diff > 0 ? -1 : 1;
+    diff += diff > 0 ? -1 : 1;
+  }
+  const v: number[] = [];
+  const w: number[] = [];
+  const haerte: number[] = [];
+  const knoten: number[] = [];
+  const H = Math.max(1e-9, yHi - yLo);
+  const push = (p: V2) => {
+    v.push(Math.min(1, Math.max(0, (p.y - yLo) / H)));
+    w.push(p.x);
+  };
+  push(drin[0]!.p);
+  for (let g = 0; g + 1 < grenzen.length; g++) {
+    const i0 = grenzen[g]!;
+    const i1 = grenzen[g + 1]!;
+    const m = anteile[g]!;
+    // Bogenlänge im Teilstück
+    const cum = [0];
+    for (let i = i0; i < i1; i++) cum.push(cum[cum.length - 1]! + Math.hypot(drin[i + 1]!.p.x - drin[i]!.p.x, drin[i + 1]!.p.y - drin[i]!.p.y));
+    const L = cum[cum.length - 1]! || 1;
+    for (let k = 1; k <= m; k++) {
+      const ziel = (L * k) / m;
+      let i = 0;
+      while (i < cum.length - 2 && cum[i + 1]! < ziel) i++;
+      const d = cum[i + 1]! - cum[i]!;
+      const t = d > 1e-15 ? (ziel - cum[i]!) / d : 0;
+      const a = drin[i0 + i]!.p;
+      const b = drin[i0 + i + 1]!.p;
+      push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+    if (g + 1 < grenzen.length - 1) {
+      const e = drin[i1]!;
+      const kn = front.knoten[e.ecke];
+      knoten.push(v.length - 1);
+      haerte.push(Math.min(1, Math.max(0, kn?.haerte ?? 1)));
+    }
+  }
+  let wMax = 0;
+  for (const x of w) wMax = Math.max(wMax, x);
+  for (let j = 0; j < w.length; j++) w[j] = wMax > 1e-9 ? w[j]! / wMax : 0;
+  v[0] = 1;
+  v[v.length - 1] = 0;
+  w[0] = 0;
+  w[w.length - 1] = 0;
+  return { v, w, haerte, knoten };
+}
+
+/** Sprosse (Rückenpunkt o, Bauchpunkt u) einer Station. */
+type Sprosse = { o: V2; u: V2 };
+
+/**
+ * Querschnitte je Ring und Kappenpunkt-Stufe aus den Sprossen: Ringe werden in Abschnitte gruppiert, liegend (Sprosse
+ * eher senkrecht) oder stehend (Sprosse eher waagerecht, z. B. Hals). Liegende Abschnitte bekommen als Vorlage ihren
+ * Lappen der Front-Silhouette (Körper, Kopf), stehende einen Kreis. Mit gezeichneten Spanten gilt `vorlageBei`.
+ */
+export function querschnitteFuer(sprossen: readonly Sprosse[], dok: Dokument | null, breiten: Breiten, N: number, opt: AbleitOptionen): Querschnitt[] {
+  if (!opt.querschnitt || !dok) return sprossen.map(() => kreisQuerschnitt(N));
+  if (dok.spanten?.length) return sprossen.map((s) => spantQuerschnitt(dok, (s.o.x + s.u.x) / 2, N));
+  const liegend = sprossen.map((s) => Math.abs(s.o.y - s.u.y) >= Math.abs(s.o.x - s.u.x));
+  const out: Querschnitt[] = new Array(sprossen.length);
+  let i = 0;
+  while (i < sprossen.length) {
+    let j = i;
+    while (j + 1 < sprossen.length && liegend[j + 1] === liegend[i]) j++;
+    if (liegend[i]) {
+      let yLo = Infinity;
+      let yHi = -Infinity;
+      for (let k = i; k <= j; k++) {
+        yLo = Math.min(yLo, sprossen[k]!.u.y, sprossen[k]!.o.y);
+        yHi = Math.max(yHi, sprossen[k]!.u.y, sprossen[k]!.o.y);
+      }
+      const q = lappenQuerschnitt(dok, yLo, yHi, N);
+      for (let k = i; k <= j; k++) out[k] = q;
+    } else {
+      const q = kreisQuerschnitt(N);
+      for (let k = i; k <= j; k++) out[k] = q;
+    }
+    i = j + 1;
+  }
+  return out;
+}
+
+function sprossenVon(l: Leiter, st: readonly Station[]): Sprosse[] {
+  return st.map((s) => ({ o: zugBei(l.ruecken, s.a), u: zugBei(l.bauch, s.b) }));
+}
+
+/**
+ * Zielpunkte aller Käfigpunkte aus Leiter, Stationen, Silhouettenbreiten und Querschnitt-Form. Ein Ringpunkt liegt bei
+ * der Höhe v auf seiner Sprosse und seitlich bei w · Maßstab; Maßstab = größter, der ins Top (bei x) und in die Front
+ * (bei jeder Höhe) passt. Liefert auch die Höhe je Käfigpunkt (für Züge).
  */
 export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen): { ziele: Float64Array; hoehe: Float64Array } {
   const { R, N, c } = v;
@@ -443,36 +614,35 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     ziele[3 * p + 2] = z;
     hoehe[p] = hv;
   };
+  const ringSprossen = sprossenVon(l, st.ringe);
+  const ringQ = querschnitteFuer(ringSprossen, dok, breiten, N, opt);
   let letzteW = 0;
-  const sprosse = (s: Station) => {
-    const o = zugBei(l.ruecken, s.a);
-    const u = zugBei(l.bauch, s.b);
-    const q = querschnittBei(dok, (o.x + u.x) / 2, N, !opt.querschnitt);
-    // Maßstab: größter, der ins Top (bei x) und in die Front (bei jeder Höhe) passt
-    let W = breiten.top((o.x + u.x) / 2);
+  const masstab = (sp: Sprosse, q: Querschnitt) => {
+    let W = breiten.top((sp.o.x + sp.u.x) / 2);
     if (!(W > 0)) W = breiten.topMax;
     for (let j = 1; j < N / 2; j++) {
       const wj = q.w[j]!;
       if (wj < 0.25) continue;
-      const y = u.y + (o.y - u.y) * q.v[j]!;
+      const y = sp.u.y + (sp.o.y - sp.u.y) * q.v[j]!;
       const fb = breiten.front(y);
       if (fb > 0) W = Math.min(W, fb / wj);
     }
     if (!(W > 1e-6)) W = letzteW || 0.01 * breiten.topMax;
     letzteW = W;
-    return { o, u, W, q };
+    return W;
   };
-  const punkt = (sp: ReturnType<typeof sprosse>, j: number): [number, number, number, number] => {
-    // j = 0 … N/2 rechte Hälfte
-    const hv = sp.q.v[j]!;
+  const punkt = (sp: Sprosse, q: Querschnitt, W: number, j: number): [number, number, number, number] => {
+    const hv = q.v[j]!;
     const x = sp.u.x + (sp.o.x - sp.u.x) * hv;
     const y = sp.u.y + (sp.o.y - sp.u.y) * hv;
-    return [x, y, sp.q.w[j]! * sp.W, hv];
+    return [x, y, q.w[j]! * W, hv];
   };
   for (let i = 0; i < R; i++) {
-    const sp = sprosse(st.ringe[i]!);
+    const sp = ringSprossen[i]!;
+    const q = ringQ[i]!;
+    const W = masstab(sp, q);
     for (let j = 0; j <= N / 2; j++) {
-      const [x, y, z, hv] = punkt(sp, j);
+      const [x, y, z, hv] = punkt(sp, q, W, j);
       setze(v.ringPunkt(i, j), x, y, j === 0 || j === N / 2 ? 0 : z, hv);
       if (j > 0 && j < N / 2) setze(v.ringPunkt(i, N - j), x, y, -z, hv);
     }
@@ -480,7 +650,9 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
   for (const seite of ['vorn', 'hinten'] as const) {
     const stK = st.kappen[seite];
     const spitze = seite === 'vorn' ? l.ruecken[0]! : l.ruecken[l.ruecken.length - 1]!;
-    const sprossen = stK.map(sprosse);
+    const sprossen = sprossenVon(l, stK);
+    // Kappenpunkte nehmen den Querschnitt des angrenzenden Rings
+    const q = ringQ[seite === 'vorn' ? 0 : R - 1]!;
     for (let a = 1; a < c; a++) {
       for (let b = 1; b < c; b++) {
         const p = v.kappe(seite, a, b);
@@ -491,12 +663,11 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
           setze(p, spitze.x, spitze.y, 0, 0.5);
           continue;
         }
-        if (u < 0) continue; // linke Hälfte wird gespiegelt
-        // Winkel in der Kappe → Ringposition j der rechten Hälfte (0 oben … N/2 unten)
+        if (u < 0) continue;
         const th = Math.atan2(u, w);
-        const j = Math.round((th / Math.PI) * (N / 2));
+        const j = Math.min(N / 2, Math.max(0, Math.round((th / Math.PI) * (N / 2))));
         const sp = sprossen[r - 1]!;
-        const [x, y, z, hv] = punkt(sp, Math.min(N / 2, Math.max(0, j)));
+        const [x, y, z, hv] = punkt(sp, q, masstab(sp, q), j);
         setze(p, x, y, u === 0 ? 0 : z, hv);
         if (u > 0) setze(v.kappe(seite, c - a, b), x, y, -z, hv);
       }
@@ -519,7 +690,7 @@ function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V2[]; an
 }
 
 /** Falten des Käfigs aus Ecken: Ringfalten (Seitenumriss), Spitzen, Längsfalten (Ecken im Querschnitt). */
-function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument, opt: AbleitOptionen): void {
+function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument, breiten: Breiten, opt: AbleitOptionen): void {
   const { R, N, c } = v;
   const k = v.kaefig;
   for (const e of st.ecken) {
@@ -543,13 +714,11 @@ function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument, opt: A
       }
     }
   }
-  // Längsfalten: Ecke im Querschnitt (Front oder Spant, Härte je Knoten) → Kante Ring i → i+1 am Ringpunkt der Ecke
+  // Längsfalten: Ecke im Querschnitt (Front-Lappen oder Spant, Härte je Knoten) → Kante Ring i → i+1 am Ringpunkt der Ecke
   if (!opt.querschnitt) return;
+  const qs = querschnitteFuer(sprossenVon(l, st.ringe), dok, breiten, N, opt);
   for (let i = 0; i + 1 < R; i++) {
-    const s = st.ringe[i]!;
-    const o = zugBei(l.ruecken, s.a);
-    const u = zugBei(l.bauch, s.b);
-    const q = querschnittBei(dok, (o.x + u.x) / 2, N, false);
+    const q = qs[i]!;
     q.haerte.forEach((h, kn) => {
       if (h <= 0) return;
       const j = q.knoten[kn];
@@ -572,7 +741,7 @@ export function ableiten(dok: Dokument, optionen: Partial<AbleitOptionen> = {}):
   const t2 = jetzt();
   const vorlage = roehre(opt.ringe, opt.ring);
   const st = stationenWaehlen(l, opt, dok);
-  faltenSetzen(vorlage, st, l, dok, opt);
+  faltenSetzen(vorlage, st, l, dok, breiten, opt);
   const u = unterteilung(vorlage.kaefig, opt.stufen);
   const t3 = jetzt();
   const loeser = grenzLoeser(u.grenze, vorlage.kaefig.n);

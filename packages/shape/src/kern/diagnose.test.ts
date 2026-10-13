@@ -6,6 +6,7 @@ import { alleFlaechen } from '../kaefig/halbkanten';
 import type { V3 } from '../versuch/catmullClark';
 import { umrissAusNetz } from '../versuch/umriss3d';
 import rexRoh from '../versuch/vorlagen/rex.json';
+import langhalsRoh from '../versuch/vorlagen/langhals.json';
 import { type Vorlage, vorlageDokument } from '../versuch/vorlagen';
 import { ableiten } from './ableiten';
 
@@ -29,7 +30,7 @@ function kasten(): Dokument {
   return { ...dok, profile: { ...dok.profile, front } };
 }
 
-function frontDiagnose(name: string, dok: Dokument) {
+function frontDiagnose(name: string, dok: Dokument, ansicht: 'front' | 'top' = 'front') {
   const abl = ableiten(dok);
   const v = abl.vorlage;
   const z = abl.ziele;
@@ -55,8 +56,8 @@ function frontDiagnose(name: string, dok: Dokument) {
     feinZ = Math.max(feinZ, Math.abs(fein[3 * i + 2]!));
   }
   const letzte = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
-  const um = umrissAusNetz({ punkte, flaechen: alleFlaechen(letzte), schaerfe: new Map() }, 'front', 900)[0] ?? [];
-  const kurve = pfadAbtasten(vollerPfad(dok.profile.front), 160);
+  const um = umrissAusNetz({ punkte, flaechen: alleFlaechen(letzte), schaerfe: new Map() }, ansicht, 900)[0] ?? [];
+  const kurve = pfadAbtasten(vollerPfad(dok.profile[ansicht]), 160);
   let kMax = 0;
   for (const p of kurve) kMax = Math.max(kMax, Math.abs(p.x));
   let uMax = 0;
@@ -75,12 +76,14 @@ function frontDiagnose(name: string, dok: Dokument) {
     }
     if (best > worst.d) worst = { d: best, p };
   }
-  console.log(`${name}: Front-Kurve |x|max ${kMax.toFixed(3)}, Umriss |x|max ${uMax.toFixed(3)}, fein |z|max ${feinZ.toFixed(3)}; größte Abweichung ${(worst.d * PX).toFixed(1)} px bei (${worst.p.x.toFixed(3)}, ${worst.p.y.toFixed(3)})\n  ${zeilen.join('\n  ')}`);
+  console.log(`${name} (${ansicht}): Kurve |x|max ${kMax.toFixed(3)}, Umriss |x|max ${uMax.toFixed(3)}, fein |z|max ${feinZ.toFixed(3)}; größte Abweichung ${(worst.d * PX).toFixed(1)} px bei (${worst.p.x.toFixed(3)}, ${worst.p.y.toFixed(3)})\n  ${zeilen.join('\n  ')}`);
 }
 
 describe('Diagnose Front', () => {
   it('Kasten-Kugel und Rex', () => {
     frontDiagnose('Kasten-Kugel', kasten());
     frontDiagnose('Rex', vorlageDokument(rexRoh as unknown as Vorlage, 'zu', 'rex'));
+    frontDiagnose('Langhals', vorlageDokument(langhalsRoh as unknown as Vorlage, 'zu', 'langhals'), 'front');
+    frontDiagnose('Langhals', vorlageDokument(langhalsRoh as unknown as Vorlage, 'zu', 'langhals'), 'top');
   });
 });

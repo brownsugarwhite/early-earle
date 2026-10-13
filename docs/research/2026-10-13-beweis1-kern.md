@@ -43,3 +43,41 @@
 ## Urteil
 
 Der Kern trägt: eine Wahrheit (Käfig), exakte Grenzfläche durch die Zeichnung, Zugschritte in wenigen Millisekunden, Ecken als Falten ohne Sonderregel. Nicht erreicht sind 0,5 px am Rex (0,70) und die Ente als Form (Seite ja, Hals nein). Beweis 1 gilt damit als **bestanden mit zwei offenen Punkten** (Spitzen-Ecke, Überhang als Teil). Weiter mit Beweis 4 (Look live auf diesem Netz) und Beweis 2 (Maul), parallel die Reifen (Spanten als Ringe-Griffe).
+
+## Nachtrag 13.10. nachts: die offenen Punkte, nachgearbeitet
+
+Florian (unterwegs): „Fixe die Punkte aus offen und ehrlich und dann weiter.“ Stand danach (Messung `beweis1.test.ts`, `diagnose.test.ts`, `querschnitt.test.ts`, `varianten.test.ts`; alle 14 Kern-Tests grün):
+
+1. **Spitzen-Ecke ✓** Ecken an den Spitzen bekommen eine kleine Kappe (`kappeSpitze` 2,5 % statt 5 %), der Eckpunkt rückt an die Kurve: Rex 0,70 → **0,33 px** (Kriterium ≤ 0,5 erfüllt). Kiel (Mittelkante in der Kappe) brächte 0,26 px, ist aber nicht Standard (Varianten-Test).
+2. **Ringverteilung ✓** Ringe nach Krümmung des Seitenumrisses (`kruemmung` 2): Langhals 1,52 → **0,97 px**. Messung jetzt nach dem Loslassen (Ableitung), nicht nur im Zugschritt.
+3. **Breite nicht mehr aus Poisson ✓** Projektionsregel: Ein Ringpunkt bei Höhe v und Breitenanteil w liegt seitlich bei w · W, und W ist die größte Breite, die ins Top (bei x) **und** in die Front (bei jeder Höhe des Rings) passt. Der Poisson-Schritt entfällt in der Ableitung (≈ 90–140 ms, größter Posten die Matrix). Kugel: Front 0,1 px, Top 0,3 px.
+4. **Querschnitte aus Front und Spanten ✓** Mit gezeichneten Spanten gilt `vorlageBei` (Halbprofil je Station). Ohne Spanten bekommt jeder **liegende Abschnitt** (Sprossen eher senkrecht: Rumpf, Kopf) seinen Lappen der Front-Silhouette als Vorlage, nach Bogenlänge abgetastet, Ecken genau auf Stützstellen; **stehende Abschnitte** (Sprossen eher waagerecht: Hals) bekommen einen Kreis. Ecken im Querschnitt werden **Längsfalten** (Schärfe aus der Härte des Knotens). Kasten-Kugel (Front als Kasten, Seite und Top Kreise): Front **0,7 px**, Knick an den Längskanten **93°** (rund wären < 15°).
+   - **Falle:** Die Schnittgrenzen des Lappens müssen auf die Enden der Front **einrasten** (3 % der Abschnittshöhe). Front und Seite sind getrennt gezeichnet; die Sprosse endete bei 0,5297, die Deckkante lag bei 0,53, und das Zuschneiden warf Deck- und Bodenkante samt Ecken weg (Front 18,9 px, keine Falten). Abgeschnittene Lappen (Sprosse mitten im Körper, Rumpf unter dem Hals) führen jetzt **flach zur Naht** statt schräg zur ersten Stützstelle.
+5. **Messung in Front und Top ✓** (`ansichtMessen`): Umriss des feinen Netzes gegen die gezeichnete Kurve, in beiden Richtungen.
+6. **Earle-Material im Tab „kern“ ✓ (Beweis 4, erster Schritt):** `createCreatureMaterial` aus `packages/render/src/creature2` auf dem Kern-Netz, Deskriptoren (Wirbelsäulen-s, θ, Umfang, Bauch; Zonen) am Käfig gerechnet und über die Grenzmatrix auf Stufe 3 gebracht; Paletten Tiger/Rex/Blob/Giraffe, Bauchfeld hart, Rückenfeld weich, gemalte Schlitzaugen mit Blinzeln; Umschalter Look/Palette in der Seitenleiste (`&look=earle&palette=…`). Bilder `kern-<wesen>-3d-earle.png`. Muster schwimmen beim Ziehen nicht (Deskriptoren folgen dem Käfig). Das Vergleichsbild Tiger-Kopf (Kastenschnauze) steht noch aus: `kern-tiger-3d-{kern,earle}.png` (Tiger-Vorlage mit Spanten, Naht 1,23 px, 4 Falten) zeigt einen runden Schnauzenstummel mit Ringfalten, keinen Kasten; die Spanten der Vorlage sind rund gezeichnet, der Kasten braucht Spanten mit Ecken (dann Längsfalten wie beim Kasten-Test).
+
+### Messwerte jetzt (px bei 461 px je Kachel)
+
+| Prüfwesen | Naht → Kurve max (Ø) | Kurve → Naht max | Front | Top | Kriterium |
+|---|---|---|---|---|---|
+| Kugel | 0,28 (0,04) | 0,27 | 0,1 | 0,3 | ≤ 0,5 ✓ |
+| Rex | 0,33 (0,04) | 0,20 | 11,0 | 1,9 | ≤ 0,5 ✓ (Seite); Front: Widerspruch, siehe unten |
+| Rex, 36 Ringe | 0,33 (0,02) | 0,18 | 11,1 | 1,9 | – |
+| Langhals (Hals steht) | 0,97 (0,18) | 0,99 | 4,0 | 15,9 | ≤ 2 ✓ (Seite); Top: Widerspruch |
+| Überhang-Ente | 1,21 (0,11) | 1,24 | 22,2 | 31,7 | ≤ 2 ✓ (Seite); Form braucht Teile |
+| Kasten-Kugel | 0,28 (0,04) | 0,27 | 0,7 | 24,5 (Top-Kreis gegen Kasten-Front, Front gewinnt: gewollt) | Knick 93° ✓ |
+
+Zugschritt am Seitenumriss (Rex, Knoten um 23 px gehoben): Löser + Matrix 2,8 ms (24 Ringe) bzw. 3,9 ms (36 Ringe); während des Zugs 1,5–1,7 px, nach dem Loslassen 0,75 bzw. 0,37 px.
+
+**Widersprüche zwischen den Ansichten werden still entschieden:** Die Projektionsregel nimmt die kleinere Breite. Beim nachgezogenen Rex ist die Front breiter gezeichnet als das Top erlaubt (0,194 gegen 0,182 → Front 11 px daneben), beim Langhals das Top breiter als die Front (0,233 gegen 0,136 → Top 16 px). Das ist kein Fehler des Kerns, aber er zeigt es nicht an. Vorgesehen: Saum und Δ-Zahl (Plan 9.8) und Reifen, mit denen Florian je Station entscheidet.
+
+### Was jetzt noch offen ist
+
+- **Überhang als Teil** (Schnauze über dem Bauch, Haken im Top): Seite stimmt, Form dazwischen nicht; Beweis 3 (Teile).
+- **Hals-Übergang:** Beim Langhals trifft der liegende Rumpf (Lappen-Vorlage, oben flach abgeschnitten) auf den stehenden Hals (Kreis) ohne Überblendung. Wirbelsäule mit schrägen Ringen oder Hals als Teil.
+- **Reifen als Griffe:** Spanten wirken nur über das Dokumentfeld `spanten`; kein Griff im 3D, keine Front-Griffe.
+- **Nur der Seitenumriss ist Griff**, kein Pinsel im 3D.
+- **Kein Worker**, **dichte LU** (ab ≈ 2 000 Käfigpunkten dünn besetzt nötig).
+- **Beweis 2 (Maul)**, **Beweis 3 (Teil)**, **Beweis 5 (Feuer/Gas/Fell)**, Vergleichsbild Tiger-Kopf für Beweis 4.
+
+**Urteil:** Beweis 1 ist **bestanden** (Kugel 0,28, Rex 0,33, Langhals 0,97, Ente 1,21 px in der Seite; Zugschritt ≈ 3 ms; Kasten mit Falten aus der Front). Die Ente bleibt als Form ein Fall für Teile. Weiter mit Beweis 2 (Maul mit Haps).

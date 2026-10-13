@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const hier = path.dirname(fileURLToPath(import.meta.url));
-const wesenListe = (process.argv[2] ?? 'kugel,rex,langhals,ueberhang').split(',');
+const wesenListe = (process.argv[2] ?? 'kugel,rex,langhals,ueberhang,tiger').split(',');
 const aus = path.resolve(process.argv[3] ?? path.resolve(hier, '../../../docs/progress/editor'));
 const url = process.env.EDITOR_URL ?? 'http://localhost:5180';
 const browser = await chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });
