@@ -979,7 +979,14 @@ function AbleitenFeld() {
 /** Blaue Startlinie für „getrennt“: die rote Linie 0,025 höher und in der Front 15 % innen (Florian zieht beides weiter). */
 function unterkieferKante(oben: Linie3): Linie3 {
   const hoch = versetzt3(oben, 0.025);
-  return { ...hoch, knoten: hoch.knoten.map((k) => ({ ...k, p: [k.p[0], k.p[1], k.p[2] * 0.85] as [number, number, number], ein: [k.ein[0], k.ein[1], k.ein[2] * 0.85] as [number, number, number], aus: [k.aus[0], k.aus[1], k.aus[2] * 0.85] as [number, number, number] })) };
+  const knoten = hoch.knoten.map((k) => ({ ...k, p: [k.p[0], k.p[1], k.p[2] * 0.85] as [number, number, number], ein: [k.ein[0], k.ein[1], k.ein[2] * 0.85] as [number, number, number], aus: [k.aus[0], k.aus[1], k.aus[2] * 0.85] as [number, number, number] }));
+  // eigener Anfang hinter der Spitze (Überbiss, Florians Grundbedingung): der erste Knoten rückt 15 % der Strecke zum zweiten zurück
+  if (knoten.length >= 2) {
+    const a = knoten[0]!;
+    const b = knoten[1]!;
+    knoten[0] = { ...a, p: [a.p[0] + 0.15 * (b.p[0] - a.p[0]), a.p[1] + 0.15 * (b.p[1] - a.p[1]), a.p[2] + 0.15 * (b.p[2] - a.p[2])] };
+  }
+  return { ...hoch, knoten };
 }
 
 /** Tafel „Maul“ (Kern): Maullinie, Öffnung, Öffnungsart, Kieferwinkel, Rille — Optionen in der Ausstattung des Dokuments. */
@@ -1031,7 +1038,7 @@ function KernMaulFeld() {
               getrennt
             </button>
           </div>
-          <p className="hilfe">Getrennt: rot = Kante der Oberlippe, blau = Kante des Unterkiefers. In der Seite gibt die blaue Linie die Höhe (Überbiss: über der roten), in der Front die Breite des Unterkiefers (innen = schmaler). Geschlossen schiebt sich der Unterkiefer in den Oberkiefer; Unterbiss (blau unter rot) kommt noch.</p>
+          <p className="hilfe">Getrennt: rot = Kante der Oberlippe, blau = Kante des Unterkiefers, jede mit eigenem Anfang. Die Linie, die weiter vorn beginnt, liegt auf der Kontur (längerer Kiefer); die andere beginnt dahinter im anderen Kiefer — Überbiss: blau hinter und über rot, Unterbiss: rot hinter und unter blau. Seite = Höhe, Front = Breite (innen = schmaler). Vorn sind die Lippen getrennt; der kürzere Kiefer folgt seiner Kante.</p>
         </>
       )}
       <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />

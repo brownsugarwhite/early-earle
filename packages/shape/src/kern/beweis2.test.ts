@@ -171,23 +171,25 @@ describe('Beweis 2: Maul mit Haps', () => {
     const r = pruefenLinie('Rex Überbiss', rex, plan.maulLinie!, 'vorn', 2, plan.maulOptionen ?? {});
     expect(r.pr.ok).toBe(true);
     const m = r.abl.maul;
-    expect(m.lage.untenV).toBeDefined();
-    // Florians Grundbedingung: die Unterkieferkante (untere Kopie) liegt in der Maulmitte deutlich über der Oberlippe
-    // (≥ 2 % der Höhe, Überbiss) und innen (schmaler: |z| kleiner als die Lippe); die Haut darunter ist eingerückt
+    expect(m.lage.versatz?.oben).toBe(false);
+    const X = r.abl.kaefig.xyz;
+    // eigener Anfang: die Unterkieferkante beginnt hinter dem roten Anfang (Spitze bei kleinerem x) — vorn sind die Lippen getrennt
+    expect(X[3 * m.unten[0]!]! - X[3 * m.pfad[0]!]!).toBeGreaterThan(0.02); // Anfang f 0,09 gegen 0,039 ≈ 13 px
+    // Florians Grundbedingung: die Unterkieferkante (untere Kopie) liegt deutlich über der Oberlippe (≥ 2 % der Höhe,
+    // Überbiss) und innen (schmaler: |z| kleiner als die Lippe an ihrer Station); die Haut darunter ist eingerückt
     let ueberbiss = 0;
     for (let t = 1; t < m.lage.m; t++) {
-      const o = m.pfad[t]!;
       const u = m.unten[t]!;
-      ueberbiss = Math.max(ueberbiss, r.abl.fein[3 * u + 1]! - r.abl.fein[3 * o + 1]!);
-      expect(Math.abs(r.abl.fein[3 * u + 2]!), `Unterkieferkante t=${t}`).toBeLessThanOrEqual(Math.abs(r.abl.fein[3 * o + 2]!) + 1e-6);
+      const o = m.pfad[Math.min(m.lage.m, Math.round(m.lage.versatz!.spalte[t]!))]!;
+      ueberbiss = Math.max(ueberbiss, X[3 * u + 1]! - X[3 * o + 1]!);
+      expect(Math.abs(X[3 * u + 2]!), `Unterkieferkante t=${t}`).toBeLessThanOrEqual(Math.abs(X[3 * o + 2]!) + 0.01);
     }
     expect(ueberbiss).toBeGreaterThan(0.015);
-    const tM = Math.round(m.lage.m / 2);
-    expect(Math.abs(r.abl.fein[3 * m.unten[tM]! + 2]!)).toBeLessThan(0.9 * Math.abs(r.abl.fein[3 * m.pfad[tM]! + 2]!));
+    console.log('Rex Überbiss Paare:', r.ergebnisse.map((e) => `${e.oeffnung}: ${e.paare}`).join(', '));
     // geschlossen ist der Unterkiefer in den Oberkiefer geschoben: die Überlappung ist verdeckt und darf sich
     // durchdringen (Florian 15.10.); offen trennen sich die Kiefer. Ziel 0 — Rest (Register): 48 Paare lippeU/lippeU
     // am Kinnanfang (Ringe 1–3), wo die Einrückung beginnt
-    for (const e of r.ergebnisse) if (e.oeffnung > 0) expect(e.paare, `Öffnung ${e.oeffnung}`).toBeLessThanOrEqual(60);
+    for (const e of r.ergebnisse) if (e.oeffnung > 0) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
   });
 
   it('Rex, blaue Kante gegen eine gezeichnete 3D-Linie (Seite und Front): Ringspalten ≤ 2,5 px Seite, ≤ 5 px Front', () => {
@@ -225,6 +227,29 @@ describe('Beweis 2: Maul mit Haps', () => {
     console.log(`Rex blaue Kante: Seite max ${seiteMax.toFixed(1)} px, Front max ${frontMax.toFixed(1)} px (Ringspalten; Kappenspalten am Kinn bis 10 px, Register)`);
     expect(seiteMax).toBeLessThan(2.5);
     expect(frontMax).toBeLessThan(5);
+  });
+
+  it('Rex, Unterbiss (Phase 2 M2): blaue Unterlippe auf der Kontur als Schlitz, rote Oberlippe mit eigenem Anfang dahinter, darunter und innen', () => {
+    const plan = pruefwesenBauplan('rex');
+    const rot = { ...plan.maulLinie! };
+    delete rot.unten;
+    // Rollen getauscht: die Konturlinie ist die Unterlippe (längerer Unterkiefer), die Oberlippe beginnt dahinter und liegt darunter innen
+    const linie: MaulLinie = { ...rot, oben: [{ f: 0.09, v: 0.3, innen: 0.15 }, { f: 0.14, v: 0.33, innen: 0.2 }, { f: 0.2, v: 0.32, innen: 0.2 }, { f: 0.28, v: 0.36, innen: 0.12 }, { f: 0.337, v: 0.45, innen: 0 }] };
+    const r = pruefenLinie('Rex Unterbiss', rex, linie, 'vorn', 2, plan.maulOptionen ?? {});
+    expect(r.pr.ok).toBe(true);
+    const m = r.abl.maul;
+    expect(m.lage.versatz?.oben).toBe(true);
+    const X = r.abl.kaefig.xyz;
+    expect(X[3 * m.pfad[0]!]! - X[3 * m.unten[0]!]!).toBeGreaterThan(0.02);
+    let unterbiss = 0;
+    for (let t = 1; t < m.lage.m; t++) {
+      const o = m.pfad[t]!;
+      const u = m.unten[Math.min(m.lage.m, Math.round(m.lage.versatz!.spalte[t]!))]!;
+      unterbiss = Math.max(unterbiss, X[3 * u + 1]! - X[3 * o + 1]!);
+      expect(Math.abs(X[3 * o + 2]!), `Oberlippe t=${t}`).toBeLessThanOrEqual(Math.abs(X[3 * u + 2]!) + 0.01);
+    }
+    expect(unterbiss).toBeGreaterThan(0.015);
+    console.log('Rex Unterbiss Paare:', r.ergebnisse.map((e) => `${e.oeffnung}: ${e.paare}`).join(', '));
   });
 
   it('Tiger, großer runder Haps (Phase 2 M3): aus dem kleinen Stern wird offen ein großes Maul, 0 Durchdringungen bei 0/25/50/75/100 %', () => {

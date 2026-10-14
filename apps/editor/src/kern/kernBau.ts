@@ -3,7 +3,7 @@
 // „neuester Auftrag gewinnt“); hier entsteht aus Dokument und Anzeige-Zustand nur der Bauplan.
 
 import type { Dokument } from '@ee/shape';
-import { type BeinArt, type Bauplan, type MaulArt, type StilArt, type WesenInfo, type WesenNetz, maulLinieAusPunkten, maulLinieUntenAusPunkten, pruefwesenBauplan } from '@ee/shape/kern';
+import { type BeinArt, type Bauplan, type MaulArt, type StilArt, type WesenInfo, type WesenNetz, maulAnteil, maulLinieAusPunkten, maulLinieUntenAusPunkten, pruefwesenBauplan } from '@ee/shape/kern';
 import { abtasten3 } from '@ee/shape/versuch';
 import { create } from 'zustand';
 import { useEditor } from '../state/editorStore';
@@ -95,23 +95,29 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
   if (!dok.ausstattung?.maulLinie && gezeichnet && gezeichnet.knoten.length >= 2) {
     try {
       const sk = dok.skalierung;
-      const p3 = abtasten3(gezeichnet, 24);
-      const punkte = p3.map((p) => ({ x: p[0] * sk, y: p[1] * sk }));
+      const skal = (q: readonly [number, number, number]) => [q[0] * sk, q[1] * sk, q[2] * sk] as [number, number, number];
+      const rot = abtasten3(gezeichnet, 24).map(skal);
+      const untenLinie = dok.maul?.zu.unten;
+      const blau = untenLinie && untenLinie.knoten.length >= 2 ? abtasten3(untenLinie, 24).map(skal) : undefined;
+      // Kiefer getrennt (Phase 2 M2): Die Linie, die weiter vorn beginnt, ist der Schlitz auf der Kontur (der längere
+      // Kiefer); die andere ist die versetzte Kante des kürzeren Kiefers mit eigenem Anfang dahinter — rot vorn = Überbiss,
+      // blau vorn = Unterbiss. Seite = Höhe, Front = Breite (dritte Koordinate = seitliche Lage der Kante).
+      const unterbiss = !!blau && maulAnteil(dok, { x: blau[0]![0], y: blau[0]![1] }) < maulAnteil(dok, { x: rot[0]![0], y: rot[0]![1] }) - 1e-3;
+      const schlitz = unterbiss && blau ? blau : rot;
+      const versetzt = unterbiss ? rot : blau;
+      const punkte = schlitz.map((p) => ({ x: p[0], y: p[1] }));
       // Anfang auf der Kontur und Kreuzungen je Sprosse kommen aus der Linie selbst („Zeichnung ist Form“, Schritt 2);
       // die seitliche Lage des Winkels (Front-Blatt) macht an einer Kastenfront das Plattenmaul (Phase 2, M1)
-      const letzter = p3[p3.length - 1]!;
+      const letzter = schlitz[schlitz.length - 1]!;
       // Front-Verlauf (|z| → y) der gezeichneten Linie: die Maularme des Plattenmauls; nur, wenn die Linie seitlich läuft
-      const front = p3.map((p) => ({ z: Math.abs(p[2]) * sk, y: p[1] * sk })).sort((a, b) => a.z - b.z);
-      maulLinie = maulLinieAusPunkten(dok, punkte, letzter[2] * sk, Math.abs(letzter[2]) > 1e-6 ? front : undefined);
-      // Kiefer getrennt (Phase 2 M2): die blaue Unterkieferkante als eigene Stützen (Überbiss: über der roten Lippe)
-      const untenLinie = dok.maul?.zu.unten;
-      if (untenLinie && untenLinie.knoten.length >= 2) {
+      const front = schlitz.map((p) => ({ z: Math.abs(p[2]), y: p[1] })).sort((a, b) => a.z - b.z);
+      maulLinie = maulLinieAusPunkten(dok, punkte, letzter[2], Math.abs(letzter[2]) > 1e-6 ? front : undefined);
+      if (versetzt) {
         try {
-          // Seite = Höhe, Front = Breite: die dritte Koordinate der blauen Linie ist die seitliche Lage der Unterkieferkante
-          const pu = abtasten3(untenLinie, 24).map((q) => [q[0] * sk, q[1] * sk, q[2] * sk] as [number, number, number]);
-          maulLinie = { ...maulLinie, unten: maulLinieUntenAusPunkten(dok, pu) };
+          const stuetzen = maulLinieUntenAusPunkten(dok, versetzt);
+          maulLinie = unterbiss ? { ...maulLinie, oben: stuetzen } : { ...maulLinie, unten: stuetzen };
         } catch (e) {
-          console.warn('[kern] Unterkieferkante nicht übersetzbar:', e);
+          console.warn('[kern] Kieferkante nicht übersetzbar:', e);
         }
       }
       if (maul === 'aus') maul = 'vorn';

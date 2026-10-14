@@ -196,7 +196,9 @@ export function pruefwesenBauplan(name: string): Ausstattung {
         anfang: { x: -0.3394, y: 0.2766 },
         winkel: { x: -0.13, y: 0.19 },
         // blaue Kante: höher als die rote (Seite) und innen (Front: `innen` = Anteil der halben Breite)
-        unten: [{ f: 0.05, v: 0.2, innen: 0.15 }, { f: 0.08, v: 0.55, innen: 0.2 }, { f: 0.12, v: 0.62, innen: 0.2 }, { f: 0.2, v: 0.55, innen: 0.2 }, { f: 0.28, v: 0.5, innen: 0.15 }, { f: 0.337, v: 0.45, innen: 0 }],
+        // Unterkieferkante mit eigenem Anfang (f 0,09, hinter dem roten Anfang 0,039): der Oberkiefer ist deutlich länger,
+        // vorn sind die Lippen getrennt, von unten sieht man die Tasche des Oberkiefers (Florians Vorlage 06-rex-mit-maul)
+        unten: [{ f: 0.09, v: 0.47, innen: 0.15 }, { f: 0.13, v: 0.58, innen: 0.2 }, { f: 0.2, v: 0.55, innen: 0.2 }, { f: 0.28, v: 0.5, innen: 0.15 }, { f: 0.337, v: 0.45, innen: 0 }],
       },
       maulOptionen: { reihen: 3 },
     };
