@@ -1024,14 +1024,15 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     const r3 = innenRichtung(t);
     const e = getrennt ? 0 : Math.min(opt.rille * H * (1 - (t / m) * (t / m)), 0.4 * mitteAbstand(t));
     const q: [number, number, number] = [p[0] + r3[0] * e, p[1] + r3[1] * e, t === 0 ? 0 : p[2] + r3[2] * e];
-    if (schlitzNah && t > 0 && !treppe) {
+    if (schlitzNah && !treppe) {
       // Schlitzkante auf der gezeichneten Linie: nächster Linienpunkt in der Seite (die Umparametrisierung trifft die
-      // Linie an den Ringen, die Kappenzeile nur näherungsweise), Breite aus seiner Tiefe
-      const nah = schlitzNah([q[0], q[1]]);
+      // Linie an den Ringen, die Kappenzeile nur näherungsweise; ein Anfang dicht unter der Spitze läuft sonst durch die
+      // Spitze, Kugel 2,5 px), Breite aus seiner Tiefe; der Anfang bleibt auf der Spiegelebene
+      const nah = t === 0 ? { x: schlitzPunkte![0]![0], y: schlitzPunkte![0]![1], z: 0 } : schlitzNah([q[0], q[1]]);
       if (nah) {
         q[0] = nah.x;
         q[1] = nah.y;
-        if (schlitzTiefe && Math.abs(q[2]) > 1e-9) {
+        if (t > 0 && schlitzTiefe && Math.abs(q[2]) > 1e-9) {
           schlitzAnteil[t] = 1 - nah.z / Math.abs(q[2]);
           q[2] = Math.sign(q[2]) * nah.z;
         }
@@ -1327,7 +1328,6 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     const kopieLinks = untenV ? untenLinks : pfadLinks;
     // Kante je Spalte: Seitenpunkt aus der Linie, Breite aus der Front (z) oder dem Anteil innen der Hautbreite an
     // ihrem Seitenpunkt (aus den Stationsprofilen; ein Walk-up an Ring bzw. Kappentangente machte die Kette zickzackig)
-    const dKante: [number, number][] = [];
     const anteilZ = new Float64Array(m + 1);
     for (let t = 0; t < m; t++) {
       const p = P(pfad[t]!);
@@ -1344,129 +1344,102 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
         setze(kopieLinks[t]!, spiegel(kante));
         hoehe[kopieLinks[t]!] = vs.v[t]!;
       }
-      dKante.push([kante[0] - p[0], kante[1] - p[1]]);
       anteilZ[t] = t > 0 && zH > 1e-9 ? 1 - zKante / zH : 0;
     }
-    dKante.push([0, 0]);
-    // Naht des kürzeren Kiefers (Spiegelebene): Schlitzanfang → Kappenspalte c/2 jenseits der Lippenzeile → Nahtpunkte
-    // der Ringe 0 … k. Der Kiefer folgt nur seiner eigenen schwarzen Linie (Florian): Der Fußpunkt des eigenen Anfangs
-    // auf diesem Zug (erste Stelle längs hinter dem Anfang, nach der vordersten Stelle des Zugs) ist, wo die Haut des
-    // Kiefers beginnt. Die Zeilen davor (Maulspalt, Stirn der Schnauze über dem Schlitz) fallen auf ihn zusammen
-    // (zehnfach gestaucht, als Wand vom Anfang zum Umriss); die Zeilen dahinter bleiben, wo sie gezeichnet sind — keine
-    // Stauchung, kein Gleiten mehr. Liegt der Anfang vor dem Zug (Kiefer ragt über den Umriss hinaus), schiebt sich
-    // die Naht starr vor, zum Winkelring auslaufend.
-    const jNaht = untenV ? N / 2 : 0;
-    const nahtIdx: number[] = [pfad[0]!];
-    if (untenV) for (let b = bL - 1; b >= 0; b--) nahtIdx.push(v.kappe('vorn', c / 2, b));
-    else for (let b = bL + 1; b <= c; b++) nahtIdx.push(v.kappe('vorn', c / 2, b));
-    for (let i = 1; i <= k; i++) nahtIdx.push(v.ringPunkt(i, jNaht));
-    const nahtP = nahtIdx.map((idx) => P(idx));
-    const sN: number[] = [0];
-    for (let q = 1; q < nahtP.length; q++) sN.push(sN[q - 1]! + Math.hypot(nahtP[q]![0] - nahtP[q - 1]![0], nahtP[q]![1] - nahtP[q - 1]![1]));
-    const sEnde = sN[sN.length - 1]!;
+    // Haut des kürzeren Kiefers (Florian: „Die Kiefer müssen NUR ihrer Linie folgen, der blauen und der roten wie der
+    // schwarzen“): Der Kiefer beginnt an seinem eigenen Anfang. Alles von ihm, was längs vor dem Anfang liegt (Kappenzeilen
+    // jenseits der Lippenzeile, Ringpunkte seiner Hälfte), wird auf die Ebene durch den Anfang gesetzt — die Stirn ist
+    // eine Wand mit dem Querschnitt des Kiefers, der Spalt zum anderen Kiefer entsteht von selbst (Rex-Bogen: die
+    // Kinnlinie fällt vom blauen Anfang senkrecht); dahinter bleibt die schwarze Linie unverändert. Ein Verschieben
+    // entlang des Umrisses oder über die Ringe verschmierte den Rücksprung zu einer Delle (Kugel mit einer Kappenzeile).
+    // Ragt der Anfang vor den Kiefer, schiebt sich der Kiefer starr vor (zum Winkelring auslaufend). Die Breite läuft
+    // von der Kante zur Naht auf die Körperbreite zu.
     const x0 = vs.xy[0]!.x;
-    const laengs = Math.sign(nahtP[0]![0] - nahtP[nahtP.length - 1]![0]) || 1;
-    let qSpitze = 0;
-    for (let q = 1; q < nahtP.length; q++) if ((nahtP[q]![0] - x0) * laengs > (nahtP[qSpitze]![0] - x0) * laengs) qSpitze = q;
-    let sC = -1;
-    for (let q = qSpitze; q + 1 < nahtP.length; q++) {
-      const da = (nahtP[q]![0] - x0) * laengs;
-      const db = (nahtP[q + 1]![0] - x0) * laengs;
-      if (da > 0 && db <= 0) {
-        sC = sN[q]! + (da / (da - db)) * (sN[q + 1]! - sN[q]!);
-        break;
-      }
-    }
-    const vorschub = (nahtP[qSpitze]![0] - x0) * laengs <= 0; // Anfang vor der vordersten Stelle des Zugs
-    const nahtBei = (sWert: number): [number, number] => {
-      for (let q = 0; q + 1 < nahtP.length; q++) {
-        if (sWert <= sN[q + 1]!) {
-          const len = sN[q + 1]! - sN[q]!;
-          const u = len > 1e-12 ? (sWert - sN[q]!) / len : 0;
-          return [nahtP[q]![0] + (nahtP[q + 1]![0] - nahtP[q]![0]) * u, nahtP[q]![1] + (nahtP[q + 1]![1] - nahtP[q]![1]) * u];
+    const nachHinten = Math.sign(P(pfad[m]!)[0] - P(pfad[0]!)[0]) || 1;
+    const jNaht = untenV ? N / 2 : 0;
+    const ringZeilen = (i: number): number[] => {
+      const out: number[] = [];
+      if (untenV) for (let jj = jL + 1; jj <= N / 2; jj++) out.push(jj);
+      else for (let jj = jL - 1; jj >= 0; jj--) out.push(jj);
+      return out.map((jj) => v.ringPunkt(i, jj)).concat(out.filter((jj) => jj !== jNaht).map((jj) => v.ringPunkt(i, N - jj)));
+    };
+    const kappenZeilen = (): { idx: number; t: number; w: number }[] => {
+      const out: { idx: number; t: number; w: number }[] = [];
+      for (let a = c / 2; a < c; a++) {
+        for (let b = untenV ? 1 : bL + 1; untenV ? b < bL : b < c; b++) {
+          const w = untenV ? (bL - b) / bL : (b - bL) / (c - bL);
+          out.push({ idx: v.kappe('vorn', a, b), t: a - c / 2, w });
+          if (a > c / 2) out.push({ idx: v.kappe('vorn', c - a, b), t: a - c / 2, w });
         }
       }
-      return [nahtP[nahtP.length - 1]![0], nahtP[nahtP.length - 1]![1]];
+      return out;
     };
-    const dX = new Float64Array(n0);
-    const dY = new Float64Array(n0);
-    const zF = new Float64Array(n0).fill(1);
-    const gesetzt = new Uint8Array(n0);
-    // Zeilen vor dem Fußpunkt: gleichmäßig auf der Wand vom eigenen Anfang (Kante, Spiegelebene) zum Fußpunkt — so
-    // steht die Stirn des Kiefers als ebene Wand (Florians Rex: Kinnlinie fällt vom blauen Anfang senkrecht), ohne dass
-    // Zeilen aufeinanderfallen (zehnfach gestaucht entlang des Zugs: 130 Paare haut/haut am Nasenrücken)
-    let qFuss = 0;
-    if (!vorschub && sC >= 0) for (let q = 1; q < nahtIdx.length; q++) if (sN[q]! <= sC) qFuss = q;
-    const fuss = !vorschub && sC >= 0 ? nahtBei(sC) : null;
-    const anfangXY: [number, number] = [vs.xy[0]!.x, vs.xy[0]!.y];
-    for (let q = 1; q < nahtIdx.length; q++) {
-      let d: [number, number];
-      if (vorschub || sC < 0 || !fuss) {
-        // Kiefer ragt vor: Naht starr mit dem Anfang vor, zum Winkelring auslaufend
-        const vor = (x0 - nahtP[0]![0]) * (1 - sN[q]! / Math.max(1e-12, sEnde));
-        d = [vor, 0];
-      } else if (q <= qFuss) {
-        const u = q / (qFuss + 1);
-        d = [anfangXY[0] + (fuss[0] - anfangXY[0]) * u - nahtP[q]![0], anfangXY[1] + (fuss[1] - anfangXY[1]) * u - nahtP[q]![1]];
-      } else d = [0, 0];
-      dX[nahtIdx[q]!] = d[0];
-      dY[nahtIdx[q]!] = d[1];
-      gesetzt[nahtIdx[q]!] = 1;
+    let xVorn = P(pfad[0]!)[0];
+    const vornSuche = (x: number) => { if ((x - xVorn) * nachHinten < 0) xVorn = x; };
+    for (let i = 0; i <= k; i++) for (const idx of ringZeilen(i)) vornSuche(P(idx)[0]);
+    for (const z of kappenZeilen()) vornSuche(P(z.idx)[0]);
+    const vorschub = (x0 - xVorn) * nachHinten < 0 ? x0 - xVorn : 0;
+    const geschnitten = (idx: number): boolean => vorschub === 0 && (P(idx)[0] - x0) * nachHinten < 0;
+    // Wand: Die geschnittenen Punkte (vor der Ebene) legen sich als verschachtelte Umrisse auf die Ebene — je Spalte j
+    // gibt der erste nicht geschnittene Ring den Umriss, innere Ringe und Kappenzeilen schrumpfen zur Wandmitte (wie
+    // eine Kappe). Einfach auf die Ebene geklappt lagen sie in falscher Reihenfolge übereinander (Rex-Schnauze mit
+    // Höcker vor der Spitze: 172 Paare haut/haut).
+    const zeilen = untenV ? N / 2 - jL : jL;
+    const jrVon = (j: number) => (j <= N / 2 ? j : N - j);
+    const refRing = new Int32Array(N / 2 + 1).fill(-1);
+    for (let jr = 0; jr <= N / 2; jr++) {
+      if (untenV ? jr <= jL : jr >= jL) continue;
+      for (let i = 0; i <= k; i++) if (!geschnitten(v.ringPunkt(i, jr))) { refRing[jr] = i; break; }
+      if (refRing[jr]! < 0) refRing[jr] = k;
     }
-    // Ringe 0 … k: linear von der Kante (Tiefe 0) zur Naht (Tiefe 1), Breite ebenso auslaufend. Die Haut des Kiefers
-    // folgt der Kante nur längs (x) und in der Breite, nicht in der Höhe: Die Kante liegt im anderen Kiefer (höher bzw.
-    // tiefer als der Schlitz), die Haut dahinter bleibt auf ihrer Höhe — so steht die Stirn des kürzeren Kiefers als
-    // senkrechte Wand von der Kante bis zum Umriss (Florians Rex: Kinnlinie fällt vom blauen Anfang senkrecht). Mit der
-    // Höhe mitgezogen faltete sich die Kappe einer scharfen Schnauze beim Unterbiss (haut/haut 70 Paare).
-    const dKanteX: [number, number][] = dKante.map((d) => [d[0], 0]);
-    const nahtVonRing = (i: number): number => nahtIdx[(untenV ? bL : c - bL) + i]!;
+    const refPunkt = (jf: number): [number, number] => {
+      const j0 = Math.max(0, Math.min(N / 2 - 1, Math.floor(jf)));
+      const j1 = Math.min(N / 2, j0 + 1);
+      const f = jf - j0;
+      const a = P(v.ringPunkt(refRing[j0]! < 0 ? k : refRing[j0]!, j0));
+      const b = P(v.ringPunkt(refRing[j1]! < 0 ? k : refRing[j1]!, j1));
+      return [a[1] + (b[1] - a[1]) * f, Math.abs(a[2]) + (Math.abs(b[2]) - Math.abs(a[2])) * f];
+    };
+    let cY = 0;
+    let cN = 0;
+    for (let jr = 0; jr <= N / 2; jr++) if (refRing[jr]! >= 0) { cY += refPunkt(jr)[0]; cN++; }
+    cY = cN ? cY / cN : P(pfad[0]!)[1];
+    const setzeRegion = (idx: number, t: number, tiefe: number, anteilHinten: number, jf: number, u: number) => {
+      const q = P(idx);
+      const zf = 1 - anteilZ[Math.min(m, t)]! * (1 - tiefe);
+      if (vorschub !== 0) {
+        setze(idx, [q[0] + vorschub * (1 - anteilHinten), q[1], q[2] * zf]);
+        return;
+      }
+      if (!geschnitten(idx)) {
+        setze(idx, [q[0], q[1], q[2] * zf]);
+        return;
+      }
+      const ref = refPunkt(jf);
+      const sc = 0.1 + 0.9 * Math.max(0, Math.min(1, u));
+      const zs = q[2] < 0 ? -1 : 1;
+      setze(idx, [x0, cY + (ref[0] - cY) * sc, zs * ref[1] * sc * zf]);
+    };
     for (let i = 0; i <= k; i++) {
       const t = c / 2 + i;
-      const dl = dKanteX[t]!;
-      const ns = nahtVonRing(i);
-      const ds: [number, number] = [dX[ns]!, dY[ns]!];
-      const schritt = untenV ? 1 : -1;
-      for (let jj = jL + schritt; untenV ? jj < N / 2 : jj > 0; jj += schritt) {
-        const d = untenV ? (jj - jL) / (N / 2 - jL) : (jL - jj) / jL;
-        const idx = v.ringPunkt(i, jj);
-        const sp = v.ringPunkt(i, N - jj);
-        dX[idx] = dX[sp] = dl[0] + (ds[0] - dl[0]) * d;
-        dY[idx] = dY[sp] = dl[1] + (ds[1] - dl[1]) * d;
-        zF[idx] = zF[sp] = 1 - anteilZ[t]! * (1 - d);
-        gesetzt[idx] = gesetzt[sp] = 1;
+      for (const idx of ringZeilen(i)) {
+        const g = gitterLage(v, idx);
+        const jr = g.art === 'ring' ? jrVon(g.j) : jL;
+        const d = untenV ? (jr - jL) / zeilen : (jL - jr) / zeilen;
+        const ref = refRing[jr]! < 0 ? k : refRing[jr]!;
+        setzeRegion(idx, t, d, k > 0 ? i / k : 1, jr, (i + 1) / (ref + 1));
       }
     }
-    // Kappe: Coons-Fläche zwischen Kante (Lippenzeile), Naht (Spalte c/2) und Ring 0 (rechte Spalte, äußere Zeile)
-    const bFern = untenV ? 0 : c;
-    const dBei = (idx: number): [number, number] => [dX[idx]!, dY[idx]!];
-    for (let a = c / 2 + 1; a < c; a++) {
-      const u = (a - c / 2) / (c / 2);
-      const t = a - c / 2;
-      for (let b = untenV ? 1 : bL + 1; untenV ? b < bL : b < c; b++) {
-        const w = untenV ? (bL - b) / bL : (b - bL) / (c - bL);
-        const Lw = dBei(v.kappe('vorn', c / 2, b));
-        const Rw = dBei(v.kappe('vorn', c, b));
-        const Tu = dKanteX[t]!;
-        const Bu = dBei(v.kappe('vorn', a, bFern));
-        const c00 = dKanteX[0]!;
-        const c10 = dKanteX[c / 2]!;
-        const c01 = dBei(v.kappe('vorn', c / 2, bFern));
-        const c11 = dBei(v.kappe('vorn', c, bFern));
-        const idx = v.kappe('vorn', a, b);
-        const sp = v.kappe('vorn', c - a, b);
-        for (const [arr, e] of [[dX, 0], [dY, 1]] as const) {
-          const wert = (1 - u) * Lw[e] + u * Rw[e] + (1 - w) * Tu[e] + w * Bu[e] - ((1 - u) * (1 - w) * c00[e] + u * (1 - w) * c10[e] + (1 - u) * w * c01[e] + u * w * c11[e]);
-          arr[idx] = wert;
-          arr[sp] = wert;
-        }
-        zF[idx] = zF[sp] = 1 - anteilZ[t]! * (1 - w);
-        gesetzt[idx] = gesetzt[sp] = 1;
-      }
-    }
-    for (let idx = 0; idx < n0; idx++) {
-      if (!gesetzt[idx]) continue;
-      const q = P(idx);
-      setze(idx, [q[0] + dX[idx]!, q[1] + dY[idx]!, q[2] * zF[idx]!]);
+    for (const z of kappenZeilen()) {
+      const g = gitterLage(v, z.idx);
+      if (g.art !== 'vorn') continue;
+      const aR = g.a >= c / 2 ? g.a : c - g.a;
+      const r = Math.max(Math.abs(aR - c / 2), Math.abs(g.b - c / 2));
+      let mIdx = 0;
+      for (let q = 0; q <= 4 * r; q++) { const [qa, qb] = quadratRing(c, r, q); if (qa === aR && qb === g.b) { mIdx = q; break; } }
+      const jf = Math.min(N / 2, (mIdx * c) / (2 * Math.max(1, r)));
+      const ref = refRing[Math.round(jf)]! < 0 ? k : refRing[Math.round(jf)]!;
+      setzeRegion(z.idx, z.t, z.w, 0, jf, r / (c / 2) / (ref + 1));
     }
   }
   for (let r = 1; r <= K; r++) {

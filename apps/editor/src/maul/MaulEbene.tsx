@@ -33,6 +33,9 @@ export function aktuelleLippen(dok: Dokument, modus: Modus): { lippen: Lippen | 
   return { lippen: offenVorschlag(dok.maul.zu), zustand, vorschlag: true };
 }
 
+/** Bauweise Kern (Phase 2): Die Maullinien sind frei — kein Einbau der Anfänge als Umrissknoten (Versuch 12.10., Loft). */
+const kernBauweise = () => useUi.getState().bauweise === 'kern';
+
 /** Lippen setzen; der Mundwinkel bleibt ein gemeinsamer Punkt beider Kiefer (Florian 12.10.). */
 export function setzeLippen(zustand: Zustand, lippen: Lippen) {
   const ed = useEditor.getState();
@@ -155,7 +158,8 @@ export function maulZeichnenBeenden(abbrechen = false) {
   if (!pts) return;
   ui.setzeMaulZeichnen(null);
   if (abbrechen || pts.length < 2) return;
-  setzeLippenImUmriss({ oben: linieDurch(pts) });
+  if (kernBauweise()) setzeLippen('zu', { oben: linieDurch(pts) });
+  else setzeLippenImUmriss({ oben: linieDurch(pts) });
   ui.setzeWerkzeug('auswahl');
   ui.setzeMaulAuswahl({ linie: 'oben', indizes: [pts.length - 1] });
 }
@@ -243,7 +247,10 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
     const start = q;
     // Maulanfang im geschlossenen Zustand (Seite oder Front): Er ist ein Knoten des Seitenumrisses. Ziehen bewegt diesen
     // Knoten, der Umriss geht mit (Unterbiss, Überbiss), der Anfang folgt ihm genau (Florian 12.10. abends).
-    if (zustand === 'zu' && sel.length === 1 && i === 0 && ctx.ansicht !== 'top') {
+    // Bauweise Kern: nicht so — der Anfang ist ein freier Linienpunkt (eigener Anfang des kürzeren Kiefers, auch innen);
+    // der Kern setzt den Schlitzanfang selbst auf die Kontur. Ein eingebauter Umrissknoten zog beim Ziehen einen neuen
+    // Silhouettenpunkt statt der Linie (Florian 15.10. nachts: „unmöglich, Über- oder Unterbiss zu erstellen“).
+    if (zustand === 'zu' && sel.length === 1 && i === 0 && ctx.ansicht !== 'top' && !kernBauweise()) {
       if (knotenBei(ed.dok.profile.seite, { x: linieVon(n).knoten[0]!.p[0], y: linieVon(n).knoten[0]!.p[1] }) === null) setzeLippenImUmriss(lippen);
       const dok0 = useEditor.getState().dok;
       const ind = maulAnfangIndizes(dok0.profile.seite, dok0.maul!.zu);
@@ -297,7 +304,9 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
       (ev) => {
         const p = ctx.lokal(ev.clientX, ev.clientY);
         const aktuell = aktuelleLippen(useEditor.getState().dok, useEditor.getState().modus).lippen!;
-        const neu = knotenVerschieben3(basis, sel, ctx.ansicht, { x: p.x - start.x, y: p.y - start.y });
+        // der Anfang bleibt auf der Spiegelebene: in der Front nur die Höhe
+        const dx = kernBauweise() && sel.includes(0) && ctx.ansicht === 'front' ? 0 : p.x - start.x;
+        const neu = knotenVerschieben3(basis, sel, ctx.ansicht, { x: dx, y: p.y - start.y });
         setzeLippen(zustand, n === 'oben' ? { ...aktuell, oben: neu } : { ...aktuell, unten: neu });
       },
       () => useEditor.getState().endeGeste(),
