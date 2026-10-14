@@ -39,6 +39,12 @@ export type AbleitOptionen = {
   nahtGewicht: number;
   /** Eingefrorene Stationen (Schritt 3): Ringverteilung aus dem Dokument statt Neuwahl nach Krümmung; Ecken und Reifen werden nachgeführt */
   stationen?: GefroreneStationen;
+  /**
+   * Ab diesem Verhältnis |dy| / |dx| einer Sprosse gilt der Ring als liegend (Vorlage aus dem Front-Lappen statt Kreis).
+   * 0,5 (15.10.): Die schrägen Sprossen am Hals-Rumpf-Übergang des Langhalses bekamen bei 1 (45°) den Kreis, dessen
+   * breitester Punkt auf halber Höhe liegt, wo die Front schon schmal ist → Top 14 px; mit 0,5 4 px, andere Wesen gleich.
+   */
+  liegendAb: number;
   /** Gewicht der Breitenschleife im Ausgleich (je Ring der breiteste Punkt, Grenzlage z = Top-Breite bei x; 0 = aus). Plan „Zeichnung ist Form“ Schritt 1: Top bestimmt die Breite. */
   breiteGewicht: number;
   /** Kantenschärfe an Ecken („eine Kante ist eine Ecke in einem Shape“); 0 = keine Falten */
@@ -58,7 +64,7 @@ export type AbleitOptionen = {
 /** Durchgänge, in denen die Breitenziele an den Grenzlagen des letzten Durchgangs nachgerechnet werden (Ableitung) */
 const BREITE_DURCHGAENGE = 2;
 
-export const ABLEIT_STANDARD: AbleitOptionen = { ringe: 24, ring: 16, stufen: 3, kappe: 0.05, nahtGewicht: 16, breiteGewicht: 16, eckenSchaerfe: 1e6, kappeSpitze: 0.025, spitzenFalte: false, kruemmung: 2, querschnitt: true, glaettung: 0 };
+export const ABLEIT_STANDARD: AbleitOptionen = { ringe: 24, ring: 16, stufen: 3, kappe: 0.05, nahtGewicht: 16, liegendAb: 0.5, breiteGewicht: 16, eckenSchaerfe: 1e6, kappeSpitze: 0.025, spitzenFalte: false, kruemmung: 2, querschnitt: true, glaettung: 0 };
 
 /** Station einer Sprosse: Anteile a (Rücken) und b (Bauch) entlang der Linien. */
 export type Station = { a: number; b: number };
@@ -898,7 +904,7 @@ export type Sprosse = { o: V2; u: V2 };
 export function querschnitteFuer(sprossen: readonly Sprosse[], dok: Dokument | null, breiten: Breiten, N: number, opt: AbleitOptionen): Querschnitt[] {
   if (!opt.querschnitt || !dok) return sprossen.map(() => kreisQuerschnitt(N));
   if (dok.spanten?.length) return sprossen.map((s) => spantQuerschnitt(dok, (s.o.x + s.u.x) / 2, N));
-  const liegend = sprossen.map((s) => Math.abs(s.o.y - s.u.y) >= Math.abs(s.o.x - s.u.x));
+  const liegend = sprossen.map((s) => Math.abs(s.o.y - s.u.y) >= opt.liegendAb * Math.abs(s.o.x - s.u.x));
   const out: Querschnitt[] = new Array(sprossen.length);
   let i = 0;
   while (i < sprossen.length) {

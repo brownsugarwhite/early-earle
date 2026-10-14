@@ -130,9 +130,9 @@ describe('Beweis 1: Kern-Tempo und Treue', () => {
     const r = messen('Langhals', vorlageDokument(langhalsRoh as unknown as Vorlage, 'zu', 'langhals'));
     // Stand 13.10. nachts: 0,97 px (Ringe nach Krümmung); Ziel ≤ 2 px
     expect(r.hin.max * PX).toBeLessThan(1.5) // Plan: ≤ 2 px; mit entfächerter Leiter 1,36 px (vorher 0,97, dafür Schwanz ohne Durchdringungen);
-    // 15.10.: Top 14 px (vorher 17) an der Brust: Top will 0,13, Seite und Front lassen dort höchstens 0,125 zu, dazu die
-    // Kreis-Vorlage der schrägen Sprossen am Hals-Rumpf-Übergang (offen, Kritik-Register Phase 1)
-    expect(Math.max(r.top.hin, r.top.her)).toBeLessThan(16);
+    // 15.10.: Top 4 px (vorher 17, dann 14): schräge Sprossen am Hals-Rumpf-Übergang bekommen ab 0,5 Neigung den
+    // Front-Lappen statt des Kreises (`liegendAb`); der Rest ist der Widerspruch Top gegen Seite + Front an der Brust (≈ 3 px)
+    expect(Math.max(r.top.hin, r.top.her)).toBeLessThan(6);
   });
 
   it('Überhang-Ente (Florian 13.10.): Naht ≤ 2 px ohne Sonderregel', () => {
