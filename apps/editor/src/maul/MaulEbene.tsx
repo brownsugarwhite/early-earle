@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { type Modus, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { punktAufFlaeche, startPunkt } from './maulFlaeche';
+import { aktuellesNetz, useNetzStand } from '../kern/netzStand';
 
 export const MAUL_FARBEN = { tuerkis: '#3fd6c0', rot: '#e0306a', blau: '#1832e6', ecke: '#000000' } as const;
 const PUNKT_R = 5;
@@ -83,6 +84,18 @@ export function MaulZeichnung({ ansicht, bild, aktiv }: { ansicht: Ansicht; bild
   const auswahl = useUi((s) => s.maulAuswahl);
   const zeichnen = useUi((s) => s.maulZeichnen);
   const { lippen, zustand } = aktuelleLippen(dok, modus);
+  // Bauweise Kern, geschlossen, Front/Top: die wirksamen Lippenlinien aus dem Kern (Breite auf der Haut × Verhältnis der
+  // Knoten) — so liegen Rot und Blau genau auf der Lippenkante, auch zwischen den Knoten (14.10.)
+  useNetzStand((s) => s.version);
+  const wirk = kernBauweise() && zustand === 'zu' && ansicht !== 'seite' ? aktuellesNetz()?.netz.maul?.linien : undefined;
+  const wirkPunkte = (name: LinienName): V3T[] | null => {
+    const flach = wirk?.[name];
+    if (!flach || flach.length < 6) return null;
+    const sk = dok.skalierung || 1;
+    const out: V3T[] = [];
+    for (let i = 0; i + 2 < flach.length; i += 3) out.push([flach[i]! / sk, flach[i + 1]! / sk, flach[i + 2]! / sk]);
+    return out;
+  };
   const zug = (pts: V3T[], spiegel = false) =>
     pts
       .map((p, k) => {
@@ -97,7 +110,7 @@ export function MaulZeichnung({ ansicht, bild, aktiv }: { ansicht: Ansicht; bild
       {lippen &&
         linien.map(([name, l]) => {
           const f = farbe(zustand, lippen, name);
-          const pts = abtasten3(l, 16);
+          const pts = wirkPunkte(name) ?? abtasten3(l, 16);
           return (
             <g key={name}>
               {ansicht !== 'seite' && <path d={zug(pts, true)} fill="none" stroke="#ffffff" strokeWidth={2} strokeLinecap="round" opacity={0.85} />}

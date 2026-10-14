@@ -29,6 +29,8 @@ for (const [art, dok] of Object.entries(faelle)) {
   await page.screenshot({ path: `${AUSGABE}/${NAME}-${art}-riss.png` });
   await buehne(`${NAME}-${art}-schraeg`, { azimut: -0.9, elevation: -0.15, distanz: 0.75, ziel: [-0.1, 0.25, 0] });
   await buehne(`${NAME}-${art}-unten`, { azimut: -0.8, elevation: -0.75, distanz: 0.85, ziel: [-0.1, 0.25, 0] });
+  await buehne(`${NAME}-${art}-oben`, { azimut: -1.2, elevation: 0.9, distanz: 0.85, ziel: [-0.1, 0.25, 0] });
+  await buehne(`${NAME}-${art}-seite`, { azimut: -1.5708, elevation: 0.0, distanz: 0.8, ziel: [-0.1, 0.25, 0] });
   await page.evaluate(() => window.__stores.ui.getState().setzeOeffnung(0.5));
   await page.waitForTimeout(1200);
   await buehne(`${NAME}-${art}-offen`, { azimut: -0.6, elevation: -0.1, distanz: 0.85, ziel: [-0.1, 0.23, 0] });

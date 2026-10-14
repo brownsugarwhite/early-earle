@@ -7,6 +7,7 @@ import { kugelMaulDokument } from '../../../../packages/shape/src/kern/pruefstan
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const faelle: Record<string, unknown> = {};
-for (const art of ['ueberbiss', 'schnabel', 'unterbiss'] as const) faelle[art] = kugelMaulDokument(art, true);
+const arten = (process.env.ARTEN ?? 'gleich,ueberbiss,schnabel,unterbiss').split(',') as ('gleich' | 'ueberbiss' | 'schnabel' | 'unterbiss')[];
+for (const art of arten) faelle[art] = kugelMaulDokument(art, true);
 writeFileSync(resolve(WURZEL, 'apps/editor/test-results/pruefen/maul-faelle.json'), JSON.stringify(faelle));
 console.log('geschrieben:', Object.keys(faelle).join(', '));

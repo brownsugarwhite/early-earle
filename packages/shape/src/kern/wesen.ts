@@ -136,7 +136,8 @@ export type WesenNetz = {
   treffer: TrefferDaten | null;
   reifen: ReifenDaten | null;
   /** Kieferknopf (M3): rechter Mundwinkel (posiert) und Maullänge (Welt) bei Maul, sonst null */
-  maul: { winkel: V3; laenge: number } | null;
+  /** Kieferknopf (Mundwinkel, Maullänge) und wirksame Lippenlinien (Welt, Ruhelage, flach x/y/z; rot = oben, blau = unten) */
+  maul: { winkel: V3; laenge: number; linien?: { oben?: number[]; unten?: number[] } } | null;
   /** Saum je Blatt (Schritt 4): Silhouettenpunkte des Körpers (x, y, d px), (NaN, NaN, 0) trennt Züge; wird kopiert, nicht übertragen */
   saum: Record<'seite' | 'front' | 'top', Float32Array> | null;
   info: WesenInfo;
@@ -829,7 +830,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   if (maul !== 'aus') {
     const m = (abl as MaulErgebnis).maul;
     const p = m.pfad[m.pfad.length - 1]!;
-    maulGriff = { winkel: [fein[3 * p]!, fein[3 * p + 1]! + hebung, fein[3 * p + 2]!], laenge: m.laenge };
+    const flach = (l?: [number, number, number][]) => (l ? l.flatMap((q) => [q[0], q[1], q[2]]) : undefined);
+    const lo = flach(m.wirk?.oben);
+    const lu = flach(m.wirk?.unten);
+    maulGriff = { winkel: [fein[3 * p]!, fein[3 * p + 1]! + hebung, fein[3 * p + 2]!], laenge: m.laenge, ...(lo || lu ? { linien: { ...(lo ? { oben: lo } : {}), ...(lu ? { unten: lu } : {}) } } : {}) };
   }
   const netz: WesenNetz = {
     positionen,
