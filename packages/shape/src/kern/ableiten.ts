@@ -28,6 +28,7 @@ import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3 } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
+import type { Schlitz } from './schlitz';
 
 export type AbleitOptionen = {
   ringe: number;
@@ -190,7 +191,32 @@ export function stationenAusLeiter(l: Leiter, anteile: readonly number[]): Stati
 // ---------- Seitenumriss (dicht) ----------
 
 /** Seitenumriss dicht abgetastet (Welt, geschlossen) mit Bogenlängen-Anteilen. */
-export function umrissDicht(dok: Dokument): { pts: V2[]; anteil: Float64Array } {
+/** Dichter Seitenumriss mit Bogenlängen-Anteilen; `offen` = Zug ohne Rückweg (Umriss ohne Maulschlitz, Block 2). */
+export type UmrissDicht = { pts: V2[]; anteil: Float64Array; offen?: boolean };
+
+/**
+ * Seitenumriss ohne den Maulschlitz (Block 2): offener Zug vom Knoten hinter dem Schlitz einmal herum bis zum Knoten
+ * davor — die Naht hängt an der schwarzen Linie und endet an den beiden Lippenknoten (Anteil 0 und 1).
+ */
+export function umrissDichtOffen(dok: Dokument, schlitz: Schlitz): UmrissDicht {
+  const s = dok.skalierung;
+  const pr = dok.profile.seite;
+  const segs = segmente(pr);
+  const n = segs.length;
+  const pts: V2[] = [];
+  for (let q = 1; q < n; q++) {
+    const seg = segs[(schlitz.segment + q) % n]!;
+    const abt = pfadAbtasten([seg], 96);
+    for (let k = q === 1 ? 0 : 1; k < abt.length; k++) pts.push({ x: abt[k]!.x * s, y: abt[k]!.y * s });
+  }
+  const anteil = new Float64Array(pts.length);
+  for (let i = 1; i < pts.length; i++) anteil[i] = anteil[i - 1]! + Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.y - pts[i - 1]!.y);
+  const L = anteil[pts.length - 1]! || 1;
+  for (let i = 0; i < pts.length; i++) anteil[i]! /= L;
+  return { pts, anteil, offen: true };
+}
+
+export function umrissDicht(dok: Dokument): UmrissDicht {
   const s = dok.skalierung;
   let pts = pfadAbtasten(vollerPfad(dok.profile.seite), 96).map((p) => ({ x: p.x * s, y: p.y * s }));
   if (pts.length > 1 && Math.hypot(pts[0]!.x - pts[pts.length - 1]!.x, pts[0]!.y - pts[pts.length - 1]!.y) < 1e-9) pts = pts.slice(0, -1);
@@ -205,9 +231,24 @@ export function umrissDicht(dok: Dokument): { pts: V2[]; anteil: Float64Array } 
   return { pts, anteil };
 }
 
-/** Punkt bei Bogenlängen-Anteil t auf dem geschlossenen Umriss. */
-export function umrissBei(u: { pts: V2[]; anteil: Float64Array }, t: number): V2 {
+/** Punkt bei Bogenlängen-Anteil t auf dem geschlossenen (bzw. offenen) Umriss. */
+export function umrissBei(u: UmrissDicht, t: number): V2 {
   const n = u.pts.length;
+  if (u.offen) {
+    const x = Math.min(1, Math.max(0, t));
+    let lo = 0;
+    let hi = n - 1;
+    while (hi - lo > 1) {
+      const m = (lo + hi) >> 1;
+      if (u.anteil[m]! <= x) lo = m;
+      else hi = m;
+    }
+    const a = u.pts[lo]!;
+    const b = u.pts[Math.min(n - 1, lo + 1)]!;
+    const d = u.anteil[Math.min(n - 1, lo + 1)]! - u.anteil[lo]!;
+    const f = d > 1e-15 ? (x - u.anteil[lo]!) / d : 0;
+    return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f };
+  }
   const x = t - Math.floor(t);
   let lo = 0;
   let hi = n;
@@ -224,11 +265,11 @@ export function umrissBei(u: { pts: V2[]; anteil: Float64Array }, t: number): V2
 }
 
 /** Nächster Anteil auf dem Umriss zu einem Punkt. */
-export function umrissAnteil(u: { pts: V2[]; anteil: Float64Array }, p: V2): number {
+export function umrissAnteil(u: UmrissDicht, p: V2): number {
   const n = u.pts.length;
   let best = Infinity;
   let bestT = 0;
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < (u.offen ? n - 1 : n); i++) {
     const a = u.pts[i]!;
     const b = u.pts[(i + 1) % n]!;
     const abx = b.x - a.x;
@@ -283,7 +324,7 @@ export function nahtOrdnen(fein: Kaefig, nahtIdx: readonly number[], start: numb
  * Bogenlängen-Anteile der geordneten Nahtpunkte: Käfigpunkte (Index < n) über ihr Ziel auf dem Umriss, feine Punkte
  * dazwischen gleichmäßig (monoton, ohne Bündelung).
  */
-export function nahtAnteile(geordnet: readonly number[], n: number, ziele: Float64Array, umriss: { pts: V2[]; anteil: Float64Array }): Float64Array {
+export function nahtAnteile(geordnet: readonly number[], n: number, ziele: Float64Array, umriss: UmrissDicht): Float64Array {
   const m = geordnet.length;
   const anteil = new Float64Array(m);
   const fest: number[] = [];
@@ -294,6 +335,21 @@ export function nahtAnteile(geordnet: readonly number[], n: number, ziele: Float
     }
   });
   if (fest.length === 0) return anteil;
+  if (umriss.offen) {
+    // offene Naht (Maulschlitz): zwischen den Ankern gleichmäßig nach Index, die Enden laufen auf die Lippenknoten zu
+    // (Anteil 0 bzw. 1 des Umrisses ohne Schlitz); kein Rückweg über den Schlitz
+    const k0 = fest[0]!;
+    const k1 = fest[fest.length - 1]!;
+    const kopfEnde = anteil[k0]! > anteil[k1]! ? 1 : 0;
+    for (let k = 0; k < k0; k++) anteil[k] = kopfEnde + ((anteil[k0]! - kopfEnde) * (k + 1)) / (k0 + 1);
+    for (let k = k1 + 1; k < m; k++) anteil[k] = anteil[k1]! + ((1 - kopfEnde - anteil[k1]!) * (k - k1)) / (m - k1);
+    for (let f = 0; f + 1 < fest.length; f++) {
+      const a = fest[f]!;
+      const b = fest[f + 1]!;
+      for (let q = 1; q < b - a; q++) anteil[a + q] = anteil[a]! + ((anteil[b]! - anteil[a]!) * q) / (b - a);
+    }
+    return anteil;
+  }
   for (let f = 0; f < fest.length; f++) {
     const k0 = fest[f]!;
     const k1 = fest[(f + 1) % fest.length]!;
@@ -429,7 +485,8 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument,
   if (dok && opt.eckenSchaerfe > 0) {
     const sk = dok.skalierung;
     for (const kn of dok.profile.seite.knoten) {
-      if (kn.art !== 'ecke') continue;
+      // Lippenanfänge (markierte Knoten, Block 2) sind keine Ringfalte und nehmen keine Station
+      if (kn.art !== 'ecke' || kn.marke) continue;
       const p = { x: kn.p.x * sk, y: kn.p.y * sk };
       const o = zugAnteil(l.ruecken, p);
       const u = zugAnteil(l.bauch, p);
@@ -1400,6 +1457,8 @@ export type Rohbau = {
   zielGewicht?: Float64Array;
   /** Startpunkt des Nahtrundgangs (Standard: Spitze vorn); mit Maul ein Hautpunkt neben der Lippe */
   nahtStart?: number;
+  /** Maulschlitz im Seitenumriss (Block 2): die Naht hängt am Umriss ohne Schlitz */
+  schlitz?: Schlitz | null;
   zeiten: { t0: number; t1: number; t2: number };
 };
 
@@ -1432,7 +1491,7 @@ export function fertigstellen(e: Rohbau): Ableitung {
     }
     feinIdx.push(i);
   }
-  const umriss = umrissDicht(dok);
+  const umriss = e.schlitz ? umrissDichtOffen(dok, e.schlitz) : umrissDicht(dok);
   const letzte = u.stufen[u.stufen.length - 1]!.kaefig;
   const geordnet = nahtOrdnen(letzte, feinIdx, e.nahtStart ?? vorlage.naht.spitzeVorn);
   const nahtFein = Uint32Array.from(geordnet);

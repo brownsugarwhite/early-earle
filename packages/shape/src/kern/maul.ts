@@ -39,9 +39,11 @@ import {
   spineAnteile,
   spineAnteilFuer,
   umrissDicht,
+  umrissDichtOffen,
   zugAnteil,
 } from './ableiten';
 import { silhouettenBreite } from './breite';
+import { dokFuerKern } from './schlitz';
 
 /**
  * Maullinie in Wirbelsäulen-Koordinaten: Anteil f der Wirbelsäulenlänge (0 = Spitze) und Höhe v auf der Sprosse
@@ -331,7 +333,7 @@ export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[], winkel
   }
   // Spitze mit Ecke (Rex): die Lippe beginnt an der Bauchnaht der Kappenzeile (Überbiss), in einer scharfen Spitze ist
   // kein Platz für die Tasche; runde Spitze (Kugel): durch die Spitze
-  const spitzeScharf = dok.profile.seite.knoten.some((kn) => kn.art === 'ecke' && Math.hypot(kn.p.x * dok.skalierung - spitze.x, kn.p.y * dok.skalierung - spitze.y) < 1e-3);
+  const spitzeScharf = dok.profile.seite.knoten.some((kn) => kn.art === 'ecke' && !kn.marke && Math.hypot(kn.p.x * dok.skalierung - spitze.x, kn.p.y * dok.skalierung - spitze.y) < 1e-3);
   const fv: { f: number; v: number }[] = [];
   if (anfangF !== undefined) fv.push({ f: anfangF, v: 0 });
   // Kreuzungen der Linie mit den Sprossen
@@ -739,7 +741,7 @@ const richtung = (a: [number, number, number], b: [number, number, number]): [nu
  * Käfig mit Maul aus der Vorlage: Schlitz entlang des Pfads, Tasche, Rachengitter; Ziele für alle Punkte (geschlossen).
  * Die Vorlagen-Indizes bleiben gültig (obere Kopien), neue Punkte hängen an.
  */
-export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Float64Array, hoeheV: Float64Array, opt: MaulOptionen, schlitzPunkte?: readonly (readonly [number, number, number])[]): { kaefig: Kaefig; ziele: Float64Array; hoehe: Float64Array; info: MaulAbleitung } {
+export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Float64Array, hoeheV: Float64Array, opt: MaulOptionen, schlitzPunkte?: readonly (readonly [number, number, number])[], kieferUmriss?: readonly V2[]): { kaefig: Kaefig; ziele: Float64Array; hoehe: Float64Array; info: MaulAbleitung } {
   const { N, c } = v;
   const n0 = v.kaefig.n;
   const { bL, jL, k } = lage;
@@ -1425,7 +1427,86 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
       const zs = q[2] < 0 ? -1 : 1;
       setze(idx, [x0, cY + (ref[0] - cY) * sc, zs * ref[1] * sc * zf]);
     };
-    for (let i = 0; i <= k; i++) {
+    // Kiefer aus seiner eigenen schwarzen Linie (Block 2, Florian 14.10.: „sollen von der Seite direkt in die schwarze
+    // Profillinie übergehen“): Liegt der Anfang als Knoten im Seitenumriss (`kieferUmriss` = sein schwarzer Bogen vom
+    // Anfang weg), wird alles vor dem Bezugsring eine Coons-Fläche zwischen Lippenkante (Kette), schwarzem Bogen (Naht),
+    // Bezugsring und dem Anfang — runde Stirn statt Wand, die Naht liegt auf der schwarzen Linie
+    const coons = !!kieferUmriss && kieferUmriss.length >= 2 && vorschub === 0;
+    if (coons) {
+      const bogen = kieferUmriss!;
+      const cum = [0];
+      for (let q = 1; q < bogen.length; q++) cum.push(cum[q - 1]! + Math.hypot(bogen[q]!.x - bogen[q - 1]!.x, bogen[q]!.y - bogen[q - 1]!.y));
+      const nahtRef = P(v.ringPunkt(refRing, jNaht));
+      // Bogenstelle des Bezugsring-Nahtpunkts (nur im vorderen Teil des Bogens suchen, der Rest läuft um den Körper)
+      let sRef = cum[cum.length - 1]! * 0.5;
+      let dBest = Infinity;
+      for (let q = 0; q + 1 < bogen.length && cum[q]! < 0.6 * cum[cum.length - 1]!; q++) {
+        const a = bogen[q]!;
+        const b = bogen[q + 1]!;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const l2 = dx * dx + dy * dy || 1e-18;
+        const f = Math.min(1, Math.max(0, ((nahtRef[0] - a.x) * dx + (nahtRef[1] - a.y) * dy) / l2));
+        const d = Math.hypot(a.x + dx * f - nahtRef[0], a.y + dy * f - nahtRef[1]);
+        if (d < dBest) {
+          dBest = d;
+          sRef = cum[q]! + (cum[q + 1]! - cum[q]!) * f;
+        }
+      }
+      const bogenBei = (sb: number): [number, number, number] => {
+        let q = 0;
+        while (q < cum.length - 2 && cum[q + 1]! < sb) q++;
+        const d = cum[q + 1]! - cum[q]!;
+        const f = d > 1e-15 ? Math.min(1, Math.max(0, (sb - cum[q]!) / d)) : 0;
+        return [bogen[q]!.x + (bogen[q + 1]!.x - bogen[q]!.x) * f, bogen[q]!.y + (bogen[q + 1]!.y - bogen[q]!.y) * f, 0];
+      };
+      const nahtJ = untenV ? N / 2 : 0;
+      const L1 = P(kopie[Math.min(m, c / 2 + refRing)]!);
+      const S1 = bogenBei(sRef);
+      const B = (jf: number): [number, number, number] => {
+        const j0 = Math.max(0, Math.min(N / 2 - 1, Math.floor(jf)));
+        const j1 = Math.min(N / 2, j0 + 1);
+        const f = jf - j0;
+        const a = P(v.ringPunkt(refRing, j0));
+        const b = P(v.ringPunkt(refRing, j1));
+        return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, Math.abs(a[2]) + (Math.abs(b[2]) - Math.abs(a[2])) * f];
+      };
+      const flaeche = (idx: number, u: number, jf: number, lippe: readonly number[]) => {
+        const w = Math.max(0, Math.min(1, untenV ? (jf - jL) / (nahtJ - jL) : (jL - jf) / (jL - nahtJ)));
+        const Su = bogenBei(u * sRef);
+        const Bv = B(jf);
+        const q = P(idx);
+        const lz = Math.abs(lippe[2]!);
+        const pos: [number, number, number] = [0, 0, 0];
+        for (let d = 0; d < 2; d++) pos[d] = (1 - w) * lippe[d]! + w * Su[d]! + u * (Bv[d]! - ((1 - w) * L1[d]! + w * S1[d]!));
+        const z = (1 - w) * lz + u * (Bv[2] - (1 - w) * Math.abs(L1[2]!));
+        pos[2] = (q[2] < 0 ? -1 : 1) * Math.max(0, z);
+        setze(idx, pos);
+      };
+      for (let i = 0; i <= k; i++) {
+        const t = c / 2 + i;
+        for (const idx of ringZeilen(i)) {
+          const g = gitterLage(v, idx);
+          const jr = g.art === 'ring' ? jrVon(g.j) : jL;
+          if (i < refRing) flaeche(idx, (i + 1) / (refRing + 1), jr, P(kopie[Math.min(m, t)]!));
+          else {
+            const d = untenV ? (jr - jL) / zeilen : (jL - jr) / zeilen;
+            setzeRegion(idx, t, d, k > 0 ? i / k : 1, jr, 1, false);
+          }
+        }
+      }
+      for (const z of kappenZeilen()) {
+        const g = gitterLage(v, z.idx);
+        if (g.art !== 'vorn') continue;
+        const aR = g.a >= c / 2 ? g.a : c - g.a;
+        const r = Math.max(Math.abs(aR - c / 2), Math.abs(g.b - c / 2));
+        let mIdx = 0;
+        for (let q = 0; q <= 4 * r; q++) { const [qa, qb] = quadratRing(c, r, q); if (qa === aR && qb === g.b) { mIdx = q; break; } }
+        const jf = Math.min(N / 2, (mIdx * c) / (2 * Math.max(1, r)));
+        flaeche(z.idx, r / (c / 2) / (refRing + 1), jf, P(kopie[Math.min(m, r)]!));
+      }
+    }
+    for (let i = 0; !coons && i <= k; i++) {
       const t = c / 2 + i;
       for (const idx of ringZeilen(i)) {
         const g = gitterLage(v, idx);
@@ -1434,7 +1515,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
         setzeRegion(idx, t, d, k > 0 ? i / k : 1, jr, (i + 1) / (refRing + 1), i < refRing);
       }
     }
-    for (const z of kappenZeilen()) {
+    for (const z of coons ? [] : kappenZeilen()) {
       const g = gitterLage(v, z.idx);
       if (g.art !== 'vorn') continue;
       const aR = g.a >= c / 2 ? g.a : c - g.a;
@@ -1727,10 +1808,14 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
 // ---------- Ableitung mit Maul ----------
 
 /** Ableitung wie `ableiten`, mit Maul: Umparametrisierung der Schleifen, Schlitz, Tasche, Rachen; Naht-Ausgleich nur auf der Haut. */
-export function ableitenMitMaul(dok: Dokument, linie: MaulLinie, optionen: Partial<AbleitOptionen> = {}, maulOptionen: Partial<MaulOptionen> = {}): MaulErgebnis {
+export function ableitenMitMaul(dokRoh: Dokument, linie: MaulLinie, optionen: Partial<AbleitOptionen> = {}, maulOptionen: Partial<MaulOptionen> = {}): MaulErgebnis {
   const opt = { ...ABLEIT_STANDARD, glaettung: 0.15, ...optionen };
   const mopt = { ...MAUL_STANDARD, ...maulOptionen };
   const t0 = jetzt();
+  // Kiefer getrennt mit Lippenknoten im Seitenumriss (Block 2): abgeleitet wird mit dem Schlitz als Sehne, die Naht hängt
+  // am Umriss ohne Schlitz (endet an den Lippenknoten)
+  const { dok: dokK, schlitz } = dokFuerKern(dokRoh);
+  const dok = dokK;
   const l = kernLeiter(dok);
   const t1 = jetzt();
   const breiten = silhouettenBreite(dok);
@@ -1741,7 +1826,15 @@ export function ableitenMitMaul(dok: Dokument, linie: MaulLinie, optionen: Parti
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
   const lage = maulLage(vorlage, l, st, linie);
   const { ziele, hoehe } = zieleBerechnen(vorlage, l, st, breiten, dok, opt, lage);
-  const mk = maulKaefig(vorlage, st, lage, ziele, hoehe, mopt, linie.punkte);
+  // schwarzer Bogen des kürzeren Kiefers vom eigenen Anfang weg (Block 2): Überbiss = blauer Anfang (Unterkiefer, Anfang
+  // des offenen Umrisses), Unterbiss = roter Anfang (Oberkiefer, Ende des offenen Umrisses)
+  let kieferUmriss: V2[] | undefined;
+  if (schlitz && lage.versatz) {
+    const offen = umrissDichtOffen(dok, schlitz).pts;
+    const startUnten = dok.profile.seite.knoten[(schlitz.segment + 1) % dok.profile.seite.knoten.length]!.marke === 'maulUnten';
+    kieferUmriss = lage.versatz.oben === !startUnten ? offen : offen.slice().reverse();
+  }
+  const mk = maulKaefig(vorlage, st, lage, ziele, hoehe, mopt, linie.punkte, kieferUmriss);
   const haut = new Uint8Array(mk.kaefig.n);
   const zielGewicht = new Float64Array(mk.kaefig.n).fill(1);
   for (let i = 0; i < mk.kaefig.n; i++) {
@@ -1754,7 +1847,7 @@ export function ableitenMitMaul(dok: Dokument, linie: MaulLinie, optionen: Parti
   // Ohne Breitenzeilen (Plan „Zeichnung ist Form“, 15.10.): Sie machen den Käfig wellig, und die Kieferpose wirft daraus
   // Hautfalten (Tiger-Stern 70 Durchdringungen bei 50 %). Die Breite kommt hier allein aus den Käfigzielen (Sichthülle);
   // offen: Breitenzeilen mit Glättung oder eine Pose, die den geglätteten Käfig nutzt.
-  const abl = fertigstellen({ opt: { ...opt, breiteGewicht: 0 }, vorlage, kaefig: mk.kaefig, ziele: mk.ziele, hoehe: mk.hoehe, l, st, breiten, dok, haut, zielGewicht, nahtStart, zeiten: { t0, t1, t2 } });
+  const abl = fertigstellen({ opt: { ...opt, breiteGewicht: 0 }, vorlage, kaefig: mk.kaefig, ziele: mk.ziele, hoehe: mk.hoehe, l, st, breiten, dok, haut, zielGewicht, nahtStart, schlitz, zeiten: { t0, t1, t2 } });
   const xyz = abl.kaefig.xyz;
   const info = mk.info;
   // Untere Kette bitgleich auf die obere (gleiche Ziele, scharfe Falten: die Grenzlage hängt nur von der Kette ab);

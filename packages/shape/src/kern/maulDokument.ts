@@ -3,6 +3,7 @@
 import type { Dokument } from '../dokument';
 import { abtasten3 } from '../versuch/linie3d';
 import { type MaulLinie, maulLinieAusPunkten, maulLinieUntenAusPunkten } from './maul';
+import { dokFuerKern } from './schlitz';
 
 type P3 = readonly [number, number, number];
 
@@ -19,7 +20,9 @@ export function maulVorn(rot: readonly P3[], blau: readonly P3[]): boolean {
  * Koordinate = seitliche Lage der Kante). `undefined`, wenn nichts gezeichnet ist. Wirft, wenn die Schlitzlinie nicht
  * übersetzbar ist; scheitert nur die versetzte Kante, baut das Maul mit gleichen Kiefern (`kanteFehler` meldet es).
  */
-export function maulLinieAusDokument(dok: Dokument, kanteFehler?: (e: unknown) => void): MaulLinie | undefined {
+export function maulLinieAusDokument(dokRoh: Dokument, kanteFehler?: (e: unknown) => void): MaulLinie | undefined {
+  // Wirbelsäulen-Anteile auf derselben Leiter wie die Ableitung (Schlitz als Sehne, `dokFuerKern`)
+  const dok = dokFuerKern(dokRoh).dok;
   const gezeichnet = dok.maul?.zu.oben;
   if (!gezeichnet || gezeichnet.knoten.length < 2) return undefined;
   const sk = dok.skalierung;
