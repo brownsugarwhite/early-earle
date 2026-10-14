@@ -35,6 +35,9 @@ import {
   zieleBerechnen,
   zugBei,
   spineAnteile,
+  spineAnteilFuer,
+  umrissDicht,
+  zugAnteil,
 } from './ableiten';
 import { silhouettenBreite } from './breite';
 
@@ -44,6 +47,12 @@ import { silhouettenBreite } from './breite';
  * die Sprossen fächern (Hinterkopf, Halsansatz). Eine gezeichnete 2D-Linie wird mit `maulLinieAusPunkten` übersetzt.
  */
 export type MaulLinie = {
+  /**
+   * Stützen (Wirbelsäulen-Anteil f, Höhe v auf der Sprosse), f steigend. Eine erste Stütze mit v < `LIPPE_V_MIN` markiert
+   * den **Anfang auf der Kontur** (Plan „Zeichnung ist Form“, Schritt 2): Die Lippe beginnt an der Naht genau dort, wo die
+   * Bauchlinie den Anteil f hat (vorderster Konturpunkt auf der gezeichneten Höhe); die Kappenzeile der Lippe wird auf
+   * diese Stelle gelegt. Ohne Markierung beginnt die Lippe in der Spitze oder an der Bauchnaht der Kappenzeile (`unterSpitze`).
+   */
   fv: { f: number; v: number }[];
   /**
    * Lippenanfang unter der Spitze: 0 = in der Schnauzenspitze; r ≥ 1 = an der Bauchnaht des r-ten Quadratrings der
@@ -51,6 +60,8 @@ export type MaulLinie = {
    * Höchstens c/2 − 1 (c = N/4).
    */
   unterSpitze?: number;
+  /** Anfang auf der Kontur als Weltpunkt (Seitenansicht), genauer als die Rückabbildung aus f (≈ 2 px Unschärfe) */
+  anfang?: V2;
 };
 
 export type MaulOptionen = {
@@ -179,45 +190,125 @@ export function maulLiniePunkte(dok: Dokument, linie: MaulLinie, n = 64): V2[] {
 }
 
 /** Lippenhöhe mindestens/höchstens auf der Sprosse (M3): die Lippe läuft nie auf der Naht (Unterkiefer ohne Dicke). */
-export const LIPPE_V_MIN = 0.1;
+export const LIPPE_V_MIN = 0.05; // 15.10.: 0,1 hob eine Lippe dicht über der Kinnlinie des Rex um 2 px (gerade Linie → Kerbe)
 export const LIPPE_V_MAX = 0.9;
 /** Sprossen kürzer als dieser Anteil der längsten Sprosse gehören zur Spitze: dort ist die Höhe Rauschen. */
 const SPITZEN_ANTEIL = 0.15;
+/** Konturanfänge näher als dieser Abstand (Welt, ≈ 4,6 px) an der Spitze beginnen in der Spitze. */
+export const ANFANG_ABSTAND_MIN = 0.01;
+/** Mindestanteil der vorderen Kappe bei einem Konturanfang f: Ring 0 liegt bei max(4/3 · f, f + 0,01). */
+export function anfangKappeMin(f: number): number {
+  return Math.max((4 / 3) * f, f + 0.01);
+}
+
+/** Anfang auf der Kontur (f der Bauchlinie), wenn die Linie ihn markiert (erste Stütze mit v < LIPPE_V_MIN). */
+export function konturAnfang(linie: MaulLinie): number | undefined {
+  const a = linie.fv[0];
+  return a && a.v < LIPPE_V_MIN && a.f > 0 ? a.f : undefined;
+}
+
+/** Vorderster Punkt des Seitenumrisses auf der Höhe y (null, wenn der Umriss die Höhe nicht erreicht). */
+function frontPunkt(dok: Dokument, y: number): V2 | null {
+  const u = umrissDicht(dok);
+  let best: V2 | null = null;
+  for (let i = 0; i < u.pts.length; i++) {
+    const a = u.pts[i]!;
+    const b = u.pts[(i + 1) % u.pts.length]!;
+    if ((a.y - y) * (b.y - y) > 0 || a.y === b.y) continue;
+    const t = (y - a.y) / (b.y - a.y);
+    const x = a.x + (b.x - a.x) * t;
+    if (!best || x < best.x) best = { x, y };
+  }
+  return best;
+}
+
+/** Kastenfront wie in `maulLage`: die Sprosse bei f liegt praktisch in der Frontebene der Spitze. */
+function frontFlach(l: Leiter, f: number): boolean {
+  const st = stationenAusLeiter(l, [f])[0]!;
+  const o = zugBei(l.ruecken, st.a);
+  const u = zugBei(l.bauch, st.b);
+  return Math.abs((o.x + u.x) / 2 - l.ruecken[0]!.x) < 0.06 * Math.hypot(o.x - u.x, o.y - u.y);
+}
 
 /**
- * Gezeichnete 2D-Linie (Welt) → Wirbelsäulen-Koordinaten: je Punkt die nächste Sprosse der Leiter und die Höhe darauf.
- * Robust gegen Florians Zeichnung (M3): Punkte in der Spitzenregion (Sprosse < 15 % der längsten) fallen am Anfang weg,
- * weil die Lippe ohnehin an der Kappe beginnt; die Höhe wird auf [0,1 … 0,9] begrenzt, damit eine Linie auf oder außerhalb
- * der Kontur keine Lippe auf der Naht ergibt (Ober- und Unterlippe lägen aufeinander: Durchdringungen geschlossen).
+ * Gezeichnete 2D-Linie (Welt) → Wirbelsäulen-Koordinaten (Plan „Zeichnung ist Form“, Schritt 2): Anfang auf der Kontur
+ * (vorderster Konturpunkt auf der Höhe des ersten Punkts, als Stütze mit v = 0 markiert; auf oder über der Spitze, in der
+ * Spitzenregion oder vor einer Kastenfront beginnt die Lippe in der Spitze bzw. Platte), dann die **Kreuzungen der Linie
+ * mit den Sprossen** (Höhe v je Sprosse, nicht mehr „nächste Sprosse je Punkt“: so liegt die Lippe an jedem Ring auf der
+ * gezeichneten Linie), zuletzt der Mundwinkel (Projektion des letzten Punkts). Robust gegen Florians Zeichnung (M3): die
+ * Höhe wird auf [0,1 … 0,9] begrenzt, damit eine Linie auf oder außerhalb der Kontur keine Lippe auf der Naht ergibt.
+ * `unterSpitze` wird mitgeliefert (1 mit Konturanfang, sonst 0).
  */
 export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[]): MaulLinie {
+  if (punkte.length < 2) throw new Error('Maullinie: zu kurz');
   const l = kernLeiter(dok);
-  const laengen = l.paare.map((pr) => {
-    const o = zugBei(l.ruecken, pr.a);
-    const u = zugBei(l.bauch, pr.b);
-    return Math.hypot(o.x - u.x, o.y - u.y);
-  });
+  const spitze = l.ruecken[0]!;
+  const sprossen = l.paare.map((pr) => ({ o: zugBei(l.ruecken, pr.a), u: zugBei(l.bauch, pr.b) }));
+  const laengen = sprossen.map((sp) => Math.hypot(sp.o.x - sp.u.x, sp.o.y - sp.u.y));
   const lMax = Math.max(...laengen);
-  const fv: { f: number; v: number }[] = [];
-  for (const p of punkte) {
-    let best = { k: 0, d: Infinity, v: 0.5 };
-    l.paare.forEach((pr, k) => {
-      const o = zugBei(l.ruecken, pr.a);
-      const u = zugBei(l.bauch, pr.b);
-      const dx = o.x - u.x;
-      const dy = o.y - u.y;
-      const l2 = dx * dx + dy * dy || 1;
-      const v = Math.min(1, Math.max(0, ((p.x - u.x) * dx + (p.y - u.y) * dy) / l2));
-      const d = Math.hypot(u.x + dx * v - p.x, u.y + dy * v - p.y);
-      if (d < best.d) best = { k, d, v };
-    });
-    if (fv.length === 0 && laengen[best.k]! < SPITZEN_ANTEIL * lMax) continue;
-    const f = spineAnteile(l, [l.paare[best.k]!])[0]!;
-    const v = Math.min(LIPPE_V_MAX, Math.max(LIPPE_V_MIN, best.v));
-    if (fv.length === 0 || f > fv[fv.length - 1]!.f) fv.push({ f, v });
+  const fPaare = spineAnteile(l, l.paare);
+  // Anfang auf der Kontur (unter der Spitze, nicht in der Spitzenregion, keine Kastenfront)
+  let anfangF: number | undefined;
+  let anfangPunkt: V2 | undefined;
+  const p0 = punkte[0]!;
+  if (p0.y < spitze.y - 1e-9) {
+    const sPkt = frontPunkt(dok, p0.y);
+    if (sPkt && Math.hypot(sPkt.x - spitze.x, sPkt.y - spitze.y) >= ANFANG_ABSTAND_MIN) {
+      const f = spineAnteilFuer(l, zugAnteil(l.bauch, sPkt).t, false);
+      if (f > 1e-4 && !frontFlach(l, Math.max(f, ABLEIT_STANDARD.kappe))) {
+        anfangF = f;
+        anfangPunkt = sPkt;
+      }
+    }
   }
+  // Spitze mit Ecke (Rex): die Lippe beginnt an der Bauchnaht der Kappenzeile (Überbiss), in einer scharfen Spitze ist
+  // kein Platz für die Tasche; runde Spitze (Kugel): durch die Spitze
+  const spitzeScharf = dok.profile.seite.knoten.some((kn) => kn.art === 'ecke' && Math.hypot(kn.p.x * dok.skalierung - spitze.x, kn.p.y * dok.skalierung - spitze.y) < 1e-3);
+  const fv: { f: number; v: number }[] = [];
+  if (anfangF !== undefined) fv.push({ f: anfangF, v: 0 });
+  // Kreuzungen der Linie mit den Sprossen
+  for (let k = 0; k < sprossen.length; k++) {
+    const f = fPaare[k]!;
+    if (anfangF !== undefined ? f <= anfangF : laengen[k]! < SPITZEN_ANTEIL * lMax) continue;
+    const sp = sprossen[k]!;
+    const dx = sp.o.x - sp.u.x;
+    const dy = sp.o.y - sp.u.y;
+    let vK: number | undefined;
+    for (let i = 0; i + 1 < punkte.length && vK === undefined; i++) {
+      const a = punkte[i]!;
+      const b = punkte[i + 1]!;
+      const ex = b.x - a.x;
+      const ey = b.y - a.y;
+      const det = dx * ey - dy * ex;
+      if (Math.abs(det) < 1e-15) continue;
+      // u + v·d = a + s·e
+      const rx = a.x - sp.u.x;
+      const ry = a.y - sp.u.y;
+      const v = (rx * ey - ry * ex) / det;
+      const sAnteil = (rx * dy - ry * dx) / det;
+      if (v >= -1e-9 && v <= 1 + 1e-9 && sAnteil >= -1e-9 && sAnteil <= 1 + 1e-9) vK = v;
+    }
+    if (vK === undefined) continue;
+    const v = Math.min(LIPPE_V_MAX, Math.max(LIPPE_V_MIN, vK));
+    if (fv.length === 0 || f > fv[fv.length - 1]!.f + 1e-9) fv.push({ f, v });
+  }
+  // Mundwinkel: Projektion des letzten Punkts auf die nächste Sprosse
+  const pEnde = punkte[punkte.length - 1]!;
+  let best = { k: 0, d: Infinity, v: 0.5 };
+  sprossen.forEach((sp, k) => {
+    const dx = sp.o.x - sp.u.x;
+    const dy = sp.o.y - sp.u.y;
+    const l2 = dx * dx + dy * dy || 1;
+    const v = Math.min(1, Math.max(0, ((pEnde.x - sp.u.x) * dx + (pEnde.y - sp.u.y) * dy) / l2));
+    const d = Math.hypot(sp.u.x + dx * v - pEnde.x, sp.u.y + dy * v - pEnde.y);
+    if (d < best.d) best = { k, d, v };
+  });
+  const fEnde = fPaare[best.k]!;
+  const vEnde = Math.min(LIPPE_V_MAX, Math.max(LIPPE_V_MIN, best.v));
+  if (fv.length === 0 || fEnde > fv[fv.length - 1]!.f + 1e-9) fv.push({ f: fEnde, v: vEnde });
+  else fv[fv.length - 1] = { f: fv[fv.length - 1]!.f, v: vEnde };
   if (fv.length < 2) throw new Error('Maullinie: zu kurz');
-  return { fv };
+  return { fv, unterSpitze: anfangF !== undefined || spitzeScharf ? 1 : 0, ...(anfangPunkt ? { anfang: anfangPunkt } : {}) };
 }
 
 /**
@@ -233,11 +324,28 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie):
   // unter der Spitze träfe sonst eine Kappenzeile, die nicht auf Lippenhöhe liegt.
   const sp0 = sprossenVon(l, [st.ringe[0]!])[0]!;
   const flach = Math.abs((sp0.o.x + sp0.u.x) / 2 - l.ruecken[0]!.x) < 0.06 * Math.hypot(sp0.o.x - sp0.u.x, sp0.o.y - sp0.u.y);
-  const rS = flach ? 0 : Math.min(c / 2 - 1, Math.max(0, Math.round(linie.unterSpitze ?? 0)));
+  const anfang = konturAnfang(linie);
+  const rS = flach ? 0 : Math.min(c / 2 - 1, Math.max(anfang !== undefined ? 1 : 0, Math.round(linie.unterSpitze ?? 0)));
   const bL = c / 2 - rS;
   const jL = (3 * c) / 2 - bL;
   const ende = linie.fv[linie.fv.length - 1]!;
   const fRinge = spineAnteile(l, st.ringe);
+  // Anfang auf der Kontur: Ziel der Bauchnaht der Lippen-Kappenzeile ist der gezeichnete Anfang (Bauchpunkt bei f;
+  // `zieleBerechnen` setzt den Punkt dorthin). Liegt der Anfang hinter der Kappenzeile, rückt die Zeile auf seinen
+  // Anteil (sonst läuft die Lippe von der Zeile rückwärts zum Anfang und faltet sich: Rex 2 Durchdringungen); liegt er
+  // davor, bleibt die Zeile, wo sie ist (auf runden Spitzen wäre der Quadratring am Anfang winzig: Kugel 136
+  // Durchdringungen). Die Zeile bleibt mindestens ein Viertel des Abstands vor Ring 0.
+  let anfangPunkt: V2 | undefined;
+  if (anfang !== undefined && rS >= 1) {
+    const kappen = st.kappen.vorn;
+    const fK = spineAnteile(l, kappen);
+    if (anfang > fK[rS - 1]!) {
+      const vorher = rS >= 2 ? fK[rS - 2]! : 0;
+      const nachher = rS < kappen.length ? fK[rS]! : fRinge[0]!;
+      kappen[rS - 1] = stationenAusLeiter(l, [Math.min(nachher - 0.25 * (nachher - vorher), anfang)])[0]!;
+    }
+    anfangPunkt = linie.anfang ?? punktBei(l, anfang, 0);
+  }
   let k = 1;
   for (let i = 1; i <= R - 2; i++) if (Math.abs(fRinge[i]! - ende.f) < Math.abs(fRinge[k]! - ende.f)) k = i;
   const vorher = fRinge[k - 1]!;
@@ -253,7 +361,7 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie):
   const vKappe = new Float64Array(c / 2).fill(NaN);
   for (let r = 1; r < c / 2; r++) vKappe[r] = lippenHoehe(linie, fKappen[r - 1]!);
   const spitze = l.ruecken[0]!;
-  return { bL, jL, k, m: c / 2 + k, vRing, vKappe, winkel: punktBei(l, ende.f, ende.v), start: { x: spitze.x, y: spitze.y } };
+  return { bL, jL, k, m: c / 2 + k, vRing, vKappe, ...(anfangPunkt ? { anfang: anfangPunkt } : {}), winkel: punktBei(l, ende.f, ende.v), start: anfangPunkt ?? { x: spitze.x, y: spitze.y } };
 }
 
 // ---------- Topologie ----------
@@ -964,7 +1072,8 @@ export function ableitenMitMaul(dok: Dokument, linie: MaulLinie, optionen: Parti
   const breiten = silhouettenBreite(dok);
   const t2 = jetzt();
   const vorlage = roehre(opt.ringe, opt.ring);
-  const st = stationenWaehlen(l, opt, dok);
+  const anfang = konturAnfang(linie);
+  const st = stationenWaehlen(l, opt, dok, anfang !== undefined ? anfangKappeMin(anfang) : undefined);
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
   const lage = maulLage(vorlage, l, st, linie);
   const { ziele, hoehe } = zieleBerechnen(vorlage, l, st, breiten, dok, opt, lage);

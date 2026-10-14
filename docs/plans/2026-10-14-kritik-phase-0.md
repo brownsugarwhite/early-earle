@@ -27,7 +27,7 @@
 - [ ] **Dokument v0** ohne Käfig; v1 mit Migration fehlt.
 
 - [ ] **Umriss von oben und vorn = Zeichnung** (Florian, 15.10. morgens: „Auch beim Tiger weicht die Form von oben und von der Seite sehr von dem eingezeichneten Shape ab“). Plan [`2026-10-15-zeichnung-ist-form.md`](2026-10-15-zeichnung-ist-form.md). *15.10. vormittags, Schritt 1:* Sichthülle und Breitenpunkte im Ausgleich; Top Rex 1,0 px, Tiger 4,0 (vorher 21,6), Langhals 14,2 (vorher 17,5). Rest: Langhals-Brust (Kreis-Vorlage schräger Sprossen, 3 px echter Widerspruch), Tiger-Frontplatte gegen runde Top-Nase, Rex-Front 11 px (Florians Front breiter als sein Top: anzeigen, Schritt 4), Maulbau ohne Breitenpunkte (Kieferpose wirft sonst Falten). (Phase 1)
-- [ ] **Gerade Maullinie ergibt ein gerades Maul** (Florian, 15.10.: „wenn ich ganz gerades Maul einzeichne, hat es immer diese komische Kerbe vorne“). Lippenanfang ist auf Spitze oder eine Kappenreihe darunter gerastet (`unterSpitze`). Schritt 2 des Plans. (Phase 1)
+- [x] **Gerade Maullinie ergibt ein gerades Maul** (Florian, 15.10.: „wenn ich ganz gerades Maul einzeichne, hat es immer diese komische Kerbe vorne“). *15.10. mittags, Schritt 2:* Anfang auf der Kontur (Weltpunkt), Lippenhöhe je Ring aus der Kreuzung mit der Sprosse, Kappenzeile auf dem Anfang; Kerbe weg (Kugel 0,7 px, Rex 1,9–2,1 px = Rille). Rest: Rille vorn 2–3 px in der Seitenansicht sichtbar; scharfe Spitze → Überbiss statt Lippe durch die Spitze. (Phase 1, Rest Phase 2)
 
 ### Phase 2 (Maul, Zähne, Augen)
 
@@ -68,3 +68,4 @@
 - [x] 14.10.: Zonen-Atlas → Beweis 4 ganz.
 - [x] 14.10.: Stile zweite Runde (Zwiebel, wellige Bänder, Wirbel, Locken, Kugelbläschen, Büschelfeld).
 - [x] 15.10.: „Zeichnung ist Form“ Schritt 1: Sichthülle (Front nur am breitesten Punkt, Rest beschnitten) und Breitenpunkte im Ausgleichslöser; Top Rex 1,0 px, Tiger 4,0 px (vorher 21,6).
+- [x] 15.10.: „Zeichnung ist Form“ Schritt 2: Lippe auf der gezeichneten Linie (Konturanfang, Sprossen-Kreuzungen); Kerbe weg.

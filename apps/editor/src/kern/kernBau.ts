@@ -84,7 +84,8 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
     try {
       const sk = dok.skalierung;
       const punkte = abtasten3(gezeichnet, 24).map((p) => ({ x: p[0] * sk, y: p[1] * sk }));
-      maulLinie = { ...maulLinieAusPunkten(dok, punkte), unterSpitze: 1 };
+      // Anfang auf der Kontur und Kreuzungen je Sprosse kommen aus der Linie selbst („Zeichnung ist Form“, Schritt 2)
+      maulLinie = maulLinieAusPunkten(dok, punkte);
       if (maul === 'aus') maul = 'vorn';
     } catch (e) {
       console.warn('[kern] Maullinie aus Zeichnung nicht übersetzbar:', e);

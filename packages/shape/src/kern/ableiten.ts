@@ -358,7 +358,7 @@ function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: numbe
 }
 
 /** Nächster Anteil eines Punkts auf einem offenen Zug (gleichmäßig abgetastet). */
-function zugAnteil(zug: readonly V2[], p: V2): { t: number; d: number } {
+export function zugAnteil(zug: readonly V2[], p: V2): { t: number; d: number } {
   let best = Infinity;
   let bestT = 0;
   const n = zug.length - 1;
@@ -379,7 +379,7 @@ function zugAnteil(zug: readonly V2[], p: V2): { t: number; d: number } {
 }
 
 /** Anteil f der Wirbelsäule, an dem die Leiter den Anteil `t` auf Rücken (oben) bzw. Bauch erreicht. */
-function spineAnteilFuer(l: Leiter, t: number, oben: boolean): number {
+export function spineAnteilFuer(l: Leiter, t: number, oben: boolean): number {
   const mitten = l.paare.map((p) => {
     const o = zugBei(l.ruecken, p.a);
     const u = zugBei(l.bauch, p.b);
@@ -399,7 +399,11 @@ function spineAnteilFuer(l: Leiter, t: number, oben: boolean): number {
   return t;
 }
 
-export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument): Stationen {
+/**
+ * `kappeMin`: Mindestanteil der vorderen Kappe (Maul, das auf der Kontur hinter der Spitze beginnt: die Kappenzeile der
+ * Lippe muss vor Ring 0 liegen).
+ */
+export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument, kappeMin?: number): Stationen {
   const { ringe: R, ring: N, kappe } = opt;
   const c = N / 4;
   let kappeVorn = kappe;
@@ -427,9 +431,12 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument)
   }
   if (spitzen.vorn) kappeVorn = Math.min(kappeVorn, opt.kappeSpitze);
   if (spitzen.hinten) kappeHinten = Math.min(kappeHinten, opt.kappeSpitze);
+  if (kappeMin !== undefined && kappeMin > kappeVorn) kappeVorn = Math.min(0.3, kappeMin);
   const anteile = ringAnteile(l, R, kappeVorn, 1 - kappeHinten, opt.kruemmung);
   const ecken: Ecke[] = [];
   for (const e of eckenRoh) {
+    // Ecken vor der Kappenzeile eines Konturanfangs bekommen keinen Ring (die Kappe gehört dem Maul; Kinnecke des Rex)
+    if (kappeMin !== undefined && e.f < kappeVorn) continue;
     let best = 0;
     for (let i = 1; i < R; i++) if (Math.abs(anteile[i]! - e.f) < Math.abs(anteile[best]! - e.f)) best = i;
     const schonDa = ecken.find((x) => x.ring === best);
@@ -855,7 +862,15 @@ export function sprossenVon(l: Leiter, st: readonly Station[]): Sprosse[] {
  * (bei jeder Höhe) passt. Liefert auch die Höhe je Käfigpunkt (für Züge).
  */
 /** Lage eines Maulschlitzes für die Umparametrisierung: Kappenzeile bL, Längsschleife jL, Winkelring k, Lippenhöhe je Ring und je Quadratring der vorderen Kappe (NaN = ohne). */
-export type SchlitzLage = { bL: number; jL: number; k: number; vRing: Float64Array; vKappe: Float64Array };
+export type SchlitzLage = {
+  bL: number;
+  jL: number;
+  k: number;
+  vRing: Float64Array;
+  vKappe: Float64Array;
+  /** Anfang auf der Kontur (Welt, Seitenansicht): Ziel der Bauchnaht der Lippen-Kappenzeile (Plan „Zeichnung ist Form“, Schritt 2) */
+  anfang?: V2;
+};
 
 export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array } {
   const { R, N, c } = v;
@@ -936,10 +951,18 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
       const q = umparametrisieren(q0, 4 * r, lippe);
       const sp = sprossen[r - 1]!;
       const W = masstab(sp, q);
+      // Konturanfang: Die Bauchnaht der Lippenzeile liegt auf dem gezeichneten Anfang (statt am Fuß der Kappen-Sprosse):
+      // so beginnt die Lippe an der Naht genau dort, wo die Linie die Kontur trifft (keine Kerbe)
+      const anfang = seite === 'vorn' && schlitz?.anfang && r === c / 2 - schlitz.bL ? schlitz.anfang : undefined;
       for (let m = 0; m <= 4 * r; m++) {
         const [a, b] = quadratRing(c, r, m);
-        const [x, y, z, hv] = punkt(sp, q, W, m);
         const naht = m === 0 || m === 4 * r;
+        if (anfang && m === 4 * r) {
+          const hv = Math.min(1, Math.max(0, (anfang.y - sp.u.y) / (sp.o.y - sp.u.y || 1)));
+          setze(v.kappe(seite, a, b), anfang.x, anfang.y, 0, hv);
+          continue;
+        }
+        const [x, y, z, hv] = punkt(sp, q, W, m);
         setze(v.kappe(seite, a, b), x, y, naht ? 0 : z, hv);
         if (!naht) setze(v.kappe(seite, c - a, b), x, y, -z, hv);
       }

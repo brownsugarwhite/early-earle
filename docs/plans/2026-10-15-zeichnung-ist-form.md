@@ -61,3 +61,18 @@ Look, Maul mit Zähnen, Kieferknopf, Augen, Reifen, Pinsel, Stamm/Tafel/Dock, Bo
   - **Tiger Top 4 px:** die ebene Frontplatte des Kastens gegen die runde Nase der Top-Kurve (Kasten ist Florians Wunsch, die Kurve ist nachgezogen) und die steile Wand Schnauze → Wangen zwischen zwei Ringen.
   - **Mit Maul ohne Breitenpunkte:** Die Breitenpunkte machen den Käfig wellig, und die Kieferpose wirft daraus Hautfalten (Tiger-Stern 70 Durchdringungen bei 50 %; Glättung 4 hilft, kostet aber 1 px an der Kugel). Der Maulbau nutzt deshalb nur die Sichthülle (Tiger mit Maul Top 7,5 px). Offen für Schritt 3 (Käfig als Wahrheit): Pose auf dem geglätteten Käfig.
   - Probiert und verworfen: Nahtanteile nach der Sehnenlänge der feinen Lagen (Naht Rex 0,34 → 0,54 px); Breitenpunkte nur am breitesten Punkt (Kastenwand 24 px, weil der Ring geneigt ist).
+- **15.10. mittags: Schritt 2 gebaut** (`packages/shape/src/kern/maul.ts`, Test `maullinie.test.ts`). Die gezeichnete Linie wird anders gelesen:
+  1. **Anfang auf der Kontur.** Der vorderste Konturpunkt auf der Höhe des ersten gezeichneten Punkts ist der Maulanfang (als erste Stütze mit v = 0 und als Weltpunkt `anfang` in der Linie). Die Bauchnaht der Lippen-Kappenzeile bekommt genau diesen Punkt als Ziel; liegt der Anfang hinter der Kappenzeile, rückt die Zeile auf ihn (nur rückwärts; an runden Spitzen bleibt sie, sonst wird ihr Quadratring winzig). Liegt der Anfang hinter Ring 0 (Rex: Linie hinter der Kinnecke), rückt Ring 0 hinter den Anfang (`kappeMin`), Ecken dazwischen bekommen keinen Ring.
+  2. **Kreuzungen statt nächster Sprosse.** Die Lippenhöhe je Ring ist die Kreuzung der Linie mit der Sprosse (vorher: nächste Sprosse je gezeichnetem Punkt); `unterSpitze` kommt aus der Linie (1 mit Konturanfang oder scharfer Spitze, sonst 0), der Editor setzt nichts mehr fest.
+  3. Mindesthöhe der Lippe 0,05 statt 0,1 der Sprosse (0,1 hob eine Linie dicht über der Kinnlinie um 2 px).
+
+  Gemessen (Stufe 2, Lippenpfad gegen die gezeichnete gerade Linie, Nahtanfang gegen den gezeichneten Anfang, Durchdringungen bei 0/50/100 %):
+
+  | Fall | Lippe→Linie | Anfang→S | Durchdringungen |
+  |---|---|---|---|
+  | Kugel, gerade Linie 0,03 unter der Spitze | 0,7 px | 2,8 px (Rille) | 0 |
+  | Rex, gerade Linie auf der Schnauzenfront | 2,1 px (Rille) | 2,6 px (Rille) | 0 |
+  | Rex, gerade Linie hinter der Kinnecke | 1,9 px | 2,0 px | 0 |
+  | Rex, Linie aus der scharfen Spitze (Überbiss) | 2,0 px | – | 0 |
+
+  Die Kerbe (vorher 10–14 px: die Lippe lief vorn zur Kappenreihe oder zur Spitze) ist weg. Was bleibt: Die Lippe liegt in der **Rille** (vorn am tiefsten, 0,012 · Maulhöhe), auf einer schrägen Unterseite zeigt „nach innen“ in der Seitenansicht nach oben: 2–3 px. An einer **scharfen Spitze** (Rex) beginnt eine Linie aus der Spitze weiter an der Bauchnaht der Kappenzeile (Überbiss; in der Spitze ist kein Platz für die Tasche), an einer runden Spitze (Kugel) durch die Spitze. Kastenfronten (Tiger) unverändert: Lippe durch die Plattenmitte auf der gezeichneten Höhe. Alle Maul-Tests (Beweis 2) bestehen.

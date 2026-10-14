@@ -9,7 +9,7 @@ import langhalsJson from '../versuch/vorlagen/langhals.json';
 import { selbstDurchdringungen } from '../versuch/pruefen';
 import type { V3 } from '../versuch/catmullClark';
 import { alleFlaechen, pruefeKaefig } from '../kaefig/halbkanten';
-import { type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, maulLinieAusPunkten, maulLiniePunkte, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
+import { LIPPE_V_MIN, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, maulLinieAusPunkten, maulLiniePunkte, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
 import { halsVerbreitern, kastenSpanten } from './kasten';
 import tigerJson from '../versuch/vorlagen/tiger.json';
 
@@ -169,8 +169,9 @@ describe('Beweis 2: Maul mit Haps', () => {
     const linie: MaulLinie = { ...maulLinieAusPunkten(rex, punkte.map((p) => ({ x: p.x * sk, y: p.y * sk }))), unterSpitze: 1 };
     expect(linie.fv.length).toBeGreaterThanOrEqual(2);
     for (let i = 1; i < linie.fv.length; i++) expect(linie.fv[i]!.f).toBeGreaterThan(linie.fv[i - 1]!.f);
-    for (const q of linie.fv) {
-      expect(q.v).toBeGreaterThanOrEqual(0.1);
+    for (const [i, q] of linie.fv.entries()) {
+      if (i === 0 && q.v === 0) continue; // Anfang auf der Kontur (Schritt 2)
+      expect(q.v).toBeGreaterThanOrEqual(LIPPE_V_MIN);
       expect(q.v).toBeLessThanOrEqual(0.9);
     }
     return linie;
