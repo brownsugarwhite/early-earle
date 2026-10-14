@@ -8,7 +8,8 @@ import { chromium } from '@playwright/test';
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
 const NAME = process.env.NAME ?? 'kamera';
-const faelle = JSON.parse(readFileSync(resolve(AUSGABE, 'pruefreihe.json'), 'utf-8'));
+// DATEI: andere Fall-Datei als pruefreihe.json (z. B. aus gelenk-faelle.ts)
+const faelle = JSON.parse(readFileSync(resolve(AUSGABE, process.env.DATEI ?? 'pruefreihe.json'), 'utf-8'));
 const namen = (process.env.FALL ?? 'kugel-gleich').split(',');
 const bilderSpec = (process.env.BILDER ?? '0:-50,-6,1,-0.12,0.24,0').split(';').map((b) => {
   const [oe, k] = b.split(':');
