@@ -31,6 +31,20 @@ describe('Prüfstand ruhiges Netz', () => {
     for (const z of ringTabelle(r2.abl)) console.log(`  Ring ${z.i}: Mitte (${z.mitte.x.toFixed(3)}, ${z.mitte.y.toFixed(3)}) Neigung ${z.neigung.toFixed(2)} Breite ${z.breite.toFixed(4)} Höhe ${z.hoehe.toFixed(4)}`);
     expect(Number.isFinite(r3.delta.front)).toBe(true);
   });
+  it('Seite über Front und Top hinausgezogen (Komma, Front/Top noch Kugel): runder Schwanz statt Kasten', () => {
+    // 14.10.: Ringe außerhalb des Tops bekamen die größte Top-Breite — der Schwanz wurde ein Kasten (Front Δ 135 px)
+    const k = kommaDokument();
+    const kugel = neuesDokument('kugel');
+    const dok = { ...k, profile: { ...k.profile, front: kugel.profile.front, top: kugel.profile.top } };
+    const r = pruefen(dok, { stufen: 2 });
+    bericht('Komma nur Seite', r);
+    const tab = ringTabelle(r.abl);
+    // Ringe hinter dem Top-Ende (x > 0,265) sind rund (höchstens halbe Sprosse), nie die Kugelbreite 0,265 (Kasten)
+    for (const z of tab) if (z.mitte.x > 0.3) expect(z.breite).toBeLessThan(0.15);
+    // Falten: vorher 1087 Kanten > 20° (Grat an der Naht aus der gestreckten Lappen-Vorlage), jetzt bleibt nur der Sprung
+    // an der Oberkante der Front (Stützstellen darunter beschnitten, darüber nicht) — ein Widerspruch der Zeichnungen
+    expect(r.falte.ueber20).toBeLessThan(300);
+  });
   it('Wächter: Kugel, Rex, Tiger (Kasten), Langhals', () => {
     const faelle = [
       ['Kugel', neuesDokument('kugel')],

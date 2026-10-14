@@ -680,6 +680,20 @@ function lappenQuerschnitt(dok: Dokument, yLoRoh: number, yHiRoh: number, N: num
   const rasten = LAPPEN_RASTEN * Math.max(1e-9, yHi - yLo);
   if (fMax > yHi && fMax - yHi <= rasten) yHi = fMax;
   if (fMin < yLo && yLo - fMin <= rasten) yLo = fMin;
+  // Reicht der Abschnitt über die Front hinaus (Seite höher oder tiefer als die Front gezeichnet), gilt die Vorlage nur
+  // über den Teil, den die Front zeigt, normiert auf 0 … 1. Vorher blieb oben eine Lücke in v, und `v[0] = 1` zog die
+  // erste Stützstelle als Spitze zur Naht — bei jedem Ring der Gruppe ein Grat auf dem Rücken (14.10., Komma)
+  // Nur bei deutlichem Überstand (> 15 % des Abschnitts): kleine Überstände (Langhals-Kopf, 5 %) behalten ihre bisherige
+  // Vorlage, dort machte die genauere Kappe einen Grat an der Naht (149°)
+  if (fMax - fMin > 1e-6) {
+    const hi = Math.min(yHi, fMax);
+    const lo = Math.max(yLo, fMin);
+    const ueber = yHi - yLo - (hi - lo);
+    if (hi - lo > 0.05 * (fMax - fMin) && ueber > 0.15 * (yHi - yLo)) {
+      yHi = hi;
+      yLo = lo;
+    }
+  }
   // auf den Höhenbereich beschneiden (Zwischenpunkte an den Grenzen)
   const drin: { p: V2; ecke: number }[] = [];
   for (let i = 0; i < zug.length; i++) {
@@ -979,8 +993,12 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
   // ein: ein Kasten unter einer runden Front oder ein Brustring unter dem Hals schrumpfte als Ganzes (Tiger 21 px).
   const fuehrend = opt.fuehrend;
   const masstab = (sp: Sprosse, q: Querschnitt) => {
+    // Rund, wo eine Zeichnung nichts sagt (14.10.): Liegt der Ring außerhalb des Tops (Seite länger als das Top) oder sein
+    // breitester Punkt außerhalb der Front, wird er höchstens so breit wie seine halbe Sprosse (runder Querschnitt). Vorher
+    // bekam er die größte Top-Breite — ein über Top oder Front hinausgezogener Schwanz wurde ein Kasten (Δ bis 135 px).
+    const rund = 0.5 * Math.hypot(sp.o.x - sp.u.x, sp.o.y - sp.u.y);
     let W = breiten.top((sp.o.x + sp.u.x) / 2);
-    if (!(W > 0)) W = breiten.topMax;
+    if (!(W > 0)) W = Math.min(rund, breiten.topMax);
     let wMax = 0;
     for (let j = 1; j + 1 < q.v.length; j++) wMax = Math.max(wMax, q.w[j]!);
     let fBest = 0;
@@ -994,6 +1012,7 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     // führendes Top: die Front engt nicht ein; sonst Sichthülle (führende Front wirkt danach örtlich, siehe unten —
     // als alleinige Breite bekäme jeder Ring die Frontbreite seiner Höhe, Kugel-Ringe vorn 0,15 → 0,33)
     if (fuehrend !== 'top' && fBest > 0) W = Math.min(W, fBest);
+    else if (fuehrend !== 'top' && !(fBest > 0)) W = Math.min(W, rund);
     if (!(W > 1e-6)) W = letzteW || 0.01 * breiten.topMax;
     letzteW = W;
     return W;
