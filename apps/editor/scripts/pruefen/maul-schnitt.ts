@@ -25,6 +25,9 @@ const m = abl.maul;
 const M = abl.unterteilung.matrix;
 const OEFF = (process.env.OEFF ?? '0,0.5,1').split(',').map(Number);
 const ZS = (process.env.ZS ?? '0.002').split(',').map(Number);
+// EBENE=x: Querschnitte bei x = ZS (Bild z, y) statt Längsschnitte bei z = ZS (Bild x, y)
+const ACHSE = process.env.EBENE === 'x' ? 0 : 2;
+const U = ACHSE === 0 ? 2 : 0;
 const fen = { x0: Number(process.env.XMIN ?? -Infinity), x1: Number(process.env.XMAX ?? Infinity), y0: Number(process.env.YMIN ?? -Infinity), y1: Number(process.env.YMAX ?? Infinity) };
 // Bereich je feinem Punkt: Art des Käfigpunkts mit dem größten Gewicht
 const nf = abl.fein.length / 3;
@@ -59,11 +62,11 @@ for (const oe of OEFF) {
       for (let k = 0; k < fl.length; k++) {
         const i = fl[k]!;
         const j = fl[(k + 1) % fl.length]!;
-        const zi = f[3 * i + 2]! - zs;
-        const zj = f[3 * j + 2]! - zs;
+        const zi = f[3 * i + ACHSE]! - zs;
+        const zj = f[3 * j + ACHSE]! - zs;
         if ((zi < 0) === (zj < 0)) continue;
         const t = zi / (zi - zj);
-        pts.push([f[3 * i]! + t * (f[3 * j]! - f[3 * i]!), f[3 * i + 1]! + t * (f[3 * j + 1]! - f[3 * i + 1]!)]);
+        pts.push([f[3 * i + U]! + t * (f[3 * j + U]! - f[3 * i + U]!), f[3 * i + 1]! + t * (f[3 * j + 1]! - f[3 * i + 1]!)]);
       }
       if (pts.length >= 2) seg.push({ a: pts[0]!, b: pts[1]!, art: artF[fi]! });
     });
@@ -79,8 +82,8 @@ for (const oe of OEFF) {
     const ax = (a: number) => ((a - amin) * sc).toFixed(1);
     const by = (b: number) => ((bmax - b) * sc).toFixed(1);
     const kreise = (idx: number[], farbe: string) =>
-      idx.filter((i) => Math.abs(X[3 * i + 2]! - zs) < 0.006).map((i) => `<circle cx="${ax(X[3 * i]!)}" cy="${by(X[3 * i + 1]!)}" r="4" fill="none" stroke="${farbe}" stroke-width="1.2"/>`).join('');
-    let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${(h + 22).toFixed(0)}" style="background:#fff;font:12px sans-serif"><text x="4" y="14">${FALL} · Öffnung ${oe} · z = ${zs}</text><g transform="translate(0,22)"><clipPath id="c"><rect width="${w}" height="${h.toFixed(0)}"/></clipPath><g clip-path="url(#c)">`;
+      idx.filter((i) => Math.abs(X[3 * i + ACHSE]! - zs) < 0.006).map((i) => `<circle cx="${ax(X[3 * i + U]!)}" cy="${by(X[3 * i + 1]!)}" r="4" fill="none" stroke="${farbe}" stroke-width="1.2"/>`).join('');
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${(h + 22).toFixed(0)}" style="background:#fff;font:12px sans-serif"><text x="4" y="14">${FALL} · Öffnung ${oe} · ${ACHSE === 0 ? 'x' : 'z'} = ${zs}</text><g transform="translate(0,22)"><clipPath id="c"><rect width="${w}" height="${h.toFixed(0)}"/></clipPath><g clip-path="url(#c)">`;
     for (const q of sichtbar) s += `<line x1="${ax(q.a[0])}" y1="${by(q.a[1])}" x2="${ax(q.b[0])}" y2="${by(q.b[1])}" stroke="${FARBE[q.art]}" stroke-width="2"/>`;
     s += kreise(m.pfad, '#e0222a') + kreise(m.unten, '#2266ee');
     bilder.push(s + '</g></g></svg>');

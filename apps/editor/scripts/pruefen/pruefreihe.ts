@@ -5,7 +5,7 @@
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Dokument } from '../../../../packages/shape/src/dokument';
+import { type Dokument, neuesDokument } from '../../../../packages/shape/src/dokument';
 import { maulMitMarken } from '../../../../packages/shape/src/maulKnoten';
 import langhalsRoh from '../../../../packages/shape/src/versuch/vorlagen/langhals.json';
 import { type Vorlage, vorlageDokument } from '../../../../packages/shape/src/versuch/vorlagen';
@@ -50,6 +50,14 @@ if (process.env.ZUG) {
     const b = (k: 'unten' | 'oben') => (frei ? kieferVorDokument(k, i / 100) : mitStationenVon(kieferVorDokument(k, i / 100), kieferVorDokument(k, 0)));
     faelle.push({ name: `zug-blau-vor-${i}`, dok: () => b('unten'), ...KUGEL });
     faelle.push({ name: `zug-rot-vor-${i}`, dok: () => b('oben'), ...KUGEL });
+  }
+}
+// KUGEL0=1: alle Kugelfälle mit den Stationen der Startkugel (eingefroren vor dem Maul, Florians üblicher Weg)
+if (process.env.KUGEL0) {
+  const start = neuesDokument('kugel');
+  for (const f of faelle.filter((x) => x.name.startsWith('kugel') || x.name.startsWith('zug'))) {
+    const roh = f.dok;
+    faelle.push({ ...f, name: `${f.name}-k0`, dok: () => mitStationenVon(roh(), start) });
   }
 }
 const nur = process.env.NUR?.split(',');

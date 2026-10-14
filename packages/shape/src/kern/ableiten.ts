@@ -389,7 +389,7 @@ function zugKruemmung(zug: readonly V2[], t: number): number {
 /** Maulbereich für die Ringverteilung: zwischen `von` und `bis` (Wirbelsäulen-Anteile) mindestens `ringe` Ringe. */
 export type MaulBereich = { von: number; bis: number; ringe: number };
 
-function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: number, maul?: MaulBereich): number[] {
+function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: number, maul?: MaulBereich, ruhig: readonly V2[] = []): number[] {
   if ((lambda <= 0 && !maul) || R < 3) {
     const out: number[] = [];
     for (let i = 0; i < R; i++) out.push(f0 + ((f1 - f0) * i) / (R - 1));
@@ -405,7 +405,13 @@ function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: numbe
     const u1 = zugBei(l.bauch, st[k]!.b);
     L += Math.hypot((o1.x + u1.x - o0.x - u0.x) / 2, (o1.y + u1.y - o0.y - u0.y) / 2);
   }
-  const roh = st.map((q) => 1 + lambda * L * Math.min(40 / L, zugKruemmung(l.ruecken, q.a) + zugKruemmung(l.bauch, q.b)));
+  // Ruhige Punkte (14.10. spätnachts): Die Lippenanfänge eines getrennten Mauls sind Ecken der Schlitzsehne, keine Form
+  // des Körpers. Zählte ihre Krümmung, drängten sich dort drei Ringe auf 0,015 (Kugel: Lippenspalten 0,0095 statt
+  // 0,03–0,06 auseinander, Lippe als Klinge mit 147–172°); im Umkreis von 3 % der Wirbelsäule zählen sie nicht.
+  const rho = 0.03 * L;
+  const nahRuhig = (p: V2) => ruhig.some((r) => Math.hypot(p.x - r.x, p.y - r.y) < rho);
+  const kr = (zug: readonly V2[], t: number) => (ruhig.length && nahRuhig(zugBei(zug, t)) ? 0 : zugKruemmung(zug, t));
+  const roh = st.map((q) => 1 + lambda * L * Math.min(40 / L, kr(l.ruecken, q.a) + kr(l.bauch, q.b)));
   const dichte = roh.map((_, k) => {
     let su = 0;
     let nn = 0;
@@ -539,7 +545,8 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument,
   // eingefrorene Stationen gelten nur, wenn das Maul genug Ringe hat (ein neues Maul plant die Verteilung einmal neu)
   const maulOk = !maul || (g ? g.ringe.filter((f) => f >= maul.von && f <= maul.bis).length >= maul.ringe - 1 : true);
   if (g && maulOk && g.ringe.length === R && g.vorn.length === c / 2 - 1 && g.hinten.length === c / 2 - 1) return stationenNachfuehren(l, opt, dok, g, eckenRoh, spitzen, kappeMin);
-  const anteile = ringAnteile(l, R, kappeVorn, 1 - kappeHinten, opt.kruemmung, maul);
+  const ruhig = dok ? dok.profile.seite.knoten.filter((kn) => kn.marke === 'maulOben' || kn.marke === 'maulUnten').map((kn) => ({ x: kn.p.x * dok.skalierung, y: kn.p.y * dok.skalierung })) : [];
+  const anteile = ringAnteile(l, R, kappeVorn, 1 - kappeHinten, opt.kruemmung, maul, ruhig);
   const ecken: Ecke[] = [];
   for (const e of eckenRoh) {
     if (kappeMin !== undefined && e.f < kappeVorn) continue;

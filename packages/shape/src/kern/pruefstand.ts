@@ -443,8 +443,9 @@ export type MaulPruefung = {
  */
 export function mitStationenVon(dok: Dokument, basis: Dokument): Dokument {
   const linie = maulLinieAusDokument(basis);
-  if (!linie) return dok;
-  const g = ableitenMitMaul(basis, linie, { stufen: 2, ...(basis.kaefig?.stationen ? { stationen: basis.kaefig.stationen } : {}) }, maulOptionenVorlage('vorn')).gefroren;
+  const opt = { stufen: 2, ...(basis.kaefig?.stationen ? { stationen: basis.kaefig.stationen } : {}) };
+  // ohne Maul: Stationen des Körpers (Florian friert sie meist schon an der Startkugel ein, vor dem Maul)
+  const g = linie ? ableitenMitMaul(basis, linie, opt, maulOptionenVorlage('vorn')).gefroren : ableiten(basis, opt).gefroren;
   return { ...dok, kaefig: { deltas: [], ...dok.kaefig, stationen: g } };
 }
 
