@@ -82,3 +82,22 @@ Pipeline: `bauplanAus` (Editor, `kernBau.ts`) → `maulLinieAusPunkten` / `maulL
   - Offen: Unterbiss (≈ 1640 Paare), Schnabel (Front/Top koppeln beim Ziehen des Lippenanfangs), Kringel am Lippenanfang, Lippe als flaches Band, Kiefer-Spanten.
   - **Lippenanfang koppelt** (c027839): Ziehen am Lippenanfang ist ein gekoppelter Zug am Seitenumriss (Front/Top folgen am entsprechenden Punkt). Im Editor mit der Maus geprüft: Knoten und Linienanfang wandern gemeinsam, keine neuen Knoten, Top-Spitze koppelt (Bild `docs/progress/editor/maul-anfang-gezogen.png`). Damit gilt Florians Satz 1 für den roten Anfang; der blaue folgt derselben Bahn (getrennt).
   - **Fragen an Florian:** (1) Ein Unterbiss-Beispiel mit seinem Umriss — der Prüffall aus zwei verschobenen Knoten ist unrealistisch (der vordere Umrissknoten des Oberkiefers bleibt vorn, die Kontur läuft sich in die Quere). (2) Lippenband: Das Material nimmt im Lippenbereich Facettennormalen (`earleCreature.ts`, `kanten`) — scharfe Kante gewollt (Look-Vertrag „Maulkanten pixelscharf“) oder weich gerundet?
+- **14.10. nachts: Florians Rückmeldung mit zwei Bildern** (`docs/progress/editor/florian-2026-10-14-unterbiss-top.webp`, `florian-2026-10-14-unterbiss-riss.webp`):
+  > „Ich sehe schon eine deutliche Verbesserung. Der kleinere Kiefer lässt sich aber von oben nicht mit den Bézier-Handles runder ziehen, wodurch der kleinere Kiefer immer kastig abgeflacht ist an der Spitze. Ich muss die Kurven auch von oben und von vorne genau bearbeiten können, und der Kiefer passt sich dann auch der runden Form an. Der schwarze Shape sollte sich auch in der Front, bei viel breiterem Kiefer als der andere (siehe Screenshot 2), an die Kieferlinie heften. Ober- und Unterkiefer müssen komplett getrennt voneinander steuerbar sein und nicht zusammenhängen. Das muss mit der schwarzen Linie und dem gelben echten Meshshape besser harmonieren. Das gelbe Shape macht das schon richtig, aber es hat bei einem Versuch viel zu viele neue Punkte erzeugt. Das schwarze Shape muss dem gelben immer viel ähnlicher sein, nur etwas mehr geglättet, und dazu die vorhandenen Punkte benutzen. Nur wenn unbedingt nötig ein neuer Punkt im schwarzen Outlineshape. […] Zusätzlich mit den Spanten, die je Kiefer wirken sollen, wenn er seitlich über zwei Kiefern liegt, sollte ich die Maulform besser kontrollieren können. Es soll alles deutlich glatter und smoother wirken und zusammenspielen. […] In der Frontansicht wäre der Unterkiefer-Shape immer an der äußersten Linie der blauen Unterkieferlinie verbunden, außer der Kiefer ist schmaler als der Grundshape. Dann wird die Linie zur Grundshape-Linie von vorne.“
+
+  Seine Bilder zeigen einen Unterbiss an der Kugel: Blau beginnt vorn, Rot dahinter auf der Kontur.
+  - Bild 1 (Top): Der rote Kiefer ist vorn flach wie ein Kasten, der rote Griff wirkt nicht.
+  - Bild 2 (Riss): Seite Δ 48 px, Front Δ 21 px (rot 63,9 px), Top Δ 28,8 px. Der blaue Unterkiefer ist in Front und Top viel breiter als die Kugel, die schwarze Front hängt nicht an ihm, und die Lippe steht als Krempe ab.
+
+  **Befund im Code:**
+  1. Seit 8d6d993 kommt die Breite der Kante aus „Haut × Verhältnis an den Knoten“. Deshalb wirken die Griffe nicht, und der Editor zeichnet in Front und Top die wirksame statt der gezeichneten Linie. Hinter einer senkrechten Oberkieferwand ist die Haut sofort voll breit, daher der Kasten.
+  2. Beim längeren Kiefer gehen nur die Lippe und zwei Nachbarzeilen mit (Faktoren 0,5 und 0,2). Der Rest des Rings bleibt bei der Vorlage, das ergibt die Krempe.
+  3. Mit Maul folgt die schwarze Linie nicht (ec9c27b schaltet „Formen folgen“ dann ab).
+
+  **Weg (Antwort an Florian, kein Denkfehler):**
+  1. Rot und Blau gelten in jeder Ansicht genau, mit ihren Griffen. Neue Linien bekommen beim Zeichnen Griffe auf der Haut und einen runden Anfang (keine Spitze). Für alte Linien gibt es „an die Haut legen“.
+  2. Jeder Kiefer passt sich als Ganzes seiner Linie an: Die Ringhälfte je Kiefer läuft weich zur Naht aus. Ober- und Unterkiefer sind getrennt.
+  3. Die schwarze Linie heftet sich an: Ist ein Kiefer breiter, läuft sie in Front und Top durch die äußerste Stelle seiner Linie, sonst bleibt sie die Grundlinie. Allgemein ist Schwarz ≈ geglättetes Gelb mit den vorhandenen Punkten, ein neuer Punkt nur am Kieferansatz.
+  4. Kiefer-Spanten.
+
+  Prüffall ist Florians Bild 2 als Unterbiss an der Kugel.
