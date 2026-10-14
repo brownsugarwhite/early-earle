@@ -111,11 +111,11 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
       const letzter = schlitz[schlitz.length - 1]!;
       // Front-Verlauf (|z| → y) der gezeichneten Linie: die Maularme des Plattenmauls; nur, wenn die Linie seitlich läuft
       const front = schlitz.map((p) => ({ z: Math.abs(p[2]), y: p[1] })).sort((a, b) => a.z - b.z);
-      maulLinie = maulLinieAusPunkten(dok, punkte, letzter[2], Math.abs(letzter[2]) > 1e-6 ? front : undefined);
+      maulLinie = { ...maulLinieAusPunkten(dok, punkte, letzter[2], Math.abs(letzter[2]) > 1e-6 ? front : undefined), punkte: schlitz };
       if (versetzt) {
         try {
           const stuetzen = maulLinieUntenAusPunkten(dok, versetzt);
-          maulLinie = unterbiss ? { ...maulLinie, oben: stuetzen } : { ...maulLinie, unten: stuetzen };
+          maulLinie = unterbiss ? { ...maulLinie, oben: stuetzen, obenPunkte: versetzt } : { ...maulLinie, unten: stuetzen, untenPunkte: versetzt };
         } catch (e) {
           console.warn('[kern] Kieferkante nicht übersetzbar:', e);
         }
