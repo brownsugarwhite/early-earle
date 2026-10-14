@@ -138,9 +138,12 @@ export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) 
     cb(netz);
     // Schritt 3 („Käfig als Wahrheit“): Der Kern meldet die wirksame Ringverteilung, das Dokument friert sie ein; ab dann
     // zieht jede Kurvenänderung nur noch nach (keine Neuwahl der Ringe, kein Springen, Pinsel-Deltas bleiben gültig)
+    // Nur, wenn der Bau zum aktuellen Dokument gehört (14.10. spätnachts): Ein Bau, der beim Laden eines anderen Wesens
+    // noch lief, schrieb sonst dessen Ringverteilung in das neue Dokument (geladener Unterbiss mit den Ringen der
+    // Startkugel); die Änderung löste einen Bau mit diesen Stationen aus und verdrängte den frischen.
     const g = netz.info.stationen;
-    if (g && !schnell) {
-      const ed = useEditor.getState();
+    const ed = useEditor.getState();
+    if (g && !schnell && ed.dok.profile === dok.profile) {
       if (JSON.stringify(ed.dok.kaefig?.stationen ?? null) !== JSON.stringify(g)) ed.setzeStationen(g);
     }
   });
