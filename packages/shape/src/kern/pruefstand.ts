@@ -41,11 +41,11 @@ export function kommaDokument(): Dokument {
   };
 }
 
-/** Feine Punkte und Flächen der letzten Stufe. */
-export function feinesNetz(abl: Ableitung): { punkte: V3[]; flaechen: number[][]; kaefig: Kaefig } {
+/** Feine Punkte und Flächen der letzten Stufe (Lagen wahlweise aus einer Pose). */
+export function feinesNetz(abl: Ableitung, fein: ArrayLike<number> = abl.fein): { punkte: V3[]; flaechen: number[][]; kaefig: Kaefig } {
   const kaefig = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
   const punkte: V3[] = [];
-  for (let i = 0; i < abl.fein.length / 3; i++) punkte.push([abl.fein[3 * i]!, abl.fein[3 * i + 1]!, abl.fein[3 * i + 2]!]);
+  for (let i = 0; i < fein.length / 3; i++) punkte.push([fein[3 * i]!, fein[3 * i + 1]!, fein[3 * i + 2]!]);
   return { punkte, flaechen: alleFlaechen(kaefig), kaefig };
 }
 
@@ -53,8 +53,8 @@ export function feinesNetz(abl: Ableitung): { punkte: V3[]; flaechen: number[][]
  * Faltenmaß: Winkel zwischen den Normalen benachbarter feiner Flächen (Grad). Kanten mit Schärfe in der letzten Stufe
  * (gezeichnete Kanten, Ecken) zählen nicht. Ein glatter Körper bleibt auf Stufe 2–3 deutlich unter 20°.
  */
-export function faltenMass(abl: Ableitung, nurFlaeche?: (f: number) => boolean): { max: number; p99: number; ueber20: number; ort: V3 } {
-  const { punkte, kaefig } = feinesNetz(abl);
+export function faltenMass(abl: Ableitung, nurFlaeche?: (f: number) => boolean, fein?: ArrayLike<number>): { max: number; p99: number; ueber20: number; ort: V3 } {
+  const { punkte, kaefig } = feinesNetz(abl, fein);
   const normalen = new Float64Array(3 * kaefig.nF);
   for (let f = 0; f < kaefig.nF; f++) {
     let nx = 0;
@@ -425,17 +425,35 @@ export type MaulPruefung = {
   falte: ReturnType<typeof faltenMass>;
   /** Falten nur zwischen Hautflächen (ohne Lippen, Tasche): zeigt Flossen und Kerben am Kiefer (14.10. spätnachts) */
   hautFalte: ReturnType<typeof faltenMass>;
+  /**
+   * Falten je Öffnung (0, 50, 100 %) zwischen Hautflächen und zwischen Lippenflächen (Florians Kerbe und Flosse waren
+   * offen zu sehen, 14.10. spätnachts); scharfe Kanten (Lippenkante) zählen nicht
+   */
+  faltenOffen: { oeffnung: number; haut: ReturnType<typeof faltenMass>; lippe: ReturnType<typeof faltenMass>; hautVorn: ReturnType<typeof faltenMass> }[];
   /** Durchdringungen je Öffnung (0, 25, 50, 75, 100 %), gesamt und nach Bereich */
   paare: { oeffnung: number; paare: number; nachBereich: Record<string, number> }[];
   zeit: number;
   abl: MaulErgebnis;
 };
 
-/** Maul eines Dokuments mit gezeichneten Linien bauen und messen (Stufe 2, Vorlage „vorn“). */
+/**
+ * Dokument mit eingefrorenen Stationen wie im Editor nach dem ersten Bau (Schritt 3 „Zeichnung ist Form“): Florian
+ * zieht an einem Wesen, dessen Ringverteilung schon steht. Ohne Einfrieren wählt jeder Prüffall die Ringe neu, und ein
+ * Zug am Anfang des kürzeren Kiefers verschiebt Ring 0 des anderen (14.10. spätnachts, Kugel: Kappenspalten gestaucht).
+ */
+export function mitStationenVon(dok: Dokument, basis: Dokument): Dokument {
+  const linie = maulLinieAusDokument(basis);
+  if (!linie) return dok;
+  const g = ableitenMitMaul(basis, linie, { stufen: 2, ...(basis.kaefig?.stationen ? { stationen: basis.kaefig.stationen } : {}) }, maulOptionenVorlage('vorn')).gefroren;
+  return { ...dok, kaefig: { deltas: [], ...dok.kaefig, stationen: g } };
+}
+
+/** Maul eines Dokuments mit gezeichneten Linien bauen und messen (Stufe 2, Vorlage „vorn“; eingefrorene Stationen wie im Worker). */
 export function pruefenMaul(dok: Dokument, opt: Partial<AbleitOptionen> = {}, maulOpt: Partial<MaulOptionen> = {}): MaulPruefung {
   const linie = maulLinieAusDokument(dok);
   if (!linie) throw new Error('kein gezeichnetes Maul');
-  const abl = ableitenMitMaul(dok, linie, { stufen: 2, ...opt }, { ...maulOptionenVorlage('vorn'), ...maulOpt });
+  const g = dok.kaefig?.stationen;
+  const abl = ableitenMitMaul(dok, linie, { stufen: 2, ...(g ? { stationen: g } : {}), ...opt }, { ...maulOptionenVorlage('vorn'), ...maulOpt });
   const { punkte, flaechen } = feinesNetz(abl);
   const ab = blattAbweichungen(punkte, flaechen, dok, 240, kieferFlaechen(abl, flaechen));
   const bereiche = regionen(abl, flaechen);
@@ -446,5 +464,14 @@ export function pruefenMaul(dok: Dokument, opt: Partial<AbleitOptionen> = {}, ma
     const d = selbstDurchdringungen({ punkte: pts, flaechen, schaerfe: new Map() }, 1e-4, bereiche);
     return { oeffnung, paare: d.paare, nachBereich: d.nachBereich };
   });
-  return { delta: { seite: ab.seite.max, front: ab.front.max, top: ab.top.max }, lippen: maulAbweichung(abl, dok, linie), falte: faltenMass(abl), hautFalte: faltenMass(abl, (f) => bereiche[f] === 'haut'), paare, zeit: abl.zeiten.gesamt, abl };
+  const istLippe = (f: number) => bereiche[f] === 'lippeO' || bereiche[f] === 'lippeU';
+  // vordere Haut (Spitzen der Kiefer, ohne Scharnier und Wangen): Ruhelage vor dem Scharnier um mehr als ⅓ Maullänge
+  const info = abl.maul;
+  const grenze = info.scharnier.x - info.vorn * info.laenge / 3;
+  const vorneF = flaechen.map((f) => info.vorn * (abl.fein[3 * f[0]!]! - grenze) < 0);
+  const faltenOffen = [0, 0.5, 1].map((oeffnung) => {
+    const fein = oeffnung === 0 ? abl.fein : maulPose(abl, oeffnung).fein;
+    return { oeffnung, haut: faltenMass(abl, (f) => bereiche[f] === 'haut', fein), lippe: faltenMass(abl, istLippe, fein), hautVorn: faltenMass(abl, (f) => bereiche[f] === 'haut' && vorneF[f]!, fein) };
+  });
+  return { delta: { seite: ab.seite.max, front: ab.front.max, top: ab.top.max }, lippen: maulAbweichung(abl, dok, linie), falte: faltenMass(abl), hautFalte: faltenMass(abl, (f) => bereiche[f] === 'haut'), faltenOffen, paare, zeit: abl.zeiten.gesamt, abl };
 }

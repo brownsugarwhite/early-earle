@@ -9,11 +9,11 @@ import type { Dokument } from '../../../../packages/shape/src/dokument';
 import { maulMitMarken } from '../../../../packages/shape/src/maulKnoten';
 import langhalsRoh from '../../../../packages/shape/src/versuch/vorlagen/langhals.json';
 import { type Vorlage, vorlageDokument } from '../../../../packages/shape/src/versuch/vorlagen';
-import { anfangVerschieben, kieferGetrennt, kieferVorDokument, kugelMaulDokument, langhalsLinieDokument, langhalsMaulDokument, naseDokument, pruefenMaul } from '../../../../packages/shape/src/kern/pruefstand';
+import { anfangVerschieben, kieferGetrennt, kieferVorDokument, kugelMaulDokument, langhalsLinieDokument, langhalsMaulDokument, mitStationenVon, naseDokument, pruefenMaul } from '../../../../packages/shape/src/kern/pruefstand';
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 type Fall = { name: string; dok: () => Dokument; ziel: [number, number, number]; dist: number };
-const KUGEL = { ziel: [-0.1, 0.25, 0] as [number, number, number], dist: 1.0 };
+const KUGEL = { ziel: [-0.12, 0.24, 0] as [number, number, number], dist: 1.25 };
 const KOPF = { ziel: [-0.1, 0.62, 0] as [number, number, number], dist: 0.55 };
 const NASE = { ziel: [-0.15, 0.25, 0] as [number, number, number], dist: 1.0 };
 const v = langhalsRoh as unknown as Vorlage & { linien: Record<string, { punkte: { x: number; y: number }[] }[]> };
@@ -42,6 +42,16 @@ const faelle: Fall[] = [
   { name: 'nase-gleich', dok: naseGleich, ...NASE },
   { name: 'nase-ueberbiss', dok: naseDokument, ...NASE },
 ];
+// ZUG=1: den Anfang des kürzeren Kiefers schrittweise nach vorn ziehen (1 … 6 % der Kachel), wie Florian im Editor:
+// die Stationen sind vom ersten Bau des Mauls eingefroren (ZUG=frei: jeder Fall wählt sie neu)
+if (process.env.ZUG) {
+  const frei = process.env.ZUG === 'frei';
+  for (let i = 1; i <= 6; i++) {
+    const b = (k: 'unten' | 'oben') => (frei ? kieferVorDokument(k, i / 100) : mitStationenVon(kieferVorDokument(k, i / 100), kieferVorDokument(k, 0)));
+    faelle.push({ name: `zug-blau-vor-${i}`, dok: () => b('unten'), ...KUGEL });
+    faelle.push({ name: `zug-rot-vor-${i}`, dok: () => b('oben'), ...KUGEL });
+  }
+}
 const nur = process.env.NUR?.split(',');
 const aus: Record<string, { dok: Dokument; ziel: [number, number, number]; dist: number; mass: string }> = {};
 const f1 = (x: number | null | undefined) => (x === null || x === undefined ? '–' : x.toFixed(1));
@@ -59,7 +69,7 @@ for (const fall of faelle) {
     const r = pruefenMaul(dok);
     const l = r.lippen;
     const lage = r.abl.maul.lage;
-    mass = `Δ ${f1(r.delta.seite)}/${f1(r.delta.front)}/${f1(r.delta.top)} · rot ${f1(l.oben.seite)}/${f1(l.oben.front)} blau ${f1(l.unten?.seite)}/${f1(l.unten?.front)} · Haut ${f1(r.hautFalte.max)}° (>20°: ${r.hautFalte.ueber20}) · Paare ${r.paare.map((p) => p.paare).join('/')} · ${lage.ringA !== undefined ? `Ring ${lage.ringA}` : 'Kappe'} k ${lage.k} m ${lage.m}`;
+    mass = `Δ ${f1(r.delta.seite)}/${f1(r.delta.front)}/${f1(r.delta.top)} · rot ${f1(l.oben.seite)}/${f1(l.oben.front)} blau ${f1(l.unten?.seite)}/${f1(l.unten?.front)} · Haut vorn ${r.faltenOffen.map((o) => f1(o.hautVorn.max)).join('/')}° Lippe ${r.faltenOffen.map((o) => f1(o.lippe.max)).join('/')}° Haut ganz ${r.faltenOffen.map((o) => f1(o.haut.max)).join('/')}° (zu/50/100 %) · Paare ${r.paare.map((p) => p.paare).join('/')} · ${lage.ringA !== undefined ? `Ring ${lage.ringA}` : 'Kappe'} k ${lage.k} m ${lage.m}`;
   } catch (e) {
     mass = `BAU-FEHLER ${String(e).slice(0, 120)}`;
   }

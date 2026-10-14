@@ -8,7 +8,14 @@ import { chromium } from '@playwright/test';
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/test-results/pruefen');
 const NAME = process.env.NAME ?? 'pruefreihe';
-const faelle = JSON.parse(readFileSync(resolve(AUSGABE, 'pruefreihe.json'), 'utf-8'));
+// NUR=fall1,fall2 filtert; NAH=x,y,z,dist rückt alle Kameras nah an eine Stelle (z. B. die Spitze des kürzeren Kiefers)
+const nur = process.env.NUR?.split(',');
+const nah = process.env.NAH?.split(',').map(Number);
+const faelle = Object.fromEntries(
+  Object.entries(JSON.parse(readFileSync(resolve(AUSGABE, 'pruefreihe.json'), 'utf-8')))
+    .filter(([n]) => !nur || nur.some((x) => n.startsWith(x)))
+    .map(([n, f]) => [n, nah ? { ...f, ziel: nah.slice(0, 3), dist: nah[3] } : f]),
+);
 const url = process.env.EDITOR_URL ?? 'http://localhost:5192';
 const browser = await chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });
 const page = await browser.newPage({ viewport: { width: 1728, height: 1161 }, deviceScaleFactor: 1 });
@@ -31,6 +38,7 @@ for (const [name, f] of Object.entries(faelle)) {
   const bilder = [];
   bilder.push(await bild({ azimut: -0.9, elevation: -0.1, distanz: f.dist, ziel: z }));
   bilder.push(await bild({ azimut: -0.6, elevation: -0.8, distanz: f.dist * 1.05, ziel: z }));
+  bilder.push(await bild({ azimut: -1.5708, elevation: -0.25, distanz: f.dist, ziel: z }));
   await page.evaluate(() => window.__stores.ui.getState().setzeOeffnung(0.5));
   await page.waitForTimeout(1200);
   bilder.push(await bild({ azimut: -0.6, elevation: -0.1, distanz: f.dist * 1.05, ziel: [z[0], z[1] - 0.02, z[2]] }));
@@ -39,7 +47,7 @@ for (const [name, f] of Object.entries(faelle)) {
   console.log('Bild', name);
 }
 const html = `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#1b2530;color:#eee;font:13px/1.3 monospace}
-.z{display:grid;grid-template-columns:repeat(3,320px);gap:4px;padding:6px 8px 2px}.t{padding:6px 8px 0;font-weight:bold}.m{padding:0 8px;color:#bcd;white-space:pre-wrap}img{width:320px;height:240px;object-fit:cover;background:#ccc}</style>
+.z{display:grid;grid-template-columns:repeat(4,240px);gap:4px;padding:6px 8px 2px}.t{padding:6px 8px 0;font-weight:bold}.m{padding:0 8px;color:#bcd;white-space:pre-wrap}img{width:240px;height:200px;object-fit:cover;background:#ccc}</style>
 ${zeilen.map((r) => `<div class="t">${r.name}</div><div class="m">${r.mass}</div><div class="z">${r.bilder.map((b) => `<img src="${b}">`).join('')}</div>`).join('')}`;
 writeFileSync(resolve(AUSGABE, `${NAME}.html`), html);
 const p2 = await browser.newPage({ viewport: { width: 990, height: 400 }, deviceScaleFactor: 1 });
