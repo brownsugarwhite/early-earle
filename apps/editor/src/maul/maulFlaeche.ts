@@ -64,6 +64,24 @@ function punktAufKern(ansicht: Ansicht, q: V2): V3T | null {
   return [x, y, z];
 }
 
+/**
+ * Halbe Breite der Haut an einem Seitenpunkt (x, y) aus dem zuletzt gebauten Kern-Netz (Profil-Einheiten; größtes z im
+ * Fenster 0,006 um den Punkt), null außerhalb. Für `lippeAnHaut`: neue Lippenlinien liegen auf der Haut (14.10. nachts).
+ */
+export function hautTiefe(x: number, y: number): number | null {
+  const n = aktuellesNetz();
+  if (!n) return null;
+  const P = n.netz.positionen;
+  const sk = n.skalierung || 1;
+  const fenster = 0.006 * sk;
+  let best = -1;
+  for (let i = 0; i + 2 < P.length; i += 3) {
+    if (Math.abs(P[i]! - x * sk) > fenster || Math.abs(P[i + 1]! - y * sk) > fenster) continue;
+    best = Math.max(best, P[i + 2]!);
+  }
+  return best > 0 ? best / sk : null;
+}
+
 /** Punkt auf der sichtbaren Fläche unter dem Cursor (Seite: rechte Flanke, Front: vorn), sonst der nächste Flächenpunkt. */
 export function punktAufFlaeche(dok: Dokument, ansicht: Ansicht, q: V2): V3T | null {
   if (useUi.getState().bauweise === 'kern') {

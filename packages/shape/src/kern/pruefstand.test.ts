@@ -72,7 +72,7 @@ describe('Prüfstand Maul (Block 2): Florians Kugel-Fälle', () => {
     const paare = r.paare.map((p) => `${Math.round(p.oeffnung * 100)}%:${p.paare}${p.paare ? `(${Object.entries(p.nachBereich).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, n]) => `${k} ${n}`).join(', ')})` : ''}`).join(' ');
     console.log(`${name}: Δ ${f1(r.delta.seite)} / ${f1(r.delta.front)} / ${f1(r.delta.top)} px · rot ${px(l.oben.seite)}/${px(l.oben.front)} blau ${px(l.unten?.seite)}/${px(l.unten?.front)} px · Falten ${f1(r.falte.max)}° (>20°: ${r.falte.ueber20}) · Paare ${paare} · ${r.zeit.toFixed(0)} ms`);
   };
-  for (const art of ['gleich', 'ueberbiss', 'schnabel', 'unterbiss'] as const) {
+  for (const art of ['gleich', 'ueberbiss', 'schnabel', 'unterbiss', 'florian'] as const) {
     it(`Kugel ${art}: Maße (frei und mit Lippenknoten in der schwarzen Linie)`, { timeout: 60_000 }, () => {
       const r = pruefenMaul(kugelMaulDokument(art));
       bericht(`Kugel ${art}`, r);

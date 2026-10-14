@@ -5,6 +5,7 @@ import type { V2 } from '../bezier';
 import type { Dokument } from '../dokument';
 import { neuesDokument } from '../dokument';
 import { maulAnMarken, maulAnfangBewegen, maulMitMarken } from '../maulKnoten';
+import { lippeAnHaut } from '../lippeHaut';
 import { type Kaefig, alleFlaechen } from '../kaefig/halbkanten';
 import type { Profil } from '../profil';
 import type { V3 } from '../versuch/catmullClark';
@@ -13,6 +14,7 @@ import { blattAbweichungen } from './abweichung';
 import { type MaulAbweichung, type MaulErgebnis, type MaulOptionen, ableitenMitMaul, maulAbweichung, maulOptionenVorlage, maulPose } from './maul';
 import { maulLinieAusDokument } from './maulDokument';
 import { selbstDurchdringungen } from '../versuch/pruefen';
+import { linieDurch as linie3Durch } from '../versuch/linie3d';
 
 /** Pixel je Kachel (Blatt-Maßstab der Messungen) */
 export const PX = 461;
@@ -194,7 +196,7 @@ function linieDurch(pts: readonly [number, number][], z: (x: number, y: number) 
   };
 }
 
-export type KugelMaulArt = 'gleich' | 'ueberbiss' | 'schnabel' | 'unterbiss';
+export type KugelMaulArt = 'gleich' | 'ueberbiss' | 'schnabel' | 'unterbiss' | 'florian';
 
 /**
  * Startkugel mit gezeichnetem Maul wie in Florians Bildern (14.10.): rote Linie ab der Kontur in halber Höhe zum
@@ -203,6 +205,7 @@ export type KugelMaulArt = 'gleich' | 'ueberbiss' | 'schnabel' | 'unterbiss';
  * der Kontur, rot 0,3 r dahinter und 0,16 r darunter.
  */
 export function kugelMaulDokument(art: KugelMaulArt, mitMarken = false): Dokument {
+  if (art === 'florian') return florianUnterbiss(mitMarken);
   const d = neuesDokument(`kugel-${art}`);
   const r = 0.265;
   const xM = 0;
@@ -221,6 +224,17 @@ export function kugelMaulDokument(art: KugelMaulArt, mitMarken = false): Dokumen
     oben = linieDurch([[xR + 0.3 * r, yR - 0.16 * r], [xR + 0.55 * r, yR - 0.12 * r], ecke], (x, y) => 0.9 * zAuf(x, y));
   }
   if (unten) unten.knoten[unten.knoten.length - 1]!.p = [...oben.knoten[oben.knoten.length - 1]!.p];
+  // wie im Maul-Tab gezeichnet (14.10. nachts): Tiefe und Tiefengriffe von der Haut, runder Anfang (`lippeAnHaut`);
+  // die versetzte Kante bleibt 10 % innen
+  const aufHaut = (l: { knoten: Linie3Knoten[] }, f: number) => lippeAnHaut(l, (x, y) => f * zAuf(x, y)) as { knoten: Linie3Knoten[] };
+  if (art === 'unterbiss' && unten) {
+    unten = aufHaut(unten, 1);
+    oben = aufHaut(oben, 0.9);
+  } else {
+    oben = aufHaut(oben, 1);
+    if (unten) unten = aufHaut(unten, 0.9);
+  }
+  if (unten) unten.knoten[unten.knoten.length - 1]!.p = [...oben.knoten[oben.knoten.length - 1]!.p];
   const roh = { ...d, maul: { zu: { oben, ...(unten ? { unten } : {}) } } } as Dokument;
   if (!mitMarken) return roh;
   // Lippenanfänge als markierte Knoten der schwarzen Linie (Block 2): einfügen/trennen, dann die Knoten dorthin ziehen,
@@ -232,6 +246,39 @@ export function kugelMaulDokument(art: KugelMaulArt, mitMarken = false): Dokumen
     const zielU = unten.knoten[0]!.p;
     seite = maulAnfangBewegen(seite, 'unten', { x: zielU[0], y: zielU[1] });
   }
+  mk = maulAnMarken({ ...mk, profile: { ...mk.profile, seite }, maul: roh.maul! });
+  return mk;
+}
+
+/**
+ * Florians Unterbiss nach seinem Bild 2 (14.10. nachts, `docs/progress/editor/florian-2026-10-14-unterbiss-riss.webp`):
+ * Startkugel, der rote Anfang auf der Kontur 0,27 r unter der Mitte, der blaue 0,54 r davor und 0,2 r tiefer (der
+ * Unterkiefer ragt als Keil vor, die schwarze Linie läuft vom blauen Knoten gerade zum Boden); das Top ist vorn bis zum
+ * blauen Anfang gezogen (wie die Kopplung beim Ziehen des Anfangs). Linien wie im Maul-Tab gezeichnet (Catmull-Rom,
+ * `linieDurch`): Rot auf der Haut, Blau mit einem Knoten 1,1 r weit (breiter als die Kugel, in Front und Top).
+ */
+function florianUnterbiss(mitMarken: boolean): Dokument {
+  const d = neuesDokument('kugel-florian');
+  const r = 0.265;
+  const xM = 0;
+  const yM = r;
+  const haut = (x: number, y: number) => Math.sqrt(Math.max(0, r * r - (x - xM) ** 2 - (y - yM) ** 2));
+  const yR = yM - 0.27 * r;
+  const xR = xM - Math.sqrt(r * r - (yR - yM) ** 2);
+  const ecke: [number, number, number] = [xM + 0.29 * r, yM - 0.14 * r, haut(xM + 0.29 * r, yM - 0.14 * r)];
+  const mitteRot: [number, number, number] = [xM - 0.35 * r, yM - 0.21 * r, haut(xM - 0.35 * r, yM - 0.21 * r)];
+  // Rot wie mit der neuen Zeichen-Vorgabe (auf der Haut, runder Anfang); Blau bleibt Florians breite Linie, nur der
+  // Anfang quer zur Spiegelebene (14.10. nachts)
+  const oben = lippeAnHaut(linie3Durch([[xR, yR, 0], mitteRot, ecke]), haut);
+  const blauAnfang: [number, number, number] = [xM - 1.5 * r, yM - 0.47 * r, 0];
+  const unten = lippeAnHaut(linie3Durch([blauAnfang, [xM - 0.4 * r, yM - 0.25 * r, 1.1 * r], [...ecke]]), haut, false);
+  unten.knoten[unten.knoten.length - 1]!.p = [...oben.knoten[oben.knoten.length - 1]!.p];
+  const top = { ...d.profile.top, knoten: d.profile.top.knoten.map((k, i) => (i === 0 ? { ...k, p: { x: blauAnfang[0], y: 0 } } : k)) };
+  const roh = { ...d, profile: { ...d.profile, top }, maul: { zu: { oben, unten } } } as Dokument;
+  if (!mitMarken) return roh;
+  let mk = maulMitMarken(roh, roh.maul!.zu);
+  let seite = maulAnfangBewegen(mk.profile.seite, 'oben', { x: xR, y: yR });
+  seite = maulAnfangBewegen(seite, 'unten', { x: blauAnfang[0], y: blauAnfang[1] });
   mk = maulAnMarken({ ...mk, profile: { ...mk.profile, seite }, maul: roh.maul! });
   return mk;
 }

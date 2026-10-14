@@ -40,14 +40,11 @@ export function maulLinieAusDokument(dokRoh: Dokument, kanteFehler?: (e: unknown
   const letzter = schlitz[schlitz.length - 1]!;
   // Front-Verlauf (|z| → y) der gezeichneten Linie: die Maularme des Plattenmauls; nur, wenn die Linie seitlich läuft
   const front = schlitz.map((p) => ({ z: Math.abs(p[2]), y: p[1] })).sort((a, b) => a.z - b.z);
-  const knotenRot = gezeichnet.knoten.map((k) => skal(k.p));
-  const knotenBlau = untenLinie && untenLinie.knoten.length >= 2 ? untenLinie.knoten.map((k) => skal(k.p)) : undefined;
-  let linie: MaulLinie = { ...maulLinieAusPunkten(dok, punkte, letzter[2], Math.abs(letzter[2]) > 1e-6 ? front : undefined), punkte: schlitz, punkteKnoten: unterbiss && knotenBlau ? knotenBlau : knotenRot };
+  let linie: MaulLinie = { ...maulLinieAusPunkten(dok, punkte, letzter[2], Math.abs(letzter[2]) > 1e-6 ? front : undefined), punkte: schlitz };
   if (versetzt) {
     try {
       const stuetzen = maulLinieUntenAusPunkten(dok, versetzt);
-      const versetztKnoten = unterbiss ? knotenRot : knotenBlau!;
-      linie = unterbiss ? { ...linie, oben: stuetzen, obenPunkte: versetzt, versetztKnoten } : { ...linie, unten: stuetzen, untenPunkte: versetzt, versetztKnoten };
+      linie = unterbiss ? { ...linie, oben: stuetzen, obenPunkte: versetzt } : { ...linie, unten: stuetzen, untenPunkte: versetzt };
     } catch (e) {
       // Kieferkante nicht übersetzbar: das Maul baut mit gleichen Kiefern
       kanteFehler?.(e);

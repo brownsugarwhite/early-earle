@@ -4,15 +4,14 @@
 // Editor-Tab = Maul zu, Fressen-Tab = Maul auf. Jeder Knoten ist ein 3D-Punkt; die Ansicht bearbeitet zwei Koordinaten.
 
 import type { Ansicht, Dokument, Lippen, Linie3, V2, V3T } from '@ee/shape';
-import { bewegeKnoten, maulAnfangBewegen, maulMitMarken } from '@ee/shape';
+import { bewegeKnoten, lippeAnHaut, maulAnfangBewegen, maulMitMarken } from '@ee/shape';
 import { abtasten3, ausAnsicht2, einfuegen3, griffZiehen3, inAnsicht2, knotenBei, knotenVerschieben3, linieDurch, loeschen3, maulAnfaengeEinbauen, maulAnfangIndizes, mundwinkelVerbinden, naechsterInAnsicht, offenVorschlag } from '@ee/shape/versuch';
 import { gekoppeltBerechnen } from '../editing/gekoppelt';
 import { poseSeite, poseSeiteSetzen, poseSpaltIndizes } from './fressenForm';
 import { useEffect } from 'react';
 import { type Modus, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
-import { punktAufFlaeche, startPunkt } from './maulFlaeche';
-import { aktuellesNetz, useNetzStand } from '../kern/netzStand';
+import { hautTiefe, punktAufFlaeche, startPunkt } from './maulFlaeche';
 
 export const MAUL_FARBEN = { tuerkis: '#3fd6c0', rot: '#e0306a', blau: '#1832e6', ecke: '#000000' } as const;
 const PUNKT_R = 5;
@@ -88,18 +87,6 @@ export function MaulZeichnung({ ansicht, bild, aktiv }: { ansicht: Ansicht; bild
   const auswahl = useUi((s) => s.maulAuswahl);
   const zeichnen = useUi((s) => s.maulZeichnen);
   const { lippen, zustand } = aktuelleLippen(dok, modus);
-  // Bauweise Kern, geschlossen, Front/Top: die wirksamen Lippenlinien aus dem Kern (Breite auf der Haut × Verhältnis der
-  // Knoten) — so liegen Rot und Blau genau auf der Lippenkante, auch zwischen den Knoten (14.10.)
-  useNetzStand((s) => s.version);
-  const wirk = kernBauweise() && zustand === 'zu' && ansicht !== 'seite' ? aktuellesNetz()?.netz.maul?.linien : undefined;
-  const wirkPunkte = (name: LinienName): V3T[] | null => {
-    const flach = wirk?.[name];
-    if (!flach || flach.length < 6) return null;
-    const sk = dok.skalierung || 1;
-    const out: V3T[] = [];
-    for (let i = 0; i + 2 < flach.length; i += 3) out.push([flach[i]! / sk, flach[i + 1]! / sk, flach[i + 2]! / sk]);
-    return out;
-  };
   const zug = (pts: V3T[], spiegel = false) =>
     pts
       .map((p, k) => {
@@ -114,7 +101,7 @@ export function MaulZeichnung({ ansicht, bild, aktiv }: { ansicht: Ansicht; bild
       {lippen &&
         linien.map(([name, l]) => {
           const f = farbe(zustand, lippen, name);
-          const pts = wirkPunkte(name) ?? abtasten3(l, 16);
+          const pts = abtasten3(l, 16);
           return (
             <g key={name}>
               {ansicht !== 'seite' && <path d={zug(pts, true)} fill="none" stroke="#ffffff" strokeWidth={2} strokeLinecap="round" opacity={0.85} />}
@@ -181,6 +168,9 @@ export type Ebene2DKontext = {
   ziehen: (e: React.PointerEvent, bewegen: (ev: PointerEvent) => void, ende?: (ev: PointerEvent) => void) => void;
 };
 
+/** Ansicht, in der die neue Maullinie begonnen wurde (Seite: Tiefe von der Haut, Front: Tiefe wie gezeichnet). */
+let zeichnenAnsicht: Ansicht = 'seite';
+
 /** Zeichnen beenden: Linie aus den gesetzten Punkten (glatt, letzter Punkt = Mundwinkel). */
 export function maulZeichnenBeenden(abbrechen = false) {
   const ui = useUi.getState();
@@ -188,7 +178,9 @@ export function maulZeichnenBeenden(abbrechen = false) {
   if (!pts) return;
   ui.setzeMaulZeichnen(null);
   if (abbrechen || pts.length < 2) return;
-  if (kernBauweise()) setzeLippen('zu', { oben: linieDurch(pts) }); // Anfang wird markierter Knoten der schwarzen Linie
+  // Bauweise Kern: Rot und Blau gelten genau samt Griffen (14.10. nachts); die neue Linie liegt deshalb auf der Haut und
+  // beginnt quer zur Spiegelebene (vorn rund, keine Spitze), in der Seite gezeichnet auch zwischen den Knoten
+  if (kernBauweise()) setzeLippen('zu', { oben: lippeAnHaut(linieDurch(pts), hautTiefe, zeichnenAnsicht === 'seite') }); // Anfang wird markierter Knoten der schwarzen Linie
   else setzeLippenImUmriss({ oben: linieDurch(pts) });
   ui.setzeWerkzeug('auswahl');
   ui.setzeMaulAuswahl({ linie: 'oben', indizes: [pts.length - 1] });
@@ -214,6 +206,7 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
       maulZeichnenBeenden();
       return true;
     }
+    if (pts.length === 0) zeichnenAnsicht = ctx.ansicht;
     const p = pts.length === 0 ? startPunkt(ed.dok, ctx.ansicht, q) : punktAufFlaeche(ed.dok, ctx.ansicht, q) ?? ausAnsicht2(letzter!, ctx.ansicht, q);
     ui.setzeMaulZeichnen([...pts, p]);
     return true;

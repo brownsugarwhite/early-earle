@@ -1,5 +1,5 @@
 import { useKernAnzeige } from '../kern/kernBau';
-import { type MaulOptionen, MAUL_STANDARD, maulOptionenVorlage, pruefwesenBauplan } from '@ee/shape/kern';
+import { type MaulOptionen, MAUL_STANDARD, maulOptionenVorlage, maulVorn, pruefwesenBauplan } from '@ee/shape/kern';
 import { naechsteStufe, stufe } from '../stamm/stufen';
 import { pauspapierAusDatei } from '../viewports/Pauspapier';
 import { nachzeichnenBlatt } from '../nachziehen/nachzeichnen';
@@ -1028,7 +1028,7 @@ function KernMaulFeld() {
         <>
           <div className="feld">
             <span>Kiefer</span>
-            <b>{dok.maul.zu.unten ? 'getrennt (Überbiss)' : 'gleich'}</b>
+            <b>{dok.maul.zu.unten ? (maulVorn(dok.maul.zu.oben.knoten.map((k) => k.p), dok.maul.zu.unten.knoten.map((k) => k.p)) ? 'getrennt (Unterbiss)' : 'getrennt (Überbiss)') : 'gleich'}</b>
           </div>
           <div className="umschalter stufen" role="group" aria-label="Kiefer">
             <button className={!dok.maul.zu.unten ? 'chip aktiv' : 'chip'} data-kiefer="gleich" onClick={() => dok.maul!.zu.unten && setzeLippen('zu', { oben: dok.maul!.zu.oben })}>
