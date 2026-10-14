@@ -12,7 +12,6 @@ export * from './breite';
 export * from './maul';
 export * from './teil';
 export * from './klinge';
-export * from './klappe';
 export * from './kasten';
 export * from './atlas';
 export * from './wesen';

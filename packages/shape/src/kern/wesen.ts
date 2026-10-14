@@ -21,7 +21,6 @@ import { anwenden3 } from '../subdivision/matrix';
 import { vorlageBei } from '../spanten';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { type MaulErgebnis, ableitenMitMaul, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
-import { klappeNetz } from './klappe';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
 
 export type StilArt = 'fest' | 'feuer' | 'gas' | 'fell';
@@ -196,10 +195,10 @@ export function pruefwesenBauplan(name: string): Ausstattung {
         unterSpitze: 1,
         anfang: { x: -0.3394, y: 0.2766 },
         winkel: { x: -0.13, y: 0.19 },
-        unten: [{ f: 0.05, v: 0.2 }, { f: 0.08, v: 0.55 }, { f: 0.12, v: 0.62 }, { f: 0.2, v: 0.55 }, { f: 0.28, v: 0.5 }, { f: 0.337, v: 0.45 }],
+        // blaue Kante: höher als die rote (Seite) und innen (Front: `innen` = Anteil der halben Breite)
+        unten: [{ f: 0.05, v: 0.2, innen: 0.15 }, { f: 0.08, v: 0.55, innen: 0.2 }, { f: 0.12, v: 0.62, innen: 0.2 }, { f: 0.2, v: 0.55, innen: 0.2 }, { f: 0.28, v: 0.5, innen: 0.15 }, { f: 0.337, v: 0.45, innen: 0 }],
       },
-      // Oberlippe 4 % der Höhe dick (mit Kinnanfang kreuzen sich die Blätter bei 3 %), vier Taschenreihen (zwei Lippen-, zwei Linsenreihen)
-      maulOptionen: { lippenDicke: 0.04, reihen: 4 },
+      maulOptionen: { reihen: 3 },
     };
   }
   if (name === 'tiger') {
@@ -754,19 +753,6 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     const nH = 0.045 * hoehe;
     const nm: V3 = [oben[0] - 0.004, oben[1] - 0.055 * hoehe + hebung, 0];
     gesicht = { nase: nm, oben: [0, 1, 0], rechts: [0, 0, 1], radius: 0.046 * hoehe, hoehe: nH, philtrumA: [nm[0], nm[1] - nH, 0], philtrumB: [unten[0] - 0.004, unten[1] + hebung, unten[2]], breite: 0.004 * hoehe };
-  }
-  // Kiefer getrennt (M2): die überhängende Oberlippe als Band-Netz an der posierten Schleife (Ruhelage aus dem Ruhe-Käfig)
-  if (maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul?.klappe) {
-    const kl = klappeNetz(abl as MaulErgebnis, xyz, plan.oeffnung, feinDeskAlle, punktAtl, hebung);
-    if (kl) {
-      t = { positionen: verketten(t.positionen, kl.positionen), normalen: verketten(t.normalen, kl.normalen) };
-      if (desk && kl.desk) desk = verketten(desk, kl.desk);
-      if (atlas && kl.atlas) atlas = { ...atlas, ecken: verketten(atlas.ecken, kl.atlas) };
-      if (ruhe) {
-        const r = klappeNetz(abl as MaulErgebnis, abl.kaefig.xyz, 0, null, null, hebung);
-        ruhe = r && r.positionen.length === kl.positionen.length ? verketten(ruhe, r.positionen) : null;
-      }
-    }
   }
   // Wangenzacken und Ohren als statische Klingen, Deskriptoren und Atlas vom Fußpunkt
   if (plan.wangen && earle) {

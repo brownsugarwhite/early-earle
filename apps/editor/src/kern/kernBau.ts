@@ -107,7 +107,8 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
       const untenLinie = dok.maul?.zu.unten;
       if (untenLinie && untenLinie.knoten.length >= 2) {
         try {
-          const pu = abtasten3(untenLinie, 24).map((q) => ({ x: q[0] * sk, y: q[1] * sk }));
+          // Seite = Höhe, Front = Breite: die dritte Koordinate der blauen Linie ist die seitliche Lage der Unterkieferkante
+          const pu = abtasten3(untenLinie, 24).map((q) => [q[0] * sk, q[1] * sk, q[2] * sk] as [number, number, number]);
           maulLinie = { ...maulLinie, unten: maulLinieUntenAusPunkten(dok, pu) };
         } catch (e) {
           console.warn('[kern] Unterkieferkante nicht übersetzbar:', e);

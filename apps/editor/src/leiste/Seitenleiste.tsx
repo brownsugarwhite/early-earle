@@ -9,6 +9,7 @@ import { PALETTEN } from '../three/wesenLook';
 
 import { type Profil, type ZahnEintrag, type Zahnreihe, type ZahnWerte, gespiegelteSegmente, hauptspantProfil, hauptspantStelle, segmente } from '@ee/shape';
 import { versetzt3 } from '@ee/shape/versuch';
+import type { Linie3 } from '@ee/shape';
 import { useEffect, useRef, useState } from 'react';
 import { ladeAusBibliothek, ladePruefwesen } from '../aktionen';
 import { PRUEFWESEN } from '../schnitte/schnittVersuch';
@@ -975,6 +976,12 @@ function AbleitenFeld() {
   );
 }
 
+/** Blaue Startlinie für „getrennt“: die rote Linie 0,025 höher und in der Front 15 % innen (Florian zieht beides weiter). */
+function unterkieferKante(oben: Linie3): Linie3 {
+  const hoch = versetzt3(oben, 0.025);
+  return { ...hoch, knoten: hoch.knoten.map((k) => ({ ...k, p: [k.p[0], k.p[1], k.p[2] * 0.85] as [number, number, number], ein: [k.ein[0], k.ein[1], k.ein[2] * 0.85] as [number, number, number], aus: [k.aus[0], k.aus[1], k.aus[2] * 0.85] as [number, number, number] })) };
+}
+
 /** Tafel „Maul“ (Kern): Maullinie, Öffnung, Öffnungsart, Kieferwinkel, Rille — Optionen in der Ausstattung des Dokuments. */
 function KernMaulFeld() {
   const dok = useEditor((s) => s.dok);
@@ -1020,13 +1027,11 @@ function KernMaulFeld() {
             <button className={!dok.maul.zu.unten ? 'chip aktiv' : 'chip'} data-kiefer="gleich" onClick={() => dok.maul!.zu.unten && setzeLippen('zu', { oben: dok.maul!.zu.oben })}>
               gleich
             </button>
-            <button className={dok.maul.zu.unten ? 'chip aktiv' : 'chip'} data-kiefer="getrennt" onClick={() => !dok.maul!.zu.unten && setzeLippen('zu', { oben: dok.maul!.zu.oben, unten: versetzt3(dok.maul!.zu.oben, 0.025) })}>
+            <button className={dok.maul.zu.unten ? 'chip aktiv' : 'chip'} data-kiefer="getrennt" onClick={() => !dok.maul!.zu.unten && setzeLippen('zu', { oben: dok.maul!.zu.oben, unten: unterkieferKante(dok.maul!.zu.oben) })}>
               getrennt
             </button>
           </div>
-          <p className="hilfe">Getrennt: die rote Linie ist die Kante der überhängenden Oberlippe, die blaue die Kante des Unterkiefers, der zurückgesetzt dahinter sitzt (Überbiss). Beide Linien sind in Seite und Front ziehbar; Unterbiss (blau unter rot) kommt noch.</p>
-          {dok.maul.zu.unten && <Regler label="Lippendicke" wert={mo.lippenDicke} min={0.01} max={0.06} schritt={0.005} anzeige={`${(mo.lippenDicke * 100).toFixed(1)} % der Höhe`} onChange={(v) => setze({ lippenDicke: v })} {...geste()} />}
-          {dok.maul.zu.unten && <Regler label="Unterkiefer zurück" wert={mo.unterkieferRueck} min={0} max={1} schritt={0.1} anzeige={`${Math.round(mo.unterkieferRueck * 100)} %`} onChange={(v) => setze({ unterkieferRueck: v })} {...geste()} />}
+          <p className="hilfe">Getrennt: rot = Kante der Oberlippe, blau = Kante des Unterkiefers. In der Seite gibt die blaue Linie die Höhe (Überbiss: über der roten), in der Front die Breite des Unterkiefers (innen = schmaler). Geschlossen schiebt sich der Unterkiefer in den Oberkiefer; Unterbiss (blau unter rot) kommt noch.</p>
         </>
       )}
       <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />

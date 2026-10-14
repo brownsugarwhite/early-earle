@@ -43,14 +43,12 @@ const KanteSchema = z.object({ knoten: z.array(Knoten3Schema).min(2), haerte: z.
 const RundSpantSchema = z.object({ p: V2, richtung: V2, profil: ProfilSchema, basis: ProfilSchema.optional(), kante: z.object({ index: z.number().int().min(0), knoten: z.number().int().min(0) }).optional() });
 
 /** Maullinie in Wirbelsäulen-Koordinaten (Anteil f der Länge, Höhe v auf der Sprosse), Lippenanfang unter der Spitze. */
-const MaulLinieSchema = z.object({ fv: z.array(z.object({ f: z.number(), v: z.number() })).min(2), unterSpitze: z.number().optional(), anfang: z.object({ x: z.number(), y: z.number() }).optional(), winkel: z.object({ x: z.number(), y: z.number() }).optional(), winkelZ: z.number().optional(), front: z.array(z.object({ z: z.number(), y: z.number() })).optional(), unten: z.array(z.object({ f: z.number(), v: z.number() })).optional() });
+const MaulLinieSchema = z.object({ fv: z.array(z.object({ f: z.number(), v: z.number() })).min(2), unterSpitze: z.number().optional(), anfang: z.object({ x: z.number(), y: z.number() }).optional(), winkel: z.object({ x: z.number(), y: z.number() }).optional(), winkelZ: z.number().optional(), front: z.array(z.object({ z: z.number(), y: z.number() })).optional(), unten: z.array(z.object({ f: z.number(), v: z.number(), z: z.number().optional(), innen: z.number().optional() })).optional() });
 const MaulOptionenSchema = z
   .object({
     reihen: z.number(),
     tiefe: z.number(),
     linse: z.number(),
-    lippenDicke: z.number(),
-    unterkieferRueck: z.number(),
     rachenTiefe: z.number(),
     rachenInnen: z.number(),
     schaedelHinter: z.number(),
@@ -99,8 +97,6 @@ export type MaulOptionenWerte = {
   reihen: number;
   tiefe: number;
   linse: number;
-  lippenDicke: number;
-  unterkieferRueck: number;
   rachenTiefe: number;
   rachenInnen: number;
   schaedelHinter: number;
@@ -123,7 +119,7 @@ export type MaulOptionenWerte = {
 };
 export type Ausstattung = {
   maul?: 'aus' | 'vorn' | 'unten' | 'hals';
-  maulLinie?: { fv: { f: number; v: number }[]; unterSpitze?: number; anfang?: { x: number; y: number }; winkel?: { x: number; y: number }; winkelZ?: number; front?: { z: number; y: number }[]; unten?: { f: number; v: number }[] };
+  maulLinie?: { fv: { f: number; v: number }[]; unterSpitze?: number; anfang?: { x: number; y: number }; winkel?: { x: number; y: number }; winkelZ?: number; front?: { z: number; y: number }[]; unten?: { f: number; v: number; z?: number; innen?: number }[] };
   /** Punkte je Ring des Käfigs (Standard 16; 24 für Kastenfronten mit Plattenmaul: 6×6-Plattengitter). Fest ab dem Anlegen (Deltas und Stationen hängen daran). */
   ring?: number;
   maulOptionen?: Partial<MaulOptionenWerte>;

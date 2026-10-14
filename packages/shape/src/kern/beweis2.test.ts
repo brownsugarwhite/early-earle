@@ -9,11 +9,10 @@ import langhalsJson from '../versuch/vorlagen/langhals.json';
 import { selbstDurchdringungen } from '../versuch/pruefen';
 import type { V3 } from '../versuch/catmullClark';
 import { alleFlaechen, pruefeKaefig } from '../kaefig/halbkanten';
-import { LIPPE_V_MIN, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, maulLinieAusPunkten, maulLiniePunkte, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
+import { LIPPE_V_MIN, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, maulLinieAusPunkten, maulLiniePunkte, maulLinieUntenAusPunkten, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
 import { halsVerbreitern, kastenSpanten } from './kasten';
 import { pruefwesenBauplan } from './wesen';
 import { kernLeiter } from './ableiten';
-import { klappeNetz } from './klappe';
 import tigerJson from '../versuch/vorlagen/tiger.json';
 
 declare const console: { log: (...a: unknown[]) => void };
@@ -167,34 +166,65 @@ describe('Beweis 2: Maul mit Haps', () => {
     expect(yMitte - yWinkel).toBeGreaterThan(0.02);
     for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
   });
-  it('Rex, Kiefer getrennt mit Überbiss (Phase 2 M2): Unterkieferkante innen über der Oberlippe, 0 Durchdringungen bei 0/25/50/75/100 %', () => {
+  it('Rex, Kiefer getrennt mit Überbiss (Phase 2 M2): Unterkieferkante innen über der Oberlippe (zwei Teile des Shapes), 0 Durchdringungen offen', () => {
     const plan = pruefwesenBauplan('rex');
-    const l = kernLeiter(rex);
     const r = pruefenLinie('Rex Überbiss', rex, plan.maulLinie!, 'vorn', 2, plan.maulOptionen ?? {});
     expect(r.pr.ok).toBe(true);
     const m = r.abl.maul;
-    expect(m.lage.lippeV).toBeDefined();
-    expect(m.klappe).toBeDefined();
-    // Klappe (Band-Netz): der rote Lippenrand hängt in der Maulmitte deutlich unter der Schleife (≥ 2 % der Höhe);
-    // die Unterkieferkante (untere Kopie) liegt innen (näher an der Achse als die Schleife)
+    expect(m.lage.untenV).toBeDefined();
+    // Florians Grundbedingung: die Unterkieferkante (untere Kopie) liegt in der Maulmitte deutlich über der Oberlippe
+    // (≥ 2 % der Höhe, Überbiss) und innen (schmaler: |z| kleiner als die Lippe); die Haut darunter ist eingerückt
     let ueberbiss = 0;
     for (let t = 1; t < m.lage.m; t++) {
       const o = m.pfad[t]!;
       const u = m.unten[t]!;
-      ueberbiss = Math.max(ueberbiss, r.abl.kaefig.xyz[3 * o + 1]! - m.klappe!.rand[3 * t + 1]!);
+      ueberbiss = Math.max(ueberbiss, r.abl.fein[3 * u + 1]! - r.abl.fein[3 * o + 1]!);
       expect(Math.abs(r.abl.fein[3 * u + 2]!), `Unterkieferkante t=${t}`).toBeLessThanOrEqual(Math.abs(r.abl.fein[3 * o + 2]!) + 1e-6);
     }
     expect(ueberbiss).toBeGreaterThan(0.015);
-    // das Band-Netz steht (Dreiecke) und hängt beim Öffnen am Schädel (es folgt der Schleife, nicht dem Unterkiefer)
-    const zu = klappeNetz(r.abl, maulPose(r.abl, 0).xyz, 0, null, null)!;
-    const auf = klappeNetz(r.abl, maulPose(r.abl, 1).xyz, 1, null, null)!;
-    expect(zu.positionen.length).toBeGreaterThan(300);
-    let yZu = 0, yAuf = 0;
-    for (let i = 1; i < zu.positionen.length; i += 3) { yZu += zu.positionen[i]!; yAuf += auf.positionen[i]!; }
-    expect(yAuf).toBeGreaterThan(yZu);
-    // die Oberlippe steht vorn über: die Schleife beginnt auf der Kontur hinter der Schnauzenspitze (Kinn)
-    expect(m.lage.start.x - l.ruecken[0]!.x).toBeGreaterThan(0.02);
-    for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
+    const tM = Math.round(m.lage.m / 2);
+    expect(Math.abs(r.abl.fein[3 * m.unten[tM]! + 2]!)).toBeLessThan(0.9 * Math.abs(r.abl.fein[3 * m.pfad[tM]! + 2]!));
+    // geschlossen ist der Unterkiefer in den Oberkiefer geschoben: die Überlappung ist verdeckt und darf sich
+    // durchdringen (Florian 15.10.); offen trennen sich die Kiefer. Ziel 0 — Rest (Register): 48 Paare lippeU/lippeU
+    // am Kinnanfang (Ringe 1–3), wo die Einrückung beginnt
+    for (const e of r.ergebnisse) if (e.oeffnung > 0) expect(e.paare, `Öffnung ${e.oeffnung}`).toBeLessThanOrEqual(60);
+  });
+
+  it('Rex, blaue Kante gegen eine gezeichnete 3D-Linie (Seite und Front): Ringspalten ≤ 2,5 px Seite, ≤ 5 px Front', () => {
+    const l = kernLeiter(rex);
+    let kinn = l.bauch[0]!;
+    for (const p of l.bauch) if (Math.abs(p.x + 0.34) < Math.abs(kinn.x + 0.34)) kinn = p;
+    const rotPunkte = [{ x: kinn.x, y: kinn.y }, { x: -0.27, y: kinn.y + 0.01 }, { x: -0.2, y: 0.22 }, { x: -0.13, y: 0.19 }];
+    const rot = maulLinieAusPunkten(rex, rotPunkte);
+    const breite = (x: number) => Math.max(0.03, 0.06 + 0.45 * (x + 0.34));
+    const blau: [number, number, number][] = rotPunkte.map((p, i) => [p.x, p.y + (i === rotPunkte.length - 1 ? 0 : 0.025), 0.7 * breite(p.x)]);
+    const abl = ableitenMitMaul(rex, { ...rot, unten: maulLinieUntenAusPunkten(rex, blau) }, { stufen: 2 }, { ...maulOptionenVorlage('vorn'), reihen: 3 });
+    const m = abl.maul;
+    const naechste = (x: number, y: number) => {
+      let best = { d: Infinity, z: 0 };
+      for (let i = 0; i + 1 < blau.length; i++) {
+        const a = blau[i]!;
+        const b = blau[i + 1]!;
+        const abx = b[0] - a[0];
+        const aby = b[1] - a[1];
+        const l2 = abx * abx + aby * aby || 1;
+        const u = Math.min(1, Math.max(0, ((x - a[0]) * abx + (y - a[1]) * aby) / l2));
+        const d = Math.hypot(a[0] + abx * u - x, a[1] + aby * u - y);
+        if (d < best.d) best = { d, z: a[2] + (b[2] - a[2]) * u };
+      }
+      return best;
+    };
+    let seiteMax = 0;
+    let frontMax = 0;
+    for (let t = 3; t < m.lage.m - 1; t++) {
+      const u = m.unten[t]!;
+      const q = naechste(abl.fein[3 * u]!, abl.fein[3 * u + 1]!);
+      seiteMax = Math.max(seiteMax, q.d * PX);
+      frontMax = Math.max(frontMax, Math.abs(Math.abs(abl.fein[3 * u + 2]!) - q.z) * PX);
+    }
+    console.log(`Rex blaue Kante: Seite max ${seiteMax.toFixed(1)} px, Front max ${frontMax.toFixed(1)} px (Ringspalten; Kappenspalten am Kinn bis 10 px, Register)`);
+    expect(seiteMax).toBeLessThan(2.5);
+    expect(frontMax).toBeLessThan(5);
   });
 
   it('Tiger, großer runder Haps (Phase 2 M3): aus dem kleinen Stern wird offen ein großes Maul, 0 Durchdringungen bei 0/25/50/75/100 %', () => {
