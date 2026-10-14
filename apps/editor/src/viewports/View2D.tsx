@@ -19,6 +19,8 @@ import {
   kannLoeschen,
   loeschen,
   loeschenMehrere,
+  maulGetrenntImUmriss,
+  maulKnotenIndex,
   minus,
   naechsterAufProfil,
   plus,
@@ -58,8 +60,9 @@ const KONTUR = 3;
 
 type Props = { ansicht: Ansicht; w: number; h: number };
 
-/** Knotennummern der geschlossenen Maulanfänge (beide gefunden), sonst null. */
+/** Knotennummern der geschlossenen Maulanfänge (beide gefunden), sonst null. Bauweise Kern: die markierten Knoten. */
 function spaltIndizesZu(seite: Profil, zu: NonNullable<Dokument['maul']>['zu']): { oben: number; unten: number } | null {
+  if (maulGetrenntImUmriss(seite)) return { oben: maulKnotenIndex(seite, 'oben'), unten: maulKnotenIndex(seite, 'unten') };
   const i = maulAnfangIndizes(seite, zu);
   return i.oben !== null && i.unten !== null ? { oben: i.oben, unten: i.unten } : null;
 }

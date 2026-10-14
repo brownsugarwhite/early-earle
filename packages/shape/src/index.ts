@@ -5,3 +5,4 @@ export * from './kopplung';
 export * from './platzhalter/loft';
 export * from './spanten';
 export * from './fit';
+export * from './maulKnoten';

@@ -10,6 +10,13 @@ import { type Kubik, type V2, ableitung, abstand, abtasten, laengeV, mal, minus,
 
 export type KnotenArt = 'glatt' | 'ecke';
 
+/**
+ * Rolle eines Knotens im Seitenumriss (14.10., Florian: „Rot und Blau gehen von der Seite direkt in die schwarze Linie
+ * über“): Lippenanfang. `maul` = Kiefer gleich (ein Knoten für beide Lippen), `maulOben`/`maulUnten` = Kiefer getrennt
+ * (roter bzw. blauer Anfang; die Strecke zwischen beiden ist der Maulschlitz). Feste Kennung statt Lage oder Nummer.
+ */
+export type Marke = 'maul' | 'maulOben' | 'maulUnten';
+
 /** Ein Kurvenpunkt; `ein`/`aus` sind die Bézier-Griffe relativ zu `p`. */
 export type Knoten = {
   p: V2;
@@ -18,6 +25,8 @@ export type Knoten = {
   art: KnotenArt;
   /** Härte einer Ecke als Kante im 3D (0 = rund … 1 = scharf, Standard 1); nur bei art 'ecke' (Versuch 12.10.) */
   haerte?: number;
+  /** Lippenanfang (nur im Seitenumriss) */
+  marke?: Marke;
 };
 
 /** senkrecht: Spiegelung an u = 0 (Front); waagerecht: Spiegelung an v = 0 (Top). */
@@ -249,6 +258,8 @@ export function einfuegen(pr: Profil, s: number, t: number): { profil: Profil; i
 
 export function kannLoeschen(pr: Profil, i: number): boolean {
   if (istAchsKnoten(pr, i)) return false;
+  // Lippenanfänge gehören zum Maul (Maul-Tab: „Maul löschen“ bzw. Kiefer gleich)
+  if (pr.knoten[i]?.marke) return false;
   const min = pr.art === 'geschlossen' ? MIN_KNOTEN_GESCHLOSSEN : MIN_KNOTEN_HALB;
   return pr.knoten.length > min && i >= 0 && i < pr.knoten.length;
 }

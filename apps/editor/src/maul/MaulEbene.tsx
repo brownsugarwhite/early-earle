@@ -4,7 +4,7 @@
 // Editor-Tab = Maul zu, Fressen-Tab = Maul auf. Jeder Knoten ist ein 3D-Punkt; die Ansicht bearbeitet zwei Koordinaten.
 
 import type { Ansicht, Dokument, Lippen, Linie3, V2, V3T } from '@ee/shape';
-import { bewegeKnoten } from '@ee/shape';
+import { bewegeKnoten, maulAnfangBewegen, maulMitMarken } from '@ee/shape';
 import { abtasten3, ausAnsicht2, einfuegen3, griffZiehen3, inAnsicht2, knotenBei, knotenVerschieben3, linieDurch, loeschen3, maulAnfaengeEinbauen, maulAnfangIndizes, mundwinkelVerbinden, naechsterInAnsicht, offenVorschlag } from '@ee/shape/versuch';
 import { gekoppeltBerechnen } from '../editing/gekoppelt';
 import { poseSeite, poseSeiteSetzen, poseSpaltIndizes } from './fressenForm';
@@ -36,14 +36,27 @@ export function aktuelleLippen(dok: Dokument, modus: Modus): { lippen: Lippen | 
 /** Bauweise Kern (Phase 2): Die Maullinien sind frei — kein Einbau der Anfänge als Umrissknoten (Versuch 12.10., Loft). */
 const kernBauweise = () => useUi.getState().bauweise === 'kern';
 
-/** Lippen setzen; der Mundwinkel bleibt ein gemeinsamer Punkt beider Kiefer (Florian 12.10.). */
+/**
+ * Lippen setzen; der Mundwinkel bleibt ein gemeinsamer Punkt beider Kiefer (Florian 12.10.). Bauweise Kern, geschlossen
+ * (14.10., Florian: „Rot und Blau gehen von der Seite direkt in die schwarze Linie über“): Die Lippenanfänge sind
+ * markierte Knoten des Seitenumrisses (`maulMitMarken`: einfügen, trennen, vereinen; Linienanfänge exakt auf den Knoten).
+ */
 export function setzeLippen(zustand: Zustand, lippen: Lippen) {
   const ed = useEditor.getState();
   const maul = ed.dok.maul;
   const vorher = zustand === 'zu' ? maul?.zu : (maul?.auf ?? null);
   const verbunden = mundwinkelVerbinden(lippen, vorher);
-  if (zustand === 'zu') ed.setzeMaul({ ...(maul ?? {}), zu: verbunden });
+  if (zustand === 'zu' && kernBauweise()) ed.setzeDokument(maulMitMarken(ed.dok, verbunden));
+  else if (zustand === 'zu') ed.setzeMaul({ ...(maul ?? {}), zu: verbunden });
   else if (maul) ed.setzeMaul({ ...maul, auf: verbunden });
+}
+
+/** Bauweise Kern: Lippenanfang ziehen = den markierten Knoten der schwarzen Linie mitbewegen (ein Zustand, ein Bau). */
+function setzeLippenMitAnfang(lippen: Lippen, rolle: LinienName, anfang: V2) {
+  const ed = useEditor.getState();
+  const verbunden = mundwinkelVerbinden(lippen, ed.dok.maul?.zu);
+  const seite = maulAnfangBewegen(ed.dok.profile.seite, rolle, anfang);
+  ed.setzeDokument(maulMitMarken({ ...ed.dok, profile: { ...ed.dok.profile, seite } }, verbunden));
 }
 
 /**
@@ -158,7 +171,7 @@ export function maulZeichnenBeenden(abbrechen = false) {
   if (!pts) return;
   ui.setzeMaulZeichnen(null);
   if (abbrechen || pts.length < 2) return;
-  if (kernBauweise()) setzeLippen('zu', { oben: linieDurch(pts) });
+  if (kernBauweise()) setzeLippen('zu', { oben: linieDurch(pts) }); // Anfang wird markierter Knoten der schwarzen Linie
   else setzeLippenImUmriss({ oben: linieDurch(pts) });
   ui.setzeWerkzeug('auswahl');
   ui.setzeMaulAuswahl({ linie: 'oben', indizes: [pts.length - 1] });
@@ -297,10 +310,9 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
       }
     }
     const basis = linieVon(n);
-    // Bauweise Kern: Liegt der Lippenanfang als Knoten im Seitenumriss („Formen folgen“ setzt ihn dorthin), zieht er
-    // diesen Knoten mit — die schwarze Linie grenzt an die Lippe (Florian 15.10. nachts); nach der Geste folgt der Umriss
-    const seite0 = ed.dok.profile.seite;
-    const k0 = kernBauweise() && zustand === 'zu' && sel.includes(0) && ctx.ansicht !== 'top' ? knotenBei(seite0, { x: basis.knoten[0]!.p[0], y: basis.knoten[0]!.p[1] }) : null;
+    // Bauweise Kern: Der Lippenanfang ist ein markierter Knoten der schwarzen Linie (14.10.); ihn ziehen bewegt Knoten und
+    // Linie zusammen, die Kurve folgt wie bei einem Illustrator-Punkt, es entsteht kein neuer Knoten
+    const mitAnfang = kernBauweise() && zustand === 'zu' && sel.includes(0) && ctx.ansicht !== 'top';
     ed.beginGeste();
     if (vorschlag) setzeLippen(zustand, lippen);
     ctx.ziehen(
@@ -311,11 +323,9 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
         // der Anfang bleibt auf der Spiegelebene: in der Front nur die Höhe
         const dx = kernBauweise() && sel.includes(0) && ctx.ansicht === 'front' ? 0 : p.x - start.x;
         const neu = knotenVerschieben3(basis, sel, ctx.ansicht, { x: dx, y: p.y - start.y });
-        setzeLippen(zustand, n === 'oben' ? { ...aktuell, oben: neu } : { ...aktuell, unten: neu });
-        if (k0 !== null) {
-          const q0 = seite0.knoten[k0]!.p;
-          useEditor.getState().setzeProfil('seite', bewegeKnoten(seite0, k0, { x: q0.x + dx, y: q0.y + (p.y - start.y) }));
-        }
+        const lippenNeu = n === 'oben' ? { ...aktuell, oben: neu } : { ...aktuell, unten: neu };
+        if (mitAnfang) setzeLippenMitAnfang(lippenNeu, n, { x: neu.knoten[0]!.p[0], y: neu.knoten[0]!.p[1] });
+        else setzeLippen(zustand, lippenNeu);
       },
       () => useEditor.getState().endeGeste(),
     );

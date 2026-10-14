@@ -3,8 +3,7 @@
 // „neuester Auftrag gewinnt“); hier entsteht aus Dokument und Anzeige-Zustand nur der Bauplan.
 
 import type { Dokument } from '@ee/shape';
-import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type StilArt, type WesenInfo, type WesenNetz, maulLinieAusPunkten, maulLinieUntenAusPunkten, pruefwesenBauplan } from '@ee/shape/kern';
-import { abtasten3 } from '@ee/shape/versuch';
+import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type StilArt, type WesenInfo, type WesenNetz, maulLinieAusDokument, pruefwesenBauplan } from '@ee/shape/kern';
 import { create } from 'zustand';
 import { setzeGesteEndeHaken, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -83,12 +82,6 @@ export function kernMaulAktiv(dok: Dokument): boolean {
   return !!(dok.ausstattung?.maulLinie ?? pruefwesenBauplan(dok.name).maulLinie);
 }
 
-/** Liegt der blaue Anfang weiter vorn als der rote (Unterbiss)? „Vorn“ = vom Mundwinkel weg längs x. */
-export function maulVorn(rot: readonly (readonly [number, number, number])[], blau: readonly (readonly [number, number, number])[]): boolean {
-  const nachVorn = Math.sign(rot[0]![0] - rot[rot.length - 1]![0]) || -1;
-  return (blau[0]![0] - rot[0]![0]) * nachVorn > 1e-4;
-}
-
 export function bauplanAus(dok: Dokument): Partial<Bauplan> {
   const s = useKernAnzeige.getState();
   const aus = { ...pruefwesenBauplan(dok.name), ...(dok.ausstattung ?? {}) };
@@ -98,38 +91,14 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
   // Eine Maullinie aus der Ausstattung (Prüfwesen Tiger aus der Library) baut das Maul auch ohne gewählten Chip
   // (die Tafel zeigt dann „aus der Ausstattung“); die Lage der Ausstattung bestimmt nur die Vorlagen-Optionen (hals = ziehen)
   if (maul === 'aus' && aus.maulLinie) maul = aus.maul && aus.maul !== 'aus' ? aus.maul : 'vorn';
-  const gezeichnet = dok.maul?.zu.oben;
-  if (!dok.ausstattung?.maulLinie && gezeichnet && gezeichnet.knoten.length >= 2) {
+  if (!dok.ausstattung?.maulLinie && dok.maul?.zu.oben && dok.maul.zu.oben.knoten.length >= 2) {
+    // gezeichnete Linien (Maul-Tab) → Kern-Maullinie (`maulLinieAusDokument`, Rollen rot/blau nach der Lage längs x)
     try {
-      const sk = dok.skalierung;
-      const skal = (q: readonly [number, number, number]) => [q[0] * sk, q[1] * sk, q[2] * sk] as [number, number, number];
-      const rot = abtasten3(gezeichnet, 24).map(skal);
-      const untenLinie = dok.maul?.zu.unten;
-      const blau = untenLinie && untenLinie.knoten.length >= 2 ? abtasten3(untenLinie, 24).map(skal) : undefined;
-      // Kiefer getrennt (Phase 2 M2): Die Linie, die weiter vorn beginnt, ist der Schlitz auf der Kontur (der längere
-      // Kiefer); die andere ist die versetzte Kante des kürzeren Kiefers mit eigenem Anfang dahinter — rot vorn = Überbiss,
-      // blau vorn = Unterbiss. Seite = Höhe, Front = Breite (dritte Koordinate = seitliche Lage der Kante).
-      // Rollen nach der Lage längs der Achse: Die Linie, deren Anfang weiter vorn liegt (vom gemeinsamen Mundwinkel aus),
-      // ist der Schlitz (über den Wirbelsäulen-Anteil entschieden kippten die Rollen, sobald sich das Profil änderte)
-      const unterbiss = !!blau && maulVorn(rot, blau);
-      const schlitz = unterbiss && blau ? blau : rot;
-      const versetzt = unterbiss ? rot : blau;
-      const punkte = schlitz.map((p) => ({ x: p[0], y: p[1] }));
-      // Anfang auf der Kontur und Kreuzungen je Sprosse kommen aus der Linie selbst („Zeichnung ist Form“, Schritt 2);
-      // die seitliche Lage des Winkels (Front-Blatt) macht an einer Kastenfront das Plattenmaul (Phase 2, M1)
-      const letzter = schlitz[schlitz.length - 1]!;
-      // Front-Verlauf (|z| → y) der gezeichneten Linie: die Maularme des Plattenmauls; nur, wenn die Linie seitlich läuft
-      const front = schlitz.map((p) => ({ z: Math.abs(p[2]), y: p[1] })).sort((a, b) => a.z - b.z);
-      maulLinie = { ...maulLinieAusPunkten(dok, punkte, letzter[2], Math.abs(letzter[2]) > 1e-6 ? front : undefined), punkte: schlitz };
-      if (versetzt) {
-        try {
-          const stuetzen = maulLinieUntenAusPunkten(dok, versetzt);
-          maulLinie = unterbiss ? { ...maulLinie, oben: stuetzen, obenPunkte: versetzt } : { ...maulLinie, unten: stuetzen, untenPunkte: versetzt };
-        } catch (e) {
-          console.warn('[kern] Kieferkante nicht übersetzbar:', e);
-        }
+      const gezeichnet = maulLinieAusDokument(dok, (e) => console.warn('[kern] Kieferkante nicht übersetzbar:', e));
+      if (gezeichnet) {
+        maulLinie = gezeichnet;
+        if (maul === 'aus') maul = 'vorn';
       }
-      if (maul === 'aus') maul = 'vorn';
     } catch (e) {
       console.warn('[kern] Maullinie aus Zeichnung nicht übersetzbar:', e);
     }

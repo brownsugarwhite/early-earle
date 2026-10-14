@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { type Profil, START_RADIUS, startHalbkreis, startKreis } from './profil';
 
 const V2 = z.object({ x: z.number(), y: z.number() });
-const Knoten = z.object({ p: V2, ein: V2, aus: V2, art: z.enum(['glatt', 'ecke']), haerte: z.number().min(0).max(1).optional() });
+const Knoten = z.object({ p: V2, ein: V2, aus: V2, art: z.enum(['glatt', 'ecke']), haerte: z.number().min(0).max(1).optional(), marke: z.enum(['maul', 'maulOben', 'maulUnten']).optional() });
 
 export const ProfilSchema = z.discriminatedUnion('art', [
   z.object({ art: z.literal('geschlossen'), knoten: z.array(Knoten).min(2) }),

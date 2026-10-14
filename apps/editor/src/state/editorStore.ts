@@ -18,6 +18,7 @@ import {
   spantenAngleichen,
 } from '@ee/shape';
 import { maulAnKontur, maulImUmrissSichern } from '@ee/shape/versuch';
+import { maulAnMarken, maulMarkenEntfernen } from '@ee/shape';
 import { useUi } from './uiStore';
 import { kantenAnFlaeche } from '../kanten/kantenFlaeche';
 import { create } from 'zustand';
@@ -100,6 +101,9 @@ function mitFormVerbunden(alt: Dokument, neu: Dokument, kantenAuch: boolean): Do
     const maul = maulAnKontur(d.maul, alt.profile.seite, d.profile.seite);
     if (maul !== d.maul) d = { ...d, maul };
   }
+  // Bauweise Kern (14.10.): Die Lippenanfänge sind markierte Knoten der schwarzen Linie — wird der Umriss gezogen, folgen
+  // die Linienanfänge ihren Knoten (Rot und Blau bleiben mit der schwarzen Linie verbunden)
+  if (d.maul && maulFrei() && alt.profile.seite !== d.profile.seite) d = maulAnMarken(d);
   if (kantenAuch && alt.profile !== d.profile) d = kantenAnFlaeche(d);
   return d;
 }
@@ -160,7 +164,12 @@ export const useEditor = create<EditorState>((set, get) => {
         if (d.maul === maul) return d;
         const rest = { ...d };
         delete rest.maul;
-        // Maulanfänge sind Knoten des Umrisses (12.10. nachts): fehlen sie (ältere Mäuler), werden sie eingebaut
+        // Maulanfänge sind Knoten des Umrisses (12.10. nachts): fehlen sie (ältere Mäuler), werden sie eingebaut. Bauweise
+        // Kern: Maul löschen nimmt die Marken der Lippenanfänge aus dem Umriss (die Knoten bleiben, sie waren formtreu)
+        if (!maul && maulFrei()) {
+          const seite = maulMarkenEntfernen(rest.profile.seite);
+          return seite === rest.profile.seite ? rest : { ...rest, profile: { ...rest.profile, seite } };
+        }
         return maul ? (maulFrei() ? { ...rest, maul } : maulImUmrissSichern({ ...rest, maul })) : rest;
       });
     },

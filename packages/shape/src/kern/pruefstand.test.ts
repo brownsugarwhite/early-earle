@@ -7,7 +7,7 @@ import rexRoh from '../versuch/vorlagen/rex.json';
 import tigerRoh from '../versuch/vorlagen/tiger.json';
 import { type Vorlage, vorlageDokument } from '../versuch/vorlagen';
 import { kastenSpanten } from './kasten';
-import { kommaDokument, lokalitaet, pruefen, ringTabelle } from './pruefstand';
+import { kommaDokument, kugelMaulDokument, lokalitaet, pruefen, pruefenMaul, ringTabelle } from './pruefstand';
 
 declare const console: { log: (...a: unknown[]) => void };
 const f1 = (x: number) => x.toFixed(1);
@@ -63,4 +63,22 @@ describe('Prüfstand ruhiges Netz', () => {
     console.log(`Komma, Spitze 10 px hoch: fern ${f1(komma.fern)} px, gesamt ${f1(komma.gesamt)} px`);
     expect(Number.isFinite(komma.fern)).toBe(true);
   });
+});
+
+describe('Prüfstand Maul (Block 2): Florians Kugel-Fälle', () => {
+  const bericht = (name: string, r: ReturnType<typeof pruefenMaul>) => {
+    const l = r.lippen;
+    const px = (x: number | null | undefined) => (x === null || x === undefined ? '–' : x.toFixed(1));
+    const paare = r.paare.map((p) => `${Math.round(p.oeffnung * 100)}%:${p.paare}${p.paare ? `(${Object.entries(p.nachBereich).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, n]) => `${k} ${n}`).join(', ')})` : ''}`).join(' ');
+    console.log(`${name}: Δ ${f1(r.delta.seite)} / ${f1(r.delta.front)} / ${f1(r.delta.top)} px · rot ${px(l.oben.seite)}/${px(l.oben.front)} blau ${px(l.unten?.seite)}/${px(l.unten?.front)} px · Falten ${f1(r.falte.max)}° (>20°: ${r.falte.ueber20}) · Paare ${paare} · ${r.zeit.toFixed(0)} ms`);
+  };
+  for (const art of ['gleich', 'ueberbiss', 'schnabel', 'unterbiss'] as const) {
+    it(`Kugel ${art}: Maße (frei und mit Lippenknoten in der schwarzen Linie)`, () => {
+      const r = pruefenMaul(kugelMaulDokument(art));
+      bericht(`Kugel ${art}`, r);
+      const m = pruefenMaul(kugelMaulDokument(art, true));
+      bericht(`Kugel ${art} (Marken)`, m);
+      expect(Number.isFinite(r.delta.seite)).toBe(true);
+    });
+  }
 });

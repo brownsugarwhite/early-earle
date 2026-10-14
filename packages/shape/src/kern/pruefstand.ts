@@ -4,11 +4,15 @@
 import type { V2 } from '../bezier';
 import type { Dokument } from '../dokument';
 import { neuesDokument } from '../dokument';
+import { maulAnMarken, maulAnfangBewegen, maulMitMarken } from '../maulKnoten';
 import { type Kaefig, alleFlaechen } from '../kaefig/halbkanten';
 import type { Profil } from '../profil';
 import type { V3 } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, ableiten, sprossenVon } from './ableiten';
 import { blattAbweichungen } from './abweichung';
+import { type MaulAbweichung, type MaulErgebnis, type MaulOptionen, ableitenMitMaul, maulAbweichung, maulOptionenVorlage, maulPose } from './maul';
+import { maulLinieAusDokument } from './maulDokument';
+import { selbstDurchdringungen } from '../versuch/pruefen';
 
 /** Pixel je Kachel (Blatt-Maßstab der Messungen) */
 export const PX = 461;
@@ -172,4 +176,106 @@ export function lokalitaet(dok: Dokument, ansicht: 'seite' | 'front' | 'top', kn
     if (abstand > ferne) fern = Math.max(fern, d);
   }
   return { fern: fern * PX, gesamt: gesamt * PX };
+}
+
+// ---------- Block 2: Maul-Fälle (Florians Kugel aus seinen Bildern vom 14.10.) ----------
+
+type Linie3Knoten = { p: [number, number, number]; ein: [number, number, number]; aus: [number, number, number]; art: 'glatt' };
+
+/** Glatte 3D-Linie durch Punkte (Seite x, y; Tiefe z aus der Kugel), Griffe ⅙ der Nachbarabstände (wie im Maul-Tab). */
+function linieDurch(pts: readonly [number, number][], z: (x: number, y: number) => number): { knoten: Linie3Knoten[] } {
+  return {
+    knoten: pts.map((p, i) => {
+      const vor = pts[Math.max(0, i - 1)]!;
+      const nach = pts[Math.min(pts.length - 1, i + 1)]!;
+      const t: [number, number] = [(nach[0] - vor[0]) / 6, (nach[1] - vor[1]) / 6];
+      return { p: [p[0], p[1], i === 0 ? 0 : z(p[0], p[1])], ein: i === 0 ? [0, 0, 0] : [-t[0], -t[1], 0], aus: i === pts.length - 1 ? [0, 0, 0] : [t[0], t[1], 0], art: 'glatt' };
+    }),
+  };
+}
+
+export type KugelMaulArt = 'gleich' | 'ueberbiss' | 'schnabel' | 'unterbiss';
+
+/**
+ * Startkugel mit gezeichnetem Maul wie in Florians Bildern (14.10.): rote Linie ab der Kontur in halber Höhe zum
+ * Mundwinkel (0,3 r hinter und unter der Mitte); Überbiss = blaue Linie 0,12 r dahinter und 0,08 r darüber (sein Bild 1:
+ * Kinnwand am blauen Anfang); Schnabel = dazu der rote Anfang 0,15 vor dem Körper (sein Bild 2); Unterbiss = blau auf
+ * der Kontur, rot 0,3 r dahinter und 0,16 r darunter.
+ */
+export function kugelMaulDokument(art: KugelMaulArt, mitMarken = false): Dokument {
+  const d = neuesDokument(`kugel-${art}`);
+  const r = 0.265;
+  const xM = 0;
+  const yM = r;
+  const zAuf = (x: number, y: number) => Math.sqrt(Math.max(0, r * r - (x - xM) ** 2 - (y - yM) ** 2));
+  const yR = yM - 0.02 * r;
+  const xR = xM - Math.sqrt(Math.max(0, r * r - (yR - yM) ** 2)) + 0.002;
+  const ecke: [number, number] = [xM + 0.3 * r, yM - 0.3 * r];
+  const vorn: [number, number][] = [[art === 'schnabel' ? xR - 0.15 : xR, yR], [xR + 0.5 * r, yR - 0.08 * r], ecke];
+  let oben = linieDurch(vorn, zAuf);
+  let unten: { knoten: Linie3Knoten[] } | undefined;
+  if (art === 'ueberbiss' || art === 'schnabel') {
+    unten = linieDurch([[xR + 0.12 * r, yR + 0.08 * r], [xR + 0.55 * r, yR + 0.04 * r], ecke], (x, y) => 0.9 * zAuf(x, y));
+  } else if (art === 'unterbiss') {
+    unten = oben;
+    oben = linieDurch([[xR + 0.3 * r, yR - 0.16 * r], [xR + 0.55 * r, yR - 0.12 * r], ecke], (x, y) => 0.9 * zAuf(x, y));
+  }
+  if (unten) unten.knoten[unten.knoten.length - 1]!.p = [...oben.knoten[oben.knoten.length - 1]!.p];
+  const roh = { ...d, maul: { zu: { oben, ...(unten ? { unten } : {}) } } } as Dokument;
+  if (!mitMarken) return roh;
+  // Lippenanfänge als markierte Knoten der schwarzen Linie (Block 2): einfügen/trennen, dann die Knoten dorthin ziehen,
+  // wo die Linien beginnen — die schwarze Linie geht in Rot und Blau über (Schlitz zwischen den Knoten)
+  let mk = maulMitMarken(roh, roh.maul!.zu);
+  const zielO = oben.knoten[0]!.p;
+  let seite = maulAnfangBewegen(mk.profile.seite, 'oben', { x: zielO[0], y: zielO[1] });
+  if (unten) {
+    const zielU = unten.knoten[0]!.p;
+    seite = maulAnfangBewegen(seite, 'unten', { x: zielU[0], y: zielU[1] });
+  }
+  mk = maulAnMarken({ ...mk, profile: { ...mk.profile, seite }, maul: roh.maul! });
+  return mk;
+}
+
+const ARTEN = ['haut', 'lippeO', 'lippeU', 'tascheO', 'tascheU', 'rachen', 'winkel'];
+
+/** Region je feiner Fläche: Art des Käfigpunkts mit dem größten Gewicht am ersten Eckpunkt (wie Beweis 2). */
+function regionen(abl: MaulErgebnis, flaechen: number[][]): string[] {
+  const M = abl.unterteilung.matrix;
+  const art = abl.maul.art;
+  return flaechen.map((f) => {
+    const i = f[0]!;
+    const g = new Float64Array(8);
+    for (let p = M.start[i]!; p < M.start[i + 1]!; p++) g[art[M.index[p]!]!] = (g[art[M.index[p]!]!] ?? 0) + M.wert[p]!;
+    let best = 0;
+    for (let a = 1; a < g.length; a++) if (g[a]! > g[best]!) best = a;
+    return ARTEN[best] ?? `art${best}`;
+  });
+}
+
+export type MaulPruefung = {
+  delta: { seite: number; front: number; top: number };
+  lippen: MaulAbweichung;
+  falte: ReturnType<typeof faltenMass>;
+  /** Durchdringungen je Öffnung (0, 25, 50, 75, 100 %), gesamt und nach Bereich */
+  paare: { oeffnung: number; paare: number; nachBereich: Record<string, number> }[];
+  zeit: number;
+  abl: MaulErgebnis;
+};
+
+/** Maul eines Dokuments mit gezeichneten Linien bauen und messen (Stufe 2, Vorlage „vorn“). */
+export function pruefenMaul(dok: Dokument, opt: Partial<AbleitOptionen> = {}, maulOpt: Partial<MaulOptionen> = {}): MaulPruefung {
+  const linie = maulLinieAusDokument(dok);
+  if (!linie) throw new Error('kein gezeichnetes Maul');
+  const abl = ableitenMitMaul(dok, linie, { stufen: 2, ...opt }, { ...maulOptionenVorlage('vorn'), ...maulOpt });
+  const { punkte, flaechen } = feinesNetz(abl);
+  const ab = blattAbweichungen(punkte, flaechen, dok);
+  const bereiche = regionen(abl, flaechen);
+  const paare = [0, 0.25, 0.5, 0.75, 1].map((oeffnung) => {
+    const pose = maulPose(abl, oeffnung);
+    const pts: V3[] = [];
+    for (let i = 0; i < pose.fein.length / 3; i++) pts.push([pose.fein[3 * i]!, pose.fein[3 * i + 1]!, pose.fein[3 * i + 2]!]);
+    const d = selbstDurchdringungen({ punkte: pts, flaechen, schaerfe: new Map() }, 1e-4, bereiche);
+    return { oeffnung, paare: d.paare, nachBereich: d.nachBereich };
+  });
+  return { delta: { seite: ab.seite.max, front: ab.front.max, top: ab.top.max }, lippen: maulAbweichung(abl, dok, linie), falte: faltenMass(abl), paare, zeit: abl.zeiten.gesamt, abl };
 }
