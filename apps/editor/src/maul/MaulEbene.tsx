@@ -52,12 +52,16 @@ export function setzeLippen(zustand: Zustand, lippen: Lippen) {
   else if (maul) ed.setzeMaul({ ...maul, auf: verbunden });
 }
 
-/** Bauweise Kern: Lippenanfang ziehen = den markierten Knoten der schwarzen Linie mitbewegen (ein Zustand, ein Bau). */
-function setzeLippenMitAnfang(lippen: Lippen, rolle: LinienName, anfang: V2) {
+/**
+ * Bauweise Kern: Lippenanfang ziehen = den markierten Knoten der schwarzen Linie mitbewegen (ein Zustand, ein Bau). Wie ein
+ * Zug am Umriss gekoppelt (Front/Top folgen der Ausdehnung am entsprechenden Punkt), gerechnet vom Gestenanfang.
+ */
+function setzeLippenMitAnfang(lippen: Lippen, rolle: LinienName, anfang: V2, basis: Dokument['profile']) {
   const ed = useEditor.getState();
   const verbunden = mundwinkelVerbinden(lippen, ed.dok.maul?.zu);
-  const seite = maulAnfangBewegen(ed.dok.profile.seite, rolle, anfang);
-  ed.setzeDokument(maulMitMarken({ ...ed.dok, profile: { ...ed.dok.profile, seite } }, verbunden));
+  const seite = maulAnfangBewegen(basis.seite, rolle, anfang);
+  const profile = gekoppeltBerechnen('seite', seite, basis, useUi.getState().auswahl).profile;
+  ed.setzeDokument(maulMitMarken({ ...ed.dok, profile }, verbunden));
 }
 
 /**
@@ -326,6 +330,7 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
     // Bauweise Kern: Der Lippenanfang ist ein markierter Knoten der schwarzen Linie (14.10.); ihn ziehen bewegt Knoten und
     // Linie zusammen, die Kurve folgt wie bei einem Illustrator-Punkt, es entsteht kein neuer Knoten
     const mitAnfang = kernBauweise() && zustand === 'zu' && sel.includes(0) && ctx.ansicht !== 'top';
+    const basisProfile = ed.dok.profile;
     ed.beginGeste();
     if (vorschlag) setzeLippen(zustand, lippen);
     ctx.ziehen(
@@ -337,7 +342,7 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
         const dx = kernBauweise() && sel.includes(0) && ctx.ansicht === 'front' ? 0 : p.x - start.x;
         const neu = knotenVerschieben3(basis, sel, ctx.ansicht, { x: dx, y: p.y - start.y });
         const lippenNeu = n === 'oben' ? { ...aktuell, oben: neu } : { ...aktuell, unten: neu };
-        if (mitAnfang) setzeLippenMitAnfang(lippenNeu, n, { x: neu.knoten[0]!.p[0], y: neu.knoten[0]!.p[1] });
+        if (mitAnfang) setzeLippenMitAnfang(lippenNeu, n, { x: neu.knoten[0]!.p[0], y: neu.knoten[0]!.p[1] }, basisProfile);
         else setzeLippen(zustand, lippenNeu);
       },
       () => useEditor.getState().endeGeste(),
