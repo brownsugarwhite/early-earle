@@ -134,14 +134,13 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
       console.warn('[kern] Maullinie aus Zeichnung nicht übersetzbar:', e);
     }
   }
-  // Führendes Blatt (Plan „Zeichnung ist Form“ 4.1): Während einer Geste in Front oder Top gilt dessen Kurve für die
-  // Breite (die andere engt nicht ein); nach der Geste folgen alle Blätter der Silhouette („Formen folgen“)
-  const start = useEditor.getState().gesteStart;
-  const fuehrend: Bauplan['fuehrend'] = start && start.profile !== dok.profile ? (start.profile.front !== dok.profile.front ? 'front' : start.profile.top !== dok.profile.top ? 'top' : undefined) : undefined;
+  // Kein führendes Blatt während Gesten (14.10.): Die führende Front ließ einzelne Ringe bis zur Frontbreite wachsen und
+  // drückte ihren Querschnitt flach — am hochgezogenen Schwanz (Florians Komma) Falten bis 34° und Sägezahn; weil
+  // `fuehrend` nicht im Cache-Schlüssel stand, blieb dieser Bau nach dem Loslassen stehen. Es gilt die Sichthülle; die
+  // Kern-Option `Bauplan.fuehrend` bleibt für eine glatte Fassung (Planseite „Ruhiges Netz und Maulschlitz“, Block 1).
   return {
     ...aus,
     ...(maulLinie ? { maulLinie } : {}),
-    ...(fuehrend ? { fuehrend } : {}),
     maul,
     oeffnung: useUi.getState().oeffnung,
     beine: s.beine,
