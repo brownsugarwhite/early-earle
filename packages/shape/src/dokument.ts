@@ -72,6 +72,7 @@ const MaulOptionenSchema = z
     gelenk: z.tuple([z.number(), z.number()]),
     kieferWinkel: z.tuple([z.number(), z.number()]),
     kieferReichweite: z.tuple([z.number(), z.number()]),
+    kieferZug: z.tuple([z.number(), z.number()]),
   })
   .partial();
 /** Zone als Vektorform, relativ zu den Ruhe-Grenzen des Körpers (x, y 0 … 1), Weichheit je Punkt als Anteil der Höhe. */
@@ -124,6 +125,7 @@ export type MaulOptionenWerte = {
   gelenk: [number, number];
   kieferWinkel: [number, number];
   kieferReichweite: [number, number];
+  kieferZug: [number, number];
 };
 export type Ausstattung = {
   maul?: 'aus' | 'vorn' | 'unten' | 'hals';

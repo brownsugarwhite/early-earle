@@ -163,9 +163,15 @@ export type MaulOptionen = {
   gelenk: [number, number];
   kieferWinkel: [number, number];
   kieferReichweite: [number, number];
+  /**
+   * Fressen-Pose (Plan 5.2; Florian 14.10.: „Bones selbst bewegen und rotieren statt mit Reglern einstellen“): Zug des
+   * Unterkiefers bei Öffnung 1 in Maullängen (x zur Schnauze, y nach oben), zusätzlich zur Drehung um das Gelenk
+   * (`winkelUnten`); beides am Knochen in der Seite gegriffen.
+   */
+  kieferZug: [number, number];
 };
 
-export const MAUL_STANDARD: MaulOptionen = { reihen: 3, tiefe: 0.9, linse: 0.03, rachenTiefe: 0.7, rachenInnen: 0.55, schaedelHinter: 0.45, lippenSchaerfe: 1e6, band: 2, bandOben: 8, nackenGanz: false, winkelUnten: 58, winkelOben: 15, oeffnungsart: 'kippen', zugWeite: 0.5, rille: 0.012, platte: 10, beutel: 0.5, haps: 0, hapsTiefe: 0.12, hapsHoehe: 0.14, hapsWeite: 0.06, hapsRadius: 0.6, gewichte: 'winkel', gelenk: [0, 0], kieferWinkel: [30, 150], kieferReichweite: [1.2, 2] };
+export const MAUL_STANDARD: MaulOptionen = { reihen: 3, tiefe: 0.9, linse: 0.03, rachenTiefe: 0.7, rachenInnen: 0.55, schaedelHinter: 0.45, lippenSchaerfe: 1e6, band: 2, bandOben: 8, nackenGanz: false, winkelUnten: 58, winkelOben: 15, oeffnungsart: 'kippen', zugWeite: 0.5, rille: 0.012, platte: 10, beutel: 0.5, haps: 0, hapsTiefe: 0.12, hapsHoehe: 0.14, hapsWeite: 0.06, hapsRadius: 0.6, gewichte: 'winkel', gelenk: [0, 0], kieferWinkel: [30, 150], kieferReichweite: [1.2, 2], kieferZug: [0, 0] };
 
 /** Maul-Optionen je vorgefertigter Lage: vorn/unten kippen (Rex), hals zieht (Drache) mit ruhigem Schädel. */
 export function maulOptionenVorlage(art: 'vorn' | 'unten' | 'hals'): Partial<MaulOptionen> {
@@ -885,7 +891,7 @@ const glattStufe = (x: number) => {
 };
 
 /** Optionen, die nur Gewichte und Pose betreffen (kein Umbau des Käfigs; Griffe und Regler im Fressen-Tab). */
-export const MAUL_POSE_OPTIONEN = ['winkelUnten', 'winkelOben', 'zugWeite', 'oeffnungsart', 'haps', 'hapsTiefe', 'hapsHoehe', 'hapsWeite', 'hapsRadius', 'gewichte', 'gelenk', 'kieferWinkel', 'kieferReichweite'] as const;
+export const MAUL_POSE_OPTIONEN = ['winkelUnten', 'winkelOben', 'zugWeite', 'oeffnungsart', 'haps', 'hapsTiefe', 'hapsHoehe', 'hapsWeite', 'hapsRadius', 'gewichte', 'gelenk', 'kieferWinkel', 'kieferReichweite', 'kieferZug'] as const;
 
 /** Kiefergelenk (Welt, Seitenansicht): Mundwinkel plus Versatz in Maullängen (x nach hinten, y nach oben). */
 export function kieferGelenk(m: MaulAbleitung, opt: Pick<MaulOptionen, 'gelenk'>): V2 {
@@ -2542,11 +2548,18 @@ export function maulPose(abl: MaulErgebnis, oeffnung: number): { xyz: Float64Arr
   };
   const zieht = m.opt.oeffnungsart === 'ziehen';
   const weite = oeffnung * m.opt.zugWeite * m.laenge;
+  // gegriffener Zug des Unterkiefers (Fressen-Pose): x zur Schnauze (Vorzeichen `vorn`), y nach oben
+  const zx = oeffnung * (m.opt.kieferZug?.[0] ?? 0) * m.laenge * m.vorn;
+  const zy = oeffnung * (m.opt.kieferZug?.[1] ?? 0) * m.laenge;
   const kiefer = (i: number, w: number) => {
     if (zieht) {
       xyz[3 * i] = xyz[3 * i]! + w * weite * m.zug.x;
       xyz[3 * i + 1] = xyz[3 * i + 1]! + w * weite * m.zug.y;
-    } else drehe(i, m.scharnier.x, m.scharnier.y, -m.vorn * w * aU);
+    } else {
+      drehe(i, m.scharnier.x, m.scharnier.y, -m.vorn * w * aU);
+      xyz[3 * i] = xyz[3 * i]! + w * zx;
+      xyz[3 * i + 1] = xyz[3 * i + 1]! + w * zy;
+    }
   };
   // Verschiebung der Plattenkante je Ring (für die Kehlhaut darunter)
   const kantenZug = new Float64Array(2 * abl.vorlage.R);
@@ -2562,8 +2575,8 @@ export function maulPose(abl: MaulErgebnis, oeffnung: number): { xyz: Float64Arr
       const sn = Math.sin(w);
       const x = ex - m.scharnier.x;
       const y = ey - m.scharnier.y;
-      kantenZug[2 * r] = m.scharnier.x + x * c - y * sn - ex;
-      kantenZug[2 * r + 1] = m.scharnier.y + x * sn + y * c - ey;
+      kantenZug[2 * r] = m.scharnier.x + x * c - y * sn - ex + zx;
+      kantenZug[2 * r + 1] = m.scharnier.y + x * sn + y * c - ey + zy;
     }
   }
   for (let i = 0; i < n; i++) {

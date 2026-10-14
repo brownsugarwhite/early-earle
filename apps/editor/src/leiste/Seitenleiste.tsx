@@ -1118,23 +1118,54 @@ function RigFeld() {
   );
 }
 
-/** Tafel „Posen & Leben“, Abschnitt Fressen: die Pose — Öffnung und Bewegung der Knochen (Unterkiefer, Schädel, Art, Haps). */
+/**
+ * Tafel „Posen & Leben“, Abschnitt Fressen: die Pose. Die Knochen greift Florian in der Seite (Spitze drehen, Mitte
+ * ziehen; Florian 14.10.: „Bones selbst bewegen und rotieren statt Kippen und Ziehen mit Reglern einzustellen“); hier
+ * stehen die Werte, die Öffnung (Anteil der Pose, wie der Kieferknopf) und der Haps.
+ */
 function FressenFeld() {
   const dok = useEditor((s) => s.dok);
   const chip = useKernAnzeige((s) => s.maul);
   const oeffnung = useUi((s) => s.oeffnung);
   if (!kernMaulAktiv(dok)) return <p className="hilfe">Die Fressen-Pose entsteht mit dem Maul: zuerst in der Stufe Maul die Maullinie zeichnen.</p>;
   const mo = maulOptionenDok(dok, chip);
+  const grund = maulOptionenDok({ ...dok, ausstattung: { ...(dok.ausstattung ?? {}), maulOptionen: {} } }, chip);
   const g = geste();
+  const pz = (x: number) => `${x >= 0 ? '' : '−'}${Math.abs(Math.round(x * 100))} %`;
+  const zieht = mo.oeffnungsart === 'ziehen';
   return (
     <>
       <h3 className="leiste-titel" data-abschnitt="fressen">Fressen</h3>
       <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />
-      <Regler label="Unterkiefer" wert={mo.winkelUnten} min={5} max={75} schritt={1} anzeige={`${Math.round(mo.winkelUnten)}°`} onChange={(v) => setzeMaulOptionen({ winkelUnten: v })} {...g} />
-      <Regler label="Schädel" wert={mo.winkelOben} min={0} max={45} schritt={1} anzeige={`${Math.round(mo.winkelOben)}°`} onChange={(v) => setzeMaulOptionen({ winkelOben: v })} {...g} />
-      <Chips werte={['kippen', 'ziehen'] as const} aktiv={mo.oeffnungsart} attribut="oeffnungsart" onWahl={(a) => setzeMaulOptionen({ oeffnungsart: a })} />
+      {zieht ? (
+        <>
+          <div className="feld">
+            <span>Kiefer</span>
+            <b>zieht wie ein Vorhang (Vorlage Hals)</b>
+          </div>
+          <button className="chip" data-auf-knochen="" onClick={() => setzeMaulOptionen({ oeffnungsart: 'kippen' })}>
+            Auf Knochen umstellen
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="feld">
+            <span>Unterkiefer</span>
+            <b data-knochen-unten="">
+              {Math.round(mo.winkelUnten)}° · Zug {pz(mo.kieferZug[0])} vor, {pz(mo.kieferZug[1])} hoch
+            </b>
+          </div>
+          <div className="feld">
+            <span>Schädel</span>
+            <b data-knochen-oben="">{Math.round(mo.winkelOben)}°</b>
+          </div>
+        </>
+      )}
       <Regler label="Haps" wert={mo.haps} min={0} max={1} schritt={0.05} anzeige={`${Math.round(mo.haps * 100)} %`} onChange={(v) => setzeMaulOptionen({ haps: v })} {...g} />
-      <p className="hilfe">Fressen-Pose = Kiefer + Blendshape (Plan 5.2): Hier stellst du ein, wie weit die Knochen gehen; dann formen in der Pose „Fressen“ (Kopfzeile) die Pinsel der Stufe Körper (G ziehen, I aufblasen, ⇧ glätten) die offene Form weiter — Käfig-Deltas, mit der Öffnung überblendet. Atmen, Blinzeln und Gehen kommen in Phase 2 und 5.</p>
+      <button className="chip" data-pose-zuruecksetzen="" onClick={() => setzeMaulOptionen({ winkelUnten: grund.winkelUnten, winkelOben: grund.winkelOben, kieferZug: [0, 0] })}>
+        Pose zurücksetzen
+      </button>
+      <p className="hilfe">Knochen in der Seite (weiß): Unterkiefer an der Spitze drehen, an der Mitte verschieben; Schädel an der Spitze drehen. Greifen zeigt die Pose ganz offen; die Öffnung (oder der Kieferknopf auf der Bühne) blendet zwischen Ruhe und Pose. Dann formen in der Pose „Fressen“ (Kopfzeile) die Pinsel der Stufe Körper die offene Form weiter — Fressen-Pose = Knochen + Blendshape (Plan 5.2).</p>
     </>
   );
 }

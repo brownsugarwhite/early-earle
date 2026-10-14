@@ -39,16 +39,18 @@ describe('Kiefergelenk', () => {
     expect(maulPose(abl, 1).fein.length).toBe(abl.fein.length);
   });
 
-  it('Fressen-Tab ohne Umbau: Gelenk, Übergang, Reichweite, Winkel und Haps bauen nicht neu; Rille baut neu', () => {
+  it('Fressen-Tab ohne Umbau: Gelenk, Übergang, Reichweite, Winkel, Zug und Haps bauen nicht neu; Rille baut neu', () => {
     const dok = { ...rex, ausstattung: { maul: 'vorn' as const, maulLinie: maulLinieVorlage(rex, 'vorn') } };
     const plan = { maul: 'vorn' as const, oeffnung: 0.6, earle: false };
     const a = wesenBauen(dok, plan, null);
     expect(a.netz.info.ableitung).toBeGreaterThan(0);
     expect(a.netz.maul?.rig.winkel).toBe(true);
     const mitOpt = (mo: object) => ({ ...dok, ausstattung: { ...dok.ausstattung, maulOptionen: mo } });
-    const b = wesenBauen(mitOpt({ gelenk: [0.1, 0.05], kieferWinkel: [20, 160], kieferReichweite: [1, 2.5], winkelUnten: 40, haps: 0.3 }), { ...plan, maulOptionen: { gelenk: [0.1, 0.05], kieferWinkel: [20, 160], kieferReichweite: [1, 2.5], winkelUnten: 40, haps: 0.3 } }, a.stand);
+    const b = wesenBauen(mitOpt({ gelenk: [0.1, 0.05], kieferWinkel: [20, 160], kieferReichweite: [1, 2.5], winkelUnten: 40, haps: 0.3, kieferZug: [0.15, -0.05] }), { ...plan, maulOptionen: { gelenk: [0.1, 0.05], kieferWinkel: [20, 160], kieferReichweite: [1, 2.5], winkelUnten: 40, haps: 0.3, kieferZug: [0.15, -0.05] } }, a.stand);
     expect(b.netz.info.ableitung).toBe(0);
     expect(b.netz.maul!.rig.gelenkVersatz).toEqual([0.1, 0.05]);
+    expect(b.netz.maul!.knochen.zug).toEqual([0.15, -0.05]);
+    expect(b.netz.maul!.knochen.winkelUnten).toBe(40);
     let d = 0;
     for (let i = 0; i < a.netz.positionen.length; i++) d = Math.max(d, Math.abs(a.netz.positionen[i]! - b.netz.positionen[i]!));
     expect(d).toBeGreaterThan(1e-3);

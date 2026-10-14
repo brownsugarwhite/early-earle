@@ -142,7 +142,16 @@ export type WesenNetz = {
    * Griffe im Fressen-Tab: Gelenk und Mundwinkel in Ruhe (Seitenansicht, mit Hebung), Schnauzenrichtung (`vorn` = Vorzeichen
    * längs x), die wirksamen Gelenk-Optionen und ob die Gewichte nach Winkel laufen.
    */
-  maul: { winkel: V3; laenge: number; rig: { gelenk: V2; mundwinkel: V2; vorn: number; gelenkVersatz: [number, number]; kieferWinkel: [number, number]; kieferReichweite: [number, number]; winkel: boolean } } | null;
+  maul: {
+    winkel: V3;
+    laenge: number;
+    rig: { gelenk: V2; mundwinkel: V2; vorn: number; gelenkVersatz: [number, number]; kieferWinkel: [number, number]; kieferReichweite: [number, number]; winkel: boolean };
+    /**
+     * Knochen der Fressen-Pose in Ruhe (Seitenansicht, mit Hebung): Unterkiefer vom Gelenk zur Unterlippe vorn, Schädel
+     * vom Schädelgelenk zur Oberlippe vorn; dazu die Pose bei Öffnung 1 (Winkel in Grad, Zug in Maullängen) und die Art.
+     */
+    knochen: { kieferSpitze: V2; schaedel: V2; schaedelSpitze: V2; winkelUnten: number; winkelOben: number; zug: [number, number]; kippen: boolean };
+  } | null;
   /** Unterkiefergewichte als Farbe je Ecke (`Bauplan.gewichteZeigen`), sonst null */
   gewichtFarben: Float32Array | null;
   /** Saum je Blatt (Schritt 4): Silhouettenpunkte des Körpers (x, y, d px), (NaN, NaN, 0) trennt Züge; wird kopiert, nicht übertragen */
@@ -898,10 +907,13 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     const p = m.pfad[m.pfad.length - 1]!;
     const o = maulOptAktuell ?? m.opt;
     const winkelGew = o.gewichte === 'winkel' && o.oeffnungsart !== 'ziehen' && !o.nackenGanz;
+    const ruhe = (abl as MaulErgebnis).fein;
+    const rp = (i: number): V2 => ({ x: ruhe[3 * i]!, y: ruhe[3 * i + 1]! + hebung });
     maulGriff = {
       winkel: [fein[3 * p]!, fein[3 * p + 1]! + hebung, fein[3 * p + 2]!],
       laenge: m.laenge,
       rig: { gelenk: { x: m.scharnier.x, y: m.scharnier.y + hebung }, mundwinkel: { x: m.kieferBasis.mundwinkel.x, y: m.kieferBasis.mundwinkel.y + hebung }, vorn: m.vorn, gelenkVersatz: [...o.gelenk], kieferWinkel: [...o.kieferWinkel], kieferReichweite: [...o.kieferReichweite], winkel: winkelGew },
+      knochen: { kieferSpitze: rp(m.unten[0]!), schaedel: { x: m.schaedel.x, y: m.schaedel.y + hebung }, schaedelSpitze: rp(m.pfad[0]!), winkelUnten: o.winkelUnten, winkelOben: o.winkelOben, zug: [...(o.kieferZug ?? [0, 0])], kippen: o.oeffnungsart !== 'ziehen' },
     };
     if (plan.gewichteZeigen) gewichtFarben = gewichteJeEcke(abl as MaulErgebnis, flaechen, gesteckteEcken);
   }
