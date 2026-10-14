@@ -18,7 +18,8 @@ import { ringSegmente } from './reifen';
 import { blattAbweichungen } from './abweichung';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
-import { vorlageBei } from '../spanten';
+import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
+import { kieferSchnitt } from './kieferSpant';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
@@ -111,8 +112,10 @@ export type ReifenDaten = {
   /** Verlauf der Reifen auf der Fläche als Liniensegmente (Paare, 3 Floats je Punkt); Start je Reifen in `verlaufStart` (Float-Index, Länge liste + 1) */
   verlauf: Float32Array;
   verlaufStart: Uint32Array;
-  /** je Reifen die Ringpunkte j (0 oben … N/2 unten) der Spant-Knoten in Knotenreihenfolge */
+  /** je Reifen die Ringpunkte j (0 oben … N/2 unten) der Spant-Knoten in Knotenreihenfolge (−1: Knoten liegt beim Kiefer-Spant im Unterkiefer) */
   knoten: number[][];
+  /** Kiefer-Spant (14.10.): je Reifen die Ringpunkte der Unterkiefer-Knoten (`unten`, −1: im Oberkiefer); leer ohne Teilung */
+  knotenUnten: number[][];
 };
 
 export type WesenNetz = {
@@ -893,12 +896,51 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     const segs: number[] = [];
     const starts: number[] = [0];
     const knoten: number[][] = [];
+    const knotenUnten: number[][] = [];
+    // Maulringe: Die Lippe verschiebt die Zeilen (Schleife eingerastet), die Stützstellen der Abtastung stimmen dort nicht
+    // mehr — Knoten auf den nächsten Ringpunkt der rechten Hälfte (Front-Ebene, Ruhelage); beim Kiefer-Spant der
+    // Oberkiefer über der Lippe (Zeilen 0 … jL), der Unterkiefer darunter (jL … N/2)
+    const lage = maul !== 'aus' ? (abl as MaulErgebnis).maul?.lage : undefined;
+    const ruheFein = abl.fein;
     for (const r of abl.reifen) {
       for (const i of ringSegmente(abl.unterteilung, abl.kaefig, r.ring, N)) segs.push(fein[3 * i]!, fein[3 * i + 1]! + hebung, fein[3 * i + 2]!);
       starts.push(segs.length);
-      knoten.push([...vorlageBei(dok, dokRoh.spanten[r.spant]!.f, N / 2).knoten]);
+      const sp = dokRoh.spanten[r.spant]!;
+      const maulRing = !!lage && r.ring <= lage.k && Number.isFinite(lage.vRing[r.ring]!);
+      if (!maulRing) {
+        knoten.push([...vorlageBei(dok, sp.f, N / 2).knoten]);
+        knotenUnten.push([]);
+        continue;
+      }
+      const kasten = spantKasten(dok, sp.f);
+      const sk = dok.skalierung;
+      const zeile = (p: V2, von: number, bis: number): number => {
+        if (p.x < 1e-6) return p.y > 0.5 ? 0 : N / 2;
+        const z = p.x * kasten.w * sk;
+        const y = (kasten.yLo + p.y * (kasten.yHi - kasten.yLo)) * sk;
+        let best = von;
+        let dBest = Infinity;
+        for (let j = Math.max(1, von); j <= Math.min(N / 2 - 1, bis); j++) {
+          const q = 3 * (r.ring * N + j);
+          const d = Math.hypot(Math.abs(ruheFein[q + 2]!) - z, ruheFein[q + 1]! - y);
+          if (d < dBest) {
+            dBest = d;
+            best = j;
+          }
+        }
+        return best;
+      };
+      const schnitt = kieferSchnitt(dokRoh, sp.f);
+      if (schnitt === null) {
+        knoten.push(sp.profil.knoten.map((kn) => zeile(kn.p, 0, N / 2)));
+        knotenUnten.push([]);
+      } else {
+        // die Lippenzeile jL gehört der Linie (rot/blau), nicht dem Spant: Perlen nur darüber bzw. darunter
+        knoten.push(sp.profil.knoten.map((kn) => (kn.p.y >= schnitt ? zeile(kn.p, 0, lage.jL - 1) : -1)));
+        knotenUnten.push(spantTeilProfil(sp, 'unten').knoten.map((kn) => (kn.p.y < schnitt ? zeile(kn.p, lage.jL + 1, N / 2) : -1)));
+      }
     }
-    reifen = { liste: abl.reifen.map((r) => ({ spant: r.spant, ring: r.ring })), ringLagen, verlauf: Float32Array.from(segs), verlaufStart: Uint32Array.from(starts), knoten };
+    reifen = { liste: abl.reifen.map((r) => ({ spant: r.spant, ring: r.ring })), ringLagen, verlauf: Float32Array.from(segs), verlaufStart: Uint32Array.from(starts), knoten, knotenUnten };
   }
   let maulGriff: WesenNetz['maul'] = null;
   let gewichtFarben: Float32Array | null = null;

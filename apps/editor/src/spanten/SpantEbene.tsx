@@ -2,6 +2,10 @@
 // wie im Spantenriss. Seite und Top zeigen die Spantlinien (S1 … Sn, vorn türkis, hinten koralle) und den Hauptspant H
 // (= Front an der dicksten Stelle). Front zeigt die vorderen Spanten, Back die hinteren; der gewählte Spant wird dort
 // bearbeitet wie ein Profil. Alle Spanten haben die Punktstruktur der Front: Ein Punkt kommt und geht in allen.
+// Kiefer-Spanten (14.10., Florian: „von vorne einen Spant für Ober- und einen für Unterkiefer, wenn der Spant von der
+// Seite über beide liegt“): Liegt ein Spant über dem Maul, zeigt die Front zwei Kurven — den Oberkiefer (`profil`) bis
+// zur Lippe und den Unterkiefer (`unten`, beim ersten Bearbeiten als Kopie angelegt) ab der Lippe; die Seite zeigt die
+// Spantlinie mit einer Lücke an der Lippe.
 
 import {
   type Ansicht,
@@ -24,11 +28,14 @@ import {
   spantRichtungNachWelt,
   spantenPunktEinfuegen,
   spantenPunktLoeschen,
+  type SpantTeil,
+  spantTeilProfil,
   stelleVon,
   umwandeln,
   verschiebeKnoten,
   weltNachSpant,
 } from '@ee/shape';
+import { kieferSchnitt, knotenImTeil, mitTeilProfil, teilZug } from '@ee/shape/kern';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 
@@ -81,9 +88,20 @@ export function SpantLinien({ ansicht, bild, aktiv }: { ansicht: Ansicht; bild: 
         const [a, b] = strich(sp.f);
         const farbe = farbeVon(dok, sp.f);
         const sel = auswahl?.spant === i;
+        // Kiefer-Spant: in der Seite mit Lücke an der Lippe (zwei Spanten übereinander)
+        const schnitt = ansicht === 'seite' ? kieferSchnitt(dok, sp.f) : null;
+        const lueckeA = schnitt !== null ? { x: a.x + (b.x - a.x) * (schnitt - 0.03), y: a.y + (b.y - a.y) * (schnitt - 0.03) } : null;
+        const lueckeB = schnitt !== null ? { x: a.x + (b.x - a.x) * (schnitt + 0.03), y: a.y + (b.y - a.y) * (schnitt + 0.03) } : null;
         return (
-          <g key={i} data-spant={i}>
-            <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={farbe} strokeWidth={sel ? 3.5 : 2} strokeLinecap="round" />
+          <g key={i} data-spant={i} {...(schnitt !== null ? { 'data-kieferspant': '' } : {})}>
+            {lueckeA && lueckeB ? (
+              <>
+                <line x1={a.x} y1={a.y} x2={lueckeA.x} y2={lueckeA.y} stroke={farbe} strokeWidth={sel ? 3.5 : 2} strokeLinecap="round" />
+                <line x1={lueckeB.x} y1={lueckeB.y} x2={b.x} y2={b.y} stroke={farbe} strokeWidth={sel ? 3.5 : 2} strokeLinecap="round" />
+              </>
+            ) : (
+              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={farbe} strokeWidth={sel ? 3.5 : 2} strokeLinecap="round" />
+            )}
             {aktiv && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={12} />}
             <text className="spant-name" x={a.x + 5} y={Math.min(a.y, b.y) - 6} fill={farbe}>
               {spantName(i)}
@@ -93,6 +111,17 @@ export function SpantLinien({ ansicht, bild, aktiv }: { ansicht: Ansicht; bild: 
       })}
     </g>
   );
+}
+
+/** Zug (normiert) als Pfad in der Front, gespiegelt an der Achse auf Wunsch. */
+function zugPfad(dok: Dokument, sp: Spant, zug: readonly V2[], bild: (p: V2) => V2, gespiegelt: boolean): string {
+  const k = spantKasten(dok, sp.f);
+  return zug
+    .map((p, n) => {
+      const q = bild(spantNachWelt(k, gespiegelt ? { x: -p.x, y: p.y } : p));
+      return `${n ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+    })
+    .join('');
 }
 
 /** Pfad eines normierten Spant-Profils in der Front (Welt über den Kasten an seiner Stelle). */
@@ -128,6 +157,25 @@ export function SpantQuerschnitte({ ansicht, bild, aktiv }: { ansicht: Ansicht; 
         if (!spantSichtbar(dok, sp.f, blick)) return null;
         const farbe = farbeVon(dok, sp.f);
         const sel = auswahl?.spant === i;
+        const schnitt = kieferSchnitt(dok, sp.f);
+        if (schnitt !== null) {
+          // Kiefer-Spant: Oberkiefer bis zur Lippe, Unterkiefer ab der Lippe (je eine Kurve, beide greifbar)
+          return (
+            <g key={i} data-spantkurve={i} data-kieferspant="">
+              {(['oben', 'unten'] as const).map((teil) => {
+                const zug = teilZug(spantTeilProfil(sp, teil), schnitt, teil);
+                const aktivTeil = sel && (auswahl?.teil ?? 'oben') === teil;
+                return (
+                  <g key={teil} data-spantteil={teil}>
+                    <path d={zugPfad(dok, sp, zug, bild, true)} fill="none" stroke={farbe} strokeWidth={sel ? 2 : 1.5} strokeOpacity={0.4} />
+                    <path d={zugPfad(dok, sp, zug, bild, false)} fill="none" stroke={farbe} strokeWidth={aktivTeil ? 3 : 1.5} strokeOpacity={sel ? 1 : 0.75} strokeLinejoin="round" strokeDasharray={teil === 'unten' ? '7 3' : undefined} />
+                    {aktiv && <path d={zugPfad(dok, sp, zug, bild, false)} fill="none" stroke="transparent" strokeWidth={12} />}
+                  </g>
+                );
+              })}
+            </g>
+          );
+        }
         return (
           <g key={i} data-spantkurve={i}>
             <path d={spantPfad(dok, sp, bild, true)} fill="none" stroke={farbe} strokeWidth={sel ? 2 : 1.5} strokeOpacity={0.4} />
@@ -137,48 +185,65 @@ export function SpantQuerschnitte({ ansicht, bild, aktiv }: { ansicht: Ansicht; 
         );
       })}
       {aktiv && auswahl && dok.spanten[auswahl.spant] && spantSichtbar(dok, dok.spanten[auswahl.spant]!.f, blick) && (
-        <SpantPunkte dok={dok} i={auswahl.spant} knoten={auswahl.knoten} bild={bild} />
+        <SpantPunkte dok={dok} i={auswahl.spant} knoten={auswahl.knoten} teilGewaehlt={auswahl.teil ?? 'oben'} bild={bild} />
       )}
     </g>
   );
 }
 
-function SpantPunkte({ dok, i, knoten, bild }: { dok: Dokument; i: number; knoten: number[]; bild: (p: V2) => V2 }) {
+function SpantPunkte({ dok, i, knoten, teilGewaehlt, bild }: { dok: Dokument; i: number; knoten: number[]; teilGewaehlt: SpantTeil; bild: (p: V2) => V2 }) {
   const sp = dok.spanten![i]!;
   const k = spantKasten(dok, sp.f);
   const farbe = farbeVon(dok, sp.f);
   const welt = (p: V2) => bild(spantNachWelt(k, p));
+  // Kiefer-Spant: Punkte des Oberkiefers über der Lippe, des Unterkiefers darunter (dieselbe Punktstruktur, je Teil eigene Lagen)
+  const schnitt = kieferSchnitt(dok, sp.f);
+  const teile: SpantTeil[] = schnitt === null ? ['oben'] : ['oben', 'unten'];
+  const sichtbar = (pr: Profil, j: number, teil: SpantTeil) => schnitt === null || knotenImTeil(pr, j, schnitt, teil);
+  const id = (j: number, teil: SpantTeil) => (schnitt === null ? `${i}:${j}` : `${i}:${j}:${teil}`);
   return (
     <g className="spant-punkte">
-      {knoten.map((j) => {
-        const kn = sp.profil.knoten[j];
-        if (!kn) return null;
-        const p = welt(kn.p);
-        const erlaubt = editierbarerGriff(sp.profil, j);
-        return (['ein', 'aus'] as const).map((seite: GriffSeite) => {
-          const rel = kn[seite];
-          if (Math.hypot(rel.x, rel.y) < 1e-6) return null;
-          if (istAchsKnoten(sp.profil, j) && erlaubt !== 'beide' && erlaubt !== seite) return null;
-          const d = spantRichtungNachWelt(k, rel);
-          const q = bild({ x: spantNachWelt(k, kn.p).x + d.x, y: spantNachWelt(k, kn.p).y + d.y });
+      {teile.map((teil) => {
+        if (teil !== teilGewaehlt) return null;
+        const pr = spantTeilProfil(sp, teil);
+        return knoten.map((j) => {
+          const kn = pr.knoten[j];
+          if (!kn || !sichtbar(pr, j, teil)) return null;
+          const p = welt(kn.p);
+          const erlaubt = editierbarerGriff(pr, j);
+          return (['ein', 'aus'] as const).map((seite: GriffSeite) => {
+            const rel = kn[seite];
+            if (Math.hypot(rel.x, rel.y) < 1e-6) return null;
+            if (istAchsKnoten(pr, j) && erlaubt !== 'beide' && erlaubt !== seite) return null;
+            const d = spantRichtungNachWelt(k, rel);
+            const q = bild({ x: spantNachWelt(k, kn.p).x + d.x, y: spantNachWelt(k, kn.p).y + d.y });
+            return (
+              <g key={`${teil}-${j}-${seite}`} data-spantgriff={schnitt === null ? `${i}:${j}:${seite}` : `${i}:${j}:${seite}:${teil}`} className="griff">
+                <line x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke={farbe} strokeWidth={1} />
+                <rect x={q.x - 8} y={q.y - 8} width={16} height={16} fill="transparent" />
+                <rect x={q.x - GRIFF / 2} y={q.y - GRIFF / 2} width={GRIFF} height={GRIFF} fill={farbe} />
+              </g>
+            );
+          });
+        });
+      })}
+      {teile.map((teil) => {
+        const pr = spantTeilProfil(sp, teil);
+        return pr.knoten.map((kn, j) => {
+          if (!sichtbar(pr, j, teil)) return null;
+          const q = welt(kn.p);
+          const sel = teil === teilGewaehlt && knoten.includes(j);
           return (
-            <g key={`${j}-${seite}`} data-spantgriff={`${i}:${j}:${seite}`} className="griff">
-              <line x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke={farbe} strokeWidth={1} />
-              <rect x={q.x - 8} y={q.y - 8} width={16} height={16} fill="transparent" />
-              <rect x={q.x - GRIFF / 2} y={q.y - GRIFF / 2} width={GRIFF} height={GRIFF} fill={farbe} />
+            <g key={`${teil}-${j}`} data-spantknoten={id(j, teil)} className={sel ? 'knoten gewaehlt' : 'knoten'}>
+              <circle cx={q.x} cy={q.y} r={10} fill="transparent" />
+              {teil === 'unten' ? (
+                <rect x={q.x - PUNKT_R} y={q.y - PUNKT_R} width={2 * PUNKT_R} height={2 * PUNKT_R} transform={`rotate(45 ${q.x} ${q.y})`} fill={farbe} stroke={sel ? '#ffffff' : 'none'} strokeWidth={2} />
+              ) : (
+                <circle cx={q.x} cy={q.y} r={PUNKT_R} fill={farbe} stroke={sel ? '#ffffff' : 'none'} strokeWidth={2} />
+              )}
             </g>
           );
         });
-      })}
-      {sp.profil.knoten.map((kn, j) => {
-        const q = welt(kn.p);
-        const sel = knoten.includes(j);
-        return (
-          <g key={j} data-spantknoten={`${i}:${j}`} className={sel ? 'knoten gewaehlt' : 'knoten'}>
-            <circle cx={q.x} cy={q.y} r={10} fill="transparent" />
-            <circle cx={q.x} cy={q.y} r={PUNKT_R} fill={farbe} stroke={sel ? '#ffffff' : 'none'} strokeWidth={2} />
-          </g>
-        );
       })}
     </g>
   );
@@ -201,12 +266,12 @@ function setzeSpant(i: number, sp: Spant) {
 }
 
 /** Spant wählen; die Front-Ansicht schaltet auf die Hälfte, in der er liegt (vorn = Front, hinten = Back). */
-export function spantWaehlen(i: number | null, knoten: number[] = []) {
+export function spantWaehlen(i: number | null, knoten: number[] = [], teil: SpantTeil = 'oben') {
   const ui = useUi.getState();
   if (i === null) return ui.setzeSpantAuswahl(null);
   const sp = spanten()[i];
   if (!sp) return;
-  ui.setzeSpantAuswahl({ spant: i, knoten });
+  ui.setzeSpantAuswahl({ spant: i, knoten, teil });
   const blick = spantSichtbar(dokument(), sp.f, ui.blick.front) ? ui.blick.front : sp.f <= hauptspantStelle(dokument()) ? 'front' : 'hinten';
   if (blick !== ui.blick.front) ui.setzeBlick('front', blick);
 }
@@ -272,10 +337,16 @@ export function spantZeiger(e: React.PointerEvent, ctx: SpantKontext): boolean {
   const kurveEl = ziel.closest('[data-spantkurve]');
   const knotenEl = ziel.closest('[data-spantknoten]');
   const griffEl = ziel.closest('[data-spantgriff]');
+  // Kiefer-Spant: welcher Teil (Oberkiefer = profil, Unterkiefer = unten) ist getroffen?
+  const teilVon = (el: Element | null, feld: number): SpantTeil | null => {
+    const t = el?.getAttribute(el.hasAttribute('data-spantknoten') ? 'data-spantknoten' : 'data-spantgriff')?.split(':')[feld];
+    return t === 'oben' || t === 'unten' ? t : null;
+  };
+  const kurvenTeil = (ziel.closest('[data-spantteil]')?.getAttribute('data-spantteil') ?? null) as SpantTeil | null;
   const sel = ui.spantAuswahl;
   if (!sel || (kurveEl && Number(kurveEl.getAttribute('data-spantkurve')) !== sel.spant && !knotenEl && !griffEl)) {
     if (kurveEl) {
-      spantWaehlen(Number(kurveEl.getAttribute('data-spantkurve')));
+      spantWaehlen(Number(kurveEl.getAttribute('data-spantkurve')), [], kurvenTeil ?? 'oben');
       return true;
     }
     return false;
@@ -285,29 +356,31 @@ export function spantZeiger(e: React.PointerEvent, ctx: SpantKontext): boolean {
   const k = spantKasten(ed.dok, sp.f);
   const norm = (p: V2) => weltNachSpant(k, p);
   const pNorm = norm(q);
+  const teil: SpantTeil = teilVon(knotenEl, 2) ?? teilVon(griffEl, 3) ?? kurvenTeil ?? sel.teil ?? 'oben';
+  const pr = spantTeilProfil(sp, teil);
 
   // Zeichenstift, + und −: Punkte gelten für alle Querschnitte (gleiche Punktstruktur)
   if (ui.werkzeug !== 'auswahl' && ui.werkzeug !== 'breite' && !e.metaKey) {
     if (knotenEl) {
       const j = Number(knotenEl.getAttribute('data-spantknoten')!.split(':')[1]);
       if (ui.werkzeug === 'stift' && e.altKey) {
-        setzeSpant(sel.spant, { ...sp, profil: umwandeln(sp.profil, j) });
-        ui.setzeSpantAuswahl({ spant: sel.spant, knoten: [j] });
+        setzeSpant(sel.spant, mitTeilProfil(sp, teil, umwandeln(pr, j)));
+        ui.setzeSpantAuswahl({ spant: sel.spant, knoten: [j], teil });
       } else if (ui.werkzeug === 'stift' || ui.werkzeug === 'minus') {
         const d = spantenPunktLoeschen(ed.dok, j);
         if (d) {
           ed.setzeDokument(d);
-          ui.setzeSpantAuswahl({ spant: sel.spant, knoten: [] });
+          ui.setzeSpantAuswahl({ spant: sel.spant, knoten: [], teil });
         } else ui.zeigeHinweis('Achspunkte bleiben – sie halten die Spiegelung');
       }
       return true;
     }
     if (kurveEl && (ui.werkzeug === 'stift' || ui.werkzeug === 'plus')) {
-      const t = naechsterAufProfil(sp.profil, pNorm);
+      const t = naechsterAufProfil(pr, pNorm);
       if (t) {
         const r = spantenPunktEinfuegen(ed.dok, t.segment, t.t);
         ed.setzeDokument(r.dok);
-        ui.setzeSpantAuswahl({ spant: sel.spant, knoten: [r.index] });
+        ui.setzeSpantAuswahl({ spant: sel.spant, knoten: [r.index], teil });
         ui.zeigeHinweis('Punkt in allen Spanten und in der Front eingefügt (gleiche Punktstruktur)');
       }
       return true;
@@ -318,7 +391,7 @@ export function spantZeiger(e: React.PointerEvent, ctx: SpantKontext): boolean {
   if (griffEl) {
     const [, jS, seite] = griffEl.getAttribute('data-spantgriff')!.split(':') as [string, string, GriffSeite];
     const j = Number(jS);
-    const kn = sp.profil.knoten[j]!;
+    const kn = pr.knoten[j]!;
     const versatz = { x: pNorm.x - (kn.p.x + kn[seite].x), y: pNorm.y - (kn.p.y + kn[seite].y) };
     let brechen = e.altKey;
     ed.beginGeste();
@@ -329,7 +402,7 @@ export function spantZeiger(e: React.PointerEvent, ctx: SpantKontext): boolean {
         const jetzt = spanten()[sel.spant];
         if (!jetzt) return;
         const pn = norm(ctx.lokal(ev.clientX, ev.clientY));
-        setzeSpant(sel.spant, { ...jetzt, profil: bewegeGriff(jetzt.profil, j, seite, { x: pn.x - versatz.x, y: pn.y - versatz.y }, brechen) });
+        setzeSpant(sel.spant, mitTeilProfil(jetzt, teil, bewegeGriff(spantTeilProfil(jetzt, teil), j, seite, { x: pn.x - versatz.x, y: pn.y - versatz.y }, brechen)));
       },
       () => useEditor.getState().endeGeste(),
     );
@@ -338,17 +411,19 @@ export function spantZeiger(e: React.PointerEvent, ctx: SpantKontext): boolean {
 
   if (knotenEl) {
     const j = Number(knotenEl.getAttribute('data-spantknoten')!.split(':')[1]);
-    const auswahl = e.shiftKey ? (sel.knoten.includes(j) ? sel.knoten.filter((x) => x !== j) : [...sel.knoten, j]) : sel.knoten.includes(j) ? sel.knoten : [j];
-    ui.setzeSpantAuswahl({ spant: sel.spant, knoten: auswahl });
+    const gleicherTeil = (sel.teil ?? 'oben') === teil;
+    const vorher = gleicherTeil ? sel.knoten : [];
+    const auswahl = e.shiftKey ? (vorher.includes(j) ? vorher.filter((x) => x !== j) : [...vorher, j]) : vorher.includes(j) ? vorher : [j];
+    ui.setzeSpantAuswahl({ spant: sel.spant, knoten: auswahl, teil });
     if (!auswahl.includes(j)) return true;
-    const basis: Profil = sp.profil;
+    const basis: Profil = pr;
     ed.beginGeste();
     ctx.ziehen(
       e,
       (ev) => {
         const pn = norm(ctx.lokal(ev.clientX, ev.clientY));
         const jetzt = spanten()[sel.spant];
-        if (jetzt) setzeSpant(sel.spant, { ...jetzt, profil: verschiebeKnoten(basis, auswahl, { x: pn.x - pNorm.x, y: pn.y - pNorm.y }) });
+        if (jetzt) setzeSpant(sel.spant, mitTeilProfil(jetzt, teil, verschiebeKnoten(basis, auswahl, { x: pn.x - pNorm.x, y: pn.y - pNorm.y })));
       },
       () => useEditor.getState().endeGeste(),
     );
@@ -356,7 +431,7 @@ export function spantZeiger(e: React.PointerEvent, ctx: SpantKontext): boolean {
   }
 
   if (kurveEl) {
-    ui.setzeSpantAuswahl({ spant: sel.spant, knoten: [] });
+    ui.setzeSpantAuswahl({ spant: sel.spant, knoten: [], teil });
     return true;
   }
   // freie Fläche oder Front-Profil: Spant abwählen, die Profil-Bedienung übernimmt

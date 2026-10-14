@@ -86,7 +86,7 @@ export function Szene3D() {
             for (let k = rf.verlaufStart[i]! / 3; k < rf.verlaufStart[i + 1]! / 3; k += 16) if (vp[3 * k + 2]! > 0) aus.push([vp[3 * k]!, vp[3 * k + 1]!]);
             return aus;
           });
-          return { perlen: perlen.map((p, i) => ({ reifen: p.reifen, spant: p.spant, knoten: p.knoten, j: p.j, px: pp[3 * i], py: pp[3 * i + 1], vorn: pp[3 * i + 2] })), baender };
+          return { perlen: perlen.map((p, i) => ({ reifen: p.reifen, spant: p.spant, knoten: p.knoten, teil: p.teil, j: p.j, px: pp[3 * i], py: pp[3 * i + 1], vorn: pp[3 * i + 2] })), baender };
         },
       };
       console.info(`[editor] 3D-Backend: ${r.backend}`);

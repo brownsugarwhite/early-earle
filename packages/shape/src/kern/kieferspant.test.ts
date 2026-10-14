@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { Dokument } from '../dokument';
 import type { Profil } from '../profil';
 import { spantEinfuegen } from '../spanten';
+import { kieferSchnitt, knotenImTeil, teilZug } from './kieferSpant';
 import { ableitenMitMaul, maulOptionenVorlage } from './maul';
 import { maulLinieAusDokument } from './maulDokument';
 import { kugelMaulDokument, mitStationenVon, pruefenMaul } from './pruefstand';
@@ -47,4 +48,24 @@ describe('Kiefer-Spanten im Kern', () => {
     const r = pruefenMaul(d);
     for (const p of r.paare.slice(1)) expect(p.paare, `Öffnung ${p.oeffnung}`).toBe(0);
   }, 60_000);
+
+  it('Schnitthöhe und Teilkurven (Front, Bühne): über dem Maul eine Höhe, sonst null; Oberkiefer endet, Unterkiefer beginnt auf ihr', () => {
+    const c = kieferSchnitt(basis, sp.f);
+    expect(c).not.toBeNull();
+    expect(c!).toBeGreaterThan(0.2);
+    expect(c!).toBeLessThan(0.8);
+    expect(kieferSchnitt(basis, 0.9)).toBeNull(); // hinter dem Mundwinkel
+    expect(kieferSchnitt(roh, 0.22)).not.toBeNull();
+    const o = teilZug(sp.profil, c!, 'oben');
+    const u = teilZug(sp.profil, c!, 'unten');
+    expect(o[0]!.y).toBeCloseTo(1, 9);
+    expect(o[o.length - 1]!.y).toBeCloseTo(c!, 12);
+    expect(u[0]!.y).toBeCloseTo(c!, 12);
+    expect(u[u.length - 1]!.y).toBeCloseTo(0, 9);
+    expect(o[o.length - 1]!.x).toBeCloseTo(u[0]!.x, 12);
+    // Achspunkte: oben gehört zum Oberkiefer, unten zum Unterkiefer
+    const n = sp.profil.knoten.length;
+    expect(knotenImTeil(sp.profil, 0, c!, 'oben')).toBe(true);
+    expect(knotenImTeil(sp.profil, n - 1, c!, 'unten')).toBe(true);
+  });
 });

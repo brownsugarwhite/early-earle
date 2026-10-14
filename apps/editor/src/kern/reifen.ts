@@ -4,8 +4,8 @@
 // `dok.spanten` — dieselben Daten, die Front/Back als Kurve zeigen. Perle ziehen = Querschnitt formen (in der Ringebene),
 // Band ziehen = Reifen entlang der Achse schieben, ⌃R oder Werkzeug S auf dem Körper = neuer Reifen an der Stelle.
 
-import { spantEinfuegen, spantKasten, stelleVon, umwandeln, verschiebeKnoten, weltNachSpant } from '@ee/shape';
-import type { WesenNetz } from '@ee/shape/kern';
+import { type SpantTeil, spantEinfuegen, spantKasten, spantTeilProfil, stelleVon, umwandeln, verschiebeKnoten, weltNachSpant } from '@ee/shape';
+import { type WesenNetz, mitTeilProfil } from '@ee/shape/kern';
 import { create } from 'zustand';
 import { sortieren, spantWaehlen } from '../spanten/SpantEbene';
 import { useEditor } from '../state/editorStore';
@@ -15,8 +15,8 @@ import { szene } from '../three/instanz';
 import { aktuellesNetz } from './kernBau';
 import { useTreffer } from './treffer';
 
-/** Was unter dem Zeiger liegt: eine Perle (Spant-Knoten) oder das Band eines Reifens. */
-export type ReifenHover = { reifen: number; knoten: number | null } | null;
+/** Was unter dem Zeiger liegt: eine Perle (Spant-Knoten, beim Kiefer-Spant mit Teil) oder das Band eines Reifens. */
+export type ReifenHover = { reifen: number; knoten: number | null; teil?: SpantTeil } | null;
 export const useReifen = create<{ hover: ReifenHover }>(() => ({ hover: null }));
 
 const FARBE_REIFEN: [number, number, number] = [0.541, 0.486, 1];
@@ -26,9 +26,12 @@ const FARBE_HOVER: [number, number, number] = [1, 0.18, 0.604];
 const FANG_PERLE = 10;
 const FANG_BAND = 6;
 
-export type Perle = { reifen: number; spant: number; knoten: number; j: number; pos: [number, number, number] };
+export type Perle = { reifen: number; spant: number; knoten: number; teil: SpantTeil; j: number; pos: [number, number, number] };
 
-/** Perlen aller Reifen (Welt, skaliert): je Spant-Knoten rechts und gespiegelt links (Achspunkte einmal). */
+/**
+ * Perlen aller Reifen (Welt, skaliert): je Spant-Knoten rechts und gespiegelt links (Achspunkte einmal). Kiefer-Spant
+ * (14.10., „zwei Perlenreihen“): Oberkiefer-Knoten über der Lippe, Unterkiefer-Knoten darunter (Teil `unten`).
+ */
 export function perlenVon(netz: WesenNetz, sk: number): Perle[] {
   const rf = netz.reifen;
   const tr = netz.treffer;
@@ -36,12 +39,18 @@ export function perlenVon(netz: WesenNetz, sk: number): Perle[] {
   const { N } = tr.vorlage;
   const out: Perle[] = [];
   rf.liste.forEach((r, ri) => {
-    rf.knoten[ri]!.forEach((j, k) => {
-      for (const jj of j === 0 || j === N / 2 ? [j] : [j, N - j]) {
-        const i = r.ring * N + jj;
-        out.push({ reifen: ri, spant: r.spant, knoten: k, j: jj, pos: [rf.ringLagen[3 * i]! * sk, rf.ringLagen[3 * i + 1]! * sk, rf.ringLagen[3 * i + 2]! * sk] });
-      }
-    });
+    for (const [teil, zeilen] of [
+      ['oben', rf.knoten[ri] ?? []],
+      ['unten', rf.knotenUnten?.[ri] ?? []],
+    ] as const) {
+      zeilen.forEach((j, k) => {
+        if (j < 0) return;
+        for (const jj of j === 0 || j === N / 2 ? [j] : [j, N - j]) {
+          const i = r.ring * N + jj;
+          out.push({ reifen: ri, spant: r.spant, knoten: k, teil, j: jj, pos: [rf.ringLagen[3 * i]! * sk, rf.ringLagen[3 * i + 1]! * sk, rf.ringLagen[3 * i + 2]! * sk] });
+        }
+      });
+    }
   });
   return out;
 }
@@ -65,7 +74,9 @@ function reifenFarben(netz: WesenNetz): Float32Array {
 function perlenZustand(perlen: Perle[]): Uint8Array {
   const auswahl = useUi.getState().spantAuswahl;
   const hover = useReifen.getState().hover;
-  return Uint8Array.from(perlen.map((p) => (hover && hover.reifen === p.reifen && hover.knoten === p.knoten ? 2 : auswahl && auswahl.spant === p.spant && auswahl.knoten.includes(p.knoten) ? 1 : 0)));
+  return Uint8Array.from(
+    perlen.map((p) => (hover && hover.reifen === p.reifen && hover.knoten === p.knoten && (hover.teil ?? 'oben') === p.teil ? 2 : auswahl && auswahl.spant === p.spant && auswahl.knoten.includes(p.knoten) && (auswahl.teil ?? 'oben') === p.teil ? 1 : 0)),
+  );
 }
 
 /** Reifen und Perlen anzeigen (nach jedem Bau, bei Auswahl und Hover) oder ausblenden (andere Stufe, keine Spanten). */
@@ -117,7 +128,7 @@ export function reifenUnter(px: number, py: number): ReifenHover {
     const d = Math.hypot(pp[3 * i]! - px, pp[3 * i + 1]! - py);
     if (d < dBest) {
       dBest = d;
-      best = { reifen: p.reifen, knoten: p.knoten };
+      best = { reifen: p.reifen, knoten: p.knoten, teil: p.teil };
     }
   });
   if (best) return best;
@@ -213,21 +224,22 @@ export function reifenZeiger(e: React.PointerEvent, px: number, py: number, el: 
   const sk = n.skalierung;
   const rr = el.getBoundingClientRect();
   const spanten = () => useEditor.getState().dok.spanten ?? [];
+  const teil: SpantTeil = h.teil ?? 'oben';
   // ⌥-Klick auf eine Perle: Ecke ↔ glatt (wie der Stift mit ⌥ in Front/Back), ein Undo-Schritt
   if (e.altKey) {
     if (h.knoten === null) return false;
     const liste = spanten().slice();
-    liste[reifen.spant] = { ...sp, profil: umwandeln(sp.profil, h.knoten) };
+    liste[reifen.spant] = mitTeilProfil(sp, teil, umwandeln(spantTeilProfil(sp, teil), h.knoten));
     ed.setzeSpanten(liste);
-    spantWaehlen(reifen.spant, [h.knoten]);
+    spantWaehlen(reifen.spant, [h.knoten], teil);
     return true;
   }
   const { mitte, normale } = ringEbene(n.netz, sk, h.reifen);
   if (h.knoten !== null) {
     const knoten = h.knoten;
-    spantWaehlen(reifen.spant, [knoten]);
+    spantWaehlen(reifen.spant, [knoten], teil);
     const kasten = spantKasten(ed.dok, sp.f);
-    const basis = sp.profil;
+    const basis = spantTeilProfil(sp, teil);
     const start = schnittMitEbene(r.strahlFuer('creation', px, py), mitte, normale);
     if (!start) return false;
     const p0 = weltNachSpant(kasten, { x: Math.abs(start[2]) / sk, y: start[1] / sk });
@@ -242,7 +254,7 @@ export function reifenZeiger(e: React.PointerEvent, px: number, py: number, el: 
         const liste = spanten().slice();
         const jetzt = liste[reifen.spant];
         if (!jetzt) return;
-        liste[reifen.spant] = { ...jetzt, profil: verschiebeKnoten(basis, [knoten], { x: pn.x - p0.x, y: pn.y - p0.y }) };
+        liste[reifen.spant] = mitTeilProfil(jetzt, teil, verschiebeKnoten(basis, [knoten], { x: pn.x - p0.x, y: pn.y - p0.y }));
         useEditor.getState().setzeSpanten(liste);
       },
       () => useEditor.getState().endeGeste(),

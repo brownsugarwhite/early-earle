@@ -11,6 +11,7 @@ export * from './deskriptoren';
 export * from './breite';
 export * from './maul';
 export * from './maulDokument';
+export * from './kieferSpant';
 export * from './folgen';
 export * from './teil';
 export * from './klinge';

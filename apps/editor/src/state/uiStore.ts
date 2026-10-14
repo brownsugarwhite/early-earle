@@ -18,7 +18,8 @@ export type KantenAuswahl = { kante: number; indizes: number[] };
 /** Zeichenstift auf freier Fläche: neue Kantenlinie, bis Enter/Esc/Doppelklick. */
 export type KanteZeichnen = { blick: Blick; ansicht: Ansicht; knoten: V3T[] };
 /** Gewählter Spant und seine gewählten Punkte. */
-export type SpantAuswahl = { spant: number; knoten: number[] };
+/** `teil` (Kiefer-Spant, 14.10.): Punkte des Oberkiefers (`profil`) oder des Unterkiefers (`unten`); ohne Angabe oben. */
+export type SpantAuswahl = { spant: number; knoten: number[]; teil?: 'oben' | 'unten' };
 /** Ebenenschalter der Kanten (Recherche 12.10.): zeigen, blass (nicht greifbar) oder aus. */
 export type KantenSicht = 'zeigen' | 'blass' | 'aus';
 /** Breitenwerkzeug beim Ziehen: Kreis um den Punkt, Radius = Härte (Weltpunkt in der Ansicht). */
