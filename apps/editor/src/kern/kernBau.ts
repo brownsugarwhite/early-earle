@@ -6,6 +6,7 @@ import type { Dokument } from '@ee/shape';
 import { type BeinArt, type Bauplan, type MaulArt, type StilArt, type WesenInfo, type WesenNetz, maulLinieAusPunkten, pruefwesenBauplan } from '@ee/shape/kern';
 import { abtasten3 } from '@ee/shape/versuch';
 import { create } from 'zustand';
+import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { type Look, PALETTEN } from '../three/wesenLook';
 import { WesenClient } from './wesenClient';
@@ -124,6 +125,13 @@ export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) 
     letztesNetz = { netz, skalierung: dok.skalierung };
     useKernAnzeige.setState({ info: netz.info });
     cb(netz);
+    // Schritt 3 („Käfig als Wahrheit“): Der Kern meldet die wirksame Ringverteilung, das Dokument friert sie ein; ab dann
+    // zieht jede Kurvenänderung nur noch nach (keine Neuwahl der Ringe, kein Springen, Pinsel-Deltas bleiben gültig)
+    const g = netz.info.stationen;
+    if (g && !schnell) {
+      const ed = useEditor.getState();
+      if (JSON.stringify(ed.dok.kaefig?.stationen ?? null) !== JSON.stringify(g)) ed.setzeStationen(g);
+    }
   });
 }
 

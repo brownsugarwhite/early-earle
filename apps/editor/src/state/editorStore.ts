@@ -2,6 +2,7 @@
 // alten Werkstatt: beginGeste … endeGeste), Einzelaktionen sind je ein Schritt.
 
 import {
+  type GefroreneStationen,
   type Ansicht,
   type Dokument,
   type Kante,
@@ -52,6 +53,8 @@ type EditorState = {
   setzeRundSpanten(spanten: NonNullable<Dokument['rundSpanten']> | null): void;
   /** ganzes Dokument ersetzen (z. B. Punkt in allen Querschnitten einfügen) */
   setzeDokument(dok: Dokument): void;
+  /** Schritt 3: eingefrorene Stationen des Kerns merken (abgeleiteter Stand, kein Undo-Schritt); null = beim nächsten Bau neu wählen */
+  setzeStationen(s: GefroreneStationen | null): void;
   rueckgaengig(): void;
   wiederholen(): void;
   neu(): void;
@@ -176,6 +179,12 @@ export const useEditor = create<EditorState>((set, get) => {
         delete rest.rundSpanten;
         return spanten?.length ? { ...rest, rundSpanten: spanten } : rest;
       });
+    },
+    setzeStationen(s) {
+      const { dok } = get();
+      const rest = { ...(dok.kaefig ?? { deltas: [] }) };
+      delete rest.stationen;
+      set({ dok: { ...dok, kaefig: s ? { ...rest, stationen: s } : rest } });
     },
     setzeDokument(dok) {
       aendern((d) => (d === dok ? d : dok));

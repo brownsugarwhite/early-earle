@@ -7,10 +7,10 @@
 // Der `WesenStand` hält die Ableitung und den Klingenstand zwischen zwei Bauten (Pose statt Umbau, Wehen je Bild).
 
 import type { V2 } from '../bezier';
-import type { Ausstattung, Dokument, ZonenVorlage } from '../dokument';
+import type { Ausstattung, Dokument, GefroreneStationen, ZonenVorlage } from '../dokument';
 import { alleFlaechen } from '../kaefig/halbkanten';
 import { type V3, zuDreiecken } from '../versuch/catmullClark';
-import { type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
+import { type AbleitOptionen, type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
 import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern } from './atlas';
 import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
@@ -92,6 +92,8 @@ export type WesenInfo = {
   schnell: boolean;
   /** Abweichung Körper ↔ Kurve je Blatt (px bei 461 px je Kachel; Plan „Zeichnung ist Form“, Schritt 4), nach echter Ableitung */
   blatt?: Record<'seite' | 'front' | 'top', { max: number; mittel: number }>;
+  /** wirksame Stationen (Schritt 3): das Dokument friert sie ein, danach wird nur noch nachgezogen */
+  stationen?: GefroreneStationen;
 };
 
 /** Reifen (M3): Ringe der gezeichneten Spanten auf dem Körper, mit Perlen an den Spant-Knoten. */
@@ -514,11 +516,17 @@ function zonenWelt(vorlagen: readonly ZonenVorlage[], g: { xMin: number; xMax: n
  * Wesen bauen: Dokument + Bauplan → Netz. `stand` ist der letzte Stand (gleiches Dokument und gleiche Maul-/Beinwahl →
  * nur Pose, kein Umbau; `schnell` während Gesten → Zug am Seitenumriss statt Ableitung).
  */
+/** Ableit-Optionen aus dem Dokument: eingefrorene Stationen (Schritt 3), wenn vorhanden. */
+function ableitOpt(dok: Dokument): Partial<AbleitOptionen> {
+  const g = dok.kaefig?.stationen;
+  return g ? { stationen: g } : {};
+}
+
 export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: WesenStand | null, schnell = false): { netz: WesenNetz; stand: WesenStand } {
   const plan: Bauplan = { ...BAUPLAN_STANDARD, ...planRoh };
   // Kasten des Prüfwesens (Tiger) nur, solange das Dokument keine eigenen Spanten hat: gezeichnete Spanten gewinnen (M3)
   const dok: Dokument = plan.kasten && !dokRoh.spanten?.length ? { ...dokRoh, spanten: kastenSpanten(dokRoh.profile.front, plan.kasten.fVorn, plan.kasten.fHinten, plan.kasten.fRund, plan.kasten.haerte) } : dokRoh;
-  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: plan.maulOptionen ?? null, ba: plan.beinAnsaetze ?? null });
+  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, st: dokRoh.kaefig?.stationen ?? null, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: plan.maulOptionen ?? null, ba: plan.beinAnsaetze ?? null });
   const gleich = stand !== null && stand.schluessel === schluessel;
   const letzte = stand && gleich ? stand : null;
   let abl: Ableitung;
@@ -537,7 +545,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   if (beine !== 'aus') {
     if (letzte && letzte.beine === beine && letzte.maul === 'aus') abl = letzte.abl;
     else {
-      abl = ableitenMitBeinen(dok, plan.beinAnsaetze ?? [{ ring: 15, j: 6 }], beine);
+      abl = ableitenMitBeinen(dok, plan.beinAnsaetze ?? [{ ring: 15, j: 6 }], beine, ableitOpt(dok));
       ableitung = abl.zeiten.gesamt;
     }
     ablRein = abl;
@@ -552,7 +560,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     if (letzte && letzte.maul === maul && letzte.beine === 'aus') abl = letzte.abl;
     else {
       const linie = plan.maulLinie ?? maulLinieVorlage(dok, maul);
-      abl = ableitenMitMaul(dok, linie, {}, { ...maulOptionenVorlage(maul), ...(plan.maulOptionen ?? {}) });
+      abl = ableitenMitMaul(dok, linie, ableitOpt(dok), { ...maulOptionenVorlage(maul), ...(plan.maulOptionen ?? {}) });
       ableitung = abl.zeiten.gesamt;
     }
     ablRein = abl;
@@ -584,7 +592,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
   } else {
-    ablRein = ableiten(dok);
+    ablRein = ableiten(dok, ableitOpt(dok));
     ableitung = ablRein.zeiten.gesamt;
     abl = mitDeltas(ablRein);
     fein = abl.fein;
@@ -681,7 +689,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     saum = { seite: bl.seite.saum, front: bl.front.saum, top: bl.top.saum };
     blatt = { seite: { max: bl.seite.max, mittel: bl.seite.mittel }, front: { max: bl.front.max, mittel: bl.front.mittel }, top: { max: bl.top.max, mittel: bl.top.mittel } };
   }
-  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}) };
+  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), stationen: abl.gefroren };
   const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
   const lippenBand = maul !== 'aus' && beine === 'aus' ? (plan.lippenBand ?? 0.03) * hoehe : 0;
   const mitte: V3 = [0, 0, 0];

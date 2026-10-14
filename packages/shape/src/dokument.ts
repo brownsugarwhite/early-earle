@@ -149,7 +149,21 @@ export const DokumentSchemaV0 = z.object({ ...DokumentFelder, version: z.literal
 /** Käfig-Delta (M3, Pinsel): Versatz eines Käfigpunkts der Vorlage (rechte Hälfte oder Naht), Profil-Einheiten. */
 const KaefigDeltaSchema = z.object({ punkt: z.number().int().min(0), d: V3 });
 /** Käfig-Deltas der Grundform und je Pose (M3: „fressen“ = offenes Maul, mit der Öffnung überblendet; Plan 5.2). */
-const KaefigSchema = z.object({ deltas: z.array(KaefigDeltaSchema), posen: z.record(z.string(), z.array(KaefigDeltaSchema)).optional() });
+/**
+ * Eingefrorene Stationen (Plan „Zeichnung ist Form“, Schritt 3, „Käfig als Wahrheit“): Ringverteilung, Kappenzeilen,
+ * Ecken, Reifen und Spitzen als Wirbelsäulen-Anteile. Einmal beim ersten Ableiten gewählt, danach nur noch nachgeführt
+ * (neue Ecken und Reifen bekommen einen Ring); jede Kurvenänderung ist ein Nachziehen auf demselben Käfig.
+ */
+const GefroreneStationenSchema = z.object({
+  ringe: z.array(z.number()),
+  vorn: z.array(z.number()),
+  hinten: z.array(z.number()),
+  ecken: z.array(z.object({ ring: z.number(), seite: z.enum(['oben', 'unten', 'beide']) })),
+  reifen: z.array(z.object({ spant: z.number(), ring: z.number() })),
+  spitzen: z.object({ vorn: z.boolean(), hinten: z.boolean() }),
+});
+export type GefroreneStationen = { ringe: number[]; vorn: number[]; hinten: number[]; ecken: { ring: number; seite: 'oben' | 'unten' | 'beide' }[]; reifen: { spant: number; ring: number }[]; spitzen: { vorn: boolean; hinten: boolean } };
+const KaefigSchema = z.object({ deltas: z.array(KaefigDeltaSchema), posen: z.record(z.string(), z.array(KaefigDeltaSchema)).optional(), stationen: GefroreneStationenSchema.optional() });
 /** Version 1: mit Ausstattung und (M3) Käfig-Deltas der Pinsel. */
 export const DokumentSchema = z.object({ ...DokumentFelder, version: z.literal(1), ausstattung: AusstattungSchema.optional(), kaefig: KaefigSchema.optional() });
 
@@ -202,7 +216,7 @@ export type Dokument = {
    * M3 (Pinsel): Versätze von Käfigpunkten der Vorlage (Index < Punktzahl der Röhre; rechte Hälfte oder Naht, die linke
    * Hälfte spiegelt der Kern), Profil-Einheiten, auf den abgeleiteten Käfig addiert. Fehlt = unberührt.
    */
-  kaefig?: { deltas: KaefigDelta[]; posen?: Record<string, KaefigDelta[]> };
+  kaefig?: { deltas: KaefigDelta[]; posen?: Record<string, KaefigDelta[]>; stationen?: GefroreneStationen };
   maul?: Maul;
   zaehne?: Zaehne;
   kanten?: Kante[];

@@ -769,6 +769,7 @@ export function Seitenleiste() {
                 <BogenFeld />
                 <PinselFeld />
                 <DarstellungFeld />
+                <AbleitenFeld />
               </section>
               <KantenBereich />
               <SpantBereich />
@@ -933,6 +934,25 @@ function DarstellungFeld() {
       </div>
       <Chips werte={['papier', 'nacht', 'gruen'] as const} aktiv={grund} text={(g) => (g === 'papier' ? 'Papier' : g === 'nacht' ? 'Nacht' : 'Grün')} attribut="grund" onWahl={(g) => useUi.getState().setzeGrund(g)} />
       <p className="hilfe">Tab wechselt zwischen Riss (vier Felder) und Bühne (große Bühne, Blätter als Spalte); je Stufe gemerkt.</p>
+    </>
+  );
+}
+
+/** Schritt 3 („Käfig als Wahrheit“): Die Ringverteilung ist eingefroren; „Neu ableiten“ wählt sie aus den Kurven neu. */
+function AbleitenFeld() {
+  const n = useEditor((s) => s.dok.kaefig?.stationen?.ringe.length ?? 0);
+  return (
+    <>
+      <div className="feld">
+        <span>Ringe</span>
+        <b data-stationen={n}>{n ? `${n} eingefroren` : 'werden festgelegt …'}</b>
+      </div>
+      <div className="umschalter stufen" role="group" aria-label="Ableitung">
+        <button className="chip" data-neu-ableiten="" disabled={!n} onClick={() => useEditor.getState().setzeStationen(null)}>
+          Neu ableiten
+        </button>
+      </div>
+      <p className="hilfe">Die Ringe liegen fest, seit das Wesen abgeleitet wurde: Kurven, Reifen und Pinsel ziehen denselben Käfig nach, nichts springt. „Neu ableiten“ verteilt die Ringe neu nach den Kurven.</p>
     </>
   );
 }
