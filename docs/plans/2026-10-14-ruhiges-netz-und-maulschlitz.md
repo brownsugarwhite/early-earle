@@ -101,3 +101,24 @@ Pipeline: `bauplanAus` (Editor, `kernBau.ts`) → `maulLinieAusPunkten` / `maulL
   4. Kiefer-Spanten.
 
   Prüffall ist Florians Bild 2 als Unterbiss an der Kugel.
+  - **Gebaut (14.10. nachts), Schritte 1 und 2 und ein Teil von 3:**
+    1. **Rot und Blau gelten genau** (cf51792): Die Lippenkante nimmt ihre Breite wieder aus der gezeichneten 3D-Linie samt Griffen. Die Regel „Haut × Verhältnis“ und die wirksamen Linien sind weg, der Editor zeichnet in Front/Top wieder die Kurve. Neue Linien (in der Seite gezeichnet) legt `lippeAnHaut` auf die Haut (kleinste Quadrate auch zwischen den Knoten) und gibt dem Anfang einen Griff quer zur Spiegelebene. Im Editor geprüft: Anfangsgriff rein in z, Δ 1,9 / 3,6 / 4,1 px; ein Zug am Anfangsgriff im Top macht die Kante spitz, wie gezogen (`docs/progress/editor/maul-neu-gezeichnet-rund.png`, Skript `maul-zeichnen-rund.mjs`).
+    2. **Jeder Kiefer folgt als Ganzes seiner Linie** (cf51792): Die Ringhälften und die Kappe des Kiefers werden um „Linie / Vorlage an der Lippe“ gestreckt. Schmaler gibt einen gestreckten Querschnitt (von oben rund wie die Linie). Breiter wird weich begrenzt durch Lippe und Vorlage, sonst wuchs eine an der Sehne gekappte Vorlage über den Körper (Überbiss Top 45 px). Ein Auslauf zur Naht ließ den Schädel über einer runden Lippe kastig, darum kein Auslauf. Die Seite misst den Schlitz wie gezeichnet (schwarze Linie ohne Schlitz + Rot + Blau, das Fenster zählt nicht).
+    3. **Schwarz heftet sich an** (71e091d): Wo ein verbreiterter Kiefer in Front oder Top über die schwarze Linie hinausgeht, wird sein Umriss zum Umweg der Linie. Er zählt nicht als Abweichung und erscheint im Editor als Teil der schwarzen Linie. Die Grundlinie bleibt Florians Kurve, denn eine Beule in der Front-Kurve ginge über die Vorlage in jeden Ring. Schmalere Kiefer liegen innen, dort bleibt die Grundlinie.
+
+    **Gemessen** (Kugel, Stufe 2), Δ Seite / Front / Top:
+
+    | Fall | vorher | jetzt |
+    |---|---|---|
+    | Florians Unterbiss | 46 / 20 / 21 px | 1,5 / 3,3 / 2,6 px |
+    | Kiefer gleich | – | 2,3 / 4,0 / 4,9 px |
+    | Überbiss mit Marken | – | 11,6 / 7,1 / 4,5 px |
+
+    Beim Unterbiss gibt es offen nur noch 4–58 Paare (vorher 138–192), rot/blau ≤ 0,1 px. Beim Überbiss mit Marken sind es offen 0–62 Paare. Bilder: `docs/progress/editor/unterbiss-florian-{vorher,nachher,umweg}-riss.png`, `-nachher-schraeg.png`, `-nachher-oben.png`.
+
+    **Offen:**
+    - Der Umweg ist nur Anzeige. Gesteuert wird er über die Kieferlinie, später über Kiefer-Spanten.
+    - Wird ein Kiefer im Top schmaler als die schwarze Linie, zeigt der Saum die Abweichung; die Linie folgt nicht von selbst. Weg: „Formen folgen“ fürs Top mit Maul.
+    - Kiefer-Spanten.
+    - Exaktes „Formen folgen“ mit Maul.
+    - Das flache Lippenband (die Frage an Florian ist offen).

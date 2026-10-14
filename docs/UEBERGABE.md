@@ -1,4 +1,4 @@
-# Übergabe (Stand 14.10.2026 abends)
+# Übergabe (Stand 14.10.2026 nachts)
 
 Branch `claude/editor-grundlayout`. Die große Sitzung ist für diese Woche aufgebraucht und brach mitten in der Arbeit ab; ihr ungespeicherter Stand ist gesichert. Es gilt der Fahrplan [`docs/plans/2026-10-14-ruhiges-netz-und-maulschlitz.md`](plans/2026-10-14-ruhiges-netz-und-maulschlitz.md) (von Florian freigegeben): **Block 1 ruhiges Netz auf der schwarzen Linie → Block 2 Maulschlitz an der schwarzen Linie, getrennte Kiefer mit eigenen Spanten → Block 3 weiter nach Phase 2.** Datumshinweis: Einträge „15.10.“ der vorigen Sitzung stammen laut Commits vom 13./14.10.; ab hier gilt das echte Datum.
 
@@ -31,9 +31,22 @@ Die schwarze Linie ist sein Werkzeug und damit die Wahrheit für den Umriss: Das
 - **Maul auf der Haut** (8d6d993): Lippenbreite aus der Haut × Verhältnis der Knoten, keine Spitze vorn (Florians Rückmeldung), Rot/Blau in Front/Top als wirksame Linien; Kiefer gleich Front 4,2 / Top 4,8 px. **Glätten springt nicht mehr** (ec9c27b): mit Maul kein Folgen nach Pinselstrichen. Offen: Unterbiss, Schnabel, Kringel am Lippenanfang, flaches Lippenband, Kiefer-Spanten.
 - **Block 2 Zwischenstand** (465ddc1, 3884b01): Lippenanfänge sind markierte Knoten der schwarzen Linie (Editor und Datenmodell fertig), der Kern kennt den Schlitz (Sehne, offene Naht, Coons-Kinn). Noch nicht sauber: Überbiss ≈ 530 offene Paare (gedrängte vordere Spalten der Unterlippe), Unterbiss schlechter, Lippe als flaches Band. Florian entscheidet den Weiterweg (Planseite, Stand 14.10. abends).
 
+## Kiefer folgen ihrer Linie (14.10. nachts, Florians Rückmeldung mit zwei Bildern)
+
+- **Rot und Blau gelten genau samt Griffen** (cf51792). Neue Linien liegen auf der Haut und beginnen rund (`lippeAnHaut`).
+- **Jeder Kiefer folgt als Ganzes seiner Linie:** Die Ringhälfte wird gestreckt. Beim Verbreitern ist sie weich durch Lippe und Vorlage begrenzt.
+- **Die schwarze Linie heftet sich in Front und Top an einen breiteren Kiefer** (Umweg, 71e091d).
+- **Messung des Unterbisses nach Florians Bild 2:** Δ 1,5 / 3,3 / 2,6 px statt 46 / 20 / 21 px, offen 4–58 Paare.
+- Einzelheiten, Zahlen und Offenes stehen auf der Planseite (Stand 14.10. nachts).
+
 ## Nächster Schritt
 
-Block 1, Schritt 1: Prüfstand (Florians Komma nachgebaut, Langhals mit gebogenem Hals, Kugel mit getrennten Kiefern; Wächter Kugel/Rex/Tiger/Langhals) mit Δ je Blatt, Faltenmaß, Sägezahnmaß, Lokalität; Bilder des heutigen Stands als Ausgangslage. Dann Diagnose je Ring und Umbau in kleinen, gemessenen Schritten. Abbruchregel: nach drei gemessenen Fehlanläufen anhalten und Florian Befund und Wege zeigen.
+Florians Test im Editor. Danach in dieser Reihenfolge:
+1. Kiefer-Spanten: Ein Spant über beiden Kiefern bekommt zwei Kurven in Front und Top.
+2. „Formen folgen“ mit Maul (Top), damit Schwarz einem schmaleren Kiefer folgt.
+3. Lippenband (Frage an Florian offen).
+
+Danach Block 3 (Phase 2: Haps → Zähne → Augen → Maularten).
 
 ## Wo Florian testet
 
