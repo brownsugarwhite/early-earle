@@ -209,6 +209,11 @@ export type MaulAbleitung = {
   zug: V2;
   /** Maullänge (Welt, x) */
   laenge: number;
+  /**
+   * Käfigpunkte, die ein Kiefer über seine Vorlage hinaus verbreitert hat, weil seine Linie breiter ist (14.10. nachts):
+   * Ihre Flächen dürfen in Front und Top über die schwarze Linie hinausgehen, die Linie heftet sich dort an den Kiefer.
+   */
+  kieferBreiter: Uint8Array;
   /** Kehlhaut unter der Kieferplatte: Gewicht je Käfigpunkt (0 = keine) und Ring, dessen Plattenkante sie folgt */
   beutelGewicht: Float64Array;
   beutelRing: Int16Array;
@@ -937,6 +942,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
   ziele.set(zieleV);
   hoehe.set(hoeheV);
   const quelle = new Int32Array(n);
+  const kieferBreiter = new Uint8Array(n);
   for (let i = 0; i < n0; i++) quelle[i] = i;
   const P = (idx: number): [number, number, number] => [ziele[3 * idx]!, ziele[3 * idx + 1]!, ziele[3 * idx + 2]!];
   const spiegel = (p: [number, number, number]): [number, number, number] => [p[0], p[1], -p[2]];
@@ -1128,6 +1134,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
         q[1] = nah.y;
         if (t > 0 && schlitzTiefe && Math.abs(q[2]) > 1e-9) {
           schlitzAnteil[t] = 1 - nah.z / Math.abs(q[2]);
+          if (nah.z > 1.002 * Math.abs(q[2])) for (const idx of [pfad[t]!, unten[t]!, pfadLinks[t]!, untenLinks[t]!]) kieferBreiter[idx] = 1;
           q[2] = Math.sign(q[2]) * nah.z;
         }
       }
@@ -1174,7 +1181,9 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
           const jj = g.j + richt * d;
           for (const idx of [v.ringPunkt(g.i, jj), v.ringPunkt(g.i, N - jj)]) {
             const q = P(idx);
-            setze(idx, [q[0], q[1], kieferZ(q[2], a, zLippe)]);
+            const z = kieferZ(q[2], a, zLippe);
+            if (Math.abs(z) > 1.002 * Math.abs(q[2])) kieferBreiter[idx] = 1;
+            setze(idx, [q[0], q[1], z]);
           }
         }
       }
@@ -1189,7 +1198,9 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
         if (b === bL || (b > bL && !kappeOben) || (b < bL && !kappeUnten)) continue;
         for (const idx of [v.kappe('vorn', aR, b), v.kappe('vorn', c - aR, b)]) {
           const q = P(idx);
-          setze(idx, [q[0], q[1], kieferZ(q[2], a, zLippe)]);
+          const z = kieferZ(q[2], a, zLippe);
+          if (Math.abs(z) > 1.002 * Math.abs(q[2])) kieferBreiter[idx] = 1;
+          setze(idx, [q[0], q[1], z]);
         }
       }
     }
@@ -1375,6 +1386,10 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
       // Kappenspalten: quer als Viertelbogen von der Spiegelebene zur vollen Breite (`quer`); die Breitenskalierung des
       // Kiefers (`anteilZ`) nimmt die volle Kante, sonst zöge sie die Stirn zum Keil zusammen
       const kante: [number, number, number] = [vs.xy[t]!.x, vs.xy[t]!.y, t === 0 ? 0 : zKante * vs.quer[t]!];
+      if (t > 0 && zKante > 1.002 * zH) {
+        kieferBreiter[kopie[t]!] = 1;
+        kieferBreiter[kopieLinks[t]!] = 1;
+      }
       setze(kopie[t]!, kante);
       hoehe[kopie[t]!] = vs.v[t]!;
       if (t > 0) {
@@ -1451,6 +1466,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
       // der ganze kürzere Kiefer folgt seiner Kante (wie der Schlitzkiefer: Ringhälfte gestreckt, Querschnitt bleibt)
       const zf = 1 - anteilZ[Math.min(m, t)]!;
       const zk = kieferZ(q[2], zf, Math.abs(P(kopie[Math.min(m, t)]!)[2]));
+      if (Math.abs(zk) > 1.002 * Math.abs(q[2])) kieferBreiter[idx] = 1;
       if (vorschub !== 0) {
         setze(idx, [q[0] + vorschub * (1 - anteilHinten), q[1], zk]);
         return;
@@ -1518,6 +1534,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
         for (let d = 0; d < 2; d++) pos[d] = (1 - w) * lippe[d]! + w * Su[d]! + u * (Bv[d]! - ((1 - w) * L1[d]! + w * S1[d]!));
         const z = (1 - w) * lz + u * (Bv[2] - (1 - w) * Math.abs(L1[2]!));
         pos[2] = (q[2] < 0 ? -1 : 1) * Math.max(0, z);
+        if (Math.abs(pos[2]) > 1.002 * Math.abs(q[2])) kieferBreiter[idx] = 1;
         setze(idx, pos);
       };
       for (let i = 0; i <= k; i++) {
@@ -1830,6 +1847,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     hoehe: H,
     zug,
     laenge: L,
+    kieferBreiter,
     beutelGewicht,
     beutelRing,
     plattenKante,
@@ -2128,6 +2146,26 @@ export function maulLinieVorlage(_dok: Dokument, art: 'vorn' | 'unten' | 'hals')
   if (art === 'vorn') return { ...maulLinieAus([{ f: 0.02, v: 0.45 }, { f: 0.2, v: 0.42 }, { f: 0.34, v: 0.45 }]), unterSpitze: 1 };
   if (art === 'unten') return { ...maulLinieAus([{ f: 0.02, v: 0.3 }, { f: 0.16, v: 0.14 }, { f: 0.28, v: 0.22 }]), unterSpitze: 1 };
   return maulLinieAus([{ f: 0.02, v: 0.42 }, { f: 0.2, v: 0.38 }, { f: 0.4, v: 0.25 }, { f: 0.6, v: 0.28 }]);
+}
+
+/**
+ * Feine Flächen, die ein Kiefer über seine Vorlage hinaus verbreitert hat (Gewicht der markierten Käfigpunkte > ½ an
+ * allen Ecken): Dort darf das Netz in Front und Top über die schwarze Linie hinaus, die Linie heftet sich an (14.10. nachts).
+ */
+export function kieferFlaechen(abl: MaulErgebnis, flaechen: readonly (readonly number[])[]): boolean[] {
+  const M = abl.unterteilung.matrix;
+  const markiert = abl.maul.kieferBreiter;
+  const anteil = new Float64Array(M.start.length - 1);
+  for (let i = 0; i + 1 < M.start.length; i++) {
+    let w = 0;
+    let g = 0;
+    for (let q = M.start[i]!; q < M.start[i + 1]!; q++) {
+      g += M.wert[q]!;
+      if (markiert[M.index[q]!]) w += M.wert[q]!;
+    }
+    anteil[i] = g > 0 ? w / g : 0;
+  }
+  return flaechen.map((f) => f.every((v) => anteil[v]! > 0.5));
 }
 
 // ---------- Pose ----------

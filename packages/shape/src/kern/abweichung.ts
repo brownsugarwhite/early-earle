@@ -19,7 +19,51 @@ export type BlattAbweichung = {
   mittel: number;
   /** Saum: Tripel (x, y, d) je Silhouettenpunkt des Körpers in Blattkoordinaten (Welt), d in px; (NaN, NaN, 0) trennt Züge */
   saum: Float32Array;
+  /**
+   * Front/Top: Stücke des Körperumrisses, an denen ein breiterer Kiefer über die schwarze Linie hinausgeht (14.10. nachts,
+   * Florian: „Der schwarze Shape sollte sich bei viel breiterem Kiefer an die Kieferlinie heften“) — Paare (x, y),
+   * (NaN, NaN) trennt Stücke. Der Editor zeichnet sie als Teil der schwarzen Linie; sie zählen nicht als Abweichung.
+   */
+  umweg?: Float32Array;
 };
+
+const proj2 = (p: V3, a: 'front' | 'top'): V2 => (a === 'front' ? { x: p[2], y: p[1] } : { x: p[0], y: p[2] });
+
+/** Abdeckung der Kieferflächen in einem Blatt (Raster mit Zelle `h`, Test mit einer Zelle Rand). */
+function kieferAbdeckung(punkte: readonly V3[], flaechen: readonly (readonly number[])[], kiefer: readonly boolean[], a: 'front' | 'top', h: number): ((p: V2) => boolean) | null {
+  const zellen = new Set<number>();
+  const schl = (i: number, j: number) => (i + 32768) * 65536 + (j + 32768);
+  const dreieck = (p0: V2, p1: V2, p2: V2) => {
+    const f = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
+    if (Math.abs(f) < 1e-18) return;
+    const sg = Math.sign(f);
+    const iMin = Math.floor(Math.min(p0.x, p1.x, p2.x) / h);
+    const iMax = Math.ceil(Math.max(p0.x, p1.x, p2.x) / h);
+    const jMin = Math.floor(Math.min(p0.y, p1.y, p2.y) / h);
+    const jMax = Math.ceil(Math.max(p0.y, p1.y, p2.y) / h);
+    for (let j = jMin; j <= jMax; j++) {
+      for (let i = iMin; i <= iMax; i++) {
+        const x = i * h;
+        const y = j * h;
+        const e0 = sg * ((p1.x - p0.x) * (y - p0.y) - (p1.y - p0.y) * (x - p0.x));
+        const e1 = sg * ((p2.x - p1.x) * (y - p1.y) - (p2.y - p1.y) * (x - p1.x));
+        const e2 = sg * ((p0.x - p2.x) * (y - p2.y) - (p0.y - p2.y) * (x - p2.x));
+        if (e0 >= -1e-12 && e1 >= -1e-12 && e2 >= -1e-12) zellen.add(schl(i, j));
+      }
+    }
+  };
+  flaechen.forEach((f, fi) => {
+    if (!kiefer[fi]) return;
+    for (let k = 1; k + 1 < f.length; k++) dreieck(proj2(punkte[f[0]!]!, a), proj2(punkte[f[k]!]!, a), proj2(punkte[f[k + 1]!]!, a));
+  });
+  if (!zellen.size) return null;
+  return (p: V2) => {
+    const i = Math.round(p.x / h);
+    const j = Math.round(p.y / h);
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) if (zellen.has(schl(i + di, j + dj))) return true;
+    return false;
+  };
+}
 
 function abstandZuZug(p: V2, zug: readonly V2[]): number {
   let best = Infinity;
@@ -79,7 +123,7 @@ function seiteMitSchlitz(dok: Dokument): { soll: V2[]; schwarz: V2[]; fenster: V
  * Abweichungen je Blatt aus dem feinen Netz (Ruhelage, ohne Hebung) und den gezeichneten Profilen des Dokuments.
  * `zellen` = Raster der Silhouette (Genauigkeit ≈ halbe Zelle; 240 ≈ 0,3 px bei 461 px).
  */
-export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly number[][], dok: Dokument, zellen = 240): Record<Ansicht3, BlattAbweichung> {
+export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly number[][], dok: Dokument, zellen = 240, kiefer?: readonly boolean[]): Record<Ansicht3, BlattAbweichung> {
   const netz = { punkte: punkte as V3[], flaechen: flaechen as number[][], schaerfe: new Map<string, number>() };
   const sk = dok.skalierung;
   const out = {} as Record<Ansicht3, BlattAbweichung>;
@@ -88,21 +132,39 @@ export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly numb
     const soll = a === 'seite' && schlitz ? schlitz.soll : pfadAbtasten(vollerPfad(dok.profile[a]), 24).map((p) => ({ x: p.x * sk, y: p.y * sk }));
     const fenster = a === 'seite' && schlitz ? schlitz.fenster : null;
     const ist = umrissAusNetz(netz, a, zellen);
+    // Front/Top: Kieferflächen, die über ihre Vorlage hinaus verbreitert sind — dort heftet sich die Linie an den Kiefer
+    let ausdehnung = 0;
+    for (const q of soll) ausdehnung = Math.max(ausdehnung, Math.abs(q.x), Math.abs(q.y));
+    const bedeckt = a !== 'seite' && kiefer ? kieferAbdeckung(punkte, flaechen, kiefer, a, (2 * ausdehnung) / zellen) : null;
     const saum: number[] = [];
+    const umweg: number[] = [];
     let max = 0;
     let summe = 0;
     let n = 0;
     for (const z of ist) {
+      let imUmweg = false;
       for (const p of z) {
-        const d = fenster && innen(p, fenster) ? 0 : abstandZuZug(p, soll) * ABWEICHUNG_PX;
+        let d = fenster && innen(p, fenster) ? 0 : abstandZuZug(p, soll) * ABWEICHUNG_PX;
+        const amKiefer = !!bedeckt && d > 1 && bedeckt(p);
+        if (amKiefer) {
+          umweg.push(p.x, p.y);
+          imUmweg = true;
+          d = 0;
+        } else if (imUmweg) {
+          umweg.push(NaN, NaN);
+          imUmweg = false;
+        }
         saum.push(p.x, p.y, d);
         if (d > max) max = d;
         summe += d;
         n++;
       }
+      if (imUmweg) umweg.push(NaN, NaN);
       saum.push(NaN, NaN, 0);
     }
     for (const p of a === 'seite' && schlitz ? schlitz.schwarz : soll) {
+      // vom Kiefer überdeckte Stücke der schwarzen Linie zählen nicht (dort gilt der Umweg)
+      if (bedeckt && bedeckt(p)) continue;
       let d = Infinity;
       for (const z of ist) d = Math.min(d, abstandZuZug(p, z));
       if (!Number.isFinite(d)) continue;
@@ -111,7 +173,7 @@ export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly numb
       summe += d;
       n++;
     }
-    out[a] = { max, mittel: n ? summe / n : 0, saum: Float32Array.from(saum) };
+    out[a] = { max, mittel: n ? summe / n : 0, saum: Float32Array.from(saum), ...(umweg.length ? { umweg: Float32Array.from(umweg) } : {}) };
   }
   return out;
 }

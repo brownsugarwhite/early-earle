@@ -11,7 +11,7 @@ import type { Profil } from '../profil';
 import type { V3 } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, ableiten, sprossenVon } from './ableiten';
 import { blattAbweichungen } from './abweichung';
-import { type MaulAbweichung, type MaulErgebnis, type MaulOptionen, ableitenMitMaul, maulAbweichung, maulOptionenVorlage, maulPose } from './maul';
+import { type MaulAbweichung, type MaulErgebnis, type MaulOptionen, ableitenMitMaul, kieferFlaechen, maulAbweichung, maulOptionenVorlage, maulPose } from './maul';
 import { maulLinieAusDokument } from './maulDokument';
 import { selbstDurchdringungen } from '../versuch/pruefen';
 import { linieDurch as linie3Durch } from '../versuch/linie3d';
@@ -315,7 +315,7 @@ export function pruefenMaul(dok: Dokument, opt: Partial<AbleitOptionen> = {}, ma
   if (!linie) throw new Error('kein gezeichnetes Maul');
   const abl = ableitenMitMaul(dok, linie, { stufen: 2, ...opt }, { ...maulOptionenVorlage('vorn'), ...maulOpt });
   const { punkte, flaechen } = feinesNetz(abl);
-  const ab = blattAbweichungen(punkte, flaechen, dok);
+  const ab = blattAbweichungen(punkte, flaechen, dok, 240, kieferFlaechen(abl, flaechen));
   const bereiche = regionen(abl, flaechen);
   const paare = [0, 0.25, 0.5, 0.75, 1].map((oeffnung) => {
     const pose = maulPose(abl, oeffnung);

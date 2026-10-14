@@ -20,7 +20,7 @@ import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { vorlageBei } from '../spanten';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
-import { type MaulAbweichung, type MaulErgebnis, type MaulLinie, ableitenMitMaul, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
+import { type MaulAbweichung, type MaulErgebnis, type MaulLinie, ableitenMitMaul, kieferFlaechen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
 
 export type StilArt = 'fest' | 'feuer' | 'gas' | 'fell';
@@ -136,10 +136,11 @@ export type WesenNetz = {
   treffer: TrefferDaten | null;
   reifen: ReifenDaten | null;
   /** Kieferknopf (M3): rechter Mundwinkel (posiert) und Maullänge (Welt) bei Maul, sonst null */
-  /** Kieferknopf (Mundwinkel, Maullänge) und wirksame Lippenlinien (Welt, Ruhelage, flach x/y/z; rot = oben, blau = unten) */
   maul: { winkel: V3; laenge: number } | null;
   /** Saum je Blatt (Schritt 4): Silhouettenpunkte des Körpers (x, y, d px), (NaN, NaN, 0) trennt Züge; wird kopiert, nicht übertragen */
   saum: Record<'seite' | 'front' | 'top', Float32Array> | null;
+  /** Front/Top: Umweg der schwarzen Linie über einen breiteren Kiefer (Paare x, y; NaN trennt), sonst fehlt das Blatt */
+  umweg: { front?: Float32Array; top?: Float32Array } | null;
   info: WesenInfo;
 };
 
@@ -154,6 +155,7 @@ export type WesenStand = {
   klingen: KlingenStand | null;
   /** letzte Blatt-Abweichung (Schritt 4), während Gesten weiterverwendet */
   saum?: WesenNetz['saum'];
+  umweg?: WesenNetz['umweg'];
   blatt?: WesenInfo['blatt'];
 };
 
@@ -715,12 +717,16 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   const ab = nahtAbweichung(abl, dok);
   // Abweichung je Blatt (Schritt 4) aus der Ruhelage ohne Hebung, nur nach einer echten Ableitung; Züge zeigen den letzten Stand
   let saum = stand?.saum ?? null;
+  let umweg = stand?.umweg ?? null;
   let blatt = stand?.blatt;
   if (!schnell || !blatt) {
     const ruheP: V3[] = [];
     for (let i = 0; i < abl.fein.length / 3; i++) ruheP.push([abl.fein[3 * i]!, abl.fein[3 * i + 1]!, abl.fein[3 * i + 2]!]);
-    const bl = blattAbweichungen(ruheP, flaechen, dok);
+    // breitere Kiefer: dort heftet sich die schwarze Linie an (Umweg), das zählt nicht als Abweichung (14.10. nachts)
+    const kiefer = maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul ? kieferFlaechen(abl as MaulErgebnis, flaechen) : undefined;
+    const bl = blattAbweichungen(ruheP, flaechen, dok, 240, kiefer);
     saum = { seite: bl.seite.saum, front: bl.front.saum, top: bl.top.saum };
+    umweg = bl.front.umweg || bl.top.umweg ? { ...(bl.front.umweg ? { front: bl.front.umweg } : {}), ...(bl.top.umweg ? { top: bl.top.umweg } : {}) } : null;
     blatt = { seite: { max: bl.seite.max, mittel: bl.seite.mittel }, front: { max: bl.front.max, mittel: bl.front.mittel }, top: { max: bl.top.max, mittel: bl.top.mittel } };
   }
   // Lippenkanten gegen die Linien (Phase 2 M2): px je Kette in Seite und Front
@@ -851,9 +857,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     reifen,
     maul: maulGriff,
     saum,
+    umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(blatt ? { blatt } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

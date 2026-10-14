@@ -115,6 +115,27 @@ export function View2D({ ansicht, w, h }: Props) {
     }
     return d;
   })();
+  // Umweg der schwarzen Linie über einen breiteren Kiefer (14.10. nachts, Florian: „Der schwarze Shape sollte sich bei
+  // viel breiterem Kiefer an die Kieferlinie heften“): Front/Top, Teil der Linie — eigene Hälfte schwarz, Spiegel weiß
+  const umweg = useKernAnzeige((s) => (s.info?.blatt && ansicht !== 'seite' ? (aktuellesNetz()?.netz.umweg?.[ansicht] ?? null) : null));
+  const umwegPfade = (() => {
+    const out = { eigen: '', spiegel: '' };
+    if (!umweg || umweg.length < 4) return out;
+    let offen: 'eigen' | 'spiegel' | null = null;
+    for (let i = 0; i + 1 < umweg.length; i += 2) {
+      const x = umweg[i]!;
+      const y = umweg[i + 1]!;
+      if (!Number.isFinite(x)) {
+        offen = null;
+        continue;
+      }
+      const seite = (ansicht === 'front' ? x : y) >= 0 ? 'eigen' : 'spiegel';
+      const q = zuBild(view, w, h, spiegeln2(blick, { x, y }));
+      out[seite] += `${offen === seite ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+      offen = seite;
+    }
+    return out;
+  })();
 
   // Rad: nicht-passiv, sonst zoomt die Seite beim Trackpad-Pinch mit
   useEffect(() => {
@@ -497,6 +518,8 @@ export function View2D({ ansicht, w, h }: Props) {
           )}
         </>
       )}
+      {umwegPfade.spiegel && <path data-umweg="spiegel" d={umwegPfade.spiegel} fill="none" stroke="var(--kurve-spiegel)" strokeWidth={KONTUR} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+      {umwegPfade.eigen && <path data-umweg="eigen" d={umwegPfade.eigen} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {saumPfad && <path className="saum" data-saum="" d={saumPfad} fill="none" stroke="var(--saum)" strokeWidth={3} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
       <WirbelZeichnung ansicht={ansicht} bild={bild} />
