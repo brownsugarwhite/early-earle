@@ -15,6 +15,10 @@ Aus `packages/shape` starten: `npx vite-node ../../apps/editor/scripts/pruefen/<
 | `ueberbiss-check.ts` | Überbiss-Varianten, Durchdringungen je Öffnung nach Bereich (`DETAIL=1`, `LINIEN`, `DICKEN`, `NUR`) |
 | `ueberbiss-schnitt.ts` + `html-shot.mjs` | Schnittbilder quer/längs als HTML → PNG |
 | `bereiche-debug.ts` | Durchdringungen nach Bereich (Haut/Lippe/Tasche) |
+| `pruefreihe.ts` | Prüfreihe Maul (Wesen × Kiefer × gezogene Anfänge): Δ, Lippen-px, Falten offen, Durchdringungen je Öffnung; schreibt `pruefreihe.json` (`NUR`, `ZUG=1`, `KUGEL0=1`) |
+| `falten-orte.ts`, `maul-schnitt.ts` | wo die Falten liegen (`FALL`), Schnittbilder eines Falls |
+| `zug-matrix.ts` (+ `flaechenabstand.ts`) | 15.10.: Anfänge in vier Richtungen ziehen (wie im Editor, Stationen eingefroren): Topologiewechsel (Ring, k, m, Käfigpunkte, Kappenzeile) und Sprünge der Haut zur vorigen Fläche |
+| `lokalitaet-maul.ts` | 15.10.: Florians Satz 2 — Lippenanfang 10 px ziehen, Haut außerhalb des Bands (schwarze Linie, mit `LINIEN=1` auch Rot/Blau, + `RAND`) zur vorigen Fläche, Ziel < 0,5 px |
 
 ## Editor-Skripte (`.mjs`, Playwright gegen eigenen Vite auf 5192)
 
@@ -28,3 +32,9 @@ Aus `packages/shape` starten: `npx vite-node ../../apps/editor/scripts/pruefen/<
 | `rex-ueberbiss.mjs`, `kugel-ueberbiss-florian.mjs` | Überbiss-/Unterbiss-Bilder (Rex, Florians Kugel) |
 | `folgen-check.mjs`, `folgen-maul.mjs` | Formen folgen nach Pinselstrichen, mit Maul |
 | `langhals-front-maul.mjs` | Maul im Front-Blatt (Tiefe vom Kern-Netz) |
+| `pruefreihe-bilder.mjs` | Kontaktbogen der Prüfreihe (`NUR`, `NAH`, `NAME`) |
+| `langhals-editor.mjs` | Florians Langhals-Ablauf: Maul zeichnen, getrennt, roter Anfang 4 × 15 px runter (Δ, Punktzahl, eingefrorener Maulzustand) |
+| `seite-nah.mjs`, `front-nah.mjs` | 15.10.: Seite bzw. Front nah (`NAH=cu,cv,zoom`; Front mit `SPANT=f`) — ist eine Abweichung echt oder verdeckt? |
+| `pruefwesen-check.mjs` | 15.10.: Wächter — alle Prüfwesen der Library laden, Δ, Punktzahl, Bühne zu/offen |
+| `kiefer-spant-editor.mjs` | 15.10.: Kiefer-Spant setzen (Werkzeug S), + auf der Unterkiefer-Kurve, Punkte ziehen (Front, Bühne), Undo |
+| `kiefer-griffe.mjs`, `knochen-griffe.mjs`, `knochen-buehne.mjs` | Rig und Fressen: Gelenk, Kieferlinie, Knochen in der Seite und auf der Bühne |
