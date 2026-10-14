@@ -140,3 +140,26 @@ Pipeline: `bauplanAus` (Editor, `kernBau.ts`) → `maulLinieAusPunkten` / `maulL
   Prüffälle: Langhals mit Maul unter dem Kopf, Kugel mit Nase nach Bild 3; Wächter Kugel gleich/Überbiss/Unterbiss, Rex, Tiger.
 
   **Danach:** Flosse und Kerbe an der Spitze des kürzeren Kiefers. In meinen Prüffällen sind sie noch nicht nachgestellt; der Zug am Anfang des kürzeren Kiefers wird schrittweise gemessen.
+  - **Gebaut (4a2ec83): Maul unter der Nase.** Florians Hinweis „sei selbstkritischer und teste die Fälle richtig aus“ gilt ab hier: Jede Meldung stützt sich auf die Prüfreihe (`apps/editor/scripts/pruefen/pruefreihe.ts`, Kontaktbogen `pruefreihe-bilder.mjs`, Editor-Ablauf `langhals-editor.mjs`).
+    1. **Anfang am gezeichneten Umrisspunkt.** Die Übersetzung nahm den vordersten Umrisspunkt auf der Höhe des Anfangs, beim Langhals also die Schnauzenspitze; die Lippe lief die ganze Schnauze entlang. Das war die eigentliche Ursache des Zerreißens.
+    2. **Ringanfang.** Liegt der Anfang hinter dem Platz von Ring 0, beginnt die Lippe am Bauchpunkt von Ring i0 und läuft dessen unteren Bogen hinauf.
+       - Ringe vor dem Maul liegen vor beiden Lippenanfängen, i0 hinter beiden. Das beseitigt die Flosse am kürzeren Kiefer der Nase.
+       - Die Maulringe liegen gleichmäßig; sonst lief eine Lippenspalte vor die vorige.
+    3. **Maulringe.** Im Maulbereich bekommt die Verteilung Zusatzdichte nach Maulgröße (Abstand mindestens ⅕ Sprossenlänge). Acht Ringe in einem winzigen Maul gaben Streifen und Falten bis 179°.
+    4. **Hautabfrage mit wachsendem Fenster** (Editor und Prüfstand).
+    5. **Lippenband nach der Kopfhöhe.** Die Kopfhöhe als Maßstab der ganzen Geometrie brach dagegen Tiger und Rex und wurde zurückgenommen.
+  - **Prüfreihe nach 4a2ec83:**
+
+    | Fall | Δ (px) | Durchdringungen 0/25/50/75/100 % | Hautfalten (über 20°) |
+    |---|---|---|---|
+    | Nase gleich | 3,4 / 3,8 / 6,7 | 0/0/0/0/0 | 23° (8) |
+    | Nase Überbiss | 3,1 / 3,4 / 5,2 | 0/4/2/0/0 | 20° (0) |
+    | Langhals gleich (wie Florians Giraffe) | 3,2 / 3,6 / 3,9 | 92/46/46/176/220 | 108° (52) |
+    | Langhals getrennt | – | 342/160/0/130/186 | 24° (22) |
+
+    Bei Langhals getrennt ist geschlossen nur verdeckte Überlappung im Spiel (die erlaubte), offen 50 % sind es 0. Im Editor (Maul gezeichnet, getrennt, roter Anfang 60 px nach unten): Δ 3/3/7 px, kein Zusammenfallen (`docs/progress/editor/langhals-editor-getrennt.png`). Kontaktbogen: `docs/progress/editor/pruefreihe-ringanfang.png`.
+  - **Noch nicht gelöst (ehrlich):**
+    - Die Kehlhaut des Langhalses faltet ab 75 % Öffnung (haut/haut 130–220 Paare; 58° Kieferwinkel um einen kleinen Mundwinkel).
+    - An der Kugel bleiben Flosse und Kerbe am kürzeren Kiefer, wenn er nach vorn gezogen wird (Kappenanfang; Florians Bilder 1/2: Hautfalten 149° bzw. 178°).
+    - Der Chip „getrennt“ setzt den blauen Anfang unter dem Kopf auf die Kinnseite, beim Langhals an die Kehle, und die blaue Linie läuft über die rote (Florians „Blau unten am Hals“).
+    - Die kleine Vorlagen-Linie des Langhalses liegt ganz auf der Kopfunterseite; dort hat der Unterkiefer keine Dicke (Grenzfall).

@@ -39,14 +39,17 @@ Die schwarze Linie ist sein Werkzeug und damit die Wahrheit für den Umriss: Das
 - **Messung des Unterbisses nach Florians Bild 2:** Δ 1,5 / 3,3 / 2,6 px statt 46 / 20 / 21 px, offen 4–58 Paare.
 - Einzelheiten, Zahlen und Offenes stehen auf der Planseite (Stand 14.10. nachts).
 
+## Maul unter der Nase (14.10. spätnachts, 4a2ec83)
+
+- Ringanfang, Anfang am gezeichneten Umrisspunkt, Maulringe, Hautabfrage mit wachsendem Fenster; Nase und Langhals tragen ein Maul (Zahlen und Offenes auf der Planseite).
+- **Prüfreihe vor jeder Meldung** (Florian: „sei selbstkritischer“): `cd packages/shape && npx vite-node ../../apps/editor/scripts/pruefen/pruefreihe.ts` (Maße), dann `apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/pruefreihe-bilder.mjs` (Kontaktbogen), Editor-Ablauf `langhals-editor.mjs`.
+
 ## Nächster Schritt
 
-Florians Test im Editor. Danach in dieser Reihenfolge:
-1. Kiefer-Spanten: Ein Spant über beiden Kiefern bekommt zwei Kurven in Front und Top.
-2. „Formen folgen“ mit Maul (Top), damit Schwarz einem schmaleren Kiefer folgt.
-3. Lippenband (Frage an Florian offen).
-
-Danach Block 3 (Phase 2: Haps → Zähne → Augen → Maularten).
+1. Flosse und Kerbe am kürzeren Kiefer der Kugel (Kappenanfang).
+2. Chip „getrennt“ für Mäuler unter dem Kopf: blauen Anfang hinter den roten legen, nicht an die Kehle.
+3. Kehlhaut beim weiten Öffnen (Langhals).
+4. Danach Kiefer-Spanten und „Formen folgen“ mit Maul.
 
 ## Wo Florian testet
 
