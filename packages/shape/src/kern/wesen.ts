@@ -15,6 +15,7 @@ import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas,
 import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
 import { ringSegmente } from './reifen';
+import { blattAbweichungen } from './abweichung';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { vorlageBei } from '../spanten';
@@ -89,6 +90,8 @@ export type WesenInfo = {
   zug: number;
   ecken: number;
   schnell: boolean;
+  /** Abweichung Körper ↔ Kurve je Blatt (px bei 461 px je Kachel; Plan „Zeichnung ist Form“, Schritt 4), nach echter Ableitung */
+  blatt?: Record<'seite' | 'front' | 'top', { max: number; mittel: number }>;
 };
 
 /** Reifen (M3): Ringe der gezeichneten Spanten auf dem Körper, mit Perlen an den Spant-Knoten. */
@@ -128,6 +131,8 @@ export type WesenNetz = {
   reifen: ReifenDaten | null;
   /** Kieferknopf (M3): rechter Mundwinkel (posiert) und Maullänge (Welt) bei Maul, sonst null */
   maul: { winkel: V3; laenge: number } | null;
+  /** Saum je Blatt (Schritt 4): Silhouettenpunkte des Körpers (x, y, d px), (NaN, NaN, 0) trennt Züge; wird kopiert, nicht übertragen */
+  saum: Record<'seite' | 'front' | 'top', Float32Array> | null;
   info: WesenInfo;
 };
 
@@ -140,6 +145,9 @@ export type WesenStand = {
   maul: MaulArt;
   beine: BeinArt;
   klingen: KlingenStand | null;
+  /** letzte Blatt-Abweichung (Schritt 4), während Gesten weiterverwendet */
+  saum?: WesenNetz['saum'];
+  blatt?: WesenInfo['blatt'];
 };
 
 const PX = 461;
@@ -663,7 +671,17 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   }
   const augen = earle || plan.stil === 'feuer' || plan.stil === 'gas' ? augenAm(abl, hoehe, plan.augen ?? { ring: 2, j: 2, groesse: 0.11 }) : [];
   const ab = nahtAbweichung(abl, dok);
-  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0 };
+  // Abweichung je Blatt (Schritt 4) aus der Ruhelage ohne Hebung, nur nach einer echten Ableitung; Züge zeigen den letzten Stand
+  let saum = stand?.saum ?? null;
+  let blatt = stand?.blatt;
+  if (!schnell || !blatt) {
+    const ruheP: V3[] = [];
+    for (let i = 0; i < abl.fein.length / 3; i++) ruheP.push([abl.fein[3 * i]!, abl.fein[3 * i + 1]!, abl.fein[3 * i + 2]!]);
+    const bl = blattAbweichungen(ruheP, flaechen, dok);
+    saum = { seite: bl.seite.saum, front: bl.front.saum, top: bl.top.saum };
+    blatt = { seite: { max: bl.seite.max, mittel: bl.seite.mittel }, front: { max: bl.front.max, mittel: bl.front.mittel }, top: { max: bl.top.max, mittel: bl.top.mittel } };
+  }
+  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}) };
   const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
   const lippenBand = maul !== 'aus' && beine === 'aus' ? (plan.lippenBand ?? 0.03) * hoehe : 0;
   const mitte: V3 = [0, 0, 0];
@@ -788,9 +806,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     treffer,
     reifen,
     maul: maulGriff,
+    saum,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(blatt ? { blatt } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

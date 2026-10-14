@@ -8,6 +8,20 @@ import { mitKanten } from '../kanten/kantenKoerper';
 import { Pauspapier, pauspapierAusDatei } from './Pauspapier';
 import { Steuerung3D } from './Steuerung3D';
 import { View2D } from './View2D';
+import { useKernAnzeige } from '../kern/kernBau';
+
+/** Abweichung Körper ↔ Kurve des Blatts (Plan 9.8: Zahl im Titel; grün ≤ 2, ocker ≤ 6, sonst pink; px bei 461 px je Kachel). */
+function Delta({ id }: { id: 'seite' | 'front' | 'top' }) {
+  const d = useKernAnzeige((s) => s.info?.blatt?.[id]?.max);
+  const kern = useUi((s) => s.bauweise === 'kern');
+  if (!kern || d === undefined) return null;
+  const stufe = d <= 2 ? 'gut' : d <= 6 ? 'mittel' : 'schlecht';
+  return (
+    <span className={`vp-delta ${stufe}`} data-delta={d.toFixed(1)} title="größte Abweichung zwischen Körper und Kurve in diesem Blatt (px bei 461 px je Kachel)">
+      Δ {d.toFixed(1).replace('.', ',')} px
+    </span>
+  );
+}
 
 /** Versuchs-Tabs am 3D-Fenster (creation · wirbelsäule · rund · kern) nur mit `?versuche=1` oder in einem Versuch */
 const VERSUCHE_ZEIGEN = new URLSearchParams(location.search).get('versuche') === '1' || new URLSearchParams(location.search).has('versuch');
@@ -66,7 +80,13 @@ function Titel({ id }: { id: ViewId }) {
       </div>
     );
   }
-  if (id !== 'front' && id !== 'top') return <div className="vp-titel">{VIEW_TEXTE[id].titel}</div>;
+  if (id !== 'front' && id !== 'top')
+    return (
+      <div className="vp-titel">
+        {VIEW_TEXTE[id].titel}
+        {id === 'seite' && <Delta id="seite" />}
+      </div>
+    );
   const [a, b] = BLICK_TEXTE[id];
   const werte = id === 'front' ? (['front', 'hinten'] as const) : (['top', 'unten'] as const);
   return (
@@ -88,6 +108,7 @@ function Titel({ id }: { id: ViewId }) {
           </button>
         );
       })}
+      <Delta id={id} />
     </div>
   );
 }

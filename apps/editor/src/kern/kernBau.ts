@@ -120,8 +120,9 @@ export function aktuellesNetz(): { netz: KernNetz; skalierung: number } | null {
 /** Feines Netz der Bauweise „kern“ im Worker bauen; während Gesten nur Zug, sonst Ableitung. Der neueste Auftrag gewinnt. */
 export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) => void): void {
   derClient().bauen(dok, bauplanAus(dok), schnell, (netz) => {
-    useKernAnzeige.setState({ info: netz.info });
+    // erst das Netz merken, dann der Stand: Abonnenten (Saum in den Blättern) lesen `aktuellesNetz()` beim Wechsel
     letztesNetz = { netz, skalierung: dok.skalierung };
+    useKernAnzeige.setState({ info: netz.info });
     cb(netz);
   });
 }

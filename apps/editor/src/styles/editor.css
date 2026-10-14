@@ -180,6 +180,30 @@ button {
   pointer-events: none;
 }
 
+/* Abweichung Körper ↔ Kurve je Blatt (Plan 9.8): Zahl im Titel, Saum im Blatt */
+.vp-delta {
+  margin-left: 10px;
+  font-size: 12px;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  letter-spacing: 0.02em;
+  opacity: 0.95;
+}
+.vp-delta.gut {
+  color: #9be37a;
+}
+.vp-delta.mittel {
+  color: #e8b85a;
+}
+.vp-delta.schlecht {
+  color: #ff5c9a;
+}
+:root {
+  --saum: #ffd54a;
+}
+.view2d .saum {
+  pointer-events: none;
+}
+
 /* Titel als Tab (Florian 12.10.): front · back, top · bottom */
 .vp-titel.blick-tabs {
   display: flex;

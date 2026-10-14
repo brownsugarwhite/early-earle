@@ -1081,6 +1081,10 @@ function SpielFeld() {
           <dd>
             max {info.nahtMax.toFixed(2)} px, Ø {info.nahtMittel.toFixed(2)} px
           </dd>
+          <dt>Blätter</dt>
+          <dd data-blaetter={info.blatt ? `${info.blatt.seite.max.toFixed(1)}/${info.blatt.front.max.toFixed(1)}/${info.blatt.top.max.toFixed(1)}` : ''}>
+            {info.blatt ? `Seite ${info.blatt.seite.max.toFixed(1)} · Front ${info.blatt.front.max.toFixed(1)} · Top ${info.blatt.top.max.toFixed(1)} px` : '…'}
+          </dd>
           <dt>Falten</dt>
           <dd>{info.ecken}</dd>
           <dt>Zeit</dt>

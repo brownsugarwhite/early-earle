@@ -46,6 +46,10 @@ import { SchnittZeichnung } from '../schnitte/SchnittEbene';
 import { RundZeichnung } from '../rund/RundEbene';
 import { RundSpantLinien, RundSpantSchnitt, rundSpantZeiger } from '../rund/RundSpantEbene';
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
+import { aktuellesNetz, useKernAnzeige } from '../kern/kernBau';
+
+/** Saum ab dieser Abweichung (px bei 461 px je Kachel; Plan 9.8) */
+const SAUM_AB = 2;
 import { abtasten3, maulAnfangIndizes, umrissMitSpalt, versetzt3 } from '@ee/shape/versuch';
 
 const PUNKT_R = 5; // Ø 10 px (Florian, 11.10.)
@@ -89,6 +93,24 @@ export function View2D({ ansicht, w, h }: Props) {
   const spalt = maulZu?.unten ? umrissMitSpalt(profil, maulZu, offenerKoerper ? poseSpaltIndizes(useEditor.getState().dok) : maulDok ? spaltIndizesZu(profil, maulDok.zu) : null) : null;
   const formAktiv = ebene === 'form' && (!offenerKoerper || ansicht === 'seite');
   const svgRef = useRef<SVGSVGElement>(null);
+  // Saum (Schritt 4): Silhouette des Körpers, wo sie > 2 px von der Kurve abweicht (Welt-Koordinaten des Blatts)
+  const saum = useKernAnzeige((s) => (s.info?.blatt ? (aktuellesNetz()?.netz.saum?.[ansicht] ?? null) : null));
+  const saumPfad = (() => {
+    if (!saum || saum.length < 6) return '';
+    let d = '';
+    let offen = false;
+    for (let i = 0; i + 2 < saum.length; i += 3) {
+      const x = saum[i]!;
+      if (!Number.isFinite(x) || saum[i + 2]! <= SAUM_AB) {
+        offen = false;
+        continue;
+      }
+      const q = zuBild(view, w, h, spiegeln2(blick, { x, y: saum[i + 1]! }));
+      d += `${offen ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+      offen = true;
+    }
+    return d;
+  })();
 
   // Rad: nicht-passiv, sonst zoomt die Seite beim Trackpad-Pinch mit
   useEffect(() => {
@@ -471,6 +493,7 @@ export function View2D({ ansicht, w, h }: Props) {
           )}
         </>
       )}
+      {saumPfad && <path className="saum" data-saum="" d={saumPfad} fill="none" stroke="var(--saum)" strokeWidth={3} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
       <WirbelZeichnung ansicht={ansicht} bild={bild} />
       <SchnittZeichnung ansicht={ansicht} bild={bild} />
