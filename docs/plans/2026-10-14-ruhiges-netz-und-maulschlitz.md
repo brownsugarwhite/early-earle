@@ -163,3 +163,19 @@ Pipeline: `bauplanAus` (Editor, `kernBau.ts`) → `maulLinieAusPunkten` / `maulL
     - An der Kugel bleiben Flosse und Kerbe am kürzeren Kiefer, wenn er nach vorn gezogen wird (Kappenanfang; Florians Bilder 1/2: Hautfalten 149° bzw. 178°).
     - Der Chip „getrennt“ setzt den blauen Anfang unter dem Kopf auf die Kinnseite, beim Langhals an die Kehle, und die blaue Linie läuft über die rote (Florians „Blau unten am Hals“).
     - Die kleine Vorlagen-Linie des Langhalses liegt ganz auf der Kopfunterseite; dort hat der Unterkiefer keine Dicke (Grenzfall).
+  - **Gebaut (ac7fbcf, c5c15c9, a9bc9e1): Kerbe, Flosse, Klinge, Stationen** (14.10. spätnachts). Bild vorher/nachher: `docs/progress/editor/maul-kerbe-flosse-scharnier-2026-10-14.png`.
+    1. **Stirn des kürzeren Kiefers ≥ 40 % seiner Linie** (gemessen: 10 % Kerbe 175°, 20 % 77°, 30 % 54°, 40 % ≤ 27°), der Bezugsring der Wand liegt dahinter; **Kappenspalten der Schlitzlippe nach Bogenlänge** zwischen Anfang und Ring 0.
+    2. **Ringverteilung ohne die Ecken der Schlitzsehne:** Sie zählten als Krümmung des Körpers und zogen drei Ringe auf 0,015 zusammen; die Lippenspalten lagen 0,0095 statt 0,03–0,06 auseinander, die Unterlippe wurde zur Klinge. Im Umkreis von 3 % der Wirbelsäule um die markierten Knoten zählt ihre Krümmung nicht mehr.
+    3. **Editor friert nur Stationen aus dem Bau des aktuellen Dokuments ein.** Ein beim Laden noch laufender Bau schrieb seine Ringverteilung in das neue Wesen.
+    4. **Prüfreihe wie im Editor:** eingefrorene Stationen, Falten offen (Haut vorn / Lippe / Haut ganz bei 0, 50, 100 %), Zugschritte. Das Faltenmaß allein am geschlossenen Körper hatte Florians Fälle nicht erfasst (Kerbe und Flosse waren offen zu sehen).
+
+    | Fall (Stationen der Startkugel) | Haut vorn zu/50/100 % | Lippe | offene Paare 25–100 % |
+    |---|---|---|---|
+    | Unterbiss, roter Anfang 1–6 % vor | ≤ 4,2° (vorher bis 178°) | ≤ 18,5° | 0/0/0/26–34 (haut/haut am Scharnier) |
+    | Überbiss, blauer Anfang 1–2 % vor | ≤ 4,1° | ≤ 26° | 0/0/16/54–56 (Scharnier) |
+    | Überbiss, blauer Anfang 3 % vor (fast bündig) | 5,0° | 26,8° | 0/0/34/60; **geschlossen sticht die Unterlippe durch** |
+    | Florians Unterbiss | ≤ 4,2° | 12,6° | 0/0/0/28 |
+
+  - **Noch nicht gelöst (ehrlich), gefunden mit der neuen Messung:**
+    - **Naht hinter dem Mundwinkel beim Öffnen**, bei jedem Maul (Kugel gleich 20/64/80/96 haut/haut-Paare bei 25–100 %, von der Seite als harte Kante sichtbar). Ursache: Der Unterkiefer dreht um den Mundwinkel; die Haut des Kieferbands (Ringe k … k + 2) liegt hinter dem Gelenk und wandert beim Drehen nach oben und vorn, die untere Hälfte des Winkelrings schwenkt nach hinten (bei der Kugel bis 0,85 × ihrer Höhe). Gemessen und verworfen: die Bewegung hinter dem Winkel nach oben/vorn klemmen (reißt die Nachbarn auf, bis 162 Paare); das Gelenk global nach hinten legen (Kugel Überbiss 52 → 0, aber Langhals 220 → 478, Nase 0 → 338, Rex unten 0 → 210). Weg: eigenes Kiefermodell (Gelenk und Gewichte nach Lage zum Gelenk), Plan und Look-Beweis vor dem Bau.
+    - **Kürzerer Kiefer fast bündig** (blauer Anfang ≤ 0,5 % hinter dem roten): Die gerade Schlitzsehne knickt den Seitenumriss zurück, wenn der blaue Anfang über dem roten liegt; die Leiter vorn wird instabil, Ring 0 springt an den Pol, die Kappenspalten der Oberlippe drängen sich (Kontrollpunkte im Zickzack, Lippe 45–65°), geschlossen sticht die Unterlippe durch. Weg: Umriss für die Ableitung entlang der sichtbaren Silhouette (rote Linie bis zur Kinnlinie); die echte Kinnlinie bleibt für die Form des Kiefers.

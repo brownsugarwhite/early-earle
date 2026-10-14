@@ -49,6 +49,7 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - Florians Unterbiss: Δ 1,5 / 3,3 / 2,6 px statt 46 / 20 / 21 px.
   - Offen: Kiefer-Spanten, Formen folgen mit Maul.
   - Planseite [`docs/plans/2026-10-14-ruhiges-netz-und-maulschlitz.md`](docs/plans/2026-10-14-ruhiges-netz-und-maulschlitz.md), Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
+- **2026-10-14 spätnachts: Kugel-Kerbe und -Flosse behoben, Prüfreihe misst wie der Editor** (ac7fbcf, c5c15c9, a9bc9e1): Stirn des kürzeren Kiefers ≥ 40 %, Kappenspalten nach Bogenlänge, Ringe nicht an den Ecken der Schlitzsehne (Klinge der Unterlippe), Editor friert nur Stationen des aktuellen Dokuments ein (Laden-Fehler). Gefunden und offen: Naht hinter dem Mundwinkel beim Öffnen (jedes Maul, braucht ein Kiefermodell), Durchstechen bei fast bündigem kürzerem Kiefer. Stand: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte) und die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 

@@ -3,7 +3,7 @@ import { dirname as _dirname, resolve as _resolve } from 'node:path';
 import { fileURLToPath as _fileURLToPath } from 'node:url';
 // gerettet aus dem Scratchpad der Sitzung vom 15.10. (Pfade relativ zum Repo)
 const WURZEL = _resolve(_dirname(_fileURLToPath(import.meta.url)), '../../../..');
-const AUSGABE = process.env.AUSGABE ?? _resolve(WURZEL, 'apps/editor/test-results/pruefen');
+const AUSGABE = process.env.AUSGABE ?? _resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
 import { chromium } from '@playwright/test';
 const url = process.env.EDITOR_URL ?? 'http://localhost:5192';
 const out = AUSGABE + '';

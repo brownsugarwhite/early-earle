@@ -9,7 +9,7 @@ import { maulLinieAusDokument } from '../../../../packages/shape/src/kern/maulDo
 import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
-const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/test-results/pruefen');
+const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
 const faelle = JSON.parse(readFileSync(resolve(AUSGABE, 'pruefreihe.json'), 'utf-8')) as Record<string, { dok: Dokument }>;
 const FALL = process.env.FALL ?? 'kugel-gleich';
 const dok = faelle[FALL]!.dok;

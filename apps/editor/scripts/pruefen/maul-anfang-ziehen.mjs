@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
-const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/test-results/pruefen');
+const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
 const dok = JSON.parse(readFileSync(resolve(AUSGABE, 'maul-faelle.json'), 'utf-8')).gleich;
 const url = process.env.EDITOR_URL ?? 'http://localhost:5192';
 const browser = await chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });

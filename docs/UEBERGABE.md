@@ -1,4 +1,4 @@
-# Übergabe (Stand 14.10.2026 nachts)
+# Übergabe (Stand 14.10.2026 spätnachts)
 
 Branch `claude/editor-grundlayout`. Die große Sitzung ist für diese Woche aufgebraucht und brach mitten in der Arbeit ab; ihr ungespeicherter Stand ist gesichert. Es gilt der Fahrplan [`docs/plans/2026-10-14-ruhiges-netz-und-maulschlitz.md`](plans/2026-10-14-ruhiges-netz-und-maulschlitz.md) (von Florian freigegeben): **Block 1 ruhiges Netz auf der schwarzen Linie → Block 2 Maulschlitz an der schwarzen Linie, getrennte Kiefer mit eigenen Spanten → Block 3 weiter nach Phase 2.** Datumshinweis: Einträge „15.10.“ der vorigen Sitzung stammen laut Commits vom 13./14.10.; ab hier gilt das echte Datum.
 
@@ -44,11 +44,24 @@ Die schwarze Linie ist sein Werkzeug und damit die Wahrheit für den Umriss: Das
 - Ringanfang, Anfang am gezeichneten Umrisspunkt, Maulringe, Hautabfrage mit wachsendem Fenster; Nase und Langhals tragen ein Maul (Zahlen und Offenes auf der Planseite).
 - **Prüfreihe vor jeder Meldung** (Florian: „sei selbstkritischer“): `cd packages/shape && npx vite-node ../../apps/editor/scripts/pruefen/pruefreihe.ts` (Maße), dann `apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/pruefreihe-bilder.mjs` (Kontaktbogen), Editor-Ablauf `langhals-editor.mjs`.
 
+## Kugel: Kerbe, Flosse, Klinge, Stationen (14.10. spätnachts)
+
+- **Kerbe und Flosse an der Spitze des kürzeren Kiefers** (Florians Bilder 1/2, ac7fbcf): Stirn des kürzeren Kiefers mindestens 40 % seiner Linie, Kappenspalten der Schlitzlippe nach Bogenlänge. Vordere Haut in allen Zugschritten (Anfang 1–6 % vor, beide Kiefer) zu/50/100 % ≤ 6,3° (vorher bis 178°). Bild vorher/nachher: `docs/progress/editor/maul-kerbe-flosse-scharnier-2026-10-14.png`.
+- **Klinge an der Unterlippe** (c5c15c9): Die Ecken der Schlitzsehne zogen Ringe an (drei Ringe auf 0,015); die markierten Lippenknoten zählen in der Ringverteilung nicht mehr als Krümmung (Florians Unterbiss 147° → 17,5°).
+- **Editor-Fehler beim Laden** (a9bc9e1): Ein noch laufender Bau schrieb seine Ringverteilung in das gerade geladene Wesen (z. B. Prüfwesen mit den Ringen der Startkugel). Jetzt friert der Editor nur Stationen aus dem Bau des aktuellen Dokuments ein. Seit dem Fehler gespeicherte Wesen können falsche Stationen tragen → Tafel Körper „Neu ableiten“.
+- **Prüfreihe misst jetzt wie der Editor:** eingefrorene Stationen (`mitStationenVon`, `KUGEL0=1` = Stationen der Startkugel, `ZUG=1` = Zugschritte), Falten offen (Haut vorn, Lippe, Haut ganz je 0/50/100 %), Faltenorte (`falten-orte.ts`), Schnittbilder (`maul-schnitt.ts`, `EBENE=x` quer), gezielte Bilder (`kamera-bilder.mjs`), Editor-Prüfung geladener Fälle (`editor-dok-check.mjs`). Ausgaben in `apps/editor/pruefen-ausgabe/` (Playwright leert `test-results/` bei jedem E2E-Lauf).
+
+### Gefunden, noch offen
+
+- **Naht hinter dem Mundwinkel beim Öffnen** (jedes Maul ab 25 %, von der Seite deutlich): Der Unterkiefer dreht um den Mundwinkel; die Haut des Kieferbands dahinter liegt hinter dem Gelenk und wandert beim Drehen nach oben und vorn in die obere Hälfte (haut/haut, Kugel gleich 20/64/80/96 Paare bei 25–100 %). Gemessen: Klemmen der Bewegung reißt die Nachbarn auf (bis 162 Paare); ein Gelenk weiter hinten hilft der Kugel (Überbiss 52 → 0), bricht aber Langhals (220 → 478), Nase (0 → 338) und Rex unten (0 → 210). Braucht ein eigenes Kiefermodell (Gelenk, Gewichte nach Lage zum Gelenk), mit Look-Beweis.
+- **Kürzerer Kiefer fast bündig** (blauer Anfang ≤ 0,5 % hinter dem roten): geschlossen sticht die Unterlippe durch die Oberlippe („W“). Ursache: Liegt der blaue Anfang über dem roten, knickt die gerade Schlitzsehne den Seitenumriss zurück; die Leiter vorn wird instabil, Ring 0 springt an den Pol (Lippenspalten gestaucht). Weg: Umriss für die Ableitung entlang der sichtbaren Silhouette (rote Linie bis zur Kinnlinie), die echte Kinnlinie bleibt für den Kiefer.
+- Ein älterer E2E-Test schlägt fehl (`kern-ablauf` „Körper … Pinsel G“: erwartet nach dem Pinsel keinen Umbau; Formen folgen baut um). Schon vor diesen Änderungen; eigene Aufgabe.
+
 ## Nächster Schritt
 
-1. Flosse und Kerbe am kürzeren Kiefer der Kugel (Kappenanfang).
-2. Chip „getrennt“ für Mäuler unter dem Kopf: blauen Anfang hinter den roten legen, nicht an die Kehle.
-3. Kehlhaut beim weiten Öffnen (Langhals).
+1. Kürzerer Kiefer fast bündig (Umriss entlang der Silhouette).
+2. Kiefermodell für das Öffnen (Naht hinter dem Mundwinkel, Kehlhaut des Langhalses): Plan, Look-Beweis, dann bauen.
+3. Chip „getrennt“ für Mäuler unter dem Kopf: blauen Anfang hinter den roten legen, nicht an die Kehle.
 4. Danach Kiefer-Spanten und „Formen folgen“ mit Maul.
 
 ## Wo Florian testet
@@ -57,7 +70,7 @@ Web-Modus `http://localhost:5180` (`pnpm --filter @ee/editor dev:web`); nach dem
 
 ## Prüfen
 
-- `pnpm typecheck` (grün seit 50c1dd4), `cd packages/shape && npx vitest run src/kern` (67 Tests; der Laufzeittest `beweis3` „Stufe 3“ reißt unter Last, einzeln mit `-t` 140 ms), `cd apps/editor && npx vitest run` (16), `npx eslint <ordner>`.
-- Prüfskripte: `apps/editor/scripts/pruefen/README.md` (Kern-Skripte mit `npx vite-node` aus `packages/shape`, Editor-Skripte über `run-check.sh` auf 5192).
-- E2E: `E2E_PORT=5191 EE_GPU=1 pnpm --filter @ee/editor e2e -- kern-ablauf`.
+- `pnpm typecheck`, `cd packages/shape && npx vitest run src/kern` (77 Tests; die Laufzeittests `beweis1` „Zugschritt“ und `beweis3` „Stufe 3“ reißen unter Last, einzeln mit `-t` grün), `cd apps/editor && npx vitest run` (16), `npx eslint <ordner>`.
+- Prüfskripte: `apps/editor/scripts/pruefen/README.md` (Kern-Skripte mit `npx vite-node` aus `packages/shape`, Editor-Skripte über `run-check.sh` auf 5192); Ausgaben in `apps/editor/pruefen-ausgabe/`.
+- E2E: `cd apps/editor && E2E_PORT=5191 EE_GPU=1 npx playwright test e2e/kern-ablauf.spec.ts --reporter=list` (`pnpm --filter @ee/editor e2e -- kern-ablauf` filtert nicht: alle Specs, 10 min, und sie überschreiben `docs/progress/editor/*.png` → vor dem Commit zurücksetzen).
 - Nie committen: `assets/fonts/Hippie Movement.otf` (unversioniert, Florians Datei).

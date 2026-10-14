@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
-const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/test-results/pruefen');
+const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
 const NAME = process.env.NAME ?? 'pruefreihe';
 // NUR=fall1,fall2 filtert; NAH=x,y,z,dist rückt alle Kameras nah an eine Stelle (z. B. die Spitze des kürzeren Kiefers)
 const nur = process.env.NUR?.split(',');

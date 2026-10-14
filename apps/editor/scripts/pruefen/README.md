@@ -1,6 +1,6 @@
 # Prüfskripte (Mess- und Bildwerkzeuge der Phase 2)
 
-Gerettet aus dem Scratchpad der Sitzung vom 14.10.2026 (dort nur flüchtig). Die Pfade sind relativ zum Repo; Ausgaben landen in `apps/editor/test-results/pruefen/` (oder `AUSGABE=<ordner>`), Bilder für Florian schreiben einzelne Skripte nach `docs/progress/editor/`.
+Gerettet aus dem Scratchpad der Sitzung vom 14.10.2026 (dort nur flüchtig). Die Pfade sind relativ zum Repo; Ausgaben landen in `apps/editor/pruefen-ausgabe/` (oder `AUSGABE=<ordner>`; nicht unter `test-results/`, das leert Playwright bei jedem E2E-Lauf), Bilder für Florian schreiben einzelne Skripte nach `docs/progress/editor/`.
 
 ## Kern-Skripte (`.ts`, ohne Browser)
 

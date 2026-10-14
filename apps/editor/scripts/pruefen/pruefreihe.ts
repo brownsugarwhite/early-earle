@@ -2,7 +2,7 @@
 // gefixt präsentierst“): Wesen × Kiefer × gezogene Anfänge, je Fall Δ je Blatt, Lippen-px, Hautfalten (Flossen/Kerben)
 // und Durchdringungen bei 0/25/50/75/100 %. Schreibt die Dokumente für den Kontaktbogen (pruefreihe-bilder.mjs).
 // Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/pruefreihe.ts   (NUR=kugel,langhals filtert)
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type Dokument, neuesDokument } from '../../../../packages/shape/src/dokument';
@@ -84,4 +84,5 @@ for (const fall of faelle) {
   console.log(`${fall.name.padEnd(32)} ${mass}`);
   aus[fall.name] = { dok, ziel: fall.ziel, dist: fall.dist, mass };
 }
-writeFileSync(resolve(WURZEL, 'apps/editor/test-results/pruefen/pruefreihe.json'), JSON.stringify(aus));
+mkdirSync(resolve(WURZEL, 'apps/editor/pruefen-ausgabe'), { recursive: true });
+writeFileSync(resolve(WURZEL, 'apps/editor/pruefen-ausgabe/pruefreihe.json'), JSON.stringify(aus));
