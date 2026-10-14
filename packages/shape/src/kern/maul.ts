@@ -17,7 +17,7 @@ import { type Kaefig, alleFlaechen, kaefigAusFlaechen, kanteZwischen, pruefeKaef
 import { type Roehre, roehre } from '../kaefig/roehre';
 import { luLoesen, luZerlegen } from '../loeser/lu';
 import { abtasten3 } from '../versuch/linie3d';
-import type { Linie3 } from '../dokument';
+import type { Linie3, MaulStationen } from '../dokument';
 import { anwenden3 } from '../subdivision/matrix';
 import type { KlingenLage } from './klinge';
 import type { Leiter } from '../versuch/wirbelsaeule';
@@ -375,7 +375,7 @@ function frontFlach(l: Leiter, f: number): boolean {
  * Höhe wird auf [0,1 … 0,9] begrenzt, damit eine Linie auf oder außerhalb der Kontur keine Lippe auf der Naht ergibt.
  * `unterSpitze` wird mitgeliefert (1 mit Konturanfang, sonst 0).
  */
-export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[], winkelZ?: number, front?: { z: number; y: number }[]): MaulLinie {
+export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[], winkelZ?: number, front?: { z: number; y: number }[], konturVorher?: boolean): MaulLinie {
   if (punkte.length < 2) throw new Error('Maullinie: zu kurz');
   const l = kernLeiter(dok);
   const spitze = l.ruecken[0]!;
@@ -395,7 +395,11 @@ export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[], winkel
   const amUmriss = aufUmriss && Math.hypot(aufUmriss.x - p0.x, aufUmriss.y - p0.y) < 0.01 && zugAnteil(l.bauch, aufUmriss).d <= zugAnteil(l.ruecken, aufUmriss).d + 1e-9;
   if (amUmriss || p0.y < spitze.y - 1e-9) {
     const sPkt = amUmriss ? aufUmriss : frontPunkt(dok, p0.y);
-    if (sPkt && Math.hypot(sPkt.x - spitze.x, sPkt.y - spitze.y) >= ANFANG_ABSTAND_MIN) {
+    // Band um die Schwelle (14.10.): Begann die Lippe beim letzten Bau auf der Kontur, bleibt sie dort bis zum halben
+    // Abstand, sonst wechselt sie erst ab dem doppelten — ein Zug um 1 px über die Schwelle hob die Lippe in eine andere
+    // Kappenzeile (Kugel: 18 px Sprung)
+    const abstandMin = konturVorher === true ? 0.5 * ANFANG_ABSTAND_MIN : konturVorher === false ? 2 * ANFANG_ABSTAND_MIN : ANFANG_ABSTAND_MIN;
+    if (sPkt && Math.hypot(sPkt.x - spitze.x, sPkt.y - spitze.y) >= abstandMin) {
       const f = spineAnteilFuer(l, zugAnteil(l.bauch, sPkt).t, false);
       if (f > 1e-4 && !frontFlach(l, Math.max(f, ABLEIT_STANDARD.kappe))) {
         anfangF = f;
@@ -602,7 +606,7 @@ function zugWerkzeuge(zug: readonly (readonly [number, number, number])[]) {
 /** Plattenmaul: Rachen und Scharnier bei diesem Anteil der Wirbelsäule hinter der Platte (Tiger: Ring 4 von 24). */
 const PLATTE_SCHARNIER = 0.08;
 
-export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie, ringAnfang = false): MaulLage {
+export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie, ringAnfang = false, gefroren?: MaulStationen): MaulLage {
   const { R, c, N } = v;
   if (linie.fv.length < 2) throw new Error('Maullinie braucht mindestens zwei Stützen');
   // Kastenfront: Ring 0 liegt praktisch in der Frontebene (Vorschub der Sprosse gegenüber der Spitze < 6 % ihrer Höhe);
@@ -651,6 +655,10 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie, 
   let k = 1;
   for (let i = 1; i <= R - 2; i++) if (Math.abs(fRinge[i]! - fScharnier) < Math.abs(fRinge[k]! - fScharnier)) k = i;
   if (platte) k = Math.max(k, Math.min(R - 2, 2));
+  // eingefrorener Winkelring (14.10.): bleibt, solange der Winkel zwischen seinen Nachbarringen liegt — sonst kippte die
+  // Wahl „nächster Ring“ beim Ziehen eines Anfangs zwischen zwei Ringen hin und her (der Anteil des Winkels wandert mit der Leiter)
+  const gw = gefroren?.winkel;
+  if (!platte && gw !== undefined && gw >= 1 && gw <= R - 2 && fScharnier > fRinge[gw - 1]! && fScharnier < fRinge[gw + 1]!) k = gw;
   const vorher = fRinge[k - 1]!;
   const nachher = fRinge[k + 1]!;
   // Winkelring auf den Winkel rasten (nicht beim Plattenmaul: dort ist der Winkel kein Ringpunkt)
@@ -688,6 +696,9 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie, 
     // erster Ring, der nicht mehr vor beiden Anfängen liegt, wird i0
     let i0 = 1;
     while (i0 < k && fRinge[i0]! < fVorn - 0.06 * spanne) i0++;
+    // eingefrorener Ringanfang (14.10.): bleibt, solange der Ring davor noch vor beiden Anfängen liegt
+    const ga = gefroren?.ringA;
+    if (ga !== undefined && ga >= 1 && ga <= k - 2 && fRinge[ga - 1]! < fVorn - 0.06 * spanne) i0 = ga;
     const geschuetzt = (i: number) => st.ecken.some((e) => e.ring === i) || st.reifen.some((r) => r.ring === i);
     let frei = true;
     for (let i = i0; i < k; i++) if (geschuetzt(i)) frei = false;
@@ -2208,7 +2219,10 @@ export function ableitenMitMaul(dokRoh: Dokument, linie: MaulLinie, optionen: Pa
   const anfang = konturAnfang(linie);
   // Ringanfang (14.10. spätnachts): Läge der Anfang hinter dem Platz von Ring 0 (die Kappe müsste ihn einschließen),
   // behält die Schnauze ihre Ringe und die Lippe beginnt an einem Ring — sonst fiele die Schnauze als Kappe zusammen
-  const ringAnfang = anfang !== undefined && !!linie.punkte && linie.punkte.length >= 2 && anfangKappeMin(anfang) > opt.kappe;
+  // Band um die Schwelle (14.10.): ein eingefrorener Ringanfang bleibt bis 0,75 · kappe, eine eingefrorene Kappe bis 1,5 · kappe
+  const gm = opt.stationen?.maul;
+  const kappeSchwelle = (gm ? (gm.ringA !== undefined ? 0.75 : 1.5) : 1) * opt.kappe;
+  const ringAnfang = anfang !== undefined && !!linie.punkte && linie.punkte.length >= 2 && anfangKappeMin(anfang) > kappeSchwelle;
   // Maulbereich für die Ringverteilung: vom vorderen Anfang (etwas davor, Platz für den letzten Nasenring) bis zum Winkel
   // Ringzahl nach der Größe des Mauls: Abstand der Ringe nicht unter einem Fünftel der Sprossenlänge (fast quadratische
   // Felder); acht Ringe in einem winzigen Maul (Langhals) gaben Streifen von 0,003 und Hautfalten bis 179°
@@ -2233,7 +2247,9 @@ export function ableitenMitMaul(dokRoh: Dokument, linie: MaulLinie, optionen: Pa
   }
   const st = stationenWaehlen(l, opt, dok, anfang !== undefined && !ringAnfang ? anfangKappeMin(anfang) : undefined, maulBereich);
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
-  const lage = maulLage(vorlage, l, st, linie, ringAnfang);
+  const lage = maulLage(vorlage, l, st, linie, ringAnfang, gm);
+  // Entscheidungen der Maullage mit einfrieren (die Ringanteile allein ließen die Maultopologie beim Ziehen kippen)
+  if (!lage.platte) st.gefroren.maul = { winkel: lage.k, ...(lage.ringA !== undefined ? { ringA: lage.ringA } : {}), kontur: anfang !== undefined };
   const { ziele, hoehe } = zieleBerechnen(vorlage, l, st, breiten, dok, opt, lage);
   // schwarzer Bogen des kürzeren Kiefers vom eigenen Anfang weg (Block 2): Überbiss = blauer Anfang (Unterkiefer, Anfang
   // des offenen Umrisses), Unterbiss = roter Anfang (Oberkiefer, Ende des offenen Umrisses)

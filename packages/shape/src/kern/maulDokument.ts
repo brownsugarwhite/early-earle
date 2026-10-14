@@ -40,7 +40,9 @@ export function maulLinieAusDokument(dokRoh: Dokument, kanteFehler?: (e: unknown
   const letzter = schlitz[schlitz.length - 1]!;
   // Front-Verlauf (|z| → y) der gezeichneten Linie: die Maularme des Plattenmauls; nur, wenn die Linie seitlich läuft
   const front = schlitz.map((p) => ({ z: Math.abs(p[2]), y: p[1] })).sort((a, b) => a.z - b.z);
-  let linie: MaulLinie = { ...maulLinieAusPunkten(dok, punkte, letzter[2], Math.abs(letzter[2]) > 1e-6 ? front : undefined), punkte: schlitz };
+  // Konturanfang mit Band um die Schwelle: Entscheidung des letzten Baus (eingefrorene Stationen)
+  const konturVorher = dokRoh.kaefig?.stationen?.maul?.kontur;
+  let linie: MaulLinie = { ...maulLinieAusPunkten(dok, punkte, letzter[2], Math.abs(letzter[2]) > 1e-6 ? front : undefined, konturVorher), punkte: schlitz };
   if (versetzt) {
     try {
       const stuetzen = maulLinieUntenAusPunkten(dok, versetzt);

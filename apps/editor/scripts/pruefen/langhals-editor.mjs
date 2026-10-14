@@ -29,7 +29,7 @@ const bildpunkt = (ansicht, p) =>
   }, { ansicht, p });
 const zustand = async (wo) => {
   await page.waitForTimeout(2500);
-  const z = await page.evaluate(() => ({ delta: [...document.querySelectorAll('[data-delta]')].map((e) => e.textContent), lippen: window.__editor.wesen()?.lippen ?? null, punkte: window.__editor.vertices(), maul: !!window.__stores.editor.getState().dok.maul, getrennt: !!window.__stores.editor.getState().dok.maul?.zu.unten, anfang: window.__stores.editor.getState().dok.maul?.zu.oben.knoten[0].p.map((x) => +x.toFixed(3)) }));
+  const z = await page.evaluate(() => ({ delta: [...document.querySelectorAll('[data-delta]')].map((e) => e.textContent), lippen: window.__editor.wesen()?.lippen ?? null, punkte: window.__editor.vertices(), maul: !!window.__stores.editor.getState().dok.maul, getrennt: !!window.__stores.editor.getState().dok.maul?.zu.unten, anfang: window.__stores.editor.getState().dok.maul?.zu.oben.knoten[0].p.map((x) => +x.toFixed(3)), maulStand: window.__stores.editor.getState().dok.kaefig?.stationen?.maul ?? null }));
   console.log(wo, JSON.stringify(z));
   return z;
 };

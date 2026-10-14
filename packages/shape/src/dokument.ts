@@ -184,8 +184,16 @@ const GefroreneStationenSchema = z.object({
   ecken: z.array(z.object({ ring: z.number(), seite: z.enum(['oben', 'unten', 'beide']) })),
   reifen: z.array(z.object({ spant: z.number(), ring: z.number() })),
   spitzen: z.object({ vorn: z.boolean(), hinten: z.boolean() }),
+  maul: z.object({ winkel: z.number(), ringA: z.number().optional(), kontur: z.boolean().optional() }).optional(),
 });
-export type GefroreneStationen = { ringe: number[]; vorn: number[]; hinten: number[]; ecken: { ring: number; seite: 'oben' | 'unten' | 'beide' }[]; reifen: { spant: number; ring: number }[]; spitzen: { vorn: boolean; hinten: boolean } };
+/**
+ * `maul` (14.10.): die Entscheidungen der Maullage aus dem letzten Bau mit Maul — Ring des Mundwinkels, erster Lippenring
+ * (Ringanfang) und ob die Lippe auf der Kontur beginnt (sonst in der Spitze). Sie bleiben, solange sie gültig sind (Winkel
+ * zwischen den Nachbarringen, letzter Nasenring vor den Anfängen) bzw. innerhalb eines Bands um die Schwelle; sonst wählte
+ * jeder Zug am Anfang neu, und das Netz sprang (Langhals: Käfig 499 ↔ 513 Punkte; Kugel: Lippe 18 px in eine andere Kappenzeile).
+ */
+export type GefroreneStationen = { ringe: number[]; vorn: number[]; hinten: number[]; ecken: { ring: number; seite: 'oben' | 'unten' | 'beide' }[]; reifen: { spant: number; ring: number }[]; spitzen: { vorn: boolean; hinten: boolean }; maul?: MaulStationen };
+export type MaulStationen = { winkel: number; ringA?: number; kontur?: boolean };
 const KaefigSchema = z.object({ deltas: z.array(KaefigDeltaSchema), posen: z.record(z.string(), z.array(KaefigDeltaSchema)).optional(), stationen: GefroreneStationenSchema.optional() });
 /** Version 1: mit Ausstattung und (M3) Käfig-Deltas der Pinsel. */
 export const DokumentSchema = z.object({ ...DokumentFelder, version: z.literal(1), ausstattung: AusstattungSchema.optional(), kaefig: KaefigSchema.optional() });
