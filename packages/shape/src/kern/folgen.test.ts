@@ -71,4 +71,31 @@ describe('Formen folgen', () => {
     console.log(`zweites Folgen: Knoten bewegen sich höchstens ${(maxKnoten * dok.skalierung * 461).toFixed(2)} px, ${r3.eingefuegt} eingefügt`);
     expect(maxKnoten * dok.skalierung * 461).toBeLessThan(1);
   });
+
+  it('ohne eingefügte Knoten (Editor-Standard): Achsknoten behalten ihre Griffe, Front/Top ≤ 3 px, kleine Deltas', () => {
+    // 14.10.: Die Endtangente am letzten Achsknoten zeigte nach außen, der Fit fiel auf Drittel-Griffe zurück und die
+    // Achsregel kappte den Griff auf 0 — Front/Top 30 px neben der Silhouette, nachgeführte Deltas bis 0,09. Verzog
+    // Florian danach die Form (Komma), entstanden Wellen und Δ ≈ 30 px.
+    const dok = neuesDokument();
+    const r0 = wesenBauen(dok, {}, null, false);
+    const abl = r0.stand.abl;
+    const n0 = abl.vorlage.kaefig.n;
+    const xyz = abl.kaefig.xyz;
+    // Pinselstrich: rechte Flanke 0,03 aufblasen
+    const deltas = [];
+    for (let p = 0; p < n0; p++) if (xyz[3 * p + 2]! > 0.15) deltas.push({ punkt: p, d: [0, 0, 0.03] as [number, number, number] });
+    const dokB = { ...dok, kaefig: { deltas } };
+    const rB = wesenBauen(dokB, {}, null, false);
+    const r = formenFolgen(dokB, {}, rB.stand);
+    console.log(`ohne Einfügen: Fit ${Object.values(r.fehlerPx).map((x) => x.toFixed(2)).join(' / ')} px, Deltas max ${Math.max(...r.deltas.map((d) => Math.hypot(...d.d))).toFixed(4)}`);
+    expect(r.eingefuegt).toBe(0);
+    expect(r.fehlerPx.front).toBeLessThan(3);
+    expect(r.fehlerPx.top).toBeLessThan(3);
+    for (const a of ['front', 'top'] as const) {
+      const kn = r.profile[a].knoten;
+      expect(Math.hypot(kn[0]!.aus.x, kn[0]!.aus.y)).toBeGreaterThan(0.05);
+      expect(Math.hypot(kn[kn.length - 1]!.ein.x, kn[kn.length - 1]!.ein.y)).toBeGreaterThan(0.05);
+    }
+    expect(Math.max(...r.deltas.map((d) => Math.hypot(...d.d)))).toBeLessThan(0.04);
+  });
 });

@@ -223,8 +223,10 @@ export function profilAnZug(pr: Profil, zugRoh: readonly P[], einfuegenAb = Infi
     const k = knotenAlt[i]!;
     const achs = halb && (i === 0 || i === n - 1);
     if (achs && k.art === 'glatt' && pr.art === 'halb') {
-      const quer: P = pr.achse === 'senkrecht' ? [1, 0] : [0, 1];
-      return i === 0 ? quer : [-quer[0], -quer[1]];
+      // Achsknoten: quer zur Achse in die bearbeitbare Hälfte, an beiden Enden in das Stück hinein (wie fitSegment die
+      // Endtangente erwartet). Zeigte sie am letzten Knoten nach außen, fiel der Fit auf Drittel-Griffe zurück, die
+      // Achsregel kappte den Griff auf 0 und Front/Top lagen bis 30 px neben der Silhouette (14.10.)
+      return pr.achse === 'senkrecht' ? [1, 0] : [0, 1];
     }
     if (k.art === 'glatt') {
       const t = w.tangente(feet[i]!.s, glattWeite);
