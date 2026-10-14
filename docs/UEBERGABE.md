@@ -17,6 +17,13 @@ Branch `claude/editor-grundlayout`. Es gilt der Fahrplan [`docs/plans/2026-10-14
 
 5. **Langhals-Kehle: Ursache war die Naht** (a11e5ae): Der Nahtrundgang lief nur in eine Richtung und endete an der Lücke am Lippenanfang; beim Ringanfang (Maul unter der Nase) fehlte die Nasenunterseite, die Mittelnaht des Unterkiefers lag über dem Lippenanfang. Jetzt läuft er bei einem fehlenden Nahtstück auch rückwärts. **Langhals „gleich“ (Florians Giraffe) 92/52/60/60/60 → 0/0/0/0/0 Durchdringungen**, Seite 3,2 → 1,6 px, Nase Seite 3,4 → 0,9 px; Kugel, Rex, Tiger unverändert.
 
+6. **Phase 2 M3, Teile ohne Look-Risiko** (f73e2eb, 452cdaf, a1481ef):
+   - **Breitenpunkte mit Maul:** Top am Maul folgt der schwarzen Linie (Kugel 5,0 → 3,8 px, Nase 6,4 → 4,2 px).
+   - **Posenliste:** Ruhen, Laufen, Inklusion wirken jetzt im Kern wie Fressen. Stärke-Regler und „Pose leeren“ in „Posen & Leben“; die Pinsel formen die aktive Pose.
+   - **Pose-Deltas an der Maullinie:** Posen überleben ein neu gezeichnetes Maul.
+   - **E2E** `kern-ablauf` wieder grün.
+   - **Vergleichsbild runder Haps gegen die Referenz:** `docs/progress/editor/haps-vergleich-tiger-2026-10-15.jpg`. Der Abstand ist groß; Florian entscheidet: Automatik ausbauen oder großer Haps über die Fressen-Pose.
+
 ## Abnahme Block 2 (ehrlich)
 
 Kontaktbogen aller Prüffälle: `docs/progress/editor/block2-stand-2026-10-15.jpg`. Tabelle mit Zahlen auf der Planseite (Stand 15.10. nachts).
@@ -46,10 +53,7 @@ Kontaktbogen aller Prüffälle: `docs/progress/editor/block2-stand-2026-10-15.jp
 
 ## Nächster Schritt (Block 3 nach Plan)
 
-1. Phase 2 **M3 großer runder Haps** (Planseite Phase 2, Meilenstein 3):
-   - Loop-Cut längs am Maul, Pose-Deltas an die Maullinie gebunden, Posenliste.
-   - Dazu Breitenpunkte mit Maul.
-   - Abnahme: Tiger-Stern offen rund wie die Referenz, Top mit Maul ≤ 4 px.
+1. **Florians Urteil zum runden Haps** (Vergleichsbild oben). Danach: Automatik ausbauen (Haut hinter dem Winkel wandert mit, Loop-Cut längs am Maul für den runden Rand) oder großer Haps über die Fressen-Pose (Pinsel in der Pose, Knochen).
 2. Plan 5.2 Rest: Kehlkette (Langhals-Kehle), Schädelgelenk als Griff, Bodengrenze.
 3. Danach Zähne → Augen → Maularten.
 
