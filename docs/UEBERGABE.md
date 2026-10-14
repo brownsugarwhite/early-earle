@@ -28,6 +28,7 @@ Die schwarze Linie ist sein Werkzeug und damit die Wahrheit für den Umriss: Das
 ## Block 1 und 2 (14.10. abends)
 
 - **Block 1 ruhiges Netz gebaut** (5599ebf, 057ab4d, fe5eb1b): Formen folgen mit gekapptem Achsgriff behoben (Ursache von Florians Wellen nach Pinsel + Verziehen), keine führende Front während Gesten (faltete, blieb im Cache hängen), rund statt Kasten/Grat außerhalb von Top/Front. Florians Komma im Editor glatt, Δ 2,9 / 13,3 / 4,5 px (`docs/progress/editor/ruhiges-netz-komma-pinsel.png`). Florians Test steht aus.
+- **Maul auf der Haut** (8d6d993): Lippenbreite aus der Haut × Verhältnis der Knoten, keine Spitze vorn (Florians Rückmeldung), Rot/Blau in Front/Top als wirksame Linien; Kiefer gleich Front 4,2 / Top 4,8 px. **Glätten springt nicht mehr** (ec9c27b): mit Maul kein Folgen nach Pinselstrichen. Offen: Unterbiss, Schnabel, Kringel am Lippenanfang, flaches Lippenband, Kiefer-Spanten.
 - **Block 2 Zwischenstand** (465ddc1, 3884b01): Lippenanfänge sind markierte Knoten der schwarzen Linie (Editor und Datenmodell fertig), der Kern kennt den Schlitz (Sehne, offene Naht, Coons-Kinn). Noch nicht sauber: Überbiss ≈ 530 offene Paare (gedrängte vordere Spalten der Unterlippe), Unterbiss schlechter, Lippe als flaches Band. Florian entscheidet den Weiterweg (Planseite, Stand 14.10. abends).
 
 ## Nächster Schritt
