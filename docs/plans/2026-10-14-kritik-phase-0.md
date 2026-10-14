@@ -14,6 +14,7 @@
 | 14.10. | Stile, zweite Runde | „Beim Feuer fehlen mir ein paar Verläufe, das Gas ist noch weit von der Vorlage weg, sieht aber alles schon vielversprechend aus“ | unten, Phase 4 |
 | 15.10. | Zeichnung ist Form, Schritte 1–4 (Editor) | „passt weitestgehend“, „bei den anderen viel besser und genauer als vorher“, gerade Linie am Blob „funktioniert gut“ | Riesenmaul am Langhals behoben (unten) |
 | 15.10. | Reifen/Kasten im Editor | „Mit den Kästen komme ich ganz gut zurecht! Das ist vielversprechend. Tiger sollte ich ohne Probleme hinbekommen“ | Phase-1-Abnahme (10-Minuten-Tiger) läuft bei ihm |
+| 15.10. | Überbiss, erste Bilder (M2) | „passt noch nicht: der untere Kiefer ist an der vorderen Kante langgezogen bis zur überstehenden Spitze der Oberlippe; Unterkiefer und Lippe sind viel kürzer und schmaler … ragen geschlossen etwas hinein. Das sollte deutlich als Grundbedingung festgelegt sein!“ | Grundbedingung auf der Planseite Phase 2 (M2); Rex-Linie beginnt jetzt am Kinn, Lippendicke 4 % |
 
 ## Offene Kritik, nach Phase geordnet
 

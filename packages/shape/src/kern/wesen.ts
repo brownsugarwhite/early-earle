@@ -185,13 +185,20 @@ export function tigerZonen(): ZonenVorlage[] {
 /** Ausstattung je Prüfwesen (Phase 0): der Tiger bekommt Kastenschnauze, Maullinie, Gesicht, Wangen, Zonen; für Dokumente ohne Ausstattung. */
 export function pruefwesenBauplan(name: string): Ausstattung {
   if (name === 'rex') {
-    // Kiefer getrennt mit Überbiss (Phase 2 M2, Florians Bogen 06-rex-mit-maul): die Oberlippe (rot) wie die Vorlage
-    // „vorn“, die Unterkieferkante (blau) bis zu 8 % der Höhe darüber, an Schnauze und Winkel treffen sich beide
+    // Kiefer getrennt mit Überbiss (Phase 2 M2, Florians Bogen 06-rex-mit-maul): die Oberlippe (rot) beginnt auf der
+    // Kontur am Kinn (f 0,039, ≈ 15 % der Maullänge hinter der Schnauzenspitze — Florian 15.10.: „Unterkiefer viel kürzer,
+    // die Oberlippe steht über“), die Unterkieferkante (blau) liegt darüber und läuft innen; am Winkel treffen sich beide
     // (v ist der Anteil der örtlichen Sprosse: an der dünnen Schnauze braucht 2,5 % der Körperhöhe v + 0,17)
     return {
-      maulLinie: { fv: [{ f: 0.02, v: 0.45 }, { f: 0.2, v: 0.42 }, { f: 0.34, v: 0.45 }], unterSpitze: 1, unten: [{ f: 0.02, v: 0.45 }, { f: 0.06, v: 0.5 }, { f: 0.1, v: 0.62 }, { f: 0.2, v: 0.55 }, { f: 0.28, v: 0.5 }, { f: 0.34, v: 0.45 }] },
-      // Oberlippe 3 % der Höhe dick (dünner kreuzen sich die Blätter der Lippe), vier Taschenreihen (zwei Lippen-, zwei Linsenreihen)
-      maulOptionen: { lippenDicke: 0.03, reihen: 4 },
+      maulLinie: {
+        fv: [{ f: 0.039, v: 0 }, { f: 0.07, v: 0.4 }, { f: 0.12, v: 0.46 }, { f: 0.2, v: 0.42 }, { f: 0.337, v: 0.45 }],
+        unterSpitze: 1,
+        anfang: { x: -0.3394, y: 0.2766 },
+        winkel: { x: -0.13, y: 0.19 },
+        unten: [{ f: 0.05, v: 0.2 }, { f: 0.08, v: 0.55 }, { f: 0.12, v: 0.62 }, { f: 0.2, v: 0.55 }, { f: 0.28, v: 0.5 }, { f: 0.337, v: 0.45 }],
+      },
+      // Oberlippe 4 % der Höhe dick (mit Kinnanfang kreuzen sich die Blätter bei 3 %), vier Taschenreihen (zwei Lippen-, zwei Linsenreihen)
+      maulOptionen: { lippenDicke: 0.04, reihen: 4 },
     };
   }
   if (name === 'tiger') {
@@ -204,7 +211,8 @@ export function pruefwesenBauplan(name: string): Ausstattung {
       // Rachen und Scharnier nach der Plattenregel an Ring 4 (8 % der Länge). Unterkiefer 20° über den Knochen (mehr öffnet die Fressen-Pose), Band 3 Ringe,
       // dünne Linse und tiefe Tasche (sonst Durchdringungen im kleinen Plattenmaul)
       maulLinie: { fv: [{ f: 0, v: 0.5 }, { f: 0.01, v: 0.35 }], unterSpitze: 0, winkel: { x: -0.376, y: 0.323 }, winkelZ: 0.035, front: [{ z: 0, y: 0.358 }, { z: 0.018, y: 0.35 }, { z: 0.035, y: 0.323 }] },
-      maulOptionen: { winkelUnten: 20, winkelOben: 26, band: 3, rille: 0.006, reihen: 2, tiefe: 0.7, linse: 0.015 },
+      // großer runder Haps (M3): aus dem kleinen Stern wird offen ein großes rundes Maul (Referenz „vier Mäuler“)
+      maulOptionen: { winkelUnten: 20, winkelOben: 26, band: 3, rille: 0.006, reihen: 2, tiefe: 0.7, linse: 0.015, haps: 1 },
       // 24 Punkte je Ring (Plattenmaul, Phase 2 M1): 6×6-Plattengitter, der Stern bekommt echte Arme; Auge bei 60°
       ring: 24,
       augen: { ring: 4, j: 4, groesse: 0.1 },

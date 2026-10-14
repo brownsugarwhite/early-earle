@@ -12,6 +12,7 @@ import { alleFlaechen, pruefeKaefig } from '../kaefig/halbkanten';
 import { LIPPE_V_MIN, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, maulLinieAusPunkten, maulLiniePunkte, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
 import { halsVerbreitern, kastenSpanten } from './kasten';
 import { pruefwesenBauplan } from './wesen';
+import { kernLeiter } from './ableiten';
 import tigerJson from '../versuch/vorlagen/tiger.json';
 
 declare const console: { log: (...a: unknown[]) => void };
@@ -167,17 +168,50 @@ describe('Beweis 2: Maul mit Haps', () => {
   });
   it('Rex, Kiefer getrennt mit Überbiss (Phase 2 M2): Unterkieferkante innen über der Oberlippe, 0 Durchdringungen bei 0/25/50/75/100 %', () => {
     const plan = pruefwesenBauplan('rex');
+    const l = kernLeiter(rex);
     const r = pruefenLinie('Rex Überbiss', rex, plan.maulLinie!, 'vorn', 2, plan.maulOptionen ?? {});
     expect(r.pr.ok).toBe(true);
     const m = r.abl.maul;
     expect(m.lage.untenV).toBeDefined();
-    // in der Maulmitte liegt die Unterkieferkante deutlich über der Oberlippe (≥ 2 % der Höhe) und innen (näher an der Achse)
-    const t = Math.round(m.lage.m / 2);
-    const o = m.pfad[t]!;
-    const u = m.unten[t]!;
-    expect(r.abl.fein[3 * u + 1]! - r.abl.fein[3 * o + 1]!).toBeGreaterThan(0.02 * 0.5);
-    expect(Math.abs(r.abl.fein[3 * u + 2]!)).toBeLessThan(Math.abs(r.abl.fein[3 * o + 2]!));
+    // in der Maulmitte liegt die Zahnfleischkante des Unterkiefers (erste untere Taschenreihe) deutlich über der Oberlippe
+    // (≥ 2 % der Höhe) und innen; die sichtbare Unterlippe (untere Kopie) knapp unter und innerhalb der Oberlippenkante
+    let ueberbiss = 0;
+    for (let t = 1; t < m.lage.m; t++) {
+      const o = m.pfad[t]!;
+      const u = m.unten[t]!;
+      const g = m.tasche.unten[0]![t]!;
+      ueberbiss = Math.max(ueberbiss, r.abl.fein[3 * g + 1]! - r.abl.fein[3 * o + 1]!);
+      expect(Math.abs(r.abl.fein[3 * g + 2]!), `Zahnfleisch t=${t}`).toBeLessThanOrEqual(Math.abs(r.abl.fein[3 * o + 2]!) + 1e-6);
+      expect(r.abl.fein[3 * u + 1]!, `Unterlippe t=${t}`).toBeLessThanOrEqual(r.abl.fein[3 * o + 1]! + 1e-6);
+    }
+    expect(ueberbiss).toBeGreaterThan(0.015);
+    // die Oberlippe steht vorn über: die Schleife beginnt auf der Kontur hinter der Schnauzenspitze (Kinn)
+    expect(m.lage.start.x - l.ruecken[0]!.x).toBeGreaterThan(0.02);
     for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
+  });
+
+  it('Tiger, großer runder Haps (Phase 2 M3): aus dem kleinen Stern wird offen ein großes Maul, 0 Durchdringungen bei 0/25/50/75/100 %', () => {
+    const roh = vorlageDokument(tigerJson as unknown as Vorlage, 'zu', 'tiger');
+    const dok = { ...roh, spanten: kastenSpanten(roh.profile.front, 0.02, 0.15, 0.25, 0.85) };
+    const plan = pruefwesenBauplan('tiger');
+    expect(plan.maulOptionen?.haps).toBe(1);
+    const r = pruefenLinie('Tiger Haps', dok, plan.maulLinie!, 'vorn', 2, plan.maulOptionen ?? {}, { ring: plan.ring! });
+    expect(r.pr.ok).toBe(true);
+    for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
+    // Größe der Lippenschleife (Länge × Höhe) offen gegen zu: mindestens dreimal so lang und dreimal so hoch
+    const m = r.abl.maul;
+    const idx = [...m.pfad, ...m.pfadLinks, ...m.unten, ...m.untenLinks];
+    const mass = (xyz: Float64Array) => {
+      let xa = Infinity, xb = -Infinity, ya = Infinity, yb = -Infinity;
+      for (const i of idx) { xa = Math.min(xa, xyz[3 * i]!); xb = Math.max(xb, xyz[3 * i]!); ya = Math.min(ya, xyz[3 * i + 1]!); yb = Math.max(yb, xyz[3 * i + 1]!); }
+      return { l: xb - xa, h: yb - ya };
+    };
+    const zu = mass(maulPose(r.abl, 0).xyz);
+    const auf = mass(maulPose(r.abl, 1).xyz);
+    const ohne = mass(maulPose(ableitenMitMaul(dok, plan.maulLinie!, { stufen: 2, ring: plan.ring! }, { ...(plan.maulOptionen ?? {}), haps: 0 }), 1).xyz);
+    console.log(`Tiger Haps: zu ${zu.l.toFixed(3)} × ${zu.h.toFixed(3)}, offen ohne Haps ${ohne.l.toFixed(3)} × ${ohne.h.toFixed(3)}, mit Haps ${auf.l.toFixed(3)} × ${auf.h.toFixed(3)}`);
+    expect(auf.l).toBeGreaterThan(3 * ohne.l);
+    expect(auf.h).toBeGreaterThan(3 * ohne.h);
   });
 
   it('Tiger, Kastenschnauze, Seitenlippe bis 17 % (Stand Beweis 2): 0 Durchdringungen bei 0/25/50/75/100 %', () => {

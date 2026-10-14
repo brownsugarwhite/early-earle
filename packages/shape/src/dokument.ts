@@ -64,6 +64,11 @@ const MaulOptionenSchema = z
     rille: z.number(),
     platte: z.number(),
     beutel: z.number(),
+    haps: z.number(),
+    hapsTiefe: z.number(),
+    hapsHoehe: z.number(),
+    hapsWeite: z.number(),
+    hapsRadius: z.number(),
   })
   .partial();
 /** Zone als Vektorform, relativ zu den Ruhe-Grenzen des Körpers (x, y 0 … 1), Weichheit je Punkt als Anteil der Höhe. */
@@ -108,6 +113,11 @@ export type MaulOptionenWerte = {
   rille: number;
   platte: number;
   beutel: number;
+  haps: number;
+  hapsTiefe: number;
+  hapsHoehe: number;
+  hapsWeite: number;
+  hapsRadius: number;
 };
 export type Ausstattung = {
   maul?: 'aus' | 'vorn' | 'unten' | 'hals';

@@ -1035,6 +1035,8 @@ function KernMaulFeld() {
       <Chips werte={['kippen', 'ziehen'] as const} aktiv={mo.oeffnungsart} attribut="oeffnungsart" onWahl={(a) => setze({ oeffnungsart: a })} />
       <Regler label="Unterkiefer" wert={mo.winkelUnten} min={5} max={75} schritt={1} anzeige={`${Math.round(mo.winkelUnten)}°`} onChange={(v) => setze({ winkelUnten: v })} {...geste()} />
       <Regler label="Schädel" wert={mo.winkelOben} min={0} max={45} schritt={1} anzeige={`${Math.round(mo.winkelOben)}°`} onChange={(v) => setze({ winkelOben: v })} {...geste()} />
+      <Regler label="Haps" wert={mo.haps} min={0} max={1} schritt={0.05} anzeige={`${Math.round(mo.haps * 100)} %`} onChange={(v) => setze({ haps: v })} {...geste()} />
+      <p className="hilfe">Haps: Wie stark sich das Maul beim Öffnen über die Knochen hinaus rundet und vergrößert (Mundwinkel wandern nach hinten, Lippen wölben sich auseinander) — aus einem kleinen geschlossenen Maul wird ein großer runder Haps.</p>
       <Regler label="Rille" wert={mo.rille} min={0} max={0.03} schritt={0.001} anzeige={`${(mo.rille * 100).toFixed(1)} % der Höhe`} onChange={(v) => setze({ rille: v })} {...geste()} />
       <p className="hilfe">Kieferknopf: die blaue Bohne am Mundwinkel auf der Bühne — ziehen öffnet, Doppelklick rastet. Unterbiss, Zunge und Rachenlinie als Griff kommen später in Phase 2.</p>
       {dok.maul && (
