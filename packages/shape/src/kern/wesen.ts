@@ -69,6 +69,12 @@ export type Bauplan = Ausstattung & {
   treffer?: boolean;
   /** Unterkiefergewichte als Farbe je Ecke (Fressen-Tab, Plan 5.2): blau 0 … rot 1 */
   gewichteZeigen?: boolean;
+  /**
+   * Weitere Pose (Plan 5.2 „Brüllen, Schlafen, Lauf-Extrem funktionieren identisch“; Posenliste, Phase 2 M3): ihre
+   * Käfig-Deltas `kaefig.posen[name]` werden mit `staerke` (0 … 1) überblendet — wie die Fressen-Deltas mit der Öffnung,
+   * ohne Umbau. Fressen selbst läuft weiter über `oeffnung`.
+   */
+  pose?: { name: string; staerke: number };
 };
 
 /** Trefferdaten (M2): je Körperdreieck die feine Fläche (−1 für angesetzte Teile), je feiner Fläche Käfigfläche und Ecken-(u, v), der posierte Käfig. */
@@ -702,6 +708,14 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     abl = mitDeltas(ablRein);
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
+  }
+  // weitere Pose (Posenliste): Deltas derselben Topologie mit der Stärke überblendet, auf alle Punkte, nach Knochen und Fressen
+  const poseDeltas = plan.pose && plan.pose.name !== 'fressen' && plan.pose.staerke > 0 ? (dokRoh.kaefig?.posen?.[plan.pose.name] ?? []) : [];
+  if (poseDeltas.length) {
+    const xyz2 = new Float64Array(xyz);
+    deltasAddieren(xyz2, spiegelIndex(abl.kaefig.xyz, abl.kaefig.n), poseDeltas, plan.pose!.staerke);
+    xyz = xyz2;
+    fein = anwenden3(abl.unterteilung.grenze, xyz2);
   }
   const letzteStufe = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
   const punkte: V3[] = [];

@@ -16,7 +16,7 @@ import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten
 import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
-import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige } from '../kern/kernBau';
+import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige, weiterePose } from '../kern/kernBau';
 import { augenPixel, griffeAnzeigen, kieferPixel } from '../kern/griffe';
 import { knochen3dAnzeigen, knochen3dPixel } from '../kiefer/knochen3d';
 import { perlenVon, reifenAnzeigen, reifenFaerben, useReifen } from '../kern/reifen';
@@ -304,6 +304,8 @@ export function Szene3D() {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
           if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
           if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || (s.bauweise === 'kern' && kernMaulAktiv(useEditor.getState().dok)))) bauen(useEditor.getState().dok);
+          // Posenliste: Stärke der aktiven weiteren Pose (ohne Umbau, Deltas)
+          if (s.poseStaerke !== v.poseStaerke && s.bauweise === 'kern' && weiterePose()) bauen(useEditor.getState().dok);
           // Rig: Gewichtsfarben an/aus (nur in „Posen & Leben“ sichtbar)
           const gewichte = (x: typeof s) => x.gewichteZeigen && x.ebene === 'posen';
           if (gewichte(s) !== gewichte(v) && s.bauweise === 'kern' && kernMaulAktiv(useEditor.getState().dok)) bauen(useEditor.getState().dok);

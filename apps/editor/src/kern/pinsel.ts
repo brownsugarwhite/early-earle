@@ -60,19 +60,29 @@ export function pinselRing(_px: number, _py: number): void {
 }
 
 /** Ziel des Strichs: Grundform (Vorlagenpunkte) oder die Fressen-Pose (alle Punkte, Deltas je Öffnung 1). */
-function pinselZiel(): { pose: boolean; faktor: number; nMax: number } | null {
+function pinselZiel(): { pose: string | null; faktor: number; nMax: number } | null {
   const n = aktuellesNetz();
   const tr = n?.netz.treffer;
   if (!n || !tr) return null;
-  if (useEditor.getState().modus === 'fressen') {
+  const modus = useEditor.getState().modus;
+  if (modus === 'fressen') {
     const o = useUi.getState().oeffnung;
     if (o < 0.25) {
       useUi.getState().zeigeHinweis('Fressen-Pose formen: Maul mindestens 25 % öffnen (Kieferknopf)');
       return null;
     }
-    return { pose: true, faktor: o, nMax: tr.kaefig.n };
+    return { pose: 'fressen', faktor: o, nMax: tr.kaefig.n };
   }
-  return { pose: false, faktor: 1, nMax: Math.min(tr.vorlage.n, tr.kaefig.n) };
+  // Posenliste: weitere Pose (Ruhen, Laufen, …) mit ihrer Stärke, wie Fressen mit der Öffnung
+  if (modus !== 'editor') {
+    const st = useUi.getState().poseStaerke;
+    if (st < 0.25) {
+      useUi.getState().zeigeHinweis('Pose formen: Stärke mindestens 25 % (Tafel „Posen & Leben“)');
+      return null;
+    }
+    return { pose: modus, faktor: st, nMax: tr.kaefig.n };
+  }
+  return { pose: null, faktor: 1, nMax: Math.min(tr.vorlage.n, tr.kaefig.n) };
 }
 
 /**
@@ -101,7 +111,7 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
   const gewichte = pinselGewichte(xyz, nMax, mitte, radius);
   if (!gewichte.length) return false;
   const ed = useEditor.getState();
-  const basis = deltaKarte(ziel.pose ? ed.dok.kaefig?.posen?.fressen : ed.dok.kaefig?.deltas);
+  const basis = deltaKarte(ziel.pose ? ed.dok.kaefig?.posen?.[ziel.pose] : ed.dok.kaefig?.deltas);
   const spiegel = spiegelIndex(xyz, nMax);
   const normalen = werkzeug === 'aufblasen' ? kaefigNormalen(xyz, tr.kaefig.fStart, tr.kaefig.fVerts, nMax) : null;
   const nachbarn = kaefigNachbarn(tr.kaefig.fStart, tr.kaefig.fVerts, nMax);
@@ -172,7 +182,7 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
       const s = useEditor.getState();
       const deltas: KaefigDelta[] = deltaListe(karte);
       const kaefig = s.dok.kaefig ?? { deltas: [] };
-      s.setzeDokument({ ...s.dok, kaefig: ziel.pose ? { ...kaefig, posen: { ...(kaefig.posen ?? {}), fressen: deltas } } : { ...kaefig, deltas } });
+      s.setzeDokument({ ...s.dok, kaefig: ziel.pose ? { ...kaefig, posen: { ...(kaefig.posen ?? {}), [ziel.pose]: deltas } } : { ...kaefig, deltas } });
     },
     () => useEditor.getState().endeGeste(), // Grundform: „Formen folgen“ hängt am Gestenende (kernBau); Pose: Deltas der Pose
   );

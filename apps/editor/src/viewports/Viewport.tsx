@@ -195,7 +195,8 @@ export function ViewportOber({ id }: { id: ViewId }) {
                   : 'Platzhalter-Körper'}
           </div>
         )}
-        {id === 'creation' && modus !== 'editor' && modus !== 'fressen' && !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>}
+        {/* Pose-Hinweis: in der Bauweise Kern formen die Pinsel die Pose (Posenliste, 15.10.); in den Versuchen gibt es das noch nicht */}
+        {id === 'creation' && modus !== 'editor' && modus !== 'fressen' && (bauweise === 'kern' ? <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“ · Pinsel der Stufe Körper formen sie, Stärke in „Posen & Leben“</div> : !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>)}
       </div>
       {/* Plan 9.3: die Stufe wählt der Stamm; am Viewport bleiben Zebra (Prüfansicht) und Vergrößern */}
       <div className="eckknoepfe">

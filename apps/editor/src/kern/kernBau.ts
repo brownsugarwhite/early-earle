@@ -82,6 +82,12 @@ export function kernMaulAktiv(dok: Dokument): boolean {
   return !!(dok.ausstattung?.maulLinie ?? pruefwesenBauplan(dok.name).maulLinie);
 }
 
+/** Aktive weitere Pose (Posenliste, nicht Editor/Fressen) oder null. */
+export function weiterePose(): string | null {
+  const m = useEditor.getState().modus;
+  return m !== 'editor' && m !== 'fressen' ? m : null;
+}
+
 export function bauplanAus(dok: Dokument): Partial<Bauplan> {
   const s = useKernAnzeige.getState();
   const aus = { ...pruefwesenBauplan(dok.name), ...(dok.ausstattung ?? {}) };
@@ -120,6 +126,8 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
     atlas: atlasAn,
     // Rig (Plan 5.2): Unterkiefergewichte als Farbe, nur in der Stufe „Posen & Leben“
     gewichteZeigen: useUi.getState().gewichteZeigen && useUi.getState().ebene === 'posen',
+    // Posenliste: im Modus einer weiteren Pose (Kopfzeile) ihre Deltas mit der Stärke
+    ...(weiterePose() ? { pose: { name: weiterePose()!, staerke: useUi.getState().poseStaerke } } : {}),
   };
 }
 

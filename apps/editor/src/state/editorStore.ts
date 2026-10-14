@@ -261,7 +261,14 @@ export const useEditor = create<EditorState>((set, get) => {
       set({ modus: p });
     },
     poseEntfernen(p) {
-      aendern((d) => ({ ...d, posen: d.posen.filter((x) => x !== p) }));
+      // mit der Pose verschwinden auch ihre Käfig-Deltas (Posenliste, Kern)
+      aendern((d) => {
+        const posen = d.posen.filter((x) => x !== p);
+        if (!d.kaefig?.posen?.[p]) return { ...d, posen };
+        const kp = { ...d.kaefig.posen };
+        delete kp[p];
+        return { ...d, posen, kaefig: { ...d.kaefig, posen: kp } };
+      });
       if (get().modus === p) set({ modus: 'editor' });
     },
   };

@@ -73,6 +73,8 @@ type UiState = {
   ebene: Ebene;
   /** Vorschau der Maulöffnung 0 … 1 im 3D (Seitenleiste) */
   oeffnung: number;
+  /** Stärke der aktiven weiteren Pose (Posenliste: Ruhen, Laufen, …), 0 … 1; Fressen läuft über `oeffnung` */
+  poseStaerke: number;
   /** Fressen-Tab (Plan 5.2): Unterkiefergewichte als Farbverlauf auf dem Körper */
   gewichteZeigen: boolean;
   maulAuswahl: MaulAuswahl | null;
@@ -121,6 +123,7 @@ type UiState = {
   libraryUmschalten(offen?: boolean): void;
   setzeEbene(e: Ebene): void;
   setzeOeffnung(a: number): void;
+  setzePoseStaerke(a: number): void;
   setzeGewichteZeigen(an: boolean): void;
   setzeMaulAuswahl(a: MaulAuswahl | null): void;
   setzeMaulZeichnen(k: [number, number, number][] | null): void;
@@ -178,6 +181,7 @@ export const useUi = create<UiState>((set, get) => ({
   library: true,
   ebene: 'form',
   oeffnung: 0,
+  poseStaerke: 1,
   gewichteZeigen: false,
   maulAuswahl: null,
   maulZeichnen: null,
@@ -230,6 +234,9 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeOeffnung(a) {
     set({ oeffnung: Math.min(1, Math.max(0, a)) });
+  },
+  setzePoseStaerke(a) {
+    set({ poseStaerke: Math.min(1, Math.max(0, a)) });
   },
   setzeGewichteZeigen(an) {
     set({ gewichteZeigen: an });

@@ -9,7 +9,8 @@ import { PALETTEN } from '../three/wesenLook';
 // Seitenleiste rechts, immer offen (Florian 12.10.): oben das Menü des aktiven Tabs (Wesen, Maul, Zähne, Rig, Augen),
 // darunter die Library. Gestaltung (Glas, Ornament) ist mein Entwurf.
 
-import { type Profil, type ZahnEintrag, type Zahnreihe, type ZahnWerte, gespiegelteSegmente, hauptspantProfil, hauptspantStelle, segmente, unterkieferVorschlag } from '@ee/shape';
+import { POSEN, type Profil, type ZahnEintrag, type Zahnreihe, type ZahnWerte, gespiegelteSegmente, hauptspantProfil, hauptspantStelle, segmente, unterkieferVorschlag } from '@ee/shape';
+import { POSE_NAMEN } from '../menu/MenuBar';
 import { versetzt3 } from '@ee/shape/versuch';
 import { useEffect, useRef, useState } from 'react';
 import { ladeAusBibliothek, ladePruefwesen } from '../aktionen';
@@ -23,7 +24,7 @@ import { spantName, spantWaehlen, SPANT_HINTEN, SPANT_VORN } from '../spanten/Sp
 import { aenderungAnwenden, befundText } from '../maul/zahnKoerper';
 import { useMaulInfo } from '../maul/maulKoerper';
 import { istPose, poseSeite, poseSeiteSetzen, poseSeiteVerwerfen } from '../maul/fressenForm';
-import { useEditor } from '../state/editorStore';
+import { type Modus, useEditor } from '../state/editorStore';
 import { type Ebene, useUi } from '../state/uiStore';
 import { Ornament } from './Ornament';
 import { WIRBEL_FARBEN, wirbelVorschlagUebernehmen } from '../wirbel/WirbelEbene';
@@ -833,6 +834,9 @@ export function Seitenleiste() {
               <section className="leiste-bereich" data-bereich="fressen">
                 <FressenFeld />
               </section>
+              <section className="leiste-bereich" data-bereich="posen-liste">
+                <PosenFeld />
+              </section>
             </>
           )}
           {kern && ebene === 'spiel' && (
@@ -1152,6 +1156,71 @@ function FressenFeld() {
         Pose zurücksetzen
       </button>
       <p className="hilfe">Knochen in der Seite (weiß): Unterkiefer an der Spitze drehen, an der Mitte verschieben; Schädel an der Spitze drehen. Greifen zeigt die Pose ganz offen; die Öffnung (oder der Kieferknopf auf der Bühne) blendet zwischen Ruhe und Pose. Dann formen in der Pose „Fressen“ (Kopfzeile) die Pinsel der Stufe Körper die offene Form weiter — Fressen-Pose = Knochen + Blendshape (Plan 5.2).</p>
+    </>
+  );
+}
+
+/**
+ * Tafel „Posen & Leben“, Posenliste (Plan 5.2 „Weitere Posen funktionieren identisch“, Phase 2 M3): Editor, Fressen und
+ * weitere Posen (Ruhen, Laufen, Inklusion) umschalten wie in der Kopfzeile; neue Pose anlegen; die aktive weitere Pose
+ * mit Stärke (Zwischenstufen) und „Pose leeren“. Geformt wird mit den Pinseln der Stufe Körper, gespeichert als
+ * Käfig-Deltas `kaefig.posen[name]`.
+ */
+function PosenFeld() {
+  const dok = useEditor((s) => s.dok);
+  const modus = useEditor((s) => s.modus);
+  const staerke = useUi((s) => s.poseStaerke);
+  const frei = POSEN.filter((p) => !dok.posen.includes(p));
+  const deltas = (name: string) => dok.kaefig?.posen?.[name]?.length ?? 0;
+  const waehle = (m: Modus) => {
+    useEditor.getState().setzeModus(m);
+    if (m === 'editor' || m === 'fressen') useUi.getState().setzeOeffnung(m === 'fressen' ? 1 : 0);
+  };
+  const leeren = (name: string) => {
+    const ed = useEditor.getState();
+    const k = ed.dok.kaefig;
+    if (!k?.posen?.[name]) return;
+    const posen = { ...k.posen };
+    delete posen[name];
+    ed.setzeDokument({ ...ed.dok, kaefig: { ...k, posen } });
+  };
+  const weitere = modus !== 'editor' && modus !== 'fressen';
+  return (
+    <>
+      <h3 className="leiste-titel" data-abschnitt="posen">Posen</h3>
+      <div className="umschalter">
+        {(['editor', 'fressen', ...dok.posen] as Modus[]).map((m) => (
+          <button key={m} className={modus === m ? 'chip aktiv' : 'chip'} data-pose={m} onClick={() => waehle(m)}>
+            {POSE_NAMEN[m]}
+            {m !== 'editor' && deltas(m) ? ' •' : ''}
+          </button>
+        ))}
+      </div>
+      {frei.length > 0 && (
+        <div className="umschalter">
+          {frei.map((p) => (
+            <button key={p} className="chip" data-pose-neu={p} onClick={() => useEditor.getState().poseHinzu(p)}>
+              + {POSE_NAMEN[p]}
+            </button>
+          ))}
+        </div>
+      )}
+      {weitere && (
+        <>
+          <Regler label="Stärke" wert={staerke} min={0} max={1} schritt={0.01} anzeige={`${Math.round(staerke * 100)} %`} onChange={(v) => useUi.getState().setzePoseStaerke(v)} />
+          <div className="feld">
+            <span>Geformt</span>
+            <b data-pose-deltas={deltas(modus)}>{deltas(modus) ? `${deltas(modus)} Käfigpunkte` : 'noch nicht'}</b>
+          </div>
+          <button className="chip" data-pose-leeren="" onClick={() => leeren(modus)}>
+            Pose leeren
+          </button>
+        </>
+      )}
+      <p className="hilfe">
+        Eine Pose ist die Grundform plus Versätze des Käfigs. In der gewählten Pose formen die Pinsel der Stufe Körper (G ziehen, I aufblasen, ⇧ glätten); der Regler blendet zwischen Grundform
+        und Pose. Fressen öffnet dazu das Maul (Knochen oben).
+      </p>
     </>
   );
 }
