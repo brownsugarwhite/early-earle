@@ -23,6 +23,7 @@ import { punktAuf } from '../bezier';
 import { pfadAbtasten, segmente, vollerPfad } from '../profil';
 import { spantKasten, stelleVon, vorlageBei } from '../spanten';
 import { kanteAbtasten, kantenFalten } from './kanten';
+import { feinKette } from './reifen';
 import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3 } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
@@ -36,6 +37,8 @@ export type AbleitOptionen = {
   kappe: number;
   /** Gewicht der feinen Nahtpunkte im Ausgleich (0 = nur Käfigziele, keine Kurvenanpassung) */
   nahtGewicht: number;
+  /** Gewicht der Breitenschleife im Ausgleich (je Ring der breiteste Punkt, Grenzlage z = Top-Breite bei x; 0 = aus). Plan „Zeichnung ist Form“ Schritt 1: Top bestimmt die Breite. */
+  breiteGewicht: number;
   /** Kantenschärfe an Ecken („eine Kante ist eine Ecke in einem Shape“); 0 = keine Falten */
   eckenSchaerfe: number;
   /** Kappenanteil, wenn die Spitze selbst eine Ecke ist (kleine Kappe, Ringe tragen die Krümmung) */
@@ -50,7 +53,10 @@ export type AbleitOptionen = {
   glaettung: number;
 };
 
-export const ABLEIT_STANDARD: AbleitOptionen = { ringe: 24, ring: 16, stufen: 3, kappe: 0.05, nahtGewicht: 16, eckenSchaerfe: 1e6, kappeSpitze: 0.025, spitzenFalte: false, kruemmung: 2, querschnitt: true, glaettung: 0 };
+/** Durchgänge, in denen die Breitenziele an den Grenzlagen des letzten Durchgangs nachgerechnet werden (Ableitung) */
+const BREITE_DURCHGAENGE = 2;
+
+export const ABLEIT_STANDARD: AbleitOptionen = { ringe: 24, ring: 16, stufen: 3, kappe: 0.05, nahtGewicht: 16, breiteGewicht: 16, eckenSchaerfe: 1e6, kappeSpitze: 0.025, spitzenFalte: false, kruemmung: 2, querschnitt: true, glaettung: 0 };
 
 /** Station einer Sprosse: Anteile a (Rücken) und b (Bauch) entlang der Linien. */
 export type Station = { a: number; b: number };
@@ -84,6 +90,8 @@ export type Ableitung = {
   dokAlt: Dokument;
   /** feine Nahtpunkte (Stufe L, Schleifenreihenfolge), ihr Anteil der Bogenlänge auf dem Seitenumriss, Ausgleichslöser */
   naht: { fein: Uint32Array; anteil: Float64Array; loeser: AusgleichsLoeser | null };
+  /** Breitenschleife im Ausgleich: je Zeile der feine Punkt (= Käfigpunkt) und das Vorzeichen seiner z-Seite; null = aus */
+  breite: Breite | null;
   zeiten: { leiter: number; breiten: number; matrix: number; loeser: number; ziele: number; gesamt: number };
 };
 
@@ -277,9 +285,11 @@ export function nahtAnteile(geordnet: readonly number[], n: number, ziele: Float
     let d = anteil[k1]! - p0;
     d -= Math.round(d);
     const schritte = ((k1 - k0 + m) % m) || m;
-    for (let s = 1; s < schritte; s++) {
-      const k = (k0 + s) % m;
-      let t = p0 + (d * s) / schritte;
+    // gleichmäßig nach Index zwischen den Ankern (eine Verteilung nach der Sehnenlänge der feinen Lagen, 15.10.
+    // probiert, kostete Naht-Treue: Rex 0,34 → 0,54 px, Langhals 1,36 → 1,66 px)
+    for (let q = 1; q < schritte; q++) {
+      const k = (k0 + q) % m;
+      let t = p0 + (d * q) / schritte;
       t -= Math.floor(t);
       anteil[k] = t;
     }
@@ -449,6 +459,15 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument)
         }
       });
       const f = spineAnteile(l, [l.paare[k]!])[0]!;
+      // Liegt der Spant praktisch auf einer Ecke (näher als ein halber mittlerer Ringabstand), teilen sich beide den
+      // Ring: Ecke und Spant sind dieselbe Stelle (Kastenkante des Tigers). Ein zweiter Ring 0,005 daneben scherte die
+      // Fläche zwischen beiden (Top 24 px zu breit).
+      // (Ring 0 und R−1 bleiben außen vor: die Frontplatte des Tigers mit Spant 0 auf Ring 0 ließ Lippe und Tasche kreuzen)
+      const ecke = ecken.find((e) => e.ring > 0 && e.ring < R - 1 && Math.abs(anteile[e.ring]! - f) < 0.5 / R);
+      if (ecke) {
+        reifen.push({ spant: index, ring: ecke.ring });
+        return;
+      }
       let best = -1;
       for (let i = 1; i < R - 1; i++) {
         if (ecken.some((e) => e.ring === i) || reifen.some((r) => r.ring === i)) continue;
@@ -851,16 +870,24 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
   const ringSprossen = sprossenVon(l, st.ringe);
   const ringQ = querschnitteFuer(ringSprossen, dok, breiten, N, opt);
   let letzteW = 0;
+  // Sichthülle der Zeichnungen (Plan „Zeichnung ist Form“, Schritt 1): Maßstab = Top bei x, begrenzt durch die Front auf
+  // der Höhe der breitesten Stützstelle(n) (die am wenigsten einengende, bei flachen Seiten). Die übrigen Stützstellen
+  // werden einzeln auf die Front ihrer Höhe beschnitten (`punkt`). Vorher engte die Front an jeder Höhe den ganzen Ring
+  // ein: ein Kasten unter einer runden Front oder ein Brustring unter dem Hals schrumpfte als Ganzes (Tiger 21 px).
   const masstab = (sp: Sprosse, q: Querschnitt) => {
     let W = breiten.top((sp.o.x + sp.u.x) / 2);
     if (!(W > 0)) W = breiten.topMax;
+    let wMax = 0;
+    for (let j = 1; j + 1 < q.v.length; j++) wMax = Math.max(wMax, q.w[j]!);
+    let fBest = 0;
     for (let j = 1; j + 1 < q.v.length; j++) {
       const wj = q.w[j]!;
-      if (wj < 0.25) continue;
+      if (wj < wMax - 1e-6) continue;
       const y = sp.u.y + (sp.o.y - sp.u.y) * q.v[j]!;
       const fb = breiten.front(y);
-      if (fb > 0) W = Math.min(W, fb / wj);
+      if (fb > 0) fBest = Math.max(fBest, fb / wj);
     }
+    if (fBest > 0) W = Math.min(W, fBest);
     if (!(W > 1e-6)) W = letzteW || 0.01 * breiten.topMax;
     letzteW = W;
     return W;
@@ -869,7 +896,10 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     const hv = q.v[j]!;
     const x = sp.u.x + (sp.o.x - sp.u.x) * hv;
     const y = sp.u.y + (sp.o.y - sp.u.y) * hv;
-    return [x, y, q.w[j]! * W, hv];
+    let z = q.w[j]! * W;
+    const fb = breiten.front(y);
+    if (fb > 0 && z > fb) z = fb; // Hülle: nie breiter als die Front auf dieser Höhe
+    return [x, y, z, hv];
   };
   for (let i = 0; i < R; i++) {
     const sp = ringSprossen[i]!;
@@ -970,8 +1000,29 @@ function kastenKappe(v: Roehre, ziele: Float64Array, hoehe: Float64Array, spitze
 }
 
 /** Ziele je Bedingung: erst alle Käfigziele, dann die Nahtpunkte auf dem Umriss (z = 0). */
-export function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V2[]; anteil: Float64Array }, nahtFein: Uint32Array, anteil: Float64Array): Float64Array {
-  const out = new Float64Array(3 * (n + nahtFein.length));
+/**
+ * Breitenpunkte im Ausgleich: je Zeile der feine Punkt (Käfigpunkt = gleicher Index, oder feiner Kettenpunkt), das
+ * Vorzeichen seiner z-Seite und sein Anteil an der Soll-Halbbreite (w / wMax der Vorlage; 1 = breitester Punkt).
+ */
+export type Breite = { fein: Uint32Array; vorzeichen: Int8Array; faktor: Float64Array };
+
+/** Stützstellen bis so weit unter der größten Breite der Vorlage zählen als Breitenpunkte (geneigte Ringe: Kastenwand) */
+const BREITE_SCHWELLE = 0.05;
+
+/**
+ * Soll-Halbbreite eines Breitenpunkts bei (x, y): die größte, die ins Top (bei x) und in die Front (bei y) passt
+ * (Sichthülle der Zeichnungen). Außerhalb beider Silhouetten gilt der Rückfall (Käfigziel).
+ */
+export function breiteSoll(breiten: Breiten, x: number, y: number, rueckfall: number): number {
+  const t = breiten.top(x);
+  const f = breiten.front(y);
+  // außerhalb einer der beiden Silhouetten (Spitzen, 1 px vor dem Top) bleibt die aktuelle Lage: dort sagt die Zeichnung nichts
+  return t > 0 && f > 0 ? Math.min(t, f) : Math.abs(rueckfall);
+}
+
+export function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V2[]; anteil: Float64Array }, nahtFein: Uint32Array, anteil: Float64Array, breite?: Breite | null, breiten?: Breiten, lagen?: Float64Array): Float64Array {
+  const nB = breite && breiten && lagen ? breite.fein.length : 0;
+  const out = new Float64Array(3 * (n + nahtFein.length + nB));
   out.set(ziele.subarray(0, 3 * n));
   for (let k = 0; k < nahtFein.length; k++) {
     const p = umrissBei(umriss, anteil[k]!);
@@ -979,7 +1030,81 @@ export function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V
     out[3 * (n + k) + 1] = p.y;
     out[3 * (n + k) + 2] = 0;
   }
+  // Breitenpunkte: x und y wie die aktuelle Grenzlage (`lagen`, sonst das Käfigziel), z = Soll-Halbbreite dort (rechts +,
+  // links −). Mit den Grenzlagen gerechnet, trifft die Silhouette auch bei geneigten Ringen (Kastenwand des Tigers).
+  if (breite && breiten && lagen) {
+    for (let k = 0; k < nB; k++) {
+      const p = breite.fein[k]!;
+      const x = lagen[3 * p]!;
+      const y = lagen[3 * p + 1]!;
+      const o = 3 * (n + nahtFein.length + k);
+      out[o] = x;
+      out[o + 1] = y;
+      const f = breite.faktor[k]!;
+      out[o + 2] = breite.vorzeichen[k]! * f * breiteSoll(breiten, x, y, lagen[3 * p + 2]! / (f || 1));
+    }
+  }
   return out;
+}
+
+/**
+ * Breitenpunkte (Plan „Zeichnung ist Form“, Schritt 1): je Ring alle breitesten Punkte der Querschnittsvorlage (bei
+ * Kästen die ganze flache Seite), rechts und gespiegelt; ihre Grenzlage soll die Soll-Halbbreite bei ihrem (x, y)
+ * treffen (`breiteSoll`). Punkte außerhalb von Top und Front fallen weg.
+ */
+export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument, opt: AbleitOptionen, ziele: Float64Array, u: Unterteilung, k: Kaefig, haut?: Uint8Array): Breite | null {
+  if (!(opt.breiteGewicht > 0)) return null;
+  const { R, N } = v;
+  const qs = querschnitteFuer(sprossenVon(l, st.ringe), dok, breiten, N, opt);
+  const fein: number[] = [];
+  const vorzeichen: number[] = [];
+  const faktor: number[] = [];
+  // Anteil je Ring und Schleife (0 = kein Breitenpunkt)
+  const breit: Float64Array[] = [];
+  for (let i = 0; i < R; i++) {
+    const q = qs[i]!;
+    let wBest = 0;
+    for (let j = 1; j < N / 2; j++) wBest = Math.max(wBest, q.w[j] ?? 0);
+    const zeile = new Float64Array(N);
+    breit.push(zeile);
+    if (!(wBest > 0)) continue;
+    // Ringe mit Maulpunkten (Lippe, Tasche, Rachen: kein Hautpunkt) folgen ganz dem Maul, nicht der Silhouette
+    let maulRing = false;
+    if (haut) for (let j = 0; j < N && !maulRing; j++) if (!haut[v.ringPunkt(i, j)]) maulRing = true;
+    if (maulRing) continue;
+    for (let j = 1; j < N / 2; j++) {
+      const f = (q.w[j] ?? 0) / wBest;
+      if (f < 1 - BREITE_SCHWELLE) continue;
+      const p = v.ringPunkt(i, j);
+      if (!(breiten.top(ziele[3 * p]!) > 0) || !(breiten.front(ziele[3 * p + 1]!) > 0)) continue;
+      zeile[j] = f;
+      fein.push(p, v.ringPunkt(i, N - j));
+      vorzeichen.push(1, -1);
+      faktor.push(f, f);
+    }
+  }
+  // feine Punkte entlang der Längskanten zwischen zwei Breitenpunkten gleicher Schleife (wie die feinen Nahtpunkte):
+  // halten die Fläche zwischen den Ringen auf der Silhouette (Tiger-Kasten wölbte sich zwischen Ring 7 und 8 um 24 px)
+  for (let i = 0; i + 1 < R; i++) {
+    for (let j = 1; j < N / 2; j++) {
+      const f0 = breit[i]![j]!;
+      const f1 = breit[i + 1]![j]!;
+      if (!(f0 > 0) || !(f1 > 0)) continue;
+      const rechts = feinKette(u, k, v.ringPunkt(i, j), v.ringPunkt(i + 1, j));
+      const links = feinKette(u, k, v.ringPunkt(i, N - j), v.ringPunkt(i + 1, N - j));
+      for (let q = 1; q + 1 < rechts.length; q++) {
+        fein.push(rechts[q]!);
+        vorzeichen.push(1);
+        faktor.push(f0 + ((f1 - f0) * q) / (rechts.length - 1));
+      }
+      for (let q = 1; q + 1 < links.length; q++) {
+        fein.push(links[q]!);
+        vorzeichen.push(-1);
+        faktor.push(f0 + ((f1 - f0) * q) / (links.length - 1));
+      }
+    }
+  }
+  return fein.length ? { fein: Uint32Array.from(fein), vorzeichen: Int8Array.from(vorzeichen), faktor: Float64Array.from(faktor) } : null;
 }
 
 /** Falten des Käfigs aus Ecken: Ringfalten (Seitenumriss), Spitzen, Längsfalten (Ecken im Querschnitt). */
@@ -1106,13 +1231,20 @@ export function fertigstellen(e: Rohbau): Ableitung {
   const nahtFein = Uint32Array.from(geordnet);
   const anteil = nahtAnteile(geordnet, k.n, ziele, umriss);
   let nahtLoeser: AusgleichsLoeser | null = null;
+  const breite = breitenSchleife(vorlage, l, st, breiten, dok, opt, ziele, u, k, e.haut);
   if (opt.nahtGewicht > 0) {
     const bedingungen: Bedingung[] = [];
     for (let i = 0; i < k.n; i++) bedingungen.push({ zeile: i, gewicht: e.zielGewicht ? e.zielGewicht[i]! : 1 });
     for (let q = 0; q < nahtFein.length; q++) bedingungen.push({ zeile: nahtFein[q]!, gewicht: opt.nahtGewicht });
+    if (breite) for (let q = 0; q < breite.fein.length; q++) bedingungen.push({ zeile: breite.fein[q]!, gewicht: opt.breiteGewicht });
     nahtLoeser = ausgleichsLoeser(u.grenze, k.n, bedingungen, opt.glaettung > 0 ? { kaefig: k, gewicht: opt.glaettung } : undefined);
-    xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil));
+    xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein));
     fein = anwenden3(u.grenze, xyz);
+    // Breitenziele an den tatsächlichen Grenzlagen nachrechnen (geneigte Ringe), zwei Durchgänge
+    for (let durchgang = 0; breite && durchgang < BREITE_DURCHGAENGE; durchgang++) {
+      xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein));
+      fein = anwenden3(u.grenze, xyz);
+    }
   }
   const kaefig = { ...k, xyz };
   const t5 = jetzt();
@@ -1135,6 +1267,7 @@ export function fertigstellen(e: Rohbau): Ableitung {
     altLeiter: l,
     dokAlt: dok,
     naht: { fein: nahtFein, anteil, loeser: nahtLoeser },
+    breite,
     zeiten: { leiter: t1 - t0, breiten: t2 - t1, matrix: t3 - t2, loeser: t4 - t3, ziele: t5 - t4, gesamt: t5 - t0 },
   };
 }
@@ -1158,9 +1291,13 @@ export function ziehen(abl: Ableitung, dokNeu: Dokument): Zug {
   const t2 = jetzt();
   const umrissNeu = umrissDicht(dokNeu);
   const anteilNeu = abl.naht.loeser ? nahtAnteile(Array.from(abl.naht.fein), v.kaefig.n, ziele, umrissNeu) : abl.naht.anteil;
-  const xyz = abl.naht.loeser ? kaefigAusgleich(abl.naht.loeser, ausgleichsZiele(v.kaefig.n, ziele, umrissNeu, abl.naht.fein, anteilNeu)) : kaefigDurchZiele(abl.loeser, ziele);
+  let xyz = abl.naht.loeser ? kaefigAusgleich(abl.naht.loeser, ausgleichsZiele(v.kaefig.n, ziele, umrissNeu, abl.naht.fein, anteilNeu, abl.breite, breiten, abl.fein)) : kaefigDurchZiele(abl.loeser, ziele);
+  let fein = anwenden3(abl.unterteilung.grenze, xyz);
+  if (abl.naht.loeser && abl.breite) {
+    xyz = kaefigAusgleich(abl.naht.loeser, ausgleichsZiele(v.kaefig.n, ziele, umrissNeu, abl.naht.fein, anteilNeu, abl.breite, breiten, fein));
+    fein = anwenden3(abl.unterteilung.grenze, xyz);
+  }
   const t3 = jetzt();
-  const fein = anwenden3(abl.unterteilung.grenze, xyz);
   const t4 = jetzt();
   return { ...abl, ziele, hoehe, kaefig: { ...abl.kaefig, xyz }, fein, breiten, altLeiter: l, dokAlt: dokNeu, naht: { ...abl.naht, anteil: anteilNeu }, zugZeit: { leiter: t1 - t0, ziele: t2 - t1, loeser: t3 - t2, matrix: t4 - t3 } };
 }

@@ -109,6 +109,9 @@ describe('Beweis 1: Kern-Tempo und Treue', () => {
     expect(r.hin.max * PX).toBeLessThan(0.5);
     expect(r.zurueck.max * PX).toBeLessThan(0.5);
     expect(r.silhouette.max * PX).toBeLessThan(1.0);
+    // 15.10. („Zeichnung ist Form“, Schritt 1): Front und Top ebenfalls auf der Kurve (0,1 bzw. 0,5 px)
+    expect(Math.max(r.front.hin, r.front.her)).toBeLessThan(1.0);
+    expect(Math.max(r.top.hin, r.top.her)).toBeLessThan(1.0);
   });
 
   it('Rex (nachgezogen): Naht ≤ 0,5 px', () => {
@@ -118,12 +121,18 @@ describe('Beweis 1: Kern-Tempo und Treue', () => {
     // Ziel (Plan 11.1): 0,5 px. Stand 13.10. nachts: 0,33 px (kleine Kappe an Spitzen-Ecken, Ringe nach Krümmung).
     expect(r.hin.max * PX).toBeLessThan(0.5);
     expect(r.zurueck.max * PX).toBeLessThan(0.5);
+    // 15.10. (Schritt 1): Top mit Breitenpunkten im Ausgleich 1,1 px (vorher 1,9). Die Front bleibt bei 11 px: Florians
+    // Front ist am breitesten Punkt 0,014 breiter als sein Top (Widerspruch der Zeichnungen, wird im Blatt angezeigt).
+    expect(Math.max(r.top.hin, r.top.her)).toBeLessThan(1.5);
   });
 
   it('Langhals (Hals steht): Naht ≤ 2 px', () => {
     const r = messen('Langhals', vorlageDokument(langhalsRoh as unknown as Vorlage, 'zu', 'langhals'));
     // Stand 13.10. nachts: 0,97 px (Ringe nach Krümmung); Ziel ≤ 2 px
     expect(r.hin.max * PX).toBeLessThan(1.5) // Plan: ≤ 2 px; mit entfächerter Leiter 1,36 px (vorher 0,97, dafür Schwanz ohne Durchdringungen);
+    // 15.10.: Top 14 px (vorher 17) an der Brust: Top will 0,13, Seite und Front lassen dort höchstens 0,125 zu, dazu die
+    // Kreis-Vorlage der schrägen Sprossen am Hals-Rumpf-Übergang (offen, Kritik-Register Phase 1)
+    expect(Math.max(r.top.hin, r.top.her)).toBeLessThan(16);
   });
 
   it('Überhang-Ente (Florian 13.10.): Naht ≤ 2 px ohne Sonderregel', () => {

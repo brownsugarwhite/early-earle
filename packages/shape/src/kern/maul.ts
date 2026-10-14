@@ -978,7 +978,10 @@ export function ableitenMitMaul(dok: Dokument, linie: MaulLinie, optionen: Parti
   }
   // Nahtrundgang startet am Hautpunkt über der Spitze (die Spitze selbst liegt auf der Lippe)
   const nahtStart = vorlage.kappe('vorn', vorlage.c / 2, vorlage.c / 2 + 1);
-  const abl = fertigstellen({ opt, vorlage, kaefig: mk.kaefig, ziele: mk.ziele, hoehe: mk.hoehe, l, st, breiten, dok, haut, zielGewicht, nahtStart, zeiten: { t0, t1, t2 } });
+  // Ohne Breitenzeilen (Plan „Zeichnung ist Form“, 15.10.): Sie machen den Käfig wellig, und die Kieferpose wirft daraus
+  // Hautfalten (Tiger-Stern 70 Durchdringungen bei 50 %). Die Breite kommt hier allein aus den Käfigzielen (Sichthülle);
+  // offen: Breitenzeilen mit Glättung oder eine Pose, die den geglätteten Käfig nutzt.
+  const abl = fertigstellen({ opt: { ...opt, breiteGewicht: 0 }, vorlage, kaefig: mk.kaefig, ziele: mk.ziele, hoehe: mk.hoehe, l, st, breiten, dok, haut, zielGewicht, nahtStart, zeiten: { t0, t1, t2 } });
   const xyz = abl.kaefig.xyz;
   const info = mk.info;
   // Untere Kette bitgleich auf die obere (gleiche Ziele, scharfe Falten: die Grenzlage hängt nur von der Kette ab)
