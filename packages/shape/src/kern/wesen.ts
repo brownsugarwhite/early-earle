@@ -7,7 +7,7 @@
 // Der `WesenStand` hält die Ableitung und den Klingenstand zwischen zwei Bauten (Pose statt Umbau, Wehen je Bild).
 
 import type { V2 } from '../bezier';
-import type { Ausstattung, Dokument, GefroreneStationen, ZonenVorlage } from '../dokument';
+import type { Ausstattung, Dokument, GefroreneStationen, KaefigDelta, ZonenVorlage } from '../dokument';
 import { alleFlaechen } from '../kaefig/halbkanten';
 import { type V3, zuDreiecken } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
@@ -24,7 +24,7 @@ import { type AnkerFeld, maulAnker, posenUmhaengen } from './posenAnker';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
-import { type ZahnBau, zaehneBauen } from './zaehne';
+import { PRUEF_OEFFNUNGEN, type ZahnBau, type ZahnMeldung, zaehneBauen, zaehnePruefenBei, zahnListe } from './zaehne';
 
 export type StilArt = 'fest' | 'feuer' | 'gas' | 'fell';
 export type MaulArt = 'aus' | 'vorn' | 'unten' | 'hals';
@@ -77,6 +77,11 @@ export type Bauplan = Ausstattung & {
    * ohne Umbau. Fressen selbst läuft weiter über `oeffnung`.
    */
   pose?: { name: string; staerke: number };
+  /**
+   * Zähne prüfen (Phase 2 M4): bei zu, 25 %, 50 % und offen gegen den Gegenkiefer (`zaehnePruefenBei`, 50–400 ms) —
+   * nur als eigener Auftrag nach einem genauen Bau, nie während einer Geste; Ergebnis in `WesenNetz.zahnMeldungen`.
+   */
+  zahnPruefung?: boolean;
 };
 
 /** Trefferdaten (M2): je Körperdreieck die feine Fläche (−1 für angesetzte Teile), je feiner Fläche Käfigfläche und Ecken-(u, v), der posierte Käfig. */
@@ -146,6 +151,8 @@ export type WesenNetz = {
   gesicht: Gesicht | null;
   /** Zähne (Phase 2 M4): Dreiecke mit Verlauf, Zahn je Ecke, je Zahn Herkunft und Lage, wirksame Reihen, Zahnfleischlinien */
   zaehne: ZahnBau | null;
+  /** Befunde der Zahnprüfung je Dokument-Zahn (nur mit `Bauplan.zahnPruefung`), sonst null */
+  zahnMeldungen: ZahnMeldung[] | null;
   atlas: AtlasDaten | null;
   treffer: TrefferDaten | null;
   reifen: ReifenDaten | null;
@@ -648,6 +655,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   let maulLinieVerwendet: MaulLinie | null = null;
   let maulOptAktuell: MaulOptionen | null = null;
   let ankerFeld: AnkerFeld | null = null;
+  let fressenDeltas: KaefigDelta[] = [];
   let fein: Float64Array;
   let xyz: Float64Array;
   let gesteckt: { fein: Float64Array; abl: BeinErgebnis } | null = null;
@@ -681,19 +689,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     kieferGewichteSetzen(mAbl, maulOptAktuell);
     ankerFeld = maulAnker(mAbl, abl.kaefig.n, abl.vorlage.kaefig.n);
     const t0 = jetzt();
-    const pose = maulPose(abl as MaulErgebnis, plan.oeffnung);
+    fressenDeltas = posenUmhaengen(dokRoh.kaefig?.posen?.fressen ?? [], ankerFeld, abl.vorlage.kaefig.n);
+    const pose = maulLageBei(abl as MaulErgebnis, plan.oeffnung, fressenDeltas);
     fein = pose.fein;
     xyz = pose.xyz;
-    // Fressen-Pose (Plan 5.2, M3): Käfig-Deltas derselben Maultopologie, mit der Öffnung überblendet, auf alle Punkte
-    // (auch Maulpunkte) nach der Knochenpose — so wird aus einem kleinen geschlossenen Maul ein großes rundes offenes
-    // an die Maullinie gebunden: nach einer neuen Maultopologie wandern Deltas mit Anker zu ihren Punkten
-    const posenDeltas = posenUmhaengen(dokRoh.kaefig?.posen?.fressen ?? [], ankerFeld, abl.vorlage.kaefig.n);
-    if (posenDeltas.length && plan.oeffnung > 0) {
-      const xyz2 = new Float64Array(pose.xyz);
-      deltasAddieren(xyz2, spiegelIndex(abl.kaefig.xyz, abl.kaefig.n), posenDeltas, plan.oeffnung);
-      xyz = xyz2;
-      fein = anwenden3(abl.unterteilung.grenze, xyz2);
-    }
     zug = jetzt() - t0;
   } else if (schnell && stand && stand.maul === 'aus' && stand.beine === 'aus' && gleicheTopologie(stand.dok, dok)) {
     // führende Kurve des aktuellen Zugs statt der des letzten Baus
@@ -840,7 +839,19 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   }
   // Zähne am Zahnfleisch des posierten Käfigs (Phase 2 M4): aus dem Dokument oder die Automatik, Werte für offen mit der Öffnung
   let zaehne: WesenNetz['zaehne'] = null;
-  if (maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul) zaehne = zaehneBauen(abl as MaulErgebnis, fein, dokRoh.zaehne, plan.oeffnung, hoehe);
+  if (maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul) {
+    // die Automatik passt geschlossen ein (≈ 30–80 ms): gemerkt je Ableitung ohne Deltas und Prüfsumme der Deltas
+    let summe = 0;
+    for (const d of deltas) summe += (d.punkt + 1) * (1.3 * d.d[0] + 1.7 * d.d[1] + 2.3 * d.d[2]);
+    zaehne = zaehneBauen(abl as MaulErgebnis, fein, dokRoh.zaehne, plan.oeffnung, ablRein ? { objekt: ablRein, schluessel: `${deltas.length}:${summe}` } : undefined);
+  }
+  // Zahnprüfung (eigener Auftrag): in den Lagen der Prüföffnungen, wie gebaut (Knochen, Haps, Fressen-Pose)
+  let zahnMeldungen: ZahnMeldung[] | null = null;
+  if (plan.zahnPruefung && zaehne) {
+    const m = abl as MaulErgebnis;
+    const lagen = PRUEF_OEFFNUNGEN.map((o) => ({ oeffnung: o, fein: maulLageBei(m, o, fressenDeltas).fein }));
+    zahnMeldungen = zaehnePruefenBei(m, lagen, zahnListe(zaehne.reihen));
+  }
   // Gesicht: Dreiecksnase oben an der Schnauzenfront, Scharte hinab zur Lippe, alles in der Ruhelage
   let gesicht: Gesicht | null = null;
   if (plan.gesicht) {
@@ -991,6 +1002,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     ruhe: ruhe && ruhe.length === positionen.length ? ruhe : null,
     gesicht,
     zaehne,
+    zahnMeldungen,
     atlas: stil === 'fest' ? atlas : null,
     treffer,
     reifen,
@@ -1012,4 +1024,17 @@ export function netzPuffer(netz: WesenNetz): ArrayBuffer[] {
     if (a && !out.includes(a.buffer as ArrayBuffer)) out.push(a.buffer as ArrayBuffer);
   }
   return out;
+}
+
+/**
+ * Lage des Mauls bei Öffnung α, wie gebaut: Knochenpose mit Haps (`maulPose`), dann die Fressen-Pose (Plan 5.2, M3;
+ * Käfig-Deltas derselben Maultopologie, mit der Öffnung überblendet, auf alle Punkte — so wird aus einem kleinen
+ * geschlossenen Maul ein großes rundes offenes; Deltas mit Anker sind schon auf die Topologie umgehängt).
+ */
+export function maulLageBei(abl: MaulErgebnis, oeffnung: number, fressen: readonly KaefigDelta[]): { xyz: Float64Array; fein: Float64Array } {
+  const pose = maulPose(abl, oeffnung);
+  if (!fressen.length || oeffnung <= 0) return pose;
+  const xyz = new Float64Array(pose.xyz);
+  deltasAddieren(xyz, spiegelIndex(abl.kaefig.xyz, abl.kaefig.n), fressen, oeffnung);
+  return { xyz, fein: anwenden3(abl.unterteilung.grenze, xyz) };
 }

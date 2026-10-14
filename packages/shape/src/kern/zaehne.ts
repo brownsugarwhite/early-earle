@@ -10,10 +10,12 @@
 //   Dokument gilt die Automatik (`zaehneStandard`), als Werte ausgegeben, damit der Editor sie beim ersten Ändern übernimmt.
 
 import type { Zaehne, ZahnEintrag, Zahnreihe } from '../dokument';
+import { alleFlaechen } from '../kaefig/halbkanten';
 import type { MaulErgebnis } from './maul';
 import { kaefigNachbarn } from './pinsel';
 import { feinKette } from './reifen';
 import { type Kiefer, type RahmenQuelle, type Zahn, type ZahnAuf, type ZahnRahmen, zahnBei, zahnNetze } from './zahnModell';
+import { type PruefOptionen, type ZahnBefund, zaehneEinpassen, zahnPruefenAuf } from './zahnPruefung';
 
 type V3 = [number, number, number];
 
@@ -332,14 +334,43 @@ export function zahnLaengeStandard(abl: MaulErgebnis, hoehe: number): number {
   return Math.min(0.075 * hoehe, 0.35 * abl.maul.laenge);
 }
 
+/** Geschlossen dieser Anteil der größten Länge, die gerade nicht stört (Abstand zur Grenze, damit kleine Änderungen nicht kippen) */
+export const EINPASSEN_ANTEIL = 0.9;
+
+/** Gemerkt je Ableitung (ohne Pinsel-Deltas) und Prüfsumme der Deltas: Öffnen und Posen passen nicht neu ein */
+const standardSpeicher = new WeakMap<object, { schluessel: string; reihen: Zaehne }>();
+/** Einpassen der Automatik: gröber abgetastet als die Prüfung, 8 Halbierungsschritte (Grenze auf 0,4 % der Länge) */
+const EINPASSEN_OPTIONEN = { alpha: 0, seiten: 6, ringe: 4, schritte: 8 } as const;
+
 /**
  * Automatik (ohne Zahnreihen im Dokument): 6 oben, 5 unten je Seite, höchstens ein Zahn je Pfadspalte (kurze Mäuler);
- * Länge nach `zahnLaengeStandard`, hinten kleiner.
+ * Länge nach `zahnLaengeStandard` (Höhe der Ruhelage), hinten kleiner. Beim Überbiss stehen die oberen Zähne außen vor
+ * dem schmaleren Unterkiefer (Bogen `06-rex-mit-maul`), beim Unterbiss die unteren vor dem Oberkiefer. Geschlossen ist
+ * die Tasche nur wenige Pixel dick: jeder Zahn ist dort so lang, wie die Prüfung erlaubt (`zaehneEinpassen`, davon
+ * `EINPASSEN_ANTEIL`), und wächst beim Öffnen auf die volle Länge (Florians Weg für Riesenzähne). Gemerkt je Ableitung.
  */
-export function zaehneStandard(abl: MaulErgebnis, hoehe: number): Zaehne {
+export function zaehneStandard(abl: MaulErgebnis, merken: { objekt: object; schluessel: string } = { objekt: abl, schluessel: '' }): Zaehne {
+  const gemerkt = standardSpeicher.get(merken.objekt);
+  if (gemerkt && gemerkt.schluessel === merken.schluessel) return gemerkt.reihen;
+  let hoehe = 0;
+  for (let i = 1; i < abl.fein.length; i += 3) hoehe = Math.max(hoehe, abl.fein[i]!);
   const jeSeite = Math.max(1, abl.maul.lage.m - 2);
   const L = zahnLaengeStandard(abl, hoehe);
-  return { oben: zahnreiheVerteilen(2 * Math.min(6, jeSeite), 'oben', L), unten: zahnreiheVerteilen(2 * Math.min(5, jeSeite), 'unten', L) };
+  const reihen: Zaehne = { oben: zahnreiheVerteilen(2 * Math.min(6, jeSeite), 'oben', L), unten: zahnreiheVerteilen(2 * Math.min(5, jeSeite), 'unten', L) };
+  const v = abl.maul.lage.versatz;
+  const aussen: Record<Kiefer, boolean> = { oben: !!v && !v.oben, unten: !!v && v.oben };
+  for (const kiefer of ['oben', 'unten'] as const) if (aussen[kiefer]) reihen[kiefer].zaehne = reihen[kiefer].zaehne.map((e) => ({ ...e, aussen: true }));
+  // geschlossen einpassen: nur die rechte Hälfte und der Mittelzahn (links ist das Spiegelbild)
+  const rechts = zahnListe(reihen).filter((q) => q.zahn.seite >= 0);
+  const laengen = zaehneEinpassen(zahnPruefFlaeche(abl, abl.fein), zahnfleischKern(abl, abl.fein), rechts.map((q) => q.zahn), EINPASSEN_OPTIONEN);
+  rechts.forEach((q, i) => {
+    const e = reihen[q.kiefer].zaehne[q.index]!;
+    const passt = laengen[i] ?? null;
+    const zu = passt === null ? 0.05 * e.laenge : passt >= e.laenge ? e.laenge : EINPASSEN_ANTEIL * passt;
+    if (zu < e.laenge) reihen[q.kiefer].zaehne[q.index] = { ...e, laenge: zu, auf: { laenge: e.laenge } };
+  });
+  standardSpeicher.set(merken.objekt, { schluessel: merken.schluessel, reihen });
+  return reihen;
 }
 
 // ---------- Bau ----------
@@ -364,9 +395,9 @@ export type ZahnBau = {
 };
 
 /** Zähne am Zahnfleisch des posierten Käfigs (`fein` = Grenzlagen der Pose) bei Öffnung α. */
-export function zaehneBauen(abl: MaulErgebnis, fein: ArrayLike<number>, dok: Zaehne | undefined, alpha: number, hoehe: number): ZahnBau {
+export function zaehneBauen(abl: MaulErgebnis, fein: ArrayLike<number>, dok: Zaehne | undefined, alpha: number, merken?: { objekt: object; schluessel: string }): ZahnBau {
   const fleisch = zahnfleischKern(abl, fein);
-  const reihen = dok ?? zaehneStandard(abl, hoehe);
+  const reihen = dok ?? zaehneStandard(abl, merken);
   const liste = zahnListe(reihen);
   const netz = zahnNetze(
     liste.map((q) => q.zahn),
@@ -388,4 +419,93 @@ export function zaehneBauen(abl: MaulErgebnis, fein: ArrayLike<number>, dok: Zae
     ausDokument: !!dok,
     fleisch: { oben: fleisch.oben.linie, unten: fleisch.unten.linie, uOben: fleisch.oben.uLinie, uUnten: fleisch.unten.uLinie },
   };
+}
+
+// ---------- Prüfung ----------
+
+/** Taschenpunkte (Art 3 Tasche oben, 4 Tasche unten, 6 Winkelsäule, 8 Zahnfleischkante des Unterkiefers) */
+const TASCHE_ART = new Set([3, 4, 6, 8]);
+
+/**
+ * Prüffläche des Kern-Mauls in einer Pose (`fein` = Grenzlagen): feine Flächen, Kiefer je Fläche aus dem Anteil des
+ * Unterkiefergewichts (über die Unterteilungsmatrix je feinem Punkt, gemittelt je Fläche: ≥ 0,6 unten, ≤ 0,4 oben, sonst
+ * Übergang), Tasche wie die Taschenpunkte. Das ganze Zahnfleisch liegt im sichtbaren Maul (kein Reißverschluss).
+ */
+export function zahnPruefFlaeche(abl: MaulErgebnis, fein: ArrayLike<number>): { netz: { punkte: [number, number, number][]; flaechen: number[][] }; kiefer: (Kiefer | 'mitte')[]; haut: boolean[]; sichtbarBis: number } {
+  const m = abl.maul;
+  const M = abl.unterteilung.matrix;
+  const nF = M.start.length - 1;
+  const wu = new Float64Array(nF);
+  const ta = new Float64Array(nF);
+  for (let i = 0; i < nF; i++) {
+    let g = 0;
+    let u = 0;
+    let t = 0;
+    for (let q = M.start[i]!; q < M.start[i + 1]!; q++) {
+      const w = M.wert[q]!;
+      const c = M.index[q]!;
+      g += w;
+      u += w * (m.gewichtUnten[c] ?? 0);
+      if (TASCHE_ART.has(m.art[c] ?? 0)) t += w;
+    }
+    wu[i] = g > 0 ? u / g : 0;
+    ta[i] = g > 0 ? t / g : 0;
+  }
+  const punkte: [number, number, number][] = [];
+  for (let i = 0; i < fein.length / 3; i++) punkte.push([fein[3 * i]!, fein[3 * i + 1]!, fein[3 * i + 2]!]);
+  const flaechen = alleFlaechen(abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig);
+  const kiefer = flaechen.map((f) => {
+    let s = 0;
+    for (const v of f) s += wu[v]!;
+    const a = s / f.length;
+    return a >= 0.6 ? 'unten' : a <= 0.4 ? 'oben' : 'mitte';
+  });
+  const haut = flaechen.map((f) => {
+    let s = 0;
+    for (const v of f) s += ta[v]!;
+    return s / f.length < 0.5;
+  });
+  return { netz: { punkte, flaechen }, kiefer, haut, sichtbarBis: 1 };
+}
+
+/** Schwerster Befund je Dokument-Zahn (beide Seiten zusammen) bei einer Öffnung. */
+export type ZahnMeldung = { kiefer: Kiefer; index: number; oeffnung: number; befund: ZahnBefund; listenIndizes: number[] };
+
+/**
+ * Prüft die Zähne in einer Pose (`fein` = Grenzlagen bei Öffnung α, wie im Bau mit Fressen-Pose) und fasst die Befunde
+ * je Dokument-Zahn zusammen (der schwerste gilt, Spiegelpartner zusammen).
+ */
+export function zaehnePruefen(abl: MaulErgebnis, fein: ArrayLike<number>, liste: readonly ZahnMitQuelle[], alpha: number, opt: Partial<PruefOptionen> = {}): ZahnMeldung[] {
+  if (!liste.length) return [];
+  const fleisch = zahnfleischKern(abl, fein);
+  const befunde = zahnPruefenAuf(zahnPruefFlaeche(abl, fein), fleisch, liste.map((q) => q.zahn), { ...opt, alpha });
+  const je = new Map<string, ZahnMeldung>();
+  for (const b of befunde) {
+    const q = liste[b.zahn];
+    if (!q || b.art === 'ok') continue;
+    const k = `${q.kiefer}:${q.index}`;
+    const alt = je.get(k);
+    if (!alt) je.set(k, { kiefer: q.kiefer, index: q.index, oeffnung: alpha, befund: b, listenIndizes: [b.zahn] });
+    else {
+      if (!alt.listenIndizes.includes(b.zahn)) alt.listenIndizes.push(b.zahn);
+      if (b.tiefe > alt.befund.tiefe) alt.befund = b;
+    }
+  }
+  return [...je.values()];
+}
+
+/** Öffnungen der Prüfung (Plan 5.3: zu, 50 %, offen; dazu 25 %, wo sich Zähne beim Öffnen am ehesten treffen). */
+export const PRUEF_OEFFNUNGEN = [0, 0.25, 0.5, 1] as const;
+
+/** Prüfung in mehreren Lagen (Öffnung und Grenzlagen der Pose); je Dokument-Zahn gilt der schwerste Befund. */
+export function zaehnePruefenBei(abl: MaulErgebnis, lagen: readonly { oeffnung: number; fein: ArrayLike<number> }[], liste: readonly ZahnMitQuelle[], opt: Partial<PruefOptionen> = {}): ZahnMeldung[] {
+  const je = new Map<string, ZahnMeldung>();
+  for (const l of lagen) {
+    for (const m of zaehnePruefen(abl, l.fein, liste, l.oeffnung, opt)) {
+      const k = `${m.kiefer}:${m.index}`;
+      const alt = je.get(k);
+      if (!alt || m.befund.tiefe > alt.befund.tiefe) je.set(k, m);
+    }
+  }
+  return [...je.values()];
 }

@@ -160,21 +160,31 @@ describe('Zähne im Kern: Zahnfleisch und Rahmen (Rex, Kugel, Tiger)', () => {
 
   it('u ist eine feste Stelle des Käfigs: die Wurzel liegt zu, halb und offen auf dem Zahnfleisch (≤ 0,5 px), der Anteil der Ruhelage bleibt', () => {
     const abl = maulAbl(rexDok());
-    const zaehne: Zahn[] = zahnListe(zaehneStandard(abl, 0.6)).map((q) => q.zahn);
+    const zaehne: Zahn[] = zahnListe(zaehneStandard(abl)).map((q) => q.zahn);
     for (const alpha of [0, 0.5, 1]) {
       const fein = maulPose(abl, alpha).fein;
       const zf = zahnfleischKern(abl, fein);
       let maxWurzel = 0;
       let maxRing = 0;
+      let aussen = 0;
       for (const z of zaehne) {
         const g = zahnGitter(z, zf[z.kiefer], alpha);
         const ring = g.ringe[1]!;
         const m = [0, 1, 2].map((k) => ring.reduce((s, p) => s + p[k]!, 0) / ring.length) as V3;
         maxRing = Math.max(maxRing, ab(m, g.wurzel));
+        const w = zahnBei(z, alpha);
+        if (z.aussen) {
+          // außen-Zahn (Rex: oben, Überbiss): Ansatz am Lippenrand, um halbe Tiefe plus 1,5 px nach außen
+          const versatz = ab(g.wurzel, zf[z.kiefer](w.u, z.seite, true).rand) - (w.tiefe * w.groesse) / 2;
+          expect(Math.abs(versatz * PX - 1.5)).toBeLessThan(1e-6);
+          aussen++;
+          continue;
+        }
         maxWurzel = Math.max(maxWurzel, abstandZuLinie(g.wurzel, zf[z.kiefer].linie));
         // die Stelle der Ruhelage: uVon auf der Linie der Pose liefert dasselbe u
-        expect(Math.abs(zf[z.kiefer].uVon(g.wurzel, z.seite === 0 ? 1 : z.seite).u - (z.seite === 0 ? 0 : z.u))).toBeLessThan(1e-6);
+        expect(Math.abs(zf[z.kiefer].uVon(g.wurzel, z.seite === 0 ? 1 : z.seite).u - (z.seite === 0 ? 0 : w.u))).toBeLessThan(1e-6);
       }
+      expect(aussen).toBe(12);
       console.log(`Rex α=${alpha}: Wurzel–Zahnfleisch ${(maxWurzel * PX).toFixed(4)} px, Ringmitte–Wurzel ${maxRing.toExponential(1)}`);
       expect(maxWurzel * PX).toBeLessThan(0.5);
       expect(maxRing).toBeLessThan(1e-9);
@@ -298,7 +308,7 @@ describe('Zähne im Kern: Bau im Wesen', () => {
   it('Tempo: Zähne des Rex (22) bauen < 15 ms', () => {
     const abl = maulAbl(rexDok());
     const fein = maulPose(abl, 0.5).fein;
-    const reihen = zaehneStandard(abl, 0.6);
+    const reihen = zaehneStandard(abl);
     // warm laufen
     for (let k = 0; k < 3; k++) zahnListe(reihen).forEach((q) => zahnNetz(q.zahn, zahnfleischKern(abl, fein)[q.kiefer], 0.5, ZAHN_SEITEN, ZAHN_RINGE));
     const t0 = performance.now();
@@ -309,4 +319,97 @@ describe('Zähne im Kern: Bau im Wesen', () => {
     console.log(`Zahnfleisch ${(t1 - t0).toFixed(2)} ms, 22 Zahnnetze ${(t2 - t1).toFixed(2)} ms`);
     expect(t2 - t0).toBeLessThan(15);
   });
+});
+
+describe('Zähne im Kern: Prüfung gegen den Gegenkiefer (zu, 25 %, 50 %, offen)', () => {
+  const planVon = (d: Dokument) => ({
+    maul: 'vorn' as const,
+    oeffnung: 0,
+    beine: 'aus' as const,
+    schwung: 0,
+    stil: 'fest' as const,
+    earle: false,
+    kaefigLinien: false,
+    ...(d.ausstattung ?? { maulLinie: maulLinieAusDokument(d)! }),
+    zahnPruefung: true,
+  });
+  const kugel = (art: Parameters<typeof kugelMaulDokument>[0]) => kugelMaulDokument(art, true);
+
+  it('Automatik ohne Befund: Rex (oben außen), Tiger-Platte, Kugel gleich, Überbiss, Unterbiss, Florians Kugel', () => {
+    for (const [name, d] of [
+      ['Rex', rexDok()],
+      ['Tiger', tigerDok()],
+      ['Kugel gleich', kugel('gleich')],
+      ['Kugel Überbiss', kugel('ueberbiss')],
+      ['Kugel Unterbiss', kugel('unterbiss')],
+      ['Kugel Florian', kugel('florian')],
+    ] as const) {
+      const w = wesenBauen(d, planVon(d), null);
+      const mel = w.netz.zahnMeldungen!;
+      console.log(`${name}: ${w.netz.zaehne!.liste.length} Zähne, ${mel.length} Befunde`);
+      expect(mel, name).toEqual([]);
+    }
+  }, 120_000);
+
+  it('zu langer Zahn: stößt geschlossen in den Gegenkiefer, „kürzen“ behebt es, nichts wird still geändert', () => {
+    const roh = kugel('gleich');
+    const reihen: Zaehne = { oben: zahnreiheVerteilen(4, 'oben', 0.06), unten: zahnreiheVerteilen(0, 'unten', 0.03) };
+    const dok: Dokument = { ...roh, zaehne: reihen };
+    const w = wesenBauen(dok, planVon(dok), null);
+    const mel = w.netz.zahnMeldungen!;
+    const m = mel.find((x) => x.kiefer === 'oben' && x.index === 0)!;
+    expect(m.befund.art).toBe('durchKiefer');
+    expect(m.oeffnung).toBe(0);
+    expect(m.befund.tiefe * PX).toBeGreaterThan(5);
+    // das Dokument ist unverändert (die Verteilung kürzt nach hinten: Länge × (1 − 0,45 u))
+    expect(dok.zaehne!.oben.zaehne[0]!.laenge).toBe(reihen.oben.zaehne[0]!.laenge);
+    expect(reihen.oben.zaehne[0]!.laenge).toBeCloseTo(0.06 * (1 - 0.45 * reihen.oben.zaehne[0]!.u), 12);
+    const kurz = m.befund.vorschlaege!.find((v) => v.text.startsWith('kürzen'))!;
+    expect(kurz).toBeDefined();
+    const neu: Zaehne = { ...reihen, oben: { ...reihen.oben, zaehne: reihen.oben.zaehne.map((e, i) => (i === 0 ? { ...e, laenge: kurz.aenderung.laenge! } : e)) } };
+    const w2 = wesenBauen({ ...dok, zaehne: neu }, planVon(dok), w.stand);
+    console.log(`zu lang: ${(m.befund.tiefe * PX).toFixed(1)} px, Vorschläge: ${m.befund.vorschlaege!.map((v) => v.text).join(' | ')}`);
+    expect(w2.netz.zahnMeldungen!.filter((x) => x.kiefer === 'oben' && x.index === 0)).toEqual([]);
+  }, 60_000);
+
+  it('Zahn gegen Zahn: zu breite Nachbarn überlappen, „schmaler“ trennt sie', () => {
+    const roh = kugel('gleich');
+    // 15 Zähne auf der großen Kugel: Abstand ≈ 24 px, Breite 37 px
+    const oben = zahnreiheVerteilen(15, 'oben', 0.012);
+    oben.zaehne = oben.zaehne.map((e) => ({ ...e, breite: 0.08 }));
+    const dok: Dokument = { ...roh, zaehne: { oben, unten: { anzahl: 0, zaehne: [] } } };
+    const w = wesenBauen(dok, planVon(dok), null);
+    const zz = w.netz.zahnMeldungen!.filter((x) => x.befund.art === 'zahnZahn');
+    expect(zz.length).toBeGreaterThan(0);
+    const schmal = zz.flatMap((x) => x.befund.vorschlaege ?? []).filter((v) => v.text.startsWith('schmaler'));
+    expect(schmal.length).toBeGreaterThan(0);
+    const b = Math.min(...schmal.map((v) => v.aenderung.breite!));
+    const neu = { ...oben, zaehne: oben.zaehne.map((e) => ({ ...e, breite: b })) };
+    const w2 = wesenBauen({ ...dok, zaehne: { oben: neu, unten: { anzahl: 0, zaehne: [] } } }, planVon(dok), w.stand);
+    expect(w2.netz.zahnMeldungen!.filter((x) => x.befund.art === 'zahnZahn')).toEqual([]);
+  }, 60_000);
+
+  it('außen-Zahn: über der bündigen Unterlippe frei, 35° nach innen geneigt stößt er hinein, „Neigung“ behebt es (die Rex-Fänge hängen 17 px vor dem Unterkiefer und treffen ihn auch so nicht)', () => {
+    const roh = kugel('gleich');
+    const mitNeigung = (n: number): Zaehne => {
+      const oben = zahnreiheVerteilen(4, 'oben', 0.03);
+      oben.zaehne = oben.zaehne.map((e, i) => (i === 0 ? { ...e, aussen: true, neigung: n } : e));
+      return { oben, unten: { anzahl: 0, zaehne: [] } };
+    };
+    const gerade = wesenBauen({ ...roh, zaehne: mitNeigung(0) }, planVon(roh), null);
+    expect(gerade.netz.zahnMeldungen!.find((x) => x.kiefer === 'oben' && x.index === 0)).toBeUndefined();
+    const schief = wesenBauen({ ...roh, zaehne: mitNeigung(35) }, planVon(roh), gerade.stand);
+    const m = schief.netz.zahnMeldungen!.find((x) => x.kiefer === 'oben' && x.index === 0)!;
+    console.log(`außen, 35° nach innen: ${m.befund.art} ${(m.befund.tiefe * PX).toFixed(1)} px → ${m.befund.vorschlaege?.map((v) => v.text).join(' | ')}`);
+    expect(m.befund.art).toBe('durchKiefer');
+    const n = m.befund.vorschlaege?.find((v) => v.text.startsWith('Neigung'));
+    if (n) {
+      const z = mitNeigung(n.aenderung.neigung!);
+      const w = wesenBauen({ ...roh, zaehne: z }, planVon(roh), gerade.stand);
+      expect(w.netz.zahnMeldungen!.find((x) => x.kiefer === 'oben' && x.index === 0)).toBeUndefined();
+    } else {
+      // ohne Neigungsvorschlag muss „kürzen“ kommen
+      expect(m.befund.vorschlaege?.some((v) => v.text.startsWith('kürzen') || v.text.startsWith('geschlossen'))).toBe(true);
+    }
+  }, 60_000);
 });
