@@ -64,7 +64,8 @@ Die schwarze Linie ist sein Werkzeug und damit die Wahrheit für den Umriss: Das
 
 ## Nächster Schritt
 
-1. Fressen-Tab nach Plan 5.2: Gelenk als Griff (Seite und Bühne), Kieferlinie als zweiter Griff (Reichweite), Übergangswinkel, Gewichte als Farbverlauf; danach Kehlkette und Bodengrenze.
+- **Gebaut seit der letzten Meldung (8b28016, 0ad4cf4):** Tafel „Posen & Leben“ mit Abschnitt Rig (Gelenk, Gewichte, Übergang, Kieferlinie, Gewichtsfarben) und Fressen (Knochen in der Seite greifen: drehen, ziehen; Öffnung, Haps). Prüfskripte `kiefer-griffe.mjs`, `knochen-griffe.mjs`.
+1. Griffe auf der Bühne: Gelenk und Knochen im 3D greifen; Schädelgelenk als Rig-Griff; danach Kehlkette und Bodengrenze.
 2. Chip „getrennt“ für Mäuler unter dem Kopf: blauen Anfang hinter den roten legen, nicht an die Kehle.
 3. Danach Kiefer-Spanten und „Formen folgen“ mit Maul.
 
