@@ -294,7 +294,19 @@ export function umrissAnteil(u: UmrissDicht, p: V2): number {
  * Feine Nahtpunkte (z = 0) als geschlossene Schleife ordnen: Nachbarn sind über Kanten der feinen Stufe verbunden, Start
  * ist die Spitze vorn (gleicher Index wie im Käfig), Laufrichtung über den Rücken (zuerst der Nachbar mit dem höheren y).
  */
-export function nahtOrdnen(fein: Kaefig, nahtIdx: readonly number[], start: number): number[] {
+export function nahtOrdnen(fein: Kaefig, nahtIdx: readonly number[], start: number, n = Infinity): number[] {
+  return nahtPfad(fein, nahtIdx, start, n).geordnet;
+}
+
+/**
+ * Nahtpunkte als Pfad (15.10.): wie `nahtOrdnen`, aber ein unterbrochener Rundgang (mit Maul: die Lippenpunkte gehören
+ * nicht zur Naht) wird auch rückwärts vom Start gelaufen, wenn dort ein ganzes Stück Naht mit Käfigpunkten (Index < n)
+ * fehlt — beim Ringanfang die Nasenunterseite. Vorher blieb es ohne Naht, und die letzten Nahtpunkte bekamen ihre Ziele
+ * über den Rückweg zum Start, die ganze Nase entlang (Langhals: die Mittelnaht des Unterkiefers lag über dem
+ * Lippenanfang, 92 Durchdringungen). `offen` = der Rückweg wurde angehängt; dann gilt die Naht nur zwischen den äußeren
+ * Käfigpunkten (siehe `fertigstellen`).
+ */
+export function nahtPfad(fein: Kaefig, nahtIdx: readonly number[], start: number, n = Infinity): { geordnet: number[]; offen: boolean } {
   const drin = new Set(nahtIdx);
   const nachbarn = new Map<number, number[]>();
   for (let e = 0; e < fein.nE; e++) {
@@ -320,14 +332,34 @@ export function nahtOrdnen(fein: Kaefig, nahtIdx: readonly number[], start: numb
     naechster = -1;
     for (const c of nachbarn.get(hier) ?? []) if (c !== vorher && !gesehen.has(c)) naechster = c;
   }
-  return out;
+  // geschlossen, wenn der letzte Punkt wieder am Start liegt
+  const letzter = out[out.length - 1]!;
+  if (out.length < 3 || (nachbarn.get(letzter) ?? []).includes(start)) return { geordnet: out, offen: false };
+  // unterbrochen: vom Start rückwärts weiterlaufen und vorne anhängen
+  const rueck: number[] = [];
+  vorher = out.length > 1 ? out[1]! : -1;
+  hier = start;
+  naechster = -1;
+  for (const c of nachbarn.get(start) ?? []) if (c !== vorher && !gesehen.has(c)) naechster = c;
+  while (naechster >= 0 && !gesehen.has(naechster)) {
+    rueck.push(naechster);
+    gesehen.add(naechster);
+    vorher = hier;
+    hier = naechster;
+    naechster = -1;
+    for (const c of nachbarn.get(hier) ?? []) if (c !== vorher && !gesehen.has(c)) naechster = c;
+  }
+  // nur ein echtes fehlendes Nahtstück (mindestens zwei Käfigpunkte, beim Ringanfang 5–7) wird angehängt; die Spitze von
+  // Kugel, Rex oder Platte (0–1 Käfigpunkte zwischen Start und Lücke) bleibt wie bisher
+  if (rueck.filter((i) => i < n).length < 2) return { geordnet: out, offen: false };
+  return { geordnet: [...rueck.reverse(), ...out], offen: true };
 }
 
 /**
  * Bogenlängen-Anteile der geordneten Nahtpunkte: Käfigpunkte (Index < n) über ihr Ziel auf dem Umriss, feine Punkte
  * dazwischen gleichmäßig (monoton, ohne Bündelung).
  */
-export function nahtAnteile(geordnet: readonly number[], n: number, ziele: Float64Array, umriss: UmrissDicht): Float64Array {
+export function nahtAnteile(geordnet: readonly number[], n: number, ziele: Float64Array, umriss: UmrissDicht, offenerPfad = false): Float64Array {
   const m = geordnet.length;
   const anteil = new Float64Array(m);
   const fest: number[] = [];
@@ -354,6 +386,8 @@ export function nahtAnteile(geordnet: readonly number[], n: number, ziele: Float
     return anteil;
   }
   for (let f = 0; f < fest.length; f++) {
+    // offener Pfad auf geschlossenem Umriss (Naht mit Lücke am Lippenanfang): kein Weg vom letzten Anker über die Lücke
+    if (offenerPfad && f === fest.length - 1) break;
     const k0 = fest[f]!;
     const k1 = fest[(f + 1) % fest.length]!;
     const p0 = anteil[k0]!;
@@ -1596,9 +1630,19 @@ export function fertigstellen(e: Rohbau): Ableitung {
   }
   const umriss = e.schlitz ? umrissDichtOffen(dok, e.schlitz) : umrissDicht(dok);
   const letzte = u.stufen[u.stufen.length - 1]!.kaefig;
-  const geordnet = nahtOrdnen(letzte, feinIdx, e.nahtStart ?? vorlage.naht.spitzeVorn);
+  // unterbrochener Rundgang mit Maul: fehlt ein Stück Naht hinter dem Start, läuft er auch rückwärts (`nahtPfad`); dann
+  // Ziele nur zwischen dem ersten und dem letzten Käfigpunkt, die Enden an der Lücke folgen dem Käfig („Enden zur Lücke“
+  // verschob den Lippenanfang um 1–2 px, die Verteilung quer über die Lücke ließ ihn bei der Nase 1,9 px wandern)
+  const pfad = nahtPfad(letzte, feinIdx, e.nahtStart ?? vorlage.naht.spitzeVorn, k.n);
+  const offenerPfad = pfad.offen && !umriss.offen;
+  let geordnet = pfad.geordnet;
+  let anteil = nahtAnteile(geordnet, k.n, ziele, umriss, offenerPfad);
+  if (offenerPfad) {
+    const fest = geordnet.map((i, q) => (i < k.n ? q : -1)).filter((q) => q >= 0);
+    geordnet = geordnet.slice(fest[0]!, fest[fest.length - 1]! + 1);
+    anteil = anteil.slice(fest[0]!, fest[fest.length - 1]! + 1);
+  }
   const nahtFein = Uint32Array.from(geordnet);
-  const anteil = nahtAnteile(geordnet, k.n, ziele, umriss);
   let nahtLoeser: AusgleichsLoeser | null = null;
   const breite = breitenSchleife(vorlage, l, st, breiten, dok, opt, ziele, u, k, e.haut);
   if (opt.nahtGewicht > 0) {
