@@ -1,4 +1,4 @@
-# Übergabe (Stand 14.10.2026 nachmittags)
+# Übergabe (Stand 14.10.2026 abends)
 
 Branch `claude/editor-grundlayout`. Die große Sitzung ist für diese Woche aufgebraucht und brach mitten in der Arbeit ab; ihr ungespeicherter Stand ist gesichert. Es gilt der Fahrplan [`docs/plans/2026-10-14-ruhiges-netz-und-maulschlitz.md`](plans/2026-10-14-ruhiges-netz-und-maulschlitz.md) (von Florian freigegeben): **Block 1 ruhiges Netz auf der schwarzen Linie → Block 2 Maulschlitz an der schwarzen Linie, getrennte Kiefer mit eigenen Spanten → Block 3 weiter nach Phase 2.** Datumshinweis: Einträge „15.10.“ der vorigen Sitzung stammen laut Commits vom 13./14.10.; ab hier gilt das echte Datum.
 
@@ -24,6 +24,11 @@ Die schwarze Linie ist sein Werkzeug und damit die Wahrheit für den Umriss: Das
 - **Maul:** Rot/Blau hängen nicht an der schwarzen Linie; der kürzere Kiefer endet als ebene Wand, ein vorgezogener roter Anfang zieht einen Schnabel; Lippe als flaches Brett, Stufen in der Tasche; keine Kiefer-Spanten — Block 2.
 - Folgen nach Kurven-, Spant- und Maulgesten; Widersprüche der Zeichnungen (Rex-Front 11 px) werden angezeigt, nicht gelöst.
 - Register offener Kritik mit Phase je Punkt: [`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md).
+
+## Block 1 und 2 (14.10. abends)
+
+- **Block 1 ruhiges Netz gebaut** (5599ebf, 057ab4d, fe5eb1b): Formen folgen mit gekapptem Achsgriff behoben (Ursache von Florians Wellen nach Pinsel + Verziehen), keine führende Front während Gesten (faltete, blieb im Cache hängen), rund statt Kasten/Grat außerhalb von Top/Front. Florians Komma im Editor glatt, Δ 2,9 / 13,3 / 4,5 px (`docs/progress/editor/ruhiges-netz-komma-pinsel.png`). Florians Test steht aus.
+- **Block 2 Zwischenstand** (465ddc1, 3884b01): Lippenanfänge sind markierte Knoten der schwarzen Linie (Editor und Datenmodell fertig), der Kern kennt den Schlitz (Sehne, offene Naht, Coons-Kinn). Noch nicht sauber: Überbiss ≈ 530 offene Paare (gedrängte vordere Spalten der Unterlippe), Unterbiss schlechter, Lippe als flaches Band. Florian entscheidet den Weiterweg (Planseite, Stand 14.10. abends).
 
 ## Nächster Schritt
 
