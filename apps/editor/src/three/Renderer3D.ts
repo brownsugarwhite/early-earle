@@ -71,6 +71,10 @@ export class Renderer3D {
   private linien: LineSegments | null = null;
   /** Reifen (M3): Ringe der Spanten auf dem Körper (Segmente mit Farbe je Punkt) und Perlen an den Spant-Knoten */
   private reifen: LineSegments | null = null;
+  /** Rig der Stufe „Posen & Leben“ (Plan 5.2): Knochen als Linien, Griffe als Perlen, ohne Tiefentest */
+  private rigLinien: LineSegments | null = null;
+  private readonly rigPerlen: Mesh[] = [];
+  private readonly rigMaterial = { gelenk: new MeshBasicNodeMaterial({ color: 0xff2e9a, depthTest: false }), spitze: new MeshBasicNodeMaterial({ color: 0xffffff, depthTest: false }), zug: new MeshBasicNodeMaterial({ color: 0x19232b, depthTest: false }), aktiv: new MeshBasicNodeMaterial({ color: 0xffd23f, depthTest: false }) };
   private readonly perlen: Mesh[] = [];
   private readonly perlenGeometrie = new SphereGeometry(1, 12, 8);
   /** Pinsel (M3): Radiusring in der Tangentialebene am Zeiger */
@@ -564,6 +568,45 @@ export class Renderer3D {
       this.reifen.renderOrder = 4;
       this.szene.add(this.reifen);
     }
+    this.anfordern();
+  }
+
+  /**
+   * Rig (Plan 5.2): Knochen als Linienpaare (Welt) und Griffe als Perlen je Art (Gelenk pink, Spitze weiß, Zug dunkel,
+   * unter dem Zeiger gelb); immer sichtbar wie Blenders Knochen im Röntgen. null blendet aus.
+   */
+  setzeRig(linien: Float32Array | null, perlen: { pos: [number, number, number]; art: 'gelenk' | 'spitze' | 'zug'; aktiv: boolean }[] | null, hoehe = 1) {
+    if (this.rigLinien) {
+      this.szene.remove(this.rigLinien);
+      this.rigLinien.geometry.dispose();
+      this.rigLinien = null;
+    }
+    if (linien && linien.length) {
+      const g = new BufferGeometry();
+      g.setAttribute('position', new BufferAttribute(linien, 3));
+      this.rigLinien = new LineSegments(g, new LineBasicNodeMaterial({ color: 0xffffff, depthTest: false, transparent: true, opacity: 0.95 }));
+      this.rigLinien.renderOrder = 6;
+      this.szene.add(this.rigLinien);
+    }
+    const n = perlen?.length ?? 0;
+    while (this.rigPerlen.length < n) {
+      const m = new Mesh(this.perlenGeometrie, this.rigMaterial.spitze);
+      m.renderOrder = 7;
+      m.visible = false;
+      this.szene.add(m);
+      this.rigPerlen.push(m);
+    }
+    const gr = Math.max(0.003, 0.012 * hoehe);
+    this.rigPerlen.forEach((m, i) => {
+      const p = perlen?.[i];
+      if (p) {
+        m.position.set(p.pos[0], p.pos[1], p.pos[2]);
+        const s = p.aktiv ? gr * 1.35 : p.art === 'zug' ? gr * 0.8 : gr;
+        m.scale.set(s, s, s);
+        m.material = p.aktiv ? this.rigMaterial.aktiv : this.rigMaterial[p.art];
+        m.visible = true;
+      } else m.visible = false;
+    });
     this.anfordern();
   }
 

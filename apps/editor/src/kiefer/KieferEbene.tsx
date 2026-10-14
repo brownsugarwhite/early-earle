@@ -1,75 +1,20 @@
 // Stufe „Posen & Leben“, Abschnitt Rig (Plan 5.2, 14.10. spätnachts): Kiefergelenk, Kieferlinie und Übergang als Griffe
 // in der Seite (Plan 9: Griffe statt Regler).
 // - Gelenk (pinker Punkt): Drehpunkt des Unterkiefers; Automatik = Mundwinkel (hohler Kreis).
-// - Kieferlinie (äußerer Kreis, Griff auf dem ersten Strahl): so weit reicht der Unterkiefer; Hals und Kehle bleiben.
+// - Kieferlinie (äußerer Kreis, Griff auf dem mittleren Strahl): so weit reicht der Unterkiefer; Hals und Kehle bleiben.
 //   Der gestrichelte innere Kreis ist der Beginn des Auslaufs.
 // - Übergang (zwei Strahlen, Griffe auf dem inneren Kreis): bis zum ersten Strahl dreht die Haut voll mit, ab dem zweiten
 //   nicht mehr (0° zur Schnauze, 90° nach unten).
 // Alles wirkt ohne Umbau des Käfigs (Pose-Optionen), die Bühne folgt beim Ziehen.
 import type { Ansicht, V2 } from '@ee/shape';
-import { aktuellesNetz, useNetzStand } from '../kern/netzStand';
+import { useNetzStand } from '../kern/netzStand';
 import type { Ebene2DKontext } from '../maul/MaulEbene';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
+import { type KieferGriff, type Rig, aktuellesRig, amGelenk, griffZug, istKnochenGriff, knochenBei } from './knochen';
 import { setzeMaulOptionen } from './kieferOptionen';
 
 const FARBE = '#ff2e9a';
-const GRAD = Math.PI / 180;
-
-type Rig = NonNullable<NonNullable<ReturnType<typeof aktuellesNetz>>['netz']['maul']>;
-
-/** Rig des zuletzt gebauten Netzes (nur Bauweise Kern mit Maul). */
-function aktuellesRig(): Rig | null {
-  if (useUi.getState().bauweise !== 'kern') return null;
-  return aktuellesNetz()?.netz.maul ?? null;
-}
-
-/** Punkt (Welt) beim Radius r und Winkel θ (Grad; 0° zur Schnauze, 90° nach unten) um das Gelenk. */
-function bei(m: Rig, r: number, th: number): V2 {
-  const g = m.rig.gelenk;
-  return { x: g.x + r * m.rig.vorn * Math.cos(th * GRAD), y: g.y - r * Math.sin(th * GRAD) };
-}
-
-/** Winkel (Grad) eines Weltpunkts um das Gelenk, wie im Kern (−90 … 270). */
-function winkelVon(m: Rig, p: V2): number {
-  const g = m.rig.gelenk;
-  let th = Math.atan2(-(p.y - g.y), (p.x - g.x) * m.rig.vorn) / GRAD;
-  if (th < -90) th += 360;
-  return th;
-}
-
-const rund = (x: number, s = 1000) => Math.round(x * s) / s;
-
-/** Punkt p um c drehen (Bogenmaß, gegen den Uhrzeigersinn). */
-function drehen(p: V2, c: V2, a: number): V2 {
-  const co = Math.cos(a);
-  const si = Math.sin(a);
-  return { x: c.x + (p.x - c.x) * co - (p.y - c.y) * si, y: c.y + (p.x - c.x) * si + (p.y - c.y) * co };
-}
-
-/** Vorzeichenbehafteter Winkel (Grad) von a nach b, gegen den Uhrzeigersinn positiv. */
-function winkelZwischen(a: V2, b: V2): number {
-  return Math.atan2(a.x * b.y - a.y * b.x, a.x * b.x + a.y * b.y) / GRAD;
-}
-
-/**
- * Knochen der Fressen-Pose bei Öffnung o (wie `maulPose`): Unterkiefer dreht um das Gelenk (−vorn · o · Winkel) und zieht
- * (o · Zug · Maullänge), der Schädel dreht um sein Gelenk hinten (vorn · o · Winkel).
- */
-function knochenBei(m: Rig, o: number) {
-  const k = m.knochen;
-  const v = m.rig.vorn;
-  const g = m.rig.gelenk;
-  const zug = { x: o * k.zug[0] * m.laenge * v, y: o * k.zug[1] * m.laenge };
-  const aU = k.kippen ? -v * o * k.winkelUnten * GRAD : 0;
-  const s = drehen(k.kieferSpitze, g, aU);
-  return {
-    kieferBasis: { x: g.x + zug.x, y: g.y + zug.y },
-    kieferSpitze: { x: s.x + zug.x, y: s.y + zug.y },
-    schaedelBasis: k.schaedel,
-    schaedelSpitze: drehen(k.schaedelSpitze, k.schaedel, v * o * k.winkelOben * GRAD),
-  };
-}
 
 /** Knochen wie in Blender: Raute von der Basis zur Spitze (breiteste Stelle bei 15 %). */
 function rautenPfad(a: V2, b: V2): string {
@@ -120,7 +65,7 @@ export function KieferZeichnung({ ansicht, bild, w, h }: { ansicht: Ansicht; bil
     const n = 24;
     let d = `M${G.x.toFixed(1)} ${G.y.toFixed(1)}`;
     for (let i = 0; i <= n; i++) {
-      const q = B(bei(m, r2, a1 + ((a2 - a1) * i) / n));
+      const q = B(amGelenk(m, r2, a1 + ((a2 - a1) * i) / n));
       d += `L${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
     }
     return `${d}Z`;
@@ -143,16 +88,17 @@ export function KieferZeichnung({ ansicht, bild, w, h }: { ansicht: Ansicht; bil
           <circle cx={G.x} cy={G.y} r={pix(r2)} fill="none" stroke={FARBE} strokeOpacity={0.75} strokeWidth={1.5} pointerEvents="none" data-kieferlinie="" />
           <circle cx={G.x} cy={G.y} r={pix(r1)} fill="none" stroke={FARBE} strokeOpacity={0.6} strokeWidth={1.2} strokeDasharray="4 4" pointerEvents="none" />
           {[a1, a2].map((a) => {
-            const q = B(bei(m, r2, a));
+            const q = B(amGelenk(m, r2, a));
             return <line key={a} x1={G.x} y1={G.y} x2={q.x} y2={q.y} stroke={FARBE} strokeOpacity={0.75} strokeWidth={1.5} pointerEvents="none" />;
           })}
         </>
       )}
       {Math.hypot(G.x - W.x, G.y - W.y) > 2 && <line x1={W.x} y1={W.y} x2={G.x} y2={G.y} stroke="#19232b" strokeOpacity={0.5} strokeDasharray="3 3" pointerEvents="none" />}
       <circle cx={W.x} cy={W.y} r={5} fill="none" stroke="#19232b" strokeOpacity={0.6} strokeWidth={1.5} pointerEvents="none" data-mundwinkel="" />
-      {rig.winkel && griff(bei(m, r2, a1), 'weite', 'Kieferlinie: so weit reicht der Unterkiefer')}
-      {rig.winkel && griff(bei(m, r1, a1), 'w1', `voll bis ${Math.round(a1)}°`)}
-      {rig.winkel && griff(bei(m, r1, a2), 'w2', `frei ab ${Math.round(a2)}°`)}
+      {/* Kieferlinie auf dem mittleren Strahl: auf dem ersten lag sie bei großer Reichweite mit „voll bis“ am selben Randpunkt */}
+      {rig.winkel && griff(amGelenk(m, r2, 0.5 * (a1 + a2)), 'weite', 'Kieferlinie: so weit reicht der Unterkiefer')}
+      {rig.winkel && griff(amGelenk(m, r1, a1), 'w1', `voll bis ${Math.round(a1)}°`)}
+      {rig.winkel && griff(amGelenk(m, r1, a2), 'w2', `frei ab ${Math.round(a2)}°`)}
       {/* Knochen der Fressen-Pose (Plan 5.2; Florian: „Bones selbst bewegen und rotieren“): Spitze drehen, Mitte ziehen */}
       {(() => {
         const kn = knochenBei(m, oeffnung);
@@ -189,13 +135,13 @@ export function KieferZeichnung({ ansicht, bild, w, h }: { ansicht: Ansicht; bil
   );
 }
 
-/** Griffe des Kiefergelenks in der Seite ziehen; true, wenn ein Griff getroffen wurde. Ein Undo-Schritt je Zug. */
+/** Griffe des Kiefergelenks und der Knochen in der Seite ziehen; true, wenn ein Griff getroffen wurde. Ein Undo-Schritt je Zug. */
 export function kieferZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean {
   if (ctx.ansicht !== 'seite') return false;
   const el = (e.target as Element).closest('[data-kiefergriff]');
-  const m = aktuellesRig();
+  const m: Rig | null = aktuellesRig();
   if (!el || !m) return false;
-  const art = el.getAttribute('data-kiefergriff');
+  const art = el.getAttribute('data-kiefergriff') as KieferGriff;
   e.preventDefault();
   e.stopPropagation();
   const skal = useEditor.getState().dok.skalierung;
@@ -203,43 +149,13 @@ export function kieferZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolea
     const q = ctx.lokal(ev.clientX, ev.clientY);
     return { x: q.x * skal, y: q.y * skal };
   };
-  // Stand am Gestenbeginn: Länge, Richtung, Mundwinkel und Optionen ändern sich beim Ziehen nicht (kein Umbau)
-  const { rig, laenge: L, knochen: kn } = m;
-  const [r10, r20] = rig.kieferReichweite;
-  const [a10, a20] = rig.kieferWinkel;
-  const knochen = art === 'kiefer-dreh' || art === 'kiefer-zug' || art === 'schaedel-dreh';
   // Knochen greifen bearbeitet die Fressen-Pose bei voller Öffnung (wie der Pinsel in der Pose)
-  if (knochen) useUi.getState().setzeOeffnung(1);
-  const p0 = welt(e.nativeEvent);
+  if (istKnochenGriff(art)) useUi.getState().setzeOeffnung(1);
+  const zug = griffZug(m, art, welt(e.nativeEvent));
   useEditor.getState().beginGeste();
   ctx.ziehen(
     e,
-    (ev) => {
-      const p = welt(ev);
-      if (art === 'gelenk') {
-        // Versatz gegen den Mundwinkel in Maullängen (x nach hinten, y nach oben), wie `kieferGelenk` im Kern
-        setzeMaulOptionen({ gelenk: [rund((rig.mundwinkel.x - p.x) / (rig.vorn * L)), rund((p.y - rig.mundwinkel.y) / L)] });
-      } else if (art === 'weite') {
-        const r2 = Math.max(0.3, Math.hypot(p.x - rig.gelenk.x, p.y - rig.gelenk.y) / L);
-        setzeMaulOptionen({ kieferReichweite: [rund((r2 * r10) / r20), rund(r2)] });
-      } else if (art === 'w1') {
-        setzeMaulOptionen({ kieferWinkel: [rund(Math.max(0, Math.min(a20 - 20, winkelVon(m, p))), 10), a20] });
-      } else if (art === 'w2') {
-        setzeMaulOptionen({ kieferWinkel: [a10, rund(Math.min(200, Math.max(a10 + 20, winkelVon(m, p))), 10)] });
-      } else if (art === 'kiefer-dreh') {
-        // relativ zum Griff (kein Sprung, wenn die Öffnung beim Greifen auf 100 % springt): Drehung des Zeigers um das
-        // gezogene Gelenk seit dem Greifen; in `maulPose` dreht der Kiefer um −vorn · Winkel
-        const basis = { x: rig.gelenk.x + kn.zug[0] * L * rig.vorn, y: rig.gelenk.y + kn.zug[1] * L };
-        const phi = winkelZwischen({ x: p0.x - basis.x, y: p0.y - basis.y }, { x: p.x - basis.x, y: p.y - basis.y });
-        setzeMaulOptionen({ winkelUnten: rund(Math.max(-20, Math.min(120, kn.winkelUnten - rig.vorn * phi)), 10) });
-      } else if (art === 'kiefer-zug') {
-        // Zug in Maullängen (x zur Schnauze, y nach oben), vom Stand am Gestenbeginn
-        setzeMaulOptionen({ kieferZug: [rund(kn.zug[0] + ((p.x - p0.x) * rig.vorn) / L), rund(kn.zug[1] + (p.y - p0.y) / L)] });
-      } else if (art === 'schaedel-dreh') {
-        const phi = winkelZwischen({ x: p0.x - kn.schaedel.x, y: p0.y - kn.schaedel.y }, { x: p.x - kn.schaedel.x, y: p.y - kn.schaedel.y });
-        setzeMaulOptionen({ winkelOben: rund(Math.max(-20, Math.min(60, kn.winkelOben + rig.vorn * phi)), 10) });
-      }
-    },
+    (ev) => setzeMaulOptionen(zug(welt(ev))),
     () => useEditor.getState().endeGeste(),
   );
   return true;

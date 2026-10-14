@@ -1113,7 +1113,7 @@ function RigFeld() {
           Automatik
         </button>
       </div>
-      <p className="hilfe">In der Seite: pinker Punkt = Gelenk (ziehen), hohler Kreis = Mundwinkel. Bis zum ersten Strahl dreht die Haut voll mit, ab dem zweiten nicht mehr (Griffe auf dem gestrichelten Kreis); der äußere Kreis ist die Kieferlinie (Griff auf dem ersten Strahl; liegt er außerhalb, sitzt er als Raute am Rand): Hals und Kehle dahinter bleiben. Gewichte zeigen: blau 0 … rot 1. Alles wirkt sofort, ohne Umbau.</p>
+      <p className="hilfe">In der Seite: pinker Punkt = Gelenk (ziehen), hohler Kreis = Mundwinkel. Bis zum ersten Strahl dreht die Haut voll mit, ab dem zweiten nicht mehr (Griffe auf dem gestrichelten Kreis); der äußere Kreis ist die Kieferlinie (Griff auf dem mittleren Strahl; liegt er außerhalb, sitzt er als Raute am Rand): Hals und Kehle dahinter bleiben. Gewichte zeigen: blau 0 … rot 1. Alles wirkt sofort, ohne Umbau.</p>
     </>
   );
 }

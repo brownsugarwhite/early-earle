@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { pruefwesenBauplan } from '@ee/shape/kern';
 import { aktuellesNetz } from '../kern/kernBau';
 import { augeZeiger, augenRandUnter, kieferUnter, kieferZeiger } from '../kern/griffe';
+import { knochen3dSchweben, knochen3dZeiger } from '../kiefer/knochen3d';
 import { pinselRing, pinselZeiger } from '../kern/pinsel';
 import { reifenNeu, reifenUnter, reifenZeiger, useReifen } from '../kern/reifen';
 import { trefferDeuten, useTreffer } from '../kern/treffer';
@@ -93,6 +94,8 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
       const px = e.clientX - rr.left;
       const py = e.clientY - rr.top;
       const ebene = useUi.getState().ebene;
+      // Rig und Fressen-Pose (Plan 5.2): Gelenk und Knochen auf der Bühne greifen
+      if (ebene === 'posen' && knochen3dZeiger(e, px, py, ref.current)) return;
       if (kieferZeiger(e, px, py, ref.current)) return;
       if (ebene === 'augen' && augeZeiger(e, px, py, ref.current)) return;
       if (ebene === 'form' && reifenZeiger(e, px, py, ref.current)) return;
@@ -155,7 +158,8 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     pinselRing(px, py);
     const kiefer = ui.bauweise === 'kern' && kieferUnter(px, py);
     const auge = ui.bauweise === 'kern' && ui.ebene === 'augen' && augenRandUnter(px, py);
-    if (ref.current) ref.current.style.cursor = kiefer ? 'ns-resize' : auge ? 'nwse-resize' : h ? (h.knoten === null ? 'ew-resize' : 'pointer') : '';
+    const knochen = ui.bauweise === 'kern' && knochen3dSchweben(px, py);
+    if (ref.current) ref.current.style.cursor = knochen ? 'grab' : kiefer ? 'ns-resize' : auge ? 'nwse-resize' : h ? (h.knoten === null ? 'ew-resize' : 'pointer') : '';
   };
   const verlassen = () => {
     szene.aktuell?.setzeMarke(null);

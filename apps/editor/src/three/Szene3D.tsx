@@ -18,13 +18,14 @@ import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
 import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige } from '../kern/kernBau';
 import { augenPixel, griffeAnzeigen, kieferPixel } from '../kern/griffe';
+import { knochen3dAnzeigen, knochen3dPixel } from '../kiefer/knochen3d';
 import { perlenVon, reifenAnzeigen, reifenFaerben, useReifen } from '../kern/reifen';
 import { trefferDeuten } from '../kern/treffer';
 import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown };
   }
 }
 
@@ -66,6 +67,8 @@ export function Szene3D() {
         },
         // M3: Kieferknopf und Augen in Feldpixeln der Bühne (E2E)
         griffe: () => ({ kiefer: kieferPixel(), augen: augenPixel() }),
+        // Rig (Plan 5.2): Gelenk und Knochen-Griffe in Feldpixeln der Bühne (E2E)
+        knochen: () => knochen3dPixel(),
         // M3: Perlen und Bänder der Reifen in Feldpixeln der Bühne (E2E)
         reifenPixel: () => {
           const n = aktuellesNetz();
@@ -151,6 +154,7 @@ export function Szene3D() {
           // M3: Reifen (Spanten als Ringe mit Perlen) und Kieferknopf auf dem Körper
           reifenAnzeigen(r, t, s);
           griffeAnzeigen(r);
+          knochen3dAnzeigen(r);
           // Beweis 5: Klingen wehen (Käfig-Pose je Bild, ≈ 14 Bilder je Sekunde)
           if (klingenUhr !== null) window.clearInterval(klingenUhr);
           klingenUhr = null;
@@ -309,7 +313,10 @@ export function Szene3D() {
           if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
           if (s.spantAuswahl !== v.spantAuswahl || s.ebene !== v.ebene) reifenFaerben(r);
           if (s.grund !== v.grund) grundAnwenden(r, s.grund);
-          if (s.ebene !== v.ebene) griffeAnzeigen(r);
+          if (s.ebene !== v.ebene) {
+            griffeAnzeigen(r);
+            knochen3dAnzeigen(r);
+          }
         }),
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
         // M3: Perle oder Band unter dem Zeiger → Farben der Reifen

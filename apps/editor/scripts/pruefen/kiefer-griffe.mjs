@@ -27,7 +27,11 @@ const griff = async (art) => {
   const b = await el.boundingBox();
   return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
 };
-console.log('Ebene da:', !!(await page.$('[data-view="seite"] [data-kiefer-ebene]')), 'Griffe:', JSON.stringify({ gelenk: await griff('gelenk'), weite: await griff('weite'), w1: await griff('w1'), w2: await griff('w2') }));
+const alle = { gelenk: await griff('gelenk'), weite: await griff('weite'), w1: await griff('w1'), w2: await griff('w2'), dreh: await griff('kiefer-dreh'), zug: await griff('kiefer-zug'), schaedel: await griff('schaedel-dreh') };
+console.log('Ebene da:', !!(await page.$('[data-view="seite"] [data-kiefer-ebene]')), 'Griffe:', JSON.stringify(alle));
+// kein Griff darf einen anderen verdecken (Abstand ≥ 12 px)
+const namen = Object.keys(alle).filter((k) => alle[k]);
+for (let i = 0; i < namen.length; i++) for (let j = i + 1; j < namen.length; j++) { const a = alle[namen[i]], b = alle[namen[j]]; if (Math.hypot(a.x - b.x, a.y - b.y) < 12) console.log('ÜBERLAPPUNG', namen[i], namen[j]); }
 console.log('vorher', JSON.stringify(await stand()));
 await page.screenshot({ path: `${AUSGABE}/kiefer-griffe-1-vorher.png` });
 // Gelenk 40 px nach rechts (hinten) und 10 px nach oben ziehen, in Schritten (live)
