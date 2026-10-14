@@ -1330,7 +1330,6 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     // ihrem Seitenpunkt (aus den Stationsprofilen; ein Walk-up an Ring bzw. Kappentangente machte die Kette zickzackig)
     const anteilZ = new Float64Array(m + 1);
     for (let t = 0; t < m; t++) {
-      const p = P(pfad[t]!);
       const zH = breiteBei(vs.xy[t]!);
       const zAbs = vs.z[t]!;
       const zInnen = vs.innen[t]!;

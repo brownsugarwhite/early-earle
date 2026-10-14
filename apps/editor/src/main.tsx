@@ -10,6 +10,7 @@ import { useRahmen } from './layout/animation';
 import { versuchAktiv, versuchForm } from './versuch/subdivision';
 import { tigerLaden } from './versuch/ueberlagerung';
 import { schnittVersuchLaden } from './schnitte/schnittVersuch';
+import { useKernAnzeige } from './kern/kernBau';
 
 // Versuche (?versuch=subd&form=…): Testform laden
 const versuch = versuchAktiv();
@@ -20,7 +21,7 @@ void schnittVersuchLaden();
 
 // Zugriff für E2E-Tests und die Konsole (kein Einfluss auf die Bedienung)
 Object.assign(window, {
-  __stores: { editor: useEditor, ui: useUi, rahmen: useRahmen },
+  __stores: { editor: useEditor, ui: useUi, rahmen: useRahmen, kernAnzeige: useKernAnzeige },
   __pruefen: { abweichung: () => abweichung(useEditor.getState().dok.profile) },
 });
 

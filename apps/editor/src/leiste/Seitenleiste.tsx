@@ -867,7 +867,7 @@ function PinselFeld() {
   return (
     <>
       <Regler label="Pinsel" wert={radius} min={0.03} max={1} schritt={0.01} anzeige={`${Math.round(radius * 100)} % der Höhe`} onChange={(v) => useUi.getState().setzePinselRadius(v)} />
-      <p className="hilfe">Auf der Bühne: G zieht den Käfig weich (gespiegelt), I bläst auf, ⇧ dabei glättet, [ und ] ändern den Radius. ⌃R setzt einen Reifen am Zeiger.</p>
+      <p className="hilfe">Auf der Bühne: G zieht den Käfig weich (gespiegelt), I bläst auf, ⇧ dabei glättet, [ und ] ändern den Radius. ⌃R setzt einen Reifen am Zeiger. Nach jedem Strich folgen die Umrisse der Blätter der neuen Form (Knoten und Ecken bleiben; Δ zeigt den Rest).</p>
     </>
   );
 }

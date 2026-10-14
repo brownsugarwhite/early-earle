@@ -1,11 +1,12 @@
 // Phase 1 / M1: Wesen-Bau im Worker. Hält den letzten Stand (Ableitung, Klingen) und beantwortet „bauen“ (Netz mit
 // übertragbaren Puffern) und „animieren“ (Klingen für eine Zeit). Der Hauptthread schickt nur Dokument und Bauplan.
 
-import { type Bauplan, type WesenStand, netzPuffer, wesenAnimieren, wesenBauen } from '@ee/shape/kern';
+import { type Bauplan, type FolgenErgebnis, type WesenStand, formenFolgen, netzPuffer, wesenAnimieren, wesenBauen } from '@ee/shape/kern';
 import type { Dokument } from '@ee/shape';
 
-export type WorkerAuftrag = { id: number; typ: 'bauen'; dok: Dokument; plan: Partial<Bauplan>; schnell: boolean } | { id: number; typ: 'animieren'; zeit: number };
-export type WorkerAntwort = { id: number; typ: 'netz'; netz: ReturnType<typeof wesenBauen>['netz'] } | { id: number; typ: 'animation'; a: { positionen: Float32Array; normalen: Float32Array } | null } | { id: number; typ: 'fehler'; fehler: string };
+export type FolgenAntwort = Omit<FolgenErgebnis, 'stand'>;
+export type WorkerAuftrag = { id: number; typ: 'bauen'; dok: Dokument; plan: Partial<Bauplan>; schnell: boolean } | { id: number; typ: 'animieren'; zeit: number } | { id: number; typ: 'folgen'; dok: Dokument; plan: Partial<Bauplan> };
+export type WorkerAntwort = { id: number; typ: 'netz'; netz: ReturnType<typeof wesenBauen>['netz'] } | { id: number; typ: 'animation'; a: { positionen: Float32Array; normalen: Float32Array } | null } | { id: number; typ: 'folgen'; ergebnis: FolgenAntwort } | { id: number; typ: 'fehler'; fehler: string };
 
 let stand: WesenStand | null = null;
 
@@ -17,6 +18,12 @@ self.onmessage = (e: MessageEvent<WorkerAuftrag>) => {
       stand = r.stand;
       const antwort: WorkerAntwort = { id: m.id, typ: 'netz', netz: r.netz };
       (self as unknown as Worker).postMessage(antwort, netzPuffer(r.netz));
+    } else if (m.typ === 'folgen') {
+      // Formen folgen (nach einem Pinselstrich): Profile an die Silhouette, Deltas nachgeführt; der Stand bleibt der neue
+      const r = formenFolgen(m.dok, m.plan, stand);
+      stand = r.stand;
+      const antwort: WorkerAntwort = { id: m.id, typ: 'folgen', ergebnis: { profile: r.profile, spanten: r.spanten, deltas: r.deltas, fehlerPx: r.fehlerPx, eingefuegt: r.eingefuegt } };
+      (self as unknown as Worker).postMessage(antwort);
     } else {
       const a = wesenAnimieren(stand, m.zeit);
       const antwort: WorkerAntwort = { id: m.id, typ: 'animation', a };

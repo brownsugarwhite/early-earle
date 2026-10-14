@@ -164,6 +164,25 @@ export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) 
   });
 }
 
+/**
+ * Formen folgen (Plan „Zeichnung ist Form“ 4.1; Florian 15.10. nachts: „sollte sich nicht die echte Umrisslinie an diese
+ * Form anpassen?“): nach einem Pinselstrich die Profile an die Silhouette des Körpers legen und die Deltas so nachführen,
+ * dass der Körper exakt bleibt. Wird im Dokument angewendet, solange es sich seit dem Auftrag nicht geändert hat; `fertig`
+ * wird immer gerufen (auch bei Fehler oder verworfenem Ergebnis).
+ */
+export function kernFolgen(fertig: () => void): void {
+  const ed = useEditor.getState();
+  const dok = ed.dok;
+  derClient().folgen(dok, bauplanAus(dok), (r) => {
+    const s = useEditor.getState();
+    if (r && s.dok.profile === dok.profile && s.dok.kaefig?.deltas === dok.kaefig?.deltas) {
+      const kaefig = { ...(s.dok.kaefig ?? { deltas: [] }), deltas: r.deltas };
+      s.setzeDokument({ ...s.dok, profile: r.profile, ...(r.spanten ? { spanten: r.spanten } : {}), kaefig });
+    }
+    fertig();
+  });
+}
+
 /** Animation (Beweis 5): Klingen für die Zeit t; false, wenn der Worker beschäftigt ist. */
 export function kernAnimieren(zeit: number, cb: (a: { positionen: Float32Array; normalen: Float32Array } | null) => void): boolean {
   return derClient().animieren(zeit, cb);

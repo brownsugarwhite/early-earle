@@ -8,7 +8,7 @@ import { deltaKarte, deltaListe, kaefigNachbarn, kaefigNormalen, pinselGewichte,
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { szene } from '../three/instanz';
-import { aktuellesNetz } from './kernBau';
+import { aktuellesNetz, kernFolgen } from './kernBau';
 import { useTreffer } from './treffer';
 
 type V3 = [number, number, number];
@@ -174,7 +174,11 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
       const kaefig = s.dok.kaefig ?? { deltas: [] };
       s.setzeDokument({ ...s.dok, kaefig: ziel.pose ? { ...kaefig, posen: { ...(kaefig.posen ?? {}), fressen: deltas } } : { ...kaefig, deltas } });
     },
-    () => useEditor.getState().endeGeste(),
+    () => {
+      // Grundform: die Umrisse der Blätter folgen der neuen Form (derselbe Undo-Schritt wie der Strich); Pose: nicht
+      if (ziel.pose) useEditor.getState().endeGeste();
+      else kernFolgen(() => useEditor.getState().endeGeste());
+    },
   );
   return true;
 }
