@@ -28,7 +28,7 @@ import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3 } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
-import type { Schlitz } from './schlitz';
+import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
 
 export type AbleitOptionen = {
   ringe: number;
@@ -134,7 +134,10 @@ export function zugBei(zug: readonly V2[], t: number): V2 {
  * monoton bleibt die Leiter; Treppen in der Mitte hat die Leiter schon geglättet.
  */
 export function kernLeiter(dok: Dokument): Leiter {
-  return leiterEntfaechern(leiter(dok, WIRBEL_STANDARD));
+  // mit getrennten Kiefern: Schlitz als Sehne und ohne Rückknick (seiteFuerLeiter), gleich für alle Aufrufer
+  const s = schlitzIm(dok.profile.seite);
+  const d = s ? { ...dok, profile: { ...dok.profile, seite: seiteFuerLeiter(dok.profile.seite, s) } } : dok;
+  return leiterEntfaechern(leiter(d, WIRBEL_STANDARD));
 }
 
 export function leiterEntfaechern(l: Leiter): Leiter {
