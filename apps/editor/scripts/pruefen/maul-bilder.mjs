@@ -23,19 +23,22 @@ const buehne = async (datei, kam) => {
 };
 // Abstand der Bühnenkamera (Kugel r = 0,265: 1,3 zeigt den ganzen Kopf; früher 0,75–0,85)
 const D = Number(process.env.DIST ?? 0.8);
+// Ziel der Bühnenkamera (Welt), z. B. ZIEL=-0.1,0.62,0 für den Langhals-Kopf
+const Z = (process.env.ZIEL ?? '-0.1,0.25,0').split(',').map(Number);
+const Z2 = [Z[0], Z[1] - 0.02, Z[2]];
 for (const [art, dok] of Object.entries(faelle)) {
   await page.evaluate((d) => { const ui = window.__stores.ui.getState(); ui.setzeOeffnung(0); window.__stores.editor.getState().laden(d, null); ui.setzeEbene('maul'); ui.maximieren(null); }, dok);
   await page.waitForTimeout(2500);
   const info = await page.evaluate(() => ({ delta: [...document.querySelectorAll('[data-delta]')].map((e) => e.textContent), lippen: window.__editor.wesen()?.lippen ?? null }));
   console.log(`${art}: Δ ${JSON.stringify(info.delta)} Lippen ${JSON.stringify(info.lippen)}`);
   await page.screenshot({ path: `${AUSGABE}/${NAME}-${art}-riss.png` });
-  await buehne(`${NAME}-${art}-schraeg`, { azimut: -0.9, elevation: -0.15, distanz: D * 0.94, ziel: [-0.1, 0.25, 0] });
-  await buehne(`${NAME}-${art}-unten`, { azimut: -0.8, elevation: -0.75, distanz: D * 1.06, ziel: [-0.1, 0.25, 0] });
-  await buehne(`${NAME}-${art}-oben`, { azimut: -1.2, elevation: 0.9, distanz: D * 1.06, ziel: [-0.1, 0.25, 0] });
-  await buehne(`${NAME}-${art}-seite`, { azimut: -1.5708, elevation: 0.0, distanz: D, ziel: [-0.1, 0.25, 0] });
+  await buehne(`${NAME}-${art}-schraeg`, { azimut: -0.9, elevation: -0.15, distanz: D * 0.94, ziel: Z });
+  await buehne(`${NAME}-${art}-unten`, { azimut: -0.8, elevation: -0.75, distanz: D * 1.06, ziel: Z });
+  await buehne(`${NAME}-${art}-oben`, { azimut: -1.2, elevation: 0.9, distanz: D * 1.06, ziel: Z });
+  await buehne(`${NAME}-${art}-seite`, { azimut: -1.5708, elevation: 0.0, distanz: D, ziel: Z });
   await page.evaluate(() => window.__stores.ui.getState().setzeOeffnung(0.5));
   await page.waitForTimeout(1200);
-  await buehne(`${NAME}-${art}-offen`, { azimut: -0.6, elevation: -0.1, distanz: D * 1.06, ziel: [-0.1, 0.23, 0] });
+  await buehne(`${NAME}-${art}-offen`, { azimut: -0.6, elevation: -0.1, distanz: D * 1.06, ziel: Z2 });
   await page.evaluate(() => window.__stores.ui.getState().setzeOeffnung(0));
 }
 await browser.close();

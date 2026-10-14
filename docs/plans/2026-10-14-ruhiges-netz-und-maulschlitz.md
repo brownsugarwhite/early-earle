@@ -122,3 +122,21 @@ Pipeline: `bauplanAus` (Editor, `kernBau.ts`) → `maulLinieAusPunkten` / `maulL
     - Kiefer-Spanten.
     - Exaktes „Formen folgen“ mit Maul.
     - Das flache Lippenband (die Frage an Florian ist offen).
+- **14.10. spätnachts: Florians nächste Rückmeldung** (Bilder `docs/progress/editor/florian-2026-10-14-kerbe-oberkiefer.webp`, `-flosse-unterkiefer.webp`, `-nase-ueber-kiefer.webp`; das Langhals-Bild kam nur im Chat):
+  > „Es funktioniert schon ganz gut. Aber an der kleineren Lippe, ob oben oder unten, entsteht noch eine komische Meshfläche oder Lücke genau an der Spitze, sobald ich Ober- oder Unterkiefer nach vorne ziehe (Bild 1 zwischen den Augen, Bild 2 die komische Flosse vorne am Unterkiefer). Es sollte immer ganz smooth sein, und der eine Kiefer soll den anderen nicht mehr beeinflussen. Eine Form wie in Bild 3 sollte auch gehen, ohne dass ich die Nase extra aufblasen muss. Es fällt irgendwie in sich zusammen, wenn ich eine Nase über dem Kiefer rausschiebe mit dem Bézier-Handle in der Seitenansicht.“
+
+  Dazu kam dieser Nachtrag:
+  > „Beim Langhals kann ich aktuell überhaupt kein Maul setzen, ohne dass es die Form komplett zerreißt oder die Nase zur Mittellinie zusammenfällt. Das ist das gleiche Phänomen.“
+
+  **Befund „Maul unter der Nase“:** Seit dem 12.10. ist das eine bekannte Grenze („Maulanfang hinter der Schnauzenspitze braucht Schnauzenringe“); es stand nicht im Plan. Die Lippe beginnt in der vorderen Kappe (Kappenzeile `bL`). Liegt der Anfang hinter der Spitze, rückt `kappeMin` Ring 0 hinter den Anfang, und die ganze Schnauze wird zur Kappe: ein c × c-Gitter mit ein bis zwei Stationen. Sie fällt zusammen.
+
+  Nachgebaut am Langhals mit seiner Maullinie (Anfang 0,12 hinter der Spitze): Δ 13,8 / 8,9 / 29,3 px, 2700–5100 Paare, die Schnauze in gefalteten Lappen (`vorher-langhals-*` im Prüfordner).
+
+  **Weg „Ringanfang“:** Beginnt das Maul hinter dem Platz von Ring 0, behält die Schnauze ihre Ringe (keine vergrößerte Kappe). Die Lippe beginnt am Bauchpunkt eines Rings i0 unter der Nase und läuft dort den unteren Bogen von i0 hinauf bis zur Lippenzeile jL (die Schleife um die Mundfront, wie Kanten in einem modellierten Kopf). Dahinter läuft sie wie bisher auf der Zeile jL.
+  - Die Punkte dieses Startbogens liegen nach Bogenlänge auf der gezeichneten Linie vom Anfang bis zur Kreuzung mit Ring i0. Der Ring biegt sich dort zum Anfang vor.
+  - Flächen vor Ring i0 (Nase) gehören zum Oberkiefer, die Kappe bleibt Nasenspitze. Rachenlinie und Kiefergewichte zählen ab Ring i0.
+  - Die Kappe-Logik bleibt für Mäuler an der Spitze unverändert.
+
+  Prüffälle: Langhals mit Maul unter dem Kopf, Kugel mit Nase nach Bild 3; Wächter Kugel gleich/Überbiss/Unterbiss, Rex, Tiger.
+
+  **Danach:** Flosse und Kerbe an der Spitze des kürzeren Kiefers. In meinen Prüffällen sind sie noch nicht nachgestellt; der Zug am Anfang des kürzeren Kiefers wird schrittweise gemessen.

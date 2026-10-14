@@ -283,6 +283,48 @@ function florianUnterbiss(mitMarken: boolean): Dokument {
   return mk;
 }
 
+/**
+ * Kürzeren Kiefer nach vorn ziehen (Florian 14.10. nachts: „an der kleineren Lippe entsteht eine komische Meshfläche
+ * oder Lücke genau an der Spitze, sobald ich Ober- oder Unterkiefer nach vorne ziehe“): Überbiss (Kugel) mit dem blauen
+ * Anfang bzw. Florians Unterbiss mit dem roten Anfang um `vor` (Profil-Einheiten) nach vorn gezogen — wie ein Zug am
+ * markierten Knoten der schwarzen Linie; der Linienanfang folgt dem Knoten.
+ */
+export function kieferVorDokument(kiefer: 'unten' | 'oben', vor: number, hoch = 0): Dokument {
+  const d = kiefer === 'unten' ? kugelMaulDokument('ueberbiss', true) : florianUnterbiss(true);
+  const rolle = kiefer === 'unten' ? 'unten' : 'oben';
+  const i = d.profile.seite.knoten.findIndex((k) => k.marke === (rolle === 'unten' ? 'maulUnten' : 'maulOben'));
+  const p = d.profile.seite.knoten[i]!.p;
+  const seite = maulAnfangBewegen(d.profile.seite, rolle, { x: p.x - vor, y: p.y + hoch });
+  return maulAnMarken({ ...d, profile: { ...d.profile, seite } });
+}
+
+/** Halbe Hautbreite an einem Seitenpunkt aus dem feinen Netz einer Ableitung (größtes z im Fenster), null außerhalb. */
+export function hautAusNetz(abl: Ableitung, fenster = 0.006): (x: number, y: number) => number | null {
+  const f = abl.fein;
+  return (x, y) => {
+    let best = -1;
+    for (let i = 0; i + 2 < f.length; i += 3) {
+      if (Math.abs(f[i]! - x) > fenster || Math.abs(f[i + 1]! - y) > fenster) continue;
+      best = Math.max(best, f[i + 2]!);
+    }
+    return best > 0 ? best : null;
+  };
+}
+
+/**
+ * Langhals mit Maul unter dem Kopf (Florian 14.10. nachts: „beim Langhals kann ich aktuell überhaupt kein Maul setzen,
+ * ohne dass es die Form komplett zerreißt oder die Nase zur Mittellinie zusammenfällt“): die Maullinie der Vorlage
+ * (Seite + Front, Anfang auf der Kopfunterseite weit hinter der Schnauzenspitze), wie im Maul-Tab gezeichnet (auf der
+ * Haut, runder Anfang), Anfang als markierter Knoten der schwarzen Linie.
+ */
+export function langhalsMaulDokument(roh: Dokument, linieSeite: readonly V2[], linieFront: readonly V2[]): Dokument {
+  const haut = hautAusNetz(ableiten(roh, { stufen: 2 }));
+  const pts = linieSeite.map((q, i) => [q.x, q.y, i === 0 ? 0 : Math.abs(linieFront[Math.min(i, linieFront.length - 1)]!.x)] as [number, number, number]);
+  const oben = lippeAnHaut(linie3Durch(pts), haut);
+  const mitLinie = { ...roh, maul: { zu: { oben } } } as Dokument;
+  return maulMitMarken(mitLinie, mitLinie.maul!.zu);
+}
+
 const ARTEN = ['haut', 'lippeO', 'lippeU', 'tascheO', 'tascheU', 'rachen', 'winkel'];
 
 /** Region je feiner Fläche: Art des Käfigpunkts mit dem größten Gewicht am ersten Eckpunkt (wie Beweis 2). */
