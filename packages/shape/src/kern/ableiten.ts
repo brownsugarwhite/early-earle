@@ -952,6 +952,12 @@ export type SchlitzLage = {
   vKappe: Float64Array;
   /** Anfang auf der Kontur (Welt, Seitenansicht): Ziel der Bauchnaht der Lippen-Kappenzeile (Plan „Zeichnung ist Form“, Schritt 2) */
   anfang?: V2;
+  /**
+   * Plattenmaul (Phase 2, M1): Verlauf der Lippe in der Front (Welt-|z| → y, rechte Hälfte, von der Mitte nach außen).
+   * Die Lippenzeile der ebenen Kappe bekommt je Spalte diese Höhe, die Zeilen darüber und darunter laufen zum Rand aus;
+   * so wird aus der waagerechten Zeile Florians nach außen fallender Maularm (Mercedesstern), topologisch bleibt sie eine Zeile.
+   */
+  front?: { z: number; y: number }[];
 };
 
 export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array } {
@@ -1105,6 +1111,30 @@ function kastenKappe(v: Roehre, ziele: Float64Array, hoehe: Float64Array, spitze
       const naht = m === 0 || m === 4 * r;
       setze(v.kappe('vorn', a, b), px, py, naht ? 0 : pz, phv);
       if (!naht) setze(v.kappe('vorn', c - a, b), px, py, -pz, phv);
+    }
+  }
+  // Plattenmaul: Lippenzeile (b = c/2) auf den gezeichneten Front-Verlauf heben/senken, Zeilen darüber und darunter
+  // laufen linear zum Plattenrand aus (Rand bleibt Ring 0)
+  const front = schlitz?.front;
+  if (front && front.length >= 2) {
+    const yBei = (z: number): number => {
+      if (z <= front[0]!.z) return front[0]!.y;
+      for (let i = 0; i + 1 < front.length; i++) {
+        const a = front[i]!;
+        const b = front[i + 1]!;
+        if (z >= a.z && z <= b.z) return b.z > a.z ? a.y + ((b.y - a.y) * (z - a.z)) / (b.z - a.z) : b.y;
+      }
+      return front[front.length - 1]!.y;
+    };
+    const y0 = yBei(0);
+    for (let a = 1; a < c; a++) {
+      for (let b = 1; b < c; b++) {
+        const w = 1 - Math.abs(b - c / 2) / (c / 2);
+        if (w <= 0) continue;
+        const q = v.kappe('vorn', a, b);
+        const dy = (yBei(Math.abs(ziele[3 * q + 2]!)) - y0) * w;
+        ziele[3 * q + 1] = ziele[3 * q + 1]! + dy;
+      }
     }
   }
 }

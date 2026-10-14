@@ -11,6 +11,7 @@ import type { V3 } from '../versuch/catmullClark';
 import { alleFlaechen, pruefeKaefig } from '../kaefig/halbkanten';
 import { LIPPE_V_MIN, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, maulLinieAusPunkten, maulLiniePunkte, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
 import { halsVerbreitern, kastenSpanten } from './kasten';
+import { pruefwesenBauplan } from './wesen';
 import tigerJson from '../versuch/vorlagen/tiger.json';
 
 declare const console: { log: (...a: unknown[]) => void };
@@ -44,8 +45,8 @@ function pruefen(name: string, dok: Dokument, art: 'vorn' | 'unten' | 'hals', st
   return pruefenLinie(name, dok, maulLinieVorlage(dok, art), art, stufen, maulOpt);
 }
 
-function pruefenLinie(name: string, dok: Dokument, linie: MaulLinie, art: 'vorn' | 'unten' | 'hals', stufen = 2, maulOpt: Partial<MaulOptionen> = {}) {
-  const abl = ableitenMitMaul(dok, linie, { stufen }, { ...maulOptionenVorlage(art), ...maulOpt });
+function pruefenLinie(name: string, dok: Dokument, linie: MaulLinie, art: 'vorn' | 'unten' | 'hals', stufen = 2, maulOpt: Partial<MaulOptionen> = {}, ableitOpt: { ring?: number } = {}) {
+  const abl = ableitenMitMaul(dok, linie, { stufen, ...ableitOpt }, { ...maulOptionenVorlage(art), ...maulOpt });
   const L = maulLiniePunkte(dok, linie);
   const pr = pruefeKaefig(abl.kaefig);
   const m = abl.maul;
@@ -145,6 +146,24 @@ describe('Beweis 2: Maul mit Haps', () => {
     for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
     // der Winkelring liegt gleich hinter der Frontplatte (Ring 2), nicht an den Seiten
     expect(r.abl.maul.lage.k).toBe(2);
+  });
+  it('Tiger, Plattenmaul (Phase 2 M1, Ring 24): Mundwinkel auf der Platte, Treppe im Plattengitter, 0 Durchdringungen bei 0/25/50/75/100 %', () => {
+    const roh = vorlageDokument(tigerJson as unknown as Vorlage, 'zu', 'tiger');
+    const dok = { ...roh, spanten: kastenSpanten(roh.profile.front, 0.02, 0.15, 0.25, 0.85) };
+    // Stern aus der Front: Mitte der Platte auf halber Höhe, Arme nach außen-unten bis zum Winkel 0,035 seitlich auf der Platte
+    const tiger = pruefwesenBauplan('tiger');
+    const linie = tiger.maulLinie!;
+    const r = pruefenLinie('Tiger Platte', dok, linie, 'vorn', 2, tiger.maulOptionen ?? {}, { ring: 24 });
+    expect(r.pr.ok).toBe(true);
+    const pfad = r.abl.maul.lage.kappenPfad!;
+    expect(pfad.length).toBeGreaterThanOrEqual(3);
+    // der Winkel liegt im Plattengitter (Spalte < c), nicht am Plattenrand; die Lippenzeile fällt nach außen (gebogener Arm)
+    expect(pfad[pfad.length - 1]![0]).toBeLessThan(r.abl.vorlage.c);
+    const m = r.abl.maul;
+    const yMitte = r.abl.fein[3 * m.pfad[0]! + 1]!;
+    const yWinkel = r.abl.fein[3 * m.pfad[m.lage.m]! + 1]!;
+    expect(yMitte - yWinkel).toBeGreaterThan(0.02);
+    for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
   });
   it('Tiger, Kastenschnauze, Seitenlippe bis 17 % (Stand Beweis 2): 0 Durchdringungen bei 0/25/50/75/100 %', () => {
     const roh = vorlageDokument(tigerJson as unknown as Vorlage, 'zu', 'tiger');

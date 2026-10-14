@@ -16,7 +16,7 @@ import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten
 import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
-import { aktuellesNetz, kernAnimieren, kernBauen, useKernAnzeige } from '../kern/kernBau';
+import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige } from '../kern/kernBau';
 import { augenPixel, griffeAnzeigen, kieferPixel } from '../kern/griffe';
 import { perlenVon, reifenAnzeigen, reifenFaerben, useReifen } from '../kern/reifen';
 import { trefferDeuten } from '../kern/treffer';
@@ -298,7 +298,7 @@ export function Szene3D() {
         useUi.subscribe((s, v) => {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
           if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
-          if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || (s.bauweise === 'kern' && useKernAnzeige.getState().maul !== 'aus'))) bauen(useEditor.getState().dok);
+          if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || (s.bauweise === 'kern' && kernMaulAktiv(useEditor.getState().dok)))) bauen(useEditor.getState().dok);
           if (s.bauweise !== v.bauweise) bauen(useEditor.getState().dok);
           if ((s.schnittRegel !== v.schnittRegel || s.schnittUeberblenden !== v.schnittUeberblenden) && s.bauweise === 'schnitte') bauen(useEditor.getState().dok);
           if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);

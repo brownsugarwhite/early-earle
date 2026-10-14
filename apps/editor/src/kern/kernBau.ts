@@ -76,18 +76,33 @@ export const useKernAnzeige = create<{
  * Eine im Maul-Tab gezeichnete Lippenlinie (`dok.maul.zu.oben`, Florians Ablauf vom 12.10.: ab Kontur oder Achse zum
  * Mundwinkel) wird die Maullinie des Kerns (M3); fehlt eine Lage, gilt „vorn“ (Kippen).
  */
+/** Baut der Kern ein Maul? (gezeichnete Linie, Maullinie der Ausstattung bzw. des Prüfwesens oder gewählter Chip) */
+export function kernMaulAktiv(dok: Dokument): boolean {
+  if (useKernAnzeige.getState().maul !== 'aus') return true;
+  if (dok.maul && dok.maul.zu.oben.knoten.length >= 2) return true;
+  return !!(dok.ausstattung?.maulLinie ?? pruefwesenBauplan(dok.name).maulLinie);
+}
+
 export function bauplanAus(dok: Dokument): Partial<Bauplan> {
   const s = useKernAnzeige.getState();
   const aus = { ...pruefwesenBauplan(dok.name), ...(dok.ausstattung ?? {}) };
   let maulLinie = aus.maulLinie;
   let maul: MaulArt = s.maul;
+  // Eine Maullinie aus der Ausstattung (Prüfwesen Tiger aus der Library) baut das Maul auch ohne gewählten Chip
+  // (die Tafel zeigt dann „aus der Ausstattung“); die Lage der Ausstattung bestimmt nur die Vorlagen-Optionen (hals = ziehen)
+  if (maul === 'aus' && aus.maulLinie) maul = aus.maul && aus.maul !== 'aus' ? aus.maul : 'vorn';
   const gezeichnet = dok.maul?.zu.oben;
   if (!dok.ausstattung?.maulLinie && gezeichnet && gezeichnet.knoten.length >= 2) {
     try {
       const sk = dok.skalierung;
-      const punkte = abtasten3(gezeichnet, 24).map((p) => ({ x: p[0] * sk, y: p[1] * sk }));
-      // Anfang auf der Kontur und Kreuzungen je Sprosse kommen aus der Linie selbst („Zeichnung ist Form“, Schritt 2)
-      maulLinie = maulLinieAusPunkten(dok, punkte);
+      const p3 = abtasten3(gezeichnet, 24);
+      const punkte = p3.map((p) => ({ x: p[0] * sk, y: p[1] * sk }));
+      // Anfang auf der Kontur und Kreuzungen je Sprosse kommen aus der Linie selbst („Zeichnung ist Form“, Schritt 2);
+      // die seitliche Lage des Winkels (Front-Blatt) macht an einer Kastenfront das Plattenmaul (Phase 2, M1)
+      const letzter = p3[p3.length - 1]!;
+      // Front-Verlauf (|z| → y) der gezeichneten Linie: die Maularme des Plattenmauls; nur, wenn die Linie seitlich läuft
+      const front = p3.map((p) => ({ z: Math.abs(p[2]) * sk, y: p[1] * sk })).sort((a, b) => a.z - b.z);
+      maulLinie = maulLinieAusPunkten(dok, punkte, letzter[2] * sk, Math.abs(letzter[2]) > 1e-6 ? front : undefined);
       if (maul === 'aus') maul = 'vorn';
     } catch (e) {
       console.warn('[kern] Maullinie aus Zeichnung nicht übersetzbar:', e);

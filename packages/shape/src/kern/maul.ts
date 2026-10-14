@@ -62,6 +62,16 @@ export type MaulLinie = {
   unterSpitze?: number;
   /** Anfang auf der Kontur als Weltpunkt (Seitenansicht), genauer als die Rückabbildung aus f (≈ 2 px Unschärfe) */
   anfang?: V2;
+  /**
+   * Seitliche Lage des Mundwinkels (Welt-z, aus einer in der Front gezeichneten Linie). An einer Kastenfront mit dem
+   * Winkel auf der Platte wird daraus das **Plattenmaul** (Phase 2, M1): der Schlitz läuft als Treppe im Plattengitter
+   * von der Mitte zum inneren Winkel (Florians Mercedesstern), nicht über die Platte hinaus an die Seiten.
+   */
+  winkelZ?: number;
+  /** Mundwinkel als Weltpunkt (Seitenansicht); auf einer Kastenfront fächern die Sprossen, dort ist (f, v) zu grob */
+  winkel?: V2;
+  /** Verlauf der Lippe in der Front (Welt-|z| → y, rechte Hälfte von der Mitte nach außen): die Maularme des Plattenmauls */
+  front?: { z: number; y: number }[];
 };
 
 export type MaulOptionen = {
@@ -105,7 +115,15 @@ export function maulOptionenVorlage(art: 'vorn' | 'unten' | 'hals'): Partial<Mau
 }
 
 /** Lage des Schlitzes im Gitter samt Lippenhöhen (für die Umparametrisierung) und Mundwinkel. */
-export type MaulLage = SchlitzLage & { m: number; winkel: V2; start: V2 };
+export type MaulLage = SchlitzLage & {
+  m: number;
+  winkel: V2;
+  start: V2;
+  /** Plattenmaul (Phase 2, M1): Mundwinkel auf der Kastenfront bei (y, |z|); `maulKaefig` setzt die Treppe `kappenPfad` */
+  platte?: { winkelY: number; winkelZ: number };
+  /** rechter Arm des Plattenmauls im Kappengitter, von der Mitte (c/2, c/2) zum Winkel (Spalte a, Zeile b) */
+  kappenPfad?: [number, number][];
+};
 
 /** Art je Käfigpunkt: 0 Haut, 1 Lippe oben, 2 Lippe unten, 3 Tasche oben, 4 Tasche unten, 6 Winkelsäule */
 export type MaulAbleitung = {
@@ -239,7 +257,7 @@ function frontFlach(l: Leiter, f: number): boolean {
  * Höhe wird auf [0,1 … 0,9] begrenzt, damit eine Linie auf oder außerhalb der Kontur keine Lippe auf der Naht ergibt.
  * `unterSpitze` wird mitgeliefert (1 mit Konturanfang, sonst 0).
  */
-export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[]): MaulLinie {
+export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[], winkelZ?: number, front?: { z: number; y: number }[]): MaulLinie {
   if (punkte.length < 2) throw new Error('Maullinie: zu kurz');
   const l = kernLeiter(dok);
   const spitze = l.ruecken[0]!;
@@ -293,22 +311,38 @@ export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[]): MaulL
     if (fv.length === 0 || f > fv[fv.length - 1]!.f + 1e-9) fv.push({ f, v });
   }
   // Mundwinkel: Projektion des letzten Punkts auf die nächste Sprosse
+  const projektion = (p: V2) => {
+    let best = { k: 0, d: Infinity, v: 0.5 };
+    sprossen.forEach((sp, k) => {
+      const dx = sp.o.x - sp.u.x;
+      const dy = sp.o.y - sp.u.y;
+      const l2 = dx * dx + dy * dy || 1;
+      const v = Math.min(1, Math.max(0, ((p.x - sp.u.x) * dx + (p.y - sp.u.y) * dy) / l2));
+      const d = Math.hypot(sp.u.x + dx * v - p.x, sp.u.y + dy * v - p.y);
+      if (d < best.d) best = { k, d, v };
+    });
+    return best;
+  };
   const pEnde = punkte[punkte.length - 1]!;
-  let best = { k: 0, d: Infinity, v: 0.5 };
-  sprossen.forEach((sp, k) => {
-    const dx = sp.o.x - sp.u.x;
-    const dy = sp.o.y - sp.u.y;
-    const l2 = dx * dx + dy * dy || 1;
-    const v = Math.min(1, Math.max(0, ((pEnde.x - sp.u.x) * dx + (pEnde.y - sp.u.y) * dy) / l2));
-    const d = Math.hypot(sp.u.x + dx * v - pEnde.x, sp.u.y + dy * v - pEnde.y);
-    if (d < best.d) best = { k, d, v };
-  });
+  const best = projektion(pEnde);
   const fEnde = fPaare[best.k]!;
   const vEnde = Math.min(LIPPE_V_MAX, Math.max(LIPPE_V_MIN, best.v));
   if (fv.length === 0 || fEnde > fv[fv.length - 1]!.f + 1e-9) fv.push({ f: fEnde, v: vEnde });
   else fv[fv.length - 1] = { f: fv[fv.length - 1]!.f, v: vEnde };
+  const seitlich = winkelZ !== undefined && Number.isFinite(winkelZ) && Math.abs(winkelZ) > 1e-6;
+  if (fv.length < 2 && seitlich) {
+    // Linie quer auf einer Kastenfront (Stern im Front-Blatt, Phase 2 M1): keine Sprossen-Kreuzung, alle Punkte auf
+    // der Platte → Anfang = Projektion des ersten Punkts (Höhe der Plattenmitte), Ende ein Hauch dahinter; die Treppe
+    // auf der Platte kommt aus `front`, das Scharnier aus der Plattenregel in `maulLage`
+    const start = projektion(p0);
+    const f0 = fPaare[start.k]!;
+    const v0 = Math.min(LIPPE_V_MAX, Math.max(LIPPE_V_MIN, start.v));
+    const ende = fv[0] ?? { f: fEnde, v: vEnde };
+    fv.length = 0;
+    fv.push({ f: f0, v: v0 }, { f: Math.max(ende.f, f0 + 0.01), v: ende.v });
+  }
   if (fv.length < 2) throw new Error('Maullinie: zu kurz');
-  return { fv, unterSpitze: anfangF !== undefined || spitzeScharf ? 1 : 0, ...(anfangPunkt ? { anfang: anfangPunkt } : {}) };
+  return { fv, unterSpitze: anfangF !== undefined || spitzeScharf ? 1 : 0, ...(anfangPunkt ? { anfang: anfangPunkt } : {}), winkel: { x: pEnde.x, y: pEnde.y }, ...(seitlich ? { winkelZ } : {}), ...(front && front.length >= 2 ? { front } : {}) };
 }
 
 /**
@@ -316,6 +350,9 @@ export function maulLinieAusPunkten(dok: Dokument, punkte: readonly V2[]): MaulL
  * Winkelring = Ring mit dem Wirbelsäulen-Anteil des Mundwinkels; seine Station wird auf den Winkel gelegt (der Ring
  * rastet auf den Winkel, nicht der Winkel auf den Ring), solange die Reihenfolge der Stationen bleibt.
  */
+/** Plattenmaul: Rachen und Scharnier bei diesem Anteil der Wirbelsäule hinter der Platte (Tiger: Ring 4 von 24). */
+const PLATTE_SCHARNIER = 0.08;
+
 export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie): MaulLage {
   const { R, c } = v;
   if (linie.fv.length < 2) throw new Error('Maullinie braucht mindestens zwei Stützen');
@@ -346,22 +383,54 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie):
     }
     anfangPunkt = linie.anfang ?? punktBei(l, anfang, 0);
   }
+  const spitze = l.ruecken[0]!;
+  const winkel = linie.winkel ?? punktBei(l, ende.f, ende.v);
+  // Plattenmaul (Phase 2, M1): Kastenfront, seitliche Winkellage bekannt, Winkel liegt auf der Platte (x wie die Spitze)
+  // → kein Ringpfad (die Ringe behalten ihre Teilung), Rachen und Scharnier am Ring hinter der Platte bei
+  // `PLATTE_SCHARNIER` der Länge (mindestens Ring 2): ein Winkel auf der Platte hat f ≈ 0, das Scharnier läge sonst
+  // direkt hinter der Platte und die Tasche wäre zu flach (Durchdringungen beim Öffnen)
+  let platte: { winkelY: number; winkelZ: number } | undefined;
+  if (flach && linie.winkelZ !== undefined && Number.isFinite(linie.winkelZ)) {
+    const H0 = Math.hypot(sp0.o.x - sp0.u.x, sp0.o.y - sp0.u.y);
+    if (Math.abs(winkel.x - spitze.x) < 0.1 * H0) platte = { winkelY: winkel.y, winkelZ: Math.abs(linie.winkelZ) };
+  }
+  const fScharnier = platte ? Math.max(ende.f, PLATTE_SCHARNIER) : ende.f;
   let k = 1;
-  for (let i = 1; i <= R - 2; i++) if (Math.abs(fRinge[i]! - ende.f) < Math.abs(fRinge[k]! - ende.f)) k = i;
+  for (let i = 1; i <= R - 2; i++) if (Math.abs(fRinge[i]! - fScharnier) < Math.abs(fRinge[k]! - fScharnier)) k = i;
+  if (platte) k = Math.max(k, Math.min(R - 2, 2));
   const vorher = fRinge[k - 1]!;
   const nachher = fRinge[k + 1]!;
-  if (ende.f > vorher && ende.f < nachher) {
+  // Winkelring auf den Winkel rasten (nicht beim Plattenmaul: dort ist der Winkel kein Ringpunkt)
+  if (!platte && ende.f > vorher && ende.f < nachher) {
     st.ringe[k] = stationenAusLeiter(l, [ende.f])[0]!;
     fRinge[k] = ende.f;
   }
   const vRing = new Float64Array(R).fill(NaN);
   for (let i = 0; i < k; i++) vRing[i] = lippenHoehe(linie, fRinge[i]!);
   vRing[k] = ende.v;
+  if (platte) {
+    // Mitte der Platte auf der gezeichneten Starthöhe, keine Ringlippe
+    vRing[0] = linie.fv[0]!.v;
+    for (let i = 1; i < R; i++) vRing[i] = NaN;
+  }
   const fKappen = spineAnteile(l, st.kappen.vorn);
   const vKappe = new Float64Array(c / 2).fill(NaN);
   for (let r = 1; r < c / 2; r++) vKappe[r] = lippenHoehe(linie, fKappen[r - 1]!);
-  const spitze = l.ruecken[0]!;
-  return { bL, jL, k, m: c / 2 + k, vRing, vKappe, ...(anfangPunkt ? { anfang: anfangPunkt } : {}), winkel: punktBei(l, ende.f, ende.v), start: anfangPunkt ?? { x: spitze.x, y: spitze.y } };
+  const front = platte && linie.front && linie.front.length >= 2 ? linie.front : undefined;
+  return { bL, jL, k, m: c / 2 + k, vRing, vKappe, ...(anfangPunkt ? { anfang: anfangPunkt } : {}), ...(platte ? { platte } : {}), ...(front ? { front } : {}), winkel, start: anfangPunkt ?? { x: spitze.x, y: spitze.y } };
+}
+
+/** Plattenmaul: Treppe im Kappengitter von der Mitte (c/2, c/2) zum inneren Winkel (aW, bW), abwechselnd seitwärts und abwärts. */
+export function plattenTreppe(c: number, aW: number, bW: number): [number, number][] {
+  const out: [number, number][] = [[c / 2, c / 2]];
+  let a = c / 2;
+  let b = c / 2;
+  while (a < aW || b > bW) {
+    if (a < aW && (b <= bW || a - c / 2 <= c / 2 - b)) a++;
+    else b--;
+    out.push([a, b]);
+  }
+  return out;
 }
 
 // ---------- Topologie ----------
@@ -402,20 +471,65 @@ const richtung = (a: [number, number, number], b: [number, number, number]): [nu
 export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Float64Array, hoeheV: Float64Array, opt: MaulOptionen): { kaefig: Kaefig; ziele: Float64Array; hoehe: Float64Array; info: MaulAbleitung } {
   const { N, c } = v;
   const n0 = v.kaefig.n;
-  const { bL, jL, k, m } = lage;
+  const { bL, jL, k } = lage;
   const K = Math.max(1, opt.reihen);
   // Pfad (obere Kopie = Vorlagenindex)
   const pfad: number[] = [];
   const pfadLinks: number[] = [];
-  for (let t = 0; t <= c / 2; t++) {
-    pfad.push(v.kappe('vorn', c / 2 + t, bL));
-    pfadLinks.push(v.kappe('vorn', c / 2 - t, bL));
+  // Plattenmaul (Phase 2, M1): Treppe im Kappengitter zum inneren Winkel, der dem gezeichneten Winkel (y, |z|) am
+  // nächsten liegt (Spalte c/2+1 … c−1, Zeile 1 … c/2); kein Ringpfad
+  let treppe: [number, number][] | null = null;
+  if (lage.platte) {
+    // Der Winkel bleibt auf der Lippenzeile (b = c/2; eine Treppe mit senkrechten Stücken ließ beim Öffnen die seitlich
+    // getrennten Lippenblätter aneinander vorbeigleiten, 50–400 Durchdringungen); die Zeile selbst ist auf die gezeichnete
+    // Höhe gebogen (`SchlitzLage.front`, kastenKappe). Spalte nach der seitlichen Lage |z| des Winkels.
+    let best: [number, number] = [c / 2 + 1, c / 2];
+    let bestD = Infinity;
+    for (let a = c / 2 + 1; a <= c - 1; a++) {
+      const q = v.kappe('vorn', a, c / 2);
+      const d = Math.abs(Math.abs(zieleV[3 * q + 2]!) - lage.platte.winkelZ);
+      if (d < bestD) {
+        bestD = d;
+        best = [a, c / 2];
+      }
+    }
+    treppe = plattenTreppe(c, best[0], best[1]);
+    lage.kappenPfad = treppe;
+    lage.m = treppe.length - 1;
+    for (const [a, b] of treppe) {
+      pfad.push(v.kappe('vorn', a, b));
+      pfadLinks.push(v.kappe('vorn', c - a, b));
+    }
+  } else {
+    for (let t = 0; t <= c / 2; t++) {
+      pfad.push(v.kappe('vorn', c / 2 + t, bL));
+      pfadLinks.push(v.kappe('vorn', c / 2 - t, bL));
+    }
+    for (let i = 1; i <= k; i++) {
+      pfad.push(v.ringPunkt(i, jL));
+      pfadLinks.push(v.ringPunkt(i, N - jL));
+    }
   }
-  for (let i = 1; i <= k; i++) {
-    pfad.push(v.ringPunkt(i, jL));
-    pfadLinks.push(v.ringPunkt(i, N - jL));
-  }
+  const m = lage.m;
   if (pfad.length !== m + 1) throw new Error('Maul: Pfadlänge passt nicht');
+  // Plattenmaul: Treppenhöhe je Spalte (rechte Hälfte); Spalten hinter dem Winkel liegen auf Winkelhöhe
+  const aW = treppe ? treppe[treppe.length - 1]![0] : 0;
+  const bW = treppe ? treppe[treppe.length - 1]![1] : 0;
+  const treppeBei = (a: number): number => {
+    if (!treppe) return bL;
+    if (a > aW) return bW;
+    let tief = Infinity;
+    for (const [ta, tb] of treppe) if (ta === a) tief = Math.min(tief, tb);
+    return Number.isFinite(tief) ? tief : bW;
+  };
+  /** Zelle (a_min, b_min) des Kappengitters: unterhalb des Arms (rechte Hälfte oder gespiegelt)? */
+  const zelleUnten = (aMin: number, bMin: number): boolean => {
+    const aR = aMin >= c / 2 ? aMin : c - 1 - aMin;
+    // waagerechtes Segment über der Zelle: Zeile, in der der Pfad von Spalte aR nach aR + 1 geht
+    let stufe = bW;
+    if (treppe && aR + 1 <= aW) for (const [ta, tb] of treppe) if (ta === aR + 1) { stufe = tb; break; }
+    return bMin < stufe;
+  };
   let naechster = n0;
   const neu = () => naechster++;
   const unten: number[] = [];
@@ -436,11 +550,14 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     if (kappe) {
       let bMin = Infinity;
       let bMax = -Infinity;
+      let aMin = Infinity;
       for (const x of lagen) {
-        const b = x.art === 'vorn' ? x.b : x.art === 'ring' ? randAB(c, x.j)[1] : NaN;
-        bMin = Math.min(bMin, b);
-        bMax = Math.max(bMax, b);
+        const ab = x.art === 'vorn' ? [x.a, x.b] : x.art === 'ring' ? randAB(c, x.j) : [NaN, NaN];
+        aMin = Math.min(aMin, ab[0]!);
+        bMin = Math.min(bMin, ab[1]!);
+        bMax = Math.max(bMax, ab[1]!);
       }
+      if (treppe) return zelleUnten(aMin, bMin) ? 'unten' : 'oben';
       if (bMin >= bL) return 'oben';
       if (bMax <= bL) return 'unten';
       throw new Error('Maul: Kappenfläche kreuzt die Lippenzeile');
@@ -555,6 +672,19 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     const g = gitterLage(v, pfad[t]!);
     let a: [number, number, number];
     let b: [number, number, number];
+    if (treppe) {
+      // Plattenmaul: „oben“ = Normale der Treppe in der Plattenebene (y, z), zur Oberlippenseite: waagerechte Stücke → +y,
+      // senkrechte Stücke → nach außen (+z); an der Naht in der Spiegelebene
+      // Normale des ankommenden Stücks (an der Naht des ersten, waagerechten): eine Mittelung über die Ecke kippte die
+      // Normale neben der Naht seitlich, und das untere Taschenblatt kreuzte die Spiegelebene (tascheU/tascheU)
+      const p0 = P(pfad[Math.max(0, t - 1)]!);
+      const p1 = P(pfad[t === 0 ? 1 : t]!);
+      const ty = p1[1] - p0[1];
+      const tz = p1[2] - p0[2];
+      const n: [number, number, number] = [0, tz, t === 0 ? 0 : -ty];
+      const l = Math.hypot(...n) || 1;
+      return [n[0] / l, n[1] / l, n[2] / l];
+    }
     if (g.art === 'ring') {
       a = P(v.ringPunkt(g.i, g.j - 1));
       b = P(v.ringPunkt(g.i, g.j + 1));
@@ -610,8 +740,15 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
   // Rachenlinie: von der Mitte (hinter dem Winkel, auf der Lippenhöhe des Winkels) zum Punkt hinter dem Winkel innen
   const S = P(pfad[0]!);
   const M = P(pfad[m]!);
-  const vorn = Math.sign(S[0] - M[0]) || -1;
-  const L = Math.max(1e-6, Math.abs(M[0] - S[0]));
+  // Plattenmaul: Länge und Scharnier am Ring k hinter der Platte (der Winkel liegt auf der Platte selbst)
+  const ringMitteRoh = (i: number): [number, number, number] => {
+    const c3: [number, number, number] = [0, 0, 0];
+    for (let j = 0; j < N; j++) for (let d = 0; d < 3; d++) c3[d] = c3[d]! + zieleV[3 * v.ringPunkt(i, j) + d]! / N;
+    return c3;
+  };
+  const MH: [number, number, number] = treppe ? [ringMitteRoh(k)[0], zieleV[3 * v.ringPunkt(k, jL) + 1]!, 0] : M;
+  const vorn = Math.sign(S[0] - MH[0]) || -1;
+  const L = Math.max(1e-6, Math.abs(MH[0] - S[0]));
   // Rachenziel je Pfadpunkt: auf der Wirbelsäule (Ringmitten) bei der Station zwischen Lippenstation und Winkelring,
   // seitlich anteilig zur Winkelbreite. So bleibt die Tasche im Körper, auch wenn das Maul um den Hinterkopf in den
   // Hals läuft (Drache), und sie reicht nie hinter das Scharnier (sonst schwingt sie beim Öffnen durch).
@@ -984,7 +1121,17 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
         u = 0.5;
       } else o = 1; // obere Kopie auf dem Pfad
     } else if (g.art === 'vorn') {
-      if (g.b > bL) o = 1;
+      if (treppe) {
+        const aR = g.a >= c / 2 ? g.a : c - g.a;
+        const stufe = treppeBei(aR);
+        if (tOben.has(i) || i === pfad[m] || i === pfadLinks[m]) o = 1;
+        else if (g.b < stufe) u = 1;
+        else if (g.b > stufe) o = 1;
+        else {
+          o = 0.5;
+          u = 0.5;
+        }
+      } else if (g.b > bL) o = 1;
       else if (g.b < bL) u = 1;
       else o = 1;
     } else {
@@ -993,12 +1140,25 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     }
     gewichtOben[i] = o * fo;
     gewichtUnten[i] = u * f;
+    // der Beutel läuft mit dem Kieferband aus: hinter dem Band darf die Kehlhaut nicht der (voll gedrehten) Plattenkante
+    // ihres Rings folgen (Tiger, Ringpfad: Bauchringe 15–19 wanderten beim Öffnen 1–2 % der Höhe)
+    if (beutelGewicht[i]! > 0) beutelGewicht[i] = beutelGewicht[i]! * f;
   }
+  // Plattenmaul: Gewicht der Lippen und Taschen zum Winkel hin auslaufen lassen (Scharnier hinter der Platte; ein voll
+  // drehendes Lippenende schwenkte durch die Winkelsäule), über die letzten zwei Pfadpunkte
+  const winkelNah = (idx: number): number => {
+    if (!treppe) return 1;
+    const q = quelle[idx]!;
+    let t = -1;
+    for (let u = 0; u <= m; u++) if (pfad[u] === q || pfadLinks[u] === q) t = u;
+    if (t < 0) return 1;
+    return Math.min(1, 0.5 + (0.5 * (m - t)) / 2);
+  };
   for (let i = n0; i < n; i++) {
     switch (art[i]) {
       case 2:
       case 4:
-        gewichtUnten[i] = 1;
+        gewichtUnten[i] = winkelNah(i);
         break;
       case 3:
         gewichtOben[i] = 1;
@@ -1016,7 +1176,8 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
   let yMitte = 0;
   for (let j = 0; j < N; j++) yMitte += zieleV[3 * v.ringPunkt(ringHinten, j) + 1]!;
   yMitte /= N;
-  const schaedel: V2 = { x: M[0] - vorn * opt.schaedelHinter * L, y: yMitte };
+  // Plattenmaul: der Schädel dreht hinter dem Scharnier (nicht hinter dem Plattenwinkel, der vor dem Scharnier liegt)
+  const schaedel: V2 = { x: MH[0] - vorn * opt.schaedelHinter * L, y: yMitte };
   // Zugrichtung: Mittel der Richtungen Rachen → Lippe (Seitenansicht), für die Öffnungsart „ziehen“
   let zx = 0;
   let zy = 0;
@@ -1046,7 +1207,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     quelle,
     gewichtUnten,
     gewichtOben,
-    scharnier: { x: M[0], y: M[1] },
+    scharnier: { x: MH[0], y: MH[1] },
     schaedel,
     vorn,
     hoehe: H,

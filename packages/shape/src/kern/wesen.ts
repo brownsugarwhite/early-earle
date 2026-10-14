@@ -190,9 +190,14 @@ export function pruefwesenBauplan(name: string): Ausstattung {
       // Mercedesstern (Florian 15.10.): die Maularme laufen von der Plattenmitte schräg nach außen-unten, der Mundwinkel
       // sitzt gleich hinter der Frontplatte (Ring 2 bei 6 % der Länge; weiter vorn trägt die heutige Topologie nicht,
       // siehe Kritik-Register). Flachere Rille, zwei Taschenreihen und flachere Tasche halten das kurze Maul sauber.
-      maulLinie: { fv: [{ f: 0, v: 0.5 }, { f: 0.032, v: 0.28 }, { f: 0.06, v: 0.25 }], unterSpitze: 0 },
-      maulOptionen: { winkelUnten: 30, winkelOben: 26, band: 1, rille: 0.006, reihen: 2, tiefe: 0.5 },
-      augen: { ring: 4, j: 3, groesse: 0.1 },
+      // Plattenmaul (Phase 2 M1): Mundwinkel auf der Platte (|z| 0,035, Höhe 0,323), Arme von der Mitte (0,358) nach außen-unten;
+      // Rachen und Scharnier nach der Plattenregel an Ring 4 (8 % der Länge). Unterkiefer 20° über den Knochen (mehr öffnet die Fressen-Pose), Band 3 Ringe,
+      // dünne Linse und tiefe Tasche (sonst Durchdringungen im kleinen Plattenmaul)
+      maulLinie: { fv: [{ f: 0, v: 0.5 }, { f: 0.01, v: 0.35 }], unterSpitze: 0, winkel: { x: -0.376, y: 0.323 }, winkelZ: 0.035, front: [{ z: 0, y: 0.358 }, { z: 0.018, y: 0.35 }, { z: 0.035, y: 0.323 }] },
+      maulOptionen: { winkelUnten: 20, winkelOben: 26, band: 3, rille: 0.006, reihen: 2, tiefe: 0.7, linse: 0.015 },
+      // 24 Punkte je Ring (Plattenmaul, Phase 2 M1): 6×6-Plattengitter, der Stern bekommt echte Arme; Auge bei 60°
+      ring: 24,
+      augen: { ring: 4, j: 4, groesse: 0.1 },
       gesicht: true,
       wangen: true,
       gesichtMaske: { voll: 2, aus: 6, oben: 0.75 },
@@ -521,14 +526,14 @@ function zonenWelt(vorlagen: readonly ZonenVorlage[], g: { xMin: number; xMax: n
 /** Ableit-Optionen aus dem Dokument: eingefrorene Stationen (Schritt 3), wenn vorhanden. */
 function ableitOpt(dok: Dokument, plan: Partial<Bauplan>): Partial<AbleitOptionen> {
   const g = dok.kaefig?.stationen;
-  return { ...(g ? { stationen: g } : {}), ...(plan.fuehrend ? { fuehrend: plan.fuehrend } : {}) };
+  return { ...(g ? { stationen: g } : {}), ...(plan.fuehrend ? { fuehrend: plan.fuehrend } : {}), ...(plan.ring ? { ring: plan.ring } : {}) };
 }
 
 export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: WesenStand | null, schnell = false): { netz: WesenNetz; stand: WesenStand } {
   const plan: Bauplan = { ...BAUPLAN_STANDARD, ...planRoh };
   // Kasten des Prüfwesens (Tiger) nur, solange das Dokument keine eigenen Spanten hat: gezeichnete Spanten gewinnen (M3)
   const dok: Dokument = plan.kasten && !dokRoh.spanten?.length ? { ...dokRoh, spanten: kastenSpanten(dokRoh.profile.front, plan.kasten.fVorn, plan.kasten.fHinten, plan.kasten.fRund, plan.kasten.haerte) } : dokRoh;
-  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, st: dokRoh.kaefig?.stationen ?? null, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: plan.maulOptionen ?? null, ba: plan.beinAnsaetze ?? null });
+  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, st: dokRoh.kaefig?.stationen ?? null, ring: plan.ring ?? null, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: plan.maulOptionen ?? null, ba: plan.beinAnsaetze ?? null });
   const gleich = stand !== null && stand.schluessel === schluessel;
   const letzte = stand && gleich ? stand : null;
   let abl: Ableitung;

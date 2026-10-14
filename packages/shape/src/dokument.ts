@@ -43,7 +43,7 @@ const KanteSchema = z.object({ knoten: z.array(Knoten3Schema).min(2), haerte: z.
 const RundSpantSchema = z.object({ p: V2, richtung: V2, profil: ProfilSchema, basis: ProfilSchema.optional(), kante: z.object({ index: z.number().int().min(0), knoten: z.number().int().min(0) }).optional() });
 
 /** Maullinie in Wirbelsäulen-Koordinaten (Anteil f der Länge, Höhe v auf der Sprosse), Lippenanfang unter der Spitze. */
-const MaulLinieSchema = z.object({ fv: z.array(z.object({ f: z.number(), v: z.number() })).min(2), unterSpitze: z.number().optional(), anfang: z.object({ x: z.number(), y: z.number() }).optional() });
+const MaulLinieSchema = z.object({ fv: z.array(z.object({ f: z.number(), v: z.number() })).min(2), unterSpitze: z.number().optional(), anfang: z.object({ x: z.number(), y: z.number() }).optional(), winkel: z.object({ x: z.number(), y: z.number() }).optional(), winkelZ: z.number().optional(), front: z.array(z.object({ z: z.number(), y: z.number() })).optional() });
 const MaulOptionenSchema = z
   .object({
     reihen: z.number(),
@@ -73,6 +73,7 @@ const ZonenVorlageSchema = z.object({ ansicht: z.enum(['seite', 'top', 'front'])
 export const AusstattungSchema = z.object({
   maul: z.enum(['aus', 'vorn', 'unten', 'hals']).optional(),
   maulLinie: MaulLinieSchema.optional(),
+  ring: z.number().int().min(8).max(64).optional(),
   maulOptionen: MaulOptionenSchema.optional(),
   beine: z.enum(['aus', 'verschmolzen', 'angesteckt']).optional(),
   beinAnsaetze: z.array(z.object({ ring: z.number().int().min(0), j: z.number().int().min(0) })).optional(),
@@ -108,7 +109,9 @@ export type MaulOptionenWerte = {
 };
 export type Ausstattung = {
   maul?: 'aus' | 'vorn' | 'unten' | 'hals';
-  maulLinie?: { fv: { f: number; v: number }[]; unterSpitze?: number; anfang?: { x: number; y: number } };
+  maulLinie?: { fv: { f: number; v: number }[]; unterSpitze?: number; anfang?: { x: number; y: number }; winkel?: { x: number; y: number }; winkelZ?: number; front?: { z: number; y: number }[] };
+  /** Punkte je Ring des Käfigs (Standard 16; 24 für Kastenfronten mit Plattenmaul: 6×6-Plattengitter). Fest ab dem Anlegen (Deltas und Stationen hängen daran). */
+  ring?: number;
   maulOptionen?: Partial<MaulOptionenWerte>;
   beine?: 'aus' | 'verschmolzen' | 'angesteckt';
   beinAnsaetze?: { ring: number; j: number }[];
