@@ -1,0 +1,312 @@
+// Phase 2 / M4 (Plan 5.3): Zähne im Kern — Zahnfleisch, Rahmen, Wurzel, Netz, Dokument und Automatik. Sinngemäß die
+// Tests des Versuchs vom 12.10. (`versuch/zaehne.test.ts`), hier auf dem Kern-Maul (Rex mit Überbiss, Kugel, Tiger-Platte)
+// bei zu, halb und offen.
+
+import { describe, expect, it } from 'vitest';
+import type { Dokument, Zaehne } from '../dokument';
+import { type Vorlage, vorlageDokument } from '../versuch';
+import rexRoh from '../versuch/vorlagen/rex.json';
+import tigerRoh from '../versuch/vorlagen/tiger.json';
+import { type MaulErgebnis, ableitenMitMaul, maulOptionenVorlage, maulPose } from './maul';
+import { maulLinieAusDokument } from './maulDokument';
+import { kugelMaulDokument } from './pruefstand';
+import { pruefwesenBauplan, wesenBauen } from './wesen';
+import { ZAHN_RINGE, ZAHN_SEITEN, zaehneStandard, zahnfleischKern, zahnListe, zahnreiheVerteilen } from './zaehne';
+import { type Zahn, zahnBei, zahnGitter, zahnNetz } from './zahnModell';
+
+declare const console: { log: (...a: unknown[]) => void };
+declare const performance: { now: () => number };
+
+type V3 = [number, number, number];
+const PX = 461;
+const spiegel = (p: V3): V3 => [p[0], p[1], -p[2]];
+const ab = (a: V3, b: V3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+const dot = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const minus = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const kreuz = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+function rexDok(): Dokument {
+  return { ...vorlageDokument(rexRoh as unknown as Vorlage, 'zu', 'rex'), ausstattung: pruefwesenBauplan('rex') };
+}
+function tigerDok(): Dokument {
+  return { ...vorlageDokument(tigerRoh as unknown as Vorlage, 'zu', 'tiger'), ausstattung: pruefwesenBauplan('tiger') };
+}
+/** Maul-Ableitung wie im Bau (Ausstattungs- oder gezeichnete Linie). */
+function maulAbl(d: Dokument): MaulErgebnis {
+  const aus = d.ausstattung ?? {};
+  const linie = aus.maulLinie ?? maulLinieAusDokument(d)!;
+  const opt = { stufen: 2, ...(aus.ring ? { ring: aus.ring } : {}), ...(aus.kasten ? { kasten: aus.kasten } : {}) };
+  return ableitenMitMaul(d, linie as never, opt as never, { ...maulOptionenVorlage('vorn'), ...(aus.maulOptionen ?? {}) });
+}
+/** Abstand eines Punkts zu einem Polygonzug (3 Floats je Punkt). */
+function abstandZuLinie(p: V3, linie: Float32Array): number {
+  let best = Infinity;
+  for (let i = 0; i + 5 < linie.length; i += 3) {
+    const a: V3 = [linie[i]!, linie[i + 1]!, linie[i + 2]!];
+    const b: V3 = [linie[i + 3]!, linie[i + 4]!, linie[i + 5]!];
+    const abv = minus(b, a);
+    const l2 = dot(abv, abv);
+    const f = l2 > 1e-24 ? Math.min(1, Math.max(0, dot(minus(p, a), abv) / l2)) : 0;
+    best = Math.min(best, ab(p, [a[0] + abv[0] * f, a[1] + abv[1] * f, a[2] + abv[2] * f]));
+  }
+  return best;
+}
+
+describe('Zähne im Kern: Reihe und Dokument', () => {
+  it('Verteilen: rechte Hälfte, Mittelzahn bei ungerader Zahl, untere Reihe in den Lücken der oberen, Form bleibt', () => {
+    for (let n = 0; n <= 9; n++) {
+      const r = zahnreiheVerteilen(n, 'oben', 0.04);
+      expect(r.anzahl).toBe(n);
+      expect(r.zaehne.length).toBe(Math.ceil(n / 2));
+      if (n % 2 === 1) expect(r.zaehne[0]!.u).toBe(0);
+      for (let i = 1; i < r.zaehne.length; i++) expect(r.zaehne[i]!.u).toBeGreaterThan(r.zaehne[i - 1]!.u);
+      expect(r.zaehne.every((z) => z.u <= 0.9 + 1e-12)).toBe(true);
+    }
+    // gleiche Anzahl: unten genau zwischen oben
+    const o = zahnreiheVerteilen(8, 'oben', 0.04).zaehne.map((z) => z.u);
+    const u = zahnreiheVerteilen(8, 'unten', 0.04).zaehne.map((z) => z.u);
+    for (let i = 0; i < 3; i++) expect(u[i]!).toBeCloseTo((o[i]! + o[i + 1]!) / 2, 12);
+    // vorhandene Einträge behalten ihre Form
+    const alt = zahnreiheVerteilen(4, 'oben', 0.04);
+    alt.zaehne[0] = { ...alt.zaehne[0]!, rundheit: 0.1, aussen: true };
+    const neu = zahnreiheVerteilen(6, 'oben', 0.04, alt);
+    expect(neu.zaehne[0]!.rundheit).toBe(0.1);
+    expect(neu.zaehne[0]!.aussen).toBe(true);
+    expect(neu.zaehne[2]!.rundheit).toBe(0.7);
+  });
+
+  it('Dokument → beide Seiten: Mittelzahn auf der Achse, Paare rechts und links, Tiefe ¾ der Breite, Größe und Drehung durchgereicht', () => {
+    const z: Zaehne = { oben: zahnreiheVerteilen(5, 'oben', 0.04), unten: zahnreiheVerteilen(4, 'unten', 0.03) };
+    z.oben.zaehne[1] = { ...z.oben.zaehne[1]!, groesse: 1.5, drehung: 30, auf: { laenge: 0.08, breite: 0.02 } };
+    const l = zahnListe(z);
+    expect(l.length).toBe(9);
+    expect(l.filter((q) => q.zahn.seite === 0).length).toBe(1);
+    expect(l[0]!.zahn.seite).toBe(0);
+    const paar = l.filter((q) => q.kiefer === 'oben' && q.index === 1);
+    expect(paar.map((q) => q.zahn.seite).sort()).toEqual([-1, 1]);
+    expect(paar[0]!.zahn.groesse).toBe(1.5);
+    expect(paar[0]!.zahn.drehung).toBe(30);
+    expect(paar[0]!.zahn.tiefe).toBeCloseTo(0.75 * paar[0]!.zahn.breite, 12);
+    expect(paar[0]!.zahn.auf?.tiefe).toBeCloseTo(0.015, 12);
+    // Größe in zahnBei: offen überblendet, Mittelzahn ohne Drehung
+    const w = zahnBei({ ...paar[0]!.zahn, auf: { groesse: 2.5 } }, 0.5);
+    expect(w.groesse).toBeCloseTo(2, 12);
+    expect(zahnBei({ ...l[0]!.zahn, drehung: 40 }, 0).drehung).toBe(0);
+  });
+});
+
+describe('Zähne im Kern: Zahnfleisch und Rahmen (Rex, Kugel, Tiger)', () => {
+  const faelle: [string, Dokument][] = [
+    ['Rex', rexDok()],
+    ['Kugel', kugelMaulDokument('gleich', true)],
+    ['Tiger', tigerDok()],
+  ];
+  for (const [name, dok] of faelle) {
+    const abl = maulAbl(dok);
+    it(`${name}: Rahmen orthonormal, d zum Gegenkiefer, i in die Tasche, links = Spiegelbild, u zurück — zu, halb, offen`, () => {
+      for (const alpha of [0, 0.5, 1]) {
+        const fein = alpha === 0 ? abl.fein : maulPose(abl, alpha).fein;
+        const zf = zahnfleischKern(abl, fein);
+        let ortho = 0;
+        let spiegelFehler = 0;
+        let minD = Infinity;
+        let minInnen = Infinity;
+        let uFehler = 0;
+        for (const kiefer of ['oben', 'unten'] as const) {
+          const gegen = zf[kiefer === 'oben' ? 'unten' : 'oben'];
+          for (let u = 0; u <= 0.9001; u += 0.05) {
+            for (const s of [-1, 1] as const) {
+              for (const aussen of [false, true]) {
+                const r = zf[kiefer](u, s, aussen);
+                for (const v of [r.t, r.d, r.i]) ortho = Math.max(ortho, Math.abs(Math.hypot(...v) - 1));
+                ortho = Math.max(ortho, Math.abs(dot(r.t, r.d)), Math.abs(dot(r.t, r.i)), Math.abs(dot(r.d, r.i)));
+              }
+              const r = zf[kiefer](u, s);
+              const g = gegen(u, s).p;
+              if (ab(g, r.p) > 1 / PX) minD = Math.min(minD, dot(r.d, minus(g, r.p)) / ab(g, r.p));
+              uFehler = Math.max(uFehler, Math.abs(zf[kiefer].uVon(r.p, s).u - u));
+            }
+            const R = zf[kiefer](u, 1);
+            const L = zf[kiefer](u, -1);
+            for (const [a, b] of [
+              [R.p, L.p],
+              [R.t, L.t],
+              [R.d, L.d],
+              [R.i, L.i],
+              [R.rand, L.rand],
+            ] as const) {
+              spiegelFehler = Math.max(spiegelFehler, ab(spiegel(a), b));
+            }
+          }
+          // i zeigt in den Mund: zur Mitte der tiefsten Taschenreihe hin (an einer mittleren Stelle)
+          const r = zf[kiefer](0.4, 1);
+          const reihe = kiefer === 'oben' ? abl.maul.tasche.oben : abl.maul.tasche.unten;
+          const tief = reihe[reihe.length - 1]!;
+          const t = Math.min(tief.length - 1, Math.round(0.4 * (tief.length - 1)));
+          const q: V3 = [fein[3 * tief[t]!]!, fein[3 * tief[t]! + 1]!, fein[3 * tief[t]! + 2]!];
+          minInnen = Math.min(minInnen, dot(r.i, minus(q, r.p)) / ab(q, r.p));
+        }
+        console.log(`${name} α=${alpha}: orthonormal bis ${ortho.toExponential(1)}; Spiegel ${spiegelFehler.toExponential(1)}; cos(d, Gegenkiefer) ≥ ${minD.toFixed(2)}; cos(i, Tasche) ≥ ${minInnen.toFixed(2)}; u zurück ${uFehler.toExponential(1)}`);
+        expect(ortho).toBeLessThan(1e-9);
+        expect(spiegelFehler).toBeLessThan(1e-9);
+        // d steht senkrecht zur Zahnfleischlinie (Spreizung kippt längs); am kurzen Plattenmaul liegt der Gegenpunkt offen
+        // schräg daneben (Tiger halb: cos 0,32), deshalb wie im Versuch nur: zum Gegenkiefer hin
+        expect(minD).toBeGreaterThan(0);
+        expect(minInnen).toBeGreaterThan(0);
+        expect(uFehler).toBeLessThan(1e-6);
+      }
+    });
+  }
+
+  it('u ist eine feste Stelle des Käfigs: die Wurzel liegt zu, halb und offen auf dem Zahnfleisch (≤ 0,5 px), der Anteil der Ruhelage bleibt', () => {
+    const abl = maulAbl(rexDok());
+    const zaehne: Zahn[] = zahnListe(zaehneStandard(abl, 0.6)).map((q) => q.zahn);
+    for (const alpha of [0, 0.5, 1]) {
+      const fein = maulPose(abl, alpha).fein;
+      const zf = zahnfleischKern(abl, fein);
+      let maxWurzel = 0;
+      let maxRing = 0;
+      for (const z of zaehne) {
+        const g = zahnGitter(z, zf[z.kiefer], alpha);
+        const ring = g.ringe[1]!;
+        const m = [0, 1, 2].map((k) => ring.reduce((s, p) => s + p[k]!, 0) / ring.length) as V3;
+        maxRing = Math.max(maxRing, ab(m, g.wurzel));
+        maxWurzel = Math.max(maxWurzel, abstandZuLinie(g.wurzel, zf[z.kiefer].linie));
+        // die Stelle der Ruhelage: uVon auf der Linie der Pose liefert dasselbe u
+        expect(Math.abs(zf[z.kiefer].uVon(g.wurzel, z.seite === 0 ? 1 : z.seite).u - (z.seite === 0 ? 0 : z.u))).toBeLessThan(1e-6);
+      }
+      console.log(`Rex α=${alpha}: Wurzel–Zahnfleisch ${(maxWurzel * PX).toFixed(4)} px, Ringmitte–Wurzel ${maxRing.toExponential(1)}`);
+      expect(maxWurzel * PX).toBeLessThan(0.5);
+      expect(maxRing).toBeLessThan(1e-9);
+    }
+  });
+
+  it('Netz: jeder Zahn geschlossen und nach außen orientiert, Spiegelzahn = Spiegelbild, Mittelzahn spiegelgleich', () => {
+    const abl = maulAbl(rexDok());
+    const zf = zahnfleischKern(abl, abl.fein);
+    const reihen: Zaehne = { oben: zahnreiheVerteilen(7, 'oben', 0.035), unten: zahnreiheVerteilen(6, 'unten', 0.03) };
+    reihen.oben.zaehne[2] = { ...reihen.oben.zaehne[2]!, drehung: 50, spreizung: 10, neigung: 8, biegung: 0.5, aussen: true };
+    const liste = zahnListe(reihen);
+    for (const q of liste) {
+      const { positionen: p, normalen: nn } = zahnNetz(q.zahn, zf[q.kiefer], 0, ZAHN_SEITEN, ZAHN_RINGE);
+      // Volumen über die Divergenz (um die Wurzel als Ursprung): > 0 heißt außen gegen den Uhrzeigersinn
+      const o0: V3 = [p[0]!, p[1]!, p[2]!];
+      let vol = 0;
+      let gleich = 0;
+      for (let o = 0; o < p.length; o += 9) {
+        const a = minus([p[o]!, p[o + 1]!, p[o + 2]!], o0);
+        const b = minus([p[o + 3]!, p[o + 4]!, p[o + 5]!], o0);
+        const c = minus([p[o + 6]!, p[o + 7]!, p[o + 8]!], o0);
+        vol += dot(a, kreuz(b, c)) / 6;
+        if (dot(kreuz(minus(b, a), minus(c, a)), [nn[o]!, nn[o + 1]!, nn[o + 2]!]) > 0) gleich++;
+      }
+      expect(vol, `${q.kiefer} ${q.index} ${q.zahn.seite}`).toBeGreaterThan(0);
+      expect(gleich).toBe(p.length / 9);
+    }
+    // Spiegelpaar (auch der gedrehte außen-Zahn)
+    for (const index of [1, 2]) {
+      const r = liste.find((q) => q.kiefer === 'oben' && q.index === index && q.zahn.seite === 1)!;
+      const l = liste.find((q) => q.kiefer === 'oben' && q.index === index && q.zahn.seite === -1)!;
+      const gr = zahnGitter(r.zahn, zf.oben, 0);
+      const gl = zahnGitter(l.zahn, zf.oben, 0);
+      let fehler = 0;
+      gr.ringe.forEach((ring, m) => ring.forEach((p, j) => (fehler = Math.max(fehler, ab(spiegel(p), gl.ringe[m]![j]!)))));
+      expect(fehler).toBeLessThan(1e-9);
+    }
+    // Mittelzahn: die Punktmenge ist spiegelgleich (jeder gespiegelte Punkt hat einen Partner)
+    const mz = zahnGitter(liste.find((q) => q.zahn.seite === 0)!.zahn, zf.oben, 0);
+    const pts = mz.ringe.flat();
+    let mFehler = 0;
+    for (const p of pts) mFehler = Math.max(mFehler, Math.min(...pts.map((q) => ab(spiegel(p), q))));
+    expect(mFehler).toBeLessThan(1e-9);
+  });
+
+  it('Größe und Drehung: Größe 2 verdoppelt die Länge, Drehung 90° biegt den Zahn längs des Zahnfleischs statt nach innen', () => {
+    const abl = maulAbl(rexDok());
+    const zf = zahnfleischKern(abl, abl.fein);
+    const basis: Zahn = { laenge: 0.04, breite: 0.016, tiefe: 0.012, rundheit: 1, schaerfe: 0.6, neigung: 0, biegung: 0, spreizung: 0, aussen: false, kiefer: 'oben', u: 0.4, seite: 1 };
+    const g1 = zahnGitter(basis, zf.oben, 0);
+    const g2 = zahnGitter({ ...basis, groesse: 2 }, zf.oben, 0);
+    expect(ab(g2.spitze, g2.wurzel) / ab(g1.spitze, g1.wurzel)).toBeCloseTo(2, 9);
+    const r = zf.oben(0.4, 1);
+    const krumm = { ...basis, biegung: 0.6 };
+    const innen = zahnGitter(krumm, zf.oben, 0);
+    const gedreht = zahnGitter({ ...krumm, drehung: 90 }, zf.oben, 0);
+    const vi = minus(innen.spitze, innen.wurzel);
+    const vg = minus(gedreht.spitze, gedreht.wurzel);
+    // ohne Drehung weicht die Spitze nach innen (i) ab, mit 90° längs t (zum Mundwinkel oder zur Mitte), nicht mehr nach innen
+    expect(dot(vi, r.i)).toBeGreaterThan(0.3 * Math.hypot(...vi));
+    expect(Math.abs(dot(vg, r.i))).toBeLessThan(1e-6);
+    expect(Math.abs(dot(vg, r.t))).toBeGreaterThan(0.3 * Math.hypot(...vg));
+    expect(Math.abs(dot(vg, r.d) - dot(vi, r.d))).toBeLessThan(1e-9);
+  });
+});
+
+describe('Zähne im Kern: Bau im Wesen', () => {
+  it('Automatik ohne Dokument: Rex 6/5 je Seite, Tiger-Platte einer je Seite; Zahn je Ecke passt zu den Bereichen', () => {
+    for (const [name, dok, oben, unten] of [
+      ['Rex', rexDok(), 12, 10],
+      ['Tiger', tigerDok(), 2, 2],
+    ] as const) {
+      const w = wesenBauen(dok, { maul: 'vorn', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: false, kaefigLinien: false, ...dok.ausstattung }, null);
+      const z = w.netz.zaehne!;
+      expect(z.ausDokument).toBe(false);
+      expect(z.reihen.oben.anzahl, name).toBe(oben);
+      expect(z.reihen.unten.anzahl, name).toBe(unten);
+      expect(z.liste.length).toBe(oben + unten);
+      expect(z.zahn.length).toBe(z.positionen.length / 3);
+      expect(z.anteil.length).toBe(z.positionen.length / 3);
+      // jede Ecke gehört zu einem Zahn, die Zähne kommen in Blöcken
+      for (let i = 1; i < z.zahn.length; i++) expect(z.zahn[i]! - z.zahn[i - 1]!).toBeGreaterThanOrEqual(0);
+      expect(z.zahn[z.zahn.length - 1]).toBe(z.liste.length - 1);
+      // Anteil: 0 am Zahnfleisch … 1 an der Spitze
+      let mx = 0;
+      for (const a of z.anteil) mx = Math.max(mx, a);
+      expect(mx).toBe(1);
+      expect(z.fleisch.oben.length % 3).toBe(0);
+      expect(z.fleisch.uOben.length).toBe(z.fleisch.oben.length / 3);
+    }
+  }, 60_000);
+
+  it('Dokument: Zähne aus dem Dokument, Mittelzahn auf der Naht, offen größer (auf) wirkt mit der Öffnung', () => {
+    const roh = rexDok();
+    const reihen: Zaehne = { oben: zahnreiheVerteilen(7, 'oben', 0.03), unten: zahnreiheVerteilen(4, 'unten', 0.025) };
+    reihen.oben.zaehne[1] = { ...reihen.oben.zaehne[1]!, auf: { laenge: 0.06 } };
+    const dok: Dokument = { ...roh, zaehne: reihen };
+    const plan = { maul: 'vorn' as const, oeffnung: 0, beine: 'aus' as const, schwung: 0, stil: 'fest' as const, earle: false, kaefigLinien: false, ...dok.ausstattung };
+    const zu = wesenBauen(dok, plan, null);
+    const z = zu.netz.zaehne!;
+    expect(z.ausDokument).toBe(true);
+    expect(z.liste.length).toBe(11);
+    const mitte = z.liste.find((q) => q.seite === 0)!;
+    expect(Math.abs(mitte.fuss[2])).toBeLessThan(1e-9);
+    const lang = (n: typeof z) => {
+      const q = n.liste.find((x) => x.kiefer === 'oben' && x.index === 1 && x.seite === 1)!;
+      return ab(q.spitze, q.fuss);
+    };
+    const offen = wesenBauen(dok, { ...plan, oeffnung: 1 }, zu.stand).netz.zaehne!;
+    const halb = wesenBauen(dok, { ...plan, oeffnung: 0.5 }, zu.stand).netz.zaehne!;
+    console.log(`Zahn oben 2: zu ${(lang(z) * PX).toFixed(1)} px, halb ${(lang(halb) * PX).toFixed(1)}, offen ${(lang(offen) * PX).toFixed(1)}`);
+    expect(lang(offen) / lang(z)).toBeGreaterThan(1.8);
+    expect(lang(halb)).toBeGreaterThan(lang(z));
+    expect(lang(halb)).toBeLessThan(lang(offen));
+    // Zähne ändern den Körper nicht: gleiche Ableitung, kein Umbau
+    const ohne = wesenBauen(roh, plan, zu.stand);
+    expect(ohne.netz.info.ableitung).toBe(0);
+  }, 60_000);
+
+  it('Tempo: Zähne des Rex (22) bauen < 15 ms', () => {
+    const abl = maulAbl(rexDok());
+    const fein = maulPose(abl, 0.5).fein;
+    const reihen = zaehneStandard(abl, 0.6);
+    // warm laufen
+    for (let k = 0; k < 3; k++) zahnListe(reihen).forEach((q) => zahnNetz(q.zahn, zahnfleischKern(abl, fein)[q.kiefer], 0.5, ZAHN_SEITEN, ZAHN_RINGE));
+    const t0 = performance.now();
+    const zf = zahnfleischKern(abl, fein);
+    const t1 = performance.now();
+    for (const q of zahnListe(reihen)) zahnNetz(q.zahn, zf[q.kiefer], 0.5, ZAHN_SEITEN, ZAHN_RINGE);
+    const t2 = performance.now();
+    console.log(`Zahnfleisch ${(t1 - t0).toFixed(2)} ms, 22 Zahnnetze ${(t2 - t1).toFixed(2)} ms`);
+    expect(t2 - t0).toBeLessThan(15);
+  });
+});

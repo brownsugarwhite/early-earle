@@ -22,3 +22,5 @@ export * from './wesen';
 export * from './reifen';
 export * from './pinsel';
 export * from './kanten';
+export * from './zahnModell';
+export * from './zaehne';

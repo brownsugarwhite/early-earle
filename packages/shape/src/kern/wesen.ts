@@ -22,8 +22,9 @@ import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
 import { kieferSchnitt } from './kieferSpant';
 import { type AnkerFeld, maulAnker, posenUmhaengen } from './posenAnker';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
-import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
+import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
+import { type ZahnBau, zaehneBauen } from './zaehne';
 
 export type StilArt = 'fest' | 'feuer' | 'gas' | 'fell';
 export type MaulArt = 'aus' | 'vorn' | 'unten' | 'hals';
@@ -143,7 +144,8 @@ export type WesenNetz = {
   /** Ruhelage je Ecke (unposiert) bei Posen, sonst null */
   ruhe: Float32Array | null;
   gesicht: Gesicht | null;
-  zaehne: { positionen: Float32Array; normalen: Float32Array; anteil: Float32Array } | null;
+  /** Zähne (Phase 2 M4): Dreiecke mit Verlauf, Zahn je Ecke, je Zahn Herkunft und Lage, wirksame Reihen, Zahnfleischlinien */
+  zaehne: ZahnBau | null;
   atlas: AtlasDaten | null;
   treffer: TrefferDaten | null;
   reifen: ReifenDaten | null;
@@ -836,13 +838,9 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     if (hebung) for (let i = 1; i < ruhe.length; i += 3) ruhe[i]! += hebung;
     if (ruhe.length !== t.positionen.length) ruhe = null;
   }
-  // Zähne am Zahnfleisch des posierten Käfigs
+  // Zähne am Zahnfleisch des posierten Käfigs (Phase 2 M4): aus dem Dokument oder die Automatik, Werte für offen mit der Öffnung
   let zaehne: WesenNetz['zaehne'] = null;
-  if (maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul) {
-    const zahnVorlage = vorlageFuer({ ringe: 4, profil: 'zacke', dicke: 0.6, einsenken: 0.3, biegung: 0.12, stufen: 1 });
-    const z = klingenStatisch(zahnVorlage, zahnLagen(abl as MaulErgebnis, xyz, hoehe), null);
-    zaehne = { positionen: z.positionen, normalen: z.normalen, anteil: z.anteil };
-  }
+  if (maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul) zaehne = zaehneBauen(abl as MaulErgebnis, fein, dokRoh.zaehne, plan.oeffnung, hoehe);
   // Gesicht: Dreiecksnase oben an der Schnauzenfront, Scharte hinab zur Lippe, alles in der Ruhelage
   let gesicht: Gesicht | null = null;
   if (plan.gesicht) {
@@ -1010,7 +1008,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
 export function netzPuffer(netz: WesenNetz): ArrayBuffer[] {
   const out: ArrayBuffer[] = [netz.positionen.buffer as ArrayBuffer, netz.normalen.buffer as ArrayBuffer];
   const tr = netz.treffer;
-  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich, tr?.dreieckFlaeche, tr?.flaecheVon, tr?.eckenUV, tr?.eckenZahl, tr?.kaefig.xyz, tr?.kaefig.fStart, tr?.kaefig.fVerts, netz.reifen?.ringLagen, netz.reifen?.verlauf, netz.reifen?.verlaufStart, netz.gewichtFarben]) {
+  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.zaehne?.zahn, netz.zaehne?.fleisch.oben, netz.zaehne?.fleisch.unten, netz.zaehne?.fleisch.uOben, netz.zaehne?.fleisch.uUnten, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich, tr?.dreieckFlaeche, tr?.flaecheVon, tr?.eckenUV, tr?.eckenZahl, tr?.kaefig.xyz, tr?.kaefig.fStart, tr?.kaefig.fVerts, netz.reifen?.ringLagen, netz.reifen?.verlauf, netz.reifen?.verlaufStart, netz.gewichtFarben]) {
     if (a && !out.includes(a.buffer as ArrayBuffer)) out.push(a.buffer as ArrayBuffer);
   }
   return out;
