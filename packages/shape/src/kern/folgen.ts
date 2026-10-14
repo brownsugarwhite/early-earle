@@ -132,7 +132,7 @@ function halbZug(zug: readonly P[], senkrecht: boolean): P[] | null {
  * Silhouette, jedes Segment wird als ein kubisches Stück an das Silhouettenstück zwischen den Fußpunkten angepasst
  * (glatte Knoten: Tangente der Silhouette; Ecken: Tangenten der Stücke). Achsknoten bleiben auf der Achse.
  */
-export function profilAnZug(pr: Profil, zugRoh: readonly P[], einfuegenAb = Infinity): { profil: Profil; fehler: number; eingefuegt: number } {
+export function profilAnZug(pr: Profil, zugRoh: readonly P[], einfuegenAb = Infinity, spalt?: { oben: P; unten: P }): { profil: Profil; fehler: number; eingefuegt: number } {
   const halb = pr.art === 'halb';
   let zug: P[];
   if (halb) {
@@ -140,8 +140,7 @@ export function profilAnZug(pr: Profil, zugRoh: readonly P[], einfuegenAb = Infi
     if (!h) return { profil: pr, fehler: Infinity, eingefuegt: 0 };
     zug = h;
   } else zug = [...zugRoh];
-  const n = pr.knoten.length;
-  if (n < 2) return { profil: pr, fehler: Infinity, eingefuegt: 0 };
+  let knotenAlt = pr.knoten;
   // Umlaufsinn angleichen: geschlossen über die Fläche, halb über die Nähe des ersten Knotens zum Zuganfang
   if (!halb) {
     const polyKnoten = pr.knoten.map((k) => [k.p.x, k.p.y] as P);
@@ -152,15 +151,60 @@ export function profilAnZug(pr: Profil, zugRoh: readonly P[], einfuegenAb = Infi
     const d1 = Math.hypot(zug[zug.length - 1]![0] - a.x, zug[zug.length - 1]![1] - a.y);
     if (d1 < d0) zug.reverse();
   }
-  const w = zugWerkzeug(zug, !halb);
-  const segs = halb ? n - 1 : n;
-  // Fußpunkte (halb: Achsknoten auf die Zugenden); Reihenfolge entlang des Zugs erzwingen (monoton)
-  const feet: { s: number; q: P }[] = pr.knoten.map((k, i) => {
-    if (halb && i === 0) return { s: 0, q: zug[0]! };
-    if (halb && i === n - 1) return { s: w.L, q: zug[zug.length - 1]! };
+  // Maulspalt (Seite, Kiefer getrennt; Florian: „die schwarze Linie soll direkt an die zugehörige Lippe angrenzen“):
+  // Die Silhouette wird zwischen den Lippenanfängen (rot, blau) aufgetrennt, die Kerbe des geschlossenen Mauls fällt
+  // weg; die Anfänge werden Eckknoten (ohne Kante im 3D), das Schlussstück dazwischen ist der Spalt — gezeichnet als
+  // Lücke, für den Kern das geschlossene Maul. Alte Knoten in der Kerbe fallen weg.
+  let offen = false;
+  if (!halb && spalt) {
+    const w0 = zugWerkzeug(zug, true);
+    const fO = w0.fuss(spalt.oben);
+    const fU = w0.fuss(spalt.unten);
+    // der Bogen mit dem Punkt, der am weitesten von der Maulmitte liegt, ist der Körper; der andere die Kerbe
+    const mitte: P = [(spalt.oben[0] + spalt.unten[0]) / 2, (spalt.oben[1] + spalt.unten[1]) / 2];
+    let sFern = 0;
+    let dFern = -1;
+    for (let i = 0; i < zug.length; i++) {
+      const d = Math.hypot(zug[i]![0] - mitte[0], zug[i]![1] - mitte[1]);
+      if (d > dFern) {
+        dFern = d;
+        sFern = w0.fuss(zug[i]!).s;
+      }
+    }
+    const vorwaerts = (a: number, b: number) => (((b - a) % w0.L) + w0.L) % w0.L;
+    // Bogen rot → blau vorwärts enthält den fernen Punkt?
+    const rotNachBlau = vorwaerts(fO.s, sFern) < vorwaerts(fO.s, fU.s);
+    const [sA, sB, pA, pB] = rotNachBlau ? [fO.s, fU.s, spalt.oben, spalt.unten] : [fU.s, fO.s, spalt.unten, spalt.oben];
+    const laenge = vorwaerts(sA, sB);
+    const schritt = Math.max(w0.L / 400, 1e-5);
+    const bogen = w0.stueck(sA, sA + laenge, schritt);
+    bogen[0] = pA;
+    bogen[bogen.length - 1] = pB;
+    // alte Knoten auf den Bogen: nur die mit Fußpunkt im Körperbogen (nicht in der Kerbe), nach Lage geordnet
+    const innen: { s: number; k: Knoten }[] = [];
+    for (const k of pr.knoten) {
+      const f = w0.fuss([k.p.x, k.p.y]);
+      const sRel = vorwaerts(sA, f.s);
+      if (sRel <= 0.02 * laenge || sRel >= 0.98 * laenge) continue;
+      innen.push({ s: sRel, k });
+    }
+    innen.sort((a, b) => a.s - b.s);
+    const ecke = (q: P): Knoten => ({ p: { x: q[0], y: q[1] }, ein: { x: 0, y: 0 }, aus: { x: 0, y: 0 }, art: 'ecke', haerte: 0 });
+    knotenAlt = [ecke(pA), ...innen.map((e) => e.k), ecke(pB)];
+    zug = bogen;
+    offen = true;
+  }
+  const n = knotenAlt.length;
+  if (n < 2) return { profil: pr, fehler: Infinity, eingefuegt: 0 };
+  const w = zugWerkzeug(zug, !halb && !offen);
+  const segs = halb || offen ? n - 1 : n;
+  // Fußpunkte (halb/offen: Endknoten auf die Zugenden); Reihenfolge entlang des Zugs erzwingen (monoton)
+  const feet: { s: number; q: P }[] = knotenAlt.map((k, i) => {
+    if ((halb || offen) && i === 0) return { s: 0, q: zug[0]! };
+    if ((halb || offen) && i === n - 1) return { s: w.L, q: zug[zug.length - 1]! };
     return w.fuss([k.p.x, k.p.y]);
   });
-  if (halb) {
+  if (halb || offen) {
     for (let i = 1; i < n - 1; i++) if (feet[i]!.s < feet[i - 1]!.s) feet[i] = { s: feet[i - 1]!.s, q: w.bei(feet[i - 1]!.s) };
     for (let i = n - 2; i >= 1; i--) if (feet[i]!.s > feet[i + 1]!.s) feet[i] = { s: feet[i + 1]!.s, q: w.bei(feet[i + 1]!.s) };
   }
@@ -173,12 +217,12 @@ export function profilAnZug(pr: Profil, zugRoh: readonly P[], einfuegenAb = Infi
     const len = halb ? Math.max(0, b.s - a.s) : (((b.s - a.s) % w.L) + w.L) % w.L;
     stuecke.push(len <= 1e-9 ? [a.q, b.q] : w.stueck(a.s, halb ? b.s : a.s + len, schritt));
   }
-  const knoten: Knoten[] = pr.knoten.map((k, i) => ({ ...k, p: { x: feet[i]!.q[0], y: feet[i]!.q[1] }, ein: { x: 0, y: 0 }, aus: { x: 0, y: 0 } }));
+  const knoten: Knoten[] = knotenAlt.map((k, i) => ({ ...k, p: { x: feet[i]!.q[0], y: feet[i]!.q[1] }, ein: { x: 0, y: 0 }, aus: { x: 0, y: 0 } }));
   const tangenteAn = (i: number, vor: boolean): P => {
     // glatter Knoten: Tangente der Silhouette (Laufrichtung); Ecke: Tangente des angrenzenden Stücks
-    const k = pr.knoten[i]!;
+    const k = knotenAlt[i]!;
     const achs = halb && (i === 0 || i === n - 1);
-    if (achs && k.art === 'glatt') {
+    if (achs && k.art === 'glatt' && pr.art === 'halb') {
       const quer: P = pr.achse === 'senkrecht' ? [1, 0] : [0, 1];
       return i === 0 ? quer : [-quer[0], -quer[1]];
     }
@@ -248,8 +292,8 @@ export function profilAnZug(pr: Profil, zugRoh: readonly P[], einfuegenAb = Infi
     ergebnis.push(...kette);
     eingefuegt += neue.length;
   }
-  if (halb) ergebnis.push(knoten[n - 1]!);
-  const profil: Profil = halb ? achsenRegeln({ art: 'halb', achse: pr.achse, knoten: ergebnis }) : { art: 'geschlossen', knoten: ergebnis };
+  if (halb || offen) ergebnis.push(knoten[n - 1]!);
+  const profil: Profil = pr.art === 'halb' ? achsenRegeln({ art: 'halb', achse: pr.achse, knoten: ergebnis }) : { art: 'geschlossen', knoten: ergebnis };
   return { profil, fehler, eingefuegt };
 }
 
@@ -257,7 +301,7 @@ export function profilAnZug(pr: Profil, zugRoh: readonly P[], einfuegenAb = Infi
  * Alle drei Profile an die Silhouetten des feinen Netzes (Welt = Profil × Maßstab, Ruhelage ohne Hebung) anpassen.
  * Liefert die neuen Profile und den größten Fehler je Blatt (px bei 461 px je Kachel).
  */
-export function profileAnSilhouette(dok: Dokument, punkte: readonly V3[], flaechen: readonly number[][], einfuegenAbPx = 2): { profile: Dokument['profile']; spanten: Dokument['spanten']; fehlerPx: Record<Ansicht3, number>; eingefuegt: number } {
+export function profileAnSilhouette(dok: Dokument, punkte: readonly V3[], flaechen: readonly number[][], einfuegenAbPx = Infinity): { profile: Dokument['profile']; spanten: Dokument['spanten']; fehlerPx: Record<Ansicht3, number>; eingefuegt: number } {
   const sk = dok.skalierung;
   const netz = { punkte: punkte as V3[], flaechen: flaechen as number[][], schaerfe: new Map<string, number>() };
   const profile = { ...dok.profile };
@@ -268,6 +312,8 @@ export function profileAnSilhouette(dok: Dokument, punkte: readonly V3[], flaech
     if (!zuege.length) continue;
     const zug = zuege[0]!.map((p): P => [p.x / sk, p.y / sk]);
     if (zug.length >= 2 && Math.hypot(zug[0]![0] - zug[zug.length - 1]![0], zug[0]![1] - zug[zug.length - 1]![1]) < 1e-9) zug.pop();
+    // Seite mit Maulspalt (Lippenanfänge als Eckknoten, `spalt`): noch nicht aktiv — Ecken nehmen Ringstationen, die
+    // Maul-Topologie kippte (15.10. nachts); braucht Ecken ohne Station oder die Lippenanfänge als eigene Griffe
     const r = profilAnZug(dok.profile[a], zug, einfuegenAbPx / (sk * PX));
     if (!Number.isFinite(r.fehler)) continue;
     profile[a] = r.profil;
@@ -299,7 +345,7 @@ export type FolgenErgebnis = { profile: Dokument['profile']; spanten: Dokument['
  * Formen folgen: Profile an die Silhouette des gebauten Körpers (mit Deltas) anpassen, dann die Deltas gegen den
  * sauberen Käfig aus den neuen Profilen nachführen. Der Körper bleibt bitgenau, die schwarzen Linien liegen auf ihm.
  */
-export function formenFolgen(dok: Dokument, plan: Partial<Bauplan>, stand: WesenStand | null): FolgenErgebnis {
+export function formenFolgen(dok: Dokument, plan: Partial<Bauplan>, stand: WesenStand | null, einfuegenAbPx = Infinity): FolgenErgebnis {
   const deltas = dok.kaefig?.deltas ?? [];
   const r1 = wesenBauen(dok, plan, stand, false);
   const abl = r1.stand.abl;
@@ -308,7 +354,9 @@ export function formenFolgen(dok: Dokument, plan: Partial<Bauplan>, stand: Wesen
   const flaechen = alleFlaechen(letzte);
   const punkte: V3[] = [];
   for (let i = 0; i < mit.fein.length / 3; i++) punkte.push([mit.fein[3 * i]!, mit.fein[3 * i + 1]!, mit.fein[3 * i + 2]!]);
-  const { profile, spanten, fehlerPx, eingefuegt } = profileAnSilhouette(dok, punkte, flaechen);
+  // Knoten werden nicht eingefügt (Florian 15.10. nachts: „es entstehen willkürlich Punkte“): Knoten und Ecken bleiben,
+  // nur Lage und Griffe folgen; was ein Segment nicht trifft, zeigt Δ im Blatt-Titel
+  const { profile, spanten, fehlerPx, eingefuegt } = profileAnSilhouette(dok, punkte, flaechen, einfuegenAbPx);
   const dok2: Dokument = { ...dok, profile, ...(spanten ? { spanten } : {}) };
   const r2 = wesenBauen(dok2, plan, r1.stand, false);
   const neu = deltasNachfuehren(mit.kaefig.xyz, r2.stand.abl);

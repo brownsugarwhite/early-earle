@@ -69,6 +69,16 @@ type EditorState = {
 const MAX_VERLAUF = 200;
 
 /**
+ * Haken am Ende einer Geste (Bauweise Kern, „Formen folgen“): bekommt Anfang und Stand der Geste und `abschliessen`
+ * (schreibt den Undo-Schritt). Gibt er true zurück, schließt er die Geste selbst ab (z. B. nach dem Folgen im Worker).
+ */
+type GesteEndeHaken = (start: Dokument, jetzt: Dokument, abschliessen: () => void) => boolean;
+let gesteEndeHaken: GesteEndeHaken | null = null;
+export function setzeGesteEndeHaken(h: GesteEndeHaken | null): void {
+  gesteEndeHaken = h;
+}
+
+/**
  * Bauweise Kern (Phase 2 M2): Die Maullinien bleiben, wie sie gezeichnet sind. Der Kern setzt den Schlitzanfang selbst
  * auf die Kontur, und die versetzte Kante (Überbiss/Unterbiss) hat ihren eigenen Anfang **im** anderen Kiefer — das
  * Einrasten der Anfänge als Umrissknoten (Versuch 12.10., Loft) zog ihn auf die Kontur und machte aus jedem Unterbiss
@@ -117,14 +127,20 @@ export const useEditor = create<EditorState>((set, get) => {
       if (!get().gesteStart) set({ gesteStart: get().dok });
     },
     endeGeste() {
-      const { gesteStart, verlauf } = get();
-      if (!gesteStart) return;
-      // nach einer Formgeste: Kanten auf die neue Fläche legen (gehört zum selben Undo-Schritt)
-      const jetzt = get().dok;
-      const formNeu = gesteStart.profile !== jetzt.profile || gesteStart.spanten !== jetzt.spanten || gesteStart.hauptspant !== jetzt.hauptspant;
-      const dok = formNeu ? kantenAnFlaeche(jetzt) : jetzt;
-      if (gesteStart !== dok) set({ dok, gesteStart: null, verlauf: [...verlauf, gesteStart].slice(-MAX_VERLAUF), zukunft: [] });
-      else set({ gesteStart: null });
+      const start = get().gesteStart;
+      if (!start) return;
+      const abschliessen = () => {
+        const { gesteStart, verlauf } = get();
+        if (!gesteStart) return;
+        // nach einer Formgeste: Kanten auf die neue Fläche legen (gehört zum selben Undo-Schritt)
+        const jetzt = get().dok;
+        const formNeu = gesteStart.profile !== jetzt.profile || gesteStart.spanten !== jetzt.spanten || gesteStart.hauptspant !== jetzt.hauptspant;
+        const dok = formNeu ? kantenAnFlaeche(jetzt) : jetzt;
+        if (gesteStart !== dok) set({ dok, gesteStart: null, verlauf: [...verlauf, gesteStart].slice(-MAX_VERLAUF), zukunft: [] });
+        else set({ gesteStart: null });
+      };
+      if (gesteEndeHaken && gesteEndeHaken(start, get().dok, abschliessen)) return;
+      abschliessen();
     },
     setzeProfil(ansicht, profil) {
       aendern((d) => mitFormVerbunden(d, { ...d, profile: { ...d.profile, [ansicht]: profil } }, !get().gesteStart));

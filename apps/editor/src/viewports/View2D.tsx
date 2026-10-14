@@ -88,11 +88,10 @@ export function View2D({ ansicht, w, h }: Props) {
   // Geschlossen mit getrennten Kiefern: Der Seitenumriss zeigt den Maulspalt (Florian 12.10. abends: „wie bei der
   // Fressen-Pose“). Die Maulanfänge sind Umrissknoten; zwischen ihnen läuft der Umriss an den Lippen entlang.
   const maulDok = useEditor((s) => s.dok.maul);
-  const kernBau = useUi((s) => s.bauweise === 'kern');
   const maulZu = ansicht === 'seite' && maulDok ? (offenerKoerper ? aktuelleLippen(useEditor.getState().dok, 'fressen').lippen ?? undefined : maulDok.zu) : undefined;
   // Spalt über die Knotennummern der Maulanfänge (geschlossen aus dem Umriss, die Pose-Form hat dieselben)
-  // Bauweise Kern: der Umriss bleibt ganz, die Linien sind frei (der Kern schneidet den Spalt selbst)
-  const spalt = maulZu?.unten && !kernBau ? umrissMitSpalt(profil, maulZu, offenerKoerper ? poseSpaltIndizes(useEditor.getState().dok) : maulDok ? spaltIndizesZu(profil, maulDok.zu) : null) : null;
+  // Bauweise Kern: „Formen folgen“ macht die Lippenanfänge zu Umrissknoten (Spalt dazwischen); solange sie es nicht sind, bleibt der Umriss ganz
+  const spalt = maulZu?.unten ? umrissMitSpalt(profil, maulZu, offenerKoerper ? poseSpaltIndizes(useEditor.getState().dok) : maulDok ? spaltIndizesZu(profil, maulDok.zu) : null) : null;
   const formAktiv = ebene === 'form' && (!offenerKoerper || ansicht === 'seite');
   const svgRef = useRef<SVGSVGElement>(null);
   // Saum (Schritt 4): Silhouette des Körpers, wo sie > 2 px von der Kurve abweicht (Welt-Koordinaten des Blatts)

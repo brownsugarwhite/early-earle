@@ -297,6 +297,10 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
       }
     }
     const basis = linieVon(n);
+    // Bauweise Kern: Liegt der Lippenanfang als Knoten im Seitenumriss („Formen folgen“ setzt ihn dorthin), zieht er
+    // diesen Knoten mit — die schwarze Linie grenzt an die Lippe (Florian 15.10. nachts); nach der Geste folgt der Umriss
+    const seite0 = ed.dok.profile.seite;
+    const k0 = kernBauweise() && zustand === 'zu' && sel.includes(0) && ctx.ansicht !== 'top' ? knotenBei(seite0, { x: basis.knoten[0]!.p[0], y: basis.knoten[0]!.p[1] }) : null;
     ed.beginGeste();
     if (vorschlag) setzeLippen(zustand, lippen);
     ctx.ziehen(
@@ -308,6 +312,10 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
         const dx = kernBauweise() && sel.includes(0) && ctx.ansicht === 'front' ? 0 : p.x - start.x;
         const neu = knotenVerschieben3(basis, sel, ctx.ansicht, { x: dx, y: p.y - start.y });
         setzeLippen(zustand, n === 'oben' ? { ...aktuell, oben: neu } : { ...aktuell, unten: neu });
+        if (k0 !== null) {
+          const q0 = seite0.knoten[k0]!.p;
+          useEditor.getState().setzeProfil('seite', bewegeKnoten(seite0, k0, { x: q0.x + dx, y: q0.y + (p.y - start.y) }));
+        }
       },
       () => useEditor.getState().endeGeste(),
     );

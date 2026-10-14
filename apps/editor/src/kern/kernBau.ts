@@ -3,10 +3,10 @@
 // „neuester Auftrag gewinnt“); hier entsteht aus Dokument und Anzeige-Zustand nur der Bauplan.
 
 import type { Dokument } from '@ee/shape';
-import { type BeinArt, type Bauplan, type MaulArt, type StilArt, type WesenInfo, type WesenNetz, maulAnteil, maulLinieAusPunkten, maulLinieUntenAusPunkten, pruefwesenBauplan } from '@ee/shape/kern';
+import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type StilArt, type WesenInfo, type WesenNetz, maulLinieAusPunkten, maulLinieUntenAusPunkten, pruefwesenBauplan } from '@ee/shape/kern';
 import { abtasten3 } from '@ee/shape/versuch';
 import { create } from 'zustand';
-import { useEditor } from '../state/editorStore';
+import { setzeGesteEndeHaken, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { type Look, PALETTEN } from '../three/wesenLook';
 import { WesenClient } from './wesenClient';
@@ -83,10 +83,17 @@ export function kernMaulAktiv(dok: Dokument): boolean {
   return !!(dok.ausstattung?.maulLinie ?? pruefwesenBauplan(dok.name).maulLinie);
 }
 
+/** Liegt der blaue Anfang weiter vorn als der rote (Unterbiss)? „Vorn“ = vom Mundwinkel weg längs x. */
+export function maulVorn(rot: readonly (readonly [number, number, number])[], blau: readonly (readonly [number, number, number])[]): boolean {
+  const nachVorn = Math.sign(rot[0]![0] - rot[rot.length - 1]![0]) || -1;
+  return (blau[0]![0] - rot[0]![0]) * nachVorn > 1e-4;
+}
+
 export function bauplanAus(dok: Dokument): Partial<Bauplan> {
   const s = useKernAnzeige.getState();
   const aus = { ...pruefwesenBauplan(dok.name), ...(dok.ausstattung ?? {}) };
-  let maulLinie = aus.maulLinie;
+  // Kern-Typ: die gezeichneten 3D-Punkte (punkte, untenPunkte, obenPunkte) gehören nur in den Bauplan, nicht ins Dokument
+  let maulLinie: MaulLinie | undefined = aus.maulLinie;
   let maul: MaulArt = s.maul;
   // Eine Maullinie aus der Ausstattung (Prüfwesen Tiger aus der Library) baut das Maul auch ohne gewählten Chip
   // (die Tafel zeigt dann „aus der Ausstattung“); die Lage der Ausstattung bestimmt nur die Vorlagen-Optionen (hals = ziehen)
@@ -102,7 +109,9 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
       // Kiefer getrennt (Phase 2 M2): Die Linie, die weiter vorn beginnt, ist der Schlitz auf der Kontur (der längere
       // Kiefer); die andere ist die versetzte Kante des kürzeren Kiefers mit eigenem Anfang dahinter — rot vorn = Überbiss,
       // blau vorn = Unterbiss. Seite = Höhe, Front = Breite (dritte Koordinate = seitliche Lage der Kante).
-      const unterbiss = !!blau && maulAnteil(dok, { x: blau[0]![0], y: blau[0]![1] }) < maulAnteil(dok, { x: rot[0]![0], y: rot[0]![1] }) - 1e-3;
+      // Rollen nach der Lage längs der Achse: Die Linie, deren Anfang weiter vorn liegt (vom gemeinsamen Mundwinkel aus),
+      // ist der Schlitz (über den Wirbelsäulen-Anteil entschieden kippten die Rollen, sobald sich das Profil änderte)
+      const unterbiss = !!blau && maulVorn(rot, blau);
       const schlitz = unterbiss && blau ? blau : rot;
       const versetzt = unterbiss ? rot : blau;
       const punkte = schlitz.map((p) => ({ x: p[0], y: p[1] }));
@@ -125,9 +134,14 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
       console.warn('[kern] Maullinie aus Zeichnung nicht übersetzbar:', e);
     }
   }
+  // Führendes Blatt (Plan „Zeichnung ist Form“ 4.1): Während einer Geste in Front oder Top gilt dessen Kurve für die
+  // Breite (die andere engt nicht ein); nach der Geste folgen alle Blätter der Silhouette („Formen folgen“)
+  const start = useEditor.getState().gesteStart;
+  const fuehrend: Bauplan['fuehrend'] = start && start.profile !== dok.profile ? (start.profile.front !== dok.profile.front ? 'front' : start.profile.top !== dok.profile.top ? 'top' : undefined) : undefined;
   return {
     ...aus,
     ...(maulLinie ? { maulLinie } : {}),
+    ...(fuehrend ? { fuehrend } : {}),
     maul,
     oeffnung: useUi.getState().oeffnung,
     beine: s.beine,
@@ -166,9 +180,10 @@ export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) 
 
 /**
  * Formen folgen (Plan „Zeichnung ist Form“ 4.1; Florian 15.10. nachts: „sollte sich nicht die echte Umrisslinie an diese
- * Form anpassen?“): nach einem Pinselstrich die Profile an die Silhouette des Körpers legen und die Deltas so nachführen,
- * dass der Körper exakt bleibt. Wird im Dokument angewendet, solange es sich seit dem Auftrag nicht geändert hat; `fertig`
- * wird immer gerufen (auch bei Fehler oder verworfenem Ergebnis).
+ * Form anpassen?“, „Gelbe Linie ist immer gleich der schwarzen Linie!“): nach jeder Formgeste (Kurve, Spant, Maullinie,
+ * Pinsel) die Profile an die Silhouette des Körpers legen und die Deltas so nachführen, dass der Körper exakt bleibt.
+ * Wird im Dokument angewendet, solange es sich seit dem Auftrag nicht geändert hat; `fertig` wird immer gerufen (auch
+ * bei Fehler oder verworfenem Ergebnis).
  */
 export function kernFolgen(fertig: () => void): void {
   const ed = useEditor.getState();
@@ -182,6 +197,16 @@ export function kernFolgen(fertig: () => void): void {
     fertig();
   });
 }
+
+// Pinselgesten der Grundform enden mit „Formen folgen“ (derselbe Undo-Schritt). Kurven-, Spant- und Maulgesten folgen
+// noch nicht automatisch: Mit neu angepassten Profilen wanderten Stationen (Ecken an den Lippenanfängen) und Maul-
+// Topologie, die Form sprang (15.10. nachts, Florian: „es entstehen willkürlich Punkte und die Form springt“).
+setzeGesteEndeHaken((start, jetzt, abschliessen) => {
+  if (useUi.getState().bauweise !== 'kern') return false;
+  if (start.kaefig?.deltas === jetzt.kaefig?.deltas) return false;
+  kernFolgen(abschliessen);
+  return true;
+});
 
 /** Animation (Beweis 5): Klingen für die Zeit t; false, wenn der Worker beschäftigt ist. */
 export function kernAnimieren(zeit: number, cb: (a: { positionen: Float32Array; normalen: Float32Array } | null) => void): boolean {

@@ -9,6 +9,7 @@ import { deltasAnwenden } from './pinsel';
 import { wesenBauen } from './wesen';
 
 declare const console: { log: (...a: unknown[]) => void };
+declare const performance: { now(): number };
 
 describe('Formen folgen', () => {
   it('Kugel mit Beule oben: Seitenprofil folgt, Front/Top folgen, Körper bleibt bitgenau, Δ ≤ 2 px', () => {
@@ -35,7 +36,7 @@ describe('Formen folgen', () => {
     for (let i = 0; i < vorher.fein.length / 3; i++) punkte.push([vorher.fein[3 * i]!, vorher.fein[3 * i + 1]!, vorher.fein[3 * i + 2]!]);
     const dSeiteVor = profilAbweichungPx(dokB, 'seite', punkte, flaechen);
     const t0 = performance.now();
-    const r = formenFolgen(dokB, {}, r0.stand);
+    const r = formenFolgen(dokB, {}, r0.stand, 2);
     const dauer = performance.now() - t0;
     const dokN = { ...dokB, profile: r.profile, kaefig: { deltas: r.deltas } };
     const dSeite = profilAbweichungPx(dokN, 'seite', punkte, flaechen);
@@ -61,7 +62,7 @@ describe('Formen folgen', () => {
     for (let i = 0; i < vorher.fein.length; i++) max = Math.max(max, Math.abs(nachher.fein[i]! - vorher.fein[i]!));
     expect(max).toBeLessThan(1e-6);
     // und ein zweites Folgen ändert nichts mehr Wesentliches (keine Rückkopplung)
-    const r3 = formenFolgen(dokN, {}, r2.stand);
+    const r3 = formenFolgen(dokN, {}, r2.stand, 2);
     let maxKnoten = 0;
     for (const a of ['seite', 'front', 'top'] as const) {
       expect(r3.profile[a].knoten.length).toBe(r.profile[a].knoten.length);

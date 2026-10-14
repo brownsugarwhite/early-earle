@@ -119,7 +119,7 @@ export type MaulOptionenWerte = {
 };
 export type Ausstattung = {
   maul?: 'aus' | 'vorn' | 'unten' | 'hals';
-  maulLinie?: { fv: { f: number; v: number }[]; unterSpitze?: number; anfang?: { x: number; y: number }; winkel?: { x: number; y: number }; winkelZ?: number; front?: { z: number; y: number }[]; unten?: { f: number; v: number; z?: number; innen?: number }[] };
+  maulLinie?: { fv: { f: number; v: number }[]; unterSpitze?: number; anfang?: { x: number; y: number }; winkel?: { x: number; y: number }; winkelZ?: number; front?: { z: number; y: number }[]; unten?: { f: number; v: number; z?: number; innen?: number }[]; oben?: { f: number; v: number; z?: number; innen?: number }[] };
   /** Punkte je Ring des Käfigs (Standard 16; 24 für Kastenfronten mit Plattenmaul: 6×6-Plattengitter). Fest ab dem Anlegen (Deltas und Stationen hängen daran). */
   ring?: number;
   maulOptionen?: Partial<MaulOptionenWerte>;
