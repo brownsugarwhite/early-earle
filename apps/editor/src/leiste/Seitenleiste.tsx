@@ -9,9 +9,8 @@ import { PALETTEN } from '../three/wesenLook';
 // Seitenleiste rechts, immer offen (Florian 12.10.): oben das Menü des aktiven Tabs (Wesen, Maul, Zähne, Rig, Augen),
 // darunter die Library. Gestaltung (Glas, Ornament) ist mein Entwurf.
 
-import { type Profil, type ZahnEintrag, type Zahnreihe, type ZahnWerte, gespiegelteSegmente, hauptspantProfil, hauptspantStelle, segmente } from '@ee/shape';
+import { type Profil, type ZahnEintrag, type Zahnreihe, type ZahnWerte, gespiegelteSegmente, hauptspantProfil, hauptspantStelle, segmente, unterkieferVorschlag } from '@ee/shape';
 import { versetzt3 } from '@ee/shape/versuch';
-import type { Linie3 } from '@ee/shape';
 import { useEffect, useRef, useState } from 'react';
 import { ladeAusBibliothek, ladePruefwesen } from '../aktionen';
 import { PRUEFWESEN } from '../schnitte/schnittVersuch';
@@ -980,19 +979,6 @@ function AbleitenFeld() {
   );
 }
 
-/** Blaue Startlinie für „getrennt“: die rote Linie 0,025 höher und in der Front 15 % innen (Florian zieht beides weiter). */
-function unterkieferKante(oben: Linie3): Linie3 {
-  const hoch = versetzt3(oben, 0.025);
-  const knoten = hoch.knoten.map((k) => ({ ...k, p: [k.p[0], k.p[1], k.p[2] * 0.85] as [number, number, number], ein: [k.ein[0], k.ein[1], k.ein[2] * 0.85] as [number, number, number], aus: [k.aus[0], k.aus[1], k.aus[2] * 0.85] as [number, number, number] }));
-  // eigener Anfang hinter der Spitze (Überbiss, Florians Grundbedingung): der erste Knoten rückt 15 % der Strecke zum zweiten zurück
-  if (knoten.length >= 2) {
-    const a = knoten[0]!;
-    const b = knoten[1]!;
-    knoten[0] = { ...a, p: [a.p[0] + 0.15 * (b.p[0] - a.p[0]), a.p[1] + 0.15 * (b.p[1] - a.p[1]), a.p[2] + 0.15 * (b.p[2] - a.p[2])] };
-  }
-  return { ...hoch, knoten };
-}
-
 /** Tafel „Maul“ (Kern): Maullinie, Öffnung, Öffnungsart, Kieferwinkel, Rille — Optionen in der Ausstattung des Dokuments. */
 function KernMaulFeld() {
   const dok = useEditor((s) => s.dok);
@@ -1038,7 +1024,7 @@ function KernMaulFeld() {
             <button className={!dok.maul.zu.unten ? 'chip aktiv' : 'chip'} data-kiefer="gleich" onClick={() => dok.maul!.zu.unten && setzeLippen('zu', { oben: dok.maul!.zu.oben })}>
               gleich
             </button>
-            <button className={dok.maul.zu.unten ? 'chip aktiv' : 'chip'} data-kiefer="getrennt" onClick={() => !dok.maul!.zu.unten && setzeLippen('zu', { oben: dok.maul!.zu.oben, unten: unterkieferKante(dok.maul!.zu.oben) })}>
+            <button className={dok.maul.zu.unten ? 'chip aktiv' : 'chip'} data-kiefer="getrennt" onClick={() => !dok.maul!.zu.unten && setzeLippen('zu', { oben: dok.maul!.zu.oben, unten: unterkieferVorschlag(dok.maul!.zu.oben) })}>
               getrennt
             </button>
           </div>

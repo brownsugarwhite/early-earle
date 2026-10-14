@@ -82,13 +82,20 @@ describe('Lippenanfänge im Seitenumriss', () => {
     const io = maulKnotenIndex(d1.profile.seite, 'oben');
     expect(io).toBeGreaterThanOrEqual(0);
     expect(d1.maul!.zu.oben.knoten[0]!.p[0]).toBeCloseTo(d1.profile.seite.knoten[io]!.p.x, 9);
-    // getrennt: blaue Linie bekommt den eigenen Knoten auf der Kinnseite
+    // getrennt (M2, jede Lippenlinie mit eigenem Anfang; 14.10.): der blaue Knoten sitzt genau am Anfang der blauen Linie —
+    // Überbiss: blau hinter und über rot —, im Umriss der Nachbar des roten Knotens auf der Kinnseite (dazwischen der Schlitz)
     const unten = { knoten: [k(-0.25, 0.27), k(-0.1, 0.25, 0.18), k(0.08, 0.185, 0.18)] };
     const d2 = maulMitMarken(d1, { oben: d1.maul!.zu.oben, unten });
     expect(maulGetrenntImUmriss(d2.profile.seite)).toBe(true);
     const iu = maulKnotenIndex(d2.profile.seite, 'unten');
+    const io2 = maulKnotenIndex(d2.profile.seite, 'oben');
+    expect(d2.profile.seite.knoten[iu]!.p.x).toBeCloseTo(-0.25, 9);
+    expect(d2.profile.seite.knoten[iu]!.p.y).toBeCloseTo(0.27, 9);
     expect(d2.maul!.zu.unten!.knoten[0]!.p[1]).toBeCloseTo(d2.profile.seite.knoten[iu]!.p.y, 9);
-    expect(d2.maul!.zu.unten!.knoten[0]!.p[1]).toBeLessThan(d2.maul!.zu.oben.knoten[0]!.p[1]);
+    const n = d2.profile.seite.knoten.length;
+    expect(Math.abs(iu - io2) === 1 || Math.abs(iu - io2) === n - 1).toBe(true);
+    // die übrigen Knoten bleiben, wo sie waren (formtreu eingefügt)
+    for (const q of d1.profile.seite.knoten) expect(d2.profile.seite.knoten.some((r) => Math.hypot(r.p.x - q.p.x, r.p.y - q.p.y) < 1e-9)).toBe(true);
     // schwarzen Knoten (blauer Anfang) ziehen → die blaue Linie folgt
     const ziel = { x: -0.22, y: 0.29 };
     const d3 = maulAnMarken({ ...d2, profile: { ...d2.profile, seite: maulAnfangBewegen(d2.profile.seite, 'unten', ziel) } });

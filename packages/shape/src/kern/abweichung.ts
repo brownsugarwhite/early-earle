@@ -96,7 +96,8 @@ function innen(p: V2, poly: readonly V2[]): boolean {
  * begrenzen Rot und Blau den offenen Schlitz. Soll = schwarze Linie ohne Schlitz + rote und blaue Linie bis zum
  * Mundwinkel; was das Netz im Fenster zwischen den Linien zeigt (Tasche, Rachen), zählt nicht. Rückwärts (Kurve → Körper)
  * zählt nur die schwarze Linie: Rot und Blau liegen in der Seite oft im Körper. Sonst maß die Seite den Blick in den
- * Schlitz als Abweichung (Florians Unterbiss: 48 px).
+ * Schlitz als Abweichung (Florians Unterbiss: 48 px). Ebenso zählen Stücke der schwarzen Linie im Fenster nicht: Die
+ * Kinnspitze des kürzeren Kiefers liegt dort verdeckt hinter der Lippe des längeren.
  */
 function seiteMitSchlitz(dok: Dokument): { soll: V2[]; schwarz: V2[]; fenster: V2[] } | null {
   const zu = dok.maul?.zu;
@@ -165,6 +166,10 @@ export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly numb
     for (const p of a === 'seite' && schlitz ? schlitz.schwarz : soll) {
       // vom Kiefer überdeckte Stücke der schwarzen Linie zählen nicht (dort gilt der Umweg)
       if (bedeckt && bedeckt(p)) continue;
+      // Stücke der schwarzen Linie im Fenster zwischen Rot und Blau (samt dem Anfang des kürzeren Kiefers) liegen in der
+      // Seite hinter der Lippe des längeren Kiefers und haben keinen Umriss (14.10.: die verdeckte Kinnspitze des
+      // Überbisses zählte als Abweichung, Kugel 11,5 px, Langhals 5,7 px)
+      if (fenster && (innen(p, fenster) || abstandZuZug(p, fenster) * ABWEICHUNG_PX < 0.5)) continue;
       let d = Infinity;
       for (const z of ist) d = Math.min(d, abstandZuZug(p, z));
       if (!Number.isFinite(d)) continue;

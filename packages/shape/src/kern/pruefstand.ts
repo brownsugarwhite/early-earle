@@ -4,7 +4,7 @@
 import type { V2 } from '../bezier';
 import type { Dokument } from '../dokument';
 import { neuesDokument } from '../dokument';
-import { maulAnMarken, maulAnfangBewegen, maulMitMarken } from '../maulKnoten';
+import { maulAnMarken, maulAnfangBewegen, maulMitMarken, unterkieferVorschlag } from '../maulKnoten';
 import { lippeAnHaut } from '../lippeHaut';
 import { type Kaefig, alleFlaechen } from '../kaefig/halbkanten';
 import type { Profil } from '../profil';
@@ -366,15 +366,9 @@ export function naseDokument(): Dokument {
  * Anfang 15 % zum zweiten Knoten; dann Marken (blauer Knoten auf der Kinnseite) und Linienanfänge auf die Knoten.
  */
 export function kieferGetrennt(dok: Dokument): Dokument {
+  // derselbe Vorschlag wie der Chip „getrennt“ im Editor (`unterkieferVorschlag`)
   const oben = dok.maul!.zu.oben;
-  const kn = oben.knoten.map((k) => ({ ...k, p: [k.p[0], k.p[1] + 0.025, k.p[2] * 0.85] as [number, number, number], ein: [k.ein[0], k.ein[1], k.ein[2] * 0.85] as [number, number, number], aus: [k.aus[0], k.aus[1], k.aus[2] * 0.85] as [number, number, number] }));
-  if (kn.length >= 2) {
-    const a = kn[0]!;
-    const b = kn[1]!;
-    kn[0] = { ...a, p: [a.p[0] + 0.15 * (b.p[0] - a.p[0]), a.p[1] + 0.15 * (b.p[1] - a.p[1]), a.p[2] + 0.15 * (b.p[2] - a.p[2])] };
-  }
-  kn[kn.length - 1]!.p = [...oben.knoten[oben.knoten.length - 1]!.p];
-  return maulMitMarken(dok, { oben, unten: { knoten: kn } });
+  return maulMitMarken(dok, { oben, unten: unterkieferVorschlag(oben) });
 }
 
 /** Lippenanfang (Knoten der schwarzen Linie samt Linienanfang) um (dx, dy) verschieben — wie ein Zug im Editor. */

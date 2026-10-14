@@ -6,6 +6,9 @@ import { alleFlaechen } from '../kaefig/halbkanten';
 import type { V3 } from '../versuch/catmullClark';
 import { ableiten } from './ableiten';
 import { blattAbweichungen } from './abweichung';
+import { ableitenMitMaul, kieferFlaechen, maulOptionenVorlage } from './maul';
+import { maulLinieAusDokument } from './maulDokument';
+import { feinesNetz, kugelMaulDokument } from './pruefstand';
 
 declare const console: { log: (...a: unknown[]) => void };
 declare const performance: { now(): number };
@@ -36,5 +39,23 @@ describe('Zeichnung ist Form, Schritt 4: Abweichung je Blatt', () => {
     expect(ab.top.max).toBeLessThan(1.5);
     expect(ab.front.max).toBeGreaterThan(5);
     expect(ab.front.max).toBeLessThan(14);
+  });
+  it('Überbiss: die verdeckte Kinnspitze im Fenster zählt nicht, Abweichungen außerhalb weiter (14.10.)', () => {
+    const dok = kugelMaulDokument('ueberbiss', true);
+    const g = dok.kaefig?.stationen;
+    const abl = ableitenMitMaul(dok, maulLinieAusDokument(dok)!, { stufen: 2, ...(g ? { stationen: g } : {}) }, maulOptionenVorlage('vorn'));
+    const { punkte, flaechen } = feinesNetz(abl);
+    const kiefer = kieferFlaechen(abl, flaechen);
+    // vorher 11,5 px: das Stück der schwarzen Kinnlinie zwischen blauem Anfang und roter Linie liegt hinter der Oberlippe
+    const ab = blattAbweichungen(punkte, flaechen, dok, 240, kiefer);
+    expect(ab.seite.max).toBeLessThan(2);
+    // derselbe Körper gegen eine schwarze Linie, deren Scheitel 0,02 höher liegt: die Rückrichtung misst weiter (≈ 9 px)
+    const seite = dok.profile.seite;
+    let top = 0;
+    seite.knoten.forEach((k, i) => {
+      if (k.p.y > seite.knoten[top]!.p.y) top = i;
+    });
+    const hoeher = { ...dok, profile: { ...dok.profile, seite: { ...seite, knoten: seite.knoten.map((k, i) => (i === top ? { ...k, p: { x: k.p.x, y: k.p.y + 0.02 / dok.skalierung } } : k)) } } };
+    expect(blattAbweichungen(punkte, flaechen, hoeher, 240, kiefer).seite.max).toBeGreaterThan(7);
   });
 });
