@@ -123,13 +123,26 @@ export function hauptspantStelle(dok: Dokument): number {
 
 export type SpantStuetze = { f: number; profil: Profil; index: number };
 
+/** Teil eines Querschnitts: `oben` = `profil` (ganzer Querschnitt bzw. Oberkiefer), `unten` = Unterkiefer eines Kiefer-Spants. */
+export type SpantTeil = 'oben' | 'unten';
+
+/** Profil eines Spants für einen Teil: der Unterkiefer nimmt `unten`, sofern vorhanden und von gleicher Struktur. */
+export function spantTeilProfil(s: Spant, teil: SpantTeil): Profil {
+  return teil === 'unten' && s.unten && s.unten.knoten.length === s.profil.knoten.length ? s.unten : s.profil;
+}
+
+/** Gibt es einen Kiefer-Spant (eigener Unterkiefer-Querschnitt)? */
+export function hatKieferSpanten(dok: Dokument): boolean {
+  return !!dok.spanten?.some((s) => s.unten && s.unten.knoten.length === s.profil.knoten.length);
+}
+
 /** Stützen der Überblendung, nach f sortiert: Hauptspant (index −1) und Spanten mit der Punktstruktur der Front. */
-export function spantStuetzen(dok: Dokument): SpantStuetze[] {
+export function spantStuetzen(dok: Dokument, teil: SpantTeil = 'oben'): SpantStuetze[] {
   const haupt = hauptspantProfil(dok);
   const n = haupt.knoten.length;
   const out: SpantStuetze[] = [{ f: hauptspantStelle(dok), profil: haupt, index: -1 }];
   (dok.spanten ?? []).forEach((s, index) => {
-    if (s.profil.knoten.length === n) out.push({ f: s.f, profil: s.profil, index });
+    if (s.profil.knoten.length === n) out.push({ f: s.f, profil: spantTeilProfil(s, teil), index });
   });
   return out.sort((a, b) => a.f - b.f || a.index - b.index);
 }
@@ -153,8 +166,8 @@ export function mischeProfile(a: Profil, b: Profil, t: number): Profil {
 }
 
 /** Querschnitt (normiertes Halbprofil) an der Stelle f: linear überblendet zwischen den Nachbar-Stützen. */
-export function spantProfilBei(dok: Dokument, f: number): Profil {
-  const st = spantStuetzen(dok);
+export function spantProfilBei(dok: Dokument, f: number, teil: SpantTeil = 'oben'): Profil {
+  const st = spantStuetzen(dok, teil);
   if (st.length === 1 || f <= st[0]!.f) return st[0]!.profil;
   const letzte = st[st.length - 1]!;
   if (f >= letzte.f) return letzte.profil;
@@ -224,7 +237,7 @@ const vorlageSpeicher = new WeakMap<Dokument['profile'], Map<string, SpantVorlag
  * Querschnitt-SpantVorlage an der Stelle f: n + 1 Punkte von oben (Achse) nach unten (Achse), normiert (Breite 0…1, Höhe
  * 0…1), Stützstelle je Knoten, Härte der Ecken je Knoten. Ohne Spanten genau wie bisher (`querschnitt`).
  */
-export function vorlageBei(dok: Dokument, f: number, n: number): SpantVorlage & { haerte: number[] } {
+export function vorlageBei(dok: Dokument, f: number, n: number, teil: SpantTeil = 'oben'): SpantVorlage & { haerte: number[] } {
   let speicher = vorlageSpeicher.get(dok.profile);
   if (!speicher || speicherSpanten.get(dok.profile) !== dok.spanten || speicherHaupt.get(dok.profile) !== dok.hauptspant) {
     speicher = new Map();
@@ -232,7 +245,7 @@ export function vorlageBei(dok: Dokument, f: number, n: number): SpantVorlage & 
     speicherSpanten.set(dok.profile, dok.spanten);
     speicherHaupt.set(dok.profile, dok.hauptspant);
   }
-  const schluessel = `${f}:${n}`;
+  const schluessel = `${teil}:${f}:${n}`;
   const alt = speicher.get(schluessel);
   if (alt) return alt;
   let v: SpantVorlage & { haerte: number[] };
@@ -252,7 +265,7 @@ export function vorlageBei(dok: Dokument, f: number, n: number): SpantVorlage & 
   } else {
     // Stützstellen je Segment wie die Front selbst (gleiche Knoten-Stützstellen wie ohne Spanten und wie im Käfig)
     const anteile = anteileVon(dok.profile.front, n);
-    const pr = spantProfilBei(dok, f);
+    const pr = spantProfilBei(dok, f, teil);
     const s = spantAbtasten(pr, n, anteile);
     v = { ...s, haerte: pr.knoten.map(eckHaerte) };
   }
@@ -264,8 +277,15 @@ const speicherHaupt = new WeakMap<Dokument['profile'], number | undefined>();
 
 /** Neuer Spant an der Stelle f: die Überblendung an dieser Stelle (die Form ändert sich beim Einfügen nicht). */
 export function spantNeu(dok: Dokument, f: number): Spant {
+  const kopie = (pr: Profil): Profil => ({ ...pr, knoten: pr.knoten.map((k) => ({ ...k })) });
   const pr = spantProfilBei(dok, f);
-  return { f, profil: { ...pr, knoten: pr.knoten.map((k) => ({ ...k })) } };
+  // mit Kiefer-Spanten auch die Überblendung des Unterkiefers (sonst änderte der neue Spant die Form)
+  return hatKieferSpanten(dok) ? { f, profil: kopie(pr), unten: kopie(spantProfilBei(dok, f, 'unten')) } : { f, profil: kopie(pr) };
+}
+
+/** Teilprofile eines Spants mit derselben Änderung der Punktstruktur (Einfügen, Löschen) umrechnen. */
+function beideTeile(sp: Spant, f: (pr: Profil) => Profil): Spant {
+  return sp.unten ? { ...sp, profil: f(sp.profil), unten: f(sp.unten) } : { ...sp, profil: f(sp.profil) };
 }
 
 /** Spanten nach f sortiert einfügen; Rückgabe: neue Liste und Index des neuen Spants. */
@@ -278,7 +298,7 @@ export function spantEinfuegen(dok: Dokument, f: number): { spanten: Spant[]; in
 /** Punkt in allen Querschnitten einfügen (Front und Spanten, formtreu an derselben Stelle s, t). */
 export function spantenPunktEinfuegen(dok: Dokument, s: number, t: number): { dok: Dokument; index: number } {
   const r = einfuegen(dok.profile.front, s, t);
-  const spanten = dok.spanten?.map((sp) => ({ ...sp, profil: einfuegen(sp.profil, s, t).profil }));
+  const spanten = dok.spanten?.map((sp) => beideTeile(sp, (pr) => einfuegen(pr, s, t).profil));
   const d: Dokument = { ...dok, profile: { ...dok.profile, front: r.profil } };
   if (spanten) d.spanten = spanten;
   return { dok: d, index: r.index };
@@ -287,7 +307,7 @@ export function spantenPunktEinfuegen(dok: Dokument, s: number, t: number): { do
 /** Punkt in allen Querschnitten löschen (Achspunkte bleiben). null, wenn er nicht gelöscht werden kann. */
 export function spantenPunktLoeschen(dok: Dokument, i: number): Dokument | null {
   if (!kannLoeschen(dok.profile.front, i)) return null;
-  const spanten = dok.spanten?.map((sp) => ({ ...sp, profil: loeschen(sp.profil, i) }));
+  const spanten = dok.spanten?.map((sp) => beideTeile(sp, (pr) => loeschen(pr, i)));
   const d: Dokument = { ...dok, profile: { ...dok.profile, front: loeschen(dok.profile.front, i) } };
   if (spanten) d.spanten = spanten;
   return d;
@@ -321,7 +341,7 @@ export function spantenAngleichen(alt: Profil, neu: Profil, spanten: readonly Sp
         bestT = t;
       }
     }
-    return spanten.map((sp) => ({ ...sp, profil: einfuegen(sp.profil, s, bestT).profil }));
+    return spanten.map((sp) => beideTeile(sp, (pr) => einfuegen(pr, s, bestT).profil));
   }
   // gelöscht: Knoten der alten Front, die in der neuen fehlen (Reihenfolge bleibt)
   const weg: number[] = [];
@@ -331,9 +351,11 @@ export function spantenAngleichen(alt: Profil, neu: Profil, spanten: readonly Sp
     else weg.push(i);
   }
   if (a.length - weg.length !== b.length) return spanten as Spant[];
-  return spanten.map((sp) => {
-    let pr = sp.profil;
-    for (const i of [...weg].sort((x, y) => y - x)) pr = loeschen(pr, i);
-    return { ...sp, profil: pr };
-  });
+  return spanten.map((sp) =>
+    beideTeile(sp, (pr0) => {
+      let pr = pr0;
+      for (const i of [...weg].sort((x, y) => y - x)) pr = loeschen(pr, i);
+      return pr;
+    }),
+  );
 }

@@ -1,9 +1,10 @@
 // Spanten (Versuch 12.10. nachmittags): Querschnitte an gewählten Stellen, gleiche Punktstruktur, Überblendung.
 import { describe, expect, it } from 'vitest';
-import { type Dokument, neuesDokument } from './dokument';
+import { type Dokument, dokumentLesen, neuesDokument } from './dokument';
 import { querschnitt } from './platzhalter/loft';
 import { type Profil, bewegeKnoten, einfuegen, umwandeln } from './profil';
 import {
+  hatKieferSpanten,
   hauptspantProfil,
   hauptspantStelle,
   spantEinfuegen,
@@ -138,5 +139,39 @@ describe('Spanten', () => {
     expect(w).toBeDefined();
     expect(Math.max(...w!.haerte)).toBeGreaterThan(0.5);
     expect(Math.min(...w!.haerte)).toBeLessThan(0.01);
+  });
+
+  it('Kiefer-Spant (14.10.): eigener Unterkiefer-Querschnitt, Rundreise, gleiche Punktstruktur bei Einfügen/Löschen, neuer Spant formtreu', () => {
+    const { spanten } = spantEinfuegen(dok, 0.25);
+    const sp = spanten[0]!;
+    // Unterkiefer 30 % breiter (Knoten und Griffe)
+    const unten: Profil = { ...sp.profil, knoten: sp.profil.knoten.map((k) => ({ ...k, p: { x: k.p.x * 1.3, y: k.p.y }, ein: { x: k.ein.x * 1.3, y: k.ein.y }, aus: { x: k.aus.x * 1.3, y: k.aus.y } })) };
+    const d: Dokument = { ...dok, spanten: [{ ...sp, unten }] };
+    expect(hatKieferSpanten(d)).toBe(true);
+    expect(hatKieferSpanten({ ...dok, spanten })).toBe(false);
+    // Rundreise über das Schema (zod verwirft unbekannte Felder)
+    const zurueck = dokumentLesen(JSON.parse(JSON.stringify(d)));
+    expect(zurueck.spanten?.[0]?.unten).toEqual(JSON.parse(JSON.stringify(unten)));
+    // Überblendung je Teil: oben wie ohne Kiefer-Spant, unten breiter
+    const oben = vorlageBei(d, 0.25, 24, 'oben');
+    const u = vorlageBei(d, 0.25, 24, 'unten');
+    expect(oben.q).toEqual(vorlageBei({ ...dok, spanten }, 0.25, 24).q);
+    expect(Math.max(...u.q.map((p) => p.x))).toBeGreaterThan(Math.max(...oben.q.map((p) => p.x)) * 1.1);
+    // Punkt einfügen/löschen: beide Teile behalten die Punktstruktur der Front
+    const mit = spantenPunktEinfuegen(d, 1, 0.5).dok;
+    expect(mit.spanten![0]!.unten!.knoten.length).toBe(mit.profile.front.knoten.length);
+    expect(mit.spanten![0]!.profil.knoten.length).toBe(mit.profile.front.knoten.length);
+    const ohne = spantenPunktLoeschen(mit, 2)!;
+    expect(ohne.spanten![0]!.unten!.knoten.length).toBe(ohne.profile.front.knoten.length);
+    // Front-Punkt eingefügt (Zeichenstift) → Angleichen nimmt beide Teile mit
+    const angeglichen = spantenAngleichen(d.profile.front, einfuegen(d.profile.front, 1, 0.5).profil, d.spanten!);
+    expect(angeglichen[0]!.unten!.knoten.length).toBe(d.profile.front.knoten.length + 1);
+    // neuer Spant zwischen Kiefer-Spant und Hauptspant: die Überblendung beider Teile ändert sich nicht
+    const f = (0.25 + hauptspantStelle(d)) / 2;
+    const vorherU = vorlageBei(d, f, 24, 'unten').q;
+    const vorherO = vorlageBei(d, f, 24, 'oben').q;
+    const d2: Dokument = { ...d, spanten: spantEinfuegen(d, f).spanten };
+    expect(maxAbstand(vorlageBei(d2, f, 24, 'unten').q, vorherU)).toBeLessThan(1e-9);
+    expect(maxAbstand(vorlageBei(d2, f, 24, 'oben').q, vorherO)).toBeLessThan(1e-9);
   });
 });

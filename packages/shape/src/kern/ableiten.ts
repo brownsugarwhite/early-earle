@@ -21,7 +21,7 @@ import { type Roehre, roehre } from '../kaefig/roehre';
 import { type AusgleichsLoeser, type Bedingung, type GrenzLoeser, ausgleichsLoeser, grenzLoeser, kaefigAusgleich, kaefigDurchZiele } from '../loeser/grenzflaeche';
 import { punktAuf } from '../bezier';
 import { pfadAbtasten, segmente, vollerPfad } from '../profil';
-import { spantKasten, stelleVon, vorlageBei } from '../spanten';
+import { type SpantTeil, hatKieferSpanten, spantKasten, stelleVon, vorlageBei } from '../spanten';
 import { kanteAbtasten, kantenFalten } from './kanten';
 import { feinKette } from './reifen';
 import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
@@ -730,9 +730,9 @@ function kreisQuerschnitt(N: number): Querschnitt {
 }
 
 /** Querschnitt aus Front und Spanten (`vorlageBei`) an der Stelle x; nur mit gezeichneten Spanten sinnvoll. */
-function spantQuerschnitt(dok: Dokument, x: number, N: number): Querschnitt {
+function spantQuerschnitt(dok: Dokument, x: number, N: number, teil: SpantTeil = 'oben'): Querschnitt {
   const h = N / 2;
-  const q = vorlageBei(dok, stelleVon(dok, x / dok.skalierung), h);
+  const q = vorlageBei(dok, stelleVon(dok, x / dok.skalierung), h, teil);
   const v = q.q.map((p) => Math.min(1, Math.max(0, p.y)));
   const w = q.q.map((p) => Math.max(0, p.x));
   v[0] = 1;
@@ -890,6 +890,58 @@ export function anteileVerteilen(laengen: readonly number[], h: number): number[
 }
 
 type Stuetze = { v: number; w: number; haerte: number; lippe: boolean };
+
+/**
+ * Querschnitt eines Maulrings mit Kiefer-Spanten (14.10.): über der Lippenhöhe vL der Oberkiefer (`oben`, bis zu seinem
+ * ersten Schnitt mit vL), darunter der Unterkiefer (`unten`, ab seinem ersten Schnitt). Der Unterschied der Breiten an
+ * der Lippe läuft zur unteren Naht linear aus — so bleibt die Fläche an der Lippe stetig, und weiter unten gilt die
+ * gezeichnete Form des Unterkiefers. Ecken beider Teile bleiben Ecken.
+ */
+export function kieferQuerschnitt(oben: Querschnitt, unten: Querschnitt, vL: number): Querschnitt {
+  const schnitt = (q: Querschnitt): { i: number; w: number } | null => {
+    for (let i = 0; i + 1 < q.v.length; i++) {
+      const a = q.v[i]!;
+      const b = q.v[i + 1]!;
+      if (a >= vL && vL >= b && a > b) return { i, w: q.w[i]! + ((q.w[i + 1]! - q.w[i]!) * (a - vL)) / (a - b) };
+    }
+    return null;
+  };
+  const so = schnitt(oben);
+  const su = schnitt(unten);
+  if (!so || !su) return oben;
+  const v: number[] = [];
+  const w: number[] = [];
+  const knoten: number[] = [];
+  const haerte: number[] = [];
+  const knotenVon = (q: Querschnitt) => new Map(q.knoten.map((j, kn) => [j, q.haerte[kn] ?? 0]));
+  const ko = knotenVon(oben);
+  const ku = knotenVon(unten);
+  for (let i = 0; i <= so.i; i++) {
+    if (oben.v[i]! <= vL) break;
+    if (ko.has(i)) {
+      knoten.push(v.length);
+      haerte.push(ko.get(i)!);
+    }
+    v.push(oben.v[i]!);
+    w.push(oben.w[i]!);
+  }
+  v.push(vL);
+  w.push(so.w);
+  const vUnten = unten.v[unten.v.length - 1]!;
+  const versatz = so.w - su.w;
+  for (let i = su.i + 1; i < unten.v.length; i++) {
+    const vi = unten.v[i]!;
+    if (vi >= vL) continue;
+    const s = vL - vUnten > 1e-12 ? Math.min(1, Math.max(0, (vi - vUnten) / (vL - vUnten))) : 0;
+    if (ku.has(i)) {
+      knoten.push(v.length);
+      haerte.push(ku.get(i)!);
+    }
+    v.push(vi);
+    w.push(Math.max(0, unten.w[i]! + versatz * s));
+  }
+  return { v, w, knoten, haerte };
+}
 
 /**
  * Querschnitt-Vorlage neu abtasten mit hOut Intervallen; Ecken bleiben auf Stützstellen. Mit `lippe` liegt die
@@ -1126,7 +1178,15 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     }
     return [x, y, z, hv];
   };
-  const ringQNeu = ringQ.map((q, i) => (schlitz && i <= schlitz.k && Number.isFinite(schlitz.vRing[i]!) ? umparametrisieren(q, N / 2, { index: schlitz.jL, v: schlitz.vRing[i]! }) : q));
+  // Kiefer-Spanten (14.10.): in Maulringen unter der Lippe der Querschnitt des Unterkiefers
+  const kiefer = !!(schlitz && dok && opt.querschnitt && dok.spanten?.length && hatKieferSpanten(dok));
+  const ringQNeu = ringQ.map((q, i) => {
+    if (!(schlitz && i <= schlitz.k && Number.isFinite(schlitz.vRing[i]!))) return q;
+    const vL = schlitz.vRing[i]!;
+    const sp = ringSprossen[i]!;
+    const basis = kiefer ? kieferQuerschnitt(q, spantQuerschnitt(dok!, (sp.o.x + sp.u.x) / 2, N, 'unten'), vL) : q;
+    return umparametrisieren(basis, N / 2, { index: schlitz.jL, v: vL });
+  });
   const Wr = ringQNeu.map((q, i) => masstab(ringSprossen[i]!, q));
   if (fuehrend === 'front') {
     // Führende Front wirkt örtlich (Plan „Zeichnung ist Form“ 4.1): Ein Ring, der an einer Höhe die Silhouette stellt
@@ -1201,7 +1261,9 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
         }
         if (mL > 0 && mL < 4 * r) lippe = { index: mL, v: schlitz.vKappe[r]! };
       }
-      const q = umparametrisieren(q0, 4 * r, lippe);
+      // Kiefer-Spanten: auch in der Kappe unter der Lippe der Unterkiefer (Querschnitt von Ring 0)
+      const q0Teil = kiefer && lippe && seite === 'vorn' ? kieferQuerschnitt(q0, spantQuerschnitt(dok!, (ringSprossen[0]!.o.x + ringSprossen[0]!.u.x) / 2, N, 'unten'), lippe.v) : q0;
+      const q = umparametrisieren(q0Teil, 4 * r, lippe);
       const sp = sprossen[r - 1]!;
       const W = masstab(sp, q);
       // Konturanfang: Die Bauchnaht der Lippenzeile liegt auf dem gezeichneten Anfang (statt am Fuß der Kappen-Sprosse):

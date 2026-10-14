@@ -36,8 +36,11 @@ const ZahnSchema = ZahnWerteSchema.extend({ u: z.number(), aussen: z.boolean(), 
 const ZahnreiheSchema = z.object({ anzahl: z.number().int().min(0).max(31), zaehne: z.array(ZahnSchema) });
 /** Ansicht, aus der eine Linie gezeichnet wurde (bestimmt, welche Fläche sie trifft, wenn sich die Form ändert). */
 const BlickSchema = z.enum(['seite', 'front', 'hinten', 'top', 'unten']);
-/** Spant: Querschnitt an der Stelle f (Anteil der Länge), halbes Profil normiert auf den Kasten aus Seite und Top. */
-const SpantSchema = z.object({ f: z.number().min(0).max(1), profil: ProfilSchema });
+/**
+ * Spant: Querschnitt an der Stelle f (Anteil der Länge), halbes Profil normiert auf den Kasten aus Seite und Top.
+ * `unten` (Kiefer-Spant, 14.10.): Querschnitt des Unterkiefers, wenn der Spant in der Seite über beiden Kiefern liegt.
+ */
+const SpantSchema = z.object({ f: z.number().min(0).max(1), profil: ProfilSchema, unten: ProfilSchema.optional() });
 const KanteSchema = z.object({ knoten: z.array(Knoten3Schema).min(2), haerte: z.array(z.number().min(0).max(1)), blick: BlickSchema, tiefe: z.number().optional() });
 /** Spant der Bauweise „rund“ (Versuch 13.10. nachmittags): Strecke quer über ein Teil der Seite (Punkt und Richtung), Halbprofil. */
 const RundSpantSchema = z.object({ p: V2, richtung: V2, profil: ProfilSchema, basis: ProfilSchema.optional(), kante: z.object({ index: z.number().int().min(0), knoten: z.number().int().min(0) }).optional() });
@@ -222,7 +225,16 @@ export type Blick = 'seite' | 'front' | 'hinten' | 'top' | 'unten';
  * Spant (Versuch 12.10. nachmittags): Querschnitt an der Stelle f (Anteil der Länge der Seite), halbes Profil mit der
  * Punktstruktur der Front, normiert auf den Kasten an dieser Stelle (Breite 0…1 ab der Achse, Höhe 0…1).
  */
-export type Spant = { f: number; profil: Profil };
+export type Spant = {
+  f: number;
+  profil: Profil;
+  /**
+   * Kiefer-Spant (14.10., Florian: „von vorne einen Spant für Ober- und einen für Unterkiefer, wenn der Spant von der
+   * Seite über beide liegt“): Querschnitt des Unterkiefers mit der Punktstruktur von `profil`. In Maulringen gilt unter
+   * der Lippe `unten`, darüber `profil`; fehlt er, gilt `profil` für beide Kiefer.
+   */
+  unten?: Profil;
+};
 export type Kante = {
   knoten: Knoten3[];
   haerte: number[];
