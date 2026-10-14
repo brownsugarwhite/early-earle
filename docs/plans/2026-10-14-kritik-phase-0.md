@@ -99,3 +99,13 @@
 - [x] 15.10.: Langhals-Brust: schräge Sprossen ab 0,5 Neigung mit Front-Lappen statt Kreis (`liegendAb`), Top 14 → 4 px.
 - [x] 15.10. vormittags: Phase 2 M1 Plattenmaul (Mercedesstern auf der Platte, Tiger 0 Durchdringungen, im Front-Blatt zeichenbar); Beutel läuft mit dem Kieferband aus (Bauchringe standen beim Öffnen nicht still); Library-Tiger baut und öffnet sein Maul ohne Chip.
 - [x] 15.10. mittags: Phase 2 M2 Kiefer getrennt mit Überbiss (Rex, 0 Durchdringungen bei 0/25/50/75/100 %, Chips gleich/getrennt, blaue Linie zeichenbar).
+- [x] 15.10. nachts: Block 2 zu Ende gebaut (Chip „getrennt“ unter dem Kopf, verdeckte Kinnspitze aus dem Seiten-Δ, Maullage eingefroren, Kiefer-Spanten); Langhals-Kehle: Ursache war die Naht (Rundgang mit Lücke), Langhals „gleich“ jetzt 0 Durchdringungen; Breitenpunkte mit Maul (Top am Maul ≤ 4 px bei Kugel und Langhals); Posenliste und Pose-Deltas an der Maullinie (Phase 2 M3).
+
+## Offen aus der Nacht 15.10. (eigene Befunde, je mit Phase)
+
+- **Lokalität (Block 2, Satz 2) nicht erfüllt:** Lippenanfang 10 px gezogen → außerhalb des Bands 0,2–0,7 px beim kürzeren Kiefer, aber 1,3–4,6 px beim Schlitzanfang; ohne Maul misst Block 1 schon 3,0 px (Kugel) bzw. 9,2 px (Komma). Ursache: globale Leiter (Ringe gleiten) und der ganze Kiefer folgt seiner Linie → „Käfig als Wahrheit“ (Florians Entscheidung).
+- **Langhals bei 100 % Öffnung:** Wangenknick hinter dem Mundwinkel (63–85°, das Gelenk liegt auf der Haut) und gestauchte Kehle bei heruntergezogenem roten Anfang (91°), ohne Durchdringungen → Plan 5.2 (Gelenk im Kopf, Kehlkette).
+- **„Blau am Hals“:** blauer Anfang weit am Hals → der Unterkiefer hängt als Lappen heraus (248–584 Paare) → Phase 2 Maularten (ohne Unterkiefer / Drache) oder Grenze für den Anfang.
+- **Tiger aus der Library:** die „Wangen“ der Ausstattung erscheinen als weiße Zackenreihe am Bauch unter dem Gesicht (schon am 14.10. so) → Look-Urteil Florian, Phase 4.
+- **Runder Haps:** Vergleichsbild `docs/progress/editor/haps-vergleich-tiger-2026-10-15.jpg` — der Tiger öffnet nur ein kleines Loch in der Platte; Florian entscheidet zwischen Automatik (Haut wandert mit, Loop-Cut) und Fressen-Pose → Phase 2 M3.
+- **Kugel-Unterkiefer im Kiefer-Spant:** an der Kugel-Front hat der Unterkiefer anfangs nur den Achspunkt; erst „+“ auf der Unterkiefer-Kurve macht ihn formbar (gleiche Punktstruktur, Punkte nur von Hand) → Florians Urteil beim Ausprobieren.
