@@ -1379,38 +1379,44 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     for (const z of kappenZeilen()) vornSuche(P(z.idx)[0]);
     const vorschub = (x0 - xVorn) * nachHinten < 0 ? x0 - xVorn : 0;
     const geschnitten = (idx: number): boolean => vorschub === 0 && (P(idx)[0] - x0) * nachHinten < 0;
-    // Wand: Die geschnittenen Punkte (vor der Ebene) legen sich als verschachtelte Umrisse auf die Ebene — je Spalte j
-    // gibt der erste nicht geschnittene Ring den Umriss, innere Ringe und Kappenzeilen schrumpfen zur Wandmitte (wie
-    // eine Kappe). Einfach auf die Ebene geklappt lagen sie in falscher Reihenfolge übereinander (Rex-Schnauze mit
-    // Höcker vor der Spitze: 172 Paare haut/haut).
+    // Wand: Die Ringe vor der Ebene (und die Kappenzeilen) legen sich als verschachtelte Umrisse auf die Ebene. Den
+    // Umriss gibt **ein** Bezugsring für die ganze Region — der erste Ring, von dem keine Kieferzeile mehr geschnitten
+    // ist; alle Ringe davor gehen ganz auf die Wand (auch ihre knapp ungeschnittenen Zeilen), innere Ringe und die
+    // Kappenzeilen schrumpfen zur Wandmitte. Ein Bezugsring je Zeile skalierte die Zeilen eines Rings verschieden
+    // (Tiger: Ring 1 in Zeile 7 ungeschnitten, in Zeile 8 geschnitten) — Zickzack, 580 Paare haut/haut am Kinn; einfach
+    // auf die Ebene geklappt lagen sie in falscher Reihenfolge übereinander (Rex-Schnauze: 172 Paare).
     const zeilen = untenV ? N / 2 - jL : jL;
     const jrVon = (j: number) => (j <= N / 2 ? j : N - j);
-    const refRing = new Int32Array(N / 2 + 1).fill(-1);
-    for (let jr = 0; jr <= N / 2; jr++) {
-      if (untenV ? jr <= jL : jr >= jL) continue;
-      for (let i = 0; i <= k; i++) if (!geschnitten(v.ringPunkt(i, jr))) { refRing[jr] = i; break; }
-      if (refRing[jr]! < 0) refRing[jr] = k;
+    let refRing = k;
+    for (let i = 0; i <= k; i++) {
+      let frei = true;
+      for (const idx of ringZeilen(i)) if (geschnitten(idx)) { frei = false; break; }
+      if (frei) { refRing = i; break; }
     }
     const refPunkt = (jf: number): [number, number] => {
       const j0 = Math.max(0, Math.min(N / 2 - 1, Math.floor(jf)));
       const j1 = Math.min(N / 2, j0 + 1);
       const f = jf - j0;
-      const a = P(v.ringPunkt(refRing[j0]! < 0 ? k : refRing[j0]!, j0));
-      const b = P(v.ringPunkt(refRing[j1]! < 0 ? k : refRing[j1]!, j1));
+      const a = P(v.ringPunkt(refRing, j0));
+      const b = P(v.ringPunkt(refRing, j1));
       return [a[1] + (b[1] - a[1]) * f, Math.abs(a[2]) + (Math.abs(b[2]) - Math.abs(a[2])) * f];
     };
     let cY = 0;
     let cN = 0;
-    for (let jr = 0; jr <= N / 2; jr++) if (refRing[jr]! >= 0) { cY += refPunkt(jr)[0]; cN++; }
+    for (let jr = 0; jr <= N / 2; jr++) {
+      if (untenV ? jr <= jL : jr >= jL) continue;
+      cY += refPunkt(jr)[0];
+      cN++;
+    }
     cY = cN ? cY / cN : P(pfad[0]!)[1];
-    const setzeRegion = (idx: number, t: number, tiefe: number, anteilHinten: number, jf: number, u: number) => {
+    const setzeRegion = (idx: number, t: number, tiefe: number, anteilHinten: number, jf: number, u: number, aufWand: boolean) => {
       const q = P(idx);
       const zf = 1 - anteilZ[Math.min(m, t)]! * (1 - tiefe);
       if (vorschub !== 0) {
         setze(idx, [q[0] + vorschub * (1 - anteilHinten), q[1], q[2] * zf]);
         return;
       }
-      if (!geschnitten(idx)) {
+      if (!aufWand) {
         setze(idx, [q[0], q[1], q[2] * zf]);
         return;
       }
@@ -1425,8 +1431,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
         const g = gitterLage(v, idx);
         const jr = g.art === 'ring' ? jrVon(g.j) : jL;
         const d = untenV ? (jr - jL) / zeilen : (jL - jr) / zeilen;
-        const ref = refRing[jr]! < 0 ? k : refRing[jr]!;
-        setzeRegion(idx, t, d, k > 0 ? i / k : 1, jr, (i + 1) / (ref + 1));
+        setzeRegion(idx, t, d, k > 0 ? i / k : 1, jr, (i + 1) / (refRing + 1), i < refRing);
       }
     }
     for (const z of kappenZeilen()) {
@@ -1437,8 +1442,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
       let mIdx = 0;
       for (let q = 0; q <= 4 * r; q++) { const [qa, qb] = quadratRing(c, r, q); if (qa === aR && qb === g.b) { mIdx = q; break; } }
       const jf = Math.min(N / 2, (mIdx * c) / (2 * Math.max(1, r)));
-      const ref = refRing[Math.round(jf)]! < 0 ? k : refRing[Math.round(jf)]!;
-      setzeRegion(z.idx, z.t, z.w, 0, jf, r / (c / 2) / (ref + 1));
+      setzeRegion(z.idx, z.t, z.w, 0, jf, r / (c / 2) / (refRing + 1), refRing > 0 || geschnitten(z.idx));
     }
   }
   for (let r = 1; r <= K; r++) {
