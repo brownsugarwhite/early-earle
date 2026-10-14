@@ -1024,7 +1024,9 @@ function KernMaulFeld() {
               getrennt
             </button>
           </div>
-          <p className="hilfe">Getrennt: die blaue Unterkieferkante liegt über der roten Oberlippe und läuft geschlossen in den Oberkiefer (Überbiss). Beide Linien sind in Seite und Front ziehbar; Unterbiss (blau unter rot) kommt noch.</p>
+          <p className="hilfe">Getrennt: die rote Linie ist die Kante der überhängenden Oberlippe, die blaue die Kante des Unterkiefers, der zurückgesetzt dahinter sitzt (Überbiss). Beide Linien sind in Seite und Front ziehbar; Unterbiss (blau unter rot) kommt noch.</p>
+          {dok.maul.zu.unten && <Regler label="Lippendicke" wert={mo.lippenDicke} min={0.01} max={0.06} schritt={0.005} anzeige={`${(mo.lippenDicke * 100).toFixed(1)} % der Höhe`} onChange={(v) => setze({ lippenDicke: v })} {...geste()} />}
+          {dok.maul.zu.unten && <Regler label="Unterkiefer zurück" wert={mo.unterkieferRueck} min={0} max={1} schritt={0.1} anzeige={`${Math.round(mo.unterkieferRueck * 100)} %`} onChange={(v) => setze({ unterkieferRueck: v })} {...geste()} />}
         </>
       )}
       <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />

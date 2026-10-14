@@ -89,6 +89,8 @@ export type MaulOptionen = {
   linse: number;
   /** Kiefer getrennt: Dicke der Oberlippe über der Unterkieferkante (Anteil der Körperhöhe); die Kante liegt doppelt so tief innen */
   lippenDicke: number;
+  /** Kiefer getrennt: Anteil, zu dem die Unterkieferhaut unter der Kante zurückgesetzt wird (0 = nur die Kante) */
+  unterkieferRueck: number;
   /** Rachenziel je Lippenpunkt: Ringmitte bei der Station Lippe + rachenTiefe · (Winkel − Lippe) (nie hinter dem Scharnier, sonst schwingt die Tasche beim Öffnen durch); seitlich Anteil der Winkelbreite */
   rachenTiefe: number;
   rachenInnen: number;
@@ -126,7 +128,7 @@ export type MaulOptionen = {
   hapsRadius: number;
 };
 
-export const MAUL_STANDARD: MaulOptionen = { reihen: 3, tiefe: 0.9, linse: 0.03, lippenDicke: 0.012, rachenTiefe: 0.7, rachenInnen: 0.55, schaedelHinter: 0.45, lippenSchaerfe: 1e6, band: 2, bandOben: 8, nackenGanz: false, winkelUnten: 58, winkelOben: 15, oeffnungsart: 'kippen', zugWeite: 0.5, rille: 0.012, platte: 10, beutel: 0.5, haps: 0, hapsTiefe: 0.12, hapsHoehe: 0.14, hapsWeite: 0.06, hapsRadius: 0.6 };
+export const MAUL_STANDARD: MaulOptionen = { reihen: 3, tiefe: 0.9, linse: 0.03, lippenDicke: 0.03, unterkieferRueck: 1, rachenTiefe: 0.7, rachenInnen: 0.55, schaedelHinter: 0.45, lippenSchaerfe: 1e6, band: 2, bandOben: 8, nackenGanz: false, winkelUnten: 58, winkelOben: 15, oeffnungsart: 'kippen', zugWeite: 0.5, rille: 0.012, platte: 10, beutel: 0.5, haps: 0, hapsTiefe: 0.12, hapsHoehe: 0.14, hapsWeite: 0.06, hapsRadius: 0.6 };
 
 /** Maul-Optionen je vorgefertigter Lage: vorn/unten kippen (Rex), hals zieht (Drache) mit ruhigem Schädel. */
 export function maulOptionenVorlage(art: 'vorn' | 'unten' | 'hals'): Partial<MaulOptionen> {
@@ -142,10 +144,13 @@ export type MaulLage = SchlitzLage & {
   platte?: { winkelY: number; winkelZ: number };
   /** rechter Arm des Plattenmauls im Kappengitter, von der Mitte (c/2, c/2) zum Winkel (Spalte a, Zeile b) */
   kappenPfad?: [number, number][];
-  /** Kiefer getrennt (M2): Höhe v der Unterkieferkante (blau) je Pfadpunkt t = 0 … m, über der Lippe; fehlt = Kiefer gleich. Nur Ringpfad. */
-  untenV?: number[];
-  /** Kiefer getrennt: Höhe v der Oberlippe je Pfadpunkt (Kappenzeilen haben in `hoehe` keine Sprossenhöhe) */
-  obenV?: number[];
+  /**
+   * Kiefer getrennt (M2, Klappe): Die Schleife liegt an der blauen Unterkieferkante; `lippeV` ist die Höhe v der roten
+   * Oberlippenkante je Pfadpunkt t = 0 … m (unter der Schleife), `schleifeV` die Höhe der Schleife selbst (Kappenzeilen
+   * haben in `hoehe` keine Sprossenhöhe). Fehlen sie, sind die Kiefer gleich. Nur Ringpfad.
+   */
+  lippeV?: number[];
+  schleifeV?: number[];
 };
 
 /** Art je Käfigpunkt: 0 Haut, 1 Lippe oben, 2 Lippe unten, 3 Tasche oben, 4 Tasche unten, 6 Winkelsäule, 7 Innenseite der Oberlippe (Kiefer getrennt; fest wie die Kette, folgt dem Schädel), 8 Zahnfleischkante des Unterkiefers (Kiefer getrennt; fest, folgt dem Unterkiefer) */
@@ -165,6 +170,8 @@ export type MaulAbleitung = {
   tiefe: Float64Array;
   /** Abstand zur Lippenkante (Welt) je Käfigpunkt, Unterlippenseite 0/1 */
   lippenAbstand: Float64Array;
+  /** Kiefer getrennt: Maße der überhängenden Oberlippe je Pfadpunkt t = 0 … m (Ruhelage, Käfigziele): roter Rand auf der Haut, Einwärtsrichtung, Dicke, Höhe; das Band-Netz baut `klappeNetz` */
+  klappe?: { rand: Float64Array; inw: Float64Array; dicke: Float64Array; hoehe: Float64Array };
   untenSeite: Float64Array;
   /** Herkunft (Vorlagen-Index) je Käfigpunkt, für Deskriptoren */
   quelle: Int32Array;
@@ -397,7 +404,12 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie):
   const rS = flach ? 0 : Math.min(c / 2 - 1, Math.max(anfang !== undefined ? 1 : 0, Math.round(linie.unterSpitze ?? 0)));
   const bL = c / 2 - rS;
   const jL = (3 * c) / 2 - bL;
-  const ende = linie.fv[linie.fv.length - 1]!;
+  // Kiefer getrennt (M2, Klappe): die Schleife folgt der blauen Unterkieferkante (`unten`), die rote Linie (`fv`) wird
+  // der Rand der darüberhängenden Oberlippe; Anfang, Spitze und Winkel kommen weiter aus `fv`
+  const getrennt = !!linie.unten && linie.unten.length >= 2;
+  const hoehen: MaulLinie = getrennt ? { fv: linie.unten! } : linie;
+  const endeRot = linie.fv[linie.fv.length - 1]!;
+  const ende = getrennt ? { f: endeRot.f, v: Math.max(endeRot.v, lippenHoehe(hoehen, endeRot.f)) } : endeRot;
   const fRinge = spineAnteile(l, st.ringe);
   // Anfang auf der Kontur: Ziel der Bauchnaht der Lippen-Kappenzeile ist der gezeichnete Anfang (Bauchpunkt bei f;
   // `zieleBerechnen` setzt den Punkt dorthin). Liegt der Anfang hinter der Kappenzeile, rückt die Zeile auf seinen
@@ -438,7 +450,7 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie):
     fRinge[k] = ende.f;
   }
   const vRing = new Float64Array(R).fill(NaN);
-  for (let i = 0; i < k; i++) vRing[i] = lippenHoehe(linie, fRinge[i]!);
+  for (let i = 0; i < k; i++) vRing[i] = Math.max(lippenHoehe(linie, fRinge[i]!), lippenHoehe(hoehen, fRinge[i]!));
   vRing[k] = ende.v;
   if (platte) {
     // Mitte der Platte auf der gezeichneten Starthöhe, keine Ringlippe
@@ -447,34 +459,29 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie):
   }
   const fKappen = spineAnteile(l, st.kappen.vorn);
   const vKappe = new Float64Array(c / 2).fill(NaN);
-  for (let r = 1; r < c / 2; r++) vKappe[r] = lippenHoehe(linie, fKappen[r - 1]!);
+  for (let r = 1; r < c / 2; r++) vKappe[r] = Math.max(lippenHoehe(linie, fKappen[r - 1]!), lippenHoehe(hoehen, fKappen[r - 1]!));
   const front = platte && linie.front && linie.front.length >= 2 ? linie.front : undefined;
-  // Kiefer getrennt (M2): Höhe der Unterkieferkante je Pfadpunkt (Kappe: Quadratring max(t, rS), Ringe: Ring i), nie
-  // unter der Lippe (Überbiss; ein Unterbiss ist noch nicht gebaut); an der Naht (t = 0) und am Winkel gleich der Lippe
-  let untenV: number[] | undefined;
-  let obenV: number[] | undefined;
-  if (!platte && linie.unten && linie.unten.length >= 2) {
-    const lu: MaulLinie = { fv: linie.unten };
-    untenV = [];
-    obenV = [];
+  // Kiefer getrennt (M2): Höhe der roten Lippenkante und der Schleife je Pfadpunkt (Kappe: Quadratring max(t, rS),
+  // Ringe: Ring i); die rote Kante nie über der Schleife (Überbiss; ein Unterbiss ist noch nicht gebaut)
+  let lippeV: number[] | undefined;
+  let schleifeV: number[] | undefined;
+  if (!platte && getrennt) {
+    lippeV = [];
+    schleifeV = [];
     const mPfad = c / 2 + k;
     for (let t = 0; t <= mPfad; t++) {
       let f: number;
-      let vO: number;
       if (t <= c / 2) {
         const r = Math.max(t, rS);
         f = r === 0 ? 0 : fKappen[r - 1]!;
-        vO = lippenHoehe(linie, f);
-      } else {
-        const i = t - c / 2;
-        f = fRinge[i]!;
-        vO = i === k ? ende.v : lippenHoehe(linie, f);
-      }
-      untenV.push(t === 0 || t === mPfad ? vO : Math.max(vO, Math.min(LIPPE_V_MAX, lippenHoehe(lu, f))));
-      obenV.push(vO);
+      } else f = fRinge[t - c / 2]!;
+      const vS = t === mPfad ? ende.v : Math.max(lippenHoehe(linie, f), lippenHoehe(hoehen, f));
+      const vR = t === mPfad ? vS : Math.min(vS, Math.max(LIPPE_V_MIN, lippenHoehe(linie, f)));
+      lippeV.push(vR);
+      schleifeV.push(vS);
     }
   }
-  return { bL, jL, k, m: c / 2 + k, vRing, vKappe, ...(untenV && obenV ? { untenV, obenV } : {}), ...(anfangPunkt ? { anfang: anfangPunkt } : {}), ...(platte ? { platte } : {}), ...(front ? { front } : {}), winkel, start: anfangPunkt ?? { x: spitze.x, y: spitze.y } };
+  return { bL, jL, k, m: c / 2 + k, vRing, vKappe, ...(lippeV && schleifeV ? { lippeV, schleifeV } : {}), ...(anfangPunkt ? { anfang: anfangPunkt } : {}), ...(platte ? { platte } : {}), ...(front ? { front } : {}), winkel, start: anfangPunkt ?? { x: spitze.x, y: spitze.y } };
 }
 
 /** Plattenmaul: Treppe im Kappengitter von der Mitte (c/2, c/2) zum inneren Winkel (aW, bW), abwechselnd seitwärts und abwärts. */
@@ -529,8 +536,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
   const { N, c } = v;
   const n0 = v.kaefig.n;
   const { bL, jL, k } = lage;
-  // Kiefer getrennt (M2): zwei Lippenreihen (Boden, Innenseite) plus mindestens zwei Linsenreihen
-  const K = Math.max(lage.untenV && !lage.platte ? 4 : 1, opt.reihen);
+  const K = Math.max(1, opt.reihen);
   // Pfad (obere Kopie = Vorlagenindex)
   const pfad: number[] = [];
   const pfadLinks: number[] = [];
@@ -779,12 +785,13 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     for (let j = 0; j < N; j++) for (let d = 0; d < 3; d++) c3[d] = c3[d]! + zieleV[3 * v.ringPunkt(ring, j) + d]! / N;
     return Math.hypot(c3[0] - p[0], c3[1] - p[1], c3[2] - p[2]);
   };
-  // Kiefer getrennt (M2): keine Rille (die untere Kette liegt überall eigenständig innen, nach `stationBei`)
-  const getrennt = !!lage.untenV && !treppe;
+  // Kiefer getrennt (M2): die Rille gilt auch hier (beide Kopien in der Rille; die Unterkieferkante rückt unten zusätzlich
+  // nach innen und etwas tiefer — eine Kopie auf der Haut neben einer eingerückten lag unter dem oberen Linsenblatt)
+  const getrennt = !!lage.lippeV && !treppe;
   for (let t = 0; t < m; t++) {
     const p = P(pfad[t]!);
     const r3 = innenRichtung(t);
-    const e = getrennt ? 0 : Math.min(opt.rille * H * (1 - (t / m) * (t / m)), 0.4 * mitteAbstand(t));
+    const e = Math.min(opt.rille * H * (1 - (t / m) * (t / m)), 0.4 * mitteAbstand(t));
     const q: [number, number, number] = [p[0] + r3[0] * e, p[1] + r3[1] * e, t === 0 ? 0 : p[2] + r3[2] * e];
     setze(pfad[t]!, q);
     setze(unten[t]!, q);
@@ -997,150 +1004,119 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
   art[pfadLinks[m]!] = 6;
   untenSeite[pfad[m]!] = 0.5;
   untenSeite[pfadLinks[m]!] = 0.5;
-  // Kiefer getrennt (M2, Überbiss): Die Unterkieferkante (untere Kopie) liegt um dv (aus `lage.untenV`) höher **auf
-  // dem Ring** (am Käfigring entlang gelaufen, nicht an der Tangente: der Ring läuft an der Schnauze schon um die Ecke)
-  // und doppelt so tief innen wie die Oberlippe dick ist. Die Oberlippe ist ein U: Reihe 1 = Lippenboden (Lippendicke
-  // innen auf der Höhe der Lippe), Reihe 2 = Innenseite (auf der Höhe der Unterkieferkante, mindestens eine Dicke höher,
-  // einfach tief innen), ab Reihe 3 die Linse. So läuft der Unterkiefer geschlossen in den Oberkiefer (Florians Rex),
-  // die Oberlippe hängt als Band darüber. Das U gilt auf der ganzen Länge, an der Naht (t = 0) mit Dicke 0 (Reihen auf
-  // der Lippe): Jeder Wechsel der Bauweise entlang des Pfads (Linse ↔ U) lässt die steigende untere Kette durch das
-  // obere Blatt laufen (100–220 Paare). Auf der Kappe zeigt „innen“ zur Spiegelebene (die Ringmitte liegt hinter der
-  // Kappe; dorthin versetzte Reihen lagen auf den Reihen der nächsten Spalte: 250–480 Paare an der Spitze).
-  const innenFlaeche: [number, number, number][] = [];
-  const lippenBoden: ([number, number, number] | null)[] = [];
-  // Kiefer getrennt: Zahnfleischkante des Unterkiefers (blaue Höhe, innen) = erste untere Taschenreihe je U-Spalte
-  const zahnfleischU: [number, number, number][] = [];
-  if (getrennt) {
-    // Vorpass: Lippendicke je Spalte nach der örtlichen Dicke (Schnauzenspitze), seitlich innerhalb der Hälfte (sonst
-    // durch die Spiegelebene); ein U gibt es nur an Ringspalten, deren Dicke mindestens 40 % der Solldicke trägt (ein
-    // kleineres U ist ein Splitter und kreuzt die Lippe), sonst bleibt die Spalte Linse mit der Unterlippe in der Rille
-    const dickeT: number[] = [];
-    const uOK: boolean[] = [];
-    for (let t = 0; t < m; t++) {
+  // Kiefer getrennt (M2, Überbiss — Florian 15.10.: „die blaue und die rote Linie geben genau die Lippenkanten vor; von
+  // unten sehe ich die Maultasche des Oberkiefers, nicht den grünen Lappen“): Die Schleife liegt an der blauen
+  // Unterkieferkante. Im Käfig wird nur der Unterkiefer zurückgesetzt: seine Lippenkante (untere Kopie) liegt doppelt so
+  // tief innen wie die Oberlippe dick ist, seine Haut darunter bis unter die rote Kante ebenso (auslaufend) — der
+  // Unterkiefer ist schmaler und ragt geschlossen hinein. Die überhängende Oberlippe selbst (Klappe von der Schleife bis
+  // zur roten Kante, mit Boden und Innenseite) ist **kein Teil des Käfigs**, sondern ein eigenes Band-Netz
+  // (`klappeNetz`): als Käfigreihen kreuzte sie sich an jedem Wechsel der Bauweise entlang des Pfads und an dünnen Stellen
+  // (sieben Anläufe, 300–900 Paare). Hier werden je Spalte nur ihre Maße gemerkt (Rand auf der ungesetzten Haut).
+  // Kappenspalten (Schnauzenspitze/Kinn) bleiben Linse mit beiden Kopien in der Rille, ab der ersten Ringspalte wächst
+  // die Rücksetzung über drei Spalten an.
+  const klappe = getrennt ? { rand: new Float64Array(3 * (m + 1)), inw: new Float64Array(3 * (m + 1)), dicke: new Float64Array(m + 1), hoehe: new Float64Array(m + 1) } : null;
+  if (getrennt && klappe) {
+    for (let t = 0; t <= m; t++) {
       const p = P(pfad[t]!);
       const g = gitterLage(v, pfad[t]!);
-      const d = t === 0 ? 0 : Math.min(opt.lippenDicke * H, 0.2 * dickeAn(p), 0.3 * Math.abs(p[2]));
-      dickeT.push(d);
-      uOK.push(g.art === 'ring' && d >= 0.4 * opt.lippenDicke * H);
-    }
-    for (let t = 0; t < m; t++) {
-      const p = P(pfad[t]!);
-      const g = gitterLage(v, pfad[t]!);
-      const r0: [number, number, number] = innenRichtung(t);
-      if (!uOK[t]) {
-        // Linse wie bei gleichen Kiefern: beide Kopien in der Rille (nur die untere innen ließ die Blätter an der Spitze
-        // aneinanderliegen: 240 Paare); die Ketten sind dort bitgleich (Versatz der Ziele 0)
-        const e = Math.min(opt.rille * H * (1 - (t / m) * (t / m)), 0.4 * mitteAbstand(t));
-        const q: [number, number, number] = [p[0] + r0[0] * e, p[1] + r0[1] * e, t === 0 ? 0 : p[2] + r0[2] * e];
-        setze(pfad[t]!, q);
-        setze(unten[t]!, q);
-        if (t > 0) {
-          setze(pfadLinks[t]!, spiegel(q));
-          setze(untenLinks[t]!, spiegel(q));
-        }
-        lippenBoden.push(null);
-        innenFlaeche.push(p);
-        zahnfleischU.push(p);
-        continue;
-      }
+      // Rücksetzung wächst ab der ersten Ringspalte über drei Spalten an und läuft zum Winkel hin aus (dort treffen sich
+      // die Lippen; eine volle Rücksetzung neben dem Winkel faltete beim Öffnen die Haut unter dem Maul: Kugel 100–260)
+      const anlauf = t === m ? 0 : g.art === 'ring' ? Math.min(1, (t - c / 2 - 1) / 3, (m - t) / 3) : 0;
+      const r3 = innenRichtung(Math.min(t, m));
+      klappe.rand.set(p, 3 * t);
+      klappe.inw.set([r3[0], r3[1], t === 0 ? 0 : r3[2]], 3 * t);
+      if (t === m) continue;
+      if (anlauf <= 0 || g.art !== 'ring') continue;
       const st = stationBei(p);
-      const dicke = dickeT[t]!;
-      // der Anstieg der Unterkieferkante beginnt erst in der zweiten U-Spalte (in der ersten läge die steigende Kette
-      // über dem Boden der Nachbarspalte ohne U)
-      const dvU = uOK[t - 1] ? Math.max(0, lage.untenV![t]! - lage.obenV![t]!) : 0;
+      const dicke = Math.min(opt.lippenDicke * H, 0.2 * dickeAn(p), 0.3 * Math.abs(p[2])) * anlauf;
       const ob = obenBei(t);
       const rs = ob[0] * st.dx + ob[1] * st.dy;
       const rung: [number, number] = rs >= 0 ? [st.dx, st.dy] : [-st.dx, -st.dy];
       const hoeheVon = (q: readonly [number, number, number]) => (q[0] - st.cx) * rung[0] + (q[1] - st.cy) * rung[1];
-      /** Hautpunkt um dv (Sprossenanteil) über der Lippe (am Ring entlang nach oben) und die Einwärtsrichtung dort */
-      const hautBei = (dv: number): { haut: [number, number, number]; inw: [number, number, number] } => {
-        if (!(dv > 0) || g.art !== 'ring') return { haut: p, inw: r0 };
-        const ziel = hoeheVon(p) + dv * st.H;
+      const waagerecht = (q: readonly [number, number, number]): [number, number, number] => {
+        const dr = q[0] * rung[0] + q[1] * rung[1];
+        const rh: [number, number, number] = [q[0] - dr * rung[0], q[1] - dr * rung[1], q[2]];
+        const l = Math.hypot(...rh);
+        return l > 1e-9 ? [rh[0] / l, rh[1] / l, rh[2] / l] : [0, 0, p[2] > 0 ? -1 : 1];
+      };
+      const r0 = waagerecht(r3);
+      const hoeheKlappe = Math.max(0, lage.schleifeV![t]! - lage.lippeV![t]!) * st.H * anlauf;
+      // roter Lippenrand: am Ring entlang nach unten (größere j) um die Klappenhöhe, auf der noch ungesetzten Haut
+      let rand: [number, number, number] = p;
+      if (hoeheKlappe > 0) {
+        const ziel = hoeheVon(p) - hoeheKlappe;
         let vorher = p;
-        let haut: [number, number, number] = p;
-        let tang: [number, number, number] = ob;
-        for (let jj = g.j - 1; jj >= 0; jj--) {
+        for (let jj = g.j + 1; jj <= N / 2; jj++) {
           const q = P(v.ringPunkt(g.i, jj));
           const hq = hoeheVon(q);
           const hp = hoeheVon(vorher);
-          tang = [q[0] - vorher[0], q[1] - vorher[1], q[2] - vorher[2]];
-          if (hq >= ziel) {
-            const u = hq > hp ? Math.min(1, Math.max(0, (ziel - hp) / (hq - hp))) : 1;
-            haut = lerp3(vorher, q, u);
+          if (hq <= ziel) {
+            rand = lerp3(vorher, q, hp > hq ? Math.min(1, Math.max(0, (hp - ziel) / (hp - hq))) : 1);
             break;
           }
           vorher = q;
-          haut = q;
+          rand = q;
         }
+      }
+      klappe.rand.set(rand, 3 * t);
+      klappe.inw.set(r0, 3 * t);
+      klappe.dicke[t] = dicke;
+      klappe.hoehe[t] = hoeheKlappe;
+      // Unterkieferkante (untere Kopie): doppelt tief innen und eine halbe Dicke unter der Schleife (unter dem oberen
+      // Linsenblatt hindurch)
+      const rueck = Math.min(2 * dicke, 0.45 * Math.abs(p[2]) || 2 * dicke);
+      const kante: [number, number, number] = [p[0] + r0[0] * rueck - ob[0] * 0.5 * dicke, p[1] + r0[1] * rueck - ob[1] * 0.5 * dicke, p[2] + r0[2] * rueck - ob[2] * 0.5 * dicke];
+      setze(unten[t]!, kante);
+      if (t > 0) setze(untenLinks[t]!, spiegel(kante));
+      // obere Kopie eine halbe Dicke höher (unter dem Band verborgen): das obere Linsenblatt beginnt über der Kante;
+      // zum Winkel hin auslaufend (an der letzten Spalte berührten sich sonst die oberen Taschenreihen, 6 Paare)
+      const pO = P(pfad[t]!);
+      const hoch = 0.5 * dicke * Math.min(1, (m - 1 - t) / 2);
+      const oben: [number, number, number] = [pO[0] + ob[0] * hoch, pO[1] + ob[1] * hoch, t === 0 ? 0 : pO[2] + ob[2] * hoch];
+      setze(pfad[t]!, oben);
+      if (t > 0) setze(pfadLinks[t]!, spiegel(oben));
+      // Unterkieferhaut unter der Schleife zurücksetzen: voll bis zur roten Kante, darunter über drei Dicken auslaufend;
+      // der erste Ringpunkt darunter mindestens zu 70 % (die Ringe liegen weiter auseinander als die Klappe hoch ist)
+      const hS = hoeheVon(p);
+      for (let jj = g.j + 1; jj < N / 2; jj++) {
+        const idx = v.ringPunkt(g.i, jj);
+        const q = P(idx);
+        const unter = hS - hoeheVon(q);
+        let w = unter <= hoeheKlappe ? 1 : Math.max(0, 1 - (unter - hoeheKlappe) / (3 * dicke));
+        if (jj === g.j + 1) w = Math.max(w, 0.7);
+        w *= opt.unterkieferRueck;
+        if (w <= 0) break;
         const c3 = ringMitteRoh(g.i);
-        const d3: [number, number, number] = [c3[0] - haut[0], c3[1] - haut[1], c3[2] - haut[2]];
-        const tl = Math.hypot(...tang) || 1;
-        const tn: [number, number, number] = [tang[0] / tl, tang[1] / tl, tang[2] / tl];
-        const dot = d3[0] * tn[0] + d3[1] * tn[1] + d3[2] * tn[2];
-        const r3: [number, number, number] = [d3[0] - dot * tn[0], d3[1] - dot * tn[1], d3[2] - dot * tn[2]];
-        // waagerecht einwärts (ohne Anteil längs der Sprosse): über dem Ringäquator zeigte „zur Ringmitte“ nach unten,
-        // die Zahnfleischkante landete wieder auf Lippenhöhe
-        const dr = r3[0] * rung[0] + r3[1] * rung[1];
-        const rh: [number, number, number] = [r3[0] - dr * rung[0], r3[1] - dr * rung[1], r3[2]];
-        const l = Math.hypot(...rh) || 1;
-        return { haut, inw: [rh[0] / l, rh[1] / l, rh[2] / l] };
-      };
-      // Boden eine halbe Dicke nach oben geneigt: die untere Kette der Nachbarspalte ohne U (in der Rille, auf
-      // Lippenhöhe) läuft so unter dem Boden durch statt in seiner Ebene (36 Paare)
-      const boden: [number, number, number] = [p[0] + r0[0] * dicke + ob[0] * 0.5 * dicke, p[1] + r0[1] * dicke + ob[1] * 0.5 * dicke, p[2] + r0[2] * dicke + ob[2] * 0.5 * dicke];
-      const dvO = Math.max(dvU, st.H > 0 ? dicke / st.H : 0);
-      const o2 = hautBei(dvO);
-      // Einwärtsmaße höchstens ein Teil der halben Breite dort (dünne Schnauze: 2,5 Dicken wären 65 % der Breite)
-      const dI = Math.min(dicke, 0.2 * Math.abs(o2.haut[2]) || dicke);
-      const innen: [number, number, number] = [o2.haut[0] + o2.inw[0] * dI, o2.haut[1] + o2.inw[1] * dI, o2.haut[2] + o2.inw[2] * dI];
-      const u2 = hautBei(dvU);
-      // Zahnfleischkante des Unterkiefers: auf der blauen Höhe, 2,5 Dicken innen (unter der Innenseite, mit Luft)
-      const dG = Math.min(2.5 * dicke, 0.45 * Math.abs(u2.haut[2]) || 2.5 * dicke);
-      const kante: [number, number, number] = [u2.haut[0] + u2.inw[0] * dG, u2.haut[1] + u2.inw[1] * dG, u2.haut[2] + u2.inw[2] * dG];
-      // sichtbare Unterlippe (untere Kopie): eine halbe Dicke unter und innerhalb der Oberlippenkante — Florian: „Unterkiefer
-      // ragt geschlossen etwas hinein“; lag die Kopie selbst auf der blauen Höhe innen, klaffte unter der Oberlippe eine Rinne
-      const lippeU: [number, number, number] = [p[0] + 0.5 * dicke * (r0[0] - ob[0]), p[1] + 0.5 * dicke * (r0[1] - ob[1]), p[2] + 0.5 * dicke * (r0[2] - ob[2])];
-      lippenBoden.push(boden);
-      innenFlaeche.push(innen);
-      zahnfleischU.push(kante);
-      setze(unten[t]!, lippeU);
-      if (t > 0) setze(untenLinks[t]!, spiegel(lippeU));
+        const inw = waagerecht([c3[0] - q[0], c3[1] - q[1], c3[2] - q[2]]);
+        const e2 = Math.min(rueck, 0.45 * Math.abs(q[2])) * w;
+        const nq: [number, number, number] = [q[0] + inw[0] * e2, q[1] + inw[1] * e2, q[2] + inw[2] * e2];
+        setze(idx, nq);
+        setze(v.ringPunkt(g.i, N - jj), spiegel(nq));
+      }
     }
   }
-  const lippenReihen = getrennt ? 2 : 0;
   for (let r = 1; r <= K; r++) {
     const s = (opt.tiefe * r) / K;
-    // obere Reihen bei getrennten Kiefern: nach den Lippenreihen von der Innenseite zum Rachen
-    const sO = getrennt ? (K > lippenReihen ? (opt.tiefe * (r - lippenReihen)) / (K - lippenReihen) : 0) : s;
     for (let t = 0; t < m; t++) {
       const p = P(pfad[t]!);
       const pu = P(unten[t]!);
       const T = Tvon(t);
-      const mitU = getrennt && lippenBoden[t] !== null;
-      const innenReihe = mitU && r <= lippenReihen;
-      const lippenPunkt = innenReihe ? (r === 1 ? lippenBoden[t]! : innenFlaeche[t]!) : null;
-      const basisO = lippenPunkt ?? (mitU ? lerp3(innenFlaeche[t]!, T, sO) : lerp3(p, T, s));
-      // untere Reihen bei U-Spalten: Reihe 1 = Zahnfleischkante (blau, innen), danach von dort zum Rachen
-      const zahnReihe = mitU && r === 1;
-      const basisU = zahnReihe ? zahnfleischU[t]! : mitU ? lerp3(zahnfleischU[t]!, T, K > 1 ? (opt.tiefe * (r - 1)) / (K - 1) : 0) : lerp3(pu, T, s);
+      const basisO = lerp3(p, T, s);
+      const basisU = lerp3(pu, T, s);
       const nrm = normale(t);
       const linse = linseAn(lerp3(p, T, s)) * (0.4 + (0.6 * r) / K);
-      const linseO = innenReihe ? 0 : linse;
-      const linseU = zahnReihe ? 0 : linse;
-      const o: [number, number, number] = [basisO[0] + nrm[0] * linseO, basisO[1] + nrm[1] * linseO, t === 0 ? 0 : basisO[2] + nrm[2] * linseO];
-      const u: [number, number, number] = [basisU[0] - nrm[0] * linseU, basisU[1] - nrm[1] * linseU, t === 0 ? 0 : basisU[2] - nrm[2] * linseU];
+      const o: [number, number, number] = [basisO[0] + nrm[0] * linse, basisO[1] + nrm[1] * linse, t === 0 ? 0 : basisO[2] + nrm[2] * linse];
+      const u: [number, number, number] = [basisU[0] - nrm[0] * linse, basisU[1] - nrm[1] * linse, t === 0 ? 0 : basisU[2] - nrm[2] * linse];
       setze(tasche.oben[r - 1]![t]!, o);
       setze(tasche.unten[r - 1]![t]!, u);
       quelle[tasche.oben[r - 1]![t]!] = pfad[t]!;
       quelle[tasche.unten[r - 1]![t]!] = pfad[t]!;
       hoehe[tasche.oben[r - 1]![t]!] = hoeheV[pfad[t]!]!;
       hoehe[tasche.unten[r - 1]![t]!] = hoeheV[pfad[t]!]!;
-      // Kiefer getrennt: die Lippenreihen (Boden, Innenseite) sind Art 7 ohne Rachentiefe
-      art[tasche.oben[r - 1]![t]!] = innenReihe ? 7 : 3;
-      art[tasche.unten[r - 1]![t]!] = zahnReihe ? 8 : 4;
-      tiefe[tasche.oben[r - 1]![t]!] = innenReihe ? 0 : r / K;
-      tiefe[tasche.unten[r - 1]![t]!] = zahnReihe ? 0 : r / K;
-      if (zahnReihe) hoehe[tasche.unten[r - 1]![t]!] = lage.untenV![t]!;
+      art[tasche.oben[r - 1]![t]!] = 3;
+      art[tasche.unten[r - 1]![t]!] = 4;
+      tiefe[tasche.oben[r - 1]![t]!] = r / K;
+      tiefe[tasche.unten[r - 1]![t]!] = r / K;
       untenSeite[tasche.unten[r - 1]![t]!] = 1;
       if (t > 0) {
         setze(tasche.obenLinks[r - 1]![t]!, spiegel(o));
@@ -1149,11 +1125,10 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
         quelle[tasche.untenLinks[r - 1]![t]!] = pfadLinks[t]!;
         hoehe[tasche.obenLinks[r - 1]![t]!] = hoeheV[pfadLinks[t]!]!;
         hoehe[tasche.untenLinks[r - 1]![t]!] = hoeheV[pfadLinks[t]!]!;
-        art[tasche.obenLinks[r - 1]![t]!] = innenReihe ? 7 : 3;
-        art[tasche.untenLinks[r - 1]![t]!] = zahnReihe ? 8 : 4;
-        tiefe[tasche.obenLinks[r - 1]![t]!] = innenReihe ? 0 : r / K;
-        tiefe[tasche.untenLinks[r - 1]![t]!] = zahnReihe ? 0 : r / K;
-        if (zahnReihe) hoehe[tasche.untenLinks[r - 1]![t]!] = lage.untenV![t]!;
+        art[tasche.obenLinks[r - 1]![t]!] = 3;
+        art[tasche.untenLinks[r - 1]![t]!] = 4;
+        tiefe[tasche.obenLinks[r - 1]![t]!] = r / K;
+        tiefe[tasche.untenLinks[r - 1]![t]!] = r / K;
         untenSeite[tasche.untenLinks[r - 1]![t]!] = 1;
       }
     }
@@ -1230,10 +1205,6 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     ];
     // Kiefer getrennt: Boden- und Innenreihe der Oberlippe sind Falten (sonst rundet die Unterteilung das U weg und die
     // Kontrollpunkte schießen 2 % der Höhe über die Haut hinaus: Innenseite vor der Schnauzenspitze, 240 Paare)
-    if (lippenBoden[t] && lippenBoden[t + 1]) {
-      for (let r = 1; r <= lippenReihen; r++) paare.push([O(r, t, false), O(r, t + 1, false)], [O(r, t, true), O(r, t + 1, true)]);
-      paare.push([U(1, t, false), U(1, t + 1, false)], [U(1, t, true), U(1, t + 1, true)]);
-    }
     for (const [a, b] of paare) {
       const ke = kanteZwischen(kaefig, a, b);
       if (ke >= 0) kaefig.eSchaerfe[ke] = opt.lippenSchaerfe;
@@ -1395,6 +1366,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     art,
     tiefe,
     lippenAbstand,
+    ...(klappe ? { klappe } : {}),
     untenSeite,
     quelle,
     gewichtUnten,
@@ -1456,7 +1428,7 @@ export function ableitenMitMaul(dok: Dokument, linie: MaulLinie, optionen: Parti
       [info.pfad[t]!, info.unten[t]!],
       [info.pfadLinks[t]!, info.untenLinks[t]!],
     ]) {
-      for (let d = 0; d < 3; d++) xyz[3 * u! + d] = xyz[3 * o! + d]! + (info.lage.untenV ? mk.ziele[3 * u! + d]! - mk.ziele[3 * o! + d]! : 0);
+      for (let d = 0; d < 3; d++) xyz[3 * u! + d] = xyz[3 * o! + d]! + (info.lage.lippeV ? mk.ziele[3 * u! + d]! - mk.ziele[3 * o! + d]! : 0);
     }
   }
   // Taschenpunkte gegen die Lippenketten nachlösen, mit Glättung: Ihre Grenzlagen hängen nur von Tasche und Ketten ab (scharfe Falten).

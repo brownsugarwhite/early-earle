@@ -13,6 +13,7 @@ import { LIPPE_V_MIN, type MaulErgebnis, type MaulLinie, type MaulOptionen, able
 import { halsVerbreitern, kastenSpanten } from './kasten';
 import { pruefwesenBauplan } from './wesen';
 import { kernLeiter } from './ableiten';
+import { klappeNetz } from './klappe';
 import tigerJson from '../versuch/vorlagen/tiger.json';
 
 declare const console: { log: (...a: unknown[]) => void };
@@ -172,19 +173,25 @@ describe('Beweis 2: Maul mit Haps', () => {
     const r = pruefenLinie('Rex Überbiss', rex, plan.maulLinie!, 'vorn', 2, plan.maulOptionen ?? {});
     expect(r.pr.ok).toBe(true);
     const m = r.abl.maul;
-    expect(m.lage.untenV).toBeDefined();
-    // in der Maulmitte liegt die Zahnfleischkante des Unterkiefers (erste untere Taschenreihe) deutlich über der Oberlippe
-    // (≥ 2 % der Höhe) und innen; die sichtbare Unterlippe (untere Kopie) knapp unter und innerhalb der Oberlippenkante
+    expect(m.lage.lippeV).toBeDefined();
+    expect(m.klappe).toBeDefined();
+    // Klappe (Band-Netz): der rote Lippenrand hängt in der Maulmitte deutlich unter der Schleife (≥ 2 % der Höhe);
+    // die Unterkieferkante (untere Kopie) liegt innen (näher an der Achse als die Schleife)
     let ueberbiss = 0;
     for (let t = 1; t < m.lage.m; t++) {
       const o = m.pfad[t]!;
       const u = m.unten[t]!;
-      const g = m.tasche.unten[0]![t]!;
-      ueberbiss = Math.max(ueberbiss, r.abl.fein[3 * g + 1]! - r.abl.fein[3 * o + 1]!);
-      expect(Math.abs(r.abl.fein[3 * g + 2]!), `Zahnfleisch t=${t}`).toBeLessThanOrEqual(Math.abs(r.abl.fein[3 * o + 2]!) + 1e-6);
-      expect(r.abl.fein[3 * u + 1]!, `Unterlippe t=${t}`).toBeLessThanOrEqual(r.abl.fein[3 * o + 1]! + 1e-6);
+      ueberbiss = Math.max(ueberbiss, r.abl.kaefig.xyz[3 * o + 1]! - m.klappe!.rand[3 * t + 1]!);
+      expect(Math.abs(r.abl.fein[3 * u + 2]!), `Unterkieferkante t=${t}`).toBeLessThanOrEqual(Math.abs(r.abl.fein[3 * o + 2]!) + 1e-6);
     }
     expect(ueberbiss).toBeGreaterThan(0.015);
+    // das Band-Netz steht (Dreiecke) und hängt beim Öffnen am Schädel (es folgt der Schleife, nicht dem Unterkiefer)
+    const zu = klappeNetz(r.abl, maulPose(r.abl, 0).xyz, 0, null, null)!;
+    const auf = klappeNetz(r.abl, maulPose(r.abl, 1).xyz, 1, null, null)!;
+    expect(zu.positionen.length).toBeGreaterThan(300);
+    let yZu = 0, yAuf = 0;
+    for (let i = 1; i < zu.positionen.length; i += 3) { yZu += zu.positionen[i]!; yAuf += auf.positionen[i]!; }
+    expect(yAuf).toBeGreaterThan(yZu);
     // die Oberlippe steht vorn über: die Schleife beginnt auf der Kontur hinter der Schnauzenspitze (Kinn)
     expect(m.lage.start.x - l.ruecken[0]!.x).toBeGreaterThan(0.02);
     for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);

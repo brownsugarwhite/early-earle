@@ -50,6 +50,7 @@ const MaulOptionenSchema = z
     tiefe: z.number(),
     linse: z.number(),
     lippenDicke: z.number(),
+    unterkieferRueck: z.number(),
     rachenTiefe: z.number(),
     rachenInnen: z.number(),
     schaedelHinter: z.number(),
@@ -99,6 +100,7 @@ export type MaulOptionenWerte = {
   tiefe: number;
   linse: number;
   lippenDicke: number;
+  unterkieferRueck: number;
   rachenTiefe: number;
   rachenInnen: number;
   schaedelHinter: number;
