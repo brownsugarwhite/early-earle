@@ -386,8 +386,11 @@ function zugKruemmung(zug: readonly V2[], t: number): number {
  * R Ringanteile zwischen f0 und f1: gleichmäßig nach Wirbelsäulenlänge, verdichtet dort, wo Rücken oder Bauch stark
  * gekrümmt sind (Dichte 1 + λ·κ·L, geglättet). Erster und letzter Ring liegen genau bei f0 und f1.
  */
-function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: number): number[] {
-  if (lambda <= 0 || R < 3) {
+/** Maulbereich für die Ringverteilung: zwischen `von` und `bis` (Wirbelsäulen-Anteile) mindestens `ringe` Ringe. */
+export type MaulBereich = { von: number; bis: number; ringe: number };
+
+function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: number, maul?: MaulBereich): number[] {
+  if ((lambda <= 0 && !maul) || R < 3) {
     const out: number[] = [];
     for (let i = 0; i < R; i++) out.push(f0 + ((f1 - f0) * i) / (R - 1));
     return out;
@@ -412,6 +415,32 @@ function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: numbe
     }
     return su / nn;
   });
+  // Maulbereich (14.10. spätnachts): Ein kurzes Maul (Langhals: 0,036 der Wirbelsäule zwischen Kopfringen im Abstand 0,05)
+  // bekäme keinen einzigen Ring — Zusatzdichte im Bereich, so dass er mindestens `ringe` der R − 1 Abstände erhält;
+  // die übrigen Ringe verteilen sich weich um (Rand ±15 % des Bereichs)
+  if (maul && maul.bis > maul.von) {
+    const kVon = ((maul.von - f0) / (f1 - f0)) * M;
+    const kBis = ((maul.bis - f0) / (f1 - f0)) * M;
+    const rand = Math.max(1, 0.15 * (kBis - kVon));
+    const form = (k: number) => {
+      const a = Math.min(1, Math.max(0, (k - (kVon - rand)) / rand));
+      const b = Math.min(1, Math.max(0, (kBis + rand - k) / rand));
+      return Math.min(a, b);
+    };
+    let cM = 0;
+    let cT = 0;
+    let kM = 0;
+    for (let k = 0; k <= M; k++) {
+      cT += dichte[k]!;
+      if (k >= kVon && k <= kBis) cM += dichte[k]!;
+      kM += form(k);
+    }
+    const q = Math.min(0.6, maul.ringe / (R - 1));
+    if (kM > 0 && cM < q * cT) {
+      const w = (q * cT - cM) / (kM * (1 - q));
+      for (let k = 0; k <= M; k++) dichte[k] = dichte[k]! + w * form(k);
+    }
+  }
   const cum = [0];
   for (let k = 1; k <= M; k++) cum.push(cum[k - 1]! + (dichte[k - 1]! + dichte[k]!) / 2);
   const gesamt = cum[M]!;
@@ -475,7 +504,7 @@ export function spineAnteilFuer(l: Leiter, t: number, oben: boolean): number {
  * `kappeMin`: Mindestanteil der vorderen Kappe (Maul, das auf der Kontur hinter der Spitze beginnt: die Kappenzeile der
  * Lippe muss vor Ring 0 liegen).
  */
-export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument, kappeMin?: number): Stationen {
+export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument, kappeMin?: number, maul?: MaulBereich): Stationen {
   const { ringe: R, ring: N, kappe } = opt;
   const c = N / 4;
   let kappeVorn = kappe;
@@ -507,8 +536,10 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument,
   if (kappeMin !== undefined && kappeMin > kappeVorn) kappeVorn = Math.min(0.3, kappeMin);
   // Schritt 3 („Käfig als Wahrheit“): eingefrorene Stationen aus dem Dokument werden nur nachgeführt
   const g = opt.stationen;
-  if (g && g.ringe.length === R && g.vorn.length === c / 2 - 1 && g.hinten.length === c / 2 - 1) return stationenNachfuehren(l, opt, dok, g, eckenRoh, spitzen, kappeMin);
-  const anteile = ringAnteile(l, R, kappeVorn, 1 - kappeHinten, opt.kruemmung);
+  // eingefrorene Stationen gelten nur, wenn das Maul genug Ringe hat (ein neues Maul plant die Verteilung einmal neu)
+  const maulOk = !maul || (g ? g.ringe.filter((f) => f >= maul.von && f <= maul.bis).length >= maul.ringe - 1 : true);
+  if (g && maulOk && g.ringe.length === R && g.vorn.length === c / 2 - 1 && g.hinten.length === c / 2 - 1) return stationenNachfuehren(l, opt, dok, g, eckenRoh, spitzen, kappeMin);
+  const anteile = ringAnteile(l, R, kappeVorn, 1 - kappeHinten, opt.kruemmung, maul);
   const ecken: Ecke[] = [];
   for (const e of eckenRoh) {
     if (kappeMin !== undefined && e.f < kappeVorn) continue;

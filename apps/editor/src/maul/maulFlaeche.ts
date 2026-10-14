@@ -73,13 +73,16 @@ export function hautTiefe(x: number, y: number): number | null {
   if (!n) return null;
   const P = n.netz.positionen;
   const sk = n.skalierung || 1;
-  const fenster = 0.006 * sk;
-  let best = -1;
-  for (let i = 0; i + 2 < P.length; i += 3) {
-    if (Math.abs(P[i]! - x * sk) > fenster || Math.abs(P[i + 1]! - y * sk) > fenster) continue;
-    best = Math.max(best, P[i + 2]!);
+  // Fenster wächst, bis es Netzpunkte findet (auf groben Stellen des Netzes lag sonst keiner darin, die Linie blieb flach)
+  for (let fenster = 0.006 * sk; fenster <= 0.05 * sk; fenster *= 2) {
+    let best = -1;
+    for (let i = 0; i + 2 < P.length; i += 3) {
+      if (Math.abs(P[i]! - x * sk) > fenster || Math.abs(P[i + 1]! - y * sk) > fenster) continue;
+      best = Math.max(best, P[i + 2]!);
+    }
+    if (best > 0) return best / sk;
   }
-  return best > 0 ? best / sk : null;
+  return null;
 }
 
 /** Punkt auf der sichtbaren Fläche unter dem Cursor (Seite: rechte Flanke, Front: vorn), sonst der nächste Flächenpunkt. */

@@ -8,6 +8,7 @@ import { maulAnMarken, maulAnfangBewegen, maulMitMarken } from '../maulKnoten';
 import { lippeAnHaut } from '../lippeHaut';
 import { type Kaefig, alleFlaechen } from '../kaefig/halbkanten';
 import type { Profil } from '../profil';
+import { pfadAbtasten, vollerPfad } from '../profil';
 import type { V3 } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, ableiten, sprossenVon } from './ableiten';
 import { blattAbweichungen } from './abweichung';
@@ -52,7 +53,7 @@ export function feinesNetz(abl: Ableitung): { punkte: V3[]; flaechen: number[][]
  * Faltenmaß: Winkel zwischen den Normalen benachbarter feiner Flächen (Grad). Kanten mit Schärfe in der letzten Stufe
  * (gezeichnete Kanten, Ecken) zählen nicht. Ein glatter Körper bleibt auf Stufe 2–3 deutlich unter 20°.
  */
-export function faltenMass(abl: Ableitung): { max: number; p99: number; ueber20: number; ort: V3 } {
+export function faltenMass(abl: Ableitung, nurFlaeche?: (f: number) => boolean): { max: number; p99: number; ueber20: number; ort: V3 } {
   const { punkte, kaefig } = feinesNetz(abl);
   const normalen = new Float64Array(3 * kaefig.nF);
   for (let f = 0; f < kaefig.nF; f++) {
@@ -83,6 +84,7 @@ export function faltenMass(abl: Ableitung): { max: number; p99: number; ueber20:
     if (t < 0) continue;
     const f1 = kaefig.hFace[h]!;
     const f2 = kaefig.hFace[t]!;
+    if (nurFlaeche && (!nurFlaeche(f1) || !nurFlaeche(f2))) continue;
     const c = normalen[3 * f1]! * normalen[3 * f2]! + normalen[3 * f1 + 1]! * normalen[3 * f2 + 1]! + normalen[3 * f1 + 2]! * normalen[3 * f2 + 2]!;
     const w = (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI;
     winkel.push(w);
@@ -301,13 +303,17 @@ export function kieferVorDokument(kiefer: 'unten' | 'oben', vor: number, hoch = 
 /** Halbe Hautbreite an einem Seitenpunkt aus dem feinen Netz einer Ableitung (größtes z im Fenster), null außerhalb. */
 export function hautAusNetz(abl: Ableitung, fenster = 0.006): (x: number, y: number) => number | null {
   const f = abl.fein;
+  // Fenster wächst, bis es Netzpunkte findet (auf einem groben Netz lagen am Langhals-Kopf keine im kleinen Fenster)
   return (x, y) => {
-    let best = -1;
-    for (let i = 0; i + 2 < f.length; i += 3) {
-      if (Math.abs(f[i]! - x) > fenster || Math.abs(f[i + 1]! - y) > fenster) continue;
-      best = Math.max(best, f[i + 2]!);
+    for (let w = fenster; w <= 8 * fenster; w *= 2) {
+      let best = -1;
+      for (let i = 0; i + 2 < f.length; i += 3) {
+        if (Math.abs(f[i]! - x) > w || Math.abs(f[i + 1]! - y) > w) continue;
+        best = Math.max(best, f[i + 2]!);
+      }
+      if (best > 0) return best;
     }
-    return best > 0 ? best : null;
+    return null;
   };
 }
 
@@ -321,6 +327,78 @@ export function langhalsMaulDokument(roh: Dokument, linieSeite: readonly V2[], l
   const haut = hautAusNetz(ableiten(roh, { stufen: 2 }));
   const pts = linieSeite.map((q, i) => [q.x, q.y, i === 0 ? 0 : Math.abs(linieFront[Math.min(i, linieFront.length - 1)]!.x)] as [number, number, number]);
   const oben = lippeAnHaut(linie3Durch(pts), haut);
+  const mitLinie = { ...roh, maul: { zu: { oben } } } as Dokument;
+  return maulMitMarken(mitLinie, mitLinie.maul!.zu);
+}
+
+/**
+ * Kugel mit Nase über dem Kiefer nach Florians Bild 3 (14.10. spätnachts, `docs/progress/editor/florian-2026-10-14-nase-
+ * ueber-kiefer.webp`): vorderer Seitenknoten nach vorn oben gezogen (senkrechte Griffe), Top vorn mitgezogen; Überbiss
+ * mit rotem Anfang auf der Nasenunterseite und blauem dahinter; Linien auf der Haut des Körpers ohne Maul.
+ */
+export function naseDokument(): Dokument {
+  const d = neuesDokument('kugel-nase');
+  const r = 0.265;
+  const seite = { ...d.profile.seite, knoten: d.profile.seite.knoten.map((k, i) => (i === 3 ? { ...k, p: { x: -1.766 * r, y: r + 0.667 * r }, ein: { x: 0, y: -0.243 * r }, aus: { x: 0.02 * r, y: 0.512 * r } } : k)) };
+  const top = { ...d.profile.top, knoten: d.profile.top.knoten.map((k, i) => (i === 0 ? { ...k, p: { x: -1.766 * r, y: 0 } } : k)) };
+  const roh = { ...d, profile: { ...d.profile, seite, top } } as Dokument;
+  const haut = hautAusNetz(ableiten(roh, { stufen: 2 }));
+  const P = (x: number, y: number): [number, number] => [x * r, r + y * r];
+  const ecke = P(-0.094, -0.158);
+  const rotAnfang = P(-1.108, -0.216);
+  const blauAnfang = P(-0.854, -0.327);
+  const oben = lippeAnHaut(linie3Durch([[rotAnfang[0], rotAnfang[1], 0], [...P(-0.62, -0.19), 0.1], [ecke[0], ecke[1], 0.2]]), haut);
+  const unten = lippeAnHaut(linie3Durch([[blauAnfang[0], blauAnfang[1], 0], [...P(-0.5, -0.25), 0.1], [ecke[0], ecke[1], 0.2]]), (x, y) => {
+    const z = haut(x, y);
+    return z === null ? null : 0.92 * z;
+  });
+  unten.knoten[unten.knoten.length - 1]!.p = [...oben.knoten[oben.knoten.length - 1]!.p];
+  const mitLinien = { ...roh, maul: { zu: { oben, unten } } } as Dokument;
+  let mk = maulMitMarken(mitLinien, mitLinien.maul!.zu);
+  let s2 = maulAnfangBewegen(mk.profile.seite, 'oben', { x: rotAnfang[0], y: rotAnfang[1] });
+  s2 = maulAnfangBewegen(s2, 'unten', { x: blauAnfang[0], y: blauAnfang[1] });
+  mk = maulAnMarken({ ...mk, profile: { ...mk.profile, seite: s2 }, maul: mitLinien.maul! });
+  return mk;
+}
+
+/**
+ * Kiefer trennen wie der Chip „getrennt“ im Editor (`unterkieferKante`): blaue Linie = rote 0,025 höher, Tiefe × 0,85,
+ * Anfang 15 % zum zweiten Knoten; dann Marken (blauer Knoten auf der Kinnseite) und Linienanfänge auf die Knoten.
+ */
+export function kieferGetrennt(dok: Dokument): Dokument {
+  const oben = dok.maul!.zu.oben;
+  const kn = oben.knoten.map((k) => ({ ...k, p: [k.p[0], k.p[1] + 0.025, k.p[2] * 0.85] as [number, number, number], ein: [k.ein[0], k.ein[1], k.ein[2] * 0.85] as [number, number, number], aus: [k.aus[0], k.aus[1], k.aus[2] * 0.85] as [number, number, number] }));
+  if (kn.length >= 2) {
+    const a = kn[0]!;
+    const b = kn[1]!;
+    kn[0] = { ...a, p: [a.p[0] + 0.15 * (b.p[0] - a.p[0]), a.p[1] + 0.15 * (b.p[1] - a.p[1]), a.p[2] + 0.15 * (b.p[2] - a.p[2])] };
+  }
+  kn[kn.length - 1]!.p = [...oben.knoten[oben.knoten.length - 1]!.p];
+  return maulMitMarken(dok, { oben, unten: { knoten: kn } });
+}
+
+/** Lippenanfang (Knoten der schwarzen Linie samt Linienanfang) um (dx, dy) verschieben — wie ein Zug im Editor. */
+export function anfangVerschieben(dok: Dokument, rolle: 'oben' | 'unten', dx: number, dy: number): Dokument {
+  const pr = dok.profile.seite;
+  const i = pr.knoten.findIndex((k) => (rolle === 'oben' ? k.marke === 'maulOben' || k.marke === 'maul' : k.marke === 'maulUnten'));
+  if (i < 0) return dok;
+  const p = pr.knoten[i]!.p;
+  return maulAnMarken({ ...dok, profile: { ...dok.profile, seite: maulAnfangBewegen(pr, rolle, { x: p.x + dx, y: p.y + dy }) } });
+}
+
+/**
+ * Langhals mit Maul wie in Florians Giraffen-Bildern (14.10. spätnachts): Anfang auf der Kopfunterseite (nächster
+ * Umrisspunkt zu `anfang`), Linie steigt nach hinten oben in den Kopf (Mundwinkel `ecke`); Tiefe von der Haut.
+ */
+export function langhalsLinieDokument(roh: Dokument, anfang: V2, mitte: V2, ecke: V2): Dokument {
+  const haut = hautAusNetz(ableiten(roh, { stufen: 2 }));
+  const sk = roh.skalierung;
+  // Anfang genau auf den Umriss legen
+  const pts = pfadAbtasten(vollerPfad(roh.profile.seite), 64).map((q) => ({ x: q.x * sk, y: q.y * sk }));
+  let a0 = pts[0]!;
+  for (const q of pts) if (Math.hypot(q.x - anfang.x, q.y - anfang.y) < Math.hypot(a0.x - anfang.x, a0.y - anfang.y)) a0 = q;
+  const z = (q: V2) => haut(q.x, q.y) ?? 0;
+  const oben = lippeAnHaut(linie3Durch([[a0.x, a0.y, 0], [mitte.x, mitte.y, z(mitte)], [ecke.x, ecke.y, z(ecke)]]), haut);
   const mitLinie = { ...roh, maul: { zu: { oben } } } as Dokument;
   return maulMitMarken(mitLinie, mitLinie.maul!.zu);
 }
@@ -345,6 +423,8 @@ export type MaulPruefung = {
   delta: { seite: number; front: number; top: number };
   lippen: MaulAbweichung;
   falte: ReturnType<typeof faltenMass>;
+  /** Falten nur zwischen Hautflächen (ohne Lippen, Tasche): zeigt Flossen und Kerben am Kiefer (14.10. spätnachts) */
+  hautFalte: ReturnType<typeof faltenMass>;
   /** Durchdringungen je Öffnung (0, 25, 50, 75, 100 %), gesamt und nach Bereich */
   paare: { oeffnung: number; paare: number; nachBereich: Record<string, number> }[];
   zeit: number;
@@ -366,5 +446,5 @@ export function pruefenMaul(dok: Dokument, opt: Partial<AbleitOptionen> = {}, ma
     const d = selbstDurchdringungen({ punkte: pts, flaechen, schaerfe: new Map() }, 1e-4, bereiche);
     return { oeffnung, paare: d.paare, nachBereich: d.nachBereich };
   });
-  return { delta: { seite: ab.seite.max, front: ab.front.max, top: ab.top.max }, lippen: maulAbweichung(abl, dok, linie), falte: faltenMass(abl), paare, zeit: abl.zeiten.gesamt, abl };
+  return { delta: { seite: ab.seite.max, front: ab.front.max, top: ab.top.max }, lippen: maulAbweichung(abl, dok, linie), falte: faltenMass(abl), hautFalte: faltenMass(abl, (f) => bereiche[f] === 'haut'), paare, zeit: abl.zeiten.gesamt, abl };
 }
