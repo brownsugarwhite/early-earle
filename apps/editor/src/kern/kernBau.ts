@@ -3,7 +3,7 @@
 // „neuester Auftrag gewinnt“); hier entsteht aus Dokument und Anzeige-Zustand nur der Bauplan.
 
 import type { Dokument } from '@ee/shape';
-import { type BeinArt, type Bauplan, type MaulArt, type StilArt, type WesenInfo, type WesenNetz, maulLinieAusPunkten, pruefwesenBauplan } from '@ee/shape/kern';
+import { type BeinArt, type Bauplan, type MaulArt, type StilArt, type WesenInfo, type WesenNetz, maulLinieAusPunkten, maulLinieUntenAusPunkten, pruefwesenBauplan } from '@ee/shape/kern';
 import { abtasten3 } from '@ee/shape/versuch';
 import { create } from 'zustand';
 import { useEditor } from '../state/editorStore';
@@ -103,6 +103,16 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
       // Front-Verlauf (|z| → y) der gezeichneten Linie: die Maularme des Plattenmauls; nur, wenn die Linie seitlich läuft
       const front = p3.map((p) => ({ z: Math.abs(p[2]) * sk, y: p[1] * sk })).sort((a, b) => a.z - b.z);
       maulLinie = maulLinieAusPunkten(dok, punkte, letzter[2] * sk, Math.abs(letzter[2]) > 1e-6 ? front : undefined);
+      // Kiefer getrennt (Phase 2 M2): die blaue Unterkieferkante als eigene Stützen (Überbiss: über der roten Lippe)
+      const untenLinie = dok.maul?.zu.unten;
+      if (untenLinie && untenLinie.knoten.length >= 2) {
+        try {
+          const pu = abtasten3(untenLinie, 24).map((q) => ({ x: q[0] * sk, y: q[1] * sk }));
+          maulLinie = { ...maulLinie, unten: maulLinieUntenAusPunkten(dok, pu) };
+        } catch (e) {
+          console.warn('[kern] Unterkieferkante nicht übersetzbar:', e);
+        }
+      }
       if (maul === 'aus') maul = 'vorn';
     } catch (e) {
       console.warn('[kern] Maullinie aus Zeichnung nicht übersetzbar:', e);

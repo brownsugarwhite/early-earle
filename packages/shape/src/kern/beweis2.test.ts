@@ -165,6 +165,21 @@ describe('Beweis 2: Maul mit Haps', () => {
     expect(yMitte - yWinkel).toBeGreaterThan(0.02);
     for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
   });
+  it('Rex, Kiefer getrennt mit Überbiss (Phase 2 M2): Unterkieferkante innen über der Oberlippe, 0 Durchdringungen bei 0/25/50/75/100 %', () => {
+    const plan = pruefwesenBauplan('rex');
+    const r = pruefenLinie('Rex Überbiss', rex, plan.maulLinie!, 'vorn', 2, plan.maulOptionen ?? {});
+    expect(r.pr.ok).toBe(true);
+    const m = r.abl.maul;
+    expect(m.lage.untenV).toBeDefined();
+    // in der Maulmitte liegt die Unterkieferkante deutlich über der Oberlippe (≥ 2 % der Höhe) und innen (näher an der Achse)
+    const t = Math.round(m.lage.m / 2);
+    const o = m.pfad[t]!;
+    const u = m.unten[t]!;
+    expect(r.abl.fein[3 * u + 1]! - r.abl.fein[3 * o + 1]!).toBeGreaterThan(0.02 * 0.5);
+    expect(Math.abs(r.abl.fein[3 * u + 2]!)).toBeLessThan(Math.abs(r.abl.fein[3 * o + 2]!));
+    for (const e of r.ergebnisse) expect(e.paare, `Öffnung ${e.oeffnung}`).toBe(0);
+  });
+
   it('Tiger, Kastenschnauze, Seitenlippe bis 17 % (Stand Beweis 2): 0 Durchdringungen bei 0/25/50/75/100 %', () => {
     const roh = vorlageDokument(tigerJson as unknown as Vorlage, 'zu', 'tiger');
     const dok = { ...roh, spanten: kastenSpanten(roh.profile.front, 0.02, 0.15, 0.25, 0.85) };

@@ -184,6 +184,16 @@ export function tigerZonen(): ZonenVorlage[] {
 
 /** Ausstattung je Prüfwesen (Phase 0): der Tiger bekommt Kastenschnauze, Maullinie, Gesicht, Wangen, Zonen; für Dokumente ohne Ausstattung. */
 export function pruefwesenBauplan(name: string): Ausstattung {
+  if (name === 'rex') {
+    // Kiefer getrennt mit Überbiss (Phase 2 M2, Florians Bogen 06-rex-mit-maul): die Oberlippe (rot) wie die Vorlage
+    // „vorn“, die Unterkieferkante (blau) bis zu 8 % der Höhe darüber, an Schnauze und Winkel treffen sich beide
+    // (v ist der Anteil der örtlichen Sprosse: an der dünnen Schnauze braucht 2,5 % der Körperhöhe v + 0,17)
+    return {
+      maulLinie: { fv: [{ f: 0.02, v: 0.45 }, { f: 0.2, v: 0.42 }, { f: 0.34, v: 0.45 }], unterSpitze: 1, unten: [{ f: 0.02, v: 0.45 }, { f: 0.06, v: 0.5 }, { f: 0.1, v: 0.62 }, { f: 0.2, v: 0.55 }, { f: 0.28, v: 0.5 }, { f: 0.34, v: 0.45 }] },
+      // Oberlippe 3 % der Höhe dick (dünner kreuzen sich die Blätter der Lippe), vier Taschenreihen (zwei Lippen-, zwei Linsenreihen)
+      maulOptionen: { lippenDicke: 0.03, reihen: 4 },
+    };
+  }
   if (name === 'tiger') {
     return {
       kasten: { fVorn: 0.02, fHinten: 0.15, fRund: 0.25, haerte: 0.85 },

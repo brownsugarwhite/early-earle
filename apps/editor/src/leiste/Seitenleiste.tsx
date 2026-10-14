@@ -1010,6 +1010,23 @@ function KernMaulFeld() {
         <span>Maul</span>
         <b>{dok.maul ? 'gezeichnet' : dok.ausstattung?.maulLinie ? 'aus der Ausstattung' : `Vorlage ${chip}`}</b>
       </div>
+      {dok.maul && (
+        <>
+          <div className="feld">
+            <span>Kiefer</span>
+            <b>{dok.maul.zu.unten ? 'getrennt (Überbiss)' : 'gleich'}</b>
+          </div>
+          <div className="umschalter stufen" role="group" aria-label="Kiefer">
+            <button className={!dok.maul.zu.unten ? 'chip aktiv' : 'chip'} data-kiefer="gleich" onClick={() => dok.maul!.zu.unten && setzeLippen('zu', { oben: dok.maul!.zu.oben })}>
+              gleich
+            </button>
+            <button className={dok.maul.zu.unten ? 'chip aktiv' : 'chip'} data-kiefer="getrennt" onClick={() => !dok.maul!.zu.unten && setzeLippen('zu', { oben: dok.maul!.zu.oben, unten: versetzt3(dok.maul!.zu.oben, 0.025) })}>
+              getrennt
+            </button>
+          </div>
+          <p className="hilfe">Getrennt: die blaue Unterkieferkante liegt über der roten Oberlippe und läuft geschlossen in den Oberkiefer (Überbiss). Beide Linien sind in Seite und Front ziehbar; Unterbiss (blau unter rot) kommt noch.</p>
+        </>
+      )}
       <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />
       <div className="feld">
         <span>Öffnungsart</span>
@@ -1019,7 +1036,7 @@ function KernMaulFeld() {
       <Regler label="Unterkiefer" wert={mo.winkelUnten} min={5} max={75} schritt={1} anzeige={`${Math.round(mo.winkelUnten)}°`} onChange={(v) => setze({ winkelUnten: v })} {...geste()} />
       <Regler label="Schädel" wert={mo.winkelOben} min={0} max={45} schritt={1} anzeige={`${Math.round(mo.winkelOben)}°`} onChange={(v) => setze({ winkelOben: v })} {...geste()} />
       <Regler label="Rille" wert={mo.rille} min={0} max={0.03} schritt={0.001} anzeige={`${(mo.rille * 100).toFixed(1)} % der Höhe`} onChange={(v) => setze({ rille: v })} {...geste()} />
-      <p className="hilfe">Kieferknopf: die blaue Bohne am Mundwinkel auf der Bühne — ziehen öffnet, Doppelklick rastet. Kiefer getrennt (Überbiss, Unterbiss), Zunge und Rachenlinie als Griff kommen in Phase 2.</p>
+      <p className="hilfe">Kieferknopf: die blaue Bohne am Mundwinkel auf der Bühne — ziehen öffnet, Doppelklick rastet. Unterbiss, Zunge und Rachenlinie als Griff kommen später in Phase 2.</p>
       {dok.maul && (
         <button className="chip" onClick={() => useEditor.getState().setzeMaul(null)}>
           Maullinie löschen

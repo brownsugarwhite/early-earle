@@ -35,7 +35,7 @@
 
 ### Phase 2 (Maul, Zähne, Augen)
 
-- [ ] **Kiefer getrennt / Überbiss** (Florian: wichtig), Lippenband zwischen roter und blauer Lippe, Hauer außen bei geschlossenem Maul.
+- [ ] **Kiefer getrennt / Überbiss** (Florian: wichtig), Lippenband zwischen roter und blauer Lippe, Hauer außen bei geschlossenem Maul. — *15.10. mittags, Phase 2 M2:* **Überbiss gebaut** (Oberlippe als U mit Boden und Innenseite, Unterkieferkante innen darüber; Rex 0 Durchdringungen bei allen Öffnungen; Chips gleich/getrennt in der Tafel Maul, blaue Linie ziehbar; Planseite Phase 2, Stand). Rest: Unterbiss, Hauer außen als bewusste Zahnlage (M4), Lippenband-Deskriptor fürs U, Florians Urteil.
 - [ ] **Rachenlinie und Kieferlinie als Griffe** (heute Automatik: Lotfußpunkt auf der Wirbelsäule ab Racheneingang; Band/Platte/Beutel als Zahlen).
 - [ ] **Bodengrenze / Kieferbereich bei dicken Rümpfen:** Tiger braucht 30° statt 58° (Plattenmaul 20°), weil die Flanke hinter dem Winkel faltet; die Kieferlinie soll den Jaw-Bereich begrenzen. *15.10.:* Auch das Schädelband (8 Ringe hinter dem Scharnier) nimmt beim Tiger den halben Rumpf mit (Ohren wandern beim Öffnen); dieselbe Linie soll den Schädelbereich begrenzen.
 - [ ] **Ringpfad-Mäuler bei 24 Punkten je Ring** (Tiger-Ausstattung seit M1): die Tasche ist auf 16 Punkte abgestimmt und durchdringt sich (tascheO/tascheO); Taschenmaße nach dem Ringabstand skalieren. (Phase 2)
@@ -81,3 +81,4 @@
 - [x] 15.10.: Langhals-Riesenmaul (Maulpunkte im Front-Blatt mit Tiefe vom Platzhalter-Loft) → Tiefe aus dem Kern-Netz.
 - [x] 15.10.: Langhals-Brust: schräge Sprossen ab 0,5 Neigung mit Front-Lappen statt Kreis (`liegendAb`), Top 14 → 4 px.
 - [x] 15.10. vormittags: Phase 2 M1 Plattenmaul (Mercedesstern auf der Platte, Tiger 0 Durchdringungen, im Front-Blatt zeichenbar); Beutel läuft mit dem Kieferband aus (Bauchringe standen beim Öffnen nicht still); Library-Tiger baut und öffnet sein Maul ohne Chip.
+- [x] 15.10. mittags: Phase 2 M2 Kiefer getrennt mit Überbiss (Rex, 0 Durchdringungen bei 0/25/50/75/100 %, Chips gleich/getrennt, blaue Linie zeichenbar).
