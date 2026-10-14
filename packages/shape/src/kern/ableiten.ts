@@ -1453,7 +1453,7 @@ export function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V
  * Kästen die ganze flache Seite), rechts und gespiegelt; ihre Grenzlage soll die Soll-Halbbreite bei ihrem (x, y)
  * treffen (`breiteSoll`). Punkte außerhalb von Top und Front fallen weg.
  */
-export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument, opt: AbleitOptionen, ziele: Float64Array, u: Unterteilung, k: Kaefig, haut?: Uint8Array): Breite | null {
+export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument, opt: AbleitOptionen, ziele: Float64Array, u: Unterteilung, k: Kaefig, haut?: Uint8Array, maulBau = false): Breite | null {
   if (!(opt.breiteGewicht > 0)) return null;
   const { R, N } = v;
   const qs = querschnitteFuer(sprossenVon(l, st.ringe), dok, breiten, N, opt);
@@ -1469,12 +1469,27 @@ export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Br
     const zeile = new Float64Array(N);
     breit.push(zeile);
     if (!(wBest > 0)) continue;
-    // Ringe mit Maulpunkten (Lippe, Tasche, Rachen: kein Hautpunkt) folgen ganz dem Maul, nicht der Silhouette
+    // Ringe mit Punkten, die keine Haut sind (Lippe, Tasche, Rachen; Beinfelder): ohne Maul folgen sie ganz ihrem Teil.
+    // Im Maulbau (Phase 2 M3, 15.10. nachts) bekommen Maulringe Breitenpunkte auf ihren Hautzeilen, Breite aus den
+    // Zielen — die Lippe verschiebt die Zeilen gegen `q` (Schleife eingerastet); ohne sie war der Körper im Top am Maul
+    // bis 6 px schmaler. Kastenringe (Ecken im Querschnitt) bleiben im Maulbau ohne Breitenpunkte: die Kante gibt die
+    // Breite hart vor, und in der Kieferpose liefen Kastenwand und Tasche gegeneinander (Tiger-Stern 12 Paare bei 75 %).
     let maulRing = false;
     if (haut) for (let j = 0; j < N && !maulRing; j++) if (!haut[v.ringPunkt(i, j)]) maulRing = true;
-    if (maulRing) continue;
+    if (maulRing && !maulBau) continue;
+    if (maulBau && q.haerte.some((h) => h > 0)) continue;
+    let zBest = 0;
+    if (maulRing) for (let j = 1; j < N / 2; j++) if (haut![v.ringPunkt(i, j)]) zBest = Math.max(zBest, Math.abs(ziele[3 * v.ringPunkt(i, j) + 2]!));
     for (let j = 1; j < N / 2; j++) {
-      const f = (q.w[j] ?? 0) / wBest;
+      if (maulRing && !haut![v.ringPunkt(i, j)]) continue;
+      // ein Kiefer, der über die Top-Linie hinausragt, folgt seiner Linie (die schwarze Linie macht dort den Umweg):
+      // kein Breitenpunkt (Kugel mit vorgezogenem Unterkiefer: Knick 20° → 56°)
+      if (maulRing) {
+        const pz = v.ringPunkt(i, j);
+        const wTop = breiten.top(ziele[3 * pz]!);
+        if (wTop > 0 && Math.abs(ziele[3 * pz + 2]!) > 1.02 * wTop) continue;
+      }
+      const f = maulRing ? (zBest > 0 ? Math.abs(ziele[3 * v.ringPunkt(i, j) + 2]!) / zBest : 0) : (q.w[j] ?? 0) / wBest;
       if (f < 1 - BREITE_SCHWELLE) continue;
       const p = v.ringPunkt(i, j);
       if (!(breiten.top(ziele[3 * p]!) > 0) || !(breiten.front(ziele[3 * p + 1]!) > 0)) continue;
@@ -1596,6 +1611,8 @@ export type Rohbau = {
   nahtStart?: number;
   /** Maulschlitz im Seitenumriss (Block 2): die Naht hängt am Umriss ohne Schlitz */
   schlitz?: Schlitz | null;
+  /** Maulbau: Breitenpunkte auch auf Hautzeilen der Maulringe, keine an Kastenringen (Phase 2 M3) */
+  maulBau?: boolean;
   zeiten: { t0: number; t1: number; t2: number };
 };
 
@@ -1644,7 +1661,7 @@ export function fertigstellen(e: Rohbau): Ableitung {
   }
   const nahtFein = Uint32Array.from(geordnet);
   let nahtLoeser: AusgleichsLoeser | null = null;
-  const breite = breitenSchleife(vorlage, l, st, breiten, dok, opt, ziele, u, k, e.haut);
+  const breite = breitenSchleife(vorlage, l, st, breiten, dok, opt, ziele, u, k, e.haut, e.maulBau);
   if (opt.nahtGewicht > 0) {
     const bedingungen: Bedingung[] = [];
     for (let i = 0; i < k.n; i++) bedingungen.push({ zeile: i, gewicht: e.zielGewicht ? e.zielGewicht[i]! : 1 });

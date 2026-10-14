@@ -901,6 +901,9 @@ const glattStufe = (x: number) => {
   return t * t * (3 - 2 * t);
 };
 
+/** Gewicht der Breitenpunkte im Maulbau (Phase 2 M3; ohne Maul 16): stark genug für das Top, schwach genug für die Pose. */
+export const BREITE_MIT_MAUL = 4;
+
 /** Optionen, die nur Gewichte und Pose betreffen (kein Umbau des Käfigs; Griffe und Regler im Fressen-Tab). */
 export const MAUL_POSE_OPTIONEN = ['winkelUnten', 'winkelOben', 'zugWeite', 'oeffnungsart', 'haps', 'hapsTiefe', 'hapsHoehe', 'hapsWeite', 'hapsRadius', 'gewichte', 'gelenk', 'kieferWinkel', 'kieferReichweite', 'kieferZug'] as const;
 
@@ -2269,10 +2272,11 @@ export function ableitenMitMaul(dokRoh: Dokument, linie: MaulLinie, optionen: Pa
   }
   // Nahtrundgang startet am Hautpunkt über der Spitze (die Spitze selbst liegt auf der Lippe)
   const nahtStart = vorlage.kappe('vorn', vorlage.c / 2, vorlage.c / 2 + 1);
-  // Ohne Breitenzeilen (Plan „Zeichnung ist Form“, 15.10.): Sie machen den Käfig wellig, und die Kieferpose wirft daraus
-  // Hautfalten (Tiger-Stern 70 Durchdringungen bei 50 %). Die Breite kommt hier allein aus den Käfigzielen (Sichthülle);
-  // offen: Breitenzeilen mit Glättung oder eine Pose, die den geglätteten Käfig nutzt.
-  const abl = fertigstellen({ opt: { ...opt, breiteGewicht: 0 }, vorlage, kaefig: mk.kaefig, ziele: mk.ziele, hoehe: mk.hoehe, l, st, breiten, dok, haut, zielGewicht, nahtStart, schlitz, zeiten: { t0, t1, t2 } });
+  // Breitenpunkte mit Maul (Phase 2 M3, 15.10. nachts): schwach (Gewicht 4 statt 16) und in Maulringen nur auf Hautzeilen.
+  // Früher ganz aus (der wellige Käfig warf in der Kieferpose Falten, Tiger-Stern 70 Durchdringungen); ohne sie war der
+  // Körper im Top am Maul bis 6 px schmaler. Gemessen: Top Kugel 5,0 → 3,8 px, Nase 6,4 → 4,2 px, Falten gleich oder
+  // kleiner, keine neuen Durchdringungen; Gewicht 16 warf wieder Paare (Kugel 6 bei 100 %).
+  const abl = fertigstellen({ opt: { ...opt, breiteGewicht: BREITE_MIT_MAUL }, vorlage, kaefig: mk.kaefig, ziele: mk.ziele, hoehe: mk.hoehe, l, st, breiten, dok, haut, zielGewicht, nahtStart, schlitz, maulBau: true, zeiten: { t0, t1, t2 } });
   const xyz = abl.kaefig.xyz;
   const info = mk.info;
   // Untere Kette bitgleich auf die obere (gleiche Ziele, scharfe Falten: die Grenzlage hängt nur von der Kette ab);

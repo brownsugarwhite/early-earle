@@ -4,7 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { type Vorlage, vorlageDokument } from '../versuch';
 import langhalsRoh from '../versuch/vorlagen/langhals.json';
-import { kugelMaulDokument, langhalsLinieDokument, pruefenMaul } from './pruefstand';
+import { kugelMaulDokument, langhalsLinieDokument, naseDokument, pruefenMaul } from './pruefstand';
+import { maulMitMarken } from '../maulKnoten';
 
 describe('Naht mit Lücke am Lippenanfang', () => {
   it('Langhals mit Maul unter dem Kopf (Ringanfang): keine Durchdringungen bei 0–100 %, Seite ≤ 2,5 px', () => {
@@ -19,5 +20,14 @@ describe('Naht mit Lücke am Lippenanfang', () => {
     const r = pruefenMaul(kugelMaulDokument('gleich', true));
     expect(r.lippen.oben.seite).toBeLessThan(0.5);
     for (const p of r.paare.slice(1, 4)) expect(p.paare, `Öffnung ${p.oeffnung}`).toBe(0);
+  }, 60_000);
+
+  it('Breitenpunkte mit Maul (Phase 2 M3): Top am Maul ≤ 4,5 px (vorher Kugel 5,0, Nase 6,4), offen keine Durchdringungen', () => {
+    const nase = naseDokument();
+    for (const [name, dok] of [['Kugel', kugelMaulDokument('gleich', true)], ['Nase', maulMitMarken(nase, { oben: nase.maul!.zu.oben })]] as const) {
+      const r = pruefenMaul(dok);
+      expect(r.delta.top, name).toBeLessThan(4.5);
+      for (const p of r.paare.slice(1, 4)) expect(p.paare, `${name} Öffnung ${p.oeffnung}`).toBe(0);
+    }
   }, 60_000);
 });
