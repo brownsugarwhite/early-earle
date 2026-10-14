@@ -991,9 +991,9 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
       const fb = breiten.front(y);
       if (fb > 0) fBest = Math.max(fBest, fb / wj);
     }
-    // führende Front: ihre Breite gilt allein; führendes Top: die Front engt nicht ein; sonst Sichthülle
-    if (fuehrend === 'front') W = fBest > 0 ? fBest : W;
-    else if (fuehrend !== 'top' && fBest > 0) W = Math.min(W, fBest);
+    // führendes Top: die Front engt nicht ein; sonst Sichthülle (führende Front wirkt danach örtlich, siehe unten —
+    // als alleinige Breite bekäme jeder Ring die Frontbreite seiner Höhe, Kugel-Ringe vorn 0,15 → 0,33)
+    if (fuehrend !== 'top' && fBest > 0) W = Math.min(W, fBest);
     if (!(W > 1e-6)) W = letzteW || 0.01 * breiten.topMax;
     letzteW = W;
     return W;
@@ -1009,11 +1009,54 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     }
     return [x, y, z, hv];
   };
+  const ringQNeu = ringQ.map((q, i) => (schlitz && i <= schlitz.k && Number.isFinite(schlitz.vRing[i]!) ? umparametrisieren(q, N / 2, { index: schlitz.jL, v: schlitz.vRing[i]! }) : q));
+  const Wr = ringQNeu.map((q, i) => masstab(ringSprossen[i]!, q));
+  if (fuehrend === 'front') {
+    // Führende Front wirkt örtlich (Plan „Zeichnung ist Form“ 4.1): Ein Ring, der an einer Höhe die Silhouette stellt
+    // (der breiteste aller Ringe dort), wächst auf die Front dieser Höhe; die anderen Ringe bleiben bei der Sichthülle.
+    // Vorher galt die Front nur als Hülle (nie breiter), ein Zug nach außen lief ins Leere, und mit der Front als
+    // alleiniger Breite bekäme der Schwanz die Kopfbreite seiner Höhe.
+    const breiteBei = (i: number, y: number): number => {
+      const sp = ringSprossen[i]!;
+      const q = ringQNeu[i]!;
+      let w = 0;
+      for (let j = 0; j + 1 < q.v.length; j++) {
+        const y0 = sp.u.y + (sp.o.y - sp.u.y) * q.v[j]!;
+        const y1 = sp.u.y + (sp.o.y - sp.u.y) * q.v[j + 1]!;
+        if ((y0 - y) * (y1 - y) > 0) continue;
+        const f = Math.abs(y1 - y0) > 1e-12 ? (y - y0) / (y1 - y0) : 0;
+        let z = Wr[i]! * (q.w[j]! + (q.w[j + 1]! - q.w[j]!) * f);
+        const fb = breiten.front(y);
+        if (fb > 0 && z > fb) z = fb;
+        w = Math.max(w, z);
+      }
+      return w;
+    };
+    const W0 = Wr.slice();
+    for (let i = 0; i < R; i++) {
+      const sp = ringSprossen[i]!;
+      const q = ringQNeu[i]!;
+      let wMax = 0;
+      for (let j = 1; j + 1 < q.v.length; j++) wMax = Math.max(wMax, q.w[j]!);
+      let W = W0[i]!;
+      for (let j = 1; j + 1 < q.v.length; j++) {
+        const wj = q.w[j]!;
+        if (wj < 0.5 * wMax) continue;
+        const y = sp.u.y + (sp.o.y - sp.u.y) * q.v[j]!;
+        const fb = breiten.front(y);
+        if (!(fb > 0)) continue;
+        const eigene = Math.min(W0[i]! * wj, fb);
+        let sil = 0;
+        for (let i2 = 0; i2 < R; i2++) if (i2 !== i) sil = Math.max(sil, breiteBei(i2, y));
+        if (eigene >= sil - 1e-6) W = Math.max(W, fb / wj);
+      }
+      Wr[i] = W;
+    }
+  }
   for (let i = 0; i < R; i++) {
     const sp = ringSprossen[i]!;
-    let q = ringQ[i]!;
-    if (schlitz && i <= schlitz.k && Number.isFinite(schlitz.vRing[i]!)) q = umparametrisieren(q, N / 2, { index: schlitz.jL, v: schlitz.vRing[i]! });
-    const W = masstab(sp, q);
+    const q = ringQNeu[i]!;
+    const W = Wr[i]!;
     for (let j = 0; j <= N / 2; j++) {
       const [x, y, z, hv] = punkt(sp, q, W, j);
       setze(v.ringPunkt(i, j), x, y, j === 0 || j === N / 2 ? 0 : z, hv);
@@ -1144,7 +1187,7 @@ function kastenKappe(v: Roehre, ziele: Float64Array, hoehe: Float64Array, spitze
  * Breitenpunkte im Ausgleich: je Zeile der feine Punkt (Käfigpunkt = gleicher Index, oder feiner Kettenpunkt), das
  * Vorzeichen seiner z-Seite und sein Anteil an der Soll-Halbbreite (w / wMax der Vorlage; 1 = breitester Punkt).
  */
-export type Breite = { fein: Uint32Array; vorzeichen: Int8Array; faktor: Float64Array };
+export type Breite = { fein: Uint32Array; vorzeichen: Int8Array; faktor: Float64Array; /** je Breitenpunkt: sein Ring stellt an seiner Höhe die Silhouette (führende Front darf ihn bis zur Front wachsen lassen) */ fuehrt?: Uint8Array };
 
 /** Stützstellen bis so weit unter der größten Breite der Vorlage zählen als Breitenpunkte (geneigte Ringe: Kastenwand) */
 const BREITE_SCHWELLE = 0.05;
@@ -1153,11 +1196,14 @@ const BREITE_SCHWELLE = 0.05;
  * Soll-Halbbreite eines Breitenpunkts bei (x, y): die größte, die ins Top (bei x) und in die Front (bei y) passt
  * (Sichthülle der Zeichnungen). Außerhalb beider Silhouetten gilt der Rückfall (Käfigziel).
  */
-export function breiteSoll(breiten: Breiten, x: number, y: number, rueckfall: number, fuehrend?: 'seite' | 'front' | 'top'): number {
+export function breiteSoll(breiten: Breiten, x: number, y: number, rueckfall: number, fuehrend?: 'seite' | 'front' | 'top', fuehrt = false): number {
   const t = breiten.top(x);
   const f = breiten.front(y);
   if (fuehrend === 'top') return t > 0 ? t : Math.abs(rueckfall);
-  if (fuehrend === 'front') return f > 0 ? f : Math.abs(rueckfall);
+  // führende Front: nur Ringe, die an ihrer Höhe die Silhouette stellen, dürfen bis zur Front (`fuehrt`, Flag je
+  // Breitenpunkt); alle anderen bleiben in der Sichthülle — die Front als Soll für jeden Ring machte den Körper zum
+  // Kasten (Kugel-Ringe vorn 0,13 → 0,52)
+  if (fuehrend === 'front' && fuehrt) return f > 0 ? f : Math.abs(rueckfall);
   // außerhalb einer der beiden Silhouetten (Spitzen, 1 px vor dem Top) bleibt die aktuelle Lage: dort sagt die Zeichnung nichts
   return t > 0 && f > 0 ? Math.min(t, f) : Math.abs(rueckfall);
 }
@@ -1183,7 +1229,7 @@ export function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V
       out[o] = x;
       out[o + 1] = y;
       const f = breite.faktor[k]!;
-      out[o + 2] = breite.vorzeichen[k]! * f * breiteSoll(breiten, x, y, lagen[3 * p + 2]! / (f || 1), fuehrend);
+      out[o + 2] = breite.vorzeichen[k]! * f * breiteSoll(breiten, x, y, lagen[3 * p + 2]! / (f || 1), fuehrend, !!breite.fuehrt?.[k]);
     }
   }
   return out;

@@ -1,5 +1,6 @@
 // „Formen folgen“ (15.10.): Die zuletzt bearbeitete Kurve führt. Rex: Florians Front ist breiter als sein Top; mit
-// führender Front liegt der Körper auf der Front, mit führendem Top auf dem Top, ohne Führung gilt die Sichthülle.
+// führender Front rückt der Körper dort an die Front, wo der Ring an seiner Höhe die Silhouette stellt (örtlich), mit
+// führendem Top liegt er auf dem Top, ohne Führung gilt die Sichthülle.
 import { describe, expect, it } from 'vitest';
 import { type Vorlage, vorlageDokument } from '../versuch';
 import rexJson from '../versuch/vorlagen/rex.json';
@@ -21,12 +22,15 @@ function messen(opt: Partial<AbleitOptionen>) {
 }
 
 describe('Formen folgen: führende Kurve', () => {
-  it('führende Front: die Front bestimmt die Breite am breitesten Punkt jedes Rings (Front näher, Top weiter weg)', () => {
+  it('führende Front wirkt örtlich: nur Ringe, die an ihrer Höhe die Silhouette stellen, wachsen bis zur Front (Front näher, Top bleibt begrenzt)', () => {
     // Aus der rohen Zeichnung (Front 0,014 breiter als Top) bleibt die Front an den Kopfhöhen unterfüllt (Lappen-Vorlage,
-    // 7,5 px); im Editor führt die Front nur nach einem Zug, wenn die anderen Kurven schon dem Körper folgen
+    // 7,5 px); im Editor führt die Front nur während eines Zugs in der Front. Vorher galt die Front als alleinige Breite
+    // (jeder Ring bekam die Frontbreite seiner Höhe, Top > 4 px); örtlich bleibt das Top bei 3,5 px.
+    const ohne = messen({});
     const ab = messen({ fuehrend: 'front' });
     expect(ab.front.max).toBeLessThan(9);
-    expect(ab.top.max).toBeGreaterThan(4);
+    expect(ab.front.max).toBeLessThan(ohne.front.max - 2);
+    expect(ab.top.max).toBeLessThan(5);
   });
   it('führendes Top: wie die Sichthülle beim Rex (Top ≤ 1,5 px, Front ≈ 11 px)', () => {
     const ab = messen({ fuehrend: 'top' });
