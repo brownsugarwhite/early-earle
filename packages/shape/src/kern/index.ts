@@ -12,6 +12,7 @@ export * from './breite';
 export * from './maul';
 export * from './maulDokument';
 export * from './kieferSpant';
+export * from './posenAnker';
 export * from './folgen';
 export * from './teil';
 export * from './klinge';

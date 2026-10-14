@@ -4,7 +4,7 @@
 // Öffnung überblendet; Plan 5.2) im Dokument — ein Undo-Schritt je Strich, der Kern addiert sie nach der Ableitung.
 
 import type { KaefigDelta } from '@ee/shape';
-import { deltaKarte, deltaListe, kaefigNachbarn, kaefigNormalen, pinselGewichte, spiegelIndex } from '@ee/shape/kern';
+import { ankerVon, deltaKarte, deltaListe, kaefigNachbarn, kaefigNormalen, pinselGewichte, spiegelIndex } from '@ee/shape/kern';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { szene } from '../three/instanz';
@@ -180,7 +180,14 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
         }
       }
       const s = useEditor.getState();
-      const deltas: KaefigDelta[] = deltaListe(karte);
+      // Pose-Deltas auf Maulpunkten tragen ihren Anker (Rolle, Reihe, Anteil entlang der Lippe): die Pose überlebt eine
+      // neue Maultopologie (Phase 2 M3, „Pose-Deltas an die Maullinie gebunden“)
+      const deltas: KaefigDelta[] = ziel.pose
+        ? deltaListe(karte).map((d) => {
+            const a = ankerVon(n.netz.anker, d.punkt);
+            return a ? { ...d, anker: a } : d;
+          })
+        : deltaListe(karte);
       const kaefig = s.dok.kaefig ?? { deltas: [] };
       s.setzeDokument({ ...s.dok, kaefig: ziel.pose ? { ...kaefig, posen: { ...(kaefig.posen ?? {}), [ziel.pose]: deltas } } : { ...kaefig, deltas } });
     },

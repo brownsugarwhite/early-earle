@@ -173,7 +173,8 @@ const DokumentFelder = {
 /** Version 0 (bis 14.10.2026): ohne Ausstattung. */
 export const DokumentSchemaV0 = z.object({ ...DokumentFelder, version: z.literal(0) });
 /** Käfig-Delta (M3, Pinsel): Versatz eines Käfigpunkts der Vorlage (rechte Hälfte oder Naht), Profil-Einheiten. */
-const KaefigDeltaSchema = z.object({ punkt: z.number().int().min(0), d: V3 });
+/** `anker` (Pose-Deltas auf Maulpunkten, 15.10.): Rolle, Reihe und Anteil entlang der Lippe — die Pose überlebt eine neue Maultopologie */
+const KaefigDeltaSchema = z.object({ punkt: z.number().int().min(0), d: V3, anker: z.object({ rolle: z.number().int().min(0), reihe: z.number().int().min(0), u: z.number() }).optional() });
 /** Käfig-Deltas der Grundform und je Pose (M3: „fressen“ = offenes Maul, mit der Öffnung überblendet; Plan 5.2). */
 /**
  * Eingefrorene Stationen (Plan „Zeichnung ist Form“, Schritt 3, „Käfig als Wahrheit“): Ringverteilung, Kappenzeilen,
@@ -205,7 +206,8 @@ export type V3T = [number, number, number];
 export type Knoten3 = { p: V3T; ein: V3T; aus: V3T; art: 'glatt' | 'ecke' };
 /** Offene 3D-Bézier-Linie (Griffe relativ zum Knoten), Knoten 0 auf der Mittelebene, letzter Knoten = Mundwinkel. */
 export type Linie3 = { knoten: Knoten3[] };
-export type KaefigDelta = { punkt: number; d: [number, number, number] };
+export type MaulAnker = { rolle: number; reihe: number; u: number };
+export type KaefigDelta = { punkt: number; d: [number, number, number]; anker?: MaulAnker };
 /** Lippen der rechten Hälfte; `unten` fehlt = Kiefer gleich (Florians türkise Linie). */
 export type Lippen = { oben: Linie3; unten?: Linie3 };
 export type Maul = { zu: Lippen; auf?: Lippen };

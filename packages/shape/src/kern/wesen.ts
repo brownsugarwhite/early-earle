@@ -20,6 +20,7 @@ import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
 import { kieferSchnitt } from './kieferSpant';
+import { type AnkerFeld, maulAnker, posenUmhaengen } from './posenAnker';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
@@ -163,6 +164,8 @@ export type WesenNetz = {
   } | null;
   /** Unterkiefergewichte als Farbe je Ecke (`Bauplan.gewichteZeigen`), sonst null */
   gewichtFarben: Float32Array | null;
+  /** Anker je Käfigpunkt (mit Maul): Rolle, Reihe, Anteil entlang der Lippe — der Pinsel schreibt ihn zu Pose-Deltas auf Maulpunkten */
+  anker: AnkerFeld | null;
   /** Saum je Blatt (Schritt 4): Silhouettenpunkte des Körpers (x, y, d px), (NaN, NaN, 0) trennt Züge; wird kopiert, nicht übertragen */
   saum: Record<'seite' | 'front' | 'top', Float32Array> | null;
   /** Front/Top: Umweg der schwarzen Linie über einen breiteren Kiefer (Paare x, y; NaN trennt), sonst fehlt das Blatt */
@@ -642,6 +645,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   let ablRein: Ableitung | null = null;
   let maulLinieVerwendet: MaulLinie | null = null;
   let maulOptAktuell: MaulOptionen | null = null;
+  let ankerFeld: AnkerFeld | null = null;
   let fein: Float64Array;
   let xyz: Float64Array;
   let gesteckt: { fein: Float64Array; abl: BeinErgebnis } | null = null;
@@ -673,13 +677,15 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     const mAbl = (abl as MaulErgebnis).maul;
     mAbl.opt = maulOptAktuell;
     kieferGewichteSetzen(mAbl, maulOptAktuell);
+    ankerFeld = maulAnker(mAbl, abl.kaefig.n, abl.vorlage.kaefig.n);
     const t0 = jetzt();
     const pose = maulPose(abl as MaulErgebnis, plan.oeffnung);
     fein = pose.fein;
     xyz = pose.xyz;
     // Fressen-Pose (Plan 5.2, M3): Käfig-Deltas derselben Maultopologie, mit der Öffnung überblendet, auf alle Punkte
     // (auch Maulpunkte) nach der Knochenpose — so wird aus einem kleinen geschlossenen Maul ein großes rundes offenes
-    const posenDeltas = dokRoh.kaefig?.posen?.fressen ?? [];
+    // an die Maullinie gebunden: nach einer neuen Maultopologie wandern Deltas mit Anker zu ihren Punkten
+    const posenDeltas = posenUmhaengen(dokRoh.kaefig?.posen?.fressen ?? [], ankerFeld, abl.vorlage.kaefig.n);
     if (posenDeltas.length && plan.oeffnung > 0) {
       const xyz2 = new Float64Array(pose.xyz);
       deltasAddieren(xyz2, spiegelIndex(abl.kaefig.xyz, abl.kaefig.n), posenDeltas, plan.oeffnung);
@@ -710,7 +716,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     xyz = abl.kaefig.xyz;
   }
   // weitere Pose (Posenliste): Deltas derselben Topologie mit der Stärke überblendet, auf alle Punkte, nach Knochen und Fressen
-  const poseDeltas = plan.pose && plan.pose.name !== 'fressen' && plan.pose.staerke > 0 ? (dokRoh.kaefig?.posen?.[plan.pose.name] ?? []) : [];
+  const poseDeltas = plan.pose && plan.pose.name !== 'fressen' && plan.pose.staerke > 0 ? posenUmhaengen(dokRoh.kaefig?.posen?.[plan.pose.name] ?? [], ankerFeld, abl.vorlage.kaefig.n) : [];
   if (poseDeltas.length) {
     const xyz2 = new Float64Array(xyz);
     deltasAddieren(xyz2, spiegelIndex(abl.kaefig.xyz, abl.kaefig.n), poseDeltas, plan.pose!.staerke);
@@ -992,6 +998,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     reifen,
     maul: maulGriff,
     gewichtFarben,
+    anker: ankerFeld,
     saum,
     umweg,
     info,
