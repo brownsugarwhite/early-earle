@@ -172,6 +172,10 @@ export function kernFolgen(fertig: () => void): void {
 setzeGesteEndeHaken((start, jetzt, abschliessen) => {
   if (useUi.getState().bauweise !== 'kern') return false;
   if (start.kaefig?.deltas === jetzt.kaefig?.deltas) return false;
+  // Mit Maul kein Folgen (14.10., Florian: „während des Glättens sieht es gut aus, beim Loslassen springt das Mesh“):
+  // Die neu angepassten Profile bauen das Maul neu, seine Punkte haben keine Ausgleichs-Deltas — gemessen sprang der
+  // Körper 7,5 px (Kiefer gleich) bzw. 59 px (Überbiss). Bis das Folgen fürs Maul exakt ist, bleibt der Strich, wie er ist.
+  if (kernMaulAktiv(jetzt)) return false;
   kernFolgen(abschliessen);
   return true;
 });
