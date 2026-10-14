@@ -11,6 +11,8 @@ Branch `claude/editor-grundlayout`. Plan „Wesen-Editor 2“ freigegeben, Phase
 
 4. **Schritt 3, Stationen einfrieren** (`stationenNachfuehren` in `ableiten.ts`, `kaefig.stationen` im Dokument, Worker, Tafel-Knopf „Neu ableiten“, Test `stationen.test.ts`): Nach dem ersten Ableiten friert das Dokument die Ringverteilung ein; jede Kurvenänderung zieht denselben Käfig nach (keine Neuwahl der Ringe, nichts springt, Pinsel-Deltas bleiben am Ort). Ecken und Reifen werden nachgeführt. Langhals, Hals +0,08: Naht 2,2 px wie frei abgeleitet, Ringe unverändert (frei: Sprünge bis 11,7 % der Wirbelsäule). Bild `docs/progress/editor/zeichnung-ist-form-stationen-langhals.png`.
 
+5. **Langhals-Riesenmaul behoben** (Florians Screenshot): Maulpunkte aus dem Front-Blatt holen ihre Tiefe jetzt vom Kern-Netz statt vom Platzhalter-Loft (`punktAufKern`); ein kleines V unter der Schnauze ergibt ein Maul von 0,059 statt 0,265 (bis in den Rumpf). Florians Urteil zu Schritt 1–4: „passt weitestgehend“, „bei den anderen viel besser und genauer als vorher“, „bei dem Blob funktioniert die gerade Linie gut“.
+
 Messwerte und ehrliche Reste stehen im „Stand“ der Planseite.
 
 ## Offen (ehrlich)
@@ -29,7 +31,7 @@ Messwerte und ehrliche Reste stehen im „Stand“ der Planseite.
 
 ## Wo Florian testet
 
-Web-Modus `http://localhost:5180` (`pnpm --filter @ee/editor dev:web`). Rechts in der Tafel **Library ▸ „Prüfwesen · immer der aktuelle Stand“**: Kugel, Rex, Tiger, Langhals, Drache, Ente, Robbe. Die Karten bauen das Wesen bei jedem Klick frisch aus Vorlage und Kern (nichts ist gespeichert, es gibt keinen alten Stand). Darunter „Gespeichert“ = eigene Wesen (Speichern legt eine Kopie an). Die drei Sätze: Maul-Stufe → gerade Linie ab Kontur → Maul; Top-Blatt → Δ im Titel und Saum; Langhals → Seite-Knoten des Halses hochziehen → Ringe bleiben („Ringe: 24 eingefroren“ in der Tafel Körper, „Neu ableiten“ nur auf Wunsch).
+Web-Modus `http://localhost:5180` (`pnpm --filter @ee/editor dev:web`). Rechts in der Tafel **Library ▸ „Prüfwesen · immer der aktuelle Stand“**: Kugel, Rex, Tiger, Langhals, Drache, Ente, Robbe. Die Karten bauen das Wesen bei jedem Klick frisch aus Vorlage und Kern (nichts ist gespeichert, es gibt keinen alten Stand). Darunter „Gespeichert“ = eigene Wesen (Speichern legt eine Kopie an). Die drei Sätze: Maul-Stufe → gerade Linie ab Kontur (Seite) oder ab der Achse (Front) → Maul; Top-Blatt → Δ im Titel und Saum; Langhals → Seite-Knoten des Halses hochziehen → Ringe bleiben („Ringe: 24 eingefroren“ in der Tafel Körper, „Neu ableiten“ nur auf Wunsch).
 
 ## Prüfen
 

@@ -10,6 +10,7 @@ import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { type Look, PALETTEN } from '../three/wesenLook';
 import { WesenClient } from './wesenClient';
+import { setzeAktuellesNetz } from './netzStand';
 
 export type { BeinArt, MaulArt, StilArt };
 export type KernInfo = WesenInfo;
@@ -112,17 +113,13 @@ function derClient(): WesenClient {
   return client;
 }
 
-let letztesNetz: { netz: KernNetz; skalierung: number } | null = null;
-/** Das zuletzt gebaute Netz (für Treffer und Griffe im Hauptthread), mit dem Maßstab des Dokuments. */
-export function aktuellesNetz(): { netz: KernNetz; skalierung: number } | null {
-  return letztesNetz;
-}
+export { aktuellesNetz } from './netzStand';
 
 /** Feines Netz der Bauweise „kern“ im Worker bauen; während Gesten nur Zug, sonst Ableitung. Der neueste Auftrag gewinnt. */
 export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) => void): void {
   derClient().bauen(dok, bauplanAus(dok), schnell, (netz) => {
     // erst das Netz merken, dann der Stand: Abonnenten (Saum in den Blättern) lesen `aktuellesNetz()` beim Wechsel
-    letztesNetz = { netz, skalierung: dok.skalierung };
+    setzeAktuellesNetz({ netz, skalierung: dok.skalierung });
     useKernAnzeige.setState({ info: netz.info });
     cb(netz);
     // Schritt 3 („Käfig als Wahrheit“): Der Kern meldet die wirksame Ringverteilung, das Dokument friert sie ein; ab dann

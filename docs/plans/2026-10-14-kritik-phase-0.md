@@ -27,6 +27,7 @@
 - [ ] **Dokument v0** ohne Käfig; v1 mit Migration fehlt.
 
 - [ ] **Umriss von oben und vorn = Zeichnung** (Florian, 15.10. morgens: „Auch beim Tiger weicht die Form von oben und von der Seite sehr von dem eingezeichneten Shape ab“). Plan [`2026-10-15-zeichnung-ist-form.md`](2026-10-15-zeichnung-ist-form.md). *15.10. vormittags, Schritt 1:* Sichthülle und Breitenpunkte im Ausgleich; Top Rex 1,0 px, Tiger 4,0 (vorher 21,6), Langhals 14,2 (vorher 17,5). Rest: Langhals-Brust (Kreis-Vorlage schräger Sprossen, 3 px echter Widerspruch), Tiger-Frontplatte gegen runde Top-Nase, Rex-Front 11 px (Florians Front breiter als sein Top), Maulbau ohne Breitenpunkte (Kieferpose wirft sonst Falten). *Schritt 4 (nachmittags):* Δ-Zahl im Blatt-Titel und Saum im Blatt zeigen die Abweichung je Blatt; Widersprüche der Kurven sind sichtbar. *Schritt 3 (nachmittags):* Stationen eingefroren, nichts springt mehr; offen: Käfig selbst im Dokument, Kurven folgen dem Körper nicht automatisch. (Phase 1)
+- [x] **Langhals: „Riesenmaul direkt in die Schnauze, auch wenn ich nur ein kleines darunter setze“** (Florian, 15.10. nachmittags, Screenshot). Ursache: Im Front-Blatt holten die Maulpunkte ihre Tiefe (x) vom Platzhalter-Loft, dessen Front beim Langhals weit hinter der Schnauze liegt; der dritte Punkt eines kleinen V landete bei x = 0,04 (Rumpf), das Maul lief von der Schnauze bis dorthin (Länge 0,265). *Behoben:* Tiefe aus dem feinen Kern-Netz (`punktAufKern` in `apps/editor/src/maul/maulFlaeche.ts`); dasselbe V ergibt jetzt ein Maul von 0,059. (Phase 1, erledigt)
 - [x] **Gerade Maullinie ergibt ein gerades Maul** (Florian, 15.10.: „wenn ich ganz gerades Maul einzeichne, hat es immer diese komische Kerbe vorne“). *15.10. mittags, Schritt 2:* Anfang auf der Kontur (Weltpunkt), Lippenhöhe je Ring aus der Kreuzung mit der Sprosse, Kappenzeile auf dem Anfang; Kerbe weg (Kugel 0,7 px, Rex 1,9–2,1 px = Rille). Rest: Rille vorn 2–3 px in der Seitenansicht sichtbar; scharfe Spitze → Überbiss statt Lippe durch die Spitze. (Phase 1, Rest Phase 2)
 
 ### Phase 2 (Maul, Zähne, Augen)
@@ -63,6 +64,8 @@
 
 ## Erledigt (mit Datum)
 
+> Florian (15.10.): „Ich weiß nie so recht, wann der Zeitpunkt für welches Feedback ist. Falls ich etwas bemängele, das laut Plan erst noch gemacht wird, dann notiere es und mache nach Plan weiter.“ So wird es gehalten: Jede Rückmeldung landet hier mit ihrer Phase; was in den laufenden Schritt gehört, wird sofort gemacht, der Rest wartet an seiner Stelle.
+
 - [x] 14.10.: Kastenschnauze (ebene Kappe), Hautfalten enden an der Lippe, Rachenlinie automatisch, Leiter entfächert, Drache als Prüfwesen → Beweis 2 ganz.
 - [x] 14.10.: Beine am runden Bauch (gleichmäßige Ringwinkel, Feldrand wandert die Achse hinab) → Beweis 3 ganz.
 - [x] 14.10.: Zonen-Atlas → Beweis 4 ganz.
@@ -71,3 +74,4 @@
 - [x] 15.10.: „Zeichnung ist Form“ Schritt 2: Lippe auf der gezeichneten Linie (Konturanfang, Sprossen-Kreuzungen); Kerbe weg.
 - [x] 15.10.: „Zeichnung ist Form“ Schritt 4: Δ je Blatt im Titel (grün/ocker/pink) und Lichtsaum > 2 px; Zahlen in der Tafel Spiel.
 - [x] 15.10.: „Zeichnung ist Form“ Schritt 3 (Zuschnitt): Stationen im Dokument eingefroren, Kurvenänderungen ziehen denselben Käfig nach, Ecken/Reifen nachgeführt, „Neu ableiten“; Giraffenhals bleibt oben (Satz 3).
+- [x] 15.10.: Langhals-Riesenmaul (Maulpunkte im Front-Blatt mit Tiefe vom Platzhalter-Loft) → Tiefe aus dem Kern-Netz.
