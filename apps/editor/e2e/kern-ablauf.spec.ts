@@ -108,13 +108,15 @@ test('Körper: Seitenknoten ziehen, zwei Reifen per ⌃R, ⌥-Ecke, Perle ziehen
   await ziehen(page, c.x + perle2.px, c.y + perle2.py, 24, -16);
   await page.waitForTimeout(800);
   expect((await page.evaluate(() => (window as unknown as Fenster).__stores.editor.getState().verlauf.length)) as number).toBe(schritte + 1);
-  // Pinsel G: Beule, Deltas im Dokument, kein Umbau; Undo nimmt sie zurück
+  // Pinsel G: Beule, Deltas im Dokument; am Gestenende folgen die Profile der Silhouette („Formen folgen“, 50c1dd4 —
+  // das baut neu, deshalb kein „kein Umbau“ mehr); Strich und Folgen sind ein Undo-Schritt, Undo nimmt beides zurück
+  const vorPinsel = (await page.evaluate(() => (window as unknown as Fenster).__stores.editor.getState().verlauf.length)) as number;
   await page.evaluate(() => (window as unknown as Fenster).__stores.ui.getState().setzeWerkzeug('ziehen'));
   await ziehen(page, c.x + c.w * 0.5, c.y + c.h * 0.5, 0, -50, 10);
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(1500);
   const d2 = await dok(page);
   expect(d2.kaefig?.deltas.length ?? 0).toBeGreaterThan(5);
-  expect((await F(page)).ableitung).toBe(0);
+  expect((await page.evaluate(() => (window as unknown as Fenster).__stores.editor.getState().verlauf.length)) as number).toBe(vorPinsel + 1);
   await page.evaluate(() => (window as unknown as Fenster).__stores.editor.getState().rueckgaengig());
   await page.waitForTimeout(600);
   expect((await dok(page)).kaefig?.deltas.length ?? 0).toBe(0);
