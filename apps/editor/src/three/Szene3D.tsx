@@ -62,7 +62,7 @@ export function Szene3D() {
           const n = aktuellesNetz();
           if (!n) return null;
           const w = n.netz;
-          return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung, reifen: w.reifen ? { liste: w.reifen.liste, knoten: w.reifen.knoten } : null, maul: w.maul };
+          return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung, reifen: w.reifen ? { liste: w.reifen.liste, knoten: w.reifen.knoten } : null, maul: w.maul, lippen: w.info.maul ?? null };
         },
         // M3: Kieferknopf und Augen in Feldpixeln der Bühne (E2E)
         griffe: () => ({ kiefer: kieferPixel(), augen: augenPixel() }),

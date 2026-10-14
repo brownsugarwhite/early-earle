@@ -10,6 +10,30 @@ import { Steuerung3D } from './Steuerung3D';
 import { View2D } from './View2D';
 import { useKernAnzeige } from '../kern/kernBau';
 
+const px = (d: number) => d.toFixed(1).replace('.', ',');
+
+/** Abweichung der Lippenkanten von Rot und Blau (Phase 2 M2, Florian: „exakt die Lippenkante“), nur in der Stufe Maul, Seite und Front. */
+function Lippen({ id }: { id: 'seite' | 'front' }) {
+  const maul = useKernAnzeige((s) => s.info?.maul);
+  const ebene = useUi((s) => s.ebene);
+  if (ebene !== 'maul' || !maul) return null;
+  const wert = (w: { seite: number; front: number | null }) => (id === 'seite' ? w.seite : w.front);
+  const eintrag = (name: 'rot' | 'blau', w: { seite: number; front: number | null }) => {
+    const d = wert(w);
+    return (
+      <span key={name} className={`vp-lippe ${name} ${d === null ? '' : d <= 1 ? 'gut' : d <= 3 ? 'mittel' : 'schlecht'}`} data-lippe={name} data-px={d === null ? '' : d.toFixed(1)} title={`größte Abweichung der ${name === 'rot' ? 'Oberlippenkante' : 'Unterkieferkante'} von der ${name === 'rot' ? 'roten' : 'blauen'} Linie in diesem Blatt (px bei 461 px je Kachel)`}>
+        {name} {d === null ? '–' : `${px(d)} px`}
+      </span>
+    );
+  };
+  return (
+    <span className="vp-lippen">
+      {eintrag('rot', maul.oben)}
+      {maul.unten && eintrag('blau', maul.unten)}
+    </span>
+  );
+}
+
 /** Abweichung Körper ↔ Kurve des Blatts (Plan 9.8: Zahl im Titel; grün ≤ 2, ocker ≤ 6, sonst pink; px bei 461 px je Kachel). */
 function Delta({ id }: { id: 'seite' | 'front' | 'top' }) {
   const d = useKernAnzeige((s) => s.info?.blatt?.[id]?.max);
@@ -17,9 +41,12 @@ function Delta({ id }: { id: 'seite' | 'front' | 'top' }) {
   if (!kern || d === undefined) return null;
   const stufe = d <= 2 ? 'gut' : d <= 6 ? 'mittel' : 'schlecht';
   return (
-    <span className={`vp-delta ${stufe}`} data-delta={d.toFixed(1)} title="größte Abweichung zwischen Körper und Kurve in diesem Blatt (px bei 461 px je Kachel)">
-      Δ {d.toFixed(1).replace('.', ',')} px
-    </span>
+    <>
+      <span className={`vp-delta ${stufe}`} data-delta={d.toFixed(1)} title="größte Abweichung zwischen Körper und Kurve in diesem Blatt (px bei 461 px je Kachel)">
+        Δ {px(d)} px
+      </span>
+      {id !== 'top' && <Lippen id={id} />}
+    </>
   );
 }
 

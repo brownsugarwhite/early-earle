@@ -18,6 +18,7 @@ import {
   spantenAngleichen,
 } from '@ee/shape';
 import { maulAnKontur, maulImUmrissSichern } from '@ee/shape/versuch';
+import { useUi } from './uiStore';
 import { kantenAnFlaeche } from '../kanten/kantenFlaeche';
 import { create } from 'zustand';
 
@@ -68,6 +69,14 @@ type EditorState = {
 const MAX_VERLAUF = 200;
 
 /**
+ * Bauweise Kern (Phase 2 M2): Die Maullinien bleiben, wie sie gezeichnet sind. Der Kern setzt den Schlitzanfang selbst
+ * auf die Kontur, und die versetzte Kante (Überbiss/Unterbiss) hat ihren eigenen Anfang **im** anderen Kiefer — das
+ * Einrasten der Anfänge als Umrissknoten (Versuch 12.10., Loft) zog ihn auf die Kontur und machte aus jedem Unterbiss
+ * einen Überbiss (Rex-Test 15.10. abends).
+ */
+const maulFrei = () => useUi.getState().bauweise === 'kern';
+
+/**
  * Was an der Form hängt, folgt ihr (Florian 12.10.: ein Objekt): Der Maulanfang bleibt auf der Seitenkontur, die
  * Kantenlinien legen sich neu auf die Fläche (≈ 0,1–0,2 s, deshalb bei Gesten erst beim Loslassen).
  */
@@ -77,7 +86,7 @@ function mitFormVerbunden(alt: Dokument, neu: Dokument, kantenAuch: boolean): Do
   if (d.spanten?.length && alt.profile.front !== d.profile.front && alt.profile.front.knoten.length !== d.profile.front.knoten.length) {
     d = { ...d, spanten: spantenAngleichen(alt.profile.front, d.profile.front, d.spanten) };
   }
-  if (d.maul && alt.profile.seite !== d.profile.seite) {
+  if (d.maul && !maulFrei() && alt.profile.seite !== d.profile.seite) {
     const maul = maulAnKontur(d.maul, alt.profile.seite, d.profile.seite);
     if (maul !== d.maul) d = { ...d, maul };
   }
@@ -136,7 +145,7 @@ export const useEditor = create<EditorState>((set, get) => {
         const rest = { ...d };
         delete rest.maul;
         // Maulanfänge sind Knoten des Umrisses (12.10. nachts): fehlen sie (ältere Mäuler), werden sie eingebaut
-        return maul ? maulImUmrissSichern({ ...rest, maul }) : rest;
+        return maul ? (maulFrei() ? { ...rest, maul } : maulImUmrissSichern({ ...rest, maul })) : rest;
       });
     },
     setzeZaehne(zaehne) {
@@ -214,7 +223,7 @@ export const useEditor = create<EditorState>((set, get) => {
       set({ dok: neuesDokument(), datei: null, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
     },
     laden(dok, datei) {
-      set({ dok: maulImUmrissSichern(dok), datei, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
+      set({ dok: maulFrei() ? dok : maulImUmrissSichern(dok), datei, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
     },
     gespeichert(datei) {
       set({ datei, geaendert: false });

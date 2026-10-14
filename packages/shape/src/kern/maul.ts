@@ -16,6 +16,8 @@ import type { Dokument } from '../dokument';
 import { type Kaefig, alleFlaechen, kaefigAusFlaechen, kanteZwischen, pruefeKaefig } from '../kaefig/halbkanten';
 import { type Roehre, roehre } from '../kaefig/roehre';
 import { luLoesen, luZerlegen } from '../loeser/lu';
+import { abtasten3 } from '../versuch/linie3d';
+import type { Linie3 } from '../dokument';
 import { anwenden3 } from '../subdivision/matrix';
 import type { KlingenLage } from './klinge';
 import type { Leiter } from '../versuch/wirbelsaeule';
@@ -1223,8 +1225,14 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     const sEnde = sN[sN.length - 1]!;
     const x0 = vs.xy[0]!.x;
     const laengs = Math.sign(nahtP[0]![0] - nahtP[nahtP.length - 1]![0]) || 1;
+    // vorderste Stelle des Zugs (beim Kinn der Schlitzanfang selbst; bei einer Schnauze über dem Schlitz die Spitze):
+    // sie landet am eigenen Anfang. Der Zug kann vor ihr nach vorn laufen (Schlitz unter der Spitze) — gemessen ab dem
+    // Schlitzanfang rückte die Rex-Schnauze beim Unterbiss 0,12 statt 0,075 zurück und verlor ihre Form.
+    let qSpitze = 0;
+    for (let q = 1; q < nahtP.length; q++) if ((nahtP[q]![0] - x0) * laengs > (nahtP[qSpitze]![0] - x0) * laengs) qSpitze = q;
+    const sSpitze = sN[qSpitze]!;
     let sC = -1;
-    for (let q = 0; q + 1 < nahtP.length; q++) {
+    for (let q = qSpitze; q + 1 < nahtP.length; q++) {
       const da = (nahtP[q]![0] - x0) * laengs;
       const db = (nahtP[q + 1]![0] - x0) * laengs;
       if (da > 0 && db <= 0) {
@@ -1234,7 +1242,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     }
     if (sC < 0) {
       let bestD = Infinity;
-      for (let q = 0; q < nahtP.length; q++) {
+      for (let q = qSpitze; q < nahtP.length; q++) {
         const d = Math.hypot(nahtP[q]![0] - x0, nahtP[q]![1] - vs.xy[0]!.y);
         if (d < bestD) {
           bestD = d;
@@ -1242,7 +1250,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
         }
       }
     }
-    sC = Math.max(0, Math.min(sC, 0.9 * sEnde));
+    sC = Math.max(sSpitze, Math.min(sC, sSpitze + 0.9 * (sEnde - sSpitze)));
     const nahtBei = (sWert: number): [number, number] => {
       for (let q = 0; q + 1 < nahtP.length; q++) {
         if (sWert <= sN[q + 1]!) {
@@ -1257,17 +1265,31 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     const dY = new Float64Array(n0);
     const zF = new Float64Array(n0).fill(1);
     const gesetzt = new Uint8Array(n0);
+    // hinter der vordersten Stelle gleitet die Naht gestaucht entlang des Zugs (Ende fest); die Stirn davor (Schlitz
+    // bis Spitze) wandert starr mit der Spitze — so bleibt sie eine Wand vom Schlitz zum zurückgesetzten Anfang
+    const neuSpitze = nahtBei(sC);
+    const dSpitze: [number, number] = [neuSpitze[0] - nahtP[qSpitze]![0], neuSpitze[1] - nahtP[qSpitze]![1]];
     for (let q = 1; q < nahtIdx.length; q++) {
-      const neu = nahtBei(sC + (sN[q]! * (sEnde - sC)) / Math.max(1e-12, sEnde));
-      dX[nahtIdx[q]!] = neu[0] - nahtP[q]![0];
-      dY[nahtIdx[q]!] = neu[1] - nahtP[q]![1];
+      let d: [number, number];
+      if (q <= qSpitze) d = dSpitze;
+      else {
+        const neu = nahtBei(sC + ((sN[q]! - sSpitze) * (sEnde - sC)) / Math.max(1e-12, sEnde - sSpitze));
+        d = [neu[0] - nahtP[q]![0], neu[1] - nahtP[q]![1]];
+      }
+      dX[nahtIdx[q]!] = d[0];
+      dY[nahtIdx[q]!] = d[1];
       gesetzt[nahtIdx[q]!] = 1;
     }
-    // Ringe 0 … k: linear von der Kante (Tiefe 0) zur Naht (Tiefe 1), Breite ebenso auslaufend
+    // Ringe 0 … k: linear von der Kante (Tiefe 0) zur Naht (Tiefe 1), Breite ebenso auslaufend. Die Haut des Kiefers
+    // folgt der Kante nur längs (x) und in der Breite, nicht in der Höhe: Die Kante liegt im anderen Kiefer (höher bzw.
+    // tiefer als der Schlitz), die Haut dahinter bleibt auf ihrer Höhe — so steht die Stirn des kürzeren Kiefers als
+    // senkrechte Wand von der Kante bis zum Umriss (Florians Rex: Kinnlinie fällt vom blauen Anfang senkrecht). Mit der
+    // Höhe mitgezogen faltete sich die Kappe einer scharfen Schnauze beim Unterbiss (haut/haut 70 Paare).
+    const dKanteX: [number, number][] = dKante.map((d) => [d[0], 0]);
     const nahtVonRing = (i: number): number => nahtIdx[(untenV ? bL : c - bL) + i]!;
     for (let i = 0; i <= k; i++) {
       const t = c / 2 + i;
-      const dl = dKante[t]!;
+      const dl = dKanteX[t]!;
       const ns = nahtVonRing(i);
       const ds: [number, number] = [dX[ns]!, dY[ns]!];
       const schritt = untenV ? 1 : -1;
@@ -1291,10 +1313,10 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
         const w = untenV ? (bL - b) / bL : (b - bL) / (c - bL);
         const Lw = dBei(v.kappe('vorn', c / 2, b));
         const Rw = dBei(v.kappe('vorn', c, b));
-        const Tu = dKante[t]!;
+        const Tu = dKanteX[t]!;
         const Bu = dBei(v.kappe('vorn', a, bFern));
-        const c00 = dKante[0]!;
-        const c10 = dKante[c / 2]!;
+        const c00 = dKanteX[0]!;
+        const c10 = dKanteX[c / 2]!;
         const c01 = dBei(v.kappe('vorn', c / 2, bFern));
         const c11 = dBei(v.kappe('vorn', c, bFern));
         const idx = v.kappe('vorn', a, b);
@@ -1632,11 +1654,14 @@ export function ableitenMitMaul(dok: Dokument, linie: MaulLinie, optionen: Parti
   // bei getrennten Kiefern (M2): untere Kette = gelöste obere Kette + geplanter Versatz der Ziele (der Löser zog die
   // eigenständig gelöste untere Kette an der Spitze 0,5 % unter die obere: Kontakt)
   if (info.lage.versatz) {
-    // Kiefer getrennt: die versetzte Kette (eigene Kante) als eigene Faltenkurve lösen — ihre Grenzlagen hängen nur von
-    // der Kette selbst ab (scharfe Falten), also trifft ein kleines System aus ihren Grenzzeilen die Ziele exakt. Die
-    // frühere Regel „gelöste Schlitzkette + Zielversatz“ übertrug die Kontrollpunkt-Schwingung der Schlitzkette an der
-    // Kappe (fünf Spalten auf 2 % der Maullänge) auf die versetzte Kette (Zickzack der Breite, 36 Paare lippeU/lippeU).
+    // Kiefer getrennt: beide Lippenketten als eigene Faltenkurven lösen — ihre Grenzlagen hängen nur von der Kette
+    // selbst ab (scharfe Falten), also trifft ein kleines System aus ihren Grenzzeilen die Ziele exakt (Florian: Rot und
+    // Blau exakt die Lippenkante). Die frühere Regel „gelöste Schlitzkette + Zielversatz“ übertrug die
+    // Kontrollpunkt-Schwingung der Schlitzkette an der Kappe (fünf Spalten auf 2 % der Maullänge) auf die versetzte
+    // Kette (Zickzack der Breite, 36 Paare lippeU/lippeU); der Ausgleich allein zog die Schlitzkette beim Unterbiss am
+    // Kinn 0,03 über ihr Ziel (36 Paare haut/lippeU).
     versatzKetteLoesen(abl, info, mk.ziele, !!info.lage.versatz.oben);
+    versatzKetteLoesen(abl, info, mk.ziele, !info.lage.versatz.oben);
   } else {
     for (let t = 0; t < info.lage.m; t++) {
       for (const [o, u] of [
@@ -1656,7 +1681,7 @@ export function ableitenMitMaul(dok: Dokument, linie: MaulLinie, optionen: Parti
  * Winkel t = m ist gelöst und fest), so dass die Grenzlagen (Zeilen der Grenzmatrix, auf der Kette nur die Kette selbst:
  * Falten- oder Eckregel) die Ziele treffen. Zeilen, die fremde Punkte berühren, nehmen deren gelöste Lagen als bekannt.
  */
-function versatzKetteLoesen(abl: Ableitung, info: MaulAbleitung, ziele: Float64Array, oben: boolean): void {
+function versatzKetteLoesen(abl: Ableitung, info: MaulAbleitung, ziele: Float64Array, oben: boolean, glatt = KETTE_GLATT): void {
   const m = info.lage.m;
   const kette = oben ? info.pfad : info.unten;
   const ketteLinks = oben ? info.pfadLinks : info.untenLinks;
@@ -1665,6 +1690,7 @@ function versatzKetteLoesen(abl: Ableitung, info: MaulAbleitung, ziele: Float64A
   const pos = new Map<number, number>();
   for (let t = 0; t < m; t++) pos.set(kette[t]!, t);
   for (let t = 1; t < m; t++) pos.set(ketteLinks[t]!, -t); // gespiegelt: x, y gleich, z negiert
+  // Grenzzeilen der Kette (A · P = r), getrennt für (x, y) und z (Spiegel)
   const Axy = new Float64Array(m * m);
   const Az = new Float64Array(m * m);
   const rxy = new Float64Array(2 * m);
@@ -1689,8 +1715,30 @@ function versatzKetteLoesen(abl: Ableitung, info: MaulAbleitung, ziele: Float64A
       }
     }
   }
-  const xy = luLoesen(luZerlegen(Axy, m), rxy, 2);
-  const z = luLoesen(luZerlegen(Az, m), rz, 1);
+  // Normalgleichungen, wahlweise mit Glättung der Kontrollpunkte (zweite Differenz). Standard ohne: Glättung 0,02
+  // kostete am Rex rot 0,06 → 0,63 px und blau 0 → 1,4 px, ohne die Kinnpaare des Unterbisses zu beseitigen.
+  const loese = (A: Float64Array, r: Float64Array, k: number): Float64Array => {
+    const N = new Float64Array(m * m);
+    const rhs = new Float64Array(k * m);
+    for (let i = 0; i < m; i++) {
+      for (let a = 0; a < m; a++) {
+        const wa = A[i * m + a]!;
+        if (wa === 0) continue;
+        for (let b = 0; b < m; b++) N[a * m + b] = N[a * m + b]! + wa * A[i * m + b]!;
+        for (let d = 0; d < k; d++) rhs[k * a + d] = rhs[k * a + d]! + wa * r[k * i + d]!;
+      }
+    }
+    if (glatt > 0) {
+      for (let t = 1; t + 1 < m; t++) {
+        const idx = [t - 1, t, t + 1];
+        const wgt = [-1, 2, -1];
+        for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) N[idx[a]! * m + idx[b]!] = N[idx[a]! * m + idx[b]!]! + glatt * wgt[a]! * wgt[b]!;
+      }
+    }
+    return luLoesen(luZerlegen(N, m), rhs, k);
+  };
+  const xy = loese(Axy, rxy, 2);
+  const z = loese(Az, rz, 1);
   for (let t = 0; t < m; t++) {
     const i = kette[t]!;
     xyz[3 * i] = xy[2 * t]!;
@@ -1704,6 +1752,8 @@ function versatzKetteLoesen(abl: Ableitung, info: MaulAbleitung, ziele: Float64A
     }
   }
 }
+/** Glättungsgewicht der Lippenketten-Lösung (zweite Differenz der Kontrollpunkte gegen Grenzzeilen mit Gewichten ≈ 1) */
+const KETTE_GLATT = 0;
 
 /**
  * Kontrollpunkte der Tasche (Reihen, Winkelsäulen) im Ausgleich lösen: Grenzlagen treffen die Ziele (Gewicht 1), dazu
@@ -1761,6 +1811,76 @@ function taschenNachloesen(abl: Ableitung, info: MaulAbleitung, ziele: Float64Ar
   }
   const x = luLoesen(luZerlegen(N, np), rhs, 3);
   for (let q = 0; q < np; q++) for (let d = 0; d < 3; d++) xyz[3 * P[q]! + d] = x[3 * q + d]!;
+}
+
+/** Abweichung einer Lippenkette von ihrer Linie (px bei 461 px je Kachel): Seite = Abstand (x, y) zum Polygonzug, Front = |z|-Unterschied am nächsten Punkt (null ohne Tiefe in der Linie). */
+export type LippenAbweichung = { seite: number; front: number | null };
+/** Abweichung beider Lippenketten (Phase 2 M2, Florian: „Rot und Blau sollen exakt die Lippenkante darstellen“); `versatz` = welcher Kiefer die versetzte Kante trägt (null = Kiefer gleich). */
+export type MaulAbweichung = { versatz: 'oben' | 'unten' | null; oben: LippenAbweichung; unten: LippenAbweichung | null };
+
+const ABWEICHUNG_PX_MAUL = 461;
+
+/**
+ * Lippenketten gegen die Linien messen: Grenzlagen der Kettenpunkte (Ruhelage) gegen die gezeichneten 3D-Linien des
+ * Dokuments (`maul.zu.oben` = rote Oberlippe ↔ Kette `pfad`, `maul.zu.unten` = blaue Unterkieferkante ↔ Kette `unten`,
+ * Profil-Einheiten × Maßstab); ohne Zeichnung gegen die Stützen (Schlitz: `maulLiniePunkte`, versetzte Kante: ihre
+ * Seitenpunkte), dann nur in der Seite.
+ */
+export function maulAbweichung(abl: MaulErgebnis, dok: Dokument, linie: MaulLinie): MaulAbweichung {
+  const m = abl.maul;
+  const sk = dok.skalierung;
+  const vs = m.lage.versatz;
+  const versatz: 'oben' | 'unten' | null = vs ? (vs.oben ? 'oben' : 'unten') : null;
+  const P = (idx: number): [number, number, number] => [abl.fein[3 * idx]!, abl.fein[3 * idx + 1]!, abl.fein[3 * idx + 2]!];
+  const kettePfad = m.pfad.map(P);
+  const ketteUnten = [...m.unten, m.pfad[m.lage.m]!].map(P);
+  const gez = dok.maul?.zu;
+  const welt = (l: Linie3): [number, number, number][] => abtasten3(l, 24).map((q) => [q[0] * sk, q[1] * sk, q[2] * sk]);
+  const messen = (kette: [number, number, number][], zug: readonly (readonly [number, number, number])[], tiefe: boolean): LippenAbweichung => {
+    let seite = 0;
+    let front = 0;
+    for (let t = 0; t < kette.length; t++) {
+      const p = kette[t]!;
+      let best = Infinity;
+      let zNah = 0;
+      for (let i = 0; i + 1 < zug.length; i++) {
+        const a = zug[i]!;
+        const b = zug[i + 1]!;
+        const abx = b[0] - a[0];
+        const aby = b[1] - a[1];
+        const l2 = abx * abx + aby * aby || 1e-18;
+        const u = Math.min(1, Math.max(0, ((p[0] - a[0]) * abx + (p[1] - a[1]) * aby) / l2));
+        const d = Math.hypot(a[0] + abx * u - p[0], a[1] + aby * u - p[1]);
+        if (d < best) {
+          best = d;
+          zNah = Math.abs(a[2] + (b[2] - a[2]) * u);
+        }
+      }
+      if (!Number.isFinite(best)) continue;
+      seite = Math.max(seite, best * ABWEICHUNG_PX_MAUL);
+      if (tiefe && t > 0) front = Math.max(front, Math.abs(Math.abs(p[2]) - zNah) * ABWEICHUNG_PX_MAUL);
+    }
+    return { seite, front: tiefe ? front : null };
+  };
+  const hatTiefe = (zug: readonly (readonly [number, number, number])[]) => zug.some((q) => Math.abs(q[2]) > 1e-6);
+  if (gez) {
+    const o = welt(gez.oben);
+    const oben = messen(kettePfad, o, hatTiefe(o));
+    let unten: LippenAbweichung | null = null;
+    if (gez.unten && versatz) {
+      const u = welt(gez.unten);
+      unten = messen(ketteUnten, u, hatTiefe(u));
+    }
+    return { versatz, oben, unten };
+  }
+  // ohne Zeichnung: Schlitz gegen die Stützen, versetzte Kante gegen ihre Seitenpunkte
+  const schlitz = maulLiniePunkte(dok, linie).map((q) => [q.x, q.y, 0] as [number, number, number]);
+  const schlitzKette = versatz === 'oben' ? ketteUnten : kettePfad;
+  const schlitzAbw = messen(schlitzKette, schlitz, false);
+  if (!vs) return { versatz, oben: schlitzAbw, unten: null };
+  const versetztKette = vs.oben ? kettePfad : ketteUnten;
+  const versetztAbw = messen(versetztKette, vs.xy.map((q) => [q.x, q.y, 0] as [number, number, number]), false);
+  return vs.oben ? { versatz, oben: versetztAbw, unten: schlitzAbw } : { versatz, oben: schlitzAbw, unten: versetztAbw };
 }
 
 /** Maullinie aus Stützen (f, v); die erste Stütze gilt ab der Spitze. */

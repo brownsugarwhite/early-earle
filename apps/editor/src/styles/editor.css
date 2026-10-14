@@ -197,6 +197,26 @@ button {
 .vp-delta.schlecht {
   color: #ff5c9a;
 }
+/* Lippenkanten gegen Rot und Blau (Phase 2 M2), nur in der Stufe Maul */
+.vp-lippen {
+  margin-left: 8px;
+  font-size: 12px;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  letter-spacing: 0.02em;
+}
+.vp-lippe {
+  margin-left: 6px;
+  opacity: 0.95;
+}
+.vp-lippe.rot {
+  color: #ff3b5c;
+}
+.vp-lippe.blau {
+  color: #2e8bff;
+}
+.vp-lippe.schlecht {
+  text-decoration: underline wavy;
+}
 :root {
   --saum: #ffd54a;
 }

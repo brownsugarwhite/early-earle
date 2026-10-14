@@ -20,7 +20,7 @@ import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { vorlageBei } from '../spanten';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
-import { type MaulErgebnis, ableitenMitMaul, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
+import { type MaulAbweichung, type MaulErgebnis, type MaulLinie, ableitenMitMaul, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
 
 export type StilArt = 'fest' | 'feuer' | 'gas' | 'fell';
@@ -96,6 +96,8 @@ export type WesenInfo = {
   blatt?: Record<'seite' | 'front' | 'top', { max: number; mittel: number }>;
   /** wirksame Stationen (Schritt 3): das Dokument friert sie ein, danach wird nur noch nachgezogen */
   stationen?: GefroreneStationen;
+  /** Abweichung der Lippenketten von den Linien (Phase 2 M2, px): rote Oberlippe, blaue Unterkieferkante; `versatz` = versetzter Kiefer */
+  maul?: MaulAbweichung;
 };
 
 /** Reifen (M3): Ringe der gezeichneten Spanten auf dem Körper, mit Perlen an den Spant-Knoten. */
@@ -566,6 +568,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   const deltas = dokRoh.kaefig?.deltas ?? [];
   const mitDeltas = <T extends Ableitung>(a: T): T => (deltas.length ? deltasAnwenden(a, deltas) : a);
   let ablRein: Ableitung | null = null;
+  let maulLinieVerwendet: MaulLinie | null = null;
   let fein: Float64Array;
   let xyz: Float64Array;
   let gesteckt: { fein: Float64Array; abl: BeinErgebnis } | null = null;
@@ -584,10 +587,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     xyz = pose.xyz;
     if ((abl as BeinErgebnis).gesteckt.length) gesteckt = { fein: pose.gesteckt.length ? Float64Array.from(pose.gesteckt.flatMap((f) => Array.from(f))) : new Float64Array(0), abl: abl as BeinErgebnis };
   } else if (maul !== 'aus') {
+    maulLinieVerwendet = plan.maulLinie ?? maulLinieVorlage(dok, maul);
     if (letzte && letzte.maul === maul && letzte.beine === 'aus') abl = letzte.abl;
     else {
-      const linie = plan.maulLinie ?? maulLinieVorlage(dok, maul);
-      abl = ableitenMitMaul(dok, linie, ableitOpt(dok, plan), { ...maulOptionenVorlage(maul), ...(plan.maulOptionen ?? {}) });
+      abl = ableitenMitMaul(dok, maulLinieVerwendet, ableitOpt(dok, plan), { ...maulOptionenVorlage(maul), ...(plan.maulOptionen ?? {}) });
       ableitung = abl.zeiten.gesamt;
     }
     ablRein = abl;
@@ -719,7 +722,9 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     saum = { seite: bl.seite.saum, front: bl.front.saum, top: bl.top.saum };
     blatt = { seite: { max: bl.seite.max, mittel: bl.seite.mittel }, front: { max: bl.front.max, mittel: bl.front.mittel }, top: { max: bl.top.max, mittel: bl.top.mittel } };
   }
-  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), stationen: abl.gefroren };
+  // Lippenkanten gegen die Linien (Phase 2 M2): px je Kette in Seite und Front
+  const maulAbw = maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul && maulLinieVerwendet ? maulAbweichung(abl as MaulErgebnis, dok, maulLinieVerwendet) : undefined;
+  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), stationen: abl.gefroren };
   const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
   const lippenBand = maul !== 'aus' && beine === 'aus' ? (plan.lippenBand ?? 0.03) * hoehe : 0;
   const mitte: V3 = [0, 0, 0];
