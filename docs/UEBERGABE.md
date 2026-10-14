@@ -15,6 +15,8 @@ Branch `claude/editor-grundlayout`. Es gilt der Fahrplan [`docs/plans/2026-10-14
    - **Punkte:** „+“ und „−“ wirken auf alle Querschnitte (gleiche Punktstruktur). An der Kugel hat der Unterkiefer anfangs nur den Achspunkt; erst ein „+“ auf der Unterkiefer-Kurve macht ihn formbar.
    - Bilder: `docs/progress/editor/kiefer-spant-front-2026-10-15.png`, `kiefer-spant-buehne-2026-10-15.png`.
 
+5. **Langhals-Kehle: Ursache war die Naht** (a11e5ae): Der Nahtrundgang lief nur in eine Richtung und endete an der Lücke am Lippenanfang; beim Ringanfang (Maul unter der Nase) fehlte die Nasenunterseite, die Mittelnaht des Unterkiefers lag über dem Lippenanfang. Jetzt läuft er bei einem fehlenden Nahtstück auch rückwärts. **Langhals „gleich“ (Florians Giraffe) 92/52/60/60/60 → 0/0/0/0/0 Durchdringungen**, Seite 3,2 → 1,6 px, Nase Seite 3,4 → 0,9 px; Kugel, Rex, Tiger unverändert.
+
 ## Abnahme Block 2 (ehrlich)
 
 Kontaktbogen aller Prüffälle: `docs/progress/editor/block2-stand-2026-10-15.jpg`. Tabelle mit Zahlen auf der Planseite (Stand 15.10. nachts).
@@ -23,8 +25,8 @@ Kontaktbogen aller Prüffälle: `docs/progress/editor/block2-stand-2026-10-15.jp
 - **Satz 3** (je Kiefer ein Spant): gebaut.
 - **Satz 4** (Lippen ≤ 1 px, offen 0 sichtbare Durchdringungen):
   - Lippen ≤ 0,7 px.
-  - Offen 0 bei allen Kugel- und Nasenfällen und bei Langhals getrennt.
-  - **Langhals „gleich“: Kehle 52–60 Paare.**
+  - Offen 0 bei allen Kugel-, Nasen- und Langhalsfällen außer „blau am Hals“ und der kleinen Vorlagen-Linie (nach dem Nahtfix).
+  - Bei 100 % bleiben Hautknicke beim Langhals: Wange hinter dem Mundwinkel 85° (das Gelenk liegt auf der Haut) und die gestauchte Kehle bei „rot runter“ 91°.
 - **Satz 2** (Netz ruhig auf der schwarzen Linie): Seite ≤ 2,4 px (Kugel) bzw. ≈ 3 px (Langhals). **Lokalität nicht erfüllt** (Lippenanfang 10 px gezogen, Haut außerhalb des Bands):
   - Beim Ziehen des kürzeren Kiefers und bei Florians Unterbiss meist 0,2–0,7 px.
   - Beim Ziehen des Schlitzanfangs 1,3–4,6 px.
@@ -33,7 +35,7 @@ Kontaktbogen aller Prüffälle: `docs/progress/editor/block2-stand-2026-10-15.jp
 
 ## Offen
 
-- **Kehle des Langhalses beim Öffnen** (Falten 52–166° bei 100 %, Langhals „gleich“ 52–60 Paare) → Kehlkette (Plan 5.2).
+- **Langhals bei 100 % Öffnung:** Wangenknick hinter dem Mundwinkel (85°) und gestauchte Kehle bei heruntergezogenem roten Anfang (91°), ohne Durchdringungen → Gelenk im Kopf statt auf der Haut / Kehlkette (Plan 5.2; ein Gelenk hinter dem Mundwinkel ließ beim Rex die Tasche durchschwingen, gemessen und verworfen).
 - **„Blau am Hals“**: Wird der blaue Anfang weit an den Hals gezogen, hängt der Unterkiefer als Lappen heraus (248–584 Paare). Ebenso offen ist die kleine Vorlagen-Linie des Langhalses (Grenzfall).
 - Lokalität (siehe oben).
 - Topologie: Einmalige Wechsel gibt es noch an den Bandgrenzen und wenn ein Lippenanfang über einen Nasenring gezogen wird; die Haut springt dort ≈ 3,5 px.
