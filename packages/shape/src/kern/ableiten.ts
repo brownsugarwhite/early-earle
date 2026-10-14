@@ -37,6 +37,12 @@ export type AbleitOptionen = {
   kappe: number;
   /** Gewicht der feinen Nahtpunkte im Ausgleich (0 = nur Käfigziele, keine Kurvenanpassung) */
   nahtGewicht: number;
+  /**
+   * Führende Kurve („Formen folgen“, Florian 15.10.): die zuletzt bearbeitete Kurve bestimmt die Breite allein (Front:
+   * front(y), Top: top(x)); ohne Angabe oder bei der Seite gilt die Sichthülle min(top, front). Die anderen Kurven zieht
+   * der Editor danach auf die Silhouette des Körpers nach.
+   */
+  fuehrend?: 'seite' | 'front' | 'top';
   /** Eingefrorene Stationen (Schritt 3): Ringverteilung aus dem Dokument statt Neuwahl nach Krümmung; Ecken und Reifen werden nachgeführt */
   stationen?: GefroreneStationen;
   /**
@@ -965,6 +971,7 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
   // der Höhe der breitesten Stützstelle(n) (die am wenigsten einengende, bei flachen Seiten). Die übrigen Stützstellen
   // werden einzeln auf die Front ihrer Höhe beschnitten (`punkt`). Vorher engte die Front an jeder Höhe den ganzen Ring
   // ein: ein Kasten unter einer runden Front oder ein Brustring unter dem Hals schrumpfte als Ganzes (Tiger 21 px).
+  const fuehrend = opt.fuehrend;
   const masstab = (sp: Sprosse, q: Querschnitt) => {
     let W = breiten.top((sp.o.x + sp.u.x) / 2);
     if (!(W > 0)) W = breiten.topMax;
@@ -978,7 +985,9 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
       const fb = breiten.front(y);
       if (fb > 0) fBest = Math.max(fBest, fb / wj);
     }
-    if (fBest > 0) W = Math.min(W, fBest);
+    // führende Front: ihre Breite gilt allein; führendes Top: die Front engt nicht ein; sonst Sichthülle
+    if (fuehrend === 'front') W = fBest > 0 ? fBest : W;
+    else if (fuehrend !== 'top' && fBest > 0) W = Math.min(W, fBest);
     if (!(W > 1e-6)) W = letzteW || 0.01 * breiten.topMax;
     letzteW = W;
     return W;
@@ -988,8 +997,10 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     const x = sp.u.x + (sp.o.x - sp.u.x) * hv;
     const y = sp.u.y + (sp.o.y - sp.u.y) * hv;
     let z = q.w[j]! * W;
-    const fb = breiten.front(y);
-    if (fb > 0 && z > fb) z = fb; // Hülle: nie breiter als die Front auf dieser Höhe
+    if (fuehrend !== 'top') {
+      const fb = breiten.front(y);
+      if (fb > 0 && z > fb) z = fb; // Hülle: nie breiter als die Front auf dieser Höhe
+    }
     return [x, y, z, hv];
   };
   for (let i = 0; i < R; i++) {
@@ -1112,14 +1123,16 @@ const BREITE_SCHWELLE = 0.05;
  * Soll-Halbbreite eines Breitenpunkts bei (x, y): die größte, die ins Top (bei x) und in die Front (bei y) passt
  * (Sichthülle der Zeichnungen). Außerhalb beider Silhouetten gilt der Rückfall (Käfigziel).
  */
-export function breiteSoll(breiten: Breiten, x: number, y: number, rueckfall: number): number {
+export function breiteSoll(breiten: Breiten, x: number, y: number, rueckfall: number, fuehrend?: 'seite' | 'front' | 'top'): number {
   const t = breiten.top(x);
   const f = breiten.front(y);
+  if (fuehrend === 'top') return t > 0 ? t : Math.abs(rueckfall);
+  if (fuehrend === 'front') return f > 0 ? f : Math.abs(rueckfall);
   // außerhalb einer der beiden Silhouetten (Spitzen, 1 px vor dem Top) bleibt die aktuelle Lage: dort sagt die Zeichnung nichts
   return t > 0 && f > 0 ? Math.min(t, f) : Math.abs(rueckfall);
 }
 
-export function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V2[]; anteil: Float64Array }, nahtFein: Uint32Array, anteil: Float64Array, breite?: Breite | null, breiten?: Breiten, lagen?: Float64Array): Float64Array {
+export function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V2[]; anteil: Float64Array }, nahtFein: Uint32Array, anteil: Float64Array, breite?: Breite | null, breiten?: Breiten, lagen?: Float64Array, fuehrend?: 'seite' | 'front' | 'top'): Float64Array {
   const nB = breite && breiten && lagen ? breite.fein.length : 0;
   const out = new Float64Array(3 * (n + nahtFein.length + nB));
   out.set(ziele.subarray(0, 3 * n));
@@ -1140,7 +1153,7 @@ export function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V
       out[o] = x;
       out[o + 1] = y;
       const f = breite.faktor[k]!;
-      out[o + 2] = breite.vorzeichen[k]! * f * breiteSoll(breiten, x, y, lagen[3 * p + 2]! / (f || 1));
+      out[o + 2] = breite.vorzeichen[k]! * f * breiteSoll(breiten, x, y, lagen[3 * p + 2]! / (f || 1), fuehrend);
     }
   }
   return out;
@@ -1337,11 +1350,11 @@ export function fertigstellen(e: Rohbau): Ableitung {
     for (let q = 0; q < nahtFein.length; q++) bedingungen.push({ zeile: nahtFein[q]!, gewicht: opt.nahtGewicht });
     if (breite) for (let q = 0; q < breite.fein.length; q++) bedingungen.push({ zeile: breite.fein[q]!, gewicht: opt.breiteGewicht });
     nahtLoeser = ausgleichsLoeser(u.grenze, k.n, bedingungen, opt.glaettung > 0 ? { kaefig: k, gewicht: opt.glaettung } : undefined);
-    xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein));
+    xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein, opt.fuehrend));
     fein = anwenden3(u.grenze, xyz);
     // Breitenziele an den tatsächlichen Grenzlagen nachrechnen (geneigte Ringe), zwei Durchgänge
     for (let durchgang = 0; breite && durchgang < BREITE_DURCHGAENGE; durchgang++) {
-      xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein));
+      xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein, opt.fuehrend));
       fein = anwenden3(u.grenze, xyz);
     }
   }
@@ -1391,10 +1404,10 @@ export function ziehen(abl: Ableitung, dokNeu: Dokument): Zug {
   const t2 = jetzt();
   const umrissNeu = umrissDicht(dokNeu);
   const anteilNeu = abl.naht.loeser ? nahtAnteile(Array.from(abl.naht.fein), v.kaefig.n, ziele, umrissNeu) : abl.naht.anteil;
-  let xyz = abl.naht.loeser ? kaefigAusgleich(abl.naht.loeser, ausgleichsZiele(v.kaefig.n, ziele, umrissNeu, abl.naht.fein, anteilNeu, abl.breite, breiten, abl.fein)) : kaefigDurchZiele(abl.loeser, ziele);
+  let xyz = abl.naht.loeser ? kaefigAusgleich(abl.naht.loeser, ausgleichsZiele(v.kaefig.n, ziele, umrissNeu, abl.naht.fein, anteilNeu, abl.breite, breiten, abl.fein, abl.opt.fuehrend)) : kaefigDurchZiele(abl.loeser, ziele);
   let fein = anwenden3(abl.unterteilung.grenze, xyz);
   if (abl.naht.loeser && abl.breite) {
-    xyz = kaefigAusgleich(abl.naht.loeser, ausgleichsZiele(v.kaefig.n, ziele, umrissNeu, abl.naht.fein, anteilNeu, abl.breite, breiten, fein));
+    xyz = kaefigAusgleich(abl.naht.loeser, ausgleichsZiele(v.kaefig.n, ziele, umrissNeu, abl.naht.fein, anteilNeu, abl.breite, breiten, fein, abl.opt.fuehrend));
     fein = anwenden3(abl.unterteilung.grenze, xyz);
   }
   const t3 = jetzt();

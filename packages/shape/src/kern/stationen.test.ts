@@ -43,7 +43,7 @@ function halsHeben(dok: Dokument, dy: number): Dokument {
   const w = (x: number) => Math.min(1, Math.max(0, -x / 0.12));
   const knoten = seite.knoten.map((k) => {
     const d = dy * w(k.p.x);
-    return d > 0 ? { ...k, p: { x: k.p.x, y: k.p.y + d }, ein: { x: k.ein.x, y: k.ein.y + d }, aus: { x: k.aus.x, y: k.aus.y + d } } : k;
+    return d > 0 ? { ...k, p: { x: k.p.x, y: k.p.y + d } } : k; // Griffe sind relativ zu p
   });
   return { ...dok, profile: { ...dok.profile, seite: { ...seite, knoten } } };
 }

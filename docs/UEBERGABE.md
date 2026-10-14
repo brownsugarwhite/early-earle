@@ -1,4 +1,4 @@
-# Übergabe (Stand 15.10.2026 später Nachmittag)
+# Übergabe (Stand 15.10.2026 abends)
 
 Branch `claude/editor-grundlayout`. Plan „Wesen-Editor 2“ freigegeben, Phase 1 nach [`docs/plans/2026-10-14-phase-1-kern.md`](plans/2026-10-14-phase-1-kern.md) (M1–M4 gebaut, Abnahme offen). Seit 15.10. morgens gilt die **Korrektur „Zeichnung ist Form“** [`docs/plans/2026-10-15-zeichnung-ist-form.md`](plans/2026-10-15-zeichnung-ist-form.md): Florians Kritik („Maul anders geformt als gezeichnet, Kerbe vorn; Tiger weicht von oben und von der Seite ab“) trifft den Vertrag von Phase 1, nicht einer späteren Phase. Abgenommen wird mit seinen drei Sätzen (Planseite Abschnitt 2), nicht mit meinen Zahlen. Blender ist nicht Teil des Plans.
 
@@ -23,11 +23,15 @@ Messwerte und ehrliche Reste stehen im „Stand“ der Planseite.
 - Rille vorn 2–3 px in der Seitenansicht; scharfe Spitze → Überbiss statt Lippe durch die Spitze; Lippe an der Spitze hinter der Schnauze braucht Schnauzenringe (Ring 0 rückt zurück, Ecken davor verlieren ihren Ring).
 - Register offener Kritik mit Phase je Punkt: [`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md).
 
+## Entscheidung „Formen folgen“ (15.10. abends)
+
+Florian will, dass die Formen immer folgen („mit der echten Form arbeiten, nicht mit gerundeten Punkten“). Der naive Weg (Knoten auf die Silhouette rutschen, Griffe bleiben) ist probiert und verworfen: Rückkopplung, der Langhals verformte sich (Top Δ 42 px). Zurückgenommen; die richtige Bauweise (Silhouette als Kurve, Anpassung je Segment beim Ziehen, führende Kurve `AbleitOptionen.fuehrend`, gebaut und getestet, vom Editor noch nicht benutzt) steht auf der Planseite „Zeichnung ist Form“, Stand 15.10. abends. Eigene Sitzung.
+
 ## Nächster Schritt
 
-1. **Florians Abnahme der drei Sätze** im Web-Modus (nach dem Pull Dev-Server neu starten): gerade Maullinie → gerades Maul; Umriss von oben = seine Kurve (Δ im Titel, Saum zeigt, wo nicht); Giraffenhals hochziehen → bleibt, Ringe springen nicht („Neu ableiten“ nur auf Wunsch).
-2. Je nach Urteil: Kurven aus der Silhouette nachziehen (Front/Top folgen einer Seite-Änderung; Entscheidung Florians, ob die Kurven dem Körper folgen sollen), Breitenpunkte mit Maul (Glättung oder Pose auf geglättetem Käfig).
-3. Tiger-Kopf in ≤ 10 min (Phase-1-Plan), dann Phase 2 (Maul: Plattenmaul, Überbiss getrennt).
+1. **Phase 2 nach [`docs/plans/2026-10-15-phase-2-maul.md`](plans/2026-10-15-phase-2-maul.md)**: Plattenmaul (Mercedesstern) → Kiefer getrennt mit Überbiss → großer runder Haps mit Breitenpunkten im Maulbau → Zähne → Augen → Maularten. Florian: „Gerne weiter mit Phase 2.“
+2. Florians Urteil zu den drei Sätzen (bisher: „passt weitestgehend“) und der 10-Minuten-Tiger (Phase-1-Abnahme).
+3. „Formen folgen“ in eigener Sitzung (Bauweise auf der Planseite).
 
 ## Wo Florian testet
 

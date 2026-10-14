@@ -62,6 +62,8 @@ export type Bauplan = Ausstattung & {
   kaefigLinien: boolean;
   /** Zonen-Atlas an (Standard) oder prozedurale Zonen */
   atlas?: boolean;
+  /** führende Kurve („Formen folgen“): die zuletzt bearbeitete Kurve bestimmt die Breite allein, die anderen folgen dem Körper */
+  fuehrend?: 'seite' | 'front' | 'top';
   /** Trefferdaten fürs Picking (M2): Dreieck → feine Fläche → Käfigfläche und (u, v), Käfigpunkte; Standard an */
   treffer?: boolean;
 };
@@ -517,9 +519,9 @@ function zonenWelt(vorlagen: readonly ZonenVorlage[], g: { xMin: number; xMax: n
  * nur Pose, kein Umbau; `schnell` während Gesten → Zug am Seitenumriss statt Ableitung).
  */
 /** Ableit-Optionen aus dem Dokument: eingefrorene Stationen (Schritt 3), wenn vorhanden. */
-function ableitOpt(dok: Dokument): Partial<AbleitOptionen> {
+function ableitOpt(dok: Dokument, plan: Partial<Bauplan>): Partial<AbleitOptionen> {
   const g = dok.kaefig?.stationen;
-  return g ? { stationen: g } : {};
+  return { ...(g ? { stationen: g } : {}), ...(plan.fuehrend ? { fuehrend: plan.fuehrend } : {}) };
 }
 
 export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: WesenStand | null, schnell = false): { netz: WesenNetz; stand: WesenStand } {
@@ -545,7 +547,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   if (beine !== 'aus') {
     if (letzte && letzte.beine === beine && letzte.maul === 'aus') abl = letzte.abl;
     else {
-      abl = ableitenMitBeinen(dok, plan.beinAnsaetze ?? [{ ring: 15, j: 6 }], beine, ableitOpt(dok));
+      abl = ableitenMitBeinen(dok, plan.beinAnsaetze ?? [{ ring: 15, j: 6 }], beine, ableitOpt(dok, plan));
       ableitung = abl.zeiten.gesamt;
     }
     ablRein = abl;
@@ -560,7 +562,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     if (letzte && letzte.maul === maul && letzte.beine === 'aus') abl = letzte.abl;
     else {
       const linie = plan.maulLinie ?? maulLinieVorlage(dok, maul);
-      abl = ableitenMitMaul(dok, linie, ableitOpt(dok), { ...maulOptionenVorlage(maul), ...(plan.maulOptionen ?? {}) });
+      abl = ableitenMitMaul(dok, linie, ableitOpt(dok, plan), { ...maulOptionenVorlage(maul), ...(plan.maulOptionen ?? {}) });
       ableitung = abl.zeiten.gesamt;
     }
     ablRein = abl;
@@ -580,7 +582,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     }
     zug = jetzt() - t0;
   } else if (schnell && stand && stand.maul === 'aus' && stand.beine === 'aus' && gleicheTopologie(stand.dok, dok)) {
-    const r = seiteZiehen(stand.abl, dok);
+    // führende Kurve des aktuellen Zugs statt der des letzten Baus
+    const optOhne = { ...stand.abl.opt };
+    delete optOhne.fuehrend;
+    const r = seiteZiehen({ ...stand.abl, opt: plan.fuehrend ? { ...optOhne, fuehrend: plan.fuehrend } : optOhne }, dok);
     ablRein = r;
     abl = mitDeltas(r);
     zug = r.zugZeit.leiter + r.zugZeit.ziele + r.zugZeit.loeser + r.zugZeit.matrix;
@@ -592,7 +597,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
   } else {
-    ablRein = ableiten(dok, ableitOpt(dok));
+    ablRein = ableiten(dok, ableitOpt(dok, plan));
     ableitung = ablRein.zeiten.gesamt;
     abl = mitDeltas(ablRein);
     fein = abl.fein;
