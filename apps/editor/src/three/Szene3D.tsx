@@ -62,7 +62,7 @@ export function Szene3D() {
           const n = aktuellesNetz();
           if (!n) return null;
           const w = n.netz;
-          return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung, reifen: w.reifen ? { liste: w.reifen.liste, knoten: w.reifen.knoten } : null, maul: w.maul, lippen: w.info.maul ?? null };
+          return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung, reifen: w.reifen ? { liste: w.reifen.liste, knoten: w.reifen.knoten } : null, maul: w.maul, lippen: w.info.maul ?? null, gewichtFarben: w.gewichtFarben !== null };
         },
         // M3: Kieferknopf und Augen in Feldpixeln der Bühne (E2E)
         griffe: () => ({ kiefer: kieferPixel(), augen: augenPixel() }),
@@ -134,7 +134,8 @@ export function Szene3D() {
             r.setzeLinien(t.kaefigLinien, t.kaefigFarben ?? undefined);
           } else r.setzeLinien(null);
           const augen = t.augen.map((a) => ({ ...a, pos: [a.pos[0] * s, a.pos[1] * s, a.pos[2] * s] as [number, number, number], groesse: a.groesse * s }));
-          if (t.stil === 'feuer' || t.stil === 'gas') r.setzeFeuer(t.positionen, t.normalen, t.hoehe * s, [t.mitte[0] * s, t.mitte[1] * s, t.mitte[2] * s], t.stil, augen);
+          if (t.gewichtFarben) r.setzeDreiecke(t.positionen, t.normalen, t.gewichtFarben);
+          else if (t.stil === 'feuer' || t.stil === 'gas') r.setzeFeuer(t.positionen, t.normalen, t.hoehe * s, [t.mitte[0] * s, t.mitte[1] * s, t.mitte[2] * s], t.stil, augen);
           else if (t.deskriptoren) {
             r.setzePalette(PALETTEN[useKernAnzeige.getState().palette] ?? PALETTEN.tiger!);
             const sk = (p: [number, number, number]): [number, number, number] => [p[0] * s, p[1] * s, p[2] * s];
@@ -299,6 +300,9 @@ export function Szene3D() {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
           if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
           if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || (s.bauweise === 'kern' && kernMaulAktiv(useEditor.getState().dok)))) bauen(useEditor.getState().dok);
+          // Rig: Gewichtsfarben an/aus (nur in „Posen & Leben“ sichtbar)
+          const gewichte = (x: typeof s) => x.gewichteZeigen && x.ebene === 'posen';
+          if (gewichte(s) !== gewichte(v) && s.bauweise === 'kern' && kernMaulAktiv(useEditor.getState().dok)) bauen(useEditor.getState().dok);
           if (s.bauweise !== v.bauweise) bauen(useEditor.getState().dok);
           if ((s.schnittRegel !== v.schnittRegel || s.schnittUeberblenden !== v.schnittUeberblenden) && s.bauweise === 'schnitte') bauen(useEditor.getState().dok);
           if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);

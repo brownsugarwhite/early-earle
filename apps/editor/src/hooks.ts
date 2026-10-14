@@ -71,9 +71,9 @@ export function useTastatur() {
         ui.maximieren('creation');
         return;
       }
-      // Stamm (Plan 9.3): ⌘1 … ⌘9 springen zur Stufe
-      if (cmd && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '9') {
-        const st = STUFEN[Number(e.key) - 1];
+      // Stamm (Plan 9.3): ⌘1 … ⌘9, ⌘0 springen zur Stufe (Taste der Stufe)
+      if (cmd && !e.shiftKey && !e.altKey && e.key >= '0' && e.key <= '9') {
+        const st = STUFEN.find((x) => String(x.taste) === e.key);
         if (st) {
           e.preventDefault();
           ui.setzeEbene(st.id);

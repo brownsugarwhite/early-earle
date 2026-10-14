@@ -118,6 +118,8 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
     earle: s.look === 'earle',
     kaefigLinien: s.kaefig,
     atlas: atlasAn,
+    // Rig (Plan 5.2): Unterkiefergewichte als Farbe, nur in der Stufe „Posen & Leben“
+    gewichteZeigen: useUi.getState().gewichteZeigen && useUi.getState().ebene === 'posen',
   };
 }
 

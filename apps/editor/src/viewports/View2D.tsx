@@ -37,6 +37,7 @@ import { useEditor } from '../state/editorStore';
 import { useUeberlagerung } from '../versuch/ueberlagerung';
 import { blickVon, useUi } from '../state/uiStore';
 import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen, setzeLippenImUmriss } from '../maul/MaulEbene';
+import { KieferZeichnung, kieferZeiger } from '../kiefer/KieferEbene';
 import { RigZeichnung } from '../maul/RigZeichnung';
 import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
 import { useMaulInfo } from '../maul/maulKoerper';
@@ -242,6 +243,8 @@ export function View2D({ ansicht, w, h }: Props) {
       zahnZeiger(e, { ansicht, lokal, ziehen });
       return;
     }
+    // Stufe „Posen & Leben“, Abschnitt Rig (Plan 5.2): Kiefergelenk, Kieferlinie, Übergang
+    if (ui.ebene === 'posen' && kieferZeiger(e, { ansicht, lokal, ziehen })) return;
     if (ui.ebene !== 'form') return;
     // Wirbelsäule (Versuch 12.10. nachts): selbst zeichnen, Punkte ziehen, einfügen, löschen
     if (wirbelBearbeitbar(ansicht) && wirbelZeiger(e, { lokal, ziehen })) return;
@@ -571,6 +574,7 @@ export function View2D({ ansicht, w, h }: Props) {
       )}
       {(hatMaul || ebene === 'maul') && <MaulZeichnung ansicht={ansicht} bild={bild} aktiv={ebene === 'maul'} />}
       {ebene === 'posen' && <RigZeichnung ansicht={ansicht} bild={bild} />}
+      {ebene === 'posen' && <KieferZeichnung ansicht={ansicht} bild={bild} w={w} h={h} />}
       {ebene === 'zaehne' && <ZahnZeichnung ansicht={ansicht} bild={bild} />}
       <BreitenKreis ansicht={ansicht} bild={bild} />
       {/* gewählter Spant der Bauweise „rund“ als Schnitt: über allem, damit seine Punkte greifbar bleiben */}

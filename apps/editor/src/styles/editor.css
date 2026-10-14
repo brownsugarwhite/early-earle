@@ -503,6 +503,15 @@ button {
   padding: 18px 18px 8px;
   color: var(--weiss);
 }
+/* Abschnittstitel in der Tafel (Posen & Leben: Rig · Fressen, 14.10.) */
+.leiste-titel {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ff7ac0;
+}
 .leiste-bereich .unterbereich {
   display: flex;
   flex-direction: column;

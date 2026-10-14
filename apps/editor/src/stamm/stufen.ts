@@ -14,6 +14,7 @@ export const STUFEN: readonly Stufe[] = [
   { id: 'teile', name: 'Teile', farbe: '#ff7a1a', taste: 5, phase: 'Phase 3' },
   { id: 'fell', name: 'Fell & Klingen', farbe: '#7ce6d5', taste: 6, phase: 'Phase 4' },
   { id: 'haut', name: 'Haut', farbe: '#b48cff', taste: 7, phase: 'Phase 4' },
+  // Posen & Leben (Plan 5.2/9): Rig (Gelenk, Gewichte) und Fressen-Pose als zwei Abschnitte einer Tafel (14.10.)
   { id: 'posen', name: 'Posen & Leben', farbe: '#ff2e9a', taste: 8, phase: 'Phase 2 und 5' },
   { id: 'spiel', name: 'Spiel', farbe: '#b8ff2a', taste: 9, phase: 'Phase 5' },
 ];

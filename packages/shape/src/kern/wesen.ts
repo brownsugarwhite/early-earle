@@ -20,7 +20,7 @@ import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { vorlageBei } from '../spanten';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
-import { type MaulAbweichung, type MaulErgebnis, type MaulLinie, ableitenMitMaul, kieferFlaechen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
+import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, zahnLagen } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
 
 export type StilArt = 'fest' | 'feuer' | 'gas' | 'fell';
@@ -66,6 +66,8 @@ export type Bauplan = Ausstattung & {
   fuehrend?: 'seite' | 'front' | 'top';
   /** Trefferdaten fürs Picking (M2): Dreieck → feine Fläche → Käfigfläche und (u, v), Käfigpunkte; Standard an */
   treffer?: boolean;
+  /** Unterkiefergewichte als Farbe je Ecke (Fressen-Tab, Plan 5.2): blau 0 … rot 1 */
+  gewichteZeigen?: boolean;
 };
 
 /** Trefferdaten (M2): je Körperdreieck die feine Fläche (−1 für angesetzte Teile), je feiner Fläche Käfigfläche und Ecken-(u, v), der posierte Käfig. */
@@ -135,8 +137,14 @@ export type WesenNetz = {
   atlas: AtlasDaten | null;
   treffer: TrefferDaten | null;
   reifen: ReifenDaten | null;
-  /** Kieferknopf (M3): rechter Mundwinkel (posiert) und Maullänge (Welt) bei Maul, sonst null */
-  maul: { winkel: V3; laenge: number } | null;
+  /**
+   * Kieferknopf (M3): rechter Mundwinkel (posiert) und Maullänge (Welt) bei Maul, sonst null. `rig` (Plan 5.2) für die
+   * Griffe im Fressen-Tab: Gelenk und Mundwinkel in Ruhe (Seitenansicht, mit Hebung), Schnauzenrichtung (`vorn` = Vorzeichen
+   * längs x), die wirksamen Gelenk-Optionen und ob die Gewichte nach Winkel laufen.
+   */
+  maul: { winkel: V3; laenge: number; rig: { gelenk: V2; mundwinkel: V2; vorn: number; gelenkVersatz: [number, number]; kieferWinkel: [number, number]; kieferReichweite: [number, number]; winkel: boolean } } | null;
+  /** Unterkiefergewichte als Farbe je Ecke (`Bauplan.gewichteZeigen`), sonst null */
+  gewichtFarben: Float32Array | null;
   /** Saum je Blatt (Schritt 4): Silhouettenpunkte des Körpers (x, y, d px), (NaN, NaN, 0) trennt Züge; wird kopiert, nicht übertragen */
   saum: Record<'seite' | 'front' | 'top', Float32Array> | null;
   /** Front/Top: Umweg der schwarzen Linie über einen breiteren Kiefer (Paare x, y; NaN trennt), sonst fehlt das Blatt */
@@ -283,6 +291,46 @@ function jeEcke(d: Float32Array, flaechen: number[][]): Float32Array {
       for (const v of [f[0]!, f[i]!, f[i + 1]!]) {
         out.set(d.subarray(v * DESKRIPTOR_FLOATS, (v + 1) * DESKRIPTOR_FLOATS), o);
         o += DESKRIPTOR_FLOATS;
+      }
+    }
+  }
+  return out;
+}
+
+/** Gewichtsfarbe wie in Blenders Weight Paint: blau 0 → türkis → grün → gelb → rot 1. */
+function gewichtFarbe(w: number): [number, number, number] {
+  const t = Math.min(1, Math.max(0, w));
+  const stufen: [number, number, number][] = [[0.1, 0.2, 0.95], [0.1, 0.8, 0.9], [0.2, 0.85, 0.3], [0.95, 0.85, 0.15], [0.95, 0.2, 0.15]];
+  const x = t * (stufen.length - 1);
+  const i = Math.min(stufen.length - 2, Math.floor(x));
+  const u = x - i;
+  const a = stufen[i]!;
+  const b = stufen[i + 1]!;
+  return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u];
+}
+
+/** Unterkiefergewicht je feinem Punkt (Grenzmatrix × Käfiggewichte) → Farbe je Dreiecksecke; angesteckte Teile grau. */
+function gewichteJeEcke(abl: MaulErgebnis, flaechen: number[][], extraEcken: number): Float32Array {
+  const G = abl.unterteilung.grenze;
+  const nF = G.start.length - 1;
+  const w = new Float32Array(nF);
+  for (let i = 0; i < nF; i++) {
+    let s = 0;
+    for (let q = G.start[i]!; q < G.start[i + 1]!; q++) s += G.wert[q]! * abl.maul.gewichtUnten[G.index[q]!]!;
+    w[i] = s;
+  }
+  let ecken = 0;
+  for (const f of flaechen) ecken += 3 * Math.max(0, f.length - 2);
+  const out = new Float32Array(3 * (ecken + extraEcken)).fill(0.6);
+  let o = 0;
+  for (const f of flaechen) {
+    for (let i = 1; i < f.length - 1; i++) {
+      for (const v of [f[0]!, f[i]!, f[i + 1]!]) {
+        const c = gewichtFarbe(w[v]!);
+        out[o] = c[0];
+        out[o + 1] = c[1];
+        out[o + 2] = c[2];
+        o += 3;
       }
     }
   }
@@ -558,7 +606,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   const plan: Bauplan = { ...BAUPLAN_STANDARD, ...planRoh };
   // Kasten des Prüfwesens (Tiger) nur, solange das Dokument keine eigenen Spanten hat: gezeichnete Spanten gewinnen (M3)
   const dok: Dokument = plan.kasten && !dokRoh.spanten?.length ? { ...dokRoh, spanten: kastenSpanten(dokRoh.profile.front, plan.kasten.fVorn, plan.kasten.fHinten, plan.kasten.fRund, plan.kasten.haerte) } : dokRoh;
-  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, st: dokRoh.kaefig?.stationen ?? null, ring: plan.ring ?? null, fu: plan.fuehrend ?? null, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: plan.maulOptionen ?? null, ba: plan.beinAnsaetze ?? null });
+  // Pose-Optionen (Winkel, Haps, Gelenk, Gewichte) bauen nicht um: sie wirken auf die gemerkte Ableitung (Fressen-Tab)
+  const moEintraege = Object.entries(plan.maulOptionen ?? {}).filter(([k]) => !(MAUL_POSE_OPTIONEN as readonly string[]).includes(k));
+  const moBau = moEintraege.length ? Object.fromEntries(moEintraege) : null;
+  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, st: dokRoh.kaefig?.stationen ?? null, ring: plan.ring ?? null, fu: plan.fuehrend ?? null, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: moBau, ba: plan.beinAnsaetze ?? null });
   const gleich = stand !== null && stand.schluessel === schluessel;
   const letzte = stand && gleich ? stand : null;
   let abl: Ableitung;
@@ -572,6 +623,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   const mitDeltas = <T extends Ableitung>(a: T): T => (deltas.length ? deltasAnwenden(a, deltas) : a);
   let ablRein: Ableitung | null = null;
   let maulLinieVerwendet: MaulLinie | null = null;
+  let maulOptAktuell: MaulOptionen | null = null;
   let fein: Float64Array;
   let xyz: Float64Array;
   let gesteckt: { fein: Float64Array; abl: BeinErgebnis } | null = null;
@@ -598,6 +650,11 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     }
     ablRein = abl;
     abl = mitDeltas(abl);
+    // Pose-Optionen und Kiefergewichte (Gelenk, Übergang, Reichweite) auf die gemerkte Ableitung: ohne Umbau
+    maulOptAktuell = { ...MAUL_STANDARD, ...maulOptionenVorlage(maul), ...(plan.maulOptionen ?? {}) };
+    const mAbl = (abl as MaulErgebnis).maul;
+    mAbl.opt = maulOptAktuell;
+    kieferGewichteSetzen(mAbl, maulOptAktuell);
     const t0 = jetzt();
     const pose = maulPose(abl as MaulErgebnis, plan.oeffnung);
     fein = pose.fein;
@@ -835,10 +892,18 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     reifen = { liste: abl.reifen.map((r) => ({ spant: r.spant, ring: r.ring })), ringLagen, verlauf: Float32Array.from(segs), verlaufStart: Uint32Array.from(starts), knoten };
   }
   let maulGriff: WesenNetz['maul'] = null;
+  let gewichtFarben: Float32Array | null = null;
   if (maul !== 'aus') {
     const m = (abl as MaulErgebnis).maul;
     const p = m.pfad[m.pfad.length - 1]!;
-    maulGriff = { winkel: [fein[3 * p]!, fein[3 * p + 1]! + hebung, fein[3 * p + 2]!], laenge: m.laenge };
+    const o = maulOptAktuell ?? m.opt;
+    const winkelGew = o.gewichte === 'winkel' && o.oeffnungsart !== 'ziehen' && !o.nackenGanz;
+    maulGriff = {
+      winkel: [fein[3 * p]!, fein[3 * p + 1]! + hebung, fein[3 * p + 2]!],
+      laenge: m.laenge,
+      rig: { gelenk: { x: m.scharnier.x, y: m.scharnier.y + hebung }, mundwinkel: { x: m.kieferBasis.mundwinkel.x, y: m.kieferBasis.mundwinkel.y + hebung }, vorn: m.vorn, gelenkVersatz: [...o.gelenk], kieferWinkel: [...o.kieferWinkel], kieferReichweite: [...o.kieferReichweite], winkel: winkelGew },
+    };
+    if (plan.gewichteZeigen) gewichtFarben = gewichteJeEcke(abl as MaulErgebnis, flaechen, gesteckteEcken);
   }
   const netz: WesenNetz = {
     positionen,
@@ -858,6 +923,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     treffer,
     reifen,
     maul: maulGriff,
+    gewichtFarben,
     saum,
     umweg,
     info,
@@ -869,7 +935,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
 export function netzPuffer(netz: WesenNetz): ArrayBuffer[] {
   const out: ArrayBuffer[] = [netz.positionen.buffer as ArrayBuffer, netz.normalen.buffer as ArrayBuffer];
   const tr = netz.treffer;
-  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich, tr?.dreieckFlaeche, tr?.flaecheVon, tr?.eckenUV, tr?.eckenZahl, tr?.kaefig.xyz, tr?.kaefig.fStart, tr?.kaefig.fVerts, netz.reifen?.ringLagen, netz.reifen?.verlauf, netz.reifen?.verlaufStart]) {
+  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich, tr?.dreieckFlaeche, tr?.flaecheVon, tr?.eckenUV, tr?.eckenZahl, tr?.kaefig.xyz, tr?.kaefig.fStart, tr?.kaefig.fVerts, netz.reifen?.ringLagen, netz.reifen?.verlauf, netz.reifen?.verlaufStart, netz.gewichtFarben]) {
     if (a && !out.includes(a.buffer as ArrayBuffer)) out.push(a.buffer as ArrayBuffer);
   }
   return out;

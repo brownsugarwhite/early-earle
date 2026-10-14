@@ -1,4 +1,6 @@
-import { useKernAnzeige } from '../kern/kernBau';
+import { kernMaulAktiv, useKernAnzeige } from '../kern/kernBau';
+import { kieferAutomatik, maulOptionenDok, setzeMaulOptionen } from '../kiefer/kieferOptionen';
+import { useNetzStand } from '../kern/netzStand';
 import { type MaulOptionen, MAUL_STANDARD, maulOptionenVorlage, maulVorn, pruefwesenBauplan } from '@ee/shape/kern';
 import { naechsteStufe, stufe } from '../stamm/stufen';
 import { pauspapierAusDatei } from '../viewports/Pauspapier';
@@ -826,10 +828,12 @@ export function Seitenleiste() {
           )}
           {kern && ebene === 'posen' && (
             <>
-              <section className="leiste-bereich" data-bereich="posen">
-                <p className="hilfe">Fressen (Kopfzeile): Öffnung 100 %, und die Pinsel der Stufe Körper (G ziehen, I aufblasen, ⇧ glätten) formen die offene Pose statt der Grundform — Käfig-Deltas derselben Maultopologie, mit der Öffnung überblendet. So wird aus einem kleinen geschlossenen Maul ein großes rundes offenes. Atmen, Blinzeln und Gehen kommen in Phase 2 und 5.</p>
+              <section className="leiste-bereich" data-bereich="rig">
+                <RigFeld />
               </section>
-              <RigBereich />
+              <section className="leiste-bereich" data-bereich="fressen">
+                <FressenFeld />
+              </section>
             </>
           )}
           {kern && ebene === 'spiel' && (
@@ -1058,6 +1062,79 @@ function KernMaulFeld() {
           Maullinie löschen
         </button>
       )}
+    </>
+  );
+}
+
+/**
+ * Tafel „Posen & Leben“, Abschnitt Rig (Plan 5.2; Florian 14.10.: „Der Kieferjoint und auch die Weights und Bewegung sollen exakt und dynamisch
+ * steuerbar sein“, „Fressen und Rig muss es beides geben“): Gelenk (Versatz gegen den Mundwinkel), Gewichte nach Winkel
+ * um das Gelenk mit Übergang und Kieferlinie, Gewichte als Farbverlauf. Griffe in der Seite; alles ohne Umbau.
+ */
+function RigFeld() {
+  const dok = useEditor((s) => s.dok);
+  const chip = useKernAnzeige((s) => s.maul);
+  useNetzStand((s) => s.version);
+  const zeigen = useUi((s) => s.gewichteZeigen);
+  if (!kernMaulAktiv(dok)) return <p className="hilfe">Das Kiefer-Rig entsteht mit dem Maul: zuerst in der Stufe Maul die Maullinie zeichnen.</p>;
+  const mo = maulOptionenDok(dok, chip);
+  const winkel = mo.gewichte === 'winkel' && mo.oeffnungsart !== 'ziehen' && !mo.nackenGanz;
+  const g = geste();
+  const pz = (x: number) => `${x >= 0 ? '' : '−'}${Math.abs(Math.round(x * 100))} %`;
+  return (
+    <>
+      <h3 className="leiste-titel" data-abschnitt="rig">Rig</h3>
+      <div className="feld">
+        <span>Kiefergelenk</span>
+        <b data-gelenk-wert="">
+          {pz(mo.gelenk[0])} hinten · {pz(mo.gelenk[1])} oben
+        </b>
+      </div>
+      <Regler label="Gelenk ↔" wert={mo.gelenk[0]} min={-0.3} max={0.8} schritt={0.005} anzeige={`${pz(mo.gelenk[0])} der Maullänge`} onChange={(v) => setzeMaulOptionen({ gelenk: [v, mo.gelenk[1]] })} {...g} />
+      <Regler label="Gelenk ↕" wert={mo.gelenk[1]} min={-0.5} max={0.5} schritt={0.005} anzeige={pz(mo.gelenk[1])} onChange={(v) => setzeMaulOptionen({ gelenk: [mo.gelenk[0], v] })} {...g} />
+      <div className="feld">
+        <span>Gewichte</span>
+        <b>{winkel ? 'Winkel um das Gelenk' : 'Ringband (bisher)'}</b>
+      </div>
+      <Chips werte={['winkel', 'ringe'] as const} aktiv={mo.gewichte} attribut="gewichte" text={(w) => (w === 'winkel' ? 'Winkel' : 'Ringe')} onWahl={(w) => setzeMaulOptionen({ gewichte: w })} />
+      {winkel && (
+        <div className="feld">
+          <span>Übergang</span>
+          <b data-uebergang-wert="">
+            voll bis {Math.round(mo.kieferWinkel[0])}° · frei ab {Math.round(mo.kieferWinkel[1])}° · Kieferlinie {mo.kieferReichweite[1].toFixed(2)} (Auslauf ab {mo.kieferReichweite[0].toFixed(2)}) Maullängen
+          </b>
+        </div>
+      )}
+      <div className="umschalter stufen" role="group" aria-label="Rig">
+        <button className={zeigen ? 'chip aktiv' : 'chip'} data-gewichte-zeigen="" onClick={() => useUi.getState().setzeGewichteZeigen(!zeigen)}>
+          Gewichte zeigen
+        </button>
+        <button className="chip" data-kiefer-automatik="" onClick={() => kieferAutomatik()}>
+          Automatik
+        </button>
+      </div>
+      <p className="hilfe">In der Seite: pinker Punkt = Gelenk (ziehen), hohler Kreis = Mundwinkel. Bis zum ersten Strahl dreht die Haut voll mit, ab dem zweiten nicht mehr (Griffe auf dem gestrichelten Kreis); der äußere Kreis ist die Kieferlinie (Griff auf dem ersten Strahl; liegt er außerhalb, sitzt er als Raute am Rand): Hals und Kehle dahinter bleiben. Gewichte zeigen: blau 0 … rot 1. Alles wirkt sofort, ohne Umbau.</p>
+    </>
+  );
+}
+
+/** Tafel „Posen & Leben“, Abschnitt Fressen: die Pose — Öffnung und Bewegung der Knochen (Unterkiefer, Schädel, Art, Haps). */
+function FressenFeld() {
+  const dok = useEditor((s) => s.dok);
+  const chip = useKernAnzeige((s) => s.maul);
+  const oeffnung = useUi((s) => s.oeffnung);
+  if (!kernMaulAktiv(dok)) return <p className="hilfe">Die Fressen-Pose entsteht mit dem Maul: zuerst in der Stufe Maul die Maullinie zeichnen.</p>;
+  const mo = maulOptionenDok(dok, chip);
+  const g = geste();
+  return (
+    <>
+      <h3 className="leiste-titel" data-abschnitt="fressen">Fressen</h3>
+      <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />
+      <Regler label="Unterkiefer" wert={mo.winkelUnten} min={5} max={75} schritt={1} anzeige={`${Math.round(mo.winkelUnten)}°`} onChange={(v) => setzeMaulOptionen({ winkelUnten: v })} {...g} />
+      <Regler label="Schädel" wert={mo.winkelOben} min={0} max={45} schritt={1} anzeige={`${Math.round(mo.winkelOben)}°`} onChange={(v) => setzeMaulOptionen({ winkelOben: v })} {...g} />
+      <Chips werte={['kippen', 'ziehen'] as const} aktiv={mo.oeffnungsart} attribut="oeffnungsart" onWahl={(a) => setzeMaulOptionen({ oeffnungsart: a })} />
+      <Regler label="Haps" wert={mo.haps} min={0} max={1} schritt={0.05} anzeige={`${Math.round(mo.haps * 100)} %`} onChange={(v) => setzeMaulOptionen({ haps: v })} {...g} />
+      <p className="hilfe">Fressen-Pose = Kiefer + Blendshape (Plan 5.2): Hier stellst du ein, wie weit die Knochen gehen; dann formen in der Pose „Fressen“ (Kopfzeile) die Pinsel der Stufe Körper (G ziehen, I aufblasen, ⇧ glätten) die offene Form weiter — Käfig-Deltas, mit der Öffnung überblendet. Atmen, Blinzeln und Gehen kommen in Phase 2 und 5.</p>
     </>
   );
 }

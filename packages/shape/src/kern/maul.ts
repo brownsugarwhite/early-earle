@@ -241,6 +241,12 @@ export type MaulAbleitung = {
    * Ihre Flächen dürfen in Front und Top über die schwarze Linie hinausgehen, die Linie heftet sich dort an den Kiefer.
    */
   kieferBreiter: Uint8Array;
+  /**
+   * Grundlagen der Unterkiefergewichte der Vorlagenpunkte (< n0): Gewicht ohne Abfall (`unten`, `beutel`), Ringband
+   * (`band`), Punkte mit Winkelgewicht (`winkelTeil`), Ruhelage (x, y) und Mundwinkel. `kieferGewichteSetzen` rechnet
+   * daraus Gelenk und Gewichte neu, ohne Umbau (Griffe im Fressen-Tab).
+   */
+  kieferBasis: { n0: number; unten: Float64Array; beutel: Float64Array; band: Float64Array; winkelTeil: Uint8Array; ruhe: Float64Array; mundwinkel: V2; anfang: V2 };
   /** Kehlhaut unter der Kieferplatte: Gewicht je Käfigpunkt (0 = keine) und Ring, dessen Plattenkante sie folgt */
   beutelGewicht: Float64Array;
   beutelRing: Int16Array;
@@ -871,6 +877,60 @@ function kieferZ(z: number, a: number, zLippe: number): number {
   const grenze = Math.max(Math.abs(z), zLippe);
   const k = 0.04 * zLippe;
   return Math.sign(z) * 0.5 * (zs + grenze - Math.sqrt((zs - grenze) * (zs - grenze) + k * k));
+}
+
+const glattStufe = (x: number) => {
+  const t = Math.min(1, Math.max(0, x));
+  return t * t * (3 - 2 * t);
+};
+
+/** Optionen, die nur Gewichte und Pose betreffen (kein Umbau des Käfigs; Griffe und Regler im Fressen-Tab). */
+export const MAUL_POSE_OPTIONEN = ['winkelUnten', 'winkelOben', 'zugWeite', 'oeffnungsart', 'haps', 'hapsTiefe', 'hapsHoehe', 'hapsWeite', 'hapsRadius', 'gewichte', 'gelenk', 'kieferWinkel', 'kieferReichweite'] as const;
+
+/** Kiefergelenk (Welt, Seitenansicht): Mundwinkel plus Versatz in Maullängen (x nach hinten, y nach oben). */
+export function kieferGelenk(m: MaulAbleitung, opt: Pick<MaulOptionen, 'gelenk'>): V2 {
+  const w = m.kieferBasis.mundwinkel;
+  return { x: w.x - m.vorn * opt.gelenk[0] * m.laenge, y: w.y + opt.gelenk[1] * m.laenge };
+}
+
+/**
+ * Unterkiefergewicht eines Punkts (Seitenansicht) nach Winkel und Reichweite um das Gelenk (`MaulOptionen.gewichte`):
+ * 0° zur Schnauze, 90° nach unten, 180° nach hinten; voll bis `kieferWinkel[0]`, null ab `[1]` (glatt), mal der
+ * Reichweite in Maullängen (voll bis `kieferReichweite[0]`, null ab `[1]` = Kieferlinie).
+ */
+export function gelenkGewicht(x: number, y: number, gelenk: V2, vorn: number, laenge: number, opt: Pick<MaulOptionen, 'kieferWinkel' | 'kieferReichweite'>, rMin = 0): number {
+  const vx = (x - gelenk.x) * vorn; // > 0: zur Schnauze
+  const vy = y - gelenk.y;
+  let th = (Math.atan2(-vy, vx) * 180) / Math.PI;
+  if (th < -90) th += 360; // über und hinter dem Gelenk: jenseits des Übergangs
+  const [a1, a2] = opt.kieferWinkel;
+  // glatt im Winkel (gemessen gegen linear: am dünnen Langhals-Kiefer, der nur 0–40° überspannt, knickte linear ab 30°
+  // die Kieferunterseite, offen 55–88° statt 28–44°; die Kugel hinter dem Winkel 100° statt 73°)
+  const wt = th <= a1 ? 1 : th >= a2 ? 0 : 1 - glattStufe((th - a1) / Math.max(1e-9, a2 - a1));
+  const r = Math.hypot(vx, vy);
+  // der Kiefer selbst bleibt starr: der Auslauf beginnt frühestens am vorderen Maulanfang (`rMin`), sonst drehte das Kinn
+  // bei weit hinten liegendem Gelenk nicht ganz mit (Flosse an der Kieferspitze, 14.10.)
+  const r1 = Math.max(opt.kieferReichweite[0] * laenge, rMin);
+  const r2 = Math.max(opt.kieferReichweite[1] * laenge, r1 + 0.15 * laenge);
+  const wr = r <= r1 ? 1 : r >= r2 ? 0 : 1 - glattStufe((r - r1) / Math.max(1e-9, r2 - r1));
+  return wt * wr;
+}
+
+/**
+ * Unterkiefergewichte und Gelenk aus der Basis neu setzen (Plan 5.2, Fressen-Tab): Gelenk, Übergang, Reichweite und
+ * Gewichtsart wirken ohne Umbau des Käfigs. „winkel“ nur beim Kippen und ohne `nackenGanz`, sonst das Ringband.
+ */
+export function kieferGewichteSetzen(m: MaulAbleitung, opt: MaulOptionen): void {
+  const b = m.kieferBasis;
+  const g = kieferGelenk(m, opt);
+  const winkel = opt.gewichte === 'winkel' && opt.oeffnungsart !== 'ziehen' && !opt.nackenGanz;
+  const rMin = 1.05 * Math.hypot(b.anfang.x - g.x, b.anfang.y - g.y);
+  for (let i = 0; i < b.n0; i++) {
+    const f = winkel && b.winkelTeil[i] ? gelenkGewicht(b.ruhe[2 * i]!, b.ruhe[2 * i + 1]!, g, m.vorn, m.laenge, opt, rMin) : b.band[i]!;
+    m.gewichtUnten[i] = b.unten[i]! * f;
+    m.beutelGewicht[i] = b.beutel[i]! * f;
+  }
+  m.scharnier = g;
 }
 
 /**
@@ -1956,34 +2016,16 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     for (const q of lippen) best = Math.min(best, Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]));
     lippenAbstand[i] = best;
   }
-  // Kiefergewichte: Lage zum Schlitz, Band über die Ringe hinter dem Winkel
+  // Kiefergewichte: Lage zum Schlitz; der Abfall (Ringband oder Winkel um das Gelenk) kommt aus `kieferGewichteSetzen`
   const gewichtUnten = new Float64Array(n);
   const gewichtOben = new Float64Array(n);
-  const glatt = (x: number) => {
-    const t = Math.min(1, Math.max(0, x));
-    return t * t * (3 - 2 * t);
-  };
+  const glatt = glattStufe;
   const bandRing = (i: number, band: number) => (i <= k ? 1 : 1 - glatt((i - k) / Math.max(1, band)));
-  // Kiefergelenk (Plan 5.2): Mundwinkel plus Versatz in Maullängen (x nach hinten, y nach oben); Unterkiefergewicht nach
-  // Winkel und Reichweite um das Gelenk (`gewichte: 'winkel'`, nur beim Kippen), siehe `MaulOptionen.gewichte`
-  const gx = MH[0] - vorn * opt.gelenk[0] * L;
-  const gy = MH[1] + opt.gelenk[1] * L;
-  const winkelGewichte = opt.gewichte === 'winkel' && opt.oeffnungsart !== 'ziehen' && !opt.nackenGanz;
-  const gelenkGewicht = (x: number, y: number): number => {
-    const vx = (x - gx) * vorn; // > 0: zur Schnauze
-    const vy = y - gy;
-    let th = (Math.atan2(-vy, vx) * 180) / Math.PI; // 0° zur Schnauze, 90° nach unten, 180° nach hinten
-    if (th < -90) th += 360; // über und hinter dem Gelenk: jenseits des Übergangs
-    const [a1, a2] = opt.kieferWinkel;
-    // glatt im Winkel (gemessen gegen linear: am dünnen Langhals-Kiefer, der nur 0–40° überspannt, knickte linear ab 30°
-    // die Kieferunterseite, offen 55–88° statt 28–44°; die Kugel hinter dem Winkel 100° statt 73°)
-    const wt = th <= a1 ? 1 : th >= a2 ? 0 : 1 - glatt((th - a1) / Math.max(1e-9, a2 - a1));
-    const r = Math.hypot(vx, vy);
-    const r1 = opt.kieferReichweite[0] * L;
-    const r2 = opt.kieferReichweite[1] * L;
-    const wr = r <= r1 ? 1 : r >= r2 ? 0 : 1 - glatt((r - r1) / Math.max(1e-9, r2 - r1));
-    return wt * wr;
-  };
+  // Basis der Unterkiefergewichte (Vorlagenpunkte): Gewicht ohne Abfall, Ringband, Punkte mit Winkelgewicht, Ruhelage
+  const basisUnten = new Float64Array(n0);
+  const basisBand = new Float64Array(n0);
+  const winkelTeil = new Uint8Array(n0);
+  const ruheXY = new Float64Array(2 * n0);
   // Kieferplatte: bis `platte` Maullängen unter der Lippe dreht die Haut starr mit dem Unterkiefer; die Kehlhaut darunter
   // (Beutel) folgt der Plattenkante ihres Rings als Verschiebung, auslaufend (sonst schwingt ein Kinnboden in den Bauch)
   const beutelGewicht = new Float64Array(n);
@@ -2005,6 +2047,8 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
   };
   for (let i = 0; i < n0; i++) {
     const g = gitterLage(v, i);
+    ruheXY[2 * i] = zieleV[3 * i]!;
+    ruheXY[2 * i + 1] = zieleV[3 * i + 1]!;
     let o = 0;
     let u = 0;
     let f = 1;
@@ -2024,7 +2068,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
       else if (jr > jL) {
         u = plattenGewicht(g.i, i);
         // Winkelgewichte ersetzen das Ringband (auch vor dem Winkel: tief unter dem Gelenk dreht die Haut weniger mit)
-        if (winkelGewichte) f = gelenkGewicht(zieleV[3 * i]!, zieleV[3 * i + 1]!);
+        winkelTeil[i] = 1;
       } else if (g.i === k) {
         o = 0.5;
         u = 0.5;
@@ -2043,18 +2087,19 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
       } else if (lage.ringA !== undefined || g.b > bL) o = 1; // Ringanfang: die Kappe ist Nasenspitze
       else if (g.b < bL) {
         u = 1;
-        if (winkelGewichte) f = gelenkGewicht(zieleV[3 * i]!, zieleV[3 * i + 1]!);
+        winkelTeil[i] = 1;
       } else o = 1;
     } else {
       f = 0;
       fo = 0;
     }
     gewichtOben[i] = o * fo;
-    gewichtUnten[i] = u * f;
-    // der Beutel läuft mit dem Kieferband aus: hinter dem Band darf die Kehlhaut nicht der (voll gedrehten) Plattenkante
-    // ihres Rings folgen (Tiger, Ringpfad: Bauchringe 15–19 wanderten beim Öffnen 1–2 % der Höhe)
-    if (beutelGewicht[i]! > 0) beutelGewicht[i] = beutelGewicht[i]! * f;
+    basisUnten[i] = u;
+    basisBand[i] = f;
   }
+  // der Beutel läuft mit dem Kiefergewicht aus (Faktor in `kieferGewichteSetzen`): hinter dem Band darf die Kehlhaut
+  // nicht der (voll gedrehten) Plattenkante ihres Rings folgen (Tiger, Ringpfad: Bauchringe 15–19 wanderten 1–2 %)
+  const basisBeutel = Float64Array.from(beutelGewicht.subarray(0, n0));
   // Plattenmaul: Gewicht der Lippen und Taschen zum Winkel hin auslaufen lassen (Scharnier hinter der Platte; ein voll
   // drehendes Lippenende schwenkte durch die Winkelsäule), über die letzten zwei Pfadpunkte
   const winkelNah = (idx: number): number => {
@@ -2120,7 +2165,7 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     quelle,
     gewichtUnten,
     gewichtOben,
-    scharnier: { x: gx, y: gy },
+    scharnier: { x: MH[0], y: MH[1] }, // `kieferGewichteSetzen` setzt das Gelenk
     schaedel,
     vorn,
     hoehe: H,
@@ -2128,11 +2173,13 @@ export function maulKaefig(v: Roehre, st: Stationen, lage: MaulLage, zieleV: Flo
     laenge: L,
     kopfHoehe: kopfHoehe > 0 ? kopfHoehe : H,
     kieferBreiter,
+    kieferBasis: { n0, unten: basisUnten, beutel: basisBeutel, band: basisBand, winkelTeil, ruhe: ruheXY, mundwinkel: { x: MH[0], y: MH[1] }, anfang: { x: S[0], y: S[1] } },
     beutelGewicht,
     beutelRing,
     plattenKante,
     rachen: { sKnick, sK, sEingang, ziele: rachenZiele },
   };
+  kieferGewichteSetzen(info, opt);
   return { kaefig, ziele, hoehe, info };
 }
 
