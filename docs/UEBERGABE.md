@@ -51,18 +51,22 @@ Die schwarze Linie ist sein Werkzeug und damit die Wahrheit für den Umriss: Das
 - **Editor-Fehler beim Laden** (a9bc9e1): Ein noch laufender Bau schrieb seine Ringverteilung in das gerade geladene Wesen (z. B. Prüfwesen mit den Ringen der Startkugel). Jetzt friert der Editor nur Stationen aus dem Bau des aktuellen Dokuments ein. Seit dem Fehler gespeicherte Wesen können falsche Stationen tragen → Tafel Körper „Neu ableiten“.
 - **Prüfreihe misst jetzt wie der Editor:** eingefrorene Stationen (`mitStationenVon`, `KUGEL0=1` = Stationen der Startkugel, `ZUG=1` = Zugschritte), Falten offen (Haut vorn, Lippe, Haut ganz je 0/50/100 %), Faltenorte (`falten-orte.ts`), Schnittbilder (`maul-schnitt.ts`, `EBENE=x` quer), gezielte Bilder (`kamera-bilder.mjs`), Editor-Prüfung geladener Fälle (`editor-dok-check.mjs`). Ausgaben in `apps/editor/pruefen-ausgabe/` (Playwright leert `test-results/` bei jedem E2E-Lauf).
 
-### Gefunden, noch offen
+### Danach (14.10. spätnachts, nach Florians Fragen zum Gelenk)
 
-- **Naht hinter dem Mundwinkel beim Öffnen** (jedes Maul ab 25 %, von der Seite deutlich): Der Unterkiefer dreht um den Mundwinkel; die Haut des Kieferbands dahinter liegt hinter dem Gelenk und wandert beim Drehen nach oben und vorn in die obere Hälfte (haut/haut, Kugel gleich 20/64/80/96 Paare bei 25–100 %). Gemessen: Klemmen der Bewegung reißt die Nachbarn auf (bis 162 Paare); ein Gelenk weiter hinten hilft der Kugel (Überbiss 52 → 0), bricht aber Langhals (220 → 478), Nase (0 → 338) und Rex unten (0 → 210). Braucht ein eigenes Kiefermodell (Gelenk, Gewichte nach Lage zum Gelenk), mit Look-Beweis.
-- **Kürzerer Kiefer fast bündig** (blauer Anfang ≤ 0,5 % hinter dem roten): geschlossen sticht die Unterlippe durch die Oberlippe („W“). Ursache: Liegt der blaue Anfang über dem roten, knickt die gerade Schlitzsehne den Seitenumriss zurück; die Leiter vorn wird instabil, Ring 0 springt an den Pol (Lippenspalten gestaucht). Weg: Umriss für die Ableitung entlang der sichtbaren Silhouette (rote Linie bis zur Kinnlinie), die echte Kinnlinie bleibt für den Kiefer.
-- Ein älterer E2E-Test schlägt fehl (`kern-ablauf` „Körper … Pinsel G“: erwartet nach dem Pinsel keinen Umbau; Formen folgen baut um). Schon vor diesen Änderungen; eigene Aufgabe.
+- **Leiter ohne Rückknick am Schlitz** (5cd89ee): Liegt der blaue Anfang über dem roten (Überbiss) bzw. der rote unter dem blauen (Unterbiss), lief die Schlitzsehne zurück und die Leiter faltete sich vorn (Ring 0 als Sprosse am Pol). Die Leiter nimmt jetzt die sichtbare Silhouette (`seiteFuerLeiter`), Naht und Kieferumriss die echte Linie. Fast bündiger Kiefer: Lippe 45–65° → 7°, das „W“ im Oberlippenband ist weg; geschlossen schaut die Unterlippe mittig als runder Tropfen unter der Oberlippe hervor (die Unterlippe liegt dort direkt hinter der Haut), an den Bandenden kleine rosa Spitzen.
+- **Kiefergelenk nach Plan 5.2, Gewichte nach Winkel und Reichweite um das Gelenk** (60e9bfa): die Naht hinter dem Mundwinkel ist weg (Kugel 254 → 0, Florians Unterbiss 174 → 0, Langhals 304 → 0 haut/haut-Paare bei 25–100 %; Rex, Tiger, Nase unverändert 0). Abweichung vom Plan: Übergang über den Winkel statt ±1–2 Ringe (Begründung, Zahlen und Verworfenes auf der Planseite Phase 2, Eintrag „Kiefergelenk und Gewichte“). Bilder: `docs/progress/editor/kiefergelenk-winkelgewichte-2026-10-14.png`.
+
+### Noch offen
+
+- Weiche Stauchfalte hinter einem Mundwinkel, der hinter der Körpermitte liegt (Kugel offen 43–100°): mit dem Gelenk-Griff je Wesen lösbar (Gelenk weiter hinten), die Tasche muss dem Gelenk dann folgen.
+- Langhals: blauer Anfang an der Kehle (Chip „getrennt“) und die kleine Vorlagen-Linie; Durchdringungen im Maul (Tasche) 60–100 Paare.
+- Ein älterer E2E-Test schlägt fehl (`kern-ablauf` „Körper … Pinsel G“; eigene Aufgabe).
 
 ## Nächster Schritt
 
-1. Kürzerer Kiefer fast bündig (Umriss entlang der Silhouette).
-2. Kiefermodell für das Öffnen (Naht hinter dem Mundwinkel, Kehlhaut des Langhalses): Plan, Look-Beweis, dann bauen.
-3. Chip „getrennt“ für Mäuler unter dem Kopf: blauen Anfang hinter den roten legen, nicht an die Kehle.
-4. Danach Kiefer-Spanten und „Formen folgen“ mit Maul.
+1. Fressen-Tab nach Plan 5.2: Gelenk als Griff (Seite und Bühne), Kieferlinie als zweiter Griff (Reichweite), Übergangswinkel, Gewichte als Farbverlauf; danach Kehlkette und Bodengrenze.
+2. Chip „getrennt“ für Mäuler unter dem Kopf: blauen Anfang hinter den roten legen, nicht an die Kehle.
+3. Danach Kiefer-Spanten und „Formen folgen“ mit Maul.
 
 ## Wo Florian testet
 
