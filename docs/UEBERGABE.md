@@ -27,6 +27,10 @@ Messwerte und ehrliche Reste stehen im „Stand“ der Planseite.
 2. Je nach Urteil: Kurven aus der Silhouette nachziehen (Front/Top folgen einer Seite-Änderung), Breitenpunkte mit Maul (Glättung), Langhals-Brust (Vorlage schräger Sprossen).
 3. Tiger-Kopf in ≤ 10 min (Phase-1-Plan), dann Phase 2 (Maul: Plattenmaul, Überbiss getrennt).
 
+## Wo Florian testet
+
+Web-Modus `http://localhost:5180` (`pnpm --filter @ee/editor dev:web`). Rechts in der Tafel **Library ▸ „Prüfwesen · immer der aktuelle Stand“**: Kugel, Rex, Tiger, Langhals, Drache, Ente, Robbe. Die Karten bauen das Wesen bei jedem Klick frisch aus Vorlage und Kern (nichts ist gespeichert, es gibt keinen alten Stand). Darunter „Gespeichert“ = eigene Wesen (Speichern legt eine Kopie an). Die drei Sätze: Maul-Stufe → gerade Linie ab Kontur → Maul; Top-Blatt → Δ im Titel und Saum; Langhals → Seite-Knoten des Halses hochziehen → Ringe bleiben („Ringe: 24 eingefroren“ in der Tafel Körper, „Neu ableiten“ nur auf Wunsch).
+
 ## Prüfen
 
 - `cd packages/shape && npx vitest run src/kern` (54 Tests; Laufzeit-Tests unter Last mit `-t` einzeln), Editor `cd apps/editor && npx vitest run`.

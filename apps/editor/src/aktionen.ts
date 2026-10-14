@@ -3,6 +3,8 @@
 import { aktivesProfil, setzeAktiv } from './editing/aktiv';
 import { angleichen, dokumentLesen, loeschenMehrere, verschiebeKnoten } from '@ee/shape';
 import { bibliothekLaden, bibliothekSpeichern, useBibliothek } from './library/speicher';
+import { useKernAnzeige } from './kern/kernBau';
+import { PRUEFWESEN, pruefwesenDokument } from './schnitte/schnittVersuch';
 import { useEditor } from './state/editorStore';
 import { useUi } from './state/uiStore';
 import { szene } from './three/instanz';
@@ -71,6 +73,23 @@ export function ladeAusBibliothek(datei: string) {
         useUi.getState().auswahlLeeren();
       } catch (e) {
         useUi.getState().zeigeHinweis(`Laden fehlgeschlagen: ${(e as Error).message}`);
+      }
+    })();
+  });
+}
+
+/** Prüfwesen aus der Library laden (immer frisch aus Vorlage und Kern gebaut; Palette passend zum Wesen). */
+export function ladePruefwesen(id: string) {
+  nachRueckfrage('Anderes Wesen laden?', () => {
+    void (async () => {
+      try {
+        const dok = await pruefwesenDokument(id);
+        useEditor.getState().laden(dok, null);
+        useUi.getState().auswahlLeeren();
+        const p = PRUEFWESEN.find((w) => w.id === id)?.palette;
+        if (p) useKernAnzeige.getState().setzePalette(p);
+      } catch (e) {
+        useUi.getState().zeigeHinweis(`Prüfwesen fehlgeschlagen: ${(e as Error).message}`);
       }
     })();
   });

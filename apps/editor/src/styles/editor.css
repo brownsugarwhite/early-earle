@@ -684,6 +684,22 @@ button {
 .chip.aktiv {
   background: var(--pille-aktiv);
 }
+/* Library: Prüfwesen-Block (immer der aktuelle Stand) über den gespeicherten Wesen */
+.library-gruppe {
+  margin: 8px 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.karte-initiale {
+  display: grid;
+  place-items: center;
+  font-family: 'Caprasimo', serif;
+  font-size: 26px;
+  color: var(--weiss);
+  opacity: 0.8;
+}
 .karten {
   display: grid;
   grid-template-columns: 1fr 1fr;

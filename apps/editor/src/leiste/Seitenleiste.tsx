@@ -10,7 +10,8 @@ import { PALETTEN } from '../three/wesenLook';
 import { type Profil, type ZahnEintrag, type Zahnreihe, type ZahnWerte, gespiegelteSegmente, hauptspantProfil, hauptspantStelle, segmente } from '@ee/shape';
 import { versetzt3 } from '@ee/shape/versuch';
 import { useEffect, useRef, useState } from 'react';
-import { ladeAusBibliothek } from '../aktionen';
+import { ladeAusBibliothek, ladePruefwesen } from '../aktionen';
+import { PRUEFWESEN } from '../schnitte/schnittVersuch';
 import { useRahmen } from '../layout/animation';
 import { editorApi, useBibliothek } from '../library/speicher';
 import { aktuelleLippen, setzeLippen, setzeLippenImUmriss } from '../maul/MaulEbene';
@@ -687,6 +688,7 @@ function LibraryBereich() {
   const offen = useUi((s) => s.library);
   const { eintraege, geladen, neuLaden } = useBibliothek();
   const aktuelleDatei = useEditor((s) => s.datei);
+  const aktuellerName = useEditor((s) => s.dok.name);
   const [fach, setFach] = useState<Fach>('Wesen');
   useEffect(() => {
     if (offen) void neuLaden();
@@ -705,6 +707,22 @@ function LibraryBereich() {
               </button>
             ))}
           </div>
+          {fach === 'Wesen' && (
+            <>
+              <div className="library-gruppe">Prüfwesen · immer der aktuelle Stand</div>
+              <div className="karten" data-pruefwesen-liste="">
+                {PRUEFWESEN.map((w) => (
+                  <button key={w.id} className={aktuellerName === w.id && !aktuelleDatei ? 'karte aktiv' : 'karte'} data-pruefwesen={w.id} onClick={() => ladePruefwesen(w.id)} title={`${w.name}: ${w.hinweis}`}>
+                    <div className="karte-bild">
+                      <div className="karte-leer karte-initiale">{w.name[0]}</div>
+                    </div>
+                    <div className="karte-name">{w.name}</div>
+                  </button>
+                ))}
+              </div>
+              <div className="library-gruppe">Gespeichert</div>
+            </>
+          )}
           <div className="karten">
             {fach === 'Wesen' &&
               eintraege.map((e) => (
