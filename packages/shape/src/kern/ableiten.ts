@@ -29,6 +29,7 @@ import { anwenden3 } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
+import { type NetzLinie, type NetzReihe, reihenLegen } from './netz/reihen';
 
 export type AbleitOptionen = {
   ringe: number;
@@ -66,6 +67,8 @@ export type AbleitOptionen = {
   querschnitt: boolean;
   /** Laplace-Glattheit der Käfiglagen im Ausgleich (0 = aus); dämpft Wellen neben scharfen Falten */
   glaettung: number;
+  /** Teil L, L0 (Versuch): Längslinien auf der Haut, je eine Reihe des Käfigs genau auf der Linie, Kantigkeit als Falte */
+  netzLinien?: NetzLinie[];
 };
 
 /** Durchgänge, in denen die Breitenziele an den Grenzlagen des letzten Durchgangs nachgerechnet werden (Ableitung) */
@@ -1264,9 +1267,19 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
       Wr[i] = W;
     }
   }
+  // Teil L, L0: Längslinien als Reihen — die Stützstelle j* je gekreuztem Ring auf die Kreuzung (auf derselben
+  // Querschnittskurve, Breitenmaßstab unverändert), Kantigkeit als Falte längs der Reihe
+  let ringQZiel = ringQNeu;
+  if (opt.netzLinien?.length && dok) {
+    const dicht = querschnitteFuer(ringSprossen, dok, breiten, 8 * N, opt);
+    const gelegt = reihenLegen(ringQNeu, ringSprossen, Wr, dicht, opt.netzLinien, schlitz ? schlitz.k : -1, 1 - BREITE_SCHWELLE);
+    ringQZiel = gelegt.q;
+    netzFalten(v, gelegt.reihen, opt.eckenSchaerfe);
+    zuletztGelegt = gelegt.reihen;
+  } else zuletztGelegt = [];
   for (let i = 0; i < R; i++) {
     const sp = ringSprossen[i]!;
-    const q = ringQNeu[i]!;
+    const q = ringQZiel[i]!;
     const W = Wr[i]!;
     for (let j = 0; j <= N / 2; j++) {
       const [x, y, z, hv] = punkt(sp, q, W, j);
@@ -1319,6 +1332,30 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     if (seite === 'vorn') kastenKappe(v, ziele, hoehe, spitze, schlitz, setze);
   }
   return { ziele, hoehe };
+}
+
+/** Zuletzt gelegte Reihen der Netzlinien (Teil L, L0: für Messungen und Bilder). */
+let zuletztGelegt: NetzReihe[] = [];
+export function netzReihenZuletzt(): NetzReihe[] {
+  return zuletztGelegt;
+}
+
+/** Kantigkeit der Netzlinien als Falte längs ihrer Reihe (Kante Ring i → i+1 bei j* und gespiegelt), wie die Längsfalten. */
+function netzFalten(v: Roehre, reihen: readonly NetzReihe[], eckenSchaerfe: number): void {
+  const k = v.kaefig;
+  for (const r of reihen) {
+    for (const [i, a] of r.kreuzungen) {
+      const b = r.kreuzungen.get(i + 1);
+      if (!b) continue;
+      const h = Math.max(a.h, b.h);
+      if (h <= 0) continue;
+      const s = h >= 1 ? eckenSchaerfe : 3 * h;
+      for (const jj of [r.j, v.N - r.j]) {
+        const e = kanteZwischen(k, v.ringPunkt(i, jj), v.ringPunkt(i + 1, jj));
+        if (e >= 0) k.eSchaerfe[e] = Math.max(k.eSchaerfe[e]!, s);
+      }
+    }
+  }
 }
 
 /**

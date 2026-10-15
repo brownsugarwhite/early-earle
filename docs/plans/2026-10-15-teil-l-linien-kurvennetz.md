@@ -73,3 +73,27 @@ Im Planmodus wurde nur recherchiert und Code gelesen. **Die Tests sind Schritt L
 
 - L0: Kern-Tests mit den Kriterien oben, Zahlen je Fall, Bilder (Tiger dreifach, Rex-Braue neben den Bögen, Langhals, Schildkröte, Kreuzung in der Front, Pose), eigener Vite auf 5192 (`run-check.sh`), dann Halt für Florian. „Bestanden“ sagt Florian.
 - Jeder Commit: `pnpm typecheck`, `pnpm test`, `pnpm lint`; B3/B3b/B4/B5-Prüfungen und `kern-ablauf` grün.
+
+## Stand
+
+- **15.10. nachts, L0.1 „Längslinie als Reihe“ gebaut und gemessen, Tor nicht erreicht, nach vier Anläufen angehalten** (Regel: nach drei gemessenen Fehlanläufen an derselben Stelle berichten):
+  - **Gebaut:**
+    - `packages/shape/src/kern/netz/reihen.ts`: Längslinie → Reihe j*. Die Stützstelle j* kommt je gekreuztem Ring auf die Kreuzung, die Nachbarn rücken örtlich auf derselben Querschnittskurve nach, an den Enden läuft es über zwei Ringe aus. Kantigkeit als Falte längs der Reihe.
+    - Eingehängt in `zieleBerechnen` über `AbleitOptionen.netzLinien`; ohne Linien bitgleich wie vorher.
+    - Messung in `kern/netz/reihen.test.ts`.
+  - **Gemessen** (Reihe gegen die Linie / Haut gegen den Körper ohne Linie / Falten):
+
+    | Fall | Reihe auf der Linie | Haut | Falten |
+    |---|---|---|---|
+    | Kugel waagerecht | 0,12 px (ohne Umlegen 10,7) | 0,86 px | 6,7° → 7,0° |
+    | Ei-Bogen | 0,74 px (18,3) | 0,87 px | gleich |
+    | Kugel schräg über die breiteste Stelle | 7,9 px | 7,8 px | 6,7° → 17,4° |
+    | Rex-Braue | 1,3 px | 1,5 px | — |
+
+    Die Rex-Braue kreuzt nur 2 Ringe. Tor war: Reihe ≤ 0,5 px, Haut ≤ 0,25 px.
+  - **Befunde (Ursachen):**
+    1. Die Breitenpunkte (sie halten die Top-Silhouette) hängen an Stützstellen-Nummern. Eine umgelegte Stützstelle, die auf 95 % der größten Breite rückt, wurde selbst Breitenpunkt; ihr Soll nimmt Front-Breite × Anteil doppelt → Beule 5–9 px. Behoben, indem die Breitenpunkte der Vorlage stehen bleiben.
+    2. Folge daraus: Eine Linie, die schräg über die breiteste Stelle läuft, kommt mit ihrer Reihe nicht an der festen Stützstelle vorbei. Lösung: Breitenpunkte an der breitesten Stelle der Querschnittskurve, nicht an einer Stützstelle.
+    3. Das Umlegen verschiebt Stützstellen auf der Kurve; die Fläche zwischen ihnen ändert sich dadurch um 0,5–0,9 px. Für ≤ 0,25 px braucht es einen formtreuen Ausgleich (Fläche auf die alte legen, Reihe hart auf der Linie) — so hatte es die Gegenprüfung vorhergesagt.
+    4. Kurze Linien kreuzen auf dem groben Käfig nur wenige Ringe (Rex-Braue 2). Dort braucht es mehr Ringe (Verdichtung am Gestenende).
+  - **Vorschlag für den nächsten Anlauf** (Florians Entscheidung): (a) Breitenpunkte an der Kurve statt an Stützstellen; (b) formtreuer Ausgleich mit Hautbedingungen in Normalenrichtung, 2–3 Durchgänge; (c) Verdichtung um kurze Linien. Oder Florian entscheidet, dass unter 1 px Hautbewegung beim Zeichnen genügt.

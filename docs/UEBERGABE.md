@@ -59,6 +59,13 @@ Florian zu B5: „Es scheint schon ganz gut zu funktionieren.“ Dann seine Idee
 - Knick = Ecke im Querschnitt am Kreuzungsknoten (wie heute bei Spanten), kein Regler für die Wirkbreite; Spanten werden geschlossene Querschnittslinien (L2).
 - **L0** = Beweis im Kern mit harten Kriterien (Planseite), dann Halt für Florian. Danach **B6** mit Linien in der Pose statt „Reifen in der Pose“.
 
+**Stand L0 (15.10. nachts):** L0.1 „Längslinie als Reihe“ ist gebaut (`packages/shape/src/kern/netz/reihen.ts`, `AbleitOptionen.netzLinien`, ohne Linien bitgleich) und gemessen:
+- Die Reihe liegt auf der Linie: 0,12 px waagerecht, 0,74 px am Ei-Bogen.
+- Die Haut bewegt sich beim Zeichnen 0,86 px (Ziel 0,25).
+- Schräg über die breiteste Stelle scheitert es (7,9 px).
+
+Nach vier Anläufen angehalten. Ursachen und Vorschlag für den nächsten Anlauf stehen auf der Planseite (Stand). **Warten auf Florians Entscheidung.**
+
 ## Erledigt: Stufe 2, B1
 
 B1 nach Plan Teil B und Entwurf `docs/plans/2026-10-15-entwurf-posen.md` §5, klein gehalten auf den heutigen Posendaten:
