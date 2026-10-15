@@ -387,7 +387,23 @@ export function kantenPfad(n: FeinNetz, feld: readonly number[], linie: readonly
   if (!dist.has(e)) return [];
   const pfad = [e];
   while (pfad[pfad.length - 1] !== s) pfad.push(vor.get(pfad[pfad.length - 1]!)!);
-  return pfad.reverse();
+  pfad.reverse();
+  // Zacken abkürzen: Sind v₋₁ und v₊₁ benachbart, fällt v heraus — sonst liegen auf einer Seite des Schnitts Dreiecke mit
+  // allen drei Ecken auf dem Schlitz (in der Karte Fläche null). Nahtpunkte bleiben gesperrt.
+  let geaendert = true;
+  while (geaendert) {
+    geaendert = false;
+    for (let i = 1; i + 1 < pfad.length; i++) {
+      const a = pfad[i - 1]!;
+      const b = pfad[i + 1]!;
+      if (nb.get(a)?.has(b) && !(b !== e && naht(b))) {
+        pfad.splice(i, 1);
+        geaendert = true;
+        break;
+      }
+    }
+  }
+  return pfad;
 }
 
 export type Aufgeschnitten = {
