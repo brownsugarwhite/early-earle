@@ -181,3 +181,8 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 - [ ] **Knicke in der Pose-Linie kann die Lippe nicht nachbilden** (freie Griffe 0,44–0,54 px, glatte Griffe 0,05 px; der Mundwinkel ist rund, weil die Lippenkette glatt um ihn läuft) → Teil A (Mundwinkel als Eckpunkt der Lippenschleife).
 - [ ] **Front und Top einer Pose zeigen noch die Grundprofile** (samt Lichtsaum der Grundform); nur die Seite zeigt den posierten Umriss → B6.
 - [ ] **Rot und Blau der Pose nur in den Blättern**, nicht auf der Bühne (wie die Grundlinien) → B7.
+
+## Befunde aus B6 (15.10. spätabends)
+
+- **Aufblasen mit Betrag 0 schreibt einen leeren Undo-Schritt in die Pose** (`apps/editor/src/kern/pinsel.ts`: `betrag` aus „rechts minus unten“; ein Zug genau diagonal nach rechts unten ergibt 0, die Pose bekommt trotzdem Form/Bezug geschrieben). → B7 (Undo-Verhalten der Oberfläche).
+- **Hebel an den Knoten der Pose-Linie fehlen** (Seite, Front, Top): Die Linie der Pose ist ein posierter Umriss, keine Bézier-Kurve; Hebel bräuchten eine Bedeutung (örtliche Krümmung oder Tangente). → Entscheidung Florian, dann B7.
