@@ -135,4 +135,5 @@
 - **Drache ohne Unterkiefer:** Die untere Schnauzenhälfte steht beim Öffnen als Schnabel vor (Maullinie bei 0,42 der Sprosse). Tiefer gelegte Linien (0,25/0,15) falten die dünne Kehlhaut in die Tasche (offen 42–54 Durchdringungen) → eigene Kehl-Tasche, Phase 2/3.
 - **Rundmaul ohne Zähne:** Das Zahnfleisch hängt am Schlitzmaul; Zähne rundum (Aal) brauchen ein Ring-Zahnfleisch, Phase 2.
 - **Rundmaul flacht die Front ab** (die Haut dehnt sich radial) und gilt nur ohne Schlitzmaul, ohne Beine, mit Earle-Look → Look-Urteil Florian, Phase 3.
+- **W-Oberlippe (Hund) nicht gelöst** (drei Anläufe am Plattenmaul): Arme, die am Mundwinkel wieder steigen oder flach auslaufen, schneiden beim Öffnen durch die Oberlippe (67–442 Paare). Wege: Unterkiefergewichte je Armstück, oder Hund als Schlitzmaul mit Philtrum-Kerbe → Florians Entscheidung, Phase 2.
 
