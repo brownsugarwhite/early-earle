@@ -1118,7 +1118,15 @@ function FressenFeld() {
   const dok = useEditor((s) => s.dok);
   const chip = useKernAnzeige((s) => s.maul);
   const oeffnung = useUi((s) => s.oeffnung);
-  if (!kernMaulAktiv(dok)) return <p className="hilfe">Die Fressen-Pose entsteht mit dem Maul: zuerst in der Stufe Maul die Maullinie zeichnen.</p>;
+  // ohne Schlitzmaul (Kugel, Fisch mit Rundmaul): Blendshape mit den Pinseln, die Öffnung blendet ihn ein (Florian 15.10.)
+  if (!kernMaulAktiv(dok))
+    return (
+      <>
+        <h3 className="leiste-titel" data-abschnitt="fressen">Fressen</h3>
+        <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />
+        <p className="hilfe">Fressen-Pose = Blendshape: in der Pose „Fressen“ (Kopfzeile) formen die Pinsel G (ziehen) und I (aufblasen) den ganzen Körper frei, hier oder in der Stufe Körper — Bohne, Rundmaul, Schädel, Haltung. Die Öffnung blendet zwischen Ruhe und Pose. Knochen (Kiefer, Schädel) gibt es mit Schlitzmaul.</p>
+      </>
+    );
   const mo = maulOptionenDok(dok, chip);
   const grund = maulOptionenDok({ ...dok, ausstattung: { ...(dok.ausstattung ?? {}), maulOptionen: {} } }, chip);
   const g = geste();
@@ -1156,7 +1164,7 @@ function FressenFeld() {
       <button className="chip" data-pose-zuruecksetzen="" onClick={() => setzeMaulOptionen({ winkelUnten: grund.winkelUnten, winkelOben: grund.winkelOben, kieferZug: [0, 0] })}>
         Pose zurücksetzen
       </button>
-      <p className="hilfe">Knochen in der Seite (weiß): Unterkiefer an der Spitze drehen, an der Mitte verschieben; Schädel an der Spitze drehen. Greifen zeigt die Pose ganz offen; die Öffnung (oder der Kieferknopf auf der Bühne) blendet zwischen Ruhe und Pose. Dann formen in der Pose „Fressen“ (Kopfzeile) die Pinsel der Stufe Körper die offene Form weiter — Fressen-Pose = Knochen + Blendshape (Plan 5.2).</p>
+      <p className="hilfe">Knochen in der Seite (weiß): Unterkiefer an der Spitze drehen, an der Mitte verschieben; Schädel an der Spitze drehen. Greifen zeigt die Pose ganz offen; die Öffnung (oder der Kieferknopf auf der Bühne) blendet zwischen Ruhe und Pose. Dann formen in der Pose „Fressen“ (Kopfzeile) die Pinsel G und I (hier oder in der Stufe Körper) die offene Form weiter — Fressen-Pose = Knochen + Blendshape (Plan 5.2).</p>
     </>
   );
 }

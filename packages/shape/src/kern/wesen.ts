@@ -867,6 +867,16 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
   }
+  // Fressen-Pose ohne Schlitzmaul (Florian 15.10.: „im Fressen-Tab Rundmaul, Bohne, W-Maul, Haltung, Schädelform frei
+  // formen“): die Deltas mit der Öffnung auf alle Punkte (mit Schlitzmaul nach den Knochen in `maulLageBei`). Vorher wirkten
+  // sie nur mit Schlitzmaul; bei Kugel, Fisch (Rundmaul) und Beinen schrieb der Pinsel Deltas, die keiner anwendete.
+  if (maul === 'aus' && plan.oeffnung > 0 && (dokRoh.kaefig?.posen?.fressen?.length ?? 0) > 0) {
+    fressenDeltas = posenUmhaengen(dokRoh.kaefig!.posen!.fressen!, null, abl.vorlage.kaefig.n);
+    const xyz2 = new Float64Array(xyz);
+    deltasAddieren(xyz2, spiegelIndex(abl.kaefig.xyz, abl.kaefig.n), fressenDeltas, plan.oeffnung);
+    xyz = xyz2;
+    fein = anwenden3(abl.unterteilung.grenze, xyz2);
+  }
   // weitere Pose (Posenliste): Deltas derselben Topologie mit der Stärke überblendet, auf alle Punkte, nach Knochen und Fressen
   const poseDeltas = plan.pose && plan.pose.name !== 'fressen' && plan.pose.staerke > 0 ? posenUmhaengen(dokRoh.kaefig?.posen?.[plan.pose.name] ?? [], ankerFeld, abl.vorlage.kaefig.n) : [];
   if (poseDeltas.length) {

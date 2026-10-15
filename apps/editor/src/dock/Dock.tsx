@@ -17,6 +17,8 @@ const DOCK: Partial<Record<Ebene, Knopf[]>> = {
   maul: [AUSWAHL, STIFT],
   zaehne: [AUSWAHL],
   augen: [AUSWAHL],
+  // Posen & Leben: Knochen mit der Auswahl, den Blendshape der Pose mit den Pinseln (Florian 15.10.)
+  posen: [AUSWAHL, { werkzeug: 'ziehen', taste: 'G', name: 'Ziehen' }, { werkzeug: 'aufblasen', taste: 'I', name: 'Aufblasen' }],
 };
 
 export function Dock() {

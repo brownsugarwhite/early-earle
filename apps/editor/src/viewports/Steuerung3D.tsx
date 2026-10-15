@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { aktuellesNetz } from '../kern/kernBau';
 import { augeZeiger, augenRandUnter, kieferUnter, kieferZeiger } from '../kern/griffe';
 import { knochen3dSchweben, knochen3dZeiger } from '../kiefer/knochen3d';
-import { pinselRing, pinselZeiger } from '../kern/pinsel';
+import { pinselRing, pinselStufe, pinselZeiger } from '../kern/pinsel';
 import { zahnUnter, zahnZeiger } from '../kern/zahnGriffe';
 import { reifenNeu, reifenUnter, reifenZeiger, useReifen } from '../kern/reifen';
 import { trefferDeuten, useTreffer } from '../kern/treffer';
@@ -115,8 +115,13 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     const menueMoeglich = knopf === 2 || (knopf === 0 && e.ctrlKey);
     // M3: Griffe auf der Bühne (Bauweise kern): Kieferknopf, Augenrand (Stufe Augen), Reifen (Stufe Körper: Perle,
     // Band, ⌥ = Ecke)
-    // Pinsel (M3): G ziehen, I aufblasen, ⇧ dabei glättet — auf dem Körper, Stufe Körper
-    if (knopf === 0 && !e.ctrlKey && ref.current && useUi.getState().bauweise === 'kern' && useUi.getState().ebene === 'form' && (useUi.getState().werkzeug === 'ziehen' || useUi.getState().werkzeug === 'aufblasen')) {
+    // Pinsel (M3): G ziehen, I aufblasen, ⇧ dabei glättet — auf dem Körper, Stufe Körper; in Fressen und den weiteren
+    // Posen auch in „Posen & Leben“ (Florian 15.10.: dort formt man den Blendshape samt Knochen)
+    if (knopf === 0 && !e.ctrlKey && ref.current && useUi.getState().bauweise === 'kern' && pinselStufe() && (useUi.getState().werkzeug === 'ziehen' || useUi.getState().werkzeug === 'aufblasen')) {
+      if (useUi.getState().ebene === 'posen' && useEditor.getState().modus === 'editor') {
+        useUi.getState().zeigeHinweis('Pinsel in „Posen & Leben“ formt eine Pose: erst Fressen (oder eine weitere Pose) wählen');
+        return;
+      }
       const rr = ref.current.getBoundingClientRect();
       if (pinselZeiger(e, e.clientX - rr.left, e.clientY - rr.top, ref.current)) return;
     }

@@ -48,6 +48,15 @@ function dreiecksNormale(normalen: Float32Array, dreieck: number): V3 {
   return [n[0] / l, n[1] / l, n[2] / l];
 }
 
+/**
+ * Stufe, in der der Pinsel wirkt: Körper immer; „Posen & Leben“ in Fressen und den weiteren Posen (Florian 15.10.: der
+ * Blendshape der Pose wird dort geformt, zusammen mit den Knochen).
+ */
+export function pinselStufe(): boolean {
+  const ebene = useUi.getState().ebene;
+  return ebene === 'form' || (ebene === 'posen' && useEditor.getState().modus !== 'editor');
+}
+
 /** Radiusring am Zeiger zeigen (Pinselwerkzeug aktiv, Treffer vorhanden) oder ausblenden. */
 export function pinselRing(_px: number, _py: number): void {
   const r = szene.aktuell;
@@ -55,7 +64,7 @@ export function pinselRing(_px: number, _py: number): void {
   const n = aktuellesNetz();
   const t = useTreffer.getState();
   if (!r) return;
-  if (!n || ui.bauweise !== 'kern' || ui.ebene !== 'form' || (ui.werkzeug !== 'ziehen' && ui.werkzeug !== 'aufblasen') || !t.treffer || t.feld !== 'creation') return r.setzeRadiusRing(null);
+  if (!n || ui.bauweise !== 'kern' || !pinselStufe() || (ui.werkzeug !== 'ziehen' && ui.werkzeug !== 'aufblasen') || !t.treffer || t.feld !== 'creation') return r.setzeRadiusRing(null);
   r.setzeRadiusRing(t.treffer.punkt, dreiecksNormale(n.netz.normalen, t.treffer.dreieck), ui.pinselRadius * n.netz.hoehe * n.skalierung);
 }
 
