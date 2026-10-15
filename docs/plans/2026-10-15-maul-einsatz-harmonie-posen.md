@@ -29,6 +29,7 @@ Grundlage ist die große Sitzung: Plan „Wesen-Editor 2“ (`docs/plans/2026-10
 5. Pinsel und Linie: Die schwarze Linie zeigt das **Pinsel-Relief, seine Punkte bleiben**; neue Punkte nur von Hand oder per „Relief übernehmen“.
 6. Maullinien: **bleiben, wo gezeichnet** (in ihrer Ansicht; Anfang folgt der Kontur, Tiefe auf der Haut, der kürzere Kiefer behält seinen Abstand nach innen) — wie in Illustrator.
 7. (Nachtrag 15.10. nachmittags) **Teil G „Grundkörper für jede Form“** kommt in den Plan, nach dem Maul-Beweis und vor dem Werkzeug-Fundament.
+8. (Nachtrag 15.10. nachmittags, nach B1) **Posen vorgezogen:** „Es war doch ausdrücklich verlangt, dass ich Shape und Maul gerade im Fressen-Tab für den Blendshape bearbeiten können muss. Das war doch das Wichtigste an dem Ganzen!“ → B2–B6 (Shape und Maul im Fressen-Tab) kommen direkt nach B1, auf dem heutigen Maulbau; beim Maul-Einsatz werden die Lippen der Posen auf die neuen Lippenketten umgehängt. Die Dokumentstände tauschen: Posen = v2, Werkzeug-Harmonie = v3.
 
 ## Befund (Code-Analysen 15.10.)
 
@@ -74,12 +75,12 @@ Grundlage ist die große Sitzung: Plan „Wesen-Editor 2“ (`docs/plans/2026-10
 | 0 | Aufräumen: Revert, Plan und Entwürfe ins Repo | – |
 | 1 | Prüfstand (Teil V) und Werkzeug-Matrix auf dem heutigen Stand = Ausgangslage; deine Fehler als Zahlen nachgestellt | Bögen der Ausgangslage |
 | 2 | Sofortkorrektur Tab-Wechsel (B1): Editor zeigt immer die Grundform | Du probierst das Hin- und Herspringen |
-| 3 | Maul-Beweis A1–A11 als eigenständiges Kernmodul | Look-Urteile 1–3 |
-| 4 | Grundkörper-Beweis G1–G5 (Teil G, Nachtrag 15.10.) | Bögen: deine Ente, Giraffe mit Bauch vor der Nase, Fisch mit Flossen |
-| 5 | Werkzeug-Fundament H1–H5: Vorgänge, X0 im Dokument, örtliche Änderungen, Relief, Linien auf der Haut | Probe: Körperbau wie vorher, Pinsel und Linien greifen ineinander |
-| 6 | Maul und Grundkörper im Editor: A12–A14 mit H6, Einbau von G; alter Maulbau gelöscht | Deine Probe mit eigenen Wesen |
-| 7 | H7: „Relief übernehmen“, Neu ableiten | – |
-| 8 | Posen B2–B10 | nach jedem Schritt |
+| 3 | **Posen vorgezogen (Entscheidung 8): B2–B6** — Shape und Maul im Fressen-Tab auf dem heutigen Maulbau | nach jedem Schritt |
+| 4 | Maul-Beweis A1–A11 als eigenständiges Kernmodul | Look-Urteile 1–3 |
+| 5 | Grundkörper-Beweis G1–G5 (Teil G) | Bögen: deine Ente, Giraffe mit Bauch vor der Nase, Fisch mit Flossen |
+| 6 | Werkzeug-Fundament H1–H5: Vorgänge, X0 im Dokument, örtliche Änderungen, Relief, Linien auf der Haut | Probe: Körperbau wie vorher, Pinsel und Linien greifen ineinander |
+| 7 | Maul und Grundkörper im Editor: A12–A14 mit H6, Einbau von G; Lippen der Posen auf die neuen Ketten umgehängt; alter Maulbau gelöscht | Deine Probe mit eigenen Wesen |
+| 8 | H7: „Relief übernehmen“, Neu ableiten; Posen B7–B10 (Tafel ganz, Extremposen, Zähne/Augen/Beine, Export) | nach jedem Schritt |
 | 9 | H8/H9: ganze Matrix, Abschluss | Abnahme |
 
 ## Teil 0: Aufräumen (zuerst)
