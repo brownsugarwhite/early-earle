@@ -27,7 +27,7 @@ function griffe3d(): { griffe: Griff3[]; linien: number[] } | null {
   const sk = n.skalierung;
   const kn = knochenBei(m, ui.oeffnung);
   const w = (p: V2): V3 => [p.x * sk, p.y * sk, 0];
-  const griffe: Griff3[] = [{ art: 'gelenk', pos: w(m.rig.gelenk), perle: 'gelenk' }, { art: 'schaedel-dreh', pos: w(kn.schaedelSpitze), perle: 'spitze' }];
+  const griffe: Griff3[] = [{ art: 'gelenk', pos: w(m.rig.gelenk), perle: 'gelenk' }, { art: 'schaedel-gelenk', pos: w(kn.schaedelBasis), perle: 'gelenk' }, { art: 'schaedel-dreh', pos: w(kn.schaedelSpitze), perle: 'spitze' }];
   if (m.knochen.kippen) griffe.push({ art: 'kiefer-dreh', pos: w(kn.kieferSpitze), perle: 'spitze' }, { art: 'kiefer-zug', pos: w(kn.kieferMitte), perle: 'zug' });
   return { griffe, linien: [...w(kn.kieferBasis), ...w(kn.kieferSpitze), ...w(kn.schaedelBasis), ...w(kn.schaedelSpitze)] };
 }

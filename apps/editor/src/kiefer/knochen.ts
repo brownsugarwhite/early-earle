@@ -11,7 +11,7 @@ export const GRAD = Math.PI / 180;
 export type Rig = NonNullable<NonNullable<ReturnType<typeof aktuellesNetz>>['netz']['maul']>;
 
 /** Griffe: Gelenk, Kieferlinie, Übergang (Rig) und die Knochen der Pose (drehen, ziehen). */
-export type KieferGriff = 'gelenk' | 'weite' | 'w1' | 'w2' | 'kiefer-dreh' | 'kiefer-zug' | 'schaedel-dreh';
+export type KieferGriff = 'gelenk' | 'weite' | 'w1' | 'w2' | 'kiefer-dreh' | 'kiefer-zug' | 'schaedel-dreh' | 'schaedel-gelenk';
 
 /** Rig des zuletzt gebauten Netzes (nur Bauweise Kern mit Maul). */
 export function aktuellesRig(): Rig | null {
@@ -105,6 +105,9 @@ export function griffZug(m: Rig, art: KieferGriff, p0: V2): (p: V2) => Partial<M
     case 'kiefer-zug':
       // Zug in Maullängen (x zur Schnauze, y nach oben), vom Stand am Gestenbeginn
       return (p) => ({ kieferZug: [rund(kn.zug[0] + ((p.x - p0.x) * rig.vorn) / L), rund(kn.zug[1] + (p.y - p0.y) / L)] });
+    case 'schaedel-gelenk':
+      // Versatz gegen das automatische Schädelgelenk in Maullängen (x nach hinten, y nach oben), wie `schaedelGelenk` im Kern
+      return (p) => ({ schaedelGelenk: [rund((rig.schaedelBasis.x - p.x) / (rig.vorn * L)), rund((p.y - rig.schaedelBasis.y) / L)] });
     case 'schaedel-dreh':
       return (p) => {
         const phi = winkelZwischen({ x: p0.x - kn.schaedel.x, y: p0.y - kn.schaedel.y }, { x: p.x - kn.schaedel.x, y: p.y - kn.schaedel.y });

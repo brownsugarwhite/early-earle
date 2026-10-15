@@ -79,6 +79,7 @@ const MaulOptionenSchema = z
     kieferWinkel: z.tuple([z.number(), z.number()]),
     kieferReichweite: z.tuple([z.number(), z.number()]),
     kieferZug: z.tuple([z.number(), z.number()]),
+    schaedelGelenk: z.tuple([z.number(), z.number()]),
   })
   .partial();
 /** Zone als Vektorform, relativ zu den Ruhe-Grenzen des Körpers (x, y 0 … 1), Weichheit je Punkt als Anteil der Höhe. */
@@ -172,6 +173,8 @@ export type MaulOptionenWerte = {
   kieferWinkel: [number, number];
   kieferReichweite: [number, number];
   kieferZug: [number, number];
+  /** Schädelgelenk (Plan 5.2, Griff im Rig): Versatz gegen das automatische Gelenk in Maullängen (x nach hinten, y nach oben) */
+  schaedelGelenk: [number, number];
 };
 export type Ausstattung = {
   maul?: 'aus' | 'vorn' | 'unten' | 'hals';

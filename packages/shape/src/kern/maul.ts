@@ -168,9 +168,11 @@ export type MaulOptionen = {
    * (`winkelUnten`); beides am Knochen in der Seite gegriffen.
    */
   kieferZug: [number, number];
+  /** Schädelgelenk (Plan 5.2, Griff im Rig): Versatz gegen das automatische Gelenk in Maullängen (x nach hinten, y nach oben) */
+  schaedelGelenk: [number, number];
 };
 
-export const MAUL_STANDARD: MaulOptionen = { reihen: 3, tiefe: 0.9, linse: 0.03, rachenTiefe: 0.7, rachenInnen: 0.55, schaedelHinter: 0.45, lippenSchaerfe: 1e6, band: 2, bandOben: 8, nackenGanz: false, winkelUnten: 58, winkelOben: 15, oeffnungsart: 'kippen', zugWeite: 0.5, rille: 0.012, platte: 10, beutel: 0.5, haps: 0, hapsTiefe: 0.12, hapsHoehe: 0.14, hapsWeite: 0.06, hapsRadius: 0.6, gewichte: 'winkel', gelenk: [0, 0], kieferWinkel: [30, 150], kieferReichweite: [1.2, 2], kieferZug: [0, 0] };
+export const MAUL_STANDARD: MaulOptionen = { reihen: 3, tiefe: 0.9, linse: 0.03, rachenTiefe: 0.7, rachenInnen: 0.55, schaedelHinter: 0.45, lippenSchaerfe: 1e6, band: 2, bandOben: 8, nackenGanz: false, winkelUnten: 58, winkelOben: 15, oeffnungsart: 'kippen', zugWeite: 0.5, rille: 0.012, platte: 10, beutel: 0.5, haps: 0, hapsTiefe: 0.12, hapsHoehe: 0.14, hapsWeite: 0.06, hapsRadius: 0.6, gewichte: 'winkel', gelenk: [0, 0], kieferWinkel: [30, 150], kieferReichweite: [1.2, 2], kieferZug: [0, 0], schaedelGelenk: [0, 0] };
 
 /**
  * Maul-Optionen je vorgefertigter Lage: vorn/unten kippen (Rex), hals zieht (Drache). Phase 2 M6 (Drache wie
@@ -909,12 +911,18 @@ const glattStufe = (x: number) => {
 export const BREITE_MIT_MAUL = 4;
 
 /** Optionen, die nur Gewichte und Pose betreffen (kein Umbau des Käfigs; Griffe und Regler im Fressen-Tab). */
-export const MAUL_POSE_OPTIONEN = ['winkelUnten', 'winkelOben', 'zugWeite', 'oeffnungsart', 'haps', 'hapsTiefe', 'hapsHoehe', 'hapsWeite', 'hapsRadius', 'gewichte', 'gelenk', 'kieferWinkel', 'kieferReichweite', 'kieferZug'] as const;
+export const MAUL_POSE_OPTIONEN = ['winkelUnten', 'winkelOben', 'zugWeite', 'oeffnungsart', 'haps', 'hapsTiefe', 'hapsHoehe', 'hapsWeite', 'hapsRadius', 'gewichte', 'gelenk', 'kieferWinkel', 'kieferReichweite', 'kieferZug', 'schaedelGelenk'] as const;
 
 /** Kiefergelenk (Welt, Seitenansicht): Mundwinkel plus Versatz in Maullängen (x nach hinten, y nach oben). */
 export function kieferGelenk(m: MaulAbleitung, opt: Pick<MaulOptionen, 'gelenk'>): V2 {
   const w = m.kieferBasis.mundwinkel;
   return { x: w.x - m.vorn * opt.gelenk[0] * m.laenge, y: w.y + opt.gelenk[1] * m.laenge };
+}
+
+/** Drehpunkt des Schädels (Plan 5.2): das automatische Gelenk hinter dem Mundwinkel plus der Versatz der Optionen. */
+export function schaedelGelenk(m: MaulAbleitung, opt: Partial<Pick<MaulOptionen, 'schaedelGelenk'>>): V2 {
+  const v = opt.schaedelGelenk ?? [0, 0];
+  return { x: m.schaedel.x - m.vorn * v[0] * m.laenge, y: m.schaedel.y + v[1] * m.laenge };
 }
 
 /**
@@ -2572,6 +2580,7 @@ export function maulPose(abl: MaulErgebnis, oeffnung: number): { xyz: Float64Arr
   };
   const zieht = m.opt.oeffnungsart === 'ziehen';
   const weite = oeffnung * m.opt.zugWeite * m.laenge;
+  const sg = schaedelGelenk(m, m.opt);
   // gegriffener Zug des Unterkiefers (Fressen-Pose): x zur Schnauze (Vorzeichen `vorn`), y nach oben
   const zx = oeffnung * (m.opt.kieferZug?.[0] ?? 0) * m.laenge * m.vorn;
   const zy = oeffnung * (m.opt.kieferZug?.[1] ?? 0) * m.laenge;
@@ -2616,7 +2625,7 @@ export function maulPose(abl: MaulErgebnis, oeffnung: number): { xyz: Float64Arr
       xyz[3 * i] = xyz[3 * i]! + wb * kantenZug[2 * r]!;
       xyz[3 * i + 1] = xyz[3 * i + 1]! + wb * kantenZug[2 * r + 1]!;
     }
-    if (wo > 0) drehe(i, m.schaedel.x, m.schaedel.y, m.vorn * wo * aO);
+    if (wo > 0) drehe(i, sg.x, sg.y, m.vorn * wo * aO);
   }
   if (m.opt.haps > 0 && oeffnung > 0) hapsAnwenden(abl, xyz, oeffnung * m.opt.haps);
   const fein = anwenden3(abl.unterteilung.grenze, xyz);

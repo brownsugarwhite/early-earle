@@ -24,7 +24,7 @@ import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
 import { kieferSchnitt } from './kieferSpant';
 import { type AnkerFeld, maulAnker, posenUmhaengen } from './posenAnker';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
-import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose } from './maul';
+import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, schaedelGelenk } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
 import { PRUEF_OEFFNUNGEN, type ZahnBau, type ZahnMeldung, zaehneBauen, zaehnePruefenBei, zahnListe } from './zaehne';
 
@@ -186,7 +186,7 @@ export type WesenNetz = {
   maul: {
     winkel: V3;
     laenge: number;
-    rig: { gelenk: V2; mundwinkel: V2; vorn: number; gelenkVersatz: [number, number]; kieferWinkel: [number, number]; kieferReichweite: [number, number]; winkel: boolean };
+    rig: { gelenk: V2; mundwinkel: V2; vorn: number; gelenkVersatz: [number, number]; kieferWinkel: [number, number]; kieferReichweite: [number, number]; winkel: boolean; schaedelBasis: V2; schaedelVersatz: [number, number] };
     /**
      * Knochen der Fressen-Pose in Ruhe (Seitenansicht, mit Hebung): Unterkiefer vom Gelenk zur Unterlippe vorn, Schädel
      * vom Schädelgelenk zur Oberlippe vorn; dazu die Pose bei Öffnung 1 (Winkel in Grad, Zug in Maullängen) und die Art.
@@ -1178,8 +1178,8 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     maulGriff = {
       winkel: [fein[3 * p]!, fein[3 * p + 1]! + hebung, fein[3 * p + 2]!],
       laenge: m.laenge,
-      rig: { gelenk: { x: m.scharnier.x, y: m.scharnier.y + hebung }, mundwinkel: { x: m.kieferBasis.mundwinkel.x, y: m.kieferBasis.mundwinkel.y + hebung }, vorn: m.vorn, gelenkVersatz: [...o.gelenk], kieferWinkel: [...o.kieferWinkel], kieferReichweite: [...o.kieferReichweite], winkel: winkelGew },
-      knochen: { kieferSpitze: rp(m.unten[0]!), schaedel: { x: m.schaedel.x, y: m.schaedel.y + hebung }, schaedelSpitze: rp(m.pfad[0]!), winkelUnten: o.winkelUnten, winkelOben: o.winkelOben, zug: [...(o.kieferZug ?? [0, 0])], kippen: o.oeffnungsart !== 'ziehen' },
+      rig: { gelenk: { x: m.scharnier.x, y: m.scharnier.y + hebung }, mundwinkel: { x: m.kieferBasis.mundwinkel.x, y: m.kieferBasis.mundwinkel.y + hebung }, vorn: m.vorn, gelenkVersatz: [...o.gelenk], kieferWinkel: [...o.kieferWinkel], kieferReichweite: [...o.kieferReichweite], winkel: winkelGew, schaedelBasis: { x: m.schaedel.x, y: m.schaedel.y + hebung }, schaedelVersatz: [...(o.schaedelGelenk ?? [0, 0])] },
+      knochen: { kieferSpitze: rp(m.unten[0]!), schaedel: { x: schaedelGelenk(m, o).x, y: schaedelGelenk(m, o).y + hebung }, schaedelSpitze: rp(m.pfad[0]!), winkelUnten: o.winkelUnten, winkelOben: o.winkelOben, zug: [...(o.kieferZug ?? [0, 0])], kippen: o.oeffnungsart !== 'ziehen' },
     };
     if (plan.gewichteZeigen) gewichtFarben = gewichteJeEcke(abl as MaulErgebnis, flaechen, gesteckteEcken);
   }

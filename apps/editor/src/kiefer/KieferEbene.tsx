@@ -5,6 +5,7 @@
 //   Der gestrichelte innere Kreis ist der Beginn des Auslaufs.
 // - Übergang (zwei Strahlen, Griffe auf dem inneren Kreis): bis zum ersten Strahl dreht die Haut voll mit, ab dem zweiten
 //   nicht mehr (0° zur Schnauze, 90° nach unten).
+// - Schädelgelenk (dunkler Punkt an der Basis des Schädelknochens): Drehpunkt des Schädels.
 // Alles wirkt ohne Umbau des Käfigs (Pose-Optionen), die Bühne folgt beim Ziehen.
 import type { Ansicht, V2 } from '@ee/shape';
 import { useNetzStand } from '../kern/netzStand';
@@ -114,7 +115,10 @@ export function KieferZeichnung({ ansicht, bild, w, h }: { ansicht: Ansicht; bil
             <circle data-kiefergriff="schaedel-dreh" cx={ss.x} cy={ss.y} r={6} fill="#fff" stroke="#19232b" strokeWidth={2} style={{ cursor: 'grab' }}>
               <title>Schädel drehen (Fressen-Pose)</title>
             </circle>
-            <circle cx={sb.x} cy={sb.y} r={4} fill="#19232b" pointerEvents="none" />
+            {/* Schädelgelenk (Plan 5.2): Drehpunkt des Schädels als Griff; die Automatik liegt hinter dem Mundwinkel */}
+            <circle data-kiefergriff="schaedel-gelenk" cx={sb.x} cy={sb.y} r={6} fill="#19232b" stroke="#fff" strokeWidth={2} style={{ cursor: 'move' }}>
+              <title>Schädelgelenk (Rig)</title>
+            </circle>
             {m.knochen.kippen && (
               <circle data-kiefergriff="kiefer-dreh" cx={ks.x} cy={ks.y} r={7} fill="#fff" stroke="#19232b" strokeWidth={2} style={{ cursor: 'grab' }}>
                 <title>Unterkiefer drehen (Fressen-Pose)</title>

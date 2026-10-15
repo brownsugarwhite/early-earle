@@ -25,7 +25,7 @@ export function setzeMaulOptionen(patch: Partial<MaulOptionen>): void {
   s.setzeDokument({ ...s.dok, ausstattung: { ...aus, maulOptionen: { ...(aus.maulOptionen ?? {}), ...patch } } });
 }
 
-/** Gelenk, Übergang und Reichweite auf die Automatik zurück (Gelenk am Mundwinkel). */
+/** Gelenke, Übergang und Reichweite auf die Automatik zurück (Kiefergelenk am Mundwinkel, Schädelgelenk dahinter). */
 export function kieferAutomatik(): void {
-  setzeMaulOptionen({ gelenk: [...MAUL_STANDARD.gelenk], kieferWinkel: [...MAUL_STANDARD.kieferWinkel], kieferReichweite: [...MAUL_STANDARD.kieferReichweite] });
+  setzeMaulOptionen({ gelenk: [...MAUL_STANDARD.gelenk], kieferWinkel: [...MAUL_STANDARD.kieferWinkel], kieferReichweite: [...MAUL_STANDARD.kieferReichweite], schaedelGelenk: [...MAUL_STANDARD.schaedelGelenk] });
 }

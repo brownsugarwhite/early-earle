@@ -53,3 +53,4 @@ Aus `packages/shape` starten: `npx vite-node ../../apps/editor/scripts/pruefen/<
 | `rundmaul.mjs` | Phase 2 M6, Schritt 2: Prüfwesen Fisch, Rundmaul in fünf Öffnungen, schräg, Seite, neben `fish_round mouth`; Tafel-Chip aus/an |
 | `drache.mjs` | Phase 2 M6, Schritt 3: Drache mit Maul `hals` in fünf Öffnungen, schräg und von vorn, neben `rex_dragon_big mouth` |
 | `maularten-abnahme.mjs` | Abnahme M6: Fisch, Drache und Tiger zu/offen neben den vier Referenzen |
+| `schaedel-gelenk.mjs` | Plan 5.2: Schädelgelenk-Griff in der Seite ziehen (Rex, Posen & Leben), Dokument, Knochen, ohne Umbau, Undo |
