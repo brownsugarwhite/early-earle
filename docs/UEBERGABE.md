@@ -1,4 +1,4 @@
-# Übergabe (Stand 15.10.2026 mittags, nach dem Planmodus)
+# Übergabe (Stand 15.10.2026 nachmittags, Stufe 1 gebaut)
 
 Branch `claude/editor-grundlayout`. **Es gilt der freigegebene Plan [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)** mit den ausführlichen Entwürfen [Teil A Maul als Einsatz](plans/2026-10-15-entwurf-maul-einsatz.md), [Teil H Werkzeug-Harmonie](plans/2026-10-15-entwurf-werkzeug-harmonie.md) und [Teil B Posen](plans/2026-10-15-entwurf-posen.md). Alle älteren Fahrpläne (Phase 2, Ruhiges Netz und Maulschlitz, Fressen wie Editor) sind dadurch abgelöst; ihre Fallen und Messwerkzeuge bleiben gültiges Wissen.
 
@@ -24,9 +24,21 @@ Die Ursachen stehen im Plan unter „Befund“ (Code-Analysen mit Datei- und Zei
 ## Stand
 
 - **Teil 0 erledigt:** Rücknahme 42ef353 (Code = c97497b; typecheck und lint grün, Unit-Tests grün bis auf einen Tempo-Test unter Last, einzeln grün; E2E kern-ablauf 4/4). Plan, Entwürfe, Kritik-Register (Abschnitt „Florian 15.10. vormittags“), Projektgedächtnis nachgezogen; „Fressen wie Editor“ als abgelöst markiert.
+- **Stufe 1 gebaut (Abnahme offen):** Prüfstand `packages/shape/src/kern/pruefen/` (Zufallsreihe, Maße, Werkzeug-Matrix; Werkzeuge geprüft in `reihe.test.ts`), Skripte `apps/editor/scripts/pruefen/{zufallsreihe.ts, werkzeug-matrix.ts, reihe-boegen.mjs}`. Ausgangslage mit acht Kontaktbögen: [`docs/progress/editor/ausgangslage-2026-10-15.md`](progress/editor/ausgangslage-2026-10-15.md). Kurz: Zufallsreihe 200 Fälle und einfachste Mäuler 40 Fälle — alle verletzen mindestens eine Schwelle; Florians Ablauf (Pinsel → Maul) nachgestellt (Seite Δ 36 px, Lippe 15 px); Linienänderungen verschieben die Haut fern um ≈ 10 px; ein Absturz im Bau (Δ-Messung bei zerrissenem Netz).
+- **Teil G** (Grundkörper für jede Form: Ente mit Flügeln, Bauch vor der Nase, S-Hals) ist nachmittags in den Plan gekommen (Florians Entscheidung 7), nach dem Maul-Beweis.
 - Im Editor gilt bis auf Weiteres der alte Maulbau und die alte Fressen-Pose (Stand c97497b). Bekannt: Der Rücksprung-Fehler im Fressen-Tab besteht weiter (B1 behebt ihn).
 
-## Nächster Schritt: Stufe 1, Teil V (Prüfstand und Ausgangslage)
+## Nächster Schritt: Stufe 2, B1 (nach Florians Blick auf die Ausgangslage)
+
+B1 nach Plan Teil B und Entwurf `docs/plans/2026-10-15-entwurf-posen.md` §5, klein gehalten auf den heutigen Posendaten:
+- eine Aktion `setzeZiel` statt `setzeModus` + `setzeOeffnung` (MenuBar, Tafel-Chips, Q), Öffnung und Modus in einem Schritt;
+- Neubau bei jedem Wechsel, mit oder ohne Maul (`Szene3D.tsx`, heute nur mit Maul);
+- Pose entfernen, Laden, Neu setzen die Öffnung zurück (`editorStore.ts`);
+- im Editor-Modus rechnet der Kern keine Pose (Abkürzung, Grundform bitgleich; `kernBau.ts` `bauplanAus`, `wesen.ts`);
+- in Ruhen/Laufen/Inklusion Werkzeuge sperren, die in die Grundform durchschreiben (Hinweis „nur im Editor“);
+- Prüfung: E2E mit echten Zügen, 20× Editor ↔ Fressen auf Kugel (ohne Maul) und Rex (mit Maul) mit Pinsel in Fressen; Grundform-Hash im Editor-Tab unverändert, Pose sichtbar im Fressen-Tab.
+
+## Erledigt: Stufe 1, Teil V (Prüfstand und Ausgangslage)
 
 1. `packages/shape/src/kern/pruefen/zufallsreihe.ts` (fester Startwert; Körper Kugel, Ei, Wurst, Turm, Flunder, Birne, Kasten, Langhals, Robbe, Drache mit Varianten; Maullinien hoch/mittel/tief/seitlich/Kinn/Hals × gerade/hoch/runter/J/S/senkrecht × kurz/lang; Kiefer gleich/Über-/Unterbiss; Öffnung 0–100 %; Bearbeitungen danach).
 2. `kern/pruefen/masse.ts` (Formtreue gegen den Körper ohne Maul, Δ je Blatt mit/ohne Maul, Lippe dicht über die ganze Linie, Falten, Zusammenklappen, sichtbare Durchdringungen, Kieferunabhängigkeit, Örtlichkeit, Tempo); vorhandene Bausteine in `kern/pruefstand.ts`, `kern/abweichung.ts` wiederverwenden.

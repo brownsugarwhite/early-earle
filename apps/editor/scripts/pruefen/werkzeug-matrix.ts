@@ -21,6 +21,16 @@ const nur = process.env.NUR;
 const f1 = (x: number | null) => (x === null ? '–' : Number.isFinite(x) ? x.toFixed(1) : '∞');
 const zeile = (s: Schritt) => `Δ ${f1(s.messung.delta.seite)}/${f1(s.messung.delta.front)}/${f1(s.messung.delta.top)} · Lippe ${f1(s.messung.lippe)} · fern ${f1(s.messung.fern)} (gesamt ${f1(s.messung.gesamt)}) px${s.folgen ? ' · Formen folgen' : ''}`;
 const ergebnis: Record<string, unknown> = { start: START };
+// Ein Bau kann abstürzen (z. B. wirft die Δ-Messung bei zerrissenem Netz): als Befund zählen, nicht das Skript beenden
+const abstuerze: { wo: string; handlung: string; fehler: string }[] = [];
+function sicher(wo: string, z: Parameters<typeof schrittAusfuehren>[0], h: Handlung, r: Parameters<typeof schrittAusfuehren>[2], k: KoerperArt): ReturnType<typeof schrittAusfuehren> | 'absturz' {
+  try {
+    return schrittAusfuehren(z, h, r, k);
+  } catch (e) {
+    abstuerze.push({ wo, handlung: h.name, fehler: String(e).slice(0, 160) });
+    return 'absturz';
+  }
+}
 
 // 1) Florians Ablauf (Bild 15.10.): feste Handlungen auf der Startkugel
 if (!nur || nur === 'florian') {
@@ -93,14 +103,14 @@ if (!nur || nur === 'paare') {
         let z = startZustand(k, r);
         // Maul-Handlungen brauchen ein Maul: vorher eines zeichnen
         if ((ha.name.startsWith('maul-') && ha.name !== 'maul-zeichnen') || ha.name === 'getrennt') {
-          const s0 = schrittAusfuehren(z, HANDLUNGEN.find((x) => x.name === 'maul-zeichnen')!, r, k);
-          if (!s0) continue;
+          const s0 = sicher(`${k} vor ${ha.name}`, z, HANDLUNGEN.find((x) => x.name === 'maul-zeichnen')!, r, k);
+          if (!s0 || s0 === 'absturz') continue;
           z = s0.z;
         }
-        const sa = schrittAusfuehren(z, ha, r, k);
-        if (!sa) continue;
-        const sb = schrittAusfuehren(sa.z, hb, r, k);
-        if (!sb) continue;
+        const sa = sicher(`${k}: ${ha.name}`, z, ha, r, k);
+        if (!sa || sa === 'absturz') continue;
+        const sb = sicher(`${k}: ${ha.name} → ${hb.name}`, sa.z, hb, r, k);
+        if (!sb || sb === 'absturz') continue;
         paare.push({ koerper: k, a: ha.name, b: hb.name, nachA: sa.schritt.messung, nachB: sb.schritt.messung });
       }
     }
@@ -120,7 +130,8 @@ if (!nur || nur === 'gaenge') {
     const schritte: Schritt[] = [];
     for (let i = 0; i < 8; i++) {
       const h = r.wahl(HANDLUNGEN);
-      const s = schrittAusfuehren(z, h, r, k);
+      const s = sicher(`Gang ${g} (${k}) Schritt ${i}`, z, h, r, k);
+      if (s === 'absturz') break;
       if (!s) continue;
       z = s.z;
       schritte.push(s.schritt);
@@ -152,6 +163,11 @@ if (alle.length) {
   ergebnis.zusammenfassung = zus;
 }
 void bauen;
+ergebnis.abstuerze = abstuerze;
+if (abstuerze.length) {
+  console.log(`\nAbstürze im Bau: ${abstuerze.length}`);
+  for (const a of abstuerze.slice(0, 10)) console.log(`  ${a.wo} · ${a.handlung} · ${a.fehler}`);
+}
 mkdirSync(AUSGABE, { recursive: true });
 const datei = resolve(AUSGABE, `werkzeug-matrix-${START}.json`);
 writeFileSync(datei, JSON.stringify(ergebnis));

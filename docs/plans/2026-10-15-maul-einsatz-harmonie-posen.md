@@ -323,3 +323,4 @@ Die Information der drei Shapes reicht: Ihr Schnitt beschreibt, was verlangt ist
 ## Stand
 
 - **15.10. Teil 0:** Rücknahme von 7baee2d, 50c8976, c10f695 als 42ef353 (Code = c97497b; typecheck, lint, Unit-Tests, E2E kern-ablauf grün). Plan und Entwürfe im Repo.
+- **15.10. Stufe 1 gebaut** (Abnahme offen): Prüfstand `kern/pruefen/` (6c770ce), Ausgangslage des heutigen Maulbaus und der Werkzeuge in [`docs/progress/editor/ausgangslage-2026-10-15.md`](../progress/editor/ausgangslage-2026-10-15.md) mit acht Kontaktbögen. Zufallsreihe 200 Fälle: alle bauen, alle verletzen mindestens eine Schwelle; einfachste Mäuler (40): ebenso. Werkzeug-Matrix: Linienänderungen nicht örtlich (≈ 10 px fern), „getrennt“ 21 px fern, Maul entfernen stellt den Körper nicht wieder her, ein Absturz im Bau. Nachmittags Teil G ergänzt (8b2cc52). Nächster Schritt: B1 nach Florians Blick auf die Ausgangslage.

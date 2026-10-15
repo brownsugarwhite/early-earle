@@ -24,15 +24,17 @@ const KLASSEN = {
   kiefer: { titel: 'Kiefer getrennt: Über- und Unterbiss', passt: (f) => f.kiefer !== 'gleich' },
   bearbeitung: { titel: 'Körper nach dem Maul geändert (Schädel, Kinn, Schnauze, Pinsel)', passt: (f) => f.bearbeitung !== 'keine' && f.bearbeitung !== 'anfang' && f.bearbeitung !== 'mundwinkel' },
   vorlagen: { titel: 'Florians Wesen (Rex, Tiger-Kasten, Langhals, Drache, Robbe)', passt: (f) => ['rex', 'kasten', 'langhals', 'drache', 'robbe'].includes(f.koerper) },
+  // für Teilreihen (FILTER in zufallsreihe.ts): alle Fälle der Datei
+  alle: { titel: process.env.TITEL ?? 'Alle Fälle der Reihe', passt: () => true },
 };
-const gewaehlt = process.env.KLASSEN?.split(',') ?? Object.keys(KLASSEN);
+const gewaehlt = process.env.KLASSEN?.split(',') ?? Object.keys(KLASSEN).filter((k) => k !== 'alle');
 
 const f1 = (x) => (x === null || x === undefined ? '–' : Number.isFinite(x) ? x.toFixed(1) : '∞');
 function masszeile(e) {
   const m = e.masse;
   if (!m) return e.fehler ?? '';
   const lu = m.lippe.unten;
-  const paare = m.paare.map((p) => `${Math.round(p.oeffnung * 100)}%:${p.haut}`).join(' ');
+  const paare = m.paare.map((p) => `${Math.round(p.oeffnung * 100)}%:${p.haut === null ? '∞ (zerrissen)' : p.haut}`).join(' ');
   const kiefer = m.kiefer ? ` · Kiefer rot→unten ${f1(m.kiefer.rotZiehtUnten)} blau→oben ${f1(m.kiefer.blauZiehtOben)} px` : '';
   return `Schwere ${f1(e.schwere)} · Formtreue fern ${f1(m.formtreue.fern.max)} nah ${f1(m.formtreue.nah.max)} px · Δ mit ${f1(m.delta.mit.seite)}/${f1(m.delta.mit.front)}/${f1(m.delta.mit.top)} ohne ${f1(m.delta.ohne.seite)}/${f1(m.delta.ohne.front)}/${f1(m.delta.ohne.top)} · Lippe rot ${f1(Math.max(m.lippe.oben.seite, m.lippe.oben.front, m.lippe.oben.top))}${lu ? ` blau ${f1(Math.max(lu.seite, lu.front, lu.top))}` : ''} px · Faltenzuwachs ${f1(m.falten.fern.max)}/${f1(m.falten.nah.max)}° · umgeklappt ${m.umgeklappt} · Durchdringungen (Haut) ${paare}${kiefer}`;
 }
@@ -56,13 +58,17 @@ async function seitenblatt() {
   return datenUrl(await page.screenshot({ clip: { x: rc.x, y: rc.y, width: rc.w, height: rc.h } }));
 }
 
+// jeder Bogen zeigt möglichst Fälle, die noch auf keinem anderen Bogen standen (die zerrissensten Fälle liegen in mehreren Klassen oben)
+const gezeigt = new Set();
 for (const k of gewaehlt) {
   const kl = KLASSEN[k];
   if (!kl) continue;
   // Rang: Summe der Verstöße auf Log-Skala (viele schwere Fehler zuerst; die Schwere selbst ist bei 1000 gekappt)
   const rang = (e) => (e.verstoesse ? e.verstoesse.reduce((s, v) => s + Math.log10(1 + Math.min(1e6, v.schwelle > 0 ? v.wert / v.schwelle : v.wert + 1)), 0) : 1e9);
   const kandidaten = reihe.eintraege.filter((e) => e.dok && kl.passt(e.fall)).sort((a, b) => rang(b) - rang(a));
-  const auswahl = kandidaten.slice(0, JE);
+  const neu = kandidaten.filter((e) => !gezeigt.has(e.fall.id));
+  const auswahl = (neu.length >= JE ? neu : [...neu, ...kandidaten.filter((e) => gezeigt.has(e.fall.id))]).slice(0, JE);
+  for (const e of auswahl) gezeigt.add(e.fall.id);
   const zeilen = [];
   for (const e of auswahl) {
     const mitte = e.maul ? [(e.maul.start[0] + e.maul.ecke[0]) / 2, (e.maul.start[1] + e.maul.ecke[1]) / 2, 0] : [0, 0.25, 0];
@@ -101,7 +107,7 @@ for (const k of gewaehlt) {
   const html = `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#1b2530;color:#eee;font:13px/1.35 -apple-system,Helvetica,sans-serif}
 h1{font-size:18px;margin:10px 10px 2px}.u{margin:0 10px 8px;color:#9ab}.t{padding:8px 10px 0;font-weight:600;font-family:monospace}.m{padding:2px 10px;color:#bcd;font-family:monospace;font-size:12px}
 .z{display:grid;grid-template-columns:330px repeat(4,250px);gap:4px;padding:4px 10px 6px}img{width:100%;height:210px;object-fit:cover;background:#ccc}.z img:first-child{object-fit:contain;background:#e9e4d8}.l{display:grid;grid-template-columns:330px repeat(4,250px);gap:4px;padding:0 10px;color:#9ab;font-size:11px}</style>
-<h1>Ausgangslage · ${kl.titel}</h1><div class="u">Heutiger Maulbau (Stand c97497b), Zufallsreihe Startwert ${reihe.start}, ${n} Fälle dieser Klasse, gezeigt die ${auswahl.length} schlechtesten. Schwellen der neuen Bauweise: Formtreue ≤ 0,25 px, Δ-Zuwachs ≤ 0,5 px, Lippe ≤ 1 px, Faltenzuwachs ≤ 2°, 0 umgeklappte Flächen, 0 Durchdringungen mit Haut beim Öffnen.</div>
+<h1>Ausgangslage · ${kl.titel}</h1><div class="u">Heutiger Maulbau (Stand c97497b), Zufallsreihe Startwert ${reihe.start}, ${n} Fälle dieser Klasse, gezeigt die ${auswahl.length} schlechtesten, die auf keinem früheren Bogen stehen. Schwellen der neuen Bauweise: Formtreue ≤ 0,25 px, Δ-Zuwachs ≤ 0,5 px, Lippe ≤ 1 px, Faltenzuwachs ≤ 2°, 0 umgeklappte Flächen, 0 Durchdringungen mit Haut beim Öffnen.</div>
 <div class="l"><div>Seitenblatt (Linien, Δ)</div><div>zu, schräg</div><div>zu, Seite</div><div>offen 50 %</div><div>offen 100 %, Seite</div></div>
 ${zeilen.map((r) => `<div class="t">${r.name}</div><div class="m">${r.mass}</div><div class="z">${r.bilder.map((b) => `<img src="${b}">`).join('')}</div>`).join('')}`;
   const datei = resolve(AUSGABE, `${NAME}-${k}`);

@@ -13,7 +13,8 @@ import { alleFlaechen } from '../../kaefig/halbkanten';
 import { formenFolgen } from '../folgen';
 import { maulLinieAusDokument } from '../maulDokument';
 import { deltaKarte, deltaListe, deltasAnwenden, kaefigNormalen, spiegelIndex } from '../pinsel';
-import { hautAusNetz } from '../pruefstand';
+import { hautAusNetz, regionen } from '../pruefstand';
+import type { MaulErgebnis } from '../maul';
 import { type Bauplan, type WesenStand, pruefwesenBauplan, wesenBauen } from '../wesen';
 import { type KoerperArt, GRUNDKOERPER, koerperDokument, vorlageVon } from './koerper';
 import { maulBezug, maulLinien } from './linien';
@@ -36,7 +37,7 @@ export function planAus(dok: Dokument): Partial<Bauplan> {
   return { ...aus, ...(linie ? { maulLinie: linie } : {}), maul: linie ? 'vorn' : 'aus', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: false, kaefigLinien: false, treffer: false };
 }
 
-export type Zustand = { dok: Dokument; stand: WesenStand | null; fein: Float32Array | null; flaechen: number[][] | null; maulVor?: Dokument };
+export type Zustand = { dok: Dokument; stand: WesenStand | null; fein: Float32Array | null; flaechen: number[][] | null; haut?: boolean[]; maulVor?: Dokument };
 
 /** Bau wie im Worker; danach das Zurückschreiben der Stationen wie `kernBauen`. */
 export function bauen(z: Zustand): Zustand & { info: NonNullable<ReturnType<typeof wesenBauen>['netz']['info']> } {
@@ -48,7 +49,11 @@ export function bauen(z: Zustand): Zustand & { info: NonNullable<ReturnType<type
   const deltas = dok.kaefig?.deltas ?? [];
   const abl = deltas.length ? deltasAnwenden(r.stand.abl, deltas) : r.stand.abl;
   const letzte = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
-  return { ...z, dok, stand: r.stand, fein: Float32Array.from(abl.fein), flaechen: alleFlaechen(letzte), info: r.netz.info };
+  const flaechen = alleFlaechen(letzte);
+  // Hautflächen: mit Maul ohne Lippen, Tasche und Rachen (deren Lage gehört zum Maul, nicht zum Körper)
+  const maul = (abl as Partial<MaulErgebnis>).maul;
+  const haut = maul ? regionen(abl as MaulErgebnis, flaechen).map((b) => b === 'haut') : flaechen.map(() => true);
+  return { ...z, dok, stand: r.stand, fein: Float32Array.from(abl.fein), flaechen, haut, info: r.netz.info };
 }
 
 export type Messung = {
@@ -62,17 +67,18 @@ export type Messung = {
   gesamt: number;
 };
 
-function hautFlaechen(z: { fein: Float32Array | null; flaechen: number[][] | null }): { punkte: V3[]; flaechen: number[][] } | null {
+function hautFlaechen(z: { fein: Float32Array | null; flaechen: number[][] | null; haut?: boolean[] }, nurHaut: boolean): { punkte: V3[]; flaechen: number[][] } | null {
   if (!z.fein || !z.flaechen) return null;
   const punkte: V3[] = [];
   for (let i = 0; i < z.fein.length / 3; i++) punkte.push([z.fein[3 * i]!, z.fein[3 * i + 1]!, z.fein[3 * i + 2]!]);
-  return { punkte, flaechen: z.flaechen };
+  return { punkte, flaechen: nurHaut && z.haut ? z.flaechen.filter((_f, i) => z.haut![i]) : z.flaechen };
 }
 
 /** Verschiebung der Fläche gegen den vorigen Schritt: Flächenmitten des neuen Netzes zur alten Fläche; „fern“ = weiter als `radius` von `ort`. */
 export function verschiebung(vorher: Zustand, nachher: Zustand, ort: V3 | null, radius: number, sk: number): { fern: number; gesamt: number } {
-  const a = hautFlaechen(vorher);
-  const b = hautFlaechen(nachher);
+  // alte Fläche ganz (die nächste Fläche zu einem Hautpunkt ist Haut), neue nur Haut (Lippen, Tasche, Rachen zählen nicht)
+  const a = hautFlaechen(vorher, false);
+  const b = hautFlaechen(nachher, true);
   if (!a || !b) return { fern: NaN, gesamt: NaN };
   const abstand = flaechenAbstand(dreiecke(a.punkte, a.flaechen));
   let fern = 0;
