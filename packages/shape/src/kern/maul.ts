@@ -239,7 +239,7 @@ export type MaulAbleitung = {
   gewichtOben: Float64Array;
   scharnier: V2;
   schaedel: V2;
-  /** Vorzeichen: +1 wenn die Schnauze bei kleinerem x liegt */
+  /** Vorzeichen von Schnauze − Mundwinkel in x: −1, wenn die Schnauze bei kleinerem x liegt (korrigiert 15.10., B3b: der alte Kommentar sagte +1) */
   vorn: number;
   hoehe: number;
   /** Zugrichtung (Welt, Seitenansicht) für „ziehen“: mittlere Richtung vom Rachen zur Lippe */
@@ -2615,7 +2615,7 @@ export function maulPose(abl: MaulErgebnis, oeffnung: number): { xyz: Float64Arr
   for (let i = 0; i < n; i++) {
     const wu = m.gewichtUnten[i]!;
     const wo = m.gewichtOben[i]!;
-    // Schnauze bei kleinerem x (vorn = +1): Unterkiefer dreht mathematisch positiv (Spitze nach unten) um den Mundwinkel,
+    // Schnauze bei kleinerem x (vorn = −1): Unterkiefer dreht mathematisch positiv (Spitze nach unten) um den Mundwinkel,
     // der Schädel negativ um das Gelenk hinten (die Schnauze hebt sich, der Hinterkopf taucht nicht in den Nacken).
     // „Ziehen“: der Unterkiefer gleitet entlang der Zugrichtung vom Rachen weg (Vorhang), die Kehle läuft über das Band aus.
     if (wu > 0) kiefer(i, wu);
