@@ -1,4 +1,4 @@
-# Übergabe (Stand 15.10.2026 abends, Stufe 3: B2 gebaut)
+# Übergabe (Stand 15.10.2026 abends, Stufe 3: B3 gebaut)
 
 Branch `claude/editor-grundlayout`. **Es gilt der freigegebene Plan [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)** mit den ausführlichen Entwürfen [Teil A Maul als Einsatz](plans/2026-10-15-entwurf-maul-einsatz.md), [Teil H Werkzeug-Harmonie](plans/2026-10-15-entwurf-werkzeug-harmonie.md) und [Teil B Posen](plans/2026-10-15-entwurf-posen.md). Alle älteren Fahrpläne (Phase 2, Ruhiges Netz und Maulschlitz, Fressen wie Editor) sind dadurch abgelöst; ihre Fallen und Messwerkzeuge bleiben gültiges Wissen.
 
@@ -35,13 +35,13 @@ Die Ursachen stehen im Plan unter „Befund“ (Code-Analysen mit Datei- und Zei
 
 - **Stufe 3, B2 gebaut (Abnahme offen):** Kern `packages/shape/src/kern/posen/` (`skin`, `auswerten`, `saat`, `rahmen`, `lage`, `uebertrag`), Schalter `?posen=ruhe`. Tor: alt ≡ neu bei voller Pose (fünf Prüfstand-Wesen ≤ 5,6e-16, im Editor ≤ 4e-18). Gefundener und behobener Fehler: `spiegelIndex` paarte bei bündigem Maul Ober- mit Unterlippe (Fressen-Pose schief). Zwischenstufen alt/neu bis 14 px verschieden, keine neuen Fehler. K6: Übertrag aus der Umgebung mit Bezugs-Käfig statt Zellbasis (gewinnt alle fünf Fälle). Ergebnis [`docs/progress/editor/b2-tor-2026-10-15.md`](progress/editor/b2-tor-2026-10-15.md), Bogen `docs/progress/editor/b2-zwischenstufen-2026-10-15.jpg`.
 
-## Nächster Schritt: B3 (nach Florians Blick auf das B2-Tor)
+- **Stufe 3, B3 gebaut (Abnahme offen, 44020db):** Dokument v2 mit Posenliste (Idle, Fressen, weitere; je Pose Stellung, Form als Ruhe-Deltas mit Bezugs-Käfig, Saat), Migration v1 exakt; Kern mit `Bauplan.gewichte` (`kern/posen/posen.ts`); Editor: Ziel = Editor oder Pose-Id, Tabs/Tafel aus der Posenliste, Pinsel in jeder Pose (Rᵀ·Zuwachs), Knochen je Pose (Griffe und Tafel), Rig gemeinsam. Geprüft mit `apps/editor/scripts/pruefen/posen-b3.mjs` (29/29, echte Züge), `tab-wechsel.mjs` (23/23), E2E kern-ablauf (4/4), Kern-Tests. Bild `docs/progress/editor/b3-posenliste-2026-10-15.jpg`. Offene Befunde der Bestandsaufnahme im Kritik-Register (`docs/plans/2026-10-14-kritik-phase-0.md`, „Bestandsaufnahme zu B3“).
 
-Nach Entwurf `docs/plans/2026-10-15-entwurf-posen.md` §4/§5 und Plan Teil B:
-- Dokument: Posenliste (Editor = Grundpose, Idle, Fressen, weitere) mit Stellung, Ruhe-Deltas und Bezugs-Käfig, Rig gemeinsam; Migration der alten Fressen-Deltas (`fressenDeltasInRuhe`) und der Pose-Felder aus `maulOptionen`.
-- Speicher und Worker: Gewichte statt Modus/Öffnung im Bauplan, Auswertung über `poseAuswerten` und `deltasUebertragen` (Umgebung je Bezug merken).
-- Pinsel in der Pose schreibt Ruhe-Deltas (Rᵀ·Zuwachs), Knochengriffe je Pose, Rig-Abschnitt.
-- Danach B4 (Löser im posierten Raum: schwarze Linien in der Pose), B5 (Pose-Linien Rot/Blau, Lippen exakt darauf), B6 (Reifen, Matrix jedes Werkzeug × jede Pose). Erst mit B4–B6 fällt die B1-Sperre (in der Pose nur Pinsel und Rig).
+## Nächster Schritt: B4 (nach Florians Blick auf B3)
+
+Nach Entwurf `docs/plans/2026-10-15-entwurf-posen.md` §4.1/4.2 und Plan Teil B:
+- **B4 Löser im posierten Raum** (`packages/shape/src/loeser/posenLoeser.ts`, `cholesky.ts`): schwarze Linien in der Pose als Griffe am posierten Körper; der Löser bewegt den Käfig örtlich und rechnet in Ruhe-Deltas zurück (ΔD = Rᵀ·ΔX), einmal zerlegen je Geste, je Zugschritt nur Rückwärtseinsetzen.
+- Danach **B5** (Pose-Linien Rot/Blau, Lippen exakt darauf, in Fressen immer getrennt) und **B6** (Reifen in der Pose, Matrix jedes Werkzeug × jede Pose). Mit B4–B6 fällt die B1-Sperre (in der Pose wirken bis dahin Pinsel und Knochen).
 
 ## Erledigt: Stufe 2, B1
 

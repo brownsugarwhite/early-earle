@@ -160,3 +160,16 @@
 - [ ] **Pinsel ↔ schwarze Linien ↔ Maul ohne unvorhersehbare Abweichungen** → Teil H.
 - [ ] **Vollständige Prüfungen** (Zufallsreihe, Werkzeug-Matrix, echte Gesten) → Teil V vor jedem Umbau.
 - [ ] **Grundkörper für jede Form** (Bauch vor der Nase ohne Umspringen, S-Hals, Flügel/Flossen als nahtlose Teile, weiche Ente aus drei Shapes) → Teil G.
+
+## Bestandsaufnahme zu B3 (15.10. abends, eigene Befunde, je mit Schritt)
+
+Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setzeOeffnung(1)` ohne Moduswechsel); Tafel-Regler Unterkiefer/Schädel/Haps schrieben die gemeinsamen Maul-Optionen statt der Fressen-Pose; Maul-Optionen von Prüfwesen und Dokument wurden flach gemischt (der erste Rig-Zug am Tiger warf dessen Winkel, Band und Rille aus dem Bau); Knochen in der Seite wurden mit der Fressen-Öffnung gezeichnet; die Bühnen-Hinweise kannten neue Posen nicht; die alte Posen-Seitenform (`posenProfile`) ersetzte im Kern-Bau die Seite.
+
+- [ ] **Maul- und Zahnebene behandeln jede Pose als „offen“** (`maul/MaulEbene.tsx` `zustandVon`, `maul/ZahnEbene.tsx`, alter `ZahnBereich`): in Idle zeigen sie die offenen Lippen bzw. Zähne → B5 (Pose-Linien), B9 (Zähne in Posen).
+- [ ] **Zähne öffnen mit dem Gewicht von Fressen, nicht mit der Pose** (Idle mit offenem Kiefer zeigt geschlossene Zähne) → B9.
+- [ ] **Rundmaul-Rand ziehen liest die Öffnung erst nach `beginGeste`**; im Editor-Tab hat `werkzeuge/ziel.ts` sie dann schon auf 0 gesetzt → B7/B9 (Rundmaul in Posen).
+- [ ] **Kieferknopf ist außerhalb von Körper/Maul/Zähne unsichtbar, aber greifbar** (`viewports/Steuerung3D.tsx`) → B7 (Kieferknopf als Vorschau).
+- [ ] **Gestenbeginn im Editor-Tab beendet jede Vorschau**, auch beim Ziehen von Reglern (Zahnregler springen von offenen auf geschlossene Werte) → B7.
+- [ ] **`nurPose` lässt in einer Pose alle Maul-Optionen durch**, auch Bauoptionen (Rille, Reihen, Band bauen den Käfig um) → B6 (Werkzeug-Router je Werkzeug).
+- [ ] **Pinsel hat auf der Bühne Vorrang vor den Knochengriffen**: Knochen greift man mit dem Auswahlwerkzeug (A) → Bedienung in B7 klären (Hinweis oder Vorrang der Griffe).
+- [ ] **Beine**: Posen-Formen werden auf den geschwungenen Käfig gelegt, der Übertrag rechnet dort mit dem geschwungenen statt dem Ruhe-Käfig → B9.
