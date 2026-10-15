@@ -258,7 +258,11 @@ const GefroreneStationenSchema = z.object({
  * jeder Zug am Anfang neu, und das Netz sprang (Langhals: Käfig 499 ↔ 513 Punkte; Kugel: Lippe 18 px in eine andere Kappenzeile).
  */
 export type GefroreneStationen = { ringe: number[]; vorn: number[]; hinten: number[]; ecken: { ring: number; seite: 'oben' | 'unten' | 'beide' }[]; reifen: { spant: number; ring: number }[]; spitzen: { vorn: boolean; hinten: boolean }; maul?: MaulStationen };
-export type MaulStationen = { winkel: number; ringA?: number; kontur?: boolean };
+/**
+ * Eingefrorene Maullage. `platte`/`erzwingen` nur zur Laufzeit (Fressen wie Editor, 15.10.): Der Käfig der Pose übernimmt
+ * die Entscheidungen der Grundform ohne Band (gleiche Topologie, auch wenn das Maul der Pose viel größer ist).
+ */
+export type MaulStationen = { winkel: number; ringA?: number; kontur?: boolean; platte?: boolean; erzwingen?: boolean };
 const KaefigSchema = z.object({ deltas: z.array(KaefigDeltaSchema), posen: z.record(z.string(), z.array(KaefigDeltaSchema)).optional(), stationen: GefroreneStationenSchema.optional() });
 /** Version 1: mit Ausstattung und (M3) Käfig-Deltas der Pinsel. */
 export const DokumentSchema = z.object({ ...DokumentFelder, version: z.literal(1), ausstattung: AusstattungSchema.optional(), kaefig: KaefigSchema.optional() });
