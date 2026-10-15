@@ -30,6 +30,7 @@ Grundlage ist die große Sitzung: Plan „Wesen-Editor 2“ (`docs/plans/2026-10
 6. Maullinien: **bleiben, wo gezeichnet** (in ihrer Ansicht; Anfang folgt der Kontur, Tiefe auf der Haut, der kürzere Kiefer behält seinen Abstand nach innen) — wie in Illustrator.
 7. (Nachtrag 15.10. nachmittags) **Teil G „Grundkörper für jede Form“** kommt in den Plan, nach dem Maul-Beweis und vor dem Werkzeug-Fundament.
 8. (Nachtrag 15.10. nachmittags, nach B1) **Posen vorgezogen:** „Es war doch ausdrücklich verlangt, dass ich Shape und Maul gerade im Fressen-Tab für den Blendshape bearbeiten können muss. Das war doch das Wichtigste an dem Ganzen!“ → B2–B6 (Shape und Maul im Fressen-Tab) kommen direkt nach B1, auf dem heutigen Maulbau; beim Maul-Einsatz werden die Lippen der Posen auf die neuen Lippenketten umgehängt. Die Dokumentstände tauschen: Posen = v2, Werkzeug-Harmonie = v3.
+9. (Nachtrag 15.10. abends, während B2) **Grundpose und Idle:** „Im Editor erstelle ich die Grundpose. Es wird dann noch eine Pose ‚Idle‘ geben, die den Normalzustand beschreibt. Man sollte immer zwischen den Posen mit allen Werkzeugen hin und her springen können.“ → Idle wird Standardpose neben Fressen (anfangs gleich der Grundform), im Spiel der Ruhezustand, von dem aus überblendet wird (Teil B, B3/B7). Dazu sein Vorschlag **beliebig vieler Wirbelsäulen** (Flügel, Flossen, zwei Hälse, Augenstiele) → Teil G.
 
 ## Befund (Code-Analysen 15.10.)
 
@@ -216,8 +217,10 @@ Die Information der drei Shapes reicht: Ihr Schnitt beschreibt, was verlangt ist
 3. **Teile automatisch:** Was die Shapes zeigen, die Röhre aber nicht erklären kann (Flügel, Flossen, Beine, Ohren), wird als nahtlose Ausstülpung angesetzt (wie die Beine aus Beweis 3): Umriss aus der zeigenden Ansicht, Dicke und Höhe aus den anderen.
 4. **Rückfall zum Vergleich:** allgemeiner Schnitt der drei Ansichten als glatte Fläche mit neu gelegtem Vierecknetz, falls 1–3 nicht reichen.
 
+**Florians Vorschlag (15.10. abends): beliebig viele Wirbelsäulen.** „Kann man für Flossen/Flügel nicht auch eine zweite Wirbelsäule bzw. beliebig viele Wirbelsäulen anbringen, die es ermöglichen, bauchige Flächen wie die Flügel oder Flossen der Ente zu extrudieren? … So könnte ich dann auch Wesen mit zwei Hälsen erstellen, oder große Glubschaugenstiele.“ Das ist der übliche Weg für Grundnetze von Wesen (ZBrush-ZSpheres, Blender-Skin-Modifier, in der Forschung B-Mesh und Skeletal Quad Meshes) und vereint die Punkte 1 und 3 des Ansatzes: ein **Baum aus Wirbelsäulen**, jede mit Anfang und Ende und eigenen Ringen; jeder Ast sitzt nahtlos auf einem Feld seines Elternkörpers (Ausstülpung wie die Beine aus Beweis 3, für breite flache Äste ein längliches Feld). Äste auf der Mittelebene (Bauch vor der Nase, Schwanz, Rückenflosse) sind selbst symmetrisch; Äste daneben (Flügel, Flossen, zweiter Hals, Augenstiele, Beine) entstehen als gespiegeltes Paar. Querschnitte je Ast aus den Ansichten (Flügel: flache Linse). Die Wirbelsäulen schlägt die Mittelachse der Umrisse vor; Florian kann sie setzen, verschieben und löschen. Das Maul (Teil A) setzt auf jeden Ast. Offen und in G zu beweisen: Übergänge glatt im Earle-Look, Äste dicht nebeneinander ohne Durchdringung, Teile, die in einer Ansicht vor dem Körper liegen (eigener Umriss je Ast), Topologie fest beim Ziehen.
+
 **Schritte:**
-- **G1** Prüfkörper und Ausgangslage: Florians Ente (aus seinem Bild nachgestellt), Giraffe mit Bauch vor der Nase, S-Hals, Fisch mit Flossen, Robbe, seine Bögen; die Zufallsreihe um solche Körper erweitert. Ausgangslage messen.
+- **G1** Prüfkörper und Ausgangslage: Florians Ente (aus seinem Bild nachgestellt), Giraffe mit Bauch vor der Nase, S-Hals, Fisch mit Flossen, Robbe, Zweihals, Augenstiele, seine Bögen; die Zufallsreihe um solche Körper erweitert. Ausgangslage messen.
 - **G2** Mittelachsen-Wirbelsäule mit eingefrorenen Enden.
 - **G3** Breite aus beiden Ansichten.
 - **G4** automatische Teile.
@@ -231,7 +234,7 @@ Die Information der drei Shapes reicht: Ihr Schnitt beschreibt, was verlangt ist
 
 ## Teil B: Posen und Blendshapes
 
-**Bauweise (zehn Festlegungen):**
+**Bauweise (elf Festlegungen):**
 1. **Eine Ruhe-Form A** (X0 aus Teil H + Maul-Einsatz aus Teil A, eingefrorene Topologie) ist die einzige Geometrie. Eine Pose speichert keine eigene Form, nur: Knochenstellung θ, Ruhe-Deltas d (in der Zellbasis von A — derselbe Baustein wie das Pinsel-Relief in Teil H, sodass Posen jeder Änderung der Grundform folgen), Linienversätze λ (Rot/Blau relativ zu den Grundlinien), Saat (Haps) und Zahn-Abweichungen. Das **Rig** (Gelenke, Gewichte) ist gemeinsam und hängt nur an A.
 2. **Auswertung** X(w) = Skin(A + Σ wᵢ·Dᵢ ; Σ wᵢ·θᵢ) auf dem Käfig, danach unterteilen. w = 0 liefert A bitgleich (Abkürzung ohne Rechnen), w = 1 einer Pose genau die geformte Pose.
 3. **Skin = starre Transformation je Punkt** (Drehung um Gelenke + Versatz, wie heute Kiefer, Schädel, Beutel, Beine), exakt umkehrbar. Kein lineares Mischen von Matrizen (fällt bei 90° zusammen); spätere 3D-Knochen mit Dual-Quaternionen.
@@ -242,9 +245,10 @@ Die Information der drei Shapes reicht: Ihr Schnitt beschreibt, was verlangt ist
 8. **Haps wird eine Saat** der Fressen-Pose (einmal ausgerechnet, als Ruhe-Delta weiter formbar). Das Rundmaul soll ein immer vorhandener Käfig-Einsatz werden (Teil A, später); bis dahin gilt eine Ausnahme: seine Öffnung ist ein Radius zwischen zu und auf, und es bleibt sichtbar, sobald es Posen gibt.
 9. **Alle Posen haben dieselbe Topologie**; Anker und eine Topologie-Signatur rechnen Pose-Daten bei Strukturänderungen um (nie still verwerfen, wie heute bei `gleicheTopologieKaefig`).
 10. **Export:** beliebig viele Posen im Editor, Markierung „Spiel-Pose“, im Spiel höchstens 3 gleichzeitig aktiv.
+11. (Nachtrag 15.10. abends, Entscheidung 9) **Grundpose und Idle:** Der Editor-Tab ist die Grundpose (Bauform). **Idle** ist eine Standardpose neben Fressen (anfangs gleich der Grundform: Stellung 0, keine Deltas) und beschreibt den Normalzustand; im Spiel ist sie der Ruhezustand, Überblendungen laufen standardmäßig von Idle aus (w_Idle = 1 − t, w_Ziel = t). Zwischen allen Posen springt man mit allen Werkzeugen hin und her (Festlegung 7, Werkzeug-Router).
 
 **Dokument v3** (auf v2 aus Teil H; `packages/shape/src/dokument.ts`, Schema zuerst, Migration in `dokumentLesen`):
-- `posen: Pose[]` (Reihenfolge = Anzeige, genau eine Fressen-Pose). `Pose = { id, name, art, stellung (Kiefer: Winkel/Zug/Ziehen, Schädel: Winkel; später Hals, Beine), form (Deltas in der Zellbasis von A), linien (Versatz je Knoten der Grundlinie für Rot und Blau, Mundwinkel), saat (Haps, Rund), zaehne, spiel? }`.
+- `posen: Pose[]` (Reihenfolge = Anzeige, genau eine Fressen- und eine Idle-Pose). `Pose = { id, name, art, stellung (Kiefer: Winkel/Zug/Ziehen, Schädel: Winkel; später Hals, Beine), form (Deltas in der Zellbasis von A), linien (Versatz je Knoten der Grundlinie für Rot und Blau, Mundwinkel), saat (Haps, Rund), zaehne, spiel? }`.
 - `rig` (Kiefer: Art, Gewichtsart, Gelenk, Winkel, Reichweite; Schädelgelenk) aus den bisherigen Pose-Feldern von `maulOptionen`; `kaefig.topologie` (Signatur, Ankertabelle je Käfigpunkt: Ring/Kappe/Einsatz (Rolle, Kiefer, Bogenanteil s, Abstand ρ aus Teil A)/Teil, Rückfall Fläche + (u, v)).
 - Entfällt: `kaefig.posen`, feste Liste `POSEN`, Pose-Felder in `maulOptionen`, `posenProfile`. Nicht gespeichert: Ziel, Vorschau-Gewichte, Überblendung, Geist.
 - Migration: Fressen-Stellung aus `maulOptionen`; alte Fressen-Deltas (nach den Knochen gespeichert) rechnet der Worker exakt in Ruhe-Deltas um (Test: neu = alt bei voller Öffnung, ≤ 1e-9); Ruhen/Laufen/Inklusion exakt (ohne Knochen).
@@ -270,7 +274,7 @@ Die Information der drei Shapes reicht: Ihr Schnitt beschreibt, was verlangt ist
 - Das Netz trägt seine Generation; Bühne und Blätter zeigen nur die passende → kein veraltetes Bild nach dem Wechsel. Undo stellt Dokument **und** Ziel wieder her (Hinweis „↶ Fressen: Unterlippe“). Laden startet im Editor ohne Vorschau. Die Zahnprüfung rechnet ihre Zustände selbst (Fressen 0/25/50/100 %).
 
 **„Posen & Leben“ (Stufe 8)** nach Florians Entwurf (Regler „Fressen 0–100 %“, „Biegen“, „Stelle“, „gestrichelt in allen Ansichten: die gewählte Pose über der Grundform“):
-- Kopf: Tabs „Editor · Fressen · … · ＋“ (Q/⇧Q); Rechtsklick: Duplizieren, Umbenennen, Zurücksetzen (Form/Knochen/Linien), Löschen, Spiel-Pose.
+- Kopf: Tabs „Editor · Idle · Fressen · … · ＋“ (Q/⇧Q); Rechtsklick: Duplizieren, Umbenennen, Zurücksetzen (Form/Knochen/Linien), Löschen, Spiel-Pose.
 - Bühne: Chip „✎ Fressen“ färbt den Rahmen; während einer Vorschau „Vorschau · Brüllen 40 % ×“; Geist (gestrichelt) der jeweils anderen Form in allen Blättern; Knochen im 3D.
 - Tafel: Posenliste mit Regler je Pose (Vorschau 0–100 %); **Überblenden „von → nach“** mit Schieben, Abspielen und Zwischenbildern; Knochen der Pose; Form der Pose (Haps, glätten, zurücksetzen); Rig für alle Posen (Gelenke, Gewichte, anzeigen); Rückmeldung „Unterlippe 0,2 px auf der blauen Linie“.
 - Alle Werkzeuge der Stufen 1–5 wirken in der Pose (ein Stufenwechsel behält das Ziel).
