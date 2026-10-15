@@ -1,4 +1,4 @@
-# Übergabe (Stand 15.10.2026 nachmittags, Stufe 2 B1 gebaut)
+# Übergabe (Stand 15.10.2026 abends, Stufe 3: B2 gebaut)
 
 Branch `claude/editor-grundlayout`. **Es gilt der freigegebene Plan [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)** mit den ausführlichen Entwürfen [Teil A Maul als Einsatz](plans/2026-10-15-entwurf-maul-einsatz.md), [Teil H Werkzeug-Harmonie](plans/2026-10-15-entwurf-werkzeug-harmonie.md) und [Teil B Posen](plans/2026-10-15-entwurf-posen.md). Alle älteren Fahrpläne (Phase 2, Ruhiges Netz und Maulschlitz, Fressen wie Editor) sind dadurch abgelöst; ihre Fallen und Messwerkzeuge bleiben gültiges Wissen.
 
@@ -20,6 +20,9 @@ Die Ursachen stehen im Plan unter „Befund“ (Code-Analysen mit Datei- und Zei
 4. Rücknahme der Fressen-Commits (erledigt, 42ef353).
 5. Nach dem Pinsel zeigt die schwarze Linie das **Relief**; seine Punkte bleiben; neue Punkte nur von Hand oder per „Relief übernehmen“.
 6. Maullinien **bleiben, wo gezeichnet** (Anfang folgt der Kontur, Tiefe auf der Haut, kürzerer Kiefer mit Abstand nach innen).
+7. Teil G „Grundkörper für jede Form“ nach dem Maul-Beweis.
+8. **Posen vorgezogen:** B2–B6 (Shape und Maul im Fressen-Tab) direkt nach B1, auf dem heutigen Maulbau („das Wichtigste an dem Ganzen“). In einer Pose nie etwas sperren, ohne zu sagen, dass die echte Bearbeitung kommt und wann.
+9. (abends) Editor-Tab = Grundpose; Standardpose **Idle** (Normalzustand, im Spiel Ruhezustand, Überblenden von Idle aus); zwischen allen Posen mit allen Werkzeugen springen. Sein Vorschlag **beliebig vieler Wirbelsäulen** (Baum, Äste als Ausstülpung, gespiegelte Paare: Flügel, Flossen, zwei Hälse, Augenstiele) ist Grundlage für Teil G (unbewiesen).
 
 ## Stand
 
@@ -30,9 +33,15 @@ Die Ursachen stehen im Plan unter „Befund“ (Code-Analysen mit Datei- und Zei
 
 - **Stufe 2, B1 gebaut (Abnahme offen):** Editor-Tab zeigt immer die Grundform (bitgleich), Fressen die Pose; `setzeZiel` statt `setzeModus`+`setzeOeffnung`; Neubau bei Öffnungsänderung auch ohne Maul; Rücksetzen bei Pose entfernen/Laden/Neu; Vorschau endet beim Stufenwechsel und Bearbeiten (`apps/editor/src/werkzeuge/ziel.ts`); Sperre: in einer Pose nur Pinsel und Rig, sonst Hinweis (`editorStore.ts` `nurPose`). Geprüft mit `packages/shape/src/kern/grundform.test.ts` und E2E `apps/editor/scripts/pruefen/tab-wechsel.mjs` (23/23; Gegenprobe am alten Code schlägt fehl). Bild `docs/progress/editor/b1-tab-wechsel-2026-10-15.jpg`.
 
-## Nächster Schritt: Stufe 3, Maul-Beweis A1 (nach Florians Probe von B1)
+- **Stufe 3, B2 gebaut (Abnahme offen):** Kern `packages/shape/src/kern/posen/` (`skin`, `auswerten`, `saat`, `rahmen`, `lage`, `uebertrag`), Schalter `?posen=ruhe`. Tor: alt ≡ neu bei voller Pose (fünf Prüfstand-Wesen ≤ 5,6e-16, im Editor ≤ 4e-18). Gefundener und behobener Fehler: `spiegelIndex` paarte bei bündigem Maul Ober- mit Unterlippe (Fressen-Pose schief). Zwischenstufen alt/neu bis 14 px verschieden, keine neuen Fehler. K6: Übertrag aus der Umgebung mit Bezugs-Käfig statt Zellbasis (gewinnt alle fünf Fälle). Ergebnis [`docs/progress/editor/b2-tor-2026-10-15.md`](progress/editor/b2-tor-2026-10-15.md), Bogen `docs/progress/editor/b2-zwischenstufen-2026-10-15.jpg`.
 
-Nach Entwurf `docs/plans/2026-10-15-entwurf-maul-einsatz.md` §9: A1 `kern/einsatz/flaeche.ts` (Linie auf A0, Projektion, Feldausschnitt, Schnitt), dann A2 Verfeinerung, A3 Feldwahl … jeweils eigenständig mit Tests und Kontaktbögen; Zufallsreihe als Tor.
+## Nächster Schritt: B3 (nach Florians Blick auf das B2-Tor)
+
+Nach Entwurf `docs/plans/2026-10-15-entwurf-posen.md` §4/§5 und Plan Teil B:
+- Dokument: Posenliste (Editor = Grundpose, Idle, Fressen, weitere) mit Stellung, Ruhe-Deltas und Bezugs-Käfig, Rig gemeinsam; Migration der alten Fressen-Deltas (`fressenDeltasInRuhe`) und der Pose-Felder aus `maulOptionen`.
+- Speicher und Worker: Gewichte statt Modus/Öffnung im Bauplan, Auswertung über `poseAuswerten` und `deltasUebertragen` (Umgebung je Bezug merken).
+- Pinsel in der Pose schreibt Ruhe-Deltas (Rᵀ·Zuwachs), Knochengriffe je Pose, Rig-Abschnitt.
+- Danach B4 (Löser im posierten Raum: schwarze Linien in der Pose), B5 (Pose-Linien Rot/Blau, Lippen exakt darauf), B6 (Reifen, Matrix jedes Werkzeug × jede Pose). Erst mit B4–B6 fällt die B1-Sperre (in der Pose nur Pinsel und Rig).
 
 ## Erledigt: Stufe 2, B1
 

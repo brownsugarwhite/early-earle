@@ -15,16 +15,27 @@ type V3 = [number, number, number];
 export function spiegelIndex(xyz: ArrayLike<number>, n0: number, eps = 1e-6): Int32Array {
   const out = new Int32Array(n0).fill(-1);
   const schluessel = (x: number, y: number, z: number) => `${Math.round(x / eps)}:${Math.round(y / eps)}:${Math.round(z / eps)}`;
-  const karte = new Map<string, number>();
-  for (let p = 0; p < n0; p++) karte.set(schluessel(xyz[3 * p]!, xyz[3 * p + 1]!, xyz[3 * p + 2]!), p);
+  // Punkte je Lage in Indexreihenfolge: Bei geschlossenem bündigem Maul liegen Ober- und Unterlippe (und die Taschenreihen)
+  // genau aufeinander. Der k-te Punkt einer Lage gehört zum k-ten der gespiegelten Lage (beide Seiten werden in derselben
+  // Reihenfolge gebaut). Vorher galt nur der letzte Punkt je Lage: Deltas der rechten Oberlippe landeten links auf der
+  // Unterlippe (B2-Tor, 15.10.: Fressen-Pose mit Kiefer gleich schief).
+  const karte = new Map<string, number[]>();
+  for (let p = 0; p < n0; p++) {
+    const k = schluessel(xyz[3 * p]!, xyz[3 * p + 1]!, xyz[3 * p + 2]!);
+    const liste = karte.get(k);
+    if (liste) liste.push(p);
+    else karte.set(k, [p]);
+  }
   for (let p = 0; p < n0; p++) {
     const z = xyz[3 * p + 2]!;
     if (Math.abs(z) < eps) {
       out[p] = p;
       continue;
     }
-    const q = karte.get(schluessel(xyz[3 * p]!, xyz[3 * p + 1]!, -z));
-    out[p] = q ?? -1;
+    const gegen = karte.get(schluessel(xyz[3 * p]!, xyz[3 * p + 1]!, -z));
+    if (!gegen) continue;
+    const rang = karte.get(schluessel(xyz[3 * p]!, xyz[3 * p + 1]!, z))!.indexOf(p);
+    out[p] = gegen[Math.min(rang, gegen.length - 1)]!;
   }
   return out;
 }

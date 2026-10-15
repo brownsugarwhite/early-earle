@@ -26,6 +26,8 @@ if (q.get('oeffnung')) useUi.getState().setzeOeffnung(Number(q.get('oeffnung')))
 if (q.get('zebra') === '1') useUi.getState().setzeZebra(true);
 /** Zonen-Atlas (Beweis 4) an, `&atlas=0` zeigt die prozeduralen Zonen */
 const atlasAn = q.get('atlas') !== '0';
+/** Posen nach Plan Teil B (B2-Tor): `&posen=ruhe` rechnet Fressen-Deltas und Haps vor den Knochen (`Bauplan.posenRuhe`) */
+const posenRuhe = q.get('posen') === 'ruhe';
 // Kamera für Bilder: `kamera=azimut°,elevation°,distanz[,zielX,zielY,zielZ]`
 if (q.get('kamera')) {
   const [az, el, dist, zx, zy, zz] = q.get('kamera')!.split(',').map(Number);
@@ -129,6 +131,7 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
     earle: s.look === 'earle',
     kaefigLinien: s.kaefig,
     atlas: atlasAn,
+    ...(posenRuhe ? { posenRuhe: true } : {}),
     // Rig (Plan 5.2): Unterkiefergewichte als Farbe, nur in der Stufe „Posen & Leben“
     gewichteZeigen: useUi.getState().gewichteZeigen && useUi.getState().ebene === 'posen',
     // Posenliste: im Modus einer weiteren Pose (Kopfzeile) ihre Deltas mit der Stärke

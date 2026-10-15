@@ -28,7 +28,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null };
   }
 }
 
@@ -95,6 +95,11 @@ export function Szene3D() {
           return `${bits.length}:${h.toString(16)}`;
         },
         netzVersion: () => useNetzStand.getState().version,
+        // B2-Tor: die angezeigten Lagen selbst (Vergleich zweier Seiten auf Float32-Genauigkeit statt nur über den Fingerabdruck)
+        netzLagen: () => {
+          const n = aktuellesNetz();
+          return n ? Array.from(n.netz.positionen) : null;
+        },
         // M3: Perlen und Bänder der Reifen in Feldpixeln der Bühne (E2E)
         reifenPixel: () => {
           const n = aktuellesNetz();

@@ -23,6 +23,7 @@ import { anwenden3 } from '../subdivision/matrix';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
 import { kieferSchnitt } from './kieferSpant';
 import { type AnkerFeld, maulAnker, posenUmhaengen } from './posenAnker';
+import { maulLageRuhe } from './posen/lage';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, schaedelGelenk } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
@@ -104,6 +105,11 @@ export type Bauplan = Ausstattung & {
    * nur als eigener Auftrag nach einem genauen Bau, nie während einer Geste; Ergebnis in `WesenNetz.zahnMeldungen`.
    */
   zahnPruefung?: boolean;
+  /**
+   * Posen nach Plan Teil B (B2-Tor): Fressen-Deltas und Haps als Ruhe-Deltas vor den Knochen (`maulLageRuhe`), statt nach
+   * den Knochen mit der Öffnung überblendet. Gleich bei Öffnung 0 und 1, dazwischen drehen sie mit den Knochen. Bis B3 aus.
+   */
+  posenRuhe?: boolean;
 };
 
 /** Trefferdaten (M2): je Körperdreieck die feine Fläche (−1 für angesetzte Teile), je feiner Fläche Käfigfläche und Ecken-(u, v), der posierte Käfig. */
@@ -842,7 +848,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     const t0 = jetzt();
     fressenDeltas = posenUmhaengen(dokRoh.kaefig?.posen?.fressen ?? [], ankerFeld, abl.vorlage.kaefig.n);
     // Öffnung 0 = Grundform bitgleich (B1): keine Drehung um 0° (die wäre nur fast gleich) und keine Pose-Deltas
-    const pose = plan.oeffnung > 0 ? maulLageBei(abl as MaulErgebnis, plan.oeffnung, fressenDeltas) : { xyz: abl.kaefig.xyz, fein: abl.fein };
+    const pose = plan.oeffnung > 0 ? (plan.posenRuhe ? maulLageRuhe : maulLageBei)(abl as MaulErgebnis, plan.oeffnung, fressenDeltas) : { xyz: abl.kaefig.xyz, fein: abl.fein };
     fein = pose.fein;
     xyz = pose.xyz;
     zug = jetzt() - t0;
@@ -1078,7 +1084,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   let zahnMeldungen: ZahnMeldung[] | null = null;
   if (plan.zahnPruefung && zaehne) {
     const m = abl as MaulErgebnis;
-    const lagen = PRUEF_OEFFNUNGEN.map((o) => ({ oeffnung: o, fein: maulLageBei(m, o, fressenDeltas).fein }));
+    const lagen = PRUEF_OEFFNUNGEN.map((o) => ({ oeffnung: o, fein: (plan.posenRuhe ? maulLageRuhe : maulLageBei)(m, o, fressenDeltas).fein }));
     zahnMeldungen = zaehnePruefenBei(m, lagen, zahnListe(zaehne.reihen));
   }
   // Gesicht: Dreiecksnase oben an der Schnauzenfront, Scharte hinab zur Lippe, alles in der Ruhelage

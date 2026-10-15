@@ -8,6 +8,9 @@ import { deltasAddieren, spiegelIndex } from '../pinsel';
 import { kugelMaulDokument } from '../pruefstand';
 import { deltaFeld, poseAuswerten } from './auswerten';
 import { ausBasis, inBasis, zellbasis } from './rahmen';
+import { maulLageBei } from '../wesen';
+import { fressenRuheDeltas, maulLageRuhe } from './lage';
+import { deltasUebertragen, umgebung } from './uebertrag';
 import { fressenDeltasInRuhe, hapsSaat } from './saat';
 import { skinAnwenden, skinBerechnen, skinUmkehren, stellungAus, stellungMischen } from './skin';
 
@@ -47,6 +50,15 @@ describe('Posen B2: Skin', () => {
 });
 
 describe('Posen B2: Auswertung', () => {
+  it('maulLageRuhe: bei 1 gleich maulLageBei (Haps + Deltas), bei 0 die Ruhe selbst', () => {
+    const abl = maulAbl(kugelMaulDokument('gleich'), { haps: 1 });
+    const n = abl.kaefig.n;
+    const alt: KaefigDelta[] = [];
+    for (let p = 0; p < n; p++) if (abl.kaefig.xyz[3 * p + 2]! >= 0 && abl.maul.art[p]! > 0) alt.push({ punkt: p, d: [0.002, -0.006, 0.001] });
+    expect(maxAbstand(maulLageRuhe(abl, 1, alt).fein, maulLageBei(abl, 1, alt).fein)).toBeLessThan(1e-9);
+    expect(maulLageRuhe(abl, 0, alt).xyz).toBe(abl.kaefig.xyz);
+  });
+
   it('alle Gewichte 0 → der Ruhe-Käfig selbst (dasselbe Feld)', () => {
     const abl = FAELLE[0]![1]();
     const ruhe = new Float64Array(abl.kaefig.xyz);
@@ -54,13 +66,14 @@ describe('Posen B2: Auswertung', () => {
     expect(poseAuswerten(ruhe, [{ w: 0, deltas: d, stellung: stellungAus(abl.maul.opt) }], () => null)).toBe(ruhe);
   });
 
-  it('Haps als Saat + alte Fressen-Deltas in Ruhe = heutige volle Fressen-Pose (≤ 1e-9)', () => {
-    const abl = maulAbl(kugelMaulDokument('ueberbiss'), { haps: 0.8 });
+  for (const art of ['ueberbiss', 'gleich'] as const) it(`Haps als Saat + alte Fressen-Deltas in Ruhe = heutige volle Fressen-Pose (${art}, ≤ 1e-9)`, () => {
+    const abl = maulAbl(kugelMaulDokument(art), { haps: 0.8 });
     const n = abl.kaefig.n;
     const theta = stellungAus(abl.maul.opt);
     // heutige Fressen-Pose: Knochen + Haps, danach die alten Deltas (Faktor 1 = volle Öffnung)
     const alt: KaefigDelta[] = [];
-    for (let p = 0; p < Math.min(n, 300); p += 13) if (abl.kaefig.xyz[3 * p + 2]! >= 0) alt.push({ punkt: p, d: [0.004 * Math.sin(p), 0.003 * Math.cos(p), 0.002] });
+    // jeder 13. Punkt und alle Lippen- und Taschenpunkte (bei Kiefer gleich liegen Ober- und Unterlippe aufeinander)
+    for (let p = 0; p < n; p++) if (abl.kaefig.xyz[3 * p + 2]! >= 0 && (p % 13 === 0 || abl.maul.art[p]! > 0)) alt.push({ punkt: p, d: [0.004 * Math.sin(p), 0.003 * Math.cos(p), 0.002] });
     const heute = maulPose(abl, 1).xyz;
     deltasAddieren(heute, spiegelIndex(abl.kaefig.xyz, n), alt, 1);
     // neu: Ruhe + Haps-Saat + umgerechnete Deltas, dann die Knochen
@@ -71,6 +84,63 @@ describe('Posen B2: Auswertung', () => {
     for (let k = 0; k < summe.length; k++) summe[k] = saat[k]! + benutzer[k]!;
     const neu = poseAuswerten(new Float64Array(abl.kaefig.xyz), [{ w: 1, deltas: summe, stellung: theta }], () => sk);
     expect(maxAbstand(neu, heute)).toBeLessThan(1e-9);
+  });
+});
+
+describe('Spiegel bei aufeinanderliegenden Punkten', () => {
+  it('Kiefer gleich: jeder Spiegelpartner hat dieselbe Art und dieselben Kiefergewichte', () => {
+    const abl = maulAbl(kugelMaulDokument('gleich'));
+    const n = abl.kaefig.n;
+    const sp = spiegelIndex(abl.kaefig.xyz, n);
+    let doppelt = 0;
+    const lagen = new Set<string>();
+    for (let p = 0; p < n; p++) {
+      const k = `${abl.kaefig.xyz[3 * p]!.toFixed(9)}:${abl.kaefig.xyz[3 * p + 1]!.toFixed(9)}:${abl.kaefig.xyz[3 * p + 2]!.toFixed(9)}`;
+      if (lagen.has(k)) doppelt++;
+      lagen.add(k);
+      const q = sp[p]!;
+      expect(q).toBeGreaterThanOrEqual(0);
+      expect(abl.maul.art[q]).toBe(abl.maul.art[p]);
+      expect(abl.maul.gewichtUnten[q]).toBeCloseTo(abl.maul.gewichtUnten[p]!, 12);
+    }
+    expect(doppelt).toBeGreaterThan(0);
+  });
+});
+
+describe('Posen B2: Übertrag aus der Umgebung (K6)', () => {
+  const abl = maulAbl(kugelMaulDokument('ueberbiss'), { haps: 1 });
+  const n = abl.kaefig.n;
+  const A = new Float64Array(abl.kaefig.xyz);
+  const D = fressenRuheDeltas(abl, []);
+  const u = umgebung(A, n);
+  it('gleicher Käfig → dieselben Deltas', () => {
+    expect(maxAbstand(deltasUebertragen(u, A, A, D), D)).toBeLessThan(1e-12);
+  });
+  it('Drehung um 40° mit Größe 1,3 und Versatz → exakt mitgedreht und gestreckt', () => {
+    const c = Math.cos(0.7);
+    const s = Math.sin(0.7);
+    const T = (p: number[]) => [1.3 * (c * p[0]! - s * p[1]!) + 0.2, 1.3 * (s * p[0]! + c * p[1]!) - 0.1, 1.3 * p[2]!];
+    const A2 = new Float64Array(3 * n);
+    const soll = new Float64Array(3 * n);
+    for (let i = 0; i < n; i++) {
+      A2.set(T([A[3 * i]!, A[3 * i + 1]!, A[3 * i + 2]!]), 3 * i);
+      soll.set([1.3 * (c * D[3 * i]! - s * D[3 * i + 1]!), 1.3 * (s * D[3 * i]! + c * D[3 * i + 1]!), 1.3 * D[3 * i + 2]!], 3 * i);
+    }
+    let dMax = 0;
+    for (let k = 0; k < D.length; k++) dMax = Math.max(dMax, Math.abs(D[k]!));
+    expect(maxAbstand(deltasUebertragen(u, A, A2, D), soll)).toBeLessThan(1e-5 * dMax);
+  });
+  it('spiegeltreu: gespiegelte Punkte bekommen gespiegelte Deltas', () => {
+    const A2 = Float64Array.from(A, (x, k) => (k % 3 === 1 ? x + 0.3 * x * x : x));
+    const D2 = deltasUebertragen(u, A, A2, D);
+    const sp = spiegelIndex(A, n);
+    let m = 0;
+    for (let p = 0; p < n; p++) {
+      const q = sp[p]!;
+      if (q < 0 || q === p) continue;
+      m = Math.max(m, Math.abs(D2[3 * p]! - D2[3 * q]!), Math.abs(D2[3 * p + 1]! - D2[3 * q + 1]!), Math.abs(D2[3 * p + 2]! + D2[3 * q + 2]!));
+    }
+    expect(m).toBeLessThan(1e-9);
   });
 });
 
