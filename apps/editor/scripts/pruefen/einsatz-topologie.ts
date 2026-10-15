@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { einsatzFall } from '../../../../packages/shape/src/kern/pruefen/einsatzFall';
 import { einsatzTopologie, ROLLE_RAND } from '../../../../packages/shape/src/kern/einsatz/topologie';
 import { valenz } from '../../../../packages/shape/src/kaefig/halbkanten';
+import { abtasten3 } from '../../../../packages/shape/src/versuch/linie3d';
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
@@ -23,7 +24,7 @@ for (const name of FAELLE) {
   const [art, anfang, form] = name.split('/') as [never, never, never];
   const f = einsatzFall(art, anfang, form);
   if (!f || 'fehler' in f) continue;
-  const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { ...(process.env.LIPPE ? { lippeBogen: Number(process.env.LIPPE) } : {}), ...(process.env.GLAETTUNG ? { glaettung: process.env.GLAETTUNG as 'konform' } : {}), ...(process.env.J ? { J: Number(process.env.J) } : {}) });
+  const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie: abtasten3(f.maulLinie, 64) as V3[], ...(process.env.LIPPE ? { lippeBogen: Number(process.env.LIPPE) } : {}), ...(process.env.GLAETTUNG ? { glaettung: process.env.GLAETTUNG as 'konform' } : {}), ...(process.env.J ? { J: Number(process.env.J) } : {}) });
   const k1 = f.v.kaefig;
   const ff = f.feinFlaechen;
   const block = ff.length / k1.nF;

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { alleFlaechen, pruefeKaefig, valenz } from '../../kaefig/halbkanten';
 import { unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
+import { abtasten3 } from '../../versuch/linie3d';
 import { einsatzFaelle, einsatzFall } from '../pruefen/einsatzFall';
 import { einsatzTopologie, hautGuete, ROLLE_AUSSEN, ROLLE_RAND, ROLLE_TOT, UNENDLICH } from './topologie';
 
@@ -39,7 +40,7 @@ describe('Teil A, A5: Topologie', () => {
       const t0 = performance.now();
       let t;
       try {
-        t = einsatzTopologie(k1, f.feld, f.karte, f.netz, f.schnitt.doppel);
+        t = einsatzTopologie(k1, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie: abtasten3(f.maulLinie, 64) as [number, number, number][] });
       } catch (e) {
         fehler += `${name}: ${(e as Error).message}; `;
         continue;

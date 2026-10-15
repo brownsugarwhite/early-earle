@@ -17,6 +17,7 @@ import { spiegelIndex } from '../pinsel';
 import type { FeldSpec } from './feld';
 import type { FeinNetz } from './flaeche';
 import type { Karte } from './karte';
+import { kruemmungsParameter } from './lippe';
 
 type V3 = [number, number, number];
 
@@ -62,6 +63,8 @@ export type EinsatzTopologie = {
   /** Speiche und Reihe je neuem Punkt (Haut: Reihe r ≥ 0, Tasche: −p; −1 sonst) */
   speiche: Int32Array;
   reihe: Int32Array;
+  /** Bogenlängenanteile der Lippenstellen auf dem Schlitz, Naht (0) → Mundwinkel (1), k = 0 … m (beide Lippen gleich) */
+  lippenAnteile: Float64Array;
   /** Kartenlage je Hautgitterpunkt (r, k) der rechten Hälfte (r = 0 … J), Speichen wie `haut` */
   hautKarte: { u: number[][]; v: number[][] };
   /** V der Lippenstellen und der Randpunkte je Speiche (in der Karte), Reihenhöhen u_r */
@@ -320,6 +323,9 @@ export type EinsatzOptionen = {
   glaettung?: 'konform' | 'laenge' | 'keine';
   /** Reihen der Mundwinkelspeiche, die auf der Verlängerung des Schlitzes bleiben (V = V_c) */
   winkelReihen?: number;
+  /** gezeichnete Linie dicht abgetastet (Welt): ihre Krümmung verdichtet die Lippenstellen (Anteil `lippeKruemmung`) */
+  linie?: readonly V3[];
+  lippeKruemmung?: number;
 };
 
 /**
@@ -383,11 +389,14 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     const b = lage(seite[i + 1]!);
     return { p: [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]), a[2] + t * (b[2] - a[2])], v: karte.v[seite[i]!]! + t * (karte.v[seite[i + 1]!]! - karte.v[seite[i]!]!) };
   };
-  // Lippenstellen: konformer Schlitzparameter τ (gemittelt über beide Seiten), gemischt mit der Bogenlänge, je Schlitzpunkt
-  // ausgewertet (stückweise linear) und umgekehrt; U_k und D_k teilen die Bogenlänge s_k (bitgleiche Lage)
+  // Lippenstellen: konformer Schlitzparameter τ (gemittelt über beide Seiten), gemischt mit der Bogenlänge und dem
+  // krümmungsgewichteten Parameter der gezeichneten Linie (Anteile der Bogenlänge übertragen), je Schlitzpunkt ausgewertet
+  // (stückweise linear) und umgekehrt; U_k und D_k teilen die Bogenlänge s_k (bitgleiche Lage)
   const beta = opt.lippeBogen ?? 0;
+  const betaK = opt.linie ? (opt.lippeKruemmung ?? 0.5) : 0;
+  const kr = opt.linie ? kruemmungsParameter(opt.linie) : (f: number) => f;
   const vc = karte.vWinkel;
-  const tauPunkte = sA.map((s, i) => (1 - beta) * 0.5 * (karte.v[seiteA[i]!]! / vc + (1 - karte.v[seiteB[i]!]!) / (1 - vc)) + (beta * s) / lippenLaenge);
+  const tauPunkte = sA.map((s, i) => (1 - betaK) * ((1 - beta) * 0.5 * (karte.v[seiteA[i]!]! / vc + (1 - karte.v[seiteB[i]!]!) / (1 - vc)) + (beta * s) / lippenLaenge) + betaK * kr(s / lippenLaenge));
   tauPunkte[0] = 0;
   tauPunkte[tauPunkte.length - 1] = 1;
   for (let i = 1; i < tauPunkte.length; i++) tauPunkte[i] = Math.max(tauPunkte[i]!, tauPunkte[i - 1]!);
@@ -401,9 +410,11 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   const thetaIn = new Float64Array(2 * m + 1);
   const thetaOut = Float64Array.from(bogen, vVon);
   const lippeLage: V3[] = [];
+  const lippenAnteile = new Float64Array(m + 1);
+  for (let k = 0; k <= m; k++) lippenAnteile[k] = k === m ? 1 : bogenBei(k / m) / lippenLaenge;
   for (let k = 0; k <= 2 * m; k++) {
     const kk = k <= m ? k : 2 * m - k;
-    const sigma = kk === m ? lippenLaenge : bogenBei(kk / m);
+    const sigma = kk === m ? lippenLaenge : lippenAnteile[kk]! * lippenLaenge;
     const st = k <= m ? stelle(seiteA, sigma) : stelle(seiteB, sigma);
     thetaIn[k] = k === 0 ? 0 : k === 2 * m ? 1 : k === m ? vc : st.v;
     lippeLage.push(st.p);
@@ -621,6 +632,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     seite,
     speiche,
     reihe,
+    lippenAnteile,
     hautKarte,
     thetaIn,
     thetaOut,
