@@ -1,15 +1,14 @@
-import { POSEN, type PoseName } from '@ee/shape';
+import { POSEN, POSE_TITEL } from '@ee/shape';
 import { useEffect, useRef, useState } from 'react';
 import { neuesWesen, speichern } from '../aktionen';
-import { type Modus, useEditor } from '../state/editorStore';
+import { type Modus, poseTitel, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { Groessenregler } from './Groessenregler';
 
-export const POSE_NAMEN: Record<Modus, string> = { editor: 'Editor', fressen: 'Fressen', ruhen: 'Ruhen', laufen: 'Laufen', inklusion: 'Inklusion' };
-
 function Tab({ modus }: { modus: Modus }) {
   const aktiv = useEditor((s) => s.modus === modus);
-  const entfernbar = modus !== 'editor' && modus !== 'fressen';
+  const titel = useEditor((s) => poseTitel(s.dok, modus));
+  const entfernbar = modus !== 'editor' && modus !== 'fressen' && modus !== 'idle';
   return (
     <button
       className={aktiv ? 'pille aktiv' : 'pille'}
@@ -18,10 +17,11 @@ function Tab({ modus }: { modus: Modus }) {
       onContextMenu={(e) => {
         e.preventDefault();
         if (!entfernbar) return;
-        useUi.getState().oeffneMenue({ x: e.clientX, y: e.clientY, eintraege: [{ label: 'Pose entfernen', aktion: () => useEditor.getState().poseEntfernen(modus as PoseName) }] });
+        useUi.getState().oeffneMenue({ x: e.clientX, y: e.clientY, eintraege: [{ label: 'Pose entfernen', aktion: () => useEditor.getState().poseEntfernen(modus) }] });
       }}
+      data-tab={modus}
     >
-      {POSE_NAMEN[modus]}
+      {titel}
     </button>
   );
 }
@@ -30,7 +30,13 @@ function NeuePose() {
   const [offen, setOffen] = useState(false);
   const posen = useEditor((s) => s.dok.posen);
   const ref = useRef<HTMLDivElement>(null);
-  const frei = POSEN.filter((p) => !posen.includes(p));
+  const frei = POSEN.filter((p) => !posen.some((q) => q.id === p));
+  // leere Pose mit eigener Id: „Pose 3“, „Pose 4“ …
+  const leer = () => {
+    let k = posen.length + 1;
+    while (posen.some((q) => q.name === `Pose ${k}`)) k++;
+    useEditor.getState().poseHinzu(`p_${Date.now().toString(36)}`, `Pose ${k}`);
+  };
 
   useEffect(() => {
     if (!offen) return;
@@ -50,7 +56,6 @@ function NeuePose() {
         </svg>
       </button>
       <div className={offen ? 'aufklapp glas offen' : 'aufklapp glas'}>
-        {frei.length === 0 && <div className="eintrag aus">Alle Posen angelegt</div>}
         {frei.map((p) => (
           <button
             key={p}
@@ -60,9 +65,19 @@ function NeuePose() {
               setOffen(false);
             }}
           >
-            {POSE_NAMEN[p]}
+            {POSE_TITEL[p] ?? p}
           </button>
         ))}
+        <button
+          className="eintrag"
+          data-pose-leer=""
+          onClick={() => {
+            leer();
+            setOffen(false);
+          }}
+        >
+          Leere Pose
+        </button>
       </div>
     </div>
   );
@@ -75,9 +90,8 @@ export function MenuBar() {
     <header className="menueleiste">
       <div className="gruppe">
         <Tab modus="editor" />
-        <Tab modus="fressen" />
         {posen.map((p) => (
-          <Tab key={p} modus={p} />
+          <Tab key={p.id} modus={p.id} />
         ))}
         <NeuePose />
       </div>

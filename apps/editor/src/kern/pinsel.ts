@@ -1,10 +1,10 @@
 // Phase 1 / M3: Pinsel auf der Bühne (Plan 4.3, Blender-Gefühl): G ziehen (weich, Radius [ ]), I aufblasen, ⇧ beim
 // Ziehen glättet, immer gespiegelt. Die Pinsel wirken auf Käfigpunkte; ihre Versätze stehen als `kaefig.deltas`
-// (Grundform, nur Vorlagenpunkte) bzw. im Fressen-Modus als `kaefig.posen.fressen` (offene Pose, alle Punkte, mit der
-// Öffnung überblendet; Plan 5.2) im Dokument — ein Undo-Schritt je Strich, der Kern addiert sie nach der Ableitung.
+// (Grundform, nur Vorlagenpunkte) bzw. in einer Pose als ihre Form (B3: Ruhe-Deltas vor den Knochen, alle Punkte, mit
+// Bezugs-Käfig; posierte Zuwächse werden mit der Drehung je Punkt zurückgedreht) — ein Undo-Schritt je Strich.
 
-import type { KaefigDelta } from '@ee/shape';
-import { ankerVon, deltaKarte, deltaListe, kaefigNachbarn, kaefigNormalen, pinselGewichte, spiegelIndex } from '@ee/shape/kern';
+import type { KaefigDelta, Pose } from '@ee/shape';
+import { type PoseBearbeitung, ankerVon, bezugAus, deltaKarte, deltaListe, formAusFeld, kaefigNachbarn, kaefigNormalen, pinselGewichte, spiegelIndex } from '@ee/shape/kern';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { szene } from '../three/instanz';
@@ -68,37 +68,62 @@ export function pinselRing(_px: number, _py: number): void {
   r.setzeRadiusRing(t.treffer.punkt, dreiecksNormale(n.netz.normalen, t.treffer.dreieck), ui.pinselRadius * n.netz.hoehe * n.skalierung);
 }
 
-/** Ziel des Strichs: Grundform (Vorlagenpunkte) oder die Fressen-Pose (alle Punkte, Deltas je Öffnung 1). */
-function pinselZiel(): { pose: string | null; faktor: number; nMax: number } | null {
+/**
+ * Ziel des Strichs: Grundform (Vorlagenpunkte) oder die Pose des Tabs (alle Punkte). Eine Pose wird nur ganz gezeigt
+ * geformt (Gewicht 1): Dann liefert der Bau ihre Bearbeitungsdaten (Ruhe-Käfig, Drehung je Punkt, Form als Ruhe-Deltas).
+ */
+function pinselZiel(): { pose: PoseBearbeitung | null; nMax: number } | null {
   const n = aktuellesNetz();
   const tr = n?.netz.treffer;
   if (!n || !tr) return null;
   const modus = useEditor.getState().modus;
-  if (modus === 'fressen') {
-    const o = useUi.getState().oeffnung;
-    if (o < 0.25) {
-      useUi.getState().zeigeHinweis('Fressen-Pose formen: Maul mindestens 25 % öffnen (Kieferknopf)');
-      return null;
-    }
-    return { pose: 'fressen', faktor: o, nMax: tr.kaefig.n };
-  }
-  // Posenliste: weitere Pose (Ruhen, Laufen, …) mit ihrer Stärke, wie Fressen mit der Öffnung
   if (modus !== 'editor') {
-    const st = useUi.getState().poseStaerke;
-    if (st < 0.25) {
-      useUi.getState().zeigeHinweis('Pose formen: Stärke mindestens 25 % (Tafel „Posen & Leben“)');
+    const b = n.netz.pose;
+    if (!b || b.id !== modus) {
+      // Vorschau (z. B. Kieferknopf bei 40 %): erst die Pose ganz zeigen, dann formen
+      useEditor.getState().setzeZiel(modus);
+      useUi.getState().zeigeHinweis('Pose wieder ganz gezeigt — jetzt formen');
       return null;
     }
-    return { pose: modus, faktor: st, nMax: tr.kaefig.n };
+    return { pose: b, nMax: tr.kaefig.n };
   }
-  return { pose: null, faktor: 1, nMax: Math.min(tr.vorlage.n, tr.kaefig.n) };
+  return { pose: null, nMax: Math.min(tr.vorlage.n, tr.kaefig.n) };
+}
+
+/**
+ * Pose-Form aus einem Strich (B3): posierte Zuwächse ΔX je Punkt (rechte Hälfte und Naht) → Ruhe-Deltas Rᵀ·ΔX zur Form,
+ * die der Bau für die aktuelle Grundform geliefert hat (Bearbeitungsdaten vom Gestenbeginn); gespeichert mit dem
+ * aktuellen Ruhe-Käfig als Bezug. Maulpunkte tragen ihren Anker (Rolle, Reihe, Anteil): die Form überlebt eine neue
+ * Maultopologie.
+ */
+function poseSchreiben(b: PoseBearbeitung, zuwachs: Map<number, V3>, anker: Parameters<typeof ankerVon>[0]): void {
+  const n = b.ruhe.length / 3;
+  const form = new Float64Array(b.form);
+  for (const [i, d] of zuwachs) {
+    if (i >= n) continue;
+    const c = b.dreh[2 * i]!;
+    const sn = b.dreh[2 * i + 1]!;
+    form[3 * i] = form[3 * i]! + c * d[0] + sn * d[1];
+    form[3 * i + 1] = form[3 * i + 1]! - sn * d[0] + c * d[1];
+    form[3 * i + 2] = form[3 * i + 2]! + d[2];
+  }
+  const deltas: KaefigDelta[] = formAusFeld(b.ruhe, n, form).map((d) => {
+    const a = ankerVon(anker, d.punkt);
+    return a ? { ...d, anker: a } : d;
+  });
+  const bezug = bezugAus(b.ruhe);
+  useEditor.getState().poseSetzen(b.id, (p: Pose) => {
+    const neu: Pose = { ...p, form: deltas, bezug };
+    delete neu.formAlt;
+    return neu;
+  });
 }
 
 /**
  * Pinselstrich auf dem Körper: Treffer → Gewichte der Käfigpunkte um den Treffer und sein Spiegelbild → je Bewegung
  * neue Deltas aus der Basis des Gestenbeginns (ziehen: Versatz in der Ebene zur Kamera; aufblasen: entlang der
  * Punktnormalen, Zug nach rechts/oben = nach außen; ⇧: Glätten zum Nachbarmittel, Schritte aus dem Zugweg). Die Lagen
- * des posierten Käfigs enthalten die bisherigen Deltas schon; gespeichert wird Basis + Zuwachs / Faktor (Pose: Öffnung).
+ * des posierten Käfigs enthalten die bisherigen Deltas schon; gespeichert wird Basis + Zuwachs (Pose: zurückgedreht).
  * true = Geste läuft.
  */
 export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: HTMLElement): boolean {
@@ -120,7 +145,8 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
   const gewichte = pinselGewichte(xyz, nMax, mitte, radius);
   if (!gewichte.length) return false;
   const ed = useEditor.getState();
-  const basis = deltaKarte(ziel.pose ? ed.dok.kaefig?.posen?.[ziel.pose] : ed.dok.kaefig?.deltas);
+  // Grundform: gespeicherte Deltas; Pose: keine Karte (Zuwächse posiert, Form aus den Bearbeitungsdaten)
+  const basis = deltaKarte(ziel.pose ? [] : ed.dok.kaefig?.deltas);
   const spiegel = spiegelIndex(xyz, nMax);
   const normalen = werkzeug === 'aufblasen' ? kaefigNormalen(xyz, tr.kaefig.fStart, tr.kaefig.fVerts, nMax) : null;
   const nachbarn = kaefigNachbarn(tr.kaefig.fStart, tr.kaefig.fVerts, nMax);
@@ -144,7 +170,7 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
         if (q < 0) return;
         const dd: V3 = rechts(p) ? d : [d[0], d[1], -d[2]];
         const a = karte.get(q) ?? [0, 0, 0];
-        karte.set(q, [a[0] + dd[0] / ziel.faktor, a[1] + dd[1] / ziel.faktor, a[2] + dd[2] / ziel.faktor]);
+        karte.set(q, [a[0] + dd[0], a[1] + dd[1], a[2] + dd[2]]);
       };
       if (ev.shiftKey) {
         // Glätten: Laplace-Entspannung im Radius, Schritte aus dem Zugweg (bis 12), jeder Schritt auf dem vorigen
@@ -189,16 +215,12 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
         }
       }
       const s = useEditor.getState();
-      // Pose-Deltas auf Maulpunkten tragen ihren Anker (Rolle, Reihe, Anteil entlang der Lippe): die Pose überlebt eine
-      // neue Maultopologie (Phase 2 M3, „Pose-Deltas an die Maullinie gebunden“)
-      const deltas: KaefigDelta[] = ziel.pose
-        ? deltaListe(karte).map((d) => {
-            const a = ankerVon(n.netz.anker, d.punkt);
-            return a ? { ...d, anker: a } : d;
-          })
-        : deltaListe(karte);
+      if (ziel.pose) {
+        poseSchreiben(ziel.pose, karte, n.netz.anker);
+        return;
+      }
       const kaefig = s.dok.kaefig ?? { deltas: [] };
-      s.setzeDokument({ ...s.dok, kaefig: ziel.pose ? { ...kaefig, posen: { ...(kaefig.posen ?? {}), [ziel.pose]: deltas } } : { ...kaefig, deltas } });
+      s.setzeDokument({ ...s.dok, kaefig: { ...kaefig, deltas: deltaListe(karte) } });
     },
     () => useEditor.getState().endeGeste(), // Grundform: „Formen folgen“ hängt am Gestenende (kernBau); Pose: Deltas der Pose
   );

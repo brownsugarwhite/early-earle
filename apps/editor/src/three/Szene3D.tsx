@@ -154,8 +154,9 @@ export function Szene3D() {
       const bauen = (dRoh: Dokument, schnell = false) => {
         // Fressen-Tab mit eigener Seitenform (Versuch 12.10. nachts): Körper ohne Maul aus der Pose-Form; mit Maul legt
         // sich die offene Haut im Maul-Bau an sie
+        // (nur in den Versuchs-Bauweisen; im Kern ist die Fressen-Pose ein Blendshape der Posenliste, B3)
         const pose = dRoh.posenProfile?.fressen?.seite;
-        const d: Dokument = useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
+        const d: Dokument = useUi.getState().bauweise !== 'kern' && useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
         if (!versuch && useUi.getState().bauweise === 'kern') {
           // Wesen-Editor 2: Käfig als Wahrheit, Seitenumriss als Griff; der Bau läuft im Worker (Phase 1 / M1), das
           // Ergebnis kommt zurück, der neueste Auftrag gewinnt
@@ -331,6 +332,7 @@ export function Szene3D() {
             s.dok.posenProfile !== v.dok.posenProfile ||
             s.dok.rundSpanten !== v.dok.rundSpanten ||
             s.dok.kaefig !== v.dok.kaefig ||
+            s.dok.posen !== v.dok.posen ||
             s.dok.ausstattung !== v.dok.ausstattung ||
             s.modus !== v.modus;
           const wirbel = useUi.getState().bauweise === 'wirbel';

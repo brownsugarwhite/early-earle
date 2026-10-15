@@ -1,3 +1,5 @@
+// Stand des B2-Tors (Commit ed3041e): Seit B3 rechnet der Editor nur noch den neuen Weg, `?posen=ruhe` gibt es nicht mehr —
+// beide Seiten zeigen dann dasselbe. Für den Vergleich alt/neu den Stand ed3041e auschecken.
 // Tor von B2 (Plan Teil B): Kontaktbogen der Zwischenstufen der Fressen-Pose im echten Editor (Earle-Look) — alt (heute:
 // Haps mit der Öffnung, Fressen-Deltas nach den Knochen mal Öffnung) gegen neu (`?posen=ruhe`: Ruhe-Deltas vor den
 // Knochen). Dokumente aus `posen-tor-b2.ts` (`pruefen-ausgabe/b2-<name>.json`: Prüfstand-Wesen mit Maul, Haps 1 und zwei

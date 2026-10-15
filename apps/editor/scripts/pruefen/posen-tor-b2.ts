@@ -256,7 +256,7 @@ for (const w of WESEN) {
   const sk = dok.skalierung;
   const pxWelt = PX / sk;
   // Dokument für die Bilder im Editor (Fressen-Deltas wie heute gespeichert, Haps 1)
-  const dokBild: Dokument = { ...dok, ausstattung: { ...(dok.ausstattung ?? {}), maulOptionen: { ...(dok.ausstattung?.maulOptionen ?? {}), haps: 1 } }, kaefig: { ...(dok.kaefig ?? { deltas: [] }), deltas: dok.kaefig?.deltas ?? [], posen: { fressen: alt } } };
+  const dokBild: Dokument = { ...dok, ausstattung: { ...(dok.ausstattung ?? {}), maulOptionen: { ...(dok.ausstattung?.maulOptionen ?? {}), haps: 1 } }, posen: dok.posen.map((q) => (q.id === 'fressen' ? { ...q, form: alt, formAlt: 'nachKnochen' as const } : q)) };
   writeFileSync(resolve(AUSGABE, `b2-${w.name}.json`), JSON.stringify(dokBild));
   // 1. Zwischenstufen
   const netz = feinesNetz(abl);

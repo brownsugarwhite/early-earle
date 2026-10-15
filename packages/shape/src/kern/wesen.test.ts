@@ -13,7 +13,7 @@ declare const console: { log: (...a: unknown[]) => void };
 describe('Phase 1 M1: wesenBauen', () => {
   it('Tiger mit Kastenschnauze, Maul, Gesicht, Wangen, Zonen-Atlas: Netz, Deskriptoren, Atlas-Ecken und Zähne passen zusammen', () => {
     const dok = vorlageDokument(tigerJson as unknown as Vorlage, 'zu', 'tiger');
-    const plan = { ...pruefwesenBauplan('tiger'), maul: 'vorn' as const, oeffnung: 0, earle: true };
+    const plan = { ...pruefwesenBauplan('tiger'), maul: 'vorn' as const, gewichte: {}, earle: true };
     const { netz, stand } = wesenBauen(dok, plan, null);
     const ecken = netz.positionen.length / 3;
     expect(netz.normalen.length).toBe(netz.positionen.length);
@@ -27,7 +27,7 @@ describe('Phase 1 M1: wesenBauen', () => {
     expect(netz.lippenBand).toBeGreaterThan(0);
     expect(netz.info.ableitung).toBeGreaterThan(0);
     // zweiter Bau mit anderer Öffnung: nur Pose (kein Umbau), gleiche Eckenzahl
-    const z = wesenBauen(dok, { ...plan, oeffnung: 1 }, stand);
+    const z = wesenBauen(dok, { ...plan, gewichte: { fressen: 1 } }, stand);
     expect(z.netz.info.ableitung).toBe(0);
     expect(z.netz.positionen.length).toBe(netz.positionen.length);
     // übertragbare Puffer: alle verschieden
@@ -56,7 +56,7 @@ describe('Phase 1 M1: wesenBauen', () => {
     const k2 = wesenBauen(kugel, { earle: false }, k1.stand, true);
     expect(k2.netz.info.ableitung).toBe(0);
     const drache = halsVerbreitern(vorlageDokument(langhalsJson as unknown as Vorlage, 'zu', 'drache'), 2, 0.3, 0.585);
-    const d = wesenBauen(drache, { maul: 'hals', oeffnung: 0.5 }, null);
+    const d = wesenBauen(drache, { maul: 'hals', gewichte: { fressen: 0.5 } }, null);
     expect(d.netz.zaehne).not.toBeNull();
   });
 

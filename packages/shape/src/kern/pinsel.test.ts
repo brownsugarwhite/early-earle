@@ -66,16 +66,17 @@ describe('M3 Pinsel', () => {
     const roh = vorlageDokument(tigerJson as unknown as Vorlage, 'zu', 'tiger');
     const tiger = { ...roh, spanten: kastenSpanten(roh.profile.front, 0.02, 0.15, 0.25, 0.85) };
     const plan = { earle: false, maul: 'vorn' as const, maulLinie: { fv: [{ f: 0, v: 0.5 }, { f: 0.032, v: 0.28 }, { f: 0.06, v: 0.25 }], unterSpitze: 0 }, maulOptionen: { winkelUnten: 30, winkelOben: 26, band: 1, rille: 0.006, reihen: 2, tiefe: 0.5 } };
-    const zu = wesenBauen(tiger, { ...plan, oeffnung: 0 }, null);
-    const auf = wesenBauen(tiger, { ...plan, oeffnung: 1 }, zu.stand);
-    const halb = wesenBauen(tiger, { ...plan, oeffnung: 0.5 }, auf.stand);
+    const zu = wesenBauen(tiger, { ...plan, gewichte: {} }, null);
+    const auf = wesenBauen(tiger, { ...plan, gewichte: { fressen: 1 } }, zu.stand);
+    const halb = wesenBauen(tiger, { ...plan, gewichte: { fressen: 0.5 } }, auf.stand);
     // Mundwinkel = Ende des Lippenpfads (Käfigpunkt jenseits der Vorlage? nein: Ringpunkt), Pose-Delta 5 % nach hinten, nach außen
     const m = (auf.stand.abl as MaulErgebnis).maul;
     const winkelPunkt = m.pfad[m.pfad.length - 1]!;
-    const dok = { ...tiger, kaefig: { deltas: [], posen: { fressen: [{ punkt: winkelPunkt, d: [0.05, -0.01, 0.02] as [number, number, number] }] } } };
-    const zuP = wesenBauen(dok, { ...plan, oeffnung: 0 }, halb.stand);
-    const aufP = wesenBauen(dok, { ...plan, oeffnung: 1 }, zuP.stand);
-    const halbP = wesenBauen(dok, { ...plan, oeffnung: 0.5 }, aufP.stand);
+    // alte Fressen-Deltas (nach den Knochen gespeichert, wie vor B3): Migrationsmarke, exakt dieselbe volle Pose
+    const dok = { ...tiger, posen: tiger.posen.map((q) => (q.id === 'fressen' ? { ...q, form: [{ punkt: winkelPunkt, d: [0.05, -0.01, 0.02] as [number, number, number] }], formAlt: 'nachKnochen' as const } : q)) };
+    const zuP = wesenBauen(dok, { ...plan, gewichte: {} }, halb.stand);
+    const aufP = wesenBauen(dok, { ...plan, gewichte: { fressen: 1 } }, zuP.stand);
+    const halbP = wesenBauen(dok, { ...plan, gewichte: { fressen: 0.5 } }, aufP.stand);
     expect(zuP.netz.info.ableitung).toBe(0);
     let diffZu = 0;
     for (let i = 0; i < zu.netz.positionen.length; i++) diffZu = Math.max(diffZu, Math.abs(zu.netz.positionen[i]! - zuP.netz.positionen[i]!));

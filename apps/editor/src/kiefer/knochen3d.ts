@@ -4,11 +4,12 @@
 // (x, y) — dieselbe Rechnung wie in der Seite (`griffZug`), ein Undo-Schritt je Zug, ohne Umbau.
 import type { V2 } from '@ee/shape';
 import { aktuellesNetz } from '../kern/netzStand';
+import { gezeigtesGewicht } from '../kern/kernBau';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import type { Renderer3D } from '../three/Renderer3D';
 import { szene } from '../three/instanz';
-import { setzeMaulOptionen } from './kieferOptionen';
+import { griffSetzen } from './kieferOptionen';
 import { type KieferGriff, aktuellesRig, griffZug, istKnochenGriff, knochenBei } from './knochen';
 
 type V3 = [number, number, number];
@@ -25,7 +26,7 @@ function griffe3d(): { griffe: Griff3[]; linien: number[] } | null {
   const n = aktuellesNetz();
   if (!m || !n || ui.ebene !== 'posen') return null;
   const sk = n.skalierung;
-  const kn = knochenBei(m, ui.oeffnung);
+  const kn = knochenBei(m, gezeigtesGewicht());
   const w = (p: V2): V3 => [p.x * sk, p.y * sk, 0];
   const griffe: Griff3[] = [{ art: 'gelenk', pos: w(m.rig.gelenk), perle: 'gelenk' }, { art: 'schaedel-gelenk', pos: w(kn.schaedelBasis), perle: 'gelenk' }, { art: 'schaedel-dreh', pos: w(kn.schaedelSpitze), perle: 'spitze' }];
   if (m.knochen.kippen) griffe.push({ art: 'kiefer-dreh', pos: w(kn.kieferSpitze), perle: 'spitze' }, { art: 'kiefer-zug', pos: w(kn.kieferMitte), perle: 'zug' });
@@ -104,10 +105,10 @@ export function knochen3dZeiger(e: React.PointerEvent, px: number, py: number, e
   e.preventDefault();
   // Knochen greifen bearbeitet die Fressen-Pose bei voller Öffnung (relativ zum Griff, siehe `griffZug`)
   // Knochen gehören zur Fressen-Pose (B1): im Editor-Tab erst in den Fressen-Tab wechseln, statt still die Öffnung zu setzen
+  // B3: Knochen gehören zur Pose im Tab (Stellung je Pose); sie wird dafür ganz gezeigt (im Editor-Tab: Fressen)
   if (istKnochenGriff(art)) {
     const ed = useEditor.getState();
-    if (ed.modus === 'editor') ed.setzeZiel('fressen');
-    else useUi.getState().setzeOeffnung(1);
+    ed.setzeZiel(ed.modus === 'editor' ? 'fressen' : ed.modus);
   }
   const zug = griffZug(m, art, p0);
   useEditor.getState().beginGeste();
@@ -115,7 +116,7 @@ export function knochen3dZeiger(e: React.PointerEvent, px: number, py: number, e
   const rect = el.getBoundingClientRect();
   const bewegen = (ev: PointerEvent) => {
     const p = schnitt(ev.clientX - rect.left, ev.clientY - rect.top);
-    if (p) setzeMaulOptionen(zug(p));
+    if (p) griffSetzen(zug(p), m.knochen);
   };
   const auf = () => {
     window.removeEventListener('pointermove', bewegen);

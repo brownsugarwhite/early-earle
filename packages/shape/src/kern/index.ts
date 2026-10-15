@@ -13,6 +13,7 @@ export * from './maul';
 export * from './maulDokument';
 export * from './kieferSpant';
 export * from './posenAnker';
+export * from './posen/posen';
 export * from './folgen';
 export * from './teil';
 export * from './klinge';

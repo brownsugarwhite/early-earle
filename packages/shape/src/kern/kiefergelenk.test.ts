@@ -41,7 +41,7 @@ describe('Kiefergelenk', () => {
 
   it('Fressen-Tab ohne Umbau: Gelenk, Übergang, Reichweite, Winkel, Zug und Haps bauen nicht neu; Rille baut neu', () => {
     const dok = { ...rex, ausstattung: { maul: 'vorn' as const, maulLinie: maulLinieVorlage(rex, 'vorn') } };
-    const plan = { maul: 'vorn' as const, oeffnung: 0.6, earle: false };
+    const plan = { maul: 'vorn' as const, gewichte: { fressen: 0.6 }, earle: false };
     const a = wesenBauen(dok, plan, null);
     expect(a.netz.info.ableitung).toBeGreaterThan(0);
     expect(a.netz.maul?.rig.winkel).toBe(true);
@@ -60,7 +60,7 @@ describe('Kiefergelenk', () => {
 
   it('Schädelgelenk als Pose-Option (Plan 5.2): versetzt den Drehpunkt ohne Umbau, zu unverändert, offen anders; Standard = Automatik', () => {
     const dok = { ...rex, ausstattung: { maul: 'vorn' as const, maulLinie: maulLinieVorlage(rex, 'vorn') } };
-    const plan = { maul: 'vorn' as const, oeffnung: 1, earle: false };
+    const plan = { maul: 'vorn' as const, gewichte: { fressen: 1 }, earle: false };
     const a = wesenBauen(dok, plan, null);
     const versatz: [number, number] = [0.4, 0.2];
     const b = wesenBauen({ ...dok, ausstattung: { ...dok.ausstattung, maulOptionen: { schaedelGelenk: versatz } } }, { ...plan, maulOptionen: { schaedelGelenk: versatz } }, a.stand);
@@ -77,8 +77,8 @@ describe('Kiefergelenk', () => {
     for (let i = 0; i < a.netz.positionen.length; i++) d = Math.max(d, Math.abs(a.netz.positionen[i]! - b.netz.positionen[i]!));
     expect(d).toBeGreaterThan(1e-3);
     // geschlossen wirkt der Versatz nicht
-    const z0 = wesenBauen(dok, { ...plan, oeffnung: 0 }, b.stand);
-    const z1 = wesenBauen({ ...dok, ausstattung: { ...dok.ausstattung, maulOptionen: { schaedelGelenk: versatz } } }, { ...plan, oeffnung: 0, maulOptionen: { schaedelGelenk: versatz } }, z0.stand);
+    const z0 = wesenBauen(dok, { ...plan, gewichte: {} }, b.stand);
+    const z1 = wesenBauen({ ...dok, ausstattung: { ...dok.ausstattung, maulOptionen: { schaedelGelenk: versatz } } }, { ...plan, gewichte: {}, maulOptionen: { schaedelGelenk: versatz } }, z0.stand);
     let dz = 0;
     for (let i = 0; i < z0.netz.positionen.length; i++) dz = Math.max(dz, Math.abs(z0.netz.positionen[i]! - z1.netz.positionen[i]!));
     expect(dz).toBeLessThan(1e-9);
@@ -86,7 +86,7 @@ describe('Kiefergelenk', () => {
 
   it('Gewichte als Farbe je Ecke', () => {
     const dok = { ...rex, ausstattung: { maul: 'vorn' as const, maulLinie: maulLinieVorlage(rex, 'vorn') } };
-    const r = wesenBauen(dok, { maul: 'vorn', oeffnung: 0, earle: false, gewichteZeigen: true }, null);
+    const r = wesenBauen(dok, { maul: 'vorn', gewichte: {}, earle: false, gewichteZeigen: true }, null);
     expect(r.netz.gewichtFarben).not.toBeNull();
     expect(r.netz.gewichtFarben!.length).toBe(r.netz.positionen.length);
   });

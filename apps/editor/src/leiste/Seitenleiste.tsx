@@ -1,5 +1,5 @@
 import { kernMaulAktiv, useKernAnzeige } from '../kern/kernBau';
-import { kieferAutomatik, maulOptionenDok, setzeMaulOptionen } from '../kiefer/kieferOptionen';
+import { kieferAutomatik, maulOptionenDok, poseKnochen, poseKnochenZuruecksetzen, setzeMaulOptionen, setzePoseKnochen } from '../kiefer/kieferOptionen';
 import { useNetzStand } from '../kern/netzStand';
 import { type MaulOptionen, MAUL_STANDARD, RUNDMAUL_STANDARD, maulOptionenVorlage, maulVorn, pruefwesenBauplan } from '@ee/shape/kern';
 import { naechsteStufe, stufe } from '../stamm/stufen';
@@ -10,7 +10,6 @@ import { PALETTEN } from '../three/wesenLook';
 // darunter die Library. Gestaltung (Glas, Ornament) ist mein Entwurf.
 
 import { POSEN, type Profil, type ZahnEintrag, type Zahnreihe, type ZahnWerte, gespiegelteSegmente, hauptspantProfil, hauptspantStelle, segmente, unterkieferVorschlag } from '@ee/shape';
-import { POSE_NAMEN } from '../menu/MenuBar';
 import { versetzt3 } from '@ee/shape/versuch';
 import { useEffect, useRef, useState } from 'react';
 import { ladeAusBibliothek, ladePruefwesen } from '../aktionen';
@@ -24,7 +23,7 @@ import { spantName, spantWaehlen, SPANT_HINTEN, SPANT_VORN } from '../spanten/Sp
 import { aenderungAnwenden, befundText } from '../maul/zahnKoerper';
 import { useMaulInfo } from '../maul/maulKoerper';
 import { istPose, poseSeite, poseSeiteSetzen, poseSeiteVerwerfen } from '../maul/fressenForm';
-import { type Modus, useEditor } from '../state/editorStore';
+import { type Modus, poseTitel, useEditor } from '../state/editorStore';
 import { type Ebene, useUi } from '../state/uiStore';
 import { Ornament } from './Ornament';
 import { Chips, Regler, geste } from './bedienung';
@@ -59,7 +58,7 @@ function WesenBereich() {
       </div>
       <div className="feld">
         <span>Posen</span>
-        <b>{['Fressen', ...dok.posen.map((p) => p[0]!.toUpperCase() + p.slice(1))].join(' · ')}</b>
+        <b>{dok.posen.map((p) => p.name).join(' · ')}</b>
       </div>
       <p className="hilfe">Die Stufen (Körper, Maul, Zähne, Augen …) wählst du links im Stamm, ⌘1 bis ⌘9. Werkzeuge der Stufe liegen unten im Dock.</p>
       {modus === 'fressen' && dok.maul && (
@@ -964,6 +963,7 @@ function KernMaulFeld() {
   const hatLinie = !!dok.maul || !!dok.ausstattung?.maulLinie;
   const lage = chip === 'aus' && hatLinie ? 'vorn' : chip;
   const mo: MaulOptionen = { ...MAUL_STANDARD, ...(lage !== 'aus' ? maulOptionenVorlage(lage) : {}), ...(pruefwesenBauplan(dok.name).maulOptionen ?? {}), ...(dok.ausstattung?.maulOptionen ?? {}) };
+  const fk = poseKnochen(dok, chip, 'fressen');
   const setze = (patch: Partial<MaulOptionen>) => {
     const s = useEditor.getState();
     const aus = s.dok.ausstattung ?? {};
@@ -1042,9 +1042,10 @@ function KernMaulFeld() {
         <b>{mo.oeffnungsart === 'ziehen' ? 'Ziehen (Vorhang)' : 'Kippen (Knochen)'}</b>
       </div>
       <Chips werte={['kippen', 'ziehen'] as const} aktiv={mo.oeffnungsart} attribut="oeffnungsart" onWahl={(a) => setze({ oeffnungsart: a })} />
-      <Regler label="Unterkiefer" wert={mo.winkelUnten} min={5} max={75} schritt={1} anzeige={`${Math.round(mo.winkelUnten)}°`} onChange={(v) => setze({ winkelUnten: v })} {...geste()} />
-      <Regler label="Schädel" wert={mo.winkelOben} min={0} max={45} schritt={1} anzeige={`${Math.round(mo.winkelOben)}°`} onChange={(v) => setze({ winkelOben: v })} {...geste()} />
-      <Regler label="Haps" wert={mo.haps} min={0} max={1} schritt={0.05} anzeige={`${Math.round(mo.haps * 100)} %`} onChange={(v) => setze({ haps: v })} {...geste()} />
+      {/* B3: Kieferwinkel und Haps gehören zur Fressen-Pose (Stellung je Pose), nicht in die gemeinsamen Maul-Optionen */}
+      <Regler label="Unterkiefer" wert={fk.winkelUnten} min={5} max={75} schritt={1} anzeige={`${Math.round(fk.winkelUnten)}°`} onChange={(v) => setzePoseKnochen('fressen', { winkelUnten: v }, fk)} {...geste()} />
+      <Regler label="Schädel" wert={fk.winkelOben} min={0} max={45} schritt={1} anzeige={`${Math.round(fk.winkelOben)}°`} onChange={(v) => setzePoseKnochen('fressen', { winkelOben: v }, fk)} {...geste()} />
+      <Regler label="Haps" wert={fk.haps} min={0} max={1} schritt={0.05} anzeige={`${Math.round(fk.haps * 100)} %`} onChange={(v) => setzePoseKnochen('fressen', { haps: v }, fk)} {...geste()} />
       <p className="hilfe">Haps: Wie stark sich das Maul beim Öffnen über die Knochen hinaus rundet und vergrößert (Mundwinkel wandern nach hinten, Lippen wölben sich auseinander) — aus einem kleinen geschlossenen Maul wird ein großer runder Haps.</p>
       <Regler label="Rille" wert={mo.rille} min={0} max={0.03} schritt={0.001} anzeige={`${(mo.rille * 100).toFixed(1)} % der Höhe`} onChange={(v) => setze({ rille: v })} {...geste()} />
       <p className="hilfe">Kieferknopf: die blaue Bohne am Mundwinkel auf der Bühne — ziehen öffnet, Doppelklick rastet. Unterbiss, Zunge und Rachenlinie als Griff kommen später in Phase 2.</p>
@@ -1128,7 +1129,8 @@ function FressenFeld() {
       </>
     );
   const mo = maulOptionenDok(dok, chip);
-  const grund = maulOptionenDok({ ...dok, ausstattung: { ...(dok.ausstattung ?? {}), maulOptionen: {} } }, chip);
+  // B3: die Werte der Fressen-Pose (eigene Stellung, sonst die Maul-Optionen)
+  const fk = poseKnochen(dok, chip, 'fressen');
   const g = geste();
   const pz = (x: number) => `${x >= 0 ? '' : '−'}${Math.abs(Math.round(x * 100))} %`;
   const zieht = mo.oeffnungsart === 'ziehen';
@@ -1151,18 +1153,18 @@ function FressenFeld() {
           <div className="feld">
             <span>Unterkiefer</span>
             <b data-knochen-unten="">
-              {Math.round(mo.winkelUnten)}° · Zug {pz(mo.kieferZug[0])} vor, {pz(mo.kieferZug[1])} hoch
+              {Math.round(fk.winkelUnten)}° · Zug {pz(fk.kieferZug[0])} vor, {pz(fk.kieferZug[1])} hoch
             </b>
           </div>
           <div className="feld">
             <span>Schädel</span>
-            <b data-knochen-oben="">{Math.round(mo.winkelOben)}°</b>
+            <b data-knochen-oben="">{Math.round(fk.winkelOben)}°</b>
           </div>
         </>
       )}
-      <Regler label="Haps" wert={mo.haps} min={0} max={1} schritt={0.05} anzeige={`${Math.round(mo.haps * 100)} %`} onChange={(v) => setzeMaulOptionen({ haps: v })} {...g} />
-      <button className="chip" data-pose-zuruecksetzen="" onClick={() => setzeMaulOptionen({ winkelUnten: grund.winkelUnten, winkelOben: grund.winkelOben, kieferZug: [0, 0] })}>
-        Pose zurücksetzen
+      <Regler label="Haps" wert={fk.haps} min={0} max={1} schritt={0.05} anzeige={`${Math.round(fk.haps * 100)} %`} onChange={(v) => setzePoseKnochen('fressen', { haps: v }, fk)} {...g} />
+      <button className="chip" data-pose-zuruecksetzen="" onClick={() => poseKnochenZuruecksetzen('fressen')}>
+        Knochen zurücksetzen
       </button>
       <p className="hilfe">Knochen in der Seite (weiß): Unterkiefer an der Spitze drehen, an der Mitte verschieben; Schädel an der Spitze drehen. Greifen zeigt die Pose ganz offen; die Öffnung (oder der Kieferknopf auf der Bühne) blendet zwischen Ruhe und Pose. Dann formen in der Pose „Fressen“ (Kopfzeile) die Pinsel G und I (hier oder in der Stufe Körper) die offene Form weiter — Fressen-Pose = Knochen + Blendshape (Plan 5.2).</p>
     </>
@@ -1170,36 +1172,38 @@ function FressenFeld() {
 }
 
 /**
- * Tafel „Posen & Leben“, Posenliste (Plan 5.2 „Weitere Posen funktionieren identisch“, Phase 2 M3): Editor, Fressen und
- * weitere Posen (Ruhen, Laufen, Inklusion) umschalten wie in der Kopfzeile; neue Pose anlegen; die aktive weitere Pose
- * mit Stärke (Zwischenstufen) und „Pose leeren“. Geformt wird mit den Pinseln der Stufe Körper, gespeichert als
- * Käfig-Deltas `kaefig.posen[name]`.
+ * Tafel „Posen & Leben“, Posenliste (B3, Plan Teil B; Florian 15.10. abends: Editor = Grundpose, Idle = Normalzustand):
+ * Editor und alle Posen umschalten wie in der Kopfzeile; neue Pose anlegen; die aktive Pose (außer Fressen) mit Stärke
+ * (Zwischenstufen) und „Form leeren“. Geformt wird mit den Pinseln (G, I) und den Knochen; gespeichert als Ruhe-Deltas
+ * der Pose (`dok.posen[].form`) mit Bezugs-Käfig.
  */
 function PosenFeld() {
   const dok = useEditor((s) => s.dok);
   const modus = useEditor((s) => s.modus);
+  const chip = useKernAnzeige((s) => s.maul);
   const staerke = useUi((s) => s.poseStaerke);
-  const frei = POSEN.filter((p) => !dok.posen.includes(p));
-  const deltas = (name: string) => dok.kaefig?.posen?.[name]?.length ?? 0;
+  const frei = POSEN.filter((p) => !dok.posen.some((q) => q.id === p));
+  const deltas = (id: string) => dok.posen.find((q) => q.id === id)?.form.length ?? 0;
   const waehle = (m: Modus) => {
     useEditor.getState().setzeZiel(m);
   };
-  const leeren = (name: string) => {
-    const ed = useEditor.getState();
-    const k = ed.dok.kaefig;
-    if (!k?.posen?.[name]) return;
-    const posen = { ...k.posen };
-    delete posen[name];
-    ed.setzeDokument({ ...ed.dok, kaefig: { ...k, posen } });
+  const leeren = (id: string) => {
+    useEditor.getState().poseSetzen(id, (p) => {
+      if (!p.form.length) return p;
+      const neu = { ...p, form: [] };
+      delete neu.formAlt;
+      delete neu.bezug;
+      return neu;
+    });
   };
   const weitere = modus !== 'editor' && modus !== 'fressen';
   return (
     <>
       <h3 className="leiste-titel" data-abschnitt="posen">Posen</h3>
       <div className="umschalter">
-        {(['editor', 'fressen', ...dok.posen] as Modus[]).map((m) => (
+        {(['editor', ...dok.posen.map((p) => p.id)] as Modus[]).map((m) => (
           <button key={m} className={modus === m ? 'chip aktiv' : 'chip'} data-pose={m} onClick={() => waehle(m)}>
-            {POSE_NAMEN[m]}
+            {poseTitel(dok, m)}
             {m !== 'editor' && deltas(m) ? ' •' : ''}
           </button>
         ))}
@@ -1208,10 +1212,26 @@ function PosenFeld() {
         <div className="umschalter">
           {frei.map((p) => (
             <button key={p} className="chip" data-pose-neu={p} onClick={() => useEditor.getState().poseHinzu(p)}>
-              + {POSE_NAMEN[p]}
+              + {poseTitel(dok, p)}
             </button>
           ))}
         </div>
+      )}
+      {weitere && kernMaulAktiv(dok) && (
+        <div className="feld">
+          <span>Knochen</span>
+          <b data-pose-knochen={modus}>
+            {(() => {
+              const k = poseKnochen(dok, chip, modus);
+              return `Unterkiefer ${Math.round(k.winkelUnten)}° · Schädel ${Math.round(k.winkelOben)}°`;
+            })()}
+          </b>
+        </div>
+      )}
+      {weitere && kernMaulAktiv(dok) && (
+        <button className="chip" data-pose-knochen-zurueck="" onClick={() => poseKnochenZuruecksetzen(modus)}>
+          Knochen zurücksetzen
+        </button>
       )}
       {weitere && (
         <>
@@ -1221,13 +1241,13 @@ function PosenFeld() {
             <b data-pose-deltas={deltas(modus)}>{deltas(modus) ? `${deltas(modus)} Käfigpunkte` : 'noch nicht'}</b>
           </div>
           <button className="chip" data-pose-leeren="" onClick={() => leeren(modus)}>
-            Pose leeren
+            Form leeren
           </button>
         </>
       )}
       <p className="hilfe">
-        Eine Pose ist die Grundform plus Versätze des Käfigs. In der gewählten Pose formen die Pinsel der Stufe Körper (G ziehen, I aufblasen, ⇧ glätten); der Regler blendet zwischen Grundform
-        und Pose. Fressen öffnet dazu das Maul (Knochen oben).
+        Eine Pose ist die Grundpose (Editor) plus Knochenstellung und Form. In der gewählten Pose formen die Pinsel (G ziehen, I aufblasen, ⇧ glätten) und die Knochen; die Form folgt
+        späteren Änderungen der Grundpose. Idle ist der Normalzustand im Spiel, Fressen öffnet das Maul.
       </p>
     </>
   );

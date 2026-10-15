@@ -68,7 +68,7 @@ describe('Rundmaul', () => {
 
   it('im Wesen-Bau: Rundmaul aus der Ausstattung, Lippenband, Rachen innen, Ecken passen; ohne Ausstattung kein Aufsatz', () => {
     const d = neuesDokument('fisch');
-    const plan = (rund: boolean, oeffnung: number): Bauplan => ({ maul: 'aus', oeffnung, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, ...(rund ? { rundmaul: {} } : {}) });
+    const plan = (rund: boolean, oeffnung: number): Bauplan => ({ maul: 'aus', gewichte: { fressen: oeffnung }, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, ...(rund ? { rundmaul: {} } : {}) });
     const ohne = wesenBauen(d, plan(false, 0), null).netz;
     const zu = wesenBauen(d, plan(true, 0), null).netz;
     const offen = wesenBauen(d, plan(true, 1), null).netz;
@@ -93,7 +93,7 @@ describe('Rundmaul', () => {
 
   it('Zähne rundum (Aal): Anzahl wie bestellt, Spitzen zur Ringmitte, wachsen mit der Öffnung mit', () => {
     const d = neuesDokument('aal');
-    const plan = (oeffnung: number): Bauplan => ({ maul: 'aus', oeffnung, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, rundmaul: { zaehne: 12 } });
+    const plan = (oeffnung: number): Bauplan => ({ maul: 'aus', gewichte: { fressen: oeffnung }, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, rundmaul: { zaehne: 12 } });
     for (const oe of [0.3, 1]) {
       const n = wesenBauen(d, plan(oe), null).netz;
       const z = n.zaehne!;
@@ -181,7 +181,7 @@ describe('Rundmaul', () => {
 
   it('geschlossen unsichtbar (Florian 15.10.): O zu = 0 lässt die Haut ganz (kein Aufsatz, kein Lippenband); offen wächst das O aus dem Punkt, rund und ohne Durchdringung', () => {
     const d = neuesDokument('fisch');
-    const plan = (rundmaul: Bauplan['rundmaul'] | undefined, oeffnung: number): Bauplan => ({ maul: 'aus', oeffnung, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, ...(rundmaul ? { rundmaul } : {}) });
+    const plan = (rundmaul: Bauplan['rundmaul'] | undefined, oeffnung: number): Bauplan => ({ maul: 'aus', gewichte: { fressen: oeffnung }, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, ...(rundmaul ? { rundmaul } : {}) });
     const ohne = wesenBauen(d, plan(undefined, 0), null).netz;
     const zu = wesenBauen(d, plan({ zu: 0 }, 0), null).netz;
     expect(zu.positionen.length).toBe(ohne.positionen.length);

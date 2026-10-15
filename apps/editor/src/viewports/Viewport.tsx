@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useRahmen } from '../layout/animation';
-import { useEditor } from '../state/editorStore';
+import { poseTitel, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { BLICK_TEXTE, VIEW_TEXTE, type ViewId } from '../types';
 import { versuchAktiv } from '../versuch/subdivision';
@@ -70,7 +70,6 @@ export function ViewportGrund({ id }: { id: ViewId }) {
 }
 
 /** Eckpunkt als Tab (Florian 12.10.): Klick schaltet die Ebene in allen Viewports um, zweiter Klick zurück zur Form. */
-const POSE_TEXT: Record<string, string> = { fressen: 'Fressen', ruhen: 'Ruhen', laufen: 'Laufen', inklusion: 'Inklusion' };
 
 /** Zebrastreifen im 3D an/aus (Prüfen der Kanten: Streifen springen an einem Knick, fließen über glatte Flächen). */
 function ZebraKnopf() {
@@ -146,6 +145,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
   const oben = useUi((s) => s.oben === id);
   const maximiert = useUi((s) => s.maximiert === id);
   const modus = useEditor((s) => s.modus);
+  const poseName = useEditor((s) => poseTitel(s.dok, s.modus));
   const hatMaul = useEditor((s) => !!s.dok.maul);
   const zurueck = useUi((s) => id === 'front' && s.blick.front === 'hinten');
   const kantenKoerper = useEditor((s) => id === 'creation' && mitKanten(s.dok));
@@ -198,7 +198,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
         {/* Pose-Hinweis: in der Bauweise Kern formen die Pinsel die Pose (Posenliste, 15.10.); in den Versuchen gibt es das noch nicht */}
         {/* Fressen (Florian 15.10.): Blendshape mit den Pinseln, Knochen in „Posen & Leben“ */}
         {id === 'creation' && modus === 'fressen' && bauweise === 'kern' && <div className="pose-hinweis glas" data-pose-hinweis="fressen">Pose „Fressen“ · Pinsel G/I formen den Blendshape (Körper oder Posen &amp; Leben), Knochen in „Posen &amp; Leben“</div>}
-        {id === 'creation' && modus !== 'editor' && modus !== 'fressen' && (bauweise === 'kern' ? <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“ · Pinsel G/I formen sie (Körper oder Posen &amp; Leben), Stärke in „Posen &amp; Leben“</div> : !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{POSE_TEXT[modus]}“: Bearbeiten kommt mit der Bauweise</div>)}
+        {id === 'creation' && modus !== 'editor' && modus !== 'fressen' && (bauweise === 'kern' ? <div className="pose-hinweis glas">Pose „{poseName}“ · Pinsel G/I und Knochen formen sie (Körper oder Posen &amp; Leben), Stärke in „Posen &amp; Leben“</div> : !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{poseName}“: Bearbeiten kommt mit der Bauweise</div>)}
       </div>
       {/* Plan 9.3: die Stufe wählt der Stamm; am Viewport bleiben Zebra (Prüfansicht) und Vergrößern */}
       <div className="eckknoepfe">

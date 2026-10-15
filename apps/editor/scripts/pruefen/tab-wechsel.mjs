@@ -102,8 +102,8 @@ async function wechselFolge(wesen) {
   await pinselstrich();
   const HF1 = await hash();
   pruefe(`${wesen}: Pinsel formt die Fressen-Pose`, HF1 !== HF0, `${HF0} → ${HF1}`);
-  const posen = await page.evaluate(() => (window.__stores.editor.getState().dok.kaefig?.posen?.fressen ?? []).length);
-  pruefe(`${wesen}: Pinsel schreibt in die Pose (kaefig.posen.fressen)`, posen > 0, `${posen} Deltas`);
+  const posen = await page.evaluate(() => (window.__stores.editor.getState().dok.posen.find((p) => p.id === 'fressen')?.form ?? []).length);
+  pruefe(`${wesen}: Pinsel schreibt in die Pose (Form der Fressen-Pose, B3)`, posen > 0, `${posen} Deltas`);
   bilder.push({ text: `${wesen} · Fressen-Tab nach dem Pinsel`, src: await bild() });
   await pille('Editor');
   const HE = await hash();

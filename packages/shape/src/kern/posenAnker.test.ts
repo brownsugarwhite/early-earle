@@ -47,7 +47,7 @@ describe('Pose-Deltas an die Maullinie gebunden', () => {
   });
 
   it('im Bau (wie der Editor, gezeichnete Linie im Bauplan): eine Fressen-Pose mit Anker wirkt nach dem Umbau an der Unterlippe beim selben Anteil', () => {
-    const plan = (d: Dokument) => ({ maul: 'vorn' as const, oeffnung: 1, earle: false, maulLinie: maulLinieAusDokument(d)! });
+    const plan = (d: Dokument) => ({ maul: 'vorn' as const, gewichte: { fressen: 1 }, earle: false, maulLinie: maulLinieAusDokument(d)! });
     const wa = wesenBauen(a, plan(a), null);
     const ankA = wa.netz.anker!;
     // ein Unterlippenpunkt in der Mitte des Pfads von A
@@ -55,7 +55,7 @@ describe('Pose-Deltas an die Maullinie gebunden', () => {
     for (let i = 0; i < ankA.rolle.length; i++) if (ankA.rolle[i] === 1 && (p < 0 || Math.abs(ankA.u[i]! - 0.5) < Math.abs(ankA.u[p]! - 0.5))) p = i;
     const fressen = [{ punkt: p, d: [0, -0.03, 0] as [number, number, number], anker: ankerVon(ankA, p)! }];
     const ohne = wesenBauen(b, plan(b), null);
-    const mit = wesenBauen({ ...b, kaefig: { deltas: [], posen: { fressen } } }, plan(b), ohne.stand);
+    const mit = wesenBauen({ ...b, posen: b.posen.map((q) => (q.id === 'fressen' ? { ...q, form: fressen, formAlt: 'nachKnochen' as const } : q)) }, plan(b), ohne.stand);
     const ankB = mit.netz.anker!;
     expect(ankB.rolle.length).not.toBe(ankA.rolle.length);
     const xa = ohne.netz.treffer!.kaefig.xyz;

@@ -363,7 +363,7 @@ describe('Zähne im Kern: Bau im Wesen', () => {
       ['Rex', rexDok(), 12, 10],
       ['Tiger', tigerDok(), 2, 2],
     ] as const) {
-      const w = wesenBauen(dok, { maul: 'vorn', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: false, kaefigLinien: false, ...dok.ausstattung }, null);
+      const w = wesenBauen(dok, { maul: 'vorn', gewichte: {}, beine: 'aus', schwung: 0, stil: 'fest', earle: false, kaefigLinien: false, ...dok.ausstattung }, null);
       const z = w.netz.zaehne!;
       expect(z.ausDokument).toBe(false);
       expect(z.reihen.oben.anzahl, name).toBe(oben);
@@ -388,7 +388,7 @@ describe('Zähne im Kern: Bau im Wesen', () => {
     const reihen: Zaehne = { oben: zahnreiheVerteilen(7, 'oben', 0.03), unten: zahnreiheVerteilen(4, 'unten', 0.025) };
     reihen.oben.zaehne[1] = { ...reihen.oben.zaehne[1]!, auf: { laenge: 0.06 } };
     const dok: Dokument = { ...roh, zaehne: reihen };
-    const plan = { maul: 'vorn' as const, oeffnung: 0, beine: 'aus' as const, schwung: 0, stil: 'fest' as const, earle: false, kaefigLinien: false, ...dok.ausstattung };
+    const plan = { maul: 'vorn' as const, gewichte: {}, beine: 'aus' as const, schwung: 0, stil: 'fest' as const, earle: false, kaefigLinien: false, ...dok.ausstattung };
     const zu = wesenBauen(dok, plan, null);
     const z = zu.netz.zaehne!;
     expect(z.ausDokument).toBe(true);
@@ -399,8 +399,8 @@ describe('Zähne im Kern: Bau im Wesen', () => {
       const q = n.liste.find((x) => x.kiefer === 'oben' && x.index === 1 && x.seite === 1)!;
       return ab(q.spitze, q.fuss);
     };
-    const offen = wesenBauen(dok, { ...plan, oeffnung: 1 }, zu.stand).netz.zaehne!;
-    const halb = wesenBauen(dok, { ...plan, oeffnung: 0.5 }, zu.stand).netz.zaehne!;
+    const offen = wesenBauen(dok, { ...plan, gewichte: { fressen: 1 } }, zu.stand).netz.zaehne!;
+    const halb = wesenBauen(dok, { ...plan, gewichte: { fressen: 0.5 } }, zu.stand).netz.zaehne!;
     console.log(`Zahn oben 2: zu ${(lang(z) * PX).toFixed(1)} px, halb ${(lang(halb) * PX).toFixed(1)}, offen ${(lang(offen) * PX).toFixed(1)}`);
     expect(lang(offen) / lang(z)).toBeGreaterThan(1.8);
     expect(lang(halb)).toBeGreaterThan(lang(z));
@@ -443,7 +443,7 @@ describe('Zähne im Kern: Prüfung gegen den Gegenkiefer (zu, 25 %, 50 %, offen)
 
   it('voller Weg (Bauplan.zahnPruefung, vier Öffnungen): die Automatik des Rex ist ohne Befund, die Fänge stehen außen', () => {
     const d = rexDok();
-    const w = wesenBauen(d, { maul: 'vorn', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: false, kaefigLinien: false, ...d.ausstattung, zahnPruefung: true }, null);
+    const w = wesenBauen(d, { maul: 'vorn', gewichte: {}, beine: 'aus', schwung: 0, stil: 'fest', earle: false, kaefigLinien: false, ...d.ausstattung, zahnPruefung: true }, null);
     expect(w.netz.zahnMeldungen).toEqual([]);
     expect(w.netz.zaehne!.reihen.oben.zaehne.every((e) => e.aussen)).toBe(true);
   }, 60_000);

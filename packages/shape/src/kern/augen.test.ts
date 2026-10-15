@@ -9,7 +9,7 @@ import { AUGEN_TIEFE, type Bauplan, pruefwesenBauplan, wesenBauen } from './wese
 
 declare const console: { log: (...a: unknown[]) => void };
 type V3 = [number, number, number];
-const plan = (augen: Bauplan['augen'], extra: Partial<Bauplan> = {}): Bauplan => ({ maul: 'aus', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, ...(augen ? { augen } : {}), ...extra });
+const plan = (augen: Bauplan['augen'], extra: Partial<Bauplan> = {}): Bauplan => ({ maul: 'aus', gewichte: {}, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, ...(augen ? { augen } : {}), ...extra });
 /** kleinster Abstand eines Punkts zu den Ecken eines Netzes (3 Floats je Ecke) */
 function naechste(p: V3, pos: Float32Array): number {
   let best = Infinity;
@@ -107,7 +107,7 @@ describe('Augen im Kern', () => {
     const aus = rex.ausstattung!;
     // Auge oben auf dem Kopf, gut hinter der Schnauze (Ring/Winkel des Käfigs: Ring 4, Winkel 2 von oben)
     const augen = { ring: 4, j: 2, groesse: 0.08, art: 'glubsch' as const };
-    const bau = (oeffnung: number) => wesenBauen(rex, plan(augen, { maul: 'vorn', oeffnung, ...(aus.maulLinie ? { maulLinie: aus.maulLinie as NonNullable<Bauplan['maulLinie']> } : {}), ...(aus.maulOptionen ? { maulOptionen: aus.maulOptionen } : {}) }), null);
+    const bau = (oeffnung: number) => wesenBauen(rex, plan(augen, { maul: 'vorn', gewichte: { fressen: oeffnung }, ...(aus.maulLinie ? { maulLinie: aus.maulLinie as NonNullable<Bauplan['maulLinie']> } : {}), ...(aus.maulOptionen ? { maulOptionen: aus.maulOptionen } : {}) }), null);
     const zu = bau(0);
     const offen = bau(1);
     const [z, o] = [zu.netz.augen[0]!, offen.netz.augen[0]!];

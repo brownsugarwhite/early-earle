@@ -84,7 +84,7 @@ describe('M3 Reifen', () => {
     const mit = wesenBauen(rex, { earle: false }, null).netz;
     expect(mit.info.nahtMax).toBeLessThan(1.5);
     console.log(`Naht ohne Spanten ${ohne.info.nahtMax.toFixed(2)} px, mit zwei Spanten ${mit.info.nahtMax.toFixed(2)} px`);
-    const m = wesenBauen(rex, { earle: false, maul: 'vorn', oeffnung: 0.5 }, null).netz;
+    const m = wesenBauen(rex, { earle: false, maul: 'vorn', gewichte: { fressen: 0.5 } }, null).netz;
     expect(m.reifen).not.toBeNull();
     const abl = ableitenMitMaul(rex, maulLinieVorlage(rex, 'vorn'), { stufen: 2 }, maulOptionenVorlage('vorn'));
     expect(abl.reifen.length).toBe(2);

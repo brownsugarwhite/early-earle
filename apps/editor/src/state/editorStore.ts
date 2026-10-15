@@ -8,7 +8,8 @@ import {
   type Kante,
   type Linie3,
   type Maul,
-  type PoseName,
+  POSE_TITEL,
+  type Pose,
   type Profil,
   SKALIERUNG_MAX,
   SKALIERUNG_MIN,
@@ -23,7 +24,14 @@ import { useUi } from './uiStore';
 import { kantenAnFlaeche } from '../kanten/kantenFlaeche';
 import { create } from 'zustand';
 
-export type Modus = 'editor' | 'fressen' | PoseName;
+/** Was bearbeitet wird (B3): 'editor' = Grundpose, sonst die Id einer Pose aus `dok.posen` ('idle', 'fressen', …). */
+export type Modus = string;
+
+/** Anzeigename eines Ziels: Editor (Grundpose) oder der Name der Pose. */
+export function poseTitel(dok: Dokument, m: Modus): string {
+  if (m === 'editor') return 'Editor';
+  return dok.posen.find((p) => p.id === m)?.name ?? POSE_TITEL[m] ?? m;
+}
 
 type EditorState = {
   dok: Dokument;
@@ -69,8 +77,12 @@ type EditorState = {
    * Reihenfolge den Rücksprung-Fehler machte (der Bau lief mit dem neuen Modus und der alten Öffnung).
    */
   setzeZiel(m: Modus): void;
-  poseHinzu(p: PoseName): void;
-  poseEntfernen(p: PoseName): void;
+  /** Neue Pose (Id aus den Namensvorschlägen oder `p_…`), danach in die Pose wechseln */
+  poseHinzu(id: string, name?: string): void;
+  /** Pose entfernen (nicht Idle, nicht Fressen); war sie das Ziel, zurück zur Grundpose */
+  poseEntfernen(id: string): void;
+  /** Eine Pose ändern (Form, Bezug, Stellung, Saat): ein Undo-Schritt bzw. Teil der laufenden Geste */
+  poseSetzen(id: string, f: (p: Pose) => Pose): void;
 };
 
 const MAX_VERLAUF = 200;
@@ -130,8 +142,7 @@ function gleichAusser(a: object | undefined, b: object | undefined, ausnahmen: r
  * Grundform oder in ungenutzte Felder; bis die Griffe der Pose kommen (B5/B6), wird es mit einem Hinweis abgewiesen.
  */
 function nurPose(alt: Dokument, neu: Dokument): boolean {
-  if (!gleichAusser(alt, neu, ['posen', 'name', 'kaefig', 'ausstattung'])) return false;
-  if (!gleichAusser(alt.kaefig, neu.kaefig, ['posen'])) return false;
+  if (!gleichAusser(alt, neu, ['posen', 'name', 'ausstattung'])) return false;
   return gleichAusser(alt.ausstattung, neu.ausstattung, ['maulOptionen']);
 }
 
@@ -140,7 +151,7 @@ function poseHinweis(): void {
   const t = Date.now();
   if (t - letzterPoseHinweis < 2500) return;
   letzterPoseHinweis = t;
-  useUi.getState().zeigeHinweis('In der Pose formt vorerst nur der Pinsel (G, I) und das Rig. Linien, Maul, Reifen und Augen bearbeitest du im Editor-Tab — die Griffe der Pose kommen mit dem Posen-Umbau.');
+  useUi.getState().zeigeHinweis('In der Pose formen vorerst Pinsel (G, I) und Knochen. Schwarze Linien, Rot/Blau und Reifen der Pose kommen als Nächstes (B4–B6); bis dahin bearbeitest du sie im Editor-Tab.');
 }
 
 export const useEditor = create<EditorState>((set, get) => {
@@ -306,20 +317,27 @@ export const useEditor = create<EditorState>((set, get) => {
       if (m !== 'editor' && m !== 'fressen') ui.setzePoseStaerke(1);
       set({ modus: m });
     },
-    poseHinzu(p) {
-      aendern((d) => (d.posen.includes(p) ? d : { ...d, posen: [...d.posen, p] }));
-      get().setzeZiel(p);
+    poseHinzu(id, name) {
+      aendern((d) => (d.posen.some((q) => q.id === id) ? d : { ...d, posen: [...d.posen, { id, name: name ?? POSE_TITEL[id] ?? id, art: 'frei', form: [] }] }));
+      get().setzeZiel(id);
     },
-    poseEntfernen(p) {
-      // mit der Pose verschwinden auch ihre Käfig-Deltas (Posenliste, Kern)
+    poseEntfernen(id) {
+      // mit der Pose verschwinden ihre Form und Stellung; Idle und Fressen bleiben immer
+      if (id === 'idle' || id === 'fressen') return;
+      if (get().modus === id) get().setzeZiel('editor');
+      aendern((d) => ({ ...d, posen: d.posen.filter((q) => q.id !== id) }));
+    },
+    poseSetzen(id, f) {
       aendern((d) => {
-        const posen = d.posen.filter((x) => x !== p);
-        if (!d.kaefig?.posen?.[p]) return { ...d, posen };
-        const kp = { ...d.kaefig.posen };
-        delete kp[p];
-        return { ...d, posen, kaefig: { ...d.kaefig, posen: kp } };
+        let geaendert = false;
+        const posen = d.posen.map((q) => {
+          if (q.id !== id) return q;
+          const neu = f(q);
+          geaendert = neu !== q;
+          return neu;
+        });
+        return geaendert ? { ...d, posen } : d;
       });
-      if (get().modus === p) get().setzeZiel('editor');
     },
   };
 });

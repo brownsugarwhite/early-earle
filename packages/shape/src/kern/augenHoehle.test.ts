@@ -141,7 +141,7 @@ describe('Augenhöhle im Käfig', () => {
   it('im Wesen-Bau: Augapfel bekommt die Höhle im gezeichneten Netz (Deskriptoren, Ruhelage, Treffer passen), andere Augen nicht', () => {
     const d: Dokument = { ...vorlageDokument(rexRoh as unknown as Vorlage, 'zu', 'rex'), ausstattung: pruefwesenBauplan('rex') };
     const aus = d.ausstattung!;
-    const plan = (augen: Bauplan['augen'], oeffnung = 0): Bauplan => ({ maul: 'vorn', oeffnung, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, ...(augen ? { augen } : {}), ...(aus.maulLinie ? { maulLinie: aus.maulLinie as NonNullable<Bauplan['maulLinie']> } : {}), ...(aus.maulOptionen ? { maulOptionen: aus.maulOptionen } : {}) });
+    const plan = (augen: Bauplan['augen'], oeffnung = 0): Bauplan => ({ maul: 'vorn', gewichte: { fressen: oeffnung }, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, ...(augen ? { augen } : {}), ...(aus.maulLinie ? { maulLinie: aus.maulLinie as NonNullable<Bauplan['maulLinie']> } : {}), ...(aus.maulOptionen ? { maulOptionen: aus.maulOptionen } : {}) });
     const basis = { ring: 4, j: 2, groesse: 0.085, punkt: [-0.16, 0.265, 0.14] as [number, number, number] };
     const ohne = wesenBauen(d, plan({ ...basis, art: 'glubsch' }), null).netz;
     const mit = wesenBauen(d, plan({ ...basis, art: 'augapfel' }), null).netz;

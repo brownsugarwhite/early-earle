@@ -7,7 +7,7 @@
 // Der `WesenStand` hält die Ableitung und den Klingenstand zwischen zwei Bauten (Pose statt Umbau, Wehen je Bild).
 
 import type { V2 } from '../bezier';
-import type { AugenWerte, Ausstattung, Dokument, GefroreneStationen, KaefigDelta, ZonenVorlage } from '../dokument';
+import type { AugenWerte, Ausstattung, Dokument, GefroreneStationen, KaefigDelta, Pose, ZonenVorlage } from '../dokument';
 import { alleFlaechen } from '../kaefig/halbkanten';
 import { type V3, zuDreiecken } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
@@ -22,8 +22,8 @@ import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
 import { kieferSchnitt } from './kieferSpant';
-import { type AnkerFeld, maulAnker, posenUmhaengen } from './posenAnker';
-import { maulLageRuhe } from './posen/lage';
+import { type AnkerFeld, maulAnker } from './posenAnker';
+import { type PoseBearbeitung, posenAuswerten, posenFuerBau, stellungVon } from './posen/posen';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, schaedelGelenk } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
@@ -74,9 +74,13 @@ export type { ZonenVorlage } from '../dokument';
  * (Structured Clone), damit der Worker ihn bekommt.
  */
 export type Bauplan = Ausstattung & {
-  /** Maul-Lage (Ausstattung oder Chip), Öffnung 0 … 1 (Pose) */
+  /** Maul-Lage (Ausstattung oder Chip) */
   maul: MaulArt;
-  oeffnung: number;
+  /**
+   * Gewichte der Posen (B3, Plan Teil B): leer = Grundform (bitgleich), `{ fressen: 1 }` = die Fressen-Pose, Mischungen
+   * überblenden. Das Gewicht von Fressen öffnet auch Rundmaul und Zähne. Der Kern sieht weder Modus noch Tab.
+   */
+  gewichte: Record<string, number>;
   /** Beine (Ausstattung oder Chip), Schwung in Grad (Pose) */
   beine: BeinArt;
   schwung: number;
@@ -95,21 +99,10 @@ export type Bauplan = Ausstattung & {
   /** Unterkiefergewichte als Farbe je Ecke (Fressen-Tab, Plan 5.2): blau 0 … rot 1 */
   gewichteZeigen?: boolean;
   /**
-   * Weitere Pose (Plan 5.2 „Brüllen, Schlafen, Lauf-Extrem funktionieren identisch“; Posenliste, Phase 2 M3): ihre
-   * Käfig-Deltas `kaefig.posen[name]` werden mit `staerke` (0 … 1) überblendet — wie die Fressen-Deltas mit der Öffnung,
-   * ohne Umbau. Fressen selbst läuft weiter über `oeffnung`.
-   */
-  pose?: { name: string; staerke: number };
-  /**
    * Zähne prüfen (Phase 2 M4): bei zu, 25 %, 50 % und offen gegen den Gegenkiefer (`zaehnePruefenBei`, 50–400 ms) —
    * nur als eigener Auftrag nach einem genauen Bau, nie während einer Geste; Ergebnis in `WesenNetz.zahnMeldungen`.
    */
   zahnPruefung?: boolean;
-  /**
-   * Posen nach Plan Teil B (B2-Tor): Fressen-Deltas und Haps als Ruhe-Deltas vor den Knochen (`maulLageRuhe`), statt nach
-   * den Knochen mit der Öffnung überblendet. Gleich bei Öffnung 0 und 1, dazwischen drehen sie mit den Knochen. Bis B3 aus.
-   */
-  posenRuhe?: boolean;
 };
 
 /** Trefferdaten (M2): je Körperdreieck die feine Fläche (−1 für angesetzte Teile), je feiner Fläche Käfigfläche und Ecken-(u, v), der posierte Käfig. */
@@ -123,7 +116,7 @@ export type TrefferDaten = {
   vorlage: { R: number; N: number; n: number };
 };
 
-export const BAUPLAN_STANDARD: Bauplan = { maul: 'aus', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false };
+export const BAUPLAN_STANDARD: Bauplan = { maul: 'aus', gewichte: {}, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false };
 
 export type WesenInfo = {
   kaefigPunkte: number;
@@ -197,7 +190,7 @@ export type WesenNetz = {
      * Knochen der Fressen-Pose in Ruhe (Seitenansicht, mit Hebung): Unterkiefer vom Gelenk zur Unterlippe vorn, Schädel
      * vom Schädelgelenk zur Oberlippe vorn; dazu die Pose bei Öffnung 1 (Winkel in Grad, Zug in Maullängen) und die Art.
      */
-    knochen: { kieferSpitze: V2; schaedel: V2; schaedelSpitze: V2; winkelUnten: number; winkelOben: number; zug: [number, number]; kippen: boolean };
+    knochen: { kieferSpitze: V2; schaedel: V2; schaedelSpitze: V2; winkelUnten: number; winkelOben: number; zug: [number, number]; zugWeite: number; kippen: boolean };
   } | null;
   /** Unterkiefergewichte als Farbe je Ecke (`Bauplan.gewichteZeigen`), sonst null */
   gewichtFarben: Float32Array | null;
@@ -209,6 +202,8 @@ export type WesenNetz = {
   rundmaul: (RundmaulLage & { zu: number; auf: number; hoehe: number; kandidaten: V3[] }) | null;
   /** Anker je Käfigpunkt (mit Maul): Rolle, Reihe, Anteil entlang der Lippe — der Pinsel schreibt ihn zu Pose-Deltas auf Maulpunkten */
   anker: AnkerFeld | null;
+  /** B3: Daten der bearbeiteten Pose (genau eine mit Gewicht 1) für den Pinsel in der Pose — Ruhe-Käfig, Drehung je Punkt, Form */
+  pose: PoseBearbeitung | null;
   /** Saum je Blatt (Schritt 4): Silhouettenpunkte des Körpers (x, y, d px), (NaN, NaN, 0) trennt Züge; wird kopiert, nicht übertragen */
   saum: Record<'seite' | 'front' | 'top', Float32Array> | null;
   /** Front/Top: Umweg der schwarzen Linie über einen breiteren Kiefer (Paare x, y; NaN trennt), sonst fehlt das Blatt */
@@ -812,7 +807,11 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   let maulLinieVerwendet: MaulLinie | null = null;
   let maulOptAktuell: MaulOptionen | null = null;
   let ankerFeld: AnkerFeld | null = null;
-  let fressenDeltas: KaefigDelta[] = [];
+  // Posen (B3): Gewichte, Posen für diesen Bau (umgehängt, Fressen mit Standardwerten), Daten der bearbeiteten Pose
+  const gewichte = plan.gewichte ?? {};
+  const wFressen = gewichte.fressen ?? 0;
+  let posen: Pose[] = [];
+  let bearbeitung: PoseBearbeitung | null = null;
   let fein: Float64Array;
   let xyz: Float64Array;
   let gesteckt: { fein: Float64Array; abl: BeinErgebnis } | null = null;
@@ -846,11 +845,12 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     kieferGewichteSetzen(mAbl, maulOptAktuell);
     ankerFeld = maulAnker(mAbl, abl.kaefig.n, abl.vorlage.kaefig.n);
     const t0 = jetzt();
-    fressenDeltas = posenUmhaengen(dokRoh.kaefig?.posen?.fressen ?? [], ankerFeld, abl.vorlage.kaefig.n);
-    // Öffnung 0 = Grundform bitgleich (B1): keine Drehung um 0° (die wäre nur fast gleich) und keine Pose-Deltas
-    const pose = plan.oeffnung > 0 ? (plan.posenRuhe ? maulLageRuhe : maulLageBei)(abl as MaulErgebnis, plan.oeffnung, fressenDeltas) : { xyz: abl.kaefig.xyz, fein: abl.fein };
-    fein = pose.fein;
-    xyz = pose.xyz;
+    // Posen mit Knochen (B3): X(w) = Skin(A + Σ w·D; Σ w·θ); keine Gewichte = Grundform bitgleich (B1)
+    posen = posenFuerBau(dokRoh.posen ?? [], ankerFeld, abl.vorlage.kaefig.n, maulOptAktuell);
+    const r = posenAuswerten(abl, abl as MaulErgebnis, maulOptAktuell, posen, gewichte);
+    xyz = r.xyz;
+    fein = xyz === abl.kaefig.xyz ? abl.fein : anwenden3(abl.unterteilung.grenze, xyz);
+    bearbeitung = r.bearbeitung;
     zug = jetzt() - t0;
   } else if (schnell && stand && stand.maul === 'aus' && stand.beine === 'aus' && gleicheTopologie(stand.dok, dok)) {
     // führende Kurve des aktuellen Zugs statt der des letzten Baus
@@ -874,23 +874,16 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
   }
-  // Fressen-Pose ohne Schlitzmaul (Florian 15.10.: „im Fressen-Tab Rundmaul, Bohne, W-Maul, Haltung, Schädelform frei
-  // formen“): die Deltas mit der Öffnung auf alle Punkte (mit Schlitzmaul nach den Knochen in `maulLageBei`). Vorher wirkten
-  // sie nur mit Schlitzmaul; bei Kugel, Fisch (Rundmaul) und Beinen schrieb der Pinsel Deltas, die keiner anwendete.
-  if (maul === 'aus' && plan.oeffnung > 0 && (dokRoh.kaefig?.posen?.fressen?.length ?? 0) > 0) {
-    fressenDeltas = posenUmhaengen(dokRoh.kaefig!.posen!.fressen!, null, abl.vorlage.kaefig.n);
-    const xyz2 = new Float64Array(xyz);
-    deltasAddieren(xyz2, spiegelIndex(abl.kaefig.xyz, abl.kaefig.n), fressenDeltas, plan.oeffnung);
-    xyz = xyz2;
-    fein = anwenden3(abl.unterteilung.grenze, xyz2);
-  }
-  // weitere Pose (Posenliste): Deltas derselben Topologie mit der Stärke überblendet, auf alle Punkte, nach Knochen und Fressen
-  const poseDeltas = plan.pose && plan.pose.name !== 'fressen' && plan.pose.staerke > 0 ? posenUmhaengen(dokRoh.kaefig?.posen?.[plan.pose.name] ?? [], ankerFeld, abl.vorlage.kaefig.n) : [];
-  if (poseDeltas.length) {
-    const xyz2 = new Float64Array(xyz);
-    deltasAddieren(xyz2, spiegelIndex(abl.kaefig.xyz, abl.kaefig.n), poseDeltas, plan.pose!.staerke);
-    xyz = xyz2;
-    fein = anwenden3(abl.unterteilung.grenze, xyz2);
+  // Posen ohne Schlitzmaul (Florian 15.10.: „im Fressen-Tab Rundmaul, Bohne, W-Maul, Haltung, Schädelform frei formen“):
+  // keine Knochen, die Ruhe-Deltas mit den Gewichten auf alle Punkte (Kugel, Fisch mit Rundmaul, Beine)
+  if (maul === 'aus') {
+    posen = posenFuerBau(dokRoh.posen ?? [], null, abl.vorlage.kaefig.n, null);
+    const r = posenAuswerten({ kaefig: { n: abl.kaefig.n, xyz } }, null, null, posen, gewichte);
+    if (r.xyz !== xyz) {
+      xyz = r.xyz;
+      fein = anwenden3(abl.unterteilung.grenze, xyz);
+    }
+    bearbeitung = r.bearbeitung;
   }
   // Rundmaul (Phase 2 M6): nur ohne Schlitzmaul und Beine; die Haut um die Spitze dehnt sich mit der Öffnung
   let hoeheRuhe = 0;
@@ -907,9 +900,9 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     rundSperre = wahl.art === 'augapfel' ? augenAm(abl, flaechen, hoeheRuhe, wahl).map((a) => a.ecke) : [];
     rundC = rundmaulZentrum(abl, plan.rundmaul?.punkt, rundSperre);
   }
-  const rundSicht = rund && rundC >= 0 ? rundmaulSichtbar(rund, plan.oeffnung) : 0;
-  if (rund && rundSicht > 0 && plan.oeffnung > 0) {
-    xyz = rundmaulPose(abl, xyz, plan.oeffnung, hoeheRuhe, rund, rundC);
+  const rundSicht = rund && rundC >= 0 ? rundmaulSichtbar(rund, wFressen) : 0;
+  if (rund && rundSicht > 0 && wFressen > 0) {
+    xyz = rundmaulPose(abl, xyz, wFressen, hoeheRuhe, rund, rundC);
     fein = anwenden3(abl.unterteilung.grenze, xyz);
   }
   const punkte: V3[] = [];
@@ -941,7 +934,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
       // Rachen höchstens 0,6 der Körperdicke hinter dem Maul (posiert bzw. in Ruhe)
       const dicke = rundmaulDicke(punkte, flaechen, rundC, rundmaulAchse(abl, xyz, rundC));
       const dickeRuhe = rundmaulDicke(punkteVon(abl.fein), flaechen, rundC, rundmaulAchse(abl, abl.kaefig.xyz, rundC));
-      eintraege.push(rundmaulEintrag(abl, plan.oeffnung, hoehe, rund, rundC, dicke));
+      eintraege.push(rundmaulEintrag(abl, wFressen, hoehe, rund, rundC, dicke));
       ruhe.push(rundmaulEintrag(abl, 0, hoehe, rund, rundC, dickeRuhe));
     }
     const topo = eintraege.length ? hoehlenTopologie(abl.kaefig, abl.unterteilung.stufen.length, eintraege) : null;
@@ -1074,7 +1067,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     // die Automatik passt geschlossen ein (≈ 30–80 ms): gemerkt je Ableitung ohne Deltas und Prüfsumme der Deltas
     let summe = 0;
     for (const d of deltas) summe += (d.punkt + 1) * (1.3 * d.d[0] + 1.7 * d.d[1] + 2.3 * d.d[2]);
-    zaehne = zaehneBauen(abl as MaulErgebnis, fein, dokRoh.zaehne, plan.oeffnung, ablRein ? { objekt: ablRein, schluessel: `${deltas.length}:${summe}` } : undefined);
+    zaehne = zaehneBauen(abl as MaulErgebnis, fein, dokRoh.zaehne, wFressen, ablRein ? { objekt: ablRein, schluessel: `${deltas.length}:${summe}` } : undefined);
   }
   // Rundmaul (Phase 2 M6): Zähne rundum am Ring-Zahnfleisch (Aal), nur Anzeige
   if (!zaehne && rund && hoehle && koerperFein && hoehle.mund >= 0 && (plan.rundmaul?.zaehne ?? 0) > 0) {
@@ -1084,7 +1077,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   let zahnMeldungen: ZahnMeldung[] | null = null;
   if (plan.zahnPruefung && zaehne) {
     const m = abl as MaulErgebnis;
-    const lagen = PRUEF_OEFFNUNGEN.map((o) => ({ oeffnung: o, fein: (plan.posenRuhe ? maulLageRuhe : maulLageBei)(m, o, fressenDeltas).fein }));
+    const lagen = PRUEF_OEFFNUNGEN.map((o) => {
+      const x = posenAuswerten(abl, m, maulOptAktuell, posen, { fressen: o }).xyz;
+      return { oeffnung: o, fein: x === abl.kaefig.xyz ? abl.fein : anwenden3(abl.unterteilung.grenze, x) };
+    });
     zahnMeldungen = zaehnePruefenBei(m, lagen, zahnListe(zaehne.reihen));
   }
   // Gesicht: Dreiecksnase oben an der Schnauzenfront, Scharte hinab zur Lippe, alles in der Ruhelage
@@ -1221,6 +1217,9 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     const m = (abl as MaulErgebnis).maul;
     const p = m.pfad[m.pfad.length - 1]!;
     const o = maulOptAktuell ?? m.opt;
+    // Knochen der gezeigten Pose (größtes Gewicht; ohne Gewichte Fressen): die Griffe zeigen ihre Stellung
+    const gezeigt = Object.entries(gewichte).sort((x, y) => y[1] - x[1])[0]?.[0];
+    const kn = stellungVon((posen.find((q) => q.id === gezeigt) ?? posen.find((q) => q.art === 'fressen'))?.stellung);
     const winkelGew = o.gewichte === 'winkel' && o.oeffnungsart !== 'ziehen' && !o.nackenGanz;
     const ruhe = (abl as MaulErgebnis).fein;
     const rp = (i: number): V2 => ({ x: ruhe[3 * i]!, y: ruhe[3 * i + 1]! + hebung });
@@ -1228,7 +1227,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
       winkel: [fein[3 * p]!, fein[3 * p + 1]! + hebung, fein[3 * p + 2]!],
       laenge: m.laenge,
       rig: { gelenk: { x: m.scharnier.x, y: m.scharnier.y + hebung }, mundwinkel: { x: m.kieferBasis.mundwinkel.x, y: m.kieferBasis.mundwinkel.y + hebung }, vorn: m.vorn, gelenkVersatz: [...o.gelenk], kieferWinkel: [...o.kieferWinkel], kieferReichweite: [...o.kieferReichweite], winkel: winkelGew, schaedelBasis: { x: m.schaedel.x, y: m.schaedel.y + hebung }, schaedelVersatz: [...(o.schaedelGelenk ?? [0, 0])] },
-      knochen: { kieferSpitze: rp(m.unten[0]!), schaedel: { x: schaedelGelenk(m, o).x, y: schaedelGelenk(m, o).y + hebung }, schaedelSpitze: rp(m.pfad[0]!), winkelUnten: o.winkelUnten, winkelOben: o.winkelOben, zug: [...(o.kieferZug ?? [0, 0])], kippen: o.oeffnungsart !== 'ziehen' },
+      knochen: { kieferSpitze: rp(m.unten[0]!), schaedel: { x: schaedelGelenk(m, o).x, y: schaedelGelenk(m, o).y + hebung }, schaedelSpitze: rp(m.pfad[0]!), winkelUnten: kn.winkelUnten, winkelOben: kn.winkelOben, zug: [kn.kieferZug[0], kn.kieferZug[1]], zugWeite: kn.zugWeite, kippen: o.oeffnungsart !== 'ziehen' },
     };
     if (plan.gewichteZeigen) gewichtFarben = gewichteJeEcke(abl as MaulErgebnis, flaechen, gesteckteEcken);
   }
@@ -1254,6 +1253,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     gewichtFarben,
     rundmaul: rundmaulInfo,
     anker: ankerFeld,
+    pose: bearbeitung,
     saum,
     umweg,
     info,

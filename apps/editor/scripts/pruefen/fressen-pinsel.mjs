@@ -37,12 +37,8 @@ for (const id of nur) {
     await page.evaluate((stufe) => {
       const ed = window.__stores.editor.getState();
       // saubere Ausgangslage: Fressen-Deltas leeren
-      const k = ed.dok.kaefig;
-      if (k?.posen?.fressen) {
-        const posen = { ...k.posen };
-        delete posen.fressen;
-        ed.setzeDokument({ ...ed.dok, kaefig: { ...k, posen } });
-      }
+      // B3: Form der Fressen-Pose leeren
+      if (ed.dok.posen.find((p) => p.id === 'fressen')?.form.length) ed.setzeDokument({ ...ed.dok, posen: ed.dok.posen.map((p) => (p.id === 'fressen' ? { ...p, form: [] } : p)) });
       const ui = window.__stores.ui.getState();
       ui.setzeEbene(stufe);
       ui.maximieren('creation');
@@ -67,7 +63,7 @@ for (const id of nur) {
     for (let k = 1; k <= 10; k++) await page.mouse.move(x + 3 * k, y - 4 * k);
     await page.mouse.up();
     await page.waitForTimeout(2500);
-    const nach = await page.evaluate(() => ({ fressen: window.__stores.editor.getState().dok.kaefig?.posen?.fressen?.length ?? 0, deltas: window.__stores.editor.getState().dok.kaefig?.deltas?.length ?? 0, kamera: window.__stores.ui.getState().kamera?.azimut }));
+    const nach = await page.evaluate(() => ({ fressen: window.__stores.editor.getState().dok.posen.find((p) => p.id === 'fressen')?.form.length ?? 0, deltas: window.__stores.editor.getState().dok.kaefig?.deltas?.length ?? 0, kamera: window.__stores.ui.getState().kamera?.azimut }));
     const a1 = await abdruck();
     await page.screenshot({ path: resolve(AUSGABE, `fressen-pinsel-${id}-${stufe}.png`), clip: { x: rc.x, y: rc.y, width: rc.w, height: rc.h } });
     console.log(`${id} · Stufe ${stufe}: ${JSON.stringify(vor)} → Fressen-Deltas ${nach.fressen}, Grund-Deltas ${nach.deltas}, Netz geändert: ${a0 === null ? '?' : Math.abs(a1 - a0) > 1e-6 ? 'ja' : 'nein'}, Kamera-Azimut ${nach.kamera?.toFixed?.(2)}`);

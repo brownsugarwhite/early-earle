@@ -26,8 +26,6 @@ if (q.get('oeffnung')) useUi.getState().setzeOeffnung(Number(q.get('oeffnung')))
 if (q.get('zebra') === '1') useUi.getState().setzeZebra(true);
 /** Zonen-Atlas (Beweis 4) an, `&atlas=0` zeigt die prozeduralen Zonen */
 const atlasAn = q.get('atlas') !== '0';
-/** Posen nach Plan Teil B (B2-Tor): `&posen=ruhe` rechnet Fressen-Deltas und Haps vor den Knochen (`Bauplan.posenRuhe`) */
-const posenRuhe = q.get('posen') === 'ruhe';
 // Kamera für Bilder: `kamera=azimut°,elevation°,distanz[,zielX,zielY,zielZ]`
 if (q.get('kamera')) {
   const [az, el, dist, zx, zy, zz] = q.get('kamera')!.split(',').map(Number);
@@ -89,15 +87,37 @@ export function kernRundmaul(dok: Dokument): boolean {
   return !!(dok.ausstattung?.rundmaul ?? pruefwesenBauplan(dok.name).rundmaul);
 }
 
-/** Aktive weitere Pose (Posenliste, nicht Editor/Fressen) oder null. */
+/** Aktive weitere Pose (nicht Editor, nicht Fressen) oder null: ihr Gewicht ist `ui.poseStaerke`. */
 export function weiterePose(): string | null {
   const m = useEditor.getState().modus;
   return m !== 'editor' && m !== 'fressen' ? m : null;
 }
 
+/** Gewicht der gezeigten Pose (Knochen zeichnen): Editor-Tab und Fressen = `ui.oeffnung`, sonst `ui.poseStaerke`. */
+export function gezeigtesGewicht(): number {
+  const m = useEditor.getState().modus;
+  const ui = useUi.getState();
+  return m === 'editor' || m === 'fressen' ? ui.oeffnung : ui.poseStaerke;
+}
+
+/**
+ * Gewichte der Posen für den Bau (B3, Plan Teil B): Editor-Tab = Grundpose (leer; eine Vorschau von Fressen über den
+ * Kieferknopf zeigt `ui.oeffnung`), Fressen = `ui.oeffnung`, jede weitere Pose (Idle, …) = `ui.poseStaerke`.
+ */
+export function anzeigeGewichte(): Record<string, number> {
+  const m = useEditor.getState().modus;
+  const ui = useUi.getState();
+  if (m === 'editor' || m === 'fressen') return ui.oeffnung > 0 ? { fressen: ui.oeffnung } : {};
+  return ui.poseStaerke > 0 ? { [m]: ui.poseStaerke } : {};
+}
+
 export function bauplanAus(dok: Dokument): Partial<Bauplan> {
   const s = useKernAnzeige.getState();
-  const aus = { ...pruefwesenBauplan(dok.name), ...(dok.ausstattung ?? {}) };
+  const pw = pruefwesenBauplan(dok.name);
+  const aus = { ...pw, ...(dok.ausstattung ?? {}) };
+  // Maul-Optionen Schlüssel für Schlüssel (wie die Tafeln): flach gemischt warf der erste Rig-Zug am Tiger dessen Winkel,
+  // Band und Rille aus dem Bau, während die Tafel sie noch zeigte
+  if (pw.maulOptionen && dok.ausstattung?.maulOptionen) aus.maulOptionen = { ...pw.maulOptionen, ...dok.ausstattung.maulOptionen };
   // Kern-Typ: die gezeichneten 3D-Punkte (punkte, untenPunkte, obenPunkte) gehören nur in den Bauplan, nicht ins Dokument
   let maulLinie: MaulLinie | undefined = aus.maulLinie;
   let maul: MaulArt = s.maul;
@@ -124,18 +144,15 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
     ...aus,
     ...(maulLinie ? { maulLinie } : {}),
     maul,
-    oeffnung: useUi.getState().oeffnung,
+    gewichte: anzeigeGewichte(),
     beine: s.beine,
     schwung: s.schwung,
     stil: s.stil,
     earle: s.look === 'earle',
     kaefigLinien: s.kaefig,
     atlas: atlasAn,
-    ...(posenRuhe ? { posenRuhe: true } : {}),
     // Rig (Plan 5.2): Unterkiefergewichte als Farbe, nur in der Stufe „Posen & Leben“
     gewichteZeigen: useUi.getState().gewichteZeigen && useUi.getState().ebene === 'posen',
-    // Posenliste: im Modus einer weiteren Pose (Kopfzeile) ihre Deltas mit der Stärke
-    ...(weiterePose() ? { pose: { name: weiterePose()!, staerke: useUi.getState().poseStaerke } } : {}),
   };
 }
 

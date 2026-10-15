@@ -232,6 +232,23 @@ export const DokumentSchemaV0 = z.object({ ...DokumentFelder, version: z.literal
 /** Käfig-Delta (M3, Pinsel): Versatz eines Käfigpunkts der Vorlage (rechte Hälfte oder Naht), Profil-Einheiten. */
 /** `anker` (Pose-Deltas auf Maulpunkten, 15.10.): Rolle, Reihe und Anteil entlang der Lippe — die Pose überlebt eine neue Maultopologie */
 const KaefigDeltaSchema = z.object({ punkt: z.number().int().min(0), d: V3, anker: z.object({ rolle: z.number().int().min(0), reihe: z.number().int().min(0), u: z.number() }).optional() });
+/**
+ * Posen (Dokument v2, Plan „Maul als Einsatz, Werkzeug-Harmonie und Posen“, Teil B): Der Editor-Tab ist die Grundpose;
+ * jede Pose = Knochenstellung + Florians Form als Ruhe-Deltas (vor den Knochen) + Saat. Idle (Normalzustand, im Spiel der
+ * Ruhezustand) und Fressen sind immer da; weitere kommen über „Neue Pose“ hinzu.
+ */
+const KnochenWertSchema = z.object({ winkel: z.number().optional(), zug: z.tuple([z.number(), z.number()]).optional(), ziehen: z.number().optional() });
+const PoseSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  art: z.enum(['idle', 'fressen', 'frei']),
+  stellung: z.object({ kiefer: KnochenWertSchema.optional(), schaedel: KnochenWertSchema.optional() }).optional(),
+  form: z.array(KaefigDeltaSchema),
+  bezug: z.array(z.number()).optional(),
+  formAlt: z.literal('nachKnochen').optional(),
+  saat: z.object({ haps: z.number().optional() }).optional(),
+  spiel: z.boolean().optional(),
+});
 /** Käfig-Deltas der Grundform und je Pose (M3: „fressen“ = offenes Maul, mit der Öffnung überblendet; Plan 5.2). */
 /**
  * Eingefrorene Stationen (Plan „Zeichnung ist Form“, Schritt 3, „Käfig als Wahrheit“): Ringverteilung, Kappenzeilen,
@@ -255,9 +272,12 @@ const GefroreneStationenSchema = z.object({
  */
 export type GefroreneStationen = { ringe: number[]; vorn: number[]; hinten: number[]; ecken: { ring: number; seite: 'oben' | 'unten' | 'beide' }[]; reifen: { spant: number; ring: number }[]; spitzen: { vorn: boolean; hinten: boolean }; maul?: MaulStationen };
 export type MaulStationen = { winkel: number; ringA?: number; kontur?: boolean };
-const KaefigSchema = z.object({ deltas: z.array(KaefigDeltaSchema), posen: z.record(z.string(), z.array(KaefigDeltaSchema)).optional(), stationen: GefroreneStationenSchema.optional() });
-/** Version 1: mit Ausstattung und (M3) Käfig-Deltas der Pinsel. */
-export const DokumentSchema = z.object({ ...DokumentFelder, version: z.literal(1), ausstattung: AusstattungSchema.optional(), kaefig: KaefigSchema.optional() });
+const KaefigSchemaV1 = z.object({ deltas: z.array(KaefigDeltaSchema), posen: z.record(z.string(), z.array(KaefigDeltaSchema)).optional(), stationen: GefroreneStationenSchema.optional() });
+/** Version 1 (bis 15.10.2026 abends): mit Ausstattung und (M3) Käfig-Deltas der Pinsel; Pose-Deltas in `kaefig.posen`. */
+export const DokumentSchemaV1 = z.object({ ...DokumentFelder, version: z.literal(1), ausstattung: AusstattungSchema.optional(), kaefig: KaefigSchemaV1.optional() });
+const KaefigSchema = z.object({ deltas: z.array(KaefigDeltaSchema), stationen: GefroreneStationenSchema.optional() });
+/** Version 2 (B3): Posenliste mit Knochenstellung, Ruhe-Deltas und Bezugs-Käfig je Pose. */
+export const DokumentSchema = z.object({ ...DokumentFelder, posen: z.array(PoseSchema), version: z.literal(2), ausstattung: AusstattungSchema.optional(), kaefig: KaefigSchema.optional() });
 
 export type V3T = [number, number, number];
 export type Knoten3 = { p: V3T; ein: V3T; aus: V3T; art: 'glatt' | 'ecke' };
@@ -305,20 +325,51 @@ export type Kante = {
   tiefe?: number;
 };
 
+/** Knochenwert einer Pose: Winkel (Grad), Zug des Unterkiefers (Maullängen), Weite beim „Ziehen“ (Maullängen). */
+export type KnochenWert = { winkel?: number; zug?: [number, number]; ziehen?: number };
+/** Stellung der Knochen einer Pose (Kiefer, Schädel; später Hals, Beine). Fehlt sie bei Fressen, gelten die Maul-Optionen. */
+export type PoseStellung = { kiefer?: KnochenWert; schaedel?: KnochenWert };
+export type PoseArt = 'idle' | 'fressen' | 'frei';
+export type Pose = {
+  id: string;
+  name: string;
+  art: PoseArt;
+  stellung?: PoseStellung;
+  /** Florians Form: Ruhe-Deltas (vor den Knochen), rechte Hälfte und Naht, Profil-Einheiten */
+  form: KaefigDelta[];
+  /** Ruhe-Käfig, auf dem `form` zuletzt geformt wurde (alle Punkte, 3 je Punkt): Die Form folgt Änderungen der Grundform (K6) */
+  bezug?: number[];
+  /** Migration aus v1: `form` liegt nach den Knochen (alte Fressen-Deltas) und wird bei der Auswertung in die Ruhe gedreht */
+  formAlt?: 'nachKnochen';
+  /** Saat (Fressen): Haps-Stärke; fehlt = aus den Maul-Optionen */
+  saat?: { haps?: number };
+  /** im Spiel benutzt (Export) */
+  spiel?: boolean;
+};
+export const POSE_TITEL: Record<string, string> = { idle: 'Idle', fressen: 'Fressen', ruhen: 'Ruhen', laufen: 'Laufen', inklusion: 'Inklusion' };
+/** Idle und Fressen sind immer da (Florian 15.10. abends: „Es wird dann noch eine Pose Idle geben, die den Normalzustand beschreibt“). */
+export function standardPosen(): Pose[] {
+  return [
+    { id: 'idle', name: 'Idle', art: 'idle', form: [] },
+    { id: 'fressen', name: 'Fressen', art: 'fressen', form: [] },
+  ];
+}
+
 export type Dokument = {
   format: 'ee-wesen';
-  version: 1;
+  version: 2;
   name: string;
   profile: { seite: Profil; front: Profil; top: Profil };
   skalierung: number;
-  posen: PoseName[];
+  /** Posen (v2): Idle, Fressen, weitere; Reihenfolge = Reihenfolge der Tabs */
+  posen: Pose[];
   /** Version 1: Absicht für den Bau (Maul, Beine, Stil, Kasten, Augen, Gesicht, Zonen); fehlt = Standardkörper */
   ausstattung?: Ausstattung;
   /**
    * M3 (Pinsel): Versätze von Käfigpunkten der Vorlage (Index < Punktzahl der Röhre; rechte Hälfte oder Naht, die linke
    * Hälfte spiegelt der Kern), Profil-Einheiten, auf den abgeleiteten Käfig addiert. Fehlt = unberührt.
    */
-  kaefig?: { deltas: KaefigDelta[]; posen?: Record<string, KaefigDelta[]>; stationen?: GefroreneStationen };
+  kaefig?: { deltas: KaefigDelta[]; stationen?: GefroreneStationen };
   maul?: Maul;
   zaehne?: Zaehne;
   kanten?: Kante[];
@@ -358,7 +409,7 @@ export function neuesDokument(name = 'Neues Wesen'): Dokument {
   const r = START_RADIUS;
   return {
     format: 'ee-wesen',
-    version: 1,
+    version: 2,
     name,
     profile: {
       seite: startKreis({ x: 0, y: r }, r, 4),
@@ -366,16 +417,33 @@ export function neuesDokument(name = 'Neues Wesen'): Dokument {
       top: startHalbkreis({ x: 0, y: 0 }, r, 'waagerecht', 2),
     },
     skalierung: 1,
-    posen: [],
+    posen: standardPosen(),
   };
 }
 
-/** Lesen mit Migration: Version 0 wird zu Version 1 (ohne Ausstattung; die Prüfwesen-Anteile ergänzt der Editor über den Namen). */
+/**
+ * Posen aus Version 1: Idle kommt hinzu, Fressen bekommt die alten Fressen-Deltas (nach den Knochen gespeichert →
+ * `formAlt`, exakt umgerechnet bei der Auswertung), jede weitere Pose ihre Deltas (ohne Knochen, also schon Ruhe-Deltas).
+ */
+export function posenAusV1(namen: readonly string[], kaefigPosen: Readonly<Record<string, KaefigDelta[]>> | undefined): Pose[] {
+  const posen = standardPosen();
+  const fressen = kaefigPosen?.fressen ?? [];
+  if (fressen.length) posen[1] = { ...posen[1]!, form: fressen, formAlt: 'nachKnochen' };
+  for (const n of namen) if (n !== 'idle' && n !== 'fressen') posen.push({ id: n, name: POSE_TITEL[n] ?? n, art: 'frei', form: kaefigPosen?.[n] ?? [] });
+  return posen;
+}
+
+/** Version 1 → 2: Posenliste statt Namen und `kaefig.posen`. */
+function v1NachV2(alt: z.infer<typeof DokumentSchemaV1> | (z.infer<typeof DokumentSchemaV0> & { version: 1 })): Dokument {
+  const { kaefig, posen, ...rest } = alt as z.infer<typeof DokumentSchemaV1>;
+  const k = kaefig ? { deltas: kaefig.deltas, ...(kaefig.stationen ? { stationen: kaefig.stationen } : {}) } : undefined;
+  return { ...rest, version: 2, posen: posenAusV1(posen, kaefig?.posen as Record<string, KaefigDelta[]> | undefined), ...(k ? { kaefig: k } : {}) } as Dokument;
+}
+
+/** Lesen mit Migration: Version 0 → 1 (ohne Ausstattung; die Prüfwesen-Anteile ergänzt der Editor über den Namen) → 2 (Posenliste). */
 export function dokumentLesen(json: unknown): Dokument {
   const v = (json as { version?: unknown } | null)?.version;
-  if (v === 0) {
-    const alt = DokumentSchemaV0.parse(json);
-    return { ...alt, version: 1 } as Dokument;
-  }
+  if (v === 0) return v1NachV2({ ...DokumentSchemaV0.parse(json), version: 1 });
+  if (v === 1) return v1NachV2(DokumentSchemaV1.parse(json));
   return DokumentSchema.parse(json) as Dokument;
 }

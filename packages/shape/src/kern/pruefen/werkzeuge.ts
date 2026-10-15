@@ -34,7 +34,7 @@ export function planAus(dok: Dokument): Partial<Bauplan> {
       // nicht übersetzbar: ohne Maul wie im Editor (Warnung)
     }
   }
-  return { ...aus, ...(linie ? { maulLinie: linie } : {}), maul: linie ? 'vorn' : 'aus', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: false, kaefigLinien: false, treffer: false };
+  return { ...aus, ...(linie ? { maulLinie: linie } : {}), maul: linie ? 'vorn' : 'aus', gewichte: {}, beine: 'aus', schwung: 0, stil: 'fest', earle: false, kaefigLinien: false, treffer: false };
 }
 
 export type Zustand = { dok: Dokument; stand: WesenStand | null; fein: Float32Array | null; flaechen: number[][] | null; haut?: boolean[]; maulVor?: Dokument };

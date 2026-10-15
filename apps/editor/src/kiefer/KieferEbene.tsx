@@ -13,7 +13,7 @@ import type { Ebene2DKontext } from '../maul/MaulEbene';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { type KieferGriff, type Rig, aktuellesRig, amGelenk, griffZug, istKnochenGriff, knochenBei } from './knochen';
-import { setzeMaulOptionen } from './kieferOptionen';
+import { griffSetzen } from './kieferOptionen';
 
 const FARBE = '#ff2e9a';
 
@@ -44,7 +44,11 @@ function imBlatt(G: V2, q: V2, w: number, h: number): { p: V2; ab: boolean } {
 
 export function KieferZeichnung({ ansicht, bild, w, h }: { ansicht: Ansicht; bild: (p: V2) => V2; w: number; h: number }) {
   useNetzStand((s) => s.version);
-  const oeffnung = useUi((s) => s.oeffnung);
+  // B3: Knochen der gezeigten Pose mit ihrem Gewicht (Editor/Fressen: Öffnung, sonst Stärke der Pose)
+  const modus = useEditor((s) => s.modus);
+  const oeffnungUi = useUi((s) => s.oeffnung);
+  const staerke = useUi((s) => s.poseStaerke);
+  const oeffnung = modus === 'editor' || modus === 'fressen' ? oeffnungUi : staerke;
   const skal = useEditor((s) => s.dok.skalierung);
   const m = ansicht === 'seite' ? aktuellesRig() : null;
   if (!m) return null;
@@ -155,16 +159,16 @@ export function kieferZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolea
   };
   // Knochen greifen bearbeitet die Fressen-Pose bei voller Öffnung (wie der Pinsel in der Pose)
   // Knochen gehören zur Fressen-Pose (B1): im Editor-Tab erst in den Fressen-Tab wechseln, statt still die Öffnung zu setzen
+  // B3: Knochen gehören zur Pose im Tab (Stellung je Pose); sie wird dafür ganz gezeigt (im Editor-Tab: Fressen)
   if (istKnochenGriff(art)) {
     const ed = useEditor.getState();
-    if (ed.modus === 'editor') ed.setzeZiel('fressen');
-    else useUi.getState().setzeOeffnung(1);
+    ed.setzeZiel(ed.modus === 'editor' ? 'fressen' : ed.modus);
   }
   const zug = griffZug(m, art, welt(e.nativeEvent));
   useEditor.getState().beginGeste();
   ctx.ziehen(
     e,
-    (ev) => setzeMaulOptionen(zug(welt(ev))),
+    (ev) => griffSetzen(zug(welt(ev)), m.knochen),
     () => useEditor.getState().endeGeste(),
   );
   return true;
