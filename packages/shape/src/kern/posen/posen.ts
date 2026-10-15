@@ -7,12 +7,13 @@
 //   in Ruhe-Deltas gedreht (exakt dieselbe Form bei voller Pose), bis die Pose wieder bearbeitet wird;
 // - ohne Bezug oder bei anderer Punktzahl: Weltversätze je Punkt wie bisher.
 // Ohne Schlitzmaul gibt es keine Knochen: X = A + Σ wᵢ·Dᵢ.
-import type { KaefigDelta, Pose, PoseStellung } from '../../dokument';
+import type { Dokument, KaefigDelta, Pose, PoseStellung } from '../../dokument';
 import type { MaulErgebnis, MaulOptionen } from '../maul';
 import { type AnkerFeld, posenUmhaengen } from '../posenAnker';
 import { deltaFeld, poseAuswerten } from './auswerten';
+import { type PoseLippen, linienAktiv, lippenKorrektur, poseLippenDaten } from './linien';
 import { fressenDeltasInRuhe, hapsSaat } from './saat';
-import { type KnochenPunkte, type Skin, type Stellung, STELLUNG_NULL, knochenPunkte, skinBerechnen, stellungMischen } from './skin';
+import { type KnochenPunkte, type Skin, type Stellung, STELLUNG_NULL, knochenPunkte, skinAnwenden, skinBerechnen, stellungMischen } from './skin';
 import { type Umgebung, deltasUebertragen, umgebung } from './uebertrag';
 
 /** Stellung der Knochen einer Pose (Grad, Maullängen) für die Skin; fehlende Knochen und Werte stehen in Ruhe. */
@@ -73,15 +74,17 @@ export type PoseAuswertung = {
 
 /**
  * Daten der Pose, die gerade bearbeitet wird: Ruhe-Käfig A (neuer Bezug), Drehung je Punkt (3×3 zeilenweise, 9 Werte) der
- * vollen Pose (posierte Zuwächse → Ruhe-Deltas: Rᵀ·ΔX), ihre Form als Ruhe-Deltas auf A (ohne Saat).
+ * vollen Pose (posierte Zuwächse → Ruhe-Deltas: Rᵀ·ΔX), ihre Form als Ruhe-Deltas auf A (ohne Saat und ohne
+ * Lippenprojektion), mit Schlitzmaul Rot und Blau der Pose (B5).
  */
-export type PoseBearbeitung = { id: string; ruhe: Float64Array; dreh: Float32Array; form: Float64Array };
+export type PoseBearbeitung = { id: string; ruhe: Float64Array; dreh: Float32Array; form: Float64Array; lippen: PoseLippen | null };
 
 /**
  * Posen mit Gewichten auswerten. `abl` = Ableitung mit Ruhe-Käfig A (`abl.kaefig.xyz`, samt Pinsel-Deltas der Grundform);
- * `maul` nur mit Schlitzmaul (dann Knochen und Haps-Saat), `opt` dessen wirksame Optionen. Alle Gewichte 0 → A selbst.
+ * `maul` nur mit Schlitzmaul (dann Knochen, Haps-Saat und Lippenprojektion auf Rot und Blau der Pose), `opt` dessen
+ * wirksame Optionen, `dok` für die Standardknoten der Pose-Linien (aus den Grundlinien). Alle Gewichte 0 → A selbst.
  */
-export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }, maul: MaulErgebnis | null, opt: MaulOptionen | null, posen: readonly Pose[], gewichte: Readonly<Record<string, number>>): PoseAuswertung {
+export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }, maul: MaulErgebnis | null, opt: MaulOptionen | null, posen: readonly Pose[], gewichte: Readonly<Record<string, number>>, dok: Dokument | null = null): PoseAuswertung {
   const A = abl.kaefig.xyz;
   const n = abl.kaefig.n;
   const aktiv = posen.filter((p) => (gewichte[p.id] ?? 0) !== 0);
@@ -99,7 +102,15 @@ export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }
       summe = hapsSaat(maul, voll, haps);
       for (let k = 0; k < summe.length; k++) summe[k] = summe[k]! + D[k]!;
     }
-    return { pose: p, w: gewichte[p.id]!, st, voll, form, summe };
+    // Rot und Blau der Pose (B5): Lippenprojektion als Ruhe-Korrektur; ohne Versätze bleibt die Pose bitgleich
+    const natuerlich = summe;
+    let korrektur: Float64Array | null = null;
+    if (maul && linienAktiv(p.linien)) {
+      korrektur = lippenKorrektur(maul, p.linien!);
+      summe = new Float64Array(natuerlich);
+      for (let k = 0; k < summe.length; k++) summe[k] = summe[k]! + korrektur[k]!;
+    }
+    return { pose: p, w: gewichte[p.id]!, st, voll, form, summe, natuerlich, korrektur };
   });
   const xyz = poseAuswerten(A, eingaben.map((e) => ({ w: e.w, deltas: e.summe, stellung: e.st })), skinFuer);
   const stellung = stellungMischen(eingaben.map((e) => ({ w: e.w, stellung: e.st })));
@@ -112,7 +123,13 @@ export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }
       if (e.voll) for (let k = 0; k < 9; k++) dreh[9 * i + k] = e.voll.r[9 * i + k]!;
       else dreh.set([1, 0, 0, 0, 1, 0, 0, 0, 1], 9 * i);
     }
-    bearbeitung = { id: e.pose.id, ruhe: new Float64Array(A), dreh, form: e.form };
+    let lippen: PoseLippen | null = null;
+    if (maul && e.voll) {
+      const nat = new Float64Array(A);
+      for (let k = 0; k < nat.length; k++) nat[k] = nat[k]! + e.natuerlich[k]!;
+      lippen = poseLippenDaten(maul, dok, e.pose.linien, e.korrektur, e.voll, skinAnwenden(e.voll, nat), xyz, e.pose.art === 'fressen');
+    }
+    bearbeitung = { id: e.pose.id, ruhe: new Float64Array(A), dreh, form: e.form, lippen };
   }
   return { xyz, stellung, knochen, bearbeitung };
 }

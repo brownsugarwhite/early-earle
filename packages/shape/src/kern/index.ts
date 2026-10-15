@@ -16,6 +16,8 @@ export * from './posenAnker';
 export * from './posen/posen';
 export * from './posen/griffeSeite';
 export * from '../loeser/posenLoeser';
+export * from './posen/linien';
+export * from '../loeser/glattLoeser';
 export * from './folgen';
 export * from './teil';
 export * from './klinge';

@@ -874,7 +874,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     const t0 = jetzt();
     // Posen mit Knochen (B3): X(w) = Skin(A + Σ w·D; Σ w·θ); keine Gewichte = Grundform bitgleich (B1)
     posen = posenFuerBau(dokRoh.posen ?? [], ankerFeld, abl.vorlage.kaefig.n, maulOptAktuell);
-    const r = posenAuswerten(abl, abl as MaulErgebnis, maulOptAktuell, posen, gewichte);
+    const r = posenAuswerten(abl, abl as MaulErgebnis, maulOptAktuell, posen, gewichte, dokRoh);
     xyz = r.xyz;
     fein = xyz === abl.kaefig.xyz ? abl.fein : anwenden3(abl.unterteilung.grenze, xyz);
     bearbeitung = r.bearbeitung;
@@ -1106,7 +1106,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   if (plan.zahnPruefung && zaehne) {
     const m = abl as MaulErgebnis;
     const lagen = PRUEF_OEFFNUNGEN.map((o) => {
-      const x = posenAuswerten(abl, m, maulOptAktuell, posen, { fressen: o }).xyz;
+      const x = posenAuswerten(abl, m, maulOptAktuell, posen, { fressen: o }, dokRoh).xyz;
       return { oeffnung: o, fein: x === abl.kaefig.xyz ? abl.fein : anwenden3(abl.unterteilung.grenze, x) };
     });
     zahnMeldungen = zaehnePruefenBei(m, lagen, zahnListe(zaehne.reihen));

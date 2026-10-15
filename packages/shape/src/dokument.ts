@@ -238,6 +238,12 @@ const KaefigDeltaSchema = z.object({ punkt: z.number().int().min(0), d: V3, anke
  * Ruhezustand) und Fressen sind immer da; weitere kommen über „Neue Pose“ hinzu.
  */
 const KnochenWertSchema = z.object({ winkel: z.number().optional(), zug: z.tuple([z.number(), z.number()]).optional(), ziehen: z.number().optional(), gieren: z.number().optional(), rollen: z.number().optional(), seit: z.number().optional() });
+/**
+ * Knoten einer Pose-Linie (B5): Lippenanteil s (0 = Anfang auf der Naht, 1 = Mundwinkel), Versatz d der Linie gegen die
+ * natürliche Lippe der Pose und Griffversätze ein/aus (relativ zum Knoten), alles im Ruheraum (Weltachsen, Kern-Einheiten wie
+ * die Form); die Pose dreht sie mit dem Lippenpunkt.
+ */
+const LinienKnotenSchema = z.object({ s: z.number(), d: V3, ein: V3, aus: V3, art: z.enum(['glatt', 'ecke']).optional() });
 const PoseSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
@@ -247,6 +253,7 @@ const PoseSchema = z.object({
   bezug: z.array(z.number()).optional(),
   formAlt: z.literal('nachKnochen').optional(),
   saat: z.object({ haps: z.number().optional() }).optional(),
+  linien: z.object({ oben: z.array(LinienKnotenSchema).min(2), unten: z.array(LinienKnotenSchema).min(2) }).optional(),
   spiel: z.boolean().optional(),
 });
 /** Käfig-Deltas der Grundform und je Pose (M3: „fressen“ = offenes Maul, mit der Öffnung überblendet; Plan 5.2). */
@@ -334,6 +341,10 @@ export type KnochenWert = { winkel?: number; zug?: [number, number]; ziehen?: nu
 /** Stellung der Knochen einer Pose (Kiefer, Schädel; später Hals, Beine). Fehlt sie bei Fressen, gelten die Maul-Optionen. */
 export type PoseStellung = { kiefer?: KnochenWert; schaedel?: KnochenWert };
 export type PoseArt = 'idle' | 'fressen' | 'frei';
+/** Knoten einer Pose-Linie (B5): Lippenanteil s, Versatz d und Griffversätze ein/aus gegen die natürliche Lippe (Ruheraum, Kern-Einheiten). */
+export type LinienKnoten = { s: number; d: V3T; ein: V3T; aus: V3T; art?: 'glatt' | 'ecke' };
+/** Rot (Oberkette) und Blau (Unterkette) einer Pose. */
+export type PoseLinien = { oben: LinienKnoten[]; unten: LinienKnoten[] };
 export type Pose = {
   id: string;
   name: string;
@@ -347,6 +358,11 @@ export type Pose = {
   formAlt?: 'nachKnochen';
   /** Saat (Fressen): Haps-Stärke; fehlt = aus den Maul-Optionen */
   saat?: { haps?: number };
+  /**
+   * Rot und Blau der Pose (B5): Versatzfelder längs der Oberkette (`oben`) und der Unterkette (`unten`) gegen die natürliche
+   * Lippe der Pose; der Mundwinkel (letzter Knoten) gilt für beide aus `oben`. Fehlt = die Linien liegen auf der natürlichen Lippe.
+   */
+  linien?: PoseLinien;
   /** im Spiel benutzt (Export) */
   spiel?: boolean;
 };
