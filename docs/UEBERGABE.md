@@ -27,6 +27,9 @@ Branch `claude/editor-grundlayout`. Es gilt der Fahrplan [`docs/plans/2026-10-14
 4. **W-Oberlippe** (5eb4d8b): drei gemessene Anläufe am Plattenmaul, nicht gelöst (steigende oder flache Arme schneiden beim Öffnen durch die Oberlippe).
 5. **Kastenkinn:** über Kasten-Spanten und Kiefer-Spant mit Ecken, kein eigener Baustein.
 6. **Abnahme per Skript** (9772e52): Bild `docs/progress/editor/maularten-m6-abnahme-2026-10-15.jpg`.
+7. **Zähne rundum am Rundmaul** (5f77138): Ring-Zahnfleisch innerhalb der inneren Lippe, Spitzen zur Mitte, wachsen mit der Öffnung (Regler „Zähne rundum“, nur Anzeige).
+
+**Plan 5.2 (Rig) weiter:** Schädelgelenk als Griff gebaut (559bca8; Seite und Bühne, ohne Umbau). Bodengrenze gemessen: Kein Prüfwesen stößt durch den Boden, aber Kugel und Rex heben beim vollen Öffnen den Bauch 1,4–1,6 % der Höhe an; Bodenhaftung über die Gewichte staucht die Haut (36 Paare) und ist zurückgenommen (32b4c94). Kehlkette offen (Florians Probe zeigt, ob nötig).
 
 **Behobene Befunde unterwegs:**
 - Die Höhe als Maß für Augen, Lippenband, Nase und Material kam aus der Pose; beim Öffnen wuchsen sie beim Rex um 11 %. Jetzt aus der Ruhelage.
@@ -50,12 +53,13 @@ Branch `claude/editor-grundlayout`. Es gilt der Fahrplan [`docs/plans/2026-10-14
 ## Nächster Schritt
 
 1. **Florians Urteil** zu M4, M5 und M6 (Bilder `zaehne-m4-abnahme-rex-14-2026-10-15.jpg`, `augen-m5-abnahme-2026-10-15.jpg`, `maularten-m6-abnahme-2026-10-15.jpg`) und seine Entscheidungen oben.
-2. **Phase 2 ist nach Plan durchgebaut.** Rest aus Plan 5.2: Kehlkette, Schädelgelenk als Griff, Bodengrenze; dazu je nach Florians Wahl Brauenwulst, Hund, Zähne am Rundmaul.
+2. **Phase 2 ist nach Plan durchgebaut** (Plan 5.2: Schädelgelenk gebaut, Bodengrenze gemessen, Kehlkette offen). Weiter je nach Florians Wahl: Brauenwulst, Hund, Bauch beim Öffnen, Aufräumen der Versuche (Phase 1 M4.2, großer Schritt, nur mit seinem Einverständnis).
 
 ## Wo Florian testet
 
 - Web-Modus `http://localhost:5180` (`pnpm --filter @ee/editor dev:web`). **Nach dem Pull den Dev-Server neu starten** (HMR-Falle; neue Kern-Module und Material-Dateien).
-- **Maularten ausprobieren:** Library ▸ Fisch (Rundmaul; Stufe Maul ⌘2: Öffnung, O zu/offen), Drache (Stufe Maul, Chip „hals“, Öffnung), Tiger (Plattenmaul).
+- **Maularten ausprobieren:** Library ▸ Fisch (Rundmaul; Stufe Maul ⌘2: Öffnung, O zu/offen, Zähne rundum), Drache (Stufe Maul, Chip „hals“, Öffnung), Tiger (Plattenmaul).
+- **Schädelgelenk:** Library ▸ Rex, Stufe „Posen & Leben“: dunkler Griff an der Basis des Schädelknochens (Seite) bzw. Perle auf der Bühne.
 - **Augen ausprobieren:** Library ▸ Prüfwesen PezenPez, Glubsch oder Rex, ⌘4 (Stufe Augen).
   1. Tafel: Art (gemalt, Glubsch, Augapfel), Form/Pupille, Zustand als Vorschau, Lid, Blinzeln, Größe, Breite, Drehung, Tiefe, Farbe.
   2. Klick auf den Körper setzt das Auge (überall auf der Haut; der Augapfel rastet auf einen Ringpunkt ohne Lippe), am Rand ziehen ändert die Größe.
@@ -63,7 +67,7 @@ Branch `claude/editor-grundlayout`. Es gilt der Fahrplan [`docs/plans/2026-10-14
 
 ## Prüfen
 
-- `pnpm typecheck`; `cd packages/shape && npx vitest run` (269 Tests; feste Tempo-Schranken kippen bei belegter Maschine — vorher `uptime`, einzeln mit `-t`); `cd apps/editor && npx vitest run` (16); `pnpm lint`.
-- Augen: `apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/<skript>`. Skripte: `augen-zustaende.mjs`, `augen-glubsch.mjs`, `augen-tafel.mjs`, `augen-augapfel.mjs` (`LAGE`, `GROESSE`), `augen-abnahme.mjs`; Maularten: `maularten-bestand.mjs`, `rundmaul.mjs`, `drache.mjs`, `maularten-abnahme.mjs`. Zähne: `zahn-*.mjs`.
+- `pnpm typecheck`; `cd packages/shape && npx vitest run` (271 Tests; feste Tempo-Schranken kippen bei belegter Maschine — vorher `uptime`, einzeln mit `-t`); `cd apps/editor && npx vitest run` (16); `pnpm lint`.
+- Augen: `apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/<skript>`. Skripte: `augen-zustaende.mjs`, `augen-glubsch.mjs`, `augen-tafel.mjs`, `augen-augapfel.mjs` (`LAGE`, `GROESSE`), `augen-abnahme.mjs`; Maularten: `maularten-bestand.mjs`, `rundmaul.mjs`, `drache.mjs`, `maularten-abnahme.mjs`; Rig: `schaedel-gelenk.mjs`. Zähne: `zahn-*.mjs`.
 - Prüfreihe Maul vor jeder Meldung: `cd packages/shape && npx vite-node ../../apps/editor/scripts/pruefen/pruefreihe.ts`. Übersicht: `apps/editor/scripts/pruefen/README.md`.
 - E2E: `cd apps/editor && E2E_PORT=5191 EE_GPU=1 npx playwright test e2e/kern-ablauf.spec.ts --reporter=list`, danach `git checkout -- docs/progress/editor/e2e-kern-*.png`.
