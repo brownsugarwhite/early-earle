@@ -126,7 +126,6 @@ export function befundText(b: ZahnBefund): string {
   const px = Math.max(0.1, b.tiefe * 461).toFixed(1).replace('.', ',');
   if (b.art === 'durchKiefer') return `stößt ${px} px in den Gegenkiefer`;
   if (b.art === 'zuNah') return `außen zu nah an der Gegenlippe (${px} px Luft fehlen)`;
-  if (b.art === 'zahnZahn') return `überlappt einen Nachbarzahn um ${px} px`;
   return `sticht ${px} px aus der Haut`;
 }
 

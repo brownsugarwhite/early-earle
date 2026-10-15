@@ -2,7 +2,8 @@
 // wählt ihn (die Tafel zeigt seine Werte), Ziehen verschiebt ihn längs der Zahnfleischlinie: das Dokument speichert die
 // rechte Hälfte, der Spiegelpartner folgt; der Mittelzahn bleibt auf der Achse. Im Fressen-Modus gilt die Stelle für das
 // offene Maul (`auf.u`). Verdeckte Zähne (geschlossen hinter den Lippen) sind nicht greifbar: liegt der Körper vor dem
-// Zahn, gilt der Körper.
+// Zahn, gilt der Körper. Mit ⌥ schiebt Ziehen den Zahn quer zum Zahnfleisch nach vorn (zur Lippe) oder zurück (zum
+// Rachen), auch den Mittelzahn (`vor`; Florian 15.10.: Zähne dürfen sich überschneiden).
 
 import type { Ansicht, Zaehne } from '@ee/shape';
 import type { ZahnBau } from '@ee/shape/kern';
@@ -17,6 +18,8 @@ type Kiefer = 'oben' | 'unten';
 export const ZAHN_FARBE = '#f3e6c8';
 /** Körper so viel näher als der Zahn (Welt längs des Strahls): Zahn verdeckt */
 const ZAHN_VERDECKT = 0.004;
+/** So weit wandert ein Zahn höchstens nach vorn oder zurück (Kachel, ≈ 28 px) */
+export const ZAHN_VOR_MAX = 0.06;
 
 /** Feld der Szene: Bühne oder ein Blatt (dieselbe Szene, orthografisch) */
 type Feld = 'creation' | Ansicht;
@@ -110,8 +113,23 @@ function stelleAmZeiger(r: Renderer3D, z: ZahnBau, kiefer: Kiefer, skalierung: n
 }
 
 /**
+ * Feldpixel je Kachel-Einheit längs „vorn“ am Fuß eines Zahns; null, wenn die Richtung fast zum Betrachter zeigt (unter
+ * 2 px je 0,01, z. B. Vorderzähne im Front-Blatt).
+ */
+function vornAmSchirm(r: Renderer3D, z: ZahnBau, liste: number, skalierung: number, feld: Feld): [number, number] | null {
+  const q = z.liste[liste];
+  if (!q) return null;
+  const eps = 0.01;
+  const s = r.projizierenViele(feld, new Float32Array([...q.fuss.map((v) => v * skalierung), ...q.fuss.map((v, k) => (v + q.vorn[k]! * eps) * skalierung)]));
+  const ex = (s[3]! - s[0]!) / eps;
+  const ey = (s[4]! - s[1]!) / eps;
+  return Math.hypot(ex, ey) * eps < 2 ? null : [ex, ey];
+}
+
+/**
  * Zeiger in der Stufe Zähne (Bühne oder Blatt): Klick auf einen Zahn wählt ihn, Ziehen verschiebt ihn längs des
- * Zahnfleischs (ein Undo-Schritt). `px`, `py` relativ zum Feld, `el` fängt den Zeiger. true = Geste übernommen.
+ * Zahnfleischs, mit ⌥ nach vorn oder zurück (ein Undo-Schritt). `px`, `py` relativ zum Feld, `el` fängt den Zeiger.
+ * true = Geste übernommen.
  */
 export function zahnZeiger(e: React.PointerEvent, px: number, py: number, el: Element, feld: Feld = 'creation'): boolean {
   const ui = useUi.getState();
@@ -122,13 +140,19 @@ export function zahnZeiger(e: React.PointerEvent, px: number, py: number, el: El
   const h = zahnUnter(px, py, feld);
   if (!h) return false;
   ui.setzeZahnAuswahl({ kiefer: h.kiefer, index: h.index });
-  if (h.seite === 0) return true; // Mittelzahn: nur wählen
+  // ⌥: vor/zurück quer zum Zahnfleisch (auch der Mittelzahn); ohne sichtbare Richtung nur wählen
+  const vorZug = e.altKey;
+  const richtung = vorZug ? vornAmSchirm(r, z, h.liste, n.skalierung, feld) : null;
+  if (vorZug ? !richtung : h.seite === 0) return true; // Mittelzahn längs des Zahnfleischs: nur wählen
   // Feldpixel aus Clientkoordinaten: derselbe Versatz wie beim Drücken
   const dx = e.clientX - px;
   const dy = e.clientY - py;
   const x0 = e.clientX;
   const y0 = e.clientY;
   const offen = useEditor.getState().modus === 'fressen';
+  // Ausgang für vor/zurück: Wert beim Drücken (Dokument oder Automatik)
+  const e0 = (useEditor.getState().dok.zaehne ?? z.reihen)[h.kiefer].zaehne[h.index];
+  const vor0 = (offen ? (e0?.auf?.vor ?? e0?.vor) : e0?.vor) ?? 0;
   let bewegt = false;
   el.setPointerCapture(e.pointerId);
   const bewegen = (ev: PointerEvent) => {
@@ -140,15 +164,23 @@ export function zahnZeiger(e: React.PointerEvent, px: number, py: number, el: El
     const netz = aktuellesNetz();
     const zz = netz?.netz.zaehne;
     if (!netz || !zz) return;
-    const st = stelleAmZeiger(r, zz, h.kiefer, netz.skalierung, ev.clientX - dx, ev.clientY - dy, feld);
-    if (!st) return;
     const ed = useEditor.getState();
     const basis: Zaehne | null = ed.dok.zaehne ?? zz.reihen;
     const reihe = basis?.[h.kiefer];
     const eintrag = reihe?.zaehne[h.index];
     if (!basis || !reihe || !eintrag) return;
     const liste = reihe.zaehne.slice();
-    liste[h.index] = offen ? { ...eintrag, auf: { ...eintrag.auf, u: st.u } } : { ...eintrag, u: st.u };
+    if (richtung) {
+      // Zug auf die Bildrichtung von „vorn“ projiziert → Kachel-Einheiten
+      const [ex, ey] = richtung;
+      const d = ((ev.clientX - x0) * ex + (ev.clientY - y0) * ey) / (ex * ex + ey * ey);
+      const vor = Math.min(ZAHN_VOR_MAX, Math.max(-ZAHN_VOR_MAX, vor0 + d));
+      liste[h.index] = offen ? { ...eintrag, auf: { ...eintrag.auf, vor } } : { ...eintrag, vor };
+    } else {
+      const st = stelleAmZeiger(r, zz, h.kiefer, netz.skalierung, ev.clientX - dx, ev.clientY - dy, feld);
+      if (!st) return;
+      liste[h.index] = offen ? { ...eintrag, auf: { ...eintrag.auf, u: st.u } } : { ...eintrag, u: st.u };
+    }
     ed.setzeZaehne({ ...basis, [h.kiefer]: { ...reihe, zaehne: liste } });
   };
   const auf = () => {

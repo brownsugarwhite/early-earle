@@ -12,7 +12,7 @@ import { maulLinieAusDokument } from './maulDokument';
 import { kugelMaulDokument } from './pruefstand';
 import { pruefwesenBauplan, wesenBauen } from './wesen';
 import { ZAHN_RINGE, ZAHN_SEITEN, zaehnePruefenBei, zaehneStandard, zahnAenderungAnwenden, zahnfleischKern, zahnListe, zahnreiheVerteilen } from './zaehne';
-import { type Zahn, zahnBei, zahnGitter, zahnNetz } from './zahnModell';
+import { type Zahn, zahnBei, zahnGitter, zahnNetz, zahnProfil, zahnRingHoehen } from './zahnModell';
 
 declare const console: { log: (...a: unknown[]) => void };
 declare const performance: { now: () => number };
@@ -277,6 +277,84 @@ describe('Zähne im Kern: Zahnfleisch und Rahmen (Rex, Kugel, Tiger)', () => {
     expect(Math.abs(dot(vg, r.t))).toBeGreaterThan(0.3 * Math.hypot(...vg));
     expect(Math.abs(dot(vg, r.d) - dot(vi, r.d))).toBeLessThan(1e-9);
   });
+
+  it('Blobzahn (Schärfe −1, Florian 15.10.): ganz ohne Spitze, runde Kappe mit dem Halbmesser des Querschnitts, darunter fast voll; bei 0 stetig', () => {
+    const L = 0.02;
+    const r = 0.005;
+    for (let h = 0; h <= 1.0001; h += 0.05) {
+      // stetig bei Schärfe 0, voller als die stumpfe Kuppe, fallend zur Spitze
+      expect(zahnProfil(h, -1e-9, L, r)).toBeCloseTo(zahnProfil(h, 0, L, r), 6);
+      expect(zahnProfil(h, -1, L, r)).toBeGreaterThanOrEqual(zahnProfil(h, -0.5, L, r) - 1e-12);
+      expect(zahnProfil(h, -0.5, L, r)).toBeGreaterThanOrEqual(zahnProfil(h, 0, L, r) - 1e-12);
+      expect(zahnProfil(h + 0.05, -1, L, r)).toBeLessThanOrEqual(zahnProfil(h, -1, L, r) + 1e-12);
+    }
+    // an der Spitze rund wie ein Kreis mit dem Halbmesser r̄: Halbmesser² ≈ 2·r̄·Δ (Δ = Abstand zur Spitze)
+    for (const eps of [0.005, 0.01]) {
+      const rad = r * zahnProfil(1 - eps, -1, L, r);
+      const verh = (rad * rad) / (2 * r * eps * L);
+      expect(verh).toBeGreaterThan(0.95);
+      expect(verh).toBeLessThan(1.05);
+    }
+    // auf halber Länge fast voll (Kapsel), die stumpfe Kuppe nur 71 %
+    expect(zahnProfil(0.5, -1, L, r)).toBeGreaterThan(0.99);
+    expect(zahnProfil(0.5, 0, L, r)).toBeCloseTo(Math.SQRT1_2, 9);
+    // Ringe: für Schärfe ≥ 0 unverändert, beim Blob liegen zwei der acht in der runden Kappe (oberstes r̄)
+    expect(zahnRingHoehen(8, 0.6, L, r)).toEqual(Array.from({ length: 8 }, (_, k) => 1 - (1 - k / 8) ** 2));
+    const hb = zahnRingHoehen(8, -1, L, r);
+    expect(hb[0]).toBe(0);
+    for (let k = 1; k < 8; k++) expect(hb[k]!).toBeGreaterThan(hb[k - 1]!);
+    expect(hb.filter((h) => h * L > L - r).length).toBeGreaterThanOrEqual(2);
+    // am Rex: der Blobzahn ist geschlossen, die Spitze liegt auf der Achse, der letzte Ring ist nicht mehr winzig
+    const abl = maulAbl(rexDok());
+    const zf = zahnfleischKern(abl, abl.fein);
+    const blob: Zahn = { laenge: 0.02, breite: 0.016, tiefe: 0.012, rundheit: 1, schaerfe: -1, neigung: 0, biegung: 0, spreizung: 0, aussen: false, kiefer: 'oben', u: 0.4, seite: 1 };
+    const spitz = zahnGitter({ ...blob, schaerfe: 0.6 }, zf.oben, 0, ZAHN_SEITEN, ZAHN_RINGE);
+    const rund = zahnGitter(blob, zf.oben, 0, ZAHN_SEITEN, ZAHN_RINGE);
+    const halb = (g: typeof rund, k: number) => Math.max(...g.ringe[k]!.map((p) => ab(p, g.ringe[k]!.reduce<V3>((m, q) => [m[0] + q[0] / ZAHN_SEITEN, m[1] + q[1] / ZAHN_SEITEN, m[2] + q[2] / ZAHN_SEITEN], [0, 0, 0]))));
+    const R = rund.ringe.length - 1;
+    console.log(`Blob: letzter Ring ${(halb(rund, R) * PX).toFixed(1)} px Halbmesser (spitz ${(halb(spitz, R) * PX).toFixed(2)} px), Länge ${(ab(rund.spitze, rund.wurzel) * PX).toFixed(1)} px`);
+    expect(halb(rund, R)).toBeGreaterThan(0.3 * 0.008);
+    expect(halb(spitz, R)).toBeLessThan(0.05 * 0.008);
+    // Netz geschlossen und außen orientiert (Volumen > 0), voller als der spitze Zahn
+    const volumen = (z: Zahn) => {
+      const q = zahnNetz(z, zf.oben, 0, ZAHN_SEITEN, ZAHN_RINGE).positionen;
+      const o0: V3 = [q[0]!, q[1]!, q[2]!];
+      let v = 0;
+      for (let o = 0; o < q.length; o += 9) v += dot(minus([q[o]!, q[o + 1]!, q[o + 2]!], o0), kreuz(minus([q[o + 3]!, q[o + 4]!, q[o + 5]!], o0), minus([q[o + 6]!, q[o + 7]!, q[o + 8]!], o0))) / 6;
+      return v;
+    };
+    const vb = volumen(blob);
+    const vs = volumen({ ...blob, schaerfe: 0.6 });
+    console.log(`Volumen Blob/spitz ${(vb / vs).toFixed(2)}`);
+    expect(vs).toBeGreaterThan(0);
+    expect(vb).toBeGreaterThan(1.5 * vs);
+  });
+
+  it('vor/zurück (Florian 15.10.): der ganze Zahn wandert quer zum Zahnfleisch, + zur Lippe (−i), auch außen; offen über „auf“', () => {
+    const abl = maulAbl(rexDok());
+    const zf = zahnfleischKern(abl, abl.fein);
+    const basis: Zahn = { laenge: 0.04, breite: 0.016, tiefe: 0.012, rundheit: 1, schaerfe: 0.6, neigung: 10, biegung: 0.3, spreizung: 5, aussen: false, kiefer: 'oben', u: 0.4, seite: 1 };
+    for (const aussen of [false, true]) {
+      for (const seite of [1, -1] as const) {
+        const r = zf.oben(0.4, seite, aussen);
+        const g0 = zahnGitter({ ...basis, aussen, seite }, zf.oben, 0);
+        const g1 = zahnGitter({ ...basis, aussen, seite, vor: 0.01 }, zf.oben, 0);
+        let fehler = 0;
+        g0.ringe.forEach((ring, k) => ring.forEach((p, j) => (fehler = Math.max(fehler, ab(g1.ringe[k]![j]!, [p[0] - 0.01 * r.i[0], p[1] - 0.01 * r.i[1], p[2] - 0.01 * r.i[2]])))));
+        fehler = Math.max(fehler, ab(g1.spitze, [g0.spitze[0] - 0.01 * r.i[0], g0.spitze[1] - 0.01 * r.i[1], g0.spitze[2] - 0.01 * r.i[2]]));
+        expect(fehler).toBeLessThan(1e-12);
+      }
+    }
+    // offen über „auf“: zu 0, offen −0,01 (zurück) → bei 50 % halb
+    const r = zf.oben(0.4, 1);
+    const z0 = zahnGitter(basis, zf.oben, 0.5);
+    const zh = zahnGitter({ ...basis, auf: { vor: -0.01 } }, zf.oben, 0.5);
+    expect(ab(zh.wurzel, [z0.wurzel[0] + 0.005 * r.i[0], z0.wurzel[1] + 0.005 * r.i[1], z0.wurzel[2] + 0.005 * r.i[2]])).toBeLessThan(1e-12);
+    // im Dokument: vor wird durchgereicht, die Änderung der Prüfung kann es setzen
+    const e = zahnreiheVerteilen(2, 'oben', 0.03).zaehne[0]!;
+    expect(zahnListe({ oben: { anzahl: 2, zaehne: [{ ...e, vor: 0.004 }] }, unten: { anzahl: 0, zaehne: [] } })[0]!.zahn.vor).toBe(0.004);
+    expect(zahnAenderungAnwenden(e, { vor: -0.002 }).vor).toBe(-0.002);
+  });
 });
 
 describe('Zähne im Kern: Bau im Wesen', () => {
@@ -404,19 +482,25 @@ describe('Zähne im Kern: Prüfung gegen den Gegenkiefer (zu, 25 %, 50 %, offen)
     expect(pruefe(abl, zahnListe(neu), [0]).filter((x) => x.kiefer === 'oben' && x.index === 0)).toEqual([]);
   }, 60_000);
 
-  it('Zahn gegen Zahn: zu breite Nachbarn überlappen, „schmaler“ trennt sie', () => {
+  it('Zähne dürfen sich überschneiden (Florian 15.10.: „das macht ein Maul erst aus“): breite Nachbarn und ein Zahn vor dem anderen geben keinen Befund', () => {
     const abl = maulAbl(kugel('gleich'));
-    // 15 Zähne auf der großen Kugel: Abstand ≈ 24 px, Breite 37 px
+    const zf = zahnfleischKern(abl, abl.fein);
+    // 15 Zähne auf der großen Kugel: Abstand ≈ 24 px, Breite 37 px — benachbarte Zähne stecken ineinander
     const oben = zahnreiheVerteilen(15, 'oben', 0.012);
-    oben.zaehne = oben.zaehne.map((e) => ({ ...e, breite: 0.08 }));
     const leer = { anzahl: 0, zaehne: [] };
-    const zz = pruefe(abl, zahnListe({ oben, unten: leer }), [0]).filter((x) => x.befund.art === 'zahnZahn');
-    expect(zz.length).toBeGreaterThan(0);
-    const schmal = zz.flatMap((x) => x.befund.vorschlaege ?? []).filter((v) => v.text.startsWith('schmaler'));
-    expect(schmal.length).toBeGreaterThan(0);
-    const b = Math.min(...schmal.map((v) => v.aenderung.breite!));
-    const neu = { ...oben, zaehne: oben.zaehne.map((e) => ({ ...e, breite: b })) };
-    expect(pruefe(abl, zahnListe({ oben: neu, unten: leer }), [0]).filter((x) => x.befund.art === 'zahnZahn')).toEqual([]);
+    const breit = { ...oben, zaehne: oben.zaehne.map((e) => ({ ...e, breite: 0.08 })) };
+    const rechts = zahnListe({ oben: breit, unten: leer })
+      .filter((q) => q.zahn.seite >= 0)
+      .map((q) => zahnGitter(q.zahn, zf.oben, 0).wurzel);
+    const abstand = Math.min(...rechts.slice(1).map((w, i) => ab(w, rechts[i]!)));
+    console.log(`Ansätze ${(abstand * PX).toFixed(1)} px auseinander, Breite ${(0.08 * PX).toFixed(1)} px`);
+    // je Zahn ±½ Breite um den Ansatz: Abstand < Breite = sie überschneiden sich
+    expect(abstand).toBeLessThan(0.7 * 0.08);
+    const arten = (r: Zaehne) => pruefe(abl, zahnListe(r), [0, 0.25]).map((x) => `${x.kiefer}:${x.index}:${x.befund.art}`);
+    expect(arten({ oben: breit, unten: leer })).toEqual(arten({ oben, unten: leer }));
+    // ein Zahn halb vor seinem Nachbarn (vor/zurück): ebenfalls kein Befund
+    const versetzt = { ...breit, zaehne: breit.zaehne.map((e, i) => (i === 2 ? { ...e, vor: 0.004 } : e)) };
+    expect(arten({ oben: versetzt, unten: leer })).toEqual(arten({ oben, unten: leer }));
   }, 60_000);
 
   it('außen-Zahn: über der bündigen Unterlippe frei, 35° nach innen geneigt stößt er hinein (die Rex-Fänge hängen 17 px vor dem Unterkiefer und treffen ihn auch so nicht)', () => {

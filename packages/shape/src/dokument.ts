@@ -34,6 +34,8 @@ const ZahnWerteSchema = z.object({
   // Phase 2 M4 (Plan 5.3 „Rotation“, „Größe“): Drehung um die eigene Achse (Grad), Faktor auf Länge, Breite, Tiefe
   drehung: z.number().optional(),
   groesse: z.number().optional(),
+  // Florian 15.10.: vor/zurück quer zum Zahnfleisch (Kachel, + zur Lippe); Schärfe unter 0 = Blob ohne Spitze
+  vor: z.number().optional(),
 });
 const ZahnSchema = ZahnWerteSchema.extend({ u: z.number(), aussen: z.boolean(), auf: ZahnWerteSchema.extend({ u: z.number() }).partial().optional() });
 const ZahnreiheSchema = z.object({ anzahl: z.number().int().min(0).max(31), zaehne: z.array(ZahnSchema) });
@@ -261,7 +263,7 @@ export type KaefigDelta = { punkt: number; d: [number, number, number]; anker?: 
 /** Lippen der rechten Hälfte; `unten` fehlt = Kiefer gleich (Florians türkise Linie). */
 export type Lippen = { oben: Linie3; unten?: Linie3 };
 export type Maul = { zu: Lippen; auf?: Lippen };
-export type ZahnWerte = { laenge: number; breite: number; rundheit: number; schaerfe: number; neigung: number; biegung: number; spreizung: number; drehung?: number; groesse?: number };
+export type ZahnWerte = { laenge: number; breite: number; rundheit: number; schaerfe: number; neigung: number; biegung: number; spreizung: number; drehung?: number; groesse?: number; vor?: number };
 /** Ein Zahn der rechten Hälfte (u = 0 Mitte … 1 Mundwinkel); `auf` = Werte im offenen Zustand (z. B. größer). */
 export type ZahnEintrag = ZahnWerte & { u: number; aussen: boolean; auf?: Partial<ZahnWerte & { u: number }> };
 /** `anzahl` gilt für den ganzen Kiefer (beide Hälften); `zaehne` = rechte Hälfte, bei ungerader Zahl zuerst der Mittelzahn. */

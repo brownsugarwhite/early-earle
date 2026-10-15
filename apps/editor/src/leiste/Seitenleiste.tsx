@@ -570,7 +570,7 @@ function ZahnBereich() {
     liste[auswahl.index] = aenderungAnwenden(zahn, a);
     useEditor.getState().setzeZaehne({ ...zaehne, [auswahl.kiefer]: { ...reihe, zaehne: liste } });
   };
-  const wert = (k: Exclude<keyof ZahnWerte, 'drehung' | 'groesse'>): number => (zahn ? (offen ? zahn.auf?.[k] ?? zahn[k] : zahn[k]) : 0);
+  const wert = (k: Exclude<keyof ZahnWerte, 'drehung' | 'groesse' | 'vor'>): number => (zahn ? (offen ? zahn.auf?.[k] ?? zahn[k] : zahn[k]) : 0);
   const setze = (k: keyof ZahnWerte | 'aussen', v: number | boolean) => {
     if (!auswahl || !zahn) return;
     const reihe = zaehne[auswahl.kiefer];

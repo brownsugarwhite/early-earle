@@ -7,7 +7,7 @@ import type { Zaehne, ZahnEintrag } from '@ee/shape';
 import { type ZahnAenderung, type ZahnMeldung, zahnAenderungAnwenden, zahnreiheVerteilen } from '@ee/shape/kern';
 import { useState } from 'react';
 import { aktuellesNetz, useNetzStand } from '../kern/netzStand';
-import { ZAHN_FARBE } from '../kern/zahnGriffe';
+import { ZAHN_FARBE, ZAHN_VOR_MAX } from '../kern/zahnGriffe';
 import { useZahnPruefung } from '../kern/zahnPruefStand';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -15,8 +15,8 @@ import { Chips, Regler, geste } from './bedienung';
 
 const PX = 461;
 type Kiefer = 'oben' | 'unten';
-type Wert = 'laenge' | 'breite' | 'rundheit' | 'schaerfe' | 'neigung' | 'biegung' | 'spreizung' | 'drehung' | 'groesse';
-const STANDARD: Partial<Record<Wert, number>> = { drehung: 0, groesse: 1 };
+type Wert = 'laenge' | 'breite' | 'rundheit' | 'schaerfe' | 'neigung' | 'biegung' | 'spreizung' | 'drehung' | 'groesse' | 'vor';
+const STANDARD: Partial<Record<Wert, number>> = { drehung: 0, groesse: 1, vor: 0 };
 /** Werte, die ohne Auswahl für alle Zähne skaliert werden (die Größenfolge vorn → hinten bleibt); die übrigen gelten gleich */
 const SKALIERT: readonly Wert[] = ['laenge', 'breite', 'groesse'];
 
@@ -33,9 +33,16 @@ function befundText(m: ZahnMeldung): string {
   const bei = m.oeffnung === 0 ? 'geschlossen' : `offen ${Math.round(m.oeffnung * 100)} %`;
   if (m.befund.art === 'durchKiefer') return `stößt ${px} px in den Gegenkiefer (${bei})`;
   if (m.befund.art === 'zuNah') return `steht außen zu nah an der Gegenlippe, ${px} px Luft fehlen (${bei})`;
-  if (m.befund.art === 'zahnZahn') return `überlappt einen Nachbarzahn um ${px} px (${bei})`;
   return `sticht ${px} px aus der Haut (${bei})`;
 }
+
+/** Schärfe in Worten: unter 0 Blob (runde Kappe ohne Spitze), 0 stumpf … 100 % Nadel. */
+const schaerfeText = (s: number) => (s <= -0.995 ? 'Blob' : s < -0.005 ? `Blob ${Math.round(-s * 100)} %` : s < 0.005 ? 'stumpf' : `${Math.round(s * 100)} %`);
+/** vor/zurück in Bildpunkten der Kachel */
+const vorText = (v: number) => {
+  const px = (Math.abs(v) * PX).toFixed(1).replace('.', ',');
+  return Math.abs(v) * PX < 0.05 ? 'am Zahnfleisch' : v > 0 ? `${px} px vor` : `${px} px zurück`;
+};
 
 /** Wirksame Zahnreihen: aus dem Dokument oder die Automatik des letzten Baus (null ohne Maul). */
 export function wirksameZaehne(dok: { zaehne?: Zaehne }): { reihen: Zaehne | null; ausDokument: boolean } {
@@ -192,8 +199,9 @@ export function ZahnFeld() {
       </div>
       <Chips werte={['zu', 'offen'] as const} aktiv={offen ? 'offen' : 'zu'} attribut="zahn-werte" onWahl={setWerteFuer} />
       <Regler label="Länge" wert={wert('laenge')} min={0.003} max={0.25} schritt={0.0005} anzeige={`${(wert('laenge') * wert('groesse') * PX).toFixed(1).replace('.', ',')} px`} onChange={(v) => setze('laenge', v)} {...geste()} />
-      <Regler label="Schärfe" wert={wert('schaerfe')} min={0} max={1} schritt={0.01} anzeige={`${Math.round(wert('schaerfe') * 100)} %`} onChange={(v) => setze('schaerfe', v)} {...geste()} />
+      <Regler label="Schärfe" wert={wert('schaerfe')} min={-1} max={1} schritt={0.01} anzeige={schaerfeText(wert('schaerfe'))} onChange={(v) => setze('schaerfe', v)} {...geste()} />
       <Regler label="Neigung" wert={wert('neigung')} min={-60} max={60} schritt={1} anzeige={`${Math.round(wert('neigung'))}°`} onChange={(v) => setze('neigung', v)} {...geste()} />
+      <Regler label="vor/zurück" wert={wert('vor')} min={-ZAHN_VOR_MAX} max={ZAHN_VOR_MAX} schritt={0.0005} anzeige={vorText(wert('vor'))} onChange={(v) => setze('vor', v)} {...geste()} />
       <button className="chip" data-zahn-mehr-werte="" onClick={() => setMehr(!mehr)}>
         {mehr ? 'weniger ▴' : 'mehr ▾'}
       </button>
@@ -242,7 +250,7 @@ export function ZahnFeld() {
         </button>
       )}
       <p className="hilfe">
-        Zahn anklicken (Bühne, Seite, Front) wählt ihn, Ziehen schiebt ihn längs des Zahnfleischs, der Spiegelzahn folgt. Ohne Auswahl wirken die Regler auf alle Zähne der gewählten Kiefer (Länge, Breite, Größe im Verhältnis, die Folge vorn groß → hinten klein bleibt). „Werte für offen“ gelten beim geöffneten Maul und blenden mit der Öffnung über — so wachsen Riesenzähne beim Öffnen. Geschlossen verdeckte Zähne sind nur bei offenem Maul greifbar.
+        Zahn anklicken (Bühne, Seite, Front) wählt ihn, Ziehen schiebt ihn längs des Zahnfleischs, der Spiegelzahn folgt; mit ⌥ schiebt Ziehen ihn nach vorn oder zurück (Zähne dürfen sich überschneiden). Schärfe unter 0 rundet die Spitze zum Blob. Ohne Auswahl wirken die Regler auf alle Zähne der gewählten Kiefer (Länge, Breite, Größe im Verhältnis, die Folge vorn groß → hinten klein bleibt). „Werte für offen“ gelten beim geöffneten Maul und blenden mit der Öffnung über — so wachsen Riesenzähne beim Öffnen. Geschlossen verdeckte Zähne sind nur bei offenem Maul greifbar.
       </p>
     </>
   );

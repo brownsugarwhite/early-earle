@@ -5,12 +5,12 @@
 //   Zahnfleischs) im Körper liegt (Strahlparität, Mehrheit aus drei Achsen) und die nächste Fläche zum Gegenkiefer gehört;
 //   außen-Zähne brauchen 1 px Luft zum Gegenkiefer.
 // - Dahinter (Reißverschluss, geschlossen verdeckt) zählt nur, dass der Zahn nicht aus dem Kopf sticht.
-// - Zahn gegen Zahn: Querschnitte entlang der Mittellinien überlappen.
-// Vorschläge (neigen, kürzen, außen, offen größer, schmaler, nach vorn) werden nur gemeldet, nie still angewandt.
+// - Zahn gegen Zahn wird nicht geprüft: Zähne dürfen sich überschneiden (Florian 15.10.: „das macht ein Maul erst aus“).
+// Vorschläge (neigen, kürzen, außen, offen größer, nach vorn) werden nur gemeldet, nie still angewandt.
 
 import type { V3 } from '../versuch/catmullClark';
 import { type Dreiecksflaeche, dreiecksFlaeche, inAnsicht, rasterAlle, tiefeIn, treffer } from '../versuch/flaechenlinie';
-import { type Kiefer, type RahmenQuelle, type Zahn, type ZahnAuf, type ZahnGitter, zahnBei, zahnGitter, zahnModell } from './zahnModell';
+import { type Kiefer, type RahmenQuelle, type Zahn, type ZahnAuf, type ZahnGitter, zahnBei, zahnGitter } from './zahnModell';
 
 /** Kachel in Bildpunkten in der Grundansicht */
 const PX = 461;
@@ -29,17 +29,14 @@ export type ZahnVorschlag = { text: string; aenderung: ZahnAenderung };
  * - durchKiefer: Zahn steckt im Gegenkiefer (sichtbarer Teil des Mauls)
  * - durchHaut: Zahn hinter dem sichtbaren Mundwinkel (Reißverschluss, geschlossen verdeckt) sticht aus dem Kopf
  * - zuNah: außen-Zahn hat weniger als `luft` Abstand zum Gegenkiefer
- * - zahnZahn: zwei Zähne überlappen
  */
-export type ZahnArt = 'durchKiefer' | 'durchHaut' | 'zuNah' | 'zahnZahn' | 'ok';
+export type ZahnArt = 'durchKiefer' | 'durchHaut' | 'zuNah' | 'ok';
 
 export type ZahnBefund = {
   zahn: number;
   art: ZahnArt;
-  /** Eindringtiefe (durchKiefer, durchHaut: Abstand zur Fläche; zahnZahn: Überlappung) bzw. fehlende Luft (zuNah), Kachel */
+  /** Eindringtiefe (durchKiefer, durchHaut: Abstand zur Fläche) bzw. fehlende Luft (zuNah), Kachel */
   tiefe: number;
-  /** anderer Zahn bei zahnZahn */
-  mit?: number;
   /** bester Vorschlag als Text */
   vorschlag?: string;
   vorschlaege?: ZahnVorschlag[];
@@ -176,18 +173,6 @@ function innenTest(fl: Dreiecksflaeche): (p: V3) => boolean {
   };
 }
 
-type Probe = { m: V3; x: V3; z: V3; a: number; c: number; p: number };
-
-/** Radius der Superellipse in Richtung w (nur der Anteil in der Querschnittsebene zählt). */
-function radiusIn(q: Probe, w: V3): number {
-  const wx = punkt3(w, q.x);
-  const wz = punkt3(w, q.z);
-  const n = Math.hypot(wx, wz);
-  if (n < 1e-12) return Math.min(q.a, q.c);
-  const s = Math.pow(Math.abs(wx / n / q.a), q.p) + Math.pow(Math.abs(wz / n / q.c), q.p);
-  return Math.pow(s, -1 / q.p);
-}
-
 /** Feld so setzen, dass der wirksame Wert bei α `wert` ist (zu + (auf − zu)·α = wert). */
 function setze(z: Zahn, feld: keyof ZahnAuf, wert: number, alpha: number): { zahn: Zahn; aenderung: ZahnAenderung } {
   const auf = z.auf?.[feld];
@@ -219,8 +204,7 @@ export type PruefFlaeche = {
  */
 export function zahnPruefenAuf(f: PruefFlaeche, fleisch: Record<Kiefer, RahmenQuelle>, zaehne: readonly Zahn[], opt: Partial<PruefOptionen> = {}): ZahnBefund[] {
   if (!zaehne.length) return [];
-  const { messen, vorschlaegeFuer, schmaler, zahnZahnPaare, toleranz } = pruefer(f, fleisch, zaehne, opt);
-  const zahnZahn = zahnZahnPaare();
+  const { messen, vorschlaegeFuer, toleranz } = pruefer(f, fleisch, zaehne, opt);
   const befunde: ZahnBefund[] = [];
   zaehne.forEach((z, zi) => {
     const m = messen(z, false);
@@ -229,7 +213,6 @@ export function zahnPruefenAuf(f: PruefFlaeche, fleisch: Record<Kiefer, RahmenQu
     if (m.durch > toleranz) eintraege.push(mitVorschlag({ zahn: zi, art: 'durchKiefer', tiefe: m.durch }, vorschlaegeFuer(z, 'durchKiefer')));
     if (m.haut > toleranz) eintraege.push(mitVorschlag({ zahn: zi, art: 'durchHaut', tiefe: m.haut }, vorschlaegeFuer(z, 'durchHaut')));
     if (m.nah > toleranz) eintraege.push(mitVorschlag({ zahn: zi, art: 'zuNah', tiefe: m.nah }, vorschlaegeFuer(z, 'zuNah')));
-    for (const [j, t] of zahnZahn.get(zi) ?? []) eintraege.push(mitVorschlag({ zahn: zi, art: 'zahnZahn', tiefe: t, mit: j }, schmaler(z, zaehne[j]!, j)));
     befunde.push(...(eintraege.length ? eintraege : [{ zahn: zi, art: 'ok' as const, tiefe: 0 }]));
   });
   return befunde;
@@ -246,7 +229,7 @@ export function zaehneEinpassen(f: PruefFlaeche, fleisch: Record<Kiefer, RahmenQ
   return zaehne.map((z) => (stoert(z) ? kuerzen(z) : zahnBei(z, alpha).laenge));
 }
 
-/** Gemeinsame Werkzeuge der Prüfung auf einer Fläche: Messung je Zahn, Vorschläge, Zahn gegen Zahn. */
+/** Gemeinsame Werkzeuge der Prüfung auf einer Fläche: Messung je Zahn und Vorschläge. */
 function pruefer(f: PruefFlaeche, fleisch: Record<Kiefer, RahmenQuelle>, zaehne: readonly Zahn[], opt: Partial<PruefOptionen>) {
   const o: PruefOptionen = { ...PRUEF_STANDARD, ...opt };
   const { alpha, seiten, ringe, toleranz, luft, schritte } = o;
@@ -289,13 +272,13 @@ function pruefer(f: PruefFlaeche, fleisch: Record<Kiefer, RahmenQuelle>, zaehne:
   /** Messung eines Zahns; `frueh`: abbrechen, sobald etwas stört (für die Suche nach Vorschlägen). */
   // Zahnfleisch im Gegenkiefer vergraben (geschlossener Über- oder Unterbiss: der schmalere Kiefer steckt im anderen,
   // verdeckte Überlappung ist erlaubt, Florian 15.10.): der Zahn ist dort verdeckt und stößt nicht sichtbar in den
-  // Gegenkiefer. Proben: das Zahnfleisch und der Sockelring (Ring 1), ½ px in Beißrichtung versetzt.
+  // Gegenkiefer. Proben: der Ansatz (Zahnfleisch, mit „vor“ versetzt) und der Sockelring (Ring 1), ½ px in Beißrichtung.
   const vergraben = (z: Zahn, f: ReturnType<typeof zahnBei>, g: ZahnGitter): boolean => {
     if (f.aussen) return false;
     const r = fleisch[z.kiefer](f.u, z.seite, false);
     const gegen = z.kiefer === 'oben' ? 'unten' : 'oben';
     const schub = mal3(r.d, 0.5 / PX);
-    for (const p of [r.p, ...g.ringe[1]!]) {
+    for (const p of [g.wurzel, ...g.ringe[1]!]) {
       const probe = plus3(p, schub);
       if (imKoerper(probe) && dKiefer[naehe(probe).dreieck] === gegen) return true;
     }
@@ -329,39 +312,6 @@ function pruefer(f: PruefFlaeche, fleisch: Record<Kiefer, RahmenQuelle>, zaehne:
     return m;
   };
   const stoert = (z: Zahn) => Math.max(...Object.values(messen(z, true))) > toleranz;
-
-  // Zahn gegen Zahn: Querschnitte entlang der Mittellinien
-  const probenVon = (z: Zahn): Probe[] => {
-    const m = zahnModell(z, fleisch[z.kiefer], alpha);
-    const out: Probe[] = [];
-    for (let s = 0; s < 10; s++) out.push({ ...m.quer((m.laenge * s) / 10), p: m.p });
-    return out;
-  };
-  const ueberlapp = (A: readonly Probe[], B: readonly Probe[]): number => {
-    let tief = 0;
-    for (const a of A) {
-      for (const b of B) {
-        const w = minus3(b.m, a.m);
-        const d = laenge3(w);
-        const e = d > 1e-12 ? mal3(w, 1 / d) : a.x;
-        tief = Math.max(tief, radiusIn(a, e) + radiusIn(b, e) - d);
-      }
-    }
-    return tief;
-  };
-  const zahnZahnPaare = (): Map<number, [number, number][]> => {
-    const proben = zaehne.map(probenVon);
-    const paare = new Map<number, [number, number][]>();
-    for (let a = 0; a < zaehne.length; a++) {
-      for (let b = a + 1; b < zaehne.length; b++) {
-        const t = ueberlapp(proben[a]!, proben[b]!);
-        if (t <= toleranz) continue;
-        paare.set(a, [...(paare.get(a) ?? []), [b, t]]);
-        paare.set(b, [...(paare.get(b) ?? []), [a, t]]);
-      }
-    }
-    return paare;
-  };
 
   // Vorschläge (gesucht, nie angewandt)
   const kuerzen = (z: Zahn): number | null => {
@@ -412,21 +362,5 @@ function pruefer(f: PruefFlaeche, fleisch: Record<Kiefer, RahmenQuelle>, zaehne:
     }
     return [...vorn, ...hinten];
   };
-  const schmaler = (z: Zahn, andere: Zahn, mitIndex: number): ZahnVorschlag[] => {
-    const B = zahnBei(z, alpha).breite;
-    const pb = probenVon(andere);
-    const passt = (f: number) => ueberlapp(probenVon(setze(z, 'breite', B * f, alpha).zahn), pb) <= toleranz;
-    if (!passt(0.2)) return [];
-    let a = 0.2;
-    let b = 1;
-    for (let it = 0; it < 12; it++) {
-      const m = (a + b) / 2;
-      if (passt(m)) a = m;
-      else b = m;
-    }
-    const gB = zahnBei(z, alpha).groesse;
-    return [{ text: `schmaler: ${px(B * a * gB)} px statt ${px(B * gB)} px (oder weiter weg von Zahn ${mitIndex})`, aenderung: setze(z, 'breite', B * a, alpha).aenderung }];
-  };
-
-  return { messen, stoert, kuerzen, vorschlaegeFuer, schmaler, zahnZahnPaare, toleranz, alpha };
+  return { messen, stoert, kuerzen, vorschlaegeFuer, toleranz, alpha };
 }

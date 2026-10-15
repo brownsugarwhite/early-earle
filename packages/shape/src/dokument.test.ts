@@ -91,4 +91,11 @@ describe('Dokument', () => {
     // keine Farbe ohne Hex
     expect(() => dokumentLesen({ ...json, ausstattung: { zahnFarbe: 'weiß' } })).toThrow();
   });
+  it('Florian 15.10.: vor/zurück und Blob-Schärfe (unter 0) der Zähne überstehen die Rundreise, auch offen', () => {
+    const d = neuesDokument('Blob');
+    const zahn = { u: 0.2, laenge: 0.02, breite: 0.018, rundheit: 1, schaerfe: -1, neigung: 0, biegung: 0, spreizung: 0, vor: 0.006, aussen: false, auf: { vor: -0.004, schaerfe: -0.5 } };
+    d.zaehne = { oben: { anzahl: 2, zaehne: [zahn] }, unten: { anzahl: 0, zaehne: [] } };
+    const json = JSON.parse(JSON.stringify(d));
+    expect(dokumentLesen(json)).toEqual(json);
+  });
 });

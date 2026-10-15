@@ -180,7 +180,10 @@ export function rundmaulZaehne(fein: ArrayLike<number>, l2: number, boden: numbe
     normalen: netz.normalen,
     anteil: netz.anteil,
     zahn,
-    liste: zaehne.map((z, k) => ({ kiefer: 'oben' as const, index: k, seite: 1 as const, u: z.u, fuss: quelle(z.u, 1).p, spitze: netz.gitter[k]!.spitze })),
+    liste: zaehne.map((z, k) => {
+      const r = quelle(z.u, 1);
+      return { kiefer: 'oben' as const, index: k, seite: 1 as const, u: z.u, fuss: r.p, spitze: netz.gitter[k]!.spitze, vorn: [-r.i[0], -r.i[1], -r.i[2]] as V3 };
+    }),
     reihen: { oben: { anzahl: 0, zaehne: [] }, unten: { anzahl: 0, zaehne: [] } },
     ausDokument: false,
     fleisch: { oben: linie, unten: new Float32Array(0), uOben: Float32Array.from({ length: 33 }, (_, k) => k / 32), uUnten: new Float32Array(0) },

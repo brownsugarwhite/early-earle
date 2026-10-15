@@ -296,6 +296,7 @@ function zahnAus(e: ZahnEintrag, kiefer: Kiefer, seite: -1 | 0 | 1): Zahn {
     spreizung: e.spreizung,
     ...(e.drehung !== undefined ? { drehung: e.drehung } : {}),
     ...(e.groesse !== undefined ? { groesse: e.groesse } : {}),
+    ...(e.vor !== undefined ? { vor: e.vor } : {}),
     aussen: e.aussen,
     kiefer,
     u: seite === 0 ? 0 : e.u,
@@ -407,8 +408,11 @@ export function zaehneStandard(abl: MaulErgebnis, merken: { objekt: object; schl
 
 // ---------- Bau ----------
 
-/** Ein gebauter Zahn: Herkunft im Dokument, Seite, Stelle und Lage (für Auswahl, Prüfung und Anzeige). */
-export type ZahnInfo = { kiefer: Kiefer; index: number; seite: -1 | 0 | 1; u: number; fuss: V3; spitze: V3 };
+/**
+ * Ein gebauter Zahn: Herkunft im Dokument, Seite, Stelle und Lage (für Auswahl, Prüfung und Anzeige); `vorn` = Richtung
+ * „vor“ am Ansatz (zur Lippe, −i des Rahmens, posiert), für den Griff vor/zurück.
+ */
+export type ZahnInfo = { kiefer: Kiefer; index: number; seite: -1 | 0 | 1; u: number; fuss: V3; spitze: V3; vorn: V3 };
 
 export type ZahnBau = {
   positionen: Float32Array;
@@ -440,7 +444,11 @@ export function zaehneBauen(abl: MaulErgebnis, fein: ArrayLike<number>, dok: Zae
   );
   const zahn = new Uint16Array(netz.positionen.length / 3);
   netz.bereiche.forEach((b, i) => zahn.fill(i, b.start, b.start + b.anzahl));
-  const info: ZahnInfo[] = liste.map((q, i) => ({ kiefer: q.kiefer, index: q.index, seite: q.zahn.seite, u: zahnBei(q.zahn, alpha).u, fuss: netz.gitter[i]!.wurzel, spitze: netz.gitter[i]!.spitze }));
+  const info: ZahnInfo[] = liste.map((q, i) => {
+    const f = zahnBei(q.zahn, alpha);
+    const r = fleisch[q.kiefer](f.u, q.zahn.seite, false);
+    return { kiefer: q.kiefer, index: q.index, seite: q.zahn.seite, u: f.u, fuss: netz.gitter[i]!.wurzel, spitze: netz.gitter[i]!.spitze, vorn: [-r.i[0], -r.i[1], -r.i[2]] };
+  });
   return {
     positionen: netz.positionen,
     normalen: netz.normalen,
@@ -545,7 +553,7 @@ export function zaehnePruefenBei(abl: MaulErgebnis, lagen: readonly { oeffnung: 
 /** Vorschlag der Prüfung auf einen Dokument-Zahn anwenden (die Tiefe folgt im Dokument der Breite, sie entfällt). */
 export function zahnAenderungAnwenden(e: ZahnEintrag, a: ZahnAenderung): ZahnEintrag {
   const neu: ZahnEintrag = { ...e };
-  for (const k of ['laenge', 'breite', 'rundheit', 'schaerfe', 'neigung', 'biegung', 'spreizung', 'drehung', 'groesse', 'u'] as const) {
+  for (const k of ['laenge', 'breite', 'rundheit', 'schaerfe', 'neigung', 'biegung', 'spreizung', 'drehung', 'groesse', 'vor', 'u'] as const) {
     const v = a[k];
     if (v !== undefined) neu[k] = v;
   }

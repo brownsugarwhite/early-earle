@@ -297,7 +297,7 @@ describe('Versuch Zähne am Tiger: Prüfung im geschlossenen Maul', () => {
   const lang = zahnreihe(6, 'oben', { ...ZAHN_STANDARD, laenge: 0.04, biegung: 0 }, mk.sichtbar);
   const zeige = (titel: string, b: ZahnBefund[]) => {
     console.log(titel);
-    for (const e of b) console.log(`  Zahn ${e.zahn} ${e.art} ${(e.tiefe * PX).toFixed(2)} px${e.mit !== undefined ? ` mit ${e.mit}` : ''}${e.vorschlaege ? ` → ${e.vorschlaege.map((v) => v.text).join(' | ')}` : ''}`);
+    for (const e of b) console.log(`  Zahn ${e.zahn} ${e.art} ${(e.tiefe * PX).toFixed(2)} px${e.vorschlaege ? ` → ${e.vorschlaege.map((v) => v.text).join(' | ')}` : ''}`);
   };
   const anwenden = (zaehne: readonly Zahn[], b: ZahnBefund[], art: string, beginn: string): Zahn[] =>
     zaehne.map((z, i) => {
@@ -350,16 +350,12 @@ describe('Versuch Zähne am Tiger: Prüfung im geschlossenen Maul', () => {
     expect(backe?.vorschlaege?.length ?? 0).toBeGreaterThan(0);
   });
 
-  it('Zahn gegen Zahn: zu breite Nachbarn überlappen, „schmaler“ trennt sie', () => {
+  it('Zähne dürfen sich überschneiden (Florian 15.10.): zu breite Nachbarn geben keinen Befund', () => {
     const breit = zahnreihe(5, 'oben', { ...ZAHN_STANDARD, laenge: 0.004, breite: 0.05 }, mk.sichtbar);
+    const schmal = zahnreihe(5, 'oben', { ...ZAHN_STANDARD, laenge: 0.004 }, mk.sichtbar);
     const b = zahnPruefen(mk, zu, breit);
     zeige('breit', b);
-    expect(b.filter((e) => e.art === 'zahnZahn').length).toBeGreaterThan(0);
-    const schmal = breit.map((z, i) => {
-      const v = b.filter((e) => e.zahn === i && e.art === 'zahnZahn').flatMap((e) => e.vorschlaege ?? []);
-      return { ...z, breite: Math.min(z.breite, ...v.map((x) => x.aenderung.breite ?? Infinity)) };
-    });
-    expect(zahnPruefen(mk, zu, schmal).filter((e) => e.art === 'zahnZahn').length).toBe(0);
+    expect(b.map((e) => `${e.zahn}:${e.art}`)).toEqual(zahnPruefen(mk, zu, schmal).map((e) => `${e.zahn}:${e.art}`));
   });
 
   it('Tempo: 2 × 9 Zahnnetze < 10 ms', () => {

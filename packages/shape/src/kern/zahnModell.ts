@@ -3,7 +3,10 @@
 // im Versuch das Zahnfleisch des alten Maul-Käfigs. Der Versuch nutzt dieselbe Rechnung (seine Tests prüfen sie mit).
 //
 // - Zahn = gebogener Kegel: Querschnitt Superellipse (Rundheit), Spitze r(h) = r0·(1 − h)^(0,5 + 1,5·Schärfe),
-//   Mittellinie ein Kreisbogen (Biegung), Wurzel 15 % der Länge im Zahnfleisch.
+//   Mittellinie ein Kreisbogen (Biegung), Wurzel 15 % der Länge im Zahnfleisch. Schärfe unter 0 (bis −1) macht ihn zum
+//   Blob ganz ohne Spitze: Kapsel mit runder Kappe (`zahnProfil`; Florian 15.10.: „süße Blobzähne“).
+// - „vor“ (Florian 15.10.): Versatz quer zum Zahnfleisch, nach vorn zur Lippe oder zurück zum Rachen; Zähne dürfen
+//   sich dabei überschneiden („das macht ein Maul erst aus“).
 // - Lage im Rahmen (t längs des Zahnfleischs, d Beißrichtung, i nach innen): erst Drehung um die eigene Achse, dann
 //   Spreizung (um i), dann Neigung (um t). Die Drehung dreht auch die Biegung: ein nach innen gebogener Zahn wird mit 90°
 //   ein nach hinten gebogener Fang (Plan 5.3 „Rotation“).
@@ -31,7 +34,7 @@ export type ZahnForm = {
   tiefe: number;
   /** Querschnitt: 0 = Klinge (Schneiden vorn/hinten), 1 = rund; Werte bis 2 = kastig (siehe `rundheitExponent`) */
   rundheit: number;
-  /** Spitze: 0 = stumpfe Kuppe, ⅓ = gerader Kegel, 1 = Nadel */
+  /** Spitze: −1 = Blob (Kapsel mit runder Kappe, ganz ohne Spitze), 0 = stumpfe Kuppe, ⅓ = gerader Kegel, 1 = Nadel */
   schaerfe: number;
   /** Grad, Kippung um die Zahnfleischtangente; + = Spitze nach innen (zum Rachen) */
   neigung: number;
@@ -43,6 +46,8 @@ export type ZahnForm = {
   drehung?: number;
   /** Faktor auf Länge, Breite und Tiefe. Fehlt: 1 */
   groesse?: number;
+  /** Versatz quer zum Zahnfleisch (Kachel): + nach vorn (zur Lippe, −i), − zurück (zum Rachen, +i). Fehlt: 0 */
+  vor?: number;
   /** außen über der Gegenlippe (Hauer über der Oberlippe, Rex-Fänge vor dem Unterkiefer) */
   aussen: boolean;
 };
@@ -110,6 +115,7 @@ export function zahnBei(z: Zahn, alpha: number): Required<ZahnForm> & { u: numbe
     spreizung: z.seite === 0 ? 0 : mix('spreizung', z.spreizung),
     drehung: z.seite === 0 ? 0 : mix('drehung', z.drehung ?? 0),
     groesse: Math.max(0, mix('groesse', z.groesse ?? 1)),
+    vor: mix('vor', z.vor ?? 0),
     aussen: z.aussen,
     u: z.seite === 0 ? 0 : zahl(mix('u', z.u), 0, 1),
   };
@@ -138,6 +144,55 @@ export function zahnreihe(anzahl: number, kiefer: Kiefer, form: ZahnForm, uMax =
   return out;
 }
 
+// ---------- Längsschnitt ----------
+
+/**
+ * Halbmesser-Anteil g(h) des Querschnitts über der Höhe h (0 Zahnfleisch … 1 Spitze), für die Länge L und den mittleren
+ * Halbmesser r̄ am Zahnfleisch:
+ * - Schärfe 0 … 1: g = (1 − h)^k, k = 0,5 + 1,5·Schärfe (0 stumpfe Kuppe, ⅓ gerader Kegel, 1 Nadel).
+ * - Schärfe −1 … 0, Blob: g = (1 − h^q)^½ mit q = qMax^b, b = −Schärfe, qMax = max(1, 2L/r̄). Bei 0 ist das die stumpfe
+ *   Kuppe (q = 1); bei −1 hat die Kuppe den Krümmungshalbmesser r̄ (an der Spitze r² ≈ r̄²·q·Δ/L = 2·r̄·Δ wie am Kreis),
+ *   darunter bleibt der Zahn fast voll: eine Kapsel mit runder Kappe, ganz ohne Spitze.
+ */
+export function zahnProfil(h: number, schaerfe: number, L: number, rMittel: number): number {
+  const hh = zahl(h, 0, 1);
+  const s = zahl(schaerfe, -1, 1);
+  if (s >= 0) return Math.pow(1 - hh, 0.5 + 1.5 * s);
+  const q = Math.pow(Math.max(1, (2 * L) / Math.max(1e-9, rMittel)), -s);
+  return Math.sqrt(Math.max(0, 1 - Math.pow(hh, q)));
+}
+
+/**
+ * Höhen der sichtbaren Ringe (h, ohne die Spitze): zur Spitze hin dichter, h_k = 1 − (1 − k/n)². Beim Blob wandern sie mit
+ * b = −Schärfe zu gleichen Bogenlängen auf dem Längsschnitt (h·L, g·r̄): Die runde Kappe bekommt Ringe, statt als flacher
+ * Kegel vom letzten Ring zur Spitze zu laufen.
+ */
+export function zahnRingHoehen(n: number, schaerfe: number, L: number, rMittel: number): number[] {
+  const alt = Array.from({ length: n }, (_, k) => 1 - (1 - k / n) ** 2);
+  const b = zahl(-schaerfe, 0, 1);
+  if (b <= 0 || n < 2) return alt;
+  const M = 256;
+  const bogen = new Float64Array(M + 1);
+  let x0 = 0;
+  let y0 = rMittel * zahnProfil(0, schaerfe, L, rMittel);
+  for (let j = 1; j <= M; j++) {
+    const x = (L * j) / M;
+    const y = rMittel * zahnProfil(j / M, schaerfe, L, rMittel);
+    bogen[j] = bogen[j - 1]! + Math.hypot(x - x0, y - y0);
+    x0 = x;
+    y0 = y;
+  }
+  const gesamt = bogen[M]!;
+  let j = 0;
+  return alt.map((h0, k) => {
+    const ziel = (gesamt * k) / n;
+    while (j < M - 1 && bogen[j + 1]! < ziel) j++;
+    const d = bogen[j + 1]! - bogen[j]!;
+    const hb = (j + (d > 1e-15 ? (ziel - bogen[j]!) / d : 0)) / M;
+    return (1 - b) * h0 + b * hb;
+  });
+}
+
 // ---------- Rahmen ----------
 
 /**
@@ -163,6 +218,8 @@ export type ZahnModell = {
   p: number;
   anker: V3;
   rechtshaendig: boolean;
+  /** Höhen (Anteil der Länge) für n sichtbare Ringe, passend zum Längsschnitt (`zahnRingHoehen`) */
+  ringHoehen: (n: number) => number[];
 };
 
 export function zahnModell(z: Zahn, fleisch: RahmenQuelle, alpha: number): ZahnModell {
@@ -172,7 +229,7 @@ export function zahnModell(z: Zahn, fleisch: RahmenQuelle, alpha: number): ZahnM
   const a0 = Math.max(1e-7, (f.breite * f.groesse) / 2);
   const c0 = Math.max(1e-7, (f.tiefe * f.groesse) / 2);
   const p = rundheitExponent(f.rundheit);
-  const k = 0.5 + 1.5 * zahl(f.schaerfe, 0, 1);
+  const rMittel = (a0 + c0) / 2;
   const beta = (zahl(f.biegung, -1, 1) * Math.PI) / 2;
   let anker = r.p;
   let wurzelLaenge = WURZEL_ANTEIL * L;
@@ -184,6 +241,8 @@ export function zahnModell(z: Zahn, fleisch: RahmenQuelle, alpha: number): ZahnM
     wurzelLaenge = Math.max(wurzelLaenge, 2 * luft);
     scherung = 2 * luft;
   }
+  // vor/zurück quer zum Zahnfleisch (+ zur Lippe = −i); die Wurzel wandert mit
+  if (f.vor) anker = plus3(anker, mal3(r.i, -f.vor));
   const nu = (f.neigung * Math.PI) / 180;
   const sg = (f.spreizung * Math.PI) / 180;
   const dr = (f.drehung * Math.PI) / 180;
@@ -229,11 +288,11 @@ export function zahnModell(z: Zahn, fleisch: RahmenQuelle, alpha: number): ZahnM
         cy = h * L;
         cz = 0;
       }
-      g = Math.pow(1 - h, k);
+      g = zahnProfil(h, f.schaerfe, L, rMittel);
     }
     return { m: plus3(anker, welt(dreh(0, cy, cz))), x: ex, z: welt(dreh(0, zy, zz)), a: a0 * g, c: c0 * g };
   };
-  return { quer, laenge: L, wurzelLaenge, p, anker, rechtshaendig: punkt3(kreuz3(r.t, r.d), r.i) > 0 };
+  return { quer, laenge: L, wurzelLaenge, p, anker, rechtshaendig: punkt3(kreuz3(r.t, r.d), r.i) > 0, ringHoehen: (n) => zahnRingHoehen(n, f.schaerfe, L, rMittel) };
 }
 
 export type ZahnGitter = {
@@ -266,9 +325,9 @@ export function zahnGitter(z: Zahn, fleisch: RahmenQuelle, alpha = 0, seiten = 8
     const s = Math.sin(w);
     kreis.push([Math.sign(c) * Math.pow(Math.abs(c), e), Math.sign(s) * Math.pow(Math.abs(s), e)]);
   }
-  // sichtbare Ringe zur Spitze hin dichter: h_k = 1 − (1 − k/n)²
+  // sichtbare Ringe zur Spitze hin dichter (beim Blob gleichmäßig über die runde Kappe)
   const s = [-m.wurzelLaenge];
-  for (let kk = 0; kk < nr; kk++) s.push(m.laenge * (1 - (1 - kk / nr) ** 2));
+  for (const h of m.ringHoehen(nr)) s.push(m.laenge * h);
   const ringListe = s.map((sk) => {
     const q = m.quer(sk);
     return kreis.map(([cx, cz]) => plus3(q.m, plus3(mal3(q.x, q.a * cx), mal3(q.z, q.c * cz))));
