@@ -151,7 +151,7 @@ function poseHinweis(): void {
   const t = Date.now();
   if (t - letzterPoseHinweis < 2500) return;
   letzterPoseHinweis = t;
-  useUi.getState().zeigeHinweis('In der Pose formen vorerst Pinsel (G, I) und Knochen. Schwarze Linien, Rot/Blau und Reifen der Pose kommen als Nächstes (B4–B6); bis dahin bearbeitest du sie im Editor-Tab.');
+  useUi.getState().zeigeHinweis('In der Pose formen Pinsel (G, I), Knochen und die schwarze Linie in der Seite. Front, Top, Rot/Blau und Reifen der Pose kommen als Nächstes (B5, B6); bis dahin bearbeitest du sie im Editor-Tab.');
 }
 
 export const useEditor = create<EditorState>((set, get) => {

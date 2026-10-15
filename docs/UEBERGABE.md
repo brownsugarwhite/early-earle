@@ -1,4 +1,4 @@
-# Übergabe (Stand 15.10.2026 abends, Stufe 3: B3 und B3b gebaut)
+# Übergabe (Stand 15.10.2026 abends, Stufe 3: B3, B3b, B4 gebaut)
 
 Branch `claude/editor-grundlayout`. **Es gilt der freigegebene Plan [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)** mit den ausführlichen Entwürfen [Teil A Maul als Einsatz](plans/2026-10-15-entwurf-maul-einsatz.md), [Teil H Werkzeug-Harmonie](plans/2026-10-15-entwurf-werkzeug-harmonie.md) und [Teil B Posen](plans/2026-10-15-entwurf-posen.md). Alle älteren Fahrpläne (Phase 2, Ruhiges Netz und Maulschlitz, Fressen wie Editor) sind dadurch abgelöst; ihre Fallen und Messwerkzeuge bleiben gültiges Wissen.
 
@@ -39,11 +39,13 @@ Die Ursachen stehen im Plan unter „Befund“ (Code-Analysen mit Datei- und Zei
 
 - **Stufe 3, B3b gebaut (Abnahme offen, bc6f62f; Florians Entscheidung 10 „Knochen in 3D“):** Gieren, Rollen (um die eigene Knochenachse), seitlicher Versatz; Griffe auf der Bühne (Spitze = Kugel um das Gelenk, türkiser Rollgriff, Mitte verschiebt); Tafel mit 3D-Werten und „Symmetrisch“; Pinsel in schiefen Posen spiegelt in der Ruhe. Prüfung `apps/editor/scripts/pruefen/posen-b3b.mjs` (10/10), Bild `docs/progress/editor/b3b-knochen-3d-2026-10-15.jpg`.
 
-## Nächster Schritt: B4 (nach Florians Blick auf B3b)
+- **Stufe 3, B4 gebaut (Abnahme offen, 4df7e0d):** Löser im posierten Raum (`packages/shape/src/loeser/posenLoeser.ts`) und die schwarze Linie im Seitenblatt einer Pose (`apps/editor/src/posen/poseLinie.tsx`, Griffdaten `kern/posen/griffeSeite.ts`): posierter Umriss mit den Knoten auf ihren Hautpunkten, ziehen formt die Pose örtlich (Radius wie der Pinsel). Prüfung `apps/editor/scripts/pruefen/posen-b4.mjs` (10/10), Bild `docs/progress/editor/b4-pose-linie-2026-10-15.jpg`.
 
-Nach Entwurf `docs/plans/2026-10-15-entwurf-posen.md` §4.1/4.2 und Plan Teil B:
-- **B4 Löser im posierten Raum** (`packages/shape/src/loeser/posenLoeser.ts`, `cholesky.ts`): schwarze Linien in der Pose als Griffe am posierten Körper (seit B3b für schiefe Posen: Silhouetten je Blatt statt der Naht); der Löser bewegt den Käfig örtlich und rechnet in Ruhe-Deltas zurück (ΔD = Rᵀ·ΔX), einmal zerlegen je Geste, je Zugschritt nur Rückwärtseinsetzen.
-- Danach **B5** (Pose-Linien Rot/Blau, Lippen exakt darauf, in Fressen immer getrennt) und **B6** (Reifen in der Pose, Matrix jedes Werkzeug × jede Pose). Mit B4–B6 fällt die B1-Sperre (in der Pose wirken bis dahin Pinsel und Knochen).
+## Nächster Schritt: B5 (nach Florians Blick auf B4)
+
+Nach Entwurf `docs/plans/2026-10-15-entwurf-posen.md` §3.4/§4.3/§4.6 und Plan Teil B:
+- **B5** Pose-Linien Rot und Blau (relativ zu den Grundlinien gespeichert, in Fressen immer zwei Linien mit eigenem Anfang und gemeinsamem Mundwinkel), Lippen bei jeder Auswertung exakt darauf (Projektion mit dem Löser aus B4), „Linien folgen dem Pinsel“, formneutrales Einfügen.
+- Danach **B6**: schwarze Linien in Front und Top (Silhouetten), Griffe an den Knoten der Seite, Reifen in der Pose, Matrix jedes Werkzeug × jede Pose mit echten Zügen. Mit B5/B6 fällt die B1-Sperre ganz.
 
 ## Erledigt: Stufe 2, B1
 
