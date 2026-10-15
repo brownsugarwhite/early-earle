@@ -270,6 +270,13 @@ const GefroreneStationenSchema = z.object({
   reifen: z.array(z.object({ spant: z.number(), ring: z.number() })),
   spitzen: z.object({ vorn: z.boolean(), hinten: z.boolean() }),
   maul: z.object({ winkel: z.number(), ringA: z.number().optional(), kontur: z.boolean().optional() }).optional(),
+  enden: z
+    .object({
+      vorn: z.object({ k: z.number(), t: z.number(), p: z.object({ x: z.number(), y: z.number() }) }),
+      hinten: z.object({ k: z.number(), t: z.number(), p: z.object({ x: z.number(), y: z.number() }) }),
+      knoten: z.number(),
+    })
+    .optional(),
 });
 /**
  * `maul` (14.10.): die Entscheidungen der Maullage aus dem letzten Bau mit Maul — Ring des Mundwinkels, erster Lippenring
@@ -277,7 +284,12 @@ const GefroreneStationenSchema = z.object({
  * zwischen den Nachbarringen, letzter Nasenring vor den Anfängen) bzw. innerhalb eines Bands um die Schwelle; sonst wählte
  * jeder Zug am Anfang neu, und das Netz sprang (Langhals: Käfig 499 ↔ 513 Punkte; Kugel: Lippe 18 px in eine andere Kappenzeile).
  */
-export type GefroreneStationen = { ringe: number[]; vorn: number[]; hinten: number[]; ecken: { ring: number; seite: 'oben' | 'unten' | 'beide' }[]; reifen: { spant: number; ring: number }[]; spitzen: { vorn: boolean; hinten: boolean }; maul?: MaulStationen };
+/**
+ * `enden` (Teil G, G2): die Enden der Wirbelsäule als Kurvenparameter des Seitenumrisses (Segment k, Parameter t, Lage p
+ * in Profil-Einheiten), gültig für `knoten` Knoten. Ein Zug am Bauch wirft sie nicht mehr um (Giraffe mit Bauch vor der Nase).
+ */
+export type EndenAnker = { k: number; t: number; p: { x: number; y: number } };
+export type GefroreneStationen = { ringe: number[]; vorn: number[]; hinten: number[]; ecken: { ring: number; seite: 'oben' | 'unten' | 'beide' }[]; reifen: { spant: number; ring: number }[]; spitzen: { vorn: boolean; hinten: boolean }; maul?: MaulStationen; enden?: { vorn: EndenAnker; hinten: EndenAnker; knoten: number } };
 export type MaulStationen = { winkel: number; ringA?: number; kontur?: boolean };
 const KaefigSchemaV1 = z.object({ deltas: z.array(KaefigDeltaSchema), posen: z.record(z.string(), z.array(KaefigDeltaSchema)).optional(), stationen: GefroreneStationenSchema.optional() });
 /** Version 1 (bis 15.10.2026 abends): mit Ausstattung und (M3) Käfig-Deltas der Pinsel; Pose-Deltas in `kaefig.posen`. */

@@ -29,6 +29,7 @@ import { anwenden3 } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
+import { endenFuer, profilAnker } from './grundkoerper/enden';
 
 export type AbleitOptionen = {
   ringe: number;
@@ -137,8 +138,16 @@ export function kernLeiter(dok: Dokument): Leiter {
   // mit getrennten Kiefern: Schlitz als Sehne und ohne Rückknick (seiteFuerLeiter), gleich für alle Aufrufer
   const s = schlitzIm(dok.profile.seite);
   const d = s ? { ...dok, profile: { ...dok.profile, seite: seiteFuerLeiter(dok.profile.seite, s) } } : dok;
-  return leiterEntfaechern(leiter(d, WIRBEL_STANDARD));
+  // Teil G, G2: Enden eingefroren (gleiche Knotenzahl) oder über die Mittelachse; ohne Seitenast wie bisher der vorderste
+  // und der hinterste Punkt (bitgleich). Die tatsächlich benutzten Enden gehen als Anker in die eingefrorenen Stationen.
+  const e = endenFuer(dok);
+  const l = leiterEntfaechern(e.quelle === 'spitzen' ? leiter(d, WIRBEL_STANDARD) : leiter(d, WIRBEL_STANDARD, { vorn: e.vorn, hinten: e.hinten }, ENDEN_FANG));
+  const seite = dok.profile.seite;
+  return { ...l, enden: { vorn: profilAnker(seite, l.ruecken[0]!), hinten: profilAnker(seite, l.ruecken[l.ruecken.length - 1]!), knoten: seite.knoten.length } };
 }
+
+/** Teil G: Eingefrorene Enden, die höchstens so weit (Anteil der Umriss-Abtastung) neben der Spitze liegen, rasten auf sie. */
+const ENDEN_FANG = 0.004;
 
 export function leiterEntfaechern(l: Leiter): Leiter {
   const p = l.paare.map((x) => ({ a: x.a, b: x.b }));
@@ -660,7 +669,7 @@ function stationenZusammensetzen(l: Leiter, R: number, anteile: number[], vorn: 
     r.ring = anteile.indexOf(reifenWerte[k]!);
   });
   const alle = stationenAusLeiter(l, [...anteile, ...vorn, ...hinten]);
-  const gefroren: GefroreneStationen = { ringe: [...anteile], vorn: [...vorn], hinten: [...hinten], ecken: ecken.map((e) => ({ ...e })), reifen: reifen.map((r) => ({ ...r })), spitzen: { ...spitzen } };
+  const gefroren: GefroreneStationen = { ringe: [...anteile], vorn: [...vorn], hinten: [...hinten], ecken: ecken.map((e) => ({ ...e })), reifen: reifen.map((r) => ({ ...r })), spitzen: { ...spitzen }, ...(l.enden ? { enden: l.enden } : {}) };
   return { ringe: alle.slice(0, R), kappen: { vorn: alle.slice(R, R + vorn.length), hinten: alle.slice(R + vorn.length) }, ecken, reifen, spitzen, gefroren };
 }
 

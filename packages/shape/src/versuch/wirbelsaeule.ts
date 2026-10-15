@@ -140,7 +140,7 @@ function geglaettet(werte: readonly number[], halb: number): number[] {
 
 // ---------- 1.–3. Linien, Leiter, Wirbelsäule ----------
 
-export type Leiter = { ruecken: V2[]; bauch: V2[]; paare: { a: number; b: number }[] };
+export type Leiter = { ruecken: V2[]; bauch: V2[]; paare: { a: number; b: number }[]; enden?: { vorn: { k: number; t: number; p: V2 }; hinten: { k: number; t: number; p: V2 }; knoten: number } };
 
 /** Seitenumriss gleichmäßig abgetastet (geschlossen, ohne doppelten Endpunkt). */
 function umrissSeite(dok: Dokument): V2[] {
@@ -151,22 +151,28 @@ function umrissSeite(dok: Dokument): V2[] {
 
 /**
  * Rücken- und Bauchlinie: der Umriss, an den beiden Spitzen geteilt (beide Linien von vorn nach hinten). Spitzen ohne
- * Vorgabe: vorn kleinstes x, hinten größtes x; mit gezeichneter Wirbelsäule: wo sie den Umriss trifft.
+ * Vorgabe: vorn kleinstes x, hinten größtes x; mit gezeichneter Wirbelsäule oder eingefrorenen Enden (Teil G): wo sie den
+ * Umriss treffen. `fang` (Anteil der Abtastpunkte): Liegt eine vorgegebene Spitze so nah am vordersten bzw. hintersten
+ * Punkt, gilt dieser — die Teilung bleibt dann bitgleich wie ohne Vorgabe.
  */
-function ketten(dok: Dokument, opt: WirbelOptionen, spitzen?: { vorn: V2; hinten: V2 }): { ruecken: V2[]; bauch: V2[] } {
+function ketten(dok: Dokument, opt: WirbelOptionen, spitzen?: { vorn: V2; hinten: V2 }, fang = 0): { ruecken: V2[]; bauch: V2[] } {
   const um = umrissSeite(dok);
   let iv = 0;
   let ih = 0;
+  um.forEach((p, i) => {
+    if (p.x < um[iv]!.x) iv = i;
+    if (p.x > um[ih]!.x) ih = i;
+  });
   if (spitzen) {
+    let jv = 0;
+    let jh = 0;
     um.forEach((p, i) => {
-      if (abstand(p, spitzen.vorn) < abstand(um[iv]!, spitzen.vorn)) iv = i;
-      if (abstand(p, spitzen.hinten) < abstand(um[ih]!, spitzen.hinten)) ih = i;
+      if (abstand(p, spitzen.vorn) < abstand(um[jv]!, spitzen.vorn)) jv = i;
+      if (abstand(p, spitzen.hinten) < abstand(um[jh]!, spitzen.hinten)) jh = i;
     });
-  } else {
-    um.forEach((p, i) => {
-      if (p.x < um[iv]!.x) iv = i;
-      if (p.x > um[ih]!.x) ih = i;
-    });
+    const nah = (a: number, b: number) => Math.min(Math.abs(a - b), um.length - Math.abs(a - b)) <= fang * um.length;
+    if (!nah(jv, iv)) iv = jv;
+    if (!nah(jh, ih)) ih = jh;
   }
   const kette = (schritt: 1 | -1) => {
     const out: V2[] = [];
@@ -235,9 +241,12 @@ export function eigeneWirbelsaeule(dok: Dokument): { punkte: V2[]; vorn: V2; hin
   return { punkte: [vorn, ...drin, hinten], vorn, hinten };
 }
 
-/** Seitenumriss → Rücken- und Bauchlinie (beide von der Schnauzen- zur Schwanzspitze) und die kürzeste Leiter. */
-export function leiter(dok: Dokument, opt: WirbelOptionen = WIRBEL_STANDARD): Leiter {
-  const { ruecken, bauch } = ketten(dok, opt);
+/**
+ * Seitenumriss → Rücken- und Bauchlinie (beide von der Schnauzen- zur Schwanzspitze) und die kürzeste Leiter. Mit
+ * `spitzen` (Teil G: eingefrorene oder über die Mittelachse gewählte Enden) wird der Umriss dort geteilt.
+ */
+export function leiter(dok: Dokument, opt: WirbelOptionen = WIRBEL_STANDARD, spitzen?: { vorn: V2; hinten: V2 }, fang = 0): Leiter {
+  const { ruecken, bauch } = ketten(dok, opt, spitzen, fang);
   const P = opt.proben;
 
   // Kürzeste Leiter (Zeitverzerrung): Summe der Sprossenlängen, Schritte (1,0), (0,1), (1,1)
