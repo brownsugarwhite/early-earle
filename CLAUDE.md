@@ -65,6 +65,12 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - Editor: Tafel Zähne (`leiste/ZahnFeld.tsx`), Wählen/Ziehen auf Bühne und in den Blättern (`kern/zahnGriffe.ts`), Zahnfarbe über Uniforms, Prüfung als Worker-Auftrag mit Glut und Vorschlägen (`kern/zahnPruefStand.ts`).
   - Abnahme per Skript: Rex mit 14 Zähnen in 20,6 s, Prüfung frei (`docs/progress/editor/zaehne-m4-abnahme-rex-14-2026-10-15.jpg`).
   - Offen: Florians 10-Minuten-Probe, Zahngröße/-breite gegen die Referenz, „Setzen T“ und Fächer (Register).
+- **2026-10-15 nachts: Phase 2 M5 Augen gebaut** (Planseite Phase 2, Abschnitt „M5 Augen“, Stand je Schritt):
+  - Gemalt: Formen Schlitz/Knopf/Mandel, Zustände offen/zu/Sichel/X/Spirale/Schlitz als Abstandsformen (`creature2/material/augenFormen.ts`), Lid und Blinzeln; Prüfwesen PezenPez.
+  - Glubschauge und Augapfel als Augenkugel (`creature2/material/augenKugel.ts`) an der posierten Stelle der Haut, folgen beim Öffnen dem Schädel; Lid im Material; Prüfwesen Glubsch (Bild 10), Rex mit Augäpfeln (Bild 11).
+  - Augapfel-Höhle im Käfig (`kern/augenHoehle.ts`): Inset-Schleifen um einen Ringpunkt ohne Lippe, nur fürs gezeichnete Netz, keine Durchdringung mit der Höhle. **Brauenwulst nach drei Anläufen nicht gelöst** (Feld am Rex-Mundwinkel zu schmal) → Wege für Florian auf der Planseite.
+  - Behoben: Maße (Augen, Lippenband, Material) aus der Ruhelage statt aus der Pose (Rex wuchs offen um 11 %); gedrehte Augen spiegelbildlich.
+  - Abnahme per Skript: `docs/progress/editor/augen-m5-abnahme-2026-10-15.jpg`. Nächster Schritt nach Plan: M6 Maularten.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte) und die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 
