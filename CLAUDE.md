@@ -75,6 +75,10 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte) und die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 
+## Grundidee des Wesen-Editors (Florian, 15.10.2026 — über allem)
+
+**Blendshapes und Bones kombinieren, um ganz extreme Posen und Verformungen zu schaffen.** Jede Pose (Fressen, weitere) = Knochen + Blendshape; in der Pose arbeiten alle Werkzeuge exakt wie im Editor (Umrisse gekoppelt, Maullinien, Reifen, Pinsel), das Ergebnis ist der Blendshape. Vor jeder Meldung in jeder Pose mit jedem Werkzeug etwas verschieben (mit und ohne Maul): `apps/editor/scripts/pruefen/fressen-pinsel.mjs` und Nachfolger. Plan: [`docs/plans/2026-10-15-fressen-wie-editor.md`](docs/plans/2026-10-15-fressen-wie-editor.md). (Dieses Grundkriterium war in der Kern-Umstellung weggefallen und wurde zwei Tage nicht bemerkt.)
+
 ## Menschen
 
 - **Florian** (illudiy): Art Direction, alle Entscheidungen, Blender, GPT-Entwürfe, Tests auf dem iPhone 16 („eyePhone (2)“) und dem Mac (M3 Pro). Arbeitet oft von unterwegs über die Claude-App und hat ein Wochenlimit.

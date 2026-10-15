@@ -4,6 +4,15 @@
 >
 > Referenzen: Florians Ordner `ref/editor/` (Bögen in `creatures/`, UI-Entwürfe in `UI/`, Versuchsbilder, Abzüge der Übergabe) liegt **lokal, nicht in Git**. Dieselben 19 Bögen liegen im Repo als `docs/look/wesen-refs/bild01…bild19` (Zuordnung nach Motiv, z. B. `rex_dragon_big mouth` → `bild05`, `dogs_mouth` → `bild08`, `raubkatzen…` → `bild09`, `grundblob eyes` → `bild10`, `rex_mouth_detail` → `bild11`, `schlangenwesen_aal` → `bild13`, `different_big mouths` → `bild14`, `leg variation…` → `bild15`, `favorite wesen!` → `bild16`, `musterTfell…` → `bild17`, `substance gas:fire` → `bild18`; vor dem Urteil das Bild öffnen). Die Abzüge unter `ref/editor/uebergabe/` entsprechen `docs/plans/2026-10-13-grosse-sitzung-wesen-editor.md` und `docs/research/2026-10-13-schnitte-ueberhaenge.md`.
 
+## Grundidee (Florian, 15.10.2026 — gilt über allem)
+
+> „Die komplette Grundidee des Editors basiert darauf, **Blendshapes und Bones zu kombinieren**, um ganz extreme Posen und Verformungen schaffen zu können!“
+
+- **Jede Pose = Knochen + Blendshape.** Die Knochen (Kiefer, Schädel, später Hals/Körper) bewegen starr; der Blendshape formt den ganzen Körper frei um — so frei, dass die Pose „eine ganz andere Form haben kann“ (kleines Maul → großes rundes Maul, Bohne, Rundmaul, W-Maul, Haltung, Schädelform).
+- **In der Pose arbeiten alle Werkzeuge exakt wie im Editor** (Umrisse in allen Ansichten gekoppelt, Maullinien, Reifen/Spanten, Pinsel, später Teile). Was sie in der Pose ändern, ist der Blendshape; die Grundform bleibt unberührt, und Änderungen der Grundform wandern in die Pose mit.
+- **Überblendung:** Zwischen Ruhe und Pose blendet die Öffnung (Fressen) bzw. die Stärke (weitere Posen); die Knochen wirken auf die überblendete Form.
+- **Prüfung vor jeder Meldung:** In jeder Pose mit jedem Werkzeug etwas verschieben (mit und ohne Maul) — Prüfmatrix `apps/editor/scripts/pruefen/fressen-pinsel.mjs` und ihre Nachfolger. Ausgearbeitet in [`2026-10-15-fressen-wie-editor.md`](2026-10-15-fressen-wie-editor.md).
+
 ## 0. Kurzfassung
 
 - **Entscheidung:** Der Editor bekommt **einen echten 3D-Körper als einzige Wahrheit** (Subdivision-Käfig mit Spiegelung und Falten, wie Florians Blender-Gewohnheit Mirror + Subsurf + Crease), und Florians Kurven (Seitenumriss, Spanten, Kantenlinien, Wirbelsäule, Maullinie) werden **Griffe auf diesem Körper**, nicht mehr die Quelle, aus der der Körper jedes Mal neu abgeleitet wird. Dazu kommen Bausteine mit Automatik (Maul, Zähne, Augen, Teile, Klingen, Rig, Posen, Look) und der Earle-Look von der ersten Sekunde an.

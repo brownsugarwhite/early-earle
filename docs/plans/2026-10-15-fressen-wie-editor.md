@@ -12,15 +12,23 @@ Grundkriterium aus dem Plan „Wesen-Editor 2“ (5.2): **Fressen-Pose = Knochen
 4. **Mit Maul** ignoriert der Kern die Pose-Seite ganz; die Maullinien in Fressen schreiben `maul.auf` (Loft-Versuch), das der Kern nicht liest: In Fressen bewegt sich nichts.
 5. Kein Test prüfte „in Fressen verschieben“; Phase 2 wurde gegen die Planseite statt gegen die Abnahme des Gesamtplans gemeldet.
 
+## Grundidee (Florian, 15.10.)
+
+> „Die komplette Grundidee des Editors basiert darauf, Blendshapes und Bones zu kombinieren, um ganz extreme Posen und Verformungen schaffen zu können! Das muss mit in den Plan und sollte schon immer drin stehen! Mach das ganz sorgfältig! Es muss perfekt funktionieren!“
+
+Steht jetzt ganz oben im Gesamtplan (`2026-10-13-wesen-editor-2.md`, „Grundidee“) und in der Projekt-`CLAUDE.md`.
+
 ## Bauweise
 
 **Fressen ist der Editor auf einer zweiten Form.** Die Pose hat eigene Griffe mit derselben Punktstruktur wie die Grundform: drei Umrisse (Seite, Front, Top), Spanten und Maullinien (`dok.posenForm.fressen`). Im Fressen-Modus sehen **alle Werkzeuge** ein Pose-Dokument (Grundform mit den Griffen der Pose); was sie schreiben, landet in der Pose, alles andere (Augen, Zähne, Ausstattung, Knochen, Käfig-Stand) in der Grundform. Dadurch arbeiten Kopplung der Ansichten, Zeichenstift, Pfeiltasten, Rot/Blau mit eigenem Anfang, Reifen, Δ und Saum in Fressen **exakt wie im Editor** — es ist derselbe Code.
 
-**Bau (Worker):** Grundform → Käfig A (wie heute). Pose-Griffe → Käfig B mit **denselben eingefrorenen Stationen und derselben Maullage** (gleiche Topologie). Blendshape D = B − A je Käfigpunkt. Bei Öffnung o: Käfig = Knochen(A + o·D, o) + o·Fressen-Pinsel-Deltas. Ohne Maul: A + o·D (+ Pinsel-Deltas). Passt die Topologie nicht (z. B. eine neue Ecke nur in der Pose), gilt die Pose nicht und die Tafel sagt es.
+**Bau (Worker):** Grundform → Käfig A (wie heute). Pose-Griffe → Käfig B mit **denselben eingefrorenen Stationen und derselben Maultopologie wie A** (die Maulwahl von A wird für B erzwungen, keine Neuwahl bei großen Pose-Mäulern), also gleicher Topologie. Blendshape D = B − A je Käfigpunkt. Bei Öffnung o: Käfig = Knochen_B(A + o·D, o) + o·Fressen-Pinsel-Deltas — die Knochen drehen die überblendete Form um die Gelenke **der Pose** (bei o = 1 genau B mit seinen eigenen Knochen, bei o = 0 genau A). Ohne Maul: A + o·D (+ Pinsel-Deltas). Passt die Topologie trotzdem nicht (z. B. eine neue Ecke nur in der Pose), gilt die Pose nicht und die Tafel sagt es. Zähne, Augen und Muster hängen am Käfig und folgen von selbst.
+
+**Extreme Posen:** Der Blendshape darf die Form beliebig ändern (andere Proportionen, Schädel, Maulgröße), die Knochen dürfen weit drehen; beides zusammen ergibt die Pose. Der Pinsel arbeitet nach den Knochen (was man sieht, formt man), die Griffe vor den Knochen (Form der Pose).
 
 **Grundform ändern nach der Pose:** Die Pose behält ihren Unterschied. Ändert sich ein Griff der Grundform, wandert derselbe Griff der Pose um dieselbe Verschiebung mit; wird ein Punkt eingefügt oder gelöscht, wird die Pose über die Lage auf der Kurve übertragen.
 
-**Anzeige in Fressen:** Die Blätter zeigen die Griffe der Pose (geschlossene Form der Pose) über dem geöffneten Körper, Δ und Saum gegen die Pose-Griffe. Editor-Tab und Öffnung 0 zeigen unverändert die Grundform.
+**Anzeige in Fressen:** Die Blätter zeigen die Griffe der Pose (Form der Pose vor den Knochen) über dem Körper, Δ und Saum gegen die Pose-Griffe. Ohne Maul (keine Knochen) deckt sich das genau mit dem Körper. Mit Maul liegen Kiefer-Griffe bei geöffnetem Maul neben dem gedrehten Kiefer; als nächster Schritt folgen die Griffe in der Anzeige den Knochen (Bearbeiten über die Umkehrung je Knoten, wie Blenders „auf dem Käfig“). Editor-Tab und Öffnung 0 zeigen unverändert die Grundform.
 
 ## Schritte (je geprüft, committet, gepusht)
 
