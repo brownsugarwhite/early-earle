@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import type { Dokument } from '../../../../packages/shape/src/dokument';
 import { pfadAbtasten, vollerPfad } from '../../../../packages/shape/src/profil';
 import { ableiten, kernLeiter, zugBei } from '../../../../packages/shape/src/kern/ableiten';
+import { ableitenMitTeilen } from '../../../../packages/shape/src/kern/grundkoerper/teilBau';
 import { blattAbweichungen } from '../../../../packages/shape/src/kern/abweichung';
 import { faltenMass, feinesNetz } from '../../../../packages/shape/src/kern/pruefstand';
 import { G_KOERPER, type GKoerper, gKoerperDokument } from '../../../../packages/shape/src/kern/pruefen/grundkoerper';
@@ -37,7 +38,7 @@ for (const name of liste) {
   const t0 = performance.now();
   let abl: ReturnType<typeof ableiten>;
   try {
-    abl = ableiten(dok, { stufen: 3 });
+    abl = process.env.TEILE ? ableitenMitTeilen(dok, { stufen: 3 }) : ableiten(dok, { stufen: 3 });
   } catch (e) {
     zeilen.push(`${name}: Bau scheitert (${(e as Error).message})`);
     faelle.push({ name, text: `<b>${name}</b> · Bau scheitert: ${(e as Error).message}`, daten: null });
