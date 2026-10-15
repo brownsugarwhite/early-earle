@@ -4,7 +4,7 @@
 // Look: Matcap (Licht an der Ansicht, wie Blender-Solid), Kachel als 10-%-Fläche, harter Schatten von
 // einem eigenen Sonnenlicht (wirkt nur auf den Schatten, die Matcap ignoriert Licht).
 
-import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, atlasTextur, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, createToothMaterial, installTslFunctionCacheFix, setzeZahnFarbe, AUGEN_FORM, AUGEN_ZUSTAND, farbRolle, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms } from '@ee/render';
+import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, atlasTextur, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, createGlubschMaterial, createGlubschUniforms, createToothMaterial, installTslFunctionCacheFix, lidEbene, lidLinie, setzeZahnFarbe, AUGEN_FORM, AUGEN_ZUSTAND, LID_NEIGUNG, farbRolle, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms, type GlubschUniforms } from '@ee/render';
 import type { LoftNetz } from '@ee/shape';
 import {
   BufferAttribute,
@@ -17,6 +17,7 @@ import {
   Line,
   LineSegments,
   FrontSide,
+  Matrix4,
   Mesh,
   MeshBasicNodeMaterial,
   MeshMatcapNodeMaterial,
@@ -38,6 +39,29 @@ import { type AtlasDaten, type Auge, type Gesicht, PALETTEN, type Palette } from
 import type { Ansicht2D, Kamera } from '../state/uiStore';
 import type { Ansicht, Blick } from '@ee/shape';
 import { massstab } from '../viewports/ansicht2d';
+
+/** Glubschauge (Phase 2 M5): Stärke des dunklen Rings auf der Haut und sein Radius als Anteil des Berührkreises (Bild 10) */
+const GLUBSCH_RING = { staerke: 0.5, radius: 0.86 } as const;
+/** Glubschauge, Zustand Sichel: Stellung des unteren Lids (die Kante wölbt sich bis etwas über die Mitte) */
+const GLUBSCH_SICHEL = 0.62;
+
+/**
+ * Augenrahmen (Phase 2 M5): oben = Welt-y senkrecht zur Normalen, rechts = oben × Normale (links gespiegelt, so spiegeln
+ * sich auch Drehung und Formen), um die Drehung des Auges (Grad) gedreht.
+ */
+function augenRahmen(normale: readonly [number, number, number], drehung: number): { n: Vector3; up: Vector3; rechts: Vector3 } {
+  const n = new Vector3(...normale).normalize();
+  let up = new Vector3(0, 1, 0).addScaledVector(n, -n.y);
+  if (up.lengthSq() < 1e-8) up = new Vector3(1, 0, 0).addScaledVector(n, -n.x);
+  up.normalize();
+  let rechts = new Vector3().crossVectors(up, n).normalize();
+  const w = (drehung * Math.PI) / 180;
+  if (w) {
+    up = up.clone().multiplyScalar(Math.cos(w)).addScaledVector(rechts, Math.sin(w)).normalize();
+    rechts = new Vector3().crossVectors(up, n).normalize();
+  }
+  return { n, up, rechts };
+}
 
 /** Blatt (Seite, Front, Top): Rechteck, 2D-Ansicht (Zoom, Mitte) und Blickrichtung — die Bühne rendert den Körper dahinter. */
 export type Blatt = { rect: Rect; ansicht: Ansicht2D; blick: Blick };
@@ -104,6 +128,11 @@ export class Renderer3D {
   /** Augen (Phase 2 M5): zuletzt gesetzte Augen und die Vorschau (Zustand, Lid, Blinzeln) */
   private augenListe: Auge[] = [];
   private augenAnzeige: { zustand: keyof typeof AUGEN_ZUSTAND; lid: number; blinzeln: boolean } = { zustand: 'offen', lid: 0, blinzeln: true };
+  /** Glubschaugen (Phase 2 M5, Schritt 2): eine Kugel je Auge, Kinder des Earle-Wesens (sichtbar mit ihm), eigenes Material */
+  private readonly glubschUniforms: GlubschUniforms;
+  private readonly glubschMaterial: MeshBasicNodeMaterial;
+  private readonly glubschGeo = new SphereGeometry(1, 48, 32);
+  private glubschKugeln: Mesh[] = [];
   private blinkPhase = -1;
   private blinkTimer = 2.2;
   private zeit = 0;
@@ -134,6 +163,8 @@ export class Renderer3D {
     this.wesen.castShadow = true;
     this.wesen.frustumCulled = false;
     this.szene.add(this.wesen);
+    this.glubschUniforms = createGlubschUniforms();
+    this.glubschMaterial = createGlubschMaterial(this.wesenUniforms, this.glubschUniforms);
     this.setzePalette(this.palette);
     this.feuerUniforms = createFeuerUniforms();
     const feuerMaterial = createFeuerMaterial(this.feuerUniforms);
@@ -336,10 +367,6 @@ export class Renderer3D {
       u.philtrumB.value.set(gesicht.philtrumB[0], gesicht.philtrumB[1], gesicht.philtrumB[2]);
       u.gesichtAn.value = 1;
     } else u.gesichtAn.value = 0;
-    u.eyeCount.value = Math.min(4, augen.length);
-    // Lidring um die gemalten Augen (Tiger): der Höhlenring des Materials auf denselben Augenlagen
-    u.ringCount.value = this.palette.augenRing ? Math.min(4, augen.length) : 0;
-    u.ringStaerke.value = this.palette.augenRing ?? 0.5;
     this.augenListe = augen.slice(0, 4);
     this.augenUniformsSetzen();
     const alt = this.wesen.geometry;
@@ -470,36 +497,76 @@ export class Renderer3D {
       }
       // Lid von Hand (Augen-Tafel) und Blinzeln: das stärkere gilt
       u.blink.value = Math.max(blink, this.augenAnzeige.lid);
+      this.glubschUniforms.zeit.value = this.zeit;
+      this.glubschLider(blink);
       this.anfordern();
     }, 50);
   }
 
   /**
-   * Augen in die Uniforms (Phase 2 M5): Rahmen je Auge — oben = Welt-y senkrecht zur Normalen, rechts = oben × Normale
-   * (links gespiegelt, so spiegeln sich auch Drehung und Formen), um die Drehung des Auges gedreht —, Form, Zustand und
-   * Seitenverhältnis.
+   * Augen in die Uniforms (Phase 2 M5): Rahmen je Auge (`augenRahmen`), Form, Zustand und Seitenverhältnis. Gemalte Augen
+   * zeichnet das Körpermaterial (Tiger mit Lidring der Palette); Glubschaugen sind Kugeln (`glubschSetzen`), auf der Haut
+   * bleibt nur der dunkle Ring um ihren Berührkreis (Bild 10). Ring und gemalte Form rechnen in der Ruhelage.
    */
   private augenUniformsSetzen() {
     const u = this.wesenUniforms;
     const form = { schlitz: AUGEN_FORM.schlitz, knopf: AUGEN_FORM.knopf, mandel: AUGEN_FORM.mandel } as const;
+    const n = this.augenListe.length;
+    const glubsch = n > 0 && this.augenListe.every((a) => a.art === 'glubsch');
+    u.eyeCount.value = glubsch ? 0 : n;
+    u.ringCount.value = glubsch || this.palette.augenRing ? n : 0;
+    u.ringStaerke.value = glubsch ? GLUBSCH_RING.staerke : (this.palette.augenRing ?? 0.5);
     this.augenListe.forEach((a, i) => {
-      const n = new Vector3(...a.normale).normalize();
-      let up = new Vector3(0, 1, 0).addScaledVector(n, -n.y);
-      if (up.lengthSq() < 1e-8) up = new Vector3(1, 0, 0).addScaledVector(n, -n.x);
-      up.normalize();
-      let rechts = new Vector3().crossVectors(up, n).normalize();
-      const w = ((a.drehung ?? 0) * Math.PI) / 180;
-      if (w) {
-        const up2 = up.clone().multiplyScalar(Math.cos(w)).addScaledVector(rechts, Math.sin(w)).normalize();
-        up = up2;
-        rechts = new Vector3().crossVectors(up, n).normalize();
-      }
-      (u.eyePos.array[i] as Vector4).set(a.pos[0] + n.x * 0.002, a.pos[1] + n.y * 0.002, a.pos[2] + n.z * 0.002, a.groesse);
+      const { n: nr, up, rechts } = augenRahmen(a.normale, a.drehung ?? 0);
+      // Glubschauge: Ring um den Berührkreis (Kugelradius × 2·√(t·(1 − t)) bei Tiefe t), das Material teilt w durch 2,2
+      const w = glubsch ? 2.2 * GLUBSCH_RING.radius * a.groesse * Math.sqrt(Math.max(0, a.tiefe * (1 - a.tiefe))) : a.groesse;
+      (u.eyePos.array[i] as Vector4).set(a.pos[0] + nr.x * 0.002, a.pos[1] + nr.y * 0.002, a.pos[2] + nr.z * 0.002, w);
       (u.eyeUp.array[i] as Vector4).set(up.x, up.y, up.z, 1);
       (u.eyeRechts.array[i] as Vector4).set(rechts.x, rechts.y, rechts.z, 0);
       (u.eyeForm.array[i] as Vector4).set(form[a.form ?? 'schlitz'] ?? 0, AUGEN_ZUSTAND[this.augenAnzeige.zustand], a.breite ?? 1, 0);
     });
+    const a0 = this.augenListe[0];
+    this.glubschUniforms.form.value.set(form[a0?.form ?? 'knopf'] ?? 1, AUGEN_ZUSTAND[this.augenAnzeige.zustand], a0?.breite ?? 1, 0);
+    this.glubschSetzen(glubsch);
+    this.glubschLider(0);
     this.anfordern();
+  }
+
+  /**
+   * Glubschaugen (Phase 2 M5, Schritt 2): je Auge eine Kugel (Radius = halbe Größe) an der posierten Stelle der Haut — so
+   * folgt sie beim Öffnen dem Schädel —, um (1 − 2·Tiefe)·Radius längs der posierten Normalen versetzt; Rahmen wie die
+   * gemalten Augen (Blick = Normale, Drehung, links gespiegelt).
+   */
+  private glubschSetzen(an: boolean) {
+    const liste = an ? this.augenListe : [];
+    while (this.glubschKugeln.length < liste.length) {
+      const m = new Mesh(this.glubschGeo, this.glubschMaterial);
+      m.name = 'glubschauge';
+      m.castShadow = true;
+      m.frustumCulled = false;
+      this.wesen.add(m);
+      this.glubschKugeln.push(m);
+    }
+    this.glubschKugeln.forEach((m, i) => {
+      const a = liste[i];
+      m.visible = !!a;
+      if (!a) return;
+      const R = a.groesse / 2;
+      const { n, up, rechts } = augenRahmen(a.posiert.normale, a.drehung ?? 0);
+      m.position.set(a.posiert.pos[0], a.posiert.pos[1], a.posiert.pos[2]).addScaledVector(n, R * (1 - 2 * a.tiefe));
+      m.scale.setScalar(R);
+      m.quaternion.setFromRotationMatrix(new Matrix4().makeBasis(rechts, up, n));
+    });
+  }
+
+  /** Lider der Glubschaugen: oben Blinzeln, Lid von Hand oder „zu“ (das stärkere gilt; ganz zu mit Lidspalt), unten die Sichel. */
+  private glubschLider(blink: number) {
+    const g = this.glubschUniforms;
+    const z = this.augenAnzeige.zustand;
+    const oben = Math.max(blink, this.augenAnzeige.lid, z === 'zu' ? 1 : 0);
+    lidEbene(oben, true, LID_NEIGUNG.oben, g.lidOben.value);
+    lidEbene(z === 'sichel' ? GLUBSCH_SICHEL : 0, false, LID_NEIGUNG.unten, g.lidUnten.value);
+    lidLinie(oben > 0.97, g.linie.value);
   }
 
   /** Augen-Vorschau (Phase 2 M5): Zustand, Lid von Hand (0 … 1), Blinzeln von selbst; ohne Umbau. */
@@ -520,6 +587,7 @@ export class Renderer3D {
     this.leben(false);
     this.wesenUniforms.blink.value = wert;
     this.feuerUniforms.blink.value = wert;
+    this.glubschLider(wert);
     this.anfordern();
   }
 

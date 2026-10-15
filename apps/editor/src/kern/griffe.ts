@@ -83,14 +83,21 @@ export function kieferZeiger(e: React.PointerEvent, px: number, py: number, el: 
   return true;
 }
 
-/** Augen in Feldpixeln: Mitte und Radius je Auge (rechts zuerst); der Radius ist die halbe Größe = Rand der gemalten Form. */
+/**
+ * Augen in Feldpixeln: Mitte und Radius je Auge (rechts zuerst), an der posierten Stelle (offenes Maul: das Auge sitzt mit
+ * dem Schädel höher); der Radius ist die halbe Größe = Rand der gemalten Form bzw. der Glubschkugel (Mitte um die Tiefe
+ * längs der Normalen versetzt).
+ */
 export function augenPixel(): { px: number; py: number; radius: number; vorn: boolean }[] {
   const r = szene.aktuell;
   const n = aktuellesNetz();
   if (!r || !n) return [];
   const sk = n.skalierung;
   return n.netz.augen.map((a) => {
-    const p = r.projizierenViele('creation', Float32Array.from([a.pos[0] * sk, a.pos[1] * sk, a.pos[2] * sk, a.pos[0] * sk, a.pos[1] * sk + (a.groesse / 2) * sk, a.pos[2] * sk]));
+    const R = a.groesse / 2;
+    const v = a.art === 'glubsch' ? R * (1 - 2 * a.tiefe) : 0;
+    const q = a.posiert.pos.map((x, k) => (x + a.posiert.normale[k]! * v) * sk);
+    const p = r.projizierenViele('creation', Float32Array.from([q[0]!, q[1]!, q[2]!, q[0]!, q[1]! + R * sk, q[2]!]));
     return { px: p[0]!, py: p[1]!, radius: Math.hypot(p[3]! - p[0]!, p[4]! - p[1]!), vorn: p[2]! > 0 && p[5]! > 0 };
   });
 }

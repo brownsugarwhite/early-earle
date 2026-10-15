@@ -3,8 +3,11 @@
 // Hebung mit Beinen.
 import { describe, expect, it } from 'vitest';
 import { type Dokument, neuesDokument } from '../dokument';
-import { type Bauplan, wesenBauen } from './wesen';
+import { type Vorlage, vorlageDokument } from '../versuch';
+import rexRoh from '../versuch/vorlagen/rex.json';
+import { AUGEN_TIEFE, type Bauplan, pruefwesenBauplan, wesenBauen } from './wesen';
 
+declare const console: { log: (...a: unknown[]) => void };
 type V3 = [number, number, number];
 const plan = (augen: Bauplan['augen'], extra: Partial<Bauplan> = {}): Bauplan => ({ maul: 'aus', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, ...(augen ? { augen } : {}), ...extra });
 /** kleinster Abstand eines Punkts zu den Ecken eines Netzes (3 Floats je Ecke) */
@@ -82,5 +85,61 @@ describe('Augen im Kern', () => {
     const ruhe = w.netz.ruhe!;
     expect(ruhe).not.toBeNull();
     expect(naechste(w.netz.augen[0]!.pos, ruhe)).toBeLessThan(1e-6);
+    // posiert: auf der gehobenen, gestellten Haut (Beinpose)
+    expect(naechste(w.netz.augen[0]!.posiert.pos, w.netz.positionen)).toBeLessThan(1e-6);
+  }, 60_000);
+
+  it('ohne Pose: posiert = Ruhelage; Tiefe nach der Art (Standard) oder aus dem Dokument', () => {
+    const w = wesenBauen(kugel, plan({ ring: 2, j: 2, groesse: 0.11, art: 'glubsch' }), null);
+    for (const a of w.netz.augen) {
+      expect(a.posiert.pos).toEqual(a.pos);
+      expect(a.posiert.normale).toEqual(a.normale);
+      expect(a.art).toBe('glubsch');
+      expect(a.tiefe).toBe(AUGEN_TIEFE.glubsch);
+    }
+    const w2 = wesenBauen(kugel, plan({ ring: 2, j: 2, groesse: 0.11, art: 'glubsch', tiefe: 0.6 }), null);
+    expect(w2.netz.augen[0]!.tiefe).toBe(0.6);
+    expect(wesenBauen(kugel, plan({ ring: 2, j: 2, groesse: 0.11 }), null).netz.augen[0]!.tiefe).toBe(0);
+  });
+
+  it('Rex öffnet das Maul: das Auge auf dem Kopf folgt dem Schädel (posiert auf der posierten Haut), die Ruhelage bleibt', () => {
+    const rex: Dokument = { ...vorlageDokument(rexRoh as unknown as Vorlage, 'zu', 'rex'), ausstattung: pruefwesenBauplan('rex') };
+    const aus = rex.ausstattung!;
+    // Auge oben auf dem Kopf, gut hinter der Schnauze (Ring/Winkel des Käfigs: Ring 4, Winkel 2 von oben)
+    const augen = { ring: 4, j: 2, groesse: 0.08, art: 'glubsch' as const };
+    const bau = (oeffnung: number) => wesenBauen(rex, plan(augen, { maul: 'vorn', oeffnung, ...(aus.maulLinie ? { maulLinie: aus.maulLinie as NonNullable<Bauplan['maulLinie']> } : {}), ...(aus.maulOptionen ? { maulOptionen: aus.maulOptionen } : {}) }), null);
+    const zu = bau(0);
+    const offen = bau(1);
+    const [z, o] = [zu.netz.augen[0]!, offen.netz.augen[0]!];
+    // Ruhelage und Größe gleich (Höhe aus der Ruhelage: der gehobene Schädel macht das Auge nicht größer), posiert auf der
+    // jeweiligen Haut
+    expect(o.pos).toEqual(z.pos);
+    expect(o.groesse).toBe(z.groesse);
+    expect(offen.netz.hoehe).toBe(zu.netz.hoehe);
+    expect(naechste(z.posiert.pos, zu.netz.positionen)).toBeLessThan(1e-6);
+    expect(naechste(o.posiert.pos, offen.netz.positionen)).toBeLessThan(1e-6);
+    // der Schädel hebt sich beim Öffnen: das Auge wandert mit (mehr als 1 % der Höhe) und nach oben
+    const weg = Math.hypot(o.posiert.pos[0] - z.posiert.pos[0], o.posiert.pos[1] - z.posiert.pos[1], o.posiert.pos[2] - z.posiert.pos[2]);
+    console.log(`Rex-Auge: Weg beim Öffnen ${(weg / offen.netz.hoehe).toFixed(4)} der Höhe, Normale zu ${z.posiert.normale.map((x) => x.toFixed(3))}, offen ${o.posiert.normale.map((x) => x.toFixed(3))}`);
+    expect(weg).toBeGreaterThan(0.01 * offen.netz.hoehe);
+    expect(o.posiert.pos[1]).toBeGreaterThan(z.posiert.pos[1]);
+    // die posierte Normale ist die der posierten Haut: nahe der glatten Eckennormale des Netzes an dieser Stelle
+    const P = offen.netz.positionen;
+    const N = offen.netz.normalen;
+    let best = -1;
+    let bestD = Infinity;
+    for (let i = 0; i < P.length; i += 3) {
+      const d = Math.hypot(P[i]! - o.posiert.pos[0], P[i + 1]! - o.posiert.pos[1], P[i + 2]! - o.posiert.pos[2]);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+    const nn = [N[best]!, N[best + 1]!, N[best + 2]!];
+    const ln = Math.hypot(...nn);
+    expect((nn[0]! * o.posiert.normale[0] + nn[1]! * o.posiert.normale[1] + nn[2]! * o.posiert.normale[2]) / ln).toBeGreaterThan(0.95);
+    // links das Spiegelbild, auch posiert
+    const l = offen.netz.augen[1]!;
+    expect(l.posiert.pos).toEqual([o.posiert.pos[0], o.posiert.pos[1], -o.posiert.pos[2]]);
   }, 60_000);
 });

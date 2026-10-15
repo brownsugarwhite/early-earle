@@ -109,6 +109,7 @@ export const AusstattungSchema = z.object({
       punkt: z.tuple([z.number(), z.number(), z.number()]).optional(),
       mitte: z.boolean().optional(),
       farbe: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+      tiefe: z.number().min(0).max(1).optional(),
     })
     .optional(),
   gesicht: z.boolean().optional(),
@@ -125,7 +126,8 @@ export type ZonenVorlage = { ansicht: 'seite' | 'top' | 'front'; punkte: { x: nu
  * Augen (Phase 2 M5, Plan 5.4): `art` gemalt (Abstandsform im Körpermaterial), glubsch (Kugel angedockt), augapfel (im
  * Netz); `form` die Grundform offen (schlitz, knopf, mandel); `breite` Seitenverhältnis (1 = Grundform), `drehung` in Grad;
  * Lage über `punkt` (Ruhelage, gleitet auf die nächste Stelle der Haut) oder Ring `ring`/Winkel `j` des Käfigs; `mitte` =
- * ein Auge auf der Mittelnaht (Zyklop wie PezenPez) statt eines gespiegelten Paars; `farbe` überschreibt die Palette.
+ * ein Auge auf der Mittelnaht (Zyklop wie PezenPez) statt eines gespiegelten Paars; `farbe` überschreibt die Palette;
+ * `tiefe` (Glubschauge, Augapfel) = Anteil des Durchmessers, der in der Haut steckt (0 aufgesetzt … 0,5 halb … 1 ganz).
  */
 export type AugenWerte = {
   ring: number;
@@ -138,6 +140,7 @@ export type AugenWerte = {
   punkt?: [number, number, number];
   mitte?: boolean;
   farbe?: string;
+  tiefe?: number;
 };
 export type MaulOptionenWerte = {
   reihen: number;

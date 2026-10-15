@@ -151,7 +151,7 @@ export function Szene3D() {
             if (s !== 1) for (let i = 0; i < t.kaefigLinien.length; i++) t.kaefigLinien[i]! *= s;
             r.setzeLinien(t.kaefigLinien, t.kaefigFarben ?? undefined);
           } else r.setzeLinien(null);
-          const augen = t.augen.map((a) => ({ ...a, pos: [a.pos[0] * s, a.pos[1] * s, a.pos[2] * s] as [number, number, number], groesse: a.groesse * s }));
+          const augen = t.augen.map((a) => ({ ...a, pos: [a.pos[0] * s, a.pos[1] * s, a.pos[2] * s] as [number, number, number], groesse: a.groesse * s, posiert: { pos: [a.posiert.pos[0] * s, a.posiert.pos[1] * s, a.posiert.pos[2] * s] as [number, number, number], normale: a.posiert.normale } }));
           if (t.gewichtFarben) r.setzeDreiecke(t.positionen, t.normalen, t.gewichtFarben);
           else if (t.stil === 'feuer' || t.stil === 'gas') r.setzeFeuer(t.positionen, t.normalen, t.hoehe * s, [t.mitte[0] * s, t.mitte[1] * s, t.mitte[2] * s], t.stil, augen);
           else if (t.deskriptoren) {

@@ -283,7 +283,7 @@ function valueNoise(p: Vec3Node): FloatNode {
  * innerhalb jeder Stufe ein Verlauf mit Anteil `verlauf` (Florians Regel: Verlauf nur in der Stufe, nie über die Kante
  * hinweg — hier ist die Kante selbst weich, wie in den gemalten Bögen).
  */
-function stepShade(x: FloatNode, stufen: FloatNode, federung: FloatNode, verlauf: FloatNode): FloatNode {
+export function stepShade(x: FloatNode, stufen: FloatNode, federung: FloatNode, verlauf: FloatNode): FloatNode {
   const S1 = max(stufen.sub(1), 1);
   const g = clamp(x, 0, 0.9999).mul(S1);
   const i = floor(g);

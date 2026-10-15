@@ -51,6 +51,23 @@ function bogen(x: FloatNode, y: FloatNode, R: number, w: FloatNode, dick: FloatN
   return select(abs(x).lessThan(w), select(nah, strich, kappe), kappe);
 }
 
+/** Abgerundetes X mit Seitenverhältnis b (Arme bis ±0,48, Strich 0,11). */
+function formX(x: FloatNode, y: FloatNode, b: FloatNode): FloatNode {
+  const p = vec2(x.div(b), y);
+  const a = 0.48;
+  return min(strecke(p, vec2(-a, -a), vec2(a, a)), strecke(p, vec2(-a, a), vec2(a, -a))).sub(0.11).mul(min(b, 1));
+}
+
+/** Spirale (Archimedes, ≈ 2,3 Windungen bis Radius 0,78, Mittelpunkt als Punkt), dreht mit `drall`. */
+function formSpirale(x: FloatNode, y: FloatNode, drall: FloatNode): FloatNode {
+  const r = length(vec2(x, y));
+  const R = 0.78;
+  const abstand = R / 2.3;
+  const s = r.div(abstand).sub(atan(y, x).add(drall).div(PI.mul(2)));
+  const dLinie = abs(fract(s).sub(0.5)).sub(0.2).mul(abstand);
+  return min(max(dLinie, r.sub(R)), r.sub(0.12));
+}
+
 /**
  * Abstand der Augenform an (x, y) (Einheit halbe Augengröße). `form`/`zustand` als Codes (AUGEN_FORM, AUGEN_ZUSTAND),
  * `breite` = Seitenverhältnis (1 = Grundform), `offen` = Lidöffnung (1 offen … ≈ 0 zu; staucht die offenen Formen),
@@ -69,20 +86,29 @@ export function augenFormAbstand(x: FloatNode, y: FloatNode, form: FloatNode, zu
   const dZu = bogen(x, y.add(0.12), 1.3, wB, float(0.075), false);
   const t = clamp(abs(x).div(wB), 0, 1);
   const dSichel = bogen(x, y.add(0.2), 1.1, wB, float(0.05).add(float(1).sub(t.mul(t)).mul(0.11)), true);
-  const p = vec2(x.div(b), y);
-  const a = 0.48;
-  const dX = min(strecke(p, vec2(-a, -a), vec2(a, a)), strecke(p, vec2(-a, a), vec2(a, -a))).sub(0.11).mul(min(b, 1));
-  // Spirale (Archimedes, ≈ 2,3 Windungen, Mittelpunkt als Punkt), dreht mit `drall`
-  const r = length(vec2(x, y));
-  const R = 0.78;
-  const abstand = R / 2.3;
-  const s = r.div(abstand).sub(atan(y, x).add(drall).div(PI.mul(2)));
-  const dLinie = abs(fract(s).sub(0.5)).sub(0.2).mul(abstand);
-  const dSpirale = min(max(dLinie, r.sub(R)), r.sub(0.12));
+  const dX = formX(x, y, b);
+  const dSpirale = formSpirale(x, y, drall);
   const dSchmal = superellipse(x, yo, b.mul(0.16), float(1), 2.6);
   return select(
     zustand.lessThan(0.5),
     dOffen,
     select(zustand.lessThan(1.5), dZu, select(zustand.lessThan(2.5), dSichel, select(zustand.lessThan(3.5), dX, select(zustand.lessThan(4.5), dSpirale, dSchmal)))),
   );
+}
+
+/**
+ * Pupille des Glubschauges (Phase 2 M5, Schritt 2) an (x, y): Lage der Kugelrichtung quer zur Blickachse, Einheit
+ * Kugelradius. Offen die Grundform als Pupille — Knopf rund und groß wie in Bild 10, Schlitz senkrecht mit spitzen Enden
+ * (Katze, Schlange), Mandel quer —, dazu die Zustände X, Spirale und Schlitz (schmal). Zu und Sichel zeigen die offene
+ * Pupille: dort deckt das Lid (`glubsch.ts`).
+ */
+export function pupillenAbstand(x: FloatNode, y: FloatNode, form: FloatNode, zustand: FloatNode, breite: FloatNode, drall: FloatNode): FloatNode {
+  const b = max(breite, 0.1);
+  const dKnopf = superellipse(x, y, b.mul(0.6), float(0.6), 2);
+  // senkrechte Mandel: Breite und Höhe getauscht
+  const dSchlitz = mandel(y, x, float(0.7), b.mul(0.2));
+  const dMandel = mandel(x, y, b.mul(0.66), float(0.34));
+  const dOffen = select(form.lessThan(0.5), dSchlitz, select(form.lessThan(1.5), dKnopf, dMandel));
+  const dSchmal = mandel(y, x, float(0.72), b.mul(0.07));
+  return select(zustand.lessThan(2.5), dOffen, select(zustand.lessThan(3.5), formX(x, y, b), select(zustand.lessThan(4.5), formSpirale(x, y, drall), dSchmal)));
 }

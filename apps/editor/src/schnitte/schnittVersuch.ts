@@ -24,6 +24,7 @@ export const PRUEFWESEN: readonly { id: string; name: string; palette: string; h
   { id: 'ueberhang', name: 'Ente', palette: 'blob', hinweis: 'Überhang (Schnauze über dem Bauch)' },
   { id: 'robbe', name: 'Robbe', palette: 'blob', hinweis: 'Versuchswesen vom 12.10.' },
   { id: 'pezenpez', name: 'PezenPez', palette: 'blob', hinweis: 'Blob mit einem senkrechten Schlitzauge in der Mitte (Augen, Phase 2 M5)' },
+  { id: 'glubsch', name: 'Glubsch', palette: 'blob', hinweis: 'Blob mit einem großen Glubschauge in der Mitte (Bild 10, Phase 2 M5)' },
 ];
 
 /** Prüfwesen frisch bauen: Vorlage (`public/versuch/<name>/<name>.json`) plus Kern-Zutaten (Drache: Hals ×2, Tiger: Kasten-Spanten). */
@@ -39,6 +40,13 @@ export async function pruefwesenDokument(wesen: string): Promise<Dokument> {
     const ys = k.profile.seite.knoten.map((q) => q.p.y);
     const y = Math.min(...ys) + 0.55 * (Math.max(...ys) - Math.min(...ys));
     dok = { ...k, ausstattung: { augen: { ring: 2, j: 2, groesse: 0.2, punkt: [Math.min(...xs), y, 0], mitte: true, form: 'schlitz', breite: 0.5 } } };
+  } else if (wesen === 'glubsch') {
+    // Glubsch (Bild 10, zweites Wesen): die Startkugel mit einem großen Glubschauge vorn auf der Mittelnaht, ≈ 62 % der Höhe
+    const k = neuesDokument('glubsch');
+    const xs = k.profile.seite.knoten.map((q) => q.p.x);
+    const ys = k.profile.seite.knoten.map((q) => q.p.y);
+    const y = Math.min(...ys) + 0.62 * (Math.max(...ys) - Math.min(...ys));
+    dok = { ...k, ausstattung: { augen: { ring: 2, j: 2, groesse: 0.34, punkt: [Math.min(...xs), y, 0], mitte: true, art: 'glubsch', form: 'knopf' } } };
   } else if (wesen !== 'kugel') {
     const json = (await (await fetch(`${import.meta.env.BASE_URL}versuch/${datei}/${datei}.json`)).json()) as { format?: string };
     dok = json.format === 'ee-wesen' ? dokumentLesen(json) : vorlageDokument(json as Vorlage, 'zu', wesen);

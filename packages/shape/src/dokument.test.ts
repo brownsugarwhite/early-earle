@@ -75,6 +75,11 @@ describe('Dokument', () => {
     const json = JSON.parse(JSON.stringify(d));
     expect(dokumentLesen(json)).toEqual(json);
     expect(() => dokumentLesen({ ...json, ausstattung: { augen: { ...json.ausstattung.augen, art: 'kugel' } } })).toThrow();
+    // Schritt 2: Glubschauge mit Tiefe (0 … 1)
+    const g = { ...d, ausstattung: { augen: { ring: 2, j: 2, groesse: 0.3, art: 'glubsch' as const, form: 'knopf' as const, tiefe: 0.6 } } };
+    const gj = JSON.parse(JSON.stringify(g));
+    expect(dokumentLesen(gj)).toEqual(gj);
+    expect(() => dokumentLesen({ ...gj, ausstattung: { augen: { ...gj.ausstattung.augen, tiefe: 1.5 } } })).toThrow();
   });
   it('Phase 2 M4: Drehung und Größe der Zähne (auch offen) und die Zahnfarbe überstehen die Rundreise', () => {
     const d = neuesDokument('Rex');

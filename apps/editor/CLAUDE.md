@@ -144,6 +144,14 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - **Prüf-Skripte** warten auf `__stores.zahnPruefung.fertig` und das Dokument (die Prüfung startet erst nach 350 ms Ruhe).
   - **Zahnfarbe in der Ausstattung**, nicht in den Zahnreihen: Sonst würde ein Farbwechsel die Automatik ins Dokument übernehmen.
   - **Tempo-Tests messen die Maschine mit:** Bei belegter Maschine (andere Programme, Lastmittel > 15) kippen die festen Schranken auch ohne eigene Änderung. Vor dem Urteil `uptime` und einzeln mit `-t` prüfen.
+- **Nachtrag 15.10. nachts — Phase 2 M5 Augen, Fallen:**
+  - **Maße aus der Ruhelage:** `WesenNetz.hoehe` (Augen, Lippenband, Nase, Klingen, Material) kommt aus `abl.fein`, nicht aus der Pose. Aus der Pose wuchsen beim Öffnen des Rex Augen, Muster und Lippenband um 11 %.
+  - **Augen haben zwei Lagen:** `pos`/`normale` in der Ruhelage (gemalte Augen und Ring rechnen dort, das Material folgt der Haut von selbst), `posiert` in der aktuellen Pose (Glubschkugel, Greifring). `Szene3D` skaliert beide.
+  - **Glubschkugeln sind Kinder von `wesen`:** Sie verschwinden mit ihm (Matcap, Feuer). `treffen` prüft nicht rekursiv, Klicks gehen durch die Kugel auf die Haut.
+  - **Lid im Material, nicht als Kappe:** Die Kugel steht heraus und wird von allen Seiten gesehen. Ganz zu muss die Ebene über die ganze Kugel rücken (sonst bleibt hinten unten Lederhaut frei).
+  - **Glanz nur bei runder und Mandel-Pupille:** Am schmalen Schlitz biss die Glanzscheibe eine Kerbe in die Pupille.
+  - **Bogen als Strich nur auf der nahen Hälfte des Kreises** (`augenFormen.ts`), sonst zeichnet die Gegenseite einen zweiten Bogen.
+  - **Skripte:** Ein geändertes Dokument lässt beim Laden eines Prüfwesens den In-App-Dialog „Anderes Wesen laden?“ erscheinen (kein Browser-Dialog): „Verwerfen“ klicken und den Dokumentnamen prüfen (`augen-glubsch.mjs`, `laden`).
 - **Nachtrag 13.10. morgens — Schnitt-Loft (Versuch):**
   - Dritter 3D-Tab „schnitte“ (`apps/editor/src/schnitte/`, Kern `packages/shape/src/versuch/schnittLoft.ts`).
   - Je Stelle wird der echte Schnitt aus allen Intervallen von Seite und Top berechnet. Teile, Löcher und Kerben bleiben erhalten.

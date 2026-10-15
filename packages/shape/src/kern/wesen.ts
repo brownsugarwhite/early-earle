@@ -32,9 +32,24 @@ export type BeinArt = 'aus' | 'verschmolzen' | 'angesteckt';
 
 /**
  * Auge (Phase 2 M5, Plan 5.4): Lage und Normale auf der Haut (Ruhelage, mit Hebung), Größe (Welt), Art und Grundform,
- * Seitenverhältnis, Drehung (Grad) und Seite (−1 links, 0 Mitte, 1 rechts).
+ * Seitenverhältnis, Drehung (Grad), Tiefe (Anteil des Durchmessers in der Haut, Glubschauge/Augapfel) und Seite (−1 links,
+ * 0 Mitte, 1 rechts). `posiert`: dieselbe Stelle der Haut in der aktuellen Pose (Kiefer, Fressen, Beine) — dort sitzt eine
+ * Augenkugel, so folgt sie beim Öffnen dem Schädel; gemalte Augen rechnen in der Ruhelage und folgen der Haut von selbst.
  */
-export type Auge = { pos: V3; normale: V3; groesse: number; art: 'gemalt' | 'glubsch' | 'augapfel'; form: 'schlitz' | 'knopf' | 'mandel'; breite: number; drehung: number; seite: -1 | 0 | 1 };
+export type Auge = {
+  pos: V3;
+  normale: V3;
+  groesse: number;
+  art: 'gemalt' | 'glubsch' | 'augapfel';
+  form: 'schlitz' | 'knopf' | 'mandel';
+  breite: number;
+  drehung: number;
+  tiefe: number;
+  seite: -1 | 0 | 1;
+  posiert: { pos: V3; normale: V3 };
+};
+/** Tiefe der Augenkugel ohne Angabe: Glubschauge sitzt mit gut der Hälfte vor der Haut (Bild 10), der Augapfel tiefer (Bild 11). */
+export const AUGEN_TIEFE = { gemalt: 0, glubsch: 0.42, augapfel: 0.7 } as const;
 
 /** Gesicht fürs Earle-Material: Dreiecksnase (Mitte, Oben, Rechts, Radius, Höhe) und Scharte A → B mit Breite; Welt/Ruhelage. */
 export type Gesicht = { nase: V3; oben: V3; rechts: V3; radius: number; hoehe: number; philtrumA: V3; philtrumB: V3; breite: number };
@@ -390,22 +405,24 @@ function kaefigSegmente(abl: Ableitung, xyz: Float64Array): { punkte: Float32Arr
 
 /**
  * Augen auf der Haut (Phase 2 M5): Lage über `punkt` (Ruhelage; gleitet auf den nächsten feinen Punkt, Normale aus den
- * Flächen um ihn) oder Ring/Winkel des Käfigs (Normale vom Ringmittelpunkt aus, wie bisher); `mitte` = ein Auge auf der
- * Mittelnaht (nur Nahtpunkte, Normale ohne z), sonst ein Paar (links gespiegelt). Größe als Anteil der Höhe.
+ * Flächen um ihn) oder Ring/Winkel des Käfigs (Normale aus den Flächen um den Ringpunkt); `mitte` = ein Auge auf der
+ * Mittelnaht (nur Nahtpunkte, Normale ohne z), sonst ein Paar (links gespiegelt). Größe als Anteil der Höhe. `posiert`
+ * (feine Punkte der aktuellen Pose, gleiche Reihenfolge): Lage und Normale derselben Ecke dort.
  */
-function augenAm(abl: Ableitung, flaechen: readonly (readonly number[])[], hoehe: number, wahl: AugenWerte): Auge[] {
+function augenAm(abl: Ableitung, flaechen: readonly (readonly number[])[], hoehe: number, wahl: AugenWerte, posiert: ArrayLike<number> = abl.fein): Auge[] {
   const f = abl.fein;
-  const P = (i: number): V3 => [f[3 * i]!, f[3 * i + 1]!, f[3 * i + 2]!];
+  const Q = (q: ArrayLike<number>, i: number): V3 => [q[3 * i]!, q[3 * i + 1]!, q[3 * i + 2]!];
+  const P = (i: number): V3 => Q(f, i);
   const v = abl.vorlage;
   // Normale am feinen Punkt: Summe der Flächennormalen (Newell) der Flächen um ihn; Flächen laufen von außen gegen den
   // Uhrzeigersinn, die Summe zeigt nach außen (Käfigpunkte behalten ihren Index in der feinen Fläche)
-  const normaleAn = (punkt: number, ohneZ: boolean): V3 => {
+  const normaleAn = (punkt: number, ohneZ: boolean, q: ArrayLike<number> = f): V3 => {
     const n: V3 = [0, 0, 0];
     for (const fl of flaechen) {
       if (!fl.includes(punkt)) continue;
       for (let k = 0; k < fl.length; k++) {
-        const a = P(fl[k]!);
-        const b = P(fl[(k + 1) % fl.length]!);
+        const a = Q(q, fl[k]!);
+        const b = Q(q, fl[(k + 1) % fl.length]!);
         n[0] += (a[1] - b[1]) * (a[2] + b[2]);
         n[1] += (a[2] - b[2]) * (a[0] + b[0]);
         n[2] += (a[0] - b[0]) * (a[1] + b[1]);
@@ -417,6 +434,7 @@ function augenAm(abl: Ableitung, flaechen: readonly (readonly number[])[], hoehe
   };
   let pos: V3;
   let normale: V3;
+  let ecke: number;
   if (wahl.punkt || wahl.mitte) {
     // Ziel: der gespeicherte Punkt, sonst der Ringpunkt (bei `mitte` auf die Naht gezogen)
     let ziel: V3 = wahl.punkt ?? P(v.ringPunkt(Math.min(wahl.ring, v.R - 1), Math.max(1, Math.min(v.N / 2 - 1, wahl.j))));
@@ -436,6 +454,7 @@ function augenAm(abl: Ableitung, flaechen: readonly (readonly number[])[], hoehe
     // auf der Naht exakt z = 0 (die feinen Nahtpunkte tragen Rechenrauschen um 1e-17)
     if (wahl.mitte) pos = [pos[0], pos[1], 0];
     normale = normaleAn(best, !!wahl.mitte);
+    ecke = best;
   } else {
     // Ring und Winkel: der Vorlagen-Ringpunkt; Normale der Fläche (bis M5 vom Ringmittelpunkt aus, ohne Vorwärtsanteil — die
     // Augenebene stand dann schräg zur Haut, Spitzen schräger Formen verliefen)
@@ -444,12 +463,18 @@ function augenAm(abl: Ableitung, flaechen: readonly (readonly number[])[], hoehe
     const p = v.ringPunkt(i, j);
     pos = P(p);
     normale = normaleAn(p, false);
+    ecke = p;
   }
-  const eigen = { groesse: wahl.groesse * hoehe, art: wahl.art ?? 'gemalt', form: wahl.form ?? 'schlitz', breite: wahl.breite ?? 1, drehung: wahl.drehung ?? 0 } as const;
-  if (wahl.mitte) return [{ pos, normale, ...eigen, seite: 0 }];
+  // dieselbe Ecke in der Pose (Pose und Netz sind spiegelgleich: das linke Auge ist das Spiegelbild)
+  let pPos = Q(posiert, ecke);
+  if (wahl.mitte) pPos = [pPos[0], pPos[1], 0];
+  const pN = posiert === f ? normale : normaleAn(ecke, !!wahl.mitte, posiert);
+  const art = wahl.art ?? 'gemalt';
+  const eigen = { groesse: wahl.groesse * hoehe, art, form: wahl.form ?? 'schlitz', breite: wahl.breite ?? 1, drehung: wahl.drehung ?? 0, tiefe: wahl.tiefe ?? AUGEN_TIEFE[art] } as const;
+  if (wahl.mitte) return [{ pos, normale, ...eigen, seite: 0, posiert: { pos: pPos, normale: pN } }];
   return [
-    { pos, normale, ...eigen, seite: 1 },
-    { pos: [pos[0], pos[1], -pos[2]], normale: [normale[0], normale[1], -normale[2]], ...eigen, seite: -1 },
+    { pos, normale, ...eigen, seite: 1, posiert: { pos: pPos, normale: pN } },
+    { pos: [pos[0], pos[1], -pos[2]], normale: [normale[0], normale[1], -normale[2]], ...eigen, seite: -1, posiert: { pos: [pPos[0], pPos[1], -pPos[2]], normale: [pN[0], pN[1], -pN[2]] } },
   ];
 }
 
@@ -794,8 +819,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     }
     t = { positionen, normalen };
   }
+  // Höhe als Maß für Augen, Lippenband, Nase, Klingen und Material: aus der Ruhelage, nicht aus der Pose (M5, 15.10.:
+  // beim Öffnen hob der Schädel den höchsten Punkt, Augen, Muster und Lippenband des Rex wuchsen um 11 %)
   let hoehe = 0;
-  for (const p of punkte) hoehe = Math.max(hoehe, p[1]);
+  for (let i = 1; i < abl.fein.length; i += 3) hoehe = Math.max(hoehe, abl.fein[i]!);
   // mit Beinen steht der Körper auf den Füßen: alles so heben, dass der tiefste Punkt auf dem Boden liegt
   let hebung = 0;
   if (beine !== 'aus') {
@@ -842,7 +869,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     punktAtl = punktAtlas(k, flaechen, rf.length / 3);
   }
   // Augen in der Ruhelage samt Hebung (wie `ruhe` und das Gesicht; sonst saßen sie mit Beinen tiefer als die Haut)
-  const augen = (earle || plan.stil === 'feuer' || plan.stil === 'gas' ? augenAm(abl, flaechen, hoehe, plan.augen ?? { ring: 2, j: 2, groesse: 0.11 }) : []).map((a) => (hebung ? { ...a, pos: [a.pos[0], a.pos[1] + hebung, a.pos[2]] as V3 } : a));
+  // `posiert` aus den feinen Punkten der Pose (Kiefer, Fressen, Posenliste, Beine), ebenfalls gehoben
+  const augen = (earle || plan.stil === 'feuer' || plan.stil === 'gas' ? augenAm(abl, flaechen, hoehe, plan.augen ?? { ring: 2, j: 2, groesse: 0.11 }, fein) : []).map((a) =>
+    hebung ? { ...a, pos: [a.pos[0], a.pos[1] + hebung, a.pos[2]] as V3, posiert: { pos: [a.posiert.pos[0], a.posiert.pos[1] + hebung, a.posiert.pos[2]] as V3, normale: a.posiert.normale } } : a,
+  );
   const ab = nahtAbweichung(abl, dok);
   // Abweichung je Blatt (Schritt 4) aus der Ruhelage ohne Hebung, nur nach einer echten Ableitung; Züge zeigen den letzten Stand
   let saum = stand?.saum ?? null;

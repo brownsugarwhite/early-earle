@@ -44,3 +44,6 @@ Aus `packages/shape` starten: `npx vite-node ../../apps/editor/scripts/pruefen/<
 | `zahn-farbe.mjs` | Zahnfarbe über den Farbwähler, keine neue Ableitung, zurück zum Standard |
 | `zahn-pruefung.mjs` | Prüfung im Editor: zu langer Zahn → Befund, Glut, Vorschlag → frei, Undo (wartet auf `__stores.zahnPruefung.fertig`) |
 | `zahn-abnahme.mjs` | Abnahme M4: Rex mit 14 Zähnen in Florians Schritten, Bild neben `rex_mouth_detail` und Bogen 06 |
+| `augen-zustaende.mjs` | Phase 2 M5: PezenPez in allen Augenzuständen, Lid halb, Kugel-Paare (Knopf, Mandel gedreht, Schlitz) neben Bild 10 und der PezenPez-Vorlage (`KAMERA`) |
+| `augen-glubsch.mjs` | Phase 2 M5, Schritt 2: Prüfwesen Glubsch in allen Zuständen, Lid halb, schräg, zu von unten; Kugel-Paare; Rex mit Glubschaugen zu/offen (Kugel folgt dem Schädel), neben Bild 10 |
+| `augen-tafel.mjs` | Tafel Augen: Chip Glubsch, Tiefe, Rand ziehen (Größe), Undo, Klick setzt neu; Prüfpunkte mit ✓/✗ |
