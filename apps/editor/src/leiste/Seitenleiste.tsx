@@ -344,6 +344,33 @@ function PoseBereich() {
   );
 }
 
+/**
+ * Fressen wie Editor (15.10., Florian: „Blendshapes und Bones kombinieren“): Im Fressen-Modus formen alle Werkzeuge die
+ * Pose; die Tafel zeigt, ob die Pose eigene Griffe hat und ob ihr Käfig zur Grundform passt.
+ */
+function PoseFormBereich() {
+  const eigen = useEditor((s) => !!s.basis.posenForm?.fressen);
+  const pose = useKernAnzeige((s) => s.info?.pose);
+  const passt = !pose || pose.passt;
+  return (
+    <section className="leiste-bereich pose-bereich" data-poseform-bereich="">
+      <div className="feld">
+        <span>Pose Fressen</span>
+        <b data-poseform={eigen ? (passt ? 'eigen' : 'passt-nicht') : 'grundform'}>{eigen ? (passt ? 'eigene Form' : 'passt nicht zur Grundform') : 'wie die Grundform'}</b>
+      </div>
+      <p className="hilfe">
+        In Fressen formen alle Werkzeuge die Pose, genau wie im Editor: Umrisse in Seite, Front und Top (gekoppelt), Maullinien, Reifen, Pinsel. Das ist der Blendshape; die Öffnung blendet ihn ein, die Knochen (Posen &amp; Leben) öffnen dazu das Maul. Die Grundform bleibt, und was du an ihr änderst, wandert in die Pose mit.
+        {!passt && ' Der Käfig der Pose hat eine andere Topologie als die Grundform (z. B. eine neue Ecke nur in der Pose) — es gilt die Grundform.'}
+      </p>
+      {eigen && (
+        <button className="chip" data-pose-grundform="" onClick={() => useEditor.getState().poseFormVerwerfen()}>
+          Pose = Grundform
+        </button>
+      )}
+    </section>
+  );
+}
+
 /** Versuch 12.10. abends: Bauweise Wirbelsäule zum Vergleichen (Tab „wirbelsäule“ am 3D-Fenster). */
 function WirbelBereich() {
   const info = useWirbelAnzeige((s) => s.info);
@@ -768,7 +795,7 @@ export function Seitenleiste() {
           {/* Tafel (Plan 9.5): je Stufe höchstens sechs Felder; Bauweise „kern“ */}
           {kern && ebene === 'form' && (
             <>
-              {modus === 'fressen' && <PoseBereich />}
+              {modus === 'fressen' && <PoseFormBereich />}
               <WesenBereich />
               <section className="leiste-bereich" data-bereich="koerper">
                 <BogenFeld />
@@ -781,9 +808,12 @@ export function Seitenleiste() {
             </>
           )}
           {kern && ebene === 'maul' && (
-            <section className="leiste-bereich" data-bereich="maul">
-              <KernMaulFeld />
-            </section>
+            <>
+              {modus === 'fressen' && <PoseFormBereich />}
+              <section className="leiste-bereich" data-bereich="maul">
+                <KernMaulFeld />
+              </section>
+            </>
           )}
           {kern && ebene === 'zaehne' && (
             <section className="leiste-bereich" data-bereich="zaehne">

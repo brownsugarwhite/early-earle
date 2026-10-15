@@ -15,6 +15,10 @@ import {
   type Spant,
   type Zaehne,
   neuesDokument,
+  poseDokument,
+  poseMitfuehren,
+  poseVerwerfen,
+  poseZurueck,
   spantenAngleichen,
 } from '@ee/shape';
 import { maulAnKontur, maulImUmrissSichern } from '@ee/shape/versuch';
@@ -26,7 +30,14 @@ import { create } from 'zustand';
 export type Modus = 'editor' | 'fressen' | PoseName;
 
 type EditorState = {
+  /**
+   * Sicht der Werkzeuge. Fressen wie Editor (15.10., Florian: „Blendshapes und Bones kombinieren“): Im Fressen-Modus
+   * (Bauweise Kern) ist das die Pose — die Grundform mit den Griffen der Pose (`poseDokument`); jede Änderung geht über
+   * `poseZurueck` in `basis` (Griffe in die Pose, alles andere in die Grundform). Sonst ist `dok === basis`.
+   */
   dok: Dokument;
+  /** das gespeicherte Dokument (Grundform samt Posen): Undo/Redo, Speichern, Bau */
+  basis: Dokument;
   /** Datei in der Bibliothek, null = noch nie gespeichert */
   datei: string | null;
   geaendert: boolean;
@@ -64,6 +75,8 @@ type EditorState = {
   gespeichert(datei: string): void;
   setzeModus(m: Modus): void;
   poseHinzu(p: PoseName): void;
+  /** Fressen wie Editor: eigene Griffe der Pose verwerfen (die Pose ist wieder die Grundform), ein Undo-Schritt */
+  poseFormVerwerfen(): void;
   poseEntfernen(p: PoseName): void;
 };
 
@@ -87,6 +100,11 @@ export function setzeGesteEndeHaken(h: GesteEndeHaken | null): void {
  */
 const maulFrei = () => useUi.getState().bauweise === 'kern';
 
+/** Wirkt der Modus auf die Pose-Form? (Fressen in der Bauweise Kern; weitere Posen formen bisher nur die Pinsel) */
+export const poseModus = (m: Modus) => m === 'fressen' && useUi.getState().bauweise === 'kern';
+/** Sicht der Werkzeuge im Modus: im Fressen-Modus die Pose, sonst das Dokument selbst */
+export const sichtVon = (basis: Dokument, m: Modus): Dokument => (poseModus(m) ? poseDokument(basis, 'fressen') : basis);
+
 /**
  * Was an der Form hängt, folgt ihr (Florian 12.10.: ein Objekt): Der Maulanfang bleibt auf der Seitenkontur, die
  * Kantenlinien legen sich neu auf die Fläche (≈ 0,1–0,2 s, deshalb bei Gesten erst beim Loslassen).
@@ -109,17 +127,24 @@ function mitFormVerbunden(alt: Dokument, neu: Dokument, kantenAuch: boolean): Do
 }
 
 export const useEditor = create<EditorState>((set, get) => {
-  /** Änderung am Dokument; außerhalb einer Geste wird sie sofort ein Undo-Schritt. */
+  /**
+   * Änderung an der Sicht; außerhalb einer Geste wird sie sofort ein Undo-Schritt. Im Fressen-Modus kommt sie über
+   * `poseZurueck` ins Dokument (Griffe in die Pose), sonst wandern die Posen mit der Grundform mit (`poseMitfuehren`).
+   */
   const aendern = (f: (d: Dokument) => Dokument) => {
-    const { dok, gesteStart, verlauf } = get();
-    const neu = f(dok);
-    if (neu === dok) return;
-    if (gesteStart) set({ dok: neu, geaendert: true });
-    else set({ dok: neu, geaendert: true, verlauf: [...verlauf, dok].slice(-MAX_VERLAUF), zukunft: [] });
+    const { dok, basis, gesteStart, verlauf, modus } = get();
+    const neuSicht = f(dok);
+    if (neuSicht === dok) return;
+    const neuBasis = poseModus(modus) ? poseZurueck(basis, dok, neuSicht, 'fressen') : poseMitfuehren(basis, neuSicht);
+    const sicht = sichtVon(neuBasis, modus);
+    if (gesteStart) set({ basis: neuBasis, dok: sicht, geaendert: true });
+    else set({ basis: neuBasis, dok: sicht, geaendert: true, verlauf: [...verlauf, basis].slice(-MAX_VERLAUF), zukunft: [] });
   };
+  const start = neuesDokument();
 
   return {
-    dok: neuesDokument(),
+    dok: start,
+    basis: start,
     datei: null,
     geaendert: false,
     modus: 'editor',
@@ -128,7 +153,7 @@ export const useEditor = create<EditorState>((set, get) => {
     gesteStart: null,
 
     beginGeste() {
-      if (!get().gesteStart) set({ gesteStart: get().dok });
+      if (!get().gesteStart) set({ gesteStart: get().basis });
     },
     endeGeste() {
       const start = get().gesteStart;
@@ -137,13 +162,13 @@ export const useEditor = create<EditorState>((set, get) => {
         const { gesteStart, verlauf } = get();
         if (!gesteStart) return;
         // nach einer Formgeste: Kanten auf die neue Fläche legen (gehört zum selben Undo-Schritt)
-        const jetzt = get().dok;
+        const jetzt = get().basis;
         const formNeu = gesteStart.profile !== jetzt.profile || gesteStart.spanten !== jetzt.spanten || gesteStart.hauptspant !== jetzt.hauptspant;
-        const dok = formNeu ? kantenAnFlaeche(jetzt) : jetzt;
-        if (gesteStart !== dok) set({ dok, gesteStart: null, verlauf: [...verlauf, gesteStart].slice(-MAX_VERLAUF), zukunft: [] });
+        const basis = formNeu ? kantenAnFlaeche(jetzt) : jetzt;
+        if (gesteStart !== basis) set({ basis, dok: sichtVon(basis, get().modus), gesteStart: null, verlauf: [...verlauf, gesteStart].slice(-MAX_VERLAUF), zukunft: [] });
         else set({ gesteStart: null });
       };
-      if (gesteEndeHaken && gesteEndeHaken(start, get().dok, abschliessen)) return;
+      if (gesteEndeHaken && gesteEndeHaken(start, get().basis, abschliessen)) return;
       abschliessen();
     },
     setzeProfil(ansicht, profil) {
@@ -215,10 +240,11 @@ export const useEditor = create<EditorState>((set, get) => {
       });
     },
     setzeStationen(s) {
-      const { dok } = get();
-      const rest = { ...(dok.kaefig ?? { deltas: [] }) };
+      const { basis, modus } = get();
+      const rest = { ...(basis.kaefig ?? { deltas: [] }) };
       delete rest.stationen;
-      set({ dok: { ...dok, kaefig: s ? { ...rest, stationen: s } : rest } });
+      const neu = { ...basis, kaefig: s ? { ...rest, stationen: s } : rest };
+      set({ basis: neu, dok: sichtVon(neu, modus) });
     },
     setzeDokument(dok) {
       aendern((d) => (d === dok ? d : dok));
@@ -232,33 +258,41 @@ export const useEditor = create<EditorState>((set, get) => {
       });
     },
     rueckgaengig() {
-      const { verlauf, zukunft, dok } = get();
+      const { verlauf, zukunft, basis, modus } = get();
       const vorher = verlauf[verlauf.length - 1];
       if (!vorher) return;
-      set({ dok: vorher, verlauf: verlauf.slice(0, -1), zukunft: [dok, ...zukunft], geaendert: true, gesteStart: null });
+      set({ basis: vorher, dok: sichtVon(vorher, modus), verlauf: verlauf.slice(0, -1), zukunft: [basis, ...zukunft], geaendert: true, gesteStart: null });
     },
     wiederholen() {
-      const { verlauf, zukunft, dok } = get();
+      const { verlauf, zukunft, basis, modus } = get();
       const nach = zukunft[0];
       if (!nach) return;
-      set({ dok: nach, verlauf: [...verlauf, dok], zukunft: zukunft.slice(1), geaendert: true, gesteStart: null });
+      set({ basis: nach, dok: sichtVon(nach, modus), verlauf: [...verlauf, basis], zukunft: zukunft.slice(1), geaendert: true, gesteStart: null });
     },
     neu() {
       // Jedes neue Wesen startet als Kugel aus drei Kreisen (Florian, 11.10.2026)
-      set({ dok: neuesDokument(), datei: null, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
+      const d = neuesDokument();
+      set({ dok: d, basis: d, datei: null, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
     },
     laden(dok, datei) {
-      set({ dok: maulFrei() ? dok : maulImUmrissSichern(dok), datei, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
+      const d = maulFrei() ? dok : maulImUmrissSichern(dok);
+      set({ dok: d, basis: d, datei, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
     },
     gespeichert(datei) {
       set({ datei, geaendert: false });
     },
     setzeModus(m) {
-      set({ modus: m });
+      set({ modus: m, dok: sichtVon(get().basis, m) });
+    },
+    poseFormVerwerfen() {
+      const { basis, verlauf, modus } = get();
+      const neu = poseVerwerfen(basis, 'fressen');
+      if (neu === basis) return;
+      set({ basis: neu, dok: sichtVon(neu, modus), geaendert: true, verlauf: [...verlauf, basis].slice(-MAX_VERLAUF), zukunft: [] });
     },
     poseHinzu(p) {
       aendern((d) => (d.posen.includes(p) ? d : { ...d, posen: [...d.posen, p] }));
-      set({ modus: p });
+      set({ modus: p, dok: sichtVon(get().basis, p) });
     },
     poseEntfernen(p) {
       // mit der Pose verschwinden auch ihre Käfig-Deltas (Posenliste, Kern)
@@ -269,7 +303,7 @@ export const useEditor = create<EditorState>((set, get) => {
         delete kp[p];
         return { ...d, posen, kaefig: { ...d.kaefig, posen: kp } };
       });
-      if (get().modus === p) set({ modus: 'editor' });
+      if (get().modus === p) set({ modus: 'editor', dok: get().basis });
     },
   };
 });

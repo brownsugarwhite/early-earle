@@ -136,10 +136,10 @@ export function Szene3D() {
         if (klingenUhr !== null) window.clearInterval(klingenUhr);
       });
       const bauen = (dRoh: Dokument, schnell = false) => {
-        // Fressen-Tab mit eigener Seitenform (Versuch 12.10. nachts): Körper ohne Maul aus der Pose-Form; mit Maul legt
-        // sich die offene Haut im Maul-Bau an sie
+        // Fressen-Tab mit eigener Seitenform (Versuch 12.10. nachts, nur noch für die Versuche): Körper ohne Maul aus der
+        // Pose-Form. In der Bauweise Kern baut der Worker aus der Grundform samt Pose-Form (Fressen wie Editor, 15.10.)
         const pose = dRoh.posenProfile?.fressen?.seite;
-        const d: Dokument = useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
+        const d: Dokument = useUi.getState().bauweise !== 'kern' && useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
         if (!versuch && useUi.getState().bauweise === 'kern') {
           // Wesen-Editor 2: Käfig als Wahrheit, Seitenumriss als Griff; der Bau läuft im Worker (Phase 1 / M1), das
           // Ergebnis kommt zurück, der neueste Auftrag gewinnt
@@ -275,7 +275,7 @@ export function Szene3D() {
         const n = versuchNetz(d, versuch.fall);
         r.setzeDreiecke(n.positionen, n.normalen);
       };
-      bauen(useEditor.getState().dok);
+      bauen(useEditor.getState().basis);
       r.setzeKamera(useUi.getState().kamera);
       r.setzeZebra(useUi.getState().zebra);
       r.setzeRect(useRahmen.getState().rects?.creation ?? null);
@@ -303,40 +303,44 @@ export function Szene3D() {
       }
       abmelden.push(
         useEditor.subscribe((s, v) => {
+          // gebaut wird aus dem gespeicherten Dokument (Grundform samt Posen); die Sicht der Werkzeuge (Fressen) folgt daraus
+          const b = s.basis;
+          const a = v.basis;
           const geaendert =
-            s.dok.profile !== v.dok.profile ||
-            s.dok.skalierung !== v.dok.skalierung ||
-            s.dok.maul !== v.dok.maul ||
-            s.dok.zaehne !== v.dok.zaehne ||
-            s.dok.kanten !== v.dok.kanten ||
-            s.dok.spanten !== v.dok.spanten ||
-            s.dok.hauptspant !== v.dok.hauptspant ||
-            s.dok.wirbelsaeule !== v.dok.wirbelsaeule ||
-            s.dok.posenProfile !== v.dok.posenProfile ||
-            s.dok.rundSpanten !== v.dok.rundSpanten ||
-            s.dok.kaefig !== v.dok.kaefig ||
-            s.dok.ausstattung !== v.dok.ausstattung ||
+            b.profile !== a.profile ||
+            b.skalierung !== a.skalierung ||
+            b.maul !== a.maul ||
+            b.zaehne !== a.zaehne ||
+            b.kanten !== a.kanten ||
+            b.spanten !== a.spanten ||
+            b.hauptspant !== a.hauptspant ||
+            b.wirbelsaeule !== a.wirbelsaeule ||
+            b.posenProfile !== a.posenProfile ||
+            b.posenForm !== a.posenForm ||
+            b.rundSpanten !== a.rundSpanten ||
+            b.kaefig !== a.kaefig ||
+            b.ausstattung !== a.ausstattung ||
             s.modus !== v.modus;
           const wirbel = useUi.getState().bauweise === 'wirbel';
           const schnitte = useUi.getState().bauweise === 'schnitte' || useUi.getState().bauweise === 'rund' || useUi.getState().bauweise === 'kern';
           // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen (Schnitte ohne Maul)
-          if (s.dok.maul && s.gesteStart && !schnitte) return;
+          if (b.maul && s.gesteStart && !schnitte) return;
           // Kanten-Käfig, Wirbelsäule und Schnitte: während einer Geste schnell (gröber), beim Loslassen genau
-          if (geaendert) bauen(s.dok, !!s.gesteStart && (wirbel || schnitte || mitKanten(s.dok)));
-          else if (v.gesteStart && !s.gesteStart && (wirbel || schnitte || s.dok.maul || mitKanten(s.dok))) bauen(s.dok);
+          if (geaendert) bauen(b, !!s.gesteStart && (wirbel || schnitte || mitKanten(b)));
+          else if (v.gesteStart && !s.gesteStart && (wirbel || schnitte || b.maul || mitKanten(b))) bauen(b);
         }),
         useUi.subscribe((s, v) => {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
           if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
-          if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || (s.bauweise === 'kern' && (kernMaulAktiv(useEditor.getState().dok) || kernRundmaul(useEditor.getState().dok))))) bauen(useEditor.getState().dok);
+          if (s.oeffnung !== v.oeffnung && (useEditor.getState().basis.maul || (s.bauweise === 'kern' && (kernMaulAktiv(useEditor.getState().basis) || kernRundmaul(useEditor.getState().basis))))) bauen(useEditor.getState().basis);
           // Posenliste: Stärke der aktiven weiteren Pose (ohne Umbau, Deltas)
-          if (s.poseStaerke !== v.poseStaerke && s.bauweise === 'kern' && weiterePose()) bauen(useEditor.getState().dok);
+          if (s.poseStaerke !== v.poseStaerke && s.bauweise === 'kern' && weiterePose()) bauen(useEditor.getState().basis);
           // Rig: Gewichtsfarben an/aus (nur in „Posen & Leben“ sichtbar)
           const gewichte = (x: typeof s) => x.gewichteZeigen && x.ebene === 'posen';
-          if (gewichte(s) !== gewichte(v) && s.bauweise === 'kern' && kernMaulAktiv(useEditor.getState().dok)) bauen(useEditor.getState().dok);
-          if (s.bauweise !== v.bauweise) bauen(useEditor.getState().dok);
-          if ((s.schnittRegel !== v.schnittRegel || s.schnittUeberblenden !== v.schnittUeberblenden) && s.bauweise === 'schnitte') bauen(useEditor.getState().dok);
-          if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
+          if (gewichte(s) !== gewichte(v) && s.bauweise === 'kern' && kernMaulAktiv(useEditor.getState().basis)) bauen(useEditor.getState().basis);
+          if (s.bauweise !== v.bauweise) bauen(useEditor.getState().basis);
+          if ((s.schnittRegel !== v.schnittRegel || s.schnittUeberblenden !== v.schnittUeberblenden) && s.bauweise === 'schnitte') bauen(useEditor.getState().basis);
+          if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().basis, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
           if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
           if (s.spantAuswahl !== v.spantAuswahl || s.ebene !== v.ebene) reifenFaerben(r);
           if ((s.zahnAuswahl !== v.zahnAuswahl || s.ebene !== v.ebene) && s.bauweise === 'kern') zahnMarkenAnzeigen(r, useZahnPruefung.getState().meldungen);
@@ -354,9 +358,9 @@ export function Szene3D() {
         // Phase 2 M5: Augen-Vorschau (Zustand, Lid, Blinzeln) ohne Umbau
         useUi.subscribe((s, v) => (s.augenZustand !== v.augenZustand || s.augenLid !== v.augenLid || s.blinzeln !== v.blinzeln) && r.setzeAugenAnzeige(s.augenZustand, s.augenLid, s.blinzeln)),
         // Beweis 4: Look oder Palette gewechselt → Kern neu bauen
-        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung || s.stil !== v.stil) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
+        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung || s.stil !== v.stil) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().basis)),
         // Biege-Regler losgelassen: genau bauen
-        useWirbelAnzeige.subscribe((s, v) => v.zieht && !s.zieht && useUi.getState().bauweise === 'wirbel' && bauen(useEditor.getState().dok)),
+        useWirbelAnzeige.subscribe((s, v) => v.zieht && !s.zieht && useUi.getState().bauweise === 'wirbel' && bauen(useEditor.getState().basis)),
       );
       const groesse = () => r.groesseAnpassen();
       window.addEventListener('resize', groesse);
