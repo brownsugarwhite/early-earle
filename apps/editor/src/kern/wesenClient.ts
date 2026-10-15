@@ -2,7 +2,7 @@
 // Während ein Bau läuft, ersetzt jede neue Anfrage die wartende; nach dem Ende startet nur die letzte. Animationsbilder
 // werden nur angefordert, wenn kein Auftrag läuft (sonst verfällt das Bild). Ohne Worker (Tests) wird synchron gebaut.
 
-import { type Bauplan, type WesenNetz, type WesenStand, formenFolgen, wesenAnimieren, wesenBauen } from '@ee/shape/kern';
+import { type Bauplan, type WesenNetz, type WesenStand, type ZahnMeldung, formenFolgen, wesenAnimieren, wesenBauen } from '@ee/shape/kern';
 import type { Dokument } from '@ee/shape';
 import type { FolgenAntwort, WorkerAntwort, WorkerAuftrag } from './wesen.worker';
 
@@ -14,7 +14,9 @@ export class WesenClient {
   private naechster: { dok: Dokument; plan: Partial<Bauplan>; schnell: boolean; cb: (n: WesenNetz) => void } | null = null;
   /** Formen folgen (nach einem Pinselstrich): wartet hinter dem nächsten Bau, nur der neueste Auftrag */
   private naechsterFolgen: { dok: Dokument; plan: Partial<Bauplan>; cb: (r: FolgenAntwort | null) => void } | null = null;
-  private laufend: { cb: (n: WesenNetz) => void } | { animation: (b: Bild | null) => void } | { folgen: (r: FolgenAntwort | null) => void } | null = null;
+  /** Zahnprüfung (Phase 2 M4): wartet hinter Bau und Folgen; ein neuer Bau verdrängt sie (sie gehörte zu einem älteren Dokument) */
+  private naechsterPruefen: { dok: Dokument; plan: Partial<Bauplan>; cb: (m: ZahnMeldung[] | null) => void } | null = null;
+  private laufend: { cb: (n: WesenNetz) => void } | { animation: (b: Bild | null) => void } | { folgen: (r: FolgenAntwort | null) => void } | { pruefen: (m: ZahnMeldung[] | null) => void } | null = null;
   private id = 0;
   /** ohne Worker: Stand im Hauptthread */
   private stand: WesenStand | null = null;
@@ -32,14 +34,17 @@ export class WesenClient {
         if (m.typ === 'fehler') {
           this.fehler(m.fehler);
           if (lauf && 'folgen' in lauf) lauf.folgen(null);
+          if (lauf && 'pruefen' in lauf) lauf.pruefen(null);
         } else if (m.typ === 'netz' && lauf && 'cb' in lauf) lauf.cb(m.netz);
         else if (m.typ === 'animation' && lauf && 'animation' in lauf) lauf.animation(m.a);
         else if (m.typ === 'folgen' && lauf && 'folgen' in lauf) lauf.folgen(m.ergebnis);
+        else if (m.typ === 'pruefung' && lauf && 'pruefen' in lauf) lauf.pruefen(m.meldungen);
         this.pumpen();
       };
       this.worker.onerror = (e) => {
         this.fehler(e.message);
         if (this.laufend && 'folgen' in this.laufend) this.laufend.folgen(null);
+        if (this.laufend && 'pruefen' in this.laufend) this.laufend.pruefen(null);
         this.laufend = null;
         this.busy = false;
         this.pumpen();
@@ -58,6 +63,27 @@ export class WesenClient {
       return;
     }
     this.naechster = { dok, plan, schnell, cb };
+    // eine wartende Prüfung gehört zu einem älteren Dokument: verwerfen (der Editor plant nach dem Bau neu)
+    this.naechsterPruefen?.cb(null);
+    this.naechsterPruefen = null;
+    this.pumpen();
+  }
+
+  /** Zahnprüfung auf dem gemerkten Stand (bei zu, 25 %, 50 %, offen); null bei Fehler oder wenn ein neuer Bau sie verdrängt. */
+  pruefen(dok: Dokument, plan: Partial<Bauplan>, cb: (m: ZahnMeldung[] | null) => void): void {
+    if (!this.worker) {
+      try {
+        const r = wesenBauen(dok, { ...plan, zahnPruefung: true }, this.stand, true);
+        this.stand = r.stand;
+        cb(r.netz.zahnMeldungen ?? []);
+      } catch (e) {
+        this.fehler(e instanceof Error ? e.message : String(e));
+        cb(null);
+      }
+      return;
+    }
+    this.naechsterPruefen?.cb(null);
+    this.naechsterPruefen = { dok, plan, cb };
     this.pumpen();
   }
 
@@ -94,7 +120,7 @@ export class WesenClient {
   }
 
   get beschaeftigt(): boolean {
-    return this.busy || this.naechster !== null || this.naechsterFolgen !== null;
+    return this.busy || this.naechster !== null || this.naechsterFolgen !== null || this.naechsterPruefen !== null;
   }
 
   private pumpen(): void {
@@ -115,6 +141,15 @@ export class WesenClient {
       this.laufend = { folgen: job.cb };
       const auftrag: WorkerAuftrag = { id: ++this.id, typ: 'folgen', dok: job.dok, plan: job.plan };
       this.worker.postMessage(auftrag);
+      return;
+    }
+    if (this.naechsterPruefen) {
+      const job = this.naechsterPruefen;
+      this.naechsterPruefen = null;
+      this.busy = true;
+      this.laufend = { pruefen: job.cb };
+      const auftrag: WorkerAuftrag = { id: ++this.id, typ: 'pruefen', dok: job.dok, plan: job.plan };
+      this.worker.postMessage(auftrag);
     }
   }
 
@@ -123,6 +158,7 @@ export class WesenClient {
     this.worker = null;
     this.naechster = null;
     this.naechsterFolgen = null;
+    this.naechsterPruefen = null;
     this.laufend = null;
   }
 }

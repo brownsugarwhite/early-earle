@@ -24,3 +24,4 @@ export * from './pinsel';
 export * from './kanten';
 export * from './zahnModell';
 export * from './zaehne';
+export * from './zahnPruefung';

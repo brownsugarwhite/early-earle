@@ -59,19 +59,22 @@ function zahnDreiecke(z: ZahnBau, passt: (kiefer: Kiefer, index: number) => bool
   return { positionen, normalen };
 }
 
-/** Marken des gewählten Zahns (nur in der Stufe Zähne); die Lagen im Netz sind schon im Maßstab der Bühne. */
-export function zahnMarkenAnzeigen(r: Renderer3D): void {
+/**
+ * Marken in der Stufe Zähne: der gewählte Zahn (Ocker) und störende Zähne als Glut (`stoerend` = Befunde der Prüfung,
+ * auch wenn gewählt); die Lagen im Netz sind schon im Maßstab der Bühne.
+ */
+export function zahnMarkenAnzeigen(r: Renderer3D, stoerend: readonly { kiefer: Kiefer; index: number }[] = []): void {
   const ui = useUi.getState();
   const z = aktuellesNetz()?.netz.zaehne;
   const a = ui.zahnAuswahl;
-  if (!z || ui.ebene !== 'zaehne' || ui.bauweise !== 'kern' || !a) {
+  if (!z || ui.ebene !== 'zaehne' || ui.bauweise !== 'kern') {
     r.setzeZahnMarken(null, null);
     return;
   }
-  r.setzeZahnMarken(
-    zahnDreiecke(z, (k, i) => k === a.kiefer && i === a.index),
-    null,
-  );
+  // die Glut hat Vorrang (Warnung vor Wahl; die Tafel zeigt die Wahl ohnehin)
+  const glut = new Set(stoerend.map((m) => `${m.kiefer}:${m.index}`));
+  const gluehend = (k: Kiefer, i: number) => glut.has(`${k}:${i}`);
+  r.setzeZahnMarken(a && !gluehend(a.kiefer, a.index) ? zahnDreiecke(z, (k, i) => k === a.kiefer && i === a.index) : null, glut.size ? zahnDreiecke(z, gluehend) : null);
 }
 
 /** Nächste Stelle der Zahnfleischlinie eines Kiefers zum Zeiger (Feldpixel): u und Seite. */

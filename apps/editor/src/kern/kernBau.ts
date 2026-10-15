@@ -3,7 +3,7 @@
 // „neuester Auftrag gewinnt“); hier entsteht aus Dokument und Anzeige-Zustand nur der Bauplan.
 
 import type { Dokument } from '@ee/shape';
-import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type StilArt, type WesenInfo, type WesenNetz, maulLinieAusDokument, pruefwesenBauplan } from '@ee/shape/kern';
+import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type StilArt, type WesenInfo, type WesenNetz, type ZahnMeldung, maulLinieAusDokument, pruefwesenBauplan } from '@ee/shape/kern';
 import { create } from 'zustand';
 import { setzeGesteEndeHaken, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -157,6 +157,11 @@ export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) 
       if (JSON.stringify(ed.dok.kaefig?.stationen ?? null) !== JSON.stringify(g)) ed.setzeStationen(g);
     }
   });
+}
+
+/** Zahnprüfung (Phase 2 M4) im Worker auf dem gemerkten Stand; null bei Fehler oder wenn ein neuer Bau sie verdrängt. */
+export function kernZahnPruefen(dok: Dokument, cb: (meldungen: ZahnMeldung[] | null) => void): void {
+  derClient().pruefen(dok, bauplanAus(dok), cb);
 }
 
 /**

@@ -4,10 +4,11 @@
 // Kein Umbau des Körpers: Die Zähne hängen nach der Pose am Netz.
 
 import type { Zaehne, ZahnEintrag } from '@ee/shape';
-import { zahnreiheVerteilen } from '@ee/shape/kern';
+import { type ZahnAenderung, type ZahnMeldung, zahnAenderungAnwenden, zahnreiheVerteilen } from '@ee/shape/kern';
 import { useState } from 'react';
 import { aktuellesNetz, useNetzStand } from '../kern/netzStand';
 import { ZAHN_FARBE } from '../kern/zahnGriffe';
+import { useZahnPruefung } from '../kern/zahnPruefStand';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { Chips, Regler, geste } from './bedienung';
@@ -26,6 +27,16 @@ const wertVon = (e: ZahnEintrag, k: Wert, offen: boolean): number => {
 const mitWert = (e: ZahnEintrag, k: Wert, v: number, offen: boolean): ZahnEintrag => (offen ? { ...e, auf: { ...e.auf, [k]: v } } : { ...e, [k]: v });
 const kopie = (z: Zaehne): Zaehne => ({ oben: { ...z.oben, zaehne: z.oben.zaehne.slice() }, unten: { ...z.unten, zaehne: z.unten.zaehne.slice() } });
 
+/** Befund in Worten (Bildpunkte der 461-px-Kachel wie die Regler) mit der Öffnung, bei der er auftritt. */
+function befundText(m: ZahnMeldung): string {
+  const px = Math.max(0.1, m.befund.tiefe * PX).toFixed(1).replace('.', ',');
+  const bei = m.oeffnung === 0 ? 'geschlossen' : `offen ${Math.round(m.oeffnung * 100)} %`;
+  if (m.befund.art === 'durchKiefer') return `stößt ${px} px in den Gegenkiefer (${bei})`;
+  if (m.befund.art === 'zuNah') return `steht außen zu nah an der Gegenlippe, ${px} px Luft fehlen (${bei})`;
+  if (m.befund.art === 'zahnZahn') return `überlappt einen Nachbarzahn um ${px} px (${bei})`;
+  return `sticht ${px} px aus der Haut (${bei})`;
+}
+
 /** Wirksame Zahnreihen: aus dem Dokument oder die Automatik des letzten Baus (null ohne Maul). */
 export function wirksameZaehne(dok: { zaehne?: Zaehne }): { reihen: Zaehne | null; ausDokument: boolean } {
   if (dok.zaehne) return { reihen: dok.zaehne, ausDokument: true };
@@ -41,6 +52,8 @@ export function ZahnFeld() {
   const [kieferWahl, setKieferWahl] = useState<Kiefer | 'beide'>('beide');
   const [werteFuer, setWerteFuer] = useState<'zu' | 'offen' | null>(null);
   const [mehr, setMehr] = useState(false);
+  const meldungen = useZahnPruefung((s) => s.meldungen);
+  const prueftGerade = useZahnPruefung((s) => s.laeuft);
   const { reihen, ausDokument } = wirksameZaehne(dok);
   if (!reihen) return <p className="hilfe">Zuerst ein Maul setzen (Stufe Maul): Die Zähne wachsen am Zahnfleisch des Mauls.</p>;
   const offen = (werteFuer ?? (modus === 'fressen' || oeffnung >= 0.5 ? 'offen' : 'zu')) === 'offen';
@@ -80,6 +93,18 @@ export function ZahnFeld() {
     useUi.getState().setzeZahnAuswahl(null);
   };
   const aussenAn = ziele.length > 0 && ziele.every((z) => reihen[z.kiefer].zaehne[z.index]?.aussen);
+  // Vorschlag der Prüfung anwenden (ein Undo-Schritt)
+  const anwenden = (m: ZahnMeldung, a: ZahnAenderung) => {
+    const b = basis();
+    const r = b[m.kiefer];
+    const e = r.zaehne[m.index];
+    if (!e) return;
+    const liste = r.zaehne.slice();
+    liste[m.index] = zahnAenderungAnwenden(e, a);
+    useEditor.getState().setzeZaehne({ ...b, [m.kiefer]: { ...r, zaehne: liste } });
+  };
+  // der gewählte Zahn zuerst, dann nach Tiefe
+  const befunde = meldungen.filter((m) => reihen[m.kiefer].zaehne[m.index]).sort((a, b) => Number(!!gewaehlt && b.kiefer === gewaehlt.kiefer && b.index === gewaehlt.index) - Number(!!gewaehlt && a.kiefer === gewaehlt.kiefer && a.index === gewaehlt.index) || b.befund.tiefe - a.befund.tiefe);
   // gleichmäßig verteilen: Abstände neu, Formen bleiben (beide Kiefer)
   const verteilen = () => {
     const b = basis();
@@ -108,6 +133,23 @@ export function ZahnFeld() {
           zurück zur Automatik
         </button>
       )}
+      <div className="feld">
+        <span>Prüfung</span>
+        <b data-zahn-befunde={befunde.length}>{prueftGerade ? 'prüft …' : befunde.length ? `${befunde.length} ${befunde.length === 1 ? 'Zahn stört' : 'Zähne stören'} (glimmen)` : 'alle Zähne frei (zu, 25 %, 50 %, offen)'}</b>
+      </div>
+      {befunde.slice(0, 6).map((m) => (
+        <div key={`${m.kiefer}:${m.index}`} className="befund" data-zahn-befund={`${m.kiefer}:${m.index}`}>
+          <button className="chip" onClick={() => useUi.getState().setzeZahnAuswahl({ kiefer: m.kiefer, index: m.index })}>
+            Zahn {m.kiefer} {m.index + 1}
+          </button>
+          <p className="hilfe warnung">{befundText(m)}</p>
+          {(m.befund.vorschlaege ?? []).slice(0, 3).map((v, i) => (
+            <button key={i} className="chip vorschlag" data-zahn-vorschlag={`${m.kiefer}:${m.index}:${i}`} onClick={() => anwenden(m, v.aenderung)}>
+              {v.text}
+            </button>
+          ))}
+        </div>
+      ))}
       {(['oben', 'unten'] as const).map((k) => (
         <div key={k} className="feld zahl">
           <span>{k === 'oben' ? 'Oberkiefer' : 'Unterkiefer'}</span>

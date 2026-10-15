@@ -11,7 +11,7 @@ import { type MaulErgebnis, ableitenMitMaul, maulOptionenVorlage, maulPose } fro
 import { maulLinieAusDokument } from './maulDokument';
 import { kugelMaulDokument } from './pruefstand';
 import { pruefwesenBauplan, wesenBauen } from './wesen';
-import { ZAHN_RINGE, ZAHN_SEITEN, zaehneStandard, zahnfleischKern, zahnListe, zahnreiheVerteilen } from './zaehne';
+import { ZAHN_RINGE, ZAHN_SEITEN, zaehnePruefenBei, zaehneStandard, zahnAenderungAnwenden, zahnfleischKern, zahnListe, zahnreiheVerteilen } from './zaehne';
 import { type Zahn, zahnBei, zahnGitter, zahnNetz } from './zahnModell';
 
 declare const console: { log: (...a: unknown[]) => void };
@@ -349,94 +349,88 @@ describe('Zähne im Kern: Bau im Wesen', () => {
 });
 
 describe('Zähne im Kern: Prüfung gegen den Gegenkiefer (zu, 25 %, 50 %, offen)', () => {
-  const planVon = (d: Dokument) => ({
-    maul: 'vorn' as const,
-    oeffnung: 0,
-    beine: 'aus' as const,
-    schwung: 0,
-    stil: 'fest' as const,
-    earle: false,
-    kaefigLinien: false,
-    ...(d.ausstattung ?? { maulLinie: maulLinieAusDokument(d)! }),
-    zahnPruefung: true,
-  });
+  // Befunde entstehen geschlossen und beim Öffnen (25 %); offen (50 %, 100 %) gab es nie welche. Die Tests prüfen deshalb
+  // direkt in diesen Lagen auf Stufe 2 (leicht, sie laufen parallel zu den Tempo-Tests); den vollen Weg über den Bauplan
+  // (vier Öffnungen, Stufe des Editors) prüft der erste Test am Rex.
   const kugel = (art: Parameters<typeof kugelMaulDokument>[0]) => kugelMaulDokument(art, true);
+  const pruefe = (abl: MaulErgebnis, liste: ReturnType<typeof zahnListe>, oeffnungen: readonly number[]) =>
+    zaehnePruefenBei(
+      abl,
+      oeffnungen.map((o) => ({ oeffnung: o, fein: o === 0 ? abl.fein : maulPose(abl, o).fein })),
+      liste,
+    );
 
-  it('Automatik ohne Befund: Rex (oben außen), Tiger-Platte, Kugel gleich, Überbiss, Unterbiss, Florians Kugel', () => {
+  it('voller Weg (Bauplan.zahnPruefung, vier Öffnungen): die Automatik des Rex ist ohne Befund, die Fänge stehen außen', () => {
+    const d = rexDok();
+    const w = wesenBauen(d, { maul: 'vorn', oeffnung: 0, beine: 'aus', schwung: 0, stil: 'fest', earle: false, kaefigLinien: false, ...d.ausstattung, zahnPruefung: true }, null);
+    expect(w.netz.zahnMeldungen).toEqual([]);
+    expect(w.netz.zaehne!.reihen.oben.zaehne.every((e) => e.aussen)).toBe(true);
+  }, 60_000);
+
+  it('Automatik ohne Befund (zu, 25 %): Tiger-Platte, Kugel gleich, Überbiss, Unterbiss, Florians Kugel', () => {
     for (const [name, d] of [
-      ['Rex', rexDok()],
       ['Tiger', tigerDok()],
       ['Kugel gleich', kugel('gleich')],
       ['Kugel Überbiss', kugel('ueberbiss')],
       ['Kugel Unterbiss', kugel('unterbiss')],
       ['Kugel Florian', kugel('florian')],
     ] as const) {
-      const w = wesenBauen(d, planVon(d), null);
-      const mel = w.netz.zahnMeldungen!;
-      console.log(`${name}: ${w.netz.zaehne!.liste.length} Zähne, ${mel.length} Befunde`);
+      const abl = maulAbl(d);
+      const liste = zahnListe(zaehneStandard(abl));
+      const mel = pruefe(abl, liste, [0, 0.25]);
+      console.log(`${name}: ${liste.length} Zähne, ${mel.length} Befunde`);
       expect(mel, name).toEqual([]);
     }
   }, 120_000);
 
   it('zu langer Zahn: stößt geschlossen in den Gegenkiefer, „kürzen“ behebt es, nichts wird still geändert', () => {
-    const roh = kugel('gleich');
+    const abl = maulAbl(kugel('gleich'));
     const reihen: Zaehne = { oben: zahnreiheVerteilen(4, 'oben', 0.06), unten: zahnreiheVerteilen(0, 'unten', 0.03) };
-    const dok: Dokument = { ...roh, zaehne: reihen };
-    const w = wesenBauen(dok, planVon(dok), null);
-    const mel = w.netz.zahnMeldungen!;
-    const m = mel.find((x) => x.kiefer === 'oben' && x.index === 0)!;
+    const vorher = JSON.stringify(reihen);
+    const m = pruefe(abl, zahnListe(reihen), [0]).find((x) => x.kiefer === 'oben' && x.index === 0)!;
     expect(m.befund.art).toBe('durchKiefer');
     expect(m.oeffnung).toBe(0);
     expect(m.befund.tiefe * PX).toBeGreaterThan(5);
-    // das Dokument ist unverändert (die Verteilung kürzt nach hinten: Länge × (1 − 0,45 u))
-    expect(dok.zaehne!.oben.zaehne[0]!.laenge).toBe(reihen.oben.zaehne[0]!.laenge);
+    // die Zahnreihen sind unverändert (die Verteilung kürzt nach hinten: Länge × (1 − 0,45 u))
+    expect(JSON.stringify(reihen)).toBe(vorher);
     expect(reihen.oben.zaehne[0]!.laenge).toBeCloseTo(0.06 * (1 - 0.45 * reihen.oben.zaehne[0]!.u), 12);
     const kurz = m.befund.vorschlaege!.find((v) => v.text.startsWith('kürzen'))!;
     expect(kurz).toBeDefined();
-    const neu: Zaehne = { ...reihen, oben: { ...reihen.oben, zaehne: reihen.oben.zaehne.map((e, i) => (i === 0 ? { ...e, laenge: kurz.aenderung.laenge! } : e)) } };
-    const w2 = wesenBauen({ ...dok, zaehne: neu }, planVon(dok), w.stand);
+    const neu: Zaehne = { ...reihen, oben: { ...reihen.oben, zaehne: reihen.oben.zaehne.map((e, i) => (i === 0 ? zahnAenderungAnwenden(e, kurz.aenderung) : e)) } };
     console.log(`zu lang: ${(m.befund.tiefe * PX).toFixed(1)} px, Vorschläge: ${m.befund.vorschlaege!.map((v) => v.text).join(' | ')}`);
-    expect(w2.netz.zahnMeldungen!.filter((x) => x.kiefer === 'oben' && x.index === 0)).toEqual([]);
+    expect(pruefe(abl, zahnListe(neu), [0]).filter((x) => x.kiefer === 'oben' && x.index === 0)).toEqual([]);
   }, 60_000);
 
   it('Zahn gegen Zahn: zu breite Nachbarn überlappen, „schmaler“ trennt sie', () => {
-    const roh = kugel('gleich');
+    const abl = maulAbl(kugel('gleich'));
     // 15 Zähne auf der großen Kugel: Abstand ≈ 24 px, Breite 37 px
     const oben = zahnreiheVerteilen(15, 'oben', 0.012);
     oben.zaehne = oben.zaehne.map((e) => ({ ...e, breite: 0.08 }));
-    const dok: Dokument = { ...roh, zaehne: { oben, unten: { anzahl: 0, zaehne: [] } } };
-    const w = wesenBauen(dok, planVon(dok), null);
-    const zz = w.netz.zahnMeldungen!.filter((x) => x.befund.art === 'zahnZahn');
+    const leer = { anzahl: 0, zaehne: [] };
+    const zz = pruefe(abl, zahnListe({ oben, unten: leer }), [0]).filter((x) => x.befund.art === 'zahnZahn');
     expect(zz.length).toBeGreaterThan(0);
     const schmal = zz.flatMap((x) => x.befund.vorschlaege ?? []).filter((v) => v.text.startsWith('schmaler'));
     expect(schmal.length).toBeGreaterThan(0);
     const b = Math.min(...schmal.map((v) => v.aenderung.breite!));
     const neu = { ...oben, zaehne: oben.zaehne.map((e) => ({ ...e, breite: b })) };
-    const w2 = wesenBauen({ ...dok, zaehne: { oben: neu, unten: { anzahl: 0, zaehne: [] } } }, planVon(dok), w.stand);
-    expect(w2.netz.zahnMeldungen!.filter((x) => x.befund.art === 'zahnZahn')).toEqual([]);
+    expect(pruefe(abl, zahnListe({ oben: neu, unten: leer }), [0]).filter((x) => x.befund.art === 'zahnZahn')).toEqual([]);
   }, 60_000);
 
-  it('außen-Zahn: über der bündigen Unterlippe frei, 35° nach innen geneigt stößt er hinein, „Neigung“ behebt es (die Rex-Fänge hängen 17 px vor dem Unterkiefer und treffen ihn auch so nicht)', () => {
-    const roh = kugel('gleich');
+  it('außen-Zahn: über der bündigen Unterlippe frei, 35° nach innen geneigt stößt er hinein (die Rex-Fänge hängen 17 px vor dem Unterkiefer und treffen ihn auch so nicht)', () => {
+    const abl = maulAbl(kugel('gleich'));
     const mitNeigung = (n: number): Zaehne => {
       const oben = zahnreiheVerteilen(4, 'oben', 0.03);
       oben.zaehne = oben.zaehne.map((e, i) => (i === 0 ? { ...e, aussen: true, neigung: n } : e));
       return { oben, unten: { anzahl: 0, zaehne: [] } };
     };
-    const gerade = wesenBauen({ ...roh, zaehne: mitNeigung(0) }, planVon(roh), null);
-    expect(gerade.netz.zahnMeldungen!.find((x) => x.kiefer === 'oben' && x.index === 0)).toBeUndefined();
-    const schief = wesenBauen({ ...roh, zaehne: mitNeigung(35) }, planVon(roh), gerade.stand);
-    const m = schief.netz.zahnMeldungen!.find((x) => x.kiefer === 'oben' && x.index === 0)!;
+    expect(pruefe(abl, zahnListe(mitNeigung(0)), [0]).find((x) => x.kiefer === 'oben' && x.index === 0)).toBeUndefined();
+    const m = pruefe(abl, zahnListe(mitNeigung(35)), [0]).find((x) => x.kiefer === 'oben' && x.index === 0)!;
     console.log(`außen, 35° nach innen: ${m.befund.art} ${(m.befund.tiefe * PX).toFixed(1)} px → ${m.befund.vorschlaege?.map((v) => v.text).join(' | ')}`);
     expect(m.befund.art).toBe('durchKiefer');
-    const n = m.befund.vorschlaege?.find((v) => v.text.startsWith('Neigung'));
-    if (n) {
-      const z = mitNeigung(n.aenderung.neigung!);
-      const w = wesenBauen({ ...roh, zaehne: z }, planVon(roh), gerade.stand);
-      expect(w.netz.zahnMeldungen!.find((x) => x.kiefer === 'oben' && x.index === 0)).toBeUndefined();
-    } else {
-      // ohne Neigungsvorschlag muss „kürzen“ kommen
-      expect(m.befund.vorschlaege?.some((v) => v.text.startsWith('kürzen') || v.text.startsWith('geschlossen'))).toBe(true);
-    }
+    // ein Vorschlag (Neigung zurück oder kürzen) behebt es
+    const v = m.befund.vorschlaege![0]!;
+    const z = mitNeigung(35);
+    z.oben.zaehne[0] = zahnAenderungAnwenden(z.oben.zaehne[0]!, v.aenderung);
+    expect(pruefe(abl, zahnListe(z), [0]).find((x) => x.kiefer === 'oben' && x.index === 0)).toBeUndefined();
   }, 60_000);
 });

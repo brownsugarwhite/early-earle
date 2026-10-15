@@ -18,6 +18,7 @@ import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
 import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige, weiterePose } from '../kern/kernBau';
 import { ZAHN_FARBE, zahnMarkenAnzeigen } from '../kern/zahnGriffe';
+import { useZahnPruefung } from '../kern/zahnPruefStand';
 import { augenPixel, griffeAnzeigen, kieferPixel } from '../kern/griffe';
 import { knochen3dAnzeigen, knochen3dPixel } from '../kiefer/knochen3d';
 import { perlenVon, reifenAnzeigen, reifenFaerben, useReifen } from '../kern/reifen';
@@ -167,7 +168,7 @@ export function Szene3D() {
           } else r.setzeZaehne(null, null, null);
           // Phase 2 M4: Zahnfarbe (Ausstattung) und gewählter Zahn (Stufe Zähne)
           r.setzeZahnFarbe(d.ausstattung?.zahnFarbe ?? ZAHN_FARBE);
-          zahnMarkenAnzeigen(r);
+          zahnMarkenAnzeigen(r, useZahnPruefung.getState().meldungen);
           // M3: Reifen (Spanten als Ringe mit Perlen) und Kieferknopf auf dem Körper
           reifenAnzeigen(r, t, s);
           griffeAnzeigen(r);
@@ -331,7 +332,7 @@ export function Szene3D() {
           if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
           if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
           if (s.spantAuswahl !== v.spantAuswahl || s.ebene !== v.ebene) reifenFaerben(r);
-          if ((s.zahnAuswahl !== v.zahnAuswahl || s.ebene !== v.ebene) && s.bauweise === 'kern') zahnMarkenAnzeigen(r);
+          if ((s.zahnAuswahl !== v.zahnAuswahl || s.ebene !== v.ebene) && s.bauweise === 'kern') zahnMarkenAnzeigen(r, useZahnPruefung.getState().meldungen);
           if (s.grund !== v.grund) grundAnwenden(r, s.grund);
           if (s.ebene !== v.ebene) {
             griffeAnzeigen(r);
@@ -341,6 +342,8 @@ export function Szene3D() {
         useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
         // M3: Perle oder Band unter dem Zeiger → Farben der Reifen
         useReifen.subscribe(() => reifenFaerben(r)),
+        // Phase 2 M4: Befunde der Zahnprüfung → Glut
+        useZahnPruefung.subscribe((s, v) => s.meldungen !== v.meldungen && zahnMarkenAnzeigen(r, s.meldungen)),
         // Beweis 4: Look oder Palette gewechselt → Kern neu bauen
         useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung || s.stil !== v.stil) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
         // Biege-Regler losgelassen: genau bauen

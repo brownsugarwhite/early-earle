@@ -15,7 +15,7 @@ import type { MaulErgebnis } from './maul';
 import { kaefigNachbarn } from './pinsel';
 import { feinKette } from './reifen';
 import { type Kiefer, type RahmenQuelle, type Zahn, type ZahnAuf, type ZahnRahmen, zahnBei, zahnNetze } from './zahnModell';
-import { type PruefOptionen, type ZahnBefund, zaehneEinpassen, zahnPruefenAuf } from './zahnPruefung';
+import { type PruefOptionen, type ZahnAenderung, type ZahnBefund, zaehneEinpassen, zahnPruefenAuf } from './zahnPruefung';
 
 type V3 = [number, number, number];
 
@@ -368,8 +368,11 @@ export const EINPASSEN_ANTEIL = 0.9;
 
 /** Gemerkt je Ableitung (ohne Pinsel-Deltas) und Prüfsumme der Deltas: Öffnen und Posen passen nicht neu ein */
 const standardSpeicher = new WeakMap<object, { schluessel: string; reihen: Zaehne }>();
-/** Einpassen der Automatik: gröber abgetastet als die Prüfung, 8 Halbierungsschritte (Grenze auf 0,4 % der Länge) */
-const EINPASSEN_OPTIONEN = { alpha: 0, seiten: 6, ringe: 4, schritte: 8 } as const;
+/**
+ * Einpassen der Automatik: so fein abgetastet wie die Prüfung (sonst meldete sie im Editor eingepasste Zähne, 0,3 px bei
+ * einem 4,6-px-Zahn), 8 Halbierungsschritte (Grenze auf 0,4 % der Länge)
+ */
+const EINPASSEN_OPTIONEN = { alpha: 0, schritte: 8 } as const;
 
 /**
  * Automatik (ohne Zahnreihen im Dokument): 6 oben, 5 unten je Seite, höchstens ein Zahn je Pfadspalte (kurze Mäuler);
@@ -537,4 +540,20 @@ export function zaehnePruefenBei(abl: MaulErgebnis, lagen: readonly { oeffnung: 
     }
   }
   return [...je.values()];
+}
+
+/** Vorschlag der Prüfung auf einen Dokument-Zahn anwenden (die Tiefe folgt im Dokument der Breite, sie entfällt). */
+export function zahnAenderungAnwenden(e: ZahnEintrag, a: ZahnAenderung): ZahnEintrag {
+  const neu: ZahnEintrag = { ...e };
+  for (const k of ['laenge', 'breite', 'rundheit', 'schaerfe', 'neigung', 'biegung', 'spreizung', 'drehung', 'groesse', 'u'] as const) {
+    const v = a[k];
+    if (v !== undefined) neu[k] = v;
+  }
+  if (a.aussen !== undefined) neu.aussen = a.aussen;
+  if (a.auf) {
+    const auf: Record<string, number | undefined> = { ...e.auf, ...a.auf };
+    delete auf.tiefe;
+    neu.auf = auf as NonNullable<ZahnEintrag['auf']>;
+  }
+  return neu;
 }
