@@ -1,7 +1,7 @@
 // Teil A (Plan „Maul als Einsatz“): ein Prüffall des Einsatzes von A0 bis zur Karte (Körper × Anfang × Form), gemeinsam für
 // die Tests von A4 an und die Bilderskripte. A0 mit drei Stufen, Linie aus der Zufallsreihe (kurz, Kiefer gleich), Feld auf
 // der ersten exakten Verfeinerung K1 (Radius 3 Kanten), Kantenpfad und Schnitt auf dem feinen Netz, Karte. DOM-frei.
-import type { Linie3 } from '../../dokument';
+import type { Dokument, Linie3 } from '../../dokument';
 import type { Ableitung } from '../ableiten';
 import { ableiten } from '../ableiten';
 import { lippeAnHaut } from '../../lippeHaut';
@@ -23,6 +23,8 @@ type V3 = [number, number, number];
 
 export type EinsatzFall = {
   name: string;
+  /** Körper ohne Maul (Dokument) und seine Ableitung A0 */
+  dok: Dokument;
   abl: Ableitung;
   /** feines Netz von A0 (Stufe 3 = Stufe 2 von K1, gleiche Nummern) */
   netz: FeinNetz;
@@ -107,7 +109,7 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form): Einsat
   const karte = karteBauen({ dreiecke: schnitt.dreiecke, punkte: netz.punkte, nPunkte: netz.punkte.length / 3, doppel: schnitt.doppel, pfad });
   let ziel: V3[] | null = null;
   const lippenZiel = () => (ziel ??= abtasten3(l.oben, 64) as V3[]);
-  return { name, abl, netz, maulLinie: l.oben, linie: auf.lagen, lippenZiel, hautAbstand, v, feinFlaechen: ff, feinK1: Float64Array.from(fein), h1, feld, pfad, schnitt, karte };
+  return { name, dok, abl, netz, maulLinie: l.oben, linie: auf.lagen, lippenZiel, hautAbstand, v, feinFlaechen: ff, feinK1: Float64Array.from(fein), h1, feld, pfad, schnitt, karte };
 }
 
 /**
