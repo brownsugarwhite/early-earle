@@ -991,7 +991,8 @@ function KernMaulFeld() {
         <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />
         <Regler label="O zu" wert={rund.zu ?? RUNDMAUL_STANDARD.zu} min={0.01} max={0.1} schritt={0.005} anzeige={`${Math.round((rund.zu ?? RUNDMAUL_STANDARD.zu) * 100)} % der Höhe`} onChange={(v) => { const s = useEditor.getState(); s.setzeDokument({ ...s.dok, ausstattung: { ...(s.dok.ausstattung ?? {}), rundmaul: { ...rund, zu: v } } }); }} {...geste()} />
         <Regler label="O offen" wert={rund.auf ?? RUNDMAUL_STANDARD.auf} min={0.05} max={0.25} schritt={0.005} anzeige={`${Math.round((rund.auf ?? RUNDMAUL_STANDARD.auf) * 100)} % der Höhe`} onChange={(v) => { const s = useEditor.getState(); s.setzeDokument({ ...s.dok, ausstattung: { ...(s.dok.ausstattung ?? {}), rundmaul: { ...rund, auf: v } } }); }} {...geste()} />
-        <p className="hilfe">Rundmaul: ein Lippenring an der Spitze des Körpers (Fisch, Aal). Öffnen weitet den Ring und dehnt die Haut darum; innen der Rachen. Zähne rundum folgen.</p>
+        <Regler label="Zähne rundum" wert={rund.zaehne ?? 0} min={0} max={24} schritt={1} anzeige={`${rund.zaehne ?? 0}`} onChange={(v) => { const s = useEditor.getState(); s.setzeDokument({ ...s.dok, ausstattung: { ...(s.dok.ausstattung ?? {}), rundmaul: { ...rund, zaehne: Math.round(v) } } }); }} {...geste()} />
+        <p className="hilfe">Rundmaul: ein Lippenring an der Spitze des Körpers (Fisch, Aal). Öffnen weitet den Ring und dehnt die Haut darum; innen der Rachen. Zähne rundum zeigen zur Mitte (Aal); wählen und prüfen lassen sie sich noch nicht.</p>
       </>
     );
   if (!hatLinie && chip === 'aus')

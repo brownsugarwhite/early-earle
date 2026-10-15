@@ -13,7 +13,7 @@ import { type V3, zuDreiecken } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
 import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern } from './atlas';
 import { HOEHLE_STANDARD, type HoehlenAuge, type HoehlenTopologie, augapfelEcke, augenOben, brauenReihe, hoehlenFein, hoehlenLagen, hoehlenTopologie } from './augenHoehle';
-import { RUNDMAUL_STANDARD, rundmaulEintrag, rundmaulPose, rundmaulRegion } from './rundmaul';
+import { RUNDMAUL_STANDARD, rundmaulEintrag, rundmaulPose, rundmaulRegion, rundmaulZaehne, rundmaulZentrum } from './rundmaul';
 import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
 import { ringSegmente } from './reifen';
@@ -911,7 +911,8 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     const topo = eintraege.length ? hoehlenTopologie(abl.kaefig, abl.unterteilung.stufen.length, eintraege) : null;
     if (topo) hoehle = { topo, augen: eintraege, ruhe, mund };
   }
-  const koerperPunkte = hoehle ? punkteVon(hoehlenFein(hoehle.topo, hoehlenLagen(hoehle.topo, xyz, hoehle.augen))) : punkte;
+  const koerperFein = hoehle ? hoehlenFein(hoehle.topo, hoehlenLagen(hoehle.topo, xyz, hoehle.augen)) : null;
+  const koerperPunkte = koerperFein ? punkteVon(koerperFein) : punkte;
   const koerperFlaechen = hoehle ? hoehle.topo.feinFlaechen : flaechen;
   const t0 = zuDreiecken({ punkte: koerperPunkte, flaechen: koerperFlaechen, schaerfe: new Map() }, 40);
   // angesteckte Beine: eigene feine Netze anhängen (Deskriptoren der Hüfte)
@@ -1038,6 +1039,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     let summe = 0;
     for (const d of deltas) summe += (d.punkt + 1) * (1.3 * d.d[0] + 1.7 * d.d[1] + 2.3 * d.d[2]);
     zaehne = zaehneBauen(abl as MaulErgebnis, fein, dokRoh.zaehne, plan.oeffnung, ablRein ? { objekt: ablRein, schluessel: `${deltas.length}:${summe}` } : undefined);
+  }
+  // Rundmaul (Phase 2 M6): Zähne rundum am Ring-Zahnfleisch (Aal), nur Anzeige
+  if (!zaehne && rund && hoehle && koerperFein && hoehle.mund >= 0 && (plan.rundmaul?.zaehne ?? 0) > 0) {
+    zaehne = rundmaulZaehne(koerperFein, hoehle.topo.nAlt + 16 * hoehle.mund + 8, rundmaulZentrum(abl), plan.rundmaul!.zaehne!);
   }
   // Zahnprüfung (eigener Auftrag): in den Lagen der Prüföffnungen, wie gebaut (Knochen, Haps, Fressen-Pose)
   let zahnMeldungen: ZahnMeldung[] | null = null;

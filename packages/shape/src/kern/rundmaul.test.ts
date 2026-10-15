@@ -85,4 +85,26 @@ describe('Rundmaul', () => {
     expect(kante).toBeGreaterThan(50);
     expect(RUNDMAUL_STANDARD.auf).toBeGreaterThan(RUNDMAUL_STANDARD.zu);
   }, 120_000);
+
+  it('Zähne rundum (Aal): Anzahl wie bestellt, Spitzen zur Ringmitte, wachsen mit der Öffnung mit', () => {
+    const d = neuesDokument('aal');
+    const plan = (oeffnung: number): Bauplan => ({ maul: 'aus', oeffnung, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, rundmaul: { zaehne: 12 } });
+    for (const oe of [0.3, 1]) {
+      const n = wesenBauen(d, plan(oe), null).netz;
+      const z = n.zaehne!;
+      expect(z).not.toBeNull();
+      expect(z.liste.length).toBe(12);
+      expect(z.anteil.length).toBe(z.positionen.length / 3);
+      // Mitte des Rings aus den Fußpunkten; jede Spitze näher an der Mitte als ihr Fuß
+      const m: V3 = [0, 0, 0];
+      for (const q of z.liste) for (let k = 0; k < 3; k++) m[k] = m[k]! + q.fuss[k]! / 12;
+      for (const q of z.liste) {
+        const df = Math.hypot(q.fuss[0] - m[0], q.fuss[1] - m[1], q.fuss[2] - m[2]);
+        const ds = Math.hypot(q.spitze[0] - m[0], q.spitze[1] - m[1], q.spitze[2] - m[2]);
+        expect(ds).toBeLessThan(df);
+      }
+    }
+    expect(wesenBauen(d, { ...plan(1), rundmaul: {} }, null).netz.zaehne).toBeNull();
+  }, 120_000);
 });
+

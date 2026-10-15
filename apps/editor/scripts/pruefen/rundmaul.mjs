@@ -58,6 +58,22 @@ for (const [o, kam, t] of [
   await kamera(kam);
   await bild(`Fisch · ${t}`);
 }
+// Zähne rundum (Aal): zwölf Zähne, offen von vorn und schräg
+await page.evaluate(() => {
+  const ed = window.__stores.editor.getState();
+  ed.setzeDokument({ ...ed.dok, ausstattung: { ...(ed.dok.ausstattung ?? {}), rundmaul: { ...(ed.dok.ausstattung?.rundmaul ?? {}), zaehne: 12 } } });
+});
+await page.waitForTimeout(2500);
+for (const [o, kam, t] of [
+  [1, [-90, 4, 1.25, 0, 0.25, 0], 'Zähne rundum · offen · vorn'],
+  [0.6, [-60, 8, 1.3, -0.15, 0.25, 0], 'Zähne rundum · 60 % · schräg'],
+]) {
+  await page.evaluate((o) => window.__stores.ui.getState().setzeOeffnung(o), o);
+  await page.waitForTimeout(1800);
+  await kamera(kam);
+  await bild(`Fisch · ${t}`);
+}
+console.log('Zähne:', await page.evaluate(() => window.__editor.wesen().zaehne));
 // Tafel: Rundmaul aus und wieder an
 await page.click('[data-rundmaul="aus"]');
 await page.waitForTimeout(2500);
