@@ -127,7 +127,7 @@ export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }
     if (maul && e.voll) {
       const nat = new Float64Array(A);
       for (let k = 0; k < nat.length; k++) nat[k] = nat[k]! + e.natuerlich[k]!;
-      lippen = poseLippenDaten(maul, dok, e.pose.linien, e.korrektur, e.voll, skinAnwenden(e.voll, nat), xyz, e.pose.art === 'fressen');
+      lippen = poseLippenDaten(maul, dok, e.pose.linien, e.korrektur, e.voll, skinAnwenden(e.voll, nat), xyz, e.pose.art === 'fressen', nat);
     }
     bearbeitung = { id: e.pose.id, ruhe: new Float64Array(A), dreh, form: e.form, lippen };
   }

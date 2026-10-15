@@ -29,7 +29,7 @@ const PX = 461;
 const GEWICHT_LIPPE = 1e3;
 const GEWICHT_ENDE = 1e4;
 /** Einflussbereich: Kanten des Käfigs um die Lippenketten (Haut und Tasche) */
-const BEREICH_KANTEN = 3;
+const BEREICH_KANTEN = 3; // 6 gemessen: gleiches Bild (25 und 60 px Zug am Rex), nur weniger örtlich
 
 const kettenMerk = new WeakMap<object, LippenKetten>();
 
@@ -272,7 +272,10 @@ export type PoseLippen = {
   unten: Record<Seite, PoseLippenKette>;
   knoten: PoseLinien;
   gespeichert: boolean;
+  /** größter Abstand der Lippe von der Linie (px bei 461; im Ruheraum, geometrisch: Abstand zur Ziellinie) */
   abweichung: { oben: number; unten: number };
+  /** größter Abstand zum Zielpunkt beim selben Lippenanteil (px; enthält Gleiten längs der Linie) */
+  abweichungPunkt: { oben: number; unten: number };
   zu: boolean;
 };
 
@@ -294,11 +297,41 @@ function grenzLage(G: DuennMatrix, xyz: ArrayLike<number>, f: number): V3 {
  * gezeigte Lippe (`istXyz` = Käfig mit Projektion; sie ist die Linie der Pose), Drehung je Lippenpunkt aus der Skin der
  * vollen Pose (für Griffe und das Umrechnen von Zügen), Abweichung = Fit der Korrektur `C` gegen H(s) im Ruheraum (px).
  */
-export function poseLippenDaten(abl: MaulErgebnis, dok: Dokument | null, linien: PoseLinien | undefined, C: Float64Array | null, sk: Skin, natuerlichXyz: ArrayLike<number>, istXyz: ArrayLike<number>, immerGetrennt: boolean): PoseLippen {
+export function poseLippenDaten(abl: MaulErgebnis, dok: Dokument | null, linien: PoseLinien | undefined, C: Float64Array | null, sk: Skin, natuerlichXyz: ArrayLike<number>, istXyz: ArrayLike<number>, immerGetrennt: boolean, natRuhe: ArrayLike<number> | null = null): PoseLippen {
   const ketten = lippenKetten(abl);
   const G = abl.unterteilung.grenze;
   const knoten: PoseLinien = linien ? linienWirksam(linien) : { oben: linienGrundKnoten(abl, ketten, dok, 'oben'), unten: linienGrundKnoten(abl, ketten, dok, 'unten') };
   const abw = { oben: 0, unten: 0 };
+  const abwPunkt = { oben: 0, unten: 0 };
+  // geometrisch im Ruheraum: Lippe (natürlich + G·C) gegen die Ziellinie (natürlich + H) als dichter Zug
+  if (C && natRuhe) {
+    for (const name of ['oben', 'unten'] as const)
+      for (const seite of ['rechts', 'links'] as const) {
+        const kt = ketten[name][seite];
+        const ziel: V3[] = [];
+        const ist: V3[] = [];
+        for (let j = 0; j < kt.fein.length; j++) {
+          const h = versatzBei(knoten[name], kt.s[j]!);
+          if (seite === 'links') h[2] = -h[2];
+          const a = grenzLage(G, natRuhe, kt.fein[j]!);
+          const c = grenzLage(G, C, kt.fein[j]!);
+          ziel.push([a[0] + h[0], a[1] + h[1], a[2] + h[2]]);
+          ist.push([a[0] + c[0], a[1] + c[1], a[2] + c[2]]);
+        }
+        for (const p of ist) {
+          let best = Infinity;
+          for (let i = 0; i + 1 < ziel.length; i++) {
+            const q0 = ziel[i]!;
+            const q1 = ziel[i + 1]!;
+            const d: V3 = [q1[0] - q0[0], q1[1] - q0[1], q1[2] - q0[2]];
+            const l2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2] || 1e-18;
+            const u = Math.max(0, Math.min(1, ((p[0] - q0[0]) * d[0] + (p[1] - q0[1]) * d[1] + (p[2] - q0[2]) * d[2]) / l2));
+            best = Math.min(best, Math.hypot(q0[0] + d[0] * u - p[0], q0[1] + d[1] * u - p[1], q0[2] + d[2] * u - p[2]));
+          }
+          if (best * PX > abw[name]) abw[name] = best * PX;
+        }
+      }
+  }
   const kette = (name: KettenName, seite: Seite): PoseLippenKette => {
     const kt = ketten[name][seite];
     const N = kt.fein.length;
@@ -317,7 +350,8 @@ export function poseLippenDaten(abl: MaulErgebnis, dok: Dokument | null, linien:
         if (seite === 'links') h[2] = -h[2];
         const c = grenzLage(G, C, kt.fein[j]!);
         const d = Math.hypot(c[0] - h[0], c[1] - h[1], c[2] - h[2]) * PX;
-        if (d > abw[name]) abw[name] = d;
+        if (d > abwPunkt[name]) abwPunkt[name] = d;
+        if (!natRuhe && d > abw[name]) abw[name] = d;
       }
     }
     return out;
@@ -332,7 +366,7 @@ export function poseLippenDaten(abl: MaulErgebnis, dok: Dokument | null, linien:
     for (let q = 0; q < a.length && zu; q++) if (Math.abs(a[q]! - b[q]!) > 1e-6) zu = false;
     if (zu) zu = JSON.stringify(knoten.oben) === JSON.stringify(knoten.unten);
   }
-  return { oben, unten, knoten, gespeichert: !!linien, abweichung: abw, zu };
+  return { oben, unten, knoten, gespeichert: !!linien, abweichung: abw, abweichungPunkt: abwPunkt, zu };
 }
 
 /**

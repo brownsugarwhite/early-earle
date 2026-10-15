@@ -24,12 +24,14 @@ export function poseLinieAktiv(ansicht: Ansicht): boolean {
   return ansicht === 'seite' && ui.bauweise === 'kern' && ed.modus !== 'editor' && (ui.ebene === 'form' || ui.ebene === 'posen');
 }
 
-/** Umriss und Knoten der Pose im Seitenblatt (Kern-Koordinaten über `bild` in Profil-Einheiten). */
-export function PoseLinieZeichnung({ ansicht, bild, skal }: { ansicht: Ansicht; bild: (p: V2) => V2; skal: number }) {
+/**
+ * Umriss und Knoten der Pose im Seitenblatt (Kern-Koordinaten über `bild` in Profil-Einheiten). Ohne `aktiv` (andere
+ * Stufen) nur die Linie als Bezug, ohne Knoten und ohne Zeiger.
+ */
+export function PoseLinieZeichnung({ bild, skal, aktiv }: { bild: (p: V2) => V2; skal: number; aktiv: boolean }) {
   useNetzStand((s) => s.version);
   useEditor((s) => s.modus);
   useUi((s) => s.ebene);
-  if (!poseLinieAktiv(ansicht)) return null;
   const ps = aktuellesNetz()?.netz.poseSeite;
   if (!ps || ps.umriss.length < 6) return null;
   const B = (x: number, y: number) => bild({ x: x / skal, y: y / skal });
@@ -39,9 +41,9 @@ export function PoseLinieZeichnung({ ansicht, bild, skal }: { ansicht: Ansicht; 
     d += `${k ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
   }
   return (
-    <g data-pose-linie="">
+    <g data-pose-linie="" pointerEvents={aktiv ? 'auto' : 'none'}>
       <path d={d + 'Z'} fill="none" stroke="var(--kurve)" strokeWidth={3} strokeLinejoin="round" />
-      {Array.from(ps.knoten).map((k, i) => {
+      {aktiv && Array.from(ps.knoten).map((k, i) => {
         if (k < 0) return null;
         const q = B(ps.lage[3 * k]!, ps.lage[3 * k + 1]!);
         return (

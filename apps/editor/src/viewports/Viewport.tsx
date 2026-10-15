@@ -9,13 +9,19 @@ import { Pauspapier, pauspapierAusDatei } from './Pauspapier';
 import { Steuerung3D } from './Steuerung3D';
 import { View2D } from './View2D';
 import { useKernAnzeige } from '../kern/kernBau';
+import { usePoseLippen } from '../posen/poseLippen';
 
 const px = (d: number) => d.toFixed(1).replace('.', ',');
 
-/** Abweichung der Lippenkanten von Rot und Blau (Phase 2 M2, Florian: „exakt die Lippenkante“), nur in der Stufe Maul, Seite und Front. */
+/**
+ * Abweichung der Lippenkanten von Rot und Blau (Phase 2 M2, Florian: „exakt die Lippenkante“), nur in der Stufe Maul, Seite
+ * und Front. In einer Pose (B5): Abweichung der Lippen von Rot und Blau der Pose (3D, in beiden Blättern dieselbe Zahl).
+ */
 function Lippen({ id }: { id: 'seite' | 'front' }) {
-  const maul = useKernAnzeige((s) => s.info?.maul);
+  const basis = useKernAnzeige((s) => s.info?.maul);
   const ebene = useUi((s) => s.ebene);
+  const pose = usePoseLippen();
+  const maul = pose ? { oben: { seite: pose.abweichung.oben, front: pose.abweichung.oben }, unten: pose.zu ? null : { seite: pose.abweichung.unten, front: pose.abweichung.unten } } : basis;
   if (ebene !== 'maul' || !maul) return null;
   const wert = (w: { seite: number; front: number | null }) => (id === 'seite' ? w.seite : w.front);
   const eintrag = (name: 'rot' | 'blau', w: { seite: number; front: number | null }) => {

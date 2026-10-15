@@ -39,6 +39,7 @@ import { blickVon, useUi } from '../state/uiStore';
 import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen, setzeLippenImUmriss } from '../maul/MaulEbene';
 import { KieferZeichnung, kieferZeiger } from '../kiefer/KieferEbene';
 import { PoseLinieZeichnung, poseLinieZeiger } from '../posen/poseLinie';
+import { PoseLippenZeichnung, poseLippenZeiger, usePoseLippen } from '../posen/poseLippen';
 import { RigZeichnung } from '../maul/RigZeichnung';
 import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
 import { RundmaulZeichnung, rundmaulZeiger } from '../maul/RundmaulEbene';
@@ -104,6 +105,11 @@ export function View2D({ ansicht, w, h }: Props) {
   // B4: im Seitenblatt einer Pose (Bauweise Kern) ist die schwarze Linie der posierte Umriss mit Florians Knoten
   const bauweise = useUi((s) => s.bauweise);
   const poseKern = bauweise === 'kern' && modus !== 'editor' && ansicht === 'seite' && (ebene === 'form' || ebene === 'posen');
+  // B5: Rot und Blau der Pose (Bauweise Kern), wenn der Worker sie für diesen Tab geliefert hat; im Seitenblatt einer Pose
+  // ist die schwarze Linie in jeder Stufe der posierte Umriss (bearbeitbar nur in Körper und Posen & Leben), nie der alte
+  // Versuchsumriss mit Spalt und Vorschlag für offene Lippen
+  const poseLippen = usePoseLippen();
+  const poseSeiteAnzeige = bauweise === 'kern' && modus !== 'editor' && ansicht === 'seite';
   const formAktiv = ebene === 'form' && (!offenerKoerper || ansicht === 'seite') && !poseKern;
   const svgRef = useRef<SVGSVGElement>(null);
   // Saum (Schritt 4): Silhouette des Körpers, wo sie > 2 px von der Kurve abweicht (Welt-Koordinaten des Blatts)
@@ -250,6 +256,8 @@ export function View2D({ ansicht, w, h }: Props) {
       if (ui.ebene === 'form') return;
     }
     if (ui.ebene === 'maul') {
+      // B5: Rot und Blau der Pose (Knoten, Griffe, Stift) vor allem anderen
+      if (poseLippenZeiger(e, { ansicht, lokal, ziehen })) return;
       // Rundmaul (Phase 2 M6): Ring und Mitte als Griffe vor dem Zeichnen einer Maullinie
       if (rundmaulZeiger(e, { ansicht, lokal, ziehen })) return;
       maulZeiger(e, { ansicht, lokal, ziehen });
@@ -523,7 +531,7 @@ export function View2D({ ansicht, w, h }: Props) {
       ) : (
         <>
           {profil.art === 'halb' && <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="var(--kurve-spiegel)" strokeWidth={KONTUR} strokeLinejoin="round" />}
-          {spalt && maulZu?.unten ? (
+          {spalt && maulZu?.unten && !poseSeiteAnzeige ? (
             <g data-maulspalt="">
               <path d={pfad(spalt.segmente, false)} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
               {[maulZu.oben, maulZu.unten].map((l, i) => (
@@ -538,7 +546,7 @@ export function View2D({ ansicht, w, h }: Props) {
                 />
               ))}
             </g>
-          ) : poseKern ? (
+          ) : poseSeiteAnzeige ? (
             // Grundlinie als Bezug (gestrichelt), bearbeitet wird die Linie der Pose
             <path data-grundlinie="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="var(--kurve-spiegel)" strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" pointerEvents="none" />
           ) : (
@@ -548,9 +556,9 @@ export function View2D({ ansicht, w, h }: Props) {
       )}
       {umwegPfade.spiegel && <path data-umweg="spiegel" d={umwegPfade.spiegel} fill="none" stroke="var(--kurve-spiegel)" strokeWidth={KONTUR} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {umwegPfade.eigen && <path data-umweg="eigen" d={umwegPfade.eigen} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
-      {saumPfad && <path className="saum" data-saum="" d={saumPfad} fill="none" stroke="var(--saum)" strokeWidth={3} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+      {saumPfad && !poseSeiteAnzeige && <path className="saum" data-saum="" d={saumPfad} fill="none" stroke="var(--saum)" strokeWidth={3} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
-      {poseKern && <PoseLinieZeichnung ansicht={ansicht} bild={bild} skal={skal} />}
+      {poseSeiteAnzeige && <PoseLinieZeichnung bild={bild} skal={skal} aktiv={poseKern} />}
       <WirbelZeichnung ansicht={ansicht} bild={bild} />
       <SchnittZeichnung ansicht={ansicht} bild={bild} />
       <RundZeichnung ansicht={ansicht} bild={bild} />
@@ -598,7 +606,7 @@ export function View2D({ ansicht, w, h }: Props) {
           })}
         </g>
       )}
-      {(hatMaul || ebene === 'maul') && <MaulZeichnung ansicht={ansicht} bild={bild} aktiv={ebene === 'maul'} />}
+      {poseLippen ? <PoseLippenZeichnung ansicht={ansicht} bild={bild} aktiv={ebene === 'maul'} l={poseLippen} /> : (hatMaul || ebene === 'maul') && <MaulZeichnung ansicht={ansicht} bild={bild} aktiv={ebene === 'maul'} />}
       {ebene === 'maul' && <RundmaulZeichnung ansicht={ansicht} bild={bild} />}
       {ebene === 'posen' && <RigZeichnung ansicht={ansicht} bild={bild} />}
       {ebene === 'posen' && <KieferZeichnung ansicht={ansicht} bild={bild} w={w} h={h} />}

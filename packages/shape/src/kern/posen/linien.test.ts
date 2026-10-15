@@ -7,6 +7,8 @@ import { MAUL_STANDARD, type MaulErgebnis, ableitenMitMaul, kieferGewichteSetzen
 import { maulLinieAusDokument } from '../maulDokument';
 import { kugelMaulDokument } from '../pruefstand';
 import { linieEinfuegen, linienGrundKnoten, linienWirksam, lippenKetten } from './linien';
+import { ketteBei, linienGriffAus, linienKnotenVerschieben, poseLinieAnzeige } from './linienGriffe';
+import { griffZiehen3 } from '../../versuch/linie3d';
 
 declare const console: { log: (...a: unknown[]) => void };
 import { posenAuswerten, posenFuerBau } from './posen';
@@ -76,16 +78,18 @@ describe('Posen B5: Rot und Blau der Pose', () => {
       const posen0 = posenFuerBau(standardPosen(), null, abl.vorlage.kaefig.n, OPT);
       let schlimmste = 0;
       let frei = 0;
+      let punkt = 0;
       for (let f = 0; f < 24; f++) {
         const linien = zufallsLinien(abl, dok, r, 0.03, undefined, f >= 12);
         const e = posenAuswerten(abl, abl, OPT, mit(posen0, 'fressen', { linien }), { fressen: 1 }, dok);
         const l = e.bearbeitung!.lippen!;
         if (f < 12) schlimmste = Math.max(schlimmste, l.abweichung.oben, l.abweichung.unten);
         else frei = Math.max(frei, l.abweichung.oben, l.abweichung.unten);
+        punkt = Math.max(punkt, l.abweichungPunkt.oben, l.abweichungPunkt.unten);
         expect(l.gespeichert).toBe(true);
         expect(l.zu).toBe(false);
       }
-      console.log(`${art}: größte Abweichung Lippe ↔ Pose-Linie ${schlimmste.toFixed(3)} px (glatte Griffe), ${frei.toFixed(3)} px (freie Griffe)`);
+      console.log(`${art}: größter Abstand Lippe ↔ Pose-Linie ${schlimmste.toFixed(3)} px (glatte Griffe), ${frei.toFixed(3)} px (freie Griffe); zum Zielpunkt beim selben Anteil ${punkt.toFixed(3)} px`);
       expect(schlimmste).toBeLessThan(0.25);
       expect(frei).toBeLessThan(1);
     });
@@ -157,6 +161,43 @@ describe('Posen B5: Rot und Blau der Pose', () => {
     expect(ein.index).toBeGreaterThan(0);
     const b = posenAuswerten(abl, abl, OPT, mit(posen0, 'fressen', { linien: { ...linien, unten: ein.knoten } }), { fressen: 1 }, dok).xyz;
     expect(maxAbstand(a, b)).toBeLessThan(1e-9);
+  });
+
+  it('Knotenzug folgt dem Zeiger (Rᵀ·Δ am Knoten), Griffzug trifft den gezogenen Griff', () => {
+    for (const art of ['gleich', 'ueberbiss'] as const) {
+      const { dok, abl } = fall(art);
+      const posen0 = posenFuerBau(standardPosen(), null, abl.vorlage.kaefig.n, OPT);
+      const l0 = posenAuswerten(abl, abl, OPT, posen0, { fressen: 1 }, dok).bearbeitung!.lippen!;
+      let schlimm = 0;
+      let ecke = 0;
+      for (const name of ['oben', 'unten'] as const) {
+        const K = l0.knoten[name].length;
+        for (let k = 0; k < K; k++) {
+          for (const delta of [[0, -0.02, 0], [0.015, 0.01, 0]]) {
+            const neu = linienKnotenVerschieben(l0, name, l0.knoten[name], [k], delta);
+            const linien = linienWirksam(name === 'oben' ? { oben: neu, unten: l0.knoten.unten } : { oben: k === K - 1 ? l0.knoten.oben.map((q, i) => (i === K - 1 ? neu[k]! : q)) : l0.knoten.oben, unten: neu });
+            const l1 = posenAuswerten(abl, abl, OPT, mit(posen0, 'fressen', { linien }), { fressen: 1 }, dok).bearbeitung!.lippen!;
+            const a0 = ketteBei(l0[name].rechts, l0.knoten[name][k]!.s).ist;
+            const a1 = ketteBei(l1[name].rechts, l0.knoten[name][k]!.s).ist;
+            // erwartet: Δ, am Anfang ohne z-Anteil in Ruhe (Naht)
+            const fehler = Math.hypot(a1[0] - a0[0] - delta[0]!, a1[1] - a0[1] - delta[1]!, a1[2] - a0[2] - delta[2]!) * 461;
+            if (k === K - 1) ecke = Math.max(ecke, fehler);
+            else schlimm = Math.max(schlimm, fehler);
+          }
+        }
+      }
+      console.log(`${art}: Knotenzug ${schlimm.toFixed(2)} px neben dem Zeiger, Mundwinkel ${ecke.toFixed(2)} px`);
+      expect(schlimm).toBeLessThan(1);
+      expect(ecke).toBeLessThan(2);
+      // Griffzug: gezeigter Griff nach dem Umrechnen = gezogener Griff
+      const anzeige = poseLinieAnzeige(l0, 'unten');
+      const k = Math.min(1, anzeige.knoten.length - 2);
+      const p = anzeige.knoten[k]!;
+      const gezogen = griffZiehen3(anzeige, k, 'aus', 'seite', { x: p.p[0] + p.aus[0] + 0.01, y: p.p[1] + p.aus[1] - 0.012 }, false);
+      const neu = linienGriffAus(l0, 'unten', l0.knoten.unten, k, gezogen);
+      const wieder = poseLinieAnzeige({ ...l0, knoten: { ...l0.knoten, unten: neu } }, 'unten', neu);
+      expect(Math.hypot(...([0, 1, 2].map((c) => wieder.knoten[k]!.aus[c]! - gezogen.knoten[k]!.aus[c]!) as [number, number, number]))).toBeLessThan(1e-9);
+    }
   });
 
   it('Überblenden: halbe Pose liegt zwischen Grundform und Pose (endlich, nicht gleich)', () => {

@@ -28,7 +28,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown };
   }
 }
 
@@ -95,6 +95,22 @@ export function Szene3D() {
           return `${bits.length}:${h.toString(16)}`;
         },
         netzVersion: () => useNetzStand.getState().version,
+        // B5: Rot und Blau der bearbeiteten Pose (E2E): Abweichung (px), geschlossen, Knoten, gezeigte Lippe rechts (Kern-Einheiten)
+        poseLippen: () => {
+          const n = aktuellesNetz();
+          const l = n?.netz.pose?.lippen;
+          if (!n || !l) return null;
+          // Lippenmitten in Feldpixeln der Bühne: Hebung aus dem Mundwinkel (posiert mit Hebung) gegen die Lippe (ohne)
+          const o = l.oben.rechts.ist;
+          const u = l.unten.rechts.ist;
+          const heb = n.netz.maul ? n.netz.maul.winkel[1] - o[o.length - 2]! : 0;
+          const mitte = (a: Float32Array) => {
+            const j = 3 * Math.floor(a.length / 6);
+            return [a[j]! * n.skalierung, (a[j + 1]! + heb) * n.skalierung, a[j + 2]! * n.skalierung];
+          };
+          const pp = r.projizierenViele('creation', Float32Array.from([...mitte(o), ...mitte(u)]));
+          return { abweichung: l.abweichung, zu: l.zu, gespeichert: l.gespeichert, knoten: l.knoten, oben: Array.from(o), unten: Array.from(u), pixel: { oben: [pp[0], pp[1]], unten: [pp[3], pp[4]] } };
+        },
         // B2-Tor: die angezeigten Lagen selbst (Vergleich zweier Seiten auf Float32-Genauigkeit statt nur über den Fingerabdruck)
         netzLagen: () => {
           const n = aktuellesNetz();
