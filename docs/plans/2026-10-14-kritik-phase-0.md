@@ -165,7 +165,7 @@
 
 Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setzeOeffnung(1)` ohne Moduswechsel); Tafel-Regler Unterkiefer/Schädel/Haps schrieben die gemeinsamen Maul-Optionen statt der Fressen-Pose; Maul-Optionen von Prüfwesen und Dokument wurden flach gemischt (der erste Rig-Zug am Tiger warf dessen Winkel, Band und Rille aus dem Bau); Knochen in der Seite wurden mit der Fressen-Öffnung gezeichnet; die Bühnen-Hinweise kannten neue Posen nicht; die alte Posen-Seitenform (`posenProfile`) ersetzte im Kern-Bau die Seite.
 
-- [ ] **Maul- und Zahnebene behandeln jede Pose als „offen“** (`maul/MaulEbene.tsx` `zustandVon`, `maul/ZahnEbene.tsx`, alter `ZahnBereich`): in Idle zeigen sie die offenen Lippen bzw. Zähne → B5 (Pose-Linien), B9 (Zähne in Posen).
+- [x] **Maul- und Zahnebene behandeln jede Pose als „offen“** (`maul/MaulEbene.tsx` `zustandVon`, `maul/ZahnEbene.tsx`, alter `ZahnBereich`): in Idle zeigen sie die offenen Lippen bzw. Zähne → B5 (Pose-Linien), B9 — *Maulebene erledigt in B5 (15.10. nachts): in der Bauweise Kern zeigt eine Pose Rot und Blau der Pose (`posen/poseLippen.tsx`), geschlossen eine türkise Linie; Zahnebene bleibt B9.* (Zähne in Posen).
 - [ ] **Zähne öffnen mit dem Gewicht von Fressen, nicht mit der Pose** (Idle mit offenem Kiefer zeigt geschlossene Zähne) → B9.
 - [ ] **Rundmaul-Rand ziehen liest die Öffnung erst nach `beginGeste`**; im Editor-Tab hat `werkzeuge/ziel.ts` sie dann schon auf 0 gesetzt → B7/B9 (Rundmaul in Posen).
 - [ ] **Kieferknopf ist außerhalb von Körper/Maul/Zähne unsichtbar, aber greifbar** (`viewports/Steuerung3D.tsx`) → B7 (Kieferknopf als Vorschau).
@@ -173,3 +173,11 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 - [ ] **`nurPose` lässt in einer Pose alle Maul-Optionen durch**, auch Bauoptionen (Rille, Reihen, Band bauen den Käfig um) → B6 (Werkzeug-Router je Werkzeug).
 - [ ] **Pinsel hat auf der Bühne Vorrang vor den Knochengriffen**: Knochen greift man mit dem Auswahlwerkzeug (A) → Bedienung in B7 klären (Hinweis oder Vorrang der Griffe).
 - [ ] **Beine**: Posen-Formen werden auf den geschwungenen Käfig gelegt, der Übertrag rechnet dort mit dem geschwungenen statt dem Ruhe-Käfig → B9.
+
+## Befunde aus B5 (15.10. nachts, eigene Befunde, je mit Schritt)
+
+- [ ] **Großer Zug an Blau bei festem Anfang faltet die Kinnfront** (Rex, Knoten 60 px tiefer: die Lippe läuft vorn unter die Kinnfläche; 25 px gibt die Illustrator-S-Kurve mit kleiner Stufe im Lippenband). Ein größerer Einflussbereich (6 statt 3 Kanten) ändert das Bild nicht. Für so starke Züge müssen Kinn bzw. Anfang mitgehen → B8 (extreme Posen: Haut folgt der Lippe über größere Strecken).
+- [ ] **Mundwinkel folgt dem Zeiger nur auf 0,6 px** (bei 10 px Zug; am Winkel mischen sich Schädel- und Kieferdrehung, umgerechnet wird mit der Drehung des Winkels). Exakt ginge über die Ableitung der Lippe nach dem Versatz (drei Einsetz-Läufe je Knoten) → B6/B7, wenn es stört.
+- [ ] **Knicke in der Pose-Linie kann die Lippe nicht nachbilden** (freie Griffe 0,44–0,54 px, glatte Griffe 0,05 px; der Mundwinkel ist rund, weil die Lippenkette glatt um ihn läuft) → Teil A (Mundwinkel als Eckpunkt der Lippenschleife).
+- [ ] **Front und Top einer Pose zeigen noch die Grundprofile** (samt Lichtsaum der Grundform); nur die Seite zeigt den posierten Umriss → B6.
+- [ ] **Rot und Blau der Pose nur in den Blättern**, nicht auf der Bühne (wie die Grundlinien) → B7.

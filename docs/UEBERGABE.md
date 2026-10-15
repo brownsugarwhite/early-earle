@@ -1,4 +1,4 @@
-# Übergabe (Stand 15.10.2026 abends, Stufe 3: B3, B3b, B4 gebaut)
+# Übergabe (Stand 15.10.2026 nachts, Stufe 3: B3, B3b, B4, B5 gebaut)
 
 Branch `claude/editor-grundlayout`. **Es gilt der freigegebene Plan [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)** mit den ausführlichen Entwürfen [Teil A Maul als Einsatz](plans/2026-10-15-entwurf-maul-einsatz.md), [Teil H Werkzeug-Harmonie](plans/2026-10-15-entwurf-werkzeug-harmonie.md) und [Teil B Posen](plans/2026-10-15-entwurf-posen.md). Alle älteren Fahrpläne (Phase 2, Ruhiges Netz und Maulschlitz, Fressen wie Editor) sind dadurch abgelöst; ihre Fallen und Messwerkzeuge bleiben gültiges Wissen.
 
@@ -41,11 +41,19 @@ Die Ursachen stehen im Plan unter „Befund“ (Code-Analysen mit Datei- und Zei
 
 - **Stufe 3, B4 gebaut (Abnahme offen, 4df7e0d):** Löser im posierten Raum (`packages/shape/src/loeser/posenLoeser.ts`) und die schwarze Linie im Seitenblatt einer Pose (`apps/editor/src/posen/poseLinie.tsx`, Griffdaten `kern/posen/griffeSeite.ts`): posierter Umriss mit den Knoten auf ihren Hautpunkten, ziehen formt die Pose örtlich (Radius wie der Pinsel). Prüfung `apps/editor/scripts/pruefen/posen-b4.mjs` (10/10), Bild `docs/progress/editor/b4-pose-linie-2026-10-15.jpg`.
 
-## Nächster Schritt: B5 (nach Florians Blick auf B4)
+- **Stufe 3, B5 gebaut (Abnahme offen, 742e6ab):** Rot und Blau der Pose. Gespeichert ist ein Versatzfeld längs der natürlichen Lippe der Pose (`Pose.linien`). Die Lippen werden im Ruheraum darauf projiziert (`kern/posen/linien.ts`, `loeser/glattLoeser.ts`), die Knochen nehmen die Korrektur mit. Im Editor zeigt die Stufe Maul einer Pose die Lippe als Linie (`apps/editor/src/posen/poseLippen.tsx`): Knoten und Griffe in Seite, Front und Top ziehen, Mundwinkel gemeinsam, Anfang auf der Naht, geschlossen türkis. Stift fügt formneutral ein. Die Linien folgen dem Pinsel und der schwarzen Linie von selbst. Gemessen:
+  - Lippen 0,05–0,06 px auf zufälligen glatten Linien (Ziel 0,25 px);
+  - schiefe Pose 0,04 px;
+  - Pinsel folgt exakt;
+  - unberührte Pose bitgleich;
+  - Prüfung `apps/editor/scripts/pruefen/posen-b5.mjs` 30/30 (Rex, Tiger);
+  - Bild `docs/progress/editor/b5-pose-linien-2026-10-15.jpg`.
 
-Nach Entwurf `docs/plans/2026-10-15-entwurf-posen.md` §3.4/§4.3/§4.6 und Plan Teil B:
-- **B5** Pose-Linien Rot und Blau (relativ zu den Grundlinien gespeichert, in Fressen immer zwei Linien mit eigenem Anfang und gemeinsamem Mundwinkel), Lippen bei jeder Auswertung exakt darauf (Projektion mit dem Löser aus B4), „Linien folgen dem Pinsel“, formneutrales Einfügen.
-- Danach **B6**: schwarze Linien in Front und Top (Silhouetten), Griffe an den Knoten der Seite, Reifen in der Pose, Matrix jedes Werkzeug × jede Pose mit echten Zügen. Mit B5/B6 fällt die B1-Sperre ganz.
+  Befunde im Kritik-Register („Befunde aus B5“): Ein Zug um 60 px faltet die Kinnfront (B8). Der Mundwinkel liegt 0,6 px neben dem Zeiger. Knicke kann die runde Lippenkette nicht nachbilden (Teil A).
+
+## Nächster Schritt: B6 (nach Florians Blick auf B5)
+
+Nach Entwurf `docs/plans/2026-10-15-entwurf-posen.md` §4.1/§4.2 und Plan Teil B: schwarze Linien in Front und Top einer Pose (posierte Silhouetten, Löser aus B4), Griffe an den Knoten der Seite, Reifen in der Pose, Matrix „jedes Werkzeug × jede Pose“ mit echten Zügen; danach fällt die B1-Sperre ganz (`nurPose` → Werkzeug-Router je Werkzeug).
 
 ## Erledigt: Stufe 2, B1
 

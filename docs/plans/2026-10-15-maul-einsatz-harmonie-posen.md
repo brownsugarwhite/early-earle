@@ -343,3 +343,19 @@ Die Information der drei Shapes reicht: Ihr Schnitt beschreibt, was verlangt ist
   - **In Fressen immer zwei Linien** (Rot = Oberkette, Blau = Unterkette), je mit eigenem Anfang auf der Naht (z des Versatzes 0 in Ruhe) und gemeinsamem Mundwinkel (der Versatz von Rot gilt für beide). Ohne offene Kiefer in Idle/frei mit gleichen Ketten und gleichen Versätzen eine türkise Linie, die beide schreibt.
   - **Lippenprojektion:** je Pose mit Versätzen ein Löser im posierten Raum über beide Hälften (Posen können schief sein): Unbekannte = Verschiebung der Käfigpunkte im Maul und 3 Kanten Umgebung, Bi-Laplace, außerhalb exakt 0; Bedingungen = Grenzzeilen aller feinen Lippenpunkte (an Knoten, Anfängen und Mundwinkel stärker); eine Zerlegung je Topologie für alle Posen (die Matrix hängt nicht an der Stellung), je Auswertung nur Einsetzen. Ergebnis R^T·ΔX als Ruhe-Korrektur der Pose (überblendet wie die Form).
   - **Prüfung (L1):** Lippen ≤ 1 px auf den Pose-Linien (feine Lippenpunkte gegen die Ziellinie, 3D), Grundform bitgleich, unberührte Pose bitgleich, außerhalb des Bereichs 0, schiefe Pose; Editor: Knoten und Griffe ziehen in Seite und Front, Einfügen, Undo, Pinsel an der Lippe (Linie geht mit).
+  - **Nachtrag beim Bau:** Die Projektion läuft im **Ruheraum**, nicht im posierten Raum. Die Knochen nehmen die Korrektur mit wie die Form; posiert ist die Linie der Pose genau die gezeigte Lippe. Gemessen: im posierten Raum gegen N + R(s)·H(s) blieben am Mundwinkel mit der Drehung des nächsten Kettenpunkts 4–5 px stehen, mit überblendeter Drehung 0,65–0,8 px (Ober- und Unterkette drehen dort verschieden, das Ziel knickt). Im Ruheraum trifft der Fit H auf ≤ 0,1 px, und die Matrix hängt nicht an der Stellung.
+- **15.10. nachts, Stufe 3, B5 gebaut** (Abnahme offen; 516d572 Zuschnitt, b52ba5f Kern, 742e6ab Editor):
+  - **Kern:** `Pose.linien` (Knoten mit Lippenanteil s, Versatz, Griffversätzen; Ruheraum); `kern/posen/linien.ts` (Ketten, Standardknoten aus der Grundlinie, Versatzfeld, Lippenprojektion, Daten für den Editor, formneutrales Einfügen); `kern/posen/linienGriffe.ts` (Anzeige, Knoten- und Griffzug); `loeser/glattLoeser.ts` (Bi-Laplace mit Bedingungen an Grenzzeilen, Hülle nach Cuthill-McKee, eine Zerlegung je Topologie).
+  - **Editor:** `posen/poseLippen.tsx`. In der Stufe Maul einer Pose ist die gezeigte Linie die Lippe der Pose; Knoten und Griffe ziehen in Seite, Front und Top (zwei Koordinaten je Blatt). Der Mundwinkel ist gemeinsam, der Anfang bleibt auf der Naht. Geschlossen mit gleichen Ketten gibt es eine türkise Linie. Stift fügt formneutral ein und löscht innere Knoten; Lippen-px stehen im Blatttitel. Das Seitenblatt einer Pose zeigt in jeder Stufe den posierten Umriss; vorher zeichnete der Versuchscode dort einen Umriss mit Spalt und einen Vorschlag für offene Lippen.
+  - **Gemessen (Kern-Tests):**
+    - unberührte Pose bitgleich;
+    - Lippen 0,05–0,06 px von zufälligen glatten Pose-Linien bis ±14 px (Kugel gleich, Über-, Unterbiss; Ziel 0,25 px), 0,44–0,54 px bei freien Griffen mit Knicken;
+    - schiefe Pose 0,04 px;
+    - nur Blau versetzt: Oberlippe 0,03 px;
+    - die Linien folgen dem Pinsel exakt (0,0000 px);
+    - Knotenzug exakt am Zeiger, Mundwinkel 0,6 px daneben.
+  - **Gemessen (Editor):** `posen-b5.mjs` 30/30 mit echten Zügen auf Rex (Überbiss) und Tiger (Plattenmaul, Idle geschlossen). B3, B3b, B4, Tab-Wechsel und kern-ablauf sind grün.
+  - **Abweichung vom Entwurf:** Die Pose speichert eigene Knoten mit s (Einfügen in der Grundlinie ändert keine Pose). „Linien folgen dem Pinsel“ braucht keinen Worker-Auftrag.
+  - **Befunde** im Kritik-Register (Abschnitt „Befunde aus B5“): großer Zug faltet die Kinnfront (B8), Mundwinkel 0,6 px (B6/B7), Knicke (Teil A), Front/Top der Pose (B6).
+  - Bild [`docs/progress/editor/b5-pose-linien-2026-10-15.jpg`](../progress/editor/b5-pose-linien-2026-10-15.jpg).
+  - **Nächster Schritt:** B6.
