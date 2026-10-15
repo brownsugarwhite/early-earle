@@ -17,7 +17,7 @@ import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirb
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
 import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige, weiterePose } from '../kern/kernBau';
-import { zahnMarkenAnzeigen } from '../kern/zahnGriffe';
+import { ZAHN_FARBE, zahnMarkenAnzeigen } from '../kern/zahnGriffe';
 import { augenPixel, griffeAnzeigen, kieferPixel } from '../kern/griffe';
 import { knochen3dAnzeigen, knochen3dPixel } from '../kiefer/knochen3d';
 import { perlenVon, reifenAnzeigen, reifenFaerben, useReifen } from '../kern/reifen';
@@ -165,7 +165,8 @@ export function Szene3D() {
             if (s !== 1) for (let i = 0; i < t.zaehne.positionen.length; i++) t.zaehne.positionen[i]! *= s;
             r.setzeZaehne(t.zaehne.positionen, t.zaehne.normalen, t.zaehne.anteil);
           } else r.setzeZaehne(null, null, null);
-          // Phase 2 M4: gewählter Zahn (Stufe Zähne)
+          // Phase 2 M4: Zahnfarbe (Ausstattung) und gewählter Zahn (Stufe Zähne)
+          r.setzeZahnFarbe(d.ausstattung?.zahnFarbe ?? ZAHN_FARBE);
           zahnMarkenAnzeigen(r);
           // M3: Reifen (Spanten als Ringe mit Perlen) und Kieferknopf auf dem Körper
           reifenAnzeigen(r, t, s);

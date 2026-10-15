@@ -13,6 +13,8 @@ import { szene } from '../three/instanz';
 import { aktuellesNetz } from './netzStand';
 
 type Kiefer = 'oben' | 'unten';
+/** Zahnfarbe ohne Angabe in der Ausstattung (Creme, Bild 5/11) */
+export const ZAHN_FARBE = '#f3e6c8';
 /** Körper so viel näher als der Zahn (Welt längs des Strahls): Zahn verdeckt */
 const ZAHN_VERDECKT = 0.004;
 

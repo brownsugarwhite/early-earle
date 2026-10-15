@@ -7,6 +7,7 @@ import type { Zaehne, ZahnEintrag } from '@ee/shape';
 import { zahnreiheVerteilen } from '@ee/shape/kern';
 import { useState } from 'react';
 import { aktuellesNetz, useNetzStand } from '../kern/netzStand';
+import { ZAHN_FARBE } from '../kern/zahnGriffe';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { Chips, Regler, geste } from './bedienung';
@@ -168,6 +169,35 @@ export function ZahnFeld() {
             <b>steht vor der Gegenlippe (Hauer)</b>
           </label>
         </>
+      )}
+      <label className="feld">
+        <span>Farbe</span>
+        <input
+          type="color"
+          data-zahn-farbe=""
+          value={dok.ausstattung?.zahnFarbe ?? ZAHN_FARBE}
+          onPointerDown={() => useEditor.getState().beginGeste()}
+          onBlur={() => useEditor.getState().endeGeste()}
+          onChange={(e) => {
+            const s = useEditor.getState();
+            s.setzeDokument({ ...s.dok, ausstattung: { ...(s.dok.ausstattung ?? {}), zahnFarbe: e.target.value } });
+          }}
+        />
+        <b>Wurzel → Spitze heller</b>
+      </label>
+      {dok.ausstattung?.zahnFarbe && (
+        <button
+          className="chip"
+          data-zahn-farbe-standard=""
+          onClick={() => {
+            const s = useEditor.getState();
+            const aus = { ...(s.dok.ausstattung ?? {}) };
+            delete aus.zahnFarbe;
+            s.setzeDokument({ ...s.dok, ausstattung: aus });
+          }}
+        >
+          Farbe: Creme (Standard)
+        </button>
       )}
       <p className="hilfe">
         Zahn anklicken (Bühne, Seite, Front) wählt ihn, Ziehen schiebt ihn längs des Zahnfleischs, der Spiegelzahn folgt. Ohne Auswahl wirken die Regler auf alle Zähne der gewählten Kiefer (Länge, Breite, Größe im Verhältnis, die Folge vorn groß → hinten klein bleibt). „Werte für offen“ gelten beim geöffneten Maul und blenden mit der Öffnung über — so wachsen Riesenzähne beim Öffnen. Geschlossen verdeckte Zähne sind nur bei offenem Maul greifbar.

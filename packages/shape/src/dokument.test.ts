@@ -69,4 +69,14 @@ describe('Dokument', () => {
     expect(migriert.ausstattung).toBeUndefined();
     expect(migriert.profile.seite.knoten.length).toBe(4);
   });
+  it('Phase 2 M4: Drehung und Größe der Zähne (auch offen) und die Zahnfarbe überstehen die Rundreise', () => {
+    const d = neuesDokument('Rex');
+    const zahn = { u: 0.3, laenge: 0.05, breite: 0.02, rundheit: 0.6, schaerfe: 0.7, neigung: 0, biegung: 0.2, spreizung: 0, drehung: 40, groesse: 1.2, aussen: true, auf: { laenge: 0.08, groesse: 1.8, drehung: 10 } };
+    d.zaehne = { oben: { anzahl: 3, zaehne: [zahn, { ...zahn, u: 0.6 }] }, unten: { anzahl: 0, zaehne: [] } };
+    d.ausstattung = { zahnFarbe: '#e8d9b0' };
+    const json = JSON.parse(JSON.stringify(d));
+    expect(dokumentLesen(json)).toEqual(json);
+    // keine Farbe ohne Hex
+    expect(() => dokumentLesen({ ...json, ausstattung: { zahnFarbe: 'weiß' } })).toThrow();
+  });
 });

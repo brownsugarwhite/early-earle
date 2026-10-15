@@ -101,6 +101,8 @@ export const AusstattungSchema = z.object({
   gesichtMaske: z.object({ voll: z.number(), aus: z.number(), oben: z.number() }).optional(),
   lippenBand: z.number().min(0).optional(),
   zonen: z.array(ZonenVorlageSchema).optional(),
+  // Phase 2 M4 (Plan 5.3): eine Farbe für alle Zähne (Hex), Verlauf Wurzel → Spitze im Material
+  zahnFarbe: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
 });
 /** Ausstattung als Typ mit exakten Optionalen (zod-Inferenz erlaubt `undefined`, das passt nicht zu `exactOptionalPropertyTypes`). */
 export type ZonenVorlage = { ansicht: 'seite' | 'top' | 'front'; punkte: { x: number; y: number; weich: number }[] };
@@ -149,6 +151,8 @@ export type Ausstattung = {
   gesichtMaske?: { voll: number; aus: number; oben: number };
   lippenBand?: number;
   zonen?: ZonenVorlage[];
+  /** Phase 2 M4: eine Farbe für alle Zähne (Hex), Verlauf Wurzel → Spitze im Material */
+  zahnFarbe?: string;
 };
 
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */

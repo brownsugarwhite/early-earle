@@ -614,6 +614,8 @@ export function createToothMaterial(u: CreatureMaterialUniforms, zahnHex: string
   const base = uniform(new Vector3(...f.base));
   const dark = uniform(new Vector3(...f.schatten));
   const light = uniform(new Vector3(...f.licht));
+  // Farbe zur Laufzeit setzbar (`setzeZahnFarbe`), ohne das Material neu zu erzeugen
+  material.userData.zahnFarbe = { base, dark, light };
   material.colorNode = Fn(() => {
     const t = attribute('eeTooth', 'float') as FloatNode;
     const N = normalize(normalView as unknown as Vec3Node);
@@ -625,6 +627,19 @@ export function createToothMaterial(u: CreatureMaterialUniforms, zahnHex: string
     return vec4(col, 1);
   })();
   return material;
+}
+
+/**
+ * Zahnfarbe zur Laufzeit (Phase 2 M4, Plan 5.3): eine Farbe für alle Zähne, Wurzel = Farbe, Spitze heller, Schattenseite
+ * dunkler und kühler (Farbrollen in OKLab wie beim Körper). Setzt nur die Uniforms von `createToothMaterial`.
+ */
+export function setzeZahnFarbe(material: MeshBasicNodeMaterial, zahnHex: string): void {
+  const u = material.userData.zahnFarbe as { base: { value: Vector3 }; dark: { value: Vector3 }; light: { value: Vector3 } } | undefined;
+  if (!u) return;
+  const f = farbRolle(zahnHex, STIL_STANDARD);
+  u.base.value.set(...f.base);
+  u.dark.value.set(...f.schatten);
+  u.light.value.set(...f.licht);
 }
 
 /** Zunge: rosa mit hellem Mittelband. */

@@ -4,7 +4,7 @@
 // Look: Matcap (Licht an der Ansicht, wie Blender-Solid), Kachel als 10-%-Fläche, harter Schatten von
 // einem eigenen Sonnenlicht (wirkt nur auf den Schatten, die Matcap ignoriert Licht).
 
-import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, atlasTextur, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, createToothMaterial, installTslFunctionCacheFix, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms } from '@ee/render';
+import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, atlasTextur, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, createToothMaterial, installTslFunctionCacheFix, setzeZahnFarbe, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms } from '@ee/render';
 import type { LoftNetz } from '@ee/shape';
 import {
   BufferAttribute,
@@ -553,6 +553,12 @@ export class Renderer3D {
     const t = this.strahl.intersectObject(ziel, false)[0];
     if (!t || t.faceIndex === undefined || t.faceIndex === null) return null;
     return { dreieck: t.faceIndex, punkt: [t.point.x, t.point.y, t.point.z], abstand: t.distance };
+  }
+
+  /** Zahnfarbe (Phase 2 M4): eine Farbe für alle Zähne, Verlauf Wurzel → Spitze im Material (nur Uniforms). */
+  setzeZahnFarbe(hex: string) {
+    setzeZahnFarbe(this.zaehne.material as MeshBasicNodeMaterial, hex);
+    this.anfordern();
   }
 
   /** Treffer auf dem Zahnnetz (Phase 2 M4): Dreieck und Abstand längs des Strahls; null ohne Zähne oder Treffer. */
