@@ -186,3 +186,11 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 
 - **Aufblasen mit Betrag 0 schreibt einen leeren Undo-Schritt in die Pose** (`apps/editor/src/kern/pinsel.ts`: `betrag` aus „rechts minus unten“; ein Zug genau diagonal nach rechts unten ergibt 0, die Pose bekommt trotzdem Form/Bezug geschrieben). → B7 (Undo-Verhalten der Oberfläche).
 - **Hebel an den Knoten der Pose-Linie fehlen** (Seite, Front, Top): Die Linie der Pose ist ein posierter Umriss, keine Bézier-Kurve; Hebel bräuchten eine Bedeutung (örtliche Krümmung oder Tangente). → Entscheidung Florian, dann B7.
+
+## Befunde aus A5 (16.10. früh, eigene Befunde)
+
+- **Güte der Hautvierecke hängt an der Feldform** (Teil A, A3/A5; Entwurf 2.5 verlangt ≥ 25° und Streckung ≤ 4). Gemessen nach vier Anläufen am Gitter: ausgeglichene Felder gut (23–39°), unausgeglichene schlecht (Keil am Mundwinkel bis 5°), große Felder (m > 10) alle schlecht. Ursachen: fehlendes Gleichgewicht (Randpunkt m nicht hinter dem Mundwinkel, V-Versatz bis 0,42), Lappen im Feld, große Felder für kurze Lippen. **Wege (Entscheidung Florian):**
+  1. **A3 neu: kompakte, ausgeglichene Felder** — Streifen um die Linie als Rechteck in den Gitterkoordinaten der Röhre bzw. der Kappe, Gleichgewicht über die Karte prüfen und die kurze Seite wachsen lassen (Entwurf 2.3, Schritt 7). Hilft bei den meisten Lagen; bei Linien nahe der Mittelnaht nachgerechnet unmöglich (der Oberlippenbereich endet an der Naht).
+  2. **Übergangsreihe mit 3/5-Polpaaren** (im Entwurf nur als Rückfall für zu großes m): Im äußeren Ring teilen oder vereinen sich Speichen. Dann ist m nicht mehr an den Feldrand gebunden (kurze Lippen mit m ≈ 6–10, lange mit mehr), und schiefe Felder werden ausgeglichen. Kostet je Übergang zwei unregelmäßige Punkte im äußeren Ring (sichtbar auf der Haut, flach gelegt).
+  3. **Ungleiche Lippen** (m_oben ≠ m_unten), Rachen als Streifen statt Quadrat. Löst nur das Gleichgewicht, nicht die großen Felder.
+  - Empfehlung: 1 + 2. A6 (Lippe exakt) hängt nicht daran und läuft weiter; A7 wird zuerst an ausgeglichenen Fällen gebaut und gezeigt.

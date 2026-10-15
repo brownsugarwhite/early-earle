@@ -27,6 +27,8 @@ export type Karte = {
   v: Float64Array;
   /** Randstücke in Umlaufreihenfolge: Schlitz (oben → Mundwinkel → unten), unteres Mittelstück, Feldrand, oberes Mittelstück */
   rand: { schlitz: number[]; mitteUnten: number[]; aussen: number[]; mitteOben: number[] };
+  /** Dreiecke der Karte (Nummern wie in der Eingabe, nach dem Kippen der Ohren) */
+  dreiecke: Int32Array;
   /** V des Mundwinkels */
   vWinkel: number;
   umgeklappt: number;
@@ -225,6 +227,7 @@ export function karteBauen(e: KartenEingabe): Karte {
     u: U2.x,
     v: V2.x,
     rand: { schlitz, mitteUnten, aussen, mitteOben },
+    dreiecke: Int32Array.from(tri, (k) => global[k]!),
     vWinkel: V2.x[winkel]!,
     umgeklappt,
     entartet,
