@@ -212,6 +212,9 @@ export type PoseName = (typeof POSEN)[number];
 export const SKALIERUNG_MIN = 0.25;
 export const SKALIERUNG_MAX = 3;
 
+/** Fressen wie Editor (15.10.): eigene Griffe einer Pose, gleiche Punktstruktur wie die Grundform */
+const PoseFormSchema = z.object({ profile: z.object({ seite: ProfilSchema, front: ProfilSchema, top: ProfilSchema }), spanten: z.array(SpantSchema).optional(), maul: z.object({ zu: LippenSchema, auf: LippenSchema.optional() }).optional() });
+
 const DokumentFelder = {
   format: z.literal('ee-wesen'),
   name: z.string().min(1),
@@ -226,6 +229,7 @@ const DokumentFelder = {
   wirbelsaeule: Linie3Schema.optional(),
   posenProfile: z.record(z.string(), z.object({ seite: ProfilSchema.optional() })).optional(),
   rundSpanten: z.array(RundSpantSchema).optional(),
+  posenForm: z.record(z.string(), PoseFormSchema).optional(),
 };
 /** Version 0 (bis 14.10.2026): ohne Ausstattung. */
 export const DokumentSchemaV0 = z.object({ ...DokumentFelder, version: z.literal(0) });
@@ -305,6 +309,9 @@ export type Kante = {
   tiefe?: number;
 };
 
+/** Griffe einer Pose (Fressen wie Editor, 15.10.): Umrisse, Spanten und Maullinien der Pose. */
+export type PoseForm = { profile: { seite: Profil; front: Profil; top: Profil }; spanten?: Spant[]; maul?: Maul };
+
 export type Dokument = {
   format: 'ee-wesen';
   version: 1;
@@ -335,6 +342,12 @@ export type Dokument = {
    * `profile.seite`. Fehlt sie, folgt die Pose dem Kiefer.
    */
   posenProfile?: Record<string, { seite?: Profil }>;
+  /**
+   * Fressen wie Editor (Florian 15.10.: „Blendshapes und Bones kombinieren“): eigene Griffe je Pose (Schlüssel „fressen“
+   * bzw. Posenname) — drei Umrisse, Spanten, Maullinien — mit derselben Punktstruktur wie die Grundform. Der Bau leitet
+   * daraus mit denselben Stationen einen zweiten Käfig ab; der Unterschied ist der Blendshape. Fehlt = Pose wie Grundform.
+   */
+  posenForm?: Record<string, PoseForm>;
   /**
    * Versuch 13.10. nachmittags: Spanten der Bauweise „rund“, je eine Strecke quer über ein Teil der Seite (Punkt und
    * Richtung; die Enden liegen auf dem Umriss) mit Halbprofil (u = Breite, 1 = runder Körper; v = Lage auf der Strecke).

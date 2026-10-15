@@ -7,3 +7,4 @@ export * from './spanten';
 export * from './fit';
 export * from './maulKnoten';
 export * from './lippeHaut';
+export * from './poseForm';
