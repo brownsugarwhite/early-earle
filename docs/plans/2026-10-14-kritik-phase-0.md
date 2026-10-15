@@ -120,3 +120,13 @@
 - **Front-Blatt** taugt kaum zum Ziehen (Zahnreihe stark verkürzt: Rex unten Zahn 2 bis 5 auf 11,5 px) → Ziehen in Seite oder Bühne; ggf. Hinweis in der Tafel, Phase 4.
 - **Zahnprüfung im selben Worker wie der Bau:** 200–500 ms; ein Zug direkt nach dem Start einer Prüfung wartet bis zu einer halben Sekunde → eigener Prüf-Worker, falls Florian es merkt, Phase 5.
 - **Tempo-Tests unter Last:** Drei feste Schranken (Umbau ≤ 350/500 ms, Kanten-Laufzeit) kippen, wenn die Maschine belegt ist (Lastmittel 21,8), einzeln grün → bei Gelegenheit als „beste von n“ messen, Phase 5.
+
+## Offen aus Phase 2 M5 Augen (15.10. nachts, eigene Befunde, je mit Phase)
+
+- **Brauenwulst am Augapfel nicht gelöst** (drei gemessene Anläufe, Abbruchregel): Am Rex ist das Feld um das Auge längs des Körpers zu schmal (Ringe am Mundwinkel 0,009–0,015 auseinander). Wege: Ringe am Auge (Stationen wie ein Reifen), Loop-Cut, Brauenkante von Hand (Kantenlinie + Pinsel), Braue als Teil → Florians Entscheidung, Phase 2/3.
+- **Augapfel nur über der Lippenreihe:** Am Rex taugen nur Ringpunkte mit j ≤ 3 (16 je Ring), sonst berührt die Höhle die Lippe. Seitlich tiefer (j = 4) bräuchte die Lippe mehr Abstand oder einen Loop-Cut → Phase 3.
+- **Kein Blick:** Die Pupille schaut entlang der Flächennormale (Glubschauge) bzw. 28° zur Schnauze (Augapfel); ein Auge folgt nicht → Hauptplan („Blick kommt später“), Phase 4.
+- **Dunkler Ring weicher als in Bild 10/11**; das Lid der Augenkugeln hat nur die Grundfarbe (keine Zonen, keine Muster) → Look-Urteil Florian, Phase 4.
+- **Feuer und Gas:** behalten ihr gemaltes Schlitzauge, keine Formen, Zustände oder Kugeln (eigenes Material) → Phase 4 (Stile).
+- **Höhle nur ohne angesteckte Beine und nicht für ein Auge in der Mitte** (Zyklop-Augapfel auf der Naht) → bei Bedarf, Phase 3.
+

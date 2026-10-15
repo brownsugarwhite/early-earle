@@ -12,6 +12,7 @@ import { alleFlaechen } from '../kaefig/halbkanten';
 import { type V3, zuDreiecken } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
 import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern } from './atlas';
+import { HOEHLE_STANDARD, type HoehlenAuge, type HoehlenTopologie, augapfelEcke, augenOben, brauenReihe, hoehlenFein, hoehlenLagen, hoehlenTopologie } from './augenHoehle';
 import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
 import { ringSegmente } from './reifen';
@@ -47,6 +48,8 @@ export type Auge = {
   tiefe: number;
   seite: -1 | 0 | 1;
   posiert: { pos: V3; normale: V3 };
+  /** feiner Punkt der Lage (rechts bzw. Mitte; beim Augapfel ein Ringpunkt des Käfigs = Mitte der Höhle) */
+  ecke: number;
 };
 /** Tiefe der Augenkugel ohne Angabe: Glubschauge sitzt mit gut der Hälfte vor der Haut (Bild 10), der Augapfel tiefer (Bild 11). */
 export const AUGEN_TIEFE = { gemalt: 0, glubsch: 0.42, augapfel: 0.7 } as const;
@@ -329,6 +332,75 @@ const verketten = (a: Float32Array, b: Float32Array): Float32Array => {
 };
 
 /** Deskriptoren je feinem Punkt → je Dreiecksecke in der Reihenfolge von `zuDreiecken` (Fächer je Fläche). */
+/** Lagen (3 je Punkt) als Punktliste. */
+function punkteVon(f: ArrayLike<number>): V3[] {
+  const out: V3[] = [];
+  for (let i = 0; i < f.length / 3; i++) out.push([f[3 * i]!, f[3 * i + 1]!, f[3 * i + 2]!]);
+  return out;
+}
+
+/** Augenzentrum der Höhle für einen Punkt: rechts (z ≥ 0) das erste, links das zweite (Paar). */
+const hoehlenZentrum = (topo: HoehlenTopologie, p: V3) => topo.zentren[topo.zentren.length > 1 && p[2] < 0 ? 1 : 0]!;
+
+/**
+ * Deskriptoren je Ecke für das Netz mit Höhle: feine Flächen außerhalb übernehmen die Ecken ihrer alten Fläche (gleiche
+ * Eckenreihenfolge), Flächen der Höhle die Werte ihres Augenpunkts.
+ */
+function jeEckeAbgebildet(d: Float32Array, altFlaechen: number[][], topo: HoehlenTopologie, punkte: V3[]): Float32Array {
+  const flaechen = topo.feinFlaechen;
+  let ecken = 0;
+  for (const f of flaechen) ecken += 3 * Math.max(0, f.length - 2);
+  const out = new Float32Array(ecken * DESKRIPTOR_FLOATS);
+  let o = 0;
+  flaechen.forEach((f, fi) => {
+    const a = topo.feinAlt[fi]!;
+    const quelle = a >= 0 ? altFlaechen[a]! : null;
+    const c = quelle ? -1 : hoehlenZentrum(topo, punkte[f[0]!]!);
+    for (let i = 1; i < f.length - 1; i++) {
+      for (const k of [0, i, i + 1]) {
+        const v = quelle ? quelle[k]! : c;
+        out.set(d.subarray(v * DESKRIPTOR_FLOATS, (v + 1) * DESKRIPTOR_FLOATS), o);
+        o += DESKRIPTOR_FLOATS;
+      }
+    }
+  });
+  return out;
+}
+
+/** Atlas-Ecken (2 je Dreiecksecke) für das Netz mit Höhle: außerhalb die alten Ecken, in der Höhle die Ecke am Augenpunkt. */
+function atlasEckenAbgebildet(alt: Float32Array, altFlaechen: number[][], topo: HoehlenTopologie, punkte: V3[]): Float32Array {
+  // alte Dreiecksecken je feiner Fläche (Vierecke: 6 Ecken), Ecke am Augenpunkt je Zentrum
+  const versatz = new Uint32Array(altFlaechen.length + 1);
+  for (let f = 0; f < altFlaechen.length; f++) versatz[f + 1] = versatz[f]! + 3 * Math.max(0, altFlaechen[f]!.length - 2);
+  const amZentrum = new Map<number, [number, number]>();
+  for (const c of topo.zentren) {
+    for (let f = 0; f < altFlaechen.length && !amZentrum.has(c); f++) {
+      const k = altFlaechen[f]!.indexOf(c);
+      if (k === 0) amZentrum.set(c, [alt[2 * versatz[f]!]!, alt[2 * versatz[f]! + 1]!]);
+    }
+    if (!amZentrum.has(c)) amZentrum.set(c, [0, 0]);
+  }
+  const flaechen = topo.feinFlaechen;
+  let ecken = 0;
+  for (const f of flaechen) ecken += 3 * Math.max(0, f.length - 2);
+  const out = new Float32Array(2 * ecken);
+  let o = 0;
+  flaechen.forEach((f, fi) => {
+    const a = topo.feinAlt[fi]!;
+    const n = 3 * Math.max(0, f.length - 2);
+    if (a >= 0) out.set(alt.subarray(2 * versatz[a]!, 2 * versatz[a]! + 2 * n), o);
+    else {
+      const uv = amZentrum.get(hoehlenZentrum(topo, punkte[f[0]!]!))!;
+      for (let i = 0; i < n; i++) {
+        out[o + 2 * i] = uv[0];
+        out[o + 2 * i + 1] = uv[1];
+      }
+    }
+    o += 2 * n;
+  });
+  return out;
+}
+
 function jeEcke(d: Float32Array, flaechen: number[][]): Float32Array {
   let ecken = 0;
   for (const f of flaechen) ecken += 3 * Math.max(0, f.length - 2);
@@ -435,7 +507,14 @@ function augenAm(abl: Ableitung, flaechen: readonly (readonly number[])[], hoehe
   let pos: V3;
   let normale: V3;
   let ecke: number;
-  if (wahl.punkt || wahl.mitte) {
+  if (wahl.art === 'augapfel' && !wahl.mitte) {
+    // Augapfel (Schritt 3b): auf den nächsten tauglichen Ringpunkt (Höhle mit vier Hautflächen, ohne Lippe)
+    const ziel: V3 = wahl.punkt ?? P(v.ringPunkt(Math.min(wahl.ring, v.R - 1), Math.max(1, Math.min(v.N / 2 - 1, wahl.j))));
+    const best = augapfelEcke(abl, ziel) ?? v.ringPunkt(Math.min(wahl.ring, v.R - 1), Math.max(1, Math.min(v.N / 2 - 1, wahl.j)));
+    pos = P(best);
+    normale = normaleAn(best, false);
+    ecke = best;
+  } else if (wahl.punkt || wahl.mitte) {
     // Ziel: der gespeicherte Punkt, sonst der Ringpunkt (bei `mitte` auf die Naht gezogen)
     let ziel: V3 = wahl.punkt ?? P(v.ringPunkt(Math.min(wahl.ring, v.R - 1), Math.max(1, Math.min(v.N / 2 - 1, wahl.j))));
     if (wahl.mitte) ziel = [ziel[0], ziel[1], 0];
@@ -471,11 +550,36 @@ function augenAm(abl: Ableitung, flaechen: readonly (readonly number[])[], hoehe
   const pN = posiert === f ? normale : normaleAn(ecke, !!wahl.mitte, posiert);
   const art = wahl.art ?? 'gemalt';
   const eigen = { groesse: wahl.groesse * hoehe, art, form: wahl.form ?? 'schlitz', breite: wahl.breite ?? 1, drehung: wahl.drehung ?? 0, tiefe: wahl.tiefe ?? AUGEN_TIEFE[art] } as const;
-  if (wahl.mitte) return [{ pos, normale, ...eigen, seite: 0, posiert: { pos: pPos, normale: pN } }];
+  if (wahl.mitte) return [{ pos, normale, ...eigen, seite: 0, posiert: { pos: pPos, normale: pN }, ecke }];
+  // das linke Auge: Spiegelpunkt (Ringpunkt j ↔ N − j), sonst der nächste feine Punkt zum Spiegelbild
+  const spiegel = spiegelEcke(abl, ecke);
   return [
-    { pos, normale, ...eigen, seite: 1, posiert: { pos: pPos, normale: pN } },
-    { pos: [pos[0], pos[1], -pos[2]], normale: [normale[0], normale[1], -normale[2]], ...eigen, seite: -1, posiert: { pos: [pPos[0], pPos[1], -pPos[2]], normale: [pN[0], pN[1], -pN[2]] } },
+    { pos, normale, ...eigen, seite: 1, posiert: { pos: pPos, normale: pN }, ecke },
+    { pos: [pos[0], pos[1], -pos[2]], normale: [normale[0], normale[1], -normale[2]], ...eigen, seite: -1, posiert: { pos: [pPos[0], pPos[1], -pPos[2]], normale: [pN[0], pN[1], -pN[2]] }, ecke: spiegel },
   ];
+}
+
+/** Spiegelpunkt einer feinen Ecke: bei Ringpunkten (i, j) der Punkt (i, N − j), sonst der nächste feine Punkt zum Spiegelbild. */
+function spiegelEcke(abl: Ableitung, ecke: number): number {
+  const v = abl.vorlage;
+  if (ecke < v.R * v.N) {
+    const i = Math.floor(ecke / v.N);
+    const j = ecke % v.N;
+    const q = v.ringPunkt(i, (v.N - j) % v.N);
+    if (q === i * v.N + ((v.N - j) % v.N)) return q;
+  }
+  const f = abl.fein;
+  const z: V3 = [f[3 * ecke]!, f[3 * ecke + 1]!, -f[3 * ecke + 2]!];
+  let best = ecke;
+  let bestD = Infinity;
+  for (let k = 0; k < f.length / 3; k++) {
+    const d = (f[3 * k]! - z[0]) ** 2 + (f[3 * k + 1]! - z[1]) ** 2 + (f[3 * k + 2]! - z[2]) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = k;
+    }
+  }
+  return best;
 }
 
 // ---------- Klingen ----------
@@ -791,7 +895,29 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   const punkte: V3[] = [];
   for (let i = 0; i < fein.length / 3; i++) punkte.push([fein[3 * i]!, fein[3 * i + 1]!, fein[3 * i + 2]!]);
   const flaechen = alleFlaechen(letzteStufe);
-  const t0 = zuDreiecken({ punkte, flaechen, schaerfe: new Map() }, 40);
+  // Höhe als Maß für Augen, Lippenband, Nase, Klingen und Material: aus der Ruhelage, nicht aus der Pose (M5, 15.10.:
+  // beim Öffnen hob der Schädel den höchsten Punkt, Augen, Muster und Lippenband des Rex wuchsen um 11 %)
+  let hoehe = 0;
+  for (let i = 1; i < abl.fein.length; i += 3) hoehe = Math.max(hoehe, abl.fein[i]!);
+  // Augen vor dem Netz: Der Augapfel (Phase 2 M5, Schritt 3b) bekommt eine Höhle im Käfig. Sie ersetzt nur das gezeichnete
+  // Netz (Dreiecke, Deskriptoren, Atlas-Ecken, Ruhelage, Treffer); der alte Käfig bleibt für Werkzeuge, Zähne und Abweichung
+  const earle = plan.earle;
+  const augenWahl = plan.augen ?? { ring: 2, j: 2, groesse: 0.11 };
+  const augenRoh = earle || plan.stil === 'feuer' || plan.stil === 'gas' ? augenAm(abl, flaechen, hoehe, augenWahl, fein) : [];
+  let hoehle: { topo: HoehlenTopologie; augen: HoehlenAuge[] } | null = null;
+  if (earle && augenWahl.art === 'augapfel' && !gesteckt && augenRoh.length === 2) {
+    const hAugen = augenRoh.map((a) => {
+      const oben = augenOben(a.normale, a.drehung, a.seite);
+      // Brauenreihe nur mit Wulst (Standard aus, siehe HOEHLE_STANDARD)
+      const braue = HOEHLE_STANDARD.wulst > 0 ? brauenReihe(abl, a.ecke, oben, a.groesse / 2) : null;
+      return { c: a.ecke, radius: a.groesse / 2, oben, ...(braue ? { braue } : {}) };
+    });
+    const topo = hoehlenTopologie(abl.kaefig, abl.unterteilung.stufen.length, hAugen);
+    if (topo) hoehle = { topo, augen: hAugen };
+  }
+  const koerperPunkte = hoehle ? punkteVon(hoehlenFein(hoehle.topo, hoehlenLagen(hoehle.topo, xyz, hoehle.augen))) : punkte;
+  const koerperFlaechen = hoehle ? hoehle.topo.feinFlaechen : flaechen;
+  const t0 = zuDreiecken({ punkte: koerperPunkte, flaechen: koerperFlaechen, schaerfe: new Map() }, 40);
   // angesteckte Beine: eigene feine Netze anhängen (Deskriptoren der Hüfte)
   let t = t0;
   let gesteckteEcken = 0;
@@ -819,10 +945,6 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     }
     t = { positionen, normalen };
   }
-  // Höhe als Maß für Augen, Lippenband, Nase, Klingen und Material: aus der Ruhelage, nicht aus der Pose (M5, 15.10.:
-  // beim Öffnen hob der Schädel den höchsten Punkt, Augen, Muster und Lippenband des Rex wuchsen um 11 %)
-  let hoehe = 0;
-  for (let i = 1; i < abl.fein.length; i += 3) hoehe = Math.max(hoehe, abl.fein[i]!);
   // mit Beinen steht der Körper auf den Füßen: alles so heben, dass der tiefste Punkt auf dem Boden liegt
   let hebung = 0;
   if (beine !== 'aus') {
@@ -834,9 +956,8 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
       hebung = -yMin;
     }
   }
-  const earle = plan.earle;
   const feinDeskAlle = earle ? deskriptoren(abl, plan.gesichtMaske) : null;
-  let desk = feinDeskAlle ? jeEcke(feinDeskAlle, flaechen) : null;
+  let desk = feinDeskAlle ? (hoehle ? jeEckeAbgebildet(feinDeskAlle, flaechen, hoehle.topo, koerperPunkte) : jeEcke(feinDeskAlle, flaechen)) : null;
   if (desk && feinDeskAlle && gesteckteEcken > 0) {
     const alle = new Float32Array(desk.length + gesteckteEcken * DESKRIPTOR_FLOATS);
     alle.set(desk);
@@ -865,12 +986,13 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     }
     const k = kach;
     const r = zonenRastern(k, flaechen, rf, zonenWelt(plan.zonen!, g));
-    atlas = { ecken: atlasEcken(k), abstand: r.abstand, weich: r.weich, breite: k.breite, hoehe: k.hoehe };
+    const ecken = atlasEcken(k);
+    atlas = { ecken: hoehle ? atlasEckenAbgebildet(ecken, flaechen, hoehle.topo, koerperPunkte) : ecken, abstand: r.abstand, weich: r.weich, breite: k.breite, hoehe: k.hoehe };
     punktAtl = punktAtlas(k, flaechen, rf.length / 3);
   }
   // Augen in der Ruhelage samt Hebung (wie `ruhe` und das Gesicht; sonst saßen sie mit Beinen tiefer als die Haut)
   // `posiert` aus den feinen Punkten der Pose (Kiefer, Fressen, Posenliste, Beine), ebenfalls gehoben
-  const augen = (earle || plan.stil === 'feuer' || plan.stil === 'gas' ? augenAm(abl, flaechen, hoehe, plan.augen ?? { ring: 2, j: 2, groesse: 0.11 }, fein) : []).map((a) =>
+  const augen = augenRoh.map((a) =>
     hebung ? { ...a, pos: [a.pos[0], a.pos[1] + hebung, a.pos[2]] as V3, posiert: { pos: [a.posiert.pos[0], a.posiert.pos[1] + hebung, a.posiert.pos[2]] as V3, normale: a.posiert.normale } } : a,
   );
   const ab = nahtAbweichung(abl, dok);
@@ -899,10 +1021,9 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   for (const p of punkte) for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! + p[d]! / punkte.length;
   // Ruhelage je Ecke (unposiert) bei Posen, damit Muster und Zonen nicht schwimmen
   let ruhe: Float32Array | null = null;
-  if (maul !== 'aus' || beine !== 'aus') {
-    const ruhePunkte: V3[] = [];
-    for (let i = 0; i < abl.fein.length / 3; i++) ruhePunkte.push([abl.fein[3 * i]!, abl.fein[3 * i + 1]!, abl.fein[3 * i + 2]!]);
-    ruhe = zuDreiecken({ punkte: ruhePunkte, flaechen, schaerfe: new Map() }, 40).positionen;
+  if (maul !== 'aus' || beine !== 'aus' || hoehle) {
+    const ruhePunkte = hoehle ? punkteVon(hoehlenFein(hoehle.topo, hoehlenLagen(hoehle.topo, abl.kaefig.xyz, hoehle.augen))) : punkteVon(abl.fein);
+    ruhe = zuDreiecken({ punkte: ruhePunkte, flaechen: koerperFlaechen, schaerfe: new Map() }, 40).positionen;
     if (hebung) for (let i = 1; i < ruhe.length; i += 3) ruhe[i]! += hebung;
     if (ruhe.length !== t.positionen.length) ruhe = null;
   }
@@ -975,7 +1096,8 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   if (kach && trefferAn) {
     const dreieckFlaeche = new Int32Array(positionen.length / 9).fill(-1);
     let d = 0;
-    for (let f = 0; f < flaechen.length; f++) for (let i = 1; i < flaechen[f]!.length - 1; i++) dreieckFlaeche[d++] = f;
+    // mit Höhle: Dreiecke außerhalb auf die alte feine Fläche, in der Höhle −1 (wie angesetzte Teile)
+    for (let f = 0; f < koerperFlaechen.length; f++) for (let i = 1; i < koerperFlaechen[f]!.length - 1; i++) dreieckFlaeche[d++] = hoehle ? hoehle.topo.feinAlt[f]! : f;
     const kf = abl.kaefig;
     treffer = { dreieckFlaeche, flaecheVon: kach.flaecheVon, eckenUV: kach.eckenUV, eckenZahl: kach.eckenZahl, kaefig: { n: kf.n, xyz: Float32Array.from(xyz), fStart: Uint32Array.from(kf.fStart), fVerts: Uint32Array.from(kf.fVerts) }, vorlage: { R: abl.vorlage.R, N: abl.vorlage.N, n: abl.vorlage.kaefig.n } };
     if (hebung) for (let i = 1; i < treffer.kaefig.xyz.length; i += 3) treffer.kaefig.xyz[i]! += hebung;

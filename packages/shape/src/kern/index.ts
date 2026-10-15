@@ -25,3 +25,4 @@ export * from './kanten';
 export * from './zahnModell';
 export * from './zaehne';
 export * from './zahnPruefung';
+export * from './augenHoehle';

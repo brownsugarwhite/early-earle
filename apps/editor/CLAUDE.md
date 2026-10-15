@@ -152,6 +152,9 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - **Glanz nur bei runder und Mandel-Pupille:** Am schmalen Schlitz biss die Glanzscheibe eine Kerbe in die Pupille.
   - **Bogen als Strich nur auf der nahen Hälfte des Kreises** (`augenFormen.ts`), sonst zeichnet die Gegenseite einen zweiten Bogen.
   - **Skripte:** Ein geändertes Dokument lässt beim Laden eines Prüfwesens den In-App-Dialog „Anderes Wesen laden?“ erscheinen (kein Browser-Dialog): „Verwerfen“ klicken und den Dokumentnamen prüfen (`augen-glubsch.mjs`, `laden`).
+  - **Höhle im Käfig (Augapfel):** Aufsatz nur fürs gezeichnete Netz (`kern/augenHoehle.ts`); feine Flächen bilden über die Blockreihenfolge der Unterteilung (je Käfigfläche ein Block, Stufe L: m·4^(L−1) Vierecke) auf die alten ab. Der Rex baut mit 3 Stufen, der Durchdringungstest braucht Stufe 2 (Speicher).
+  - **Ringe am Mundwinkel liegen dicht:** Alles, was nach Ringzahl bemessen wird (Wulst, Felder), wird dort schmal und hoch. Maße nach Abstand nehmen; ein Ring, der die Lippe berührt, taugt nicht für eine Höhle.
+  - **Erst ohne Zusatz prüfen:** Die dunkle Faltenlinie der Anläufe 2/3 kam von der angehobenen Brauenreihe, die Höhle allein ist sauber (Bild mit Wulst 0).
 - **Nachtrag 13.10. morgens — Schnitt-Loft (Versuch):**
   - Dritter 3D-Tab „schnitte“ (`apps/editor/src/schnitte/`, Kern `packages/shape/src/versuch/schnittLoft.ts`).
   - Je Stelle wird der echte Schnitt aus allen Intervallen von Seite und Top berechnet. Teile, Löcher und Kerben bleiben erhalten.

@@ -81,6 +81,8 @@ for (const [drehung, oe, kam, text] of [
   [20, 0, [-90, 2, 0.9, ...kopf], 'von vorn · Drehung 20° (spiegelbildlich?)'],
   [20, 0, [-35, 6, 0.32, ...ziel(augen[0].pos)], 'nah · zu · Drehung 20°'],
   [0, 0, [-35, 6, 0.32, ...ziel(augen[0].pos)], 'nah · zu · Drehung 0°'],
+  [20, 0, [-90, 18, 0.32, ...ziel(augen[0].pos)], 'nah · von vorn oben (Wulst?)'],
+  [20, 0, [0, 2, 0.32, ...ziel(augen[0].pos)], 'nah · Seite (Wulst?)'],
 ]) {
   await augenSetzen({ ...basis, drehung });
   await page.evaluate((oe) => window.__stores.ui.getState().setzeOeffnung(oe), oe);
