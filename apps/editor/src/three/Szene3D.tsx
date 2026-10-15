@@ -17,6 +17,7 @@ import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirb
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
 import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige, weiterePose } from '../kern/kernBau';
+import { zahnMarkenAnzeigen } from '../kern/zahnGriffe';
 import { augenPixel, griffeAnzeigen, kieferPixel } from '../kern/griffe';
 import { knochen3dAnzeigen, knochen3dPixel } from '../kiefer/knochen3d';
 import { perlenVon, reifenAnzeigen, reifenFaerben, useReifen } from '../kern/reifen';
@@ -25,7 +26,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown };
   }
 }
 
@@ -67,6 +68,19 @@ export function Szene3D() {
         },
         // M3: Kieferknopf und Augen in Feldpixeln der Bühne (E2E)
         griffe: () => ({ kiefer: kieferPixel(), augen: augenPixel() }),
+        // Phase 2 M4: je Zahn Kiefer, Index, Seite und die Mitte zwischen Fuß und Spitze in Feldpixeln der Bühne (E2E)
+        zahnPixel: (feld: 'creation' | 'seite' | 'front' | 'top' = 'creation') => {
+          const n = aktuellesNetz();
+          const z = n?.netz.zaehne;
+          if (!n || !z) return null;
+          const s = n.skalierung;
+          const lagen = new Float32Array(z.liste.length * 3);
+          z.liste.forEach((q, i) => lagen.set([((q.fuss[0] + q.spitze[0]) / 2) * s, ((q.fuss[1] + q.spitze[1]) / 2) * s, ((q.fuss[2] + q.spitze[2]) / 2) * s], 3 * i));
+          const px = r.projizierenViele(feld, lagen);
+          return z.liste.map((q, i) => ({ kiefer: q.kiefer, index: q.index, seite: q.seite, u: q.u, x: px[3 * i]!, y: px[3 * i + 1]! }));
+        },
+        // Phase 2 M4: Treffer auf Zahn und Körper unter einem Feldpixel (Abstände längs des Strahls; E2E und Diagnose)
+        zahnTreffer: (px: number, py: number) => ({ zahn: r.treffenZahn('creation', px, py), koerper: r.treffen('creation', px, py)?.abstand ?? null }),
         // Rig (Plan 5.2): Gelenk und Knochen-Griffe in Feldpixeln der Bühne (E2E)
         knochen: () => knochen3dPixel(),
         // M3: Perlen und Bänder der Reifen in Feldpixeln der Bühne (E2E)
@@ -151,6 +165,8 @@ export function Szene3D() {
             if (s !== 1) for (let i = 0; i < t.zaehne.positionen.length; i++) t.zaehne.positionen[i]! *= s;
             r.setzeZaehne(t.zaehne.positionen, t.zaehne.normalen, t.zaehne.anteil);
           } else r.setzeZaehne(null, null, null);
+          // Phase 2 M4: gewählter Zahn (Stufe Zähne)
+          zahnMarkenAnzeigen(r);
           // M3: Reifen (Spanten als Ringe mit Perlen) und Kieferknopf auf dem Körper
           reifenAnzeigen(r, t, s);
           griffeAnzeigen(r);
@@ -314,6 +330,7 @@ export function Szene3D() {
           if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
           if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
           if (s.spantAuswahl !== v.spantAuswahl || s.ebene !== v.ebene) reifenFaerben(r);
+          if ((s.zahnAuswahl !== v.zahnAuswahl || s.ebene !== v.ebene) && s.bauweise === 'kern') zahnMarkenAnzeigen(r);
           if (s.grund !== v.grund) grundAnwenden(r, s.grund);
           if (s.ebene !== v.ebene) {
             griffeAnzeigen(r);

@@ -4,6 +4,7 @@ import { aktuellesNetz } from '../kern/kernBau';
 import { augeZeiger, augenRandUnter, kieferUnter, kieferZeiger } from '../kern/griffe';
 import { knochen3dSchweben, knochen3dZeiger } from '../kiefer/knochen3d';
 import { pinselRing, pinselZeiger } from '../kern/pinsel';
+import { zahnUnter, zahnZeiger } from '../kern/zahnGriffe';
 import { reifenNeu, reifenUnter, reifenZeiger, useReifen } from '../kern/reifen';
 import { trefferDeuten, useTreffer } from '../kern/treffer';
 import { useEditor } from '../state/editorStore';
@@ -99,6 +100,8 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
       if (kieferZeiger(e, px, py, ref.current)) return;
       if (ebene === 'augen' && augeZeiger(e, px, py, ref.current)) return;
       if (ebene === 'form' && reifenZeiger(e, px, py, ref.current)) return;
+      // Stufe Zähne (Phase 2 M4): Zahn wählen, längs des Zahnfleischs ziehen
+      if (ebene === 'zaehne' && zahnZeiger(e, px, py, ref.current)) return;
     }
     let lx = e.clientX;
     let ly = e.clientY;
@@ -121,6 +124,11 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
       if (knopf === 0 && !e.ctrlKey && weg < 4 && useUi.getState().werkzeug === 'spant' && useUi.getState().bauweise === 'kern') {
         const rr = ref.current?.getBoundingClientRect();
         if (rr && reifenNeu(ev.clientX - rr.left, ev.clientY - rr.top)) useUi.getState().setzeWerkzeug('auswahl');
+        return;
+      }
+      // Stufe „Zähne“: Klick ohne Bewegung neben die Zähne hebt die Auswahl auf
+      if (knopf === 0 && !e.ctrlKey && weg < 4 && useUi.getState().ebene === 'zaehne' && useUi.getState().bauweise === 'kern') {
+        useUi.getState().setzeZahnAuswahl(null);
         return;
       }
       // Stufe „Augen“ (M3): Klick ohne Bewegung setzt das Auge an den Trefferpunkt
@@ -159,7 +167,8 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     const kiefer = ui.bauweise === 'kern' && kieferUnter(px, py);
     const auge = ui.bauweise === 'kern' && ui.ebene === 'augen' && augenRandUnter(px, py);
     const knochen = ui.bauweise === 'kern' && knochen3dSchweben(px, py);
-    if (ref.current) ref.current.style.cursor = knochen ? 'grab' : kiefer ? 'ns-resize' : auge ? 'nwse-resize' : h ? (h.knoten === null ? 'ew-resize' : 'pointer') : '';
+    const zahn = ui.bauweise === 'kern' && ui.ebene === 'zaehne' && !kiefer && zahnUnter(px, py);
+    if (ref.current) ref.current.style.cursor = knochen ? 'grab' : kiefer ? 'ns-resize' : auge ? 'nwse-resize' : zahn ? 'grab' : h ? (h.knoten === null ? 'ew-resize' : 'pointer') : '';
   };
   const verlassen = () => {
     szene.aktuell?.setzeMarke(null);

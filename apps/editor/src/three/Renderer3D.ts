@@ -94,6 +94,8 @@ export class Renderer3D {
   private readonly feuerUniforms: FeuerUniforms;
   /** Beweis 4: Zähne mit Verlauf Ansatz → Spitze (Attribut `eeTooth`) */
   private readonly zaehne: Mesh;
+  /** Zahn-Marken (Phase 2 M4): gewählter Zahn (Ocker) und störende Zähne (Glut), leicht über den Zähnen */
+  private zahnMarken: { gewaehlt: Mesh; glut: Mesh } | null = null;
   private readonly wesenUniforms: CreatureMaterialUniforms;
   private palette: Palette = PALETTEN.tiger!;
   /** Zonen-Atlas-Texturen des aktuellen Wesens (zum Freigeben) */
@@ -540,7 +542,7 @@ export class Renderer3D {
     return out;
   }
 
-  treffen(feld: 'creation' | Ansicht, px: number, py: number): { dreieck: number; punkt: [number, number, number] } | null {
+  treffen(feld: 'creation' | Ansicht, px: number, py: number): { dreieck: number; punkt: [number, number, number]; abstand: number } | null {
     const k = this.feldKamera(feld);
     if (!k) return null;
     const { cam, r } = k;
@@ -550,7 +552,62 @@ export class Renderer3D {
     if (!ziel) return null;
     const t = this.strahl.intersectObject(ziel, false)[0];
     if (!t || t.faceIndex === undefined || t.faceIndex === null) return null;
-    return { dreieck: t.faceIndex, punkt: [t.point.x, t.point.y, t.point.z] };
+    return { dreieck: t.faceIndex, punkt: [t.point.x, t.point.y, t.point.z], abstand: t.distance };
+  }
+
+  /** Treffer auf dem Zahnnetz (Phase 2 M4): Dreieck und Abstand längs des Strahls; null ohne Zähne oder Treffer. */
+  treffenZahn(feld: 'creation' | Ansicht, px: number, py: number): { dreieck: number; abstand: number } | null {
+    const k = this.feldKamera(feld);
+    if (!k || !this.zaehne.visible || !(this.zaehne.geometry.getAttribute('position')?.count ?? 0)) return null;
+    const { cam, r } = k;
+    this.strahl.setFromCamera(new Vector2((px / r.w) * 2 - 1, -((py / r.h) * 2 - 1)), cam);
+    const t = this.strahl.intersectObject(this.zaehne, false)[0];
+    if (!t || t.faceIndex === undefined || t.faceIndex === null) return null;
+    return { dreieck: t.faceIndex, abstand: t.distance };
+  }
+
+  /**
+   * Zahn-Marken (Phase 2 M4): Dreiecke (Welt, 9 Floats je Dreieck) des gewählten Zahns in Ocker und störender Zähne als
+   * Glut, ein wenig längs der Normalen nach außen gesetzt, damit sie über den Zähnen liegen (Bedienung, keine Kontur am
+   * Wesen); null blendet aus.
+   */
+  setzeZahnMarken(gewaehlt: { positionen: Float32Array; normalen: Float32Array } | null, glut: { positionen: Float32Array; normalen: Float32Array } | null) {
+    if (!this.zahnMarken) {
+      const marke = (farbe: number, deckkraft: number) => {
+        const m = new Mesh(new BufferGeometry(), new MeshBasicNodeMaterial({ color: farbe, transparent: true, opacity: deckkraft, depthWrite: false }));
+        m.visible = false;
+        m.renderOrder = 3;
+        m.frustumCulled = false;
+        this.szene.add(m);
+        return m;
+      };
+      this.zahnMarken = { gewaehlt: marke(0xd9a441, 0.72), glut: marke(0xff5a2a, 0.6) };
+    }
+    const setze = (m: Mesh, d: { positionen: Float32Array; normalen: Float32Array } | null) => {
+      if (!d || !d.positionen.length) {
+        m.visible = false;
+        return;
+      }
+      // um 1 % der Höhe der markierten Zähne hinaus (Welt): genug gegen Z-Kämpfe, zu wenig, um die Form zu ändern
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let i = 1; i < d.positionen.length; i += 3) {
+        lo = Math.min(lo, d.positionen[i]!);
+        hi = Math.max(hi, d.positionen[i]!);
+      }
+      const e = Math.max(1e-4, 0.01 * (hi - lo));
+      const p = new Float32Array(d.positionen.length);
+      for (let i = 0; i < p.length; i++) p[i] = d.positionen[i]! + e * d.normalen[i]!;
+      const g = new BufferGeometry();
+      g.setAttribute('position', new BufferAttribute(p, 3));
+      const alt = m.geometry;
+      m.geometry = g;
+      alt.dispose();
+      m.visible = true;
+    };
+    setze(this.zahnMarken.gewaehlt, gewaehlt);
+    setze(this.zahnMarken.glut, glut);
+    this.anfordern();
   }
 
   /** Reifen (M3): Liniensegmente (Welt) mit Farbe je Punkt, immer sichtbar über der Fläche; null blendet aus. */

@@ -79,6 +79,23 @@ export function ZahnFeld() {
     useUi.getState().setzeZahnAuswahl(null);
   };
   const aussenAn = ziele.length > 0 && ziele.every((z) => reihen[z.kiefer].zaehne[z.index]?.aussen);
+  // gleichmäßig verteilen: Abstände neu, Formen bleiben (beide Kiefer)
+  const verteilen = () => {
+    const b = basis();
+    const neu = { ...b };
+    for (const k of ['oben', 'unten'] as const) if (b[k].zaehne.length) neu[k] = zahnreiheVerteilen(b[k].anzahl, k, b[k].zaehne[0]!.laenge, b[k]);
+    useEditor.getState().setzeZaehne(neu);
+  };
+  // gewählten Zahn löschen (beide Seiten; der Mittelzahn allein)
+  const loeschen = () => {
+    if (!gewaehlt) return;
+    const b = basis();
+    const r = b[gewaehlt.kiefer];
+    const mitte = r.anzahl % 2 === 1 && gewaehlt.index === 0;
+    const zaehne = r.zaehne.filter((_, i) => i !== gewaehlt.index);
+    useEditor.getState().setzeZaehne({ ...b, [gewaehlt.kiefer]: { anzahl: Math.max(0, r.anzahl - (mitte ? 1 : 2)), zaehne } });
+    useUi.getState().setzeZahnAuswahl(null);
+  };
   return (
     <>
       <div className="feld">
@@ -110,11 +127,21 @@ export function ZahnFeld() {
         </b>
       </div>
       {gewaehlt ? (
-        <button className="chip" onClick={() => useUi.getState().setzeZahnAuswahl(null)}>
-          Auswahl aufheben
-        </button>
+        <div className="umschalter stufen">
+          <button className="chip" onClick={() => useUi.getState().setzeZahnAuswahl(null)}>
+            Auswahl aufheben
+          </button>
+          <button className="chip" data-zahn-loeschen="" onClick={loeschen}>
+            Zahn löschen
+          </button>
+        </div>
       ) : (
-        <Chips werte={['beide', 'oben', 'unten'] as const} aktiv={kieferWahl} attribut="zahn-kiefer" text={(w) => (w === 'beide' ? 'beide Kiefer' : w)} onWahl={setKieferWahl} />
+        <>
+          <Chips werte={['beide', 'oben', 'unten'] as const} aktiv={kieferWahl} attribut="zahn-kiefer" text={(w) => (w === 'beide' ? 'beide Kiefer' : w)} onWahl={setKieferWahl} />
+          <button className="chip" data-zahn-verteilen="" onClick={verteilen}>
+            gleichmäßig verteilen
+          </button>
+        </>
       )}
       <div className="feld">
         <span>Werte für</span>
@@ -143,7 +170,7 @@ export function ZahnFeld() {
         </>
       )}
       <p className="hilfe">
-        Ohne Auswahl wirken die Regler auf alle Zähne der gewählten Kiefer (Länge, Breite, Größe im Verhältnis, die Folge vorn groß → hinten klein bleibt). „Werte für offen“ gelten beim geöffneten Maul und blenden mit der Öffnung über — so wachsen Riesenzähne beim Öffnen. Einzelne Zähne wählen und längs des Zahnfleischs ziehen folgt im nächsten Schritt.
+        Zahn anklicken (Bühne, Seite, Front) wählt ihn, Ziehen schiebt ihn längs des Zahnfleischs, der Spiegelzahn folgt. Ohne Auswahl wirken die Regler auf alle Zähne der gewählten Kiefer (Länge, Breite, Größe im Verhältnis, die Folge vorn groß → hinten klein bleibt). „Werte für offen“ gelten beim geöffneten Maul und blenden mit der Öffnung über — so wachsen Riesenzähne beim Öffnen. Geschlossen verdeckte Zähne sind nur bei offenem Maul greifbar.
       </p>
     </>
   );

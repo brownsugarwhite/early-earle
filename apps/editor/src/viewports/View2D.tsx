@@ -40,6 +40,8 @@ import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen, setzeLippenImUm
 import { KieferZeichnung, kieferZeiger } from '../kiefer/KieferEbene';
 import { RigZeichnung } from '../maul/RigZeichnung';
 import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
+import { zahnZeiger as kernZahnZeiger } from '../kern/zahnGriffe';
+import { useRahmen } from '../layout/animation';
 import { useMaulInfo } from '../maul/maulKoerper';
 import { offenerUmriss } from '../maul/offenerUmriss';
 import { BreitenKreis, EckKantenZeichnung, KantenZeichnung, breiteZiehen, kantenZeiger } from '../kanten/KantenEbene';
@@ -240,6 +242,12 @@ export function View2D({ ansicht, w, h }: Props) {
       return;
     }
     if (ui.ebene === 'zaehne') {
+      // Bauweise Kern (Phase 2 M4): das Blatt zeigt dieselbe Szene orthografisch — Zahn per Strahl wählen und ziehen
+      if (ui.bauweise === 'kern') {
+        const rc = useRahmen.getState().rects?.[ansicht];
+        if (!(rc && svgRef.current && kernZahnZeiger(e, e.clientX - rc.x, e.clientY - rc.y, svgRef.current, ansicht))) ui.setzeZahnAuswahl(null);
+        return;
+      }
       zahnZeiger(e, { ansicht, lokal, ziehen });
       return;
     }

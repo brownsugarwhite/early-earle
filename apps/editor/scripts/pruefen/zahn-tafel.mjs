@@ -87,6 +87,17 @@ await regler('Länge', 30 / 461);
 const s4 = await stand();
 console.log('offen 30 px (oben 2):', JSON.stringify(s4.dok.auf));
 await bild('zahn-tafel-1');
+// gewählten Zahn löschen (oben 2: ein Paar, 13 → 11), dann gleichmäßig verteilen
+await page.click('[data-zahn-loeschen]');
+await page.waitForTimeout(1200);
+const s4b = await page.evaluate(() => {
+  const z = window.__stores.editor.getState().dok.zaehne;
+  return { oben: z.oben.anzahl, eintraege: z.oben.zaehne.length, u: z.oben.zaehne.map((e) => +e.u.toFixed(3)), gebaut: window.__editor.zahnPixel().filter((q) => q.kiefer === 'oben').length, auswahl: window.__stores.ui.getState().zahnAuswahl };
+});
+console.log('Zahn oben 2 gelöscht:', JSON.stringify(s4b));
+await page.click('[data-zahn-verteilen]');
+await page.waitForTimeout(1200);
+console.log('verteilt:', JSON.stringify(await page.evaluate(() => window.__stores.editor.getState().dok.zaehne.oben.zaehne.map((e) => +e.u.toFixed(3)))));
 // zurück zur Automatik
 await page.click('[data-zahn-automatik]');
 await page.waitForTimeout(1500);
