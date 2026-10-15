@@ -25,8 +25,20 @@ export function setzeMaulOptionen(patch: Partial<MaulOptionen>): void {
   s.setzeDokument({ ...s.dok, ausstattung: { ...aus, maulOptionen: { ...(aus.maulOptionen ?? {}), ...patch } } });
 }
 
-/** Knochenwerte einer Pose (Grad, Maullängen) und Haps (nur Fressen). */
-export type PoseKnochen = { winkelUnten: number; winkelOben: number; kieferZug: [number, number]; zugWeite: number; haps: number };
+/** Knochenwerte einer Pose (Grad, Maullängen; B3b: Gieren, Rollen, Seite) und Haps (nur Fressen). */
+export type PoseKnochen = {
+  winkelUnten: number;
+  winkelOben: number;
+  kieferZug: [number, number];
+  zugWeite: number;
+  gierenUnten: number;
+  rollenUnten: number;
+  seitUnten: number;
+  gierenOben: number;
+  rollenOben: number;
+  haps: number;
+};
+const DREI_D_NULL = { gierenUnten: 0, rollenUnten: 0, seitUnten: 0, gierenOben: 0, rollenOben: 0 };
 
 /**
  * Knochen einer Pose, wie der Kern sie nimmt (B3): ihre Stellung (fehlende Knochen = 0); hat Fressen noch keine eigene
@@ -38,9 +50,21 @@ export function poseKnochen(dok: Dokument, chip: MaulLageChip, id: string): Pose
   const fressen = p?.art === 'fressen';
   const st = p?.stellung;
   const haps = fressen ? (p?.saat?.haps ?? mo.haps) : 0;
-  if (st) return { winkelUnten: st.kiefer?.winkel ?? 0, winkelOben: st.schaedel?.winkel ?? 0, kieferZug: [st.kiefer?.zug?.[0] ?? 0, st.kiefer?.zug?.[1] ?? 0], zugWeite: st.kiefer?.ziehen ?? 0, haps };
-  if (fressen) return { winkelUnten: mo.winkelUnten, winkelOben: mo.winkelOben, kieferZug: [mo.kieferZug?.[0] ?? 0, mo.kieferZug?.[1] ?? 0], zugWeite: mo.zugWeite, haps };
-  return { winkelUnten: 0, winkelOben: 0, kieferZug: [0, 0], zugWeite: 0, haps };
+  if (st)
+    return {
+      winkelUnten: st.kiefer?.winkel ?? 0,
+      winkelOben: st.schaedel?.winkel ?? 0,
+      kieferZug: [st.kiefer?.zug?.[0] ?? 0, st.kiefer?.zug?.[1] ?? 0],
+      zugWeite: st.kiefer?.ziehen ?? 0,
+      gierenUnten: st.kiefer?.gieren ?? 0,
+      rollenUnten: st.kiefer?.rollen ?? 0,
+      seitUnten: st.kiefer?.seit ?? 0,
+      gierenOben: st.schaedel?.gieren ?? 0,
+      rollenOben: st.schaedel?.rollen ?? 0,
+      haps,
+    };
+  if (fressen) return { winkelUnten: mo.winkelUnten, winkelOben: mo.winkelOben, kieferZug: [mo.kieferZug?.[0] ?? 0, mo.kieferZug?.[1] ?? 0], zugWeite: mo.zugWeite, ...DREI_D_NULL, haps };
+  return { winkelUnten: 0, winkelOben: 0, kieferZug: [0, 0], zugWeite: 0, ...DREI_D_NULL, haps };
 }
 
 /**
@@ -49,12 +73,28 @@ export function poseKnochen(dok: Dokument, chip: MaulLageChip, id: string): Pose
  */
 export function setzePoseKnochen(id: string, patch: Partial<PoseKnochen>, aktuell: Omit<PoseKnochen, 'haps'>): void {
   useEditor.getState().poseSetzen(id, (p) => {
-    const knochen = patch.winkelUnten !== undefined || patch.winkelOben !== undefined || patch.kieferZug !== undefined || patch.zugWeite !== undefined;
+    const knochen = Object.keys(patch).some((k) => k !== 'haps');
     let q = p;
     if (knochen) {
-      const st = p.stellung ?? { kiefer: { winkel: aktuell.winkelUnten, zug: [aktuell.kieferZug[0], aktuell.kieferZug[1]] as [number, number], ziehen: aktuell.zugWeite }, schaedel: { winkel: aktuell.winkelOben } };
-      const kiefer = { ...(st.kiefer ?? {}), ...(patch.winkelUnten !== undefined ? { winkel: patch.winkelUnten } : {}), ...(patch.kieferZug ? { zug: [patch.kieferZug[0], patch.kieferZug[1]] as [number, number] } : {}), ...(patch.zugWeite !== undefined ? { ziehen: patch.zugWeite } : {}) };
-      const schaedel = { ...(st.schaedel ?? {}), ...(patch.winkelOben !== undefined ? { winkel: patch.winkelOben } : {}) };
+      const st = p.stellung ?? {
+        kiefer: { winkel: aktuell.winkelUnten, zug: [aktuell.kieferZug[0], aktuell.kieferZug[1]] as [number, number], ziehen: aktuell.zugWeite, gieren: aktuell.gierenUnten, rollen: aktuell.rollenUnten, seit: aktuell.seitUnten },
+        schaedel: { winkel: aktuell.winkelOben, gieren: aktuell.gierenOben, rollen: aktuell.rollenOben },
+      };
+      const kiefer = {
+        ...(st.kiefer ?? {}),
+        ...(patch.winkelUnten !== undefined ? { winkel: patch.winkelUnten } : {}),
+        ...(patch.kieferZug ? { zug: [patch.kieferZug[0], patch.kieferZug[1]] as [number, number] } : {}),
+        ...(patch.zugWeite !== undefined ? { ziehen: patch.zugWeite } : {}),
+        ...(patch.gierenUnten !== undefined ? { gieren: patch.gierenUnten } : {}),
+        ...(patch.rollenUnten !== undefined ? { rollen: patch.rollenUnten } : {}),
+        ...(patch.seitUnten !== undefined ? { seit: patch.seitUnten } : {}),
+      };
+      const schaedel = {
+        ...(st.schaedel ?? {}),
+        ...(patch.winkelOben !== undefined ? { winkel: patch.winkelOben } : {}),
+        ...(patch.gierenOben !== undefined ? { gieren: patch.gierenOben } : {}),
+        ...(patch.rollenOben !== undefined ? { rollen: patch.rollenOben } : {}),
+      };
       q = { ...q, stellung: { ...st, kiefer, schaedel } };
     }
     if (patch.haps !== undefined) q = { ...q, saat: { ...(p.saat ?? {}), haps: patch.haps } };
@@ -78,16 +118,32 @@ export function poseKnochenZuruecksetzen(id: string): void {
  * Schädelwinkel) gehen in die Stellung der Pose im Tab (im Editor-Tab: Fressen), Rig-Werte (Gelenke, Übergang,
  * Reichweite) in die Maul-Optionen für alle Posen. Hat die Pose noch keine Stellung, startet sie bei den gezeigten Knochen.
  */
-export function griffSetzen(patch: Partial<MaulOptionen>, gezeigt: { winkelUnten: number; winkelOben: number; zug: [number, number]; zugWeite: number }): void {
+export function griffSetzen(patch: Partial<MaulOptionen>, gezeigt: { winkelUnten: number; winkelOben: number; zug: [number, number]; zugWeite: number; gierenUnten: number; rollenUnten: number; seitUnten: number; gierenOben: number; rollenOben: number }): void {
   const { winkelUnten, winkelOben, kieferZug, ...rig } = patch;
   if (Object.keys(rig).length) setzeMaulOptionen(rig);
   if (winkelUnten === undefined && winkelOben === undefined && kieferZug === undefined) return;
   const ed = useEditor.getState();
   const ziel = ed.modus === 'editor' ? 'fressen' : ed.modus;
-  setzePoseKnochen(ziel, { ...(winkelUnten !== undefined ? { winkelUnten } : {}), ...(winkelOben !== undefined ? { winkelOben } : {}), ...(kieferZug ? { kieferZug: [kieferZug[0], kieferZug[1]] as [number, number] } : {}) }, { winkelUnten: gezeigt.winkelUnten, winkelOben: gezeigt.winkelOben, kieferZug: gezeigt.zug, zugWeite: gezeigt.zugWeite });
+  setzePoseKnochen(ziel, { ...(winkelUnten !== undefined ? { winkelUnten } : {}), ...(winkelOben !== undefined ? { winkelOben } : {}), ...(kieferZug ? { kieferZug: [kieferZug[0], kieferZug[1]] as [number, number] } : {}) }, { winkelUnten: gezeigt.winkelUnten, winkelOben: gezeigt.winkelOben, kieferZug: gezeigt.zug, zugWeite: gezeigt.zugWeite, gierenUnten: gezeigt.gierenUnten, rollenUnten: gezeigt.rollenUnten, seitUnten: gezeigt.seitUnten, gierenOben: gezeigt.gierenOben, rollenOben: gezeigt.rollenOben });
 }
 
 /** Gelenke, Übergang und Reichweite auf die Automatik zurück (Kiefergelenk am Mundwinkel, Schädelgelenk dahinter). */
 export function kieferAutomatik(): void {
   setzeMaulOptionen({ gelenk: [...MAUL_STANDARD.gelenk], kieferWinkel: [...MAUL_STANDARD.kieferWinkel], kieferReichweite: [...MAUL_STANDARD.kieferReichweite], schaedelGelenk: [...MAUL_STANDARD.schaedelGelenk] });
+}
+
+/** Pose wieder spiegelgleich: Gieren, Rollen und seitlicher Versatz der Knochen auf 0 (Winkel und Zug bleiben). */
+export function poseSymmetrisch(id: string): void {
+  useEditor.getState().poseSetzen(id, (p) => {
+    const st = p.stellung;
+    if (!st) return p;
+    const kiefer = { ...(st.kiefer ?? {}) };
+    const schaedel = { ...(st.schaedel ?? {}) };
+    delete kiefer.gieren;
+    delete kiefer.rollen;
+    delete kiefer.seit;
+    delete schaedel.gieren;
+    delete schaedel.rollen;
+    return { ...p, stellung: { ...st, kiefer, schaedel } };
+  });
 }

@@ -138,8 +138,10 @@ describe('Augen im Kern', () => {
     const nn = [N[best]!, N[best + 1]!, N[best + 2]!];
     const ln = Math.hypot(...nn);
     expect((nn[0]! * o.posiert.normale[0] + nn[1]! * o.posiert.normale[1] + nn[2]! * o.posiert.normale[2]) / ln).toBeGreaterThan(0.95);
-    // links das Spiegelbild, auch posiert
+    // links das Spiegelbild, auch posiert (bei ebener Pose; seit B3b hat jedes Auge seine eigene Stelle der posierten
+    // Haut, gleich bis auf Rundung — in einer schiefen Pose sind sie verschieden)
     const l = offen.netz.augen[1]!;
-    expect(l.posiert.pos).toEqual([o.posiert.pos[0], o.posiert.pos[1], -o.posiert.pos[2]]);
+    const soll = [o.posiert.pos[0], o.posiert.pos[1], -o.posiert.pos[2]];
+    expect(Math.max(...l.posiert.pos.map((x, k) => Math.abs(x - soll[k]!)))).toBeLessThan(1e-12);
   }, 60_000);
 });

@@ -72,11 +72,12 @@ describe('Posen B3: Dokument-Posen mit Gewichten', () => {
       if (b.ruhe[3 * i + 2]! < -1e-9) continue;
       const d = [0.002 * Math.cos(i), 0.003, Math.abs(b.ruhe[3 * i + 2]!) < 1e-9 ? 0 : 0.001];
       dX.set(d, 3 * i);
-      const c = b.dreh[2 * i]!;
-      const s = b.dreh[2 * i + 1]!;
-      form[3 * i] = form[3 * i]! + c * d[0]! + s * d[1]!;
-      form[3 * i + 1] = form[3 * i + 1]! - s * d[0]! + c * d[1]!;
-      form[3 * i + 2] = form[3 * i + 2]! + d[2]!;
+      // Rᵀ·d (Drehung je Punkt zeilenweise, 9 Werte)
+      const o = 9 * i;
+      const R = b.dreh;
+      form[3 * i] = form[3 * i]! + R[o]! * d[0]! + R[o + 3]! * d[1]! + R[o + 6]! * d[2]!;
+      form[3 * i + 1] = form[3 * i + 1]! + R[o + 1]! * d[0]! + R[o + 4]! * d[1]! + R[o + 7]! * d[2]!;
+      form[3 * i + 2] = form[3 * i + 2]! + R[o + 2]! * d[0]! + R[o + 5]! * d[1]! + R[o + 8]! * d[2]!;
     }
     const neu = mit(posen, 'fressen', { form: formAusFeld(b.ruhe, n, form), bezug: bezugAus(b.ruhe) });
     delete (neu.find((q) => q.id === 'fressen') as Pose).formAlt;

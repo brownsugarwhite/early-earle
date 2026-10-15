@@ -3,7 +3,7 @@
 // Gewichte 0 liefern A selbst (dasselbe Feld, bitgleich); eine Pose mit Gewicht 1 genau die geformte Pose.
 import type { KaefigDelta } from '../../dokument';
 import { spiegelIndex } from '../pinsel';
-import { type Skin, type Stellung, stellungMischen, stellungNull } from './skin';
+import { type Skin, type Stellung, skinAnwenden, stellungMischen, stellungNull } from './skin';
 
 export type PoseEingabe = { w: number; deltas: Float64Array | null; stellung: Stellung };
 
@@ -45,13 +45,5 @@ export function poseAuswerten(ruhe: Float64Array, posen: readonly PoseEingabe[],
   if (stellungNull(st)) return y;
   const sk = skinFuer(st);
   if (!sk) return y;
-  const x = new Float64Array(y.length);
-  for (let i = 0; i < sk.n; i++) {
-    const px = y[3 * i]!;
-    const py = y[3 * i + 1]!;
-    x[3 * i] = sk.c[i]! * px - sk.s[i]! * py + sk.tx[i]!;
-    x[3 * i + 1] = sk.s[i]! * px + sk.c[i]! * py + sk.ty[i]!;
-    x[3 * i + 2] = y[3 * i + 2]!;
-  }
-  return x;
+  return skinAnwenden(sk, y);
 }

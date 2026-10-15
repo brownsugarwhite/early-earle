@@ -12,7 +12,7 @@ import { maulLageBei } from '../wesen';
 import { fressenRuheDeltas, maulLageRuhe } from './lage';
 import { deltasUebertragen, umgebung } from './uebertrag';
 import { fressenDeltasInRuhe, hapsSaat } from './saat';
-import { skinAnwenden, skinBerechnen, skinUmkehren, stellungAus, stellungMischen } from './skin';
+import { STELLUNG_NULL, knochenPunkte, skinAnwenden, skinBerechnen, skinUmkehren, stellungAus, stellungMischen } from './skin';
 
 function maulAbl(dok: Dokument, opt: Record<string, unknown> = {}): MaulErgebnis {
   const linie = maulLinieAusDokument(dok)!;
@@ -84,6 +84,66 @@ describe('Posen B2: Auswertung', () => {
     for (let k = 0; k < summe.length; k++) summe[k] = saat[k]! + benutzer[k]!;
     const neu = poseAuswerten(new Float64Array(abl.kaefig.xyz), [{ w: 1, deltas: summe, stellung: theta }], () => sk);
     expect(maxAbstand(neu, heute)).toBeLessThan(1e-9);
+  });
+});
+
+describe('Posen B3b: Knochen in 3D (Gieren, Rollen, Seite)', () => {
+  const abl = maulAbl(kugelMaulDokument('ueberbiss'));
+  abl.maul.opt = { ...abl.maul.opt, haps: 0 };
+  const n = abl.kaefig.n;
+  const A = abl.kaefig.xyz;
+  const sp = spiegelIndex(A, n);
+  const st3 = { ...stellungAus(abl.maul.opt), gierenUnten: 9, rollenUnten: -12, seitUnten: 0.06, gierenOben: -4, rollenOben: 15 };
+  it('jede Transformation ist eine Drehung (RᵀR = 1, det = 1) und exakt umkehrbar', () => {
+    const sk = skinBerechnen(abl, abl.maul.opt, st3);
+    let m = 0;
+    for (let i = 0; i < n; i++) {
+      const R = sk.r.subarray(9 * i, 9 * i + 9);
+      for (let a = 0; a < 3; a++)
+        for (let b = 0; b < 3; b++) {
+          let d = 0;
+          for (let k = 0; k < 3; k++) d += R[3 * k + a]! * R[3 * k + b]!;
+          m = Math.max(m, Math.abs(d - (a === b ? 1 : 0)));
+        }
+      const det = R[0]! * (R[4]! * R[8]! - R[5]! * R[7]!) - R[1]! * (R[3]! * R[8]! - R[5]! * R[6]!) + R[2]! * (R[3]! * R[7]! - R[4]! * R[6]!);
+      m = Math.max(m, Math.abs(det - 1));
+    }
+    expect(m).toBeLessThan(1e-12);
+    expect(maxAbstand(skinUmkehren(sk, skinAnwenden(sk, A)), A)).toBeLessThan(1e-12);
+  });
+  const spiegelFehler = (X: ArrayLike<number>) => {
+    let m = 0;
+    for (let p = 0; p < n; p++) {
+      const q = sp[p]!;
+      if (q < 0 || q === p) continue;
+      m = Math.max(m, Math.abs(X[3 * p]! - X[3 * q]!), Math.abs(X[3 * p + 1]! - X[3 * q + 1]!), Math.abs(X[3 * p + 2]! + X[3 * q + 2]!));
+    }
+    return m;
+  };
+  it('eben bleibt die Pose spiegelgleich; Rollen und Gieren machen sie asymmetrisch', () => {
+    const eben = skinAnwenden(skinBerechnen(abl, abl.maul.opt, stellungAus(abl.maul.opt)), A);
+    expect(spiegelFehler(eben)).toBeLessThan(1e-12);
+    const schief = skinAnwenden(skinBerechnen(abl, abl.maul.opt, { ...stellungAus(abl.maul.opt), rollenOben: 15 }), A);
+    expect(spiegelFehler(schief)).toBeGreaterThan(1e-3);
+  });
+  it('reines Rollen lässt die Knochenachse stehen (Spitze und Gelenk), Gieren schwenkt die Spitze nach +z', () => {
+    const ruhe = knochenPunkte(abl, abl.maul.opt, STELLUNG_NULL);
+    const roll = knochenPunkte(abl, abl.maul.opt, { ...STELLUNG_NULL, rollenUnten: 25, rollenOben: -30 });
+    expect(maxAbstand(roll.kieferSpitze, ruhe.kieferSpitze)).toBeLessThan(1e-12);
+    expect(maxAbstand(roll.schaedelSpitze, ruhe.schaedelSpitze)).toBeLessThan(1e-12);
+    expect(maxAbstand(roll.kieferRolle, ruhe.kieferRolle)).toBeGreaterThan(1e-3);
+    const gier = knochenPunkte(abl, abl.maul.opt, { ...STELLUNG_NULL, gierenUnten: 20 });
+    expect(gier.kieferSpitze[2]).toBeGreaterThan(1e-3);
+    // seitlicher Versatz: Basis und Spitze wandern gleich weit nach +z
+    const seit = knochenPunkte(abl, abl.maul.opt, { ...STELLUNG_NULL, seitUnten: 0.1 });
+    expect(seit.kieferBasis[2]).toBeCloseTo(0.1 * abl.maul.laenge, 12);
+    expect(seit.kieferSpitze[2]).toBeCloseTo(0.1 * abl.maul.laenge, 12);
+  });
+  it('gemischte Stellung ist linear in allen Werten', () => {
+    const m = stellungMischen([{ w: 0.25, stellung: st3 }, { w: 0.5, stellung: { ...STELLUNG_NULL, kieferZug: [0, 0], rollenOben: 8 } }]);
+    expect(m.rollenOben).toBeCloseTo(0.25 * 15 + 0.5 * 8, 12);
+    expect(m.gierenUnten).toBeCloseTo(0.25 * 9, 12);
+    expect(m.seitUnten).toBeCloseTo(0.25 * 0.06, 12);
   });
 });
 

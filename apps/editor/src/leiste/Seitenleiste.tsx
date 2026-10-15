@@ -1,5 +1,5 @@
 import { kernMaulAktiv, useKernAnzeige } from '../kern/kernBau';
-import { kieferAutomatik, maulOptionenDok, poseKnochen, poseKnochenZuruecksetzen, setzeMaulOptionen, setzePoseKnochen } from '../kiefer/kieferOptionen';
+import { type PoseKnochen, kieferAutomatik, maulOptionenDok, poseKnochen, poseKnochenZuruecksetzen, poseSymmetrisch, setzeMaulOptionen, setzePoseKnochen } from '../kiefer/kieferOptionen';
 import { useNetzStand } from '../kern/netzStand';
 import { type MaulOptionen, MAUL_STANDARD, RUNDMAUL_STANDARD, maulOptionenVorlage, maulVorn, pruefwesenBauplan } from '@ee/shape/kern';
 import { naechsteStufe, stufe } from '../stamm/stufen';
@@ -1110,6 +1110,18 @@ function RigFeld() {
   );
 }
 
+/** B3b: 3D-Werte der Knochen als Text (nur, wenn sie nicht 0 sind). */
+const grad = (x: number) => `${Math.round(x)}°`;
+function dreiDUnten(k: PoseKnochen): string {
+  const t = [k.gierenUnten ? `gieren ${grad(k.gierenUnten)}` : '', k.rollenUnten ? `rollen ${grad(k.rollenUnten)}` : '', k.seitUnten ? `seitlich ${Math.round(k.seitUnten * 100)} %` : ''].filter(Boolean);
+  return t.length ? ` · ${t.join(' · ')}` : '';
+}
+function dreiDOben(k: PoseKnochen): string {
+  const t = [k.gierenOben ? `gieren ${grad(k.gierenOben)}` : '', k.rollenOben ? `rollen ${grad(k.rollenOben)}` : ''].filter(Boolean);
+  return t.length ? ` · ${t.join(' · ')}` : '';
+}
+const schief = (k: PoseKnochen) => !!(k.gierenUnten || k.rollenUnten || k.seitUnten || k.gierenOben || k.rollenOben);
+
 /**
  * Tafel „Posen & Leben“, Abschnitt Fressen: die Pose. Die Knochen greift Florian in der Seite (Spitze drehen, Mitte
  * ziehen; Florian 14.10.: „Bones selbst bewegen und rotieren statt Kippen und Ziehen mit Reglern einzustellen“); hier
@@ -1153,20 +1165,27 @@ function FressenFeld() {
           <div className="feld">
             <span>Unterkiefer</span>
             <b data-knochen-unten="">
-              {Math.round(fk.winkelUnten)}° · Zug {pz(fk.kieferZug[0])} vor, {pz(fk.kieferZug[1])} hoch
+              {Math.round(fk.winkelUnten)}° · Zug {pz(fk.kieferZug[0])} vor, {pz(fk.kieferZug[1])} hoch{dreiDUnten(fk)}
             </b>
           </div>
           <div className="feld">
             <span>Schädel</span>
-            <b data-knochen-oben="">{Math.round(fk.winkelOben)}°</b>
+            <b data-knochen-oben="">
+              {Math.round(fk.winkelOben)}°{dreiDOben(fk)}
+            </b>
           </div>
+          {schief(fk) && (
+            <button className="chip" data-pose-symmetrisch="fressen" onClick={() => poseSymmetrisch('fressen')}>
+              Symmetrisch
+            </button>
+          )}
         </>
       )}
       <Regler label="Haps" wert={fk.haps} min={0} max={1} schritt={0.05} anzeige={`${Math.round(fk.haps * 100)} %`} onChange={(v) => setzePoseKnochen('fressen', { haps: v }, fk)} {...g} />
       <button className="chip" data-pose-zuruecksetzen="" onClick={() => poseKnochenZuruecksetzen('fressen')}>
         Knochen zurücksetzen
       </button>
-      <p className="hilfe">Knochen in der Seite (weiß): Unterkiefer an der Spitze drehen, an der Mitte verschieben; Schädel an der Spitze drehen. Greifen zeigt die Pose ganz offen; die Öffnung (oder der Kieferknopf auf der Bühne) blendet zwischen Ruhe und Pose. Dann formen in der Pose „Fressen“ (Kopfzeile) die Pinsel G und I (hier oder in der Stufe Körper) die offene Form weiter — Fressen-Pose = Knochen + Blendshape (Plan 5.2).</p>
+      <p className="hilfe">Knochen auf der Bühne (Auswahlwerkzeug A): Spitze ziehen schwenkt den Knochen hoch, runter und seitlich; der türkise Griff rollt ihn um seine Achse (asymmetrisch, z. B. Oberkiefer schräg); die Mitte verschiebt den Unterkiefer, auch seitlich. In der Seite drehst du eben. Greifen zeigt die Pose ganz; die Öffnung (oder der Kieferknopf) blendet zwischen Ruhe und Pose. Die Pinsel G und I formen die Pose weiter — Pose = Knochen + Blendshape.</p>
     </>
   );
 }
@@ -1223,10 +1242,15 @@ function PosenFeld() {
           <b data-pose-knochen={modus}>
             {(() => {
               const k = poseKnochen(dok, chip, modus);
-              return `Unterkiefer ${Math.round(k.winkelUnten)}° · Schädel ${Math.round(k.winkelOben)}°`;
+              return `Unterkiefer ${Math.round(k.winkelUnten)}°${dreiDUnten(k)} · Schädel ${Math.round(k.winkelOben)}°${dreiDOben(k)}`;
             })()}
           </b>
         </div>
+      )}
+      {weitere && kernMaulAktiv(dok) && schief(poseKnochen(dok, chip, modus)) && (
+        <button className="chip" data-pose-symmetrisch={modus} onClick={() => poseSymmetrisch(modus)}>
+          Symmetrisch
+        </button>
       )}
       {weitere && kernMaulAktiv(dok) && (
         <button className="chip" data-pose-knochen-zurueck="" onClick={() => poseKnochenZuruecksetzen(modus)}>

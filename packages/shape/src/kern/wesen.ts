@@ -24,6 +24,7 @@ import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
 import { kieferSchnitt } from './kieferSpant';
 import { type AnkerFeld, maulAnker } from './posenAnker';
 import { type PoseBearbeitung, posenAuswerten, posenFuerBau, stellungVon } from './posen/posen';
+import type { KnochenPunkte } from './posen/skin';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, schaedelGelenk } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
@@ -190,7 +191,24 @@ export type WesenNetz = {
      * Knochen der Fressen-Pose in Ruhe (Seitenansicht, mit Hebung): Unterkiefer vom Gelenk zur Unterlippe vorn, Schädel
      * vom Schädelgelenk zur Oberlippe vorn; dazu die Pose bei Öffnung 1 (Winkel in Grad, Zug in Maullängen) und die Art.
      */
-    knochen: { kieferSpitze: V2; schaedel: V2; schaedelSpitze: V2; winkelUnten: number; winkelOben: number; zug: [number, number]; zugWeite: number; kippen: boolean };
+    knochen: {
+      kieferSpitze: V2;
+      schaedel: V2;
+      schaedelSpitze: V2;
+      winkelUnten: number;
+      winkelOben: number;
+      zug: [number, number];
+      zugWeite: number;
+      kippen: boolean;
+      /** B3b: 3D-Werte der gezeigten Pose (Grad, Maullängen) */
+      gierenUnten: number;
+      rollenUnten: number;
+      seitUnten: number;
+      gierenOben: number;
+      rollenOben: number;
+      /** B3b: Knochen posiert in 3D (Welt, mit Hebung), wie gezeigt: Zeichnung und Griffe auf der Bühne */
+      posiert: KnochenPunkte | null;
+    };
   } | null;
   /** Unterkiefergewichte als Farbe je Ecke (`Bauplan.gewichteZeigen`), sonst null */
   gewichtFarben: Float32Array | null;
@@ -529,18 +547,23 @@ function augenAm(abl: Ableitung, flaechen: readonly (readonly number[])[], hoehe
     normale = normaleAn(p, false);
     ecke = p;
   }
-  // dieselbe Ecke in der Pose (Pose und Netz sind spiegelgleich: das linke Auge ist das Spiegelbild)
+  // dieselbe Ecke in der Pose; auf der Naht nur das Rechenrauschen auf 0 (eine schiefe Pose, B3b, verschiebt die Naht
+  // seitlich wirklich)
   let pPos = Q(posiert, ecke);
-  if (wahl.mitte) pPos = [pPos[0], pPos[1], 0];
+  if (wahl.mitte && Math.abs(pPos[2]) < 1e-9) pPos = [pPos[0], pPos[1], 0];
   const pN = posiert === f ? normale : normaleAn(ecke, !!wahl.mitte, posiert);
   const art = wahl.art ?? 'gemalt';
   const eigen = { groesse: wahl.groesse * hoehe, art, form: wahl.form ?? 'schlitz', breite: wahl.breite ?? 1, drehung: wahl.drehung ?? 0, tiefe: wahl.tiefe ?? AUGEN_TIEFE[art] } as const;
   if (wahl.mitte) return [{ pos, normale, ...eigen, seite: 0, posiert: { pos: pPos, normale: pN }, ecke }];
-  // das linke Auge: Spiegelpunkt (Ringpunkt j ↔ N − j), sonst der nächste feine Punkt zum Spiegelbild
+  // das linke Auge: Spiegelpunkt (Ringpunkt j ↔ N − j), sonst der nächste feine Punkt zum Spiegelbild. In der Ruhe ist es
+  // das Spiegelbild; in der Pose seine eigene Stelle der Haut (B3b: eine schiefe Pose ist nicht spiegelgleich — vorher
+  // schwebte das linke Auge bei gerolltem Oberkiefer neben dem Kopf)
   const spiegel = spiegelEcke(abl, ecke);
+  const lPos = posiert === f ? ([pPos[0], pPos[1], -pPos[2]] as V3) : Q(posiert, spiegel);
+  const lN = posiert === f ? ([pN[0], pN[1], -pN[2]] as V3) : normaleAn(spiegel, false, posiert);
   return [
     { pos, normale, ...eigen, seite: 1, posiert: { pos: pPos, normale: pN }, ecke },
-    { pos: [pos[0], pos[1], -pos[2]], normale: [normale[0], normale[1], -normale[2]], ...eigen, seite: -1, posiert: { pos: [pPos[0], pPos[1], -pPos[2]], normale: [pN[0], pN[1], -pN[2]] }, ecke: spiegel },
+    { pos: [pos[0], pos[1], -pos[2]], normale: [normale[0], normale[1], -normale[2]], ...eigen, seite: -1, posiert: { pos: lPos, normale: lN }, ecke: spiegel },
   ];
 }
 
@@ -812,6 +835,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   const wFressen = gewichte.fressen ?? 0;
   let posen: Pose[] = [];
   let bearbeitung: PoseBearbeitung | null = null;
+  let knochen3d: KnochenPunkte | null = null;
   let fein: Float64Array;
   let xyz: Float64Array;
   let gesteckt: { fein: Float64Array; abl: BeinErgebnis } | null = null;
@@ -851,6 +875,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     xyz = r.xyz;
     fein = xyz === abl.kaefig.xyz ? abl.fein : anwenden3(abl.unterteilung.grenze, xyz);
     bearbeitung = r.bearbeitung;
+    knochen3d = r.knochen;
     zug = jetzt() - t0;
   } else if (schnell && stand && stand.maul === 'aus' && stand.beine === 'aus' && gleicheTopologie(stand.dok, dok)) {
     // führende Kurve des aktuellen Zugs statt der des letzten Baus
@@ -1227,7 +1252,18 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
       winkel: [fein[3 * p]!, fein[3 * p + 1]! + hebung, fein[3 * p + 2]!],
       laenge: m.laenge,
       rig: { gelenk: { x: m.scharnier.x, y: m.scharnier.y + hebung }, mundwinkel: { x: m.kieferBasis.mundwinkel.x, y: m.kieferBasis.mundwinkel.y + hebung }, vorn: m.vorn, gelenkVersatz: [...o.gelenk], kieferWinkel: [...o.kieferWinkel], kieferReichweite: [...o.kieferReichweite], winkel: winkelGew, schaedelBasis: { x: m.schaedel.x, y: m.schaedel.y + hebung }, schaedelVersatz: [...(o.schaedelGelenk ?? [0, 0])] },
-      knochen: { kieferSpitze: rp(m.unten[0]!), schaedel: { x: schaedelGelenk(m, o).x, y: schaedelGelenk(m, o).y + hebung }, schaedelSpitze: rp(m.pfad[0]!), winkelUnten: kn.winkelUnten, winkelOben: kn.winkelOben, zug: [kn.kieferZug[0], kn.kieferZug[1]], zugWeite: kn.zugWeite, kippen: o.oeffnungsart !== 'ziehen' },
+      knochen: { kieferSpitze: rp(m.unten[0]!), schaedel: { x: schaedelGelenk(m, o).x, y: schaedelGelenk(m, o).y + hebung }, schaedelSpitze: rp(m.pfad[0]!), winkelUnten: kn.winkelUnten,
+        winkelOben: kn.winkelOben,
+        zug: [kn.kieferZug[0], kn.kieferZug[1]],
+        zugWeite: kn.zugWeite,
+        kippen: o.oeffnungsart !== 'ziehen',
+        gierenUnten: kn.gierenUnten,
+        rollenUnten: kn.rollenUnten,
+        seitUnten: kn.seitUnten,
+        gierenOben: kn.gierenOben,
+        rollenOben: kn.rollenOben,
+        posiert: knochen3d ? (Object.fromEntries(Object.entries(knochen3d).map(([k, v]) => [k, [v[0], v[1] + hebung, v[2]]])) as KnochenPunkte) : null,
+      },
     };
     if (plan.gewichteZeigen) gewichtFarben = gewichteJeEcke(abl as MaulErgebnis, flaechen, gesteckteEcken);
   }

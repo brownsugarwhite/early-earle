@@ -237,7 +237,7 @@ const KaefigDeltaSchema = z.object({ punkt: z.number().int().min(0), d: V3, anke
  * jede Pose = Knochenstellung + Florians Form als Ruhe-Deltas (vor den Knochen) + Saat. Idle (Normalzustand, im Spiel der
  * Ruhezustand) und Fressen sind immer da; weitere kommen über „Neue Pose“ hinzu.
  */
-const KnochenWertSchema = z.object({ winkel: z.number().optional(), zug: z.tuple([z.number(), z.number()]).optional(), ziehen: z.number().optional() });
+const KnochenWertSchema = z.object({ winkel: z.number().optional(), zug: z.tuple([z.number(), z.number()]).optional(), ziehen: z.number().optional(), gieren: z.number().optional(), rollen: z.number().optional(), seit: z.number().optional() });
 const PoseSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
@@ -325,8 +325,12 @@ export type Kante = {
   tiefe?: number;
 };
 
-/** Knochenwert einer Pose: Winkel (Grad), Zug des Unterkiefers (Maullängen), Weite beim „Ziehen“ (Maullängen). */
-export type KnochenWert = { winkel?: number; zug?: [number, number]; ziehen?: number };
+/**
+ * Knochenwert einer Pose: Winkel (Grad, Öffnen um die Querachse), Zug des Unterkiefers (Maullängen), Weite beim „Ziehen“
+ * (Maullängen); 3D (B3b, Florians Entscheidung 10): Gieren (Grad, um die Senkrechte), Rollen (Grad, um die eigene
+ * Knochenachse), seitlicher Versatz (Maullängen, +z). Mit Gieren, Rollen oder Seite wird die Pose asymmetrisch.
+ */
+export type KnochenWert = { winkel?: number; zug?: [number, number]; ziehen?: number; gieren?: number; rollen?: number; seit?: number };
 /** Stellung der Knochen einer Pose (Kiefer, Schädel; später Hals, Beine). Fehlt sie bei Fressen, gelten die Maul-Optionen. */
 export type PoseStellung = { kiefer?: KnochenWert; schaedel?: KnochenWert };
 export type PoseArt = 'idle' | 'fressen' | 'frei';

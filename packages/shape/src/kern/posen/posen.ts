@@ -12,13 +12,25 @@ import type { MaulErgebnis, MaulOptionen } from '../maul';
 import { type AnkerFeld, posenUmhaengen } from '../posenAnker';
 import { deltaFeld, poseAuswerten } from './auswerten';
 import { fressenDeltasInRuhe, hapsSaat } from './saat';
-import { type Skin, type Stellung, STELLUNG_NULL, skinBerechnen } from './skin';
+import { type KnochenPunkte, type Skin, type Stellung, STELLUNG_NULL, knochenPunkte, skinBerechnen, stellungMischen } from './skin';
 import { type Umgebung, deltasUebertragen, umgebung } from './uebertrag';
 
-/** Stellung der Knochen einer Pose (Grad, Maullängen) für die Skin; fehlende Knochen stehen in Ruhe. */
+/** Stellung der Knochen einer Pose (Grad, Maullängen) für die Skin; fehlende Knochen und Werte stehen in Ruhe. */
 export function stellungVon(s: PoseStellung | undefined): Stellung {
   if (!s) return { ...STELLUNG_NULL, kieferZug: [0, 0] };
-  return { winkelUnten: s.kiefer?.winkel ?? 0, winkelOben: s.schaedel?.winkel ?? 0, kieferZug: [s.kiefer?.zug?.[0] ?? 0, s.kiefer?.zug?.[1] ?? 0], zugWeite: s.kiefer?.ziehen ?? 0 };
+  const k = s.kiefer;
+  const o = s.schaedel;
+  return {
+    winkelUnten: k?.winkel ?? 0,
+    winkelOben: o?.winkel ?? 0,
+    kieferZug: [k?.zug?.[0] ?? 0, k?.zug?.[1] ?? 0],
+    zugWeite: k?.ziehen ?? 0,
+    gierenUnten: k?.gieren ?? 0,
+    rollenUnten: k?.rollen ?? 0,
+    seitUnten: k?.seit ?? 0,
+    gierenOben: o?.gieren ?? 0,
+    rollenOben: o?.rollen ?? 0,
+  };
 }
 
 /** Umgebungen je Bezugs-Käfig merken (≈ 50 ms je Aufbau); Worker-Nachrichten sind Kopien, deshalb ein Wert-Schlüssel. */
@@ -51,13 +63,17 @@ export function formRuhe(A: Float64Array, n: number, pose: Pose, vollSkin: Skin 
 
 export type PoseAuswertung = {
   xyz: Float64Array;
+  /** gemischte Stellung Σ w·θ (die Knochen, wie sie gezeigt werden) */
+  stellung: Stellung;
+  /** Knochen posiert in 3D (mit Schlitzmaul), für Zeichnung und Griffe */
+  knochen: KnochenPunkte | null;
   /** die bearbeitete Pose (genau eine mit Gewicht 1): Daten für den Pinsel in der Pose */
   bearbeitung: PoseBearbeitung | null;
 };
 
 /**
- * Daten der Pose, die gerade bearbeitet wird: Ruhe-Käfig A (neuer Bezug), Drehung je Punkt (cos, sin) der vollen Pose
- * (posierte Zuwächse → Ruhe-Deltas: Rᵀ·ΔX), ihre Form als Ruhe-Deltas auf A (ohne Saat, rechte Hälfte und Naht reichen).
+ * Daten der Pose, die gerade bearbeitet wird: Ruhe-Käfig A (neuer Bezug), Drehung je Punkt (3×3 zeilenweise, 9 Werte) der
+ * vollen Pose (posierte Zuwächse → Ruhe-Deltas: Rᵀ·ΔX), ihre Form als Ruhe-Deltas auf A (ohne Saat).
  */
 export type PoseBearbeitung = { id: string; ruhe: Float64Array; dreh: Float32Array; form: Float64Array };
 
@@ -69,7 +85,8 @@ export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }
   const A = abl.kaefig.xyz;
   const n = abl.kaefig.n;
   const aktiv = posen.filter((p) => (gewichte[p.id] ?? 0) !== 0);
-  if (!aktiv.length) return { xyz: A, bearbeitung: null };
+  const knochenRuhe = maul && opt ? knochenPunkte(maul, opt, { ...STELLUNG_NULL, kieferZug: [0, 0] }) : null;
+  if (!aktiv.length) return { xyz: A, stellung: { ...STELLUNG_NULL, kieferZug: [0, 0] }, knochen: knochenRuhe, bearbeitung: null };
   const skinFuer = (st: Stellung): Skin | null => (maul && opt ? skinBerechnen(maul, opt, st) : null);
   const eingaben = aktiv.map((p) => {
     const st = stellungVon(p.stellung);
@@ -85,17 +102,19 @@ export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }
     return { pose: p, w: gewichte[p.id]!, st, voll, form, summe };
   });
   const xyz = poseAuswerten(A, eingaben.map((e) => ({ w: e.w, deltas: e.summe, stellung: e.st })), skinFuer);
+  const stellung = stellungMischen(eingaben.map((e) => ({ w: e.w, stellung: e.st })));
+  const knochen = maul && opt ? knochenPunkte(maul, opt, stellung) : null;
   let bearbeitung: PoseBearbeitung | null = null;
   if (eingaben.length === 1 && eingaben[0]!.w === 1) {
     const e = eingaben[0]!;
-    const dreh = new Float32Array(2 * n);
+    const dreh = new Float32Array(9 * n);
     for (let i = 0; i < n; i++) {
-      dreh[2 * i] = e.voll ? e.voll.c[i]! : 1;
-      dreh[2 * i + 1] = e.voll ? e.voll.s[i]! : 0;
+      if (e.voll) for (let k = 0; k < 9; k++) dreh[9 * i + k] = e.voll.r[9 * i + k]!;
+      else dreh.set([1, 0, 0, 0, 1, 0, 0, 0, 1], 9 * i);
     }
     bearbeitung = { id: e.pose.id, ruhe: new Float64Array(A), dreh, form: e.form };
   }
-  return { xyz, bearbeitung };
+  return { xyz, stellung, knochen, bearbeitung };
 }
 
 /** Pose-Form aus einem vollen Ruhe-Deltafeld: rechte Hälfte und Naht (z = 0 auf der Naht), ohne Nullen. */

@@ -99,13 +99,26 @@ function pinselZiel(): { pose: PoseBearbeitung | null; nMax: number } | null {
 function poseSchreiben(b: PoseBearbeitung, zuwachs: Map<number, V3>, anker: Parameters<typeof ankerVon>[0]): void {
   const n = b.ruhe.length / 3;
   const form = new Float64Array(b.form);
+  // B3b: Zuwächse beider Hälften je Punkt mit seiner eigenen Drehung zurück (Rᵀ, 3×3), gespiegelt erst in der Ruhe — in
+  // einer schiefen Pose (gerollter Kiefer) sind die Drehungen links und rechts verschieden. Naht: beide Hälften (× 2, z 0).
+  const spiegel = spiegelIndex(b.ruhe, n);
+  const R = b.dreh;
+  const add = (i: number, x: number, y: number, z: number) => {
+    form[3 * i] = form[3 * i]! + x;
+    form[3 * i + 1] = form[3 * i + 1]! + y;
+    form[3 * i + 2] = form[3 * i + 2]! + z;
+  };
   for (const [i, d] of zuwachs) {
     if (i >= n) continue;
-    const c = b.dreh[2 * i]!;
-    const sn = b.dreh[2 * i + 1]!;
-    form[3 * i] = form[3 * i]! + c * d[0] + sn * d[1];
-    form[3 * i + 1] = form[3 * i + 1]! - sn * d[0] + c * d[1];
-    form[3 * i + 2] = form[3 * i + 2]! + d[2];
+    const o = 9 * i;
+    const x = R[o]! * d[0] + R[o + 3]! * d[1] + R[o + 6]! * d[2];
+    const y = R[o + 1]! * d[0] + R[o + 4]! * d[1] + R[o + 7]! * d[2];
+    const z = R[o + 2]! * d[0] + R[o + 5]! * d[1] + R[o + 8]! * d[2];
+    const rz = b.ruhe[3 * i + 2]!;
+    const q = spiegel[i]!;
+    if (Math.abs(rz) < 1e-9 || q === i) add(i, 2 * x, 2 * y, 0);
+    else if (rz > 0) add(i, x, y, z);
+    else if (q >= 0) add(q, x, y, -z);
   }
   const deltas: KaefigDelta[] = formAusFeld(b.ruhe, n, form).map((d) => {
     const a = ankerVon(anker, d.punkt);
@@ -164,6 +177,12 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
     (ev) => {
       const karte = new Map<number, V3>();
       for (const [k, v] of basis) karte.set(k, [v[0], v[1], v[2]]);
+      // Pose (B3b): Zuwächse aller getroffenen Punkte beider Hälften, posiert; gespiegelt wird erst in der Ruhe
+      const alle = new Map<number, V3>();
+      const zuPose = (p: number, d: V3) => {
+        const a = alle.get(p) ?? [0, 0, 0];
+        alle.set(p, [a[0] + d[0], a[1] + d[1], a[2] + d[2]]);
+      };
       // Zuwachs eines Punkts (Welt, unskaliert) in die Karte: rechte Hälfte und Naht direkt, linke gespiegelt beim Partner
       const zuwachs = (p: number, d: V3) => {
         const q = rechts(p) ? p : spiegel[p]!;
@@ -199,16 +218,23 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
           const l = lagen.get(g.punkt);
           if (!l) continue;
           const p0 = pos(g.punkt);
-          if (rechts(g.punkt)) zuwachs(g.punkt, [l[0] - p0[0], l[1] - p0[1], l[2] - p0[2]]);
+          if (ziel.pose) zuPose(g.punkt, [l[0] - p0[0], l[1] - p0[1], l[2] - p0[2]]);
+          else if (rechts(g.punkt)) zuwachs(g.punkt, [l[0] - p0[0], l[1] - p0[1], l[2] - p0[2]]);
         }
       } else if (werkzeug === 'ziehen') {
         const hit = schnittMitEbene(r.strahlFuer('creation', ev.clientX - rr.left, ev.clientY - rr.top), h.punkt, ebene);
         if (!hit) return;
         const D: V3 = [(hit[0] - h.punkt[0]) / sk, (hit[1] - h.punkt[1]) / sk, (hit[2] - h.punkt[2]) / sk];
-        for (const g of gewichte) if (rechts(g.punkt)) zuwachs(g.punkt, [(g.w + g.wSpiegel) * D[0], (g.w + g.wSpiegel) * D[1], (g.w - g.wSpiegel) * D[2]]);
+        if (ziel.pose) {
+          for (const g of gewichte) if (g.w > 0) zuPose(g.punkt, [g.w * D[0], g.w * D[1], g.w * D[2]]);
+        } else for (const g of gewichte) if (rechts(g.punkt)) zuwachs(g.punkt, [(g.w + g.wSpiegel) * D[0], (g.w + g.wSpiegel) * D[1], (g.w - g.wSpiegel) * D[2]]);
       } else {
         const betrag = ((ev.clientX - x0 - (ev.clientY - y0)) / 300) * radius;
         for (const g of gewichte) {
+          if (ziel.pose) {
+            if (g.w > 0) zuPose(g.punkt, [g.w * betrag * normalen![3 * g.punkt]!, g.w * betrag * normalen![3 * g.punkt + 1]!, g.w * betrag * normalen![3 * g.punkt + 2]!]);
+            continue;
+          }
           if (!rechts(g.punkt)) continue;
           const w = (g.w + g.wSpiegel) * betrag;
           zuwachs(g.punkt, [w * normalen![3 * g.punkt]!, w * normalen![3 * g.punkt + 1]!, w * normalen![3 * g.punkt + 2]!]);
@@ -216,7 +242,7 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
       }
       const s = useEditor.getState();
       if (ziel.pose) {
-        poseSchreiben(ziel.pose, karte, n.netz.anker);
+        poseSchreiben(ziel.pose, alle, n.netz.anker);
         return;
       }
       const kaefig = s.dok.kaefig ?? { deltas: [] };

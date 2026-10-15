@@ -10,8 +10,34 @@ export const GRAD = Math.PI / 180;
 
 export type Rig = NonNullable<NonNullable<ReturnType<typeof aktuellesNetz>>['netz']['maul']>;
 
-/** Griffe: Gelenk, Kieferlinie, Übergang (Rig) und die Knochen der Pose (drehen, ziehen). */
-export type KieferGriff = 'gelenk' | 'weite' | 'w1' | 'w2' | 'kiefer-dreh' | 'kiefer-zug' | 'schaedel-dreh' | 'schaedel-gelenk';
+/** Griffe: Gelenk, Kieferlinie, Übergang (Rig) und die Knochen der Pose (drehen, ziehen; B3b: rollen um die Knochenachse). */
+export type KieferGriff = 'gelenk' | 'weite' | 'w1' | 'w2' | 'kiefer-dreh' | 'kiefer-zug' | 'kiefer-roll' | 'schaedel-dreh' | 'schaedel-roll' | 'schaedel-gelenk';
+
+type V3 = [number, number, number];
+
+/**
+ * Richtung eines Knochens in der Pose aus Winkel und Gieren (wie der Kern, `posen/skin.ts`): erst Gieren um die
+ * Senkrechte (Vorzeichen nach der Knochenachse: positiv schwenkt die Spitze nach +z), dann der Winkel um die Querachse
+ * mit dem Vorzeichen `vz` (Kiefer −vorn, Schädel +vorn). Rollen lässt die Achse stehen.
+ */
+export function knochenRichtung(dRuhe: V3, vz: number, winkel: number, gieren: number): V3 {
+  const b = (dRuhe[0] < 0 ? 1 : -1) * gieren * GRAD;
+  const x1 = dRuhe[0] * Math.cos(b) + dRuhe[2] * Math.sin(b);
+  const y1 = dRuhe[1];
+  const z1 = -dRuhe[0] * Math.sin(b) + dRuhe[2] * Math.cos(b);
+  const a = vz * winkel * GRAD;
+  return [x1 * Math.cos(a) - y1 * Math.sin(a), x1 * Math.sin(a) + y1 * Math.cos(a), z1];
+}
+
+/** Umkehrung von `knochenRichtung`: Winkel und Gieren (Grad) für eine gewünschte Richtung d (normiert). */
+export function winkelAusRichtung(dRuhe: V3, vz: number, d: V3): { winkel: number; gieren: number } {
+  const sx = dRuhe[0] < 0 ? 1 : -1;
+  const b = Math.asin(Math.max(-1, Math.min(1, -d[2] / (dRuhe[0] || 1e-9))));
+  let a = Math.atan2(d[1], d[0]) - Math.atan2(dRuhe[1], dRuhe[0] * Math.cos(b));
+  while (a > Math.PI) a -= 2 * Math.PI;
+  while (a <= -Math.PI) a += 2 * Math.PI;
+  return { winkel: a / (vz * GRAD), gieren: b / (sx * GRAD) };
+}
 
 /** Rig des zuletzt gebauten Netzes (nur Bauweise Kern mit Maul). */
 export function aktuellesRig(): Rig | null {
@@ -67,7 +93,7 @@ export function knochenBei(m: Rig, o: number) {
   };
 }
 
-export const istKnochenGriff = (a: KieferGriff) => a === 'kiefer-dreh' || a === 'kiefer-zug' || a === 'schaedel-dreh';
+export const istKnochenGriff = (a: KieferGriff) => a === 'kiefer-dreh' || a === 'kiefer-zug' || a === 'kiefer-roll' || a === 'schaedel-dreh' || a === 'schaedel-roll';
 
 /**
  * Zug an einem Griff: aus dem Stand am Gestenbeginn (Rig `m`, Zeiger `p0`) die Maul-Optionen für den Zeiger p.
@@ -108,6 +134,10 @@ export function griffZug(m: Rig, art: KieferGriff, p0: V2): (p: V2) => Partial<M
     case 'schaedel-gelenk':
       // Versatz gegen das automatische Schädelgelenk in Maullängen (x nach hinten, y nach oben), wie `schaedelGelenk` im Kern
       return (p) => ({ schaedelGelenk: [rund((rig.schaedelBasis.x - p.x) / (rig.vorn * L)), rund((p.y - rig.schaedelBasis.y) / L)] });
+    case 'kiefer-roll':
+    case 'schaedel-roll':
+      // Rollen gibt es nur auf der Bühne (um die Knochenachse in 3D, `knochen3d.ts`)
+      return () => ({});
     case 'schaedel-dreh':
       return (p) => {
         const phi = winkelZwischen({ x: p0.x - kn.schaedel.x, y: p0.y - kn.schaedel.y }, { x: p.x - kn.schaedel.x, y: p.y - kn.schaedel.y });

@@ -106,7 +106,9 @@ export function KieferZeichnung({ ansicht, bild, w, h }: { ansicht: Ansicht; bil
       {rig.winkel && griff(amGelenk(m, r1, a2), 'w2', `frei ab ${Math.round(a2)}°`)}
       {/* Knochen der Fressen-Pose (Plan 5.2; Florian: „Bones selbst bewegen und rotieren“): Spitze drehen, Mitte ziehen */}
       {(() => {
-        const kn = knochenBei(m, oeffnung);
+        // B3b: Knochen posiert in 3D vom Kern (Seite = x, y); ohne sie die ebene Rechnung bei der gezeigten Öffnung
+        const p3 = m.knochen.posiert;
+        const kn = p3 ? { kieferBasis: { x: p3.kieferBasis[0], y: p3.kieferBasis[1] }, kieferSpitze: { x: p3.kieferSpitze[0], y: p3.kieferSpitze[1] }, schaedelBasis: { x: p3.schaedelBasis[0], y: p3.schaedelBasis[1] }, schaedelSpitze: { x: p3.schaedelSpitze[0], y: p3.schaedelSpitze[1] } } : knochenBei(m, oeffnung);
         const kb = B(kn.kieferBasis);
         const ks = B(kn.kieferSpitze);
         const sb = B(kn.schaedelBasis);

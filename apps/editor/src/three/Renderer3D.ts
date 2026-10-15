@@ -128,7 +128,7 @@ export class Renderer3D {
   /** Rig der Stufe „Posen & Leben“ (Plan 5.2): Knochen als Linien, Griffe als Perlen, ohne Tiefentest */
   private rigLinien: LineSegments | null = null;
   private readonly rigPerlen: Mesh[] = [];
-  private readonly rigMaterial = { gelenk: new MeshBasicNodeMaterial({ color: 0xff2e9a, depthTest: false }), spitze: new MeshBasicNodeMaterial({ color: 0xffffff, depthTest: false }), zug: new MeshBasicNodeMaterial({ color: 0x19232b, depthTest: false }), aktiv: new MeshBasicNodeMaterial({ color: 0xffd23f, depthTest: false }) };
+  private readonly rigMaterial = { gelenk: new MeshBasicNodeMaterial({ color: 0xff2e9a, depthTest: false }), spitze: new MeshBasicNodeMaterial({ color: 0xffffff, depthTest: false }), zug: new MeshBasicNodeMaterial({ color: 0x19232b, depthTest: false }), rolle: new MeshBasicNodeMaterial({ color: 0x00ffe1, depthTest: false }), aktiv: new MeshBasicNodeMaterial({ color: 0xffd23f, depthTest: false }) };
   private readonly perlen: Mesh[] = [];
   private readonly perlenGeometrie = new SphereGeometry(1, 12, 8);
   /** Pinsel (M3): Radiusring in der Tangentialebene am Zeiger */
@@ -798,7 +798,7 @@ export class Renderer3D {
    * Rig (Plan 5.2): Knochen als Linienpaare (Welt) und Griffe als Perlen je Art (Gelenk pink, Spitze weiß, Zug dunkel,
    * unter dem Zeiger gelb); immer sichtbar wie Blenders Knochen im Röntgen. null blendet aus.
    */
-  setzeRig(linien: Float32Array | null, perlen: { pos: [number, number, number]; art: 'gelenk' | 'spitze' | 'zug'; aktiv: boolean }[] | null, hoehe = 1) {
+  setzeRig(linien: Float32Array | null, perlen: { pos: [number, number, number]; art: 'gelenk' | 'spitze' | 'zug' | 'rolle'; aktiv: boolean }[] | null, hoehe = 1) {
     if (this.rigLinien) {
       this.szene.remove(this.rigLinien);
       this.rigLinien.geometry.dispose();
@@ -824,7 +824,7 @@ export class Renderer3D {
       const p = perlen?.[i];
       if (p) {
         m.position.set(p.pos[0], p.pos[1], p.pos[2]);
-        const s = p.aktiv ? gr * 1.35 : p.art === 'zug' ? gr * 0.8 : gr;
+        const s = p.aktiv ? gr * 1.35 : p.art === 'zug' || p.art === 'rolle' ? gr * 0.8 : gr;
         m.scale.set(s, s, s);
         m.material = p.aktiv ? this.rigMaterial.aktiv : this.rigMaterial[p.art];
         m.visible = true;
