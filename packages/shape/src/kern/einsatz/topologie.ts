@@ -191,6 +191,30 @@ function strahlTreffer(netz: FeinNetz, o: V3, r: V3, tMin: number): number {
   return best;
 }
 
+/**
+ * Hautreihen nach der Feldtiefe (Entwurf 2.5: Reihenabstand wächst bis etwa zur Kantenlänge am Rand): Tiefe = Median der
+ * Wege auf der Haut von der Lippe zum Randpunkt je Speiche (in der Karte längs U abgetastet), Kante = Median der Randkanten;
+ * J = Tiefe / (0,85 · Kante), auf 4 … 8 begrenzt. Rand von M und Kragen bleiben fest (Kragen-Lemma), nur die äußeren Reihen
+ * gleichen die neue Verbindung an den Randpunkten aus — zu wenige, zu weite Reihen kosteten die Kugel 0,75 statt 0,26 px.
+ */
+function reihenZahl(umkehr: (u: number, v: number) => { p: V3; n: V3 }, thetaOut: Float64Array, lippe: V3[], rand: V3[]): number {
+  const tiefen: number[] = [];
+  for (let k = 0; k < rand.length; k++) {
+    let vor = lippe[k]!;
+    let weg = 0;
+    for (let i = 1; i <= 8; i++) {
+      const q = i === 8 ? rand[k]! : umkehr(i / 8, thetaOut[k]!).p;
+      weg += Math.hypot(q[0] - vor[0], q[1] - vor[1], q[2] - vor[2]);
+      vor = q;
+    }
+    tiefen.push(weg);
+  }
+  const kanten: number[] = [];
+  for (let k = 0; k + 1 < rand.length; k++) kanten.push(Math.hypot(rand[k + 1]![0] - rand[k]![0], rand[k + 1]![1] - rand[k]![1], rand[k + 1]![2] - rand[k]![2]));
+  const median = (a: number[]) => [...a].sort((x, y) => x - y)[a.length >> 1]!;
+  return Math.min(8, Math.max(4, Math.round(median(tiefen) / (0.85 * median(kanten)))));
+}
+
 /** Reihenhöhen u_r (r = 0 … J): Abstände wachsen von 0,6 auf 1 (Entwurf 2.5). */
 export function reihenHoehen(J: number): number[] {
   const w = Array.from({ length: J }, (_, i) => 0.6 + (0.4 * i) / Math.max(1, J - 1));
@@ -331,7 +355,7 @@ function hautGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: numb
 
 /** Einstellungen des Einsatzes (Standard nach dem Vergleich in A5: β = 0, Dehnungsgewichte, eine feste Reihe am Mundwinkel) */
 export type EinsatzOptionen = {
-  /** Hautreihen J (3 … 7) und Taschenreihen K */
+  /** Hautreihen J (fehlt: nach der Feldtiefe, 4 … 8) und Taschenreihen K */
   J?: number;
   K?: number;
   /**
@@ -356,11 +380,11 @@ export type EinsatzOptionen = {
  * von K1, gleiche Nummern), `doppel` aus dem Schnitt (A1).
  */
 export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz: FeinNetz, doppel: Map<number, number>, opt: EinsatzOptionen = {}): EinsatzTopologie {
-  const J = opt.J ?? 4;
+  let J = opt.J ?? 0;
   const K = opt.K ?? 5;
   const m = feld.m;
   if (!Number.isInteger(m) || m < 2) throw new Error(`Einsatz: Lippenauflösung m = ${m} ungültig`);
-  if (J < 2 || K < 1) throw new Error(`Einsatz: J = ${J}, K = ${K} ungültig`);
+  if ((J !== 0 && J < 2) || K < 1) throw new Error(`Einsatz: J = ${J}, K = ${K} ungültig`);
   const spK1 = spiegelIndex(k1.xyz, k1.n);
   const kIdx = new Map<number, number>();
   karte.punkte.forEach((g, i) => kIdx.set(g, i));
@@ -447,6 +471,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   // Haut: Gitter in der Karte (Startlage: Speichen als Mischung von θ_in und θ_out), Nahtspeichen nach Bogenlänge, dann
   // geglättet (Tutte mit Dehnungsgewichten, Rand fest → faltenfrei), Lagen über die Umkehrung der Karte
   const umkehr = kartenUmkehr(karte, netz, doppel);
+  if (!J) J = reihenZahl(umkehr, thetaOut, lippeLage, Array.from(bogen, (b): V3 => [netz.punkte[3 * b]!, netz.punkte[3 * b + 1]!, netz.punkte[3 * b + 2]!]));
   const uR = reihenHoehen(J);
   const gitter = hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, Array.from(bogen, (b): V3 => [netz.punkte[3 * b]!, netz.punkte[3 * b + 1]!, netz.punkte[3 * b + 2]!]), opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
   const hautLage: V3[][] = [lippeLage];
