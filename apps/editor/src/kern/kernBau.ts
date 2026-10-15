@@ -131,8 +131,6 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
     atlas: atlasAn,
     // Rig (Plan 5.2): Unterkiefergewichte als Farbe, nur in der Stufe „Posen & Leben“
     gewichteZeigen: useUi.getState().gewichteZeigen && useUi.getState().ebene === 'posen',
-    // Fressen wie Editor (15.10.): im Fressen-Modus Δ und Saum gegen die Griffe der Pose
-    formPose: useEditor.getState().modus === 'fressen',
     // Posenliste: im Modus einer weiteren Pose (Kopfzeile) ihre Deltas mit der Stärke
     ...(weiterePose() ? { pose: { name: weiterePose()!, staerke: useUi.getState().poseStaerke } } : {}),
   };
@@ -160,8 +158,8 @@ export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) 
     // Startkugel); die Änderung löste einen Bau mit diesen Stationen aus und verdrängte den frischen.
     const g = netz.info.stationen;
     const ed = useEditor.getState();
-    if (g && !schnell && ed.basis.profile === dok.profile) {
-      if (JSON.stringify(ed.basis.kaefig?.stationen ?? null) !== JSON.stringify(g)) ed.setzeStationen(g);
+    if (g && !schnell && ed.dok.profile === dok.profile) {
+      if (JSON.stringify(ed.dok.kaefig?.stationen ?? null) !== JSON.stringify(g)) ed.setzeStationen(g);
     }
   });
 }
@@ -180,11 +178,10 @@ export function kernZahnPruefen(dok: Dokument, cb: (meldungen: ZahnMeldung[] | n
  */
 export function kernFolgen(fertig: () => void): void {
   const ed = useEditor.getState();
-  // aus der Grundform; im Fressen-Modus (Pose-Sicht) folgt nichts (der Pinsel der Pose schreibt Pose-Deltas)
-  const dok = ed.basis;
+  const dok = ed.dok;
   derClient().folgen(dok, bauplanAus(dok), (r) => {
     const s = useEditor.getState();
-    if (r && s.modus !== 'fressen' && s.basis.profile === dok.profile && s.basis.kaefig?.deltas === dok.kaefig?.deltas) {
+    if (r && s.dok.profile === dok.profile && s.dok.kaefig?.deltas === dok.kaefig?.deltas) {
       const kaefig = { ...(s.dok.kaefig ?? { deltas: [] }), deltas: r.deltas };
       s.setzeDokument({ ...s.dok, profile: r.profile, ...(r.spanten ? { spanten: r.spanten } : {}), kaefig });
     }

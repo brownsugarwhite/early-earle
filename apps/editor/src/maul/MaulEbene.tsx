@@ -21,8 +21,6 @@ export type Zustand = 'zu' | 'auf';
 export type LinienName = 'oben' | 'unten';
 
 export function zustandVon(modus: Modus): Zustand {
-  // Bauweise Kern (Fressen wie Editor, 15.10.): die Pose-Sicht hat eigene Lippen „zu“ (Linien der Pose)
-  if (useUi.getState().bauweise === 'kern') return 'zu';
   return modus === 'editor' ? 'zu' : 'auf';
 }
 

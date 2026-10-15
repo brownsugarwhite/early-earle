@@ -657,11 +657,6 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie, 
     const H0 = Math.hypot(sp0.o.x - sp0.u.x, sp0.o.y - sp0.u.y);
     if (Math.abs(winkel.x - spitze.x) < 0.1 * H0) platte = { winkelY: winkel.y, winkelZ: Math.abs(linie.winkelZ) };
   }
-  // Pose-Käfig (Fressen wie Editor): Plattenmaul wie in der Grundform, auch wenn der Winkel der Pose woanders liegt
-  if (gefroren?.erzwingen && gefroren.platte !== undefined) {
-    if (!gefroren.platte) platte = undefined;
-    else if (!platte && linie.winkelZ !== undefined && Number.isFinite(linie.winkelZ)) platte = { winkelY: winkel.y, winkelZ: Math.abs(linie.winkelZ) };
-  }
   const fScharnier = platte ? Math.max(ende.f, PLATTE_SCHARNIER) : ende.f;
   let k = 1;
   for (let i = 1; i <= R - 2; i++) if (Math.abs(fRinge[i]! - fScharnier) < Math.abs(fRinge[k]! - fScharnier)) k = i;
@@ -669,41 +664,13 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie, 
   // eingefrorener Winkelring (14.10.): bleibt, solange der Winkel zwischen seinen Nachbarringen liegt — sonst kippte die
   // Wahl „nächster Ring“ beim Ziehen eines Anfangs zwischen zwei Ringen hin und her (der Anteil des Winkels wandert mit der Leiter)
   const gw = gefroren?.winkel;
-  if (!platte && gw !== undefined && gw >= 1 && gw <= R - 2 && (gefroren?.erzwingen || (fScharnier > fRinge[gw - 1]! && fScharnier < fRinge[gw + 1]!))) k = gw;
+  if (!platte && gw !== undefined && gw >= 1 && gw <= R - 2 && fScharnier > fRinge[gw - 1]! && fScharnier < fRinge[gw + 1]!) k = gw;
   const vorher = fRinge[k - 1]!;
   const nachher = fRinge[k + 1]!;
   // Winkelring auf den Winkel rasten (nicht beim Plattenmaul: dort ist der Winkel kein Ringpunkt)
   if (!platte && ende.f > vorher && ende.f < nachher) {
     st.ringe[k] = stationenAusLeiter(l, [ende.f])[0]!;
     fRinge[k] = ende.f;
-  } else if (!platte && gefroren?.erzwingen && Math.abs(ende.f - fRinge[k]!) > 1e-9) {
-    // Käfig der Pose (Fressen wie Editor, 15.10.): Der Winkel der Pose liegt jenseits eines Nachbarrings. Der Winkelring
-    // folgt ihm trotzdem; die Ringe bis zum nächsten geschützten Ring (Ecke, Reifen) bzw. bis Ring 0 und R − 1 rücken
-    // gleichmäßig nach, die Reihenfolge bleibt (gleiche Topologie). Ohne das blieb der Mundwinkel der Pose am alten Ring.
-    const geschuetzt = (i: number) => st.ecken.some((e) => e.ring === i) || st.reifen.some((r) => r.ring === i);
-    if (!geschuetzt(k)) {
-      let k1 = k - 1;
-      while (k1 > 1 && !geschuetzt(k1 - 1)) k1--;
-      let k2 = k + 1;
-      while (k2 < R - 2 && !geschuetzt(k2 + 1)) k2++;
-      const fLo = fRinge[k1 - 1]!;
-      const fHi = fRinge[k2 + 1]!;
-      const eps = 0.004;
-      const fAlt = fRinge[k]!;
-      const fNeu = Math.min(fHi - (k2 - k + 1) * eps, Math.max(fLo + (k - k1 + 1) * eps, ende.f));
-      const idx: number[] = [];
-      const neu: number[] = [];
-      for (let i = k1; i <= k2; i++) {
-        const fi = fRinge[i]!;
-        idx.push(i);
-        neu.push(i < k ? fLo + ((fi - fLo) * (fNeu - fLo)) / (fAlt - fLo) : i === k ? fNeu : fNeu + ((fi - fAlt) * (fHi - fNeu)) / (fHi - fAlt));
-      }
-      const stn = stationenAusLeiter(l, neu);
-      idx.forEach((i, j) => {
-        st.ringe[i] = stn[j]!;
-        fRinge[i] = neu[j]!;
-      });
-    }
   }
   // Ringanfang (14.10. spätnachts): Die Ringe vor dem Maul (Nase) liegen vor beiden Lippenanfängen, Ring i0 hinter beiden
   // und hinter dem Bogen der Linie um die Mundfront (Tiefe erstmals 60 % der größten, 8–35 % ihrer Länge); sein unterer
@@ -737,7 +704,7 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie, 
     while (i0 < k && fRinge[i0]! < fVorn - 0.06 * spanne) i0++;
     // eingefrorener Ringanfang (14.10.): bleibt, solange der Ring davor noch vor beiden Anfängen liegt
     const ga = gefroren?.ringA;
-    if (ga !== undefined && ga >= 1 && ga <= k - 2 && (gefroren?.erzwingen || fRinge[ga - 1]! < fVorn - 0.06 * spanne)) i0 = ga;
+    if (ga !== undefined && ga >= 1 && ga <= k - 2 && fRinge[ga - 1]! < fVorn - 0.06 * spanne) i0 = ga;
     const geschuetzt = (i: number) => st.ecken.some((e) => e.ring === i) || st.reifen.some((r) => r.ring === i);
     let frei = true;
     for (let i = i0; i < k; i++) if (geschuetzt(i)) frei = false;
@@ -751,7 +718,7 @@ export function maulLage(v: Roehre, l: Leiter, st: Stationen, linie: MaulLinie, 
         fRinge[i] = neu[i - i0]!;
       }
       ringA = i0;
-    } else if (gefroren?.erzwingen && ga !== undefined && frei) ringA = ga;
+    }
   }
   const ringA0 = ringA ?? 0;
   const sA = ringA !== undefined ? N / 2 - jL : c / 2;
@@ -2270,7 +2237,7 @@ export function ableitenMitMaul(dokRoh: Dokument, linie: MaulLinie, optionen: Pa
   // Band um die Schwelle (14.10.): ein eingefrorener Ringanfang bleibt bis 0,75 · kappe, eine eingefrorene Kappe bis 1,5 · kappe
   const gm = opt.stationen?.maul;
   const kappeSchwelle = (gm ? (gm.ringA !== undefined ? 0.75 : 1.5) : 1) * opt.kappe;
-  const ringAnfang = anfang !== undefined && !!linie.punkte && linie.punkte.length >= 2 && (gm?.erzwingen ? gm.ringA !== undefined : anfangKappeMin(anfang) > kappeSchwelle);
+  const ringAnfang = anfang !== undefined && !!linie.punkte && linie.punkte.length >= 2 && anfangKappeMin(anfang) > kappeSchwelle;
   // Maulbereich für die Ringverteilung: vom vorderen Anfang (etwas davor, Platz für den letzten Nasenring) bis zum Winkel
   // Ringzahl nach der Größe des Mauls: Abstand der Ringe nicht unter einem Fünftel der Sprossenlänge (fast quadratische
   // Felder); acht Ringe in einem winzigen Maul (Langhals) gaben Streifen von 0,003 und Hautfalten bis 179°

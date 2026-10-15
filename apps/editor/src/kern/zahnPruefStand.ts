@@ -31,10 +31,10 @@ export function zahnPruefungPlanen(): void {
     uhr = null;
     const ed = useEditor.getState();
     if (!aktiv() || ed.gesteStart) return;
-    const dok = ed.basis;
+    const dok = ed.dok;
     useZahnPruefung.setState({ laeuft: true });
     kernZahnPruefen(dok, (meldungen) => {
-      const jetzt = useEditor.getState().basis;
+      const jetzt = useEditor.getState().dok;
       useZahnPruefung.setState((st) => (meldungen && jetzt === dok ? { meldungen, dok, laeuft: false, fertig: st.fertig + 1 } : { laeuft: false, fertig: st.fertig + 1 }));
     });
   }, RUHE);

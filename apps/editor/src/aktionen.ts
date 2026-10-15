@@ -34,7 +34,7 @@ export function neuesWesen() {
 async function schreiben(name: string) {
   const editor = useEditor.getState();
   if (editor.dok.name !== name) editor.setzeName(name);
-  const { basis: dok, datei } = useEditor.getState();
+  const { dok, datei } = useEditor.getState();
   try {
     const vorschau = szene.aktuell?.vorschau() ?? null;
     const r = await bibliothekSpeichern({ datei, name, json: `${JSON.stringify(dok, null, 2)}\n`, vorschau });

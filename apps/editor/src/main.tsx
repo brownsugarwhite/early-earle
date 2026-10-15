@@ -16,10 +16,7 @@ import { useZahnPruefung } from './kern/zahnPruefStand';
 // Versuche (?versuch=subd&form=…): Testform laden
 const versuch = versuchAktiv();
 if (versuch?.modus === 'tiger') void tigerLaden(versuch.zustand);
-else if (versuch && versuch.modus !== 'maul') {
-  const d = versuchForm(useEditor.getState().dok, versuch.form);
-  useEditor.setState({ dok: d, basis: d });
-}
+else if (versuch && versuch.modus !== 'maul') useEditor.setState({ dok: versuchForm(useEditor.getState().dok, versuch.form) });
 // Versuch 13.10.: Prüfwesen der Bauweisen „Schnitte“ und „rund“ (?versuch=schnitte|rund&wesen=ueberhang|kugel|rex|…)
 void schnittVersuchLaden();
 

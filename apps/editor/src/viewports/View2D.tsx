@@ -83,15 +83,13 @@ export function View2D({ ansicht, w, h }: Props) {
   // Back ist waagerecht, Bottom senkrecht gespiegelt (Florian 12.10.); die Silhouette ist dieselbe, die Fläche die abgewandte
   const blick = useUi((s) => blickVon(ansicht, s.blick));
   const hatMaul = useEditor((s) => !!s.dok.maul);
-  const bauweise = useUi((s) => s.bauweise);
   const ueber = useUeberlagerung((s) => s[ansicht]);
   /** Profile nur im Form-Tab bearbeitbar; in den anderen Tabs sind sie Kontext. */
   // Fressen mit Maul: Der Körper folgt dem Kiefer (Florian 12.10.: „Kiefer wirklich mit dem Shape verbunden“). Die
   // Ansichten zeigen den geöffneten Umriss aus dem 3D; die Grundform wird im Tab Editor bearbeitet.
   const modus = useEditor((s) => s.modus);
   useMaulInfo((s) => s.info);
-  // Bauweise Kern (Fressen wie Editor, 15.10.): die Blätter zeigen die Griffe der Pose (Sicht des Speichers), kein offener Umriss
-  const offenerKoerper = modus === 'fressen' && hatMaul && bauweise !== 'kern';
+  const offenerKoerper = modus === 'fressen' && hatMaul;
   // Front und Top zeigen im Fressen-Tab den Umriss des geöffneten Körpers; die Seite ist die bearbeitbare Pose-Form
   const offen = offenerKoerper && ansicht !== 'seite' ? offenerUmriss(useEditor.getState().dok, ansicht) : null;
   // Geschlossen mit getrennten Kiefern: Der Seitenumriss zeigt den Maulspalt (Florian 12.10. abends: „wie bei der

@@ -8,8 +8,7 @@
 
 import type { V2 } from '../bezier';
 import type { AugenWerte, Ausstattung, Dokument, GefroreneStationen, KaefigDelta, ZonenVorlage } from '../dokument';
-import { type Kaefig, alleFlaechen } from '../kaefig/halbkanten';
-import { poseDokument } from '../poseForm';
+import { alleFlaechen } from '../kaefig/halbkanten';
 import { type V3, zuDreiecken } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
 import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern } from './atlas';
@@ -27,7 +26,6 @@ import { type AnkerFeld, maulAnker, posenUmhaengen } from './posenAnker';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, schaedelGelenk } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
-import { maulLinieAusDokument } from './maulDokument';
 import { PRUEF_OEFFNUNGEN, type ZahnBau, type ZahnMeldung, zaehneBauen, zaehnePruefenBei, zahnListe } from './zaehne';
 
 export type StilArt = 'fest' | 'feuer' | 'gas' | 'fell';
@@ -95,8 +93,6 @@ export type Bauplan = Ausstattung & {
   treffer?: boolean;
   /** Unterkiefergewichte als Farbe je Ecke (Fressen-Tab, Plan 5.2): blau 0 … rot 1 */
   gewichteZeigen?: boolean;
-  /** Fressen-Modus (Fressen wie Editor, 15.10.): Δ und Saum gegen die Griffe der Pose statt der Grundform */
-  formPose?: boolean;
   /**
    * Weitere Pose (Plan 5.2 „Brüllen, Schlafen, Lauf-Extrem funktionieren identisch“; Posenliste, Phase 2 M3): ihre
    * Käfig-Deltas `kaefig.posen[name]` werden mit `staerke` (0 … 1) überblendet — wie die Fressen-Deltas mit der Öffnung,
@@ -140,11 +136,6 @@ export type WesenInfo = {
   stationen?: GefroreneStationen;
   /** Abweichung der Lippenketten von den Linien (Phase 2 M2, px): rote Oberlippe, blaue Unterkieferkante; `versatz` = versetzter Kiefer */
   maul?: MaulAbweichung;
-  /**
-   * Fressen wie Editor (15.10.): hat das Dokument eine Pose-Form, und passt ihr Käfig zur Grundform (gleiche Topologie)?
-   * Passt sie nicht, gilt nur die Grundform (Tafel sagt es).
-   */
-  pose?: { form: boolean; passt: boolean };
 };
 
 /** Reifen (M3): Ringe der gezeichneten Spanten auf dem Körper, mit Perlen an den Spant-Knoten. */
@@ -228,8 +219,6 @@ export type WesenStand = {
   maul: MaulArt;
   beine: BeinArt;
   klingen: KlingenStand | null;
-  /** Käfig der Pose (Fressen wie Editor) mit seinem Wert-Schlüssel; abl null = passt nicht zur Grundform */
-  pose?: { schluessel: string; abl: Ableitung | null } | null;
   /** letzte Blatt-Abweichung (Schritt 4), während Gesten weiterverwendet */
   saum?: WesenNetz['saum'];
   umweg?: WesenNetz['umweg'];
@@ -789,50 +778,6 @@ function zonenWelt(vorlagen: readonly ZonenVorlage[], g: { xMin: number; xMax: n
  * nur Pose, kein Umbau; `schnell` während Gesten → Zug am Seitenumriss statt Ableitung).
  */
 /** Ableit-Optionen aus dem Dokument: eingefrorene Stationen (Schritt 3), wenn vorhanden. */
-/** Gleiche Topologie zweier Käfige (Punktzahl und Flächen bitgleich): Voraussetzung für den Blendshape der Pose. */
-function gleicheTopologieKaefig(a: Kaefig, b: Kaefig): boolean {
-  if (a.n !== b.n || a.fStart.length !== b.fStart.length || a.fVerts.length !== b.fVerts.length) return false;
-  for (let i = 0; i < a.fStart.length; i++) if (a.fStart[i] !== b.fStart[i]) return false;
-  for (let i = 0; i < a.fVerts.length; i++) if (a.fVerts[i] !== b.fVerts[i]) return false;
-  return true;
-}
-
-/** Käfig überblendet: A + o·(B − A) je Koordinate. */
-function kaefigMischen(a: Float64Array, b: Float64Array, o: number): Float64Array {
-  const out = new Float64Array(a.length);
-  for (let i = 0; i < a.length; i++) out[i] = a[i]! + o * (b[i]! - a[i]!);
-  return out;
-}
-
-/** Grenzlagen eines Käfigs zwischen zwei Unterteilungen (Falten von A und B) überblendet: bei o = 0 genau A, bei 1 genau B. */
-function feinMischen(gA: Ableitung['unterteilung']['grenze'], gB: Ableitung['unterteilung']['grenze'], xyz: Float64Array, o: number): Float64Array {
-  if (gA === gB || o <= 0) return anwenden3(gA, xyz);
-  if (o >= 1) return anwenden3(gB, xyz);
-  const fa = anwenden3(gA, xyz);
-  const fb = anwenden3(gB, xyz);
-  for (let i = 0; i < fa.length; i++) fa[i] = fa[i]! + o * (fb[i]! - fa[i]!);
-  return fa;
-}
-
-/**
- * Stationen für den Käfig der Pose (Fressen wie Editor): die wirksamen von A; mit Maul zusätzlich die Maullage von A
- * erzwungen (Winkelring, Ringanfang, Plattenmaul, ohne Band) — gleiche Topologie auch bei einem viel größeren Pose-Maul.
- */
-export function poseStationen(A: Ableitung): GefroreneStationen {
-  const gA = A.gefroren;
-  const m = (A as Partial<MaulErgebnis>).maul;
-  if (!m) return gA;
-  const lageA = m.lage;
-  return { ...gA, maul: { winkel: lageA.k, ...(lageA.ringA !== undefined ? { ringA: lageA.ringA } : {}), kontur: gA.maul?.kontur ?? true, platte: !!lageA.platte, erzwingen: true } };
-}
-
-/** Käfig überblendet und mit den Knochen der Pose geöffnet (Fressen wie Editor): Knochen_B(A + o·(B − A), o) + o·Pinsel-Deltas. */
-export function maulMitPose(A: MaulErgebnis, B: MaulErgebnis, oeffnung: number, fressen: readonly KaefigDelta[]): { xyz: Float64Array; fein: Float64Array } {
-  const misch = { ...B, kaefig: { ...B.kaefig, xyz: kaefigMischen(A.kaefig.xyz, B.kaefig.xyz, oeffnung) } } as MaulErgebnis;
-  const pose = maulLageBei(misch, oeffnung, fressen);
-  return { xyz: pose.xyz, fein: feinMischen(A.unterteilung.grenze, B.unterteilung.grenze, pose.xyz, oeffnung) };
-}
-
 function ableitOpt(dok: Dokument, plan: Partial<Bauplan>): Partial<AbleitOptionen> {
   const g = dok.kaefig?.stationen;
   return { ...(g ? { stationen: g } : {}), ...(plan.fuehrend ? { fuehrend: plan.fuehrend } : {}), ...(plan.ring ? { ring: plan.ring } : {}) };
@@ -858,49 +803,6 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   const deltas = dokRoh.kaefig?.deltas ?? [];
   const mitDeltas = <T extends Ableitung>(a: T): T => (deltas.length ? deltasAnwenden(a, deltas) : a);
   let ablRein: Ableitung | null = null;
-  // Fressen wie Editor (Plan 2026-10-15, Florian: „Blendshapes und Bones kombinieren“): Käfig B aus den Griffen der Pose
-  // mit denselben Stationen und derselben Maultopologie wie A (erzwungen, ohne Band), gemerkt je Pose-Griffe im Stand;
-  // nur mit Öffnung > 0 bzw. im Fressen-Modus. Blendshape D = B − A, überblendet vor den Knochen.
-  const poseFormF = dokRoh.posenForm?.fressen;
-  const poseBraucht = !!poseFormF && (plan.oeffnung > 0 || !!plan.formPose);
-  let poseStand: WesenStand['pose'] = stand?.pose ?? null;
-  let poseAbl: Ableitung | null = null;
-  let posePasst = false;
-  let poseDok: Dokument | null = null;
-  const poseKaefig = (art: 'koerper' | 'maul' | 'beine', A: Ableitung, linieA?: MaulLinie): Ableitung | null => {
-    if (!poseFormF || !poseBraucht) return null;
-    const roh = poseDokument(dokRoh, 'fressen');
-    const dp: Dokument = plan.kasten && !roh.spanten?.length ? { ...roh, spanten: kastenSpanten(roh.profile.front, plan.kasten.fVorn, plan.kasten.fHinten, plan.kasten.fRund, plan.kasten.haerte) } : roh;
-    poseDok = dp;
-    const opt: Partial<AbleitOptionen> = { ...ableitOpt(dp, plan), stationen: poseStationen(A) };
-    let linieB: MaulLinie | undefined = linieA;
-    if (art === 'maul') {
-      // eigene Maullinien der Pose (gezeichnet), sonst die der Grundform
-      if (roh.maul && dokRoh.maul && roh.maul !== dokRoh.maul) {
-        try {
-          linieB = maulLinieAusDokument(roh) ?? linieA;
-        } catch {
-          linieB = linieA;
-        }
-      }
-    }
-    const key = JSON.stringify({ art, f: poseFormF, st: opt.stationen ?? null, linie: linieB ?? null, ring: plan.ring ?? null, kasten: plan.kasten ?? null, mo: moBau, ba: plan.beinAnsaetze ?? null, beine, maul, sk: dokRoh.skalierung });
-    if (poseStand && poseStand.schluessel === key) return poseStand.abl;
-    let B: Ableitung | null = null;
-    try {
-      B =
-        art === 'maul'
-          ? ableitenMitMaul(dp, linieB!, opt, { ...maulOptionenVorlage(maul as 'vorn' | 'unten' | 'hals'), ...(plan.maulOptionen ?? {}) })
-          : art === 'beine'
-            ? ableitenMitBeinen(dp, plan.beinAnsaetze ?? [{ ring: 15, j: 6 }], beine as 'verschmolzen' | 'angesteckt', opt)
-            : ableiten(dp, opt);
-    } catch {
-      B = null;
-    }
-    if (B && !gleicheTopologieKaefig(A.kaefig, B.kaefig)) B = null;
-    poseStand = { schluessel: key, abl: B };
-    return B;
-  };
   let maulLinieVerwendet: MaulLinie | null = null;
   let maulOptAktuell: MaulOptionen | null = null;
   let ankerFeld: AnkerFeld | null = null;
@@ -917,15 +819,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     ablRein = abl;
     abl = mitDeltas(abl);
     const t0 = jetzt();
-    const B0 = poseKaefig('beine', ablRein);
-    let ablB = abl;
-    if (B0) {
-      const B = mitDeltas(B0);
-      poseAbl = B;
-      posePasst = true;
-      ablB = { ...B, kaefig: { ...B.kaefig, xyz: kaefigMischen(abl.kaefig.xyz, B.kaefig.xyz, plan.oeffnung) } } as Ableitung;
-    }
-    const pose = beinPose(ablB as BeinErgebnis, plan.schwung);
+    const pose = beinPose(abl as BeinErgebnis, plan.schwung);
     zug = jetzt() - t0;
     fein = pose.fein;
     xyz = pose.xyz;
@@ -947,22 +841,9 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     ankerFeld = maulAnker(mAbl, abl.kaefig.n, abl.vorlage.kaefig.n);
     const t0 = jetzt();
     fressenDeltas = posenUmhaengen(dokRoh.kaefig?.posen?.fressen ?? [], ankerFeld, abl.vorlage.kaefig.n);
-    // Blendshape der Pose vor den Knochen; die Knochen drehen um die Gelenke der Pose (bei o = 1 genau B, bei o = 0 genau A)
-    const B0 = poseKaefig('maul', ablRein, maulLinieVerwendet);
-    if (B0) {
-      const B = mitDeltas(B0) as MaulErgebnis;
-      kieferGewichteSetzen(B.maul, maulOptAktuell);
-      B.maul.opt = maulOptAktuell;
-      poseAbl = B;
-      posePasst = true;
-      const pose = maulMitPose(abl as MaulErgebnis, B, plan.oeffnung, fressenDeltas);
-      xyz = pose.xyz;
-      fein = pose.fein;
-    } else {
-      const pose = maulLageBei(abl as MaulErgebnis, plan.oeffnung, fressenDeltas);
-      fein = pose.fein;
-      xyz = pose.xyz;
-    }
+    const pose = maulLageBei(abl as MaulErgebnis, plan.oeffnung, fressenDeltas);
+    fein = pose.fein;
+    xyz = pose.xyz;
     zug = jetzt() - t0;
   } else if (schnell && stand && stand.maul === 'aus' && stand.beine === 'aus' && gleicheTopologie(stand.dok, dok)) {
     // führende Kurve des aktuellen Zugs statt der des letzten Baus
@@ -985,17 +866,6 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     abl = mitDeltas(ablRein);
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
-  }
-  // Körper ohne Maul und Beine: Blendshape der Pose überblenden
-  if (maul === 'aus' && beine === 'aus' && ablRein) {
-    const B0 = poseKaefig('koerper', ablRein);
-    if (B0) {
-      const B = mitDeltas(B0);
-      poseAbl = B;
-      posePasst = true;
-      xyz = kaefigMischen(abl.kaefig.xyz, B.kaefig.xyz, plan.oeffnung);
-      fein = feinMischen(abl.unterteilung.grenze, B.unterteilung.grenze, xyz, plan.oeffnung);
-    }
   }
   // Fressen-Pose ohne Schlitzmaul (Florian 15.10.: „im Fressen-Tab Rundmaul, Bohne, W-Maul, Haltung, Schädelform frei
   // formen“): die Deltas mit der Öffnung auf alle Punkte (mit Schlitzmaul nach den Knochen in `maulLageBei`). Vorher wirkten
@@ -1163,22 +1033,19 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   let saum = stand?.saum ?? null;
   let umweg = stand?.umweg ?? null;
   let blatt = stand?.blatt;
-  // im Fressen-Modus gegen die Griffe der Pose (Fressen wie Editor): Ruhelage von B, Pose-Dokument
-  const gegenPose = !!plan.formPose && posePasst && poseAbl !== null && poseDok !== null;
-  if (!schnell || !blatt || gegenPose) {
-    const ablR = gegenPose ? poseAbl! : abl;
+  if (!schnell || !blatt) {
     const ruheP: V3[] = [];
-    for (let i = 0; i < ablR.fein.length / 3; i++) ruheP.push([ablR.fein[3 * i]!, ablR.fein[3 * i + 1]!, ablR.fein[3 * i + 2]!]);
+    for (let i = 0; i < abl.fein.length / 3; i++) ruheP.push([abl.fein[3 * i]!, abl.fein[3 * i + 1]!, abl.fein[3 * i + 2]!]);
     // breitere Kiefer: dort heftet sich die schwarze Linie an (Umweg), das zählt nicht als Abweichung (14.10. nachts)
-    const kiefer = maul !== 'aus' && (ablR as Partial<MaulErgebnis>).maul ? kieferFlaechen(ablR as MaulErgebnis, flaechen) : undefined;
-    const bl = blattAbweichungen(ruheP, flaechen, gegenPose ? poseDok! : dok, 240, kiefer);
+    const kiefer = maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul ? kieferFlaechen(abl as MaulErgebnis, flaechen) : undefined;
+    const bl = blattAbweichungen(ruheP, flaechen, dok, 240, kiefer);
     saum = { seite: bl.seite.saum, front: bl.front.saum, top: bl.top.saum };
     umweg = bl.front.umweg || bl.top.umweg ? { ...(bl.front.umweg ? { front: bl.front.umweg } : {}), ...(bl.top.umweg ? { top: bl.top.umweg } : {}) } : null;
     blatt = { seite: { max: bl.seite.max, mittel: bl.seite.mittel }, front: { max: bl.front.max, mittel: bl.front.mittel }, top: { max: bl.top.max, mittel: bl.top.mittel } };
   }
   // Lippenkanten gegen die Linien (Phase 2 M2): px je Kette in Seite und Front
   const maulAbw = maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul && maulLinieVerwendet ? maulAbweichung(abl as MaulErgebnis, dok, maulLinieVerwendet) : undefined;
-  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), stationen: abl.gefroren, ...(poseFormF ? { pose: { form: true, passt: posePasst || !poseBraucht } } : {}) };
+  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), stationen: abl.gefroren };
   const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
   // Lippenband nach der Kopfhöhe am Maul (nicht der ganzen Körperhöhe: beim Langhals war das Band breiter als der Kiefer)
   const maulHoehe = maul !== 'aus' ? 1.1 * ((abl as Partial<MaulErgebnis>).maul?.kopfHoehe ?? hoehe) : hoehe;
@@ -1384,7 +1251,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, pose: poseStand, ...(saum ? { saum } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

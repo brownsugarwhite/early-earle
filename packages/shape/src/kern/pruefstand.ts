@@ -400,7 +400,7 @@ export function langhalsLinieDokument(roh: Dokument, anfang: V2, mitte: V2, ecke
 const ARTEN = ['haut', 'lippeO', 'lippeU', 'tascheO', 'tascheU', 'rachen', 'winkel'];
 
 /** Region je feiner Fläche: Art des Käfigpunkts mit dem größten Gewicht am ersten Eckpunkt (wie Beweis 2). */
-export function regionen(abl: MaulErgebnis, flaechen: number[][]): string[] {
+function regionen(abl: MaulErgebnis, flaechen: number[][]): string[] {
   const M = abl.unterteilung.matrix;
   const art = abl.maul.art;
   return flaechen.map((f) => {

@@ -8,16 +8,12 @@
 import { type Ansicht, type Dokument, type Lippen, type Linie3, type Profil, type V2, type V3T, bewegeKnoten, einfuegen, loeschen, naechsterAufProfil, segment } from '@ee/shape';
 import { type Netz, bereichUnterteilen, kinnRichtung, knotenBei, maulAnfangIndizes, maulRichtung, mundwinkelVerbinden, offenVorschlag, poseMitAnfaengen, unterteilen } from '@ee/shape/versuch';
 import { type Modus, useEditor } from '../state/editorStore';
-import { useUi } from '../state/uiStore';
 import { flaechenBereiche } from '../versuch/maulVersuch';
 import { maulZuletzt } from './maulKoerper';
 
-/**
- * Bearbeitet diese Ansicht im aktuellen Modus die Pose-Form des Versuchs (Fressen, Seite)? In der Bauweise Kern nie: Dort
- * sehen alle Werkzeuge im Fressen-Modus die Pose-Sicht des Speichers (Fressen wie Editor, 15.10.).
- */
+/** Bearbeitet diese Ansicht im aktuellen Modus die Pose-Form? (Fressen, Seite) */
 export function istPose(modus: Modus, ansicht: Ansicht): boolean {
-  return modus === 'fressen' && ansicht === 'seite' && useUi.getState().bauweise !== 'kern';
+  return modus === 'fressen' && ansicht === 'seite';
 }
 
 /** Gespeicherte Seitenform der Pose, wenn sie zur Punktstruktur des Umrisses passt. */
