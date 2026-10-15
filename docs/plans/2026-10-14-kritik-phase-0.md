@@ -136,4 +136,5 @@
 - **Rundmaul ohne Zähne:** Das Zahnfleisch hängt am Schlitzmaul; Zähne rundum (Aal) brauchen ein Ring-Zahnfleisch, Phase 2.
 - **Rundmaul flacht die Front ab** (die Haut dehnt sich radial) und gilt nur ohne Schlitzmaul, ohne Beine, mit Earle-Look → Look-Urteil Florian, Phase 3.
 - **W-Oberlippe (Hund) nicht gelöst** (drei Anläufe am Plattenmaul): Arme, die am Mundwinkel wieder steigen oder flach auslaufen, schneiden beim Öffnen durch die Oberlippe (67–442 Paare). Wege: Unterkiefergewichte je Armstück, oder Hund als Schlitzmaul mit Philtrum-Kerbe → Florians Entscheidung, Phase 2.
+- **Bauch hebt beim Öffnen ab** (Kugel mit Maul vorn, Rex: 1,4–1,6 % der Höhe, Bauch gleitet nach hinten): Die Unterkiefergewichte reichen bis zum Boden. Bodenhaftung über die Gewichte staucht die Haut (36 Paare) → Schädel statt Unterkiefer am Limit (Plan 5.2), Phase 2, wenn Florian es sieht.
 
