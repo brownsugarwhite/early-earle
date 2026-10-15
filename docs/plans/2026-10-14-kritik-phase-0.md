@@ -130,3 +130,9 @@
 - **Feuer und Gas:** behalten ihr gemaltes Schlitzauge, keine Formen, Zustände oder Kugeln (eigenes Material) → Phase 4 (Stile).
 - **Höhle nur ohne angesteckte Beine und nicht für ein Auge in der Mitte** (Zyklop-Augapfel auf der Naht) → bei Bedarf, Phase 3.
 
+## Offen aus Phase 2 M6 Maularten (15.10. nachts, eigene Befunde, je mit Phase)
+
+- **Drache ohne Unterkiefer:** Die untere Schnauzenhälfte steht beim Öffnen als Schnabel vor (Maullinie bei 0,42 der Sprosse). Tiefer gelegte Linien (0,25/0,15) falten die dünne Kehlhaut in die Tasche (offen 42–54 Durchdringungen) → eigene Kehl-Tasche, Phase 2/3.
+- **Rundmaul ohne Zähne:** Das Zahnfleisch hängt am Schlitzmaul; Zähne rundum (Aal) brauchen ein Ring-Zahnfleisch, Phase 2.
+- **Rundmaul flacht die Front ab** (die Haut dehnt sich radial) und gilt nur ohne Schlitzmaul, ohne Beine, mit Earle-Look → Look-Urteil Florian, Phase 3.
+

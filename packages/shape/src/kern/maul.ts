@@ -172,9 +172,14 @@ export type MaulOptionen = {
 
 export const MAUL_STANDARD: MaulOptionen = { reihen: 3, tiefe: 0.9, linse: 0.03, rachenTiefe: 0.7, rachenInnen: 0.55, schaedelHinter: 0.45, lippenSchaerfe: 1e6, band: 2, bandOben: 8, nackenGanz: false, winkelUnten: 58, winkelOben: 15, oeffnungsart: 'kippen', zugWeite: 0.5, rille: 0.012, platte: 10, beutel: 0.5, haps: 0, hapsTiefe: 0.12, hapsHoehe: 0.14, hapsWeite: 0.06, hapsRadius: 0.6, gewichte: 'winkel', gelenk: [0, 0], kieferWinkel: [30, 150], kieferReichweite: [1.2, 2], kieferZug: [0, 0] };
 
-/** Maul-Optionen je vorgefertigter Lage: vorn/unten kippen (Rex), hals zieht (Drache) mit ruhigem Schädel. */
+/**
+ * Maul-Optionen je vorgefertigter Lage: vorn/unten kippen (Rex), hals zieht (Drache). Phase 2 M6 (Drache wie
+ * `rex_dragon_big mouth`): Der Kopf kippt beim Öffnen 20° nach hinten, der Hals zieht 0,7 Maullängen — Öffnung 2,5-mal so
+ * weit wie mit 4° und Zug 0,5, ohne Durchdringung bei 0/25/50/75/100 %; mit 22° oder mehr stoßen die Rachenwände an der
+ * Mittelebene aneinander.
+ */
 export function maulOptionenVorlage(art: 'vorn' | 'unten' | 'hals'): Partial<MaulOptionen> {
-  return art === 'hals' ? { oeffnungsart: 'ziehen', winkelOben: 4, band: 3, nackenGanz: true } : {};
+  return art === 'hals' ? { oeffnungsart: 'ziehen', winkelOben: 20, zugWeite: 0.7, band: 3, nackenGanz: true } : {};
 }
 
 /** Lage des Schlitzes im Gitter samt Lippenhöhen (für die Umparametrisierung) und Mundwinkel. */
