@@ -8,6 +8,7 @@
 
 | Datum | Woran | Urteil | Folge |
 |---|---|---|---|
+| 15.10. nachmittags | Ente mit Flügeln, Giraffe mit Bauch vor der Nase (Bild `docs/look/editor/florian-2026-10-15-ente-fluegel.webp`) | „Aus den Shapes lässt sich sehr genau ableiten, was verlangt ist … ich hätte eine weiche Ente mit Flügeln erwartet … sobald der Bauch weiter vorn ist als die Nasenspitze, springt es um … es muss flexibler und intelligenter werden“; Mund auch an Bauch, Hals, Nase frei setzbar | Plan Teil G „Grundkörper für jede Form“ nach dem Maul-Beweis (seine Entscheidung 7) |
 | 15.10. vormittags | Maul an eigenen Wesen (Kugel mit Bauch, Ei, Langhals, Rex) | „äußerst fragil … Nasen und Bäuche kollabieren, komische Falten und Wellen, der gelbe Umriss wird shaky und ragt aus der schwarzen Form … Das Maul soll perfekt sitzen und das Grundmesh nicht beeinflussen“; J-Mundwinkel unmöglich, echter Rex-Unterbiss zerreißt alles | Plan [Maul als Einsatz, Werkzeug-Harmonie und Posen](2026-10-15-maul-einsatz-harmonie-posen.md), Teil A |
 | 15.10. vormittags | Fressen nach „Fressen wie Editor“ | „beim Zurückspringen auf Editor bleibt der neue Shape der Fressen-Pose erhalten“; mit Maul nichts verschiebbar; „Im Fressen-Tab ist das Maul immer getrennt“; Regler für Morphs, Bones je Pose; „Das Posen- und Blendshape-Element ist das Herzstück“ | Rücknahme 42ef353; Teil B (B1 als Sofortkorrektur) |
 | 15.10. vormittags | Pinsel und Linien | „Tools wie Ziehen und Aufblasen werden nicht korrekt auf die Shapes übertragen … jede Änderung der schwarzen Linie oder das Setzen des Mauls wirft unvorhersehbare Abweichungen aus. Alle Werkzeuge müssen perfekt harmonieren!“ | Teil H (Käfig als Wahrheit, Relief, örtliche Änderungen, Linien bleiben, wo gezeichnet) |
@@ -158,3 +159,4 @@
 - [ ] **Fressen wie Editor bearbeitbar, Lippen exakt auf Rot/Blau, in Fressen immer getrennt, Bones je Pose, Morph-Regler** → Teil B.
 - [ ] **Pinsel ↔ schwarze Linien ↔ Maul ohne unvorhersehbare Abweichungen** → Teil H.
 - [ ] **Vollständige Prüfungen** (Zufallsreihe, Werkzeug-Matrix, echte Gesten) → Teil V vor jedem Umbau.
+- [ ] **Grundkörper für jede Form** (Bauch vor der Nase ohne Umspringen, S-Hals, Flügel/Flossen als nahtlose Teile, weiche Ente aus drei Shapes) → Teil G.

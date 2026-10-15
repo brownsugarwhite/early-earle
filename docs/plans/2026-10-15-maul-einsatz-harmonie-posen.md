@@ -28,6 +28,7 @@ Grundlage ist die große Sitzung: Plan „Wesen-Editor 2“ (`docs/plans/2026-10
 4. Die heutigen Fressen-Commits **zurücknehmen**.
 5. Pinsel und Linie: Die schwarze Linie zeigt das **Pinsel-Relief, seine Punkte bleiben**; neue Punkte nur von Hand oder per „Relief übernehmen“.
 6. Maullinien: **bleiben, wo gezeichnet** (in ihrer Ansicht; Anfang folgt der Kontur, Tiefe auf der Haut, der kürzere Kiefer behält seinen Abstand nach innen) — wie in Illustrator.
+7. (Nachtrag 15.10. nachmittags) **Teil G „Grundkörper für jede Form“** kommt in den Plan, nach dem Maul-Beweis und vor dem Werkzeug-Fundament.
 
 ## Befund (Code-Analysen 15.10.)
 
@@ -74,11 +75,12 @@ Grundlage ist die große Sitzung: Plan „Wesen-Editor 2“ (`docs/plans/2026-10
 | 1 | Prüfstand (Teil V) und Werkzeug-Matrix auf dem heutigen Stand = Ausgangslage; deine Fehler als Zahlen nachgestellt | Bögen der Ausgangslage |
 | 2 | Sofortkorrektur Tab-Wechsel (B1): Editor zeigt immer die Grundform | Du probierst das Hin- und Herspringen |
 | 3 | Maul-Beweis A1–A11 als eigenständiges Kernmodul | Look-Urteile 1–3 |
-| 4 | Werkzeug-Fundament H1–H5: Vorgänge, X0 im Dokument, örtliche Änderungen, Relief, Linien auf der Haut | Probe: Körperbau wie vorher, Pinsel und Linien greifen ineinander |
-| 5 | Maul im Editor: A12–A14 mit H6; alter Maulbau gelöscht | Deine Probe mit eigenen Wesen |
-| 6 | H7: „Relief übernehmen“, Neu ableiten | – |
-| 7 | Posen B2–B10 | nach jedem Schritt |
-| 8 | H8/H9: ganze Matrix, Abschluss | Abnahme |
+| 4 | Grundkörper-Beweis G1–G5 (Teil G, Nachtrag 15.10.) | Bögen: deine Ente, Giraffe mit Bauch vor der Nase, Fisch mit Flossen |
+| 5 | Werkzeug-Fundament H1–H5: Vorgänge, X0 im Dokument, örtliche Änderungen, Relief, Linien auf der Haut | Probe: Körperbau wie vorher, Pinsel und Linien greifen ineinander |
+| 6 | Maul und Grundkörper im Editor: A12–A14 mit H6, Einbau von G; alter Maulbau gelöscht | Deine Probe mit eigenen Wesen |
+| 7 | H7: „Relief übernehmen“, Neu ableiten | – |
+| 8 | Posen B2–B10 | nach jedem Schritt |
+| 9 | H8/H9: ganze Matrix, Abschluss | Abnahme |
 
 ## Teil 0: Aufräumen (zuerst)
 
@@ -196,6 +198,36 @@ Pinsel im Einzelnen: Ziehen/Aufblasen wirken auf X0; Glätten (⇧) glättet das
 
 **Abbruchregeln:** Masken-Artefakte (Faltenzuwachs > 2° oder Dellen > 0,5 px in > 2 % der Schritte trotz Auslaufbreite 2–4 und Ausgleich) → Stationen als Kurvenparameter, sonst Löser im Auslauf. Florian lehnt das Relief ab → „Relief übernehmen“ läuft automatisch nach jedem Strich (Algorithmus ist derselbe). Abschluss > 400 ms → Zerlegung wiederverwenden. Details verzerren (Beule > 20 % bei Streckung < 1,5) → starre Rahmen.
 
+## Teil G: Grundkörper für jede Form (Nachtrag 15.10. nachmittags)
+
+> Florian (15.10., Bild `docs/look/editor/florian-2026-10-15-ente-fluegel.webp`: Seite Δ 124 px, Top Δ 86 px): „Ich verstehe nicht, warum Shapes mit Bauch, Hals und Flügeln oder Flossen nicht genauso umgesetzt werden können. Aus den Shapes lässt sich sehr genau ableiten, was verlangt ist … Ich hätte erwartet, dass aus dem Beispiel eine weiche Ente mit Flügeln entsteht … Bei der Giraffe geht es, wenn der Bauch unten nicht weiter nach vorne ragt als die Nasenspitze. Sobald er das tut, springt es um und es wird verzogen. Es muss flexibler und intelligenter werden … Den Mund muss ich auch hier völlig frei setzen können, ob an Bauch, Hals oder oben/unten an der Nase.“
+
+**Befund:** Der Grundkörper ist eine Röhre aus Ringen entlang einer Wirbelsäule.
+1. **Umspringen:** Die Wirbelsäule entsteht aus dem Seitenumriss, Anfang und Ende sind der vorderste und der hinterste Punkt (`versuch/wirbelsaeule.ts`, Leiter). Ragt der Bauch weiter vor als die Nase, wird der Bauch zum Anfang, und die Röhre klappt um.
+2. **Flügel und Flossen:** Jeder Ring hat genau einen Querschnitt (aus der Front bzw. den Spanten), seine Breite kommt aus dem Top an dieser Stelle. Aus Flügeln oder Flossen im Top wird so ein breiter Klotz statt dünner Teile in einer bestimmten Höhe.
+3. **S-Hals:** Läuft der Hals über den Körper zurück, liegen an derselben Stelle zwei Teile übereinander; eine Röhre mit einem Ring je Stelle kann das nur verdreht darstellen.
+
+Die Information der drei Shapes reicht: Ihr Schnitt beschreibt, was verlangt ist. Der heutige Bau nutzt ihn nur entlang einer einzigen Röhre. Der Maul-Einsatz (Teil A) hängt nicht davon ab, wie der Körper gebaut ist; er setzt auf jeden Körper auf, der hier entsteht.
+
+**Ansatz (zu beweisen, nicht versprochen):**
+1. **Wirbelsäule aus der Mittelachse** des Seitenumrisses statt aus vorderstem und hinterstem Punkt. Die Enden werden einmal gewählt und als Kurvenparameter eingefroren; beim Bearbeiten springt nichts um.
+2. **Breite je Ring aus Top und Front zugleich** (Schnitt der Ansichten an der Lage des Rings).
+3. **Teile automatisch:** Was die Shapes zeigen, die Röhre aber nicht erklären kann (Flügel, Flossen, Beine, Ohren), wird als nahtlose Ausstülpung angesetzt (wie die Beine aus Beweis 3): Umriss aus der zeigenden Ansicht, Dicke und Höhe aus den anderen.
+4. **Rückfall zum Vergleich:** allgemeiner Schnitt der drei Ansichten als glatte Fläche mit neu gelegtem Vierecknetz, falls 1–3 nicht reichen.
+
+**Schritte:**
+- **G1** Prüfkörper und Ausgangslage: Florians Ente (aus seinem Bild nachgestellt), Giraffe mit Bauch vor der Nase, S-Hals, Fisch mit Flossen, Robbe, seine Bögen; die Zufallsreihe um solche Körper erweitert. Ausgangslage messen.
+- **G2** Mittelachsen-Wirbelsäule mit eingefrorenen Enden.
+- **G3** Breite aus beiden Ansichten.
+- **G4** automatische Teile.
+- **G5** Kontaktbögen → **Florians Urteil**.
+
+**Kriterien:** Δ ≤ 1–2 px in allen Blättern (außer echten Widersprüchen der Zeichnungen, die angezeigt werden); glatt wie die Kugel (Faltenmaß); kein Umspringen beim Ziehen (Sprung ≤ 0,5 px in der Zug-Matrix); das Maul aus Teil A setzt auf jeden dieser Körper an jeder Stelle; Gestenende ≤ 250 ms.
+
+**Abhängigkeiten:** Teil H nutzt die Ableitung C(P) als Erzeuger und kommt deshalb nach der Entscheidung über G. Der Einbau von G geschieht mit dem Maul im Editor (Stufe 6).
+
+**Abbruchregel:** Nach drei gemessenen Fehlanläufen an derselben Körperklasse Bericht an Florian und Rückfall 4 prüfen.
+
 ## Teil B: Posen und Blendshapes
 
 **Bauweise (zehn Festlegungen):**
@@ -272,7 +304,7 @@ Pinsel im Einzelnen: Ziehen/Aufblasen wirken auf X0; Glätten (⇧) glättet das
 
 ## Dateien
 
-**Neu:** `packages/shape/src/kern/pruefen/` (Zufallsreihe, Maße, Tests), `kern/einsatz/` (Teil A), `kern/harmonie/` (Teil H), `kern/posen/` (Teil B), `kern/rig.ts`, `packages/shape/src/loeser/{cg,posenLoeser,cholesky}.ts`; `apps/editor/src/werkzeuge/ziel.ts`; Skripte `apps/editor/scripts/pruefen/{zufallsreihe,reihe-boegen,werkzeug-matrix}.ts`, `werkzeug-harmonie.mjs`, `posen-kontakt.mjs`; E2E `apps/editor/e2e/{maul-einsatz,posen-wechsel,posen-mischen,posen-anlegen}.spec.ts`.
+**Neu:** `packages/shape/src/kern/pruefen/` (Zufallsreihe, Maße, Tests), `kern/einsatz/` (Teil A), `kern/grundkoerper/` (Teil G), `kern/harmonie/` (Teil H), `kern/posen/` (Teil B), `kern/rig.ts`, `packages/shape/src/loeser/{cg,posenLoeser,cholesky}.ts`; `apps/editor/src/werkzeuge/ziel.ts`; Skripte `apps/editor/scripts/pruefen/{zufallsreihe,reihe-boegen,werkzeug-matrix}.ts`, `werkzeug-harmonie.mjs`, `posen-kontakt.mjs`; E2E `apps/editor/e2e/{maul-einsatz,posen-wechsel,posen-mischen,posen-anlegen}.spec.ts`.
 
 **Geändert, Kern:** `dokument.ts` (v2, v3, Migration), `kern/wesen.ts` (Bau aus X0 → verfeinern → Einsatz → Posen, Zwischenspeicher je Schicht), `kern/ableiten.ts` (Maulzweige raus), `kern/maul.ts` (nur Rig-Teile bleiben, nach `rig.ts`), `kern/pinsel.ts`, `kern/abweichung.ts` (Relief; Δ nur für Widersprüche), `kern/zaehne.ts`, `kern/deskriptoren.ts`, `kern/augenHoehle.ts`, `kern/rundmaul.ts`.
 
