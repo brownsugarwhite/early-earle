@@ -1,4 +1,4 @@
-# Übergabe (Stand 15.10.2026 nachts, Stufe 3: B3, B3b, B4, B5 gebaut; Teil L freigegeben)
+# Übergabe (Stand 16.10.2026 früh: L0.1 neu gebaut, Teil G G1/G2/G2b gebaut, G4 erster Beweis; jetzt B6)
 
 Branch `claude/editor-grundlayout`. **Es gilt der freigegebene Plan [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)** mit den ausführlichen Entwürfen [Teil A Maul als Einsatz](plans/2026-10-15-entwurf-maul-einsatz.md), [Teil H Werkzeug-Harmonie](plans/2026-10-15-entwurf-werkzeug-harmonie.md) und [Teil B Posen](plans/2026-10-15-entwurf-posen.md). Alle älteren Fahrpläne (Phase 2, Ruhiges Netz und Maulschlitz, Fressen wie Editor) sind dadurch abgelöst; ihre Fallen und Messwerkzeuge bleiben gültiges Wissen.
 
@@ -51,20 +51,20 @@ Die Ursachen stehen im Plan unter „Befund“ (Code-Analysen mit Datei- und Zei
 
   Befunde im Kritik-Register („Befunde aus B5“): Ein Zug um 60 px faltet die Kinnfront (B8). Der Mundwinkel liegt 0,6 px neben dem Zeiger. Knicke kann die runde Lippenkette nicht nachbilden (Teil A).
 
-## Nächster Schritt: L0 (Teil L, freigegeben 15.10. nachts), danach B6
+## Diese Nacht (15./16.10., Florian schläft: „außer den Konturlinien … besonders die Grundform … Ente mit Flügeln und Bäuche unter dem Mund … danach weiter mit B6, immer weiter“)
 
-Florian zu B5: „Es scheint schon ganz gut zu funktionieren.“ Dann seine Idee, die Linien auf der Haut zu echten Griffen mit Kantigkeit zu machen; nach einem ersten Entwurf (den er als zu kompliziert zurückwies) freigegeben als **Kurvennetz** ([`docs/plans/2026-10-15-teil-l-linien-kurvennetz.md`](plans/2026-10-15-teil-l-linien-kurvennetz.md), Entscheidung 11):
-- Konturen und Linien sind gleichwertige Kurven mit gemeinsamen Knoten; Linien beginnen an Konturen, Kreuzungen werden automatisch Knoten.
-- Jede Linie wird eine Schleife des Käfigs genau auf der Linie (Querlinie → Ring, Längslinie → Längsreihe), ohne neue Punktnummern, eingefroren wie die Stationen: keine Treppe, nichts springt.
-- Knick = Ecke im Querschnitt am Kreuzungsknoten (wie heute bei Spanten), kein Regler für die Wirkbreite; Spanten werden geschlossene Querschnittslinien (L2).
-- **L0** = Beweis im Kern mit harten Kriterien (Planseite), dann Halt für Florian. Danach **B6** mit Linien in der Pose statt „Reifen in der Pose“.
+Alles gebaut und gemessen, **nichts abgenommen**. Bilder in `docs/progress/editor/`, Zahlen auf den Planseiten.
 
-**Stand L0 (15.10. nachts):** L0.1 „Längslinie als Reihe“ ist gebaut (`packages/shape/src/kern/netz/reihen.ts`, `AbleitOptionen.netzLinien`, ohne Linien bitgleich) und gemessen:
-- Die Reihe liegt auf der Linie: 0,12 px waagerecht, 0,74 px am Ei-Bogen.
-- Die Haut bewegt sich beim Zeichnen 0,86 px (Ziel 0,25).
-- Schräg über die breiteste Stelle scheitert es (7,9 px).
+1. **Teil L, L0.1 „Linie wird Reihe“, zweiter Ansatz** (4db6df6; Planseite [Teil L](plans/2026-10-15-teil-l-linien-kurvennetz.md), Stand): „Die Fläche bleibt, das Netz gleitet“ — Röhrengitter (u, v) der feinen Fläche, Gleitfeld als dünne Platte im Maß der Haut (0 auf Konturen und Kappen), Ausgleich senkrecht zur Haut gegen die alte Fläche, Reihe quer zur Linie stark, Gleiten, mitgleitender Bezugskäfig. Der erste Versuch ist entfernt, die Ableitung wieder bitgleich. Gemessen: Reihe 0,04–0,29 px auf der Linie, Haut 0,04–0,22 px (Kugel, Ei), Normalen 0,19° waagerecht, **1,4° bei schrägen Linien** (Tor 1°), **Rex-Braue offen** (24° an der Schnauzenspitze). Bild `l0-linie-als-reihe-2026-10-15.jpg`.
+2. **Teil G vorgezogen** (hängt nicht am Maul-Einsatz; Planseite [Maul als Einsatz …](plans/2026-10-15-maul-einsatz-harmonie-posen.md), Stand):
+   - **G1** Prüfkörper `kern/pruefen/grundkoerper.ts`: deine Ente (aus deinem Bild), Giraffe mit Bauch vor der Nase, Schwanenhals, Fisch mit Flossen; Kontaktbogen `apps/editor/scripts/pruefen/grundkoerper-g.ts`. Ausgangslage: Ente Seite Δ 76 px, Giraffe 49 px (`g1-ausgangslage-2026-10-15.jpg`).
+   - **G2 Enden der Wirbelsäule** (2574a95): eingefroren als Kurvenparameter der Seite (mit den Stationen), automatisch über Wege im Inneren (der innen fernste Punkt hinter einer Biegung wird Anfang). Alle 33 bisherigen Prüfkörper bitgleich; **ein Zug am Bauch über die Nase springt nicht mehr um**; Ente Seite 76 → 5 px, Giraffe 49 → 1 px (`g2-enden-2026-10-15.jpg`).
+   - **G2b Fächer an inneren Ecken** (351b963): Ente Falten über 20° 1209 → 416, bestehende Körper bitgleich (`g2b-faecher-2026-10-15.jpg`).
+   - **G4 Teile, erster Beweis, nicht gut genug** (56a8d72): Erkennung durch Öffnen der Silhouetten (bisherige Körper ohne Teil, bitgleich; Ente: Flügelspitzen; Fisch: Brustflossen), Bau als Ausstülpung entlang der Mittellinie mit flachen Ellipsen. Flügel und Flossen sitzen an der richtigen Stelle, aber Ente Front/Top Δ 24/26 px und Falten am tangentialen Ansatz, Fisch-Schwanzgabel faltet (`g4-teile-erster-beweis-2026-10-16.jpg`). Befunde und Wege auf der Planseite.
+   - **Bäuche unter dem Mund:** Der Teil „Bauch vor der Nase springt um“ ist mit G2 gelöst. Dass ein Bauch unter einem hohen Maul zur Flosse klappt, kommt vom Maulbau (feste Punktzahl über/unter der Lippe) und gehört zu Teil A (Maul als Einsatz).
+3. **Jetzt: B6** (Florians Auftrag). Danach nach Plan weiter.
 
-Nach vier Anläufen angehalten. Ursachen und Vorschlag für den nächsten Anlauf stehen auf der Planseite (Stand). **Warten auf Florians Entscheidung.**
+**Für dich zum Ansehen:** die fünf Bilder oben; Entscheidungen, die anstehen: (a) L0.1 — genügen 1,4° Normalenabweichung bei schrägen Linien, oder soll die Verdichtung (eine Reihe mehr) kommen? (b) G4 — Flügel nahtlos als Ausstülpung (nach außen ansetzen, dann nach hinten) oder als angestecktes Teil mit verdeckter Überlappung?
 
 ## Erledigt: Stufe 2, B1
 
