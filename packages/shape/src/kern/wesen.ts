@@ -265,6 +265,8 @@ export function pruefwesenBauplan(name: string): Ausstattung {
         unten: [{ f: 0.09, v: 0.47, innen: 0.15 }, { f: 0.13, v: 0.58, innen: 0.2 }, { f: 0.2, v: 0.55, innen: 0.2 }, { f: 0.28, v: 0.5, innen: 0.15 }, { f: 0.337, v: 0.45, innen: 0 }],
       },
       maulOptionen: { reihen: 3 },
+      // Augäpfel in der Höhle (Phase 2 M5, Bild 11): über dem Mundwinkel, Ø 6 % der Höhe (Zielsystem), 20° geneigt (böser Blick)
+      augen: { ring: 8, j: 3, groesse: 0.06, punkt: [-0.15, 0.285, 0.11], art: 'augapfel', form: 'knopf', drehung: 20 },
     };
   }
   if (name === 'tiger') {

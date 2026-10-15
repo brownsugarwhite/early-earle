@@ -48,3 +48,4 @@ Aus `packages/shape` starten: `npx vite-node ../../apps/editor/scripts/pruefen/<
 | `augen-glubsch.mjs` | Phase 2 M5, Schritt 2: Prüfwesen Glubsch in allen Zuständen, Lid halb, schräg, zu von unten; Kugel-Paare; Rex mit Glubschaugen zu/offen (Kugel folgt dem Schädel), neben Bild 10 |
 | `augen-tafel.mjs` | Tafel Augen: Chip Glubsch, Tiefe, Rand ziehen (Größe), Undo, Klick setzt neu; Prüfpunkte mit ✓/✗ |
 | `augen-augapfel.mjs` | Phase 2 M5, Schritte 3a/3b: Augapfel am Rex mit Höhle (zu/offen, 0°/20°, vorn, nah, von vorn oben, Seite) neben Bild 11; Spiegeltest gedrehter Augen (gemalt, Glubsch) von vorn (`LAGE=x,y,z`, `GROESSE`; Rex-Probe `LAGE=-0.15,0.285,0.11 GROESSE=0.06`) |
+| `augen-abnahme.mjs` | Abnahme M5: PezenPez, Glubsch und Rex aus der Library, alle Zustände, neben Bild 10, PezenPez-Vorlage und Bild 11 |
