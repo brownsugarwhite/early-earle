@@ -2638,7 +2638,7 @@ export function maulPose(abl: MaulErgebnis, oeffnung: number): { xyz: Float64Arr
  * unten, „oben“ = Richtung von der unteren zur oberen Kopie); Taschenpunkte folgen ihrer Lippe (`quelle`, zum Rachen hin
  * auslaufend), die Haut dem nächsten Lippenpunkt mit Abfall (1 − d/R)² über den unposierten Abstand.
  */
-function hapsAnwenden(abl: MaulErgebnis, xyz: Float64Array, a: number): void {
+export function hapsAnwenden(abl: MaulErgebnis, xyz: Float64Array, a: number): void {
   const m = abl.maul;
   const n = abl.kaefig.n;
   const o = m.opt;
