@@ -115,7 +115,7 @@ export function zahnfleischKern(abl: MaulErgebnis, fein: ArrayLike<number>, ruhe
     const rd = feinZug(randKaefig(kiefer));
     const gg = feinZug(fleischKaefig(gegenK));
     if (rd.length !== fl.length || gg.length !== fl.length) throw new Error('Zähne: Zahnfleisch, Rand und Gegenkiefer ungleich lang');
-    // je Käfigspalte: Richtung längs der Haut des Gegenkiefers (Rand → Hautnachbar) und ein Punkt tief in der Tasche
+    // je Käfigspalte, in der Ruhelage (zu): Richtung längs der Haut des Gegenkiefers (Rand → Hautnachbar) und ein Punkt tief in der Tasche
     const gegenRand = randKaefig(gegenK);
     const tief = (t: number) => (t < M ? reihe(kiefer, Math.max(0, K - 1))[t]! : winkel(Math.max(0, K - 1)));
     const gegenHautRichtung: V3[] = [];
@@ -123,8 +123,8 @@ export function zahnfleischKern(abl: MaulErgebnis, fein: ArrayLike<number>, ruhe
     for (let t = 0; t <= M; t++) {
       const r = gegenRand[t]!;
       const h = hautNachbar(r, gegenK);
-      gegenHautRichtung.push(h >= 0 ? minus3(P(h), P(r)) : [0, 0, 0]);
-      innen.push(P(tief(t)));
+      gegenHautRichtung.push(h >= 0 ? minus3(P(h, ruhe), P(r, ruhe)) : [0, 0, 0]);
+      innen.push(P(tief(t), ruhe));
     }
     // Bogenanteil der Ruhelage
     const u = new Float64Array(fl.length);
@@ -138,11 +138,11 @@ export function zahnfleischKern(abl: MaulErgebnis, fein: ArrayLike<number>, ruhe
     const S = { 1: seiteBauen(kiefer, false), [-1]: seiteBauen(kiefer, true) } as Record<-1 | 1, Seite>;
     const nF = S[1].fleisch.length;
     const proSpalte = M > 0 ? (nF - 1) / M : 1;
-    const bei = (kette: readonly number[], j: number): V3 => {
+    const bei = (kette: readonly number[], j: number, A: ArrayLike<number> = fein): V3 => {
       const j0 = Math.min(kette.length - 2, Math.max(0, Math.floor(j)));
       const f = zahl(j - j0, 0, 1);
-      const a = P(kette[j0]!);
-      const b = P(kette[j0 + 1]!);
+      const a = P(kette[j0]!, A);
+      const b = P(kette[j0 + 1]!, A);
       return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
     };
     const spalte = (L: readonly V3[], j: number): V3 => {
@@ -168,21 +168,38 @@ export function zahnfleischKern(abl: MaulErgebnis, fein: ArrayLike<number>, ruhe
       return zahl(s.u[j0]! + (j - j0) * (s.u[j0 + 1]! - s.u[j0]!), 0, 1);
     };
     // zentrale Differenz; an der Mitte über die Naht hinweg auf der anderen Seite (der Mittelzahn steht dann quer zur Naht)
-    const tangente = (sk: -1 | 1, j: number): V3 => {
+    const tangente = (sk: -1 | 1, j: number, A: ArrayLike<number>): V3 => {
       const h = 0.5;
-      const a = j - h >= 0 ? bei(S[sk].fleisch, j - h) : bei(S[sk === 1 ? -1 : 1].fleisch, h - j);
-      const b = bei(S[sk].fleisch, Math.min(nF - 1, j + h));
+      const a = j - h >= 0 ? bei(S[sk].fleisch, j - h, A) : bei(S[sk === 1 ? -1 : 1].fleisch, h - j, A);
+      const b = bei(S[sk].fleisch, Math.min(nF - 1, j + h), A);
       return normiert3(minus3(b, a));
     };
     const senkrecht = (t: V3, v: V3): V3 => minus3(v, mal3(t, punkt3(t, v)));
-    /** Beißrichtung roh (senkrecht zu t) und ihre Länge */
+    /** Beißrichtung in der Ruhelage roh (senkrecht zu t) und ihre Länge */
     const zumGegen = (s: Seite, j: number, t: V3, aussen: boolean): { v: V3; l: number } => {
       if (aussen) {
         const v = senkrecht(t, spalte(s.gegenHautRichtung, j));
         return { v, l: laenge3(v) };
       }
-      const v = senkrecht(t, minus3(bei(s.gegen, j), bei(s.fleisch, j)));
+      const v = senkrecht(t, minus3(bei(s.gegen, j, ruhe), bei(s.fleisch, j, ruhe)));
       return { v, l: laenge3(v) };
+    };
+    /**
+     * Rahmen des eigenen Kiefers an der Stelle j: Tangente des Zahnfleischs, Richtung zur eigenen Lippe (senkrecht dazu),
+     * Normale. Zahnfleisch und Lippe gehören demselben Kiefer — der Rahmen folgt Knochen, Haps und Fressen-Pose. Am
+     * Mundwinkel laufen beide zusammen: dort gilt die Richtung weiter vorn.
+     */
+    const kieferRahmen = (sk: -1 | 1, j: number, A: ArrayLike<number>): { t: V3; w: V3; n: V3 } => {
+      const s = S[sk];
+      const t = tangente(sk, j, A);
+      let jj = j;
+      let w = senkrecht(t, minus3(bei(s.rand, jj, A), bei(s.fleisch, jj, A)));
+      while (jj > 0 && laenge3(w) < NAH_AM_WINKEL) {
+        jj = Math.max(0, jj - 0.25 * proSpalte);
+        w = senkrecht(t, minus3(bei(s.rand, jj, A), bei(s.fleisch, jj, A)));
+      }
+      w = normiert3(w);
+      return { t, w, n: kreuz3(t, w) };
     };
     const rahmen = (u: number, seite: -1 | 0 | 1, aussen = false): ZahnRahmen => {
       const sk: -1 | 1 = seite < 0 ? -1 : 1;
@@ -190,27 +207,38 @@ export function zahnfleischKern(abl: MaulErgebnis, fein: ArrayLike<number>, ruhe
       const j = jVon(s, seite === 0 ? 0 : u);
       const rand = bei(s.rand, j);
       const p = aussen ? rand : bei(s.fleisch, j);
-      const t = tangente(sk, j);
-      // am Mundwinkel treffen sich die Linien: dort gilt die Beißrichtung der nächsten Stelle weiter vorn
-      const g = zumGegen(s, j, t, aussen);
-      let d: V3;
-      if (g.l >= NAH_AM_WINKEL) d = mal3(g.v, 1 / g.l);
+      // Beißrichtung und innen in der Ruhelage (zu): zum Zahnfleisch des Gegenkiefers an derselben Stelle (außen: längs
+      // dessen Haut); am Mundwinkel treffen sich die Linien, dort gilt die Richtung der nächsten Stelle weiter vorn
+      const tR = tangente(sk, j, ruhe);
+      const g = zumGegen(s, j, tR, aussen);
+      let dR: V3;
+      if (g.l >= NAH_AM_WINKEL) dR = mal3(g.v, 1 / g.l);
       else {
         let jj = j;
         let h = g;
         while (jj > 0 && h.l < NAH_AM_WINKEL) {
           jj = Math.max(0, jj - 0.25 * proSpalte);
-          h = zumGegen(s, jj, t, aussen);
+          h = zumGegen(s, jj, tR, aussen);
         }
-        const zurueck = h.l > 1e-300 ? normiert3(senkrecht(t, h.v)) : [0, kiefer === 'oben' ? -1 : 1, 0] as V3;
+        const zurueck = h.l > 1e-300 ? normiert3(senkrecht(tR, h.v)) : [0, kiefer === 'oben' ? -1 : 1, 0] as V3;
         const w = glatt(g.l / NAH_AM_WINKEL);
-        d = normiert3(plus3(mal3(g.l > 1e-300 ? mal3(g.v, 1 / g.l) : zurueck, w), mal3(zurueck, 1 - w)));
+        dR = normiert3(plus3(mal3(g.l > 1e-300 ? mal3(g.v, 1 / g.l) : zurueck, w), mal3(zurueck, 1 - w)));
       }
       // nach innen: zum tiefen Teil der Tasche (Rachen)
-      const k = kreuz3(t, d);
-      const zuInnen = minus3(spalte(s.innen, j), p);
-      const i = punkt3(k, zuInnen) >= 0 ? k : mal3(k, -1);
-      return { p, t, d, i, rand };
+      const k = kreuz3(tR, dR);
+      const zuInnen = minus3(spalte(s.innen, j), aussen ? bei(s.rand, j, ruhe) : bei(s.fleisch, j, ruhe));
+      const iR = punkt3(k, zuInnen) >= 0 ? k : mal3(k, -1);
+      // starr im eigenen Kiefer: Anteile im Kieferrahmen der Ruhelage, in den Kieferrahmen der Pose übertragen (Florian:
+      // die Zähne hängen fest am Kiefer; zum Gegenkiefer neu ausgerichtet schwenkten sie beim Öffnen um die halbe Öffnung)
+      const fR = kieferRahmen(sk, j, ruhe);
+      const fP = fein === ruhe ? fR : kieferRahmen(sk, j, fein);
+      const mit = (v: V3): V3 => {
+        const a = punkt3(v, fR.t);
+        const b = punkt3(v, fR.w);
+        const c = punkt3(v, fR.n);
+        return normiert3(plus3(plus3(mal3(fP.t, a), mal3(fP.w, b)), mal3(fP.n, c)));
+      };
+      return { p, t: fP.t, d: mit(dR), i: mit(iR), rand };
     };
     // Linie links → Mitte → rechts in der Pose
     const linie = new Float32Array(3 * (2 * nF - 1));
@@ -302,7 +330,7 @@ export const ZAHN_FORM_STANDARD = { rundheit: 0.7, schaerfe: 0.7, neigung: 0, bi
 /**
  * Rechte Hälfte einer Zahnreihe, symmetrisch verteilt (ungerade Zahl: zuerst der Mittelzahn auf der Achse; die untere
  * Reihe steht in den Lücken der oberen). `laenge` = Länge vorn, hinten (u = 1) 45 % kürzer; vorhandene Einträge behalten
- * ihre Form und bekommen nur ein neues u.
+ * ihre Form und bekommen nur ein neues u, neue übernehmen die Form des letzten vorhandenen (samt Werten für offen).
  */
 export function zahnreiheVerteilen(anzahl: number, kiefer: Kiefer, laenge: number, bisher?: Zahnreihe, uMax = 0.9): Zahnreihe {
   const n = Math.max(0, Math.min(31, Math.round(anzahl)));
@@ -322,8 +350,9 @@ export function zahnreiheVerteilen(anzahl: number, kiefer: Kiefer, laenge: numbe
     const l = laenge * (1 - 0.45 * u);
     return { laenge: l, breite: ZAHN_FORM_STANDARD.breiteAnteil * l, rundheit: ZAHN_FORM_STANDARD.rundheit, schaerfe: ZAHN_FORM_STANDARD.schaerfe, neigung: 0, biegung: ZAHN_FORM_STANDARD.biegung, spreizung: 0, u, aussen: false };
   };
+  const letzter = bisher?.zaehne[bisher.zaehne.length - 1];
   const zaehne = us.map((u, i) => {
-    const alt = bisher?.zaehne[i];
+    const alt = bisher?.zaehne[i] ?? letzter;
     return alt ? { ...alt, u } : vorlage(u);
   });
   return { anzahl: n, zaehne };

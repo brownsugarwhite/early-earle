@@ -72,7 +72,12 @@ describe('Zähne im Kern: Reihe und Dokument', () => {
     const neu = zahnreiheVerteilen(6, 'oben', 0.04, alt);
     expect(neu.zaehne[0]!.rundheit).toBe(0.1);
     expect(neu.zaehne[0]!.aussen).toBe(true);
-    expect(neu.zaehne[2]!.rundheit).toBe(0.7);
+    // neue Zähne übernehmen die Form des letzten vorhandenen
+    expect(neu.zaehne[2]!.rundheit).toBe(alt.zaehne[1]!.rundheit);
+    expect(neu.zaehne[2]!.laenge).toBe(alt.zaehne[1]!.laenge);
+    expect(neu.zaehne[2]!.u).toBeGreaterThan(neu.zaehne[1]!.u);
+    // ohne Vorlage: Standardform
+    expect(zahnreiheVerteilen(6, 'oben', 0.04).zaehne[2]!.rundheit).toBe(0.7);
   });
 
   it('Dokument → beide Seiten: Mittelzahn auf der Achse, Paare rechts und links, Tiefe ¾ der Breite, Größe und Drehung durchgereicht', () => {
@@ -149,14 +154,36 @@ describe('Zähne im Kern: Zahnfleisch und Rahmen (Rex, Kugel, Tiger)', () => {
         console.log(`${name} α=${alpha}: orthonormal bis ${ortho.toExponential(1)}; Spiegel ${spiegelFehler.toExponential(1)}; cos(d, Gegenkiefer) ≥ ${minD.toFixed(2)}; cos(i, Tasche) ≥ ${minInnen.toFixed(2)}; u zurück ${uFehler.toExponential(1)}`);
         expect(ortho).toBeLessThan(1e-9);
         expect(spiegelFehler).toBeLessThan(1e-9);
-        // d steht senkrecht zur Zahnfleischlinie (Spreizung kippt längs); am kurzen Plattenmaul liegt der Gegenpunkt offen
-        // schräg daneben (Tiger halb: cos 0,32), deshalb wie im Versuch nur: zum Gegenkiefer hin
-        expect(minD).toBeGreaterThan(0);
-        expect(minInnen).toBeGreaterThan(0);
+        // Der Rahmen wird zu festgelegt (d zum Gegenkiefer, i in die Tasche) und wandert dann starr mit dem eigenen
+        // Kiefer: offen zeigt d nicht mehr zum weggedrehten Gegenkiefer (gewollt). d steht senkrecht zur
+        // Zahnfleischlinie (Spreizung kippt längs), deshalb wie im Versuch nur: zum Gegenkiefer hin
+        if (alpha === 0) {
+          expect(minD).toBeGreaterThan(0);
+          expect(minInnen).toBeGreaterThan(0);
+        }
         expect(uFehler).toBeLessThan(1e-6);
       }
     });
   }
+
+  it('starr im eigenen Kiefer: vorn dreht ein Zahn beim Öffnen genau mit dem Unterkiefer bzw. dem Schädel (Kugel, Knochen ohne Haps)', () => {
+    const abl = maulAbl(kugelMaulDokument('gleich', true));
+    const zu = zahnfleischKern(abl, abl.fein);
+    const offen = zahnfleischKern(abl, maulPose(abl, 1).fein);
+    const um = (v: V3, w: number): V3 => [v[0] * Math.cos(w) - v[1] * Math.sin(w), v[0] * Math.sin(w) + v[1] * Math.cos(w), v[2]];
+    const winkel = (a: V3, b: V3) => (Math.acos(Math.min(1, Math.max(-1, dot(a, b)))) * 180) / Math.PI;
+    for (const [kiefer, grad] of [
+      ['unten', abl.maul.opt.winkelUnten],
+      ['oben', abl.maul.opt.winkelOben],
+    ] as const) {
+      const d0 = zu[kiefer](0.15, 1).d;
+      const d1 = offen[kiefer](0.15, 1).d;
+      const w = (grad * Math.PI) / 180;
+      const rest = Math.min(winkel(um(d0, w), d1), winkel(um(d0, -w), d1));
+      console.log(`${kiefer}: Knochen ${grad}°, Zahn gedreht um ${winkel(d0, d1).toFixed(1)}°, Rest nach der Knochendrehung ${rest.toFixed(2)}°`);
+      expect(rest).toBeLessThan(2);
+    }
+  });
 
   it('u ist eine feste Stelle des Käfigs: die Wurzel liegt zu, halb und offen auf dem Zahnfleisch (≤ 0,5 px), der Anteil der Ruhelage bleibt', () => {
     const abl = maulAbl(rexDok());

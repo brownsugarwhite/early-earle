@@ -27,6 +27,8 @@ import { istPose, poseSeite, poseSeiteSetzen, poseSeiteVerwerfen } from '../maul
 import { type Modus, useEditor } from '../state/editorStore';
 import { type Ebene, useUi } from '../state/uiStore';
 import { Ornament } from './Ornament';
+import { Chips, Regler, geste } from './bedienung';
+import { ZahnFeld } from './ZahnFeld';
 import { WIRBEL_FARBEN, wirbelVorschlagUebernehmen } from '../wirbel/WirbelEbene';
 import { useWirbelAnzeige } from '../wirbel/wirbelKoerper';
 import { schnittEcht, useSchnittAnzeige } from '../schnitte/schnittKoerper';
@@ -37,25 +39,6 @@ type Fach = (typeof FAECHER)[number];
 
 const TITEL: Record<Ebene, string> = { form: 'wesen', maul: 'maul', zaehne: 'zähne', augen: 'augen', teile: 'teile', fell: 'fell & klingen', haut: 'haut', posen: 'posen & leben', spiel: 'spiel' };
 
-function Regler({ label, wert, min, max, schritt, anzeige, onChange, onStart, onEnde }: {
-  label: string;
-  wert: number;
-  min: number;
-  max: number;
-  schritt: number;
-  anzeige: string;
-  onChange: (v: number) => void;
-  onStart?: () => void;
-  onEnde?: () => void;
-}) {
-  return (
-    <label className="regler">
-      <span>{label}</span>
-      <input type="range" min={min} max={max} step={schritt} value={wert} onChange={(e) => onChange(Number(e.target.value))} onPointerDown={onStart} onPointerUp={onEnde} />
-      <b>{anzeige}</b>
-    </label>
-  );
-}
 
 function WesenBereich() {
   const dok = useEditor((s) => s.dok);
@@ -803,7 +786,7 @@ export function Seitenleiste() {
           )}
           {kern && ebene === 'zaehne' && (
             <section className="leiste-bereich" data-bereich="zaehne">
-              <p className="hilfe">Die Zähne wachsen heute von selbst am Zahnfleisch des Mauls (Verlauf hell zur Spitze). Anzahl je Kiefer, einzeln setzen, Form (Krümmung, Rundheit, Größe, Länge, Breite, Drehung), Farbe mit Verlauf und die Prüfung im geschlossenen Maul kommen in Phase 2.</p>
+              <ZahnFeld />
             </section>
           )}
           {kern && ebene === 'augen' && (
@@ -854,19 +837,7 @@ export function Seitenleiste() {
 }
 
 /** Chips einer Auswahl (Tafel): ein Wert aktiv. */
-function Chips<T extends string>({ werte, aktiv, text, attribut, onWahl }: { werte: readonly T[]; aktiv: T; text?: (w: T) => string; attribut: string; onWahl: (w: T) => void }) {
-  return (
-    <div className="umschalter stufen" role="radiogroup">
-      {werte.map((w) => (
-        <button key={w} className={aktiv === w ? 'chip aktiv' : 'chip'} {...{ [`data-${attribut}`]: w }} onClick={() => onWahl(w)}>
-          {text ? text(w) : w}
-        </button>
-      ))}
-    </div>
-  );
-}
 
-const geste = () => ({ onStart: () => useEditor.getState().beginGeste(), onEnde: () => useEditor.getState().endeGeste() });
 
 /** Tafel „Körper“: Pinsel-Radius (G ziehen, I aufblasen, ⇧ glätten, [ ] Radius). */
 function PinselFeld() {
