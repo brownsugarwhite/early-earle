@@ -35,3 +35,22 @@ describe('Teil G, G4: Teile', () => {
     }
   });
 });
+
+describe('Teil G, G4: angesteckte Teile', () => {
+  it('Ente und Fisch: je Teil zwei eigene Röhren (rechts, links gespiegelt), geschlossen und einheitlich orientiert', () => {
+    for (const name of ['ente', 'fisch'] as const) {
+      const abl = ableitenMitTeilen(gKoerperDokument(name), { stufen: 1 }, 'angesteckt');
+      expect(abl.gesteckt.length, name).toBe(2 * abl.teile.length);
+      for (const g of abl.gesteckt) expect(pruefeKaefig(g.kaefig).ok, name).toBe(true);
+      // links ist das Spiegelbild von rechts (als Punktmenge: die linke Röhre läuft umgekehrt herum, damit ihre Flächen nach außen zeigen)
+      const [r, l] = abl.gesteckt as [(typeof abl.gesteckt)[0], (typeof abl.gesteckt)[0]];
+      let d = 0;
+      for (let i = 0; i < r.fein.length; i += 3) {
+        let best = Infinity;
+        for (let k = 0; k < l.fein.length; k += 3) best = Math.min(best, Math.hypot(r.fein[i]! - l.fein[k]!, r.fein[i + 1]! - l.fein[k + 1]!, r.fein[i + 2]! + l.fein[k + 2]!));
+        d = Math.max(d, best);
+      }
+      expect(d, name).toBeLessThan(1e-9);
+    }
+  });
+});

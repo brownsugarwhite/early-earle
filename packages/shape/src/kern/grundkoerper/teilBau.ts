@@ -11,6 +11,9 @@ import { knotenNachWelt, profilHalb } from '../../fit';
 import { type Profil, achsenRegeln } from '../../profil';
 import { type Kaefig, type V3, alleFlaechen, kaefigAusFlaechen, kanteZwischen, pruefeKaefig } from '../../kaefig/halbkanten';
 import { type Roehre, roehre } from '../../kaefig/roehre';
+import { grenzLoeser, kaefigDurchZiele } from '../../loeser/grenzflaeche';
+import { type Unterteilung, unterteilung } from '../../subdivision/catmullClark';
+import { anwenden3 } from '../../subdivision/matrix';
 import { ABLEIT_STANDARD, type AbleitOptionen, type Ableitung, ableiten, faltenSetzen, fertigstellen, kernLeiter, stationenWaehlen, zieleBerechnen } from '../ableiten';
 import { type Breiten, silhouettenBreite } from '../breite';
 import { type AnsichtTeile, type Raster, type TeilFleck, teileVon } from './teile';
@@ -23,7 +26,13 @@ export type TeilInfo = {
   ansatz: { ring: number; j: number };
 };
 
-export type TeilErgebnis = Ableitung & { teile: TeilInfo[]; rumpfBreiten: Breiten };
+/** Angestecktes Teil: eigene Röhre (8 Punkte je Ring), vorn verdeckt im Rumpf, mit eigenem feinem Netz. */
+export type GestecktesTeil = { kaefig: Kaefig; fein: Float64Array; unterteilung: Unterteilung };
+
+export type TeilErgebnis = Ableitung & { teile: TeilInfo[]; rumpfBreiten: Breiten; gesteckt: GestecktesTeil[] };
+
+/** Bauart der Teile: nahtlos aus dem Rumpf (Ausstülpung) oder als eigene Röhre, die verdeckt im Rumpf beginnt */
+export type TeilArt = 'verschmolzen' | 'angesteckt';
 
 const uhr = (globalThis as { performance?: { now(): number } }).performance;
 const jetzt = () => (uhr ? uhr.now() : Date.now());
@@ -249,11 +258,11 @@ export function rumpfDokument(dok: Dokument, t = teileVon(dok)): Dokument {
   return top === dok.profile.top && front === dok.profile.front ? dok : { ...dok, profile: { ...dok.profile, top, front } };
 }
 
-/** Ableitung mit Teilen: Rumpf aus den geöffneten Silhouetten, Teile als Ausstülpungen. Ohne Teile wie `ableiten`. */
-export function ableitenMitTeilen(dok: Dokument, optionen: Partial<AbleitOptionen> = {}): TeilErgebnis {
+/** Ableitung mit Teilen: Rumpf aus den geöffneten Silhouetten, Teile als Ausstülpungen oder angesteckt. Ohne Teile wie `ableiten`. */
+export function ableitenMitTeilen(dok: Dokument, optionen: Partial<AbleitOptionen> = {}, art: TeilArt = 'verschmolzen'): TeilErgebnis {
   const t = teileVon(dok);
   const breitenVoll = silhouettenBreite(dok);
-  if (!t.top.teile.length && !t.front.teile.length) return { ...ableiten(dok, optionen), teile: [], rumpfBreiten: breitenVoll };
+  if (!t.top.teile.length && !t.front.teile.length) return { ...ableiten(dok, optionen), teile: [], rumpfBreiten: breitenVoll, gesteckt: [] };
   const opt = { ...ABLEIT_STANDARD, ...optionen };
   const t0 = jetzt();
   const rumpf = rumpfDokument(dok, t);
@@ -298,11 +307,17 @@ export function ableitenMitTeilen(dok: Dokument, optionen: Partial<AbleitOptione
   }
   if (!infos.length) {
     const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele: roh.ziele, hoehe: roh.hoehe, l, st, breiten, dok: rumpf, zeiten: { t0, t1, t2 } });
-    return { ...abl, teile: [], rumpfBreiten: breiten };
+    return { ...abl, teile: [], rumpfBreiten: breiten, gesteckt: [] };
+  }
+  if (art === 'angesteckt') {
+    const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele: roh.ziele, hoehe: roh.hoehe, l, st, breiten, dok: rumpf, zeiten: { t0, t1, t2 } });
+    const gesteckt: GestecktesTeil[] = [];
+    for (const info of infos) for (const spiegel of [false, true]) gesteckt.push(teilGesteckt(info, roh.ziele, vorlage.ringPunkt(info.ansatz.ring, info.ansatz.j), spiegel, opt.stufen));
+    return { ...abl, teile: infos, rumpfBreiten: breiten, gesteckt };
   }
   const b = teileAnsetzen(vorlage, vorlage.kaefig, roh.ziele, roh.hoehe, infos);
   const abl = fertigstellen({ opt, vorlage, kaefig: b.kaefig, ziele: b.ziele, hoehe: b.hoehe, l, st, breiten, dok: rumpf, haut: b.haut, zeiten: { t0, t1, t2 } });
-  return { ...abl, teile: infos, rumpfBreiten: breiten };
+  return { ...abl, teile: infos, rumpfBreiten: breiten, gesteckt: [] };
 }
 
 /** Feldrand um den Ringpunkt (i, j) im Umlauf. */
@@ -444,4 +459,60 @@ function teileAnsetzen(v: Roehre, kaefigV: Kaefig, zieleV: Float64Array, hoeheV:
   }
   for (let i = 0; i < n0; i++) if (kaefigV.vSchaerfe[i]! > 0) kaefig.vSchaerfe[i] = kaefigV.vSchaerfe[i]!;
   return { kaefig, ziele, hoehe, haut };
+}
+
+/**
+ * Angestecktes Teil (wie die angesteckten Beine aus Beweis 3): eigene Röhre aus 8 Punkten je Ring entlang der
+ * Mittellinie, Ringe als flache Ellipsen (Breite aus dem Top, Dicke aus der Front oder halb so dick), vorn um die
+ * Ansatzbreite verdeckt in den Rumpf verlängert, Kappen an beiden Enden; links gespiegelt (Umlauf umgekehrt, damit die
+ * Flächen nach außen zeigen). Der Käfig wird durch die Ziele gelöst.
+ */
+function teilGesteckt(info: TeilInfo, zieleRumpf: Float64Array, ansatz: number, spiegel: boolean, stufen: number): GestecktesTeil {
+  const s = spiegel ? -1 : 1;
+  const basis: V3 = [zieleRumpf[3 * ansatz]!, zieleRumpf[3 * ansatz + 1]!, s * zieleRumpf[3 * ansatz + 2]!];
+  const linie: V3[] = info.linie.map((q) => [q[0], q[1], s * q[2]]);
+  // vorn verdeckt in den Rumpf: vom Ansatz gegen die Richtung der Linie um die doppelte Ansatzbreite
+  const r0: V3 = [linie[1]![0] - linie[0]![0], linie[1]![1] - linie[0]![1], linie[1]![2] - linie[0]![2]];
+  const rl = Math.hypot(...r0) || 1;
+  const innen = 2 * Math.max(info.breite[0]!, info.breite[1]!);
+  const start: V3 = [basis[0] - (r0[0] / rl) * innen, basis[1], basis[2] - (r0[2] / rl) * innen];
+  const pfad: V3[] = [start, basis, ...linie.slice(1)];
+  const breite = [info.breite[1]!, info.breite[1]!, ...info.breite.slice(1)];
+  const dicke = [info.dicke[1]!, info.dicke[1]!, ...info.dicke.slice(1)];
+  const R = pfad.length;
+  const vorlage = roehre(R, 8);
+  const ziele = new Float64Array(3 * vorlage.kaefig.n);
+  const setze = (idx: number, p: V3) => {
+    ziele[3 * idx] = p[0];
+    ziele[3 * idx + 1] = p[1];
+    ziele[3 * idx + 2] = p[2];
+  };
+  for (let r = 0; r < R; r++) {
+    const a0 = pfad[Math.max(0, r - 1)]!;
+    const b0 = pfad[Math.min(R - 1, r + 1)]!;
+    const tg: V3 = [b0[0] - a0[0], b0[1] - a0[1], b0[2] - a0[2]];
+    const tl = Math.hypot(...tg) || 1;
+    const t3: V3 = [tg[0] / tl, tg[1] / tl, tg[2] / tl];
+    const up: V3 = [-t3[1] * t3[0], 1 - t3[1] * t3[1], -t3[1] * t3[2]];
+    const ul = Math.hypot(...up) || 1;
+    const u2: V3 = [up[0] / ul, up[1] / ul, up[2] / ul];
+    const u1: V3 = [u2[1] * t3[2] - u2[2] * t3[1], u2[2] * t3[0] - u2[0] * t3[2], u2[0] * t3[1] - u2[1] * t3[0]];
+    const c = pfad[r]!;
+    const w = breite[r]! * (r === R - 1 ? 0.7 : 1);
+    const d = dicke[r]! * (r === R - 1 ? 0.7 : 1);
+    for (let j = 0; j < 8; j++) {
+      const th = (s * 2 * Math.PI * j) / 8;
+      setze(vorlage.ringPunkt(r, j), [c[0] + w * Math.cos(th) * u1[0] + d * Math.sin(th) * u2[0], c[1] + w * Math.cos(th) * u1[1] + d * Math.sin(th) * u2[1], c[2] + w * Math.cos(th) * u1[2] + d * Math.sin(th) * u2[2]]);
+    }
+  }
+  const ende = pfad[R - 1]!;
+  const vor = pfad[R - 2]!;
+  const el = Math.hypot(ende[0] - vor[0], ende[1] - vor[1], ende[2] - vor[2]) || 1;
+  setze(vorlage.kappe('vorn', 1, 1), [start[0] - (r0[0] / rl) * 0.3 * innen, start[1], start[2] - (r0[2] / rl) * 0.3 * innen]);
+  setze(vorlage.kappe('hinten', 1, 1), [ende[0] + ((ende[0] - vor[0]) / el) * 0.5 * dicke[R - 1]!, ende[1], ende[2] + ((ende[2] - vor[2]) / el) * 0.5 * dicke[R - 1]!]);
+  const u = unterteilung(vorlage.kaefig, stufen);
+  const loeser = grenzLoeser(u.grenze, vorlage.kaefig.n);
+  const xyz = kaefigDurchZiele(loeser, ziele);
+  const kaefig = { ...vorlage.kaefig, xyz };
+  return { kaefig, fein: anwenden3(u.grenze, xyz), unterteilung: u };
 }

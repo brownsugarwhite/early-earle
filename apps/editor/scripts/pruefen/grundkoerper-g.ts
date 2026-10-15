@@ -9,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 import type { Dokument } from '../../../../packages/shape/src/dokument';
 import { pfadAbtasten, vollerPfad } from '../../../../packages/shape/src/profil';
 import { ableiten, kernLeiter, zugBei } from '../../../../packages/shape/src/kern/ableiten';
-import { ableitenMitTeilen } from '../../../../packages/shape/src/kern/grundkoerper/teilBau';
+import { type TeilErgebnis, ableitenMitTeilen } from '../../../../packages/shape/src/kern/grundkoerper/teilBau';
+import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
 import { blattAbweichungen } from '../../../../packages/shape/src/kern/abweichung';
 import { faltenMass, feinesNetz } from '../../../../packages/shape/src/kern/pruefstand';
 import { G_KOERPER, type GKoerper, gKoerperDokument } from '../../../../packages/shape/src/kern/pruefen/grundkoerper';
@@ -38,14 +39,22 @@ for (const name of liste) {
   const t0 = performance.now();
   let abl: ReturnType<typeof ableiten>;
   try {
-    abl = process.env.TEILE ? ableitenMitTeilen(dok, { stufen: 3 }) : ableiten(dok, { stufen: 3 });
+    abl = process.env.TEILE ? ableitenMitTeilen(dok, { stufen: 3 }, process.env.TEILE === 'angesteckt' ? 'angesteckt' : 'verschmolzen') : ableiten(dok, { stufen: 3 });
   } catch (e) {
     zeilen.push(`${name}: Bau scheitert (${(e as Error).message})`);
     faelle.push({ name, text: `<b>${name}</b> · Bau scheitert: ${(e as Error).message}`, daten: null });
     continue;
   }
   const zeit = performance.now() - t0;
-  const { punkte, flaechen } = feinesNetz(abl);
+  const netz0 = feinesNetz(abl);
+  const punkte = [...netz0.punkte];
+  const flaechen = [...netz0.flaechen];
+  // angesteckte Teile: ihre feinen Netze anhängen (für Δ und Bild)
+  for (const g of (abl as Partial<TeilErgebnis>).gesteckt ?? []) {
+    const o = punkte.length;
+    for (let i = 0; i < g.fein.length / 3; i++) punkte.push([g.fein[3 * i]!, g.fein[3 * i + 1]!, g.fein[3 * i + 2]!]);
+    for (const f of alleFlaechen(g.unterteilung.stufen[g.unterteilung.stufen.length - 1]!.kaefig)) flaechen.push(f.map((i) => i + o));
+  }
   const d = blattAbweichungen(punkte, flaechen, dok);
   const f = faltenMass(abl);
   const l = kernLeiter(dok);
