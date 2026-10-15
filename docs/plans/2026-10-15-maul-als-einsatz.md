@@ -23,6 +23,16 @@ Vorbild sind Rundmaul und Augapfel (Phase 2 M5/M6), die sauber laufen: Sie erset
 - **Kiefer:** Oberkiefer = Feldhälfte über der Linie, Unterkiefer = darunter; Gelenk am Mundwinkel; Gewichte im Feld nach dem Winkel um das Gelenk (wie heute), der Körper außerhalb nach Winkel und Reichweite. Über-/Unterbiss: die beiden Lippenkanten liegen getrennt (rote und blaue Linie), der kürzere Kiefer läuft im Feld hinter seiner Kante aus.
 - **Fressen wie Editor:** Die Topologie hängt nur am Feld (Flächen, Punktzahlen je Ring) — sie wird eingefroren wie die Stationen; die Pose übernimmt sie (gleiche Topologie, Blendshape).
 
+## Prüfung: Zufallsreihe statt Testwesen (Florian 15.10.)
+
+> „Die Testwesen sind nur zum Testen. Daran ist nicht eine Sache abgenommen. Keines erfüllt bisher meine Kriterien … Deine Tests waren sehr, sehr unvollständig.“ — „Eigentlich ist bei allem etwas kaputt oder nicht schön!“
+
+- Prüfwesen (Kugel, Rex, Tiger, …) sind Prüfmittel, keine Abnahme. Nichts gilt als „bestanden“, bevor Florian es abnimmt; Meldungen heißen „gebaut, gemessen an …, Abnahme offen“.
+- **Zufallsreihe** (fester Startwert, reproduzierbar, Hunderte Fälle): Körper (Kugel, Ei, lang, hoch, flach, mit Bauch, Kasten, Langhals) × Maullinie (Anfang hoch/mittel/tief/seitlich, Form gerade/nach oben/nach unten/J mit steilem Ende/S, kurz/lang) × Kiefer (gleich, Überbiss, Unterbiss) × Öffnung (0, ¼, ½, 1) × Bearbeitung (Anfang ziehen, Mundwinkel ziehen, Schädel höher, Kinn tiefer, Fressen-Griffe).
+- **Maße je Fall:** Zusammenklappen (Δ je Blatt außerhalb der Lippe, kleinste Flächen, umgeklappte Normalen), Falten außerhalb der Lippe gegen den Körper ohne Maul, Lippe an der Linie (px über die ganze Länge), Durchdringungen offen (sichtbar), Glätte (Krümmungssprünge).
+- **Kontaktbögen** je Klasse (zu/offen, zwei Blicke), vor jeder Meldung selbst kritisch angesehen; die schlechtesten Fälle zuerst.
+- Der heutige Maulbau läuft zuerst durch dieselbe Reihe (Ausgangslage als Zahl), der Einsatz muss sie in allen Klassen schlagen.
+
 ## Phase A: Beweis (vor jedem Einbau)
 
 Harte Kriterien, alle in einer Prüfreihe (`kern/maulEinsatz.test.ts` + Bilder):
