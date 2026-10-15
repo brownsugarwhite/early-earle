@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Dokument } from '../../dokument';
 import { WIRBEL_STANDARD, leiter } from '../../versuch/wirbelsaeule';
-import { ableiten, kernLeiter, leiterEntfaechern } from '../ableiten';
+import { ableiten, kernLeiter, leiterEntfaechern, leiterInnenEntfaechern } from '../ableiten';
 import { giraffeBauchDokument, gKoerperDokument } from '../pruefen/grundkoerper';
 import { KOERPER, koerperDokument } from '../pruefen/koerper';
 import { zufall } from '../pruefen/zufall';
@@ -20,6 +20,8 @@ describe('Teil G, G2: Enden der Wirbelsäule', () => {
         expect(endenAutomatisch(d.profile.seite).quelle, `${k} ${s}`).toBe('spitzen');
         const neu = kernLeiter(d);
         const alt = leiterEntfaechern(leiter(d, WIRBEL_STANDARD));
+        // G2b ändert bestehende Körper nicht (keine Fächer über eine Sprossenlänge)
+        expect(leiterInnenEntfaechern(alt), `${k} ${s}`).toBe(alt);
         expect(neu.ruecken, `${k} ${s}`).toEqual(alt.ruecken);
         expect(neu.bauch, `${k} ${s}`).toEqual(alt.bauch);
         expect(neu.paare, `${k} ${s}`).toEqual(alt.paare);

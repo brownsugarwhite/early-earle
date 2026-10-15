@@ -141,13 +141,80 @@ export function kernLeiter(dok: Dokument): Leiter {
   // Teil G, G2: Enden eingefroren (gleiche Knotenzahl) oder über die Mittelachse; ohne Seitenast wie bisher der vorderste
   // und der hinterste Punkt (bitgleich). Die tatsächlich benutzten Enden gehen als Anker in die eingefrorenen Stationen.
   const e = endenFuer(dok);
-  const l = leiterEntfaechern(e.quelle === 'spitzen' ? leiter(d, WIRBEL_STANDARD) : leiter(d, WIRBEL_STANDARD, { vorn: e.vorn, hinten: e.hinten }, ENDEN_FANG));
+  const l = leiterInnenEntfaechern(leiterEntfaechern(e.quelle === 'spitzen' ? leiter(d, WIRBEL_STANDARD) : leiter(d, WIRBEL_STANDARD, { vorn: e.vorn, hinten: e.hinten }, ENDEN_FANG)));
   const seite = dok.profile.seite;
   return { ...l, enden: { vorn: profilAnker(seite, l.ruecken[0]!), hinten: profilAnker(seite, l.ruecken[l.ruecken.length - 1]!), knoten: seite.knoten.length } };
 }
 
 /** Teil G: Eingefrorene Enden, die höchstens so weit (Anteil der Umriss-Abtastung) neben der Spitze liegen, rasten auf sie. */
 const ENDEN_FANG = 0.004;
+
+/** Teil G, G2b: Ein Stocken einer Kette gilt als Fächer, wenn die andere dabei weiter vorrückt als die Sprosse lang ist. */
+const FAECHER_ANTEIL = 0.2;
+const FAECHER_LAENGE = 1;
+
+/**
+ * Teil G, G2b: Fächer an inneren Ecken auflösen. Die kürzeste Leiter bleibt an einer Kehle (Ente: Kinn → Hals) mit vielen
+ * Sprossen an einem Punkt der einen Kette hängen, während die andere um die Ecke läuft; die Ringe laufen dort zusammen, die
+ * Fläche faltet. Läuft eine Kette über ein Stück weniger als 20 % der anderen und rückt die andere dabei weiter vor, als
+ * die Sprosse lang ist, wird die stockende Kette über das doppelt so breite Stück gleichmäßig nach dem Fortschritt der
+ * anderen verteilt (beide Anteile bleiben monoton). Kleinere Stockungen (Langhals am Kinn: 15–21 px bei einer Halsdicke
+ * von 28 px) bleiben; alle bisherigen Prüfkörper bauen bitgleich.
+ */
+export function leiterInnenEntfaechern(l: Leiter): Leiter {
+  const p = l.paare.map((x) => ({ a: x.a, b: x.b }));
+  const n = p.length;
+  if (n < 12) return l;
+  const lang = (z: readonly V2[]) => {
+    let s2 = 0;
+    for (let i = 1; i < z.length; i++) s2 += Math.hypot(z[i]!.x - z[i - 1]!.x, z[i]!.y - z[i - 1]!.y);
+    return s2;
+  };
+  const L = { a: lang(l.ruecken), b: lang(l.bauch) };
+  const sprosse = (k: number) => {
+    const o = zugBei(l.ruecken, p[k]!.a);
+    const u = zugBei(l.bauch, p[k]!.b);
+    return Math.hypot(o.x - u.x, o.y - u.y);
+  };
+  const rand = Math.max(2, Math.round(0.03 * n));
+  let geaendert = false;
+  for (const [st, an] of [
+    ['b', 'a'],
+    ['a', 'b'],
+  ] as const) {
+    let k = rand;
+    while (k < n - rand - 1) {
+      const schritt = (j: number) => ({ s: (p[j + 1]![st] - p[j]![st]) * L[st], o: (p[j + 1]![an] - p[j]![an]) * L[an] });
+      const q = schritt(k);
+      if (!(q.o > 0 && q.s < FAECHER_ANTEIL * q.o)) {
+        k++;
+        continue;
+      }
+      let e = k;
+      while (e + 1 < n - rand - 1) {
+        const r = schritt(e + 1);
+        if (!(r.s < FAECHER_ANTEIL * Math.max(r.o, 1e-12))) break;
+        e++;
+      }
+      const vor = (p[e + 1]![an] - p[k]![an]) * L[an];
+      let sp = 0;
+      for (let j = k; j <= e + 1; j++) sp = Math.max(sp, sprosse(j));
+      if (vor > FAECHER_LAENGE * sp) {
+        const m = e + 1 - k;
+        const w0 = Math.max(rand, k - m);
+        const w1 = Math.min(n - rand - 1, e + 1 + m);
+        const s0 = p[w0]![st];
+        const s1 = p[w1]![st];
+        const o0 = p[w0]![an];
+        const o1 = p[w1]![an];
+        if (o1 > o0) for (let j = w0 + 1; j < w1; j++) p[j]![st] = s0 + ((s1 - s0) * (p[j]![an] - o0)) / (o1 - o0);
+        geaendert = true;
+        k = w1;
+      } else k = e + 1;
+    }
+  }
+  return geaendert ? { ...l, paare: p } : l;
+}
 
 export function leiterEntfaechern(l: Leiter): Leiter {
   const p = l.paare.map((x) => ({ a: x.a, b: x.b }));
