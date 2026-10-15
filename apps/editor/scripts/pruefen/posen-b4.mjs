@@ -42,13 +42,17 @@ const warteBau = async (v0) => {
   }
 };
 const hash = () => page.evaluate(() => window.__editor.netzHash());
-const knoten = () =>
-  page.$$eval('[data-pose-knoten] .knoten-punkt', (els) =>
+// nur die Knoten im Seitenblatt (seit B6 tragen auch Front und Top Knoten der Pose mit denselben Nummern)
+const knoten = async () => {
+  const rc = await page.evaluate(() => window.__stores.rahmen.getState().rects.seite);
+  const alle = await page.$$eval('[data-pose-knoten] .knoten-punkt', (els) =>
     els.map((e) => {
       const r = e.getBoundingClientRect();
       return { i: Number(e.parentElement.getAttribute('data-pose-knoten')), x: r.x + r.width / 2, y: r.y + r.height / 2 };
     }),
   );
+  return alle.filter((k) => k.x >= rc.x && k.x <= rc.x + rc.w && k.y >= rc.y && k.y <= rc.y + rc.h);
+};
 const zug = async (von, dx, dy) => {
   await page.mouse.move(von.x, von.y);
   await page.waitForTimeout(100);
@@ -121,8 +125,13 @@ pruefe('Undo nimmt den Zug zurück', (await hash()) === hF0 && (await fressen())
   const b = ks[1];
   const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   // nächster Punkt der gezeichneten Linie zur Mitte
-  const p = await page.evaluate(({ m }) => {
-    const path = document.querySelector('[data-pose-linie] path');
+  const rcSeite = await page.evaluate(() => window.__stores.rahmen.getState().rects.seite);
+  const p = await page.evaluate(({ m, rc }) => {
+    // die Linie im Seitenblatt (seit B6 auch in Front und Top)
+    const path = [...document.querySelectorAll('[data-pose-linie] path')].find((el) => {
+      const b = el.getBoundingClientRect();
+      return b.x + b.width / 2 >= rc.x && b.x + b.width / 2 <= rc.x + rc.w && b.y + b.height / 2 >= rc.y && b.y + b.height / 2 <= rc.y + rc.h;
+    });
     const svg = path.ownerSVGElement;
     const r = svg.getBoundingClientRect();
     const L = path.getTotalLength();
@@ -137,7 +146,7 @@ pruefe('Undo nimmt den Zug zurück', (await hash()) === hF0 && (await fressen())
       }
     }
     return best;
-  }, { m });
+  }, { m, rc: rcSeite });
   const vorher = await hash();
   await zug(p, -20, -10);
   pruefe('Zug an der Linie formt die Pose', (await hash()) !== vorher && (await fressen()).form.length > formVor);

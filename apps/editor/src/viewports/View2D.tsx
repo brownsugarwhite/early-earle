@@ -104,12 +104,15 @@ export function View2D({ ansicht, w, h }: Props) {
   const spalt = maulZu?.unten ? umrissMitSpalt(profil, maulZu, offenerKoerper ? poseSpaltIndizes(useEditor.getState().dok) : maulDok ? spaltIndizesZu(profil, maulDok.zu) : null) : null;
   // B4: im Seitenblatt einer Pose (Bauweise Kern) ist die schwarze Linie der posierte Umriss mit Florians Knoten
   const bauweise = useUi((s) => s.bauweise);
-  const poseKern = bauweise === 'kern' && modus !== 'editor' && ansicht === 'seite' && (ebene === 'form' || ebene === 'posen');
+  // B6: ebenso in Front und Top (posierte Silhouette mit den Knoten der Front- bzw. Top-Kurve und ihren Spiegelbildern)
+  const poseBlatt = ansicht === 'seite' || ansicht === 'front' || ansicht === 'top';
+  const poseKern = bauweise === 'kern' && modus !== 'editor' && poseBlatt && (ebene === 'form' || ebene === 'posen');
   // B5: Rot und Blau der Pose (Bauweise Kern), wenn der Worker sie für diesen Tab geliefert hat; im Seitenblatt einer Pose
   // ist die schwarze Linie in jeder Stufe der posierte Umriss (bearbeitbar nur in Körper und Posen & Leben), nie der alte
   // Versuchsumriss mit Spalt und Vorschlag für offene Lippen
   const poseLippen = usePoseLippen();
   const poseSeiteAnzeige = bauweise === 'kern' && modus !== 'editor' && ansicht === 'seite';
+  const poseBlattAnzeige = bauweise === 'kern' && modus !== 'editor' && poseBlatt;
   const formAktiv = ebene === 'form' && (!offenerKoerper || ansicht === 'seite') && !poseKern;
   const svgRef = useRef<SVGSVGElement>(null);
   // Saum (Schritt 4): Silhouette des Körpers, wo sie > 2 px von der Kurve abweicht (Welt-Koordinaten des Blatts)
@@ -530,7 +533,7 @@ export function View2D({ ansicht, w, h }: Props) {
         </g>
       ) : (
         <>
-          {profil.art === 'halb' && <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="var(--kurve-spiegel)" strokeWidth={KONTUR} strokeLinejoin="round" />}
+          {profil.art === 'halb' && (poseBlattAnzeige ? <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="var(--kurve-spiegel)" strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" pointerEvents="none" /> : <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="var(--kurve-spiegel)" strokeWidth={KONTUR} strokeLinejoin="round" />)}
           {spalt && maulZu?.unten && !poseSeiteAnzeige ? (
             <g data-maulspalt="">
               <path d={pfad(spalt.segmente, false)} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
@@ -546,7 +549,7 @@ export function View2D({ ansicht, w, h }: Props) {
                 />
               ))}
             </g>
-          ) : poseSeiteAnzeige ? (
+          ) : poseBlattAnzeige ? (
             // Grundlinie als Bezug (gestrichelt), bearbeitet wird die Linie der Pose
             <path data-grundlinie="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="var(--kurve-spiegel)" strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" pointerEvents="none" />
           ) : (
@@ -556,9 +559,9 @@ export function View2D({ ansicht, w, h }: Props) {
       )}
       {umwegPfade.spiegel && <path data-umweg="spiegel" d={umwegPfade.spiegel} fill="none" stroke="var(--kurve-spiegel)" strokeWidth={KONTUR} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {umwegPfade.eigen && <path data-umweg="eigen" d={umwegPfade.eigen} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
-      {saumPfad && !poseSeiteAnzeige && <path className="saum" data-saum="" d={saumPfad} fill="none" stroke="var(--saum)" strokeWidth={3} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+      {saumPfad && !poseBlattAnzeige && <path className="saum" data-saum="" d={saumPfad} fill="none" stroke="var(--saum)" strokeWidth={3} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
-      {poseSeiteAnzeige && <PoseLinieZeichnung bild={bild} skal={skal} aktiv={poseKern} />}
+      {poseBlattAnzeige && <PoseLinieZeichnung ansicht={ansicht} bild={bild} skal={skal} aktiv={poseKern} />}
       <WirbelZeichnung ansicht={ansicht} bild={bild} />
       <SchnittZeichnung ansicht={ansicht} bild={bild} />
       <RundZeichnung ansicht={ansicht} bild={bild} />

@@ -3,7 +3,8 @@
 // Hautpunkten und wandern mit der Pose. Ziehen an einem Knoten oder an der Linie bewegt diesen Hautpunkt in der Seite
 // (x, y); der Löser im posierten Raum (`posenLoeserBauen`) formt den Körper örtlich (Bi-Laplace, Radius wie der Pinsel,
 // außerhalb exakt 0, entferntere Knoten als weiche Anker) und schreibt Ruhe-Deltas in die Form der Pose — ein Undo-Schritt je Zug.
-// Front, Top und Reifen folgen in B6, Rot/Blau der Pose in B5.
+// B6: dasselbe in Front (z, y) und Top (x, z) — Umriss der Pose in diesem Blatt, Knoten der Front- bzw. Top-Kurve und ihre
+// Spiegelbilder auf Hautpunkten, Ziehen bindet die zwei Achsen des Blatts.
 import type { KaefigDelta, Pose, V2 } from '@ee/shape';
 import { ankerVon, bezugAus, formAusFeld, kaefigNachbarn, posenLoeserBauen, spiegelIndex } from '@ee/shape/kern';
 import type { Ansicht } from '@ee/shape';
@@ -17,23 +18,36 @@ const FANG_LINIE = 7;
 const GEWICHT_GRIFF = 1e3;
 const GEWICHT_ANKER = 1e2;
 
-/** Ist die Pose-Linie in diesem Blatt aktiv? (Bauweise Kern, Seite, Ziel = Pose, Stufe Körper oder Posen & Leben) */
+/** Achsen der Blätter (Seite x, y; Front z, y; Top x, z) */
+const ACHSEN: Record<'seite' | 'front' | 'top', [0 | 1 | 2, 0 | 1 | 2]> = { seite: [0, 1], front: [2, 1], top: [0, 2] };
+const blattVon = (a: Ansicht): 'seite' | 'front' | 'top' | null => (a === 'seite' || a === 'front' || a === 'top' ? a : null);
+
+/** Griffdaten der Pose-Linie eines Blatts aus dem zuletzt gebauten Netz. */
+function poseBlatt(ansicht: Ansicht) {
+  const n = aktuellesNetz()?.netz;
+  if (!n) return null;
+  return ansicht === 'seite' ? n.poseSeite : ansicht === 'front' ? n.poseFront : ansicht === 'top' ? n.poseTop : null;
+}
+
+/** Ist die Pose-Linie in diesem Blatt aktiv? (Bauweise Kern, Seite/Front/Top, Ziel = Pose, Stufe Körper oder Posen & Leben) */
 export function poseLinieAktiv(ansicht: Ansicht): boolean {
   const ui = useUi.getState();
   const ed = useEditor.getState();
-  return ansicht === 'seite' && ui.bauweise === 'kern' && ed.modus !== 'editor' && (ui.ebene === 'form' || ui.ebene === 'posen');
+  return blattVon(ansicht) !== null && ui.bauweise === 'kern' && ed.modus !== 'editor' && (ui.ebene === 'form' || ui.ebene === 'posen');
 }
 
 /**
  * Umriss und Knoten der Pose im Seitenblatt (Kern-Koordinaten über `bild` in Profil-Einheiten). Ohne `aktiv` (andere
  * Stufen) nur die Linie als Bezug, ohne Knoten und ohne Zeiger.
  */
-export function PoseLinieZeichnung({ bild, skal, aktiv }: { bild: (p: V2) => V2; skal: number; aktiv: boolean }) {
+export function PoseLinieZeichnung({ ansicht, bild, skal, aktiv }: { ansicht: Ansicht; bild: (p: V2) => V2; skal: number; aktiv: boolean }) {
   useNetzStand((s) => s.version);
   useEditor((s) => s.modus);
   useUi((s) => s.ebene);
-  const ps = aktuellesNetz()?.netz.poseSeite;
-  if (!ps || ps.umriss.length < 6) return null;
+  const ps = poseBlatt(ansicht);
+  const blatt = blattVon(ansicht);
+  if (!ps || !blatt || ps.umriss.length < 6) return null;
+  const [a0, a1] = ACHSEN[blatt];
   const B = (x: number, y: number) => bild({ x: x / skal, y: y / skal });
   let d = '';
   for (let k = 0; k < ps.umriss.length; k += 2) {
@@ -45,7 +59,7 @@ export function PoseLinieZeichnung({ bild, skal, aktiv }: { bild: (p: V2) => V2;
       <path d={d + 'Z'} fill="none" stroke="var(--kurve)" strokeWidth={3} strokeLinejoin="round" />
       {aktiv && Array.from(ps.knoten).map((k, i) => {
         if (k < 0) return null;
-        const q = B(ps.lage[3 * k]!, ps.lage[3 * k + 1]!);
+        const q = B(ps.lage[3 * k + a0]!, ps.lage[3 * k + a1]!);
         return (
           <g key={i} data-pose-knoten={i} className="knoten">
             <circle cx={q.x} cy={q.y} r={10} fill="transparent" />
@@ -63,7 +77,10 @@ type Kontext = { ansicht: Ansicht; lokal: (clientX: number, clientY: number) => 
 export function poseLinieZeiger(e: React.PointerEvent, ctx: Kontext): boolean {
   if (!poseLinieAktiv(ctx.ansicht)) return false;
   const n = aktuellesNetz();
-  const ps = n?.netz.poseSeite;
+  const ps = poseBlatt(ctx.ansicht);
+  const blatt = blattVon(ctx.ansicht);
+  if (!blatt) return false;
+  const [a0, a1] = ACHSEN[blatt];
   const b = n?.netz.pose;
   const tr = n?.netz.treffer;
   if (!n || !ps || !b || !tr) return false;
@@ -75,7 +92,7 @@ export function poseLinieZeiger(e: React.PointerEvent, ctx: Kontext): boolean {
   const p0 = kern(e.clientX, e.clientY);
   // Fangweiten in Kern-Einheiten (Pixel des Blatts)
   const px = Math.hypot(kern(e.clientX + 10, e.clientY).x - p0.x, kern(e.clientX, e.clientY + 10).y - p0.y) / Math.SQRT2 / 10;
-  const lage = (k: number): V2 => ({ x: ps.lage[3 * k]!, y: ps.lage[3 * k + 1]! });
+  const lage = (k: number): V2 => ({ x: ps.lage[3 * k + a0]!, y: ps.lage[3 * k + a1]! });
   let ziel = -1;
   let bd = FANG_KNOTEN * px;
   ps.knoten.forEach((k) => {
@@ -137,7 +154,7 @@ export function poseLinieZeiger(e: React.PointerEvent, ctx: Kontext): boolean {
     dreh: b.dreh,
     spiegel: spiegelIndex(b.ruhe, nR),
     bereich,
-    bedingungen: [{ ...zeile(ziel), achsen: [0, 1], gewicht: GEWICHT_GRIFF }, ...anker.map((k) => ({ ...zeile(k), achsen: [0, 1], gewicht: GEWICHT_ANKER }))],
+    bedingungen: [{ ...zeile(ziel), achsen: [a0, a1], gewicht: GEWICHT_GRIFF }, ...anker.map((k) => ({ ...zeile(k), achsen: [a0, a1], gewicht: GEWICHT_ANKER }))],
   });
   const formStart = new Float64Array(b.form);
   const bezug = bezugAus(b.ruhe);

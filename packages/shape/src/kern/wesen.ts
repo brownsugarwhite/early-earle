@@ -25,7 +25,7 @@ import { kieferSchnitt } from './kieferSpant';
 import { type AnkerFeld, maulAnker } from './posenAnker';
 import { type PoseBearbeitung, posenAuswerten, posenFuerBau, stellungVon } from './posen/posen';
 import type { KnochenPunkte } from './posen/skin';
-import { type PoseSeite, poseSeiteGriffe } from './posen/griffeSeite';
+import { type PoseSeite, poseBlattGriffe } from './posen/griffeSeite';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, schaedelGelenk } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
@@ -225,6 +225,9 @@ export type WesenNetz = {
   pose: PoseBearbeitung | null;
   /** B4: Griffe der schwarzen Linie im Seitenblatt der bearbeiteten Pose (posierter Umriss, Hautpunkte der Knoten, Zeilen) */
   poseSeite: PoseSeite | null;
+  /** B6: schwarze Linien der Pose in Front und Top */
+  poseFront: PoseSeite | null;
+  poseTop: PoseSeite | null;
   /** Saum je Blatt (Schritt 4): Silhouettenpunkte des Körpers (x, y, d px), (NaN, NaN, 0) trennt Züge; wird kopiert, nicht übertragen */
   saum: Record<'seite' | 'front' | 'top', Float32Array> | null;
   /** Front/Top: Umweg der schwarzen Linie über einen breiteren Kiefer (Paare x, y; NaN trennt), sonst fehlt das Blatt */
@@ -1270,8 +1273,10 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     };
     if (plan.gewichteZeigen) gewichtFarben = gewichteJeEcke(abl as MaulErgebnis, flaechen, gesteckteEcken);
   }
-  // B4: schwarze Linie in der Seite der bearbeiteten Pose (Umriss und Griffe aus der posierten feinen Fläche)
-  const poseSeite = bearbeitung ? poseSeiteGriffe(abl.fein, fein, flaechen, abl.unterteilung.grenze, dok) : null;
+  // B4/B6: schwarze Linien der bearbeiteten Pose in Seite, Front und Top (Umriss und Griffe aus der posierten feinen Fläche)
+  const poseSeite = bearbeitung ? poseBlattGriffe('seite', abl.fein, fein, flaechen, abl.unterteilung.grenze, dok) : null;
+  const poseFront = bearbeitung ? poseBlattGriffe('front', abl.fein, fein, flaechen, abl.unterteilung.grenze, dok) : null;
+  const poseTop = bearbeitung ? poseBlattGriffe('top', abl.fein, fein, flaechen, abl.unterteilung.grenze, dok) : null;
   const netz: WesenNetz = {
     positionen,
     normalen,
@@ -1296,6 +1301,8 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     anker: ankerFeld,
     pose: bearbeitung,
     poseSeite,
+    poseFront,
+    poseTop,
     saum,
     umweg,
     info,

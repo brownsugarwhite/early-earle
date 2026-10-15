@@ -1,22 +1,28 @@
-// Posen (Plan Teil B, B4): Griffe der schwarzen Linie im Seitenblatt einer Pose. Die Linie ist der posierte Umriss des
-// Körpers (wie der Lichtsaum: Kern-Koordinaten ohne Hebung, Raster 240); Florians Knoten des Seitenprofils sitzen auf
-// Hautpunkten (der feine Punkt am Ruhe-Umriss, der dem Knoten am nächsten liegt) und wandern mit der Pose. Für Züge an
-// der Linie gehen die feinen Punkte nahe dem posierten Umriss mit, je Punkt seine Zeile der Grenzmatrix — damit löst der
-// Editor (`loeser/posenLoeser.ts`) ohne Worker-Umweg.
+// Posen (Plan Teil B, B4; B6: auch Front und Top): Griffe der schwarzen Linie in einem Blatt der Pose. Die Linie ist der
+// posierte Umriss des Körpers in diesem Blatt (wie der Lichtsaum: Kern-Koordinaten ohne Hebung, Raster 240; Seite (x, y),
+// Front (z, y), Top (x, z)); Florians Knoten des Profils sitzen auf Hautpunkten (der feine Punkt am Ruhe-Umriss, der dem
+// Knoten am nächsten liegt) und wandern mit der Pose — in Front und Top auch die gespiegelten Knoten (Posen dürfen schief
+// sein). Für Züge an der Linie gehen die feinen Punkte nahe dem posierten Umriss mit, je Punkt seine Zeile der Grenzmatrix
+// — damit löst der Editor (`loeser/posenLoeser.ts`) ohne Worker-Umweg.
 import type { Dokument } from '../../dokument';
 import type { DuennMatrix } from '../../subdivision/matrix';
-import { umrissAusNetz } from '../../versuch/umriss3d';
+import { type Ansicht3, umrissAusNetz } from '../../versuch/umriss3d';
 
 type V3 = [number, number, number];
 
+/** Achsen eines Blatts (Seite x, y; Front z, y; Top x, z) */
+const ACHSEN: Record<Ansicht3, [number, number]> = { seite: [0, 1], front: [2, 1], top: [0, 2] };
+
 export type PoseSeite = {
-  /** posierter Seitenumriss (x, y), Kern-Koordinaten ohne Hebung */
+  /** Blatt (B6) */
+  ansicht: Ansicht3;
+  /** posierter Umriss im Blatt (zwei Koordinaten je Punkt), Kern-Koordinaten ohne Hebung */
   umriss: Float32Array;
   /** feine Punkte: je Umrisspunkt die Haut am posierten Umriss, dazu die Hautpunkte der Knoten */
   punkte: Int32Array;
   /** posierte Lage (x, y, z) je Punkt */
   lage: Float32Array;
-  /** je Knoten des Seitenprofils die Nummer in `punkte` (−1 = keiner) */
+  /** je Knoten des Profils (Front/Top: erst die Knoten, dann ihre Spiegelbilder) die Nummer in `punkte` (−1 = keiner) */
   knoten: Int32Array;
   /** Zeilen der Grenzmatrix je Punkt (CSR über `punkte`) */
   zeilenStart: Int32Array;
@@ -35,17 +41,18 @@ function alsPunkte(fein: ArrayLike<number>): V3[] {
 }
 
 /** Längster Zug eines Umrisses (der äußere) und die Rasterweite. */
-function aussenUmriss(punkte: V3[], flaechen: readonly number[][]): { zug: { x: number; y: number }[]; zelle: number } {
-  const zuege = umrissAusNetz({ punkte, flaechen: flaechen as number[][], schaerfe: new Map() }, 'seite', ZELLEN);
+function aussenUmriss(punkte: V3[], flaechen: readonly number[][], ansicht: Ansicht3): { zug: { x: number; y: number }[]; zelle: number } {
+  const zuege = umrissAusNetz({ punkte, flaechen: flaechen as number[][], schaerfe: new Map() }, ansicht, ZELLEN);
+  const [a0, a1] = ACHSEN[ansicht];
   let x0 = Infinity;
   let x1 = -Infinity;
   let y0 = Infinity;
   let y1 = -Infinity;
   for (const p of punkte) {
-    x0 = Math.min(x0, p[0]);
-    x1 = Math.max(x1, p[0]);
-    y0 = Math.min(y0, p[1]);
-    y1 = Math.max(y1, p[1]);
+    x0 = Math.min(x0, p[a0]!);
+    x1 = Math.max(x1, p[a0]!);
+    y0 = Math.min(y0, p[a1]!);
+    y1 = Math.max(y1, p[a1]!);
   }
   const zelle = Math.max(x1 - x0, y1 - y0, 1e-6) / ZELLEN;
   let zug = zuege[0] ?? [];
@@ -65,12 +72,13 @@ function aussenUmriss(punkte: V3[], flaechen: readonly number[][]): { zug: { x: 
  * Je Punkt des Umrisses der feine Punkt mit der nächsten Projektion (x, y) — die Haut am Umriss (doppelte entfernt).
  * Alle Punkte nahe dem Umriss zu nehmen gab tausende: Nahe der Silhouette projizieren ganze Streifen auf den Umriss.
  */
-function amZug(punkte: V3[], zug: readonly { x: number; y: number }[], zelle: number): number[] {
+function amZug(punkte: V3[], zug: readonly { x: number; y: number }[], zelle: number, ansicht: Ansicht3): number[] {
+  const [a0, a1] = ACHSEN[ansicht];
   const g = 2 * zelle;
   const gitter = new Map<string, number[]>();
   const schl = (i: number, j: number) => `${i}:${j}`;
   for (let p = 0; p < punkte.length; p++) {
-    const s = schl(Math.floor(punkte[p]![0] / g), Math.floor(punkte[p]![1] / g));
+    const s = schl(Math.floor(punkte[p]![a0]! / g), Math.floor(punkte[p]![a1]! / g));
     (gitter.get(s) ?? gitter.set(s, []).get(s)!).push(p);
   }
   const gesehen = new Set<number>();
@@ -84,7 +92,7 @@ function amZug(punkte: V3[], zug: readonly { x: number; y: number }[], zelle: nu
       for (let i = i0 - r; i <= i0 + r; i++)
         for (let j = j0 - r; j <= j0 + r; j++)
           for (const p of gitter.get(schl(i, j)) ?? []) {
-            const d = Math.hypot(punkte[p]![0] - q.x, punkte[p]![1] - q.y);
+            const d = Math.hypot(punkte[p]![a0]! - q.x, punkte[p]![a1]! - q.y);
             if (d < bd) {
               bd = d;
               best = p;
@@ -98,33 +106,45 @@ function amZug(punkte: V3[], zug: readonly { x: number; y: number }[], zelle: nu
   return out;
 }
 
-/** Ruhe-Umriss und Kandidaten je Ableitung merken (hängen nur an der Ruhelage). */
-const ruheMerk = new WeakMap<ArrayLike<number>, { kandidaten: number[] }>();
+/** Ruhe-Umriss und Kandidaten je Ableitung und Blatt merken (hängen nur an der Ruhelage). */
+const ruheMerk = new WeakMap<ArrayLike<number>, Partial<Record<Ansicht3, { kandidaten: number[] }>>>();
 
 /**
  * Griffdaten der schwarzen Linie im Seitenblatt einer Pose: posierter Umriss, Hautpunkte der Knoten des Seitenprofils,
  * Kandidaten nahe der Linie mit ihren Zeilen der Grenzmatrix.
  */
 export function poseSeiteGriffe(ruheFein: Float64Array, poseFein: ArrayLike<number>, flaechen: readonly number[][], grenze: DuennMatrix, dok: Dokument): PoseSeite {
+  return poseBlattGriffe('seite', ruheFein, poseFein, flaechen, grenze, dok);
+}
+
+/** Griffdaten der schwarzen Linie in einem Blatt der Pose (B6: Seite, Front, Top). */
+export function poseBlattGriffe(ansicht: Ansicht3, ruheFein: Float64Array, poseFein: ArrayLike<number>, flaechen: readonly number[][], grenze: DuennMatrix, dok: Dokument): PoseSeite {
+  const [a0, a1] = ACHSEN[ansicht];
   const pose = alsPunkte(poseFein);
-  const { zug, zelle } = aussenUmriss(pose, flaechen);
-  const kandidaten = amZug(pose, zug, zelle);
-  let ruhe = ruheMerk.get(ruheFein);
+  const { zug, zelle } = aussenUmriss(pose, flaechen, ansicht);
+  const kandidaten = amZug(pose, zug, zelle, ansicht);
+  const merk = ruheMerk.get(ruheFein) ?? {};
+  let ruhe = merk[ansicht];
   if (!ruhe) {
     const rp = alsPunkte(ruheFein);
-    const r = aussenUmriss(rp, flaechen);
-    ruhe = { kandidaten: amZug(rp, r.zug, r.zelle) };
-    ruheMerk.set(ruheFein, ruhe);
+    const r = aussenUmriss(rp, flaechen, ansicht);
+    ruhe = { kandidaten: amZug(rp, r.zug, r.zelle, ansicht) };
+    merk[ansicht] = ruhe;
+    ruheMerk.set(ruheFein, merk);
   }
-  // Knoten des Seitenprofils → nächster feiner Punkt am Ruhe-Umriss (Profil-Einheiten · Skalierung = Kern)
+  // Knoten des Profils → nächster feiner Punkt am Ruhe-Umriss (Profil-Einheiten · Skalierung = Kern); Front und Top:
+  // Halbprofile, dazu die gespiegelten Knoten (Achsknoten nur einmal)
   const sk = dok.skalierung;
-  const knotenPunkt = dok.profile.seite.knoten.map((k) => {
-    const x = k.p.x * sk;
-    const y = k.p.y * sk;
+  const knotenLagen: { x: number; y: number }[] = [];
+  const profil = dok.profile[ansicht];
+  for (const k of profil.knoten) knotenLagen.push({ x: k.p.x * sk, y: k.p.y * sk });
+  if (ansicht === 'front') for (const k of profil.knoten) if (Math.abs(k.p.x) > 1e-9) knotenLagen.push({ x: -k.p.x * sk, y: k.p.y * sk });
+  if (ansicht === 'top') for (const k of profil.knoten) if (Math.abs(k.p.y) > 1e-9) knotenLagen.push({ x: k.p.x * sk, y: -k.p.y * sk });
+  const knotenPunkt = knotenLagen.map(({ x, y }) => {
     let best = -1;
     let bd = Infinity;
     for (const p of ruhe!.kandidaten) {
-      const d = Math.hypot(ruheFein[3 * p]! - x, ruheFein[3 * p + 1]! - y);
+      const d = Math.hypot(ruheFein[3 * p + a0]! - x, ruheFein[3 * p + a1]! - y);
       if (d < bd) {
         bd = d;
         best = p;
@@ -160,5 +180,5 @@ export function poseSeiteGriffe(ruheFein: Float64Array, poseFein: ArrayLike<numb
     umriss[2 * k] = q.x;
     umriss[2 * k + 1] = q.y;
   });
-  return { umriss, punkte: Int32Array.from(alle), lage, knoten: Int32Array.from(knotenPunkt.map((p) => (p >= 0 ? nummer.get(p)! : -1))), zeilenStart, zeilenIndex: Int32Array.from(idx), zeilenWert: Float64Array.from(wert), zelle };
+  return { ansicht, umriss, punkte: Int32Array.from(alle), lage, knoten: Int32Array.from(knotenPunkt.map((p) => (p >= 0 ? nummer.get(p)! : -1))), zeilenStart, zeilenIndex: Int32Array.from(idx), zeilenWert: Float64Array.from(wert), zelle };
 }

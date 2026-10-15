@@ -1,4 +1,4 @@
-# Übergabe (Stand 16.10.2026 früh: L0.1 neu gebaut, Teil G G1/G2/G2b gebaut, G4 erster Beweis; jetzt B6)
+# Übergabe (Stand 15.10.2026 spätabends: L0.1 neu gebaut, Teil G G1/G2/G2b gebaut, G4 erster Beweis; jetzt B6)
 
 Branch `claude/editor-grundlayout`. **Es gilt der freigegebene Plan [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)** mit den ausführlichen Entwürfen [Teil A Maul als Einsatz](plans/2026-10-15-entwurf-maul-einsatz.md), [Teil H Werkzeug-Harmonie](plans/2026-10-15-entwurf-werkzeug-harmonie.md) und [Teil B Posen](plans/2026-10-15-entwurf-posen.md). Alle älteren Fahrpläne (Phase 2, Ruhiges Netz und Maulschlitz, Fressen wie Editor) sind dadurch abgelöst; ihre Fallen und Messwerkzeuge bleiben gültiges Wissen.
 
@@ -60,7 +60,7 @@ Alles gebaut und gemessen, **nichts abgenommen**. Bilder in `docs/progress/edito
    - **G1** Prüfkörper `kern/pruefen/grundkoerper.ts`: deine Ente (aus deinem Bild), Giraffe mit Bauch vor der Nase, Schwanenhals, Fisch mit Flossen; Kontaktbogen `apps/editor/scripts/pruefen/grundkoerper-g.ts`. Ausgangslage: Ente Seite Δ 76 px, Giraffe 49 px (`g1-ausgangslage-2026-10-15.jpg`).
    - **G2 Enden der Wirbelsäule** (2574a95): eingefroren als Kurvenparameter der Seite (mit den Stationen), automatisch über Wege im Inneren (der innen fernste Punkt hinter einer Biegung wird Anfang). Alle 33 bisherigen Prüfkörper bitgleich; **ein Zug am Bauch über die Nase springt nicht mehr um**; Ente Seite 76 → 5 px, Giraffe 49 → 1 px (`g2-enden-2026-10-15.jpg`).
    - **G2b Fächer an inneren Ecken** (351b963): Ente Falten über 20° 1209 → 416, bestehende Körper bitgleich (`g2b-faecher-2026-10-15.jpg`).
-   - **G4 Teile, erster Beweis, nicht gut genug** (56a8d72): Erkennung durch Öffnen der Silhouetten (bisherige Körper ohne Teil, bitgleich; Ente: Flügelspitzen; Fisch: Brustflossen), Bau als Ausstülpung entlang der Mittellinie mit flachen Ellipsen. Flügel und Flossen sitzen an der richtigen Stelle, aber Ente Front/Top Δ 24/26 px und Falten am tangentialen Ansatz, Fisch-Schwanzgabel faltet (`g4-teile-erster-beweis-2026-10-16.jpg`). Befunde und Wege auf der Planseite.
+   - **G4 Teile, erster Beweis, nicht gut genug** (56a8d72): Erkennung durch Öffnen der Silhouetten (bisherige Körper ohne Teil, bitgleich; Ente: Flügelspitzen; Fisch: Brustflossen), Bau als Ausstülpung entlang der Mittellinie mit flachen Ellipsen. Flügel und Flossen sitzen an der richtigen Stelle, aber Ente Front/Top Δ 24/26 px und Falten am tangentialen Ansatz, Fisch-Schwanzgabel faltet (`g4-teile-erster-beweis-2026-10-15.jpg`). Befunde und Wege auf der Planseite.
    - **Bäuche unter dem Mund:** Der Teil „Bauch vor der Nase springt um“ ist mit G2 gelöst. Dass ein Bauch unter einem hohen Maul zur Flosse klappt, kommt vom Maulbau (feste Punktzahl über/unter der Lippe) und gehört zu Teil A (Maul als Einsatz).
 3. **Jetzt: B6** (Florians Auftrag). Danach nach Plan weiter.
 
