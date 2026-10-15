@@ -79,7 +79,8 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - B3b: Knochen in 3D (Entscheidung 10: Gieren, Rollen, seitlich).
   - B4: Löser im posierten Raum, schwarze Linie im Seitenblatt einer Pose.
   - B5: Rot und Blau der Pose als Versatzfeld längs der natürlichen Lippe, Lippenprojektion im Ruheraum (die Knochen nehmen sie mit; 0,05 px), in Fressen immer getrennt, geschlossen türkis; die Linien folgen dem Pinsel von selbst.
-  - Stand je Schritt auf der Planseite, Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md), nächster Schritt B6 (Front/Top/Reifen in der Pose).
+  - Stand je Schritt auf der Planseite, Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
+- **2026-10-15 nachts: Teil L freigegeben (Entscheidung 11), Linien als Kurvennetz** ([`docs/plans/2026-10-15-teil-l-linien-kurvennetz.md`](docs/plans/2026-10-15-teil-l-linien-kurvennetz.md)): Konturen und Linien mit gemeinsamen Knoten, jede Linie eine Käfigschleife genau auf der Linie, Knick über Ecken im Querschnitt, kein Wirkbreiten-Regler, Spanten werden Querschnittslinien. Florian wies einen ersten Entwurf (Korrekturschicht mit Wirkbreite, eingesetztes Band) als zu kompliziert zurück. Nächster Schritt L0 (Beweis im Kern), dann B6 mit Linien statt Reifen in der Pose.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte) und die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 

@@ -1,4 +1,4 @@
-# Übergabe (Stand 15.10.2026 nachts, Stufe 3: B3, B3b, B4, B5 gebaut)
+# Übergabe (Stand 15.10.2026 nachts, Stufe 3: B3, B3b, B4, B5 gebaut; Teil L freigegeben)
 
 Branch `claude/editor-grundlayout`. **Es gilt der freigegebene Plan [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)** mit den ausführlichen Entwürfen [Teil A Maul als Einsatz](plans/2026-10-15-entwurf-maul-einsatz.md), [Teil H Werkzeug-Harmonie](plans/2026-10-15-entwurf-werkzeug-harmonie.md) und [Teil B Posen](plans/2026-10-15-entwurf-posen.md). Alle älteren Fahrpläne (Phase 2, Ruhiges Netz und Maulschlitz, Fressen wie Editor) sind dadurch abgelöst; ihre Fallen und Messwerkzeuge bleiben gültiges Wissen.
 
@@ -51,9 +51,13 @@ Die Ursachen stehen im Plan unter „Befund“ (Code-Analysen mit Datei- und Zei
 
   Befunde im Kritik-Register („Befunde aus B5“): Ein Zug um 60 px faltet die Kinnfront (B8). Der Mundwinkel liegt 0,6 px neben dem Zeiger. Knicke kann die runde Lippenkette nicht nachbilden (Teil A).
 
-## Nächster Schritt: B6 (nach Florians Blick auf B5)
+## Nächster Schritt: L0 (Teil L, freigegeben 15.10. nachts), danach B6
 
-Nach Entwurf `docs/plans/2026-10-15-entwurf-posen.md` §4.1/§4.2 und Plan Teil B: schwarze Linien in Front und Top einer Pose (posierte Silhouetten, Löser aus B4), Griffe an den Knoten der Seite, Reifen in der Pose, Matrix „jedes Werkzeug × jede Pose“ mit echten Zügen; danach fällt die B1-Sperre ganz (`nurPose` → Werkzeug-Router je Werkzeug).
+Florian zu B5: „Es scheint schon ganz gut zu funktionieren.“ Dann seine Idee, die Linien auf der Haut zu echten Griffen mit Kantigkeit zu machen; nach einem ersten Entwurf (den er als zu kompliziert zurückwies) freigegeben als **Kurvennetz** ([`docs/plans/2026-10-15-teil-l-linien-kurvennetz.md`](plans/2026-10-15-teil-l-linien-kurvennetz.md), Entscheidung 11):
+- Konturen und Linien sind gleichwertige Kurven mit gemeinsamen Knoten; Linien beginnen an Konturen, Kreuzungen werden automatisch Knoten.
+- Jede Linie wird eine Schleife des Käfigs genau auf der Linie (Querlinie → Ring, Längslinie → Längsreihe), ohne neue Punktnummern, eingefroren wie die Stationen: keine Treppe, nichts springt.
+- Knick = Ecke im Querschnitt am Kreuzungsknoten (wie heute bei Spanten), kein Regler für die Wirkbreite; Spanten werden geschlossene Querschnittslinien (L2).
+- **L0** = Beweis im Kern mit harten Kriterien (Planseite), dann Halt für Florian. Danach **B6** mit Linien in der Pose statt „Reifen in der Pose“.
 
 ## Erledigt: Stufe 2, B1
 
