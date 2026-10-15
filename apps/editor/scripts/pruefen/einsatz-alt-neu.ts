@@ -19,7 +19,6 @@ import { einsatzTopologie } from '../../../../packages/shape/src/kern/einsatz/to
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
 const b64 = (a: Float32Array | Uint32Array | Uint8Array) => Buffer.from(a.buffer, a.byteOffset, a.byteLength).toString('base64');
-type V3 = [number, number, number];
 const FAELLE = (process.env.FAELLE ?? 'birne/hoch/gerade,kugel/hoch/gerade,ei/hoch/s').split(',');
 const tri = (fl: number[][]) => {
   const out: number[] = [];
