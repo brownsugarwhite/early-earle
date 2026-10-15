@@ -129,13 +129,14 @@ await page.evaluate(() => window.__stores.editor.getState().neu());
 await warteBau(await version(), false);
 const kugel0 = await wechselFolge('Kugel');
 
-// 2) Sperre: in Fressen eine schwarze Linie ziehen (echter Zug auf einen Seitenknoten) → Grundform bleibt, Hinweis
+// 2) In Fressen die schwarze Linie ziehen (echter Zug auf einen Knoten der Seite) → Grundform bleibt. Seit B4 ist die
+// Linie im Seitenblatt einer Pose die Linie der Pose (`data-pose-knoten`): der Zug formt die Pose statt gesperrt zu sein.
 await pille('Fressen');
 await page.evaluate(() => window.__stores.ui.getState().maximieren(null));
 await page.waitForTimeout(500);
 const knoten = await page.evaluate(() => {
   const r = window.__stores.rahmen.getState().rects.seite;
-  for (const el of document.querySelectorAll('[data-knoten]')) {
+  for (const el of document.querySelectorAll('[data-pose-knoten]')) {
     const b = el.getBoundingClientRect();
     const x = b.x + b.width / 2;
     const y = b.y + b.height / 2;
@@ -151,10 +152,10 @@ if (knoten) {
   await page.mouse.up();
   await page.waitForTimeout(400);
   const nachher = await page.evaluate(() => JSON.stringify(window.__stores.editor.getState().dok.profile));
-  const hinweis = await page.evaluate(() => window.__stores.ui.getState().hinweis?.text ?? '');
-  pruefe('Sperre: Seitenknoten in Fressen ziehen ändert die Grundform nicht', vorher === nachher);
-  pruefe('Sperre: Hinweis „In der Pose formt vorerst nur der Pinsel …“', hinweis.startsWith('In der Pose'), hinweis.slice(0, 60));
-} else pruefe('Sperre: Seitenknoten gefunden', false);
+  const form = await page.evaluate(() => window.__stores.editor.getState().dok.posen.find((p) => p.id === 'fressen')?.form.length ?? 0);
+  pruefe('Knoten der Seite in Fressen ziehen ändert die Grundform nicht', vorher === nachher);
+  pruefe('… und formt die Pose (B4)', form > 0, `${form} Punkte`);
+} else pruefe('Knoten der Pose-Linie in der Seite gefunden', false);
 await pille('Editor');
 
 // 3) Vorschau im Editor-Tab endet beim Stufenwechsel

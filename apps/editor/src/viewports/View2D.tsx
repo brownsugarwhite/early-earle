@@ -38,6 +38,7 @@ import { useUeberlagerung } from '../versuch/ueberlagerung';
 import { blickVon, useUi } from '../state/uiStore';
 import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen, setzeLippenImUmriss } from '../maul/MaulEbene';
 import { KieferZeichnung, kieferZeiger } from '../kiefer/KieferEbene';
+import { PoseLinieZeichnung, poseLinieZeiger } from '../posen/poseLinie';
 import { RigZeichnung } from '../maul/RigZeichnung';
 import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
 import { RundmaulZeichnung, rundmaulZeiger } from '../maul/RundmaulEbene';
@@ -73,7 +74,8 @@ function spaltIndizesZu(seite: Profil, zu: NonNullable<Dokument['maul']>['zu']):
 
 export function View2D({ ansicht, w, h }: Props) {
   // im Fressen-Tab bearbeitet die Seite die Pose-Form (gespeichert oder dem Kiefer folgend)
-  const profil = useEditor((s) => (istPose(s.modus, ansicht) ? poseSeite(s.dok) : s.dok.profile[ansicht]));
+  // (Bauweise Kern: in der Pose bleibt die Grundlinie Bezug; die Pose zeigt ihre eigene Linie, `PoseLinieZeichnung`)
+  const profil = useEditor((s) => (istPose(s.modus, ansicht) && useUi.getState().bauweise !== 'kern' ? poseSeite(s.dok) : s.dok.profile[ansicht]));
   const skal = useEditor((s) => s.dok.skalierung);
   const view = useUi((s) => s.ansichten[ansicht]);
   const gewaehlt = useUi((s) => s.auswahl[ansicht]);
@@ -99,7 +101,10 @@ export function View2D({ ansicht, w, h }: Props) {
   // Spalt über die Knotennummern der Maulanfänge (geschlossen aus dem Umriss, die Pose-Form hat dieselben)
   // Bauweise Kern: „Formen folgen“ macht die Lippenanfänge zu Umrissknoten (Spalt dazwischen); solange sie es nicht sind, bleibt der Umriss ganz
   const spalt = maulZu?.unten ? umrissMitSpalt(profil, maulZu, offenerKoerper ? poseSpaltIndizes(useEditor.getState().dok) : maulDok ? spaltIndizesZu(profil, maulDok.zu) : null) : null;
-  const formAktiv = ebene === 'form' && (!offenerKoerper || ansicht === 'seite');
+  // B4: im Seitenblatt einer Pose (Bauweise Kern) ist die schwarze Linie der posierte Umriss mit Florians Knoten
+  const bauweise = useUi((s) => s.bauweise);
+  const poseKern = bauweise === 'kern' && modus !== 'editor' && ansicht === 'seite' && (ebene === 'form' || ebene === 'posen');
+  const formAktiv = ebene === 'form' && (!offenerKoerper || ansicht === 'seite') && !poseKern;
   const svgRef = useRef<SVGSVGElement>(null);
   // Saum (Schritt 4): Silhouette des Körpers, wo sie > 2 px von der Kurve abweicht (Welt-Koordinaten des Blatts)
   const saum = useKernAnzeige((s) => (s.info?.blatt ? (aktuellesNetz()?.netz.saum?.[ansicht] ?? null) : null));
@@ -238,6 +243,12 @@ export function View2D({ ansicht, w, h }: Props) {
       return;
     }
     if (e.button !== 0) return;
+    // B4: schwarze Linie der Pose (Seite): Knoten und Linie ziehen formen die Pose; die Kiefergriffe gehen vor
+    if (poseKern) {
+      if (ui.ebene === 'posen' && kieferZeiger(e, { ansicht, lokal, ziehen })) return;
+      if (poseLinieZeiger(e, { ansicht, lokal, ziehen })) return;
+      if (ui.ebene === 'form') return;
+    }
     if (ui.ebene === 'maul') {
       // Rundmaul (Phase 2 M6): Ring und Mitte als Griffe vor dem Zeichnen einer Maullinie
       if (rundmaulZeiger(e, { ansicht, lokal, ziehen })) return;
@@ -527,6 +538,9 @@ export function View2D({ ansicht, w, h }: Props) {
                 />
               ))}
             </g>
+          ) : poseKern ? (
+            // Grundlinie als Bezug (gestrichelt), bearbeitet wird die Linie der Pose
+            <path data-grundlinie="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="var(--kurve-spiegel)" strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" pointerEvents="none" />
           ) : (
             <path d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinejoin="round" strokeLinecap="round" />
           )}
@@ -536,6 +550,7 @@ export function View2D({ ansicht, w, h }: Props) {
       {umwegPfade.eigen && <path data-umweg="eigen" d={umwegPfade.eigen} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {saumPfad && <path className="saum" data-saum="" d={saumPfad} fill="none" stroke="var(--saum)" strokeWidth={3} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
+      {poseKern && <PoseLinieZeichnung ansicht={ansicht} bild={bild} skal={skal} />}
       <WirbelZeichnung ansicht={ansicht} bild={bild} />
       <SchnittZeichnung ansicht={ansicht} bild={bild} />
       <RundZeichnung ansicht={ansicht} bild={bild} />
