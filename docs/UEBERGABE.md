@@ -1,4 +1,4 @@
-# Übergabe (Stand 15.10.2026 spätabends: L0.1 neu gebaut, Teil G G1/G2/G2b gebaut, G4 erster Beweis; jetzt B6)
+# Übergabe (Stand 16.10.2026 früh: L0.1, Teil G G1–G4, B6, Teil A A1–A7 gebaut; A angehalten an zwei Grundsatzbefunden, weiter mit L0)
 
 Branch `claude/editor-grundlayout`. **Es gilt der freigegebene Plan [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)** mit den ausführlichen Entwürfen [Teil A Maul als Einsatz](plans/2026-10-15-entwurf-maul-einsatz.md), [Teil H Werkzeug-Harmonie](plans/2026-10-15-entwurf-werkzeug-harmonie.md) und [Teil B Posen](plans/2026-10-15-entwurf-posen.md). Alle älteren Fahrpläne (Phase 2, Ruhiges Netz und Maulschlitz, Fressen wie Editor) sind dadurch abgelöst; ihre Fallen und Messwerkzeuge bleiben gültiges Wissen.
 
@@ -69,9 +69,14 @@ Alles gebaut und gemessen, **nichts abgenommen**. Bilder in `docs/progress/edito
    - **A1** Linie auf A0 (b6defeda): Anker hin und zurück 8e-17; in 45 Fällen ist das entlang der Linie aufgeschnittene Feld eine Scheibe. Offen: Pfad bis 1,1 feine Kanten neben der Linie (Plan ½).
    - **A3** Feldwahl (4718a0ad): in 54 Fällen Scheibe, symmetrisch, keine konkaven Ecken, Pole genau nach Gauß–Bonnet, deterministisch. Offen: an der Schnauzenspitze sehr große Felder (bis 768 von 1602 Flächen; ein Versuch „erst schrumpfen“ war schlechter und ist verworfen), m 22 > 20 beim tiefen Rex-Mund.
    - **A4** Karte (3c42ac72): in 54 Fällen 0 umgeklappte und 0 entartete Kartendreiecke; Bild mit den Höhenlinien (künftige Reihen und Speichen, elliptische Mundschleifen am Mundwinkel): `a3-a4-feld-karte-2026-10-15.jpg`.
-   - **Jetzt A5** (Topologie des Einsatzes), dann A6 (Lippe exakt auf der Linie), A7 (Lösen, gleiche Kiefer) → **dein Look-Urteil 1**.
+   - **A5** Topologie (ee4d0e6f): Haut, Lippenschleife (unendlich scharf), Tasche, Rachen; in 54 Fällen geschlossen und orientiert (χ = 2), Spiegel bitgenau, **außen bitgleich (0,0)**, Valenzen wie vorhergesagt. **Nicht erreicht:** gute Hautvierecke nur bei ausgeglichenen Feldern (23–39°); große, schiefe Felder bleiben schlecht — Ursache ist die Feldform aus A3 (`a5-topologie-2026-10-16.jpg`).
+   - **A6** Lippe exakt auf der Linie (d53a0308): Die Lippen-Grenzkurve ist ein B-Spline der Schleife (gegen die Unterteilung 1e-16); krümmungsgewichtet trifft sie jede gültige Linie ab m = 10 auf ≤ 0,82 px, ab m = 16 auf 0,30 px. Die Lippe braucht m ≈ 10–15, kompakte Felder haben heute m = 8.
+   - **A7** Haut lösen (5081c3a0): außen bitgleich, Spiegel bitgenau; Haut gegen A0 Langhals 0,27–0,39 px, Kugel/Ei 0,75–0,84 px (mit 8 statt 4 Reihen Kugel 0,26 px), Rex/Robbe bis 4,7 px (`a7-haut-geloest-2026-10-16.jpg`: Cel, Wärmebild, Zebra). Dabei gefunden: Die Linien der Zufallsreihe lagen bis 13 px neben der Haut; der Prüffall legt sie jetzt wie der Editor auf die Haut.
+   - **Angehalten** (drei Anläufe je Stelle) an zwei Grundsatzbefunden, beide mit Wegen im Kritik-Register (Befunde A5/A6/A7): **(1) Der Mundwinkel faltet:** Als Ecke zweier geschlossener, unendlich scharfer Lippen müssen zwei Hautflächen 360° überdecken; Catmull–Clark gibt ihnen 180° → Umklappen in 0,2–1,4 px um den Mundwinkel, in allen Fällen. Empfehlung: Eckregel mit Sektorwinkel (Biermann/Levin/Zorin 2000). **(2) Lippenauflösung und Feldrand widersprechen sich** (m ist an den Feldrand gebunden): Empfehlung kompakte Felder + Übergangsreihe (3/5-Paare im äußeren Ring), damit m der Linie folgt.
 
-**Für dich zum Ansehen:** die fünf Bilder oben; Entscheidungen, die anstehen: (a) L0.1 — genügen 1,4° Normalenabweichung bei schrägen Linien, oder soll die Verdichtung (eine Reihe mehr) kommen? (b) G4 — Flügel nahtlos als Ausstülpung (nach außen ansetzen, dann nach hinten) oder als angestecktes Teil mit verdeckter Überlappung?
+**Für dich zum Ansehen:** die Bilder oben; Entscheidungen, die anstehen: (a) L0.1 — genügen 1,4° Normalenabweichung bei schrägen Linien, oder soll die Verdichtung (eine Reihe mehr) kommen? (b) G4 — Flügel nahtlos als Ausstülpung oder als angestecktes Teil, und wie groß? (c) Mundwinkel — Eckregel mit Sektorwinkel (Empfehlung), Spitze, Fächer oder kleine runde Öffnung? (d) Übergangsreihe im äußeren Ring (Empfehlung) oder ungleiche Lippen?
+
+**Danach in dieser Nacht:** Teil L, L0 Fälle 2–6 (Kreuzung und Knick, Querschnitt aus Linien, steil und waagerecht, ohne Springen, Pose) — „besonders wichtig“ neben der Grundform.
 
 ## Erledigt: Stufe 2, B1
 
