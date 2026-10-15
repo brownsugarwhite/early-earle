@@ -1,4 +1,4 @@
-# Übergabe (Stand 15.10.2026 nachts, nach Phase 2 M5)
+# Übergabe (Stand 15.10.2026 früh, nach Phase 2 M6)
 
 Branch `claude/editor-grundlayout`. Es gilt der Fahrplan [`docs/plans/2026-10-14-ruhiges-netz-und-maulschlitz.md`](plans/2026-10-14-ruhiges-netz-und-maulschlitz.md): Block 1 ruhiges Netz → Block 2 Maulschlitz und getrennte Kiefer (zu Ende gebaut) → **Block 3 = Phase 2 nach [`docs/plans/2026-10-15-phase-2-maul.md`](plans/2026-10-15-phase-2-maul.md)**. Florians Auftrag für die Nacht: selbstständig weiter, extrem selbstkritisch, jeden Schritt ausgiebig prüfen, genau nach dem Plan.
 
@@ -19,6 +19,15 @@ Branch `claude/editor-grundlayout`. Es gilt der Fahrplan [`docs/plans/2026-10-14
    - **Brauenwulst nicht gelöst** (drei gemessene Anläufe, Abbruchregel): Am Rex ist das Feld um das Auge längs des Körpers zu schmal (Ringe am Mundwinkel 0,009–0,015 auseinander). Standard ohne Wulst; Wege auf der Planseite.
 4. **Abnahme per Skript** (5240ff8): PezenPez, Glubsch, Rex (jetzt mit Augäpfeln) mit allen Zuständen neben den Bögen. Bild `docs/progress/editor/augen-m5-abnahme-2026-10-15.jpg`.
 
+**Phase 2 M6 Maularten** (Planseite Phase 2, Abschnitt „M6 Maularten“):
+
+1. **Bestandsbild** (5dfb939): Fisch brauchte eine Ring-Topologie, Drache und Plattenmaul trugen als Grundlage, das Kastenkinn war mit den Kasten-Spanten schon da.
+2. **Rundmaul** (9d497bb): O-Maul als Aufsatz an der Kappenmitte (Lippenring, innere Kante, Rachenboden), Öffnen weitet den Ring und dehnt die Haut; rund 0,96–0,99, 4,2-fach weiter, keine Durchdringung. Prüfwesen **Fisch**, Tafel Maul mit Chip „Rundmaul“ und Reglern. Deskriptoren rechnen auf dem erweiterten Käfig.
+3. **Drache** (1537249): Kopf kippt 20° zurück, Hals zieht 0,7 → 2,5-mal weiter, keine Durchdringung. Offen: Die untere Schnauze steht als Schnabel vor.
+4. **W-Oberlippe** (5eb4d8b): drei gemessene Anläufe am Plattenmaul, nicht gelöst (steigende oder flache Arme schneiden beim Öffnen durch die Oberlippe).
+5. **Kastenkinn:** über Kasten-Spanten und Kiefer-Spant mit Ecken, kein eigener Baustein.
+6. **Abnahme per Skript** (9772e52): Bild `docs/progress/editor/maularten-m6-abnahme-2026-10-15.jpg`.
+
 **Behobene Befunde unterwegs:**
 - Die Höhe als Maß für Augen, Lippenband, Nase und Material kam aus der Pose; beim Öffnen wuchsen sie beim Rex um 11 %. Jetzt aus der Ruhelage.
 - Gedrehte Augen neigten sich beide in dieselbe Richtung; das linke Auge bekommt die gespiegelte Drehung.
@@ -27,8 +36,9 @@ Branch `claude/editor-grundlayout`. Es gilt der Fahrplan [`docs/plans/2026-10-14
 ## Entscheidungen für Florian
 
 1. **Brauenwulst** am Rex-Augapfel, einer der Wege von der Planseite: Ringe am Auge (Stationen wie ein Reifen, klein), Loop-Cut (größer), Brauenkante von Hand (Kantenlinie + Pinsel), Braue als Teil.
-2. **Look der drei Augenarten** gegen Bild 10, 11 und PezenPez; ob der Prüfwesen-Rex Augäpfel behalten soll.
-3. Aus M4 weiter offen: Zahngröße/-breite gegen die Referenz, Rex mit 14 Zähnen in 10 min, runder Haps.
+2. **Hund mit W-Lippe:** Unterkiefergewichte je Armstück am Plattenmaul, oder Hund als Schlitzmaul mit Philtrum-Kerbe vorn.
+3. **Look** der drei Augenarten (Bild 10, 11, PezenPez), des Rundmauls (`fish_round mouth`) und des Drachen (`rex_dragon_big mouth`); ob der Prüfwesen-Rex Augäpfel behalten soll.
+4. Aus M4 weiter offen: Zahngröße/-breite gegen die Referenz, Rex mit 14 Zähnen in 10 min, runder Haps (Automatik oder Fressen-Pose).
 
 ## Ehrlich offen
 
@@ -39,12 +49,13 @@ Branch `claude/editor-grundlayout`. Es gilt der Fahrplan [`docs/plans/2026-10-14
 
 ## Nächster Schritt
 
-1. **Florians Urteil** zu M4 und M5 (Bilder `zaehne-m4-abnahme-rex-14-2026-10-15.jpg`, `augen-m5-abnahme-2026-10-15.jpg`), Entscheidung zum Brauenwulst.
-2. **Phase 2 weiter nach Plan: M6 Maularten** (Rundmaul, W-Oberlippe, ohne Unterkiefer, Kastenkinn). Erst den Plan auf die Planseite, dann je Maulart ein Test mit Kriterium und Abbruchregel. Dazu der Rest aus Plan 5.2: Kehlkette, Schädelgelenk als Griff, Bodengrenze.
+1. **Florians Urteil** zu M4, M5 und M6 (Bilder `zaehne-m4-abnahme-rex-14-2026-10-15.jpg`, `augen-m5-abnahme-2026-10-15.jpg`, `maularten-m6-abnahme-2026-10-15.jpg`) und seine Entscheidungen oben.
+2. **Phase 2 ist nach Plan durchgebaut.** Rest aus Plan 5.2: Kehlkette, Schädelgelenk als Griff, Bodengrenze; dazu je nach Florians Wahl Brauenwulst, Hund, Zähne am Rundmaul.
 
 ## Wo Florian testet
 
 - Web-Modus `http://localhost:5180` (`pnpm --filter @ee/editor dev:web`). **Nach dem Pull den Dev-Server neu starten** (HMR-Falle; neue Kern-Module und Material-Dateien).
+- **Maularten ausprobieren:** Library ▸ Fisch (Rundmaul; Stufe Maul ⌘2: Öffnung, O zu/offen), Drache (Stufe Maul, Chip „hals“, Öffnung), Tiger (Plattenmaul).
 - **Augen ausprobieren:** Library ▸ Prüfwesen PezenPez, Glubsch oder Rex, ⌘4 (Stufe Augen).
   1. Tafel: Art (gemalt, Glubsch, Augapfel), Form/Pupille, Zustand als Vorschau, Lid, Blinzeln, Größe, Breite, Drehung, Tiefe, Farbe.
   2. Klick auf den Körper setzt das Auge (überall auf der Haut; der Augapfel rastet auf einen Ringpunkt ohne Lippe), am Rand ziehen ändert die Größe.
@@ -52,7 +63,7 @@ Branch `claude/editor-grundlayout`. Es gilt der Fahrplan [`docs/plans/2026-10-14
 
 ## Prüfen
 
-- `pnpm typecheck`; `cd packages/shape && npx vitest run` (267 Tests; feste Tempo-Schranken kippen bei belegter Maschine — vorher `uptime`, einzeln mit `-t`); `cd apps/editor && npx vitest run` (16); `pnpm lint`.
-- Augen: `apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/<skript>`. Skripte: `augen-zustaende.mjs`, `augen-glubsch.mjs`, `augen-tafel.mjs`, `augen-augapfel.mjs` (`LAGE`, `GROESSE`), `augen-abnahme.mjs`. Zähne: `zahn-*.mjs`.
+- `pnpm typecheck`; `cd packages/shape && npx vitest run` (269 Tests; feste Tempo-Schranken kippen bei belegter Maschine — vorher `uptime`, einzeln mit `-t`); `cd apps/editor && npx vitest run` (16); `pnpm lint`.
+- Augen: `apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/<skript>`. Skripte: `augen-zustaende.mjs`, `augen-glubsch.mjs`, `augen-tafel.mjs`, `augen-augapfel.mjs` (`LAGE`, `GROESSE`), `augen-abnahme.mjs`; Maularten: `maularten-bestand.mjs`, `rundmaul.mjs`, `drache.mjs`, `maularten-abnahme.mjs`. Zähne: `zahn-*.mjs`.
 - Prüfreihe Maul vor jeder Meldung: `cd packages/shape && npx vite-node ../../apps/editor/scripts/pruefen/pruefreihe.ts`. Übersicht: `apps/editor/scripts/pruefen/README.md`.
 - E2E: `cd apps/editor && E2E_PORT=5191 EE_GPU=1 npx playwright test e2e/kern-ablauf.spec.ts --reporter=list`, danach `git checkout -- docs/progress/editor/e2e-kern-*.png`.
