@@ -3,11 +3,16 @@
 import { describe, expect, it } from 'vitest';
 import { neuesDokument } from '../dokument';
 import { selbstDurchdringungen } from '../versuch/pruefen';
-import { pruefeKaefig } from '../kaefig/halbkanten';
+import { alleFlaechen, pruefeKaefig } from '../kaefig/halbkanten';
 import { ableiten } from './ableiten';
 import { hoehlenFein, hoehlenLagen, hoehlenTopologie } from './augenHoehle';
-import { RUNDMAUL_STANDARD, rundmaulEintrag, rundmaulPose, rundmaulZentrum } from './rundmaul';
+import { RUNDMAUL_STANDARD, type RundmaulForm, rundmaulAchse, rundmaulDicke, rundmaulEintrag, rundmaulKandidaten, rundmaulPose, rundmaulSpitze, rundmaulZentrum } from './rundmaul';
+import { anwenden3 } from '../subdivision/matrix';
 import { type Bauplan, wesenBauen } from './wesen';
+import { type Vorlage, vorlageDokument } from '../versuch';
+import rexRoh from '../versuch/vorlagen/rex.json';
+import tigerRoh from '../versuch/vorlagen/tiger.json';
+import langRoh from '../versuch/vorlagen/langhals.json';
 
 declare const console: { log: (...a: unknown[]) => void };
 type V3 = [number, number, number];
@@ -105,6 +110,104 @@ describe('Rundmaul', () => {
       }
     }
     expect(wesenBauen(d, { ...plan(1), rundmaul: {} }, null).netz.zaehne).toBeNull();
+  }, 120_000);
+
+  /** Lippenring und Durchdringungen des Aufsatzes um den Käfigpunkt c bei den Öffnungen (wie der erste Test). */
+  function ringPruefen(abl: ReturnType<typeof ableiten>, c: number, form: RundmaulForm, oeffnungen: readonly number[]) {
+    let H = 0;
+    for (let i = 1; i < abl.fein.length; i += 3) H = Math.max(H, abl.fein[i]!);
+    const flaechen = alleFlaechen(abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig);
+    return oeffnungen.map((oe) => {
+      // wie im Bau: Rachen höchstens 0,6 der Körperdicke hinter dem Maul (posiert)
+      const xyz = rundmaulPose(abl, abl.kaefig.xyz, oe, H, form, c);
+      const dicke = rundmaulDicke(punkteAus(anwenden3(abl.unterteilung.grenze, xyz)), flaechen, c, rundmaulAchse(abl, xyz, c));
+      const e = rundmaulEintrag(abl, oe, H, form, c, dicke);
+      const topo = hoehlenTopologie(abl.kaefig, 2, [e])!;
+      expect(pruefeKaefig(topo.kaefig).fehler).toEqual([]);
+      const fein = hoehlenFein(topo, hoehlenLagen(topo, xyz, [e]));
+      const ring: V3[] = Array.from({ length: 8 }, (_, k) => [fein[3 * (topo.nAlt + k)]!, fein[3 * (topo.nAlt + k) + 1]!, fein[3 * (topo.nAlt + k) + 2]!] as V3);
+      const mitte: V3 = [0, 0, 0];
+      for (const q of ring) for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! + q[d]! / 8;
+      const sp: V3 = [fein[3 * c]!, fein[3 * c + 1]!, fein[3 * c + 2]!];
+      const ax: V3 = [mitte[0] - sp[0], mitte[1] - sp[1], mitte[2] - sp[2]];
+      const la = Math.hypot(...ax) || 1;
+      const r = ring.map((q) => {
+        const d: V3 = [q[0] - mitte[0], q[1] - mitte[1], q[2] - mitte[2]];
+        const dn = (d[0] * ax[0] + d[1] * ax[1] + d[2] * ax[2]) / la;
+        return Math.hypot(d[0] - (dn * ax[0]) / la, d[1] - (dn * ax[1]) / la, d[2] - (dn * ax[2]) / la);
+      });
+      const paare = selbstDurchdringungen({ punkte: punkteAus(fein), flaechen: topo.feinFlaechen, schaerfe: new Map() }, 1e-4).paare;
+      return { oe, radius: Math.max(...r) / H, rund: Math.min(...r) / Math.max(...r), paare, tiefe: Math.hypot(...ax) / H, mitte, dicke: dicke / H };
+    });
+  }
+
+  it('Mitte wählbar (Florian 15.10.): Käfigpunkte der Spiegelebene vorn mit regelmäßigem Umfeld; jede Lage rund und ohne Durchdringung (Fisch, Rex, Tiger, Langhals)', () => {
+    for (const [name, dok] of [
+      ['fisch', neuesDokument('fisch')],
+      ['rex', vorlageDokument(rexRoh as unknown as Vorlage, 'zu', 'rex')],
+      ['tiger', vorlageDokument(tigerRoh as unknown as Vorlage, 'zu', 'tiger')],
+      ['langhals', vorlageDokument(langRoh as unknown as Vorlage, 'zu', 'langhals')],
+    ] as const) {
+      const abl = ableiten(dok, { stufen: 2 });
+      const kand = rundmaulKandidaten(abl);
+      const sp = rundmaulSpitze(abl);
+      const F = abl.fein;
+      expect(kand.length).toBeGreaterThanOrEqual(3);
+      for (const i of kand) expect(Math.abs(abl.kaefig.xyz[3 * i + 2]!)).toBeLessThan(1e-7);
+      for (let k = 1; k < kand.length; k++) expect(F[3 * kand[k]! + 1]!).toBeLessThanOrEqual(F[3 * kand[k - 1]! + 1]!);
+      const zeilen: string[] = [];
+      for (const c of kand) {
+        // Fisch geschlossen und offen, die anderen offen (größter Ring, tiefster Rachen); 15.10. waren alle 55 Lagen bei 0, 50
+        // und 100 % frei — hier leichter, die Datei läuft neben den Tempo-Tests
+        const z = ringPruefen(abl, c, RUNDMAUL_STANDARD, name === 'fisch' ? [0, 1] : [1]);
+        zeilen.push(`${c}: ${z.map((x) => `${x.paare}/${x.rund.toFixed(2)}`).join(' ')} (Dicke ${z[z.length - 1]!.dicke.toFixed(2)} H)`);
+        for (const x of z) {
+          expect(x.paare, `${name} ${c} bei ${x.oe}`).toBe(0);
+          expect(x.rund, `${name} ${c} bei ${x.oe}`).toBeGreaterThanOrEqual(0.75);
+        }
+      }
+      console.log(`${name}: Kandidaten (Paare/rund) ${zeilen.join(' · ')}`);
+      if (name !== 'fisch') continue;
+      expect(kand).toContain(sp);
+      // ohne Punkt die Kappenmitte, mit Punkt der nächste Kandidat; der Punkt darunter liegt tiefer
+      expect(rundmaulZentrum(abl)).toBe(sp);
+      const unter = kand[kand.indexOf(sp) + 1]!;
+      expect(rundmaulZentrum(abl, [F[3 * unter]!, F[3 * unter + 1]! - 0.002, 0])).toBe(unter);
+      expect(F[3 * unter + 1]!).toBeLessThan(F[3 * sp + 1]!);
+      // eine Augapfel-Höhle sperrt ihre Flächen
+      expect(rundmaulKandidaten(abl, [sp])).not.toContain(sp);
+    }
+  }, 300_000);
+
+  it('geschlossen unsichtbar (Florian 15.10.): O zu = 0 lässt die Haut ganz (kein Aufsatz, kein Lippenband); offen wächst das O aus dem Punkt, rund und ohne Durchdringung', () => {
+    const d = neuesDokument('fisch');
+    const plan = (rundmaul: Bauplan['rundmaul'] | undefined, oeffnung: number): Bauplan => ({ maul: 'aus', oeffnung, beine: 'aus', schwung: 0, stil: 'fest', earle: true, kaefigLinien: false, ...(rundmaul ? { rundmaul } : {}) });
+    const ohne = wesenBauen(d, plan(undefined, 0), null).netz;
+    const zu = wesenBauen(d, plan({ zu: 0 }, 0), null).netz;
+    expect(zu.positionen.length).toBe(ohne.positionen.length);
+    let abw = 0;
+    for (let i = 0; i < zu.positionen.length; i++) abw = Math.max(abw, Math.abs(zu.positionen[i]! - ohne.positionen[i]!));
+    expect(abw).toBeLessThan(1e-9);
+    expect(zu.lippenBand).toBe(0);
+    expect(zu.rundmaul).not.toBeNull();
+    expect(zu.rundmaul!.radius).toBe(0);
+    expect(zu.rundmaul!.kandidaten.length).toBeGreaterThan(0);
+    // offen: der Ring ist da, Radius wächst mit der Öffnung, Lippenband ab dem Standard-O voll
+    const halb = wesenBauen(d, plan({ zu: 0 }, 0.5), null).netz;
+    expect(halb.positionen.length).toBeGreaterThan(ohne.positionen.length);
+    expect(halb.rundmaul!.radius / halb.hoehe).toBeGreaterThan(0.5 * 0.5 * RUNDMAUL_STANDARD.auf);
+    expect(halb.lippenBand).toBeCloseTo(0.012 * halb.hoehe, 9);
+    // Ring und Rachen aus dem Punkt: rund, ohne Durchdringung, auch knapp geöffnet; geschlossener Rachen 0
+    const abl = ableiten(d, { stufen: 2 });
+    const form: RundmaulForm = { ...RUNDMAUL_STANDARD, zu: 0 };
+    const z = ringPruefen(abl, rundmaulSpitze(abl), form, [0.05, 0.25, 0.5, 1]);
+    console.log(`O zu = 0: ${z.map((x) => `${x.oe}: r ${x.radius.toFixed(3)} H, Rachen ${x.tiefe.toFixed(3)} H, rund ${x.rund.toFixed(2)}, ${x.paare} Paare`).join(' · ')}`);
+    for (const x of z) {
+      expect(x.paare).toBe(0);
+      expect(x.rund).toBeGreaterThanOrEqual(0.8);
+    }
+    expect(z[0]!.radius).toBeLessThan(0.02);
+    expect(rundmaulEintrag(abl, 0, 1, form).mund!.tiefe).toBe(0);
   }, 120_000);
 });
 

@@ -123,7 +123,9 @@ export const AusstattungSchema = z.object({
   // Phase 2 M4 (Plan 5.3): eine Farbe für alle Zähne (Hex), Verlauf Wurzel → Spitze im Material
   zahnFarbe: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   // Phase 2 M6: Rundmaul (O-Maul an der Körperspitze statt Schlitz); Lippenradius zu/offen als Anteil der Höhe
-  rundmaul: z.object({ zu: z.number().min(0).max(0.5).optional(), auf: z.number().min(0).max(0.5).optional(), zaehne: z.number().int().min(0).max(40).optional() }).optional(),
+  // Florian 15.10.: O zu = 0 = geschlossen unsichtbar; `punkt` = Lage der Mitte (Profileinheiten in Ruhe, rastet auf einen
+  // Käfigpunkt der Spiegelebene vorn)
+  rundmaul: z.object({ zu: z.number().min(0).max(0.5).optional(), auf: z.number().min(0).max(0.5).optional(), zaehne: z.number().int().min(0).max(40).optional(), punkt: V3.optional() }).optional(),
 });
 /** Ausstattung als Typ mit exakten Optionalen (zod-Inferenz erlaubt `undefined`, das passt nicht zu `exactOptionalPropertyTypes`). */
 export type ZonenVorlage = { ansicht: 'seite' | 'top' | 'front'; punkte: { x: number; y: number; weich: number }[] };
@@ -196,8 +198,11 @@ export type Ausstattung = {
   zonen?: ZonenVorlage[];
   /** Phase 2 M4: eine Farbe für alle Zähne (Hex), Verlauf Wurzel → Spitze im Material */
   zahnFarbe?: string;
-  /** Rundmaul (Phase 2 M6): O-Maul an der Körperspitze; Lippenradius zu/offen als Anteil der Höhe, Zähne rundum (Anzahl) */
-  rundmaul?: { zu?: number; auf?: number; zaehne?: number };
+  /**
+   * Rundmaul (Phase 2 M6): O-Maul vorn auf der Spiegelebene; Lippenradius zu/offen als Anteil der Höhe (zu = 0: geschlossen
+   * unsichtbar), Zähne rundum (Anzahl), Lage der Mitte (Profileinheiten in Ruhe; fehlt: Kappenmitte)
+   */
+  rundmaul?: { zu?: number; auf?: number; zaehne?: number; punkt?: [number, number, number] };
 };
 
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */

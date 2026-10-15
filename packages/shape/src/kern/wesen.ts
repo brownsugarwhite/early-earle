@@ -13,7 +13,7 @@ import { type V3, zuDreiecken } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
 import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern } from './atlas';
 import { HOEHLE_STANDARD, type HoehlenAuge, type HoehlenTopologie, augapfelEcke, augenOben, brauenReihe, hoehlenFein, hoehlenLagen, hoehlenTopologie } from './augenHoehle';
-import { RUNDMAUL_STANDARD, rundmaulEintrag, rundmaulPose, rundmaulRegion, rundmaulZaehne, rundmaulZentrum } from './rundmaul';
+import { RUNDMAUL_STANDARD, type RundmaulLage, rundmaulAchse, rundmaulDicke, rundmaulEintrag, rundmaulKandidaten, rundmaulLage, rundmaulPose, rundmaulRegion, rundmaulSichtbar, rundmaulZaehne, rundmaulZentrum } from './rundmaul';
 import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
 import { ringSegmente } from './reifen';
@@ -195,6 +195,12 @@ export type WesenNetz = {
   } | null;
   /** Unterkiefergewichte als Farbe je Ecke (`Bauplan.gewichteZeigen`), sonst null */
   gewichtFarben: Float32Array | null;
+  /**
+   * Rundmaul (Phase 2 M6, Florian 15.10.): Lage des Lippenrings in der Pose (Profileinheiten; Radius 0 = unsichtbar), die
+   * wirksamen Radien zu/offen (Anteil der Höhe), die Höhe als Maß und die möglichen Mittelpunkte (Grenzlagen in Ruhe, von
+   * oben nach unten) für die Griffe in Front und Seite; sonst null.
+   */
+  rundmaul: (RundmaulLage & { zu: number; auf: number; hoehe: number; kandidaten: V3[] }) | null;
   /** Anker je Käfigpunkt (mit Maul): Rolle, Reihe, Anteil entlang der Lippe — der Pinsel schreibt ihn zu Pose-Deltas auf Maulpunkten */
   anker: AnkerFeld | null;
   /** Saum je Blatt (Schritt 4): Silhouettenpunkte des Körpers (x, y, d px), (NaN, NaN, 0) trennt Züge; wird kopiert, nicht übertragen */
@@ -872,15 +878,25 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   // Rundmaul (Phase 2 M6): nur ohne Schlitzmaul und Beine; die Haut um die Spitze dehnt sich mit der Öffnung
   let hoeheRuhe = 0;
   for (let i = 1; i < abl.fein.length; i += 3) hoeheRuhe = Math.max(hoeheRuhe, abl.fein[i]!);
+  const letzteStufe = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
+  const flaechen = alleFlaechen(letzteStufe);
   const rund = plan.rundmaul && maul === 'aus' && beine === 'aus' && plan.earle ? { ...RUNDMAUL_STANDARD, ...(plan.rundmaul.zu !== undefined ? { zu: plan.rundmaul.zu } : {}), ...(plan.rundmaul.auf !== undefined ? { auf: plan.rundmaul.auf } : {}) } : null;
-  if (rund && plan.oeffnung > 0) {
-    xyz = rundmaulPose(abl, xyz, plan.oeffnung, hoeheRuhe, rund);
+  // Mitte: Käfigpunkt der Spiegelebene vorn nahe dem Punkt im Dokument, nicht an einer Augapfel-Höhle; unsichtbar mit
+  // O zu = 0 bei geschlossenem Maul (Florian 15.10.: kein Aufsatz, die Haut bleibt ganz)
+  let rundC = -1;
+  let rundSperre: number[] = [];
+  if (rund) {
+    const wahl = plan.augen ?? { ring: 2, j: 2, groesse: 0.11 };
+    rundSperre = wahl.art === 'augapfel' ? augenAm(abl, flaechen, hoeheRuhe, wahl).map((a) => a.ecke) : [];
+    rundC = rundmaulZentrum(abl, plan.rundmaul?.punkt, rundSperre);
+  }
+  const rundSicht = rund && rundC >= 0 ? rundmaulSichtbar(rund, plan.oeffnung) : 0;
+  if (rund && rundSicht > 0 && plan.oeffnung > 0) {
+    xyz = rundmaulPose(abl, xyz, plan.oeffnung, hoeheRuhe, rund, rundC);
     fein = anwenden3(abl.unterteilung.grenze, xyz);
   }
-  const letzteStufe = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
   const punkte: V3[] = [];
   for (let i = 0; i < fein.length / 3; i++) punkte.push([fein[3 * i]!, fein[3 * i + 1]!, fein[3 * i + 2]!]);
-  const flaechen = alleFlaechen(letzteStufe);
   // Höhe als Maß für Augen, Lippenband, Nase, Klingen und Material: aus der Ruhelage, nicht aus der Pose (M5, 15.10.:
   // beim Öffnen hob der Schädel den höchsten Punkt, Augen, Muster und Lippenband des Rex wuchsen um 11 %)
   let hoehe = hoeheRuhe;
@@ -903,10 +919,13 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     }
     const ruhe = [...eintraege];
     let mund = -1;
-    if (rund) {
+    if (rund && rundSicht > 0) {
       mund = eintraege.length;
-      eintraege.push(rundmaulEintrag(abl, plan.oeffnung, hoehe, rund));
-      ruhe.push(rundmaulEintrag(abl, 0, hoehe, rund));
+      // Rachen höchstens 0,6 der Körperdicke hinter dem Maul (posiert bzw. in Ruhe)
+      const dicke = rundmaulDicke(punkte, flaechen, rundC, rundmaulAchse(abl, xyz, rundC));
+      const dickeRuhe = rundmaulDicke(punkteVon(abl.fein), flaechen, rundC, rundmaulAchse(abl, abl.kaefig.xyz, rundC));
+      eintraege.push(rundmaulEintrag(abl, plan.oeffnung, hoehe, rund, rundC, dicke));
+      ruhe.push(rundmaulEintrag(abl, 0, hoehe, rund, rundC, dickeRuhe));
     }
     const topo = eintraege.length ? hoehlenTopologie(abl.kaefig, abl.unterteilung.stufen.length, eintraege) : null;
     if (topo) hoehle = { topo, augen: eintraege, ruhe, mund };
@@ -958,7 +977,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   let desk: Float32Array | null = null;
   if (feinDeskAlle && hoehle) {
     const t = hoehle.topo;
-    const region = hoehle.mund >= 0 ? rundmaulRegion(abl, hoehle.mund, t.nAlt, hoehe, rund ?? RUNDMAUL_STANDARD) : undefined;
+    const region = hoehle.mund >= 0 ? rundmaulRegion(abl, hoehle.mund, t.nAlt, hoehe, rund ?? RUNDMAUL_STANDARD, rundC) : undefined;
     const feinNeu = deskriptoren(abl, plan.gesichtMaske, { n: t.kaefig.n, grenze: t.unterteilung.grenze, quelle: t.quelle, ...(region ? { region } : {}) });
     desk = jeEcke(feinNeu, koerperFlaechen);
   } else if (feinDeskAlle) desk = jeEcke(feinDeskAlle, flaechen);
@@ -1020,8 +1039,8 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
   // Lippenband nach der Kopfhöhe am Maul (nicht der ganzen Körperhöhe: beim Langhals war das Band breiter als der Kiefer)
   const maulHoehe = maul !== 'aus' ? 1.1 * ((abl as Partial<MaulErgebnis>).maul?.kopfHoehe ?? hoehe) : hoehe;
-  // Rundmaul: schmaleres Band (der Lippenring selbst ist schon Lippe)
-  const lippenBand = maul !== 'aus' && beine === 'aus' ? (plan.lippenBand ?? 0.03) * Math.min(hoehe, maulHoehe) : rund ? (plan.lippenBand ?? 0.012) * hoehe : 0;
+  // Rundmaul: schmaleres Band (der Lippenring selbst ist schon Lippe), wächst mit dem Ring aus dem Unsichtbaren
+  const lippenBand = maul !== 'aus' && beine === 'aus' ? (plan.lippenBand ?? 0.03) * Math.min(hoehe, maulHoehe) : rund ? (plan.lippenBand ?? 0.012) * hoehe * rundSicht : 0;
   const mitte: V3 = [0, 0, 0];
   for (const p of punkte) for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! + p[d]! / punkte.length;
   // Ruhelage je Ecke (unposiert) bei Posen, damit Muster und Zonen nicht schwimmen
@@ -1042,7 +1061,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   }
   // Rundmaul (Phase 2 M6): Zähne rundum am Ring-Zahnfleisch (Aal), nur Anzeige
   if (!zaehne && rund && hoehle && koerperFein && hoehle.mund >= 0 && (plan.rundmaul?.zaehne ?? 0) > 0) {
-    zaehne = rundmaulZaehne(koerperFein, hoehle.topo.nAlt + 16 * hoehle.mund + 8, rundmaulZentrum(abl), plan.rundmaul!.zaehne!);
+    zaehne = rundmaulZaehne(koerperFein, hoehle.topo.nAlt + 16 * hoehle.mund + 8, rundC, plan.rundmaul!.zaehne!);
   }
   // Zahnprüfung (eigener Auftrag): in den Lagen der Prüföffnungen, wie gebaut (Knochen, Haps, Fressen-Pose)
   let zahnMeldungen: ZahnMeldung[] | null = null;
@@ -1173,6 +1192,14 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   }
   let maulGriff: WesenNetz['maul'] = null;
   let gewichtFarben: Float32Array | null = null;
+  // Rundmaul: Ringlage für die Griffe (aus dem Aufsatz; unsichtbar: Mittelpunkt mit Radius 0)
+  let rundmaulInfo: WesenNetz['rundmaul'] = null;
+  if (rund && rundC >= 0) {
+    const l1 = hoehle && hoehle.mund >= 0 ? hoehle.topo.nAlt + 16 * hoehle.mund : -1;
+    const lage = rundmaulLage(abl, xyz, fein, rundC, koerperFein && l1 >= 0 ? koerperFein.subarray(3 * l1, 3 * (l1 + 8)) : undefined);
+    const F = abl.fein;
+    rundmaulInfo = { ...lage, zu: rund.zu, auf: rund.auf, hoehe: hoeheRuhe, kandidaten: rundmaulKandidaten(abl, rundSperre).map((i) => [F[3 * i]!, F[3 * i + 1]!, F[3 * i + 2]!] as V3) };
+  }
   if (maul !== 'aus') {
     const m = (abl as MaulErgebnis).maul;
     const p = m.pfad[m.pfad.length - 1]!;
@@ -1208,6 +1235,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     reifen,
     maul: maulGriff,
     gewichtFarben,
+    rundmaul: rundmaulInfo,
     anker: ankerFeld,
     saum,
     umweg,

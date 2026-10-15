@@ -40,6 +40,7 @@ import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen, setzeLippenImUm
 import { KieferZeichnung, kieferZeiger } from '../kiefer/KieferEbene';
 import { RigZeichnung } from '../maul/RigZeichnung';
 import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
+import { RundmaulZeichnung, rundmaulZeiger } from '../maul/RundmaulEbene';
 import { zahnZeiger as kernZahnZeiger } from '../kern/zahnGriffe';
 import { useRahmen } from '../layout/animation';
 import { useMaulInfo } from '../maul/maulKoerper';
@@ -238,6 +239,8 @@ export function View2D({ ansicht, w, h }: Props) {
     }
     if (e.button !== 0) return;
     if (ui.ebene === 'maul') {
+      // Rundmaul (Phase 2 M6): Ring und Mitte als Griffe vor dem Zeichnen einer Maullinie
+      if (rundmaulZeiger(e, { ansicht, lokal, ziehen })) return;
       maulZeiger(e, { ansicht, lokal, ziehen });
       return;
     }
@@ -581,6 +584,7 @@ export function View2D({ ansicht, w, h }: Props) {
         </g>
       )}
       {(hatMaul || ebene === 'maul') && <MaulZeichnung ansicht={ansicht} bild={bild} aktiv={ebene === 'maul'} />}
+      {ebene === 'maul' && <RundmaulZeichnung ansicht={ansicht} bild={bild} />}
       {ebene === 'posen' && <RigZeichnung ansicht={ansicht} bild={bild} />}
       {ebene === 'posen' && <KieferZeichnung ansicht={ansicht} bild={bild} w={w} h={h} />}
       {ebene === 'zaehne' && <ZahnZeichnung ansicht={ansicht} bild={bild} />}

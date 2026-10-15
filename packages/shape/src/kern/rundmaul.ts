@@ -3,9 +3,12 @@
 // Lippenring L1 (äußere Kante, gewölbt), die innere Lippenkante L2 (scharf) und die Kappenmitte als Rachenboden. Öffnen ist
 // eine Pose: Der Ring wird weiter, der Rachen tiefer, und die Haut um das Maul dehnt sich radial mit (sonst stieße der Ring
 // an die Feldgrenze). Der alte Käfig bleibt die Wahrheit; der Aufsatz ersetzt nur das gezeichnete Netz.
+// Florian 15.10.: Geschlossen soll das Rundmaul auch unsichtbar sein können (O zu = 0: kein Aufsatz, die Haut bleibt ganz;
+// beim Öffnen wachsen Ring, Wulst, Rachen und Lippenband aus dem Punkt). Die Mitte sitzt auf einem Käfigpunkt der
+// Spiegelebene vorn (Kappe oder Ringpunkt oben/unten), gewählt über einen Punkt im Dokument (`rundmaulZentrum`).
 
 import type { Ableitung } from './ableiten';
-import type { HoehlenAuge } from './augenHoehle';
+import { type HoehlenAuge, hoehlenRing } from './augenHoehle';
 import type { ZahnBau } from './zaehne';
 import { type RahmenQuelle, type Zahn, ZAHN_STANDARD, zahnNetze } from './zahnModell';
 
@@ -30,10 +33,111 @@ export type RundmaulForm = {
 
 export const RUNDMAUL_STANDARD: RundmaulForm = { zu: 0.035, auf: 0.17, lippe: 0.24, wulst: 0.18, tiefeZu: 0.1, tiefeAuf: 0.32, dehnung: 1.15, reichweite: 0.45 };
 
-/** Käfigpunkt in der Mitte der vorderen Kappe (die Spitze des Körpers), dort sitzt das Rundmaul. */
-export function rundmaulZentrum(abl: Ableitung): number {
+/** Käfigpunkt in der Mitte der vorderen Kappe (die Spitze des Körpers): Standardlage des Rundmauls. */
+export function rundmaulSpitze(abl: Ableitung): number {
   const v = abl.vorlage;
   return v.kappe('vorn', v.c / 2, v.c / 2);
+}
+
+/** Flächen um einen Käfigpunkt. */
+function flaechenUm(abl: Ableitung, i: number): number[] {
+  const k = abl.kaefig;
+  const out: number[] = [];
+  for (let h = k.vFStart[i]!; h < k.vFStart[i + 1]!; h++) out.push(k.vFlaechen[h]!);
+  return out;
+}
+
+/** Rachen höchstens so tief wie dieser Anteil der Körperdicke hinter dem Maul (an der dünnen Rex-Schnauze stach er sonst durch) */
+export const RUNDMAUL_TIEFE_ANTEIL = 0.6;
+/** Nachbarn eines Mittelpunkts höchstens so weit vom 45°-Raster des Rings (Grad) */
+const RUNDMAUL_RASTER = 60;
+
+/**
+ * Weicht der Umlauf der acht Nachbarn (in der Tangentialebene, Reihenfolge wie im Aufsatz) vom 45°-Raster ab? Die
+ * Kappenpunkte neben der Kappenmitte haben ein gefaltetes Umfeld (Winkel laufen mehrfach herum, 132–1198°): Dort
+ * durchdringt sich der Aufsatz schon geschlossen (Fisch 215, Rex 226 Paare); regelmäßige Punkte bleiben ≤ 48°.
+ */
+function rasterAbweichung(abl: Ableitung, c: number): number {
+  const k = abl.kaefig;
+  const r = hoehlenRing(k, c);
+  if (!r) return Infinity;
+  const n = achse(abl, k.xyz, c);
+  const P = (i: number): V3 => [k.xyz[3 * i]!, k.xyz[3 * i + 1]!, k.xyz[3 * i + 2]!];
+  const cp = P(c);
+  const dir = r.rand.map((i) => {
+    const p = P(i);
+    const q: V3 = [p[0] - cp[0], p[1] - cp[1], p[2] - cp[2]];
+    const h = q[0] * n[0] + q[1] * n[1] + q[2] * n[2];
+    const t: V3 = [q[0] - h * n[0], q[1] - h * n[1], q[2] - h * n[2]];
+    const l = Math.hypot(...t) || 1;
+    return [t[0] / l, t[1] / l, t[2] / l] as V3;
+  });
+  const e1 = dir[0]!;
+  const e2: V3 = [n[1] * e1[2] - n[2] * e1[1], n[2] * e1[0] - n[0] * e1[2], n[0] * e1[1] - n[1] * e1[0]];
+  const s1 = dir[1]![0] * e2[0] + dir[1]![1] * e2[1] + dir[1]![2] * e2[2] >= 0 ? 1 : -1;
+  let alt = 0;
+  let ab = 0;
+  dir.forEach((d, i) => {
+    let w = Math.atan2(s1 * (d[0] * e2[0] + d[1] * e2[1] + d[2] * e2[2]), d[0] * e1[0] + d[1] * e1[1] + d[2] * e1[2]);
+    while (i > 0 && w < alt - 1e-9) w += 2 * Math.PI;
+    alt = w;
+    ab = Math.max(ab, Math.abs((w * 180) / Math.PI - 45 * i));
+  });
+  return ab;
+}
+
+/**
+ * Käfigpunkte, die das Rundmaul tragen können: auf der Spiegelebene (z = 0), vier Vierecke ringsum (der Aufsatz ersetzt
+ * genau sie) mit regelmäßigem Umfeld (`rasterAbweichung`), vorn am Körper (Grenzlage höchstens 35 % der Körperlänge von
+ * der Spitze), ohne gemeinsame Fläche mit einem gesperrten Punkt (Augapfel-Höhlen). Sortiert von oben nach unten.
+ */
+export function rundmaulKandidaten(abl: Ableitung, sperre: readonly number[] = []): number[] {
+  const k = abl.kaefig;
+  const nV = abl.vorlage.kaefig.n;
+  const F = abl.fein;
+  let xMin = Infinity;
+  let xMax = -Infinity;
+  for (let i = 0; i < F.length; i += 3) {
+    xMin = Math.min(xMin, F[i]!);
+    xMax = Math.max(xMax, F[i]!);
+  }
+  const sp = rundmaulSpitze(abl);
+  const sx = F[3 * sp]!;
+  const sy = F[3 * sp + 1]!;
+  const reich = 0.35 * (xMax - xMin);
+  const gesperrt = new Set(sperre.flatMap((e) => flaechenUm(abl, e)));
+  const out: number[] = [];
+  for (let i = 0; i < nV; i++) {
+    if (Math.abs(k.xyz[3 * i + 2]!) > 1e-7) continue;
+    const fl = flaechenUm(abl, i);
+    if (fl.length !== 4 || fl.some((f) => k.fStart[f + 1]! - k.fStart[f]! !== 4 || gesperrt.has(f))) continue;
+    if (Math.hypot(F[3 * i]! - sx, F[3 * i + 1]! - sy) > reich) continue;
+    if (rasterAbweichung(abl, i) > RUNDMAUL_RASTER) continue;
+    out.push(i);
+  }
+  return out.sort((a, b) => F[3 * b + 1]! - F[3 * a + 1]!);
+}
+
+/**
+ * Käfigpunkt des Rundmauls: der Kandidat, dessen Grenzlage `punkt` (Dokument, Profileinheiten in Ruhe) am nächsten liegt;
+ * ohne Punkt die Kappenmitte (bzw. der Kandidat am nächsten zu ihr, wenn eine Höhle sie sperrt). −1 ohne Kandidaten.
+ */
+export function rundmaulZentrum(abl: Ableitung, punkt?: readonly [number, number, number], sperre: readonly number[] = []): number {
+  const kand = rundmaulKandidaten(abl, sperre);
+  const F = abl.fein;
+  const sp = rundmaulSpitze(abl);
+  if (!punkt && kand.includes(sp)) return sp;
+  const ziel = punkt ?? [F[3 * sp]!, F[3 * sp + 1]!, F[3 * sp + 2]!];
+  let best = -1;
+  let bestD = Infinity;
+  for (const i of kand) {
+    const d = Math.hypot(F[3 * i]! - ziel[0], F[3 * i + 1]! - ziel[1], F[3 * i + 2]! - ziel[2]);
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  }
+  return best;
 }
 
 /** Achse der Spitze: Mittel der Normalen der Käfigflächen um die Mitte (zeigt nach vorn, aus dem Körper). */
@@ -56,17 +160,87 @@ function achse(abl: Ableitung, xyz: Float64Array, c: number): V3 {
   return [n[0] / l, n[1] / l, n[2] / l];
 }
 
+/** Achse des Rundmauls am Käfigpunkt c (Lagen `xyz`, aus dem Körper). */
+export const rundmaulAchse = (abl: Ableitung, xyz: Float64Array, c: number): V3 => achse(abl, xyz, c);
+
+/**
+ * Dicke des Körpers hinter dem Maul: Strahl von der Grenzlage des Mittelpunkts längs −Achse bis zum ersten Austritt aus dem
+ * feinen Netz (Punkte, Flächen als Fächer). Ohne Austritt ∞.
+ */
+export function rundmaulDicke(punkte: readonly V3[], flaechen: readonly (readonly number[])[], c: number, n: V3): number {
+  const o: V3 = [punkte[c]![0] - n[0] * 1e-6, punkte[c]![1] - n[1] * 1e-6, punkte[c]![2] - n[2] * 1e-6];
+  const d: V3 = [-n[0], -n[1], -n[2]];
+  let best = Infinity;
+  for (const f of flaechen) {
+    const a = punkte[f[0]!]!;
+    for (let k = 1; k + 1 < f.length; k++) {
+      const b = punkte[f[k]!]!;
+      const q = punkte[f[k + 1]!]!;
+      const e1: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+      const e2: V3 = [q[0] - a[0], q[1] - a[1], q[2] - a[2]];
+      const pv: V3 = [d[1] * e2[2] - d[2] * e2[1], d[2] * e2[0] - d[0] * e2[2], d[0] * e2[1] - d[1] * e2[0]];
+      const det = e1[0] * pv[0] + e1[1] * pv[1] + e1[2] * pv[2];
+      if (Math.abs(det) < 1e-16) continue;
+      const tv: V3 = [o[0] - a[0], o[1] - a[1], o[2] - a[2]];
+      const u = (tv[0] * pv[0] + tv[1] * pv[1] + tv[2] * pv[2]) / det;
+      if (u < 0 || u > 1) continue;
+      const qv: V3 = [tv[1] * e1[2] - tv[2] * e1[1], tv[2] * e1[0] - tv[0] * e1[2], tv[0] * e1[1] - tv[1] * e1[0]];
+      const v = (d[0] * qv[0] + d[1] * qv[1] + d[2] * qv[2]) / det;
+      if (v < 0 || u + v > 1) continue;
+      const t = (e2[0] * qv[0] + e2[1] * qv[1] + e2[2] * qv[2]) / det;
+      if (t > 1e-5 && t < best) best = t;
+    }
+  }
+  return best;
+}
+
+/** Lage des Lippenrings für Griffe und Anzeige: Mitte, Achse (aus dem Körper), Ebene (e1, e2), Radius (Welt). */
+export type RundmaulLage = { mitte: V3; normale: V3; e1: V3; e2: V3; radius: number };
+
+/**
+ * Lage des Lippenrings in der Pose: aus den acht Punkten des Rings L1 (Grenzlagen des Aufsatzes), sonst (unsichtbar) die
+ * Grenzlage des Mittelpunkts mit Radius 0. Achse aus den Käfigflächen um c (posiert).
+ */
+export function rundmaulLage(abl: Ableitung, xyz: Float64Array, fein: ArrayLike<number>, c: number, ring?: ArrayLike<number>): RundmaulLage {
+  const n = achse(abl, xyz, c);
+  let mitte: V3 = [fein[3 * c]!, fein[3 * c + 1]!, fein[3 * c + 2]!];
+  let radius = 0;
+  let e1: V3 = [0, 1, 0];
+  if (ring && ring.length >= 24) {
+    mitte = [0, 0, 0];
+    for (let k = 0; k < 8; k++) for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! + ring[3 * k + d]! / 8;
+    for (let k = 0; k < 8; k++) {
+      const q: V3 = [ring[3 * k]! - mitte[0], ring[3 * k + 1]! - mitte[1], ring[3 * k + 2]! - mitte[2]];
+      const qn = q[0] * n[0] + q[1] * n[1] + q[2] * n[2];
+      radius += Math.hypot(q[0] - qn * n[0], q[1] - qn * n[1], q[2] - qn * n[2]) / 8;
+    }
+  }
+  // e1: Welt-oben in der Ringebene (bei senkrechter Achse die Längsrichtung)
+  const yn = e1[1] * n[1];
+  let t: V3 = [-yn * n[0], 1 - yn * n[1], -yn * n[2]];
+  if (Math.hypot(...t) < 1e-6) t = [1 - n[0] * n[0], -n[0] * n[1], -n[0] * n[2]];
+  const lt = Math.hypot(...t) || 1;
+  e1 = [t[0] / lt, t[1] / lt, t[2] / lt];
+  const e2: V3 = [n[1] * e1[2] - n[2] * e1[1], n[2] * e1[0] - n[0] * e1[2], n[0] * e1[1] - n[1] * e1[0]];
+  return { mitte, normale: n, e1, e2, radius };
+}
+
 /** Lippenradius bei der Öffnung (Welt). */
 export const rundmaulRadius = (form: RundmaulForm, oeffnung: number, hoehe: number) => (form.zu + (form.auf - form.zu) * Math.max(0, Math.min(1, oeffnung))) * hoehe;
+
+/**
+ * Sichtbarkeit 0 … 1: Lippenradius im Verhältnis zum Standard-O (geschlossen). 0 = unsichtbar (O zu = 0 bei geschlossenem
+ * Maul): kein Aufsatz, die Haut bleibt ganz. Bis 1 wachsen Rachentiefe (geschlossen) und Lippenband mit.
+ */
+export const rundmaulSichtbar = (form: RundmaulForm, oeffnung: number) => Math.max(0, Math.min(1, rundmaulRadius(form, oeffnung, 1) / RUNDMAUL_STANDARD.zu));
 
 /**
  * Pose des Rundmauls auf dem alten Käfig: Punkte der Vorlage um die Spitze (Ruhelage näher als `reichweite`) wandern radial
  * von der Achse weg, um die Radiuszunahme mal `dehnung`, weich abfallend (smoothstep). Die Spitze selbst bleibt.
  */
-export function rundmaulPose(abl: Ableitung, xyz: Float64Array, oeffnung: number, hoehe: number, form: RundmaulForm = RUNDMAUL_STANDARD): Float64Array {
+export function rundmaulPose(abl: Ableitung, xyz: Float64Array, oeffnung: number, hoehe: number, form: RundmaulForm = RUNDMAUL_STANDARD, c = rundmaulZentrum(abl)): Float64Array {
   const out = new Float64Array(xyz);
-  if (oeffnung <= 0) return out;
-  const c = rundmaulZentrum(abl);
+  if (oeffnung <= 0 || c < 0) return out;
   const R0 = abl.kaefig.xyz;
   const n = achse(abl, R0, c);
   const zuwachs = (rundmaulRadius(form, oeffnung, hoehe) - rundmaulRadius(form, 0, hoehe)) * form.dehnung;
@@ -91,15 +265,20 @@ export function rundmaulPose(abl: Ableitung, xyz: Float64Array, oeffnung: number
   return out;
 }
 
-/** Eintrag für den Aufsatz (`hoehlenTopologie`/`hoehlenLagen`): Rundmaul an der Spitze bei der Öffnung. */
-export function rundmaulEintrag(abl: Ableitung, oeffnung: number, hoehe: number, form: RundmaulForm = RUNDMAUL_STANDARD): HoehlenAuge {
+/**
+ * Eintrag für den Aufsatz (`hoehlenTopologie`/`hoehlenLagen`): Rundmaul bei der Öffnung um den Käfigpunkt `c`. Ein O zu
+ * unter dem Standard verflacht den geschlossenen Rachen im selben Verhältnis (O zu = 0: Rachen wächst erst beim Öffnen);
+ * `dicke` (Körper hinter dem Maul, `rundmaulDicke`) begrenzt die Tiefe auf `RUNDMAUL_TIEFE_ANTEIL` davon.
+ */
+export function rundmaulEintrag(abl: Ableitung, oeffnung: number, hoehe: number, form: RundmaulForm = RUNDMAUL_STANDARD, c = rundmaulZentrum(abl), dicke = Infinity): HoehlenAuge {
   const r1 = rundmaulRadius(form, oeffnung, hoehe);
   const o = Math.max(0, Math.min(1, oeffnung));
+  const tiefeZu = form.tiefeZu * Math.min(1, form.zu / RUNDMAUL_STANDARD.zu);
   return {
-    c: rundmaulZentrum(abl),
+    c,
     radius: r1,
     oben: [0, 1, 0],
-    mund: { r1, r2: r1 * (1 - form.lippe), wulst: form.wulst * r1, tiefe: (form.tiefeZu + (form.tiefeAuf - form.tiefeZu) * o) * hoehe },
+    mund: { r1, r2: r1 * (1 - form.lippe), wulst: form.wulst * r1, tiefe: Math.min((tiefeZu + (form.tiefeAuf - tiefeZu) * o) * hoehe, RUNDMAUL_TIEFE_ANTEIL * dicke) },
     schaerfe: { l1: 2, l2: 2 },
   };
 }
@@ -109,8 +288,7 @@ export function rundmaulEintrag(abl: Ableitung, oeffnung: number, hoehe: number,
  * Boden die Rachenwand (Rachen 1); die Haut bekommt ihren Abstand zum Lippenring (Ruhelage, in Körperhöhen), so malt das
  * Material das Lippenband ums O.
  */
-export function rundmaulRegion(abl: Ableitung, eintrag: number, nAlt: number, hoehe: number, form: RundmaulForm = RUNDMAUL_STANDARD): (i: number) => { rachen?: number; abstand?: number; kante?: number } | null {
-  const c = rundmaulZentrum(abl);
+export function rundmaulRegion(abl: Ableitung, eintrag: number, nAlt: number, hoehe: number, form: RundmaulForm = RUNDMAUL_STANDARD, c = rundmaulZentrum(abl)): (i: number) => { rachen?: number; abstand?: number; kante?: number } | null {
   const R0 = abl.kaefig.xyz;
   const r1 = rundmaulRadius(form, 0, hoehe);
   const l1 = nAlt + 16 * eintrag;
