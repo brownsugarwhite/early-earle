@@ -82,7 +82,7 @@ export type EinsatzTopologie = {
 const smooth = (u: number) => u * u * (3 - 2 * u);
 
 /** Normalen je Punkt des feinen Netzes (flächengewichtet, nach außen). */
-function punktNormalen(netz: FeinNetz): Float64Array {
+export function punktNormalen(netz: FeinNetz): Float64Array {
   const P = netz.punkte;
   const N = new Float64Array(P.length);
   const T = netz.dreiecke;
@@ -209,7 +209,7 @@ export function reihenHoehen(J: number): number[] {
  * Rand liegt auf dem konvexen Einheitsquadrat und alle Gewichte sind positiv → nach Tutte/Floater ist jedes Zwischen- und
  * Endgitter in der Karte faltenfrei, also auch auf der Haut; die Gewichte gleichen die 3D-Abstände längs der Gitterlinien aus.
  */
-function hautGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], thetaIn: Float64Array, thetaOut: Float64Array, lippe: V3[], rand: V3[], glaettung: 'konform' | 'laenge' | 'keine', winkelReihen: number, runden = 24, sweeps = 40): { u: number[][]; v: number[][]; lagen: V3[][] } {
+function hautGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], thetaIn: Float64Array, thetaOut: Float64Array, lippe: V3[], rand: V3[], glaettung: 'konform' | 'laenge' | 'keine', winkelReihen: number, winkelFaktor = 1, runden = 24, sweeps = 40): { u: number[][]; v: number[][]; lagen: V3[][] } {
   const J = uR.length - 1;
   const S = thetaIn.length - 1;
   const mw = S / 2;
@@ -236,6 +236,27 @@ function hautGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: numb
   };
   const uOben = naht(0);
   const uUnten = naht(1);
+  // Mundwinkelspeiche: ihr Punkt in Reihe r ≤ winkelReihen liegt auf der Verlängerung des Schlitzes (V = V_c) im 3D-Abstand
+  // r·winkelFaktor·s vor dem Mundwinkel (s = letzter Lippenabstand). Liegt er näher (die Karte drängt die Reihen an der
+  // Spitze zusammen, Abstand ∝ U²), fällt der Kantenpunkt (c + H + F_A + F_B)/4 der Speiche hinter c und die feinen Flächen
+  // am Mundwinkel klappen um (in allen Fällen der Reihe gemessen)
+  const c0 = lippe[mw]!;
+  const sLetzt = Math.hypot(lippe[mw - 1]![0] - c0[0], lippe[mw - 1]![1] - c0[1], lippe[mw - 1]![2] - c0[2]);
+  const winkelU = (abstand: number, uMax: number) => {
+    let lo = 0;
+    let hi = uMax;
+    const d = (uu: number) => {
+      const q = umkehr(uu, thetaIn[mw]!).p;
+      return Math.hypot(q[0] - c0[0], q[1] - c0[1], q[2] - c0[2]);
+    };
+    if (d(hi) < abstand) return hi;
+    for (let i = 0; i < 40; i++) {
+      const mid = 0.5 * (lo + hi);
+      if (d(mid) < abstand) lo = mid;
+      else hi = mid;
+    }
+    return 0.5 * (lo + hi);
+  };
   const u: number[][] = [];
   const v: number[][] = [];
   for (let r = 0; r <= J; r++) {
@@ -256,7 +277,7 @@ function hautGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: numb
         ur.push(uUnten[r]!);
         vr.push(1);
       } else if (k === mw && r <= winkelReihen) {
-        ur.push(uR[r]!);
+        ur.push(Math.max(uR[r]!, winkelU(r * winkelFaktor * sLetzt, 0.5 * (uR[r]! + uR[r + 1]!))));
         vr.push(thetaIn[k]!);
       } else {
         ur.push(uR[r]!);
@@ -321,8 +342,10 @@ export type EinsatzOptionen = {
   lippeBogen?: number;
   /** Glättung des Hautgitters in der Karte: gleiche Gewichte (konform), Dehnungsgewichte (Länge) oder keine */
   glaettung?: 'konform' | 'laenge' | 'keine';
-  /** Reihen der Mundwinkelspeiche, die auf der Verlängerung des Schlitzes bleiben (V = V_c) */
+  /** Reihen der Mundwinkelspeiche, die auf der Verlängerung des Schlitzes bleiben (V = V_c), und ihr Abstand vor dem
+   * Mundwinkel in letzten Lippenabständen je Reihe */
   winkelReihen?: number;
+  winkelFaktor?: number;
   /** gezeichnete Linie dicht abgetastet (Welt): ihre Krümmung verdichtet die Lippenstellen (Anteil `lippeKruemmung`) */
   linie?: readonly V3[];
   lippeKruemmung?: number;
@@ -425,7 +448,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   // geglättet (Tutte mit Dehnungsgewichten, Rand fest → faltenfrei), Lagen über die Umkehrung der Karte
   const umkehr = kartenUmkehr(karte, netz, doppel);
   const uR = reihenHoehen(J);
-  const gitter = hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, Array.from(bogen, (b): V3 => [netz.punkte[3 * b]!, netz.punkte[3 * b + 1]!, netz.punkte[3 * b + 2]!]), opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1);
+  const gitter = hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, Array.from(bogen, (b): V3 => [netz.punkte[3 * b]!, netz.punkte[3 * b + 1]!, netz.punkte[3 * b + 2]!]), opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
   const hautLage: V3[][] = [lippeLage];
   for (let r = 1; r < J; r++) hautLage.push(gitter.lagen[r]!.map((p, k) => (k === 0 || k === 2 * m ? [p[0], p[1], 0] : p)));
   // Oberseite = die Seite, deren Randpunkte im Mittel höher liegen; liegt sie bei V > V_c, werden die Speichen umgedreht

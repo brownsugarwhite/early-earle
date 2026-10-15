@@ -4,6 +4,9 @@
 import type { Linie3 } from '../../dokument';
 import type { Ableitung } from '../ableiten';
 import { ableiten } from '../ableiten';
+import { lippeAnHaut } from '../../lippeHaut';
+import { abtasten3, linieDurch } from '../../versuch/linie3d';
+import { hautZ } from '../netz/pruefen';
 import { feinesNetz, hautAusNetz } from '../pruefstand';
 import { GRUNDKOERPER, type KoerperArt, koerperDokument, vorlageVon } from './koerper';
 import { type Anfang, type Form, maulBezug, maulLinien } from './linien';
@@ -12,7 +15,7 @@ import { alleFlaechen } from '../../kaefig/halbkanten';
 import { unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
 import { type FeldSpec, feldMitGerademRand, flaechenAbstand } from '../einsatz/feld';
-import { type Aufgeschnitten, aufschneiden, type FeinNetz, feinNetz, kantenPfad, linieAufNetz } from '../einsatz/flaeche';
+import { ankerVon, type Aufgeschnitten, aufschneiden, type FeinNetz, feinNetz, kantenPfad, linieAufNetz } from '../einsatz/flaeche';
 import { type Karte, karteBauen } from '../einsatz/karte';
 import { type Verfeinert, verfeinern1 } from '../einsatz/verfeinern';
 
@@ -23,9 +26,13 @@ export type EinsatzFall = {
   abl: Ableitung;
   /** feines Netz von A0 (Stufe 3 = Stufe 2 von K1, gleiche Nummern) */
   netz: FeinNetz;
-  /** Maullinie wie gezeichnet (Welt) und auf das feine Netz gelegt */
+  /** Maullinie wie gezeichnet (Welt) und auf das feine Netz gelegt (24 je Segment) */
   maulLinie: Linie3;
   linie: V3[];
+  /** Lippenziel: die auf die Haut gelegte Linie dicht abgetastet (64 je Segment), bei Bedarf gerechnet und gemerkt */
+  lippenZiel: () => V3[];
+  /** größter Abstand der gelegten Linie zur Haut (px; Linien entlang der Silhouette bekommen aus der Seite keine Tiefe) */
+  hautAbstand: number;
   v: Verfeinert;
   /** feine Flächen von K1 auf Stufe 2 (Blöcke je Fläche von K1) und ihre Grenzlagen */
   feinFlaechen: number[][];
@@ -44,22 +51,20 @@ export function einsatzFaelle(): [KoerperArt, Anfang, Form][] {
   return faelle;
 }
 
-/** Einen Fall bis zur Karte bauen; null, wenn die Reihe für diese Lage keine Linie zieht; `fehler` bei einem Bruch. */
-export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form): EinsatzFall | { name: string; fehler: string } | null {
-  const name = `${art}/${anfang}/${form}`;
+type KoerperStand = { dok: ReturnType<typeof koerperDokument>; abl: Ableitung; netz: FeinNetz; v: Verfeinert; fein: Float64Array; ff: number[][]; h1: number };
+const koerperMerk = new Map<KoerperArt, KoerperStand>();
+
+/** Körperstand je Körperart (gemerkt; die Fälle teilen ihn, keiner verändert ihn): A0, feines Netz, K1 und seine Stufe 2. */
+function koerperStand(art: KoerperArt): KoerperStand {
+  const alt = koerperMerk.get(art);
+  if (alt) return alt;
   const dok = koerperDokument(art, zufall(1));
   const abl = ableiten(dok, { stufen: 3 });
-  const vorlage = GRUNDKOERPER.includes(art) ? null : vorlageVon(art as 'rex' | 'langhals' | 'robbe');
-  const l = maulLinien(dok, art, maulBezug(art, dok, vorlage), hautAusNetz(abl), anfang, form, 'kurz', 'gleich', zufall(3));
-  if ('fehler' in l) return null;
-  const { flaechen } = feinesNetz(abl);
-  const netz = feinNetz(abl.fein, flaechen);
-  const auf = linieAufNetz(netz, l.oben);
+  const netz = feinNetz(abl.fein, feinesNetz(abl).flaechen);
   const v = verfeinern1(abl.kaefig);
   const u = unterteilung(v.kaefig, 2);
   const fein = anwenden3(u.grenze, v.kaefig.xyz);
   const ff = alleFlaechen(u.stufen[u.stufen.length - 1]!.kaefig);
-  const d = flaechenAbstand(fein, ff, v.kaefig.nF, auf.lagen);
   const kanten: number[] = [];
   for (let e = 0; e < v.kaefig.nE; e++) {
     const a = v.kaefig.eA[e]!;
@@ -67,7 +72,23 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form): Einsat
     kanten.push(Math.hypot(v.kaefig.xyz[3 * a]! - v.kaefig.xyz[3 * b]!, v.kaefig.xyz[3 * a + 1]! - v.kaefig.xyz[3 * b + 1]!, v.kaefig.xyz[3 * a + 2]! - v.kaefig.xyz[3 * b + 2]!));
   }
   kanten.sort((a, b) => a - b);
-  const h1 = kanten[Math.floor(kanten.length / 2)]!;
+  const stand = { dok, abl, netz, v, fein, ff, h1: kanten[Math.floor(kanten.length / 2)]! };
+  koerperMerk.set(art, stand);
+  return stand;
+}
+
+/** Einen Fall bis zur Karte bauen; null, wenn die Reihe für diese Lage keine Linie zieht; `fehler` bei einem Bruch. */
+export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form): EinsatzFall | { name: string; fehler: string } | null {
+  const name = `${art}/${anfang}/${form}`;
+  const { dok, abl, netz, v, fein, ff, h1 } = koerperStand(art);
+  const vorlage = GRUNDKOERPER.includes(art) ? null : vorlageVon(art as 'rex' | 'langhals' | 'robbe');
+  const roh = maulLinien(dok, art, maulBezug(art, dok, vorlage), hautAusNetz(abl), anfang, form, 'kurz', 'gleich', zufall(3));
+  if ('fehler' in roh) return null;
+  // Linie auf die Haut legen wie im Editor nach Teil H (Seitenlage bleibt, Tiefe von der Haut); die Reihe holt die Tiefe nur
+  // grob aus dem feinen Netz (Linien bis 13 px neben der Haut)
+  const l = { ...roh, oben: linieAufHaut(abl, roh.oben) };
+  const auf = linieAufNetz(netz, l.oben);
+  const d = flaechenAbstand(fein, ff, v.kaefig.nF, auf.lagen);
   const feld = feldMitGerademRand(v.kaefig, d, 3 * h1, h1);
   // feine Dreiecke der rechten Hälfte von M (Blöcke der Stufe-1-Flächen; je Viereck zwei Dreiecke in `feinNetz`)
   const block = ff.length / v.kaefig.nF;
@@ -78,9 +99,40 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form): Einsat
       if (ecken.some((p) => netz.punkte[3 * p + 2]! < -1e-9)) continue;
       dreiecke.push(2 * q, 2 * q + 1);
     }
+  let hautAbstand = 0;
+  for (const p of abtasten3(l.oben, 32) as V3[]) hautAbstand = Math.max(hautAbstand, ankerVon(netz, p).abstand * 461);
   const pfad = kantenPfad(netz, dreiecke, auf.lagen);
   if (pfad.length < 2) return { name, fehler: 'kein Pfad' };
   const schnitt = aufschneiden(netz, dreiecke, pfad);
   const karte = karteBauen({ dreiecke: schnitt.dreiecke, punkte: netz.punkte, nPunkte: netz.punkte.length / 3, doppel: schnitt.doppel, pfad });
-  return { name, abl, netz, maulLinie: l.oben, linie: auf.lagen, v, feinFlaechen: ff, feinK1: Float64Array.from(fein), h1, feld, pfad, schnitt, karte };
+  let ziel: V3[] | null = null;
+  const lippenZiel = () => (ziel ??= abtasten3(l.oben, 64) as V3[]);
+  return { name, abl, netz, maulLinie: l.oben, linie: auf.lagen, lippenZiel, hautAbstand, v, feinFlaechen: ff, feinK1: Float64Array.from(fein), h1, feld, pfad, schnitt, karte };
+}
+
+/**
+ * Linie auf die Haut legen (Teil H: Seitenlage bleibt, Tiefe von der Haut): 16 Punkte gleichmäßig nach der Seitenlänge, Tiefe
+ * je Punkt per Strahl auf Stufe 4 (`hautZ`, außerhalb der Silhouette die alte Tiefe), Anfang auf der Naht, glatt durch die
+ * Punkte geführt; `lippeAnHaut` legt die Tiefengriffe zwischen den Knoten auf die Haut und macht den Anfang rund. Mit wenigen
+ * Knoten folgt eine kubische Tiefe einer stark gebogenen Haut nicht (bis 6 px daneben), mit 16 Knoten schon.
+ */
+export function linieAufHaut(abl: Ableitung, linie: Linie3, knoten = 16): Linie3 {
+  const proben = abtasten3(linie, 48) as V3[];
+  const s = [0];
+  for (let i = 1; i < proben.length; i++) s.push(s[i - 1]! + Math.hypot(proben[i]![0] - proben[i - 1]![0], proben[i]![1] - proben[i - 1]![1]));
+  const L = s[s.length - 1]!;
+  const pts: V3[] = [];
+  for (let k = 0; k < knoten; k++) {
+    const ziel = (k / (knoten - 1)) * L;
+    let i = 0;
+    while (i + 2 < proben.length && s[i + 1]! < ziel) i++;
+    const t = s[i + 1]! > s[i]! ? Math.min(1, Math.max(0, (ziel - s[i]!) / (s[i + 1]! - s[i]!))) : 0;
+    const a = proben[i]!;
+    const b = proben[i + 1]!;
+    const x = a[0] + t * (b[0] - a[0]);
+    const y = a[1] + t * (b[1] - a[1]);
+    const z = k === 0 ? 0 : (hautZ(abl, x, y) ?? a[2] + t * (b[2] - a[2]));
+    pts.push([x, y, z]);
+  }
+  return lippeAnHaut(linieDurch(pts), (x, y) => hautZ(abl, x, y));
 }

@@ -195,3 +195,15 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   3. **Ungleiche Lippen** (m_oben ≠ m_unten), Rachen als Streifen statt Quadrat. Löst nur das Gleichgewicht, nicht die großen Felder.
   - Empfehlung: 1 + 2. A6 (Lippe exakt) hängt nicht daran und läuft weiter; A7 wird zuerst an ausgeglichenen Fällen gebaut und gezeigt.
 - **Lippenauflösung gegen Feldrand** (A6, 16.10. früh): Die Lippe braucht krümmungsgewichtet m ≥ 10 für ≤ 1 px und m ≈ 12–14 für das Ziel 0,3 px (gemessen über 111 Linien); kompakte, ausgeglichene Felder haben heute m = 8, große Felder m = 14–22 (dort sitzt die Lippe auf ≤ 0,18 px, aber das Gitter ist schief). Weil m heute an den Feldrand gebunden ist (m = E/2), widersprechen sich gute Lippe und gutes Gitter. Das ist das stärkste Argument für Weg 2 (Übergangsreihe: m nach der Linie, Feldrand nach der Form).
+
+## Befunde aus A7 (16.10. früh, eigene Befunde)
+
+- **Mundwinkel faltet bei geschlossenen, unendlich scharfen Lippen** (Teil A, A5/A7; Entwurf 2.6 „c bekommt unendliche Punktschärfe“). Die Haut um c hat zwei Flächen und muss 360° überdecken; der Ecksektor aus k Flächen bekommt unter Catmull–Clark k·90° → Umklappen in 0,2–1,4 px um c, in allen gemessenen Fällen, schon in der Startlage. **Wege (Entscheidung Florian):**
+  1. **Eckregel mit Sektorwinkel** (Biermann, Levin, Zorin 2000: geänderte Kantenregeln am Eckpunkt für einen Sektorwinkel θ, hier 2π): behält die geschlossene scharfe Lippe und den Mundwinkel exakt auf dem schwarzen Punkt; Eingriff in `verfeinern`/`grenzMaske` nur für markierte Punkte, ein Beweis mit Messung zuerst.
+  2. **Mundwinkel als Spitze** (glatter Faltenpunkt statt Ecke, Lippen-B-Spline mit Spitze, Grenzlage auf den schwarzen Punkt gelegt): gemessen 8 von 15 sauber, der Rest braucht Arbeit am Gitter um c.
+  3. **Fächer am Mundwinkel** (vier Hautflächen an c, Valenz 6): ein Ecksektor aus vier Flächen ist von sich aus 360°; zwei zusätzliche Speichen, Topologie ändert sich.
+  4. **Kleine runde Öffnung am Mundwinkel** (Lippen geschlossen nicht ganz bis c, Lippenschleife glatt herum): Mundwinkel leicht gerundet — gehört zu Florians Wahl „scharf oder leicht gerundet“ beim Look-Urteil.
+  - Empfehlung: 1 (kleinster Eingriff in die Bauweise, Look wie geplant); 2 als Rückfall.
+- **Falten von A0 im Feld gehen verloren** (A3, Entwurf 2.3 Schritt 5 nicht gebaut): Rex 16 scharfe Kanten im Feld → Haut bis 3,5 px daneben. Falten am Rand oder im Kragen halten, im Feld an Speichen ausrichten.
+- **Hautreihen nach Feldtiefe** (A5): mit Rand und Kragen fest gleicht nur die letzte Reihe die neue Verbindung an den Randpunkten aus; J = 8 statt 4 bringt die Kugel von 0,75 auf 0,26 px. J aus der Feldtiefe wählen (Reihenabstand ≈ Kantenlänge, Entwurf 2.5).
+
