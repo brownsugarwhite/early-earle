@@ -95,7 +95,22 @@ export const AusstattungSchema = z.object({
   beinAnsaetze: z.array(z.object({ ring: z.number().int().min(0), j: z.number().int().min(0) })).optional(),
   stil: z.enum(['fest', 'feuer', 'gas', 'fell']).optional(),
   kasten: z.object({ fVorn: z.number(), fHinten: z.number(), fRund: z.number(), haerte: z.number() }).optional(),
-  augen: z.object({ ring: z.number().int().min(0), j: z.number().int().min(0), groesse: z.number().min(0) }).optional(),
+  // Phase 2 M5 (Plan 5.4): Art, Grundform, Seitenverhältnis, Drehung, Farbe; Lage als Punkt der Ruhelage (gleitet auf die
+  // Haut) oder Ring/Winkel; `mitte` = ein Auge auf der Mittelnaht statt eines Paars
+  augen: z
+    .object({
+      ring: z.number().int().min(0),
+      j: z.number().int().min(0),
+      groesse: z.number().min(0),
+      art: z.enum(['gemalt', 'glubsch', 'augapfel']).optional(),
+      form: z.enum(['schlitz', 'knopf', 'mandel']).optional(),
+      breite: z.number().min(0.1).max(4).optional(),
+      drehung: z.number().optional(),
+      punkt: z.tuple([z.number(), z.number(), z.number()]).optional(),
+      mitte: z.boolean().optional(),
+      farbe: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    })
+    .optional(),
   gesicht: z.boolean().optional(),
   wangen: z.boolean().optional(),
   gesichtMaske: z.object({ voll: z.number(), aus: z.number(), oben: z.number() }).optional(),
@@ -106,6 +121,24 @@ export const AusstattungSchema = z.object({
 });
 /** Ausstattung als Typ mit exakten Optionalen (zod-Inferenz erlaubt `undefined`, das passt nicht zu `exactOptionalPropertyTypes`). */
 export type ZonenVorlage = { ansicht: 'seite' | 'top' | 'front'; punkte: { x: number; y: number; weich: number }[] };
+/**
+ * Augen (Phase 2 M5, Plan 5.4): `art` gemalt (Abstandsform im Körpermaterial), glubsch (Kugel angedockt), augapfel (im
+ * Netz); `form` die Grundform offen (schlitz, knopf, mandel); `breite` Seitenverhältnis (1 = Grundform), `drehung` in Grad;
+ * Lage über `punkt` (Ruhelage, gleitet auf die nächste Stelle der Haut) oder Ring `ring`/Winkel `j` des Käfigs; `mitte` =
+ * ein Auge auf der Mittelnaht (Zyklop wie PezenPez) statt eines gespiegelten Paars; `farbe` überschreibt die Palette.
+ */
+export type AugenWerte = {
+  ring: number;
+  j: number;
+  groesse: number;
+  art?: 'gemalt' | 'glubsch' | 'augapfel';
+  form?: 'schlitz' | 'knopf' | 'mandel';
+  breite?: number;
+  drehung?: number;
+  punkt?: [number, number, number];
+  mitte?: boolean;
+  farbe?: string;
+};
 export type MaulOptionenWerte = {
   reihen: number;
   tiefe: number;
@@ -145,7 +178,7 @@ export type Ausstattung = {
   beinAnsaetze?: { ring: number; j: number }[];
   stil?: 'fest' | 'feuer' | 'gas' | 'fell';
   kasten?: { fVorn: number; fHinten: number; fRund: number; haerte: number };
-  augen?: { ring: number; j: number; groesse: number };
+  augen?: AugenWerte;
   gesicht?: boolean;
   wangen?: boolean;
   gesichtMaske?: { voll: number; aus: number; oben: number };

@@ -1,5 +1,6 @@
 export * from './material/stil';
 export * from './material/earleCreature';
+export * from './material/augenFormen';
 export * from './CreatureMesh';
 export * from './material/jelly';
 export * from './material/muster';

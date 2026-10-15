@@ -5,6 +5,8 @@ import type { SchnittRegel } from '@ee/shape/versuch';
 import { create } from 'zustand';
 import type { ViewId } from '../types';
 
+/** Augen-Zustand (Phase 2 M5, Plan 5.4): offen = Grundform, zu, Sichel („freuen“), X, Spirale, Schlitz */
+export type AugenZustand = 'offen' | 'zu' | 'sichel' | 'x' | 'spirale' | 'schlitz';
 export type Ansicht2D = { zoom: number; cu: number; cv: number };
 export type Kamera = { azimut: number; elevation: number; distanz: number; ziel: [number, number, number] };
 
@@ -77,6 +79,10 @@ type UiState = {
   poseStaerke: number;
   /** Fressen-Tab (Plan 5.2): Unterkiefergewichte als Farbverlauf auf dem Körper */
   gewichteZeigen: boolean;
+  /** Augen (Phase 2 M5, Vorschau wie die Öffnung): Zustand, Lid von Hand (0 offen … 1 zu), Blinzeln von selbst */
+  augenZustand: AugenZustand;
+  augenLid: number;
+  blinzeln: boolean;
   maulAuswahl: MaulAuswahl | null;
   /** Zeichenstift des Maul-Tabs: Knoten der neuen Linie, bis Enter/Esc */
   maulZeichnen: [number, number, number][] | null;
@@ -125,6 +131,9 @@ type UiState = {
   setzeOeffnung(a: number): void;
   setzePoseStaerke(a: number): void;
   setzeGewichteZeigen(an: boolean): void;
+  setzeAugenZustand(z: AugenZustand): void;
+  setzeAugenLid(l: number): void;
+  setzeBlinzeln(an: boolean): void;
   setzeMaulAuswahl(a: MaulAuswahl | null): void;
   setzeMaulZeichnen(k: [number, number, number][] | null): void;
   setzeZahnAuswahl(z: { kiefer: 'oben' | 'unten'; index: number } | null): void;
@@ -183,6 +192,9 @@ export const useUi = create<UiState>((set, get) => ({
   oeffnung: 0,
   poseStaerke: 1,
   gewichteZeigen: false,
+  augenZustand: 'offen',
+  augenLid: 0,
+  blinzeln: true,
   maulAuswahl: null,
   maulZeichnen: null,
   zahnAuswahl: null,
@@ -240,6 +252,15 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzeGewichteZeigen(an) {
     set({ gewichteZeigen: an });
+  },
+  setzeAugenZustand(z) {
+    set({ augenZustand: z });
+  },
+  setzeAugenLid(l) {
+    set({ augenLid: Math.min(1, Math.max(0, l)) });
+  },
+  setzeBlinzeln(an) {
+    set({ blinzeln: an });
   },
   setzeMaulAuswahl(a) {
     set({ maulAuswahl: a });

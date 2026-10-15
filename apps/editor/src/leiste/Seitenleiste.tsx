@@ -29,6 +29,7 @@ import { type Ebene, useUi } from '../state/uiStore';
 import { Ornament } from './Ornament';
 import { Chips, Regler, geste } from './bedienung';
 import { ZahnFeld } from './ZahnFeld';
+import { AugenFeld } from './AugenFeld';
 import { WIRBEL_FARBEN, wirbelVorschlagUebernehmen } from '../wirbel/WirbelEbene';
 import { useWirbelAnzeige } from '../wirbel/wirbelKoerper';
 import { schnittEcht, useSchnittAnzeige } from '../schnitte/schnittKoerper';
@@ -1197,28 +1198,6 @@ function PosenFeld() {
 }
 
 /** Tafel „Augen“: Lage (Ring, Winkel) und Größe; Setzen per Klick, Größe am Rand. */
-function AugenFeld() {
-  const dok = useEditor((s) => s.dok);
-  const augen = dok.ausstattung?.augen ?? pruefwesenBauplan(dok.name).augen ?? { ring: 2, j: 2, groesse: 0.11 };
-  const setze = (patch: Partial<typeof augen>) => {
-    const s = useEditor.getState();
-    const aus = s.dok.ausstattung ?? {};
-    s.setzeDokument({ ...s.dok, ausstattung: { ...aus, augen: { ...augen, ...patch } } });
-  };
-  return (
-    <>
-      <div className="feld">
-        <span>Lage</span>
-        <b>
-          Ring {augen.ring} · Winkel {augen.j}
-        </b>
-      </div>
-      <Regler label="Größe" wert={augen.groesse} min={0.02} max={0.4} schritt={0.005} anzeige={`${Math.round(augen.groesse * 100)} % der Höhe`} onChange={(v) => setze({ groesse: v })} {...geste()} />
-      <p className="hilfe">Klick auf den Körper in der Bühne setzt das Auge (gespiegelt); am Augenrand ziehen ändert die Größe. Augenarten (Schlitz, Knopf, Kugel, Glubschauge) und Zustände (Blinzeln, Sichel, X, Spirale) kommen in Phase 2.</p>
-    </>
-  );
-}
-
 /** Tafel „Teile“: Beine (Beweis 3) mit Schwung; Teile aus der Bibliothek folgen in Phase 3. */
 function TeileFeld() {
   const beine = useKernAnzeige((s) => s.beine);

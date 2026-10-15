@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { pruefwesenBauplan } from '@ee/shape/kern';
 import { aktuellesNetz } from '../kern/kernBau';
 import { augeZeiger, augenRandUnter, kieferUnter, kieferZeiger } from '../kern/griffe';
 import { knochen3dSchweben, knochen3dZeiger } from '../kiefer/knochen3d';
@@ -13,27 +12,58 @@ import { drehen, verschieben3d, zoomen } from '../three/kamera';
 import { FOV } from '../three/Renderer3D';
 import { szene } from '../three/instanz';
 import { istTrackpad, radFaktor } from './ansicht2d';
+import { wirksameAugen } from '../leiste/AugenFeld';
 
 /**
- * Auge setzen (M3, Stufe „Augen“): Klick auf den Körper → nächster Käfigpunkt → Vorlagen-Ringpunkt (Ring, Winkel, rechts
- * gespiegelt) in die Ausstattung des Dokuments; Größe bleibt (Standard 10 % der Höhe). Kappen- und Maulpunkte zählen nicht.
+ * Auge setzen (Stufe „Augen“; M3, Phase 2 M5): Klick auf den Körper → Punkt der Ruhelage am Treffer (baryzentrisch im
+ * getroffenen Dreieck, in Profileinheiten; mit „Mitte“ auf die Naht) in die Ausstattung, dazu Ring und Winkel des nächsten
+ * Vorlagen-Ringpunkts (rechts gespiegelt), wenn es einer ist. Form, Größe und die übrigen Werte bleiben.
  */
 export function augeSetzen(px: number, py: number): boolean {
   const r = szene.aktuell;
   const n = aktuellesNetz();
   if (!r || !n || useUi.getState().bauweise !== 'kern') return false;
   const h = r.treffen('creation', px, py);
-  const t = h ? trefferDeuten(n.netz, h.dreieck, h.punkt, n.skalierung) : null;
-  const tr = n.netz.treffer;
-  if (!t || !tr || t.kaefigPunkt < 0 || t.kaefigPunkt >= tr.vorlage.R * tr.vorlage.N) return false;
-  const { N } = tr.vorlage;
-  const ring = Math.floor(t.kaefigPunkt / N);
-  let j = t.kaefigPunkt % N;
-  if (j > N / 2) j = N - j;
+  if (!h) return false;
+  const w = n.netz;
+  const t = trefferDeuten(w, h.dreieck, h.punkt, n.skalierung);
+  const tr = w.treffer;
   const ed = useEditor.getState();
-  const alt = ed.dok.ausstattung ?? {};
-  const groesse = alt.augen?.groesse ?? pruefwesenBauplan(ed.dok.name).augen?.groesse ?? 0.11;
-  ed.setzeDokument({ ...ed.dok, ausstattung: { ...alt, augen: { ring, j: Math.max(1, Math.min(N / 2 - 1, j)), groesse } } });
+  const alt = wirksameAugen(ed.dok);
+  // Punkt der Ruhelage: baryzentrisch im getroffenen Dreieck der Pose, angewandt auf dasselbe Dreieck der Ruhelage
+  const P = w.positionen;
+  const R = w.ruhe ?? w.positionen;
+  const o = 9 * h.dreieck;
+  const ecke = (A: Float32Array, k: number): [number, number, number] => [A[o + 3 * k]!, A[o + 3 * k + 1]!, A[o + 3 * k + 2]!];
+  const [a0, a1, a2] = [ecke(P, 0), ecke(P, 1), ecke(P, 2)];
+  const v0 = [a1[0] - a0[0], a1[1] - a0[1], a1[2] - a0[2]];
+  const v1 = [a2[0] - a0[0], a2[1] - a0[1], a2[2] - a0[2]];
+  const v2 = [h.punkt[0] - a0[0], h.punkt[1] - a0[1], h.punkt[2] - a0[2]];
+  const dp = (x: number[], y: number[]) => x[0]! * y[0]! + x[1]! * y[1]! + x[2]! * y[2]!;
+  const d00 = dp(v0, v0);
+  const d01 = dp(v0, v1);
+  const d11 = dp(v1, v1);
+  const d20 = dp(v2, v0);
+  const d21 = dp(v2, v1);
+  const nenner = d00 * d11 - d01 * d01 || 1;
+  const bv = (d11 * d20 - d01 * d21) / nenner;
+  const bw = (d00 * d21 - d01 * d20) / nenner;
+  const bu = 1 - bv - bw;
+  const [r0, r1, r2] = [ecke(R, 0), ecke(R, 1), ecke(R, 2)];
+  const s = n.skalierung || 1;
+  const punkt: [number, number, number] = [0, 1, 2].map((k) => (bu * r0[k]! + bv * r1[k]! + bw * r2[k]!) / s) as [number, number, number];
+  if (alt.mitte) punkt[2] = 0;
+  // Ring und Winkel, wenn der nächste Käfigpunkt ein Vorlagen-Ringpunkt ist (sonst bleiben die alten)
+  let ring = alt.ring;
+  let j = alt.j;
+  if (t && tr && t.kaefigPunkt >= 0 && t.kaefigPunkt < tr.vorlage.R * tr.vorlage.N) {
+    const { N } = tr.vorlage;
+    ring = Math.floor(t.kaefigPunkt / N);
+    j = t.kaefigPunkt % N;
+    if (j > N / 2) j = N - j;
+    j = Math.max(1, Math.min(N / 2 - 1, j));
+  }
+  ed.setzeDokument({ ...ed.dok, ausstattung: { ...(ed.dok.ausstattung ?? {}), augen: { ...alt, ring, j, punkt } } });
   return true;
 }
 

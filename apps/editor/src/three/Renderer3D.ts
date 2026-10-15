@@ -4,7 +4,7 @@
 // Look: Matcap (Licht an der Ansicht, wie Blender-Solid), Kachel als 10-%-Fläche, harter Schatten von
 // einem eigenen Sonnenlicht (wirkt nur auf den Schatten, die Matcap ignoriert Licht).
 
-import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, atlasTextur, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, createToothMaterial, installTslFunctionCacheFix, setzeZahnFarbe, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms } from '@ee/render';
+import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, atlasTextur, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, createToothMaterial, installTslFunctionCacheFix, setzeZahnFarbe, AUGEN_FORM, AUGEN_ZUSTAND, farbRolle, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms } from '@ee/render';
 import type { LoftNetz } from '@ee/shape';
 import {
   BufferAttribute,
@@ -101,6 +101,9 @@ export class Renderer3D {
   /** Zonen-Atlas-Texturen des aktuellen Wesens (zum Freigeben) */
   private atlasTexturen: DataTexture[] = [];
   private lebenTimer: number | null = null;
+  /** Augen (Phase 2 M5): zuletzt gesetzte Augen und die Vorschau (Zustand, Lid, Blinzeln) */
+  private augenListe: Auge[] = [];
+  private augenAnzeige: { zustand: keyof typeof AUGEN_ZUSTAND; lid: number; blinzeln: boolean } = { zustand: 'offen', lid: 0, blinzeln: true };
   private blinkPhase = -1;
   private blinkTimer = 2.2;
   private zeit = 0;
@@ -124,7 +127,7 @@ export class Renderer3D {
     this.szene.add(this.koerper);
 
     this.wesenUniforms = createCreatureUniforms(this.palette.farben, STIL_STANDARD, 1);
-    const wesenMaterial = createCreatureMaterial(this.wesenUniforms, { ruheAttribut: true });
+    const wesenMaterial = createCreatureMaterial(this.wesenUniforms, { ruheAttribut: true, augenFormen: true });
     wesenMaterial.shadowSide = FrontSide;
     this.wesen = new Mesh(new BufferGeometry(), wesenMaterial);
     this.wesen.visible = false;
@@ -337,12 +340,8 @@ export class Renderer3D {
     // Lidring um die gemalten Augen (Tiger): der Höhlenring des Materials auf denselben Augenlagen
     u.ringCount.value = this.palette.augenRing ? Math.min(4, augen.length) : 0;
     u.ringStaerke.value = this.palette.augenRing ?? 0.5;
-    augen.slice(0, 4).forEach((a, i) => {
-      const n = new Vector3(...a.normale).normalize();
-      const up = new Vector3(0, 1, 0).addScaledVector(n, -n.y).normalize();
-      (u.eyePos.array[i] as Vector4).set(a.pos[0] + n.x * 0.002, a.pos[1] + n.y * 0.002, a.pos[2] + n.z * 0.002, a.groesse);
-      (u.eyeUp.array[i] as Vector4).set(up.x, up.y, up.z, 1);
-    });
+    this.augenListe = augen.slice(0, 4);
+    this.augenUniformsSetzen();
     const alt = this.wesen.geometry;
     this.wesen.geometry = g;
     this.wesen.visible = true;
@@ -454,21 +453,65 @@ export class Renderer3D {
       const u = this.wesenUniforms;
       u.zeit.value = this.zeit;
       this.feuerUniforms.zeit.value = this.zeit;
+      // Spirale dreht (Phase 2 M5)
+      u.augenZeit.value = this.zeit;
+      let blink = 0;
       if (this.blinkPhase < 0) {
         this.blinkTimer -= dt;
-        if (this.blinkTimer <= 0) {
+        if (this.blinkTimer <= 0 && this.augenAnzeige.blinzeln) {
           this.blinkPhase = 0;
           this.blinkTimer = 2.4 + Math.random() * 4;
         }
-        u.blink.value = 0;
       } else {
         this.blinkPhase += dt;
         const x = this.blinkPhase / 0.17;
-        u.blink.value = x < 0.4 ? Math.pow(x / 0.4, 0.6) : Math.max(0, 1 - Math.pow((x - 0.4) / 0.6, 1.4));
+        blink = x < 0.4 ? Math.pow(x / 0.4, 0.6) : Math.max(0, 1 - Math.pow((x - 0.4) / 0.6, 1.4));
         if (x >= 1) this.blinkPhase = -1;
       }
+      // Lid von Hand (Augen-Tafel) und Blinzeln: das stärkere gilt
+      u.blink.value = Math.max(blink, this.augenAnzeige.lid);
       this.anfordern();
     }, 50);
+  }
+
+  /**
+   * Augen in die Uniforms (Phase 2 M5): Rahmen je Auge — oben = Welt-y senkrecht zur Normalen, rechts = oben × Normale
+   * (links gespiegelt, so spiegeln sich auch Drehung und Formen), um die Drehung des Auges gedreht —, Form, Zustand und
+   * Seitenverhältnis.
+   */
+  private augenUniformsSetzen() {
+    const u = this.wesenUniforms;
+    const form = { schlitz: AUGEN_FORM.schlitz, knopf: AUGEN_FORM.knopf, mandel: AUGEN_FORM.mandel } as const;
+    this.augenListe.forEach((a, i) => {
+      const n = new Vector3(...a.normale).normalize();
+      let up = new Vector3(0, 1, 0).addScaledVector(n, -n.y);
+      if (up.lengthSq() < 1e-8) up = new Vector3(1, 0, 0).addScaledVector(n, -n.x);
+      up.normalize();
+      let rechts = new Vector3().crossVectors(up, n).normalize();
+      const w = ((a.drehung ?? 0) * Math.PI) / 180;
+      if (w) {
+        const up2 = up.clone().multiplyScalar(Math.cos(w)).addScaledVector(rechts, Math.sin(w)).normalize();
+        up = up2;
+        rechts = new Vector3().crossVectors(up, n).normalize();
+      }
+      (u.eyePos.array[i] as Vector4).set(a.pos[0] + n.x * 0.002, a.pos[1] + n.y * 0.002, a.pos[2] + n.z * 0.002, a.groesse);
+      (u.eyeUp.array[i] as Vector4).set(up.x, up.y, up.z, 1);
+      (u.eyeRechts.array[i] as Vector4).set(rechts.x, rechts.y, rechts.z, 0);
+      (u.eyeForm.array[i] as Vector4).set(form[a.form ?? 'schlitz'] ?? 0, AUGEN_ZUSTAND[this.augenAnzeige.zustand], a.breite ?? 1, 0);
+    });
+    this.anfordern();
+  }
+
+  /** Augen-Vorschau (Phase 2 M5): Zustand, Lid von Hand (0 … 1), Blinzeln von selbst; ohne Umbau. */
+  setzeAugenAnzeige(zustand: keyof typeof AUGEN_ZUSTAND, lid: number, blinzeln: boolean) {
+    this.augenAnzeige = { zustand, lid: Math.min(1, Math.max(0, lid)), blinzeln };
+    this.augenUniformsSetzen();
+  }
+
+  /** Augenfarbe (Ausstattung oder Palette), nur der Uniform. */
+  setzeAugenFarbe(hex: string) {
+    this.wesenUniforms.auge.value.set(...farbRolle(hex, STIL_STANDARD).base);
+    this.anfordern();
   }
 
   /** Blinzeln festhalten (Standbilder): 0 offen … 1 zu, null = Automatik. */

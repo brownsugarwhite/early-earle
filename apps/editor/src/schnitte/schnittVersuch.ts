@@ -23,6 +23,7 @@ export const PRUEFWESEN: readonly { id: string; name: string; palette: string; h
   { id: 'drache', name: 'Drache', palette: 'giraffe', hinweis: 'Langhals mit doppeltem Hals, Maul bis zum Hals' },
   { id: 'ueberhang', name: 'Ente', palette: 'blob', hinweis: 'Überhang (Schnauze über dem Bauch)' },
   { id: 'robbe', name: 'Robbe', palette: 'blob', hinweis: 'Versuchswesen vom 12.10.' },
+  { id: 'pezenpez', name: 'PezenPez', palette: 'blob', hinweis: 'Blob mit einem senkrechten Schlitzauge in der Mitte (Augen, Phase 2 M5)' },
 ];
 
 /** Prüfwesen frisch bauen: Vorlage (`public/versuch/<name>/<name>.json`) plus Kern-Zutaten (Drache: Hals ×2, Tiger: Kasten-Spanten). */
@@ -31,7 +32,14 @@ export async function pruefwesenDokument(wesen: string): Promise<Dokument> {
   const datei = wesen === 'drache' ? 'langhals' : wesen;
   let dok: Dokument = neuesDokument('Kugel');
   if (wesen === 'zwiebel') dok = zwiebel(neuesDokument('zwiebel'));
-  else if (wesen !== 'kugel') {
+  else if (wesen === 'pezenpez') {
+    // PezenPez (Augen, Phase 2 M5): die Startkugel mit einem senkrechten Schlitzauge auf der Mittelnaht, vorn auf ≈ 55 % der Höhe
+    const k = neuesDokument('pezenpez');
+    const xs = k.profile.seite.knoten.map((q) => q.p.x);
+    const ys = k.profile.seite.knoten.map((q) => q.p.y);
+    const y = Math.min(...ys) + 0.55 * (Math.max(...ys) - Math.min(...ys));
+    dok = { ...k, ausstattung: { augen: { ring: 2, j: 2, groesse: 0.2, punkt: [Math.min(...xs), y, 0], mitte: true, form: 'schlitz', breite: 0.5 } } };
+  } else if (wesen !== 'kugel') {
     const json = (await (await fetch(`${import.meta.env.BASE_URL}versuch/${datei}/${datei}.json`)).json()) as { format?: string };
     dok = json.format === 'ee-wesen' ? dokumentLesen(json) : vorlageDokument(json as Vorlage, 'zu', wesen);
     if (wesen === 'drache') dok = halsVerbreitern(dok, 2, 0.3, 0.585);

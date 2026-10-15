@@ -4,6 +4,7 @@ import { abs, attribute, clamp, cross, dFdx, dFdy, dot, exp2, float, floor, Fn, 
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { STIL_STANDARD, farbRolle, type WesenStil } from './stil';
 import { createMusterUniforms, createZonenUniforms, hash3, musterMasks, ZONEN_ANZAHL, zonenMaske, type MusterUniforms, type ZonenUniforms } from './muster';
+import { augenFormAbstand } from './augenFormen';
 
 /**
  * Das Earle-Wesen-Material (erste Fassung, Look-Vertrag Regeln 1–5, 9, 10 teilweise, 12):
@@ -58,6 +59,10 @@ export interface CreatureMaterialUniforms {
   /** Schlitzaugen: Position (xyz) + Größe (w) im Körperraum; Rahmen: oben (xyz) + Blinzeln (w). */
   eyePos: ReturnType<typeof uniformArray>;
   eyeUp: ReturnType<typeof uniformArray>;
+  /** Augenformen (Phase 2 M5, nur mit `augenFormen`): Rechts-Achse (xyz) je Auge; Form, Zustand, Breite (xyz) je Auge; Zeit (Spirale) */
+  eyeRechts: ReturnType<typeof uniformArray>;
+  eyeForm: ReturnType<typeof uniformArray>;
+  augenZeit: UniformNode<'float', number>;
   eyeCount: UniformNode<'float', number>;
   /** Augenringe (dunkler Höhlenring auf der Haut um Augäpfel, Bild 10/11): Anzahl und Stärke. */
   ringCount: UniformNode<'float', number>;
@@ -136,6 +141,8 @@ const GLIMMER_STANDARD = '#f7d6a0';
 export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil = STIL_STANDARD, bodyScale = 1): CreatureMaterialUniforms {
   const eyePos = uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(0, 0, 0, 0)), 'vec4');
   const eyeUp = uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(0, 1, 0, 1)), 'vec4');
+  const eyeRechts = uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(1, 0, 0, 0)), 'vec4');
+  const eyeForm = uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(0, 0, 1, 0)), 'vec4');
   return {
     lightDir: uniform(lightDirFromStil(stil)),
     stufen: uniform(stil.stufen),
@@ -168,6 +175,9 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     bauchStaerke: uniform(0),
     eyePos,
     eyeUp,
+    eyeRechts,
+    eyeForm,
+    augenZeit: uniform(0),
     eyeCount: uniform(0),
     ringCount: uniform(0),
     ringStaerke: uniform(0.5),
@@ -314,6 +324,11 @@ function tupfer(p: Vec3Node, seed: number, rMin: number, rMax: number, weich: nu
 export interface CreatureMaterialOptionen {
   /** Ruhelage aus dem Attribut `eeRest` statt `positionGeometry` (CPU-posierte Netze im Editor: Muster, Zonen, Augen und Korn bleiben bei Posen stehen). */
   ruheAttribut?: boolean;
+  /**
+   * Gemalte Augen mit Formen und Zuständen (Phase 2 M5, `augenFormen.ts`): Augenrahmen mit Rechts-Achse, Schlitz/Knopf/
+   * Mandel offen, zu, Sichel, X, Spirale, Schlitz; Kanten über `fwidth`. Ohne die Option das bisherige Schlitzauge (Spiel).
+   */
+  augenFormen?: boolean;
 }
 
 export function createCreatureMaterial(u: CreatureMaterialUniforms, optionen: CreatureMaterialOptionen = {}): MeshBasicNodeMaterial {
@@ -531,6 +546,23 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms, optionen: Cr
       const ep = (u.eyePos as unknown as { element(i: number): Vec4Node }).element(i);
       const eu = (u.eyeUp as unknown as { element(i: number): Vec4Node }).element(i);
       const active = smoothstep(float(i).sub(0.5), float(i).add(0.5), u.eyeCount.sub(0.5)).mul(min(ep.w.mul(1000), 1));
+      if (optionen.augenFormen) {
+        // Augenrahmen: x längs der Rechts-Achse, y längs der Oben-Achse (Einheit halbe Größe); Tiefe längs der Normalen
+        // begrenzt, damit die Form bei dünnen Körpern nicht auf die Rückseite durchschlägt
+        const er = (u.eyeRechts as unknown as { element(i: number): Vec4Node }).element(i);
+        const ef = (u.eyeForm as unknown as { element(i: number): Vec4Node }).element(i);
+        const dA = rest.sub(ep.xyz);
+        const hsA = max(ep.w.mul(0.5), 1e-6);
+        const xv = dot(dA, er.xyz).div(hsA);
+        const yv = dot(dA, eu.xyz).div(hsA);
+        const tiefe = abs(dot(dA, cross(er.xyz, eu.xyz))).div(hsA);
+        const offen = max(float(1).sub(u.blink).mul(eu.w), 0.08);
+        const distA = augenFormAbstand(xv, yv, ef.x, ef.y, ef.z, offen, u.augenZeit.mul(2.4));
+        const aaA = fwidth(distA).mul(0.8).add(1e-4);
+        const vorn = float(1).sub(smoothstep(0.5, 0.75, tiefe));
+        eyeMask.assign(max(eyeMask, float(1).sub(smoothstep(aaA.negate(), aaA, distA)).mul(vorn).mul(active)));
+        continue;
+      }
       const d = rest.sub(ep.xyz);
       const up = eu.xyz;
       const dy = dot(d, up);

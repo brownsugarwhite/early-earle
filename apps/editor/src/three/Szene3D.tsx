@@ -161,6 +161,8 @@ export function Szene3D() {
             if (t.ruhe && s !== 1) for (let i = 0; i < t.ruhe.length; i++) t.ruhe[i]! *= s;
             r.setzeFell(t.stil === 'fell' ? 0.45 : 0, 0.055);
             r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, augen, t.lippenBand * s, t.ruhe, gesicht, t.atlas);
+            // Phase 2 M5: eigene Augenfarbe der Ausstattung überschreibt die Palette
+            if (d.ausstattung?.augen?.farbe) r.setzeAugenFarbe(d.ausstattung.augen.farbe);
           } else r.setzeDreiecke(t.positionen, t.normalen);
           if (t.zaehne) {
             if (s !== 1) for (let i = 0; i < t.zaehne.positionen.length; i++) t.zaehne.positionen[i]! *= s;
@@ -294,6 +296,11 @@ export function Szene3D() {
         useRahmen.subscribe(blaetter),
         useUi.subscribe((s, v) => (s.ansichten !== v.ansichten || s.blick !== v.blick || s.bauweise !== v.bauweise) && blaetter()),
       );
+      // Phase 2 M5: Augen-Vorschau wie im Store (auch nach einem Neuaufbau des Renderers)
+      {
+        const ui0 = useUi.getState();
+        r.setzeAugenAnzeige(ui0.augenZustand, ui0.augenLid, ui0.blinzeln);
+      }
       abmelden.push(
         useEditor.subscribe((s, v) => {
           const geaendert =
@@ -344,6 +351,8 @@ export function Szene3D() {
         useReifen.subscribe(() => reifenFaerben(r)),
         // Phase 2 M4: Befunde der Zahnprüfung → Glut
         useZahnPruefung.subscribe((s, v) => s.meldungen !== v.meldungen && zahnMarkenAnzeigen(r, s.meldungen)),
+        // Phase 2 M5: Augen-Vorschau (Zustand, Lid, Blinzeln) ohne Umbau
+        useUi.subscribe((s, v) => (s.augenZustand !== v.augenZustand || s.augenLid !== v.augenLid || s.blinzeln !== v.blinzeln) && r.setzeAugenAnzeige(s.augenZustand, s.augenLid, s.blinzeln)),
         // Beweis 4: Look oder Palette gewechselt → Kern neu bauen
         useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung || s.stil !== v.stil) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
         // Biege-Regler losgelassen: genau bauen

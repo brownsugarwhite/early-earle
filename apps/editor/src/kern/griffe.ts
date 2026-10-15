@@ -83,14 +83,14 @@ export function kieferZeiger(e: React.PointerEvent, px: number, py: number, el: 
   return true;
 }
 
-/** Augen in Feldpixeln: Mitte und Radius je Auge (rechts zuerst). */
+/** Augen in Feldpixeln: Mitte und Radius je Auge (rechts zuerst); der Radius ist die halbe Größe = Rand der gemalten Form. */
 export function augenPixel(): { px: number; py: number; radius: number; vorn: boolean }[] {
   const r = szene.aktuell;
   const n = aktuellesNetz();
   if (!r || !n) return [];
   const sk = n.skalierung;
   return n.netz.augen.map((a) => {
-    const p = r.projizierenViele('creation', Float32Array.from([a.pos[0] * sk, a.pos[1] * sk, a.pos[2] * sk, a.pos[0] * sk, a.pos[1] * sk + a.groesse * sk, a.pos[2] * sk]));
+    const p = r.projizierenViele('creation', Float32Array.from([a.pos[0] * sk, a.pos[1] * sk, a.pos[2] * sk, a.pos[0] * sk, a.pos[1] * sk + (a.groesse / 2) * sk, a.pos[2] * sk]));
     return { px: p[0]!, py: p[1]!, radius: Math.hypot(p[3]! - p[0]!, p[4]! - p[1]!), vorn: p[2]! > 0 && p[5]! > 0 };
   });
 }

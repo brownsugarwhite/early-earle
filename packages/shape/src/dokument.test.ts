@@ -69,6 +69,13 @@ describe('Dokument', () => {
     expect(migriert.ausstattung).toBeUndefined();
     expect(migriert.profile.seite.knoten.length).toBe(4);
   });
+  it('Phase 2 M5: Augen mit Art, Form, Breite, Drehung, Punkt, Mitte und Farbe überstehen die Rundreise', () => {
+    const d = neuesDokument('PezenPez');
+    d.ausstattung = { augen: { ring: 0, j: 0, groesse: 0.2, art: 'gemalt', form: 'schlitz', breite: 0.8, drehung: -10, punkt: [-0.3, 0.25, 0], mitte: true, farbe: '#14222b' } };
+    const json = JSON.parse(JSON.stringify(d));
+    expect(dokumentLesen(json)).toEqual(json);
+    expect(() => dokumentLesen({ ...json, ausstattung: { augen: { ...json.ausstattung.augen, art: 'kugel' } } })).toThrow();
+  });
   it('Phase 2 M4: Drehung und Größe der Zähne (auch offen) und die Zahnfarbe überstehen die Rundreise', () => {
     const d = neuesDokument('Rex');
     const zahn = { u: 0.3, laenge: 0.05, breite: 0.02, rundheit: 0.6, schaerfe: 0.7, neigung: 0, biegung: 0.2, spreizung: 0, drehung: 40, groesse: 1.2, aussen: true, auf: { laenge: 0.08, groesse: 1.8, drehung: 10 } };
