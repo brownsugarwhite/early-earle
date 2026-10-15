@@ -1,7 +1,7 @@
 import { kernMaulAktiv, useKernAnzeige } from '../kern/kernBau';
 import { kieferAutomatik, maulOptionenDok, setzeMaulOptionen } from '../kiefer/kieferOptionen';
 import { useNetzStand } from '../kern/netzStand';
-import { type MaulOptionen, MAUL_STANDARD, maulOptionenVorlage, maulVorn, pruefwesenBauplan } from '@ee/shape/kern';
+import { type MaulOptionen, MAUL_STANDARD, RUNDMAUL_STANDARD, maulOptionenVorlage, maulVorn, pruefwesenBauplan } from '@ee/shape/kern';
 import { naechsteStufe, stufe } from '../stamm/stufen';
 import { pauspapierAusDatei } from '../viewports/Pauspapier';
 import { nachzeichnenBlatt } from '../nachziehen/nachzeichnen';
@@ -969,6 +969,31 @@ function KernMaulFeld() {
     const aus = s.dok.ausstattung ?? {};
     s.setzeDokument({ ...s.dok, ausstattung: { ...aus, maulOptionen: { ...(aus.maulOptionen ?? {}), ...patch } } });
   };
+  // Rundmaul (Phase 2 M6): O-Maul an der Körperspitze statt Schlitz, aus der Ausstattung (Chip schaltet), Öffnung als Pose
+  const rund = dok.ausstattung?.rundmaul ?? pruefwesenBauplan(dok.name).rundmaul;
+  const rundSetzen = (an: boolean) => {
+    const s = useEditor.getState();
+    const aus = { ...(s.dok.ausstattung ?? {}) };
+    if (an) aus.rundmaul = aus.rundmaul ?? {};
+    else delete aus.rundmaul;
+    s.setzeDokument({ ...s.dok, ausstattung: aus });
+  };
+  if (!hatLinie && chip === 'aus' && rund)
+    return (
+      <>
+        <div className="feld">
+          <span>Maul</span>
+          <b data-maul-art="rund">Rundmaul (O an der Spitze)</b>
+        </div>
+        <button className="chip aktiv" data-rundmaul="aus" onClick={() => rundSetzen(false)}>
+          Rundmaul aus
+        </button>
+        <Regler label="Öffnung" wert={oeffnung} min={0} max={1} schritt={0.01} anzeige={`${Math.round(oeffnung * 100)} %`} onChange={(v) => useUi.getState().setzeOeffnung(v)} />
+        <Regler label="O zu" wert={rund.zu ?? RUNDMAUL_STANDARD.zu} min={0.01} max={0.1} schritt={0.005} anzeige={`${Math.round((rund.zu ?? RUNDMAUL_STANDARD.zu) * 100)} % der Höhe`} onChange={(v) => { const s = useEditor.getState(); s.setzeDokument({ ...s.dok, ausstattung: { ...(s.dok.ausstattung ?? {}), rundmaul: { ...rund, zu: v } } }); }} {...geste()} />
+        <Regler label="O offen" wert={rund.auf ?? RUNDMAUL_STANDARD.auf} min={0.05} max={0.25} schritt={0.005} anzeige={`${Math.round((rund.auf ?? RUNDMAUL_STANDARD.auf) * 100)} % der Höhe`} onChange={(v) => { const s = useEditor.getState(); s.setzeDokument({ ...s.dok, ausstattung: { ...(s.dok.ausstattung ?? {}), rundmaul: { ...rund, auf: v } } }); }} {...geste()} />
+        <p className="hilfe">Rundmaul: ein Lippenring an der Spitze des Körpers (Fisch, Aal). Öffnen weitet den Ring und dehnt die Haut darum; innen der Rachen. Zähne rundum folgen.</p>
+      </>
+    );
   if (!hatLinie && chip === 'aus')
     return (
       <>
@@ -982,6 +1007,9 @@ function KernMaulFeld() {
           <b>{chip}</b>
         </div>
         <Chips werte={['aus', 'vorn', 'unten', 'hals'] as const} aktiv={chip} attribut="maul" onWahl={(m) => useKernAnzeige.getState().setzeMaul(m)} />
+        <button className="chip" data-rundmaul="an" onClick={() => rundSetzen(true)}>
+          Rundmaul (O an der Spitze)
+        </button>
       </>
     );
   return (

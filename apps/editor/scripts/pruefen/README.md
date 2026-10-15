@@ -50,3 +50,4 @@ Aus `packages/shape` starten: `npx vite-node ../../apps/editor/scripts/pruefen/<
 | `augen-augapfel.mjs` | Phase 2 M5, Schritte 3a/3b: Augapfel am Rex mit Höhle (zu/offen, 0°/20°, vorn, nah, von vorn oben, Seite) neben Bild 11; Spiegeltest gedrehter Augen (gemalt, Glubsch) von vorn (`LAGE=x,y,z`, `GROESSE`; Rex-Probe `LAGE=-0.15,0.285,0.11 GROESSE=0.06`) |
 | `augen-abnahme.mjs` | Abnahme M5: PezenPez, Glubsch und Rex aus der Library, alle Zustände, neben Bild 10, PezenPez-Vorlage und Bild 11 |
 | `maularten-bestand.mjs` | Phase 2 M6, Schritt 1: Bestand je Maulart (Kugel als Fisch, Drache `hals`, Tiger-Platte als W, Tiger-Kinn) neben den Referenzen |
+| `rundmaul.mjs` | Phase 2 M6, Schritt 2: Prüfwesen Fisch, Rundmaul in fünf Öffnungen, schräg, Seite, neben `fish_round mouth`; Tafel-Chip aus/an |

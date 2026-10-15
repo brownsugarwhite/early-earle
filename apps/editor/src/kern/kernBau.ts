@@ -82,6 +82,11 @@ export function kernMaulAktiv(dok: Dokument): boolean {
   return !!(dok.ausstattung?.maulLinie ?? pruefwesenBauplan(dok.name).maulLinie);
 }
 
+/** Rundmaul (Phase 2 M6) aus der Ausstattung oder dem Prüfwesen: Die Öffnung ist dann eine Pose wie beim Schlitzmaul. */
+export function kernRundmaul(dok: Dokument): boolean {
+  return !!(dok.ausstattung?.rundmaul ?? pruefwesenBauplan(dok.name).rundmaul);
+}
+
 /** Aktive weitere Pose (Posenliste, nicht Editor/Fressen) oder null. */
 export function weiterePose(): string | null {
   const m = useEditor.getState().modus;

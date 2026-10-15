@@ -44,7 +44,19 @@ export const HOEHLE_STANDARD: HoehlenForm = { oeffnung: 0.95, lidTiefe: 0.08, wu
  * eine Falte entlang dieser Reihe, angehoben und über das Auge gezogen; so reicht er über mehrere Ringe (am Rex liegen die
  * Ringe am Mundwinkel so dicht, dass ein Wulst nur im Feld des Auges als schmaler Grat nach oben stand).
  */
-export type HoehlenAuge = { c: number; radius: number; oben: V3; braue?: { punkte: number[]; gewicht: number[] } };
+export type HoehlenAuge = {
+  c: number;
+  radius: number;
+  oben: V3;
+  braue?: { punkte: number[]; gewicht: number[] };
+  /**
+   * Rundmaul (Phase 2 M6) statt Auge: L1 = äußere Lippenkante mit Radius `r1`, nach vorn gewölbt um `wulst`, L2 = innere
+   * Lippenkante mit Radius `r2`, c = Rachenboden in der Tiefe `tiefe` (alles Welt, für die aktuelle Öffnung); eigene Schärfen.
+   */
+  mund?: { r1: number; r2: number; wulst: number; tiefe: number };
+  /** Kantenschärfe der Schleifen (statt der Form): L1, L2 */
+  schaerfe?: { l1: number; l2: number };
+};
 
 type RingInfo = { flaechen: number[]; rand: number[]; ecken: number[][] };
 
@@ -108,7 +120,7 @@ const blockGroesse = (m: number, L: number) => (L === 0 ? 1 : m * 4 ** (L - 1));
  * regelmäßigen Viereck-Ring hat oder sich zwei Ringe berühren.
  */
 export function hoehlenTopologie(k: Kaefig, L: number, augen: readonly HoehlenAuge[], form: HoehlenForm = HOEHLE_STANDARD): HoehlenTopologie | null {
-  const schluessel = JSON.stringify([L, augen.map((a) => [a.c, a.oben.map((x) => Math.round(x * 100) / 100), a.braue?.punkte ?? []]), form.schaerfeWulst, form.schaerfeRahmen, form.schaerfeLid]);
+  const schluessel = JSON.stringify([L, augen.map((a) => [a.c, a.oben.map((x) => Math.round(x * 100) / 100), a.braue?.punkte ?? [], a.schaerfe ?? null]), form.schaerfeWulst, form.schaerfeRahmen, form.schaerfeLid]);
   let m = merker.get(k.fStart);
   if (!m) {
     m = new Map();
@@ -187,10 +199,10 @@ export function hoehlenTopologie(k: Kaefig, L: number, augen: readonly HoehlenAu
       hoch[8 * e + i] = x * x * (3 - 2 * x);
       const mitteHoch = richtung([(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2]);
       const e1 = kanteZwischen(neu, nAlt + 16 * e + i, nAlt + 16 * e + ((i + 1) % 8));
-      // mit Brauenreihe trägt die Reihe die harte Kante, der Rahmen bleibt weich
-      if (e1 >= 0) neu.eSchaerfe[e1] = mitteHoch > 0.3 && !a.braue ? form.schaerfeWulst : form.schaerfeRahmen;
+      // mit Brauenreihe trägt die Reihe die harte Kante, der Rahmen bleibt weich; eigene Schärfen (Rundmaul) gehen vor
+      if (e1 >= 0) neu.eSchaerfe[e1] = a.schaerfe ? a.schaerfe.l1 : mitteHoch > 0.3 && !a.braue ? form.schaerfeWulst : form.schaerfeRahmen;
       const e2 = kanteZwischen(neu, nAlt + 16 * e + 8 + i, nAlt + 16 * e + 8 + ((i + 1) % 8));
-      if (e2 >= 0) neu.eSchaerfe[e2] = form.schaerfeLid;
+      if (e2 >= 0) neu.eSchaerfe[e2] = a.schaerfe ? a.schaerfe.l2 : form.schaerfeLid;
     }
   });
   // Brauenfalte entlang der Reihe (Schärfe nach dem Gewicht der beiden Punkte)
@@ -267,12 +279,35 @@ export function hoehlenLagen(topo: HoehlenTopologie, xyzAlt: Float64Array, augen
     // Öffnung rund mit dem Augenradius, höchstens 3/4 des kleinsten Randabstands (am Rex liegen die Ringe am Mundwinkel
     // dicht: 0,015 zum vorderen Nachbarring bei 0,04 nach oben); der Rahmen L1 ist dort schmaler
     const rhoMin = Math.min(...rho);
-    const r2 = Math.min(form.oeffnung * R, 0.75 * rhoMin);
     const setze = (idx: number, p: V3) => {
       out[3 * idx] = p[0];
       out[3 * idx + 1] = p[1];
       out[3 * idx + 2] = p[2];
     };
+    if (a.mund) {
+      // Rundmaul: Lippenring L1 (gewölbt), innere Kante L2 etwas zurück, Rachenboden in der Tiefe; Kreise um c, höchstens
+      // 0,85 bzw. 0,8 des kleinsten Randabstands (die Pose dehnt das Feld beim Öffnen)
+      const m = a.mund;
+      const r1 = Math.min(m.r1, 0.85 * rhoMin);
+      const r2 = Math.min(m.r2, 0.8 * r1);
+      // gleichmäßige Winkel (45°) ab der Richtung des ersten Randpunkts: Die Randpunkte der Kappe liegen nicht im 45°-Raster
+      // (Zellen breiter als hoch), entlang ihrer Richtungen wurde der Ring eine Ellipse (Rundheit 0,79)
+      const e1 = dir[0]!;
+      const e2: V3 = [n[1] * e1[2] - n[2] * e1[1], n[2] * e1[0] - n[0] * e1[2], n[0] * e1[1] - n[1] * e1[0]];
+      const s1 = dir[1]![0] * e2[0] + dir[1]![1] * e2[1] + dir[1]![2] * e2[2] >= 0 ? 1 : -1;
+      for (let i = 0; i < 8; i++) {
+        const w = (s1 * i * Math.PI) / 4;
+        const d: V3 = [e1[0] * Math.cos(w) + e2[0] * Math.sin(w), e1[1] * Math.cos(w) + e2[1] * Math.sin(w), e1[2] * Math.cos(w) + e2[2] * Math.sin(w)];
+        const wolb = (rr: number) => h[i]! * (rr / rho[i]!) ** 2;
+        const h1 = wolb(r1) + m.wulst;
+        const h2 = wolb(r2) + 0.4 * m.wulst;
+        setze(nAlt + 16 * e + i, [c[0] + d[0] * r1 + n[0] * h1, c[1] + d[1] * r1 + n[1] * h1, c[2] + d[2] * r1 + n[2] * h1]);
+        setze(nAlt + 16 * e + 8 + i, [c[0] + d[0] * r2 + n[0] * h2, c[1] + d[1] * r2 + n[1] * h2, c[2] + d[2] * r2 + n[2] * h2]);
+      }
+      setze(a.c, [c[0] - n[0] * m.tiefe, c[1] - n[1] * m.tiefe, c[2] - n[2] * m.tiefe]);
+      return;
+    }
+    const r2 = Math.min(form.oeffnung * R, 0.75 * rhoMin);
     for (let i = 0; i < 8; i++) {
       const d = dir[i]!;
       const w = topo.hoch[8 * e + i]!;

@@ -4,7 +4,7 @@
 // Die Werte werden auf dem Käfig gesetzt (Ring = Station, Punkt = Winkel) und mit derselben Grenzmatrix wie die Lagen
 // auf das feine Netz abgebildet; der Winkel über (cos θ, sin θ), damit die Naht bei ±π nicht springt.
 
-import { anwenden1 } from '../subdivision/matrix';
+import { type DuennMatrix, anwenden1 } from '../subdivision/matrix';
 import type { Ableitung } from './ableiten';
 import type { MaulErgebnis } from './maul';
 import type { BeinErgebnis } from './teil';
@@ -18,11 +18,25 @@ export const DESKRIPTOR_FLOATS = 16;
  */
 export type GesichtMaske = { voll: number; aus: number; oben: number };
 
+/**
+ * Aufsatz auf den Käfig (Augenhöhle, Rundmaul): erweiterter Käfig mit `n` Punkten (die alten zuerst), Grenzmatrix seiner
+ * Unterteilung, Quelle je neuem Punkt (seine Werte übernimmt er) und Regionen, die einzelne Punkte überschreiben (Rachen
+ * 0,5 Lippe … 1 Rachenwand, Abstand zur Maulkante in Körperhöhen, Kante 0/1). Die Deskriptoren gelten dann je feinem Punkt
+ * des erweiterten Netzes.
+ */
+export type DeskriptorAufsatz = {
+  n: number;
+  grenze: DuennMatrix;
+  quelle: Int32Array;
+  region?: (i: number) => { rachen?: number; abstand?: number; kante?: number } | null;
+};
+
 /** 16 Floats je feinem Punkt (Reihenfolge wie `CreatureMesh`). */
-export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis, gesicht?: GesichtMaske): Float32Array {
+export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis, gesicht?: GesichtMaske, aufsatz?: DeskriptorAufsatz): Float32Array {
   const v = abl.vorlage;
   const { R, N, c } = v;
-  const n = abl.kaefig.n;
+  const nAlt = abl.kaefig.n;
+  const n = aufsatz ? aufsatz.n : nAlt;
   const z = abl.ziele;
   const maul = (abl as Partial<MaulErgebnis>).maul ?? null;
   const beine = (abl as Partial<BeinErgebnis>).teilQuelle ? (abl as BeinErgebnis) : null;
@@ -103,7 +117,7 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis, gesic
   const kUnten = new Float64Array(n);
   const quelle = maul ? maul.quelle : beine ? beine.teilQuelle : null;
   if (quelle) {
-    for (let i = v.kaefig.n; i < n; i++) {
+    for (let i = v.kaefig.n; i < nAlt; i++) {
       const q = quelle[i]!;
       kS[i] = kS[q]!;
       kC[i] = kC[q]!;
@@ -113,9 +127,9 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis, gesic
     }
   }
   const kTeil = new Float64Array(n);
-  if (beine) for (let i = 0; i < n; i++) kTeil[i] = beine.teilWert[i]!;
+  if (beine) for (let i = 0; i < nAlt; i++) kTeil[i] = beine.teilWert[i]!;
   if (maul) {
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < nAlt; i++) {
       const a = maul.art[i]!;
       kRachen[i] = a === 3 || a === 4 || a === 5 || (a === 6 && maul.tiefe[i]! > 0) ? 0.5 + 0.5 * maul.tiefe[i]! : 0;
       kAbstand[i] = a === 0 ? maul.lippenAbstand[i]! / maul.hoehe : 0;
@@ -123,11 +137,38 @@ export function deskriptoren(abl: Ableitung | MaulErgebnis | BeinErgebnis, gesic
       kUnten[i] = maul.untenSeite[i]!;
     }
   }
-  const g = abl.unterteilung.grenze;
-  const fRachen = maul ? anwenden1(g, kRachen) : null;
-  const fAbstand = maul ? anwenden1(g, kAbstand) : null;
-  const fKante = maul ? anwenden1(g, kKante) : null;
-  const fUnten = maul ? anwenden1(g, kUnten) : null;
+  // Aufsatz: neue Punkte übernehmen die Werte ihrer Quelle, Regionen überschreiben einzelne Punkte (auch alte)
+  let regionen = !!maul;
+  if (aufsatz) {
+    for (let i = nAlt; i < n; i++) {
+      const q = aufsatz.quelle[i - nAlt]!;
+      kS[i] = kS[q]!;
+      kC[i] = kC[q]!;
+      kSi[i] = kSi[q]!;
+      kU[i] = kU[q]!;
+      kGesicht[i] = kGesicht[q]!;
+      kRachen[i] = kRachen[q]!;
+      kAbstand[i] = kAbstand[q]!;
+      kKante[i] = kKante[q]!;
+      kUnten[i] = kUnten[q]!;
+      kTeil[i] = kTeil[q]!;
+    }
+    if (aufsatz.region) {
+      for (let i = 0; i < n; i++) {
+        const r = aufsatz.region(i);
+        if (!r) continue;
+        regionen = true;
+        if (r.rachen !== undefined) kRachen[i] = r.rachen;
+        if (r.abstand !== undefined) kAbstand[i] = r.abstand;
+        if (r.kante !== undefined) kKante[i] = r.kante;
+      }
+    }
+  }
+  const g = aufsatz ? aufsatz.grenze : abl.unterteilung.grenze;
+  const fRachen = regionen ? anwenden1(g, kRachen) : null;
+  const fAbstand = regionen ? anwenden1(g, kAbstand) : null;
+  const fKante = regionen ? anwenden1(g, kKante) : null;
+  const fUnten = regionen ? anwenden1(g, kUnten) : null;
   const fTeil = beine ? anwenden1(g, kTeil) : null;
   const fS = anwenden1(g, kS);
   const fC = anwenden1(g, kC);

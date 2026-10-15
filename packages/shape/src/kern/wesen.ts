@@ -13,6 +13,7 @@ import { type V3, zuDreiecken } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
 import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern } from './atlas';
 import { HOEHLE_STANDARD, type HoehlenAuge, type HoehlenTopologie, augapfelEcke, augenOben, brauenReihe, hoehlenFein, hoehlenLagen, hoehlenTopologie } from './augenHoehle';
+import { RUNDMAUL_STANDARD, rundmaulEintrag, rundmaulPose, rundmaulRegion } from './rundmaul';
 import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
 import { ringSegmente } from './reifen';
@@ -343,31 +344,6 @@ function punkteVon(f: ArrayLike<number>): V3[] {
 
 /** Augenzentrum der Höhle für einen Punkt: rechts (z ≥ 0) das erste, links das zweite (Paar). */
 const hoehlenZentrum = (topo: HoehlenTopologie, p: V3) => topo.zentren[topo.zentren.length > 1 && p[2] < 0 ? 1 : 0]!;
-
-/**
- * Deskriptoren je Ecke für das Netz mit Höhle: feine Flächen außerhalb übernehmen die Ecken ihrer alten Fläche (gleiche
- * Eckenreihenfolge), Flächen der Höhle die Werte ihres Augenpunkts.
- */
-function jeEckeAbgebildet(d: Float32Array, altFlaechen: number[][], topo: HoehlenTopologie, punkte: V3[]): Float32Array {
-  const flaechen = topo.feinFlaechen;
-  let ecken = 0;
-  for (const f of flaechen) ecken += 3 * Math.max(0, f.length - 2);
-  const out = new Float32Array(ecken * DESKRIPTOR_FLOATS);
-  let o = 0;
-  flaechen.forEach((f, fi) => {
-    const a = topo.feinAlt[fi]!;
-    const quelle = a >= 0 ? altFlaechen[a]! : null;
-    const c = quelle ? -1 : hoehlenZentrum(topo, punkte[f[0]!]!);
-    for (let i = 1; i < f.length - 1; i++) {
-      for (const k of [0, i, i + 1]) {
-        const v = quelle ? quelle[k]! : c;
-        out.set(d.subarray(v * DESKRIPTOR_FLOATS, (v + 1) * DESKRIPTOR_FLOATS), o);
-        o += DESKRIPTOR_FLOATS;
-      }
-    }
-  });
-  return out;
-}
 
 /** Atlas-Ecken (2 je Dreiecksecke) für das Netz mit Höhle: außerhalb die alten Ecken, in der Höhle die Ecke am Augenpunkt. */
 function atlasEckenAbgebildet(alt: Float32Array, altFlaechen: number[][], topo: HoehlenTopologie, punkte: V3[]): Float32Array {
@@ -893,29 +869,47 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     xyz = xyz2;
     fein = anwenden3(abl.unterteilung.grenze, xyz2);
   }
+  // Rundmaul (Phase 2 M6): nur ohne Schlitzmaul und Beine; die Haut um die Spitze dehnt sich mit der Öffnung
+  let hoeheRuhe = 0;
+  for (let i = 1; i < abl.fein.length; i += 3) hoeheRuhe = Math.max(hoeheRuhe, abl.fein[i]!);
+  const rund = plan.rundmaul && maul === 'aus' && beine === 'aus' && plan.earle ? { ...RUNDMAUL_STANDARD, ...(plan.rundmaul.zu !== undefined ? { zu: plan.rundmaul.zu } : {}), ...(plan.rundmaul.auf !== undefined ? { auf: plan.rundmaul.auf } : {}) } : null;
+  if (rund && plan.oeffnung > 0) {
+    xyz = rundmaulPose(abl, xyz, plan.oeffnung, hoeheRuhe, rund);
+    fein = anwenden3(abl.unterteilung.grenze, xyz);
+  }
   const letzteStufe = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
   const punkte: V3[] = [];
   for (let i = 0; i < fein.length / 3; i++) punkte.push([fein[3 * i]!, fein[3 * i + 1]!, fein[3 * i + 2]!]);
   const flaechen = alleFlaechen(letzteStufe);
   // Höhe als Maß für Augen, Lippenband, Nase, Klingen und Material: aus der Ruhelage, nicht aus der Pose (M5, 15.10.:
   // beim Öffnen hob der Schädel den höchsten Punkt, Augen, Muster und Lippenband des Rex wuchsen um 11 %)
-  let hoehe = 0;
-  for (let i = 1; i < abl.fein.length; i += 3) hoehe = Math.max(hoehe, abl.fein[i]!);
+  let hoehe = hoeheRuhe;
   // Augen vor dem Netz: Der Augapfel (Phase 2 M5, Schritt 3b) bekommt eine Höhle im Käfig. Sie ersetzt nur das gezeichnete
   // Netz (Dreiecke, Deskriptoren, Atlas-Ecken, Ruhelage, Treffer); der alte Käfig bleibt für Werkzeuge, Zähne und Abweichung
   const earle = plan.earle;
   const augenWahl = plan.augen ?? { ring: 2, j: 2, groesse: 0.11 };
   const augenRoh = earle || plan.stil === 'feuer' || plan.stil === 'gas' ? augenAm(abl, flaechen, hoehe, augenWahl, fein) : [];
-  let hoehle: { topo: HoehlenTopologie; augen: HoehlenAuge[] } | null = null;
-  if (earle && augenWahl.art === 'augapfel' && !gesteckt && augenRoh.length === 2) {
-    const hAugen = augenRoh.map((a) => {
-      const oben = augenOben(a.normale, a.drehung, a.seite);
-      // Brauenreihe nur mit Wulst (Standard aus, siehe HOEHLE_STANDARD)
-      const braue = HOEHLE_STANDARD.wulst > 0 ? brauenReihe(abl, a.ecke, oben, a.groesse / 2) : null;
-      return { c: a.ecke, radius: a.groesse / 2, oben, ...(braue ? { braue } : {}) };
-    });
-    const topo = hoehlenTopologie(abl.kaefig, abl.unterteilung.stufen.length, hAugen);
-    if (topo) hoehle = { topo, augen: hAugen };
+  // Aufsatz: Augapfel-Höhlen und Rundmaul (je ein Eintrag; der Mund zuletzt, seine Ruhe ist geschlossen)
+  let hoehle: { topo: HoehlenTopologie; augen: HoehlenAuge[]; ruhe: HoehlenAuge[]; mund: number } | null = null;
+  {
+    const eintraege: HoehlenAuge[] = [];
+    if (earle && augenWahl.art === 'augapfel' && !gesteckt && augenRoh.length === 2) {
+      for (const a of augenRoh) {
+        const oben = augenOben(a.normale, a.drehung, a.seite);
+        // Brauenreihe nur mit Wulst (Standard aus, siehe HOEHLE_STANDARD)
+        const braue = HOEHLE_STANDARD.wulst > 0 ? brauenReihe(abl, a.ecke, oben, a.groesse / 2) : null;
+        eintraege.push({ c: a.ecke, radius: a.groesse / 2, oben, ...(braue ? { braue } : {}) });
+      }
+    }
+    const ruhe = [...eintraege];
+    let mund = -1;
+    if (rund) {
+      mund = eintraege.length;
+      eintraege.push(rundmaulEintrag(abl, plan.oeffnung, hoehe, rund));
+      ruhe.push(rundmaulEintrag(abl, 0, hoehe, rund));
+    }
+    const topo = eintraege.length ? hoehlenTopologie(abl.kaefig, abl.unterteilung.stufen.length, eintraege) : null;
+    if (topo) hoehle = { topo, augen: eintraege, ruhe, mund };
   }
   const koerperPunkte = hoehle ? punkteVon(hoehlenFein(hoehle.topo, hoehlenLagen(hoehle.topo, xyz, hoehle.augen))) : punkte;
   const koerperFlaechen = hoehle ? hoehle.topo.feinFlaechen : flaechen;
@@ -959,7 +953,14 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     }
   }
   const feinDeskAlle = earle ? deskriptoren(abl, plan.gesichtMaske) : null;
-  let desk = feinDeskAlle ? (hoehle ? jeEckeAbgebildet(feinDeskAlle, flaechen, hoehle.topo, koerperPunkte) : jeEcke(feinDeskAlle, flaechen)) : null;
+  // mit Aufsatz: Deskriptoren auf dem erweiterten Käfig (neue Punkte von ihrer Quelle, Rundmaul mit Lippe und Rachen)
+  let desk: Float32Array | null = null;
+  if (feinDeskAlle && hoehle) {
+    const t = hoehle.topo;
+    const region = hoehle.mund >= 0 ? rundmaulRegion(abl, hoehle.mund, t.nAlt, hoehe, rund ?? RUNDMAUL_STANDARD) : undefined;
+    const feinNeu = deskriptoren(abl, plan.gesichtMaske, { n: t.kaefig.n, grenze: t.unterteilung.grenze, quelle: t.quelle, ...(region ? { region } : {}) });
+    desk = jeEcke(feinNeu, koerperFlaechen);
+  } else if (feinDeskAlle) desk = jeEcke(feinDeskAlle, flaechen);
   if (desk && feinDeskAlle && gesteckteEcken > 0) {
     const alle = new Float32Array(desk.length + gesteckteEcken * DESKRIPTOR_FLOATS);
     alle.set(desk);
@@ -1018,13 +1019,14 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
   // Lippenband nach der Kopfhöhe am Maul (nicht der ganzen Körperhöhe: beim Langhals war das Band breiter als der Kiefer)
   const maulHoehe = maul !== 'aus' ? 1.1 * ((abl as Partial<MaulErgebnis>).maul?.kopfHoehe ?? hoehe) : hoehe;
-  const lippenBand = maul !== 'aus' && beine === 'aus' ? (plan.lippenBand ?? 0.03) * Math.min(hoehe, maulHoehe) : 0;
+  // Rundmaul: schmaleres Band (der Lippenring selbst ist schon Lippe)
+  const lippenBand = maul !== 'aus' && beine === 'aus' ? (plan.lippenBand ?? 0.03) * Math.min(hoehe, maulHoehe) : rund ? (plan.lippenBand ?? 0.012) * hoehe : 0;
   const mitte: V3 = [0, 0, 0];
   for (const p of punkte) for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! + p[d]! / punkte.length;
   // Ruhelage je Ecke (unposiert) bei Posen, damit Muster und Zonen nicht schwimmen
   let ruhe: Float32Array | null = null;
   if (maul !== 'aus' || beine !== 'aus' || hoehle) {
-    const ruhePunkte = hoehle ? punkteVon(hoehlenFein(hoehle.topo, hoehlenLagen(hoehle.topo, abl.kaefig.xyz, hoehle.augen))) : punkteVon(abl.fein);
+    const ruhePunkte = hoehle ? punkteVon(hoehlenFein(hoehle.topo, hoehlenLagen(hoehle.topo, abl.kaefig.xyz, hoehle.ruhe))) : punkteVon(abl.fein);
     ruhe = zuDreiecken({ punkte: ruhePunkte, flaechen: koerperFlaechen, schaerfe: new Map() }, 40).positionen;
     if (hebung) for (let i = 1; i < ruhe.length; i += 3) ruhe[i]! += hebung;
     if (ruhe.length !== t.positionen.length) ruhe = null;

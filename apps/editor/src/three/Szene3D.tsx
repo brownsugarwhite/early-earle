@@ -16,7 +16,7 @@ import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten
 import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
-import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige, weiterePose } from '../kern/kernBau';
+import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, kernRundmaul, useKernAnzeige, weiterePose } from '../kern/kernBau';
 import { ZAHN_FARBE, zahnMarkenAnzeigen } from '../kern/zahnGriffe';
 import { useZahnPruefung } from '../kern/zahnPruefStand';
 import { augenPixel, griffeAnzeigen, kieferPixel } from '../kern/griffe';
@@ -328,7 +328,7 @@ export function Szene3D() {
         useUi.subscribe((s, v) => {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
           if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
-          if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || (s.bauweise === 'kern' && kernMaulAktiv(useEditor.getState().dok)))) bauen(useEditor.getState().dok);
+          if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || (s.bauweise === 'kern' && (kernMaulAktiv(useEditor.getState().dok) || kernRundmaul(useEditor.getState().dok))))) bauen(useEditor.getState().dok);
           // Posenliste: Stärke der aktiven weiteren Pose (ohne Umbau, Deltas)
           if (s.poseStaerke !== v.poseStaerke && s.bauweise === 'kern' && weiterePose()) bauen(useEditor.getState().dok);
           // Rig: Gewichtsfarben an/aus (nur in „Posen & Leben“ sichtbar)
