@@ -109,3 +109,14 @@
 - **Tiger aus der Library:** die „Wangen“ der Ausstattung erscheinen als weiße Zackenreihe am Bauch unter dem Gesicht (schon am 14.10. so) → Look-Urteil Florian, Phase 4.
 - **Runder Haps:** Vergleichsbild `docs/progress/editor/haps-vergleich-tiger-2026-10-15.jpg` — der Tiger öffnet nur ein kleines Loch in der Platte; Florian entscheidet zwischen Automatik (Haut wandert mit, Loop-Cut) und Fressen-Pose → Phase 2 M3.
 - **Kugel-Unterkiefer im Kiefer-Spant:** an der Kugel-Front hat der Unterkiefer anfangs nur den Achspunkt; erst „+“ auf der Unterkiefer-Kurve macht ihn formbar (gleiche Punktstruktur, Punkte nur von Hand) → Florians Urteil beim Ausprobieren.
+
+## Offen aus Phase 2 M4 Zähne (15.10. nachts, eigene Befunde, je mit Phase)
+
+- **Zahngröße und -breite gegen die Referenz** (`rex_mouth_detail`): Die Automatik ist schmaler (Breite 0,42 der Länge) und kleiner (7,5 % der Höhe) als die dicken Kegel der Referenz; einstellbar mit Breite und Größe → Florians Urteil zu den Grundwerten, Phase 2.
+- **Hintere außen-Fänge schräg** (folgen der Haut des Unterkiefers am Mundwinkel, bis 37° nach hinten) → Florians Urteil; Ausweg je Zahn über die Spreizung oder eine senkrechte Grundrichtung für außen-Zähne, Phase 2.
+- **Bedienung nach Plan 9.4, noch nicht gebaut:** Werkzeug „Setzen T“ (Klick aufs Zahnfleisch setzt einen Zahn), Spitze ziehen = Länge, Seite ziehen = Breite, Fächer (Hauer, Spiegeln aus, kopieren, löschen, Prüfen), Prüf-Lupe → Phase 2 (nach Florians Probe).
+- **Verdeckte Riesenzähne:** Steckt das Zahnfleisch geschlossen im Gegenkiefer (Über-/Unterbiss), gibt ein Zahn geschlossen keinen Befund; sticht er dort aus dem Gegenkiefer heraus, wird das nicht gemeldet (der Paritätstest zählt in der Überlappung zweier Körperteile einen Punkt in beiden als außen; Ausweg: Windungszahl statt Parität) → Phase 2.
+- **Neigungsvorschlag** sucht nur ±20° → bei großen Neigungen kommt nur „kürzen“, Phase 2.
+- **Front-Blatt** taugt kaum zum Ziehen (Zahnreihe stark verkürzt: Rex unten Zahn 2 bis 5 auf 11,5 px) → Ziehen in Seite oder Bühne; ggf. Hinweis in der Tafel, Phase 4.
+- **Zahnprüfung im selben Worker wie der Bau:** 200–500 ms; ein Zug direkt nach dem Start einer Prüfung wartet bis zu einer halben Sekunde → eigener Prüf-Worker, falls Florian es merkt, Phase 5.
+- **Tempo-Tests unter Last:** Drei feste Schranken (Umbau ≤ 350/500 ms, Kanten-Laufzeit) kippen, wenn die Maschine belegt ist (Lastmittel 21,8), einzeln grün → bei Gelegenheit als „beste von n“ messen, Phase 5.

@@ -38,3 +38,9 @@ Aus `packages/shape` starten: `npx vite-node ../../apps/editor/scripts/pruefen/<
 | `pruefwesen-check.mjs` | 15.10.: Wächter — alle Prüfwesen der Library laden, Δ, Punktzahl, Bühne zu/offen |
 | `kiefer-spant-editor.mjs` | 15.10.: Kiefer-Spant setzen (Werkzeug S), + auf der Unterkiefer-Kurve, Punkte ziehen (Front, Bühne), Undo |
 | `kiefer-griffe.mjs`, `knochen-griffe.mjs`, `knochen-buehne.mjs` | Rig und Fressen: Gelenk, Kieferlinie, Knochen in der Seite und auf der Bühne |
+| `zahn-vergleich.mjs` | Phase 2 M4: Zähne zu/offen aus mehreren Kameras neben Referenzen (`WESEN`, `KAMERAS`, `OEFFNUNGEN`, `REF`, `DOK`, `MAUL`); vorher/nachher aus einem eigenen Arbeitsbaum mit kopierten `node_modules`-Verweisen |
+| `zahn-tafel.mjs` | Tafel Zähne: Automatik → Stepper (Dokument übernimmt) → Länge für alle → Neigung am gewählten Zahn → Werte für offen → Löschen, Verteilen → Automatik, Undo |
+| `zahn-griffe.mjs`, `zahn-blaetter.mjs` | Zahn auf der Bühne bzw. in Seite und Front anklicken und längs ziehen; verdeckte Zähne nicht greifbar |
+| `zahn-farbe.mjs` | Zahnfarbe über den Farbwähler, keine neue Ableitung, zurück zum Standard |
+| `zahn-pruefung.mjs` | Prüfung im Editor: zu langer Zahn → Befund, Glut, Vorschlag → frei, Undo (wartet auf `__stores.zahnPruefung.fertig`) |
+| `zahn-abnahme.mjs` | Abnahme M4: Rex mit 14 Zähnen in Florians Schritten, Bild neben `rex_mouth_detail` und Bogen 06 |

@@ -134,6 +134,16 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - **Seiten-Δ mit getrennten Kiefern:** Auch Stücke der schwarzen Linie im Fenster zwischen Rot und Blau zählen nicht (verdeckte Kinnspitze), sonst misst die Seite 6–12 px am Unterkiefer, die nicht zu sehen sind.
   - **Kiefer-Spant:** `Spant.unten` hat die Punktstruktur von `profil` (alle Spant-Hilfen führen beide Teile mit). Schnitthöhe = Schlitzlippe an der Spant-Stelle (`kieferSchnitt`), Teilkurven `teilZug`, Auswahl mit `teil`. Perlen in Maulringen auf den nächsten echten Ringpunkt legen (die Lippe verschiebt die Zeilen), nie auf die Lippenzeile selbst (sie gehört der Linie).
   - **Lokalität ehrlich messen:** Band = Bereich, in dem sich die schwarze Linie **und die Lippenlinien** bewegen (das erste Bézier-Segment der roten Linie reicht bis zur Maulmitte), dazu ein Ringabstand (`lokalitaet-maul.ts`).
+- **Nachtrag 15.10. nachts — Phase 2 M4 Zähne, Fallen:**
+  - **Einpassen und Prüfen müssen dasselbe sehen:** Die Automatik passt die geschlossene Länge mit der Prüfung selbst ein (gleiche Abtastung 8 Seiten × 6 Ringe). Mit gröberer Abtastung meldete die Prüfung im Editor eingepasste Zähne (0,3 px). Schätzungen per Abstand oder Strahl unterschätzen gebogene Zähne und den Überbiss.
+  - **Zähne starr im eigenen Kiefer:** Rahmen zu bestimmen, dann im Kieferrahmen (Zahnfleischtangente, Richtung zur eigenen Lippe) mitführen. Neu zum Gegenkiefer ausgerichtet schwenkten sie offen um die halbe Öffnung.
+  - **Verdeckt ≠ Fehler:** Steckt das Zahnfleisch geschlossen im Gegenkiefer (Über-/Unterbiss), ist der Zahn verdeckt. Der Paritätstest zählt in der Überlappung zweier Körperteile einen Punkt in beiden als außen, ein Hautdurchstich ist dort nicht messbar.
+  - **Zahn greifen:** Die Wurzel steckt im Zahnfleisch; Zahn und Körper treffen dicht darüber fast gleich weit (bis 0,012 Welt). Verdeckt erst, wenn der Körper ≥ 0,004 davor liegt.
+  - **Blätter rendern dieselbe Szene:** Picking über `treffenZahn(feld, …)` mit `useRahmen.rects[ansicht]` statt eigener SVG-Umrisse.
+  - **Netzlagen im Hauptthread sind skaliert:** `Szene3D` multipliziert Körper- und Zahnlagen mit `dok.skalierung` an Ort und Stelle; `zaehne.liste` (Fuß, Spitze) und `zaehne.fleisch` bleiben in Profileinheiten.
+  - **Prüf-Skripte** warten auf `__stores.zahnPruefung.fertig` und das Dokument (die Prüfung startet erst nach 350 ms Ruhe).
+  - **Zahnfarbe in der Ausstattung**, nicht in den Zahnreihen: Sonst würde ein Farbwechsel die Automatik ins Dokument übernehmen.
+  - **Tempo-Tests messen die Maschine mit:** Bei belegter Maschine (andere Programme, Lastmittel > 15) kippen die festen Schranken auch ohne eigene Änderung. Vor dem Urteil `uptime` und einzeln mit `-t` prüfen.
 - **Nachtrag 13.10. morgens — Schnitt-Loft (Versuch):**
   - Dritter 3D-Tab „schnitte“ (`apps/editor/src/schnitte/`, Kern `packages/shape/src/versuch/schnittLoft.ts`).
   - Je Stelle wird der echte Schnitt aus allen Intervallen von Seite und Top berechnet. Teile, Löcher und Kerben bleiben erhalten.

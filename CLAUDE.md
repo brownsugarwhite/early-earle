@@ -58,6 +58,13 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Kiefer-Spanten:** `Spant.unten`; die Front zeigt Ober- und Unterkiefer als zwei Kurven, die Bühne zwei Perlenreihen.
   - Ehrliche Abnahme: Satz 1, 3, 4 erfüllt bis auf die Langhals-Kehle. **Lokalität (Satz 2) nicht erfüllt** (Schlitzanfang 10 px gezogen → 1,3–4,6 px außerhalb des Bands; ohne Maul schon 3–9 px), das gehört zu „Käfig als Wahrheit“.
   - Tabelle auf der Planseite [`docs/plans/2026-10-14-ruhiges-netz-und-maulschlitz.md`](docs/plans/2026-10-14-ruhiges-netz-und-maulschlitz.md), Kontaktbogen `docs/progress/editor/block2-stand-2026-10-15.jpg`, Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md). Nächster Schritt: Block 3 (Phase 2 M3 runder Haps, Kehlkette).
+- **2026-10-15 nachts: Phase 2 M4 Zähne ganz gebaut** (Plan und Stand je Schritt auf der Planseite Phase 2, Abschnitt „M4 Zähne“):
+  - Zahnmodell aus dem Versuch in den Kern herausgelöst (`kern/zahnModell.ts`, neu: Drehung, Größe); Zahnfleisch des Kern-Mauls (`kern/zaehne.ts`, u fest am Käfig).
+  - Prüfung gegen den Gegenkiefer bei zu/25/50/100 % (`kern/zahnPruefung.ts`); verdeckte Überlappung beim Über-/Unterbiss gibt keinen Befund.
+  - Automatik: geschlossen eingepasst, offen volle Länge; beim Überbiss stehen die oberen Zähne außen wie im Bogen 06. Zähne starr im eigenen Kiefer.
+  - Editor: Tafel Zähne (`leiste/ZahnFeld.tsx`), Wählen/Ziehen auf Bühne und in den Blättern (`kern/zahnGriffe.ts`), Zahnfarbe über Uniforms, Prüfung als Worker-Auftrag mit Glut und Vorschlägen (`kern/zahnPruefStand.ts`).
+  - Abnahme per Skript: Rex mit 14 Zähnen in 20,6 s, Prüfung frei (`docs/progress/editor/zaehne-m4-abnahme-rex-14-2026-10-15.jpg`).
+  - Offen: Florians 10-Minuten-Probe, Zahngröße/-breite gegen die Referenz, „Setzen T“ und Fächer (Register).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte) und die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 
