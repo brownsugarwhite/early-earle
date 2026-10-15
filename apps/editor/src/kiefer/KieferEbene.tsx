@@ -154,7 +154,12 @@ export function kieferZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolea
     return { x: q.x * skal, y: q.y * skal };
   };
   // Knochen greifen bearbeitet die Fressen-Pose bei voller Öffnung (wie der Pinsel in der Pose)
-  if (istKnochenGriff(art)) useUi.getState().setzeOeffnung(1);
+  // Knochen gehören zur Fressen-Pose (B1): im Editor-Tab erst in den Fressen-Tab wechseln, statt still die Öffnung zu setzen
+  if (istKnochenGriff(art)) {
+    const ed = useEditor.getState();
+    if (ed.modus === 'editor') ed.setzeZiel('fressen');
+    else useUi.getState().setzeOeffnung(1);
+  }
   const zug = griffZug(m, art, welt(e.nativeEvent));
   useEditor.getState().beginGeste();
   ctx.ziehen(

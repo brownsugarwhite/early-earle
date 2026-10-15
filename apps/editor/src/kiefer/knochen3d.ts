@@ -103,7 +103,12 @@ export function knochen3dZeiger(e: React.PointerEvent, px: number, py: number, e
   if (!p0) return false;
   e.preventDefault();
   // Knochen greifen bearbeitet die Fressen-Pose bei voller Öffnung (relativ zum Griff, siehe `griffZug`)
-  if (istKnochenGriff(art)) useUi.getState().setzeOeffnung(1);
+  // Knochen gehören zur Fressen-Pose (B1): im Editor-Tab erst in den Fressen-Tab wechseln, statt still die Öffnung zu setzen
+  if (istKnochenGriff(art)) {
+    const ed = useEditor.getState();
+    if (ed.modus === 'editor') ed.setzeZiel('fressen');
+    else useUi.getState().setzeOeffnung(1);
+  }
   const zug = griffZug(m, art, p0);
   useEditor.getState().beginGeste();
   el.setPointerCapture(e.pointerId);

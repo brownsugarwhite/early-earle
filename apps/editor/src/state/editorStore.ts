@@ -63,6 +63,12 @@ type EditorState = {
   laden(dok: Dokument, datei: string | null): void;
   gespeichert(datei: string): void;
   setzeModus(m: Modus): void;
+  /**
+   * Tab wechseln (B1, Plan Teil B): Öffnung bzw. Posenstärke und Modus in einem Zug — Editor = Grundform (Öffnung 0),
+   * Fressen = volle Pose (Öffnung 1), weitere Pose = Stärke 1 bei Öffnung 0. Ersetzt `setzeModus` + `setzeOeffnung`, deren
+   * Reihenfolge den Rücksprung-Fehler machte (der Bau lief mit dem neuen Modus und der alten Öffnung).
+   */
+  setzeZiel(m: Modus): void;
   poseHinzu(p: PoseName): void;
   poseEntfernen(p: PoseName): void;
 };
@@ -108,12 +114,45 @@ function mitFormVerbunden(alt: Dokument, neu: Dokument, kantenAuch: boolean): Do
   return d;
 }
 
+/** Gleich bis auf die genannten Felder (flacher Vergleich der Objektfelder). */
+function gleichAusser(a: object | undefined, b: object | undefined, ausnahmen: readonly string[]): boolean {
+  if (a === b) return true;
+  const ra = (a ?? {}) as Record<string, unknown>;
+  const rb = (b ?? {}) as Record<string, unknown>;
+  for (const k of new Set([...Object.keys(ra), ...Object.keys(rb)])) if (!ausnahmen.includes(k) && ra[k] !== rb[k]) return false;
+  return true;
+}
+
+/**
+ * B1 (Plan Teil B, Florian 15.10.: „beim Zurückspringen auf Editor bleibt der neue Shape der Fressen-Pose erhalten“): In
+ * einer Pose wirkt nur, was zur Pose gehört — ihre Käfig-Deltas (Pinsel), Knochen und Rig (`ausstattung.maulOptionen`),
+ * die Posenliste. Alles andere (Linien, Maul, Reifen, Kanten, Augen, Zähne, Grundform-Deltas) schrieb bisher still in die
+ * Grundform oder in ungenutzte Felder; bis die Griffe der Pose kommen (B5/B6), wird es mit einem Hinweis abgewiesen.
+ */
+function nurPose(alt: Dokument, neu: Dokument): boolean {
+  if (!gleichAusser(alt, neu, ['posen', 'name', 'kaefig', 'ausstattung'])) return false;
+  if (!gleichAusser(alt.kaefig, neu.kaefig, ['posen'])) return false;
+  return gleichAusser(alt.ausstattung, neu.ausstattung, ['maulOptionen']);
+}
+
+let letzterPoseHinweis = 0;
+function poseHinweis(): void {
+  const t = Date.now();
+  if (t - letzterPoseHinweis < 2500) return;
+  letzterPoseHinweis = t;
+  useUi.getState().zeigeHinweis('In der Pose formt vorerst nur der Pinsel (G, I) und das Rig. Linien, Maul, Reifen und Augen bearbeitest du im Editor-Tab — die Griffe der Pose kommen mit dem Posen-Umbau.');
+}
+
 export const useEditor = create<EditorState>((set, get) => {
   /** Änderung am Dokument; außerhalb einer Geste wird sie sofort ein Undo-Schritt. */
   const aendern = (f: (d: Dokument) => Dokument) => {
-    const { dok, gesteStart, verlauf } = get();
+    const { dok, gesteStart, verlauf, modus } = get();
     const neu = f(dok);
     if (neu === dok) return;
+    if (modus !== 'editor' && !nurPose(dok, neu)) {
+      poseHinweis();
+      return;
+    }
     if (gesteStart) set({ dok: neu, geaendert: true });
     else set({ dok: neu, geaendert: true, verlauf: [...verlauf, dok].slice(-MAX_VERLAUF), zukunft: [] });
   };
@@ -244,10 +283,14 @@ export const useEditor = create<EditorState>((set, get) => {
       set({ dok: nach, verlauf: [...verlauf, dok], zukunft: zukunft.slice(1), geaendert: true, gesteStart: null });
     },
     neu() {
-      // Jedes neue Wesen startet als Kugel aus drei Kreisen (Florian, 11.10.2026)
+      // Jedes neue Wesen startet als Kugel aus drei Kreisen (Florian, 11.10.2026); Grundform ohne Vorschau (B1)
+      useUi.getState().setzeOeffnung(0);
+      useUi.getState().setzePoseStaerke(1);
       set({ dok: neuesDokument(), datei: null, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
     },
     laden(dok, datei) {
+      useUi.getState().setzeOeffnung(0);
+      useUi.getState().setzePoseStaerke(1);
       set({ dok: maulFrei() ? dok : maulImUmrissSichern(dok), datei, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
     },
     gespeichert(datei) {
@@ -256,9 +299,16 @@ export const useEditor = create<EditorState>((set, get) => {
     setzeModus(m) {
       set({ modus: m });
     },
+    setzeZiel(m) {
+      // erst die Gewichte, dann der Modus: kein Bau sieht den neuen Modus mit der alten Öffnung
+      const ui = useUi.getState();
+      ui.setzeOeffnung(m === 'fressen' ? 1 : 0);
+      if (m !== 'editor' && m !== 'fressen') ui.setzePoseStaerke(1);
+      set({ modus: m });
+    },
     poseHinzu(p) {
       aendern((d) => (d.posen.includes(p) ? d : { ...d, posen: [...d.posen, p] }));
-      set({ modus: p });
+      get().setzeZiel(p);
     },
     poseEntfernen(p) {
       // mit der Pose verschwinden auch ihre Käfig-Deltas (Posenliste, Kern)
@@ -269,7 +319,7 @@ export const useEditor = create<EditorState>((set, get) => {
         delete kp[p];
         return { ...d, posen, kaefig: { ...d.kaefig, posen: kp } };
       });
-      if (get().modus === p) set({ modus: 'editor' });
+      if (get().modus === p) get().setzeZiel('editor');
     },
   };
 });

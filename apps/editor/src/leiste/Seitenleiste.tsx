@@ -1182,8 +1182,7 @@ function PosenFeld() {
   const frei = POSEN.filter((p) => !dok.posen.includes(p));
   const deltas = (name: string) => dok.kaefig?.posen?.[name]?.length ?? 0;
   const waehle = (m: Modus) => {
-    useEditor.getState().setzeModus(m);
-    if (m === 'editor' || m === 'fressen') useUi.getState().setzeOeffnung(m === 'fressen' ? 1 : 0);
+    useEditor.getState().setzeZiel(m);
   };
   const leeren = (name: string) => {
     const ed = useEditor.getState();

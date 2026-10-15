@@ -841,7 +841,8 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     ankerFeld = maulAnker(mAbl, abl.kaefig.n, abl.vorlage.kaefig.n);
     const t0 = jetzt();
     fressenDeltas = posenUmhaengen(dokRoh.kaefig?.posen?.fressen ?? [], ankerFeld, abl.vorlage.kaefig.n);
-    const pose = maulLageBei(abl as MaulErgebnis, plan.oeffnung, fressenDeltas);
+    // Öffnung 0 = Grundform bitgleich (B1): keine Drehung um 0° (die wäre nur fast gleich) und keine Pose-Deltas
+    const pose = plan.oeffnung > 0 ? maulLageBei(abl as MaulErgebnis, plan.oeffnung, fressenDeltas) : { xyz: abl.kaefig.xyz, fein: abl.fein };
     fein = pose.fein;
     xyz = pose.xyz;
     zug = jetzt() - t0;

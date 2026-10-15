@@ -1,4 +1,4 @@
-# Übergabe (Stand 15.10.2026 nachmittags, Stufe 1 gebaut)
+# Übergabe (Stand 15.10.2026 nachmittags, Stufe 2 B1 gebaut)
 
 Branch `claude/editor-grundlayout`. **Es gilt der freigegebene Plan [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)** mit den ausführlichen Entwürfen [Teil A Maul als Einsatz](plans/2026-10-15-entwurf-maul-einsatz.md), [Teil H Werkzeug-Harmonie](plans/2026-10-15-entwurf-werkzeug-harmonie.md) und [Teil B Posen](plans/2026-10-15-entwurf-posen.md). Alle älteren Fahrpläne (Phase 2, Ruhiges Netz und Maulschlitz, Fressen wie Editor) sind dadurch abgelöst; ihre Fallen und Messwerkzeuge bleiben gültiges Wissen.
 
@@ -28,7 +28,13 @@ Die Ursachen stehen im Plan unter „Befund“ (Code-Analysen mit Datei- und Zei
 - **Teil G** (Grundkörper für jede Form: Ente mit Flügeln, Bauch vor der Nase, S-Hals) ist nachmittags in den Plan gekommen (Florians Entscheidung 7), nach dem Maul-Beweis.
 - Im Editor gilt bis auf Weiteres der alte Maulbau und die alte Fressen-Pose (Stand c97497b). Bekannt: Der Rücksprung-Fehler im Fressen-Tab besteht weiter (B1 behebt ihn).
 
-## Nächster Schritt: Stufe 2, B1 (nach Florians Blick auf die Ausgangslage)
+- **Stufe 2, B1 gebaut (Abnahme offen):** Editor-Tab zeigt immer die Grundform (bitgleich), Fressen die Pose; `setzeZiel` statt `setzeModus`+`setzeOeffnung`; Neubau bei Öffnungsänderung auch ohne Maul; Rücksetzen bei Pose entfernen/Laden/Neu; Vorschau endet beim Stufenwechsel und Bearbeiten (`apps/editor/src/werkzeuge/ziel.ts`); Sperre: in einer Pose nur Pinsel und Rig, sonst Hinweis (`editorStore.ts` `nurPose`). Geprüft mit `packages/shape/src/kern/grundform.test.ts` und E2E `apps/editor/scripts/pruefen/tab-wechsel.mjs` (23/23; Gegenprobe am alten Code schlägt fehl). Bild `docs/progress/editor/b1-tab-wechsel-2026-10-15.jpg`.
+
+## Nächster Schritt: Stufe 3, Maul-Beweis A1 (nach Florians Probe von B1)
+
+Nach Entwurf `docs/plans/2026-10-15-entwurf-maul-einsatz.md` §9: A1 `kern/einsatz/flaeche.ts` (Linie auf A0, Projektion, Feldausschnitt, Schnitt), dann A2 Verfeinerung, A3 Feldwahl … jeweils eigenständig mit Tests und Kontaktbögen; Zufallsreihe als Tor.
+
+## Erledigt: Stufe 2, B1
 
 B1 nach Plan Teil B und Entwurf `docs/plans/2026-10-15-entwurf-posen.md` §5, klein gehalten auf den heutigen Posendaten:
 - eine Aktion `setzeZiel` statt `setzeModus` + `setzeOeffnung` (MenuBar, Tafel-Chips, Q), Öffnung und Modus in einem Schritt;

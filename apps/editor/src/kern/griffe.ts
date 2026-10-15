@@ -64,7 +64,9 @@ export function kieferZeiger(e: React.PointerEvent, px: number, py: number, el: 
   const jetzt = performance.now();
   if (letzterKlick && jetzt - letzterKlick.t < 400 && Math.hypot(letzterKlick.x - e.clientX, letzterKlick.y - e.clientY) < 6) {
     letzterKlick = null;
-    ui.setzeOeffnung(ui.oeffnung > 0.5 ? 0 : 1);
+    // Doppelklick wechselt Editor ↔ Fressen (B1): der Editor-Tab zeigt immer die Grundform
+    const ed = useEditor.getState();
+    ed.setzeZiel(ed.modus === 'fressen' ? 'editor' : 'fressen');
     el.setPointerCapture(e.pointerId);
     return true;
   }

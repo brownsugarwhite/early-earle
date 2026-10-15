@@ -16,18 +16,19 @@ import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten
 import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
-import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, kernRundmaul, useKernAnzeige, weiterePose } from '../kern/kernBau';
+import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige, weiterePose } from '../kern/kernBau';
 import { ZAHN_FARBE, zahnMarkenAnzeigen } from '../kern/zahnGriffe';
 import { useZahnPruefung } from '../kern/zahnPruefStand';
 import { augenPixel, griffeAnzeigen, kieferPixel } from '../kern/griffe';
 import { knochen3dAnzeigen, knochen3dPixel } from '../kiefer/knochen3d';
 import { perlenVon, reifenAnzeigen, reifenFaerben, useReifen } from '../kern/reifen';
 import { trefferDeuten } from '../kern/treffer';
+import { useNetzStand } from '../kern/netzStand';
 import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number };
   }
 }
 
@@ -84,6 +85,16 @@ export function Szene3D() {
         zahnTreffer: (px: number, py: number) => ({ zahn: r.treffenZahn('creation', px, py), koerper: r.treffen('creation', px, py)?.abstand ?? null }),
         // Rig (Plan 5.2): Gelenk und Knochen-Griffe in Feldpixeln der Bühne (E2E)
         knochen: () => knochen3dPixel(),
+        // B1: Fingerabdruck der angezeigten Lagen (FNV-1a über die Float32-Bits) und Zähler der gebauten Netze (E2E)
+        netzHash: () => {
+          const n = aktuellesNetz();
+          if (!n) return null;
+          const bits = new Uint32Array(n.netz.positionen.buffer, n.netz.positionen.byteOffset, n.netz.positionen.length);
+          let h = 0x811c9dc5;
+          for (let i = 0; i < bits.length; i++) h = Math.imul(h ^ bits[i]!, 0x01000193) >>> 0;
+          return `${bits.length}:${h.toString(16)}`;
+        },
+        netzVersion: () => useNetzStand.getState().version,
         // M3: Perlen und Bänder der Reifen in Feldpixeln der Bühne (E2E)
         reifenPixel: () => {
           const n = aktuellesNetz();
@@ -328,7 +339,9 @@ export function Szene3D() {
         useUi.subscribe((s, v) => {
           if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
           if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
-          if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || (s.bauweise === 'kern' && (kernMaulAktiv(useEditor.getState().dok) || kernRundmaul(useEditor.getState().dok))))) bauen(useEditor.getState().dok);
+          // Öffnung = Gewicht der Fressen-Pose: im Kern immer neu bauen, auch ohne Maul (B1: Fressen-Deltas einer Kugel blieben
+          // sonst nach dem Wechsel in den Editor-Tab stehen)
+          if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || s.bauweise === 'kern')) bauen(useEditor.getState().dok);
           // Posenliste: Stärke der aktiven weiteren Pose (ohne Umbau, Deltas)
           if (s.poseStaerke !== v.poseStaerke && s.bauweise === 'kern' && weiterePose()) bauen(useEditor.getState().dok);
           // Rig: Gewichtsfarben an/aus (nur in „Posen & Leben“ sichtbar)

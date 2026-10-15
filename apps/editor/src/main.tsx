@@ -12,6 +12,7 @@ import { tigerLaden } from './versuch/ueberlagerung';
 import { schnittVersuchLaden } from './schnitte/schnittVersuch';
 import { useKernAnzeige } from './kern/kernBau';
 import { useZahnPruefung } from './kern/zahnPruefStand';
+import { zielAnmelden } from './werkzeuge/ziel';
 
 // Versuche (?versuch=subd&form=…): Testform laden
 const versuch = versuchAktiv();
@@ -26,4 +27,6 @@ Object.assign(window, {
   __pruefen: { abweichung: () => abweichung(useEditor.getState().dok.profile) },
 });
 
+// B1: Vorschau im Editor-Tab endet beim Stufenwechsel und beim Bearbeiten
+zielAnmelden();
 createRoot(document.getElementById('root')!).render(<App />);
