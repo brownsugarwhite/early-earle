@@ -1,5 +1,7 @@
 # Fressen wie Editor (15.10.2026)
 
+> **Abgelöst (15.10. mittags):** Die Umsetzung (7baee2d, 50c8976, c10f695) ist zurückgenommen (42ef353): Beim Zurückspringen auf „Editor“ blieb die Pose-Form erhalten, mit Maul ließ sich in Fressen nichts verschieben. Es gilt der Plan [Maul als Einsatz, Werkzeug-Harmonie und Posen](2026-10-15-maul-einsatz-harmonie-posen.md), Teil B. Das Grundkriterium dieser Seite bleibt gültig.
+
 > Florian (15.10. vormittags): „Wenn ich auf Fressen-Pose klicke, konnte ich immer den Blendshape fürs Fressen einstellen. Jetzt kann ich da gar nichts mehr verschieben. Das war ja die Idee des ganzen Editors.“ — „Das Verformen des Shapes bei Fressen ist ganz buggy und die Shapes sind nicht synchron wie bei Editor.“ — „Sobald das Wesen ein Maul hat, kann ich bei Fressen gar nichts verschieben. Ich muss Mesh und Maul exakt wie bei Editor anpassen können.“ — „Wie konnte das wegfallen? Das war ein absolutes Grundkriterium!“
 
 Grundkriterium aus dem Plan „Wesen-Editor 2“ (5.2): **Fressen-Pose = Knochen + Körper-Blendshape. Die Pose zeigt zuerst, was die Knochen ergeben; dann bearbeitet Florian alles in der Pose (Umriss, Spanten, Pinsel, Teile).** Abnahme Phase 2: „Fressen-Pose in allen Ansichten bearbeitbar“.

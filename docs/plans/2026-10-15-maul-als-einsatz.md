@@ -1,5 +1,7 @@
 # Maul als Einsatz (15.10.2026)
 
+> **Ausgeführt (15.10. mittags):** Der freigegebene Plan [Maul als Einsatz, Werkzeug-Harmonie und Posen](2026-10-15-maul-einsatz-harmonie-posen.md) mit dem Entwurf [Teil A](2026-10-15-entwurf-maul-einsatz.md) ersetzt diese Skizze.
+
 > Florian (15.10. vormittags, mit Bildern): „Wenn die Figur einen Bauch unter dem Maul hat, fällt er in sich zusammen wie bei der Giraffe die Nase. Das Ergebnis ist ein unbearbeitbares, völlig zerrissenes Wesen.“ — „Mundwinkel können diese Form nicht annehmen! Das muss auch gehen. Es ist immer noch viel zu fragil und unflexibel! Du solltest maximal selbstkritisch sein und alle Fälle testen, bevor du zum nächsten Schritt gehst!“ — „Bei hoch sitzendem Maul passieren die komischsten Sachen!“ — „Selbst bei den einfachsten Mäulern entstehen so viele hässliche Falten. Es muss alles viel smoother sein!“
 
 ## Befund: der Maulbau aus Phase 2 trägt nicht

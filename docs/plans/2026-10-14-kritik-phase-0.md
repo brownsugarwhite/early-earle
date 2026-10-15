@@ -8,6 +8,10 @@
 
 | Datum | Woran | Urteil | Folge |
 |---|---|---|---|
+| 15.10. vormittags | Maul an eigenen Wesen (Kugel mit Bauch, Ei, Langhals, Rex) | „äußerst fragil … Nasen und Bäuche kollabieren, komische Falten und Wellen, der gelbe Umriss wird shaky und ragt aus der schwarzen Form … Das Maul soll perfekt sitzen und das Grundmesh nicht beeinflussen“; J-Mundwinkel unmöglich, echter Rex-Unterbiss zerreißt alles | Plan [Maul als Einsatz, Werkzeug-Harmonie und Posen](2026-10-15-maul-einsatz-harmonie-posen.md), Teil A |
+| 15.10. vormittags | Fressen nach „Fressen wie Editor“ | „beim Zurückspringen auf Editor bleibt der neue Shape der Fressen-Pose erhalten“; mit Maul nichts verschiebbar; „Im Fressen-Tab ist das Maul immer getrennt“; Regler für Morphs, Bones je Pose; „Das Posen- und Blendshape-Element ist das Herzstück“ | Rücknahme 42ef353; Teil B (B1 als Sofortkorrektur) |
+| 15.10. vormittags | Pinsel und Linien | „Tools wie Ziehen und Aufblasen werden nicht korrekt auf die Shapes übertragen … jede Änderung der schwarzen Linie oder das Setzen des Mauls wirft unvorhersehbare Abweichungen aus. Alle Werkzeuge müssen perfekt harmonieren!“ | Teil H (Käfig als Wahrheit, Relief, örtliche Änderungen, Linien bleiben, wo gezeichnet) |
+| 15.10. vormittags | Prüfungen | „Die Testwesen sind nur zum Testen. Daran ist nicht eine Sache abgenommen … Deine Tests waren sehr, sehr unvollständig“ | Teil V (Zufallsreihe, Werkzeug-Matrix, Kontaktbögen), keine Meldung „bestanden“ ohne Abnahme |
 | 14.10. | Rex-Haps (Beweis 2) | „scheint für mich erstmal zu passen“; der getrennte Kiefer mit Überbiss (Unterkiefer läuft deutlich in den Oberkiefer) ist ihm wichtig | Phase 2 (Kiefer getrennt) |
 | 14.10. | Tiger-Kopf (Beweis 4) | „zumindest schon besser als alle Versuche zuvor“, „vor allem das Maul passt noch nicht“ | Maul technisch sauber (14.10. spätabends); Look-Urteil offen → Phase 2/4 |
 | 14.10. | Stile, erste Runde (Beweis 5) | „ganz gut, aber treffen es noch nicht wirklich“ | zweite Runde gebaut |
@@ -145,3 +149,12 @@
 - [ ] **Runde Bohne aus jeder geschlossenen Maulform:** geht für ihn mit den Werkzeugen und der Fressen-Pose (damit ist die offene M3-Frage „Automatik oder Fressen-Pose“ für ihn beantwortet: Fressen-Pose genügt) → beobachten.
 - [ ] **Hundemaul:** seine Frage, ob es mit den bisherigen Werkzeugen geht → Antwort im Chat, Ergänzung „Lippenverlauf im Front-Blatt auch beim Schlitzmaul“ nur auf seinen Wunsch.
 
+## Florian 15.10. vormittags: Grundfehler (Plan „Maul als Einsatz, Werkzeug-Harmonie und Posen“)
+
+- [ ] **Maul verändert den Körper** (Bauch/Nase klappen zusammen, Kinnwand, Ei-Schnabel, Falten beim einfachsten Maul, unruhiger gelber Umriss) → Teil A (Einsatz, A0 bitgleich).
+- [ ] **Mundwinkel in jeder Form** (J, senkrecht, S) und **Maul an jeder Stelle** (hoch, seitlich, Kinn, Hals) → Teil A (Karte, Lippenschleife).
+- [ ] **Über- und Unterbiss über die Bézier-Griffe, Kiefer unabhängig** → Teil A (Korrekturfeld je Kieferseite).
+- [ ] **Rücksprung auf „Editor“ zeigt die Pose** → B1 (Sofortkorrektur).
+- [ ] **Fressen wie Editor bearbeitbar, Lippen exakt auf Rot/Blau, in Fressen immer getrennt, Bones je Pose, Morph-Regler** → Teil B.
+- [ ] **Pinsel ↔ schwarze Linien ↔ Maul ohne unvorhersehbare Abweichungen** → Teil H.
+- [ ] **Vollständige Prüfungen** (Zufallsreihe, Werkzeug-Matrix, echte Gesten) → Teil V vor jedem Umbau.
