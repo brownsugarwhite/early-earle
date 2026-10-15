@@ -4,7 +4,7 @@
 // Look: Matcap (Licht an der Ansicht, wie Blender-Solid), Kachel als 10-%-Fläche, harter Schatten von
 // einem eigenen Sonnenlicht (wirkt nur auf den Schatten, die Matcap ignoriert Licht).
 
-import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, atlasTextur, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, createGlubschMaterial, createGlubschUniforms, createToothMaterial, installTslFunctionCacheFix, lidEbene, lidLinie, setzeZahnFarbe, AUGEN_FORM, AUGEN_ZUSTAND, LID_NEIGUNG, farbRolle, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms, type GlubschUniforms } from '@ee/render';
+import { STIL_STANDARD, applyFeuerArt, applyMuster, applyStil, applyZonen, atlasTextur, createCreatureMaterial, createCreatureUniforms, createFeuerMaterial, createFeuerUniforms, createAugenKugelMaterial, createAugenKugelUniforms, createToothMaterial, installTslFunctionCacheFix, lidEbene, lidLinie, setzeZahnFarbe, AUGEN_FORM, AUGEN_ZUSTAND, LID_NEIGUNG, farbRolle, type CreatureMaterialUniforms, type FeuerArt, type FeuerUniforms, type AugenKugelUniforms } from '@ee/render';
 import type { LoftNetz } from '@ee/shape';
 import {
   BufferAttribute,
@@ -40,10 +40,20 @@ import type { Ansicht2D, Kamera } from '../state/uiStore';
 import type { Ansicht, Blick } from '@ee/shape';
 import { massstab } from '../viewports/ansicht2d';
 
-/** Glubschauge (Phase 2 M5): Stärke des dunklen Rings auf der Haut und sein Radius als Anteil des Berührkreises (Bild 10) */
-const GLUBSCH_RING = { staerke: 0.5, radius: 0.86 } as const;
-/** Glubschauge, Zustand Sichel: Stellung des unteren Lids (die Kante wölbt sich bis etwas über die Mitte) */
-const GLUBSCH_SICHEL = 0.62;
+/**
+ * Augenkugeln (Phase 2 M5): dunkler Ring auf der Haut um den Berührkreis (Stärke, Radius als Anteil), Iris, Pupille und
+ * Glanz, Lid in Ruhe. Glubschauge nach Bild 10: weiß, große Pupille in der Augenfarbe, großer Glanz, kein Ruhelid.
+ * Augapfel nach Bild 11 (Look-Test, Schritt 3): Lederhaut der Palette, Iris in der Augenfarbe, kleine dunkle Pupille, kleiner
+ * Glanz, das obere Lid deckt in Ruhe ein Drittel (steht für den Brauenwulst, die Drehung neigt es: böser Blick).
+ */
+const KUGEL_AUGE = {
+  glubsch: { ring: 0.5, ringRadius: 0.86, iris: 0, pupille: 1, glanz: 0.905, ruheLid: 0 },
+  augapfel: { ring: 0.9, ringRadius: 1.05, iris: 0.55, pupille: 2.2, glanz: 0.975, ruheLid: 0.42 },
+} as const;
+/** Augapfel: Ruheblick nach vorn (−x, zur Schnauze), höchstens so weit von der Flächennormalen (Bild 11 schaut nach vorn) */
+const AUGAPFEL_BLICK = (28 * Math.PI) / 180;
+/** Augenkugel, Zustand Sichel: Stellung des unteren Lids (die Kante wölbt sich bis etwas über die Mitte) */
+const KUGEL_SICHEL = 0.62;
 
 /**
  * Augenrahmen (Phase 2 M5): oben = Welt-y senkrecht zur Normalen, rechts = oben × Normale (links gespiegelt, so spiegeln
@@ -61,6 +71,26 @@ function augenRahmen(normale: readonly [number, number, number], drehung: number
     rechts = new Vector3().crossVectors(up, n).normalize();
   }
   return { n, up, rechts };
+}
+
+/**
+ * Drehung eines Auges für seinen Rahmen: Das linke Auge (Seite −1) bekommt die gespiegelte Drehung. Sein Rahmen zeigt mit
+ * rechts = oben × Normale zur Nase statt nach außen; mit derselben Drehung neigten sich beide Augen in dieselbe Richtung
+ * (/ / statt \ /).
+ */
+function augenDrehung(a: { drehung?: number; seite: -1 | 0 | 1 }): number {
+  return (a.seite === -1 ? -1 : 1) * (a.drehung ?? 0);
+}
+
+/** Richtung n zur Schnauze (−x) gedreht, höchstens um `maxWinkel` (Bogenmaß); in der Ebene von n und −x. */
+function zurSchnauze(n: Vector3, maxWinkel: number): Vector3 {
+  const vorn = new Vector3(-1, 0, 0);
+  const w = Math.acos(Math.max(-1, Math.min(1, n.dot(vorn))));
+  if (w < 1e-4) return n.clone();
+  const t = Math.min(1, maxWinkel / w);
+  // Kugelinterpolation von n nach vorn um den Anteil t
+  const sin = Math.sin(w);
+  return n.clone().multiplyScalar(Math.sin((1 - t) * w) / sin).addScaledVector(vorn, Math.sin(t * w) / sin).normalize();
 }
 
 /** Blatt (Seite, Front, Top): Rechteck, 2D-Ansicht (Zoom, Mitte) und Blickrichtung — die Bühne rendert den Körper dahinter. */
@@ -128,11 +158,13 @@ export class Renderer3D {
   /** Augen (Phase 2 M5): zuletzt gesetzte Augen und die Vorschau (Zustand, Lid, Blinzeln) */
   private augenListe: Auge[] = [];
   private augenAnzeige: { zustand: keyof typeof AUGEN_ZUSTAND; lid: number; blinzeln: boolean } = { zustand: 'offen', lid: 0, blinzeln: true };
-  /** Glubschaugen (Phase 2 M5, Schritt 2): eine Kugel je Auge, Kinder des Earle-Wesens (sichtbar mit ihm), eigenes Material */
-  private readonly glubschUniforms: GlubschUniforms;
-  private readonly glubschMaterial: MeshBasicNodeMaterial;
-  private readonly glubschGeo = new SphereGeometry(1, 48, 32);
-  private glubschKugeln: Mesh[] = [];
+  /** Augenkugeln (Phase 2 M5: Glubschauge, Augapfel): eine Kugel je Auge, Kinder des Earle-Wesens (sichtbar mit ihm) */
+  private readonly kugelUniforms: AugenKugelUniforms;
+  private readonly kugelMaterial: MeshBasicNodeMaterial;
+  private readonly kugelGeo = new SphereGeometry(1, 48, 32);
+  private augenKugeln: Mesh[] = [];
+  /** Lid der Augenkugeln in Ruhe (Augapfel: Brauenwulst) */
+  private kugelRuheLid = 0;
   private blinkPhase = -1;
   private blinkTimer = 2.2;
   private zeit = 0;
@@ -163,8 +195,8 @@ export class Renderer3D {
     this.wesen.castShadow = true;
     this.wesen.frustumCulled = false;
     this.szene.add(this.wesen);
-    this.glubschUniforms = createGlubschUniforms();
-    this.glubschMaterial = createGlubschMaterial(this.wesenUniforms, this.glubschUniforms);
+    this.kugelUniforms = createAugenKugelUniforms();
+    this.kugelMaterial = createAugenKugelMaterial(this.wesenUniforms, this.kugelUniforms);
     this.setzePalette(this.palette);
     this.feuerUniforms = createFeuerUniforms();
     const feuerMaterial = createFeuerMaterial(this.feuerUniforms);
@@ -497,75 +529,92 @@ export class Renderer3D {
       }
       // Lid von Hand (Augen-Tafel) und Blinzeln: das stärkere gilt
       u.blink.value = Math.max(blink, this.augenAnzeige.lid);
-      this.glubschUniforms.zeit.value = this.zeit;
-      this.glubschLider(blink);
+      this.kugelUniforms.zeit.value = this.zeit;
+      this.kugelLider(blink);
       this.anfordern();
     }, 50);
   }
 
   /**
-   * Augen in die Uniforms (Phase 2 M5): Rahmen je Auge (`augenRahmen`), Form, Zustand und Seitenverhältnis. Gemalte Augen
-   * zeichnet das Körpermaterial (Tiger mit Lidring der Palette); Glubschaugen sind Kugeln (`glubschSetzen`), auf der Haut
-   * bleibt nur der dunkle Ring um ihren Berührkreis (Bild 10). Ring und gemalte Form rechnen in der Ruhelage.
+   * Augen in die Uniforms (Phase 2 M5): Rahmen je Auge (`augenRahmen`; das linke Auge mit gespiegelter Drehung, so neigen
+   * sich beide spiegelbildlich), Form, Zustand und Seitenverhältnis. Gemalte Augen zeichnet das Körpermaterial (Tiger mit
+   * Lidring der Palette); Glubschauge und Augapfel sind Kugeln (`kugelnSetzen`), auf der Haut bleibt nur der dunkle Ring um
+   * ihren Berührkreis (Bild 10, 11). Ring und gemalte Form rechnen in der Ruhelage.
    */
   private augenUniformsSetzen() {
     const u = this.wesenUniforms;
     const form = { schlitz: AUGEN_FORM.schlitz, knopf: AUGEN_FORM.knopf, mandel: AUGEN_FORM.mandel } as const;
     const n = this.augenListe.length;
-    const glubsch = n > 0 && this.augenListe.every((a) => a.art === 'glubsch');
-    u.eyeCount.value = glubsch ? 0 : n;
-    u.ringCount.value = glubsch || this.palette.augenRing ? n : 0;
-    u.ringStaerke.value = glubsch ? GLUBSCH_RING.staerke : (this.palette.augenRing ?? 0.5);
+    const art = n > 0 ? this.augenListe[0]!.art : 'gemalt';
+    const kugel = art === 'glubsch' || art === 'augapfel' ? KUGEL_AUGE[art] : null;
+    u.eyeCount.value = kugel ? 0 : n;
+    u.ringCount.value = kugel || this.palette.augenRing ? n : 0;
+    u.ringStaerke.value = kugel ? kugel.ring : (this.palette.augenRing ?? 0.5);
     this.augenListe.forEach((a, i) => {
-      const { n: nr, up, rechts } = augenRahmen(a.normale, a.drehung ?? 0);
-      // Glubschauge: Ring um den Berührkreis (Kugelradius × 2·√(t·(1 − t)) bei Tiefe t), das Material teilt w durch 2,2
-      const w = glubsch ? 2.2 * GLUBSCH_RING.radius * a.groesse * Math.sqrt(Math.max(0, a.tiefe * (1 - a.tiefe))) : a.groesse;
+      const { n: nr, up, rechts } = augenRahmen(a.normale, augenDrehung(a));
+      // Augenkugel: Ring um den Berührkreis (Kugelradius × 2·√(t·(1 − t)) bei Tiefe t), das Material teilt w durch 2,2
+      const w = kugel ? 2.2 * kugel.ringRadius * a.groesse * Math.sqrt(Math.max(0, a.tiefe * (1 - a.tiefe))) : a.groesse;
       (u.eyePos.array[i] as Vector4).set(a.pos[0] + nr.x * 0.002, a.pos[1] + nr.y * 0.002, a.pos[2] + nr.z * 0.002, w);
       (u.eyeUp.array[i] as Vector4).set(up.x, up.y, up.z, 1);
       (u.eyeRechts.array[i] as Vector4).set(rechts.x, rechts.y, rechts.z, 0);
       (u.eyeForm.array[i] as Vector4).set(form[a.form ?? 'schlitz'] ?? 0, AUGEN_ZUSTAND[this.augenAnzeige.zustand], a.breite ?? 1, 0);
     });
     const a0 = this.augenListe[0];
-    this.glubschUniforms.form.value.set(form[a0?.form ?? 'knopf'] ?? 1, AUGEN_ZUSTAND[this.augenAnzeige.zustand], a0?.breite ?? 1, 0);
-    this.glubschSetzen(glubsch);
-    this.glubschLider(0);
+    const g = this.kugelUniforms;
+    g.form.value.set(form[a0?.form ?? 'knopf'] ?? 1, AUGEN_ZUSTAND[this.augenAnzeige.zustand], a0?.breite ?? 1, 0);
+    if (kugel) {
+      g.irisRadius.value = kugel.iris;
+      g.pupillenMass.value = kugel.pupille;
+      g.glanz.value = kugel.glanz;
+      const lh = art === 'augapfel' && this.palette.lederhaut ? farbRolle(this.palette.lederhaut, STIL_STANDARD).base : [0.96, 0.95, 0.9];
+      g.lederhaut.value.set(lh[0]!, lh[1]!, lh[2]!);
+    }
+    this.kugelRuheLid = kugel?.ruheLid ?? 0;
+    this.kugelnSetzen(!!kugel);
+    this.kugelLider(0);
     this.anfordern();
   }
 
   /**
-   * Glubschaugen (Phase 2 M5, Schritt 2): je Auge eine Kugel (Radius = halbe Größe) an der posierten Stelle der Haut — so
-   * folgt sie beim Öffnen dem Schädel —, um (1 − 2·Tiefe)·Radius längs der posierten Normalen versetzt; Rahmen wie die
-   * gemalten Augen (Blick = Normale, Drehung, links gespiegelt).
+   * Augenkugeln (Phase 2 M5): je Auge eine Kugel (Radius = halbe Größe) an der posierten Stelle der Haut — so folgt sie beim
+   * Öffnen dem Schädel —, um (1 − 2·Tiefe)·Radius längs der posierten Normalen versetzt; Rahmen wie die gemalten Augen
+   * (Blick = Normale, Drehung, links gespiegelt).
    */
-  private glubschSetzen(an: boolean) {
+  private kugelnSetzen(an: boolean) {
     const liste = an ? this.augenListe : [];
-    while (this.glubschKugeln.length < liste.length) {
-      const m = new Mesh(this.glubschGeo, this.glubschMaterial);
-      m.name = 'glubschauge';
+    while (this.augenKugeln.length < liste.length) {
+      const m = new Mesh(this.kugelGeo, this.kugelMaterial);
+      m.name = 'augenkugel';
       m.castShadow = true;
       m.frustumCulled = false;
       this.wesen.add(m);
-      this.glubschKugeln.push(m);
+      this.augenKugeln.push(m);
     }
-    this.glubschKugeln.forEach((m, i) => {
+    this.augenKugeln.forEach((m, i) => {
       const a = liste[i];
       m.visible = !!a;
       if (!a) return;
       const R = a.groesse / 2;
-      const { n, up, rechts } = augenRahmen(a.posiert.normale, a.drehung ?? 0);
-      m.position.set(a.posiert.pos[0], a.posiert.pos[1], a.posiert.pos[2]).addScaledVector(n, R * (1 - 2 * a.tiefe));
+      const nh = new Vector3(...a.posiert.normale).normalize();
+      // Blickachse: beim Augapfel zur Schnauze geneigt (die Kugel sitzt weiter längs der Flächennormalen in der Haut)
+      const blick = a.art === 'augapfel' ? zurSchnauze(nh, AUGAPFEL_BLICK) : nh;
+      const { up, rechts } = augenRahmen([blick.x, blick.y, blick.z], augenDrehung(a));
+      m.position.set(a.posiert.pos[0], a.posiert.pos[1], a.posiert.pos[2]).addScaledVector(nh, R * (1 - 2 * a.tiefe));
       m.scale.setScalar(R);
-      m.quaternion.setFromRotationMatrix(new Matrix4().makeBasis(rechts, up, n));
+      m.quaternion.setFromRotationMatrix(new Matrix4().makeBasis(rechts, up, blick));
     });
   }
 
-  /** Lider der Glubschaugen: oben Blinzeln, Lid von Hand oder „zu“ (das stärkere gilt; ganz zu mit Lidspalt), unten die Sichel. */
-  private glubschLider(blink: number) {
-    const g = this.glubschUniforms;
+  /**
+   * Lider der Augenkugeln: oben Ruhelid (Augapfel), Blinzeln, Lid von Hand oder „zu“ (das stärkere gilt; ganz zu mit
+   * Lidspalt), unten die Sichel.
+   */
+  private kugelLider(blink: number) {
+    const g = this.kugelUniforms;
     const z = this.augenAnzeige.zustand;
-    const oben = Math.max(blink, this.augenAnzeige.lid, z === 'zu' ? 1 : 0);
+    const oben = Math.max(this.kugelRuheLid, blink, this.augenAnzeige.lid, z === 'zu' ? 1 : 0);
     lidEbene(oben, true, LID_NEIGUNG.oben, g.lidOben.value);
-    lidEbene(z === 'sichel' ? GLUBSCH_SICHEL : 0, false, LID_NEIGUNG.unten, g.lidUnten.value);
+    lidEbene(z === 'sichel' ? KUGEL_SICHEL : 0, false, LID_NEIGUNG.unten, g.lidUnten.value);
     lidLinie(oben > 0.97, g.linie.value);
   }
 
@@ -587,7 +636,7 @@ export class Renderer3D {
     this.leben(false);
     this.wesenUniforms.blink.value = wert;
     this.feuerUniforms.blink.value = wert;
-    this.glubschLider(wert);
+    this.kugelLider(wert);
     this.anfordern();
   }
 

@@ -19,6 +19,8 @@ export type Palette = {
   gesichtHell?: number;
   /** Dunkler Lidring um die gemalten Augen (Stärke, 0 = aus) */
   augenRing?: number;
+  /** Lederhaut des Augapfels (Bild 11: orangerot beim Rex); ohne Angabe weiß */
+  lederhaut?: string;
 };
 
 export const PALETTEN: Record<string, Palette> = {
@@ -48,6 +50,7 @@ export const PALETTEN: Record<string, Palette> = {
     bauchlinie: -0.2,
     bauchStaerke: 0.7,
     glimmer: 0.5,
+    lederhaut: '#d9482c',
   },
   blob: {
     name: 'Blob',
