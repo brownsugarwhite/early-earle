@@ -10,7 +10,7 @@ import type { Dokument } from '../../../../packages/shape/src/dokument';
 import { pfadAbtasten, vollerPfad } from '../../../../packages/shape/src/profil';
 import { ableiten, kernLeiter, zugBei } from '../../../../packages/shape/src/kern/ableiten';
 import { type TeilErgebnis, ableitenMitTeilen } from '../../../../packages/shape/src/kern/grundkoerper/teilBau';
-import { baumTeile } from '../../../../packages/shape/src/kern/grundkoerper/baum';
+import { baumAbleiten, baumTeile } from '../../../../packages/shape/src/kern/grundkoerper/baum';
 import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
 import { blattAbweichungen } from '../../../../packages/shape/src/kern/abweichung';
 import { faltenMass, feinesNetz } from '../../../../packages/shape/src/kern/pruefstand';
@@ -42,7 +42,8 @@ for (const name of liste) {
   // BAUM=1 (G4 neu, Schritt 2): Rumpf und Äste der Seite getrennt, die Äste als eigene Netze dazu
   let baumAeste: ReturnType<typeof ableiten>[] = [];
   try {
-    if (process.env.BAUM) {
+    if (process.env.BAUM === '3') abl = baumAbleiten(dok, { stufen: 3 });
+    else if (process.env.BAUM) {
       const b = baumTeile(dok, { stufen: 3 });
       abl = b.rumpf;
       baumAeste = b.aeste;
